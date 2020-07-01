@@ -139,15 +139,16 @@ tu_CreateDescriptorSetLayout(
       }
    }
 
-   uint32_t samplers_offset = sizeof(struct tu_descriptor_set_layout) +
-      (max_binding + 1) * sizeof(set_layout->binding[0]);
+   uint32_t samplers_offset =
+         offsetof(struct tu_descriptor_set_layout, binding[max_binding + 1]);
+
    /* note: only need to store TEX_SAMP_DWORDS for immutable samples,
     * but using struct tu_sampler makes things simpler */
    uint32_t size = samplers_offset +
       immutable_sampler_count * sizeof(struct tu_sampler) +
       ycbcr_sampler_count * sizeof(struct tu_sampler_ycbcr_conversion);
 
-   set_layout = vk_alloc2(&device->alloc, pAllocator, size, 8,
+   set_layout = vk_zalloc2(&device->alloc, pAllocator, size, 8,
                           VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
    if (!set_layout)
       return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
@@ -171,9 +172,6 @@ tu_CreateDescriptorSetLayout(
    set_layout->has_immutable_samplers = false;
    set_layout->size = 0;
    set_layout->dynamic_ubo = 0;
-
-   memset(set_layout->binding, 0,
-          size - sizeof(struct tu_descriptor_set_layout));
 
    uint32_t dynamic_offset_count = 0;
    uint32_t buffer_count = 0;

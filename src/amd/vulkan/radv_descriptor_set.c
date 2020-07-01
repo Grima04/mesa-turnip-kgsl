@@ -102,8 +102,8 @@ VkResult radv_CreateDescriptorSetLayout(
 		}
 	}
 
-	uint32_t samplers_offset = sizeof(struct radv_descriptor_set_layout) +
-		(max_binding + 1) * sizeof(set_layout->binding[0]);
+	uint32_t samplers_offset =
+			offsetof(struct radv_descriptor_set_layout, binding[max_binding + 1]);
 	size_t size = samplers_offset + immutable_sampler_count * 4 * sizeof(uint32_t);
 	if (ycbcr_sampler_count > 0) {
 		size += ycbcr_sampler_count * sizeof(struct radv_sampler_ycbcr_conversion) + (max_binding + 1) * sizeof(uint32_t);
@@ -145,8 +145,6 @@ VkResult radv_CreateDescriptorSetLayout(
 	set_layout->dynamic_shader_stages = 0;
 	set_layout->has_immutable_samplers = false;
 	set_layout->size = 0;
-
-	memset(set_layout->binding, 0, size - sizeof(struct radv_descriptor_set_layout));
 
 	uint32_t buffer_count = 0;
 	uint32_t dynamic_offset_count = 0;
