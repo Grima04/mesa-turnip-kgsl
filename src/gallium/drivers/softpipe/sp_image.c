@@ -352,25 +352,11 @@ sp_tgsi_store(const struct tgsi_image *image,
       offset = get_image_offset(spr, iview, pformat, r_coord);
       data_ptr = (char *)spr->data + offset;
 
-      if (util_format_is_pure_sint(pformat)) {
-         int32_t sdata[4];
-         for (c = 0; c < 4; c++)
-            sdata[c] = ((int32_t *)rgba[c])[j];
-         util_format_write_4i(pformat, sdata, 0, data_ptr, stride,
-                              s_coord, t_coord, 1, 1);
-      } else if (util_format_is_pure_uint(pformat)) {
-         uint32_t sdata[4];
-         for (c = 0; c < 4; c++)
-            sdata[c] = ((uint32_t *)rgba[c])[j];
-         util_format_write_4ui(pformat, sdata, 0, data_ptr, stride,
-                               s_coord, t_coord, 1, 1);
-      } else {
-         float sdata[4];
-         for (c = 0; c < 4; c++)
-            sdata[c] = rgba[c][j];
-         util_format_write_4f(pformat, sdata, 0, data_ptr, stride,
-                              s_coord, t_coord, 1, 1);
-      }
+      uint32_t sdata[4];
+      for (c = 0; c < 4; c++)
+         sdata[c] = ((uint32_t *)rgba[c])[j];
+      util_format_write_4(pformat, sdata, 0, data_ptr, stride,
+                          s_coord, t_coord, 1, 1);
    }
 }
 
@@ -487,8 +473,8 @@ handle_op_uint(const struct pipe_image_view *iview,
       assert(!"Unexpected TGSI opcode in sp_tgsi_op");
       break;
    }
-   util_format_write_4ui(params->format, sdata, 0, data_ptr, stride,
-                         s, t, 1, 1);
+   util_format_write_4(params->format, sdata, 0, data_ptr, stride,
+                       s, t, 1, 1);
 }
 
 /*
@@ -603,8 +589,8 @@ handle_op_int(const struct pipe_image_view *iview,
       assert(!"Unexpected TGSI opcode in sp_tgsi_op");
       break;
    }
-   util_format_write_4i(params->format, sdata, 0, data_ptr, stride,
-                        s, t, 1, 1);
+   util_format_write_4(params->format, sdata, 0, data_ptr, stride,
+                       s, t, 1, 1);
 }
 
 /* GLES OES_shader_image_atomic.txt allows XCHG on R32F */
@@ -639,8 +625,8 @@ handle_op_r32f_xchg(const struct pipe_image_view *iview,
       sdata[c] = ((float *)rgba[c])[qi];
       ((float *)rgba[c])[qi] = temp;
    }
-   util_format_write_4f(params->format, sdata, 0, data_ptr, stride,
-                        s, t, 1, 1);
+   util_format_write_4(params->format, sdata, 0, data_ptr, stride,
+                       s, t, 1, 1);
 }
 
 /*

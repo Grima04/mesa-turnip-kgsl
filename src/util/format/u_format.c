@@ -348,14 +348,13 @@ util_format_read_4f(enum pipe_format format,
 
 
 void
-util_format_write_4f(enum pipe_format format,
-                     const float *src, unsigned src_stride,
+util_format_write_4(enum pipe_format format,
+                     const void *src, unsigned src_stride,
                      void *dst, unsigned dst_stride,
                      unsigned x, unsigned y, unsigned w, unsigned h)
 {
    const struct util_format_description *format_desc;
    uint8_t *dst_row;
-   const float *src_row;
 
    format_desc = util_format_description(format);
 
@@ -363,9 +362,13 @@ util_format_write_4f(enum pipe_format format,
    assert(y % format_desc->block.height == 0);
 
    dst_row = (uint8_t *)dst + y*dst_stride + x*(format_desc->block.bits/8);
-   src_row = src;
 
-   format_desc->pack_rgba_float(dst_row, dst_stride, src_row, src_stride, w, h);
+   if (util_format_is_pure_uint(format))
+      format_desc->pack_rgba_uint(dst_row, dst_stride, src, src_stride, w, h);
+   else if (util_format_is_pure_sint(format))
+      format_desc->pack_rgba_sint(dst_row, dst_stride, src, src_stride, w, h);
+   else
+      format_desc->pack_rgba_float(dst_row, dst_stride, src, src_stride, w, h);
 }
 
 
@@ -428,27 +431,6 @@ util_format_read_4ui(enum pipe_format format,
 }
 
 void
-util_format_write_4ui(enum pipe_format format,
-                      const unsigned int *src, unsigned src_stride,
-                      void *dst, unsigned dst_stride,
-                      unsigned x, unsigned y, unsigned w, unsigned h)
-{
-   const struct util_format_description *format_desc;
-   uint8_t *dst_row;
-   const uint32_t *src_row;
-
-   format_desc = util_format_description(format);
-
-   assert(x % format_desc->block.width == 0);
-   assert(y % format_desc->block.height == 0);
-
-   dst_row = (uint8_t *)dst + y*dst_stride + x*(format_desc->block.bits/8);
-   src_row = src;
-
-   format_desc->pack_rgba_uint(dst_row, dst_stride, src_row, src_stride, w, h);
-}
-
-void
 util_format_read_4i(enum pipe_format format,
                     int *dst, unsigned dst_stride,
                     const void *src, unsigned src_stride,
@@ -467,27 +449,6 @@ util_format_read_4i(enum pipe_format format,
    dst_row = dst;
 
    format_desc->unpack_rgba_sint(dst_row, dst_stride, src_row, src_stride, w, h);
-}
-
-void
-util_format_write_4i(enum pipe_format format,
-                      const int *src, unsigned src_stride,
-                      void *dst, unsigned dst_stride,
-                      unsigned x, unsigned y, unsigned w, unsigned h)
-{
-   const struct util_format_description *format_desc;
-   uint8_t *dst_row;
-   const int32_t *src_row;
-
-   format_desc = util_format_description(format);
-
-   assert(x % format_desc->block.width == 0);
-   assert(y % format_desc->block.height == 0);
-
-   dst_row = (uint8_t *)dst + y*dst_stride + x*(format_desc->block.bits/8);
-   src_row = src;
-
-   format_desc->pack_rgba_sint(dst_row, dst_stride, src_row, src_stride, w, h);
 }
 
 /**

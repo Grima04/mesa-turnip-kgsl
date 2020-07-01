@@ -371,22 +371,10 @@ pipe_put_tile_rgba(struct pipe_transfer *pt,
    if (util_format_is_depth_or_stencil(format))
       return;
 
-   if (util_format_is_pure_uint(format)) {
-      util_format_write_4ui(format,
-                            p, src_stride * sizeof(float),
-                            dst, pt->stride,
-                            x, y, w, h);
-   } else if (util_format_is_pure_sint(format)) {
-      util_format_write_4i(format,
-                           p, src_stride * sizeof(float),
-                           dst, pt->stride,
-                           x, y, w, h);
-   } else {
-      util_format_write_4f(format,
-                           p, src_stride * sizeof(float),
-                           dst, pt->stride,
-                           x, y, w, h);
-   }
+   util_format_write_4(format,
+                       p, src_stride * sizeof(float),
+                       dst, pt->stride,
+                       x, y, w, h);
 }
 
 void
