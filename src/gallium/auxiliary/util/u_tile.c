@@ -436,22 +436,10 @@ pipe_get_tile_rgba(struct pipe_transfer *pt,
       x32_s8_get_tile_rgba((unsigned *) packed, w, h, dst, dst_stride);
       break;
    default:
-      if (util_format_is_pure_uint(format)) {
-         util_format_read_4ui(format,
-                              dst, dst_stride * sizeof(float),
-                              packed, util_format_get_stride(format, w),
-                              0, 0, w, h);
-      } else if (util_format_is_pure_sint(format)) {
-         util_format_read_4i(format,
-                             dst, dst_stride * sizeof(float),
-                             packed, util_format_get_stride(format, w),
-                             0, 0, w, h);
-      } else {
-            util_format_read_4f(format,
-                                dst, dst_stride * sizeof(float),
-                                packed, util_format_get_stride(format, w),
-                                0, 0, w, h);
-      }
+      util_format_read_4(format,
+                         dst, dst_stride * sizeof(float),
+                         packed, util_format_get_stride(format, w),
+                         0, 0, w, h);
    }
 
    FREE(packed);

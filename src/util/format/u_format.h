@@ -1551,10 +1551,10 @@ util_format_pack_rgba(enum pipe_format format, void *dst,
  */
 
 void
-util_format_read_4f(enum pipe_format format,
-                    float *dst, unsigned dst_stride, 
-                    const void *src, unsigned src_stride, 
-                    unsigned x, unsigned y, unsigned w, unsigned h);
+util_format_read_4(enum pipe_format format,
+                   void *dst, unsigned dst_stride,
+                   const void *src, unsigned src_stride,
+                   unsigned x, unsigned y, unsigned w, unsigned h);
 
 void
 util_format_write_4(enum pipe_format format,
@@ -1573,18 +1573,6 @@ util_format_write_4ub(enum pipe_format format,
                       const uint8_t *src, unsigned src_stride, 
                       void *dst, unsigned dst_stride, 
                       unsigned x, unsigned y, unsigned w, unsigned h);
-
-void
-util_format_read_4ui(enum pipe_format format,
-                     unsigned *dst, unsigned dst_stride,
-                     const void *src, unsigned src_stride,
-                     unsigned x, unsigned y, unsigned w, unsigned h);
-
-void
-util_format_read_4i(enum pipe_format format,
-                    int *dst, unsigned dst_stride,
-                    const void *src, unsigned src_stride,
-                    unsigned x, unsigned y, unsigned w, unsigned h);
 
 /*
  * Generic format conversion;

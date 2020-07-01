@@ -61,10 +61,10 @@ util_format_bptc_rgba_unorm_unpack_rgba_float(float *dst_row, unsigned dst_strid
    decompress_rgba_unorm(width, height,
                          src_row, src_stride,
                          temp_block, width * 4 * sizeof(uint8_t));
-   util_format_read_4f(PIPE_FORMAT_R8G8B8A8_UNORM,
-                       dst_row, dst_stride,
-                       temp_block, width * 4 * sizeof(uint8_t),
-                       0, 0, width, height);
+   util_format_read_4(PIPE_FORMAT_R8G8B8A8_UNORM,
+                      dst_row, dst_stride,
+                      temp_block, width * 4 * sizeof(uint8_t),
+                      0, 0, width, height);
    free((void *) temp_block);
 }
 
@@ -94,10 +94,10 @@ util_format_bptc_rgba_unorm_fetch_rgba_float(float *dst, const uint8_t *src,
    fetch_rgba_unorm_from_block(src + ((width * sizeof(uint8_t)) * (height / 4) + (width / 4)) * 16,
                                temp_block, (width % 4) + (height % 4) * 4);
 
-   util_format_read_4f(PIPE_FORMAT_R8G8B8A8_UNORM,
-                       dst, 4 * sizeof(float),
-                       temp_block, 4 * sizeof(uint8_t),
-                       0, 0, 1, 1);
+   util_format_read_4(PIPE_FORMAT_R8G8B8A8_UNORM,
+                      dst, 4 * sizeof(float),
+                      temp_block, 4 * sizeof(uint8_t),
+                      0, 0, 1, 1);
 }
 
 void
@@ -130,10 +130,10 @@ util_format_bptc_srgba_unpack_rgba_float(float *dst_row, unsigned dst_stride,
    decompress_rgba_unorm(width, height,
                          src_row, src_stride,
                          temp_block, width * 4 * sizeof(uint8_t));
-   util_format_read_4f(PIPE_FORMAT_R8G8B8A8_SRGB,
-                       dst_row, dst_stride,
-                       temp_block, width * 4 * sizeof(uint8_t),
-                       0, 0, width, height);
+   util_format_read_4(PIPE_FORMAT_R8G8B8A8_SRGB,
+                      dst_row, dst_stride,
+                      temp_block, width * 4 * sizeof(uint8_t),
+                      0, 0, width, height);
    free((void *) temp_block);
 }
 
@@ -156,10 +156,10 @@ util_format_bptc_srgba_fetch_rgba_float(float *dst, const uint8_t *src,
 
    fetch_rgba_unorm_from_block(src + ((width * sizeof(uint8_t)) * (height / 4) + (width / 4)) * 16,
                                temp_block, (width % 4) + (height % 4) * 4);
-   util_format_read_4f(PIPE_FORMAT_R8G8B8A8_SRGB,
-                       dst, 4 * sizeof(float),
-                       temp_block, width * 4 * sizeof(uint8_t),
-                       0, 0, 1, 1);
+   util_format_read_4(PIPE_FORMAT_R8G8B8A8_SRGB,
+                      dst, 4 * sizeof(float),
+                      temp_block, width * 4 * sizeof(uint8_t),
+                      0, 0, 1, 1);
 }
 
 void
