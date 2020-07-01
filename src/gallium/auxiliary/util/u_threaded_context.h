@@ -191,7 +191,7 @@
 struct threaded_context;
 struct tc_unflushed_batch_token;
 
-/* These are transfer flags sent to drivers. */
+/* These are map flags sent to drivers. */
 /* Never infer whether it's safe to use unsychronized mappings: */
 #define TC_TRANSFER_MAP_NO_INFER_UNSYNCHRONIZED (1u << 29)
 /* Don't invalidate buffers: */

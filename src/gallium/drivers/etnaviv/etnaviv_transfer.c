@@ -270,7 +270,7 @@ etna_transfer_map(struct pipe_context *pctx, struct pipe_resource *prsc,
        * resources, but only if the RS can blit them. */
       if (usage & PIPE_MAP_DIRECTLY) {
          slab_free(&ctx->transfer_pool, trans);
-         BUG("unsupported transfer flags %#x with tile status/tiled layout", usage);
+         BUG("unsupported map flags %#x with tile status/tiled layout", usage);
          return NULL;
       }
 
