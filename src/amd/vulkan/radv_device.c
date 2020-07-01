@@ -569,6 +569,9 @@ radv_handle_per_app_options(struct radv_instance *instance,
 			 * rendering issues.
 			 */
 			instance->debug_flags |= RADV_DEBUG_ZERO_VRAM;
+		} else if (!strcmp(engine_name, "Quantic Dream Engine")) {
+			/* Fix various artifacts in Detroit: Become Human */
+			instance->debug_flags |= RADV_DEBUG_ZERO_VRAM;
 		}
 	}
 
