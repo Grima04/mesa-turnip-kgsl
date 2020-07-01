@@ -1018,25 +1018,3 @@ util_format_snorm8_to_sint8(enum pipe_format format)
       return format;
    }
 }
-
-bool
-util_format_planar_is_supported(struct pipe_screen *screen,
-                                enum pipe_format format,
-                                enum pipe_texture_target target,
-                                unsigned sample_count,
-                                unsigned storage_sample_count,
-                                unsigned bind)
-{
-   unsigned num_planes = util_format_get_num_planes(format);
-   assert(num_planes >= 2);
-
-   for (unsigned i = 0; i < num_planes; i++) {
-      if (!screen->is_format_supported(screen,
-                                       util_format_get_plane_format(format, i),
-                                       target, sample_count,
-                                       storage_sample_count, bind))
-         return false;
-   }
-
-   return true;
-}

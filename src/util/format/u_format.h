@@ -1399,13 +1399,6 @@ util_format_get_plane_height(enum pipe_format format, unsigned plane,
    }
 }
 
-bool util_format_planar_is_supported(struct pipe_screen *screen,
-                                     enum pipe_format format,
-                                     enum pipe_texture_target target,
-                                     unsigned sample_count,
-                                     unsigned storage_sample_count,
-                                     unsigned bind);
-
 /**
  * Return the number of components stored.
  * Formats with block size != 1x1 will always have 1 component (the block).
