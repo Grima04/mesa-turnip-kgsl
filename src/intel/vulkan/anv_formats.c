@@ -1155,7 +1155,7 @@ VkResult anv_GetPhysicalDeviceImageFormatProperties2(
             external_props->externalMemoryProperties = android_image_props;
             break;
          }
-      /* fallthrough if ahw not supported */
+      /* fallthrough - if ahw not supported */
       default:
          /* From the Vulkan 1.0.42 spec:
           *
