@@ -508,7 +508,7 @@ radv_shader_compile_to_nir(struct radv_device *device,
 			NIR_PASS_V(nir, nir_lower_input_attachments,
 				   &(nir_input_attachment_options) {
 					.use_fragcoord_sysval = true,
-					.use_layer_id_sysval = true,
+					.use_layer_id_sysval = false,
 				   });
 
 		NIR_PASS_V(nir, nir_remove_dead_variables,
@@ -643,13 +643,12 @@ find_layer_in_var(nir_shader *nir)
 }
 
 /* We use layered rendering to implement multiview, which means we need to map
- * view_index to gl_Layer. The attachment lowering also uses needs to know the
- * layer so that it can sample from the correct layer. The code generates a
- * load from the layer_id sysval, but since we don't have a way to get at this
- * information from the fragment shader, we also need to lower this to the
- * gl_Layer varying.  This pass lowers both to a varying load from the LAYER
- * slot, before lowering io, so that nir_assign_var_locations() will give the
- * LAYER varying the correct driver_location.
+ * view_index to gl_Layer. The code generates a load from the layer_id sysval,
+ * but since we don't have a way to get at this information from the fragment
+ * shader, we also need to lower this to the gl_Layer varying.  This pass
+ * lowers both to a varying load from the LAYER slot, before lowering io, so
+ * that nir_assign_var_locations() will give the LAYER varying the correct
+ * driver_location.
  */
 
 static bool
@@ -667,8 +666,7 @@ lower_view_index(nir_shader *nir)
 				continue;
 
 			nir_intrinsic_instr *load = nir_instr_as_intrinsic(instr);
-			if (load->intrinsic != nir_intrinsic_load_view_index &&
-			    load->intrinsic != nir_intrinsic_load_layer_id)
+			if (load->intrinsic != nir_intrinsic_load_view_index)
 				continue;
 
 			if (!layer)
