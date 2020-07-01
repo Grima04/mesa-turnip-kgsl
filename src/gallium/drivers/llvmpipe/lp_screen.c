@@ -424,6 +424,7 @@ llvmpipe_get_shader_param(struct pipe_screen *screen,
    case PIPE_SHADER_COMPUTE:
       if ((LP_DEBUG & DEBUG_CL) && param == PIPE_SHADER_CAP_SUPPORTED_IRS)
          return (1 << PIPE_SHADER_IR_TGSI) | (1 << PIPE_SHADER_IR_NIR) | (1 << PIPE_SHADER_IR_NIR_SERIALIZED);
+      /* fallthrough */
    case PIPE_SHADER_FRAGMENT:
       if (param == PIPE_SHADER_CAP_PREFERRED_IR) {
          if (lscreen->use_tgsi)
@@ -435,11 +436,13 @@ llvmpipe_get_shader_param(struct pipe_screen *screen,
       default:
          return gallivm_get_shader_param(param);
       }
+      /* fallthrough */
    case PIPE_SHADER_TESS_CTRL:
    case PIPE_SHADER_TESS_EVAL:
       /* Tessellation shader needs llvm coroutines support */
       if (!GALLIVM_HAVE_CORO || lscreen->use_tgsi)
          return 0;
+      /* fallthrough */
    case PIPE_SHADER_VERTEX:
    case PIPE_SHADER_GEOMETRY:
       if (param == PIPE_SHADER_CAP_PREFERRED_IR) {
