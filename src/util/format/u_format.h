@@ -426,7 +426,7 @@ struct util_format_description
 
 
 const struct util_format_description *
-util_format_description(enum pipe_format format);
+util_format_description(enum pipe_format format) ATTRIBUTE_CONST;
 
 
 /*
