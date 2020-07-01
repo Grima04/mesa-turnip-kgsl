@@ -80,7 +80,7 @@ ok_format(enum pipe_format pfmt)
 	if (fmt == FMT6_NONE)
 		return false;
 
-	if (fd6_ifmt(fmt) == 0)
+	if (fmt == FMT6_10_10_10_2_UNORM_DEST)
 		return false;
 
 	return true;
@@ -409,15 +409,6 @@ emit_blit_or_clear_texture(struct fd_context *ctx, struct fd_ringbuffer *ring,
 			dfmt = FMT6_Z24_UNORM_S8_UINT_AS_R8G8B8A8;
 			break;
 		}
-		case PIPE_FORMAT_B5G6R5_UNORM:
-		case PIPE_FORMAT_B5G5R5A1_UNORM:
-		case PIPE_FORMAT_B5G5R5X1_UNORM:
-		case PIPE_FORMAT_B4G4R4A4_UNORM:
-			color->ui[0] = float_to_ubyte(color->f[0]);
-			color->ui[1] = float_to_ubyte(color->f[1]);
-			color->ui[2] = float_to_ubyte(color->f[2]);
-			color->ui[3] = float_to_ubyte(color->f[3]);
-			break;
 		default:
 			break;
 		}
@@ -439,12 +430,10 @@ emit_blit_or_clear_texture(struct fd_context *ctx, struct fd_ringbuffer *ring,
 			OUT_RING(ring, _mesa_float_to_half(color->f[3]));
 			sfmt = FMT6_16_16_16_16_FLOAT;
 			break;
-
 		case R2D_FLOAT32:
 		case R2D_INT32:
 		case R2D_INT16:
 		case R2D_INT8:
-		case R2D_RAW:
 		default:
 			OUT_RING(ring, color->ui[0]);
 			OUT_RING(ring, color->ui[1]);

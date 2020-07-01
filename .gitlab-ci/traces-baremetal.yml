@@ -72,7 +72,7 @@ traces:
     expectations:
       # Bad rendering -- some sort of gap in the upper right of the image.
       - device: freedreno-a630
-        checksum: 1c7411cebed6ba0015aaef102539fc5a
+        checksum: c6d7e9712631762b6acdd53bc1dd2aa3
   - path: humus/RaytracedShadows.trace
     expectations:
       - device: freedreno-a630
