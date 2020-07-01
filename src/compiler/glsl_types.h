@@ -811,6 +811,14 @@ public:
       return base_type == GLSL_TYPE_FLOAT16 || is_float() || is_double();
    }
 
+   /**
+    * Query whether or not a type is a float or double
+    */
+   bool is_float_32_64() const
+   {
+      return is_float() || is_double();
+   }
+
    bool is_int_16_32_64() const
    {
       return base_type == GLSL_TYPE_INT16 ||

@@ -388,20 +388,20 @@ ir_validate::visit_leave(ir_expression *ir)
       assert(ir->type->is_int_16_32());
       break;
    case ir_unop_bitcast_i2f:
-      assert(ir->operands[0]->type->is_int_16_32());
-      assert(ir->type->is_float_16_32());
+      assert(ir->operands[0]->type->base_type == GLSL_TYPE_INT);
+      assert(ir->type->base_type == GLSL_TYPE_FLOAT);
       break;
    case ir_unop_bitcast_f2i:
-      assert(ir->operands[0]->type->is_float_16_32());
-      assert(ir->type->is_int_16_32());
+      assert(ir->operands[0]->type->base_type == GLSL_TYPE_FLOAT);
+      assert(ir->type->base_type == GLSL_TYPE_INT);
       break;
    case ir_unop_bitcast_u2f:
-      assert(ir->operands[0]->type->is_uint_16_32());
-      assert(ir->type->is_float_16_32());
+      assert(ir->operands[0]->type->base_type == GLSL_TYPE_UINT);
+      assert(ir->type->base_type == GLSL_TYPE_FLOAT);
       break;
    case ir_unop_bitcast_f2u:
-      assert(ir->operands[0]->type->is_float_16_32());
-      assert(ir->type->is_uint_16_32());
+      assert(ir->operands[0]->type->base_type == GLSL_TYPE_FLOAT);
+      assert(ir->type->base_type == GLSL_TYPE_UINT);
       break;
 
    case ir_unop_bitcast_u642d:
@@ -598,7 +598,7 @@ ir_validate::visit_leave(ir_expression *ir)
 
    case ir_unop_bitfield_reverse:
       assert(ir->operands[0]->type == ir->type);
-      assert(ir->type->is_integer_16_32());
+      assert(ir->type->is_integer_32());
       break;
 
    case ir_unop_bit_count:
@@ -687,12 +687,12 @@ ir_validate::visit_leave(ir_expression *ir)
       break;
 
    case ir_unop_frexp_sig:
-      assert(ir->operands[0]->type->is_float_16_32_64());
+      assert(ir->operands[0]->type->is_float_32_64());
       assert(ir->type->is_double());
       break;
    case ir_unop_frexp_exp:
-      assert(ir->operands[0]->type->is_float_16_32_64());
-      assert(ir->type->is_int_16_32());
+      assert(ir->operands[0]->type->is_float_32_64());
+      assert(ir->type->base_type == GLSL_TYPE_INT);
       break;
    case ir_unop_subroutine_to_int:
       assert(ir->operands[0]->type->base_type == GLSL_TYPE_SUBROUTINE);
@@ -847,8 +847,8 @@ ir_validate::visit_leave(ir_expression *ir)
 
    case ir_binop_ldexp:
       assert(ir->operands[0]->type == ir->type);
-      assert(ir->operands[0]->type->is_float_16_32_64());
-      assert(ir->operands[1]->type->is_int_16_32());
+      assert(ir->operands[0]->type->is_float_32_64());
+      assert(ir->operands[1]->type->base_type == GLSL_TYPE_INT);
       assert(ir->operands[0]->type->components() ==
              ir->operands[1]->type->components());
       break;

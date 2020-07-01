@@ -466,7 +466,35 @@ is_lowerable_builtin(ir_call *ir,
       }
    }
 
-   if (!ir->callee->is_builtin())
+   if (!ir->callee->is_builtin() ||
+       /* Parameters are always highp: */
+       !strcmp(ir->callee_name(), "floatBitsToInt") ||
+       !strcmp(ir->callee_name(), "floatBitsToUint") ||
+       !strcmp(ir->callee_name(), "intBitsToFloat") ||
+       !strcmp(ir->callee_name(), "uintBitsToFloat") ||
+       !strcmp(ir->callee_name(), "bitfieldReverse") ||
+       !strcmp(ir->callee_name(), "frexp") ||
+       !strcmp(ir->callee_name(), "ldexp") ||
+       /* Parameters and outputs are always highp: */
+       /* TODO: The operations are highp, but carry and borrow outputs are lowp. */
+       !strcmp(ir->callee_name(), "uaddCarry") ||
+       !strcmp(ir->callee_name(), "usubBorrow") ||
+       !strcmp(ir->callee_name(), "imulExtended") ||
+       !strcmp(ir->callee_name(), "umulExtended") ||
+       !strcmp(ir->callee_name(), "unpackUnorm2x16") ||
+       !strcmp(ir->callee_name(), "unpackSnorm2x16") ||
+       /* Outputs are highp: */
+       !strcmp(ir->callee_name(), "packUnorm2x16") ||
+       !strcmp(ir->callee_name(), "packSnorm2x16") ||
+       /* Parameters are mediump and outputs are highp. The parameters should
+        * be optimized in NIR, not here, e.g:
+        * - packHalf2x16 can just be a bitcast from f16vec2 to uint32
+        * - Other opcodes don't have to convert parameters to highp if the hw
+        *   has f16 versions. Optimize in NIR accordingly.
+        */
+       !strcmp(ir->callee_name(), "packHalf2x16") ||
+       !strcmp(ir->callee_name(), "packUnorm4x8") ||
+       !strcmp(ir->callee_name(), "packSnorm4x8"))
       return false;
 
    assert(ir->callee->return_precision == GLSL_PRECISION_NONE);

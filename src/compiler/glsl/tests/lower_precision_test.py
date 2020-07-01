@@ -1176,6 +1176,289 @@ TESTS = [
          }
          """,
          r'expression ivec2 \* \(txs ivec2 \(var_ref tex'),
+    Test("floatBitsToInt",
+         """
+         #version 310 es
+         precision mediump float;
+         precision mediump int;
+
+         uniform float val;
+         out int color;
+
+         void main()
+         {
+                 color = floatBitsToInt(val + 1.0) + 1;
+         }
+         """,
+         r'expression int bitcast_f2i \(expression float'),
+    Test("floatBitsToUint",
+         """
+         #version 310 es
+         precision mediump float;
+         precision mediump int;
+
+         uniform float val;
+         out uint color;
+
+         void main()
+         {
+                 color = floatBitsToUint(val + 1.0) + 1u;
+         }
+         """,
+         r'expression uint bitcast_f2u \(expression float'),
+    Test("intBitsToFloat",
+         """
+         #version 310 es
+         precision mediump float;
+         precision mediump int;
+
+         uniform int val;
+         out float color;
+
+         void main()
+         {
+                 color = intBitsToFloat(val + 1) + 1.0;
+         }
+         """,
+         r'expression float bitcast_i2f \(expression int'),
+    Test("uintBitsToFloat",
+         """
+         #version 310 es
+         precision mediump float;
+         precision mediump int;
+
+         uniform uint val;
+         out float color;
+
+         void main()
+         {
+                 color = uintBitsToFloat(val + 1u) + 1.0;
+         }
+         """,
+         r'expression float bitcast_u2f \(expression uint'),
+    Test("bitfieldReverse",
+         """
+         #version 310 es
+         precision mediump float;
+         precision mediump int;
+
+         uniform int val;
+         out int color;
+
+         void main()
+         {
+                 color = bitfieldReverse(val + 1) + 1;
+         }
+         """,
+         r'expression int bitfield_reverse \(expression int'),
+    Test("frexp",
+         """
+         #version 310 es
+         precision mediump float;
+         precision mediump int;
+
+         uniform float val;
+         out float color;
+         out int color2;
+
+         void main()
+         {
+                 int y;
+                 float x = frexp(val + 1.0, y);
+                 color = x + 1.0;
+                 color2 = y + 1;
+         }
+         """,
+         r'assign  \(x\) \(var_ref x\)  \(expression float f162f'),
+    Test("ldexp",
+         """
+         #version 310 es
+         precision mediump float;
+         precision mediump int;
+
+         uniform float val;
+         uniform int exp;
+         out float color;
+
+         void main()
+         {
+                 color = ldexp(val + 1.0, exp + 1) + 1.0;
+         }
+         """,
+         r'expression float ldexp \(expression float'),
+    Test("uaddCarry",
+         """
+         #version 310 es
+         precision mediump float;
+         precision mediump int;
+
+         uniform uint x, y;
+         out uint color;
+
+         void main()
+         {
+                 lowp uint carry;
+                 color = uaddCarry(x * 2u, y * 2u, carry) * 2u;
+                 color *= carry;
+         }
+         """,
+         r'expression uint \+ \(var_ref x\) \(var_ref y'),
+    Test("usubBorrow",
+         """
+         #version 310 es
+         precision mediump float;
+         precision mediump int;
+
+         uniform uint x, y;
+         out uint color;
+
+         void main()
+         {
+                 lowp uint borrow;
+                 color = usubBorrow(x * 2u, y * 2u, borrow) * 2u;
+                 color *= borrow;
+         }
+         """,
+         r'expression uint \+ \(var_ref x\) \(expression uint neg'),
+    Test("imulExtended",
+         """
+         #version 310 es
+         precision mediump float;
+         precision mediump int;
+
+         uniform int x, y;
+         out int color;
+
+         void main()
+         {
+                 int msb, lsb;
+                 imulExtended(x + 2, y + 2, msb, lsb);
+                 color = msb + lsb;
+         }
+         """,
+         r'expression int64_t \* \(expression int'),
+    Test("umulExtended",
+         """
+         #version 310 es
+         precision mediump float;
+         precision mediump int;
+
+         uniform uint x, y;
+         out uint color;
+
+         void main()
+         {
+                 uint msb, lsb;
+                 umulExtended(x + 2u, y + 2u, msb, lsb);
+                 color = msb + lsb;
+         }
+         """,
+         r'expression uint64_t \* \(expression uint'),
+    Test("unpackUnorm2x16",
+         """
+         #version 310 es
+         precision mediump float;
+         precision mediump int;
+
+         uniform uint val;
+         out vec2 color;
+
+         void main()
+         {
+                 color = unpackUnorm2x16(val + 1u) + vec2(1.0);
+         }
+         """,
+         r'expression vec2 unpackUnorm2x16 \(expression uint'),
+    Test("unpackSnorm2x16",
+         """
+         #version 310 es
+         precision mediump float;
+         precision mediump int;
+
+         uniform uint val;
+         out vec2 color;
+
+         void main()
+         {
+                 color = unpackSnorm2x16(val + 1u) + vec2(1.0);
+         }
+         """,
+         r'expression vec2 unpackSnorm2x16 \(expression uint'),
+    Test("packUnorm2x16",
+         """
+         #version 310 es
+         precision mediump float;
+         precision mediump int;
+
+         uniform vec2 val;
+         out uint color;
+
+         void main()
+         {
+                 color = packUnorm2x16(val + vec2(1.0)) + 1u;
+         }
+         """,
+         r'expression uint packUnorm2x16 \(expression vec2'),
+    Test("packSnorm2x16",
+         """
+         #version 310 es
+         precision mediump float;
+         precision mediump int;
+
+         uniform vec2 val;
+         out uint color;
+
+         void main()
+         {
+                 color = packSnorm2x16(val + vec2(1.0)) + 1u;
+         }
+         """,
+         r'expression uint packSnorm2x16 \(expression vec2'),
+    Test("packHalf2x16",
+         """
+         #version 310 es
+         precision mediump float;
+         precision mediump int;
+
+         uniform vec2 val;
+         out uint color;
+
+         void main()
+         {
+                 color = packHalf2x16(val + vec2(1.0)) + 1u;
+         }
+         """,
+         r'expression uint packHalf2x16 \(expression vec2'),
+    Test("packUnorm4x8",
+         """
+         #version 310 es
+         precision mediump float;
+         precision mediump int;
+
+         uniform vec4 val;
+         out uint color;
+
+         void main()
+         {
+                 color = packUnorm4x8(val + vec4(1.0)) + 1u;
+         }
+         """,
+         r'expression uint packUnorm4x8 \(expression vec4'),
+    Test("packSnorm4x8",
+         """
+         #version 310 es
+         precision mediump float;
+         precision mediump int;
+
+         uniform vec4 val;
+         out uint color;
+
+         void main()
+         {
+                 color = packSnorm4x8(val + vec4(1.0)) + 1u;
+         }
+         """,
+         r'expression uint packSnorm4x8 \(expression vec4'),
 ]
 
 
