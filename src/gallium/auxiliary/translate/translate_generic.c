@@ -799,6 +799,8 @@ translate_generic_create(const struct translate_key *key)
    for (i = 0; i < key->nr_elements; i++) {
       const struct util_format_description *format_desc =
             util_format_description(key->element[i].input_format);
+      const struct util_format_unpack_description *unpack =
+         util_format_unpack_description(key->element[i].input_format);
 
       assert(format_desc);
 
@@ -814,15 +816,15 @@ translate_generic_create(const struct translate_key *key)
          }
 
          if (format_desc->channel[0].type == UTIL_FORMAT_TYPE_SIGNED) {
-            assert(format_desc->fetch_rgba_sint);
-            tg->attrib[i].fetch = (fetch_func)format_desc->fetch_rgba_sint;
+            assert(unpack->fetch_rgba_sint);
+            tg->attrib[i].fetch = (fetch_func)unpack->fetch_rgba_sint;
          } else {
-            assert(format_desc->fetch_rgba_uint);
-            tg->attrib[i].fetch = (fetch_func)format_desc->fetch_rgba_uint;
+            assert(unpack->fetch_rgba_uint);
+            tg->attrib[i].fetch = (fetch_func)unpack->fetch_rgba_uint;
          }
       } else {
-         assert(format_desc->fetch_rgba_float);
-         tg->attrib[i].fetch = (fetch_func)format_desc->fetch_rgba_float;
+         assert(unpack->fetch_rgba_float);
+         tg->attrib[i].fetch = (fetch_func)unpack->fetch_rgba_float;
       }
 
       tg->attrib[i].buffer = key->element[i].input_buffer;

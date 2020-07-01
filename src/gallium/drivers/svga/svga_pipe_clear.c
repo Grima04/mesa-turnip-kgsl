@@ -290,6 +290,8 @@ svga_clear_texture(struct pipe_context *pipe,
    union pipe_color_union color;
    const struct util_format_description *desc =
       util_format_description(surface->format);
+   const struct util_format_description *unpack =
+      util_format_unpack_description(surface->format);
 
    if (util_format_is_depth_or_stencil(surface->format)) {
       float depth;
@@ -302,8 +304,8 @@ svga_clear_texture(struct pipe_context *pipe,
          stencil = 0;
       }
       else {
-         desc->unpack_z_float(&depth, 0, data, 0, 1, 1);
-         desc->unpack_s_8uint(&stencil, 0, data, 0, 1, 1);
+         unpack->unpack_z_float(&depth, 0, data, 0, 1, 1);
+         unpack->unpack_s_8uint(&stencil, 0, data, 0, 1, 1);
       }
 
       if (util_format_has_depth(desc)) {

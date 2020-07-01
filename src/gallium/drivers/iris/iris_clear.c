@@ -717,16 +717,16 @@ iris_clear_texture(struct pipe_context *ctx,
       iris_resource_finish_aux_import(ctx->screen, res);
 
    if (util_format_is_depth_or_stencil(p_res->format)) {
-      const struct util_format_description *fmt_desc =
-         util_format_description(p_res->format);
+      const struct util_format_unpack_description *unpack =
+         util_format_unpack_description(p_res->format);
 
       float depth = 0.0;
       uint8_t stencil = 0;
 
-      if (fmt_desc->unpack_z_float)
+      if (unpack->unpack_z_float)
          util_format_unpack_z_float(p_res->format, &depth, data, 1);
 
-      if (fmt_desc->unpack_s_8uint)
+      if (unpack->unpack_s_8uint)
          util_format_unpack_s_8uint(p_res->format, &stencil, data, 1);
 
       clear_depth_stencil(ice, p_res, level, box, true, true, true,
