@@ -2086,6 +2086,7 @@ v3dv_CreateSampler(VkDevice _device,
       return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
    sampler->compare_enable = pCreateInfo->compareEnable;
+   sampler->unnormalized_coordinates = pCreateInfo->unnormalizedCoordinates;
    pack_sampler_state(sampler, pCreateInfo);
 
    *pSampler = v3dv_sampler_to_handle(sampler);

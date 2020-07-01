@@ -140,10 +140,25 @@ write_tmu_p1(struct v3dv_cmd_buffer *cmd_buffer,
       v3dv_descriptor_map_get_sampler_state(descriptor_state, &pipeline->sampler_map,
                                             pipeline->layout, sampler_idx);
 
+   const struct v3dv_sampler *sampler =
+      v3dv_descriptor_map_get_sampler(descriptor_state, &pipeline->sampler_map,
+                                         pipeline->layout, sampler_idx);
+   assert(sampler);
+
+   /* Set unnormalized coordinates flag from sampler object */
+   uint32_t p1_packed = v3d_unit_data_get_offset(data);
+   if (sampler->unnormalized_coordinates) {
+      struct V3DX(TMU_CONFIG_PARAMETER_1) p1_unpacked;
+      V3DX(TMU_CONFIG_PARAMETER_1_unpack)((uint8_t *)&p1_packed, &p1_unpacked);
+      p1_unpacked.unnormalized_coordinates = true;
+      V3DX(TMU_CONFIG_PARAMETER_1_pack)(NULL, (uint8_t *)&p1_packed,
+                                        &p1_unpacked);
+   }
+
    cl_aligned_reloc(&job->indirect, uniforms,
                     sampler_state_reloc.bo,
                     sampler_state_reloc.offset +
-                    v3d_unit_data_get_offset(data));
+                    p1_packed);
 }
 
 static void
