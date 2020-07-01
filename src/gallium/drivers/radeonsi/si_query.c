@@ -1223,6 +1223,7 @@ static void si_get_hw_query_params(struct si_context *sctx, struct si_query_hw *
    case PIPE_QUERY_SO_OVERFLOW_ANY_PREDICATE:
       params->pair_count = SI_MAX_STREAMS;
       params->pair_stride = 32;
+      /* fallthrough */
    case PIPE_QUERY_SO_OVERFLOW_PREDICATE:
       params->start_offset = 0;
       params->end_offset = 16;
