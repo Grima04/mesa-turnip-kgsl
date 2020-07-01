@@ -43,7 +43,7 @@ pages:
       changes: &docs-or-ci
       - docs/**/*
       - .gitlab-ci.yml
-      when: on_success
+      when: always
     # Other cases default to never
 
 test-docs:
