@@ -155,7 +155,7 @@ can_lower_type(const struct gl_shader_compiler_options *options,
     * boolean types so that it will do comparisons as 16-bit.
     */
 
-   switch (type->base_type) {
+   switch (type->without_array()->base_type) {
    /* TODO: should we do anything for these two with regard to Int16 vs FP16
     * support?
     */
@@ -626,23 +626,46 @@ find_lowerable_rvalues(const struct gl_shader_compiler_options *options,
 }
 
 static const glsl_type *
-lower_glsl_type(const glsl_type *type)
+convert_type(bool up, const glsl_type *type)
 {
+   if (type->is_array()) {
+      return glsl_type::get_array_instance(convert_type(up, type->fields.array),
+                                           type->array_size(),
+                                           type->explicit_stride);
+   }
+
    glsl_base_type new_base_type;
 
-   switch (type->base_type) {
-   case GLSL_TYPE_FLOAT:
-      new_base_type = GLSL_TYPE_FLOAT16;
-      break;
-   case GLSL_TYPE_INT:
-      new_base_type = GLSL_TYPE_INT16;
-      break;
-   case GLSL_TYPE_UINT:
-      new_base_type = GLSL_TYPE_UINT16;
-      break;
-   default:
-      unreachable("invalid type");
-      return NULL;
+   if (up) {
+      switch (type->base_type) {
+      case GLSL_TYPE_FLOAT16:
+         new_base_type = GLSL_TYPE_FLOAT;
+         break;
+      case GLSL_TYPE_INT16:
+         new_base_type = GLSL_TYPE_INT;
+         break;
+      case GLSL_TYPE_UINT16:
+         new_base_type = GLSL_TYPE_UINT;
+         break;
+      default:
+         unreachable("invalid type");
+         return NULL;
+      }
+   } else {
+      switch (type->base_type) {
+      case GLSL_TYPE_FLOAT:
+         new_base_type = GLSL_TYPE_FLOAT16;
+         break;
+      case GLSL_TYPE_INT:
+         new_base_type = GLSL_TYPE_INT16;
+         break;
+      case GLSL_TYPE_UINT:
+         new_base_type = GLSL_TYPE_UINT16;
+         break;
+      default:
+         unreachable("invalid type");
+         return NULL;
+      }
    }
 
    return glsl_type::get_instance(new_base_type,
@@ -652,23 +675,26 @@ lower_glsl_type(const glsl_type *type)
                                   type->interface_row_major);
 }
 
+static const glsl_type *
+lower_glsl_type(const glsl_type *type)
+{
+   return convert_type(false, type);
+}
+
 static ir_rvalue *
 convert_precision(bool up, ir_rvalue *ir)
 {
-   unsigned new_type, op;
+   unsigned op;
 
    if (up) {
-      switch (ir->type->base_type) {
+      switch (ir->type->without_array()->base_type) {
       case GLSL_TYPE_FLOAT16:
-         new_type = GLSL_TYPE_FLOAT;
          op = ir_unop_f162f;
          break;
       case GLSL_TYPE_INT16:
-         new_type = GLSL_TYPE_INT;
          op = ir_unop_i2i;
          break;
       case GLSL_TYPE_UINT16:
-         new_type = GLSL_TYPE_UINT;
          op = ir_unop_u2u;
          break;
       default:
@@ -676,17 +702,14 @@ convert_precision(bool up, ir_rvalue *ir)
          return NULL;
       }
    } else {
-      switch (ir->type->base_type) {
+      switch (ir->type->without_array()->base_type) {
       case GLSL_TYPE_FLOAT:
-         new_type = GLSL_TYPE_FLOAT16;
          op = ir_unop_f2fmp;
          break;
       case GLSL_TYPE_INT:
-         new_type = GLSL_TYPE_INT16;
          op = ir_unop_i2imp;
          break;
       case GLSL_TYPE_UINT:
-         new_type = GLSL_TYPE_UINT16;
          op = ir_unop_u2ump;
          break;
       default:
@@ -695,11 +718,7 @@ convert_precision(bool up, ir_rvalue *ir)
       }
    }
 
-   const glsl_type *desired_type;
-   desired_type = glsl_type::get_instance(new_type,
-                             ir->type->vector_elements,
-                             ir->type->matrix_columns);
-
+   const glsl_type *desired_type = convert_type(up, ir->type);
    void *mem_ctx = ralloc_parent(ir);
    return new(mem_ctx) ir_expression(op, desired_type, ir, NULL);
 }
