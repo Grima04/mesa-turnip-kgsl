@@ -10246,6 +10246,7 @@ emit_temp_tessfactor_instructions(struct svga_shader_emitter_v10 *emit)
                   emit->tes.inner.in_index + 1, TGSI_SWIZZLE_X);
          dst = writemask_dst(&dst, TGSI_WRITEMASK_Y);
          emit_instruction_op1(emit, VGPU10_OPCODE_MOV, &dst, &src);
+         /* fallthrough */
       case PIPE_PRIM_TRIANGLES:
          src = make_src_scalar_reg(TGSI_FILE_INPUT,
                   emit->tes.inner.in_index, TGSI_SWIZZLE_X);
@@ -10277,11 +10278,13 @@ emit_temp_tessfactor_instructions(struct svga_shader_emitter_v10 *emit)
                   emit->tes.outer.in_index + 3, TGSI_SWIZZLE_X);
          dst = writemask_dst(&dst, TGSI_WRITEMASK_W);
          emit_instruction_op1(emit, VGPU10_OPCODE_MOV, &dst, &src);
+         /* fallthrough */
       case PIPE_PRIM_TRIANGLES:
          src = make_src_scalar_reg(TGSI_FILE_INPUT,
                   emit->tes.outer.in_index + 2, TGSI_SWIZZLE_X);
          dst = writemask_dst(&dst, TGSI_WRITEMASK_Z);
          emit_instruction_op1(emit, VGPU10_OPCODE_MOV, &dst, &src);
+         /* fallthrough */
       case PIPE_PRIM_LINES:
          src = make_src_scalar_reg(TGSI_FILE_INPUT,
                   emit->tes.outer.in_index + 1, TGSI_SWIZZLE_X);
