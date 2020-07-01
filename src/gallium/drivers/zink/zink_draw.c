@@ -11,6 +11,7 @@
 #include "util/u_helpers.h"
 #include "util/u_inlines.h"
 #include "util/u_prim.h"
+#include "util/u_prim_restart.h"
 
 static VkDescriptorSet
 allocate_descriptor_set(struct zink_screen *screen,
@@ -206,6 +207,7 @@ zink_draw_vbo(struct pipe_context *pctx,
    struct zink_so_target *so_target = zink_so_target(dinfo->count_from_stream_output);
    VkBuffer counter_buffers[PIPE_MAX_SO_OUTPUTS];
    VkDeviceSize counter_buffer_offsets[PIPE_MAX_SO_OUTPUTS] = {};
+   bool need_index_buffer_unref = false;
 
    if (dinfo->mode >= PIPE_PRIM_QUADS ||
        dinfo->mode == PIPE_PRIM_LINE_LOOP ||
@@ -221,6 +223,9 @@ zink_draw_vbo(struct pipe_context *pctx,
    struct zink_gfx_program *gfx_program = get_gfx_program(ctx);
    if (!gfx_program)
       return;
+
+   /* this is broken for anything requiring primconvert atm */
+   ctx->gfx_pipeline_state.primitive_restart = !!dinfo->primitive_restart;
 
    VkPipeline pipeline = zink_get_gfx_pipeline(screen, gfx_program,
                                                &ctx->gfx_pipeline_state,
@@ -249,13 +254,19 @@ zink_draw_vbo(struct pipe_context *pctx,
    unsigned index_offset = 0;
    struct pipe_resource *index_buffer = NULL;
    if (dinfo->index_size > 0) {
-      if (dinfo->has_user_indices) {
-         if (!util_upload_index_buffer(pctx, dinfo, &index_buffer, &index_offset, 4)) {
-            debug_printf("util_upload_index_buffer() failed\n");
-            return;
-         }
-      } else
-         index_buffer = dinfo->index.resource;
+       uint32_t restart_index = util_prim_restart_index_from_size(dinfo->index_size);
+       if ((dinfo->primitive_restart && (dinfo->restart_index != restart_index))) {
+          util_translate_prim_restart_ib(pctx, dinfo, &index_buffer);
+          need_index_buffer_unref = true;
+       } else {
+          if (dinfo->has_user_indices) {
+             if (!util_upload_index_buffer(pctx, dinfo, &index_buffer, &index_offset, 4)) {
+                debug_printf("util_upload_index_buffer() failed\n");
+                return;
+             }
+          } else
+             index_buffer = dinfo->index.resource;
+       }
    }
 
    VkWriteDescriptorSet wds[PIPE_SHADER_TYPES * PIPE_MAX_CONSTANT_BUFFERS + PIPE_SHADER_TYPES * PIPE_MAX_SHADER_SAMPLER_VIEWS];
@@ -424,7 +435,11 @@ zink_draw_vbo(struct pipe_context *pctx,
 
    if (dinfo->index_size > 0) {
       VkIndexType index_type;
-      switch (dinfo->index_size) {
+      unsigned index_size = dinfo->index_size;
+      if (need_index_buffer_unref)
+         /* index buffer will have been promoted from uint8 to uint16 in this case */
+         index_size = MAX2(index_size, 2);
+      switch (index_size) {
       case 1:
          assert(screen->have_EXT_index_type_uint8);
          index_type = VK_INDEX_TYPE_UINT8_EXT;
@@ -443,7 +458,7 @@ zink_draw_vbo(struct pipe_context *pctx,
       zink_batch_reference_resoure(batch, res);
       vkCmdDrawIndexed(batch->cmdbuf,
          dinfo->count, dinfo->instance_count,
-         dinfo->start, dinfo->index_bias, dinfo->start_instance);
+         need_index_buffer_unref ? 0 : dinfo->start, dinfo->index_bias, dinfo->start_instance);
    } else {
       if (so_target && screen->tf_props.transformFeedbackDraw) {
          zink_batch_reference_resoure(batch, zink_resource(so_target->counter_buffer));
@@ -455,7 +470,7 @@ zink_draw_vbo(struct pipe_context *pctx,
          vkCmdDraw(batch->cmdbuf, dinfo->count, dinfo->instance_count, dinfo->start, dinfo->start_instance);
    }
 
-   if (dinfo->index_size > 0 && dinfo->has_user_indices)
+   if (dinfo->index_size > 0 && (dinfo->has_user_indices || need_index_buffer_unref))
       pipe_resource_reference(&index_buffer, NULL);
 
    if (ctx->num_so_targets) {

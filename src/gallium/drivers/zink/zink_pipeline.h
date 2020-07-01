@@ -51,6 +51,8 @@ struct zink_gfx_pipeline_state {
 
    VkSampleMask sample_mask;
    uint8_t rast_samples;
+
+   bool primitive_restart;
 };
 
 VkPipeline
