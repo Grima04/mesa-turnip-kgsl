@@ -354,13 +354,6 @@ lower_intrinsic(nir_builder *b, nir_intrinsic_instr *instr,
                 const struct tu_pipeline_layout *layout)
 {
    switch (instr->intrinsic) {
-   case nir_intrinsic_load_layer_id:
-      /* TODO: remove this when layered rendering is implemented */
-      nir_ssa_def_rewrite_uses(&instr->dest.ssa,
-                               nir_src_for_ssa(nir_imm_int(b, 0)));
-      nir_instr_remove(&instr->instr);
-      return true;
-
    case nir_intrinsic_load_push_constant:
       lower_load_push_constant(b, instr, shader);
       return true;
@@ -774,7 +767,7 @@ tu_shader_create(struct tu_device *dev,
       NIR_PASS_V(nir, nir_lower_input_attachments,
                  &(nir_input_attachment_options) {
                      .use_fragcoord_sysval = true,
-                     .use_layer_id_sysval = true,
+                     .use_layer_id_sysval = false,
                  });
    }
 
