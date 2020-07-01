@@ -4458,7 +4458,12 @@ enum nir_lower_idiv_path {
 
 bool nir_lower_idiv(nir_shader *shader, enum nir_lower_idiv_path path);
 
-bool nir_lower_input_attachments(nir_shader *shader, bool use_fragcoord_sysval);
+typedef struct nir_input_attachment_options {
+   bool use_fragcoord_sysval;
+} nir_input_attachment_options;
+
+bool nir_lower_input_attachments(nir_shader *shader,
+                                 const nir_input_attachment_options *options);
 
 bool nir_lower_clip_vs(nir_shader *shader, unsigned ucp_enables,
                        bool use_vars,

@@ -505,7 +505,10 @@ radv_shader_compile_to_nir(struct radv_device *device,
 		    !radv_use_llvm_for_stage(device, nir->info.stage))
                         NIR_PASS_V(nir, nir_lower_io_to_vector, nir_var_shader_out);
 		if (nir->info.stage == MESA_SHADER_FRAGMENT)
-			NIR_PASS_V(nir, nir_lower_input_attachments, true);
+			NIR_PASS_V(nir, nir_lower_input_attachments,
+				   &(nir_input_attachment_options) {
+					.use_fragcoord_sysval = true,
+				   });
 
 		NIR_PASS_V(nir, nir_remove_dead_variables,
 		           nir_var_shader_in | nir_var_shader_out | nir_var_system_value | nir_var_mem_shared,

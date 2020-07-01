@@ -770,8 +770,12 @@ tu_shader_create(struct tu_device *dev,
    NIR_PASS_V(nir, nir_lower_system_values);
    NIR_PASS_V(nir, nir_lower_frexp);
 
-   if (stage == MESA_SHADER_FRAGMENT)
-      NIR_PASS_V(nir, nir_lower_input_attachments, true);
+   if (stage == MESA_SHADER_FRAGMENT) {
+      NIR_PASS_V(nir, nir_lower_input_attachments,
+                 &(nir_input_attachment_options) {
+                     .use_fragcoord_sysval = true,
+                 });
+   }
 
    NIR_PASS_V(nir, nir_lower_explicit_io,
               nir_var_mem_ubo | nir_var_mem_ssbo,
