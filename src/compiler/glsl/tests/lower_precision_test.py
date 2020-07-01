@@ -1459,6 +1459,85 @@ TESTS = [
          }
          """,
          r'expression uint packSnorm4x8 \(expression vec4'),
+    Test("interpolateAtCentroid",
+         """
+         #version 320 es
+         precision mediump float;
+         precision mediump int;
+
+         in float val;
+         out float color;
+
+         void main()
+         {
+                 color = interpolateAtCentroid(val) + 1.0;
+         }
+         """,
+         r'expression float16_t interpolate_at_centroid \(expression float16_t'),
+    Test("interpolateAtOffset",
+         """
+         #version 320 es
+         precision mediump float;
+         precision mediump int;
+
+         uniform highp vec2 offset;
+         in float val;
+         out float color;
+
+         void main()
+         {
+                 color = interpolateAtOffset(val, offset) + 1.0;
+         }
+         """,
+         r'expression float16_t interpolate_at_offset \(expression float16_t'),
+    Test("interpolateAtSample",
+         """
+         #version 320 es
+         precision mediump float;
+         precision mediump int;
+
+         uniform highp int sample_index;
+         in float val;
+         out float color;
+
+         void main()
+         {
+                 color = interpolateAtSample(val, sample_index) + 1.0;
+         }
+         """,
+         r'expression float16_t interpolate_at_sample \(expression float16_t'),
+    Test("bitfieldExtract",
+         """
+         #version 310 es
+         precision mediump float;
+         precision mediump int;
+
+         uniform highp int offset, bits;
+         uniform int val;
+         out int color;
+
+         void main()
+         {
+                 color = bitfieldExtract(val, offset, bits) + 1;
+         }
+         """,
+         r'expression int16_t bitfield_extract \(expression int16_t'),
+    Test("bitfieldInsert",
+         """
+         #version 310 es
+         precision mediump float;
+         precision mediump int;
+
+         uniform highp int offset, bits;
+         uniform int val, val2;
+         out int color;
+
+         void main()
+         {
+                 color = bitfieldInsert(val, val2, offset, bits) + 1;
+         }
+         """,
+         r'expression int16_t bitfield_insert \(expression int16_t'),
 ]
 
 

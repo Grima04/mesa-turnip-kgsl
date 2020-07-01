@@ -499,10 +499,28 @@ is_lowerable_builtin(ir_call *ir,
 
    assert(ir->callee->return_precision == GLSL_PRECISION_NONE);
 
+   /* Number of parameters to check if they are lowerable. */
+   unsigned check_parameters = ir->actual_parameters.length();
+
+   /* Interpolation functions only consider the precision of the interpolant. */
+   /* Bitfield functions ignore the precision of "offset" and "bits". */
+   if (!strcmp(ir->callee_name(), "interpolateAtOffset") ||
+       !strcmp(ir->callee_name(), "interpolateAtSample") ||
+       !strcmp(ir->callee_name(), "bitfieldExtract")) {
+      check_parameters = 1;
+   } else if (!strcmp(ir->callee_name(), "bitfieldInsert")) {
+      check_parameters = 2;
+   }
+
    foreach_in_list(ir_rvalue, param, &ir->actual_parameters) {
+      if (!check_parameters)
+         break;
+
       if (!param->as_constant() &&
           _mesa_set_search(lowerable_rvalues, param) == NULL)
          return false;
+
+      --check_parameters;
    }
 
    return true;
