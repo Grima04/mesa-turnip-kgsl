@@ -85,9 +85,9 @@
  * Transfer_map rules for buffer mappings
  * --------------------------------------
  *
- * 1) If transfer_map has PIPE_TRANSFER_UNSYNCHRONIZED, the call is made
+ * 1) If transfer_map has PIPE_MAP_UNSYNCHRONIZED, the call is made
  *    in the non-driver thread without flushing the queue. The driver will
- *    receive TC_TRANSFER_MAP_THREADED_UNSYNC in addition to PIPE_TRANSFER_-
+ *    receive TC_TRANSFER_MAP_THREADED_UNSYNC in addition to PIPE_MAP_-
  *    UNSYNCHRONIZED to indicate this.
  *    Note that transfer_unmap is always enqueued and called from the driver
  *    thread.

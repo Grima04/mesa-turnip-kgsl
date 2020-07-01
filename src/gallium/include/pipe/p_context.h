@@ -674,7 +674,7 @@ struct pipe_context {
    void *(*transfer_map)(struct pipe_context *,
                          struct pipe_resource *resource,
                          unsigned level,
-                         unsigned usage,  /* a combination of PIPE_TRANSFER_x */
+                         unsigned usage,  /* a combination of PIPE_MAP_x */
                          const struct pipe_box *,
                          struct pipe_transfer **out_transfer);
 
@@ -694,7 +694,7 @@ struct pipe_context {
     */
    void (*buffer_subdata)(struct pipe_context *,
                           struct pipe_resource *,
-                          unsigned usage, /* a combination of PIPE_TRANSFER_x */
+                          unsigned usage, /* a combination of PIPE_MAP_x */
                           unsigned offset,
                           unsigned size,
                           const void *data);
@@ -702,7 +702,7 @@ struct pipe_context {
    void (*texture_subdata)(struct pipe_context *,
                            struct pipe_resource *,
                            unsigned level,
-                           unsigned usage, /* a combination of PIPE_TRANSFER_x */
+                           unsigned usage, /* a combination of PIPE_MAP_x */
                            const struct pipe_box *,
                            const void *data,
                            unsigned stride,

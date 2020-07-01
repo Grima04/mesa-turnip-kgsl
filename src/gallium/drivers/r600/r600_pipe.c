@@ -811,7 +811,7 @@ struct pipe_screen *r600_screen_create(struct radeon_winsys *ws,
 	templ.usage = PIPE_USAGE_DEFAULT;
 
 	struct r600_resource *res = r600_resource(rscreen->screen.resource_create(&rscreen->screen, &templ));
-	unsigned char *map = ws->buffer_map(res->buf, NULL, PIPE_TRANSFER_WRITE);
+	unsigned char *map = ws->buffer_map(res->buf, NULL, PIPE_MAP_WRITE);
 
 	memset(map, 0, 256);
 

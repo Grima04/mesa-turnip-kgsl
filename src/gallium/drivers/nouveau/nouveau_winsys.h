@@ -75,12 +75,12 @@ nouveau_screen_transfer_flags(unsigned pipe)
 {
    uint32_t flags = 0;
 
-   if (!(pipe & PIPE_TRANSFER_UNSYNCHRONIZED)) {
-      if (pipe & PIPE_TRANSFER_READ)
+   if (!(pipe & PIPE_MAP_UNSYNCHRONIZED)) {
+      if (pipe & PIPE_MAP_READ)
          flags |= NOUVEAU_BO_RD;
-      if (pipe & PIPE_TRANSFER_WRITE)
+      if (pipe & PIPE_MAP_WRITE)
          flags |= NOUVEAU_BO_WR;
-      if (pipe & PIPE_TRANSFER_DONTBLOCK)
+      if (pipe & PIPE_MAP_DONTBLOCK)
          flags |= NOUVEAU_BO_NOBLOCK;
    }
 

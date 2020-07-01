@@ -961,7 +961,7 @@ static struct pb_buffer *rvcn_dec_message_decode(struct radeon_decoder *dec,
 
          /* ctx needs probs table */
          ptr = dec->ws->buffer_map(dec->ctx.res->buf, dec->cs,
-                                   PIPE_TRANSFER_WRITE | RADEON_TRANSFER_TEMPORARY);
+                                   PIPE_MAP_WRITE | RADEON_TRANSFER_TEMPORARY);
          fill_probs_table(ptr);
          dec->ws->buffer_unmap(dec->ctx.res->buf);
          dec->bs_ptr = NULL;
@@ -1052,7 +1052,7 @@ static void map_msg_fb_it_probs_buf(struct radeon_decoder *dec)
 
    /* and map it for CPU access */
    ptr =
-      dec->ws->buffer_map(buf->res->buf, dec->cs, PIPE_TRANSFER_WRITE | RADEON_TRANSFER_TEMPORARY);
+      dec->ws->buffer_map(buf->res->buf, dec->cs, PIPE_MAP_WRITE | RADEON_TRANSFER_TEMPORARY);
 
    /* calc buffer offsets */
    dec->msg = ptr;
@@ -1331,7 +1331,7 @@ static void radeon_dec_begin_frame(struct pipe_video_codec *decoder,
 
    dec->bs_size = 0;
    dec->bs_ptr = dec->ws->buffer_map(dec->bs_buffers[dec->cur_buffer].res->buf, dec->cs,
-                                     PIPE_TRANSFER_WRITE | RADEON_TRANSFER_TEMPORARY);
+                                     PIPE_MAP_WRITE | RADEON_TRANSFER_TEMPORARY);
 }
 
 /**
@@ -1376,7 +1376,7 @@ static void radeon_dec_decode_bitstream(struct pipe_video_codec *decoder,
          }
 
          dec->bs_ptr = dec->ws->buffer_map(buf->res->buf, dec->cs,
-                                           PIPE_TRANSFER_WRITE | RADEON_TRANSFER_TEMPORARY);
+                                           PIPE_MAP_WRITE | RADEON_TRANSFER_TEMPORARY);
          if (!dec->bs_ptr)
             return;
 
@@ -1559,7 +1559,7 @@ struct pipe_video_codec *radeon_create_decoder(struct pipe_context *context,
 
          buf = &dec->msg_fb_it_probs_buffers[i];
          ptr = dec->ws->buffer_map(buf->res->buf, dec->cs,
-                                   PIPE_TRANSFER_WRITE | RADEON_TRANSFER_TEMPORARY);
+                                   PIPE_MAP_WRITE | RADEON_TRANSFER_TEMPORARY);
          ptr += FB_BUFFER_OFFSET + FB_BUFFER_SIZE;
          fill_probs_table(ptr);
          dec->ws->buffer_unmap(buf->res->buf);

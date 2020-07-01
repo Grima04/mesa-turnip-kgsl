@@ -352,8 +352,8 @@ NineDevice9_ctor( struct NineDevice9 *This,
 
         u_box_1d(0, 16, &box);
         data = This->context.pipe->transfer_map(This->context.pipe, This->dummy_vbo, 0,
-                                        PIPE_TRANSFER_WRITE |
-                                        PIPE_TRANSFER_DISCARD_WHOLE_RESOURCE,
+                                        PIPE_MAP_WRITE |
+                                        PIPE_MAP_DISCARD_WHOLE_RESOURCE,
                                         &box, &transfer);
         assert(data);
         assert(transfer);
@@ -787,8 +787,8 @@ NineDevice9_SetCursorProperties( struct NineDevice9 *This,
     u_box_origin_2d(This->cursor.w, This->cursor.h, &box);
 
     ptr = pipe->transfer_map(pipe, This->cursor.image, 0,
-                             PIPE_TRANSFER_WRITE |
-                             PIPE_TRANSFER_DISCARD_WHOLE_RESOURCE,
+                             PIPE_MAP_WRITE |
+                             PIPE_MAP_DISCARD_WHOLE_RESOURCE,
                              &box, &transfer);
     if (!ptr)
         ret_err("Failed to update cursor image.\n", D3DERR_DRIVERINTERNALERROR);
@@ -3192,7 +3192,7 @@ NineDevice9_ProcessVertices( struct NineDevice9 *This,
     pipe_sw->stream_output_target_destroy(pipe_sw, target);
 
     u_box_1d(0, VertexCount * so.stride[0] * 4, &box);
-    map = pipe_sw->transfer_map(pipe_sw, resource, 0, PIPE_TRANSFER_READ, &box,
+    map = pipe_sw->transfer_map(pipe_sw, resource, 0, PIPE_MAP_READ, &box,
                                 &transfer);
     if (!map) {
         hr = D3DERR_DRIVERINTERNALERROR;

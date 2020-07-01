@@ -524,7 +524,7 @@ flush_resource(struct fd_context *ctx, struct fd_resource *rsc, unsigned usage)
 	fd_batch_reference_locked(&write_batch, rsc->write_batch);
 	fd_screen_unlock(ctx->screen);
 
-	if (usage & PIPE_TRANSFER_WRITE) {
+	if (usage & PIPE_MAP_WRITE) {
 		struct fd_batch *batch, *batches[32] = {};
 		uint32_t batch_mask;
 
@@ -558,7 +558,7 @@ flush_resource(struct fd_context *ctx, struct fd_resource *rsc, unsigned usage)
 static void
 fd_flush_resource(struct pipe_context *pctx, struct pipe_resource *prsc)
 {
-	flush_resource(fd_context(pctx), fd_resource(prsc), PIPE_TRANSFER_READ);
+	flush_resource(fd_context(pctx), fd_resource(prsc), PIPE_MAP_READ);
 }
 
 static void
@@ -570,12 +570,12 @@ fd_resource_transfer_unmap(struct pipe_context *pctx,
 	struct fd_transfer *trans = fd_transfer(ptrans);
 
 	if (trans->staging_prsc) {
-		if (ptrans->usage & PIPE_TRANSFER_WRITE)
+		if (ptrans->usage & PIPE_MAP_WRITE)
 			fd_blit_from_staging(ctx, trans);
 		pipe_resource_reference(&trans->staging_prsc, NULL);
 	}
 
-	if (!(ptrans->usage & PIPE_TRANSFER_UNSYNCHRONIZED)) {
+	if (!(ptrans->usage & PIPE_MAP_UNSYNCHRONIZED)) {
 		fd_bo_cpu_fini(rsc->bo);
 	}
 
@@ -607,7 +607,7 @@ fd_resource_transfer_map(struct pipe_context *pctx,
 	DBG("prsc=%p, level=%u, usage=%x, box=%dx%d+%d,%d", prsc, level, usage,
 		box->width, box->height, box->x, box->y);
 
-	if ((usage & PIPE_TRANSFER_MAP_DIRECTLY) && rsc->layout.tile_mode) {
+	if ((usage & PIPE_MAP_DIRECTLY) && rsc->layout.tile_mode) {
 		DBG("CANNOT MAP DIRECTLY!\n");
 		return NULL;
 	}
@@ -638,7 +638,7 @@ fd_resource_transfer_map(struct pipe_context *pctx,
 
 		staging_rsc = fd_alloc_staging(ctx, rsc, level, box);
 		if (staging_rsc) {
-			// TODO for PIPE_TRANSFER_READ, need to do untiling blit..
+			// TODO for PIPE_MAP_READ, need to do untiling blit..
 			trans->staging_prsc = &staging_rsc->base;
 			trans->base.stride = fd_resource_pitch(staging_rsc, 0);
 			trans->base.layer_stride = fd_resource_layer_stride(staging_rsc, 0);
@@ -647,7 +647,7 @@ fd_resource_transfer_map(struct pipe_context *pctx,
 			trans->staging_box.y = 0;
 			trans->staging_box.z = 0;
 
-			if (usage & PIPE_TRANSFER_READ) {
+			if (usage & PIPE_MAP_READ) {
 				fd_blit_to_staging(ctx, trans);
 
 				fd_bo_cpu_prep(staging_rsc->bo, ctx->pipe,
@@ -665,30 +665,30 @@ fd_resource_transfer_map(struct pipe_context *pctx,
 		}
 	}
 
-	if (ctx->in_shadow && !(usage & PIPE_TRANSFER_READ))
-		usage |= PIPE_TRANSFER_UNSYNCHRONIZED;
+	if (ctx->in_shadow && !(usage & PIPE_MAP_READ))
+		usage |= PIPE_MAP_UNSYNCHRONIZED;
 
-	if (usage & PIPE_TRANSFER_READ)
+	if (usage & PIPE_MAP_READ)
 		op |= DRM_FREEDRENO_PREP_READ;
 
-	if (usage & PIPE_TRANSFER_WRITE)
+	if (usage & PIPE_MAP_WRITE)
 		op |= DRM_FREEDRENO_PREP_WRITE;
 
-	bool needs_flush = pending(rsc, !!(usage & PIPE_TRANSFER_WRITE));
+	bool needs_flush = pending(rsc, !!(usage & PIPE_MAP_WRITE));
 
-	if (usage & PIPE_TRANSFER_DISCARD_WHOLE_RESOURCE) {
+	if (usage & PIPE_MAP_DISCARD_WHOLE_RESOURCE) {
 		if (needs_flush || fd_resource_busy(rsc, op)) {
 			rebind_resource(rsc);
 			realloc_bo(rsc, fd_bo_size(rsc->bo));
 		}
-	} else if ((usage & PIPE_TRANSFER_WRITE) &&
+	} else if ((usage & PIPE_MAP_WRITE) &&
 			   prsc->target == PIPE_BUFFER &&
 			   !util_ranges_intersect(&rsc->valid_buffer_range,
 									  box->x, box->x + box->width)) {
 		/* We are trying to write to a previously uninitialized range. No need
 		 * to wait.
 		 */
-	} else if (!(usage & PIPE_TRANSFER_UNSYNCHRONIZED)) {
+	} else if (!(usage & PIPE_MAP_UNSYNCHRONIZED)) {
 		struct fd_batch *write_batch = NULL;
 
 		/* hold a reference, so it doesn't disappear under us: */
@@ -696,7 +696,7 @@ fd_resource_transfer_map(struct pipe_context *pctx,
 		fd_batch_reference_locked(&write_batch, rsc->write_batch);
 		fd_context_unlock(ctx);
 
-		if ((usage & PIPE_TRANSFER_WRITE) && write_batch &&
+		if ((usage & PIPE_MAP_WRITE) && write_batch &&
 				write_batch->back_blit) {
 			/* if only thing pending is a back-blit, we can discard it: */
 			fd_batch_reset(write_batch);
@@ -714,8 +714,8 @@ fd_resource_transfer_map(struct pipe_context *pctx,
 		 * ie. we only *don't* want to go down this path if the blit
 		 * will trigger a flush!
 		 */
-		if (ctx->screen->reorder && busy && !(usage & PIPE_TRANSFER_READ) &&
-				(usage & PIPE_TRANSFER_DISCARD_RANGE)) {
+		if (ctx->screen->reorder && busy && !(usage & PIPE_MAP_READ) &&
+				(usage & PIPE_MAP_DISCARD_RANGE)) {
 			/* try shadowing only if it avoids a flush, otherwise staging would
 			 * be better:
 			 */
@@ -784,7 +784,7 @@ fd_resource_transfer_map(struct pipe_context *pctx,
 		box->x / util_format_get_blockwidth(format) * rsc->layout.cpp +
 		fd_resource_offset(rsc, level, box->z);
 
-	if (usage & PIPE_TRANSFER_WRITE)
+	if (usage & PIPE_MAP_WRITE)
 		rsc->valid = true;
 
 	*pptrans = ptrans;

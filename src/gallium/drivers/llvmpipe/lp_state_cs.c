@@ -993,7 +993,7 @@ lp_csctx_set_sampler_views(struct lp_cs_context *csctx,
             struct llvmpipe_screen *screen = llvmpipe_screen(res->screen);
             struct sw_winsys *winsys = screen->winsys;
             jit_tex->base = winsys->displaytarget_map(winsys, lp_tex->dt,
-                                                         PIPE_TRANSFER_READ);
+                                                         PIPE_MAP_READ);
             jit_tex->row_stride[0] = lp_tex->row_stride[0];
             jit_tex->img_stride[0] = lp_tex->img_stride[0];
             jit_tex->mip_offsets[0] = 0;
@@ -1300,7 +1300,7 @@ fill_grid_size(struct pipe_context *pipe,
    params = pipe_buffer_map_range(pipe, info->indirect,
                                   info->indirect_offset,
                                   3 * sizeof(uint32_t),
-                                  PIPE_TRANSFER_READ,
+                                  PIPE_MAP_READ,
                                   &transfer);
 
    if (!transfer)

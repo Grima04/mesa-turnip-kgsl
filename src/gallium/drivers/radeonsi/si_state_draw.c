@@ -1425,7 +1425,7 @@ static void si_get_draw_start_count(struct si_context *sctx, const struct pipe_d
       if (indirect->indirect_draw_count) {
          data = pipe_buffer_map_range(&sctx->b, indirect->indirect_draw_count,
                                       indirect->indirect_draw_count_offset, sizeof(unsigned),
-                                      PIPE_TRANSFER_READ, &transfer);
+                                      PIPE_MAP_READ, &transfer);
 
          indirect_count = *data;
 
@@ -1441,7 +1441,7 @@ static void si_get_draw_start_count(struct si_context *sctx, const struct pipe_d
 
       map_size = (indirect_count - 1) * indirect->stride + 3 * sizeof(unsigned);
       data = pipe_buffer_map_range(&sctx->b, indirect->buffer, indirect->offset, map_size,
-                                   PIPE_TRANSFER_READ, &transfer);
+                                   PIPE_MAP_READ, &transfer);
 
       begin = UINT_MAX;
       end = 0;

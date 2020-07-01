@@ -51,18 +51,18 @@ void *si_buffer_map_sync_with_rings(struct si_context *sctx, struct si_resource 
 
    assert(!(resource->flags & RADEON_FLAG_SPARSE));
 
-   if (usage & PIPE_TRANSFER_UNSYNCHRONIZED) {
+   if (usage & PIPE_MAP_UNSYNCHRONIZED) {
       return sctx->ws->buffer_map(resource->buf, NULL, usage);
    }
 
-   if (!(usage & PIPE_TRANSFER_WRITE)) {
+   if (!(usage & PIPE_MAP_WRITE)) {
       /* have to wait for the last write */
       rusage = RADEON_USAGE_WRITE;
    }
 
    if (radeon_emitted(sctx->gfx_cs, sctx->initial_gfx_cs_size) &&
        sctx->ws->cs_is_buffer_referenced(sctx->gfx_cs, resource->buf, rusage)) {
-      if (usage & PIPE_TRANSFER_DONTBLOCK) {
+      if (usage & PIPE_MAP_DONTBLOCK) {
          si_flush_gfx_cs(sctx, RADEON_FLUSH_ASYNC_START_NEXT_GFX_IB_NOW, NULL);
          return NULL;
       } else {
@@ -72,7 +72,7 @@ void *si_buffer_map_sync_with_rings(struct si_context *sctx, struct si_resource 
    }
    if (radeon_emitted(sctx->sdma_cs, 0) &&
        sctx->ws->cs_is_buffer_referenced(sctx->sdma_cs, resource->buf, rusage)) {
-      if (usage & PIPE_TRANSFER_DONTBLOCK) {
+      if (usage & PIPE_MAP_DONTBLOCK) {
          si_flush_dma_cs(sctx, PIPE_FLUSH_ASYNC, NULL);
          return NULL;
       } else {
@@ -82,7 +82,7 @@ void *si_buffer_map_sync_with_rings(struct si_context *sctx, struct si_resource 
    }
 
    if (busy || !sctx->ws->buffer_wait(resource->buf, 0, rusage)) {
-      if (usage & PIPE_TRANSFER_DONTBLOCK) {
+      if (usage & PIPE_MAP_DONTBLOCK) {
          return NULL;
       } else {
          /* We will be wait for the GPU. Wait for any offloaded
@@ -339,7 +339,7 @@ static void *si_buffer_get_transfer(struct pipe_context *ctx, struct pipe_resour
    struct si_context *sctx = (struct si_context *)ctx;
    struct si_transfer *transfer;
 
-   if (usage & PIPE_TRANSFER_THREAD_SAFE)
+   if (usage & PIPE_MAP_THREAD_SAFE)
       transfer = malloc(sizeof(*transfer));
    else if (usage & TC_TRANSFER_MAP_THREADED_UNSYNC)
       transfer = slab_alloc(&sctx->pool_transfers_unsync);
@@ -382,60 +382,60 @@ static void *si_buffer_transfer_map(struct pipe_context *ctx, struct pipe_resour
     * So don't ever use staging buffers.
     */
    if (buf->b.is_user_ptr)
-      usage |= PIPE_TRANSFER_PERSISTENT;
+      usage |= PIPE_MAP_PERSISTENT;
 
    /* See if the buffer range being mapped has never been initialized,
     * in which case it can be mapped unsynchronized. */
-   if (!(usage & (PIPE_TRANSFER_UNSYNCHRONIZED | TC_TRANSFER_MAP_NO_INFER_UNSYNCHRONIZED)) &&
-       usage & PIPE_TRANSFER_WRITE && !buf->b.is_shared &&
+   if (!(usage & (PIPE_MAP_UNSYNCHRONIZED | TC_TRANSFER_MAP_NO_INFER_UNSYNCHRONIZED)) &&
+       usage & PIPE_MAP_WRITE && !buf->b.is_shared &&
        !util_ranges_intersect(&buf->valid_buffer_range, box->x, box->x + box->width)) {
-      usage |= PIPE_TRANSFER_UNSYNCHRONIZED;
+      usage |= PIPE_MAP_UNSYNCHRONIZED;
    }
 
    /* If discarding the entire range, discard the whole resource instead. */
-   if (usage & PIPE_TRANSFER_DISCARD_RANGE && box->x == 0 && box->width == resource->width0) {
-      usage |= PIPE_TRANSFER_DISCARD_WHOLE_RESOURCE;
+   if (usage & PIPE_MAP_DISCARD_RANGE && box->x == 0 && box->width == resource->width0) {
+      usage |= PIPE_MAP_DISCARD_WHOLE_RESOURCE;
    }
 
    /* If a buffer in VRAM is too large and the range is discarded, don't
     * map it directly. This makes sure that the buffer stays in VRAM.
     */
    bool force_discard_range = false;
-   if (usage & (PIPE_TRANSFER_DISCARD_WHOLE_RESOURCE | PIPE_TRANSFER_DISCARD_RANGE) &&
-       !(usage & PIPE_TRANSFER_PERSISTENT) &&
+   if (usage & (PIPE_MAP_DISCARD_WHOLE_RESOURCE | PIPE_MAP_DISCARD_RANGE) &&
+       !(usage & PIPE_MAP_PERSISTENT) &&
        /* Try not to decrement the counter if it's not positive. Still racy,
         * but it makes it harder to wrap the counter from INT_MIN to INT_MAX. */
        buf->max_forced_staging_uploads > 0 &&
        p_atomic_dec_return(&buf->max_forced_staging_uploads) >= 0) {
-      usage &= ~(PIPE_TRANSFER_DISCARD_WHOLE_RESOURCE | PIPE_TRANSFER_UNSYNCHRONIZED);
-      usage |= PIPE_TRANSFER_DISCARD_RANGE;
+      usage &= ~(PIPE_MAP_DISCARD_WHOLE_RESOURCE | PIPE_MAP_UNSYNCHRONIZED);
+      usage |= PIPE_MAP_DISCARD_RANGE;
       force_discard_range = true;
    }
 
-   if (usage & PIPE_TRANSFER_DISCARD_WHOLE_RESOURCE &&
-       !(usage & (PIPE_TRANSFER_UNSYNCHRONIZED | TC_TRANSFER_MAP_NO_INVALIDATE))) {
-      assert(usage & PIPE_TRANSFER_WRITE);
+   if (usage & PIPE_MAP_DISCARD_WHOLE_RESOURCE &&
+       !(usage & (PIPE_MAP_UNSYNCHRONIZED | TC_TRANSFER_MAP_NO_INVALIDATE))) {
+      assert(usage & PIPE_MAP_WRITE);
 
       if (si_invalidate_buffer(sctx, buf)) {
          /* At this point, the buffer is always idle. */
-         usage |= PIPE_TRANSFER_UNSYNCHRONIZED;
+         usage |= PIPE_MAP_UNSYNCHRONIZED;
       } else {
          /* Fall back to a temporary buffer. */
-         usage |= PIPE_TRANSFER_DISCARD_RANGE;
+         usage |= PIPE_MAP_DISCARD_RANGE;
       }
    }
 
-   if (usage & PIPE_TRANSFER_FLUSH_EXPLICIT &&
+   if (usage & PIPE_MAP_FLUSH_EXPLICIT &&
        buf->b.b.flags & SI_RESOURCE_FLAG_UPLOAD_FLUSH_EXPLICIT_VIA_SDMA) {
-      usage &= ~(PIPE_TRANSFER_UNSYNCHRONIZED | PIPE_TRANSFER_PERSISTENT);
-      usage |= PIPE_TRANSFER_DISCARD_RANGE;
+      usage &= ~(PIPE_MAP_UNSYNCHRONIZED | PIPE_MAP_PERSISTENT);
+      usage |= PIPE_MAP_DISCARD_RANGE;
       force_discard_range = true;
    }
 
-   if (usage & PIPE_TRANSFER_DISCARD_RANGE &&
-       ((!(usage & (PIPE_TRANSFER_UNSYNCHRONIZED | PIPE_TRANSFER_PERSISTENT))) ||
+   if (usage & PIPE_MAP_DISCARD_RANGE &&
+       ((!(usage & (PIPE_MAP_UNSYNCHRONIZED | PIPE_MAP_PERSISTENT))) ||
         (buf->flags & RADEON_FLAG_SPARSE))) {
-      assert(usage & PIPE_TRANSFER_WRITE);
+      assert(usage & PIPE_MAP_WRITE);
 
       /* Check if mapping this buffer would cause waiting for the GPU.
        */
@@ -469,16 +469,16 @@ static void *si_buffer_transfer_map(struct pipe_context *ctx, struct pipe_resour
          }
       } else {
          /* At this point, the buffer is always idle (we checked it above). */
-         usage |= PIPE_TRANSFER_UNSYNCHRONIZED;
+         usage |= PIPE_MAP_UNSYNCHRONIZED;
       }
    }
    /* Use a staging buffer in cached GTT for reads. */
-   else if (((usage & PIPE_TRANSFER_READ) && !(usage & PIPE_TRANSFER_PERSISTENT) &&
+   else if (((usage & PIPE_MAP_READ) && !(usage & PIPE_MAP_PERSISTENT) &&
              (buf->domains & RADEON_DOMAIN_VRAM || buf->flags & RADEON_FLAG_GTT_WC)) ||
             (buf->flags & RADEON_FLAG_SPARSE)) {
       struct si_resource *staging;
 
-      assert(!(usage & (TC_TRANSFER_MAP_THREADED_UNSYNC | PIPE_TRANSFER_THREAD_SAFE)));
+      assert(!(usage & (TC_TRANSFER_MAP_THREADED_UNSYNC | PIPE_MAP_THREAD_SAFE)));
       staging = si_aligned_buffer_create(ctx->screen, SI_RESOURCE_FLAG_UNCACHED,
                                          PIPE_USAGE_STAGING,
                                          box->width + (box->x % SI_MAP_BUFFER_ALIGNMENT), 256);
@@ -487,7 +487,7 @@ static void *si_buffer_transfer_map(struct pipe_context *ctx, struct pipe_resour
          si_sdma_copy_buffer(sctx, &staging->b.b, resource, box->x % SI_MAP_BUFFER_ALIGNMENT,
                              box->x, box->width);
 
-         data = si_buffer_map_sync_with_rings(sctx, staging, usage & ~PIPE_TRANSFER_UNSYNCHRONIZED);
+         data = si_buffer_map_sync_with_rings(sctx, staging, usage & ~PIPE_MAP_UNSYNCHRONIZED);
          if (!data) {
             si_resource_reference(&staging, NULL);
             return NULL;
@@ -570,7 +570,7 @@ static void si_buffer_do_flush_region(struct pipe_context *ctx, struct pipe_tran
 static void si_buffer_flush_region(struct pipe_context *ctx, struct pipe_transfer *transfer,
                                    const struct pipe_box *rel_box)
 {
-   unsigned required_usage = PIPE_TRANSFER_WRITE | PIPE_TRANSFER_FLUSH_EXPLICIT;
+   unsigned required_usage = PIPE_MAP_WRITE | PIPE_MAP_FLUSH_EXPLICIT;
 
    if ((transfer->usage & required_usage) == required_usage) {
       struct pipe_box box;
@@ -585,14 +585,14 @@ static void si_buffer_transfer_unmap(struct pipe_context *ctx, struct pipe_trans
    struct si_context *sctx = (struct si_context *)ctx;
    struct si_transfer *stransfer = (struct si_transfer *)transfer;
 
-   if (transfer->usage & PIPE_TRANSFER_WRITE && !(transfer->usage & PIPE_TRANSFER_FLUSH_EXPLICIT))
+   if (transfer->usage & PIPE_MAP_WRITE && !(transfer->usage & PIPE_MAP_FLUSH_EXPLICIT))
       si_buffer_do_flush_region(ctx, transfer, &transfer->box);
 
    si_resource_reference(&stransfer->staging, NULL);
    assert(stransfer->b.staging == NULL); /* for threaded context only */
    pipe_resource_reference(&transfer->resource, NULL);
 
-   if (transfer->usage & PIPE_TRANSFER_THREAD_SAFE) {
+   if (transfer->usage & PIPE_MAP_THREAD_SAFE) {
       free(transfer);
    } else {
       /* Don't use pool_transfers_unsync. We are always in the driver
@@ -609,10 +609,10 @@ static void si_buffer_subdata(struct pipe_context *ctx, struct pipe_resource *bu
    struct pipe_box box;
    uint8_t *map = NULL;
 
-   usage |= PIPE_TRANSFER_WRITE;
+   usage |= PIPE_MAP_WRITE;
 
-   if (!(usage & PIPE_TRANSFER_MAP_DIRECTLY))
-      usage |= PIPE_TRANSFER_DISCARD_RANGE;
+   if (!(usage & PIPE_MAP_DIRECTLY))
+      usage |= PIPE_MAP_DISCARD_RANGE;
 
    u_box_1d(offset, size, &box);
    map = si_buffer_transfer_map(ctx, buffer, 0, usage, &box, &transfer);

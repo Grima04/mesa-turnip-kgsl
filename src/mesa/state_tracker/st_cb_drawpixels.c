@@ -772,7 +772,7 @@ make_texture(struct st_context *st,
 
       /* map texture transfer */
       dest = pipe_transfer_map(pipe, pt, 0, 0,
-                               PIPE_TRANSFER_WRITE, 0, 0,
+                               PIPE_MAP_WRITE, 0, 0,
                                width, height, &transfer);
       if (!dest) {
          pipe_resource_reference(&pt, NULL);
@@ -1078,10 +1078,10 @@ draw_stencil_pixels(struct gl_context *ctx, GLint x, GLint y,
    if (format == GL_STENCIL_INDEX &&
        _mesa_is_format_packed_depth_stencil(strb->Base.Format)) {
       /* writing stencil to a combined depth+stencil buffer */
-      usage = PIPE_TRANSFER_READ_WRITE;
+      usage = PIPE_MAP_READ_WRITE;
    }
    else {
-      usage = PIPE_TRANSFER_WRITE;
+      usage = PIPE_MAP_WRITE;
    }
 
    stmap = pipe_transfer_map(pipe, strb->texture,
@@ -1139,7 +1139,7 @@ draw_stencil_pixels(struct gl_context *ctx, GLint x, GLint y,
             case PIPE_FORMAT_S8_UINT:
                {
                   ubyte *dest = stmap + spanY * pt->stride;
-                  assert(usage == PIPE_TRANSFER_WRITE);
+                  assert(usage == PIPE_MAP_WRITE);
                   memcpy(dest, sValues, width);
                }
                break;
@@ -1147,7 +1147,7 @@ draw_stencil_pixels(struct gl_context *ctx, GLint x, GLint y,
                if (format == GL_DEPTH_STENCIL) {
                   uint *dest = (uint *) (stmap + spanY * pt->stride);
                   GLint k;
-                  assert(usage == PIPE_TRANSFER_WRITE);
+                  assert(usage == PIPE_MAP_WRITE);
                   for (k = 0; k < width; k++) {
                      dest[k] = zValues[k] | (sValues[k] << 24);
                   }
@@ -1155,7 +1155,7 @@ draw_stencil_pixels(struct gl_context *ctx, GLint x, GLint y,
                else {
                   uint *dest = (uint *) (stmap + spanY * pt->stride);
                   GLint k;
-                  assert(usage == PIPE_TRANSFER_READ_WRITE);
+                  assert(usage == PIPE_MAP_READ_WRITE);
                   for (k = 0; k < width; k++) {
                      dest[k] = (dest[k] & 0xffffff) | (sValues[k] << 24);
                   }
@@ -1165,7 +1165,7 @@ draw_stencil_pixels(struct gl_context *ctx, GLint x, GLint y,
                if (format == GL_DEPTH_STENCIL) {
                   uint *dest = (uint *) (stmap + spanY * pt->stride);
                   GLint k;
-                  assert(usage == PIPE_TRANSFER_WRITE);
+                  assert(usage == PIPE_MAP_WRITE);
                   for (k = 0; k < width; k++) {
                      dest[k] = (zValues[k] << 8) | (sValues[k] & 0xff);
                   }
@@ -1173,7 +1173,7 @@ draw_stencil_pixels(struct gl_context *ctx, GLint x, GLint y,
                else {
                   uint *dest = (uint *) (stmap + spanY * pt->stride);
                   GLint k;
-                  assert(usage == PIPE_TRANSFER_READ_WRITE);
+                  assert(usage == PIPE_MAP_READ_WRITE);
                   for (k = 0; k < width; k++) {
                      dest[k] = (dest[k] & 0xffffff00) | (sValues[k] & 0xff);
                   }
@@ -1184,7 +1184,7 @@ draw_stencil_pixels(struct gl_context *ctx, GLint x, GLint y,
                   uint *dest = (uint *) (stmap + spanY * pt->stride);
                   GLfloat *destf = (GLfloat*)dest;
                   GLint k;
-                  assert(usage == PIPE_TRANSFER_WRITE);
+                  assert(usage == PIPE_MAP_WRITE);
                   for (k = 0; k < width; k++) {
                      destf[k*2] = zValuesFloat[k];
                      dest[k*2+1] = sValues[k] & 0xff;
@@ -1193,7 +1193,7 @@ draw_stencil_pixels(struct gl_context *ctx, GLint x, GLint y,
                else {
                   uint *dest = (uint *) (stmap + spanY * pt->stride);
                   GLint k;
-                  assert(usage == PIPE_TRANSFER_READ_WRITE);
+                  assert(usage == PIPE_MAP_READ_WRITE);
                   for (k = 0; k < width; k++) {
                      dest[k*2+1] = sValues[k] & 0xff;
                   }
@@ -1572,9 +1572,9 @@ copy_stencil_pixels(struct gl_context *ctx, GLint srcx, GLint srcy,
    }
 
    if (_mesa_is_format_packed_depth_stencil(rbDraw->Base.Format))
-      usage = PIPE_TRANSFER_READ_WRITE;
+      usage = PIPE_MAP_READ_WRITE;
    else
-      usage = PIPE_TRANSFER_WRITE;
+      usage = PIPE_MAP_WRITE;
 
    if (st_fb_orientation(ctx->DrawBuffer) == Y_0_TOP) {
       dsty = rbDraw->Base.Height - dsty - height;

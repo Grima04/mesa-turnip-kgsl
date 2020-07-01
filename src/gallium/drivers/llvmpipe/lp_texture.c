@@ -230,7 +230,7 @@ llvmpipe_displaytarget_layout(struct llvmpipe_screen *screen,
 
    if (!map_front_private) {
       void *map = winsys->displaytarget_map(winsys, lpr->dt,
-                                            PIPE_TRANSFER_WRITE);
+                                            PIPE_MAP_WRITE);
 
       if (map)
          memset(map, 0, height * lpr->row_stride[0]);
@@ -408,10 +408,10 @@ llvmpipe_resource_map(struct pipe_resource *resource,
       unsigned dt_usage;
 
       if (tex_usage == LP_TEX_USAGE_READ) {
-         dt_usage = PIPE_TRANSFER_READ;
+         dt_usage = PIPE_MAP_READ;
       }
       else {
-         dt_usage = PIPE_TRANSFER_READ_WRITE;
+         dt_usage = PIPE_MAP_READ_WRITE;
       }
 
       assert(level == 0);
@@ -566,9 +566,9 @@ llvmpipe_transfer_map_ms( struct pipe_context *pipe,
     * Transfers, like other pipe operations, must happen in order, so flush the
     * context if necessary.
     */
-   if (!(usage & PIPE_TRANSFER_UNSYNCHRONIZED)) {
-      boolean read_only = !(usage & PIPE_TRANSFER_WRITE);
-      boolean do_not_block = !!(usage & PIPE_TRANSFER_DONTBLOCK);
+   if (!(usage & PIPE_MAP_UNSYNCHRONIZED)) {
+      boolean read_only = !(usage & PIPE_MAP_WRITE);
+      boolean do_not_block = !!(usage & PIPE_MAP_DONTBLOCK);
       if (!llvmpipe_flush_resource(pipe, resource,
                                    level,
                                    read_only,
@@ -584,7 +584,7 @@ llvmpipe_transfer_map_ms( struct pipe_context *pipe,
    }
 
    /* Check if we're mapping a current constant buffer */
-   if ((usage & PIPE_TRANSFER_WRITE) &&
+   if ((usage & PIPE_MAP_WRITE) &&
        (resource->bind & PIPE_BIND_CONSTANT_BUFFER)) {
       unsigned i;
       for (i = 0; i < ARRAY_SIZE(llvmpipe->constants[PIPE_SHADER_FRAGMENT]); ++i) {
@@ -618,7 +618,7 @@ llvmpipe_transfer_map_ms( struct pipe_context *pipe,
           transfer->usage);
    */
 
-   if (usage == PIPE_TRANSFER_READ) {
+   if (usage == PIPE_MAP_READ) {
       tex_usage = LP_TEX_USAGE_READ;
       mode = "read";
    }
@@ -642,7 +642,7 @@ llvmpipe_transfer_map_ms( struct pipe_context *pipe,
    /* May want to do different things here depending on read/write nature
     * of the map:
     */
-   if (usage & PIPE_TRANSFER_WRITE) {
+   if (usage & PIPE_MAP_WRITE) {
       /* Do something to notify sharing contexts of a texture change.
        */
       screen->timestamp++;

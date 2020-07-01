@@ -1171,7 +1171,7 @@ static struct si_texture *si_texture_create_object(struct pipe_screen *screen,
       struct si_resource *buf = si_aligned_buffer_create(screen, 0, PIPE_USAGE_STREAM,
                                                          dcc_retile_map_size,
                                                          sscreen->info.tcc_cache_line_size);
-      void *map = sscreen->ws->buffer_map(buf->buf, NULL, PIPE_TRANSFER_WRITE);
+      void *map = sscreen->ws->buffer_map(buf->buf, NULL, PIPE_MAP_WRITE);
 
       /* Upload the retile map into the staging buffer. */
       memcpy(map, tex->surface.u.gfx9.dcc_retile_map, dcc_retile_map_size);
@@ -1593,7 +1593,7 @@ static bool si_can_invalidate_texture(struct si_screen *sscreen, struct si_textu
                                       unsigned transfer_usage, const struct pipe_box *box)
 {
    return !tex->buffer.b.is_shared && !(tex->surface.flags & RADEON_SURF_IMPORTED) &&
-          !(transfer_usage & PIPE_TRANSFER_READ) && tex->buffer.b.b.last_level == 0 &&
+          !(transfer_usage & PIPE_MAP_READ) && tex->buffer.b.b.last_level == 0 &&
           util_texrange_covers_whole_level(&tex->buffer.b.b, 0, box->x, box->y, box->z, box->width,
                                            box->height, box->depth);
 }
@@ -1658,7 +1658,7 @@ static void *si_texture_transfer_map(struct pipe_context *ctx, struct pipe_resou
        */
       if (!tex->surface.is_linear || (tex->buffer.flags & RADEON_FLAG_ENCRYPTED))
          use_staging_texture = true;
-      else if (usage & PIPE_TRANSFER_READ)
+      else if (usage & PIPE_MAP_READ)
          use_staging_texture =
             tex->buffer.domains & RADEON_DOMAIN_VRAM || tex->buffer.flags & RADEON_FLAG_GTT_WC;
       /* Write & linear only: */
@@ -1683,7 +1683,7 @@ static void *si_texture_transfer_map(struct pipe_context *ctx, struct pipe_resou
    if (use_staging_texture) {
       struct pipe_resource resource;
       struct si_texture *staging;
-      unsigned bo_usage = usage & PIPE_TRANSFER_READ ? PIPE_USAGE_STAGING : PIPE_USAGE_STREAM;
+      unsigned bo_usage = usage & PIPE_MAP_READ ? PIPE_USAGE_STAGING : PIPE_USAGE_STREAM;
       unsigned bo_flags = SI_RESOURCE_FLAG_FORCE_LINEAR;
 
       /* The pixel shader has a bad access pattern for linear textures.
@@ -1696,7 +1696,7 @@ static void *si_texture_transfer_map(struct pipe_context *ctx, struct pipe_resou
           !tex->is_depth &&
           !util_format_is_compressed(texture->format) &&
           /* Texture uploads with DCC use the pixel shader to blit */
-          (!(usage & PIPE_TRANSFER_WRITE) || !vi_dcc_enabled(tex, level)))
+          (!(usage & PIPE_MAP_WRITE) || !vi_dcc_enabled(tex, level)))
          bo_flags |= SI_RESOURCE_FLAG_UNCACHED;
 
       si_init_temp_resource_from_box(&resource, texture, box, level, bo_usage,
@@ -1721,10 +1721,10 @@ static void *si_texture_transfer_map(struct pipe_context *ctx, struct pipe_resou
       si_texture_get_offset(sctx->screen, staging, 0, NULL, &trans->b.b.stride,
                             &trans->b.b.layer_stride);
 
-      if (usage & PIPE_TRANSFER_READ)
+      if (usage & PIPE_MAP_READ)
          si_copy_to_staging_texture(ctx, trans);
       else
-         usage |= PIPE_TRANSFER_UNSYNCHRONIZED;
+         usage |= PIPE_MAP_UNSYNCHRONIZED;
 
       buf = trans->staging;
    } else {
@@ -1769,7 +1769,7 @@ static void si_texture_transfer_unmap(struct pipe_context *ctx, struct pipe_tran
       sctx->ws->buffer_unmap(buf->buf);
    }
 
-   if ((transfer->usage & PIPE_TRANSFER_WRITE) && stransfer->staging)
+   if ((transfer->usage & PIPE_MAP_WRITE) && stransfer->staging)
       si_copy_from_staging_texture(ctx, stransfer);
 
    if (stransfer->staging) {

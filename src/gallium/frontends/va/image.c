@@ -528,7 +528,7 @@ vlVaGetImage(VADriverContextP ctx, VASurfaceID surface, int x, int y,
          struct pipe_transfer *transfer;
          uint8_t *map;
          map = drv->pipe->transfer_map(drv->pipe, views[i]->texture, 0,
-                  PIPE_TRANSFER_READ, &box, &transfer);
+                  PIPE_MAP_READ, &box, &transfer);
          if (!map) {
             mtx_unlock(&drv->mutex);
             return VA_STATUS_ERROR_OPERATION_FAILED;
@@ -665,8 +665,8 @@ vlVaPutImage(VADriverContextP ctx, VASurfaceID surface, VAImageID image,
             map = drv->pipe->transfer_map(drv->pipe,
                                           tex,
                                           0,
-                                          PIPE_TRANSFER_WRITE |
-                                          PIPE_TRANSFER_DISCARD_RANGE,
+                                          PIPE_MAP_WRITE |
+                                          PIPE_MAP_DISCARD_RANGE,
                                           &dst_box, &transfer);
             if (map == NULL) {
                mtx_unlock(&drv->mutex);
@@ -679,7 +679,7 @@ vlVaPutImage(VADriverContextP ctx, VASurfaceID surface, VAImageID image,
             pipe_transfer_unmap(drv->pipe, transfer);
          } else {
             drv->pipe->texture_subdata(drv->pipe, tex, 0,
-                                       PIPE_TRANSFER_WRITE, &dst_box,
+                                       PIPE_MAP_WRITE, &dst_box,
                                        data[i] + pitches[i] * j,
                                        pitches[i] * views[i]->texture->array_size, 0);
          }

@@ -44,7 +44,7 @@ vmw_svga_winsys_surface_init(struct svga_winsys_screen *sws,
    struct pb_buffer *pb_buf;
    uint32_t pb_flags;
    struct vmw_winsys_screen *vws = vsrf->screen;
-   pb_flags = PIPE_TRANSFER_WRITE | PIPE_TRANSFER_DISCARD_WHOLE_RESOURCE;
+   pb_flags = PIPE_MAP_WRITE | PIPE_MAP_DISCARD_WHOLE_RESOURCE;
 
    struct pb_manager *provider;
    struct pb_desc desc;
@@ -113,12 +113,12 @@ vmw_svga_winsys_surface_map(struct svga_winsys_context *swc,
 
    *retry = FALSE;
    *rebind = FALSE;
-   assert((flags & (PIPE_TRANSFER_READ | PIPE_TRANSFER_WRITE)) != 0);
+   assert((flags & (PIPE_MAP_READ | PIPE_MAP_WRITE)) != 0);
    mtx_lock(&vsrf->mutex);
 
    if (vsrf->mapcount) {
       /* Other mappers will get confused if we discard. */
-      flags &= ~PIPE_TRANSFER_DISCARD_WHOLE_RESOURCE;
+      flags &= ~PIPE_MAP_DISCARD_WHOLE_RESOURCE;
    }
 
    vsrf->rebind = FALSE;
@@ -127,31 +127,31 @@ vmw_svga_winsys_surface_map(struct svga_winsys_context *swc,
     * If we intend to read, there's no point discarding the
     * data if busy.
     */
-   if (flags & PIPE_TRANSFER_READ || vsrf->shared)
-      flags &= ~PIPE_TRANSFER_DISCARD_WHOLE_RESOURCE;
+   if (flags & PIPE_MAP_READ || vsrf->shared)
+      flags &= ~PIPE_MAP_DISCARD_WHOLE_RESOURCE;
 
    /*
     * Discard is a hint to a synchronized map.
     */
-   if (flags & PIPE_TRANSFER_DISCARD_WHOLE_RESOURCE)
-      flags &= ~PIPE_TRANSFER_UNSYNCHRONIZED;
+   if (flags & PIPE_MAP_DISCARD_WHOLE_RESOURCE)
+      flags &= ~PIPE_MAP_UNSYNCHRONIZED;
 
    /*
     * The surface is allowed to be referenced on the command stream iff
     * we're mapping unsynchronized or discard. This is an early check.
     * We need to recheck after a failing discard map.
     */
-   if (!(flags & (PIPE_TRANSFER_DISCARD_WHOLE_RESOURCE |
-                  PIPE_TRANSFER_UNSYNCHRONIZED)) &&
+   if (!(flags & (PIPE_MAP_DISCARD_WHOLE_RESOURCE |
+                  PIPE_MAP_UNSYNCHRONIZED)) &&
        p_atomic_read(&vsrf->validated)) {
       *retry = TRUE;
       goto out_unlock;
    }
 
-   pb_flags = flags & (PIPE_TRANSFER_READ_WRITE | PIPE_TRANSFER_UNSYNCHRONIZED |
-      PIPE_TRANSFER_PERSISTENT);
+   pb_flags = flags & (PIPE_MAP_READ_WRITE | PIPE_MAP_UNSYNCHRONIZED |
+      PIPE_MAP_PERSISTENT);
 
-   if (flags & PIPE_TRANSFER_DISCARD_WHOLE_RESOURCE) {
+   if (flags & PIPE_MAP_DISCARD_WHOLE_RESOURCE) {
       struct pb_manager *provider;
       struct pb_desc desc;
 
@@ -160,7 +160,7 @@ vmw_svga_winsys_surface_map(struct svga_winsys_context *swc,
        */
       if (!p_atomic_read(&vsrf->validated)) {
          data = vmw_svga_winsys_buffer_map(&vws->base, vsrf->buf,
-                                           PIPE_TRANSFER_DONTBLOCK | pb_flags);
+                                           PIPE_MAP_DONTBLOCK | pb_flags);
          if (data)
             goto out_mapped;
       } 
@@ -189,7 +189,7 @@ vmw_svga_winsys_surface_map(struct svga_winsys_context *swc,
             vsrf->buf = vbuf;
 
             /* Rebind persistent maps immediately */
-            if (flags & PIPE_TRANSFER_PERSISTENT) {
+            if (flags & PIPE_MAP_PERSISTENT) {
                *rebind = TRUE;
                vsrf->rebind = FALSE;
             }
@@ -203,14 +203,14 @@ vmw_svga_winsys_surface_map(struct svga_winsys_context *swc,
        * But tell pipe driver to flush now if already on validate list,
        * Otherwise we'll overwrite previous contents.
        */
-      if (!(flags & PIPE_TRANSFER_UNSYNCHRONIZED) && 
+      if (!(flags & PIPE_MAP_UNSYNCHRONIZED) && 
           p_atomic_read(&vsrf->validated)) {
          *retry = TRUE;
          goto out_unlock;
       }
    }
 
-   pb_flags |= (flags & PIPE_TRANSFER_DONTBLOCK);
+   pb_flags |= (flags & PIPE_MAP_DONTBLOCK);
    data = vmw_svga_winsys_buffer_map(&vws->base, vsrf->buf, pb_flags);
    if (data == NULL)
       goto out_unlock;
@@ -218,7 +218,7 @@ vmw_svga_winsys_surface_map(struct svga_winsys_context *swc,
 out_mapped:
    ++vsrf->mapcount;
    vsrf->data = data;
-   vsrf->map_mode = flags & (PIPE_TRANSFER_READ | PIPE_TRANSFER_WRITE);
+   vsrf->map_mode = flags & (PIPE_MAP_READ | PIPE_MAP_WRITE);
 out_unlock:
    mtx_unlock(&vsrf->mutex);
    return data;

@@ -1006,7 +1006,7 @@ lp_setup_set_fragment_sampler_views(struct lp_setup_context *setup,
             struct llvmpipe_screen *screen = llvmpipe_screen(res->screen);
             struct sw_winsys *winsys = screen->winsys;
             jit_tex->base = winsys->displaytarget_map(winsys, lp_tex->dt,
-                                                         PIPE_TRANSFER_READ);
+                                                         PIPE_MAP_READ);
             jit_tex->row_stride[0] = lp_tex->row_stride[0];
             jit_tex->img_stride[0] = lp_tex->img_stride[0];
             jit_tex->mip_offsets[0] = 0;

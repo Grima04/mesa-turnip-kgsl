@@ -1351,7 +1351,7 @@ static void
 iris_flush_staging_region(struct pipe_transfer *xfer,
                           const struct pipe_box *flush_box)
 {
-   if (!(xfer->usage & PIPE_TRANSFER_WRITE))
+   if (!(xfer->usage & PIPE_MAP_WRITE))
       return;
 
    struct iris_transfer *map = (void *) xfer;
@@ -1422,7 +1422,7 @@ iris_map_copy_region(struct iris_transfer *map)
       xfer->layer_stride = isl_surf_get_array_pitch(surf);
    }
 
-   if (!(xfer->usage & PIPE_TRANSFER_DISCARD_RANGE)) {
+   if (!(xfer->usage & PIPE_MAP_DISCARD_RANGE)) {
       iris_copy_region(map->blorp, map->batch, map->staging, 0, extra, 0, 0,
                        xfer->resource, xfer->level, box);
       /* Ensure writes to the staging BO land before we map it below. */
@@ -1610,7 +1610,7 @@ iris_unmap_s8(struct iris_transfer *map)
    struct iris_resource *res = (struct iris_resource *) xfer->resource;
    struct isl_surf *surf = &res->surf;
 
-   if (xfer->usage & PIPE_TRANSFER_WRITE) {
+   if (xfer->usage & PIPE_MAP_WRITE) {
       uint8_t *untiled_s8_map = map->ptr;
       uint8_t *tiled_s8_map =
          iris_bo_map(map->dbg, res->bo, (xfer->usage | MAP_RAW) & MAP_FLAGS);
@@ -1657,7 +1657,7 @@ iris_map_s8(struct iris_transfer *map)
     * invalidate is set, since we'll be writing the whole rectangle from our
     * temporary buffer back out.
     */
-   if (!(xfer->usage & PIPE_TRANSFER_DISCARD_RANGE)) {
+   if (!(xfer->usage & PIPE_MAP_DISCARD_RANGE)) {
       uint8_t *untiled_s8_map = map->ptr;
       uint8_t *tiled_s8_map =
          iris_bo_map(map->dbg, res->bo, (xfer->usage | MAP_RAW) & MAP_FLAGS);
@@ -1716,7 +1716,7 @@ iris_unmap_tiled_memcpy(struct iris_transfer *map)
 
    const bool has_swizzling = false;
 
-   if (xfer->usage & PIPE_TRANSFER_WRITE) {
+   if (xfer->usage & PIPE_MAP_WRITE) {
       char *dst =
          iris_bo_map(map->dbg, res->bo, (xfer->usage | MAP_RAW) & MAP_FLAGS);
 
@@ -1760,7 +1760,7 @@ iris_map_tiled_memcpy(struct iris_transfer *map)
 
    const bool has_swizzling = false;
 
-   if (!(xfer->usage & PIPE_TRANSFER_DISCARD_RANGE)) {
+   if (!(xfer->usage & PIPE_MAP_DISCARD_RANGE)) {
       char *src =
          iris_bo_map(map->dbg, res->bo, (xfer->usage | MAP_RAW) & MAP_FLAGS);
 
@@ -1819,7 +1819,7 @@ can_promote_to_async(const struct iris_resource *res,
     * initialized with useful data, then we can safely promote this write
     * to be unsynchronized.  This helps the common pattern of appending data.
     */
-   return res->base.target == PIPE_BUFFER && (usage & PIPE_TRANSFER_WRITE) &&
+   return res->base.target == PIPE_BUFFER && (usage & PIPE_MAP_WRITE) &&
           !(usage & TC_TRANSFER_MAP_NO_INFER_UNSYNCHRONIZED) &&
           !util_ranges_intersect(&res->valid_buffer_range, box->x,
                                  box->x + box->width);
@@ -1840,35 +1840,35 @@ iris_transfer_map(struct pipe_context *ctx,
    if (iris_resource_unfinished_aux_import(res))
       iris_resource_finish_aux_import(ctx->screen, res);
 
-   if (usage & PIPE_TRANSFER_DISCARD_WHOLE_RESOURCE) {
+   if (usage & PIPE_MAP_DISCARD_WHOLE_RESOURCE) {
       /* Replace the backing storage with a fresh buffer for non-async maps */
-      if (!(usage & (PIPE_TRANSFER_UNSYNCHRONIZED |
+      if (!(usage & (PIPE_MAP_UNSYNCHRONIZED |
                      TC_TRANSFER_MAP_NO_INVALIDATE)))
          iris_invalidate_resource(ctx, resource);
 
       /* If we can discard the whole resource, we can discard the range. */
-      usage |= PIPE_TRANSFER_DISCARD_RANGE;
+      usage |= PIPE_MAP_DISCARD_RANGE;
    }
 
-   if (!(usage & PIPE_TRANSFER_UNSYNCHRONIZED) &&
+   if (!(usage & PIPE_MAP_UNSYNCHRONIZED) &&
        can_promote_to_async(res, box, usage)) {
-      usage |= PIPE_TRANSFER_UNSYNCHRONIZED;
+      usage |= PIPE_MAP_UNSYNCHRONIZED;
    }
 
    bool map_would_stall = false;
 
-   if (!(usage & PIPE_TRANSFER_UNSYNCHRONIZED)) {
+   if (!(usage & PIPE_MAP_UNSYNCHRONIZED)) {
       map_would_stall =
          resource_is_busy(ice, res) ||
          iris_has_invalid_primary(res, level, 1, box->z, box->depth);
 
-      if (map_would_stall && (usage & PIPE_TRANSFER_DONTBLOCK) &&
-                             (usage & PIPE_TRANSFER_MAP_DIRECTLY))
+      if (map_would_stall && (usage & PIPE_MAP_DONTBLOCK) &&
+                             (usage & PIPE_MAP_DIRECTLY))
          return NULL;
    }
 
    if (surf->tiling != ISL_TILING_LINEAR &&
-       (usage & PIPE_TRANSFER_MAP_DIRECTLY))
+       (usage & PIPE_MAP_DIRECTLY))
       return NULL;
 
    struct iris_transfer *map = slab_alloc(&ice->transfer_pool);
@@ -1890,7 +1890,7 @@ iris_transfer_map(struct pipe_context *ctx,
       util_ranges_intersect(&res->valid_buffer_range, box->x,
                             box->x + box->width);
 
-   if (usage & PIPE_TRANSFER_WRITE)
+   if (usage & PIPE_MAP_WRITE)
       util_range_add(&res->base, &res->valid_buffer_range, box->x, box->x + box->width);
 
    /* Avoid using GPU copies for persistent/coherent buffers, as the idea
@@ -1899,9 +1899,9 @@ iris_transfer_map(struct pipe_context *ctx,
     * contain state we're constructing for a GPU draw call, which would
     * kill us with infinite stack recursion.
     */
-   bool no_gpu = usage & (PIPE_TRANSFER_PERSISTENT |
-                          PIPE_TRANSFER_COHERENT |
-                          PIPE_TRANSFER_MAP_DIRECTLY);
+   bool no_gpu = usage & (PIPE_MAP_PERSISTENT |
+                          PIPE_MAP_COHERENT |
+                          PIPE_MAP_DIRECTLY);
 
    /* GPU copies are not useful for buffer reads.  Instead of stalling to
     * read from the original buffer, we'd simply copy it to a temporary...
@@ -1912,7 +1912,7 @@ iris_transfer_map(struct pipe_context *ctx,
     * temporary and map that, to avoid the resolve.  (It might be better to
     * a tiled temporary and use the tiled_memcpy paths...)
     */
-   if (!(usage & PIPE_TRANSFER_DISCARD_RANGE) &&
+   if (!(usage & PIPE_MAP_DISCARD_RANGE) &&
        !iris_has_invalid_primary(res, level, 1, box->z, box->depth)) {
       no_gpu = true;
    }
@@ -1939,10 +1939,10 @@ iris_transfer_map(struct pipe_context *ctx,
 
       if (resource->target != PIPE_BUFFER) {
          iris_resource_access_raw(ice, res, level, box->z, box->depth,
-                                  usage & PIPE_TRANSFER_WRITE);
+                                  usage & PIPE_MAP_WRITE);
       }
 
-      if (!(usage & PIPE_TRANSFER_UNSYNCHRONIZED)) {
+      if (!(usage & PIPE_MAP_UNSYNCHRONIZED)) {
          for (int i = 0; i < IRIS_BATCH_COUNT; i++) {
             if (iris_batch_references(&ice->batches[i], res->bo))
                iris_batch_flush(&ice->batches[i]);
@@ -2010,8 +2010,8 @@ iris_transfer_unmap(struct pipe_context *ctx, struct pipe_transfer *xfer)
    struct iris_context *ice = (struct iris_context *)ctx;
    struct iris_transfer *map = (void *) xfer;
 
-   if (!(xfer->usage & (PIPE_TRANSFER_FLUSH_EXPLICIT |
-                        PIPE_TRANSFER_COHERENT))) {
+   if (!(xfer->usage & (PIPE_MAP_FLUSH_EXPLICIT |
+                        PIPE_MAP_COHERENT))) {
       struct pipe_box flush_box = {
          .x = 0, .y = 0, .z = 0,
          .width  = xfer->box.width,
@@ -2068,7 +2068,7 @@ iris_texture_subdata(struct pipe_context *ctx,
                                        data, stride, layer_stride);
    }
 
-   /* No state trackers pass any flags other than PIPE_TRANSFER_WRITE */
+   /* No state trackers pass any flags other than PIPE_MAP_WRITE */
 
    iris_resource_access_raw(ice, res, level, box->z, box->depth, true);
 

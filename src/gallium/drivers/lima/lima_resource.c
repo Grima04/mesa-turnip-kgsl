@@ -559,12 +559,12 @@ lima_transfer_map(struct pipe_context *pctx,
    /* No direct mappings of tiled, since we need to manually
     * tile/untile.
     */
-   if (res->tiled && (usage & PIPE_TRANSFER_MAP_DIRECTLY))
+   if (res->tiled && (usage & PIPE_MAP_DIRECTLY))
       return NULL;
 
    /* bo might be in use in a previous stream draw. Allocate a new
     * one for the resource to avoid overwriting data in use. */
-   if (usage & PIPE_TRANSFER_DISCARD_WHOLE_RESOURCE) {
+   if (usage & PIPE_MAP_DISCARD_WHOLE_RESOURCE) {
       struct lima_bo *new_bo;
       assert(res->bo && res->bo->size);
 
@@ -580,13 +580,13 @@ lima_transfer_map(struct pipe_context *pctx,
 
       bo = res->bo;
    }
-   else if (!(usage & PIPE_TRANSFER_UNSYNCHRONIZED) &&
-            (usage & PIPE_TRANSFER_READ_WRITE)) {
+   else if (!(usage & PIPE_MAP_UNSYNCHRONIZED) &&
+            (usage & PIPE_MAP_READ_WRITE)) {
       /* use once buffers are made sure to not read/write overlapped
        * range, so no need to sync */
-      lima_flush_job_accessing_bo(ctx, bo, usage & PIPE_TRANSFER_WRITE);
+      lima_flush_job_accessing_bo(ctx, bo, usage & PIPE_MAP_WRITE);
 
-      unsigned op = usage & PIPE_TRANSFER_WRITE ?
+      unsigned op = usage & PIPE_MAP_WRITE ?
          LIMA_GEM_WAIT_WRITE : LIMA_GEM_WAIT_READ;
       lima_bo_wait(bo, op, PIPE_TIMEOUT_INFINITE);
    }
@@ -614,7 +614,7 @@ lima_transfer_map(struct pipe_context *pctx,
 
       trans->staging = malloc(ptrans->stride * ptrans->box.height * ptrans->box.depth);
 
-      if (usage & PIPE_TRANSFER_READ) {
+      if (usage & PIPE_MAP_READ) {
          unsigned i;
          for (i = 0; i < ptrans->box.depth; i++)
             panfrost_load_tiled_image(
@@ -629,15 +629,15 @@ lima_transfer_map(struct pipe_context *pctx,
 
       return trans->staging;
    } else {
-      unsigned dpw = PIPE_TRANSFER_MAP_DIRECTLY | PIPE_TRANSFER_WRITE |
-                     PIPE_TRANSFER_PERSISTENT;
+      unsigned dpw = PIPE_MAP_DIRECTLY | PIPE_MAP_WRITE |
+                     PIPE_MAP_PERSISTENT;
       if ((usage & dpw) == dpw && res->index_cache)
          return NULL;
 
       ptrans->stride = res->levels[level].stride;
       ptrans->layer_stride = res->levels[level].layer_stride;
 
-      if ((usage & PIPE_TRANSFER_WRITE) && (usage & PIPE_TRANSFER_MAP_DIRECTLY))
+      if ((usage & PIPE_MAP_WRITE) && (usage & PIPE_MAP_DIRECTLY))
          panfrost_minmax_cache_invalidate(res->index_cache, ptrans);
 
       return bo->map + res->levels[level].offset +
@@ -668,7 +668,7 @@ lima_transfer_unmap_inner(struct lima_context *ctx,
 
    if (trans->staging) {
       pres = &res->base;
-      if (trans->base.usage & PIPE_TRANSFER_WRITE) {
+      if (trans->base.usage & PIPE_MAP_WRITE) {
          unsigned i;
          for (i = 0; i < trans->base.box.depth; i++)
             panfrost_store_tiled_image(
@@ -779,12 +779,12 @@ lima_texture_subdata(struct pipe_context *pctx,
       return;
    }
 
-   assert(!(usage & PIPE_TRANSFER_READ));
+   assert(!(usage & PIPE_MAP_READ));
 
    struct lima_transfer t = {
       .base = {
          .resource = prsc,
-         .usage = PIPE_TRANSFER_WRITE,
+         .usage = PIPE_MAP_WRITE,
          .level = level,
          .box = *box,
          .stride = stride,

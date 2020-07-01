@@ -148,8 +148,8 @@ u_transfer_helper_resource_destroy(struct pipe_screen *pscreen,
 
 static bool needs_pack(unsigned usage)
 {
-   return (usage & PIPE_TRANSFER_READ) &&
-      !(usage & (PIPE_TRANSFER_DISCARD_WHOLE_RESOURCE | PIPE_TRANSFER_DISCARD_RANGE));
+   return (usage & PIPE_MAP_READ) &&
+      !(usage & (PIPE_MAP_DISCARD_WHOLE_RESOURCE | PIPE_MAP_DISCARD_RANGE));
 }
 
 /* In the case of transfer_map of a multi-sample resource, call back into
@@ -358,7 +358,7 @@ flush_region(struct pipe_context *pctx, struct pipe_transfer *ptrans,
    unsigned height = box->height;
    void *src, *dst;
 
-   if (!(ptrans->usage & PIPE_TRANSFER_WRITE))
+   if (!(ptrans->usage & PIPE_MAP_WRITE))
       return;
 
    if (trans->ss) {
@@ -495,7 +495,7 @@ u_transfer_helper_transfer_unmap(struct pipe_context *pctx,
    if (handle_transfer(ptrans->resource)) {
       struct u_transfer *trans = u_transfer(ptrans);
 
-      if (!(ptrans->usage & PIPE_TRANSFER_FLUSH_EXPLICIT)) {
+      if (!(ptrans->usage & PIPE_MAP_FLUSH_EXPLICIT)) {
          struct pipe_box box;
          u_box_2d(0, 0, ptrans->box.width, ptrans->box.height, &box);
          flush_region(pctx, ptrans, &box);
@@ -589,13 +589,13 @@ u_transfer_helper_deinterleave_transfer_map(struct pipe_context *pctx,
    if (!trans->staging)
       goto fail;
 
-   trans->ptr = helper->vtbl->transfer_map(pctx, prsc, level, usage | PIPE_TRANSFER_DEPTH_ONLY, box,
+   trans->ptr = helper->vtbl->transfer_map(pctx, prsc, level, usage | PIPE_MAP_DEPTH_ONLY, box,
                                            &trans->trans);
    if (!trans->ptr)
       goto fail;
 
    trans->ptr2 = helper->vtbl->transfer_map(pctx, prsc, level,
-                                            usage | PIPE_TRANSFER_STENCIL_ONLY, box, &trans->trans2);
+                                            usage | PIPE_MAP_STENCIL_ONLY, box, &trans->trans2);
    if (needs_pack(usage)) {
       switch (prsc->format) {
       case PIPE_FORMAT_Z32_FLOAT_S8X24_UINT:
@@ -649,7 +649,7 @@ u_transfer_helper_deinterleave_transfer_unmap(struct pipe_context *pctx,
        (format == PIPE_FORMAT_Z32_FLOAT_S8X24_UINT && helper->separate_z32s8)) {
       struct u_transfer *trans = (struct u_transfer *)ptrans;
 
-      if (!(ptrans->usage & PIPE_TRANSFER_FLUSH_EXPLICIT)) {
+      if (!(ptrans->usage & PIPE_MAP_FLUSH_EXPLICIT)) {
          struct pipe_box box;
          u_box_2d(0, 0, ptrans->box.width, ptrans->box.height, &box);
          flush_region(pctx, ptrans, &box);

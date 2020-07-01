@@ -210,7 +210,7 @@ static bool virgl_get_query_result(struct pipe_context *ctx,
          }
 
          host_state = pipe_buffer_map(ctx, &query->buf->u.b,
-               PIPE_TRANSFER_READ, &transfer);
+               PIPE_MAP_READ, &transfer);
       }
 
       if (query->result_size == 8)

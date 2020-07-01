@@ -53,14 +53,14 @@ lp_resource_copy_ms(struct pipe_context *pipe,
    for (unsigned i = 0; i < src->nr_samples; i++) {
       struct pipe_transfer *src_trans, *dst_trans;
       const uint8_t *src_map = llvmpipe_transfer_map_ms(pipe,
-                                                        src, 0, PIPE_TRANSFER_READ, i,
+                                                        src, 0, PIPE_MAP_READ, i,
                                                         src_box,
                                                         &src_trans);
       if (!src_map)
          return;
 
       uint8_t *dst_map = llvmpipe_transfer_map_ms(pipe,
-                                                  dst, 0, PIPE_TRANSFER_WRITE, i,
+                                                  dst, 0, PIPE_MAP_WRITE, i,
                                                   &dst_box,
                                                   &dst_trans);
       if (!dst_map) {
@@ -285,7 +285,7 @@ lp_clear_color_texture_msaa(struct pipe_context *pipe,
    struct pipe_transfer *dst_trans;
    ubyte *dst_map;
 
-   dst_map = llvmpipe_transfer_map_ms(pipe, texture, 0, PIPE_TRANSFER_WRITE,
+   dst_map = llvmpipe_transfer_map_ms(pipe, texture, 0, PIPE_MAP_WRITE,
                                       sample, box, &dst_trans);
    if (!dst_map)
       return;
@@ -347,8 +347,8 @@ lp_clear_depth_stencil_texture_msaa(struct pipe_context *pipe,
    dst_map = llvmpipe_transfer_map_ms(pipe,
                                       texture,
                                       0,
-                                      (need_rmw ? PIPE_TRANSFER_READ_WRITE :
-                                       PIPE_TRANSFER_WRITE),
+                                      (need_rmw ? PIPE_MAP_READ_WRITE :
+                                       PIPE_MAP_WRITE),
                                       sample, box, &dst_trans);
    assert(dst_map);
    if (!dst_map)

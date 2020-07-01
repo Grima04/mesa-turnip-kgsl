@@ -754,49 +754,49 @@ the last (partial) page requires a box that ends at the end of the buffer
 
 .. _pipe_transfer:
 
-PIPE_TRANSFER
+PIPE_MAP
 ^^^^^^^^^^^^^
 
 These flags control the behavior of a transfer object.
 
-``PIPE_TRANSFER_READ``
+``PIPE_MAP_READ``
   Resource contents read back (or accessed directly) at transfer create time.
 
-``PIPE_TRANSFER_WRITE``
+``PIPE_MAP_WRITE``
   Resource contents will be written back at transfer_unmap time (or modified
   as a result of being accessed directly).
 
-``PIPE_TRANSFER_MAP_DIRECTLY``
+``PIPE_MAP_DIRECTLY``
   a transfer should directly map the resource. May return NULL if not supported.
 
-``PIPE_TRANSFER_DISCARD_RANGE``
+``PIPE_MAP_DISCARD_RANGE``
   The memory within the mapped region is discarded.  Cannot be used with
-  ``PIPE_TRANSFER_READ``.
+  ``PIPE_MAP_READ``.
 
-``PIPE_TRANSFER_DISCARD_WHOLE_RESOURCE``
+``PIPE_MAP_DISCARD_WHOLE_RESOURCE``
   Discards all memory backing the resource.  It should not be used with
-  ``PIPE_TRANSFER_READ``.
+  ``PIPE_MAP_READ``.
 
-``PIPE_TRANSFER_DONTBLOCK``
+``PIPE_MAP_DONTBLOCK``
   Fail if the resource cannot be mapped immediately.
 
-``PIPE_TRANSFER_UNSYNCHRONIZED``
+``PIPE_MAP_UNSYNCHRONIZED``
   Do not synchronize pending operations on the resource when mapping. The
   interaction of any writes to the map and any operations pending on the
-  resource are undefined. Cannot be used with ``PIPE_TRANSFER_READ``.
+  resource are undefined. Cannot be used with ``PIPE_MAP_READ``.
 
-``PIPE_TRANSFER_FLUSH_EXPLICIT``
+``PIPE_MAP_FLUSH_EXPLICIT``
   Written ranges will be notified later with :ref:`transfer_flush_region`.
-  Cannot be used with ``PIPE_TRANSFER_READ``.
+  Cannot be used with ``PIPE_MAP_READ``.
 
-``PIPE_TRANSFER_PERSISTENT``
+``PIPE_MAP_PERSISTENT``
   Allows the resource to be used for rendering while mapped.
   PIPE_RESOURCE_FLAG_MAP_PERSISTENT must be set when creating
   the resource.
   If COHERENT is not set, memory_barrier(PIPE_BARRIER_MAPPED_BUFFER)
   must be called to ensure the device can see what the CPU has written.
 
-``PIPE_TRANSFER_COHERENT``
+``PIPE_MAP_COHERENT``
   If PERSISTENT is set, this ensures any writes done by the device are
   immediately visible to the CPU and vice versa.
   PIPE_RESOURCE_FLAG_MAP_COHERENT must be set when creating
@@ -909,4 +909,4 @@ uploaded data, unless:
   mapping, memory_barrier(PIPE_BARRIER_MAPPED_BUFFER) should be called on the
   context that has mapped the resource. No flush is required.
 
-* Mapping the resource with PIPE_TRANSFER_MAP_DIRECTLY.
+* Mapping the resource with PIPE_MAP_DIRECTLY.

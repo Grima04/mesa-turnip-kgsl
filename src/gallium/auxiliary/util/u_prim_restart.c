@@ -49,7 +49,7 @@ read_indirect_elements(struct pipe_context *context, struct pipe_draw_indirect_i
    map = pipe_buffer_map_range(context, indirect->buffer,
                                    indirect->offset,
                                    read_size,
-                                   PIPE_TRANSFER_READ,
+                                   PIPE_MAP_READ,
                                    &transfer);
    assert(map);
    memcpy(&ret, map, read_size);
@@ -129,7 +129,7 @@ util_translate_prim_restart_ib(struct pipe_context *context,
 
    /* Map new / dest index buffer */
    dst_map = pipe_buffer_map(context, *dst_buffer,
-                             PIPE_TRANSFER_WRITE, &dst_transfer);
+                             PIPE_MAP_WRITE, &dst_transfer);
    if (!dst_map)
       goto error;
 
@@ -140,7 +140,7 @@ util_translate_prim_restart_ib(struct pipe_context *context,
       src_map = pipe_buffer_map_range(context, info->index.resource,
                                       start * src_index_size,
                                       count * src_index_size,
-                                      PIPE_TRANSFER_READ,
+                                      PIPE_MAP_READ,
                                       &src_transfer);
    if (!src_map)
       goto error;
@@ -248,7 +248,7 @@ util_draw_vbo_without_prim_restart(struct pipe_context *context,
       src_map = pipe_buffer_map_range(context, info->index.resource,
                                       info_start * info->index_size,
                                       info_count * info->index_size,
-                                      PIPE_TRANSFER_READ,
+                                      PIPE_MAP_READ,
                                       &src_transfer);
       if (!src_map) {
          return PIPE_ERROR_OUT_OF_MEMORY;

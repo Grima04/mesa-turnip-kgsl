@@ -156,7 +156,7 @@ static bool gfx10_alloc_query_buffer(struct si_context *sctx)
     * compatibility with the SET_PREDICATION packet.
     */
    uint64_t *results = sctx->ws->buffer_map(qbuf->buf->buf, NULL,
-                                            PIPE_TRANSFER_WRITE | PIPE_TRANSFER_UNSYNCHRONIZED);
+                                            PIPE_MAP_WRITE | PIPE_MAP_UNSYNCHRONIZED);
    assert(results);
 
    for (unsigned i = 0, e = qbuf->buf->b.b.width0 / sizeof(struct gfx10_sh_query_buffer_mem); i < e;
@@ -292,7 +292,7 @@ static bool gfx10_sh_query_get_result(struct si_context *sctx, struct si_query *
 
    for (struct gfx10_sh_query_buffer *qbuf = query->last;;
         qbuf = LIST_ENTRY(struct gfx10_sh_query_buffer, qbuf->list.prev, list)) {
-      unsigned usage = PIPE_TRANSFER_READ | (wait ? 0 : PIPE_TRANSFER_DONTBLOCK);
+      unsigned usage = PIPE_MAP_READ | (wait ? 0 : PIPE_MAP_DONTBLOCK);
       void *map;
 
       if (rquery->b.flushed)

@@ -381,7 +381,7 @@ st_UnmapTextureImage(struct gl_context *ctx,
 
       assert(z == transfer->box.z);
 
-      if (transfer->usage & PIPE_TRANSFER_WRITE) {
+      if (transfer->usage & PIPE_MAP_WRITE) {
          if (texImage->TexFormat == MESA_FORMAT_ETC1_RGB8) {
             _mesa_etc1_unpack_rgba8888(itransfer->map, transfer->stride,
                                        itransfer->temp_data,
@@ -1676,7 +1676,7 @@ st_TexSubImage(struct gl_context *ctx, GLuint dims,
       height = 1;
    }
 
-   map = pipe_transfer_map_3d(pipe, src, 0, PIPE_TRANSFER_WRITE, 0, 0, 0,
+   map = pipe_transfer_map_3d(pipe, src, 0, PIPE_MAP_WRITE, 0, 0, 0,
                               width, height, depth, &transfer);
    if (!map) {
       _mesa_unmap_teximage_pbo(ctx, unpack);
@@ -2205,7 +2205,7 @@ st_GetTexSubImage(struct gl_context * ctx,
 
    pixels = _mesa_map_pbo_dest(ctx, &ctx->Pack, pixels);
 
-   map = pipe_transfer_map_3d(pipe, dst, 0, PIPE_TRANSFER_READ,
+   map = pipe_transfer_map_3d(pipe, dst, 0, PIPE_MAP_READ,
                               0, 0, 0, width, height, depth, &tex_xfer);
    if (!map) {
       goto end;
@@ -2337,7 +2337,7 @@ fallback_copy_texsubimage(struct gl_context *ctx,
                            strb->texture,
                            strb->surface->u.tex.level,
                            strb->surface->u.tex.first_layer,
-                           PIPE_TRANSFER_READ,
+                           PIPE_MAP_READ,
                            srcX, srcY,
                            width, height, &src_trans);
    if (!map) {
@@ -2348,9 +2348,9 @@ fallback_copy_texsubimage(struct gl_context *ctx,
    if ((baseFormat == GL_DEPTH_COMPONENT ||
         baseFormat == GL_DEPTH_STENCIL) &&
        util_format_is_depth_and_stencil(stImage->pt->format))
-      transfer_usage = PIPE_TRANSFER_READ_WRITE;
+      transfer_usage = PIPE_MAP_READ_WRITE;
    else
-      transfer_usage = PIPE_TRANSFER_WRITE;
+      transfer_usage = PIPE_MAP_WRITE;
 
    texDest = st_texture_image_map(st, stImage, transfer_usage,
                                   destX, destY, slice,

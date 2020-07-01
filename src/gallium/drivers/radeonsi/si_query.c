@@ -669,7 +669,7 @@ static bool si_query_hw_prepare_buffer(struct si_context *sctx, struct si_query_
 
    /* The caller ensures that the buffer is currently unused by the GPU. */
    uint32_t *results = screen->ws->buffer_map(qbuf->buf->buf, NULL,
-                                              PIPE_TRANSFER_WRITE | PIPE_TRANSFER_UNSYNCHRONIZED);
+                                              PIPE_MAP_WRITE | PIPE_MAP_UNSYNCHRONIZED);
    if (!results)
       return false;
 
@@ -1408,7 +1408,7 @@ bool si_query_hw_get_result(struct si_context *sctx, struct si_query *squery, bo
    query->ops->clear_result(query, result);
 
    for (qbuf = &query->buffer; qbuf; qbuf = qbuf->previous) {
-      unsigned usage = PIPE_TRANSFER_READ | (wait ? 0 : PIPE_TRANSFER_DONTBLOCK);
+      unsigned usage = PIPE_MAP_READ | (wait ? 0 : PIPE_MAP_DONTBLOCK);
       unsigned results_base = 0;
       void *map;
 

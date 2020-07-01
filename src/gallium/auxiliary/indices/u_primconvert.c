@@ -130,7 +130,7 @@ util_primconvert_draw_vbo(struct primconvert_context *pc,
       src = info->has_user_indices ? info->index.user : NULL;
       if (!src) {
          src = pipe_buffer_map(pc->pipe, info->index.resource,
-                               PIPE_TRANSFER_READ, &src_transfer);
+                               PIPE_MAP_READ, &src_transfer);
       }
       src = (const uint8_t *)src;
    }

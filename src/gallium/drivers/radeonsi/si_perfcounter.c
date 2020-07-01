@@ -1053,7 +1053,7 @@ static bool si_pc_query_get_result(struct si_context *sctx, struct si_query *squ
    memset(result, 0, sizeof(result->batch[0]) * query->num_counters);
 
    for (struct si_query_buffer *qbuf = &query->buffer; qbuf; qbuf = qbuf->previous) {
-      unsigned usage = PIPE_TRANSFER_READ | (wait ? 0 : PIPE_TRANSFER_DONTBLOCK);
+      unsigned usage = PIPE_MAP_READ | (wait ? 0 : PIPE_MAP_DONTBLOCK);
       unsigned results_base = 0;
       void *map;
 

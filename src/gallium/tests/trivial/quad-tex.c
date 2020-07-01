@@ -177,7 +177,7 @@ static void init_prog(struct program *p)
 		box.height = 2;
 		box.depth = 1;
 
-		ptr = p->pipe->transfer_map(p->pipe, p->tex, 0, PIPE_TRANSFER_WRITE, &box, &t);
+		ptr = p->pipe->transfer_map(p->pipe, p->tex, 0, PIPE_MAP_WRITE, &box, &t);
 		ptr[0] = 0xffff0000;
 		ptr[1] = 0xff0000ff;
 		ptr[2] = 0xff00ff00;

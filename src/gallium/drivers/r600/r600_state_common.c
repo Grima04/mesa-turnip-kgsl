@@ -2143,7 +2143,7 @@ static void r600_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info 
 				/* Have to get start/count from indirect buffer, slow path ahead... */
 				struct r600_resource *indirect_resource = (struct r600_resource *)info->indirect->buffer;
 				unsigned *data = r600_buffer_map_sync_with_rings(&rctx->b, indirect_resource,
-					PIPE_TRANSFER_READ);
+					PIPE_MAP_READ);
 				if (data) {
 					data += info->indirect->offset / sizeof(unsigned);
 					start = data[2] * index_size;

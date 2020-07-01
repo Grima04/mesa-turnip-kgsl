@@ -222,7 +222,7 @@ struct pipe_fence_handle *si_create_fence(struct pipe_context *ctx,
 static bool si_fine_fence_signaled(struct radeon_winsys *rws, const struct si_fine_fence *fine)
 {
    char *map =
-      rws->buffer_map(fine->buf->buf, NULL, PIPE_TRANSFER_READ | PIPE_TRANSFER_UNSYNCHRONIZED);
+      rws->buffer_map(fine->buf->buf, NULL, PIPE_MAP_READ | PIPE_MAP_UNSYNCHRONIZED);
    if (!map)
       return false;
 

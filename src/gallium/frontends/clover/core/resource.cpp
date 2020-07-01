@@ -167,10 +167,10 @@ root_resource::root_resource(clover::device &dev, memory_obj &obj,
       unsigned cpp = util_format_get_blocksize(info.format);
 
       if (pipe->target == PIPE_BUFFER)
-         q.pipe->buffer_subdata(q.pipe, pipe, PIPE_TRANSFER_WRITE,
+         q.pipe->buffer_subdata(q.pipe, pipe, PIPE_MAP_WRITE,
                                 0, info.width0, data_ptr);
       else
-         q.pipe->texture_subdata(q.pipe, pipe, 0, PIPE_TRANSFER_WRITE,
+         q.pipe->texture_subdata(q.pipe, pipe, 0, PIPE_MAP_WRITE,
                                  rect, data_ptr, cpp * info.width0,
                                  cpp * info.width0 * info.height0);
    }
@@ -197,11 +197,11 @@ mapping::mapping(command_queue &q, resource &r,
                  const resource::vector &origin,
                  const resource::vector &region) :
    pctx(q.pipe), pres(NULL) {
-   unsigned usage = ((flags & CL_MAP_WRITE ? PIPE_TRANSFER_WRITE : 0 ) |
-                     (flags & CL_MAP_READ ? PIPE_TRANSFER_READ : 0 ) |
+   unsigned usage = ((flags & CL_MAP_WRITE ? PIPE_MAP_WRITE : 0 ) |
+                     (flags & CL_MAP_READ ? PIPE_MAP_READ : 0 ) |
                      (flags & CL_MAP_WRITE_INVALIDATE_REGION ?
-                      PIPE_TRANSFER_DISCARD_RANGE : 0) |
-                     (!blocking ? PIPE_TRANSFER_UNSYNCHRONIZED : 0));
+                      PIPE_MAP_DISCARD_RANGE : 0) |
+                     (!blocking ? PIPE_MAP_UNSYNCHRONIZED : 0));
 
    p = pctx->transfer_map(pctx, r.pipe, 0, usage,
                           box(origin + r.offset, region), &pxfer);

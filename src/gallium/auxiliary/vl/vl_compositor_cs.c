@@ -654,7 +654,7 @@ set_viewport(struct vl_compositor_state *s,
    assert(s && drawn);
 
    void *ptr = pipe_buffer_map(s->pipe, s->shader_params,
-                               PIPE_TRANSFER_READ | PIPE_TRANSFER_WRITE,
+                               PIPE_MAP_READ | PIPE_MAP_WRITE,
                                &buf_transfer);
 
    if (!ptr)

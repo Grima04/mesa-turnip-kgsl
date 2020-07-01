@@ -210,7 +210,7 @@ The integer capabilities:
   hardware implements the SM5 features, component selection,
   shadow comparison, and run-time offsets.
 * ``PIPE_CAP_BUFFER_MAP_PERSISTENT_COHERENT``: Whether
-  PIPE_TRANSFER_PERSISTENT and PIPE_TRANSFER_COHERENT are supported
+  PIPE_MAP_PERSISTENT and PIPE_MAP_COHERENT are supported
   for buffers.
 * ``PIPE_CAP_TEXTURE_QUERY_LOD``: Whether the ``LODQ`` instruction is
   supported.

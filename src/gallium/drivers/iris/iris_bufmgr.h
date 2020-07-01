@@ -292,11 +292,11 @@ iris_bo_reference(struct iris_bo *bo)
  */
 void iris_bo_unreference(struct iris_bo *bo);
 
-#define MAP_READ          PIPE_TRANSFER_READ
-#define MAP_WRITE         PIPE_TRANSFER_WRITE
-#define MAP_ASYNC         PIPE_TRANSFER_UNSYNCHRONIZED
-#define MAP_PERSISTENT    PIPE_TRANSFER_PERSISTENT
-#define MAP_COHERENT      PIPE_TRANSFER_COHERENT
+#define MAP_READ          PIPE_MAP_READ
+#define MAP_WRITE         PIPE_MAP_WRITE
+#define MAP_ASYNC         PIPE_MAP_UNSYNCHRONIZED
+#define MAP_PERSISTENT    PIPE_MAP_PERSISTENT
+#define MAP_COHERENT      PIPE_MAP_COHERENT
 /* internal */
 #define MAP_INTERNAL_MASK (0xffu << 24)
 #define MAP_RAW           (0x01 << 24)

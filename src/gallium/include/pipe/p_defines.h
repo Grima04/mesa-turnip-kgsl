@@ -240,18 +240,18 @@ enum pipe_transfer_usage
     * Resource contents read back (or accessed directly) at transfer
     * create time.
     */
-   PIPE_TRANSFER_READ = (1 << 0),
+   PIPE_MAP_READ = (1 << 0),
    
    /**
     * Resource contents will be written back at transfer_unmap
     * time (or modified as a result of being accessed directly).
     */
-   PIPE_TRANSFER_WRITE = (1 << 1),
+   PIPE_MAP_WRITE = (1 << 1),
 
    /**
     * Read/modify/write
     */
-   PIPE_TRANSFER_READ_WRITE = PIPE_TRANSFER_READ | PIPE_TRANSFER_WRITE,
+   PIPE_MAP_READ_WRITE = PIPE_MAP_READ | PIPE_MAP_WRITE,
 
    /** 
     * The transfer should map the texture storage directly. The driver may
@@ -264,17 +264,17 @@ enum pipe_transfer_usage
     *
     * This flag supresses implicit "DISCARD" for buffer_subdata.
     */
-   PIPE_TRANSFER_MAP_DIRECTLY = (1 << 2),
+   PIPE_MAP_DIRECTLY = (1 << 2),
 
    /**
     * Discards the memory within the mapped region.
     *
-    * It should not be used with PIPE_TRANSFER_READ.
+    * It should not be used with PIPE_MAP_READ.
     *
     * See also:
     * - OpenGL's ARB_map_buffer_range extension, MAP_INVALIDATE_RANGE_BIT flag.
     */
-   PIPE_TRANSFER_DISCARD_RANGE = (1 << 8),
+   PIPE_MAP_DISCARD_RANGE = (1 << 8),
 
    /**
     * Fail if the resource cannot be mapped immediately.
@@ -284,36 +284,36 @@ enum pipe_transfer_usage
     * - Mesa's MESA_MAP_NOWAIT_BIT flag.
     * - WDDM's D3DDDICB_LOCKFLAGS.DonotWait flag.
     */
-   PIPE_TRANSFER_DONTBLOCK = (1 << 9),
+   PIPE_MAP_DONTBLOCK = (1 << 9),
 
    /**
     * Do not attempt to synchronize pending operations on the resource when mapping.
     *
-    * It should not be used with PIPE_TRANSFER_READ.
+    * It should not be used with PIPE_MAP_READ.
     *
     * See also:
     * - OpenGL's ARB_map_buffer_range extension, MAP_UNSYNCHRONIZED_BIT flag.
     * - Direct3D's D3DLOCK_NOOVERWRITE flag.
     * - WDDM's D3DDDICB_LOCKFLAGS.IgnoreSync flag.
     */
-   PIPE_TRANSFER_UNSYNCHRONIZED = (1 << 10),
+   PIPE_MAP_UNSYNCHRONIZED = (1 << 10),
 
    /**
     * Written ranges will be notified later with
     * pipe_context::transfer_flush_region.
     *
-    * It should not be used with PIPE_TRANSFER_READ.
+    * It should not be used with PIPE_MAP_READ.
     *
     * See also:
     * - pipe_context::transfer_flush_region
     * - OpenGL's ARB_map_buffer_range extension, MAP_FLUSH_EXPLICIT_BIT flag.
     */
-   PIPE_TRANSFER_FLUSH_EXPLICIT = (1 << 11),
+   PIPE_MAP_FLUSH_EXPLICIT = (1 << 11),
 
    /**
     * Discards all memory backing the resource.
     *
-    * It should not be used with PIPE_TRANSFER_READ.
+    * It should not be used with PIPE_MAP_READ.
     *
     * This is equivalent to:
     * - OpenGL's ARB_map_buffer_range extension, MAP_INVALIDATE_BUFFER_BIT
@@ -323,7 +323,7 @@ enum pipe_transfer_usage
     * - D3D10 DDI's D3D10_DDI_MAP_WRITE_DISCARD flag
     * - D3D10's D3D10_MAP_WRITE_DISCARD flag.
     */
-   PIPE_TRANSFER_DISCARD_WHOLE_RESOURCE = (1 << 12),
+   PIPE_MAP_DISCARD_WHOLE_RESOURCE = (1 << 12),
 
    /**
     * Allows the resource to be used for rendering while mapped.
@@ -334,7 +334,7 @@ enum pipe_transfer_usage
     * If COHERENT is not set, memory_barrier(PIPE_BARRIER_MAPPED_BUFFER)
     * must be called to ensure the device can see what the CPU has written.
     */
-   PIPE_TRANSFER_PERSISTENT = (1 << 13),
+   PIPE_MAP_PERSISTENT = (1 << 13),
 
    /**
     * If PERSISTENT is set, this ensures any writes done by the device are
@@ -343,30 +343,30 @@ enum pipe_transfer_usage
     * PIPE_RESOURCE_FLAG_MAP_COHERENT must be set when creating
     * the resource.
     */
-   PIPE_TRANSFER_COHERENT = (1 << 14),
+   PIPE_MAP_COHERENT = (1 << 14),
 
    /**
     * Map a resource in a thread-safe manner, because the calling thread can
     * be any thread. It can only be used if both WRITE and UNSYNCHRONIZED are
     * set.
     */
-   PIPE_TRANSFER_THREAD_SAFE = 1 << 15,
+   PIPE_MAP_THREAD_SAFE = 1 << 15,
 
    /**
     * Map only the depth aspect of a resource
     */
-   PIPE_TRANSFER_DEPTH_ONLY = 1 << 16,
+   PIPE_MAP_DEPTH_ONLY = 1 << 16,
 
    /**
     * Map only the stencil aspect of a resource
     */
-   PIPE_TRANSFER_STENCIL_ONLY = 1 << 17,
+   PIPE_MAP_STENCIL_ONLY = 1 << 17,
 
    /**
     * This and higher bits are reserved for private use by drivers. Drivers
-    * should use this as (PIPE_TRANSFER_DRV_PRV << i).
+    * should use this as (PIPE_MAP_DRV_PRV << i).
     */
-   PIPE_TRANSFER_DRV_PRV = (1 << 24)
+   PIPE_MAP_DRV_PRV = (1 << 24)
 };
 
 /**

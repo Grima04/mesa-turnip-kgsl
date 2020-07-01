@@ -109,7 +109,7 @@ static void si_dump_shader(struct si_screen *sscreen, struct si_shader *shader, 
 
       const char *mapped = sscreen->ws->buffer_map(
          shader->bo->buf, NULL,
-         PIPE_TRANSFER_UNSYNCHRONIZED | PIPE_TRANSFER_READ | RADEON_TRANSFER_TEMPORARY);
+         PIPE_MAP_UNSYNCHRONIZED | PIPE_MAP_READ | RADEON_TRANSFER_TEMPORARY);
 
       for (unsigned i = 0; i < size; i += 4) {
          fprintf(f, " %4x: %08x\n", i, *(uint32_t *)(mapped + i));
@@ -403,7 +403,7 @@ static void si_log_chunk_type_cs_print(void *data, FILE *f)
     * If the GPU is hung, there is no point in waiting for it.
     */
    uint32_t *map = ctx->ws->buffer_map(scs->trace_buf->buf, NULL,
-                                       PIPE_TRANSFER_UNSYNCHRONIZED | PIPE_TRANSFER_READ);
+                                       PIPE_MAP_UNSYNCHRONIZED | PIPE_MAP_READ);
    if (map) {
       last_trace_id = map[0];
       last_compute_trace_id = map[1];

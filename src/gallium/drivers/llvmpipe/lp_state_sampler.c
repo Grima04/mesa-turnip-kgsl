@@ -333,7 +333,7 @@ prepare_shader_sampling(
             struct llvmpipe_screen *screen = llvmpipe_screen(tex->screen);
             struct sw_winsys *winsys = screen->winsys;
             addr = winsys->displaytarget_map(winsys, lp_tex->dt,
-                                                PIPE_TRANSFER_READ);
+                                                PIPE_MAP_READ);
             row_stride[0] = lp_tex->row_stride[0];
             img_stride[0] = lp_tex->img_stride[0];
             mip_offsets[0] = 0;
@@ -474,7 +474,7 @@ prepare_shader_images(
             struct llvmpipe_screen *screen = llvmpipe_screen(img->screen);
             struct sw_winsys *winsys = screen->winsys;
             addr = winsys->displaytarget_map(winsys, lp_img->dt,
-                                                PIPE_TRANSFER_READ);
+                                                PIPE_MAP_READ);
             row_stride = lp_img->row_stride[0];
             img_stride = lp_img->img_stride[0];
             sample_stride = 0;

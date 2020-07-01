@@ -122,7 +122,7 @@ v3d_resource_transfer_unmap(struct pipe_context *pctx,
                 struct v3d_resource *rsc = v3d_resource(ptrans->resource);
                 struct v3d_resource_slice *slice = &rsc->slices[ptrans->level];
 
-                if (ptrans->usage & PIPE_TRANSFER_WRITE) {
+                if (ptrans->usage & PIPE_MAP_WRITE) {
                         for (int z = 0; z < ptrans->box.depth; z++) {
                                 void *dst = rsc->bo->map +
                                         v3d_layer_offset(&rsc->base,
@@ -154,7 +154,7 @@ v3d_map_usage_prep(struct pipe_context *pctx,
         struct v3d_context *v3d = v3d_context(pctx);
         struct v3d_resource *rsc = v3d_resource(prsc);
 
-        if (usage & PIPE_TRANSFER_DISCARD_WHOLE_RESOURCE) {
+        if (usage & PIPE_MAP_DISCARD_WHOLE_RESOURCE) {
                 if (v3d_resource_bo_alloc(rsc)) {
                         /* If it might be bound as one of our vertex buffers
                          * or UBOs, make sure we re-emit vertex buffer state
@@ -172,12 +172,12 @@ v3d_map_usage_prep(struct pipe_context *pctx,
                                                         V3D_FLUSH_DEFAULT,
                                                         false);
                 }
-        } else if (!(usage & PIPE_TRANSFER_UNSYNCHRONIZED)) {
+        } else if (!(usage & PIPE_MAP_UNSYNCHRONIZED)) {
                 /* If we're writing and the buffer is being used by the CL, we
                  * have to flush the CL first.  If we're only reading, we need
                  * to flush if the CL has written our buffer.
                  */
-                if (usage & PIPE_TRANSFER_WRITE) {
+                if (usage & PIPE_MAP_WRITE) {
                         v3d_flush_jobs_reading_resource(v3d, prsc,
                                                         V3D_FLUSH_ALWAYS,
                                                         false);
@@ -188,7 +188,7 @@ v3d_map_usage_prep(struct pipe_context *pctx,
                 }
         }
 
-        if (usage & PIPE_TRANSFER_WRITE) {
+        if (usage & PIPE_MAP_WRITE) {
                 rsc->writes++;
                 rsc->initialized_buffers = ~0;
         }
@@ -214,8 +214,8 @@ v3d_resource_transfer_map(struct pipe_context *pctx,
         /* Upgrade DISCARD_RANGE to WHOLE_RESOURCE if the whole resource is
          * being mapped.
          */
-        if ((usage & PIPE_TRANSFER_DISCARD_RANGE) &&
-            !(usage & PIPE_TRANSFER_UNSYNCHRONIZED) &&
+        if ((usage & PIPE_MAP_DISCARD_RANGE) &&
+            !(usage & PIPE_MAP_UNSYNCHRONIZED) &&
             !(prsc->flags & PIPE_RESOURCE_FLAG_MAP_PERSISTENT) &&
             prsc->last_level == 0 &&
             prsc->width0 == box->width &&
@@ -223,7 +223,7 @@ v3d_resource_transfer_map(struct pipe_context *pctx,
             prsc->depth0 == box->depth &&
             prsc->array_size == 1 &&
             rsc->bo->private) {
-                usage |= PIPE_TRANSFER_DISCARD_WHOLE_RESOURCE;
+                usage |= PIPE_MAP_DISCARD_WHOLE_RESOURCE;
         }
 
         v3d_map_usage_prep(pctx, prsc, usage);
@@ -247,7 +247,7 @@ v3d_resource_transfer_map(struct pipe_context *pctx,
          * need to do syncing stuff here yet.
          */
 
-        if (usage & PIPE_TRANSFER_UNSYNCHRONIZED)
+        if (usage & PIPE_MAP_UNSYNCHRONIZED)
                 buf = v3d_bo_map_unsynchronized(rsc->bo);
         else
                 buf = v3d_bo_map(rsc->bo);
@@ -271,7 +271,7 @@ v3d_resource_transfer_map(struct pipe_context *pctx,
                 /* No direct mappings of tiled, since we need to manually
                  * tile/untile.
                  */
-                if (usage & PIPE_TRANSFER_MAP_DIRECTLY)
+                if (usage & PIPE_MAP_DIRECTLY)
                         return NULL;
 
                 ptrans->stride = ptrans->box.width * rsc->cpp;
@@ -279,7 +279,7 @@ v3d_resource_transfer_map(struct pipe_context *pctx,
 
                 trans->map = malloc(ptrans->layer_stride * ptrans->box.depth);
 
-                if (usage & PIPE_TRANSFER_READ) {
+                if (usage & PIPE_MAP_READ) {
                         for (int z = 0; z < ptrans->box.depth; z++) {
                                 void *src = rsc->bo->map +
                                         v3d_layer_offset(&rsc->base,
@@ -336,11 +336,11 @@ v3d_texture_subdata(struct pipe_context *pctx,
          * texture.  Note that gallium's texture_subdata may be called with
          * obvious usage flags missing!
          */
-        v3d_map_usage_prep(pctx, prsc, usage | (PIPE_TRANSFER_WRITE |
-                                                PIPE_TRANSFER_DISCARD_RANGE));
+        v3d_map_usage_prep(pctx, prsc, usage | (PIPE_MAP_WRITE |
+                                                PIPE_MAP_DISCARD_RANGE));
 
         void *buf;
-        if (usage & PIPE_TRANSFER_UNSYNCHRONIZED)
+        if (usage & PIPE_MAP_UNSYNCHRONIZED)
                 buf = v3d_bo_map_unsynchronized(rsc->bo);
         else
                 buf = v3d_bo_map(rsc->bo);

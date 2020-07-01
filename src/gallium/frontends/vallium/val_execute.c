@@ -1522,7 +1522,7 @@ static void handle_copy_image_to_buffer(struct val_cmd_buffer_entry *cmd,
       src_data = state->pctx->transfer_map(state->pctx,
                                            copycmd->src->bo,
                                            copycmd->regions[i].imageSubresource.mipLevel,
-                                           PIPE_TRANSFER_READ,
+                                           PIPE_MAP_READ,
                                            &box,
                                            &src_t);
 
@@ -1535,7 +1535,7 @@ static void handle_copy_image_to_buffer(struct val_cmd_buffer_entry *cmd,
       dst_data = state->pctx->transfer_map(state->pctx,
                                            copycmd->dst->bo,
                                            0,
-                                           PIPE_TRANSFER_WRITE,
+                                           PIPE_MAP_WRITE,
                                            &dbox,
                                            &dst_t);
 
@@ -1600,7 +1600,7 @@ static void handle_copy_buffer_to_image(struct val_cmd_buffer_entry *cmd,
       src_data = state->pctx->transfer_map(state->pctx,
                                            copycmd->src->bo,
                                            0,
-                                           PIPE_TRANSFER_READ,
+                                           PIPE_MAP_READ,
                                            &sbox,
                                            &src_t);
 
@@ -1615,7 +1615,7 @@ static void handle_copy_buffer_to_image(struct val_cmd_buffer_entry *cmd,
       dst_data = state->pctx->transfer_map(state->pctx,
                                            copycmd->dst->bo,
                                            copycmd->regions[i].imageSubresource.mipLevel,
-                                           PIPE_TRANSFER_WRITE,
+                                           PIPE_MAP_WRITE,
                                            &box,
                                            &dst_t);
 
@@ -1789,7 +1789,7 @@ static void handle_fill_buffer(struct val_cmd_buffer_entry *cmd,
    dst = state->pctx->transfer_map(state->pctx,
                                    fillcmd->buffer->bo,
                                    0,
-                                   PIPE_TRANSFER_WRITE,
+                                   PIPE_MAP_WRITE,
                                    &box,
                                    &dst_t);
 
@@ -1810,7 +1810,7 @@ static void handle_update_buffer(struct val_cmd_buffer_entry *cmd,
    dst = state->pctx->transfer_map(state->pctx,
                                    updcmd->buffer->bo,
                                    0,
-                                   PIPE_TRANSFER_WRITE,
+                                   PIPE_MAP_WRITE,
                                    &box,
                                    &dst_t);
 
@@ -2061,7 +2061,7 @@ static void handle_copy_query_pool_results(struct val_cmd_buffer_entry *cmd,
             box.height = 1;
             box.depth = 1;
             map = state->pctx->transfer_map(state->pctx,
-                                            copycmd->dst->bo, 0, PIPE_TRANSFER_READ, &box,
+                                            copycmd->dst->bo, 0, PIPE_MAP_READ, &box,
                                             &src_t);
 
             memset(map, 0, box.width);

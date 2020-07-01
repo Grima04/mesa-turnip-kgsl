@@ -391,15 +391,15 @@ zink_transfer_copy_bufimage(struct zink_context *ctx,
    zink_batch_reference_resoure(batch, res);
    zink_batch_reference_resoure(batch, staging_res);
 
-   /* we're using u_transfer_helper_deinterleave, which means we'll be getting PIPE_TRANSFER_* usage
+   /* we're using u_transfer_helper_deinterleave, which means we'll be getting PIPE_MAP_* usage
     * to indicate whether to copy either the depth or stencil aspects
     */
    unsigned aspects = 0;
-   assert((trans->base.usage & (PIPE_TRANSFER_DEPTH_ONLY | PIPE_TRANSFER_STENCIL_ONLY)) !=
-          (PIPE_TRANSFER_DEPTH_ONLY | PIPE_TRANSFER_STENCIL_ONLY));
-   if (trans->base.usage & PIPE_TRANSFER_DEPTH_ONLY)
+   assert((trans->base.usage & (PIPE_MAP_DEPTH_ONLY | PIPE_MAP_STENCIL_ONLY)) !=
+          (PIPE_MAP_DEPTH_ONLY | PIPE_MAP_STENCIL_ONLY));
+   if (trans->base.usage & PIPE_MAP_DEPTH_ONLY)
       aspects = VK_IMAGE_ASPECT_DEPTH_BIT;
-   else if (trans->base.usage & PIPE_TRANSFER_STENCIL_ONLY)
+   else if (trans->base.usage & PIPE_MAP_STENCIL_ONLY)
       aspects = VK_IMAGE_ASPECT_STENCIL_BIT;
    else {
       aspects = aspect_from_format(res->base.format);
@@ -451,7 +451,7 @@ zink_transfer_map(struct pipe_context *pctx,
 
    void *ptr;
    if (pres->target == PIPE_BUFFER) {
-      if (usage & PIPE_TRANSFER_READ) {
+      if (usage & PIPE_MAP_READ) {
          /* need to wait for rendering to finish
           * TODO: optimize/fix this to be much less obtrusive
           * mesa/mesa#2966
@@ -476,9 +476,9 @@ zink_transfer_map(struct pipe_context *pctx,
    } else {
       if (res->optimial_tiling || ((res->base.usage != PIPE_USAGE_STAGING))) {
          enum pipe_format format = pres->format;
-         if (usage & PIPE_TRANSFER_DEPTH_ONLY)
+         if (usage & PIPE_MAP_DEPTH_ONLY)
             format = util_format_get_depth_only(pres->format);
-         else if (usage & PIPE_TRANSFER_STENCIL_ONLY)
+         else if (usage & PIPE_MAP_STENCIL_ONLY)
             format = PIPE_FORMAT_S8_UINT;
          trans->base.stride = util_format_get_stride(format, box->width);
          trans->base.layer_stride = util_format_get_2d_size(format,
@@ -502,7 +502,7 @@ zink_transfer_map(struct pipe_context *pctx,
 
          struct zink_resource *staging_res = zink_resource(trans->staging_res);
 
-         if (usage & PIPE_TRANSFER_READ) {
+         if (usage & PIPE_MAP_READ) {
             struct zink_context *ctx = zink_context(pctx);
             bool ret = zink_transfer_copy_bufimage(ctx, res,
                                                    staging_res, trans,
@@ -562,7 +562,7 @@ zink_transfer_unmap(struct pipe_context *pctx,
       struct zink_resource *staging_res = zink_resource(trans->staging_res);
       vkUnmapMemory(screen->dev, staging_res->mem);
 
-      if (trans->base.usage & PIPE_TRANSFER_WRITE) {
+      if (trans->base.usage & PIPE_MAP_WRITE) {
          struct zink_context *ctx = zink_context(pctx);
 
          zink_transfer_copy_bufimage(ctx, res, staging_res, trans, true);

@@ -204,7 +204,7 @@ static void init_tex(struct context *ctx, int slot,
         *tex = ctx->screen->resource_create(ctx->screen, &ttex);
         assert(*tex);
 
-        map = pipe->transfer_map(pipe, *tex, 0, PIPE_TRANSFER_WRITE,
+        map = pipe->transfer_map(pipe, *tex, 0, PIPE_MAP_WRITE,
                                   &(struct pipe_box) { .width = w,
                                                   .height = h,
                                                   .depth = 1 }, &xfer);
@@ -246,7 +246,7 @@ static void check_tex(struct context *ctx, int slot,
         if (!check)
                 check = default_check;
 
-        map = pipe->transfer_map(pipe, tex, 0, PIPE_TRANSFER_READ,
+        map = pipe->transfer_map(pipe, tex, 0, PIPE_MAP_READ,
                                   &(struct pipe_box) { .width = tex->width0,
                                         .height = tex->height0,
                                         .depth = 1 }, &xfer);
