@@ -365,6 +365,12 @@ pipe_put_tile_rgba(struct pipe_transfer *pt,
    if (u_clip_tile(x, y, &w, &h, &pt->box))
       return;
 
+   /* While we do generate RGBA tiles for z/s for softpipe's texture fetch
+    * path, we never have to store from "RGBA" to Z/S.
+    */
+   if (util_format_is_depth_or_stencil(format))
+      return;
+
    if (util_format_is_pure_uint(format)) {
       util_format_write_4ui(format,
                             p, src_stride * sizeof(float),
@@ -376,33 +382,10 @@ pipe_put_tile_rgba(struct pipe_transfer *pt,
                            dst, pt->stride,
                            x, y, w, h);
    } else {
-      switch (format) {
-      case PIPE_FORMAT_Z16_UNORM:
-         /*z16_put_tile_rgba((ushort *) dst, w, h, p, src_stride);*/
-         break;
-      case PIPE_FORMAT_Z32_UNORM:
-         /*z32_put_tile_rgba((unsigned *) dst, w, h, p, src_stride);*/
-         break;
-      case PIPE_FORMAT_Z24_UNORM_S8_UINT:
-      case PIPE_FORMAT_Z24X8_UNORM:
-         /*s8z24_put_tile_rgba((unsigned *) dst, w, h, p, src_stride);*/
-         break;
-      case PIPE_FORMAT_S8_UINT_Z24_UNORM:
-      case PIPE_FORMAT_X8Z24_UNORM:
-         /*z24s8_put_tile_rgba((unsigned *) dst, w, h, p, src_stride);*/
-         break;
-      case PIPE_FORMAT_Z32_FLOAT:
-         /*z32f_put_tile_rgba((unsigned *) dst, w, h, p, src_stride);*/
-         break;
-      case PIPE_FORMAT_Z32_FLOAT_S8X24_UINT:
-         /*z32f_s8x24_put_tile_rgba((unsigned *) dst, w, h, p, src_stride);*/
-         break;
-      default:
-         util_format_write_4f(format,
-                              p, src_stride * sizeof(float),
-                              dst, pt->stride,
-                              x, y, w, h);
-      }
+      util_format_write_4f(format,
+                           p, src_stride * sizeof(float),
+                           dst, pt->stride,
+                           x, y, w, h);
    }
 }
 
