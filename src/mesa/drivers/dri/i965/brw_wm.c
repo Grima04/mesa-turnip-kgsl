@@ -253,8 +253,8 @@ brw_populate_sampler_prog_key_data(struct gl_context *ctx,
                      key->swizzles[i] |= SWIZZLE_ONE << (3 * i);
                   }
                }
-               /* fallthrough */
             }
+            /* fallthrough */
             case GL_RG32F:
                /* The channel select for green doesn't work - we have to
                 * request blue.  Haswell can use SCS for this, but Ivybridge
