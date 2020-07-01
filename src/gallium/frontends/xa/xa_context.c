@@ -104,7 +104,7 @@ xa_surface_dma(struct xa_context *ctx,
     struct pipe_transfer *transfer;
     void *map;
     int w, h, i;
-    enum pipe_transfer_usage transfer_direction;
+    enum pipe_map_flags transfer_direction;
     struct pipe_context *pipe = ctx->pipe;
 
     transfer_direction = (to_surface ? PIPE_MAP_WRITE :

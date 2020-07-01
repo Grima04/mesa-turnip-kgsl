@@ -134,7 +134,7 @@ swr_transfer_map(struct pipe_context *pipe,
    if (!pt)
       return NULL;
    pipe_resource_reference(&pt->resource, resource);
-   pt->usage = (pipe_transfer_usage)usage;
+   pt->usage = (pipe_map_flags)usage;
    pt->level = level;
    pt->box = *box;
    pt->stride = spr->swr.pitch;

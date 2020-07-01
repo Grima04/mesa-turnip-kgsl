@@ -1813,7 +1813,7 @@ iris_map_direct(struct iris_transfer *map)
 static bool
 can_promote_to_async(const struct iris_resource *res,
                      const struct pipe_box *box,
-                     enum pipe_transfer_usage usage)
+                     enum pipe_map_flags usage)
 {
    /* If we're writing to a section of the buffer that hasn't even been
     * initialized with useful data, then we can safely promote this write
@@ -1829,7 +1829,7 @@ static void *
 iris_transfer_map(struct pipe_context *ctx,
                   struct pipe_resource *resource,
                   unsigned level,
-                  enum pipe_transfer_usage usage,
+                  enum pipe_map_flags usage,
                   const struct pipe_box *box,
                   struct pipe_transfer **ptransfer)
 {

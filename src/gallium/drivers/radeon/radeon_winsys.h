@@ -314,7 +314,7 @@ struct radeon_winsys {
     * \return          The pointer at the beginning of the buffer.
     */
    void *(*buffer_map)(struct pb_buffer *buf, struct radeon_cmdbuf *cs,
-                       enum pipe_transfer_usage usage);
+                       enum pipe_map_flags usage);
 
    /**
     * Unmap a buffer object from the client's address space.

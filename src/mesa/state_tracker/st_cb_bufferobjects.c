@@ -453,13 +453,13 @@ st_bufferobj_invalidate(struct gl_context *ctx,
 
 
 /**
- * Convert GLbitfield of GL_MAP_x flags to gallium pipe_transfer_usage flags.
+ * Convert GLbitfield of GL_MAP_x flags to gallium pipe_map_flags flags.
  * \param wholeBuffer  is the whole buffer being mapped?
  */
-enum pipe_transfer_usage
+enum pipe_map_flags
 st_access_flags_to_transfer_flags(GLbitfield access, bool wholeBuffer)
 {
-   enum pipe_transfer_usage flags = 0;
+   enum pipe_map_flags flags = 0;
 
    if (access & GL_MAP_WRITE_BIT)
       flags |= PIPE_MAP_WRITE;
@@ -518,7 +518,7 @@ st_bufferobj_map_range(struct gl_context *ctx,
    assert(offset < obj->Size);
    assert(offset + length <= obj->Size);
 
-   const enum pipe_transfer_usage transfer_flags =
+   const enum pipe_map_flags transfer_flags =
       st_access_flags_to_transfer_flags(access,
                                         offset == 0 && length == obj->Size);
 

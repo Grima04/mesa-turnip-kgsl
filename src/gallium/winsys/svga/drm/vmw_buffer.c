@@ -354,7 +354,7 @@ vmw_svga_winsys_buffer_destroy(struct svga_winsys_screen *sws,
 void *
 vmw_svga_winsys_buffer_map(struct svga_winsys_screen *sws,
                            struct svga_winsys_buffer *buf,
-                           enum pipe_transfer_usage flags)
+                           enum pipe_map_flags flags)
 {
    void *map;
 

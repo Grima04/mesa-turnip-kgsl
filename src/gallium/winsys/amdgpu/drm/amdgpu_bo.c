@@ -270,7 +270,7 @@ static bool amdgpu_bo_do_map(struct amdgpu_winsys_bo *bo, void **cpu)
 
 void *amdgpu_bo_map(struct pb_buffer *buf,
                     struct radeon_cmdbuf *rcs,
-                    enum pipe_transfer_usage usage)
+                    enum pipe_map_flags usage)
 {
    struct amdgpu_winsys_bo *bo = (struct amdgpu_winsys_bo*)buf;
    struct amdgpu_winsys_bo *real;

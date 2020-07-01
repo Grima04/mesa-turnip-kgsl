@@ -1558,7 +1558,7 @@ dri2_map_image(__DRIcontext *context, __DRIimage *image,
 {
    struct dri_context *ctx = dri_context(context);
    struct pipe_context *pipe = ctx->st->pipe;
-   enum pipe_transfer_usage pipe_access = 0;
+   enum pipe_map_flags pipe_access = 0;
    struct pipe_resource *resource = image->texture;
    struct pipe_transfer *trans;
    void *map;

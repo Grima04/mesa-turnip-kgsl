@@ -1052,7 +1052,7 @@ draw_stencil_pixels(struct gl_context *ctx, GLint x, GLint y,
    struct st_context *st = st_context(ctx);
    struct pipe_context *pipe = st->pipe;
    struct st_renderbuffer *strb;
-   enum pipe_transfer_usage usage;
+   enum pipe_map_flags usage;
    struct pipe_transfer *pt;
    const GLboolean zoom = ctx->Pixel.ZoomX != 1.0 || ctx->Pixel.ZoomY != 1.0;
    ubyte *stmap;
@@ -1538,7 +1538,7 @@ copy_stencil_pixels(struct gl_context *ctx, GLint srcx, GLint srcy,
 {
    struct st_renderbuffer *rbDraw;
    struct pipe_context *pipe = st_context(ctx)->pipe;
-   enum pipe_transfer_usage usage;
+   enum pipe_map_flags usage;
    struct pipe_transfer *ptDraw;
    ubyte *drawMap;
    ubyte *buffer;

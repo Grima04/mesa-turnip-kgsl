@@ -232,9 +232,9 @@ enum pipe_tex_compare {
 #define PIPE_CLEAR_DEPTHSTENCIL (PIPE_CLEAR_DEPTH | PIPE_CLEAR_STENCIL)
 
 /**
- * Transfer object usage flags
+ * CPU access map flags
  */
-enum pipe_transfer_usage
+enum pipe_map_flags
 {
    /**
     * Resource contents read back (or accessed directly) at transfer
