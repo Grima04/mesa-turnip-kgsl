@@ -851,6 +851,9 @@ struct ir3_shader_linkage {
 
 	/* location for fixed-function gl_PrimitiveID passthrough */
 	uint8_t primid_loc;
+
+	/* location for fixed-function gl_ViewIndex passthrough */
+	uint8_t viewid_loc;
 };
 
 static inline void
@@ -891,6 +894,7 @@ ir3_link_shaders(struct ir3_shader_linkage *l,
 	int j = -1, k;
 
 	l->primid_loc = 0xff;
+	l->viewid_loc = 0xff;
 
 	while (l->cnt < ARRAY_SIZE(l->var)) {
 		j = ir3_next_varying(fs, j);
@@ -905,6 +909,11 @@ ir3_link_shaders(struct ir3_shader_linkage *l,
 
 		if (k < 0 && fs->inputs[j].slot == VARYING_SLOT_PRIMITIVE_ID) {
 			l->primid_loc = fs->inputs[j].inloc;
+		}
+
+		if (fs->inputs[j].slot == VARYING_SLOT_VIEW_INDEX) {
+			assert(k < 0);
+			l->viewid_loc = fs->inputs[j].inloc;
 		}
 
 		ir3_link_add(l, k >= 0 ? vs->outputs[k].regid : default_regid,
