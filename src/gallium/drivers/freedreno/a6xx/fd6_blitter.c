@@ -604,6 +604,29 @@ emit_blit_or_clear_texture(struct fd_context *ctx, struct fd_ringbuffer *ring,
 	OUT_PKT4(ring, REG_A6XX_GRAS_2D_BLIT_CNTL, 1);
 	OUT_RING(ring, blit_cntl);
 
+	if (dfmt == FMT6_10_10_10_2_UNORM_DEST)
+		sfmt = FMT6_16_16_16_16_FLOAT;
+
+	/* This register is probably badly named... it seems that it's
+	 * controlling the internal/accumulator format or something like
+	 * that. It's certainly not tied to only the src format.
+	 */
+	OUT_PKT4(ring, REG_A6XX_SP_2D_SRC_FORMAT, 1);
+	OUT_RING(ring, A6XX_SP_2D_SRC_FORMAT_COLOR_FORMAT(sfmt) |
+			COND(util_format_is_pure_sint(info->src.format),
+					A6XX_SP_2D_SRC_FORMAT_SINT) |
+			COND(util_format_is_pure_uint(info->src.format),
+					A6XX_SP_2D_SRC_FORMAT_UINT) |
+			COND(util_format_is_snorm(info->src.format),
+					A6XX_SP_2D_SRC_FORMAT_SINT |
+						A6XX_SP_2D_SRC_FORMAT_NORM) |
+			COND(util_format_is_unorm(info->src.format),
+// TODO sometimes blob uses UINT+NORM but dEQP seems unhappy about that
+//						A6XX_SP_2D_SRC_FORMAT_UINT |
+					A6XX_SP_2D_SRC_FORMAT_NORM) |
+			COND(util_format_is_srgb(info->dst.format), A6XX_SP_2D_SRC_FORMAT_SRGB) |
+			A6XX_SP_2D_SRC_FORMAT_MASK(0xf));
+
 	for (unsigned i = 0; i < info->dst.box.depth; i++) {
 
 		emit_blit_src(ring, info, sbox->z + i, nr_samples);
@@ -619,29 +642,6 @@ emit_blit_or_clear_texture(struct fd_context *ctx, struct fd_ringbuffer *ring,
 
 		OUT_PKT4(ring, REG_A6XX_RB_UNKNOWN_8C01, 1);
 		OUT_RING(ring, 0);
-
-		if (dfmt == FMT6_10_10_10_2_UNORM_DEST)
-			sfmt = FMT6_16_16_16_16_FLOAT;
-
-		/* This register is probably badly named... it seems that it's
-		 * controlling the internal/accumulator format or something like
-		 * that. It's certainly not tied to only the src format.
-		 */
-		OUT_PKT4(ring, REG_A6XX_SP_2D_SRC_FORMAT, 1);
-		OUT_RING(ring, A6XX_SP_2D_SRC_FORMAT_COLOR_FORMAT(sfmt) |
-				COND(util_format_is_pure_sint(info->src.format),
-						A6XX_SP_2D_SRC_FORMAT_SINT) |
-				COND(util_format_is_pure_uint(info->src.format),
-						A6XX_SP_2D_SRC_FORMAT_UINT) |
-				COND(util_format_is_snorm(info->src.format),
-						A6XX_SP_2D_SRC_FORMAT_SINT |
-						A6XX_SP_2D_SRC_FORMAT_NORM) |
-				COND(util_format_is_unorm(info->src.format),
-// TODO sometimes blob uses UINT+NORM but dEQP seems unhappy about that
-//						A6XX_SP_2D_SRC_FORMAT_UINT |
-						A6XX_SP_2D_SRC_FORMAT_NORM) |
-				COND(util_format_is_srgb(info->dst.format), A6XX_SP_2D_SRC_FORMAT_SRGB) |
-				A6XX_SP_2D_SRC_FORMAT_MASK(0xf));
 
 		OUT_PKT4(ring, REG_A6XX_RB_UNKNOWN_8E04, 1);
 		OUT_RING(ring, fd6_context(ctx)->magic.RB_UNKNOWN_8E04_blit);
