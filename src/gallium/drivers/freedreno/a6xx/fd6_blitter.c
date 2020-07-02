@@ -538,11 +538,7 @@ emit_blit_or_clear_texture(struct fd_context *ctx, struct fd_ringbuffer *ring,
 	OUT_RING(ring, A6XX_GRAS_2D_DST_TL_X(dx1) | A6XX_GRAS_2D_DST_TL_Y(dy1));
 	OUT_RING(ring, A6XX_GRAS_2D_DST_BR_X(dx2) | A6XX_GRAS_2D_DST_BR_Y(dy2));
 
-	uint32_t blit_cntl = blit_control(dfmt, util_format_is_srgb(info->dst.format));
-
 	if (color) {
-		blit_cntl |= A6XX_RB_2D_BLIT_CNTL_SOLID_COLOR;
-
 		switch (info->dst.format) {
 		case PIPE_FORMAT_Z24X8_UNORM:
 		case PIPE_FORMAT_Z24_UNORM_S8_UINT:
@@ -595,8 +591,12 @@ emit_blit_or_clear_texture(struct fd_context *ctx, struct fd_ringbuffer *ring,
 				 A6XX_GRAS_RESOLVE_CNTL_1_Y(info->scissor.miny));
 		OUT_RING(ring, A6XX_GRAS_RESOLVE_CNTL_1_X(info->scissor.maxx - 1) |
 				 A6XX_GRAS_RESOLVE_CNTL_1_Y(info->scissor.maxy - 1));
-		blit_cntl |= A6XX_RB_2D_BLIT_CNTL_SCISSOR;
 	}
+
+	uint32_t blit_cntl =
+		blit_control(dfmt, util_format_is_srgb(info->dst.format)) |
+		COND(color, A6XX_RB_2D_BLIT_CNTL_SOLID_COLOR) |
+		COND(info->scissor_enable, A6XX_RB_2D_BLIT_CNTL_SCISSOR);
 
 	OUT_PKT4(ring, REG_A6XX_RB_2D_BLIT_CNTL, 1);
 	OUT_RING(ring, blit_cntl);
