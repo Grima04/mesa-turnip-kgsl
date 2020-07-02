@@ -610,6 +610,14 @@ opcode: CP_LOAD_STATE4 (30) (4 dwords)
 		<value name="SS6_DIRECT" value="0"/>
 		<value name="SS6_BINDLESS" value="1"/> <!-- TODO does this exist on a4xx/a5xx? -->
 		<value name="SS6_INDIRECT" value="2"/>
+		<doc>
+		SS6_UBO used by the a6xx vulkan blob with tesselation constants
+		in this case, EXT_SRC_ADDR is (ubo_id shl 16 | offset)
+		to load constants from a UBO loaded with DST_OFF = 14 and offset 0,
+		EXT_SRC_ADDR = 0xe0000
+		(offset is a guess, should be in bytes given that maxUniformBufferRange=64k)
+		</doc>
+		<value name="SS6_UBO" value="3"/>
 	</enum>
 	<reg32 offset="0" name="0">
 		<bitfield name="DST_OFF" low="0" high="13" type="uint"/>
