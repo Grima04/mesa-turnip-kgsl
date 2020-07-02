@@ -69,6 +69,13 @@ dpp_row_sr(unsigned amount)
     return (dpp_ctrl)(((unsigned) _dpp_row_sr) | amount);
 }
 
+inline dpp_ctrl
+dpp_row_rr(unsigned amount)
+{
+    assert(amount > 0 && amount < 16);
+    return (dpp_ctrl)(((unsigned) _dpp_row_rr) | amount);
+}
+
 inline unsigned
 ds_pattern_bitmode(unsigned and_mask, unsigned or_mask, unsigned xor_mask)
 {

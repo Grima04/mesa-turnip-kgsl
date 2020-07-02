@@ -207,6 +207,36 @@ static Temp emit_bpermute(isel_context *ctx, Builder &bld, Temp index, Temp data
    }
 }
 
+static Temp emit_masked_swizzle(isel_context *ctx, Builder &bld, Temp src, unsigned mask)
+{
+   if (ctx->options->chip_class >= GFX8) {
+      unsigned and_mask = mask & 0x1f;
+      unsigned or_mask = (mask >> 5) & 0x1f;
+      unsigned xor_mask = (mask >> 10) & 0x1f;
+
+      uint16_t dpp_ctrl = 0xffff;
+
+      // TODO: we could use DPP8 for some swizzles
+      if (and_mask == 0x1f && or_mask < 4 && xor_mask < 4) {
+         unsigned res[4] = {0, 1, 2, 3};
+         for (unsigned i = 0; i < 4; i++)
+            res[i] = ((res[i] | or_mask) ^ xor_mask) & 0x3;
+         dpp_ctrl = dpp_quad_perm(res[0], res[1], res[2], res[3]);
+      } else if (and_mask == 0x1f && !or_mask && xor_mask == 8) {
+         dpp_ctrl = dpp_row_rr(8);
+      } else if (and_mask == 0x1f && !or_mask && xor_mask == 0xf) {
+         dpp_ctrl = dpp_row_mirror;
+      } else if (and_mask == 0x1f && !or_mask && xor_mask == 0x7) {
+         dpp_ctrl = dpp_row_half_mirror;
+      }
+
+      if (dpp_ctrl != 0xffff)
+         return bld.vop1_dpp(aco_opcode::v_mov_b32, bld.def(v1), src, dpp_ctrl);
+   }
+
+   return bld.ds(aco_opcode::ds_swizzle_b32, bld.def(v1), src, mask, 0, false);
+}
+
 Temp as_vgpr(isel_context *ctx, Temp val)
 {
    if (val.type() == RegType::sgpr) {
@@ -7923,13 +7953,13 @@ void visit_intrinsic(isel_context *ctx, nir_intrinsic_instr *instr)
       uint32_t mask = nir_intrinsic_swizzle_mask(instr);
       if (dst.regClass() == v1) {
          emit_wqm(ctx,
-                  bld.ds(aco_opcode::ds_swizzle_b32, bld.def(v1), src, mask, 0, false),
+                  emit_masked_swizzle(ctx, bld, src, mask),
                   dst);
       } else if (dst.regClass() == v2) {
          Temp lo = bld.tmp(v1), hi = bld.tmp(v1);
          bld.pseudo(aco_opcode::p_split_vector, Definition(lo), Definition(hi), src);
-         lo = emit_wqm(ctx, bld.ds(aco_opcode::ds_swizzle_b32, bld.def(v1), lo, mask, 0, false));
-         hi = emit_wqm(ctx, bld.ds(aco_opcode::ds_swizzle_b32, bld.def(v1), hi, mask, 0, false));
+         lo = emit_wqm(ctx, emit_masked_swizzle(ctx, bld, lo, mask));
+         hi = emit_wqm(ctx, emit_masked_swizzle(ctx, bld, hi, mask));
          bld.pseudo(aco_opcode::p_create_vector, Definition(dst), lo, hi);
          emit_split_vector(ctx, dst, 2);
       } else {
