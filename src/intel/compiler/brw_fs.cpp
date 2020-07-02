@@ -7788,7 +7788,7 @@ fs_visitor::allocate_registers(bool allow_spilling)
 
       /* Scheduling may create additional opportunities for CMOD propagation,
        * so let's do it again.  If CMOD propagation made any progress,
-       * elminate dead code one more time.
+       * eliminate dead code one more time.
        */
       bool progress = false;
       const int iteration = 99;
