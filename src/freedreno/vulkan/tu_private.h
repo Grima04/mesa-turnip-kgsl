@@ -1076,8 +1076,7 @@ struct tu_pipeline
    struct
    {
       uint32_t patch_type;
-      uint32_t per_vertex_output_size;
-      uint32_t per_patch_output_size;
+      uint32_t param_stride;
       uint32_t hs_bo_regid;
       uint32_t ds_bo_regid;
       bool upper_left_domain_origin;

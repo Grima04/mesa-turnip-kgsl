@@ -2808,21 +2808,17 @@ get_tess_param_bo_size(const struct tu_pipeline *pipeline,
 {
    /* TODO: For indirect draws, we can't compute the BO size ahead of time.
     * Still not sure what to do here, so just allocate a reasonably large
-    * BO and hope for the best for now.
-    * (maxTessellationControlPerVertexOutputComponents * 2048 vertices +
-    *  maxTessellationControlPerPatchOutputComponents * 512 patches) */
-   if (!draw_count) {
-      return ((128 * 2048) + (128 * 512)) * 4;
-   }
+    * BO and hope for the best for now. */
+   if (!draw_count)
+      draw_count = 2048;
 
-   /* For each patch, adreno lays out the tess param BO in memory as:
-    * (v_input[0][0])...(v_input[i][j])(p_input[0])...(p_input[k]).
-    * where i = # vertices per patch, j = # per-vertex outputs, and
-    * k = # per-patch outputs.*/
+   /* the tess param BO is pipeline->tess.param_stride bytes per patch,
+    * which includes both the per-vertex outputs and per-patch outputs
+    * build_primitive_map in ir3 calculates this stride
+    */
    uint32_t verts_per_patch = pipeline->ia.primtype - DI_PT_PATCHES0;
    uint32_t num_patches = draw_count / verts_per_patch;
-   return draw_count * pipeline->tess.per_vertex_output_size +
-          pipeline->tess.per_patch_output_size * num_patches;
+   return num_patches * pipeline->tess.param_stride;
 }
 
 static uint64_t
@@ -2831,11 +2827,9 @@ get_tess_factor_bo_size(const struct tu_pipeline *pipeline,
 {
    /* TODO: For indirect draws, we can't compute the BO size ahead of time.
     * Still not sure what to do here, so just allocate a reasonably large
-    * BO and hope for the best for now.
-    * (quad factor stride * 512 patches) */
-   if (!draw_count) {
-      return (28 * 512) * 4;
-   }
+    * BO and hope for the best for now. */
+   if (!draw_count)
+      draw_count = 2048;
 
    /* Each distinct patch gets its own tess factor output. */
    uint32_t verts_per_patch = pipeline->ia.primtype - DI_PT_PATCHES0;

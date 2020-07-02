@@ -2028,30 +2028,6 @@ tu_pipeline_builder_compile_shaders(struct tu_pipeline_builder *builder,
 
    builder->binning_variant = variant;
 
-   if (builder->shaders[MESA_SHADER_TESS_CTRL]) {
-      struct ir3_shader *hs =
-            builder->shaders[MESA_SHADER_TESS_CTRL]->ir3_shader;
-      assert(hs->type != MESA_SHADER_NONE);
-
-      /* Calculate and store the per-vertex and per-patch HS-output sizes. */
-      uint32_t per_vertex_output_size = 0;
-      uint32_t per_patch_output_size = 0;
-      nir_foreach_variable (output, &hs->nir->outputs) {
-         switch (output->data.location) {
-         case VARYING_SLOT_TESS_LEVEL_OUTER:
-         case VARYING_SLOT_TESS_LEVEL_INNER:
-            continue;
-         }
-         uint32_t size = glsl_count_attribute_slots(output->type, false) * 4;
-         if (output->data.patch)
-            per_patch_output_size += size;
-         else
-            per_vertex_output_size += size;
-      }
-      pipeline->tess.per_vertex_output_size = per_vertex_output_size;
-      pipeline->tess.per_patch_output_size = per_patch_output_size;
-   }
-
    return VK_SUCCESS;
 }
 
@@ -2200,6 +2176,7 @@ tu_pipeline_builder_parse_tessellation(struct tu_pipeline_builder *builder,
          domain_info->domainOrigin == VK_TESSELLATION_DOMAIN_ORIGIN_UPPER_LEFT;
    const struct ir3_shader_variant *hs = builder->variants[MESA_SHADER_TESS_CTRL];
    const struct ir3_shader_variant *ds = builder->variants[MESA_SHADER_TESS_EVAL];
+   pipeline->tess.param_stride = hs->output_size * 4;
    pipeline->tess.hs_bo_regid = hs->const_state->offsets.primitive_param + 1;
    pipeline->tess.ds_bo_regid = ds->const_state->offsets.primitive_param + 1;
 }
