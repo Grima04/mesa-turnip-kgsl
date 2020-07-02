@@ -1908,6 +1908,17 @@ void lower_to_hw_instr(Program* program)
                            reduce->operands[2].physReg(), // vtmp
                            reduce->definitions[2].physReg(), // sitmp
                            reduce->operands[0], reduce->definitions[0]);
+         } else if (instr->opcode == aco_opcode::p_cvt_f16_f32_rtne) {
+            float_mode new_mode = block->fp_mode;
+            new_mode.round16_64 = fp_round_ne;
+            bool set_round = new_mode.round != block->fp_mode.round;
+
+            emit_set_mode(bld, new_mode, set_round, false);
+
+            instr->opcode = aco_opcode::v_cvt_f16_f32;
+            ctx.instructions.emplace_back(std::move(instr));
+
+            emit_set_mode(bld, block->fp_mode, set_round, false);
          } else {
             ctx.instructions.emplace_back(std::move(instr));
          }
