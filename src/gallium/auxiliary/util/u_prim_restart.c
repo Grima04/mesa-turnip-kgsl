@@ -52,9 +52,6 @@ util_translate_prim_restart_ib(struct pipe_context *context,
    dst_index_size = MAX2(2, info->index_size);
    assert(dst_index_size == 2 || dst_index_size == 4);
 
-   /* no user buffers for now */
-   assert(!info->has_user_indices);
-
    /* Create new index buffer */
    *dst_buffer = pipe_buffer_create(screen, PIPE_BIND_INDEX_BUFFER,
                                     PIPE_USAGE_STREAM,
@@ -68,12 +65,15 @@ util_translate_prim_restart_ib(struct pipe_context *context,
    if (!dst_map)
       goto error;
 
-   /* Map original / src index buffer */
-   src_map = pipe_buffer_map_range(context, info->index.resource,
-                                   info->start * src_index_size,
-                                   info->count * src_index_size,
-                                   PIPE_TRANSFER_READ,
-                                   &src_transfer);
+   if (info->has_user_indices)
+      src_map = (unsigned char*)info->index.user + info->start * src_index_size;
+   else
+      /* Map original / src index buffer */
+      src_map = pipe_buffer_map_range(context, info->index.resource,
+                                      info->start * src_index_size,
+                                      info->count * src_index_size,
+                                      PIPE_TRANSFER_READ,
+                                      &src_transfer);
    if (!src_map)
       goto error;
 
@@ -104,7 +104,8 @@ util_translate_prim_restart_ib(struct pipe_context *context,
       }
    }
 
-   pipe_buffer_unmap(context, src_transfer);
+   if (src_transfer)
+      pipe_buffer_unmap(context, src_transfer);
    pipe_buffer_unmap(context, dst_transfer);
 
    return PIPE_OK;
