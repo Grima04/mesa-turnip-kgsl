@@ -439,6 +439,16 @@ r3d_common(struct tu_cmd_buffer *cmd, struct tu_cs *cs, bool blit, uint32_t num_
    tu_cs_emit_regs(cs, A6XX_PC_PRIMITIVE_CNTL_0());
    tu_cs_emit_regs(cs, A6XX_VFD_CONTROL_0());
 
+   /* Copy what the blob does here. This will emit an extra 0x3f
+    * CP_EVENT_WRITE when multiview is disabled. I'm not exactly sure what
+    * this is working around yet.
+    */
+   tu_cs_emit_pkt7(cs, CP_REG_WRITE, 3);
+   tu_cs_emit(cs, CP_REG_WRITE_0_TRACKER(UNK_EVENT_WRITE));
+   tu_cs_emit(cs, REG_A6XX_PC_MULTIVIEW_CNTL);
+   tu_cs_emit(cs, 0);
+   tu_cs_emit_regs(cs, A6XX_VFD_MULTIVIEW_CNTL());
+
    tu6_emit_vpc(cs, &vs, NULL, NULL, NULL, &fs, 0, false);
 
    /* REPL_MODE for varying with RECTLIST (2 vertices only) */
@@ -1665,11 +1675,18 @@ tu_CmdResolveImage(VkCommandBuffer commandBuffer,
    ops->teardown(cmd, cs);
 }
 
+#define for_each_layer(layer, layer_mask, layers) \
+   for (uint32_t layer = 0; \
+        layer < ((layer_mask) ? (util_logbase2(layer_mask) + 1) : layers); \
+        layer++) \
+      if (!layer_mask || (layer_mask & BIT(layer)))
+
 void
 tu_resolve_sysmem(struct tu_cmd_buffer *cmd,
                   struct tu_cs *cs,
                   struct tu_image_view *src,
                   struct tu_image_view *dst,
+                  uint32_t layer_mask,
                   uint32_t layers,
                   const VkRect2D *rect)
 {
@@ -1684,7 +1701,7 @@ tu_resolve_sysmem(struct tu_cmd_buffer *cmd,
               ROTATE_0, false, dst->ubwc_enabled);
    ops->coords(cs, &rect->offset, &rect->offset, &rect->extent);
 
-   for (uint32_t i = 0; i < layers; i++) {
+   for_each_layer(i, layer_mask, layers) {
       ops->src(cmd, cs, src, i, VK_FILTER_NEAREST);
       ops->dst(cs, dst, i);
       ops->run(cmd, cs);
@@ -1878,6 +1895,15 @@ tu_clear_sysmem_attachments(struct tu_cmd_buffer *cmd,
          layered_clear = true;
    }
 
+   /* a630 doesn't support multiview masks, which means that we can't use the
+    * normal multiview path without potentially recompiling a shader on-demand
+    * or using a more complicated variant that takes the mask as a const. Just
+    * use the layered path instead, since it shouldn't be much worse.
+    */
+   if (subpass->multiview_mask) {
+      layered_clear = true;
+   }
+
    r3d_common(cmd, cs, false, num_rts, layered_clear);
 
    tu_cs_emit_regs(cs,
@@ -1923,7 +1949,15 @@ tu_clear_sysmem_attachments(struct tu_cmd_buffer *cmd,
       tu_cs_emit_array(cs, clear_value[b], 4);
 
    for (uint32_t i = 0; i < rect_count; i++) {
-      for (uint32_t layer = 0; layer < rects[i].layerCount; layer++) {
+      /* This should be true because of this valid usage for
+       * vkCmdClearAttachments:
+       *
+       *    "If the render pass instance this is recorded in uses multiview,
+       *    then baseArrayLayer must be zero and layerCount must be one"
+       */
+      assert(!subpass->multiview_mask || rects[i].baseArrayLayer == 0);
+
+      for_each_layer(layer, subpass->multiview_mask, rects[i].layerCount) {
          r3d_coords_raw(cs, (float[]) {
             rects[i].rect.offset.x, rects[i].rect.offset.y,
             z_clear_val, uif(rects[i].baseArrayLayer + layer),
@@ -2150,6 +2184,7 @@ clear_sysmem_attachment(struct tu_cmd_buffer *cmd,
 {
    const struct tu_framebuffer *fb = cmd->state.framebuffer;
    const struct tu_image_view *iview = fb->attachments[a].attachment;
+   const uint32_t clear_views = cmd->state.pass->attachments[a].clear_views;
    const struct blit_ops *ops = &r2d_ops;
    if (cmd->state.pass->attachments[a].samples > 1)
       ops = &r3d_ops;
@@ -2158,7 +2193,7 @@ clear_sysmem_attachment(struct tu_cmd_buffer *cmd,
    ops->coords(cs, &info->renderArea.offset, NULL, &info->renderArea.extent);
    ops->clear_value(cs, format, &info->pClearValues[a]);
 
-   for (uint32_t i = 0; i < fb->layers; i++) {
+   for_each_layer(i, clear_views, fb->layers) {
       if (separate_stencil) {
          if (ops == &r3d_ops)
             r3d_dst_stencil(cs, iview, i);

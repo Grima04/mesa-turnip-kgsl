@@ -340,7 +340,8 @@ tu6_emit_mrt(struct tu_cmd_buffer *cmd,
    tu_cs_emit_regs(cs,
                    A6XX_SP_SRGB_CNTL(.dword = subpass->srgb_cntl));
 
-   tu_cs_emit_regs(cs, A6XX_GRAS_MAX_LAYER_INDEX(fb->layers - 1));
+   unsigned layers = MAX2(fb->layers, util_logbase2(subpass->multiview_mask) + 1);
+   tu_cs_emit_regs(cs, A6XX_GRAS_MAX_LAYER_INDEX(layers - 1));
 }
 
 void
@@ -684,6 +685,7 @@ tu6_emit_tile_select(struct tu_cmd_buffer *cmd,
 static void
 tu6_emit_sysmem_resolve(struct tu_cmd_buffer *cmd,
                         struct tu_cs *cs,
+                        uint32_t layer_mask,
                         uint32_t a,
                         uint32_t gmem_a)
 {
@@ -691,7 +693,7 @@ tu6_emit_sysmem_resolve(struct tu_cmd_buffer *cmd,
    struct tu_image_view *dst = fb->attachments[a].attachment;
    struct tu_image_view *src = fb->attachments[gmem_a].attachment;
 
-   tu_resolve_sysmem(cmd, cs, src, dst, fb->layers, &cmd->state.render_area);
+   tu_resolve_sysmem(cmd, cs, src, dst, layer_mask, fb->layers, &cmd->state.render_area);
 }
 
 static void
@@ -731,7 +733,7 @@ tu6_emit_sysmem_resolves(struct tu_cmd_buffer *cmd,
          if (a == VK_ATTACHMENT_UNUSED)
             continue;
 
-         tu6_emit_sysmem_resolve(cmd, cs, a,
+         tu6_emit_sysmem_resolve(cmd, cs, subpass->multiview_mask, a,
                                  subpass->color_attachments[i].attachment);
       }
    }
