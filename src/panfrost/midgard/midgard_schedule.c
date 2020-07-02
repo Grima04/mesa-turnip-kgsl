@@ -341,6 +341,10 @@ struct midgard_predicate {
         unsigned no_mask;
         unsigned dest;
 
+        /* For VADD/VLUT whether to only/never schedule imov/fmov instructions
+         * This allows non-move instructions to get priority on each unit */
+        bool moves;
+
         /* For load/store: how many pipeline registers are in use? The two
          * scheduled instructions cannot use more than the 256-bits of pipeline
          * space available or RA will fail (as it would run out of pipeline
@@ -605,6 +609,10 @@ mir_choose_instruction(
         }
 
         BITSET_FOREACH_SET(i, worklist, count) {
+                bool is_move = alu &&
+                        (instructions[i]->alu.op == midgard_alu_op_imov ||
+                         instructions[i]->alu.op == midgard_alu_op_fmov);
+
                 if ((max_active - i) >= max_distance)
                         continue;
 
@@ -615,6 +623,9 @@ mir_choose_instruction(
                         continue;
 
                 if (alu && !branch && !(mir_has_unit(instructions[i], unit)))
+                        continue;
+
+                if ((unit == UNIT_VLUT || unit == UNIT_VADD) && (predicate->moves != is_move))
                         continue;
 
                 if (branch && !instructions[i]->compact_branch)
@@ -1112,11 +1123,13 @@ mir_schedule_alu(
 
         mir_choose_alu(&smul, instructions, worklist, len, &predicate, UNIT_SMUL);
 
-        predicate.no_mask = writeout ? (1 << 3) : 0;
-        mir_choose_alu(&vlut, instructions, worklist, len, &predicate, UNIT_VLUT);
-        predicate.no_mask = 0;
-
-        mir_choose_alu(&vadd, instructions, worklist, len, &predicate, UNIT_VADD);
+        for (unsigned moves = 0; moves < 2; ++moves) {
+                predicate.moves = moves;
+                predicate.no_mask = writeout ? (1 << 3) : 0;
+                mir_choose_alu(&vlut, instructions, worklist, len, &predicate, UNIT_VLUT);
+                predicate.no_mask = 0;
+                mir_choose_alu(&vadd, instructions, worklist, len, &predicate, UNIT_VADD);
+        }
 
         mir_update_worklist(worklist, len, instructions, vlut);
         mir_update_worklist(worklist, len, instructions, vadd);
