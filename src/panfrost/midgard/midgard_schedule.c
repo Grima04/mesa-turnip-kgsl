@@ -946,6 +946,73 @@ mir_schedule_ldst(
         return out;
 }
 
+static void
+mir_schedule_zs_write(
+                compiler_context *ctx,
+                struct midgard_predicate *predicate,
+                midgard_instruction **instructions,
+                BITSET_WORD *worklist, unsigned len,
+                midgard_instruction *branch,
+                midgard_instruction **smul,
+                midgard_instruction **vadd,
+                midgard_instruction **vlut,
+                bool stencil)
+{
+        bool success = false;
+        unsigned idx = stencil ? 3 : 2;
+        unsigned src = (branch->src[0] == ~0) ? SSA_FIXED_REGISTER(1) : branch->src[idx];
+
+        predicate->dest = src;
+        predicate->mask = 0x1;
+
+        midgard_instruction **units[] = { smul, vadd, vlut };
+        unsigned unit_names[] = { UNIT_SMUL, UNIT_VADD, UNIT_VLUT };
+
+        for (unsigned i = 0; i < 3; ++i) {
+                if (*(units[i]))
+                        continue;
+
+                predicate->unit = unit_names[i];
+                midgard_instruction *ins =
+                        mir_choose_instruction(instructions, worklist, len, predicate);
+
+                if (ins) {
+                        ins->unit = unit_names[i];
+                        *(units[i]) = ins;
+                        success |= true;
+                        break;
+                }
+        }
+
+        predicate->dest = predicate->mask = 0;
+
+        if (success)
+                return;
+
+        midgard_instruction *mov = ralloc(ctx, midgard_instruction);
+        *mov = v_mov(src, make_compiler_temp(ctx));
+        mov->mask = 0x1;
+
+        branch->src[idx] = mov->dest;
+
+        if (stencil) {
+                unsigned swizzle = (branch->src[0] == ~0) ? COMPONENT_Y : COMPONENT_X;
+
+                for (unsigned c = 0; c < 16; ++c)
+                        mov->swizzle[1][c] = swizzle;
+        }
+
+        for (unsigned i = 0; i < 3; ++i) {
+                if (!(*(units[i]))) {
+                        *(units[i]) = mov;
+                        mov->unit = unit_names[i];
+                        return;
+                }
+        }
+
+        unreachable("Could not schedule Z/S move to any unit");
+}
+
 static midgard_bundle
 mir_schedule_alu(
                 compiler_context *ctx,
@@ -1037,64 +1104,11 @@ mir_schedule_alu(
                 branch->dest_type = vadd->dest_type;
         }
 
-        if (writeout & PAN_WRITEOUT_Z) {
-                /* Depth writeout */
+        if (writeout & PAN_WRITEOUT_Z)
+                mir_schedule_zs_write(ctx, &predicate, instructions, worklist, len, branch, &smul, &vadd, &vlut, false);
 
-                unsigned src = (branch->src[0] == ~0) ? SSA_FIXED_REGISTER(1) : branch->src[2];
-
-                predicate.unit = UNIT_SMUL;
-                predicate.dest = src;
-                predicate.mask = 0x1;
-
-                midgard_instruction *z_store;
-
-                z_store = mir_choose_instruction(instructions, worklist, len, &predicate);
-
-                predicate.dest = predicate.mask = 0;
-
-                if (!z_store) {
-                        z_store = ralloc(ctx, midgard_instruction);
-                        *z_store = v_mov(src, make_compiler_temp(ctx));
-
-                        branch->src[2] = z_store->dest;
-                }
-
-                smul = z_store;
-                smul->unit = UNIT_SMUL;
-        }
-
-        if (writeout & PAN_WRITEOUT_S) {
-                /* Stencil writeout */
-
-                unsigned src = (branch->src[0] == ~0) ? SSA_FIXED_REGISTER(1) : branch->src[3];
-
-                predicate.unit = UNIT_VLUT;
-                predicate.dest = src;
-                predicate.mask = 0x1;
-
-                midgard_instruction *z_store;
-
-                z_store = mir_choose_instruction(instructions, worklist, len, &predicate);
-
-                predicate.dest = predicate.mask = 0;
-
-                if (!z_store) {
-                        z_store = ralloc(ctx, midgard_instruction);
-                        *z_store = v_mov(src, make_compiler_temp(ctx));
-
-                        branch->src[3] = z_store->dest;
-
-                        z_store->mask = 0x1;
-
-                        unsigned swizzle = (branch->src[0] == ~0) ? COMPONENT_Y : COMPONENT_X;
-
-                        for (unsigned c = 0; c < 16; ++c)
-                                z_store->swizzle[1][c] = swizzle;
-                }
-
-                vlut = z_store;
-                vlut->unit = UNIT_VLUT;
-        }
+        if (writeout & PAN_WRITEOUT_S)
+                mir_schedule_zs_write(ctx, &predicate, instructions, worklist, len, branch, &smul, &vadd, &vlut, true);
 
         mir_choose_alu(&smul, instructions, worklist, len, &predicate, UNIT_SMUL);
 
