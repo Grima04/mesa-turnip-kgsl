@@ -835,7 +835,9 @@ panfrost_frag_shader_meta_init(struct panfrost_context *ctx,
 
         fs = panfrost_get_shader_state(ctx, PIPE_SHADER_FRAGMENT);
 
-        fragmeta->coverage_mask = 0xFFFF;
+        bool msaa = ctx->rasterizer && ctx->rasterizer->base.multisample;
+        fragmeta->coverage_mask = (msaa ? ctx->sample_mask : ~0) & 0xF;
+
         fragmeta->unknown2_3 = MALI_DEPTH_FUNC(MALI_FUNC_ALWAYS) | 0x10;
         fragmeta->unknown2_4 = 0x4e0;
 

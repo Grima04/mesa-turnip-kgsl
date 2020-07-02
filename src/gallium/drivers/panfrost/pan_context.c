@@ -1168,6 +1168,8 @@ static void
 panfrost_set_sample_mask(struct pipe_context *pipe,
                          unsigned sample_mask)
 {
+        struct panfrost_context *ctx = pan_context(pipe);
+        ctx->sample_mask = sample_mask;
 }
 
 static void
@@ -1525,6 +1527,9 @@ panfrost_create_context(struct pipe_screen *screen, void *priv, unsigned flags)
 
         panfrost_batch_init(ctx);
         panfrost_invalidate_frame(ctx);
+
+        /* By default mask everything on */
+        ctx->sample_mask = ~0;
 
         return gallium;
 }
