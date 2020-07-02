@@ -686,14 +686,20 @@ spec/arb_shader_image_size/preprocessor/disabled-undefined-core.geom: skip
 spec/arb_shader_image_size/preprocessor/disabled-undefined-core.tesc: skip
 spec/arb_shader_image_size/preprocessor/disabled-undefined-core.tese: skip
 spec/arb_shader_image_size/preprocessor/disabled-undefined-core.vert: skip
+spec/arb_shader_precision/preprocessor/disabled-defined-core.comp: skip
+spec/arb_shader_precision/preprocessor/disabled-defined-core.frag: skip
+spec/arb_shader_precision/preprocessor/disabled-defined-core.geom: skip
+spec/arb_shader_precision/preprocessor/disabled-defined-core.tesc: skip
+spec/arb_shader_precision/preprocessor/disabled-defined-core.tese: skip
+spec/arb_shader_precision/preprocessor/disabled-defined-core.vert: skip
+spec/arb_shader_precision/preprocessor/disabled-undefined-core.comp: skip
+spec/arb_shader_precision/preprocessor/disabled-undefined-core.frag: skip
+spec/arb_shader_precision/preprocessor/disabled-undefined-core.geom: skip
+spec/arb_shader_precision/preprocessor/disabled-undefined-core.tesc: skip
+spec/arb_shader_precision/preprocessor/disabled-undefined-core.tese: skip
+spec/arb_shader_precision/preprocessor/disabled-undefined-core.vert: skip
 spec/arb_shader_precision/preprocessor/enabled-compat.frag: skip
 spec/arb_shader_precision/preprocessor/enabled-compat.vert: skip
-spec/arb_shader_precision/preprocessor/enabled-core.comp: skip
-spec/arb_shader_precision/preprocessor/enabled-core.frag: skip
-spec/arb_shader_precision/preprocessor/enabled-core.geom: skip
-spec/arb_shader_precision/preprocessor/enabled-core.tesc: skip
-spec/arb_shader_precision/preprocessor/enabled-core.tese: skip
-spec/arb_shader_precision/preprocessor/enabled-core.vert: skip
 spec/arb_shader_stencil_export/preprocessor/disabled-defined-compat.frag: skip
 spec/arb_shader_stencil_export/preprocessor/disabled-defined-compat.vert: skip
 spec/arb_shader_stencil_export/preprocessor/disabled-defined-core.comp: skip
@@ -2667,10 +2673,10 @@ spec/oes_texture_storage_multisample_2d_array/preprocessor/disabled-undefined-es
 summary:
        name:  results
        ----  --------
-       pass:    12166
+       pass:    12160
        fail:        2
       crash:        4
-       skip:     2660
+       skip:     2666
     timeout:        0
        warn:        0
  incomplete:        0
