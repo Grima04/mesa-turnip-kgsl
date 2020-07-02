@@ -9,10 +9,12 @@ import sphinx.addnodes
 def parse_envvar(env, sig, signode):
     envvar, t, default = sig.split(" ", 2)
     envvar = envvar.strip().upper()
-    t = " Type: %s" % t.strip(" <>").lower()
-    default = " Default: %s" % default.strip(" ()")
+    t = "Type: %s" % t.strip(" <>").lower()
+    default = "Default: %s" % default.strip(" ()")
     signode += sphinx.addnodes.desc_name(envvar, envvar)
+    signode += docutils.nodes.Text(' ')
     signode += sphinx.addnodes.desc_type(t, t)
+    signode += docutils.nodes.Text(', ')
     signode += sphinx.addnodes.desc_annotation(default, default)
     return envvar
 
