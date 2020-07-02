@@ -37,7 +37,7 @@
 #include "virgl_resource.h"
 #include "virgl_public.h"
 #include "virgl_context.h"
-#include "virgl_protocol.h"
+#include "virtio-gpu/virgl_protocol.h"
 
 int virgl_debug = 0;
 static const struct debug_named_value debug_options[] = {

@@ -24,7 +24,7 @@
 #define VIRGL_WINSYS_H
 
 #include "pipe/p_defines.h"
-#include "virgl_hw.h"
+#include "virtio-gpu/virgl_hw.h"
 
 struct pipe_box;
 struct pipe_fence_handle;

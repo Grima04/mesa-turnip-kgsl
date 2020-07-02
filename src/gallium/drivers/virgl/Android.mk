@@ -31,6 +31,9 @@ LOCAL_SRC_FILES := \
 LOCAL_MODULE := libmesa_pipe_virgl
 
 LOCAL_MODULE_CLASS := STATIC_LIBRARIES
+
+LOCAL_C_INCLUDES := $(MESA_TOP)/src/virtio
+
 intermediates := $(call local-generated-sources-dir)
 LOCAL_GENERATED_SOURCES := $(intermediates)/virgl/virgl_driinfo.h
 

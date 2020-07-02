@@ -29,7 +29,7 @@
 #include "util/list.h"
 #include "util/u_transfer.h"
 
-#include "virgl_hw.h"
+#include "virtio-gpu/virgl_hw.h"
 #include "virgl_screen.h"
 #define VR_MAX_TEXTURE_2D_LEVELS 15
 

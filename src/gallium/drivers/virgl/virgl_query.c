@@ -25,7 +25,7 @@
 #include "util/u_inlines.h"
 #include "virgl_context.h"
 #include "virgl_encode.h"
-#include "virgl_protocol.h"
+#include "virtio-gpu/virgl_protocol.h"
 #include "virgl_resource.h"
 #include "virgl_screen.h"
 
