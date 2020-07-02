@@ -1953,6 +1953,8 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
    case nir_op_fneg: {
       Temp src = get_alu_src(ctx, instr->src[0]);
       if (dst.regClass() == v2b) {
+         if (ctx->block->fp_mode.must_flush_denorms16_64)
+            src = bld.vop2(aco_opcode::v_mul_f16, bld.def(v2b), Operand((uint16_t)0x3C00), as_vgpr(ctx, src));
          bld.vop2(aco_opcode::v_xor_b32, Definition(dst), Operand(0x8000u), as_vgpr(ctx, src));
       } else if (dst.regClass() == v1) {
          if (ctx->block->fp_mode.must_flush_denorms32)
@@ -1975,6 +1977,8 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
    case nir_op_fabs: {
       Temp src = get_alu_src(ctx, instr->src[0]);
       if (dst.regClass() == v2b) {
+         if (ctx->block->fp_mode.must_flush_denorms16_64)
+            src = bld.vop2(aco_opcode::v_mul_f16, bld.def(v2b), Operand((uint16_t)0x3C00), as_vgpr(ctx, src));
          bld.vop2(aco_opcode::v_and_b32, Definition(dst), Operand(0x7FFFu), as_vgpr(ctx, src));
       } else if (dst.regClass() == v1) {
          if (ctx->block->fp_mode.must_flush_denorms32)
