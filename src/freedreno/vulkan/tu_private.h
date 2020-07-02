@@ -1484,6 +1484,7 @@ struct tu_subpass
    VkSampleCountFlagBits samples;
 
    uint32_t srgb_cntl;
+   uint32_t multiview_mask;
 
    struct tu_subpass_barrier start_barrier;
 };
@@ -1494,6 +1495,7 @@ struct tu_render_pass_attachment
    uint32_t samples;
    uint32_t cpp;
    VkImageAspectFlags clear_mask;
+   uint32_t clear_views;
    bool load;
    bool store;
    int32_t gmem_offset;

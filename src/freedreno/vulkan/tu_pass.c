@@ -699,6 +699,8 @@ tu_CreateRenderPass2(VkDevice _device,
       subpass->samples = 0;
       subpass->srgb_cntl = 0;
 
+      subpass->multiview_mask = desc->viewMask;
+
       if (desc->inputAttachmentCount > 0) {
          subpass->input_attachments = p;
          p += desc->inputAttachmentCount;
@@ -725,6 +727,8 @@ tu_CreateRenderPass2(VkDevice _device,
 
                if (vk_format_is_srgb(pass->attachments[a].format))
                   subpass->srgb_cntl |= 1 << j;
+
+               pass->attachments[a].clear_views |= subpass->multiview_mask;
             }
          }
       }
@@ -759,7 +763,20 @@ tu_CreateRenderPass2(VkDevice _device,
       }
    }
 
-   tu_render_pass_gmem_config(pass, device->physical_device);
+   /* From the VK_KHR_multiview spec:
+    *
+    *    Multiview is all-or-nothing for a render pass - that is, either all
+    *    subpasses must have a non-zero view mask (though some subpasses may
+    *    have only one view) or all must be zero.
+    *
+    * This means we only have to check one of the view masks.
+    */
+   if (pCreateInfo->pSubpasses[0].viewMask) {
+      /* It seems multiview must use sysmem rendering. */
+      pass->gmem_pixels = 0;
+   } else {
+      tu_render_pass_gmem_config(pass, device->physical_device);
+   }
 
    for (unsigned i = 0; i < pCreateInfo->dependencyCount; ++i) {
       tu_render_pass_add_subpass_dep(pass, &pCreateInfo->pDependencies[i]);
