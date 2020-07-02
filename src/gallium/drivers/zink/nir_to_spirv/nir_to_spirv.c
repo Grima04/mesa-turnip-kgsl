@@ -1762,6 +1762,19 @@ get_src_int(struct ntv_context *ctx, nir_src *src)
    return bitcast_to_ivec(ctx, def, bit_size, num_components);
 }
 
+static inline bool
+tex_instr_is_lod_allowed(nir_tex_instr *tex)
+{
+   /* This can only be used with an OpTypeImage that has a Dim operand of 1D, 2D, 3D, or Cube
+    * - SPIR-V: 3.14. Image Operands
+    */
+
+   return (tex->sampler_dim == GLSL_SAMPLER_DIM_1D ||
+           tex->sampler_dim == GLSL_SAMPLER_DIM_2D ||
+           tex->sampler_dim == GLSL_SAMPLER_DIM_3D ||
+           tex->sampler_dim == GLSL_SAMPLER_DIM_CUBE);
+}
+
 static SpvId
 pad_coord_vector(struct ntv_context *ctx, SpvId orig, unsigned old_size, unsigned new_size)
 {
@@ -1882,6 +1895,8 @@ emit_tex(struct ntv_context *ctx, nir_tex_instr *tex)
 
    SpvId dest_type = get_dest_type(ctx, &tex->dest, tex->dest_type);
 
+   if (!tex_instr_is_lod_allowed(tex))
+      lod = 0;
    if (tex->op == nir_texop_txs) {
       SpvId image = spirv_builder_emit_image(&ctx->builder, image_type, load);
       SpvId result = spirv_builder_emit_image_query_size(&ctx->builder,
