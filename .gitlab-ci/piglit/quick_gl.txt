@@ -901,7 +901,6 @@ spec/arb_vertex_program/vp-address-02: skip
 spec/arb_vertex_program/vp-address-04: skip
 spec/arb_vertex_type_2_10_10_10_rev/attrib-p-type-size-match: skip
 spec/arb_viewport_array/display-list: skip
-spec/arb_viewport_array/render-viewport-2: fail
 spec/ati_envmap_bumpmap/ati_envmap_bumpmap-bump: skip
 spec/egl 1.4/egl-blob-cache: skip
 spec/egl 1.4/egl-context-priority: skip
@@ -1681,15 +1680,14 @@ spec/oes_texture_view/rendering-formats/render to gl_rgb8ui as gl_rgb8i: skip
 spec/oes_texture_view/rendering-formats/render to gl_rgb8ui as gl_rgb8ui: skip
 spec/oes_texture_view/texsubimage-layers pbo: skip
 spec/oes_texture_view/texsubimage-levels pbo: skip
-spec/oes_viewport_array/render-viewport-2: fail
 wgl/wgl-multi-context-single-window: skip
 wgl/wgl-multi-window-single-context: skip
 wgl/wgl-sanity: skip
 summary:
        name:  results
        ----  --------
-       pass:    21837
-       fail:      217
+       pass:    21839
+       fail:      215
       crash:        0
        skip:     1446
     timeout:        0

@@ -49,7 +49,6 @@ static boolean TAG(do_cliptest)( struct pt_post_vs *pvs,
    int viewport_index = 0;
    int num_written_clipdistance =
       draw_current_shader_num_written_clipdistances(pvs->draw);
-   unsigned verts_per_prim = u_vertices_per_prim(prim_info->prim);
 
    if (uses_vp_idx) {
       viewport_index = u_bitcast_f2u(out->data[viewport_index_output][0]);
@@ -70,16 +69,20 @@ static boolean TAG(do_cliptest)( struct pt_post_vs *pvs,
    }
 
    assert(pos != -1);
+   unsigned prim_idx = 0, prim_vert_idx = 0;
    for (j = 0; j < info->count; j++) {
       float *position = out->data[pos];
       unsigned mask = 0x0;
 
       if (uses_vp_idx) {
          /* only change the viewport_index for the leading vertex */
-         if (!(j % verts_per_prim)) {
+         if (prim_vert_idx == (prim_info->primitive_lengths[prim_idx])) {
+            prim_idx++;
+            prim_vert_idx = 0;
             viewport_index = u_bitcast_f2u(out->data[viewport_index_output][0]);
             viewport_index = draw_clamp_viewport_idx(viewport_index);
          }
+         prim_vert_idx++;
       }
       float *scale = pvs->draw->viewports[viewport_index].scale;
       float *trans = pvs->draw->viewports[viewport_index].translate;
