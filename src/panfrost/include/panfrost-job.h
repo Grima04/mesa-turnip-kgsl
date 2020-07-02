@@ -384,13 +384,6 @@ enum mali_format {
 };
 
 
-/* Alpha coverage is encoded as 4-bits (from a clampf), with inversion
- * literally performing a bitwise invert. This function produces slightly wrong
- * results and I'm not sure why; some rounding issue I suppose... */
-
-#define MALI_ALPHA_COVERAGE(clampf) ((uint16_t) (int) (clampf * 15.0f))
-#define MALI_GET_ALPHA_COVERAGE(nibble) ((float) nibble / 15.0f)
-
 /* Applies to midgard1.flags_lo */
 
 /* Should be set when the fragment shader updates the depth value. */
@@ -610,7 +603,11 @@ struct mali_shader_meta {
 
         u32 unknown2_2;
 
-        u16 alpha_coverage;
+        /* Generated from SAMPLE_COVERAGE_VALUE and SAMPLE_COVERAGE_INVERT. See
+         * 13.8.3 ("Multisample Fragment Operations") in the OpenGL ES 3.2
+         * specification. Only matters when multisampling is enabled. */
+        u16 coverage_mask;
+
         u16 unknown2_3;
 
         u8 stencil_mask_front;

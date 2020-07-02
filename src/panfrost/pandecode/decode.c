@@ -2642,14 +2642,8 @@ pandecode_vertex_tiler_postfix_pre(
                         pandecode_prop("depth_units = %f", s->depth_units);
                 }
 
-                if (s->alpha_coverage) {
-                        bool invert_alpha_coverage = s->alpha_coverage & 0xFFF0;
-                        uint16_t inverted_coverage = invert_alpha_coverage ? ~s->alpha_coverage : s->alpha_coverage;
-
-                        pandecode_prop("alpha_coverage = %sMALI_ALPHA_COVERAGE(%f)",
-                                       invert_alpha_coverage ? "~" : "",
-                                       MALI_GET_ALPHA_COVERAGE(inverted_coverage));
-                }
+                if (s->coverage_mask)
+                        pandecode_prop("coverage_mask = 0x%X", s->coverage_mask);
 
                 if (s->unknown2_2)
                         pandecode_prop(".unknown2_2 = %X", s->unknown2_2);

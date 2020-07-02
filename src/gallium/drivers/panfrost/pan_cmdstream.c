@@ -835,7 +835,7 @@ panfrost_frag_shader_meta_init(struct panfrost_context *ctx,
 
         fs = panfrost_get_shader_state(ctx, PIPE_SHADER_FRAGMENT);
 
-        fragmeta->alpha_coverage = ~MALI_ALPHA_COVERAGE(0.000000);
+        fragmeta->coverage_mask = 0xFFFF;
         fragmeta->unknown2_3 = MALI_DEPTH_FUNC(MALI_FUNC_ALWAYS) | 0x10;
         fragmeta->unknown2_4 = 0x4e0;
 
