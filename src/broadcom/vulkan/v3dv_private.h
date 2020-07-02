@@ -441,9 +441,14 @@ struct v3dv_image_view {
    uint8_t swizzle[4];
 
    /* Prepacked TEXTURE_SHADER_STATE. It will be copied to the descriptor info
-    * during UpdateDescriptorSets
+    * during UpdateDescriptorSets.
+    *
+    * Empirical tests show that cube arrays need a different shader state
+    * depending on whether they are used with a sampler or not, so for these
+    * we generate two states and select the one to use based on the descriptor
+    * type.
     */
-   uint8_t texture_shader_state[cl_packet_length(TEXTURE_SHADER_STATE)];
+   uint8_t texture_shader_state[2][cl_packet_length(TEXTURE_SHADER_STATE)];
 };
 
 uint32_t v3dv_layer_offset(const struct v3dv_image *image, uint32_t level, uint32_t layer);

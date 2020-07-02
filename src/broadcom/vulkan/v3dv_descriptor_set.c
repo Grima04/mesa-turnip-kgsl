@@ -883,7 +883,8 @@ descriptor_bo_copy(struct v3dv_descriptor_set *dst_set,
 }
 
 static void
-write_image_descriptor(struct v3dv_descriptor_set *set,
+write_image_descriptor(VkDescriptorType desc_type,
+                       struct v3dv_descriptor_set *set,
                        const struct v3dv_descriptor_set_binding_layout *binding_layout,
                        struct v3dv_image_view *iview,
                        struct v3dv_sampler *sampler,
@@ -892,9 +893,12 @@ write_image_descriptor(struct v3dv_descriptor_set *set,
    void *desc_map = descriptor_bo_map(set, binding_layout, array_index);
 
    if (iview) {
+      const uint32_t tex_state_index =
+         iview->type != VK_IMAGE_VIEW_TYPE_CUBE_ARRAY ||
+         desc_type != VK_DESCRIPTOR_TYPE_STORAGE_IMAGE ? 0 : 1;
       memcpy(desc_map,
-             iview->texture_shader_state,
-             sizeof(iview->texture_shader_state));
+             iview->texture_shader_state[tex_state_index],
+             sizeof(iview->texture_shader_state[0]));
       desc_map += offsetof(struct v3dv_combined_image_sampler_descriptor,
                            sampler_state);
    }
@@ -960,7 +964,8 @@ v3dv_UpdateDescriptorSets(VkDevice  _device,
 
             descriptor->sampler = sampler;
 
-            write_image_descriptor(set, binding_layout, NULL, sampler,
+            write_image_descriptor(writeset->descriptorType,
+                                   set, binding_layout, NULL, sampler,
                                    writeset->dstArrayElement + j);
 
             break;
@@ -973,7 +978,8 @@ v3dv_UpdateDescriptorSets(VkDevice  _device,
 
             descriptor->image_view = iview;
 
-            write_image_descriptor(set, binding_layout, iview, NULL,
+            write_image_descriptor(writeset->descriptorType,
+                                   set, binding_layout, iview, NULL,
                                    writeset->dstArrayElement + j);
 
             break;
@@ -986,7 +992,8 @@ v3dv_UpdateDescriptorSets(VkDevice  _device,
             descriptor->image_view = iview;
             descriptor->sampler = sampler;
 
-            write_image_descriptor(set, binding_layout, iview, sampler,
+            write_image_descriptor(writeset->descriptorType,
+                                   set, binding_layout, iview, sampler,
                                    writeset->dstArrayElement + j);
 
             break;

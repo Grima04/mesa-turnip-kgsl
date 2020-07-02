@@ -435,14 +435,19 @@ translate_swizzle(unsigned char pipe_swizzle)
  * Packs and ensure bo for the shader state (the latter can be temporal).
  */
 static void
-pack_texture_shader_state(struct v3dv_device *device,
-                          struct v3dv_image_view *image_view)
+pack_texture_shader_state_helper(struct v3dv_device *device,
+                                 struct v3dv_image_view *image_view,
+                                 bool for_cube_map_array_storage)
 {
+   assert(!for_cube_map_array_storage ||
+          image_view->type == VK_IMAGE_VIEW_TYPE_CUBE_ARRAY);
+   const uint32_t index = for_cube_map_array_storage ? 1 : 0;
+
    assert(image_view->image);
    const struct v3dv_image *image = image_view->image;
 
    int msaa_scale = 1; /* FIXME: hardcoded. Revisit when msaa get supported */
-   v3dv_pack(image_view->texture_shader_state, TEXTURE_SHADER_STATE, tex) {
+   v3dv_pack(image_view->texture_shader_state[index], TEXTURE_SHADER_STATE, tex) {
 
       tex.level_0_is_strictly_uif =
          (image->slices[0].tiling == VC5_TILING_UIF_XOR ||
@@ -478,7 +483,12 @@ pack_texture_shader_state(struct v3dv_device *device,
          tex.image_depth = (image_view->last_layer - image_view->first_layer) + 1;
       }
 
-      if (image_view->type == VK_IMAGE_VIEW_TYPE_CUBE_ARRAY) {
+      /* Empirical testing with CTS shows that when we are sampling from cube
+       * arrays we want to set image depth to layers / 6, but not when doing
+       * image load/store.
+       */
+      if (image_view->type == VK_IMAGE_VIEW_TYPE_CUBE_ARRAY &&
+          !for_cube_map_array_storage) {
          assert(tex.image_depth % 6 == 0);
          tex.image_depth /= 6;
       }
@@ -509,6 +519,15 @@ pack_texture_shader_state(struct v3dv_device *device,
          v3dv_layer_offset(image, 0, image_view->first_layer);
       tex.texture_base_pointer = v3dv_cl_address(NULL, base_offset);
    }
+}
+
+static void
+pack_texture_shader_state(struct v3dv_device *device,
+                          struct v3dv_image_view *iview)
+{
+   pack_texture_shader_state_helper(device, iview, false);
+   if (iview->type == VK_IMAGE_VIEW_TYPE_CUBE_ARRAY)
+      pack_texture_shader_state_helper(device, iview, true);
 }
 
 static enum pipe_swizzle
