@@ -1557,30 +1557,29 @@ radv_get_physical_device_properties_1_2(struct radv_physical_device *pdevice,
 		p->roundingModeIndependence = VK_SHADER_FLOAT_CONTROLS_INDEPENDENCE_ALL_KHR;
 	}
 
-	/* Do not allow both preserving and flushing denorms because different
-	 * shaders in the same pipeline can have different settings and this
-	 * won't work for merged shaders. To make it work, this requires LLVM
+	/* With LLVM, do not allow both preserving and flushing denorms because
+	 * different shaders in the same pipeline can have different settings and
+	 * this won't work for merged shaders. To make it work, this requires LLVM
 	 * support for changing the register. The same logic applies for the
 	 * rounding modes because they are configured with the same config
-	 * register. TODO: we can enable a lot of these for ACO when it
-	 * supports all stages.
+	 * register.
 	 */
 	p->shaderDenormFlushToZeroFloat32 = true;
-	p->shaderDenormPreserveFloat32 = false;
+	p->shaderDenormPreserveFloat32 = !pdevice->use_llvm;
 	p->shaderRoundingModeRTEFloat32 = true;
-	p->shaderRoundingModeRTZFloat32 = false;
+	p->shaderRoundingModeRTZFloat32 = !pdevice->use_llvm;
 	p->shaderSignedZeroInfNanPreserveFloat32 = true;
 
-	p->shaderDenormFlushToZeroFloat16 = false;
+	p->shaderDenormFlushToZeroFloat16 = pdevice->rad_info.has_packed_math_16bit && !pdevice->use_llvm;
 	p->shaderDenormPreserveFloat16 = pdevice->rad_info.has_packed_math_16bit;
 	p->shaderRoundingModeRTEFloat16 = pdevice->rad_info.has_packed_math_16bit;
-	p->shaderRoundingModeRTZFloat16 = false;
+	p->shaderRoundingModeRTZFloat16 = pdevice->rad_info.has_packed_math_16bit && !pdevice->use_llvm;
 	p->shaderSignedZeroInfNanPreserveFloat16 = pdevice->rad_info.has_packed_math_16bit;
 
-	p->shaderDenormFlushToZeroFloat64 = false;
+	p->shaderDenormFlushToZeroFloat64 = pdevice->rad_info.chip_class >= GFX8 && !pdevice->use_llvm;
 	p->shaderDenormPreserveFloat64 = pdevice->rad_info.chip_class >= GFX8;
 	p->shaderRoundingModeRTEFloat64 = pdevice->rad_info.chip_class >= GFX8;
-	p->shaderRoundingModeRTZFloat64 = false;
+	p->shaderRoundingModeRTZFloat64 = pdevice->rad_info.chip_class >= GFX8 && !pdevice->use_llvm;
 	p->shaderSignedZeroInfNanPreserveFloat64 = pdevice->rad_info.chip_class >= GFX8;
 
 	p->maxUpdateAfterBindDescriptorsInAllPools = UINT32_MAX / 64;
