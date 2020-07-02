@@ -39,6 +39,74 @@
 #include "fd6_resource.h"
 #include "fd6_pack.h"
 
+static inline enum a6xx_2d_ifmt
+fd6_ifmt(enum a6xx_format fmt)
+{
+	switch (fmt) {
+	case FMT6_A8_UNORM:
+	case FMT6_8_UNORM:
+	case FMT6_8_SNORM:
+	case FMT6_8_8_UNORM:
+	case FMT6_8_8_SNORM:
+	case FMT6_8_8_8_8_UNORM:
+	case FMT6_8_8_8_X8_UNORM:
+	case FMT6_8_8_8_8_SNORM:
+	case FMT6_4_4_4_4_UNORM:
+	case FMT6_5_5_5_1_UNORM:
+	case FMT6_5_6_5_UNORM:
+		return R2D_UNORM8;
+
+	case FMT6_32_UINT:
+	case FMT6_32_SINT:
+	case FMT6_32_32_UINT:
+	case FMT6_32_32_SINT:
+	case FMT6_32_32_32_32_UINT:
+	case FMT6_32_32_32_32_SINT:
+		return R2D_INT32;
+
+	case FMT6_16_UINT:
+	case FMT6_16_SINT:
+	case FMT6_16_16_UINT:
+	case FMT6_16_16_SINT:
+	case FMT6_16_16_16_16_UINT:
+	case FMT6_16_16_16_16_SINT:
+	case FMT6_10_10_10_2_UINT:
+		return R2D_INT16;
+
+	case FMT6_8_UINT:
+	case FMT6_8_SINT:
+	case FMT6_8_8_UINT:
+	case FMT6_8_8_SINT:
+	case FMT6_8_8_8_8_UINT:
+	case FMT6_8_8_8_8_SINT:
+	case FMT6_Z24_UNORM_S8_UINT:
+	case FMT6_Z24_UNORM_S8_UINT_AS_R8G8B8A8:
+		return R2D_INT8;
+
+	case FMT6_16_UNORM:
+	case FMT6_16_SNORM:
+	case FMT6_16_16_UNORM:
+	case FMT6_16_16_SNORM:
+	case FMT6_16_16_16_16_UNORM:
+	case FMT6_16_16_16_16_SNORM:
+	case FMT6_32_FLOAT:
+	case FMT6_32_32_FLOAT:
+	case FMT6_32_32_32_32_FLOAT:
+		return R2D_FLOAT32;
+
+	case FMT6_16_FLOAT:
+	case FMT6_16_16_FLOAT:
+	case FMT6_16_16_16_16_FLOAT:
+	case FMT6_11_11_10_FLOAT:
+	case FMT6_10_10_10_2_UNORM_DEST:
+		return R2D_FLOAT16;
+
+	default:
+		unreachable("bad format");
+		return 0;
+	}
+}
+
 /* Make sure none of the requested dimensions extend beyond the size of the
  * resource.  Not entirely sure why this happens, but sometimes it does, and
  * w/ 2d blt doesn't have wrap modes like a sampler, so force those cases
