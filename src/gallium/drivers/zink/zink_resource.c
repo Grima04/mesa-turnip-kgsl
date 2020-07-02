@@ -115,6 +115,7 @@ resource_create(struct pipe_screen *pscreen,
 
       if (templ->bind & PIPE_BIND_VERTEX_BUFFER)
          bci.usage |= VK_BUFFER_USAGE_VERTEX_BUFFER_BIT |
+                      VK_BUFFER_USAGE_INDEX_BUFFER_BIT |
                       VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT;
 
       if (templ->bind & PIPE_BIND_INDEX_BUFFER)
