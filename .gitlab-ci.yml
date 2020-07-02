@@ -36,7 +36,7 @@ stages:
   extends: .ci-run-policy
   image: alpine
   script:
-  - apk --no-cache add py3-pip
+  - apk --no-cache add py3-pip graphviz
   - pip3 install sphinx sphinx_rtd_theme
   - sphinx-build -b html docs public
 
