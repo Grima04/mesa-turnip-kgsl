@@ -138,12 +138,12 @@ static const struct v3dv_format format_table[] = {
    FORMAT(B10G11R11_UFLOAT_PACK32, R11F_G11F_B10F,R11F_G11F_B10F, SWIZ_XYZW, 16, true),
 
    /* Depth */
-   FORMAT(D16_UNORM,               D16,          DEPTH_COMP16,  SWIZ_XXXX, 32, false),
-   FORMAT(D32_SFLOAT,              D32F,         DEPTH_COMP32F, SWIZ_XXXX, 32, false),
-   FORMAT(X8_D24_UNORM_PACK32,     D24S8,        DEPTH24_X8,    SWIZ_XXXX, 32, false),
+   FORMAT(D16_UNORM,               D16,          DEPTH_COMP16,  SWIZ_X001, 32, false),
+   FORMAT(D32_SFLOAT,              D32F,         DEPTH_COMP32F, SWIZ_X001, 32, false),
+   FORMAT(X8_D24_UNORM_PACK32,     D24S8,        DEPTH24_X8,    SWIZ_X001, 32, false),
 
    /* Depth + Stencil */
-   FORMAT(D24_UNORM_S8_UINT,       D24S8,        DEPTH24_X8,    SWIZ_XXXX, 32, false),
+   FORMAT(D24_UNORM_S8_UINT,       D24S8,        DEPTH24_X8,    SWIZ_X001, 32, false),
 
    /* Compressed: ETC2 / EAC */
    FORMAT(ETC2_R8G8B8_UNORM_BLOCK,    NO,  RGB8_ETC2,                SWIZ_XYZ1, 16, true),
