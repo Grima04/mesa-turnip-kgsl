@@ -384,18 +384,14 @@ test_all(unsigned verbose, FILE *fp)
          if (util_format_is_pure_integer(format))
             continue;
 
-         /* only have util fetch func for etc1 */
-         if (format_desc->layout == UTIL_FORMAT_LAYOUT_ETC &&
-             format != PIPE_FORMAT_ETC1_RGB8) {
+         /* The codegen sometimes falls back to calling the precompiled fetch
+          * func, so if we don't have one of those (some compressed formats,
+          * some ), we can't reliably test it.  We'll surely have a
+          * precompiled fetch func for any format before we write LLVM code to
+          * fetch from it.
+          */
+         if (!format_desc->fetch_rgba_float)
             continue;
-         }
-
-         /* missing fetch funcs */
-         if (format_desc->layout == UTIL_FORMAT_LAYOUT_ASTC ||
-             format_desc->layout == UTIL_FORMAT_LAYOUT_ATC ||
-             format_desc->layout == UTIL_FORMAT_LAYOUT_FXT1) {
-            continue;
-         }
 
          /* only test twice with formats which can use cache */
          if (format_desc->layout != UTIL_FORMAT_LAYOUT_S3TC && use_cache) {
