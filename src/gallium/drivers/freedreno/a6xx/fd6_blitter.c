@@ -496,7 +496,6 @@ emit_blit_or_clear_texture(struct fd_context *ctx, struct fd_ringbuffer *ring,
 	const struct pipe_box *dbox = &info->dst.box;
 	struct fd_resource *dst;
 	enum a6xx_format sfmt, dfmt;
-	enum a6xx_tile_mode stile, dtile;
 	int sx1, sy1, sx2, sy2;
 	int dx1, dy1, dx2, dy2;
 
@@ -514,9 +513,6 @@ emit_blit_or_clear_texture(struct fd_context *ctx, struct fd_ringbuffer *ring,
 
 	sfmt = fd6_pipe2color(info->src.format);
 	dfmt = fd6_pipe2color(info->dst.format);
-
-	stile = fd_resource_tile_mode(info->src.resource, info->src.level);
-	dtile = fd_resource_tile_mode(info->dst.resource, info->dst.level);
 
 	uint32_t nr_samples = fd_resource_nr_samples(&dst->base);
 	sx1 = sbox->x * nr_samples;
@@ -582,9 +578,6 @@ emit_blit_or_clear_texture(struct fd_context *ctx, struct fd_ringbuffer *ring,
 			break;
 		}
 	}
-
-	if (dtile != stile)
-		blit_cntl |= 0x20000000;
 
 	if (info->scissor_enable) {
 		OUT_PKT4(ring, REG_A6XX_GRAS_RESOLVE_CNTL_1, 2);
