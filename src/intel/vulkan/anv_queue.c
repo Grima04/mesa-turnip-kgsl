@@ -2055,22 +2055,31 @@ VkResult anv_ImportSemaphoreFdKHR(
 
    case VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_SYNC_FD_BIT:
       if (device->physical->has_syncobj) {
+         uint32_t create_flags = 0;
+
+         if (fd == -1)
+            create_flags |= DRM_SYNCOBJ_CREATE_SIGNALED;
+
          new_impl = (struct anv_semaphore_impl) {
             .type = ANV_SEMAPHORE_TYPE_DRM_SYNCOBJ,
-            .syncobj = anv_gem_syncobj_create(device, 0),
+            .syncobj = anv_gem_syncobj_create(device, create_flags),
          };
+
          if (!new_impl.syncobj)
             return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
-         if (anv_gem_syncobj_import_sync_file(device, new_impl.syncobj, fd)) {
-            anv_gem_syncobj_destroy(device, new_impl.syncobj);
-            return vk_errorf(device, NULL, VK_ERROR_INVALID_EXTERNAL_HANDLE,
-                             "syncobj sync file import failed: %m");
+
+         if (fd != -1) {
+            if (anv_gem_syncobj_import_sync_file(device, new_impl.syncobj, fd)) {
+               anv_gem_syncobj_destroy(device, new_impl.syncobj);
+               return vk_errorf(device, NULL, VK_ERROR_INVALID_EXTERNAL_HANDLE,
+                                "syncobj sync file import failed: %m");
+            }
+            /* Ownership of the FD is transfered to Anv. Since we don't need it
+             * anymore because the associated fence has been put into a syncobj,
+             * we must close the FD.
+             */
+            close(fd);
          }
-         /* Ownership of the FD is transfered to Anv. Since we don't need it
-          * anymore because the associated fence has been put into a syncobj,
-          * we must close the FD.
-          */
-         close(fd);
       } else {
          new_impl = (struct anv_semaphore_impl) {
             .type = ANV_SEMAPHORE_TYPE_SYNC_FILE,
