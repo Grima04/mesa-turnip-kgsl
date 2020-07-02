@@ -432,7 +432,7 @@ tu_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
          features->uniformAndStorageBuffer16BitAccess  = false;
          features->storagePushConstant16               = false;
          features->storageInputOutput16                = false;
-         features->multiview                           = false;
+         features->multiview                           = true;
          features->multiviewGeometryShader             = false;
          features->multiviewTessellationShader         = false;
          features->variablePointersStorageBuffer       = true;
@@ -504,7 +504,7 @@ tu_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_FEATURES: {
          VkPhysicalDeviceMultiviewFeatures *features =
             (VkPhysicalDeviceMultiviewFeatures *) ext;
-         features->multiview = false;
+         features->multiview = true;
          features->multiviewGeometryShader = false;
          features->multiviewTessellationShader = false;
          break;

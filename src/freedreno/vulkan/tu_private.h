@@ -95,7 +95,7 @@ typedef uint32_t xcb_window_t;
 #define MAX_DYNAMIC_BUFFERS                                                  \
    (MAX_DYNAMIC_UNIFORM_BUFFERS + MAX_DYNAMIC_STORAGE_BUFFERS)
 #define TU_MAX_DRM_DEVICES 8
-#define MAX_VIEWS 8
+#define MAX_VIEWS 16
 #define MAX_BIND_POINTS 2 /* compute + graphics */
 /* The Qualcomm driver exposes 0x20000058 */
 #define MAX_STORAGE_BUFFER_RANGE 0x20000000

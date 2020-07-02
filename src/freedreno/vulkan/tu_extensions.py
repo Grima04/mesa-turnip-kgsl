@@ -92,6 +92,7 @@ EXTENSIONS = [
     Extension('VK_EXT_4444_formats',                      1, True),
     Extension('VK_EXT_conditional_rendering',             1, True),
     Extension('VK_EXT_custom_border_color',              12, True),
+    Extension('VK_KHR_multiview',                         1, True),
 ]
 
 MAX_API_VERSION = VkVersion(MAX_API_VERSION)
