@@ -782,12 +782,34 @@ tu_CmdWriteTimestamp(VkCommandBuffer commandBuffer,
 {
    TU_FROM_HANDLE(tu_cmd_buffer, cmd, commandBuffer);
    TU_FROM_HANDLE(tu_query_pool, pool, queryPool);
-   struct tu_cs *cs = cmd->state.pass ? &cmd->draw_epilogue_cs : &cmd->cs;
 
    tu_bo_list_add(&cmd->bo_list, &pool->bo, MSM_SUBMIT_BO_WRITE);
 
-   /* WFI to get more accurate timestamp */
-   tu_cs_emit_wfi(cs);
+   /* Inside a render pass, just write the timestamp multiple times so that
+    * the user gets the last one if we use GMEM. There isn't really much
+    * better we can do, and this seems to be what the blob does too.
+    */
+   struct tu_cs *cs = cmd->state.pass ? &cmd->draw_cs : &cmd->cs;
+
+   /* Stages that will already have been executed by the time the CP executes
+    * the REG_TO_MEM. DrawIndirect parameters are read by the CP, so the draw
+    * indirect stage counts as top-of-pipe too.
+    */
+   VkPipelineStageFlags top_of_pipe_flags =
+      VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT |
+      VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT;
+
+   if (pipelineStage & ~top_of_pipe_flags) {
+      /* Execute a WFI so that all commands complete. Note that CP_REG_TO_MEM
+       * does CP_WAIT_FOR_ME internally, which will wait for the WFI to
+       * complete.
+       *
+       * Stalling the CP like this is really unfortunate, but I don't think
+       * there's a better solution that allows all 48 bits of precision
+       * because CP_EVENT_WRITE doesn't support 64-bit timestamps.
+       */
+      tu_cs_emit_wfi(cs);
+   }
 
    tu_cs_emit_pkt7(cs, CP_REG_TO_MEM, 3);
    tu_cs_emit(cs, CP_REG_TO_MEM_0_REG(REG_A6XX_CP_ALWAYS_ON_COUNTER_LO) |
@@ -795,16 +817,12 @@ tu_CmdWriteTimestamp(VkCommandBuffer commandBuffer,
                   CP_REG_TO_MEM_0_64B);
    tu_cs_emit_qw(cs, query_result_iova(pool, query, 0));
 
+   /* Only flag availability once the entire renderpass is done, similar to
+    * the begin/end path.
+    */
+   cs = cmd->state.pass ? &cmd->draw_epilogue_cs : &cmd->cs;
+
    tu_cs_emit_pkt7(cs, CP_MEM_WRITE, 4);
    tu_cs_emit_qw(cs, query_available_iova(pool, query));
    tu_cs_emit_qw(cs, 0x1);
-
-   if (cmd->state.pass) {
-      /* TODO: to have useful in-renderpass timestamps:
-       * for sysmem path, we can just emit the timestamp in draw_cs,
-       * for gmem renderpass, we do something with accumulate,
-       * but I'm not sure that would follow the spec
-       */
-      tu_finishme("CmdWriteTimestam in renderpass not accurate");
-   }
 }
