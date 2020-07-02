@@ -59,6 +59,8 @@ tu_spirv_to_nir(struct ir3_compiler *compiler,
       /* Accessed via stg/ldg (not used with Vulkan?) */
       .global_addr_format = nir_address_format_64bit_global,
 
+      /* ViewID is a sysval in geometry stages and an input in the FS */
+      .view_index_is_input = stage == MESA_SHADER_FRAGMENT,
       .caps = {
          .transform_feedback = true,
          .tessellation = true,
@@ -661,6 +663,7 @@ struct tu_shader *
 tu_shader_create(struct tu_device *dev,
                  gl_shader_stage stage,
                  const VkPipelineShaderStageCreateInfo *stage_info,
+                 unsigned multiview_mask,
                  struct tu_pipeline_layout *layout,
                  const VkAllocationCallbacks *alloc)
 {
@@ -768,7 +771,17 @@ tu_shader_create(struct tu_device *dev,
                  &(nir_input_attachment_options) {
                      .use_fragcoord_sysval = true,
                      .use_layer_id_sysval = false,
+                     /* When using multiview rendering, we must use
+                      * gl_ViewIndex as the layer id to pass to the texture
+                      * sampling function. gl_Layer doesn't work when
+                      * multiview is enabled.
+                      */
+                     .use_view_id_for_layer = multiview_mask != 0,
                  });
+   }
+
+   if (stage == MESA_SHADER_VERTEX && multiview_mask) {
+      NIR_PASS_V(nir, tu_nir_lower_multiview, multiview_mask, dev);
    }
 
    NIR_PASS_V(nir, nir_lower_explicit_io,

@@ -1086,6 +1086,7 @@ struct tu_shader *
 tu_shader_create(struct tu_device *dev,
                  gl_shader_stage stage,
                  const VkPipelineShaderStageCreateInfo *stage_info,
+                 unsigned multiview_mask,
                  struct tu_pipeline_layout *layout,
                  const VkAllocationCallbacks *alloc);
 
