@@ -48,7 +48,10 @@ struct zink_vertex_elements_state;
 
 struct zink_sampler_view {
    struct pipe_sampler_view base;
-   VkImageView image_view;
+   union {
+      VkImageView image_view;
+      VkBufferView buffer_view;
+   };
 };
 
 static inline struct zink_sampler_view *

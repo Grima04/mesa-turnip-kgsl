@@ -320,18 +320,22 @@ zink_draw_vbo(struct pipe_context *pctx,
             struct zink_sampler_view *sampler_view = zink_sampler_view(psampler_view);
 
             struct zink_resource *res = zink_resource(psampler_view->texture);
-            VkImageLayout layout = res->layout;
-            if (layout != VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL &&
-                layout != VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL &&
-                layout != VK_IMAGE_LAYOUT_GENERAL) {
-               transitions[num_transitions++] = res;
-               layout = VK_IMAGE_LAYOUT_GENERAL;
+            if (res->base.target == PIPE_BUFFER)
+                wds[num_wds].pTexelBufferView = &sampler_view->buffer_view;
+            else {
+               VkImageLayout layout = res->layout;
+               if (layout != VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL &&
+                   layout != VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL &&
+                   layout != VK_IMAGE_LAYOUT_GENERAL) {
+                  transitions[num_transitions++] = res;
+                  layout = VK_IMAGE_LAYOUT_GENERAL;
+               }
+               image_infos[num_image_info].imageLayout = layout;
+               image_infos[num_image_info].imageView = sampler_view->image_view;
+               image_infos[num_image_info].sampler = ctx->samplers[i][index];
+               wds[num_wds].pImageInfo = image_infos + num_image_info;
+               ++num_image_info;
             }
-            image_infos[num_image_info].imageLayout = layout;
-            image_infos[num_image_info].imageView = sampler_view->image_view;
-            image_infos[num_image_info].sampler = ctx->samplers[i][index];
-            wds[num_wds].pImageInfo = image_infos + num_image_info;
-            ++num_image_info;
          }
 
          wds[num_wds].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;

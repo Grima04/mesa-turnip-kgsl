@@ -311,12 +311,13 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
          } else {
             assert(var->data.mode == nir_var_uniform);
             if (glsl_type_is_sampler(var->type)) {
+               VkDescriptorType vktype = zink_sampler_type(var->type);
                int binding = zink_binding(nir->info.stage,
-                                          VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                                          vktype,
                                           var->data.binding);
                ret->bindings[ret->num_bindings].index = var->data.binding;
                ret->bindings[ret->num_bindings].binding = binding;
-               ret->bindings[ret->num_bindings].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+               ret->bindings[ret->num_bindings].type = vktype;
                ret->num_bindings++;
             } else if (glsl_type_is_array(var->type)) {
                /* need to unroll possible arrays of arrays before checking type
@@ -325,15 +326,16 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
                const struct glsl_type *type = glsl_without_array(var->type);
                if (!glsl_type_is_sampler(type))
                   continue;
+               VkDescriptorType vktype = zink_sampler_type(type);
 
                unsigned size = glsl_get_aoa_size(var->type);
                for (int i = 0; i < size; ++i) {
                   int binding = zink_binding(nir->info.stage,
-                                             VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                                             vktype,
                                              var->data.binding + i);
                   ret->bindings[ret->num_bindings].index = var->data.binding + i;
                   ret->bindings[ret->num_bindings].binding = binding;
-                  ret->bindings[ret->num_bindings].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+                  ret->bindings[ret->num_bindings].type = vktype;
                   ret->num_bindings++;
                }
             }

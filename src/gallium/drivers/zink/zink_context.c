@@ -252,6 +252,7 @@ zink_create_sampler_view(struct pipe_context *pctx, struct pipe_resource *pres,
    struct zink_screen *screen = zink_screen(pctx->screen);
    struct zink_resource *res = zink_resource(pres);
    struct zink_sampler_view *sampler_view = CALLOC_STRUCT(zink_sampler_view);
+   VkResult err;
 
    sampler_view->base = *state;
    sampler_view->base.texture = NULL;
@@ -259,28 +260,38 @@ zink_create_sampler_view(struct pipe_context *pctx, struct pipe_resource *pres,
    sampler_view->base.reference.count = 1;
    sampler_view->base.context = pctx;
 
-   VkImageViewCreateInfo ivci = {};
-   ivci.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-   ivci.image = res->image;
-   ivci.viewType = image_view_type(state->target);
-   ivci.format = zink_get_format(screen, state->format);
-   ivci.components.r = component_mapping(state->swizzle_r);
-   ivci.components.g = component_mapping(state->swizzle_g);
-   ivci.components.b = component_mapping(state->swizzle_b);
-   ivci.components.a = component_mapping(state->swizzle_a);
+   if (state->target != PIPE_BUFFER) {
+      VkImageViewCreateInfo ivci = {};
+      ivci.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+      ivci.image = res->image;
+      ivci.viewType = image_view_type(state->target);
+      ivci.format = zink_get_format(screen, state->format);
+      ivci.components.r = component_mapping(state->swizzle_r);
+      ivci.components.g = component_mapping(state->swizzle_g);
+      ivci.components.b = component_mapping(state->swizzle_b);
+      ivci.components.a = component_mapping(state->swizzle_a);
 
-   ivci.subresourceRange.aspectMask = sampler_aspect_from_format(state->format);
-   ivci.subresourceRange.baseMipLevel = state->u.tex.first_level;
-   ivci.subresourceRange.baseArrayLayer = state->u.tex.first_layer;
-   ivci.subresourceRange.levelCount = state->u.tex.last_level - state->u.tex.first_level + 1;
-   ivci.subresourceRange.layerCount = state->u.tex.last_layer - state->u.tex.first_layer + 1;
+      ivci.subresourceRange.aspectMask = sampler_aspect_from_format(state->format);
+      ivci.subresourceRange.baseMipLevel = state->u.tex.first_level;
+      ivci.subresourceRange.baseArrayLayer = state->u.tex.first_layer;
+      ivci.subresourceRange.levelCount = state->u.tex.last_level - state->u.tex.first_level + 1;
+      ivci.subresourceRange.layerCount = state->u.tex.last_layer - state->u.tex.first_layer + 1;
 
-   VkResult err = vkCreateImageView(screen->dev, &ivci, NULL, &sampler_view->image_view);
+      err = vkCreateImageView(screen->dev, &ivci, NULL, &sampler_view->image_view);
+   } else {
+      VkBufferViewCreateInfo bvci = {};
+      bvci.sType = VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO;
+      bvci.buffer = res->buffer;
+      bvci.format = zink_get_format(screen, state->format);
+      bvci.offset = state->u.buf.offset;
+      bvci.range = state->u.buf.size;
+
+      err = vkCreateBufferView(screen->dev, &bvci, NULL, &sampler_view->buffer_view);
+   }
    if (err != VK_SUCCESS) {
       FREE(sampler_view);
       return NULL;
    }
-
    return &sampler_view->base;
 }
 
@@ -289,7 +300,10 @@ zink_sampler_view_destroy(struct pipe_context *pctx,
                           struct pipe_sampler_view *pview)
 {
    struct zink_sampler_view *view = zink_sampler_view(pview);
-   vkDestroyImageView(zink_screen(pctx->screen)->dev, view->image_view, NULL);
+   if (pview->texture->target == PIPE_BUFFER)
+      vkDestroyBufferView(zink_screen(pctx->screen)->dev, view->buffer_view, NULL);
+   else
+      vkDestroyImageView(zink_screen(pctx->screen)->dev, view->image_view, NULL);
    pipe_resource_reference(&pview->texture, NULL);
    FREE(view);
 }

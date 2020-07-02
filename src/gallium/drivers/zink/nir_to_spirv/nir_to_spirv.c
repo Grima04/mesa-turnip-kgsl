@@ -446,6 +446,7 @@ zink_binding(gl_shader_stage stage, VkDescriptorType type, int index)
          return stage_offset + index;
 
       case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
+      case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
          assert(index < PIPE_MAX_SHADER_SAMPLER_VIEWS);
          return stage_offset + PIPE_MAX_CONSTANT_BUFFERS + index;
 
@@ -500,7 +501,7 @@ emit_sampler(struct ntv_context *ctx, struct nir_variable *var)
 
          spirv_builder_emit_descriptor_set(&ctx->builder, var_id, 0);
          int binding = zink_binding(ctx->stage,
-                                    VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                                    zink_sampler_type(glsl_without_array(var->type)),
                                     var->data.binding + i);
          spirv_builder_emit_binding(&ctx->builder, var_id, binding);
       }
@@ -520,7 +521,7 @@ emit_sampler(struct ntv_context *ctx, struct nir_variable *var)
 
       spirv_builder_emit_descriptor_set(&ctx->builder, var_id, 0);
       int binding = zink_binding(ctx->stage,
-                                 VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                                 zink_sampler_type(var->type),
                                  var->data.binding);
       spirv_builder_emit_binding(&ctx->builder, var_id, binding);
    }
@@ -2166,6 +2167,8 @@ nir_to_spirv(struct nir_shader *s, const struct zink_so_info *so_info,
    case MESA_SHADER_FRAGMENT:
    case MESA_SHADER_COMPUTE:
       spirv_builder_emit_cap(&ctx.builder, SpvCapabilityShader);
+      spirv_builder_emit_cap(&ctx.builder, SpvCapabilityImageBuffer);
+      spirv_builder_emit_cap(&ctx.builder, SpvCapabilitySampledBuffer);
       break;
 
    case MESA_SHADER_TESS_CTRL:
