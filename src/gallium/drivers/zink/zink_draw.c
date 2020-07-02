@@ -283,6 +283,7 @@ zink_draw_vbo(struct pipe_context *pctx,
    }
 
    VkWriteDescriptorSet wds[PIPE_SHADER_TYPES * PIPE_MAX_CONSTANT_BUFFERS + PIPE_SHADER_TYPES * PIPE_MAX_SHADER_SAMPLER_VIEWS];
+   struct zink_resource *write_desc_resources[PIPE_SHADER_TYPES * PIPE_MAX_CONSTANT_BUFFERS + PIPE_SHADER_TYPES * PIPE_MAX_SHADER_SAMPLER_VIEWS];
    VkDescriptorBufferInfo buffer_infos[PIPE_SHADER_TYPES * PIPE_MAX_CONSTANT_BUFFERS];
    VkDescriptorImageInfo image_infos[PIPE_SHADER_TYPES * PIPE_MAX_SHADER_SAMPLER_VIEWS];
    int num_wds = 0, num_buffer_info = 0, num_image_info = 0;
@@ -309,6 +310,7 @@ zink_draw_vbo(struct pipe_context *pctx,
             assert(ctx->ubos[i][index].buffer_size <= screen->info.props.limits.maxUniformBufferRange);
             assert(ctx->ubos[i][index].buffer);
             struct zink_resource *res = zink_resource(ctx->ubos[i][index].buffer);
+            write_desc_resources[num_wds] = res;
             buffer_infos[num_buffer_info].buffer = res->buffer;
             buffer_infos[num_buffer_info].offset = ctx->ubos[i][index].buffer_offset;
             buffer_infos[num_buffer_info].range  = ctx->ubos[i][index].buffer_size;
@@ -320,6 +322,7 @@ zink_draw_vbo(struct pipe_context *pctx,
             struct zink_sampler_view *sampler_view = zink_sampler_view(psampler_view);
 
             struct zink_resource *res = zink_resource(psampler_view->texture);
+            write_desc_resources[num_wds] = res;
             if (res->base.target == PIPE_BUFFER)
                 wds[num_wds].pTexelBufferView = &sampler_view->buffer_view;
             else {
@@ -388,13 +391,9 @@ zink_draw_vbo(struct pipe_context *pctx,
 
       for (int j = 0; j < shader->num_bindings; j++) {
          int index = shader->bindings[j].index;
-         if (shader->bindings[j].type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER) {
-            struct zink_resource *res = zink_resource(ctx->ubos[i][index].buffer);
-            zink_batch_reference_resource_rw(batch, res, false);
-         } else {
+         if (shader->bindings[j].type != VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER) {
             struct zink_sampler_view *sampler_view = zink_sampler_view(ctx->image_views[i][index]);
             zink_batch_reference_sampler_view(batch, sampler_view);
-            zink_batch_reference_resource_rw(batch, zink_resource(ctx->image_views[i][index]->texture), false);
          }
       }
    }
@@ -440,8 +439,10 @@ zink_draw_vbo(struct pipe_context *pctx,
       vkCmdSetBlendConstants(batch->cmdbuf, ctx->blend_constants);
 
    if (num_wds > 0) {
-      for (int i = 0; i < num_wds; ++i)
+      for (int i = 0; i < num_wds; ++i) {
          wds[i].dstSet = desc_set;
+         zink_batch_reference_resource_rw(batch, write_desc_resources[i], false);
+      }
       vkUpdateDescriptorSets(screen->dev, num_wds, wds, 0, NULL);
    }
 
