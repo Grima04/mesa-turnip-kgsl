@@ -675,7 +675,8 @@ fs_visitor::vfail(const char *format, va_list va)
    failed = true;
 
    msg = ralloc_vasprintf(mem_ctx, format, va);
-   msg = ralloc_asprintf(mem_ctx, "%s compile failed: %s\n", stage_abbrev, msg);
+   msg = ralloc_asprintf(mem_ctx, "SIMD%d %s compile failed: %s\n",
+         dispatch_width, stage_abbrev, msg);
 
    this->fail_msg = msg;
 
