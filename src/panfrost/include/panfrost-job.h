@@ -110,8 +110,7 @@ enum mali_func {
 /* Next flags to unknown2_4 */
 #define MALI_STENCIL_TEST      	(1 << 0)
 
-/* What?! */
-#define MALI_SAMPLE_ALPHA_TO_COVERAGE_NO_BLEND_SHADER (1 << 1)
+#define MALI_ALPHA_TO_COVERAGE (1 << 1)
 
 #define MALI_NO_DITHER		(1 << 9)
 #define MALI_DEPTH_RANGE_A	(1 << 12)

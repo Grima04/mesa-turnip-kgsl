@@ -107,7 +107,6 @@ panfrost_create_blend_state(struct pipe_context *pipe,
         so->base = *blend;
 
         /* TODO: The following features are not yet implemented */
-        assert(!blend->alpha_to_coverage);
         assert(!blend->alpha_to_one);
 
         for (unsigned c = 0; c < PIPE_MAX_COLOR_BUFS; ++c) {

@@ -672,6 +672,9 @@ panfrost_frag_meta_blend_update(struct panfrost_context *ctx,
                 (dev->quirks & MIDGARD_SFBD) && ctx->blend &&
                 !ctx->blend->base.dither);
 
+        SET_BIT(fragmeta->unknown2_4, MALI_ALPHA_TO_COVERAGE,
+                        ctx->blend->base.alpha_to_coverage);
+
         /* Get blending setup */
         unsigned rt_count = MAX2(ctx->pipe_framebuffer.nr_cbufs, 1);
 
@@ -857,7 +860,8 @@ panfrost_frag_shader_meta_init(struct panfrost_context *ctx,
 
                 SET_BIT(fragmeta->midgard1.flags_lo, MALI_EARLY_Z,
                         !fs->can_discard && !fs->writes_global &&
-                        !fs->writes_depth && !fs->writes_stencil);
+                        !fs->writes_depth && !fs->writes_stencil &&
+                        !ctx->blend->base.alpha_to_coverage);
 
                 /* Add the writes Z/S flags if needed. */
                 SET_BIT(fragmeta->midgard1.flags_lo, MALI_WRITES_Z, fs->writes_depth);

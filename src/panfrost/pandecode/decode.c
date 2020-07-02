@@ -237,7 +237,7 @@ static const struct pandecode_flag_info u4_flag_info[] = {
         FLAG_INFO(DEPTH_RANGE_A),
         FLAG_INFO(DEPTH_RANGE_B),
         FLAG_INFO(STENCIL_TEST),
-        FLAG_INFO(SAMPLE_ALPHA_TO_COVERAGE_NO_BLEND_SHADER),
+        FLAG_INFO(ALPHA_TO_COVERAGE),
         {}
 };
 #undef FLAG_INFO
