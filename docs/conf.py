@@ -182,3 +182,7 @@ texinfo_documents = [
      author, 'TheMesa3DGraphicsLibrary', 'One line description of project.',
      'Miscellaneous'),
 ]
+
+# -- Options for Graphviz -------------------------------------------------
+
+graphviz_output_format = 'svg'
