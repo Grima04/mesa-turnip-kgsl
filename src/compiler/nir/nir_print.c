@@ -1215,6 +1215,19 @@ print_jump_instr(nir_jump_instr *instr, print_state *state)
    case nir_jump_return:
       fprintf(fp, "return");
       break;
+
+   case nir_jump_goto:
+      fprintf(fp, "goto block_%u",
+              instr->target ? instr->target->index : -1);
+      break;
+
+   case nir_jump_goto_if:
+      fprintf(fp, "goto block_%u if ",
+              instr->target ? instr->target->index : -1);
+      print_src(&instr->condition, state);
+      fprintf(fp, " else block_%u",
+              instr->else_target ? instr->else_target->index : -1);
+      break;
    }
 }
 

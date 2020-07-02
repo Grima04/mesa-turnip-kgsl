@@ -2293,11 +2293,22 @@ typedef enum {
     * NIR loop is implemented as "while (1) { body }".
     */
    nir_jump_continue,
+
+   /** Jumps for unstructured CFG.
+    *
+    * As within an unstructured CFG we can't rely on block ordering we need to
+    * place explicit jumps at the end of every block.
+    */
+   nir_jump_goto,
+   nir_jump_goto_if,
 } nir_jump_type;
 
 typedef struct {
    nir_instr instr;
    nir_jump_type type;
+   nir_src condition;
+   struct nir_block *target;
+   struct nir_block *else_target;
 } nir_jump_instr;
 
 /* creates a new SSA variable in an undefined state */

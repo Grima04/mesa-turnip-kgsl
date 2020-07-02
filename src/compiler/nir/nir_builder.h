@@ -1342,7 +1342,29 @@ nir_load_barycentric(nir_builder *build, nir_intrinsic_op op,
 static inline void
 nir_jump(nir_builder *build, nir_jump_type jump_type)
 {
+   assert(jump_type != nir_jump_goto && jump_type != nir_jump_goto_if);
    nir_jump_instr *jump = nir_jump_instr_create(build->shader, jump_type);
+   nir_builder_instr_insert(build, &jump->instr);
+}
+
+static inline void
+nir_goto(nir_builder *build, struct nir_block *target)
+{
+   assert(!build->impl->structured);
+   nir_jump_instr *jump = nir_jump_instr_create(build->shader, nir_jump_goto);
+   jump->target = target;
+   nir_builder_instr_insert(build, &jump->instr);
+}
+
+static inline void
+nir_goto_if(nir_builder *build, struct nir_block *target, nir_src cond,
+            struct nir_block *else_target)
+{
+   assert(!build->impl->structured);
+   nir_jump_instr *jump = nir_jump_instr_create(build->shader, nir_jump_goto_if);
+   jump->condition = cond;
+   jump->target = target;
+   jump->else_target = else_target;
    nir_builder_instr_insert(build, &jump->instr);
 }
 
