@@ -1024,16 +1024,21 @@ void setup_gs_variables(isel_context *ctx, nir_shader *nir)
 }
 
 void
-setup_tcs_info(isel_context *ctx, nir_shader *nir)
+setup_tcs_info(isel_context *ctx, nir_shader *nir, nir_shader *vs)
 {
    /* When the number of TCS input and output vertices are the same (typically 3):
     * - There is an equal amount of LS and HS invocations
     * - In case of merged LSHS shaders, the LS and HS halves of the shader
     *   always process the exact same vertex. We can use this knowledge to optimize them.
+    *
+    * We don't set tcs_in_out_eq if the float controls differ because that might
+    * involve different float modes for the same block and our optimizer
+    * doesn't handle a instruction dominating another with a different mode.
     */
    ctx->tcs_in_out_eq =
       ctx->stage == vertex_tess_control_hs &&
-      ctx->args->options->key.tcs.input_vertices == nir->info.tess.tcs_vertices_out;
+      ctx->args->options->key.tcs.input_vertices == nir->info.tess.tcs_vertices_out &&
+      vs->info.float_controls_execution_mode == nir->info.float_controls_execution_mode;
 
    if (ctx->tcs_in_out_eq) {
       ctx->tcs_temp_only_inputs = ~nir->info.tess.tcs_cross_invocation_inputs_read &
@@ -1416,11 +1421,11 @@ setup_isel_context(Program* program,
       program->workgroup_size = UINT_MAX; /* TODO: probably tcs_num_patches * tcs_vertices_in, but those are not plumbed to ACO for LS */
    } else if (program->stage == tess_control_hs) {
       /* Unmerged HS operates in workgroups, size is determined by the output vertices */
-      setup_tcs_info(&ctx, shaders[0]);
+      setup_tcs_info(&ctx, shaders[0], NULL);
       program->workgroup_size = ctx.tcs_num_patches * shaders[0]->info.tess.tcs_vertices_out;
    } else if (program->stage == vertex_tess_control_hs) {
       /* Merged LSHS operates in workgroups, but can still have a different number of LS and HS invocations */
-      setup_tcs_info(&ctx, shaders[1]);
+      setup_tcs_info(&ctx, shaders[1], shaders[0]);
       program->workgroup_size = ctx.tcs_num_patches * MAX2(shaders[1]->info.tess.tcs_vertices_out, ctx.args->options->key.tcs.input_vertices);
    } else if (program->stage & hw_ngg_gs) {
       /* TODO: Calculate workgroup size of NGG shaders. */
