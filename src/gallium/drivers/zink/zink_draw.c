@@ -286,6 +286,7 @@ zink_draw_vbo(struct pipe_context *pctx,
    struct zink_resource *write_desc_resources[PIPE_SHADER_TYPES * PIPE_MAX_CONSTANT_BUFFERS + PIPE_SHADER_TYPES * PIPE_MAX_SHADER_SAMPLER_VIEWS];
    VkDescriptorBufferInfo buffer_infos[PIPE_SHADER_TYPES * PIPE_MAX_CONSTANT_BUFFERS];
    VkDescriptorImageInfo image_infos[PIPE_SHADER_TYPES * PIPE_MAX_SHADER_SAMPLER_VIEWS];
+   VkBufferView buffer_view[] = {VK_NULL_HANDLE};
    int num_wds = 0, num_buffer_info = 0, num_image_info = 0;
 
    struct zink_resource *transitions[PIPE_SHADER_TYPES * PIPE_MAX_SHADER_SAMPLER_VIEWS];
@@ -318,13 +319,26 @@ zink_draw_vbo(struct pipe_context *pctx,
             ++num_buffer_info;
          } else {
             struct pipe_sampler_view *psampler_view = ctx->image_views[i][index];
-            assert(psampler_view);
             struct zink_sampler_view *sampler_view = zink_sampler_view(psampler_view);
 
-            struct zink_resource *res = zink_resource(psampler_view->texture);
+            struct zink_resource *res = psampler_view ? zink_resource(psampler_view->texture) : NULL;
             write_desc_resources[num_wds] = res;
-            if (res->base.target == PIPE_BUFFER)
-                wds[num_wds].pTexelBufferView = &sampler_view->buffer_view;
+            if (!res) {
+               /* if we're hitting this assert often, we can probably just throw a junk buffer in since
+                * the results of this codepath are undefined in ARB_texture_buffer_object spec
+                */
+               assert(screen->info.rb2_feats.nullDescriptor);
+               if (shader->bindings[j].type == VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER)
+                  wds[num_wds].pTexelBufferView = &buffer_view[0];
+               else {
+                  image_infos[num_image_info].imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+                  image_infos[num_image_info].imageView = VK_NULL_HANDLE;
+                  image_infos[num_image_info].sampler = ctx->samplers[i][index];
+                  wds[num_wds].pImageInfo = image_infos + num_image_info;
+                  ++num_image_info;
+               }
+            } else if (res->base.target == PIPE_BUFFER)
+               wds[num_wds].pTexelBufferView = &sampler_view->buffer_view;
             else {
                VkImageLayout layout = res->layout;
                if (layout != VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL &&
@@ -393,7 +407,8 @@ zink_draw_vbo(struct pipe_context *pctx,
          int index = shader->bindings[j].index;
          if (shader->bindings[j].type != VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER) {
             struct zink_sampler_view *sampler_view = zink_sampler_view(ctx->image_views[i][index]);
-            zink_batch_reference_sampler_view(batch, sampler_view);
+            if (sampler_view)
+               zink_batch_reference_sampler_view(batch, sampler_view);
          }
       }
    }
@@ -441,7 +456,8 @@ zink_draw_vbo(struct pipe_context *pctx,
    if (num_wds > 0) {
       for (int i = 0; i < num_wds; ++i) {
          wds[i].dstSet = desc_set;
-         zink_batch_reference_resource_rw(batch, write_desc_resources[i], false);
+         if (write_desc_resources[i])
+            zink_batch_reference_resource_rw(batch, write_desc_resources[i], false);
       }
       vkUpdateDescriptorSets(screen->dev, num_wds, wds, 0, NULL);
    }
