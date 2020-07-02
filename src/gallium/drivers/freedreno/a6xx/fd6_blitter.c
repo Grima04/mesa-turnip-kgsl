@@ -514,6 +514,9 @@ emit_blit_or_clear_texture(struct fd_context *ctx, struct fd_ringbuffer *ring,
 	sfmt = fd6_pipe2color(info->src.format);
 	dfmt = fd6_pipe2color(info->dst.format);
 
+	OUT_PKT7(ring, CP_SET_MARKER, 1);
+	OUT_RING(ring, A6XX_CP_SET_MARKER_0_MODE(RM6_BLIT2DSCALE));
+
 	uint32_t nr_samples = fd_resource_nr_samples(&dst->base);
 	sx1 = sbox->x * nr_samples;
 	sy1 = sbox->y;
@@ -525,8 +528,15 @@ emit_blit_or_clear_texture(struct fd_context *ctx, struct fd_ringbuffer *ring,
 	dx2 = (dbox->x + dbox->width) * nr_samples - 1;
 	dy2 = dbox->y + dbox->height - 1;
 
-	OUT_PKT7(ring, CP_SET_MARKER, 1);
-	OUT_RING(ring, A6XX_CP_SET_MARKER_0_MODE(RM6_BLIT2DSCALE));
+	OUT_PKT4(ring, REG_A6XX_GRAS_2D_SRC_TL_X, 4);
+	OUT_RING(ring, A6XX_GRAS_2D_SRC_TL_X_X(sx1));
+	OUT_RING(ring, A6XX_GRAS_2D_SRC_BR_X_X(sx2));
+	OUT_RING(ring, A6XX_GRAS_2D_SRC_TL_Y_Y(sy1));
+	OUT_RING(ring, A6XX_GRAS_2D_SRC_BR_Y_Y(sy2));
+
+	OUT_PKT4(ring, REG_A6XX_GRAS_2D_DST_TL, 2);
+	OUT_RING(ring, A6XX_GRAS_2D_DST_TL_X(dx1) | A6XX_GRAS_2D_DST_TL_Y(dy1));
+	OUT_RING(ring, A6XX_GRAS_2D_DST_BR_X(dx2) | A6XX_GRAS_2D_DST_BR_Y(dy2));
 
 	uint32_t blit_cntl = blit_control(dfmt, util_format_is_srgb(info->dst.format));
 
@@ -603,16 +613,6 @@ emit_blit_or_clear_texture(struct fd_context *ctx, struct fd_ringbuffer *ring,
 		/*
 		 * Blit command:
 		 */
-		OUT_PKT4(ring, REG_A6XX_GRAS_2D_SRC_TL_X, 4);
-		OUT_RING(ring, A6XX_GRAS_2D_SRC_TL_X_X(sx1));
-		OUT_RING(ring, A6XX_GRAS_2D_SRC_BR_X_X(sx2));
-		OUT_RING(ring, A6XX_GRAS_2D_SRC_TL_Y_Y(sy1));
-		OUT_RING(ring, A6XX_GRAS_2D_SRC_BR_Y_Y(sy2));
-
-		OUT_PKT4(ring, REG_A6XX_GRAS_2D_DST_TL, 2);
-		OUT_RING(ring, A6XX_GRAS_2D_DST_TL_X(dx1) | A6XX_GRAS_2D_DST_TL_Y(dy1));
-		OUT_RING(ring, A6XX_GRAS_2D_DST_BR_X(dx2) | A6XX_GRAS_2D_DST_BR_Y(dy2));
-
 		OUT_PKT7(ring, CP_EVENT_WRITE, 1);
 		OUT_RING(ring, 0x3f);
 		OUT_WFI5(ring);
