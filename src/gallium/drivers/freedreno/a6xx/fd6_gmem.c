@@ -1327,6 +1327,7 @@ emit_sysmem_clears(struct fd_batch *batch, struct fd_ringbuffer *ring)
 			value.ui[0] = batch->clear_stencil;
 
 			struct pipe_surface stencil_surf = *pfb->zsbuf;
+			stencil_surf.format = PIPE_FORMAT_S8_UINT;
 			stencil_surf.texture = separate_stencil;
 
 			fd6_clear_surface(ctx, ring,
