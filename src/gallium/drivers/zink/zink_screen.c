@@ -759,7 +759,8 @@ static struct pipe_screen *
 zink_internal_create_screen(struct sw_winsys *winsys, int fd)
 {
    struct zink_screen *screen = CALLOC_STRUCT(zink_screen);
-   bool have_tf_ext = false, have_cond_render_ext = false, have_EXT_index_type_uint8 = false;
+   bool have_tf_ext = false, have_cond_render_ext = false, have_EXT_index_type_uint8 = false,
+      have_EXT_robustness2_features = false;
    if (!screen)
       return NULL;
 
@@ -801,6 +802,9 @@ zink_internal_create_screen(struct sw_winsys *winsys, int fd)
             if (!strcmp(extensions[i].extensionName,
                         VK_EXT_INDEX_TYPE_UINT8_EXTENSION_NAME))
                have_EXT_index_type_uint8 = true;
+            if (!strcmp(extensions[i].extensionName,
+                        VK_EXT_ROBUSTNESS_2_EXTENSION_NAME))
+               have_EXT_robustness2_features = true;
 
          }
          FREE(extensions);
@@ -827,6 +831,11 @@ zink_internal_create_screen(struct sw_winsys *winsys, int fd)
       index_uint8_feats.pNext = feats.pNext;
       feats.pNext = &index_uint8_feats;
    }
+   if (have_EXT_robustness2_features) {
+      screen->rb2_feats.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_FEATURES_EXT;
+      screen->rb2_feats.pNext = feats.pNext;
+      feats.pNext = &screen->rb2_feats;
+   }
    vkGetPhysicalDeviceFeatures2(screen->pdev, &feats);
    memcpy(&screen->feats, &feats.features, sizeof(screen->feats));
    if (have_tf_ext && tf_feats.transformFeedback)
@@ -835,13 +844,19 @@ zink_internal_create_screen(struct sw_winsys *winsys, int fd)
       screen->have_EXT_conditional_rendering = true;
    if (have_EXT_index_type_uint8 && index_uint8_feats.indexTypeUint8)
       screen->have_EXT_index_type_uint8 = true;
+   screen->have_EXT_robustness2_features = have_EXT_robustness2_features;
 
    VkPhysicalDeviceProperties2 props = {};
    props.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
    if (screen->have_EXT_transform_feedback) {
       screen->tf_props.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TRANSFORM_FEEDBACK_PROPERTIES_EXT;
-      screen->tf_props.pNext = NULL;
+      screen->tf_props.pNext = props.pNext;
       props.pNext = &screen->tf_props;
+   }
+   if (have_EXT_robustness2_features) {
+      screen->rb2_props.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_PROPERTIES_EXT;
+      screen->rb2_props.pNext = props.pNext;
+      props.pNext = &screen->rb2_props;
    }
    vkGetPhysicalDeviceProperties2(screen->pdev, &props);
    memcpy(&screen->props, &props.properties, sizeof(screen->props));
@@ -866,7 +881,7 @@ zink_internal_create_screen(struct sw_winsys *winsys, int fd)
     * this requires us to pass the whole VkPhysicalDeviceFeatures2 struct
     */
    dci.pNext = &feats;
-   const char *extensions[6] = {
+   const char *extensions[7] = {
       VK_KHR_MAINTENANCE1_EXTENSION_NAME,
    };
    num_extensions = 1;
@@ -889,6 +904,8 @@ zink_internal_create_screen(struct sw_winsys *winsys, int fd)
 
    if (screen->have_EXT_transform_feedback)
       extensions[num_extensions++] = VK_EXT_TRANSFORM_FEEDBACK_EXTENSION_NAME;
+   if (screen->have_EXT_robustness2_features)
+      extensions[num_extensions++] = VK_EXT_ROBUSTNESS_2_EXTENSION_NAME;
    assert(num_extensions <= ARRAY_SIZE(extensions));
 
    dci.ppEnabledExtensionNames = extensions;
