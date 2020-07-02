@@ -619,8 +619,10 @@ spec/arb_shader_image_load_store/invalid/imageload/address bounds test/image2d/r
 spec/arb_shader_image_load_store/invalid/imageload/address bounds test/image2d/rg8_snorm: fail
 spec/arb_shader_image_load_store/invalid/imageload/address bounds test/image2d/rg8i: fail
 spec/arb_shader_image_load_store/invalid/imageload/address bounds test/image2d/rg8ui: fail
-spec/arb_shader_image_load_store/max-size/imagecube max size test/8192x8192x6x1: skip
-spec/arb_shader_image_load_store/max-size/imagecubearray max size test/8192x8192x6x1: skip
+spec/arb_shader_image_load_store/max-size/image2dmsarray max size test/4x16384x8x8: skip
+spec/arb_shader_image_load_store/max-size/image2dmsarray max size test/4x8x16384x8: skip
+spec/arb_shader_image_load_store/max-size/imagecube max size test/16384x16384x6x1: skip
+spec/arb_shader_image_load_store/max-size/imagecubearray max size test/16384x16384x6x1: skip
 spec/arb_shader_texture_image_samples/builtin-image/r8/compute/image2dms samples test/2x8x96x1: skip
 spec/arb_shader_texture_image_samples/builtin-image/r8/compute/image2dmsarray samples test/2x8x16x6: skip
 spec/arb_shader_texture_image_samples/builtin-image/r8/fragment/image2dms samples test/2x8x96x1: skip
@@ -1689,7 +1691,7 @@ summary:
        pass:    21839
        fail:      215
       crash:        0
-       skip:     1446
+       skip:     1448
     timeout:        0
        warn:        6
  incomplete:        0
