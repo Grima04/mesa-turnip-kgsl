@@ -7951,10 +7951,20 @@ void visit_intrinsic(isel_context *ctx, nir_intrinsic_instr *instr)
       }
       Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
       uint32_t mask = nir_intrinsic_swizzle_mask(instr);
-      if (dst.regClass() == v1) {
-         emit_wqm(ctx,
-                  emit_masked_swizzle(ctx, bld, src, mask),
-                  dst);
+      if (instr->dest.ssa.bit_size == 1) {
+         assert(src.regClass() == bld.lm);
+         src = bld.vop2_e64(aco_opcode::v_cndmask_b32, bld.def(v1), Operand(0u), Operand((uint32_t)-1), src);
+         src = emit_masked_swizzle(ctx, bld, src, mask);
+         Temp tmp = bld.vopc(aco_opcode::v_cmp_lg_u32, bld.def(bld.lm), Operand(0u), src);
+         emit_wqm(ctx, tmp, dst);
+      } else if (dst.regClass() == v1b) {
+         Temp tmp = emit_wqm(ctx, emit_masked_swizzle(ctx, bld, src, mask));
+         emit_extract_vector(ctx, tmp, 0, dst);
+      } else if (dst.regClass() == v2b) {
+         Temp tmp = emit_wqm(ctx, emit_masked_swizzle(ctx, bld, src, mask));
+         emit_extract_vector(ctx, tmp, 0, dst);
+      } else if (dst.regClass() == v1) {
+         emit_wqm(ctx, emit_masked_swizzle(ctx, bld, src, mask), dst);
       } else if (dst.regClass() == v2) {
          Temp lo = bld.tmp(v1), hi = bld.tmp(v1);
          bld.pseudo(aco_opcode::p_split_vector, Definition(lo), Definition(hi), src);
