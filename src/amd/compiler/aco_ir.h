@@ -142,6 +142,10 @@ struct float_mode {
           unsigned denorm32:2;
           unsigned denorm16_64:2;
       };
+      struct {
+         uint8_t round:4;
+         uint8_t denorm:4;
+      };
       uint8_t val = 0;
    };
    /* if false, optimizations which may remove infs/nan/-0.0 can be done */
