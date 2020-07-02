@@ -143,7 +143,33 @@ def write_format_table(formats):
         u_format_pack.print_channels(format, do_channel_array)
         u_format_pack.print_channels(format, do_swizzle_array)
         print("   %s," % (colorspace_map(format.colorspace),))
-        access = True
+
+        # We don't generate code for YUV formats, and many of the new ones lack pack/unpack
+        # functions for softpipe/llvmpipe.
+        noaccess_formats = [
+            'yv12',
+            'yv16',
+            'iyuv',
+            'nv12',
+            'nv16',
+            'nv21',
+            'p010',
+            'p012',
+            'p016',
+            'xyuv',
+            'ayuv',
+            'r8g8_r8b8_unorm',
+            'g8r8_b8r8_unorm',
+            'g8r8_g8b8_unorm',
+            'y8_u8_v8_422_unorm',
+            'y8_u8v8_422_unorm',
+            'y8_u8_v8_444_unorm',
+            'y16_u16_v16_420_unorm',
+            'y16_u16_v16_422_unorm',
+            'y16_u16v16_422_unorm',
+            'y16_u16_v16_444_unorm',
+        ]
+        access = sn not in noaccess_formats
         if format.layout in ('astc', 'atc', 'fxt1'):
             access = False
         if format.layout == 'etc' and sn != 'etc1_rgb8':
