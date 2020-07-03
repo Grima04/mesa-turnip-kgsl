@@ -318,6 +318,9 @@ struct ir3_shader_key {
 			 * the limit:
 			 */
 			unsigned safe_constlen : 1;
+
+			/* Whether gl_Layer must be forced to 0 because it isn't written. */
+			unsigned layer_zero : 1;
 		};
 		uint32_t global;
 	};
@@ -383,6 +386,9 @@ ir3_shader_key_changes_fs(struct ir3_shader_key *key, struct ir3_shader_key *las
 		return true;
 
 	if (last_key->rasterflat != key->rasterflat)
+		return true;
+
+	if (last_key->layer_zero != key->layer_zero)
 		return true;
 
 	if (last_key->ucp_enables != key->ucp_enables)

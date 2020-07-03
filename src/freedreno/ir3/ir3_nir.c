@@ -305,6 +305,61 @@ ir3_nir_post_finalize(struct ir3_compiler *compiler, nir_shader *s)
 	ir3_optimize_loop(s);
 }
 
+static bool
+ir3_nir_lower_layer_id(nir_shader *nir)
+{
+	unsigned layer_id_loc = ~0;
+	nir_foreach_variable(var, &nir->inputs) {
+		if (var->data.location == VARYING_SLOT_LAYER) {
+			layer_id_loc = var->data.driver_location;
+			break;
+		}
+	}
+
+	assert(layer_id_loc != ~0);
+
+	bool progress = false;
+	nir_builder b;
+
+	nir_foreach_function(func, nir) {
+		nir_builder_init(&b, func->impl);
+
+		nir_foreach_block(block, func->impl) {
+			nir_foreach_instr_safe(instr, block) {
+				if (instr->type != nir_instr_type_intrinsic)
+					continue;
+
+				nir_intrinsic_instr *intrin =
+					nir_instr_as_intrinsic(instr);
+
+				if (intrin->intrinsic != nir_intrinsic_load_input)
+					continue;
+
+				unsigned base = nir_intrinsic_base(intrin);
+				if (base != layer_id_loc)
+					continue;
+
+				b.cursor = nir_before_instr(&intrin->instr);
+				nir_ssa_def *zero = nir_imm_int(&b, 0);
+				nir_ssa_def_rewrite_uses(&intrin->dest.ssa,
+										 nir_src_for_ssa(zero));
+				nir_instr_remove(&intrin->instr);
+				progress = true;
+			}
+		}
+
+		if (progress) {
+			nir_metadata_preserve(func->impl,
+								  nir_metadata_block_index |
+								  nir_metadata_dominance);
+		} else {
+			nir_metadata_preserve(func->impl, nir_metadata_all);
+		}
+	}
+
+	return progress;
+}
+
 void
 ir3_nir_lower_variant(struct ir3_shader_variant *so, nir_shader *s)
 {
@@ -352,6 +407,8 @@ ir3_nir_lower_variant(struct ir3_shader_variant *so, nir_shader *s)
 			progress |= OPT(s, nir_lower_clip_fs, so->key.ucp_enables, false);
 		if (so->key.fclamp_color)
 			progress |= OPT(s, nir_lower_clamp_color_outputs);
+		if (so->key.layer_zero && (s->info.inputs_read & VARYING_BIT_LAYER))
+			progress |= OPT(s, ir3_nir_lower_layer_id);
 	}
 	if (so->key.color_two_side) {
 		OPT_V(s, nir_lower_two_sided_color);
