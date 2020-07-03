@@ -646,6 +646,27 @@ v3dv_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
    }
 }
 
+uint32_t
+v3dv_physical_device_vendor_id(struct v3dv_physical_device *dev)
+{
+   return 0x14E4;
+}
+
+
+/* FIXME:
+ * Getting deviceID and UUID will probably require to use the kernel pci
+ * interface. See this:
+ * https://www.kernel.org/doc/html/latest/PCI/pci.html#how-to-find-pci-devices-manually
+ * And check the getparam ioctl in the i915 kernel with CHIPSET_ID for
+ * example.
+ */
+uint32_t
+v3dv_physical_device_device_id(struct v3dv_physical_device *dev)
+{
+   /* FIXME */
+   return 0;
+}
+
 void
 v3dv_GetPhysicalDeviceProperties(VkPhysicalDevice physicalDevice,
                                  VkPhysicalDeviceProperties *pProperties)
@@ -799,18 +820,11 @@ v3dv_GetPhysicalDeviceProperties(VkPhysicalDevice physicalDevice,
       .nonCoherentAtomSize                      = 256,
    };
 
-   /* FIXME:
-    * Getting deviceID and UUID will probably require to use the kernel pci
-    * interface. See this:
-    * https://www.kernel.org/doc/html/latest/PCI/pci.html#how-to-find-pci-devices-manually
-    * And check the getparam ioctl in the i915 kernel with CHIPSET_ID for
-    * example.
-    */
    *pProperties = (VkPhysicalDeviceProperties) {
       .apiVersion = v3dv_physical_device_api_version(pdevice),
       .driverVersion = vk_get_driver_version(),
-      .vendorID = 0x14E4,
-      .deviceID = 0, /* FIXME */
+      .vendorID = v3dv_physical_device_vendor_id(pdevice),
+      .deviceID = v3dv_physical_device_device_id(pdevice),
       .deviceType = VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU,
       .limits = limits,
       .sparseProperties = { 0 },

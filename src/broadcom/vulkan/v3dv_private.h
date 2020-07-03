@@ -1616,6 +1616,8 @@ v3dv_zs_buffer(bool depth, bool stencil)
 }
 
 uint32_t v3dv_physical_device_api_version(struct v3dv_physical_device *dev);
+uint32_t v3dv_physical_device_vendor_id(struct v3dv_physical_device *dev);
+uint32_t v3dv_physical_device_device_id(struct v3dv_physical_device *dev);
 
 int v3dv_get_instance_entrypoint_index(const char *name);
 int v3dv_get_device_entrypoint_index(const char *name);
