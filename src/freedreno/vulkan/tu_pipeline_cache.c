@@ -27,6 +27,7 @@
 #include "util/disk_cache.h"
 #include "util/mesa-sha1.h"
 #include "util/u_atomic.h"
+#include "vulkan/util/vk_util.h"
 
 struct cache_entry_variant_info
 {
@@ -196,22 +197,13 @@ tu_pipeline_cache_add_entry(struct tu_pipeline_cache *cache,
       tu_pipeline_cache_set_entry(cache, entry);
 }
 
-struct cache_header
-{
-   uint32_t header_size;
-   uint32_t header_version;
-   uint32_t vendor_id;
-   uint32_t device_id;
-   uint8_t uuid[VK_UUID_SIZE];
-};
-
 static void
 tu_pipeline_cache_load(struct tu_pipeline_cache *cache,
                        const void *data,
                        size_t size)
 {
    struct tu_device *device = cache->device;
-   struct cache_header header;
+   struct vk_pipeline_cache_header header;
 
    if (size < sizeof(header))
       return;
@@ -307,7 +299,7 @@ tu_GetPipelineCacheData(VkDevice _device,
 {
    TU_FROM_HANDLE(tu_device, device, _device);
    TU_FROM_HANDLE(tu_pipeline_cache, cache, _cache);
-   struct cache_header *header;
+   struct vk_pipeline_cache_header *header;
    VkResult result = VK_SUCCESS;
 
    pthread_mutex_lock(&cache->mutex);

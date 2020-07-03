@@ -29,6 +29,7 @@
 #include "nir/nir_serialize.h"
 #include "anv_private.h"
 #include "nir/nir_xfb_info.h"
+#include "vulkan/util/vk_util.h"
 
 struct anv_shader_bin *
 anv_shader_bin_create(struct anv_device *device,
@@ -475,14 +476,6 @@ anv_pipeline_cache_upload_kernel(struct anv_pipeline_cache *cache,
    }
 }
 
-struct cache_header {
-   uint32_t header_size;
-   uint32_t header_version;
-   uint32_t vendor_id;
-   uint32_t device_id;
-   uint8_t  uuid[VK_UUID_SIZE];
-};
-
 static void
 anv_pipeline_cache_load(struct anv_pipeline_cache *cache,
                         const void *data, size_t size)
@@ -496,7 +489,7 @@ anv_pipeline_cache_load(struct anv_pipeline_cache *cache,
    struct blob_reader blob;
    blob_reader_init(&blob, data, size);
 
-   struct cache_header header;
+   struct vk_pipeline_cache_header header;
    blob_copy_bytes(&blob, &header, sizeof(header));
    uint32_t count = blob_read_uint32(&blob);
    if (blob.overrun)
@@ -586,8 +579,8 @@ VkResult anv_GetPipelineCacheData(
       blob_init_fixed(&blob, NULL, SIZE_MAX);
    }
 
-   struct cache_header header = {
-      .header_size = sizeof(struct cache_header),
+   struct vk_pipeline_cache_header header = {
+      .header_size = sizeof(struct vk_pipeline_cache_header),
       .header_version = VK_PIPELINE_CACHE_HEADER_VERSION_ONE,
       .vendor_id = 0x8086,
       .device_id = device->info.chipset_id,

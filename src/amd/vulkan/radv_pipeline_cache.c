@@ -28,6 +28,7 @@
 #include "radv_debug.h"
 #include "radv_private.h"
 #include "radv_shader.h"
+#include "vulkan/util/vk_util.h"
 
 #include "ac_nir_to_llvm.h"
 
@@ -452,20 +453,12 @@ radv_pipeline_cache_insert_shaders(struct radv_device *device,
 	return;
 }
 
-struct cache_header {
-	uint32_t header_size;
-	uint32_t header_version;
-	uint32_t vendor_id;
-	uint32_t device_id;
-	uint8_t  uuid[VK_UUID_SIZE];
-};
-
 bool
 radv_pipeline_cache_load(struct radv_pipeline_cache *cache,
 			 const void *data, size_t size)
 {
 	struct radv_device *device = cache->device;
-	struct cache_header header;
+	struct vk_pipeline_cache_header header;
 
 	if (size < sizeof(header))
 		return false;
@@ -569,7 +562,7 @@ VkResult radv_GetPipelineCacheData(
 {
 	RADV_FROM_HANDLE(radv_device, device, _device);
 	RADV_FROM_HANDLE(radv_pipeline_cache, cache, _cache);
-	struct cache_header *header;
+	struct vk_pipeline_cache_header *header;
 	VkResult result = VK_SUCCESS;
 
 	radv_pipeline_cache_lock(cache);
