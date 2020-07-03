@@ -282,6 +282,9 @@ emit_blit_setup(struct fd_ringbuffer *ring,
 					A6XX_SP_2D_SRC_FORMAT_NORM) |
 			COND(is_srgb, A6XX_SP_2D_SRC_FORMAT_SRGB) |
 			A6XX_SP_2D_SRC_FORMAT_MASK(0xf));
+
+	OUT_PKT4(ring, REG_A6XX_RB_UNKNOWN_8C01, 1);
+	OUT_RING(ring, 0);
 }
 
 /* buffers need to be handled specially since x/width can exceed the bounds
@@ -405,9 +408,6 @@ emit_blit_buffer(struct fd_context *ctx, struct fd_ringbuffer *ring,
 		OUT_PKT7(ring, CP_EVENT_WRITE, 1);
 		OUT_RING(ring, 0x3f);
 		OUT_WFI5(ring);
-
-		OUT_PKT4(ring, REG_A6XX_RB_UNKNOWN_8C01, 1);
-		OUT_RING(ring, 0);
 
 		OUT_PKT4(ring, REG_A6XX_RB_UNKNOWN_8E04, 1);
 		OUT_RING(ring, fd6_context(ctx)->magic.RB_UNKNOWN_8E04_blit);
@@ -629,9 +629,6 @@ emit_blit_or_clear_texture(struct fd_context *ctx, struct fd_ringbuffer *ring,
 		OUT_PKT7(ring, CP_EVENT_WRITE, 1);
 		OUT_RING(ring, 0x3f);
 		OUT_WFI5(ring);
-
-		OUT_PKT4(ring, REG_A6XX_RB_UNKNOWN_8C01, 1);
-		OUT_RING(ring, 0);
 
 		OUT_PKT4(ring, REG_A6XX_RB_UNKNOWN_8E04, 1);
 		OUT_RING(ring, fd6_context(ctx)->magic.RB_UNKNOWN_8E04_blit);
