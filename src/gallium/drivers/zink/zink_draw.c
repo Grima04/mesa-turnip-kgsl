@@ -390,6 +390,7 @@ zink_draw_vbo(struct pipe_context *pctx,
          } else {
             struct zink_sampler_view *sampler_view = zink_sampler_view(ctx->image_views[i][index]);
             zink_batch_reference_sampler_view(batch, sampler_view);
+            zink_batch_reference_resource_rw(batch, zink_resource(ctx->image_views[i][index]->texture), false);
          }
       }
    }

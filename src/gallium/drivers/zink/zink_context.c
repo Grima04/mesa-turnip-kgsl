@@ -290,6 +290,7 @@ zink_sampler_view_destroy(struct pipe_context *pctx,
 {
    struct zink_sampler_view *view = zink_sampler_view(pview);
    vkDestroyImageView(zink_screen(pctx->screen)->dev, view->image_view, NULL);
+   pipe_resource_reference(&pview->texture, NULL);
    FREE(view);
 }
 
