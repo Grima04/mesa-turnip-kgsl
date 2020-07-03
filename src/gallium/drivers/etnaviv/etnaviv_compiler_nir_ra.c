@@ -81,10 +81,10 @@ static inline int reg_get_class(int virt_reg)
    return 0;
 }
 
-void
-etna_ra_assign(struct etna_compile *c, nir_shader *shader)
+struct ra_regs *
+etna_ra_setup(void *mem_ctx)
 {
-   struct ra_regs *regs = ra_alloc_reg_set(NULL, ETNA_MAX_TEMPS *
+   struct ra_regs *regs = ra_alloc_reg_set(mem_ctx, ETNA_MAX_TEMPS *
                   NUM_REG_TYPES, false);
 
    /* classes always be created from index 0, so equal to the class enum
@@ -107,6 +107,15 @@ etna_ra_assign(struct etna_compile *c, nir_shader *shader)
       }
    }
    ra_set_finalize(regs, q_values);
+
+   return regs;
+}
+
+void
+etna_ra_assign(struct etna_compile *c, nir_shader *shader)
+{
+   struct etna_compiler *compiler = c->variant->shader->compiler;
+   struct ra_regs *regs = compiler->regs;
 
    nir_function_impl *impl = nir_shader_get_entrypoint(shader);
 
@@ -226,7 +235,6 @@ etna_ra_assign(struct etna_compile *c, nir_shader *shader)
    assert(ok);
 
    c->g = g;
-   c->regs = regs;
    c->live_map = live_map;
    c->num_nodes = num_nodes;
 }
@@ -241,7 +249,6 @@ etna_ra_finish(struct etna_compile *c)
    }
 
    ralloc_free(c->g);
-   ralloc_free(c->regs);
    ralloc_free(c->live_map);
 
    return j;

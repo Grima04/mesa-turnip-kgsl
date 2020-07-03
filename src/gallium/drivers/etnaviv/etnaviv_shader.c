@@ -404,6 +404,7 @@ etna_create_shader_state(struct pipe_context *pctx,
 
    shader->id = p_atomic_inc_return(&compiler->shader_count);
    shader->specs = &screen->specs;
+   shader->compiler = screen->compiler;
 
    if (DBG_ENABLED(ETNA_DBG_NIR))
       shader->nir = (pss->type == PIPE_SHADER_IR_NIR) ? pss->ir.nir :

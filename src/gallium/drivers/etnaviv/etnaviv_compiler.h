@@ -50,6 +50,7 @@
  */
 struct etna_compiler {
    uint32_t shader_count;
+   struct ra_regs *regs;
 };
 
 /* compiler output per input/output */

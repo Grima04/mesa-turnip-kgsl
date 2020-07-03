@@ -25,12 +25,23 @@
  */
 
 #include "etnaviv_compiler.h"
+#include "etnaviv_compiler_nir.h"
+#include "etnaviv_debug.h"
 #include "util/ralloc.h"
 
 struct etna_compiler *
 etna_compiler_create(void)
 {
    struct etna_compiler *compiler = rzalloc(NULL, struct etna_compiler);
+
+   if (!DBG_ENABLED(ETNA_DBG_NIR))
+      return compiler;
+
+   compiler->regs = etna_ra_setup(compiler);
+   if (!compiler->regs) {
+      ralloc_free((void *)compiler);
+      compiler = NULL;
+   }
 
    return compiler;
 }
