@@ -233,8 +233,11 @@ emit_setup(struct fd_batch *batch)
 }
 
 static uint32_t
-blit_control(enum a6xx_format fmt, bool is_srgb)
+emit_blit_control(struct fd_ringbuffer *ring,
+		enum pipe_format pfmt, bool scissor_enable, union pipe_color_union *color)
 {
+	enum a6xx_format fmt = fd6_pipe2color(pfmt);
+	bool is_srgb = util_format_is_srgb(pfmt);
 	enum a6xx_2d_ifmt ifmt = fd6_ifmt(fmt);
 
 	if (is_srgb) {
@@ -242,9 +245,17 @@ blit_control(enum a6xx_format fmt, bool is_srgb)
 		ifmt = R2D_UNORM8_SRGB;
 	}
 
-	return A6XX_RB_2D_BLIT_CNTL_MASK(0xf) |
+	uint32_t blit_cntl = A6XX_RB_2D_BLIT_CNTL_MASK(0xf) |
 		A6XX_RB_2D_BLIT_CNTL_COLOR_FORMAT(fmt) |
-		A6XX_RB_2D_BLIT_CNTL_IFMT(ifmt);
+		A6XX_RB_2D_BLIT_CNTL_IFMT(ifmt) |
+		COND(color, A6XX_RB_2D_BLIT_CNTL_SOLID_COLOR) |
+		COND(scissor_enable, A6XX_RB_2D_BLIT_CNTL_SCISSOR);
+
+	OUT_PKT4(ring, REG_A6XX_RB_2D_BLIT_CNTL, 1);
+	OUT_RING(ring, blit_cntl);
+
+	OUT_PKT4(ring, REG_A6XX_GRAS_2D_BLIT_CNTL, 1);
+	OUT_RING(ring, blit_cntl);
 }
 
 /* buffers need to be handled specially since x/width can exceed the bounds
@@ -307,12 +318,7 @@ emit_blit_buffer(struct fd_context *ctx, struct fd_ringbuffer *ring,
 	OUT_PKT7(ring, CP_SET_MARKER, 1);
 	OUT_RING(ring, A6XX_CP_SET_MARKER_0_MODE(RM6_BLIT2DSCALE));
 
-	uint32_t blit_cntl = blit_control(FMT6_8_UNORM, false) | 0x20000000;
-	OUT_PKT4(ring, REG_A6XX_RB_2D_BLIT_CNTL, 1);
-	OUT_RING(ring, blit_cntl);
-
-	OUT_PKT4(ring, REG_A6XX_GRAS_2D_BLIT_CNTL, 1);
-	OUT_RING(ring, blit_cntl);
+	emit_blit_control(ring, PIPE_FORMAT_R8_UNORM, false, NULL);
 
 	for (unsigned off = 0; off < sbox->width; off += (0x4000 - 0x40)) {
 		unsigned soff, doff, w, p;
@@ -593,16 +599,7 @@ emit_blit_or_clear_texture(struct fd_context *ctx, struct fd_ringbuffer *ring,
 				 A6XX_GRAS_RESOLVE_CNTL_1_Y(info->scissor.maxy - 1));
 	}
 
-	uint32_t blit_cntl =
-		blit_control(dfmt, util_format_is_srgb(info->dst.format)) |
-		COND(color, A6XX_RB_2D_BLIT_CNTL_SOLID_COLOR) |
-		COND(info->scissor_enable, A6XX_RB_2D_BLIT_CNTL_SCISSOR);
-
-	OUT_PKT4(ring, REG_A6XX_RB_2D_BLIT_CNTL, 1);
-	OUT_RING(ring, blit_cntl);
-
-	OUT_PKT4(ring, REG_A6XX_GRAS_2D_BLIT_CNTL, 1);
-	OUT_RING(ring, blit_cntl);
+	emit_blit_control(ring, info->dst.format, info->scissor_enable, color);
 
 	if (dfmt == FMT6_10_10_10_2_UNORM_DEST)
 		sfmt = FMT6_16_16_16_16_FLOAT;
