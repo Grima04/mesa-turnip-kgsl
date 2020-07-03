@@ -148,9 +148,6 @@ ok_format(enum pipe_format pfmt)
 	if (fmt == FMT6_NONE)
 		return false;
 
-	if (fmt == FMT6_10_10_10_2_UNORM_DEST)
-		return false;
-
 	return true;
 }
 
