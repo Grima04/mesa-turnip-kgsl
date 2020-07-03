@@ -558,6 +558,7 @@ meson-classic:
     EXTRA_OPTION: >
       -D osmesa=classic
       -D tools=all
+      -D werror=true
 
 .meson-cross:
   extends:
