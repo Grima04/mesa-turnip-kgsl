@@ -423,15 +423,15 @@ emit_blit_buffer(struct fd_context *ctx, struct fd_ringbuffer *ring,
 }
 
 static void
-emit_blit_dst(struct fd_ringbuffer *ring, const struct pipe_blit_info *info, unsigned layer)
+emit_blit_dst(struct fd_ringbuffer *ring, struct pipe_resource *prsc, enum pipe_format pfmt, unsigned level, unsigned layer)
 {
-	struct fd_resource *dst = fd_resource(info->dst.resource);
-	enum a6xx_format fmt = fd6_pipe2color(info->dst.format);
-	enum a6xx_tile_mode tile = fd_resource_tile_mode(info->dst.resource, info->dst.level);
-	enum a3xx_color_swap swap = fd6_resource_swap(dst, info->dst.format);
-	uint32_t pitch = fd_resource_pitch(dst, info->dst.level);
-	bool ubwc_enabled = fd_resource_ubwc_enabled(dst, info->dst.level);
-	unsigned off = fd_resource_offset(dst, info->dst.level, layer);
+	struct fd_resource *dst = fd_resource(prsc);
+	enum a6xx_format fmt = fd6_pipe2color(pfmt);
+	enum a6xx_tile_mode tile = fd_resource_tile_mode(prsc, level);
+	enum a3xx_color_swap swap = fd6_resource_swap(dst, pfmt);
+	uint32_t pitch = fd_resource_pitch(dst, level);
+	bool ubwc_enabled = fd_resource_ubwc_enabled(dst, level);
+	unsigned off = fd_resource_offset(dst, level, layer);
 
 	if (fmt == FMT6_Z24_UNORM_S8_UINT)
 		fmt = FMT6_Z24_UNORM_S8_UINT_AS_R8G8B8A8;
@@ -440,7 +440,7 @@ emit_blit_dst(struct fd_ringbuffer *ring, const struct pipe_blit_info *info, uns
 	OUT_RING(ring, A6XX_RB_2D_DST_INFO_COLOR_FORMAT(fmt) |
 			A6XX_RB_2D_DST_INFO_TILE_MODE(tile) |
 			A6XX_RB_2D_DST_INFO_COLOR_SWAP(swap) |
-			COND(util_format_is_srgb(info->dst.format), A6XX_RB_2D_DST_INFO_SRGB) |
+			COND(util_format_is_srgb(pfmt), A6XX_RB_2D_DST_INFO_SRGB) |
 			COND(ubwc_enabled, A6XX_RB_2D_DST_INFO_FLAGS));
 	OUT_RELOC(ring, dst->bo, off, 0, 0);    /* RB_2D_DST_LO/HI */
 	OUT_RING(ring, A6XX_RB_2D_DST_SIZE_PITCH(pitch));
@@ -452,7 +452,7 @@ emit_blit_dst(struct fd_ringbuffer *ring, const struct pipe_blit_info *info, uns
 
 	if (ubwc_enabled) {
 		OUT_PKT4(ring, REG_A6XX_RB_2D_DST_FLAGS_LO, 6);
-		fd6_emit_flag_reference(ring, dst, info->dst.level, layer);
+		fd6_emit_flag_reference(ring, dst, level, layer);
 		OUT_RING(ring, 0x00000000);
 		OUT_RING(ring, 0x00000000);
 		OUT_RING(ring, 0x00000000);
@@ -621,7 +621,7 @@ emit_blit_or_clear_texture(struct fd_context *ctx, struct fd_ringbuffer *ring,
 		if (!color)
 			emit_blit_src(ring, info, sbox->z + i, nr_samples);
 
-		emit_blit_dst(ring, info, dbox->z + i);
+		emit_blit_dst(ring, info->dst.resource, info->dst.format, info->dst.level, dbox->z + i);
 
 		/*
 		 * Blit command:
