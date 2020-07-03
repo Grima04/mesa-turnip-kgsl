@@ -4789,7 +4789,6 @@ KHR-GL31.transform_feedback.capture_vertex_interleaved_test
 KHR-GL31.transform_feedback.capture_vertex_separate_test
 KHR-GL31.transform_feedback.discard_vertex_test
 KHR-GL31.transform_feedback.draw_xfb_instanced_test
-KHR-GL31.transform_feedback.draw_xfb_stream_test
 KHR-GL31.transform_feedback.draw_xfb_stream_instanced_test
 KHR-GL31.transform_feedback.query_vertex_interleaved_test
 KHR-GL31.transform_feedback.query_vertex_separate_test
@@ -4797,7 +4796,6 @@ KHR-GL32.transform_feedback.capture_vertex_interleaved_test
 KHR-GL32.transform_feedback.capture_vertex_separate_test
 KHR-GL32.transform_feedback.discard_vertex_test
 KHR-GL32.transform_feedback.draw_xfb_instanced_test
-KHR-GL32.transform_feedback.draw_xfb_stream_test
 KHR-GL32.transform_feedback.draw_xfb_stream_instanced_test
 KHR-GL32.transform_feedback_overflow_query_ARB.advanced-single-stream-interleaved-attribs
 KHR-GL32.transform_feedback_overflow_query_ARB.advanced-single-stream-separate-attribs
