@@ -241,6 +241,12 @@ panfrost_emit_texture_payload(
         }
 }
 
+#define MALI_SWIZZLE_A001 \
+        (MALI_CHANNEL_ALPHA << 0) | \
+        (MALI_CHANNEL_ZERO << 3) | \
+        (MALI_CHANNEL_ZERO << 6) | \
+        (MALI_CHANNEL_ONE << 9)
+
 void
 panfrost_new_texture(
         void *out,
@@ -275,7 +281,9 @@ panfrost_new_texture(
                 .depth = MALI_POSITIVE(u_minify(depth, first_level)),
                 .array_size = MALI_POSITIVE(array_size),
                 .format = {
-                        .swizzle = panfrost_translate_swizzle_4(desc->swizzle),
+                        .swizzle = (format == PIPE_FORMAT_X24S8_UINT) ?
+                                MALI_SWIZZLE_A001 :
+                                panfrost_translate_swizzle_4(desc->swizzle),
                         .format = mali_format,
                         .srgb = (desc->colorspace == UTIL_FORMAT_COLORSPACE_SRGB),
                         .type = type,

@@ -140,6 +140,7 @@ struct panfrost_format panfrost_pipe_format_table[PIPE_FORMAT_COUNT] = {
         [PIPE_FORMAT_Z24X8_UNORM]		= { MALI_Z24X8_UNORM, _TZ },
         [PIPE_FORMAT_Z32_FLOAT]		        = { MALI_R32F, _TZ },
         [PIPE_FORMAT_Z32_FLOAT_S8X24_UINT]	= { MALI_R32F, _TZ },
+        [PIPE_FORMAT_X24S8_UINT]		= { MALI_RGBA8UI, _TZ },
 
         [PIPE_FORMAT_R32_FIXED] 		= { MALI_R32_FIXED, _V },
         [PIPE_FORMAT_R32G32_FIXED] 		= { MALI_RG32_FIXED, _V },
