@@ -143,6 +143,7 @@ fd6_draw_vbo(struct fd_context *ctx, const struct pipe_draw_info *info,
              unsigned index_offset)
 {
 	struct fd6_context *fd6_ctx = fd6_context(ctx);
+	struct ir3_shader *gs = ctx->prog.gs;
 	struct fd6_emit emit = {
 		.ctx = ctx,
 		.vtx  = &ctx->vtx,
@@ -164,6 +165,7 @@ fd6_draw_vbo(struct fd_context *ctx, const struct pipe_draw_info *info,
 				.fsaturate_s = fd6_ctx->fsaturate_s,
 				.fsaturate_t = fd6_ctx->fsaturate_t,
 				.fsaturate_r = fd6_ctx->fsaturate_r,
+				.layer_zero = !gs || !(gs->nir->info.outputs_written & VARYING_BIT_LAYER),
 				.vsamples = ctx->tex[PIPE_SHADER_VERTEX].samples,
 				.fsamples = ctx->tex[PIPE_SHADER_FRAGMENT].samples,
 				.sample_shading = (ctx->min_samples > 1),
