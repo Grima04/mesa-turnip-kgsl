@@ -224,6 +224,9 @@ panfrost_mfbd_set_cbuf(
 
         rt->format = panfrost_mfbd_format(surf);
 
+        if (layer_stride)
+                rt->format.flags |= MALI_MFBD_FORMAT_MSAA | MALI_MFBD_FORMAT_LAYERED;
+
         /* Now, we set the layout specific pieces */
 
         if (rsrc->layout == MALI_TEXTURE_LINEAR) {
@@ -521,6 +524,14 @@ panfrost_mfbd_fragment(struct panfrost_batch *batch, bool has_draws)
                 struct pipe_surface *surf = batch->key.cbufs[cb];
 
                 if (surf) {
+                        unsigned nr_samples = surf->nr_samples;
+
+                        if (!nr_samples)
+                                nr_samples = surf->texture->nr_samples;
+
+                        if (nr_samples > 1)
+                                batch->requirements |= PAN_REQ_MSAA;
+
                         panfrost_mfbd_set_cbuf(&rts[cb], surf);
 
                         /* What is this? Looks like some extension of the bpp
