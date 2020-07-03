@@ -512,13 +512,12 @@ emit_blit_src(struct fd_ringbuffer *ring, const struct pipe_blit_info *info, uns
 }
 
 static void
-emit_blit_or_clear_texture(struct fd_context *ctx, struct fd_ringbuffer *ring,
-		const struct pipe_blit_info *info, union pipe_color_union *color)
+emit_blit_texture(struct fd_context *ctx,
+		struct fd_ringbuffer *ring, const struct pipe_blit_info *info)
 {
 	const struct pipe_box *sbox = &info->src.box;
 	const struct pipe_box *dbox = &info->dst.box;
 	struct fd_resource *dst;
-	enum a6xx_format dfmt;
 	int sx1, sy1, sx2, sy2;
 	int dx1, dy1, dx2, dy2;
 
@@ -534,22 +533,18 @@ emit_blit_or_clear_texture(struct fd_context *ctx, struct fd_ringbuffer *ring,
 
 	dst = fd_resource(info->dst.resource);
 
-	dfmt = fd6_pipe2color(info->dst.format);
-
 	uint32_t nr_samples = fd_resource_nr_samples(&dst->base);
 
-	if (!color) {
-		sx1 = sbox->x * nr_samples;
-		sy1 = sbox->y;
-		sx2 = (sbox->x + sbox->width) * nr_samples - 1;
-		sy2 = sbox->y + sbox->height - 1;
+	sx1 = sbox->x * nr_samples;
+	sy1 = sbox->y;
+	sx2 = (sbox->x + sbox->width) * nr_samples - 1;
+	sy2 = sbox->y + sbox->height - 1;
 
-		OUT_PKT4(ring, REG_A6XX_GRAS_2D_SRC_TL_X, 4);
-		OUT_RING(ring, A6XX_GRAS_2D_SRC_TL_X_X(sx1));
-		OUT_RING(ring, A6XX_GRAS_2D_SRC_BR_X_X(sx2));
-		OUT_RING(ring, A6XX_GRAS_2D_SRC_TL_Y_Y(sy1));
-		OUT_RING(ring, A6XX_GRAS_2D_SRC_BR_Y_Y(sy2));
-	}
+	OUT_PKT4(ring, REG_A6XX_GRAS_2D_SRC_TL_X, 4);
+	OUT_RING(ring, A6XX_GRAS_2D_SRC_TL_X_X(sx1));
+	OUT_RING(ring, A6XX_GRAS_2D_SRC_BR_X_X(sx2));
+	OUT_RING(ring, A6XX_GRAS_2D_SRC_TL_Y_Y(sy1));
+	OUT_RING(ring, A6XX_GRAS_2D_SRC_BR_Y_Y(sy2));
 
 	dx1 = dbox->x * nr_samples;
 	dy1 = dbox->y;
@@ -560,52 +555,6 @@ emit_blit_or_clear_texture(struct fd_context *ctx, struct fd_ringbuffer *ring,
 	OUT_RING(ring, A6XX_GRAS_2D_DST_TL_X(dx1) | A6XX_GRAS_2D_DST_TL_Y(dy1));
 	OUT_RING(ring, A6XX_GRAS_2D_DST_BR_X(dx2) | A6XX_GRAS_2D_DST_BR_Y(dy2));
 
-	if (color) {
-		switch (info->dst.format) {
-		case PIPE_FORMAT_Z24X8_UNORM:
-		case PIPE_FORMAT_Z24_UNORM_S8_UINT:
-		case PIPE_FORMAT_X24S8_UINT: {
-			uint32_t depth_unorm24 = color->f[0] * ((1u << 24) - 1);
-			uint8_t stencil = color->ui[1];
-			color->ui[0] = depth_unorm24 & 0xff;
-			color->ui[1] = (depth_unorm24 >> 8) & 0xff;
-			color->ui[2] = (depth_unorm24 >> 16) & 0xff;
-			color->ui[3] = stencil;
-			break;
-		}
-		default:
-			break;
-		}
-
-		OUT_PKT4(ring, REG_A6XX_RB_2D_SRC_SOLID_C0, 4);
-
-		switch (fd6_ifmt(dfmt)) {
-		case R2D_UNORM8:
-		case R2D_UNORM8_SRGB:
-			OUT_RING(ring, float_to_ubyte(color->f[0]));
-			OUT_RING(ring, float_to_ubyte(color->f[1]));
-			OUT_RING(ring, float_to_ubyte(color->f[2]));
-			OUT_RING(ring, float_to_ubyte(color->f[3]));
-			break;
-		case R2D_FLOAT16:
-			OUT_RING(ring, _mesa_float_to_half(color->f[0]));
-			OUT_RING(ring, _mesa_float_to_half(color->f[1]));
-			OUT_RING(ring, _mesa_float_to_half(color->f[2]));
-			OUT_RING(ring, _mesa_float_to_half(color->f[3]));
-			break;
-		case R2D_FLOAT32:
-		case R2D_INT32:
-		case R2D_INT16:
-		case R2D_INT8:
-		default:
-			OUT_RING(ring, color->ui[0]);
-			OUT_RING(ring, color->ui[1]);
-			OUT_RING(ring, color->ui[2]);
-			OUT_RING(ring, color->ui[3]);
-			break;
-		}
-	}
-
 	if (info->scissor_enable) {
 		OUT_PKT4(ring, REG_A6XX_GRAS_RESOLVE_CNTL_1, 2);
 		OUT_RING(ring, A6XX_GRAS_RESOLVE_CNTL_1_X(info->scissor.minx) |
@@ -614,13 +563,11 @@ emit_blit_or_clear_texture(struct fd_context *ctx, struct fd_ringbuffer *ring,
 				 A6XX_GRAS_RESOLVE_CNTL_1_Y(info->scissor.maxy - 1));
 	}
 
-	emit_blit_setup(ring, info->dst.format, info->scissor_enable, color);
+	emit_blit_setup(ring, info->dst.format, info->scissor_enable, NULL);
 
 	for (unsigned i = 0; i < info->dst.box.depth; i++) {
 
-		if (!color)
-			emit_blit_src(ring, info, sbox->z + i, nr_samples);
-
+		emit_blit_src(ring, info, sbox->z + i, nr_samples);
 		emit_blit_dst(ring, info->dst.resource, info->dst.format, info->dst.level, dbox->z + i);
 
 		/*
@@ -643,28 +590,95 @@ emit_blit_or_clear_texture(struct fd_context *ctx, struct fd_ringbuffer *ring,
 	}
 }
 
+static void
+emit_clear_color(struct fd_ringbuffer *ring,
+		enum pipe_format pfmt, union pipe_color_union *color)
+{
+	switch (pfmt) {
+	case PIPE_FORMAT_Z24X8_UNORM:
+	case PIPE_FORMAT_Z24_UNORM_S8_UINT:
+	case PIPE_FORMAT_X24S8_UINT: {
+		uint32_t depth_unorm24 = color->f[0] * ((1u << 24) - 1);
+		uint8_t stencil = color->ui[1];
+		color->ui[0] = depth_unorm24 & 0xff;
+		color->ui[1] = (depth_unorm24 >> 8) & 0xff;
+		color->ui[2] = (depth_unorm24 >> 16) & 0xff;
+		color->ui[3] = stencil;
+		break;
+	}
+	default:
+		break;
+	}
+
+	OUT_PKT4(ring, REG_A6XX_RB_2D_SRC_SOLID_C0, 4);
+	switch (fd6_ifmt(fd6_pipe2color(pfmt))) {
+	case R2D_UNORM8:
+	case R2D_UNORM8_SRGB:
+		OUT_RING(ring, float_to_ubyte(color->f[0]));
+		OUT_RING(ring, float_to_ubyte(color->f[1]));
+		OUT_RING(ring, float_to_ubyte(color->f[2]));
+		OUT_RING(ring, float_to_ubyte(color->f[3]));
+		break;
+	case R2D_FLOAT16:
+		OUT_RING(ring, _mesa_float_to_half(color->f[0]));
+		OUT_RING(ring, _mesa_float_to_half(color->f[1]));
+		OUT_RING(ring, _mesa_float_to_half(color->f[2]));
+		OUT_RING(ring, _mesa_float_to_half(color->f[3]));
+		break;
+	case R2D_FLOAT32:
+	case R2D_INT32:
+	case R2D_INT16:
+	case R2D_INT8:
+	default:
+		OUT_RING(ring, color->ui[0]);
+		OUT_RING(ring, color->ui[1]);
+		OUT_RING(ring, color->ui[2]);
+		OUT_RING(ring, color->ui[3]);
+		break;
+	}
+}
+
 void
 fd6_clear_surface(struct fd_context *ctx,
 		struct fd_ringbuffer *ring, struct pipe_surface *psurf,
 		uint32_t width, uint32_t height, union pipe_color_union *color)
 {
-	struct pipe_blit_info info = {};
+	if (DEBUG_BLIT) {
+		fprintf(stderr, "surface clear:\ndst resource: ");
+		util_dump_resource(stderr, psurf->texture);
+		fprintf(stderr, "\n");
+	}
 
-	info.dst.resource = psurf->texture;
-	info.dst.level = psurf->u.tex.level;
-	info.dst.box.x = 0;
-	info.dst.box.y = 0;
-	info.dst.box.z = psurf->u.tex.first_layer;
-	info.dst.box.width = width;
-	info.dst.box.height = height;
-	info.dst.box.depth = psurf->u.tex.last_layer + 1 - psurf->u.tex.first_layer;
-	info.dst.format = psurf->format;
-	info.src = info.dst;
-	info.mask = util_format_get_mask(psurf->format);
-	info.filter = PIPE_TEX_FILTER_NEAREST;
-	info.scissor_enable = 0;
+	uint32_t nr_samples = fd_resource_nr_samples(psurf->texture);
+	OUT_PKT4(ring, REG_A6XX_GRAS_2D_DST_TL, 2);
+	OUT_RING(ring, A6XX_GRAS_2D_DST_TL_X(0) | A6XX_GRAS_2D_DST_TL_Y(0));
+	OUT_RING(ring, A6XX_GRAS_2D_DST_BR_X(width * nr_samples - 1) |
+			A6XX_GRAS_2D_DST_BR_Y(height - 1));
 
-	emit_blit_or_clear_texture(ctx, ring, &info, color);
+	emit_clear_color(ring, psurf->format, color);
+	emit_blit_setup(ring, psurf->format, false, color);
+
+	for (unsigned i = psurf->u.tex.first_layer; i <= psurf->u.tex.last_layer; i++) {
+		emit_blit_dst(ring, psurf->texture, psurf->format, psurf->u.tex.level, i);
+
+		/*
+		 * Blit command:
+		 */
+		OUT_PKT7(ring, CP_EVENT_WRITE, 1);
+		OUT_RING(ring, 0x3f);
+		OUT_WFI5(ring);
+
+		OUT_PKT4(ring, REG_A6XX_RB_UNKNOWN_8E04, 1);
+		OUT_RING(ring, fd6_context(ctx)->magic.RB_UNKNOWN_8E04_blit);
+
+		OUT_PKT7(ring, CP_BLIT, 1);
+		OUT_RING(ring, CP_BLIT_0_OP(BLIT_OP_SCALE));
+
+		OUT_WFI5(ring);
+
+		OUT_PKT4(ring, REG_A6XX_RB_UNKNOWN_8E04, 1);
+		OUT_RING(ring, 0);             /* RB_UNKNOWN_8E04 */
+	}
 }
 
 static bool
@@ -713,7 +727,7 @@ handle_rgba_blit(struct fd_context *ctx, const struct pipe_blit_info *info)
 		debug_assert(info->src.resource->target != PIPE_BUFFER);
 		debug_assert(info->dst.resource->target != PIPE_BUFFER);
 		fd_log(batch, "START BLIT (TEXTURE)");
-		emit_blit_or_clear_texture(ctx, batch->draw, info, NULL);
+		emit_blit_texture(ctx, batch->draw, info);
 		fd_log(batch, "END BLIT (TEXTURE)");
 	}
 
