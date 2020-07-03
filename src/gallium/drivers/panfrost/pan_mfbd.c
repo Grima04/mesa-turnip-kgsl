@@ -298,7 +298,7 @@ panfrost_mfbd_set_zsbuf(
 
                 unsigned header_size = rsrc->slices[level].header_size;
 
-                fb->mfbd_flags |= MALI_MFBD_EXTRA;
+                fb->mfbd_flags |= MALI_MFBD_EXTRA | MALI_MFBD_DEPTH_WRITE;
 
                 fbx->flags_hi |= MALI_EXTRA_PRESENT;
                 fbx->flags_lo |= MALI_EXTRA_ZS | 0x1; /* unknown */
@@ -322,7 +322,7 @@ panfrost_mfbd_set_zsbuf(
 
                 unsigned layer_stride = (nr_samples > 1) ? rsrc->slices[level].size0 : 0;
 
-                fb->mfbd_flags |= MALI_MFBD_EXTRA;
+                fb->mfbd_flags |= MALI_MFBD_EXTRA | MALI_MFBD_DEPTH_WRITE;
                 fbx->flags_hi |= MALI_EXTRA_PRESENT;
                 fbx->flags_lo |= MALI_EXTRA_ZS;
 
