@@ -1381,6 +1381,7 @@ struct v3dv_descriptor_map {
 struct v3dv_sampler {
    bool compare_enable;
    bool unnormalized_coordinates;
+   bool clamp_to_transparent_black_border;
 
    /* Prepacked SAMPLER_STATE, that is referenced as part of the tmu
     * configuration. If needed it will be copied to the descriptor info during

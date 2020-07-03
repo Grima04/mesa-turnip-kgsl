@@ -2016,10 +2016,10 @@ pack_sampler_state(struct v3dv_sampler *sampler,
 {
    enum V3DX(Border_Color_Mode) border_color_mode;
 
-   /* FIXME: direct border_color_mode mapping would work with some specific
-    * formats, but some others it would be needed to use
-    * V3D_BORDER_COLOR_FOLLOWS, and fill up
-    * SAMPLER_STATE.border_color_word_[0/1/2/3]
+   /* For now we only support the preset Vulkan border color modes. If we
+    * want to implement VK_EXT_custom_border_color in the future we would have
+    * to use V3D_BORDER_COLOR_FOLLOWS, and fill up border_color_word_[0/1/2/3]
+    * SAMPLER_STATE.
     */
    switch (pCreateInfo->borderColor) {
    case VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK:
@@ -2037,6 +2037,21 @@ pack_sampler_state(struct v3dv_sampler *sampler,
    default:
       unreachable("Unknown border color");
       break;
+   }
+
+   /* For some texture formats, when clamping to transparent black border the
+    * CTS expects alpha to be set to 1 instead of 0, but the border color mode
+    * will take priority over the texture state swizzle, so the only way to
+    * fix that is to apply a swizzle in the shader. Here we keep track of
+    * whether we are activating that mode and we will decide if we need to
+    * activate the texture swizzle lowering in the shader key at compile time
+    * depending on the actual texture format.
+    */
+   if ((pCreateInfo->addressModeU == VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER ||
+        pCreateInfo->addressModeV == VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER ||
+        pCreateInfo->addressModeW == VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER) &&
+       border_color_mode == V3D_BORDER_COLOR_0000) {
+      sampler->clamp_to_transparent_black_border = true;
    }
 
    v3dv_pack(sampler->sampler_state, SAMPLER_STATE, s) {

@@ -2625,11 +2625,26 @@ cmd_buffer_populate_v3d_key(struct v3d_key *key,
             key->tex[combined_idx].return_channels = 4;
          }
 
-      /* Note: we don't need to do anything for the swizzle, as that is
-       * handled with the swizzle info at the Texture State, and the
-       * default values for key->tex[].swizzle were already filled up on
-       * the pipeline populate.
-       */
+         /* Note: In general, we don't need to do anything for the swizzle, as
+          * that is handled with the swizzle info at the Texture State, and the
+          * default values for key->tex[].swizzle were already filled up at
+          * the pipeline creation time.
+          *
+          * The only exeption in which we want to apply a texture swizzle
+          * lowering in the shader is to force alpha to 1 when using clamp
+          * to border with transparent black in combination with specific
+          * formats.
+          */
+         if (sampler && sampler->clamp_to_transparent_black_border) {
+            switch (image_view->vk_format) {
+            case VK_FORMAT_E5B9G9R9_UFLOAT_PACK32:
+            case VK_FORMAT_B10G11R11_UFLOAT_PACK32:
+               key->tex[combined_idx].swizzle[3] = PIPE_SWIZZLE_1;
+               break;
+            default:
+               break;
+            }
+         }
       }
    }
 }
