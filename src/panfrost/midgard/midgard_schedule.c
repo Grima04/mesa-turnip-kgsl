@@ -341,9 +341,9 @@ struct midgard_predicate {
         unsigned no_mask;
         unsigned dest;
 
-        /* For VADD/VLUT whether to only/never schedule imov/fmov instructions
-         * This allows non-move instructions to get priority on each unit */
-        bool moves;
+        /* Whether to not-care/only/never schedule imov/fmov instructions This
+         * allows non-move instructions to get priority on each unit */
+        unsigned move_mode;
 
         /* For load/store: how many pipeline registers are in use? The two
          * scheduled instructions cannot use more than the 256-bits of pipeline
@@ -673,7 +673,8 @@ mir_choose_instruction(
                 if (alu && !branch && !(mir_has_unit(instructions[i], unit)))
                         continue;
 
-                if ((unit == UNIT_VLUT || unit == UNIT_VADD) && (predicate->moves != is_move))
+                /* 0: don't care, 1: no moves, 2: only moves */
+                if (predicate->move_mode && ((predicate->move_mode - 1) != is_move))
                         continue;
 
                 if (branch && !instructions[i]->compact_branch)
@@ -1189,13 +1190,16 @@ mir_schedule_alu(
 
         mir_choose_alu(&smul, instructions, liveness, worklist, len, &predicate, UNIT_SMUL);
 
-        for (unsigned moves = 0; moves < 2; ++moves) {
-                predicate.moves = moves;
+        for (unsigned mode = 1; mode < 3; ++mode) {
+                predicate.move_mode = mode;
                 predicate.no_mask = writeout ? (1 << 3) : 0;
                 mir_choose_alu(&vlut, instructions, liveness, worklist, len, &predicate, UNIT_VLUT);
                 predicate.no_mask = 0;
                 mir_choose_alu(&vadd, instructions, liveness, worklist, len, &predicate, UNIT_VADD);
         }
+
+        /* Reset */
+        predicate.move_mode = 0;
 
         mir_update_worklist(worklist, len, instructions, vlut);
         mir_update_worklist(worklist, len, instructions, vadd);
