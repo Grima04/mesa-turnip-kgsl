@@ -29,12 +29,65 @@
 #include "vk_util.h"
 #include "vk_format.h"
 
+/* Return true if we have to fallback to sysmem rendering because the
+ * dependency can't be satisfied with tiled rendering.
+ */
+
+static bool
+dep_invalid_for_gmem(const VkSubpassDependency2 *dep)
+{
+   /* External dependencies don't matter here. */
+   if (dep->srcSubpass == VK_SUBPASS_EXTERNAL ||
+       dep->dstSubpass == VK_SUBPASS_EXTERNAL)
+      return false;
+
+   /* We can conceptually break down the process of rewriting a sysmem
+    * renderpass into a gmem one into two parts:
+    *
+    * 1. Split each draw and multisample resolve into N copies, one for each
+    * bin. (If hardware binning, add one more copy where the FS is disabled
+    * for the binning pass). This is always allowed because the vertex stage
+    * is allowed to run an arbitrary number of times and there are no extra
+    * ordering constraints within a draw.
+    * 2. Take the last copy of the second-to-last draw and slide it down to
+    * before the last copy of the last draw. Repeat for each earlier draw
+    * until the draw pass for the last bin is complete, then repeat for each
+    * earlier bin until we finish with the first bin.
+    *
+    * During this rearranging process, we can't slide draws past each other in
+    * a way that breaks the subpass dependencies. For each draw, we must slide
+    * it past (copies of) the rest of the draws in the renderpass. We can
+    * slide a draw past another if there isn't a dependency between them, or
+    * if the dependenc(ies) are dependencies between framebuffer-space stages
+    * only with the BY_REGION bit set. Note that this includes
+    * self-dependencies, since these may result in pipeline barriers that also
+    * break the rearranging process.
+    */
+
+   /* This is straight from the Vulkan 1.2 spec, section 6.1.4 "Framebuffer
+    * Region Dependencies":
+    */
+   const VkPipelineStageFlags framebuffer_space_stages =
+      VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT |
+      VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT |
+      VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT |
+      VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+
+   return
+      (dep->srcStageMask & ~framebuffer_space_stages) ||
+      (dep->dstStageMask & ~framebuffer_space_stages) ||
+      !(dep->dependencyFlags & VK_DEPENDENCY_BY_REGION_BIT);
+}
+
 static void
 tu_render_pass_add_subpass_dep(struct tu_render_pass *pass,
                                const VkSubpassDependency2 *dep)
 {
    uint32_t src = dep->srcSubpass;
    uint32_t dst = dep->dstSubpass;
+
+   if (dep_invalid_for_gmem(dep))
+      pass->gmem_pixels = 0;
 
    /* Ignore subpass self-dependencies as they allow the app to call
     * vkCmdPipelineBarrier() inside the render pass and the driver should only
