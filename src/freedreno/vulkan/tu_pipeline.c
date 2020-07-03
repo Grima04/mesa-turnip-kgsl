@@ -1977,6 +1977,10 @@ tu_pipeline_builder_compile_shaders(struct tu_pipeline_builder *builder,
       builder->shaders[stage] = shader;
    }
 
+   struct tu_shader *gs = builder->shaders[MESA_SHADER_GEOMETRY];
+   key.layer_zero =
+      !gs || !(gs->ir3_shader->nir->info.outputs_written & VARYING_SLOT_LAYER);
+
    pipeline->tess.patch_type = key.tessellation;
 
    for (gl_shader_stage stage = MESA_SHADER_VERTEX;
