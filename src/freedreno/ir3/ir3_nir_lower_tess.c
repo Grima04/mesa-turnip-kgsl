@@ -42,9 +42,6 @@ struct state {
 
 	struct exec_list old_outputs;
 	struct exec_list emit_outputs;
-
-	nir_ssa_def *outer_levels[4];
-	nir_ssa_def *inner_levels[2];
 };
 
 static nir_ssa_def *
@@ -82,6 +79,13 @@ get_var(struct exec_list *list, int driver_location)
 	}
 
 	return NULL;
+}
+
+static bool
+is_tess_levels(nir_variable *var)
+{
+	return (var->data.location == VARYING_SLOT_TESS_LEVEL_OUTER ||
+			var->data.location == VARYING_SLOT_TESS_LEVEL_INNER);
 }
 
 static nir_ssa_def *
@@ -354,26 +358,32 @@ build_patch_offset(nir_builder *b, struct state *state, nir_ssa_def *offset, nir
 	return build_per_vertex_offset(b, state, nir_imm_int(b, 0), offset, var);
 }
 
-static nir_ssa_def *
-build_tessfactor_base(nir_builder *b, gl_varying_slot slot, struct state *state)
+static void
+tess_level_components(struct state *state, uint32_t *inner, uint32_t *outer)
 {
-	uint32_t inner_levels, outer_levels;
 	switch (state->topology) {
 	case IR3_TESS_TRIANGLES:
-		inner_levels = 1;
-		outer_levels = 3;
+		*inner = 1;
+		*outer = 3;
 		break;
 	case IR3_TESS_QUADS:
-		inner_levels = 2;
-		outer_levels = 4;
+		*inner = 2;
+		*outer = 4;
 		break;
 	case IR3_TESS_ISOLINES:
-		inner_levels = 0;
-		outer_levels = 2;
+		*inner = 0;
+		*outer = 2;
 		break;
 	default:
 		unreachable("bad");
 	}
+}
+
+static nir_ssa_def *
+build_tessfactor_base(nir_builder *b, gl_varying_slot slot, struct state *state)
+{
+	uint32_t inner_levels, outer_levels;
+	tess_level_components(state, &inner_levels, &outer_levels);
 
 	const uint32_t patch_stride = 1 + inner_levels + outer_levels;
 
@@ -437,11 +447,7 @@ lower_tess_ctrl_block(nir_block *block, nir_builder *b, struct state *state)
 
 			b->cursor = nir_before_instr(&intr->instr);
 
-			/* nir_lower_io_to_temporaries replaces all access to output
-			 * variables with temp variables and then emits a nir_copy_var at
-			 * the end of the shader.  Thus, we should always get a full wrmask
-			 * here.
-			 */
+			/* sparse writemask not supported */
 			assert(util_is_power_of_two_nonzero(nir_intrinsic_write_mask(intr) + 1));
 
 			nir_ssa_def *value = intr->src[0].ssa;
@@ -456,23 +462,6 @@ lower_tess_ctrl_block(nir_block *block, nir_builder *b, struct state *state)
 			break;
 		}
 
-		case nir_intrinsic_load_tess_level_inner:
-		case nir_intrinsic_load_tess_level_outer: {
-			b->cursor = nir_before_instr(&intr->instr);
-
-			gl_varying_slot slot;
-			if (intr->intrinsic == nir_intrinsic_load_tess_level_inner)
-				slot = VARYING_SLOT_TESS_LEVEL_INNER;
-			else
-				slot = VARYING_SLOT_TESS_LEVEL_OUTER;
-
-			nir_ssa_def *address = nir_load_tess_factor_base_ir3(b);
-			nir_ssa_def *offset = build_tessfactor_base(b, slot, state);
-
-			replace_intrinsic(b, intr, nir_intrinsic_load_global_ir3, address, offset, NULL);
-			break;
-		}
-
 		case nir_intrinsic_load_output: {
 			// src[] = { offset }.
 
@@ -480,8 +469,21 @@ lower_tess_ctrl_block(nir_block *block, nir_builder *b, struct state *state)
 
 			b->cursor = nir_before_instr(&intr->instr);
 
-			nir_ssa_def *address = nir_load_tess_param_base_ir3(b);
-			nir_ssa_def *offset = build_patch_offset(b, state, intr->src[0].ssa, var);
+			nir_ssa_def *address, *offset;
+
+			/* note if vectorization of the tess level loads ever happens:
+			 * "ldg" across 16-byte boundaries can behave incorrectly if results
+			 * are never used. most likely some issue with (sy) not properly
+			 * syncing with values coming from a second memory transaction.
+			 */
+			if (is_tess_levels(var)) {
+				assert(intr->dest.ssa.num_components == 1);
+				address = nir_load_tess_factor_base_ir3(b);
+				offset = build_tessfactor_base(b, var->data.location, state);
+			} else {
+				address = nir_load_tess_param_base_ir3(b);
+				offset = build_patch_offset(b, state, intr->src[0].ssa, var);
+			}
 
 			replace_intrinsic(b, intr, nir_intrinsic_load_global_ir3, address, offset, NULL);
 			break;
@@ -494,34 +496,42 @@ lower_tess_ctrl_block(nir_block *block, nir_builder *b, struct state *state)
 
 			nir_variable *var = get_var(&b->shader->outputs, nir_intrinsic_base(intr));
 
-			nir_ssa_def **levels = NULL;
-			if (var->data.location == VARYING_SLOT_TESS_LEVEL_OUTER)
-				levels = state->outer_levels;
-			else if (var->data.location == VARYING_SLOT_TESS_LEVEL_INNER)
-				levels = state->inner_levels;
-
 			b->cursor = nir_before_instr(&intr->instr);
 
-			if (levels) {
-				for (int i = 0; i < 4; i++) {
-					if (nir_intrinsic_write_mask(intr) & (1 << i)) {
-						uint32_t component = nir_intrinsic_component(intr);
-						levels[i + component] = nir_channel(b, intr->src[0].ssa, i);
-					}
-				}
-				nir_instr_remove(&intr->instr);
+			/* sparse writemask not supported */
+			assert(util_is_power_of_two_nonzero(nir_intrinsic_write_mask(intr) + 1));
+
+			if (is_tess_levels(var)) {
+				/* with tess levels are defined as float[4] and float[2],
+				 * but tess factor BO has smaller sizes for tris/isolines,
+				 * so we have to discard any writes beyond the number of
+				 * components for inner/outer levels */
+				uint32_t inner_levels, outer_levels, levels;
+				tess_level_components(state, &inner_levels, &outer_levels);
+
+				if (var->data.location == VARYING_SLOT_TESS_LEVEL_OUTER)
+					levels = outer_levels;
+				else
+					levels = inner_levels;
+
+				assert(intr->src[0].ssa->num_components == 1);
+
+				nir_ssa_def *offset =
+					nir_iadd_imm(b, intr->src[1].ssa, nir_intrinsic_component(intr));
+
+				nir_if *nif = nir_push_if(b, nir_ult(b, offset, nir_imm_int(b, levels)));
+
+				replace_intrinsic(b, intr, nir_intrinsic_store_global_ir3,
+						intr->src[0].ssa,
+						nir_load_tess_factor_base_ir3(b),
+						nir_iadd(b, offset, build_tessfactor_base(b, var->data.location, state)));
+
+				nir_pop_if(b, nif);
 			} else {
 				nir_ssa_def *address = nir_load_tess_param_base_ir3(b);
 				nir_ssa_def *offset = build_patch_offset(b, state, intr->src[1].ssa, var);
 
 				debug_assert(nir_intrinsic_component(intr) == 0);
-
-				/* nir_lower_io_to_temporaries replaces all access to output
-				 * variables with temp variables and then emits a nir_copy_var at
-				 * the end of the shader.  Thus, we should always get a full wrmask
-				 * here.
-				 */
-				assert(util_is_power_of_two_nonzero(nir_intrinsic_write_mask(intr) + 1));
 
 				replace_intrinsic(b, intr, nir_intrinsic_store_global_ir3,
 						intr->src[0].ssa, address, offset);
@@ -538,57 +548,7 @@ lower_tess_ctrl_block(nir_block *block, nir_builder *b, struct state *state)
 static void
 emit_tess_epilouge(nir_builder *b, struct state *state)
 {
-	nir_ssa_def *tessfactor_address = nir_load_tess_factor_base_ir3(b);
-	nir_ssa_def *levels[2];
-
-	if (!state->outer_levels[0])
-		return;
-
-	/* Then emit the epilogue that actually writes out the tessellation levels
-	 * to the BOs.
-	 */
-	switch (state->topology) {
-	case IR3_TESS_TRIANGLES:
-		levels[0] = nir_vec4(b, state->outer_levels[0], state->outer_levels[1],
-				state->outer_levels[2], state->inner_levels[0]);
-		levels[1] = NULL;
-		break;
-	case IR3_TESS_QUADS:
-		levels[0] = nir_vec4(b, state->outer_levels[0], state->outer_levels[1],
-				state->outer_levels[2], state->outer_levels[3]);
-		levels[1] = nir_vec2(b, state->inner_levels[0], state->inner_levels[1]);
-		break;
-	case IR3_TESS_ISOLINES:
-		levels[0] = nir_vec2(b, state->outer_levels[0], state->outer_levels[1]);
-		levels[1] = NULL;
-		break;
-	default:
-		unreachable("nope");
-	}
-
-	nir_ssa_def *offset = build_tessfactor_base(b, VARYING_SLOT_TESS_LEVEL_OUTER, state);
-
-	nir_intrinsic_instr *store =
-		nir_intrinsic_instr_create(b->shader, nir_intrinsic_store_global_ir3);
-
-	store->src[0] = nir_src_for_ssa(levels[0]);
-	store->src[1] = nir_src_for_ssa(tessfactor_address);
-	store->src[2] = nir_src_for_ssa(offset);
-	nir_builder_instr_insert(b, &store->instr);
-	store->num_components = levels[0]->num_components;
-
-	if (levels[1]) {
-		store = nir_intrinsic_instr_create(b->shader, nir_intrinsic_store_global_ir3);
-		offset = nir_iadd(b, offset, nir_imm_int(b, levels[0]->num_components));
-
-		store->src[0] = nir_src_for_ssa(levels[1]);
-		store->src[1] = nir_src_for_ssa(tessfactor_address);
-		store->src[2] = nir_src_for_ssa(offset);
-		nir_builder_instr_insert(b, &store->instr);
-		store->num_components = levels[1]->num_components;
-	}
-
-	/* Finally, Insert endpatch instruction:
+	/* Insert endpatch instruction:
 	 *
 	 * TODO we should re-work this to use normal flow control.
 	 */
@@ -710,47 +670,6 @@ lower_tess_eval_block(nir_block *block, nir_builder *b, struct state *state)
 			break;
 		}
 
-		case nir_intrinsic_load_tess_level_inner:
-		case nir_intrinsic_load_tess_level_outer: {
-				unsigned dest_comp = nir_intrinsic_dest_components(intr);
-				b->cursor = nir_before_instr(&intr->instr);
-
-				gl_varying_slot slot;
-				if (intr->intrinsic == nir_intrinsic_load_tess_level_inner)
-					slot = VARYING_SLOT_TESS_LEVEL_INNER;
-				else
-					slot = VARYING_SLOT_TESS_LEVEL_OUTER;
-
-				nir_ssa_def *address = nir_load_tess_factor_base_ir3(b);
-				nir_ssa_def *offset = build_tessfactor_base(b, slot, state);
-
-				/* Loading across a vec4 (16b) memory boundary is problematic
-				 * if we don't use components from the second vec4.  The tess
-				 * levels aren't guaranteed to be vec4 aligned and we don't
-				 * know which levels are actually used, so we load each
-				 * component individually.
-				 */
-				nir_ssa_def *levels[4];
-				for (unsigned i = 0; i < dest_comp; i++) {
-					nir_intrinsic_instr *new_intr =
-						nir_intrinsic_instr_create(b->shader, nir_intrinsic_load_global_ir3);
-
-					new_intr->src[0] = nir_src_for_ssa(address);
-					new_intr->src[1] = nir_src_for_ssa(nir_iadd(b, offset, nir_imm_int(b, i)));
-					new_intr->num_components = 1;
-					nir_ssa_dest_init(&new_intr->instr, &new_intr->dest, 1, 32, NULL);
-					nir_builder_instr_insert(b, &new_intr->instr);
-					levels[i] = &new_intr->dest.ssa;
-				}
-
-				nir_ssa_def *v = nir_vec(b, levels, dest_comp);
-
-				nir_ssa_def_rewrite_uses(&intr->dest.ssa, nir_src_for_ssa(v));
-
-				nir_instr_remove(&intr->instr);
-				break;
-		}
-
 		case nir_intrinsic_load_input: {
 			// src[] = { offset }.
 
@@ -760,8 +679,23 @@ lower_tess_eval_block(nir_block *block, nir_builder *b, struct state *state)
 
 			b->cursor = nir_before_instr(&intr->instr);
 
-			nir_ssa_def *address = nir_load_tess_param_base_ir3(b);
-			nir_ssa_def *offset = build_patch_offset(b, state, intr->src[0].ssa, var);
+			nir_ssa_def *address, *offset;
+
+			/* note if vectorization of the tess level loads ever happens:
+			 * "ldg" across 16-byte boundaries can behave incorrectly if results
+			 * are never used. most likely some issue with (sy) not properly
+			 * syncing with values coming from a second memory transaction.
+			 */
+			if (is_tess_levels(var)) {
+				assert(intr->dest.ssa.num_components == 1);
+				address = nir_load_tess_factor_base_ir3(b);
+				offset = build_tessfactor_base(b, var->data.location, state);
+			} else {
+				address = nir_load_tess_param_base_ir3(b);
+				offset = build_patch_offset(b, state, intr->src[0].ssa, var);
+			}
+
+			offset = nir_iadd(b, offset, nir_imm_int(b, nir_intrinsic_component(intr)));
 
 			replace_intrinsic(b, intr, nir_intrinsic_load_global_ir3, address, offset, NULL);
 			break;

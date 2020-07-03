@@ -43,8 +43,6 @@ tu_spirv_to_nir(struct ir3_compiler *compiler,
    const struct spirv_to_nir_options spirv_options = {
       .frag_coord_is_sysval = true,
       .lower_ubo_ssbo_access_to_offsets = true,
-      .tess_levels_are_sysvals = true,
-      .lower_tess_levels_to_vec = true,
       .caps = {
          .transform_feedback = true,
          .tessellation = true,
