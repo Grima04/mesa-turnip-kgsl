@@ -312,6 +312,13 @@ panfrost_mfbd_set_zsbuf(
 
                 int stride = rsrc->slices[level].stride;
 
+                unsigned nr_samples = surf->nr_samples;
+
+                if (!nr_samples)
+                        nr_samples = surf->texture->nr_samples;
+
+                unsigned layer_stride = (nr_samples > 1) ? rsrc->slices[level].size0 : 0;
+
                 fb->mfbd_flags |= MALI_MFBD_EXTRA;
                 fbx->flags_hi |= MALI_EXTRA_PRESENT;
                 fbx->flags_lo |= MALI_EXTRA_ZS;
@@ -321,6 +328,7 @@ panfrost_mfbd_set_zsbuf(
                 if (rsrc->layout == MALI_TEXTURE_LINEAR) {
                         fbx->zs_block = MALI_BLOCK_LINEAR;
                         fbx->ds_linear.depth_stride = stride / 16;
+                        fbx->ds_linear.depth_layer_stride = layer_stride;
                 } else {
                         if (is_bifrost) {
                                 fbx->zs_block = MALI_BLOCK_UNKNOWN;
@@ -331,6 +339,7 @@ panfrost_mfbd_set_zsbuf(
                         }
 
                         fbx->ds_linear.depth_stride = stride;
+                        fbx->ds_linear.depth_layer_stride = layer_stride;
                 }
 
                 if (panfrost_is_z24s8_variant(surf->format)) {
@@ -347,9 +356,11 @@ panfrost_mfbd_set_zsbuf(
 
                         struct panfrost_resource *stencil = rsrc->separate_stencil;
                         struct panfrost_slice stencil_slice = stencil->slices[level];
+                        unsigned stencil_layer_stride = (nr_samples > 1) ? stencil_slice.size0 : 0;
 
                         fbx->ds_linear.stencil = panfrost_get_texture_address(stencil, level, first_layer, 0);
                         fbx->ds_linear.stencil_stride = stencil_slice.stride;
+                        fbx->ds_linear.stencil_layer_stride = stencil_layer_stride;
                 }
 
         } else {
