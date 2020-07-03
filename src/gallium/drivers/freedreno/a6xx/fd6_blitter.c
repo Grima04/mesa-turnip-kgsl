@@ -240,6 +240,9 @@ emit_blit_setup(struct fd_ringbuffer *ring,
 	bool is_srgb = util_format_is_srgb(pfmt);
 	enum a6xx_2d_ifmt ifmt = fd6_ifmt(fmt);
 
+	OUT_PKT7(ring, CP_SET_MARKER, 1);
+	OUT_RING(ring, A6XX_CP_SET_MARKER_0_MODE(RM6_BLIT2DSCALE));
+
 	if (is_srgb) {
 		assert(ifmt == R2D_UNORM8);
 		ifmt = R2D_UNORM8_SRGB;
@@ -337,9 +340,6 @@ emit_blit_buffer(struct fd_context *ctx, struct fd_ringbuffer *ring,
 
 	sshift = sbox->x & 0x3f;
 	dshift = dbox->x & 0x3f;
-
-	OUT_PKT7(ring, CP_SET_MARKER, 1);
-	OUT_RING(ring, A6XX_CP_SET_MARKER_0_MODE(RM6_BLIT2DSCALE));
 
 	emit_blit_setup(ring, PIPE_FORMAT_R8_UNORM, false, NULL);
 
@@ -535,9 +535,6 @@ emit_blit_or_clear_texture(struct fd_context *ctx, struct fd_ringbuffer *ring,
 	dst = fd_resource(info->dst.resource);
 
 	dfmt = fd6_pipe2color(info->dst.format);
-
-	OUT_PKT7(ring, CP_SET_MARKER, 1);
-	OUT_RING(ring, A6XX_CP_SET_MARKER_0_MODE(RM6_BLIT2DSCALE));
 
 	uint32_t nr_samples = fd_resource_nr_samples(&dst->base);
 
