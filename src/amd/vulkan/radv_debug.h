@@ -58,6 +58,7 @@ enum {
 	RADV_DEBUG_LLVM              = 1 << 27,
 	RADV_DEBUG_FORCE_COMPRESS    = 1 << 28,
 	RADV_DEBUG_HANG              = 1 << 29,
+	RADV_DEBUG_IMG               = 1 << 30,
 };
 
 enum {

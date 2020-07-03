@@ -1409,6 +1409,31 @@ radv_destroy_image(struct radv_device *device,
 	vk_free2(&device->vk.alloc, pAllocator, image);
 }
 
+static void
+radv_image_print_info(struct radv_device *device, struct radv_image *image)
+{
+	fprintf(stderr, "Image:\n");
+	fprintf(stderr, "  Info: size=%" PRIu64 ", alignment=%" PRIu32 ", "
+			"width=%" PRIu32 ", height=%" PRIu32 ", "
+			"offset=%" PRIu64 "\n",
+		image->size, image->alignment, image->info.width,
+		image->info.height, image->offset);
+	for (unsigned i = 0; i < image->plane_count; ++i) {
+		const struct radv_image_plane *plane = &image->planes[i];
+		const struct radeon_surf *surf = &plane->surface;
+		const struct vk_format_description *desc =
+			vk_format_description(plane->format);
+
+		fprintf(stderr,
+			"  Plane[%u]: vkformat=%s, offset=%" PRIu64 "\n",
+			i, desc->name, plane->offset);
+
+		ac_surface_print_info(stderr,
+				      &device->physical_device->rad_info,
+				      surf);
+	}
+}
+
 VkResult
 radv_image_create(VkDevice _device,
 		  const struct radv_image_create_info *create_info,
@@ -1503,6 +1528,10 @@ radv_image_create(VkDevice _device,
 			radv_destroy_image(device, alloc, image);
 			return vk_error(device->instance, VK_ERROR_OUT_OF_DEVICE_MEMORY);
 		}
+	}
+
+	if (device->instance->debug_flags & RADV_DEBUG_IMG) {
+		radv_image_print_info(device, image);
 	}
 
 	*pImage = radv_image_to_handle(image);

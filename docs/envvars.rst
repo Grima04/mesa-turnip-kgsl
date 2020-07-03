@@ -557,6 +557,8 @@ RADV driver environment variables
    ``hang``
       enable GPU hangs detection and dump a report to $HOME/radv_dumps_<pid>
       if a GPU hang is detected
+   ``img``
+      Print image info
    ``info``
       show GPU-related information
    ``metashaders``

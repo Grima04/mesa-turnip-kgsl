@@ -552,6 +552,7 @@ static const struct debug_control radv_debug_options[] = {
 	{"llvm", RADV_DEBUG_LLVM},
 	{"forcecompress", RADV_DEBUG_FORCE_COMPRESS},
 	{"hang", RADV_DEBUG_HANG},
+	{"img", RADV_DEBUG_IMG},
 	{NULL, 0}
 };
 
