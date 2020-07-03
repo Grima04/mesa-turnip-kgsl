@@ -40,6 +40,9 @@ struct ssa_result_range {
    /** A floating-point value that can only have integer values. */
    bool is_integral;
 
+   /** A floating-point value that cannot be NaN. */
+   bool is_a_number;
+
    /** Is the value known to be a finite number? */
    bool is_finite;
 };
