@@ -498,7 +498,7 @@ emit_blit_or_clear_texture(struct fd_context *ctx, struct fd_ringbuffer *ring,
 	const struct pipe_box *sbox = &info->src.box;
 	const struct pipe_box *dbox = &info->dst.box;
 	struct fd_resource *dst;
-	enum a6xx_format sfmt, dfmt;
+	enum a6xx_format dfmt;
 	int sx1, sy1, sx2, sy2;
 	int dx1, dy1, dx2, dy2;
 
@@ -514,7 +514,6 @@ emit_blit_or_clear_texture(struct fd_context *ctx, struct fd_ringbuffer *ring,
 
 	dst = fd_resource(info->dst.resource);
 
-	sfmt = fd6_pipe2color(info->src.format);
 	dfmt = fd6_pipe2color(info->dst.format);
 
 	OUT_PKT7(ring, CP_SET_MARKER, 1);
@@ -576,7 +575,6 @@ emit_blit_or_clear_texture(struct fd_context *ctx, struct fd_ringbuffer *ring,
 			OUT_RING(ring, _mesa_float_to_half(color->f[1]));
 			OUT_RING(ring, _mesa_float_to_half(color->f[2]));
 			OUT_RING(ring, _mesa_float_to_half(color->f[3]));
-			sfmt = FMT6_16_16_16_16_FLOAT;
 			break;
 		case R2D_FLOAT32:
 		case R2D_INT32:
@@ -602,22 +600,22 @@ emit_blit_or_clear_texture(struct fd_context *ctx, struct fd_ringbuffer *ring,
 	emit_blit_control(ring, info->dst.format, info->scissor_enable, color);
 
 	if (dfmt == FMT6_10_10_10_2_UNORM_DEST)
-		sfmt = FMT6_16_16_16_16_FLOAT;
+		dfmt = FMT6_16_16_16_16_FLOAT;
 
 	/* This register is probably badly named... it seems that it's
 	 * controlling the internal/accumulator format or something like
 	 * that. It's certainly not tied to only the src format.
 	 */
 	OUT_PKT4(ring, REG_A6XX_SP_2D_SRC_FORMAT, 1);
-	OUT_RING(ring, A6XX_SP_2D_SRC_FORMAT_COLOR_FORMAT(sfmt) |
-			COND(util_format_is_pure_sint(info->src.format),
+	OUT_RING(ring, A6XX_SP_2D_SRC_FORMAT_COLOR_FORMAT(dfmt) |
+			COND(util_format_is_pure_sint(info->dst.format),
 					A6XX_SP_2D_SRC_FORMAT_SINT) |
-			COND(util_format_is_pure_uint(info->src.format),
+			COND(util_format_is_pure_uint(info->dst.format),
 					A6XX_SP_2D_SRC_FORMAT_UINT) |
-			COND(util_format_is_snorm(info->src.format),
+			COND(util_format_is_snorm(info->dst.format),
 					A6XX_SP_2D_SRC_FORMAT_SINT |
 						A6XX_SP_2D_SRC_FORMAT_NORM) |
-			COND(util_format_is_unorm(info->src.format),
+			COND(util_format_is_unorm(info->dst.format),
 // TODO sometimes blob uses UINT+NORM but dEQP seems unhappy about that
 //						A6XX_SP_2D_SRC_FORMAT_UINT |
 					A6XX_SP_2D_SRC_FORMAT_NORM) |
