@@ -1784,12 +1784,12 @@ struct mali_framebuffer_extra  {
                         mali_ptr depth;
                         u32 depth_stride_zero : 4;
                         u32 depth_stride : 28;
-                        u32 zero1;
+                        u32 depth_layer_stride;
 
                         mali_ptr stencil;
                         u32 stencil_stride_zero : 4;
                         u32 stencil_stride : 28;
-                        u32 zero2;
+                        u32 stencil_layer_stride;
                 } ds_linear;
         };
 

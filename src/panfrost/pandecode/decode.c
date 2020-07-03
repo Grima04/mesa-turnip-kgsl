@@ -1273,30 +1273,29 @@ pandecode_mfbd_bfr(uint64_t gpu_va, int job_no, bool is_fragment, bool is_comput
                                 MEMORY_PROP_DIR(fbx->ds_linear, depth);
                                 pandecode_prop("depth_stride = %d",
                                                fbx->ds_linear.depth_stride);
-                        } else if (fbx->ds_linear.depth_stride) {
-                                pandecode_msg("XXX: depth stride zero tripped %d\n", fbx->ds_linear.depth_stride);
+                                pandecode_prop("depth_layer_stride = %d",
+                                               fbx->ds_linear.depth_layer_stride);
+                        } else if (fbx->ds_linear.depth_stride || fbx->ds_linear.depth_layer_stride) {
+                                pandecode_msg("XXX: depth stride zero tripped %d %d\n", fbx->ds_linear.depth_stride, fbx->ds_linear.depth_layer_stride);
                         }
 
                         if (fbx->ds_linear.stencil) {
                                 MEMORY_PROP_DIR(fbx->ds_linear, stencil);
                                 pandecode_prop("stencil_stride = %d",
                                                fbx->ds_linear.stencil_stride);
-                        } else if (fbx->ds_linear.stencil_stride) {
-                                pandecode_msg("XXX: stencil stride zero tripped %d\n", fbx->ds_linear.stencil_stride);
+                                pandecode_prop("stencil_layer_stride = %d",
+                                               fbx->ds_linear.stencil_layer_stride);
+                        } else if (fbx->ds_linear.stencil_stride || fbx->ds_linear.stencil_layer_stride) {
+                                pandecode_msg("XXX: stencil stride zero tripped %d %d\n", fbx->ds_linear.stencil_stride, fbx->ds_linear.stencil_layer_stride);
                         }
 
                         if (fbx->ds_linear.depth_stride_zero ||
-                            fbx->ds_linear.stencil_stride_zero ||
-                            fbx->ds_linear.zero1 || fbx->ds_linear.zero2) {
+                            fbx->ds_linear.stencil_stride_zero) {
                                 pandecode_msg("XXX: Depth/stencil zeros tripped\n");
                                 pandecode_prop("depth_stride_zero = 0x%x",
                                                fbx->ds_linear.depth_stride_zero);
                                 pandecode_prop("stencil_stride_zero = 0x%x",
                                                fbx->ds_linear.stencil_stride_zero);
-                                pandecode_prop("zero1 = 0x%" PRIx32,
-                                               fbx->ds_linear.zero1);
-                                pandecode_prop("zero2 = 0x%" PRIx32,
-                                               fbx->ds_linear.zero2);
                         }
 
                         pandecode_indent--;
