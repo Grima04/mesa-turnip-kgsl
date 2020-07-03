@@ -432,7 +432,7 @@ struct si_mmio_counter {
 };
 
 union si_mmio_counters {
-   struct {
+   struct si_mmio_counters_named {
       /* For global GPU load including SDMA. */
       struct si_mmio_counter gpu;
 
@@ -463,7 +463,8 @@ union si_mmio_counters {
       struct si_mmio_counter cp_dma;
       struct si_mmio_counter scratch_ram;
    } named;
-   unsigned array[0];
+
+   unsigned array[sizeof(struct si_mmio_counters_named) / sizeof(unsigned)];
 };
 
 struct si_memory_object {

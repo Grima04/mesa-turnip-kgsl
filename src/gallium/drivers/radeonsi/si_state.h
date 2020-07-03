@@ -176,7 +176,7 @@ struct si_vertex_elements {
 };
 
 union si_state {
-   struct {
+   struct si_state_named {
       struct si_state_blend *blend;
       struct si_state_rasterizer *rasterizer;
       struct si_state_dsa *dsa;
@@ -189,7 +189,7 @@ union si_state {
       struct si_pm4_state *vs;
       struct si_pm4_state *ps;
    } named;
-   struct si_pm4_state *array[0];
+   struct si_pm4_state *array[sizeof(struct si_state_named) / sizeof(struct si_pm4_state *)];
 };
 
 #define SI_STATE_IDX(name) (offsetof(union si_state, named.name) / sizeof(struct si_pm4_state *))
@@ -203,7 +203,7 @@ static inline unsigned si_states_that_always_roll_context(void)
 }
 
 union si_state_atoms {
-   struct {
+   struct si_atoms_s {
       /* The order matters. */
       struct si_atom render_cond;
       struct si_atom streamout_begin;
@@ -228,7 +228,7 @@ union si_state_atoms {
       struct si_atom window_rectangles;
       struct si_atom shader_query;
    } s;
-   struct si_atom array[0];
+   struct si_atom array[sizeof(struct si_atoms_s) / sizeof(struct si_atom)];
 };
 
 #define SI_ATOM_BIT(name) (1 << (offsetof(union si_state_atoms, s.name) / sizeof(struct si_atom)))
