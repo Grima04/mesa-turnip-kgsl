@@ -503,7 +503,8 @@ enumerate_devices(struct v3dv_instance *instance)
       } else if (devices[i]->available_nodes & 1 << DRM_NODE_PRIMARY) {
          char **compat = devices[i]->deviceinfo.platform->compatible;
          while (*compat) {
-            if (strncmp(*compat, "brcm,bcm2835-vc4", 16) == 0) {
+            if (strncmp(*compat, "brcm,bcm2711-vc5", 16) == 0 ||
+                strncmp(*compat, "brcm,bcm2835-vc4", 16) == 0 ) {
                vc4_idx = i;
                break;
             }
