@@ -232,8 +232,8 @@ emit_setup(struct fd_batch *batch)
 	OUT_RING(ring, fd6_context(batch->ctx)->magic.RB_CCU_CNTL_bypass);
 }
 
-static uint32_t
-emit_blit_control(struct fd_ringbuffer *ring,
+static void
+emit_blit_setup(struct fd_ringbuffer *ring,
 		enum pipe_format pfmt, bool scissor_enable, union pipe_color_union *color)
 {
 	enum a6xx_format fmt = fd6_pipe2color(pfmt);
@@ -256,6 +256,29 @@ emit_blit_control(struct fd_ringbuffer *ring,
 
 	OUT_PKT4(ring, REG_A6XX_GRAS_2D_BLIT_CNTL, 1);
 	OUT_RING(ring, blit_cntl);
+
+	if (fmt == FMT6_10_10_10_2_UNORM_DEST)
+		fmt = FMT6_16_16_16_16_FLOAT;
+
+	/* This register is probably badly named... it seems that it's
+	 * controlling the internal/accumulator format or something like
+	 * that. It's certainly not tied to only the src format.
+	 */
+	OUT_PKT4(ring, REG_A6XX_SP_2D_SRC_FORMAT, 1);
+	OUT_RING(ring, A6XX_SP_2D_SRC_FORMAT_COLOR_FORMAT(fmt) |
+			COND(util_format_is_pure_sint(pfmt),
+					A6XX_SP_2D_SRC_FORMAT_SINT) |
+			COND(util_format_is_pure_uint(pfmt),
+					A6XX_SP_2D_SRC_FORMAT_UINT) |
+			COND(util_format_is_snorm(pfmt),
+					A6XX_SP_2D_SRC_FORMAT_SINT |
+						A6XX_SP_2D_SRC_FORMAT_NORM) |
+			COND(util_format_is_unorm(pfmt),
+// TODO sometimes blob uses UINT+NORM but dEQP seems unhappy about that
+//						A6XX_SP_2D_SRC_FORMAT_UINT |
+					A6XX_SP_2D_SRC_FORMAT_NORM) |
+			COND(is_srgb, A6XX_SP_2D_SRC_FORMAT_SRGB) |
+			A6XX_SP_2D_SRC_FORMAT_MASK(0xf));
 }
 
 /* buffers need to be handled specially since x/width can exceed the bounds
@@ -318,7 +341,7 @@ emit_blit_buffer(struct fd_context *ctx, struct fd_ringbuffer *ring,
 	OUT_PKT7(ring, CP_SET_MARKER, 1);
 	OUT_RING(ring, A6XX_CP_SET_MARKER_0_MODE(RM6_BLIT2DSCALE));
 
-	emit_blit_control(ring, PIPE_FORMAT_R8_UNORM, false, NULL);
+	emit_blit_setup(ring, PIPE_FORMAT_R8_UNORM, false, NULL);
 
 	for (unsigned off = 0; off < sbox->width; off += (0x4000 - 0x40)) {
 		unsigned soff, doff, w, p;
@@ -385,9 +408,6 @@ emit_blit_buffer(struct fd_context *ctx, struct fd_ringbuffer *ring,
 
 		OUT_PKT4(ring, REG_A6XX_RB_UNKNOWN_8C01, 1);
 		OUT_RING(ring, 0);
-
-		OUT_PKT4(ring, REG_A6XX_SP_2D_SRC_FORMAT, 1);
-		OUT_RING(ring, 0xf180);
 
 		OUT_PKT4(ring, REG_A6XX_RB_UNKNOWN_8E04, 1);
 		OUT_RING(ring, fd6_context(ctx)->magic.RB_UNKNOWN_8E04_blit);
@@ -597,30 +617,7 @@ emit_blit_or_clear_texture(struct fd_context *ctx, struct fd_ringbuffer *ring,
 				 A6XX_GRAS_RESOLVE_CNTL_1_Y(info->scissor.maxy - 1));
 	}
 
-	emit_blit_control(ring, info->dst.format, info->scissor_enable, color);
-
-	if (dfmt == FMT6_10_10_10_2_UNORM_DEST)
-		dfmt = FMT6_16_16_16_16_FLOAT;
-
-	/* This register is probably badly named... it seems that it's
-	 * controlling the internal/accumulator format or something like
-	 * that. It's certainly not tied to only the src format.
-	 */
-	OUT_PKT4(ring, REG_A6XX_SP_2D_SRC_FORMAT, 1);
-	OUT_RING(ring, A6XX_SP_2D_SRC_FORMAT_COLOR_FORMAT(dfmt) |
-			COND(util_format_is_pure_sint(info->dst.format),
-					A6XX_SP_2D_SRC_FORMAT_SINT) |
-			COND(util_format_is_pure_uint(info->dst.format),
-					A6XX_SP_2D_SRC_FORMAT_UINT) |
-			COND(util_format_is_snorm(info->dst.format),
-					A6XX_SP_2D_SRC_FORMAT_SINT |
-						A6XX_SP_2D_SRC_FORMAT_NORM) |
-			COND(util_format_is_unorm(info->dst.format),
-// TODO sometimes blob uses UINT+NORM but dEQP seems unhappy about that
-//						A6XX_SP_2D_SRC_FORMAT_UINT |
-					A6XX_SP_2D_SRC_FORMAT_NORM) |
-			COND(util_format_is_srgb(info->dst.format), A6XX_SP_2D_SRC_FORMAT_SRGB) |
-			A6XX_SP_2D_SRC_FORMAT_MASK(0xf));
+	emit_blit_setup(ring, info->dst.format, info->scissor_enable, color);
 
 	for (unsigned i = 0; i < info->dst.box.depth; i++) {
 
