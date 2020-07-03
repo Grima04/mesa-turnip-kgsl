@@ -1757,6 +1757,19 @@ else
   dep_lmsensors = null_dep
 endif
 
+# If the compiler supports it, put function and data symbols in their
+# own sections and GC the sections after linking.  This lets drivers
+# drop shared code unused by that specific driver (particularly
+# relevant for Vulkan drivers).
+if cc.has_link_argument('-Wl,--gc-sections')
+  add_project_arguments('-Wl,--gc-sections', language : ['c', 'cpp'])
+  foreach a: ['-ffunction-sections', '-fdata-sections']
+    if cc.has_argument(a)
+      add_project_arguments(a, language : ['c', 'cpp'])
+    endif
+  endforeach
+endif
+
 foreach a : pre_args
   add_project_arguments(a, language : ['c', 'cpp'])
 endforeach
