@@ -23,13 +23,19 @@ if [[ "$DEBIAN_ARCH" = "arm64" ]]; then
     DEFCONFIG="arch/arm64/configs/defconfig"
     DEVICE_TREES="arch/arm64/boot/dts/rockchip/rk3399-gru-kevin.dtb arch/arm64/boot/dts/amlogic/meson-gxl-s905x-libretech-cc.dtb arch/arm64/boot/dts/allwinner/sun50i-h6-pine-h64.dtb arch/arm64/boot/dts/amlogic/meson-gxm-khadas-vim2.dtb arch/arm64/boot/dts/qcom/apq8016-sbc.dtb"
     KERNEL_IMAGE_NAME="Image"
-else
+elif [[ "$DEBIAN_ARCH" = "armhf" ]]; then
     GCC_ARCH="arm-linux-gnueabihf"
     KERNEL_ARCH="arm"
     DEFCONFIG="arch/arm/configs/multi_v7_defconfig"
     DEVICE_TREES="arch/arm/boot/dts/rk3288-veyron-jaq.dtb arch/arm/boot/dts/sun8i-h3-libretech-all-h3-cc.dtb"
     KERNEL_IMAGE_NAME="zImage"
     . .gitlab-ci/create-cross-file.sh armhf
+else
+    GCC_ARCH="x86_64-linux-gnu"
+    KERNEL_ARCH="x86_64"
+    DEFCONFIG="arch/x86/configs/x86_64_defconfig"
+    DEVICE_TREES=""
+    KERNEL_IMAGE_NAME="bzImage"
 fi
 
 # Determine if we're in a cross build.
@@ -117,16 +123,27 @@ mv /renderdoc/build /lava-files/rootfs-${DEBIAN_ARCH}/renderdoc
 rm -rf /renderdoc
 
 
+############### Build libdrm
+EXTRA_MESON_ARGS+=" -D prefix=/libdrm"
+. .gitlab-ci/build-libdrm.sh
+mkdir -p /lava-files/rootfs-${DEBIAN_ARCH}/usr/lib/$GCC_ARCH
+find /libdrm/ -name lib\*\.so\* | xargs cp -t /lava-files/rootfs-${DEBIAN_ARCH}/usr/lib/$GCC_ARCH/.
+rm -rf /libdrm
+
+
 ############### Cross-build kernel
 mkdir -p kernel
 wget -qO- ${KERNEL_URL} | tar -xz --strip-components=1 -C kernel
 pushd kernel
 ./scripts/kconfig/merge_config.sh ${DEFCONFIG} ../.gitlab-ci/${KERNEL_ARCH}.config
-make ${KERNEL_IMAGE_NAME} dtbs
+make ${KERNEL_IMAGE_NAME}
 for image in ${KERNEL_IMAGE_NAME}; do
     cp arch/${KERNEL_ARCH}/boot/${image} /lava-files/.
 done
-cp ${DEVICE_TREES} /lava-files/.
+if [[ -n ${DEVICE_TREES} ]]; then
+    make dtbs
+    cp ${DEVICE_TREES} /lava-files/.
+fi
 
 if [[ ${DEBIAN_ARCH} = "arm64" ]] && which mkimage > /dev/null; then
     make Image.lzma
@@ -157,8 +174,11 @@ cat /lava-files/rootfs-${DEBIAN_ARCH}/debootstrap/debootstrap.log
 set -e
 
 cp .gitlab-ci/create-rootfs.sh /lava-files/rootfs-${DEBIAN_ARCH}/.
+cp .gitlab-ci/container/llvm-snapshot.gpg.key /lava-files/rootfs-${DEBIAN_ARCH}/.
 chroot /lava-files/rootfs-${DEBIAN_ARCH} sh /create-rootfs.sh
 rm /lava-files/rootfs-${DEBIAN_ARCH}/create-rootfs.sh
+rm /lava-files/rootfs-${DEBIAN_ARCH}/llvm-snapshot.gpg.key
+du -ah /lava-files/rootfs-${DEBIAN_ARCH} | sort -h | tail -100
 pushd /lava-files/rootfs-${DEBIAN_ARCH}
   find -H  |  cpio -H newc -o | gzip -c - > /lava-files/lava-rootfs.cpio.gz
 popd
@@ -203,8 +223,11 @@ fi
 if [ -n "$UPLOAD_FOR_LAVA" ]; then
     ci-fairy minio login $CI_JOB_JWT
     FILES_TO_UPLOAD="lava-rootfs.cpio.gz \
-                     $KERNEL_IMAGE_NAME \
-                     $(basename -a $DEVICE_TREES)"
+                     $KERNEL_IMAGE_NAME"
+
+    if [[ -n $DEVICE_TREES ]]; then
+        FILES_TO_UPLOAD="$FILES_TO_UPLOAD $(basename -a $DEVICE_TREES)"
+    fi
 
     for f in $FILES_TO_UPLOAD; do
         ci-fairy minio cp /lava-files/$f \

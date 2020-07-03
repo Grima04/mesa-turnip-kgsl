@@ -61,7 +61,9 @@ apt-get install -y --no-remove \
         python-mako \
         python3-mako \
         python3-pil \
+        python3-pip \
         python3-requests \
+        python3-setuptools \
         qemu-user \
         scons \
         wine64-development \
@@ -90,7 +92,6 @@ rm bin/glslangValidator glslang-master-linux-Release.zip
 
 apt-get purge -y \
         gnupg \
-        unzip \
-        wget
+        unzip
 
 . .gitlab-ci/container/container_post_build.sh

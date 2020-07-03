@@ -30,6 +30,7 @@ stages:
   - radv
   - lima
   - virgl
+  - radeonsi
   - success
 
 # Generic rule to not run the job during scheduled pipelines
@@ -203,7 +204,7 @@ x86_build-base:
     - .fdo.container-build@debian
     - .container
   variables:
-    FDO_DISTRIBUTION_TAG: &x86_build-base "2020-07-28-libdrm"
+    FDO_DISTRIBUTION_TAG: &x86_build-base "2020-07-28-x86-2"
 
 .use-x86_build-base:
   extends:
@@ -221,7 +222,7 @@ x86_build:
   extends:
     - .use-x86_build-base
   variables:
-    FDO_DISTRIBUTION_TAG: &x86_build "2020-07-28-libdrm-2"
+    FDO_DISTRIBUTION_TAG: &x86_build "2020-07-28-x86-2"
 
 .use-x86_build:
   variables:
@@ -235,7 +236,7 @@ i386_build:
   extends:
     - .use-x86_build-base
   variables:
-    FDO_DISTRIBUTION_TAG: &i386_build "2020-07-28-libdrm"
+    FDO_DISTRIBUTION_TAG: &i386_build "2020-07-28-x86-2"
 
 .use-i386_build:
   variables:
@@ -249,7 +250,7 @@ ppc64el_build:
   extends:
     - .use-x86_build-base
   variables:
-    FDO_DISTRIBUTION_TAG: &ppc64el_build "2020-07-28-libdrm"
+    FDO_DISTRIBUTION_TAG: &ppc64el_build "2020-07-28-x86-2"
 
 .use-ppc64el_build:
   variables:
@@ -263,7 +264,7 @@ s390x_build:
   extends:
     - .use-x86_build-base
   variables:
-    FDO_DISTRIBUTION_TAG: &s390x_build "2020-07-28-libdrm"
+    FDO_DISTRIBUTION_TAG: &s390x_build "2020-07-28-x86-2"
 
 .use-s390x_build:
   variables:
@@ -276,7 +277,7 @@ s390x_build:
 x86_test-base:
   extends: x86_build-base
   variables:
-    FDO_DISTRIBUTION_TAG: &x86_test-base "2020-07-28-libdrm"
+    FDO_DISTRIBUTION_TAG: &x86_test-base "2020-07-28-x86-2"
 
 .use-x86_test-base:
   extends:
@@ -293,19 +294,19 @@ x86_test-base:
 x86_test-gl:
   extends: .use-x86_test-base
   variables:
-    FDO_DISTRIBUTION_TAG: &x86_test-gl "2020-07-28-libdrm"
+    FDO_DISTRIBUTION_TAG: &x86_test-gl "2020-07-28-x86-2"
 
 # Debian 10 based x86 test image for VK
 x86_test-vk:
   extends: .use-x86_test-base
   variables:
-    FDO_DISTRIBUTION_TAG: &x86_test-vk "2020-07-28-libdrm"
+    FDO_DISTRIBUTION_TAG: &x86_test-vk "2020-07-28-x86-2"
 
 # Debian 9 based x86 build image (old LLVM)
 x86_build_old:
   extends: x86_build-base
   variables:
-    FDO_DISTRIBUTION_TAG: &x86_build_old "2020-07-28-libdrm"
+    FDO_DISTRIBUTION_TAG: &x86_build_old "2020-07-28-x86-2"
     FDO_DISTRIBUTION_VERSION: stretch-slim
 
 .use-x86_build_old:
@@ -518,11 +519,13 @@ meson-testing:
       -D platforms=x11
     GALLIUM_ST: >
       -D dri3=enabled
-    GALLIUM_DRIVERS: "swrast,virgl"
+    GALLIUM_DRIVERS: "swrast,virgl,radeonsi"
     VULKAN_DRIVERS: amd
     BUILDTYPE: "debugoptimized"
     EXTRA_OPTION: >
       -D werror=true
+    UPLOAD_FOR_LAVA: 1
+    DEBIAN_ARCH: amd64
   script:
     - .gitlab-ci/meson-build.sh
     - .gitlab-ci/prepare-artifacts.sh

@@ -30,8 +30,10 @@ actions:
     ramdisk:
       url: {{ base_artifacts_url }}/lava-rootfs.cpio.gz
       compression: gz
+{% if dtb %}
     dtb:
-      url: {{ base_artifacts_url }}/{{ device_type }}.dtb
+      url: {{ base_artifacts_url }}/{{ dtb }}.dtb
+{% endif %}
     os: oe
 - boot:
     timeout:

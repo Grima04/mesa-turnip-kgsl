@@ -1,5 +1,5 @@
 variables:
-  DISTRIBUTION_TAG: "2020-07-28"
+  DISTRIBUTION_TAG: "2020-07-28-x86"
 
 .kernel+rootfs:
   stage: container-2
@@ -10,7 +10,15 @@ variables:
     KERNEL_URL: "https://gitlab.freedesktop.org/tomeu/linux/-/archive/v5.5-panfrost-fixes/linux-v5.5-panfrost-fixes.tar.gz"
     UPLOAD_FOR_LAVA: 1
   script:
-    - .gitlab-ci/container/lava_arm.sh
+    - .gitlab-ci/container/lava_build.sh
+
+kernel+rootfs_amd64:
+  extends:
+    - .use-x86_build-base
+    - .kernel+rootfs
+  image: "$CI_REGISTRY_IMAGE/debian/x86_build-base:$BASE_TAG"
+  variables:
+    DEBIAN_ARCH: "amd64"
 
 kernel+rootfs_arm64:
   extends:
@@ -54,6 +62,7 @@ kernel+rootfs_armhf:
         --base-artifacts-url ${ARTIFACTS_URL} \
         --mesa-url ${MESA_URL} \
         --device-type ${DEVICE_TYPE} \
+        --dtb ${DTB} \
         --env-vars "${ENV_VARS} ${FIXED_ENV_VARS}" \
         --deqp-version ${DEQP_VERSION} \
         --kernel-image-name ${KERNEL_IMAGE_NAME} \
@@ -108,6 +117,26 @@ kernel+rootfs_armhf:
     - kernel+rootfs_arm64
     - meson-arm64
 
+.lava-test:amd64:
+  variables:
+    ARCH: amd64
+    KERNEL_IMAGE_NAME: bzImage
+    KERNEL_IMAGE_TYPE: "type:\ zimage"
+    BOOT_METHOD: u-boot
+    TEST_SUITE: "deqp"
+  extends:
+    - .lava-test
+    - .use-arm_build
+  needs:
+    - kernel+rootfs_amd64
+    - meson-testing
+
+.lava-traces:amd64:
+  variables:
+    TEST_SUITE: "tracie"
+  extends:
+    - .lava-test:amd64
+
 .lava-traces:armhf:
   variables:
     TEST_SUITE: "tracie"
@@ -126,6 +155,7 @@ panfrost-t720-gles2:arm64:
     - .panfrost-rules
   variables:
     DEVICE_TYPE: sun50i-h6-pine-h64
+    DTB: ${DEVICE_TYPE}
     GPU_VERSION: panfrost-t720
     ENV_VARS: "PAN_MESA_DEBUG=gles3 DEQP_PARALLEL=6 DEQP_EXPECTED_RENDERER=T720"
   tags:
@@ -137,6 +167,7 @@ panfrost-t760-gles2:armhf:
     - .panfrost-rules
   variables:
     DEVICE_TYPE: rk3288-veyron-jaq
+    DTB: ${DEVICE_TYPE}
     GPU_VERSION: panfrost-t760
     BOOT_METHOD: depthcharge
     KERNEL_IMAGE_TYPE: ""
@@ -150,6 +181,7 @@ panfrost-t760-gles2:armhf:
     - .panfrost-rules
   variables:
     DEVICE_TYPE: rk3288-veyron-jaq
+    DTB: ${DEVICE_TYPE}
     GPU_VERSION: panfrost-t760
     BOOT_METHOD: depthcharge
     KERNEL_IMAGE_TYPE: ""
@@ -162,6 +194,7 @@ panfrost-t760-gles2:armhf:
     - .panfrost-rules
   variables:
     DEVICE_TYPE: rk3399-gru-kevin
+    DTB: ${DEVICE_TYPE}
     GPU_VERSION: panfrost-t860
     BOOT_METHOD: depthcharge
     KERNEL_IMAGE_TYPE: ""
@@ -197,6 +230,7 @@ panfrost-t860-traces:arm64:
     - .panfrost-rules
   variables:
     DEVICE_TYPE: meson-gxm-khadas-vim2
+    DTB: ${DEVICE_TYPE}
     GPU_VERSION: panfrost-t820
     LAVA_TAGS: panfrost
     ENV_VARS: "PAN_MESA_DEBUG=gles3 DEQP_PARALLEL=6 DEQP_EXPECTED_RENDERER=T820"
@@ -210,6 +244,7 @@ panfrost-t860-traces:arm64:
     - .lima-rules
   variables:
     DEVICE_TYPE: sun8i-h3-libretech-all-h3-cc
+    DTB: ${DEVICE_TYPE}
     GPU_VERSION: lima
     ENV_VARS: "DEQP_PARALLEL=3 DEQP_EXPECTED_RENDERER=Mali400"
   tags:
@@ -221,7 +256,45 @@ panfrost-t860-traces:arm64:
     - .lima-rules
   variables:
     DEVICE_TYPE: meson-gxl-s905x-libretech-cc
+    DTB: ${DEVICE_TYPE}
     GPU_VERSION: lima
     ENV_VARS: "DEQP_PARALLEL=6 DEQP_EXPECTED_RENDERER=Mali450"
   tags:
     - mesa-ci-aarch64-lava-baylibre
+
+# Commented out while waiting for more DUTs to come online
+.radeonsi-stoney-gles2:amd64:
+  extends:
+    - .lava-test:amd64
+    - .radeonsi-rules
+  variables:
+    DEVICE_TYPE: hp-11A-G6-EE-grunt
+    DTB: ""
+    GPU_VERSION: radeonsi-stoney
+    BOOT_METHOD: depthcharge
+    KERNEL_IMAGE_TYPE: ""
+    ENV_VARS: "DEQP_PARALLEL=4 DEQP_EXPECTED_RENDERER=STONEY NIR_VALIDATE=0"
+  tags:
+    - mesa-ci-aarch64-lava-collabora
+
+# Commented out while waiting for more DUTs to come online
+.radeonsi-stoney-gles3:amd64:
+  extends:
+    - .radeonsi-stoney-gles2:amd64
+  variables:
+    DEQP_VERSION: gles3
+  tags:
+    - mesa-ci-aarch64-lava-collabora
+
+radeonsi-stoney-traces:amd64:
+  extends:
+    - .lava-traces:amd64
+    - .radeonsi-rules
+  variables:
+    DEVICE_TYPE: hp-11A-G6-EE-grunt
+    DTB: ""
+    GPU_VERSION: radeonsi-stoney
+    BOOT_METHOD: depthcharge
+    KERNEL_IMAGE_TYPE: ""
+  tags:
+    - mesa-ci-aarch64-lava-collabora

@@ -2,6 +2,27 @@
 
 set -ex
 
+if [ $DEBIAN_ARCH = arm64 ]; then
+    ARCH_PACKAGES="firmware-qcom-media"
+elif [ $DEBIAN_ARCH = amd64 ]; then
+    # Upstream LLVM package repository
+    apt-get -y install --no-install-recommends gnupg ca-certificates
+    apt-key add /llvm-snapshot.gpg.key
+    echo "deb https://apt.llvm.org/buster/ llvm-toolchain-buster-9 main" >/etc/apt/sources.list.d/llvm9.list
+    apt-get update
+
+    ARCH_PACKAGES="libelf1
+                   libllvm9
+                   libxcb-dri2-0
+                   libxcb-dri3-0
+                   libxcb-present0
+                   libxcb-sync1
+                   libxcb-xfixes0
+                   libxshmfence1
+                   firmware-amd-graphics
+                  "
+fi
+
 apt-get -y install --no-install-recommends \
     ca-certificates \
     curl \
@@ -12,7 +33,7 @@ apt-get -y install --no-install-recommends \
     libexpat1 \
     libx11-6 \
     libx11-xcb1 \
-    firmware-qcom-media \
+    $ARCH_PACKAGES \
     netcat-openbsd \
     python3 \
     libpython3.7 \
@@ -57,7 +78,8 @@ cp /usr/share/zoneinfo/Etc/UTC /etc/localtime
 
 UNNEEDED_PACKAGES="libfdisk1
                    tzdata
-                   diffutils"
+                   diffutils
+                   gnupg"
 
 export DEBIAN_FRONTEND=noninteractive
 

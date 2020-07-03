@@ -170,3 +170,19 @@
       - src/gallium/winsys/virgl/**/*
       when: on_success
     - when: never
+
+.radeonsi-rules:
+  stage: radeonsi
+  rules:
+    - changes:
+        *mesa_core_file_list
+      when: on_success
+    - changes:
+        *gallium_core_file_list
+      when: on_success
+    - changes:
+      - src/gallium/drivers/radeonsi/**/*
+      - src/gallium/winsys/amdgpu/**/*
+      - src/amd/**/*
+      when: on_success
+    - when: never

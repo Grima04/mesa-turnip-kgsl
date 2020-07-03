@@ -51,7 +51,7 @@ mkdir /var/cache/apt/archives/$arch
 ############### Create rootfs
 KERNEL_URL=https://gitlab.freedesktop.org/drm/msm/-/archive/drm-msm-fixes-2020-06-25/msm-drm-msm-fixes-2020-06-25.tar.gz
 
-DEBIAN_ARCH=$arch INCLUDE_VK_CTS=1 . .gitlab-ci/container/lava_arm.sh
+DEBIAN_ARCH=$arch INCLUDE_VK_CTS=1 . .gitlab-ci/container/lava_build.sh
 
 ############### Store traces
 # Clone the traces-db at container build time so we don't have to pull traces
