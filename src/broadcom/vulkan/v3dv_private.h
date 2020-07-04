@@ -261,6 +261,13 @@ struct v3dv_meta_blit_pipeline {
 
 #define V3DV_META_BLIT_CACHE_KEY_SIZE (3 * sizeof(uint32_t))
 
+struct v3dv_pipeline_cache {
+   VK_LOADER_DATA _loader_data;
+
+   struct v3dv_device *device;
+   mtx_t mutex;
+};
+
 struct v3dv_device {
    VK_LOADER_DATA _loader_data;
 
@@ -1782,6 +1789,7 @@ V3DV_DEFINE_NONDISP_HANDLE_CASTS(v3dv_framebuffer, VkFramebuffer)
 V3DV_DEFINE_NONDISP_HANDLE_CASTS(v3dv_image, VkImage)
 V3DV_DEFINE_NONDISP_HANDLE_CASTS(v3dv_image_view, VkImageView)
 V3DV_DEFINE_NONDISP_HANDLE_CASTS(v3dv_pipeline, VkPipeline)
+V3DV_DEFINE_NONDISP_HANDLE_CASTS(v3dv_pipeline_cache, VkPipelineCache)
 V3DV_DEFINE_NONDISP_HANDLE_CASTS(v3dv_pipeline_layout, VkPipelineLayout)
 V3DV_DEFINE_NONDISP_HANDLE_CASTS(v3dv_query_pool, VkQueryPool)
 V3DV_DEFINE_NONDISP_HANDLE_CASTS(v3dv_render_pass, VkRenderPass)
