@@ -860,9 +860,8 @@ static void visit_alu(struct ac_nir_context *ctx, const nir_alu_instr *instr)
 		                              ac_to_float_type(&ctx->ac, def_type),src[0]);
 		break;
 	case nir_op_ffract:
-		src[0] = ac_to_float(&ctx->ac, src[0]);
-		result = ac_build_fract(&ctx->ac, src[0],
-					instr->dest.dest.ssa.bit_size);
+		result = emit_intrin_1f_param_scalar(&ctx->ac, "llvm.amdgcn.fract",
+						     ac_to_float_type(&ctx->ac, def_type), src[0]);
 		break;
 	case nir_op_fsin:
 		result = emit_intrin_1f_param(&ctx->ac, "llvm.sin",
