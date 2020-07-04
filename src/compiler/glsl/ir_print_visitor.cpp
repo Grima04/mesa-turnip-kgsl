@@ -30,8 +30,6 @@
 #include "util/u_string.h"
 #include "util/half_float.h"
 
-static void print_type(FILE *f, const glsl_type *t);
-
 void
 ir_instruction::print(void) const
 {
@@ -61,7 +59,7 @@ _mesa_print_ir(FILE *f, exec_list *instructions,
 
 	 for (unsigned j = 0; j < s->length; j++) {
 	    fprintf(f, "\t((");
-	    print_type(f, s->fields.structure[j].type);
+	    ir_print_type(f, s->fields.structure[j].type);
 	    fprintf(f, ")(%s))\n", s->fields.structure[j].name);
 	 }
 
@@ -143,12 +141,12 @@ ir_print_visitor::unique_name(ir_variable *var)
    return name;
 }
 
-static void
-print_type(FILE *f, const glsl_type *t)
+extern "C" void
+ir_print_type(FILE *f, const glsl_type *t)
 {
    if (t->is_array()) {
       fprintf(f, "(array ");
-      print_type(f, t->fields.array);
+      ir_print_type(f, t->fields.array);
       fprintf(f, " %u)", t->length);
    } else if (t->is_struct() && !is_gl_identifier(t->name)) {
       fprintf(f, "%s@%p", t->name, (void *) t);
@@ -225,7 +223,7 @@ void ir_print_visitor::visit(ir_variable *ir)
            stream,
            interp[ir->data.interpolation]);
 
-   print_type(f, ir->type);
+   ir_print_type(f, ir->type);
    fprintf(f, " %s)", unique_name(ir));
 }
 
@@ -236,7 +234,7 @@ void ir_print_visitor::visit(ir_function_signature *ir)
    fprintf(f, "(signature ");
    indentation++;
 
-   print_type(f, ir->return_type);
+   ir_print_type(f, ir->return_type);
    fprintf(f, "\n");
    indent();
 
@@ -290,7 +288,7 @@ void ir_print_visitor::visit(ir_expression *ir)
 {
    fprintf(f, "(expression ");
 
-   print_type(f, ir->type);
+   ir_print_type(f, ir->type);
 
    fprintf(f, " %s ", ir_expression_operation_strings[ir->operation]);
 
@@ -314,7 +312,7 @@ void ir_print_visitor::visit(ir_texture *ir)
       return;
    }
 
-   print_type(f, ir->type);
+   ir_print_type(f, ir->type);
    fprintf(f, " ");
 
    ir->sampler->accept(this);
@@ -478,7 +476,7 @@ print_float_constant(FILE *f, float val)
 void ir_print_visitor::visit(ir_constant *ir)
 {
    fprintf(f, "(constant ");
-   print_type(f, ir->type);
+   ir_print_type(f, ir->type);
    fprintf(f, " (");
 
    if (ir->type->is_array()) {
