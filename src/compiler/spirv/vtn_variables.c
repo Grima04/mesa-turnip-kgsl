@@ -1354,22 +1354,10 @@ vtn_get_builtin_location(struct vtn_builder *b,
          vtn_fail("invalid stage for SpvBuiltInViewportIndex");
       break;
    case SpvBuiltInTessLevelOuter:
-      if (b->options && b->options->tess_levels_are_sysvals &&
-          *mode == nir_var_shader_in) {
-         *location = SYSTEM_VALUE_TESS_LEVEL_OUTER;
-         set_mode_system_value(b, mode);
-      } else {
-         *location = VARYING_SLOT_TESS_LEVEL_OUTER;
-      }
+      *location = VARYING_SLOT_TESS_LEVEL_OUTER;
       break;
    case SpvBuiltInTessLevelInner:
-      if (b->options && b->options->tess_levels_are_sysvals &&
-          *mode == nir_var_shader_in) {
-         *location = SYSTEM_VALUE_TESS_LEVEL_INNER;
-         set_mode_system_value(b, mode);
-      } else {
-         *location = VARYING_SLOT_TESS_LEVEL_INNER;
-      }
+      *location = VARYING_SLOT_TESS_LEVEL_INNER;
       break;
    case SpvBuiltInTessCoord:
       *location = SYSTEM_VALUE_TESS_COORD;
