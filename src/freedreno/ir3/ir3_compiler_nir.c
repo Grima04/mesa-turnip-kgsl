@@ -3023,6 +3023,9 @@ setup_input(struct ir3_context *ctx, nir_variable *in)
 	} else if (ctx->so->type == MESA_SHADER_VERTEX) {
 		struct ir3_instruction *input = NULL;
 		struct ir3_instruction *components[4];
+		/* input as setup as frac=0 with "ncomp + frac" components,
+		 * this avoids getting a sparse writemask
+		 */
 		unsigned mask = (1 << (ncomp + frac)) - 1;
 
 		foreach_input (in, ctx->ir) {
@@ -3043,20 +3046,16 @@ setup_input(struct ir3_context *ctx, nir_variable *in)
 			 * If the new input that aliases a previously processed input
 			 * sets no new bits, then just bail as there is nothing to see
 			 * here.
-			 *
-			 * Note that we don't expect to get an input w/ frac!=0, if we
-			 * did we'd have to adjust ncomp and frac to cover the entire
-			 * merged input.
 			 */
 			if (!(mask & ~input->regs[0]->wrmask))
 				return;
 			input->regs[0]->wrmask |= mask;
 		}
 
-		ir3_split_dest(ctx->block, components, input, frac, ncomp);
+		ir3_split_dest(ctx->block, components, input, 0, ncomp + frac);
 
-		for (int i = 0; i < ncomp; i++) {
-			unsigned idx = (n * 4) + i + frac;
+		for (int i = 0; i < ncomp + frac; i++) {
+			unsigned idx = (n * 4) + i;
 			compile_assert(ctx, idx < ctx->ninputs);
 
 			/* With aliased inputs, since we add to the wrmask above, we
@@ -3083,6 +3082,9 @@ setup_input(struct ir3_context *ctx, nir_variable *in)
 		ir3_context_error(ctx, "unknown shader type: %d\n", ctx->so->type);
 	}
 
+	/* note: this can be wrong for sparse vertex inputs, this happens with
+	 * vulkan, only a3xx/a4xx use this value for VS, so it shouldn't matter
+	 */
 	if (so->inputs[n].bary || (ctx->so->type == MESA_SHADER_VERTEX)) {
 		so->total_in += ncomp;
 	}
