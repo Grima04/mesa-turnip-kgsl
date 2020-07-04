@@ -286,8 +286,6 @@ static LLVMValueRef emit_bcsel(struct ac_llvm_context *ctx,
 	LLVMTypeRef src1_type = LLVMTypeOf(src1);
 	LLVMTypeRef src2_type = LLVMTypeOf(src2);
 
-	assert(LLVMGetTypeKind(LLVMTypeOf(src0)) != LLVMVectorTypeKind);
-
 	if (LLVMGetTypeKind(src1_type) == LLVMPointerTypeKind &&
 	    LLVMGetTypeKind(src2_type) != LLVMPointerTypeKind) {
 		src2 = LLVMBuildIntToPtr(ctx->builder, src2, src1_type, "");
@@ -297,7 +295,7 @@ static LLVMValueRef emit_bcsel(struct ac_llvm_context *ctx,
 	}
 
 	LLVMValueRef v = LLVMBuildICmp(ctx->builder, LLVMIntNE, src0,
-				       ctx->i32_0, "");
+				       LLVMConstNull(LLVMTypeOf(src0)), "");
 	return LLVMBuildSelect(ctx->builder, v,
 			       ac_to_integer_or_pointer(ctx, src1),
 			       ac_to_integer_or_pointer(ctx, src2), "");
