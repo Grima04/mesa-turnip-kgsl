@@ -843,6 +843,9 @@ emit_alu(bi_context *ctx, nir_alu_instr *instr)
         case nir_op_ixor:
                 alu.op.bitwise = BI_BITWISE_XOR;
                 break;
+        case nir_op_f2i32:
+                alu.roundmode = BIFROST_RTZ;
+                break;
 
         case nir_op_f2f16:
         case nir_op_i2i16:
