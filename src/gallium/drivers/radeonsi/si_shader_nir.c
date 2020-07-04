@@ -743,28 +743,32 @@ static void si_nir_opts(struct nir_shader *nir)
 {
    bool progress;
 
+   NIR_PASS_V(nir, nir_lower_vars_to_ssa);
+   NIR_PASS_V(nir, nir_lower_alu_to_scalar, NULL, NULL);
+   NIR_PASS_V(nir, nir_lower_phis_to_scalar);
+
    do {
       progress = false;
-
-      NIR_PASS_V(nir, nir_lower_vars_to_ssa);
+      bool lower_alu_to_scalar = false;
+      bool lower_phis_to_scalar = false;
 
       NIR_PASS(progress, nir, nir_opt_copy_prop_vars);
       NIR_PASS(progress, nir, nir_opt_dead_write_vars);
 
-      NIR_PASS_V(nir, nir_lower_alu_to_scalar, NULL, NULL);
-      NIR_PASS_V(nir, nir_lower_phis_to_scalar);
-
+      NIR_PASS(lower_alu_to_scalar, nir, nir_opt_trivial_continues);
       /* (Constant) copy propagation is needed for txf with offsets. */
       NIR_PASS(progress, nir, nir_copy_prop);
       NIR_PASS(progress, nir, nir_opt_remove_phis);
       NIR_PASS(progress, nir, nir_opt_dce);
-      if (nir_opt_trivial_continues(nir)) {
-         progress = true;
-         NIR_PASS(progress, nir, nir_copy_prop);
-         NIR_PASS(progress, nir, nir_opt_dce);
-      }
-      NIR_PASS(progress, nir, nir_opt_if, true);
+      NIR_PASS(lower_phis_to_scalar, nir, nir_opt_if, true);
       NIR_PASS(progress, nir, nir_opt_dead_cf);
+
+      if (lower_alu_to_scalar)
+         NIR_PASS_V(nir, nir_lower_alu_to_scalar, NULL, NULL);
+      if (lower_phis_to_scalar)
+         NIR_PASS_V(nir, nir_lower_phis_to_scalar);
+      progress |= lower_alu_to_scalar | lower_phis_to_scalar;
+
       NIR_PASS(progress, nir, nir_opt_cse);
       NIR_PASS(progress, nir, nir_opt_peephole_select, 8, true, true);
 
