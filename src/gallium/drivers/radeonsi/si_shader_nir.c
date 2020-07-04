@@ -739,7 +739,7 @@ void si_nir_scan_shader(const struct nir_shader *nir, struct si_shader_info *inf
    }
 }
 
-static void si_nir_opts(struct nir_shader *nir)
+static void si_nir_opts(struct nir_shader *nir, bool first)
 {
    bool progress;
 
@@ -752,7 +752,24 @@ static void si_nir_opts(struct nir_shader *nir)
       bool lower_alu_to_scalar = false;
       bool lower_phis_to_scalar = false;
 
-      NIR_PASS(progress, nir, nir_opt_copy_prop_vars);
+      if (first) {
+         bool opt_find_array_copies = false;
+
+         NIR_PASS(progress, nir, nir_split_array_vars, nir_var_function_temp);
+         NIR_PASS(lower_alu_to_scalar, nir, nir_shrink_vec_array_vars, nir_var_function_temp);
+         NIR_PASS(opt_find_array_copies, nir, nir_opt_find_array_copies);
+         NIR_PASS(progress, nir, nir_opt_copy_prop_vars);
+
+         /* Call nir_lower_var_copies() to remove any copies introduced
+          * by nir_opt_find_array_copies().
+          */
+         if (opt_find_array_copies)
+            NIR_PASS(progress, nir, nir_lower_var_copies);
+         progress |= opt_find_array_copies;
+      } else {
+         NIR_PASS(progress, nir, nir_opt_copy_prop_vars);
+      }
+
       NIR_PASS(progress, nir, nir_opt_dead_write_vars);
 
       NIR_PASS(lower_alu_to_scalar, nir, nir_opt_trivial_continues);
@@ -920,7 +937,7 @@ static void si_lower_nir(struct si_screen *sscreen, struct nir_shader *nir)
    NIR_PASS_V(nir, nir_lower_var_copies);
    NIR_PASS_V(nir, nir_lower_pack);
    NIR_PASS_V(nir, nir_opt_access);
-   si_nir_opts(nir);
+   si_nir_opts(nir, true);
 
    /* Lower large variables that are always constant with load_constant
     * intrinsics, which get turned into PC-relative loads from a data
@@ -935,7 +952,7 @@ static void si_lower_nir(struct si_screen *sscreen, struct nir_shader *nir)
 
    changed |= ac_lower_indirect_derefs(nir, sscreen->info.chip_class);
    if (changed)
-      si_nir_opts(nir);
+      si_nir_opts(nir, false);
 
    NIR_PASS_V(nir, nir_lower_bool_to_int32);
    NIR_PASS_V(nir, nir_remove_dead_variables, nir_var_function_temp, NULL);
