@@ -226,6 +226,16 @@ void ir_print_visitor::visit(ir_variable *ir)
 
    ir_print_type(f, ir->type);
    fprintf(f, " %s)", unique_name(ir));
+
+   if (ir->constant_initializer) {
+      fprintf(f, " ");
+      visit(ir->constant_initializer);
+   }
+
+   if (ir->constant_value) {
+      fprintf(f, " ");
+      visit(ir->constant_value);
+   }
 }
 
 
