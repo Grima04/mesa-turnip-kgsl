@@ -86,6 +86,7 @@ if dep_v3dv3.found()
 endif
 
 v3dv_deps = [
+  dep_dl,
   dep_libdrm,
   dep_valgrind,
   dep_v3dv3,

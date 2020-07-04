@@ -44,6 +44,8 @@
 #include "u_atomic.h"
 #include "vk_util.h"
 
+#include "util/build_id.h"
+
 #ifdef VK_USE_PLATFORM_XCB_KHR
 #include <xcb/xcb.h>
 #include <xcb/dri3.h>
@@ -346,6 +348,43 @@ device_has_expected_features(struct v3dv_physical_device *device)
           v3d_has_feature(device, DRM_V3D_PARAM_SUPPORTS_CACHE_FLUSH);
 }
 
+
+static VkResult
+init_uuids(struct v3dv_physical_device *device)
+{
+   const struct build_id_note *note =
+      build_id_find_nhdr_for_addr(init_uuids);
+   if (!note) {
+      return vk_errorf(device->instance,
+                       VK_ERROR_INITIALIZATION_FAILED,
+                       "Failed to find build-id");
+   }
+
+   unsigned build_id_len = build_id_length(note);
+   if (build_id_len < 20) {
+      return vk_errorf(device->instance,
+                       VK_ERROR_INITIALIZATION_FAILED,
+                       "build-id too short.  It needs to be a SHA");
+   }
+
+   struct mesa_sha1 sha1_ctx;
+   uint8_t sha1[20];
+   STATIC_ASSERT(VK_UUID_SIZE <= sizeof(sha1));
+   uint32_t device_id = v3dv_physical_device_device_id(device);
+
+   /* The pipeline cache UUID is used for determining when a pipeline cache is
+    * invalid.  It needs both a driver build and the PCI ID of the device.
+    */
+   _mesa_sha1_init(&sha1_ctx);
+   _mesa_sha1_update(&sha1_ctx, build_id_data(note), build_id_len);
+   _mesa_sha1_update(&sha1_ctx, &device_id, sizeof(device_id));
+   _mesa_sha1_final(&sha1_ctx, sha1);
+
+   memcpy(device->pipeline_cache_uuid, sha1, VK_UUID_SIZE);
+
+   return VK_SUCCESS;
+}
+
 static VkResult
 physical_device_init(struct v3dv_physical_device *device,
                      struct v3dv_instance *instance,
@@ -379,8 +418,9 @@ physical_device_init(struct v3dv_physical_device *device,
    device->render_fd = render_fd;       /* The v3d render node  */
    device->display_fd = display_fd;    /* The vc4 primary node */
 
-   uint8_t zeroes[VK_UUID_SIZE] = { 0 };
-   memcpy(device->pipeline_cache_uuid, zeroes, VK_UUID_SIZE);
+   result = init_uuids(device);
+   if (result != VK_SUCCESS)
+      goto fail;
 
 #if using_v3d_simulator
    device->sim_file = v3d_simulator_init(device->render_fd);
