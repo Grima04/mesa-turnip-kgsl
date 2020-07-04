@@ -1692,11 +1692,21 @@ Converter::visit(nir_intrinsic_instr *insn)
 
       // see load_barycentric_* handling
       if (prog->getType() == Program::TYPE_FRAGMENT) {
-         mode = translateInterpMode(&vary, nvirOp);
          if (op == nir_intrinsic_load_interpolated_input) {
             ImmediateValue immMode;
             if (getSrc(&insn->src[0], 1)->getUniqueInsn()->src(0).getImmediate(immMode))
-               mode |= immMode.reg.data.u32;
+               mode = immMode.reg.data.u32;
+         }
+         if (mode == NV50_IR_INTERP_DEFAULT)
+            mode |= translateInterpMode(&vary, nvirOp);
+         else {
+            if (vary.linear) {
+               nvirOp = OP_LINTERP;
+               mode |= NV50_IR_INTERP_LINEAR;
+            } else {
+               nvirOp = OP_PINTERP;
+               mode |= NV50_IR_INTERP_PERSPECTIVE;
+            }
          }
       }
 
