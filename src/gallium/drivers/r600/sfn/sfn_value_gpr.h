@@ -54,7 +54,7 @@ public:
 
    void set_as_input(){ m_input = true; }
    bool is_input() const {return  m_input; }
-   void set_pin_to_channel() { m_pin_to_channel = true;}
+   void set_pin_to_channel() override { m_pin_to_channel = true;}
    bool pin_to_channel()  const { return m_pin_to_channel;}
 
 private:
@@ -94,6 +94,7 @@ public:
    PValue& operator [] (int i) {return m_elms[i];}
 
    void pin_to_channel(int i);
+   void pin_all_to_channel();
 
    PValue x() const {return m_elms[0];}
    PValue y() const {return m_elms[1];}
