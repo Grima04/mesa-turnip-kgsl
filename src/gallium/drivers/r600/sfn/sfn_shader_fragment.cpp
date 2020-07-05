@@ -47,7 +47,8 @@ FragmentShaderFromNir::FragmentShaderFromNir(const nir_shader& nir,
    m_need_back_color(false),
    m_front_face_loaded(false),
    m_depth_exports(0),
-   m_enable_centroid_interpolators(false)
+   m_enable_centroid_interpolators(false),
+   m_apply_sample_mask(key.ps.apply_sample_id_mask)
 {
    for (auto&  i: m_interpolator) {
       i.enabled = false;
@@ -145,6 +146,7 @@ bool FragmentShaderFromNir::do_allocate_reserved_registers()
    assert(!m_reserved_registers);
 
    int face_reg_index = -1;
+   int sample_id_index = -1;
    // enabled interpolators based on inputs
    for (auto& i: m_shaderio.inputs()) {
       int ij = i->ij_index();
@@ -220,16 +222,17 @@ bool FragmentShaderFromNir::do_allocate_reserved_registers()
       m_shaderio.add_input(new ShaderInputSystemValue(TGSI_SEMANTIC_SAMPLEMASK, face_reg_index));
    }
 
-   if (m_sv_values.test(es_sample_id)) {
-      if (face_reg_index < 0)
-         face_reg_index = m_reserved_registers++;
+   if (m_sv_values.test(es_sample_id) ||
+       m_sv_values.test(es_sample_mask_in)) {
+      if (sample_id_index < 0)
+         sample_id_index = m_reserved_registers++;
 
-      auto smi = new GPRValue(face_reg_index, 3);
+      auto smi = new GPRValue(sample_id_index, 3);
       smi->set_as_input();
       m_sample_id_reg.reset(smi);
       sfn_log << SfnLog::io << "Set sample id register to " <<  *m_sample_id_reg << "\n";
       sh_info().nsys_inputs++;
-      m_shaderio.add_input(new ShaderInputSystemValue(TGSI_SEMANTIC_SAMPLEID, face_reg_index));
+      m_shaderio.add_input(new ShaderInputSystemValue(TGSI_SEMANTIC_SAMPLEID, sample_id_index));
    }
 
    // The back color handling is not emmited in the code, so we have
@@ -336,11 +339,25 @@ bool FragmentShaderFromNir::do_process_outputs(nir_variable *output)
    return false;
 }
 
+bool FragmentShaderFromNir::emit_load_sample_mask_in(nir_intrinsic_instr* instr)
+{
+   auto dest = from_nir(instr->dest, 0);
+   assert(m_sample_id_reg);
+   assert(m_sample_mask_reg);
+
+   emit_instruction(new AluInstruction(op2_lshl_int, dest, Value::one_i, m_sample_id_reg, EmitInstruction::last_write));
+   emit_instruction(new AluInstruction(op2_and_int, dest, dest, m_sample_mask_reg, EmitInstruction::last_write));
+   return true;
+}
+
 bool FragmentShaderFromNir::emit_intrinsic_instruction_override(nir_intrinsic_instr* instr)
 {
    switch (instr->intrinsic) {
    case nir_intrinsic_load_sample_mask_in:
-      return load_preloaded_value(instr->dest, 0, m_sample_mask_reg);
+      if (m_apply_sample_mask) {
+         return emit_load_sample_mask_in(instr);
+      } else
+         return load_preloaded_value(instr->dest, 0, m_sample_mask_reg);
    case nir_intrinsic_load_sample_id:
       return load_preloaded_value(instr->dest, 0, m_sample_id_reg);
    case nir_intrinsic_load_front_face:
