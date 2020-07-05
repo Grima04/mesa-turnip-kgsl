@@ -138,9 +138,9 @@ EmitInstruction::get_literal_register(const nir_src& src) const
       return nullptr;
 }
 
-PValue EmitInstruction::get_temp_register()
+PValue EmitInstruction::get_temp_register(int channel)
 {
-   return m_proc.get_temp_register();
+   return m_proc.get_temp_register(channel);
 }
 
 GPRVector EmitInstruction::get_temp_vec4()
