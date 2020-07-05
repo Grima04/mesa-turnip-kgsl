@@ -218,7 +218,7 @@ fdl6_layout(struct fdl_layout *layout,
 		if (level == mip_levels - 1)
 			height = align(nblocksy, 4);
 
-		slice->offset = layout->size;
+		slice->offset = offset + layout->size;
 		slice->pitch = align(u_minify(pitch0, level), pitchalign);
 
 		/* 1d array and 2d array textures must all have the same layer size
