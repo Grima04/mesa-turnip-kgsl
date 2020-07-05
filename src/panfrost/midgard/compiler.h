@@ -51,6 +51,7 @@ struct midgard_block;
 #define TARGET_BREAK 1
 #define TARGET_CONTINUE 2
 #define TARGET_DISCARD 3
+#define TARGET_TILEBUF_WAIT 4
 
 typedef struct midgard_branch {
         /* If conditional, the condition is specified in r31.w */

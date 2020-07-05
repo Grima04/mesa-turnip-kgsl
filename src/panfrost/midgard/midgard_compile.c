@@ -2851,13 +2851,17 @@ midgard_compile_shader_nir(nir_shader *nir, panfrost_program *program, bool is_b
                                 bool is_conditional = ins->branch.conditional;
                                 bool is_inverted = ins->branch.invert_conditional;
                                 bool is_discard = ins->branch.target_type == TARGET_DISCARD;
+                                bool is_tilebuf_wait = ins->branch.target_type == TARGET_TILEBUF_WAIT;
+                                bool is_special = is_discard || is_tilebuf_wait;
                                 bool is_writeout = ins->writeout;
 
                                 /* Determine the block we're jumping to */
                                 int target_number = ins->branch.target_block;
 
                                 /* Report the destination tag */
-                                int dest_tag = is_discard ? 0 : midgard_get_first_tag_from_block(ctx, target_number);
+                                int dest_tag = is_discard ? 0 :
+                                        is_tilebuf_wait ? bundle->tag :
+                                        midgard_get_first_tag_from_block(ctx, target_number);
 
                                 /* Count up the number of quadwords we're
                                  * jumping over = number of quadwords until
@@ -2867,6 +2871,8 @@ midgard_compile_shader_nir(nir_shader *nir, panfrost_program *program, bool is_b
 
                                 if (is_discard) {
                                         /* Ignored */
+                                } else if (is_tilebuf_wait) {
+                                        quadword_offset = -1;
                                 } else if (target_number > br_block_idx) {
                                         /* Jump forward */
 
@@ -2901,6 +2907,7 @@ midgard_compile_shader_nir(nir_shader *nir, panfrost_program *program, bool is_b
 
                                 midgard_jmp_writeout_op op =
                                         is_discard ? midgard_jmp_writeout_op_discard :
+                                        is_tilebuf_wait ? midgard_jmp_writeout_op_tilebuffer_pending :
                                         is_writeout ? midgard_jmp_writeout_op_writeout :
                                         (is_compact && !is_conditional) ? midgard_jmp_writeout_op_branch_uncond :
                                         midgard_jmp_writeout_op_branch_cond;
@@ -2913,7 +2920,7 @@ midgard_compile_shader_nir(nir_shader *nir, panfrost_program *program, bool is_b
                                                         quadword_offset);
 
                                         memcpy(&ins->branch_extended, &branch, sizeof(branch));
-                                } else if (is_conditional || is_discard) {
+                                } else if (is_conditional || is_special) {
                                         midgard_branch_cond branch = {
                                                 .op = op,
                                                 .dest_tag = dest_tag,
