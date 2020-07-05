@@ -924,9 +924,6 @@ fd4_emit_restore(struct fd_batch *batch, struct fd_ringbuffer *ring)
 	OUT_PKT0(ring, REG_A4XX_RB_FS_OUTPUT, 1);
 	OUT_RING(ring, A4XX_RB_FS_OUTPUT_SAMPLE_MASK(0xffff));
 
-	OUT_PKT0(ring, REG_A4XX_GRAS_CLEAR_CNTL, 1);
-	OUT_RING(ring, A4XX_GRAS_CLEAR_CNTL_NOT_FASTCLEAR);
-
 	OUT_PKT0(ring, REG_A4XX_GRAS_ALPHA_CONTROL, 1);
 	OUT_RING(ring, 0x0);
 

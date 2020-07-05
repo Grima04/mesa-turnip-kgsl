@@ -164,7 +164,7 @@ fd4_program_emit(struct fd_ringbuffer *ring, struct fd4_emit *emit,
 {
 	struct stage s[MAX_STAGES];
 	uint32_t pos_regid, posz_regid, psize_regid, color_regid[8];
-	uint32_t face_regid, coord_regid, zwcoord_regid, vcoord_regid, lcoord_regid;
+	uint32_t face_regid, coord_regid, zwcoord_regid, ij_regid[IJ_COUNT];
 	enum a3xx_threadsize fssz;
 	int constmode;
 	int i, j;
@@ -209,17 +209,8 @@ fd4_program_emit(struct fd_ringbuffer *ring, struct fd4_emit *emit,
 	face_regid      = ir3_find_sysval_regid(s[FS].v, SYSTEM_VALUE_FRONT_FACE);
 	coord_regid     = ir3_find_sysval_regid(s[FS].v, SYSTEM_VALUE_FRAG_COORD);
 	zwcoord_regid   = (coord_regid == regid(63,0)) ? regid(63,0) : (coord_regid + 2);
-	vcoord_regid    = ir3_find_sysval_regid(s[FS].v, SYSTEM_VALUE_BARYCENTRIC_PERSP_PIXEL);
-	lcoord_regid    = ir3_find_sysval_regid(s[FS].v, SYSTEM_VALUE_BARYCENTRIC_LINEAR_PIXEL);
-
-	/* XXX since we don't know how to support noperspective varyings on a4xx,
-	 * use this little hack to support u_blitter, which should be the only
-	 * case with noperspective varyings on a4xx:
-	 */
-	if (VALIDREG(lcoord_regid)) {
-		assert(!VALIDREG(vcoord_regid));
-		vcoord_regid = lcoord_regid;
-	}
+	for (unsigned i = 0; i < ARRAY_SIZE(ij_regid); i++)
+		ij_regid[i] = ir3_find_sysval_regid(s[FS].v, SYSTEM_VALUE_BARYCENTRIC_PERSP_PIXEL + i);
 
 	/* we could probably divide this up into things that need to be
 	 * emitted if frag-prog is dirty vs if vert-prog is dirty..
@@ -245,8 +236,10 @@ fd4_program_emit(struct fd_ringbuffer *ring, struct fd4_emit *emit,
 	OUT_RING(ring, A4XX_HLSQ_CONTROL_2_REG_PRIMALLOCTHRESHOLD(63) |
 			0x3f3f000 |           /* XXX */
 			A4XX_HLSQ_CONTROL_2_REG_FACEREGID(face_regid));
-	OUT_RING(ring, A4XX_HLSQ_CONTROL_3_REG_IJ_PERSP_PIXEL(vcoord_regid) |
-			0xfcfcfc00);
+	/* XXX left out centroid/sample for now */
+	OUT_RING(ring, A4XX_HLSQ_CONTROL_3_REG_IJ_PERSP_PIXEL(ij_regid[IJ_PERSP_PIXEL]) |
+			A4XX_HLSQ_CONTROL_3_REG_IJ_LINEAR_PIXEL(ij_regid[IJ_LINEAR_PIXEL]) |
+			0xfcfc0000);
 	OUT_RING(ring, 0x00fcfcfc);   /* XXX HLSQ_CONTROL_4 */
 
 	OUT_PKT0(ring, REG_A4XX_HLSQ_VS_CONTROL_REG, 5);
@@ -392,9 +385,17 @@ fd4_program_emit(struct fd_ringbuffer *ring, struct fd4_emit *emit,
 	OUT_RING(ring, A4XX_SP_GS_OBJ_OFFSET_REG_CONSTOBJECTOFFSET(s[GS].constoff) |
 			A4XX_SP_GS_OBJ_OFFSET_REG_SHADEROBJOFFSET(s[GS].instroff));
 
+	OUT_PKT0(ring, REG_A4XX_GRAS_CNTL, 1);
+	OUT_RING(ring,
+			CONDREG(face_regid, A4XX_GRAS_CNTL_IJ_PERSP) |
+			CONDREG(zwcoord_regid, A4XX_GRAS_CNTL_IJ_PERSP) |
+			CONDREG(ij_regid[IJ_PERSP_PIXEL], A4XX_GRAS_CNTL_IJ_PERSP) |
+			CONDREG(ij_regid[IJ_LINEAR_PIXEL], A4XX_GRAS_CNTL_IJ_LINEAR));
+
 	OUT_PKT0(ring, REG_A4XX_RB_RENDER_CONTROL2, 1);
 	OUT_RING(ring, A4XX_RB_RENDER_CONTROL2_MSAA_SAMPLES(0) |
-			COND(s[FS].v->total_in > 0, A4XX_RB_RENDER_CONTROL2_VARYING) |
+			CONDREG(ij_regid[IJ_PERSP_PIXEL], A4XX_RB_RENDER_CONTROL2_IJ_PERSP_PIXEL) |
+			CONDREG(ij_regid[IJ_LINEAR_PIXEL], A4XX_RB_RENDER_CONTROL2_SIZE) |
 			COND(s[FS].v->frag_face, A4XX_RB_RENDER_CONTROL2_FACENESS) |
 			COND(s[FS].v->fragcoord_compmask != 0,
 					A4XX_RB_RENDER_CONTROL2_COORD_MASK(s[FS].v->fragcoord_compmask)));

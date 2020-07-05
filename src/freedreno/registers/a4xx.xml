@@ -923,7 +923,13 @@ perhaps they should be taken with a grain of salt
 		<bitfield name="SAMPLEID" pos="6" type="boolean"/>
 		<bitfield name="MSAA_SAMPLES" low="7" high="9" type="uint"/>
 		<bitfield name="SAMPLEID_HR" pos="11" type="boolean"/>
-		<bitfield name="VARYING" pos="12" type="boolean"/>
+		<bitfield name="IJ_PERSP_PIXEL" pos="12" type="boolean"/>
+		<!-- the 2 below are just educated guesses -->
+		<bitfield name="IJ_PERSP_CENTROID" pos="13" type="boolean"/>
+		<bitfield name="IJ_PERSP_SAMPLE" pos="14" type="boolean"/>
+		<!-- needs to be enabled to get nopersp values,
+		     perhaps other cases too? -->
+		<bitfield name="SIZE" pos="15" type="boolean"/>
 	</reg32>
 	<array offset="0x20a4" name="RB_MRT" stride="5" length="8">
 		<reg32 offset="0x0" name="CONTROL">
@@ -1944,10 +1950,9 @@ perhaps they should be taken with a grain of salt
 		<bitfield name="ZFAR_CLIP_DISABLE" pos="17" type="boolean"/>
 		<bitfield name="ZERO_GB_SCALE_Z" pos="22" type="boolean"/>
 	</reg32>
-	<reg32 offset="0x2003" name="GRAS_CLEAR_CNTL">
-		<!-- probably not the right name, but.. -->
-		<!-- bit0 set for everything *but* fastclear -->
-		<bitfield name="NOT_FASTCLEAR" pos="0" type="boolean"/>
+	<reg32 offset="0x2003" name="GRAS_CNTL">
+		<bitfield name="IJ_PERSP" pos="0" type="boolean"/>
+		<bitfield name="IJ_LINEAR" pos="1" type="boolean"/>
 	</reg32>
 	<reg32 offset="0x2004" name="GRAS_CL_GB_CLIP_ADJ">
 		<bitfield name="HORZ" low="0" high="9" type="uint"/>
@@ -2065,7 +2070,7 @@ perhaps they should be taken with a grain of salt
 		<bitfield name="IJ_LINEAR_CENTROID" low="24" high="31" type="a3xx_regid"/>
 	</reg32>
 	<!-- 0x23c4 3 regids, lowest one goes to 0 when *not* per-sample shading -->
-	<reg32 offset="0xb985" name="HLSQ_CONTROL_4_REG">
+	<reg32 offset="0x23c4" name="HLSQ_CONTROL_4_REG">
 		<bitfield name="IJ_PERSP_SAMPLE" low="0" high="7" type="a3xx_regid"/>
 		<bitfield name="IJ_LINEAR_SAMPLE" low="8" high="15" type="a3xx_regid"/>
 	</reg32>
