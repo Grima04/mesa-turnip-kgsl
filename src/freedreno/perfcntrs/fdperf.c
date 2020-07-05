@@ -295,7 +295,7 @@ find_device(void)
 	if (!dev.dtnode)
 		errx(1, "could not find qcom,adreno-3xx node");
 
-	fd = drmOpen("msm", NULL);
+	fd = drmOpenWithType("msm", NULL, DRM_NODE_RENDER);
 	if (fd < 0)
 		err(1, "could not open drm device");
 
