@@ -311,7 +311,7 @@ find_device(void)
 
 	free(b);
 
-	printf("i/o region at %08"PRIu64" (size: %x)\n", dev.base, dev.size);
+	printf("i/o region at %08"PRIx64" (size: %x)\n", dev.base, dev.size);
 
 	/* try MAX_FREQ first as that will work regardless of old dt
 	 * dt bindings vs upstream bindings:
