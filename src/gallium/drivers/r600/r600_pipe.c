@@ -559,14 +559,10 @@ static int r600_get_shader_param(struct pipe_screen* pscreen,
 		if (rscreen->b.info.drm_minor >= 37)
 			break;
 		return 0;
-      /* With NIR we currently disable TES, TCS and COMP shaders */
 	case PIPE_SHADER_TESS_CTRL:
 	case PIPE_SHADER_TESS_EVAL:
-		if (rscreen->b.family >= CHIP_CEDAR)
-			break;
-		/* fallthrough */
 	case PIPE_SHADER_COMPUTE:
-		if (!is_nir_enabled(&rscreen->b))
+		if (rscreen->b.family >= CHIP_CEDAR)
 			break;
 		/* fallthrough */
 	default:
