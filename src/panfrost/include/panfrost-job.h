@@ -413,7 +413,7 @@ enum mali_format {
  * are side effects, hence it interacts with early-z. */
 #define MALI_WRITES_GLOBAL (1 << 9)
 
-#define MALI_READS_TILEBUFFER (1 << 12)
+#define MALI_READS_TILEBUFFER (1 << 10)
 
 /* Applies to midgard1.flags_hi */
 
