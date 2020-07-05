@@ -2171,8 +2171,11 @@ void radv_set_db_count_control(struct radv_cmd_buffer *cmd_buffer)
 		bool gfx10_perfect = cmd_buffer->device->physical_device->rad_info.chip_class >= GFX10 && has_perfect_queries;
 
 		if (cmd_buffer->device->physical_device->rad_info.chip_class >= GFX7) {
+			/* Always enable PERFECT_ZPASS_COUNTS due to issues with partially
+			 * covered tiles, discards, and early depth testing. For more details,
+			 * see https://gitlab.freedesktop.org/mesa/mesa/-/issues/3218 */
 			db_count_control =
-				S_028004_PERFECT_ZPASS_COUNTS(has_perfect_queries) |
+				S_028004_PERFECT_ZPASS_COUNTS(1) |
 				S_028004_DISABLE_CONSERVATIVE_ZPASS_COUNTS(gfx10_perfect) |
 				S_028004_SAMPLE_RATE(sample_rate) |
 				S_028004_ZPASS_ENABLE(1) |
