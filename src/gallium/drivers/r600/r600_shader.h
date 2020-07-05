@@ -136,6 +136,7 @@ union r600_shader_key {
 		unsigned        image_size_const_offset:5;
 		unsigned	color_two_side:1;
 		unsigned	alpha_to_one:1;
+		unsigned        apply_sample_id_mask:1;
 	} ps;
 	struct {
 		unsigned	prim_id_out:8;
