@@ -199,7 +199,7 @@ bool VertexStageExportForFS::emit_varying_param(const nir_variable *out_var, nir
 
    m_proc.sh_info().output[out_var->data.driver_location].write_mask = write_mask;
 
-   GPRVector value = m_proc.vec_from_nir_with_fetch_constant(instr->src[1], write_mask, swizzle);
+   GPRVector value = m_proc.vec_from_nir_with_fetch_constant(instr->src[1], write_mask, swizzle, true);
    m_proc.sh_info().output[out_var->data.driver_location].gpr = value.sel();
 
    /* This should use the registers!! */
@@ -417,7 +417,7 @@ bool VertexStageExportForGS::store_deref(const nir_variable *out_var, nir_intrin
    uint32_t write_mask =  (1 << instr->num_components) - 1;
 
    GPRVector value = m_proc.vec_from_nir_with_fetch_constant(instr->src[1], write_mask,
-         swizzle_from_comps(instr->num_components));
+         swizzle_from_comps(instr->num_components), true);
 
    auto ir = new MemRingOutIntruction(cf_mem_ring, mem_write, value,
                                       ring_offset >> 2, 4, PValue());
