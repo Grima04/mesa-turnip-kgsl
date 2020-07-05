@@ -655,6 +655,8 @@ bool EmitTexInstruction::emit_tex_tg4(nir_tex_instr* instr, TexInputs& src)
                  << *reinterpret_cast<nir_instr*>(instr)
                  << "' (" << __func__ << ")\n";
 
+   TexInstruction *set_ofs = nullptr;
+
    auto tex_op = TexInstruction::gather4;
 
    if (instr->is_shadow)  {
@@ -689,11 +691,10 @@ bool EmitTexInstruction::emit_tex_tg4(nir_tex_instr* instr, TexInputs& src)
          tex_op = (tex_op == TexInstruction::gather4_c) ?
                      TexInstruction::gather4_c_o : TexInstruction::gather4_o;
 
-         auto set_ofs = new TexInstruction(TexInstruction::set_offsets, dummy,
+         set_ofs = new TexInstruction(TexInstruction::set_offsets, dummy,
                                            ofs, sampler.id,
-                                           sampler.id + R600_MAX_CONST_BUFFERS, src.sampler_offset);
+                                      sampler.id + R600_MAX_CONST_BUFFERS, src.sampler_offset);
          set_ofs->set_dest_swizzle({7,7,7,7});
-         emit_instruction(set_ofs);
       }
    }
 
@@ -715,6 +716,9 @@ bool EmitTexInstruction::emit_tex_tg4(nir_tex_instr* instr, TexInputs& src)
    }
 
    set_rect_coordinate_flags(instr, irt);
+
+   if (set_ofs)
+      emit_instruction(set_ofs);
 
    emit_instruction(irt);
    return true;
