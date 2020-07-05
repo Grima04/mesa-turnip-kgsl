@@ -56,7 +56,7 @@ GDSInstr::GDSInstr(ESDOp op, const GPRVector& dest,  const PValue& value,
 {
       assert(value);
       m_src_swizzle[1] = value->chan();
-      m_src_swizzle[2] = PIPE_SWIZZLE_MAX;
+      m_src_swizzle[2] = PIPE_SWIZZLE_0;
 }
 
 GDSInstr::GDSInstr(ESDOp op, const GPRVector& dest,
