@@ -483,8 +483,9 @@ ir3_nir_scan_driver_consts(nir_shader *shader,
 						MAX2(layout->num_driver_params, IR3_DP_INSTID_BASE + 1);
 					break;
 				case nir_intrinsic_load_user_clip_plane:
+					idx = nir_intrinsic_ucp_id(intr);
 					layout->num_driver_params =
-						MAX2(layout->num_driver_params, IR3_DP_UCP7_W + 1);
+						MAX2(layout->num_driver_params, IR3_DP_UCP0_X + (idx + 1) * 4);
 					break;
 				case nir_intrinsic_load_num_work_groups:
 					layout->num_driver_params =

@@ -451,11 +451,6 @@ ir3_emit_vs_driver_params(const struct ir3_shader_variant *v,
 					info->index_bias : info->start,
 					[IR3_DP_VTXCNT_MAX] = max_tf_vtx(ctx, v),
 	};
-	/* if no user-clip-planes, we don't need to emit the
-	 * entire thing:
-	 */
-	uint32_t vertex_params_size = 4;
-
 	if (v->key.ucp_enables) {
 		struct pipe_clip_state *ucp = &ctx->ucp;
 		unsigned pos = IR3_DP_UCP0_X;
@@ -465,10 +460,16 @@ ir3_emit_vs_driver_params(const struct ir3_shader_variant *v,
 				pos++;
 			}
 		}
-		vertex_params_size = ARRAY_SIZE(vertex_params);
 	}
 
-	vertex_params_size = MAX2(vertex_params_size, const_state->num_driver_params);
+	/* Only emit as many params as needed, i.e. up to the highest enabled UCP
+	 * plane. However a binning pass may drop even some of these, so limit to
+	 * program max.
+	 */
+	const uint32_t vertex_params_size = MIN2(
+			const_state->num_driver_params,
+			(v->constlen - offset) * 4);
+	assert(vertex_params_size <= IR3_DP_VS_COUNT);
 
 	bool needs_vtxid_base =
 		ir3_find_sysval_regid(v, SYSTEM_VALUE_VERTEX_ID_ZERO_BASE) != regid(63, 0);
