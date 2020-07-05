@@ -9979,15 +9979,15 @@ static bool export_fs_mrt_z(isel_context *ctx)
    return true;
 }
 
-static bool export_fs_mrt_color(isel_context *ctx, int slot,
-                                unsigned write_mask, Temp *outputs)
+static bool export_fs_mrt_color(isel_context *ctx, int slot)
 {
    Builder bld(ctx->program, ctx->block);
+   unsigned write_mask = ctx->outputs.mask[slot];
    Operand values[4];
 
    for (unsigned i = 0; i < 4; ++i) {
       if (write_mask & (1 << i)) {
-         values[i] = Operand(outputs[i]);
+         values[i] = Operand(ctx->outputs.temps[slot * 4u + i]);
       } else {
          values[i] = Operand(v1);
       }
@@ -9997,6 +9997,7 @@ static bool export_fs_mrt_color(isel_context *ctx, int slot,
    unsigned enabled_channels = 0;
    aco_opcode compr_op = (aco_opcode)0;
 
+   slot -= FRAG_RESULT_DATA0;
    target = V_008DFC_SQ_EXP_MRT + slot;
    col_format = (ctx->options->key.fs.col_format >> (4 * slot)) & 0xf;
 
@@ -10181,7 +10182,6 @@ static bool export_fs_mrt_color(isel_context *ctx, int slot,
 
 static void create_fs_exports(isel_context *ctx)
 {
-   unsigned compacted_mrt_index = 0;
    bool exported = false;
 
    /* Export depth, stencil and sample mask. */
@@ -10191,15 +10191,9 @@ static void create_fs_exports(isel_context *ctx)
       exported |= export_fs_mrt_z(ctx);
 
    /* Export all color render targets. */
-   for (unsigned i = FRAG_RESULT_DATA0; i < FRAG_RESULT_DATA7 + 1; ++i) {
+   for (unsigned i = FRAG_RESULT_DATA0; i < FRAG_RESULT_DATA7 + 1; ++i)
       if (ctx->outputs.mask[i])
-         if (export_fs_mrt_color(ctx, compacted_mrt_index,
-                                 ctx->outputs.mask[i],
-                                 &ctx->outputs.temps[i * 4u])) {
-            compacted_mrt_index++;
-            exported = true;
-         }
-   }
+         exported |= export_fs_mrt_color(ctx, i);
 
    if (!exported)
       create_null_export(ctx);

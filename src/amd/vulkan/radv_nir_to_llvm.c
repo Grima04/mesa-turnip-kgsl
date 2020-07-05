@@ -3586,7 +3586,8 @@ handle_fs_outputs_post(struct radv_shader_context *ctx)
 			values[j] = ac_to_float(&ctx->ac,
 						radv_load_output(ctx, i, j));
 
-		bool ret = si_export_mrt_color(ctx, values, index,
+		bool ret = si_export_mrt_color(ctx, values,
+					       i - FRAG_RESULT_DATA0,
 					       &color_args[index]);
 		if (ret)
 			index++;
