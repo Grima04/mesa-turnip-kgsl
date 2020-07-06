@@ -115,6 +115,8 @@ panfrost_get_param(struct pipe_screen *screen, enum pipe_cap param)
                 return 1;
 
         case PIPE_CAP_MAX_RENDER_TARGETS:
+        case PIPE_CAP_FBFETCH:
+        case PIPE_CAP_FBFETCH_COHERENT:
                 return is_gles3 ? 4 : 1;
 
         case PIPE_CAP_MAX_DUAL_SOURCE_RENDER_TARGETS:
