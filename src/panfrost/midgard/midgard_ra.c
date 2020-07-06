@@ -266,9 +266,6 @@ mir_lower_special_reads(compiler_context *ctx)
 
                         unsigned idx = spill_idx++;
 
-                        midgard_instruction m = hazard_write ?
-                                v_mov(idx, i) : v_mov(i, idx);
-
                         /* Insert move before each read/write, depending on the
                          * hazard we're trying to account for */
 
@@ -279,19 +276,23 @@ mir_lower_special_reads(compiler_context *ctx)
                                 if (hazard_write) {
                                         if (pre_use->dest != i)
                                                 continue;
-                                } else {
-                                        if (!mir_has_arg(pre_use, i))
-                                                continue;
-                                }
 
-                                if (hazard_write) {
+                                        midgard_instruction m = v_mov(idx, i);
+                                        m.dest_type = pre_use->dest_type;
+                                        m.src_types[1] = m.dest_type;
+                                        m.mask = pre_use->mask;
+
                                         midgard_instruction *use = mir_next_op(pre_use);
                                         assert(use);
                                         mir_insert_instruction_before(ctx, use, m);
                                         mir_rewrite_index_dst_single(pre_use, i, idx);
                                 } else {
+                                        if (!mir_has_arg(pre_use, i))
+                                                continue;
+
                                         idx = spill_idx++;
-                                        m = v_mov(i, idx);
+
+                                        midgard_instruction m = v_mov(i, idx);
                                         m.mask = mir_from_bytemask(mir_round_bytemask_up(
                                                                 mir_bytemask_of_read_components(pre_use, i), 32), 32);
                                         mir_insert_instruction_before(ctx, pre_use, m);
