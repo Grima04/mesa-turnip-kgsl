@@ -777,6 +777,16 @@ panfrost_bind_shader_state(
                 if (type == PIPE_SHADER_FRAGMENT) {
                         v->alpha_state = ctx->depth_stencil->alpha;
 
+                        struct pipe_framebuffer_state *fb = &ctx->pipe_framebuffer;
+                        for (unsigned i = 0; i < fb->nr_cbufs; ++i) {
+                                enum pipe_format fmt = PIPE_FORMAT_R8G8B8A8_UNORM;
+
+                                if ((fb->nr_cbufs > i) && fb->cbufs[i])
+                                        fmt = fb->cbufs[i]->format;
+
+                                v->rt_formats[i] = fmt;
+                        }
+
                         /* Point sprites are TODO on Bifrost */
                         if (ctx->rasterizer && !(dev->quirks & IS_BIFROST)) {
                                 v->point_sprite_mask = ctx->rasterizer->base.sprite_coord_enable;

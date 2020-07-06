@@ -165,6 +165,8 @@ panfrost_shader_compile(struct panfrost_context *ctx,
                 .alpha_ref = state->alpha_state.ref_value
         };
 
+        memcpy(program.rt_formats, state->rt_formats, sizeof(program.rt_formats));
+
         if (dev->quirks & IS_BIFROST) {
                 bifrost_compile_shader_nir(s, &program, dev->gpu_id);
         } else {

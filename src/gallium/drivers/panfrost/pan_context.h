@@ -224,6 +224,8 @@ struct panfrost_shader_state {
 
         unsigned first_tag;
         struct panfrost_bo *bo;
+
+        enum pipe_format rt_formats[8];
 };
 
 /* A collection of varyings (the CSO) */
