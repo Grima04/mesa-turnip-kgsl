@@ -24,6 +24,7 @@
 #include "freedreno_layout.h"
 #include "fd_layout_test.h"
 #include "adreno_common.xml.h"
+#include "adreno_pm4.xml.h"
 #include "a6xx.xml.h"
 
 #include <stdio.h>
