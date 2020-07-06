@@ -660,13 +660,14 @@ pan_lower_fb_load(nir_shader *shader,
         nir_ssa_def_rewrite_uses_after(&intr->dest.ssa, rewritten, &intr->instr);
 }
 
-void
-pan_lower_framebuffer(nir_shader *shader,
-                const struct util_format_description *desc,
-                unsigned quirks)
+bool
+pan_lower_framebuffer(nir_shader *shader, enum pipe_format *rt_fmts,
+                      unsigned quirks)
 {
-        /* Blend shaders are represented as special fragment shaders */
-        assert(shader->info.stage == MESA_SHADER_FRAGMENT);
+        if (shader->info.stage != MESA_SHADER_FRAGMENT)
+               return false;
+
+        bool progress = false;
 
         nir_foreach_function(func, shader) {
                 nir_foreach_block(block, func->impl) {
@@ -682,17 +683,22 @@ pan_lower_framebuffer(nir_shader *shader,
                                 if (!(is_load || is_store))
                                         continue;
 
+                                nir_variable *var = nir_intrinsic_get_var(intr, 0);
+
+                                if (var->data.mode != nir_var_shader_out)
+                                        continue;
+
+                                if (var->data.location != FRAG_RESULT_COLOR)
+                                        continue;
+
+                                const struct util_format_description *desc =
+                                   util_format_description(rt_fmts[0]);
+
                                 enum pan_format_class fmt_class =
                                         pan_format_class(desc, quirks, is_store);
 
                                 /* Don't lower */
                                 if (fmt_class == PAN_FORMAT_NATIVE)
-                                        continue;
-
-                                /* Don't worry about MRT */
-                                nir_variable *var = nir_intrinsic_get_var(intr, 0);
-
-                                if (var->data.location != FRAG_RESULT_COLOR)
                                         continue;
 
                                 nir_builder b;
@@ -707,10 +713,14 @@ pan_lower_framebuffer(nir_shader *shader,
                                 }
 
                                 nir_instr_remove(instr);
+
+                                progress = true;
                         }
                 }
 
                 nir_metadata_preserve(func->impl, nir_metadata_block_index |
                                 nir_metadata_dominance);
         }
+
+        return progress;
 }

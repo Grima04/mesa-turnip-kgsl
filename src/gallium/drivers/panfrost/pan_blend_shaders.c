@@ -203,11 +203,13 @@ panfrost_compile_blend_shader(
                 options.half = true;
 
         NIR_PASS_V(shader, nir_lower_blend, options);
-        NIR_PASS_V(shader, pan_lower_framebuffer, format_desc, dev->quirks);
 
         /* Compile the built shader */
 
-        panfrost_program program;
+        panfrost_program program = {
+           .rt_formats = {format}
+        };
+
         midgard_compile_shader_nir(shader, &program, true, rt, dev->gpu_id, false);
 
         /* Allow us to patch later */
