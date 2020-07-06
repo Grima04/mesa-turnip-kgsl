@@ -1177,6 +1177,16 @@ pipeline_populate_v3d_vs_key(struct v3d_vs_key *key,
       memcpy(key->used_outputs, fs_variant->prog_data.fs->input_slots,
              sizeof(key->used_outputs));
    }
+
+   const VkPipelineVertexInputStateCreateInfo *vi_info =
+      pCreateInfo->pVertexInputState;
+   for (uint32_t i = 0; i < vi_info->vertexAttributeDescriptionCount; i++) {
+      const VkVertexInputAttributeDescription *desc =
+         &vi_info->pVertexAttributeDescriptions[i];
+      assert(desc->location < MAX_VERTEX_ATTRIBS);
+      if (desc->format == VK_FORMAT_B8G8R8A8_UNORM)
+         key->va_swap_rb_mask |= 1 << desc->location;
+   }
 }
 
 /* FIXME: following hash/compare methods are C&P from v3d. Common place? */
