@@ -1983,15 +1983,40 @@ tu_pipeline_builder_compile_shaders(struct tu_pipeline_builder *builder,
    struct ir3_shader_key key = {};
    tu_pipeline_shader_key_init(&key, builder->create_info);
 
+   nir_shader *nir[MESA_SHADER_STAGES] = { NULL };
+
    for (gl_shader_stage stage = MESA_SHADER_VERTEX;
         stage < MESA_SHADER_STAGES; stage++) {
       const VkPipelineShaderStageCreateInfo *stage_info = stage_infos[stage];
-      if (!stage_info && stage != MESA_SHADER_FRAGMENT)
+      if (!stage_info)
+         continue;
+
+      nir[stage] = tu_spirv_to_nir(builder->device, stage_info, stage);
+      if (!nir[stage])
+         return VK_ERROR_OUT_OF_HOST_MEMORY;
+   }
+
+   if (!nir[MESA_SHADER_FRAGMENT]) {
+         const nir_shader_compiler_options *nir_options =
+            ir3_get_compiler_options(builder->device->compiler);
+         nir_builder fs_b;
+         nir_builder_init_simple_shader(&fs_b, NULL, MESA_SHADER_FRAGMENT,
+                                        nir_options);
+         fs_b.shader->info.name = ralloc_strdup(fs_b.shader, "noop_fs");
+         nir[MESA_SHADER_FRAGMENT] = fs_b.shader;
+   }
+
+   /* TODO do intra-stage linking here */
+
+   for (gl_shader_stage stage = MESA_SHADER_VERTEX;
+        stage < MESA_SHADER_STAGES; stage++) {
+      if (!nir[stage])
          continue;
 
       struct tu_shader *shader =
-         tu_shader_create(builder->device, stage, stage_info, builder->multiview_mask,
-                          builder->layout, builder->alloc);
+         tu_shader_create(builder->device, nir[stage],
+                          builder->multiview_mask, builder->layout,
+                          builder->alloc);
       if (!shader)
          return VK_ERROR_OUT_OF_HOST_MEMORY;
 
@@ -2724,8 +2749,10 @@ tu_compute_pipeline_create(VkDevice device,
 
    struct ir3_shader_key key = {};
 
+   nir_shader *nir = tu_spirv_to_nir(dev, stage_info, MESA_SHADER_COMPUTE);
+
    struct tu_shader *shader =
-      tu_shader_create(dev, MESA_SHADER_COMPUTE, stage_info, 0, layout, pAllocator);
+      tu_shader_create(dev, nir, 0, layout, pAllocator);
    if (!shader) {
       result = VK_ERROR_OUT_OF_HOST_MEMORY;
       goto fail;

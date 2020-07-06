@@ -31,13 +31,10 @@
 
 #include "ir3/ir3_nir.h"
 
-static nir_shader *
-tu_spirv_to_nir(struct ir3_compiler *compiler,
-                const uint32_t *words,
-                size_t word_count,
-                gl_shader_stage stage,
-                const char *entry_point_name,
-                const VkSpecializationInfo *spec_info)
+nir_shader *
+tu_spirv_to_nir(struct tu_device *dev,
+                const VkPipelineShaderStageCreateInfo *stage_info,
+                gl_shader_stage stage)
 {
    /* TODO these are made-up */
    const struct spirv_to_nir_options spirv_options = {
@@ -72,9 +69,10 @@ tu_spirv_to_nir(struct ir3_compiler *compiler,
       },
    };
    const nir_shader_compiler_options *nir_options =
-      ir3_get_compiler_options(compiler);
+      ir3_get_compiler_options(dev->compiler);
 
    /* convert VkSpecializationInfo */
+   const VkSpecializationInfo *spec_info = stage_info->pSpecializationInfo;
    struct nir_spirv_specialization *spec = NULL;
    uint32_t num_spec = 0;
    if (spec_info && spec_info->mapEntryCount) {
@@ -110,14 +108,72 @@ tu_spirv_to_nir(struct ir3_compiler *compiler,
       num_spec = spec_info->mapEntryCount;
    }
 
+   struct tu_shader_module *module =
+      tu_shader_module_from_handle(stage_info->module);
+   assert(module->code_size % 4 == 0);
    nir_shader *nir =
-      spirv_to_nir(words, word_count, spec, num_spec, stage, entry_point_name,
+      spirv_to_nir(module->code, module->code_size / 4,
+                   spec, num_spec, stage, stage_info->pName,
                    &spirv_options, nir_options);
 
    free(spec);
 
    assert(nir->info.stage == stage);
    nir_validate_shader(nir, "after spirv_to_nir");
+
+   if (unlikely(dev->physical_device->instance->debug_flags & TU_DEBUG_NIR)) {
+      fprintf(stderr, "translated nir:\n");
+      nir_print_shader(nir, stderr);
+   }
+
+   /* multi step inlining procedure */
+   NIR_PASS_V(nir, nir_lower_variable_initializers, nir_var_function_temp);
+   NIR_PASS_V(nir, nir_lower_returns);
+   NIR_PASS_V(nir, nir_inline_functions);
+   NIR_PASS_V(nir, nir_copy_prop);
+   NIR_PASS_V(nir, nir_opt_deref);
+   foreach_list_typed_safe(nir_function, func, node, &nir->functions) {
+      if (!func->is_entrypoint)
+         exec_node_remove(&func->node);
+   }
+   assert(exec_list_length(&nir->functions) == 1);
+   NIR_PASS_V(nir, nir_lower_variable_initializers, ~nir_var_function_temp);
+
+   /* Split member structs.  We do this before lower_io_to_temporaries so that
+    * it doesn't lower system values to temporaries by accident.
+    */
+   NIR_PASS_V(nir, nir_split_var_copies);
+   NIR_PASS_V(nir, nir_split_per_member_structs);
+
+   NIR_PASS_V(nir, nir_remove_dead_variables,
+              nir_var_shader_in | nir_var_shader_out | nir_var_system_value | nir_var_mem_shared,
+              NULL);
+
+   NIR_PASS_V(nir, nir_propagate_invariant);
+
+   NIR_PASS_V(nir, nir_lower_io_to_temporaries, nir_shader_get_entrypoint(nir), true, true);
+
+   NIR_PASS_V(nir, nir_lower_global_vars_to_local);
+   NIR_PASS_V(nir, nir_split_var_copies);
+   NIR_PASS_V(nir, nir_lower_var_copies);
+
+   NIR_PASS_V(nir, nir_opt_copy_prop_vars);
+   NIR_PASS_V(nir, nir_opt_combine_stores, nir_var_all);
+
+   /* ir3 doesn't support indirect input/output */
+   /* TODO: We shouldn't perform this lowering pass on gl_TessLevelInner
+    * and gl_TessLevelOuter. Since the tess levels are actually stored in
+    * a global BO, they can be directly accessed via stg and ldg.
+    * nir_lower_indirect_derefs will instead generate a big if-ladder which
+    * isn't *incorrect* but is much less efficient. */
+   NIR_PASS_V(nir, nir_lower_indirect_derefs, nir_var_shader_in | nir_var_shader_out, UINT32_MAX);
+
+   NIR_PASS_V(nir, nir_lower_io_arrays_to_elements_no_indirects, false);
+
+   NIR_PASS_V(nir, nir_lower_system_values);
+   NIR_PASS_V(nir, nir_lower_compute_system_values, NULL);
+
+   NIR_PASS_V(nir, nir_lower_frexp);
 
    return nir;
 }
@@ -663,8 +719,7 @@ tu_gather_xfb_info(nir_shader *nir, struct ir3_stream_output_info *info)
 
 struct tu_shader *
 tu_shader_create(struct tu_device *dev,
-                 gl_shader_stage stage,
-                 const VkPipelineShaderStageCreateInfo *stage_info,
+                 nir_shader *nir,
                  unsigned multiview_mask,
                  struct tu_pipeline_layout *layout,
                  const VkAllocationCallbacks *alloc)
@@ -678,58 +733,6 @@ tu_shader_create(struct tu_device *dev,
    if (!shader)
       return NULL;
 
-   nir_shader *nir;
-   if (stage_info) {
-      /* translate SPIR-V to NIR */
-      const struct tu_shader_module *module =
-         tu_shader_module_from_handle(stage_info->module);
-      assert(module->code_size % 4 == 0);
-      nir = tu_spirv_to_nir(
-         dev->compiler, module->code, module->code_size / 4,
-         stage, stage_info->pName, stage_info->pSpecializationInfo);
-   } else {
-      assert(stage == MESA_SHADER_FRAGMENT);
-      nir_builder fs_b;
-      const nir_shader_compiler_options *nir_options =
-         ir3_get_compiler_options(dev->compiler);
-      nir_builder_init_simple_shader(&fs_b, NULL, MESA_SHADER_FRAGMENT, nir_options);
-      fs_b.shader->info.name = ralloc_strdup(fs_b.shader, "noop_fs");
-      nir = fs_b.shader;
-   }
-
-   if (!nir) {
-      vk_free2(&dev->vk.alloc, alloc, shader);
-      return NULL;
-   }
-
-   if (unlikely(dev->physical_device->instance->debug_flags & TU_DEBUG_NIR)) {
-      fprintf(stderr, "translated nir:\n");
-      nir_print_shader(nir, stderr);
-   }
-
-   /* multi step inlining procedure */
-   NIR_PASS_V(nir, nir_lower_variable_initializers, nir_var_function_temp);
-   NIR_PASS_V(nir, nir_lower_returns);
-   NIR_PASS_V(nir, nir_inline_functions);
-   NIR_PASS_V(nir, nir_copy_prop);
-   NIR_PASS_V(nir, nir_opt_deref);
-   foreach_list_typed_safe(nir_function, func, node, &nir->functions) {
-      if (!func->is_entrypoint)
-         exec_node_remove(&func->node);
-   }
-   assert(exec_list_length(&nir->functions) == 1);
-   NIR_PASS_V(nir, nir_lower_variable_initializers, ~nir_var_function_temp);
-
-   /* Split member structs.  We do this before lower_io_to_temporaries so that
-    * it doesn't lower system values to temporaries by accident.
-    */
-   NIR_PASS_V(nir, nir_split_var_copies);
-   NIR_PASS_V(nir, nir_split_per_member_structs);
-
-   NIR_PASS_V(nir, nir_remove_dead_variables,
-              nir_var_shader_in | nir_var_shader_out | nir_var_system_value | nir_var_mem_shared,
-              NULL);
-
    /* Gather information for transform feedback.
     * This should be called after nir_split_per_member_structs.
     * Also needs to be called after nir_remove_dead_variables with varyings,
@@ -741,36 +744,7 @@ tu_shader_create(struct tu_device *dev,
          nir->info.stage == MESA_SHADER_GEOMETRY)
       tu_gather_xfb_info(nir, &so_info);
 
-   NIR_PASS_V(nir, nir_propagate_invariant);
-
-   NIR_PASS_V(nir, nir_lower_io_to_temporaries, nir_shader_get_entrypoint(nir), true, true);
-
-   NIR_PASS_V(nir, nir_lower_global_vars_to_local);
-   NIR_PASS_V(nir, nir_split_var_copies);
-   NIR_PASS_V(nir, nir_lower_var_copies);
-
-   NIR_PASS_V(nir, nir_opt_copy_prop_vars);
-   NIR_PASS_V(nir, nir_opt_combine_stores, nir_var_all);
-
-   /* ir3 doesn't support indirect input/output */
-   /* TODO: We shouldn't perform this lowering pass on gl_TessLevelInner
-    * and gl_TessLevelOuter. Since the tess levels are actually stored in
-    * a global BO, they can be directly accessed via stg and ldg.
-    * nir_lower_indirect_derefs will instead generate a big if-ladder which
-    * isn't *incorrect* but is much less efficient. */
-   NIR_PASS_V(nir, nir_lower_indirect_derefs, nir_var_shader_in | nir_var_shader_out, UINT32_MAX);
-
-   NIR_PASS_V(nir, nir_lower_io_arrays_to_elements_no_indirects, false);
-
-   nir_assign_io_var_locations(nir, nir_var_shader_in, &nir->num_inputs, stage);
-   nir_assign_io_var_locations(nir, nir_var_shader_out, &nir->num_outputs, stage);
-
-   NIR_PASS_V(nir, nir_lower_system_values);
-   NIR_PASS_V(nir, nir_lower_compute_system_values, NULL);
-
-   NIR_PASS_V(nir, nir_lower_frexp);
-
-   if (stage == MESA_SHADER_FRAGMENT) {
+   if (nir->info.stage == MESA_SHADER_FRAGMENT) {
       NIR_PASS_V(nir, nir_lower_input_attachments,
                  &(nir_input_attachment_options) {
                      .use_fragcoord_sysval = true,
@@ -784,7 +758,7 @@ tu_shader_create(struct tu_device *dev,
                  });
    }
 
-   if (stage == MESA_SHADER_VERTEX && multiview_mask) {
+   if (nir->info.stage == MESA_SHADER_VERTEX && multiview_mask) {
       NIR_PASS_V(nir, tu_nir_lower_multiview, multiview_mask, dev);
    }
 
@@ -799,6 +773,9 @@ tu_shader_create(struct tu_device *dev,
                  nir_var_mem_shared,
                  nir_address_format_32bit_offset);
    }
+
+   nir_assign_io_var_locations(nir, nir_var_shader_in, &nir->num_inputs, nir->info.stage);
+   nir_assign_io_var_locations(nir, nir_var_shader_out, &nir->num_outputs, nir->info.stage);
 
    NIR_PASS_V(nir, tu_lower_io, shader, layout);
 

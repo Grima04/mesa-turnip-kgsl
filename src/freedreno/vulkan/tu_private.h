@@ -1032,10 +1032,14 @@ struct tu_shader
 bool
 tu_nir_lower_multiview(nir_shader *nir, uint32_t mask, struct tu_device *dev);
 
+nir_shader *
+tu_spirv_to_nir(struct tu_device *dev,
+                const VkPipelineShaderStageCreateInfo *stage_info,
+                gl_shader_stage stage);
+
 struct tu_shader *
 tu_shader_create(struct tu_device *dev,
-                 gl_shader_stage stage,
-                 const VkPipelineShaderStageCreateInfo *stage_info,
+                 nir_shader *nir,
                  unsigned multiview_mask,
                  struct tu_pipeline_layout *layout,
                  const VkAllocationCallbacks *alloc);
