@@ -89,6 +89,7 @@ bi_combine_sel16(bi_context *ctx, bi_instruction *parent, unsigned comp, unsigne
  * If this pass is slow, this cost can be avoided in favour for better
  * bookkeeping. */
 
+#if 0
 static bi_instruction *
 bi_get_parent(bi_context *ctx, unsigned idx)
 {
@@ -99,6 +100,7 @@ bi_get_parent(bi_context *ctx, unsigned idx)
 
         return NULL;
 }
+#endif
 
 /* Rewrites uses of an index. Again, this could be O(n) to the program but is
  * currently O(nc) to the program and number of combines, so the pass becomes
@@ -124,6 +126,7 @@ bi_rewrite_uses(bi_context *ctx,
 
 /* Checks if we have a nicely aligned vector prefix */
 
+#if 0
 static bool
 bi_is_aligned_vec32(bi_instruction *combine, unsigned s, bi_instruction *io,
                 unsigned *count)
@@ -158,7 +161,6 @@ bi_is_aligned_vec32(bi_instruction *combine, unsigned s, bi_instruction *io,
         return true;
 }
 
-#if 0
 /* Tries to lower a given source of a combine to an appropriate rewrite,
  * returning true if successful, and false with no changes otherwise. */
 
