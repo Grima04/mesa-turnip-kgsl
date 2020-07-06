@@ -1718,89 +1718,6 @@ tu_CmdClearDepthStencilImage(VkCommandBuffer commandBuffer,
 }
 
 static void
-tu_clear_sysmem_attachments_2d(struct tu_cmd_buffer *cmd,
-                               uint32_t attachment_count,
-                               const VkClearAttachment *attachments,
-                               uint32_t rect_count,
-                               const VkClearRect *rects)
-{
-   const struct tu_subpass *subpass = cmd->state.subpass;
-   /* note: cannot use shader path here.. there is a special shader path
-    * in tu_clear_sysmem_attachments()
-    */
-   const struct blit_ops *ops = &r2d_ops;
-   struct tu_cs *cs = &cmd->draw_cs;
-
-   for (uint32_t j = 0; j < attachment_count; j++) {
-         /* The vulkan spec, section 17.2 "Clearing Images Inside a Render
-          * Pass Instance" says that:
-          *
-          *     Unlike other clear commands, vkCmdClearAttachments executes as
-          *     a drawing command, rather than a transfer command, with writes
-          *     performed by it executing in rasterization order. Clears to
-          *     color attachments are executed as color attachment writes, by
-          *     the VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT stage.
-          *     Clears to depth/stencil attachments are executed as depth
-          *     writes and writes by the
-          *     VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT and
-          *     VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT stages.
-          *
-          * However, the 2d path here is executed the same way as a
-          * transfer command, using the CCU color cache exclusively with
-          * a special depth-as-color format for depth clears. This means that
-          * we can't rely on the normal pipeline barrier mechanism here, and
-          * have to manually flush whenever using a different cache domain
-          * from what the 3d path would've used. This happens when we clear
-          * depth/stencil, since normally depth attachments use CCU depth, but
-          * we clear it using a special depth-as-color format. Since the clear
-          * potentially uses a different attachment state we also need to
-          * invalidate color beforehand and flush it afterwards.
-          */
-
-         uint32_t a;
-         if (attachments[j].aspectMask & VK_IMAGE_ASPECT_COLOR_BIT) {
-            a = subpass->color_attachments[attachments[j].colorAttachment].attachment;
-            tu6_emit_event_write(cmd, cs, PC_CCU_FLUSH_COLOR_TS);
-         } else {
-            a = subpass->depth_stencil_attachment.attachment;
-            tu6_emit_event_write(cmd, cs, PC_CCU_FLUSH_DEPTH_TS);
-            tu6_emit_event_write(cmd, cs, PC_CCU_FLUSH_COLOR_TS);
-            tu6_emit_event_write(cmd, cs, PC_CCU_INVALIDATE_COLOR);
-         }
-
-         if (a == VK_ATTACHMENT_UNUSED)
-               continue;
-
-         const struct tu_image_view *iview =
-            cmd->state.framebuffer->attachments[a].attachment;
-
-         ops->setup(cmd, cs, iview->image->vk_format, attachments[j].aspectMask,
-                    ROTATE_0, true, iview->ubwc_enabled);
-         ops->clear_value(cs, iview->image->vk_format, &attachments[j].clearValue);
-
-         /* Wait for the flushes we triggered manually to complete */
-         tu_cs_emit_wfi(cs);
-
-         for (uint32_t i = 0; i < rect_count; i++) {
-            ops->coords(cs, &rects[i].rect.offset, NULL, &rects[i].rect.extent);
-            for (uint32_t layer = 0; layer < rects[i].layerCount; layer++) {
-               ops->dst(cs, iview, rects[i].baseArrayLayer + layer);
-               ops->run(cmd, cs);
-            }
-         }
-
-         if (attachments[j].aspectMask & VK_IMAGE_ASPECT_COLOR_BIT) {
-            tu6_emit_event_write(cmd, cs, PC_CCU_FLUSH_COLOR_TS);
-            tu6_emit_event_write(cmd, cs, PC_CCU_INVALIDATE_COLOR);
-         } else {
-            /* sync color into depth */
-            tu6_emit_event_write(cmd, cs, PC_CCU_FLUSH_COLOR_TS);
-            tu6_emit_event_write(cmd, cs, PC_CCU_INVALIDATE_DEPTH);
-         }
-   }
-}
-
-static void
 tu_clear_sysmem_attachments(struct tu_cmd_buffer *cmd,
                             uint32_t attachment_count,
                             const VkClearAttachment *attachments,
@@ -1851,16 +1768,8 @@ tu_clear_sysmem_attachments(struct tu_cmd_buffer *cmd,
       max_samples = MAX2(max_samples, pass->attachments[a].samples);
    }
 
-   /* prefer to use 2D path for clears
-    * 2D can't clear separate depth/stencil and msaa, needs known framebuffer
-    */
-   if (max_samples == 1 && cmd->state.framebuffer) {
-      tu_clear_sysmem_attachments_2d(cmd, attachment_count, attachments, rect_count, rects);
-      return;
-   }
-
    /* disable all draw states so they don't interfere
-    * TODO: use and re-use draw states for this path
+    * TODO: use and re-use draw states
     * we have to disable draw states individually to preserve
     * input attachment states, because a secondary command buffer
     * won't be able to restore them
