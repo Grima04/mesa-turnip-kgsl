@@ -189,7 +189,7 @@ swr_generate_fs_key(struct swr_jit_fs_key &key,
                     struct swr_context *ctx,
                     swr_fragment_shader *swr_fs)
 {
-   memset(&key, 0, sizeof(key));
+   memset((void*)&key, 0, sizeof(key));
 
    key.nr_cbufs = ctx->framebuffer.nr_cbufs;
    key.light_twoside = ctx->rasterizer->light_twoside;
@@ -221,7 +221,7 @@ swr_generate_vs_key(struct swr_jit_vs_key &key,
                     struct swr_context *ctx,
                     swr_vertex_shader *swr_vs)
 {
-   memset(&key, 0, sizeof(key));
+   memset((void*)&key, 0, sizeof(key));
 
    key.clip_plane_mask =
       swr_vs->info.base.clipdist_writemask ?
@@ -235,7 +235,7 @@ void
 swr_generate_fetch_key(struct swr_jit_fetch_key &key,
                        struct swr_vertex_element_state *velems)
 {
-   memset(&key, 0, sizeof(key));
+   memset((void*)&key, 0, sizeof(key));
 
    key.fsState = velems->fsState;
 }
@@ -245,7 +245,7 @@ swr_generate_gs_key(struct swr_jit_gs_key &key,
                     struct swr_context *ctx,
                     swr_geometry_shader *swr_gs)
 {
-   memset(&key, 0, sizeof(key));
+   memset((void*)&key, 0, sizeof(key));
 
    struct tgsi_shader_info *pPrevShader = nullptr;
 
@@ -270,7 +270,7 @@ swr_generate_tcs_key(struct swr_jit_tcs_key &key,
                     struct swr_context *ctx,
                     swr_tess_control_shader *swr_tcs)
 {
-   memset(&key, 0, sizeof(key));
+   memset((void*)&key, 0, sizeof(key));
 
    struct tgsi_shader_info *pPrevShader = &ctx->vs->info.base;
 
@@ -294,7 +294,7 @@ swr_generate_tes_key(struct swr_jit_tes_key &key,
                     struct swr_context *ctx,
                     swr_tess_evaluation_shader *swr_tes)
 {
-   memset(&key, 0, sizeof(key));
+   memset((void*)&key, 0, sizeof(key));
 
    struct tgsi_shader_info *pPrevShader = nullptr;
 
