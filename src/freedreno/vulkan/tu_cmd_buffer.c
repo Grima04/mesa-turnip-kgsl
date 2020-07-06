@@ -2913,10 +2913,11 @@ static VkResult
 tu6_emit_tess_consts(struct tu_cmd_buffer *cmd,
                      uint32_t draw_count,
                      const struct tu_pipeline *pipeline,
-                     struct tu_draw_state *state)
+                     struct tu_draw_state *state,
+                     uint64_t *factor_iova)
 {
    struct tu_cs cs;
-   VkResult result = tu_cs_begin_sub_stream(&cmd->sub_cs, 20, &cs);
+   VkResult result = tu_cs_begin_sub_stream(&cmd->sub_cs, 16, &cs);
    if (result != VK_SUCCESS)
       return result;
 
@@ -2956,14 +2957,7 @@ tu6_emit_tess_consts(struct tu_cmd_buffer *cmd,
       tu_cs_emit_qw(&cs, tess_param_iova);
       tu_cs_emit_qw(&cs, tess_factor_iova);
 
-      tu_cs_emit_pkt4(&cs, REG_A6XX_PC_TESSFACTOR_ADDR_LO, 2);
-      tu_cs_emit_qw(&cs, tess_factor_iova);
-
-      /* TODO: Without this WFI here, the hardware seems unable to read these
-       * addresses we just emitted. Freedreno emits these consts as part of
-       * IB1 instead of in a draw state which might make this WFI unnecessary,
-       * but it requires a bit more indirection (SS6_INDIRECT for consts). */
-      tu_cs_emit_wfi(&cs);
+      *factor_iova = tess_factor_iova;
    }
    *state = tu_cs_end_draw_state(&cmd->sub_cs, &cs);
    return VK_SUCCESS;
@@ -3012,10 +3006,24 @@ tu6_draw_common(struct tu_cmd_buffer *cmd,
          pipeline->active_stages & VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
    struct tu_draw_state tess_consts = {};
    if (has_tess) {
+      uint64_t tess_factor_iova = 0;
+
       cmd->has_tess = true;
-      result = tu6_emit_tess_consts(cmd, draw_count, pipeline, &tess_consts);
+      result = tu6_emit_tess_consts(cmd, draw_count, pipeline, &tess_consts, &tess_factor_iova);
       if (result != VK_SUCCESS)
          return result;
+
+      /* this sequence matches what the blob does before every tess draw
+       * PC_TESSFACTOR_ADDR_LO is a non-context register and needs a wfi
+       * before writing to it
+       */
+      tu_cs_emit_wfi(cs);
+
+      tu_cs_emit_pkt4(cs, REG_A6XX_PC_TESSFACTOR_ADDR_LO, 2);
+      tu_cs_emit_qw(cs, tess_factor_iova);
+
+      tu_cs_emit_pkt7(cs, CP_SET_SUBDRAW_SIZE, 1);
+      tu_cs_emit(cs, draw_count);
    }
 
    /* for the first draw in a renderpass, re-emit all the draw states
