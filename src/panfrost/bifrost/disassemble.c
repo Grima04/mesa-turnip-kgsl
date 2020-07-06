@@ -1592,6 +1592,7 @@ static void dump_add(FILE *fp, uint64_t word, struct bifrost_regs regs,
         }
         case ADD_LOAD_ATTR:
                 fprintf(fp, "location:%d, ", (ADD.op >> 3) & 0x1f);
+                /* fallthrough */
         case ADD_TWO_SRC:
                 dump_src(fp, ADD.src0, regs, consts, false);
                 fprintf(fp, ", ");
@@ -1987,6 +1988,7 @@ bool dump_clause(FILE *fp, uint32_t *words, unsigned *size, unsigned offset, boo
                                 // only constants can come after this
                                 num_instrs = 1;
                                 done = stop;
+                                /* fallthrough */
                         case 0x5:
                                 header_bits = bits(words[2], 19, 32) | ((uint64_t) words[3] << (32 - 19));
                                 main_instr.add_bits |= (tag & 0x7) << 17;
