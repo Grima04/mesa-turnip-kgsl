@@ -1907,6 +1907,11 @@ tu_clear_sysmem_attachments(struct tu_cmd_buffer *cmd,
             .component_enable = COND(clear_rts & (1 << i), 0xf)));
    }
 
+   if (z_clear) {
+      tu_cs_emit_regs(cs, A6XX_GRAS_LRZ_CNTL(0));
+      tu_cs_emit_regs(cs, A6XX_RB_LRZ_CNTL(0));
+   }
+
    tu_cs_emit_regs(cs, A6XX_RB_DEPTH_PLANE_CNTL());
    tu_cs_emit_regs(cs, A6XX_RB_DEPTH_CNTL(
          .z_enable = z_clear,
