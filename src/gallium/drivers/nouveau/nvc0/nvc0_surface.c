@@ -514,6 +514,7 @@ nvc0_clear_buffer(struct pipe_context *pipe,
       /* RGB32 is not a valid RT format. This will be handled by the pushbuf
        * uploader.
        */
+      dst_fmt = PIPE_FORMAT_NONE; /* Init dst_fmt to silence gcc warning */
       break;
    case 8:
       dst_fmt = PIPE_FORMAT_R32G32_UINT;
