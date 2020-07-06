@@ -1278,6 +1278,7 @@ tu_CreateDevice(VkPhysicalDevice physicalDevice,
       goto fail_global_bo_map;
 
    memcpy(device->global_bo.map + gb_offset(border_color), border_color, sizeof(border_color));
+   tu_init_clear_blit_shaders(device->global_bo.map);
 
    VkPipelineCacheCreateInfo ci;
    ci.sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO;

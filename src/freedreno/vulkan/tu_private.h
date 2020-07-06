@@ -339,11 +339,24 @@ struct tu_bo
    void *map;
 };
 
+enum global_shader {
+   GLOBAL_SH_VS,
+   GLOBAL_SH_VS_LAYER,
+   GLOBAL_SH_GS_LAYER,
+   GLOBAL_SH_FS_BLIT,
+   GLOBAL_SH_FS_CLEAR0,
+   GLOBAL_SH_FS_CLEAR_MAX = GLOBAL_SH_FS_CLEAR0 + MAX_RTS,
+   GLOBAL_SH_COUNT,
+};
+
 /* This struct defines the layout of the global_bo */
 struct tu6_global
 {
    /* 6 bcolor_entry entries, one for each VK_BORDER_COLOR */
    uint8_t border_color[128 * 6];
+
+   /* clear/blit shaders, all <= 16 instrs (16 instr = 1 instrlen unit) */
+   instr_t shaders[GLOBAL_SH_COUNT][16];
 
    uint32_t seqno_dummy;          /* dummy seqno for CP_EVENT_WRITE */
    uint32_t _pad0;
@@ -360,6 +373,8 @@ struct tu6_global
 };
 #define gb_offset(member) offsetof(struct tu6_global, member)
 #define global_iova(cmd, member) ((cmd)->device->global_bo.iova + gb_offset(member))
+
+void tu_init_clear_blit_shaders(struct tu6_global *global);
 
 /* extra space in vsc draw/prim streams */
 #define VSC_PAD 0x40

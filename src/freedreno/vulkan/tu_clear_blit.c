@@ -318,6 +318,87 @@ r2d_run(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
 
 /* r3d_ = shader path operations */
 
+void
+tu_init_clear_blit_shaders(struct tu6_global *global)
+{
+#define MOV(args...) { .cat1 = { .opc_cat = 1, .src_type = TYPE_S32, .dst_type = TYPE_S32, args } }
+#define CAT2(op, args...) { .cat2 = { .opc_cat = 2, .opc = (op) & 63, .full = 1, args } }
+#define CAT3(op, args...) { .cat3 = { .opc_cat = 3, .opc = (op) & 63, args } }
+
+   static const instr_t vs_code[] = {
+      /* r0.xyz = r0.w ? c1.xyz : c0.xyz
+       * r1.xy = r0.w ? c1.zw : c0.zw
+       * r0.w = 1.0f
+       */
+      CAT3(OPC_SEL_B32, .repeat = 2, .dst = 0,
+         .c1 = {.src1_c = 1, .src1 = 4}, .src1_r = 1,
+         .src2 = 3,
+         .c2 = {.src3_c = 1, .dummy = 1, .src3 = 0}),
+      CAT3(OPC_SEL_B32, .repeat = 1, .dst = 4,
+         .c1 = {.src1_c = 1, .src1 = 6}, .src1_r = 1,
+         .src2 = 3,
+         .c2 = {.src3_c = 1, .dummy = 1, .src3 = 2}),
+      MOV(.dst = 3, .src_im = 1, .fim_val = 1.0f ),
+      { .cat0 = { .opc = OPC_END } },
+   };
+
+   static const instr_t vs_layered[] = {
+      { .cat0 = { .opc = OPC_CHMASK } },
+      { .cat0 = { .opc = OPC_CHSH } },
+   };
+
+   static const instr_t gs_code[] = {
+      /* (sy)(ss)(nop3)shr.b r0.w, r0.x, 16 (extract local_id) */
+      CAT2(OPC_SHR_B, .dst = 3, .src1 = 0, .src2_im = 1, .src2 = 16,
+           .src1_r = 1, .src2_r = 1, .ss = 1, .sync = 1),
+      /* x = (local_id & 1) ? c1.x : c0.x */
+      CAT2(OPC_AND_B, .dst = 0, .src1 = 3, .src2_im = 1, .src2 = 1),
+      /* y = (local_id & 2) ? c1.y : c0.y */
+      CAT2(OPC_AND_B, .dst = 1, .src1 = 3, .src2_im = 1, .src2 = 2),
+      /* pred = (local_id >= 4), used by OPC_KILL */
+      CAT2(OPC_CMPS_S, .dst = REG_P0 * 4, .cond = IR3_COND_GE, .src1 = 3, .src2_im = 1, .src2 = 4),
+      /* vertex_flags_out = (local_id == 0) ? 4 : 0 - first vertex flag */
+      CAT2(OPC_CMPS_S, .dst = 4, .cond = IR3_COND_EQ, .src1 = 3, .src2_im = 1, .src2 = 0),
+
+      MOV(.dst = 2, .src_c = 1, .src = 2), /* depth clear value from c0.z */
+      MOV(.dst = 3, .src_im = 1, .fim_val = 1.0f),
+      MOV(.dst = 5, .src_c = 1, .src = 3), /* layer id from c0.w */
+
+      /* (rpt1)sel.b32 r0.x, (r)c1.x, (r)r0.x, (r)c0.x */
+      CAT3(OPC_SEL_B32, .repeat = 1, .dst = 0,
+         .c1 = {.src1_c = 1, .src1 = 4, .dummy = 4}, .src1_r = 1,
+         .src2 = 0,
+         .c2 = {.src3_c = 1, .dummy = 1, .src3 = 0}),
+
+      CAT2(OPC_SHL_B, .dst = 4, .src1 = 4, .src2_im = 1, .src2 = 2),
+
+      { .cat0 = { .opc = OPC_KILL } },
+      { .cat0 = { .opc = OPC_END, .ss = 1, .sync = 1 } },
+   };
+
+   static const instr_t fs_blit[] = {
+      /* " bary.f (ei)r63.x, 0, r0.x" note the blob doesn't have this in its
+       * blit path (its not clear what allows it to not have it)
+       */
+      CAT2(OPC_BARY_F, .ei = 1, .full = 1, .dst = 63 * 4, .src1_im = 1),
+      { .cat0 = { .opc = OPC_END } },
+   };
+
+   memcpy(&global->shaders[GLOBAL_SH_VS], vs_code, sizeof(vs_code));
+   memcpy(&global->shaders[GLOBAL_SH_VS_LAYER], vs_layered, sizeof(vs_layered));
+   memcpy(&global->shaders[GLOBAL_SH_GS_LAYER], gs_code, sizeof(gs_code));
+   memcpy(&global->shaders[GLOBAL_SH_FS_BLIT], fs_blit, sizeof(fs_blit));
+
+   for (uint32_t num_rts = 0; num_rts <= MAX_RTS; num_rts++) {
+      instr_t *code = global->shaders[GLOBAL_SH_FS_CLEAR0 + num_rts];
+      for (uint32_t i = 0; i < num_rts; i++) {
+         /* (rpt3)mov.s32s32 r0.x, (r)c[i].x */
+         *code++ = (instr_t) MOV(.repeat = 3, .dst = i * 4, .src_c = 1, .src_r = 1, .src = i * 4);
+      }
+      *code++ = (instr_t) { .cat0 = { .opc = OPC_END } };
+   }
+}
+
 static void
 r3d_common(struct tu_cmd_buffer *cmd, struct tu_cs *cs, bool blit, uint32_t num_rts,
            bool layered_clear)
@@ -415,105 +496,17 @@ r3d_common(struct tu_cmd_buffer *cmd, struct tu_cs *cs, bool blit, uint32_t num_
       .const_state = &dummy_const_state,
    }, *gs = layered_clear ? &gs_shader : NULL;
 
-
-#define MOV(args...) { .cat1 = { .opc_cat = 1, .src_type = TYPE_F32, .dst_type = TYPE_F32, args } }
-#define CAT2(op, args...) { .cat2 = { .opc_cat = 2, .opc = (op) & 63, .full = 1, args } }
-#define CAT3(op, args...) { .cat3 = { .opc_cat = 3, .opc = (op) & 63, args } }
-
-   static const instr_t vs_code[] = {
-      /* r0.xyz = r0.w ? c1.xyz : c0.xyz
-       * r1.xy = r0.w ? c1.zw : c0.zw
-       * r0.w = 1.0f
-       */
-      CAT3(OPC_SEL_B32, .repeat = 2, .dst = 0,
-         .c1 = {.src1_c = 1, .src1 = 4}, .src1_r = 1,
-         .src2 = 3,
-         .c2 = {.src3_c = 1, .dummy = 1, .src3 = 0}),
-      CAT3(OPC_SEL_B32, .repeat = 1, .dst = 4,
-         .c1 = {.src1_c = 1, .src1 = 6}, .src1_r = 1,
-         .src2 = 3,
-         .c2 = {.src3_c = 1, .dummy = 1, .src3 = 2}),
-      MOV(.dst = 3, .src_im = 1, .fim_val = 1.0f ),
-      { .cat0 = { .opc = OPC_END } },
-   };
-
-   static const instr_t vs_layered[] = {
-      { .cat0 = { .opc = OPC_CHMASK } },
-      { .cat0 = { .opc = OPC_CHSH } },
-   };
-
-   static const instr_t gs_code[16] = {
-      /* (sy)(ss)(nop3)shr.b r0.w, r0.x, 16 (extract local_id) */
-      CAT2(OPC_SHR_B, .dst = 3, .src1 = 0, .src2_im = 1, .src2 = 16,
-           .src1_r = 1, .src2_r = 1, .ss = 1, .sync = 1),
-      /* x = (local_id & 1) ? c1.x : c0.x */
-      CAT2(OPC_AND_B, .dst = 0, .src1 = 3, .src2_im = 1, .src2 = 1),
-      /* y = (local_id & 2) ? c1.y : c0.y */
-      CAT2(OPC_AND_B, .dst = 1, .src1 = 3, .src2_im = 1, .src2 = 2),
-      /* pred = (local_id >= 4), used by OPC_KILL */
-      CAT2(OPC_CMPS_S, .dst = REG_P0 * 4, .cond = IR3_COND_GE, .src1 = 3, .src2_im = 1, .src2 = 4),
-      /* vertex_flags_out = (local_id == 0) ? 4 : 0 - first vertex flag */
-      CAT2(OPC_CMPS_S, .dst = 4, .cond = IR3_COND_EQ, .src1 = 3, .src2_im = 1, .src2 = 0),
-
-      MOV(.dst = 2, .src_c = 1, .src = 2), /* depth clear value from c0.z */
-      MOV(.dst = 3, .src_im = 1, .fim_val = 1.0f),
-      MOV(.dst = 5, .src_c = 1, .src = 3), /* layer id from c0.w */
-
-      /* (rpt1)sel.b32 r0.x, (r)c1.x, (r)r0.x, (r)c0.x */
-      CAT3(OPC_SEL_B32, .repeat = 1, .dst = 0,
-         .c1 = {.src1_c = 1, .src1 = 4, .dummy = 4}, .src1_r = 1,
-         .src2 = 0,
-         .c2 = {.src3_c = 1, .dummy = 1, .src3 = 0}),
-
-      CAT2(OPC_SHL_B, .dst = 4, .src1 = 4, .src2_im = 1, .src2 = 2),
-
-      { .cat0 = { .opc = OPC_KILL } },
-      { .cat0 = { .opc = OPC_END, .ss = 1, .sync = 1 } },
-   };
-#define FS_OFFSET (16 * sizeof(instr_t))
-#define GS_OFFSET (32 * sizeof(instr_t))
-
    /* shaders */
-   struct tu_cs_memory shaders = { };
-   VkResult result = tu_cs_alloc(&cmd->sub_cs, 2 + layered_clear,
-                                 16 * sizeof(instr_t), &shaders);
-   assert(result == VK_SUCCESS);
-
-   if (layered_clear) {
-      memcpy(shaders.map, vs_layered, sizeof(vs_layered));
-      memcpy((uint8_t*) shaders.map + GS_OFFSET, gs_code, sizeof(gs_code));
-   } else {
-      memcpy(shaders.map, vs_code, sizeof(vs_code));
-   }
-
-   instr_t *fs_code = (instr_t*) ((uint8_t*) shaders.map + FS_OFFSET);
-   for (uint32_t i = 0; i < num_rts; i++) {
-      /* (rpt3)mov.s32s32 r0.x, (r)c[i].x */
-      *fs_code++ = (instr_t) { .cat1 = {
-         .opc_cat = 1, .src_type = TYPE_S32, .dst_type = TYPE_S32,
-         .repeat = 3, .dst = i * 4, .src_c = 1, .src_r = 1, .src = i * 4
-      } };
-   }
-
-   /* " bary.f (ei)r63.x, 0, r0.x" note the blob doesn't have this in its
-    * blit path (its not clear what allows it to not have it)
-    */
-   if (blit) {
-      *fs_code++ = (instr_t) { .cat2 = {
-         .opc_cat = 2, .opc = OPC_BARY_F & 63, .ei = 1, .full = 1,
-         .dst = regid(63, 0), .src1_im = 1
-      } };
-   }
-   *fs_code++ = (instr_t) { .cat0 = { .opc = OPC_END } };
-   /* note: assumed <= 16 instructions (MAX_RTS is 8) */
-
    tu_cs_emit_regs(cs, A6XX_HLSQ_UPDATE_CNTL(0x7ffff));
 
-   tu6_emit_xs_config(cs, MESA_SHADER_VERTEX, &vs, shaders.iova);
+   tu6_emit_xs_config(cs, MESA_SHADER_VERTEX, &vs,
+         global_iova(cmd, shaders[gs ? GLOBAL_SH_VS_LAYER : GLOBAL_SH_VS]));
    tu6_emit_xs_config(cs, MESA_SHADER_TESS_CTRL, NULL, 0);
    tu6_emit_xs_config(cs, MESA_SHADER_TESS_EVAL, NULL, 0);
-   tu6_emit_xs_config(cs, MESA_SHADER_GEOMETRY, gs, shaders.iova + GS_OFFSET);
-   tu6_emit_xs_config(cs, MESA_SHADER_FRAGMENT, &fs, shaders.iova + FS_OFFSET);
+   tu6_emit_xs_config(cs, MESA_SHADER_GEOMETRY, gs,
+         global_iova(cmd, shaders[GLOBAL_SH_GS_LAYER]));
+   tu6_emit_xs_config(cs, MESA_SHADER_FRAGMENT, &fs,
+         global_iova(cmd, shaders[blit ? GLOBAL_SH_FS_BLIT : (GLOBAL_SH_FS_CLEAR0 + num_rts)]));
 
    tu_cs_emit_regs(cs, A6XX_PC_PRIMITIVE_CNTL_0());
    tu_cs_emit_regs(cs, A6XX_VFD_CONTROL_0());
