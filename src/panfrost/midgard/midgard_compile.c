@@ -1330,6 +1330,11 @@ emit_ubo_read(
                 ins.src[2] = nir_src_index(ctx, indirect_offset);
                 ins.src_types[2] = nir_type_uint32;
                 ins.load_store.arg_2 = (indirect_shift << 5);
+
+                /* X component for the whole swizzle to prevent register
+                 * pressure from ballooning from the extra components */
+                for (unsigned i = 0; i < ARRAY_SIZE(ins.swizzle[2]); ++i)
+                        ins.swizzle[2][i] = 0;
         } else {
                 ins.load_store.arg_2 = 0x1E;
         }
