@@ -128,6 +128,7 @@ void lp_setup_reset( struct lp_setup_context *setup )
       setup->constants[i].stored_size = 0;
       setup->constants[i].stored_data = NULL;
    }
+
    setup->fs.stored = NULL;
    setup->dirty = ~0;
 
@@ -624,7 +625,6 @@ lp_setup_set_fs_variant( struct lp_setup_context *setup,
 {
    LP_DBG(DEBUG_SETUP, "%s %p\n", __FUNCTION__,
           variant);
-   /* FIXME: reference count */
 
    setup->fs.current.variant = variant;
    setup->dirty |= LP_SETUP_NEW_FS;
@@ -1280,9 +1280,14 @@ try_update_scene_state( struct lp_setup_context *setup )
             return FALSE;
          }
 
-         memcpy(stored,
-                &setup->fs.current,
-                sizeof setup->fs.current);
+         memcpy(&stored->jit_context,
+                &setup->fs.current.jit_context,
+                sizeof setup->fs.current.jit_context);
+         stored->variant = setup->fs.current.variant;
+
+         if (!lp_scene_add_frag_shader_reference(scene,
+                                                 setup->fs.current.variant))
+            return FALSE;
          setup->fs.stored = stored;
          
          /* The scene now references the textures in the rasterization
