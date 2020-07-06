@@ -445,6 +445,50 @@ midgard_nir_lower_zs_store(nir_shader *nir)
         return progress;
 }
 
+/* Real writeout stores, which break execution, need to be moved to after
+ * dual-source stores, which are just standard register writes. */
+static bool
+midgard_nir_reorder_writeout(nir_shader *nir)
+{
+        bool progress = false;
+
+        nir_foreach_function(function, nir) {
+                if (!function->impl) continue;
+
+                nir_foreach_block(block, function->impl) {
+                        nir_instr *last_writeout = NULL;
+
+                        nir_foreach_instr_reverse_safe(instr, block) {
+                                if (instr->type != nir_instr_type_intrinsic)
+                                        continue;
+
+                                nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
+                                if (intr->intrinsic != nir_intrinsic_store_output)
+                                        continue;
+
+                                const nir_variable *var = search_var(&nir->outputs, nir_intrinsic_base(intr));
+
+                                if (var->data.index) {
+                                        if (!last_writeout)
+                                                last_writeout = instr;
+                                        continue;
+                                }
+
+                                if (!last_writeout)
+                                        continue;
+
+                                /* This is a real store, so move it to after dual-source stores */
+                                exec_node_remove(&instr->node);
+                                exec_node_insert_after(&last_writeout->node, &instr->node);
+
+                                progress = true;
+                        }
+                }
+        }
+
+        return progress;
+}
+
 /* Flushes undefined values to zero */
 
 static void
@@ -2817,6 +2861,8 @@ midgard_compile_shader_nir(nir_shader *nir, panfrost_program *program, bool is_b
         /* Optimisation passes */
 
         optimise_nir(nir, ctx->quirks, is_blend);
+
+        NIR_PASS_V(nir, midgard_nir_reorder_writeout);
 
         if (midgard_debug & MIDGARD_DBG_SHADERS) {
                 nir_print_shader(nir, stdout);
