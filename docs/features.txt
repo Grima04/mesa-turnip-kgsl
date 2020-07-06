@@ -227,14 +227,14 @@ GL 4.5, GLSL 4.50 -- all DONE: nvc0, r600, radeonsi, llvmpipe
 
 GL 4.6, GLSL 4.60 -- all DONE: radeonsi
 
-  GL_ARB_gl_spirv                                       DONE (i965/gen7+)
+  GL_ARB_gl_spirv                                       DONE (i965/gen7+, llvmpipe)
   GL_ARB_indirect_parameters                            DONE (i965/gen7+, nvc0, llvmpipe, virgl, zink)
   GL_ARB_pipeline_statistics_query                      DONE (i965, nvc0, r600, llvmpipe, softpipe, swr)
   GL_ARB_polygon_offset_clamp                           DONE (freedreno, i965, nv50, nvc0, r600, llvmpipe, swr, virgl)
   GL_ARB_shader_atomic_counter_ops                      DONE (freedreno/a5xx+, i965/gen7+, nvc0, r600, llvmpipe, softpipe, virgl, v3d, zink)
   GL_ARB_shader_draw_parameters                         DONE (i965, llvmpipe, nvc0)
   GL_ARB_shader_group_vote                              DONE (i965, nvc0, llvmpipe)
-  GL_ARB_spirv_extensions                               DONE (i965/gen7+)
+  GL_ARB_spirv_extensions                               DONE (i965/gen7+, llvmpipe)
   GL_ARB_texture_filter_anisotropic                     DONE (etnaviv/HALTI0, freedreno, i965, nv50, nvc0, r600, softpipe (*), llvmpipe (*), d3d12, virgl, zink)
   GL_ARB_transform_feedback_overflow_query              DONE (i965/gen6+, nvc0, llvmpipe, softpipe, virgl)
   GL_KHR_no_error                                       DONE (all drivers)
