@@ -1331,8 +1331,11 @@ mir_schedule_alu(
         /* Size ALU instruction for tag */
         bundle.tag = (TAG_ALU_4) + (bytes_emitted / 16) - 1;
 
+        bool tilebuf_wait = branch && branch->compact_branch &&
+           branch->branch.target_type == TARGET_TILEBUF_WAIT;
+
         /* MRT capable GPUs use a special writeout procedure */
-        if (writeout && !(ctx->quirks & MIDGARD_NO_UPPER_ALU))
+        if ((writeout || tilebuf_wait) && !(ctx->quirks & MIDGARD_NO_UPPER_ALU))
                 bundle.tag += 4;
 
         bundle.padding = padding;
