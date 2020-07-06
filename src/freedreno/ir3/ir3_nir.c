@@ -153,7 +153,7 @@ ir3_get_compiler_options(struct ir3_compiler *compiler)
 
 #define OPT_V(nir, pass, ...) NIR_PASS_V(nir, pass, ##__VA_ARGS__)
 
-static void
+void
 ir3_optimize_loop(nir_shader *s)
 {
 	bool progress;
