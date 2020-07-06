@@ -30,8 +30,6 @@
  *    gl_FragCoord.xyz = gl_FragCoord_orig.xyz
  *    gl_FragCoord.w = 1.0 / gl_FragCoord_orig.w
  *
- * To trigger the transformation, gl_FragCoord currently has to be treated
- * as a system value with PIPE_CAP_TGSI_FS_POSITION_IS_SYSVAL enabled.
  */
 
 static bool
@@ -41,7 +39,14 @@ lower_fragcoord_wtrans_filter(const nir_instr *instr, UNUSED const void *_option
       return false;
 
    nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
-   return intr->intrinsic == nir_intrinsic_load_frag_coord;
+   if (intr->intrinsic == nir_intrinsic_load_frag_coord)
+      return true;
+
+   if (intr->intrinsic != nir_intrinsic_load_deref)
+      return false;
+
+   nir_variable *var = nir_intrinsic_get_var(intr, 0);
+   return var->data.location == VARYING_SLOT_POS;
 }
 
 static nir_ssa_def *
