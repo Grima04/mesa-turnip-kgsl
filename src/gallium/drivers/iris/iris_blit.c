@@ -504,7 +504,7 @@ iris_blit(struct pipe_context *ctx, const struct pipe_blit_info *info)
    }
 
    struct iris_resource *stc_dst = NULL;
-   enum isl_aux_usage stc_src_aux_usage, stc_dst_aux_usage;
+   enum isl_aux_usage stc_dst_aux_usage = ISL_AUX_USAGE_NONE;
    if ((info->mask & PIPE_MASK_S) &&
        util_format_has_stencil(util_format_description(info->dst.format)) &&
        util_format_has_stencil(util_format_description(info->src.format))) {
@@ -516,7 +516,7 @@ iris_blit(struct pipe_context *ctx, const struct pipe_blit_info *info)
       struct iris_format_info src_fmt =
          iris_format_for_usage(devinfo, src_res->base.format,
                                ISL_SURF_USAGE_TEXTURE_BIT);
-      stc_src_aux_usage =
+      enum isl_aux_usage stc_src_aux_usage =
          iris_resource_texture_aux_usage(ice, src_res, src_fmt.fmt);
 
       struct iris_format_info dst_fmt =
