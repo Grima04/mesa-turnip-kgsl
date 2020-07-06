@@ -398,7 +398,7 @@ radv_AcquireImageANDROID(
 		                                                 .flags = VK_SEMAPHORE_IMPORT_TEMPORARY_BIT,
 		                                                 .fd = semaphore_fd,
 		                                                 .semaphore = semaphore,
-		                                                 .handleType = VK_EXTERNAL_FENCE_HANDLE_TYPE_SYNC_FD_BIT,
+		                                                 .handleType = VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_SYNC_FD_BIT,
 		                                            });
 	}
 
