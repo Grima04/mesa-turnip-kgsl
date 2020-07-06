@@ -74,6 +74,9 @@ struct ir3_compiler {
 	 */
 	bool samgq_workaround;
 
+	/* on a650, vertex shader <-> tess control io uses LDL/STL */
+	bool tess_use_shared;
+
 	/* The maximum number of constants, in vec4's, across the entire graphics
 	 * pipeline.
 	 */

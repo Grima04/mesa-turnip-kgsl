@@ -42,6 +42,9 @@ struct state {
 
 	struct exec_list old_outputs;
 	struct exec_list emit_outputs;
+
+	/* tess ctrl shader on a650 gets the local primitive id at different bits: */
+	bool local_primitive_id_start;
 };
 
 static nir_ssa_def *
@@ -66,7 +69,7 @@ build_vertex_id(nir_builder *b, struct state *state)
 static nir_ssa_def *
 build_local_primitive_id(nir_builder *b, struct state *state)
 {
-	return bitfield_extract(b, state->header, 0, 63);
+	return bitfield_extract(b, state->header, state->local_primitive_id_start, 63);
 }
 
 static nir_variable *
@@ -301,9 +304,15 @@ lower_block_to_explicit_input(nir_block *block, nir_builder *b, struct state *st
 }
 
 void
-ir3_nir_lower_to_explicit_input(nir_shader *shader)
+ir3_nir_lower_to_explicit_input(nir_shader *shader, struct ir3_compiler *compiler)
 {
  	struct state state = { };
+
+	/* when using stl/ldl (instead of stlw/ldlw) for linking VS and HS,
+	 * HS uses a different primitive id, which starts at bit 16 in the header
+	 */
+	if (shader->info.stage == MESA_SHADER_TESS_CTRL && compiler->tess_use_shared)
+		state.local_primitive_id_start = 16;
 
 	nir_function_impl *impl = nir_shader_get_entrypoint(shader);
 	assert(impl);

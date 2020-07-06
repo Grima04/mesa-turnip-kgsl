@@ -379,7 +379,7 @@ ir3_nir_lower_variant(struct ir3_shader_variant *so, nir_shader *s)
 			break;
 		case MESA_SHADER_TESS_CTRL:
 			NIR_PASS_V(s, ir3_nir_lower_tess_ctrl, so, so->key.tessellation);
-			NIR_PASS_V(s, ir3_nir_lower_to_explicit_input);
+			NIR_PASS_V(s, ir3_nir_lower_to_explicit_input, so->shader->compiler);
 			progress = true;
 			break;
 		case MESA_SHADER_TESS_EVAL:
@@ -389,7 +389,7 @@ ir3_nir_lower_variant(struct ir3_shader_variant *so, nir_shader *s)
 			progress = true;
 			break;
 		case MESA_SHADER_GEOMETRY:
-			NIR_PASS_V(s, ir3_nir_lower_to_explicit_input);
+			NIR_PASS_V(s, ir3_nir_lower_to_explicit_input, so->shader->compiler);
 			progress = true;
 			break;
 		default:

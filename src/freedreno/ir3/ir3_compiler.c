@@ -93,6 +93,9 @@ ir3_compiler_create(struct fd_device *dev, uint32_t gpu_id)
 		 * TODO: is this true on earlier gen's?
 		 */
 		compiler->max_const_compute = 256;
+
+		if (compiler->gpu_id == 650)
+			compiler->tess_use_shared = true;
 	} else {
 		compiler->max_const_pipeline = 512;
 		compiler->max_const_geom = 512;
