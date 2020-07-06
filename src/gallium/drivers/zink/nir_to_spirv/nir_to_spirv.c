@@ -394,15 +394,14 @@ emit_output(struct ntv_context *ctx, struct nir_variable *var)
       ctx->so_output_gl_types[var->data.location] = var->type;
       ctx->so_output_types[var->data.location] = var_type;
    } else if (ctx->stage == MESA_SHADER_FRAGMENT) {
-      if (var->data.location >= FRAG_RESULT_DATA0)
+      if (var->data.location >= FRAG_RESULT_DATA0) {
          spirv_builder_emit_location(&ctx->builder, var_id,
                                      var->data.location - FRAG_RESULT_DATA0);
-      else {
+         spirv_builder_emit_index(&ctx->builder, var_id, var->data.index);
+      } else {
          switch (var->data.location) {
          case FRAG_RESULT_COLOR:
-            spirv_builder_emit_location(&ctx->builder, var_id, 0);
-            spirv_builder_emit_index(&ctx->builder, var_id, var->data.index);
-            break;
+            unreachable("gl_FragColor should be lowered by now");
 
          case FRAG_RESULT_DEPTH:
             spirv_builder_emit_builtin(&ctx->builder, var_id, SpvBuiltInFragDepth);
@@ -411,6 +410,7 @@ emit_output(struct ntv_context *ctx, struct nir_variable *var)
          default:
             spirv_builder_emit_location(&ctx->builder, var_id,
                                         var->data.driver_location);
+            spirv_builder_emit_index(&ctx->builder, var_id, var->data.index);
          }
       }
    }
