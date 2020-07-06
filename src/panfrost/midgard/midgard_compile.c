@@ -1614,6 +1614,29 @@ mir_get_branch_cond(nir_src *src, bool *invert)
         return nir_src_index(NULL, &alu.src);
 }
 
+static uint8_t
+output_load_rt_addr(nir_shader *nir, nir_intrinsic_instr *instr)
+{
+        const nir_variable *var;
+        var = search_var(&nir->outputs, nir_intrinsic_base(instr));
+        assert(var);
+
+        unsigned loc = var->data.location;
+
+        if (loc == FRAG_RESULT_COLOR)
+                loc = FRAG_RESULT_DATA0;
+
+        if (loc >= FRAG_RESULT_DATA0)
+                return loc - FRAG_RESULT_DATA0;
+
+        if (loc == FRAG_RESULT_DEPTH)
+                return 0x1F;
+        if (loc == FRAG_RESULT_STENCIL)
+                return 0x1E;
+
+        assert(0);
+}
+
 static void
 emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
 {
@@ -1726,6 +1749,8 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
 
                 midgard_instruction ld = m_ld_color_buffer_32u(reg, 0);
 
+                ld.load_store.arg_2 = output_load_rt_addr(ctx->nir, instr);
+
                 if (ctx->quirks & MIDGARD_OLD_BLEND) {
                         ld.load_store.op = midgard_op_ld_color_buffer_32u_old;
                         ld.load_store.address = 16;
@@ -1740,6 +1765,8 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
                 reg = nir_dest_index(&instr->dest);
 
                 midgard_instruction ld = m_ld_color_buffer_as_fp16(reg, 0);
+
+                ld.load_store.arg_2 = output_load_rt_addr(ctx->nir, instr);
 
                 for (unsigned c = 4; c < 16; ++c)
                         ld.swizzle[0][c] = 0;

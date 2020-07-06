@@ -646,6 +646,8 @@ pan_lower_fb_load(nir_shader *shader,
                        nir_intrinsic_load_raw_output_pan);
         new->num_components = 4;
 
+        nir_intrinsic_set_base(new, base);
+
         nir_ssa_dest_init(&new->instr, &new->dest, 4, 32, NULL);
         nir_builder_instr_insert(b, &new->instr);
 
@@ -714,11 +716,18 @@ pan_lower_framebuffer(nir_shader *shader, enum pipe_format *rt_fmts,
                                 if (var->data.mode != nir_var_shader_out)
                                         continue;
 
-                                if (var->data.location != FRAG_RESULT_COLOR)
+                                unsigned base = var->data.driver_location;
+
+                                unsigned rt;
+                                if (var->data.location == FRAG_RESULT_COLOR)
+                                        rt = 0;
+                                else if (var->data.location >= FRAG_RESULT_DATA0)
+                                        rt = var->data.location - FRAG_RESULT_DATA0;
+                                else
                                         continue;
 
                                 const struct util_format_description *desc =
-                                   util_format_description(rt_fmts[0]);
+                                   util_format_description(rt_fmts[rt]);
 
                                 enum pan_format_class fmt_class =
                                         pan_format_class(desc, quirks, is_store);
