@@ -1673,8 +1673,12 @@ struct mali_single_framebuffer {
         /* More below this, maybe */
 } __attribute__((packed));
 
-/* Format bits for the render target flags */
+/* Format bits for the render target flags. Setting MSAA alone works for on
+ * chip MSAA. Setting MSAA with the LAYERED flag works for MSAA where each
+ * sample is its own image (implements the ES3 spec directly but inefficient on
+ * mobile). */
 
+#define MALI_MFBD_FORMAT_LAYERED  (1 << 0)
 #define MALI_MFBD_FORMAT_MSAA 	  (1 << 1)
 #define MALI_MFBD_FORMAT_SRGB 	  (1 << 2)
 

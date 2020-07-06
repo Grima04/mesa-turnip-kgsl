@@ -244,6 +244,7 @@ static const struct pandecode_flag_info u4_flag_info[] = {
 
 #define FLAG_INFO(flag) { MALI_MFBD_FORMAT_##flag, "MALI_MFBD_FORMAT_" #flag }
 static const struct pandecode_flag_info mfbd_fmt_flag_info[] = {
+        FLAG_INFO(LAYERED),
         FLAG_INFO(MSAA),
         FLAG_INFO(SRGB),
         {}
