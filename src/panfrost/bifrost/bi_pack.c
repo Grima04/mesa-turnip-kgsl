@@ -719,6 +719,7 @@ bi_cond_to_csel(enum bi_cond cond, bool *flip, bool *invert, nir_alu_type T)
         switch (cond){
         case BI_COND_LT:
                 *flip = true;
+                /* fallthrough */
         case BI_COND_GT: {
                 const enum bifrost_csel_cond ops[] = {
                         BIFROST_FGT_F,
@@ -730,6 +731,7 @@ bi_cond_to_csel(enum bi_cond cond, bool *flip, bool *invert, nir_alu_type T)
         }
         case BI_COND_LE:
                 *flip = true;
+                /* fallthrough */
         case BI_COND_GE: {
                 const enum bifrost_csel_cond ops[] = {
                         BIFROST_FGE_F,
@@ -741,6 +743,7 @@ bi_cond_to_csel(enum bi_cond cond, bool *flip, bool *invert, nir_alu_type T)
         }
         case BI_COND_NE:
                 *invert = true;
+                /* fallthrough */
         case BI_COND_EQ: {
                 const enum bifrost_csel_cond ops[] = {
                         BIFROST_FEQ_F,
