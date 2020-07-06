@@ -208,7 +208,6 @@ spec/amd_vertex_shader_viewport_index/preprocessor/disabled-undefined-core.tese:
 spec/amd_vertex_shader_viewport_index/preprocessor/disabled-undefined-core.vert: skip
 spec/amd_vertex_shader_viewport_index/preprocessor/enabled-compat.frag: skip
 spec/amd_vertex_shader_viewport_index/preprocessor/enabled-compat.vert: skip
-spec/arb_arrays_of_arrays/compiler/glsl-4.20-basic-types.frag: skip
 spec/arb_arrays_of_arrays/preprocessor/disabled-defined-compat.frag: skip
 spec/arb_arrays_of_arrays/preprocessor/disabled-defined-compat.vert: skip
 spec/arb_arrays_of_arrays/preprocessor/disabled-defined-core.comp: skip
@@ -287,14 +286,6 @@ spec/arb_bindless_texture/compiler/samplers/return-struct.frag: skip
 spec/arb_bindless_texture/compiler/samplers/struct-inside-uniform-block.frag: skip
 spec/arb_bindless_texture/compiler/samplers/temporary.vert: skip
 spec/arb_bindless_texture/compiler/samplers/uniform-block-initializer.frag: skip
-spec/arb_compute_shader/compiler/barrier.comp: skip
-spec/arb_compute_shader/compiler/groupmemorybarrier.comp: skip
-spec/arb_compute_shader/compiler/memorybarrieratomiccounter.comp: skip
-spec/arb_compute_shader/compiler/memorybarrierbuffer.comp: skip
-spec/arb_compute_shader/compiler/memorybarrierimage.comp: skip
-spec/arb_compute_shader/compiler/memorybarriershared.comp: skip
-spec/arb_compute_shader/compiler/shared-atomics.comp: skip
-spec/arb_compute_shader/compiler/shared-variables.comp: skip
 spec/arb_compute_shader/preprocessor/disabled-defined-compat.frag: skip
 spec/arb_compute_shader/preprocessor/disabled-defined-compat.vert: skip
 spec/arb_compute_shader/preprocessor/disabled-defined-core.comp: skip
@@ -2673,10 +2664,10 @@ spec/oes_texture_storage_multisample_2d_array/preprocessor/disabled-undefined-es
 summary:
        name:  results
        ----  --------
-       pass:    12160
+       pass:    12169
        fail:        2
       crash:        4
-       skip:     2666
+       skip:     2657
     timeout:        0
        warn:        0
  incomplete:        0

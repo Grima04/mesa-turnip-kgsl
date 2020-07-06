@@ -391,9 +391,6 @@ spec/!opengl 3.1/draw-buffers-errors: skip
 spec/!opengl 3.2/gl-3.2-adj-prims pv-first: fail
 spec/!opengl 3.2/layered-rendering/clear-color-mismatched-layer-count: fail
 spec/!opengl 4.2/gl-max-vertex-attrib-stride: skip
-spec/!opengl 4.2/required-renderbuffer-attachment-formats: skip
-spec/!opengl 4.2/required-sized-texture-formats: skip
-spec/!opengl 4.2/required-texture-attachment-formats: skip
 spec/!opengl 4.3/get_glsl_version: skip
 spec/!opengl 4.5/compare-framebuffer-parameter-with-get: skip
 spec/!opengl 4.5/named-framebuffer-draw-buffers-errors: skip
@@ -1688,10 +1685,10 @@ wgl/wgl-sanity: skip
 summary:
        name:  results
        ----  --------
-       pass:    21839
+       pass:    21840
        fail:      215
       crash:        0
-       skip:     1448
+       skip:     1445
     timeout:        0
        warn:        6
  incomplete:        0
