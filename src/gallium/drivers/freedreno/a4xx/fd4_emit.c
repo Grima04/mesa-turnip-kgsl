@@ -613,9 +613,10 @@ fd4_emit_state(struct fd_context *ctx, struct fd_ringbuffer *ring,
 		OUT_RING(ring, rasterizer->gras_su_point_minmax);
 		OUT_RING(ring, rasterizer->gras_su_point_size);
 
-		OUT_PKT0(ring, REG_A4XX_GRAS_SU_POLY_OFFSET_SCALE, 2);
+		OUT_PKT0(ring, REG_A4XX_GRAS_SU_POLY_OFFSET_SCALE, 3);
 		OUT_RING(ring, rasterizer->gras_su_poly_offset_scale);
 		OUT_RING(ring, rasterizer->gras_su_poly_offset_offset);
+		OUT_RING(ring, rasterizer->gras_su_poly_offset_clamp);
 
 		OUT_PKT0(ring, REG_A4XX_GRAS_CL_CLIP_CNTL, 1);
 		OUT_RING(ring, rasterizer->gras_cl_clip_cntl);
