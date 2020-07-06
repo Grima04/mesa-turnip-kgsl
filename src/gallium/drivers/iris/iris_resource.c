@@ -619,6 +619,7 @@ iris_resource_configure_aux(struct iris_screen *screen,
       *alloc_flags |= BO_ALLOC_ZEROED;
       break;
    case ISL_AUX_USAGE_MC:
+   default:
       unreachable("Unsupported aux mode");
    }
 
