@@ -640,7 +640,7 @@ pan_lower_fb_load(nir_shader *shader,
                 nir_builder *b,
                 nir_intrinsic_instr *intr,
                 const struct util_format_description *desc,
-                unsigned quirks)
+                unsigned base, unsigned quirks)
 {
         nir_intrinsic_instr *new = nir_intrinsic_instr_create(shader,
                        nir_intrinsic_load_raw_output_pan);
@@ -656,13 +656,39 @@ pan_lower_fb_load(nir_shader *shader,
         if (desc->colorspace == UTIL_FORMAT_COLORSPACE_SRGB)
                 unpacked = pan_srgb_to_linear(b, unpacked);
 
+        /* Convert to the size of the load intrinsic.
+         *
+         * We can assume that the type will match with the framebuffer format:
+         *
+         * Page 170 of the PDF of the OpenGL ES 3.0.6 spec says:
+         *
+         * If [UNORM or SNORM, convert to fixed-point]; otherwise no type
+         * conversion is applied. If the values written by the fragment shader
+         * do not match the format(s) of the corresponding color buffer(s),
+         * the result is undefined.
+         */
+
+        unsigned bits = nir_dest_bit_size(intr->dest);
+
+        nir_alu_type src_type;
+        if (desc->channel[0].pure_integer) {
+                if (desc->channel[0].type == UTIL_FORMAT_TYPE_SIGNED)
+                        src_type = nir_type_int;
+                else
+                        src_type = nir_type_uint;
+        } else {
+                src_type = nir_type_float;
+        }
+
+        unpacked = nir_convert_to_bit_size(b, unpacked, src_type, bits);
+
         nir_src rewritten = nir_src_for_ssa(unpacked);
         nir_ssa_def_rewrite_uses_after(&intr->dest.ssa, rewritten, &intr->instr);
 }
 
 bool
 pan_lower_framebuffer(nir_shader *shader, enum pipe_format *rt_fmts,
-                      unsigned quirks)
+                      bool lower_store, unsigned quirks)
 {
         if (shader->info.stage != MESA_SHADER_FRAGMENT)
                return false;
@@ -680,7 +706,7 @@ pan_lower_framebuffer(nir_shader *shader, enum pipe_format *rt_fmts,
                                 bool is_load = intr->intrinsic == nir_intrinsic_load_deref;
                                 bool is_store = intr->intrinsic == nir_intrinsic_store_deref;
 
-                                if (!(is_load || is_store))
+                                if (!(is_load || (is_store && lower_store)))
                                         continue;
 
                                 nir_variable *var = nir_intrinsic_get_var(intr, 0);
@@ -709,7 +735,7 @@ pan_lower_framebuffer(nir_shader *shader, enum pipe_format *rt_fmts,
                                         pan_lower_fb_store(shader, &b, intr, desc, quirks);
                                 } else {
                                         b.cursor = nir_after_instr(instr);
-                                        pan_lower_fb_load(shader, &b, intr, desc, quirks);
+                                        pan_lower_fb_load(shader, &b, intr, desc, base, quirks);
                                 }
 
                                 nir_instr_remove(instr);

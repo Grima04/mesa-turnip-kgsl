@@ -1720,7 +1720,6 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
 
         case nir_intrinsic_load_raw_output_pan: {
                 reg = nir_dest_index(&instr->dest);
-                assert(ctx->is_blend);
 
                 /* T720 and below use different blend opcodes with slightly
                  * different semantics than T760 and up */
@@ -1739,7 +1738,6 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
 
         case nir_intrinsic_load_output: {
                 reg = nir_dest_index(&instr->dest);
-                assert(ctx->is_blend);
 
                 midgard_instruction ld = m_ld_color_buffer_as_fp16(reg, 0);
 
@@ -2766,9 +2764,8 @@ midgard_compile_shader_nir(nir_shader *nir, panfrost_program *program, bool is_b
         NIR_PASS_V(nir, nir_lower_vars_to_ssa);
 
         unsigned pan_quirks = panfrost_get_quirks(gpu_id);
-        if (is_blend)
         NIR_PASS_V(nir, pan_lower_framebuffer,
-                   program->rt_formats, pan_quirks);
+                   program->rt_formats, is_blend, pan_quirks);
 
         NIR_PASS_V(nir, nir_lower_io, nir_var_shader_in | nir_var_shader_out,
                         glsl_type_size, 0);
