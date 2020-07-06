@@ -2184,6 +2184,7 @@ VkResult anv_GetSemaphoreCounterValue(
    switch (impl->type) {
    case ANV_SEMAPHORE_TYPE_TIMELINE: {
       pthread_mutex_lock(&device->mutex);
+      anv_timeline_gc_locked(device, &impl->timeline);
       *pValue = impl->timeline.highest_past;
       pthread_mutex_unlock(&device->mutex);
       return VK_SUCCESS;
