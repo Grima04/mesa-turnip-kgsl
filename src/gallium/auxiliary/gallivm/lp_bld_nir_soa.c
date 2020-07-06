@@ -1604,6 +1604,7 @@ static void emit_vertex(struct lp_build_nir_context *bld_base, uint32_t stream_i
    bld->gs_iface->emit_vertex(bld->gs_iface, &bld->bld_base.base,
                               bld->outputs,
                               total_emitted_vertices_vec,
+                              mask,
                               lp_build_const_int_vec(bld->bld_base.base.gallivm, bld->bld_base.base.type, stream_id));
 
    increment_vec_ptr_by_mask(bld_base, bld->emitted_vertices_vec_ptr[stream_id],

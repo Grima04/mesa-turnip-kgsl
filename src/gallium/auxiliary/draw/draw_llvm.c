@@ -1785,7 +1785,7 @@ draw_gs_llvm_emit_vertex(const struct lp_build_gs_iface *gs_base,
                          struct lp_build_context * bld,
                          LLVMValueRef (*outputs)[4],
                          LLVMValueRef emitted_vertices_vec,
-                         LLVMValueRef stream_id)
+                         LLVMValueRef mask_vec, LLVMValueRef stream_id)
 {
    const struct draw_gs_llvm_iface *gs_iface = draw_gs_llvm_iface(gs_base);
    struct draw_gs_llvm_variant *variant = gs_iface->variant;
@@ -1801,12 +1801,15 @@ draw_gs_llvm_emit_vertex(const struct lp_build_gs_iface *gs_base,
    unsigned i;
    const struct tgsi_shader_info *gs_info = &variant->shader->base.info;
 
+   LLVMValueRef cond = LLVMBuildICmp(gallivm->builder, LLVMIntNE, mask_vec, lp_build_const_int_vec(gallivm, bld->type, 0), "");
    for (i = 0; i < gs_type.length; ++i) {
       LLVMValueRef ind = lp_build_const_int32(gallivm, i);
       LLVMValueRef currently_emitted =
          LLVMBuildExtractElement(builder, emitted_vertices_vec, ind, "");
       indices[i] = LLVMBuildMul(builder, ind, next_prim_offset, "");
       indices[i] = LLVMBuildAdd(builder, indices[i], currently_emitted, "");
+      indices[i] = LLVMBuildSelect(builder, LLVMBuildExtractElement(builder, cond, ind, ""), indices[i],
+                                   lp_build_const_int32(gallivm, variant->shader->base.primitive_boundary - 1), "");
    }
 
    LLVMValueRef stream_idx = LLVMBuildExtractElement(builder, stream_id, lp_build_const_int32(gallivm, 0), "");

@@ -429,7 +429,7 @@ struct lp_build_gs_iface
                        struct lp_build_context * bld,
                        LLVMValueRef (*outputs)[4],
                        LLVMValueRef emitted_vertices_vec,
-                       LLVMValueRef stream_id);
+                       LLVMValueRef mask_vec, LLVMValueRef stream_id);
    void (*end_primitive)(const struct lp_build_gs_iface *gs_iface,
                          struct lp_build_context * bld,
                          LLVMValueRef total_emitted_vertices_vec,
