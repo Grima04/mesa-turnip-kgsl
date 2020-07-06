@@ -364,7 +364,7 @@ private:
    void emitATOMS();
    void emitIPA();
    void emitISBERD();
-   void emitLDSTc(int);
+   void emitLDSTc(int, int);
    void emitLDSTs(int, DataType);
    void emitLD();
    void emitLDC();

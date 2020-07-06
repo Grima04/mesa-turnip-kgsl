@@ -991,21 +991,22 @@ CodeEmitterGV100::emitISBERD()
 }
 
 void
-CodeEmitterGV100::emitLDSTc(int pos)
+CodeEmitterGV100::emitLDSTc(int posm, int poso)
 {
    int mode = 0;
+   int order = 1;
 
    switch (insn->cache) {
-   case CACHE_CA: mode = 0; break;
-   case CACHE_CG: mode = 1; break;
-   case CACHE_CS: mode = 2; break;
-   case CACHE_CV: mode = 3; break;
+   case CACHE_CA: mode = 0; order = 1; break;
+   case CACHE_CG: mode = 2; order = 2; break;
+   case CACHE_CV: mode = 3; order = 2; break;
    default:
       assert(!"invalid caching mode");
       break;
    }
 
-   emitField(pos, 2, mode);
+   emitField(poso, 2, order);
+   emitField(posm, 2, mode);
 }
 
 void
@@ -1459,7 +1460,6 @@ CodeEmitterGV100::emitSULD()
          assert(0);
          break;
       }
-   //   emitLDSTc(0x18);
       emitField(73, 3, type);
    } else {
       emitInsn(0x998);
@@ -1468,7 +1468,7 @@ CodeEmitterGV100::emitSULD()
    }
 
    emitPRED (81);
-   emitField(79, 2, 1);
+   emitLDSTc(77, 79);
 
    emitGPR  (16, insn->def(0));
    emitGPR  (24, insn->src(0));
@@ -1488,12 +1488,7 @@ CodeEmitterGV100::emitSUST()
 #endif
    emitSUTarget();
 
-
-#if 0
-   emitLDSTc(0x18);
-#endif
-
-   emitField(79, 2, 1);
+   emitLDSTc(77, 79);
    emitField(72, 4, 0xf); // rgba
    emitGPR(32, insn->src(1));
    emitGPR(24, insn->src(0));
