@@ -225,6 +225,7 @@ struct panfrost_shader_state {
         unsigned first_tag;
         struct panfrost_bo *bo;
 
+        BITSET_WORD outputs_read;
         enum pipe_format rt_formats[8];
 };
 

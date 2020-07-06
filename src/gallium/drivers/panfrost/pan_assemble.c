@@ -226,6 +226,12 @@ panfrost_shader_compile(struct panfrost_context *ctx,
                 if (s->info.outputs_written & BITFIELD64_BIT(FRAG_RESULT_STENCIL))
                         state->writes_stencil = true;
 
+                uint64_t outputs_read = s->info.outputs_read;
+                if (outputs_read & BITFIELD64_BIT(FRAG_RESULT_COLOR))
+                        outputs_read |= BITFIELD64_BIT(FRAG_RESULT_DATA0);
+
+                state->outputs_read = outputs_read >> FRAG_RESULT_DATA0;
+
                 /* List of reasons we need to execute frag shaders when things
                  * are masked off */
 

@@ -664,6 +664,21 @@ panfrost_variant_matches(
                 }
         }
 
+        if (variant->outputs_read) {
+                struct pipe_framebuffer_state *fb = &ctx->pipe_framebuffer;
+
+                unsigned i;
+                BITSET_FOREACH_SET(i, &variant->outputs_read, 8) {
+                        enum pipe_format fmt = PIPE_FORMAT_R8G8B8A8_UNORM;
+
+                        if ((fb->nr_cbufs > i) && fb->cbufs[i])
+                                fmt = fb->cbufs[i]->format;
+
+                        if (variant->rt_formats[i] != fmt)
+                                return false;
+                }
+        }
+
         /* Point sprites TODO on bifrost, always pass */
         if (is_fragment && rasterizer && (rasterizer->sprite_coord_enable |
                                           variant->point_sprite_mask)
