@@ -154,6 +154,7 @@ files_libnir = files(
   'nir_lower_io_to_temporaries.c',
   'nir_lower_io_to_scalar.c',
   'nir_lower_io_to_vector.c',
+  'nir_lower_multiview.c',
   'nir_lower_mediump_outputs.c',
   'nir_lower_memcpy.c',
   'nir_lower_memory_model.c',
