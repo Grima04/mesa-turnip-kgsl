@@ -689,6 +689,24 @@ radv_prims_for_vertices(struct radv_prim_vertex_count *info, unsigned num)
 	return 1 + ((num - info->min) / info->incr);
 }
 
+static const struct radv_prim_vertex_count prim_size_table[] = {
+	[V_008958_DI_PT_NONE] = {0, 0},
+	[V_008958_DI_PT_POINTLIST] = {1, 1},
+	[V_008958_DI_PT_LINELIST] = {2, 2},
+	[V_008958_DI_PT_LINESTRIP] = {2, 1},
+	[V_008958_DI_PT_TRILIST] = {3, 3},
+	[V_008958_DI_PT_TRIFAN] = {3, 1},
+	[V_008958_DI_PT_TRISTRIP] = {3, 1},
+	[V_008958_DI_PT_LINELIST_ADJ] = {4, 4},
+	[V_008958_DI_PT_LINESTRIP_ADJ] = {4, 1},
+	[V_008958_DI_PT_TRILIST_ADJ] = {6, 6},
+	[V_008958_DI_PT_TRISTRIP_ADJ] = {6, 2},
+	[V_008958_DI_PT_RECTLIST] = {3, 3},
+	[V_008958_DI_PT_LINELOOP] = {2, 1},
+	[V_008958_DI_PT_POLYGON] = {3, 1},
+	[V_008958_DI_PT_2D_TRI_STRIP] = {0, 0},
+};
+
 uint32_t
 si_get_ia_multi_vgt_param(struct radv_cmd_buffer *cmd_buffer,
 			  bool instanced_draw, bool indirect_draw,
@@ -707,10 +725,18 @@ si_get_ia_multi_vgt_param(struct radv_cmd_buffer *cmd_buffer,
 	bool partial_es_wave = cmd_buffer->state.pipeline->graphics.ia_multi_vgt_param.partial_es_wave;
 	unsigned topology = cmd_buffer->state.pipeline->graphics.topology;
 	bool multi_instances_smaller_than_primgroup;
+	struct radv_prim_vertex_count prim_vertex_count = prim_size_table[topology];
+
+	if (radv_pipeline_has_tess(cmd_buffer->state.pipeline)) {
+		if (topology == V_008958_DI_PT_PATCH) {
+			prim_vertex_count.min = cmd_buffer->state.pipeline->graphics.tess_patch_control_points;
+			prim_vertex_count.incr = 1;
+		}
+	}
 
 	multi_instances_smaller_than_primgroup = indirect_draw;
 	if (!multi_instances_smaller_than_primgroup && instanced_draw) {
-		uint32_t num_prims = radv_prims_for_vertices(&cmd_buffer->state.pipeline->graphics.prim_vertex_count, draw_vertex_count);
+		uint32_t num_prims = radv_prims_for_vertices(&prim_vertex_count, draw_vertex_count);
 		if (num_prims < cmd_buffer->state.pipeline->graphics.ia_multi_vgt_param.primgroup_size)
 			multi_instances_smaller_than_primgroup = true;
 	}
@@ -788,7 +814,7 @@ si_get_ia_multi_vgt_param(struct radv_cmd_buffer *cmd_buffer,
 		if (family == CHIP_HAWAII && ia_switch_on_eoi) {
 			bool set_vgt_flush = indirect_draw;
 			if (!set_vgt_flush && instanced_draw) {
-				uint32_t num_prims = radv_prims_for_vertices(&cmd_buffer->state.pipeline->graphics.prim_vertex_count, draw_vertex_count);
+				uint32_t num_prims = radv_prims_for_vertices(&prim_vertex_count, draw_vertex_count);
 				if (num_prims <= 1)
 					set_vgt_flush = true;
 			}

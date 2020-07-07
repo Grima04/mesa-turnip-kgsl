@@ -2032,24 +2032,6 @@ calculate_tess_state(struct radv_pipeline *pipeline,
 	return tess;
 }
 
-static const struct radv_prim_vertex_count prim_size_table[] = {
-	[V_008958_DI_PT_NONE] = {0, 0},
-	[V_008958_DI_PT_POINTLIST] = {1, 1},
-	[V_008958_DI_PT_LINELIST] = {2, 2},
-	[V_008958_DI_PT_LINESTRIP] = {2, 1},
-	[V_008958_DI_PT_TRILIST] = {3, 3},
-	[V_008958_DI_PT_TRIFAN] = {3, 1},
-	[V_008958_DI_PT_TRISTRIP] = {3, 1},
-	[V_008958_DI_PT_LINELIST_ADJ] = {4, 4},
-	[V_008958_DI_PT_LINESTRIP_ADJ] = {4, 1},
-	[V_008958_DI_PT_TRILIST_ADJ] = {6, 6},
-	[V_008958_DI_PT_TRISTRIP_ADJ] = {6, 2},
-	[V_008958_DI_PT_RECTLIST] = {3, 3},
-	[V_008958_DI_PT_LINELOOP] = {2, 1},
-	[V_008958_DI_PT_POLYGON] = {3, 1},
-	[V_008958_DI_PT_2D_TRI_STRIP] = {0, 0},
-};
-
 static const struct radv_vs_output_info *get_vs_output_info(const struct radv_pipeline *pipeline)
 {
 	if (radv_pipeline_has_gs(pipeline))
@@ -5057,8 +5039,6 @@ radv_pipeline_init(struct radv_pipeline *pipeline,
 			gs_out = V_028A6C_VGT_OUT_RECT_V0;
 	}
 	pipeline->graphics.prim_restart_enable = !!pCreateInfo->pInputAssemblyState->primitiveRestartEnable;
-	/* prim vertex count will need TESS changes */
-	pipeline->graphics.prim_vertex_count = prim_size_table[prim];
 
 	radv_pipeline_init_dynamic_state(pipeline, pCreateInfo);
 
@@ -5115,10 +5095,8 @@ radv_pipeline_init(struct radv_pipeline *pipeline,
 
 	struct radv_tessellation_state tess = {0};
 	if (radv_pipeline_has_tess(pipeline)) {
-		if (prim == V_008958_DI_PT_PATCH) {
-			pipeline->graphics.prim_vertex_count.min = pCreateInfo->pTessellationState->patchControlPoints;
-			pipeline->graphics.prim_vertex_count.incr = 1;
-		}
+		pipeline->graphics.tess_patch_control_points =
+			pCreateInfo->pTessellationState->patchControlPoints;
 		tess = calculate_tess_state(pipeline, pCreateInfo);
 	}
 
