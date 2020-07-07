@@ -1,5 +1,5 @@
-Continuous Integration & Testing
-================================
+Continuous Integration
+======================
 
 
 GitLab CI

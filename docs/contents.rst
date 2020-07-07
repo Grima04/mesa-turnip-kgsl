@@ -10,7 +10,6 @@
    faq
    relnotes
    thanks
-   conform
 
 .. toctree::
    :maxdepth: 2
@@ -61,12 +60,19 @@
    devinfo
    codingstyle
    submittingpatches
-   ci/index
    releasing
    release-calendar
    sourcedocs
    dispatch
    gallium/index
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Testing
+   :hidden:
+
+   conform
+   ci/index
 
 .. toctree::
    :maxdepth: 1
