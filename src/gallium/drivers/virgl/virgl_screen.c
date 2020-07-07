@@ -466,6 +466,7 @@ virgl_get_shader_param(struct pipe_screen *screen,
       case PIPE_SHADER_CAP_FP16:
       case PIPE_SHADER_CAP_FP16_DERIVATIVES:
       case PIPE_SHADER_CAP_INT16:
+      case PIPE_SHADER_CAP_GLSL_16BIT_TEMPS:
          return 0;
       default:
          return 0;
