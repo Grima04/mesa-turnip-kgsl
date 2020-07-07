@@ -1317,7 +1317,7 @@ fail:
  * \sa _mesa_initialize_context() and init_attrib_groups().
  */
 void
-_mesa_free_context_data(struct gl_context *ctx)
+_mesa_free_context_data(struct gl_context *ctx, bool destroy_debug_output)
 {
    if (!_mesa_get_current_context()){
       /* No current context, but we may need one in order to delete
@@ -1386,7 +1386,8 @@ _mesa_free_context_data(struct gl_context *ctx)
    /* needs to be after freeing shared state */
    _mesa_free_display_list_data(ctx);
 
-   _mesa_destroy_debug_output(ctx);
+   if (destroy_debug_output)
+      _mesa_destroy_debug_output(ctx);
 
    free((void *)ctx->Extensions.String);
 
@@ -1420,7 +1421,7 @@ void
 _mesa_destroy_context( struct gl_context *ctx )
 {
    if (ctx) {
-      _mesa_free_context_data(ctx);
+      _mesa_free_context_data(ctx, true);
       free( (void *) ctx );
    }
 }
