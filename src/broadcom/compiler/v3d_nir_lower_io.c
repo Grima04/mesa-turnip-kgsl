@@ -81,10 +81,17 @@ v3d_nir_store_output(nir_builder *b, int base, nir_ssa_def *offset,
         intr->num_components = 1;
 
         intr->src[0] = nir_src_for_ssa(chan);
-        if (offset)
-                intr->src[1] = nir_src_for_ssa(offset);
-        else
+        if (offset) {
+                /* When generating the VIR instruction, the base and the offset
+                 * are just going to get added together with an ADD instruction
+                 * so we might as well do the add here at the NIR level instead
+                 * and let the constant folding do its magic.
+                 */
+                intr->src[1] = nir_src_for_ssa(nir_iadd_imm(b, offset, base));
+                base = 0;
+        } else {
                 intr->src[1] = nir_src_for_ssa(nir_imm_int(b, 0));
+        }
 
         nir_intrinsic_set_base(intr, base);
         nir_intrinsic_set_write_mask(intr, 0x1);

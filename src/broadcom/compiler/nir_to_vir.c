@@ -2014,10 +2014,12 @@ emit_store_output_gs(struct v3d_compile *c, nir_intrinsic_instr *instr)
 {
         assert(instr->num_components == 1);
 
+        struct qreg offset = ntq_get_src(c, instr->src[1], 0);
+
         uint32_t base_offset = nir_intrinsic_base(instr);
-        struct qreg src_offset = ntq_get_src(c, instr->src[1], 0);
-        struct qreg offset =
-                vir_ADD(c, vir_uniform_ui(c, base_offset), src_offset);
+
+        if (base_offset)
+                offset = vir_ADD(c, vir_uniform_ui(c, base_offset), offset);
 
         /* Usually, for VS or FS, we only emit outputs once at program end so
          * our VPM writes are never in non-uniform control flow, but this
