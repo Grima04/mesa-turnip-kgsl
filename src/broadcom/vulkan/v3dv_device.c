@@ -49,6 +49,10 @@
 #include <xcb/dri3.h>
 #endif
 
+#ifdef USE_V3D_SIMULATOR
+#include "drm-uapi/i915_drm.h"
+#endif
+
 static void *
 default_alloc_func(void *pUserData, size_t size, size_t align,
                    VkSystemAllocationScope allocationScope)
@@ -653,6 +657,26 @@ v3dv_physical_device_vendor_id(struct v3dv_physical_device *dev)
 }
 
 
+#if using_v3d_simulator
+static bool
+get_i915_param(int fd, uint32_t param, int *value)
+{
+   int tmp;
+
+   struct drm_i915_getparam gp = {
+      .param = param,
+      .value = &tmp,
+   };
+
+   int ret = drmIoctl(fd, DRM_IOCTL_I915_GETPARAM, &gp);
+   if (ret != 0)
+      return false;
+
+   *value = tmp;
+   return true;
+}
+#endif
+
 /* FIXME:
  * Getting deviceID and UUID will probably require to use the kernel pci
  * interface. See this:
@@ -663,8 +687,17 @@ v3dv_physical_device_vendor_id(struct v3dv_physical_device *dev)
 uint32_t
 v3dv_physical_device_device_id(struct v3dv_physical_device *dev)
 {
+#if using_v3d_simulator
+   int devid = 0;
+
+   if (!get_i915_param(dev->render_fd, I915_PARAM_CHIPSET_ID, &devid))
+      fprintf(stderr, "Error getting for device_id\n");
+
+   return devid;
+#else
    /* FIXME */
    return 0;
+#endif
 }
 
 void
