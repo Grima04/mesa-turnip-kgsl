@@ -1460,6 +1460,9 @@ driver_location_compare(const void *in_a, const void *in_b)
         const nir_variable *const *a = in_a;
         const nir_variable *const *b = in_b;
 
+        if ((*a)->data.driver_location == (*b)->data.driver_location)
+                return (*a)->data.location_frac - (*b)->data.location_frac;
+
         return (*a)->data.driver_location - (*b)->data.driver_location;
 }
 
