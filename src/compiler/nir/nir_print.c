@@ -1517,6 +1517,8 @@ nir_print_shader_annotated(nir_shader *shader, FILE *fp,
    fprintf(fp, "shared: %u\n", shader->num_shared);
    if (shader->scratch_size)
       fprintf(fp, "scratch: %u\n", shader->scratch_size);
+   if (shader->constant_data_size)
+      fprintf(fp, "constants: %u\n", shader->constant_data_size);
 
    nir_foreach_variable_in_shader(var, shader)
       print_var_decl(var, &state);
