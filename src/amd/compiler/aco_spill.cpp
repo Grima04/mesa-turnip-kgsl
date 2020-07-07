@@ -604,6 +604,17 @@ RegisterDemand init_live_in_vars(spill_ctx& ctx, Block* block, unsigned block_id
          }
       }
    } else {
+      for (unsigned i = 0; i < idx; i++) {
+         aco_ptr<Instruction>& instr = block->instructions[i];
+         assert(is_phi(instr));
+         /* Killed phi definitions increase pressure in the predecessor but not
+          * the block they're in. Since the loops below are both to control
+          * pressure of the start of this block and the ends of it's
+          * predecessors, we need to count killed unspilled phi definitions here. */
+         if (instr->definitions[0].isKill() &&
+             !ctx.spills_entry[block_idx].count(instr->definitions[0].getTemp()))
+            reg_pressure += instr->definitions[0].getTemp();
+      }
       idx--;
    }
    reg_pressure += ctx.register_demand[block_idx][idx] - spilled_registers;
