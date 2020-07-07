@@ -56,7 +56,7 @@ struct spill_ctx {
    std::stack<Block*> loop_header;
    std::vector<std::map<Temp, std::pair<uint32_t, uint32_t>>> next_use_distances_start;
    std::vector<std::map<Temp, std::pair<uint32_t, uint32_t>>> next_use_distances_end;
-   std::vector<std::pair<RegClass, std::set<uint32_t>>> interferences;
+   std::vector<std::pair<RegClass, std::unordered_set<uint32_t>>> interferences;
    std::vector<std::vector<uint32_t>> affinities;
    std::vector<bool> is_reloaded;
    std::map<Temp, remat_info> remat;
@@ -100,7 +100,7 @@ struct spill_ctx {
 
    uint32_t allocate_spill_id(RegClass rc)
    {
-      interferences.emplace_back(rc, std::set<uint32_t>());
+      interferences.emplace_back(rc, std::unordered_set<uint32_t>());
       is_reloaded.push_back(false);
       return next_spill_id++;
    }
