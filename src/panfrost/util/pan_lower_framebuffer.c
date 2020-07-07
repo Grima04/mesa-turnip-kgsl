@@ -726,6 +726,9 @@ pan_lower_framebuffer(nir_shader *shader, enum pipe_format *rt_fmts,
                                 else
                                         continue;
 
+                                if (rt_fmts[rt] == PIPE_FORMAT_NONE)
+                                        continue;
+
                                 const struct util_format_description *desc =
                                    util_format_description(rt_fmts[rt]);
 

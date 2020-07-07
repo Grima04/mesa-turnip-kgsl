@@ -54,6 +54,7 @@
 #include "pan_cmdstream.h"
 #include "pan_util.h"
 #include "pandecode/decode.h"
+#include "util/pan_lower_framebuffer.h"
 
 struct midgard_tiler_descriptor
 panfrost_emit_midg_tiler(struct panfrost_batch *batch, unsigned vertex_count)
@@ -681,6 +682,12 @@ panfrost_variant_matches(
                         if ((fb->nr_cbufs > i) && fb->cbufs[i])
                                 fmt = fb->cbufs[i]->format;
 
+                        const struct util_format_description *desc =
+                                util_format_description(fmt);
+
+                        if (pan_format_class_load(desc, dev->quirks) == PAN_FORMAT_NATIVE)
+                                fmt = PIPE_FORMAT_NONE;
+
                         if (variant->rt_formats[i] != fmt)
                                 return false;
                 }
@@ -805,6 +812,12 @@ panfrost_bind_shader_state(
 
                                 if ((fb->nr_cbufs > i) && fb->cbufs[i])
                                         fmt = fb->cbufs[i]->format;
+
+                                const struct util_format_description *desc =
+                                        util_format_description(fmt);
+
+                                if (pan_format_class_load(desc, dev->quirks) == PAN_FORMAT_NATIVE)
+                                        fmt = PIPE_FORMAT_NONE;
 
                                 v->rt_formats[i] = fmt;
                         }
