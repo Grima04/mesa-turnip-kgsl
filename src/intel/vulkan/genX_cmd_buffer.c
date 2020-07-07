@@ -5115,11 +5115,11 @@ cmd_buffer_begin_subpass(struct anv_cmd_buffer *cmd_buffer,
       VkImageLayout target_stencil_layout =
          subpass->attachments[i].stencil_layout;
 
+      uint32_t level = iview->planes[0].isl.base_level;
       uint32_t base_layer, layer_count;
       if (image->type == VK_IMAGE_TYPE_3D) {
          base_layer = 0;
-         layer_count = anv_minify(iview->image->extent.depth,
-                                  iview->planes[0].isl.base_level);
+         layer_count = anv_minify(iview->image->extent.depth, level);
       } else {
          base_layer = iview->planes[0].isl.base_array_layer;
          layer_count = fb->layers;
@@ -5128,8 +5128,7 @@ cmd_buffer_begin_subpass(struct anv_cmd_buffer *cmd_buffer,
       if (image->aspects & VK_IMAGE_ASPECT_ANY_COLOR_BIT_ANV) {
          assert(image->aspects == VK_IMAGE_ASPECT_COLOR_BIT);
          transition_color_buffer(cmd_buffer, image, VK_IMAGE_ASPECT_COLOR_BIT,
-                                 iview->planes[0].isl.base_level, 1,
-                                 base_layer, layer_count,
+                                 level, 1, base_layer, layer_count,
                                  att_state->current_layout, target_layout);
          att_state->aux_usage =
             anv_layout_to_aux_usage(&cmd_buffer->device->info, image,
@@ -5151,8 +5150,7 @@ cmd_buffer_begin_subpass(struct anv_cmd_buffer *cmd_buffer,
 
       if (image->aspects & VK_IMAGE_ASPECT_STENCIL_BIT) {
          transition_stencil_buffer(cmd_buffer, image,
-                                   iview->planes[0].isl.base_level, 1,
-                                   base_layer, layer_count,
+                                   level, 1, base_layer, layer_count,
                                    att_state->current_stencil_layout,
                                    target_stencil_layout);
       }
@@ -5172,8 +5170,7 @@ cmd_buffer_begin_subpass(struct anv_cmd_buffer *cmd_buffer,
          if (att_state->fast_clear &&
              do_first_layer_clear(cmd_state, att_state)) {
             /* We only support fast-clears on the first layer */
-            assert(iview->planes[0].isl.base_level == 0);
-            assert(iview->planes[0].isl.base_array_layer == 0);
+            assert(level == 0 && base_layer == 0);
 
             union isl_color_value clear_color = {};
             anv_clear_color_from_att_state(&clear_color, att_state, iview);
@@ -5241,8 +5238,7 @@ cmd_buffer_begin_subpass(struct anv_cmd_buffer *cmd_buffer,
                                      att_state->aux_usage,
                                      iview->planes[0].isl.format,
                                      iview->planes[0].isl.swizzle,
-                                     iview->planes[0].isl.base_level,
-                                     layer, 1,
+                                     level, layer, 1,
                                      render_area,
                                      vk_to_isl_color(att_state->clear_value.color));
             }
@@ -5254,8 +5250,7 @@ cmd_buffer_begin_subpass(struct anv_cmd_buffer *cmd_buffer,
                                   att_state->aux_usage,
                                   iview->planes[0].isl.format,
                                   iview->planes[0].isl.swizzle,
-                                  iview->planes[0].isl.base_level,
-                                  base_clear_layer, clear_layer_count,
+                                  level, base_clear_layer, clear_layer_count,
                                   render_area,
                                   vk_to_isl_color(att_state->clear_value.color));
          }
@@ -5281,16 +5276,13 @@ cmd_buffer_begin_subpass(struct anv_cmd_buffer *cmd_buffer,
                if (att_state->fast_clear) {
                   anv_image_hiz_clear(cmd_buffer, image,
                                       att_state->pending_clear_aspects,
-                                      iview->planes[0].isl.base_level,
-                                      layer, 1, render_area,
+                                      level, layer, 1, render_area,
                                       att_state->clear_value.depthStencil.stencil);
                } else {
                   anv_image_clear_depth_stencil(cmd_buffer, image,
                                                 att_state->pending_clear_aspects,
                                                 att_state->aux_usage,
-                                                iview->planes[0].isl.base_level,
-                                                layer, 1,
-                                                render_area,
+                                                level, layer, 1, render_area,
                                                 att_state->clear_value.depthStencil.depth,
                                                 att_state->clear_value.depthStencil.stencil);
                }
@@ -5301,17 +5293,15 @@ cmd_buffer_begin_subpass(struct anv_cmd_buffer *cmd_buffer,
             if (att_state->fast_clear) {
                anv_image_hiz_clear(cmd_buffer, image,
                                    att_state->pending_clear_aspects,
-                                   iview->planes[0].isl.base_level,
-                                   iview->planes[0].isl.base_array_layer,
-                                   fb->layers, render_area,
+                                   level, base_layer, layer_count,
+                                   render_area,
                                    att_state->clear_value.depthStencil.stencil);
             } else {
                anv_image_clear_depth_stencil(cmd_buffer, image,
                                              att_state->pending_clear_aspects,
                                              att_state->aux_usage,
-                                             iview->planes[0].isl.base_level,
-                                             iview->planes[0].isl.base_array_layer,
-                                             fb->layers, render_area,
+                                             level, base_layer, layer_count,
+                                             render_area,
                                              att_state->clear_value.depthStencil.depth,
                                              att_state->clear_value.depthStencil.stencil);
             }
