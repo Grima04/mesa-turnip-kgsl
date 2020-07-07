@@ -86,7 +86,7 @@ panfrost_pool_alloc(struct pan_pool *pool, size_t sz)
                  * flags to this function and keep the read/write,
                  * fragment/vertex+tiler pools separate.
                  */
-                bo = pan_bo_create(pool->dev, bo_sz, 0);
+                bo = panfrost_bo_create(pool->dev, bo_sz, 0);
 
                 uintptr_t flags = PAN_BO_ACCESS_PRIVATE |
                                   PAN_BO_ACCESS_RW |

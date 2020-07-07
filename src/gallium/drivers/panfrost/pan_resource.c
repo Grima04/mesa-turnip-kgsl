@@ -50,23 +50,6 @@
 #include "pandecode/decode.h"
 #include "panfrost-quirks.h"
 
-/* Wrapper around panfrost_bo_create that handles pandecode */
-
-struct panfrost_bo *
-pan_bo_create(struct panfrost_device *dev, size_t size, uint32_t flags)
-{
-        struct panfrost_bo *bo = panfrost_bo_create(dev, size, flags);
-
-        if (dev->debug & (PAN_DBG_TRACE | PAN_DBG_SYNC)) {
-                if (flags & PAN_BO_INVISIBLE)
-                        pandecode_inject_mmap(bo->gpu, NULL, bo->size, NULL);
-                else if (!(flags & PAN_BO_DELAY_MMAP))
-                        pandecode_inject_mmap(bo->gpu, bo->cpu, bo->size, NULL);
-        }
-
-        return bo;
-}
-
 void
 panfrost_resource_reset_damage(struct panfrost_resource *pres)
 {
@@ -113,7 +96,7 @@ panfrost_resource_from_handle(struct pipe_screen *pscreen,
             templat->bind & PIPE_BIND_RENDER_TARGET) {
                 unsigned size = panfrost_compute_checksum_size(
                                         &rsc->slices[0], templat->width0, templat->height0);
-                rsc->slices[0].checksum_bo = pan_bo_create(dev, size, 0);
+                rsc->slices[0].checksum_bo = panfrost_bo_create(dev, size, 0);
                 rsc->checksummed = true;
         }
 
@@ -448,7 +431,7 @@ panfrost_resource_create_bo(struct panfrost_device *dev, struct panfrost_resourc
 
         /* We create a BO immediately but don't bother mapping, since we don't
          * care to map e.g. FBOs which the CPU probably won't touch */
-        pres->bo = pan_bo_create(dev, bo_size, PAN_BO_DELAY_MMAP);
+        pres->bo = panfrost_bo_create(dev, bo_size, PAN_BO_DELAY_MMAP);
 }
 
 void
@@ -650,7 +633,7 @@ panfrost_transfer_map(struct pipe_context *pctx,
                          * doing to it.
                          */
                         if (!(bo->flags & (PAN_BO_IMPORTED | PAN_BO_EXPORTED)))
-                                newbo = pan_bo_create(dev, bo->size,
+                                newbo = panfrost_bo_create(dev, bo->size,
                                                            flags);
 
                         if (newbo) {
@@ -952,7 +935,7 @@ panfrost_resource_hint_layout(
         /* If we grew in size, reallocate the BO */
         if (new_size > rsrc->bo->size) {
                 panfrost_bo_unreference(rsrc->bo);
-                rsrc->bo = pan_bo_create(dev, new_size, PAN_BO_DELAY_MMAP);
+                rsrc->bo = panfrost_bo_create(dev, new_size, PAN_BO_DELAY_MMAP);
         }
 
         /* TODO: If there are textures bound, regenerate their descriptors */

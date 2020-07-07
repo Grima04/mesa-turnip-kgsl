@@ -31,6 +31,8 @@
 #include "drm-uapi/panfrost_drm.h"
 
 #include "pan_bo.h"
+#include "pan_util.h"
+#include "../pandecode/public.h"
 
 #include "os/os_mman.h"
 
@@ -404,6 +406,13 @@ panfrost_bo_create(struct panfrost_device *dev, size_t size,
         pthread_mutex_lock(&dev->active_bos_lock);
         _mesa_set_add(bo->dev->active_bos, bo);
         pthread_mutex_unlock(&dev->active_bos_lock);
+
+        if (dev->debug & (PAN_DBG_TRACE | PAN_DBG_SYNC)) {
+                if (flags & PAN_BO_INVISIBLE)
+                        pandecode_inject_mmap(bo->gpu, NULL, bo->size, NULL);
+                else if (!(flags & PAN_BO_DELAY_MMAP))
+                        pandecode_inject_mmap(bo->gpu, bo->cpu, bo->size, NULL);
+        }
 
         return bo;
 }
