@@ -4665,8 +4665,7 @@ radv_pipeline_generate_pm4(struct radv_pipeline *pipeline,
 
 static struct radv_ia_multi_vgt_param_helpers
 radv_compute_ia_multi_vgt_param_helpers(struct radv_pipeline *pipeline,
-                                        const struct radv_tessellation_state *tess,
-                                        uint32_t prim)
+                                        const struct radv_tessellation_state *tess)
 {
 	struct radv_ia_multi_vgt_param_helpers ia_multi_vgt_param = {0};
 	const struct radv_device *device = pipeline->device;
@@ -4714,17 +4713,6 @@ radv_compute_ia_multi_vgt_param_helpers(struct radv_pipeline *pipeline,
 				ia_multi_vgt_param.partial_vs_wave = true;
 			}
 		}
-	}
-
-	/* Workaround for a VGT hang when strip primitive types are used with
-	 * primitive restart.
-	 */
-	if (pipeline->graphics.prim_restart_enable &&
-	    (prim == V_008958_DI_PT_LINESTRIP ||
-	     prim == V_008958_DI_PT_TRISTRIP ||
-	     prim == V_008958_DI_PT_LINESTRIP_ADJ ||
-	     prim == V_008958_DI_PT_TRISTRIP_ADJ)) {
-		ia_multi_vgt_param.partial_vs_wave = true;
 	}
 
 	if (radv_pipeline_has_gs(pipeline)) {
@@ -5134,7 +5122,7 @@ radv_pipeline_init(struct radv_pipeline *pipeline,
 		tess = calculate_tess_state(pipeline, pCreateInfo);
 	}
 
-	pipeline->graphics.ia_multi_vgt_param = radv_compute_ia_multi_vgt_param_helpers(pipeline, &tess, prim);
+	pipeline->graphics.ia_multi_vgt_param = radv_compute_ia_multi_vgt_param_helpers(pipeline, &tess);
 
 	radv_compute_vertex_input_state(pipeline, pCreateInfo);
 

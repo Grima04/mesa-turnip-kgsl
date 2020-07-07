@@ -797,6 +797,17 @@ si_get_ia_multi_vgt_param(struct radv_cmd_buffer *cmd_buffer,
 		}
 	}
 
+	/* Workaround for a VGT hang when strip primitive types are used with
+	 * primitive restart.
+	 */
+	if (cmd_buffer->state.pipeline->graphics.prim_restart_enable &&
+	    (topology == V_008958_DI_PT_LINESTRIP ||
+	     topology == V_008958_DI_PT_TRISTRIP ||
+	     topology == V_008958_DI_PT_LINESTRIP_ADJ ||
+	     topology == V_008958_DI_PT_TRISTRIP_ADJ)) {
+		partial_vs_wave = true;
+	}
+
 	return cmd_buffer->state.pipeline->graphics.ia_multi_vgt_param.base |
 		S_028AA8_SWITCH_ON_EOP(ia_switch_on_eop) |
 		S_028AA8_SWITCH_ON_EOI(ia_switch_on_eoi) |
