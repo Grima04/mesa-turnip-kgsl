@@ -333,6 +333,34 @@ v3d_nir_lower_end_primitive(struct v3d_compile *c, nir_builder *b,
         nir_instr_remove(&instr->instr);
 }
 
+/* Some vertex attribute formats may require to apply a swizzle but the hardware
+ * doesn't provide means to do that, so we need to apply the swizzle in the
+ * vertex shader.
+ *
+ * This is required at least in Vulkan to support madatory vertex attribute
+ * format VK_FORMAT_B8G8R8A8_UNORM.
+ */
+static void
+v3d_nir_lower_vertex_input(struct v3d_compile *c, nir_builder *b,
+                           nir_intrinsic_instr *instr)
+{
+        assert(c->s->info.stage == MESA_SHADER_VERTEX);
+
+        if (!c->vs_key->va_swap_rb_mask)
+                return;
+
+        const uint32_t location =
+           nir_intrinsic_io_semantics(instr).location - VERT_ATTRIB_GENERIC0;
+        assert(location < V3D_MAX_VS_INPUTS / 4);
+        if (!(c->vs_key->va_swap_rb_mask & (1 << location)))
+                return;
+
+        assert(instr->num_components == 1);
+        const uint32_t comp = nir_intrinsic_component(instr);
+        if (comp == 0 || comp == 2)
+                nir_intrinsic_set_component(instr, (comp + 2) % 4);
+}
+
 static void
 v3d_nir_lower_io_instr(struct v3d_compile *c, nir_builder *b,
                        struct nir_instr *instr,
@@ -343,6 +371,11 @@ v3d_nir_lower_io_instr(struct v3d_compile *c, nir_builder *b,
         nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
 
         switch (intr->intrinsic) {
+        case nir_intrinsic_load_input:
+                if (c->s->info.stage == MESA_SHADER_VERTEX)
+                        v3d_nir_lower_vertex_input(c, b, intr);
+                break;
+
         case nir_intrinsic_load_uniform:
                 v3d_nir_lower_uniform(c, b, intr);
                 break;

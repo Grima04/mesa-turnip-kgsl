@@ -412,6 +412,12 @@ struct v3d_vs_key {
         struct v3d_varying_slot used_outputs[V3D_MAX_ANY_STAGE_INPUTS];
         uint8_t num_used_outputs;
 
+        /* A bit-mask indicating if we need to swap the R/B channels for
+         * vertex attributes. Since the hardware doesn't provide any
+         * means to swizzle vertex attributes we need to do it in the shader.
+         */
+        uint16_t va_swap_rb_mask;
+
         bool is_coord;
         bool per_vertex_point_size;
         bool clamp_color;
