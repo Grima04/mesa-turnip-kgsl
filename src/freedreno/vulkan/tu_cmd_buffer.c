@@ -2317,8 +2317,8 @@ tu_flush_for_access(struct tu_cache_state *cache,
 #undef DST_FLUSH
 
 #define DST_INCOHERENT_FLUSH(domain, flush, invalidate) \
-   if (dst_mask & (TU_ACCESS_##domain##_READ |                 \
-                   TU_ACCESS_##domain##_WRITE)) {              \
+   if (dst_mask & (TU_ACCESS_##domain##_INCOHERENT_READ |      \
+                   TU_ACCESS_##domain##_INCOHERENT_WRITE)) {   \
       flush_bits |= TU_CMD_FLAG_##invalidate |                 \
           (cache->pending_flush_bits &                         \
            (TU_CMD_FLAG_ALL_FLUSH & ~TU_CMD_FLAG_##flush));    \
