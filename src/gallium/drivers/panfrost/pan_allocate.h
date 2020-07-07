@@ -41,6 +41,9 @@ struct panfrost_batch;
  * command pool */
 
 struct pan_pool {
+        /* Parent device for allocation */
+        struct panfrost_device *dev;
+
         /* panfrost_bo -> access_flags owned by the pool */
         struct hash_table *bos;
 
@@ -52,7 +55,7 @@ struct pan_pool {
 };
 
 struct pan_pool
-panfrost_create_pool(void *memctx);
+panfrost_create_pool(void *memctx, struct panfrost_device *dev);
 
 /* Represents a fat pointer for GPU-mapped memory, returned from the transient
  * allocator and not used for much else */

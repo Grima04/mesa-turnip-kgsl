@@ -40,9 +40,10 @@
  * into the pool and copy there */
 
 struct pan_pool
-panfrost_create_pool(void *memctx)
+panfrost_create_pool(void *memctx, struct panfrost_device *dev)
 {
         struct pan_pool pool = {
+                .dev = dev,
                 .transient_offset = 0,
                 .transient_bo = NULL
         };
@@ -85,7 +86,7 @@ panfrost_allocate_transient(struct panfrost_batch *batch, size_t sz)
                  * flags to this function and keep the read/write,
                  * fragment/vertex+tiler pools separate.
                  */
-                bo = pan_bo_create(pan_device(batch->ctx->base.screen), bo_sz, 0);
+                bo = pan_bo_create(batch->pool.dev, bo_sz, 0);
 
                 uintptr_t flags = PAN_BO_ACCESS_PRIVATE |
                                   PAN_BO_ACCESS_RW |

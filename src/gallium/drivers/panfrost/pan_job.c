@@ -117,7 +117,7 @@ panfrost_create_batch(struct panfrost_context *ctx,
         batch->out_sync = panfrost_create_batch_fence(batch);
         util_copy_framebuffer_state(&batch->key, key);
 
-        batch->pool = panfrost_create_pool(batch);
+        batch->pool = panfrost_create_pool(batch, pan_device(ctx->base.screen));
 
         return batch;
 }
