@@ -57,7 +57,7 @@ pan_bo_create(struct panfrost_device *dev, size_t size, uint32_t flags)
 {
         struct panfrost_bo *bo = panfrost_bo_create(dev, size, flags);
 
-        if (pan_debug & (PAN_DBG_TRACE | PAN_DBG_SYNC)) {
+        if (dev->debug & (PAN_DBG_TRACE | PAN_DBG_SYNC)) {
                 if (flags & PAN_BO_INVISIBLE)
                         pandecode_inject_mmap(bo->gpu, NULL, bo->size, NULL);
                 else if (!(flags & PAN_BO_DELAY_MMAP))
@@ -183,7 +183,7 @@ panfrost_resource_get_handle(struct pipe_screen *pscreen,
 static void
 panfrost_flush_resource(struct pipe_context *pctx, struct pipe_resource *prsc)
 {
-        //DBG("TODO %s\n", __func__);
+        /* TODO */
 }
 
 static struct pipe_surface *
@@ -535,8 +535,7 @@ panfrost_resource_create(struct pipe_screen *screen,
         case PIPE_TEXTURE_2D_ARRAY:
                 break;
         default:
-                DBG("Unknown texture target %d\n", template->target);
-                assert(0);
+                unreachable("Unknown texture target\n");
         }
 
         if (dev->ro && (template->bind &
@@ -591,6 +590,7 @@ panfrost_transfer_map(struct pipe_context *pctx,
                       struct pipe_transfer **out_transfer)
 {
         struct panfrost_context *ctx = pan_context(pctx);
+        struct panfrost_device *dev = pan_device(pctx->screen);
         struct panfrost_resource *rsrc = pan_resource(resource);
         int bytes_per_pixel = util_format_get_blocksize(rsrc->internal_format);
         struct panfrost_bo *bo = rsrc->bo;
@@ -607,7 +607,7 @@ panfrost_transfer_map(struct pipe_context *pctx,
         /* If we haven't already mmaped, now's the time */
         panfrost_bo_mmap(bo);
 
-        if (pan_debug & (PAN_DBG_TRACE | PAN_DBG_SYNC))
+        if (dev->debug & (PAN_DBG_TRACE | PAN_DBG_SYNC))
                 pandecode_inject_mmap(bo->gpu, bo->cpu, bo->size, NULL);
 
         bool create_new_bo = usage & PIPE_TRANSFER_DISCARD_WHOLE_RESOURCE;
@@ -640,7 +640,6 @@ panfrost_transfer_map(struct pipe_context *pctx,
                  */
                 if (panfrost_pending_batches_access_bo(ctx, bo) ||
                     !panfrost_bo_wait(bo, 0, PAN_BO_ACCESS_RW)) {
-                        struct panfrost_device *dev = pan_device(pctx->screen);
                         /* We want the BO to be MMAPed. */
                         uint32_t flags = bo->flags & ~PAN_BO_DELAY_MMAP;
                         struct panfrost_bo *newbo = NULL;
@@ -699,7 +698,7 @@ panfrost_transfer_map(struct pipe_context *pctx,
 
                 if ((usage & PIPE_TRANSFER_READ) && rsrc->slices[level].initialized) {
                         if (rsrc->layout == MALI_TEXTURE_AFBC) {
-                                DBG("Unimplemented: reads from AFBC");
+                                unreachable("Unimplemented: reads from AFBC");
                         } else if (rsrc->layout == MALI_TEXTURE_TILED) {
                                 panfrost_load_tiled_image(
                                         transfer->map,
@@ -761,7 +760,7 @@ panfrost_transfer_unmap(struct pipe_context *pctx,
 
                 if (transfer->usage & PIPE_TRANSFER_WRITE) {
                         if (prsrc->layout == MALI_TEXTURE_AFBC) {
-                                DBG("Unimplemented: writes to AFBC\n");
+                                unreachable("Unimplemented: writes to AFBC\n");
                         } else if (prsrc->layout == MALI_TEXTURE_TILED) {
                                 assert(transfer->box.depth == 1);
 
@@ -845,7 +844,7 @@ panfrost_transfer_flush_region(struct pipe_context *pctx,
 static void
 panfrost_invalidate_resource(struct pipe_context *pctx, struct pipe_resource *prsc)
 {
-        //DBG("TODO %s\n", __func__);
+        /* TODO */
 }
 
 static enum pipe_format

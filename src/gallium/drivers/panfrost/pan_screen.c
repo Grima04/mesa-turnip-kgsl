@@ -69,10 +69,6 @@ static const struct debug_named_value debug_options[] = {
         DEBUG_NAMED_VALUE_END
 };
 
-DEBUG_GET_ONCE_FLAGS_OPTION(pan_debug, "PAN_MESA_DEBUG", debug_options, 0)
-
-int pan_debug = 0;
-
 static const char *
 panfrost_get_name(struct pipe_screen *screen)
 {
@@ -95,15 +91,15 @@ static int
 panfrost_get_param(struct pipe_screen *screen, enum pipe_cap param)
 {
         /* We expose in-dev stuff for dEQP that we don't want apps to use yet */
-        bool is_deqp = pan_debug & PAN_DBG_DEQP;
         struct panfrost_device *dev = pan_device(screen);
+        bool is_deqp = dev->debug & PAN_DBG_DEQP;
 
         /* Our GL 3.x implementation is WIP */
-        bool is_gl3 = pan_debug & PAN_DBG_GL3;
+        bool is_gl3 = dev->debug & PAN_DBG_GL3;
         is_gl3 |= is_deqp;
 
         /* Same with GLES 3 */
-        bool is_gles3 = pan_debug & PAN_DBG_GLES3;
+        bool is_gles3 = dev->debug & PAN_DBG_GLES3;
         is_gles3 |= is_gl3;
 
         switch (param) {
@@ -299,9 +295,9 @@ panfrost_get_shader_param(struct pipe_screen *screen,
                           enum pipe_shader_type shader,
                           enum pipe_shader_cap param)
 {
-        bool is_deqp = pan_debug & PAN_DBG_DEQP;
-        bool is_fp16 = pan_debug & PAN_DBG_FP16;
         struct panfrost_device *dev = pan_device(screen);
+        bool is_deqp = dev->debug & PAN_DBG_DEQP;
+        bool is_fp16 = dev->debug & PAN_DBG_FP16;
 
         if (shader != PIPE_SHADER_VERTEX &&
             shader != PIPE_SHADER_FRAGMENT &&
@@ -396,7 +392,7 @@ panfrost_get_shader_param(struct pipe_screen *screen,
                 return 0;
 
         default:
-                DBG("unknown shader param %d\n", param);
+                /* Other params are unknown */
                 return 0;
         }
 
@@ -449,6 +445,7 @@ panfrost_is_format_supported( struct pipe_screen *screen,
                               unsigned storage_sample_count,
                               unsigned bind)
 {
+        struct panfrost_device *dev = pan_device(screen);
         const struct util_format_description *format_desc;
 
         assert(target == PIPE_BUFFER ||
@@ -485,7 +482,7 @@ panfrost_is_format_supported( struct pipe_screen *screen,
         if (scanout && renderable && !util_format_is_rgba8_variant(format_desc))
                 return false;
 
-        if (pan_debug & (PAN_DBG_GL3 | PAN_DBG_DEQP)) {
+        if (dev->debug & (PAN_DBG_GL3 | PAN_DBG_DEQP)) {
                 if (format_desc->layout == UTIL_FORMAT_LAYOUT_RGTC)
                         return true;
         }
@@ -504,9 +501,10 @@ static int
 panfrost_get_compute_param(struct pipe_screen *pscreen, enum pipe_shader_ir ir_type,
                 enum pipe_compute_cap param, void *ret)
 {
+        struct panfrost_device *dev = pan_device(pscreen);
 	const char * const ir = "panfrost";
 
-	if (!(pan_debug & PAN_DBG_DEQP))
+	if (!(dev->debug & PAN_DBG_DEQP))
 		return 0;
 
 #define RET(x) do {                  \
@@ -687,8 +685,6 @@ panfrost_screen_get_compiler_options(struct pipe_screen *pscreen,
 struct pipe_screen *
 panfrost_create_screen(int fd, struct renderonly *ro)
 {
-        pan_debug = debug_get_option_pan_debug();
-
         /* Blacklist apps known to be buggy under Panfrost */
         const char *proc = util_get_process_name();
         const char *blacklist[] = {
@@ -710,10 +706,14 @@ panfrost_create_screen(int fd, struct renderonly *ro)
         struct panfrost_device *dev = pan_device(&screen->base);
         panfrost_open_device(screen, fd, dev);
 
+        dev->debug = debug_get_flags_option("PAN_MESA_DEBUG", debug_options, 0);
+
         if (ro) {
                 dev->ro = renderonly_dup(ro);
                 if (!dev->ro) {
-                        DBG("Failed to dup renderonly object\n");
+                        if (dev->debug & PAN_DBG_MSGS)
+                                fprintf(stderr, "Failed to dup renderonly object\n");
+
                         free(screen);
                         return NULL;
                 }
@@ -729,7 +729,7 @@ panfrost_create_screen(int fd, struct renderonly *ro)
                 break;
         case 0x7093: /* G31 */
         case 0x7212: /* G52 */
-                if (pan_debug & PAN_DBG_BIFROST)
+                if (dev->debug & PAN_DBG_BIFROST)
                         break;
 
                 /* fallthrough */
@@ -740,8 +740,8 @@ panfrost_create_screen(int fd, struct renderonly *ro)
                 return NULL;
         }
 
-        if (pan_debug & (PAN_DBG_TRACE | PAN_DBG_SYNC))
-                pandecode_initialize(!(pan_debug & PAN_DBG_TRACE));
+        if (dev->debug & (PAN_DBG_TRACE | PAN_DBG_SYNC))
+                pandecode_initialize(!(dev->debug & PAN_DBG_TRACE));
 
         screen->base.destroy = panfrost_destroy_screen;
 

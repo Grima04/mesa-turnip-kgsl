@@ -39,11 +39,4 @@
 #define PAN_DBG_BIFROST         0x0100
 #define PAN_DBG_GL3             0x0200
 
-extern int pan_debug;
-
-#define DBG(fmt, ...) \
-		do { if (pan_debug & PAN_DBG_MSGS) \
-			fprintf(stderr, "%s:%d: "fmt, \
-				__FUNCTION__, __LINE__, ##__VA_ARGS__); } while (0)
-
 #endif /* PAN_UTIL_H */

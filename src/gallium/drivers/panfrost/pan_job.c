@@ -973,18 +973,20 @@ panfrost_batch_submit_ioctl(struct panfrost_batch *batch,
         free(in_syncs);
 
         if (ret) {
-                DBG("Error submitting: %m\n");
+                if (dev->debug & PAN_DBG_MSGS)
+                        fprintf(stderr, "Error submitting: %m\n");
+
                 return errno;
         }
 
         /* Trace the job if we're doing that */
-        if (pan_debug & (PAN_DBG_TRACE | PAN_DBG_SYNC)) {
+        if (dev->debug & (PAN_DBG_TRACE | PAN_DBG_SYNC)) {
                 /* Wait so we can get errors reported back */
                 drmSyncobjWait(dev->fd, &batch->out_sync->syncobj, 1,
                                INT64_MAX, 0, NULL);
 
                 /* Trace gets priority over sync */
-                bool minimal = !(pan_debug & PAN_DBG_TRACE);
+                bool minimal = !(dev->debug & PAN_DBG_TRACE);
                 pandecode_jc(submit.jc, dev->quirks & IS_BIFROST, dev->gpu_id, minimal);
         }
 
@@ -1015,6 +1017,7 @@ static void
 panfrost_batch_submit(struct panfrost_batch *batch)
 {
         assert(batch);
+        struct panfrost_device *dev = pan_device(batch->ctx->base.screen);
 
         /* Submit the dependencies first. */
         util_dynarray_foreach(&batch->dependencies,
@@ -1054,8 +1057,8 @@ panfrost_batch_submit(struct panfrost_batch *batch)
 
         ret = panfrost_batch_submit_jobs(batch);
 
-        if (ret)
-                DBG("panfrost_batch_submit failed: %d\n", ret);
+        if (ret && dev->debug & PAN_DBG_MSGS)
+                fprintf(stderr, "panfrost_batch_submit failed: %d\n", ret);
 
         /* We must reset the damage info of our render targets here even
          * though a damage reset normally happens when the DRI layer swaps

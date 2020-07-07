@@ -238,6 +238,7 @@ panfrost_flush(
         unsigned flags)
 {
         struct panfrost_context *ctx = pan_context(pipe);
+        struct panfrost_device *dev = pan_device(pipe->screen);
         struct util_dynarray fences;
 
         /* We must collect the fences before the flush is done, otherwise we'll
@@ -269,7 +270,7 @@ panfrost_flush(
                 util_dynarray_fini(&fences);
         }
 
-        if (pan_debug & PAN_DBG_TRACE)
+        if (dev->debug & PAN_DBG_TRACE)
                 pandecode_next_frame();
 }
 
@@ -557,6 +558,7 @@ panfrost_create_shader_state(
         enum pipe_shader_type stage)
 {
         struct panfrost_shader_variants *so = CALLOC_STRUCT(panfrost_shader_variants);
+        struct panfrost_device *dev = pan_device(pctx->screen);
         so->base = *cso;
 
         /* Token deep copy to prevent memory corruption */
@@ -565,7 +567,7 @@ panfrost_create_shader_state(
                 so->base.tokens = tgsi_dup_tokens(so->base.tokens);
 
         /* Precompile for shader-db if we need to */
-        if (unlikely((pan_debug & PAN_DBG_PRECOMPILE) && cso->type == PIPE_SHADER_IR_NIR)) {
+        if (unlikely((dev->debug & PAN_DBG_PRECOMPILE) && cso->type == PIPE_SHADER_IR_NIR)) {
                 struct panfrost_context *ctx = pan_context(pctx);
 
                 struct panfrost_shader_state state;
@@ -588,7 +590,7 @@ panfrost_delete_shader_state(
         struct panfrost_shader_variants *cso = (struct panfrost_shader_variants *) so;
 
         if (cso->base.type == PIPE_SHADER_IR_TGSI) {
-                DBG("Deleting TGSI shader leaks duplicated tokens\n");
+                /* TODO: leaks TGSI tokens! */
         }
 
         for (unsigned i = 0; i < cso->variant_count; ++i) {
@@ -1098,7 +1100,7 @@ panfrost_hint_afbc(
                 const struct pipe_framebuffer_state *fb)
 {
         /* AFBC implemenation incomplete; hide it */
-        if (!(pan_debug & PAN_DBG_AFBC)) return;
+        if (!(device->debug & PAN_DBG_AFBC)) return;
 
         /* Hint AFBC to the resources bound to each color buffer */
 
@@ -1298,7 +1300,7 @@ panfrost_begin_query(struct pipe_context *pipe, struct pipe_query *q)
                 break;
 
         default:
-                DBG("Skipping query %u\n", query->type);
+                /* TODO: timestamp queries, etc? */
                 break;
         }
 
@@ -1342,7 +1344,6 @@ panfrost_get_query_result(struct pipe_context *pipe,
         case PIPE_QUERY_OCCLUSION_COUNTER:
         case PIPE_QUERY_OCCLUSION_PREDICATE:
         case PIPE_QUERY_OCCLUSION_PREDICATE_CONSERVATIVE:
-                DBG("Flushing for occlusion query\n");
                 panfrost_flush_batches_accessing_bo(ctx, query->bo, PAN_BO_ACCESS_WRITE);
                 panfrost_bo_wait(query->bo, INT64_MAX, PAN_BO_ACCESS_WRITE);
 
@@ -1360,13 +1361,12 @@ panfrost_get_query_result(struct pipe_context *pipe,
 
         case PIPE_QUERY_PRIMITIVES_GENERATED:
         case PIPE_QUERY_PRIMITIVES_EMITTED:
-                DBG("Flushing for primitive query\n");
                 panfrost_flush_all_batches(ctx, true);
                 vresult->u64 = query->end - query->start;
                 break;
 
         default:
-                DBG("Skipped query get %u\n", query->type);
+                /* TODO: more queries */
                 break;
         }
 

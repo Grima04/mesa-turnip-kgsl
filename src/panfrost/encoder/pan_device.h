@@ -79,6 +79,9 @@ struct panfrost_device {
         unsigned thread_tls_alloc;
         unsigned quirks;
 
+        /* debug flags, see pan_util.h how to interpret */
+        unsigned debug;
+
         drmVersionPtr kernel_version;
 
         struct renderonly *ro;

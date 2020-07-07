@@ -132,8 +132,7 @@ bifrost_blend_type_from_nir(nir_alu_type nir_type)
         case nir_type_uint16:
                 return BIFROST_BLEND_U16;
         default:
-                DBG("Unsupported blend shader type for NIR alu type %d", nir_type);
-                assert(0);
+                unreachable("Unsupported blend shader type for NIR alu type");
                 return 0;
         }
 }
@@ -170,7 +169,7 @@ panfrost_shader_compile(struct panfrost_context *ctx,
                 bifrost_compile_shader_nir(s, &program, dev->gpu_id);
         } else {
                 midgard_compile_shader_nir(s, &program, false, 0, dev->gpu_id,
-                                pan_debug & PAN_DBG_PRECOMPILE);
+                                dev->debug & PAN_DBG_PRECOMPILE);
         }
 
         /* Prepare the compiled binary for upload */
