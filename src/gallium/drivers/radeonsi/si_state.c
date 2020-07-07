@@ -5127,48 +5127,14 @@ void si_init_cs_preamble_state(struct si_context *sctx)
       si_pm4_cmd_add(pm4, 0);
    }
 
-   if (sctx->chip_class <= GFX8)
-      si_set_raster_config(sctx, pm4);
-
-   si_pm4_set_reg(pm4, R_028A18_VGT_HOS_MAX_TESS_LEVEL, fui(64));
-   if (!has_clear_state)
-      si_pm4_set_reg(pm4, R_028A1C_VGT_HOS_MIN_TESS_LEVEL, fui(0));
-
-   /* FIXME calculate these values somehow ??? */
-   if (sctx->chip_class <= GFX8) {
-      si_pm4_set_reg(pm4, R_028A54_VGT_GS_PER_ES, SI_GS_PER_ES);
-      si_pm4_set_reg(pm4, R_028A58_VGT_ES_PER_GS, 0x40);
-   }
-
-   if (!has_clear_state) {
-      si_pm4_set_reg(pm4, R_028A5C_VGT_GS_PER_VS, 0x2);
-      si_pm4_set_reg(pm4, R_028A8C_VGT_PRIMITIVEID_RESET, 0x0);
-      si_pm4_set_reg(pm4, R_028B98_VGT_STRMOUT_BUFFER_CONFIG, 0x0);
-   }
-
-   if (sscreen->info.chip_class <= GFX9)
-      si_pm4_set_reg(pm4, R_028AA0_VGT_INSTANCE_STEP_RATE_0, 1);
-   if (!has_clear_state)
-      si_pm4_set_reg(pm4, R_028AB8_VGT_VTX_CNT_EN, 0x0);
-   if (sctx->chip_class < GFX7)
-      si_pm4_set_reg(pm4, R_008A14_PA_CL_ENHANCE,
-                     S_008A14_NUM_CLIP_SEQ(3) | S_008A14_CLIP_VTX_REORDER_ENA(1));
-
    /* CLEAR_STATE doesn't restore these correctly. */
    si_pm4_set_reg(pm4, R_028240_PA_SC_GENERIC_SCISSOR_TL, S_028240_WINDOW_OFFSET_DISABLE(1));
    si_pm4_set_reg(pm4, R_028244_PA_SC_GENERIC_SCISSOR_BR,
                   S_028244_BR_X(16384) | S_028244_BR_Y(16384));
 
-   /* CLEAR_STATE doesn't clear these correctly on certain generations.
-    * I don't know why. Deduced by trial and error.
-    */
-   if (sctx->chip_class <= GFX7 || !has_clear_state) {
-      si_pm4_set_reg(pm4, R_028B28_VGT_STRMOUT_DRAW_OPAQUE_OFFSET, 0);
-      si_pm4_set_reg(pm4, R_028204_PA_SC_WINDOW_SCISSOR_TL, S_028204_WINDOW_OFFSET_DISABLE(1));
-      si_pm4_set_reg(pm4, R_028030_PA_SC_SCREEN_SCISSOR_TL, 0);
-      si_pm4_set_reg(pm4, R_028034_PA_SC_SCREEN_SCISSOR_BR,
-                     S_028034_BR_X(16384) | S_028034_BR_Y(16384));
-   }
+   si_pm4_set_reg(pm4, R_028A18_VGT_HOS_MAX_TESS_LEVEL, fui(64));
+   if (!has_clear_state)
+      si_pm4_set_reg(pm4, R_028A1C_VGT_HOS_MIN_TESS_LEVEL, fui(0));
 
    if (!has_clear_state) {
       si_pm4_set_reg(pm4, R_028230_PA_SC_EDGERULE,
@@ -5181,55 +5147,36 @@ void si_init_cs_preamble_state(struct si_context *sctx)
       si_pm4_set_reg(pm4, R_028AC4_DB_SRESULTS_COMPARE_STATE1, 0x0);
       si_pm4_set_reg(pm4, R_028AC8_DB_PRELOAD_CONTROL, 0x0);
       si_pm4_set_reg(pm4, R_02800C_DB_RENDER_OVERRIDE, 0);
+      si_pm4_set_reg(pm4, R_028A5C_VGT_GS_PER_VS, 0x2);
+      si_pm4_set_reg(pm4, R_028A8C_VGT_PRIMITIVEID_RESET, 0x0);
+      si_pm4_set_reg(pm4, R_028B98_VGT_STRMOUT_BUFFER_CONFIG, 0x0);
+      si_pm4_set_reg(pm4, R_028AB8_VGT_VTX_CNT_EN, 0x0);
    }
 
-   if (sctx->chip_class >= GFX10) {
-      si_pm4_set_reg(pm4, R_028A98_VGT_DRAW_PAYLOAD_CNTL, 0);
-      si_pm4_set_reg(pm4, R_030964_GE_MAX_VTX_INDX, ~0);
-      si_pm4_set_reg(pm4, R_030924_GE_MIN_VTX_INDX, 0);
-      si_pm4_set_reg(pm4, R_030928_GE_INDX_OFFSET, 0);
-      si_pm4_set_reg(pm4, R_03097C_GE_STEREO_CNTL, 0);
-      si_pm4_set_reg(pm4, R_030988_GE_USER_VGPR_EN, 0);
-   } else if (sctx->chip_class == GFX9) {
-      si_pm4_set_reg(pm4, R_030920_VGT_MAX_VTX_INDX, ~0);
-      si_pm4_set_reg(pm4, R_030924_VGT_MIN_VTX_INDX, 0);
-      si_pm4_set_reg(pm4, R_030928_VGT_INDX_OFFSET, 0);
-   } else {
-      /* These registers, when written, also overwrite the CLEAR_STATE
-       * context, so we can't rely on CLEAR_STATE setting them.
-       * It would be an issue if there was another UMD changing them.
+   si_pm4_set_reg(pm4, R_028080_TA_BC_BASE_ADDR, border_color_va >> 8);
+   if (sctx->chip_class >= GFX7)
+      si_pm4_set_reg(pm4, R_028084_TA_BC_BASE_ADDR_HI, S_028084_ADDRESS(border_color_va >> 40));
+
+   if (sctx->chip_class == GFX6) {
+      si_pm4_set_reg(pm4, R_008A14_PA_CL_ENHANCE,
+                     S_008A14_NUM_CLIP_SEQ(3) | S_008A14_CLIP_VTX_REORDER_ENA(1));
+   }
+
+   if (sctx->chip_class <= GFX7 || !has_clear_state) {
+      si_pm4_set_reg(pm4, R_028C58_VGT_VERTEX_REUSE_BLOCK_CNTL, 14);
+      si_pm4_set_reg(pm4, R_028C5C_VGT_OUT_DEALLOC_CNTL, 16);
+
+      /* CLEAR_STATE doesn't clear these correctly on certain generations.
+       * I don't know why. Deduced by trial and error.
        */
-      si_pm4_set_reg(pm4, R_028400_VGT_MAX_VTX_INDX, ~0);
-      si_pm4_set_reg(pm4, R_028404_VGT_MIN_VTX_INDX, 0);
-      si_pm4_set_reg(pm4, R_028408_VGT_INDX_OFFSET, 0);
+      si_pm4_set_reg(pm4, R_028B28_VGT_STRMOUT_DRAW_OPAQUE_OFFSET, 0);
+      si_pm4_set_reg(pm4, R_028204_PA_SC_WINDOW_SCISSOR_TL, S_028204_WINDOW_OFFSET_DISABLE(1));
+      si_pm4_set_reg(pm4, R_028030_PA_SC_SCREEN_SCISSOR_TL, 0);
+      si_pm4_set_reg(pm4, R_028034_PA_SC_SCREEN_SCISSOR_BR,
+                     S_028034_BR_X(16384) | S_028034_BR_Y(16384));
    }
 
    if (sctx->chip_class >= GFX7) {
-      if (sctx->chip_class >= GFX10) {
-         /* Logical CUs 16 - 31 */
-         si_pm4_set_reg(pm4, R_00B404_SPI_SHADER_PGM_RSRC4_HS, S_00B404_CU_EN(0xffff));
-         si_pm4_set_reg(pm4, R_00B104_SPI_SHADER_PGM_RSRC4_VS, S_00B104_CU_EN(0xffff));
-         si_pm4_set_reg(pm4, R_00B004_SPI_SHADER_PGM_RSRC4_PS, S_00B004_CU_EN(0xffff));
-      }
-
-      if (sctx->chip_class >= GFX9) {
-         si_pm4_set_reg(pm4, R_00B41C_SPI_SHADER_PGM_RSRC3_HS,
-                        S_00B41C_CU_EN(0xffff) | S_00B41C_WAVE_LIMIT(0x3F));
-      } else {
-         si_pm4_set_reg(pm4, R_00B51C_SPI_SHADER_PGM_RSRC3_LS,
-                        S_00B51C_CU_EN(0xffff) | S_00B51C_WAVE_LIMIT(0x3F));
-         si_pm4_set_reg(pm4, R_00B41C_SPI_SHADER_PGM_RSRC3_HS, S_00B41C_WAVE_LIMIT(0x3F));
-         si_pm4_set_reg(pm4, R_00B31C_SPI_SHADER_PGM_RSRC3_ES,
-                        S_00B31C_CU_EN(0xffff) | S_00B31C_WAVE_LIMIT(0x3F));
-
-         /* If this is 0, Bonaire can hang even if GS isn't being used.
-          * Other chips are unaffected. These are suboptimal values,
-          * but we don't use on-chip GS.
-          */
-         si_pm4_set_reg(pm4, R_028A44_VGT_GS_ONCHIP_CNTL,
-                        S_028A44_ES_VERTS_PER_SUBGRP(64) | S_028A44_GS_PRIMS_PER_SUBGRP(4));
-      }
-
       /* Compute LATE_ALLOC_VS.LIMIT. */
       unsigned num_cu_per_sh = sscreen->info.min_good_cu_per_sa;
       unsigned late_alloc_wave64 = 0; /* The limit is per SA. */
@@ -5279,15 +5226,117 @@ void si_init_cs_preamble_state(struct si_context *sctx)
       si_pm4_set_reg(pm4, R_00B118_SPI_SHADER_PGM_RSRC3_VS,
                      S_00B118_CU_EN(cu_mask_vs) | S_00B118_WAVE_LIMIT(0x3F));
       si_pm4_set_reg(pm4, R_00B11C_SPI_SHADER_LATE_ALLOC_VS, S_00B11C_LIMIT(late_alloc_wave64));
-
       si_pm4_set_reg(pm4, R_00B21C_SPI_SHADER_PGM_RSRC3_GS,
                      S_00B21C_CU_EN(cu_mask_gs) | S_00B21C_WAVE_LIMIT(0x3F));
-
       si_pm4_set_reg(pm4, R_00B01C_SPI_SHADER_PGM_RSRC3_PS,
                      S_00B01C_CU_EN(0xffff) | S_00B01C_WAVE_LIMIT(0x3F));
    }
 
+   if (sctx->chip_class <= GFX8) {
+      si_set_raster_config(sctx, pm4);
+
+      /* FIXME calculate these values somehow ??? */
+      si_pm4_set_reg(pm4, R_028A54_VGT_GS_PER_ES, SI_GS_PER_ES);
+      si_pm4_set_reg(pm4, R_028A58_VGT_ES_PER_GS, 0x40);
+
+      /* These registers, when written, also overwrite the CLEAR_STATE
+       * context, so we can't rely on CLEAR_STATE setting them.
+       * It would be an issue if there was another UMD changing them.
+       */
+      si_pm4_set_reg(pm4, R_028400_VGT_MAX_VTX_INDX, ~0);
+      si_pm4_set_reg(pm4, R_028404_VGT_MIN_VTX_INDX, 0);
+      si_pm4_set_reg(pm4, R_028408_VGT_INDX_OFFSET, 0);
+   }
+
+   if (sctx->chip_class >= GFX7 && sctx->chip_class <= GFX8) {
+      si_pm4_set_reg(pm4, R_00B51C_SPI_SHADER_PGM_RSRC3_LS,
+                     S_00B51C_CU_EN(0xffff) | S_00B51C_WAVE_LIMIT(0x3F));
+      si_pm4_set_reg(pm4, R_00B41C_SPI_SHADER_PGM_RSRC3_HS, S_00B41C_WAVE_LIMIT(0x3F));
+      si_pm4_set_reg(pm4, R_00B31C_SPI_SHADER_PGM_RSRC3_ES,
+                     S_00B31C_CU_EN(0xffff) | S_00B31C_WAVE_LIMIT(0x3F));
+
+      /* If this is 0, Bonaire can hang even if GS isn't being used.
+       * Other chips are unaffected. These are suboptimal values,
+       * but we don't use on-chip GS.
+       */
+      si_pm4_set_reg(pm4, R_028A44_VGT_GS_ONCHIP_CNTL,
+                     S_028A44_ES_VERTS_PER_SUBGRP(64) | S_028A44_GS_PRIMS_PER_SUBGRP(4));
+   }
+
+   if (sctx->chip_class == GFX8) {
+      unsigned vgt_tess_distribution;
+
+      vgt_tess_distribution = S_028B50_ACCUM_ISOLINE(32) | S_028B50_ACCUM_TRI(11) |
+                              S_028B50_ACCUM_QUAD(11) | S_028B50_DONUT_SPLIT(16);
+
+      /* Testing with Unigine Heaven extreme tesselation yielded best results
+       * with TRAP_SPLIT = 3.
+       */
+      if (sctx->family == CHIP_FIJI || sctx->family >= CHIP_POLARIS10)
+         vgt_tess_distribution |= S_028B50_TRAP_SPLIT(3);
+
+      si_pm4_set_reg(pm4, R_028B50_VGT_TESS_DISTRIBUTION, vgt_tess_distribution);
+   }
+
+   if (sscreen->info.chip_class <= GFX9) {
+      si_pm4_set_reg(pm4, R_028AA0_VGT_INSTANCE_STEP_RATE_0, 1);
+   }
+
+   if (sctx->chip_class == GFX9) {
+      si_pm4_set_reg(pm4, R_030920_VGT_MAX_VTX_INDX, ~0);
+      si_pm4_set_reg(pm4, R_030924_VGT_MIN_VTX_INDX, 0);
+      si_pm4_set_reg(pm4, R_030928_VGT_INDX_OFFSET, 0);
+   }
+
+   if (sctx->chip_class >= GFX9) {
+      si_pm4_set_reg(pm4, R_00B41C_SPI_SHADER_PGM_RSRC3_HS,
+                     S_00B41C_CU_EN(0xffff) | S_00B41C_WAVE_LIMIT(0x3F));
+
+      si_pm4_set_reg(pm4, R_028B50_VGT_TESS_DISTRIBUTION,
+                     S_028B50_ACCUM_ISOLINE(40) | S_028B50_ACCUM_TRI(30) | S_028B50_ACCUM_QUAD(24) |
+                     S_028B50_DONUT_SPLIT(24) | S_028B50_TRAP_SPLIT(6));
+      si_pm4_set_reg(pm4, R_028C48_PA_SC_BINNER_CNTL_1,
+                     S_028C48_MAX_ALLOC_COUNT(sscreen->info.pbb_max_alloc_count - 1) |
+                     S_028C48_MAX_PRIM_PER_BATCH(1023));
+      si_pm4_set_reg(pm4, R_028C4C_PA_SC_CONSERVATIVE_RASTERIZATION_CNTL,
+                     S_028C4C_NULL_SQUAD_AA_MASK_ENABLE(1));
+
+      si_pm4_set_reg(pm4, R_030968_VGT_INSTANCE_BASE_ID, 0);
+      si_pm4_set_reg(pm4, R_0301EC_CP_COHER_START_DELAY,
+                     sctx->chip_class >= GFX10 ? 0x20 : 0);
+   }
+
    if (sctx->chip_class >= GFX10) {
+      /* Logical CUs 16 - 31 */
+      si_pm4_set_reg(pm4, R_00B004_SPI_SHADER_PGM_RSRC4_PS, S_00B004_CU_EN(0xffff));
+      si_pm4_set_reg(pm4, R_00B104_SPI_SHADER_PGM_RSRC4_VS, S_00B104_CU_EN(0xffff));
+      si_pm4_set_reg(pm4, R_00B404_SPI_SHADER_PGM_RSRC4_HS, S_00B404_CU_EN(0xffff));
+
+      si_pm4_set_reg(pm4, R_00B0C8_SPI_SHADER_USER_ACCUM_PS_0, 0);
+      si_pm4_set_reg(pm4, R_00B0CC_SPI_SHADER_USER_ACCUM_PS_1, 0);
+      si_pm4_set_reg(pm4, R_00B0D0_SPI_SHADER_USER_ACCUM_PS_2, 0);
+      si_pm4_set_reg(pm4, R_00B0D4_SPI_SHADER_USER_ACCUM_PS_3, 0);
+      si_pm4_set_reg(pm4, R_00B1C8_SPI_SHADER_USER_ACCUM_VS_0, 0);
+      si_pm4_set_reg(pm4, R_00B1CC_SPI_SHADER_USER_ACCUM_VS_1, 0);
+      si_pm4_set_reg(pm4, R_00B1D0_SPI_SHADER_USER_ACCUM_VS_2, 0);
+      si_pm4_set_reg(pm4, R_00B1D4_SPI_SHADER_USER_ACCUM_VS_3, 0);
+      si_pm4_set_reg(pm4, R_00B2C8_SPI_SHADER_USER_ACCUM_ESGS_0, 0);
+      si_pm4_set_reg(pm4, R_00B2CC_SPI_SHADER_USER_ACCUM_ESGS_1, 0);
+      si_pm4_set_reg(pm4, R_00B2D0_SPI_SHADER_USER_ACCUM_ESGS_2, 0);
+      si_pm4_set_reg(pm4, R_00B2D4_SPI_SHADER_USER_ACCUM_ESGS_3, 0);
+      si_pm4_set_reg(pm4, R_00B4C8_SPI_SHADER_USER_ACCUM_LSHS_0, 0);
+      si_pm4_set_reg(pm4, R_00B4CC_SPI_SHADER_USER_ACCUM_LSHS_1, 0);
+      si_pm4_set_reg(pm4, R_00B4D0_SPI_SHADER_USER_ACCUM_LSHS_2, 0);
+      si_pm4_set_reg(pm4, R_00B4D4_SPI_SHADER_USER_ACCUM_LSHS_3, 0);
+
+      si_pm4_set_reg(pm4, R_00B0C0_SPI_SHADER_REQ_CTRL_PS,
+                     S_00B0C0_SOFT_GROUPING_EN(1) |
+                     S_00B0C0_NUMBER_OF_REQUESTS_PER_CU(4 - 1));
+      si_pm4_set_reg(pm4, R_00B1C0_SPI_SHADER_REQ_CTRL_VS, 0);
+
+      si_pm4_set_reg(pm4, R_028428_CB_COVERAGE_OUT_CONTROL, 0);
+      si_pm4_set_reg(pm4, R_028A98_VGT_DRAW_PAYLOAD_CNTL, 0);
+
       /* Break up a pixel wave if it contains deallocs for more than
        * half the parameter cache.
        *
@@ -5306,71 +5355,16 @@ void si_init_cs_preamble_state(struct si_context *sctx)
                         sscreen->info.pa_sc_tile_steering_override);
       }
 
-      si_pm4_set_reg(pm4, R_028428_CB_COVERAGE_OUT_CONTROL, 0);
 
-      si_pm4_set_reg(pm4, R_00B0C0_SPI_SHADER_REQ_CTRL_PS,
-                     S_00B0C0_SOFT_GROUPING_EN(1) | S_00B0C0_NUMBER_OF_REQUESTS_PER_CU(4 - 1));
-      si_pm4_set_reg(pm4, R_00B1C0_SPI_SHADER_REQ_CTRL_VS, 0);
+      si_pm4_set_reg(pm4, R_030964_GE_MAX_VTX_INDX, ~0);
+      si_pm4_set_reg(pm4, R_030924_GE_MIN_VTX_INDX, 0);
+      si_pm4_set_reg(pm4, R_030928_GE_INDX_OFFSET, 0);
+      si_pm4_set_reg(pm4, R_03097C_GE_STEREO_CNTL, 0);
+      si_pm4_set_reg(pm4, R_030988_GE_USER_VGPR_EN, 0);
    }
+
    if (sctx->chip_class >= GFX10_3) {
       si_pm4_set_reg(pm4, R_028750_SX_PS_DOWNCONVERT_CONTROL_GFX103, 0xff);
-   }
-
-   if (sctx->chip_class >= GFX9) {
-      si_pm4_set_reg(pm4, R_028B50_VGT_TESS_DISTRIBUTION,
-                     S_028B50_ACCUM_ISOLINE(40) | S_028B50_ACCUM_TRI(30) | S_028B50_ACCUM_QUAD(24) |
-                        S_028B50_DONUT_SPLIT(24) | S_028B50_TRAP_SPLIT(6));
-   } else if (sctx->chip_class >= GFX8) {
-      unsigned vgt_tess_distribution;
-
-      vgt_tess_distribution = S_028B50_ACCUM_ISOLINE(32) | S_028B50_ACCUM_TRI(11) |
-                              S_028B50_ACCUM_QUAD(11) | S_028B50_DONUT_SPLIT(16);
-
-      /* Testing with Unigine Heaven extreme tesselation yielded best results
-       * with TRAP_SPLIT = 3.
-       */
-      if (sctx->family == CHIP_FIJI || sctx->family >= CHIP_POLARIS10)
-         vgt_tess_distribution |= S_028B50_TRAP_SPLIT(3);
-
-      si_pm4_set_reg(pm4, R_028B50_VGT_TESS_DISTRIBUTION, vgt_tess_distribution);
-   } else if (!has_clear_state) {
-      si_pm4_set_reg(pm4, R_028C58_VGT_VERTEX_REUSE_BLOCK_CNTL, 14);
-      si_pm4_set_reg(pm4, R_028C5C_VGT_OUT_DEALLOC_CNTL, 16);
-   }
-
-   si_pm4_set_reg(pm4, R_028080_TA_BC_BASE_ADDR, border_color_va >> 8);
-   if (sctx->chip_class >= GFX7) {
-      si_pm4_set_reg(pm4, R_028084_TA_BC_BASE_ADDR_HI, S_028084_ADDRESS(border_color_va >> 40));
-   }
-
-   if (sctx->chip_class >= GFX9) {
-      si_pm4_set_reg(pm4, R_028C48_PA_SC_BINNER_CNTL_1,
-                     S_028C48_MAX_ALLOC_COUNT(sscreen->info.pbb_max_alloc_count - 1) |
-                        S_028C48_MAX_PRIM_PER_BATCH(1023));
-      si_pm4_set_reg(pm4, R_028C4C_PA_SC_CONSERVATIVE_RASTERIZATION_CNTL,
-                     S_028C4C_NULL_SQUAD_AA_MASK_ENABLE(1));
-      si_pm4_set_reg(pm4, R_030968_VGT_INSTANCE_BASE_ID, 0);
-      si_pm4_set_reg(pm4, R_0301EC_CP_COHER_START_DELAY,
-                     sctx->chip_class >= GFX10 ? 0x20 : 0);
-   }
-
-   if (sctx->chip_class >= GFX10) {
-      si_pm4_set_reg(pm4, R_00B0C8_SPI_SHADER_USER_ACCUM_PS_0, 0);
-      si_pm4_set_reg(pm4, R_00B0CC_SPI_SHADER_USER_ACCUM_PS_1, 0);
-      si_pm4_set_reg(pm4, R_00B0D0_SPI_SHADER_USER_ACCUM_PS_2, 0);
-      si_pm4_set_reg(pm4, R_00B0D4_SPI_SHADER_USER_ACCUM_PS_3, 0);
-      si_pm4_set_reg(pm4, R_00B1C8_SPI_SHADER_USER_ACCUM_VS_0, 0);
-      si_pm4_set_reg(pm4, R_00B1CC_SPI_SHADER_USER_ACCUM_VS_1, 0);
-      si_pm4_set_reg(pm4, R_00B1D0_SPI_SHADER_USER_ACCUM_VS_2, 0);
-      si_pm4_set_reg(pm4, R_00B1D4_SPI_SHADER_USER_ACCUM_VS_3, 0);
-      si_pm4_set_reg(pm4, R_00B2C8_SPI_SHADER_USER_ACCUM_ESGS_0, 0);
-      si_pm4_set_reg(pm4, R_00B2CC_SPI_SHADER_USER_ACCUM_ESGS_1, 0);
-      si_pm4_set_reg(pm4, R_00B2D0_SPI_SHADER_USER_ACCUM_ESGS_2, 0);
-      si_pm4_set_reg(pm4, R_00B2D4_SPI_SHADER_USER_ACCUM_ESGS_3, 0);
-      si_pm4_set_reg(pm4, R_00B4C8_SPI_SHADER_USER_ACCUM_LSHS_0, 0);
-      si_pm4_set_reg(pm4, R_00B4CC_SPI_SHADER_USER_ACCUM_LSHS_1, 0);
-      si_pm4_set_reg(pm4, R_00B4D0_SPI_SHADER_USER_ACCUM_LSHS_2, 0);
-      si_pm4_set_reg(pm4, R_00B4D4_SPI_SHADER_USER_ACCUM_LSHS_3, 0);
    }
 
    sctx->cs_preamble_state = pm4;
