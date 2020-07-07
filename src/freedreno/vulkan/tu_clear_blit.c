@@ -524,8 +524,7 @@ r3d_common(struct tu_cmd_buffer *cmd, struct tu_cs *cs, bool blit, uint32_t num_
                       .persp_division_disable = 1,
                       .vp_xform_disable = 1,
                       .vp_clip_code_ignore = 1,
-                      .clip_disable = 1),
-                   A6XX_GRAS_VS_CL_CNTL(0));
+                      .clip_disable = 1));
    tu_cs_emit_regs(cs, A6XX_GRAS_SU_CNTL()); // XXX msaa enable?
 
    tu_cs_emit_regs(cs,
