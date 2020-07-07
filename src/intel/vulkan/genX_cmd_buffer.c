@@ -5261,20 +5261,15 @@ cmd_buffer_begin_subpass(struct anv_cmd_buffer *cmd_buffer,
          }
       } else if (att_state->pending_clear_aspects & (VK_IMAGE_ASPECT_DEPTH_BIT |
                                                      VK_IMAGE_ASPECT_STENCIL_BIT)) {
-         if (att_state->fast_clear && !is_multiview) {
+         if (att_state->fast_clear &&
+             (att_state->pending_clear_aspects & VK_IMAGE_ASPECT_DEPTH_BIT)) {
             /* We currently only support HiZ for single-LOD images */
-            if (att_state->pending_clear_aspects & VK_IMAGE_ASPECT_DEPTH_BIT) {
-               assert(isl_aux_usage_has_hiz(iview->image->planes[0].aux_usage));
-               assert(iview->planes[0].isl.base_level == 0);
-            }
+            assert(isl_aux_usage_has_hiz(iview->image->planes[0].aux_usage));
+            assert(iview->planes[0].isl.base_level == 0);
+            assert(iview->planes[0].isl.levels == 1);
+         }
 
-            anv_image_hiz_clear(cmd_buffer, image,
-                                att_state->pending_clear_aspects,
-                                iview->planes[0].isl.base_level,
-                                iview->planes[0].isl.base_array_layer,
-                                fb->layers, render_area,
-                                att_state->clear_value.depthStencil.stencil);
-         } else if (is_multiview) {
+         if (is_multiview) {
             uint32_t pending_clear_mask =
               get_multiview_subpass_clear_mask(cmd_state, att_state);
 
@@ -5283,26 +5278,43 @@ cmd_buffer_begin_subpass(struct anv_cmd_buffer *cmd_buffer,
                uint32_t layer =
                   iview->planes[0].isl.base_array_layer + layer_idx;
 
-               anv_image_clear_depth_stencil(cmd_buffer, image,
-                                             att_state->pending_clear_aspects,
-                                             att_state->aux_usage,
-                                             iview->planes[0].isl.base_level,
-                                             layer, 1,
-                                             render_area,
-                                             att_state->clear_value.depthStencil.depth,
-                                             att_state->clear_value.depthStencil.stencil);
+               if (att_state->fast_clear) {
+                  anv_image_hiz_clear(cmd_buffer, image,
+                                      att_state->pending_clear_aspects,
+                                      iview->planes[0].isl.base_level,
+                                      layer, 1, render_area,
+                                      att_state->clear_value.depthStencil.stencil);
+               } else {
+                  anv_image_clear_depth_stencil(cmd_buffer, image,
+                                                att_state->pending_clear_aspects,
+                                                att_state->aux_usage,
+                                                iview->planes[0].isl.base_level,
+                                                layer, 1,
+                                                render_area,
+                                                att_state->clear_value.depthStencil.depth,
+                                                att_state->clear_value.depthStencil.stencil);
+               }
             }
 
             att_state->pending_clear_views &= ~pending_clear_mask;
          } else {
-            anv_image_clear_depth_stencil(cmd_buffer, image,
-                                          att_state->pending_clear_aspects,
-                                          att_state->aux_usage,
-                                          iview->planes[0].isl.base_level,
-                                          iview->planes[0].isl.base_array_layer,
-                                          fb->layers, render_area,
-                                          att_state->clear_value.depthStencil.depth,
-                                          att_state->clear_value.depthStencil.stencil);
+            if (att_state->fast_clear) {
+               anv_image_hiz_clear(cmd_buffer, image,
+                                   att_state->pending_clear_aspects,
+                                   iview->planes[0].isl.base_level,
+                                   iview->planes[0].isl.base_array_layer,
+                                   fb->layers, render_area,
+                                   att_state->clear_value.depthStencil.stencil);
+            } else {
+               anv_image_clear_depth_stencil(cmd_buffer, image,
+                                             att_state->pending_clear_aspects,
+                                             att_state->aux_usage,
+                                             iview->planes[0].isl.base_level,
+                                             iview->planes[0].isl.base_array_layer,
+                                             fb->layers, render_area,
+                                             att_state->clear_value.depthStencil.depth,
+                                             att_state->clear_value.depthStencil.stencil);
+            }
          }
       } else  {
          assert(att_state->pending_clear_aspects == 0);
