@@ -132,7 +132,8 @@ panfrost_launch_grid(struct pipe_context *pipe,
                                           info->block[2],
                                           false);
 
-        panfrost_new_job(batch, JOB_TYPE_COMPUTE, true, 0, &payload,
+        panfrost_new_job(&batch->pool, &batch->scoreboard,
+                        JOB_TYPE_COMPUTE, true, 0, &payload,
                          sizeof(payload), false);
         panfrost_flush_all_batches(ctx, true);
 }

@@ -29,7 +29,7 @@
 #include "util/bitset.h"
 
 /*
- * Within a batch (panfrost_job), there are various types of Mali jobs:
+ * There are various types of Mali jobs:
  *
  *  - WRITE_VALUE: generic write primitive, used to zero tiler field
  *  - VERTEX: runs a vertex shader
@@ -108,15 +108,14 @@
 
 unsigned
 panfrost_new_job(
-                struct panfrost_batch *batch,
+                struct pan_pool *pool,
+                struct pan_scoreboard *scoreboard,
                 enum mali_job_type type,
                 bool barrier,
                 unsigned local_dep,
                 void *payload, size_t payload_size,
                 bool inject)
 {
-        struct panfrost_device *dev = pan_device(batch->ctx->base.screen);
-
         unsigned global_dep = 0;
 
         if (type == JOB_TYPE_TILER) {
@@ -124,16 +123,16 @@ panfrost_new_job(
                  * job must depend on the write value job, whose index we
                  * reserve now */
 
-                if (batch->scoreboard.tiler_dep)
-                        global_dep = batch->scoreboard.tiler_dep;
-                else if (!(dev->quirks & IS_BIFROST)) {
-                        batch->scoreboard.write_value_index = ++batch->scoreboard.job_index;
-                        global_dep = batch->scoreboard.write_value_index;
+                if (scoreboard->tiler_dep)
+                        global_dep = scoreboard->tiler_dep;
+                else if (!(pool->dev->quirks & IS_BIFROST)) {
+                        scoreboard->write_value_index = ++scoreboard->job_index;
+                        global_dep = scoreboard->write_value_index;
                 }
         }
 
         /* Assign the index */
-        unsigned index = ++batch->scoreboard.job_index;
+        unsigned index = ++scoreboard->job_index;
 
         struct mali_job_descriptor_header job = {
                 .job_descriptor_size = 1,
@@ -145,27 +144,27 @@ panfrost_new_job(
         };
 
         if (inject)
-                job.next_job = batch->scoreboard.first_job;
+                job.next_job = scoreboard->first_job;
 
-        struct panfrost_transfer transfer = panfrost_pool_alloc(&batch->pool, sizeof(job) + payload_size);
+        struct panfrost_transfer transfer = panfrost_pool_alloc(pool, sizeof(job) + payload_size);
         memcpy(transfer.cpu, &job, sizeof(job));
         memcpy(transfer.cpu + sizeof(job), payload, payload_size);
 
         if (inject) {
-                batch->scoreboard.first_job = transfer.gpu;
+                scoreboard->first_job = transfer.gpu;
                 return index;
         }
 
         /* Form a chain */
         if (type == JOB_TYPE_TILER)
-                batch->scoreboard.tiler_dep = index;
+                scoreboard->tiler_dep = index;
 
-        if (batch->scoreboard.prev_job)
-                batch->scoreboard.prev_job->next_job = transfer.gpu;
+        if (scoreboard->prev_job)
+                scoreboard->prev_job->next_job = transfer.gpu;
         else
-                batch->scoreboard.first_job = transfer.gpu;
+                scoreboard->first_job = transfer.gpu;
 
-        batch->scoreboard.prev_job = (struct mali_job_descriptor_header *) transfer.cpu;
+        scoreboard->prev_job = (struct mali_job_descriptor_header *) transfer.cpu;
         return index;
 }
 
@@ -173,12 +172,12 @@ panfrost_new_job(
  * this is called right before frame submission. */
 
 void
-panfrost_scoreboard_initialize_tiler(struct panfrost_batch *batch, mali_ptr polygon_list)
+panfrost_scoreboard_initialize_tiler(struct pan_pool *pool,
+                struct pan_scoreboard *scoreboard,
+                mali_ptr polygon_list)
 {
-        struct panfrost_device *dev = pan_device(batch->ctx->base.screen);
-
         /* Check if we even need tiling */
-        if (dev->quirks & IS_BIFROST || !batch->scoreboard.tiler_dep)
+        if (pool->dev->quirks & IS_BIFROST || !scoreboard->tiler_dep)
                 return;
 
         /* Okay, we do. Let's generate it. We'll need the job's polygon list
@@ -186,9 +185,9 @@ panfrost_scoreboard_initialize_tiler(struct panfrost_batch *batch, mali_ptr poly
 
         struct mali_job_descriptor_header job = {
                 .job_type = JOB_TYPE_WRITE_VALUE,
-                .job_index = batch->scoreboard.write_value_index,
+                .job_index = scoreboard->write_value_index,
                 .job_descriptor_size = 1,
-                .next_job = batch->scoreboard.first_job
+                .next_job = scoreboard->first_job
         };
 
         struct mali_payload_write_value payload = {
@@ -196,9 +195,9 @@ panfrost_scoreboard_initialize_tiler(struct panfrost_batch *batch, mali_ptr poly
                 .value_descriptor = MALI_WRITE_VALUE_ZERO,
         };
 
-        struct panfrost_transfer transfer = panfrost_pool_alloc(&batch->pool, sizeof(job) + sizeof(payload));
+        struct panfrost_transfer transfer = panfrost_pool_alloc(pool, sizeof(job) + sizeof(payload));
         memcpy(transfer.cpu, &job, sizeof(job));
         memcpy(transfer.cpu + sizeof(job), &payload, sizeof(payload));
 
-        batch->scoreboard.first_job = transfer.gpu;
+        scoreboard->first_job = transfer.gpu;
 }

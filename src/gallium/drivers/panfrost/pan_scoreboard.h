@@ -47,14 +47,17 @@ struct pan_scoreboard {
 
 unsigned
 panfrost_new_job(
-                struct panfrost_batch *batch,
+                struct pan_pool *pool,
+                struct pan_scoreboard *scoreboard,
                 enum mali_job_type type,
                 bool barrier,
                 unsigned local_dep,
                 void *payload, size_t payload_size,
                 bool inject);
 
-void panfrost_scoreboard_initialize_tiler(struct panfrost_batch *batch,
+void panfrost_scoreboard_initialize_tiler(
+                struct pan_pool *pool,
+                struct pan_scoreboard *scoreboard,
                 mali_ptr polygon_list);
 
 #endif
