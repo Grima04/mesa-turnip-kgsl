@@ -259,7 +259,6 @@ fd4_sampler_view_create(struct pipe_context *pctx, struct pipe_resource *prsc,
 			A4XX_TEX_CONST_1_WIDTH(elements) |
 			A4XX_TEX_CONST_1_HEIGHT(1);
 		so->texconst2 =
-			A4XX_TEX_CONST_2_FETCHSIZE(fd4_pipe2fetchsize(format)) |
 			A4XX_TEX_CONST_2_PITCH(elements * rsc->layout.cpp);
 		so->offset = cso->u.buf.offset;
 	} else {
@@ -274,7 +273,7 @@ fd4_sampler_view_create(struct pipe_context *pctx, struct pipe_resource *prsc,
 			A4XX_TEX_CONST_1_WIDTH(u_minify(prsc->width0, lvl)) |
 			A4XX_TEX_CONST_1_HEIGHT(u_minify(prsc->height0, lvl));
 		so->texconst2 =
-			A4XX_TEX_CONST_2_FETCHSIZE(fd4_pipe2fetchsize(format)) |
+			A4XX_TEX_CONST_2_PITCHALIGN(rsc->layout.pitchalign - 5) |
 			A4XX_TEX_CONST_2_PITCH(fd_resource_pitch(rsc, lvl));
 		so->offset = fd_resource_offset(rsc, lvl, cso->u.tex.first_layer);
 	}

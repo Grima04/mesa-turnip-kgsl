@@ -232,18 +232,6 @@ xsi:schemaLocation="http://nouveau.freedesktop.org/ rules-ng.xsd">
 	<value value="0xff" name="TFMT5_NONE"/>
 </enum>
 
-<enum name="a5xx_tex_fetchsize">
-	<doc>
-		Size pixel to fetch, in bytes.  Doesn't seem to be required, setting
-		it to 0x0 seems to work ok, but may be less optimal.
-	</doc>
-	<value name="TFETCH5_1_BYTE"  value="0"/>
-	<value name="TFETCH5_2_BYTE"  value="1"/>
-	<value name="TFETCH5_4_BYTE"  value="2"/>
-	<value name="TFETCH5_8_BYTE"  value="3"/>
-	<value name="TFETCH5_16_BYTE" value="4"/>
-</enum>
-
 <enum name="a5xx_depth_format">
 	<value name="DEPTH5_NONE" value="0"/>
 	<value name="DEPTH5_16" value="1"/>
@@ -2914,7 +2902,8 @@ different border-color states per texture..  Looks something like:
 		<bitfield name="HEIGHT" low="15" high="29" type="uint"/>
 	</reg32>
 	<reg32 offset="2" name="2">
-		<bitfield name="FETCHSIZE" low="0" high="3" type="a5xx_tex_fetchsize"/>
+		<!-- minimum pitch (for mipmap levels): log2(pitchalign / 64) -->
+		<bitfield name="PITCHALIGN" low="0" high="3" type="uint"/>
 		<doc>Pitch in bytes (so actually stride)</doc>
 		<bitfield name="PITCH" low="7" high="28" type="uint"/>
 		<bitfield name="TYPE" low="29" high="30" type="a5xx_tex_type"/>

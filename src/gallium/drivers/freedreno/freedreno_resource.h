@@ -201,7 +201,10 @@ fd_resource_layer_stride(struct fd_resource *rsc, unsigned level)
 static inline uint32_t
 fd_resource_pitch(struct fd_resource *rsc, unsigned level)
 {
-	return fd_resource_slice(rsc, level)->pitch;
+	if (is_a2xx(fd_screen(rsc->base.screen)))
+		return fdl2_pitch(&rsc->layout, level);
+
+	return fdl_pitch(&rsc->layout, level);
 }
 
 /* get offset for specified mipmap level and texture/array layer */

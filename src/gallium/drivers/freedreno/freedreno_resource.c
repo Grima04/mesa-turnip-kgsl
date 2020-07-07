@@ -821,6 +821,8 @@ fd_resource_layout_init(struct pipe_resource *prsc)
 	struct fd_resource *rsc = fd_resource(prsc);
 	struct fdl_layout *layout = &rsc->layout;
 
+	layout->format = prsc->format;
+
 	layout->width0 = prsc->width0;
 	layout->height0 = prsc->height0;
 	layout->depth0 = prsc->depth0;
@@ -1021,7 +1023,7 @@ fd_resource_from_handle(struct pipe_screen *pscreen,
 		goto fail;
 
 	rsc->internal_format = tmpl->format;
-	slice->pitch = handle->stride;
+	rsc->layout.pitch0 = handle->stride;
 	slice->offset = handle->offset;
 	slice->size0 = handle->stride * prsc->height0;
 
@@ -1033,8 +1035,8 @@ fd_resource_from_handle(struct pipe_screen *pscreen,
 	if (is_a6xx(screen))
 		pitchalign = 64;
 
-	if ((slice->pitch < align(prsc->width0 * rsc->layout.cpp, pitchalign)) ||
-			(slice->pitch & (pitchalign - 1)))
+	if ((rsc->layout.pitch0 < align(prsc->width0 * rsc->layout.cpp, pitchalign)) ||
+			(rsc->layout.pitch0 & (pitchalign - 1)))
 		goto fail;
 
 	assert(rsc->layout.cpp);

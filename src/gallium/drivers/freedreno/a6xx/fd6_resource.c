@@ -163,7 +163,10 @@ static int
 fill_ubwc_buffer_sizes(struct fd_resource *rsc)
 {
 	struct pipe_resource *prsc = &rsc->base;
-	struct fdl_slice slice = *fd_resource_slice(rsc, 0);
+	struct fdl_explicit_layout explicit = {
+		.offset = rsc->layout.slices[0].offset,
+		.pitch = rsc->layout.pitch0,
+	};
 
 	/* limit things to simple single level 2d for now: */
 	if ((prsc->depth0 != 1) || (prsc->array_size != 1) || (prsc->last_level != 0))
@@ -178,7 +181,7 @@ fill_ubwc_buffer_sizes(struct fd_resource *rsc)
 
 	if (!fdl6_layout(&rsc->layout, prsc->format, fd_resource_nr_samples(prsc),
 			prsc->width0, prsc->height0, prsc->depth0,
-			prsc->last_level + 1, prsc->array_size, false, &slice))
+			prsc->last_level + 1, prsc->array_size, false, &explicit))
 		return -1;
 
 	if (rsc->layout.size > fd_bo_size(rsc->bo))

@@ -344,9 +344,8 @@ fd3_emit_gmem_restore_tex(struct fd_ringbuffer *ring,
 				 A3XX_TEX_CONST_0_TYPE(A3XX_TEX_2D) |
 				 fd3_tex_swiz(format,  PIPE_SWIZZLE_X, PIPE_SWIZZLE_Y,
 							  PIPE_SWIZZLE_Z, PIPE_SWIZZLE_W));
-		OUT_RING(ring, A3XX_TEX_CONST_1_FETCHSIZE(TFETCH_DISABLE) |
-				 A3XX_TEX_CONST_1_WIDTH(psurf[i]->width) |
-				 A3XX_TEX_CONST_1_HEIGHT(psurf[i]->height));
+		OUT_RING(ring, A3XX_TEX_CONST_1_WIDTH(psurf[i]->width) |
+				A3XX_TEX_CONST_1_HEIGHT(psurf[i]->height));
 		OUT_RING(ring, A3XX_TEX_CONST_2_PITCH(fd_resource_pitch(rsc, lvl)) |
 				 A3XX_TEX_CONST_2_INDX(BASETABLE_SZ * i));
 		OUT_RING(ring, 0x00000000);

@@ -89,11 +89,10 @@ emit_gmem2mem_surf(struct fd_batch *batch, uint32_t base,
 {
 	struct fd_ringbuffer *ring = batch->tile_fini;
 	struct fd_resource *rsc = fd_resource(psurf->texture);
-	struct fdl_slice *slice = fd_resource_slice(rsc, psurf->u.tex.level);
 	uint32_t offset =
 		fd_resource_offset(rsc, psurf->u.tex.level, psurf->u.tex.first_layer);
 	enum pipe_format format = fd_gmem_restore_format(psurf->format);
-	uint32_t pitch = slice->pitch >> fdl_cpp_shift(&rsc->layout);
+	uint32_t pitch = fdl2_pitch_pixels(&rsc->layout, psurf->u.tex.level);
 
 	assert((pitch & 31) == 0);
 	assert((offset & 0xfff) == 0);
@@ -230,10 +229,10 @@ emit_mem2gmem_surf(struct fd_batch *batch, uint32_t base,
 {
 	struct fd_ringbuffer *ring = batch->gmem;
 	struct fd_resource *rsc = fd_resource(psurf->texture);
-	struct fdl_slice *slice = fd_resource_slice(rsc, psurf->u.tex.level);
 	uint32_t offset =
 		fd_resource_offset(rsc, psurf->u.tex.level, psurf->u.tex.first_layer);
 	enum pipe_format format = fd_gmem_restore_format(psurf->format);
+
 
 	OUT_PKT3(ring, CP_SET_CONSTANT, 2);
 	OUT_RING(ring, CP_REG(REG_A2XX_RB_COLOR_INFO));
@@ -246,7 +245,7 @@ emit_mem2gmem_surf(struct fd_batch *batch, uint32_t base,
 	OUT_RING(ring, A2XX_SQ_TEX_0_CLAMP_X(SQ_TEX_WRAP) |
 			A2XX_SQ_TEX_0_CLAMP_Y(SQ_TEX_WRAP) |
 			A2XX_SQ_TEX_0_CLAMP_Z(SQ_TEX_WRAP) |
-			A2XX_SQ_TEX_0_PITCH(slice->pitch >> fdl_cpp_shift(&rsc->layout)));
+			A2XX_SQ_TEX_0_PITCH(fdl2_pitch_pixels(&rsc->layout, psurf->u.tex.level)));
 	OUT_RELOC(ring, rsc->bo, offset,
 			A2XX_SQ_TEX_1_FORMAT(fd2_pipe2surface(format).format) |
 			A2XX_SQ_TEX_1_CLAMP_POLICY(SQ_TEX_CLAMP_POLICY_OGL), 0);
@@ -436,10 +435,9 @@ fd2_emit_sysmem_prep(struct fd_batch *batch)
 		return;
 
 	struct fd_resource *rsc = fd_resource(psurf->texture);
-	struct fdl_slice *slice = fd_resource_slice(rsc, psurf->u.tex.level);
 	uint32_t offset =
 		fd_resource_offset(rsc, psurf->u.tex.level, psurf->u.tex.first_layer);
-	uint32_t pitch = slice->pitch >> fdl_cpp_shift(&rsc->layout);
+	uint32_t pitch = fdl2_pitch_pixels(&rsc->layout, psurf->u.tex.level);
 
 	assert((pitch & 31) == 0);
 	assert((offset & 0xfff) == 0);

@@ -44,7 +44,6 @@ static enum a4xx_state_block imgsb[] = {
 struct fd5_image {
 	enum pipe_format pfmt;
 	enum a5xx_tex_fmt fmt;
-	enum a5xx_tex_fetchsize fetchsize;
 	enum a5xx_tex_type type;
 	bool srgb;
 	uint32_t cpp;
@@ -71,7 +70,6 @@ static void translate_image(struct fd5_image *img, struct pipe_image_view *pimg)
 
 	img->pfmt      = format;
 	img->fmt       = fd5_pipe2tex(format);
-	img->fetchsize = fd5_pipe2fetchsize(format);
 	img->type      = fd5_tex_type(prsc->target);
 	img->srgb      = util_format_is_srgb(format);
 	img->cpp       = rsc->layout.cpp;
@@ -138,8 +136,7 @@ static void emit_image_tex(struct fd_ringbuffer *ring, unsigned slot,
 		COND(img->srgb, A5XX_TEX_CONST_0_SRGB));
 	OUT_RING(ring, A5XX_TEX_CONST_1_WIDTH(img->width) |
 		A5XX_TEX_CONST_1_HEIGHT(img->height));
-	OUT_RING(ring, A5XX_TEX_CONST_2_FETCHSIZE(img->fetchsize) |
-		A5XX_TEX_CONST_2_TYPE(img->type) |
+	OUT_RING(ring, A5XX_TEX_CONST_2_TYPE(img->type) |
 		A5XX_TEX_CONST_2_PITCH(img->pitch));
 	OUT_RING(ring, A5XX_TEX_CONST_3_ARRAY_PITCH(img->array_pitch));
 	if (img->bo) {

@@ -210,7 +210,7 @@ tu_image_create(VkDevice _device,
          }
       }
 
-      struct fdl_slice plane_layout;
+      struct fdl_explicit_layout plane_layout;
 
       if (plane_layouts) {
          /* only expect simple 2D images for now */
@@ -412,8 +412,8 @@ tu_image_view_init(struct tu_image_view *iview,
    uint64_t ubwc_addr = image->bo->iova + image->bo_offset +
       fdl_ubwc_offset(layout, range->baseMipLevel, range->baseArrayLayer);
 
-   uint32_t pitch = layout->slices[range->baseMipLevel].pitch;
-   uint32_t ubwc_pitch = layout->ubwc_slices[range->baseMipLevel].pitch;
+   uint32_t pitch = fdl_pitch(layout, range->baseMipLevel);
+   uint32_t ubwc_pitch = fdl_ubwc_pitch(layout, range->baseMipLevel);
    uint32_t layer_size = fdl_layer_stride(layout, range->baseMipLevel);
 
    struct tu_native_format fmt = tu6_format_texture(format, layout->tile_mode);
@@ -443,7 +443,7 @@ tu_image_view_init(struct tu_image_view *iview,
       A6XX_TEX_CONST_0_MIPLVLS(tu_get_levelCount(image, range) - 1);
    iview->descriptor[1] = A6XX_TEX_CONST_1_WIDTH(width) | A6XX_TEX_CONST_1_HEIGHT(height);
    iview->descriptor[2] =
-      A6XX_TEX_CONST_2_PITCHALIGN(layout->pitchalign) |
+      A6XX_TEX_CONST_2_PITCHALIGN(layout->pitchalign - 6) |
       A6XX_TEX_CONST_2_PITCH(pitch) |
       A6XX_TEX_CONST_2_TYPE(tu6_tex_type(pCreateInfo->viewType, false));
    iview->descriptor[3] = A6XX_TEX_CONST_3_ARRAY_PITCH(layer_size);
@@ -481,7 +481,7 @@ tu_image_view_init(struct tu_image_view *iview,
       iview->descriptor[4] = base_addr[0];
       iview->descriptor[5] |= base_addr[0] >> 32;
       iview->descriptor[6] =
-         A6XX_TEX_CONST_6_PLANE_PITCH(image->layout[1].slices[range->baseMipLevel].pitch);
+         A6XX_TEX_CONST_6_PLANE_PITCH(fdl_pitch(&image->layout[1], range->baseMipLevel));
       iview->descriptor[7] = base_addr[1];
       iview->descriptor[8] = base_addr[1] >> 32;
       iview->descriptor[9] = base_addr[2];
@@ -685,7 +685,7 @@ tu_GetImageSubresourceLayout(VkDevice _device,
    pLayout->offset =
       fdl_surface_offset(layout, pSubresource->mipLevel, pSubresource->arrayLayer);
    pLayout->size = slice->size0;
-   pLayout->rowPitch = slice->pitch;
+   pLayout->rowPitch = fdl_pitch(layout, pSubresource->mipLevel);
    pLayout->arrayPitch = fdl_layer_stride(layout, pSubresource->mipLevel);
    pLayout->depthPitch = slice->size0;
 
