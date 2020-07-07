@@ -1914,9 +1914,13 @@ to upconvert to 32b float internally?
 		<bitfield name="VP_XFORM_DISABLE" pos="8" type="boolean"/>
 		<bitfield name="PERSP_DIVISION_DISABLE" pos="9" type="boolean"/>
 	</reg32>
-	<reg32 offset="0x8001" name="GRAS_UNKNOWN_8001"/>
-	<reg32 offset="0x8002" name="GRAS_UNKNOWN_8002"/>
-	<reg32 offset="0x8003" name="GRAS_UNKNOWN_8003"/>
+	<bitset name="a6xx_gras_xs_cl_cntl" inline="yes">
+		<bitfield name="CLIP_MASK" low="0" high="7"/>
+		<bitfield name="CULL_MASK" low="8" high="15"/>
+	</bitset>
+	<reg32 offset="0x8001" name="GRAS_VS_CL_CNTL" type="a6xx_gras_xs_cl_cntl"/>
+	<reg32 offset="0x8002" name="GRAS_DS_CL_CNTL" type="a6xx_gras_xs_cl_cntl"/>
+	<reg32 offset="0x8003" name="GRAS_GS_CL_CNTL" type="a6xx_gras_xs_cl_cntl"/>
 
 	<enum name="a6xx_layer_type">
 	  <value value="0x0" name="LAYER_MULTISAMPLE_ARRAY"/>
@@ -1988,14 +1992,12 @@ to upconvert to 32b float internally?
 	<!-- always 0x0 -->
 	<reg32 offset="0x8099" name="GRAS_UNKNOWN_8099"/>
 
-	<!-- always 0x0 ? -->
-	<reg32 offset="0x809b" name="GRAS_UNKNOWN_809B"/>
-
-	<reg32 offset="0x809c" name="GRAS_UNKNOWN_809C">
-		<bitfield name="GS_WRITES_LAYER" pos="0" type="boolean"/>
-	</reg32>
-
-	<reg32 offset="0x809d" name="GRAS_UNKNOWN_809D"/>
+	<bitset name="a6xx_gras_layer_cntl" inline="yes">
+		<bitfield name="WRITES_LAYER" pos="0" type="boolean"/>
+	</bitset>
+	<reg32 offset="0x809b" name="GRAS_VS_LAYER_CNTL" type="a6xx_gras_layer_cntl"/>
+	<reg32 offset="0x809c" name="GRAS_GS_LAYER_CNTL" type="a6xx_gras_layer_cntl"/>
+	<reg32 offset="0x809d" name="GRAS_DS_LAYER_CNTL" type="a6xx_gras_layer_cntl"/>
 
 	<reg32 offset="0x80a0" name="GRAS_UNKNOWN_80A0"/>
 
@@ -2551,18 +2553,28 @@ to upconvert to 32b float internally?
 
 	<reg32 offset="0x9100" name="VPC_UNKNOWN_9100"/>
 
-	<!-- always 0x00ffff00 ? */ -->
-	<reg32 offset="0x9101" name="VPC_UNKNOWN_9101"/>
-	<reg32 offset="0x9102" name="VPC_UNKNOWN_9102"/>
-	<reg32 offset="0x9103" name="VPC_UNKNOWN_9103"/>
+	<bitset name="a6xx_vpc_xs_clip_cntl" inline="yes">
+		<bitfield name="CLIP_MASK" low="0" high="7" type="uint"/>
+		<!-- there can be up to 8 total clip/cull distance outputs,
+		     but apparenly VPC can only deal with vec4, so when there are
+		     more than 4 outputs a second location needs to be programmed
+		-->
+		<bitfield name="CLIP_DIST_03_LOC" low="8" high="15" type="uint"/>
+		<bitfield name="CLIP_DIST_47_LOC" low="16" high="23" type="uint"/>
+	</bitset>
+	<reg32 offset="0x9101" name="VPC_VS_CLIP_CNTL" type="a6xx_vpc_xs_clip_cntl"/>
+	<reg32 offset="0x9102" name="VPC_GS_CLIP_CNTL" type="a6xx_vpc_xs_clip_cntl"/>
+	<reg32 offset="0x9103" name="VPC_DS_CLIP_CNTL" type="a6xx_vpc_xs_clip_cntl"/>
 
-	<reg32 offset="0x9104" name="VPC_GS_SIV_CNTL"/>
-
-	<reg32 offset="0x9105" name="VPC_UNKNOWN_9105">
+	<bitset name="a6xx_vpc_xs_layer_cntl" inline="yes">
 		<bitfield name="LAYERLOC" low="0" high="7" type="uint"/>
-	</reg32>
+		<bitfield name="UNKLOC" low="8" high="15" type="uint"/>
+	</bitset>
 
-	<reg32 offset="0x9106" name="VPC_UNKNOWN_9106"/>
+	<reg32 offset="0x9104" name="VPC_VS_LAYER_CNTL" type="a6xx_vpc_xs_layer_cntl"/>
+	<reg32 offset="0x9105" name="VPC_GS_LAYER_CNTL" type="a6xx_vpc_xs_layer_cntl"/>
+	<reg32 offset="0x9106" name="VPC_DS_LAYER_CNTL" type="a6xx_vpc_xs_layer_cntl"/>
+
 	<reg32 offset="0x9107" name="VPC_UNKNOWN_9107"/>
 	<reg32 offset="0x9108" name="VPC_POLYGON_MODE">
 		<bitfield name="MODE" low="0" high="1" type="a6xx_polygon_mode"/>
@@ -2620,7 +2632,7 @@ to upconvert to 32b float internally?
 	<!-- always 0x0 ? -->
 	<reg32 offset="0x9300" name="VPC_UNKNOWN_9300"/>
 
-	<reg32 offset="0x9301" name="VPC_PACK">
+	<bitset name="a6xx_vpc_xs_pack" inline="yes">
 		<doc>
 			num of varyings plus four for gl_Position (plus one if gl_PointSize)
 			plus # of transform-feedback (streamout) varyings if using the
@@ -2628,43 +2640,11 @@ to upconvert to 32b float internally?
 		</doc>
 		<bitfield name="STRIDE_IN_VPC" low="0" high="7" type="uint"/>
 		<bitfield name="POSITIONLOC" low="8" high="15" type="uint"/>
-		<!--
-		This seems to be the OUTLOC for the psize output.  It could possibly
-		be the max-OUTLOC position, but it is only set when VS writes psize
-		(and blob always puts psize at highest OUTLOC)
-		 -->
 		<bitfield name="PSIZELOC" low="16" high="23" type="uint"/>
-	</reg32>
-
-	<reg32 offset="0x9302" name="VPC_PACK_GS">
-		<doc>
-			num of varyings plus four for gl_Position (plus one if gl_PointSize)
-			plus # of transform-feedback (streamout) varyings if using the
-			hw streamout (rather than stg instructions in shader)
-		</doc>
-		<bitfield name="STRIDE_IN_VPC" low="0" high="7" type="uint"/>
-		<bitfield name="POSITIONLOC" low="8" high="15" type="uint"/>
-		<!--
-		This seems to be the OUTLOC for the psize output.  It could possibly
-		be the max-OUTLOC position, but it is only set when VS writes psize
-		(and blob always puts psize at highest OUTLOC)
-		 -->
-		<bitfield name="PSIZELOC" low="16" high="23" type="uint"/>
-	</reg32>
-
-	<reg32 offset="0x9303" name="VPC_PACK_3">
-		<doc>
-			domain shader version of VPC_PACK
-		</doc>
-		<bitfield name="STRIDE_IN_VPC" low="0" high="7" type="uint"/>
-		<bitfield name="POSITIONLOC" low="8" high="15" type="uint"/>
-		<!--
-		This seems to be the OUTLOC for the psize output.  It could possibly
-		be the max-OUTLOC position, but it is only set when VS writes psize
-		(and blob always puts psize at highest OUTLOC)
-		 -->
-		<bitfield name="PSIZELOC" low="16" high="23" type="uint"/>
-	</reg32>
+	</bitset>
+	<reg32 offset="0x9301" name="VPC_VS_PACK" type="a6xx_vpc_xs_pack"/>
+	<reg32 offset="0x9302" name="VPC_GS_PACK" type="a6xx_vpc_xs_pack"/>
+	<reg32 offset="0x9303" name="VPC_DS_PACK" type="a6xx_vpc_xs_pack"/>
 
 	<reg32 offset="0x9304" name="VPC_CNTL_0">
 		<bitfield name="NUMNONPOSVAR" low="0" high="7" type="uint"/>
@@ -2753,49 +2733,25 @@ to upconvert to 32b float internally?
 		<bitfield name="PROVOKING_VTX_LAST" pos="1" type="boolean"/>
 		<bitfield name="TESS_UPPER_LEFT_DOMAIN_ORIGIN" pos="2" type="boolean"/>
 	</reg32>
-	<reg32 offset="0x9b01" name="PC_PRIMITIVE_CNTL_1">
-		<doc>
-		        vertex shader
 
+	<bitset name="a6xx_xs_out_cntl" inline="yes">
+		<doc>
 			num of varyings plus four for gl_Position (plus one if gl_PointSize)
 			plus # of transform-feedback (streamout) varyings if using the
 			hw streamout (rather than stg instructions in shader)
 		</doc>
 		<bitfield name="STRIDE_IN_VPC" low="0" high="7" type="uint"/>
 		<bitfield name="PSIZE" pos="8" type="boolean"/>
-	</reg32>
-
-	<reg32 offset="0x9b02" name="PC_PRIMITIVE_CNTL_2">
-		<doc>
-		  geometry shader
-		</doc>
-		<bitfield name="STRIDE_IN_VPC" low="0" high="7" type="uint"/>
-		<bitfield name="PSIZE" pos="8" type="boolean"/>
+		<!-- layer / primitiveid only for GS (apparently) -->
 		<bitfield name="LAYER" pos="9" type="boolean"/>
 		<bitfield name="PRIMITIVE_ID" pos="11" type="boolean"/>
-	</reg32>
+		<bitfield name="CLIP_MASK" low="16" high="23" type="uint"/>
+	</bitset>
 
-	<reg32 offset="0x9b03" name="PC_PRIMITIVE_CNTL_3">
-		<doc>
-		        hull shader?
-
-			num of varyings plus four for gl_Position (plus one if gl_PointSize)
-			plus # of transform-feedback (streamout) varyings if using the
-			hw streamout (rather than stg instructions in shader)
-		</doc>
-		<bitfield name="STRIDE_IN_VPC" low="0" high="7" type="uint"/>
-		<bitfield name="PSIZE" pos="8" type="boolean"/>
-	</reg32>
-	<reg32 offset="0x9b04" name="PC_PRIMITIVE_CNTL_4">
-		<doc>
-		        domain shader
-			num of varyings plus four for gl_Position (plus one if gl_PointSize)
-			plus # of transform-feedback (streamout) varyings if using the
-			hw streamout (rather than stg instructions in shader)
-		</doc>
-		<bitfield name="STRIDE_IN_VPC" low="0" high="7" type="uint"/>
-		<bitfield name="PSIZE" pos="8" type="boolean"/>
-	</reg32>
+	<reg32 offset="0x9b01" name="PC_VS_OUT_CNTL" type="a6xx_xs_out_cntl"/>
+	<reg32 offset="0x9b02" name="PC_GS_OUT_CNTL" type="a6xx_xs_out_cntl"/>
+	<reg32 offset="0x9b03" name="PC_PRIMITIVE_CNTL_3"/>
+	<reg32 offset="0x9b04" name="PC_DS_OUT_CNTL" type="a6xx_xs_out_cntl"/>
 
 	<reg32 offset="0x9b05" name="PC_PRIMITIVE_CNTL_5">
 		<doc>
@@ -2967,9 +2923,9 @@ to upconvert to 32b float internally?
 		bit N corresponds to brac.N
 		 -->
 	</reg32>
-	<reg32 offset="0xa802" name="SP_PRIMITIVE_CNTL">
+	<reg32 offset="0xa802" name="SP_VS_PRIMITIVE_CNTL">
 		<!-- # of VS outputs including pos/psize -->
-		<bitfield name="VSOUT" low="0" high="5" type="uint"/>
+		<bitfield name="OUT" low="0" high="5" type="uint"/>
 	</reg32>
 	<array offset="0xa803" name="SP_VS_OUT" stride="1" length="16">
 		<reg32 offset="0x0" name="REG">
@@ -3014,7 +2970,7 @@ to upconvert to 32b float internally?
 	<reg32 offset="0xa840" name="SP_DS_CTRL_REG0" type="a6xx_sp_xs_ctrl_reg0"/>
 	<reg32 offset="0xa842" name="SP_DS_PRIMITIVE_CNTL">
 		<!-- # of DS outputs including pos/psize -->
-		<bitfield name="DSOUT" low="0" high="4" type="uint"/>
+		<bitfield name="OUT" low="0" high="5" type="uint"/>
 	</reg32>
 	<array offset="0xa843" name="SP_DS_OUT" stride="1" length="16">
 		<reg32 offset="0x0" name="REG">
@@ -3051,9 +3007,9 @@ to upconvert to 32b float internally?
 		 -->
 	</reg32>
 
-	<reg32 offset="0xa873" name="SP_PRIMITIVE_CNTL_GS">
+	<reg32 offset="0xa873" name="SP_GS_PRIMITIVE_CNTL">
 		<!-- # of VS outputs including pos/psize -->
-		<bitfield name="GSOUT" low="0" high="5" type="uint"/>
+		<bitfield name="OUT" low="0" high="5" type="uint"/>
 		<bitfield name="FLAGS_REGID" low="6" high="13" type="a3xx_regid"/>
 	</reg32>
 

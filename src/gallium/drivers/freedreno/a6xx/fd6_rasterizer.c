@@ -56,7 +56,7 @@ __fd6_setup_rasterizer_stateobj(struct fd_context *ctx,
 			.vp_clip_code_ignore = 1,
 			.zero_gb_scale_z = cso->clip_halfz
 			),
-		A6XX_GRAS_UNKNOWN_8001());
+		A6XX_GRAS_VS_CL_CNTL());
 
 	OUT_REG(ring,
 		A6XX_GRAS_SU_CNTL(

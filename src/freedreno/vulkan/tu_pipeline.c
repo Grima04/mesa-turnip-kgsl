@@ -822,10 +822,10 @@ tu6_emit_vpc(struct tu_cs *cs,
                   A6XX_VPC_CNTL_0_PRIMIDLOC(linkage.primid_loc) |
                   A6XX_VPC_CNTL_0_UNKLOC(0xff));
 
-   tu_cs_emit_pkt4(cs, REG_A6XX_VPC_PACK, 1);
-   tu_cs_emit(cs, A6XX_VPC_PACK_POSITIONLOC(position_loc) |
-                  A6XX_VPC_PACK_PSIZELOC(pointsize_loc) |
-                  A6XX_VPC_PACK_STRIDE_IN_VPC(linkage.max_loc));
+   tu_cs_emit_pkt4(cs, REG_A6XX_VPC_VS_PACK, 1);
+   tu_cs_emit(cs, A6XX_VPC_VS_PACK_POSITIONLOC(position_loc) |
+                  A6XX_VPC_VS_PACK_PSIZELOC(pointsize_loc) |
+                  A6XX_VPC_VS_PACK_STRIDE_IN_VPC(linkage.max_loc));
 
    if (hs) {
       shader_info *hs_info = &hs->shader->nir->info;
@@ -875,33 +875,33 @@ tu6_emit_vpc(struct tu_cs *cs,
             A6XX_PC_TESS_CNTL_OUTPUT(output));
 
       /* xxx: Misc tess unknowns: */
-      tu_cs_emit_pkt4(cs, REG_A6XX_VPC_UNKNOWN_9103, 1);
+      tu_cs_emit_pkt4(cs, REG_A6XX_VPC_DS_CLIP_CNTL, 1);
       tu_cs_emit(cs, 0x00ffff00);
 
-      tu_cs_emit_pkt4(cs, REG_A6XX_VPC_UNKNOWN_9106, 1);
+      tu_cs_emit_pkt4(cs, REG_A6XX_VPC_DS_LAYER_CNTL, 1);
       tu_cs_emit(cs, 0x0000ffff);
 
-      tu_cs_emit_pkt4(cs, REG_A6XX_GRAS_UNKNOWN_809D, 1);
+      tu_cs_emit_pkt4(cs, REG_A6XX_GRAS_DS_LAYER_CNTL, 1);
       tu_cs_emit(cs, 0x0);
 
-      tu_cs_emit_pkt4(cs, REG_A6XX_GRAS_UNKNOWN_8002, 1);
+      tu_cs_emit_pkt4(cs, REG_A6XX_GRAS_DS_CL_CNTL, 1);
       tu_cs_emit(cs, 0x0);
 
-      tu_cs_emit_pkt4(cs, REG_A6XX_VPC_PACK, 1);
-      tu_cs_emit(cs, A6XX_VPC_PACK_POSITIONLOC(position_loc) |
-             A6XX_VPC_PACK_PSIZELOC(255) |
-             A6XX_VPC_PACK_STRIDE_IN_VPC(linkage.max_loc));
+      tu_cs_emit_pkt4(cs, REG_A6XX_VPC_VS_PACK, 1);
+      tu_cs_emit(cs, A6XX_VPC_VS_PACK_POSITIONLOC(position_loc) |
+             A6XX_VPC_VS_PACK_PSIZELOC(255) |
+             A6XX_VPC_VS_PACK_STRIDE_IN_VPC(linkage.max_loc));
 
-      tu_cs_emit_pkt4(cs, REG_A6XX_VPC_PACK_3, 1);
-      tu_cs_emit(cs, A6XX_VPC_PACK_3_POSITIONLOC(position_loc) |
-             A6XX_VPC_PACK_3_PSIZELOC(pointsize_loc) |
-             A6XX_VPC_PACK_3_STRIDE_IN_VPC(linkage.max_loc));
+      tu_cs_emit_pkt4(cs, REG_A6XX_VPC_DS_PACK, 1);
+      tu_cs_emit(cs, A6XX_VPC_DS_PACK_POSITIONLOC(position_loc) |
+             A6XX_VPC_DS_PACK_PSIZELOC(pointsize_loc) |
+             A6XX_VPC_DS_PACK_STRIDE_IN_VPC(linkage.max_loc));
 
       tu_cs_emit_pkt4(cs, REG_A6XX_SP_DS_PRIMITIVE_CNTL, 1);
-      tu_cs_emit(cs, A6XX_SP_DS_PRIMITIVE_CNTL_DSOUT(linkage.cnt));
+      tu_cs_emit(cs, A6XX_SP_DS_PRIMITIVE_CNTL_OUT(linkage.cnt));
 
-      tu_cs_emit_pkt4(cs, REG_A6XX_PC_PRIMITIVE_CNTL_4, 1);
-      tu_cs_emit(cs, A6XX_PC_PRIMITIVE_CNTL_4_STRIDE_IN_VPC(linkage.max_loc) |
+      tu_cs_emit_pkt4(cs, REG_A6XX_PC_DS_OUT_CNTL, 1);
+      tu_cs_emit(cs, A6XX_PC_DS_OUT_CNTL_STRIDE_IN_VPC(linkage.max_loc) |
             CONDREG(pointsize_regid, 0x100));
 
       tu6_emit_link_map(cs, vs, hs, SB6_HS_SHADER);
@@ -933,30 +933,30 @@ tu6_emit_vpc(struct tu_cs *cs,
 
       uint32_t primitive_regid =
             ir3_find_sysval_regid(gs, SYSTEM_VALUE_PRIMITIVE_ID);
-      tu_cs_emit_pkt4(cs, REG_A6XX_VPC_PACK_GS, 1);
-      tu_cs_emit(cs, A6XX_VPC_PACK_GS_POSITIONLOC(position_loc) |
-             A6XX_VPC_PACK_GS_PSIZELOC(pointsize_loc) |
-             A6XX_VPC_PACK_GS_STRIDE_IN_VPC(linkage.max_loc));
+      tu_cs_emit_pkt4(cs, REG_A6XX_VPC_GS_PACK, 1);
+      tu_cs_emit(cs, A6XX_VPC_GS_PACK_POSITIONLOC(position_loc) |
+             A6XX_VPC_GS_PACK_PSIZELOC(pointsize_loc) |
+             A6XX_VPC_GS_PACK_STRIDE_IN_VPC(linkage.max_loc));
 
-      tu_cs_emit_pkt4(cs, REG_A6XX_VPC_UNKNOWN_9105, 1);
-      tu_cs_emit(cs, A6XX_VPC_UNKNOWN_9105_LAYERLOC(layer_loc) | 0xff00);
+      tu_cs_emit_pkt4(cs, REG_A6XX_VPC_GS_LAYER_CNTL, 1);
+      tu_cs_emit(cs, A6XX_VPC_GS_LAYER_CNTL_LAYERLOC(layer_loc) | 0xff00);
 
-      tu_cs_emit_pkt4(cs, REG_A6XX_GRAS_UNKNOWN_809C, 1);
+      tu_cs_emit_pkt4(cs, REG_A6XX_GRAS_GS_LAYER_CNTL, 1);
       tu_cs_emit(cs, CONDREG(layer_regid,
-            A6XX_GRAS_UNKNOWN_809C_GS_WRITES_LAYER));
+            A6XX_GRAS_GS_LAYER_CNTL_WRITES_LAYER));
 
       uint32_t flags_regid = ir3_find_output_regid(gs,
             VARYING_SLOT_GS_VERTEX_FLAGS_IR3);
 
-      tu_cs_emit_pkt4(cs, REG_A6XX_SP_PRIMITIVE_CNTL_GS, 1);
-      tu_cs_emit(cs, A6XX_SP_PRIMITIVE_CNTL_GS_GSOUT(linkage.cnt) |
-            A6XX_SP_PRIMITIVE_CNTL_GS_FLAGS_REGID(flags_regid));
+      tu_cs_emit_pkt4(cs, REG_A6XX_SP_GS_PRIMITIVE_CNTL, 1);
+      tu_cs_emit(cs, A6XX_SP_GS_PRIMITIVE_CNTL_OUT(linkage.cnt) |
+            A6XX_SP_GS_PRIMITIVE_CNTL_FLAGS_REGID(flags_regid));
 
-      tu_cs_emit_pkt4(cs, REG_A6XX_PC_PRIMITIVE_CNTL_2, 1);
-      tu_cs_emit(cs, A6XX_PC_PRIMITIVE_CNTL_2_STRIDE_IN_VPC(linkage.max_loc) |
-            CONDREG(pointsize_regid, A6XX_PC_PRIMITIVE_CNTL_2_PSIZE) |
-            CONDREG(layer_regid, A6XX_PC_PRIMITIVE_CNTL_2_LAYER) |
-            CONDREG(primitive_regid, A6XX_PC_PRIMITIVE_CNTL_2_PRIMITIVE_ID));
+      tu_cs_emit_pkt4(cs, REG_A6XX_PC_GS_OUT_CNTL, 1);
+      tu_cs_emit(cs, A6XX_PC_GS_OUT_CNTL_STRIDE_IN_VPC(linkage.max_loc) |
+            CONDREG(pointsize_regid, A6XX_PC_GS_OUT_CNTL_PSIZE) |
+            CONDREG(layer_regid, A6XX_PC_GS_OUT_CNTL_LAYER) |
+            CONDREG(primitive_regid, A6XX_PC_GS_OUT_CNTL_PRIMITIVE_ID));
 
       tu_cs_emit_pkt4(cs, REG_A6XX_PC_PRIMITIVE_CNTL_5, 1);
       tu_cs_emit(cs,
@@ -967,13 +967,13 @@ tu6_emit_vpc(struct tu_cs *cs,
       tu_cs_emit_pkt4(cs, REG_A6XX_PC_PRIMITIVE_CNTL_3, 1);
       tu_cs_emit(cs, 0);
 
-      tu_cs_emit_pkt4(cs, REG_A6XX_GRAS_UNKNOWN_8003, 1);
+      tu_cs_emit_pkt4(cs, REG_A6XX_GRAS_GS_CL_CNTL, 1);
       tu_cs_emit(cs, 0);
 
       tu_cs_emit_pkt4(cs, REG_A6XX_VPC_UNKNOWN_9100, 1);
       tu_cs_emit(cs, 0xff);
 
-      tu_cs_emit_pkt4(cs, REG_A6XX_VPC_UNKNOWN_9102, 1);
+      tu_cs_emit_pkt4(cs, REG_A6XX_VPC_GS_CLIP_CNTL, 1);
       tu_cs_emit(cs, 0xffff00);
 
       tu_cs_emit_pkt4(cs, REG_A6XX_PC_PRIMITIVE_CNTL_6, 1);
@@ -986,12 +986,12 @@ tu6_emit_vpc(struct tu_cs *cs,
       tu_cs_emit(cs, vs->output_size);
    }
 
-   tu_cs_emit_pkt4(cs, REG_A6XX_SP_PRIMITIVE_CNTL, 1);
-   tu_cs_emit(cs, A6XX_SP_PRIMITIVE_CNTL_VSOUT(linkage.cnt));
+   tu_cs_emit_pkt4(cs, REG_A6XX_SP_VS_PRIMITIVE_CNTL, 1);
+   tu_cs_emit(cs, A6XX_SP_VS_PRIMITIVE_CNTL_OUT(linkage.cnt));
 
-   tu_cs_emit_pkt4(cs, REG_A6XX_PC_PRIMITIVE_CNTL_1, 1);
-   tu_cs_emit(cs, A6XX_PC_PRIMITIVE_CNTL_1_STRIDE_IN_VPC(linkage.max_loc) |
-         (last_shader->writes_psize ? A6XX_PC_PRIMITIVE_CNTL_1_PSIZE : 0));
+   tu_cs_emit_pkt4(cs, REG_A6XX_PC_VS_OUT_CNTL, 1);
+   tu_cs_emit(cs, A6XX_PC_VS_OUT_CNTL_STRIDE_IN_VPC(linkage.max_loc) |
+         (last_shader->writes_psize ? A6XX_PC_VS_OUT_CNTL_PSIZE : 0));
 }
 
 static int
@@ -2239,7 +2239,7 @@ tu_pipeline_builder_parse_rasterization(struct tu_pipeline_builder *builder,
                    A6XX_PC_POLYGON_MODE(.mode = mode));
 
    /* move to hw ctx init? */
-   tu_cs_emit_regs(&cs, A6XX_GRAS_UNKNOWN_8001());
+   tu_cs_emit_regs(&cs, A6XX_GRAS_VS_CL_CNTL());
    tu_cs_emit_regs(&cs,
                    A6XX_GRAS_SU_POINT_MINMAX(.min = 1.0f / 16.0f, .max = 4092.0f),
                    A6XX_GRAS_SU_POINT_SIZE(1.0f));
