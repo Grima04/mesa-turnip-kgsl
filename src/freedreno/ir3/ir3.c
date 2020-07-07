@@ -942,15 +942,24 @@ void * ir3_assemble(struct ir3_shader_variant *v)
 	 * doesn't try to decode the following data as instructions (such as the
 	 * next stage's shader in turnip)
 	 */
-	info->sizedwords = MAX2(v->instrlen * compiler->instr_align,
-			instr_count + 4) * sizeof(instr_t) / 4;
+	info->size = MAX2(v->instrlen * compiler->instr_align, instr_count + 4) *
+		sizeof(instr_t);
+	info->sizedwords = info->size / 4;
+
+	if (v->constant_data_size) {
+		/* Make sure that where we're about to place the constant_data is safe
+		 * to indirectly upload from.
+		 */
+		info->constant_data_offset = align(info->size, v->shader->compiler->const_upload_unit * 16);
+		info->size = info->constant_data_offset + v->constant_data_size;
+	}
 
 	/* Pad out the size so that when turnip uploads the shaders in
 	 * sequence, the starting offset of the next one is properly aligned.
 	 */
-	info->sizedwords = align(info->sizedwords, compiler->instr_align * sizeof(instr_t) / 4);
+	info->size = align(info->size, compiler->instr_align * sizeof(instr_t));
 
-	ptr = dwords = rzalloc_size(v, 4 * info->sizedwords);
+	ptr = dwords = rzalloc_size(v, info->size);
 
 	foreach_block (block, &shader->block_list) {
 		unsigned sfu_delay = 0;
@@ -1002,6 +1011,14 @@ void * ir3_assemble(struct ir3_shader_variant *v)
 			}
 		}
 	}
+
+	/* Append the immediates after the end of the program.  This lets us emit
+	 * the immediates as an indirect load, while avoiding creating another BO.
+	 */
+	if (v->constant_data_size)
+		memcpy(&ptr[info->constant_data_offset / 4], v->constant_data, v->constant_data_size);
+	ralloc_free(v->constant_data);
+	v->constant_data = NULL;
 
 	return ptr;
 

@@ -3013,7 +3013,8 @@ tu6_emit_user_consts(struct tu_cs *cs, const struct tu_pipeline *pipeline,
 {
    const struct tu_program_descriptor_linkage *link =
       &pipeline->program.link[type];
-   const struct ir3_ubo_analysis_state *state = &link->const_state.ubo_state;
+   const struct ir3_const_state *const_state = &link->const_state;
+   const struct ir3_ubo_analysis_state *state = &const_state->ubo_state;
 
    if (link->push_consts.count > 0) {
       unsigned num_units = link->push_consts.count;
@@ -3048,9 +3049,14 @@ tu6_emit_user_consts(struct tu_cs *cs, const struct tu_pipeline *pipeline,
       debug_assert((offset % 16) == 0);
 
       /* Dig out the descriptor from the descriptor state and read the VA from
-       * it.
+       * it.  All our UBOs are bindless with the exception of the NIR
+       * constant_data, which is uploaded once in the pipeline.
        */
-      assert(state->range[i].ubo.bindless);
+      if (!state->range[i].ubo.bindless) {
+         assert(state->range[i].ubo.block == const_state->constant_data_ubo);
+         continue;
+      }
+
       uint32_t *base = state->range[i].ubo.bindless_base == MAX_SETS ?
          descriptors_state->dynamic_descriptors :
          descriptors_state->sets[state->range[i].ubo.bindless_base]->mapped_ptr;

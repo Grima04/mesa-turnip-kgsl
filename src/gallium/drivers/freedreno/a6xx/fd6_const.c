@@ -248,6 +248,16 @@ fd6_emit_ubos(struct fd_context *ctx, const struct ir3_shader_variant *v,
 	OUT_RING(ring, CP_LOAD_STATE6_2_EXT_SRC_ADDR_HI(0));
 
 	for (int i = 0; i < num_ubos; i++) {
+		/* NIR constant data is packed into the end of the shader. */
+		if (i == const_state->constant_data_ubo) {
+			int size_vec4s = DIV_ROUND_UP(v->constant_data_size, 16);
+			OUT_RELOC(ring, v->bo,
+					v->info.constant_data_offset,
+					(uint64_t)A6XX_UBO_1_SIZE(size_vec4s) << 32,
+					0);
+			continue;
+		}
+
 		struct pipe_constant_buffer *cb = &constbuf->cb[i];
 
 		/* If we have user pointers (constbuf 0, aka GL uniforms), upload them

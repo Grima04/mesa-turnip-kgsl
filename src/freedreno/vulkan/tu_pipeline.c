@@ -453,19 +453,61 @@ tu6_emit_xs_config(struct tu_cs *cs,
     */
    size = MIN2(size + base, xs->constlen) - base;
 
-   if (size <= 0)
-      return;
+   if (size > 0) {
+      tu_cs_emit_pkt7(cs, tu6_stage2opcode(stage), 3 + size * 4);
+      tu_cs_emit(cs, CP_LOAD_STATE6_0_DST_OFF(base) |
+                 CP_LOAD_STATE6_0_STATE_TYPE(ST6_CONSTANTS) |
+                 CP_LOAD_STATE6_0_STATE_SRC(SS6_DIRECT) |
+                 CP_LOAD_STATE6_0_STATE_BLOCK(tu6_stage2shadersb(stage)) |
+                 CP_LOAD_STATE6_0_NUM_UNIT(size));
+      tu_cs_emit(cs, CP_LOAD_STATE6_1_EXT_SRC_ADDR(0));
+      tu_cs_emit(cs, CP_LOAD_STATE6_2_EXT_SRC_ADDR_HI(0));
 
-   tu_cs_emit_pkt7(cs, tu6_stage2opcode(stage), 3 + size * 4);
-   tu_cs_emit(cs, CP_LOAD_STATE6_0_DST_OFF(base) |
-                  CP_LOAD_STATE6_0_STATE_TYPE(ST6_CONSTANTS) |
-                  CP_LOAD_STATE6_0_STATE_SRC(SS6_DIRECT) |
-                  CP_LOAD_STATE6_0_STATE_BLOCK(tu6_stage2shadersb(stage)) |
-                  CP_LOAD_STATE6_0_NUM_UNIT(size));
-   tu_cs_emit(cs, CP_LOAD_STATE6_1_EXT_SRC_ADDR(0));
-   tu_cs_emit(cs, CP_LOAD_STATE6_2_EXT_SRC_ADDR_HI(0));
+      tu_cs_emit_array(cs, const_state->immediates, size * 4);
+   }
 
-   tu_cs_emit_array(cs, const_state->immediates, size * 4);
+   if (const_state->constant_data_ubo != -1) {
+      uint64_t iova = binary_iova + xs->info.constant_data_offset;
+
+      /* Upload UBO state for the constant data. */
+      tu_cs_emit_pkt7(cs, tu6_stage2opcode(stage), 5);
+      tu_cs_emit(cs,
+                 CP_LOAD_STATE6_0_DST_OFF(const_state->constant_data_ubo) |
+                 CP_LOAD_STATE6_0_STATE_TYPE(ST6_UBO)|
+                 CP_LOAD_STATE6_0_STATE_SRC(SS6_DIRECT) |
+                 CP_LOAD_STATE6_0_STATE_BLOCK(tu6_stage2shadersb(stage)) |
+                 CP_LOAD_STATE6_0_NUM_UNIT(1));
+      tu_cs_emit(cs, CP_LOAD_STATE6_1_EXT_SRC_ADDR(0));
+      tu_cs_emit(cs, CP_LOAD_STATE6_2_EXT_SRC_ADDR_HI(0));
+      int size_vec4s = DIV_ROUND_UP(xs->constant_data_size, 16);
+      tu_cs_emit_qw(cs,
+                    iova |
+                    (uint64_t)A6XX_UBO_1_SIZE(size_vec4s) << 32);
+
+      /* Upload the constant data to the const file if needed. */
+      const struct ir3_ubo_analysis_state *ubo_state = &const_state->ubo_state;
+
+      for (int i = 0; i < ubo_state->num_enabled; i++) {
+         if (ubo_state->range[i].ubo.block != const_state->constant_data_ubo ||
+             ubo_state->range[i].ubo.bindless) {
+            continue;
+         }
+
+         uint32_t start = ubo_state->range[i].start;
+         uint32_t end = ubo_state->range[i].end;
+         uint32_t size = MIN2(end - start,
+                              (16 * xs->constlen) - ubo_state->range[i].offset);
+
+         tu_cs_emit_pkt7(cs, tu6_stage2opcode(stage), 3);
+         tu_cs_emit(cs,
+                    CP_LOAD_STATE6_0_DST_OFF(ubo_state->range[i].offset / 16) |
+                    CP_LOAD_STATE6_0_STATE_TYPE(ST6_CONSTANTS) |
+                    CP_LOAD_STATE6_0_STATE_SRC(SS6_INDIRECT) |
+                    CP_LOAD_STATE6_0_STATE_BLOCK(tu6_stage2shadersb(stage)) |
+                    CP_LOAD_STATE6_0_NUM_UNIT(size / 16));
+         tu_cs_emit_qw(cs, iova + start);
+      }
+   }
 }
 
 static void
@@ -1939,12 +1981,12 @@ tu_pipeline_allocate_cs(struct tu_device *dev,
    if (builder) {
       for (uint32_t i = 0; i < MESA_SHADER_STAGES; i++) {
          if (builder->variants[i])
-            size += builder->variants[i]->info.sizedwords;
+            size += builder->variants[i]->info.size / 4;
       }
 
-      size += builder->binning_variant->info.sizedwords;
+      size += builder->binning_variant->info.size / 4;
    } else {
-      size += compute->info.sizedwords;
+      size += compute->info.size / 4;
    }
 
    tu_cs_init(&pipeline->cs, dev, TU_CS_MODE_SUB_STREAM, size);
@@ -2016,12 +2058,12 @@ tu_upload_variant(struct tu_pipeline *pipeline,
       return 0;
 
    /* this expects to get enough alignment because shaders are allocated first
-    * and sizedwords is always aligned correctly
+    * and total size is always aligned correctly
     * note: an assert in tu6_emit_xs_config validates the alignment
     */
-   tu_cs_alloc(&pipeline->cs, variant->info.sizedwords, 1, &memory);
+   tu_cs_alloc(&pipeline->cs, variant->info.size / 4, 1, &memory);
 
-   memcpy(memory.map, variant->bin, sizeof(uint32_t) * variant->info.sizedwords);
+   memcpy(memory.map, variant->bin, variant->info.size);
    return memory.iova;
 }
 

@@ -495,10 +495,24 @@ ir3_nir_lower_variant(struct ir3_shader_variant *so, nir_shader *s)
 		progress |= OPT(s, nir_lower_tex, &tex_options);
 	}
 
+	/* Move large constant variables to the constants attached to the NIR
+	 * shader, which we will upload in the immediates range.  This generates
+	 * amuls, so we need to clean those up after.
+	 *
+	 * Passing no size_align, we would get packed values, which if we end up
+	 * having to load with LDC would result in extra reads to unpack from
+	 * straddling loads.  Align everything to vec4 to avoid that, though we
+	 * could theoretically do better.
+	 */
+	OPT_V(s, nir_opt_large_constants, glsl_get_vec4_size_align_bytes, 32 /* bytes */);
+	OPT_V(s, ir3_nir_lower_load_constant, so);
+
 	if (!so->binning_pass)
 		OPT_V(s, ir3_nir_analyze_ubo_ranges, so);
 
 	progress |= OPT(s, ir3_nir_lower_ubo_loads, so);
+
+	OPT_V(s, nir_lower_amul, ir3_glsl_type_size);
 
 	/* UBO offset lowering has to come after we've decided what will
 	 * be left as load_ubo

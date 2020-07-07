@@ -157,6 +157,9 @@ struct ir3_const_state {
 	unsigned num_ubos;
 	unsigned num_driver_params;   /* scalar */
 
+	/* UBO that should be mapped to the NIR shader's constant_data (or -1). */
+	int32_t constant_data_ubo;
+
 	struct {
 		/* user const start at zero */
 		unsigned ubo;
@@ -504,6 +507,12 @@ struct ir3_shader_variant {
 	gl_shader_stage type;
 	struct ir3_shader *shader;
 
+	/* variant's copy of nir->constant_data (since we don't track the NIR in
+	 * the variant, and shader->nir is before the opt pass).  Moves to v->bin
+	 * after assembly.
+	 */
+	void *constant_data;
+
 	/*
 	 * Below here is serialized when written to disk cache:
 	 */
@@ -524,6 +533,8 @@ struct ir3_shader_variant {
 #define VARIANT_CACHE_SIZE     (sizeof(struct ir3_shader_variant) - VARIANT_CACHE_START)
 
 	struct ir3_info info;
+
+	uint32_t constant_data_size;
 
 	/* Levels of nesting of flow control:
 	 */

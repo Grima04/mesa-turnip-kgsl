@@ -107,6 +107,44 @@ ir3_user_consts_size(struct ir3_ubo_analysis_state *state,
 }
 
 /**
+ * Uploads the referenced subranges of the nir constant_data to the hardware's
+ * constant buffer.
+ */
+static inline void
+ir3_emit_constant_data(struct fd_screen *screen,
+		const struct ir3_shader_variant *v, struct fd_ringbuffer *ring)
+{
+	const struct ir3_const_state *const_state = ir3_const_state(v);
+	const struct ir3_ubo_analysis_state *state = &const_state->ubo_state;
+
+	for (unsigned i = 0; i < state->num_enabled; i++) {
+		unsigned ubo = state->range[i].ubo.block;
+		if (ubo != const_state->constant_data_ubo)
+			continue;
+
+		uint32_t size = state->range[i].end - state->range[i].start;
+
+		/* Pre-a6xx, we might have ranges enabled in the shader that aren't
+		 * used in the binning variant.
+		 */
+		if (16 * v->constlen <= state->range[i].offset)
+			continue;
+
+		/* and even if the start of the const buffer is before
+		 * first_immediate, the end may not be:
+		 */
+		size = MIN2(size, (16 * v->constlen) - state->range[i].offset);
+
+		if (size == 0)
+			continue;
+
+		emit_const_bo(ring, v, state->range[i].offset / 4,
+				v->info.constant_data_offset + state->range[i].start,
+				size / 4, v->bo);
+	}
+}
+
+/**
  * Uploads sub-ranges of UBOs to the hardware's constant buffer (UBO access
  * outside of these ranges will be done using full UBO accesses in the
  * shader).
@@ -121,8 +159,10 @@ ir3_emit_user_consts(struct fd_screen *screen, const struct ir3_shader_variant *
 	for (unsigned i = 0; i < state->num_enabled; i++) {
 		assert(!state->range[i].ubo.bindless);
 		unsigned ubo = state->range[i].ubo.block;
-		if (!(constbuf->enabled_mask & (1 << ubo)))
+		if (!(constbuf->enabled_mask & (1 << ubo)) ||
+				ubo == const_state->constant_data_ubo) {
 			continue;
+		}
 		struct pipe_constant_buffer *cb = &constbuf->cb[ubo];
 
 		uint32_t size = state->range[i].end - state->range[i].start;
@@ -176,6 +216,12 @@ ir3_emit_ubos(struct fd_context *ctx, const struct ir3_shader_variant *v,
 		struct fd_bo *bos[params];
 
 		for (uint32_t i = 0; i < params; i++) {
+			if (i == const_state->constant_data_ubo) {
+				bos[i] = v->bo;
+				offsets[i] = v->info.constant_data_offset;
+				continue;
+			}
+
 			struct pipe_constant_buffer *cb = &constbuf->cb[i];
 
 			/* If we have user pointers (constbuf 0, aka GL uniforms), upload
@@ -299,6 +345,11 @@ ir3_emit_immediates(struct fd_screen *screen, const struct ir3_shader_variant *v
 
 	if (size > 0)
 		emit_const_user(ring, v, base, size, const_state->immediates);
+
+	/* NIR constant data has the same lifetime as immediates, so upload it
+	 * now, too.
+	 */
+	ir3_emit_constant_data(screen, v, ring);
 }
 
 static inline void
