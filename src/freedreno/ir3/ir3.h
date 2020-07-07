@@ -1409,14 +1409,14 @@ create_uniform(struct ir3_block *block, unsigned n)
 }
 
 static inline struct ir3_instruction *
-create_uniform_indirect(struct ir3_block *block, int n,
+create_uniform_indirect(struct ir3_block *block, int n, type_t type,
 		struct ir3_instruction *address)
 {
 	struct ir3_instruction *mov;
 
 	mov = ir3_instr_create(block, OPC_MOV);
-	mov->cat1.src_type = TYPE_U32;
-	mov->cat1.dst_type = TYPE_U32;
+	mov->cat1.src_type = type;
+	mov->cat1.dst_type = type;
 	__ssa_dst(mov);
 	ir3_reg_create(mov, 0, IR3_REG_CONST | IR3_REG_RELATIV)->array.offset = n;
 

@@ -785,8 +785,8 @@ emit_intrinsic_load_ubo(struct ir3_context *ctx, nir_intrinsic_instr *intr,
 		base_lo = create_uniform(b, ubo + (src0->regs[1]->iim_val * ptrsz));
 		base_hi = create_uniform(b, ubo + (src0->regs[1]->iim_val * ptrsz) + 1);
 	} else {
-		base_lo = create_uniform_indirect(b, ubo, ir3_get_addr0(ctx, src0, ptrsz));
-		base_hi = create_uniform_indirect(b, ubo + 1, ir3_get_addr0(ctx, src0, ptrsz));
+		base_lo = create_uniform_indirect(b, ubo, TYPE_U32, ir3_get_addr0(ctx, src0, ptrsz));
+		base_hi = create_uniform_indirect(b, ubo + 1, TYPE_U32, ir3_get_addr0(ctx, src0, ptrsz));
 
 		/* NOTE: since relative addressing is used, make sure constlen is
 		 * at least big enough to cover all the UBO addresses, since the
@@ -1524,6 +1524,7 @@ emit_intrinsic(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 			src = ir3_get_src(ctx, &intr->src[0]);
 			for (int i = 0; i < dest_components; i++) {
 				dst[i] = create_uniform_indirect(b, idx + i,
+						nir_dest_bit_size(intr->dest) == 16 ? TYPE_F16 : TYPE_F32,
 						ir3_get_addr0(ctx, src[0], 1));
 			}
 			/* NOTE: if relative addressing is used, we set
