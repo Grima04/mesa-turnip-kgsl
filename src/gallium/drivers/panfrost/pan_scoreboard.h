@@ -54,6 +54,7 @@ panfrost_new_job(
                 void *payload, size_t payload_size,
                 bool inject);
 
-void panfrost_scoreboard_initialize_tiler(struct panfrost_batch *batch);
+void panfrost_scoreboard_initialize_tiler(struct panfrost_batch *batch,
+                mali_ptr polygon_list);
 
 #endif

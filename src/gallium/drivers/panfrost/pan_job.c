@@ -1053,7 +1053,10 @@ panfrost_batch_submit(struct panfrost_batch *batch)
                         panfrost_attach_mfbd(batch, ~0);
         }
 
-        panfrost_scoreboard_initialize_tiler(batch);
+        mali_ptr polygon_list = panfrost_batch_get_polygon_list(batch,
+                MALI_TILER_MINIMUM_HEADER_SIZE);
+
+        panfrost_scoreboard_initialize_tiler(batch, polygon_list);
 
         ret = panfrost_batch_submit_jobs(batch);
 

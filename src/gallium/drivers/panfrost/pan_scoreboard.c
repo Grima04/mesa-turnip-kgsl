@@ -173,7 +173,7 @@ panfrost_new_job(
  * this is called right before frame submission. */
 
 void
-panfrost_scoreboard_initialize_tiler(struct panfrost_batch *batch)
+panfrost_scoreboard_initialize_tiler(struct panfrost_batch *batch, mali_ptr polygon_list)
 {
         struct panfrost_device *dev = pan_device(batch->ctx->base.screen);
 
@@ -183,9 +183,6 @@ panfrost_scoreboard_initialize_tiler(struct panfrost_batch *batch)
 
         /* Okay, we do. Let's generate it. We'll need the job's polygon list
          * regardless of size. */
-
-        mali_ptr polygon_list = panfrost_batch_get_polygon_list(batch,
-                MALI_TILER_MINIMUM_HEADER_SIZE);
 
         struct mali_job_descriptor_header job = {
                 .job_type = JOB_TYPE_WRITE_VALUE,
