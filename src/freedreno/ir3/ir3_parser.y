@@ -156,7 +156,7 @@ static void add_const(unsigned reg, unsigned c0, unsigned c1, unsigned c2, unsig
 	struct ir3_const_state *const_state = ir3_const_state(variant);
 	assert((reg & 0x7) == 0);
 	int idx = reg >> (1 + 2); /* low bit is half vs full, next two bits are swiz */
-	if (const_state->immediate_idx == const_state->immediates_size * 4) {
+	if (const_state->immediates_count == const_state->immediates_size * 4) {
 		const_state->immediates = rerzalloc(const_state,
 				const_state->immediates,
 				__typeof__(const_state->immediates[0]),
@@ -168,8 +168,7 @@ static void add_const(unsigned reg, unsigned c0, unsigned c1, unsigned c2, unsig
 	const_state->immediates[idx].val[1] = c1;
 	const_state->immediates[idx].val[2] = c2;
 	const_state->immediates[idx].val[3] = c3;
-	const_state->immediates_count = idx + 1;
-	const_state->immediate_idx++;
+	const_state->immediates_count++;
 }
 
 static void add_sysval(unsigned reg, unsigned compmask, gl_system_value sysval)

@@ -191,7 +191,6 @@ struct ir3_const_state {
 		uint32_t off[IR3_MAX_SHADER_IMAGES];
 	} image_dims;
 
-	unsigned immediate_idx;
 	unsigned immediates_count;
 	unsigned immediates_size;
 	struct {

@@ -220,7 +220,7 @@ cs_const_emit(struct fd_ringbuffer *ring, struct kernel *kernel, uint32_t grid[3
 
 	const struct ir3_const_state *const_state = ir3_const_state(v);
 	uint32_t base = const_state->offsets.immediate;
-	int size = const_state->immediates_count;
+	int size = DIV_ROUND_UP(const_state->immediates_count, 4);
 
 	if (ir3_kernel->info.numwg != INVALID_REG) {
 		assert((ir3_kernel->info.numwg & 0x3) == 0);
