@@ -464,7 +464,9 @@ buffer_format_features(VkFormat vk_format, const struct v3dv_format *v3dv_format
    assert(desc);
 
    VkFormatFeatureFlags flags = 0;
-   if (desc->layout == UTIL_FORMAT_LAYOUT_PLAIN && desc->is_array) {
+   if (desc->layout == UTIL_FORMAT_LAYOUT_PLAIN &&
+       desc->colorspace == UTIL_FORMAT_COLORSPACE_RGB &&
+       desc->is_array) {
       flags |=  VK_FORMAT_FEATURE_VERTEX_BUFFER_BIT |
                 VK_FORMAT_FEATURE_UNIFORM_TEXEL_BUFFER_BIT |
                 VK_FORMAT_FEATURE_STORAGE_TEXEL_BUFFER_BIT;
