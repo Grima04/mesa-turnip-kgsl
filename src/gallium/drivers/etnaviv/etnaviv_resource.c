@@ -256,39 +256,6 @@ etna_resource_alloc(struct pipe_screen *pscreen, unsigned layout,
    if (!screen->specs.use_blt && templat->target != PIPE_BUFFER && layout == ETNA_LAYOUT_LINEAR)
       paddingY = align(paddingY, ETNA_RS_HEIGHT_MASK + 1);
 
-   if (templat->bind & PIPE_BIND_SCANOUT && screen->ro->kms_fd >= 0) {
-      struct pipe_resource scanout_templat = *templat;
-      struct renderonly_scanout *scanout;
-      struct winsys_handle handle;
-
-      /* pad scanout buffer size to be compatible with the RS */
-      if (!screen->specs.use_blt && modifier == DRM_FORMAT_MOD_LINEAR) {
-         paddingX = align(paddingX, ETNA_RS_WIDTH_MASK + 1);
-         paddingY = align(paddingY, ETNA_RS_HEIGHT_MASK + 1);
-      }
-
-      scanout_templat.width0 = align(scanout_templat.width0, paddingX);
-      scanout_templat.height0 = align(scanout_templat.height0, paddingY);
-
-      scanout = renderonly_scanout_for_resource(&scanout_templat,
-                                                screen->ro, &handle);
-      if (!scanout)
-         return NULL;
-
-      assert(handle.type == WINSYS_HANDLE_TYPE_FD);
-      handle.modifier = modifier;
-      rsc = etna_resource(pscreen->resource_from_handle(pscreen, templat,
-                                                        &handle,
-                                                        PIPE_HANDLE_USAGE_FRAMEBUFFER_WRITE));
-      close(handle.handle);
-      if (!rsc)
-         return NULL;
-
-      rsc->scanout = scanout;
-
-      return &rsc->base;
-   }
-
    rsc = CALLOC_STRUCT(etna_resource);
    if (!rsc)
       return NULL;
@@ -304,14 +271,37 @@ etna_resource_alloc(struct pipe_screen *pscreen, unsigned layout,
 
    size = setup_miptree(rsc, paddingX, paddingY, msaa_xscale, msaa_yscale);
 
-   uint32_t flags = DRM_ETNA_GEM_CACHE_WC;
-   if (templat->bind & PIPE_BIND_VERTEX_BUFFER)
-      flags |= DRM_ETNA_GEM_FORCE_MMU;
+   if (unlikely(templat->bind & PIPE_BIND_SCANOUT) && screen->ro->kms_fd >= 0) {
+      struct pipe_resource scanout_templat = *templat;
+      struct winsys_handle handle;
 
-   rsc->bo = etna_bo_new(screen->dev, size, flags);
-   if (unlikely(!rsc->bo)) {
-      BUG("Problem allocating video memory for resource");
-      goto free_rsc;
+      scanout_templat.width0 = align(scanout_templat.width0, paddingX);
+      scanout_templat.height0 = align(scanout_templat.height0, paddingY);
+
+      rsc->scanout = renderonly_scanout_for_resource(&scanout_templat,
+                                                     screen->ro, &handle);
+      if (!rsc->scanout) {
+         BUG("Problem allocating kms memory for resource");
+         goto free_rsc;
+      }
+
+      assert(handle.type == WINSYS_HANDLE_TYPE_FD);
+      rsc->levels[0].stride = handle.stride;
+      rsc->bo = etna_screen_bo_from_handle(pscreen, &handle);
+      close(handle.handle);
+      if (unlikely(!rsc->bo))
+         goto free_rsc;
+   } else {
+      uint32_t flags = DRM_ETNA_GEM_CACHE_WC;
+
+      if (templat->bind & PIPE_BIND_VERTEX_BUFFER)
+         flags |= DRM_ETNA_GEM_FORCE_MMU;
+
+      rsc->bo = etna_bo_new(screen->dev, size, flags);
+      if (unlikely(!rsc->bo)) {
+         BUG("Problem allocating video memory for resource");
+         goto free_rsc;
+      }
    }
 
    if (DBG_ENABLED(ETNA_DBG_ZERO)) {
