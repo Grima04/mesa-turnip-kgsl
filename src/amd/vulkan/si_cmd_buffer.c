@@ -705,6 +705,7 @@ si_get_ia_multi_vgt_param(struct radv_cmd_buffer *cmd_buffer,
 	bool ia_switch_on_eoi = false;
 	bool partial_vs_wave = false;
 	bool partial_es_wave = cmd_buffer->state.pipeline->graphics.ia_multi_vgt_param.partial_es_wave;
+	unsigned topology = cmd_buffer->state.pipeline->graphics.topology;
 	bool multi_instances_smaller_than_primgroup;
 
 	multi_instances_smaller_than_primgroup = indirect_draw;
@@ -718,7 +719,19 @@ si_get_ia_multi_vgt_param(struct radv_cmd_buffer *cmd_buffer,
 	partial_vs_wave = cmd_buffer->state.pipeline->graphics.ia_multi_vgt_param.partial_vs_wave;
 
 	if (chip_class >= GFX7) {
-		wd_switch_on_eop = cmd_buffer->state.pipeline->graphics.ia_multi_vgt_param.wd_switch_on_eop;
+		/* WD_SWITCH_ON_EOP has no effect on GPUs with less than
+		 * 4 shader engines. Set 1 to pass the assertion below.
+		 * The other cases are hardware requirements. */
+		if (cmd_buffer->device->physical_device->rad_info.max_se < 4 ||
+		    topology == V_008958_DI_PT_POLYGON ||
+		    topology == V_008958_DI_PT_LINELOOP ||
+		    topology == V_008958_DI_PT_TRIFAN ||
+		    topology == V_008958_DI_PT_TRISTRIP_ADJ ||
+		    (cmd_buffer->state.pipeline->graphics.prim_restart_enable &&
+		     (cmd_buffer->device->physical_device->rad_info.family < CHIP_POLARIS10 ||
+		      (topology != V_008958_DI_PT_POINTLIST &&
+		       topology != V_008958_DI_PT_LINESTRIP))))
+			wd_switch_on_eop = true;
 
 		/* Hawaii hangs if instancing is enabled and WD_SWITCH_ON_EOP is 0.
 		 * We don't know that for indirect drawing, so treat it as

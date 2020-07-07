@@ -4684,23 +4684,6 @@ radv_compute_ia_multi_vgt_param_helpers(struct radv_pipeline *pipeline,
 		if (SI_GS_PER_ES / ia_multi_vgt_param.primgroup_size >= pipeline->device->gs_table_depth - 3)
 			ia_multi_vgt_param.partial_es_wave = true;
 
-	ia_multi_vgt_param.wd_switch_on_eop = false;
-	if (device->physical_device->rad_info.chip_class >= GFX7) {
-		/* WD_SWITCH_ON_EOP has no effect on GPUs with less than
-		 * 4 shader engines. Set 1 to pass the assertion below.
-		 * The other cases are hardware requirements. */
-		if (device->physical_device->rad_info.max_se < 4 ||
-		    prim == V_008958_DI_PT_POLYGON ||
-		    prim == V_008958_DI_PT_LINELOOP ||
-		    prim == V_008958_DI_PT_TRIFAN ||
-		    prim == V_008958_DI_PT_TRISTRIP_ADJ ||
-		    (pipeline->graphics.prim_restart_enable &&
-		     (device->physical_device->rad_info.family < CHIP_POLARIS10 ||
-		      (prim != V_008958_DI_PT_POINTLIST &&
-		       prim != V_008958_DI_PT_LINESTRIP))))
-			ia_multi_vgt_param.wd_switch_on_eop = true;
-	}
-
 	ia_multi_vgt_param.ia_switch_on_eoi = false;
 	if (pipeline->shaders[MESA_SHADER_FRAGMENT]->info.ps.prim_id_input)
 		ia_multi_vgt_param.ia_switch_on_eoi = true;
