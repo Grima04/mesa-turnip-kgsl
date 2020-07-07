@@ -1386,7 +1386,7 @@ _mesa_free_context_data(struct gl_context *ctx)
    /* needs to be after freeing shared state */
    _mesa_free_display_list_data(ctx);
 
-   _mesa_free_errors_data(ctx);
+   _mesa_destroy_debug_output(ctx);
 
    free((void *)ctx->Extensions.String);
 
