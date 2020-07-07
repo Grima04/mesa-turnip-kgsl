@@ -22,11 +22,10 @@
  *
  */
 
-#include "pan_context.h"
-#include "pan_job.h"
-#include "pan_pool.h"
+#include <string.h>
+#include "pan_scoreboard.h"
+#include "pan_device.h"
 #include "panfrost-quirks.h"
-#include "util/bitset.h"
 
 /*
  * There are various types of Mali jobs:

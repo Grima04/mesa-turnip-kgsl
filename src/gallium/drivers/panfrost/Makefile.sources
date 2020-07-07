@@ -22,7 +22,6 @@ C_SOURCES := \
 	pan_public.h \
 	pan_resource.c \
 	pan_resource.h \
-	pan_scoreboard.c \
 	pan_screen.c \
 	pan_screen.h \
 	pan_sfbd.c \

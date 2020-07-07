@@ -27,6 +27,9 @@
 #ifndef __PAN_SCOREBOARD_H__
 #define __PAN_SCOREBOARD_H__
 
+#include "panfrost-job.h"
+#include "pan_pool.h"
+
 struct pan_scoreboard {
         /* The first job in the batch */
         mali_ptr first_job;
