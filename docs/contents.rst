@@ -61,7 +61,7 @@
    devinfo
    codingstyle
    submittingpatches
-   ci
+   ci/index
    releasing
    release-calendar
    sourcedocs
