@@ -200,6 +200,8 @@ struct v3dv_instance {
    struct v3dv_physical_device physicalDevice;
 
    struct vk_debug_report_instance debug_report_callbacks;
+
+   bool pipeline_cache_enabled;
 };
 
 /* Tracks wait threads spawned from a single vkQueueSubmit call */
@@ -261,11 +263,20 @@ struct v3dv_meta_blit_pipeline {
 
 #define V3DV_META_BLIT_CACHE_KEY_SIZE (3 * sizeof(uint32_t))
 
+struct v3dv_pipeline_cache_stats {
+   uint32_t miss;
+   uint32_t hit;
+   uint32_t count;
+};
+
 struct v3dv_pipeline_cache {
    VK_LOADER_DATA _loader_data;
 
    struct v3dv_device *device;
    mtx_t mutex;
+
+   struct hash_table *nir_cache;
+   struct v3dv_pipeline_cache_stats nir_stats;
 };
 
 struct v3dv_device {
@@ -1245,6 +1256,9 @@ struct v3dv_pipeline_stage {
 
    nir_shader *nir;
 
+   /* The following is the combined hash of module+entrypoint+spec_info+nir */
+   unsigned char shader_sha1[20];
+
    /** A name for this program, so you can track it in shader-db output. */
    uint32_t program_id;
    /** How many variants of this program were compiled, for shader-db. */
@@ -1738,6 +1752,17 @@ v3dv_immutable_samplers(const struct v3dv_descriptor_set_layout *set,
    assert(binding->immutable_samplers_offset);
    return (const struct v3dv_sampler *) ((const char *) set + binding->immutable_samplers_offset);
 }
+
+void v3dv_pipeline_cache_upload_nir(struct v3dv_pipeline *pipeline,
+                                    struct v3dv_pipeline_cache *cache,
+                                    nir_shader *nir,
+                                    unsigned char sha1_key[20]);
+
+nir_shader* v3dv_pipeline_cache_search_for_nir(struct v3dv_pipeline *pipeline,
+                                               struct v3dv_pipeline_cache *cache,
+                                               const nir_shader_compiler_options *nir_options,
+                                               unsigned char sha1_key[20]);
+
 
 #define V3DV_DEFINE_HANDLE_CASTS(__v3dv_type, __VkType)   \
                                                         \

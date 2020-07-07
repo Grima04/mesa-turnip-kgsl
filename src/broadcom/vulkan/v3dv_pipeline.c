@@ -1270,6 +1270,7 @@ pipeline_stage_create_vs_bin(const struct v3dv_pipeline_stage *src,
    p_stage->module = src->module;
    p_stage->nir = nir_shader_clone(NULL, src->nir);
    p_stage->spec_info = src->spec_info;
+   memcpy(p_stage->shader_sha1, src->shader_sha1, 20);
 
    /* Technically we could share the hash_table, but having their own makes
     * destroy p_stage more straightforward
@@ -1567,8 +1568,61 @@ get_ucp_enable_mask(struct v3dv_pipeline_stage **stages)
    return 0;
 }
 
+static nir_shader*
+pipeline_stage_get_nir(struct v3dv_pipeline_stage *p_stage,
+                       struct v3dv_pipeline *pipeline,
+                       struct v3dv_pipeline_cache *cache)
+{
+   nir_shader *nir = NULL;
+
+   nir = v3dv_pipeline_cache_search_for_nir(pipeline, cache,
+                                            &v3dv_nir_options,
+                                            p_stage->shader_sha1);
+
+   if (nir) {
+      assert(nir->info.stage == p_stage->stage);
+      return nir;
+   }
+
+   nir = shader_module_compile_to_nir(pipeline->device, p_stage);
+
+   if (nir) {
+      v3dv_pipeline_cache_upload_nir(pipeline, cache, nir,
+                                     p_stage->shader_sha1);
+      return nir;
+   }
+
+   /* FIXME: this shouldn't happen, raise error? */
+   return NULL;
+}
+
+static void
+pipeline_hash_shader(const struct v3dv_shader_module *module,
+                     const char *entrypoint,
+                     gl_shader_stage stage,
+                     const VkSpecializationInfo *spec_info,
+                     unsigned char *sha1_out)
+{
+   struct mesa_sha1 ctx;
+   _mesa_sha1_init(&ctx);
+
+   _mesa_sha1_update(&ctx, module->sha1, sizeof(module->sha1));
+   _mesa_sha1_update(&ctx, entrypoint, strlen(entrypoint));
+   _mesa_sha1_update(&ctx, &stage, sizeof(stage));
+   if (spec_info) {
+      _mesa_sha1_update(&ctx, spec_info->pMapEntries,
+                        spec_info->mapEntryCount *
+                        sizeof(*spec_info->pMapEntries));
+      _mesa_sha1_update(&ctx, spec_info->pData,
+                        spec_info->dataSize);
+   }
+
+   _mesa_sha1_final(&ctx, sha1_out);
+}
+
 static VkResult
 pipeline_compile_graphics(struct v3dv_pipeline *pipeline,
+                          struct v3dv_pipeline_cache *cache,
                           const VkGraphicsPipelineCreateInfo *pCreateInfo,
                           const VkAllocationCallbacks *pAllocator)
 {
@@ -1607,12 +1661,15 @@ pipeline_compile_graphics(struct v3dv_pipeline *pipeline,
       p_stage->module = v3dv_shader_module_from_handle(sinfo->module);
       p_stage->spec_info = sinfo->pSpecializationInfo;
 
+      pipeline_hash_shader(p_stage->module,
+                           p_stage->entrypoint,
+                           stage,
+                           p_stage->spec_info,
+                           p_stage->shader_sha1);
+
       pipeline->active_stages |= sinfo->stage;
 
-      /* FIXME: when cache support is in place, first check if for the given
-       * spirv module and options, we already have a nir shader.
-       */
-      p_stage->nir = shader_module_compile_to_nir(pipeline->device, p_stage);
+      p_stage->nir = pipeline_stage_get_nir(p_stage, pipeline, cache);
 
       stages[stage] = p_stage;
    }
@@ -2519,6 +2576,7 @@ pack_shader_state_attribute_record(struct v3dv_pipeline *pipeline,
 static VkResult
 pipeline_init(struct v3dv_pipeline *pipeline,
               struct v3dv_device *device,
+              struct v3dv_pipeline_cache *cache,
               const VkGraphicsPipelineCreateInfo *pCreateInfo,
               const VkAllocationCallbacks *pAllocator)
 {
@@ -2570,7 +2628,7 @@ pipeline_init(struct v3dv_pipeline *pipeline,
    pipeline->primitive_restart =
       pCreateInfo->pInputAssemblyState->primitiveRestartEnable;
 
-   result = pipeline_compile_graphics(pipeline, pCreateInfo, pAllocator);
+   result = pipeline_compile_graphics(pipeline, cache, pCreateInfo, pAllocator);
 
    if (result != VK_SUCCESS) {
       /* Caller would already destroy the pipeline, and we didn't allocate any
@@ -2632,6 +2690,7 @@ graphics_pipeline_create(VkDevice _device,
                          VkPipeline *pPipeline)
 {
    V3DV_FROM_HANDLE(v3dv_device, device, _device);
+   V3DV_FROM_HANDLE(v3dv_pipeline_cache, cache, _cache);
 
    struct v3dv_pipeline *pipeline;
    VkResult result;
@@ -2641,7 +2700,7 @@ graphics_pipeline_create(VkDevice _device,
    if (pipeline == NULL)
       return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
-   result = pipeline_init(pipeline, device,
+   result = pipeline_init(pipeline, device, cache,
                           pCreateInfo,
                           pAllocator);
 
@@ -2706,6 +2765,7 @@ lower_cs_shared(struct nir_shader *nir)
 
 static VkResult
 pipeline_compile_compute(struct v3dv_pipeline *pipeline,
+                         struct v3dv_pipeline_cache *cache,
                          const VkComputePipelineCreateInfo *info,
                          const VkAllocationCallbacks *alloc)
 {
@@ -2730,7 +2790,14 @@ pipeline_compile_compute(struct v3dv_pipeline *pipeline,
    p_stage->entrypoint = sinfo->pName;
    p_stage->module = v3dv_shader_module_from_handle(sinfo->module);
    p_stage->spec_info = sinfo->pSpecializationInfo;
-   p_stage->nir = shader_module_compile_to_nir(pipeline->device, p_stage);
+
+   pipeline_hash_shader(p_stage->module,
+                        p_stage->entrypoint,
+                        stage,
+                        p_stage->spec_info,
+                        p_stage->shader_sha1);
+
+   p_stage->nir = pipeline_stage_get_nir(p_stage, pipeline, cache);
 
    pipeline->active_stages |= sinfo->stage;
    st_nir_opts(p_stage->nir);
@@ -2752,6 +2819,7 @@ pipeline_compile_compute(struct v3dv_pipeline *pipeline,
 static VkResult
 compute_pipeline_init(struct v3dv_pipeline *pipeline,
                       struct v3dv_device *device,
+                      struct v3dv_pipeline_cache *cache,
                       const VkComputePipelineCreateInfo *info,
                       const VkAllocationCallbacks *alloc)
 {
@@ -2760,7 +2828,7 @@ compute_pipeline_init(struct v3dv_pipeline *pipeline,
    pipeline->device = device;
    pipeline->layout = layout;
 
-   VkResult result = pipeline_compile_compute(pipeline, info, alloc);
+   VkResult result = pipeline_compile_compute(pipeline, cache, info, alloc);
 
    return result;
 }
@@ -2773,6 +2841,7 @@ compute_pipeline_create(VkDevice _device,
                          VkPipeline *pPipeline)
 {
    V3DV_FROM_HANDLE(v3dv_device, device, _device);
+   V3DV_FROM_HANDLE(v3dv_pipeline_cache, cache, _cache);
 
    struct v3dv_pipeline *pipeline;
    VkResult result;
@@ -2782,7 +2851,8 @@ compute_pipeline_create(VkDevice _device,
    if (pipeline == NULL)
       return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
-   result = compute_pipeline_init(pipeline, device, pCreateInfo, pAllocator);
+   result = compute_pipeline_init(pipeline, device, cache,
+                                  pCreateInfo, pAllocator);
    if (result != VK_SUCCESS) {
       v3dv_destroy_pipeline(pipeline, device, pAllocator);
       return result;

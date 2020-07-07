@@ -45,6 +45,7 @@
 #include "vk_util.h"
 
 #include "util/build_id.h"
+#include "util/debug.h"
 
 #ifdef VK_USE_PLATFORM_XCB_KHR
 #include <xcb/xcb.h>
@@ -219,6 +220,9 @@ v3dv_CreateInstance(const VkInstanceCreateInfo *pCreateInfo,
       vk_free2(&default_alloc, pAllocator, instance);
       return vk_error(NULL, result);
    }
+
+   instance->pipeline_cache_enabled =
+      env_var_as_boolean("V3DV_ENABLE_PIPELINE_CACHE", true);
 
    glsl_type_singleton_init_or_ref();
 
