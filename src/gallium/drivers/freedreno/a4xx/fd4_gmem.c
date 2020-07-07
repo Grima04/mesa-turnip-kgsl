@@ -61,7 +61,6 @@ emit_mrt(struct fd_ringbuffer *ring, unsigned nr_bufs,
 		enum a3xx_color_swap swap = WZYX;
 		bool srgb = false;
 		struct fd_resource *rsc = NULL;
-		struct fdl_slice *slice = NULL;
 		uint32_t stride = 0;
 		uint32_t base = 0;
 		uint32_t offset = 0;
@@ -82,7 +81,6 @@ emit_mrt(struct fd_ringbuffer *ring, unsigned nr_bufs,
 					bases++;
 			}
 
-			slice = fd_resource_slice(rsc, psurf->u.tex.level);
 			format = fd4_pipe2color(pformat);
 			swap = fd4_pipe2swap(pformat);
 
@@ -103,7 +101,7 @@ emit_mrt(struct fd_ringbuffer *ring, unsigned nr_bufs,
 					base = bases[i];
 				}
 			} else {
-				stride = slice->pitch;
+				stride = fd_resource_pitch(rsc, psurf->u.tex.level);
 			}
 		} else if ((i < nr_bufs) && bases) {
 			base = bases[i];
@@ -152,8 +150,7 @@ emit_gmem2mem_surf(struct fd_batch *batch, bool stencil,
 	struct fd_ringbuffer *ring = batch->gmem;
 	struct fd_resource *rsc = fd_resource(psurf->texture);
 	enum pipe_format pformat = psurf->format;
-	struct fdl_slice *slice;
-	uint32_t offset;
+	uint32_t offset, pitch;
 
 	if (!rsc->valid)
 		return;
@@ -164,9 +161,9 @@ emit_gmem2mem_surf(struct fd_batch *batch, bool stencil,
 		pformat = rsc->base.format;
 	}
 
-	slice = fd_resource_slice(rsc, psurf->u.tex.level);
 	offset = fd_resource_offset(rsc, psurf->u.tex.level,
 			psurf->u.tex.first_layer);
+	pitch = fd_resource_pitch(rsc, psurf->u.tex.level);
 
 	debug_assert(psurf->u.tex.first_layer == psurf->u.tex.last_layer);
 
@@ -175,7 +172,7 @@ emit_gmem2mem_surf(struct fd_batch *batch, bool stencil,
 			A4XX_RB_COPY_CONTROL_MODE(RB_COPY_RESOLVE) |
 			A4XX_RB_COPY_CONTROL_GMEM_BASE(base));
 	OUT_RELOC(ring, rsc->bo, offset, 0, 0);   /* RB_COPY_DEST_BASE */
-	OUT_RING(ring, A4XX_RB_COPY_DEST_PITCH_PITCH(slice->pitch));
+	OUT_RING(ring, A4XX_RB_COPY_DEST_PITCH_PITCH(pitch));
 	OUT_RING(ring, A4XX_RB_COPY_DEST_INFO_TILE(TILE4_LINEAR) |
 			A4XX_RB_COPY_DEST_INFO_FORMAT(fd4_pipe2color(pformat)) |
 			A4XX_RB_COPY_DEST_INFO_COMPONENT_ENABLE(0xf) |

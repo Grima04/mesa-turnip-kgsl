@@ -62,7 +62,6 @@ static void translate_image(struct fd5_image *img, struct pipe_image_view *pimg)
 	enum pipe_format format = pimg->format;
 	struct pipe_resource *prsc = pimg->resource;
 	struct fd_resource *rsc = fd_resource(prsc);
-	struct fdl_slice *slice = NULL;
 	unsigned lvl;
 
 	if (!pimg->resource) {
@@ -84,9 +83,8 @@ static void translate_image(struct fd5_image *img, struct pipe_image_view *pimg)
 		img->pitch  = pimg->u.buf.size;
 	} else {
 		lvl = pimg->u.tex.level;
-		slice = fd_resource_slice(rsc, lvl);
 		img->offset = fd_resource_offset(rsc, lvl, pimg->u.tex.first_layer);
-		img->pitch  = slice->pitch;
+		img->pitch  = fd_resource_pitch(rsc, lvl);
 	}
 
 	img->width     = u_minify(prsc->width0, lvl);
@@ -112,7 +110,7 @@ static void translate_image(struct fd5_image *img, struct pipe_image_view *pimg)
 		img->depth = layers;
 		break;
 	case PIPE_TEXTURE_3D:
-		img->array_pitch = slice->size0;
+		img->array_pitch = fd_resource_slice(rsc, lvl)->size0;
 		img->depth = u_minify(prsc->depth0, lvl);
 		break;
 	default:

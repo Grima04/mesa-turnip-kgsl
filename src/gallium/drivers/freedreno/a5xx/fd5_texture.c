@@ -207,7 +207,6 @@ fd5_sampler_view_create(struct pipe_context *pctx, struct pipe_resource *prsc,
 {
 	struct fd5_pipe_sampler_view *so = CALLOC_STRUCT(fd5_pipe_sampler_view);
 	struct fd_resource *rsc = fd_resource(prsc);
-	struct fdl_slice *slice = NULL;
 	enum pipe_format format = cso->format;
 	unsigned lvl, layers = 0;
 
@@ -265,7 +264,6 @@ fd5_sampler_view_create(struct pipe_context *pctx, struct pipe_resource *prsc,
 		unsigned miplevels;
 
 		lvl = fd_sampler_first_level(cso);
-		slice = fd_resource_slice(rsc, lvl);
 		miplevels = fd_sampler_last_level(cso) - lvl;
 		layers = cso->u.tex.last_layer - cso->u.tex.first_layer + 1;
 
@@ -275,7 +273,7 @@ fd5_sampler_view_create(struct pipe_context *pctx, struct pipe_resource *prsc,
 			A5XX_TEX_CONST_1_HEIGHT(u_minify(prsc->height0, lvl));
 		so->texconst2 =
 			A5XX_TEX_CONST_2_FETCHSIZE(fd5_pipe2fetchsize(format)) |
-			A5XX_TEX_CONST_2_PITCH(slice->pitch);
+			A5XX_TEX_CONST_2_PITCH(fd_resource_pitch(rsc, lvl));
 		so->offset = fd_resource_offset(rsc, lvl, cso->u.tex.first_layer);
 	}
 
@@ -308,7 +306,7 @@ fd5_sampler_view_create(struct pipe_context *pctx, struct pipe_resource *prsc,
 		so->texconst3 =
 			A5XX_TEX_CONST_3_MIN_LAYERSZ(
 				fd_resource_slice(rsc, prsc->last_level)->size0) |
-			A5XX_TEX_CONST_3_ARRAY_PITCH(slice->size0);
+			A5XX_TEX_CONST_3_ARRAY_PITCH(fd_resource_slice(rsc, lvl)->size0);
 		so->texconst5 =
 			A5XX_TEX_CONST_5_DEPTH(u_minify(prsc->depth0, lvl));
 		break;

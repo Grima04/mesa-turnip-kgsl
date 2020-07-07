@@ -112,7 +112,7 @@ emit_mrt(struct fd_ringbuffer *ring, struct pipe_framebuffer_state *pfb,
 		offset = fd_resource_offset(rsc, psurf->u.tex.level,
 				psurf->u.tex.first_layer);
 
-		stride = slice->pitch;
+		stride = fd_resource_pitch(rsc, psurf->u.tex.level);
 		swap = fd6_resource_swap(rsc, pformat);
 
 		tile_mode = fd_resource_tile_mode(psurf->texture, psurf->u.tex.level);
@@ -172,9 +172,8 @@ emit_zs(struct fd_ringbuffer *ring, struct pipe_surface *zsbuf,
 	if (zsbuf) {
 		struct fd_resource *rsc = fd_resource(zsbuf->texture);
 		enum a6xx_depth_format fmt = fd6_pipe2depth(zsbuf->format);
-		struct fdl_slice *slice = fd_resource_slice(rsc, 0);
-		uint32_t stride = slice->pitch;
-		uint32_t size = slice->size0;
+		uint32_t stride = fd_resource_pitch(rsc, 0);
+		uint32_t size = fd_resource_slice(rsc, 0)->size0;
 		uint32_t base = gmem ? gmem->zsbuf_base[0] : 0;
 		uint32_t offset = fd_resource_offset(rsc, zsbuf->u.tex.level,
 				zsbuf->u.tex.first_layer);
@@ -215,9 +214,8 @@ emit_zs(struct fd_ringbuffer *ring, struct pipe_surface *zsbuf,
 		OUT_RING(ring, CP_EVENT_WRITE_0_EVENT(UNK_25));
 
 		if (rsc->stencil) {
-			struct fdl_slice *slice = fd_resource_slice(rsc->stencil, 0);
-			stride = slice->pitch;
-			size = slice->size0;
+			stride = fd_resource_pitch(rsc->stencil, 0);
+			size = fd_resource_slice(rsc->stencil, 0)->size0;
 			uint32_t base = gmem ? gmem->zsbuf_base[1] : 0;
 
 			OUT_REG(ring,
@@ -859,7 +857,6 @@ emit_blit(struct fd_batch *batch,
 		  struct pipe_surface *psurf,
 		  bool stencil)
 {
-	struct fdl_slice *slice;
 	struct fd_resource *rsc = fd_resource(psurf->texture);
 	enum pipe_format pfmt = psurf->format;
 	uint32_t offset;
@@ -873,7 +870,6 @@ emit_blit(struct fd_batch *batch,
 		pfmt = rsc->base.format;
 	}
 
-	slice = fd_resource_slice(rsc, psurf->u.tex.level);
 	offset = fd_resource_offset(rsc, psurf->u.tex.level,
 			psurf->u.tex.first_layer);
 	ubwc_enabled = fd_resource_ubwc_enabled(rsc, psurf->u.tex.level);
@@ -881,8 +877,8 @@ emit_blit(struct fd_batch *batch,
 	debug_assert(psurf->u.tex.first_layer == psurf->u.tex.last_layer);
 
 	enum a6xx_format format = fd6_pipe2color(pfmt);
-	uint32_t stride = slice->pitch;
-	uint32_t size = slice->size0;
+	uint32_t stride = fd_resource_pitch(rsc, psurf->u.tex.level);
+	uint32_t size = fd_resource_slice(rsc, psurf->u.tex.level)->size0;
 	enum a3xx_color_swap swap = fd6_resource_swap(rsc, pfmt);
 	enum a3xx_msaa_samples samples =
 			fd_msaa_samples(rsc->base.nr_samples);

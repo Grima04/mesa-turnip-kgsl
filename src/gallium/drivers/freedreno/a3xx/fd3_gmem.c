@@ -55,7 +55,6 @@ emit_mrt(struct fd_ringbuffer *ring, unsigned nr_bufs,
 		enum a3xx_color_swap swap = WZYX;
 		bool srgb = false;
 		struct fd_resource *rsc = NULL;
-		struct fdl_slice *slice = NULL;
 		uint32_t stride = 0;
 		uint32_t base = 0;
 		uint32_t offset = 0;
@@ -80,7 +79,6 @@ emit_mrt(struct fd_ringbuffer *ring, unsigned nr_bufs,
 				if (bases)
 					bases++;
 			}
-			slice = fd_resource_slice(rsc, psurf->u.tex.level);
 			format = fd3_pipe2color(pformat);
 			if (decode_srgb)
 				srgb = util_format_is_srgb(pformat);
@@ -100,7 +98,7 @@ emit_mrt(struct fd_ringbuffer *ring, unsigned nr_bufs,
 					base = bases[i];
 				}
 			} else {
-				stride = slice->pitch;
+				stride = fd_resource_pitch(rsc, psurf->u.tex.level);
 				tile_mode = rsc->layout.tile_mode;
 			}
 		} else if (i < nr_bufs && bases) {
@@ -327,9 +325,9 @@ emit_gmem2mem_surf(struct fd_batch *batch,
 		format = rsc->base.format;
 	}
 
-	struct fdl_slice *slice = fd_resource_slice(rsc, psurf->u.tex.level);
 	uint32_t offset = fd_resource_offset(rsc, psurf->u.tex.level,
 			psurf->u.tex.first_layer);
+	uint32_t pitch = fd_resource_pitch(rsc, psurf->u.tex.level);
 
 	debug_assert(psurf->u.tex.first_layer == psurf->u.tex.last_layer);
 
@@ -342,7 +340,7 @@ emit_gmem2mem_surf(struct fd_batch *batch,
 				 A3XX_RB_COPY_CONTROL_DEPTH32_RESOLVE));
 
 	OUT_RELOC(ring, rsc->bo, offset, 0, -1);    /* RB_COPY_DEST_BASE */
-	OUT_RING(ring, A3XX_RB_COPY_DEST_PITCH_PITCH(slice->pitch));
+	OUT_RING(ring, A3XX_RB_COPY_DEST_PITCH_PITCH(pitch));
 	OUT_RING(ring, A3XX_RB_COPY_DEST_INFO_TILE(rsc->layout.tile_mode) |
 			A3XX_RB_COPY_DEST_INFO_FORMAT(fd3_pipe2color(format)) |
 			A3XX_RB_COPY_DEST_INFO_COMPONENT_ENABLE(0xf) |
@@ -729,8 +727,7 @@ fd3_emit_sysmem_prep(struct fd_batch *batch)
 		if (!psurf)
 			continue;
 		struct fd_resource *rsc = fd_resource(psurf->texture);
-		struct fdl_slice *slice = fd_resource_slice(rsc, psurf->u.tex.level);
-		pitch = slice->pitch / rsc->layout.cpp;
+		pitch = fd_resource_pitch(rsc, psurf->u.tex.level) / rsc->layout.cpp;
 	}
 
 	fd3_emit_restore(batch, ring);

@@ -338,7 +338,7 @@ emit_blit_or_clear_texture(struct fd_context *ctx, struct fd_ringbuffer *ring,
 	const struct pipe_box *sbox = &info->src.box;
 	const struct pipe_box *dbox = &info->dst.box;
 	struct fd_resource *src, *dst;
-	struct fdl_slice *sslice, *dslice;
+	uint32_t spitch, dpitch;
 	enum a6xx_format sfmt, dfmt;
 	enum a6xx_tile_mode stile, dtile;
 	enum a3xx_color_swap sswap, dswap;
@@ -358,8 +358,8 @@ emit_blit_or_clear_texture(struct fd_context *ctx, struct fd_ringbuffer *ring,
 	src = fd_resource(info->src.resource);
 	dst = fd_resource(info->dst.resource);
 
-	sslice = fd_resource_slice(src, info->src.level);
-	dslice = fd_resource_slice(dst, info->dst.level);
+	spitch = fd_resource_pitch(src, info->src.level);
+	dpitch = fd_resource_pitch(dst, info->dst.level);
 
 	sfmt = fd6_pipe2color(info->src.format);
 	dfmt = fd6_pipe2color(info->dst.format);
@@ -503,7 +503,7 @@ emit_blit_or_clear_texture(struct fd_context *ctx, struct fd_ringbuffer *ring,
 		OUT_RING(ring, A6XX_SP_PS_2D_SRC_SIZE_WIDTH(width) |
 				 A6XX_SP_PS_2D_SRC_SIZE_HEIGHT(height)); /* SP_PS_2D_SRC_SIZE */
 		OUT_RELOC(ring, src->bo, soff, 0, 0);    /* SP_PS_2D_SRC_LO/HI */
-		OUT_RING(ring, A6XX_SP_PS_2D_SRC_PITCH_PITCH(sslice->pitch));
+		OUT_RING(ring, A6XX_SP_PS_2D_SRC_PITCH_PITCH(spitch));
 
 		OUT_RING(ring, 0x00000000);
 		OUT_RING(ring, 0x00000000);
@@ -529,7 +529,7 @@ emit_blit_or_clear_texture(struct fd_context *ctx, struct fd_ringbuffer *ring,
 				 COND(util_format_is_srgb(info->dst.format), A6XX_RB_2D_DST_INFO_SRGB) |
 				 COND(dubwc_enabled, A6XX_RB_2D_DST_INFO_FLAGS));
 		OUT_RELOC(ring, dst->bo, doff, 0, 0);    /* RB_2D_DST_LO/HI */
-		OUT_RING(ring, A6XX_RB_2D_DST_SIZE_PITCH(dslice->pitch));
+		OUT_RING(ring, A6XX_RB_2D_DST_SIZE_PITCH(dpitch));
 		OUT_RING(ring, 0x00000000);
 		OUT_RING(ring, 0x00000000);
 		OUT_RING(ring, 0x00000000);
