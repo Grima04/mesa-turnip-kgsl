@@ -558,7 +558,8 @@ transition_depth_buffer(struct anv_cmd_buffer *cmd_buffer,
                         const struct anv_image *image,
                         uint32_t base_layer, uint32_t layer_count,
                         VkImageLayout initial_layout,
-                        VkImageLayout final_layout)
+                        VkImageLayout final_layout,
+                        bool will_full_fast_clear)
 {
    uint32_t depth_plane =
       anv_image_aspect_to_plane(image->aspects, VK_IMAGE_ASPECT_DEPTH_BIT);
@@ -574,6 +575,14 @@ transition_depth_buffer(struct anv_cmd_buffer *cmd_buffer,
                             0, 1, 0, 1);
    }
 #endif
+
+   /* If will_full_fast_clear is set, the caller promises to fast-clear the
+    * largest portion of the specified range as it can.  For depth images,
+    * that means the entire image because we don't support multi-LOD HiZ.
+    */
+   assert(image->planes[0].surface.isl.levels == 1);
+   if (will_full_fast_clear)
+      return;
 
    const enum isl_aux_state initial_state =
       anv_layout_to_aux_state(&cmd_buffer->device->info, image,
@@ -1060,7 +1069,8 @@ transition_color_buffer(struct anv_cmd_buffer *cmd_buffer,
                         const uint32_t base_level, uint32_t level_count,
                         uint32_t base_layer, uint32_t layer_count,
                         VkImageLayout initial_layout,
-                        VkImageLayout final_layout)
+                        VkImageLayout final_layout,
+                        bool will_full_fast_clear)
 {
    struct anv_device *device = cmd_buffer->device;
    const struct gen_device_info *devinfo = &device->info;
@@ -1275,6 +1285,14 @@ transition_color_buffer(struct anv_cmd_buffer *cmd_buffer,
 
       for (uint32_t a = 0; a < level_layer_count; a++) {
          uint32_t array_layer = base_layer + a;
+
+         /* If will_full_fast_clear is set, the caller promises to fast-clear
+          * the largest portion of the specified range as it can.  For color
+          * images, that means only the first LOD and array slice.
+          */
+         if (level == 0 && array_layer == 0 && will_full_fast_clear)
+            continue;
+
          if (image->samples == 1) {
             anv_cmd_predicated_ccs_resolve(cmd_buffer, image,
                                            image->planes[plane].surface.isl.format,
@@ -2317,7 +2335,8 @@ void genX(CmdPipelineBarrier)(
          transition_depth_buffer(cmd_buffer, image,
                                  base_layer, layer_count,
                                  pImageMemoryBarriers[i].oldLayout,
-                                 pImageMemoryBarriers[i].newLayout);
+                                 pImageMemoryBarriers[i].newLayout,
+                                 false /* will_full_fast_clear */);
       }
 
       if (range->aspectMask & VK_IMAGE_ASPECT_STENCIL_BIT) {
@@ -2339,7 +2358,8 @@ void genX(CmdPipelineBarrier)(
                                     anv_get_levelCount(image, range),
                                     base_layer, layer_count,
                                     pImageMemoryBarriers[i].oldLayout,
-                                    pImageMemoryBarriers[i].newLayout);
+                                    pImageMemoryBarriers[i].newLayout,
+                                    false /* will_full_fast_clear */);
          }
       }
    }
@@ -5116,6 +5136,13 @@ cmd_buffer_begin_subpass(struct anv_cmd_buffer *cmd_buffer,
          subpass->attachments[i].stencil_layout;
 
       uint32_t level = iview->planes[0].isl.base_level;
+      uint32_t width = anv_minify(iview->image->extent.width, level);
+      uint32_t height = anv_minify(iview->image->extent.height, level);
+      bool full_surface_draw =
+         render_area.offset.x == 0 && render_area.offset.y == 0 &&
+         render_area.extent.width == width &&
+         render_area.extent.height == height;
+
       uint32_t base_layer, layer_count;
       if (image->type == VK_IMAGE_TYPE_3D) {
          base_layer = 0;
@@ -5126,10 +5153,15 @@ cmd_buffer_begin_subpass(struct anv_cmd_buffer *cmd_buffer,
       }
 
       if (image->aspects & VK_IMAGE_ASPECT_ANY_COLOR_BIT_ANV) {
+         bool will_full_fast_clear =
+            (att_state->pending_clear_aspects & VK_IMAGE_ASPECT_COLOR_BIT) &&
+            att_state->fast_clear && full_surface_draw;
+
          assert(image->aspects == VK_IMAGE_ASPECT_COLOR_BIT);
          transition_color_buffer(cmd_buffer, image, VK_IMAGE_ASPECT_COLOR_BIT,
                                  level, 1, base_layer, layer_count,
-                                 att_state->current_layout, target_layout);
+                                 att_state->current_layout, target_layout,
+                                 will_full_fast_clear);
          att_state->aux_usage =
             anv_layout_to_aux_usage(&cmd_buffer->device->info, image,
                                     VK_IMAGE_ASPECT_COLOR_BIT,
@@ -5138,9 +5170,14 @@ cmd_buffer_begin_subpass(struct anv_cmd_buffer *cmd_buffer,
       }
 
       if (image->aspects & VK_IMAGE_ASPECT_DEPTH_BIT) {
+         bool will_full_fast_clear =
+            (att_state->pending_clear_aspects & VK_IMAGE_ASPECT_DEPTH_BIT) &&
+            att_state->fast_clear && full_surface_draw;
+
          transition_depth_buffer(cmd_buffer, image,
                                  base_layer, layer_count,
-                                 att_state->current_layout, target_layout);
+                                 att_state->current_layout, target_layout,
+                                 will_full_fast_clear);
          att_state->aux_usage =
             anv_layout_to_aux_usage(&cmd_buffer->device->info, image,
                                     VK_IMAGE_ASPECT_DEPTH_BIT,
@@ -5633,7 +5670,8 @@ cmd_buffer_end_subpass(struct anv_cmd_buffer *cmd_buffer)
                                  src_iview->planes[0].isl.base_array_layer,
                                  fb->layers,
                                  src_state->current_layout,
-                                 VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+                                 VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                                 false /* will_full_fast_clear */);
          src_state->aux_usage =
             anv_layout_to_aux_usage(&cmd_buffer->device->info, src_iview->image,
                                     VK_IMAGE_ASPECT_DEPTH_BIT,
@@ -5660,7 +5698,8 @@ cmd_buffer_end_subpass(struct anv_cmd_buffer *cmd_buffer)
                                  dst_iview->planes[0].isl.base_array_layer,
                                  fb->layers,
                                  dst_initial_layout,
-                                 VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+                                 VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                 false /* will_full_fast_clear */);
          dst_state->aux_usage =
             anv_layout_to_aux_usage(&cmd_buffer->device->info, dst_iview->image,
                                     VK_IMAGE_ASPECT_DEPTH_BIT,
@@ -5790,13 +5829,15 @@ cmd_buffer_end_subpass(struct anv_cmd_buffer *cmd_buffer)
          transition_color_buffer(cmd_buffer, image, VK_IMAGE_ASPECT_COLOR_BIT,
                                  iview->planes[0].isl.base_level, 1,
                                  base_layer, layer_count,
-                                 att_state->current_layout, target_layout);
+                                 att_state->current_layout, target_layout,
+                                 false /* will_full_fast_clear */);
       }
 
       if (image->aspects & VK_IMAGE_ASPECT_DEPTH_BIT) {
          transition_depth_buffer(cmd_buffer, image,
                                  base_layer, layer_count,
-                                 att_state->current_layout, target_layout);
+                                 att_state->current_layout, target_layout,
+                                 false /* will_full_fast_clear */);
       }
 
       if (image->aspects & VK_IMAGE_ASPECT_STENCIL_BIT) {
