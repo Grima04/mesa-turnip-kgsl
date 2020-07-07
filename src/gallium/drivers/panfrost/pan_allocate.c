@@ -85,11 +85,14 @@ panfrost_allocate_transient(struct panfrost_batch *batch, size_t sz)
                  * flags to this function and keep the read/write,
                  * fragment/vertex+tiler pools separate.
                  */
-                bo = panfrost_batch_create_bo(batch, bo_sz, 0,
-                                              PAN_BO_ACCESS_PRIVATE |
-                                              PAN_BO_ACCESS_RW |
-                                              PAN_BO_ACCESS_VERTEX_TILER |
-                                              PAN_BO_ACCESS_FRAGMENT);
+                bo = pan_bo_create(pan_device(batch->ctx->base.screen), bo_sz, 0);
+
+                uintptr_t flags = PAN_BO_ACCESS_PRIVATE |
+                                  PAN_BO_ACCESS_RW |
+                                  PAN_BO_ACCESS_VERTEX_TILER |
+                                  PAN_BO_ACCESS_FRAGMENT;
+
+                _mesa_hash_table_insert(batch->pool.bos, bo, (void *) flags);
 
                 if (sz < TRANSIENT_SLAB_SIZE) {
                         batch->pool.transient_bo = bo;
