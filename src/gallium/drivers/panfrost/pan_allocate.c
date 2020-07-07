@@ -39,6 +39,21 @@
  * into whereever we left off. If there isn't space, we allocate a new entry
  * into the pool and copy there */
 
+struct pan_pool
+panfrost_create_pool(void *memctx)
+{
+        struct pan_pool pool = {
+                .transient_offset = 0,
+                .transient_bo = NULL
+        };
+
+        pool.bos = _mesa_hash_table_create(memctx, _mesa_hash_pointer,
+                        _mesa_key_pointer_equal);
+
+
+        return pool;
+}
+
 struct panfrost_transfer
 panfrost_allocate_transient(struct panfrost_batch *batch, size_t sz)
 {
@@ -50,15 +65,15 @@ panfrost_allocate_transient(struct panfrost_batch *batch, size_t sz)
 
         unsigned offset = 0;
 
-        bool fits_in_current = (batch->transient_offset + sz) < TRANSIENT_SLAB_SIZE;
+        bool fits_in_current = (batch->pool.transient_offset + sz) < TRANSIENT_SLAB_SIZE;
 
-        if (likely(batch->transient_bo && fits_in_current)) {
+        if (likely(batch->pool.transient_bo && fits_in_current)) {
                 /* We can reuse the current BO, so get it */
-                bo = batch->transient_bo;
+                bo = batch->pool.transient_bo;
 
                 /* Use the specified offset */
-                offset = batch->transient_offset;
-                batch->transient_offset = offset + sz;
+                offset = batch->pool.transient_offset;
+                batch->pool.transient_offset = offset + sz;
         } else {
                 size_t bo_sz = sz < TRANSIENT_SLAB_SIZE ?
                                TRANSIENT_SLAB_SIZE : ALIGN_POT(sz, 4096);
@@ -77,8 +92,8 @@ panfrost_allocate_transient(struct panfrost_batch *batch, size_t sz)
                                               PAN_BO_ACCESS_FRAGMENT);
 
                 if (sz < TRANSIENT_SLAB_SIZE) {
-                        batch->transient_bo = bo;
-                        batch->transient_offset = offset + sz;
+                        batch->pool.transient_bo = bo;
+                        batch->pool.transient_offset = offset + sz;
                 }
         }
 

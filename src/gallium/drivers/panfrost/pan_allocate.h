@@ -35,6 +35,25 @@
 
 struct panfrost_batch;
 
+/* Represents a pool of memory that can only grow, used to allocate objects
+ * with the same lifetime as the pool itself. In OpenGL, a pool is owned by the
+ * batch for transient structures. In Vulkan, it may be owned by e.g. the
+ * command pool */
+
+struct pan_pool {
+        /* panfrost_bo -> access_flags owned by the pool */
+        struct hash_table *bos;
+
+        /* Current transient BO */
+        struct panfrost_bo *transient_bo;
+
+        /* Within the topmost transient BO, how much has been used? */
+        unsigned transient_offset;
+};
+
+struct pan_pool
+panfrost_create_pool(void *memctx);
+
 /* Represents a fat pointer for GPU-mapped memory, returned from the transient
  * allocator and not used for much else */
 

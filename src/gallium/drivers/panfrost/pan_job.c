@@ -109,14 +109,15 @@ panfrost_create_batch(struct panfrost_context *ctx,
         batch->ctx = ctx;
 
         batch->bos = _mesa_hash_table_create(batch, _mesa_hash_pointer,
-                                             _mesa_key_pointer_equal);
+                        _mesa_key_pointer_equal);
 
         batch->minx = batch->miny = ~0;
         batch->maxx = batch->maxy = 0;
-        batch->transient_offset = 0;
 
         batch->out_sync = panfrost_create_batch_fence(batch);
         util_copy_framebuffer_state(&batch->key, key);
+
+        batch->pool = panfrost_create_pool(batch);
 
         return batch;
 }
@@ -174,6 +175,9 @@ panfrost_free_batch(struct panfrost_batch *batch)
 #endif
 
         hash_table_foreach(batch->bos, entry)
+                panfrost_bo_unreference((struct panfrost_bo *)entry->key);
+
+        hash_table_foreach(batch->pool.bos, entry)
                 panfrost_bo_unreference((struct panfrost_bo *)entry->key);
 
         util_dynarray_foreach(&batch->dependencies,
@@ -892,6 +896,25 @@ panfrost_batch_draw_wallpaper(struct panfrost_batch *batch)
         batch->ctx->wallpaper_batch = NULL;
 }
 
+static void
+panfrost_batch_record_bo(struct hash_entry *entry, unsigned *bo_handles, unsigned idx)
+{
+        struct panfrost_bo *bo = (struct panfrost_bo *)entry->key;
+        uint32_t flags = (uintptr_t)entry->data;
+
+        assert(bo->gem_handle > 0);
+        bo_handles[idx] = bo->gem_handle;
+
+        /* Update the BO access flags so that panfrost_bo_wait() knows
+         * about all pending accesses.
+         * We only keep the READ/WRITE info since this is all the BO
+         * wait logic cares about.
+         * We also preserve existing flags as this batch might not
+         * be the first one to access the BO.
+         */
+        bo->gpu_access |= flags & (PAN_BO_ACCESS_RW);
+}
+
 static int
 panfrost_batch_submit_ioctl(struct panfrost_batch *batch,
                             mali_ptr first_job_desc,
@@ -935,25 +958,14 @@ panfrost_batch_submit_ioctl(struct panfrost_batch *batch,
         submit.jc = first_job_desc;
         submit.requirements = reqs;
 
-        bo_handles = calloc(batch->bos->entries, sizeof(*bo_handles));
+        bo_handles = calloc(batch->pool.bos->entries + batch->bos->entries, sizeof(*bo_handles));
         assert(bo_handles);
 
-        hash_table_foreach(batch->bos, entry) {
-                struct panfrost_bo *bo = (struct panfrost_bo *)entry->key;
-                uint32_t flags = (uintptr_t)entry->data;
+        hash_table_foreach(batch->bos, entry)
+                panfrost_batch_record_bo(entry, bo_handles, submit.bo_handle_count++);
 
-                assert(bo->gem_handle > 0);
-                bo_handles[submit.bo_handle_count++] = bo->gem_handle;
-
-                /* Update the BO access flags so that panfrost_bo_wait() knows
-                 * about all pending accesses.
-                 * We only keep the READ/WRITE info since this is all the BO
-                 * wait logic cares about.
-                 * We also preserve existing flags as this batch might not
-                 * be the first one to access the BO.
-                 */
-                bo->gpu_access |= flags & (PAN_BO_ACCESS_RW);
-        }
+        hash_table_foreach(batch->pool.bos, entry)
+                panfrost_batch_record_bo(entry, bo_handles, submit.bo_handle_count++);
 
         submit.bo_handles = (u64) (uintptr_t) bo_handles;
         ret = drmIoctl(dev->fd, DRM_IOCTL_PANFROST_SUBMIT, &submit);

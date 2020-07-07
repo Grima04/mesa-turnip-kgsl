@@ -115,14 +115,11 @@ struct panfrost_batch {
         /* The job index of the WRITE_VALUE job (before it has been created) */
         unsigned write_value_index;
 
-        /* BOs referenced -- will be used for flushing logic */
+        /* BOs referenced not in the pool */
         struct hash_table *bos;
 
-        /* Current transient BO */
-	struct panfrost_bo *transient_bo;
-
-        /* Within the topmost transient BO, how much has been used? */
-        unsigned transient_offset;
+        /* Pool owned by this batch (released when the batch is released) used for temporary descriptors */
+        struct pan_pool pool;
 
         /* Polygon list bound to the batch, or NULL if none bound yet */
         struct panfrost_bo *polygon_list;
