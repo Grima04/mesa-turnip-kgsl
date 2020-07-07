@@ -751,10 +751,10 @@ panfrost_batch_get_tiler_meta(struct panfrost_batch *batch, unsigned vertex_coun
             .flags = 0x0,
             .width = MALI_POSITIVE(batch->key.width),
             .height = MALI_POSITIVE(batch->key.height),
-            .tiler_heap_meta = panfrost_upload_transient(batch, &tiler_heap_meta, sizeof(tiler_heap_meta)),
+            .tiler_heap_meta = panfrost_pool_upload(&batch->pool, &tiler_heap_meta, sizeof(tiler_heap_meta)),
         };
 
-        batch->tiler_meta = panfrost_upload_transient(batch, &tiler_meta, sizeof(tiler_meta));
+        batch->tiler_meta = panfrost_pool_upload(&batch->pool, &tiler_meta, sizeof(tiler_meta));
         return batch->tiler_meta;
 }
 

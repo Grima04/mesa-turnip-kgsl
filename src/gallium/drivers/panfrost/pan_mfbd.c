@@ -400,7 +400,7 @@ panfrost_mfbd_upload(struct panfrost_batch *batch,
                 sizeof(struct mali_render_target) * 4;
 
         struct panfrost_transfer m_f_trans =
-                panfrost_allocate_transient(batch, total_sz);
+                panfrost_pool_alloc(&batch->pool, total_sz);
 
         /* Do the transfer */
 

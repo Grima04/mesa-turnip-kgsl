@@ -66,10 +66,9 @@ struct panfrost_transfer {
 };
 
 struct panfrost_transfer
-panfrost_allocate_transient(struct panfrost_batch *batch, size_t sz);
+panfrost_pool_alloc(struct pan_pool *pool, size_t sz);
 
 mali_ptr
-panfrost_upload_transient(struct panfrost_batch *batch, const void *data,
-                          size_t sz);
+panfrost_pool_upload(struct pan_pool *pool, const void *data, size_t sz);
 
 #endif /* __PAN_ALLOCATE_H__ */

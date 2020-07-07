@@ -56,7 +56,7 @@ panfrost_create_pool(void *memctx, struct panfrost_device *dev)
 }
 
 struct panfrost_transfer
-panfrost_allocate_transient(struct panfrost_batch *batch, size_t sz)
+panfrost_pool_alloc(struct pan_pool *pool, size_t sz)
 {
         /* Pad the size */
         sz = ALIGN_POT(sz, ALIGNMENT);
@@ -66,15 +66,15 @@ panfrost_allocate_transient(struct panfrost_batch *batch, size_t sz)
 
         unsigned offset = 0;
 
-        bool fits_in_current = (batch->pool.transient_offset + sz) < TRANSIENT_SLAB_SIZE;
+        bool fits_in_current = (pool->transient_offset + sz) < TRANSIENT_SLAB_SIZE;
 
-        if (likely(batch->pool.transient_bo && fits_in_current)) {
+        if (likely(pool->transient_bo && fits_in_current)) {
                 /* We can reuse the current BO, so get it */
-                bo = batch->pool.transient_bo;
+                bo = pool->transient_bo;
 
                 /* Use the specified offset */
-                offset = batch->pool.transient_offset;
-                batch->pool.transient_offset = offset + sz;
+                offset = pool->transient_offset;
+                pool->transient_offset = offset + sz;
         } else {
                 size_t bo_sz = sz < TRANSIENT_SLAB_SIZE ?
                                TRANSIENT_SLAB_SIZE : ALIGN_POT(sz, 4096);
@@ -86,18 +86,18 @@ panfrost_allocate_transient(struct panfrost_batch *batch, size_t sz)
                  * flags to this function and keep the read/write,
                  * fragment/vertex+tiler pools separate.
                  */
-                bo = pan_bo_create(batch->pool.dev, bo_sz, 0);
+                bo = pan_bo_create(pool->dev, bo_sz, 0);
 
                 uintptr_t flags = PAN_BO_ACCESS_PRIVATE |
                                   PAN_BO_ACCESS_RW |
                                   PAN_BO_ACCESS_VERTEX_TILER |
                                   PAN_BO_ACCESS_FRAGMENT;
 
-                _mesa_hash_table_insert(batch->pool.bos, bo, (void *) flags);
+                _mesa_hash_table_insert(pool->bos, bo, (void *) flags);
 
                 if (sz < TRANSIENT_SLAB_SIZE) {
-                        batch->pool.transient_bo = bo;
-                        batch->pool.transient_offset = offset + sz;
+                        pool->transient_bo = bo;
+                        pool->transient_offset = offset + sz;
                 }
         }
 
@@ -111,10 +111,9 @@ panfrost_allocate_transient(struct panfrost_batch *batch, size_t sz)
 }
 
 mali_ptr
-panfrost_upload_transient(struct panfrost_batch *batch, const void *data,
-                          size_t sz)
+panfrost_pool_upload(struct pan_pool *pool, const void *data, size_t sz)
 {
-        struct panfrost_transfer transfer = panfrost_allocate_transient(batch, sz);
+        struct panfrost_transfer transfer = panfrost_pool_alloc(pool, sz);
         memcpy(transfer.cpu, data, sz);
         return transfer.gpu;
 }

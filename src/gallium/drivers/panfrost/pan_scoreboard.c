@@ -147,7 +147,7 @@ panfrost_new_job(
         if (inject)
                 job.next_job = batch->first_job;
 
-        struct panfrost_transfer transfer = panfrost_allocate_transient(batch, sizeof(job) + payload_size);
+        struct panfrost_transfer transfer = panfrost_pool_alloc(&batch->pool, sizeof(job) + payload_size);
         memcpy(transfer.cpu, &job, sizeof(job));
         memcpy(transfer.cpu + sizeof(job), payload, payload_size);
 
@@ -199,7 +199,7 @@ panfrost_scoreboard_initialize_tiler(struct panfrost_batch *batch)
                 .value_descriptor = MALI_WRITE_VALUE_ZERO,
         };
 
-        struct panfrost_transfer transfer = panfrost_allocate_transient(batch, sizeof(job) + sizeof(payload));
+        struct panfrost_transfer transfer = panfrost_pool_alloc(&batch->pool, sizeof(job) + sizeof(payload));
         memcpy(transfer.cpu, &job, sizeof(job));
         memcpy(transfer.cpu + sizeof(job), &payload, sizeof(payload));
 
