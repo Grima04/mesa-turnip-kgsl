@@ -814,8 +814,8 @@ tu6_emit_vpc(struct tu_cs *cs,
       ir3_find_output_regid(last_shader, VARYING_SLOT_POS);
    const uint32_t pointsize_regid =
       ir3_find_output_regid(last_shader, VARYING_SLOT_PSIZ);
-   const uint32_t layer_regid = gs ?
-      ir3_find_output_regid(gs, VARYING_SLOT_LAYER) : regid(63, 0);
+   const uint32_t layer_regid =
+      ir3_find_output_regid(last_shader, VARYING_SLOT_LAYER);
    uint32_t primitive_regid = gs ?
       ir3_find_sysval_regid(gs, SYSTEM_VALUE_PRIMITIVE_ID) : regid(63, 0);
    uint32_t flags_regid = gs ?
