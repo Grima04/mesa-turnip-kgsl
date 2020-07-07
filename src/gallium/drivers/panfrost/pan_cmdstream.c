@@ -28,7 +28,7 @@
 
 #include "panfrost-quirks.h"
 
-#include "pan_allocate.h"
+#include "pan_pool.h"
 #include "pan_bo.h"
 #include "pan_cmdstream.h"
 #include "pan_context.h"

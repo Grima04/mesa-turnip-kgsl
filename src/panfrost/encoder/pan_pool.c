@@ -23,14 +23,9 @@
  *
  */
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <assert.h>
-#include <panfrost-misc.h>
-#include <panfrost-job.h>
+#include "util/hash_table.h"
 #include "pan_bo.h"
-#include "pan_context.h"
+#include "pan_pool.h"
 
 /* TODO: What does this actually have to be? */
 #define ALIGNMENT 128

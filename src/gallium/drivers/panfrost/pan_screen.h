@@ -39,7 +39,7 @@
 
 #include <panfrost-misc.h>
 #include "pan_device.h"
-#include "pan_allocate.h"
+#include "pan_pool.h"
 
 struct panfrost_batch;
 struct panfrost_context;

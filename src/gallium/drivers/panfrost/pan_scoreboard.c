@@ -24,7 +24,7 @@
 
 #include "pan_context.h"
 #include "pan_job.h"
-#include "pan_allocate.h"
+#include "pan_pool.h"
 #include "panfrost-quirks.h"
 #include "util/bitset.h"
 

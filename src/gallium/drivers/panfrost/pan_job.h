@@ -28,7 +28,7 @@
 
 #include "util/u_dynarray.h"
 #include "pipe/p_state.h"
-#include "pan_allocate.h"
+#include "pan_pool.h"
 #include "pan_resource.h"
 
 /* panfrost_batch_fence is the out fence of a batch that users or other batches

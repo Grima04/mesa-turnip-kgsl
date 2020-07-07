@@ -22,18 +22,10 @@
  *
  */
 
-#ifndef __PAN_ALLOCATE_H__
-#define __PAN_ALLOCATE_H__
-
-#include <unistd.h>
-#include <sys/mman.h>
-#include <stdbool.h>
+#ifndef __PAN_POOL_H__
+#define __PAN_POOL_H__
 
 #include <panfrost-misc.h>
-
-#include "util/list.h"
-
-struct panfrost_batch;
 
 /* Represents a pool of memory that can only grow, used to allocate objects
  * with the same lifetime as the pool itself. In OpenGL, a pool is owned by the
@@ -71,4 +63,4 @@ panfrost_pool_alloc(struct pan_pool *pool, size_t sz);
 mali_ptr
 panfrost_pool_upload(struct pan_pool *pool, const void *data, size_t sz);
 
-#endif /* __PAN_ALLOCATE_H__ */
+#endif

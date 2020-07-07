@@ -29,6 +29,8 @@ encoder_FILES := \
         encoder/pan_encoder.h \
         encoder/pan_format.c \
         encoder/pan_invocation.c \
+        encoder/pan_pool.c \
+        encoder/pan_pool.h \
         encoder/pan_props.c \
         encoder/pan_sampler.c \
         encoder/pan_tiler.c \
