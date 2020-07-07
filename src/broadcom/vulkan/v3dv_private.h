@@ -1458,19 +1458,13 @@ struct v3dv_pipeline {
    uint32_t vb_count;
 
    /* Note that a lot of info from VkVertexInputAttributeDescription is
-    * already prepacked, so storing here only those that need recheck later
-    *
-    * Note that they are not indexed by the location or nir driver location,
-    * as we are defining here only the inputs that the shader are really
-    * using.
+    * already prepacked, so here we are only storing those that need recheck
+    * later. The array must be indexed by driver location, since that is the
+    * order in which we need to emit the attributes.
     */
    struct v3dv_pipeline_vertex_attrib {
       uint32_t binding;
       uint32_t offset;
-      /* We store driver_location instead of location because most v3d structs
-       * are indexed by driver_location
-       */
-      uint32_t driver_location;
       VkFormat vk_format;
    } va[MAX_VERTEX_ATTRIBS];
    uint32_t va_count;

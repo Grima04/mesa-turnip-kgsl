@@ -2562,12 +2562,12 @@ pipeline_init(struct v3dv_pipeline *pipeline,
       if (var != NULL) {
          unsigned driver_location = var->data.driver_location;
 
-         pipeline->va[pipeline->va_count].offset = desc->offset;
-         pipeline->va[pipeline->va_count].binding = desc->binding;
-         pipeline->va[pipeline->va_count].driver_location = driver_location;
-         pipeline->va[pipeline->va_count].vk_format = desc->format;
+         assert(driver_location < MAX_VERTEX_ATTRIBS);
+         pipeline->va[driver_location].offset = desc->offset;
+         pipeline->va[driver_location].binding = desc->binding;
+         pipeline->va[driver_location].vk_format = desc->format;
 
-         pack_shader_state_attribute_record(pipeline, pipeline->va_count, desc);
+         pack_shader_state_attribute_record(pipeline, driver_location, desc);
 
          pipeline->va_count++;
       }

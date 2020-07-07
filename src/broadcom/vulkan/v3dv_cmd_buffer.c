@@ -3443,9 +3443,19 @@ emit_gl_shader_state(struct v3dv_cmd_buffer *cmd_buffer)
    const uint32_t packet_length =
       cl_packet_length(GL_SHADER_STATE_ATTRIBUTE_RECORD);
 
-   for (uint32_t i = 0; i < pipeline->va_count; i++) {
-      uint32_t binding = pipeline->va[i].binding;
-      uint32_t location = pipeline->va[i].driver_location;
+   uint32_t emitted_va_count = 0;
+   for (uint32_t i = 0; emitted_va_count < pipeline->va_count; i++) {
+      assert(i < MAX_VERTEX_ATTRIBS);
+
+      if (pipeline->va[i].vk_format == VK_FORMAT_UNDEFINED)
+         continue;
+
+      const uint32_t binding = pipeline->va[i].binding;
+
+      /* We store each vertex attribute in the array using its driver location
+       * as index.
+       */
+      const uint32_t location = i;
 
       struct v3dv_vertex_binding *c_vb = &cmd_buffer->state.vertex_bindings[binding];
 
@@ -3484,6 +3494,8 @@ emit_gl_shader_state(struct v3dv_cmd_buffer *cmd_buffer)
 
          attr.maximum_index = 0xffffff;
       }
+
+      emitted_va_count++;
    }
 
    if (pipeline->va_count == 0) {
