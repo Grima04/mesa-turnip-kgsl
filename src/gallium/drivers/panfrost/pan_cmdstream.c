@@ -2164,7 +2164,7 @@ panfrost_emit_vertex_tiler_jobs(struct panfrost_batch *batch,
 {
         struct panfrost_context *ctx = batch->ctx;
         struct panfrost_device *device = pan_device(ctx->base.screen);
-        bool wallpapering = ctx->wallpaper_batch && batch->tiler_dep;
+        bool wallpapering = ctx->wallpaper_batch && batch->scoreboard.tiler_dep;
         struct bifrost_payload_vertex bifrost_vertex = {0,};
         struct bifrost_payload_tiler bifrost_tiler = {0,};
         struct midgard_payload_vertex_tiler midgard_vertex = {0,};
@@ -2201,7 +2201,7 @@ panfrost_emit_vertex_tiler_jobs(struct panfrost_batch *batch,
                 /* Inject in reverse order, with "predicted" job indices.
                  * THIS IS A HACK XXX */
                 panfrost_new_job(batch, JOB_TYPE_TILER, false,
-                                 batch->job_index + 2, tp, tp_size, true);
+                                 batch->scoreboard.job_index + 2, tp, tp_size, true);
                 panfrost_new_job(batch, JOB_TYPE_VERTEX, false, 0,
                                  vp, vp_size, true);
                 return;

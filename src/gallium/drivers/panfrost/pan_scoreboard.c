@@ -124,16 +124,16 @@ panfrost_new_job(
                  * job must depend on the write value job, whose index we
                  * reserve now */
 
-                if (batch->tiler_dep)
-                        global_dep = batch->tiler_dep;
+                if (batch->scoreboard.tiler_dep)
+                        global_dep = batch->scoreboard.tiler_dep;
                 else if (!(dev->quirks & IS_BIFROST)) {
-                        batch->write_value_index = ++batch->job_index;
-                        global_dep = batch->write_value_index;
+                        batch->scoreboard.write_value_index = ++batch->scoreboard.job_index;
+                        global_dep = batch->scoreboard.write_value_index;
                 }
         }
 
         /* Assign the index */
-        unsigned index = ++batch->job_index;
+        unsigned index = ++batch->scoreboard.job_index;
 
         struct mali_job_descriptor_header job = {
                 .job_descriptor_size = 1,
@@ -145,27 +145,27 @@ panfrost_new_job(
         };
 
         if (inject)
-                job.next_job = batch->first_job;
+                job.next_job = batch->scoreboard.first_job;
 
         struct panfrost_transfer transfer = panfrost_pool_alloc(&batch->pool, sizeof(job) + payload_size);
         memcpy(transfer.cpu, &job, sizeof(job));
         memcpy(transfer.cpu + sizeof(job), payload, payload_size);
 
         if (inject) {
-                batch->first_job = transfer.gpu;
+                batch->scoreboard.first_job = transfer.gpu;
                 return index;
         }
 
         /* Form a chain */
         if (type == JOB_TYPE_TILER)
-                batch->tiler_dep = index;
+                batch->scoreboard.tiler_dep = index;
 
-        if (batch->prev_job)
-                batch->prev_job->next_job = transfer.gpu;
+        if (batch->scoreboard.prev_job)
+                batch->scoreboard.prev_job->next_job = transfer.gpu;
         else
-                batch->first_job = transfer.gpu;
+                batch->scoreboard.first_job = transfer.gpu;
 
-        batch->prev_job = (struct mali_job_descriptor_header *) transfer.cpu;
+        batch->scoreboard.prev_job = (struct mali_job_descriptor_header *) transfer.cpu;
         return index;
 }
 
@@ -178,7 +178,7 @@ panfrost_scoreboard_initialize_tiler(struct panfrost_batch *batch)
         struct panfrost_device *dev = pan_device(batch->ctx->base.screen);
 
         /* Check if we even need tiling */
-        if (dev->quirks & IS_BIFROST || !batch->tiler_dep)
+        if (dev->quirks & IS_BIFROST || !batch->scoreboard.tiler_dep)
                 return;
 
         /* Okay, we do. Let's generate it. We'll need the job's polygon list
@@ -189,9 +189,9 @@ panfrost_scoreboard_initialize_tiler(struct panfrost_batch *batch)
 
         struct mali_job_descriptor_header job = {
                 .job_type = JOB_TYPE_WRITE_VALUE,
-                .job_index = batch->write_value_index,
+                .job_index = batch->scoreboard.write_value_index,
                 .job_descriptor_size = 1,
-                .next_job = batch->first_job
+                .next_job = batch->scoreboard.first_job
         };
 
         struct mali_payload_write_value payload = {
@@ -203,5 +203,5 @@ panfrost_scoreboard_initialize_tiler(struct panfrost_batch *batch)
         memcpy(transfer.cpu, &job, sizeof(job));
         memcpy(transfer.cpu + sizeof(job), &payload, sizeof(payload));
 
-        batch->first_job = transfer.gpu;
+        batch->scoreboard.first_job = transfer.gpu;
 }

@@ -30,6 +30,7 @@
 #include "pipe/p_state.h"
 #include "pan_pool.h"
 #include "pan_resource.h"
+#include "pan_scoreboard.h"
 
 /* panfrost_batch_fence is the out fence of a batch that users or other batches
  * might want to wait on. The batch fence lifetime is different from the batch
@@ -99,27 +100,14 @@ struct panfrost_batch {
         unsigned minx, miny;
         unsigned maxx, maxy;
 
-        /* The first job in the batch */
-        mali_ptr first_job;
-
-        /* The number of jobs in the primary batch, essentially */
-        unsigned job_index;
-
-        /* A CPU-side pointer to the previous job for next_job linking */
-        struct mali_job_descriptor_header *prev_job;
-
-        /* The dependency for tiler jobs (i.e. the index of the last emitted
-         * tiler job, or zero if none have been emitted) */
-        unsigned tiler_dep;
-
-        /* The job index of the WRITE_VALUE job (before it has been created) */
-        unsigned write_value_index;
-
         /* BOs referenced not in the pool */
         struct hash_table *bos;
 
         /* Pool owned by this batch (released when the batch is released) used for temporary descriptors */
         struct pan_pool pool;
+
+        /* Job scoreboarding state */
+        struct pan_scoreboard scoreboard;
 
         /* Polygon list bound to the batch, or NULL if none bound yet */
         struct panfrost_bo *polygon_list;
@@ -223,19 +211,6 @@ void
 panfrost_batch_intersection_scissor(struct panfrost_batch *batch,
                                     unsigned minx, unsigned miny,
                                     unsigned maxx, unsigned maxy);
-
-/* Scoreboarding */
-
-unsigned
-panfrost_new_job(
-                struct panfrost_batch *batch,
-                enum mali_job_type type,
-                bool barrier,
-                unsigned local_dep,
-                void *payload, size_t payload_size,
-                bool inject);
-
-void panfrost_scoreboard_initialize_tiler(struct panfrost_batch *batch);
 
 bool
 panfrost_batch_is_scanout(struct panfrost_batch *batch);

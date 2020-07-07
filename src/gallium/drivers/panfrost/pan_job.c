@@ -311,7 +311,7 @@ panfrost_get_fresh_batch_for_fbo(struct panfrost_context *ctx)
          * Note that it's perfectly fine to re-use a batch with an
          * existing clear, we'll just update it with the new clear request.
          */
-        if (!batch->first_job)
+        if (!batch->scoreboard.first_job)
                 return batch;
 
         /* Otherwise, we need to freeze the existing one and instantiate a new
@@ -797,7 +797,7 @@ panfrost_batch_draw_wallpaper(struct panfrost_batch *batch)
         /* No draw calls, and no clear on the depth/stencil bufs.
          * Drawing the wallpaper would be useless.
          */
-        if (!batch->tiler_dep &&
+        if (!batch->scoreboard.tiler_dep &&
             !(batch->clear & PIPE_CLEAR_DEPTHSTENCIL))
                 return;
 
@@ -928,7 +928,7 @@ panfrost_batch_submit_ioctl(struct panfrost_batch *batch,
         bool is_fragment_shader;
         int ret;
 
-        is_fragment_shader = (reqs & PANFROST_JD_REQ_FS) && batch->first_job;
+        is_fragment_shader = (reqs & PANFROST_JD_REQ_FS) && batch->scoreboard.first_job;
         if (is_fragment_shader)
                 submit.in_sync_count = 1;
         else
@@ -996,15 +996,15 @@ panfrost_batch_submit_ioctl(struct panfrost_batch *batch,
 static int
 panfrost_batch_submit_jobs(struct panfrost_batch *batch)
 {
-        bool has_draws = batch->first_job;
+        bool has_draws = batch->scoreboard.first_job;
         int ret = 0;
 
         if (has_draws) {
-                ret = panfrost_batch_submit_ioctl(batch, batch->first_job, 0);
+                ret = panfrost_batch_submit_ioctl(batch, batch->scoreboard.first_job, 0);
                 assert(!ret);
         }
 
-        if (batch->tiler_dep || batch->clear) {
+        if (batch->scoreboard.tiler_dep || batch->clear) {
                 mali_ptr fragjob = panfrost_fragment_job(batch, has_draws);
                 ret = panfrost_batch_submit_ioctl(batch, fragjob, PANFROST_JD_REQ_FS);
                 assert(!ret);
@@ -1029,7 +1029,7 @@ panfrost_batch_submit(struct panfrost_batch *batch)
         int ret;
 
         /* Nothing to do! */
-        if (!batch->first_job && !batch->clear) {
+        if (!batch->scoreboard.first_job && !batch->clear) {
                 /* Mark the fence as signaled so the fence logic does not try
                  * to wait on it.
                  */
@@ -1042,7 +1042,7 @@ panfrost_batch_submit(struct panfrost_batch *batch)
         /* Now that all draws are in, we can finally prepare the
          * FBD for the batch */
 
-        if (batch->framebuffer.gpu && batch->first_job) {
+        if (batch->framebuffer.gpu && batch->scoreboard.first_job) {
                 struct panfrost_context *ctx = batch->ctx;
                 struct pipe_context *gallium = (struct pipe_context *) ctx;
                 struct panfrost_device *dev = pan_device(gallium->screen);
