@@ -32,6 +32,13 @@ stages:
   - virgl
   - success
 
+# Generic rule to not run the job during scheduled pipelines
+# ----------------------------------------------------------
+.scheduled_pipelines-rules:
+  rules: &ignore_scheduled_pipelines
+    if: '$CI_PIPELINE_SOURCE == "schedule"'
+    when: never
+
 .docs-base:
   extends: .ci-run-policy
   image: alpine
@@ -47,6 +54,7 @@ pages:
     paths:
     - public
   rules:
+    - *ignore_scheduled_pipelines
     - if: '$CI_PROJECT_NAMESPACE == "mesa" && $CI_COMMIT_REF_NAME == "master"'
       changes: &docs-or-ci
       - docs/**/*
@@ -58,6 +66,7 @@ test-docs:
   extends: .docs-base
   stage: container+docs
   rules:
+    - *ignore_scheduled_pipelines
     - if: '$CI_PROJECT_NAMESPACE == "mesa"'
       when: never
     - if: '$GITLAB_USER_LOGIN == "marge-bot"'
@@ -70,6 +79,7 @@ test-docs:
 # When to automatically run the CI
 .ci-run-policy:
   rules:
+    - *ignore_scheduled_pipelines
     # If any files affecting the pipeline are changed, build/test jobs run
     # automatically once all dependency jobs have passed
     - changes: &all_paths
@@ -106,6 +116,7 @@ success:
   stage: success
   image: debian:stable-slim
   rules:
+    - *ignore_scheduled_pipelines
     - if: '$CI_PROJECT_NAMESPACE == "mesa"'
       when: never
     - if: '$GITLAB_USER_LOGIN == "marge-bot"'
@@ -152,6 +163,7 @@ success:
   extends:
     - .ci-run-policy
   rules:
+    - *ignore_scheduled_pipelines
     # Run pipeline by default in the main project if any CI pipeline
     # configuration files were changed, to ensure docker images are up to date
     - if: '$CI_PROJECT_PATH == "mesa/mesa"'
@@ -399,8 +411,9 @@ arm64_test:
 git_archive:
   extends: .fdo.container-build@alpine
   stage: container+docs
-  only:
-    - schedules
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+      when: always
   variables:
     FDO_REPO_SUFFIX: &git-archive-suffix "alpine/git_archive"
     FDO_DISTRIBUTION_EXEC: 'pip3 install git+http://gitlab.freedesktop.org/freedesktop/ci-templates@6f5af7e5574509726c79109e3c147cee95e81366'
@@ -415,8 +428,9 @@ git_archive:
 make git archive:
   stage: git-archive
   extends: .fdo.suffixed-image@alpine
-  only:
-    - schedules
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+      when: on_success
   # ensure we are running on packet
   tags:
     - packet.net
@@ -986,6 +1000,7 @@ virgl-gl32-on-gl:
 # to).
 .test-manual:
   rules:
+    - *ignore_scheduled_pipelines
     - if: '$CI_PROJECT_PATH != "mesa/mesa" && $CI_MERGE_REQUEST_SOURCE_BRANCH_NAME != $CI_COMMIT_REF_NAME'
       changes:
         *all_paths

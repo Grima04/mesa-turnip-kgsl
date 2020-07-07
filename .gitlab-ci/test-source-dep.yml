@@ -39,9 +39,17 @@
       - src/gallium/tests/**/*
       - src/gallium/winsys/*
 
+# Generic rule to not run the job during scheduled pipelines
+# ----------------------------------------------------------
+.scheduled_pipelines-rules:
+  rules: &ignore_scheduled_pipelines
+    if: '$CI_PIPELINE_SOURCE == "schedule"'
+    when: never
+
 .softpipe-rules:
   stage: softpipe
   rules:
+    - *ignore_scheduled_pipelines
     - changes:
         *mesa_core_file_list
       when: on_success
@@ -57,6 +65,7 @@
 .llvmpipe-rules:
   stage: llvmpipe
   rules:
+    - *ignore_scheduled_pipelines
     - changes:
         *mesa_core_file_list
       when: on_success
@@ -72,6 +81,7 @@
 .freedreno-rules:
   stage: freedreno
   rules:
+    - *ignore_scheduled_pipelines
     - changes:
         *mesa_core_file_list
       when: on_success
@@ -88,6 +98,7 @@
 .panfrost-rules:
   stage: panfrost
   rules:
+    - *ignore_scheduled_pipelines
     - changes:
         *mesa_core_file_list
       when: on_success
@@ -104,6 +115,7 @@
 .lima-rules:
   stage: lima
   rules:
+    - *ignore_scheduled_pipelines
     - changes:
         *mesa_core_file_list
       when: on_success
@@ -119,6 +131,7 @@
 
 .radv-rules:
   rules:
+    - *ignore_scheduled_pipelines
     - changes:
         *mesa_core_file_list
       when: on_success
@@ -131,6 +144,7 @@
 .virgl-rules:
   stage: virgl
   rules:
+    - *ignore_scheduled_pipelines
     - changes:
         *mesa_core_file_list
       when: on_success
