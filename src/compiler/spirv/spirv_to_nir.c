@@ -4441,14 +4441,7 @@ vtn_handle_execution_mode(struct vtn_builder *b, struct vtn_value *entry_point,
       b->shader->info.cs.local_size[2] = mode->operands[2];
       break;
 
-   case SpvExecutionModeLocalSizeId:
-      b->shader->info.cs.local_size[0] = vtn_constant_uint(b, mode->operands[0]);
-      b->shader->info.cs.local_size[1] = vtn_constant_uint(b, mode->operands[1]);
-      b->shader->info.cs.local_size[2] = vtn_constant_uint(b, mode->operands[2]);
-      break;
-
    case SpvExecutionModeLocalSizeHint:
-   case SpvExecutionModeLocalSizeHintId:
       break; /* Nothing to do with this */
 
    case SpvExecutionModeOutputVertices:
@@ -4578,8 +4571,60 @@ vtn_handle_execution_mode(struct vtn_builder *b, struct vtn_value *entry_point,
    case SpvExecutionModeDenormFlushToZero:
    case SpvExecutionModeSignedZeroInfNanPreserve:
    case SpvExecutionModeRoundingModeRTE:
-   case SpvExecutionModeRoundingModeRTZ:
-      /* Already handled in vtn_handle_rounding_mode_in_execution_mode() */
+   case SpvExecutionModeRoundingModeRTZ: {
+      unsigned execution_mode = 0;
+      switch (mode->exec_mode) {
+      case SpvExecutionModeDenormPreserve:
+         switch (mode->operands[0]) {
+         case 16: execution_mode = FLOAT_CONTROLS_DENORM_PRESERVE_FP16; break;
+         case 32: execution_mode = FLOAT_CONTROLS_DENORM_PRESERVE_FP32; break;
+         case 64: execution_mode = FLOAT_CONTROLS_DENORM_PRESERVE_FP64; break;
+         default: vtn_fail("Floating point type not supported");
+         }
+         break;
+      case SpvExecutionModeDenormFlushToZero:
+         switch (mode->operands[0]) {
+         case 16: execution_mode = FLOAT_CONTROLS_DENORM_FLUSH_TO_ZERO_FP16; break;
+         case 32: execution_mode = FLOAT_CONTROLS_DENORM_FLUSH_TO_ZERO_FP32; break;
+         case 64: execution_mode = FLOAT_CONTROLS_DENORM_FLUSH_TO_ZERO_FP64; break;
+         default: vtn_fail("Floating point type not supported");
+         }
+         break;
+      case SpvExecutionModeSignedZeroInfNanPreserve:
+         switch (mode->operands[0]) {
+         case 16: execution_mode = FLOAT_CONTROLS_SIGNED_ZERO_INF_NAN_PRESERVE_FP16; break;
+         case 32: execution_mode = FLOAT_CONTROLS_SIGNED_ZERO_INF_NAN_PRESERVE_FP32; break;
+         case 64: execution_mode = FLOAT_CONTROLS_SIGNED_ZERO_INF_NAN_PRESERVE_FP64; break;
+         default: vtn_fail("Floating point type not supported");
+         }
+         break;
+      case SpvExecutionModeRoundingModeRTE:
+         switch (mode->operands[0]) {
+         case 16: execution_mode = FLOAT_CONTROLS_ROUNDING_MODE_RTE_FP16; break;
+         case 32: execution_mode = FLOAT_CONTROLS_ROUNDING_MODE_RTE_FP32; break;
+         case 64: execution_mode = FLOAT_CONTROLS_ROUNDING_MODE_RTE_FP64; break;
+         default: vtn_fail("Floating point type not supported");
+         }
+         break;
+      case SpvExecutionModeRoundingModeRTZ:
+         switch (mode->operands[0]) {
+         case 16: execution_mode = FLOAT_CONTROLS_ROUNDING_MODE_RTZ_FP16; break;
+         case 32: execution_mode = FLOAT_CONTROLS_ROUNDING_MODE_RTZ_FP32; break;
+         case 64: execution_mode = FLOAT_CONTROLS_ROUNDING_MODE_RTZ_FP64; break;
+         default: vtn_fail("Floating point type not supported");
+         }
+         break;
+      default:
+         break;
+      }
+
+      b->shader->info.float_controls_execution_mode |= execution_mode;
+      break;
+   }
+
+   case SpvExecutionModeLocalSizeId:
+   case SpvExecutionModeLocalSizeHintId:
+      /* Handled later by vtn_handle_execution_mode_id(). */
       break;
 
    default:
@@ -4590,60 +4635,28 @@ vtn_handle_execution_mode(struct vtn_builder *b, struct vtn_value *entry_point,
 }
 
 static void
-vtn_handle_rounding_mode_in_execution_mode(struct vtn_builder *b, struct vtn_value *entry_point,
-                                           const struct vtn_decoration *mode, void *data)
+vtn_handle_execution_mode_id(struct vtn_builder *b, struct vtn_value *entry_point,
+                             const struct vtn_decoration *mode, UNUSED void *data)
 {
+
    vtn_assert(b->entry_point == entry_point);
 
-   unsigned execution_mode = 0;
+   switch (mode->exec_mode) {
+   case SpvExecutionModeLocalSizeId:
+      b->shader->info.cs.local_size[0] = vtn_constant_uint(b, mode->operands[0]);
+      b->shader->info.cs.local_size[1] = vtn_constant_uint(b, mode->operands[1]);
+      b->shader->info.cs.local_size[2] = vtn_constant_uint(b, mode->operands[2]);
+      break;
 
-   switch(mode->exec_mode) {
-   case SpvExecutionModeDenormPreserve:
-      switch (mode->operands[0]) {
-      case 16: execution_mode = FLOAT_CONTROLS_DENORM_PRESERVE_FP16; break;
-      case 32: execution_mode = FLOAT_CONTROLS_DENORM_PRESERVE_FP32; break;
-      case 64: execution_mode = FLOAT_CONTROLS_DENORM_PRESERVE_FP64; break;
-      default: vtn_fail("Floating point type not supported");
-      }
-      break;
-   case SpvExecutionModeDenormFlushToZero:
-      switch (mode->operands[0]) {
-      case 16: execution_mode = FLOAT_CONTROLS_DENORM_FLUSH_TO_ZERO_FP16; break;
-      case 32: execution_mode = FLOAT_CONTROLS_DENORM_FLUSH_TO_ZERO_FP32; break;
-      case 64: execution_mode = FLOAT_CONTROLS_DENORM_FLUSH_TO_ZERO_FP64; break;
-      default: vtn_fail("Floating point type not supported");
-      }
-       break;
-   case SpvExecutionModeSignedZeroInfNanPreserve:
-      switch (mode->operands[0]) {
-      case 16: execution_mode = FLOAT_CONTROLS_SIGNED_ZERO_INF_NAN_PRESERVE_FP16; break;
-      case 32: execution_mode = FLOAT_CONTROLS_SIGNED_ZERO_INF_NAN_PRESERVE_FP32; break;
-      case 64: execution_mode = FLOAT_CONTROLS_SIGNED_ZERO_INF_NAN_PRESERVE_FP64; break;
-      default: vtn_fail("Floating point type not supported");
-      }
-      break;
-   case SpvExecutionModeRoundingModeRTE:
-      switch (mode->operands[0]) {
-      case 16: execution_mode = FLOAT_CONTROLS_ROUNDING_MODE_RTE_FP16; break;
-      case 32: execution_mode = FLOAT_CONTROLS_ROUNDING_MODE_RTE_FP32; break;
-      case 64: execution_mode = FLOAT_CONTROLS_ROUNDING_MODE_RTE_FP64; break;
-      default: vtn_fail("Floating point type not supported");
-      }
-      break;
-   case SpvExecutionModeRoundingModeRTZ:
-      switch (mode->operands[0]) {
-      case 16: execution_mode = FLOAT_CONTROLS_ROUNDING_MODE_RTZ_FP16; break;
-      case 32: execution_mode = FLOAT_CONTROLS_ROUNDING_MODE_RTZ_FP32; break;
-      case 64: execution_mode = FLOAT_CONTROLS_ROUNDING_MODE_RTZ_FP64; break;
-      default: vtn_fail("Floating point type not supported");
-      }
+   case SpvExecutionModeLocalSizeHintId:
+      /* Nothing to do with this hint. */
       break;
 
    default:
+      /* Nothing to do.  Literal execution modes already handled by
+       * vtn_handle_execution_mode(). */
       break;
    }
-
-   b->shader->info.float_controls_execution_mode |= execution_mode;
 }
 
 static bool
@@ -5438,12 +5451,9 @@ spirv_to_nir(const uint32_t *words, size_t word_count,
    if (stage == MESA_SHADER_GEOMETRY)
       b->shader->info.gs.invocations = 1;
 
-   /* Parse rounding mode execution modes. This has to happen earlier than
-    * other changes in the execution modes since they can affect, for example,
-    * the result of the floating point constants.
-    */
+   /* Parse execution modes. */
    vtn_foreach_execution_mode(b, b->entry_point,
-                              vtn_handle_rounding_mode_in_execution_mode, NULL);
+                              vtn_handle_execution_mode, NULL);
 
    b->specializations = spec;
    b->num_specializations = num_spec;
@@ -5452,9 +5462,11 @@ spirv_to_nir(const uint32_t *words, size_t word_count,
    words = vtn_foreach_instruction(b, words, word_end,
                                    vtn_handle_variable_or_type_instruction);
 
-   /* Parse execution modes */
+   /* Parse execution modes that depend on IDs. Must happen after we have
+    * constants parsed.
+    */
    vtn_foreach_execution_mode(b, b->entry_point,
-                              vtn_handle_execution_mode, NULL);
+                              vtn_handle_execution_mode_id, NULL);
 
    if (b->workgroup_size_builtin) {
       vtn_assert(b->workgroup_size_builtin->type->type ==
