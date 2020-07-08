@@ -400,7 +400,7 @@ trim_constlens(unsigned *constlens,
       cur_total += constlens[i];
    }
 
-   unsigned max_stage;
+   unsigned max_stage = 0;
    unsigned max_const = 0;
    uint32_t trimmed = 0;
 
