@@ -84,7 +84,6 @@ struct radv_dsa_order_invariance {
 
 struct radv_tessellation_state {
 	uint32_t ls_hs_config;
-	unsigned num_patches;
 	unsigned lds_size;
 	uint32_t tf_param;
 };
@@ -2033,7 +2032,6 @@ calculate_tess_state(struct radv_pipeline *pipeline,
 	tess.ls_hs_config = S_028B58_NUM_PATCHES(num_patches) |
 		S_028B58_HS_NUM_INPUT_CP(num_tcs_input_cp) |
 		S_028B58_HS_NUM_OUTPUT_CP(num_tcs_output_cp);
-	tess.num_patches = num_patches;
 
 	struct radv_shader_variant *tes = radv_get_shader(pipeline, MESA_SHADER_TESS_EVAL);
 	unsigned type = 0, partitioning = 0, topology = 0, distribution_mode = 0;
@@ -4604,15 +4602,14 @@ radv_pipeline_generate_cliprect_rule(struct radeon_cmdbuf *ctx_cs,
 
 static void
 gfx10_pipeline_generate_ge_cntl(struct radeon_cmdbuf *ctx_cs,
-				struct radv_pipeline *pipeline,
-				const struct radv_tessellation_state *tess)
+				struct radv_pipeline *pipeline)
 {
 	bool break_wave_at_eoi = false;
 	unsigned primgroup_size;
 	unsigned vertgroup_size = 256; /* 256 = disable vertex grouping */
 
 	if (radv_pipeline_has_tess(pipeline)) {
-		primgroup_size = tess->num_patches; /* must be a multiple of NUM_PATCHES */
+		primgroup_size = pipeline->shaders[MESA_SHADER_TESS_CTRL]->info.tcs.num_patches;
 	} else if (radv_pipeline_has_gs(pipeline)) {
 		const struct gfx9_gs_info *gs_state =
 			&pipeline->shaders[MESA_SHADER_GEOMETRY]->info.gs_ring_info;
@@ -4667,7 +4664,7 @@ radv_pipeline_generate_pm4(struct radv_pipeline *pipeline,
 	radv_pipeline_generate_cliprect_rule(ctx_cs, pCreateInfo);
 
 	if (pipeline->device->physical_device->rad_info.chip_class >= GFX10 && !radv_pipeline_has_ngg(pipeline))
-		gfx10_pipeline_generate_ge_cntl(ctx_cs, pipeline, tess);
+		gfx10_pipeline_generate_ge_cntl(ctx_cs, pipeline);
 
 	radeon_set_context_reg(ctx_cs, R_028A6C_VGT_GS_OUT_PRIM_TYPE, gs_out);
 
@@ -4678,14 +4675,13 @@ radv_pipeline_generate_pm4(struct radv_pipeline *pipeline,
 }
 
 static struct radv_ia_multi_vgt_param_helpers
-radv_compute_ia_multi_vgt_param_helpers(struct radv_pipeline *pipeline,
-                                        const struct radv_tessellation_state *tess)
+radv_compute_ia_multi_vgt_param_helpers(struct radv_pipeline *pipeline)
 {
 	struct radv_ia_multi_vgt_param_helpers ia_multi_vgt_param = {0};
 	const struct radv_device *device = pipeline->device;
 
 	if (radv_pipeline_has_tess(pipeline))
-		ia_multi_vgt_param.primgroup_size = tess->num_patches;
+		ia_multi_vgt_param.primgroup_size = pipeline->shaders[MESA_SHADER_TESS_CTRL]->info.tcs.num_patches;
 	else if (radv_pipeline_has_gs(pipeline))
 		ia_multi_vgt_param.primgroup_size = 64;
 	else
@@ -4923,7 +4919,7 @@ radv_pipeline_init(struct radv_pipeline *pipeline,
 		tess = calculate_tess_state(pipeline, pCreateInfo);
 	}
 
-	pipeline->graphics.ia_multi_vgt_param = radv_compute_ia_multi_vgt_param_helpers(pipeline, &tess);
+	pipeline->graphics.ia_multi_vgt_param = radv_compute_ia_multi_vgt_param_helpers(pipeline);
 
 	radv_compute_vertex_input_state(pipeline, pCreateInfo);
 
