@@ -1707,6 +1707,14 @@ st_get_common_variant(struct st_context *st,
                finalize = true;
             }
 
+            if (key->lower_point_size) {
+               static const gl_state_index16 point_size_state[STATE_LENGTH] =
+                  { STATE_INTERNAL, STATE_POINT_SIZE_CLAMPED, 0 };
+               _mesa_add_state_reference(params, point_size_state);
+               NIR_PASS_V(state.ir.nir, nir_lower_point_size_mov,
+                          point_size_state);
+               finalize = true;
+            }
             state.stream_output = prog->state.stream_output;
 
             if (finalize || !st->allow_st_finalize_nir_twice) {
@@ -1930,6 +1938,7 @@ st_precompile_shader_variant(struct st_context *st,
       memset(&key, 0, sizeof(key));
 
       key.st = st->has_shareable_shaders ? NULL : st;
+
       st_get_common_variant(st, p, &key);
       break;
    }
