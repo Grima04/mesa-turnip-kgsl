@@ -25,6 +25,7 @@ import asyncio
 import datetime
 import os
 import pathlib
+import subprocess
 import sys
 import textwrap
 import typing
@@ -251,6 +252,10 @@ async def main() -> None:
             ))
         except:
             print(exceptions.text_error_template().render())
+
+    subprocess.run(['git', 'add', final])
+    subprocess.run(['git', 'commit', '-m',
+                    f'docs: add release notes for {this_version}'])
 
 
 if __name__ == "__main__":
