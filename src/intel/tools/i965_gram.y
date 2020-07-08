@@ -1561,7 +1561,7 @@ immreg:
 			$$.d64 = $1;
 			break;
 		default:
-			error(&@2, "Unkown immdediate type %s\n",
+			error(&@2, "Unknown immediate type %s\n",
 			      brw_reg_type_to_letters($2.type));
 		}
 	}
@@ -1756,7 +1756,7 @@ addrreg:
 		int subnr = (p->devinfo->gen >= 8) ? 16 : 8;
 
 		if ($2 > subnr)
-			error(&@2, "Address sub resgister number %d"
+			error(&@2, "Address sub register number %d"
 				   "out of range\n", $2);
 
 		$$.file = BRW_ARCHITECTURE_REGISTER_FILE;
