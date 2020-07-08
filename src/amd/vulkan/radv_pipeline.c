@@ -2957,7 +2957,6 @@ lower_bit_size_callback(const nir_alu_instr *alu, void *_)
 		unsigned bit_size = alu->dest.dest.ssa.bit_size;
 		switch (alu->op) {
 		case nir_op_iabs:
-		case nir_op_iand:
 		case nir_op_bitfield_select:
 		case nir_op_udiv:
 		case nir_op_idiv:
@@ -2966,11 +2965,8 @@ lower_bit_size_callback(const nir_alu_instr *alu, void *_)
 		case nir_op_imul_high:
 		case nir_op_umul_high:
 		case nir_op_ineg:
-		case nir_op_inot:
-		case nir_op_ior:
 		case nir_op_irem:
 		case nir_op_isign:
-		case nir_op_ixor:
 			return 32;
 		case nir_op_imax:
 		case nir_op_umax:
@@ -2979,10 +2975,7 @@ lower_bit_size_callback(const nir_alu_instr *alu, void *_)
 		case nir_op_ishr:
 		case nir_op_ushr:
 		case nir_op_ishl:
-		case nir_op_iadd:
 		case nir_op_uadd_sat:
-		case nir_op_isub:
-		case nir_op_imul:
 			return (bit_size == 8 ||
 			        !(chip >= GFX8 && nir_dest_is_divergent(alu->dest.dest))) ? 32 : 0;
 		default:
