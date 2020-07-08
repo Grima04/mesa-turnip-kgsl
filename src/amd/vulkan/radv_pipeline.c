@@ -3738,20 +3738,6 @@ radv_pipeline_generate_raster_state(struct radeon_cmdbuf *ctx_cs,
 	                       S_028810_DX_RASTERIZATION_KILL(vkraster->rasterizerDiscardEnable ? 1 : 0) |
 	                       S_028810_DX_LINEAR_ATTR_CLIP_ENA(1));
 
-	radeon_set_context_reg(ctx_cs, R_0286D4_SPI_INTERP_CONTROL_0,
-	                       S_0286D4_FLAT_SHADE_ENA(1) |
-	                       S_0286D4_PNT_SPRITE_ENA(1) |
-	                       S_0286D4_PNT_SPRITE_OVRD_X(V_0286D4_SPI_PNT_SPRITE_SEL_S) |
-	                       S_0286D4_PNT_SPRITE_OVRD_Y(V_0286D4_SPI_PNT_SPRITE_SEL_T) |
-	                       S_0286D4_PNT_SPRITE_OVRD_Z(V_0286D4_SPI_PNT_SPRITE_SEL_0) |
-	                       S_0286D4_PNT_SPRITE_OVRD_W(V_0286D4_SPI_PNT_SPRITE_SEL_1) |
-	                       S_0286D4_PNT_SPRITE_TOP_1(0)); /* vulkan is top to bottom - 1.0 at bottom */
-
-	radeon_set_context_reg(ctx_cs, R_028BE4_PA_SU_VTX_CNTL,
-	                       S_028BE4_PIX_CENTER(1) |
-	                       S_028BE4_ROUND_MODE(V_028BE4_X_ROUND_TO_EVEN) |
-	                       S_028BE4_QUANT_MODE(V_028BE4_X_16_8_FIXED_POINT_1_256TH));
-
 	pipeline->graphics.pa_su_sc_mode_cntl =
 		S_028814_FACE(vkraster->frontFace) |
 		S_028814_CULL_FRONT(!!(vkraster->cullMode & VK_CULL_MODE_FRONT_BIT)) |
@@ -3906,12 +3892,6 @@ radv_pipeline_generate_hw_vs(struct radeon_cmdbuf *ctx_cs,
 	                                                   V_02870C_SPI_SHADER_4COMP :
 	                                                   V_02870C_SPI_SHADER_NONE));
 
-	radeon_set_context_reg(ctx_cs, R_028818_PA_CL_VTE_CNTL,
-			       S_028818_VTX_W0_FMT(1) |
-			       S_028818_VPORT_X_SCALE_ENA(1) | S_028818_VPORT_X_OFFSET_ENA(1) |
-			       S_028818_VPORT_Y_SCALE_ENA(1) | S_028818_VPORT_Y_OFFSET_ENA(1) |
-			       S_028818_VPORT_Z_SCALE_ENA(1) | S_028818_VPORT_Z_OFFSET_ENA(1));
-
 	radeon_set_context_reg(ctx_cs, R_02881C_PA_CL_VS_OUT_CNTL,
 	                       S_02881C_USE_VTX_POINT_SIZE(outinfo->writes_pointsize) |
 	                       S_02881C_USE_VTX_RENDER_TARGET_INDX(outinfo->writes_layer) |
@@ -4027,11 +4007,6 @@ radv_pipeline_generate_hw_ngg(struct radeon_cmdbuf *ctx_cs,
 	                                                   V_02870C_SPI_SHADER_4COMP :
 	                                                   V_02870C_SPI_SHADER_NONE));
 
-	radeon_set_context_reg(ctx_cs, R_028818_PA_CL_VTE_CNTL,
-			       S_028818_VTX_W0_FMT(1) |
-			       S_028818_VPORT_X_SCALE_ENA(1) | S_028818_VPORT_X_OFFSET_ENA(1) |
-			       S_028818_VPORT_Y_SCALE_ENA(1) | S_028818_VPORT_Y_OFFSET_ENA(1) |
-			       S_028818_VPORT_Z_SCALE_ENA(1) | S_028818_VPORT_Z_OFFSET_ENA(1));
 	radeon_set_context_reg(ctx_cs, R_02881C_PA_CL_VS_OUT_CNTL,
 	                       S_02881C_USE_VTX_POINT_SIZE(outinfo->writes_pointsize) |
 	                       S_02881C_USE_VTX_RENDER_TARGET_INDX(outinfo->writes_layer) |

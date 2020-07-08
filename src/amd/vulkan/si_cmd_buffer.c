@@ -506,6 +506,26 @@ si_emit_graphics(struct radv_device *device,
 				       small_prim_filter_cntl);
 	}
 
+	radeon_set_context_reg(cs, R_0286D4_SPI_INTERP_CONTROL_0,
+	                       S_0286D4_FLAT_SHADE_ENA(1) |
+	                       S_0286D4_PNT_SPRITE_ENA(1) |
+	                       S_0286D4_PNT_SPRITE_OVRD_X(V_0286D4_SPI_PNT_SPRITE_SEL_S) |
+	                       S_0286D4_PNT_SPRITE_OVRD_Y(V_0286D4_SPI_PNT_SPRITE_SEL_T) |
+	                       S_0286D4_PNT_SPRITE_OVRD_Z(V_0286D4_SPI_PNT_SPRITE_SEL_0) |
+	                       S_0286D4_PNT_SPRITE_OVRD_W(V_0286D4_SPI_PNT_SPRITE_SEL_1) |
+	                       S_0286D4_PNT_SPRITE_TOP_1(0)); /* vulkan is top to bottom - 1.0 at bottom */
+
+	radeon_set_context_reg(cs, R_028BE4_PA_SU_VTX_CNTL,
+	                       S_028BE4_PIX_CENTER(1) |
+	                       S_028BE4_ROUND_MODE(V_028BE4_X_ROUND_TO_EVEN) |
+	                       S_028BE4_QUANT_MODE(V_028BE4_X_16_8_FIXED_POINT_1_256TH));
+
+	radeon_set_context_reg(cs, R_028818_PA_CL_VTE_CNTL,
+			       S_028818_VTX_W0_FMT(1) |
+			       S_028818_VPORT_X_SCALE_ENA(1) | S_028818_VPORT_X_OFFSET_ENA(1) |
+			       S_028818_VPORT_Y_SCALE_ENA(1) | S_028818_VPORT_Y_OFFSET_ENA(1) |
+			       S_028818_VPORT_Z_SCALE_ENA(1) | S_028818_VPORT_Z_OFFSET_ENA(1));
+
 	si_emit_compute(physical_device, cs);
 }
 
