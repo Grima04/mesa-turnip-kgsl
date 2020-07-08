@@ -1697,7 +1697,6 @@ struct radv_pipeline {
 			/* Used for rbplus */
 			uint32_t col_format;
 			uint32_t cb_target_mask;
-			bool is_dual_src;
 		} graphics;
 	};
 
