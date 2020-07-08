@@ -98,7 +98,10 @@ ir_validate::visit(ir_dereference_variable *ir)
       abort();
    }
 
-   if (ir->var->type != ir->type) {
+   /* Compare types without arrays, because one side can be sized and
+    * the other unsized.
+    */
+   if (ir->var->type->without_array() != ir->type->without_array()) {
       printf("ir_dereference_variable type is not equal to variable type: ");
       ir->print();
       printf("\n");
