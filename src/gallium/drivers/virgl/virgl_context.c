@@ -1017,7 +1017,8 @@ virgl_texture_barrier(struct pipe_context *ctx, unsigned flags)
    struct virgl_context *vctx = virgl_context(ctx);
    struct virgl_screen *rs = virgl_screen(ctx->screen);
 
-   if (!(rs->caps.caps.v2.capability_bits & VIRGL_CAP_TEXTURE_BARRIER))
+   if (!(rs->caps.caps.v2.capability_bits & VIRGL_CAP_TEXTURE_BARRIER) &&
+       !(rs->caps.caps.v2.capability_bits_v2 & VIRGL_CAP_V2_BLEND_EQUATION))
       return;
    virgl_encode_texture_barrier(vctx, flags);
 }
