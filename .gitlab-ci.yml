@@ -555,6 +555,7 @@ meson-gallium:
     EXTRA_OPTION: >
       -D osmesa=gallium
       -D tools=all
+      -D werror=true
   script:
     - .gitlab-ci/meson-build.sh
     - .gitlab-ci/run-shader-db.sh
