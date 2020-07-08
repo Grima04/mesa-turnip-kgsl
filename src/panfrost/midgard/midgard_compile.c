@@ -401,7 +401,12 @@ midgard_nir_lower_zs_store(nir_shader *nir)
 
                         combined_store->num_components = 4;
 
-                        nir_intrinsic_set_base(combined_store, 0);
+                        unsigned base;
+                        if (z_store)
+                                base = nir_intrinsic_base(z_store);
+                        else
+                                base = nir_intrinsic_base(s_store);
+                        nir_intrinsic_set_base(combined_store, base);
 
                         unsigned writeout = 0;
                         if (z_store)
