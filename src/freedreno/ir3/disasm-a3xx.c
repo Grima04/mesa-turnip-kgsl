@@ -681,7 +681,7 @@ static void print_instr_cat6_a3xx(struct disasm_ctx *ctx, instr_t *instr)
 	char sd = 0, ss = 0;  /* dst/src address space */
 	bool nodst = false;
 	struct reginfo dst, src1, src2, ssbo;
-	int src1off = 0, dstoff = 0;
+	int src1off = 0;
 
 	memset(&dst, 0, sizeof(dst));
 	memset(&src1, 0, sizeof(src1));
@@ -936,12 +936,6 @@ static void print_instr_cat6_a3xx(struct disasm_ctx *ctx, instr_t *instr)
 
 		return;
 	}
-	if (cat6->dst_off) {
-		dst.reg = (reg_t)(cat6->c.dst);
-		dstoff  = cat6->c.off;
-	} else {
-		dst.reg = (reg_t)(cat6->d.dst);
-	}
 
 	if (cat6->src_off) {
 		src1.reg = (reg_t)(cat6->a.src1);
@@ -960,16 +954,23 @@ static void print_instr_cat6_a3xx(struct disasm_ctx *ctx, instr_t *instr)
 		if (sd)
 			fprintf(ctx->out, "%c[", sd);
 		/* note: dst might actually be a src (ie. address to store to) */
-		print_src(ctx, &dst);
-		if (cat6->dst_off && cat6->g) {
-			struct reginfo dstoff_reg = {
-				.reg = (reg_t) cat6->c.off,
-				.full  = true
-			};
-			fprintf(ctx->out, "+");
-			print_src(ctx, &dstoff_reg);
-		} else if (dstoff)
-			fprintf(ctx->out, "%+d", dstoff);
+		if (cat6->dst_off) {
+			dst.reg = (reg_t)(cat6->c.dst);
+			print_src(ctx, &dst);
+			if (cat6->g) {
+				struct reginfo dstoff_reg = {
+					.reg = (reg_t) cat6->c.off,
+					.full  = true
+				};
+				fprintf(ctx->out, "+");
+				print_src(ctx, &dstoff_reg);
+			} else if (cat6->c.off) {
+				fprintf(ctx->out, "%+d", cat6->c.off);
+			}
+		} else {
+			dst.reg = (reg_t)(cat6->d.dst);
+			print_src(ctx, &dst);
+		}
 		if (sd)
 			fprintf(ctx->out, "]");
 		fprintf(ctx->out, ", ");
