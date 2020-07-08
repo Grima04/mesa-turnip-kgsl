@@ -5016,59 +5016,71 @@ VkResult radv_CreateGraphicsPipelines(
 	return result;
 }
 
+static void
+radv_pipeline_generate_hw_cs(struct radeon_cmdbuf *cs,
+			     struct radv_pipeline *pipeline)
+{
+	struct radv_shader_variant *shader = pipeline->shaders[MESA_SHADER_COMPUTE];
+	uint64_t va = radv_buffer_get_va(shader->bo) + shader->bo_offset;
+	struct radv_device *device = pipeline->device;
+
+	radeon_set_sh_reg_seq(cs, R_00B830_COMPUTE_PGM_LO, 2);
+	radeon_emit(cs, va >> 8);
+	radeon_emit(cs, S_00B834_DATA(va >> 40));
+
+	radeon_set_sh_reg_seq(cs, R_00B848_COMPUTE_PGM_RSRC1, 2);
+	radeon_emit(cs, shader->config.rsrc1);
+	radeon_emit(cs, shader->config.rsrc2);
+	if (device->physical_device->rad_info.chip_class >= GFX10) {
+		radeon_set_sh_reg(cs, R_00B8A0_COMPUTE_PGM_RSRC3, shader->config.rsrc3);
+	}
+}
 
 static void
-radv_compute_generate_pm4(struct radv_pipeline *pipeline)
+radv_pipeline_generate_compute_state(struct radeon_cmdbuf *cs,
+				     struct radv_pipeline *pipeline)
 {
-	struct radv_shader_variant *compute_shader;
+	struct radv_shader_variant *shader = pipeline->shaders[MESA_SHADER_COMPUTE];
 	struct radv_device *device = pipeline->device;
 	unsigned threads_per_threadgroup;
 	unsigned threadgroups_per_cu = 1;
 	unsigned waves_per_threadgroup;
 	unsigned max_waves_per_sh = 0;
-	uint64_t va;
-
-	pipeline->cs.max_dw = device->physical_device->rad_info.chip_class >= GFX10 ? 19 : 16;
-	pipeline->cs.buf = malloc(pipeline->cs.max_dw * 4);
-
-	compute_shader = pipeline->shaders[MESA_SHADER_COMPUTE];
-	va = radv_buffer_get_va(compute_shader->bo) + compute_shader->bo_offset;
-
-	radeon_set_sh_reg_seq(&pipeline->cs, R_00B830_COMPUTE_PGM_LO, 2);
-	radeon_emit(&pipeline->cs, va >> 8);
-	radeon_emit(&pipeline->cs, S_00B834_DATA(va >> 40));
-
-	radeon_set_sh_reg_seq(&pipeline->cs, R_00B848_COMPUTE_PGM_RSRC1, 2);
-	radeon_emit(&pipeline->cs, compute_shader->config.rsrc1);
-	radeon_emit(&pipeline->cs, compute_shader->config.rsrc2);
-	if (device->physical_device->rad_info.chip_class >= GFX10) {
-		radeon_set_sh_reg(&pipeline->cs, R_00B8A0_COMPUTE_PGM_RSRC3, compute_shader->config.rsrc3);
-	}
 
 	/* Calculate best compute resource limits. */
-	threads_per_threadgroup = compute_shader->info.cs.block_size[0] *
-				  compute_shader->info.cs.block_size[1] *
-				  compute_shader->info.cs.block_size[2];
+	threads_per_threadgroup = shader->info.cs.block_size[0] *
+				  shader->info.cs.block_size[1] *
+				  shader->info.cs.block_size[2];
 	waves_per_threadgroup = DIV_ROUND_UP(threads_per_threadgroup,
-					     compute_shader->info.wave_size);
+					     shader->info.wave_size);
 
 	if (device->physical_device->rad_info.chip_class >= GFX10 &&
 	    waves_per_threadgroup == 1)
 		threadgroups_per_cu = 2;
 
-	radeon_set_sh_reg(&pipeline->cs, R_00B854_COMPUTE_RESOURCE_LIMITS,
+	radeon_set_sh_reg(cs, R_00B854_COMPUTE_RESOURCE_LIMITS,
 			  ac_get_compute_resource_limits(&device->physical_device->rad_info,
 							 waves_per_threadgroup,
 							 max_waves_per_sh,
 							 threadgroups_per_cu));
 
-	radeon_set_sh_reg_seq(&pipeline->cs, R_00B81C_COMPUTE_NUM_THREAD_X, 3);
-	radeon_emit(&pipeline->cs,
-		    S_00B81C_NUM_THREAD_FULL(compute_shader->info.cs.block_size[0]));
-	radeon_emit(&pipeline->cs,
-		    S_00B81C_NUM_THREAD_FULL(compute_shader->info.cs.block_size[1]));
-	radeon_emit(&pipeline->cs,
-		    S_00B81C_NUM_THREAD_FULL(compute_shader->info.cs.block_size[2]));
+	radeon_set_sh_reg_seq(cs, R_00B81C_COMPUTE_NUM_THREAD_X, 3);
+	radeon_emit(cs, S_00B81C_NUM_THREAD_FULL(shader->info.cs.block_size[0]));
+	radeon_emit(cs, S_00B81C_NUM_THREAD_FULL(shader->info.cs.block_size[1]));
+	radeon_emit(cs, S_00B81C_NUM_THREAD_FULL(shader->info.cs.block_size[2]));
+}
+
+static void
+radv_compute_generate_pm4(struct radv_pipeline *pipeline)
+{
+	struct radv_device *device = pipeline->device;
+	struct radeon_cmdbuf *cs = &pipeline->cs;
+
+	cs->max_dw = device->physical_device->rad_info.chip_class >= GFX10 ? 19 : 16;
+	cs->buf = malloc(cs->max_dw * 4);
+
+	radv_pipeline_generate_hw_cs(cs, pipeline);
+	radv_pipeline_generate_compute_state(cs, pipeline);
 
 	assert(pipeline->cs.cdw <= pipeline->cs.max_dw);
 }
