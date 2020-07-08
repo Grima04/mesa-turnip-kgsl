@@ -4505,8 +4505,9 @@ radv_pipeline_generate_vgt_vertex_reuse(struct radeon_cmdbuf *ctx_cs,
 	                       S_028C58_VTX_REUSE_DEPTH(vtx_reuse_depth));
 }
 
-static uint32_t
-radv_compute_vgt_shader_stages_en(const struct radv_pipeline *pipeline)
+static void
+radv_pipeline_generate_vgt_shader_config(struct radeon_cmdbuf *ctx_cs,
+					 const struct radv_pipeline *pipeline)
 {
 	uint32_t stages = 0;
 	if (radv_pipeline_has_tess(pipeline)) {
@@ -4564,7 +4565,7 @@ radv_compute_vgt_shader_stages_en(const struct radv_pipeline *pipeline)
 			  S_028B54_VS_W32_EN(vs_size == 32 ? 1 : 0);
 	}
 
-	return stages;
+	radeon_set_context_reg(ctx_cs, R_028B54_VGT_SHADER_STAGES_EN, stages);
 }
 
 static uint32_t
@@ -4659,11 +4660,11 @@ radv_pipeline_generate_pm4(struct radv_pipeline *pipeline,
 	radv_pipeline_generate_ps_inputs(ctx_cs, pipeline);
 	radv_pipeline_generate_vgt_vertex_reuse(ctx_cs, pipeline);
 	radv_pipeline_generate_binning_state(ctx_cs, pipeline, pCreateInfo, blend);
+	radv_pipeline_generate_vgt_shader_config(ctx_cs, pipeline);
 
 	if (pipeline->device->physical_device->rad_info.chip_class >= GFX10 && !radv_pipeline_has_ngg(pipeline))
 		gfx10_pipeline_generate_ge_cntl(ctx_cs, pipeline, tess);
 
-	radeon_set_context_reg(ctx_cs, R_028B54_VGT_SHADER_STAGES_EN, radv_compute_vgt_shader_stages_en(pipeline));
 	radeon_set_context_reg(ctx_cs, R_028A6C_VGT_GS_OUT_PRIM_TYPE, gs_out);
 
 	radeon_set_context_reg(ctx_cs, R_02820C_PA_SC_CLIPRECT_RULE, radv_compute_cliprect_rule(pCreateInfo));
