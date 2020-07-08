@@ -2013,8 +2013,7 @@ region_wh:
 	;
 
 srctype:
-	%empty 	        { $$ = retype($$, BRW_REGISTER_TYPE_F); }
-	| TYPE_F 	{ $$ = retype($$, BRW_REGISTER_TYPE_F); }
+	  TYPE_F 	{ $$ = retype($$, BRW_REGISTER_TYPE_F); }
 	| TYPE_UD 	{ $$ = retype($$, BRW_REGISTER_TYPE_UD); }
 	| TYPE_D 	{ $$ = retype($$, BRW_REGISTER_TYPE_D); }
 	| TYPE_UW 	{ $$ = retype($$, BRW_REGISTER_TYPE_UW); }
