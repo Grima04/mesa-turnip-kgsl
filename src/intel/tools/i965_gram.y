@@ -321,6 +321,7 @@ i965_asm_set_dst_nr(struct brw_codegen *p,
 	int integer;
 	unsigned long long int llint;
 	struct brw_reg reg;
+	enum brw_reg_type reg_type;
 	struct brw_codegen *program;
 	struct predicate predicate;
 	struct condition condition;
@@ -469,7 +470,7 @@ i965_asm_set_dst_nr(struct brw_codegen *p,
 %type <reg> writemask
 
 /* dst operand */
-%type <reg> dst dstoperand dstoperandex dstoperandex_typed dstreg dsttype
+%type <reg> dst dstoperand dstoperandex dstoperandex_typed dstreg
 %type <integer> dstregion
 
 %type <integer> saturate relativelocation rellocation
@@ -477,8 +478,8 @@ i965_asm_set_dst_nr(struct brw_codegen *p,
 
 /* src operand */
 %type <reg> directsrcoperand directsrcaccoperand indirectsrcoperand srcacc
-%type <reg> srcarcoperandex srcaccimm srcarcoperandex_typed srctype srcimm
-%type <reg> srcimmtype indirectgenreg indirectregion
+%type <reg> srcarcoperandex srcaccimm srcarcoperandex_typed srcimm
+%type <reg> indirectgenreg indirectregion
 %type <reg> immreg src reg32 payload directgenreg_list addrparam region
 %type <reg> region_wh swizzle directgenreg directmsgreg indirectmsgreg
 
@@ -486,6 +487,9 @@ i965_asm_set_dst_nr(struct brw_codegen *p,
 %type <reg> accreg addrreg channelenablereg controlreg flagreg ipreg
 %type <reg> notifyreg nullreg performancereg threadcontrolreg statereg maskreg
 %type <integer> subregnum
+
+/* register types */
+%type <reg_type> reg_type imm_type
 
 /* immediate values */
 %type <llint> immval
@@ -1418,7 +1422,7 @@ dst:
 	;
 
 dstoperand:
-	dstreg dstregion writemask dsttype
+	dstreg dstregion writemask reg_type
 	{
 		$$ = $1;
 
@@ -1429,27 +1433,27 @@ dstoperand:
 		} else {
 			$$.hstride = $2;
 		}
-		$$.type = $4.type;
+		$$.type = $4;
 		$$.writemask = $3.writemask;
 		$$.swizzle = BRW_SWIZZLE_NOOP;
-		$$.subnr = $$.subnr * brw_reg_type_to_size($4.type);
+		$$.subnr = $$.subnr * brw_reg_type_to_size($4);
 	}
 	;
 
 dstoperandex:
-	dstoperandex_typed dstregion writemask dsttype
+	dstoperandex_typed dstregion writemask reg_type
 	{
 		$$ = $1;
 		$$.hstride = $2;
-		$$.type = $4.type;
+		$$.type = $4;
 		$$.writemask = $3.writemask;
-		$$.subnr = $$.subnr * brw_reg_type_to_size($4.type);
+		$$.subnr = $$.subnr * brw_reg_type_to_size($4);
 	}
 	/* BSpec says "When the conditional modifier is present, updates
 	 * to the selected flag register also occur. In this case, the
 	 * register region fields of the ‘null’ operand are valid."
 	 */
-	| nullreg dstregion writemask dsttype
+	| nullreg dstregion writemask reg_type
 	{
 		$$ = $1;
 		if ($2 == -1) {
@@ -1460,7 +1464,7 @@ dstoperandex:
 			$$.hstride = $2;
 		}
 		$$.writemask = $3.writemask;
-		$$.type = $4.type;
+		$$.type = $4;
 	}
 	| threadcontrolreg
 	{
@@ -1512,11 +1516,11 @@ srcaccimm:
 	;
 
 immreg:
-	immval srcimmtype
+	immval imm_type
 	{
 		uint32_t u32;
 		uint64_t u64;
-		switch ($2.type) {
+		switch ($2) {
 		case BRW_REGISTER_TYPE_UD:
 			u32 = $1;
 			$$ = brw_imm_ud(u32);
@@ -1561,15 +1565,15 @@ immreg:
 			break;
 		default:
 			error(&@2, "Unknown immediate type %s\n",
-			      brw_reg_type_to_letters($2.type));
+			      brw_reg_type_to_letters($2));
 		}
 	}
 	;
 
 reg32:
-	directgenreg region srctype
+	directgenreg region reg_type
 	{
-		$$ = set_direct_src_operand(&$1, $3.type);
+		$$ = set_direct_src_operand(&$1, $3);
 		$$ = stride($$, $2.vstride, $2.width, $2.hstride);
 	}
 	;
@@ -1596,9 +1600,9 @@ srcimm:
 
 directsrcaccoperand:
 	directsrcoperand
-	| accreg region srctype
+	| accreg region reg_type
 	{
-		$$ = set_direct_src_operand(&$1, $3.type);
+		$$ = set_direct_src_operand(&$1, $3);
 		$$.vstride = $2.vstride;
 		$$.width = $2.width;
 		$$.hstride = $2.hstride;
@@ -1606,23 +1610,23 @@ directsrcaccoperand:
 	;
 
 srcarcoperandex:
-	srcarcoperandex_typed region srctype
+	srcarcoperandex_typed region reg_type
 	{
 		$$ = brw_reg($1.file,
 			     $1.nr,
 			     $1.subnr,
 			     0,
 			     0,
-			     $3.type,
+			     $3,
 			     $2.vstride,
 			     $2.width,
 			     $2.hstride,
 			     BRW_SWIZZLE_NOOP,
 			     WRITEMASK_XYZW);
 	}
-	| nullreg region srctype
+	| nullreg region reg_type
 	{
-		$$ = set_direct_src_operand(&$1, $3.type);
+		$$ = set_direct_src_operand(&$1, $3);
 		$$.vstride = $2.vstride;
 		$$.width = $2.width;
 		$$.hstride = $2.hstride;
@@ -1643,14 +1647,14 @@ srcarcoperandex_typed:
 	;
 
 indirectsrcoperand:
-	negate abs indirectgenreg indirectregion swizzle srctype
+	negate abs indirectgenreg indirectregion swizzle reg_type
 	{
 		$$ = brw_reg($3.file,
 			     0,
 			     $3.subnr,
 			     $1,  // negate
 			     $2,  // abs
-			     $6.type,
+			     $6,
 			     $4.vstride,
 			     $4.width,
 			     $4.hstride,
@@ -1672,14 +1676,14 @@ directgenreg_list:
 	;
 
 directsrcoperand:
-	negate abs directgenreg_list region swizzle srctype
+	negate abs directgenreg_list region swizzle reg_type
 	{
 		$$ = brw_reg($3.file,
 			     $3.nr,
 			     $3.subnr,
 			     $1,
 			     $2,
-			     $6.type,
+			     $6,
 			     $4.vstride,
 			     $4.width,
 			     $4.hstride,
@@ -2012,30 +2016,26 @@ region_wh:
 	}
 	;
 
-srctype:
-	  TYPE_F 	{ $$ = retype($$, BRW_REGISTER_TYPE_F); }
-	| TYPE_UD 	{ $$ = retype($$, BRW_REGISTER_TYPE_UD); }
-	| TYPE_D 	{ $$ = retype($$, BRW_REGISTER_TYPE_D); }
-	| TYPE_UW 	{ $$ = retype($$, BRW_REGISTER_TYPE_UW); }
-	| TYPE_W 	{ $$ = retype($$, BRW_REGISTER_TYPE_W); }
-	| TYPE_UB 	{ $$ = retype($$, BRW_REGISTER_TYPE_UB); }
-	| TYPE_B 	{ $$ = retype($$, BRW_REGISTER_TYPE_B); }
-	| TYPE_DF 	{ $$ = retype($$, BRW_REGISTER_TYPE_DF); }
-	| TYPE_UQ 	{ $$ = retype($$, BRW_REGISTER_TYPE_UQ); }
-	| TYPE_Q 	{ $$ = retype($$, BRW_REGISTER_TYPE_Q); }
-	| TYPE_HF 	{ $$ = retype($$, BRW_REGISTER_TYPE_HF); }
-	| TYPE_NF 	{ $$ = retype($$, BRW_REGISTER_TYPE_NF); }
+reg_type:
+	  TYPE_F 	{ $$ = BRW_REGISTER_TYPE_F;  }
+	| TYPE_UD 	{ $$ = BRW_REGISTER_TYPE_UD; }
+	| TYPE_D 	{ $$ = BRW_REGISTER_TYPE_D;  }
+	| TYPE_UW 	{ $$ = BRW_REGISTER_TYPE_UW; }
+	| TYPE_W 	{ $$ = BRW_REGISTER_TYPE_W;  }
+	| TYPE_UB 	{ $$ = BRW_REGISTER_TYPE_UB; }
+	| TYPE_B 	{ $$ = BRW_REGISTER_TYPE_B;  }
+	| TYPE_DF 	{ $$ = BRW_REGISTER_TYPE_DF; }
+	| TYPE_UQ 	{ $$ = BRW_REGISTER_TYPE_UQ; }
+	| TYPE_Q 	{ $$ = BRW_REGISTER_TYPE_Q;  }
+	| TYPE_HF 	{ $$ = BRW_REGISTER_TYPE_HF; }
+	| TYPE_NF 	{ $$ = BRW_REGISTER_TYPE_NF; }
 	;
 
-srcimmtype:
-	srctype 	{ $$ = $1; }
-	| TYPE_V 	{ $$ = retype($$, BRW_REGISTER_TYPE_V); }
-	| TYPE_VF 	{ $$ = retype($$, BRW_REGISTER_TYPE_VF); }
-	| TYPE_UV 	{ $$ = retype($$, BRW_REGISTER_TYPE_UV); }
-	;
-
-dsttype:
-	srctype 	{ $$ = $1; }
+imm_type:
+	reg_type 	{ $$ = $1; }
+	| TYPE_V 	{ $$ = BRW_REGISTER_TYPE_V;  }
+	| TYPE_VF 	{ $$ = BRW_REGISTER_TYPE_VF; }
+	| TYPE_UV 	{ $$ = BRW_REGISTER_TYPE_UV; }
 	;
 
 writemask:
