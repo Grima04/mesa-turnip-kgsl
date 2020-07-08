@@ -197,6 +197,7 @@ static bool ppir_do_one_node_to_instr(ppir_block *block, ppir_node *node)
             return false;
          break;
       }
+      break;
    }
    case ppir_node_type_discard:
       if (!create_new_instr(block, node))
