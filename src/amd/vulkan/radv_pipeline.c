@@ -2950,29 +2950,61 @@ mem_vectorize_callback(unsigned align_mul, unsigned align_offset,
 static unsigned
 lower_bit_size_callback(const nir_alu_instr *alu, void *_)
 {
-	if (nir_op_is_vec(alu->op))
-		return 0;
+	struct radv_device *device = _;
+	enum chip_class chip = device->physical_device->rad_info.chip_class;
 
-	unsigned bit_size = alu->dest.dest.ssa.bit_size;
-	if (nir_alu_instr_is_comparison(alu))
-		bit_size = nir_src_bit_size(alu->src[0].src);
+	if (alu->dest.dest.ssa.bit_size & (8 | 16)) {
+		switch (alu->op) {
+		case nir_op_iabs:
+		case nir_op_iadd:
+		case nir_op_iand:
+		case nir_op_bitfield_select:
+		case nir_op_udiv:
+		case nir_op_idiv:
+		case nir_op_imax:
+		case nir_op_umax:
+		case nir_op_imin:
+		case nir_op_umin:
+		case nir_op_umod:
+		case nir_op_imod:
+		case nir_op_imul:
+		case nir_op_imul_high:
+		case nir_op_umul_high:
+		case nir_op_ineg:
+		case nir_op_inot:
+		case nir_op_ior:
+		case nir_op_irem:
+		case nir_op_ishl:
+		case nir_op_ishr:
+		case nir_op_ushr:
+		case nir_op_isign:
+		case nir_op_isub:
+		case nir_op_ixor:
+			return 32;
+		default:
+			return 0;
+		}
+	}
 
-	if (bit_size >= 32 || bit_size == 1)
-		return 0;
+	if (nir_src_bit_size(alu->src[0].src) & (8 | 16)) {
+		switch (alu->op) {
+		case nir_op_bit_count:
+		case nir_op_find_lsb:
+		case nir_op_ufind_msb:
+		case nir_op_ieq:
+		case nir_op_ige:
+		case nir_op_uge:
+		case nir_op_ilt:
+		case nir_op_ult:
+		case nir_op_ine:
+		case nir_op_i2b1:
+			return 32;
+		default:
+			return 0;
+		}
+	}
 
-	if (alu->op == nir_op_bcsel)
-		return 0;
-
-	const nir_op_info *info = &nir_op_infos[alu->op];
-
-	if (info->is_conversion)
-		return 0;
-
-	bool is_integer = info->output_type & (nir_type_uint | nir_type_int);
-	for (unsigned i = 0; is_integer && (i < info->num_inputs); i++)
-		is_integer = info->input_types[i] & (nir_type_uint | nir_type_int);
-
-	return is_integer ? 32 : 0;
+	return 0;
 }
 
 VkResult radv_create_shaders(struct radv_pipeline *pipeline,
@@ -3178,10 +3210,20 @@ VkResult radv_create_shaders(struct radv_pipeline *pipeline,
 				NIR_PASS_V(nir[i], nir_opt_cse);
 			}
 
-			if (nir_lower_bit_size(nir[i], lower_bit_size_callback, NULL)) {
-				nir_lower_idiv(nir[i], nir_lower_idiv_precise);
-				nir_opt_constant_folding(nir[i]);
-				nir_opt_dce(nir[i]);
+			if (nir[i]->info.bit_sizes_int & (8 | 16)) {
+				if (device->physical_device->rad_info.chip_class >= GFX8) {
+					nir_convert_to_lcssa(nir[i], true, true);
+					nir_divergence_analysis(nir[i]);
+				}
+
+				if (nir_lower_bit_size(nir[i], lower_bit_size_callback, device)) {
+					nir_lower_idiv(nir[i], nir_lower_idiv_precise);
+					nir_opt_constant_folding(nir[i]);
+					nir_opt_dce(nir[i]);
+				}
+
+				if (device->physical_device->rad_info.chip_class >= GFX8)
+					nir_opt_remove_phis(nir[i]); /* cleanup LCSSA phis */
 			}
 
 			/* cleanup passes */
