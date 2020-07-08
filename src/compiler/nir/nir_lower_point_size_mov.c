@@ -68,7 +68,8 @@ void
 nir_lower_point_size_mov(nir_shader *shader,
                          const gl_state_index16 *pointsize_state_tokens)
 {
-   assert(shader->info.stage == MESA_SHADER_VERTEX);
+   assert(shader->info.stage == MESA_SHADER_VERTEX ||
+          shader->info.stage == MESA_SHADER_GEOMETRY);
 
    nir_variable *out = NULL;
    nir_foreach_variable(var, &shader->outputs) {
