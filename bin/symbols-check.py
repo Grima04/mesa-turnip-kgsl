@@ -88,6 +88,9 @@ def main():
     parser.add_argument('--dumpbin',
                         action='store',
                         help='path to binary (or name in $PATH)')
+    parser.add_argument('--ignore-symbol',
+                        action='append',
+                        help='do not process this symbol')
     args = parser.parse_args()
 
     try:
@@ -146,6 +149,8 @@ def main():
         if symbol in mandatory_symbols:
             continue
         if symbol in optional_symbols:
+            continue
+        if args.ignore_symbol and symbol in args.ignore_symbol:
             continue
         if symbol[:2] == '_Z':
             # As ajax found out, the compiler intentionally exports symbols
