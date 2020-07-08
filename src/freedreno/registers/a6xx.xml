@@ -3193,7 +3193,16 @@ to upconvert to 32b float internally?
 	<reg32 offset="0xa9a8" name="SP_UNKNOWN_A9A8"/>
 
 	<!-- set for compute shaders, always 0x41 -->
-	<reg32 offset="0xa9b1" name="SP_CS_UNKNOWN_A9B1" type="uint"/>
+	<reg32 offset="0xa9b1" name="SP_CS_UNKNOWN_A9B1" type="uint">
+		<doc>
+			bit 0 seems to toggle between 2k and 32k of shared storage
+			the ldl/stl offset seems to be rewritten to 0 when it is beyond
+			this limit. This is different from ldlw/stlw, which wraps at
+			64k (and has 36k of storage on A640 - reads between 36k-64k
+			always return 0)
+		</doc>
+		<bitfield name="SHARED_SIZE_2K" pos="0" type="uint"/>
+	</reg32>
 
 	<!-- set for compute shaders, always 0x0 -->
 	<reg32 offset="0xa9b3" name="SP_CS_UNKNOWN_A9B3" type="uint"/>
