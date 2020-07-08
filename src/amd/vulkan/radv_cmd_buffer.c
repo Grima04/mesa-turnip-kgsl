@@ -1332,7 +1332,7 @@ radv_emit_line_stipple(struct radv_cmd_buffer *cmd_buffer)
 	struct radv_pipeline *pipeline = cmd_buffer->state.pipeline;
 	uint32_t auto_reset_cntl = 1;
 
-	if (pipeline->graphics.topology == VK_PRIMITIVE_TOPOLOGY_LINE_STRIP)
+	if (pipeline->graphics.topology == V_008958_DI_PT_LINESTRIP)
 		auto_reset_cntl = 2;
 
 	radeon_set_context_reg(cmd_buffer->cs, R_028A0C_PA_SC_LINE_STIPPLE,

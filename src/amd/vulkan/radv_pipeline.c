@@ -5063,7 +5063,7 @@ radv_pipeline_init(struct radv_pipeline *pipeline,
 	uint32_t gs_out;
 	uint32_t prim = si_translate_prim(pCreateInfo->pInputAssemblyState->topology);
 
-	pipeline->graphics.topology = pCreateInfo->pInputAssemblyState->topology;
+	pipeline->graphics.topology = si_translate_prim(pCreateInfo->pInputAssemblyState->topology);
 	pipeline->graphics.can_use_guardband = radv_prim_can_use_guardband(pCreateInfo->pInputAssemblyState->topology);
 
 	if (radv_pipeline_has_gs(pipeline)) {
