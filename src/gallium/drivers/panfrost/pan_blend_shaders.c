@@ -209,6 +209,7 @@ panfrost_compile_blend_shader(
         res.first_tag = program.first_tag;
         res.size = program.compiled.size;
         res.buffer = program.compiled.data;
+        res.work_count = program.work_register_count;
 
         return res;
 }
