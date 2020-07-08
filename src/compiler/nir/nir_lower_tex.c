@@ -40,6 +40,32 @@
 #include "nir_builtin_builder.h"
 #include "nir_format_convert.h"
 
+static float bt601_csc_coeffs[9] = {
+   1.16438356f,  1.16438356f, 1.16438356f,
+   0.0f,        -0.39176229f, 2.01723214f,
+   1.59602678f, -0.81296764f, 0.0f,
+};
+static float bt709_csc_coeffs[9] = {
+   1.16438356f,  1.16438356f, 1.16438356f,
+   0.0f       , -0.21324861f, 2.11240179f,
+   1.79274107f, -0.53290933f, 0.0f,
+};
+static float bt2020_csc_coeffs[9] = {
+   1.16438356f,  1.16438356f, 1.16438356f,
+   0.0f       , -0.18732610f, 2.14177232f,
+   1.67867411f, -0.65042432f, 0.0f,
+};
+
+static float bt601_csc_offsets[3] = {
+   -0.874202218f, 0.531667823f, -1.085630789f
+};
+static float bt709_csc_offsets[3] = {
+   -0.972945075f, 0.301482665f, -1.133402218f
+};
+static float bt2020_csc_offsets[3] = {
+   -0.915687932f, 0.347458499f, -1.148145075f
+};
+
 static bool
 project_src(nir_builder *b, nir_tex_instr *tex)
 {
@@ -256,20 +282,36 @@ sample_plane(nir_builder *b, nir_tex_instr *tex, int plane,
 static void
 convert_yuv_to_rgb(nir_builder *b, nir_tex_instr *tex,
                    nir_ssa_def *y, nir_ssa_def *u, nir_ssa_def *v,
-                   nir_ssa_def *a)
+                   nir_ssa_def *a,
+                   const nir_lower_tex_options *options)
 {
+
+   float *offset_vals;
+   float *m_vals;
+   assert((options->bt709_external & options->bt2020_external) == 0);
+   if (options->bt709_external & (1 << tex->texture_index)) {
+      m_vals = bt709_csc_coeffs;
+      offset_vals = bt709_csc_offsets;
+   } else if (options->bt2020_external & (1 << tex->texture_index)) {
+      m_vals = bt2020_csc_coeffs;
+      offset_vals = bt2020_csc_offsets;
+   } else {
+      m_vals = bt601_csc_coeffs;
+      offset_vals = bt601_csc_offsets;
+   }
+
    nir_const_value m[3][4] = {
-      { { .f32 = 1.16438356f }, { .f32 =  1.16438356f }, { .f32 = 1.16438356f }, { .f32 = 0.0f } },
-      { { .f32 = 0.0f        }, { .f32 = -0.39176229f }, { .f32 = 2.01723214f }, { .f32 = 0.0f } },
-      { { .f32 = 1.59602678f }, { .f32 = -0.81296764f }, { .f32 = 0.0f        }, { .f32 = 0.0f } },
+      { { .f32 = m_vals[0] }, { .f32 =  m_vals[1] }, { .f32 = m_vals[2] }, { .f32 = 0.0f } },
+      { { .f32 = m_vals[3] }, { .f32 =  m_vals[4] }, { .f32 = m_vals[5] }, { .f32 = 0.0f } },
+      { { .f32 = m_vals[6] }, { .f32 =  m_vals[7] }, { .f32 = m_vals[8] }, { .f32 = 0.0f } },
    };
    unsigned bit_size = nir_dest_bit_size(tex->dest);
 
    nir_ssa_def *offset =
       nir_vec4(b,
-               nir_imm_float(b, -0.874202214f),
-               nir_imm_float(b,  0.531667820f),
-               nir_imm_float(b, -1.085630787f),
+               nir_imm_float(b, offset_vals[0]),
+               nir_imm_float(b, offset_vals[1]),
+               nir_imm_float(b, offset_vals[2]),
                a);
 
    offset = nir_f2fN(b, offset, bit_size);
@@ -297,7 +339,8 @@ lower_y_uv_external(nir_builder *b, nir_tex_instr *tex,
                       nir_channel(b, y, 0),
                       nir_channel(b, uv, 0),
                       nir_channel(b, uv, 1),
-                      nir_imm_float(b, 1.0f));
+                      nir_imm_float(b, 1.0f),
+                      options);
 }
 
 static void
@@ -314,7 +357,8 @@ lower_y_u_v_external(nir_builder *b, nir_tex_instr *tex,
                       nir_channel(b, y, 0),
                       nir_channel(b, u, 0),
                       nir_channel(b, v, 0),
-                      nir_imm_float(b, 1.0f));
+                      nir_imm_float(b, 1.0f),
+                      options);
 }
 
 static void
@@ -330,7 +374,8 @@ lower_yx_xuxv_external(nir_builder *b, nir_tex_instr *tex,
                       nir_channel(b, y, 0),
                       nir_channel(b, xuxv, 1),
                       nir_channel(b, xuxv, 3),
-                      nir_imm_float(b, 1.0f));
+                      nir_imm_float(b, 1.0f),
+                      options);
 }
 
 static void
@@ -346,7 +391,8 @@ lower_xy_uxvx_external(nir_builder *b, nir_tex_instr *tex,
                      nir_channel(b, y, 1),
                      nir_channel(b, uxvx, 0),
                      nir_channel(b, uxvx, 2),
-                     nir_imm_float(b, 1.0f));
+                     nir_imm_float(b, 1.0f),
+                     options);
 }
 
 static void
@@ -361,7 +407,8 @@ lower_ayuv_external(nir_builder *b, nir_tex_instr *tex,
                      nir_channel(b, ayuv, 2),
                      nir_channel(b, ayuv, 1),
                      nir_channel(b, ayuv, 0),
-                     nir_channel(b, ayuv, 3));
+                     nir_channel(b, ayuv, 3),
+                     options);
 }
 
 static void
@@ -376,7 +423,8 @@ lower_xyuv_external(nir_builder *b, nir_tex_instr *tex,
                      nir_channel(b, xyuv, 2),
                      nir_channel(b, xyuv, 1),
                      nir_channel(b, xyuv, 0),
-                     nir_imm_float(b, 1.0f));
+                     nir_imm_float(b, 1.0f),
+                     options);
 }
 
 /*
