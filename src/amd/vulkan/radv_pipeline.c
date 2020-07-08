@@ -3748,7 +3748,7 @@ radv_pipeline_generate_raster_state(struct radeon_cmdbuf *ctx_cs,
 	                       S_0286D4_PNT_SPRITE_TOP_1(0)); /* vulkan is top to bottom - 1.0 at bottom */
 
 	radeon_set_context_reg(ctx_cs, R_028BE4_PA_SU_VTX_CNTL,
-	                       S_028BE4_PIX_CENTER(1) | // TODO verify
+	                       S_028BE4_PIX_CENTER(1) |
 	                       S_028BE4_ROUND_MODE(V_028BE4_X_ROUND_TO_EVEN) |
 	                       S_028BE4_QUANT_MODE(V_028BE4_X_16_8_FIXED_POINT_1_256TH));
 
