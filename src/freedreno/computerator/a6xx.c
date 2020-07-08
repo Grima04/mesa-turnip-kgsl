@@ -117,6 +117,9 @@ cs_program_emit(struct fd_ringbuffer *ring, struct kernel *kernel)
 	const struct ir3_info *i = &v->info;
 	enum a3xx_threadsize thrsz = FOUR_QUADS;
 
+	OUT_PKT4(ring, REG_A6XX_SP_MODE_CONTROL, 1);
+	OUT_RING(ring, A6XX_SP_MODE_CONTROL_CONSTANT_DEMOTION_ENABLE | 4);
+
 	OUT_PKT4(ring, REG_A6XX_HLSQ_INVALIDATE_CMD, 1);
 	OUT_RING(ring, A6XX_HLSQ_INVALIDATE_CMD_VS_STATE |
                    A6XX_HLSQ_INVALIDATE_CMD_HS_STATE |
