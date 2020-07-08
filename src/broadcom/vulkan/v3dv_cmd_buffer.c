@@ -727,6 +727,46 @@ v3dv_cmd_buffer_finish_job(struct v3dv_cmd_buffer *cmd_buffer)
    }
 }
 
+static bool
+job_type_is_gpu(struct v3dv_job *job)
+{
+   switch (job->type) {
+   case V3DV_JOB_TYPE_GPU_CL:
+   case V3DV_JOB_TYPE_GPU_CL_SECONDARY:
+   case V3DV_JOB_TYPE_GPU_TFU:
+   case V3DV_JOB_TYPE_GPU_CSD:
+      return true;
+   default:
+      return false;
+   }
+}
+
+static void
+cmd_buffer_serialize_job_if_needed(struct v3dv_cmd_buffer *cmd_buffer,
+                                   struct v3dv_job *job)
+{
+   assert(cmd_buffer && job);
+
+   if (!cmd_buffer->state.has_barrier)
+      return;
+
+   /* Serialization only affects GPU jobs, CPU jobs are always automatically
+    * serialized.
+    */
+   if (!job_type_is_gpu(job))
+      return;
+
+   job->serialize = true;
+   if (cmd_buffer->state.has_bcl_barrier &&
+       (job->type == V3DV_JOB_TYPE_GPU_CL ||
+        job->type == V3DV_JOB_TYPE_GPU_CL_SECONDARY)) {
+      job->needs_bcl_sync = true;
+   }
+
+   cmd_buffer->state.has_barrier = false;
+   cmd_buffer->state.has_bcl_barrier = false;
+}
+
 void
 v3dv_job_init(struct v3dv_job *job,
               enum v3dv_job_type type,
@@ -735,6 +775,9 @@ v3dv_job_init(struct v3dv_job *job,
               int32_t subpass_idx)
 {
    assert(job);
+
+   /* Make sure we haven't made this new job current before calling here */
+   assert(!cmd_buffer || cmd_buffer->state.job != job);
 
    job->type = type;
 
@@ -777,6 +820,8 @@ v3dv_job_init(struct v3dv_job *job,
        */
       if (cmd_buffer->state.pass)
          job->first_subpass = subpass_idx;
+
+      cmd_buffer_serialize_job_if_needed(cmd_buffer, job);
    }
 }
 
@@ -804,8 +849,6 @@ v3dv_cmd_buffer_start_job(struct v3dv_cmd_buffer *cmd_buffer,
                                     sizeof(struct v3dv_job), 8,
                                     VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
 
-   cmd_buffer->state.job = job;
-
    if (!job) {
       fprintf(stderr, "Error: failed to allocate CPU memory for job\n");
       v3dv_flag_oom(cmd_buffer, NULL);
@@ -813,6 +856,7 @@ v3dv_cmd_buffer_start_job(struct v3dv_cmd_buffer *cmd_buffer,
    }
 
    v3dv_job_init(job, type, cmd_buffer->device, cmd_buffer, subpass_idx);
+   cmd_buffer->state.job = job;
 
    return job;
 }
@@ -2350,6 +2394,16 @@ cmd_buffer_execute_inside_pass(struct v3dv_cmd_buffer *primary,
             cl_emit(&primary_job->bcl, BRANCH_TO_SUB_LIST, branch) {
                branch.address = v3dv_cl_address(secondary_job->bcl.bo, 0);
             }
+
+            /* If this secondary has barriers, we need to flag them in the
+             * primary job.
+             *
+             * FIXME: This might be moving the sync point too early though,
+             * maybe we would need to split the primary in this case to ensure
+             * that barriers execute right before the secondary.
+             */
+            primary_job->serialize |= secondary_job->serialize;
+            primary_job->needs_bcl_sync |= secondary_job->needs_bcl_sync;
          } else if (secondary_job->type == V3DV_JOB_TYPE_CPU_CLEAR_ATTACHMENTS) {
             const struct v3dv_clear_attachments_cpu_job_info *info =
                &secondary_job->cpu.clear_attachments;
@@ -4038,18 +4092,27 @@ v3dv_CmdPipelineBarrier(VkCommandBuffer commandBuffer,
                         VkDependencyFlags dependencyFlags,
                         uint32_t memoryBarrierCount,
                         const VkMemoryBarrier *pMemoryBarriers,
-                        uint32_t bufferMemoryBarrierCount,
-                        const VkBufferMemoryBarrier *pBufferMemoryBarriers,
-                        uint32_t imageMemoryBarrierCount,
-                        const VkImageMemoryBarrier *pImageMemoryBarriers)
+                        uint32_t bufferBarrierCount,
+                        const VkBufferMemoryBarrier *pBufferBarriers,
+                        uint32_t imageBarrierCount,
+                        const VkImageMemoryBarrier *pImageBarriers)
 {
    V3DV_FROM_HANDLE(v3dv_cmd_buffer, cmd_buffer, commandBuffer);
 
+   /* If we have a recording job, finish it here */
    struct v3dv_job *job = cmd_buffer->state.job;
-   if (!job)
-      return;
+   if (job)
+      v3dv_cmd_buffer_finish_job(cmd_buffer);
 
-   v3dv_cmd_buffer_finish_job(cmd_buffer);
+   cmd_buffer->state.has_barrier = true;
+   if (dstStageMask & (VK_PIPELINE_STAGE_VERTEX_INPUT_BIT |
+                       VK_PIPELINE_STAGE_VERTEX_SHADER_BIT |
+                       VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT |
+                       VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT |
+                       VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT |
+                       VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT)) {
+      cmd_buffer->state.has_bcl_barrier = true;
+   }
 }
 
 void

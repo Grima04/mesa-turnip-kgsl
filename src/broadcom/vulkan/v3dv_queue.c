@@ -530,6 +530,12 @@ handle_cl_job(struct v3dv_queue *queue,
 
    struct drm_v3d_submit_cl submit;
 
+   /* Sanity check: we should only flag a bcl sync on a job that needs to be
+    * serialized.
+    */
+   assert(job->serialize || !job->needs_bcl_sync);
+   do_wait |= job->serialize;
+
    /* We expect to have just one RCL per job which should fit in just one BO.
     * Our BCL, could chain multiple BOS together though.
     */
@@ -575,9 +581,12 @@ handle_cl_job(struct v3dv_queue *queue,
     * we would have to extend our kernel interface to support the case where
     * we have more than one semaphore to wait on.
     */
+   const bool needs_bcl_sync = do_wait && job->needs_bcl_sync;
+   const bool needs_rcl_sync = do_wait && !needs_bcl_sync;
+
    mtx_lock(&queue->device->mutex);
-   submit.in_sync_bcl = 0;
-   submit.in_sync_rcl = do_wait ? device->last_job_sync : 0;
+   submit.in_sync_bcl = needs_bcl_sync ? device->last_job_sync : 0;
+   submit.in_sync_rcl = needs_rcl_sync ? device->last_job_sync : 0;
    submit.out_sync = device->last_job_sync;
    v3dv_clif_dump(device, job, &submit);
    int ret = v3dv_ioctl(device->render_fd, DRM_IOCTL_V3D_SUBMIT_CL, &submit);
@@ -605,6 +614,8 @@ handle_tfu_job(struct v3dv_queue *queue,
 {
    struct v3dv_device *device = queue->device;
 
+   do_wait |= job->serialize;
+
    mtx_lock(&device->mutex);
    job->tfu.in_sync = do_wait ? device->last_job_sync : 0;
    job->tfu.out_sync = device->last_job_sync;
@@ -627,6 +638,8 @@ handle_csd_job(struct v3dv_queue *queue,
    struct v3dv_device *device = queue->device;
 
    struct drm_v3d_submit_csd *submit = &job->csd.submit;
+
+   do_wait |= job->serialize;
 
    submit->bo_handle_count = job->bo_count;
    uint32_t *bo_handles =

@@ -805,6 +805,12 @@ struct v3dv_job {
     */
    bool always_flush;
 
+   /* Whether we need to serialize this job in our command stream */
+   bool serialize;
+
+   /* If this is a CL job, whether we should sync before binning */
+   bool needs_bcl_sync;
+
    /* Job specs for CPU jobs */
    union {
       struct v3dv_reset_query_cpu_job_info          query_reset;
@@ -902,6 +908,12 @@ struct v3dv_cmd_buffer_state {
 
    /* Used to flag OOM conditions during command buffer recording */
    bool oom;
+
+   /* Whether we have recorded a pipeline barrier that we still need to
+    * process.
+    */
+   bool has_barrier;
+   bool has_bcl_barrier;
 
    /* Command buffer state saved during a meta operation */
    struct {
