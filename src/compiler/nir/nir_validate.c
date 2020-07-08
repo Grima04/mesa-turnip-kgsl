@@ -873,8 +873,8 @@ validate_phi_src(nir_phi_instr *instr, nir_block *pred, validate_state *state)
          return;
       }
    }
-
-   abort();
+   validate_assert(state, !"Phi does not have a source corresponding to one "
+                           "of its predecessor blocks");
 }
 
 static void
@@ -1093,42 +1093,21 @@ postvalidate_reg_decl(nir_register *reg, validate_state *state)
       validate_assert(state, entry);
       _mesa_set_remove(reg_state->uses, entry);
    }
-
-   if (reg_state->uses->entries != 0) {
-      printf("extra entries in register uses:\n");
-      set_foreach(reg_state->uses, entry)
-         printf("%p\n", entry->key);
-
-      abort();
-   }
+   validate_assert(state, reg_state->uses->entries == 0);
 
    nir_foreach_if_use(src, reg) {
       struct set_entry *entry = _mesa_set_search(reg_state->if_uses, src);
       validate_assert(state, entry);
       _mesa_set_remove(reg_state->if_uses, entry);
    }
-
-   if (reg_state->if_uses->entries != 0) {
-      printf("extra entries in register if_uses:\n");
-      set_foreach(reg_state->if_uses, entry)
-         printf("%p\n", entry->key);
-
-      abort();
-   }
+   validate_assert(state, reg_state->if_uses->entries == 0);
 
    nir_foreach_def(src, reg) {
       struct set_entry *entry = _mesa_set_search(reg_state->defs, src);
       validate_assert(state, entry);
       _mesa_set_remove(reg_state->defs, entry);
    }
-
-   if (reg_state->defs->entries != 0) {
-      printf("extra entries in register defs:\n");
-      set_foreach(reg_state->defs, entry)
-         printf("%p\n", entry->key);
-
-      abort();
-   }
+   validate_assert(state, reg_state->defs->entries == 0);
 }
 
 static void
@@ -1225,13 +1204,8 @@ validate_function_impl(nir_function_impl *impl, validate_state *state)
       postvalidate_reg_decl(reg, state);
    }
 
-   if (state->ssa_srcs->entries != 0) {
-      printf("extra dangling SSA sources:\n");
-      set_foreach(state->ssa_srcs, entry)
-         printf("%p\n", entry->key);
-
-      abort();
-   }
+   validate_assert(state, state->ssa_srcs->entries == 0);
+   _mesa_set_clear(state->ssa_srcs, NULL);
 }
 
 static void
