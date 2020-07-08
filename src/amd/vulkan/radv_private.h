@@ -1621,7 +1621,6 @@ unsigned radv_format_meta_fs_key(VkFormat format);
 
 struct radv_multisample_state {
 	uint32_t db_eqaa;
-	uint32_t pa_sc_line_cntl;
 	uint32_t pa_sc_mode_cntl_0;
 	uint32_t pa_sc_mode_cntl_1;
 	uint32_t pa_sc_aa_config;
