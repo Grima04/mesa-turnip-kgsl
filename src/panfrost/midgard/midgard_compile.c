@@ -2478,7 +2478,7 @@ emit_fragment_epilogue(compiler_context *ctx, unsigned rt)
 }
 
 static midgard_block *
-emit_block(compiler_context *ctx, nir_block *block)
+emit_block_init(compiler_context *ctx)
 {
         midgard_block *this_block = ctx->after_block;
         ctx->after_block = NULL;
@@ -2494,6 +2494,14 @@ emit_block(compiler_context *ctx, nir_block *block)
         /* Set up current block */
         list_inithead(&this_block->base.instructions);
         ctx->current_block = this_block;
+
+        return this_block;
+}
+
+static midgard_block *
+emit_block(compiler_context *ctx, nir_block *block)
+{
+        midgard_block *this_block = emit_block_init(ctx);
 
         nir_foreach_instr(instr, block) {
                 emit_instr(ctx, instr);
@@ -2790,6 +2798,17 @@ midgard_compile_shader_nir(nir_shader *nir, panfrost_program *program, bool is_b
                 ctx->block_count = 0;
                 ctx->func = func;
                 ctx->already_emitted = calloc(BITSET_WORDS(func->impl->ssa_alloc), sizeof(BITSET_WORD));
+
+                if (nir->info.outputs_read && !is_blend) {
+                        emit_block_init(ctx);
+
+                        struct midgard_instruction wait = v_branch(false, false);
+                        wait.branch.target_type = TARGET_TILEBUF_WAIT;
+
+                        emit_mir_instruction(ctx, wait);
+
+                        ++ctx->instruction_count;
+                }
 
                 emit_cf_list(ctx, &func->impl->body);
                 free(ctx->already_emitted);
