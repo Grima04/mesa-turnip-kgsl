@@ -1634,10 +1634,6 @@ struct radv_prim_vertex_count {
 	uint8_t incr;
 };
 
-struct radv_vertex_elements_info {
-	uint32_t format_size[MAX_VERTEX_ATTRIBS];
-};
-
 struct radv_ia_multi_vgt_param_helpers {
 	uint32_t base;
 	bool partial_es_wave;
@@ -1668,8 +1664,6 @@ struct radv_pipeline {
 	struct radeon_cmdbuf                      cs;
 	uint32_t                                  ctx_cs_hash;
 	struct radeon_cmdbuf                      ctx_cs;
-
-	struct radv_vertex_elements_info             vertex_elements;
 
 	uint32_t                                     binding_stride[MAX_VBS];
 	uint8_t                                      num_vertex_bindings;

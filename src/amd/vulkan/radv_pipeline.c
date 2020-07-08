@@ -4787,18 +4787,6 @@ radv_compute_vertex_input_state(struct radv_pipeline *pipeline,
 {
 	const VkPipelineVertexInputStateCreateInfo *vi_info =
 		pCreateInfo->pVertexInputState;
-	struct radv_vertex_elements_info *velems = &pipeline->vertex_elements;
-
-	for (uint32_t i = 0; i < vi_info->vertexAttributeDescriptionCount; i++) {
-		const VkVertexInputAttributeDescription *desc =
-			&vi_info->pVertexAttributeDescriptions[i];
-		unsigned loc = desc->location;
-		const struct vk_format_description *format_desc;
-
-		format_desc = vk_format_description(desc->format);
-
-		velems->format_size[loc] = format_desc->block.bits / 8;
-	}
 
 	for (uint32_t i = 0; i < vi_info->vertexBindingDescriptionCount; i++) {
 		const VkVertexInputBindingDescription *desc =
