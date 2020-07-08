@@ -22,6 +22,15 @@
  * IN THE SOFTWARE.
  */
 
+/* Unit test for disassembly of instructions.
+ *
+ * The goal is to take instructions we've seen the blob produce, and test that
+ * we can disassemble them correctly.  For the next person investigating the
+ * behavior of this instruction, please include the testcase it was generated
+ * from, and the qcom disassembly as a comment if it differs from what we
+ * produce.
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
