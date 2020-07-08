@@ -492,6 +492,18 @@ nir_compare_deref_paths(nir_deref_path *a_path,
              deref_path_contains_coherent_decoration(b_path))
             return nir_derefs_may_alias_bit;
 
+         /* Per SPV_KHR_workgroup_memory_explicit_layout and GL_EXT_shared_memory_block,
+          * shared blocks alias each other.
+          */
+         if (a_path->path[0]->modes & nir_var_mem_shared &&
+             b_path->path[0]->modes & nir_var_mem_shared &&
+             (glsl_type_is_interface(a_path->path[0]->var->type) ||
+              glsl_type_is_interface(b_path->path[0]->var->type))) {
+            assert(glsl_type_is_interface(a_path->path[0]->var->type) &&
+                   glsl_type_is_interface(b_path->path[0]->var->type));
+            return nir_derefs_may_alias_bit;
+         }
+
          /* If we can chase the deref all the way back to the variable and
           * they're not the same variable and at least one is not declared
           * coherent, we know they can't possibly alias.
