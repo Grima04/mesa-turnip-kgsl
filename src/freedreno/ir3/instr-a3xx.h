@@ -715,7 +715,8 @@ typedef struct PACKED {
 typedef struct PACKED {
 	/* dword0: */
 	uint32_t mustbe0  : 1;
-	uint32_t src1     : 13;
+	uint32_t src1     : 8;
+	uint32_t pad      : 5;
 	uint32_t ignore0  : 8;
 	uint32_t src1_im  : 1;
 	uint32_t src2_im  : 1;
@@ -728,15 +729,11 @@ typedef struct PACKED {
 /* dword1 encoding for dst_off: */
 typedef struct PACKED {
 	/* dword0: */
-	uint32_t dword0;
+	uint32_t dw0_pad1 : 9;
+	int32_t off_high : 5;
+	uint32_t dw0_pad2 : 18;
 
-	/* note: there is some weird stuff going on where sometimes
-	 * cat6->a.off is involved.. but that seems like a bug in
-	 * the blob, since it is used even if !cat6->src_off
-	 * It would make sense for there to be some more bits to
-	 * bring us to 11 bits worth of offset, but not sure..
-	 */
-	int32_t off       : 8;
+	uint32_t off      : 8;
 	uint32_t mustbe1  : 1;
 	uint32_t dst      : 8;
 	uint32_t pad1     : 15;

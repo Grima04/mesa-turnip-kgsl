@@ -964,8 +964,8 @@ static void print_instr_cat6_a3xx(struct disasm_ctx *ctx, instr_t *instr)
 				};
 				fprintf(ctx->out, "+");
 				print_src(ctx, &dstoff_reg);
-			} else if (cat6->c.off) {
-				fprintf(ctx->out, "%+d", cat6->c.off);
+			} else if (cat6->c.off || cat6->c.off_high) {
+				fprintf(ctx->out, "%+d", ((uint32_t)cat6->c.off_high << 8) | cat6->c.off);
 			}
 		} else {
 			dst.reg = (reg_t)(cat6->d.dst);

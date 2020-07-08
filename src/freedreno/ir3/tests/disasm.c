@@ -179,10 +179,12 @@ static const struct test {
 	INSTR_6XX(c0260000_00478600, "ldc.offset3.1.imm r0.x, r0.x, 0"), /* ldc.1.mode0.base0 r0.x, r0.x, 0 */
 
 	/* dEQP-VK.glsl.struct.local.nested_struct_array_dynamic_index_fragment */
-	INSTR_6XX(c1425b50_01803e02, "stp.f32 p[r11.y+80], r960.y, 1"), /* stp.f32 p[r11.y-176], r0.y, 1 */
-	INSTR_6XX(c1425b98_02803e14, "stp.f32 p[r11.y-104], r962.z, 2"), /* stp.f32 p[r11.y-104], r2.z, 2 */
-	INSTR_6XX(c1465ba0_01803e2a, "stp.u32 p[r11.y-96], r965.y, 1"), /* stp.u32 p[r11.y-96], r5.y, 1 */
+	INSTR_6XX(c1425b50_01803e02, "stp.f32 p[r11.y-176], r0.y, 1"),
+	INSTR_6XX(c1425b98_02803e14, "stp.f32 p[r11.y-104], r2.z, 2"),
+	INSTR_6XX(c1465ba0_01803e2a, "stp.u32 p[r11.y-96], r5.y, 1"),
 	INSTR_6XX(c0860008_01860001, "ldp.u32 r2.x, p[r6.x], 1"),
+	/* Custom stp based on above to catch a disasm bug. */
+	INSTR_6XX(c1465b00_0180022a, "stp.u32 p[r11.y+256], r5.y, 1"),
 
 	/* dEQP-GLES31.functional.shaders.opaque_type_indexing.sampler.const_literal.fragment.sampler2d */
 	INSTR_6XX(a0c01f04_0cc00005, "sam (f32)(xyzw)r1.x, r0.z, s#6, t#6"),

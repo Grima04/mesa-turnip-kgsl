@@ -882,6 +882,7 @@ static int emit_cat6(struct ir3_instruction *instr, void *ptr,
 			}
 		} else {
 			cat6c->off = instr->cat6.dst_offset;
+			cat6c->off_high = instr->cat6.dst_offset >> 8;
 		}
 	} else {
 		instr_cat6d_t *cat6d = ptr;
