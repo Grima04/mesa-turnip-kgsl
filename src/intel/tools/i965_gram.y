@@ -1938,14 +1938,14 @@ indirectregion:
 region:
 	%empty
 	{
-		$$ = stride($$, BRW_VERTICAL_STRIDE_1, BRW_WIDTH_2, BRW_HORIZONTAL_STRIDE_1);
+		$$ = stride($$, 0, 1, 0);
 	}
 	| LANGLE exp RANGLE
 	{
 		if ($2 != 0 && ($2 > 32 || !isPowerofTwo($2)))
 			error(&@2, "Invalid VertStride %d\n", $2);
 
-		$$ = stride($$, $2, BRW_WIDTH_1, 0);
+		$$ = stride($$, $2, 1, 0);
 	}
 	| LANGLE exp COMMA exp COMMA exp RANGLE
 	{
@@ -1999,7 +1999,8 @@ region_wh:
 			error(&@4, "Invalid Horizontal stride in"
 				   " region_wh %d\n", $4);
 
-		$$ = stride($$, BRW_VERTICAL_STRIDE_ONE_DIMENSIONAL, $2, $4);
+		$$ = stride($$, 0, $2, $4);
+		$$.vstride = BRW_VERTICAL_STRIDE_ONE_DIMENSIONAL;
 	}
 	;
 
