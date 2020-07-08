@@ -5028,7 +5028,7 @@ radv_compute_generate_pm4(struct radv_pipeline *pipeline)
 	unsigned max_waves_per_sh = 0;
 	uint64_t va;
 
-	pipeline->cs.max_dw = device->physical_device->rad_info.chip_class >= GFX10 ? 22 : 20;
+	pipeline->cs.max_dw = device->physical_device->rad_info.chip_class >= GFX10 ? 19 : 16;
 	pipeline->cs.buf = malloc(pipeline->cs.max_dw * 4);
 
 	compute_shader = pipeline->shaders[MESA_SHADER_COMPUTE];
