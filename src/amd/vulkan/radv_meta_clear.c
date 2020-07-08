@@ -664,11 +664,11 @@ create_depthstencil_pipeline(struct radv_device *device,
 
 	const VkPipelineDepthStencilStateCreateInfo ds_state = {
 		.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
-		.depthTestEnable = (aspects & VK_IMAGE_ASPECT_DEPTH_BIT),
+		.depthTestEnable = !!(aspects & VK_IMAGE_ASPECT_DEPTH_BIT),
 		.depthCompareOp = VK_COMPARE_OP_ALWAYS,
-		.depthWriteEnable = (aspects & VK_IMAGE_ASPECT_DEPTH_BIT),
+		.depthWriteEnable = !!(aspects & VK_IMAGE_ASPECT_DEPTH_BIT),
 		.depthBoundsTestEnable = false,
-		.stencilTestEnable = (aspects & VK_IMAGE_ASPECT_STENCIL_BIT),
+		.stencilTestEnable = !!(aspects & VK_IMAGE_ASPECT_STENCIL_BIT),
 		.front = {
 			.passOp = VK_STENCIL_OP_REPLACE,
 			.compareOp = VK_COMPARE_OP_ALWAYS,
