@@ -92,8 +92,34 @@ static const struct test {
 	INSTR_6XX(a2802f00_00000001, "getsize (u16)(xyzw)hr0.x, r0.x, t#0"),
 
 	/* cat6 */
+
 	INSTR_6XX(c0c00000_00000000, "stg.f16 g[hr0.x], hr0.x, hr0.x"),
-	INSTR_6XX(c1100000_c1000000, "stl.f16 l[0], hr0.x, hr48.y"),
+	/* dEQP-GLES31.functional.tessellation.invariance.outer_edge_symmetry.isolines_equal_spacing_ccw */
+	INSTR_6XX(c0d20906_02800004, "stg.f32 g[r1.x+r1.z], r0.z, 2"), /* stg.a.f32 g[r1.x+(r1.z<<2)], r0.z, 2 */
+
+	/* TODO: We don't support disasm of stc yet and produce a stgb instead
+	 * (same as their disasm does for other families.  They're used as part
+	 * uniforms setup, followed by a shpe and then a load of the constant that
+	 * was stored in the dynamic part of the shader.
+	 */
+	/* dEQP-GLES3.functional.ubo.random.basic_arrays.0 */
+	/* INSTR_6XX(c7020020_01800000, "stc c[32], r0.x, 1"), */
+	/* dEQP-VK.image.image_size.cube_array.readonly_writeonly_1x1x12 */
+	/* INSTR_6XX(c7060020_03800000, "stc c[32], r0.x, 3"), */
+
+	/* dEQP-VK.image.image_size.cube_array.readonly_writeonly_1x1x12 */
+	INSTR_6XX(c0260200_03676100, "stib.untyped.1d.u32.3.imm.base0 r0.x, r0.w, 1"), /* stib.untyped.u32.1d.3.mode4.base0 r0.x, r0.w, 1 */
+	/* dEQP-VK.texture.filtering.cube.formats.a8b8g8r8_srgb_nearest_mipmap_nearest.txt */
+	INSTR_6XX(c0220200_0361b801, "ldib.typed.1d.f32.4.imm r0.x, r0.w, 1"), /* ldib.f32.1d.4.mode0.base0 r0.x, r0.w, 1 */
+
+	/* dEQP-GLES31.functional.tessellation.invariance.outer_edge_symmetry.isolines_equal_spacing_ccw */
+	INSTR_6XX(c2c21100_04800006, "stlw.f32 l[r2.x], r0.w, 4"),
+	INSTR_6XX(c2c20f00_01800004, "stlw.f32 l[r1.w], r0.z, 1"),
+	INSTR_6XX(c2860003_02808011, "ldlw.u32 r0.w, l[r0.z+8], 2"),
+
+	/* dEQP-VK.compute.basic.shared_var_single_group */
+	INSTR_6XX(c1060500_01800008, "stl.u32 l[r0.z], r1.x, 1"),
+	INSTR_6XX(c0460001_01804001, "ldl.u32 r0.y, l[r0.y], 1"),
 
 	/* resinfo */
 	INSTR_6XX(c0260000_0063c200, "resinfo.untyped.2d.u32.1.imm r0.x, 0"), /* resinfo.u32.2d.mode0.base0 r0.x, 0 */
@@ -151,6 +177,12 @@ static const struct test {
 	INSTR_6XX(c0260000_00478200, "ldc.offset1.1.imm r0.x, r0.x, 0"), /* ldc.1.mode0.base0 r0.x, r0.x, 0 */
 	INSTR_6XX(c0260000_00478400, "ldc.offset2.1.imm r0.x, r0.x, 0"), /* ldc.1.mode0.base0 r0.x, r0.x, 0 */
 	INSTR_6XX(c0260000_00478600, "ldc.offset3.1.imm r0.x, r0.x, 0"), /* ldc.1.mode0.base0 r0.x, r0.x, 0 */
+
+	/* dEQP-VK.glsl.struct.local.nested_struct_array_dynamic_index_fragment */
+	INSTR_6XX(c1425b50_01803e02, "stp.f32 p[r11.y+80], r960.y, 1"), /* stp.f32 p[r11.y-176], r0.y, 1 */
+	INSTR_6XX(c1425b98_02803e14, "stp.f32 p[r11.y-104], r962.z, 2"), /* stp.f32 p[r11.y-104], r2.z, 2 */
+	INSTR_6XX(c1465ba0_01803e2a, "stp.u32 p[r11.y-96], r965.y, 1"), /* stp.u32 p[r11.y-96], r5.y, 1 */
+	INSTR_6XX(c0860008_01860001, "ldp.u32 r2.x, p[r6.x], 1"),
 
 	/* dEQP-GLES31.functional.shaders.opaque_type_indexing.sampler.const_literal.fragment.sampler2d */
 	INSTR_6XX(a0c01f04_0cc00005, "sam (f32)(xyzw)r1.x, r0.z, s#6, t#6"),
