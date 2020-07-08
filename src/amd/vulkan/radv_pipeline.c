@@ -4568,35 +4568,38 @@ radv_pipeline_generate_vgt_shader_config(struct radeon_cmdbuf *ctx_cs,
 	radeon_set_context_reg(ctx_cs, R_028B54_VGT_SHADER_STAGES_EN, stages);
 }
 
-static uint32_t
-radv_compute_cliprect_rule(const VkGraphicsPipelineCreateInfo *pCreateInfo)
+static void
+radv_pipeline_generate_cliprect_rule(struct radeon_cmdbuf *ctx_cs,
+				     const VkGraphicsPipelineCreateInfo *pCreateInfo)
 {
 	const  VkPipelineDiscardRectangleStateCreateInfoEXT *discard_rectangle_info =
 			vk_find_struct_const(pCreateInfo->pNext, PIPELINE_DISCARD_RECTANGLE_STATE_CREATE_INFO_EXT);
+	uint32_t cliprect_rule = 0;
 
-	if (!discard_rectangle_info)
-		return 0xffff;
+	if (!discard_rectangle_info) {
+		cliprect_rule = 0xffff;
+	} else {
+		for (unsigned i = 0; i < (1u << MAX_DISCARD_RECTANGLES); ++i) {
+			/* Interpret i as a bitmask, and then set the bit in
+			 * the mask if that combination of rectangles in which
+			 * the pixel is contained should pass the cliprect
+			 * test.
+			 */
+			unsigned relevant_subset = i & ((1u << discard_rectangle_info->discardRectangleCount) - 1);
 
-	unsigned mask = 0;
+			if (discard_rectangle_info->discardRectangleMode == VK_DISCARD_RECTANGLE_MODE_INCLUSIVE_EXT &&
+			    !relevant_subset)
+				continue;
 
-	for (unsigned i = 0; i < (1u << MAX_DISCARD_RECTANGLES); ++i) {
-		/* Interpret i as a bitmask, and then set the bit in the mask if
-		 * that combination of rectangles in which the pixel is contained
-		 * should pass the cliprect test. */
-		unsigned relevant_subset = i & ((1u << discard_rectangle_info->discardRectangleCount) - 1);
+			if (discard_rectangle_info->discardRectangleMode == VK_DISCARD_RECTANGLE_MODE_EXCLUSIVE_EXT &&
+			    relevant_subset)
+				continue;
 
-		if (discard_rectangle_info->discardRectangleMode == VK_DISCARD_RECTANGLE_MODE_INCLUSIVE_EXT &&
-		    !relevant_subset)
-			continue;
-
-		if (discard_rectangle_info->discardRectangleMode == VK_DISCARD_RECTANGLE_MODE_EXCLUSIVE_EXT &&
-		    relevant_subset)
-			continue;
-
-		mask |= 1u << i;
+			cliprect_rule |= 1u << i;
+		}
 	}
 
-	return mask;
+	radeon_set_context_reg(ctx_cs, R_02820C_PA_SC_CLIPRECT_RULE, cliprect_rule);
 }
 
 static void
@@ -4661,13 +4664,12 @@ radv_pipeline_generate_pm4(struct radv_pipeline *pipeline,
 	radv_pipeline_generate_vgt_vertex_reuse(ctx_cs, pipeline);
 	radv_pipeline_generate_binning_state(ctx_cs, pipeline, pCreateInfo, blend);
 	radv_pipeline_generate_vgt_shader_config(ctx_cs, pipeline);
+	radv_pipeline_generate_cliprect_rule(ctx_cs, pCreateInfo);
 
 	if (pipeline->device->physical_device->rad_info.chip_class >= GFX10 && !radv_pipeline_has_ngg(pipeline))
 		gfx10_pipeline_generate_ge_cntl(ctx_cs, pipeline, tess);
 
 	radeon_set_context_reg(ctx_cs, R_028A6C_VGT_GS_OUT_PRIM_TYPE, gs_out);
-
-	radeon_set_context_reg(ctx_cs, R_02820C_PA_SC_CLIPRECT_RULE, radv_compute_cliprect_rule(pCreateInfo));
 
 	pipeline->ctx_cs_hash = _mesa_hash_data(ctx_cs->buf, ctx_cs->cdw * 4);
 
