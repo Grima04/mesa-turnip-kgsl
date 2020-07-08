@@ -126,4 +126,31 @@ panfrost_resource_set_damage_region(struct pipe_screen *screen,
                                     unsigned int nrects,
                                     const struct pipe_box *rects);
 
+static inline enum mali_texture_type
+panfrost_translate_texture_type(enum pipe_texture_target t) {
+        switch (t)
+        {
+        case PIPE_BUFFER:
+        case PIPE_TEXTURE_1D:
+        case PIPE_TEXTURE_1D_ARRAY:
+                return MALI_TEX_1D;
+
+        case PIPE_TEXTURE_2D:
+        case PIPE_TEXTURE_2D_ARRAY:
+        case PIPE_TEXTURE_RECT:
+                return MALI_TEX_2D;
+
+        case PIPE_TEXTURE_3D:
+                return MALI_TEX_3D;
+
+        case PIPE_TEXTURE_CUBE:
+        case PIPE_TEXTURE_CUBE_ARRAY:
+                return MALI_TEX_CUBE;
+
+        default:
+                unreachable("Unknown target");
+        }
+}
+
+
 #endif /* PAN_RESOURCE_H */

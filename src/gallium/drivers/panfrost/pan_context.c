@@ -885,32 +885,6 @@ panfrost_set_stencil_ref(
         ctx->stencil_ref = *ref;
 }
 
-static enum mali_texture_type
-panfrost_translate_texture_type(enum pipe_texture_target t) {
-        switch (t)
-        {
-        case PIPE_BUFFER:
-        case PIPE_TEXTURE_1D:
-        case PIPE_TEXTURE_1D_ARRAY:
-                return MALI_TEX_1D;
-
-        case PIPE_TEXTURE_2D:
-        case PIPE_TEXTURE_2D_ARRAY:
-        case PIPE_TEXTURE_RECT:
-                return MALI_TEX_2D;
-
-        case PIPE_TEXTURE_3D:
-                return MALI_TEX_3D;
-
-        case PIPE_TEXTURE_CUBE:
-        case PIPE_TEXTURE_CUBE_ARRAY:
-                return MALI_TEX_CUBE;
-
-        default:
-                unreachable("Unknown target");
-        }
-}
-
 void
 panfrost_create_sampler_view_bo(struct panfrost_sampler_view *so,
                                 struct pipe_context *pctx,
