@@ -1963,23 +1963,6 @@ calculate_gs_ring_sizes(struct radv_pipeline *pipeline,
 	pipeline->graphics.gsvs_ring_size = MIN2(gsvs_ring_size, max_size);
 }
 
-static void si_multiwave_lds_size_workaround(struct radv_device *device,
-					     unsigned *lds_size)
-{
-	/* If tessellation is all offchip and on-chip GS isn't used, this
-	 * workaround is not needed.
-	 */
-	return;
-
-	/* SPI barrier management bug:
-	 *   Make sure we have at least 4k of LDS in use to avoid the bug.
-	 *   It applies to workgroup sizes of more than one wavefront.
-	 */
-	if (device->physical_device->rad_info.family == CHIP_BONAIRE ||
-	    device->physical_device->rad_info.family == CHIP_KABINI)
-		*lds_size = MAX2(*lds_size, 8);
-}
-
 struct radv_shader_variant *
 radv_get_shader(struct radv_pipeline *pipeline,
 		gl_shader_stage stage)
@@ -2025,7 +2008,6 @@ calculate_tess_state(struct radv_pipeline *pipeline,
 		assert(lds_size <= 32768);
 		lds_size = align(lds_size, 256) / 256;
 	}
-	si_multiwave_lds_size_workaround(pipeline->device, &lds_size);
 
 	tess.lds_size = lds_size;
 
