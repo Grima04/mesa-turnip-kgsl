@@ -1859,9 +1859,6 @@ tu_clear_sysmem_attachments(struct tu_cmd_buffer *cmd,
       return;
    }
 
-   /* This clear path behaves like a draw, needs the same flush as tu_draw */
-   tu_emit_cache_flush_renderpass(cmd, cs);
-
    /* disable all draw states so they don't interfere
     * TODO: use and re-use draw states for this path
     * we have to disable draw states individually to preserve
@@ -2076,6 +2073,11 @@ tu_CmdClearAttachments(VkCommandBuffer commandBuffer,
 {
    TU_FROM_HANDLE(tu_cmd_buffer, cmd, commandBuffer);
    struct tu_cs *cs = &cmd->draw_cs;
+
+   /* sysmem path behaves like a draw, note we don't have a way of using different
+    * flushes for sysmem/gmem, so this needs to be outside of the cond_exec
+    */
+   tu_emit_cache_flush_renderpass(cmd, cs);
 
    tu_cond_exec_start(cs, CP_COND_EXEC_0_RENDER_MODE_GMEM);
    tu_clear_gmem_attachments(cmd, attachmentCount, pAttachments, rectCount, pRects);
