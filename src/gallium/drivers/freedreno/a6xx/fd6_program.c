@@ -434,8 +434,8 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_screen *screen,
 	OUT_PKT4(ring, REG_A6XX_SP_UNKNOWN_A9A8, 1);
 	OUT_RING(ring, 0);
 
-	OUT_PKT4(ring, REG_A6XX_SP_UNKNOWN_AB00, 1);
-	OUT_RING(ring, 0x5);
+	OUT_PKT4(ring, REG_A6XX_SP_MODE_CONTROL, 1);
+	OUT_RING(ring, A6XX_SP_MODE_CONTROL_CONSTANT_DEMOTION_ENABLE | 4);
 
 	OUT_PKT4(ring, REG_A6XX_SP_FS_OUTPUT_CNTL0, 1);
 	OUT_RING(ring, A6XX_SP_FS_OUTPUT_CNTL0_DEPTH_REGID(posz_regid) |

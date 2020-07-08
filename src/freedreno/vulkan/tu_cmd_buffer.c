@@ -824,7 +824,8 @@ tu6_init_hw(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
    tu_cs_emit_write_reg(cs, REG_A6XX_RB_UNKNOWN_8E01, 0x0);
    tu_cs_emit_write_reg(cs, REG_A6XX_SP_UNKNOWN_A982, 0);
    tu_cs_emit_write_reg(cs, REG_A6XX_SP_UNKNOWN_A9A8, 0);
-   tu_cs_emit_write_reg(cs, REG_A6XX_SP_UNKNOWN_AB00, 0x5);
+   tu_cs_emit_write_reg(cs, REG_A6XX_SP_MODE_CONTROL,
+                        A6XX_SP_MODE_CONTROL_CONSTANT_DEMOTION_ENABLE | 4);
 
    /* TODO: set A6XX_VFD_ADD_OFFSET_INSTANCE and fix ir3 to avoid adding base instance */
    tu_cs_emit_write_reg(cs, REG_A6XX_VFD_ADD_OFFSET, A6XX_VFD_ADD_OFFSET_VERTEX);
