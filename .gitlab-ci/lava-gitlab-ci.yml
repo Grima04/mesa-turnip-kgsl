@@ -3,12 +3,12 @@ variables:
 
 .kernel+rootfs:
   stage: container-2
+  extends:
+    - .ci-run-policy
   variables:
     GIT_STRATEGY: fetch
   script:
     - DEBIAN_ARCH=${DEBIAN_ARCH} .gitlab-ci/container/lava_arm.sh
-  rules:
-    - when: always
 
 kernel+rootfs_arm64:
   extends:
