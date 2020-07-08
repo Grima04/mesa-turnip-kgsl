@@ -2053,8 +2053,27 @@ before_ffma_optimizations = [
 # they help code generation but do not necessarily produce code that is
 # more easily optimizable.
 late_optimizations = [
-   # Most of these optimizations aren't quite safe when you get infinity or
-   # Nan involved but the first one should be fine.
+   # The rearrangements are fine w.r.t. NaN.  However, they produce incorrect
+   # results if one operand is +Inf and the other is -Inf.
+   #
+   # 1. Inf + -Inf = NaN
+   # 2. ∀x: x + NaN = NaN and x - NaN = NaN
+   # 3. ∀x: x != NaN = true
+   # 4. ∀x, ∀ cmp ∈ {<, >, ≤, ≥, =}: x cmp NaN = false
+   #
+   #               a=Inf, b=-Inf   a=-Inf, b=Inf    a=NaN    b=NaN
+   #  (a+b) < 0        false            false       false    false
+   #      a < -b       false            false       false    false
+   # -(a+b) < 0        false            false       false    false
+   #     -a < b        false            false       false    false
+   #  (a+b) >= 0       false            false       false    false
+   #      a >= -b      true             true        false    false
+   # -(a+b) >= 0       false            false       false    false
+   #     -a >= b       true             true        false    false
+   #  (a+b) == 0       false            false       false    false
+   #      a == -b      true             true        false    false
+   #  (a+b) != 0       true             true        true     true
+   #      a != -b      false            false       true     true
    (('flt',          ('fadd', a, b),  0.0), ('flt',          a, ('fneg', b))),
    (('flt', ('fneg', ('fadd', a, b)), 0.0), ('flt', ('fneg', a),         b)),
    (('~fge',          ('fadd', a, b),  0.0), ('fge',          a, ('fneg', b))),
