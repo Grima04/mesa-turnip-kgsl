@@ -774,7 +774,6 @@ binaryaccinstruction:
 		if (p->devinfo->gen >= 7)
 			brw_inst_set_nib_control(p->devinfo, brw_last_inst,
 					         $9.nib_ctrl);
-
 	}
 	;
 
