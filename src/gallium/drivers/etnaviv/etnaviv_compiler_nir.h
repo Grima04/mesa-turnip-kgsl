@@ -145,6 +145,7 @@ real_dest(nir_dest *dest, unsigned *swiz, unsigned *mask)
              nir_instr_as_alu(p_instr)->op == nir_op_mov) {
             break;
          }
+         /* fallthrough */
       default:
          can_bypass_src = false;
          break;
