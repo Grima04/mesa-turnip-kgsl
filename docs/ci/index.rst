@@ -117,7 +117,7 @@ no ``parallel`` field set and:
 to just run 1/10th of the test list.
 
 If a HW CI farm goes offline (network dies and all CI pipelines end up
-stalled) or its runners are consistenly spuriously failing (disk
+stalled) or its runners are consistently spuriously failing (disk
 full?), and the maintainer is not immediately available to fix the
 issue, please push through an MR disabling that farm's jobs by adding
 '.' to the front of the jobs names until the maintainer can bring
@@ -150,7 +150,7 @@ instead of silently reusing their container)
 
 When developing a given change to your docker image, you would have to
 bump the tag on each ``git commit --amend`` to your development
-branch, which can get tedious.  Instad, you can navigate to the
+branch, which can get tedious.  Instead, you can navigate to the
 `container registry
 <https://gitlab.freedesktop.org/mesa/mesa/container_registry>`_ for
 your repository and delete the tag to force a rebuild.  When your code

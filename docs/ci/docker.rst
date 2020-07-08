@@ -36,7 +36,7 @@ DUT requirements
 ----------------
 
 In addition to the general :ref:`CI-farm-expectations`, using
-docker requiers:
+docker requires:
 
 * DUTs must have a stable kernel and GPU reset (if applicable).
 

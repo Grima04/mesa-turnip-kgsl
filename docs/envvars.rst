@@ -181,8 +181,8 @@ Core Mesa environment variables
    -  This can be very useful for debugging but some features may not be
       implemented correctly. (For developers only)
 
-NIR passes enviroment variables
--------------------------------
+NIR passes environment variables
+--------------------------------
 
 The following are only applicable for drivers that uses NIR, as they
 modify the behaviour for the common NIR_PASS and NIR_PASS_V macros, that
@@ -190,13 +190,13 @@ wrap calls to NIR lowering/optimizations.
 
 ``NIR_PRINT``
    If defined, the resulting NIR shader will be printed out at each
-   succesful NIR lowering/optimization call.
+   successful NIR lowering/optimization call.
 ``NIR_TEST_CLONE``
-   If defined, cloning a NIR shader would be tested at each succesful
+   If defined, cloning a NIR shader would be tested at each successful
    NIR lowering/optimization call.
 ``NIR_TEST_SERIALIZE``
    If defined, serialize and deserialize a NIR shader would be tested at
-   each succesful NIR lowering/optimization call.
+   each successful NIR lowering/optimization call.
 
 Mesa Xlib driver environment variables
 --------------------------------------

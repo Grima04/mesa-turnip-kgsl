@@ -190,7 +190,7 @@ Compiler Options
 Meson supports the common CFLAGS, CXXFLAGS, etc. environment variables
 but their use is discouraged because of the many caveats in using them.
 
-Instead, it is recomended to use ``-D${lang}_args`` and
+Instead, it is recommended to use ``-D${lang}_args`` and
 ``-D${lang}_link_args``. Among the benefits of these options is that
 they are guaranteed to persist across rebuilds and reconfigurations.
 
@@ -310,7 +310,7 @@ The wrap file must define the following:
 It may also define:
 
 -  ``irbuilder_h``: a ``files()`` object pointing to llvm/IR/IRBuilder.h
-   (this is requred for SWR)
+   (this is required for SWR)
 -  ``has_rtti``: a ``bool`` that declares whether LLVM was built with
    RTTI. Defaults to true
 

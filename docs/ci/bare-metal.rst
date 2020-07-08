@@ -103,7 +103,7 @@ into that pool.
 We need privileged mode and the /dev bind mount in order to get at the
 serial console and fastboot USB devices (--device arguments don't
 apply to devices that show up after container start, which is the case
-with fastboot, and the servo serial devices are acctually links to
+with fastboot, and the servo serial devices are actually links to
 /dev/pts).  We use host network mode so that we can (in the future)
 spin up a server to collect XML results for fastboot.
 

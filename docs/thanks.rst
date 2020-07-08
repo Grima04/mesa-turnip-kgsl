@@ -30,7 +30,7 @@ somewhat dated, unfortunately.
 -  **David Bucciarelli** wrote and maintained the 3Dfx Glide driver.
    Thousands of Linux/Quake players thank David!
 -  **Gareth Hughes** wrote new GLU 1.2 Polygon Tessellation code (now
-   superceded by SGI SI GLU).
+   superseded by SGI SI GLU).
 -  **Holger Waechtler** contributed AMD 3DNow! assembly code which
    accelerates vertex transformation in Mesa 3.1. Holger also
    implemented the GL_EXT_texture_env_combine extension.
