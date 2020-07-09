@@ -2236,9 +2236,10 @@ radv_get_attrib_stride(const VkPipelineVertexInputStateCreateInfo *input_state,
 static struct radv_pipeline_key
 radv_generate_graphics_pipeline_key(struct radv_pipeline *pipeline,
                                     const VkGraphicsPipelineCreateInfo *pCreateInfo,
-                                    const struct radv_blend_state *blend,
-                                    bool has_view_index)
+                                    const struct radv_blend_state *blend)
 {
+	RADV_FROM_HANDLE(radv_render_pass, pass, pCreateInfo->renderPass);
+	struct radv_subpass *subpass = pass->subpasses + pCreateInfo->subpass;
 	const VkPipelineVertexInputStateCreateInfo *input_state =
 	                                         pCreateInfo->pVertexInputState;
 	const VkPipelineVertexInputDivisorStateCreateInfoEXT *divisor_state =
@@ -2250,7 +2251,7 @@ radv_generate_graphics_pipeline_key(struct radv_pipeline *pipeline,
 	if (pCreateInfo->flags & VK_PIPELINE_CREATE_DISABLE_OPTIMIZATION_BIT)
 		key.optimisations_disabled = 1;
 
-	key.has_multiview_view_index = has_view_index;
+	key.has_multiview_view_index = !!subpass->view_mask;
 
 	uint32_t binding_input_rate = 0;
 	uint32_t instance_rate_divisors[MAX_VERTEX_ATTRIBS];
@@ -4779,12 +4780,6 @@ radv_pipeline_init(struct radv_pipeline *pipeline,
 		   const struct radv_graphics_pipeline_create_info *extra)
 {
 	VkResult result;
-	bool has_view_index = false;
-
-	RADV_FROM_HANDLE(radv_render_pass, pass, pCreateInfo->renderPass);
-	struct radv_subpass *subpass = pass->subpasses + pCreateInfo->subpass;
-	if (subpass->view_mask)
-		has_view_index = true;
 
 	pipeline->device = device;
 	pipeline->layout = radv_pipeline_layout_from_handle(pCreateInfo->layout);
@@ -4807,7 +4802,7 @@ radv_pipeline_init(struct radv_pipeline *pipeline,
 			stage_feedbacks[stage] = &creation_feedback->pPipelineStageCreationFeedbacks[i];
 	}
 
-	struct radv_pipeline_key key = radv_generate_graphics_pipeline_key(pipeline, pCreateInfo, &blend, has_view_index);
+	struct radv_pipeline_key key = radv_generate_graphics_pipeline_key(pipeline, pCreateInfo, &blend);
 
 	result = radv_create_shaders(pipeline, device, cache, &key, pStages,
 		                     pCreateInfo->flags, pipeline_feedback,
