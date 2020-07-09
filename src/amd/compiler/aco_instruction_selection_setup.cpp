@@ -1184,6 +1184,7 @@ setup_tcs_info(isel_context *ctx, nir_shader *nir, nir_shader *vs)
                              ctx->args->options->chip_class,
                              ctx->args->options->family);
    unsigned lds_size = calculate_tess_lds_size(
+                             ctx->args->options->chip_class,
                              ctx->args->options->key.tcs.input_vertices,
                              nir->info.tess.tcs_vertices_out,
                              ctx->tcs_num_inputs,
@@ -1192,7 +1193,7 @@ setup_tcs_info(isel_context *ctx, nir_shader *nir, nir_shader *vs)
                              ctx->tcs_num_patch_outputs);
 
    ctx->args->shader_info->tcs.num_patches = ctx->tcs_num_patches;
-   ctx->args->shader_info->tcs.lds_size = lds_size;
+   ctx->args->shader_info->tcs.num_lds_blocks = lds_size;
    ctx->program->config->lds_size = (lds_size + ctx->program->lds_alloc_granule - 1) /
                                     ctx->program->lds_alloc_granule;
 }

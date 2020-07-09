@@ -84,7 +84,7 @@ struct radv_dsa_order_invariance {
 
 struct radv_tessellation_state {
 	uint32_t ls_hs_config;
-	unsigned lds_size;
+	unsigned num_lds_blocks;
 	uint32_t tf_param;
 };
 
@@ -1991,7 +1991,6 @@ calculate_tess_state(struct radv_pipeline *pipeline,
 {
 	unsigned num_tcs_input_cp;
 	unsigned num_tcs_output_cp;
-	unsigned lds_size;
 	unsigned num_patches;
 	struct radv_tessellation_state tess = {0};
 
@@ -1999,17 +1998,7 @@ calculate_tess_state(struct radv_pipeline *pipeline,
 	num_tcs_output_cp = pipeline->shaders[MESA_SHADER_TESS_CTRL]->info.tcs.tcs_vertices_out; //TCS VERTICES OUT
 	num_patches = pipeline->shaders[MESA_SHADER_TESS_CTRL]->info.tcs.num_patches;
 
-	lds_size = pipeline->shaders[MESA_SHADER_TESS_CTRL]->info.tcs.lds_size;
-
-	if (pipeline->device->physical_device->rad_info.chip_class >= GFX7) {
-		assert(lds_size <= 65536);
-		lds_size = align(lds_size, 512) / 512;
-	} else {
-		assert(lds_size <= 32768);
-		lds_size = align(lds_size, 256) / 256;
-	}
-
-	tess.lds_size = lds_size;
+	tess.num_lds_blocks = pipeline->shaders[MESA_SHADER_TESS_CTRL]->info.tcs.num_lds_blocks;
 
 	tess.ls_hs_config = S_028B58_NUM_PATCHES(num_patches) |
 		S_028B58_HS_NUM_INPUT_CP(num_tcs_input_cp) |
@@ -3918,7 +3907,7 @@ radv_pipeline_generate_hw_ls(struct radeon_cmdbuf *cs,
 	radeon_emit(cs, va >> 8);
 	radeon_emit(cs, S_00B524_MEM_BASE(va >> 40));
 
-	rsrc2 |= S_00B52C_LDS_SIZE(tess->lds_size);
+	rsrc2 |= S_00B52C_LDS_SIZE(tess->num_lds_blocks);
 	if (pipeline->device->physical_device->rad_info.chip_class == GFX7 &&
 	    pipeline->device->physical_device->rad_info.family != CHIP_HAWAII)
 		radeon_set_sh_reg(cs, R_00B52C_SPI_SHADER_PGM_RSRC2_LS, rsrc2);
@@ -4074,9 +4063,9 @@ radv_pipeline_generate_hw_hs(struct radeon_cmdbuf *cs,
 		unsigned hs_rsrc2 = shader->config.rsrc2;
 
 		if (pipeline->device->physical_device->rad_info.chip_class >= GFX10) {
-			hs_rsrc2 |= S_00B42C_LDS_SIZE_GFX10(tess->lds_size);
+			hs_rsrc2 |= S_00B42C_LDS_SIZE_GFX10(tess->num_lds_blocks);
 		} else {
-			hs_rsrc2 |= S_00B42C_LDS_SIZE_GFX9(tess->lds_size);
+			hs_rsrc2 |= S_00B42C_LDS_SIZE_GFX9(tess->num_lds_blocks);
 		}
 
 		if (pipeline->device->physical_device->rad_info.chip_class >= GFX10) {
