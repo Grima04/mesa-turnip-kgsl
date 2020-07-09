@@ -280,11 +280,13 @@ sha1_compare_func(const void *sha1_a, const void *sha1_b)
 void
 anv_pipeline_cache_init(struct anv_pipeline_cache *cache,
                         struct anv_device *device,
-                        bool cache_enabled)
+                        bool cache_enabled,
+                        bool external_sync)
 {
    vk_object_base_init(&device->vk, &cache->base,
                        VK_OBJECT_TYPE_PIPELINE_CACHE);
    cache->device = device;
+   cache->external_sync = external_sync;
    pthread_mutex_init(&cache->mutex, NULL);
 
    if (cache_enabled) {
@@ -538,11 +540,9 @@ VkResult anv_CreatePipelineCache(
    if (cache == NULL)
       return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
 
-   cache->external_sync =
-      (pCreateInfo->flags & VK_PIPELINE_CACHE_CREATE_EXTERNALLY_SYNCHRONIZED_BIT_EXT);
-
    anv_pipeline_cache_init(cache, device,
-                           device->physical->instance->pipeline_cache_enabled);
+                           device->physical->instance->pipeline_cache_enabled,
+                           pCreateInfo->flags & VK_PIPELINE_CACHE_CREATE_EXTERNALLY_SYNCHRONIZED_BIT_EXT);
 
    if (pCreateInfo->initialDataSize > 0)
       anv_pipeline_cache_load(cache,

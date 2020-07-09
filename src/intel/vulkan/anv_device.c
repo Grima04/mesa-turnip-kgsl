@@ -2983,7 +2983,8 @@ VkResult anv_CreateDevice(
    if (result != VK_SUCCESS)
       goto fail_clear_value_bo;
 
-   anv_pipeline_cache_init(&device->default_pipeline_cache, device, true);
+   anv_pipeline_cache_init(&device->default_pipeline_cache, device,
+                           true /* cache_enabled */, false /* external_sync */);
 
    anv_device_init_blorp(device);
 

@@ -1253,7 +1253,8 @@ struct anv_pipeline_bind_map;
 
 void anv_pipeline_cache_init(struct anv_pipeline_cache *cache,
                              struct anv_device *device,
-                             bool cache_enabled);
+                             bool cache_enabled,
+                             bool external_sync);
 void anv_pipeline_cache_finish(struct anv_pipeline_cache *cache);
 
 struct anv_shader_bin *
