@@ -81,7 +81,7 @@ get_absolute_timeout(uint64_t timeout)
 static VkResult
 queue_submit_job(struct v3dv_queue *queue,
                  struct v3dv_job *job,
-                 bool do_wait,
+                 bool do_sem_wait,
                  pthread_t *wait_thread);
 
 /* Waits for active CPU wait threads spawned before the current thread to
@@ -424,12 +424,12 @@ handle_copy_buffer_to_image_cpu_job(struct v3dv_job *job)
 static VkResult
 handle_csd_job(struct v3dv_queue *queue,
                struct v3dv_job *job,
-               bool do_wait);
+               bool do_sem_wait);
 
 static VkResult
 handle_csd_indirect_cpu_job(struct v3dv_queue *queue,
                             struct v3dv_job *job,
-                            bool do_wait)
+                            bool do_sem_wait)
 {
    assert(job->type == V3DV_JOB_TYPE_CPU_CSD_INDIRECT);
    struct v3dv_csd_indirect_cpu_job_info *info = &job->cpu.csd_indirect;
@@ -457,7 +457,7 @@ handle_csd_indirect_cpu_job(struct v3dv_queue *queue,
       v3dv_cmd_buffer_rewrite_indirect_csd_job(info, group_counts);
    }
 
-   handle_csd_job(queue, info->csd_job, do_wait);
+   handle_csd_job(queue, info->csd_job, do_sem_wait);
 
    return VK_SUCCESS;
 }
@@ -524,7 +524,7 @@ process_fence_to_signal(struct v3dv_device *device, VkFence _fence)
 static VkResult
 handle_cl_job(struct v3dv_queue *queue,
               struct v3dv_job *job,
-              bool do_wait)
+              bool do_sem_wait)
 {
    struct v3dv_device *device = queue->device;
 
@@ -534,7 +534,6 @@ handle_cl_job(struct v3dv_queue *queue,
     * serialized.
     */
    assert(job->serialize || !job->needs_bcl_sync);
-   do_wait |= job->serialize;
 
    /* We expect to have just one RCL per job which should fit in just one BO.
     * Our BCL, could chain multiple BOS together though.
@@ -570,9 +569,15 @@ handle_cl_job(struct v3dv_queue *queue,
    assert(bo_idx == submit.bo_handle_count);
    submit.bo_handles = (uintptr_t)(void *)bo_handles;
 
-   /* RCL jobs don't start until the previous RCL job has finished so we don't
-    * really need to add a fence for those, however, we might need to wait on a
-    * CSD or TFU job, which are not serialized.
+   /* We need a binning sync if we are waiting on a sempahore (do_sem_wait) or
+    * if the job comes after a pipeline barrier than involves geometry stages
+    * (needs_bcl_sync).
+    *
+    * We need a render sync if the job doesn't need a binning sync but has
+    * still been flagged for serialization. It should be noted that RCL jobs
+    * don't start until the previous RCL job has finished so we don't really
+    * need to add a fence for those, however, we might need to wait on a CSD or
+    * TFU job, which are not automatically serialized with CL jobs.
     *
     * FIXME: for now, if we are asked to wait on any semaphores, we just wait
     * on the last job we submitted. In the future we might want to pass the
@@ -581,8 +586,8 @@ handle_cl_job(struct v3dv_queue *queue,
     * we would have to extend our kernel interface to support the case where
     * we have more than one semaphore to wait on.
     */
-   const bool needs_bcl_sync = do_wait && job->needs_bcl_sync;
-   const bool needs_rcl_sync = do_wait && !needs_bcl_sync;
+   const bool needs_bcl_sync = do_sem_wait || job->needs_bcl_sync;
+   const bool needs_rcl_sync = job->serialize && !needs_bcl_sync;
 
    mtx_lock(&queue->device->mutex);
    submit.in_sync_bcl = needs_bcl_sync ? device->last_job_sync : 0;
@@ -610,14 +615,14 @@ handle_cl_job(struct v3dv_queue *queue,
 static VkResult
 handle_tfu_job(struct v3dv_queue *queue,
                struct v3dv_job *job,
-               bool do_wait)
+               bool do_sem_wait)
 {
    struct v3dv_device *device = queue->device;
 
-   do_wait |= job->serialize;
+   const bool needs_sync = do_sem_wait || job->serialize;
 
    mtx_lock(&device->mutex);
-   job->tfu.in_sync = do_wait ? device->last_job_sync : 0;
+   job->tfu.in_sync = needs_sync ? device->last_job_sync : 0;
    job->tfu.out_sync = device->last_job_sync;
    int ret = v3dv_ioctl(device->render_fd, DRM_IOCTL_V3D_SUBMIT_TFU, &job->tfu);
    mtx_unlock(&device->mutex);
@@ -633,13 +638,11 @@ handle_tfu_job(struct v3dv_queue *queue,
 static VkResult
 handle_csd_job(struct v3dv_queue *queue,
                struct v3dv_job *job,
-               bool do_wait)
+               bool do_sem_wait)
 {
    struct v3dv_device *device = queue->device;
 
    struct drm_v3d_submit_csd *submit = &job->csd.submit;
-
-   do_wait |= job->serialize;
 
    submit->bo_handle_count = job->bo_count;
    uint32_t *bo_handles =
@@ -652,8 +655,10 @@ handle_csd_job(struct v3dv_queue *queue,
    assert(bo_idx == submit->bo_handle_count);
    submit->bo_handles = (uintptr_t)(void *)bo_handles;
 
+   const bool needs_sync = do_sem_wait || job->serialize;
+
    mtx_lock(&queue->device->mutex);
-   submit->in_sync = do_wait ? device->last_job_sync : 0;
+   submit->in_sync = needs_sync ? device->last_job_sync : 0;
    submit->out_sync = device->last_job_sync;
    int ret = v3dv_ioctl(device->render_fd, DRM_IOCTL_V3D_SUBMIT_CSD, submit);
    mtx_unlock(&queue->device->mutex);
@@ -676,18 +681,18 @@ handle_csd_job(struct v3dv_queue *queue,
 static VkResult
 queue_submit_job(struct v3dv_queue *queue,
                  struct v3dv_job *job,
-                 bool do_wait,
+                 bool do_sem_wait,
                  pthread_t *wait_thread)
 {
    assert(job);
 
    switch (job->type) {
    case V3DV_JOB_TYPE_GPU_CL:
-      return handle_cl_job(queue, job, do_wait);
+      return handle_cl_job(queue, job, do_sem_wait);
    case V3DV_JOB_TYPE_GPU_TFU:
-      return handle_tfu_job(queue, job, do_wait);
+      return handle_tfu_job(queue, job, do_sem_wait);
    case V3DV_JOB_TYPE_GPU_CSD:
-      return handle_csd_job(queue, job, do_wait);
+      return handle_csd_job(queue, job, do_sem_wait);
    case V3DV_JOB_TYPE_CPU_RESET_QUERIES:
       return handle_reset_query_cpu_job(job);
    case V3DV_JOB_TYPE_CPU_END_QUERY:
@@ -697,11 +702,11 @@ queue_submit_job(struct v3dv_queue *queue,
    case V3DV_JOB_TYPE_CPU_SET_EVENT:
       return handle_set_event_cpu_job(job, wait_thread != NULL);
    case V3DV_JOB_TYPE_CPU_WAIT_EVENTS:
-      return handle_wait_events_cpu_job(job, do_wait, wait_thread);
+      return handle_wait_events_cpu_job(job, do_sem_wait, wait_thread);
    case V3DV_JOB_TYPE_CPU_COPY_BUFFER_TO_IMAGE:
       return handle_copy_buffer_to_image_cpu_job(job);
    case V3DV_JOB_TYPE_CPU_CSD_INDIRECT:
-      return handle_csd_indirect_cpu_job(queue, job, do_wait);
+      return handle_csd_indirect_cpu_job(queue, job, do_sem_wait);
    default:
       unreachable("Unhandled job type");
    }
