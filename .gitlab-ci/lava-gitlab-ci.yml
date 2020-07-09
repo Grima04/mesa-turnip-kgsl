@@ -32,9 +32,16 @@ kernel+rootfs_armhf:
     GIT_STRATEGY: none # testing doesn't build anything from source
     ENV_VARS: "DEQP_PARALLEL=6"
     DEQP_VERSION: gles2
-    ARTIFACTS_URL: "https://minio-packet.freedesktop.org/mesa-lava/${CI_PROJECT_PATH}/${DISTRIBUTION_TAG}/${ARCH}"
+    ARTIFACTS_PREFIX: "https://minio-packet.freedesktop.org/mesa-lava/"
     MESA_URL: "https://minio-packet.freedesktop.org/artifacts/${CI_PROJECT_PATH}/${CI_PIPELINE_ID}/mesa-${ARCH}.tar.gz"
   script:
+    # Try to use the kernel and rootfs built in mainline first, to save cycles
+    - >
+      if wget -q --method=HEAD "${ARTIFACTS_PREFIX}/mesa/mesa/${DISTRIBUTION_TAG}/${ARCH}/done"; then
+        ARTIFACTS_URL="${ARTIFACTS_PREFIX}/mesa/mesa/${DISTRIBUTION_TAG}/${ARCH}"
+      else
+        ARTIFACTS_URL="${ARTIFACTS_PREFIX}/${CI_PROJECT_PATH}/${DISTRIBUTION_TAG}/${ARCH}"
+      fi
     - >
       artifacts/generate_lava.py \
         --template artifacts/lava-deqp.yml.jinja2 \

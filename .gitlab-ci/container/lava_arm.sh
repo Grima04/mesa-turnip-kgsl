@@ -3,12 +3,17 @@
 set -e
 set -o xtrace
 
+check_minio()
+{
+    MINIO_PATH="minio-packet.freedesktop.org/mesa-lava/$1/${DISTRIBUTION_TAG}/${DEBIAN_ARCH}"
+    if wget -q --method=HEAD "https://${MINIO_PATH}/done"; then
+        exit
+    fi
+}
+
 # If remote files are up-to-date, skip rebuilding them
-MINIO_PATH=minio-packet.freedesktop.org/mesa-lava/${CI_PROJECT_PATH}/${DISTRIBUTION_TAG}/${DEBIAN_ARCH}
-DONE_FILE=https://${MINIO_PATH}/done
-if wget -q --method=HEAD ${DONE_FILE}; then
-    exit
-fi
+check_minio "mesa/mesa"
+check_minio "${CI_PROJECT_PATH}"
 
 . .gitlab-ci/container/container_pre_build.sh
 
