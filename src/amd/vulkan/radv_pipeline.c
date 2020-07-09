@@ -3404,9 +3404,8 @@ radv_gfx10_compute_bin_size(struct radv_pipeline *pipeline, const VkGraphicsPipe
 }
 
 static void
-radv_pipeline_generate_disabled_binning_state(struct radeon_cmdbuf *ctx_cs,
-					      struct radv_pipeline *pipeline,
-					      const VkGraphicsPipelineCreateInfo *pCreateInfo)
+radv_pipeline_init_disabled_binning_state(struct radv_pipeline *pipeline,
+					  const VkGraphicsPipelineCreateInfo *pCreateInfo)
 {
 	uint32_t pa_sc_binner_cntl_0 =
 	                S_028C44_BINNING_MODE(V_028C44_DISABLE_BINNING_USE_LEGACY_SC) |
@@ -3476,10 +3475,9 @@ radv_get_binning_settings(const struct radv_physical_device *pdev)
 }
 
 static void
-radv_pipeline_generate_binning_state(struct radeon_cmdbuf *ctx_cs,
-				     struct radv_pipeline *pipeline,
-				     const VkGraphicsPipelineCreateInfo *pCreateInfo,
-				     const struct radv_blend_state *blend)
+radv_pipeline_init_binning_state(struct radv_pipeline *pipeline,
+				 const VkGraphicsPipelineCreateInfo *pCreateInfo,
+				 const struct radv_blend_state *blend)
 {
 	if (pipeline->device->physical_device->rad_info.chip_class < GFX9)
 		return;
@@ -3524,7 +3522,7 @@ radv_pipeline_generate_binning_state(struct radeon_cmdbuf *ctx_cs,
 		pipeline->graphics.binning.pa_sc_binner_cntl_0 = pa_sc_binner_cntl_0;
 		pipeline->graphics.binning.db_dfsm_control = db_dfsm_control;
 	} else
-		radv_pipeline_generate_disabled_binning_state(ctx_cs, pipeline, pCreateInfo);
+		radv_pipeline_init_disabled_binning_state(pipeline, pCreateInfo);
 }
 
 
@@ -4666,7 +4664,6 @@ radv_pipeline_generate_pm4(struct radv_pipeline *pipeline,
 	radv_pipeline_generate_fragment_shader(ctx_cs, cs, pipeline);
 	radv_pipeline_generate_ps_inputs(ctx_cs, pipeline);
 	radv_pipeline_generate_vgt_vertex_reuse(ctx_cs, pipeline);
-	radv_pipeline_generate_binning_state(ctx_cs, pipeline, pCreateInfo, blend);
 	radv_pipeline_generate_vgt_shader_config(ctx_cs, pipeline);
 	radv_pipeline_generate_cliprect_rule(ctx_cs, pCreateInfo);
 	radv_pipeline_generate_vgt_gs_out(ctx_cs, pipeline, pCreateInfo, extra);
@@ -4897,6 +4894,8 @@ radv_pipeline_init(struct radv_pipeline *pipeline,
 	pipeline->graphics.ia_multi_vgt_param = radv_compute_ia_multi_vgt_param_helpers(pipeline);
 
 	radv_compute_vertex_input_state(pipeline, pCreateInfo);
+
+	radv_pipeline_init_binning_state(pipeline, pCreateInfo, &blend);
 
 	for (uint32_t i = 0; i < MESA_SHADER_STAGES; i++)
 		pipeline->user_data_0[i] = radv_pipeline_stage_to_user_data_0(pipeline, i, device->physical_device->rad_info.chip_class);
