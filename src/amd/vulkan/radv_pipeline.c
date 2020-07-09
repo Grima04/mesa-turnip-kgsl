@@ -84,7 +84,6 @@ struct radv_dsa_order_invariance {
 
 struct radv_tessellation_state {
 	uint32_t ls_hs_config;
-	unsigned num_lds_blocks;
 	uint32_t tf_param;
 };
 
@@ -1998,8 +1997,6 @@ calculate_tess_state(struct radv_pipeline *pipeline,
 	num_tcs_output_cp = pipeline->shaders[MESA_SHADER_TESS_CTRL]->info.tcs.tcs_vertices_out; //TCS VERTICES OUT
 	num_patches = pipeline->shaders[MESA_SHADER_TESS_CTRL]->info.tcs.num_patches;
 
-	tess.num_lds_blocks = pipeline->shaders[MESA_SHADER_TESS_CTRL]->info.tcs.num_lds_blocks;
-
 	tess.ls_hs_config = S_028B58_NUM_PATCHES(num_patches) |
 		S_028B58_HS_NUM_INPUT_CP(num_tcs_input_cp) |
 		S_028B58_HS_NUM_OUTPUT_CP(num_tcs_output_cp);
@@ -3897,9 +3894,9 @@ radv_pipeline_generate_hw_es(struct radeon_cmdbuf *cs,
 static void
 radv_pipeline_generate_hw_ls(struct radeon_cmdbuf *cs,
 			     struct radv_pipeline *pipeline,
-			     struct radv_shader_variant *shader,
-			     const struct radv_tessellation_state *tess)
+			     struct radv_shader_variant *shader)
 {
+	unsigned num_lds_blocks = pipeline->shaders[MESA_SHADER_TESS_CTRL]->info.tcs.num_lds_blocks;
 	uint64_t va = radv_buffer_get_va(shader->bo) + shader->bo_offset;
 	uint32_t rsrc2 = shader->config.rsrc2;
 
@@ -3907,7 +3904,7 @@ radv_pipeline_generate_hw_ls(struct radeon_cmdbuf *cs,
 	radeon_emit(cs, va >> 8);
 	radeon_emit(cs, S_00B524_MEM_BASE(va >> 40));
 
-	rsrc2 |= S_00B52C_LDS_SIZE(tess->num_lds_blocks);
+	rsrc2 |= S_00B52C_LDS_SIZE(num_lds_blocks);
 	if (pipeline->device->physical_device->rad_info.chip_class == GFX7 &&
 	    pipeline->device->physical_device->rad_info.family != CHIP_HAWAII)
 		radeon_set_sh_reg(cs, R_00B52C_SPI_SHADER_PGM_RSRC2_LS, rsrc2);
@@ -4084,8 +4081,7 @@ radv_pipeline_generate_hw_hs(struct radeon_cmdbuf *cs,
 static void
 radv_pipeline_generate_vertex_shader(struct radeon_cmdbuf *ctx_cs,
 				     struct radeon_cmdbuf *cs,
-				     struct radv_pipeline *pipeline,
-				     const struct radv_tessellation_state *tess)
+				     struct radv_pipeline *pipeline)
 {
 	struct radv_shader_variant *vs;
 
@@ -4095,7 +4091,7 @@ radv_pipeline_generate_vertex_shader(struct radeon_cmdbuf *ctx_cs,
 		return;
 
 	if (vs->info.vs.as_ls)
-		radv_pipeline_generate_hw_ls(cs, pipeline, vs, tess);
+		radv_pipeline_generate_hw_ls(cs, pipeline, vs);
 	else if (vs->info.vs.as_es)
 		radv_pipeline_generate_hw_es(cs, pipeline, vs);
 	else if (vs->info.is_ngg)
@@ -4616,7 +4612,7 @@ radv_pipeline_generate_pm4(struct radv_pipeline *pipeline,
 	radv_pipeline_generate_raster_state(ctx_cs, pipeline, pCreateInfo);
 	radv_pipeline_generate_multisample_state(ctx_cs, pipeline);
 	radv_pipeline_generate_vgt_gs_mode(ctx_cs, pipeline);
-	radv_pipeline_generate_vertex_shader(ctx_cs, cs, pipeline, tess);
+	radv_pipeline_generate_vertex_shader(ctx_cs, cs, pipeline);
 	radv_pipeline_generate_tess_shaders(ctx_cs, cs, pipeline, tess);
 	radv_pipeline_generate_geometry_shader(ctx_cs, cs, pipeline);
 	radv_pipeline_generate_fragment_shader(ctx_cs, cs, pipeline);
