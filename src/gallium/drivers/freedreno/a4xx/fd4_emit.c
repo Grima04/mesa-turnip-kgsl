@@ -43,6 +43,8 @@
 #include "fd4_format.h"
 #include "fd4_zsa.h"
 
+#define emit_const_user fd4_emit_const_user
+#define emit_const_bo fd4_emit_const_bo
 #include "ir3_const.h"
 
 /* regid:          base const register
@@ -50,41 +52,37 @@
  * sizedwords:     size of const value buffer
  */
 static void
-fd4_emit_const(struct fd_ringbuffer *ring, gl_shader_stage type,
-		uint32_t regid, uint32_t offset, uint32_t sizedwords,
-		const uint32_t *dwords, struct pipe_resource *prsc)
+fd4_emit_const_user(struct fd_ringbuffer *ring,
+		const struct ir3_shader_variant *v, uint32_t regid, uint32_t sizedwords,
+		const uint32_t *dwords)
 {
-	uint32_t i, sz;
-	enum a4xx_state_src src;
+	emit_const_asserts(ring, v, regid, sizedwords);
 
-	debug_assert((regid % 4) == 0);
-	debug_assert((sizedwords % 4) == 0);
-
-	if (prsc) {
-		sz = 0;
-		src = SS4_INDIRECT;
-	} else {
-		sz = sizedwords;
-		src = SS4_DIRECT;
-	}
-
-	OUT_PKT3(ring, CP_LOAD_STATE4, 2 + sz);
+	OUT_PKT3(ring, CP_LOAD_STATE4, 2 + sizedwords);
 	OUT_RING(ring, CP_LOAD_STATE4_0_DST_OFF(regid/4) |
-			CP_LOAD_STATE4_0_STATE_SRC(src) |
-			CP_LOAD_STATE4_0_STATE_BLOCK(fd4_stage2shadersb(type)) |
+			CP_LOAD_STATE4_0_STATE_SRC(SS4_DIRECT) |
+			CP_LOAD_STATE4_0_STATE_BLOCK(fd4_stage2shadersb(v->type)) |
 			CP_LOAD_STATE4_0_NUM_UNIT(sizedwords/4));
-	if (prsc) {
-		struct fd_bo *bo = fd_resource(prsc)->bo;
-		OUT_RELOC(ring, bo, offset,
-				CP_LOAD_STATE4_1_STATE_TYPE(ST4_CONSTANTS), 0);
-	} else {
-		OUT_RING(ring, CP_LOAD_STATE4_1_EXT_SRC_ADDR(0) |
-				CP_LOAD_STATE4_1_STATE_TYPE(ST4_CONSTANTS));
-		dwords = (uint32_t *)&((uint8_t *)dwords)[offset];
-	}
-	for (i = 0; i < sz; i++) {
+	OUT_RING(ring, CP_LOAD_STATE4_1_EXT_SRC_ADDR(0) |
+			CP_LOAD_STATE4_1_STATE_TYPE(ST4_CONSTANTS));
+	for (int i = 0; i < sizedwords; i++)
 		OUT_RING(ring, dwords[i]);
-	}
+}
+
+static void
+fd4_emit_const_bo(struct fd_ringbuffer *ring, const struct ir3_shader_variant *v,
+		uint32_t regid, uint32_t offset, uint32_t sizedwords,
+		struct fd_bo *bo)
+{
+	emit_const_asserts(ring, v, regid, sizedwords);
+
+	OUT_PKT3(ring, CP_LOAD_STATE4, 2);
+	OUT_RING(ring, CP_LOAD_STATE4_0_DST_OFF(regid/4) |
+			CP_LOAD_STATE4_0_STATE_SRC(SS4_INDIRECT) |
+			CP_LOAD_STATE4_0_STATE_BLOCK(fd4_stage2shadersb(v->type)) |
+			CP_LOAD_STATE4_0_NUM_UNIT(sizedwords/4));
+	OUT_RELOC(ring, bo, offset,
+			CP_LOAD_STATE4_1_STATE_TYPE(ST4_CONSTANTS), 0);
 }
 
 static void
@@ -120,18 +118,6 @@ static bool
 is_stateobj(struct fd_ringbuffer *ring)
 {
 	return false;
-}
-
-void
-emit_const(struct fd_ringbuffer *ring,
-		const struct ir3_shader_variant *v, uint32_t dst_offset,
-		uint32_t offset, uint32_t size, const void *user_buffer,
-		struct pipe_resource *buffer)
-{
-	/* TODO inline this */
-	assert(dst_offset + size <= v->constlen * 4);
-	fd4_emit_const(ring, v->type, dst_offset,
-			offset, size, user_buffer, buffer);
 }
 
 static void
