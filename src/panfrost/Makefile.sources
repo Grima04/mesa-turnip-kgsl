@@ -25,6 +25,7 @@ encoder_FILES := \
         encoder/pan_attributes.c \
         encoder/pan_bo.c \
         encoder/pan_bo.h \
+        encoder/pan_blit.c \
         encoder/pan_device.h \
         encoder/pan_encoder.h \
         encoder/pan_format.c \

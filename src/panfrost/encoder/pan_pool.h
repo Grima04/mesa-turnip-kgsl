@@ -25,6 +25,7 @@
 #ifndef __PAN_POOL_H__
 #define __PAN_POOL_H__
 
+#include <stddef.h>
 #include <panfrost-misc.h>
 
 /* Represents a pool of memory that can only grow, used to allocate objects

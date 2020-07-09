@@ -68,6 +68,22 @@
 /* Fencepost problem, hence the off-by-one */
 #define NR_BO_CACHE_BUCKETS (MAX_BO_CACHE_BUCKET - MIN_BO_CACHE_BUCKET + 1)
 
+/* Cache for blit shaders. Defined here so they can be cached with the device */
+
+enum pan_blit_type {
+        PAN_BLIT_FLOAT = 0,
+        PAN_BLIT_UINT,
+        PAN_BLIT_INT,
+        PAN_BLIT_NUM_TYPES,
+};
+
+#define PAN_BLIT_NUM_TARGETS (12)
+
+struct pan_blit_shaders {
+        struct panfrost_bo *bo;
+        mali_ptr loads[PAN_BLIT_NUM_TARGETS][PAN_BLIT_NUM_TYPES][2];
+};
+
 struct panfrost_device {
         /* For ralloc */
         void *memctx;
@@ -109,6 +125,8 @@ struct panfrost_device {
 
                 struct list_head buckets[NR_BO_CACHE_BUCKETS];
         } bo_cache;
+
+        struct pan_blit_shaders blit_shaders;
 };
 
 void

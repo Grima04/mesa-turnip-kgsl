@@ -776,5 +776,8 @@ panfrost_create_screen(int fd, struct renderonly *ro)
 
         panfrost_resource_screen_init(&screen->base);
 
+        if (!(dev->quirks & IS_BIFROST))
+                panfrost_init_blit_shaders(dev);
+
         return &screen->base;
 }

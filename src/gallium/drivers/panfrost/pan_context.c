@@ -1567,6 +1567,11 @@ panfrost_create_context(struct pipe_screen *screen, void *priv, unsigned flags)
         panfrost_batch_init(ctx);
         panfrost_invalidate_frame(ctx);
 
+        if (!(dev->quirks & IS_BIFROST)) {
+                for (unsigned c = 0; c < PIPE_MAX_COLOR_BUFS; ++c)
+                        ctx->blit_blend.rt[c].shaders = _mesa_hash_table_u64_create(ctx);
+        }
+
         /* By default mask everything on */
         ctx->sample_mask = ~0;
 

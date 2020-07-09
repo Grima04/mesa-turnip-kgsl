@@ -165,6 +165,8 @@ struct panfrost_context {
         struct pipe_stencil_ref stencil_ref;
         unsigned sample_mask;
         unsigned min_samples;
+
+        struct panfrost_blend_state blit_blend;
 };
 
 /* Corresponds to the CSO */

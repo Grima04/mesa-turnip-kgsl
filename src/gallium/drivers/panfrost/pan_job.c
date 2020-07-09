@@ -35,6 +35,7 @@
 #include "util/u_pack_color.h"
 #include "util/rounding.h"
 #include "pan_util.h"
+#include "pan_blending.h"
 #include "pandecode/decode.h"
 #include "panfrost-quirks.h"
 
@@ -795,35 +796,19 @@ panfrost_batch_reserve_framebuffer(struct panfrost_batch *batch)
 
 
 static void
-panfrost_batch_draw_wallpaper(struct panfrost_batch *batch)
+panfrost_load_surface(struct panfrost_batch *batch, struct pipe_surface *surf, unsigned loc)
 {
-        /* Color 0 is cleared, no need to draw the wallpaper.
-         * TODO: MRT wallpapers.
-         */
-        if (batch->clear & PIPE_CLEAR_COLOR0)
+        if (!surf)
                 return;
 
-        /* Nothing to reload? TODO: MRT wallpapers */
-        if (batch->key.cbufs[0] == NULL)
-                return;
-
-        /* No draw calls, and no clear on the depth/stencil bufs.
-         * Drawing the wallpaper would be useless.
-         */
-        if (!batch->scoreboard.tiler_dep &&
-            !(batch->clear & PIPE_CLEAR_DEPTHSTENCIL))
-                return;
-
-        /* Check if the buffer has any content on it worth preserving */
-
-        struct pipe_surface *surf = batch->key.cbufs[0];
         struct panfrost_resource *rsrc = pan_resource(surf->texture);
         unsigned level = surf->u.tex.level;
 
         if (!rsrc->slices[level].initialized)
                 return;
 
-        batch->ctx->wallpaper_batch = batch;
+        if (!rsrc->damage.inverted_len)
+                return;
 
         /* Clamp the rendering area to the damage extent. The
          * KHR_partial_update() spec states that trying to render outside of
@@ -840,73 +825,152 @@ panfrost_batch_draw_wallpaper(struct panfrost_batch *batch)
                                                     rsrc->damage.extent.maxy);
         }
 
-        /* FIXME: Looks like aligning on a tile is not enough, but
-         * aligning on twice the tile size seems to works. We don't
-         * know exactly what happens here but this deserves extra
-         * investigation to figure it out.
-         */
-        batch->minx = batch->minx & ~((MALI_TILE_LENGTH * 2) - 1);
-        batch->miny = batch->miny & ~((MALI_TILE_LENGTH * 2) - 1);
-        batch->maxx = MIN2(ALIGN_POT(batch->maxx, MALI_TILE_LENGTH * 2),
-                           rsrc->base.width0);
-        batch->maxy = MIN2(ALIGN_POT(batch->maxy, MALI_TILE_LENGTH * 2),
-                           rsrc->base.height0);
+        /* XXX: Native blits on Bifrost */
+        if (batch->pool.dev->quirks & IS_BIFROST) {
+                if (loc != FRAG_RESULT_DATA0)
+                        return;
 
-        struct pipe_scissor_state damage;
-        struct pipe_box rects[4];
+                /* XXX: why align on *twice* the tile length? */
+                batch->minx = batch->minx & ~((MALI_TILE_LENGTH * 2) - 1);
+                batch->miny = batch->miny & ~((MALI_TILE_LENGTH * 2) - 1);
+                batch->maxx = MIN2(ALIGN_POT(batch->maxx, MALI_TILE_LENGTH * 2),
+                                rsrc->base.width0);
+                batch->maxy = MIN2(ALIGN_POT(batch->maxy, MALI_TILE_LENGTH * 2),
+                                rsrc->base.height0);
 
-        /* Clamp the damage box to the rendering area. */
-        damage.minx = MAX2(batch->minx, rsrc->damage.biggest_rect.x);
-        damage.miny = MAX2(batch->miny, rsrc->damage.biggest_rect.y);
-        damage.maxx = MIN2(batch->maxx,
-                           rsrc->damage.biggest_rect.x +
-                           rsrc->damage.biggest_rect.width);
-        damage.maxx = MAX2(damage.maxx, damage.minx);
-        damage.maxy = MIN2(batch->maxy,
-                           rsrc->damage.biggest_rect.y +
-                           rsrc->damage.biggest_rect.height);
-        damage.maxy = MAX2(damage.maxy, damage.miny);
-
-        /* One damage rectangle means we can end up with at most 4 reload
-         * regions:
-         * 1: left region, only exists if damage.x > 0
-         * 2: right region, only exists if damage.x + damage.width < fb->width
-         * 3: top region, only exists if damage.y > 0. The intersection with
-         *    the left and right regions are dropped
-         * 4: bottom region, only exists if damage.y + damage.height < fb->height.
-         *    The intersection with the left and right regions are dropped
-         *
-         *                    ____________________________
-         *                    |       |     3     |      |
-         *                    |       |___________|      |
-         *                    |       |   damage  |      |
-         *                    |   1   |    rect   |   2  |
-         *                    |       |___________|      |
-         *                    |       |     4     |      |
-         *                    |_______|___________|______|
-         */
-        u_box_2d(batch->minx, batch->miny, damage.minx - batch->minx,
-                 batch->maxy - batch->miny, &rects[0]);
-        u_box_2d(damage.maxx, batch->miny, batch->maxx - damage.maxx,
-                 batch->maxy - batch->miny, &rects[1]);
-        u_box_2d(damage.minx, batch->miny, damage.maxx - damage.minx,
-                 damage.miny - batch->miny, &rects[2]);
-        u_box_2d(damage.minx, damage.maxy, damage.maxx - damage.minx,
-                 batch->maxy - damage.maxy, &rects[3]);
-
-        for (unsigned i = 0; i < 4; i++) {
-                /* Width and height are always >= 0 even if width is declared as a
-                 * signed integer: u_box_2d() helper takes unsigned args and
-                 * panfrost_set_damage_region() is taking care of clamping
-                 * negative values.
-                 */
-                if (!rects[i].width || !rects[i].height)
-                        continue;
-
-                /* Blit the wallpaper in */
-                panfrost_blit_wallpaper(batch->ctx, &rects[i]);
+                struct pipe_box rect;
+                batch->ctx->wallpaper_batch = batch;
+                u_box_2d(batch->minx, batch->miny, batch->maxx - batch->minx,
+                                batch->maxy - batch->miny, &rect);
+                panfrost_blit_wallpaper(batch->ctx, &rect);
+                batch->ctx->wallpaper_batch = NULL;
+                return;
         }
-        batch->ctx->wallpaper_batch = NULL;
+
+        enum pipe_format format = rsrc->base.format;
+
+        if (loc == FRAG_RESULT_DEPTH) {
+                if (!util_format_has_depth(util_format_description(format)))
+                        return;
+
+                format = util_format_get_depth_only(format);
+        } else if (loc == FRAG_RESULT_STENCIL) {
+                if (!util_format_has_stencil(util_format_description(format)))
+                        return;
+
+                if (rsrc->separate_stencil) {
+                        rsrc = rsrc->separate_stencil;
+                        format = rsrc->base.format;
+                }
+
+                format = util_format_stencil_only(format);
+        }
+
+        enum mali_texture_type type =
+                panfrost_translate_texture_type(rsrc->base.target);
+
+        unsigned nr_samples = surf->nr_samples;
+
+        if (!nr_samples)
+                nr_samples = surf->texture->nr_samples;
+
+        struct pan_image img = {
+                .width0 = rsrc->base.width0,
+                .height0 = rsrc->base.height0,
+                .depth0 = rsrc->base.depth0,
+                .format = format,
+                .type = type,
+                .layout = rsrc->layout,
+                .array_size = rsrc->base.array_size,
+                .first_level = level,
+                .last_level = level,
+                .first_layer = surf->u.tex.first_layer,
+                .last_layer = surf->u.tex.last_layer,
+                .nr_samples = nr_samples,
+                .cubemap_stride = rsrc->cubemap_stride,
+                .bo = rsrc->bo,
+                .slices = rsrc->slices
+        };
+
+        mali_ptr blend_shader = 0;
+
+        if (loc >= FRAG_RESULT_DATA0 && !panfrost_can_fixed_blend(rsrc->base.format)) {
+                struct panfrost_blend_shader *b =
+                        panfrost_get_blend_shader(batch->ctx, &batch->ctx->blit_blend, rsrc->base.format, loc - FRAG_RESULT_DATA0);
+
+                struct panfrost_bo *bo = panfrost_batch_create_bo(batch, b->size,
+                   PAN_BO_EXECUTE,
+                   PAN_BO_ACCESS_PRIVATE |
+                   PAN_BO_ACCESS_READ |
+                   PAN_BO_ACCESS_FRAGMENT);
+
+                memcpy(bo->cpu, b->buffer, b->size);
+                assert(b->work_count <= 4);
+
+                blend_shader = bo->gpu | b->first_tag;
+        }
+
+        struct panfrost_transfer transfer = panfrost_pool_alloc(&batch->pool,
+                        4 * 4 * 6 * rsrc->damage.inverted_len);
+
+        for (unsigned i = 0; i < rsrc->damage.inverted_len; ++i) {
+                float *o = (float *) (transfer.cpu + (4 * 4 * 6 * i));
+                struct pan_rect r = rsrc->damage.inverted_rects[i];
+
+                float rect[] = {
+                        r.minx, rsrc->base.height0 - r.miny, 0.0, 1.0,
+                        r.maxx, rsrc->base.height0 - r.miny, 0.0, 1.0,
+                        r.minx, rsrc->base.height0 - r.maxy, 0.0, 1.0,
+
+                        r.maxx, rsrc->base.height0 - r.miny, 0.0, 1.0,
+                        r.minx, rsrc->base.height0 - r.maxy, 0.0, 1.0,
+                        r.maxx, rsrc->base.height0 - r.maxy, 0.0, 1.0,
+                };
+
+                assert(sizeof(rect) == 4 * 4 * 6);
+                memcpy(o, rect, sizeof(rect));
+        }
+
+        panfrost_load_midg(&batch->pool, &batch->scoreboard,
+                blend_shader,
+                batch->framebuffer.gpu, transfer.gpu,
+                rsrc->damage.inverted_len * 6,
+                &img, loc);
+
+        panfrost_batch_add_bo(batch, batch->pool.dev->blit_shaders.bo,
+                        PAN_BO_ACCESS_SHARED | PAN_BO_ACCESS_READ | PAN_BO_ACCESS_FRAGMENT);
+}
+
+static void
+panfrost_batch_draw_wallpaper(struct panfrost_batch *batch)
+{
+        panfrost_batch_reserve_framebuffer(batch);
+
+        /* Assume combined. If either depth or stencil is written, they will
+         * both be written so we need to be careful for reloading */
+
+        unsigned draws = batch->draws;
+
+        if (draws & PIPE_CLEAR_DEPTHSTENCIL)
+                draws |= PIPE_CLEAR_DEPTHSTENCIL;
+
+        /* Mask of buffers which need reload since they are not cleared and
+         * they are drawn. (If they are cleared, reload is useless; if they are
+         * not drawn and also not cleared, we can generally omit the attachment
+         * at the framebuffer descriptor level */
+
+        unsigned reload = ~batch->clear & draws;
+
+        for (unsigned i = 0; i < batch->key.nr_cbufs; ++i) {
+                if (reload & (PIPE_CLEAR_COLOR0 << i)) 
+                        panfrost_load_surface(batch, batch->key.cbufs[i], FRAG_RESULT_DATA0 + i);
+        }
+
+        if (reload & PIPE_CLEAR_DEPTH)
+                panfrost_load_surface(batch, batch->key.zsbuf, FRAG_RESULT_DEPTH);
+
+        if (reload & PIPE_CLEAR_STENCIL)
+                panfrost_load_surface(batch, batch->key.zsbuf, FRAG_RESULT_STENCIL);
 }
 
 static void
@@ -1086,13 +1150,11 @@ panfrost_batch_submit(struct panfrost_batch *batch)
          * it flushed, the easiest solution is to reload everything.
          */
         for (unsigned i = 0; i < batch->key.nr_cbufs; i++) {
-                struct panfrost_resource *res;
-
                 if (!batch->key.cbufs[i])
                         continue;
 
-                res = pan_resource(batch->key.cbufs[i]->texture);
-                panfrost_resource_reset_damage(res);
+                panfrost_resource_set_damage_region(NULL,
+                                batch->key.cbufs[i]->texture, 0, NULL);
         }
 
 out:

@@ -50,17 +50,6 @@
 #include "pandecode/decode.h"
 #include "panfrost-quirks.h"
 
-void
-panfrost_resource_reset_damage(struct panfrost_resource *pres)
-{
-        /* We set the damage extent to the full resource size but keep the
-         * damage box empty so that the FB content is reloaded by default.
-         */
-        memset(&pres->damage, 0, sizeof(pres->damage));
-        pres->damage.extent.maxx = pres->base.width0;
-        pres->damage.extent.maxy = pres->base.height0;
-}
-
 static struct pipe_resource *
 panfrost_resource_from_handle(struct pipe_screen *pscreen,
                               const struct pipe_resource *templat,
@@ -90,7 +79,7 @@ panfrost_resource_from_handle(struct pipe_screen *pscreen,
         rsc->slices[0].stride = whandle->stride;
         rsc->slices[0].offset = whandle->offset;
         rsc->slices[0].initialized = true;
-        panfrost_resource_reset_damage(rsc);
+        panfrost_resource_set_damage_region(NULL, &rsc->base, 0, NULL);
 
         if (dev->quirks & IS_BIFROST &&
             templat->bind & PIPE_BIND_RENDER_TARGET) {
@@ -441,56 +430,28 @@ panfrost_resource_set_damage_region(struct pipe_screen *screen,
                                     const struct pipe_box *rects)
 {
         struct panfrost_resource *pres = pan_resource(res);
-        struct pipe_box *damage_rect = &pres->damage.biggest_rect;
         struct pipe_scissor_state *damage_extent = &pres->damage.extent;
         unsigned int i;
 
-	if (!nrects) {
-		panfrost_resource_reset_damage(pres);
-		return;
-	}
+        if (pres->damage.inverted_rects)
+                ralloc_free(pres->damage.inverted_rects);
 
-        /* We keep track of 2 different things here:
-         * 1 the damage extent: the quad including all damage regions. Will be
-         *   used restrict the rendering area
-         * 2 the biggest damage rectangle: when there are more than one damage
-         *   rect we keep the biggest one and will generate 4 wallpaper quads
-         *   out of it (see panfrost_draw_wallpaper() for more details). We
-         *   might want to do something smarter at some point.
-         *
-         *                _________________________________
-         *                |                               |
-         *                |    _________________________  |
-         *                |   | rect1|         _________| |
-         *                |   |______|_____   | rect 3: | |
-         *                |   |    | rect2 |  | biggest | |
-         *                |   |    |_______|  |  rect   | |
-         *                |   |_______________|_________| |
-         *                |        damage extent          |
-         *                |_______________________________|
-         *                            resource
-         */
         memset(&pres->damage, 0, sizeof(pres->damage));
+
+        pres->damage.inverted_rects =
+                pan_subtract_damage(pres,
+                        res->width0, res->height0,
+                        nrects, rects, &pres->damage.inverted_len);
+
+        /* Track the damage extent: the quad including all damage regions. Will
+         * be used restrict the rendering area */
+
         damage_extent->minx = 0xffff;
         damage_extent->miny = 0xffff;
+
         for (i = 0; i < nrects; i++) {
                 int x = rects[i].x, w = rects[i].width, h = rects[i].height;
                 int y = res->height0 - (rects[i].y + h);
-
-                /* Clamp x,y,w,h to prevent negative values. */
-                if (x < 0) {
-                        h += x;
-                        x = 0;
-                }
-                if (y < 0) {
-                        w += y;
-                        y = 0;
-                }
-                w = MAX2(w, 0);
-                h = MAX2(h, 0);
-
-                if (damage_rect->width * damage_rect->height < w * h)
-                       u_box_2d(x, y, w, h, damage_rect);
 
                 damage_extent->minx = MIN2(damage_extent->minx, x);
                 damage_extent->miny = MIN2(damage_extent->miny, y);
@@ -543,7 +504,7 @@ panfrost_resource_create(struct pipe_screen *screen,
         util_range_init(&so->valid_buffer_range);
 
         panfrost_resource_create_bo(dev, so);
-        panfrost_resource_reset_damage(so);
+        panfrost_resource_set_damage_region(NULL, &so->base, 0, NULL);
 
         if (template->bind & PIPE_BIND_INDEX_BUFFER)
                 so->index_cache = rzalloc(so, struct panfrost_minmax_cache);

@@ -30,6 +30,7 @@
 
 #include <stdbool.h>
 #include "util/format/u_format.h"
+#include "compiler/shader_enums.h"
 #include "panfrost-job.h"
 #include "pan_bo.h"
 
@@ -50,6 +51,20 @@ struct panfrost_slice {
 
         /* Has anything been written to this slice? */
         bool initialized;
+};
+
+struct pan_image {
+        /* Format and size */
+        uint16_t width0, height0, depth0, array_size;
+        enum pipe_format format;
+        enum mali_texture_type type;
+        unsigned first_level, last_level;
+        unsigned first_layer, last_layer;
+        unsigned nr_samples;
+        struct panfrost_bo *bo;
+        struct panfrost_slice *slices;
+        unsigned cubemap_stride;
+        enum mali_texture_layout layout;
 };
 
 unsigned
@@ -163,5 +178,21 @@ panfrost_bifrost_swizzle(unsigned components)
 
 enum mali_format
 panfrost_format_to_bifrost_blend(const struct util_format_description *desc);
+
+struct pan_pool;
+struct pan_scoreboard;
+
+void
+panfrost_init_blit_shaders(struct panfrost_device *dev);
+
+void
+panfrost_load_midg(
+                struct pan_pool *pool,
+                struct pan_scoreboard *scoreboard,
+                mali_ptr blend_shader,
+                mali_ptr fbd,
+                mali_ptr coordinates, unsigned vertex_count,
+                struct pan_image *image,
+                unsigned loc);
 
 #endif

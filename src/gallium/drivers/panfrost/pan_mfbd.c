@@ -527,7 +527,7 @@ panfrost_mfbd_fragment(struct panfrost_batch *batch, bool has_draws)
         for (int cb = 0; cb < rt_descriptors; ++cb) {
                 struct pipe_surface *surf = batch->key.cbufs[cb];
 
-                if (surf) {
+                if (surf && ((batch->clear | batch->draws) & (PIPE_CLEAR_COLOR0 << cb))) {
                         unsigned nr_samples = surf->nr_samples;
 
                         if (!nr_samples)
@@ -564,7 +564,7 @@ panfrost_mfbd_fragment(struct panfrost_batch *batch, bool has_draws)
                 rts[cb].format.unk1 |= (cb * 0x400);
         }
 
-        if (batch->key.zsbuf) {
+        if (batch->key.zsbuf && ((batch->clear | batch->draws) & PIPE_CLEAR_DEPTHSTENCIL)) {
                 panfrost_mfbd_set_zsbuf(&fb, &fbx, batch->key.zsbuf);
         }
 

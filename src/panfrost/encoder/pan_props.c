@@ -177,6 +177,7 @@ panfrost_open_device(void *memctx, int fd, struct panfrost_device *dev)
 void
 panfrost_close_device(struct panfrost_device *dev)
 {
+        panfrost_bo_unreference(dev->blit_shaders.bo);
         panfrost_bo_cache_evict_all(dev);
         pthread_mutex_destroy(&dev->bo_cache.lock);
         drmFreeVersion(dev->kernel_version);
