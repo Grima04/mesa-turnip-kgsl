@@ -137,6 +137,7 @@ M_LOAD(ld_int4, nir_type_uint32);
 M_STORE(st_int4, nir_type_uint32);
 M_LOAD(ld_color_buffer_32u, nir_type_uint32);
 M_LOAD(ld_color_buffer_as_fp16, nir_type_float16);
+M_LOAD(ld_color_buffer_as_fp32, nir_type_float32);
 M_STORE(st_vary_32, nir_type_uint32);
 M_LOAD(ld_cubemap_coords, nir_type_uint32);
 M_LOAD(ld_compute_id, nir_type_uint32);
@@ -1769,7 +1770,13 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
         case nir_intrinsic_load_output: {
                 reg = nir_dest_index(&instr->dest);
 
-                midgard_instruction ld = m_ld_color_buffer_as_fp16(reg, 0);
+                unsigned bits = nir_dest_bit_size(instr->dest);
+
+                midgard_instruction ld;
+                if (bits == 16)
+                        ld = m_ld_color_buffer_as_fp16(reg, 0);
+                else
+                        ld = m_ld_color_buffer_as_fp32(reg, 0);
 
                 ld.load_store.arg_2 = output_load_rt_addr(ctx->nir, instr);
 
@@ -1777,7 +1784,10 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
                         ld.swizzle[0][c] = 0;
 
                 if (ctx->quirks & MIDGARD_OLD_BLEND) {
-                        ld.load_store.op = midgard_op_ld_color_buffer_as_fp16_old;
+                        if (bits == 16)
+                                ld.load_store.op = midgard_op_ld_color_buffer_as_fp16_old;
+                        else
+                                ld.load_store.op = midgard_op_ld_color_buffer_as_fp32_old;
                         ld.load_store.address = 1;
                         ld.load_store.arg_2 = 0x1E;
                 }

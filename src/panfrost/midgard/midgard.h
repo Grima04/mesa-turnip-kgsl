@@ -478,6 +478,7 @@ typedef enum {
         midgard_op_ld_vary_32i = 0x9B,
 
         /* Old version of midgard_op_ld_color_buffer_as_fp16, for T720 */
+        midgard_op_ld_color_buffer_as_fp32_old = 0x9C,
         midgard_op_ld_color_buffer_as_fp16_old = 0x9D,
         midgard_op_ld_color_buffer_32u_old = 0x9E,
 
@@ -496,6 +497,7 @@ typedef enum {
         midgard_op_ld_ubo_int4   = 0xB0,
 
         /* New-style blending ops. Works on T760/T860 */
+        midgard_op_ld_color_buffer_as_fp32 = 0xB8,
         midgard_op_ld_color_buffer_as_fp16 = 0xB9,
         midgard_op_ld_color_buffer_32u = 0xBA,
 
