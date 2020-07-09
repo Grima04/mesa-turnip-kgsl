@@ -1335,6 +1335,31 @@ static uint32_t radv_pipeline_needed_dynamic_state(const VkGraphicsPipelineCreat
 	return states;
 }
 
+static void
+radv_pipeline_init_input_assembly_state(struct radv_pipeline *pipeline,
+					const VkGraphicsPipelineCreateInfo *pCreateInfo,
+					const struct radv_graphics_pipeline_create_info *extra)
+{
+	const VkPipelineInputAssemblyStateCreateInfo *ia_state = pCreateInfo->pInputAssemblyState;
+	struct radv_shader_variant *tes = pipeline->shaders[MESA_SHADER_TESS_EVAL];
+	struct radv_shader_variant *gs = pipeline->shaders[MESA_SHADER_GEOMETRY];
+
+	pipeline->graphics.prim_restart_enable = !!ia_state->primitiveRestartEnable;
+	pipeline->graphics.can_use_guardband = radv_prim_can_use_guardband(ia_state->topology);
+
+	if (radv_pipeline_has_gs(pipeline)) {
+		if (si_conv_gl_prim_to_gs_out(gs->info.gs.output_prim) == V_028A6C_OUTPRIM_TYPE_TRISTRIP)
+			pipeline->graphics.can_use_guardband = true;
+	} else if (radv_pipeline_has_tess(pipeline)) {
+		if (!tes->info.tes.point_mode &&
+		    si_conv_gl_prim_to_gs_out(tes->info.tes.primitive_mode) == V_028A6C_OUTPRIM_TYPE_TRISTRIP)
+			pipeline->graphics.can_use_guardband = true;
+	}
+
+	if (extra && extra->use_rectlist) {
+		pipeline->graphics.can_use_guardband = true;
+	}
+}
 
 static void
 radv_pipeline_init_dynamic_state(struct radv_pipeline *pipeline,
@@ -4780,28 +4805,23 @@ radv_pipeline_init(struct radv_pipeline *pipeline,
 	radv_pipeline_init_multisample_state(pipeline, &blend, pCreateInfo);
 	uint32_t gs_out;
 
-	pipeline->graphics.can_use_guardband = radv_prim_can_use_guardband(pCreateInfo->pInputAssemblyState->topology);
-
 	if (radv_pipeline_has_gs(pipeline)) {
 		gs_out = si_conv_gl_prim_to_gs_out(pipeline->shaders[MESA_SHADER_GEOMETRY]->info.gs.output_prim);
-		pipeline->graphics.can_use_guardband = gs_out == V_028A6C_OUTPRIM_TYPE_TRISTRIP;
 	} else if (radv_pipeline_has_tess(pipeline)) {
 		if (pipeline->shaders[MESA_SHADER_TESS_EVAL]->info.tes.point_mode)
 			gs_out = V_028A6C_OUTPRIM_TYPE_POINTLIST;
 		else
 			gs_out = si_conv_gl_prim_to_gs_out(pipeline->shaders[MESA_SHADER_TESS_EVAL]->info.tes.primitive_mode);
-		pipeline->graphics.can_use_guardband = gs_out == V_028A6C_OUTPRIM_TYPE_TRISTRIP;
 	} else {
 		gs_out = si_conv_prim_to_gs_out(pCreateInfo->pInputAssemblyState->topology);
 	}
 	if (extra && extra->use_rectlist) {
 		gs_out = V_028A6C_OUTPRIM_TYPE_TRISTRIP;
-		pipeline->graphics.can_use_guardband = true;
 		if (radv_pipeline_has_ngg(pipeline))
 			gs_out = V_028A6C_VGT_OUT_RECT_V0;
 	}
-	pipeline->graphics.prim_restart_enable = !!pCreateInfo->pInputAssemblyState->primitiveRestartEnable;
 
+	radv_pipeline_init_input_assembly_state(pipeline, pCreateInfo, extra);
 	radv_pipeline_init_dynamic_state(pipeline, pCreateInfo, extra);
 
 	/* Ensure that some export memory is always allocated, for two reasons:
