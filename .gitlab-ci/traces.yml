@@ -1,6 +1,5 @@
 traces-db:
-  gitlab-project-url: "https://gitlab.freedesktop.org/gfx-ci/tracie/traces-db"
-  commit: "d3b1efe0cd69ef6ae40a29a14ed733ee0ba0cb4c"
+  download-url: "https://minio-packet.freedesktop.org/mesa-tracie-public/"
 
 traces:
   - path: glmark2/desktop-blur-radius=5:effect=blur:passes=1:separable=true:windows=4.rdc
