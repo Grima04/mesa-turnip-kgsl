@@ -492,7 +492,7 @@ allocate_registers(compiler_context *ctx, bool *spilled)
                  * want to muck with the conditional itself, so just force
                  * alignment for now */
 
-                if (ins->type == TAG_ALU_4 && OP_IS_CSEL_V(ins->alu.op)) {
+                if (ins->type == TAG_ALU_4 && OP_IS_CSEL_V(ins->op)) {
                         min_alignment[dest] = 4; /* 1 << 4= 16-byte = vec4 */
 
                         /* LCRA assumes bound >= alignment */
@@ -681,7 +681,7 @@ install_registers_instr(
                 mir_set_bytemask(ins, mir_bytemask(ins) << dest.offset);
 
                 unsigned dest_offset =
-                        GET_CHANNEL_COUNT(alu_opcode_props[ins->alu.op].props) ? 0 :
+                        GET_CHANNEL_COUNT(alu_opcode_props[ins->op].props) ? 0 :
                         dest.offset;
 
                 offset_swizzle(ins->swizzle[0], src1.offset, src1.shift, dest.shift, dest_offset);

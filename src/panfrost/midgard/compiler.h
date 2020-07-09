@@ -175,6 +175,9 @@ typedef struct midgard_instruction {
         unsigned nr_dependencies;
         BITSET_WORD *dependents;
 
+        /* Use this in conjunction with `type` */
+        unsigned op;
+
         union {
                 midgard_load_store_word load_store;
                 midgard_vector_alu alu;
@@ -550,8 +553,8 @@ v_mov(unsigned src, unsigned dest)
                 .swizzle = SWIZZLE_IDENTITY,
                 .dest = dest,
                 .dest_type = nir_type_uint32,
+                .op = midgard_alu_op_imov,
                 .alu = {
-                        .op = midgard_alu_op_imov,
                         .reg_mode = midgard_reg_mode_32,
                         .outmod = midgard_outmod_int_wrap
                 },

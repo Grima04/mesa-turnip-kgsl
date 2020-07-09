@@ -1220,7 +1220,6 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
         ins.mask = mask_of(nr_components);
 
         midgard_vector_alu alu = {
-                .op = op,
                 .reg_mode = reg_mode,
                 .outmod = outmod,
         };
@@ -1233,6 +1232,8 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
                 ins.mask &= instr->dest.write_mask;
 
         ins.alu = alu;
+
+        ins.op = op;
 
         /* Late fixup for emulated instructions */
 
@@ -2468,7 +2469,7 @@ embedded_to_inline_constant(compiler_context *ctx, midgard_block *block)
                  * restrictions. So, if possible we try to flip the arguments
                  * in that case */
 
-                int op = ins->alu.op;
+                int op = ins->op;
 
                 if (ins->src[0] == SSA_FIXED_REGISTER(REGISTER_CONSTANT) &&
                                 alu_opcode_props[op].props & OP_COMMUTES) {
@@ -2520,7 +2521,7 @@ embedded_to_inline_constant(compiler_context *ctx, midgard_block *block)
                         uint32_t value = is_16 ? cons->u16[component] : cons->u32[component];
 
                         bool is_vector = false;
-                        unsigned mask = effective_writemask(ins->alu.op, ins->mask);
+                        unsigned mask = effective_writemask(ins->op, ins->mask);
 
                         for (unsigned c = 0; c < MIR_VEC_COMPONENTS; ++c) {
                                 /* We only care if this component is actually used */
@@ -2580,8 +2581,8 @@ midgard_legalize_invert(compiler_context *ctx, midgard_block *block)
         mir_foreach_instr_in_block(block, ins) {
                 if (ins->type != TAG_ALU_4) continue;
 
-                if (ins->alu.op != midgard_alu_op_iand &&
-                    ins->alu.op != midgard_alu_op_ior) continue;
+                if (ins->op != midgard_alu_op_iand &&
+                    ins->op != midgard_alu_op_ior) continue;
 
                 if (ins->src_invert[1] || !ins->src_invert[0]) continue;
 

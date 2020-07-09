@@ -55,7 +55,7 @@ midgard_opt_combine_projection(compiler_context *ctx, midgard_block *block)
         mir_foreach_instr_in_block_safe(block, ins) {
                 /* First search for fmul */
                 if (ins->type != TAG_ALU_4) continue;
-                if (ins->alu.op != midgard_alu_op_fmul) continue;
+                if (ins->op != midgard_alu_op_fmul) continue;
 
                 /* TODO: Flip */
 
@@ -83,7 +83,7 @@ midgard_opt_combine_projection(compiler_context *ctx, midgard_block *block)
 
                         frcp_found =
                                 (sub->type == TAG_ALU_4) &&
-                                (sub->alu.op == midgard_alu_op_frcp);
+                                (sub->op == midgard_alu_op_frcp);
                         break;
                 }
 

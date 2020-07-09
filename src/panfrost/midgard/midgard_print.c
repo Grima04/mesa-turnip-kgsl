@@ -244,7 +244,7 @@ mir_print_embedded_constant(midgard_instruction *ins, unsigned src_idx)
                 src = vector_alu_from_unsigned(ins->alu.src2);
 
         unsigned *swizzle = ins->swizzle[src_idx];
-        unsigned comp_mask = effective_writemask(ins->alu.op, ins->mask);
+        unsigned comp_mask = effective_writemask(ins->op, ins->mask);
         unsigned num_comp = util_bitcount(comp_mask);
         unsigned max_comp = mir_components_for_type(ins->dest_type);
         bool first = true;
@@ -265,7 +265,7 @@ mir_print_embedded_constant(midgard_instruction *ins, unsigned src_idx)
 
                 mir_print_constant_component(stdout, &ins->constants,
                                              swizzle[comp], ins->alu.reg_mode,
-                                             src.half, src.mod, ins->alu.op);
+                                             src.half, src.mod, ins->op);
         }
 
         if (num_comp > 1)
@@ -328,7 +328,7 @@ mir_print_instruction(midgard_instruction *ins)
 
         switch (ins->type) {
         case TAG_ALU_4: {
-                midgard_alu_op op = ins->alu.op;
+                midgard_alu_op op = ins->op;
                 const char *name = alu_opcode_props[op].name;
 
                 if (ins->unit)

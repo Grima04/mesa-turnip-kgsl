@@ -520,7 +520,7 @@ mir_pipeline_count(midgard_instruction *ins)
 static bool
 mir_is_add_2(midgard_instruction *ins)
 {
-        if (ins->alu.op != midgard_alu_op_fadd)
+        if (ins->op != midgard_alu_op_fadd)
                 return false;
 
         if (ins->src[0] != ins->src[1])
@@ -548,7 +548,7 @@ mir_adjust_unit(midgard_instruction *ins, unsigned unit)
 {
         /* FADD x, x = FMUL x, #2 */
         if (mir_is_add_2(ins) && (unit & (UNITS_MUL | UNIT_VLUT))) {
-                ins->alu.op = midgard_alu_op_fmul;
+                ins->op = midgard_alu_op_fmul;
 
                 ins->src[1] = ~0;
                 ins->src_abs[1] = false;
@@ -562,7 +562,7 @@ mir_adjust_unit(midgard_instruction *ins, unsigned unit)
 static unsigned
 mir_has_unit(midgard_instruction *ins, unsigned unit)
 {
-        if (alu_opcode_props[ins->alu.op].props & unit)
+        if (alu_opcode_props[ins->op].props & unit)
                 return true;
 
         /* FADD x, x can run on any adder or any multiplier */
@@ -658,8 +658,8 @@ mir_choose_instruction(
 
         BITSET_FOREACH_SET(i, worklist, count) {
                 bool is_move = alu &&
-                        (instructions[i]->alu.op == midgard_alu_op_imov ||
-                         instructions[i]->alu.op == midgard_alu_op_fmov);
+                        (instructions[i]->op == midgard_alu_op_imov ||
+                         instructions[i]->op == midgard_alu_op_fmov);
 
                 if ((max_active - i) >= max_distance)
                         continue;
@@ -698,7 +698,7 @@ mir_choose_instruction(
                 if (ldst && mir_pipeline_count(instructions[i]) + predicate->pipeline_count > 2)
                         continue;
 
-                bool conditional = alu && !branch && OP_IS_CSEL(instructions[i]->alu.op);
+                bool conditional = alu && !branch && OP_IS_CSEL(instructions[i]->op);
                 conditional |= (branch && instructions[i]->branch.conditional);
 
                 if (conditional && no_cond)
@@ -830,13 +830,13 @@ mir_comparison_mobile(
                         return ~0;
 
                 /* If it would itself require a condition, that's recursive */
-                if (OP_IS_CSEL(instructions[i]->alu.op))
+                if (OP_IS_CSEL(instructions[i]->op))
                         return ~0;
 
                 /* We'll need to rewrite to .w but that doesn't work for vector
                  * ops that don't replicate (ball/bany), so bail there */
 
-                if (GET_CHANNEL_COUNT(alu_opcode_props[instructions[i]->alu.op].props))
+                if (GET_CHANNEL_COUNT(alu_opcode_props[instructions[i]->op].props))
                         return ~0;
 
                 /* Ensure it will fit with constants */
@@ -908,7 +908,7 @@ mir_schedule_condition(compiler_context *ctx,
         unsigned condition_index = branch ? 0 : 2;
 
         /* csel_v is vector; otherwise, conditions are scalar */
-        bool vector = !branch && OP_IS_CSEL_V(last->alu.op);
+        bool vector = !branch && OP_IS_CSEL_V(last->op);
 
         /* Grab the conditional instruction */
 
@@ -1160,7 +1160,7 @@ mir_schedule_alu(
                 *vadd = v_mov(~0, make_compiler_temp(ctx));
 
                 if (!ctx->is_blend) {
-                        vadd->alu.op = midgard_alu_op_iadd;
+                        vadd->op = midgard_alu_op_iadd;
                         vadd->src[0] = SSA_FIXED_REGISTER(31);
                         vadd->src_types[0] = nir_type_uint32;
 
@@ -1206,8 +1206,8 @@ mir_schedule_alu(
         mir_update_worklist(worklist, len, instructions, vadd);
         mir_update_worklist(worklist, len, instructions, smul);
 
-        bool vadd_csel = vadd && OP_IS_CSEL(vadd->alu.op);
-        bool smul_csel = smul && OP_IS_CSEL(smul->alu.op);
+        bool vadd_csel = vadd && OP_IS_CSEL(vadd->op);
+        bool smul_csel = smul && OP_IS_CSEL(smul->op);
 
         if (vadd_csel || smul_csel) {
                 midgard_instruction *ins = vadd_csel ? vadd : smul;

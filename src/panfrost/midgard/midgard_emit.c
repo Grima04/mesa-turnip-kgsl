@@ -46,7 +46,7 @@ mir_get_imod(bool shift, nir_alu_type T, bool half, bool scalar)
 static unsigned
 mir_pack_mod(midgard_instruction *ins, unsigned i, bool scalar)
 {
-        bool integer = midgard_is_integer_op(ins->alu.op);
+        bool integer = midgard_is_integer_op(ins->op);
         unsigned base_size = (8 << ins->alu.reg_mode);
         unsigned sz = nir_alu_type_get_type_size(ins->src_types[i]);
         bool half = (sz == (base_size >> 1));
@@ -278,7 +278,7 @@ mir_pack_swizzle(unsigned mask, unsigned *swizzle,
 static void
 mir_pack_vector_srcs(midgard_instruction *ins)
 {
-        bool channeled = GET_CHANNEL_COUNT(alu_opcode_props[ins->alu.op].props);
+        bool channeled = GET_CHANNEL_COUNT(alu_opcode_props[ins->op].props);
 
         midgard_reg_mode mode = ins->alu.reg_mode;
         unsigned base_size = (8 << mode);
@@ -441,15 +441,15 @@ mir_lower_inverts(midgard_instruction *ins)
                 ins->src_invert[2]
         };
 
-        switch (ins->alu.op) {
+        switch (ins->op) {
         case midgard_alu_op_iand:
                 /* a & ~b = iandnot(a, b) */
                 /* ~a & ~b = ~(a | b) = inor(a, b) */
 
                 if (inv[0] && inv[1])
-                        ins->alu.op = midgard_alu_op_inor;
+                        ins->op = midgard_alu_op_inor;
                 else if (inv[1])
-                        ins->alu.op = midgard_alu_op_iandnot;
+                        ins->op = midgard_alu_op_iandnot;
 
                 break;
         case midgard_alu_op_ior:
@@ -457,9 +457,9 @@ mir_lower_inverts(midgard_instruction *ins)
                 /* ~a | ~b = ~(a & b) = inand(a, b) */
 
                 if (inv[0] && inv[1])
-                        ins->alu.op = midgard_alu_op_inand;
+                        ins->op = midgard_alu_op_inand;
                 else if (inv[1])
-                        ins->alu.op = midgard_alu_op_iornot;
+                        ins->op = midgard_alu_op_iornot;
 
                 break;
 
@@ -468,7 +468,7 @@ mir_lower_inverts(midgard_instruction *ins)
                 /* ~a ^ ~b = a ^ b */
 
                 if (inv[0] ^ inv[1])
-                        ins->alu.op = midgard_alu_op_inxor;
+                        ins->op = midgard_alu_op_inxor;
 
                 break;
 
@@ -482,9 +482,9 @@ mir_lower_inverts(midgard_instruction *ins)
 static void
 mir_lower_roundmode(midgard_instruction *ins)
 {
-        if (alu_opcode_props[ins->alu.op].props & MIDGARD_ROUNDS) {
+        if (alu_opcode_props[ins->op].props & MIDGARD_ROUNDS) {
                 assert(ins->roundmode <= 0x3);
-                ins->alu.op += ins->roundmode;
+                ins->op += ins->roundmode;
         }
 }
 
@@ -518,6 +518,8 @@ emit_alu_bundle(compiler_context *ctx,
                 unsigned size = 0;
                 void *source = NULL;
 
+                midgard_vector_alu source_alu;
+
                 /* In case we demote to a scalar */
                 midgard_scalar_alu scalarized;
 
@@ -530,7 +532,9 @@ emit_alu_bundle(compiler_context *ctx,
                         mir_pack_mask_alu(ins);
                         mir_pack_vector_srcs(ins);
                         size = sizeof(midgard_vector_alu);
-                        source = &ins->alu;
+                        source_alu = ins->alu;
+                        source_alu.op = ins->op;
+                        source = &source_alu;
                 } else if (ins->unit == ALU_ENAB_BR_COMPACT) {
                         size = sizeof(midgard_branch_cond);
                         source = &ins->br_compact;
@@ -539,7 +543,9 @@ emit_alu_bundle(compiler_context *ctx,
                         source = &ins->branch_extended;
                 } else {
                         size = sizeof(midgard_scalar_alu);
-                        scalarized = vector_to_scalar_alu(ins->alu, ins);
+                        source_alu = ins->alu;
+                        source_alu.op = ins->op;
+                        scalarized = vector_to_scalar_alu(source_alu, ins);
                         source = &scalarized;
                 }
 

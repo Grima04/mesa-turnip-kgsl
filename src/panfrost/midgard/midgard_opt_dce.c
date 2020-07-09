@@ -138,7 +138,7 @@ midgard_opt_dead_move_eliminate(compiler_context *ctx, midgard_block *block)
         mir_foreach_instr_in_block_safe(block, ins) {
                 if (ins->type != TAG_ALU_4) continue;
                 if (ins->compact_branch) continue;
-                if (!OP_IS_MOVE(ins->alu.op)) continue;
+                if (!OP_IS_MOVE(ins->op)) continue;
 
                 /* Check if it's overwritten in this block before being read */
                 bool overwritten = false;

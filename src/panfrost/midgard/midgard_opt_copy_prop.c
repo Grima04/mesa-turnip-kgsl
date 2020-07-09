@@ -34,7 +34,7 @@ midgard_opt_copy_prop_reg(compiler_context *ctx, midgard_block *block)
 
         mir_foreach_instr_in_block_safe(block, ins) {
                 if (ins->type != TAG_ALU_4) continue;
-                if (!OP_IS_MOVE(ins->alu.op)) continue;
+                if (!OP_IS_MOVE(ins->op)) continue;
                 if (ins->is_pack) continue;
 
                 unsigned from = ins->src[1];
@@ -68,7 +68,7 @@ midgard_opt_copy_prop(compiler_context *ctx, midgard_block *block)
 
         mir_foreach_instr_in_block_safe(block, ins) {
                 if (ins->type != TAG_ALU_4) continue;
-                if (!OP_IS_MOVE(ins->alu.op)) continue;
+                if (!OP_IS_MOVE(ins->op)) continue;
                 if (ins->is_pack) continue;
 
                 unsigned from = ins->src[1];

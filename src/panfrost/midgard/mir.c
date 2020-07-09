@@ -116,7 +116,7 @@ mir_single_use(compiler_context *ctx, unsigned value)
 bool
 mir_nontrivial_mod(midgard_instruction *ins, unsigned i, bool check_swizzle)
 {
-        bool is_int = midgard_is_integer_op(ins->alu.op);
+        bool is_int = midgard_is_integer_op(ins->op);
 
         if (is_int) {
                 if (ins->src_shift[i]) return true;
@@ -140,7 +140,7 @@ mir_nontrivial_mod(midgard_instruction *ins, unsigned i, bool check_swizzle)
 bool
 mir_nontrivial_outmod(midgard_instruction *ins)
 {
-        bool is_int = midgard_is_integer_op(ins->alu.op);
+        bool is_int = midgard_is_integer_op(ins->op);
         unsigned mod = ins->alu.outmod;
 
         if (ins->dest_type != ins->src_types[1])
@@ -286,7 +286,7 @@ mir_bytemask_of_read_components_index(midgard_instruction *ins, unsigned i)
 
         /* Handle dot products and things */
         if (ins->type == TAG_ALU_4 && !ins->compact_branch) {
-                unsigned props = alu_opcode_props[ins->alu.op].props;
+                unsigned props = alu_opcode_props[ins->op].props;
 
                 unsigned channel_override = GET_CHANNEL_COUNT(props);
 
@@ -335,7 +335,7 @@ mir_bundle_for_op(compiler_context *ctx, midgard_instruction ins)
         };
 
         if (bundle.tag == TAG_ALU_4) {
-                assert(OP_IS_MOVE(u->alu.op));
+                assert(OP_IS_MOVE(u->op));
                 u->unit = UNIT_VMUL;
 
                 size_t bytes_emitted = sizeof(uint32_t) + sizeof(midgard_reg_info) + sizeof(midgard_vector_alu);
