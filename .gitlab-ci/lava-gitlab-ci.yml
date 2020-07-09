@@ -1,5 +1,5 @@
 variables:
-  DISTRIBUTION_TAG: "2020-07-06"
+  DISTRIBUTION_TAG: "2020-07-10"
 
 .kernel+rootfs:
   stage: container-2
@@ -7,8 +7,10 @@ variables:
     - .ci-run-policy
   variables:
     GIT_STRATEGY: fetch
+    KERNEL_URL: "https://gitlab.freedesktop.org/tomeu/linux/-/archive/v5.5-panfrost-fixes/linux-v5.5-panfrost-fixes.tar.gz"
+    UPLOAD_FOR_LAVA: 1
   script:
-    - DEBIAN_ARCH=${DEBIAN_ARCH} .gitlab-ci/container/lava_arm.sh
+    - .gitlab-ci/container/lava_arm.sh
 
 kernel+rootfs_arm64:
   extends:
