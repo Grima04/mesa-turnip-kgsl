@@ -12,7 +12,6 @@ STABLE_EPHEMERAL=" \
       autotools-dev \
       bzip2 \
       cmake \
-      git \
       gnupg \
       libgbm-dev \
       libtool \

@@ -8,6 +8,8 @@ export DEBIAN_FRONTEND=noninteractive
 apt-get install -y \
         ca-certificates \
         gnupg \
+        python3-pip \
+        python3-setuptools \
         unzip \
         wget
 
@@ -30,6 +32,7 @@ apt-get install -y --no-remove \
         g++ \
         g++-mingw-w64-x86-64 \
         gcc \
+        git \
         libclang-9-dev \
         libclc-dev \
         libelf-dev \
@@ -73,6 +76,8 @@ apt-get install -y --no-remove -t buster-backports \
         libllvm8 \
         meson
 
+# Needed for ci-fairy, this revision is able to upload files to MinIO
+pip3 install git+http://gitlab.freedesktop.org/freedesktop/ci-templates@6f5af7e5574509726c79109e3c147cee95e81366
 
 # for the vulkan overlay layer
 wget https://github.com/KhronosGroup/glslang/releases/download/master-tot/glslang-master-linux-Release.zip

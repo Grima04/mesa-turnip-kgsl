@@ -8,10 +8,16 @@ VERSION=`cat install/VERSION`
 cd /piglit
 
 PIGLIT_OPTIONS=$(echo $PIGLIT_OPTIONS | head -n 1)
+set +e
 xvfb-run --server-args="-noreset" sh -c \
          "export LD_LIBRARY_PATH=$OLDPWD/install/lib;
-         wflinfo --platform glx --api gl --profile core | grep \"Mesa $VERSION\\\$\" &&
+         wflinfo --platform glx --api gl --profile core | tee /tmp/version.txt | grep \"Mesa $VERSION\\\$\" &&
          ./piglit run -j${FDO_CI_CONCURRENT:-4} $PIGLIT_OPTIONS $PIGLIT_PROFILES $OLDPWD/results"
+retVal=$?
+if [ $retVal -ne 0 ]; then
+    echo "Found $(cat /tmp/version.txt), expected $VERSION"
+fi
+set -e
 
 PIGLIT_RESULTS=${PIGLIT_RESULTS:-$PIGLIT_PROFILES}
 mkdir -p .gitlab-ci/piglit

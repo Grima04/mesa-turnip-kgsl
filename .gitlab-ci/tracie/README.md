@@ -5,15 +5,13 @@ Home of the Mesa trace testing effort.
 
 ### Traces definition file
 
-The trace definition file contains information about the GitLab
-project and git commit to get the traces from, and a list of the
-traces to run along with their expected image checksums on each
-device. An example:
+The trace definition file contains information about the traces to run along
+with their expected image checksums on each device, and optionally from where to
+download them. An example:
 
 ```yaml
 traces-db:
-  gitlab-project-url: https://gitlab.freedesktop.org/gfx-ci/tracie/traces-db
-  commit: master
+  download-url: https://minio-packet.freedesktop.org/mesa-tracie-public/
 
 traces:
   - path: glmark2/jellyfish.rdc
@@ -40,12 +38,10 @@ with the [image_checksum.py](.gitlab-ci/tracie/image_checksum.py) script.
 Alternatively, an arbitrary checksum can be used, and during replay (see below)
 the scripts will report the mismatch and expected checksum.
 
-### Trace-db GitLab projects
+### Trace-db download urls
 
-The trace-db GitLab projects are assumed to have git repositories
-using LFS for their trace files. This is so that trace files can be
-potentially checked out and replayed individually, thus reducing
-storage requirements during CI runs.
+The trace-db:download-url property contains an HTTPS url from which traces can
+be downloaded, by appending traces:path properties to it.
 
 ### Enabling trace testing on a new device
 
@@ -93,6 +89,10 @@ legally redistributable. This is typically true for FOSS games and
 applications. Traces for proprietary games and application are typically not
 redistributable, unless specific redistribution rights have been granted by the
 publisher.
+
+Trace files in a given repository are expected to be immutable once committed
+for the first time, so any changes need to be accompanied by a change in the
+file name (eg. by appending a _v2 suffix to the file).
 
 ### Replaying traces
 

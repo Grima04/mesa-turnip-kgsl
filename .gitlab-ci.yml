@@ -203,7 +203,7 @@ x86_build-base:
     - .fdo.container-build@debian
     - .container
   variables:
-    FDO_DISTRIBUTION_TAG: &x86_build-base "2020-06-12"
+    FDO_DISTRIBUTION_TAG: &x86_build-base "2020-07-21-tracie"
 
 .use-x86_build-base:
   extends:
@@ -221,7 +221,7 @@ x86_build:
   extends:
     - .use-x86_build-base
   variables:
-    FDO_DISTRIBUTION_TAG: &x86_build "2020-07-20-jflags"
+    FDO_DISTRIBUTION_TAG: &x86_build "2020-07-21-tracie"
 
 .use-x86_build:
   variables:
@@ -235,7 +235,7 @@ i386_build:
   extends:
     - .use-x86_build-base
   variables:
-    FDO_DISTRIBUTION_TAG: &i386_build "2020-07-20-jflags"
+    FDO_DISTRIBUTION_TAG: &i386_build "2020-07-21-tracie"
 
 .use-i386_build:
   variables:
@@ -249,7 +249,7 @@ ppc64el_build:
   extends:
     - .use-x86_build-base
   variables:
-    FDO_DISTRIBUTION_TAG: &ppc64el_build "2020-07-20-jflags"
+    FDO_DISTRIBUTION_TAG: &ppc64el_build "2020-07-21-tracie"
 
 .use-ppc64el_build:
   variables:
@@ -263,7 +263,7 @@ s390x_build:
   extends:
     - .use-x86_build-base
   variables:
-    FDO_DISTRIBUTION_TAG: &s390x_build "2020-06-29-jflags"
+    FDO_DISTRIBUTION_TAG: &s390x_build "2020-07-21-tracie"
 
 .use-s390x_build:
   variables:
@@ -276,7 +276,7 @@ s390x_build:
 x86_test-base:
   extends: x86_build-base
   variables:
-    FDO_DISTRIBUTION_TAG: &x86_test-base "2020-06-02"
+    FDO_DISTRIBUTION_TAG: &x86_test-base "2020-07-21-tracie"
 
 .use-x86_test-base:
   extends:
@@ -293,19 +293,19 @@ x86_test-base:
 x86_test-gl:
   extends: .use-x86_test-base
   variables:
-    FDO_DISTRIBUTION_TAG: &x86_test-gl "2020-07-15-virgl"
+    FDO_DISTRIBUTION_TAG: &x86_test-gl "2020-07-21-tracie"
 
 # Debian 10 based x86 test image for VK
 x86_test-vk:
   extends: .use-x86_test-base
   variables:
-    FDO_DISTRIBUTION_TAG: &x86_test-vk "2020-06-18-vkcts"
+    FDO_DISTRIBUTION_TAG: &x86_test-vk "2020-07-21-tracie"
 
 # Debian 9 based x86 build image (old LLVM)
 x86_build_old:
   extends: x86_build-base
   variables:
-    FDO_DISTRIBUTION_TAG: &x86_build_old "2020-06-29-jflags"
+    FDO_DISTRIBUTION_TAG: &x86_build_old "2020-07-21-tracie"
     FDO_DISTRIBUTION_VERSION: stretch-slim
 
 .use-x86_build_old:

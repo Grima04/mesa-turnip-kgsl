@@ -22,7 +22,7 @@ find install -name \*.so -exec $STRIP {} \;
 
 # Test runs don't pull down the git tree, so put the dEQP helper
 # script and associated bits there.
-cp VERSION install/
+echo "$(cat VERSION) (git-$(git rev-parse HEAD | cut -b -10))" >> install/VERSION
 cp -Rp .gitlab-ci/bare-metal install/
 cp -Rp .gitlab-ci/deqp* install/
 cp -Rp .gitlab-ci/piglit install/
@@ -41,12 +41,15 @@ cp -Rp .gitlab-ci/deqp-runner.sh install/
 cp -Rp .gitlab-ci/deqp-*-fails.txt install/
 cp -Rp .gitlab-ci/deqp-*-skips.txt install/
 
+ci-fairy minio login $CI_JOB_JWT
+# These credentials will be used for uploading artifacts from test jobs
+cp .minio_credentials install/
+
 # Tar up the install dir so that symlinks and hardlinks aren't each
 # packed separately in the zip file.
 mkdir -p artifacts/
 tar -cf artifacts/install.tar install
 
-# If the container has LAVA stuff, prepare the artifacts for LAVA jobs
 if [ -n "$UPLOAD_FOR_LAVA" ]; then
     # Pass needed files to the test stage
     cp $CI_PROJECT_DIR/.gitlab-ci/generate_lava.py artifacts/.
@@ -54,7 +57,6 @@ if [ -n "$UPLOAD_FOR_LAVA" ]; then
     cp $CI_PROJECT_DIR/.gitlab-ci/lava-tracie.yml.jinja2 artifacts/.
 
     gzip -c artifacts/install.tar > mesa-${DEBIAN_ARCH}.tar.gz
-    ci-fairy minio login $CI_JOB_JWT
     MINIO_PATH=minio-packet.freedesktop.org/artifacts/${CI_PROJECT_PATH}/${CI_PIPELINE_ID}
     ci-fairy minio cp mesa-${DEBIAN_ARCH}.tar.gz minio://${MINIO_PATH}/mesa-${DEBIAN_ARCH}.tar.gz
 fi
