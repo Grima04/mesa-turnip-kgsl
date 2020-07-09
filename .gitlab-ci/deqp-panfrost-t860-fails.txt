@@ -15,9 +15,6 @@ dEQP-GLES3.functional.fbo.blit.rect.nearest_consistency_min_reverse_src_dst_x
 dEQP-GLES3.functional.fbo.blit.rect.nearest_consistency_min_reverse_src_dst_y
 dEQP-GLES3.functional.fbo.blit.rect.nearest_consistency_min_reverse_src_x
 dEQP-GLES3.functional.fbo.blit.rect.nearest_consistency_min_reverse_src_y
-dEQP-GLES3.functional.fbo.color.repeated_clear.blit.rbo.srgb8_alpha8
-dEQP-GLES3.functional.fbo.color.repeated_clear.blit.tex2d.srgb8_alpha8
-dEQP-GLES3.functional.fbo.color.repeated_clear.sample.tex2d.srgb8_alpha8
 dEQP-GLES3.functional.fbo.invalidate.sub.unbind_blit_msaa_color
 dEQP-GLES3.functional.fbo.invalidate.sub.unbind_blit_msaa_depth
 dEQP-GLES3.functional.fbo.invalidate.sub.unbind_blit_msaa_stencil

@@ -1324,7 +1324,7 @@ pan_pack_color(uint32_t *packed, const union pipe_color_union *color, enum pipe_
         const struct util_format_description *desc =
                 util_format_description(format);
 
-        if (util_format_is_rgba8_variant(desc)) {
+        if (util_format_is_rgba8_variant(desc) && desc->colorspace != UTIL_FORMAT_COLORSPACE_SRGB) {
                 pan_pack_color_32(packed,
                                   ((uint32_t) float_to_ubyte(clear_alpha) << 24) |
                                   ((uint32_t) float_to_ubyte(color->f[2]) << 16) |
