@@ -111,24 +111,9 @@ typedef uint32_t xcb_window_t;
 
 #define tu_printflike(a, b) __attribute__((__format__(__printf__, a, b)))
 
-static inline uint32_t
-tu_minify(uint32_t n, uint32_t levels)
-{
-   if (unlikely(n == 0))
-      return 0;
-   else
-      return MAX2(n >> levels, 1);
-}
-
 #define for_each_bit(b, dword)                                               \
    for (uint32_t __dword = (dword);                                          \
         (b) = __builtin_ffs(__dword) - 1, __dword; __dword &= ~(1 << (b)))
-
-#define typed_memcpy(dest, src, count)                                       \
-   ({                                                                        \
-      STATIC_ASSERT(sizeof(*src) == sizeof(*dest));                          \
-      memcpy((dest), (src), (count) * sizeof(*(src)));                       \
-   })
 
 #define COND(bool, val) ((bool) ? (val) : 0)
 #define BIT(bit) (1u << (bit))

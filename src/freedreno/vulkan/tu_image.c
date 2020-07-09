@@ -427,7 +427,7 @@ tu_image_view_init(struct tu_image_view *iview,
       break;
    case VK_IMAGE_TYPE_3D:
       assert(range->baseArrayLayer + tu_get_layerCount(image, range) <=
-             tu_minify(image->extent.depth, range->baseMipLevel));
+             u_minify(image->extent.depth, range->baseMipLevel));
       break;
    default:
       unreachable("bad VkImageType");
