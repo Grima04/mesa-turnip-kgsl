@@ -2059,7 +2059,7 @@ calculate_gs_ring_sizes(struct radv_pipeline *pipeline,
 }
 
 struct radv_shader_variant *
-radv_get_shader(struct radv_pipeline *pipeline,
+radv_get_shader(const struct radv_pipeline *pipeline,
 		gl_shader_stage stage)
 {
 	if (stage == MESA_SHADER_VERTEX) {
@@ -3582,7 +3582,7 @@ radv_pipeline_init_binning_state(struct radv_pipeline *pipeline,
 
 static void
 radv_pipeline_generate_depth_stencil_state(struct radeon_cmdbuf *ctx_cs,
-                                           struct radv_pipeline *pipeline,
+                                           const struct radv_pipeline *pipeline,
                                            const VkGraphicsPipelineCreateInfo *pCreateInfo,
                                            const struct radv_graphics_pipeline_create_info *extra)
 {
@@ -3643,7 +3643,7 @@ radv_pipeline_generate_depth_stencil_state(struct radeon_cmdbuf *ctx_cs,
 
 static void
 radv_pipeline_generate_blend_state(struct radeon_cmdbuf *ctx_cs,
-                                   struct radv_pipeline *pipeline,
+                                   const struct radv_pipeline *pipeline,
                                    const struct radv_blend_state *blend)
 {
 	radeon_set_context_reg_seq(ctx_cs, R_028780_CB_BLEND0_CONTROL, 8);
@@ -3666,7 +3666,7 @@ radv_pipeline_generate_blend_state(struct radeon_cmdbuf *ctx_cs,
 
 static void
 radv_pipeline_generate_raster_state(struct radeon_cmdbuf *ctx_cs,
-				    struct radv_pipeline *pipeline,
+				    const struct radv_pipeline *pipeline,
                                     const VkGraphicsPipelineCreateInfo *pCreateInfo)
 {
 	const VkPipelineRasterizationStateCreateInfo *vkraster = pCreateInfo->pRasterizationState;
@@ -3722,9 +3722,9 @@ radv_pipeline_generate_raster_state(struct radeon_cmdbuf *ctx_cs,
 
 static void
 radv_pipeline_generate_multisample_state(struct radeon_cmdbuf *ctx_cs,
-                                         struct radv_pipeline *pipeline)
+                                         const struct radv_pipeline *pipeline)
 {
-	struct radv_multisample_state *ms = &pipeline->graphics.ms;
+	const struct radv_multisample_state *ms = &pipeline->graphics.ms;
 
 	radeon_set_context_reg_seq(ctx_cs, R_028C38_PA_SC_AA_MASK_X0Y0_X1Y0, 2);
 	radeon_emit(ctx_cs, ms->pa_sc_aa_mask[0]);
@@ -3753,7 +3753,7 @@ radv_pipeline_generate_multisample_state(struct radeon_cmdbuf *ctx_cs,
 
 static void
 radv_pipeline_generate_vgt_gs_mode(struct radeon_cmdbuf *ctx_cs,
-                                   struct radv_pipeline *pipeline)
+                                   const struct radv_pipeline *pipeline)
 {
 	const struct radv_vs_output_info *outinfo = get_vs_output_info(pipeline);
 	const struct radv_shader_variant *vs =
@@ -3784,8 +3784,8 @@ radv_pipeline_generate_vgt_gs_mode(struct radeon_cmdbuf *ctx_cs,
 static void
 radv_pipeline_generate_hw_vs(struct radeon_cmdbuf *ctx_cs,
 			     struct radeon_cmdbuf *cs,
-			     struct radv_pipeline *pipeline,
-			     struct radv_shader_variant *shader)
+			     const struct radv_pipeline *pipeline,
+			     const struct radv_shader_variant *shader)
 {
 	uint64_t va = radv_buffer_get_va(shader->bo) + shader->bo_offset;
 
@@ -3846,8 +3846,8 @@ radv_pipeline_generate_hw_vs(struct radeon_cmdbuf *ctx_cs,
 
 static void
 radv_pipeline_generate_hw_es(struct radeon_cmdbuf *cs,
-			     struct radv_pipeline *pipeline,
-			     struct radv_shader_variant *shader)
+			     const struct radv_pipeline *pipeline,
+			     const struct radv_shader_variant *shader)
 {
 	uint64_t va = radv_buffer_get_va(shader->bo) + shader->bo_offset;
 
@@ -3860,8 +3860,8 @@ radv_pipeline_generate_hw_es(struct radeon_cmdbuf *cs,
 
 static void
 radv_pipeline_generate_hw_ls(struct radeon_cmdbuf *cs,
-			     struct radv_pipeline *pipeline,
-			     struct radv_shader_variant *shader)
+			     const struct radv_pipeline *pipeline,
+			     const struct radv_shader_variant *shader)
 {
 	unsigned num_lds_blocks = pipeline->shaders[MESA_SHADER_TESS_CTRL]->info.tcs.num_lds_blocks;
 	uint64_t va = radv_buffer_get_va(shader->bo) + shader->bo_offset;
@@ -3884,8 +3884,8 @@ radv_pipeline_generate_hw_ls(struct radeon_cmdbuf *cs,
 static void
 radv_pipeline_generate_hw_ngg(struct radeon_cmdbuf *ctx_cs,
 			      struct radeon_cmdbuf *cs,
-			      struct radv_pipeline *pipeline,
-			      struct radv_shader_variant *shader)
+			      const struct radv_pipeline *pipeline,
+			      const struct radv_shader_variant *shader)
 {
 	uint64_t va = radv_buffer_get_va(shader->bo) + shader->bo_offset;
 	gl_shader_stage es_type =
@@ -4017,8 +4017,8 @@ radv_pipeline_generate_hw_ngg(struct radeon_cmdbuf *ctx_cs,
 
 static void
 radv_pipeline_generate_hw_hs(struct radeon_cmdbuf *cs,
-			     struct radv_pipeline *pipeline,
-			     struct radv_shader_variant *shader)
+			     const struct radv_pipeline *pipeline,
+			     const struct radv_shader_variant *shader)
 {
 	uint64_t va = radv_buffer_get_va(shader->bo) + shader->bo_offset;
 
@@ -4048,7 +4048,7 @@ radv_pipeline_generate_hw_hs(struct radeon_cmdbuf *cs,
 static void
 radv_pipeline_generate_vertex_shader(struct radeon_cmdbuf *ctx_cs,
 				     struct radeon_cmdbuf *cs,
-				     struct radv_pipeline *pipeline)
+				     const struct radv_pipeline *pipeline)
 {
 	struct radv_shader_variant *vs;
 
@@ -4070,7 +4070,7 @@ radv_pipeline_generate_vertex_shader(struct radeon_cmdbuf *ctx_cs,
 static void
 radv_pipeline_generate_tess_shaders(struct radeon_cmdbuf *ctx_cs,
 				    struct radeon_cmdbuf *cs,
-				    struct radv_pipeline *pipeline)
+				    const struct radv_pipeline *pipeline)
 {
 	struct radv_shader_variant *tes, *tcs;
 
@@ -4099,7 +4099,7 @@ radv_pipeline_generate_tess_shaders(struct radeon_cmdbuf *ctx_cs,
 
 static void
 radv_pipeline_generate_tess_state(struct radeon_cmdbuf *ctx_cs,
-				  struct radv_pipeline *pipeline,
+				  const struct radv_pipeline *pipeline,
 				  const VkGraphicsPipelineCreateInfo *pCreateInfo)
 {
 	struct radv_shader_variant *tes = radv_get_shader(pipeline, MESA_SHADER_TESS_EVAL);
@@ -4185,12 +4185,12 @@ radv_pipeline_generate_tess_state(struct radeon_cmdbuf *ctx_cs,
 static void
 radv_pipeline_generate_hw_gs(struct radeon_cmdbuf *ctx_cs,
 			     struct radeon_cmdbuf *cs,
-			     struct radv_pipeline *pipeline,
-			     struct radv_shader_variant *gs)
+			     const struct radv_pipeline *pipeline,
+			     const struct radv_shader_variant *gs)
 {
 	const struct gfx9_gs_info *gs_state = &gs->info.gs_ring_info;
 	unsigned gs_max_out_vertices;
-	uint8_t *num_components;
+	const uint8_t *num_components;
 	uint8_t max_stream;
 	unsigned offset;
 	uint64_t va;
@@ -4260,7 +4260,7 @@ radv_pipeline_generate_hw_gs(struct radeon_cmdbuf *ctx_cs,
 static void
 radv_pipeline_generate_geometry_shader(struct radeon_cmdbuf *ctx_cs,
 				       struct radeon_cmdbuf *cs,
-				       struct radv_pipeline *pipeline)
+				       const struct radv_pipeline *pipeline)
 {
 	struct radv_shader_variant *gs;
 
@@ -4308,7 +4308,7 @@ static uint32_t offset_to_ps_input(uint32_t offset, bool flat_shade,
 
 static void
 radv_pipeline_generate_ps_inputs(struct radeon_cmdbuf *ctx_cs,
-				 struct radv_pipeline *pipeline)
+				 const struct radv_pipeline *pipeline)
 {
 	struct radv_shader_variant *ps = pipeline->shaders[MESA_SHADER_FRAGMENT];
 	const struct radv_vs_output_info *outinfo = get_vs_output_info(pipeline);
@@ -4485,7 +4485,7 @@ radv_pipeline_generate_fragment_shader(struct radeon_cmdbuf *ctx_cs,
 
 static void
 radv_pipeline_generate_vgt_vertex_reuse(struct radeon_cmdbuf *ctx_cs,
-					struct radv_pipeline *pipeline)
+					const struct radv_pipeline *pipeline)
 {
 	if (pipeline->device->physical_device->rad_info.family < CHIP_POLARIS10 ||
 	    pipeline->device->physical_device->rad_info.chip_class >= GFX10)
@@ -4631,7 +4631,7 @@ gfx10_pipeline_generate_ge_cntl(struct radeon_cmdbuf *ctx_cs,
 
 static void
 radv_pipeline_generate_vgt_gs_out(struct radeon_cmdbuf *ctx_cs,
-				  struct radv_pipeline *pipeline,
+				  const struct radv_pipeline *pipeline,
 				  const VkGraphicsPipelineCreateInfo *pCreateInfo,
 				  const struct radv_graphics_pipeline_create_info *extra)
 {
@@ -5017,7 +5017,7 @@ VkResult radv_CreateGraphicsPipelines(
 
 static void
 radv_pipeline_generate_hw_cs(struct radeon_cmdbuf *cs,
-			     struct radv_pipeline *pipeline)
+			     const struct radv_pipeline *pipeline)
 {
 	struct radv_shader_variant *shader = pipeline->shaders[MESA_SHADER_COMPUTE];
 	uint64_t va = radv_buffer_get_va(shader->bo) + shader->bo_offset;
@@ -5037,7 +5037,7 @@ radv_pipeline_generate_hw_cs(struct radeon_cmdbuf *cs,
 
 static void
 radv_pipeline_generate_compute_state(struct radeon_cmdbuf *cs,
-				     struct radv_pipeline *pipeline)
+				     const struct radv_pipeline *pipeline)
 {
 	struct radv_shader_variant *shader = pipeline->shaders[MESA_SHADER_COMPUTE];
 	struct radv_device *device = pipeline->device;
