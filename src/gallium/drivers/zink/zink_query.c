@@ -88,7 +88,7 @@ zink_create_query(struct pipe_context *pctx,
    pool_create.queryType = query->vkqtype;
    pool_create.queryCount = query->num_queries;
    if (query_type == PIPE_QUERY_PRIMITIVES_GENERATED)
-     pool_create.pipelineStatistics = VK_QUERY_PIPELINE_STATISTIC_INPUT_ASSEMBLY_PRIMITIVES_BIT;
+     pool_create.pipelineStatistics = VK_QUERY_PIPELINE_STATISTIC_CLIPPING_INVOCATIONS_BIT;
 
    VkResult status = vkCreateQueryPool(screen->dev, &pool_create, NULL, &query->query_pool);
    if (status != VK_SUCCESS) {
