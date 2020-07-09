@@ -760,7 +760,7 @@ zink_internal_create_screen(struct sw_winsys *winsys, int fd)
 {
    struct zink_screen *screen = CALLOC_STRUCT(zink_screen);
    bool have_tf_ext = false, have_cond_render_ext = false, have_EXT_index_type_uint8 = false,
-      have_EXT_robustness2_features = false;
+      have_EXT_robustness2_features = false, have_EXT_vertex_attribute_divisor = false;
    if (!screen)
       return NULL;
 
@@ -805,6 +805,9 @@ zink_internal_create_screen(struct sw_winsys *winsys, int fd)
             if (!strcmp(extensions[i].extensionName,
                         VK_EXT_ROBUSTNESS_2_EXTENSION_NAME))
                have_EXT_robustness2_features = true;
+            if (!strcmp(extensions[i].extensionName,
+                        VK_EXT_VERTEX_ATTRIBUTE_DIVISOR_EXTENSION_NAME))
+               have_EXT_vertex_attribute_divisor = true;
 
          }
          FREE(extensions);
@@ -836,6 +839,11 @@ zink_internal_create_screen(struct sw_winsys *winsys, int fd)
       screen->rb2_feats.pNext = feats.pNext;
       feats.pNext = &screen->rb2_feats;
    }
+   if (have_EXT_vertex_attribute_divisor) {
+      screen->vdiv_feats.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_FEATURES_EXT;
+      screen->vdiv_feats.pNext = feats.pNext;
+      feats.pNext = &screen->vdiv_feats;
+   }
    vkGetPhysicalDeviceFeatures2(screen->pdev, &feats);
    memcpy(&screen->feats, &feats.features, sizeof(screen->feats));
    if (have_tf_ext && tf_feats.transformFeedback)
@@ -845,8 +853,11 @@ zink_internal_create_screen(struct sw_winsys *winsys, int fd)
    if (have_EXT_index_type_uint8 && index_uint8_feats.indexTypeUint8)
       screen->have_EXT_index_type_uint8 = true;
    screen->have_EXT_robustness2_features = have_EXT_robustness2_features;
+   if (have_EXT_vertex_attribute_divisor && screen->vdiv_feats.vertexAttributeInstanceRateDivisor)
+      screen->have_EXT_vertex_attribute_divisor = true;
 
    VkPhysicalDeviceProperties2 props = {};
+   VkPhysicalDeviceVertexAttributeDivisorPropertiesEXT vdiv_props = {};
    props.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
    if (screen->have_EXT_transform_feedback) {
       screen->tf_props.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TRANSFORM_FEEDBACK_PROPERTIES_EXT;
@@ -858,8 +869,14 @@ zink_internal_create_screen(struct sw_winsys *winsys, int fd)
       screen->rb2_props.pNext = props.pNext;
       props.pNext = &screen->rb2_props;
    }
+   if (have_EXT_vertex_attribute_divisor) {
+      vdiv_props.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_PROPERTIES_EXT;
+      vdiv_props.pNext = props.pNext;
+      props.pNext = &vdiv_props;
+   }
    vkGetPhysicalDeviceProperties2(screen->pdev, &props);
    memcpy(&screen->props, &props.properties, sizeof(screen->props));
+   screen->max_vertex_attrib_divisor = vdiv_props.maxVertexAttribDivisor;
 
    if (!screen->have_KHR_maintenance1) {
       debug_printf("ZINK: VK_KHR_maintenance1 required!\n");
@@ -881,7 +898,7 @@ zink_internal_create_screen(struct sw_winsys *winsys, int fd)
     * this requires us to pass the whole VkPhysicalDeviceFeatures2 struct
     */
    dci.pNext = &feats;
-   const char *extensions[7] = {
+   const char *extensions[8] = {
       VK_KHR_MAINTENANCE1_EXTENSION_NAME,
    };
    num_extensions = 1;
@@ -906,6 +923,8 @@ zink_internal_create_screen(struct sw_winsys *winsys, int fd)
       extensions[num_extensions++] = VK_EXT_TRANSFORM_FEEDBACK_EXTENSION_NAME;
    if (screen->have_EXT_robustness2_features)
       extensions[num_extensions++] = VK_EXT_ROBUSTNESS_2_EXTENSION_NAME;
+   if (screen->have_EXT_vertex_attribute_divisor)
+      extensions[num_extensions++] = VK_EXT_VERTEX_ATTRIBUTE_DIVISOR_EXTENSION_NAME;
    assert(num_extensions <= ARRAY_SIZE(extensions));
 
    dci.ppEnabledExtensionNames = extensions;

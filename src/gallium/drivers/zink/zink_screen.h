@@ -51,6 +51,8 @@ struct zink_screen {
    VkPhysicalDeviceTransformFeedbackPropertiesEXT tf_props;
    VkPhysicalDeviceRobustness2PropertiesEXT rb2_props;
    VkPhysicalDeviceRobustness2FeaturesEXT rb2_feats;
+   VkPhysicalDeviceVertexAttributeDivisorFeaturesEXT vdiv_feats;
+   uint32_t max_vertex_attrib_divisor;
 
    bool have_KHR_maintenance1;
    bool have_KHR_external_memory_fd;
@@ -58,6 +60,7 @@ struct zink_screen {
    bool have_EXT_transform_feedback;
    bool have_EXT_index_type_uint8;
    bool have_EXT_robustness2_features;
+   bool have_EXT_vertex_attribute_divisor;
 
    bool have_X8_D24_UNORM_PACK32;
    bool have_D24_UNORM_S8_UINT;
