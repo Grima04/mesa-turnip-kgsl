@@ -209,7 +209,7 @@ emit_urb_config(struct blorp_batch *batch,
    /* The URB size is expressed in units of 64 bytes (512 bits) */
    const unsigned vs_entry_size = DIV_ROUND_UP(total_needed, 64);
 
-   const unsigned sf_entry_size =
+   ASSERTED const unsigned sf_entry_size =
       params->sf_prog_data ? params->sf_prog_data->urb_entry_size : 0;
 
 #if GEN_GEN >= 7
