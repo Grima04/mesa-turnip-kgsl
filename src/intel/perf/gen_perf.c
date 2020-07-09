@@ -662,8 +662,8 @@ build_unique_counter_list(struct gen_perf_config *perf)
 }
 
 static bool
-load_oa_metrics(struct gen_perf_config *perf, int fd,
-                const struct gen_device_info *devinfo)
+oa_metrics_available(struct gen_perf_config *perf, int fd,
+      const struct gen_device_info *devinfo)
 {
    perf_register_oa_queries_t oa_register = get_register_queries_function(devinfo);
    bool i915_perf_oa_available = false;
@@ -697,11 +697,17 @@ load_oa_metrics(struct gen_perf_config *perf, int fd,
       perf->platform_supported = oa_register != NULL;
    }
 
-   if (!i915_perf_oa_available ||
-       !oa_register ||
-       !get_sysfs_dev_dir(perf, fd) ||
-       !init_oa_sys_vars(perf, devinfo))
-      return false;
+   return i915_perf_oa_available &&
+          oa_register &&
+          get_sysfs_dev_dir(perf, fd) &&
+          init_oa_sys_vars(perf, devinfo);
+}
+
+static void
+load_oa_metrics(struct gen_perf_config *perf, int fd,
+                const struct gen_device_info *devinfo)
+{
+   perf_register_oa_queries_t oa_register = get_register_queries_function(devinfo);
 
    perf->oa_metrics_table =
       _mesa_hash_table_create(perf, _mesa_hash_string,
@@ -720,10 +726,6 @@ load_oa_metrics(struct gen_perf_config *perf, int fd,
    } else {
       add_all_metrics(perf, devinfo);
    }
-
-   build_unique_counter_list(perf);
-
-   return true;
 }
 
 struct gen_perf_registers *
@@ -1048,6 +1050,10 @@ gen_perf_init_metrics(struct gen_perf_config *perf_cfg,
       load_pipeline_statistic_metrics(perf_cfg, devinfo);
       gen_perf_register_mdapi_statistic_query(perf_cfg, devinfo);
    }
-   if (load_oa_metrics(perf_cfg, drm_fd, devinfo))
+
+   if (oa_metrics_available(perf_cfg, drm_fd, devinfo)) {
+      load_oa_metrics(perf_cfg, drm_fd, devinfo);
+      build_unique_counter_list(perf_cfg);
       gen_perf_register_mdapi_oa_query(perf_cfg, devinfo);
+   }
 }
