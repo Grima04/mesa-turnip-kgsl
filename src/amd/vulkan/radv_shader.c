@@ -813,8 +813,10 @@ static void radv_postprocess_config(const struct radv_physical_device *pdevice,
 			 */
 			if (pdevice->rad_info.chip_class >= GFX10) {
 				vgpr_comp_cnt = info->vs.needs_instance_id ? 3 : 1;
+				config_out->rsrc2 |= S_00B42C_LDS_SIZE_GFX10(info->tcs.num_lds_blocks);
 			} else {
 				vgpr_comp_cnt = info->vs.needs_instance_id ? 2 : 1;
+				config_out->rsrc2 |= S_00B42C_LDS_SIZE_GFX9(info->tcs.num_lds_blocks);
 			}
 		} else {
 			config_out->rsrc2 |= S_00B12C_OC_LDS_EN(1);
