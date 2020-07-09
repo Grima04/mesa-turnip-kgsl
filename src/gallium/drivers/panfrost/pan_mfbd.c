@@ -428,6 +428,23 @@ panfrost_mfbd_upload(struct panfrost_batch *batch,
 
 #undef UPLOAD
 
+/* Determines the # of bytes per pixel we need to reserve for a given format in
+ * the tilebuffer (compared to 128-bit budget, etc). Usually the same as the
+ * bytes per pixel of the format itself, but there are some special cases I
+ * don't understand. */
+
+static unsigned
+pan_bytes_per_pixel_tib(enum pipe_format format)
+{
+        const struct util_format_description *desc =
+                util_format_description(format);
+
+        if (util_format_is_unorm8(desc) || format == PIPE_FORMAT_B5G6R5_UNORM)
+                return 4;
+
+        return desc->block.bits / 8;
+}
+
 /* Determines whether a framebuffer uses too much tilebuffer space (requiring
  * us to scale up the tile at a performance penalty). This is conservative but
  * afaict you get 128-bits per pixel normally */
@@ -440,8 +457,7 @@ pan_is_large_tib(struct panfrost_batch *batch)
         for (int cb = 0; cb < batch->key.nr_cbufs; ++cb) {
                 struct pipe_surface *surf = batch->key.cbufs[cb];
                 assert(surf);
-                unsigned bpp = util_format_get_blocksize(surf->format);
-                size += ALIGN_POT(bpp, 4);
+                size += pan_bytes_per_pixel_tib(surf->format);
         }
 
         return (size > 16);
@@ -515,17 +531,18 @@ panfrost_mfbd_fragment(struct panfrost_batch *batch, bool has_draws)
         unsigned rt_descriptors = MAX2(batch->key.nr_cbufs, 1);
 
         fb.rt_count_1 = MALI_POSITIVE(rt_descriptors);
-        fb.rt_count_2 = rt_descriptors;
         fb.mfbd_flags = 0x100;
 
-        /* TODO: MRT clear */
-        panfrost_mfbd_clear(batch, &fb, &fbx, rts, fb.rt_count_2);
-
+        panfrost_mfbd_clear(batch, &fb, &fbx, rts, rt_descriptors);
 
         /* Upload either the render target or a dummy GL_NONE target */
 
+        unsigned offset = 0;
+        bool is_large = pan_is_large_tib(batch);
+
         for (int cb = 0; cb < rt_descriptors; ++cb) {
                 struct pipe_surface *surf = batch->key.cbufs[cb];
+                unsigned rt_offset = offset * 0x100;
 
                 if (surf && ((batch->clear | batch->draws) & (PIPE_CLEAR_COLOR0 << cb))) {
                         unsigned nr_samples = surf->nr_samples;
@@ -538,12 +555,7 @@ panfrost_mfbd_fragment(struct panfrost_batch *batch, bool has_draws)
 
                         panfrost_mfbd_set_cbuf(&rts[cb], surf);
 
-                        /* What is this? Looks like some extension of the bpp
-                         * field. Maybe it establishes how much internal
-                         * tilebuffer space is reserved? */
-
-                        unsigned bpp = util_format_get_blocksize(surf->format);
-                        fb.rt_count_2 = MAX2(fb.rt_count_2, ALIGN_POT(bpp, 4) / 4);
+                        offset += pan_bytes_per_pixel_tib(surf->format);
                 } else {
                         struct mali_rt_format null_rt = {
                                 .unk1 = 0x4000000,
@@ -561,8 +573,10 @@ panfrost_mfbd_fragment(struct panfrost_batch *batch, bool has_draws)
                 }
 
                 /* TODO: Break out the field */
-                rts[cb].format.unk1 |= (cb * 0x400);
+                rts[cb].format.unk1 |= is_large ? (rt_offset / 4) : rt_offset;
         }
+
+        fb.rt_count_2 = MAX2(DIV_ROUND_UP(offset, is_large ? 16 : 4), 1);
 
         if (batch->key.zsbuf && ((batch->clear | batch->draws) & PIPE_CLEAR_DEPTHSTENCIL)) {
                 panfrost_mfbd_set_zsbuf(&fb, &fbx, batch->key.zsbuf);
