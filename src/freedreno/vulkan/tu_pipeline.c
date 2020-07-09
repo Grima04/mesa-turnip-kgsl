@@ -464,12 +464,7 @@ tu6_emit_xs_config(struct tu_cs *cs,
    tu_cs_emit(cs, CP_LOAD_STATE6_1_EXT_SRC_ADDR(0));
    tu_cs_emit(cs, CP_LOAD_STATE6_2_EXT_SRC_ADDR_HI(0));
 
-   for (unsigned i = 0; i < size; i++) {
-      tu_cs_emit(cs, const_state->immediates[i].val[0]);
-      tu_cs_emit(cs, const_state->immediates[i].val[1]);
-      tu_cs_emit(cs, const_state->immediates[i].val[2]);
-      tu_cs_emit(cs, const_state->immediates[i].val[3]);
-   }
+   tu_cs_emit_array(cs, const_state->immediates, size * 4);
 }
 
 static void

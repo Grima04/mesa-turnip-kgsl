@@ -574,10 +574,10 @@ ir3_shader_disasm(struct ir3_shader_variant *so, uint32_t *bin, FILE *out)
 	for (i = 0; i < DIV_ROUND_UP(const_state->immediates_count, 4); i++) {
 		fprintf(out, "@const(c%d.x)\t", const_state->offsets.immediate + i);
 		fprintf(out, "0x%08x, 0x%08x, 0x%08x, 0x%08x\n",
-				const_state->immediates[i].val[0],
-				const_state->immediates[i].val[1],
-				const_state->immediates[i].val[2],
-				const_state->immediates[i].val[3]);
+				const_state->immediates[i * 4 + 0],
+				const_state->immediates[i * 4 + 1],
+				const_state->immediates[i * 4 + 2],
+				const_state->immediates[i * 4 + 3]);
 	}
 
 	disasm_a3xx(bin, so->info.sizedwords, 0, out, ir->compiler->gpu_id);

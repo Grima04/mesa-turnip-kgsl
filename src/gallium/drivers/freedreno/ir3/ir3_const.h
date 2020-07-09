@@ -271,7 +271,7 @@ ir3_emit_immediates(struct fd_screen *screen, const struct ir3_shader_variant *v
 	size *= 4;
 
 	if (size > 0)
-		emit_const(ring, v, base, 0, size, const_state->immediates[0].val, NULL);
+		emit_const(ring, v, base, 0, size, const_state->immediates, NULL);
 }
 
 static inline void

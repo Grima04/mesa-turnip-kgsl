@@ -225,9 +225,9 @@ cs_const_emit(struct fd_ringbuffer *ring, struct kernel *kernel, uint32_t grid[3
 	if (ir3_kernel->info.numwg != INVALID_REG) {
 		assert((ir3_kernel->info.numwg & 0x3) == 0);
 		int idx = ir3_kernel->info.numwg >> 2;
-		const_state->immediates[idx].val[0] = grid[0];
-		const_state->immediates[idx].val[1] = grid[1];
-		const_state->immediates[idx].val[2] = grid[2];
+		const_state->immediates[idx * 4 + 0] = grid[0];
+		const_state->immediates[idx * 4 + 1] = grid[1];
+		const_state->immediates[idx * 4 + 2] = grid[2];
 	}
 
 	/* truncate size to avoid writing constants that shader
@@ -240,7 +240,7 @@ cs_const_emit(struct fd_ringbuffer *ring, struct kernel *kernel, uint32_t grid[3
 	size *= 4;
 
 	if (size > 0) {
-		emit_const(ring, base, size, const_state->immediates[0].val);
+		emit_const(ring, base, size, const_state->immediates);
 	}
 }
 
