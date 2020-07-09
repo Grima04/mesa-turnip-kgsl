@@ -1048,6 +1048,17 @@ radv_pipeline_out_of_order_rast(struct radv_pipeline *pipeline,
 	return true;
 }
 
+static const VkConservativeRasterizationModeEXT
+radv_get_conservative_raster_mode(const VkPipelineRasterizationStateCreateInfo *pCreateInfo)
+{
+	const VkPipelineRasterizationConservativeStateCreateInfoEXT *conservative_raster =
+		vk_find_struct_const(pCreateInfo->pNext, PIPELINE_RASTERIZATION_CONSERVATIVE_STATE_CREATE_INFO_EXT);
+
+	if (!conservative_raster)
+		return VK_CONSERVATIVE_RASTERIZATION_MODE_DISABLED_EXT;
+	return conservative_raster->conservativeRasterizationMode;
+}
+
 static void
 radv_pipeline_init_multisample_state(struct radv_pipeline *pipeline,
 				     struct radv_blend_state *blend,
@@ -1056,6 +1067,8 @@ radv_pipeline_init_multisample_state(struct radv_pipeline *pipeline,
 	const VkPipelineMultisampleStateCreateInfo *vkms = radv_pipeline_get_multisample_state(pCreateInfo);
 	struct radv_multisample_state *ms = &pipeline->graphics.ms;
 	unsigned num_tile_pipes = pipeline->device->physical_device->rad_info.num_tile_pipes;
+	const VkConservativeRasterizationModeEXT mode =
+		radv_get_conservative_raster_mode(pCreateInfo->pRasterizationState);
 	bool out_of_order_rast = false;
 	int ps_iter_samples = 1;
 	uint32_t mask = 0xffff;
@@ -1108,6 +1121,15 @@ radv_pipeline_init_multisample_state(struct radv_pipeline *pipeline,
 		      S_028804_INCOHERENT_EQAA_READS(1) |
 		      S_028804_INTERPOLATE_COMP_Z(1) |
 		      S_028804_STATIC_ANCHOR_ASSOCIATIONS(1);
+
+	/* Adjust MSAA state if conservative rasterization is enabled. */
+	if (mode != VK_CONSERVATIVE_RASTERIZATION_MODE_DISABLED_EXT) {
+		ms->pa_sc_aa_config |= S_028BE0_AA_MASK_CENTROID_DTMN(1);
+
+		ms->db_eqaa |= S_028804_ENABLE_POSTZ_OVERRASTERIZATION(1) |
+			       S_028804_OVERRASTERIZATION_AMOUNT(4);
+	}
+
 	ms->pa_sc_mode_cntl_1 =
 		S_028A4C_WALK_FENCE_ENABLE(1) | //TODO linear dst fixes
 		S_028A4C_WALK_FENCE_SIZE(num_tile_pipes == 2 ? 2 : 3) |
@@ -3609,17 +3631,6 @@ radv_pipeline_generate_blend_state(struct radeon_cmdbuf *ctx_cs,
 	pipeline->graphics.cb_target_mask = blend->cb_target_mask;
 }
 
-static const VkConservativeRasterizationModeEXT
-radv_get_conservative_raster_mode(const VkPipelineRasterizationStateCreateInfo *pCreateInfo)
-{
-	const VkPipelineRasterizationConservativeStateCreateInfoEXT *conservative_raster =
-		vk_find_struct_const(pCreateInfo->pNext, PIPELINE_RASTERIZATION_CONSERVATIVE_STATE_CREATE_INFO_EXT);
-
-	if (!conservative_raster)
-		return VK_CONSERVATIVE_RASTERIZATION_MODE_DISABLED_EXT;
-	return conservative_raster->conservativeRasterizationMode;
-}
-
 static void
 radv_pipeline_generate_raster_state(struct radeon_cmdbuf *ctx_cs,
 				    struct radv_pipeline *pipeline,
@@ -3660,12 +3671,6 @@ radv_pipeline_generate_raster_state(struct radeon_cmdbuf *ctx_cs,
 
 	/* Conservative rasterization. */
 	if (mode != VK_CONSERVATIVE_RASTERIZATION_MODE_DISABLED_EXT) {
-		struct radv_multisample_state *ms = &pipeline->graphics.ms;
-
-		ms->pa_sc_aa_config |= S_028BE0_AA_MASK_CENTROID_DTMN(1);
-		ms->db_eqaa |= S_028804_ENABLE_POSTZ_OVERRASTERIZATION(1) |
-			       S_028804_OVERRASTERIZATION_AMOUNT(4);
-
 		pa_sc_conservative_rast = S_028C4C_PREZ_AA_MASK_ENABLE(1) |
 					  S_028C4C_POSTZ_AA_MASK_ENABLE(1) |
 					  S_028C4C_CENTROID_SAMPLE_OVERRIDE(1);
