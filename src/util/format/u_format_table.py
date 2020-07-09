@@ -174,20 +174,20 @@ def write_format_table(formats):
         sn = format.short_name()
 
         print("   [%s] = {" % (format.name,))
-        print("   %s," % (format.name,))
-        print("   \"%s\"," % (format.name,))
-        print("   \"%s\"," % (sn,))
-        print("   {%u, %u, %u, %u},\t/* block */" % (format.block_width, format.block_height, format.block_depth, format.block_size()))
-        print("   %s," % (layout_map(format.layout),))
-        print("   %u,\t/* nr_channels */" % (format.nr_channels(),))
-        print("   %s,\t/* is_array */" % (bool_map(format.is_array()),))
-        print("   %s,\t/* is_bitmask */" % (bool_map(format.is_bitmask()),))
-        print("   %s,\t/* is_mixed */" % (bool_map(format.is_mixed()),))
-        print("   %s,\t/* is_unorm */" % (bool_map(format.is_unorm()),))
-        print("   %s,\t/* is_snorm */" % (bool_map(format.is_snorm()),))
+        print("      %s," % (format.name,))
+        print("      \"%s\"," % (format.name,))
+        print("      \"%s\"," % (sn,))
+        print("      {%u, %u, %u, %u},\t/* block */" % (format.block_width, format.block_height, format.block_depth, format.block_size()))
+        print("      %s," % (layout_map(format.layout),))
+        print("      %u,\t/* nr_channels */" % (format.nr_channels(),))
+        print("      %s,\t/* is_array */" % (bool_map(format.is_array()),))
+        print("      %s,\t/* is_bitmask */" % (bool_map(format.is_bitmask()),))
+        print("      %s,\t/* is_mixed */" % (bool_map(format.is_mixed()),))
+        print("      %s,\t/* is_unorm */" % (bool_map(format.is_unorm()),))
+        print("      %s,\t/* is_snorm */" % (bool_map(format.is_snorm()),))
         u_format_pack.print_channels(format, do_channel_array)
         u_format_pack.print_channels(format, do_swizzle_array)
-        print("   %s," % (colorspace_map(format.colorspace),))
+        print("      %s," % (colorspace_map(format.colorspace),))
         print("   },")
         print()
     print("};")
@@ -204,21 +204,20 @@ def write_format_table(formats):
             continue
 
         print("   [%s] = {" % (format.name,))
-
         if format.colorspace != ZS and not format.is_pure_color():
-            print("   .pack_rgba_8unorm = &util_format_%s_pack_rgba_8unorm," % sn)
-            print("   .pack_rgba_float = &util_format_%s_pack_rgba_float," % sn)
+            print("      .pack_rgba_8unorm = &util_format_%s_pack_rgba_8unorm," % sn)
+            print("      .pack_rgba_float = &util_format_%s_pack_rgba_float," % sn)
 
         if format.has_depth():
-            print("   .pack_z_32unorm = &util_format_%s_pack_z_32unorm," % sn)
-            print("   .pack_z_float = &util_format_%s_pack_z_float," % sn)
+            print("      .pack_z_32unorm = &util_format_%s_pack_z_32unorm," % sn)
+            print("      .pack_z_float = &util_format_%s_pack_z_float," % sn)
 
         if format.has_stencil():
-            print("   .pack_s_8uint = &util_format_%s_pack_s_8uint," % sn)
+            print("      .pack_s_8uint = &util_format_%s_pack_s_8uint," % sn)
 
         if format.is_pure_unsigned() or format.is_pure_signed():
-            print("   .pack_rgba_uint = &util_format_%s_pack_unsigned," % sn)
-            print("   .pack_rgba_sint = &util_format_%s_pack_signed," % sn)
+            print("      .pack_rgba_uint = &util_format_%s_pack_unsigned," % sn)
+            print("      .pack_rgba_sint = &util_format_%s_pack_signed," % sn)
         print("   },")
         print()
     print("};")
@@ -235,27 +234,26 @@ def write_format_table(formats):
             continue
 
         print("   [%s] = {" % (format.name,))
-
         if format.colorspace != ZS and not format.is_pure_color():
-            print("   .unpack_rgba_8unorm = &util_format_%s_unpack_rgba_8unorm," % sn)
+            print("      .unpack_rgba_8unorm = &util_format_%s_unpack_rgba_8unorm," % sn)
             if format.layout == 's3tc' or format.layout == 'rgtc':
-                print("   .fetch_rgba_8unorm = &util_format_%s_fetch_rgba_8unorm," % sn)
-            print("   .unpack_rgba = &util_format_%s_unpack_rgba_float," % sn)
-            print("   .fetch_rgba_float = &util_format_%s_fetch_rgba_float," % sn)
+                print("      .fetch_rgba_8unorm = &util_format_%s_fetch_rgba_8unorm," % sn)
+            print("      .unpack_rgba = &util_format_%s_unpack_rgba_float," % sn)
+            print("      .fetch_rgba_float = &util_format_%s_fetch_rgba_float," % sn)
 
         if format.has_depth():
-            print("   .unpack_z_32unorm = &util_format_%s_unpack_z_32unorm," % sn)
-            print("   .unpack_z_float = &util_format_%s_unpack_z_float," % sn)
+            print("      .unpack_z_32unorm = &util_format_%s_unpack_z_32unorm," % sn)
+            print("      .unpack_z_float = &util_format_%s_unpack_z_float," % sn)
 
         if format.has_stencil():
-            print("   .unpack_s_8uint = &util_format_%s_unpack_s_8uint," % sn)
+            print("      .unpack_s_8uint = &util_format_%s_unpack_s_8uint," % sn)
 
         if format.is_pure_unsigned():
-            print("   .unpack_rgba = &util_format_%s_unpack_unsigned," % sn)
-            print("   .fetch_rgba_uint = &util_format_%s_fetch_unsigned," % sn)
+            print("      .unpack_rgba = &util_format_%s_unpack_unsigned," % sn)
+            print("      .fetch_rgba_uint = &util_format_%s_fetch_unsigned," % sn)
         elif format.is_pure_signed():
-            print("   .unpack_rgba = &util_format_%s_unpack_signed," % sn)
-            print("   .fetch_rgba_sint = &util_format_%s_fetch_signed," % sn)
+            print("      .unpack_rgba = &util_format_%s_unpack_signed," % sn)
+            print("      .fetch_rgba_sint = &util_format_%s_fetch_signed," % sn)
         print("   },")
     print("};")
     print()
