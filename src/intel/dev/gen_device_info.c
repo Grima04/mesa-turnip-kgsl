@@ -910,47 +910,35 @@ static const struct gen_device_info gen_device_info_icl_gt0_5 = {
    .simulator_id = 19,
 };
 
+#define GEN11_LP_FEATURES                           \
+   .is_elkhartlake = true,                          \
+   .urb = {                                         \
+      GEN11_URB_MIN_MAX_ENTRIES,                    \
+   },                                               \
+   .disable_ccs_repack = true,                      \
+   .simulator_id = 28
+
 static const struct gen_device_info gen_device_info_ehl_7 = {
    GEN11_FEATURES(1, 1, subslices(4), 4),
-   .is_elkhartlake = true,
-   .urb = {
-      GEN11_URB_MIN_MAX_ENTRIES,
-   },
-   .disable_ccs_repack = true,
-   .simulator_id = 28,
+   GEN11_LP_FEATURES,
 };
 
 static const struct gen_device_info gen_device_info_ehl_6 = {
    GEN11_FEATURES(1, 1, subslices(4), 4),
-   .is_elkhartlake = true,
-   .urb = {
-      GEN11_URB_MIN_MAX_ENTRIES,
-   },
-   .disable_ccs_repack = true,
+   GEN11_LP_FEATURES,
    .num_eu_per_subslice = 6,
-   .simulator_id = 28,
 };
 
 static const struct gen_device_info gen_device_info_ehl_5 = {
    GEN11_FEATURES(1, 1, subslices(4), 4),
-   .is_elkhartlake = true,
-   .urb = {
-      GEN11_URB_MIN_MAX_ENTRIES,
-   },
-   .disable_ccs_repack = true,
+   GEN11_LP_FEATURES,
    .num_eu_per_subslice = 4,
-   .simulator_id = 28,
 };
 
 static const struct gen_device_info gen_device_info_ehl_4 = {
    GEN11_FEATURES(1, 1, subslices(2), 4),
-   .is_elkhartlake = true,
-   .urb = {
-      GEN11_URB_MIN_MAX_ENTRIES,
-   },
-   .disable_ccs_repack = true,
+   GEN11_LP_FEATURES,
    .num_eu_per_subslice =4,
-   .simulator_id = 28,
 };
 
 #define GEN12_URB_MIN_MAX_ENTRIES                   \
