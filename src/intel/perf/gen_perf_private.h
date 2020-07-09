@@ -31,6 +31,11 @@ static inline uint64_t to_user_pointer(void *ptr)
    return (uintptr_t) ptr;
 }
 
+static inline uint64_t to_const_user_pointer(const void *ptr)
+{
+   return (uintptr_t) ptr;
+}
+
 static inline void
 gen_perf_query_add_stat_reg(struct gen_perf_query_info *query, uint32_t reg,
                             uint32_t numerator, uint32_t denominator,

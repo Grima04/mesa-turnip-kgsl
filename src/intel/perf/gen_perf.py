@@ -430,10 +430,14 @@ def generate_register_configs(set):
             c_indent(3)
 
         registers = register_config.findall('register')
-        c("query->config.%s = rzalloc_array(query, struct gen_perf_query_register_prog, %d);" % (t, len(registers)))
+        c("static const struct gen_perf_query_register_prog %s[] = {" % t)
+        c_indent(3)
         for register in registers:
-            c("query->config.%s[query->config.n_%s++] = (struct gen_perf_query_register_prog) { .reg = %s, .val = %s };" %
-              (t, t, register.get('address'), register.get('value')))
+            c("{ .reg = %s, .val = %s }," % (register.get('address'), register.get('value')))
+        c_outdent(3)
+        c("};")
+        c("query->config.%s = %s;" % (t, t))
+        c("query->config.n_%s = ARRAY_SIZE(%s);" % (t, t))
 
         if availability:
             c_outdent(3)

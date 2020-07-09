@@ -190,13 +190,13 @@ struct gen_perf_query_register_prog {
 
 /* Register programming for a given query */
 struct gen_perf_registers {
-   struct gen_perf_query_register_prog *flex_regs;
+   const struct gen_perf_query_register_prog *flex_regs;
    uint32_t n_flex_regs;
 
-   struct gen_perf_query_register_prog *mux_regs;
+   const struct gen_perf_query_register_prog *mux_regs;
    uint32_t n_mux_regs;
 
-   struct gen_perf_query_register_prog *b_counter_regs;
+   const struct gen_perf_query_register_prog *b_counter_regs;
    uint32_t n_b_counter_regs;
 };
 
