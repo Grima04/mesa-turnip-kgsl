@@ -937,7 +937,16 @@ panfrost_create_sampler_view_bo(struct panfrost_sampler_view *so,
 {
         struct panfrost_device *device = pan_device(pctx->screen);
         struct panfrost_resource *prsrc = (struct panfrost_resource *)texture;
+        enum pipe_format format = so->base.format;
         assert(prsrc->bo);
+
+        /* Format to access the stencil portion of a Z32_S8 texture */
+        if (so->base.format == PIPE_FORMAT_X32_S8X24_UINT) {
+                assert(prsrc->separate_stencil);
+                texture = &prsrc->separate_stencil->base;
+                prsrc = (struct panfrost_resource *)texture;
+                format = texture->format;
+        }
 
         so->texture_bo = prsrc->bo->gpu;
         so->layout = prsrc->layout;
@@ -977,7 +986,7 @@ panfrost_create_sampler_view_bo(struct panfrost_sampler_view *so,
 
         if (device->quirks & IS_BIFROST) {
                 const struct util_format_description *desc =
-                        util_format_description(so->base.format);
+                        util_format_description(format);
                 unsigned char composed_swizzle[4];
                 util_format_compose_swizzles(desc->swizzle, user_swizzle, composed_swizzle);
 
@@ -996,7 +1005,7 @@ panfrost_create_sampler_view_bo(struct panfrost_sampler_view *so,
                                 so->bifrost_descriptor,
                                 texture->width0, texture->height0,
                                 depth, array_size,
-                                so->base.format,
+                                format,
                                 type, prsrc->layout,
                                 so->base.u.tex.first_level,
                                 so->base.u.tex.last_level,
@@ -1024,7 +1033,7 @@ panfrost_create_sampler_view_bo(struct panfrost_sampler_view *so,
                                 so->bo->cpu,
                                 texture->width0, texture->height0,
                                 depth, array_size,
-                                so->base.format,
+                                format,
                                 type, prsrc->layout,
                                 so->base.u.tex.first_level,
                                 so->base.u.tex.last_level,
