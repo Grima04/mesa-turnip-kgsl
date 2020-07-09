@@ -625,7 +625,7 @@ snapshot_statistics_registers(struct gen_perf_context *ctx,
 
       perf->vtbl.store_register_mem(ctx->ctx, obj->pipeline_stats.bo,
                                     counter->pipeline_stat.reg, 8,
-                                    offset_in_bytes + i * sizeof(uint64_t));
+                                    offset_in_bytes + counter->offset);
    }
 }
 
