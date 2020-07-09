@@ -92,7 +92,7 @@ fd5_emit_const(struct fd_ringbuffer *ring, gl_shader_stage type,
 }
 
 static void
-fd5_emit_const_bo(struct fd_ringbuffer *ring, gl_shader_stage type,
+fd5_emit_const_ptrs(struct fd_ringbuffer *ring, gl_shader_stage type,
 		uint32_t regid, uint32_t num, struct pipe_resource **prscs, uint32_t *offsets)
 {
 	uint32_t anum = align(num, 2);
@@ -143,13 +143,13 @@ emit_const(struct fd_ringbuffer *ring,
 }
 
 static void
-emit_const_bo(struct fd_ringbuffer *ring,
+emit_const_ptrs(struct fd_ringbuffer *ring,
 		const struct ir3_shader_variant *v, uint32_t dst_offset,
 		uint32_t num, struct pipe_resource **prscs, uint32_t *offsets)
 {
 	/* TODO inline this */
 	assert(dst_offset + num <= v->constlen * 4);
-	fd5_emit_const_bo(ring, v->type, dst_offset, num, prscs, offsets);
+	fd5_emit_const_ptrs(ring, v->type, dst_offset, num, prscs, offsets);
 }
 
 void

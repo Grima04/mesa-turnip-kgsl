@@ -123,7 +123,7 @@ emit_const(struct fd_ringbuffer *ring,
 }
 
 static void
-emit_const_bo(struct fd_ringbuffer *ring,
+emit_const_ptrs(struct fd_ringbuffer *ring,
 		const struct ir3_shader_variant *v, uint32_t dst_offset,
 		uint32_t num, struct pipe_resource **prscs, uint32_t *offsets)
 {
