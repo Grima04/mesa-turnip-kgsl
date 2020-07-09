@@ -104,6 +104,7 @@ panfrost_get_param(struct pipe_screen *screen, enum pipe_cap param)
 
         switch (param) {
         case PIPE_CAP_NPOT_TEXTURES:
+        case PIPE_CAP_MIXED_COLORBUFFER_FORMATS:
         case PIPE_CAP_MIXED_FRAMEBUFFER_SIZES:
         case PIPE_CAP_MIXED_COLOR_DEPTH_BITS:
         case PIPE_CAP_FRAGMENT_SHADER_TEXTURE_LOD:
