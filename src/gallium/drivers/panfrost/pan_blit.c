@@ -66,17 +66,9 @@ panfrost_u_blitter_blit(struct pipe_context *pipe,
                         const struct pipe_blit_info *info)
 {
         struct panfrost_context *ctx = pan_context(pipe);
-        struct panfrost_device *dev = pan_device(pipe->screen);
 
-        if (!util_blitter_is_blit_supported(ctx->blitter, info)) {
-                if (dev->debug & PAN_DBG_MSGS) {
-                        fprintf(stderr, "blit unsupported %s -> %s\n",
-                                        util_format_short_name(info->src.resource->format),
-                                        util_format_short_name(info->dst.resource->format));
-                }
-
-                return false;
-        }
+        if (!util_blitter_is_blit_supported(ctx->blitter, info))
+                unreachable("Unsupported blit\n");
 
         /* TODO: Scissor */
 
