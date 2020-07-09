@@ -289,9 +289,8 @@ int main(int argc, char **argv)
 	/* TODO cmdline option to target different gpus: */
 	unsigned gpu_id = 320;
 	const char *info;
-	const char *entry;
+	const char *spirv_entry = NULL;
 	void *ptr;
-	bool from_spirv = false;
 	bool from_tgsi = false;
 	size_t size;
 
@@ -413,21 +412,20 @@ int main(int argc, char **argv)
 			if (num_files != 0)
 				errx(1, "in SPIR-V mode, only a single file may be specified");
 			stage = MESA_SHADER_COMPUTE;
-			from_spirv = true;
 			filenames[num_files++] = filename;
 			n++;
 			if (n == argc)
 				errx(1, "in SPIR-V mode, an entry point must be specified");
-			entry = argv[n];
+			spirv_entry = argv[n];
 			n++;
 		} else if (strcmp(ext, ".comp") == 0) {
-			if (from_tgsi || from_spirv)
+			if (from_tgsi || spirv_entry)
 				errx(1, "cannot mix GLSL/TGSI/SPIRV");
 			if (num_files >= ARRAY_SIZE(filenames))
 				errx(1, "too many GLSL files");
 			stage = MESA_SHADER_COMPUTE;
 		} else if (strcmp(ext, ".frag") == 0) {
-			if (from_tgsi || from_spirv)
+			if (from_tgsi || spirv_entry)
 				errx(1, "cannot mix GLSL/TGSI/SPIRV");
 			if (num_files >= ARRAY_SIZE(filenames))
 				errx(1, "too many GLSL files");
@@ -474,8 +472,8 @@ int main(int argc, char **argv)
 
 		nir = tgsi_to_nir_noscreen(toks, nir_options);
 		NIR_PASS_V(nir, nir_lower_global_vars_to_local);
-	} else if (from_spirv) {
-		nir = load_spirv(filenames[0], entry, stage);
+	} else if (spirv_entry) {
+		nir = load_spirv(filenames[0], spirv_entry, stage);
 
 		NIR_PASS_V(nir, nir_lower_io,
 		           nir_var_shader_in | nir_var_shader_out,
