@@ -1608,6 +1608,60 @@ radv_pipeline_init_dynamic_state(struct radv_pipeline *pipeline,
 }
 
 static void
+radv_pipeline_init_raster_state(struct radv_pipeline *pipeline,
+				const VkGraphicsPipelineCreateInfo *pCreateInfo)
+{
+	const VkPipelineRasterizationStateCreateInfo *raster_info =
+		pCreateInfo->pRasterizationState;
+
+	pipeline->graphics.pa_su_sc_mode_cntl =
+		S_028814_FACE(raster_info->frontFace) |
+		S_028814_CULL_FRONT(!!(raster_info->cullMode & VK_CULL_MODE_FRONT_BIT)) |
+		S_028814_CULL_BACK(!!(raster_info->cullMode & VK_CULL_MODE_BACK_BIT)) |
+		S_028814_POLY_MODE(raster_info->polygonMode != VK_POLYGON_MODE_FILL) |
+		S_028814_POLYMODE_FRONT_PTYPE(si_translate_fill(raster_info->polygonMode)) |
+		S_028814_POLYMODE_BACK_PTYPE(si_translate_fill(raster_info->polygonMode)) |
+		S_028814_POLY_OFFSET_FRONT_ENABLE(raster_info->depthBiasEnable ? 1 : 0) |
+		S_028814_POLY_OFFSET_BACK_ENABLE(raster_info->depthBiasEnable ? 1 : 0) |
+		S_028814_POLY_OFFSET_PARA_ENABLE(raster_info->depthBiasEnable ? 1 : 0);
+}
+
+static void
+radv_pipeline_init_depth_stencil_state(struct radv_pipeline *pipeline,
+				       const VkGraphicsPipelineCreateInfo *pCreateInfo)
+{
+	const VkPipelineDepthStencilStateCreateInfo *ds_info
+		= radv_pipeline_get_depth_stencil_state(pCreateInfo);
+	RADV_FROM_HANDLE(radv_render_pass, pass, pCreateInfo->renderPass);
+	struct radv_subpass *subpass = pass->subpasses + pCreateInfo->subpass;
+	struct radv_render_pass_attachment *attachment = NULL;
+	uint32_t db_depth_control = 0;
+
+	if (subpass->depth_stencil_attachment)
+		attachment = pass->attachments + subpass->depth_stencil_attachment->attachment;
+
+	bool has_depth_attachment = attachment && vk_format_is_depth(attachment->format);
+	bool has_stencil_attachment = attachment && vk_format_is_stencil(attachment->format);
+
+	if (ds_info) {
+		if (has_depth_attachment) {
+			db_depth_control = S_028800_Z_ENABLE(ds_info->depthTestEnable ? 1 : 0) |
+			                   S_028800_Z_WRITE_ENABLE(ds_info->depthWriteEnable ? 1 : 0) |
+			                   S_028800_ZFUNC(ds_info->depthCompareOp) |
+			                   S_028800_DEPTH_BOUNDS_ENABLE(ds_info->depthBoundsTestEnable ? 1 : 0);
+		}
+
+		if (has_stencil_attachment && ds_info->stencilTestEnable) {
+			db_depth_control |= S_028800_STENCIL_ENABLE(1) | S_028800_BACKFACE_ENABLE(1);
+			db_depth_control |= S_028800_STENCILFUNC(ds_info->front.compareOp);
+			db_depth_control |= S_028800_STENCILFUNC_BF(ds_info->back.compareOp);
+		}
+	}
+
+	pipeline->graphics.db_depth_control = db_depth_control;
+}
+
+static void
 gfx9_get_gs_info(const struct radv_pipeline_key *key,
                  const struct radv_pipeline *pipeline,
 		 nir_shader **nir,
@@ -3537,7 +3591,6 @@ radv_pipeline_generate_depth_stencil_state(struct radeon_cmdbuf *ctx_cs,
 	struct radv_subpass *subpass = pass->subpasses + pCreateInfo->subpass;
 	struct radv_shader_variant *ps = pipeline->shaders[MESA_SHADER_FRAGMENT];
 	struct radv_render_pass_attachment *attachment = NULL;
-	uint32_t db_depth_control = 0;
 	uint32_t db_render_control = 0, db_render_override2 = 0;
 	uint32_t db_render_override = 0;
 
@@ -3545,26 +3598,13 @@ radv_pipeline_generate_depth_stencil_state(struct radeon_cmdbuf *ctx_cs,
 		attachment = pass->attachments + subpass->depth_stencil_attachment->attachment;
 
 	bool has_depth_attachment = attachment && vk_format_is_depth(attachment->format);
-	bool has_stencil_attachment = attachment && vk_format_is_stencil(attachment->format);
 
 	if (vkds && has_depth_attachment) {
-		db_depth_control = S_028800_Z_ENABLE(vkds->depthTestEnable ? 1 : 0) |
-		                   S_028800_Z_WRITE_ENABLE(vkds->depthWriteEnable ? 1 : 0) |
-		                   S_028800_ZFUNC(vkds->depthCompareOp) |
-		                   S_028800_DEPTH_BOUNDS_ENABLE(vkds->depthBoundsTestEnable ? 1 : 0);
-
 		/* from amdvlk: For 4xAA and 8xAA need to decompress on flush for better performance */
 		db_render_override2 |= S_028010_DECOMPRESS_Z_ON_FLUSH(attachment->samples > 2);
 
 		if (pipeline->device->physical_device->rad_info.chip_class >= GFX10_3)
 			db_render_override2 |= S_028010_CENTROID_COMPUTATION_MODE_GFX103(2);
-	}
-
-	if (has_stencil_attachment && vkds && vkds->stencilTestEnable) {
-		db_depth_control |= S_028800_STENCIL_ENABLE(1) | S_028800_BACKFACE_ENABLE(1);
-		db_depth_control |= S_028800_STENCILFUNC(vkds->front.compareOp);
-
-		db_depth_control |= S_028800_STENCILFUNC_BF(vkds->back.compareOp);
 	}
 
 	if (attachment && extra) {
@@ -3599,8 +3639,6 @@ radv_pipeline_generate_depth_stencil_state(struct radeon_cmdbuf *ctx_cs,
 	radeon_set_context_reg(ctx_cs, R_028000_DB_RENDER_CONTROL, db_render_control);
 	radeon_set_context_reg(ctx_cs, R_02800C_DB_RENDER_OVERRIDE, db_render_override);
 	radeon_set_context_reg(ctx_cs, R_028010_DB_RENDER_OVERRIDE2, db_render_override2);
-
-	pipeline->graphics.db_depth_control = db_depth_control;
 }
 
 static void
@@ -3624,9 +3662,6 @@ radv_pipeline_generate_blend_state(struct radeon_cmdbuf *ctx_cs,
 
 	radeon_set_context_reg(ctx_cs, R_028238_CB_TARGET_MASK, blend->cb_target_mask);
 	radeon_set_context_reg(ctx_cs, R_02823C_CB_SHADER_MASK, blend->cb_shader_mask);
-
-	pipeline->graphics.col_format = blend->spi_shader_col_format;
-	pipeline->graphics.cb_target_mask = blend->cb_target_mask;
 }
 
 static void
@@ -3652,17 +3687,6 @@ radv_pipeline_generate_raster_state(struct radeon_cmdbuf *ctx_cs,
 	                       S_028810_ZCLIP_FAR_DISABLE(depth_clip_disable ? 1 : 0) |
 	                       S_028810_DX_RASTERIZATION_KILL(vkraster->rasterizerDiscardEnable ? 1 : 0) |
 	                       S_028810_DX_LINEAR_ATTR_CLIP_ENA(1));
-
-	pipeline->graphics.pa_su_sc_mode_cntl =
-		S_028814_FACE(vkraster->frontFace) |
-		S_028814_CULL_FRONT(!!(vkraster->cullMode & VK_CULL_MODE_FRONT_BIT)) |
-		S_028814_CULL_BACK(!!(vkraster->cullMode & VK_CULL_MODE_BACK_BIT)) |
-		S_028814_POLY_MODE(vkraster->polygonMode != VK_POLYGON_MODE_FILL) |
-		S_028814_POLYMODE_FRONT_PTYPE(si_translate_fill(vkraster->polygonMode)) |
-		S_028814_POLYMODE_BACK_PTYPE(si_translate_fill(vkraster->polygonMode)) |
-		S_028814_POLY_OFFSET_FRONT_ENABLE(vkraster->depthBiasEnable ? 1 : 0) |
-		S_028814_POLY_OFFSET_BACK_ENABLE(vkraster->depthBiasEnable ? 1 : 0) |
-		S_028814_POLY_OFFSET_PARA_ENABLE(vkraster->depthBiasEnable ? 1 : 0);
 
 	radeon_set_context_reg(ctx_cs, R_028BDC_PA_SC_LINE_CNTL,
 			       S_028BDC_DX10_DIAMOND_TEST_ENA(1));
@@ -4834,6 +4858,8 @@ radv_pipeline_init(struct radv_pipeline *pipeline,
 	radv_pipeline_init_multisample_state(pipeline, &blend, pCreateInfo);
 	radv_pipeline_init_input_assembly_state(pipeline, pCreateInfo, extra);
 	radv_pipeline_init_dynamic_state(pipeline, pCreateInfo, extra);
+	radv_pipeline_init_raster_state(pipeline, pCreateInfo);
+	radv_pipeline_init_depth_stencil_state(pipeline, pCreateInfo);
 
 	/* Ensure that some export memory is always allocated, for two reasons:
 	 *
@@ -4872,6 +4898,9 @@ radv_pipeline_init(struct radv_pipeline *pipeline,
 		 */
 		blend.cb_shader_mask = 0xf;
 	}
+
+	pipeline->graphics.col_format = blend.spi_shader_col_format;
+	pipeline->graphics.cb_target_mask = blend.cb_target_mask;
 
 	for (unsigned i = 0; i < MESA_SHADER_STAGES; i++) {
 		if (pipeline->shaders[i]) {
