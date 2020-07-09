@@ -1592,19 +1592,6 @@ to upconvert to 32b float internally?
 	<reg32 offset="0x0630" name="DBGC_CFG_DBGBUS_TRACE_BUF2"/>
 	<reg32 offset="0x0CD8" name="VSC_PERFCTR_VSC_SEL_0"/>
 	<reg32 offset="0x0CD9" name="VSC_PERFCTR_VSC_SEL_1"/>
-	<reg32 offset="0x8601" name="GRAS_ADDR_MODE_CNTL"/>
-	<reg32 offset="0x8610" name="GRAS_PERFCTR_TSE_SEL_0"/>
-	<reg32 offset="0x8611" name="GRAS_PERFCTR_TSE_SEL_1"/>
-	<reg32 offset="0x8612" name="GRAS_PERFCTR_TSE_SEL_2"/>
-	<reg32 offset="0x8613" name="GRAS_PERFCTR_TSE_SEL_3"/>
-	<reg32 offset="0x8614" name="GRAS_PERFCTR_RAS_SEL_0"/>
-	<reg32 offset="0x8615" name="GRAS_PERFCTR_RAS_SEL_1"/>
-	<reg32 offset="0x8616" name="GRAS_PERFCTR_RAS_SEL_2"/>
-	<reg32 offset="0x8617" name="GRAS_PERFCTR_RAS_SEL_3"/>
-	<reg32 offset="0x8618" name="GRAS_PERFCTR_LRZ_SEL_0"/>
-	<reg32 offset="0x8619" name="GRAS_PERFCTR_LRZ_SEL_1"/>
-	<reg32 offset="0x861A" name="GRAS_PERFCTR_LRZ_SEL_2"/>
-	<reg32 offset="0x861B" name="GRAS_PERFCTR_LRZ_SEL_3"/>
 	<reg32 offset="0x8E05" name="RB_ADDR_MODE_CNTL"/>
 	<reg32 offset="0x8E08" name="RB_NC_MODE_CNTL"/>
 	<reg32 offset="0x8E10" name="RB_PERFCTR_RB_SEL_0"/>
@@ -1805,14 +1792,6 @@ to upconvert to 32b float internally?
 	<reg32 offset="0xb4d1" name="SP_WINDOW_OFFSET" type="adreno_reg_xy"/>
 	<reg32 offset="0xb307" name="SP_TP_WINDOW_OFFSET" type="adreno_reg_xy"/>
 
-	<!-- same as RB_BIN_CONTROL -->
-	<reg32 offset="0x80a1" name="GRAS_BIN_CONTROL">
-		<bitfield name="BINW" low="0" high="7" shr="5" type="uint"/>
-		<bitfield name="BINH" low="8" high="16" shr="4" type="uint"/>
-		<bitfield name="BINNING_PASS" pos="18" type="boolean"/>
-		<bitfield name="USE_VIZ" pos="21" type="boolean"/>
-	</reg32>
-
 	<!--
 		from offset it seems it should be RB, but weird to duplicate
 		other regs from same block??
@@ -1900,6 +1879,12 @@ to upconvert to 32b float internally?
 	<!-- always 0x03200000 ? -->
 	<reg32 offset="0x0e12" name="UCHE_UNKNOWN_0E12"/>
 
+	<!-- adreno_reg_xy has 15 bits per coordinate, but a6xx registers only have 14 -->
+	<bitset name="a6xx_reg_xy" inline="yes">
+		<bitfield name="X" low="0" high="13" type="uint"/>
+		<bitfield name="Y" low="16" high="29" type="uint"/>
+	</bitset>
+
 	<reg32 offset="0x8000" name="GRAS_CL_CNTL">
 		<bitfield name="CLIP_DISABLE" pos="0" type="boolean"/>
 		<bitfield name="ZNEAR_CLIP_DISABLE" pos="1" type="boolean"/>
@@ -1914,6 +1899,7 @@ to upconvert to 32b float internally?
 		<bitfield name="VP_XFORM_DISABLE" pos="8" type="boolean"/>
 		<bitfield name="PERSP_DIVISION_DISABLE" pos="9" type="boolean"/>
 	</reg32>
+
 	<bitset name="a6xx_gras_xs_cl_cntl" inline="yes">
 		<bitfield name="CLIP_MASK" low="0" high="7"/>
 		<bitfield name="CULL_MASK" low="8" high="15"/>
@@ -1921,16 +1907,7 @@ to upconvert to 32b float internally?
 	<reg32 offset="0x8001" name="GRAS_VS_CL_CNTL" type="a6xx_gras_xs_cl_cntl"/>
 	<reg32 offset="0x8002" name="GRAS_DS_CL_CNTL" type="a6xx_gras_xs_cl_cntl"/>
 	<reg32 offset="0x8003" name="GRAS_GS_CL_CNTL" type="a6xx_gras_xs_cl_cntl"/>
-
-	<enum name="a6xx_layer_type">
-	  <value value="0x0" name="LAYER_MULTISAMPLE_ARRAY"/>
-	  <value value="0x1" name="LAYER_3D"/>
-	  <value value="0x2" name="LAYER_CUBEMAP"/>
-	  <value value="0x3" name="LAYER_2D_ARRAY"/>
-	</enum>
-
-	<!-- index of highest layer that can be written to via gl_Layer -->
-	<reg32 offset="0x8004" name="GRAS_MAX_LAYER_INDEX" type="uint"/>
+	<reg32 offset="0x8004" name="GRAS_MAX_LAYER_INDEX" low="0" high="10" type="uint"/>
 
 	<reg32 offset="0x8005" name="GRAS_CNTL">
 		<!-- see also RB_RENDER_CONTROL0 -->
@@ -1944,24 +1921,28 @@ to upconvert to 32b float internally?
 		mode, and frag_face
 		 -->
 		<bitfield name="SIZE" pos="3" type="boolean"/>
+		<bitfield name="UNK4" pos="4" type="boolean"/>
 		<!-- b5 set ofr interpolateAt{Offset,Sample}() if in per-sample mode -->
 		<bitfield name="SIZE_PERSAMP" pos="5" type="boolean"/>
 		<bitfield name="COORD_MASK" low="6" high="9" type="hex"/>
 	</reg32>
 	<reg32 offset="0x8006" name="GRAS_CL_GUARDBAND_CLIP_ADJ">
-		<bitfield name="HORZ" low="0" high="9" type="uint"/>
-		<bitfield name="VERT" low="10" high="19" type="uint"/>
+		<bitfield name="HORZ" low="0" high="8" type="uint"/>
+		<bitfield name="VERT" low="10" high="18" type="uint"/>
 	</reg32>
-	<reg32 offset="0x8010" name="GRAS_CL_VPORT_XOFFSET_0" type="float"/>
-	<reg32 offset="0x8011" name="GRAS_CL_VPORT_XSCALE_0" type="float"/>
-	<reg32 offset="0x8012" name="GRAS_CL_VPORT_YOFFSET_0" type="float"/>
-	<reg32 offset="0x8013" name="GRAS_CL_VPORT_YSCALE_0" type="float"/>
-	<reg32 offset="0x8014" name="GRAS_CL_VPORT_ZOFFSET_0" type="float"/>
-	<reg32 offset="0x8015" name="GRAS_CL_VPORT_ZSCALE_0" type="float"/>
-
-	<!-- not clear what it does, mirrors RB_Z_CLAMP_MIN -->
-	<reg32 offset="0x8070" name="GRAS_CL_Z_CLAMP_MIN" type="float"/>
-	<reg32 offset="0x8071" name="GRAS_CL_Z_CLAMP_MAX" type="float"/>
+	<!-- 0x8006-0x800f invalid -->
+	<array offset="0x8010" name="GRAS_CL_VPORT" stride="6" length="16">
+		<reg32 offset="0" name="XOFFSET" type="float"/>
+		<reg32 offset="1" name="XSCALE" type="float"/>
+		<reg32 offset="2" name="YOFFSET" type="float"/>
+		<reg32 offset="3" name="YSCALE" type="float"/>
+		<reg32 offset="4" name="ZOFFSET" type="float"/>
+		<reg32 offset="5" name="ZSCALE" type="float"/>
+	</array>
+	<array offset="0x8070" name="GRAS_CL_Z_CLAMP" stride="2" length="16">
+		<reg32 offset="0" name="MIN" type="float"/>
+		<reg32 offset="1" name="MAX" type="float"/>
+	</array>
 
 	<reg32 offset="0x8090" name="GRAS_SU_CNTL">
 		<bitfield name="CULL_FRONT" pos="0" type="boolean"/>
@@ -1969,15 +1950,16 @@ to upconvert to 32b float internally?
 		<bitfield name="FRONT_CW" pos="2" type="boolean"/>
 		<bitfield name="LINEHALFWIDTH" low="3" high="10" radix="2" type="fixed"/>
 		<bitfield name="POLY_OFFSET" pos="11" type="boolean"/>
+		<bitfield name="UNK12" pos="12"/>
 		<bitfield name="MSAA_ENABLE" pos="13" type="boolean"/>
-		<!-- probably LINEHALFWIDTH is the same as a4xx.. -->
+		<bitfield name="UNK15" low="15" high="22"/>
 	</reg32>
 	<reg32 offset="0x8091" name="GRAS_SU_POINT_MINMAX">
 		<bitfield name="MIN" low="0" high="15" type="ufixed" radix="4"/>
 		<bitfield name="MAX" low="16" high="31" type="ufixed" radix="4"/>
 	</reg32>
-	<reg32 offset="0x8092" name="GRAS_SU_POINT_SIZE" type="fixed" radix="4"/>
-
+	<reg32 offset="0x8092" name="GRAS_SU_POINT_SIZE" low="0" high="15" type="fixed" radix="4"/>
+	<!-- 0x8093 invalid -->
 	<reg32 offset="0x8094" name="GRAS_SU_DEPTH_PLANE_CNTL">
 		<bitfield name="Z_MODE" low="0" high="1" type="a6xx_ztest_mode"/>
 	</reg32>
@@ -1987,22 +1969,35 @@ to upconvert to 32b float internally?
 	<!-- duplicates RB_DEPTH_BUFFER_INFO: -->
 	<reg32 offset="0x8098" name="GRAS_SU_DEPTH_BUFFER_INFO">
 		<bitfield name="DEPTH_FORMAT" low="0" high="2" type="a6xx_depth_format"/>
+		<bitfield name="UNK3" pos="3"/>
 	</reg32>
 
-	<!-- always 0x0 -->
-	<reg32 offset="0x8099" name="GRAS_UNKNOWN_8099"/>
+	<reg32 offset="0x8099" name="GRAS_UNKNOWN_8099" low="0" high="5"/>
+	<reg32 offset="0x809a" name="GRAS_UNKNOWN_809A" low="0" high="1"/>
 
 	<bitset name="a6xx_gras_layer_cntl" inline="yes">
 		<bitfield name="WRITES_LAYER" pos="0" type="boolean"/>
+		<bitfield name="WRITES_VIEW" pos="1" type="boolean"/>
 	</bitset>
 	<reg32 offset="0x809b" name="GRAS_VS_LAYER_CNTL" type="a6xx_gras_layer_cntl"/>
 	<reg32 offset="0x809c" name="GRAS_GS_LAYER_CNTL" type="a6xx_gras_layer_cntl"/>
 	<reg32 offset="0x809d" name="GRAS_DS_LAYER_CNTL" type="a6xx_gras_layer_cntl"/>
-
-	<reg32 offset="0x80a0" name="GRAS_UNKNOWN_80A0"/>
+	<!-- 0x809e/0x809f invalid -->
+	<reg32 offset="0x80a0" name="GRAS_UNKNOWN_80A0" low="0" high="12"/>
+	<reg32 offset="0x80a1" name="GRAS_BIN_CONTROL">
+		<bitfield name="BINW" low="0" high="5" shr="5" type="uint"/>
+		<bitfield name="BINH" low="8" high="14" shr="4" type="uint"/>
+		<bitfield name="BINNING_PASS" pos="18" type="boolean"/>
+		<bitfield name="UNK19" pos="19"/>
+		<bitfield name="UNK20" pos="20"/>
+		<bitfield name="USE_VIZ" pos="21" type="boolean"/>
+		<bitfield name="UNK22" low="22" high="27"/>
+	</reg32>
 
 	<reg32 offset="0x80a2" name="GRAS_RAS_MSAA_CNTL">
 		<bitfield name="SAMPLES" low="0" high="1" type="a3xx_msaa_samples"/>
+		<bitfield name="UNK2" pos="2"/>
+		<bitfield name="UNK3" pos="3"/>
 	</reg32>
 	<reg32 offset="0x80a3" name="GRAS_DEST_MSAA_CNTL">
 		<bitfield name="SAMPLES" low="0" high="1" type="a3xx_msaa_samples"/>
@@ -2010,6 +2005,7 @@ to upconvert to 32b float internally?
 	</reg32>
 
 	<bitset name="a6xx_sample_config" inline="yes">
+		<bitfield name="UNK0" pos="0"/>
 		<bitfield name="LOCATION_ENABLE" pos="1" type="boolean"/>
 	</bitset>
 
@@ -2027,16 +2023,25 @@ to upconvert to 32b float internally?
 	<reg32 offset="0x80a4" name="GRAS_SAMPLE_CONFIG" type="a6xx_sample_config"/>
 	<reg32 offset="0x80a5" name="GRAS_SAMPLE_LOCATION_0" type="a6xx_sample_locations"/>
 	<reg32 offset="0x80a6" name="GRAS_SAMPLE_LOCATION_1" type="a6xx_sample_locations"/>
+	<!-- 0x80a7-0x80ae invalid -->
+	<reg32 offset="0x80af" name="GRAS_UNKNOWN_80AF" pos="0"/>
 
-	<!-- always 0x0 -->
-	<reg32 offset="0x80af" name="GRAS_UNKNOWN_80AF"/>
+	<bitset name="a6xx_scissor_xy" inline="yes">
+		<bitfield name="X" low="0" high="15" type="uint"/>
+		<bitfield name="Y" low="16" high="31" type="uint"/>
+	</bitset>
+	<array offset="0x80b0" name="GRAS_SC_SCREEN_SCISSOR" stride="2" length="16">
+		<reg32 offset="0" name="TL" type="a6xx_scissor_xy"/>
+		<reg32 offset="1" name="BR" type="a6xx_scissor_xy"/>
+	</array>
+	<array offset="0x80d0" name="GRAS_SC_VIEWPORT_SCISSOR" stride="2" length="16">
+		<reg32 offset="0" name="TL" type="a6xx_scissor_xy"/>
+		<reg32 offset="1" name="BR" type="a6xx_scissor_xy"/>
+	</array>
 
-	<reg32 offset="0x80b0" name="GRAS_SC_SCREEN_SCISSOR_TL_0" type="adreno_reg_xy"/>
-	<reg32 offset="0x80b1" name="GRAS_SC_SCREEN_SCISSOR_BR_0" type="adreno_reg_xy"/>
-	<reg32 offset="0x80d0" name="GRAS_SC_VIEWPORT_SCISSOR_TL_0" type="adreno_reg_xy"/>
-	<reg32 offset="0x80d1" name="GRAS_SC_VIEWPORT_SCISSOR_BR_0" type="adreno_reg_xy"/>
-	<reg32 offset="0x80f0" name="GRAS_SC_WINDOW_SCISSOR_TL" type="adreno_reg_xy"/>
-	<reg32 offset="0x80f1" name="GRAS_SC_WINDOW_SCISSOR_BR" type="adreno_reg_xy"/>
+	<reg32 offset="0x80f0" name="GRAS_SC_WINDOW_SCISSOR_TL" type="a6xx_reg_xy"/>
+	<reg32 offset="0x80f1" name="GRAS_SC_WINDOW_SCISSOR_BR" type="a6xx_reg_xy"/>
+	<!-- 0x80f2-0x80ff invalid -->
 
 	<reg32 offset="0x8100" name="GRAS_LRZ_CNTL">
 		<!--
@@ -2051,17 +2056,19 @@ to upconvert to 32b float internally?
 		<bitfield name="FC_ENABLE" pos="3" type="boolean"/>
 		<!-- set when depth-test + depth-write enabled -->
 		<bitfield name="Z_TEST_ENABLE" pos="4" type="boolean"/>
+		<bitfield name="UNK5" low="5" high="9"/>
 	</reg32>
-	<reg32 offset="0x8101" name="GRAS_UNKNOWN_8101"/>
+	<reg32 offset="0x8101" name="GRAS_UNKNOWN_8101" low="0" high="2"/>
 	<reg32 offset="0x8102" name="GRAS_2D_BLIT_INFO">
 		<bitfield name="COLOR_FORMAT" low="0" high="7" type="a6xx_format"/>
 	</reg32>
 	<reg32 offset="0x8103" name="GRAS_LRZ_BUFFER_BASE_LO"/>
 	<reg32 offset="0x8104" name="GRAS_LRZ_BUFFER_BASE_HI"/>
-	<reg64 offset="0x8103" name="GRAS_LRZ_BUFFER_BASE" type="waddress"/>
+	<reg64 offset="0x8103" name="GRAS_LRZ_BUFFER_BASE" align="256" type="waddress"/>
 	<reg32 offset="0x8105" name="GRAS_LRZ_BUFFER_PITCH">
-		<bitfield name="PITCH" low="0" high="10" shr="5" type="uint"/>
-		<bitfield name="ARRAY_PITCH" low="11" high="21" shr="5" type="uint"/> <!-- ??? -->
+		<!-- TODO: fix the shr fields -->
+		<bitfield name="PITCH" low="0" high="7" shr="5" type="uint"/>
+		<bitfield name="ARRAY_PITCH" low="10" high="28" shr="4" type="uint"/>
 	</reg32>
 
 	<!--
@@ -2096,62 +2103,84 @@ to upconvert to 32b float internally?
 	 -->
 	<reg32 offset="0x8106" name="GRAS_LRZ_FAST_CLEAR_BUFFER_BASE_LO"/>
 	<reg32 offset="0x8107" name="GRAS_LRZ_FAST_CLEAR_BUFFER_BASE_HI"/>
-	<reg32 offset="0x8106" name="GRAS_LRZ_FAST_CLEAR_BUFFER_BASE" type="waddress"/>
-
+	<reg32 offset="0x8106" name="GRAS_LRZ_FAST_CLEAR_BUFFER_BASE" align="64" type="waddress"/>
+	<!-- 0x8108 invalid -->
 	<reg32 offset="0x8109" name="GRAS_SAMPLE_CNTL">
 		<bitfield name="PER_SAMP_MODE" pos="0" type="boolean"/>
 	</reg32>
+	<reg32 offset="0x810a" name="GRAS_UNKNOWN_810A">
+		<bitfield name="UNK0" low="0" high="10" type="uint"/>
+		<bitfield name="UNK16" low="16" high="26" type="uint"/>
+		<bitfield name="UNK28" low="28" high="31" type="uint"/>
+	</reg32>
 
-	<reg32 offset="0x8110" name="GRAS_UNKNOWN_8110"/>
+	<!-- 0x810b-0x810f invalid -->
+
+	<reg32 offset="0x8110" name="GRAS_UNKNOWN_8110" low="0" high="1"/>
+
+	<!-- 0x8111-0x83ff invalid -->
 
 	<enum name="a6xx_rotation">
-	  <value value="0x0" name="ROTATE_0"/>
-	  <value value="0x1" name="ROTATE_90"/>
-	  <value value="0x2" name="ROTATE_180"/>
-	  <value value="0x3" name="ROTATE_270"/>
-	  <value value="0x4" name="ROTATE_HFLIP"/>
-	  <value value="0x5" name="ROTATE_VFLIP"/>
+		<value value="0x0" name="ROTATE_0"/>
+		<value value="0x1" name="ROTATE_90"/>
+		<value value="0x2" name="ROTATE_180"/>
+		<value value="0x3" name="ROTATE_270"/>
+		<value value="0x4" name="ROTATE_HFLIP"/>
+		<value value="0x5" name="ROTATE_VFLIP"/>
 	</enum>
 
 	<bitset name="a6xx_2d_blit_cntl" inline="yes">
 		<bitfield name="ROTATE" low="0" high="2" type="a6xx_rotation"/>
+		<bitfield name="UNK3" low="3" high="6"/>
 		<bitfield name="SOLID_COLOR" pos="7" type="boolean"/>
 		<bitfield name="COLOR_FORMAT" low="8" high="15" type="a6xx_format"/>
 		<bitfield name="SCISSOR" pos="16" type="boolean"/>
-
-		<bitfield name="UNK" low="17" high="18" type="uint"/>
-
+		<bitfield name="UNK17" low="17" high="18"/>
 		<!-- required when blitting D24S8/D24X8 -->
 		<bitfield name="D24S8" pos="19" type="boolean"/>
 		<!-- some sort of channel mask, disabled channels are set to zero ? -->
 		<bitfield name="MASK" low="20" high="23"/>
 		<bitfield name="IFMT" low="24" high="28" type="a6xx_2d_ifmt"/>
+		<bitfield name="UNK29" pos="29"/>
 	</bitset>
 
 	<reg32 offset="0x8400" name="GRAS_2D_BLIT_CNTL" type="a6xx_2d_blit_cntl"/>
+	<!-- note: the low 8 bits for src coords are valid, probably fixed point
+	     it would be a bit weird though, since we subtract 1 from BR coords
+	     apparently signed, gallium driver uses negative coords and it works?
+	 -->
+	<reg32 offset="0x8401" name="GRAS_2D_SRC_TL_X" low="8" high="24" type="int"/>
+	<reg32 offset="0x8402" name="GRAS_2D_SRC_BR_X" low="8" high="24" type="int"/>
+	<reg32 offset="0x8403" name="GRAS_2D_SRC_TL_Y" low="8" high="24" type="int"/>
+	<reg32 offset="0x8404" name="GRAS_2D_SRC_BR_Y" low="8" high="24" type="int"/>
+	<reg32 offset="0x8405" name="GRAS_2D_DST_TL" type="a6xx_reg_xy"/>
+	<reg32 offset="0x8406" name="GRAS_2D_DST_BR" type="a6xx_reg_xy"/>
+	<reg32 offset="0x8407" name="GRAS_2D_UNKNOWN_8407" low="0" high="31"/>
+	<reg32 offset="0x8408" name="GRAS_2D_UNKNOWN_8408" low="0" high="31"/>
+	<reg32 offset="0x8409" name="GRAS_2D_UNKNOWN_8409" low="0" high="31"/>
+	<reg32 offset="0x840a" name="GRAS_2D_RESOLVE_CNTL_1" type="a6xx_reg_xy"/>
+	<reg32 offset="0x840b" name="GRAS_2D_RESOLVE_CNTL_2" type="a6xx_reg_xy"/>
+	<!-- 0x840c-0x85ff invalid -->
 
-	<!-- could be the src coords are fixed point? -->
-	<reg32 offset="0x8401" name="GRAS_2D_SRC_TL_X">
-		<bitfield name="X" low="8" high="31" type="int"/>
-	</reg32>
-	<reg32 offset="0x8402" name="GRAS_2D_SRC_BR_X">
-		<bitfield name="X" low="8" high="31" type="int"/>
-	</reg32>
-	<reg32 offset="0x8403" name="GRAS_2D_SRC_TL_Y">
-		<bitfield name="Y" low="8" high="31" type="int"/>
-	</reg32>
-	<reg32 offset="0x8404" name="GRAS_2D_SRC_BR_Y">
-		<bitfield name="Y" low="8" high="31" type="int"/>
-	</reg32>
+	<!-- always 0x880 ? (and 0 in a640/a650 traces?) -->
+	<reg32 offset="0x8600" name="GRAS_UNKNOWN_8600" low="0" high="12" />
+	<reg32 offset="0x8601" name="GRAS_ADDR_MODE_CNTL" pos="0" type="boolean"/>
+	<reg32 offset="0x8610" name="GRAS_PERFCTR_TSE_SEL_0"/>
+	<reg32 offset="0x8611" name="GRAS_PERFCTR_TSE_SEL_1"/>
+	<reg32 offset="0x8612" name="GRAS_PERFCTR_TSE_SEL_2"/>
+	<reg32 offset="0x8613" name="GRAS_PERFCTR_TSE_SEL_3"/>
+	<reg32 offset="0x8614" name="GRAS_PERFCTR_RAS_SEL_0"/>
+	<reg32 offset="0x8615" name="GRAS_PERFCTR_RAS_SEL_1"/>
+	<reg32 offset="0x8616" name="GRAS_PERFCTR_RAS_SEL_2"/>
+	<reg32 offset="0x8617" name="GRAS_PERFCTR_RAS_SEL_3"/>
+	<reg32 offset="0x8618" name="GRAS_PERFCTR_LRZ_SEL_0"/>
+	<reg32 offset="0x8619" name="GRAS_PERFCTR_LRZ_SEL_1"/>
+	<reg32 offset="0x861A" name="GRAS_PERFCTR_LRZ_SEL_2"/>
+	<reg32 offset="0x861B" name="GRAS_PERFCTR_LRZ_SEL_3"/>
 
-	<reg32 offset="0x8405" name="GRAS_2D_DST_TL" type="adreno_reg_xy"/>
-	<reg32 offset="0x8406" name="GRAS_2D_DST_BR" type="adreno_reg_xy"/>
-
-	<reg32 offset="0x840a" name="GRAS_RESOLVE_CNTL_1" type="adreno_reg_xy"/>
-	<reg32 offset="0x840b" name="GRAS_RESOLVE_CNTL_2" type="adreno_reg_xy"/>
-
-	<!-- always 0x880 ? -->
-	<reg32 offset="0x8600" name="GRAS_UNKNOWN_8600"/>
+	<!-- note 0x8620-0x87ff are not all invalid
+	(in particular, 0x8631/0x8632 have 0x3fff3fff mask and would be xy coords)
+	-->
 
 	<!-- same as GRAS_BIN_CONTROL: -->
 	<reg32 offset="0x8800" name="RB_BIN_CONTROL">

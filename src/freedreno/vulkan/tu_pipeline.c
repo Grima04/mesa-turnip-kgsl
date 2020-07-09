@@ -1539,19 +1539,19 @@ tu6_emit_viewport(struct tu_cs *cs, const VkViewport *viewport)
    guardband_adj.width = tu6_guardband_adj(max.x - min.x);
    guardband_adj.height = tu6_guardband_adj(max.y - min.y);
 
-   tu_cs_emit_pkt4(cs, REG_A6XX_GRAS_CL_VPORT_XOFFSET_0, 6);
-   tu_cs_emit(cs, A6XX_GRAS_CL_VPORT_XOFFSET_0(offsets[0]).value);
-   tu_cs_emit(cs, A6XX_GRAS_CL_VPORT_XSCALE_0(scales[0]).value);
-   tu_cs_emit(cs, A6XX_GRAS_CL_VPORT_YOFFSET_0(offsets[1]).value);
-   tu_cs_emit(cs, A6XX_GRAS_CL_VPORT_YSCALE_0(scales[1]).value);
-   tu_cs_emit(cs, A6XX_GRAS_CL_VPORT_ZOFFSET_0(offsets[2]).value);
-   tu_cs_emit(cs, A6XX_GRAS_CL_VPORT_ZSCALE_0(scales[2]).value);
+   tu_cs_emit_regs(cs,
+                   A6XX_GRAS_CL_VPORT_XOFFSET(0, offsets[0]),
+                   A6XX_GRAS_CL_VPORT_XSCALE(0, scales[0]),
+                   A6XX_GRAS_CL_VPORT_YOFFSET(0, offsets[1]),
+                   A6XX_GRAS_CL_VPORT_YSCALE(0, scales[1]),
+                   A6XX_GRAS_CL_VPORT_ZOFFSET(0, offsets[2]),
+                   A6XX_GRAS_CL_VPORT_ZSCALE(0, scales[2]));
 
-   tu_cs_emit_pkt4(cs, REG_A6XX_GRAS_SC_VIEWPORT_SCISSOR_TL_0, 2);
-   tu_cs_emit(cs, A6XX_GRAS_SC_VIEWPORT_SCISSOR_TL_0_X(min.x) |
-                     A6XX_GRAS_SC_VIEWPORT_SCISSOR_TL_0_Y(min.y));
-   tu_cs_emit(cs, A6XX_GRAS_SC_VIEWPORT_SCISSOR_TL_0_X(max.x - 1) |
-                     A6XX_GRAS_SC_VIEWPORT_SCISSOR_TL_0_Y(max.y - 1));
+   tu_cs_emit_pkt4(cs, REG_A6XX_GRAS_SC_VIEWPORT_SCISSOR_TL(0), 2);
+   tu_cs_emit(cs, A6XX_GRAS_SC_VIEWPORT_SCISSOR_TL_X(min.x) |
+                     A6XX_GRAS_SC_VIEWPORT_SCISSOR_TL_Y(min.y));
+   tu_cs_emit(cs, A6XX_GRAS_SC_VIEWPORT_SCISSOR_TL_X(max.x - 1) |
+                     A6XX_GRAS_SC_VIEWPORT_SCISSOR_TL_Y(max.y - 1));
 
    tu_cs_emit_pkt4(cs, REG_A6XX_GRAS_CL_GUARDBAND_CLIP_ADJ, 1);
    tu_cs_emit(cs,
@@ -1562,8 +1562,8 @@ tu6_emit_viewport(struct tu_cs *cs, const VkViewport *viewport)
    float z_clamp_max = MAX2(viewport->minDepth, viewport->maxDepth);
 
    tu_cs_emit_regs(cs,
-                   A6XX_GRAS_CL_Z_CLAMP_MIN(z_clamp_min),
-                   A6XX_GRAS_CL_Z_CLAMP_MAX(z_clamp_max));
+                   A6XX_GRAS_CL_Z_CLAMP_MIN(0, z_clamp_min),
+                   A6XX_GRAS_CL_Z_CLAMP_MAX(0, z_clamp_max));
 
    tu_cs_emit_regs(cs,
                    A6XX_RB_Z_CLAMP_MIN(z_clamp_min),
@@ -1595,8 +1595,8 @@ tu6_emit_scissor(struct tu_cs *cs, const VkRect2D *scissor)
    max.y = MIN2(scissor_max, max.y);
 
    tu_cs_emit_regs(cs,
-                   A6XX_GRAS_SC_SCREEN_SCISSOR_TL_0(.x = min.x, .y = min.y),
-                   A6XX_GRAS_SC_SCREEN_SCISSOR_BR_0(.x = max.x - 1, .y = max.y - 1));
+                   A6XX_GRAS_SC_SCREEN_SCISSOR_TL(0, .x = min.x, .y = min.y),
+                   A6XX_GRAS_SC_SCREEN_SCISSOR_BR(0, .x = max.x - 1, .y = max.y - 1));
 }
 
 void

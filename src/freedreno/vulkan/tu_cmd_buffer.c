@@ -458,8 +458,8 @@ tu6_emit_window_scissor(struct tu_cs *cs,
                    A6XX_GRAS_SC_WINDOW_SCISSOR_BR(.x = x2, .y = y2));
 
    tu_cs_emit_regs(cs,
-                   A6XX_GRAS_RESOLVE_CNTL_1(.x = x1, .y = y1),
-                   A6XX_GRAS_RESOLVE_CNTL_2(.x = x2, .y = y2));
+                   A6XX_GRAS_2D_RESOLVE_CNTL_1(.x = x1, .y = y1),
+                   A6XX_GRAS_2D_RESOLVE_CNTL_2(.x = x2, .y = y2));
 }
 
 void

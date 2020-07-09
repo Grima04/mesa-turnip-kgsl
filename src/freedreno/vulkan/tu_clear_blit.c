@@ -107,10 +107,10 @@ r2d_coords(struct tu_cs *cs,
       return;
 
    tu_cs_emit_regs(cs,
-                   A6XX_GRAS_2D_SRC_TL_X(.x = src->x),
-                   A6XX_GRAS_2D_SRC_BR_X(.x = src->x + extent->width - 1),
-                   A6XX_GRAS_2D_SRC_TL_Y(.y = src->y),
-                   A6XX_GRAS_2D_SRC_BR_Y(.y = src->y + extent->height - 1));
+                   A6XX_GRAS_2D_SRC_TL_X(src->x),
+                   A6XX_GRAS_2D_SRC_BR_X(src->x + extent->width - 1),
+                   A6XX_GRAS_2D_SRC_TL_Y(src->y),
+                   A6XX_GRAS_2D_SRC_BR_Y(src->y + extent->height - 1));
 }
 
 static void
@@ -468,11 +468,11 @@ r3d_common(struct tu_cmd_buffer *cmd, struct tu_cs *cs, bool blit, uint32_t num_
    tu_cs_emit_regs(cs, A6XX_GRAS_SU_CNTL()); // XXX msaa enable?
 
    tu_cs_emit_regs(cs,
-                   A6XX_GRAS_SC_VIEWPORT_SCISSOR_TL_0(.x = 0, .y = 0),
-                   A6XX_GRAS_SC_VIEWPORT_SCISSOR_BR_0(.x = 0x7fff, .y = 0x7fff));
+                   A6XX_GRAS_SC_VIEWPORT_SCISSOR_TL(0, .x = 0, .y = 0),
+                   A6XX_GRAS_SC_VIEWPORT_SCISSOR_BR(0, .x = 0x7fff, .y = 0x7fff));
    tu_cs_emit_regs(cs,
-                   A6XX_GRAS_SC_SCREEN_SCISSOR_TL_0(.x = 0, .y = 0),
-                   A6XX_GRAS_SC_SCREEN_SCISSOR_BR_0(.x = 0x7fff, .y = 0x7fff));
+                   A6XX_GRAS_SC_SCREEN_SCISSOR_TL(0, .x = 0, .y = 0),
+                   A6XX_GRAS_SC_SCREEN_SCISSOR_BR(0, .x = 0x7fff, .y = 0x7fff));
 
    tu_cs_emit_regs(cs,
                    A6XX_VFD_INDEX_OFFSET(),
@@ -719,7 +719,7 @@ r3d_setup(struct tu_cmd_buffer *cmd,
 {
    if (!cmd->state.pass) {
       tu_emit_cache_flush_ccu(cmd, cs, TU_CMD_CCU_SYSMEM);
-      tu6_emit_window_scissor(cs, 0, 0, 0x7fff, 0x7fff);
+      tu6_emit_window_scissor(cs, 0, 0, 0x3fff, 0x3fff);
    }
 
    tu_cs_emit_regs(cs, A6XX_GRAS_BIN_CONTROL(.dword = 0xc00000));
@@ -1001,10 +1001,10 @@ tu6_blit_image(struct tu_cmd_buffer *cmd,
          A6XX_GRAS_2D_DST_BR(.x = MAX2(info->dstOffsets[0].x, info->dstOffsets[1].x) - 1,
                              .y = MAX2(info->dstOffsets[0].y, info->dstOffsets[1].y) - 1));
       tu_cs_emit_regs(cs,
-         A6XX_GRAS_2D_SRC_TL_X(.x = MIN2(info->srcOffsets[0].x, info->srcOffsets[1].x)),
-         A6XX_GRAS_2D_SRC_BR_X(.x = MAX2(info->srcOffsets[0].x, info->srcOffsets[1].x) - 1),
-         A6XX_GRAS_2D_SRC_TL_Y(.y = MIN2(info->srcOffsets[0].y, info->srcOffsets[1].y)),
-         A6XX_GRAS_2D_SRC_BR_Y(.y = MAX2(info->srcOffsets[0].y, info->srcOffsets[1].y) - 1));
+         A6XX_GRAS_2D_SRC_TL_X(MIN2(info->srcOffsets[0].x, info->srcOffsets[1].x)),
+         A6XX_GRAS_2D_SRC_BR_X(MAX2(info->srcOffsets[0].x, info->srcOffsets[1].x) - 1),
+         A6XX_GRAS_2D_SRC_TL_Y(MIN2(info->srcOffsets[0].y, info->srcOffsets[1].y)),
+         A6XX_GRAS_2D_SRC_BR_Y(MAX2(info->srcOffsets[0].y, info->srcOffsets[1].y) - 1));
    }
 
    struct tu_image_view dst, src;

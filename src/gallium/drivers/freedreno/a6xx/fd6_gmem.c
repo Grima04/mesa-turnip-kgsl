@@ -539,8 +539,8 @@ set_scissor(struct fd_ringbuffer *ring, uint32_t x1, uint32_t y1, uint32_t x2, u
 			A6XX_GRAS_SC_WINDOW_SCISSOR_BR(.x = x2, .y = y2));
 
 	OUT_REG(ring,
-			A6XX_GRAS_RESOLVE_CNTL_1(.x = x1, .y = y1),
-			A6XX_GRAS_RESOLVE_CNTL_2(.x = x2, .y = y2));
+			A6XX_GRAS_2D_RESOLVE_CNTL_1(.x = x1, .y = y1),
+			A6XX_GRAS_2D_RESOLVE_CNTL_2(.x = x2, .y = y2));
 }
 
 static void

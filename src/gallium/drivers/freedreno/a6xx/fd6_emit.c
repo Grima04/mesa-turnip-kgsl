@@ -860,11 +860,11 @@ fd6_emit_state(struct fd_ringbuffer *ring, struct fd6_emit *emit)
 		struct pipe_scissor_state *scissor = fd_context_get_scissor(ctx);
 
 		OUT_REG(ring,
-				A6XX_GRAS_SC_SCREEN_SCISSOR_TL_0(
+				A6XX_GRAS_SC_SCREEN_SCISSOR_TL(0,
 					.x = scissor->minx,
 					.y = scissor->miny
 				),
-				A6XX_GRAS_SC_SCREEN_SCISSOR_BR_0(
+				A6XX_GRAS_SC_SCREEN_SCISSOR_BR(0,
 					.x = MAX2(scissor->maxx, 1) - 1,
 					.y = MAX2(scissor->maxy, 1) - 1
 				)
@@ -882,20 +882,20 @@ fd6_emit_state(struct fd_ringbuffer *ring, struct fd6_emit *emit)
 		struct pipe_scissor_state *scissor = &ctx->viewport_scissor;
 
 		OUT_REG(ring,
-				A6XX_GRAS_CL_VPORT_XOFFSET_0(ctx->viewport.translate[0]),
-				A6XX_GRAS_CL_VPORT_XSCALE_0(ctx->viewport.scale[0]),
-				A6XX_GRAS_CL_VPORT_YOFFSET_0(ctx->viewport.translate[1]),
-				A6XX_GRAS_CL_VPORT_YSCALE_0(ctx->viewport.scale[1]),
-				A6XX_GRAS_CL_VPORT_ZOFFSET_0(ctx->viewport.translate[2]),
-				A6XX_GRAS_CL_VPORT_ZSCALE_0(ctx->viewport.scale[2])
+				A6XX_GRAS_CL_VPORT_XOFFSET(0, ctx->viewport.translate[0]),
+				A6XX_GRAS_CL_VPORT_XSCALE(0, ctx->viewport.scale[0]),
+				A6XX_GRAS_CL_VPORT_YOFFSET(0, ctx->viewport.translate[1]),
+				A6XX_GRAS_CL_VPORT_YSCALE(0, ctx->viewport.scale[1]),
+				A6XX_GRAS_CL_VPORT_ZOFFSET(0, ctx->viewport.translate[2]),
+				A6XX_GRAS_CL_VPORT_ZSCALE(0, ctx->viewport.scale[2])
 			);
 
 		OUT_REG(ring,
-				A6XX_GRAS_SC_VIEWPORT_SCISSOR_TL_0(
+				A6XX_GRAS_SC_VIEWPORT_SCISSOR_TL(0,
 					.x = scissor->minx,
 					.y = scissor->miny
 				),
-				A6XX_GRAS_SC_VIEWPORT_SCISSOR_BR_0(
+				A6XX_GRAS_SC_VIEWPORT_SCISSOR_BR(0,
 					.x = MAX2(scissor->maxx, 1) - 1,
 					.y = MAX2(scissor->maxy, 1) - 1
 				)

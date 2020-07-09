@@ -37,7 +37,6 @@
 #include "fd6_format.h"
 #include "fd6_emit.h"
 #include "fd6_resource.h"
-#include "fd6_pack.h"
 
 static inline enum a6xx_2d_ifmt
 fd6_ifmt(enum a6xx_format fmt)
@@ -396,10 +395,10 @@ emit_blit_buffer(struct fd_context *ctx, struct fd_ringbuffer *ring,
 		 * Blit command:
 		 */
 		OUT_PKT4(ring, REG_A6XX_GRAS_2D_SRC_TL_X, 4);
-		OUT_RING(ring, A6XX_GRAS_2D_SRC_TL_X_X(sshift));
-		OUT_RING(ring, A6XX_GRAS_2D_SRC_BR_X_X(sshift + w - 1));
-		OUT_RING(ring, A6XX_GRAS_2D_SRC_TL_Y_Y(0));
-		OUT_RING(ring, A6XX_GRAS_2D_SRC_BR_Y_Y(0));
+		OUT_RING(ring, A6XX_GRAS_2D_SRC_TL_X(sshift));
+		OUT_RING(ring, A6XX_GRAS_2D_SRC_BR_X(sshift + w - 1));
+		OUT_RING(ring, A6XX_GRAS_2D_SRC_TL_Y(0));
+		OUT_RING(ring, A6XX_GRAS_2D_SRC_BR_Y(0));
 
 		OUT_PKT4(ring, REG_A6XX_GRAS_2D_DST_TL, 2);
 		OUT_RING(ring, A6XX_GRAS_2D_DST_TL_X(dshift) | A6XX_GRAS_2D_DST_TL_Y(0));
@@ -541,10 +540,10 @@ emit_blit_texture(struct fd_context *ctx,
 	sy2 = sbox->y + sbox->height - 1;
 
 	OUT_PKT4(ring, REG_A6XX_GRAS_2D_SRC_TL_X, 4);
-	OUT_RING(ring, A6XX_GRAS_2D_SRC_TL_X_X(sx1));
-	OUT_RING(ring, A6XX_GRAS_2D_SRC_BR_X_X(sx2));
-	OUT_RING(ring, A6XX_GRAS_2D_SRC_TL_Y_Y(sy1));
-	OUT_RING(ring, A6XX_GRAS_2D_SRC_BR_Y_Y(sy2));
+	OUT_RING(ring, A6XX_GRAS_2D_SRC_TL_X(sx1));
+	OUT_RING(ring, A6XX_GRAS_2D_SRC_BR_X(sx2));
+	OUT_RING(ring, A6XX_GRAS_2D_SRC_TL_Y(sy1));
+	OUT_RING(ring, A6XX_GRAS_2D_SRC_BR_Y(sy2));
 
 	dx1 = dbox->x * nr_samples;
 	dy1 = dbox->y;
@@ -556,11 +555,11 @@ emit_blit_texture(struct fd_context *ctx,
 	OUT_RING(ring, A6XX_GRAS_2D_DST_BR_X(dx2) | A6XX_GRAS_2D_DST_BR_Y(dy2));
 
 	if (info->scissor_enable) {
-		OUT_PKT4(ring, REG_A6XX_GRAS_RESOLVE_CNTL_1, 2);
-		OUT_RING(ring, A6XX_GRAS_RESOLVE_CNTL_1_X(info->scissor.minx) |
-				 A6XX_GRAS_RESOLVE_CNTL_1_Y(info->scissor.miny));
-		OUT_RING(ring, A6XX_GRAS_RESOLVE_CNTL_1_X(info->scissor.maxx - 1) |
-				 A6XX_GRAS_RESOLVE_CNTL_1_Y(info->scissor.maxy - 1));
+		OUT_PKT4(ring, REG_A6XX_GRAS_2D_RESOLVE_CNTL_1, 2);
+		OUT_RING(ring, A6XX_GRAS_2D_RESOLVE_CNTL_1_X(info->scissor.minx) |
+				 A6XX_GRAS_2D_RESOLVE_CNTL_1_Y(info->scissor.miny));
+		OUT_RING(ring, A6XX_GRAS_2D_RESOLVE_CNTL_1_X(info->scissor.maxx - 1) |
+				 A6XX_GRAS_2D_RESOLVE_CNTL_1_Y(info->scissor.maxy - 1));
 	}
 
 	emit_blit_setup(ring, info->dst.format, info->scissor_enable, NULL);

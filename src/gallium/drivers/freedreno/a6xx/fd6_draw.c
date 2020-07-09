@@ -425,11 +425,11 @@ fd6_clear_lrz(struct fd_batch *batch, struct fd_resource *zsbuf, double depth)
 	OUT_RING(ring, 0x00000000);
 	OUT_RING(ring, 0x00000000);
 
-	OUT_PKT4(ring, REG_A6XX_GRAS_2D_SRC_TL_X, 4);
-	OUT_RING(ring, A6XX_GRAS_2D_SRC_TL_X_X(0));
-	OUT_RING(ring, A6XX_GRAS_2D_SRC_BR_X_X(0));
-	OUT_RING(ring, A6XX_GRAS_2D_SRC_TL_Y_Y(0));
-	OUT_RING(ring, A6XX_GRAS_2D_SRC_BR_Y_Y(0));
+	OUT_REG(ring,
+			A6XX_GRAS_2D_SRC_TL_X(0),
+			A6XX_GRAS_2D_SRC_BR_X(0),
+			A6XX_GRAS_2D_SRC_TL_Y(0),
+			A6XX_GRAS_2D_SRC_BR_Y(0));
 
 	OUT_PKT4(ring, REG_A6XX_GRAS_2D_DST_TL, 2);
 	OUT_RING(ring, A6XX_GRAS_2D_DST_TL_X(0) |
