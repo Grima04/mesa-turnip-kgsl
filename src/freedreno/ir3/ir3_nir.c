@@ -320,17 +320,18 @@ ir3_nir_post_finalize(struct ir3_compiler *compiler, nir_shader *s)
 }
 
 static bool
-ir3_nir_lower_layer_id(nir_shader *nir)
+ir3_nir_lower_view_layer_id(nir_shader *nir, bool layer_zero, bool view_zero)
 {
-	unsigned layer_id_loc = ~0;
+	unsigned layer_id_loc = ~0, view_id_loc = ~0;
 	nir_foreach_shader_in_variable(var, nir) {
-		if (var->data.location == VARYING_SLOT_LAYER) {
+		if (var->data.location == VARYING_SLOT_LAYER)
 			layer_id_loc = var->data.driver_location;
-			break;
-		}
+		if (var->data.location == VARYING_SLOT_VIEWPORT)
+			view_id_loc = var->data.driver_location;
 	}
 
-	assert(layer_id_loc != ~0);
+	assert(!layer_zero || layer_id_loc != ~0);
+	assert(!view_zero || view_id_loc != ~0);
 
 	bool progress = false;
 	nir_builder b;
@@ -350,7 +351,7 @@ ir3_nir_lower_layer_id(nir_shader *nir)
 					continue;
 
 				unsigned base = nir_intrinsic_base(intrin);
-				if (base != layer_id_loc)
+				if (base != layer_id_loc && base != view_id_loc)
 					continue;
 
 				b.cursor = nir_before_instr(&intrin->instr);
@@ -417,12 +418,15 @@ ir3_nir_lower_variant(struct ir3_shader_variant *so, nir_shader *s)
 		if (so->key.vclamp_color)
 			progress |= OPT(s, nir_lower_clamp_color_outputs);
 	} else if (s->info.stage == MESA_SHADER_FRAGMENT) {
+		bool layer_zero = so->key.layer_zero && (s->info.inputs_read & VARYING_BIT_LAYER);
+		bool view_zero = so->key.view_zero && (s->info.inputs_read & VARYING_BIT_VIEWPORT);
+
 		if (so->key.ucp_enables)
 			progress |= OPT(s, nir_lower_clip_fs, so->key.ucp_enables, false);
 		if (so->key.fclamp_color)
 			progress |= OPT(s, nir_lower_clamp_color_outputs);
-		if (so->key.layer_zero && (s->info.inputs_read & VARYING_BIT_LAYER))
-			progress |= OPT(s, ir3_nir_lower_layer_id);
+		if (layer_zero || view_zero)
+			progress |= OPT(s, ir3_nir_lower_view_layer_id, layer_zero, view_zero);
 	}
 	if (so->key.color_two_side) {
 		OPT_V(s, nir_lower_two_sided_color, true);

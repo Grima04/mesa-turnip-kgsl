@@ -356,6 +356,10 @@ ir3_setup_used_key(struct ir3_shader *shader)
 			key->layer_zero = true;
 		}
 
+		if (info->inputs_read & VARYING_BIT_VIEWPORT) {
+			key->view_zero = true;
+		}
+
 		if ((info->outputs_written & ~(FRAG_RESULT_DEPTH |
 								FRAG_RESULT_STENCIL |
 								FRAG_RESULT_SAMPLE_MASK)) != 0) {

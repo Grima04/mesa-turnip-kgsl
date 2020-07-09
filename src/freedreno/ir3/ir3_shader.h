@@ -318,6 +318,9 @@ struct ir3_shader_key {
 
 			/* Whether gl_Layer must be forced to 0 because it isn't written. */
 			unsigned layer_zero : 1;
+
+			/* Whether gl_ViewportIndex must be forced to 0 because it isn't written. */
+			unsigned view_zero : 1;
 		};
 		uint32_t global;
 	};
