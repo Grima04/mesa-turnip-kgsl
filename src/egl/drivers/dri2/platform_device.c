@@ -41,6 +41,7 @@
 
 #include "egl_dri2.h"
 #include "loader.h"
+#include "util/debug.h"
 
 static __DRIimage*
 device_alloc_image(struct dri2_egl_display *dri2_dpy,
@@ -252,8 +253,9 @@ static bool
 device_probe_device(_EGLDisplay *disp)
 {
    struct dri2_egl_display *dri2_dpy = disp->DriverData;
+   bool request_software = env_var_as_boolean("LIBGL_ALWAYS_SOFTWARE", false);
 
-   if (disp->Options.ForceSoftware)
+   if (request_software)
       _eglLog(_EGL_WARNING, "Not allowed to force software rendering when "
                             "API explicitly selects a hardware device.");
    dri2_dpy->fd = device_get_fd(disp, disp->Device);
@@ -263,6 +265,18 @@ device_probe_device(_EGLDisplay *disp)
    dri2_dpy->driver_name = loader_get_driver_for_fd(dri2_dpy->fd);
    if (!dri2_dpy->driver_name)
       goto err_name;
+
+   /* When doing software rendering, some times user still want to explicitly
+    * choose the render node device since cross node import doesn't work between
+    * vgem/virtio_gpu yet. It would be nice to have a new EXTENSION for this.
+    * For now, just fallback to kms_swrast. */
+   if (disp->Options.ForceSoftware && !request_software &&
+       (strcmp(dri2_dpy->driver_name, "vgem") == 0 ||
+        strcmp(dri2_dpy->driver_name, "virtio_gpu") == 0)) {
+      free(dri2_dpy->driver_name);
+      _eglLog(_EGL_WARNING, "NEEDS EXTENSION: falling back to kms_swrast");
+      dri2_dpy->driver_name = strdup("kms_swrast");
+   }
 
    if (!dri2_load_driver_dri3(disp))
       goto err_load;
