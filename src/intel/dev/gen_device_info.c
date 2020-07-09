@@ -918,24 +918,24 @@ static const struct gen_device_info gen_device_info_icl_gt0_5 = {
    .disable_ccs_repack = true,                      \
    .simulator_id = 28
 
-static const struct gen_device_info gen_device_info_ehl_7 = {
+static const struct gen_device_info gen_device_info_ehl_4x8 = {
    GEN11_FEATURES(1, 1, subslices(4), 4),
    GEN11_LP_FEATURES,
 };
 
-static const struct gen_device_info gen_device_info_ehl_6 = {
+static const struct gen_device_info gen_device_info_ehl_4x6 = {
    GEN11_FEATURES(1, 1, subslices(4), 4),
    GEN11_LP_FEATURES,
    .num_eu_per_subslice = 6,
 };
 
-static const struct gen_device_info gen_device_info_ehl_5 = {
+static const struct gen_device_info gen_device_info_ehl_4x4 = {
    GEN11_FEATURES(1, 1, subslices(4), 4),
    GEN11_LP_FEATURES,
    .num_eu_per_subslice = 4,
 };
 
-static const struct gen_device_info gen_device_info_ehl_4 = {
+static const struct gen_device_info gen_device_info_ehl_2x4 = {
    GEN11_FEATURES(1, 1, subslices(2), 4),
    GEN11_LP_FEATURES,
    .num_eu_per_subslice =4,
