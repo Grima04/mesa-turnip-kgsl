@@ -1571,7 +1571,7 @@ void assign_spill_slots(spill_ctx& ctx, unsigned spills_to_vgpr) {
                      split->definitions[i] = bld.def(v1);
                   bld.insert(split);
                   for (unsigned i = 0; i < temp.size(); i++)
-                     bld.mubuf(opcode, scratch_rsrc, Operand(), scratch_offset, split->definitions[i].getTemp(), offset + i * 4, false);
+                     bld.mubuf(opcode, scratch_rsrc, Operand(v1), scratch_offset, split->definitions[i].getTemp(), offset + i * 4, false);
                } else {
                   bld.mubuf(opcode, scratch_rsrc, Operand(v1), scratch_offset, temp, offset, false);
                }
@@ -1637,7 +1637,7 @@ void assign_spill_slots(spill_ctx& ctx, unsigned spills_to_vgpr) {
                   for (unsigned i = 0; i < def.size(); i++) {
                      Temp tmp = bld.tmp(v1);
                      vec->operands[i] = Operand(tmp);
-                     bld.mubuf(opcode, Definition(tmp), scratch_rsrc, Operand(), scratch_offset, offset + i * 4, false);
+                     bld.mubuf(opcode, Definition(tmp), scratch_rsrc, Operand(v1), scratch_offset, offset + i * 4, false);
                   }
                   bld.insert(vec);
                } else {
