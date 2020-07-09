@@ -154,10 +154,16 @@ tu_image_create(VkDevice _device,
     * For IYUV, the blob doesn't use UBWC, but it seems to work, but
     * disable it since we don't know if a special UBWC format is needed
     * like NV12
+    *
+    * Disable tiling completely, because we set the TILE_ALL bit to
+    * match the blob, however fdl expects the TILE_ALL bit to not be
+    * set for non-UBWC tiled formats
     */
    if (image->vk_format == VK_FORMAT_G8_B8R8_2PLANE_420_UNORM ||
-       image->vk_format == VK_FORMAT_G8_B8_R8_3PLANE_420_UNORM)
+       image->vk_format == VK_FORMAT_G8_B8_R8_3PLANE_420_UNORM) {
+      tile_mode = TILE6_LINEAR;
       ubwc_enabled = false;
+   }
 
    /* don't use UBWC with compressed formats */
    if (vk_format_is_compressed(image->vk_format))
