@@ -2592,6 +2592,8 @@ tu_compute_pipeline_create(VkDevice device,
       goto fail;
    }
 
+   pipeline->active_desc_sets = shader->active_desc_sets;
+
    bool created;
    struct ir3_shader_variant *v =
       ir3_shader_get_variant(shader->ir3_shader, &key, false, &created);
