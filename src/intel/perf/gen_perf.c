@@ -866,7 +866,7 @@ gen_perf_get_counters_passes(struct gen_perf_config *perf,
                              struct gen_perf_counter_pass *counter_pass)
 {
    uint64_t queries_mask = get_passes_mask(perf, counter_indices, counter_indices_count);
-   uint32_t n_passes = __builtin_popcount(queries_mask);
+   ASSERTED uint32_t n_passes = __builtin_popcount(queries_mask);
 
    for (uint32_t i = 0; i < counter_indices_count; i++) {
       assert(counter_indices[i] < perf->n_counters);
