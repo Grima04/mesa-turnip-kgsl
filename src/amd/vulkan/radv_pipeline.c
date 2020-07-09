@@ -82,11 +82,6 @@ struct radv_dsa_order_invariance {
 	bool pass_set;
 };
 
-struct radv_tessellation_state {
-	uint32_t ls_hs_config;
-	uint32_t tf_param;
-};
-
 static const VkPipelineMultisampleStateCreateInfo *
 radv_pipeline_get_multisample_state(const VkGraphicsPipelineCreateInfo *pCreateInfo)
 {
@@ -1982,86 +1977,6 @@ radv_get_shader(struct radv_pipeline *pipeline,
 			return pipeline->shaders[MESA_SHADER_GEOMETRY];
 	}
 	return pipeline->shaders[stage];
-}
-
-static struct radv_tessellation_state
-calculate_tess_state(struct radv_pipeline *pipeline,
-		     const VkGraphicsPipelineCreateInfo *pCreateInfo)
-{
-	unsigned num_tcs_input_cp;
-	unsigned num_tcs_output_cp;
-	unsigned num_patches;
-	struct radv_tessellation_state tess = {0};
-
-	num_tcs_input_cp = pCreateInfo->pTessellationState->patchControlPoints;
-	num_tcs_output_cp = pipeline->shaders[MESA_SHADER_TESS_CTRL]->info.tcs.tcs_vertices_out; //TCS VERTICES OUT
-	num_patches = pipeline->shaders[MESA_SHADER_TESS_CTRL]->info.tcs.num_patches;
-
-	tess.ls_hs_config = S_028B58_NUM_PATCHES(num_patches) |
-		S_028B58_HS_NUM_INPUT_CP(num_tcs_input_cp) |
-		S_028B58_HS_NUM_OUTPUT_CP(num_tcs_output_cp);
-
-	struct radv_shader_variant *tes = radv_get_shader(pipeline, MESA_SHADER_TESS_EVAL);
-	unsigned type = 0, partitioning = 0, topology = 0, distribution_mode = 0;
-
-	switch (tes->info.tes.primitive_mode) {
-	case GL_TRIANGLES:
-		type = V_028B6C_TESS_TRIANGLE;
-		break;
-	case GL_QUADS:
-		type = V_028B6C_TESS_QUAD;
-		break;
-	case GL_ISOLINES:
-		type = V_028B6C_TESS_ISOLINE;
-		break;
-	}
-
-	switch (tes->info.tes.spacing) {
-	case TESS_SPACING_EQUAL:
-		partitioning = V_028B6C_PART_INTEGER;
-		break;
-	case TESS_SPACING_FRACTIONAL_ODD:
-		partitioning = V_028B6C_PART_FRAC_ODD;
-		break;
-	case TESS_SPACING_FRACTIONAL_EVEN:
-		partitioning = V_028B6C_PART_FRAC_EVEN;
-		break;
-	default:
-		break;
-	}
-
-	bool ccw = tes->info.tes.ccw;
-	const VkPipelineTessellationDomainOriginStateCreateInfo *domain_origin_state =
-	              vk_find_struct_const(pCreateInfo->pTessellationState,
-	                                   PIPELINE_TESSELLATION_DOMAIN_ORIGIN_STATE_CREATE_INFO);
-
-	if (domain_origin_state && domain_origin_state->domainOrigin != VK_TESSELLATION_DOMAIN_ORIGIN_UPPER_LEFT)
-		ccw = !ccw;
-
-	if (tes->info.tes.point_mode)
-		topology = V_028B6C_OUTPUT_POINT;
-	else if (tes->info.tes.primitive_mode == GL_ISOLINES)
-		topology = V_028B6C_OUTPUT_LINE;
-	else if (ccw)
-		topology = V_028B6C_OUTPUT_TRIANGLE_CCW;
-	else
-		topology = V_028B6C_OUTPUT_TRIANGLE_CW;
-
-	if (pipeline->device->physical_device->rad_info.has_distributed_tess) {
-		if (pipeline->device->physical_device->rad_info.family == CHIP_FIJI ||
-		    pipeline->device->physical_device->rad_info.family >= CHIP_POLARIS10)
-			distribution_mode = V_028B6C_DISTRIBUTION_MODE_TRAPEZOIDS;
-		else
-			distribution_mode = V_028B6C_DISTRIBUTION_MODE_DONUTS;
-	} else
-		distribution_mode = V_028B6C_DISTRIBUTION_MODE_NO_DIST;
-
-	tess.tf_param = S_028B6C_TYPE(type) |
-		S_028B6C_PARTITIONING(partitioning) |
-		S_028B6C_TOPOLOGY(topology) |
-		S_028B6C_DISTRIBUTION_MODE(distribution_mode);
-
-	return tess;
 }
 
 static const struct radv_vs_output_info *get_vs_output_info(const struct radv_pipeline *pipeline)
@@ -4103,12 +4018,8 @@ radv_pipeline_generate_vertex_shader(struct radeon_cmdbuf *ctx_cs,
 static void
 radv_pipeline_generate_tess_shaders(struct radeon_cmdbuf *ctx_cs,
 				    struct radeon_cmdbuf *cs,
-				    struct radv_pipeline *pipeline,
-				    const struct radv_tessellation_state *tess)
+				    struct radv_pipeline *pipeline)
 {
-	if (!radv_pipeline_has_tess(pipeline))
-		return;
-
 	struct radv_shader_variant *tes, *tcs;
 
 	tcs = pipeline->shaders[MESA_SHADER_TESS_CTRL];
@@ -4125,16 +4036,6 @@ radv_pipeline_generate_tess_shaders(struct radeon_cmdbuf *ctx_cs,
 
 	radv_pipeline_generate_hw_hs(cs, pipeline, tcs);
 
-	radeon_set_context_reg(ctx_cs, R_028B6C_VGT_TF_PARAM,
-			       tess->tf_param);
-
-	if (pipeline->device->physical_device->rad_info.chip_class >= GFX7)
-		radeon_set_context_reg_idx(ctx_cs, R_028B58_VGT_LS_HS_CONFIG, 2,
-					   tess->ls_hs_config);
-	else
-		radeon_set_context_reg(ctx_cs, R_028B58_VGT_LS_HS_CONFIG,
-				       tess->ls_hs_config);
-
 	if (pipeline->device->physical_device->rad_info.chip_class >= GFX10 &&
 	    !radv_pipeline_has_gs(pipeline) && !radv_pipeline_has_ngg(pipeline)) {
 		radeon_set_context_reg(ctx_cs, R_028A44_VGT_GS_ONCHIP_CNTL,
@@ -4142,6 +4043,91 @@ radv_pipeline_generate_tess_shaders(struct radeon_cmdbuf *ctx_cs,
 		                       S_028A44_GS_PRIMS_PER_SUBGRP(126) |
 		                       S_028A44_GS_INST_PRIMS_IN_SUBGRP(126));
 	}
+}
+
+static void
+radv_pipeline_generate_tess_state(struct radeon_cmdbuf *ctx_cs,
+				  struct radv_pipeline *pipeline,
+				  const VkGraphicsPipelineCreateInfo *pCreateInfo)
+{
+	struct radv_shader_variant *tes = radv_get_shader(pipeline, MESA_SHADER_TESS_EVAL);
+	unsigned type = 0, partitioning = 0, topology = 0, distribution_mode = 0;
+	unsigned num_tcs_input_cp, num_tcs_output_cp, num_patches;
+	unsigned ls_hs_config;
+
+	num_tcs_input_cp = pCreateInfo->pTessellationState->patchControlPoints;
+	num_tcs_output_cp = pipeline->shaders[MESA_SHADER_TESS_CTRL]->info.tcs.tcs_vertices_out; //TCS VERTICES OUT
+	num_patches = pipeline->shaders[MESA_SHADER_TESS_CTRL]->info.tcs.num_patches;
+
+	ls_hs_config = S_028B58_NUM_PATCHES(num_patches) |
+		       S_028B58_HS_NUM_INPUT_CP(num_tcs_input_cp) |
+		       S_028B58_HS_NUM_OUTPUT_CP(num_tcs_output_cp);
+
+	if (pipeline->device->physical_device->rad_info.chip_class >= GFX7) {
+		radeon_set_context_reg_idx(ctx_cs, R_028B58_VGT_LS_HS_CONFIG,
+					   2, ls_hs_config);
+	} else {
+		radeon_set_context_reg(ctx_cs, R_028B58_VGT_LS_HS_CONFIG,
+				       ls_hs_config);
+	}
+
+	switch (tes->info.tes.primitive_mode) {
+	case GL_TRIANGLES:
+		type = V_028B6C_TESS_TRIANGLE;
+		break;
+	case GL_QUADS:
+		type = V_028B6C_TESS_QUAD;
+		break;
+	case GL_ISOLINES:
+		type = V_028B6C_TESS_ISOLINE;
+		break;
+	}
+
+	switch (tes->info.tes.spacing) {
+	case TESS_SPACING_EQUAL:
+		partitioning = V_028B6C_PART_INTEGER;
+		break;
+	case TESS_SPACING_FRACTIONAL_ODD:
+		partitioning = V_028B6C_PART_FRAC_ODD;
+		break;
+	case TESS_SPACING_FRACTIONAL_EVEN:
+		partitioning = V_028B6C_PART_FRAC_EVEN;
+		break;
+	default:
+		break;
+	}
+
+	bool ccw = tes->info.tes.ccw;
+	const VkPipelineTessellationDomainOriginStateCreateInfo *domain_origin_state =
+	              vk_find_struct_const(pCreateInfo->pTessellationState,
+	                                   PIPELINE_TESSELLATION_DOMAIN_ORIGIN_STATE_CREATE_INFO);
+
+	if (domain_origin_state && domain_origin_state->domainOrigin != VK_TESSELLATION_DOMAIN_ORIGIN_UPPER_LEFT)
+		ccw = !ccw;
+
+	if (tes->info.tes.point_mode)
+		topology = V_028B6C_OUTPUT_POINT;
+	else if (tes->info.tes.primitive_mode == GL_ISOLINES)
+		topology = V_028B6C_OUTPUT_LINE;
+	else if (ccw)
+		topology = V_028B6C_OUTPUT_TRIANGLE_CCW;
+	else
+		topology = V_028B6C_OUTPUT_TRIANGLE_CW;
+
+	if (pipeline->device->physical_device->rad_info.has_distributed_tess) {
+		if (pipeline->device->physical_device->rad_info.family == CHIP_FIJI ||
+		    pipeline->device->physical_device->rad_info.family >= CHIP_POLARIS10)
+			distribution_mode = V_028B6C_DISTRIBUTION_MODE_TRAPEZOIDS;
+		else
+			distribution_mode = V_028B6C_DISTRIBUTION_MODE_DONUTS;
+	} else
+		distribution_mode = V_028B6C_DISTRIBUTION_MODE_NO_DIST;
+
+	radeon_set_context_reg(ctx_cs, R_028B6C_VGT_TF_PARAM,
+			       S_028B6C_TYPE(type) |
+			       S_028B6C_PARTITIONING(partitioning) |
+			       S_028B6C_TOPOLOGY(topology) |
+			       S_028B6C_DISTRIBUTION_MODE(distribution_mode));
 }
 
 static void
@@ -4596,7 +4582,6 @@ radv_pipeline_generate_pm4(struct radv_pipeline *pipeline,
                            const VkGraphicsPipelineCreateInfo *pCreateInfo,
                            const struct radv_graphics_pipeline_create_info *extra,
                            const struct radv_blend_state *blend,
-                           const struct radv_tessellation_state *tess,
                            unsigned gs_out)
 {
 	struct radeon_cmdbuf *ctx_cs = &pipeline->ctx_cs;
@@ -4613,7 +4598,12 @@ radv_pipeline_generate_pm4(struct radv_pipeline *pipeline,
 	radv_pipeline_generate_multisample_state(ctx_cs, pipeline);
 	radv_pipeline_generate_vgt_gs_mode(ctx_cs, pipeline);
 	radv_pipeline_generate_vertex_shader(ctx_cs, cs, pipeline);
-	radv_pipeline_generate_tess_shaders(ctx_cs, cs, pipeline, tess);
+
+	if (radv_pipeline_has_tess(pipeline)) {
+		radv_pipeline_generate_tess_shaders(ctx_cs, cs, pipeline);
+		radv_pipeline_generate_tess_state(ctx_cs, pipeline, pCreateInfo);
+	}
+
 	radv_pipeline_generate_geometry_shader(ctx_cs, cs, pipeline);
 	radv_pipeline_generate_fragment_shader(ctx_cs, cs, pipeline);
 	radv_pipeline_generate_ps_inputs(ctx_cs, pipeline);
@@ -4865,11 +4855,9 @@ radv_pipeline_init(struct radv_pipeline *pipeline,
 		calculate_gs_ring_sizes(pipeline, &gs->info.gs_ring_info);
 	}
 
-	struct radv_tessellation_state tess = {0};
 	if (radv_pipeline_has_tess(pipeline)) {
 		pipeline->graphics.tess_patch_control_points =
 			pCreateInfo->pTessellationState->patchControlPoints;
-		tess = calculate_tess_state(pipeline, pCreateInfo);
 	}
 
 	pipeline->graphics.ia_multi_vgt_param = radv_compute_ia_multi_vgt_param_helpers(pipeline);
@@ -4894,7 +4882,7 @@ radv_pipeline_init(struct radv_pipeline *pipeline,
 	pipeline->streamout_shader = radv_pipeline_get_streamout_shader(pipeline);
 
 	result = radv_pipeline_scratch_init(device, pipeline);
-	radv_pipeline_generate_pm4(pipeline, pCreateInfo, extra, &blend, &tess, gs_out);
+	radv_pipeline_generate_pm4(pipeline, pCreateInfo, extra, &blend, gs_out);
 
 	return result;
 }
