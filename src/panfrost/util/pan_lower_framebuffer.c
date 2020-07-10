@@ -231,6 +231,22 @@ pan_fill_4(nir_builder *b, nir_ssa_def *v)
 }
 
 static nir_ssa_def *
+pan_extend(nir_builder *b, nir_ssa_def *v, unsigned N)
+{
+        nir_ssa_def *q[4];
+        assert(v->num_components <= 4);
+        assert(N <= 4);
+
+        for (unsigned j = 0; j < v->num_components; ++j)
+                q[j] = nir_channel(b, v, j);
+
+        for (unsigned j = v->num_components; j < N; ++j)
+                q[j] = nir_imm_int(b, 0);
+
+        return nir_vec(b, q, N);
+}
+
+static nir_ssa_def *
 pan_replicate_4(nir_builder *b, nir_ssa_def *v)
 {
         nir_ssa_def *replicated[4] = { v, v, v, v };
@@ -692,6 +708,7 @@ pan_lower_fb_load(nir_shader *shader,
         }
 
         unpacked = nir_convert_to_bit_size(b, unpacked, src_type, bits);
+        unpacked = pan_extend(b, unpacked, nir_dest_num_components(intr->dest));
 
         nir_src rewritten = nir_src_for_ssa(unpacked);
         nir_ssa_def_rewrite_uses_after(&intr->dest.ssa, rewritten, &intr->instr);
