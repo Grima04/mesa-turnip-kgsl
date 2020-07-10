@@ -784,9 +784,6 @@ static bool si_texture_get_handle(struct pipe_screen *screen, struct pipe_contex
 
    si_texture_get_info(screen, resource, &stride, &offset);
 
-   if (flush)
-      sctx->b.flush(&sctx->b, NULL, 0);
-
    if (res->b.is_shared) {
       /* USAGE_EXPLICIT_FLUSH must be cleared if at least one user
        * doesn't set it.
@@ -798,6 +795,9 @@ static bool si_texture_get_handle(struct pipe_screen *screen, struct pipe_contex
       res->b.is_shared = true;
       res->external_usage = usage;
    }
+
+   if (flush)
+      sctx->b.flush(&sctx->b, NULL, 0);
 
    whandle->stride = stride;
    whandle->offset = offset + slice_size * whandle->layer;

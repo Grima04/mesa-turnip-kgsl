@@ -1258,6 +1258,15 @@ static void si_flush_resource(struct pipe_context *ctx, struct pipe_resource *re
    }
 }
 
+void si_flush_implicit_resources(struct si_context *sctx)
+{
+   hash_table_foreach(sctx->dirty_implicit_resources, entry) {
+      si_flush_resource(&sctx->b, entry->data);
+      pipe_resource_reference((struct pipe_resource **)&entry->data, NULL);
+   }
+   _mesa_hash_table_clear(sctx->dirty_implicit_resources, NULL);
+}
+
 void si_decompress_dcc(struct si_context *sctx, struct si_texture *tex)
 {
    /* If graphics is disabled, we can't decompress DCC, but it shouldn't

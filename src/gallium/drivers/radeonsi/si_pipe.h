@@ -1282,6 +1282,12 @@ struct si_context {
                     unsigned src_level, const struct pipe_box *src_box);
 
    struct si_tracked_regs tracked_regs;
+
+   /* Resources that need to be flushed, but will not get an explicit
+    * flush_resource from the frontend and that will need to get flushed during
+    * a context flush.
+    */
+   struct hash_table *dirty_implicit_resources;
 };
 
 /* cik_sdma.c */
@@ -1307,6 +1313,7 @@ void si_resource_copy_region(struct pipe_context *ctx, struct pipe_resource *dst
                              struct pipe_resource *src, unsigned src_level,
                              const struct pipe_box *src_box);
 void si_decompress_dcc(struct si_context *sctx, struct si_texture *tex);
+void si_flush_implicit_resources(struct si_context *sctx);
 
 /* si_buffer.c */
 bool si_rings_is_buffer_referenced(struct si_context *sctx, struct pb_buffer *buf,

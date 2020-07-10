@@ -166,6 +166,12 @@ static void si_destroy_compiler(struct ac_llvm_compiler *compiler)
    ac_destroy_llvm_compiler(compiler);
 }
 
+
+static void decref_implicit_resource(struct hash_entry *entry)
+{
+   pipe_resource_reference((struct pipe_resource**)&entry->data, NULL);
+}
+
 /*
  * pipe_context
  */
@@ -285,6 +291,10 @@ static void si_destroy_context(struct pipe_context *context)
       sctx->ws->cs_destroy(sctx->sdma_cs);
    if (sctx->ctx)
       sctx->ws->ctx_destroy(sctx->ctx);
+
+   if (sctx->dirty_implicit_resources)
+      _mesa_hash_table_destroy(sctx->dirty_implicit_resources,
+                               decref_implicit_resource);
 
    if (sctx->b.stream_uploader)
       u_upload_destroy(sctx->b.stream_uploader);
@@ -706,6 +716,10 @@ static struct pipe_context *si_create_context(struct pipe_screen *screen, unsign
    util_dynarray_init(&sctx->resident_tex_needs_color_decompress, NULL);
    util_dynarray_init(&sctx->resident_img_needs_color_decompress, NULL);
    util_dynarray_init(&sctx->resident_tex_needs_depth_decompress, NULL);
+
+   sctx->dirty_implicit_resources = _mesa_pointer_hash_table_create(NULL);
+   if (!sctx->dirty_implicit_resources)
+      goto fail;
 
    sctx->sample_pos_buffer =
       pipe_buffer_create(sctx->b.screen, 0, PIPE_USAGE_DEFAULT, sizeof(sctx->sample_positions));

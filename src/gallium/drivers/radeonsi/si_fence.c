@@ -458,8 +458,9 @@ static int si_fence_get_fd(struct pipe_screen *screen, struct pipe_fence_handle 
    return gfx_fd;
 }
 
-static void si_flush_from_st(struct pipe_context *ctx, struct pipe_fence_handle **fence,
-                             unsigned flags)
+static void si_flush_all_queues(struct pipe_context *ctx,
+                                struct pipe_fence_handle **fence,
+                                unsigned flags, bool force_flush)
 {
    struct pipe_screen *screen = ctx->screen;
    struct si_context *sctx = (struct si_context *)ctx;
@@ -469,6 +470,10 @@ static void si_flush_from_st(struct pipe_context *ctx, struct pipe_fence_handle 
    bool deferred_fence = false;
    struct si_fine_fence fine = {};
    unsigned rflags = PIPE_FLUSH_ASYNC;
+
+   if (!(flags & PIPE_FLUSH_DEFERRED)) {
+      si_flush_implicit_resources(sctx);
+   }
 
    if (flags & PIPE_FLUSH_END_OF_FRAME)
       rflags |= PIPE_FLUSH_END_OF_FRAME;
@@ -483,6 +488,10 @@ static void si_flush_from_st(struct pipe_context *ctx, struct pipe_fence_handle 
    /* DMA IBs are preambles to gfx IBs, therefore must be flushed first. */
    if (sctx->sdma_cs)
       si_flush_dma_cs(sctx, rflags, fence ? &sdma_fence : NULL);
+
+   if (force_flush) {
+      sctx->initial_gfx_cs_size = 0;
+   }
 
    if (!radeon_emitted(sctx->gfx_cs, sctx->initial_gfx_cs_size)) {
       if (fence)
@@ -549,6 +558,12 @@ finish:
    }
 }
 
+static void si_flush_from_st(struct pipe_context *ctx, struct pipe_fence_handle **fence,
+                             unsigned flags)
+{
+   return si_flush_all_queues(ctx, fence, flags, false);
+}
+
 static void si_fence_server_signal(struct pipe_context *ctx, struct pipe_fence_handle *fence)
 {
    struct si_context *sctx = (struct si_context *)ctx;
@@ -572,11 +587,9 @@ static void si_fence_server_signal(struct pipe_context *ctx, struct pipe_fence_h
     * new work being emitted and getting executed before the signal
     * operation.
     *
-    * Set sctx->initial_gfx_cs_size to force IB submission even if
-    * it is empty.
+    * Forces a flush even if the GFX CS is empty.
     */
-   sctx->initial_gfx_cs_size = 0;
-   si_flush_from_st(ctx, NULL, PIPE_FLUSH_ASYNC);
+   si_flush_all_queues(ctx, NULL, PIPE_FLUSH_ASYNC, true);
 }
 
 static void si_fence_server_sync(struct pipe_context *ctx, struct pipe_fence_handle *fence)
