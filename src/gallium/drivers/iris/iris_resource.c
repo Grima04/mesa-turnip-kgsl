@@ -782,8 +782,9 @@ iris_resource_finish_aux_import(struct pipe_screen *pscreen,
 
    if (clear_color_state_size > 0) {
       res->aux.clear_color_bo =
-         iris_bo_alloc(screen->bufmgr, "clear color buffer",
-                       clear_color_state_size, IRIS_MEMZONE_OTHER);
+         iris_bo_alloc_tiled(screen->bufmgr, "clear color_buffer",
+                             clear_color_state_size, 1, IRIS_MEMZONE_OTHER,
+                             I915_TILING_NONE, 0, BO_ALLOC_ZEROED);
       res->aux.clear_color_offset = 0;
    }
 
