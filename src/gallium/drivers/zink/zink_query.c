@@ -477,6 +477,20 @@ zink_render_condition(struct pipe_context *pctx,
    pipe_resource_reference(&pres, NULL);
 }
 
+static uint64_t
+zink_get_timestamp(struct pipe_context *pctx)
+{
+   struct zink_screen *screen = zink_screen(pctx->screen);
+   uint64_t timestamp, deviation;
+   assert(screen->info.have_EXT_calibrated_timestamps);
+   VkCalibratedTimestampInfoEXT cti = {};
+   cti.sType = VK_STRUCTURE_TYPE_CALIBRATED_TIMESTAMP_INFO_EXT;
+   cti.timeDomain = VK_TIME_DOMAIN_DEVICE_EXT;
+   screen->vk_GetCalibratedTimestampsEXT(screen->dev, 1, &cti, &timestamp, &deviation);
+   timestamp_to_nanoseconds(screen, &timestamp);
+   return timestamp;
+}
+
 void
 zink_context_query_init(struct pipe_context *pctx)
 {
@@ -490,4 +504,5 @@ zink_context_query_init(struct pipe_context *pctx)
    pctx->get_query_result = zink_get_query_result;
    pctx->set_active_query_state = zink_set_active_query_state;
    pctx->render_condition = zink_render_condition;
+   pctx->get_timestamp = zink_get_timestamp;
 }
