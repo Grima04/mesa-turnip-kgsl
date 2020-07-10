@@ -51,6 +51,25 @@ struct panfrost_format panfrost_pipe_format_table[PIPE_FORMAT_COUNT] = {
         [PIPE_FORMAT_ETC2_RGB8A1] 		= { MALI_ETC2_RGB8A1, _T },
         [PIPE_FORMAT_ETC2_SRGB8A1] 		= { MALI_ETC2_RGB8A1, _T },
 
+        [PIPE_FORMAT_DXT1_RGB]                  = { MALI_BC1_UNORM, _T },
+        [PIPE_FORMAT_DXT1_RGBA]                 = { MALI_BC1_UNORM, _T },
+        [PIPE_FORMAT_DXT1_SRGB]                 = { MALI_BC1_UNORM, _T },
+        [PIPE_FORMAT_DXT1_SRGBA]                = { MALI_BC1_UNORM, _T },
+        [PIPE_FORMAT_DXT3_RGBA]                 = { MALI_BC2_UNORM, _T },
+        [PIPE_FORMAT_DXT3_SRGBA]                = { MALI_BC2_UNORM, _T },
+        [PIPE_FORMAT_DXT5_RGBA]                 = { MALI_BC3_UNORM, _T },
+        [PIPE_FORMAT_DXT5_SRGBA]                = { MALI_BC3_UNORM, _T },
+
+        [PIPE_FORMAT_RGTC1_UNORM]               = { MALI_BC4_UNORM, _T },
+        [PIPE_FORMAT_RGTC1_SNORM]               = { MALI_BC4_SNORM, _T },
+        [PIPE_FORMAT_RGTC2_UNORM]               = { MALI_BC5_UNORM, _T },
+        [PIPE_FORMAT_RGTC2_SNORM]               = { MALI_BC5_SNORM, _T },
+
+        [PIPE_FORMAT_BPTC_RGB_FLOAT]            = { MALI_BC6H_SF16, _T },
+        [PIPE_FORMAT_BPTC_RGB_UFLOAT]           = { MALI_BC6H_UF16, _T },
+        [PIPE_FORMAT_BPTC_RGBA_UNORM]           = { MALI_BC7_UNORM, _T },
+        [PIPE_FORMAT_BPTC_SRGBA]                = { MALI_BC7_UNORM, _T },
+
         [PIPE_FORMAT_ASTC_4x4]	                = { MALI_ASTC_2D_HDR, _T },
         [PIPE_FORMAT_ASTC_5x4]		        = { MALI_ASTC_2D_HDR, _T },
         [PIPE_FORMAT_ASTC_5x5]		        = { MALI_ASTC_2D_HDR, _T },

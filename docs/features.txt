@@ -52,7 +52,7 @@ GL 3.0, GLSL 1.30 --- all DONE: freedreno, i965, nv50, nvc0, r600, radeonsi, llv
   GL_EXT_texture_integer                                DONE (panfrost, v3d)
   GL_EXT_texture_array                                  DONE (panfrost, v3d)
   GL_EXT_draw_buffers2 (Per-buffer blend and masks)     DONE (panfrost, v3d)
-  GL_EXT_texture_compression_rgtc                       DONE ()
+  GL_EXT_texture_compression_rgtc                       DONE (panfrost/if SoC supports)
   GL_ARB_texture_rg                                     DONE (panfrost, v3d)
   GL_EXT_transform_feedback (Transform feedback)        DONE (panfrost, v3d)
   GL_ARB_vertex_array_object (Vertex array objects)     DONE (panfrost, v3d)
@@ -152,7 +152,7 @@ GL 4.1, GLSL 4.10 --- all DONE: i965/gen7+, nvc0, r600, radeonsi, llvmpipe, virg
 
 GL 4.2, GLSL 4.20 -- all DONE: i965/gen7+, nvc0, r600, radeonsi, llvmpipe, virgl
 
-  GL_ARB_texture_compression_bptc                       DONE (freedreno, i965, softpipe, swr, zink)
+  GL_ARB_texture_compression_bptc                       DONE (freedreno, i965, softpipe, swr, zink, panfrost/if SoC supports)
   GL_ARB_compressed_texture_pixel_storage               DONE (all drivers)
   GL_ARB_shader_atomic_counters                         DONE (freedreno/a5xx+, i965, softpipe, v3d)
   GL_ARB_texture_storage                                DONE (all drivers)
