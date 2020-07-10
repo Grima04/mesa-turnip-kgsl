@@ -1348,6 +1348,23 @@ radv_image_create_layout(struct radv_device *device,
 	return VK_SUCCESS;
 }
 
+static void
+radv_destroy_image(struct radv_device *device,
+		   const VkAllocationCallbacks *pAllocator,
+		   struct radv_image *image)
+{
+	if ((image->flags & VK_IMAGE_CREATE_SPARSE_BINDING_BIT) && image->bo)
+		device->ws->buffer_destroy(image->bo);
+
+	if (image->owned_memory != VK_NULL_HANDLE) {
+		RADV_FROM_HANDLE(radv_device_memory, mem, image->owned_memory);
+		radv_free_memory(device, pAllocator, mem);
+	}
+
+	vk_object_base_finish(&image->base);
+	vk_free2(&device->vk.alloc, pAllocator, image);
+}
+
 VkResult
 radv_image_create(VkDevice _device,
 		  const struct radv_image_create_info *create_info,
@@ -1437,7 +1454,7 @@ radv_image_create(VkDevice _device,
 		image->bo = device->ws->buffer_create(device->ws, image->size, image->alignment,
 		                                      0, RADEON_FLAG_VIRTUAL, RADV_BO_PRIORITY_VIRTUAL);
 		if (!image->bo) {
-			vk_free2(&device->vk.alloc, alloc, image);
+			radv_destroy_image(device, alloc, image);
 			return vk_error(device->instance, VK_ERROR_OUT_OF_DEVICE_MEMORY);
 		}
 	}
@@ -1767,14 +1784,7 @@ radv_DestroyImage(VkDevice _device, VkImage _image,
 	if (!image)
 		return;
 
-	if (image->flags & VK_IMAGE_CREATE_SPARSE_BINDING_BIT)
-		device->ws->buffer_destroy(image->bo);
-
-	if (image->owned_memory != VK_NULL_HANDLE)
-		radv_FreeMemory(_device, image->owned_memory, pAllocator);
-
-	vk_object_base_finish(&image->base);
-	vk_free2(&device->vk.alloc, pAllocator, image);
+	radv_destroy_image(device, pAllocator, image);
 }
 
 void radv_GetImageSubresourceLayout(

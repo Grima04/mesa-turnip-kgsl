@@ -1505,6 +1505,9 @@ void radv_cmd_buffer_trace_emit(struct radv_cmd_buffer *cmd_buffer);
 bool radv_get_memory_fd(struct radv_device *device,
 			struct radv_device_memory *memory,
 			int *pFD);
+void radv_free_memory(struct radv_device *device,
+		      const VkAllocationCallbacks* pAllocator,
+		      struct radv_device_memory *mem);
 
 static inline void
 radv_emit_shader_pointer_head(struct radeon_cmdbuf *cs,

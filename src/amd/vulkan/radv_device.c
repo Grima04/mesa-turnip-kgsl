@@ -4649,9 +4649,10 @@ bool radv_get_memory_fd(struct radv_device *device,
 }
 
 
-static void radv_free_memory(struct radv_device *device,
-			     const VkAllocationCallbacks* pAllocator,
-			     struct radv_device_memory *mem)
+void
+radv_free_memory(struct radv_device *device,
+		 const VkAllocationCallbacks* pAllocator,
+		 struct radv_device_memory *mem)
 {
 	if (mem == NULL)
 		return;
