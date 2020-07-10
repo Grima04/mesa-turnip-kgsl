@@ -938,20 +938,24 @@ read_oa_samples_until(struct gen_perf_context *perf_ctx,
       if (len <= 0) {
          exec_list_push_tail(&perf_ctx->free_sample_buffers, &buf->link);
 
-         if (len < 0) {
-            if (errno == EAGAIN) {
-               return ((last_timestamp - start_timestamp) < INT32_MAX &&
-                       (last_timestamp - start_timestamp) >=
-                       (end_timestamp - start_timestamp)) ?
-                      OA_READ_STATUS_FINISHED :
-                      OA_READ_STATUS_UNFINISHED;
-            } else {
-               DBG("Error reading i915 perf samples: %m\n");
-            }
-         } else
+         if (len == 0) {
             DBG("Spurious EOF reading i915 perf samples\n");
+            return OA_READ_STATUS_ERROR;
+         }
 
-         return OA_READ_STATUS_ERROR;
+         if (errno != EAGAIN) {
+            DBG("Error reading i915 perf samples: %m\n");
+            return OA_READ_STATUS_ERROR;
+         }
+
+         if ((last_timestamp - start_timestamp) >= INT32_MAX)
+            return OA_READ_STATUS_UNFINISHED;
+
+         if ((last_timestamp - start_timestamp) <
+              (end_timestamp - start_timestamp))
+            return OA_READ_STATUS_UNFINISHED;
+
+         return OA_READ_STATUS_FINISHED;
       }
 
       buf->len = len;
