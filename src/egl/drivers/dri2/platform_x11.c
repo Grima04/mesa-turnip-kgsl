@@ -1182,7 +1182,6 @@ static const struct dri2_egl_display_vtbl dri2_x11_swrast_display_vtbl = {
    .create_image = dri2_create_image_khr,
    .swap_buffers = dri2_x11_swap_buffers,
    /* XXX: should really implement this since X11 has pixmaps */
-   .copy_buffers = dri2_fallback_copy_buffers,
    .query_buffer_age = dri2_fallback_query_buffer_age,
    .query_surface = dri2_query_surface,
    .create_wayland_buffer_from_image = dri2_fallback_create_wayland_buffer_from_image,

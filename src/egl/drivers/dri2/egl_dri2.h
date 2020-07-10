@@ -136,6 +136,7 @@ struct dri2_egl_display_vtbl {
                                  EGLint x, EGLint y,
                                  EGLint width, EGLint height);
 
+   /* optional */
    EGLBoolean (*copy_buffers)(_EGLDriver *drv, _EGLDisplay *disp,
                               _EGLSurface *surf, void *native_pixmap_target);
 

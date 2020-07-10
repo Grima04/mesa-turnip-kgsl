@@ -30,14 +30,6 @@
 
 struct wl_buffer;
 
-static inline EGLBoolean
-dri2_fallback_copy_buffers(_EGLDriver *drv, _EGLDisplay *disp,
-                           _EGLSurface *surf,
-                           void *native_pixmap_target)
-{
-   return _eglError(EGL_BAD_NATIVE_PIXMAP, "no support for native pixmaps");
-}
-
 static inline EGLint
 dri2_fallback_query_buffer_age(_EGLDriver *drv, _EGLDisplay *disp,
                                _EGLSurface *surf)

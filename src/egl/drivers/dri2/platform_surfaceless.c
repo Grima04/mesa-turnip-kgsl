@@ -180,7 +180,6 @@ static const struct dri2_egl_display_vtbl dri2_surfaceless_display_vtbl = {
    .create_pbuffer_surface = dri2_surfaceless_create_pbuffer_surface,
    .destroy_surface = surfaceless_destroy_surface,
    .create_image = dri2_create_image_khr,
-   .copy_buffers = dri2_fallback_copy_buffers,
    .query_buffer_age = dri2_fallback_query_buffer_age,
    .create_wayland_buffer_from_image = dri2_fallback_create_wayland_buffer_from_image,
    .get_sync_values = dri2_fallback_get_sync_values,

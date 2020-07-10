@@ -1267,7 +1267,6 @@ static const struct dri2_egl_display_vtbl droid_display_vtbl = {
    .create_image = droid_create_image_khr,
    .swap_buffers = droid_swap_buffers,
    .swap_interval = droid_swap_interval,
-   .copy_buffers = dri2_fallback_copy_buffers,
    .query_buffer_age = droid_query_buffer_age,
    .query_surface = droid_query_surface,
    .create_wayland_buffer_from_image = dri2_fallback_create_wayland_buffer_from_image,
