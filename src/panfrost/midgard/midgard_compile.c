@@ -1266,7 +1266,7 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
                 /* Lots of instructions need a 0 plonked in */
                 ins.has_inline_constant = false;
                 ins.src[1] = SSA_FIXED_REGISTER(REGISTER_CONSTANT);
-                ins.src_types[1] = nir_type_uint32;
+                ins.src_types[1] = ins.src_types[0];
                 ins.has_constants = true;
                 ins.constants.u32[0] = 0;
 
