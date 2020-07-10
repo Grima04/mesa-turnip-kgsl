@@ -82,18 +82,18 @@ GL 3.1, GLSL 1.40 --- all DONE: freedreno, i965, nv50, nvc0, r600, radeonsi, llv
   GL_EXT_texture_snorm (Signed normalized textures)     DONE (v3d)
 
 
-GL 3.2, GLSL 1.50 --- all DONE: i965, nv50, nvc0, r600, radeonsi, llvmpipe, softpipe, swr, virgl
+GL 3.2, GLSL 1.50 --- all DONE: i965, nv50, nvc0, r600, radeonsi, llvmpipe, softpipe, swr, virgl, zink
 
   Core/compatibility profiles                           DONE
   Geometry shaders                                      DONE ()
-  GL_ARB_vertex_array_bgra (BGRA vertex order)          DONE (freedreno, zink, panfrost)
-  GL_ARB_draw_elements_base_vertex (Base vertex offset) DONE (freedreno, v3d, zink, panfrost)
+  GL_ARB_vertex_array_bgra (BGRA vertex order)          DONE (freedreno, panfrost)
+  GL_ARB_draw_elements_base_vertex (Base vertex offset) DONE (freedreno, v3d, panfrost)
   GL_ARB_fragment_coord_conventions (Frag shader coord) DONE (freedreno, v3d, panfrost)
   GL_ARB_provoking_vertex (Provoking vertex)            DONE (freedreno, v3d, panfrost)
-  GL_ARB_seamless_cube_map (Seamless cubemaps)          DONE (freedreno, zink, panfrost)
-  GL_ARB_texture_multisample (Multisample textures)     DONE (freedreno/a5xx+, v3d, zink, panfrost)
-  GL_ARB_depth_clamp (Frag depth clamp)                 DONE (freedreno, zink, panfrost)
-  GL_ARB_sync (Fence objects)                           DONE (freedreno, v3d, zink, panfrost)
+  GL_ARB_seamless_cube_map (Seamless cubemaps)          DONE (freedreno, panfrost)
+  GL_ARB_texture_multisample (Multisample textures)     DONE (freedreno/a5xx+, v3d, panfrost)
+  GL_ARB_depth_clamp (Frag depth clamp)                 DONE (freedreno, panfrost)
+  GL_ARB_sync (Fence objects)                           DONE (freedreno, v3d, panfrost)
   GLX_ARB_create_context_profile                        DONE
 
 
