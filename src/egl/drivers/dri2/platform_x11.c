@@ -1181,7 +1181,6 @@ static const struct dri2_egl_display_vtbl dri2_x11_swrast_display_vtbl = {
    .destroy_surface = dri2_x11_destroy_surface,
    .create_image = dri2_create_image_khr,
    .swap_buffers = dri2_x11_swap_buffers,
-   .post_sub_buffer = dri2_fallback_post_sub_buffer,
    /* XXX: should really implement this since X11 has pixmaps */
    .copy_buffers = dri2_fallback_copy_buffers,
    .query_buffer_age = dri2_fallback_query_buffer_age,

@@ -130,6 +130,7 @@ struct dri2_egl_display_vtbl {
                                      _EGLSurface *surf, EGLint numRects,
                                      const EGLint *rects);
 
+   /* optional */
    EGLBoolean (*post_sub_buffer)(_EGLDriver *drv, _EGLDisplay *disp,
                                  _EGLSurface *surf,
                                  EGLint x, EGLint y,
