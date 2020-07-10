@@ -43,7 +43,6 @@
 
 #include "loader.h"
 #include "egl_dri2.h"
-#include "egl_dri2_fallbacks.h"
 
 #ifdef HAVE_DRM_GRALLOC
 #include <gralloc_drm_handle.h>

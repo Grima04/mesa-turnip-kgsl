@@ -90,7 +90,6 @@ if with_dri2
   files_egl += files(
     'drivers/dri2/egl_dri2.c',
     'drivers/dri2/egl_dri2.h',
-    'drivers/dri2/egl_dri2_fallbacks.h',
   )
   deps_for_egl += idep_xmlconfig
   link_for_egl += libloader

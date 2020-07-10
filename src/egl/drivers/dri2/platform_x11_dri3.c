@@ -33,7 +33,6 @@
 #include "util/macros.h"
 
 #include "egl_dri2.h"
-#include "egl_dri2_fallbacks.h"
 #include "platform_x11_dri3.h"
 
 #include "loader.h"

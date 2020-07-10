@@ -45,7 +45,6 @@
 #include "util/bitscan.h"
 
 #include "egl_dri2.h"
-#include "egl_dri2_fallbacks.h"
 #include "loader.h"
 
 #ifdef HAVE_DRI3

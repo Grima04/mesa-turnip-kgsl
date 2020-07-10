@@ -40,7 +40,6 @@
 #include <sys/mman.h>
 
 #include "egl_dri2.h"
-#include "egl_dri2_fallbacks.h"
 #include "loader.h"
 #include "util/u_vector.h"
 #include "util/anon_file.h"

@@ -40,7 +40,6 @@
 #include <unistd.h>
 
 #include "egl_dri2.h"
-#include "egl_dri2_fallbacks.h"
 #include "loader.h"
 
 static __DRIimage*
