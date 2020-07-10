@@ -66,6 +66,7 @@ struct zink_screen {
    bool have_D24_UNORM_S8_UINT;
 
    uint32_t gfx_queue;
+   uint32_t timestamp_valid_bits;
    VkDevice dev;
 
    PFN_vkGetMemoryFdKHR vk_GetMemoryFdKHR;

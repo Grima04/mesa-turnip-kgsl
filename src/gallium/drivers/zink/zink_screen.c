@@ -662,24 +662,25 @@ choose_pdev(const VkInstance instance)
    return pdev;
 }
 
-static uint32_t
-find_gfx_queue(const VkPhysicalDevice pdev)
+static void
+update_queue_props(struct zink_screen *screen)
 {
    uint32_t num_queues;
-   vkGetPhysicalDeviceQueueFamilyProperties(pdev, &num_queues, NULL);
+   vkGetPhysicalDeviceQueueFamilyProperties(screen->pdev, &num_queues, NULL);
    assert(num_queues > 0);
 
    VkQueueFamilyProperties *props = malloc(sizeof(*props) * num_queues);
-   vkGetPhysicalDeviceQueueFamilyProperties(pdev, &num_queues, props);
+   vkGetPhysicalDeviceQueueFamilyProperties(screen->pdev, &num_queues, props);
 
    for (uint32_t i = 0; i < num_queues; i++) {
       if (props[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) {
-         free(props);
-         return i;
+         screen->gfx_queue = i;
+         screen->timestamp_valid_bits = props[i].timestampValidBits;
+         assert(screen->timestamp_valid_bits);
+         break;
       }
    }
-
-   return UINT32_MAX;
+   free(props);
 }
 
 static void
@@ -768,7 +769,7 @@ zink_internal_create_screen(struct sw_winsys *winsys, int fd)
 
    screen->instance = create_instance();
    screen->pdev = choose_pdev(screen->instance);
-   screen->gfx_queue = find_gfx_queue(screen->pdev);
+   update_queue_props(screen);
 
    vkGetPhysicalDeviceMemoryProperties(screen->pdev, &screen->mem_props);
 
