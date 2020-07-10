@@ -1210,9 +1210,6 @@ update_csctx_ssbo(struct llvmpipe_context *llvmpipe)
 static void
 llvmpipe_cs_update_derived(struct llvmpipe_context *llvmpipe, void *input)
 {
-   if (llvmpipe->cs_dirty & (LP_CSNEW_CS))
-      llvmpipe_update_cs(llvmpipe);
-
    if (llvmpipe->cs_dirty & LP_CSNEW_CONSTANTS) {
       lp_csctx_set_cs_constants(llvmpipe->csctx,
                                 ARRAY_SIZE(llvmpipe->constants[PIPE_SHADER_COMPUTE]),
@@ -1247,6 +1244,13 @@ llvmpipe_cs_update_derived(struct llvmpipe_context *llvmpipe, void *input)
       csctx->input = input;
       csctx->cs.current.jit_context.kernel_args = input;
    }
+
+   if (llvmpipe->cs_dirty & (LP_CSNEW_CS |
+                             LP_CSNEW_IMAGES |
+                             LP_CSNEW_SAMPLER_VIEW |
+                             LP_CSNEW_SAMPLER))
+      llvmpipe_update_cs(llvmpipe);
+
 
    llvmpipe->cs_dirty = 0;
 }
