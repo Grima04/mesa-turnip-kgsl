@@ -93,6 +93,45 @@ panfrost_query_thread_tls_alloc(int fd)
                 return 256;
 }
 
+static uint32_t
+panfrost_query_compressed_formats(int fd)
+{
+        /* If unspecified, assume ASTC/ETC only. Factory default for Juno, and
+         * should exist on any Mali configuration. All hardware should report
+         * these texture formats but the kernel might not be new enough. */
+
+        uint32_t default_set =
+                (1 << MALI_ETC2_RGB8) |
+                (1 << MALI_ETC2_R11_UNORM) |
+                (1 << MALI_ETC2_RGBA8) |
+                (1 << MALI_ETC2_RG11_UNORM) |
+                (1 << MALI_ETC2_R11_SNORM) |
+                (1 << MALI_ETC2_RG11_SNORM) |
+                (1 << MALI_ETC2_RGB8A1) |
+                (1 << MALI_ASTC_3D_LDR) |
+                (1 << MALI_ASTC_3D_HDR) |
+                (1 << MALI_ASTC_2D_LDR) |
+                (1 << MALI_ASTC_2D_HDR);
+
+        return panfrost_query_raw(fd, DRM_PANFROST_PARAM_TEXTURE_FEATURES0,
+                        false, default_set);
+}
+
+/* DRM_PANFROST_PARAM_TEXTURE_FEATURES0 will return a bitmask of supported
+ * compressed formats, so we offer a helper to test if a format is supported */
+
+bool
+panfrost_supports_compressed_format(struct panfrost_device *dev, unsigned fmt)
+{
+        if (MALI_EXTRACT_TYPE(fmt) != MALI_FORMAT_COMPRESSED)
+                return true;
+
+        unsigned idx = fmt & ~MALI_FORMAT_COMPRESSED;
+        assert(idx < 32);
+
+        return dev->compressed_formats & (1 << idx);
+}
+
 /* Given a GPU ID like 0x860, return a prettified model name */
 
 const char *
@@ -124,6 +163,7 @@ panfrost_open_device(void *memctx, int fd, struct panfrost_device *dev)
         dev->thread_tls_alloc = panfrost_query_thread_tls_alloc(fd);
         dev->kernel_version = drmGetVersion(fd);
         dev->quirks = panfrost_get_quirks(dev->gpu_id);
+        dev->compressed_formats = panfrost_query_compressed_formats(fd);
 
         util_sparse_array_init(&dev->bo_map, sizeof(struct panfrost_bo), 512);
 

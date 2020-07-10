@@ -80,6 +80,9 @@ struct panfrost_device {
         unsigned thread_tls_alloc;
         unsigned quirks;
 
+        /* Bitmask of supported compressed texture formats */
+        uint32_t compressed_formats;
+
         /* debug flags, see pan_util.h how to interpret */
         unsigned debug;
 
@@ -113,6 +116,9 @@ panfrost_open_device(void *memctx, int fd, struct panfrost_device *dev);
 
 void
 panfrost_close_device(struct panfrost_device *dev);
+
+bool
+panfrost_supports_compressed_format(struct panfrost_device *dev, unsigned fmt);
 
 static inline struct panfrost_bo *
 pan_lookup_bo(struct panfrost_device *dev, uint32_t gem_handle)
