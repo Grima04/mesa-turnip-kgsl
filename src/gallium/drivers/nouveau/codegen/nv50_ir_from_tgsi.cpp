@@ -1061,6 +1061,8 @@ Source::Source(struct nv50_ir_prog_info *info, nv50_ir::Program *prog)
    if (info->dbgFlags & NV50_IR_DEBUG_BASIC)
       tgsi_dump(tokens, 0);
 
+   tgsi_scan_shader(tokens, &scan);
+
    immd.count = 0;
    immd.data = (uint32_t *)MALLOC(scan.immediate_count * 16);
 }
@@ -1078,8 +1080,6 @@ bool Source::scanSource()
 {
    unsigned insnCount = 0;
    struct tgsi_parse_context parse;
-
-   tgsi_scan_shader(tokens, &scan);
 
    insns = (struct tgsi_full_instruction *)MALLOC(scan.num_instructions *
                                                   sizeof(insns[0]));
