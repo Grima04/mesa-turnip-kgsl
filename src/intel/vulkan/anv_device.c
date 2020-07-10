@@ -284,6 +284,7 @@ get_device_extensions(const struct anv_physical_device *device,
       .EXT_pipeline_creation_feedback        = true,
       .EXT_post_depth_coverage               = device->info.ver >= 9,
       .EXT_private_data                      = true,
+      .EXT_provoking_vertex                  = true,
       .EXT_queue_family_foreign              = true,
       .EXT_robustness2                       = true,
       .EXT_sample_locations                  = true,
@@ -1559,6 +1560,14 @@ void anv_GetPhysicalDeviceFeatures2(
          break;
       }
 
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROVOKING_VERTEX_FEATURES_EXT: {
+         VkPhysicalDeviceProvokingVertexFeaturesEXT *features =
+            (VkPhysicalDeviceProvokingVertexFeaturesEXT *)ext;
+         features->provokingVertexLast = true;
+         features->transformFeedbackPreservesProvokingVertex = true;
+         break;
+      }
+
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_FEATURES_EXT: {
          VkPhysicalDeviceRobustness2FeaturesEXT *features = (void *)ext;
          features->robustBufferAccess2 = true;
@@ -2323,6 +2332,14 @@ void anv_GetPhysicalDeviceProperties2(
          VkPhysicalDeviceProtectedMemoryProperties *properties =
             (VkPhysicalDeviceProtectedMemoryProperties *)ext;
          CORE_PROPERTY(1, 1, protectedNoFault);
+         break;
+      }
+
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROVOKING_VERTEX_PROPERTIES_EXT: {
+         VkPhysicalDeviceProvokingVertexPropertiesEXT *properties =
+            (VkPhysicalDeviceProvokingVertexPropertiesEXT *)ext;
+         properties->provokingVertexModePerPipeline = true;
+         properties->transformFeedbackPreservesTriangleFanProvokingVertex = false;
          break;
       }
 

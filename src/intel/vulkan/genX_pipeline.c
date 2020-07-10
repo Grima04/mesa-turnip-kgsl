@@ -558,6 +558,16 @@ gfx7_ms_rast_mode(struct anv_graphics_pipeline *pipeline,
 }
 #endif
 
+static VkProvokingVertexModeEXT
+vk_provoking_vertex_mode(const VkPipelineRasterizationStateCreateInfo *rs_info)
+{
+   const VkPipelineRasterizationProvokingVertexStateCreateInfoEXT *rs_pv_info =
+      vk_find_struct_const(rs_info, PIPELINE_RASTERIZATION_PROVOKING_VERTEX_STATE_CREATE_INFO_EXT);
+
+   return rs_pv_info == NULL ? VK_PROVOKING_VERTEX_MODE_FIRST_VERTEX_EXT :
+                               rs_pv_info->provokingVertexMode;
+}
+
 const uint32_t genX(vk_to_intel_cullmode)[] = {
    [VK_CULL_MODE_NONE]                       = CULLMODE_NONE,
    [VK_CULL_MODE_FRONT_BIT]                  = CULLMODE_FRONT,
@@ -605,11 +615,25 @@ emit_rs_state(struct anv_graphics_pipeline *pipeline,
 
    sf.ViewportTransformEnable = true;
    sf.StatisticsEnable = true;
-   sf.TriangleStripListProvokingVertexSelect = 0;
-   sf.LineStripListProvokingVertexSelect = 0;
-   sf.TriangleFanProvokingVertexSelect = 1;
    sf.VertexSubPixelPrecisionSelect = _8Bit;
    sf.AALineDistanceMode = true;
+
+   switch (vk_provoking_vertex_mode(rs_info)) {
+   case VK_PROVOKING_VERTEX_MODE_FIRST_VERTEX_EXT:
+      sf.TriangleStripListProvokingVertexSelect = 0;
+      sf.LineStripListProvokingVertexSelect = 0;
+      sf.TriangleFanProvokingVertexSelect = 1;
+      break;
+
+   case VK_PROVOKING_VERTEX_MODE_LAST_VERTEX_EXT:
+      sf.TriangleStripListProvokingVertexSelect = 2;
+      sf.LineStripListProvokingVertexSelect = 1;
+      sf.TriangleFanProvokingVertexSelect = 2;
+      break;
+
+   default:
+      unreachable("Invalid provoking vertex mode");
+   }
 
 #if GFX_VERx10 == 75
    sf.LineStippleEnable = line_info && line_info->stippledLineEnable;
@@ -1374,9 +1398,22 @@ emit_3dstate_clip(struct anv_graphics_pipeline *pipeline,
 #endif
    clip.ClipMode = CLIPMODE_NORMAL;
 
-   clip.TriangleStripListProvokingVertexSelect = 0;
-   clip.LineStripListProvokingVertexSelect     = 0;
-   clip.TriangleFanProvokingVertexSelect       = 1;
+   switch (vk_provoking_vertex_mode(rs_info)) {
+   case VK_PROVOKING_VERTEX_MODE_FIRST_VERTEX_EXT:
+      clip.TriangleStripListProvokingVertexSelect = 0;
+      clip.LineStripListProvokingVertexSelect = 0;
+      clip.TriangleFanProvokingVertexSelect = 1;
+      break;
+
+   case VK_PROVOKING_VERTEX_MODE_LAST_VERTEX_EXT:
+      clip.TriangleStripListProvokingVertexSelect = 2;
+      clip.LineStripListProvokingVertexSelect = 1;
+      clip.TriangleFanProvokingVertexSelect = 2;
+      break;
+
+   default:
+      unreachable("Invalid provoking vertex mode");
+   }
 
    clip.MinimumPointWidth = 0.125;
    clip.MaximumPointWidth = 255.875;
@@ -1443,7 +1480,19 @@ emit_3dstate_streamout(struct anv_graphics_pipeline *pipeline,
       if (xfb_info) {
          so.SOFunctionEnable = true;
          so.SOStatisticsEnable = true;
-         so.ReorderMode = TRAILING;
+
+         switch (vk_provoking_vertex_mode(rs_info)) {
+         case VK_PROVOKING_VERTEX_MODE_FIRST_VERTEX_EXT:
+            so.ReorderMode = LEADING;
+            break;
+
+         case VK_PROVOKING_VERTEX_MODE_LAST_VERTEX_EXT:
+            so.ReorderMode = TRAILING;
+            break;
+
+         default:
+            unreachable("Invalid provoking vertex mode");
+         }
 
          const VkPipelineRasterizationStateStreamCreateInfoEXT *stream_info =
             vk_find_struct_const(rs_info, PIPELINE_RASTERIZATION_STATE_STREAM_CREATE_INFO_EXT);
