@@ -1147,6 +1147,13 @@ panfrost_set_framebuffer_state(struct pipe_context *pctx,
         util_copy_framebuffer_state(&ctx->pipe_framebuffer, fb);
         ctx->batch = NULL;
         panfrost_invalidate_frame(ctx);
+
+        /* We may need to generate a new variant if the fragment shader is
+         * keyed to the framebuffer format (due to EXT_framebuffer_fetch) */
+        struct panfrost_shader_variants *fs = ctx->shader[PIPE_SHADER_FRAGMENT];
+
+        if (fs && fs->variant_count && fs->variants[fs->active_variant].outputs_read)
+                ctx->base.bind_fs_state(&ctx->base, fs);
 }
 
 static void *
