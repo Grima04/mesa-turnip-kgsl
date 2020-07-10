@@ -394,11 +394,11 @@ one_time_init(void)
 }
 
 /**
- * One-time initialization mutex lock.
+ * One-time initialization flag
  *
  * \sa Used by _mesa_initialize().
  */
-mtx_t OneTimeLock = _MTX_INITIALIZER_NP;
+static once_flag init_once = ONCE_FLAG_INIT;
 
 
 /**
@@ -413,17 +413,7 @@ mtx_t OneTimeLock = _MTX_INITIALIZER_NP;
 void
 _mesa_initialize(void)
 {
-   static bool initialized;
-
-   mtx_lock(&OneTimeLock);
-
-   /* truly one-time init */
-   if (!initialized)
-      one_time_init();
-
-   initialized = true;
-
-   mtx_unlock(&OneTimeLock);
+   call_once(&init_once, one_time_init);
 }
 
 
