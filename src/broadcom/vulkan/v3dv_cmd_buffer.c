@@ -1460,14 +1460,22 @@ cmd_buffer_render_pass_emit_loads(struct v3dv_cmd_buffer *cmd_buffer,
          &state->pass->attachments[ds_attachment_idx];
 
       assert(state->job->first_subpass >= ds_attachment->first_subpass);
-      bool needs_load =
+      const bool might_need_load =
          state->job->first_subpass > ds_attachment->first_subpass ||
          state->job->is_subpass_continue ||
-         ds_attachment->desc.loadOp == VK_ATTACHMENT_LOAD_OP_LOAD ||
-         ds_attachment->desc.stencilLoadOp == VK_ATTACHMENT_LOAD_OP_LOAD ||
          !state->tile_aligned_render_area;
 
-      if (needs_load) {
+      const bool needs_depth_load =
+         vk_format_has_depth(ds_attachment->desc.format) &&
+         (ds_attachment->desc.loadOp == VK_ATTACHMENT_LOAD_OP_LOAD ||
+          might_need_load);
+
+      const bool needs_stencil_load =
+         vk_format_has_stencil(ds_attachment->desc.format) &&
+         (ds_attachment->desc.stencilLoadOp == VK_ATTACHMENT_LOAD_OP_LOAD ||
+          might_need_load);
+
+      if (needs_depth_load || needs_stencil_load) {
          struct v3dv_image_view *iview =
             framebuffer->attachments[ds_attachment_idx];
          /* From the Vulkan spec:
@@ -1475,9 +1483,13 @@ cmd_buffer_render_pass_emit_loads(struct v3dv_cmd_buffer *cmd_buffer,
           *   "When an image view of a depth/stencil image is used as a
           *   depth/stencil framebuffer attachment, the aspectMask is ignored
           *   and both depth and stencil image subresources are used."
+          *
+          * So we ignore the aspects from the subresource range of the image
+          * view for the depth/stencil attachment, but we still need to restrict
+          * the to aspects compatible with the render pass and the image.
           */
          const uint32_t zs_buffer =
-            v3dv_zs_buffer_from_vk_format(iview->image->vk_format);
+            v3dv_zs_buffer(needs_depth_load, needs_stencil_load);
          cmd_buffer_render_pass_emit_load(cmd_buffer, cl,
                                           iview, layer, zs_buffer);
       }
@@ -1554,9 +1566,9 @@ cmd_buffer_render_pass_emit_stores(struct v3dv_cmd_buffer *cmd_buffer,
        *   depth/stencil framebuffer attachment, the aspectMask is ignored
        *   and both depth and stencil image subresources are used."
        *
-       * So we ignore the aspects from the subresource range of the image view
-       * for the depth/stencil attachment, but we still need to restrict this
-       * to aspects that actually exist in the image.
+       * So we ignore the aspects from the subresource range of the image
+       * view for the depth/stencil attachment, but we still need to restrict
+       * the to aspects compatible with the render pass and the image.
        */
       const VkImageAspectFlags aspects =
          vk_format_aspects(ds_attachment->desc.format);
@@ -1606,9 +1618,9 @@ cmd_buffer_render_pass_emit_stores(struct v3dv_cmd_buffer *cmd_buffer,
        * correctly.
        */
       use_per_buffer_clear = !needs_stencil_clear && !needs_depth_clear;
-      bool needs_ds_store = needs_stencil_store || needs_depth_store;
-      if (needs_ds_store) {
-         uint32_t zs_buffer = v3dv_zs_buffer_from_aspect_bits(aspects);
+      if (needs_depth_store || needs_stencil_store) {
+         const uint32_t zs_buffer =
+            v3dv_zs_buffer(needs_depth_store, needs_stencil_store);
          cmd_buffer_render_pass_emit_store(cmd_buffer, cl,
                                            ds_attachment_idx, layer,
                                            zs_buffer, false);

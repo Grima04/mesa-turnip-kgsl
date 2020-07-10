@@ -1593,6 +1593,18 @@ v3dv_zs_buffer_from_vk_format(VkFormat format)
    }
 }
 
+static inline uint32_t
+v3dv_zs_buffer(bool depth, bool stencil)
+{
+   if (depth && stencil)
+      return ZSTENCIL;
+   else if (depth)
+      return Z;
+   else if (stencil)
+      return STENCIL;
+   return NONE;
+}
+
 uint32_t v3dv_physical_device_api_version(struct v3dv_physical_device *dev);
 
 int v3dv_get_instance_entrypoint_index(const char *name);
