@@ -5628,6 +5628,17 @@ radv_get_semaphore_type(const void *pNext, uint64_t *initial_value)
 	return type_info->semaphoreType;
 }
 
+static void
+radv_destroy_semaphore(struct radv_device *device,
+		       const VkAllocationCallbacks *pAllocator,
+		       struct radv_semaphore *sem)
+{
+	radv_destroy_semaphore_part(device, &sem->temporary);
+	radv_destroy_semaphore_part(device, &sem->permanent);
+	vk_object_base_finish(&sem->base);
+	vk_free2(&device->vk.alloc, pAllocator, sem);
+}
+
 VkResult radv_CreateSemaphore(
 	VkDevice                                    _device,
 	const VkSemaphoreCreateInfo*                pCreateInfo,
@@ -5661,14 +5672,14 @@ VkResult radv_CreateSemaphore(
 		assert (device->physical_device->rad_info.has_syncobj);
 		int ret = device->ws->create_syncobj(device->ws, &sem->permanent.syncobj);
 		if (ret) {
-			vk_free2(&device->vk.alloc, pAllocator, sem);
+			radv_destroy_semaphore(device, pAllocator, sem);
 			return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 		}
 		sem->permanent.kind = RADV_SEMAPHORE_SYNCOBJ;
 	} else {
 		sem->permanent.ws_sem = device->ws->create_sem(device->ws);
 		if (!sem->permanent.ws_sem) {
-			vk_free2(&device->vk.alloc, pAllocator, sem);
+			radv_destroy_semaphore(device, pAllocator, sem);
 			return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 		}
 		sem->permanent.kind = RADV_SEMAPHORE_WINSYS;
@@ -5688,10 +5699,7 @@ void radv_DestroySemaphore(
 	if (!_semaphore)
 		return;
 
-	radv_destroy_semaphore_part(device, &sem->temporary);
-	radv_destroy_semaphore_part(device, &sem->permanent);
-	vk_object_base_finish(&sem->base);
-	vk_free2(&device->vk.alloc, pAllocator, sem);
+	radv_destroy_semaphore(device, pAllocator, sem);
 }
 
 VkResult
