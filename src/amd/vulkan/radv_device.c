@@ -5800,7 +5800,9 @@ static void radv_destroy_event(struct radv_device *device,
                                const VkAllocationCallbacks* pAllocator,
                                struct radv_event *event)
 {
-	device->ws->buffer_destroy(event->bo);
+	if (event->bo)
+		device->ws->buffer_destroy(event->bo);
+
 	vk_object_base_finish(&event->base);
 	vk_free2(&device->vk.alloc, pAllocator, event);
 }
@@ -5826,7 +5828,7 @@ VkResult radv_CreateEvent(
 					      RADEON_FLAG_VA_UNCACHED | RADEON_FLAG_CPU_ACCESS | RADEON_FLAG_NO_INTERPROCESS_SHARING,
 					      RADV_BO_PRIORITY_FENCE);
 	if (!event->bo) {
-		vk_free2(&device->vk.alloc, pAllocator, event);
+		radv_destroy_event(device, pAllocator, event);
 		return vk_error(device->instance, VK_ERROR_OUT_OF_DEVICE_MEMORY);
 	}
 
