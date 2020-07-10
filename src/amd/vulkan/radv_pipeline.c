@@ -4816,6 +4816,33 @@ radv_pipeline_get_streamout_shader(struct radv_pipeline *pipeline)
 	return NULL;
 }
 
+static void
+radv_pipeline_init_shader_stages_state(struct radv_pipeline *pipeline)
+{
+	struct radv_device *device = pipeline->device;
+
+	for (unsigned i = 0; i < MESA_SHADER_STAGES; i++) {
+		pipeline->user_data_0[i] =
+			radv_pipeline_stage_to_user_data_0(pipeline, i,
+							   device->physical_device->rad_info.chip_class);
+
+		if (pipeline->shaders[i]) {
+			pipeline->need_indirect_descriptor_sets |= pipeline->shaders[i]->info.need_indirect_descriptor_sets;
+		}
+	}
+
+	struct radv_userdata_info *loc = radv_lookup_user_sgpr(pipeline, MESA_SHADER_VERTEX,
+							     AC_UD_VS_BASE_VERTEX_START_INSTANCE);
+	if (loc->sgpr_idx != -1) {
+		pipeline->graphics.vtx_base_sgpr = pipeline->user_data_0[MESA_SHADER_VERTEX];
+		pipeline->graphics.vtx_base_sgpr += loc->sgpr_idx * 4;
+		if (radv_get_shader(pipeline, MESA_SHADER_VERTEX)->info.vs.needs_draw_id)
+			pipeline->graphics.vtx_emit_num = 3;
+		else
+			pipeline->graphics.vtx_emit_num = 2;
+	}
+}
+
 static VkResult
 radv_pipeline_init(struct radv_pipeline *pipeline,
 		   struct radv_device *device,
@@ -4902,12 +4929,6 @@ radv_pipeline_init(struct radv_pipeline *pipeline,
 	pipeline->graphics.col_format = blend.spi_shader_col_format;
 	pipeline->graphics.cb_target_mask = blend.cb_target_mask;
 
-	for (unsigned i = 0; i < MESA_SHADER_STAGES; i++) {
-		if (pipeline->shaders[i]) {
-			pipeline->need_indirect_descriptor_sets |= pipeline->shaders[i]->info.need_indirect_descriptor_sets;
-		}
-	}
-
 	if (radv_pipeline_has_gs(pipeline) && !radv_pipeline_has_ngg(pipeline)) {
 		struct radv_shader_variant *gs =
 			pipeline->shaders[MESA_SHADER_GEOMETRY];
@@ -4925,20 +4946,7 @@ radv_pipeline_init(struct radv_pipeline *pipeline,
 	radv_compute_vertex_input_state(pipeline, pCreateInfo);
 
 	radv_pipeline_init_binning_state(pipeline, pCreateInfo, &blend);
-
-	for (uint32_t i = 0; i < MESA_SHADER_STAGES; i++)
-		pipeline->user_data_0[i] = radv_pipeline_stage_to_user_data_0(pipeline, i, device->physical_device->rad_info.chip_class);
-
-	struct radv_userdata_info *loc = radv_lookup_user_sgpr(pipeline, MESA_SHADER_VERTEX,
-							     AC_UD_VS_BASE_VERTEX_START_INSTANCE);
-	if (loc->sgpr_idx != -1) {
-		pipeline->graphics.vtx_base_sgpr = pipeline->user_data_0[MESA_SHADER_VERTEX];
-		pipeline->graphics.vtx_base_sgpr += loc->sgpr_idx * 4;
-		if (radv_get_shader(pipeline, MESA_SHADER_VERTEX)->info.vs.needs_draw_id)
-			pipeline->graphics.vtx_emit_num = 3;
-		else
-			pipeline->graphics.vtx_emit_num = 2;
-	}
+	radv_pipeline_init_shader_stages_state(pipeline);
 
 	/* Find the last vertex shader stage that eventually uses streamout. */
 	pipeline->streamout_shader = radv_pipeline_get_streamout_shader(pipeline);
