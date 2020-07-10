@@ -496,6 +496,14 @@ panfrost_is_format_supported( struct pipe_screen *screen,
                 | PIPE_BIND_VERTEX_BUFFER | PIPE_BIND_SAMPLER_VIEW);
 
         struct panfrost_format fmt = panfrost_pipe_format_table[format];
+
+        /* Also check that compressed texture formats are supported on this
+         * particular chip. They may not be depending on system integration
+         * differences. */
+
+        if (!panfrost_supports_compressed_format(dev, fmt.hw))
+                return false;
+
         return fmt.hw && ((relevant_bind & ~fmt.bind) == 0);
 }
 
