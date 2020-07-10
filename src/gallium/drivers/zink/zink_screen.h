@@ -61,6 +61,7 @@ struct zink_screen {
    bool have_EXT_index_type_uint8;
    bool have_EXT_robustness2_features;
    bool have_EXT_vertex_attribute_divisor;
+   bool have_EXT_calibrated_timestamps;
 
    bool have_X8_D24_UNORM_PACK32;
    bool have_D24_UNORM_S8_UINT;
@@ -79,6 +80,9 @@ struct zink_screen {
    PFN_vkCmdBeginQueryIndexedEXT vk_CmdBeginQueryIndexedEXT;
    PFN_vkCmdEndQueryIndexedEXT vk_CmdEndQueryIndexedEXT;
    PFN_vkCmdDrawIndirectByteCountEXT vk_CmdDrawIndirectByteCountEXT;
+
+   PFN_vkGetPhysicalDeviceCalibrateableTimeDomainsEXT vk_GetPhysicalDeviceCalibrateableTimeDomainsEXT;
+   PFN_vkGetCalibratedTimestampsEXT vk_GetCalibratedTimestampsEXT;
 };
 
 static inline struct zink_screen *

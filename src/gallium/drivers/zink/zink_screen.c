@@ -735,6 +735,14 @@ load_device_extensions(struct zink_screen *screen)
       if (!screen->vk_##x)                                                  \
          return false;                                                      \
    } while (0)
+
+#define GET_PROC_ADDR_INSTANCE(x) do {                                          \
+      screen->vk_##x = (PFN_vk##x)vkGetInstanceProcAddr(screen->instance, "vk"#x); \
+      if (!screen->vk_##x) {                                                \
+         debug_printf("GetInstanceProcAddr failed: vk"#x"\n");        \
+         return false;                                                      \
+      } \
+   } while (0)
    if (screen->have_EXT_transform_feedback) {
       GET_PROC_ADDR(CmdBindTransformFeedbackBuffersEXT);
       GET_PROC_ADDR(CmdBeginTransformFeedbackEXT);
@@ -751,6 +759,29 @@ load_device_extensions(struct zink_screen *screen)
       GET_PROC_ADDR(CmdEndConditionalRenderingEXT);
    }
 
+   if (screen->have_EXT_calibrated_timestamps) {
+      GET_PROC_ADDR_INSTANCE(GetPhysicalDeviceCalibrateableTimeDomainsEXT);
+      GET_PROC_ADDR(GetCalibratedTimestampsEXT);
+
+      uint32_t num_domains = 0;
+      screen->vk_GetPhysicalDeviceCalibrateableTimeDomainsEXT(screen->pdev, &num_domains, NULL);
+      assert(num_domains > 0);
+
+      VkTimeDomainEXT *domains = malloc(sizeof(VkTimeDomainEXT) * num_domains);
+      screen->vk_GetPhysicalDeviceCalibrateableTimeDomainsEXT(screen->pdev, &num_domains, domains);
+
+      /* VK_TIME_DOMAIN_DEVICE_EXT is used for the ctx->get_timestamp hook and is the only one we really need */
+      bool have_device_time = false;
+      for (unsigned i = 0; i < num_domains; i++) {
+         if (domains[i] == VK_TIME_DOMAIN_DEVICE_EXT) {
+            have_device_time = true;
+            break;
+         }
+      }
+      assert(have_device_time);
+      free(domains);
+   }
+
 #undef GET_PROC_ADDR
 
    return true;
@@ -761,7 +792,8 @@ zink_internal_create_screen(struct sw_winsys *winsys, int fd)
 {
    struct zink_screen *screen = CALLOC_STRUCT(zink_screen);
    bool have_tf_ext = false, have_cond_render_ext = false, have_EXT_index_type_uint8 = false,
-      have_EXT_robustness2_features = false, have_EXT_vertex_attribute_divisor = false;
+      have_EXT_robustness2_features = false, have_EXT_vertex_attribute_divisor = false,
+      have_EXT_calibrated_timestamps = false;
    if (!screen)
       return NULL;
 
@@ -809,6 +841,9 @@ zink_internal_create_screen(struct sw_winsys *winsys, int fd)
             if (!strcmp(extensions[i].extensionName,
                         VK_EXT_VERTEX_ATTRIBUTE_DIVISOR_EXTENSION_NAME))
                have_EXT_vertex_attribute_divisor = true;
+            if (!strcmp(extensions[i].extensionName,
+                        VK_EXT_CALIBRATED_TIMESTAMPS_EXTENSION_NAME))
+               have_EXT_calibrated_timestamps = true;
 
          }
          FREE(extensions);
@@ -856,6 +891,7 @@ zink_internal_create_screen(struct sw_winsys *winsys, int fd)
    screen->have_EXT_robustness2_features = have_EXT_robustness2_features;
    if (have_EXT_vertex_attribute_divisor && screen->vdiv_feats.vertexAttributeInstanceRateDivisor)
       screen->have_EXT_vertex_attribute_divisor = true;
+   screen->have_EXT_calibrated_timestamps = have_EXT_calibrated_timestamps;
 
    VkPhysicalDeviceProperties2 props = {};
    VkPhysicalDeviceVertexAttributeDivisorPropertiesEXT vdiv_props = {};
@@ -899,7 +935,7 @@ zink_internal_create_screen(struct sw_winsys *winsys, int fd)
     * this requires us to pass the whole VkPhysicalDeviceFeatures2 struct
     */
    dci.pNext = &feats;
-   const char *extensions[8] = {
+   const char *extensions[9] = {
       VK_KHR_MAINTENANCE1_EXTENSION_NAME,
    };
    num_extensions = 1;
@@ -926,6 +962,8 @@ zink_internal_create_screen(struct sw_winsys *winsys, int fd)
       extensions[num_extensions++] = VK_EXT_ROBUSTNESS_2_EXTENSION_NAME;
    if (screen->have_EXT_vertex_attribute_divisor)
       extensions[num_extensions++] = VK_EXT_VERTEX_ATTRIBUTE_DIVISOR_EXTENSION_NAME;
+   if (screen->have_EXT_calibrated_timestamps)
+      extensions[num_extensions++] = VK_EXT_CALIBRATED_TIMESTAMPS_EXTENSION_NAME;
    assert(num_extensions <= ARRAY_SIZE(extensions));
 
    dci.ppEnabledExtensionNames = extensions;
