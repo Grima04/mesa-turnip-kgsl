@@ -31,15 +31,6 @@
 struct wl_buffer;
 
 static inline _EGLSurface *
-dri2_fallback_create_pixmap_surface(_EGLDriver *drv, _EGLDisplay *disp,
-                                    _EGLConfig *conf,
-                                    void *native_pixmap,
-                                    const EGLint *attrib_list)
-{
-   return NULL;
-}
-
-static inline _EGLSurface *
 dri2_fallback_create_pbuffer_surface(_EGLDriver *drv, _EGLDisplay *disp,
                                      _EGLConfig *conf,
                                      const EGLint *attrib_list)

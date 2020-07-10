@@ -95,6 +95,7 @@ struct dri2_egl_display_vtbl {
                                          void *native_window,
                                          const EGLint *attrib_list);
 
+   /* optional */
    _EGLSurface* (*create_pixmap_surface)(_EGLDriver *drv, _EGLDisplay *disp,
                                          _EGLConfig *config,
                                          void *native_pixmap,

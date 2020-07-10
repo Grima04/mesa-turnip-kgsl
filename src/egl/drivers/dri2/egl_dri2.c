@@ -1895,6 +1895,8 @@ dri2_create_pixmap_surface(_EGLDriver *drv, _EGLDisplay *disp,
                            const EGLint *attrib_list)
 {
    struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
+   if (!dri2_dpy->vtbl->create_pixmap_surface)
+      return NULL;
    return dri2_dpy->vtbl->create_pixmap_surface(drv, disp, conf, native_pixmap,
                                                 attrib_list);
 }

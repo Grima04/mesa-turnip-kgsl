@@ -1262,7 +1262,6 @@ droid_add_configs_for_visuals(_EGLDriver *drv, _EGLDisplay *disp)
 static const struct dri2_egl_display_vtbl droid_display_vtbl = {
    .authenticate = NULL,
    .create_window_surface = droid_create_window_surface,
-   .create_pixmap_surface = dri2_fallback_create_pixmap_surface,
    .create_pbuffer_surface = droid_create_pbuffer_surface,
    .destroy_surface = droid_destroy_surface,
    .create_image = droid_create_image_khr,
