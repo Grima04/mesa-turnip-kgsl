@@ -337,6 +337,9 @@ midgard_nir_lower_zs_store(nir_shader *nir)
                                     var->data.location < FRAG_RESULT_DATA0)
                                         continue;
 
+                                if (var->data.index)
+                                        continue;
+
                                 assert(nir_src_is_const(intr->src[1]) && "no indirect outputs");
 
                                 nir_builder b;
