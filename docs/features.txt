@@ -108,7 +108,7 @@ GL 3.3, GLSL 3.30 --- all DONE: i965, nv50, nvc0, r600, radeonsi, llvmpipe, soft
   GL_ARB_texture_swizzle                                DONE (freedreno, swr, v3d, zink, panfrost)
   GL_ARB_timer_query                                    DONE (freedreno, swr, zink)
   GL_ARB_instanced_arrays                               DONE (freedreno, swr, v3d, panfrost, zink)
-  GL_ARB_vertex_type_2_10_10_10_rev                     DONE (freedreno, swr, v3d, panfrost)
+  GL_ARB_vertex_type_2_10_10_10_rev                     DONE (freedreno, swr, v3d, panfrost, zink)
 
 
 GL 4.0, GLSL 4.00 --- all DONE: i965/gen7+, nvc0, r600, radeonsi, llvmpipe, virgl
