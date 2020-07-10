@@ -679,7 +679,6 @@ static const struct dri2_egl_display_vtbl dri2_drm_display_vtbl = {
    .create_image = dri2_drm_create_image_khr,
    .swap_buffers = dri2_drm_swap_buffers,
    .query_buffer_age = dri2_drm_query_buffer_age,
-   .get_sync_values = dri2_fallback_get_sync_values,
    .get_dri_drawable = dri2_surface_get_dri_drawable,
 };
 

@@ -152,6 +152,7 @@ struct dri2_egl_display_vtbl {
    struct wl_buffer* (*create_wayland_buffer_from_image)(
                         _EGLDriver *drv, _EGLDisplay *disp, _EGLImage *img);
 
+   /* optional */
    EGLBoolean (*get_sync_values)(_EGLDisplay *display, _EGLSurface *surface,
                                  EGLuint64KHR *ust, EGLuint64KHR *msc,
                                  EGLuint64KHR *sbc);

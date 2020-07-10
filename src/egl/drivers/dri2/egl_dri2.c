@@ -2347,6 +2347,8 @@ dri2_get_sync_values_chromium(_EGLDisplay *disp, _EGLSurface *surf,
                               EGLuint64KHR *sbc)
 {
    struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
+   if (!dri2_dpy->vtbl->get_sync_values)
+      return EGL_FALSE;
    return dri2_dpy->vtbl->get_sync_values(disp, surf, ust, msc, sbc);
 }
 

@@ -1269,7 +1269,6 @@ static const struct dri2_egl_display_vtbl droid_display_vtbl = {
    .swap_interval = droid_swap_interval,
    .query_buffer_age = droid_query_buffer_age,
    .query_surface = droid_query_surface,
-   .get_sync_values = dri2_fallback_get_sync_values,
    .get_dri_drawable = dri2_surface_get_dri_drawable,
    .set_shared_buffer_mode = droid_set_shared_buffer_mode,
 };

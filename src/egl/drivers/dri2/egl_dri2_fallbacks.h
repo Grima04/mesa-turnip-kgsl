@@ -28,12 +28,4 @@
 #include "eglcurrent.h"
 #include "egltypedefs.h"
 
-static inline EGLBoolean
-dri2_fallback_get_sync_values(_EGLDisplay *disp, _EGLSurface *surf,
-                              EGLuint64KHR *ust, EGLuint64KHR *msc,
-                              EGLuint64KHR *sbc)
-{
-   return EGL_FALSE;
-}
-
 #endif /* EGL_DRI2_FALLBACKS_INCLUDED */
