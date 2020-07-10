@@ -5160,6 +5160,24 @@ static bool radv_sparse_bind_has_effects(const VkBindSparseInfo *info)
 	return VK_SUCCESS;
 }
 
+static void
+radv_destroy_fence(struct radv_device *device,
+		   const VkAllocationCallbacks *pAllocator,
+		   struct radv_fence *fence)
+{
+	if (fence->temp_syncobj)
+		device->ws->destroy_syncobj(device->ws, fence->temp_syncobj);
+	if (fence->syncobj)
+		device->ws->destroy_syncobj(device->ws, fence->syncobj);
+	if (fence->fence)
+		device->ws->destroy_fence(fence->fence);
+	if (fence->fence_wsi)
+		fence->fence_wsi->destroy(fence->fence_wsi);
+
+	vk_object_base_finish(&fence->base);
+	vk_free2(&device->vk.alloc, pAllocator, fence);
+}
+
 VkResult radv_CreateFence(
 	VkDevice                                    _device,
 	const VkFenceCreateInfo*                    pCreateInfo,
@@ -5186,7 +5204,7 @@ VkResult radv_CreateFence(
 	if (device->always_use_syncobj || handleTypes) {
 		int ret = device->ws->create_syncobj(device->ws, &fence->syncobj);
 		if (ret) {
-			vk_free2(&device->vk.alloc, pAllocator, fence);
+			radv_destroy_fence(device, pAllocator, fence);
 			return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 		}
 		if (pCreateInfo->flags & VK_FENCE_CREATE_SIGNALED_BIT) {
@@ -5196,7 +5214,7 @@ VkResult radv_CreateFence(
 	} else {
 		fence->fence = device->ws->create_fence();
 		if (!fence->fence) {
-			vk_free2(&device->vk.alloc, pAllocator, fence);
+			radv_destroy_fence(device, pAllocator, fence);
 			return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 		}
 		fence->syncobj = 0;
@@ -5220,17 +5238,7 @@ void radv_DestroyFence(
 	if (!fence)
 		return;
 
-	if (fence->temp_syncobj)
-		device->ws->destroy_syncobj(device->ws, fence->temp_syncobj);
-	if (fence->syncobj)
-		device->ws->destroy_syncobj(device->ws, fence->syncobj);
-	if (fence->fence)
-		device->ws->destroy_fence(fence->fence);
-	if (fence->fence_wsi)
-		fence->fence_wsi->destroy(fence->fence_wsi);
-
-	vk_object_base_finish(&fence->base);
-	vk_free2(&device->vk.alloc, pAllocator, fence);
+	radv_destroy_fence(device, pAllocator, fence);
 }
 
 
