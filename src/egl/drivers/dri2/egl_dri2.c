@@ -2015,6 +2015,8 @@ dri2_swap_buffers_region(_EGLDriver *drv, _EGLDisplay *disp, _EGLSurface *surf,
    __DRIdrawable *dri_drawable = dri2_dpy->vtbl->get_dri_drawable(surf);
    EGLBoolean ret;
 
+   if (!dri2_dpy->vtbl->swap_buffers_region)
+      return EGL_FALSE;
    ret = dri2_dpy->vtbl->swap_buffers_region(drv, disp, surf, numRects, rects);
 
    /* SwapBuffers marks the end of the frame; reset the damage region for

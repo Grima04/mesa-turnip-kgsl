@@ -31,14 +31,6 @@
 struct wl_buffer;
 
 static inline EGLBoolean
-dri2_fallback_swap_buffers_region(_EGLDriver *drv, _EGLDisplay *disp,
-                                  _EGLSurface *surf,
-                                  EGLint numRects, const EGLint *rects)
-{
-   return EGL_FALSE;
-}
-
-static inline EGLBoolean
 dri2_fallback_post_sub_buffer(_EGLDriver *drv, _EGLDisplay *disp,
                               _EGLSurface *draw,
                               EGLint x, EGLint y, EGLint width, EGLint height)
