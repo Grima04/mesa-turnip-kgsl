@@ -48,7 +48,6 @@ zink_create_vertex_elements_state(struct pipe_context *pctx,
    int num_bindings = 0;
    for (i = 0; i < num_elements; ++i) {
       const struct pipe_vertex_element *elem = elements + i;
-      assert(!elem->instance_divisor);
 
       int binding = elem->vertex_buffer_index;
       if (buffer_map[binding] < 0) {
@@ -59,7 +58,11 @@ zink_create_vertex_elements_state(struct pipe_context *pctx,
 
 
       ves->bindings[binding].binding = binding;
-      ves->bindings[binding].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+      ves->bindings[binding].inputRate = elem->instance_divisor ? VK_VERTEX_INPUT_RATE_INSTANCE : VK_VERTEX_INPUT_RATE_VERTEX;
+
+      assert(!elem->instance_divisor || zink_screen(pctx->screen)->have_EXT_vertex_attribute_divisor);
+      ves->divisor[binding] = elem->instance_divisor;
+      assert(elem->instance_divisor <= screen->max_vertex_attrib_divisor);
 
       ves->hw_state.attribs[i].binding = binding;
       ves->hw_state.attribs[i].location = i; // TODO: unsure
@@ -82,12 +85,18 @@ zink_bind_vertex_elements_state(struct pipe_context *pctx,
    struct zink_gfx_pipeline_state *state = &ctx->gfx_pipeline_state;
    ctx->element_state = cso;
    state->hash = 0;
+   state->divisors_present = 0;
    if (cso) {
       state->element_state = &ctx->element_state->hw_state;
       struct zink_vertex_elements_state *ves = cso;
       for (int i = 0; i < state->element_state->num_bindings; ++i) {
          state->bindings[i].binding = ves->bindings[i].binding;
          state->bindings[i].inputRate = ves->bindings[i].inputRate;
+         if (ves->divisor[i]) {
+            state->divisors[state->divisors_present].divisor = ves->divisor[i];
+            state->divisors[state->divisors_present].binding = state->bindings[i].binding;
+            state->divisors_present++;
+         }
       }
    } else
      state->element_state = NULL;

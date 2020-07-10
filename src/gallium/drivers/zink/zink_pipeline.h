@@ -41,6 +41,8 @@ struct zink_gfx_pipeline_state {
 
    struct zink_vertex_elements_hw_state *element_state;
    VkVertexInputBindingDescription bindings[PIPE_MAX_ATTRIBS]; // combination of element_state and stride
+   VkVertexInputBindingDivisorDescriptionEXT divisors[PIPE_MAX_ATTRIBS];
+   uint8_t divisors_present;
 
    uint32_t num_attachments;
    struct zink_blend_state *blend_state;

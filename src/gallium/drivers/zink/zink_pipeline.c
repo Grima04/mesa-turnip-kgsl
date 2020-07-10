@@ -46,6 +46,14 @@ zink_create_gfx_pipeline(struct zink_screen *screen,
    vertex_input_state.pVertexAttributeDescriptions = state->element_state->attribs;
    vertex_input_state.vertexAttributeDescriptionCount = state->element_state->num_attribs;
 
+   VkPipelineVertexInputDivisorStateCreateInfoEXT vdiv_state = {};
+   if (state->divisors_present) {
+       vertex_input_state.pNext = &vdiv_state;
+       vdiv_state.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_DIVISOR_STATE_CREATE_INFO_EXT;
+       vdiv_state.vertexBindingDivisorCount = state->divisors_present;
+       vdiv_state.pVertexBindingDivisors = state->divisors;
+   }
+
    VkPipelineInputAssemblyStateCreateInfo primitive_state = {};
    primitive_state.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
    primitive_state.topology = primitive_topology;
