@@ -1443,6 +1443,7 @@ emit_3dstate_streamout(struct anv_graphics_pipeline *pipeline,
       if (xfb_info) {
          so.SOFunctionEnable = true;
          so.SOStatisticsEnable = true;
+         so.ReorderMode = TRAILING;
 
          const VkPipelineRasterizationStateStreamCreateInfoEXT *stream_info =
             vk_find_struct_const(rs_info, PIPELINE_RASTERIZATION_STATE_STREAM_CREATE_INFO_EXT);
