@@ -123,6 +123,12 @@ nir_make_options(const struct pipe_blend_state *blend, unsigned i)
         return options;
 }
 
+static nir_ssa_def *
+nir_iclamp(nir_builder *b, nir_ssa_def *v, int32_t lo, int32_t hi)
+{
+        return nir_imin(b, nir_imax(b, v, nir_imm_int(b, lo)), nir_imm_int(b, hi));
+}
+
 struct panfrost_blend_shader
 panfrost_compile_blend_shader(
         struct panfrost_context *ctx,
@@ -178,13 +184,13 @@ panfrost_compile_blend_shader(
         if (T == nir_type_float16)
                 s_src = nir_f2f16(b, s_src);
         else if (T == nir_type_int16)
-                s_src = nir_i2i16(b, s_src);
+                s_src = nir_i2i16(b, nir_iclamp(b, s_src, -32768, 32767));
         else if (T == nir_type_uint16)
-                s_src = nir_u2u16(b, s_src);
+                s_src = nir_u2u16(b, nir_umin(b, s_src, nir_imm_int(b, 65535)));
         else if (T == nir_type_int8)
-                s_src = nir_i2i8(b, s_src);
+                s_src = nir_i2i8(b, nir_iclamp(b, s_src, -128, 127));
         else if (T == nir_type_uint8)
-                s_src = nir_u2u8(b, s_src);
+                s_src = nir_u2u8(b, nir_umin(b, s_src, nir_imm_int(b, 255)));
 
         /* Build a trivial blend shader */
         nir_store_var(b, c_out, s_src, 0xFF);
