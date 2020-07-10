@@ -28,16 +28,6 @@
 #include "eglcurrent.h"
 #include "egltypedefs.h"
 
-struct wl_buffer;
-
-static inline struct wl_buffer*
-dri2_fallback_create_wayland_buffer_from_image(_EGLDriver *drv,
-                                               _EGLDisplay *disp,
-                                               _EGLImage *img)
-{
-   return NULL;
-}
-
 static inline EGLBoolean
 dri2_fallback_get_sync_values(_EGLDisplay *disp, _EGLSurface *surf,
                               EGLuint64KHR *ust, EGLuint64KHR *msc,

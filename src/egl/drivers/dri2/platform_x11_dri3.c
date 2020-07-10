@@ -502,7 +502,6 @@ struct dri2_egl_display_vtbl dri3_x11_display_vtbl = {
    .copy_buffers = dri3_copy_buffers,
    .query_buffer_age = dri3_query_buffer_age,
    .query_surface = dri3_query_surface,
-   .create_wayland_buffer_from_image = dri2_fallback_create_wayland_buffer_from_image,
    .get_sync_values = dri3_get_sync_values,
    .get_dri_drawable = dri3_get_dri_drawable,
    .close_screen_notify = dri3_close_screen_notify,
