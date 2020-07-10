@@ -89,6 +89,15 @@ pan_unpacked_type_for_format(const struct util_format_description *desc)
 enum pan_format_class
 pan_format_class_load(const struct util_format_description *desc, unsigned quirks)
 {
+        /* Pure integers can be loaded via EXT_framebuffer_fetch and should be
+         * handled as a raw load with a size conversion (it's cheap). Likewise,
+         * since float framebuffers are internally implemented as raw (i.e.
+         * integer) framebuffers with blend shaders to go back and forth, they
+         * should be s/w as well */
+
+        if (util_format_is_pure_integer(desc->format) || util_format_is_float(desc->format))
+                return PAN_FORMAT_SOFTWARE;
+
         /* Check if we can do anything better than software architecturally */
         if (quirks & MIDGARD_NO_TYPED_BLEND_LOADS) {
                 return (quirks & NO_BLEND_PACKS)
