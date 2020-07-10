@@ -2520,7 +2520,7 @@ embedded_to_inline_constant(compiler_context *ctx, midgard_block *block)
                         uint32_t value = is_16 ? cons->u16[component] : cons->u32[component];
 
                         bool is_vector = false;
-                        unsigned mask = effective_writemask(&ins->alu, ins->mask);
+                        unsigned mask = effective_writemask(ins->alu.op, ins->mask);
 
                         for (unsigned c = 0; c < MIR_VEC_COMPONENTS; ++c) {
                                 /* We only care if this component is actually used */

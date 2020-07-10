@@ -372,7 +372,7 @@ print_vector_constants(FILE *fp, unsigned src_binary,
         assert(consts);
         assert(max_comp <= 16);
 
-        comp_mask = effective_writemask(alu, condense_writemask(alu->mask, bits));
+        comp_mask = effective_writemask(alu->op, condense_writemask(alu->mask, bits));
         num_comp = util_bitcount(comp_mask);
 
         fprintf(fp, "<");
