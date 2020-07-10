@@ -271,7 +271,11 @@ debug_symbol_print(const void *addr)
 }
 
 struct hash_table* symbols_hash;
+#ifdef PIPE_OS_WINDOWS
+static mtx_t symbols_mutex;
+#else
 static mtx_t symbols_mutex = _MTX_INITIALIZER_NP;
+#endif
 
 const char*
 debug_symbol_name_cached(const void *addr)
