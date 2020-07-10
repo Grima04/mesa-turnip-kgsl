@@ -30,14 +30,6 @@
 
 struct wl_buffer;
 
-static inline _EGLSurface *
-dri2_fallback_create_pbuffer_surface(_EGLDriver *drv, _EGLDisplay *disp,
-                                     _EGLConfig *conf,
-                                     const EGLint *attrib_list)
-{
-   return NULL;
-}
-
 static inline _EGLImage*
 dri2_fallback_create_image_khr(_EGLDriver *drv, _EGLDisplay *disp,
                                _EGLContext *ctx, EGLenum target,

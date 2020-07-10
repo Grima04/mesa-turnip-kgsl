@@ -675,7 +675,6 @@ static const struct dri2_egl_display_vtbl dri2_drm_display_vtbl = {
    .authenticate = dri2_drm_authenticate,
    .create_window_surface = dri2_drm_create_window_surface,
    .create_pixmap_surface = dri2_drm_create_pixmap_surface,
-   .create_pbuffer_surface = dri2_fallback_create_pbuffer_surface,
    .destroy_surface = dri2_drm_destroy_surface,
    .create_image = dri2_drm_create_image_khr,
    .swap_buffers = dri2_drm_swap_buffers,

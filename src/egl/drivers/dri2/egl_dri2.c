@@ -1906,6 +1906,8 @@ dri2_create_pbuffer_surface(_EGLDriver *drv, _EGLDisplay *disp,
                            _EGLConfig *conf, const EGLint *attrib_list)
 {
    struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
+   if (!dri2_dpy->vtbl->create_pbuffer_surface)
+      return NULL;
    return dri2_dpy->vtbl->create_pbuffer_surface(drv, disp, conf, attrib_list);
 }
 
