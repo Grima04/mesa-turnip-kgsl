@@ -31,15 +31,6 @@
 struct wl_buffer;
 
 static inline EGLBoolean
-dri2_fallback_swap_buffers_with_damage(_EGLDriver *drv, _EGLDisplay *disp,
-                                      _EGLSurface *surf,
-                                      const EGLint *rects, EGLint n_rects)
-{
-   struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
-   return dri2_dpy->vtbl->swap_buffers(drv, disp, surf);
-}
-
-static inline EGLBoolean
 dri2_fallback_swap_buffers_region(_EGLDriver *drv, _EGLDisplay *disp,
                                   _EGLSurface *surf,
                                   EGLint numRects, const EGLint *rects)
