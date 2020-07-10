@@ -283,7 +283,7 @@ iris_get_monitor_result(struct pipe_context *ctx,
    assert(gen_perf_is_query_ready(perf_ctx, monitor->query, batch));
 
    unsigned bytes_written;
-   gen_perf_get_query_data(perf_ctx, monitor->query,
+   gen_perf_get_query_data(perf_ctx, monitor->query, batch,
                            monitor->result_size,
                            (unsigned*) monitor->result_buffer,
                            &bytes_written);

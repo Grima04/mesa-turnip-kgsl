@@ -214,7 +214,8 @@ iris_get_perf_query_data(struct pipe_context *pipe,
    struct gen_perf_query_object *obj = perf_query->query;
    struct gen_perf_context *perf_ctx = ice->perf_ctx;
 
-   gen_perf_get_query_data(perf_ctx, obj, data_size, data, bytes_written);
+   gen_perf_get_query_data(perf_ctx, obj, &ice->batches[IRIS_BATCH_RENDER],
+         data_size, data, bytes_written);
 }
 
 void

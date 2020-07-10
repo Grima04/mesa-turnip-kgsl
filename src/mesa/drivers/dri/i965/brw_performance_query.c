@@ -323,7 +323,7 @@ brw_get_perf_query_data(struct gl_context *ctx,
     */
    assert(o->Ready);
 
-   gen_perf_get_query_data(brw->perf_ctx, obj,
+   gen_perf_get_query_data(brw->perf_ctx, obj, &brw->batch,
                            data_size, data, bytes_written);
 }
 
