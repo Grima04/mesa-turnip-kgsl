@@ -223,7 +223,7 @@ static uint32_t get_hash_flags(struct radv_device *device)
 }
 
 static void
-radv_pipeline_scratch_init(struct radv_device *device,
+radv_pipeline_init_scratch(struct radv_device *device,
                            struct radv_pipeline *pipeline)
 {
 	unsigned scratch_bytes_per_wave = 0;
@@ -1356,6 +1356,87 @@ static uint32_t radv_pipeline_needed_dynamic_state(const VkGraphicsPipelineCreat
 	return states;
 }
 
+static struct radv_ia_multi_vgt_param_helpers
+radv_compute_ia_multi_vgt_param_helpers(struct radv_pipeline *pipeline)
+{
+	struct radv_ia_multi_vgt_param_helpers ia_multi_vgt_param = {0};
+	const struct radv_device *device = pipeline->device;
+
+	if (radv_pipeline_has_tess(pipeline))
+		ia_multi_vgt_param.primgroup_size = pipeline->shaders[MESA_SHADER_TESS_CTRL]->info.tcs.num_patches;
+	else if (radv_pipeline_has_gs(pipeline))
+		ia_multi_vgt_param.primgroup_size = 64;
+	else
+		ia_multi_vgt_param.primgroup_size = 128; /* recommended without a GS */
+
+	/* GS requirement. */
+	ia_multi_vgt_param.partial_es_wave = false;
+	if (radv_pipeline_has_gs(pipeline) && device->physical_device->rad_info.chip_class <= GFX8)
+		if (SI_GS_PER_ES / ia_multi_vgt_param.primgroup_size >= pipeline->device->gs_table_depth - 3)
+			ia_multi_vgt_param.partial_es_wave = true;
+
+	ia_multi_vgt_param.ia_switch_on_eoi = false;
+	if (pipeline->shaders[MESA_SHADER_FRAGMENT]->info.ps.prim_id_input)
+		ia_multi_vgt_param.ia_switch_on_eoi = true;
+	if (radv_pipeline_has_gs(pipeline) &&
+	    pipeline->shaders[MESA_SHADER_GEOMETRY]->info.uses_prim_id)
+		ia_multi_vgt_param.ia_switch_on_eoi = true;
+	if (radv_pipeline_has_tess(pipeline)) {
+		/* SWITCH_ON_EOI must be set if PrimID is used. */
+		if (pipeline->shaders[MESA_SHADER_TESS_CTRL]->info.uses_prim_id ||
+		    radv_get_shader(pipeline, MESA_SHADER_TESS_EVAL)->info.uses_prim_id)
+			ia_multi_vgt_param.ia_switch_on_eoi = true;
+	}
+
+	ia_multi_vgt_param.partial_vs_wave = false;
+	if (radv_pipeline_has_tess(pipeline)) {
+		/* Bug with tessellation and GS on Bonaire and older 2 SE chips. */
+		if ((device->physical_device->rad_info.family == CHIP_TAHITI ||
+		     device->physical_device->rad_info.family == CHIP_PITCAIRN ||
+		     device->physical_device->rad_info.family == CHIP_BONAIRE) &&
+		    radv_pipeline_has_gs(pipeline))
+			ia_multi_vgt_param.partial_vs_wave = true;
+		/* Needed for 028B6C_DISTRIBUTION_MODE != 0 */
+		if (device->physical_device->rad_info.has_distributed_tess) {
+			if (radv_pipeline_has_gs(pipeline)) {
+				if (device->physical_device->rad_info.chip_class <= GFX8)
+					ia_multi_vgt_param.partial_es_wave = true;
+			} else {
+				ia_multi_vgt_param.partial_vs_wave = true;
+			}
+		}
+	}
+
+	if (radv_pipeline_has_gs(pipeline)) {
+		/* On these chips there is the possibility of a hang if the
+		 * pipeline uses a GS and partial_vs_wave is not set.
+		 *
+		 * This mostly does not hit 4-SE chips, as those typically set
+		 * ia_switch_on_eoi and then partial_vs_wave is set for pipelines
+		 * with GS due to another workaround.
+		 *
+		 * Reproducer: https://bugs.freedesktop.org/show_bug.cgi?id=109242
+		 */
+		if (device->physical_device->rad_info.family == CHIP_TONGA ||
+		    device->physical_device->rad_info.family == CHIP_FIJI ||
+		    device->physical_device->rad_info.family == CHIP_POLARIS10 ||
+		    device->physical_device->rad_info.family == CHIP_POLARIS11 ||
+		    device->physical_device->rad_info.family == CHIP_POLARIS12 ||
+	            device->physical_device->rad_info.family == CHIP_VEGAM) {
+			ia_multi_vgt_param.partial_vs_wave = true;
+		}
+	}
+
+	ia_multi_vgt_param.base =
+		S_028AA8_PRIMGROUP_SIZE(ia_multi_vgt_param.primgroup_size - 1) |
+		/* The following field was moved to VGT_SHADER_STAGES_EN in GFX9. */
+		S_028AA8_MAX_PRIMGRP_IN_WAVE(device->physical_device->rad_info.chip_class == GFX8 ? 2 : 0) |
+		S_030960_EN_INST_OPT_BASIC(device->physical_device->rad_info.chip_class >= GFX9) |
+		S_030960_EN_INST_OPT_ADV(device->physical_device->rad_info.chip_class >= GFX9);
+
+	return ia_multi_vgt_param;
+}
+
 static void
 radv_pipeline_init_input_assembly_state(struct radv_pipeline *pipeline,
 					const VkGraphicsPipelineCreateInfo *pCreateInfo,
@@ -1380,6 +1461,9 @@ radv_pipeline_init_input_assembly_state(struct radv_pipeline *pipeline,
 	if (extra && extra->use_rectlist) {
 		pipeline->graphics.can_use_guardband = true;
 	}
+
+	pipeline->graphics.ia_multi_vgt_param =
+		radv_compute_ia_multi_vgt_param_helpers(pipeline);
 }
 
 static void
@@ -2021,8 +2105,8 @@ gfx10_get_ngg_info(const struct radv_pipeline_key *key,
 }
 
 static void
-calculate_gs_ring_sizes(struct radv_pipeline *pipeline,
-			const struct gfx9_gs_info *gs)
+radv_pipeline_init_gs_ring_state(struct radv_pipeline *pipeline,
+				 const struct gfx9_gs_info *gs)
 {
 	struct radv_device *device = pipeline->device;
 	unsigned num_se = device->physical_device->rad_info.max_se;
@@ -4700,91 +4784,9 @@ radv_pipeline_generate_pm4(struct radv_pipeline *pipeline,
 	assert(cs->cdw <= cs->max_dw);
 }
 
-static struct radv_ia_multi_vgt_param_helpers
-radv_compute_ia_multi_vgt_param_helpers(struct radv_pipeline *pipeline)
-{
-	struct radv_ia_multi_vgt_param_helpers ia_multi_vgt_param = {0};
-	const struct radv_device *device = pipeline->device;
-
-	if (radv_pipeline_has_tess(pipeline))
-		ia_multi_vgt_param.primgroup_size = pipeline->shaders[MESA_SHADER_TESS_CTRL]->info.tcs.num_patches;
-	else if (radv_pipeline_has_gs(pipeline))
-		ia_multi_vgt_param.primgroup_size = 64;
-	else
-		ia_multi_vgt_param.primgroup_size = 128; /* recommended without a GS */
-
-	/* GS requirement. */
-	ia_multi_vgt_param.partial_es_wave = false;
-	if (radv_pipeline_has_gs(pipeline) && device->physical_device->rad_info.chip_class <= GFX8)
-		if (SI_GS_PER_ES / ia_multi_vgt_param.primgroup_size >= pipeline->device->gs_table_depth - 3)
-			ia_multi_vgt_param.partial_es_wave = true;
-
-	ia_multi_vgt_param.ia_switch_on_eoi = false;
-	if (pipeline->shaders[MESA_SHADER_FRAGMENT]->info.ps.prim_id_input)
-		ia_multi_vgt_param.ia_switch_on_eoi = true;
-	if (radv_pipeline_has_gs(pipeline) &&
-	    pipeline->shaders[MESA_SHADER_GEOMETRY]->info.uses_prim_id)
-		ia_multi_vgt_param.ia_switch_on_eoi = true;
-	if (radv_pipeline_has_tess(pipeline)) {
-		/* SWITCH_ON_EOI must be set if PrimID is used. */
-		if (pipeline->shaders[MESA_SHADER_TESS_CTRL]->info.uses_prim_id ||
-		    radv_get_shader(pipeline, MESA_SHADER_TESS_EVAL)->info.uses_prim_id)
-			ia_multi_vgt_param.ia_switch_on_eoi = true;
-	}
-
-	ia_multi_vgt_param.partial_vs_wave = false;
-	if (radv_pipeline_has_tess(pipeline)) {
-		/* Bug with tessellation and GS on Bonaire and older 2 SE chips. */
-		if ((device->physical_device->rad_info.family == CHIP_TAHITI ||
-		     device->physical_device->rad_info.family == CHIP_PITCAIRN ||
-		     device->physical_device->rad_info.family == CHIP_BONAIRE) &&
-		    radv_pipeline_has_gs(pipeline))
-			ia_multi_vgt_param.partial_vs_wave = true;
-		/* Needed for 028B6C_DISTRIBUTION_MODE != 0 */
-		if (device->physical_device->rad_info.has_distributed_tess) {
-			if (radv_pipeline_has_gs(pipeline)) {
-				if (device->physical_device->rad_info.chip_class <= GFX8)
-					ia_multi_vgt_param.partial_es_wave = true;
-			} else {
-				ia_multi_vgt_param.partial_vs_wave = true;
-			}
-		}
-	}
-
-	if (radv_pipeline_has_gs(pipeline)) {
-		/* On these chips there is the possibility of a hang if the
-		 * pipeline uses a GS and partial_vs_wave is not set.
-		 *
-		 * This mostly does not hit 4-SE chips, as those typically set
-		 * ia_switch_on_eoi and then partial_vs_wave is set for pipelines
-		 * with GS due to another workaround.
-		 *
-		 * Reproducer: https://bugs.freedesktop.org/show_bug.cgi?id=109242
-		 */
-		if (device->physical_device->rad_info.family == CHIP_TONGA ||
-		    device->physical_device->rad_info.family == CHIP_FIJI ||
-		    device->physical_device->rad_info.family == CHIP_POLARIS10 ||
-		    device->physical_device->rad_info.family == CHIP_POLARIS11 ||
-		    device->physical_device->rad_info.family == CHIP_POLARIS12 ||
-	            device->physical_device->rad_info.family == CHIP_VEGAM) {
-			ia_multi_vgt_param.partial_vs_wave = true;
-		}
-	}
-
-	ia_multi_vgt_param.base =
-		S_028AA8_PRIMGROUP_SIZE(ia_multi_vgt_param.primgroup_size - 1) |
-		/* The following field was moved to VGT_SHADER_STAGES_EN in GFX9. */
-		S_028AA8_MAX_PRIMGRP_IN_WAVE(device->physical_device->rad_info.chip_class == GFX8 ? 2 : 0) |
-		S_030960_EN_INST_OPT_BASIC(device->physical_device->rad_info.chip_class >= GFX9) |
-		S_030960_EN_INST_OPT_ADV(device->physical_device->rad_info.chip_class >= GFX9);
-
-	return ia_multi_vgt_param;
-}
-
-
 static void
-radv_compute_vertex_input_state(struct radv_pipeline *pipeline,
-                                const VkGraphicsPipelineCreateInfo *pCreateInfo)
+radv_pipeline_init_vertex_input_state(struct radv_pipeline *pipeline,
+				      const VkGraphicsPipelineCreateInfo *pCreateInfo)
 {
 	const VkPipelineVertexInputStateCreateInfo *vi_info =
 		pCreateInfo->pVertexInputState;
@@ -4932,7 +4934,7 @@ radv_pipeline_init(struct radv_pipeline *pipeline,
 		struct radv_shader_variant *gs =
 			pipeline->shaders[MESA_SHADER_GEOMETRY];
 
-		calculate_gs_ring_sizes(pipeline, &gs->info.gs_ring_info);
+		radv_pipeline_init_gs_ring_state(pipeline, &gs->info.gs_ring_info);
 	}
 
 	if (radv_pipeline_has_tess(pipeline)) {
@@ -4940,17 +4942,14 @@ radv_pipeline_init(struct radv_pipeline *pipeline,
 			pCreateInfo->pTessellationState->patchControlPoints;
 	}
 
-	pipeline->graphics.ia_multi_vgt_param = radv_compute_ia_multi_vgt_param_helpers(pipeline);
-
-	radv_compute_vertex_input_state(pipeline, pCreateInfo);
-
+	radv_pipeline_init_vertex_input_state(pipeline, pCreateInfo);
 	radv_pipeline_init_binning_state(pipeline, pCreateInfo, &blend);
 	radv_pipeline_init_shader_stages_state(pipeline);
+	radv_pipeline_init_scratch(device, pipeline);
 
 	/* Find the last vertex shader stage that eventually uses streamout. */
 	pipeline->streamout_shader = radv_pipeline_get_streamout_shader(pipeline);
 
-	radv_pipeline_scratch_init(device, pipeline);
 	radv_pipeline_generate_pm4(pipeline, pCreateInfo, extra, &blend);
 
 	return result;
@@ -5164,7 +5163,7 @@ static VkResult radv_compute_pipeline_create(
 
 	pipeline->user_data_0[MESA_SHADER_COMPUTE] = radv_pipeline_stage_to_user_data_0(pipeline, MESA_SHADER_COMPUTE, device->physical_device->rad_info.chip_class);
 	pipeline->need_indirect_descriptor_sets |= pipeline->shaders[MESA_SHADER_COMPUTE]->info.need_indirect_descriptor_sets;
-	radv_pipeline_scratch_init(device, pipeline);
+	radv_pipeline_init_scratch(device, pipeline);
 
 	radv_compute_generate_pm4(pipeline);
 
