@@ -228,7 +228,6 @@ x86_build:
     TAG: *x86_build
   image: "$CI_REGISTRY_IMAGE/debian/x86_build:$TAG"
   needs:
-    - x86_build-base
     - x86_build
 
 # Debian 10 based i386 cross-build image
@@ -243,7 +242,6 @@ i386_build:
     TAG: *i386_build
   image: "$CI_REGISTRY_IMAGE/debian/i386_build:$TAG"
   needs:
-    - x86_build-base
     - i386_build
 
 # Debian 10 based ppc64el cross-build image
@@ -258,7 +256,6 @@ ppc64el_build:
     TAG: *ppc64el_build
   image: "$CI_REGISTRY_IMAGE/debian/ppc64el_build:$TAG"
   needs:
-    - x86_build-base
     - ppc64el_build
 
 # Debian 10 based s390x cross-build image
@@ -273,7 +270,6 @@ s390x_build:
     TAG: *s390x_build
   image: "$CI_REGISTRY_IMAGE/debian/s390x_build:$TAG"
   needs:
-    - x86_build-base
     - s390x_build
 
 # Debian 10 based x86 test image base
@@ -365,7 +361,6 @@ arm64_test:
     TAG: *arm64_test
   image: "$CI_REGISTRY_IMAGE/debian/arm64_test:$TAG"
   needs:
-    - arm_test-base
     - arm64_test
 
 # Native Windows docker builds
@@ -811,10 +806,7 @@ meson-mingw32-x86_64:
     TAG: *x86_test-gl
   image: "$CI_REGISTRY_IMAGE/debian/x86_test-gl:$TAG"
   needs:
-    - x86_build-base
-    - x86_build
     - meson-testing
-    - x86_test-base
     - x86_test-gl
   dependencies:
     - meson-testing
@@ -826,10 +818,7 @@ meson-mingw32-x86_64:
     TAG: *x86_test-vk
   image: "$CI_REGISTRY_IMAGE/debian/x86_test-vk:$TAG"
   needs:
-    - x86_build-base
-    - x86_build
     - meson-testing
-    - x86_test-base
     - x86_test-vk
   dependencies:
     - meson-testing
@@ -1170,9 +1159,7 @@ arm64_a306_gles2:
   script:
     - ./install/bare-metal/fastboot.sh
   needs:
-    - arm_test-base
     - arm64_test
-    - arm_build
     - meson-arm64
   tags:
     - google-freedreno-db410c
