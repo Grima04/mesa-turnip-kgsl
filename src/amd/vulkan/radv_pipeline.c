@@ -222,7 +222,7 @@ static uint32_t get_hash_flags(struct radv_device *device)
 	return hash_flags;
 }
 
-static VkResult
+static void
 radv_pipeline_scratch_init(struct radv_device *device,
                            struct radv_pipeline *pipeline)
 {
@@ -254,7 +254,6 @@ radv_pipeline_scratch_init(struct radv_device *device,
 
 	pipeline->scratch_bytes_per_wave = scratch_bytes_per_wave;
 	pipeline->max_waves = max_waves;
-	return VK_SUCCESS;
 }
 
 static uint32_t si_translate_blend_logic_op(VkLogicOp op)
@@ -4951,7 +4950,7 @@ radv_pipeline_init(struct radv_pipeline *pipeline,
 	/* Find the last vertex shader stage that eventually uses streamout. */
 	pipeline->streamout_shader = radv_pipeline_get_streamout_shader(pipeline);
 
-	result = radv_pipeline_scratch_init(device, pipeline);
+	radv_pipeline_scratch_init(device, pipeline);
 	radv_pipeline_generate_pm4(pipeline, pCreateInfo, extra, &blend);
 
 	return result;
@@ -5165,11 +5164,7 @@ static VkResult radv_compute_pipeline_create(
 
 	pipeline->user_data_0[MESA_SHADER_COMPUTE] = radv_pipeline_stage_to_user_data_0(pipeline, MESA_SHADER_COMPUTE, device->physical_device->rad_info.chip_class);
 	pipeline->need_indirect_descriptor_sets |= pipeline->shaders[MESA_SHADER_COMPUTE]->info.need_indirect_descriptor_sets;
-	result = radv_pipeline_scratch_init(device, pipeline);
-	if (result != VK_SUCCESS) {
-		radv_pipeline_destroy(device, pipeline, pAllocator);
-		return result;
-	}
+	radv_pipeline_scratch_init(device, pipeline);
 
 	radv_compute_generate_pm4(pipeline);
 
