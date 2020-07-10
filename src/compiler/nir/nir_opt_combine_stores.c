@@ -350,6 +350,20 @@ combine_stores_block(struct combine_stores_state *state, nir_block *block)
          combine_stores_with_modes(state, nir_var_shader_out);
          break;
 
+      case nir_intrinsic_report_ray_intersection:
+         combine_stores_with_modes(state, nir_var_mem_ssbo |
+                                          nir_var_mem_global |
+                                          nir_var_shader_call_data |
+                                          nir_var_ray_hit_attrib);
+         break;
+
+      case nir_intrinsic_ignore_ray_intersection:
+      case nir_intrinsic_terminate_ray:
+         combine_stores_with_modes(state, nir_var_mem_ssbo |
+                                          nir_var_mem_global |
+                                          nir_var_shader_call_data);
+         break;
+
       case nir_intrinsic_load_deref: {
          nir_deref_instr *src = nir_src_as_deref(intrin->src[0]);
          combine_stores_with_deref(state, src);
@@ -377,6 +391,14 @@ combine_stores_block(struct combine_stores_state *state, nir_block *block)
          nir_deref_instr *src = nir_src_as_deref(intrin->src[1]);
          combine_stores_with_deref(state, dst);
          combine_stores_with_deref(state, src);
+         break;
+      }
+
+      case nir_intrinsic_trace_ray:
+      case nir_intrinsic_execute_callable: {
+         nir_deref_instr *payload =
+            nir_src_as_deref(*nir_get_shader_call_payload_src(intrin));
+         combine_stores_with_deref(state, payload);
          break;
       }
 

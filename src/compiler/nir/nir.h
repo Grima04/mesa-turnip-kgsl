@@ -4579,6 +4579,7 @@ bool nir_lower_explicit_io(nir_shader *shader,
 
 nir_src *nir_get_io_offset_src(nir_intrinsic_instr *instr);
 nir_src *nir_get_io_vertex_index_src(nir_intrinsic_instr *instr);
+nir_src *nir_get_shader_call_payload_src(nir_intrinsic_instr *call);
 
 bool nir_is_per_vertex_io(const nir_variable *var, gl_shader_stage stage);
 

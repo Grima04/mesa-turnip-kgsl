@@ -184,6 +184,39 @@ gather_vars_written(struct copy_prop_var_state *state,
             written->modes = nir_var_shader_out;
             break;
 
+         case nir_intrinsic_trace_ray:
+         case nir_intrinsic_execute_callable: {
+            nir_deref_instr *payload =
+               nir_src_as_deref(*nir_get_shader_call_payload_src(intrin));
+
+            nir_component_mask_t mask =
+               BITFIELD_MASK(glsl_get_vector_elements(payload->type));
+
+            struct hash_entry *ht_entry =
+               _mesa_hash_table_search(written->derefs, payload);
+            if (ht_entry) {
+               ht_entry->data = (void *)(mask | (uintptr_t)ht_entry->data);
+            } else {
+               _mesa_hash_table_insert(written->derefs, payload,
+                                       (void *)(uintptr_t)mask);
+            }
+            break;
+         }
+
+         case nir_intrinsic_report_ray_intersection:
+            written->modes |= nir_var_mem_ssbo |
+                              nir_var_mem_global |
+                              nir_var_shader_call_data |
+                              nir_var_ray_hit_attrib;
+            break;
+
+         case nir_intrinsic_ignore_ray_intersection:
+         case nir_intrinsic_terminate_ray:
+            written->modes |= nir_var_mem_ssbo |
+                              nir_var_mem_global |
+                              nir_var_shader_call_data;
+            break;
+
          case nir_intrinsic_deref_atomic_add:
          case nir_intrinsic_deref_atomic_imin:
          case nir_intrinsic_deref_atomic_umin:
@@ -846,6 +879,20 @@ copy_prop_vars_block(struct copy_prop_var_state *state,
          apply_barrier_for_modes(copies, nir_var_shader_out);
          break;
 
+      case nir_intrinsic_report_ray_intersection:
+         apply_barrier_for_modes(copies, nir_var_mem_ssbo |
+                                         nir_var_mem_global |
+                                         nir_var_shader_call_data |
+                                         nir_var_ray_hit_attrib);
+         break;
+
+      case nir_intrinsic_ignore_ray_intersection:
+      case nir_intrinsic_terminate_ray:
+         apply_barrier_for_modes(copies, nir_var_mem_ssbo |
+                                         nir_var_mem_global |
+                                         nir_var_shader_call_data);
+         break;
+
       case nir_intrinsic_load_deref: {
          if (debug) dump_instr(instr);
 
@@ -1054,6 +1101,18 @@ copy_prop_vars_block(struct copy_prop_var_state *state,
          struct copy_entry *dst_entry =
             get_entry_and_kill_aliases(copies, dst, full_mask);
          value_set_from_value(&dst_entry->src, &value, 0, full_mask);
+         break;
+      }
+
+      case nir_intrinsic_trace_ray:
+      case nir_intrinsic_execute_callable: {
+         if (debug) dump_instr(instr);
+
+         nir_deref_instr *payload =
+            nir_src_as_deref(*nir_get_shader_call_payload_src(intrin));
+         nir_component_mask_t full_mask =
+            BITFIELD_MASK(glsl_get_vector_elements(payload->type));
+         kill_aliases(copies, payload, full_mask);
          break;
       }
 
