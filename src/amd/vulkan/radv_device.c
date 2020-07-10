@@ -5886,6 +5886,18 @@ VkResult radv_ResetEvent(
 	return VK_SUCCESS;
 }
 
+static void
+radv_destroy_buffer(struct radv_device *device,
+		    const VkAllocationCallbacks *pAllocator,
+		    struct radv_buffer *buffer)
+{
+	if ((buffer->flags & VK_BUFFER_CREATE_SPARSE_BINDING_BIT) && buffer->bo)
+		device->ws->buffer_destroy(buffer->bo);
+
+	vk_object_base_finish(&buffer->base);
+	vk_free2(&device->vk.alloc, pAllocator, buffer);
+}
+
 VkResult radv_CreateBuffer(
 	VkDevice                                    _device,
 	const VkBufferCreateInfo*                   pCreateInfo,
@@ -5922,7 +5934,7 @@ VkResult radv_CreateBuffer(
 		                                       4096, 0, RADEON_FLAG_VIRTUAL,
 		                                       RADV_BO_PRIORITY_VIRTUAL);
 		if (!buffer->bo) {
-			vk_free2(&device->vk.alloc, pAllocator, buffer);
+			radv_destroy_buffer(device, pAllocator, buffer);
 			return vk_error(device->instance, VK_ERROR_OUT_OF_DEVICE_MEMORY);
 		}
 	}
@@ -5943,11 +5955,7 @@ void radv_DestroyBuffer(
 	if (!buffer)
 		return;
 
-	if (buffer->flags & VK_BUFFER_CREATE_SPARSE_BINDING_BIT)
-		device->ws->buffer_destroy(buffer->bo);
-
-	vk_object_base_finish(&buffer->base);
-	vk_free2(&device->vk.alloc, pAllocator, buffer);
+	radv_destroy_buffer(device, pAllocator, buffer);
 }
 
 VkDeviceAddress radv_GetBufferDeviceAddress(
