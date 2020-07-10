@@ -1269,6 +1269,17 @@ radv_query_pool_needs_gds(struct radv_device *device,
 	       (pool->pipeline_stats_mask & VK_QUERY_PIPELINE_STATISTIC_GEOMETRY_SHADER_PRIMITIVES_BIT);
 }
 
+static void
+radv_destroy_query_pool(struct radv_device *device,
+			const VkAllocationCallbacks *pAllocator,
+			struct radv_query_pool *pool)
+{
+	if (pool->bo)
+		device->ws->buffer_destroy(pool->bo);
+	vk_object_base_finish(&pool->base);
+	vk_free2(&device->vk.alloc, pAllocator, pool);
+}
+
 VkResult radv_CreateQueryPool(
 	VkDevice                                    _device,
 	const VkQueryPoolCreateInfo*                pCreateInfo,
@@ -1313,17 +1324,14 @@ VkResult radv_CreateQueryPool(
 	pool->bo = device->ws->buffer_create(device->ws, pool->size,
 					     64, RADEON_DOMAIN_GTT, RADEON_FLAG_NO_INTERPROCESS_SHARING,
 					     RADV_BO_PRIORITY_QUERY_POOL);
-
 	if (!pool->bo) {
-		vk_free2(&device->vk.alloc, pAllocator, pool);
+		radv_destroy_query_pool(device, pAllocator, pool);
 		return vk_error(device->instance, VK_ERROR_OUT_OF_DEVICE_MEMORY);
 	}
 
 	pool->ptr = device->ws->buffer_map(pool->bo);
-
 	if (!pool->ptr) {
-		device->ws->buffer_destroy(pool->bo);
-		vk_free2(&device->vk.alloc, pAllocator, pool);
+		radv_destroy_query_pool(device, pAllocator, pool);
 		return vk_error(device->instance, VK_ERROR_OUT_OF_DEVICE_MEMORY);
 	}
 
@@ -1342,10 +1350,7 @@ void radv_DestroyQueryPool(
 	if (!pool)
 		return;
 
-	device->ws->buffer_destroy(pool->bo);
-
-	vk_object_base_finish(&pool->base);
-	vk_free2(&device->vk.alloc, pAllocator, pool);
+	radv_destroy_query_pool(device, pAllocator, pool);
 }
 
 VkResult radv_GetQueryPoolResults(
