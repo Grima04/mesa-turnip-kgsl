@@ -355,14 +355,6 @@ with_platform_wayland = _platforms.contains('wayland')
 with_platform_haiku = _platforms.contains('haiku')
 with_platform_windows = _platforms.contains('windows')
 
-if _platforms.contains('surfaceless')
-  warning('Platform `surfaceless` is now always selected; setting this option will be an error in Mesa 20.3')
-endif
-
-if _platforms.contains('drm')
-  warning('Platform `drm` is now automatically selected; setting this option will be an error in Mesa 20.3')
-endif
-
 if _platforms.length() != 0
   egl_native_platform = _platforms[0]
 else
