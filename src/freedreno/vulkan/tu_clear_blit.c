@@ -1939,8 +1939,6 @@ tu_clear_sysmem_attachments(struct tu_cmd_buffer *cmd,
 static void
 pack_gmem_clear_value(const VkClearValue *val, VkFormat format, uint32_t clear_value[4])
 {
-   enum pipe_format pformat = vk_format_to_pipe_format(format);
-
    switch (format) {
    case VK_FORMAT_X8_D24_UNORM_PACK32:
    case VK_FORMAT_D24_UNORM_S8_UINT:
@@ -1956,27 +1954,63 @@ pack_gmem_clear_value(const VkClearValue *val, VkFormat format, uint32_t clear_v
    case VK_FORMAT_S8_UINT:
       clear_value[0] = val->depthStencil.stencil;
       return;
-   /* these formats use a different base format when tiled
-    * the same format can be used for both because GMEM is always in WZYX order
-    */
-   case VK_FORMAT_R5G5B5A1_UNORM_PACK16:
-   case VK_FORMAT_B5G5R5A1_UNORM_PACK16:
-      pformat = PIPE_FORMAT_B5G5R5A1_UNORM;
    default:
       break;
    }
 
-   VkClearColorValue color;
+   float tmp[4];
+   memcpy(tmp, val->color.float32, 4 * sizeof(float));
+   if (vk_format_is_srgb(format)) {
+      for (int i = 0; i < 4; i++)
+         tmp[i] = util_format_linear_to_srgb_float(tmp[i]);
+   }
 
-   /**
-    * GMEM is tiled and wants the components in WZYX order,
-    * apply swizzle to the color before packing, to counteract
-    * deswizzling applied by packing functions
-    */
-   pipe_swizzle_4f(color.float32, val->color.float32,
-                   util_format_description(pformat)->swizzle);
-
-   util_format_pack_rgba(pformat, clear_value, color.uint32, 1);
+#define PACK_F(type) util_format_##type##_pack_rgba_float \
+   ( (uint8_t*) &clear_value[0], 0, tmp, 0, 1, 1)
+   switch (vk_format_get_component_bits(format, UTIL_FORMAT_COLORSPACE_RGB, PIPE_SWIZZLE_X)) {
+   case 4:
+      PACK_F(r4g4b4a4_unorm);
+      break;
+   case 5:
+      if (vk_format_get_component_bits(format, UTIL_FORMAT_COLORSPACE_RGB, PIPE_SWIZZLE_Y) == 6)
+         PACK_F(r5g6b5_unorm);
+      else
+         PACK_F(r5g5b5a1_unorm);
+      break;
+   case 8:
+      if (vk_format_is_snorm(format))
+         PACK_F(r8g8b8a8_snorm);
+      else if (vk_format_is_unorm(format))
+         PACK_F(r8g8b8a8_unorm);
+      else
+         pack_int8(clear_value, val->color.uint32);
+      break;
+   case 10:
+      if (vk_format_is_int(format))
+         pack_int10_2(clear_value, val->color.uint32);
+      else
+         PACK_F(r10g10b10a2_unorm);
+      break;
+   case 11:
+      clear_value[0] = float3_to_r11g11b10f(val->color.float32);
+      break;
+   case 16:
+      if (vk_format_is_snorm(format))
+         PACK_F(r16g16b16a16_snorm);
+      else if (vk_format_is_unorm(format))
+         PACK_F(r16g16b16a16_unorm);
+      else if (vk_format_is_float(format))
+         PACK_F(r16g16b16a16_float);
+      else
+         pack_int16(clear_value, val->color.uint32);
+      break;
+   case 32:
+      memcpy(clear_value, val->color.float32, 4 * sizeof(float));
+      break;
+   default:
+      unreachable("unexpected channel size");
+   }
+#undef PACK_F
 }
 
 static void

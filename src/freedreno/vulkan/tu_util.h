@@ -269,14 +269,42 @@ struct bcolor_entry {
    uint8_t  __pad1[56];
 } __attribute__((aligned(128)));
 
+/* vulkan does not want clamping of integer clear values, differs from u_format
+ * see spec for VkClearColorValue
+ */
+static inline void
+pack_int8(uint32_t *dst, const uint32_t *val)
+{
+   *dst = (val[0] & 0xff) |
+          (val[1] & 0xff) << 8 |
+          (val[2] & 0xff) << 16 |
+          (val[3] & 0xff) << 24;
+}
+
+static inline void
+pack_int10_2(uint32_t *dst, const uint32_t *val)
+{
+   *dst = (val[0] & 0x3ff) |
+          (val[1] & 0x3ff) << 10 |
+          (val[2] & 0x3ff) << 20 |
+          (val[3] & 0x3)   << 30;
+}
+
+static inline void
+pack_int16(uint32_t *dst, const uint32_t *val)
+{
+   dst[0] = (val[0] & 0xffff) |
+            (val[1] & 0xffff) << 16;
+   dst[1] = (val[2] & 0xffff) |
+            (val[3] & 0xffff) << 16;
+}
+
 static inline void
 tu6_pack_border_color(struct bcolor_entry *bcolor, const VkClearColorValue *val, bool is_int)
 {
    memcpy(bcolor->fp32, val, 4 * sizeof(float));
    if (is_int) {
-      /* TODO: clamp? */
-      util_format_r16g16b16a16_uint_pack_unsigned((uint8_t*) &bcolor->fp16,
-                                                  0, val->uint32, 0, 1, 1);
+      pack_int16((uint32_t*) &bcolor->fp16, val->uint32);
       return;
    }
 #define PACK_F(x, type) util_format_##type##_pack_rgba_float \
