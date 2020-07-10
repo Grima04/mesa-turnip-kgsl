@@ -225,10 +225,14 @@ typedef struct midgard_bundle {
 } midgard_bundle;
 
 enum midgard_rt_id {
-        MIDGARD_COLOR_RT0,
+        MIDGARD_COLOR_RT0 = 0,
         MIDGARD_COLOR_RT1,
         MIDGARD_COLOR_RT2,
         MIDGARD_COLOR_RT3,
+        MIDGARD_COLOR_RT4,
+        MIDGARD_COLOR_RT5,
+        MIDGARD_COLOR_RT6,
+        MIDGARD_COLOR_RT7,
         MIDGARD_ZS_RT,
         MIDGARD_NUM_RTS,
 };
