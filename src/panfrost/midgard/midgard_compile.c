@@ -706,60 +706,6 @@ nir_is_non_scalar_swizzle(nir_alu_src *src, unsigned nr_components)
 		op = midgard_alu_op_##_op; \
                 ALU_CHECK_CMP(sext); \
                  break;
-	
-/* Analyze the sizes of the dest and inputs to determine reg mode. */
-
-static midgard_reg_mode
-reg_mode_for_nir(nir_alu_instr *instr)
-{
-        unsigned src_bitsize = nir_src_bit_size(instr->src[0].src);
-        unsigned dst_bitsize = nir_dest_bit_size(instr->dest.dest);
-        unsigned max_bitsize = MAX2(src_bitsize, dst_bitsize);
-
-        /* We don't have fp16 LUTs, so we'll want to emit code like:
-         *
-         *      vlut.fsinr hr0, hr0
-         *
-         * where both input and output are 16-bit but the operation is carried
-         * out in 32-bit
-         */
-
-        switch (instr->op) {
-        case nir_op_fsqrt:
-        case nir_op_frcp:
-        case nir_op_frsq:
-        case nir_op_fsin:
-        case nir_op_fcos:
-        case nir_op_fexp2:
-        case nir_op_flog2:
-                max_bitsize = MAX2(max_bitsize, 32);
-                break;
-
-        /* These get lowered to moves */
-        case nir_op_pack_32_4x8:
-                max_bitsize = 8;
-                break;
-        case nir_op_pack_32_2x16:
-                max_bitsize = 16;
-                break;
-        default:
-                break;
-        }
-
-
-        switch (max_bitsize) {
-                /* Use 16 pipe for 8 since we don't support vec16 yet */
-        case 8:
-        case 16:
-                return midgard_reg_mode_16;
-        case 32:
-                return midgard_reg_mode_32;
-        case 64:
-                return midgard_reg_mode_64;
-        default:
-                unreachable("Invalid bit size");
-        }
-}
 
 /* Compare mir_lower_invert */
 static bool
@@ -911,10 +857,6 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
          * in Midgard */
 
         unsigned broadcast_swizzle = 0;
-
-        /* What register mode should we operate in? */
-        midgard_reg_mode reg_mode =
-                reg_mode_for_nir(instr);
 
         /* Should we swap arguments? */
         bool flip_src12 = false;
@@ -1220,7 +1162,6 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
         ins.mask = mask_of(nr_components);
 
         midgard_vector_alu alu = {
-                .reg_mode = reg_mode,
                 .outmod = outmod,
         };
 
@@ -2443,6 +2384,61 @@ inline_alu_constants(compiler_context *ctx, midgard_block *block)
         }
 }
 
+unsigned
+max_bitsize_for_alu(midgard_instruction *ins)
+{
+        unsigned max_bitsize = 0;
+        for (int i = 0; i < MIR_SRC_COUNT; i++) {
+                if (ins->src[i] == ~0) continue;
+                unsigned src_bitsize = nir_alu_type_get_type_size(ins->src_types[i]);
+                max_bitsize = MAX2(src_bitsize, max_bitsize);
+        }
+        unsigned dst_bitsize = nir_alu_type_get_type_size(ins->dest_type);
+        max_bitsize = MAX2(dst_bitsize, max_bitsize);
+
+        /* We don't have fp16 LUTs, so we'll want to emit code like:
+         *
+         *      vlut.fsinr hr0, hr0
+         *
+         * where both input and output are 16-bit but the operation is carried
+         * out in 32-bit
+         */
+
+        switch (ins->op) {
+        case midgard_alu_op_fsqrt:
+        case midgard_alu_op_frcp:
+        case midgard_alu_op_frsqrt:
+        case midgard_alu_op_fsin:
+        case midgard_alu_op_fcos:
+        case midgard_alu_op_fexp2:
+        case midgard_alu_op_flog2:
+                max_bitsize = MAX2(max_bitsize, 32);
+                break;
+
+        default:
+                break;
+        }
+
+        return max_bitsize;
+}
+
+midgard_reg_mode
+reg_mode_for_bitsize(unsigned bitsize)
+{
+        switch (bitsize) {
+                /* use 16 pipe for 8 since we don't support vec16 yet */
+        case 8:
+        case 16:
+                return midgard_reg_mode_16;
+        case 32:
+                return midgard_reg_mode_32;
+        case 64:
+                return midgard_reg_mode_64;
+        default:
+                unreachable("invalid bit size");
+        }
+}
+
 /* Midgard supports two types of constants, embedded constants (128-bit) and
  * inline constants (16-bit). Sometimes, especially with scalar ops, embedded
  * constants can be demoted to inline constants, for space savings and
@@ -2458,9 +2454,11 @@ embedded_to_inline_constant(compiler_context *ctx, midgard_block *block)
                 /* Blend constants must not be inlined by definition */
                 if (ins->has_blend_constant) continue;
 
+                unsigned max_bitsize = max_bitsize_for_alu(ins);
+
                 /* We can inline 32-bit (sometimes) or 16-bit (usually) */
-                bool is_16 = ins->alu.reg_mode == midgard_reg_mode_16;
-                bool is_32 = ins->alu.reg_mode == midgard_reg_mode_32;
+                bool is_16 = max_bitsize == 16;
+                bool is_32 = max_bitsize == 32;
 
                 if (!(is_16 || is_32))
                         continue;

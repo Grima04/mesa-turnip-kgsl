@@ -47,7 +47,7 @@ static unsigned
 mir_pack_mod(midgard_instruction *ins, unsigned i, bool scalar)
 {
         bool integer = midgard_is_integer_op(ins->op);
-        unsigned base_size = (8 << ins->alu.reg_mode);
+        unsigned base_size = max_bitsize_for_alu(ins);
         unsigned sz = nir_alu_type_get_type_size(ins->src_types[i]);
         bool half = (sz == (base_size >> 1));
 
@@ -172,7 +172,7 @@ mir_pack_mask_alu(midgard_instruction *ins)
          * override to the lower or upper half, shifting the effective mask in
          * the latter, so AAAA.... becomes AAAA */
 
-        unsigned inst_size = 8 << ins->alu.reg_mode;
+        unsigned inst_size = max_bitsize_for_alu(ins);
         signed upper_shift = mir_upper_override(ins, inst_size);
 
         if (upper_shift >= 0) {
@@ -184,9 +184,9 @@ mir_pack_mask_alu(midgard_instruction *ins)
                 ins->alu.dest_override = midgard_dest_override_none;
         }
 
-        if (ins->alu.reg_mode == midgard_reg_mode_32)
+        if (inst_size == 32)
                 ins->alu.mask = expand_writemask(effective, 2);
-        else if (ins->alu.reg_mode == midgard_reg_mode_64)
+        else if (inst_size == 64)
                 ins->alu.mask = expand_writemask(effective, 1);
         else
                 ins->alu.mask = effective;
@@ -280,8 +280,7 @@ mir_pack_vector_srcs(midgard_instruction *ins)
 {
         bool channeled = GET_CHANNEL_COUNT(alu_opcode_props[ins->op].props);
 
-        midgard_reg_mode mode = ins->alu.reg_mode;
-        unsigned base_size = (8 << mode);
+        unsigned base_size = max_bitsize_for_alu(ins);
 
         for (unsigned i = 0; i < 2; ++i) {
                 if (ins->has_inline_constant && (i == 1))
@@ -297,7 +296,7 @@ mir_pack_vector_srcs(midgard_instruction *ins)
                 assert((sz == base_size) || half);
 
                 unsigned swizzle = mir_pack_swizzle(ins->mask, ins->swizzle[i],
-                                ins->src_types[i], ins->alu.reg_mode,
+                                ins->src_types[i], reg_mode_for_bitsize(base_size),
                                 channeled, &rep_lo, &rep_hi);
 
                 midgard_vector_alu_src pack = {
@@ -488,6 +487,15 @@ mir_lower_roundmode(midgard_instruction *ins)
         }
 }
 
+static midgard_vector_alu
+vector_alu_from_instr(midgard_instruction *ins)
+{
+        midgard_vector_alu alu = ins->alu;
+        alu.op = ins->op;
+        alu.reg_mode = reg_mode_for_bitsize(max_bitsize_for_alu(ins));
+        return alu;
+}
+
 static void
 emit_alu_bundle(compiler_context *ctx,
                 midgard_bundle *bundle,
@@ -532,8 +540,7 @@ emit_alu_bundle(compiler_context *ctx,
                         mir_pack_mask_alu(ins);
                         mir_pack_vector_srcs(ins);
                         size = sizeof(midgard_vector_alu);
-                        source_alu = ins->alu;
-                        source_alu.op = ins->op;
+                        source_alu = vector_alu_from_instr(ins);
                         source = &source_alu;
                 } else if (ins->unit == ALU_ENAB_BR_COMPACT) {
                         size = sizeof(midgard_branch_cond);
@@ -543,8 +550,7 @@ emit_alu_bundle(compiler_context *ctx,
                         source = &ins->branch_extended;
                 } else {
                         size = sizeof(midgard_scalar_alu);
-                        source_alu = ins->alu;
-                        source_alu.op = ins->op;
+                        source_alu = vector_alu_from_instr(ins);
                         scalarized = vector_to_scalar_alu(source_alu, ins);
                         source = &scalarized;
                 }

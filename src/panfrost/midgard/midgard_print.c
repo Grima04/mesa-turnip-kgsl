@@ -244,6 +244,7 @@ mir_print_embedded_constant(midgard_instruction *ins, unsigned src_idx)
                 src = vector_alu_from_unsigned(ins->alu.src2);
 
         unsigned *swizzle = ins->swizzle[src_idx];
+        midgard_reg_mode reg_mode = reg_mode_for_bitsize(max_bitsize_for_alu(ins));
         unsigned comp_mask = effective_writemask(ins->op, ins->mask);
         unsigned num_comp = util_bitcount(comp_mask);
         unsigned max_comp = mir_components_for_type(ins->dest_type);
@@ -264,7 +265,7 @@ mir_print_embedded_constant(midgard_instruction *ins, unsigned src_idx)
                         printf(", ");
 
                 mir_print_constant_component(stdout, &ins->constants,
-                                             swizzle[comp], ins->alu.reg_mode,
+                                             swizzle[comp], reg_mode,
                                              src.half, src.mod, ins->op);
         }
 
