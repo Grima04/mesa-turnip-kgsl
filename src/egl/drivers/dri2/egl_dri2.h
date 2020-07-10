@@ -140,6 +140,7 @@ struct dri2_egl_display_vtbl {
    EGLBoolean (*copy_buffers)(_EGLDriver *drv, _EGLDisplay *disp,
                               _EGLSurface *surf, void *native_pixmap_target);
 
+   /* optional */
    EGLint (*query_buffer_age)(_EGLDriver *drv, _EGLDisplay *disp,
                               _EGLSurface *surf);
 

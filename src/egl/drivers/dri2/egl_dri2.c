@@ -2067,6 +2067,8 @@ static EGLint
 dri2_query_buffer_age(_EGLDriver *drv, _EGLDisplay *disp, _EGLSurface *surf)
 {
    struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
+   if (!dri2_dpy->vtbl->query_buffer_age)
+      return 0;
    return dri2_dpy->vtbl->query_buffer_age(drv, disp, surf);
 }
 
