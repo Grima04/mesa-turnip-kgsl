@@ -94,7 +94,7 @@ panfrost_compression_tag(
 {
         if (layout == MALI_TEXTURE_AFBC)
                 return desc->nr_channels >= 3;
-        else if (format == MALI_ASTC_HDR_SUPP || format == MALI_ASTC_SRGB_SUPP)
+        else if (format == MALI_ASTC_2D_LDR || format == MALI_ASTC_2D_HDR)
                 return (panfrost_astc_stretch(desc->block.height) << 3) |
                         panfrost_astc_stretch(desc->block.width);
         else
