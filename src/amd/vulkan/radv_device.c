@@ -5024,9 +5024,11 @@ VkResult radv_QueueWaitIdle(
 	}
 	pthread_mutex_unlock(&queue->pending_mutex);
 
-	queue->device->ws->ctx_wait_idle(queue->hw_ctx,
-	                                 radv_queue_family_to_ring(queue->queue_family_index),
-	                                 queue->queue_idx);
+	if (!queue->device->ws->ctx_wait_idle(queue->hw_ctx,
+					      radv_queue_family_to_ring(queue->queue_family_index),
+					      queue->queue_idx))
+		return VK_ERROR_DEVICE_LOST;
+
 	return VK_SUCCESS;
 }
 
@@ -5037,7 +5039,11 @@ VkResult radv_DeviceWaitIdle(
 
 	for (unsigned i = 0; i < RADV_MAX_QUEUE_FAMILIES; i++) {
 		for (unsigned q = 0; q < device->queue_count[i]; q++) {
-			radv_QueueWaitIdle(radv_queue_to_handle(&device->queues[i][q]));
+			VkResult result =
+				radv_QueueWaitIdle(radv_queue_to_handle(&device->queues[i][q]));
+
+			if (result != VK_SUCCESS)
+				return result;
 		}
 	}
 	return VK_SUCCESS;
