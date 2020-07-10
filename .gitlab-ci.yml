@@ -808,8 +808,6 @@ meson-mingw32-x86_64:
   needs:
     - meson-testing
     - x86_test-gl
-  dependencies:
-    - meson-testing
 
 .test-vk:
   extends:
@@ -820,8 +818,6 @@ meson-mingw32-x86_64:
   needs:
     - meson-testing
     - x86_test-vk
-  dependencies:
-    - meson-testing
 
 .piglit-test:
   extends:

@@ -82,8 +82,6 @@ kernel+rootfs_armhf:
   extends:
     - .lava-test
     - .use-arm_build
-  dependencies:
-    - meson-armhf
   needs:
     - kernel+rootfs_armhf
     - meson-armhf
@@ -97,8 +95,6 @@ kernel+rootfs_armhf:
   extends:
     - .lava-test
     - .use-arm_build
-  dependencies:
-    - meson-arm64
   needs:
     - kernel+rootfs_arm64
     - meson-arm64
