@@ -44,7 +44,8 @@ struct ssa_state {
    unsigned phi_block_idx;
    unsigned loop_nest_depth;
    std::map<unsigned, unsigned> writes;
-   std::vector<unsigned> latest;
+   std::vector<Operand> latest;
+   std::vector<bool> visited;
 };
 
 Operand get_ssa(Program *program, unsigned block_idx, ssa_state *state, bool before_write)
@@ -53,9 +54,11 @@ Operand get_ssa(Program *program, unsigned block_idx, ssa_state *state, bool bef
       auto it = state->writes.find(block_idx);
       if (it != state->writes.end())
          return Operand(Temp(it->second, program->lane_mask));
-      if (state->latest[block_idx])
-         return Operand(Temp(state->latest[block_idx], program->lane_mask));
+      if (state->visited[block_idx])
+         return state->latest[block_idx];
    }
+
+   state->visited[block_idx] = true;
 
    Block& block = program->blocks[block_idx];
    size_t pred = block.linear_preds.size();
@@ -63,29 +66,38 @@ Operand get_ssa(Program *program, unsigned block_idx, ssa_state *state, bool bef
       return Operand(program->lane_mask);
    } else if (block.loop_nest_depth > state->loop_nest_depth) {
       Operand op = get_ssa(program, block_idx - 1, state, false);
-      assert(!state->latest[block_idx]);
-      state->latest[block_idx] = op.tempId();
+      state->latest[block_idx] = op;
       return op;
    } else if (pred == 1 || block.kind & block_kind_loop_exit) {
       Operand op = get_ssa(program, block.linear_preds[0], state, false);
-      assert(!state->latest[block_idx]);
-      state->latest[block_idx] = op.tempId();
+      state->latest[block_idx] = op;
       return op;
    } else if (block.kind & block_kind_loop_header &&
               !(program->blocks[state->phi_block_idx].kind & block_kind_loop_exit)) {
       return Operand(program->lane_mask);
    } else {
-      unsigned res = program->allocateId();
-      assert(!state->latest[block_idx]);
-      state->latest[block_idx] = res;
+      Temp res = Temp(program->allocateId(), program->lane_mask);
+      state->latest[block_idx] = Operand(res);
+
+      Operand ops[pred];
+      for (unsigned i = 0; i < pred; i++)
+         ops[i] = get_ssa(program, block.linear_preds[i], state, false);
+
+      bool all_undef = true;
+      for (unsigned i = 0; i < pred; i++)
+         all_undef = all_undef && ops[i].isUndefined();
+      if (all_undef) {
+         state->latest[block_idx] = ops[0];
+         return ops[0];
+      }
 
       aco_ptr<Pseudo_instruction> phi{create_instruction<Pseudo_instruction>(aco_opcode::p_linear_phi, Format::PSEUDO, pred, 1)};
       for (unsigned i = 0; i < pred; i++)
-         phi->operands[i] = get_ssa(program, block.linear_preds[i], state, false);
-      phi->definitions[0] = Definition(Temp{res, program->lane_mask});
+         phi->operands[i] = ops[i];
+      phi->definitions[0] = Definition(res);
       block.instructions.emplace(block.instructions.begin(), std::move(phi));
 
-      return Operand(Temp(res, program->lane_mask));
+      return Operand(res);
    }
 }
 
@@ -169,6 +181,7 @@ void lower_divergent_bool_phi(Program *program, ssa_state *state, Block *block, 
    }
 
    state->latest.resize(program->blocks.size());
+   state->visited.resize(program->blocks.size());
 
    uint64_t undef_operands = 0;
    for (unsigned i = 0; i < phi->operands.size(); i++)
@@ -187,7 +200,8 @@ void lower_divergent_bool_phi(Program *program, ssa_state *state, Block *block, 
       state->writes.clear();
       state->needs_init = false;
    }
-   std::fill(state->latest.begin(), state->latest.end(), 0);
+   std::fill(state->latest.begin(), state->latest.end(), Operand(program->lane_mask));
+   std::fill(state->visited.begin(), state->visited.end(), false);
 
    for (unsigned i = 0; i < phi->operands.size(); i++) {
       if (phi->operands[i].isUndefined())
