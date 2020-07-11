@@ -114,7 +114,7 @@ GL 3.3, GLSL 3.30 --- all DONE: i965, nv50, nvc0, r600, radeonsi, llvmpipe, soft
 GL 4.0, GLSL 4.00 --- all DONE: i965/gen7+, nvc0, r600, radeonsi, llvmpipe, virgl
 
   GL_ARB_draw_buffers_blend                             DONE (freedreno, i965/gen6+, nv50, softpipe, swr, zink, panfrost)
-  GL_ARB_draw_indirect                                  DONE (freedreno, i965/gen7+, softpipe, swr, v3d)
+  GL_ARB_draw_indirect                                  DONE (freedreno, i965/gen7+, softpipe, swr, v3d, zink)
   GL_ARB_gpu_shader5                                    DONE (i965/gen7+)
   - 'precise' qualifier                                 DONE (softpipe)
   - Dynamically uniform sampler array indices           DONE (softpipe)

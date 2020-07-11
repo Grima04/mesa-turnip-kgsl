@@ -509,17 +509,25 @@ zink_draw_vbo(struct pipe_context *pctx,
       struct zink_resource *res = zink_resource(index_buffer);
       vkCmdBindIndexBuffer(batch->cmdbuf, res->buffer, index_offset, index_type);
       zink_batch_reference_resource_rw(batch, res, false);
-      vkCmdDrawIndexed(batch->cmdbuf,
-         dinfo->count, dinfo->instance_count,
-         need_index_buffer_unref ? 0 : dinfo->start, dinfo->index_bias, dinfo->start_instance);
+      if (dinfo->indirect) {
+         struct zink_resource *indirect = zink_resource(dinfo->indirect->buffer);
+         zink_batch_reference_resource_rw(batch, indirect, false);
+         vkCmdDrawIndexedIndirect(batch->cmdbuf, indirect->buffer, dinfo->indirect->offset, dinfo->indirect->draw_count, dinfo->indirect->stride);
+      } else
+         vkCmdDrawIndexed(batch->cmdbuf,
+            dinfo->count, dinfo->instance_count,
+            need_index_buffer_unref ? 0 : dinfo->start, dinfo->index_bias, dinfo->start_instance);
    } else {
       if (so_target && screen->info.tf_props.transformFeedbackDraw) {
          zink_batch_reference_resource_rw(batch, zink_resource(so_target->counter_buffer), true);
          screen->vk_CmdDrawIndirectByteCountEXT(batch->cmdbuf, dinfo->instance_count, dinfo->start_instance,
                                        zink_resource(so_target->counter_buffer)->buffer, so_target->counter_buffer_offset, 0,
                                        MIN2(so_target->stride, screen->info.tf_props.maxTransformFeedbackBufferDataStride));
-      }
-      else
+      } else if (dinfo->indirect) {
+         struct zink_resource *indirect = zink_resource(dinfo->indirect->buffer);
+         zink_batch_reference_resource_rw(batch, indirect, false);
+         vkCmdDrawIndirect(batch->cmdbuf, indirect->buffer, dinfo->indirect->offset, dinfo->indirect->draw_count, dinfo->indirect->stride);
+      } else
          vkCmdDraw(batch->cmdbuf, dinfo->count, dinfo->instance_count, dinfo->start, dinfo->start_instance);
    }
 
