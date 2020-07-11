@@ -61,6 +61,7 @@ struct ac_addrlib {
 	 */
 	simple_mtx_t dcc_retile_map_lock;
 	struct hash_table *dcc_retile_maps;
+	struct hash_table *dcc_retile_tile_indices;
 };
 
 struct dcc_retile_map_key {
@@ -87,6 +88,156 @@ static void dcc_retile_map_free(struct hash_entry *entry)
 {
 	free((void*)entry->key);
 	free(entry->data);
+}
+
+struct dcc_retile_tile_key {
+	enum radeon_family family;
+	unsigned bpp;
+	unsigned swizzle_mode;
+	bool rb_aligned;
+	bool pipe_aligned;
+};
+
+struct dcc_retile_tile_data {
+	unsigned tile_width_log2;
+	unsigned tile_height_log2;
+	uint16_t *data;
+};
+
+static uint32_t dcc_retile_tile_hash_key(const void *key)
+{
+	return _mesa_hash_data(key, sizeof(struct dcc_retile_tile_key));
+}
+
+static bool dcc_retile_tile_keys_equal(const void *a, const void *b)
+{
+	return memcmp(a, b, sizeof(struct dcc_retile_tile_key)) == 0;
+}
+
+static void dcc_retile_tile_free(struct hash_entry *entry)
+{
+	free((void*)entry->key);
+	free(((struct dcc_retile_tile_data*)entry->data)->data);
+	free(entry->data);
+}
+
+/* Assumes dcc_retile_map_lock is taken. */
+static const struct dcc_retile_tile_data *
+ac_compute_dcc_retile_tile_indices(struct ac_addrlib *addrlib,
+                                   const struct radeon_info *info,
+                                   unsigned bpp, unsigned swizzle_mode,
+                                   bool rb_aligned, bool pipe_aligned)
+{
+	struct dcc_retile_tile_key key = (struct dcc_retile_tile_key) {
+		.family = info->family,
+		.bpp = bpp,
+		.swizzle_mode = swizzle_mode,
+		.rb_aligned = rb_aligned,
+		.pipe_aligned = pipe_aligned
+	};
+
+	struct hash_entry *entry = _mesa_hash_table_search(addrlib->dcc_retile_tile_indices, &key);
+	if (entry)
+		return entry->data;
+
+	ADDR2_COMPUTE_DCCINFO_INPUT din = {0};
+	ADDR2_COMPUTE_DCCINFO_OUTPUT dout = {0};
+	din.size = sizeof(ADDR2_COMPUTE_DCCINFO_INPUT);
+	dout.size = sizeof(ADDR2_COMPUTE_DCCINFO_OUTPUT);
+
+	din.dccKeyFlags.pipeAligned = pipe_aligned;
+	din.dccKeyFlags.rbAligned = rb_aligned;
+	din.resourceType = ADDR_RSRC_TEX_2D;
+	din.swizzleMode = swizzle_mode;
+	din.bpp = bpp;
+	din.unalignedWidth = 1;
+	din.unalignedHeight = 1;
+	din.numSlices = 1;
+	din.numFrags = 1;
+	din.numMipLevels = 1;
+
+	ADDR_E_RETURNCODE ret = Addr2ComputeDccInfo(addrlib->handle, &din, &dout);
+	if (ret != ADDR_OK)
+		return NULL;
+
+	ADDR2_COMPUTE_DCC_ADDRFROMCOORD_INPUT addrin = {0};
+	addrin.size = sizeof(addrin);
+	addrin.swizzleMode = swizzle_mode;
+	addrin.resourceType = ADDR_RSRC_TEX_2D;
+	addrin.bpp = bpp;
+	addrin.numSlices = 1;
+	addrin.numMipLevels = 1;
+	addrin.numFrags = 1;
+	addrin.pitch = dout.pitch;
+	addrin.height = dout.height;
+	addrin.compressBlkWidth = dout.compressBlkWidth;
+	addrin.compressBlkHeight = dout.compressBlkHeight;
+	addrin.compressBlkDepth = dout.compressBlkDepth;
+	addrin.metaBlkWidth = dout.metaBlkWidth;
+	addrin.metaBlkHeight = dout.metaBlkHeight;
+	addrin.metaBlkDepth = dout.metaBlkDepth;
+	addrin.dccKeyFlags.pipeAligned = pipe_aligned;
+	addrin.dccKeyFlags.rbAligned = rb_aligned;
+
+	unsigned w = dout.metaBlkWidth / dout.compressBlkWidth;
+	unsigned h = dout.metaBlkHeight / dout.compressBlkHeight;
+	uint16_t *indices = malloc(w * h * sizeof (uint16_t));
+	if (!indices)
+		return NULL;
+
+	ADDR2_COMPUTE_DCC_ADDRFROMCOORD_OUTPUT addrout = {};
+	addrout.size = sizeof(addrout);
+
+	for (unsigned y = 0; y < h; ++y) {
+		addrin.y = y * dout.compressBlkHeight;
+		for (unsigned x = 0; x < w; ++x) {
+			addrin.x = x * dout.compressBlkWidth;
+			addrout.addr = 0;
+
+			if (Addr2ComputeDccAddrFromCoord(addrlib->handle, &addrin, &addrout) != ADDR_OK) {
+				free(indices);
+				return NULL;
+			}
+			indices[y * w + x] = addrout.addr;
+		}
+	}
+
+	struct dcc_retile_tile_data *data = calloc(1, sizeof(*data));
+	if (!data) {
+		free(indices);
+		return NULL;
+	}
+
+	data->tile_width_log2 = util_logbase2(w);
+	data->tile_height_log2 = util_logbase2(h);
+	data->data = indices;
+
+	struct dcc_retile_tile_key *heap_key = mem_dup(&key, sizeof(key));
+	if (!heap_key) {
+		free(data);
+		free(indices);
+		return NULL;
+	}
+
+	entry = _mesa_hash_table_insert(addrlib->dcc_retile_tile_indices, heap_key, data);
+	if (!entry) {
+		free(heap_key);
+		free(data);
+		free(indices);
+	}
+	return data;
+}
+
+static uint32_t ac_compute_retile_tile_addr(const struct dcc_retile_tile_data *tile,
+                                            unsigned stride, unsigned x, unsigned y)
+{
+	unsigned x_mask = (1u << tile->tile_width_log2) - 1;
+	unsigned y_mask = (1u << tile->tile_height_log2) - 1;
+	unsigned tile_size_log2 = tile->tile_width_log2 + tile->tile_height_log2;
+
+	unsigned base = ((y >> tile->tile_height_log2) * stride + (x >> tile->tile_width_log2)) << tile_size_log2;
+	unsigned offset_in_tile = tile->data[((y & y_mask) << tile->tile_width_log2) + (x & x_mask)];
+	return base + offset_in_tile;
 }
 
 static uint32_t *ac_compute_dcc_retile_map(struct ac_addrlib *addrlib,
@@ -120,11 +271,17 @@ static uint32_t *ac_compute_dcc_retile_map(struct ac_addrlib *addrlib,
 		return map;
 	}
 
-	ADDR2_COMPUTE_DCC_ADDRFROMCOORD_INPUT addrin;
-	memcpy(&addrin, in, sizeof(*in));
-
-	ADDR2_COMPUTE_DCC_ADDRFROMCOORD_OUTPUT addrout = {};
-	addrout.size = sizeof(addrout);
+	const struct dcc_retile_tile_data *src_tile =
+		ac_compute_dcc_retile_tile_indices(addrlib, info, in->bpp,
+		                                   in->swizzleMode,
+		                                   rb_aligned, pipe_aligned);
+	const struct dcc_retile_tile_data *dst_tile =
+		ac_compute_dcc_retile_tile_indices(addrlib, info, in->bpp,
+		                                   in->swizzleMode, false, false);
+	if (!src_tile || !dst_tile) {
+		simple_mtx_unlock(&addrlib->dcc_retile_map_lock);
+		return NULL;
+	}
 
 	void *dcc_retile_map = malloc(dcc_retile_map_size);
 	if (!dcc_retile_map) {
@@ -133,47 +290,27 @@ static uint32_t *ac_compute_dcc_retile_map(struct ac_addrlib *addrlib,
 	}
 
 	unsigned index = 0;
+	unsigned w = DIV_ROUND_UP(retile_width, in->compressBlkWidth);
+	unsigned h = DIV_ROUND_UP(retile_height, in->compressBlkHeight);
+	unsigned src_stride = DIV_ROUND_UP(w, 1u << src_tile->tile_width_log2);
+	unsigned dst_stride = DIV_ROUND_UP(w, 1u << dst_tile->tile_width_log2);
 
-	for (unsigned y = 0; y < retile_height; y += in->compressBlkHeight) {
-		addrin.y = y;
+	for (unsigned y = 0; y < h; ++y) {
+		for (unsigned x = 0; x < w; ++x) {
+			unsigned src_addr = ac_compute_retile_tile_addr(src_tile, src_stride, x, y);
+			unsigned dst_addr = ac_compute_retile_tile_addr(dst_tile, dst_stride, x, y);
 
-		for (unsigned x = 0; x < retile_width; x += in->compressBlkWidth) {
-			addrin.x = x;
-
-			/* Compute src DCC address */
-			addrin.dccKeyFlags.pipeAligned = pipe_aligned;
-			addrin.dccKeyFlags.rbAligned = rb_aligned;
-			addrout.addr = 0;
-
-			if (Addr2ComputeDccAddrFromCoord(addrlib->handle, &addrin, &addrout) != ADDR_OK) {
-				simple_mtx_unlock(&addrlib->dcc_retile_map_lock);
-				return NULL;
+			if (use_uint16) {
+				((uint16_t*)dcc_retile_map)[2 * index] = src_addr;
+				((uint16_t*)dcc_retile_map)[2 * index + 1] = dst_addr;
+			} else {
+				((uint32_t*)dcc_retile_map)[2 * index] = src_addr;
+				((uint32_t*)dcc_retile_map)[2 * index + 1] = dst_addr;
 			}
-
-			if (use_uint16)
-				((uint16_t*)dcc_retile_map)[index * 2] = addrout.addr;
-			else
-				((uint32_t*)dcc_retile_map)[index * 2] = addrout.addr;
-
-			/* Compute dst DCC address */
-			addrin.dccKeyFlags.pipeAligned = 0;
-			addrin.dccKeyFlags.rbAligned = 0;
-			addrout.addr = 0;
-
-			if (Addr2ComputeDccAddrFromCoord(addrlib->handle, &addrin, &addrout) != ADDR_OK) {
-				simple_mtx_unlock(&addrlib->dcc_retile_map_lock);
-				return NULL;
-			}
-
-			if (use_uint16)
-				((uint16_t*)dcc_retile_map)[index * 2 + 1] = addrout.addr;
-			else
-				((uint32_t*)dcc_retile_map)[index * 2 + 1] = addrout.addr;
-
-			assert(index * 2 + 1 < dcc_retile_num_elements);
-			index++;
+			++index;
 		}
 	}
+
 	/* Fill the remaining pairs with the last one (for the compute shader). */
 	for (unsigned i = index * 2; i < dcc_retile_num_elements; i++) {
 		if (use_uint16)
@@ -276,6 +413,8 @@ struct ac_addrlib *ac_addrlib_create(const struct radeon_info *info,
 	simple_mtx_init(&addrlib->dcc_retile_map_lock, mtx_plain);
 	addrlib->dcc_retile_maps = _mesa_hash_table_create(NULL, dcc_retile_map_hash_key,
 							   dcc_retile_map_keys_equal);
+	addrlib->dcc_retile_tile_indices = _mesa_hash_table_create(NULL, dcc_retile_tile_hash_key,
+	                                                           dcc_retile_tile_keys_equal);
 	return addrlib;
 }
 
@@ -284,6 +423,7 @@ void ac_addrlib_destroy(struct ac_addrlib *addrlib)
 	AddrDestroy(addrlib->handle);
 	simple_mtx_destroy(&addrlib->dcc_retile_map_lock);
 	_mesa_hash_table_destroy(addrlib->dcc_retile_maps, dcc_retile_map_free);
+	_mesa_hash_table_destroy(addrlib->dcc_retile_tile_indices, dcc_retile_tile_free);
 	free(addrlib);
 }
 
