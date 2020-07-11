@@ -375,7 +375,7 @@ fd6_clear_lrz(struct fd_batch *batch, struct fd_resource *zsbuf, double depth)
 	OUT_RING(ring, A6XX_CP_SET_MARKER_0_MODE(RM6_BLIT2DSCALE));
 	emit_marker6(ring, 7);
 
-	OUT_PKT4(ring, REG_A6XX_RB_UNKNOWN_8C01, 1);
+	OUT_PKT4(ring, REG_A6XX_RB_2D_UNKNOWN_8C01, 1);
 	OUT_RING(ring, 0x0);
 
 	OUT_PKT4(ring, REG_A6XX_SP_PS_2D_SRC_INFO, 13);
@@ -418,7 +418,7 @@ fd6_clear_lrz(struct fd_batch *batch, struct fd_resource *zsbuf, double depth)
 			A6XX_RB_2D_DST_INFO_TILE_MODE(TILE6_LINEAR) |
 			A6XX_RB_2D_DST_INFO_COLOR_SWAP(WZYX));
 	OUT_RELOC(ring, zsbuf->lrz, 0, 0, 0);
-	OUT_RING(ring, A6XX_RB_2D_DST_SIZE_PITCH(zsbuf->lrz_pitch * 2));
+	OUT_RING(ring, A6XX_RB_2D_DST_PITCH(zsbuf->lrz_pitch * 2).value);
 	OUT_RING(ring, 0x00000000);
 	OUT_RING(ring, 0x00000000);
 	OUT_RING(ring, 0x00000000);

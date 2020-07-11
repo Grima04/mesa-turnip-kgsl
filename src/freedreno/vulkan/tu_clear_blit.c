@@ -240,7 +240,7 @@ r2d_dst_buffer(struct tu_cs *cs, VkFormat vk_format, uint64_t va, uint32_t pitch
                       .srgb = vk_format_is_srgb(vk_format)),
                    A6XX_RB_2D_DST_LO((uint32_t) va),
                    A6XX_RB_2D_DST_HI(va >> 32),
-                   A6XX_RB_2D_DST_SIZE(.pitch = pitch));
+                   A6XX_RB_2D_DST_PITCH(pitch));
 }
 
 static void
@@ -266,7 +266,7 @@ r2d_setup_common(struct tu_cmd_buffer *cmd,
          unknown_8c01 = 0x00084001;
    }
 
-   tu_cs_emit_pkt4(cs, REG_A6XX_RB_UNKNOWN_8C01, 1);
+   tu_cs_emit_pkt4(cs, REG_A6XX_RB_2D_UNKNOWN_8C01, 1);
    tu_cs_emit(cs, unknown_8c01);
 
    uint32_t blit_cntl = A6XX_RB_2D_BLIT_CNTL(

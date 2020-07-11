@@ -1592,27 +1592,6 @@ to upconvert to 32b float internally?
 	<reg32 offset="0x0630" name="DBGC_CFG_DBGBUS_TRACE_BUF2"/>
 	<reg32 offset="0x0CD8" name="VSC_PERFCTR_VSC_SEL_0"/>
 	<reg32 offset="0x0CD9" name="VSC_PERFCTR_VSC_SEL_1"/>
-	<reg32 offset="0x8E05" name="RB_ADDR_MODE_CNTL"/>
-	<reg32 offset="0x8E08" name="RB_NC_MODE_CNTL"/>
-	<reg32 offset="0x8E10" name="RB_PERFCTR_RB_SEL_0"/>
-	<reg32 offset="0x8E11" name="RB_PERFCTR_RB_SEL_1"/>
-	<reg32 offset="0x8E12" name="RB_PERFCTR_RB_SEL_2"/>
-	<reg32 offset="0x8E13" name="RB_PERFCTR_RB_SEL_3"/>
-	<reg32 offset="0x8E14" name="RB_PERFCTR_RB_SEL_4"/>
-	<reg32 offset="0x8E15" name="RB_PERFCTR_RB_SEL_5"/>
-	<reg32 offset="0x8E16" name="RB_PERFCTR_RB_SEL_6"/>
-	<reg32 offset="0x8E17" name="RB_PERFCTR_RB_SEL_7"/>
-	<reg32 offset="0x8E18" name="RB_PERFCTR_CCU_SEL_0"/>
-	<reg32 offset="0x8E19" name="RB_PERFCTR_CCU_SEL_1"/>
-	<reg32 offset="0x8E1A" name="RB_PERFCTR_CCU_SEL_2"/>
-	<reg32 offset="0x8E1B" name="RB_PERFCTR_CCU_SEL_3"/>
-	<reg32 offset="0x8E1C" name="RB_PERFCTR_CCU_SEL_4"/>
-	<reg32 offset="0x8E2C" name="RB_PERFCTR_CMP_SEL_0"/>
-	<reg32 offset="0x8E2D" name="RB_PERFCTR_CMP_SEL_1"/>
-	<reg32 offset="0x8E2E" name="RB_PERFCTR_CMP_SEL_2"/>
-	<reg32 offset="0x8E2F" name="RB_PERFCTR_CMP_SEL_3"/>
-	<reg32 offset="0x8E3D" name="RB_RB_SUB_BLOCK_SEL_CNTL_CD"/>
-	<reg32 offset="0x8E50" name="RB_CONTEXT_SWITCH_GMEM_SAVE_RESTORE"/>
 	<reg32 offset="0x9E00" name="PC_DBG_ECO_CNTL"/>
 	<reg32 offset="0x9E01" name="PC_ADDR_MODE_CNTL"/>
 	<reg32 offset="0x9E34" name="PC_PERFCTR_PC_SEL_0"/>
@@ -1788,18 +1767,8 @@ to upconvert to 32b float internally?
 
 	<!-- move/rename these.. -->
 
-	<reg32 offset="0x88d4" name="RB_WINDOW_OFFSET2" type="adreno_reg_xy"/>
 	<reg32 offset="0xb4d1" name="SP_WINDOW_OFFSET" type="adreno_reg_xy"/>
 	<reg32 offset="0xb307" name="SP_TP_WINDOW_OFFSET" type="adreno_reg_xy"/>
-
-	<!--
-		from offset it seems it should be RB, but weird to duplicate
-		other regs from same block??
-	 -->
-	<reg32 offset="0x88d3" name="RB_BIN_CONTROL2">
-		<bitfield name="BINW" low="0" high="7" shr="5" type="uint"/>
-		<bitfield name="BINH" low="8" high="16" shr="4" type="uint"/>
-	</reg32>
 
 	<reg32 offset="0x0c02" name="VSC_BIN_SIZE">
 		<bitfield name="WIDTH" low="0" high="7" shr="5" type="uint"/>
@@ -2182,18 +2151,24 @@ to upconvert to 32b float internally?
 	(in particular, 0x8631/0x8632 have 0x3fff3fff mask and would be xy coords)
 	-->
 
-	<!-- same as GRAS_BIN_CONTROL: -->
+	<!-- same as GRAS_BIN_CONTROL, but without bit 27: -->
 	<reg32 offset="0x8800" name="RB_BIN_CONTROL">
-		<bitfield name="BINW" low="0" high="7" shr="5" type="uint"/>
-		<bitfield name="BINH" low="8" high="16" shr="4" type="uint"/>
+		<bitfield name="BINW" low="0" high="5" shr="5" type="uint"/>
+		<bitfield name="BINH" low="8" high="14" shr="4" type="uint"/>
 		<bitfield name="BINNING_PASS" pos="18" type="boolean"/>
+		<bitfield name="UNK19" pos="19"/>
+		<bitfield name="UNK20" pos="20"/>
 		<bitfield name="USE_VIZ" pos="21" type="boolean"/>
+		<bitfield name="UNK22" low="22" high="26"/>
 	</reg32>
 	<reg32 offset="0x8801" name="RB_RENDER_CNTL">
+		<bitfield name="UNK3" pos="3" type="boolean"/>
 		<!-- always set: ?? -->
 		<bitfield name="UNK4" pos="4" type="boolean"/>
+		<bitfield name="UNK5" low="5" high="6"/>
 		<!-- set during binning pass: -->
 		<bitfield name="BINNING" pos="7" type="boolean"/>
+		<bitfield name="UNK8" low="8" high="12"/>
 		<!-- bit seems to be set whenever depth buffer enabled: -->
 		<bitfield name="FLAG_DEPTH" pos="14" type="boolean"/>
 		<!-- bitmask of MRTs using UBWC flag buffer: -->
@@ -2201,6 +2176,8 @@ to upconvert to 32b float internally?
 	</reg32>
 	<reg32 offset="0x8802" name="RB_RAS_MSAA_CNTL">
 		<bitfield name="SAMPLES" low="0" high="1" type="a3xx_msaa_samples"/>
+		<bitfield name="UNK2" pos="2"/>
+		<bitfield name="UNK3" pos="3"/>
 	</reg32>
 	<reg32 offset="0x8803" name="RB_DEST_MSAA_CNTL">
 		<bitfield name="SAMPLES" low="0" high="1" type="a3xx_msaa_samples"/>
@@ -2210,7 +2187,7 @@ to upconvert to 32b float internally?
 	<reg32 offset="0x8804" name="RB_SAMPLE_CONFIG" type="a6xx_sample_config"/>
 	<reg32 offset="0x8805" name="RB_SAMPLE_LOCATION_0" type="a6xx_sample_locations"/>
 	<reg32 offset="0x8806" name="RB_SAMPLE_LOCATION_1" type="a6xx_sample_locations"/>
-
+	<!-- 0x8807-0x8808 invalid -->
 	<!--
 	note: maybe not actually called RB_RENDER_CONTROLn (since RB_RENDER_CNTL
 	name comes from kernel and is probably right)
@@ -2227,6 +2204,7 @@ to upconvert to 32b float internally?
 		mode, and frag_face
 		 -->
 		<bitfield name="SIZE" pos="3" type="boolean"/>
+		<bitfield name="UNK4" pos="4" type="boolean"/>
 		<!-- b5 set ofr interpolateAt{Offset,Sample}() if in per-sample mode -->
 		<bitfield name="SIZE_PERSAMP" pos="5" type="boolean"/>
 		<bitfield name="COORD_MASK" low="6" high="9" type="hex"/>
@@ -2235,18 +2213,22 @@ to upconvert to 32b float internally?
 	<reg32 offset="0x880a" name="RB_RENDER_CONTROL1">
 		<!-- enable bits for various FS sysvalue regs: -->
 		<bitfield name="SAMPLEMASK" pos="0" type="boolean"/>
+		<bitfield name="UNK1" pos="1" type="boolean"/>
 		<bitfield name="FACENESS" pos="2" type="boolean"/>
 		<bitfield name="SAMPLEID" pos="3" type="boolean"/>
 		<!-- b4 and b5 set in per-sample mode: -->
 		<bitfield name="UNK4" pos="4" type="boolean"/>
 		<bitfield name="UNK5" pos="5" type="boolean"/>
 		<bitfield name="SIZE" pos="6" type="boolean"/>
+		<bitfield name="UNK7" pos="7" type="boolean"/>
+		<bitfield name="UNK8" pos="8" type="boolean"/>
 	</reg32>
 
 	<reg32 offset="0x880b" name="RB_FS_OUTPUT_CNTL0">
 		<bitfield name="DUAL_COLOR_IN_ENABLE" pos="0" type="boolean"/>
 		<bitfield name="FRAG_WRITES_Z" pos="1" type="boolean"/>
 		<bitfield name="FRAG_WRITES_SAMPMASK" pos="2" type="boolean"/>
+		<bitfield name="UNK3" pos="3" type="boolean"/>
 	</reg32>
 	<reg32 offset="0x880c" name="RB_FS_OUTPUT_CNTL1">
 		<bitfield name="MRT" low="0" high="3" type="uint"/>
@@ -2286,17 +2268,18 @@ to upconvert to 32b float internally?
 	<reg32 offset="0x8810" name="RB_SAMPLE_CNTL">
 		<bitfield name="PER_SAMP_MODE" pos="0" type="boolean"/>
 	</reg32>
-	<reg32 offset="0x8811" name="RB_UNKNOWN_8811"/>
-
+	<reg32 offset="0x8811" name="RB_UNKNOWN_8811" low="4" high="6"/>
+	<!-- 0x8812-0x8817 invalid -->
 	<!-- always 0x0 ? -->
-	<reg32 offset="0x8818" name="RB_UNKNOWN_8818"/>
+	<reg32 offset="0x8818" name="RB_UNKNOWN_8818" low="0" high="6"/>
+	<!-- 0x8819-0x881e all 32 bits -->
 	<reg32 offset="0x8819" name="RB_UNKNOWN_8819"/>
 	<reg32 offset="0x881a" name="RB_UNKNOWN_881A"/>
 	<reg32 offset="0x881b" name="RB_UNKNOWN_881B"/>
 	<reg32 offset="0x881c" name="RB_UNKNOWN_881C"/>
 	<reg32 offset="0x881d" name="RB_UNKNOWN_881D"/>
 	<reg32 offset="0x881e" name="RB_UNKNOWN_881E"/>
-
+	<!-- 0x881f invalid -->
 	<array offset="0x8820" name="RB_MRT" stride="8" length="8">
 		<reg32 offset="0x0" name="CONTROL">
 			<bitfield name="BLEND" pos="0" type="boolean"/>
@@ -2316,14 +2299,15 @@ to upconvert to 32b float internally?
 		<reg32 offset="0x2" name="BUF_INFO">
 			<bitfield name="COLOR_FORMAT" low="0" high="7" type="a6xx_format"/>
 			<bitfield name="COLOR_TILE_MODE" low="8" high="9" type="a6xx_tile_mode"/>
+			<bitfield name="UNK10" pos="10"/>
 			<bitfield name="COLOR_SWAP" low="13" high="14" type="a3xx_color_swap"/>
 		</reg32>
 		<!--
 		at least in gmem, things seem to be aligned to pitch of 64..
 		maybe an artifact of tiled format used in gmem?
 		 -->
-		<reg32 offset="0x3" name="PITCH" shr="6" type="uint"/>
-		<reg32 offset="0x4" name="ARRAY_PITCH" shr="6" type="uint"/>
+		<reg32 offset="0x3" name="PITCH" shr="6" high="15" type="uint"/>
+		<reg32 offset="0x4" name="ARRAY_PITCH" shr="6" high="28" type="uint"/>
 		<!--
 		Compared to a5xx and before, we configure both a GMEM base and
 		external base.  Not sure if this is to facilitate GMEM save/
@@ -2333,9 +2317,10 @@ to upconvert to 32b float internally?
 		<reg32 offset="0x5" name="BASE_LO"/>
 		<reg32 offset="0x6" name="BASE_HI"/>
 
-		<reg64 offset="0x5" name="BASE" type="waddress"/>
+		<!-- maybe something in low bits since alignment of 1 doesn't make sense? -->
+		<reg64 offset="0x5" name="BASE" type="waddress" align="1"/>
 
-		<reg32 offset="0x7" name="BASE_GMEM"/>
+		<reg32 offset="0x7" name="BASE_GMEM" low="12" high="31" shr="12"/>
 	</array>
 
 	<reg32 offset="0x8860" name="RB_BLEND_RED_F32" type="float"/>
@@ -2356,6 +2341,7 @@ to upconvert to 32b float internally?
 		<bitfield name="ALPHA_TO_ONE" pos="11" type="boolean"/>
 		<bitfield name="SAMPLE_MASK" low="16" high="31"/>
 	</reg32>
+	<!-- 0x8866-0x886f invalid -->
 	<reg32 offset="0x8870" name="RB_DEPTH_PLANE_CNTL">
 		<bitfield name="Z_MODE" low="0" high="1" type="a6xx_ztest_mode"/>
 	</reg32>
@@ -2375,22 +2361,18 @@ to upconvert to 32b float internally?
 	<!-- duplicates GRAS_SU_DEPTH_BUFFER_INFO: -->
 	<reg32 offset="0x8872" name="RB_DEPTH_BUFFER_INFO">
 		<bitfield name="DEPTH_FORMAT" low="0" high="2" type="a6xx_depth_format"/>
+		<bitfield name="UNK3" low="3" high="4"/>
 	</reg32>
-<!-- probably: -->
-	<reg32 offset="0x8873" name="RB_DEPTH_BUFFER_PITCH" shr="6" type="uint">
-		<doc>stride of depth/stencil buffer</doc>
-	</reg32>
-	<reg32 offset="0x8874" name="RB_DEPTH_BUFFER_ARRAY_PITCH" shr="6" type="uint">
-		<doc>size of layer</doc>
-	</reg32>
+	<reg32 offset="0x8873" name="RB_DEPTH_BUFFER_PITCH" low="0" high="13" shr="6" type="uint"/>
+	<reg32 offset="0x8874" name="RB_DEPTH_BUFFER_ARRAY_PITCH" low="0" high="27" shr="6" type="uint"/>
 	<reg32 offset="0x8875" name="RB_DEPTH_BUFFER_BASE_LO"/>
 	<reg32 offset="0x8876" name="RB_DEPTH_BUFFER_BASE_HI"/>
-	<reg64 offset="0x8875" name="RB_DEPTH_BUFFER_BASE" type="waddress"/>
-	<reg32 offset="0x8877" name="RB_DEPTH_BUFFER_BASE_GMEM"/>
+	<reg64 offset="0x8875" name="RB_DEPTH_BUFFER_BASE" type="waddress" align="64"/>
+	<reg32 offset="0x8877" name="RB_DEPTH_BUFFER_BASE_GMEM" low="12" high="31" shr="12"/>
 
 	<reg32 offset="0x8878" name="RB_Z_BOUNDS_MIN" type="float"/>
 	<reg32 offset="0x8879" name="RB_Z_BOUNDS_MAX" type="float"/>
-
+	<!-- 0x887a-0x887f invalid -->
 	<reg32 offset="0x8880" name="RB_STENCIL_CONTROL">
 		<bitfield name="STENCIL_ENABLE" pos="0" type="boolean"/>
 		<bitfield name="STENCIL_ENABLE_BF" pos="1" type="boolean"/>
@@ -2412,17 +2394,14 @@ to upconvert to 32b float internally?
 	</reg32>
 	<reg32 offset="0x8881" name="RB_STENCIL_INFO">
 		<bitfield name="SEPARATE_STENCIL" pos="0" type="boolean"/>
+		<bitfield name="UNK1" pos="1" type="boolean"/>
 	</reg32>
-	<reg32 offset="0x8882" name="RB_STENCIL_BUFFER_PITCH" shr="6" type="uint">
-		<doc>stride of stencil buffer</doc>
-	</reg32>
-	<reg32 offset="0x8883" name="RB_STENCIL_BUFFER_ARRAY_PITCH" shr="6" type="uint">
-		<doc>size of layer</doc>
-	</reg32>
+	<reg32 offset="0x8882" name="RB_STENCIL_BUFFER_PITCH" low="0" high="11" shr="6" type="uint"/>
+	<reg32 offset="0x8883" name="RB_STENCIL_BUFFER_ARRAY_PITCH" low="0" high="23" shr="6" type="uint"/>
 	<reg32 offset="0x8884" name="RB_STENCIL_BUFFER_BASE_LO"/>
 	<reg32 offset="0x8885" name="RB_STENCIL_BUFFER_BASE_HI"/>
-	<reg64 offset="0x8884" name="RB_STENCIL_BUFFER_BASE" type="waddress"/>
-	<reg32 offset="0x8886" name="RB_STENCIL_BUFFER_BASE_GMEM"/>
+	<reg64 offset="0x8884" name="RB_STENCIL_BUFFER_BASE" type="waddress" align="64"/>
+	<reg32 offset="0x8886" name="RB_STENCIL_BUFFER_BASE_GMEM" low="12" high="31" shr="12"/>
 	<reg32 offset="0x8887" name="RB_STENCILREF">
 		<bitfield name="REF" low="0" high="7"/>
 		<bitfield name="BFREF" low="8" high="15"/>
@@ -2435,47 +2414,58 @@ to upconvert to 32b float internally?
 		<bitfield name="WRMASK" low="0" high="7"/>
 		<bitfield name="BFWRMASK" low="8" high="15"/>
 	</reg32>
-	<reg32 offset="0x8890" name="RB_WINDOW_OFFSET" type="adreno_reg_xy"/>
+	<!-- 0x888a-0x888f invalid -->
+	<reg32 offset="0x8890" name="RB_WINDOW_OFFSET" type="a6xx_reg_xy"/>
 	<reg32 offset="0x8891" name="RB_SAMPLE_COUNT_CONTROL">
+		<bitfield name="UNK0" pos="0" type="boolean"/>
 		<bitfield name="COPY" pos="1" type="boolean"/>
 	</reg32>
-
+	<!-- 0x8892-0x8897 invalid -->
 	<reg32 offset="0x8898" name="RB_LRZ_CNTL">
 		<bitfield name="ENABLE" pos="0" type="boolean"/>
 	</reg32>
-
+	<!-- 0x8899-0x88bf invalid -->
 	<!-- clamps depth value for depth test/write -->
 	<reg32 offset="0x88c0" name="RB_Z_CLAMP_MIN" type="float"/>
 	<reg32 offset="0x88c1" name="RB_Z_CLAMP_MAX" type="float"/>
-
-	<reg32 offset="0x88d0" name="RB_UNKNOWN_88D0"/>
-	<reg32 offset="0x88d1" name="RB_BLIT_SCISSOR_TL" type="adreno_reg_xy"/>
-	<reg32 offset="0x88d2" name="RB_BLIT_SCISSOR_BR" type="adreno_reg_xy"/>
-
+	<!-- 0x88c2-0x88cf invalid-->
+	<reg32 offset="0x88d0" name="RB_UNKNOWN_88D0">
+		<bitfield name="UNK0" low="0" high="12"/>
+		<bitfield name="UNK16" low="16" high="26"/>
+	</reg32>
+	<reg32 offset="0x88d1" name="RB_BLIT_SCISSOR_TL" type="a6xx_reg_xy"/>
+	<reg32 offset="0x88d2" name="RB_BLIT_SCISSOR_BR" type="a6xx_reg_xy"/>
+	<!-- weird to duplicate other regs from same block?? -->
+	<reg32 offset="0x88d3" name="RB_BIN_CONTROL2">
+		<bitfield name="BINW" low="0" high="5" shr="5" type="uint"/>
+		<bitfield name="BINH" low="8" high="14" shr="4" type="uint"/>
+	</reg32>
+	<reg32 offset="0x88d4" name="RB_WINDOW_OFFSET2" type="a6xx_reg_xy"/>
 	<reg32 offset="0x88d5" name="RB_MSAA_CNTL">
 		<bitfield name="SAMPLES" low="3" high="4" type="a3xx_msaa_samples"/>
 	</reg32>
-	<reg32 offset="0x88d6" name="RB_BLIT_BASE_GMEM"/>
+	<reg32 offset="0x88d6" name="RB_BLIT_BASE_GMEM" low="12" high="31" shr="12"/>
 	<!-- s/DST_FORMAT/DST_INFO/ probably: -->
 	<reg32 offset="0x88d7" name="RB_BLIT_DST_INFO">
 		<bitfield name="TILE_MODE" low="0" high="1" type="a6xx_tile_mode"/>
 		<bitfield name="FLAGS" pos="2" type="boolean"/>
 		<bitfield name="SAMPLES" low="3" high="4" type="a3xx_msaa_samples"/>
-		<bitfield name="COLOR_FORMAT" low="7" high="14" type="a6xx_format"/>
 		<bitfield name="COLOR_SWAP" low="5" high="6" type="a3xx_color_swap"/>
+		<bitfield name="COLOR_FORMAT" low="7" high="14" type="a6xx_format"/>
+		<bitfield name="UNK15" pos="15" type="boolean"/>
 	</reg32>
-	<reg64 offset="0x88d8" name="RB_BLIT_DST" type="waddress"/>
+	<reg64 offset="0x88d8" name="RB_BLIT_DST" type="waddress" align="64"/>
 	<reg32 offset="0x88d8" name="RB_BLIT_DST_LO"/>
 	<reg32 offset="0x88d9" name="RB_BLIT_DST_HI"/>
-	<reg32 offset="0x88da" name="RB_BLIT_DST_PITCH" shr="6" type="uint"/>
+	<reg32 offset="0x88da" name="RB_BLIT_DST_PITCH" low="0" high="15" shr="6" type="uint"/>
 	<!-- array-pitch is size of layer -->
-	<reg32 offset="0x88db" name="RB_BLIT_DST_ARRAY_PITCH" shr="6" type="uint"/>
-	<reg64 offset="0x88dc" name="RB_BLIT_FLAG_DST" type="waddress"/>
+	<reg32 offset="0x88db" name="RB_BLIT_DST_ARRAY_PITCH" low="0" high="28" shr="6" type="uint"/>
+	<reg64 offset="0x88dc" name="RB_BLIT_FLAG_DST" type="waddress" align="64"/>
 	<reg32 offset="0x88dc" name="RB_BLIT_FLAG_DST_LO"/>
 	<reg32 offset="0x88dd" name="RB_BLIT_FLAG_DST_HI"/>
 	<reg32 offset="0x88de" name="RB_BLIT_FLAG_DST_PITCH">
 		<bitfield name="PITCH" low="0" high="10" shr="6" type="uint"/>
-		<bitfield name="ARRAY_PITCH" low="11" high="21" shr="7" type="uint"/>
+		<bitfield name="ARRAY_PITCH" low="11" high="27" shr="7" type="uint"/>
 	</reg32>
 
 	<reg32 offset="0x88df" name="RB_BLIT_CLEAR_COLOR_DW0"/>
@@ -2498,32 +2488,48 @@ to upconvert to 32b float internally?
 				then probably a component mask, I always see 0xf
 		</doc>
 		<bitfield name="CLEAR_MASK" low="4" high="7"/>
+		<bitfield name="UNK8" low="8" high="9"/>
+		<bitfield name="UNK12" low="12" high="15"/>
 	</reg32>
-
+	<!-- 0x88e4-0x88ef invalid -->
 	<!-- always 0x0 ? -->
-	<reg32 offset="0x88f0" name="RB_UNKNOWN_88F0"/>
-
+	<reg32 offset="0x88f0" name="RB_UNKNOWN_88F0" low="0" high="11"/>
+	<!-- could be for separate stencil? (or may not be a flag buffer at all) -->
+	<reg64 offset="0x88f1" name="RB_UNK_FLAG_BUFFER_BASE" type="waddress" align="64"/>
+	<reg32 offset="0x88f3" name="RB_UNK_FLAG_BUFFER_PITCH">
+		<bitfield name="PITCH" low="0" high="10" shr="6" type="uint"/>
+		<bitfield name="ARRAY_PITCH" low="11" high="23" shr="7" type="uint"/>
+	</reg32>
+	<reg32 offset="0x88f4" name="RB_UNKNOWN_88F4" low="0" high="2"/>
+	<!-- 0x88f5-0x88ff invalid -->
 	<reg32 offset="0x8900" name="RB_DEPTH_FLAG_BUFFER_BASE_LO"/>
 	<reg32 offset="0x8901" name="RB_DEPTH_FLAG_BUFFER_BASE_HI"/>
-	<reg64 offset="0x8900" name="RB_DEPTH_FLAG_BUFFER_BASE" type="waddress"/>
+	<reg64 offset="0x8900" name="RB_DEPTH_FLAG_BUFFER_BASE" type="waddress" align="64"/>
 	<reg32 offset="0x8902" name="RB_DEPTH_FLAG_BUFFER_PITCH">
-		<bitfield name="PITCH" low="0" high="10" shr="6" type="uint"/>
-		<bitfield name="ARRAY_PITCH" low="11" high="24" shr="7" type="uint"/>
+		<bitfield name="PITCH" low="0" high="6" shr="6" type="uint"/>
+		<!-- TODO: actually part of array pitch -->
+		<bitfield name="UNK8" low="8" high="10"/>
+		<bitfield name="ARRAY_PITCH" low="11" high="27" shr="7" type="uint"/>
 	</reg32>
 	<array offset="0x8903" name="RB_MRT_FLAG_BUFFER" stride="3" length="8">
 		<reg32 offset="0" name="ADDR_LO"/>
 		<reg32 offset="1" name="ADDR_HI"/>
-		<reg64 offset="0" name="ADDR" type="waddress"/>
+		<reg64 offset="0" name="ADDR" type="waddress" align="64"/>
 		<reg32 offset="2" name="PITCH">
 			<bitfield name="PITCH" low="0" high="10" shr="6" type="uint"/>
-			<bitfield name="ARRAY_PITCH" low="11" high="24" shr="7" type="uint"/> <!-- ??? -->
+			<bitfield name="ARRAY_PITCH" low="11" high="28" shr="7" type="uint"/>
 		</reg32>
 	</array>
+	<!-- 0x891b-0x8926 invalid -->
 	<reg32 offset="0x8927" name="RB_SAMPLE_COUNT_ADDR_LO"/>
 	<reg32 offset="0x8928" name="RB_SAMPLE_COUNT_ADDR_HI"/>
+	<reg64 offset="0x8927" name="RB_SAMPLE_COUNT_ADDR" type="waddress" align="16"/>
+	<!-- 0x8929-0x89ff invalid -->
+
+	<!-- TODO: there are some registers in the 0x8a00-0x8bff range -->
 
 	<reg32 offset="0x8c00" name="RB_2D_BLIT_CNTL" type="a6xx_2d_blit_cntl"/>
-	<reg32 offset="0x8c01" name="RB_UNKNOWN_8C01"/>
+	<reg32 offset="0x8c01" name="RB_2D_UNKNOWN_8C01" low="0" high="31"/>
 
 	<bitset name="a6xx_2d_surf_info" inline="yes">
 		<bitfield name="COLOR_FORMAT" low="0" high="7" type="a6xx_format"/>
@@ -2539,33 +2545,40 @@ to upconvert to 32b float internally?
 		<bitfield name="UNK22" pos="22" type="boolean"/>
 	</bitset>
 
+	<!-- 0x8c02-0x8c16 invalid -->
+	<!-- TODO: RB_2D_DST_INFO has 17 valid bits (doesn't match a6xx_2d_surf_info) -->
 	<reg32 offset="0x8c17" name="RB_2D_DST_INFO" type="a6xx_2d_surf_info"/>
 	<reg32 offset="0x8c18" name="RB_2D_DST_LO"/>
 	<reg32 offset="0x8c19" name="RB_2D_DST_HI"/>
-	<reg64 offset="0x8c18" name="RB_2D_DST" type="waddress"/>
-	<reg32 offset="0x8c1a" name="RB_2D_DST_SIZE">
-		<bitfield name="PITCH" low="0" high="15" shr="6" type="uint"/>
-	</reg32>
+	<reg64 offset="0x8c18" name="RB_2D_DST" type="waddress" align="64"/>
+	<reg32 offset="0x8c1a" name="RB_2D_DST_PITCH" low="0" high="15" shr="6" type="uint"/>
+	<!-- this is a guess but seems likely (for NV12/IYUV): -->
+	<reg64 offset="0x8c1b" name="RB_2D_DST_PLANE1" type="waddress" align="64"/>
+	<reg32 offset="0x8c1d" name="RB_2D_DST_PLANE_PITCH" low="0" high="15" shr="6" type="uint"/>
+	<reg64 offset="0x8c1e" name="RB_2D_DST_PLANE2" type="waddress" align="64"/>
 
 	<reg32 offset="0x8c20" name="RB_2D_DST_FLAGS_LO"/>
 	<reg32 offset="0x8c21" name="RB_2D_DST_FLAGS_HI"/>
-	<reg64 offset="0x8c20" name="RB_2D_DST_FLAGS" type="waddress"/>
-	<reg32 offset="0x8c22" name="RB_2D_DST_FLAGS_PITCH">
-		<bitfield name="PITCH" low="0" high="10" shr="6" type="uint"/>
-		<bitfield name="ARRAY_PITCH" low="11" high="21" shr="7" type="uint"/>
-	</reg32>
+	<reg64 offset="0x8c20" name="RB_2D_DST_FLAGS" type="waddress" align="64"/>
+	<reg32 offset="0x8c22" name="RB_2D_DST_FLAGS_PITCH" low="0" high="7" shr="6" type="uint"/>
+	<!-- this is a guess but seems likely (for NV12 with UBWC): -->
+	<reg64 offset="0x8c23" name="RB_2D_DST_FLAGS_PLANE" type="waddress" align="64"/>
+	<reg32 offset="0x8c25" name="RB_2D_DST_FLAGS_PLANE_PITCH" low="0" high="7" shr="6" type="uint"/>
 
+	<!-- TODO: 0x8c26-0x8c33 are all full 32-bit registers -->
 	<!-- unlike a5xx, these are per channel values rather than packed -->
 	<reg32 offset="0x8c2c" name="RB_2D_SRC_SOLID_C0"/>
 	<reg32 offset="0x8c2d" name="RB_2D_SRC_SOLID_C1"/>
 	<reg32 offset="0x8c2e" name="RB_2D_SRC_SOLID_C2"/>
 	<reg32 offset="0x8c2f" name="RB_2D_SRC_SOLID_C3"/>
+	<!-- 0x8c34-0x8dff invalid -->
 
-	<!-- always 0x1 ? -->
+	<!-- always 0x1 ? either doesn't exist for a650 or write-only: -->
 	<reg32 offset="0x8e01" name="RB_UNKNOWN_8E01"/>
-
-	<reg32 offset="0x8e04" name="RB_UNKNOWN_8E04"/>
-
+	<!-- 0x8e00-0x8e03 invalid -->
+	<reg32 offset="0x8e04" name="RB_UNKNOWN_8E04"/> <!-- TODO: valid mask 0xfffffeff -->
+	<reg32 offset="0x8e05" name="RB_ADDR_MODE_CNTL" pos="0" type="boolean"/>
+	<!-- 0x8e06 invalid -->
 	<reg32 offset="0x8e07" name="RB_CCU_CNTL">
 		<!-- offset into GMEM for something.
 			important for sysmem path
@@ -2574,11 +2587,54 @@ to upconvert to 32b float internally?
 			a618: 0x7c000 a630/a640: 0xf8000 a650: 0x114000
 			SYSMEM path values:
 			a618: 0x10000 a630/a640: 0x20000 a650: 0x30000
+			TODO: valid mask 0xfffffc1f
 		-->
 		<bitfield name="OFFSET" low="23" high="31" shr="12" type="hex"/>
 		<bitfield name="GMEM" pos="22" type="boolean"/> <!-- set for GMEM path -->
 		<bitfield name="UNK2" pos="2" type="boolean"/> <!-- sometimes set with GMEM? -->
 	</reg32>
+	<reg32 offset="0x8e08" name="RB_NC_MODE_CNTL">
+		<bitfield name="MODE" pos="0" type="boolean"/>
+		<bitfield name="LOWER_BIT" low="1" high="2" type="uint"/>
+		<bitfield name="MIN_ACCESS_LENGTH" pos="3" type="boolean"/> <!-- true=64b false=32b -->
+		<bitfield name="AMSBC" pos="4" type="boolean"/>
+		<bitfield name="UPPER_BIT" pos="10" type="uint"/>
+		<bitfield name="RGB565_PREDICATOR" pos="11" type="boolean"/>
+		<bitfield name="UNK12" low="12" high="13"/>
+	</reg32>
+	<!-- 0x8e09-0x8e0f invalid -->
+	<reg32 offset="0x8e10" name="RB_PERFCTR_RB_SEL_0"/>
+	<reg32 offset="0x8e11" name="RB_PERFCTR_RB_SEL_1"/>
+	<reg32 offset="0x8e12" name="RB_PERFCTR_RB_SEL_2"/>
+	<reg32 offset="0x8e13" name="RB_PERFCTR_RB_SEL_3"/>
+	<reg32 offset="0x8e14" name="RB_PERFCTR_RB_SEL_4"/>
+	<reg32 offset="0x8e15" name="RB_PERFCTR_RB_SEL_5"/>
+	<reg32 offset="0x8e16" name="RB_PERFCTR_RB_SEL_6"/>
+	<reg32 offset="0x8e17" name="RB_PERFCTR_RB_SEL_7"/>
+	<reg32 offset="0x8e18" name="RB_PERFCTR_CCU_SEL_0"/>
+	<reg32 offset="0x8e19" name="RB_PERFCTR_CCU_SEL_1"/>
+	<reg32 offset="0x8e1a" name="RB_PERFCTR_CCU_SEL_2"/>
+	<reg32 offset="0x8e1b" name="RB_PERFCTR_CCU_SEL_3"/>
+	<reg32 offset="0x8e1c" name="RB_PERFCTR_CCU_SEL_4"/>
+	<!-- 0x8e1d-0x8e1f invalid -->
+	<!-- 0x8e20-0x8e25 more perfcntr sel? -->
+	<!-- 0x8e26-0x8e27 invalid -->
+	<reg32 offset="0x8e28" name="RB_UNKNOWN_8E28" low="0" high="10"/>
+	<!-- 0x8e29-0x8e2b invalid -->
+	<reg32 offset="0x8e2c" name="RB_PERFCTR_CMP_SEL_0"/>
+	<reg32 offset="0x8e2d" name="RB_PERFCTR_CMP_SEL_1"/>
+	<reg32 offset="0x8e2e" name="RB_PERFCTR_CMP_SEL_2"/>
+	<reg32 offset="0x8e2f" name="RB_PERFCTR_CMP_SEL_3"/>
+	<reg32 offset="0x8e3b" name="RB_RB_SUB_BLOCK_SEL_CNTL_HOST"/>
+	<reg32 offset="0x8e3d" name="RB_RB_SUB_BLOCK_SEL_CNTL_CD"/>
+	<!-- 0x8e3e-0x8e4f invalid -->
+	<!-- GMEM save/restore for preemption: -->
+	<reg32 offset="0x8e50" name="RB_CONTEXT_SWITCH_GMEM_SAVE_RESTORE" pos="0" type="boolean"/>
+	<!-- address for GMEM save/restore? -->
+	<reg32 offset="0x8e51" name="RB_UNKNOWN_8E51" type="waddress" align="1"/>
+	<!-- 0x8e53-0x8e7f invalid -->
+	<!-- 0x8e80-0x8e83 are valid -->
+	<!-- 0x8e84-0x90ff invalid -->
 
 	<reg32 offset="0x9100" name="VPC_UNKNOWN_9100"/>
 
