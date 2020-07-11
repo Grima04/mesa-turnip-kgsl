@@ -176,13 +176,15 @@ compile_variant(struct ir3_shader_variant *v)
 {
 	int ret = ir3_compile_shader_nir(v->shader->compiler, v);
 	if (ret) {
-		debug_error("compile failed!");
+		_debug_printf("compile failed! (%s:%s)", v->shader->nir->info.name,
+				v->shader->nir->info.label);
 		return false;
 	}
 
 	assemble_variant(v);
 	if (!v->bin) {
-		debug_error("assemble failed!");
+		_debug_printf("assemble failed! (%s:%s)", v->shader->nir->info.name,
+				v->shader->nir->info.label);
 		return false;
 	}
 
