@@ -447,9 +447,11 @@ ir3_emit_vs_driver_params(const struct ir3_shader_variant *v,
 	const struct ir3_const_state *const_state = ir3_const_state(v);
 	uint32_t offset = const_state->offsets.driver_param;
 	uint32_t vertex_params[IR3_DP_VS_COUNT] = {
-			[IR3_DP_VTXID_BASE] = info->index_size ?
+			[IR3_DP_DRAWID]      = 0,  /* filled by hw (CP_DRAW_INDIRECT_MULTI) */
+			[IR3_DP_VTXID_BASE]  = info->index_size ?
 					info->index_bias : info->start,
-					[IR3_DP_VTXCNT_MAX] = max_tf_vtx(ctx, v),
+			[IR3_DP_INSTID_BASE] = info->start_instance,
+			[IR3_DP_VTXCNT_MAX]  = max_tf_vtx(ctx, v),
 	};
 	if (v->key.ucp_enables) {
 		struct pipe_clip_state *ucp = &ctx->ucp;
