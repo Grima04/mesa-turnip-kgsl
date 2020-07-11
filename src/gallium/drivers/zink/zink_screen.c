@@ -733,8 +733,10 @@ load_device_extensions(struct zink_screen *screen)
 {
 #define GET_PROC_ADDR(x) do {                                               \
       screen->vk_##x = (PFN_vk##x)vkGetDeviceProcAddr(screen->dev, "vk"#x); \
-      if (!screen->vk_##x)                                                  \
+      if (!screen->vk_##x) {                                                \
+         debug_printf("vkGetDeviceProcAddr failed: vk"#x"\n");              \
          return false;                                                      \
+      } \
    } while (0)
 
 #define GET_PROC_ADDR_INSTANCE(x) do {                                          \
