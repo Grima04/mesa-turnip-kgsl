@@ -1027,16 +1027,23 @@ fd_resource_from_handle(struct pipe_screen *pscreen,
 	slice->offset = handle->offset;
 	slice->size0 = handle->stride * prsc->height0;
 
-	uint32_t pitchalign = fd_screen(pscreen)->gmem_alignw * rsc->layout.cpp;
-
-	/* pitchalign is 64-bytes for linear formats on a6xx
-	 * layout_resource_for_modifier will validate tiled pitch
+	/* use a pitchalign of gmem_alignw pixels, because GMEM resolve for
+	 * lower alignments is not implemented (but possible for a6xx at least)
+	 *
+	 * for UBWC-enabled resources, layout_resource_for_modifier will further
+	 * validate the pitch and set the right pitchalign
 	 */
-	if (is_a6xx(screen))
-		pitchalign = 64;
+	rsc->layout.pitchalign =
+		fdl_cpp_shift(&rsc->layout) + util_logbase2(screen->gmem_alignw);
 
-	if ((rsc->layout.pitch0 < align(prsc->width0 * rsc->layout.cpp, pitchalign)) ||
-			(rsc->layout.pitch0 & (pitchalign - 1)))
+	/* apply the minimum pitchalign (note: actually 4 for a3xx but doesn't matter) */
+	if (is_a6xx(screen) || is_a5xx(screen))
+		rsc->layout.pitchalign = MAX2(rsc->layout.pitchalign, 6);
+	else
+		rsc->layout.pitchalign = MAX2(rsc->layout.pitchalign, 5);
+
+	if (rsc->layout.pitch0 < (prsc->width0 * rsc->layout.cpp) ||
+		fd_resource_pitch(rsc, 0) != rsc->layout.pitch0)
 		goto fail;
 
 	assert(rsc->layout.cpp);
