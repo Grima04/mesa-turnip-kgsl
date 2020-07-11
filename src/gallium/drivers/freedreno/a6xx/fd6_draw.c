@@ -178,9 +178,15 @@ fd6_draw_vbo(struct fd_context *ctx, const struct pipe_draw_info *info,
 		.primitive_restart = info->primitive_restart && info->index_size,
 	};
 
+	if (!(ctx->prog.vs && ctx->prog.fs))
+		return false;
+
 	if (info->mode == PIPE_PRIM_PATCHES) {
 		emit.key.hs = ctx->prog.hs;
 		emit.key.ds = ctx->prog.ds;
+
+		if (!(ctx->prog.hs && ctx->prog.ds))
+			return false;
 
 		shader_info *ds_info = &emit.key.ds->nir->info;
 		emit.key.key.tessellation = ir3_tess_mode(ds_info->tess.primitive_mode);
