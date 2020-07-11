@@ -592,8 +592,7 @@ tu6_emit_tile_select(struct tu_cmd_buffer *cmd,
    tu6_emit_window_scissor(cs, x1, y1, x2, y2);
    tu6_emit_window_offset(cs, x1, y1);
 
-   tu_cs_emit_regs(cs,
-                   A6XX_VPC_SO_OVERRIDE(.so_disable = false));
+   tu_cs_emit_regs(cs, A6XX_VPC_SO_DISABLE(false));
 
    if (use_hw_binning(cmd)) {
       tu_cs_emit_pkt7(cs, CP_WAIT_FOR_ME, 0);
@@ -785,12 +784,10 @@ tu6_init_hw(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
 
    tu_cs_emit_write_reg(cs, REG_A6XX_VPC_UNKNOWN_9107, 0);
 
-   tu_cs_emit_write_reg(cs, REG_A6XX_VPC_UNKNOWN_9236,
-                        A6XX_VPC_UNKNOWN_9236_POINT_COORD_INVERT(0));
+   tu_cs_emit_regs(cs, A6XX_VPC_POINT_COORD_INVERT(false));
    tu_cs_emit_write_reg(cs, REG_A6XX_VPC_UNKNOWN_9300, 0);
 
-   tu_cs_emit_write_reg(cs, REG_A6XX_VPC_SO_OVERRIDE,
-                        A6XX_VPC_SO_OVERRIDE_SO_DISABLE);
+   tu_cs_emit_regs(cs, A6XX_VPC_SO_DISABLE(true));
 
    tu_cs_emit_write_reg(cs, REG_A6XX_PC_UNKNOWN_9801, 0);
    tu_cs_emit_write_reg(cs, REG_A6XX_PC_UNKNOWN_9980, 0);
@@ -1171,8 +1168,7 @@ tu6_sysmem_render_begin(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
    tu_emit_cache_flush_ccu(cmd, cs, TU_CMD_CCU_SYSMEM);
 
    /* enable stream-out, with sysmem there is only one pass: */
-   tu_cs_emit_regs(cs,
-                   A6XX_VPC_SO_OVERRIDE(.so_disable = false));
+   tu_cs_emit_regs(cs, A6XX_VPC_SO_DISABLE(false));
 
    tu_cs_emit_pkt7(cs, CP_SET_VISIBILITY_OVERRIDE, 1);
    tu_cs_emit(cs, 0x1);
@@ -1218,7 +1214,7 @@ tu6_tile_render_begin(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
    const struct tu_framebuffer *fb = cmd->state.framebuffer;
    if (use_hw_binning(cmd)) {
       /* enable stream-out during binning pass: */
-      tu_cs_emit_regs(cs, A6XX_VPC_SO_OVERRIDE(.so_disable=false));
+      tu_cs_emit_regs(cs, A6XX_VPC_SO_DISABLE(false));
 
       tu6_emit_bin_size(cs, fb->tile0.width, fb->tile0.height,
                         A6XX_RB_BIN_CONTROL_BINNING_PASS | 0x6000000);
@@ -1228,7 +1224,7 @@ tu6_tile_render_begin(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
       tu6_emit_binning_pass(cmd, cs);
 
       /* and disable stream-out for draw pass: */
-      tu_cs_emit_regs(cs, A6XX_VPC_SO_OVERRIDE(.so_disable=true));
+      tu_cs_emit_regs(cs, A6XX_VPC_SO_DISABLE(true));
 
       tu6_emit_bin_size(cs, fb->tile0.width, fb->tile0.height,
                         A6XX_RB_BIN_CONTROL_USE_VIZ | 0x6000000);
@@ -1244,7 +1240,7 @@ tu6_tile_render_begin(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
       tu_cs_emit(cs, 0x1);
    } else {
       /* no binning pass, so enable stream-out for draw pass:: */
-      tu_cs_emit_regs(cs, A6XX_VPC_SO_OVERRIDE(.so_disable=false));
+      tu_cs_emit_regs(cs, A6XX_VPC_SO_DISABLE(false));
 
       tu6_emit_bin_size(cs, fb->tile0.width, fb->tile0.height, 0x6000000);
    }

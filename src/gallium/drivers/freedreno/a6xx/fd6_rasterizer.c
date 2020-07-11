@@ -107,7 +107,7 @@ __fd6_setup_rasterizer_stateobj(struct fd_context *ctx,
 		break;
 	}
 
-	OUT_REG(ring, A6XX_VPC_POLYGON_MODE(.mode = mode));
+	OUT_REG(ring, A6XX_VPC_POLYGON_MODE(mode));
 	OUT_REG(ring, A6XX_PC_POLYGON_MODE(.mode = mode));
 
 	return ring;

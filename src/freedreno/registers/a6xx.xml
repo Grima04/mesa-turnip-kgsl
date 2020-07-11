@@ -1620,13 +1620,6 @@ to upconvert to 32b float internally?
 	<reg32 offset="0xA615" name="VFD_PERFCTR_VFD_SEL_5"/>
 	<reg32 offset="0xA616" name="VFD_PERFCTR_VFD_SEL_6"/>
 	<reg32 offset="0xA617" name="VFD_PERFCTR_VFD_SEL_7"/>
-	<reg32 offset="0x9601" name="VPC_ADDR_MODE_CNTL"/>
-	<reg32 offset="0x9604" name="VPC_PERFCTR_VPC_SEL_0"/>
-	<reg32 offset="0x9605" name="VPC_PERFCTR_VPC_SEL_1"/>
-	<reg32 offset="0x9606" name="VPC_PERFCTR_VPC_SEL_2"/>
-	<reg32 offset="0x9607" name="VPC_PERFCTR_VPC_SEL_3"/>
-	<reg32 offset="0x9608" name="VPC_PERFCTR_VPC_SEL_4"/>
-	<reg32 offset="0x9609" name="VPC_PERFCTR_VPC_SEL_5"/>
 	<reg32 offset="0x0E00" name="UCHE_ADDR_MODE_CNTL"/>
 	<reg32 offset="0x0E01" name="UCHE_MODE_CNTL"/>
 	<reg32 offset="0x0E05" name="UCHE_WRITE_RANGE_MAX_LO"/>
@@ -2636,7 +2629,10 @@ to upconvert to 32b float internally?
 	<!-- 0x8e80-0x8e83 are valid -->
 	<!-- 0x8e84-0x90ff invalid -->
 
-	<reg32 offset="0x9100" name="VPC_UNKNOWN_9100"/>
+	<!-- 0x9000-0x90ff invalid -->
+
+	<!-- something to do with geometry shader: -->
+	<reg32 offset="0x9100" name="VPC_UNKNOWN_9100" low="0" high="7"/>
 
 	<bitset name="a6xx_vpc_xs_clip_cntl" inline="yes">
 		<bitfield name="CLIP_MASK" low="0" high="7" type="uint"/>
@@ -2653,18 +2649,18 @@ to upconvert to 32b float internally?
 
 	<bitset name="a6xx_vpc_xs_layer_cntl" inline="yes">
 		<bitfield name="LAYERLOC" low="0" high="7" type="uint"/>
-		<bitfield name="UNKLOC" low="8" high="15" type="uint"/>
+		<bitfield name="VIEWLOC" low="8" high="15" type="uint"/>
 	</bitset>
 
 	<reg32 offset="0x9104" name="VPC_VS_LAYER_CNTL" type="a6xx_vpc_xs_layer_cntl"/>
 	<reg32 offset="0x9105" name="VPC_GS_LAYER_CNTL" type="a6xx_vpc_xs_layer_cntl"/>
 	<reg32 offset="0x9106" name="VPC_DS_LAYER_CNTL" type="a6xx_vpc_xs_layer_cntl"/>
 
-	<reg32 offset="0x9107" name="VPC_UNKNOWN_9107"/>
+	<reg32 offset="0x9107" name="VPC_UNKNOWN_9107" pos="2"/>
 	<reg32 offset="0x9108" name="VPC_POLYGON_MODE">
 		<bitfield name="MODE" low="0" high="1" type="a6xx_polygon_mode"/>
 	</reg32>
-
+	<!-- 0x9109-0x91ff invalid -->
 	<array offset="0x9200" name="VPC_VARYING_INTERP" stride="1" length="8">
 		<reg32 offset="0x0" name="MODE"/>
 	</array>
@@ -2673,8 +2669,8 @@ to upconvert to 32b float internally?
 	</array>
 
 	<!-- always 0x0 -->
-	<reg32 offset="0x9210" name="VPC_UNKNOWN_9210"/>
-	<reg32 offset="0x9211" name="VPC_UNKNOWN_9211"/>
+	<reg32 offset="0x9210" name="VPC_UNKNOWN_9210" low="0" high="31"/>
+	<reg32 offset="0x9211" name="VPC_UNKNOWN_9211" low="0" high="31"/>
 
 	<array offset="0x9212" name="VPC_VAR" stride="1" length="4">
 		<!-- one bit per varying component: -->
@@ -2682,9 +2678,11 @@ to upconvert to 32b float internally?
 	</array>
 
 	<reg32 offset="0x9216" name="VPC_SO_CNTL">
+		<bitfield name="UNK0" low="0" high="7"/>
 		<!-- always 0x10000 when SO enabled.. -->
 		<bitfield name="ENABLE" pos="16" type="boolean"/>
 	</reg32>
+	<!-- special register, write multiple times to load SO program (not readable) -->
 	<reg32 offset="0x9217" name="VPC_SO_PROG">
 		<bitfield name="A_BUF" low="0" high="1" type="uint"/>
 		<bitfield name="A_OFF" low="2" high="10" shr="2" type="uint"/>
@@ -2696,26 +2694,26 @@ to upconvert to 32b float internally?
 
 	<reg32 offset="0x9218" name="VPC_SO_STREAM_COUNTS_LO"/>
 	<reg32 offset="0x9219" name="VPC_SO_STREAM_COUNTS_HI"/>
+	<reg32 offset="0x9218" name="VPC_SO_STREAM_COUNTS" type="waddress" align="32"/>
 
 	<array offset="0x921a" name="VPC_SO" stride="7" length="4">
-		<reg64 offset="0" name="BUFFER_BASE" type="waddress"/>
+		<reg64 offset="0" name="BUFFER_BASE" type="waddress" align="32"/>
 		<reg32 offset="0" name="BUFFER_BASE_LO"/>
 		<reg32 offset="1" name="BUFFER_BASE_HI"/>
-		<reg32 offset="2" name="BUFFER_SIZE"/>
-		<reg32 offset="3" name="NCOMP"/>  <!-- component count -->
-		<reg32 offset="4" name="BUFFER_OFFSET"/>
-		<reg64 offset="5" name="FLUSH_BASE" type="waddress"/>
+		<reg32 offset="2" name="BUFFER_SIZE" low="2" high="31" shr="2"/>
+		<reg32 offset="3" name="NCOMP" low="0" high="9"/>  <!-- component count -->
+		<reg32 offset="4" name="BUFFER_OFFSET" low="2" high="31" shr="2"/>
+		<reg64 offset="5" name="FLUSH_BASE" type="waddress" align="32"/>
 		<reg32 offset="5" name="FLUSH_BASE_LO"/>
 		<reg32 offset="6" name="FLUSH_BASE_HI"/>
 	</array>
 
-	<!-- always 0x0 ? -->
-	<reg32 offset="0x9236" name="VPC_UNKNOWN_9236">
-		<bitfield name="POINT_COORD_INVERT" pos="0" type="uint"/>
+	<reg32 offset="0x9236" name="VPC_POINT_COORD_INVERT">
+		<bitfield name="INVERT" pos="0" type="boolean"/>
 	</reg32>
-
+	<!-- 0x9237-0x92ff invalid -->
 	<!-- always 0x0 ? -->
-	<reg32 offset="0x9300" name="VPC_UNKNOWN_9300"/>
+	<reg32 offset="0x9300" name="VPC_UNKNOWN_9300" low="0" high="2"/>
 
 	<bitset name="a6xx_vpc_xs_pack" inline="yes">
 		<doc>
@@ -2726,6 +2724,7 @@ to upconvert to 32b float internally?
 		<bitfield name="STRIDE_IN_VPC" low="0" high="7" type="uint"/>
 		<bitfield name="POSITIONLOC" low="8" high="15" type="uint"/>
 		<bitfield name="PSIZELOC" low="16" high="23" type="uint"/>
+		<bitfield name="UNK24" low="24" high="27"/>
 	</bitset>
 	<reg32 offset="0x9301" name="VPC_VS_PACK" type="a6xx_vpc_xs_pack"/>
 	<reg32 offset="0x9302" name="VPC_GS_PACK" type="a6xx_vpc_xs_pack"/>
@@ -2740,20 +2739,33 @@ to upconvert to 32b float internally?
 	</reg32>
 
 	<reg32 offset="0x9305" name="VPC_SO_BUF_CNTL">
+		<!-- TODO: the first 12 bits are valid, likely 3-bit enum instead of bools -->
 		<bitfield name="BUF0" pos="0" type="boolean"/>
 		<bitfield name="BUF1" pos="3" type="boolean"/>
 		<bitfield name="BUF2" pos="6" type="boolean"/>
 		<bitfield name="BUF3" pos="9" type="boolean"/>
 		<bitfield name="ENABLE" pos="15" type="boolean"/>
+		<bitfield name="UNK16" low="16" high="19"/>
 	</reg32>
-	<reg32 offset="0x9306" name="VPC_SO_OVERRIDE">
-		<bitfield name="SO_DISABLE" pos="0" type="boolean"/>
+	<reg32 offset="0x9306" name="VPC_SO_DISABLE">
+		<bitfield name="DISABLE" pos="0" type="boolean"/>
 	</reg32>
+	<!-- 0x9307-0x95ff invalid -->
 
-	<!-- always 0x0 ? -->
-	<reg32 offset="0x9600" name="VPC_UNKNOWN_9600"/>
-	<!-- always 0x0 ? -->
-	<reg32 offset="0x9602" name="VPC_UNKNOWN_9602"/>
+	<!-- TODO: 0x9600-0x97ff range -->
+	<reg32 offset="0x9600" name="VPC_UNKNOWN_9600"/> <!-- always 0x0 ? TODO: 0x1fbf37ff valid mask -->
+	<reg32 offset="0x9601" name="VPC_ADDR_MODE_CNTL" pos="0" type="boolean"/>
+	<reg32 offset="0x9602" name="VPC_UNKNOWN_9602" pos="0"/> <!-- always 0x0 ? -->
+	<reg32 offset="0x9603" name="VPC_UNKNOWN_9603" low="0" high="26"/>
+	<reg32 offset="0x9604" name="VPC_PERFCTR_VPC_SEL_0"/>
+	<reg32 offset="0x9605" name="VPC_PERFCTR_VPC_SEL_1"/>
+	<reg32 offset="0x9606" name="VPC_PERFCTR_VPC_SEL_2"/>
+	<reg32 offset="0x9607" name="VPC_PERFCTR_VPC_SEL_3"/>
+	<reg32 offset="0x9608" name="VPC_PERFCTR_VPC_SEL_4"/>
+	<reg32 offset="0x9609" name="VPC_PERFCTR_VPC_SEL_5"/>
+	<!-- 0x960a-0x9623 invalid -->
+	<!-- TODO: regs from 0x9624-0x963a -->
+	<!-- 0x963b-0x97ff invalid -->
 
 	<reg32 offset="0x9800" name="PC_TESS_NUM_VERTEX"/>
 

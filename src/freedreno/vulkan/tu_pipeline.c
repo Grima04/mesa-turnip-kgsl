@@ -2235,7 +2235,7 @@ tu_pipeline_builder_parse_rasterization(struct tu_pipeline_builder *builder,
                      .vp_clip_code_ignore = 1));
 
    tu_cs_emit_regs(&cs,
-                   A6XX_VPC_POLYGON_MODE(.mode = mode));
+                   A6XX_VPC_POLYGON_MODE(mode));
 
    tu_cs_emit_regs(&cs,
                    A6XX_PC_POLYGON_MODE(.mode = mode));

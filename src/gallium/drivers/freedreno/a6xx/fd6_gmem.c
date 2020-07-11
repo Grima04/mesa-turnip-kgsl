@@ -705,8 +705,7 @@ fd6_emit_tile_init(struct fd_batch *batch)
 
 	if (use_hw_binning(batch)) {
 		/* enable stream-out during binning pass: */
-		OUT_PKT4(ring, REG_A6XX_VPC_SO_OVERRIDE, 1);
-		OUT_RING(ring, 0);
+		OUT_REG(ring, A6XX_VPC_SO_DISABLE(false));
 
 		set_bin_size(ring, gmem->bin_w, gmem->bin_h,
 				A6XX_RB_BIN_CONTROL_BINNING_PASS | 0x6000000);
@@ -714,8 +713,7 @@ fd6_emit_tile_init(struct fd_batch *batch)
 		emit_binning_pass(batch);
 
 		/* and disable stream-out for draw pass: */
-		OUT_PKT4(ring, REG_A6XX_VPC_SO_OVERRIDE, 1);
-		OUT_RING(ring, A6XX_VPC_SO_OVERRIDE_SO_DISABLE);
+		OUT_REG(ring, A6XX_VPC_SO_DISABLE(true));
 
 		/*
 		 * NOTE: even if we detect VSC overflow and disable use of
@@ -742,8 +740,7 @@ fd6_emit_tile_init(struct fd_batch *batch)
 		OUT_RING(ring, 0x1);
 	} else {
 		/* no binning pass, so enable stream-out for draw pass:: */
-		OUT_PKT4(ring, REG_A6XX_VPC_SO_OVERRIDE, 1);
-		OUT_RING(ring, 0);
+		OUT_REG(ring, A6XX_VPC_SO_DISABLE(false));
 
 		set_bin_size(ring, gmem->bin_w, gmem->bin_h, 0x6000000);
 	}
@@ -1406,8 +1403,7 @@ fd6_emit_sysmem_prep(struct fd_batch *batch)
 	OUT_RING(ring, fd6_context(batch->ctx)->magic.RB_CCU_CNTL_bypass);
 
 	/* enable stream-out, with sysmem there is only one pass: */
-	OUT_PKT4(ring, REG_A6XX_VPC_SO_OVERRIDE, 1);
-	OUT_RING(ring, 0);
+	OUT_REG(ring, A6XX_VPC_SO_DISABLE(false));
 
 	OUT_PKT7(ring, CP_SET_VISIBILITY_OVERRIDE, 1);
 	OUT_RING(ring, 0x1);
