@@ -1571,7 +1571,6 @@ static int gfx9_compute_miptree(struct ac_addrlib *addrlib,
 
 			din.dccKeyFlags.pipeAligned = !in->flags.metaPipeUnaligned;
 			din.dccKeyFlags.rbAligned = !in->flags.metaRbUnaligned;
-			din.colorFlags = in->flags;
 			din.resourceType = in->resourceType;
 			din.swizzleMode = in->swizzleMode;
 			din.bpp = in->bpp;
@@ -1830,7 +1829,6 @@ static int gfx9_compute_miptree(struct ac_addrlib *addrlib,
 
 			cin.cMaskFlags.pipeAligned = 1;
 			cin.cMaskFlags.rbAligned = 1;
-			cin.colorFlags = in->flags;
 			cin.resourceType = in->resourceType;
 			cin.unalignedWidth = in->width;
 			cin.unalignedHeight = in->height;
