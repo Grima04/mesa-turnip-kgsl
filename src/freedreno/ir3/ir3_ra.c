@@ -236,7 +236,7 @@ get_definer(struct ir3_ra_ctx *ctx, struct ir3_instruction *instr,
 		dd = get_definer(ctx, d->regs[1]->instr, &dsz, &doff);
 
 		/* by definition, should come before: */
-		debug_assert(instr_before(dd, d));
+		ra_assert(ctx, instr_before(dd, d));
 
 		*sz = MAX2(*sz, dsz);
 
@@ -246,7 +246,7 @@ get_definer(struct ir3_ra_ctx *ctx, struct ir3_instruction *instr,
 		d = dd;
 	}
 
-	debug_assert(d->opc != OPC_META_SPLIT);
+	ra_assert(ctx, d->opc != OPC_META_SPLIT);
 
 	id->defn = d;
 	id->sz = *sz;
@@ -453,7 +453,7 @@ ra_select_reg_merged(unsigned int n, BITSET_WORD *regs, void *data)
 			return pick_in_range(regs, base, base + max_target);
 		}
 	} else {
-		assert(sz == 1);
+		ra_assert(ctx, sz == 1);
 	}
 
 	/* NOTE: this is only used in scalar pass, so the register
@@ -586,11 +586,11 @@ ra_init(struct ir3_ra_ctx *ctx)
 static struct ir3_instruction *
 name_to_instr(struct ir3_ra_ctx *ctx, unsigned name)
 {
-	assert(!name_is_array(ctx, name));
+	ra_assert(ctx, !name_is_array(ctx, name));
 	struct hash_entry *entry = _mesa_hash_table_search(ctx->name_to_instr, &name);
 	if (entry)
 		return entry->data;
-	unreachable("invalid instr name");
+	ra_unreachable(ctx, "invalid instr name");
 	return NULL;
 }
 
@@ -603,13 +603,13 @@ name_is_array(struct ir3_ra_ctx *ctx, unsigned name)
 static struct ir3_array *
 name_to_array(struct ir3_ra_ctx *ctx, unsigned name)
 {
-	assert(name_is_array(ctx, name));
+	ra_assert(ctx, name_is_array(ctx, name));
 	foreach_array (arr, &ctx->ir->array_list) {
 		unsigned sz = reg_size_for_array(arr);
 		if (name < (arr->base + sz))
 			return arr;
 	}
-	unreachable("invalid array name");
+	ra_unreachable(ctx, "invalid array name");
 	return NULL;
 }
 
@@ -623,7 +623,7 @@ static void
 __def(struct ir3_ra_ctx *ctx, struct ir3_ra_block_data *bd, unsigned name,
 		struct ir3_instruction *instr)
 {
-	debug_assert(name < ctx->alloc_count);
+	ra_assert(ctx, name < ctx->alloc_count);
 
 	/* split/collect do not actually define any real value */
 	if ((instr->opc == OPC_META_SPLIT) || (instr->opc == OPC_META_COLLECT))
@@ -640,7 +640,7 @@ static void
 __use(struct ir3_ra_ctx *ctx, struct ir3_ra_block_data *bd, unsigned name,
 		struct ir3_instruction *instr)
 {
-	debug_assert(name < ctx->alloc_count);
+	ra_assert(ctx, name < ctx->alloc_count);
 	ctx->use[name] = MAX2(ctx->use[name], instr->ip);
 	if (!BITSET_TEST(bd->def, name))
 		BITSET_SET(bd->use, name);
@@ -757,7 +757,7 @@ ra_block_compute_live_ranges(struct ir3_ra_ctx *ctx, struct ir3_block *block)
 				 */
 				unsigned *key = ralloc(ctx->name_to_instr, unsigned);
 				*key = name;
-				debug_assert(!_mesa_hash_table_search(ctx->name_to_instr, key));
+				ra_assert(ctx, !_mesa_hash_table_search(ctx->name_to_instr, key));
 				_mesa_hash_table_insert(ctx->name_to_instr, key, instr);
 			}
 		}
@@ -866,14 +866,14 @@ ra_calc_block_live_values(struct ir3_ra_ctx *ctx, struct ir3_block *block)
 	struct ir3_ra_block_data *bd = block->data;
 	unsigned name;
 
-	assert(ctx->name_to_instr);
+	ra_assert(ctx, ctx->name_to_instr);
 
 	/* TODO this gets a bit more complicated in non-scalar pass.. but
 	 * possibly a lowball estimate is fine to start with if we do
 	 * round-robin in non-scalar pass?  Maybe we just want to handle
 	 * that in a different fxn?
 	 */
-	assert(ctx->scalar_pass);
+	ra_assert(ctx, ctx->scalar_pass);
 
 	BITSET_WORD *live =
 		rzalloc_array(bd, BITSET_WORD, BITSET_WORDS(ctx->alloc_count));
@@ -943,7 +943,7 @@ ra_calc_block_live_values(struct ir3_ra_ctx *ctx, struct ir3_block *block)
 		cur_live += new_live;
 		cur_live -= new_dead;
 
-		assert(cur_live >= 0);
+		ra_assert(ctx, cur_live >= 0);
 		d("CUR_LIVE: %u", cur_live);
 
 		max = MAX2(max, cur_live);
@@ -953,14 +953,14 @@ ra_calc_block_live_values(struct ir3_ra_ctx *ctx, struct ir3_block *block)
 		 * live)
 		 */
 		cur_live -= next_dead;
-		assert(cur_live >= 0);
+		ra_assert(ctx, cur_live >= 0);
 
 		if (RA_DEBUG) {
 			unsigned cnt = 0;
 			BITSET_FOREACH_SET (name, live, ctx->alloc_count) {
 				cnt += name_size(ctx, name);
 			}
-			assert(cur_live == cnt);
+			ra_assert(ctx, cur_live == cnt);
 		}
 	}
 
@@ -989,7 +989,7 @@ ra_calc_block_live_values(struct ir3_ra_ctx *ctx, struct ir3_block *block)
 			 * tells us a value is livein.  But not used by the block or
 			 * liveout for the block.  Possibly a bug in the liverange
 			 * extension.  But for now leave the assert disabled:
-			assert(cur_live == liveout);
+			ra_assert(ctx, cur_live == liveout);
 			 */
 		}
 	}
@@ -1159,7 +1159,7 @@ reg_assign(struct ir3_ra_ctx *ctx, struct ir3_register *reg,
 		 */
 		if (ctx->scalar_pass && is_tex_or_prefetch(id->defn)) {
 			unsigned n = ffs(id->defn->regs[0]->wrmask);
-			debug_assert(n > 0);
+			ra_assert(ctx, n > 0);
 			first_component = n - 1;
 		}
 
@@ -1167,9 +1167,9 @@ reg_assign(struct ir3_ra_ctx *ctx, struct ir3_register *reg,
 		unsigned r = ra_get_node_reg(ctx->g, name);
 		unsigned num = ctx->set->ra_reg_to_gpr[r] + id->off;
 
-		debug_assert(!(reg->flags & IR3_REG_RELATIV));
+		ra_assert(ctx, !(reg->flags & IR3_REG_RELATIV));
 
-		debug_assert(num >= first_component);
+		ra_assert(ctx, num >= first_component);
 
 		if (is_high(id->defn))
 			num += FIRST_HIGH_REG;
@@ -1308,7 +1308,7 @@ ra_precolor(struct ir3_ra_ctx *ctx, struct ir3_instruction **precolor, unsigned 
 
 			struct ir3_ra_instr_data *id = &ctx->instrd[instr->ip];
 
-			debug_assert(!(instr->regs[0]->flags & (IR3_REG_HALF | IR3_REG_HIGH)));
+			ra_assert(ctx, !(instr->regs[0]->flags & (IR3_REG_HALF | IR3_REG_HIGH)));
 
 			/* 'base' is in scalar (class 0) but we need to map that
 			 * the conflicting register of the appropriate class (ie.
@@ -1328,7 +1328,7 @@ ra_precolor(struct ir3_ra_ctx *ctx, struct ir3_instruction **precolor, unsigned 
 			 *           .. and so on..
 			 */
 			unsigned regid = instr->regs[0]->num;
-			assert(regid >= id->off);
+			ra_assert(ctx, regid >= id->off);
 			regid -= id->off;
 
 			unsigned reg = ctx->set->gpr_to_ra_reg[id->cls][regid];
@@ -1418,7 +1418,7 @@ precolor(struct ir3_ra_ctx *ctx, struct ir3_instruction *instr)
 static void
 ra_precolor_assigned(struct ir3_ra_ctx *ctx)
 {
-	debug_assert(ctx->scalar_pass);
+	ra_assert(ctx, ctx->scalar_pass);
 
 	foreach_block (block, &ctx->ir->block_list) {
 		foreach_instr (instr, &block->instr_list) {
@@ -1490,12 +1490,18 @@ ir3_ra_pass(struct ir3_shader_variant *v, struct ir3_instruction **precolor,
 	};
 	int ret;
 
+	ret = setjmp(ctx.jmp_env);
+	if (ret)
+		goto fail;
+
 	ra_init(&ctx);
 	ra_add_interference(&ctx);
 	ra_precolor(&ctx, precolor, nprecolor);
 	if (scalar_pass)
 		ra_precolor_assigned(&ctx);
 	ret = ra_alloc(&ctx);
+
+fail:
 	ra_destroy(&ctx);
 
 	return ret;
