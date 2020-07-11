@@ -831,8 +831,7 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_screen *screen,
 	if (fs->instrlen)
 		fd6_emit_shader(ring, fs);
 
-	OUT_PKT4(ring, REG_A6XX_PC_PRIMID_CNTL, 1);
-	OUT_RING(ring, COND(primid_passthru, A6XX_PC_PRIMID_CNTL_PRIMID_PASSTHRU));
+	OUT_REG(ring, A6XX_PC_PRIMID_PASSTHRU(primid_passthru));
 
 	uint32_t non_sysval_input_count = 0;
 	for (uint32_t i = 0; i < vs->inputs_count; i++)

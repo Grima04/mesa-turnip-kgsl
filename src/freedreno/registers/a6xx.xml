@@ -1592,16 +1592,6 @@ to upconvert to 32b float internally?
 	<reg32 offset="0x0630" name="DBGC_CFG_DBGBUS_TRACE_BUF2"/>
 	<reg32 offset="0x0CD8" name="VSC_PERFCTR_VSC_SEL_0"/>
 	<reg32 offset="0x0CD9" name="VSC_PERFCTR_VSC_SEL_1"/>
-	<reg32 offset="0x9E00" name="PC_DBG_ECO_CNTL"/>
-	<reg32 offset="0x9E01" name="PC_ADDR_MODE_CNTL"/>
-	<reg32 offset="0x9E34" name="PC_PERFCTR_PC_SEL_0"/>
-	<reg32 offset="0x9E35" name="PC_PERFCTR_PC_SEL_1"/>
-	<reg32 offset="0x9E36" name="PC_PERFCTR_PC_SEL_2"/>
-	<reg32 offset="0x9E37" name="PC_PERFCTR_PC_SEL_3"/>
-	<reg32 offset="0x9E38" name="PC_PERFCTR_PC_SEL_4"/>
-	<reg32 offset="0x9E39" name="PC_PERFCTR_PC_SEL_5"/>
-	<reg32 offset="0x9E3A" name="PC_PERFCTR_PC_SEL_6"/>
-	<reg32 offset="0x9E3B" name="PC_PERFCTR_PC_SEL_7"/>
 	<reg32 offset="0xBE05" name="HLSQ_ADDR_MODE_CNTL"/>
 	<reg32 offset="0xBE10" name="HLSQ_PERFCTR_HLSQ_SEL_0"/>
 	<reg32 offset="0xBE11" name="HLSQ_PERFCTR_HLSQ_SEL_1"/>
@@ -2767,41 +2757,41 @@ to upconvert to 32b float internally?
 	<!-- TODO: regs from 0x9624-0x963a -->
 	<!-- 0x963b-0x97ff invalid -->
 
-	<reg32 offset="0x9800" name="PC_TESS_NUM_VERTEX"/>
+	<reg32 offset="0x9800" name="PC_TESS_NUM_VERTEX" low="0" high="5" type="uint"/>
 
 	<!-- always 0x0 ? -->
-	<reg32 offset="0x9801" name="PC_UNKNOWN_9801"/>
+	<reg32 offset="0x9801" name="PC_UNKNOWN_9801">
+		<bitfield name="UNK0" low="0" high="10"/>
+		<bitfield name="UNK13" pos="13"/>
+	</reg32>
 
 	<enum name="a6xx_tess_spacing">
-	  <value value="0x0" name="TESS_EQUAL"/>
-	  <value value="0x2" name="TESS_FRACTIONAL_ODD"/>
-	  <value value="0x3" name="TESS_FRACTIONAL_EVEN"/>
+		<value value="0x0" name="TESS_EQUAL"/>
+		<value value="0x2" name="TESS_FRACTIONAL_ODD"/>
+		<value value="0x3" name="TESS_FRACTIONAL_EVEN"/>
 	</enum>
-
 	<enum name="a6xx_tess_output">
-	  <value value="0x0" name="TESS_POINTS"/>
-	  <value value="0x1" name="TESS_LINES"/>
-	  <value value="0x2" name="TESS_CW_TRIS"/>
-	  <value value="0x3" name="TESS_CCW_TRIS"/>
+		<value value="0x0" name="TESS_POINTS"/>
+		<value value="0x1" name="TESS_LINES"/>
+		<value value="0x2" name="TESS_CW_TRIS"/>
+		<value value="0x3" name="TESS_CCW_TRIS"/>
 	</enum>
-
 	<reg32 offset="0x9802" name="PC_TESS_CNTL">
-	  <bitfield name="SPACING" low="0" high="1" type="a6xx_tess_spacing"/>
-	  <bitfield name="OUTPUT" low="2" high="3" type="a6xx_tess_output"/>
+		<bitfield name="SPACING" low="0" high="1" type="a6xx_tess_spacing"/>
+		<bitfield name="OUTPUT" low="2" high="3" type="a6xx_tess_output"/>
 	</reg32>
 
-	<!-- probably: -->
-	<reg32 offset="0x9803" name="PC_RESTART_INDEX"/>
-	<reg32 offset="0x9804" name="PC_MODE_CNTL"/>
+	<reg32 offset="0x9803" name="PC_RESTART_INDEX" low="0" high="31" type="uint"/>
+	<reg32 offset="0x9804" name="PC_MODE_CNTL" low="0" high="7"/>
 
 	<!-- always 0x1 ? -->
-	<reg32 offset="0x9805" name="PC_UNKNOWN_9805"/>
+	<reg32 offset="0x9805" name="PC_UNKNOWN_9805" low="0" high="2"/>
 
 	<!-- probably a mirror of VFD_CONTROL_6 -->
-	<reg32 offset="0x9806" name="PC_PRIMID_CNTL">
-		<bitfield name="PRIMID_PASSTHRU" pos="0" type="boolean"/>
-	</reg32>
+	<reg32 offset="0x9806" name="PC_PRIMID_PASSTHRU" pos="0" type="boolean"/>
+	<!-- 0x980b-0x983f invalid -->
 
+	<!-- 0x9840 - 0x9842 are not readable -->
 	<reg32 offset="0x9840" name="PC_DRAW_CMD">
 		<bitfield name="STATE_ID" low="0" high="7"/>
 	</reg32>
@@ -2816,19 +2806,21 @@ to upconvert to 32b float internally?
 		<bitfield name="EVENT" low="0" high="6" type="vgt_event_type"/>
 	</reg32>
 
-	<reg32 offset="0x9980" name="PC_UNKNOWN_9980"/>
+	<!-- 0x9843-0x997f invalid -->
 
 	<reg32 offset="0x9981" name="PC_POLYGON_MODE">
 		<bitfield name="MODE" low="0" high="1" type="a6xx_polygon_mode"/>
 	</reg32>
+	<reg32 offset="0x9980" name="PC_UNKNOWN_9980" low="0" high="2"/>
 
-	<reg32 offset="0x9990" name="PC_UNKNOWN_9990"/>
+	<!-- 0x9982-0x9aff invalid -->
 
 	<reg32 offset="0x9b00" name="PC_PRIMITIVE_CNTL_0">
 		<bitfield name="PRIMITIVE_RESTART" pos="0" type="boolean"/>
 		<!-- maybe?  b1 seems always set, so just assume it is for now: -->
 		<bitfield name="PROVOKING_VTX_LAST" pos="1" type="boolean"/>
 		<bitfield name="TESS_UPPER_LEFT_DOMAIN_ORIGIN" pos="2" type="boolean"/>
+		<bitfield name="UNK3" pos="3" type="boolean"/>
 	</reg32>
 
 	<bitset name="a6xx_xs_out_cntl" inline="yes">
@@ -2839,52 +2831,70 @@ to upconvert to 32b float internally?
 		</doc>
 		<bitfield name="STRIDE_IN_VPC" low="0" high="7" type="uint"/>
 		<bitfield name="PSIZE" pos="8" type="boolean"/>
-		<!-- layer / primitiveid only for GS (apparently) -->
 		<bitfield name="LAYER" pos="9" type="boolean"/>
+		<bitfield name="VIEW" pos="10" type="boolean"/>
+		<!-- note: PC_VS_OUT_CNTL doesn't have the PRIMITIVE_ID bit -->
 		<bitfield name="PRIMITIVE_ID" pos="11" type="boolean"/>
 		<bitfield name="CLIP_MASK" low="16" high="23" type="uint"/>
 	</bitset>
 
 	<reg32 offset="0x9b01" name="PC_VS_OUT_CNTL" type="a6xx_xs_out_cntl"/>
 	<reg32 offset="0x9b02" name="PC_GS_OUT_CNTL" type="a6xx_xs_out_cntl"/>
-	<reg32 offset="0x9b03" name="PC_PRIMITIVE_CNTL_3"/>
+	<reg32 offset="0x9b03" name="PC_PRIMITIVE_CNTL_3" pos="11"/>
 	<reg32 offset="0x9b04" name="PC_DS_OUT_CNTL" type="a6xx_xs_out_cntl"/>
 
 	<reg32 offset="0x9b05" name="PC_PRIMITIVE_CNTL_5">
 		<doc>
 		  geometry shader
 		</doc>
+		<!-- TODO: first 16 bits are valid so something is wrong or missing here -->
 		<bitfield name="GS_VERTICES_OUT" low="0" high="7" type="uint"/>
 		<bitfield name="GS_INVOCATIONS" low="10" high="14" type="uint"/>
 		<bitfield name="GS_OUTPUT" low="16" high="17" type="a6xx_tess_output"/>
+		<bitfield name="UNK18" pos="18"/>
 	</reg32>
 
 	<reg32 offset="0x9b06" name="PC_PRIMITIVE_CNTL_6">
 		<doc>
-		  size in vec4s of per-primitive storage for gs
+		  size in vec4s of per-primitive storage for gs. TODO: not actually in VPC
 		</doc>
-		<bitfield name="STRIDE_IN_VPC" low="0" high="8" type="uint"/>
+		<bitfield name="STRIDE_IN_VPC" low="0" high="10" type="uint"/>
 	</reg32>
+	<!-- something gs related: -->
+	<reg32 offset="0x9b07" name="PC_UNKNOWN_9B07" low="0" high="6"/>
 
-	<reg32 offset="0x9b07" name="PC_UNKNOWN_9B07"/>
-
+	<reg32 offset="0x9b08" name="PC_UNKNOWN_9B08" low="0" high="15"/>
+	<!-- 0x9b09-0x9bff invalid -->
+	<reg32 offset="0x9c00" name="PC_2D_EVENT_CMD">
+		<!-- special register (but note first 8 bits can be written/read) -->
+		<bitfield name="EVENT" low="0" high="6" type="vgt_event_type"/>
+		<bitfield name="STATE_ID" low="8" high="15"/>
+	</reg32>
+	<!-- 0x9c01-0x9dff invalid -->
+	<!-- TODO: 0x9e00-0xa000 range incomplete -->
+	<reg32 offset="0x9e00" name="PC_DBG_ECO_CNTL"/>
+	<reg32 offset="0x9e01" name="PC_ADDR_MODE_CNTL"/>
 	<reg32 offset="0x9e08" name="PC_TESSFACTOR_ADDR_LO"/>
 	<reg32 offset="0x9e09" name="PC_TESSFACTOR_ADDR_HI"/>
+	<reg32 offset="0x9e08" name="PC_TESSFACTOR_ADDR" type="waddress" align="32"/>
 
 	<!-- These match the contents of CP_SET_BIN_DATA (not written directly) -->
 	<reg32 offset="0x9e11" name="PC_VSTREAM_CONTROL">
+		<bitfield name="UNK0" low="0" high="15"/>
 		<bitfield name="VSC_SIZE" low="16" high="21" type="uint"/>
 		<bitfield name="VSC_N" low="22" high="26" type="uint"/>
 	</reg32>
-	<reg32 offset="0x9e12" name="PC_BIN_DATA_ADDR2_LO"/>
-	<reg32 offset="0x9e13" name="PC_BIN_DATA_ADDR2_HI"/>
-	<reg32 offset="0x9e14" name="PC_BIN_DATA_ADDR_LO"/>
-	<reg32 offset="0x9e15" name="PC_BIN_DATA_ADDR_HI"/>
+	<reg32 offset="0x9e12" name="PC_BIN_DATA_ADDR2" type="waddress" align="32"/>
+	<reg32 offset="0x9e14" name="PC_BIN_DATA_ADDR" type="waddress" align="32"/>
 
-	<reg32 offset="0x9c00" name="PC_2D_EVENT_CMD">
-		<bitfield name="STATE_ID" low="8" high="15"/>
-		<bitfield name="EVENT" low="0" high="6" type="vgt_event_type"/>
-	</reg32>
+	<reg32 offset="0x9e34" name="PC_PERFCTR_PC_SEL_0"/>
+	<reg32 offset="0x9e35" name="PC_PERFCTR_PC_SEL_1"/>
+	<reg32 offset="0x9e36" name="PC_PERFCTR_PC_SEL_2"/>
+	<reg32 offset="0x9e37" name="PC_PERFCTR_PC_SEL_3"/>
+	<reg32 offset="0x9e38" name="PC_PERFCTR_PC_SEL_4"/>
+	<reg32 offset="0x9e39" name="PC_PERFCTR_PC_SEL_5"/>
+	<reg32 offset="0x9e3a" name="PC_PERFCTR_PC_SEL_6"/>
+	<reg32 offset="0x9e3b" name="PC_PERFCTR_PC_SEL_7"/>
 
 	<!-- always 0x0 -->
 	<reg32 offset="0x9e72" name="PC_UNKNOWN_9E72"/>

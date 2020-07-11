@@ -893,8 +893,7 @@ tu6_emit_vpc(struct tu_cs *cs,
    tu_cs_emit_pkt4(cs, cfg->reg_gras_xs_layer_cntl, 1);
    tu_cs_emit(cs, CONDREG(layer_regid, A6XX_GRAS_GS_LAYER_CNTL_WRITES_LAYER));
 
-   tu_cs_emit_pkt4(cs, REG_A6XX_PC_PRIMID_CNTL, 1);
-   tu_cs_emit(cs, COND(primid_passthru, A6XX_PC_PRIMID_CNTL_PRIMID_PASSTHRU));
+   tu_cs_emit_regs(cs, A6XX_PC_PRIMID_PASSTHRU(primid_passthru));
 
    tu_cs_emit_pkt4(cs, REG_A6XX_VPC_CNTL_0, 1);
    tu_cs_emit(cs, A6XX_VPC_CNTL_0_NUMNONPOSVAR(fs ? fs->total_in : 0) |
@@ -2238,7 +2237,7 @@ tu_pipeline_builder_parse_rasterization(struct tu_pipeline_builder *builder,
                    A6XX_VPC_POLYGON_MODE(mode));
 
    tu_cs_emit_regs(&cs,
-                   A6XX_PC_POLYGON_MODE(.mode = mode));
+                   A6XX_PC_POLYGON_MODE(mode));
 
    /* move to hw ctx init? */
    tu_cs_emit_regs(&cs,
