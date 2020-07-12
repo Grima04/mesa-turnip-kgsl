@@ -95,18 +95,6 @@ typedef uint32_t xcb_window_t;
 #define RADV_SUPPORT_ANDROID_HARDWARE_BUFFER 0
 #endif
 
-enum radv_secure_compile_type {
-	RADV_SC_TYPE_INIT_SUCCESS,
-	RADV_SC_TYPE_INIT_FAILURE,
-	RADV_SC_TYPE_COMPILE_PIPELINE,
-	RADV_SC_TYPE_COMPILE_PIPELINE_FINISHED,
-	RADV_SC_TYPE_READ_DISK_CACHE,
-	RADV_SC_TYPE_WRITE_DISK_CACHE,
-	RADV_SC_TYPE_FORK_DEVICE,
-	RADV_SC_TYPE_DESTROY_DEVICE,
-	RADV_SC_TYPE_COUNT
-};
-
 #define radv_printflike(a, b) __attribute__((__format__(__printf__, a, b)))
 
 static inline uint32_t
@@ -337,7 +325,6 @@ struct radv_instance {
 
 	uint64_t debug_flags;
 	uint64_t perftest_flags;
-	uint8_t num_sc_threads;
 
 	struct vk_debug_report_instance             debug_report_callbacks;
 
@@ -357,12 +344,6 @@ struct radv_instance {
 	 */
 	bool enable_mrt_output_nan_fixup;
 };
-
-static inline
-bool radv_device_use_secure_compile(struct radv_instance *instance)
-{
-   return instance->num_sc_threads;
-}
 
 VkResult radv_init_wsi(struct radv_physical_device *physical_device);
 void radv_finish_wsi(struct radv_physical_device *physical_device);
@@ -743,36 +724,6 @@ VkResult radv_bo_list_add(struct radv_device *device,
 void radv_bo_list_remove(struct radv_device *device,
 			 struct radeon_winsys_bo *bo);
 
-struct radv_secure_compile_process {
-	/* Secure process file descriptors. Used to communicate between the
-	 * user facing device and the idle forked device used to fork a clean
-	 * process for each new pipeline compile.
-	 */
-	int fd_secure_input;
-	int fd_secure_output;
-
-	/* FIFO file descriptors used to communicate between the user facing
-	 * device and the secure process that does the actual secure compile.
-	 */
-	int fd_server;
-	int fd_client;
-
-	/* Secure compile process id */
-	pid_t sc_pid;
-
-	/* Is the secure compile process currently in use by a thread */
-	bool in_use;
-};
-
-struct radv_secure_compile_state {
-	struct radv_secure_compile_process *secure_compile_processes;
-	uint32_t secure_compile_thread_counter;
-	mtx_t secure_compile_mutex;
-
-	/* Unique process ID used to build name for FIFO file descriptor */
-	char *uid;
-};
-
 #define RADV_BORDER_COLOR_COUNT       4096
 #define RADV_BORDER_COLOR_BUFFER_SIZE (sizeof(VkClearColorValue) * RADV_BORDER_COLOR_COUNT)
 
@@ -858,8 +809,6 @@ struct radv_device {
 	int force_aniso;
 
 	struct radv_device_border_color_data border_color_data;
-
-	struct radv_secure_compile_state *sc_state;
 
 	/* Condition variable for legacy timelines, to notify waiters when a
 	 * new point gets submitted. */
@@ -1220,9 +1169,6 @@ void
 radv_initialise_ds_surface(struct radv_device *device,
 			   struct radv_ds_buffer_info *ds,
 			   struct radv_image_view *iview);
-
-bool
-radv_sc_read(int fd, void *buf, size_t size, bool timeout);
 
 /**
  * Attachment state when recording a renderpass instance.

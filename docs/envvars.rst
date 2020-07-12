@@ -588,8 +588,6 @@ RADV driver environment variables
    ``tccompatcmask``
       enable TC-compat cmask for MSAA images
 
-``RADV_SECURE_COMPILE_THREADS``
-   maximum number of secure compile threads (up to 32)
 ``RADV_TEX_ANISO``
    force anisotropy filter (up to 16)
 ``RADV_TRACE_FILE``

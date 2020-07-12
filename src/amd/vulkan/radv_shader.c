@@ -1036,13 +1036,6 @@ radv_shader_variant_create(struct radv_device *device,
 	radv_postprocess_config(device->physical_device, &config, &binary->info,
 				binary->stage, &variant->config);
 
-	if (radv_device_use_secure_compile(device->instance)) {
-		if (binary->type == RADV_BINARY_TYPE_RTLD)
-			ac_rtld_close(&rtld_binary);
-
-		return variant;
-	}
-
 	void *dest_ptr = radv_alloc_shader_memory(device, variant);
 	if (!dest_ptr) {
 		if (binary->type == RADV_BINARY_TYPE_RTLD)
