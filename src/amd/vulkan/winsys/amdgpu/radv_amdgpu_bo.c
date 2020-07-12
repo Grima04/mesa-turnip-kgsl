@@ -132,7 +132,11 @@ radv_amdgpu_winsys_rebuild_bo_list(struct radv_amdgpu_winsys_bo *bo)
 {
 	if (bo->bo_capacity < bo->range_count) {
 		uint32_t new_count = MAX2(bo->bo_capacity * 2, bo->range_count);
-		bo->bos = realloc(bo->bos, new_count * sizeof(struct radv_amdgpu_winsys_bo *));
+		struct radv_amdgpu_winsys_bo **bos =
+			realloc(bo->bos, new_count * sizeof(struct radv_amdgpu_winsys_bo *));
+		if (!bos)
+			return;
+		bo->bos = bos;
 		bo->bo_capacity = new_count;
 	}
 
@@ -170,9 +174,14 @@ radv_amdgpu_winsys_bo_virtual_bind(struct radeon_winsys_bo *_parent,
 
 	/* We have at most 2 new ranges (1 by the bind, and another one by splitting a range that contains the newly bound range). */
 	if (parent->range_capacity - parent->range_count < 2) {
-		parent->range_capacity += 2;
-		parent->ranges = realloc(parent->ranges,
-		                         parent->range_capacity * sizeof(struct radv_amdgpu_map_range));
+		uint32_t range_capacity = parent->range_capacity + 2;
+		struct radv_amdgpu_map_range *ranges =
+			realloc(parent->ranges,
+				range_capacity * sizeof(struct radv_amdgpu_map_range));
+		if (!ranges)
+			return;
+		parent->ranges = ranges;
+		parent->range_capacity = range_capacity;
 	}
 
 	/*
@@ -335,6 +344,7 @@ radv_amdgpu_winsys_bo_create(struct radeon_winsys *_ws,
 	struct radv_amdgpu_winsys *ws = radv_amdgpu_winsys(_ws);
 	struct radv_amdgpu_winsys_bo *bo;
 	struct amdgpu_bo_alloc_request request = {0};
+	struct radv_amdgpu_map_range *ranges = NULL;
 	amdgpu_bo_handle buf_handle;
 	uint64_t va = 0;
 	amdgpu_va_handle va_handle;
@@ -363,7 +373,11 @@ radv_amdgpu_winsys_bo_create(struct radeon_winsys *_ws,
 	bo->ref_count = 1;
 
 	if (flags & RADEON_FLAG_VIRTUAL) {
-		bo->ranges = realloc(NULL, sizeof(struct radv_amdgpu_map_range));
+		ranges = realloc(NULL, sizeof(struct radv_amdgpu_map_range));
+		if (!ranges)
+			goto error_ranges_alloc;
+
+		bo->ranges = ranges;
 		bo->range_count = 1;
 		bo->range_capacity = 1;
 
@@ -472,6 +486,9 @@ error_va_map:
 	amdgpu_bo_free(buf_handle);
 
 error_bo_alloc:
+	free(ranges);
+
+error_ranges_alloc:
 	amdgpu_va_range_free(va_handle);
 
 error_va_alloc:

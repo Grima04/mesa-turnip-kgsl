@@ -170,6 +170,9 @@ static void radv_amdgpu_request_to_fence(struct radv_amdgpu_ctx *ctx,
 static struct radeon_winsys_fence *radv_amdgpu_create_fence()
 {
 	struct radv_amdgpu_fence *fence = calloc(1, sizeof(struct radv_amdgpu_fence));
+	if (!fence)
+		return NULL;
+
 	fence->fence.fence = UINT64_MAX;
 	return (struct radeon_winsys_fence*)fence;
 }
@@ -347,12 +350,13 @@ radv_amdgpu_cs_create(struct radeon_winsys *ws,
 
 		ws->cs_add_buffer(&cs->base, cs->ib_buffer);
 	} else {
-		cs->base.buf = malloc(16384);
-		cs->base.max_dw = 4096;
-		if (!cs->base.buf) {
+		uint32_t *buf = malloc(16384);
+		if (!buf) {
 			free(cs);
 			return NULL;
 		}
+		cs->base.buf = buf;
+		cs->base.max_dw = 4096;
 	}
 
 	return &cs->base;
@@ -378,14 +382,15 @@ static void radv_amdgpu_cs_grow(struct radeon_cmdbuf *_cs, size_t min_size)
 			/* The maximum size in dwords has been reached,
 			 * try to allocate a new one.
 			 */
-			cs->old_cs_buffers =
+			struct radeon_cmdbuf *old_cs_buffers =
 				realloc(cs->old_cs_buffers,
-				        (cs->num_old_cs_buffers + 1) * sizeof(*cs->old_cs_buffers));
-			if (!cs->old_cs_buffers) {
+					(cs->num_old_cs_buffers + 1) * sizeof(*cs->old_cs_buffers));
+			if (!old_cs_buffers) {
 				cs->status = VK_ERROR_OUT_OF_HOST_MEMORY;
 				cs->base.cdw = 0;
 				return;
 			}
+			cs->old_cs_buffers = old_cs_buffers;
 
 			/* Store the current one for submitting it later. */
 			cs->old_cs_buffers[cs->num_old_cs_buffers].cdw = cs->base.cdw;
@@ -430,9 +435,17 @@ static void radv_amdgpu_cs_grow(struct radeon_cmdbuf *_cs, size_t min_size)
 	*cs->ib_size_ptr |= cs->base.cdw + 4;
 
 	if (cs->num_old_ib_buffers == cs->max_num_old_ib_buffers) {
-		cs->max_num_old_ib_buffers = MAX2(1, cs->max_num_old_ib_buffers * 2);
-		cs->old_ib_buffers = realloc(cs->old_ib_buffers,
-					     cs->max_num_old_ib_buffers * sizeof(void*));
+		unsigned max_num_old_ib_buffers =
+			MAX2(1, cs->max_num_old_ib_buffers * 2);
+		struct radeon_winsys_bo **old_ib_buffers =
+			realloc(cs->old_ib_buffers,
+				max_num_old_ib_buffers * sizeof(void*));
+		if (!old_ib_buffers) {
+			cs->status = VK_ERROR_OUT_OF_HOST_MEMORY;
+			return;
+		}
+		cs->max_num_old_ib_buffers = max_num_old_ib_buffers;
+		cs->old_ib_buffers = old_ib_buffers;
 	}
 
 	cs->old_ib_buffers[cs->num_old_ib_buffers++] = cs->ib_buffer;
@@ -595,7 +608,14 @@ static void radv_amdgpu_cs_add_virtual_buffer(struct radeon_cmdbuf *_cs,
 
 
 	if (!cs->virtual_buffer_hash_table) {
-		cs->virtual_buffer_hash_table = malloc(VIRTUAL_BUFFER_HASH_TABLE_SIZE * sizeof(int));
+		int *virtual_buffer_hash_table =
+			malloc(VIRTUAL_BUFFER_HASH_TABLE_SIZE * sizeof(int));
+		if (!virtual_buffer_hash_table) {
+			cs->status = VK_ERROR_OUT_OF_HOST_MEMORY;
+			return;
+		}
+		cs->virtual_buffer_hash_table = virtual_buffer_hash_table;
+
 		for (int i = 0; i < VIRTUAL_BUFFER_HASH_TABLE_SIZE; ++i)
 			cs->virtual_buffer_hash_table[i] = -1;
 	}
@@ -614,8 +634,17 @@ static void radv_amdgpu_cs_add_virtual_buffer(struct radeon_cmdbuf *_cs,
 	}
 
 	if(cs->max_num_virtual_buffers <= cs->num_virtual_buffers) {
-		cs->max_num_virtual_buffers = MAX2(2, cs->max_num_virtual_buffers * 2);
-		cs->virtual_buffers = realloc(cs->virtual_buffers, sizeof(struct radv_amdgpu_virtual_virtual_buffer*) * cs->max_num_virtual_buffers);
+		unsigned max_num_virtual_buffers =
+			MAX2(2, cs->max_num_virtual_buffers * 2);
+		struct radeon_winsys_bo **virtual_buffers =
+			realloc(cs->virtual_buffers,
+				sizeof(struct radv_amdgpu_virtual_virtual_buffer*) * max_num_virtual_buffers);
+		if (!virtual_buffers) {
+			cs->status = VK_ERROR_OUT_OF_HOST_MEMORY;
+			return;
+		}
+		cs->max_num_virtual_buffers = max_num_virtual_buffers;
+		cs->virtual_buffers = virtual_buffers;
 	}
 
 	cs->virtual_buffers[cs->num_virtual_buffers] = bo;
@@ -1319,11 +1348,11 @@ static VkResult radv_amdgpu_ctx_create(struct radeon_winsys *_ws,
 	r = amdgpu_cs_ctx_create2(ws->dev, amdgpu_priority, &ctx->ctx);
 	if (r && r == -EACCES) {
 		result = VK_ERROR_NOT_PERMITTED_EXT;
-		goto error_create;
+		goto fail_create;
 	} else if (r) {
 		fprintf(stderr, "amdgpu: radv_amdgpu_cs_ctx_create2 failed. (%i)\n", r);
 		result = VK_ERROR_OUT_OF_HOST_MEMORY;
-		goto error_create;
+		goto fail_create;
 	}
 	ctx->ws = ws;
 
@@ -1333,14 +1362,27 @@ static VkResult radv_amdgpu_ctx_create(struct radeon_winsys *_ws,
 	                                      RADEON_FLAG_CPU_ACCESS |
 					      RADEON_FLAG_NO_INTERPROCESS_SHARING,
 					      RADV_BO_PRIORITY_CS);
-	if (ctx->fence_bo)
-		ctx->fence_map = (uint64_t*)ws->base.buffer_map(ctx->fence_bo);
-	if (ctx->fence_map)
-		memset(ctx->fence_map, 0, 4096);
+	if (!ctx->fence_bo) {
+		result = VK_ERROR_OUT_OF_DEVICE_MEMORY;
+		goto fail_alloc;
+	}
+
+	ctx->fence_map = (uint64_t *)ws->base.buffer_map(ctx->fence_bo);
+	if (!ctx->fence_map) {
+		result = VK_ERROR_OUT_OF_DEVICE_MEMORY;
+		goto fail_map;
+	}
+
+	memset(ctx->fence_map, 0, 4096);
 
 	*rctx = (struct radeon_winsys_ctx *)ctx;
 	return VK_SUCCESS;
-error_create:
+
+fail_map:
+	ws->base.buffer_destroy(ctx->fence_bo);
+fail_alloc:
+	amdgpu_cs_ctx_free(ctx->ctx);
+fail_create:
 	FREE(ctx);
 	return result;
 }
