@@ -912,13 +912,6 @@ static int radv_amdgpu_winsys_cs_submit_chained(struct radeon_winsys_ctx *_ctx,
 
 	/* Submit the CS. */
 	r = radv_amdgpu_cs_submit(ctx, &request, sem_info);
-	if (r) {
-		if (r == -ENOMEM)
-			fprintf(stderr, "amdgpu: Not enough memory for command submission.\n");
-		else
-			fprintf(stderr, "amdgpu: The CS has been rejected, "
-					"see dmesg for more information.\n");
-	}
 
 	free(request.handles);
 
@@ -997,13 +990,6 @@ static int radv_amdgpu_winsys_cs_submit_fallback(struct radeon_winsys_ctx *_ctx,
 
 	/* Submit the CS. */
 	r = radv_amdgpu_cs_submit(ctx, &request, sem_info);
-	if (r) {
-		if (r == -ENOMEM)
-			fprintf(stderr, "amdgpu: Not enough memory for command submission.\n");
-		else
-			fprintf(stderr, "amdgpu: The CS has been rejected, "
-					"see dmesg for more information.\n");
-	}
 
 	free(request.handles);
 	free(ibs);
@@ -1195,13 +1181,6 @@ static int radv_amdgpu_winsys_cs_submit_sysmem(struct radeon_winsys_ctx *_ctx,
 
 		sem_info->cs_emit_signal = (i == cs_count - cnt) ? emit_signal_sem : false;
 		r = radv_amdgpu_cs_submit(ctx, &request, sem_info);
-		if (r) {
-			if (r == -ENOMEM)
-				fprintf(stderr, "amdgpu: Not enough memory for command submission.\n");
-			else
-				fprintf(stderr, "amdgpu: The CS has been rejected, "
-						"see dmesg for more information.\n");
-		}
 
 		free(request.handles);
 
@@ -1589,6 +1568,16 @@ static int radv_amdgpu_cs_submit(struct radv_amdgpu_ctx *ctx,
 
 	if (bo_list)
 		amdgpu_bo_list_destroy_raw(ctx->ws->dev, bo_list);
+
+	if (r) {
+		if (r == -ENOMEM)
+			fprintf(stderr, "amdgpu: Not enough memory for command submission.\n");
+		else if (r == -ECANCELED)
+			fprintf(stderr, "amdgpu: The CS has been cancelled because the context is lost.\n");
+		else
+			fprintf(stderr, "amdgpu: The CS has been rejected, "
+					"see dmesg for more information (%i).\n", r);
+	}
 
 error_out:
 	free(chunks);
