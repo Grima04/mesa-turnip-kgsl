@@ -662,6 +662,7 @@ VkResult radv_CreateInstance(
 
 		if (idx >= RADV_INSTANCE_EXTENSION_COUNT ||
 		    !radv_instance_extensions_supported.extensions[idx]) {
+			vk_object_base_finish(&instance->base);
 			vk_free2(&default_alloc, pAllocator, instance);
 			return vk_error(instance, VK_ERROR_EXTENSION_NOT_PRESENT);
 		}
@@ -718,6 +719,7 @@ VkResult radv_CreateInstance(
 
 	result = vk_debug_report_instance_init(&instance->debug_report_callbacks);
 	if (result != VK_SUCCESS) {
+		vk_object_base_finish(&instance->base);
 		vk_free2(&default_alloc, pAllocator, instance);
 		return vk_error(instance, result);
 	}
