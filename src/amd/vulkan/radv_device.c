@@ -4273,8 +4273,6 @@ radv_queue_submit_deferred(struct radv_deferred_queue_submission *submission,
 			radv_loge("failed to submit CS\n");
 			abort();
 		}
-
-		goto success;
 	} else {
 		struct radeon_cmdbuf **cs_array = malloc(sizeof(struct radeon_cmdbuf *) *
 		                                         (submission->cmd_buffer_count));
@@ -4328,7 +4326,6 @@ radv_queue_submit_deferred(struct radv_deferred_queue_submission *submission,
 		free(cs_array);
 	}
 
-success:
 	radv_free_temp_syncobjs(queue->device,
 				submission->temporary_semaphore_part_count,
 				submission->temporary_semaphore_parts);
