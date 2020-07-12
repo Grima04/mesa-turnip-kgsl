@@ -2722,6 +2722,9 @@ VkResult radv_CreateDevice(
 
 	for (int family = 0; family < RADV_MAX_QUEUE_FAMILIES; ++family) {
 		device->empty_cs[family] = device->ws->cs_create(device->ws, family);
+		if (!device->empty_cs[family])
+			goto fail;
+
 		switch (family) {
 		case RADV_QUEUE_GENERAL:
 			radeon_emit(device->empty_cs[family], PKT3(PKT3_CONTEXT_CONTROL, 1, 0));
@@ -2733,7 +2736,10 @@ VkResult radv_CreateDevice(
 			radeon_emit(device->empty_cs[family], 0);
 			break;
 		}
-		device->ws->cs_finalize(device->empty_cs[family]);
+
+		result = device->ws->cs_finalize(device->empty_cs[family]);
+		if (result != VK_SUCCESS)
+			goto fail;
 	}
 
 	if (device->physical_device->rad_info.chip_class >= GFX7)
@@ -5639,6 +5645,7 @@ radv_timeline_add_point_locked(struct radv_device *device,
 
 	struct radv_timeline_point *ret = NULL;
 	struct radv_timeline_point *prev = NULL;
+	int r;
 
 	if (p <= timeline->highest_signaled)
 		return NULL;
@@ -5655,7 +5662,11 @@ radv_timeline_add_point_locked(struct radv_device *device,
 
 	if (list_is_empty(&timeline->free_points)) {
 		ret = malloc(sizeof(struct radv_timeline_point));
-		device->ws->create_syncobj(device->ws, false, &ret->syncobj);
+		r = device->ws->create_syncobj(device->ws, false, &ret->syncobj);
+		if (r) {
+			free(ret);
+			return NULL;
+		}
 	} else {
 		ret = list_first_entry(&timeline->free_points, struct radv_timeline_point, list);
 		list_del(&ret->list);
