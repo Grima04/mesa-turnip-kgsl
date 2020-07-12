@@ -575,7 +575,7 @@ static void radv_amdgpu_cs_add_buffer_internal(struct radv_amdgpu_cs *cs,
 	unsigned hash;
 	int index = radv_amdgpu_cs_find_buffer(cs, bo);
 
-	if (index != -1 || cs->status != VK_SUCCESS)
+	if (index != -1)
 		return;
 
 	if (cs->num_buffers == cs->max_num_buffers) {
@@ -660,6 +660,9 @@ static void radv_amdgpu_cs_add_buffer(struct radeon_cmdbuf *_cs,
 	struct radv_amdgpu_cs *cs = radv_amdgpu_cs(_cs);
 	struct radv_amdgpu_winsys_bo *bo = radv_amdgpu_winsys_bo(_bo);
 
+	if (cs->status != VK_SUCCESS)
+		return;
+
 	if (bo->is_virtual)  {
 		radv_amdgpu_cs_add_virtual_buffer(_cs, _bo);
 		return;
@@ -676,6 +679,9 @@ static void radv_amdgpu_cs_execute_secondary(struct radeon_cmdbuf *_parent,
 {
 	struct radv_amdgpu_cs *parent = radv_amdgpu_cs(_parent);
 	struct radv_amdgpu_cs *child = radv_amdgpu_cs(_child);
+
+	if (parent->status != VK_SUCCESS || child->status != VK_SUCCESS)
+		return;
 
 	for (unsigned i = 0; i < child->num_buffers; ++i) {
 		radv_amdgpu_cs_add_buffer_internal(parent,
