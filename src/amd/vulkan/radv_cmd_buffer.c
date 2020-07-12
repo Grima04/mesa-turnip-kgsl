@@ -336,6 +336,31 @@ enum ring_type radv_queue_family_to_ring(int f) {
 	}
 }
 
+static void
+radv_destroy_cmd_buffer(struct radv_cmd_buffer *cmd_buffer)
+{
+	list_del(&cmd_buffer->pool_link);
+
+	list_for_each_entry_safe(struct radv_cmd_buffer_upload, up,
+				 &cmd_buffer->upload.list, list) {
+		cmd_buffer->device->ws->buffer_destroy(up->upload_bo);
+		list_del(&up->list);
+		free(up);
+	}
+
+	if (cmd_buffer->upload.upload_bo)
+		cmd_buffer->device->ws->buffer_destroy(cmd_buffer->upload.upload_bo);
+
+	if (cmd_buffer->cs)
+		cmd_buffer->device->ws->cs_destroy(cmd_buffer->cs);
+
+	for (unsigned i = 0; i < MAX_BIND_POINTS; i++)
+		free(cmd_buffer->descriptors[i].push_set.set.mapped_ptr);
+
+	vk_object_base_finish(&cmd_buffer->base);
+	vk_free(&cmd_buffer->pool->alloc, cmd_buffer);
+}
+
 static VkResult radv_create_cmd_buffer(
 	struct radv_device *                         device,
 	struct radv_cmd_pool *                       pool,
@@ -363,7 +388,7 @@ static VkResult radv_create_cmd_buffer(
 
 	cmd_buffer->cs = device->ws->cs_create(device->ws, ring);
 	if (!cmd_buffer->cs) {
-		vk_free(&cmd_buffer->pool->alloc, cmd_buffer);
+		radv_destroy_cmd_buffer(cmd_buffer);
 		return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 	}
 
@@ -372,30 +397,6 @@ static VkResult radv_create_cmd_buffer(
 	list_inithead(&cmd_buffer->upload.list);
 
 	return VK_SUCCESS;
-}
-
-static void
-radv_cmd_buffer_destroy(struct radv_cmd_buffer *cmd_buffer)
-{
-	list_del(&cmd_buffer->pool_link);
-
-	list_for_each_entry_safe(struct radv_cmd_buffer_upload, up,
-				 &cmd_buffer->upload.list, list) {
-		cmd_buffer->device->ws->buffer_destroy(up->upload_bo);
-		list_del(&up->list);
-		free(up);
-	}
-
-	if (cmd_buffer->upload.upload_bo)
-		cmd_buffer->device->ws->buffer_destroy(cmd_buffer->upload.upload_bo);
-	cmd_buffer->device->ws->cs_destroy(cmd_buffer->cs);
-
-	for (unsigned i = 0; i < MAX_BIND_POINTS; i++)
-		free(cmd_buffer->descriptors[i].push_set.set.mapped_ptr);
-
-	vk_object_base_finish(&cmd_buffer->base);
-
-	vk_free(&cmd_buffer->pool->alloc, cmd_buffer);
 }
 
 static VkResult
@@ -3628,7 +3629,7 @@ void radv_FreeCommandBuffers(
 				list_del(&cmd_buffer->pool_link);
 				list_addtail(&cmd_buffer->pool_link, &cmd_buffer->pool->free_cmd_buffers);
 			} else
-				radv_cmd_buffer_destroy(cmd_buffer);
+				radv_destroy_cmd_buffer(cmd_buffer);
 
 		}
 	}
@@ -4767,12 +4768,12 @@ void radv_DestroyCommandPool(
 
 	list_for_each_entry_safe(struct radv_cmd_buffer, cmd_buffer,
 				 &pool->cmd_buffers, pool_link) {
-		radv_cmd_buffer_destroy(cmd_buffer);
+		radv_destroy_cmd_buffer(cmd_buffer);
 	}
 
 	list_for_each_entry_safe(struct radv_cmd_buffer, cmd_buffer,
 				 &pool->free_cmd_buffers, pool_link) {
-		radv_cmd_buffer_destroy(cmd_buffer);
+		radv_destroy_cmd_buffer(cmd_buffer);
 	}
 
 	vk_object_base_finish(&pool->base);
@@ -4809,7 +4810,7 @@ void radv_TrimCommandPool(
 
 	list_for_each_entry_safe(struct radv_cmd_buffer, cmd_buffer,
 				 &pool->free_cmd_buffers, pool_link) {
-		radv_cmd_buffer_destroy(cmd_buffer);
+		radv_destroy_cmd_buffer(cmd_buffer);
 	}
 }
 
