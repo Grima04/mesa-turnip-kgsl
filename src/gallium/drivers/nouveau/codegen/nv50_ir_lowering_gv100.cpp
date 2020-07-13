@@ -35,7 +35,7 @@ GV100LegalizeSSA::handleCMP(Instruction *i)
    Value *pred = bld.getSSA(1, FILE_PREDICATE);
 
    bld.mkCmp(OP_SET, reverseCondCode(i->asCmp()->setCond), TYPE_U8, pred,
-             i->sType, bld.mkImm(0), i->getSrc(2));
+             i->sType, bld.mkImm(0), i->getSrc(2))->ftz = i->ftz;
    bld.mkOp3(OP_SELP, TYPE_U32, i->getDef(0), i->getSrc(0), i->getSrc(1), pred);
    return true;
 }
@@ -189,6 +189,7 @@ GV100LegalizeSSA::handleSET(Instruction *i)
    xsetp->src(0).mod = i->src(0).mod;
    xsetp->src(1).mod = i->src(1).mod;
    xsetp->setSrc(2, src2);
+   xsetp->ftz = i->ftz;
 
    i = bld.mkOp3(OP_SELP, TYPE_U32, i->getDef(0), bld.mkImm(0), met, pred);
    i->src(2).mod = Modifier(NV50_IR_MOD_NOT);
@@ -235,6 +236,7 @@ GV100LegalizeSSA::handleSUB(Instruction *i)
       bld.mkOp2(OP_ADD, i->dType, i->getDef(0), i->getSrc(0), i->getSrc(1));
    xadd->src(0).mod = i->src(0).mod;
    xadd->src(1).mod = i->src(1).mod ^ Modifier(NV50_IR_MOD_NEG);
+   xadd->ftz = i->ftz;
    return true;
 }
 
@@ -244,6 +246,9 @@ GV100LegalizeSSA::visit(Instruction *i)
    bool lowered = false;
 
    bld.setPosition(i, false);
+   if (i->sType == TYPE_F32 && i->dType != TYPE_F16 &&
+       prog->getType() != Program::TYPE_COMPUTE)
+      handleFTZ(i);
 
    switch (i->op) {
    case OP_AND:
