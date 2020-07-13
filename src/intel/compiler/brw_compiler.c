@@ -146,15 +146,7 @@ brw_compiler_create(void *mem_ctx, const struct gen_device_info *devinfo)
       nir_lower_ddiv;
 
    if (!devinfo->has_64bit_float || (INTEL_DEBUG & DEBUG_SOFT64)) {
-      int64_options |= nir_lower_mov64 |
-                       nir_lower_icmp64 |
-                       nir_lower_iadd64 |
-                       nir_lower_iabs64 |
-                       nir_lower_ineg64 |
-                       nir_lower_logic64 |
-                       nir_lower_minmax64 |
-                       nir_lower_shift64 |
-                       nir_lower_extract64;
+      int64_options |= (nir_lower_int64_options)~0;
       fp64_options |= nir_lower_fp64_full_software;
    }
 
