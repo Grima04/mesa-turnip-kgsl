@@ -469,14 +469,8 @@ tu6_emit_cs_config(struct tu_cs *cs, const struct tu_shader *shader,
                    uint32_t binary_iova)
 {
    tu_cs_emit_regs(cs, A6XX_HLSQ_INVALIDATE_CMD(
-         .vs_state = true,
-         .hs_state = true,
-         .ds_state = true,
-         .gs_state = true,
-         .fs_state = true,
          .cs_state = true,
-         .cs_ibo = true,
-         .gfx_ibo = true));
+         .cs_ibo = true));
 
    tu6_emit_xs_config(cs, MESA_SHADER_COMPUTE, v, binary_iova);
 
@@ -1368,8 +1362,6 @@ tu6_emit_program(struct tu_cs *cs,
          .ds_state = true,
          .gs_state = true,
          .fs_state = true,
-         .cs_state = true,
-         .cs_ibo = true,
          .gfx_ibo = true));
 
   /* Don't use the binning pass variant when GS is present because we don't
