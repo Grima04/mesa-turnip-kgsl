@@ -103,7 +103,7 @@ kernel+rootfs_armhf:
   dependencies:
     - meson-arm64
   needs:
-    - arm_build
+    - kernel+rootfs_arm64
     - meson-arm64
 
 .lava-traces:armhf:
