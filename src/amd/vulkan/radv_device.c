@@ -4211,7 +4211,6 @@ radv_queue_submit_deferred(struct radv_deferred_queue_submission *submission,
 	uint32_t advance;
 	struct radv_winsys_sem_info sem_info;
 	VkResult result;
-	int ret;
 	struct radeon_cmdbuf *initial_preamble_cs = NULL;
 	struct radeon_cmdbuf *initial_flush_preamble_cs = NULL;
 	struct radeon_cmdbuf *continue_preamble_cs = NULL;
@@ -4264,15 +4263,13 @@ radv_queue_submit_deferred(struct radv_deferred_queue_submission *submission,
 	}
 
 	if (!submission->cmd_buffer_count) {
-		ret = queue->device->ws->cs_submit(ctx, queue->queue_idx,
-						   &queue->device->empty_cs[queue->queue_family_index],
-						   1, NULL, NULL,
-						   &sem_info, NULL,
-						   false, base_fence);
-		if (ret) {
-			radv_loge("failed to submit CS\n");
-			abort();
-		}
+		result = queue->device->ws->cs_submit(ctx, queue->queue_idx,
+						      &queue->device->empty_cs[queue->queue_family_index],
+						      1, NULL, NULL,
+						      &sem_info, NULL,
+						      false, base_fence);
+		if (result != VK_SUCCESS)
+			goto fail;
 	} else {
 		struct radeon_cmdbuf **cs_array = malloc(sizeof(struct radeon_cmdbuf *) *
 		                                         (submission->cmd_buffer_count));
@@ -4306,18 +4303,17 @@ radv_queue_submit_deferred(struct radv_deferred_queue_submission *submission,
 				bo_list = &queue->device->bo_list.list;
 			}
 
-			ret = queue->device->ws->cs_submit(ctx, queue->queue_idx, cs_array + j,
-			                                   advance, initial_preamble, continue_preamble_cs,
-			                                   &sem_info, bo_list,
-			                                   can_patch, base_fence);
+			result = queue->device->ws->cs_submit(ctx, queue->queue_idx, cs_array + j,
+							      advance, initial_preamble, continue_preamble_cs,
+							      &sem_info, bo_list,
+							      can_patch, base_fence);
 
 			if (unlikely(queue->device->use_global_bo_list))
 				pthread_mutex_unlock(&queue->device->bo_list.mutex);
 
-			if (ret) {
-				radv_loge("failed to submit CS\n");
-				abort();
-			}
+			if (result != VK_SUCCESS)
+				goto fail;
+
 			if (queue->device->trace_bo) {
 				radv_check_gpu_hangs(queue, cs_array[j]);
 			}
@@ -4346,11 +4342,22 @@ radv_queue_submit_deferred(struct radv_deferred_queue_submission *submission,
 	return VK_SUCCESS;
 
 fail:
+	if (result != VK_SUCCESS && result != VK_ERROR_DEVICE_LOST) {
+		/* When something bad happened during the submission, such as
+		 * an out of memory issue, it might be hard to recover from
+		 * this inconsistent state. To avoid this sort of problem, we
+		 * assume that we are in a really bad situation and return
+		 * VK_ERROR_DEVICE_LOST to ensure the clients do not attempt
+		 * to submit the same job again to this device.
+		 */
+		result = VK_ERROR_DEVICE_LOST;
+	}
+
 	radv_free_temp_syncobjs(queue->device,
 				submission->temporary_semaphore_part_count,
 				submission->temporary_semaphore_parts);
 	free(submission);
-	return VK_ERROR_DEVICE_LOST;
+	return result;
 }
 
 static VkResult
@@ -4390,17 +4397,21 @@ radv_queue_internal_submit(struct radv_queue *queue, struct radeon_cmdbuf *cs)
 	struct radeon_winsys_ctx *ctx = queue->hw_ctx;
 	struct radv_winsys_sem_info sem_info;
 	VkResult result;
-	int ret;
 
 	result = radv_alloc_sem_info(queue->device, &sem_info, 0, NULL, 0, 0,
 				     0, NULL, VK_NULL_HANDLE);
 	if (result != VK_SUCCESS)
 		return false;
 
-	ret = queue->device->ws->cs_submit(ctx, queue->queue_idx, &cs, 1, NULL,
-					   NULL, &sem_info, NULL, false, NULL);
+	result = queue->device->ws->cs_submit(ctx, queue->queue_idx, &cs, 1,
+					      NULL, NULL, &sem_info, NULL,
+					      false, NULL);
 	radv_free_sem_info(&sem_info);
-	return !ret;
+	if (result != VK_SUCCESS)
+		return false;
+
+	return true;
+
 }
 
 /* Signals fence as soon as all the work currently put on queue is done. */

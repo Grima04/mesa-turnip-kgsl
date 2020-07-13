@@ -277,16 +277,16 @@ struct radeon_winsys {
 
 	void (*cs_grow)(struct radeon_cmdbuf * cs, size_t min_size);
 
-	int (*cs_submit)(struct radeon_winsys_ctx *ctx,
-			 int queue_index,
-			 struct radeon_cmdbuf **cs_array,
-			 unsigned cs_count,
-			 struct radeon_cmdbuf *initial_preamble_cs,
-			 struct radeon_cmdbuf *continue_preamble_cs,
-			 struct radv_winsys_sem_info *sem_info,
-			 const struct radv_winsys_bo_list *bo_list, /* optional */
-			 bool can_patch,
-			 struct radeon_winsys_fence *fence);
+	VkResult (*cs_submit)(struct radeon_winsys_ctx *ctx,
+			      int queue_index,
+			      struct radeon_cmdbuf **cs_array,
+			      unsigned cs_count,
+			      struct radeon_cmdbuf *initial_preamble_cs,
+			      struct radeon_cmdbuf *continue_preamble_cs,
+			      struct radv_winsys_sem_info *sem_info,
+			      const struct radv_winsys_bo_list *bo_list, /* optional */
+			      bool can_patch,
+			      struct radeon_winsys_fence *fence);
 
 	void (*cs_add_buffer)(struct radeon_cmdbuf *cs,
 			      struct radeon_winsys_bo *bo);
