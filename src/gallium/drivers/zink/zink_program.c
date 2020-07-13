@@ -180,6 +180,13 @@ shader_key_fs_gen(struct zink_context *ctx, struct zink_shader *zs, struct zink_
 
    fs_key->shader_id = zs->shader_id;
    //fs_key->flat_shade = ctx->rast_state->base.flatshade;
+
+   /* if gl_SampleMask[] is written to, we have to ensure that we get a shader with the same sample count:
+    * in GL, rast_samples==1 means ignore gl_SampleMask[]
+    * in VK, gl_SampleMask[] is never ignored
+    */
+   if (zs->nir->info.outputs_written & (1 << FRAG_RESULT_SAMPLE_MASK))
+      fs_key->samples = !!ctx->fb_state.samples;
 }
 
 typedef void (*zink_shader_key_gen)(struct zink_context *ctx, struct zink_shader *zs, struct zink_shader_key *key);

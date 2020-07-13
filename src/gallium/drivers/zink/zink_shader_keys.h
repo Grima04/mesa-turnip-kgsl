@@ -29,6 +29,7 @@
 struct zink_fs_key {
    unsigned shader_id;
    //bool flat_shade;
+   bool samples;
 };
 
 /* a shader key is used for swapping out shader modules based on pipeline states,
