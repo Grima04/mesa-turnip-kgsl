@@ -1101,7 +1101,7 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
          * fsat alone.
          */
 
-        if (!is_int && !(opcode_props & OP_TYPE_CONVERT)) {
+        if (!midgard_is_integer_out_op(op)) {
                 bool fpos = mir_accept_dest_mod(ctx, &dest, nir_op_fclamp_pos);
                 bool fsat = mir_accept_dest_mod(ctx, &dest, nir_op_fsat);
                 bool ssat = mir_accept_dest_mod(ctx, &dest, nir_op_fsat_signed);
