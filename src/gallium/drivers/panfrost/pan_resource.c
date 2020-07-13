@@ -499,6 +499,14 @@ panfrost_resource_set_damage_region(struct pipe_screen *screen,
                 damage_extent->maxy = MAX2(damage_extent->maxy,
                                            MIN2(y + h, res->height0));
         }
+
+        if (nrects == 0) {
+                damage_extent->minx = 0;
+                damage_extent->miny = 0;
+                damage_extent->maxx = res->width0;
+                damage_extent->maxy = res->height0;
+        }
+
 }
 
 static struct pipe_resource *

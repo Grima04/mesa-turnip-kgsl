@@ -40,6 +40,7 @@ files_panfrost = files(
   'pan_fragment.c',
   'pan_sfbd.c',
   'pan_mfbd.c',
+  'pan_partial_update.c',
 )
 
 panfrost_includes = [
