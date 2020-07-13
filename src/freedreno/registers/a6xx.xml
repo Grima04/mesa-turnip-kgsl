@@ -3426,6 +3426,7 @@ to upconvert to 32b float internally?
 		<bitfield name="CS_IBO" pos="6" type="boolean"/>
 		<bitfield name="GFX_IBO" pos="7" type="boolean"/>
 
+		<!-- Note: these only do something when HLSQ_SHARED_CONSTS is set to 1 -->
 		<bitfield name="CS_SHARED_CONST" pos="19" type="boolean"/>
 		<bitfield name="GFX_SHARED_CONST" pos="8" type="boolean"/>
 
@@ -3436,8 +3437,27 @@ to upconvert to 32b float internally?
 
 	<reg32 offset="0xbb10" name="HLSQ_FS_CNTL" type="a6xx_hlsq_xs_cntl"/>
 
-	<!-- always 0x0 ? -->
-	<reg32 offset="0xbb11" name="HLSQ_UNKNOWN_BB11"/>
+	<reg32 offset="0xbb11" name="HLSQ_SHARED_CONSTS">
+		<doc>
+			Shared constants are intended to be used for Vulkan push
+			constants. When enabled, 8 vec4's are reserved in the FS
+			const pool and 16 in the geometry const pool although
+			only 8 are actually used (why?) and they are mapped to
+			c504-c511 in each stage. Both VS and FS shared consts
+			are written using ST6_CONSTANTS/SB6_IBO, so that both
+			the geometry and FS shared consts can be written at once
+			by using CP_LOAD_STATE6 rather than
+			CP_LOAD_STATE6_FRAG/CP_LOAD_STATE6_GEOM. In addition
+			DST_OFF and NUM_UNIT are in units of dwords instead of
+			vec4's.
+
+			There is also a separate shared constant pool for CS,
+			which is loaded through CP_LOAD_STATE6_FRAG with
+			ST6_UBO/ST6_IBO. However the only real difference for CS
+			is the dword units.
+		</doc>
+		<bitfield name="ENABLE" pos="0" type="boolean"/>
+	</reg32>
 
 	<!-- mirror of SP_BINDLESS_BASE -->
 	<array offset="0xbb20" name="HLSQ_BINDLESS_BASE" stride="2" length="5">
