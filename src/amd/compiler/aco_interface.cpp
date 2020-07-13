@@ -156,6 +156,9 @@ void aco_compile_shader(unsigned shader_count,
    aco::insert_wait_states(program.get());
    aco::insert_NOPs(program.get());
 
+   if (program->chip_class >= GFX10)
+      aco::form_hard_clauses(program.get());
+
    if (program->collect_statistics)
       aco::collect_preasm_stats(program.get());
 

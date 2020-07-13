@@ -1746,6 +1746,7 @@ void schedule_program(Program* program, live& live_vars);
 void spill(Program* program, live& live_vars);
 void insert_wait_states(Program* program);
 void insert_NOPs(Program* program);
+void form_hard_clauses(Program *program);
 unsigned emit_program(Program* program, std::vector<uint32_t>& code);
 bool print_asm(Program *program, std::vector<uint32_t>& binary,
                unsigned exec_size, FILE *output);
