@@ -389,8 +389,18 @@ void si_set_mutable_tex_desc_fields(struct si_screen *sscreen, struct si_texture
          state[3] |= S_008F1C_SW_MODE(tex->surface.u.gfx9.stencil.swizzle_mode);
          state[4] |= S_008F20_PITCH(tex->surface.u.gfx9.stencil.epitch);
       } else {
+         uint16_t epitch = tex->surface.u.gfx9.surf.epitch;
+         if (tex->buffer.b.b.format == PIPE_FORMAT_R8G8_R8B8_UNORM &&
+             block_width == 1) {
+            /* epitch is patched in ac_surface for sdma/vcn blocks to get
+             * a value expressed in elements unit.
+             * But here the texture is used with block_width == 1 so we
+             * need epitch in pixel units.
+             */
+            epitch = (epitch + 1) / tex->surface.blk_w - 1;
+         }
          state[3] |= S_008F1C_SW_MODE(tex->surface.u.gfx9.surf.swizzle_mode);
-         state[4] |= S_008F20_PITCH(tex->surface.u.gfx9.surf.epitch);
+         state[4] |= S_008F20_PITCH(epitch);
       }
 
       state[5] &=
