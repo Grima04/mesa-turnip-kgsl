@@ -27,6 +27,7 @@
 #include "zink_context.h"
 #include "zink_render_pass.h"
 #include "zink_screen.h"
+#include "zink_state.h"
 
 #include "util/hash_table.h"
 #include "util/set.h"
@@ -49,6 +50,58 @@ static void
 debug_describe_zink_shader_module(char *buf, const struct zink_shader_module *ptr)
 {
    sprintf(buf, "zink_shader_module");
+}
+
+/* copied from iris */
+struct keybox {
+   uint16_t size;
+   gl_shader_stage stage;
+   uint8_t data[0];
+};
+
+static struct keybox *
+make_keybox(void *mem_ctx,
+            gl_shader_stage stage,
+            const void *key,
+            uint32_t key_size)
+{
+   struct keybox *keybox =
+      ralloc_size(mem_ctx, sizeof(struct keybox) + key_size);
+
+   keybox->stage = stage;
+   keybox->size = key_size;
+   memcpy(keybox->data, key, key_size);
+
+   return keybox;
+}
+
+static uint32_t
+keybox_hash(const void *void_key)
+{
+   const struct keybox *key = void_key;
+   return _mesa_hash_data(&key->stage, key->size + sizeof(key->stage));
+}
+
+static bool
+keybox_equals(const void *void_a, const void *void_b)
+{
+   const struct keybox *a = void_a, *b = void_b;
+   if (a->size != b->size)
+      return false;
+
+   return memcmp(a->data, b->data, a->size) == 0;
+}
+
+static struct zink_shader_module *
+find_cached_shader(struct zink_gfx_program *prog, gl_shader_stage stage, uint32_t key_size, const void *key)
+{
+   struct keybox *keybox = make_keybox(NULL, stage, key, key_size);
+   struct hash_entry *entry =
+      _mesa_hash_table_search(prog->shader_cache, keybox);
+
+   ralloc_free(keybox);
+
+   return entry ? entry->data : NULL;
 }
 
 static VkDescriptorSetLayout
@@ -113,6 +166,70 @@ create_pipeline_layout(VkDevice dev, VkDescriptorSetLayout dsl)
    return layout;
 }
 
+ 
+static void
+shader_key_fs_gen(struct zink_context *ctx, struct zink_shader *zs, struct zink_shader_key *key)
+{
+   struct zink_fs_key *fs_key = &key->key.fs;
+   key->size = sizeof(struct zink_fs_key);
+
+   fs_key->shader_id = zs->shader_id;
+   //fs_key->flat_shade = ctx->rast_state->base.flatshade;
+}
+
+typedef void (*zink_shader_key_gen)(struct zink_context *ctx, struct zink_shader *zs, struct zink_shader_key *key);
+static zink_shader_key_gen shader_key_vtbl[] =
+{
+   [MESA_SHADER_VERTEX] = NULL,
+   [MESA_SHADER_TESS_CTRL] = NULL,
+   [MESA_SHADER_TESS_EVAL] = NULL,
+   [MESA_SHADER_GEOMETRY] = NULL,
+   [MESA_SHADER_FRAGMENT] = shader_key_fs_gen,
+};
+
+static struct zink_shader_module *
+get_shader_module_for_stage(struct zink_context *ctx, struct zink_shader *zs, struct zink_gfx_program *prog)
+{
+   gl_shader_stage stage = zs->nir->info.stage;
+   struct zink_shader_key key = {};
+   /* TODO: all stages should have keys and 'shader_key' below should disappear */
+   void *shader_key = &key;
+   uint32_t key_size;
+   VkShaderModule mod;
+   struct zink_shader_module *zm;
+
+   if (shader_key_vtbl[stage]) {
+      shader_key_vtbl[stage](ctx, zs, &key);
+      key_size = key.size;
+   } else {
+      shader_key = zs;
+      key_size = sizeof(void*);
+   }
+
+   zm = find_cached_shader(prog, stage, key_size, shader_key);
+   if (!zm) {
+      struct keybox *keybox = make_keybox(NULL, stage, shader_key, key_size);
+      zm = CALLOC_STRUCT(zink_shader_module);
+      if (!zm) {
+         ralloc_free(keybox);
+         return NULL;
+      }
+      pipe_reference_init(&zm->reference, 1);
+      mod = zink_shader_compile(zink_screen(ctx->base.screen), zs, shader_key, prog->shader_slot_map, &prog->shader_slots_reserved);
+      if (!mod) {
+         ralloc_free(keybox);
+         FREE(zm);
+         return NULL;
+      }
+      zm->shader = mod;
+
+      _mesa_hash_table_insert(prog->shader_cache, keybox, zm);
+
+      ralloc_free(keybox);
+   }
+   return zm;
+}
+
 static void
 zink_destroy_shader_module(struct zink_screen *screen, struct zink_shader_module *zm)
 {
@@ -150,12 +267,10 @@ update_shader_modules(struct zink_context *ctx, struct zink_shader *stages[ZINK_
    for (int i = 0; i < ZINK_SHADER_COUNT; ++i) {
       enum pipe_shader_type type = pipe_shader_type_from_mesa(i);
       if (dirty[i]) {
-         prog->modules[type] = CALLOC_STRUCT(zink_shader_module);
-         assert(prog->modules[type]);
-         pipe_reference_init(&prog->modules[type]->reference, 1);
+         struct zink_shader_module *zm;
          dirty[i]->has_geometry_shader = dirty[MESA_SHADER_GEOMETRY] || stages[PIPE_SHADER_GEOMETRY];
-         prog->modules[type]->shader = zink_shader_compile(zink_screen(ctx->base.screen), dirty[i],
-                                                           prog->shader_slot_map, &prog->shader_slots_reserved);
+         zm = get_shader_module_for_stage(ctx, dirty[i], prog);
+         zink_shader_module_reference(zink_screen(ctx->base.screen), &prog->modules[type], zm);
       } else if (stages[type]) /* reuse existing shader module */
          zink_shader_module_reference(zink_screen(ctx->base.screen), &prog->modules[type], ctx->curr_program->modules[type]);
       prog->shaders[type] = stages[type];
@@ -207,6 +322,8 @@ zink_create_gfx_program(struct zink_context *ctx,
       goto fail;
 
    pipe_reference_init(&prog->reference, 1);
+   /* we need the slot map to match up, so shaders are only cached for a given program */
+   prog->shader_cache = _mesa_hash_table_create(NULL, keybox_hash, keybox_equals);
 
    init_slot_map(ctx, prog);
 
@@ -294,6 +411,11 @@ zink_destroy_gfx_program(struct zink_screen *screen,
       }
       _mesa_hash_table_destroy(prog->pipelines[i], NULL);
    }
+   hash_table_foreach(prog->shader_cache, entry) {
+      struct zink_shader_module *zm = entry->data;
+      zink_shader_module_reference(screen, &zm, NULL);
+   }
+   _mesa_hash_table_destroy(prog->shader_cache, NULL);
 
    FREE(prog);
 }
