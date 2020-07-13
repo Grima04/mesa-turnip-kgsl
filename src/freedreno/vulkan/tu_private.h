@@ -200,6 +200,7 @@ struct tu_physical_device
    /* gmem store/load granularity */
 #define GMEM_ALIGN_W 16
 #define GMEM_ALIGN_H 4
+   bool supports_multiview_mask;
 
    struct {
       uint32_t PC_UNKNOWN_9805;
@@ -1077,6 +1078,9 @@ struct tu_shader
    struct tu_push_constant_range push_consts;
    uint8_t active_desc_sets;
 };
+
+bool
+tu_nir_lower_multiview(nir_shader *nir, uint32_t mask, struct tu_device *dev);
 
 struct tu_shader *
 tu_shader_create(struct tu_device *dev,
