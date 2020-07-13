@@ -52,6 +52,12 @@ debug_describe_zink_shader_module(char *buf, const struct zink_shader_module *pt
    sprintf(buf, "zink_shader_module");
 }
 
+static void
+debug_describe_zink_shader_cache(char* buf, const struct zink_shader_cache *ptr)
+{
+   sprintf(buf, "zink_shader_cache");
+}
+
 /* copied from iris */
 struct keybox {
    uint16_t size;
@@ -96,8 +102,7 @@ static struct zink_shader_module *
 find_cached_shader(struct zink_gfx_program *prog, gl_shader_stage stage, uint32_t key_size, const void *key)
 {
    struct keybox *keybox = make_keybox(NULL, stage, key, key_size);
-   struct hash_entry *entry =
-      _mesa_hash_table_search(prog->shader_cache, keybox);
+   struct hash_entry *entry = _mesa_hash_table_search(prog->shader_cache->shader_cache, keybox);
 
    ralloc_free(keybox);
 
@@ -223,7 +228,7 @@ get_shader_module_for_stage(struct zink_context *ctx, struct zink_shader *zs, st
       }
       zm->shader = mod;
 
-      _mesa_hash_table_insert(prog->shader_cache, keybox, zm);
+      _mesa_hash_table_insert(prog->shader_cache->shader_cache, keybox, zm);
 
       ralloc_free(keybox);
    }
@@ -247,6 +252,30 @@ zink_shader_module_reference(struct zink_screen *screen,
    if (pipe_reference_described(old_dst ? &old_dst->reference : NULL, &src->reference,
                                 (debug_reference_descriptor)debug_describe_zink_shader_module))
       zink_destroy_shader_module(screen, old_dst);
+   if (dst) *dst = src;
+}
+
+static void
+zink_destroy_shader_cache(struct zink_screen *screen, struct zink_shader_cache *sc)
+{
+   hash_table_foreach(sc->shader_cache, entry) {
+      struct zink_shader_module *zm = entry->data;
+      zink_shader_module_reference(screen, &zm, NULL);
+   }
+   _mesa_hash_table_destroy(sc->shader_cache, NULL);
+   free(sc);
+}
+
+static inline void
+zink_shader_cache_reference(struct zink_screen *screen,
+                           struct zink_shader_cache **dst,
+                           struct zink_shader_cache *src)
+{
+   struct zink_shader_cache *old_dst = dst ? *dst : NULL;
+
+   if (pipe_reference_described(old_dst ? &old_dst->reference : NULL, &src->reference,
+                                (debug_reference_descriptor)debug_describe_zink_shader_cache))
+      zink_destroy_shader_cache(screen, old_dst);
    if (dst) *dst = src;
 }
 
@@ -302,13 +331,22 @@ init_slot_map(struct zink_context *ctx, struct zink_gfx_program *prog)
              existing_shaders |= 1 << i;
       }
    }
-   if (ctx->dirty_shader_stages == existing_shaders || !existing_shaders)
+   if (ctx->dirty_shader_stages == existing_shaders || !existing_shaders) {
       /* all shaders are being recompiled: new slot map */
       memset(prog->shader_slot_map, -1, sizeof(prog->shader_slot_map));
-   else {
+      /* we need the slot map to match up, so we can't reuse the previous cache if we can't guarantee
+       * the slots match up
+       * TOOD: if we compact the slot map table, we can store it on the shader keys and reuse the cache
+       */
+      prog->shader_cache = CALLOC_STRUCT(zink_shader_cache);
+      pipe_reference_init(&prog->shader_cache->reference, 1);
+      prog->shader_cache->shader_cache =  _mesa_hash_table_create(NULL, keybox_hash, keybox_equals);
+   } else {
       /* at least some shaders are being reused: use existing slot map so locations match up */
       memcpy(prog->shader_slot_map, ctx->curr_program->shader_slot_map, sizeof(prog->shader_slot_map));
       prog->shader_slots_reserved = ctx->curr_program->shader_slots_reserved;
+      /* and then we can also reuse the shader cache since we know the slots are the same */
+      zink_shader_cache_reference(zink_screen(ctx->base.screen), &prog->shader_cache, ctx->curr_program->shader_cache);
    }
 }
 
@@ -322,8 +360,6 @@ zink_create_gfx_program(struct zink_context *ctx,
       goto fail;
 
    pipe_reference_init(&prog->reference, 1);
-   /* we need the slot map to match up, so shaders are only cached for a given program */
-   prog->shader_cache = _mesa_hash_table_create(NULL, keybox_hash, keybox_equals);
 
    init_slot_map(ctx, prog);
 
@@ -411,11 +447,7 @@ zink_destroy_gfx_program(struct zink_screen *screen,
       }
       _mesa_hash_table_destroy(prog->pipelines[i], NULL);
    }
-   hash_table_foreach(prog->shader_cache, entry) {
-      struct zink_shader_module *zm = entry->data;
-      zink_shader_module_reference(screen, &zm, NULL);
-   }
-   _mesa_hash_table_destroy(prog->shader_cache, NULL);
+   zink_shader_cache_reference(screen, &prog->shader_cache, NULL);
 
    FREE(prog);
 }
