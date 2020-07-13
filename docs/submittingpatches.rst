@@ -134,6 +134,8 @@ to automatically, so you don't need to figure it out.
 Alternatively, you may use a "CC:" tag. Here are some examples of such a
 note::
 
+    Cc: mesa-stable
+    Cc: 20.0 <mesa-stable>
     CC: 20.0 19.3 <mesa-stable>
 
 Using the CC tag **should** include the stable branches you want to
