@@ -762,6 +762,12 @@ tu_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
          features->vertexAttributeInstanceRateZeroDivisor = true;
          break;
       }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRIVATE_DATA_FEATURES_EXT: {
+         VkPhysicalDevicePrivateDataFeaturesEXT *features =
+            (VkPhysicalDevicePrivateDataFeaturesEXT *)ext;
+         features->privateData = true;
+         break;
+      }
       default:
          break;
       }
@@ -2698,4 +2704,57 @@ void tu_GetPhysicalDeviceMultisamplePropertiesEXT(
       pMultisampleProperties->maxSampleLocationGridSize = (VkExtent2D){ 1, 1 };
    else
       pMultisampleProperties->maxSampleLocationGridSize = (VkExtent2D){ 0, 0 };
+}
+
+
+VkResult
+tu_CreatePrivateDataSlotEXT(VkDevice _device,
+                            const VkPrivateDataSlotCreateInfoEXT* pCreateInfo,
+                            const VkAllocationCallbacks* pAllocator,
+                            VkPrivateDataSlotEXT* pPrivateDataSlot)
+{
+   TU_FROM_HANDLE(tu_device, device, _device);
+   return vk_private_data_slot_create(&device->vk,
+                                      pCreateInfo,
+                                      pAllocator,
+                                      pPrivateDataSlot);
+}
+
+void
+tu_DestroyPrivateDataSlotEXT(VkDevice _device,
+                             VkPrivateDataSlotEXT privateDataSlot,
+                             const VkAllocationCallbacks* pAllocator)
+{
+   TU_FROM_HANDLE(tu_device, device, _device);
+   vk_private_data_slot_destroy(&device->vk, privateDataSlot, pAllocator);
+}
+
+VkResult
+tu_SetPrivateDataEXT(VkDevice _device,
+                     VkObjectType objectType,
+                     uint64_t objectHandle,
+                     VkPrivateDataSlotEXT privateDataSlot,
+                     uint64_t data)
+{
+   TU_FROM_HANDLE(tu_device, device, _device);
+   return vk_object_base_set_private_data(&device->vk,
+                                          objectType,
+                                          objectHandle,
+                                          privateDataSlot,
+                                          data);
+}
+
+void
+tu_GetPrivateDataEXT(VkDevice _device,
+                     VkObjectType objectType,
+                     uint64_t objectHandle,
+                     VkPrivateDataSlotEXT privateDataSlot,
+                     uint64_t* pData)
+{
+   TU_FROM_HANDLE(tu_device, device, _device);
+   vk_object_base_get_private_data(&device->vk,
+                                   objectType,
+                                   objectHandle,
+                                   privateDataSlot,
+                                   pData);
 }

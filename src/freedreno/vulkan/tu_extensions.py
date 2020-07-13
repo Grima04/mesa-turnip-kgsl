@@ -85,6 +85,7 @@ EXTENSIONS = [
     Extension('VK_EXT_vertex_attribute_divisor',          1, True),
     Extension('VK_KHR_shader_draw_parameters',            1, True),
     Extension('VK_KHR_variable_pointers',                 1, True),
+    Extension('VK_EXT_private_data',                      1, True),
 ]
 
 MAX_API_VERSION = VkVersion(MAX_API_VERSION)
