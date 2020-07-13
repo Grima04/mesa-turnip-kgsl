@@ -1350,7 +1350,7 @@ setup_nir(isel_context *ctx, nir_shader *nir)
       nir_lower_pack(nir);
 
    /* lower ALU operations */
-   nir_lower_int64(nir, nir->options->lower_int64_options);
+   nir_lower_int64(nir);
 
    if (nir_lower_bit_size(nir, lower_bit_size_callback, NULL))
       nir_copy_prop(nir); /* allow nir_opt_idiv_const() to optimize lowered divisions */

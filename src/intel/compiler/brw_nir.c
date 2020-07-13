@@ -688,7 +688,7 @@ brw_preprocess_nir(const struct brw_compiler *compiler, nir_shader *nir,
    brw_nir_optimize(nir, compiler, is_scalar, true);
 
    OPT(nir_lower_doubles, softfp64, nir->options->lower_doubles_options);
-   OPT(nir_lower_int64, nir->options->lower_int64_options);
+   OPT(nir_lower_int64);
 
    OPT(nir_lower_bit_size, lower_bit_size_callback, (void *)compiler);
 
@@ -925,7 +925,7 @@ brw_postprocess_nir(nir_shader *nir, const struct brw_compiler *compiler,
 
    brw_vectorize_lower_mem_access(nir, compiler, is_scalar);
 
-   if (OPT(nir_lower_int64, nir->options->lower_int64_options))
+   if (OPT(nir_lower_int64))
       brw_nir_optimize(nir, compiler, is_scalar, false);
 
    if (devinfo->gen >= 6) {

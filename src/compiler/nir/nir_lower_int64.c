@@ -866,16 +866,11 @@ lower_int64_alu_instr(nir_builder *b, nir_instr *instr, void *_state)
    }
 }
 
-typedef struct {
-   const nir_shader_compiler_options *shader_options;
-   nir_lower_int64_options options;
-} should_lower_cb_data;
-
 static bool
 should_lower_int64_alu_instr(const nir_instr *instr, const void *_data)
 {
-   const should_lower_cb_data *cb_data = (const should_lower_cb_data *)_data;
-   const nir_lower_int64_options options = cb_data->options;
+   const nir_shader_compiler_options *options =
+      (const nir_shader_compiler_options *)_data;
 
    if (instr->type != nir_instr_type_alu)
       return false;
@@ -922,7 +917,7 @@ should_lower_int64_alu_instr(const nir_instr *instr, const void *_data)
       break;
    case nir_op_amul:
       assert(alu->dest.dest.is_ssa);
-      if (cb_data->shader_options->has_imul24)
+      if (options->has_imul24)
          return false;
       if (alu->dest.dest.ssa.bit_size != 64)
          return false;
@@ -934,18 +929,15 @@ should_lower_int64_alu_instr(const nir_instr *instr, const void *_data)
       break;
    }
 
-   return (options & nir_lower_int64_op_to_options_mask(alu->op)) != 0;
+   unsigned mask = nir_lower_int64_op_to_options_mask(alu->op);
+   return (options->lower_int64_options & mask) != 0;
 }
 
 bool
-nir_lower_int64(nir_shader *shader, nir_lower_int64_options options)
+nir_lower_int64(nir_shader *shader)
 {
-   should_lower_cb_data cb_data;
-   cb_data.shader_options = shader->options;
-   cb_data.options = options;
-
    return nir_shader_lower_instructions(shader,
                                         should_lower_int64_alu_instr,
                                         lower_int64_alu_instr,
-                                        &cb_data);
+                                        (void *)shader->options);
 }

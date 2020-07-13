@@ -497,10 +497,8 @@ st_glsl_to_nir_post_opts(struct st_context *st, struct gl_program *prog,
          NIR_PASS(lowered_64bit_ops, nir, nir_lower_doubles,
                   st->ctx->SoftFP64, nir->options->lower_doubles_options);
       }
-      if (nir->options->lower_int64_options) {
-         NIR_PASS(lowered_64bit_ops, nir, nir_lower_int64,
-                  nir->options->lower_int64_options);
-      }
+      if (nir->options->lower_int64_options)
+         NIR_PASS(lowered_64bit_ops, nir, nir_lower_int64);
 
       if (lowered_64bit_ops)
          st_nir_opts(nir);

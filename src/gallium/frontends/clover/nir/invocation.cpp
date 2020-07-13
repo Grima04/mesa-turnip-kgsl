@@ -144,8 +144,7 @@ module clover::nir::spirv_to_nir(const module &mod, const device &dev,
 
       NIR_PASS_V(nir, nir_lower_system_values);
       if (compiler_options->lower_int64_options)
-         NIR_PASS_V(nir, nir_lower_int64,
-                    compiler_options->lower_int64_options);
+         NIR_PASS_V(nir, nir_lower_int64);
 
       NIR_PASS_V(nir, nir_opt_dce);
 

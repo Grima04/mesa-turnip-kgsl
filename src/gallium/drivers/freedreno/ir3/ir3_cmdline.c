@@ -480,7 +480,7 @@ int main(int argc, char **argv)
 		           ir3_glsl_type_size, (nir_lower_io_options)0);
 
 		/* TODO do this somewhere else */
-		nir_lower_int64(nir, ~0);
+		nir_lower_int64(nir);
 		nir_lower_system_values(nir);
 	} else if (num_files > 0) {
 		nir = load_glsl(num_files, filenames, stage);

@@ -4483,7 +4483,7 @@ bool nir_lower_bit_size(nir_shader *shader,
                         void *callback_data);
 
 nir_lower_int64_options nir_lower_int64_op_to_options_mask(nir_op opcode);
-bool nir_lower_int64(nir_shader *shader, nir_lower_int64_options options);
+bool nir_lower_int64(nir_shader *shader);
 
 nir_lower_doubles_options nir_lower_doubles_op_to_options_mask(nir_op opcode);
 bool nir_lower_doubles(nir_shader *shader, const nir_shader *softfp64,
