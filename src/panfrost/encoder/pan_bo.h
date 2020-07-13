@@ -43,17 +43,13 @@
 /* This memory region should not be mapped to the CPU */
 #define PAN_BO_INVISIBLE          (1 << 2)
 
-/* bit 3 unused */
-
 /* This region may not be used immediately and will not mmap on allocate
  * (semantically distinct from INVISIBLE, which cannot never be mmaped) */
-#define PAN_BO_DELAY_MMAP         (1 << 4)
-
-/* bit 5 unused */
+#define PAN_BO_DELAY_MMAP         (1 << 3)
 
 /* BO is shared across processes (imported or exported) and therefore cannot be
  * cached locally */
-#define PAN_BO_SHARED             (1 << 6)
+#define PAN_BO_SHARED             (1 << 4)
 
 /* GPU access flags */
 
