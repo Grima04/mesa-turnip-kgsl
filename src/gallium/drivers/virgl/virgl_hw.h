@@ -337,6 +337,7 @@ enum virgl_formats {
 #define VIRGL_CAP_APP_TWEAK_SUPPORT    (1 << 28)
 #define VIRGL_CAP_BGRA_SRGB_IS_EMULATED (1 << 29)
 #define VIRGL_CAP_CLEAR_TEXTURE        (1 << 30)
+/* Reserved for VIRGL_CAP_ARB_BUFFER_STORAGE */
 
 /* virgl bind flags - these are compatible with mesa 10.5 gallium.
  * but are fixed, no other should be passed to virgl either.
