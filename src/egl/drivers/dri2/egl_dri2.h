@@ -88,8 +88,10 @@ struct zwp_linux_dmabuf_v1;
 struct wl_buffer;
 
 struct dri2_egl_display_vtbl {
+   /* mandatory on Wayland, unused otherwise */
    int (*authenticate)(_EGLDisplay *disp, uint32_t id);
 
+   /* mandatory */
    _EGLSurface* (*create_window_surface)(_EGLDriver *drv, _EGLDisplay *disp,
                                          _EGLConfig *config,
                                          void *native_window,
@@ -106,17 +108,21 @@ struct dri2_egl_display_vtbl {
                                           _EGLConfig *config,
                                           const EGLint *attrib_list);
 
+   /* mandatory */
    EGLBoolean (*destroy_surface)(_EGLDriver *drv, _EGLDisplay *disp,
                                  _EGLSurface *surface);
 
+   /* optional */
    EGLBoolean (*swap_interval)(_EGLDriver *drv, _EGLDisplay *disp,
                                _EGLSurface *surf, EGLint interval);
 
+   /* mandatory */
    _EGLImage* (*create_image)(_EGLDriver *drv, _EGLDisplay *disp,
                               _EGLContext *ctx, EGLenum target,
                               EGLClientBuffer buffer,
                               const EGLint *attr_list);
 
+   /* mandatory */
    EGLBoolean (*swap_buffers)(_EGLDriver *drv, _EGLDisplay *disp,
                               _EGLSurface *surf);
 
@@ -144,6 +150,7 @@ struct dri2_egl_display_vtbl {
    EGLint (*query_buffer_age)(_EGLDriver *drv, _EGLDisplay *disp,
                               _EGLSurface *surf);
 
+   /* optional */
    EGLBoolean (*query_surface)(_EGLDriver *drv, _EGLDisplay *disp,
                                _EGLSurface *surf, EGLint attribute,
                                EGLint *value);
@@ -157,12 +164,15 @@ struct dri2_egl_display_vtbl {
                                  EGLuint64KHR *ust, EGLuint64KHR *msc,
                                  EGLuint64KHR *sbc);
 
+   /* mandatory */
    __DRIdrawable *(*get_dri_drawable)(_EGLSurface *surf);
 
+   /* optional */
    void (*close_screen_notify)(_EGLDisplay *disp);
 
    /* Used in EGL_KHR_mutable_render_buffer to update the native window's
     * shared buffer mode.
+    * optional
     */
    bool (*set_shared_buffer_mode)(_EGLDisplay *disp, _EGLSurface *surf,
                                   bool mode);
