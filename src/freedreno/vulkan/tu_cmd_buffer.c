@@ -719,7 +719,19 @@ tu6_init_hw(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
 
    tu6_emit_event_write(cmd, cs, CACHE_INVALIDATE);
 
-   tu_cs_emit_write_reg(cs, REG_A6XX_HLSQ_UPDATE_CNTL, 0xfffff);
+   tu_cs_emit_regs(cs, A6XX_HLSQ_INVALIDATE_CMD(
+         .vs_state = true,
+         .hs_state = true,
+         .ds_state = true,
+         .gs_state = true,
+         .fs_state = true,
+         .cs_state = true,
+         .gfx_ibo = true,
+         .cs_ibo = true,
+         .gfx_shared_const = true,
+         .cs_shared_const = true,
+         .gfx_bindless = 0x1f,
+         .cs_bindless = 0x1f));
 
    tu_cs_emit_regs(cs,
                    A6XX_RB_CCU_CNTL(.offset = phys_dev->ccu_offset_bypass));
@@ -1684,7 +1696,7 @@ tu_CmdBindDescriptorSets(VkCommandBuffer commandBuffer,
    }
    assert(dyn_idx == dynamicOffsetCount);
 
-   uint32_t sp_bindless_base_reg, hlsq_bindless_base_reg, hlsq_update_value;
+   uint32_t sp_bindless_base_reg, hlsq_bindless_base_reg, hlsq_invalidate_value;
    uint64_t addr[MAX_SETS + 1] = {};
    struct tu_cs cs;
 
@@ -1709,7 +1721,7 @@ tu_CmdBindDescriptorSets(VkCommandBuffer commandBuffer,
    if (pipelineBindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS) {
       sp_bindless_base_reg = REG_A6XX_SP_BINDLESS_BASE(0);
       hlsq_bindless_base_reg = REG_A6XX_HLSQ_BINDLESS_BASE(0);
-      hlsq_update_value = 0x7c000;
+      hlsq_invalidate_value = A6XX_HLSQ_INVALIDATE_CMD_GFX_BINDLESS(0x1f);
 
       cmd->state.dirty |= TU_CMD_DIRTY_DESCRIPTOR_SETS | TU_CMD_DIRTY_SHADER_CONSTS;
    } else {
@@ -1717,7 +1729,7 @@ tu_CmdBindDescriptorSets(VkCommandBuffer commandBuffer,
 
       sp_bindless_base_reg = REG_A6XX_SP_CS_BINDLESS_BASE(0);
       hlsq_bindless_base_reg = REG_A6XX_HLSQ_CS_BINDLESS_BASE(0);
-      hlsq_update_value = 0x3e00;
+      hlsq_invalidate_value = A6XX_HLSQ_INVALIDATE_CMD_CS_BINDLESS(0x1f);
 
       cmd->state.dirty |= TU_CMD_DIRTY_COMPUTE_DESCRIPTOR_SETS;
    }
@@ -1728,7 +1740,7 @@ tu_CmdBindDescriptorSets(VkCommandBuffer commandBuffer,
    tu_cs_emit_array(&cs, (const uint32_t*) addr, 10);
    tu_cs_emit_pkt4(&cs, hlsq_bindless_base_reg, 10);
    tu_cs_emit_array(&cs, (const uint32_t*) addr, 10);
-   tu_cs_emit_regs(&cs, A6XX_HLSQ_UPDATE_CNTL(.dword = hlsq_update_value));
+   tu_cs_emit_regs(&cs, A6XX_HLSQ_INVALIDATE_CMD(.dword = hlsq_invalidate_value));
 
    struct tu_cs_entry ib = tu_cs_end_sub_stream(&cmd->sub_cs, &cs);
    if (pipelineBindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS) {

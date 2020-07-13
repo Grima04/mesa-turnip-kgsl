@@ -39,6 +39,7 @@
 #include "fd6_emit.h"
 #include "fd6_texture.h"
 #include "fd6_format.h"
+#include "fd6_pack.h"
 
 void
 fd6_emit_shader(struct fd_ringbuffer *ring, const struct ir3_shader_variant *so)
@@ -225,8 +226,16 @@ setup_stream_out(struct fd6_program_state *state, const struct ir3_shader_varian
 static void
 setup_config_stateobj(struct fd_ringbuffer *ring, struct fd6_program_state *state)
 {
-	OUT_PKT4(ring, REG_A6XX_HLSQ_UPDATE_CNTL, 1);
-	OUT_RING(ring, 0xff);        /* XXX */
+	OUT_REG(ring, A6XX_HLSQ_INVALIDATE_CMD(
+			.vs_state = true,
+			.hs_state = true,
+			.ds_state = true,
+			.gs_state = true,
+			.fs_state = true,
+			.cs_state = true,
+			.gfx_ibo = true,
+			.cs_ibo = true,
+		));
 
 	debug_assert(state->vs->constlen >= state->bs->constlen);
 

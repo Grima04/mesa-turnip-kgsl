@@ -428,7 +428,18 @@ r3d_common(struct tu_cmd_buffer *cmd, struct tu_cs *cs, bool blit, uint32_t num_
       .const_state = &dummy_const_state,
    };
 
-   tu_cs_emit_regs(cs, A6XX_HLSQ_UPDATE_CNTL(0x7ffff));
+   tu_cs_emit_regs(cs, A6XX_HLSQ_INVALIDATE_CMD(
+         .vs_state = true,
+         .hs_state = true,
+         .ds_state = true,
+         .gs_state = true,
+         .fs_state = true,
+         .cs_state = true,
+         .gfx_ibo = true,
+         .cs_ibo = true,
+         .gfx_shared_const = true,
+         .gfx_bindless = 0x1f,
+         .cs_bindless = 0x1f));
 
    tu6_emit_xs_config(cs, MESA_SHADER_VERTEX, &vs, global_iova(cmd, shaders[GLOBAL_SH_VS]));
    tu6_emit_xs_config(cs, MESA_SHADER_TESS_CTRL, NULL, 0);

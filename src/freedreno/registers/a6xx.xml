@@ -3408,8 +3408,31 @@ to upconvert to 32b float internally?
 		<bitfield name="EVENT" low="0" high="6" type="vgt_event_type"/>
 	</reg32>
 
-	<!-- probably: -->
-	<reg32 offset="0xbb08" name="HLSQ_UPDATE_CNTL"/>
+	<reg32 offset="0xbb08" name="HLSQ_INVALIDATE_CMD">
+		<doc>
+			This register clears pending loads queued up by
+			CP_LOAD_STATE6. Each bit resets a particular kind(s) of
+			CP_LOAD_STATE6.
+		</doc>
+
+		<!-- per-stage state: shader, non-bindless UBO, textures, and samplers -->
+		<bitfield name="VS_STATE" pos="0" type="boolean"/>
+		<bitfield name="HS_STATE" pos="1" type="boolean"/>
+		<bitfield name="DS_STATE" pos="2" type="boolean"/>
+		<bitfield name="GS_STATE" pos="3" type="boolean"/>
+		<bitfield name="FS_STATE" pos="4" type="boolean"/>
+		<bitfield name="CS_STATE" pos="5" type="boolean"/>
+
+		<bitfield name="CS_IBO" pos="6" type="boolean"/>
+		<bitfield name="GFX_IBO" pos="7" type="boolean"/>
+
+		<bitfield name="CS_SHARED_CONST" pos="19" type="boolean"/>
+		<bitfield name="GFX_SHARED_CONST" pos="8" type="boolean"/>
+
+		<!-- SS6_BINDLESS: one bit per bindless base -->
+		<bitfield name="CS_BINDLESS" low="9" high="13" type="hex"/>
+		<bitfield name="GFX_BINDLESS" low="14" high="18" type="hex"/>
+	</reg32>
 
 	<reg32 offset="0xbb10" name="HLSQ_FS_CNTL" type="a6xx_hlsq_xs_cntl"/>
 

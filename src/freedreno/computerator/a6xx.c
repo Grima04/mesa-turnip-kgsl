@@ -117,8 +117,15 @@ cs_program_emit(struct fd_ringbuffer *ring, struct kernel *kernel)
 	const struct ir3_info *i = &v->info;
 	enum a3xx_threadsize thrsz = FOUR_QUADS;
 
-	OUT_PKT4(ring, REG_A6XX_HLSQ_UPDATE_CNTL, 1);
-	OUT_RING(ring, 0xff);
+	OUT_PKT4(ring, REG_A6XX_HLSQ_INVALIDATE_CMD, 1);
+	OUT_RING(ring, A6XX_HLSQ_INVALIDATE_CMD_VS_STATE |
+                   A6XX_HLSQ_INVALIDATE_CMD_HS_STATE |
+                   A6XX_HLSQ_INVALIDATE_CMD_DS_STATE |
+                   A6XX_HLSQ_INVALIDATE_CMD_GS_STATE |
+                   A6XX_HLSQ_INVALIDATE_CMD_FS_STATE |
+                   A6XX_HLSQ_INVALIDATE_CMD_CS_STATE |
+                   A6XX_HLSQ_INVALIDATE_CMD_CS_IBO |
+                   A6XX_HLSQ_INVALIDATE_CMD_GFX_IBO);
 
 	unsigned constlen = align(v->constlen, 4);
 	OUT_PKT4(ring, REG_A6XX_HLSQ_CS_CNTL, 1);
