@@ -35,7 +35,9 @@ static struct pipe_surface *
 framebuffer_null_surface_init(struct zink_context *ctx, struct zink_framebuffer_state *state)
 {
    struct pipe_surface surf_templ = {};
-   if (!ctx->null_buffer) {
+   unsigned idx = util_logbase2_ceil(MAX2(state->samples, 1));
+
+   if (!ctx->null_buffers[idx]) {
       struct pipe_resource *pres;
       struct pipe_resource templ = {};
       templ.width0 = state->width;
@@ -44,16 +46,17 @@ framebuffer_null_surface_init(struct zink_context *ctx, struct zink_framebuffer_
       templ.format = PIPE_FORMAT_R8_UINT;
       templ.target = PIPE_TEXTURE_2D;
       templ.bind = PIPE_BIND_RENDER_TARGET;
+      templ.nr_samples = state->samples;
 
       pres = ctx->base.screen->resource_create(ctx->base.screen, &templ);
       if (!pres)
          return NULL;
 
-      ctx->null_buffer = pres;
+      ctx->null_buffers[idx] = pres;
    }
    surf_templ.format = PIPE_FORMAT_R8_UINT;
-   surf_templ.nr_samples = 1;
-   return ctx->base.create_surface(&ctx->base, ctx->null_buffer, &surf_templ);
+   surf_templ.nr_samples = state->samples;
+   return ctx->base.create_surface(&ctx->base, ctx->null_buffers[idx], &surf_templ);
 }
 
 void

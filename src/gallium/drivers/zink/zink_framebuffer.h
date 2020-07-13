@@ -37,6 +37,7 @@ struct zink_framebuffer_state {
    struct zink_render_pass *rp;
    uint32_t width;
    uint16_t height, layers;
+   uint8_t samples;
    uint8_t num_attachments;
    struct zink_surface *attachments[PIPE_MAX_COLOR_BUFS + 1];
    bool has_null_attachments;

@@ -58,7 +58,8 @@ zink_context_destroy(struct pipe_context *pctx)
    if (vkQueueWaitIdle(ctx->queue) != VK_SUCCESS)
       debug_printf("vkQueueWaitIdle failed\n");
 
-   pipe_resource_reference(&ctx->null_buffer, NULL);
+   for (unsigned i = 0; i < ARRAY_SIZE(ctx->null_buffers); i++)
+      pipe_resource_reference(&ctx->null_buffers[i], NULL);
 
    for (int i = 0; i < ARRAY_SIZE(ctx->batches); ++i)
       vkFreeCommandBuffers(screen->dev, ctx->cmdpool, 1, &ctx->batches[i].cmdbuf);
@@ -506,7 +507,7 @@ get_render_pass(struct zink_context *ctx)
                                                        VK_SAMPLE_COUNT_1_BIT;
       } else {
          state.rts[i].format = VK_FORMAT_R8_UINT;
-         state.rts[i].samples = VK_SAMPLE_COUNT_1_BIT;
+         state.rts[i].samples = MAX2(fb->samples, 1);
       }
    }
    state.num_cbufs = fb->nr_cbufs;
@@ -553,6 +554,7 @@ create_framebuffer(struct zink_context *ctx)
    state.width = ctx->fb_state.width;
    state.height = ctx->fb_state.height;
    state.layers = MAX2(ctx->fb_state.layers, 1);
+   state.samples = ctx->fb_state.samples;
 
    return zink_create_framebuffer(ctx, screen, &state);
 }
