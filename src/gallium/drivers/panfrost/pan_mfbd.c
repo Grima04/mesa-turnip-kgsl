@@ -449,8 +449,8 @@ pan_bytes_per_pixel_tib(enum pipe_format format)
  * us to scale up the tile at a performance penalty). This is conservative but
  * afaict you get 128-bits per pixel normally */
 
-static bool
-pan_is_large_tib(struct panfrost_batch *batch)
+static unsigned
+pan_tib_size(struct panfrost_batch *batch)
 {
         unsigned size = 0;
 
@@ -460,7 +460,24 @@ pan_is_large_tib(struct panfrost_batch *batch)
                 size += pan_bytes_per_pixel_tib(surf->format);
         }
 
-        return (size > 16);
+        return size;
+}
+
+static unsigned
+pan_tib_shift(struct panfrost_batch *batch)
+{
+        unsigned size = pan_tib_size(batch);
+
+        if (size > 128)
+                return 4;
+        else if (size > 64)
+                return 5;
+        else if (size > 32)
+                return 6;
+        else if (size > 16)
+                return 7;
+        else
+                return 8;
 }
 
 static struct mali_framebuffer
@@ -479,8 +496,8 @@ panfrost_emit_mfbd(struct panfrost_batch *batch, unsigned vertex_count)
                 .width2 = MALI_POSITIVE(width),
                 .height2 = MALI_POSITIVE(height),
 
-                /* Seems to configure tib size */
-                .unk1 = pan_is_large_tib(batch) ? 0xc80 : 0x1080,
+                /* Configures tib size */
+                .unk1 = (pan_tib_shift(batch) << 9) | 0x80,
 
                 .rt_count_1 = MALI_POSITIVE(MAX2(batch->key.nr_cbufs, 1)),
                 .rt_count_2 = 4,
@@ -538,11 +555,11 @@ panfrost_mfbd_fragment(struct panfrost_batch *batch, bool has_draws)
         /* Upload either the render target or a dummy GL_NONE target */
 
         unsigned offset = 0;
-        bool is_large = pan_is_large_tib(batch);
+        unsigned tib_shift = pan_tib_shift(batch);
 
         for (int cb = 0; cb < rt_descriptors; ++cb) {
                 struct pipe_surface *surf = batch->key.cbufs[cb];
-                unsigned rt_offset = offset * 0x100;
+                unsigned rt_offset = offset << tib_shift;
 
                 if (surf && ((batch->clear | batch->draws) & (PIPE_CLEAR_COLOR0 << cb))) {
                         unsigned nr_samples = surf->nr_samples;
@@ -573,10 +590,10 @@ panfrost_mfbd_fragment(struct panfrost_batch *batch, bool has_draws)
                 }
 
                 /* TODO: Break out the field */
-                rts[cb].format.unk1 |= is_large ? (rt_offset / 4) : rt_offset;
+                rts[cb].format.unk1 |= rt_offset;
         }
 
-        fb.rt_count_2 = MAX2(DIV_ROUND_UP(offset, is_large ? 16 : 4), 1);
+        fb.rt_count_2 = MAX2(DIV_ROUND_UP(offset, 1 << (10 - tib_shift)), 1);
 
         if (batch->key.zsbuf && ((batch->clear | batch->draws) & PIPE_CLEAR_DEPTHSTENCIL)) {
                 panfrost_mfbd_set_zsbuf(&fb, &fbx, batch->key.zsbuf);
