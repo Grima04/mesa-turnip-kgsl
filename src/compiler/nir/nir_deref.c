@@ -283,15 +283,19 @@ nir_deref_instr_get_const_offset(nir_deref_instr *deref,
 
    unsigned offset = 0;
    for (nir_deref_instr **p = &path.path[1]; *p; p++) {
-      if ((*p)->deref_type == nir_deref_type_array) {
+      switch ((*p)->deref_type) {
+      case nir_deref_type_array:
          offset += nir_src_as_uint((*p)->arr.index) *
                    type_get_array_stride((*p)->type, size_align);
-      } else if ((*p)->deref_type == nir_deref_type_struct) {
+	 break;
+      case nir_deref_type_struct: {
          /* p starts at path[1], so this is safe */
          nir_deref_instr *parent = *(p - 1);
          offset += struct_type_get_field_offset(parent->type, size_align,
                                                 (*p)->strct.index);
-      } else {
+	 break;
+      }
+      default:
          unreachable("Unsupported deref type");
       }
    }
@@ -312,18 +316,23 @@ nir_build_deref_offset(nir_builder *b, nir_deref_instr *deref,
 
    nir_ssa_def *offset = nir_imm_intN_t(b, 0, deref->dest.ssa.bit_size);
    for (nir_deref_instr **p = &path.path[1]; *p; p++) {
-      if ((*p)->deref_type == nir_deref_type_array) {
+      switch ((*p)->deref_type) {
+      case nir_deref_type_array: {
          nir_ssa_def *index = nir_ssa_for_src(b, (*p)->arr.index, 1);
          int stride = type_get_array_stride((*p)->type, size_align);
          offset = nir_iadd(b, offset, nir_amul_imm(b, index, stride));
-      } else if ((*p)->deref_type == nir_deref_type_struct) {
+         break;
+      }
+      case nir_deref_type_struct: {
          /* p starts at path[1], so this is safe */
          nir_deref_instr *parent = *(p - 1);
          unsigned field_offset =
             struct_type_get_field_offset(parent->type, size_align,
                                          (*p)->strct.index);
          offset = nir_iadd_imm(b, offset, field_offset);
-      } else {
+         break;
+      }
+      default:
          unreachable("Unsupported deref type");
       }
    }
