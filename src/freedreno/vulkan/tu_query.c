@@ -129,23 +129,22 @@ tu_CreateQueryPool(VkDevice _device,
    }
 
    struct tu_query_pool *pool =
-      vk_alloc2(&device->alloc, pAllocator, sizeof(*pool), 8,
-                VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
-
+         vk_object_alloc(&device->vk, pAllocator, sizeof(*pool),
+                         VK_OBJECT_TYPE_QUERY_POOL);
    if (!pool)
       return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
    VkResult result = tu_bo_init_new(device, &pool->bo,
          pCreateInfo->queryCount * slot_size);
    if (result != VK_SUCCESS) {
-      vk_free2(&device->alloc, pAllocator, pool);
+      vk_object_free(&device->vk, pAllocator, pool);
       return result;
    }
 
    result = tu_bo_map(device, &pool->bo);
    if (result != VK_SUCCESS) {
       tu_bo_finish(device, &pool->bo);
-      vk_free2(&device->alloc, pAllocator, pool);
+      vk_object_free(&device->vk, pAllocator, pool);
       return result;
    }
 
@@ -173,7 +172,7 @@ tu_DestroyQueryPool(VkDevice _device,
       return;
 
    tu_bo_finish(device, &pool->bo);
-   vk_free2(&device->alloc, pAllocator, pool);
+   vk_object_free(&device->vk, pAllocator, pool);
 }
 
 static uint32_t

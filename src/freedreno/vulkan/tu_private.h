@@ -49,6 +49,7 @@
 #include "util/macros.h"
 #include "util/u_atomic.h"
 #include "vk_alloc.h"
+#include "vk_object.h"
 #include "vk_debug_report.h"
 #include "wsi_common.h"
 
@@ -189,7 +190,7 @@ tu_lookup_entrypoint_checked(
 
 struct tu_physical_device
 {
-   VK_LOADER_DATA _loader_data;
+   struct vk_object_base base;
 
    struct tu_instance *instance;
 
@@ -245,7 +246,7 @@ enum tu_debug_flags
 
 struct tu_instance
 {
-   VK_LOADER_DATA _loader_data;
+   struct vk_object_base base;
 
    VkAllocationCallbacks alloc;
 
@@ -277,6 +278,8 @@ struct cache_entry;
 
 struct tu_pipeline_cache
 {
+   struct vk_object_base base;
+
    struct tu_device *device;
    pthread_mutex_t mutex;
 
@@ -301,6 +304,7 @@ struct tu_pipeline_key
 
 struct tu_fence
 {
+   struct vk_object_base base;
    struct wsi_fence *fence_wsi;
    bool signaled;
    int fd;
@@ -321,7 +325,8 @@ tu_fence_wait_idle(struct tu_fence *fence);
 
 struct tu_queue
 {
-   VK_LOADER_DATA _loader_data;
+   struct vk_object_base base;
+
    struct tu_device *device;
    uint32_t queue_family_index;
    int queue_idx;
@@ -381,10 +386,7 @@ void tu_init_clear_blit_shaders(struct tu6_global *global);
 
 struct tu_device
 {
-   VK_LOADER_DATA _loader_data;
-
-   VkAllocationCallbacks alloc;
-
+   struct vk_device vk;
    struct tu_instance *instance;
 
    struct tu_queue *queues[TU_MAX_QUEUE_FAMILIES];
@@ -565,6 +567,8 @@ struct tu_cs
 
 struct tu_device_memory
 {
+   struct vk_object_base base;
+
    struct tu_bo bo;
    VkDeviceSize size;
 
@@ -585,6 +589,8 @@ struct tu_descriptor_range
 
 struct tu_descriptor_set
 {
+   struct vk_object_base base;
+
    const struct tu_descriptor_set_layout *layout;
    struct tu_descriptor_pool *pool;
    uint32_t size;
@@ -612,6 +618,8 @@ struct tu_descriptor_pool_entry
 
 struct tu_descriptor_pool
 {
+   struct vk_object_base base;
+
    struct tu_bo bo;
    uint64_t current_offset;
    uint64_t size;
@@ -654,12 +662,16 @@ struct tu_descriptor_update_template_entry
 
 struct tu_descriptor_update_template
 {
+   struct vk_object_base base;
+
    uint32_t entry_count;
    struct tu_descriptor_update_template_entry entry[0];
 };
 
 struct tu_buffer
 {
+   struct vk_object_base base;
+
    VkDeviceSize size;
 
    VkBufferUsageFlags usage;
@@ -877,6 +889,8 @@ struct tu_cmd_state
 
 struct tu_cmd_pool
 {
+   struct vk_object_base base;
+
    VkAllocationCallbacks alloc;
    struct list_head cmd_buffers;
    struct list_head free_cmd_buffers;
@@ -924,7 +938,7 @@ tu_bo_list_merge(struct tu_bo_list *list, const struct tu_bo_list *other);
 
 struct tu_cmd_buffer
 {
-   VK_LOADER_DATA _loader_data;
+   struct vk_object_base base;
 
    struct tu_device *device;
 
@@ -997,11 +1011,14 @@ tu_get_descriptors_state(struct tu_cmd_buffer *cmd_buffer,
 
 struct tu_event
 {
+   struct vk_object_base base;
    struct tu_bo bo;
 };
 
 struct tu_shader_module
 {
+   struct vk_object_base base;
+
    unsigned char sha1[20];
 
    uint32_t code_size;
@@ -1045,6 +1062,8 @@ struct tu_program_descriptor_linkage
 
 struct tu_pipeline
 {
+   struct vk_object_base base;
+
    struct tu_cs cs;
 
    struct tu_pipeline_layout *layout;
@@ -1222,6 +1241,8 @@ tu6_base_format(VkFormat format)
 
 struct tu_image
 {
+   struct vk_object_base base;
+
    VkImageType type;
    /* The original VkFormat provided by the client.  This may not match any
     * of the actual surface formats.
@@ -1271,6 +1292,8 @@ tu_get_levelCount(const struct tu_image *image,
 
 struct tu_image_view
 {
+   struct vk_object_base base;
+
    struct tu_image *image; /**< VkImageViewCreateInfo::image */
 
    uint64_t base_addr;
@@ -1307,6 +1330,8 @@ struct tu_image_view
 };
 
 struct tu_sampler_ycbcr_conversion {
+   struct vk_object_base base;
+
    VkFormat format;
    VkSamplerYcbcrModelConversion ycbcr_model;
    VkSamplerYcbcrRange ycbcr_range;
@@ -1316,6 +1341,8 @@ struct tu_sampler_ycbcr_conversion {
 };
 
 struct tu_sampler {
+   struct vk_object_base base;
+
    uint32_t descriptor[A6XX_TEX_SAMP_DWORDS];
    struct tu_sampler_ycbcr_conversion *ycbcr_sampler;
 };
@@ -1350,6 +1377,8 @@ tu_image_view_init(struct tu_image_view *view,
 
 struct tu_buffer_view
 {
+   struct vk_object_base base;
+
    uint32_t descriptor[A6XX_TEX_CONST_DWORDS];
 
    struct tu_buffer *buffer;
@@ -1366,6 +1395,8 @@ struct tu_attachment_info
 
 struct tu_framebuffer
 {
+   struct vk_object_base base;
+
    uint32_t width;
    uint32_t height;
    uint32_t layers;
@@ -1434,6 +1465,8 @@ struct tu_render_pass_attachment
 
 struct tu_render_pass
 {
+   struct vk_object_base base;
+
    uint32_t attachment_count;
    uint32_t subpass_count;
    uint32_t gmem_pixels;
@@ -1446,6 +1479,8 @@ struct tu_render_pass
 
 struct tu_query_pool
 {
+   struct vk_object_base base;
+
    VkQueryType type;
    uint32_t stride;
    uint64_t size;
@@ -1469,6 +1504,8 @@ struct tu_semaphore_part
 
 struct tu_semaphore
 {
+   struct vk_object_base base;
+
    struct tu_semaphore_part permanent;
    struct tu_semaphore_part temporary;
 };

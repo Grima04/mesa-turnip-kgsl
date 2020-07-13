@@ -218,7 +218,7 @@ tu_physical_device_init(struct tu_physical_device *device,
    if (instance->debug_flags & TU_DEBUG_STARTUP)
       tu_logi("Found compatible device '%s'.", path);
 
-   device->_loader_data.loaderMagic = ICD_LOADER_MAGIC;
+   vk_object_base_init(NULL, &device->base, VK_OBJECT_TYPE_PHYSICAL_DEVICE);
    device->instance = instance;
    assert(strlen(path) < ARRAY_SIZE(device->path));
    strncpy(device->path, path, ARRAY_SIZE(device->path));
@@ -339,6 +339,8 @@ tu_physical_device_finish(struct tu_physical_device *device)
    close(device->local_fd);
    if (device->master_fd != -1)
       close(device->master_fd);
+
+   vk_object_base_finish(&device->base);
 }
 
 static VKAPI_ATTR void *
@@ -421,10 +423,11 @@ tu_CreateInstance(const VkInstanceCreateInfo *pCreateInfo,
 
    instance = vk_zalloc2(&default_alloc, pAllocator, sizeof(*instance), 8,
                          VK_SYSTEM_ALLOCATION_SCOPE_INSTANCE);
+
    if (!instance)
       return vk_error(NULL, VK_ERROR_OUT_OF_HOST_MEMORY);
 
-   instance->_loader_data.loaderMagic = ICD_LOADER_MAGIC;
+   vk_object_base_init(NULL, &instance->base, VK_OBJECT_TYPE_INSTANCE);
 
    if (pAllocator)
       instance->alloc = *pAllocator;
@@ -445,6 +448,7 @@ tu_CreateInstance(const VkInstanceCreateInfo *pCreateInfo,
       int index = tu_get_instance_extension_index(ext_name);
 
       if (index < 0 || !tu_instance_extensions_supported.extensions[index]) {
+         vk_object_base_finish(&instance->base);
          vk_free2(&default_alloc, pAllocator, instance);
          return vk_error(instance, VK_ERROR_EXTENSION_NOT_PRESENT);
       }
@@ -454,6 +458,7 @@ tu_CreateInstance(const VkInstanceCreateInfo *pCreateInfo,
 
    result = vk_debug_report_instance_init(&instance->debug_report_callbacks);
    if (result != VK_SUCCESS) {
+      vk_object_base_finish(&instance->base);
       vk_free2(&default_alloc, pAllocator, instance);
       return vk_error(instance, result);
    }
@@ -486,6 +491,7 @@ tu_DestroyInstance(VkInstance _instance,
 
    vk_debug_report_instance_destroy(&instance->debug_report_callbacks);
 
+   vk_object_base_finish(&instance->base);
    vk_free(&instance->alloc, instance);
 }
 
@@ -1096,7 +1102,8 @@ tu_queue_init(struct tu_device *device,
               int idx,
               VkDeviceQueueCreateFlags flags)
 {
-   queue->_loader_data.loaderMagic = ICD_LOADER_MAGIC;
+   vk_object_base_init(&device->vk, &queue->base, VK_OBJECT_TYPE_QUEUE);
+
    queue->device = device;
    queue->queue_family_index = queue_family_index;
    queue->queue_idx = idx;
@@ -1212,22 +1219,19 @@ tu_CreateDevice(VkPhysicalDevice physicalDevice,
    if (!device)
       return vk_error(physical_device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
-   device->_loader_data.loaderMagic = ICD_LOADER_MAGIC;
+   vk_device_init(&device->vk, pCreateInfo,
+         &physical_device->instance->alloc, pAllocator);
+
    device->instance = physical_device->instance;
    device->physical_device = physical_device;
    device->_lost = false;
-
-   if (pAllocator)
-      device->alloc = *pAllocator;
-   else
-      device->alloc = physical_device->instance->alloc;
 
    for (uint32_t i = 0; i < pCreateInfo->enabledExtensionCount; i++) {
       const char *ext_name = pCreateInfo->ppEnabledExtensionNames[i];
       int index = tu_get_device_extension_index(ext_name);
       if (index < 0 ||
           !physical_device->supported_extensions.extensions[index]) {
-         vk_free(&device->alloc, device);
+         vk_free(&device->vk.alloc, device);
          return vk_error(physical_device->instance,
                          VK_ERROR_EXTENSION_NOT_PRESENT);
       }
@@ -1240,7 +1244,7 @@ tu_CreateDevice(VkPhysicalDevice physicalDevice,
          &pCreateInfo->pQueueCreateInfos[i];
       uint32_t qfi = queue_create->queueFamilyIndex;
       device->queues[qfi] = vk_alloc(
-         &device->alloc, queue_create->queueCount * sizeof(struct tu_queue),
+         &device->vk.alloc, queue_create->queueCount * sizeof(struct tu_queue),
          8, VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
       if (!device->queues[qfi]) {
          result = VK_ERROR_OUT_OF_HOST_MEMORY;
@@ -1314,10 +1318,10 @@ fail_queues:
       for (unsigned q = 0; q < device->queue_count[i]; q++)
          tu_queue_finish(&device->queues[i][q]);
       if (device->queue_count[i])
-         vk_free(&device->alloc, device->queues[i]);
+         vk_object_free(&device->vk, NULL, device->queues[i]);
    }
 
-   vk_free(&device->alloc, device);
+   vk_free(&device->vk.alloc, device);
    return result;
 }
 
@@ -1333,7 +1337,7 @@ tu_DestroyDevice(VkDevice _device, const VkAllocationCallbacks *pAllocator)
       for (unsigned q = 0; q < device->queue_count[i]; q++)
          tu_queue_finish(&device->queues[i][q]);
       if (device->queue_count[i])
-         vk_free(&device->alloc, device->queues[i]);
+         vk_object_free(&device->vk, NULL, device->queues[i]);
    }
 
    for (unsigned i = 0; i < ARRAY_SIZE(device->scratch_bos); i++) {
@@ -1346,7 +1350,7 @@ tu_DestroyDevice(VkDevice _device, const VkAllocationCallbacks *pAllocator)
    VkPipelineCache pc = tu_pipeline_cache_to_handle(device->mem_cache);
    tu_DestroyPipelineCache(tu_device_to_handle(device), pc, NULL);
 
-   vk_free(&device->alloc, device);
+   vk_free(&device->vk.alloc, device);
 }
 
 VkResult
@@ -1774,8 +1778,8 @@ tu_alloc_memory(struct tu_device *device,
       return VK_SUCCESS;
    }
 
-   mem = vk_alloc2(&device->alloc, pAllocator, sizeof(*mem), 8,
-                   VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+   mem = vk_object_alloc(&device->vk, pAllocator, sizeof(*mem),
+                         VK_OBJECT_TYPE_DEVICE_MEMORY);
    if (mem == NULL)
       return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
@@ -1807,7 +1811,7 @@ tu_alloc_memory(struct tu_device *device,
    }
 
    if (result != VK_SUCCESS) {
-      vk_free2(&device->alloc, pAllocator, mem);
+      vk_object_free(&device->vk, pAllocator, mem);
       return result;
    }
 
@@ -1844,7 +1848,7 @@ tu_FreeMemory(VkDevice _device,
       return;
 
    tu_bo_finish(device, &mem->bo);
-   vk_free2(&device->alloc, pAllocator, mem);
+   vk_object_free(&device->vk, pAllocator, mem);
 }
 
 VkResult
@@ -2092,8 +2096,8 @@ tu_CreateSemaphore(VkDevice _device,
    TU_FROM_HANDLE(tu_device, device, _device);
 
    struct tu_semaphore *sem =
-      vk_alloc2(&device->alloc, pAllocator, sizeof(*sem), 8,
-                VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+         vk_object_alloc(&device->vk, pAllocator, sizeof(*sem),
+                         VK_OBJECT_TYPE_SEMAPHORE);
    if (!sem)
       return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
@@ -2107,7 +2111,7 @@ tu_CreateSemaphore(VkDevice _device,
 
    if (handleTypes) {
       if (drmSyncobjCreate(device->physical_device->local_fd, 0, &sem->permanent.syncobj) < 0) {
-          vk_free2(&device->alloc, pAllocator, sem);
+          vk_free2(&device->vk.alloc, pAllocator, sem);
           return VK_ERROR_OUT_OF_HOST_MEMORY;
       }
       sem->permanent.kind = TU_SEMAPHORE_SYNCOBJ;
@@ -2129,7 +2133,7 @@ tu_DestroySemaphore(VkDevice _device,
    tu_semaphore_part_destroy(device, &sem->permanent);
    tu_semaphore_part_destroy(device, &sem->temporary);
 
-   vk_free2(&device->alloc, pAllocator, sem);
+   vk_object_free(&device->vk, pAllocator, sem);
 }
 
 VkResult
@@ -2139,10 +2143,10 @@ tu_CreateEvent(VkDevice _device,
                VkEvent *pEvent)
 {
    TU_FROM_HANDLE(tu_device, device, _device);
-   struct tu_event *event =
-      vk_alloc2(&device->alloc, pAllocator, sizeof(*event), 8,
-                VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
 
+   struct tu_event *event =
+         vk_object_alloc(&device->vk, pAllocator, sizeof(*event),
+                         VK_OBJECT_TYPE_EVENT);
    if (!event)
       return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
@@ -2161,7 +2165,7 @@ tu_CreateEvent(VkDevice _device,
 fail_map:
    tu_bo_finish(device, &event->bo);
 fail_alloc:
-   vk_free2(&device->alloc, pAllocator, event);
+   vk_object_free(&device->vk, pAllocator, event);
    return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 }
 
@@ -2177,7 +2181,7 @@ tu_DestroyEvent(VkDevice _device,
       return;
 
    tu_bo_finish(device, &event->bo);
-   vk_free2(&device->alloc, pAllocator, event);
+   vk_object_free(&device->vk, pAllocator, event);
 }
 
 VkResult
@@ -2219,8 +2223,8 @@ tu_CreateBuffer(VkDevice _device,
 
    assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO);
 
-   buffer = vk_alloc2(&device->alloc, pAllocator, sizeof(*buffer), 8,
-                      VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+   buffer = vk_object_alloc(&device->vk, pAllocator, sizeof(*buffer),
+                            VK_OBJECT_TYPE_BUFFER);
    if (buffer == NULL)
       return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
@@ -2244,7 +2248,7 @@ tu_DestroyBuffer(VkDevice _device,
    if (!buffer)
       return;
 
-   vk_free2(&device->alloc, pAllocator, buffer);
+   vk_object_free(&device->vk, pAllocator, buffer);
 }
 
 VkResult
@@ -2261,8 +2265,8 @@ tu_CreateFramebuffer(VkDevice _device,
 
    size_t size = sizeof(*framebuffer) + sizeof(struct tu_attachment_info) *
                                            pCreateInfo->attachmentCount;
-   framebuffer = vk_alloc2(&device->alloc, pAllocator, size, 8,
-                           VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+   framebuffer = vk_object_alloc(&device->vk, pAllocator, size,
+                                 VK_OBJECT_TYPE_FRAMEBUFFER);
    if (framebuffer == NULL)
       return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
@@ -2292,7 +2296,8 @@ tu_DestroyFramebuffer(VkDevice _device,
 
    if (!fb)
       return;
-   vk_free2(&device->alloc, pAllocator, fb);
+
+   vk_object_free(&device->vk, pAllocator, fb);
 }
 
 static void
@@ -2365,8 +2370,8 @@ tu_CreateSampler(VkDevice _device,
 
    assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO);
 
-   sampler = vk_alloc2(&device->alloc, pAllocator, sizeof(*sampler), 8,
-                       VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+   sampler = vk_object_alloc(&device->vk, pAllocator, sizeof(*sampler),
+                             VK_OBJECT_TYPE_SAMPLER);
    if (!sampler)
       return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
@@ -2386,7 +2391,8 @@ tu_DestroySampler(VkDevice _device,
 
    if (!sampler)
       return;
-   vk_free2(&device->alloc, pAllocator, sampler);
+
+   vk_object_free(&device->vk, pAllocator, sampler);
 }
 
 /* vk_icd.h does not declare this function, so we declare it here to

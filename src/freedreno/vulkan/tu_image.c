@@ -95,8 +95,8 @@ tu_image_create(VkDevice _device,
    assert(pCreateInfo->extent.height > 0);
    assert(pCreateInfo->extent.depth > 0);
 
-   image = vk_zalloc2(&device->alloc, alloc, sizeof(*image), 8,
-                      VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+   image = vk_object_zalloc(&device->vk, alloc, sizeof(*image),
+                            VK_OBJECT_TYPE_IMAGE);
    if (!image)
       return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
@@ -259,7 +259,7 @@ tu_image_create(VkDevice _device,
    return VK_SUCCESS;
 
 invalid_layout:
-   vk_free2(&device->alloc, alloc, image);
+   vk_object_free(&device->vk, alloc, image);
    return vk_error(device->instance, VK_ERROR_INVALID_DRM_FORMAT_MODIFIER_PLANE_LAYOUT_EXT);
 }
 
@@ -667,7 +667,7 @@ tu_DestroyImage(VkDevice _device,
    if (image->owned_memory != VK_NULL_HANDLE)
       tu_FreeMemory(_device, image->owned_memory, pAllocator);
 
-   vk_free2(&device->alloc, pAllocator, image);
+   vk_object_free(&device->vk, pAllocator, image);
 }
 
 void
@@ -729,8 +729,8 @@ tu_CreateImageView(VkDevice _device,
    TU_FROM_HANDLE(tu_device, device, _device);
    struct tu_image_view *view;
 
-   view = vk_alloc2(&device->alloc, pAllocator, sizeof(*view), 8,
-                    VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+   view = vk_object_alloc(&device->vk, pAllocator, sizeof(*view),
+                          VK_OBJECT_TYPE_IMAGE_VIEW);
    if (view == NULL)
       return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
@@ -751,7 +751,8 @@ tu_DestroyImageView(VkDevice _device,
 
    if (!iview)
       return;
-   vk_free2(&device->alloc, pAllocator, iview);
+
+   vk_object_free(&device->vk, pAllocator, iview);
 }
 
 void
@@ -811,8 +812,8 @@ tu_CreateBufferView(VkDevice _device,
    TU_FROM_HANDLE(tu_device, device, _device);
    struct tu_buffer_view *view;
 
-   view = vk_alloc2(&device->alloc, pAllocator, sizeof(*view), 8,
-                    VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+   view = vk_object_alloc(&device->vk, pAllocator, sizeof(*view),
+                          VK_OBJECT_TYPE_BUFFER_VIEW);
    if (!view)
       return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
@@ -834,5 +835,5 @@ tu_DestroyBufferView(VkDevice _device,
    if (!view)
       return;
 
-   vk_free2(&device->alloc, pAllocator, view);
+   vk_object_free(&device->vk, pAllocator, view);
 }

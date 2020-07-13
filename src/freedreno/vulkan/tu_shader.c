@@ -673,7 +673,7 @@ tu_shader_create(struct tu_device *dev,
    struct tu_shader *shader;
 
    shader = vk_zalloc2(
-      &dev->alloc, alloc,
+      &dev->vk.alloc, alloc,
       sizeof(*shader),
       8, VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
    if (!shader)
@@ -699,7 +699,7 @@ tu_shader_create(struct tu_device *dev,
    }
 
    if (!nir) {
-      vk_free2(&dev->alloc, alloc, shader);
+      vk_free2(&dev->vk.alloc, alloc, shader);
       return NULL;
    }
 
@@ -804,7 +804,7 @@ tu_shader_destroy(struct tu_device *dev,
 {
    ir3_shader_destroy(shader->ir3_shader);
 
-   vk_free2(&dev->alloc, alloc, shader);
+   vk_free2(&dev->vk.alloc, alloc, shader);
 }
 
 VkResult
@@ -820,9 +820,9 @@ tu_CreateShaderModule(VkDevice _device,
    assert(pCreateInfo->flags == 0);
    assert(pCreateInfo->codeSize % 4 == 0);
 
-   module = vk_alloc2(&device->alloc, pAllocator,
-                      sizeof(*module) + pCreateInfo->codeSize, 8,
-                      VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+   module = vk_object_alloc(&device->vk, pAllocator,
+                            sizeof(*module) + pCreateInfo->codeSize,
+                            VK_OBJECT_TYPE_SHADER_MODULE);
    if (module == NULL)
       return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
@@ -847,5 +847,5 @@ tu_DestroyShaderModule(VkDevice _device,
    if (!module)
       return;
 
-   vk_free2(&device->alloc, pAllocator, module);
+   vk_object_free(&device->vk, pAllocator, module);
 }

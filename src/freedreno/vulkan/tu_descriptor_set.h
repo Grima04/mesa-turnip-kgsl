@@ -68,6 +68,8 @@ struct tu_descriptor_set_binding_layout
 
 struct tu_descriptor_set_layout
 {
+   struct vk_object_base base;
+
    /* The create flags for this descriptor set layout */
    VkDescriptorSetLayoutCreateFlags flags;
 
@@ -99,6 +101,8 @@ struct tu_descriptor_set_layout
 
 struct tu_pipeline_layout
 {
+   struct vk_object_base base;
+
    struct
    {
       struct tu_descriptor_set_layout *layout;

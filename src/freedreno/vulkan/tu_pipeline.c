@@ -2396,9 +2396,8 @@ tu_pipeline_builder_build(struct tu_pipeline_builder *builder,
 {
    VkResult result;
 
-   *pipeline =
-      vk_zalloc2(&builder->device->alloc, builder->alloc, sizeof(**pipeline),
-                 8, VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+   *pipeline = vk_object_zalloc(&builder->device->vk, builder->alloc,
+                                sizeof(**pipeline), VK_OBJECT_TYPE_PIPELINE);
    if (!*pipeline)
       return VK_ERROR_OUT_OF_HOST_MEMORY;
 
@@ -2407,13 +2406,13 @@ tu_pipeline_builder_build(struct tu_pipeline_builder *builder,
    /* compile and upload shaders */
    result = tu_pipeline_builder_compile_shaders(builder, *pipeline);
    if (result != VK_SUCCESS) {
-      vk_free2(&builder->device->alloc, builder->alloc, *pipeline);
+      vk_object_free(&builder->device->vk, builder->alloc, *pipeline);
       return result;
    }
 
    result = tu_pipeline_allocate_cs(builder->device, *pipeline, builder, NULL);
    if (result != VK_SUCCESS) {
-      vk_free2(&builder->device->alloc, builder->alloc, *pipeline);
+      vk_object_free(&builder->device->vk, builder->alloc, *pipeline);
       return result;
    }
 
@@ -2575,9 +2574,8 @@ tu_compute_pipeline_create(VkDevice device,
 
    *pPipeline = VK_NULL_HANDLE;
 
-   pipeline =
-      vk_zalloc2(&dev->alloc, pAllocator, sizeof(*pipeline), 8,
-                 VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+   pipeline = vk_object_zalloc(&dev->vk, pAllocator, sizeof(*pipeline),
+                               VK_OBJECT_TYPE_PIPELINE);
    if (!pipeline)
       return VK_ERROR_OUT_OF_HOST_MEMORY;
 
@@ -2628,7 +2626,7 @@ fail:
    if (shader)
       tu_shader_destroy(dev, shader, pAllocator);
 
-   vk_free2(&dev->alloc, pAllocator, pipeline);
+   vk_object_free(&dev->vk, pAllocator, pipeline);
 
    return result;
 }
@@ -2666,5 +2664,5 @@ tu_DestroyPipeline(VkDevice _device,
       return;
 
    tu_pipeline_finish(pipeline, dev, pAllocator);
-   vk_free2(&dev->alloc, pAllocator, pipeline);
+   vk_object_free(&dev->vk, pAllocator, pipeline);
 }

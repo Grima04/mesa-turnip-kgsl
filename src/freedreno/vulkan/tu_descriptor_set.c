@@ -148,8 +148,8 @@ tu_CreateDescriptorSetLayout(
       immutable_sampler_count * sizeof(struct tu_sampler) +
       ycbcr_sampler_count * sizeof(struct tu_sampler_ycbcr_conversion);
 
-   set_layout = vk_zalloc2(&device->alloc, pAllocator, size, 8,
-                          VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+   set_layout = vk_object_zalloc(&device->vk, pAllocator, size,
+                                 VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT);
    if (!set_layout)
       return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
@@ -163,7 +163,7 @@ tu_CreateDescriptorSetLayout(
    VkDescriptorSetLayoutBinding *bindings = create_sorted_bindings(
       pCreateInfo->pBindings, pCreateInfo->bindingCount);
    if (!bindings) {
-      vk_free2(&device->alloc, pAllocator, set_layout);
+      vk_object_free(&device->vk, pAllocator, set_layout);
       return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
    }
 
@@ -272,7 +272,7 @@ tu_DestroyDescriptorSetLayout(VkDevice _device,
    if (!set_layout)
       return;
 
-   vk_free2(&device->alloc, pAllocator, set_layout);
+   vk_object_free(&device->vk, pAllocator, set_layout);
 }
 
 void
@@ -353,8 +353,8 @@ tu_CreatePipelineLayout(VkDevice _device,
    assert(pCreateInfo->sType ==
           VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO);
 
-   layout = vk_alloc2(&device->alloc, pAllocator, sizeof(*layout), 8,
-                      VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+   layout = vk_object_alloc(&device->vk, pAllocator, sizeof(*layout),
+                            VK_OBJECT_TYPE_PIPELINE_LAYOUT);
    if (layout == NULL)
       return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
@@ -411,7 +411,8 @@ tu_DestroyPipelineLayout(VkDevice _device,
 
    if (!pipeline_layout)
       return;
-   vk_free2(&device->alloc, pAllocator, pipeline_layout);
+
+   vk_object_free(&device->vk, pAllocator, pipeline_layout);
 }
 
 #define EMPTY 1
@@ -445,7 +446,7 @@ tu_descriptor_set_create(struct tu_device *device,
       set = (struct tu_descriptor_set*)pool->host_memory_ptr;
       pool->host_memory_ptr += mem_size;
    } else {
-      set = vk_alloc2(&device->alloc, NULL, mem_size, 8,
+      set = vk_alloc2(&device->vk.alloc, NULL, mem_size, 8,
                       VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
 
       if (!set)
@@ -453,6 +454,7 @@ tu_descriptor_set_create(struct tu_device *device,
    }
 
    memset(set, 0, mem_size);
+   vk_object_base_init(&device->vk, &set->base, VK_OBJECT_TYPE_DESCRIPTOR_SET);
 
    if (layout->dynamic_offset_count) {
       set->dynamic_descriptors = (uint32_t *)((uint8_t*)set + dynamic_offset);
@@ -472,7 +474,7 @@ tu_descriptor_set_create(struct tu_device *device,
       set->size = layout_size;
 
       if (!pool->host_memory_base && pool->entry_count == pool->max_entry_count) {
-         vk_free2(&device->alloc, NULL, set);
+         vk_object_free(&device->vk, NULL, set);
          return vk_error(device->instance, VK_ERROR_OUT_OF_POOL_MEMORY);
       }
 
@@ -500,7 +502,7 @@ tu_descriptor_set_create(struct tu_device *device,
          }
 
          if (pool->size - offset < layout_size) {
-            vk_free2(&device->alloc, NULL, set);
+            vk_object_free(&device->vk, NULL, set);
             return vk_error(device->instance, VK_ERROR_OUT_OF_POOL_MEMORY);
          }
 
@@ -559,7 +561,8 @@ tu_descriptor_set_destroy(struct tu_device *device,
          }
       }
    }
-   vk_free2(&device->alloc, NULL, set);
+
+   vk_object_free(&device->vk, NULL, set);
 }
 
 VkResult
@@ -598,12 +601,10 @@ tu_CreateDescriptorPool(VkDevice _device,
       size += sizeof(struct tu_descriptor_pool_entry) * pCreateInfo->maxSets;
    }
 
-   pool = vk_alloc2(&device->alloc, pAllocator, size, 8,
-                    VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+   pool = vk_object_zalloc(&device->vk, pAllocator, size,
+                          VK_OBJECT_TYPE_DESCRIPTOR_POOL);
    if (!pool)
       return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
-
-   memset(pool, 0, sizeof(*pool));
 
    if (!(pCreateInfo->flags & VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT)) {
       pool->host_memory_base = (uint8_t*)pool + sizeof(struct tu_descriptor_pool);
@@ -646,7 +647,8 @@ tu_DestroyDescriptorPool(VkDevice _device,
 
    if (pool->size)
       tu_bo_finish(device, &pool->bo);
-   vk_free2(&device->alloc, pAllocator, pool);
+
+   vk_object_free(&device->vk, pAllocator, pool);
 }
 
 VkResult
@@ -1036,8 +1038,8 @@ tu_CreateDescriptorUpdateTemplate(
       sizeof(struct tu_descriptor_update_template_entry) * entry_count;
    struct tu_descriptor_update_template *templ;
 
-   templ = vk_alloc2(&device->alloc, pAllocator, size, 8,
-                     VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+   templ = vk_object_alloc(&device->vk, pAllocator, size,
+                           VK_OBJECT_TYPE_DESCRIPTOR_UPDATE_TEMPLATE);
    if (!templ)
       return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
@@ -1109,7 +1111,7 @@ tu_DestroyDescriptorUpdateTemplate(
    if (!templ)
       return;
 
-   vk_free2(&device->alloc, pAllocator, templ);
+   vk_object_free(&device->vk, pAllocator, templ);
 }
 
 void
@@ -1213,8 +1215,8 @@ tu_CreateSamplerYcbcrConversion(
    TU_FROM_HANDLE(tu_device, device, _device);
    struct tu_sampler_ycbcr_conversion *conversion;
 
-   conversion = vk_alloc2(&device->alloc, pAllocator, sizeof(*conversion), 8,
-                          VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+   conversion = vk_object_alloc(&device->vk, pAllocator, sizeof(*conversion),
+                                VK_OBJECT_TYPE_SAMPLER_YCBCR_CONVERSION);
    if (!conversion)
       return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
@@ -1238,6 +1240,8 @@ tu_DestroySamplerYcbcrConversion(VkDevice _device,
    TU_FROM_HANDLE(tu_device, device, _device);
    TU_FROM_HANDLE(tu_sampler_ycbcr_conversion, ycbcr_conversion, ycbcrConversion);
 
-   if (ycbcr_conversion)
-      vk_free2(&device->alloc, pAllocator, ycbcr_conversion);
+   if (!ycbcr_conversion)
+      return;
+
+   vk_object_free(&device->vk, pAllocator, ycbcr_conversion);
 }

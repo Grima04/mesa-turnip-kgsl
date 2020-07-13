@@ -170,9 +170,8 @@ tu_CreateFence(VkDevice _device,
    TU_FROM_HANDLE(tu_device, device, _device);
 
    struct tu_fence *fence =
-      vk_alloc2(&device->alloc, pAllocator, sizeof(*fence), 8,
-                VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
-
+         vk_object_alloc(&device->vk, pAllocator, sizeof(*fence),
+                         VK_OBJECT_TYPE_FENCE);
    if (!fence)
       return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
@@ -196,7 +195,7 @@ tu_DestroyFence(VkDevice _device,
 
    tu_fence_finish(fence);
 
-   vk_free2(&device->alloc, pAllocator, fence);
+   vk_object_free(&device->vk, pAllocator, fence);
 }
 
 /**
@@ -344,7 +343,7 @@ tu_WaitForFences(VkDevice _device,
    struct pollfd stack_fds[8];
    struct pollfd *fds = stack_fds;
    if (fenceCount > ARRAY_SIZE(stack_fds)) {
-      fds = vk_alloc(&device->alloc, sizeof(*fds) * fenceCount, 8,
+      fds = vk_alloc(&device->vk.alloc, sizeof(*fds) * fenceCount, 8,
                      VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
       if (!fds)
          return VK_ERROR_OUT_OF_HOST_MEMORY;
@@ -362,7 +361,7 @@ tu_WaitForFences(VkDevice _device,
    }
 
    if (fds != stack_fds)
-      vk_free(&device->alloc, fds);
+      vk_free(&device->vk.alloc, fds);
 
    if (result != VK_SUCCESS)
       return result;

@@ -262,15 +262,15 @@ tu_CreatePipelineCache(VkDevice _device,
    assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO);
    assert(pCreateInfo->flags == 0);
 
-   cache = vk_alloc2(&device->alloc, pAllocator, sizeof(*cache), 8,
-                     VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+   cache = vk_object_alloc(&device->vk, pAllocator, sizeof(*cache),
+                           VK_OBJECT_TYPE_PIPELINE_CACHE);
    if (cache == NULL)
       return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
    if (pAllocator)
       cache->alloc = *pAllocator;
    else
-      cache->alloc = device->alloc;
+      cache->alloc = device->vk.alloc;
 
    tu_pipeline_cache_init(cache, device);
 
@@ -296,7 +296,7 @@ tu_DestroyPipelineCache(VkDevice _device,
       return;
    tu_pipeline_cache_finish(cache);
 
-   vk_free2(&device->alloc, pAllocator, cache);
+   vk_object_free(&device->vk, pAllocator, cache);
 }
 
 VkResult
