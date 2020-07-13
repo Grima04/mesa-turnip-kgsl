@@ -941,11 +941,23 @@ panfrost_create_sampler_view_bo(struct panfrost_sampler_view *so,
         assert(prsrc->bo);
 
         /* Format to access the stencil portion of a Z32_S8 texture */
-        if (so->base.format == PIPE_FORMAT_X32_S8X24_UINT) {
+        if (format == PIPE_FORMAT_X32_S8X24_UINT) {
                 assert(prsrc->separate_stencil);
                 texture = &prsrc->separate_stencil->base;
                 prsrc = (struct panfrost_resource *)texture;
                 format = texture->format;
+        }
+
+        const struct util_format_description *desc = util_format_description(format);
+
+        bool fake_rgtc = !panfrost_supports_compressed_format(device, MALI_BC4_UNORM);
+
+        if (desc->layout == UTIL_FORMAT_LAYOUT_RGTC && fake_rgtc) {
+                if (desc->is_snorm)
+                        format = PIPE_FORMAT_R8G8B8A8_SNORM;
+                else
+                        format = PIPE_FORMAT_R8G8B8A8_UNORM;
+                desc = util_format_description(format);
         }
 
         so->texture_bo = prsrc->bo->gpu;
@@ -985,8 +997,6 @@ panfrost_create_sampler_view_bo(struct panfrost_sampler_view *so,
                 panfrost_translate_texture_type(so->base.target);
 
         if (device->quirks & IS_BIFROST) {
-                const struct util_format_description *desc =
-                        util_format_description(format);
                 unsigned char composed_swizzle[4];
                 util_format_compose_swizzles(desc->swizzle, user_swizzle, composed_swizzle);
 

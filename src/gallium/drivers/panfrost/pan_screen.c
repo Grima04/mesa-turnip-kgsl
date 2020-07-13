@@ -463,11 +463,6 @@ panfrost_is_format_supported( struct pipe_screen *screen,
         if (scanout && renderable && !util_format_is_rgba8_variant(format_desc))
                 return false;
 
-        if (dev->debug & (PAN_DBG_GL3 | PAN_DBG_DEQP)) {
-                if (format_desc->layout == UTIL_FORMAT_LAYOUT_RGTC)
-                        return true;
-        }
-
         /* Check we support the format with the given bind */
 
         unsigned relevant_bind = bind &
@@ -478,9 +473,12 @@ panfrost_is_format_supported( struct pipe_screen *screen,
 
         /* Also check that compressed texture formats are supported on this
          * particular chip. They may not be depending on system integration
-         * differences. */
+         * differences. RGTC can be emulated so is always supported. */
 
-        if (!panfrost_supports_compressed_format(dev, fmt.hw))
+        bool is_rgtc = format_desc->layout == UTIL_FORMAT_LAYOUT_RGTC;
+        bool supported = panfrost_supports_compressed_format(dev, fmt.hw);
+
+        if (!is_rgtc && !supported)
                 return false;
 
         return fmt.hw && ((relevant_bind & ~fmt.bind) == 0);

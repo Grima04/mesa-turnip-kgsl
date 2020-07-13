@@ -52,7 +52,7 @@ GL 3.0, GLSL 1.30 --- all DONE: freedreno, i965, nv50, nvc0, r600, radeonsi, llv
   GL_EXT_texture_integer                                DONE (panfrost, v3d)
   GL_EXT_texture_array                                  DONE (panfrost, v3d)
   GL_EXT_draw_buffers2 (Per-buffer blend and masks)     DONE (panfrost, v3d)
-  GL_EXT_texture_compression_rgtc                       DONE (panfrost/if SoC supports)
+  GL_EXT_texture_compression_rgtc                       DONE (panfrost)
   GL_ARB_texture_rg                                     DONE (panfrost, v3d)
   GL_EXT_transform_feedback (Transform feedback)        DONE (panfrost, v3d)
   GL_ARB_vertex_array_object (Vertex array objects)     DONE (panfrost, v3d)

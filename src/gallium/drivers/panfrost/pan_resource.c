@@ -934,6 +934,10 @@ static const struct u_transfer_vtbl transfer_vtbl = {
 void
 panfrost_resource_screen_init(struct pipe_screen *pscreen)
 {
+        struct panfrost_device *dev = pan_device(pscreen);
+
+        bool fake_rgtc = !panfrost_supports_compressed_format(dev, MALI_BC4_UNORM);
+
         //pscreen->base.resource_create_with_modifiers =
         //        panfrost_resource_create_with_modifiers;
         pscreen->resource_create = u_transfer_helper_resource_create;
@@ -942,7 +946,7 @@ panfrost_resource_screen_init(struct pipe_screen *pscreen)
         pscreen->resource_get_handle = panfrost_resource_get_handle;
         pscreen->transfer_helper = u_transfer_helper_create(&transfer_vtbl,
                                         true, false,
-                                        true, true);
+                                        fake_rgtc, true);
 }
 
 void
