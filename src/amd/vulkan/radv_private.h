@@ -851,7 +851,24 @@ struct radv_device {
 	bool overallocation_disallowed;
 	uint64_t allocated_memory_size[VK_MAX_MEMORY_HEAPS];
 	mtx_t overallocation_mutex;
+
+	/* Track the number of device loss occurs. */
+	int lost;
 };
+
+VkResult _radv_device_set_lost(struct radv_device *device,
+                              const char *file, int line,
+                              const char *msg, ...)
+	radv_printflike(4, 5);
+
+#define radv_device_set_lost(dev, ...) \
+	_radv_device_set_lost(dev, __FILE__, __LINE__, __VA_ARGS__)
+
+static inline bool
+radv_device_is_lost(const struct radv_device *device)
+{
+	return unlikely(p_atomic_read(&device->lost));
+}
 
 struct radv_device_memory {
 	struct vk_object_base                        base;
