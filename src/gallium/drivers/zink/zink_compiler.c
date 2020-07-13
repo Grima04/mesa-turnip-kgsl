@@ -222,9 +222,26 @@ zink_shader_compile(struct zink_screen *screen, struct zink_shader *zs, struct z
 {
    VkShaderModule mod = VK_NULL_HANDLE;
    void *streamout = NULL;
+   nir_shader *nir = zs->nir;
+   /* TODO: use a separate mem ctx here for ralloc */
    if (zs->streamout.so_info_slots && (zs->nir->info.stage != MESA_SHADER_VERTEX || !zs->has_geometry_shader))
       streamout = &zs->streamout;
-   struct spirv_shader *spirv = nir_to_spirv(zs->nir, streamout, shader_slot_map, shader_slots_reserved);
+   if (zs->nir->info.stage == MESA_SHADER_FRAGMENT) {
+      nir = nir_shader_clone(NULL, nir);
+      if (!zink_fs_key(key)->samples && nir->info.outputs_written & BITFIELD64_BIT(FRAG_RESULT_SAMPLE_MASK)) {
+         /* VK will always use gl_SampleMask[] values even if sample count is 0,
+          * so we need to skip this write here to mimic GL's behavior of ignoring it
+          */
+         nir_foreach_shader_out_variable(var, nir) {
+            if (var->data.location == FRAG_RESULT_SAMPLE_MASK)
+               var->data.mode = nir_var_shader_temp;
+         }
+         nir_fixup_deref_modes(nir);
+         NIR_PASS_V(nir, nir_remove_dead_variables, nir_var_shader_temp, NULL);
+         optimize_nir(nir);
+      }
+   }
+   struct spirv_shader *spirv = nir_to_spirv(nir, streamout, shader_slot_map, shader_slots_reserved);
    assert(spirv);
 
    if (zink_debug & ZINK_DEBUG_SPIRV) {
@@ -246,6 +263,9 @@ zink_shader_compile(struct zink_screen *screen, struct zink_shader *zs, struct z
 
    if (vkCreateShaderModule(screen->dev, &smci, NULL, &mod) != VK_SUCCESS)
       mod = VK_NULL_HANDLE;
+
+   if (zs->nir->info.stage == MESA_SHADER_FRAGMENT)
+      ralloc_free(nir);
 
    /* TODO: determine if there's any reason to cache spirv output? */
    free(spirv->words);
