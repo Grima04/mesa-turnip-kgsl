@@ -608,6 +608,9 @@ system_value("global_invocation_index", 1, bit_sizes=[32, 64])
 system_value("work_dim", 1)
 system_value("line_width", 1)
 system_value("aa_line_width", 1)
+# BASE=0 for global/shader, BASE=1 for local/function
+system_value("scratch_base_ptr", 0, bit_sizes=[32,64], indices=[BASE])
+
 # Driver-specific viewport scale/offset parameters.
 #
 # VC4 and V3D need to emit a scaled version of the position in the vertex

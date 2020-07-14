@@ -854,8 +854,12 @@ build_explicit_io_load(nir_builder *b, nir_intrinsic_instr *intrin,
       break;
    case nir_var_shader_temp:
    case nir_var_function_temp:
-      assert(addr_format_is_offset(addr_format));
-      op = nir_intrinsic_load_scratch;
+      if (addr_format_is_offset(addr_format)) {
+         op = nir_intrinsic_load_scratch;
+      } else {
+         assert(addr_format_is_global(addr_format));
+         op = nir_intrinsic_load_global;
+      }
       break;
    default:
       unreachable("Unsupported explicit IO variable mode");
@@ -956,8 +960,12 @@ build_explicit_io_store(nir_builder *b, nir_intrinsic_instr *intrin,
       break;
    case nir_var_shader_temp:
    case nir_var_function_temp:
-      assert(addr_format_is_offset(addr_format));
-      op = nir_intrinsic_store_scratch;
+      if (addr_format_is_offset(addr_format)) {
+         op = nir_intrinsic_store_scratch;
+      } else {
+         assert(addr_format_is_global(addr_format));
+         op = nir_intrinsic_store_global;
+      }
       break;
    default:
       unreachable("Unsupported explicit IO variable mode");
@@ -1100,8 +1108,18 @@ nir_explicit_io_address_from_deref(nir_builder *b, nir_deref_instr *deref,
    case nir_deref_type_var:
       assert(deref->mode & (nir_var_shader_in | nir_var_mem_shared |
                             nir_var_shader_temp | nir_var_function_temp));
-      return nir_imm_intN_t(b, deref->var->data.driver_location,
-                            deref->dest.ssa.bit_size);
+      if (addr_format_is_global(addr_format)) {
+         assert(nir_var_shader_temp | nir_var_function_temp);
+         base_addr =
+            nir_load_scratch_base_ptr(b, !(deref->mode & nir_var_shader_temp),
+                                      nir_address_format_num_components(addr_format),
+                                      nir_address_format_bit_size(addr_format));
+         return build_addr_iadd_imm(b, base_addr, addr_format,
+                                       deref->var->data.driver_location);
+      } else {
+         return nir_imm_intN_t(b, deref->var->data.driver_location,
+                               deref->dest.ssa.bit_size);
+      }
 
    case nir_deref_type_array: {
       nir_deref_instr *parent = nir_deref_instr_parent(deref);
