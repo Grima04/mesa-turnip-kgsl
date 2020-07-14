@@ -1548,7 +1548,7 @@ cmd_buffer_render_pass_emit_stores(struct v3dv_cmd_buffer *cmd_buffer,
       &state->pass->subpasses[state->subpass_idx];
 
    bool has_stores = false;
-   bool use_per_buffer_clear = true;
+   bool use_global_clear = false;
 
    /* FIXME: separate stencil */
    uint32_t ds_attachment_idx = subpass->ds_attachment.attachment;
@@ -1588,19 +1588,17 @@ cmd_buffer_render_pass_emit_stores(struct v3dv_cmd_buffer *cmd_buffer,
          ds_attachment->desc.stencilLoadOp == VK_ATTACHMENT_LOAD_OP_CLEAR &&
          !state->job->is_subpass_continue;
 
-      /* Skip the last store if it is not required  */
+      /* Skip the last store if it is not required */
       bool needs_depth_store =
          (aspects & VK_IMAGE_ASPECT_DEPTH_BIT) &&
          (state->subpass_idx < ds_attachment->last_subpass ||
           ds_attachment->desc.storeOp == VK_ATTACHMENT_STORE_OP_STORE ||
-          needs_depth_clear ||
           !state->job->is_subpass_finish);
 
       bool needs_stencil_store =
          (aspects & VK_IMAGE_ASPECT_STENCIL_BIT) &&
          (state->subpass_idx < ds_attachment->last_subpass ||
           ds_attachment->desc.stencilStoreOp == VK_ATTACHMENT_STORE_OP_STORE ||
-          needs_stencil_clear ||
           !state->job->is_subpass_finish);
 
       /* GFXH-1461/GFXH-1689: The per-buffer store command's clear
@@ -1617,7 +1615,7 @@ cmd_buffer_render_pass_emit_stores(struct v3dv_cmd_buffer *cmd_buffer,
        * using the clear buffer bit in depth/stencil stores seems to work
        * correctly.
        */
-      use_per_buffer_clear = !needs_stencil_clear && !needs_depth_clear;
+      use_global_clear = needs_depth_clear || needs_stencil_clear;
       if (needs_depth_store || needs_stencil_store) {
          const uint32_t zs_buffer =
             v3dv_zs_buffer(needs_depth_store, needs_stencil_store);
@@ -1652,15 +1650,16 @@ cmd_buffer_render_pass_emit_stores(struct v3dv_cmd_buffer *cmd_buffer,
       bool needs_store =
          state->subpass_idx < attachment->last_subpass ||
          attachment->desc.storeOp == VK_ATTACHMENT_STORE_OP_STORE ||
-         needs_clear ||
          !state->job->is_subpass_finish;
 
       if (needs_store) {
          cmd_buffer_render_pass_emit_store(cmd_buffer, cl,
                                            attachment_idx, layer,
                                            RENDER_TARGET_0 + i,
-                                           needs_clear && use_per_buffer_clear);
+                                           needs_clear && !use_global_clear);
          has_stores = true;
+      } else if (needs_clear) {
+         use_global_clear = true;
       }
    }
 
@@ -1674,7 +1673,7 @@ cmd_buffer_render_pass_emit_stores(struct v3dv_cmd_buffer *cmd_buffer,
    /* If we have any depth/stencil clears we can't use the per-buffer clear
     * bit and instead we have to emit a single clear of all tile buffers.
     */
-   if (!use_per_buffer_clear) {
+   if (use_global_clear) {
       cl_emit(cl, CLEAR_TILE_BUFFERS, clear) {
          clear.clear_z_stencil_buffer = true;
          clear.clear_all_render_targets = true;
