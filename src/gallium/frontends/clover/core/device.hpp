@@ -72,7 +72,6 @@ namespace clover {
       bool has_unified_memory() const;
       size_t mem_base_addr_align() const;
       cl_device_svm_capabilities svm_support() const;
-      bool allows_user_pointers() const;
 
       std::vector<size_t> max_block_size() const;
       cl_uint subgroup_size() const;

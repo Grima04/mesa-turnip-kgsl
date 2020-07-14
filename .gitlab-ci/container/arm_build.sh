@@ -48,10 +48,10 @@ arch=armhf
 . .gitlab-ci/container/container_pre_build.sh
 
 # dependencies where we want a specific version
-export LIBDRM_VERSION=libdrm-2.4.102
+export LIBDRM_VERSION=libdrm-2.4.100
 
-wget https://dri.freedesktop.org/libdrm/$LIBDRM_VERSION.tar.xz
-tar -xvf $LIBDRM_VERSION.tar.xz && rm $LIBDRM_VERSION.tar.xz
+wget https://dri.freedesktop.org/libdrm/$LIBDRM_VERSION.tar.bz2
+tar -xvf $LIBDRM_VERSION.tar.bz2 && rm $LIBDRM_VERSION.tar.bz2
 cd $LIBDRM_VERSION; meson build -D vc4=true -D freedreno=true -D etnaviv=true; ninja -C build install; cd ..
 rm -rf $LIBDRM_VERSION
 

@@ -54,7 +54,7 @@ export               XCB_RELEASES=https://xcb.freedesktop.org/dist
 export           WAYLAND_RELEASES=https://wayland.freedesktop.org/releases
 
 export         XORGMACROS_VERSION=util-macros-1.19.0
-export             LIBDRM_VERSION=libdrm-2.4.102
+export             LIBDRM_VERSION=libdrm-2.4.100
 export           XCBPROTO_VERSION=xcb-proto-1.13
 export             LIBXCB_VERSION=libxcb-1.13
 export         LIBWAYLAND_VERSION=wayland-1.15.0
@@ -75,8 +75,8 @@ tar -xvf $LIBXCB_VERSION.tar.bz2 && rm $LIBXCB_VERSION.tar.bz2
 cd $LIBXCB_VERSION; ./configure; make install; cd ..
 rm -rf $LIBXCB_VERSION
 
-wget https://dri.freedesktop.org/libdrm/$LIBDRM_VERSION.tar.xz
-tar -xvf $LIBDRM_VERSION.tar.xz && rm $LIBDRM_VERSION.tar.xz
+wget https://dri.freedesktop.org/libdrm/$LIBDRM_VERSION.tar.bz2
+tar -xvf $LIBDRM_VERSION.tar.bz2 && rm $LIBDRM_VERSION.tar.bz2
 cd $LIBDRM_VERSION
 meson build -D vc4=true -D freedreno=true -D etnaviv=true -D libdir=lib/x86_64-linux-gnu; ninja -C build install
 cd ..

@@ -323,9 +323,6 @@ nvc0_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
       return class_3d >= GM200_3D_CLASS;
    case PIPE_CAP_CONSERVATIVE_RASTER_PRE_SNAP_TRIANGLES:
       return class_3d >= GP100_3D_CLASS;
-   case PIPE_CAP_RESOURCE_FROM_USER_MEMORY_COMPUTE_ONLY:
-   case PIPE_CAP_SYSTEM_SVM:
-      return screen->has_svm ? 1 : 0;
 
    /* caps has to be turned on with nir */
    case PIPE_CAP_GL_SPIRV:

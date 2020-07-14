@@ -221,7 +221,7 @@ x86_build:
   extends:
     - .use-x86_build-base
   variables:
-    FDO_DISTRIBUTION_TAG: &x86_build "2020-06-30"
+    FDO_DISTRIBUTION_TAG: &x86_build "2020-06-02"
 
 .use-x86_build:
   variables:
@@ -235,7 +235,7 @@ i386_build:
   extends:
     - .use-x86_build-base
   variables:
-    FDO_DISTRIBUTION_TAG: &i386_build "2020-06-30"
+    FDO_DISTRIBUTION_TAG: &i386_build "2020-06-02"
 
 .use-i386_build:
   variables:
@@ -249,7 +249,7 @@ ppc64el_build:
   extends:
     - .use-x86_build-base
   variables:
-    FDO_DISTRIBUTION_TAG: &ppc64el_build "2020-06-30"
+    FDO_DISTRIBUTION_TAG: &ppc64el_build "2020-06-02"
 
 .use-ppc64el_build:
   variables:
@@ -321,7 +321,7 @@ arm_build:
     - .fdo.container-build@debian@arm64v8
     - .container
   variables:
-    FDO_DISTRIBUTION_TAG: &arm_build "2020-07-10"
+    FDO_DISTRIBUTION_TAG: &arm_build "2020-07-07"
 
 .use-arm_build:
   variables:

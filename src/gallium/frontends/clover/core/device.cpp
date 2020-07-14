@@ -238,18 +238,13 @@ device::svm_support() const {
    //
    // Another unsolvable scenario is a cl_mem object passed by cl_mem reference
    // and SVM pointer into the same kernel at the same time.
-   if (allows_user_pointers() && pipe->get_param(pipe, PIPE_CAP_SYSTEM_SVM))
+   if (pipe->get_param(pipe, PIPE_CAP_RESOURCE_FROM_USER_MEMORY) &&
+       pipe->get_param(pipe, PIPE_CAP_SYSTEM_SVM))
       // we can emulate all lower levels if we support fine grain system
       return CL_DEVICE_SVM_FINE_GRAIN_SYSTEM |
              CL_DEVICE_SVM_COARSE_GRAIN_BUFFER |
              CL_DEVICE_SVM_FINE_GRAIN_BUFFER;
    return 0;
-}
-
-bool
-device::allows_user_pointers() const {
-   return pipe->get_param(pipe, PIPE_CAP_RESOURCE_FROM_USER_MEMORY) ||
-          pipe->get_param(pipe, PIPE_CAP_RESOURCE_FROM_USER_MEMORY_COMPUTE_ONLY);
 }
 
 std::vector<size_t>
