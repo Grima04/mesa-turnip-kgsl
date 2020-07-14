@@ -3217,10 +3217,7 @@ to upconvert to 32b float internally?
 	<reg32 offset="0xab1b" name="SP_IBO_HI"/>
 	<reg32 offset="0xab20" name="SP_IBO_COUNT" type="uint"/>
 
-	<!--
-	not really src, COLOR_FORMAT/SRGB seem to be related to ifmt which is for dst
-	 -->
-	<reg32 offset="0xacc0" name="SP_2D_SRC_FORMAT">
+	<reg32 offset="0xacc0" name="SP_2D_DST_FORMAT">
 		<bitfield name="NORM" pos="0" type="boolean"/>
 		<bitfield name="SINT" pos="1" type="boolean"/>
 		<bitfield name="UINT" pos="2" type="boolean"/>

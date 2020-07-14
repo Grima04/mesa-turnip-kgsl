@@ -288,7 +288,7 @@ r2d_setup_common(struct tu_cmd_buffer *cmd,
    if (format == FMT6_10_10_10_2_UNORM_DEST)
       format = FMT6_16_16_16_16_FLOAT;
 
-   tu_cs_emit_regs(cs, A6XX_SP_2D_SRC_FORMAT(
+   tu_cs_emit_regs(cs, A6XX_SP_2D_DST_FORMAT(
          .sint = vk_format_is_sint(vk_format),
          .uint = vk_format_is_uint(vk_format),
          .color_format = format,

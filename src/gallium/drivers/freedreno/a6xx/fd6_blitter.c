@@ -267,21 +267,21 @@ emit_blit_setup(struct fd_ringbuffer *ring,
 	 * controlling the internal/accumulator format or something like
 	 * that. It's certainly not tied to only the src format.
 	 */
-	OUT_PKT4(ring, REG_A6XX_SP_2D_SRC_FORMAT, 1);
-	OUT_RING(ring, A6XX_SP_2D_SRC_FORMAT_COLOR_FORMAT(fmt) |
+	OUT_PKT4(ring, REG_A6XX_SP_2D_DST_FORMAT, 1);
+	OUT_RING(ring, A6XX_SP_2D_DST_FORMAT_COLOR_FORMAT(fmt) |
 			COND(util_format_is_pure_sint(pfmt),
-					A6XX_SP_2D_SRC_FORMAT_SINT) |
+					A6XX_SP_2D_DST_FORMAT_SINT) |
 			COND(util_format_is_pure_uint(pfmt),
-					A6XX_SP_2D_SRC_FORMAT_UINT) |
+					A6XX_SP_2D_DST_FORMAT_UINT) |
 			COND(util_format_is_snorm(pfmt),
-					A6XX_SP_2D_SRC_FORMAT_SINT |
-						A6XX_SP_2D_SRC_FORMAT_NORM) |
+					A6XX_SP_2D_DST_FORMAT_SINT |
+						A6XX_SP_2D_DST_FORMAT_NORM) |
 			COND(util_format_is_unorm(pfmt),
 // TODO sometimes blob uses UINT+NORM but dEQP seems unhappy about that
-//						A6XX_SP_2D_SRC_FORMAT_UINT |
-					A6XX_SP_2D_SRC_FORMAT_NORM) |
-			COND(is_srgb, A6XX_SP_2D_SRC_FORMAT_SRGB) |
-			A6XX_SP_2D_SRC_FORMAT_MASK(0xf));
+//						A6XX_SP_2D_DST_FORMAT_UINT |
+					A6XX_SP_2D_DST_FORMAT_NORM) |
+			COND(is_srgb, A6XX_SP_2D_DST_FORMAT_SRGB) |
+			A6XX_SP_2D_DST_FORMAT_MASK(0xf));
 
 	OUT_PKT4(ring, REG_A6XX_RB_UNKNOWN_8C01, 1);
 	OUT_RING(ring, 0);
