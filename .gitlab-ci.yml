@@ -173,7 +173,7 @@ success:
       when: on_success
     # Run pipeline by default if it was triggered by Marge Bot, is for a
     # merge request, and any files affecting the pipeline were changed
-    - if: '$GITLAB_USER_LOGIN == "marge-bot" && $CI_PROJECT_PATH != "mesa/mesa"'
+    - if: '$GITLAB_USER_LOGIN == "marge-bot" && $CI_MERGE_REQUEST_SOURCE_BRANCH_NAME == $CI_COMMIT_REF_NAME'
       changes:
         *all_paths
       when: on_success
