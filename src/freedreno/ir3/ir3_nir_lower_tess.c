@@ -44,7 +44,7 @@ struct state {
 	struct exec_list emit_outputs;
 
 	/* tess ctrl shader on a650 gets the local primitive id at different bits: */
-	bool local_primitive_id_start;
+	unsigned local_primitive_id_start;
 };
 
 static nir_ssa_def *
