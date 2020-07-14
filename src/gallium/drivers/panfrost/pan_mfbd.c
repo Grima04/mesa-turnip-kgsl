@@ -482,7 +482,7 @@ panfrost_emit_mfbd(struct panfrost_batch *batch, unsigned vertex_count)
                 /* Seems to configure tib size */
                 .unk1 = pan_is_large_tib(batch) ? 0xc80 : 0x1080,
 
-                .rt_count_1 = MALI_POSITIVE(batch->key.nr_cbufs),
+                .rt_count_1 = MALI_POSITIVE(MAX2(batch->key.nr_cbufs, 1)),
                 .rt_count_2 = 4,
         };
 
