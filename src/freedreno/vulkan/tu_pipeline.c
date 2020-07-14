@@ -740,7 +740,8 @@ tu6_emit_vpc(struct tu_cs *cs,
              const struct ir3_shader_variant *hs,
              const struct ir3_shader_variant *ds,
              const struct ir3_shader_variant *gs,
-             const struct ir3_shader_variant *fs)
+             const struct ir3_shader_variant *fs,
+             uint32_t patch_control_points)
 {
    /* note: doesn't compile as static because of the array regs.. */
    const struct reg_config {
@@ -916,9 +917,8 @@ tu6_emit_vpc(struct tu_cs *cs,
       tu_cs_emit(cs, hs_info->tess.tcs_vertices_out);
 
       /* Total attribute slots in HS incoming patch. */
-      tu_cs_emit_pkt4(cs, REG_A6XX_PC_UNKNOWN_9801, 1);
-      tu_cs_emit(cs,
-            hs_info->tess.tcs_vertices_out * vs->output_size / 4);
+      tu_cs_emit_pkt4(cs, REG_A6XX_PC_HS_INPUT_SIZE, 1);
+      tu_cs_emit(cs, patch_control_points * vs->output_size / 4);
 
       tu_cs_emit_pkt4(cs, REG_A6XX_SP_HS_UNKNOWN_A831, 1);
       tu_cs_emit(cs, vs->output_size);
@@ -1371,6 +1371,8 @@ tu6_emit_program(struct tu_cs *cs,
    const struct ir3_shader_variant *gs = builder->variants[MESA_SHADER_GEOMETRY];
    const struct ir3_shader_variant *fs = builder->variants[MESA_SHADER_FRAGMENT];
    gl_shader_stage stage = MESA_SHADER_VERTEX;
+   uint32_t cps_per_patch = builder->create_info->pTessellationState ?
+      builder->create_info->pTessellationState->patchControlPoints : 0;
 
    STATIC_ASSERT(MESA_SHADER_VERTEX == 0);
 
@@ -1403,7 +1405,7 @@ tu6_emit_program(struct tu_cs *cs,
    tu_cs_emit_pkt4(cs, REG_A6XX_SP_HS_UNKNOWN_A831, 1);
    tu_cs_emit(cs, 0);
 
-   tu6_emit_vpc(cs, vs, hs, ds, gs, fs);
+   tu6_emit_vpc(cs, vs, hs, ds, gs, fs, cps_per_patch);
    tu6_emit_vpc_varying_modes(cs, fs);
 
    if (fs) {
@@ -1423,8 +1425,6 @@ tu6_emit_program(struct tu_cs *cs,
    }
 
    if (gs || hs) {
-      uint32_t cps_per_patch = builder->create_info->pTessellationState ?
-            builder->create_info->pTessellationState->patchControlPoints : 0;
       tu6_emit_geom_tess_consts(cs, vs, hs, ds, gs, cps_per_patch);
    }
 }

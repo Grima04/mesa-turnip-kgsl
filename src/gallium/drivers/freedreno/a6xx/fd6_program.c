@@ -565,7 +565,7 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_screen *screen,
 		OUT_RING(ring, hs_info->tess.tcs_vertices_out);
 
 		/* Total attribute slots in HS incoming patch. */
-		OUT_PKT4(ring, REG_A6XX_PC_UNKNOWN_9801, 1);
+		OUT_PKT4(ring, REG_A6XX_PC_HS_INPUT_SIZE, 1);
 		OUT_RING(ring, hs_info->tess.tcs_vertices_out * vs->output_size / 4);
 
 		OUT_PKT4(ring, REG_A6XX_SP_HS_UNKNOWN_A831, 1);

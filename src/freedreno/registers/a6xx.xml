@@ -2765,8 +2765,8 @@ to upconvert to 32b float internally?
 	<reg32 offset="0x9800" name="PC_TESS_NUM_VERTEX" low="0" high="5" type="uint"/>
 
 	<!-- always 0x0 ? -->
-	<reg32 offset="0x9801" name="PC_UNKNOWN_9801">
-		<bitfield name="UNK0" low="0" high="10"/>
+	<reg32 offset="0x9801" name="PC_HS_INPUT_SIZE">
+		<bitfield name="SIZE" low="0" high="10"/>
 		<bitfield name="UNK13" pos="13"/>
 	</reg32>
 
