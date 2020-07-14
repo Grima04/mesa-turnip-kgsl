@@ -7064,7 +7064,7 @@ static VkResult radv_import_sync_fd(struct radv_device *device,
 	if (!syncobj_handle) {
 		int ret = device->ws->create_syncobj(device->ws, &syncobj_handle);
 		if (ret) {
-			return vk_error(device->instance, VK_ERROR_INVALID_EXTERNAL_HANDLE);
+			return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 		}
 	}
 
