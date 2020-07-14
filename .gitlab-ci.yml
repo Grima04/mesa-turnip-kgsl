@@ -1094,7 +1094,7 @@ arm64_a630_gles3:
     FD_MESA_DEBUG: nobypass
     NIR_VALIDATE: 1
 
-.arm64_a630_vk:
+arm64_a630_vk:
   extends: arm64_a630_gles2
   variables:
     DEQP_VER: vk
@@ -1112,7 +1112,7 @@ arm64_a630_gles3:
 # to click play on in their branches.
 .arm64_a630_vk_sysmem:
   extends:
-    - .arm64_a630_vk
+    - arm64_a630_vk
   variables:
     CI_NODE_INDEX: 1
     CI_NODE_TOTAL: 10
