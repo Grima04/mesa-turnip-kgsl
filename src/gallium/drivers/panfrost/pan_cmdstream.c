@@ -467,7 +467,9 @@ void panfrost_sampler_desc_init(const struct pipe_sampler_state *cso,
                 .wrap_s = translate_tex_wrap(cso->wrap_s),
                 .wrap_t = translate_tex_wrap(cso->wrap_t),
                 .wrap_r = translate_tex_wrap(cso->wrap_r),
-                .compare_func = panfrost_flip_compare_func(func),
+                .compare_func = cso->compare_mode ?
+                        panfrost_flip_compare_func(func) :
+                        MALI_FUNC_NEVER,
                 .border_color = {
                         cso->border_color.f[0],
                         cso->border_color.f[1],
