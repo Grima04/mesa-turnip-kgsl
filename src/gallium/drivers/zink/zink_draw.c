@@ -1,6 +1,7 @@
 #include "zink_compiler.h"
 #include "zink_context.h"
 #include "zink_program.h"
+#include "zink_query.h"
 #include "zink_resource.h"
 #include "zink_screen.h"
 #include "zink_state.h"
@@ -471,6 +472,8 @@ zink_draw_vbo(struct pipe_context *pctx,
    vkCmdBindDescriptorSets(batch->cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS,
                            gfx_program->layout, 0, 1, &desc_set, 0, NULL);
    zink_bind_vertex_buffers(batch, ctx);
+
+   zink_query_update_gs_states(ctx);
 
    if (ctx->num_so_targets) {
       for (unsigned i = 0; i < ctx->num_so_targets; i++) {
