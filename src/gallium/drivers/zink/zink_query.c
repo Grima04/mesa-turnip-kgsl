@@ -194,33 +194,24 @@ get_query_result(struct pipe_context *pctx,
    uint64_t results[NUM_QUERIES * 2];
    memset(results, 0, sizeof(results));
    int num_results = query->curr_query - query->last_checked_query;
-   if (query->vkqtype == VK_QUERY_TYPE_TRANSFORM_FEEDBACK_STREAM_EXT) {
-      /* this query emits 2 values */
-      assert(query->curr_query <= ARRAY_SIZE(results) / 2);
-      VkResult status = vkGetQueryPoolResults(screen->dev, query->query_pool,
-                                              query->last_checked_query, num_results,
-                                              sizeof(results),
-                                              results,
-                                              sizeof(uint64_t),
-                                              flags);
-      if (status != VK_SUCCESS)
-         return false;
-      /* multiply for correct looping behavior below */
-      num_results *= 2;
-   } else {
-      assert(query->curr_query <= ARRAY_SIZE(results));
-      VkResult status = vkGetQueryPoolResults(screen->dev, query->query_pool,
-                                              query->last_checked_query, num_results,
-                                              sizeof(results),
-                                              results,
-                                              sizeof(uint64_t),
-                                              flags);
-      if (status != VK_SUCCESS)
-         return false;
-   }
+   int result_size = 1;
+      /* these query types emit 2 values */
+   if (query->vkqtype == VK_QUERY_TYPE_TRANSFORM_FEEDBACK_STREAM_EXT)
+      result_size = 2;
+
+   /* verify that we have an in-bounds number of results pending */
+   assert(query->curr_query <= ARRAY_SIZE(results) / result_size);
+   VkResult status = vkGetQueryPoolResults(screen->dev, query->query_pool,
+                                           query->last_checked_query, num_results,
+                                           sizeof(results),
+                                           results,
+                                           sizeof(uint64_t),
+                                           flags);
+   if (status != VK_SUCCESS)
+      return false;
 
    uint64_t last_val = 0;
-   for (int i = 0; i < num_results; ++i) {
+   for (int i = 0; i < num_results * result_size; i += result_size) {
       switch (query->type) {
       case PIPE_QUERY_OCCLUSION_PREDICATE:
       case PIPE_QUERY_OCCLUSION_PREDICATE_CONSERVATIVE:
@@ -252,7 +243,6 @@ get_query_result(struct pipe_context *pctx,
           * - from VK_EXT_transform_feedback spec
           */
          result->u64 += results[i];
-         i++;
          break;
 
       default:
