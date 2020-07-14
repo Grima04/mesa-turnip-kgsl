@@ -775,6 +775,12 @@ addr_format_is_global(nir_address_format addr_format)
           addr_format == nir_address_format_64bit_bounded_global;
 }
 
+static bool
+addr_format_is_offset(nir_address_format addr_format)
+{
+   return addr_format == nir_address_format_32bit_offset;
+}
+
 static nir_ssa_def *
 addr_to_global(nir_builder *b, nir_ssa_def *addr,
                nir_address_format addr_format)
@@ -843,7 +849,7 @@ build_explicit_io_load(nir_builder *b, nir_intrinsic_instr *intrin,
       op = nir_intrinsic_load_kernel_input;
       break;
    case nir_var_mem_shared:
-      assert(addr_format == nir_address_format_32bit_offset);
+      assert(addr_format_is_offset(addr_format));
       op = nir_intrinsic_load_shared;
       break;
    default:
@@ -938,7 +944,7 @@ build_explicit_io_store(nir_builder *b, nir_intrinsic_instr *intrin,
       op = nir_intrinsic_store_global;
       break;
    case nir_var_mem_shared:
-      assert(addr_format == nir_address_format_32bit_offset);
+      assert(addr_format_is_offset(addr_format));
       op = nir_intrinsic_store_shared;
       break;
    default:
