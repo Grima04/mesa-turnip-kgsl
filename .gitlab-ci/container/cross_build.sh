@@ -20,7 +20,8 @@ apt-get install -y --no-remove \
         libexpat1-dev:$arch \
         libffi-dev:$arch \
         libstdc++6:$arch \
-        libtinfo-dev:$arch
+        libtinfo-dev:$arch \
+        wget
 
 if [[ $arch == "armhf" ]]; then
         LLVM=llvm-7-dev
