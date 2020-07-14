@@ -32,10 +32,12 @@
 typedef struct {
    nir_builder   b;
    nir_shader   *shader;
+   bool face_sysval;
    struct {
       nir_variable *front;        /* COLn */
       nir_variable *back;         /* BFCn */
    } colors[MAX_COLORS];
+   nir_variable *face;
    int colors_count;
 } lower_2side_state;
 
@@ -58,6 +60,29 @@ create_input(nir_shader *shader, gl_varying_slot slot,
    var->data.index = 0;
    var->data.location = slot;
    var->data.interpolation = interpolation;
+
+   exec_list_push_tail(&shader->inputs, &var->node);
+
+   return var;
+}
+
+static nir_variable *
+create_face_input(nir_shader *shader)
+{
+   nir_foreach_variable(var, &shader->inputs) {
+      if (var->data.location == VARYING_SLOT_FACE)
+         return var;
+   }
+
+   nir_variable *var = rzalloc(shader, nir_variable);
+
+   var->data.driver_location = shader->num_inputs++;
+   var->type = glsl_bool_type();
+   var->data.mode = nir_var_shader_in;
+   var->name = "gl_FrontFacing";
+   var->data.index = 0;
+   var->data.location = VARYING_SLOT_FACE;
+   var->data.interpolation = INTERP_MODE_FLAT;
 
    exec_list_push_tail(&shader->inputs, &var->node);
 
@@ -112,6 +137,9 @@ setup_inputs(lower_2side_state *state)
             state->colors[i].front->data.interpolation);
    }
 
+   if (!state->face_sysval)
+      state->face = create_face_input(state->shader);
+
    return 0;
 }
 
@@ -160,7 +188,12 @@ nir_lower_two_sided_color_block(nir_block *block,
       /* gl_FrontFace is a boolean but the intrinsic constructor creates
        * 32-bit value by default.
        */
-      nir_ssa_def *face = nir_load_front_face(b, 1);
+      nir_ssa_def *face;
+      if (state->face_sysval)
+         face = nir_load_front_face(b, 1);
+      else
+         face = nir_load_var(b, state->face);
+
       nir_ssa_def *front, *back;
       if (intr->intrinsic == nir_intrinsic_load_deref) {
          front = nir_load_var(b, state->colors[idx].front);
@@ -199,6 +232,7 @@ nir_lower_two_sided_color(nir_shader *shader, bool face_sysval)
 {
    lower_2side_state state = {
       .shader = shader,
+      .face_sysval = face_sysval,
    };
 
    if (shader->info.stage != MESA_SHADER_FRAGMENT)
