@@ -1640,7 +1640,7 @@ output_load_rt_addr(nir_shader *nir, nir_intrinsic_instr *instr)
         if (loc == FRAG_RESULT_STENCIL)
                 return 0x1E;
 
-        assert(0);
+        unreachable("Invalid RT to load from");
 }
 
 static void
