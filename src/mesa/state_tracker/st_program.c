@@ -1278,7 +1278,8 @@ st_create_fp_variant(struct st_context *st,
       }
 
       if (key->lower_two_sided_color) {
-         NIR_PASS_V(state.ir.nir, nir_lower_two_sided_color);
+         bool face_sysval = st->ctx->Const.GLSLFrontFacingIsSysVal;
+         NIR_PASS_V(state.ir.nir, nir_lower_two_sided_color, face_sysval);
          finalize = true;
       }
 

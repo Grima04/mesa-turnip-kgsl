@@ -2304,7 +2304,7 @@ vc4_shader_ntq(struct vc4_context *vc4, enum qstage stage,
         NIR_PASS_V(c->s, nir_lower_tex, &tex_options);
 
         if (c->fs_key && c->fs_key->light_twoside)
-                NIR_PASS_V(c->s, nir_lower_two_sided_color);
+                NIR_PASS_V(c->s, nir_lower_two_sided_color, true);
 
         if (c->vs_key && c->vs_key->clamp_color)
                 NIR_PASS_V(c->s, nir_lower_clamp_color_outputs);

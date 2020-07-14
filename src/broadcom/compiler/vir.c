@@ -939,7 +939,7 @@ static void
 v3d_nir_lower_fs_late(struct v3d_compile *c)
 {
         if (c->fs_key->light_twoside)
-                NIR_PASS_V(c->s, nir_lower_two_sided_color);
+                NIR_PASS_V(c->s, nir_lower_two_sided_color, true);
 
         if (c->fs_key->clamp_color)
                 NIR_PASS_V(c->s, nir_lower_clamp_color_outputs);

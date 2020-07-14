@@ -412,7 +412,7 @@ ir3_nir_lower_variant(struct ir3_shader_variant *so, nir_shader *s)
 			progress |= OPT(s, ir3_nir_lower_layer_id);
 	}
 	if (so->key.color_two_side) {
-		OPT_V(s, nir_lower_two_sided_color);
+		OPT_V(s, nir_lower_two_sided_color, true);
 		progress = true;
 	}
 

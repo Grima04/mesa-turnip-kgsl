@@ -195,7 +195,7 @@ nir_lower_two_sided_color_impl(nir_function_impl *impl,
 }
 
 void
-nir_lower_two_sided_color(nir_shader *shader)
+nir_lower_two_sided_color(nir_shader *shader, bool face_sysval)
 {
    lower_2side_state state = {
       .shader = shader,
