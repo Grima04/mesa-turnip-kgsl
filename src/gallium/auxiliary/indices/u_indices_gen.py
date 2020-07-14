@@ -294,7 +294,11 @@ def trifan(intype, outtype, inpv, outpv, pr):
             print('         start = i;')
         prim_restart(3, 3, 1, close_func)
 
-    do_tri( intype, outtype, 'out+j',  'start', 'i+1', 'i+2', inpv, outpv );
+    if inpv == FIRST:
+        do_tri( intype, outtype, 'out+j',  'i+1', 'i+2', 'start', inpv, outpv );
+    else:
+        do_tri( intype, outtype, 'out+j',  'start', 'i+1', 'i+2', inpv, outpv );
+
     print('   }')
     postamble()
 
