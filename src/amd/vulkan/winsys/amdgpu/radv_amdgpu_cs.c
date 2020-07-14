@@ -110,10 +110,10 @@ struct radv_amdgpu_cs_request {
 	uint32_t ring;
 
 	/**
-	 * List handle with resources used by this request. This is a raw
-	 * bo list handle used by the kernel.
+	 * BO list handles used by this request.
 	 */
-	uint32_t resources;
+	struct drm_amdgpu_bo_list_entry *handles;
+	uint32_t num_handles;
 
 	/**
 	 * Number of dependencies this Command submission needs to
@@ -673,21 +673,23 @@ static void radv_amdgpu_cs_execute_secondary(struct radeon_cmdbuf *_parent,
 	}
 }
 
-static int radv_amdgpu_create_bo_list(struct radv_amdgpu_winsys *ws,
-				      struct radeon_cmdbuf **cs_array,
-				      unsigned count,
-				      struct radv_amdgpu_winsys_bo **extra_bo_array,
-				      unsigned num_extra_bo,
-				      struct radeon_cmdbuf *extra_cs,
-				      const struct radv_winsys_bo_list *radv_bo_list,
-				      uint32_t *bo_list)
+static int
+radv_amdgpu_get_bo_list(struct radv_amdgpu_winsys *ws,
+			struct radeon_cmdbuf **cs_array,
+			unsigned count,
+			struct radv_amdgpu_winsys_bo **extra_bo_array,
+			unsigned num_extra_bo,
+			struct radeon_cmdbuf *extra_cs,
+			const struct radv_winsys_bo_list *radv_bo_list,
+			unsigned *rnum_handles,
+			struct drm_amdgpu_bo_list_entry **rhandles)
 {
+	struct drm_amdgpu_bo_list_entry *handles = NULL;
+	unsigned num_handles = 0;
 	int r = 0;
 
 	if (ws->debug_all_bos) {
 		struct radv_amdgpu_winsys_bo *bo;
-		struct drm_amdgpu_bo_list_entry *handles;
-		unsigned num = 0;
 
 		pthread_mutex_lock(&ws->global_bo_list_lock);
 
@@ -698,28 +700,29 @@ static int radv_amdgpu_create_bo_list(struct radv_amdgpu_winsys *ws,
 		}
 
 		LIST_FOR_EACH_ENTRY(bo, &ws->global_bo_list, global_list_item) {
-			assert(num < ws->num_buffers);
-			handles[num].bo_handle = bo->bo_handle;
-			handles[num].bo_priority = bo->priority;
-			num++;
+			assert(num_handles < ws->num_buffers);
+			handles[num_handles].bo_handle = bo->bo_handle;
+			handles[num_handles].bo_priority = bo->priority;
+			num_handles++;
 		}
 
-		r = amdgpu_bo_list_create_raw(ws->dev, ws->num_buffers,
-					      handles, bo_list);
-		free(handles);
 		pthread_mutex_unlock(&ws->global_bo_list_lock);
 	} else if (count == 1 && !num_extra_bo && !extra_cs && !radv_bo_list &&
 	           !radv_amdgpu_cs(cs_array[0])->num_virtual_buffers) {
 		struct radv_amdgpu_cs *cs = (struct radv_amdgpu_cs*)cs_array[0];
-		if (cs->num_buffers == 0) {
-			*bo_list = 0;
+		if (cs->num_buffers == 0)
 			return 0;
-		}
-		r = amdgpu_bo_list_create_raw(ws->dev, cs->num_buffers, cs->handles,
-					      bo_list);
+
+		handles = malloc(sizeof(handles[0]) * cs->num_buffers);
+		if (!handles)
+			return -ENOMEM;
+
+		memcpy(handles, cs->handles,
+		       sizeof(handles[0]) * cs->num_buffers);
+		num_handles = cs->num_buffers;
 	} else {
 		unsigned total_buffer_count = num_extra_bo;
-		unsigned unique_bo_count = num_extra_bo;
+		num_handles = num_extra_bo;
 		for (unsigned i = 0; i < count; ++i) {
 			struct radv_amdgpu_cs *cs = (struct radv_amdgpu_cs*)cs_array[i];
 			total_buffer_count += cs->num_buffers;
@@ -735,11 +738,10 @@ static int radv_amdgpu_create_bo_list(struct radv_amdgpu_winsys *ws,
 			total_buffer_count += radv_bo_list->count;
 		}
 
-		if (total_buffer_count == 0) {
-			*bo_list = 0;
+		if (total_buffer_count == 0)
 			return 0;
-		}
-		struct drm_amdgpu_bo_list_entry *handles = malloc(sizeof(struct drm_amdgpu_bo_list_entry) * total_buffer_count);
+
+		handles = malloc(sizeof(handles[0]) * total_buffer_count);
 		if (!handles)
 			return -ENOMEM;
 
@@ -759,12 +761,12 @@ static int radv_amdgpu_create_bo_list(struct radv_amdgpu_winsys *ws,
 			if (!cs->num_buffers)
 				continue;
 
-			if (unique_bo_count == 0 && !cs->num_virtual_buffers) {
+			if (num_handles == 0 && !cs->num_virtual_buffers) {
 				memcpy(handles, cs->handles, cs->num_buffers * sizeof(struct drm_amdgpu_bo_list_entry));
-				unique_bo_count = cs->num_buffers;
+				num_handles = cs->num_buffers;
 				continue;
 			}
-			int unique_bo_so_far = unique_bo_count;
+			int unique_bo_so_far = num_handles;
 			for (unsigned j = 0; j < cs->num_buffers; ++j) {
 				bool found = false;
 				for (unsigned k = 0; k < unique_bo_so_far; ++k) {
@@ -774,8 +776,8 @@ static int radv_amdgpu_create_bo_list(struct radv_amdgpu_winsys *ws,
 					}
 				}
 				if (!found) {
-					handles[unique_bo_count] = cs->handles[j];
-					++unique_bo_count;
+					handles[num_handles] = cs->handles[j];
+					++num_handles;
 				}
 			}
 			for (unsigned j = 0; j < cs->num_virtual_buffers; ++j) {
@@ -783,23 +785,23 @@ static int radv_amdgpu_create_bo_list(struct radv_amdgpu_winsys *ws,
 				for(unsigned k = 0; k < virtual_bo->bo_count; ++k) {
 					struct radv_amdgpu_winsys_bo *bo = virtual_bo->bos[k];
 					bool found = false;
-					for (unsigned m = 0; m < unique_bo_count; ++m) {
+					for (unsigned m = 0; m < num_handles; ++m) {
 						if (handles[m].bo_handle == bo->bo_handle) {
 							found = true;
 							break;
 						}
 					}
 					if (!found) {
-						handles[unique_bo_count].bo_handle = bo->bo_handle;
-						handles[unique_bo_count].bo_priority = bo->priority;
-						++unique_bo_count;
+						handles[num_handles].bo_handle = bo->bo_handle;
+						handles[num_handles].bo_priority = bo->priority;
+						++num_handles;
 					}
 				}
 			}
 		}
 
 		if (radv_bo_list) {
-			unsigned unique_bo_so_far = unique_bo_count;
+			unsigned unique_bo_so_far = num_handles;
 			for (unsigned i = 0; i < radv_bo_list->count; ++i) {
 				struct radv_amdgpu_winsys_bo *bo = radv_amdgpu_winsys_bo(radv_bo_list->bos[i]);
 				bool found = false;
@@ -810,22 +812,16 @@ static int radv_amdgpu_create_bo_list(struct radv_amdgpu_winsys *ws,
 					}
 				}
 				if (!found) {
-					handles[unique_bo_count].bo_handle = bo->bo_handle;
-					handles[unique_bo_count].bo_priority = bo->priority;
-					++unique_bo_count;
+					handles[num_handles].bo_handle = bo->bo_handle;
+					handles[num_handles].bo_priority = bo->priority;
+					++num_handles;
 				}
 			}
 		}
-
-		if (unique_bo_count > 0) {
-			r = amdgpu_bo_list_create_raw(ws->dev, unique_bo_count, handles,
-						      bo_list);
-		} else {
-			*bo_list = 0;
-		}
-
-		free(handles);
 	}
+
+	*rhandles = handles;
+	*rnum_handles = num_handles;
 
 	return r;
 }
@@ -862,10 +858,11 @@ static int radv_amdgpu_winsys_cs_submit_chained(struct radeon_winsys_ctx *_ctx,
 	struct radv_amdgpu_ctx *ctx = radv_amdgpu_ctx(_ctx);
 	struct radv_amdgpu_fence *fence = (struct radv_amdgpu_fence *)_fence;
 	struct radv_amdgpu_cs *cs0 = radv_amdgpu_cs(cs_array[0]);
-	uint32_t bo_list;
+	struct drm_amdgpu_bo_list_entry *handles = NULL;
 	struct radv_amdgpu_cs_request request = {0};
 	struct amdgpu_cs_ib_info ibs[2];
 	unsigned number_of_ibs = 1;
+	unsigned num_handles = 0;
 
 	for (unsigned i = cs_count; i--;) {
 		struct radv_amdgpu_cs *cs = radv_amdgpu_cs(cs_array[i]);
@@ -889,15 +886,12 @@ static int radv_amdgpu_winsys_cs_submit_chained(struct radeon_winsys_ctx *_ctx,
 		}
 	}
 
-	/* Create a buffer object list. */
-	r = radv_amdgpu_create_bo_list(cs0->ws, cs_array, cs_count, NULL, 0,
-				       initial_preamble_cs, radv_bo_list,
-				       &bo_list);
-	if (r) {
-		fprintf(stderr, "amdgpu: buffer list creation failed for the "
-				"chained submission(%d)\n", r);
+	/* Get the BO list. */
+	r = radv_amdgpu_get_bo_list(cs0->ws, cs_array, cs_count, NULL, 0,
+				    initial_preamble_cs, radv_bo_list,
+				    &num_handles, &handles);
+	if (r)
 		return r;
-	}
 
 	/* Configure the CS request. */
 	if (initial_preamble_cs) {
@@ -912,7 +906,8 @@ static int radv_amdgpu_winsys_cs_submit_chained(struct radeon_winsys_ctx *_ctx,
 	request.ring = queue_idx;
 	request.number_of_ibs = number_of_ibs;
 	request.ibs = ibs;
-	request.resources = bo_list;
+	request.handles = handles;
+	request.num_handles = num_handles;
 	request.fence_info = radv_set_cs_fence(ctx, cs0->hw_ip, queue_idx);
 
 	/* Submit the CS. */
@@ -925,7 +920,7 @@ static int radv_amdgpu_winsys_cs_submit_chained(struct radeon_winsys_ctx *_ctx,
 					"see dmesg for more information.\n");
 	}
 
-	amdgpu_bo_list_destroy_raw(ctx->ws->dev, bo_list);
+	free(request.handles);
 
 	if (r)
 		return r;
@@ -951,10 +946,11 @@ static int radv_amdgpu_winsys_cs_submit_fallback(struct radeon_winsys_ctx *_ctx,
 	int r;
 	struct radv_amdgpu_ctx *ctx = radv_amdgpu_ctx(_ctx);
 	struct radv_amdgpu_fence *fence = (struct radv_amdgpu_fence *)_fence;
-	uint32_t bo_list;
+	struct drm_amdgpu_bo_list_entry *handles = NULL;
 	struct radv_amdgpu_cs_request request = {};
 	struct amdgpu_cs_ib_info *ibs;
 	struct radv_amdgpu_cs *cs0;
+	unsigned num_handles = 0;
 	unsigned number_of_ibs;
 
 	assert(cs_count);
@@ -963,19 +959,16 @@ static int radv_amdgpu_winsys_cs_submit_fallback(struct radeon_winsys_ctx *_ctx,
 	/* Compute the number of IBs for this submit. */
 	number_of_ibs = cs_count + !!initial_preamble_cs;
 
-	/* Create a buffer object list. */
-	r = radv_amdgpu_create_bo_list(cs0->ws, &cs_array[0], cs_count, NULL, 0,
-				       initial_preamble_cs, radv_bo_list,
-				       &bo_list);
-	if (r) {
-		fprintf(stderr, "amdgpu: buffer list creation failed "
-				"for the fallback submission (%d)\n", r);
+	/* Get the BO list. */
+	r = radv_amdgpu_get_bo_list(cs0->ws, &cs_array[0], cs_count, NULL, 0,
+				    initial_preamble_cs, radv_bo_list,
+				    &num_handles, &handles);
+	if (r)
 		return r;
-	}
 
 	ibs = malloc(number_of_ibs * sizeof(*ibs));
 	if (!ibs) {
-		amdgpu_bo_list_destroy_raw(ctx->ws->dev, bo_list);
+		free(request.handles);
 		return -ENOMEM;
 	}
 
@@ -996,7 +989,8 @@ static int radv_amdgpu_winsys_cs_submit_fallback(struct radeon_winsys_ctx *_ctx,
 
 	request.ip_type = cs0->hw_ip;
 	request.ring = queue_idx;
-	request.resources = bo_list;
+	request.handles = handles;
+	request.num_handles = num_handles;
 	request.number_of_ibs = number_of_ibs;
 	request.ibs = ibs;
 	request.fence_info = radv_set_cs_fence(ctx, cs0->hw_ip, queue_idx);
@@ -1011,7 +1005,7 @@ static int radv_amdgpu_winsys_cs_submit_fallback(struct radeon_winsys_ctx *_ctx,
 					"see dmesg for more information.\n");
 	}
 
-	amdgpu_bo_list_destroy_raw(ctx->ws->dev, bo_list);
+	free(request.handles);
 	free(ibs);
 
 	if (r)
@@ -1040,7 +1034,6 @@ static int radv_amdgpu_winsys_cs_submit_sysmem(struct radeon_winsys_ctx *_ctx,
 	struct radv_amdgpu_fence *fence = (struct radv_amdgpu_fence *)_fence;
 	struct radv_amdgpu_cs *cs0 = radv_amdgpu_cs(cs_array[0]);
 	struct radeon_winsys *ws = (struct radeon_winsys*)cs0->ws;
-	uint32_t bo_list;
 	struct radv_amdgpu_cs_request request;
 	uint32_t pad_word = PKT3_NOP_PAD;
 	bool emit_signal_sem = sem_info->cs_emit_signal;
@@ -1055,6 +1048,8 @@ static int radv_amdgpu_winsys_cs_submit_sysmem(struct radeon_winsys_ctx *_ctx,
 		struct radeon_winsys_bo **bos;
 		struct radeon_cmdbuf *preamble_cs = i ? continue_preamble_cs : initial_preamble_cs;
 		struct radv_amdgpu_cs *cs = radv_amdgpu_cs(cs_array[i]);
+		struct drm_amdgpu_bo_list_entry *handles = NULL;
+		unsigned num_handles = 0;
 		unsigned number_of_ibs;
 		uint32_t *ptr;
 		unsigned cnt = 0;
@@ -1175,10 +1170,11 @@ static int radv_amdgpu_winsys_cs_submit_sysmem(struct radeon_winsys_ctx *_ctx,
 			ibs[0].flags = 0;
 		}
 
-		r = radv_amdgpu_create_bo_list(cs0->ws, &cs_array[i], cnt,
-			                       (struct radv_amdgpu_winsys_bo **)bos,
-					       number_of_ibs, preamble_cs,
-					       radv_bo_list, &bo_list);
+		r = radv_amdgpu_get_bo_list(cs0->ws, &cs_array[i], cnt,
+			                    (struct radv_amdgpu_winsys_bo **)bos,
+					    number_of_ibs, preamble_cs,
+					    radv_bo_list,
+					    &num_handles, &handles);
 		if (r) {
 			fprintf(stderr, "amdgpu: buffer list creation failed "
 					"for the sysmem submission (%d)\n", r);
@@ -1191,7 +1187,8 @@ static int radv_amdgpu_winsys_cs_submit_sysmem(struct radeon_winsys_ctx *_ctx,
 
 		request.ip_type = cs0->hw_ip;
 		request.ring = queue_idx;
-		request.resources = bo_list;
+		request.handles = handles;
+		request.num_handles = num_handles;
 		request.number_of_ibs = number_of_ibs;
 		request.ibs = ibs;
 		request.fence_info = radv_set_cs_fence(ctx, cs0->hw_ip, queue_idx);
@@ -1206,7 +1203,7 @@ static int radv_amdgpu_winsys_cs_submit_sysmem(struct radeon_winsys_ctx *_ctx,
 						"see dmesg for more information.\n");
 		}
 
-		amdgpu_bo_list_destroy_raw(ctx->ws->dev, bo_list);
+		free(request.handles);
 
 		for (unsigned j = 0; j < number_of_ibs; j++) {
 			ws->buffer_destroy(bos[j]);
@@ -1454,11 +1451,14 @@ static int radv_amdgpu_cs_submit(struct radv_amdgpu_ctx *ctx,
 	struct drm_amdgpu_cs_chunk_data *chunk_data;
 	struct drm_amdgpu_cs_chunk_dep *sem_dependencies = NULL;
 	struct drm_amdgpu_cs_chunk_sem *wait_syncobj = NULL, *signal_syncobj = NULL;
+	bool use_bo_list_create = ctx->ws->info.drm_minor < 27;
+	struct drm_amdgpu_bo_list_in bo_list_in;
 	int i;
 	struct amdgpu_cs_fence *sem;
+	uint32_t bo_list = 0;
 
 	user_fence = (request->fence_info.handle != NULL);
-	size = request->number_of_ibs + (user_fence ? 2 : 1) + 3;
+	size = request->number_of_ibs + (user_fence ? 2 : 1) + (!use_bo_list_create ? 1 : 0) + 3;
 
 	chunks = malloc(sizeof(chunks[0]) * size);
 	if (!chunks)
@@ -1556,12 +1556,40 @@ static int radv_amdgpu_cs_submit(struct radv_amdgpu_ctx *ctx,
 		num_chunks++;
 	}
 
+	if (use_bo_list_create) {
+		/* Legacy path creating the buffer list handle and passing it
+		 * to the CS ioctl.
+		 */
+		r = amdgpu_bo_list_create_raw(ctx->ws->dev, request->num_handles,
+					      request->handles, &bo_list);
+		if (r) {
+			fprintf(stderr, "amdgpu: buffer list creation failed (%d)\n", r);
+			goto error_out;
+		}
+	} else {
+		/* Standard path passing the buffer list via the CS ioctl. */
+		bo_list_in.operation = ~0;
+		bo_list_in.list_handle = ~0;
+		bo_list_in.bo_number = request->num_handles;
+		bo_list_in.bo_info_size = sizeof(struct drm_amdgpu_bo_list_entry);
+		bo_list_in.bo_info_ptr = (uint64_t)(uintptr_t)request->handles;
+
+		chunks[num_chunks].chunk_id = AMDGPU_CHUNK_ID_BO_HANDLES;
+		chunks[num_chunks].length_dw = sizeof(struct drm_amdgpu_bo_list_in) / 4;
+		chunks[num_chunks].chunk_data = (uintptr_t)&bo_list_in;
+		num_chunks++;
+	}
+
 	r = amdgpu_cs_submit_raw2(ctx->ws->dev,
 				 ctx->ctx,
-				 request->resources,
+				 bo_list,
 				 num_chunks,
 				 chunks,
 				 &request->seq_no);
+
+	if (bo_list)
+		amdgpu_bo_list_destroy_raw(ctx->ws->dev, bo_list);
+
 error_out:
 	free(chunks);
 	free(chunk_data);
