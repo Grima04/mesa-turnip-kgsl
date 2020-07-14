@@ -305,6 +305,7 @@ lower_system_value_instr(nir_builder *b, nir_instr *instr, void *_state)
       nir_intrinsic_op sysval_op =
          nir_intrinsic_from_system_value(var->data.location);
       return nir_load_system_value(b, sysval_op, 0,
+                                      intrin->dest.ssa.num_components,
                                       intrin->dest.ssa.bit_size);
    }
 
