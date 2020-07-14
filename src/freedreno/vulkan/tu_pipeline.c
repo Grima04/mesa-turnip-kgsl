@@ -741,7 +741,8 @@ tu6_emit_vpc(struct tu_cs *cs,
              const struct ir3_shader_variant *ds,
              const struct ir3_shader_variant *gs,
              const struct ir3_shader_variant *fs,
-             uint32_t patch_control_points)
+             uint32_t patch_control_points,
+             bool vshs_workgroup)
 {
    /* note: doesn't compile as static because of the array regs.. */
    const struct reg_config {
@@ -913,6 +914,8 @@ tu6_emit_vpc(struct tu_cs *cs,
 
    if (hs) {
       shader_info *hs_info = &hs->shader->nir->info;
+      uint32_t unknown_a831 = vs->output_size;
+
       tu_cs_emit_pkt4(cs, REG_A6XX_PC_TESS_NUM_VERTEX, 1);
       tu_cs_emit(cs, hs_info->tess.tcs_vertices_out);
 
@@ -920,8 +923,21 @@ tu6_emit_vpc(struct tu_cs *cs,
       tu_cs_emit_pkt4(cs, REG_A6XX_PC_HS_INPUT_SIZE, 1);
       tu_cs_emit(cs, patch_control_points * vs->output_size / 4);
 
+      /* for A650 this value seems to be local memory size per wave */
+      if (vshs_workgroup) {
+         const uint32_t wavesize = 64;
+         /* note: if HS is really just the VS extended, then this
+          * should be by MAX2(patch_control_points, hs_info->tess.tcs_vertices_out)
+          * however that doesn't match the blob, and fails some dEQP tests.
+          */
+         uint32_t prims_per_wave = wavesize / hs_info->tess.tcs_vertices_out;
+         uint32_t total_size = vs->output_size * patch_control_points * prims_per_wave;
+         unknown_a831 = DIV_ROUND_UP(total_size, wavesize);
+      }
+
       tu_cs_emit_pkt4(cs, REG_A6XX_SP_HS_UNKNOWN_A831, 1);
-      tu_cs_emit(cs, vs->output_size);
+      tu_cs_emit(cs, unknown_a831);
+
       /* In SPIR-V generated from GLSL, the tessellation primitive params are
        * are specified in the tess eval shader, but in SPIR-V generated from
        * HLSL, they are specified in the tess control shader. */
@@ -1405,7 +1421,8 @@ tu6_emit_program(struct tu_cs *cs,
    tu_cs_emit_pkt4(cs, REG_A6XX_SP_HS_UNKNOWN_A831, 1);
    tu_cs_emit(cs, 0);
 
-   tu6_emit_vpc(cs, vs, hs, ds, gs, fs, cps_per_patch);
+   tu6_emit_vpc(cs, vs, hs, ds, gs, fs, cps_per_patch,
+                builder->device->physical_device->gpu_id == 650);
    tu6_emit_vpc_varying_modes(cs, fs);
 
    if (fs) {
