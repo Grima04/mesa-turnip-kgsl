@@ -7138,23 +7138,24 @@ VkResult radv_GetSemaphoreFdKHR(VkDevice _device,
 	switch(pGetFdInfo->handleType) {
 	case VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_FD_BIT:
 		ret = device->ws->export_syncobj(device->ws, syncobj_handle, pFd);
+		if (ret)
+			return vk_error(device->instance, VK_ERROR_TOO_MANY_OBJECTS);
 		break;
 	case VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_SYNC_FD_BIT:
 		ret = device->ws->export_syncobj_to_sync_file(device->ws, syncobj_handle, pFd);
-		if (!ret) {
-			if (sem->temporary.kind != RADV_SEMAPHORE_NONE) {
-				radv_destroy_semaphore_part(device, &sem->temporary);
-			} else {
-				device->ws->reset_syncobj(device->ws, syncobj_handle);
-			}
+		if (ret)
+			return vk_error(device->instance, VK_ERROR_TOO_MANY_OBJECTS);
+
+		if (sem->temporary.kind != RADV_SEMAPHORE_NONE) {
+			radv_destroy_semaphore_part(device, &sem->temporary);
+		} else {
+			device->ws->reset_syncobj(device->ws, syncobj_handle);
 		}
 		break;
 	default:
 		unreachable("Unhandled semaphore handle type");
 	}
 
-	if (ret)
-		return vk_error(device->instance, VK_ERROR_INVALID_EXTERNAL_HANDLE);
 	return VK_SUCCESS;
 }
 
@@ -7232,24 +7233,25 @@ VkResult radv_GetFenceFdKHR(VkDevice _device,
 	switch(pGetFdInfo->handleType) {
 	case VK_EXTERNAL_FENCE_HANDLE_TYPE_OPAQUE_FD_BIT:
 		ret = device->ws->export_syncobj(device->ws, syncobj_handle, pFd);
+		if (ret)
+			return vk_error(device->instance, VK_ERROR_TOO_MANY_OBJECTS);
 		break;
 	case VK_EXTERNAL_FENCE_HANDLE_TYPE_SYNC_FD_BIT:
 		ret = device->ws->export_syncobj_to_sync_file(device->ws, syncobj_handle, pFd);
-		if (!ret) {
-			if (fence->temp_syncobj) {
-				device->ws->destroy_syncobj(device->ws, fence->temp_syncobj);
-				fence->temp_syncobj = 0;
-			} else {
-				device->ws->reset_syncobj(device->ws, syncobj_handle);
-			}
+		if (ret)
+			return vk_error(device->instance, VK_ERROR_TOO_MANY_OBJECTS);
+
+		if (fence->temp_syncobj) {
+			device->ws->destroy_syncobj(device->ws, fence->temp_syncobj);
+			fence->temp_syncobj = 0;
+		} else {
+			device->ws->reset_syncobj(device->ws, syncobj_handle);
 		}
 		break;
 	default:
 		unreachable("Unhandled fence handle type");
 	}
 
-	if (ret)
-		return vk_error(device->instance, VK_ERROR_INVALID_EXTERNAL_HANDLE);
 	return VK_SUCCESS;
 }
 
