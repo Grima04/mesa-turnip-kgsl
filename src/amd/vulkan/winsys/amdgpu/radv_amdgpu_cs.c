@@ -1600,10 +1600,16 @@ error_out:
 }
 
 static int radv_amdgpu_create_syncobj(struct radeon_winsys *_ws,
+				      bool create_signaled,
 				      uint32_t *handle)
 {
 	struct radv_amdgpu_winsys *ws = radv_amdgpu_winsys(_ws);
-	return amdgpu_cs_create_syncobj(ws->dev, handle);
+	uint32_t flags = 0;
+
+	if (create_signaled)
+		flags |= DRM_SYNCOBJ_CREATE_SIGNALED;
+
+	return amdgpu_cs_create_syncobj2(ws->dev, flags, handle);
 }
 
 static void radv_amdgpu_destroy_syncobj(struct radeon_winsys *_ws,

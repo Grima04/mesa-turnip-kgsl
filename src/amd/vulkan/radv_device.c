@@ -5204,13 +5204,15 @@ VkResult radv_CreateFence(
 	fence->fence_wsi = NULL;
 	fence->temp_syncobj = 0;
 	if (device->always_use_syncobj || handleTypes) {
-		int ret = device->ws->create_syncobj(device->ws, &fence->syncobj);
+		bool create_signaled = false;
+		if (pCreateInfo->flags & VK_FENCE_CREATE_SIGNALED_BIT)
+			create_signaled = true;
+
+		int ret = device->ws->create_syncobj(device->ws, create_signaled,
+						     &fence->syncobj);
 		if (ret) {
 			radv_destroy_fence(device, pAllocator, fence);
 			return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
-		}
-		if (pCreateInfo->flags & VK_FENCE_CREATE_SIGNALED_BIT) {
-			device->ws->signal_syncobj(device->ws, fence->syncobj);
 		}
 		fence->fence = NULL;
 	} else {
@@ -5539,7 +5541,7 @@ radv_timeline_add_point_locked(struct radv_device *device,
 
 	if (list_is_empty(&timeline->free_points)) {
 		ret = malloc(sizeof(struct radv_timeline_point));
-		device->ws->create_syncobj(device->ws, &ret->syncobj);
+		device->ws->create_syncobj(device->ws, false, &ret->syncobj);
 	} else {
 		ret = list_first_entry(&timeline->free_points, struct radv_timeline_point, list);
 		list_del(&ret->list);
@@ -5680,7 +5682,8 @@ VkResult radv_CreateSemaphore(
 		sem->permanent.kind = RADV_SEMAPHORE_TIMELINE;
 	} else if (device->always_use_syncobj || handleTypes) {
 		assert (device->physical_device->rad_info.has_syncobj);
-		int ret = device->ws->create_syncobj(device->ws, &sem->permanent.syncobj);
+		int ret = device->ws->create_syncobj(device->ws, false,
+						     &sem->permanent.syncobj);
 		if (ret) {
 			radv_destroy_semaphore(device, pAllocator, sem);
 			return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
@@ -7062,23 +7065,26 @@ static VkResult radv_import_sync_fd(struct radv_device *device,
 	 * leave a syncobj in an undetermined state in the fence. */
 	uint32_t syncobj_handle =  *syncobj;
 	if (!syncobj_handle) {
-		int ret = device->ws->create_syncobj(device->ws, &syncobj_handle);
+		bool create_signaled = fd == -1 ? true : false;
+
+		int ret = device->ws->create_syncobj(device->ws, create_signaled,
+						     &syncobj_handle);
 		if (ret) {
 			return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 		}
+	} else {
+		if (fd == -1)
+			device->ws->signal_syncobj(device->ws, syncobj_handle);
 	}
 
-	if (fd == -1) {
-		device->ws->signal_syncobj(device->ws, syncobj_handle);
-	} else {
+	if (fd != -1) {
 		int ret = device->ws->import_syncobj_from_sync_file(device->ws, syncobj_handle, fd);
-	if (ret != 0)
-		return vk_error(device->instance, VK_ERROR_INVALID_EXTERNAL_HANDLE);
+		if (ret)
+			return vk_error(device->instance, VK_ERROR_INVALID_EXTERNAL_HANDLE);
+		close(fd);
 	}
 
 	*syncobj = syncobj_handle;
-	if (fd != -1)
-		close(fd);
 
 	return VK_SUCCESS;
 }

@@ -320,7 +320,8 @@ struct radeon_winsys {
 	void (*destroy_sem)(struct radeon_winsys_sem *sem);
 
 	/* new shareable sync objects */
-	int (*create_syncobj)(struct radeon_winsys *ws, uint32_t *handle);
+	int (*create_syncobj)(struct radeon_winsys *ws, bool create_signaled,
+			      uint32_t *handle);
 	void (*destroy_syncobj)(struct radeon_winsys *ws, uint32_t handle);
 
 	void (*reset_syncobj)(struct radeon_winsys *ws, uint32_t handle);
