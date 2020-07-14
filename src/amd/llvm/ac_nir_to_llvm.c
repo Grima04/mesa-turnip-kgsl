@@ -5571,7 +5571,7 @@ ac_lower_indirect_derefs(struct nir_shader *nir, enum chip_class chip_class)
 	 */
 	indirect_mask |= nir_var_function_temp;
 
-	progress |= nir_lower_indirect_derefs(nir, indirect_mask);
+	progress |= nir_lower_indirect_derefs(nir, indirect_mask, UINT32_MAX);
 	return progress;
 }
 

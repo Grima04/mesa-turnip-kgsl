@@ -757,7 +757,7 @@ tu_shader_create(struct tu_device *dev,
     * a global BO, they can be directly accessed via stg and ldg.
     * nir_lower_indirect_derefs will instead generate a big if-ladder which
     * isn't *incorrect* but is much less efficient. */
-   NIR_PASS_V(nir, nir_lower_indirect_derefs, nir_var_shader_in | nir_var_shader_out);
+   NIR_PASS_V(nir, nir_lower_indirect_derefs, nir_var_shader_in | nir_var_shader_out, UINT32_MAX);
 
    NIR_PASS_V(nir, nir_lower_io_arrays_to_elements_no_indirects, false);
 

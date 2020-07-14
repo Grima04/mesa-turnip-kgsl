@@ -763,7 +763,7 @@ brw_preprocess_nir(const struct brw_compiler *compiler, nir_shader *nir,
 
    nir_variable_mode indirect_mask =
       brw_nir_no_indirect_mask(compiler, nir->info.stage);
-   OPT(nir_lower_indirect_derefs, indirect_mask);
+   OPT(nir_lower_indirect_derefs, indirect_mask, UINT32_MAX);
 
    /* Lower array derefs of vectors for SSBO and UBO loads.  For both UBOs and
     * SSBOs, our back-end is capable of loading an entire vec4 at a time and
@@ -813,9 +813,11 @@ brw_nir_link_shaders(const struct brw_compiler *compiler,
        * varyings we have demoted here.
        */
       NIR_PASS_V(producer, nir_lower_indirect_derefs,
-                 brw_nir_no_indirect_mask(compiler, producer->info.stage));
+                 brw_nir_no_indirect_mask(compiler, producer->info.stage),
+                 UINT32_MAX);
       NIR_PASS_V(consumer, nir_lower_indirect_derefs,
-                 brw_nir_no_indirect_mask(compiler, consumer->info.stage));
+                 brw_nir_no_indirect_mask(compiler, consumer->info.stage),
+                 UINT32_MAX);
 
       brw_nir_optimize(producer, compiler, p_is_scalar, false);
       brw_nir_optimize(consumer, compiler, c_is_scalar, false);
