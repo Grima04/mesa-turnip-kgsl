@@ -2025,11 +2025,13 @@ tu_CmdSetViewport(VkCommandBuffer commandBuffer,
                   const VkViewport *pViewports)
 {
    TU_FROM_HANDLE(tu_cmd_buffer, cmd, commandBuffer);
-   struct tu_cs cs = tu_cmd_dynamic_state(cmd, VK_DYNAMIC_STATE_VIEWPORT, 18);
+   struct tu_cs cs;
 
-   assert(firstViewport == 0 && viewportCount == 1);
+   memcpy(&cmd->state.viewport[firstViewport], pViewports, viewportCount * sizeof(*pViewports));
+   cmd->state.max_viewport = MAX2(cmd->state.max_viewport, firstViewport + viewportCount);
 
-   tu6_emit_viewport(&cs, pViewports);
+   cs = tu_cmd_dynamic_state(cmd, VK_DYNAMIC_STATE_VIEWPORT, 8 + 10 * cmd->state.max_viewport);
+   tu6_emit_viewport(&cs, cmd->state.viewport, cmd->state.max_viewport);
 }
 
 void
@@ -2039,11 +2041,13 @@ tu_CmdSetScissor(VkCommandBuffer commandBuffer,
                  const VkRect2D *pScissors)
 {
    TU_FROM_HANDLE(tu_cmd_buffer, cmd, commandBuffer);
-   struct tu_cs cs = tu_cmd_dynamic_state(cmd, VK_DYNAMIC_STATE_SCISSOR, 3);
+   struct tu_cs cs;
 
-   assert(firstScissor == 0 && scissorCount == 1);
+   memcpy(&cmd->state.scissor[firstScissor], pScissors, scissorCount * sizeof(*pScissors));
+   cmd->state.max_scissor = MAX2(cmd->state.max_scissor, firstScissor + scissorCount);
 
-   tu6_emit_scissor(&cs, pScissors);
+   cs = tu_cmd_dynamic_state(cmd, VK_DYNAMIC_STATE_SCISSOR, 1 + 2 * cmd->state.max_scissor);
+   tu6_emit_scissor(&cs, cmd->state.scissor, cmd->state.max_scissor);
 }
 
 void

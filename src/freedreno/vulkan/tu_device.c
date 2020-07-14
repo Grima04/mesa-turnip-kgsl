@@ -389,7 +389,7 @@ tu_GetPhysicalDeviceFeatures(VkPhysicalDevice physicalDevice,
       .wideLines = false,
       .largePoints = true,
       .alphaToOne = true,
-      .multiViewport = false,
+      .multiViewport = true,
       .samplerAnisotropy = true,
       .textureCompressionETC2 = true,
       .textureCompressionASTC_LDR = true,
@@ -490,8 +490,8 @@ tu_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
          features->vulkanMemoryModel                   = false;
          features->vulkanMemoryModelDeviceScope        = false;
          features->vulkanMemoryModelAvailabilityVisibilityChains = false;
-         features->shaderOutputViewportIndex           = false;
-         features->shaderOutputLayer                   = false;
+         features->shaderOutputViewportIndex           = true;
+         features->shaderOutputLayer                   = true;
          features->subgroupBroadcastDynamicId          = false;
          break;
       }

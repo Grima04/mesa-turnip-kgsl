@@ -85,7 +85,7 @@ typedef uint32_t xcb_window_t;
 #define MAX_VERTEX_ATTRIBS 32
 #define MAX_RTS 8
 #define MAX_VSC_PIPES 32
-#define MAX_VIEWPORTS 1
+#define MAX_VIEWPORTS 16
 #define MAX_SCISSORS 16
 #define MAX_DISCARD_RECTANGLES 4
 #define MAX_PUSH_CONSTANTS_SIZE 128
@@ -859,11 +859,17 @@ struct tu_cmd_state
    struct tu_pipeline *pipeline;
    struct tu_pipeline *compute_pipeline;
 
-   /* Vertex buffers */
+   /* Vertex buffers, viewports, and scissors
+    * the states for these can be updated partially, so we need to save these
+    * to be able to emit a complete draw state
+    */
    struct {
       uint64_t base;
       uint32_t size;
    } vb[MAX_VBS];
+   VkViewport viewport[MAX_VIEWPORTS];
+   VkRect2D scissor[MAX_SCISSORS];
+   uint32_t max_viewport, max_scissor;
 
    /* for dynamic states that can't be emitted directly */
    uint32_t dynamic_stencil_mask;
@@ -1115,10 +1121,10 @@ struct tu_pipeline
 };
 
 void
-tu6_emit_viewport(struct tu_cs *cs, const VkViewport *viewport);
+tu6_emit_viewport(struct tu_cs *cs, const VkViewport *viewport, uint32_t num_viewport);
 
 void
-tu6_emit_scissor(struct tu_cs *cs, const VkRect2D *scissor);
+tu6_emit_scissor(struct tu_cs *cs, const VkRect2D *scs, uint32_t scissor_count);
 
 void
 tu6_emit_sample_locations(struct tu_cs *cs, const VkSampleLocationsInfoEXT *samp_loc);

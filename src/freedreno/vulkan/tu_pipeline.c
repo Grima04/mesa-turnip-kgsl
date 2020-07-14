@@ -831,15 +831,21 @@ tu6_emit_vpc(struct tu_cs *cs,
       ir3_find_output_regid(last_shader, VARYING_SLOT_PSIZ);
    const uint32_t layer_regid =
       ir3_find_output_regid(last_shader, VARYING_SLOT_LAYER);
+   const uint32_t view_regid =
+      ir3_find_output_regid(last_shader, VARYING_SLOT_VIEWPORT);
    uint32_t primitive_regid = gs ?
       ir3_find_sysval_regid(gs, SYSTEM_VALUE_PRIMITIVE_ID) : regid(63, 0);
    uint32_t flags_regid = gs ?
       ir3_find_output_regid(gs, VARYING_SLOT_GS_VERTEX_FLAGS_IR3) : 0;
 
-   uint32_t pointsize_loc = 0xff, position_loc = 0xff, layer_loc = 0xff;
+   uint32_t pointsize_loc = 0xff, position_loc = 0xff, layer_loc = 0xff, view_loc = 0xff;
    if (layer_regid != regid(63, 0)) {
       layer_loc = linkage.max_loc;
       ir3_link_add(&linkage, layer_regid, 0x1, linkage.max_loc);
+   }
+   if (view_regid != regid(63, 0)) {
+      view_loc = linkage.max_loc;
+      ir3_link_add(&linkage, view_regid, 0x1, linkage.max_loc);
    }
    if (position_regid != regid(63, 0)) {
       position_loc = linkage.max_loc;
@@ -895,6 +901,7 @@ tu6_emit_vpc(struct tu_cs *cs,
    tu_cs_emit(cs, A6XX_PC_VS_OUT_CNTL_STRIDE_IN_VPC(linkage.max_loc) |
                   CONDREG(pointsize_regid, A6XX_PC_VS_OUT_CNTL_PSIZE) |
                   CONDREG(layer_regid, A6XX_PC_VS_OUT_CNTL_LAYER) |
+                  CONDREG(view_regid, A6XX_PC_VS_OUT_CNTL_VIEW) |
                   CONDREG(primitive_regid, A6XX_PC_VS_OUT_CNTL_PRIMITIVE_ID));
 
    tu_cs_emit_pkt4(cs, cfg->reg_sp_xs_primitive_cntl, 1);
@@ -902,10 +909,12 @@ tu6_emit_vpc(struct tu_cs *cs,
                   A6XX_SP_GS_PRIMITIVE_CNTL_FLAGS_REGID(flags_regid));
 
    tu_cs_emit_pkt4(cs, cfg->reg_vpc_xs_layer_cntl, 1);
-   tu_cs_emit(cs, A6XX_VPC_GS_LAYER_CNTL_LAYERLOC(layer_loc) | 0xff00);
+   tu_cs_emit(cs, A6XX_VPC_VS_LAYER_CNTL_LAYERLOC(layer_loc) |
+                  A6XX_VPC_VS_LAYER_CNTL_VIEWLOC(view_loc));
 
    tu_cs_emit_pkt4(cs, cfg->reg_gras_xs_layer_cntl, 1);
-   tu_cs_emit(cs, CONDREG(layer_regid, A6XX_GRAS_GS_LAYER_CNTL_WRITES_LAYER));
+   tu_cs_emit(cs, CONDREG(layer_regid, A6XX_GRAS_GS_LAYER_CNTL_WRITES_LAYER) |
+                  CONDREG(view_regid, A6XX_GRAS_GS_LAYER_CNTL_WRITES_VIEW));
 
    tu_cs_emit_regs(cs, A6XX_PC_PRIMID_PASSTHRU(primid_passthru));
 
@@ -1547,63 +1556,73 @@ tu6_emit_vertex_input(struct tu_cs *cs,
 }
 
 void
-tu6_emit_viewport(struct tu_cs *cs, const VkViewport *viewport)
+tu6_emit_viewport(struct tu_cs *cs, const VkViewport *viewports, uint32_t num_viewport)
 {
-   float offsets[3];
-   float scales[3];
-   scales[0] = viewport->width / 2.0f;
-   scales[1] = viewport->height / 2.0f;
-   scales[2] = viewport->maxDepth - viewport->minDepth;
-   offsets[0] = viewport->x + scales[0];
-   offsets[1] = viewport->y + scales[1];
-   offsets[2] = viewport->minDepth;
+   VkExtent2D guardband = {511, 511};
 
-   VkOffset2D min;
-   VkOffset2D max;
-   min.x = (int32_t) viewport->x;
-   max.x = (int32_t) ceilf(viewport->x + viewport->width);
-   if (viewport->height >= 0.0f) {
-      min.y = (int32_t) viewport->y;
-      max.y = (int32_t) ceilf(viewport->y + viewport->height);
-   } else {
-      min.y = (int32_t)(viewport->y + viewport->height);
-      max.y = (int32_t) ceilf(viewport->y);
+   tu_cs_emit_pkt4(cs, REG_A6XX_GRAS_CL_VPORT_XOFFSET(0), num_viewport * 6);
+   for (uint32_t i = 0; i < num_viewport; i++) {
+      const VkViewport *viewport = &viewports[i];
+      float offsets[3];
+      float scales[3];
+      scales[0] = viewport->width / 2.0f;
+      scales[1] = viewport->height / 2.0f;
+      scales[2] = viewport->maxDepth - viewport->minDepth;
+      offsets[0] = viewport->x + scales[0];
+      offsets[1] = viewport->y + scales[1];
+      offsets[2] = viewport->minDepth;
+      for (uint32_t j = 0; j < 3; j++) {
+         tu_cs_emit(cs, fui(offsets[j]));
+         tu_cs_emit(cs, fui(scales[j]));
+      }
+
+      guardband.width =
+         MIN2(guardband.width, fd_calc_guardband(offsets[0], scales[0], false));
+      guardband.height =
+         MIN2(guardband.height, fd_calc_guardband(offsets[1], scales[1], false));
    }
-   /* the spec allows viewport->height to be 0.0f */
-   if (min.y == max.y)
-      max.y++;
-   assert(min.x >= 0 && min.x < max.x);
-   assert(min.y >= 0 && min.y < max.y);
 
-   VkExtent2D guardband_adj;
-   guardband_adj.width = fd_calc_guardband(offsets[0], scales[0], false);
-   guardband_adj.height = fd_calc_guardband(offsets[1], scales[1], false);
-
-   tu_cs_emit_regs(cs,
-                   A6XX_GRAS_CL_VPORT_XOFFSET(0, offsets[0]),
-                   A6XX_GRAS_CL_VPORT_XSCALE(0, scales[0]),
-                   A6XX_GRAS_CL_VPORT_YOFFSET(0, offsets[1]),
-                   A6XX_GRAS_CL_VPORT_YSCALE(0, scales[1]),
-                   A6XX_GRAS_CL_VPORT_ZOFFSET(0, offsets[2]),
-                   A6XX_GRAS_CL_VPORT_ZSCALE(0, scales[2]));
-
-   tu_cs_emit_pkt4(cs, REG_A6XX_GRAS_SC_VIEWPORT_SCISSOR_TL(0), 2);
-   tu_cs_emit(cs, A6XX_GRAS_SC_VIEWPORT_SCISSOR_TL_X(min.x) |
+   tu_cs_emit_pkt4(cs, REG_A6XX_GRAS_SC_VIEWPORT_SCISSOR_TL(0), num_viewport * 2);
+   for (uint32_t i = 0; i < num_viewport; i++) {
+      const VkViewport *viewport = &viewports[i];
+      VkOffset2D min;
+      VkOffset2D max;
+      min.x = (int32_t) viewport->x;
+      max.x = (int32_t) ceilf(viewport->x + viewport->width);
+      if (viewport->height >= 0.0f) {
+         min.y = (int32_t) viewport->y;
+         max.y = (int32_t) ceilf(viewport->y + viewport->height);
+      } else {
+         min.y = (int32_t)(viewport->y + viewport->height);
+         max.y = (int32_t) ceilf(viewport->y);
+      }
+      /* the spec allows viewport->height to be 0.0f */
+      if (min.y == max.y)
+         max.y++;
+      /* allow viewport->width = 0.0f for un-initialized viewports: */
+      if (min.x == max.x)
+         max.x++;
+      assert(min.x >= 0 && min.x < max.x);
+      assert(min.y >= 0 && min.y < max.y);
+      tu_cs_emit(cs, A6XX_GRAS_SC_VIEWPORT_SCISSOR_TL_X(min.x) |
                      A6XX_GRAS_SC_VIEWPORT_SCISSOR_TL_Y(min.y));
-   tu_cs_emit(cs, A6XX_GRAS_SC_VIEWPORT_SCISSOR_TL_X(max.x - 1) |
+      tu_cs_emit(cs, A6XX_GRAS_SC_VIEWPORT_SCISSOR_TL_X(max.x - 1) |
                      A6XX_GRAS_SC_VIEWPORT_SCISSOR_TL_Y(max.y - 1));
+   }
 
+   tu_cs_emit_pkt4(cs, REG_A6XX_GRAS_CL_Z_CLAMP(0), num_viewport * 2);
+   for (uint32_t i = 0; i < num_viewport; i++) {
+      const VkViewport *viewport = &viewports[i];
+      tu_cs_emit(cs, fui(MIN2(viewport->minDepth, viewport->maxDepth)));
+      tu_cs_emit(cs, fui(MAX2(viewport->minDepth, viewport->maxDepth)));
+   }
    tu_cs_emit_pkt4(cs, REG_A6XX_GRAS_CL_GUARDBAND_CLIP_ADJ, 1);
-   tu_cs_emit(cs,
-              A6XX_GRAS_CL_GUARDBAND_CLIP_ADJ_HORZ(guardband_adj.width) |
-                 A6XX_GRAS_CL_GUARDBAND_CLIP_ADJ_VERT(guardband_adj.height));
+   tu_cs_emit(cs, A6XX_GRAS_CL_GUARDBAND_CLIP_ADJ_HORZ(guardband.width) |
+                  A6XX_GRAS_CL_GUARDBAND_CLIP_ADJ_VERT(guardband.height));
 
-   float z_clamp_min = MIN2(viewport->minDepth, viewport->maxDepth);
-   float z_clamp_max = MAX2(viewport->minDepth, viewport->maxDepth);
-
-   tu_cs_emit_regs(cs,
-                   A6XX_GRAS_CL_Z_CLAMP_MIN(0, z_clamp_min),
-                   A6XX_GRAS_CL_Z_CLAMP_MAX(0, z_clamp_max));
+   /* TODO: what to do about this and multi viewport ? */
+   float z_clamp_min = num_viewport ? MIN2(viewports[0].minDepth, viewports[0].maxDepth) : 0;
+   float z_clamp_max = num_viewport ? MAX2(viewports[0].minDepth, viewports[0].maxDepth) : 0;
 
    tu_cs_emit_regs(cs,
                    A6XX_RB_Z_CLAMP_MIN(z_clamp_min),
@@ -1611,32 +1630,35 @@ tu6_emit_viewport(struct tu_cs *cs, const VkViewport *viewport)
 }
 
 void
-tu6_emit_scissor(struct tu_cs *cs, const VkRect2D *scissor)
+tu6_emit_scissor(struct tu_cs *cs, const VkRect2D *scissors, uint32_t scissor_count)
 {
-   VkOffset2D min = scissor->offset;
-   VkOffset2D max = {
-      scissor->offset.x + scissor->extent.width,
-      scissor->offset.y + scissor->extent.height,
-   };
+   tu_cs_emit_pkt4(cs, REG_A6XX_GRAS_SC_SCREEN_SCISSOR_TL(0), scissor_count * 2);
 
-   /* special case for empty scissor with max == 0 to avoid overflow */
-   if (max.x == 0)
-      min.x = max.x = 1;
-   if (max.y == 0)
-      min.y = max.y = 1;
+   for (uint32_t i = 0; i < scissor_count; i++) {
+      const VkRect2D *scissor = &scissors[i];
 
-   /* avoid overflow with large scissor
-    * note the max will be limited to min - 1, so that empty scissor works
-    */
-   uint32_t scissor_max = BITFIELD_MASK(15);
-   min.x = MIN2(scissor_max, min.x);
-   min.y = MIN2(scissor_max, min.y);
-   max.x = MIN2(scissor_max, max.x);
-   max.y = MIN2(scissor_max, max.y);
+      uint32_t min_x = scissor->offset.x;
+      uint32_t min_y = scissor->offset.y;
+      uint32_t max_x = min_x + scissor->extent.width - 1;
+      uint32_t max_y = min_y + scissor->extent.height - 1;
 
-   tu_cs_emit_regs(cs,
-                   A6XX_GRAS_SC_SCREEN_SCISSOR_TL(0, .x = min.x, .y = min.y),
-                   A6XX_GRAS_SC_SCREEN_SCISSOR_BR(0, .x = max.x - 1, .y = max.y - 1));
+      if (!scissor->extent.width || !scissor->extent.height) {
+         min_x = min_y = 1;
+         max_x = max_y = 0;
+      } else {
+         /* avoid overflow */
+         uint32_t scissor_max = BITFIELD_MASK(15);
+         min_x = MIN2(scissor_max, min_x);
+         min_y = MIN2(scissor_max, min_y);
+         max_x = MIN2(scissor_max, max_x);
+         max_y = MIN2(scissor_max, max_y);
+      }
+
+      tu_cs_emit(cs, A6XX_GRAS_SC_SCREEN_SCISSOR_TL_X(min_x) |
+                     A6XX_GRAS_SC_SCREEN_SCISSOR_TL_Y(min_y));
+      tu_cs_emit(cs, A6XX_GRAS_SC_SCREEN_SCISSOR_BR_X(max_x) |
+                     A6XX_GRAS_SC_SCREEN_SCISSOR_BR_Y(max_y));
+   }
 }
 
 void
@@ -2034,9 +2056,16 @@ tu_pipeline_builder_compile_shaders(struct tu_pipeline_builder *builder,
       builder->shaders[stage] = shader;
    }
 
-   struct tu_shader *gs = builder->shaders[MESA_SHADER_GEOMETRY];
-   key.layer_zero =
-      !gs || !(gs->ir3_shader->nir->info.outputs_written & VARYING_SLOT_LAYER);
+   struct tu_shader *last_shader = builder->shaders[MESA_SHADER_GEOMETRY];
+   if (!last_shader)
+      last_shader = builder->shaders[MESA_SHADER_TESS_EVAL];
+   if (!last_shader)
+      last_shader = builder->shaders[MESA_SHADER_VERTEX];
+
+   uint64_t outputs_written = last_shader->ir3_shader->nir->info.outputs_written;
+
+   key.layer_zero = !(outputs_written & VARYING_BIT_LAYER);
+   key.view_zero = !(outputs_written & VARYING_BIT_VIEWPORT);
 
    pipeline->tess.patch_type = key.tessellation;
 
@@ -2254,11 +2283,11 @@ tu_pipeline_builder_parse_viewport(struct tu_pipeline_builder *builder,
 
    struct tu_cs cs;
 
-   if (tu_pipeline_static_state(pipeline, &cs, VK_DYNAMIC_STATE_VIEWPORT, 18))
-      tu6_emit_viewport(&cs, vp_info->pViewports);
+   if (tu_pipeline_static_state(pipeline, &cs, VK_DYNAMIC_STATE_VIEWPORT, 8 + 10 * vp_info->viewportCount))
+      tu6_emit_viewport(&cs, vp_info->pViewports, vp_info->viewportCount);
 
-   if (tu_pipeline_static_state(pipeline, &cs, VK_DYNAMIC_STATE_SCISSOR, 3))
-      tu6_emit_scissor(&cs, vp_info->pScissors);
+   if (tu_pipeline_static_state(pipeline, &cs, VK_DYNAMIC_STATE_SCISSOR, 1 + 2 * vp_info->scissorCount))
+      tu6_emit_scissor(&cs, vp_info->pScissors, vp_info->scissorCount);
 }
 
 static void
