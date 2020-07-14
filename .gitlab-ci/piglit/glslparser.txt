@@ -2083,13 +2083,6 @@ spec/ext_shader_framebuffer_fetch/compiler/gles3/negative-gl_lastfragdata.frag: 
 spec/ext_shader_framebuffer_fetch/compiler/gles3/negative-inout-gl_fragdepth.frag: skip
 spec/ext_shader_framebuffer_fetch/compiler/gles3/negative-inout-vertex-output.vert: skip
 spec/ext_shader_framebuffer_fetch/compiler/gles3/negative-output-layout.frag: skip
-spec/ext_shader_framebuffer_fetch_non_coherent/compiler/gles2/negative-gl_lastfragdata-write.frag: skip
-spec/ext_shader_framebuffer_fetch_non_coherent/compiler/gles2/negative-inout-fragment-output.frag: skip
-spec/ext_shader_framebuffer_fetch_non_coherent/compiler/gles2/negative-output-layout.frag: skip
-spec/ext_shader_framebuffer_fetch_non_coherent/compiler/gles3/negative-gl_lastfragdata.frag: skip
-spec/ext_shader_framebuffer_fetch_non_coherent/compiler/gles3/negative-inout-gl_fragdepth.frag: skip
-spec/ext_shader_framebuffer_fetch_non_coherent/compiler/gles3/negative-inout-vertex-output.vert: skip
-spec/ext_shader_framebuffer_fetch_non_coherent/compiler/gles3/negative-output-layout.frag: skip
 spec/ext_shader_io_blocks/preprocessor/disabled-defined-es.comp: skip
 spec/ext_shader_io_blocks/preprocessor/disabled-defined-es.frag: skip
 spec/ext_shader_io_blocks/preprocessor/disabled-defined-es.geom: skip
@@ -2664,10 +2657,10 @@ spec/oes_texture_storage_multisample_2d_array/preprocessor/disabled-undefined-es
 summary:
        name:  results
        ----  --------
-       pass:    12172
+       pass:    12179
        fail:        2
       crash:        4
-       skip:     2657
+       skip:     2650
     timeout:        0
        warn:        0
  incomplete:        0

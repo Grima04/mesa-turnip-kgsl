@@ -574,35 +574,12 @@ spec/ext_shader_framebuffer_fetch/execution/gles3/single-slice-2darray-mipmap: s
 spec/ext_shader_framebuffer_fetch/execution/gles3/single-slice-3d: skip
 spec/ext_shader_framebuffer_fetch/execution/gles3/single-slice-cubemap: skip
 spec/ext_shader_framebuffer_fetch/execution/gles3/texture: skip
-spec/ext_shader_framebuffer_fetch_non_coherent/execution/gl/1d: skip
-spec/ext_shader_framebuffer_fetch_non_coherent/execution/gl/layered-1darray: skip
-spec/ext_shader_framebuffer_fetch_non_coherent/execution/gl/layered-2darray: skip
-spec/ext_shader_framebuffer_fetch_non_coherent/execution/gl/layered-cubemap: skip
-spec/ext_shader_framebuffer_fetch_non_coherent/execution/gles2/mrt: skip
-spec/ext_shader_framebuffer_fetch_non_coherent/execution/gles2/nonuniform-ss: skip
-spec/ext_shader_framebuffer_fetch_non_coherent/execution/gles2/nonuniform-ss-redecl-highp: skip
-spec/ext_shader_framebuffer_fetch_non_coherent/execution/gles2/nonuniform-ss-redecl-lowp: skip
-spec/ext_shader_framebuffer_fetch_non_coherent/execution/gles2/simple-ss: skip
 spec/ext_shader_framebuffer_fetch_non_coherent/execution/gles3/discard-ms8: skip
-spec/ext_shader_framebuffer_fetch_non_coherent/execution/gles3/discard-ss: skip
-spec/ext_shader_framebuffer_fetch_non_coherent/execution/gles3/integer-ms2: skip
 spec/ext_shader_framebuffer_fetch_non_coherent/execution/gles3/integer-ms8: skip
-spec/ext_shader_framebuffer_fetch_non_coherent/execution/gles3/integer-ss: skip
-spec/ext_shader_framebuffer_fetch_non_coherent/execution/gles3/mrt: skip
 spec/ext_shader_framebuffer_fetch_non_coherent/execution/gles3/nonuniform-ms16: skip
-spec/ext_shader_framebuffer_fetch_non_coherent/execution/gles3/nonuniform-ms2: skip
 spec/ext_shader_framebuffer_fetch_non_coherent/execution/gles3/nonuniform-ms8: skip
-spec/ext_shader_framebuffer_fetch_non_coherent/execution/gles3/nonuniform-ss: skip
-spec/ext_shader_framebuffer_fetch_non_coherent/execution/gles3/overwrite: skip
 spec/ext_shader_framebuffer_fetch_non_coherent/execution/gles3/simple-ms16: skip
-spec/ext_shader_framebuffer_fetch_non_coherent/execution/gles3/simple-ms2: skip
 spec/ext_shader_framebuffer_fetch_non_coherent/execution/gles3/simple-ms8: skip
-spec/ext_shader_framebuffer_fetch_non_coherent/execution/gles3/simple-ss: skip
-spec/ext_shader_framebuffer_fetch_non_coherent/execution/gles3/single-slice-2darray: skip
-spec/ext_shader_framebuffer_fetch_non_coherent/execution/gles3/single-slice-2darray-mipmap: skip
-spec/ext_shader_framebuffer_fetch_non_coherent/execution/gles3/single-slice-3d: skip
-spec/ext_shader_framebuffer_fetch_non_coherent/execution/gles3/single-slice-cubemap: skip
-spec/ext_shader_framebuffer_fetch_non_coherent/execution/gles3/texture: skip
 spec/ext_shader_image_load_formatted/execution/image_checkerboard: skip
 spec/glsl-1.10/execution/built-in-functions/fs-pow-float-float: fail
 spec/glsl-1.10/execution/built-in-functions/vs-pow-float-float: fail
@@ -2322,10 +2299,10 @@ spec/nv_viewport_swizzle/viewport_swizzle: skip
 summary:
        name:  results
        ----  --------
-       pass:    14054
+       pass:    14077
        fail:      102
       crash:      178
-       skip:     2041
+       skip:     2018
     timeout:        0
        warn:        0
  incomplete:        0

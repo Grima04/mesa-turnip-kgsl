@@ -425,6 +425,10 @@ static void emit_load_var(struct lp_build_nir_context *bld_base,
       }
       break;
    case nir_var_shader_out:
+      if (bld->fs_iface && bld->fs_iface->fb_fetch) {
+         bld->fs_iface->fb_fetch(bld->fs_iface, &bld_base->base, var->data.driver_location, result);
+         return;
+      }
       for (unsigned i = 0; i < num_components; i++) {
          int idx = (i * dmul) + var->data.location_frac;
          if (bld->tcs_iface) {

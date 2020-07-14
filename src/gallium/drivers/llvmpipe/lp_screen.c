@@ -331,6 +331,10 @@ llvmpipe_get_param(struct pipe_screen *screen, enum pipe_cap param)
       return 1;
    case PIPE_CAP_DRAW_PARAMETERS:
       return 1;
+   case PIPE_CAP_FBFETCH:
+      return 8;
+   case PIPE_CAP_FBFETCH_COHERENT:
+      return 0;
    case PIPE_CAP_MULTI_DRAW_INDIRECT:
    case PIPE_CAP_MULTI_DRAW_INDIRECT_PARAMS:
       return 1;
@@ -364,7 +368,6 @@ llvmpipe_get_param(struct pipe_screen *screen, enum pipe_cap param)
    case PIPE_CAP_TGSI_CAN_READ_OUTPUTS:
    case PIPE_CAP_NATIVE_FENCE_FD:
    case PIPE_CAP_GLSL_OPTIMIZE_CONSERVATIVELY:
-   case PIPE_CAP_FBFETCH:
    case PIPE_CAP_TGSI_MUL_ZERO_WINS:
    case PIPE_CAP_TGSI_CLOCK:
    case PIPE_CAP_POLYGON_MODE_FILL_RECTANGLE:
