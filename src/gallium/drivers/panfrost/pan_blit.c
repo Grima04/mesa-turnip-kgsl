@@ -57,6 +57,8 @@ panfrost_blitter_save(
         util_blitter_save_fragment_sampler_views(blitter,
                         ctx->sampler_view_count[PIPE_SHADER_FRAGMENT],
                         (struct pipe_sampler_view **)&ctx->sampler_views[PIPE_SHADER_FRAGMENT]);
+        util_blitter_save_fragment_constant_buffer_slot(blitter,
+                        ctx->constant_buffer[PIPE_SHADER_FRAGMENT].cb);
 }
 
 static bool
