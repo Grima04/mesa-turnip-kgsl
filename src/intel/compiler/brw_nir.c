@@ -472,13 +472,29 @@ static nir_variable_mode
 brw_nir_no_indirect_mask(const struct brw_compiler *compiler,
                          gl_shader_stage stage)
 {
+   const bool is_scalar = compiler->scalar_stage[stage];
    nir_variable_mode indirect_mask = 0;
 
-   if (compiler->glsl_compiler_options[stage].EmitNoIndirectInput)
+   switch (stage) {
+   case MESA_SHADER_VERTEX:
+   case MESA_SHADER_FRAGMENT:
       indirect_mask |= nir_var_shader_in;
-   if (compiler->glsl_compiler_options[stage].EmitNoIndirectOutput)
+      break;
+
+   case MESA_SHADER_GEOMETRY:
+      if (!is_scalar)
+         indirect_mask |= nir_var_shader_in;
+      break;
+
+   default:
+      /* Everything else can handle indirect inputs */
+      break;
+   }
+
+   if (is_scalar && stage != MESA_SHADER_TESS_CTRL)
       indirect_mask |= nir_var_shader_out;
-   if (compiler->glsl_compiler_options[stage].EmitNoIndirectTemp)
+
+   if (is_scalar)
       indirect_mask |= nir_var_function_temp;
 
    return indirect_mask;

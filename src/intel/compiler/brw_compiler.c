@@ -162,13 +162,13 @@ brw_compiler_create(void *mem_ctx, const struct gen_device_info *devinfo)
       compiler->glsl_compiler_options[i].MaxIfDepth =
          devinfo->gen < 6 ? 16 : UINT_MAX;
 
-      compiler->glsl_compiler_options[i].EmitNoIndirectInput = true;
+      /* We handle this in NIR */
+      compiler->glsl_compiler_options[i].EmitNoIndirectInput = false;
+      compiler->glsl_compiler_options[i].EmitNoIndirectOutput = false;
       compiler->glsl_compiler_options[i].EmitNoIndirectUniform = false;
+      compiler->glsl_compiler_options[i].EmitNoIndirectTemp = false;
 
       bool is_scalar = compiler->scalar_stage[i];
-
-      compiler->glsl_compiler_options[i].EmitNoIndirectOutput = is_scalar;
-      compiler->glsl_compiler_options[i].EmitNoIndirectTemp = is_scalar;
       compiler->glsl_compiler_options[i].OptimizeForAOS = !is_scalar;
 
       struct nir_shader_compiler_options *nir_options =
@@ -198,13 +198,6 @@ brw_compiler_create(void *mem_ctx, const struct gen_device_info *devinfo)
 
       compiler->glsl_compiler_options[i].ClampBlockIndicesToArrayBounds = true;
    }
-
-   compiler->glsl_compiler_options[MESA_SHADER_TESS_CTRL].EmitNoIndirectInput = false;
-   compiler->glsl_compiler_options[MESA_SHADER_TESS_EVAL].EmitNoIndirectInput = false;
-   compiler->glsl_compiler_options[MESA_SHADER_TESS_CTRL].EmitNoIndirectOutput = false;
-
-   if (compiler->scalar_stage[MESA_SHADER_GEOMETRY])
-      compiler->glsl_compiler_options[MESA_SHADER_GEOMETRY].EmitNoIndirectInput = false;
 
    return compiler;
 }
