@@ -506,6 +506,8 @@ struct ir3_array {
 
 	/* Indicates if half-precision */
 	bool half;
+
+	bool unused;
 };
 
 struct ir3_array * ir3_lookup_array(struct ir3 *ir, unsigned id);
@@ -1244,6 +1246,8 @@ static inline bool __is_false_dep(struct ir3_instruction *instr, unsigned n)
 /* iterators for arrays: */
 #define foreach_array(__array, __list) \
 	list_for_each_entry(struct ir3_array, __array, __list, node)
+#define foreach_array_safe(__array, __list) \
+	list_for_each_entry_safe(struct ir3_array, __array, __list, node)
 
 /* Check if condition is true for any src instruction.
  */
