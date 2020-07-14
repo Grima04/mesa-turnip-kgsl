@@ -64,7 +64,7 @@ GL 3.0, GLSL 1.30 --- all DONE: freedreno, i965, nv50, nvc0, r600, radeonsi, llv
   Depth format cube textures                            DONE (panfrost)
   GLX_ARB_create_context (GLX 1.4 is required)          DONE (panfrost, v3d)
   Multisample anti-aliasing                             DONE (freedreno/a5xx+, freedreno (*), llvmpipe (*), softpipe (*), swr (*), panfrost)
-  8 draw buffers                                        DONE ()
+  8 draw buffers                                        DONE (panfrost/t760+)
 
 (*) freedreno (a2xx-a4xx), llvmpipe, softpipe, and swr have fake Multisample anti-aliasing support
 

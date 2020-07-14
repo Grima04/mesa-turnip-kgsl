@@ -120,7 +120,7 @@ panfrost_get_param(struct pipe_screen *screen, enum pipe_cap param)
         case PIPE_CAP_MAX_RENDER_TARGETS:
         case PIPE_CAP_FBFETCH:
         case PIPE_CAP_FBFETCH_COHERENT:
-                return has_mrt ? 4 : 1;
+                return has_mrt ? 8 : 1;
 
         case PIPE_CAP_MAX_DUAL_SOURCE_RENDER_TARGETS:
                 return 1;
@@ -300,7 +300,7 @@ panfrost_get_shader_param(struct pipe_screen *screen,
                 return 16;
 
         case PIPE_SHADER_CAP_MAX_OUTPUTS:
-                return shader == PIPE_SHADER_FRAGMENT ? 4 : 16;
+                return shader == PIPE_SHADER_FRAGMENT ? 8 : 16;
 
         case PIPE_SHADER_CAP_MAX_TEMPS:
                 return 256; /* GL_MAX_PROGRAM_TEMPORARIES_ARB */

@@ -1849,8 +1849,8 @@ struct mali_framebuffer {
         u32 zero3;
         u16 width2, height2;
         u32 unk1 : 19; // = 0x01000
-        u32 rt_count_1 : 2; // off-by-one (use MALI_POSITIVE)
-        u32 unk2 : 3; // = 0
+        u32 rt_count_1 : 3; // off-by-one (use MALI_POSITIVE)
+        u32 unk2 : 2; // = 0
         u32 rt_count_2 : 3; // no off-by-one
         u32 zero4 : 5;
         /* 0x30 */

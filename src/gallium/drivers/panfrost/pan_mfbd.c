@@ -401,7 +401,7 @@ panfrost_mfbd_upload(struct panfrost_batch *batch,
         size_t total_sz =
                 sizeof(struct mali_framebuffer) +
                 (has_extra ? sizeof(struct mali_framebuffer_extra) : 0) +
-                sizeof(struct mali_render_target) * 4;
+                sizeof(struct mali_render_target) * 8;
 
         struct panfrost_transfer m_f_trans =
                 panfrost_pool_alloc(&batch->pool, total_sz);
@@ -413,7 +413,7 @@ panfrost_mfbd_upload(struct panfrost_batch *batch,
         if (has_extra)
                 UPLOAD(m_f_trans, offset, fbx, total_sz);
 
-        for (unsigned c = 0; c < 4; ++c) {
+        for (unsigned c = 0; c < 8; ++c) {
                 UPLOAD(m_f_trans, offset, &rts[c], total_sz);
         }
 
@@ -541,7 +541,7 @@ panfrost_mfbd_fragment(struct panfrost_batch *batch, bool has_draws)
 
         struct mali_framebuffer fb = panfrost_emit_mfbd(batch, has_draws);
         struct mali_framebuffer_extra fbx = {0};
-        struct mali_render_target rts[4] = {0};
+        struct mali_render_target rts[8] = {0};
 
         /* We always upload at least one dummy GL_NONE render target */
 
