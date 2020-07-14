@@ -2364,13 +2364,32 @@ void radv_initialize_fmask(struct radv_cmd_buffer *cmd_buffer,
 			   struct radv_image *image,
 			   const VkImageSubresourceRange *range);
 
+typedef enum {
+	RADV_FENCE_NONE,
+	RADV_FENCE_WINSYS,
+	RADV_FENCE_SYNCOBJ,
+	RADV_FENCE_WSI,
+} radv_fence_kind;
+
+struct radv_fence_part {
+	radv_fence_kind kind;
+
+	union {
+		/* AMDGPU winsys fence. */
+		struct radeon_winsys_fence *fence;
+
+		/* DRM syncobj handle for syncobj-based fences. */
+		uint32_t syncobj;
+
+		/* WSI fence. */
+		struct wsi_fence *fence_wsi;
+	};
+};
+
 struct radv_fence {
 	struct vk_object_base base;
-	struct radeon_winsys_fence *fence;
-	struct wsi_fence *fence_wsi;
-
-	uint32_t syncobj;
-	uint32_t temp_syncobj;
+	struct radv_fence_part permanent;
+	struct radv_fence_part temporary;
 };
 
 /* radv_nir_to_llvm.c */

@@ -259,12 +259,21 @@ VkResult radv_AcquireNextImage2KHR(
 
 	if (result == VK_SUCCESS || result == VK_SUBOPTIMAL_KHR) {
 		if (fence) {
-			if (fence->fence)
-				device->ws->signal_fence(fence->fence);
-			if (fence->temp_syncobj) {
-				device->ws->signal_syncobj(device->ws, fence->temp_syncobj);
-			} else if (fence->syncobj) {
-				device->ws->signal_syncobj(device->ws, fence->syncobj);
+			struct radv_fence_part *part =
+				fence->temporary.kind != RADV_FENCE_NONE ?
+				&fence->temporary : &fence->permanent;
+
+			switch (part->kind) {
+			case RADV_FENCE_NONE:
+				break;
+			case RADV_FENCE_WINSYS:
+				device->ws->signal_fence(part->fence);
+				break;
+			case RADV_FENCE_SYNCOBJ:
+				device->ws->signal_syncobj(device->ws, part->syncobj);
+				break;
+			default:
+				unreachable("Invalid WSI fence type");
 			}
 		}
 		if (semaphore) {

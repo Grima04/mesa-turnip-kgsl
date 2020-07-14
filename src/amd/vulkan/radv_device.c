@@ -3755,7 +3755,11 @@ static VkResult radv_alloc_sem_counts(struct radv_device *device,
 
 	if (_fence != VK_NULL_HANDLE) {
 		RADV_FROM_HANDLE(radv_fence, fence, _fence);
-		if (fence->temp_syncobj || fence->syncobj)
+
+		struct radv_fence_part *part =
+			fence->temporary.kind != RADV_FENCE_NONE ?
+			&fence->temporary : &fence->permanent;
+		if (part->kind == RADV_FENCE_SYNCOBJ)
 			counts->syncobj_count++;
 	}
 
@@ -3809,10 +3813,12 @@ static VkResult radv_alloc_sem_counts(struct radv_device *device,
 
 	if (_fence != VK_NULL_HANDLE) {
 		RADV_FROM_HANDLE(radv_fence, fence, _fence);
-		if (fence->temp_syncobj)
-			counts->syncobj[syncobj_idx++] = fence->temp_syncobj;
-		else if (fence->syncobj)
-			counts->syncobj[syncobj_idx++] = fence->syncobj;
+
+		struct radv_fence_part *part =
+			fence->temporary.kind != RADV_FENCE_NONE ?
+			&fence->temporary : &fence->permanent;
+		if (part->kind == RADV_FENCE_SYNCOBJ)
+			counts->syncobj[syncobj_idx++] = part->syncobj;
 	}
 
 	assert(syncobj_idx <= counts->syncobj_count);
@@ -4199,7 +4205,7 @@ radv_queue_submit_deferred(struct radv_deferred_queue_submission *submission,
 	struct radv_queue *queue = submission->queue;
 	struct radeon_winsys_ctx *ctx = queue->hw_ctx;
 	uint32_t max_cs_submission = queue->device->trace_bo ? 1 : RADV_MAX_IBS_PER_SUBMIT;
-	struct radeon_winsys_fence *base_fence = fence ? fence->fence : NULL;
+	struct radeon_winsys_fence *base_fence = NULL;
 	bool do_flush = submission->flush_caches || submission->wait_dst_stage_mask;
 	bool can_patch = true;
 	uint32_t advance;
@@ -4209,6 +4215,23 @@ radv_queue_submit_deferred(struct radv_deferred_queue_submission *submission,
 	struct radeon_cmdbuf *initial_preamble_cs = NULL;
 	struct radeon_cmdbuf *initial_flush_preamble_cs = NULL;
 	struct radeon_cmdbuf *continue_preamble_cs = NULL;
+
+	if (fence) {
+		/* Under most circumstances, out fences won't be temporary.
+		 * However, the spec does allow it for opaque_fd.
+		 *
+		 * From the Vulkan 1.0.53 spec:
+		 *
+		 *    "If the import is temporary, the implementation must
+		 *    restore the semaphore to its prior permanent state after
+		 *    submitting the next semaphore wait operation."
+		 */
+		struct radv_fence_part *part =
+			fence->temporary.kind != RADV_FENCE_NONE ?
+			&fence->temporary : &fence->permanent;
+		if (part->kind == RADV_FENCE_WINSYS)
+			base_fence = part->fence;
+	}
 
 	result = radv_get_preambles(queue, submission->cmd_buffers,
 	                            submission->cmd_buffer_count,
@@ -5163,18 +5186,35 @@ static bool radv_sparse_bind_has_effects(const VkBindSparseInfo *info)
 }
 
 static void
+radv_destroy_fence_part(struct radv_device *device,
+			struct radv_fence_part *part)
+{
+	switch (part->kind) {
+	case RADV_FENCE_NONE:
+		break;
+	case RADV_FENCE_WINSYS:
+		device->ws->destroy_fence(part->fence);
+		break;
+	case RADV_FENCE_SYNCOBJ:
+		device->ws->destroy_syncobj(device->ws, part->syncobj);
+		break;
+	case RADV_FENCE_WSI:
+		part->fence_wsi->destroy(part->fence_wsi);
+		break;
+	default:
+		unreachable("Invalid fence type");
+	}
+
+	part->kind = RADV_FENCE_NONE;
+}
+
+static void
 radv_destroy_fence(struct radv_device *device,
 		   const VkAllocationCallbacks *pAllocator,
 		   struct radv_fence *fence)
 {
-	if (fence->temp_syncobj)
-		device->ws->destroy_syncobj(device->ws, fence->temp_syncobj);
-	if (fence->syncobj)
-		device->ws->destroy_syncobj(device->ws, fence->syncobj);
-	if (fence->fence)
-		device->ws->destroy_fence(fence->fence);
-	if (fence->fence_wsi)
-		fence->fence_wsi->destroy(fence->fence_wsi);
+	radv_destroy_fence_part(device, &fence->temporary);
+	radv_destroy_fence_part(device, &fence->permanent);
 
 	vk_object_base_finish(&fence->base);
 	vk_free2(&device->vk.alloc, pAllocator, fence);
@@ -5191,45 +5231,46 @@ VkResult radv_CreateFence(
 		vk_find_struct_const(pCreateInfo->pNext, EXPORT_FENCE_CREATE_INFO);
 	VkExternalFenceHandleTypeFlags handleTypes =
 		export ? export->handleTypes : 0;
+	struct radv_fence *fence;
 
-	struct radv_fence *fence = vk_alloc2(&device->vk.alloc, pAllocator,
-					       sizeof(*fence), 8,
-					       VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
-
+	fence = vk_zalloc2(&device->vk.alloc, pAllocator, sizeof(*fence), 8,
+			   VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
 	if (!fence)
 		return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
 	vk_object_base_init(&device->vk, &fence->base, VK_OBJECT_TYPE_FENCE);
 
-	fence->fence_wsi = NULL;
-	fence->temp_syncobj = 0;
 	if (device->always_use_syncobj || handleTypes) {
+		fence->permanent.kind = RADV_FENCE_SYNCOBJ;
+
 		bool create_signaled = false;
 		if (pCreateInfo->flags & VK_FENCE_CREATE_SIGNALED_BIT)
 			create_signaled = true;
 
 		int ret = device->ws->create_syncobj(device->ws, create_signaled,
-						     &fence->syncobj);
+						     &fence->permanent.syncobj);
 		if (ret) {
 			radv_destroy_fence(device, pAllocator, fence);
 			return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 		}
-		fence->fence = NULL;
 	} else {
-		fence->fence = device->ws->create_fence();
-		if (!fence->fence) {
+		fence->permanent.kind = RADV_FENCE_WINSYS;
+
+		fence->permanent.fence = device->ws->create_fence();
+		if (!fence->permanent.fence) {
+			vk_free2(&device->vk.alloc, pAllocator, fence);
 			radv_destroy_fence(device, pAllocator, fence);
 			return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 		}
-		fence->syncobj = 0;
 		if (pCreateInfo->flags & VK_FENCE_CREATE_SIGNALED_BIT)
-			device->ws->signal_fence(fence->fence);
+			device->ws->signal_fence(fence->permanent.fence);
 	}
 
 	*pFence = radv_fence_to_handle(fence);
 
 	return VK_SUCCESS;
 }
+
 
 void radv_DestroyFence(
 	VkDevice                                    _device,
@@ -5268,9 +5309,12 @@ static bool radv_all_fences_plain_and_submitted(struct radv_device *device,
 {
 	for (uint32_t i = 0; i < fenceCount; ++i) {
 		RADV_FROM_HANDLE(radv_fence, fence, pFences[i]);
-		if (fence->fence == NULL || fence->syncobj ||
-		    fence->temp_syncobj || fence->fence_wsi ||
-		    (!device->ws->is_fence_waitable(fence->fence)))
+
+		struct radv_fence_part *part =
+			fence->temporary.kind != RADV_FENCE_NONE ?
+			&fence->temporary : &fence->permanent;
+		if (part->kind != RADV_FENCE_WINSYS ||
+		    !device->ws->is_fence_waitable(part->fence))
 			return false;
 	}
 	return true;
@@ -5280,7 +5324,11 @@ static bool radv_all_fences_syncobj(uint32_t fenceCount, const VkFence *pFences)
 {
 	for (uint32_t i = 0; i < fenceCount; ++i) {
 		RADV_FROM_HANDLE(radv_fence, fence, pFences[i]);
-		if (fence->syncobj == 0 && fence->temp_syncobj == 0)
+
+		struct radv_fence_part *part =
+			fence->temporary.kind != RADV_FENCE_NONE ?
+			&fence->temporary : &fence->permanent;
+		if (part->kind != RADV_FENCE_SYNCOBJ)
 			return false;
 	}
 	return true;
@@ -5305,7 +5353,13 @@ VkResult radv_WaitForFences(
 
 		for (uint32_t i = 0; i < fenceCount; ++i) {
 			RADV_FROM_HANDLE(radv_fence, fence, pFences[i]);
-			handles[i] = fence->temp_syncobj ? fence->temp_syncobj : fence->syncobj;
+
+			struct radv_fence_part *part =
+				fence->temporary.kind != RADV_FENCE_NONE ?
+				&fence->temporary : &fence->permanent;
+
+			assert(part->kind == RADV_FENCE_SYNCOBJ);
+			handles[i] = part->syncobj;
 		}
 
 		bool success = device->ws->wait_syncobj(device->ws, handles, fenceCount, waitAll, timeout);
@@ -5325,12 +5379,17 @@ VkResult radv_WaitForFences(
 			for (uint32_t i = 0; i < fenceCount; ++i) {
 				RADV_FROM_HANDLE(radv_fence, fence, pFences[i]);
 
-				if (device->ws->fence_wait(device->ws, fence->fence, false, 0)) {
+				struct radv_fence_part *part =
+					fence->temporary.kind != RADV_FENCE_NONE ?
+					&fence->temporary : &fence->permanent;
+				assert(part->kind == RADV_FENCE_WINSYS);
+
+				if (device->ws->fence_wait(device->ws, part->fence, false, 0)) {
 					free(fences);
 					return VK_SUCCESS;
 				}
 
-				fences[wait_count++] = fence->fence;
+				fences[wait_count++] = part->fence;
 			}
 
 			bool success = device->ws->fences_wait(device->ws, fences, wait_count,
@@ -5353,36 +5412,40 @@ VkResult radv_WaitForFences(
 		RADV_FROM_HANDLE(radv_fence, fence, pFences[i]);
 		bool expired = false;
 
-		if (fence->temp_syncobj) {
-			if (!device->ws->wait_syncobj(device->ws, &fence->temp_syncobj, 1, true, timeout))
-				return VK_TIMEOUT;
-			continue;
-		}
+		struct radv_fence_part *part =
+			fence->temporary.kind != RADV_FENCE_NONE ?
+			&fence->temporary : &fence->permanent;
 
-		if (fence->syncobj) {
-			if (!device->ws->wait_syncobj(device->ws, &fence->syncobj, 1, true, timeout))
-				return VK_TIMEOUT;
-			continue;
-		}
-
-		if (fence->fence) {
-			if (!device->ws->is_fence_waitable(fence->fence)) {
-				while(!device->ws->is_fence_waitable(fence->fence) &&
+		switch (part->kind) {
+		case RADV_FENCE_NONE:
+			break;
+		case RADV_FENCE_WINSYS:
+			if (!device->ws->is_fence_waitable(part->fence)) {
+				while (!device->ws->is_fence_waitable(part->fence) &&
 				      radv_get_current_time() <= timeout)
 					/* Do nothing */;
 			}
 
 			expired = device->ws->fence_wait(device->ws,
-							 fence->fence,
+							 part->fence,
 							 true, timeout);
 			if (!expired)
 				return VK_TIMEOUT;
-		}
-
-		if (fence->fence_wsi) {
-			VkResult result = fence->fence_wsi->wait(fence->fence_wsi, timeout);
+			break;
+		case RADV_FENCE_SYNCOBJ:
+			if (!device->ws->wait_syncobj(device->ws,
+						      &part->syncobj, 1, true,
+						      timeout))
+				return VK_TIMEOUT;
+			break;
+		case RADV_FENCE_WSI: {
+			VkResult result = part->fence_wsi->wait(part->fence_wsi, timeout);
 			if (result != VK_SUCCESS)
 				return result;
+			break;
+		}
+		default:
+			unreachable("Invalid fence type");
 		}
 	}
 
@@ -5397,18 +5460,29 @@ VkResult radv_ResetFences(VkDevice _device,
 
 	for (unsigned i = 0; i < fenceCount; ++i) {
 		RADV_FROM_HANDLE(radv_fence, fence, pFences[i]);
-		if (fence->fence)
-			device->ws->reset_fence(fence->fence);
 
-		/* Per spec, we first restore the permanent payload, and then reset, so
-		 * having a temp syncobj should not skip resetting the permanent syncobj. */
-		if (fence->temp_syncobj) {
-			device->ws->destroy_syncobj(device->ws, fence->temp_syncobj);
-			fence->temp_syncobj = 0;
-		}
+		/* From the Vulkan 1.0.53 spec:
+		 *
+		 *    "If any member of pFences currently has its payload
+		 *    imported with temporary permanence, that fence’s prior
+		 *    permanent payload is irst restored. The remaining
+		 *    operations described therefore operate on the restored
+		 *    payload."
+		 */
+		if (fence->temporary.kind != RADV_FENCE_NONE)
+			radv_destroy_fence_part(device, &fence->temporary);
 
-		if (fence->syncobj) {
-			device->ws->reset_syncobj(device->ws, fence->syncobj);
+		struct radv_fence_part *part = &fence->permanent;
+
+		switch (part->kind) {
+		case RADV_FENCE_WSI:
+			device->ws->reset_fence(part->fence);
+			break;
+		case RADV_FENCE_SYNCOBJ:
+			device->ws->reset_syncobj(device->ws, part->syncobj);
+			break;
+		default:
+			unreachable("Invalid fence type");
 		}
 	}
 
@@ -5420,29 +5494,37 @@ VkResult radv_GetFenceStatus(VkDevice _device, VkFence _fence)
 	RADV_FROM_HANDLE(radv_device, device, _device);
 	RADV_FROM_HANDLE(radv_fence, fence, _fence);
 
-	if (fence->temp_syncobj) {
-			bool success = device->ws->wait_syncobj(device->ws, &fence->temp_syncobj, 1, true, 0);
-			return success ? VK_SUCCESS : VK_NOT_READY;
-	}
+	struct radv_fence_part *part =
+		fence->temporary.kind != RADV_FENCE_NONE ?
+		&fence->temporary : &fence->permanent;
 
-	if (fence->syncobj) {
-			bool success = device->ws->wait_syncobj(device->ws, &fence->syncobj, 1, true, 0);
-			return success ? VK_SUCCESS : VK_NOT_READY;
-	}
-
-	if (fence->fence) {
-		if (!device->ws->fence_wait(device->ws, fence->fence, false, 0))
+	switch (part->kind) {
+	case RADV_FENCE_NONE:
+		break;
+	case RADV_FENCE_WINSYS:
+		if (!device->ws->fence_wait(device->ws, part->fence, false, 0))
 			return VK_NOT_READY;
+		break;
+	case RADV_FENCE_SYNCOBJ: {
+		bool success = device->ws->wait_syncobj(device->ws,
+							&part->syncobj, 1, true, 0);
+		if (!success)
+			return VK_NOT_READY;
+		break;
 	}
-	if (fence->fence_wsi) {
-		VkResult result = fence->fence_wsi->wait(fence->fence_wsi, 0);
-
+	case RADV_FENCE_WSI: {
+		VkResult result = part->fence_wsi->wait(part->fence_wsi, 0);
 		if (result != VK_SUCCESS) {
 			if (result == VK_TIMEOUT)
 				return VK_NOT_READY;
 			return result;
 		}
+		break;
 	}
+	default:
+		unreachable("Invalid fence type");
+	}
+
 	return VK_SUCCESS;
 }
 
@@ -7203,23 +7285,34 @@ VkResult radv_ImportFenceFdKHR(VkDevice _device,
 {
 	RADV_FROM_HANDLE(radv_device, device, _device);
 	RADV_FROM_HANDLE(radv_fence, fence, pImportFenceFdInfo->fence);
-	uint32_t *syncobj_dst = NULL;
-
+	struct radv_fence_part *dst = NULL;
+	VkResult result;
 
 	if (pImportFenceFdInfo->flags & VK_FENCE_IMPORT_TEMPORARY_BIT) {
-		syncobj_dst = &fence->temp_syncobj;
+		dst = &fence->temporary;
 	} else {
-		syncobj_dst = &fence->syncobj;
+		dst = &fence->permanent;
 	}
+
+	uint32_t syncobj = dst->kind == RADV_FENCE_SYNCOBJ ? dst->syncobj : 0;
 
 	switch(pImportFenceFdInfo->handleType) {
 		case VK_EXTERNAL_FENCE_HANDLE_TYPE_OPAQUE_FD_BIT:
-			return radv_import_opaque_fd(device, pImportFenceFdInfo->fd, syncobj_dst);
+			result = radv_import_opaque_fd(device, pImportFenceFdInfo->fd, &syncobj);
+			break;
 		case VK_EXTERNAL_FENCE_HANDLE_TYPE_SYNC_FD_BIT:
-			return radv_import_sync_fd(device, pImportFenceFdInfo->fd, syncobj_dst);
+			result = radv_import_sync_fd(device, pImportFenceFdInfo->fd, &syncobj);
+			break;
 		default:
 			unreachable("Unhandled fence handle type");
 	}
+
+	if (result == VK_SUCCESS) {
+		dst->syncobj = syncobj;
+		dst->kind = RADV_FENCE_SYNCOBJ;
+	}
+
+	return result;
 }
 
 VkResult radv_GetFenceFdKHR(VkDevice _device,
@@ -7229,29 +7322,27 @@ VkResult radv_GetFenceFdKHR(VkDevice _device,
 	RADV_FROM_HANDLE(radv_device, device, _device);
 	RADV_FROM_HANDLE(radv_fence, fence, pGetFdInfo->fence);
 	int ret;
-	uint32_t syncobj_handle;
 
-	if (fence->temp_syncobj)
-		syncobj_handle = fence->temp_syncobj;
-	else
-		syncobj_handle = fence->syncobj;
+	struct radv_fence_part *part =
+		fence->temporary.kind != RADV_FENCE_NONE ?
+		&fence->temporary : &fence->permanent;
 
 	switch(pGetFdInfo->handleType) {
 	case VK_EXTERNAL_FENCE_HANDLE_TYPE_OPAQUE_FD_BIT:
-		ret = device->ws->export_syncobj(device->ws, syncobj_handle, pFd);
+		ret = device->ws->export_syncobj(device->ws, part->syncobj, pFd);
 		if (ret)
 			return vk_error(device->instance, VK_ERROR_TOO_MANY_OBJECTS);
 		break;
 	case VK_EXTERNAL_FENCE_HANDLE_TYPE_SYNC_FD_BIT:
-		ret = device->ws->export_syncobj_to_sync_file(device->ws, syncobj_handle, pFd);
+		ret = device->ws->export_syncobj_to_sync_file(device->ws,
+							      part->syncobj, pFd);
 		if (ret)
 			return vk_error(device->instance, VK_ERROR_TOO_MANY_OBJECTS);
 
-		if (fence->temp_syncobj) {
-			device->ws->destroy_syncobj(device->ws, fence->temp_syncobj);
-			fence->temp_syncobj = 0;
+		if (part == &fence->temporary) {
+			radv_destroy_fence_part(device, part);
 		} else {
-			device->ws->reset_syncobj(device->ws, syncobj_handle);
+			device->ws->reset_syncobj(device->ws, part->syncobj);
 		}
 		break;
 	default:
