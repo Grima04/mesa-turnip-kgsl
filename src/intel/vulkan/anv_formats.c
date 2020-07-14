@@ -333,6 +333,11 @@ static const struct anv_format main_formats[] = {
    fmt1(VK_FORMAT_B8G8R8A8_SRGB,                     ISL_FORMAT_B8G8R8A8_UNORM_SRGB),
 };
 
+static const struct anv_format _4444_formats[] = {
+   fmt1(VK_FORMAT_A4R4G4B4_UNORM_PACK16_EXT, ISL_FORMAT_B4G4R4A4_UNORM),
+   fmt_unsupported(VK_FORMAT_A4B4G4R4_UNORM_PACK16_EXT),
+};
+
 static const struct anv_format ycbcr_formats[] = {
    ycbcr_fmt(VK_FORMAT_G8B8G8R8_422_UNORM, 1,
              y_plane(0, ISL_FORMAT_YCRCB_SWAPUV, RGBA, _ISL_SWIZZLE(BLUE, GREEN, RED, ZERO), 1, 1)),
@@ -414,6 +419,8 @@ static const struct {
 } anv_formats[] = {
    [0]                                       = { .formats = main_formats,
                                                  .n_formats = ARRAY_SIZE(main_formats), },
+   [_VK_EXT_4444_formats_number]             = { .formats = _4444_formats,
+                                                 .n_formats = ARRAY_SIZE(_4444_formats), },
    [_VK_KHR_sampler_ycbcr_conversion_number] = { .formats = ycbcr_formats,
                                                  .n_formats = ARRAY_SIZE(ycbcr_formats), },
 };
