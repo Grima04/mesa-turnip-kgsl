@@ -7237,7 +7237,7 @@ VkResult radv_GetFenceFdKHR(VkDevice _device,
 		ret = device->ws->export_syncobj_to_sync_file(device->ws, syncobj_handle, pFd);
 		if (!ret) {
 			if (fence->temp_syncobj) {
-				close (fence->temp_syncobj);
+				device->ws->destroy_syncobj(device->ws, fence->temp_syncobj);
 				fence->temp_syncobj = 0;
 			} else {
 				device->ws->reset_syncobj(device->ws, syncobj_handle);
