@@ -849,7 +849,7 @@ write_combined_image_sampler_descriptor(struct tu_device *device,
                           descriptor_type, image_info);
    /* copy over sampler state */
    if (has_sampler) {
-      memcpy(dst + A6XX_TEX_CONST_DWORDS, sampler, sizeof(*sampler));
+      memcpy(dst + A6XX_TEX_CONST_DWORDS, sampler->descriptor, sizeof(sampler->descriptor));
    }
 }
 
@@ -860,7 +860,7 @@ write_sampler_descriptor(struct tu_device *device,
 {
    TU_FROM_HANDLE(tu_sampler, sampler, image_info->sampler);
 
-   memcpy(dst, sampler, sizeof(*sampler));
+   memcpy(dst, sampler->descriptor, sizeof(sampler->descriptor));
 }
 
 void
