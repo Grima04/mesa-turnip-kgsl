@@ -62,6 +62,7 @@ struct state {
    bool per_stream;
    bool count_prims;
    bool count_vtx_per_prim;
+   bool overwrite_incomplete;
    bool progress;
 };
 
@@ -131,6 +132,73 @@ rewrite_emit_vertex(nir_intrinsic_instr *intrin, struct state *state)
 }
 
 /**
+ * Emits code that overwrites incomplete primitives and their vertices.
+ *
+ * A primitive is considered incomplete when it doesn't have enough vertices.
+ * For example, a triangle strip that has 2 or fewer vertices, or a line strip
+ * with 1 vertex are considered incomplete.
+ *
+ * After each end_primitive and at the end of the shader before emitting
+ * set_vertex_and_primitive_count, we check if the primitive that is being
+ * emitted has enough vertices or not, and we adjust the vertex and primitive
+ * counters accordingly.
+ *
+ * This means that the following emit_vertex can reuse the vertex index of
+ * a previous vertex, if the previous primitive was incomplete, so the compiler
+ * backend is expected to simply overwrite any data that belonged to those.
+ */
+static void
+overwrite_incomplete_primitives(struct state *state, unsigned stream)
+{
+   assert(state->count_vtx_per_prim);
+
+   nir_builder *b = state->builder;
+   unsigned outprim = b->shader->info.gs.output_primitive;
+   unsigned outprim_min_vertices;
+
+   if (outprim == GL_POINTS)
+      outprim_min_vertices = 1;
+   else if (outprim == GL_LINE_STRIP)
+      outprim_min_vertices = 2;
+   else if (outprim == GL_TRIANGLE_STRIP)
+      outprim_min_vertices = 3;
+   else
+      unreachable("Invalid GS output primitive type.");
+
+   /* Total count of vertices emitted so far. */
+   nir_ssa_def *vtxcnt_total =
+      nir_load_var(b, state->vertex_count_vars[stream]);
+
+   /* Number of vertices emitted for the last primitive */
+   nir_ssa_def *vtxcnt_per_primitive =
+      nir_load_var(b, state->vtxcnt_per_prim_vars[stream]);
+
+   /* See if the current primitive is a incomplete */
+   nir_ssa_def *is_inc_prim =
+      nir_ilt(b, vtxcnt_per_primitive, nir_imm_int(b, outprim_min_vertices));
+
+   /* Number of vertices in the incomplete primitive */
+   nir_ssa_def *num_inc_vtx =
+      nir_bcsel(b, is_inc_prim, vtxcnt_per_primitive, nir_imm_int(b, 0));
+
+   /* Store corrected total vertex count */
+   nir_store_var(b, state->vertex_count_vars[stream],
+                 nir_isub(b, vtxcnt_total, num_inc_vtx),
+                 0x1); /* .x */
+
+   if (state->count_prims) {
+      /* Number of incomplete primitives (0 or 1) */
+      nir_ssa_def *num_inc_prim = nir_b2i32(b, is_inc_prim);
+
+      /* Store corrected primitive count */
+      nir_ssa_def *prim_cnt = nir_load_var(b, state->primitive_count_vars[stream]);
+      nir_store_var(b, state->primitive_count_vars[stream],
+                    nir_isub(b, prim_cnt, num_inc_prim),
+                    0x1); /* .x */
+   }
+}
+
+/**
  * Replace end_primitive with end_primitive_with_counter.
  */
 static void
@@ -166,6 +234,9 @@ rewrite_end_primitive(nir_intrinsic_instr *intrin, struct state *state)
    }
 
    if (state->count_vtx_per_prim) {
+      if (state->overwrite_incomplete)
+         overwrite_incomplete_primitives(state, stream);
+
       /* Store 0 to per-primitive vertex count */
       nir_store_var(b, state->vtxcnt_per_prim_vars[stream],
                     nir_imm_int(b, 0),
@@ -226,6 +297,9 @@ append_set_vertex_and_primitive_count(nir_block *end_block, struct state *state)
          if (state->per_stream && !(shader->info.gs.active_stream_mask & (1 << stream)))
             continue;
 
+         if (state->overwrite_incomplete)
+            overwrite_incomplete_primitives(state, stream);
+
          nir_ssa_def *vtx_cnt = nir_load_var(b, state->vertex_count_vars[stream]);
          nir_ssa_def *prim_cnt;
 
@@ -251,13 +325,16 @@ nir_lower_gs_intrinsics(nir_shader *shader, nir_lower_gs_intrinsics_flags option
 {
    bool per_stream = options & nir_lower_gs_intrinsics_per_stream;
    bool count_primitives = options & nir_lower_gs_intrinsics_count_primitives;
+   bool overwrite_incomplete = options & nir_lower_gs_intrinsics_overwrite_incomplete;
    bool count_vtx_per_prim =
-      options & nir_lower_gs_intrinsics_count_vertices_per_primitive;
+      overwrite_incomplete ||
+      (options & nir_lower_gs_intrinsics_count_vertices_per_primitive);
 
    struct state state;
    state.progress = false;
    state.count_prims = count_primitives;
    state.count_vtx_per_prim = count_vtx_per_prim;
+   state.overwrite_incomplete = overwrite_incomplete;
    state.per_stream = per_stream;
 
    nir_function_impl *impl = nir_shader_get_entrypoint(shader);
