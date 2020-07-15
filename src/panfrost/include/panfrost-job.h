@@ -1777,7 +1777,7 @@ struct mali_render_target {
  */
 
 /* flags_hi */
-#define MALI_EXTRA_PRESENT      (0x10)
+#define MALI_EXTRA_PRESENT      (0x1)
 
 /* flags_lo */
 #define MALI_EXTRA_ZS           (0x4)
@@ -1789,7 +1789,11 @@ struct mali_framebuffer_extra  {
 
         unsigned flags_lo : 4;
         enum mali_block_format zs_block : 2;
-        unsigned flags_hi : 26;
+
+        /* Number of samples in Z/S attachment, MALI_POSITIVE. So zero for
+         * 1-sample (non-MSAA), 0x3 for MSAA 4x, etc */
+        unsigned zs_samples : 4;
+        unsigned flags_hi : 22;
 
         union {
                 /* Note: AFBC is only allowed for 24/8 combined depth/stencil. */

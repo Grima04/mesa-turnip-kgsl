@@ -335,7 +335,7 @@ panfrost_mfbd_set_zsbuf(
                 } else {
                         if (is_bifrost) {
                                 fbx->zs_block = MALI_BLOCK_UNKNOWN;
-                                fbx->flags_hi |= 0x4400;
+                                fbx->flags_hi |= 0x440;
                                 fbx->flags_lo |= 0x1;
                         } else {
                                 fbx->zs_block = MALI_BLOCK_TILED;
@@ -352,7 +352,7 @@ panfrost_mfbd_set_zsbuf(
                         fb->mfbd_flags ^= 0x100;
                         fb->mfbd_flags |= 0x200;
                 } else if (surf->format == PIPE_FORMAT_Z32_FLOAT_S8X24_UINT) {
-                        fbx->flags_hi |= 0x400;
+                        fbx->flags_hi |= 0x40;
                         fbx->flags_lo |= 0xA;
                         fb->mfbd_flags ^= 0x100;
                         fb->mfbd_flags |= 0x201;
