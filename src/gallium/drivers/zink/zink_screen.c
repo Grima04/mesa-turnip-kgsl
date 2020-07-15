@@ -99,6 +99,7 @@ zink_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_NPOT_TEXTURES:
    case PIPE_CAP_TGSI_TEXCOORD:
    case PIPE_CAP_DRAW_INDIRECT:
+   case PIPE_CAP_TEXTURE_QUERY_LOD:
       return 1;
 
    case PIPE_CAP_VERTEX_ELEMENT_INSTANCE_DIVISOR:
