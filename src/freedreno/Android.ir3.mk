@@ -73,7 +73,7 @@ ir3_parser_deps := \
 $(intermediates)/ir3/ir3_lexer.c: $(ir3_lexer_deps)
 	@mkdir -p $(dir $@)
 	@echo "Gen Header: $(PRIVATE_MODULE) <= $(notdir $(@))"
-	$(hide) flex -o $@ $<
+	$(hide) $(MESA_LEX) -o $@ $<
 
 $(intermediates)/ir3/ir3_nir_imul.c: $(ir3_nir_imul_deps)
 	@mkdir -p $(dir $@)
@@ -86,12 +86,12 @@ $(intermediates)/ir3/ir3_nir_trig.c: $(ir3_nir_trig_deps)
 $(intermediates)/ir3/ir3_parser.c: $(ir3_parser_deps)
 	@mkdir -p $(dir $@)
 	@echo "Gen Header: $(PRIVATE_MODULE) <= $(notdir $(@))"
-	$(hide) bison $< --name-prefix=ir3_yy --output=$@
+	$(hide) $(BISON) $< --name-prefix=ir3_yy --output=$@
 
 $(intermediates)/ir3/ir3_parser.h: $(ir3_parser_deps)
 	@mkdir -p $(dir $@)
 	@echo "Gen Header: $(PRIVATE_MODULE) <= $(notdir $(@))"
-	$(hide) bison $< --name-prefix=ir3_yy --defines=$@
+	$(hide) $(BISON) $< --name-prefix=ir3_yy --defines=$@
 
 include $(MESA_COMMON_MK)
 include $(BUILD_STATIC_LIBRARY)
