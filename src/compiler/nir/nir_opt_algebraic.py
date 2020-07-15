@@ -147,6 +147,9 @@ optimizations = [
    (('~fadd', a, ('fadd', ('fneg', a), b)), b),
    (('fadd', ('fsat', a), ('fsat', ('fneg', a))), ('fsat', ('fabs', a))),
    (('~fmul', a, 0.0), 0.0),
+   # The only effect a*0.0 should have is when 'a' is infinity, -0.0 or NaN
+   (('fmul', 'a@16', 0.0), 0.0, '!'+signed_zero_inf_nan_preserve_16),
+   (('fmul', 'a@32', 0.0), 0.0, '!'+signed_zero_inf_nan_preserve_32),
    (('imul', a, 0), 0),
    (('umul_unorm_4x8', a, 0), 0),
    (('umul_unorm_4x8', a, ~0), a),
@@ -165,6 +168,8 @@ optimizations = [
    (('fmul', ('fsign', a), ('fmul', a, a)), ('fmul', ('fabs', a), a)),
    (('fmul', ('fmul', ('fsign', a), a), a), ('fmul', ('fabs', a), a)),
    (('~ffma', 0.0, a, b), b),
+   (('ffma@16(is_only_used_as_float)', 0.0, a, b), b, '!'+signed_zero_inf_nan_preserve_16),
+   (('ffma@32(is_only_used_as_float)', 0.0, a, b), b, '!'+signed_zero_inf_nan_preserve_32),
    (('~ffma', a, b, 0.0), ('fmul', a, b)),
    (('ffma@16', a, b, 0.0), ('fmul', a, b), '!'+signed_zero_inf_nan_preserve_16),
    (('ffma@32', a, b, 0.0), ('fmul', a, b), '!'+signed_zero_inf_nan_preserve_32),
