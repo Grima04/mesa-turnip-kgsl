@@ -285,6 +285,15 @@ panfrost_mfbd_set_zsbuf(
         bool is_bifrost = dev->quirks & IS_BIFROST;
         struct panfrost_resource *rsrc = pan_resource(surf->texture);
 
+        unsigned nr_samples = surf->nr_samples;
+
+        if (!nr_samples)
+                nr_samples = surf->texture->nr_samples;
+
+        nr_samples = MAX2(nr_samples, 1);
+
+        fbx->zs_samples = MALI_POSITIVE(nr_samples);
+
         unsigned level = surf->u.tex.level;
         unsigned first_layer = surf->u.tex.first_layer;
         assert(surf->u.tex.last_layer == first_layer);
@@ -314,11 +323,6 @@ panfrost_mfbd_set_zsbuf(
                 /* TODO: Z32F(S8) support, which is always linear */
 
                 int stride = rsrc->slices[level].stride;
-
-                unsigned nr_samples = surf->nr_samples;
-
-                if (!nr_samples)
-                        nr_samples = surf->texture->nr_samples;
 
                 unsigned layer_stride = (nr_samples > 1) ? rsrc->slices[level].size0 : 0;
 
