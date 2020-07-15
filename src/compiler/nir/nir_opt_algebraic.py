@@ -40,6 +40,9 @@ c = 'c'
 d = 'd'
 e = 'e'
 
+signed_zero_inf_nan_preserve_16 = 'nir_is_float_control_signed_zero_inf_nan_preserve(info->float_controls_execution_mode, 16)'
+signed_zero_inf_nan_preserve_32 = 'nir_is_float_control_signed_zero_inf_nan_preserve(info->float_controls_execution_mode, 32)'
+
 # Written in the form (<search>, <replace>) where <search> is an expression
 # and <replace> is either an expression or a value.  An expression is
 # defined as a tuple of the form ([~]<op>, <src0>, <src1>, <src2>, <src3>)
@@ -124,6 +127,11 @@ optimizations = [
    (('f2b', ('fneg', a)), ('f2b', a)),
    (('i2b', ('ineg', a)), ('i2b', a)),
    (('~fadd', a, 0.0), a),
+   # a+0.0 is 'a' unless 'a' is denormal or -0.0. If it's only used by a
+   # floating point instruction, they should flush any input denormals and we
+   # can replace -0.0 with 0.0 if the float execution mode allows it.
+   (('fadd(is_only_used_as_float)', 'a@16', 0.0), a, '!'+signed_zero_inf_nan_preserve_16),
+   (('fadd(is_only_used_as_float)', 'a@32', 0.0), a, '!'+signed_zero_inf_nan_preserve_32),
    (('iadd', a, 0), a),
    (('usadd_4x8', a, 0), a),
    (('usadd_4x8', a, ~0), ~0),
@@ -158,6 +166,8 @@ optimizations = [
    (('fmul', ('fmul', ('fsign', a), a), a), ('fmul', ('fabs', a), a)),
    (('~ffma', 0.0, a, b), b),
    (('~ffma', a, b, 0.0), ('fmul', a, b)),
+   (('ffma@16', a, b, 0.0), ('fmul', a, b), '!'+signed_zero_inf_nan_preserve_16),
+   (('ffma@32', a, b, 0.0), ('fmul', a, b), '!'+signed_zero_inf_nan_preserve_32),
    (('ffma', 1.0, a, b), ('fadd', a, b)),
    (('ffma', -1.0, a, b), ('fadd', ('fneg', a), b)),
    (('~flrp', a, b, 0.0), a),
