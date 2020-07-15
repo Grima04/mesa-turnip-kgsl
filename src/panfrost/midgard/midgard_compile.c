@@ -736,6 +736,34 @@ mir_accept_dest_mod(compiler_context *ctx, nir_dest **dest, nir_op op)
         return false;
 }
 
+/* Look for floating point mods. We have the mods fsat, fsat_signed,
+ * and fpos. We also have the relations (note 3 * 2 = 6 cases):
+ *
+ * fsat_signed(fpos(x)) = fsat(x)
+ * fsat_signed(fsat(x)) = fsat(x)
+ * fpos(fsat_signed(x)) = fsat(x)
+ * fpos(fsat(x)) = fsat(x)
+ * fsat(fsat_signed(x)) = fsat(x)
+ * fsat(fpos(x)) = fsat(x)
+ *
+ * So by cases any composition of output modifiers is equivalent to
+ * fsat alone.
+ */
+static unsigned
+mir_determine_float_outmod(compiler_context *ctx, nir_dest **dest, unsigned prior_outmod)
+{
+        bool fpos = mir_accept_dest_mod(ctx, dest, nir_op_fclamp_pos);
+        bool fsat = mir_accept_dest_mod(ctx, dest, nir_op_fsat);
+        bool ssat = mir_accept_dest_mod(ctx, dest, nir_op_fsat_signed);
+        bool prior = (prior_outmod != midgard_outmod_none);
+        int count = (int) prior + (int) fpos + (int) ssat + (int) fsat;
+
+        return ((count > 1) || fsat) ? midgard_outmod_sat :
+                                fpos ? midgard_outmod_pos :
+                                ssat ? midgard_outmod_sat_signed :
+                                prior_outmod;
+}
+
 static void
 mir_copy_src(midgard_instruction *ins, nir_alu_instr *instr, unsigned i, unsigned to, bool *abs, bool *neg, bool *not, enum midgard_roundmode *roundmode, bool is_int, unsigned bcast_count)
 {
@@ -1076,31 +1104,8 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
         unsigned opcode_props = alu_opcode_props[op].props;
         bool quirk_flipped_r24 = opcode_props & QUIRK_FLIPPED_R24;
 
-        /* Look for floating point mods. We have the mods fsat, fsat_signed,
-         * and fpos. We also have the relations (note 3 * 2 = 6 cases):
-         *
-         * fsat_signed(fpos(x)) = fsat(x)
-         * fsat_signed(fsat(x)) = fsat(x)
-         * fpos(fsat_signed(x)) = fsat(x)
-         * fpos(fsat(x)) = fsat(x)
-         * fsat(fsat_signed(x)) = fsat(x)
-         * fsat(fpos(x)) = fsat(x)
-         *
-         * So by cases any composition of output modifiers is equivalent to
-         * fsat alone.
-         */
-
         if (!midgard_is_integer_out_op(op)) {
-                bool fpos = mir_accept_dest_mod(ctx, &dest, nir_op_fclamp_pos);
-                bool fsat = mir_accept_dest_mod(ctx, &dest, nir_op_fsat);
-                bool ssat = mir_accept_dest_mod(ctx, &dest, nir_op_fsat_signed);
-                bool prior = (outmod != midgard_outmod_none);
-                int count = (int) prior + (int) fpos + (int) ssat + (int) fsat;
-
-                outmod = ((count > 1) || fsat) ? midgard_outmod_sat :
-                        fpos ? midgard_outmod_pos :
-                        ssat ? midgard_outmod_sat_signed :
-                        outmod;
+                outmod = mir_determine_float_outmod(ctx, &dest, outmod);
         }
 
         midgard_instruction ins = {
@@ -2067,19 +2072,28 @@ emit_texop_native(compiler_context *ctx, nir_tex_instr *instr,
         /* TODO */
         //assert (!instr->sampler);
 
+        nir_dest *dest = &instr->dest;
+
         int texture_index = instr->texture_index;
         int sampler_index = texture_index;
 
         nir_alu_type dest_base = nir_alu_type_get_base_type(instr->dest_type);
-        nir_alu_type dest_type = dest_base | nir_dest_bit_size(instr->dest);
+        nir_alu_type dest_type = dest_base | nir_dest_bit_size(*dest);
+
+        /* texture instructions support float outmods */
+        unsigned outmod = midgard_outmod_none;
+        if (dest_base == nir_type_float) {
+                outmod = mir_determine_float_outmod(ctx, &dest, 0);
+        }
 
         midgard_instruction ins = {
                 .type = TAG_TEXTURE_4,
                 .mask = 0xF,
-                .dest = nir_dest_index(&instr->dest),
+                .dest = nir_dest_index(dest),
                 .src = { ~0, ~0, ~0, ~0 },
                 .dest_type = dest_type,
                 .swizzle = SWIZZLE_IDENTITY_4,
+                .outmod = outmod,
                 .texture = {
                         .op = midgard_texop,
                         .format = midgard_tex_format(instr->sampler_dim),
