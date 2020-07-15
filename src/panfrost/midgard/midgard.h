@@ -716,7 +716,7 @@ __attribute__((__packed__))
 
         unsigned mask : 4;
 
-        /* Intriguingly, textures can take an outmod just like textures. Int
+        /* Intriguingly, textures can take an outmod just like alu ops. Int
          * outmods are not supported as far as I can tell, so this is only
          * meaningful for float samplers */
         midgard_outmod_float outmod  : 2;
