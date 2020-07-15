@@ -122,6 +122,10 @@ panfrost_get_param(struct pipe_screen *screen, enum pipe_cap param)
         case PIPE_CAP_MAX_DUAL_SOURCE_RENDER_TARGETS:
                 return 1;
 
+        case PIPE_CAP_SAMPLE_SHADING:
+                /* WIP */
+                return is_gl3 ? 1 : 0;
+
         /* Throttling frames breaks pipelining */
         case PIPE_CAP_THROTTLE:
                 return 0;

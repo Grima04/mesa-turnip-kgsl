@@ -567,6 +567,10 @@ panfrost_frag_meta_rasterizer_update(struct panfrost_context *ctx,
         /* TODO: Sample size */
         SET_BIT(fragmeta->unknown2_3, MALI_HAS_MSAA, msaa);
         SET_BIT(fragmeta->unknown2_4, MALI_NO_MSAA, !msaa);
+
+        SET_BIT(fragmeta->unknown2_3, MALI_PER_SAMPLE,
+                        msaa && ctx->min_samples > 1);
+
         fragmeta->depth_units = rast->offset_units * 2.0f;
         fragmeta->depth_factor = rast->offset_scale;
 

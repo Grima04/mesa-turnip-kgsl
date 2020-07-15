@@ -1203,6 +1203,15 @@ panfrost_set_sample_mask(struct pipe_context *pipe,
 }
 
 static void
+panfrost_set_min_samples(struct pipe_context *pipe,
+                         unsigned min_samples)
+{
+        struct panfrost_context *ctx = pan_context(pipe);
+        ctx->min_samples = min_samples;
+}
+
+
+static void
 panfrost_set_clip_state(struct pipe_context *pipe,
                         const struct pipe_clip_state *clip)
 {
@@ -1509,6 +1518,7 @@ panfrost_create_context(struct pipe_screen *screen, void *priv, unsigned flags)
         gallium->delete_depth_stencil_alpha_state = panfrost_delete_depth_stencil_state;
 
         gallium->set_sample_mask = panfrost_set_sample_mask;
+        gallium->set_min_samples = panfrost_set_min_samples;
 
         gallium->set_clip_state = panfrost_set_clip_state;
         gallium->set_viewport_states = panfrost_set_viewport_states;
