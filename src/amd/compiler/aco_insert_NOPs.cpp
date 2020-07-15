@@ -608,15 +608,22 @@ void handle_instruction_gfx10(Program *program, Block *cur_block, NOP_ctx_gfx10 
          unsigned vmcnt = (imm & 0xF) | ((imm & (0x3 << 14)) >> 10);
          if (vmcnt == 0)
             ctx.sgprs_read_by_VMEM.reset();
+      } else if (instr->opcode == aco_opcode::s_waitcnt_depctr) {
+         /* Hazard is mitigated by a s_waitcnt_depctr with a magic imm */
+         const SOPP_instruction *sopp = static_cast<const SOPP_instruction *>(instr.get());
+         if (sopp->imm == 0xffe3)
+            ctx.sgprs_read_by_VMEM.reset();
       }
 
       /* Check if SALU writes an SGPR that was previously read by the VALU */
       if (check_written_regs(instr, ctx.sgprs_read_by_VMEM)) {
          ctx.sgprs_read_by_VMEM.reset();
 
-         /* Insert v_nop to mitigate the problem */
-         aco_ptr<VOP1_instruction> nop{create_instruction<VOP1_instruction>(aco_opcode::v_nop, Format::VOP1, 0, 0)};
-         new_instructions.emplace_back(std::move(nop));
+         /* Insert s_waitcnt_depctr instruction with magic imm to mitigate the problem */
+         aco_ptr<SOPP_instruction> depctr{create_instruction<SOPP_instruction>(aco_opcode::s_waitcnt_depctr, Format::SOPP, 0, 0)};
+         depctr->imm = 0xffe3;
+         depctr->block = -1;
+         new_instructions.emplace_back(std::move(depctr));
       }
    } else if (instr->isVALU()) {
       /* Hazard is mitigated by any VALU instruction */
