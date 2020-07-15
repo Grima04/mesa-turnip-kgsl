@@ -920,7 +920,9 @@ build_explicit_io_load(nir_builder *b, nir_intrinsic_instr *intrin,
        * standard encoding for booleans rather than forcing a 0/1 boolean.
        * This should save an instruction or two.
        */
-      if (mode == nir_var_mem_shared)
+      if (mode == nir_var_mem_shared ||
+          mode == nir_var_shader_temp ||
+          mode == nir_var_function_temp)
          result = nir_b2b1(b, result);
       else
          result = nir_i2b(b, result);
@@ -970,7 +972,9 @@ build_explicit_io_store(nir_builder *b, nir_intrinsic_instr *intrin,
        *
        * TODO: Make the native bool bit_size an option.
        */
-      if (mode == nir_var_mem_shared)
+      if (mode == nir_var_mem_shared ||
+          mode == nir_var_shader_temp ||
+          mode == nir_var_function_temp)
          value = nir_b2b32(b, value);
       else
          value = nir_b2i(b, value, 32);
