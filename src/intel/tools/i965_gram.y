@@ -481,7 +481,8 @@ i965_asm_set_dst_nr(struct brw_codegen *p,
 %type <reg> srcarcoperandex srcaccimm srcarcoperandex_typed srcimm
 %type <reg> indirectgenreg indirectregion
 %type <reg> immreg src reg32 payload directgenreg_list addrparam region
-%type <reg> region_wh swizzle directgenreg directmsgreg indirectmsgreg
+%type <reg> region_wh directgenreg directmsgreg indirectmsgreg
+%type <integer> swizzle
 
 /* registers */
 %type <reg> accreg addrreg channelenablereg controlreg flagreg ipreg
@@ -1658,7 +1659,7 @@ indirectsrcoperand:
 			     $4.vstride,
 			     $4.width,
 			     $4.hstride,
-			     $5.swizzle,
+			     $5,
 			     WRITEMASK_X);
 
 		$$.address_mode = BRW_ADDRESS_REGISTER_INDIRECT_REGISTER;
@@ -1687,7 +1688,7 @@ directsrcoperand:
 			     $4.vstride,
 			     $4.width,
 			     $4.hstride,
-			     $5.swizzle,
+			     $5,
 			     WRITEMASK_X);
 	}
 	| srcarcoperandex
@@ -2072,15 +2073,15 @@ writemask_w:
 swizzle:
 	%empty
 	{
-		$$.swizzle = BRW_SWIZZLE_NOOP;
+		$$ = BRW_SWIZZLE_NOOP;
 	}
 	| DOT chansel
 	{
-		$$.swizzle = BRW_SWIZZLE4($2, $2, $2, $2);
+		$$ = BRW_SWIZZLE4($2, $2, $2, $2);
 	}
 	| DOT chansel chansel chansel chansel
 	{
-		$$.swizzle = BRW_SWIZZLE4($2, $3, $4, $5);
+		$$ = BRW_SWIZZLE4($2, $3, $4, $5);
 	}
 	;
 
