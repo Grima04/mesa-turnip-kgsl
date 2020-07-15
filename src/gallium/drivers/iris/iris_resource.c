@@ -485,8 +485,7 @@ want_ccs_e_for_format(const struct gen_device_info *devinfo,
  */
 static bool
 iris_resource_configure_aux(struct iris_screen *screen,
-                            struct iris_resource *res, bool imported,
-                            uint64_t *aux_size_B)
+                            struct iris_resource *res, bool imported)
 {
    const struct gen_device_info *devinfo = &screen->devinfo;
 
@@ -566,11 +565,13 @@ iris_resource_configure_aux(struct iris_screen *screen,
    res->aux.sampler_usages &= ~(1 << ISL_AUX_USAGE_HIZ_CCS);
 
    enum isl_aux_state initial_state;
-   *aux_size_B = 0;
    assert(!res->aux.bo);
 
    switch (res->aux.usage) {
    case ISL_AUX_USAGE_NONE:
+      /* Update relevant fields to indicate that aux is disabled. */
+      iris_resource_disable_aux(res);
+
       /* Having no aux buffer is only okay if there's no modifier with aux. */
       return !res->mod_info || res->mod_info->aux_usage == ISL_AUX_USAGE_NONE;
    case ISL_AUX_USAGE_HIZ:
@@ -625,30 +626,6 @@ iris_resource_configure_aux(struct iris_screen *screen,
    res->aux.state = create_aux_state_map(res, initial_state);
    if (!res->aux.state)
       return false;
-
-   /* Allocate space in the buffer for storing the aux surface. */
-   res->aux.offset =
-      ALIGN(res->surf.size_B, res->aux.surf.alignment_B);
-   uint64_t size = res->aux.surf.size_B;
-
-   /* Allocate space in the buffer for storing the CCS. */
-   if (res->aux.extra_aux.surf.size_B > 0) {
-      const uint64_t padded_aux_size =
-         ALIGN(size, res->aux.extra_aux.surf.alignment_B);
-      res->aux.extra_aux.offset = res->aux.offset + padded_aux_size;
-      size = padded_aux_size + res->aux.extra_aux.surf.size_B;
-   }
-
-   /* Allocate space in the buffer for storing the indirect clear color.
-    *
-    * Also add some padding to make sure the fast clear color state buffer
-    * starts at a 4K alignment. We believe that 256B might be enough, but due
-    * to lack of testing we will leave this as 4K for now.
-    */
-   size = ALIGN(size, 4096);
-   res->aux.clear_color_offset = res->aux.offset + size;
-   size += iris_get_aux_clear_color_state_size(screen);
-   *aux_size_B = size;
 
    if (isl_aux_usage_has_hiz(res->aux.usage)) {
       for (unsigned level = 0; level < res->surf.levels; ++level) {
@@ -724,7 +701,6 @@ iris_resource_finish_aux_import(struct pipe_screen *pscreen,
 
    assert(res->bo->size >= (res->aux.offset + res->aux.surf.size_B));
    assert(res->aux.clear_color_bo == NULL);
-   res->aux.clear_color_offset = 0;
 
    assert(aux_res->aux.surf.row_pitch_B == res->aux.surf.row_pitch_B);
 
@@ -736,7 +712,6 @@ iris_resource_finish_aux_import(struct pipe_screen *pscreen,
          iris_bo_alloc_tiled(screen->bufmgr, "clear color_buffer",
                              clear_color_state_size, 1, IRIS_MEMZONE_OTHER,
                              I915_TILING_NONE, 0, BO_ALLOC_ZEROED);
-      res->aux.clear_color_offset = 0;
    }
 
    iris_resource_destroy(&screen->base, res->base.next);
@@ -879,15 +854,39 @@ iris_resource_create_with_modifiers(struct pipe_screen *pscreen,
                             IRIS_RESOURCE_FLAG_SURFACE_MEMZONE |
                             IRIS_RESOURCE_FLAG_DYNAMIC_MEMZONE)));
 
-   uint64_t aux_size = 0;
-   if (!iris_resource_configure_aux(screen, res, false, &aux_size))
+   if (!iris_resource_configure_aux(screen, res, false))
       goto fail;
 
    /* Modifiers require the aux data to be in the same buffer as the main
-    * surface, but we combine them even when a modifiers is not being used.
+    * surface, but we combine them even when a modifier is not being used.
     */
-   const uint64_t bo_size =
-      MAX2(res->surf.size_B, res->aux.offset + aux_size);
+   uint64_t bo_size = res->surf.size_B;
+
+   /* Allocate space for the aux buffer. */
+   if (res->aux.surf.size_B > 0) {
+      res->aux.offset = ALIGN(bo_size, res->aux.surf.alignment_B);
+      bo_size = res->aux.offset + res->aux.surf.size_B;
+   }
+
+   /* Allocate space for the extra aux buffer. */
+   if (res->aux.extra_aux.surf.size_B > 0) {
+      res->aux.extra_aux.offset =
+         ALIGN(bo_size, res->aux.extra_aux.surf.alignment_B);
+      bo_size = res->aux.extra_aux.offset + res->aux.extra_aux.surf.size_B;
+   }
+
+   /* Allocate space for the indirect clear color.
+    *
+    * Also add some padding to make sure the fast clear color state buffer
+    * starts at a 4K alignment. We believe that 256B might be enough, but due
+    * to lack of testing we will leave this as 4K for now.
+    */
+   if (res->aux.surf.size_B > 0) {
+      res->aux.clear_color_offset = ALIGN(bo_size, 4096);
+      bo_size = res->aux.clear_color_offset +
+                iris_get_aux_clear_color_state_size(screen);
+   }
+
    uint32_t alignment = MAX2(4096, res->surf.alignment_B);
    res->bo = iris_bo_alloc_tiled(screen->bufmgr, name, bo_size, alignment,
                                  memzone,
@@ -897,7 +896,7 @@ iris_resource_create_with_modifiers(struct pipe_screen *pscreen,
    if (!res->bo)
       goto fail;
 
-   if (aux_size > 0) {
+   if (res->aux.surf.size_B > 0) {
       res->aux.bo = res->bo;
       iris_bo_reference(res->aux.bo);
       unsigned clear_color_state_size =
@@ -1041,8 +1040,7 @@ iris_resource_from_handle(struct pipe_screen *pscreen,
          assert(res->bo->tiling_mode ==
                 isl_tiling_to_i915_tiling(res->surf.tiling));
 
-         uint64_t size;
-         bool ok = iris_resource_configure_aux(screen, res, true, &size);
+         UNUSED const bool ok = iris_resource_configure_aux(screen, res, true);
          assert(ok);
          /* The gallium dri layer will create a separate plane resource
           * for the aux image. iris_resource_finish_aux_import will
