@@ -668,6 +668,7 @@ panfrost_frag_meta_blend_update(struct panfrost_context *ctx,
                                 struct mali_shader_meta *fragmeta,
                                 void *rts)
 {
+        struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
         const struct panfrost_device *dev = pan_device(ctx->base.screen);
         struct panfrost_shader_state *fs;
         fs = panfrost_get_shader_state(ctx, PIPE_SHADER_FRAGMENT);
@@ -749,6 +750,8 @@ panfrost_frag_meta_blend_update(struct panfrost_context *ctx,
 
                 SET_BIT(fragmeta->unknown2_3, MALI_CAN_DISCARD,
                         !blend[0].no_blending || fs->can_discard); 
+
+                batch->draws |= PIPE_CLEAR_COLOR0;
                 return;
         }
 
@@ -769,6 +772,7 @@ panfrost_frag_meta_blend_update(struct panfrost_context *ctx,
 
                 if (ctx->pipe_framebuffer.nr_cbufs > i && !blend[i].no_colour) {
                         flags = 0x200;
+                        batch->draws |= (PIPE_CLEAR_COLOR0 << i);
 
                         bool is_srgb = (ctx->pipe_framebuffer.nr_cbufs > i) &&
                                        (ctx->pipe_framebuffer.cbufs[i]) &&
