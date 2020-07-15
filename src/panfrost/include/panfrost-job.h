@@ -92,6 +92,10 @@ enum mali_func {
 /* Flags apply to unknown2_3? */
 
 #define MALI_HAS_MSAA		(1 << 0)
+
+/* Execute fragment shader per-sample if set (e.g. to implement gl_SampleID
+ * reads) */
+#define MALI_PER_SAMPLE         (1 << 2)
 #define MALI_CAN_DISCARD 	(1 << 5)
 
 /* Applies on SFBD systems, specifying that programmable blending is in use */

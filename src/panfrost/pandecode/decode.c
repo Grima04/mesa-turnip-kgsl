@@ -223,6 +223,7 @@ static const struct pandecode_flag_info mask_flag_info[] = {
 #define FLAG_INFO(flag) { MALI_##flag, "MALI_" #flag }
 static const struct pandecode_flag_info u3_flag_info[] = {
         FLAG_INFO(HAS_MSAA),
+        FLAG_INFO(PER_SAMPLE),
         FLAG_INFO(CAN_DISCARD),
         FLAG_INFO(HAS_BLEND_SHADER),
         FLAG_INFO(DEPTH_WRITEMASK),
