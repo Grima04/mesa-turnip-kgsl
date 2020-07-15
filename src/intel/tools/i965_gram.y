@@ -467,7 +467,7 @@ i965_asm_set_dst_nr(struct brw_codegen *p,
 
 /* writemask */
 %type <integer> writemask_x writemask_y writemask_z writemask_w
-%type <reg> writemask
+%type <integer> writemask
 
 /* dst operand */
 %type <reg> dst dstoperand dstoperandex dstoperandex_typed dstreg
@@ -1435,7 +1435,7 @@ dstoperand:
 			$$.hstride = $2;
 		}
 		$$.type = $4;
-		$$.writemask = $3.writemask;
+		$$.writemask = $3;
 		$$.swizzle = BRW_SWIZZLE_NOOP;
 		$$.subnr = $$.subnr * brw_reg_type_to_size($4);
 	}
@@ -1447,7 +1447,7 @@ dstoperandex:
 		$$ = $1;
 		$$.hstride = $2;
 		$$.type = $4;
-		$$.writemask = $3.writemask;
+		$$.writemask = $3;
 		$$.subnr = $$.subnr * brw_reg_type_to_size($4);
 	}
 	/* BSpec says "When the conditional modifier is present, updates
@@ -1464,7 +1464,7 @@ dstoperandex:
 		} else {
 			$$.hstride = $2;
 		}
-		$$.writemask = $3.writemask;
+		$$.writemask = $3;
 		$$.type = $4;
 	}
 	| threadcontrolreg
@@ -2042,11 +2042,11 @@ imm_type:
 writemask:
 	%empty
 	{
-		$$= brw_set_writemask($$, WRITEMASK_XYZW);
+		$$ = WRITEMASK_XYZW;
 	}
 	| DOT writemask_x writemask_y writemask_z writemask_w
 	{
-		$$ = brw_set_writemask($$, $2 | $3 | $4 | $5);
+		$$ = $2 | $3 | $4 | $5;
 	}
 	;
 
