@@ -1636,6 +1636,22 @@ emit_vertex_builtin(compiler_context *ctx, nir_intrinsic_instr *instr)
 }
 
 static void
+emit_msaa_builtin(compiler_context *ctx, nir_intrinsic_instr *instr)
+{
+        unsigned reg = nir_dest_index(&instr->dest);
+
+        midgard_instruction ld = m_ld_color_buffer_32u(reg, 0);
+        ld.load_store.op = midgard_op_ld_color_buffer_32u_old;
+        ld.load_store.address = 97;
+        ld.load_store.arg_2 = 0x1E;
+
+        for (int i = 0; i < 4; ++i)
+                ld.swizzle[0][i] = COMPONENT_X;
+
+        emit_mir_instruction(ctx, ld);
+}
+
+static void
 emit_control_barrier(compiler_context *ctx)
 {
         midgard_instruction ins = {
@@ -2013,6 +2029,10 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
         case nir_intrinsic_load_vertex_id:
         case nir_intrinsic_load_instance_id:
                 emit_vertex_builtin(ctx, instr);
+                break;
+
+        case nir_intrinsic_load_sample_id:
+                emit_msaa_builtin(ctx, instr);
                 break;
 
         case nir_intrinsic_memory_barrier_buffer:
