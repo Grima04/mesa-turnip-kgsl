@@ -62,7 +62,6 @@ static const struct debug_named_value debug_options[] = {
         {"afbc",      PAN_DBG_AFBC,     "Enable non-conformant AFBC impl"},
         {"sync",      PAN_DBG_SYNC,     "Wait for each job's completion and check for any GPU fault"},
         {"precompile", PAN_DBG_PRECOMPILE, "Precompile shaders for shader-db"},
-        {"gles3",     PAN_DBG_GLES3,    "Enable experimental GLES3 implementation"},
         {"fp16",     PAN_DBG_FP16,     "Enable buggy experimental (don't use!) fp16"},
         {"bifrost",   PAN_DBG_BIFROST, "Enable experimental Mali G31 and G52 support"},
         {"gl3",       PAN_DBG_GL3,      "Enable experimental GL 3.x implementation, up to 3.3"},
@@ -98,27 +97,30 @@ panfrost_get_param(struct pipe_screen *screen, enum pipe_cap param)
         bool is_gl3 = dev->debug & PAN_DBG_GL3;
         is_gl3 |= is_deqp;
 
-        /* Same with GLES 3 */
-        bool is_gles3 = dev->debug & PAN_DBG_GLES3;
-        is_gles3 |= is_gl3;
+        /* Don't expose MRT related CAPs on GPUs that don't implement them */
+        bool has_mrt = !(dev->quirks & MIDGARD_SFBD);
+
+        /* Bifrost is WIP. No MRT support yet. */
+        bool is_bifrost = (dev->quirks & IS_BIFROST);
+        has_mrt &= !is_bifrost;
 
         switch (param) {
         case PIPE_CAP_NPOT_TEXTURES:
-        case PIPE_CAP_MIXED_COLORBUFFER_FORMATS:
-        case PIPE_CAP_MIXED_FRAMEBUFFER_SIZES:
         case PIPE_CAP_MIXED_COLOR_DEPTH_BITS:
         case PIPE_CAP_FRAGMENT_SHADER_TEXTURE_LOD:
         case PIPE_CAP_VERTEX_SHADER_SATURATE:
         case PIPE_CAP_VERTEX_COLOR_UNCLAMPED:
         case PIPE_CAP_POINT_SPRITE:
         case PIPE_CAP_DEPTH_CLIP_DISABLE:
+        case PIPE_CAP_MIXED_COLORBUFFER_FORMATS:
+        case PIPE_CAP_MIXED_FRAMEBUFFER_SIZES:
         case PIPE_CAP_DEPTH_CLIP_DISABLE_SEPARATE:
                 return 1;
 
         case PIPE_CAP_MAX_RENDER_TARGETS:
         case PIPE_CAP_FBFETCH:
         case PIPE_CAP_FBFETCH_COHERENT:
-                return is_gles3 ? 4 : 1;
+                return has_mrt ? 4 : 1;
 
         case PIPE_CAP_MAX_DUAL_SOURCE_RENDER_TARGETS:
                 return 1;
@@ -131,59 +133,61 @@ panfrost_get_param(struct pipe_screen *screen, enum pipe_cap param)
         case PIPE_CAP_THROTTLE:
                 return 0;
 
+        /* ES3 features unsupported on Bifrost */
         case PIPE_CAP_OCCLUSION_QUERY:
-                return 1;
-        case PIPE_CAP_QUERY_TIME_ELAPSED:
-        case PIPE_CAP_QUERY_PIPELINE_STATISTICS:
-        case PIPE_CAP_QUERY_SO_OVERFLOW:
-                return 0;
-
-        case PIPE_CAP_TEXTURE_SWIZZLE:
-                return 1;
-
-        case PIPE_CAP_TEXTURE_MIRROR_CLAMP:
-        case PIPE_CAP_TEXTURE_MIRROR_CLAMP_TO_EDGE:
-                return 1;
-
         case PIPE_CAP_TGSI_INSTANCEID:
-        case PIPE_CAP_VERTEX_ELEMENT_INSTANCE_DIVISOR:
+        case PIPE_CAP_TEXTURE_MULTISAMPLE:
         case PIPE_CAP_PRIMITIVE_RESTART:
         case PIPE_CAP_PRIMITIVE_RESTART_FIXED_INDEX:
+                return !is_bifrost;
+
+        case PIPE_CAP_SAMPLER_VIEW_TARGET:
+        case PIPE_CAP_TEXTURE_SWIZZLE:
+        case PIPE_CAP_TEXTURE_MIRROR_CLAMP:
+        case PIPE_CAP_TEXTURE_MIRROR_CLAMP_TO_EDGE:
+        case PIPE_CAP_VERTEX_ELEMENT_INSTANCE_DIVISOR:
+        case PIPE_CAP_BLEND_EQUATION_SEPARATE:
+        case PIPE_CAP_INDEP_BLEND_ENABLE:
+        case PIPE_CAP_INDEP_BLEND_FUNC:
+        case PIPE_CAP_GENERATE_MIPMAP:
+        case PIPE_CAP_ACCELERATED:
+        case PIPE_CAP_UMA:
+        case PIPE_CAP_TEXTURE_FLOAT_LINEAR:
+        case PIPE_CAP_TEXTURE_HALF_FLOAT_LINEAR:
+        case PIPE_CAP_COPY_BETWEEN_COMPRESSED_AND_PLAIN_FORMATS:
+        case PIPE_CAP_TGSI_ARRAY_COMPONENTS:
                 return 1;
 
         case PIPE_CAP_MAX_STREAM_OUTPUT_BUFFERS:
-                return is_gles3 ? 4 : 0;
+                return is_bifrost ? 0 : 4;
         case PIPE_CAP_MAX_STREAM_OUTPUT_SEPARATE_COMPONENTS:
         case PIPE_CAP_MAX_STREAM_OUTPUT_INTERLEAVED_COMPONENTS:
-                return is_gles3 ? 64 : 0;
+                return is_bifrost ? 0 : 64;
         case PIPE_CAP_STREAM_OUTPUT_INTERLEAVE_BUFFERS:
-                return 1;
+                return is_bifrost ? 0 : 1;
 
         case PIPE_CAP_MAX_TEXTURE_ARRAY_LAYERS:
-                return 256;
+                return is_bifrost ? 0 : 256;
 
         case PIPE_CAP_GLSL_FEATURE_LEVEL:
         case PIPE_CAP_GLSL_FEATURE_LEVEL_COMPATIBILITY:
-                return is_gl3 ? 330 : (is_gles3 ? 140 : 120);
+                return is_gl3 ? 330 : (is_bifrost ? 120 : 140);
         case PIPE_CAP_ESSL_FEATURE_LEVEL:
-                return is_gles3 ? 300 : 120;
+                return is_bifrost ? 120 : 300;
 
         case PIPE_CAP_CONSTANT_BUFFER_OFFSET_ALIGNMENT:
                 return 16;
-
-        case PIPE_CAP_TEXTURE_MULTISAMPLE:
-                return is_gles3;
 
         /* For faking GLES 3.1 for dEQP-GLES31 */
         case PIPE_CAP_MAX_COMBINED_HW_ATOMIC_COUNTERS:
         case PIPE_CAP_MAX_COMBINED_HW_ATOMIC_COUNTER_BUFFERS:
         case PIPE_CAP_IMAGE_LOAD_FORMATTED:
         case PIPE_CAP_CUBE_MAP_ARRAY:
-                return is_deqp;
-
-        /* For faking compute shaders */
         case PIPE_CAP_COMPUTE:
+        case PIPE_CAP_TEXTURE_BUFFER_OBJECTS:
                 return is_deqp;
+        case PIPE_CAP_MAX_TEXTURE_BUFFER_SIZE:
+                return is_deqp ? 65536 : 0;
 
         case PIPE_CAP_QUERY_TIMESTAMP:
         case PIPE_CAP_CONDITIONAL_RENDER:
@@ -192,13 +196,9 @@ panfrost_get_param(struct pipe_screen *screen, enum pipe_cap param)
         case PIPE_CAP_MAX_TEXTURE_2D_SIZE:
                 return 4096;
         case PIPE_CAP_MAX_TEXTURE_3D_LEVELS:
+                return is_bifrost ? 0 : 13;
         case PIPE_CAP_MAX_TEXTURE_CUBE_LEVELS:
                 return 13;
-
-        case PIPE_CAP_BLEND_EQUATION_SEPARATE:
-        case PIPE_CAP_INDEP_BLEND_ENABLE:
-        case PIPE_CAP_INDEP_BLEND_FUNC:
-                return 1;
 
         case PIPE_CAP_TGSI_FS_COORD_ORIGIN_LOWER_LEFT:
                 /* Hardware is natively upper left */
@@ -207,32 +207,21 @@ panfrost_get_param(struct pipe_screen *screen, enum pipe_cap param)
         case PIPE_CAP_TGSI_FS_COORD_ORIGIN_UPPER_LEFT:
         case PIPE_CAP_TGSI_FS_COORD_PIXEL_CENTER_HALF_INTEGER:
         case PIPE_CAP_TGSI_FS_COORD_PIXEL_CENTER_INTEGER:
-        case PIPE_CAP_GENERATE_MIPMAP:
+        case PIPE_CAP_TGSI_TEXCOORD:
                 return 1;
 
         /* We would prefer varyings on Midgard, but proper sysvals on Bifrost */
         case PIPE_CAP_TGSI_FS_FACE_IS_INTEGER_SYSVAL:
         case PIPE_CAP_TGSI_FS_POSITION_IS_SYSVAL:
         case PIPE_CAP_TGSI_FS_POINT_IS_SYSVAL:
-                return dev->quirks & IS_BIFROST;
-
-        /* I really don't want to set this CAP but let's not swim against the
-         * tide.. */
-        case PIPE_CAP_TGSI_TEXCOORD:
-                return 1;
+                return is_bifrost;
 
         case PIPE_CAP_SEAMLESS_CUBE_MAP:
         case PIPE_CAP_SEAMLESS_CUBE_MAP_PER_TEXTURE:
-                return 1;
+                return !is_bifrost;
 
         case PIPE_CAP_MAX_VERTEX_ELEMENT_SRC_OFFSET:
                 return 0xffff;
-
-        case PIPE_CAP_TEXTURE_BUFFER_OBJECTS:
-                return 1;
-
-        case PIPE_CAP_MAX_TEXTURE_BUFFER_SIZE:
-                return 65536;
 
         case PIPE_CAP_PREFER_BLIT_BASED_TEXTURE_TRANSFER:
                 return 0;
@@ -240,7 +229,6 @@ panfrost_get_param(struct pipe_screen *screen, enum pipe_cap param)
         case PIPE_CAP_ENDIANNESS:
                 return PIPE_ENDIAN_NATIVE;
 
-        case PIPE_CAP_SAMPLER_VIEW_TARGET:
                 return 1;
 
         case PIPE_CAP_MIN_TEXTURE_GATHER_OFFSET:
@@ -248,18 +236,6 @@ panfrost_get_param(struct pipe_screen *screen, enum pipe_cap param)
 
         case PIPE_CAP_MAX_TEXTURE_GATHER_OFFSET:
                 return 7;
-
-        case PIPE_CAP_VENDOR_ID:
-        case PIPE_CAP_DEVICE_ID:
-                return 0xFFFFFFFF;
-
-        case PIPE_CAP_ACCELERATED:
-        case PIPE_CAP_UMA:
-        case PIPE_CAP_TEXTURE_FLOAT_LINEAR:
-        case PIPE_CAP_TEXTURE_HALF_FLOAT_LINEAR:
-        case PIPE_CAP_COPY_BETWEEN_COMPRESSED_AND_PLAIN_FORMATS:
-        case PIPE_CAP_TGSI_ARRAY_COMPONENTS:
-                return 1;
 
         case PIPE_CAP_VIDEO_MEMORY: {
                 uint64_t system_memory;
@@ -271,7 +247,7 @@ panfrost_get_param(struct pipe_screen *screen, enum pipe_cap param)
         }
 
         case PIPE_CAP_SHADER_STENCIL_EXPORT:
-                return 1;
+                return !is_bifrost;
 
         case PIPE_CAP_SHADER_BUFFER_OFFSET_ALIGNMENT:
                 return 4;
@@ -305,6 +281,7 @@ panfrost_get_shader_param(struct pipe_screen *screen,
         struct panfrost_device *dev = pan_device(screen);
         bool is_deqp = dev->debug & PAN_DBG_DEQP;
         bool is_fp16 = dev->debug & PAN_DBG_FP16;
+        bool is_bifrost = dev->quirks & IS_BIFROST;
 
         if (shader != PIPE_SHADER_VERTEX &&
             shader != PIPE_SHADER_FRAGMENT &&
@@ -341,7 +318,7 @@ panfrost_get_shader_param(struct pipe_screen *screen,
                 return 0;
 
         case PIPE_SHADER_CAP_INDIRECT_INPUT_ADDR:
-                return 1;
+                return is_bifrost ? 0 : 1;
         case PIPE_SHADER_CAP_INDIRECT_OUTPUT_ADDR:
                 return 0;
 
@@ -349,7 +326,7 @@ panfrost_get_shader_param(struct pipe_screen *screen,
                 return 0;
 
         case PIPE_SHADER_CAP_INDIRECT_CONST_ADDR:
-                return 1;
+                return is_bifrost ? 0 : 1;
 
         case PIPE_SHADER_CAP_SUBROUTINES:
                 return 0;
