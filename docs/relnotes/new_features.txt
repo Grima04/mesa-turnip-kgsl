@@ -23,4 +23,4 @@ RADV now uses ACO per default as backend
 RADV_DEBUG=llvm option to enable LLVM backend for RADV
 VK_EXT_image_robustness for ANV
 VK_EXT_shader_atomic_float on ANV
-VK_EXT_4444_formats on ANV
+VK_EXT_4444_formats on ANV and RADV.

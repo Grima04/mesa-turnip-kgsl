@@ -1378,6 +1378,13 @@ void radv_GetPhysicalDeviceFeatures2(
 			features->sparseImageFloat32AtomicAdd = false;
 			break;
 		}
+		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_4444_FORMATS_FEATURES_EXT: {
+			VkPhysicalDevice4444FormatsFeaturesEXT *features =
+				(VkPhysicalDevice4444FormatsFeaturesEXT *)ext;
+			features->formatA4R4G4B4 = true;
+			features->formatA4B4G4R4 = true;
+			break;
+		}
 		default:
 			break;
 		}

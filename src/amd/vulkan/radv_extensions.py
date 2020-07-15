@@ -187,6 +187,7 @@ EXTENSIONS = [
     Extension('VK_GOOGLE_hlsl_functionality1',            1, True),
     Extension('VK_GOOGLE_user_type',                      1, True),
     Extension('VK_NV_compute_shader_derivatives',         1, True),
+    Extension('VK_EXT_4444_formats',                      1, True),
 ]
 
 MAX_API_VERSION = VkVersion('0.0.0')
