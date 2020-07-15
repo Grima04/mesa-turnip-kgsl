@@ -1426,14 +1426,9 @@ dstoperand:
 	dstreg dstregion writemask reg_type
 	{
 		$$ = $1;
-
-		if ($2 == -1) {
-			$$.hstride = BRW_HORIZONTAL_STRIDE_1;
-			$$.vstride = BRW_VERTICAL_STRIDE_1;
-			$$.width = BRW_WIDTH_1;
-		} else {
-			$$.hstride = $2;
-		}
+		$$.vstride = BRW_VERTICAL_STRIDE_1;
+		$$.width = BRW_WIDTH_1;
+		$$.hstride = $2;
 		$$.type = $4;
 		$$.writemask = $3;
 		$$.swizzle = BRW_SWIZZLE_NOOP;
@@ -1457,13 +1452,9 @@ dstoperandex:
 	| nullreg dstregion writemask reg_type
 	{
 		$$ = $1;
-		if ($2 == -1) {
-			$$.hstride = BRW_HORIZONTAL_STRIDE_1;
-			$$.vstride = BRW_VERTICAL_STRIDE_1;
-			$$.width = BRW_WIDTH_1;
-		} else {
-			$$.hstride = $2;
-		}
+		$$.vstride = BRW_VERTICAL_STRIDE_1;
+		$$.width = BRW_WIDTH_1;
+		$$.hstride = $2;
 		$$.writemask = $3;
 		$$.type = $4;
 	}
@@ -1926,7 +1917,10 @@ immval:
 
 /* Regions */
 dstregion:
-	%empty 	{ $$ = -1; }
+	%empty
+	{
+		$$ = BRW_HORIZONTAL_STRIDE_1;
+	}
 	| LANGLE exp RANGLE
 	{
 		if ($2 != 0 && ($2 > 4 || !isPowerofTwo($2)))
