@@ -225,9 +225,11 @@ st_update_vp( struct st_context *st )
          key.clip_negative_one_to_one =
                st->ctx->Transform.ClipDepthMode == GL_NEGATIVE_ONE_TO_ONE;
 
-      /* _NEW_POINT */
-      key.lower_point_size = st->lower_point_size &&
-                             !st_point_size_per_vertex(st->ctx);
+      if (!st->ctx->GeometryProgram._Current) {
+         /* _NEW_POINT */
+         key.lower_point_size = st->lower_point_size &&
+                                !st_point_size_per_vertex(st->ctx);
+      }
 
       /* _NEW_TRANSFORM */
       if (st->lower_ucp && st_user_clip_planes_enabled(st->ctx) &&
