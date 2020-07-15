@@ -486,8 +486,7 @@ want_ccs_e_for_format(const struct gen_device_info *devinfo,
 static bool
 iris_resource_configure_aux(struct iris_screen *screen,
                             struct iris_resource *res, bool imported,
-                            uint64_t *aux_size_B,
-                            uint32_t *alloc_flags)
+                            uint64_t *aux_size_B)
 {
    const struct gen_device_info *devinfo = &screen->devinfo;
 
@@ -568,7 +567,6 @@ iris_resource_configure_aux(struct iris_screen *screen,
 
    enum isl_aux_state initial_state;
    *aux_size_B = 0;
-   *alloc_flags = 0;
    assert(!res->aux.bo);
 
    switch (res->aux.usage) {
@@ -617,7 +615,6 @@ iris_resource_configure_aux(struct iris_screen *screen,
       } else {
          initial_state = ISL_AUX_STATE_PASS_THROUGH;
       }
-      *alloc_flags |= BO_ALLOC_ZEROED;
       break;
    case ISL_AUX_USAGE_MC:
    default:
@@ -679,30 +676,29 @@ iris_resource_configure_aux(struct iris_screen *screen,
  * Returns false on unexpected error (e.g. mapping a BO failed).
  */
 static bool
-iris_resource_init_aux_buf(struct iris_resource *res, uint32_t alloc_flags,
+iris_resource_init_aux_buf(struct iris_resource *res,
                            unsigned clear_color_state_size)
 {
-   if (!(alloc_flags & BO_ALLOC_ZEROED)) {
-      void *map = iris_bo_map(NULL, res->aux.bo, MAP_WRITE | MAP_RAW);
+   void *map = iris_bo_map(NULL, res->aux.bo, MAP_WRITE | MAP_RAW);
 
-      if (!map)
-         return false;
+   if (!map)
+      return false;
 
-      if (iris_resource_get_aux_state(res, 0, 0) != ISL_AUX_STATE_AUX_INVALID) {
-         uint8_t memset_value = isl_aux_usage_has_mcs(res->aux.usage) ? 0xFF : 0;
-         memset((char*)map + res->aux.offset, memset_value,
-                res->aux.surf.size_B);
-      }
-
-      memset((char*)map + res->aux.extra_aux.offset,
-             0, res->aux.extra_aux.surf.size_B);
-
-      /* Zero the indirect clear color to match ::fast_clear_color. */
-      memset((char *)map + res->aux.clear_color_offset, 0,
-             clear_color_state_size);
-
-      iris_bo_unmap(res->aux.bo);
+   if (iris_resource_get_aux_state(res, 0, 0) != ISL_AUX_STATE_AUX_INVALID) {
+      /* See iris_resource_configure_aux for the memset_value rationale. */
+      uint8_t memset_value = isl_aux_usage_has_mcs(res->aux.usage) ? 0xFF : 0;
+      memset((char*)map + res->aux.offset, memset_value,
+             res->aux.surf.size_B);
    }
+
+   memset((char*)map + res->aux.extra_aux.offset,
+          0, res->aux.extra_aux.surf.size_B);
+
+   /* Zero the indirect clear color to match ::fast_clear_color. */
+   memset((char *)map + res->aux.clear_color_offset, 0,
+          clear_color_state_size);
+
+   iris_bo_unmap(res->aux.bo);
 
    if (clear_color_state_size > 0) {
       res->aux.clear_color_bo = res->aux.bo;
@@ -887,12 +883,9 @@ iris_resource_create_with_modifiers(struct pipe_screen *pscreen,
                             IRIS_RESOURCE_FLAG_SURFACE_MEMZONE |
                             IRIS_RESOURCE_FLAG_DYNAMIC_MEMZONE)));
 
-   uint32_t aux_preferred_alloc_flags;
    uint64_t aux_size = 0;
-   if (!iris_resource_configure_aux(screen, res, false, &aux_size,
-                                    &aux_preferred_alloc_flags)) {
+   if (!iris_resource_configure_aux(screen, res, false, &aux_size))
       goto fail;
-   }
 
    /* Modifiers require the aux data to be in the same buffer as the main
     * surface, but we combine them even when a modifiers is not being used.
@@ -913,7 +906,7 @@ iris_resource_create_with_modifiers(struct pipe_screen *pscreen,
       iris_bo_reference(res->aux.bo);
       unsigned clear_color_state_size =
          iris_get_aux_clear_color_state_size(screen);
-      if (!iris_resource_init_aux_buf(res, flags, clear_color_state_size))
+      if (!iris_resource_init_aux_buf(res, clear_color_state_size))
          goto fail;
       map_aux_addresses(screen, res);
    }
@@ -1052,10 +1045,8 @@ iris_resource_from_handle(struct pipe_screen *pscreen,
          assert(res->bo->tiling_mode ==
                 isl_tiling_to_i915_tiling(res->surf.tiling));
 
-         uint32_t alloc_flags;
          uint64_t size;
-         bool ok = iris_resource_configure_aux(screen, res, true, &size,
-                                               &alloc_flags);
+         bool ok = iris_resource_configure_aux(screen, res, true, &size);
          assert(ok);
          /* The gallium dri layer will create a separate plane resource
           * for the aux image. iris_resource_finish_aux_import will
