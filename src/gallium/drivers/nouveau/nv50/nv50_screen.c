@@ -657,7 +657,7 @@ nv50_screen_init_hwctx(struct nv50_screen *screen)
    PUSH_DATA (push, 0);
    BEGIN_NV04(push, NV50_2D(COLOR_KEY_ENABLE), 1);
    PUSH_DATA (push, 0);
-   BEGIN_NV04(push, SUBC_2D(0x0888), 1);
+   BEGIN_NV04(push, NV50_2D(SET_PIXELS_FROM_MEMORY_SAFE_OVERLAP), 1);
    PUSH_DATA (push, 1);
    BEGIN_NV04(push, NV50_2D(COND_MODE), 1);
    PUSH_DATA (push, NV50_2D_COND_MODE_ALWAYS);

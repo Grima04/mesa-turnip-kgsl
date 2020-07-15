@@ -8,7 +8,7 @@ https://github.com/envytools/envytools/
 git clone https://github.com/envytools/envytools.git
 
 The rules-ng-ng source files this header was generated from are:
-- rnndb/graph/g80_2d.xml         (  11609 bytes, from 2020-07-15 13:41:28)
+- rnndb/graph/g80_2d.xml         (  11616 bytes, from 2020-07-15 14:40:08)
 - rnndb/copyright.xml            (   6431 bytes, from 2020-07-11 09:17:41)
 - rnndb/fifo/nv_object.xml       (  16105 bytes, from 2020-07-11 09:17:37)
 - rnndb-generated/nvchipsets.xml (   3335 bytes, from 2020-06-09 15:36:30)
@@ -401,7 +401,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #define NV50_2D_UNK0884						0x00000884
 
-#define NV50_2D_UNK0888						0x00000888
+#define NV50_2D_SET_PIXELS_FROM_MEMORY_SAFE_OVERLAP		0x00000888
 
 #define NV50_2D_BLIT_CONTROL					0x0000088c
 #define NV50_2D_BLIT_CONTROL_ORIGIN__MASK			0x00000001
