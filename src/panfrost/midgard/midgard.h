@@ -519,6 +519,7 @@ typedef enum {
 } midgard_load_store_op;
 
 typedef enum {
+        midgard_interp_sample = 0,
         midgard_interp_centroid = 1,
         midgard_interp_default = 2
 } midgard_interpolation;

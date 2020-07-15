@@ -1082,6 +1082,8 @@ print_varying_parameters(FILE *fp, midgard_load_store_word *word)
                 if (param.interpolation != midgard_interp_default) {
                         if (param.interpolation == midgard_interp_centroid)
                                 fprintf(fp, ".centroid");
+                        else if (param.interpolation == midgard_interp_sample)
+                                fprintf(fp, ".sample");
                         else
                                 fprintf(fp, ".interp%d", param.interpolation);
                 }
