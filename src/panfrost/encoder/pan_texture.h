@@ -72,6 +72,7 @@ unsigned
 panfrost_estimate_texture_payload_size(
                 unsigned first_level, unsigned last_level,
                 unsigned first_layer, unsigned last_layer,
+                unsigned nr_samples,
                 enum mali_texture_type type, enum mali_texture_layout layout);
 
 void

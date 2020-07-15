@@ -986,6 +986,7 @@ panfrost_create_sampler_view_bo(struct panfrost_sampler_view *so,
                                 so->base.u.tex.last_level,
                                 so->base.u.tex.first_layer,
                                 so->base.u.tex.last_layer,
+                                texture->nr_samples,
                                 type, prsrc->layout);
 
                 so->bo = panfrost_bo_create(device, size, 0);
@@ -1013,6 +1014,7 @@ panfrost_create_sampler_view_bo(struct panfrost_sampler_view *so,
                                 so->base.u.tex.last_level,
                                 so->base.u.tex.first_layer,
                                 so->base.u.tex.last_layer,
+                                texture->nr_samples,
                                 type, prsrc->layout);
                 size += sizeof(struct mali_texture_descriptor);
 

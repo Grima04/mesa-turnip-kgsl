@@ -125,6 +125,7 @@ static unsigned
 panfrost_texture_num_elements(
                 unsigned first_level, unsigned last_level,
                 unsigned first_layer, unsigned last_layer,
+                unsigned nr_samples,
                 bool is_cube, bool manual_stride)
 {
         unsigned first_face  = 0, last_face = 0;
@@ -137,7 +138,7 @@ panfrost_texture_num_elements(
         unsigned levels = 1 + last_level - first_level;
         unsigned layers = 1 + last_layer - first_layer;
         unsigned faces  = 1 + last_face  - first_face;
-        unsigned num_elements = levels * layers * faces;
+        unsigned num_elements = levels * layers * faces * MAX2(nr_samples, 1);
 
         if (manual_stride)
                 num_elements *= 2;
@@ -155,6 +156,7 @@ unsigned
 panfrost_estimate_texture_payload_size(
                 unsigned first_level, unsigned last_level,
                 unsigned first_layer, unsigned last_layer,
+                unsigned nr_samples,
                 enum mali_texture_type type, enum mali_texture_layout layout)
 {
         /* Assume worst case */
@@ -163,6 +165,7 @@ panfrost_estimate_texture_payload_size(
         unsigned elements = panfrost_texture_num_elements(
                         first_level, last_level,
                         first_layer, last_layer,
+                        nr_samples,
                         type == MALI_TEX_CUBE, manual_stride);
 
         return sizeof(mali_ptr) * elements;
