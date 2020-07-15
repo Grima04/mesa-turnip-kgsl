@@ -770,6 +770,30 @@ panfrost_batch_get_tiler_dummy(struct panfrost_batch *batch)
         return batch->tiler_dummy;
 }
 
+mali_ptr
+panfrost_batch_reserve_framebuffer(struct panfrost_batch *batch)
+{
+        struct panfrost_device *dev = pan_device(batch->ctx->base.screen);
+
+        /* If we haven't, reserve space for the framebuffer */
+
+        if (!batch->framebuffer.gpu) {
+                unsigned size = (dev->quirks & MIDGARD_SFBD) ?
+                        sizeof(struct mali_single_framebuffer) :
+                        sizeof(struct mali_framebuffer);
+
+                batch->framebuffer = panfrost_pool_alloc(&batch->pool, size);
+
+                /* Tag the pointer */
+                if (!(dev->quirks & MIDGARD_SFBD))
+                        batch->framebuffer.gpu |= MALI_MFBD;
+        }
+
+        return batch->framebuffer.gpu;
+}
+
+
+
 static void
 panfrost_batch_draw_wallpaper(struct panfrost_batch *batch)
 {

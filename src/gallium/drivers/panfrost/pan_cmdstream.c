@@ -71,24 +71,8 @@ static void
 panfrost_vt_attach_framebuffer(struct panfrost_context *ctx,
                                struct mali_vertex_tiler_postfix *postfix)
 {
-        struct panfrost_device *dev = pan_device(ctx->base.screen);
         struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
-
-        /* If we haven't, reserve space for the framebuffer */
-
-        if (!batch->framebuffer.gpu) {
-                unsigned size = (dev->quirks & MIDGARD_SFBD) ?
-                        sizeof(struct mali_single_framebuffer) :
-                        sizeof(struct mali_framebuffer);
-
-                batch->framebuffer = panfrost_pool_alloc(&batch->pool, size);
-
-                /* Tag the pointer */
-                if (!(dev->quirks & MIDGARD_SFBD))
-                        batch->framebuffer.gpu |= MALI_MFBD;
-        }
-
-        postfix->shared_memory = batch->framebuffer.gpu;
+        postfix->shared_memory = panfrost_batch_reserve_framebuffer(batch);
 }
 
 static void
