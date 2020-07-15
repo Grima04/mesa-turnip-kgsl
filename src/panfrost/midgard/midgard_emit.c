@@ -492,6 +492,7 @@ vector_alu_from_instr(midgard_instruction *ins)
 {
         midgard_vector_alu alu = ins->alu;
         alu.op = ins->op;
+        alu.outmod = ins->outmod;
         alu.reg_mode = reg_mode_for_bitsize(max_bitsize_for_alu(ins));
         return alu;
 }
@@ -699,6 +700,7 @@ emit_binary_bundle(compiler_context *ctx,
                 ins->texture.out_upper = override > 0;
                 ins->texture.in_reg_full = (isz == 32);
                 ins->texture.sampler_type = midgard_sampler_type(ins->dest_type);
+                ins->texture.outmod = ins->outmod;
 
                 if (mir_op_computes_derivatives(ctx->stage, ins->texture.op)) {
                         ins->texture.cont = !ins->helper_terminate;

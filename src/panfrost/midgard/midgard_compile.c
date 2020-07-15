@@ -1161,10 +1161,6 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
 
         ins.mask = mask_of(nr_components);
 
-        midgard_vector_alu alu = {
-                .outmod = outmod,
-        };
-
         /* Apply writemask if non-SSA, keeping in mind that we can't write to
          * components that don't exist. Note modifier => SSA => !reg => no
          * writemask, so we don't have to worry about writemasks here.*/
@@ -1172,9 +1168,8 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
         if (!is_ssa)
                 ins.mask &= instr->dest.write_mask;
 
-        ins.alu = alu;
-
         ins.op = op;
+        ins.outmod = outmod;
 
         /* Late fixup for emulated instructions */
 

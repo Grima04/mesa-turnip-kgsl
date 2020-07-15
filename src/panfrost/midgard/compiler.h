@@ -178,6 +178,12 @@ typedef struct midgard_instruction {
         /* Use this in conjunction with `type` */
         unsigned op;
 
+        /* This refers to midgard_outmod_float or midgard_outmod_int.
+         * In case of a ALU op, use midgard_is_integer_out_op() to know which
+         * one is used.
+         * If it's a texture op, it's always midgard_outmod_float. */
+        unsigned outmod;
+
         union {
                 midgard_load_store_word load_store;
                 midgard_vector_alu alu;
@@ -556,9 +562,7 @@ v_mov(unsigned src, unsigned dest)
                 .dest = dest,
                 .dest_type = nir_type_uint32,
                 .op = midgard_alu_op_imov,
-                .alu = {
-                        .outmod = midgard_outmod_int_wrap
-                },
+                .outmod = midgard_outmod_int_wrap
         };
 
         return ins;

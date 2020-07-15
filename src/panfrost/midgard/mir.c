@@ -141,7 +141,7 @@ bool
 mir_nontrivial_outmod(midgard_instruction *ins)
 {
         bool is_int = midgard_is_integer_op(ins->op);
-        unsigned mod = ins->alu.outmod;
+        unsigned mod = ins->outmod;
 
         if (ins->dest_type != ins->src_types[1])
                 return true;
