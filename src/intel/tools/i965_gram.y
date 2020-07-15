@@ -1519,28 +1519,23 @@ srcaccimm:
 immreg:
 	immval imm_type
 	{
-		uint32_t u32;
-		uint64_t u64;
 		switch ($2) {
 		case BRW_REGISTER_TYPE_UD:
-			u32 = $1;
-			$$ = brw_imm_ud(u32);
+			$$ = brw_imm_ud($1);
 			break;
 		case BRW_REGISTER_TYPE_D:
 			$$ = brw_imm_d($1);
 			break;
 		case BRW_REGISTER_TYPE_UW:
-			u32 = $1 | ($1 << 16);
-			$$ = brw_imm_uw(u32);
+			$$ = brw_imm_uw($1 | ($1 << 16));
 			break;
 		case BRW_REGISTER_TYPE_W:
-			u32 = $1;
-			$$ = brw_imm_w(u32);
+			$$ = brw_imm_w($1);
 			break;
 		case BRW_REGISTER_TYPE_F:
 			$$ = brw_imm_reg(BRW_REGISTER_TYPE_F);
+			/* Set u64 instead of ud since DIM uses a 64-bit F-typed imm */
 			$$.u64 = $1;
-			$$.ud = $1;
 			break;
 		case BRW_REGISTER_TYPE_V:
 			$$ = brw_imm_v($1);
@@ -1549,16 +1544,13 @@ immreg:
 			$$ = brw_imm_uv($1);
 			break;
 		case BRW_REGISTER_TYPE_VF:
-			$$ = brw_imm_reg(BRW_REGISTER_TYPE_VF);
-			$$.d = $1;
+			$$ = brw_imm_vf($1);
 			break;
 		case BRW_REGISTER_TYPE_Q:
-			u64 = $1;
-			$$ = brw_imm_q(u64);
+			$$ = brw_imm_q($1);
 			break;
 		case BRW_REGISTER_TYPE_UQ:
-			u64 = $1;
-			$$ = brw_imm_uq(u64);
+			$$ = brw_imm_uq($1);
 			break;
 		case BRW_REGISTER_TYPE_DF:
 			$$ = brw_imm_reg(BRW_REGISTER_TYPE_DF);
