@@ -629,10 +629,9 @@ iris_resource_configure_aux(struct iris_screen *screen,
    if (!res->aux.state)
       return false;
 
-   /* Increase the aux offset if the main and aux surfaces will share a BO. */
+   /* Allocate space in the buffer for storing the aux surface. */
    res->aux.offset =
-      !res->mod_info || res->mod_info->aux_usage == res->aux.usage ?
-      ALIGN(res->surf.size_B, res->aux.surf.alignment_B) : 0;
+      ALIGN(res->surf.size_B, res->aux.surf.alignment_B);
    uint64_t size = res->aux.surf.size_B;
 
    /* Allocate space in the buffer for storing the CCS. */
@@ -709,46 +708,6 @@ iris_resource_init_aux_buf(struct iris_resource *res, uint32_t alloc_flags,
       res->aux.clear_color_bo = res->aux.bo;
       iris_bo_reference(res->aux.clear_color_bo);
    }
-
-   return true;
-}
-
-/**
- * Allocate the initial aux surface for a resource based on aux.usage
- *
- * Returns false on unexpected error (e.g. allocation failed, or invalid
- * configuration result).
- */
-static bool
-iris_resource_alloc_separate_aux(struct iris_screen *screen,
-                                 struct iris_resource *res)
-{
-   uint32_t alloc_flags;
-   uint64_t size;
-   if (!iris_resource_configure_aux(screen, res, false, &size, &alloc_flags))
-      return false;
-
-   if (size == 0)
-      return true;
-
-   /* Allocate the auxiliary buffer.  ISL has stricter set of alignment rules
-    * the drm allocator.  Therefore, one can pass the ISL dimensions in terms
-    * of bytes instead of trying to recalculate based on different format
-    * block sizes.
-    */
-   res->aux.bo = iris_bo_alloc_tiled(screen->bufmgr, "aux buffer", size, 4096,
-                                     IRIS_MEMZONE_OTHER,
-                                     isl_tiling_to_i915_tiling(res->aux.surf.tiling),
-                                     res->aux.surf.row_pitch_B, alloc_flags);
-   if (!res->aux.bo) {
-      return false;
-   }
-
-   if (!iris_resource_init_aux_buf(res, alloc_flags,
-                                   iris_get_aux_clear_color_state_size(screen)))
-      return false;
-
-   map_aux_addresses(screen, res);
 
    return true;
 }
@@ -1093,24 +1052,16 @@ iris_resource_from_handle(struct pipe_screen *pscreen,
          assert(res->bo->tiling_mode ==
                 isl_tiling_to_i915_tiling(res->surf.tiling));
 
-         // XXX: create_ccs_buf_for_image?
-         if (whandle->modifier == DRM_FORMAT_MOD_INVALID) {
-            if (!iris_resource_alloc_separate_aux(screen, res))
-               goto fail;
-         } else {
-            if (res->mod_info->aux_usage != ISL_AUX_USAGE_NONE) {
-               uint32_t alloc_flags;
-               uint64_t size;
-               bool ok = iris_resource_configure_aux(screen, res, true, &size,
-                                                     &alloc_flags);
-               assert(ok);
-               /* The gallium dri layer will create a separate plane resource
-                * for the aux image. iris_resource_finish_aux_import will
-                * merge the separate aux parameters back into a single
-                * iris_resource.
-                */
-            }
-         }
+         uint32_t alloc_flags;
+         uint64_t size;
+         bool ok = iris_resource_configure_aux(screen, res, true, &size,
+                                               &alloc_flags);
+         assert(ok);
+         /* The gallium dri layer will create a separate plane resource
+          * for the aux image. iris_resource_finish_aux_import will
+          * merge the separate aux parameters back into a single
+          * iris_resource.
+          */
       } else {
          /* Save modifier import information to reconstruct later. After
           * import, this will be available under a second image accessible
