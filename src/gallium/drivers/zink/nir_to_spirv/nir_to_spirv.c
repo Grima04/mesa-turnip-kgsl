@@ -2105,7 +2105,8 @@ emit_tex(struct ntv_context *ctx, nir_tex_instr *tex)
           tex->op == nir_texop_txf ||
           tex->op == nir_texop_txf_ms ||
           tex->op == nir_texop_txs ||
-          tex->op == nir_texop_lod);
+          tex->op == nir_texop_lod ||
+          tex->op == nir_texop_tg4);
    assert(tex->texture_index == tex->sampler_index);
 
    SpvId coord = 0, proj = 0, bias = 0, lod = 0, dref = 0, dx = 0, dy = 0,
@@ -2267,12 +2268,18 @@ emit_tex(struct ntv_context *ctx, nir_tex_instr *tex)
 
    SpvId result;
    if (tex->op == nir_texop_txf ||
-       tex->op == nir_texop_txf_ms) {
+       tex->op == nir_texop_txf_ms ||
+       tex->op == nir_texop_tg4) {
       SpvId image = spirv_builder_emit_image(&ctx->builder, image_type, load);
       if (offset)
          spirv_builder_emit_cap(&ctx->builder, SpvCapabilityImageGatherExtended);
-      result = spirv_builder_emit_image_fetch(&ctx->builder, dest_type,
-                                              image, coord, lod, sample, offset);
+      if (tex->op == nir_texop_tg4)
+         result = spirv_builder_emit_image_gather(&ctx->builder, dest_type,
+                                                 load, coord, emit_uint_const(ctx, 32, tex->component),
+                                                 lod, sample, offset);
+      else
+         result = spirv_builder_emit_image_fetch(&ctx->builder, dest_type,
+                                                 image, coord, lod, sample, offset);
    } else {
       result = spirv_builder_emit_image_sample(&ctx->builder,
                                                actual_dest_type, load,

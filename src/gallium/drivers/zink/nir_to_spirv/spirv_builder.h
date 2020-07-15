@@ -266,6 +266,16 @@ spirv_builder_emit_image_fetch(struct spirv_builder *b,
                                SpvId sample,
                                SpvId offset);
 SpvId
+spirv_builder_emit_image_gather(struct spirv_builder *b,
+                               SpvId result_type,
+                               SpvId image,
+                               SpvId coordinate,
+                               SpvId component,
+                               SpvId lod,
+                               SpvId sample,
+                               SpvId offset);
+
+SpvId
 spirv_builder_emit_image_query_size(struct spirv_builder *b,
                                     SpvId result_type,
                                     SpvId image,
