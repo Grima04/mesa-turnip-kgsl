@@ -69,7 +69,7 @@ test-docs:
     - *ignore_scheduled_pipelines
     - if: '$CI_PROJECT_NAMESPACE == "mesa"'
       when: never
-    - if: '$GITLAB_USER_LOGIN == "marge-bot"'
+    - if: '$GITLAB_USER_LOGIN == "marge-bot" && $CI_MERGE_REQUEST_SOURCE_BRANCH_NAME == $CI_COMMIT_REF_NAME'
       changes: *docs-or-ci
       when: on_success
     - changes: *docs-or-ci
