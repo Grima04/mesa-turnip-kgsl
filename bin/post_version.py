@@ -34,10 +34,14 @@ def update_release_notes(version: str) -> None:
 
     new_relnotes = []
     first_list = True
+    second_list = True
     for line in relnotes:
         if first_list and line.startswith('-'):
             first_list = False
-            new_relnotes.append(f'- `{version} release notes <relnotes/{version}.rst>`__\n')
+            new_relnotes.append(f'-  :doc:`{version} release notes <relnotes/{version}>`\n')
+        if not first_list and second_list and line.startswith('   relnotes/'):
+            second_list = False
+            new_relnotes.append(f'   relnotes/{version}\n')
         new_relnotes.append(line)
 
     with open(p, 'w') as f:
