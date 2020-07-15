@@ -677,18 +677,6 @@ panfrost_screen_get_compiler_options(struct pipe_screen *pscreen,
 struct pipe_screen *
 panfrost_create_screen(int fd, struct renderonly *ro)
 {
-        /* Blacklist apps known to be buggy under Panfrost */
-        const char *proc = util_get_process_name();
-        const char *blacklist[] = {
-                "chromium",
-                "chrome",
-        };
-
-        for (unsigned i = 0; i < ARRAY_SIZE(blacklist); ++i) {
-                if ((strcmp(blacklist[i], proc) == 0))
-                        return NULL;
-        }
-
         /* Create the screen */
         struct panfrost_screen *screen = rzalloc(NULL, struct panfrost_screen);
 
