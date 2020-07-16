@@ -169,8 +169,10 @@ struct radeon_winsys_bo {
 struct radv_winsys_sem_counts {
 	uint32_t syncobj_count;
 	uint32_t syncobj_reset_count; /* for wait only, whether to reset the syncobj */
+	uint32_t timeline_syncobj_count;
 	uint32_t sem_count;
 	uint32_t *syncobj;
+	uint64_t *points;
 	struct radeon_winsys_sem **sem;
 };
 

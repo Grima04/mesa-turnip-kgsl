@@ -1450,9 +1450,9 @@ static int radv_amdgpu_signal_sems(struct radv_amdgpu_ctx *ctx,
 	return 0;
 }
 
-static struct drm_amdgpu_cs_chunk_sem *radv_amdgpu_cs_alloc_syncobj_chunk(struct radv_winsys_sem_counts *counts,
-									  const uint32_t *syncobj_override,
-									  struct drm_amdgpu_cs_chunk *chunk, int chunk_id)
+static void *radv_amdgpu_cs_alloc_syncobj_chunk(struct radv_winsys_sem_counts *counts,
+						const uint32_t *syncobj_override,
+						struct drm_amdgpu_cs_chunk *chunk, int chunk_id)
 {
 	const uint32_t *src = syncobj_override ? syncobj_override : counts->syncobj;
 	struct drm_amdgpu_cs_chunk_sem *syncobj = malloc(sizeof(struct drm_amdgpu_cs_chunk_sem) * counts->syncobj_count);
@@ -1466,6 +1466,38 @@ static struct drm_amdgpu_cs_chunk_sem *radv_amdgpu_cs_alloc_syncobj_chunk(struct
 
 	chunk->chunk_id = chunk_id;
 	chunk->length_dw = sizeof(struct drm_amdgpu_cs_chunk_sem) / 4 * counts->syncobj_count;
+	chunk->chunk_data = (uint64_t)(uintptr_t)syncobj;
+	return syncobj;
+}
+
+static void *
+radv_amdgpu_cs_alloc_timeline_syncobj_chunk(struct radv_winsys_sem_counts *counts,
+                                            const uint32_t *syncobj_override,
+                                            struct drm_amdgpu_cs_chunk *chunk, int chunk_id)
+{
+	const uint32_t *src = syncobj_override ? syncobj_override : counts->syncobj;
+	struct drm_amdgpu_cs_chunk_syncobj *syncobj = malloc(sizeof(struct drm_amdgpu_cs_chunk_syncobj) *
+	                                                     (counts->syncobj_count + counts->timeline_syncobj_count));
+	if (!syncobj)
+		return NULL;
+
+	for (unsigned i = 0; i < counts->syncobj_count; i++) {
+		struct drm_amdgpu_cs_chunk_syncobj *sem = &syncobj[i];
+		sem->handle = src[i];
+		sem->flags = 0;
+		sem->point = 0;
+	}
+
+	for (unsigned i = 0; i < counts->timeline_syncobj_count; i++) {
+		struct drm_amdgpu_cs_chunk_syncobj *sem = &syncobj[i + counts->syncobj_count];
+		sem->handle = counts->syncobj[i + counts->syncobj_count];
+		sem->flags = DRM_SYNCOBJ_WAIT_FLAGS_WAIT_FOR_SUBMIT;
+		sem->point = counts->points[i];
+	}
+
+	chunk->chunk_id = chunk_id;
+	chunk->length_dw = sizeof(struct drm_amdgpu_cs_chunk_syncobj) / 4 *
+		(counts->syncobj_count + counts->timeline_syncobj_count);
 	chunk->chunk_data = (uint64_t)(uintptr_t)syncobj;
 	return syncobj;
 }
@@ -1577,9 +1609,9 @@ radv_amdgpu_cs_submit(struct radv_amdgpu_ctx *ctx,
 	struct drm_amdgpu_cs_chunk *chunks;
 	struct drm_amdgpu_cs_chunk_data *chunk_data;
 	struct drm_amdgpu_cs_chunk_dep *sem_dependencies = NULL;
-	struct drm_amdgpu_cs_chunk_sem *wait_syncobj = NULL, *signal_syncobj = NULL;
 	bool use_bo_list_create = ctx->ws->info.drm_minor < 27;
 	struct drm_amdgpu_bo_list_in bo_list_in;
+	void *wait_syncobj = NULL, *signal_syncobj = NULL;
 	uint32_t *in_syncobjs = NULL;
 	int i;
 	struct amdgpu_cs_fence *sem;
@@ -1630,15 +1662,22 @@ radv_amdgpu_cs_submit(struct radv_amdgpu_ctx *ctx,
 						   &chunk_data[i]);
 	}
 
-	if (sem_info->wait.syncobj_count && sem_info->cs_emit_wait) {
+	if ((sem_info->wait.syncobj_count || sem_info->wait.timeline_syncobj_count) && sem_info->cs_emit_wait) {
 		r = radv_amdgpu_cs_prepare_syncobjs(ctx->ws, &sem_info->wait, &in_syncobjs);
 		if (r)
 			goto error_out;
 
-		wait_syncobj = radv_amdgpu_cs_alloc_syncobj_chunk(&sem_info->wait,
-								  in_syncobjs,
-								  &chunks[num_chunks],
-								  AMDGPU_CHUNK_ID_SYNCOBJ_IN);
+		if (ctx->ws->info.has_timeline_syncobj) {
+			wait_syncobj = radv_amdgpu_cs_alloc_timeline_syncobj_chunk(&sem_info->wait,
+										   in_syncobjs,
+										   &chunks[num_chunks],
+										   AMDGPU_CHUNK_ID_SYNCOBJ_TIMELINE_WAIT);
+		} else {
+			wait_syncobj = radv_amdgpu_cs_alloc_syncobj_chunk(&sem_info->wait,
+									  in_syncobjs,
+									  &chunks[num_chunks],
+									  AMDGPU_CHUNK_ID_SYNCOBJ_IN);
+		}
 		if (!wait_syncobj) {
 			result = VK_ERROR_OUT_OF_HOST_MEMORY;
 			goto error_out;
@@ -1679,11 +1718,18 @@ radv_amdgpu_cs_submit(struct radv_amdgpu_ctx *ctx,
 		sem_info->cs_emit_wait = false;
 	}
 
-	if (sem_info->signal.syncobj_count && sem_info->cs_emit_signal) {
-		signal_syncobj = radv_amdgpu_cs_alloc_syncobj_chunk(&sem_info->signal,
-								    NULL,
-								    &chunks[num_chunks],
-								    AMDGPU_CHUNK_ID_SYNCOBJ_OUT);
+	if ((sem_info->signal.syncobj_count || sem_info->signal.timeline_syncobj_count) && sem_info->cs_emit_signal) {
+		if (ctx->ws->info.has_timeline_syncobj) {
+			signal_syncobj = radv_amdgpu_cs_alloc_timeline_syncobj_chunk(&sem_info->signal,
+										     NULL,
+										     &chunks[num_chunks],
+										     AMDGPU_CHUNK_ID_SYNCOBJ_TIMELINE_SIGNAL);
+		} else {
+			signal_syncobj = radv_amdgpu_cs_alloc_syncobj_chunk(&sem_info->signal,
+									    NULL,
+									    &chunks[num_chunks],
+									    AMDGPU_CHUNK_ID_SYNCOBJ_OUT);
+		}
 		if (!signal_syncobj) {
 			result = VK_ERROR_OUT_OF_HOST_MEMORY;
 			goto error_out;
