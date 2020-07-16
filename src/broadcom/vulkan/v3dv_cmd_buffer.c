@@ -4110,6 +4110,12 @@ v3dv_CmdPipelineBarrier(VkCommandBuffer commandBuffer,
 {
    V3DV_FROM_HANDLE(v3dv_cmd_buffer, cmd_buffer, commandBuffer);
 
+   /* We only care about barriers between GPU jobs */
+   if (srcStageMask == VK_PIPELINE_STAGE_HOST_BIT ||
+       dstStageMask == VK_PIPELINE_STAGE_HOST_BIT) {
+      return;
+   }
+
    /* If we have a recording job, finish it here */
    struct v3dv_job *job = cmd_buffer->state.job;
    if (job)
