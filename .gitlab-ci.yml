@@ -1036,8 +1036,6 @@ arm64_a630_gles2:
 arm64_a630_gles31:
   extends: arm64_a630_gles2
   variables:
-    CI_NODE_INDEX: 1
-    CI_NODE_TOTAL: 2
     DEQP_VER: gles31
     # gles31 is about 12 minutes with validation enabled.
     NIR_VALIDATE: 0
@@ -1045,15 +1043,13 @@ arm64_a630_gles31:
 arm64_a630_gles3:
   extends: arm64_a630_gles2
   variables:
-    CI_NODE_INDEX: 1
-    CI_NODE_TOTAL: 2
     DEQP_VER: gles3
     # gles3 is about 15 minutes with validation enabled.
     NIR_VALIDATE: 0
 
 # We almost always manage to lower UBOs back to constant uploads in
 # the test suite, so get a little testing for it here.
-.arm64_a630_noubo:
+arm64_a630_noubo:
   extends: arm64_a630_gles31
   variables:
     DEQP_VER: gles31
@@ -1063,7 +1059,7 @@ arm64_a630_gles3:
 # The driver does some guessing as to whether to render using gmem
 # or bypass, and some GLES3.1 features interact with either one.
 # Do a little testing with gmem and bypass forced.
-.arm64_a630_bypass:
+arm64_a630_bypass:
   extends: arm64_a630_gles31
   variables:
     CI_NODE_INDEX: 1
@@ -1071,7 +1067,7 @@ arm64_a630_gles3:
     FD_MESA_DEBUG: nogmem
     DEQP_EXPECTED_FAILS: deqp-freedreno-a630-bypass-fails.txt
 
-.arm64_a630_traces:
+arm64_a630_traces:
   extends:
     - arm64_a630_gles2
   variables:
@@ -1086,7 +1082,7 @@ arm64_a630_gles3:
 # Along with checking gmem path, check that we don't get obvious nir
 # validation failures (though it's too expensive to have it on for the
 # full CTS)
-.arm64_a630_gmem:
+arm64_a630_gmem:
   extends: arm64_a630_gles31
   variables:
     CI_NODE_INDEX: 1
@@ -1110,7 +1106,7 @@ arm64_a630_vk:
 # Do a separate sysmem pass over the testcases that really affect sysmem
 # rendering.  This is currently very flaky, leave it as an option for devs
 # to click play on in their branches.
-.arm64_a630_vk_sysmem:
+arm64_a630_vk_sysmem:
   extends:
     - arm64_a630_vk
   variables:
