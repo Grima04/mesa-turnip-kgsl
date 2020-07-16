@@ -1813,10 +1813,6 @@ maskreg:
 notifyreg:
 	NOTIFYREG subregnum
 	{
-		if ($1 > 0)
-			error(&@1, "Notification register number %d"
-				   " out of range\n", $1);
-
 		int subnr = (p->devinfo->gen >= 11) ? 2 : 3;
 		if ($2 > subnr)
 			error(&@2, "Notification sub register number %d"
