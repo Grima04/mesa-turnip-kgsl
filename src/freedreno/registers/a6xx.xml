@@ -2211,7 +2211,7 @@ to upconvert to 32b float internally?
 		<bitfield name="DUAL_COLOR_IN_ENABLE" pos="0" type="boolean"/>
 		<bitfield name="FRAG_WRITES_Z" pos="1" type="boolean"/>
 		<bitfield name="FRAG_WRITES_SAMPMASK" pos="2" type="boolean"/>
-		<bitfield name="UNK3" pos="3" type="boolean"/>
+		<bitfield name="FRAG_WRITES_STENCILREF" pos="3" type="boolean"/>
 	</reg32>
 	<reg32 offset="0x880c" name="RB_FS_OUTPUT_CNTL1">
 		<bitfield name="MRT" low="0" high="3" type="uint"/>
@@ -3203,6 +3203,7 @@ to upconvert to 32b float internally?
 		<bitfield name="DUAL_COLOR_IN_ENABLE" pos="0" type="boolean"/>
 		<bitfield name="DEPTH_REGID" low="8" high="15" type="a3xx_regid"/>
 		<bitfield name="SAMPMASK_REGID" low="16" high="23" type="a3xx_regid"/>
+		<bitfield name="STENCILREF_REGID" low="24" high="31" type="a3xx_regid"/>
 	</reg32>
 	<reg32 offset="0xa98d" name="SP_FS_OUTPUT_CNTL1">
 		<bitfield name="MRT" low="0" high="3" type="uint"/>
