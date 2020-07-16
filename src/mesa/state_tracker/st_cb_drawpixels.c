@@ -1724,6 +1724,13 @@ st_CopyPixels(struct gl_context *ctx, GLint srcx, GLint srcy,
       return;
    }
 
+   /* fallback if the driver can't do stencil exports */
+   if (type == GL_STENCIL &&
+       !pipe->screen->get_param(pipe->screen, PIPE_CAP_SHADER_STENCIL_EXPORT)) {
+      copy_stencil_pixels(ctx, srcx, srcy, width, height, dstx, dsty);
+      return;
+   }
+
    /*
     * The subsequent code implements glCopyPixels by copying the source
     * pixels into a temporary texture that's then applied to a textured quad.
