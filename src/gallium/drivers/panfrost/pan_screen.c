@@ -129,9 +129,6 @@ panfrost_get_param(struct pipe_screen *screen, enum pipe_cap param)
                 /* WIP */
                 return is_gl3 ? 1 : 0;
 
-        /* Throttling frames breaks pipelining */
-        case PIPE_CAP_THROTTLE:
-                return 0;
 
         /* ES3 features unsupported on Bifrost */
         case PIPE_CAP_OCCLUSION_QUERY:
