@@ -716,7 +716,7 @@ pan_lower_fb_load(nir_shader *shader,
 
 bool
 pan_lower_framebuffer(nir_shader *shader, enum pipe_format *rt_fmts,
-                      bool lower_store, unsigned quirks)
+                      bool is_blend, unsigned quirks)
 {
         if (shader->info.stage != MESA_SHADER_FRAGMENT)
                return false;
@@ -734,7 +734,7 @@ pan_lower_framebuffer(nir_shader *shader, enum pipe_format *rt_fmts,
                                 bool is_load = intr->intrinsic == nir_intrinsic_load_deref;
                                 bool is_store = intr->intrinsic == nir_intrinsic_store_deref;
 
-                                if (!(is_load || (is_store && lower_store)))
+                                if (!(is_load || (is_store && is_blend)))
                                         continue;
 
                                 nir_variable *var = nir_intrinsic_get_var(intr, 0);
