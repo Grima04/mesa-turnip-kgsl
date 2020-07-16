@@ -262,6 +262,8 @@ virgl_get_param(struct pipe_screen *screen, enum pipe_cap param)
    case PIPE_CAP_FBFETCH:
       return (vscreen->caps.caps.v2.capability_bits &
               VIRGL_CAP_TGSI_FBFETCH) ? 1 : 0;
+   case PIPE_CAP_BLEND_EQUATION_ADVANCED:
+      return vscreen->caps.caps.v2.capability_bits_v2 & VIRGL_CAP_V2_BLEND_EQUATION;
    case PIPE_CAP_TGSI_CLOCK:
       return vscreen->caps.caps.v2.capability_bits & VIRGL_CAP_SHADER_CLOCK;
    case PIPE_CAP_TGSI_ARRAY_COMPONENTS:
