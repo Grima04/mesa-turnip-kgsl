@@ -267,6 +267,7 @@ typedef struct {
    unsigned int export_refcount;
    VABufferInfo export_state;
    unsigned int coded_size;
+   struct pipe_video_buffer *derived_image_buffer;
 } vlVaBuffer;
 
 typedef struct {

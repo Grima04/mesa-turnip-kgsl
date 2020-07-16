@@ -204,8 +204,12 @@ vlVaDestroyBuffer(VADriverContextP ctx, VABufferID buf_id)
       return VA_STATUS_ERROR_INVALID_BUFFER;
    }
 
-   if (buf->derived_surface.resource)
+   if (buf->derived_surface.resource) {
       pipe_resource_reference(&buf->derived_surface.resource, NULL);
+
+      if (buf->derived_image_buffer)
+         buf->derived_image_buffer->destroy(buf->derived_image_buffer);
+   }
 
    FREE(buf->data);
    FREE(buf);
