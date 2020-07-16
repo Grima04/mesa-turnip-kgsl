@@ -552,8 +552,8 @@ ra_init(struct ir3_ra_ctx *ctx)
 	base = ctx->class_base[total_class_count];
 	foreach_array (arr, &ctx->ir->array_list) {
 		arr->base = base;
-		ctx->class_alloc_count[total_class_count] += reg_size_for_array(arr);
-		base += reg_size_for_array(arr);
+		ctx->class_alloc_count[total_class_count] += arr->length;
+		base += arr->length;
 	}
 	ctx->alloc_count += ctx->class_alloc_count[total_class_count];
 
@@ -626,8 +626,7 @@ name_to_array(struct ir3_ra_ctx *ctx, unsigned name)
 {
 	ra_assert(ctx, name_is_array(ctx, name));
 	foreach_array (arr, &ctx->ir->array_list) {
-		unsigned sz = reg_size_for_array(arr);
-		if (name < (arr->base + sz))
+		if (name < (arr->base + arr->length))
 			return arr;
 	}
 	ra_unreachable(ctx, "invalid array name");
@@ -1344,11 +1343,8 @@ ra_precolor(struct ir3_ra_ctx *ctx, struct ir3_instruction **precolor, unsigned 
 		}
 	}
 
-	/* pre-assign array elements:
-	 *
-	 * TODO this is going to need some work for half-precision.. possibly
-	 * this is easier on a6xx, where we can just divide array size by two?
-	 * But on a5xx and earlier it will need to track two bases.
+	/*
+	 * Pre-assign array elements:
 	 */
 	foreach_array (arr, &ctx->ir->array_list) {
 
@@ -1358,28 +1354,12 @@ ra_precolor(struct ir3_ra_ctx *ctx, struct ir3_instruction **precolor, unsigned 
 		if (!ctx->scalar_pass)
 			assign_arr_base(ctx, arr, precolor, nprecolor);
 
-		unsigned base = arr->reg;
-
 		for (unsigned i = 0; i < arr->length; i++) {
-			unsigned name, reg;
+			unsigned cls = arr->half ? HALF_OFFSET : 0;
 
-			if (arr->half) {
-				/* Doesn't need to do this on older generations than a6xx,
-				 * since there's no conflict between full regs and half regs
-				 * on them.
-				 *
-				 * TODO Presumably "base" could start from 0 respectively
-				 * for half regs of arrays on older generations.
-				 */
-				unsigned base_half = base * 2 + i;
-				reg = ctx->set->gpr_to_ra_reg[0+HALF_OFFSET][base_half];
-				base = base_half / 2 + 1;
-			} else {
-				reg = ctx->set->gpr_to_ra_reg[0][base++];
-			}
-
-			name = arr->base + i;
-			ra_set_node_reg(ctx->g, name, reg);
+			ra_set_node_reg(ctx->g,
+					arr->base + i,   /* vreg name */
+					ctx->set->gpr_to_ra_reg[cls][arr->reg + i]);
 		}
 	}
 
