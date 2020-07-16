@@ -2145,9 +2145,6 @@ spec/ext_texture_buffer/preprocessor/disabled-undefined-es.tesc: skip
 spec/ext_texture_buffer/preprocessor/disabled-undefined-es.tese: skip
 spec/ext_texture_buffer/preprocessor/disabled-undefined-es.vert: skip
 spec/ext_texture_shadow_lod/compiler/negative_compile.frag: skip
-spec/ext_texture_shadow_lod/compiler/sampler2darray.frag: skip
-spec/ext_texture_shadow_lod/compiler/samplercube.frag: skip
-spec/ext_texture_shadow_lod/compiler/samplercubearray.frag: skip
 spec/glsl-1.20/compiler/invalid-vec4-array-to-vec3-array-conversion.vert: fail
 spec/glsl-1.50/compiler/arb_compatibility-gs/ftransform.geom: skip
 spec/glsl-1.50/compiler/arb_compatibility-gs/gl_backcolor.geom: skip
@@ -2657,10 +2654,10 @@ spec/oes_texture_storage_multisample_2d_array/preprocessor/disabled-undefined-es
 summary:
        name:  results
        ----  --------
-       pass:    12179
+       pass:    12182
        fail:        2
       crash:        4
-       skip:     2650
+       skip:     2647
     timeout:        0
        warn:        0
  incomplete:        0

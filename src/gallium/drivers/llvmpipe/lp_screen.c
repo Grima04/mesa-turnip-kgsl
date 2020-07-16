@@ -140,6 +140,7 @@ llvmpipe_get_param(struct pipe_screen *screen, enum pipe_cap param)
    case PIPE_CAP_TEXTURE_MIRROR_CLAMP_TO_EDGE:
       return 1;
    case PIPE_CAP_TEXTURE_SWIZZLE:
+   case PIPE_CAP_TEXTURE_SHADOW_LOD:
       return 1;
    case PIPE_CAP_MAX_TEXTURE_2D_SIZE:
       return 1 << (LP_MAX_TEXTURE_2D_LEVELS - 1);
