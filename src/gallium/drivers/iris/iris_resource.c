@@ -639,11 +639,7 @@ iris_resource_configure_aux(struct iris_screen *screen,
       size = padded_aux_size + res->aux.extra_aux.surf.size_B;
    }
 
-   /* Allocate space in the buffer for storing the clear color. On modern
-    * platforms (gen > 9), we can read it directly from such buffer.
-    *
-    * On gen <= 9, we are going to store the clear color on the buffer
-    * anyways, and copy it back to the surface state during state emission.
+   /* Allocate space in the buffer for storing the indirect clear color.
     *
     * Also add some padding to make sure the fast clear color state buffer
     * starts at a 4K alignment. We believe that 256B might be enough, but due
