@@ -1082,7 +1082,15 @@ panfrost_batch_submit_jobs(struct panfrost_batch *batch)
         }
 
         if (batch->scoreboard.tiler_dep || batch->clear) {
-                mali_ptr fragjob = panfrost_fragment_job(batch, has_draws);
+                /* Whether we program the fragment job for draws or not depends
+                 * on whether there is any *tiler* activity (so fragment
+                 * shaders). If there are draws but entirely RASTERIZER_DISCARD
+                 * (say, for transform feedback), we want a fragment job that
+                 * *only* clears, since otherwise the tiler structures will be
+                 * uninitialized leading to faults (or state leaks) */
+
+                mali_ptr fragjob = panfrost_fragment_job(batch,
+                                batch->scoreboard.tiler_dep != 0);
                 ret = panfrost_batch_submit_ioctl(batch, fragjob, PANFROST_JD_REQ_FS);
                 assert(!ret);
         }
