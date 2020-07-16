@@ -247,6 +247,11 @@ struct v3dv_queue {
 struct v3dv_meta_color_clear_pipeline {
    VkPipeline pipeline;
    VkRenderPass pass;
+   bool free_render_pass;
+};
+
+struct v3dv_meta_depth_clear_pipeline {
+   VkPipeline pipeline;
 };
 
 struct v3dv_meta_blit_pipeline {
@@ -284,6 +289,10 @@ struct v3dv_device {
          VkPipelineLayout playout;
          struct hash_table *cache; /* v3dv_meta_color_clear_pipeline */
       } color_clear;
+      struct {
+         VkPipelineLayout playout;
+         struct hash_table *cache; /* v3dv_meta_depth_clear_pipeline */
+      } depth_clear;
       struct {
          VkDescriptorSetLayout dslayout;
          VkPipelineLayout playout;
@@ -1106,7 +1115,8 @@ void v3dv_cmd_buffer_subpass_finish(struct v3dv_cmd_buffer *cmd_buffer);
 void v3dv_cmd_buffer_meta_state_push(struct v3dv_cmd_buffer *cmd_buffer,
                                      bool push_descriptor_state);
 void v3dv_cmd_buffer_meta_state_pop(struct v3dv_cmd_buffer *cmd_buffer,
-                                    uint32_t dirty_dynamic_state);
+                                    uint32_t dirty_dynamic_state,
+                                    bool needs_subpass_resume);
 
 void v3dv_render_pass_setup_render_target(struct v3dv_cmd_buffer *cmd_buffer,
                                           int rt,

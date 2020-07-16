@@ -1106,9 +1106,11 @@ u64_compare(const void *key1, const void *key2)
 }
 
 static void
-init_meta_color_clear_resources(struct v3dv_device *device)
+init_meta_clear_resources(struct v3dv_device *device)
 {
    device->meta.color_clear.cache =
+      _mesa_hash_table_create(NULL, u64_hash, u64_compare);
+   device->meta.depth_clear.cache =
       _mesa_hash_table_create(NULL, u64_hash, u64_compare);
 }
 
@@ -1139,7 +1141,7 @@ static void
 init_device_meta(struct v3dv_device *device)
 {
    mtx_init(&device->meta.mtx, mtx_plain);
-   init_meta_color_clear_resources(device);
+   init_meta_clear_resources(device);
    init_meta_blit_resources(device);
 }
 
@@ -1153,13 +1155,26 @@ destroy_device_meta(struct v3dv_device *device)
    hash_table_foreach(device->meta.color_clear.cache, entry) {
       struct v3dv_meta_color_clear_pipeline *item = entry->data;
       v3dv_DestroyPipeline(_device, item->pipeline, &device->alloc);
-      v3dv_DestroyRenderPass(_device, item->pass, &device->alloc);
+      if (item->free_render_pass)
+         v3dv_DestroyRenderPass(_device, item->pass, &device->alloc);
       vk_free(&device->alloc, item);
    }
    _mesa_hash_table_destroy(device->meta.color_clear.cache, NULL);
 
    if (device->meta.color_clear.playout) {
       v3dv_DestroyPipelineLayout(_device, device->meta.color_clear.playout,
+                                 &device->alloc);
+   }
+
+   hash_table_foreach(device->meta.depth_clear.cache, entry) {
+      struct v3dv_meta_depth_clear_pipeline *item = entry->data;
+      v3dv_DestroyPipeline(_device, item->pipeline, &device->alloc);
+      vk_free(&device->alloc, item);
+   }
+   _mesa_hash_table_destroy(device->meta.depth_clear.cache, NULL);
+
+   if (device->meta.depth_clear.playout) {
+      v3dv_DestroyPipelineLayout(_device, device->meta.depth_clear.playout,
                                  &device->alloc);
    }
 

@@ -3697,7 +3697,8 @@ v3dv_cmd_buffer_meta_state_push(struct v3dv_cmd_buffer *cmd_buffer,
  */
 void
 v3dv_cmd_buffer_meta_state_pop(struct v3dv_cmd_buffer *cmd_buffer,
-                               uint32_t dirty_dynamic_state)
+                               uint32_t dirty_dynamic_state,
+                               bool needs_subpass_resume)
 {
    struct v3dv_cmd_buffer_state *state = &cmd_buffer->state;
 
@@ -3716,7 +3717,13 @@ v3dv_cmd_buffer_meta_state_pop(struct v3dv_cmd_buffer *cmd_buffer,
       state->tile_aligned_render_area = state->meta.tile_aligned_render_area;
       memcpy(&state->render_area, &state->meta.render_area, sizeof(VkRect2D));
 
-      v3dv_cmd_buffer_subpass_resume(cmd_buffer, state->meta.subpass_idx);
+      /* Is needs_subpass_resume is true it means that the emitted the meta
+       * operation in its own job (possibly with an RT config that is
+       * incompatible with the current subpass), so resuming subpass execution
+       * after it requires that we create a new job with the subpass RT setup.
+       */
+      if (needs_subpass_resume)
+         v3dv_cmd_buffer_subpass_resume(cmd_buffer, state->meta.subpass_idx);
    } else {
       state->subpass_idx = -1;
    }

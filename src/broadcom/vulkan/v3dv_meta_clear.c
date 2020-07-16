@@ -67,7 +67,7 @@ gen_rect_vertices(nir_builder *b)
 }
 
 static nir_shader *
-get_color_clear_rect_vs()
+get_clear_rect_vs()
 {
    nir_builder b;
    const nir_shader_compiler_options *options = v3dv_pipeline_get_nir_options();
@@ -86,19 +86,14 @@ get_color_clear_rect_vs()
 }
 
 static nir_shader *
-get_color_clear_rect_fs(struct v3dv_render_pass *pass, uint32_t rt_idx)
+get_color_clear_rect_fs(uint32_t rt_idx, VkFormat format)
 {
    nir_builder b;
    const nir_shader_compiler_options *options = v3dv_pipeline_get_nir_options();
    nir_builder_init_simple_shader(&b, NULL, MESA_SHADER_FRAGMENT, options);
    b.shader->info.name = ralloc_strdup(b.shader, "meta clear fs");
 
-   /* Since our implementation can only clear one RT at a time we know there
-    * is a single subpass with a single attachment.
-    */
-   assert(pass->attachment_count == 1);
-   enum pipe_format pformat =
-      vk_format_to_pipe_format(pass->attachments[0].desc.format);
+   enum pipe_format pformat = vk_format_to_pipe_format(format);
    const struct glsl_type *fs_out_type =
       util_format_is_float(pformat) ? glsl_vec4_type() : glsl_uvec4_type();
 
@@ -120,6 +115,34 @@ get_color_clear_rect_fs(struct v3dv_render_pass *pass, uint32_t rt_idx)
    return b.shader;
 }
 
+static nir_shader *
+get_depth_clear_rect_fs()
+{
+   nir_builder b;
+   const nir_shader_compiler_options *options = v3dv_pipeline_get_nir_options();
+   nir_builder_init_simple_shader(&b, NULL, MESA_SHADER_FRAGMENT, options);
+   b.shader->info.name = ralloc_strdup(b.shader, "meta depth clear fs");
+
+   nir_variable *fs_out_depth =
+      nir_variable_create(b.shader, nir_var_shader_out, glsl_float_type(),
+                          "out_depth");
+   fs_out_depth->data.location = FRAG_RESULT_DEPTH;
+
+   nir_intrinsic_instr *depth_load =
+      nir_intrinsic_instr_create(b.shader, nir_intrinsic_load_push_constant);
+   nir_intrinsic_set_base(depth_load, 0);
+   nir_intrinsic_set_range(depth_load, 4);
+   depth_load->src[0] = nir_src_for_ssa(nir_imm_int(&b, 0));
+   depth_load->num_components = 1;
+   nir_ssa_dest_init(&depth_load->instr, &depth_load->dest, 1, 32,
+                     "clear depth value");
+   nir_builder_instr_insert(&b, &depth_load->instr);
+
+   nir_store_var(&b, fs_out_depth, &depth_load->dest.ssa, 0x1);
+
+   return b.shader;
+}
+
 static VkResult
 create_color_clear_pipeline_layout(struct v3dv_device *device,
                                    VkPipelineLayout *pipeline_layout)
@@ -137,8 +160,25 @@ create_color_clear_pipeline_layout(struct v3dv_device *device,
 }
 
 static VkResult
+create_depth_clear_pipeline_layout(struct v3dv_device *device,
+                                   VkPipelineLayout *pipeline_layout)
+{
+   VkPipelineLayoutCreateInfo info = {
+      .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+      .setLayoutCount = 0,
+      .pushConstantRangeCount = 1,
+      .pPushConstantRanges =
+         &(VkPushConstantRange) { VK_SHADER_STAGE_FRAGMENT_BIT, 0, 4 },
+   };
+
+   return v3dv_CreatePipelineLayout(v3dv_device_to_handle(device),
+                                    &info, &device->alloc, pipeline_layout);
+}
+
+static VkResult
 create_pipeline(struct v3dv_device *device,
                 struct v3dv_render_pass *pass,
+                uint32_t subpass_idx,
                 uint32_t samples,
                 struct nir_shader *vs_nir,
                 struct nir_shader *fs_nir,
@@ -169,7 +209,7 @@ create_pipeline(struct v3dv_device *device,
    VkGraphicsPipelineCreateInfo info = {
       .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
 
-      .stageCount = 2,
+      .stageCount = fs_nir ? 2 : 1,
       .pStages = stages,
 
       .pVertexInputState = vi_state,
@@ -231,7 +271,7 @@ create_pipeline(struct v3dv_device *device,
       .flags = 0,
       .layout = layout,
       .renderPass = v3dv_render_pass_to_handle(pass),
-      .subpass = 0,
+      .subpass = subpass_idx,
    };
 
    VkResult result =
@@ -249,20 +289,17 @@ create_pipeline(struct v3dv_device *device,
 
 static VkResult
 create_color_clear_pipeline(struct v3dv_device *device,
+                            struct v3dv_render_pass *pass,
+                            uint32_t subpass_idx,
                             uint32_t rt_idx,
+                            VkFormat format,
                             uint32_t samples,
                             uint32_t components,
-                            VkRenderPass _pass,
                             VkPipelineLayout pipeline_layout,
                             VkPipeline *pipeline)
 {
-   /* For now we only support clearing a framebuffer with a single attachment */
-   assert(rt_idx == 0);
-
-   struct v3dv_render_pass *pass = v3dv_render_pass_from_handle(_pass);
-
-   nir_shader *vs_nir = get_color_clear_rect_vs();
-   nir_shader *fs_nir = get_color_clear_rect_fs(pass, rt_idx);
+   nir_shader *vs_nir = get_clear_rect_vs();
+   nir_shader *fs_nir = get_color_clear_rect_fs(rt_idx, format);
 
    const VkPipelineVertexInputStateCreateInfo vi_state = {
       .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
@@ -278,27 +315,84 @@ create_color_clear_pipeline(struct v3dv_device *device,
       .stencilTestEnable = false,
    };
 
-   /* FIXME: for now our color clear pipeline can only clear a single RT,
-    * but in the future we might want to be able to support multiple render
-    * targets. If we do that, then we might also be able to implement partial
-    * color clearing for vkCmdClearAttachments without having to split the
-    * subpass job at all.
-    */
-   VkPipelineColorBlendAttachmentState blend_att_state[1] = { 0 };
-   blend_att_state[rt_idx] = (VkPipelineColorBlendAttachmentState) {
-      .blendEnable = false,
-      .colorWriteMask = components,
-   };
+   assert(subpass_idx < pass->subpass_count);
+   const uint32_t color_count = pass->subpasses[subpass_idx].color_count;
+   assert(rt_idx < color_count);
+
+   VkPipelineColorBlendAttachmentState blend_att_state[V3D_MAX_DRAW_BUFFERS];
+   for (uint32_t i = 0; i < color_count; i++) {
+      blend_att_state[i] = (VkPipelineColorBlendAttachmentState) {
+         .blendEnable = false,
+         .colorWriteMask = i == rt_idx ? components : 0,
+      };
+   }
 
    const VkPipelineColorBlendStateCreateInfo cb_state = {
       .sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
       .logicOpEnable = false,
-      .attachmentCount = 1,
+      .attachmentCount = color_count,
       .pAttachments = blend_att_state
    };
 
    return create_pipeline(device,
-                          pass,
+                          pass, subpass_idx,
+                          samples,
+                          vs_nir, fs_nir,
+                          &vi_state,
+                          &ds_state,
+                          &cb_state,
+                          pipeline_layout,
+                          pipeline);
+}
+
+static VkResult
+create_depth_clear_pipeline(struct v3dv_device *device,
+                            VkImageAspectFlags aspects,
+                            struct v3dv_render_pass *pass,
+                            uint32_t subpass_idx,
+                            uint32_t samples,
+                            VkPipelineLayout pipeline_layout,
+                            VkPipeline *pipeline)
+{
+   const bool has_depth = aspects & VK_IMAGE_ASPECT_DEPTH_BIT;
+   const bool has_stencil = aspects & VK_IMAGE_ASPECT_STENCIL_BIT;
+   assert(has_depth || has_stencil);
+
+   nir_shader *vs_nir = get_clear_rect_vs();
+   nir_shader *fs_nir = has_depth ? get_depth_clear_rect_fs() : NULL;
+
+   const VkPipelineVertexInputStateCreateInfo vi_state = {
+      .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
+      .vertexBindingDescriptionCount = 0,
+      .vertexAttributeDescriptionCount = 0,
+   };
+
+   const VkPipelineDepthStencilStateCreateInfo ds_state = {
+      .sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
+      .depthTestEnable = has_depth,
+      .depthWriteEnable = has_depth,
+      .depthCompareOp = VK_COMPARE_OP_ALWAYS,
+      .depthBoundsTestEnable = false,
+      .stencilTestEnable = has_stencil,
+      .front = {
+         .passOp = VK_STENCIL_OP_REPLACE,
+         .compareOp = VK_COMPARE_OP_ALWAYS,
+         /* compareMask, writeMask and reference are dynamic state */
+      },
+      .back = { 0 },
+   };
+
+   assert(subpass_idx < pass->subpass_count);
+   VkPipelineColorBlendAttachmentState blend_att_state[V3D_MAX_DRAW_BUFFERS] = { 0 };
+   const VkPipelineColorBlendStateCreateInfo cb_state = {
+      .sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
+      .logicOpEnable = false,
+      .attachmentCount = pass->subpasses[subpass_idx].color_count,
+      .pAttachments = blend_att_state,
+   };
+
+   return create_pipeline(device,
+                          pass, subpass_idx,
                           samples,
                           vs_nir, fs_nir,
                           &vi_state,
@@ -310,6 +404,7 @@ create_color_clear_pipeline(struct v3dv_device *device,
 
 static VkResult
 create_color_clear_render_pass(struct v3dv_device *device,
+                               uint32_t rt_idx,
                                VkFormat format,
                                uint32_t samples,
                                VkRenderPass *pass)
@@ -324,7 +419,7 @@ create_color_clear_render_pass(struct v3dv_device *device,
    };
 
    VkAttachmentReference att_ref = {
-      .attachment = 0,
+      .attachment = rt_idx,
       .layout = VK_IMAGE_LAYOUT_GENERAL,
    };
 
@@ -354,9 +449,36 @@ create_color_clear_render_pass(struct v3dv_device *device,
 }
 
 static inline uint64_t
-get_color_clear_pipeline_cache_key(VkFormat format,
+get_color_clear_pipeline_cache_key(uint32_t rt_idx,
+                                   VkFormat format,
                                    uint32_t samples,
                                    uint32_t components)
+{
+   assert(rt_idx < V3D_MAX_DRAW_BUFFERS);
+
+   uint64_t key = 0;
+   uint32_t bit_offset = 0;
+
+   key |= rt_idx;
+   bit_offset += 2;
+
+   key |= ((uint64_t) format) << bit_offset;
+   bit_offset += 32;
+
+   key |= ((uint64_t) samples) << bit_offset;
+   bit_offset += 4;
+
+   key |= ((uint64_t) components) << bit_offset;
+   bit_offset += 4;
+
+   assert(bit_offset <= 64);
+   return key;
+}
+
+static inline uint64_t
+get_depth_clear_pipeline_cache_key(VkImageAspectFlags aspects,
+                                   VkFormat format,
+                                   uint32_t samples)
 {
    uint64_t key = 0;
    uint32_t bit_offset = 0;
@@ -367,19 +489,31 @@ get_color_clear_pipeline_cache_key(VkFormat format,
    key |= ((uint64_t) samples) << bit_offset;
    bit_offset += 4;
 
-   key |= ((uint64_t) components) << bit_offset;
-   bit_offset += 4;
+   const bool has_depth = (aspects & VK_IMAGE_ASPECT_DEPTH_BIT) ? 1 : 0;
+   key |= ((uint64_t) has_depth) << bit_offset;
+   bit_offset++;
 
+   const bool has_stencil = (aspects & VK_IMAGE_ASPECT_STENCIL_BIT) ? 1 : 0;
+   key |= ((uint64_t) has_stencil) << bit_offset;
+   bit_offset++;;
+
+   assert(bit_offset <= 64);
    return key;
 }
 
 static VkResult
 get_color_clear_pipeline(struct v3dv_device *device,
+                         struct v3dv_render_pass *pass,
+                         uint32_t subpass_idx,
+                         uint32_t rt_idx,
+                         uint32_t attachment_idx,
                          VkFormat format,
                          uint32_t samples,
                          uint32_t components,
                          struct v3dv_meta_color_clear_pipeline **pipeline)
 {
+   assert(vk_format_is_color(format));
+
    VkResult result = VK_SUCCESS;
 
    mtx_lock(&device->meta.mtx);
@@ -393,7 +527,7 @@ get_color_clear_pipeline(struct v3dv_device *device,
       return result;
 
    const uint64_t key =
-      get_color_clear_pipeline_cache_key(format, samples, components);
+      get_color_clear_pipeline_cache_key(rt_idx, format, samples, components);
    mtx_lock(&device->meta.mtx);
    struct hash_entry *entry =
       _mesa_hash_table_search(device->meta.color_clear.cache, &key);
@@ -411,18 +545,28 @@ get_color_clear_pipeline(struct v3dv_device *device,
       goto fail;
    }
 
-   result = create_color_clear_render_pass(device,
-                                           format,
-                                           samples,
-                                           &(*pipeline)->pass);
-   if (result != VK_SUCCESS)
-      goto fail;
+   if (!pass) {
+      result = create_color_clear_render_pass(device,
+                                              rt_idx,
+                                              format,
+                                              samples,
+                                              &(*pipeline)->pass);
+      if (result != VK_SUCCESS)
+         goto fail;
+
+      (*pipeline)->free_render_pass = true;
+      pass = v3dv_render_pass_from_handle((*pipeline)->pass);
+   } else {
+      (*pipeline)->pass = v3dv_render_pass_to_handle(pass);
+   }
 
    result = create_color_clear_pipeline(device,
-                                        0 /* rt_idx*/,
+                                        pass,
+                                        subpass_idx,
+                                        rt_idx,
+                                        format,
                                         samples,
                                         components,
-                                        (*pipeline)->pass,
                                         device->meta.color_clear.playout,
                                         &(*pipeline)->pipeline);
    if (result != VK_SUCCESS)
@@ -438,8 +582,84 @@ fail:
 
    VkDevice _device = v3dv_device_to_handle(device);
    if (*pipeline) {
-      if ((*pipeline)->pass)
+      if ((*pipeline)->free_render_pass)
          v3dv_DestroyRenderPass(_device, (*pipeline)->pass, &device->alloc);
+      if ((*pipeline)->pipeline)
+         v3dv_DestroyPipeline(_device, (*pipeline)->pipeline, &device->alloc);
+      vk_free(&device->alloc, *pipeline);
+      *pipeline = NULL;
+   }
+
+   return result;
+}
+
+static VkResult
+get_depth_clear_pipeline(struct v3dv_device *device,
+                         VkImageAspectFlags aspects,
+                         struct v3dv_render_pass *pass,
+                         uint32_t subpass_idx,
+                         uint32_t attachment_idx,
+                         struct v3dv_meta_depth_clear_pipeline **pipeline)
+{
+   assert(subpass_idx < pass->subpass_count);
+   assert(attachment_idx != VK_ATTACHMENT_UNUSED);
+   assert(attachment_idx < pass->attachment_count);
+
+   VkResult result = VK_SUCCESS;
+
+   mtx_lock(&device->meta.mtx);
+   if (!device->meta.depth_clear.playout) {
+      result =
+         create_depth_clear_pipeline_layout(device,
+                                            &device->meta.depth_clear.playout);
+   }
+   mtx_unlock(&device->meta.mtx);
+   if (result != VK_SUCCESS)
+      return result;
+
+   const uint32_t samples = pass->attachments[attachment_idx].desc.samples;
+   const VkFormat format = pass->attachments[attachment_idx].desc.format;
+   assert(vk_format_is_depth_or_stencil(format));
+
+   const uint64_t key =
+      get_depth_clear_pipeline_cache_key(aspects, format, samples);
+   mtx_lock(&device->meta.mtx);
+   struct hash_entry *entry =
+      _mesa_hash_table_search(device->meta.depth_clear.cache, &key);
+   if (entry) {
+      mtx_unlock(&device->meta.mtx);
+      *pipeline = entry->data;
+      return VK_SUCCESS;
+   }
+
+   *pipeline = vk_zalloc2(&device->alloc, NULL, sizeof(**pipeline), 8,
+                          VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
+
+   if (*pipeline == NULL) {
+      result = VK_ERROR_OUT_OF_HOST_MEMORY;
+      goto fail;
+   }
+
+   result = create_depth_clear_pipeline(device,
+                                        aspects,
+                                        pass,
+                                        subpass_idx,
+                                        samples,
+                                        device->meta.depth_clear.playout,
+                                        &(*pipeline)->pipeline);
+   if (result != VK_SUCCESS)
+      goto fail;
+
+   _mesa_hash_table_insert(device->meta.depth_clear.cache, &key, *pipeline);
+
+   mtx_unlock(&device->meta.mtx);
+   return VK_SUCCESS;
+
+fail:
+   mtx_unlock(&device->meta.mtx);
+
+   VkDevice _device = v3dv_device_to_handle(device);
+   if (*pipeline) {
       if ((*pipeline)->pipeline)
          v3dv_DestroyPipeline(_device, (*pipeline)->pipeline, &device->alloc);
       vk_free(&device->alloc, *pipeline);
@@ -470,14 +690,24 @@ get_color_format_for_depth_stencil_format(VkFormat format)
 }
 
 /**
- * Emits a scissored quad in the clear color. Notice this can also handle
- * depth/stencil formats by rendering to the depth/stencil target using
- * a compatible color format.
+ * Emits a scissored quad in the clear color, however, unlike the subpass
+ * versions, this creates its own framebuffer setup with a single color
+ * attachment, and therefore spanws new jobs, making it much slower than the
+ * subpass version.
+ *
+ * This path is only used when we have clears on layers other than the
+ * base layer in a framebuffer attachment, since we don't currently
+ * support any form of layered rendering that would allow us to implement
+ * this in the subpass version.
+ *
+ * Notice this can also handle depth/stencil formats by rendering to the
+ * depth/stencil target using a compatible color format.
  */
 static void
 emit_color_clear_rect(struct v3dv_cmd_buffer *cmd_buffer,
                       uint32_t attachment_idx,
                       VkFormat rt_format,
+                      uint32_t rt_samples,
                       uint32_t rt_components,
                       VkClearColorValue clear_color,
                       const VkClearRect *rect)
@@ -489,11 +719,12 @@ emit_color_clear_rect(struct v3dv_cmd_buffer *cmd_buffer,
    assert(attachment_idx != VK_ATTACHMENT_UNUSED &&
           attachment_idx < pass->attachment_count);
 
-   const uint32_t rt_samples = pass->attachments[attachment_idx].desc.samples;
-
    struct v3dv_meta_color_clear_pipeline *pipeline = NULL;
    VkResult result =
-      get_color_clear_pipeline(device, rt_format, rt_samples, rt_components,
+      get_color_clear_pipeline(device,
+                               NULL, 0, /* Not using current subpass */
+                               0, attachment_idx,
+                               rt_format, rt_samples, rt_components,
                                &pipeline);
    if (result != VK_SUCCESS) {
       if (result == VK_ERROR_OUT_OF_HOST_MEMORY)
@@ -624,7 +855,7 @@ emit_color_clear_rect(struct v3dv_cmd_buffer *cmd_buffer,
    dirty_dynamic_state = V3DV_CMD_DIRTY_VIEWPORT | V3DV_CMD_DIRTY_SCISSOR;
 
 fail:
-   v3dv_cmd_buffer_meta_state_pop(cmd_buffer, dirty_dynamic_state);
+   v3dv_cmd_buffer_meta_state_pop(cmd_buffer, dirty_dynamic_state, true);
 }
 
 static void
@@ -641,6 +872,9 @@ emit_ds_clear_rect(struct v3dv_cmd_buffer *cmd_buffer,
    VkFormat format =
       cmd_buffer->state.pass->attachments[attachment_idx].desc.format;
    assert ((aspects & ~vk_format_aspects(format)) == 0);
+
+   uint32_t samples =
+      cmd_buffer->state.pass->attachments[attachment_idx].desc.samples;
 
    enum pipe_format pformat = vk_format_to_pipe_format(format);
    VkClearColorValue clear_color;
@@ -679,8 +913,170 @@ emit_ds_clear_rect(struct v3dv_cmd_buffer *cmd_buffer,
       clear_color.uint32[0] = clear_zs;
    }
 
-   emit_color_clear_rect(cmd_buffer, attachment_idx, color_format, comps,
+   emit_color_clear_rect(cmd_buffer, attachment_idx,
+                         color_format, samples, comps,
                          clear_color, rect);
+}
+
+/* Emits a scissored quad in the clear color.
+ *
+ * This path only works for clears to the base layer in the framebuffer, since
+ * we don't currently support any form of layered rendering.
+ */
+static void
+emit_subpass_color_clear_rects(struct v3dv_cmd_buffer *cmd_buffer,
+                               struct v3dv_render_pass *pass,
+                               struct v3dv_subpass *subpass,
+                               uint32_t rt_idx,
+                               const VkClearColorValue *clear_color,
+                               uint32_t rect_count,
+                               const VkClearRect *rects)
+{
+   /* Skip if attachment is unused in the current subpass */
+   assert(rt_idx < subpass->color_count);
+   const uint32_t attachment_idx = subpass->color_attachments[rt_idx].attachment;
+   if (attachment_idx == VK_ATTACHMENT_UNUSED)
+      return;
+
+   /* Obtain a pipeline for this clear */
+   assert(attachment_idx < cmd_buffer->state.pass->attachment_count);
+   const VkFormat format =
+      cmd_buffer->state.pass->attachments[attachment_idx].desc.format;
+   const VkFormat samples =
+      cmd_buffer->state.pass->attachments[attachment_idx].desc.samples;
+   const uint32_t components = VK_COLOR_COMPONENT_R_BIT |
+                               VK_COLOR_COMPONENT_G_BIT |
+                               VK_COLOR_COMPONENT_B_BIT |
+                               VK_COLOR_COMPONENT_A_BIT;
+   struct v3dv_meta_color_clear_pipeline *pipeline = NULL;
+   VkResult result = get_color_clear_pipeline(cmd_buffer->device,
+                                              pass,
+                                              cmd_buffer->state.subpass_idx,
+                                              rt_idx,
+                                              attachment_idx,
+                                              format,
+                                              samples,
+                                              components,
+                                              &pipeline);
+   if (result != VK_SUCCESS) {
+      if (result == VK_ERROR_OUT_OF_HOST_MEMORY)
+         v3dv_flag_oom(cmd_buffer, NULL);
+      return;
+   }
+   assert(pipeline && pipeline->pipeline);
+
+   /* Emit clear rects */
+   v3dv_cmd_buffer_meta_state_push(cmd_buffer, false);
+
+   VkCommandBuffer cmd_buffer_handle = v3dv_cmd_buffer_to_handle(cmd_buffer);
+   v3dv_CmdPushConstants(cmd_buffer_handle,
+                         cmd_buffer->device->meta.depth_clear.playout,
+                         VK_SHADER_STAGE_FRAGMENT_BIT, 0, 16,
+                         clear_color->float32);
+
+   v3dv_CmdBindPipeline(cmd_buffer_handle,
+                        VK_PIPELINE_BIND_POINT_GRAPHICS,
+                        pipeline->pipeline);
+
+   uint32_t dynamic_states = V3DV_CMD_DIRTY_VIEWPORT | V3DV_CMD_DIRTY_SCISSOR;
+
+   for (uint32_t i = 0; i < rect_count; i++) {
+      assert(rects[i].baseArrayLayer == 0 && rects[i].layerCount == 1);
+      const VkViewport viewport = {
+         .x = rects[i].rect.offset.x,
+         .y = rects[i].rect.offset.y,
+         .width = rects[i].rect.extent.width,
+         .height = rects[i].rect.extent.height,
+         .minDepth = 0.0f,
+         .maxDepth = 1.0f
+      };
+      v3dv_CmdSetViewport(cmd_buffer_handle, 0, 1, &viewport);
+      v3dv_CmdSetScissor(cmd_buffer_handle, 0, 1, &rects[i].rect);
+      v3dv_CmdDraw(cmd_buffer_handle, 4, 1, 0, 0);
+   }
+
+   v3dv_cmd_buffer_meta_state_pop(cmd_buffer, dynamic_states, false);
+}
+
+/* Emits a scissored quad, clearing the depth aspect by writing to gl_FragDepth
+ * and the stencil aspect by using stencil testing.
+ *
+ * This path only works for clears to the base layer in the framebuffer, since
+ * we don't currently support any form of layered rendering.
+ */
+static void
+emit_subpass_ds_clear_rects(struct v3dv_cmd_buffer *cmd_buffer,
+                            struct v3dv_render_pass *pass,
+                            struct v3dv_subpass *subpass,
+                            VkImageAspectFlags aspects,
+                            const VkClearDepthStencilValue *clear_ds,
+                            uint32_t rect_count,
+                            const VkClearRect *rects)
+{
+   /* Skip if attachment is unused in the current subpass */
+   const uint32_t attachment_idx = subpass->ds_attachment.attachment;
+   if (attachment_idx == VK_ATTACHMENT_UNUSED)
+      return;
+
+   /* Obtain a pipeline for this clear */
+   assert(attachment_idx < cmd_buffer->state.pass->attachment_count);
+   struct v3dv_meta_depth_clear_pipeline *pipeline = NULL;
+   VkResult result = get_depth_clear_pipeline(cmd_buffer->device,
+                                              aspects,
+                                              pass,
+                                              cmd_buffer->state.subpass_idx,
+                                              attachment_idx,
+                                              &pipeline);
+   if (result != VK_SUCCESS) {
+      if (result == VK_ERROR_OUT_OF_HOST_MEMORY)
+         v3dv_flag_oom(cmd_buffer, NULL);
+      return;
+   }
+   assert(pipeline && pipeline->pipeline);
+
+   /* Emit clear rects */
+   v3dv_cmd_buffer_meta_state_push(cmd_buffer, false);
+
+   VkCommandBuffer cmd_buffer_handle = v3dv_cmd_buffer_to_handle(cmd_buffer);
+   v3dv_CmdPushConstants(cmd_buffer_handle,
+                         cmd_buffer->device->meta.depth_clear.playout,
+                         VK_SHADER_STAGE_FRAGMENT_BIT, 0, 4,
+                         &clear_ds->depth);
+
+   v3dv_CmdBindPipeline(cmd_buffer_handle,
+                        VK_PIPELINE_BIND_POINT_GRAPHICS,
+                        pipeline->pipeline);
+
+   uint32_t dynamic_states = V3DV_CMD_DIRTY_VIEWPORT | V3DV_CMD_DIRTY_SCISSOR;
+   if (aspects & VK_IMAGE_ASPECT_STENCIL_BIT) {
+      v3dv_CmdSetStencilReference(cmd_buffer_handle,
+                                  VK_STENCIL_FACE_FRONT_AND_BACK,
+                                  clear_ds->stencil);
+      v3dv_CmdSetStencilWriteMask(cmd_buffer_handle,
+                                  VK_STENCIL_FACE_FRONT_AND_BACK, 0xff);
+      v3dv_CmdSetStencilCompareMask(cmd_buffer_handle,
+                                    VK_STENCIL_FACE_FRONT_AND_BACK, 0xff);
+      dynamic_states |= VK_DYNAMIC_STATE_STENCIL_COMPARE_MASK |
+                        VK_DYNAMIC_STATE_STENCIL_WRITE_MASK |
+                        VK_DYNAMIC_STATE_STENCIL_REFERENCE;
+   }
+
+   for (uint32_t i = 0; i < rect_count; i++) {
+      assert(rects[i].baseArrayLayer == 0 && rects[i].layerCount == 1);
+      const VkViewport viewport = {
+         .x = rects[i].rect.offset.x,
+         .y = rects[i].rect.offset.y,
+         .width = rects[i].rect.extent.width,
+         .height = rects[i].rect.extent.height,
+         .minDepth = 0.0f,
+         .maxDepth = 1.0f
+      };
+      v3dv_CmdSetViewport(cmd_buffer_handle, 0, 1, &viewport);
+      v3dv_CmdSetScissor(cmd_buffer_handle, 0, 1, &rects[i].rect);
+      v3dv_CmdDraw(cmd_buffer_handle, 4, 1, 0, 0);
+   }
+
+   v3dv_cmd_buffer_meta_state_pop(cmd_buffer, dynamic_states, false);
 }
 
 static void
@@ -1137,6 +1533,16 @@ handle_deferred_clear_attachments(struct v3dv_cmd_buffer *cmd_buffer,
                                   cmd_buffer->state.subpass_idx);
 }
 
+static bool
+all_clear_rects_in_base_layer(uint32_t rect_count, const VkClearRect *rects)
+{
+   for (uint32_t i = 0; i < rect_count; i++) {
+      if (rects[i].baseArrayLayer != 0 || rects[i].layerCount != 1)
+         return false;
+   }
+   return true;
+}
+
 void
 v3dv_CmdClearAttachments(VkCommandBuffer commandBuffer,
                          uint32_t attachmentCount,
@@ -1176,17 +1582,50 @@ v3dv_CmdClearAttachments(VkCommandBuffer commandBuffer,
 
    assert(cmd_buffer->state.framebuffer);
 
-   /* Check if we can use the fast path via the TLB */
+   struct v3dv_render_pass *pass = cmd_buffer->state.pass;
+
+   assert(cmd_buffer->state.subpass_idx < pass->subpass_count);
+   struct v3dv_subpass *subpass =
+      &cmd_buffer->state.pass->subpasses[cmd_buffer->state.subpass_idx];
+
+   /* First we try to handle this by emitting a clear rect inside the
+    * current job for this subpass. This should be optimal but this method
+    * cannot handle clearing layers other than the base layer, since we don't
+    * support any form of layered rendering yet.
+    */
+   if (all_clear_rects_in_base_layer(rectCount, pRects)) {
+      for (uint32_t i = 0; i < attachmentCount; i++) {
+         if (pAttachments[i].aspectMask & VK_IMAGE_ASPECT_COLOR_BIT) {
+            emit_subpass_color_clear_rects(cmd_buffer, pass, subpass,
+                                           pAttachments[i].colorAttachment,
+                                           &pAttachments[i].clearValue.color,
+                                           rectCount, pRects);
+         } else {
+            emit_subpass_ds_clear_rects(cmd_buffer, pass, subpass,
+                                        pAttachments[i].aspectMask,
+                                        &pAttachments[i].clearValue.depthStencil,
+                                        rectCount, pRects);
+         }
+      }
+      return;
+   }
+
+   perf_debug("Falling back to slow path for vkCmdClearAttachments due to "
+              "clearing layers other than the base array layer.\n");
+
+   /* If we can't handle this as a draw call inside the current job then we
+    * will have to spawn jobs for the clears, which will be slow. In that case,
+    * try to use the TLB to clear if possible.
+    */
    if (can_use_tlb_clear(cmd_buffer, rectCount, pRects)) {
       emit_tlb_clear(cmd_buffer, attachmentCount, pAttachments,
                      pRects[0].baseArrayLayer, pRects[0].layerCount);
       return;
    }
 
-   /* Otherwise, fall back to drawing rects with the clear value */
-   const struct v3dv_subpass *subpass =
-      &cmd_buffer->state.pass->subpasses[cmd_buffer->state.subpass_idx];
-
+   /* Otherwise, fall back to drawing rects with the clear value using a
+    * separate job. This is the slowest path.
+    */
    for (uint32_t i = 0; i < attachmentCount; i++) {
       uint32_t attachment_idx = VK_ATTACHMENT_UNUSED;
 
@@ -1206,12 +1645,15 @@ v3dv_CmdClearAttachments(VkCommandBuffer commandBuffer,
                                      VK_COLOR_COMPONENT_G_BIT |
                                      VK_COLOR_COMPONENT_B_BIT |
                                      VK_COLOR_COMPONENT_A_BIT;
+         const uint32_t samples =
+            cmd_buffer->state.pass->attachments[attachment_idx].desc.samples;
          const VkFormat format =
             cmd_buffer->state.pass->attachments[attachment_idx].desc.format;
          for (uint32_t j = 0; j < rectCount; j++) {
             emit_color_clear_rect(cmd_buffer,
                                   attachment_idx,
                                   format,
+                                  samples,
                                   components,
                                   pAttachments[i].clearValue.color,
                                   &pRects[j]);

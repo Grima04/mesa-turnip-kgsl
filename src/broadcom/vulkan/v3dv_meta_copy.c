@@ -3895,7 +3895,7 @@ blit_shader(struct v3dv_cmd_buffer *cmd_buffer,
    }
 
 fail:
-   v3dv_cmd_buffer_meta_state_pop(cmd_buffer, dirty_dynamic_state);
+   v3dv_cmd_buffer_meta_state_pop(cmd_buffer, dirty_dynamic_state, true);
 
    return handled;
 }
