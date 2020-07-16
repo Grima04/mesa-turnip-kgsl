@@ -56,6 +56,10 @@ cache_dump_stats(struct v3dv_pipeline_cache *cache)
    fprintf(stderr, "  NIR cache entries:      %d\n", cache->nir_stats.count);
    fprintf(stderr, "  NIR cache miss count:   %d\n", cache->nir_stats.miss);
    fprintf(stderr, "  NIR cache hit  count:   %d\n", cache->nir_stats.hit);
+
+   fprintf(stderr, "  variant cache entries:      %d\n", cache->variant_stats.count);
+   fprintf(stderr, "  variant cache miss count:   %d\n", cache->variant_stats.miss);
+   fprintf(stderr, "  variant cache hit  count:   %d\n", cache->variant_stats.hit);
 }
 
 void
@@ -186,10 +190,152 @@ pipeline_cache_init(struct v3dv_pipeline_cache *cache,
       cache->nir_stats.miss = 0;
       cache->nir_stats.hit = 0;
       cache->nir_stats.count = 0;
+
+      cache->variant_cache = _mesa_hash_table_create(NULL, sha1_hash_func,
+                                                     sha1_compare_func);
+      cache->variant_stats.miss = 0;
+      cache->variant_stats.hit = 0;
+      cache->variant_stats.count = 0;
    } else {
       cache->nir_cache = NULL;
+      cache->variant_cache = NULL;
    }
 
+}
+
+struct v3dv_shader_variant*
+v3dv_pipeline_cache_search_for_variant(struct v3dv_pipeline *pipeline,
+                                       struct v3dv_pipeline_cache *cache,
+                                       unsigned char sha1_key[20])
+{
+   if (!cache || !cache->nir_cache)
+      return NULL;
+
+   if (unlikely(dump_stats)) {
+      char sha1buf[41];
+      _mesa_sha1_format(sha1buf, sha1_key);
+
+      fprintf(stderr, "pipeline cache %p, search variant with key %s\n", cache, sha1buf);
+   }
+
+   pthread_mutex_lock(&cache->mutex);
+
+   struct hash_entry *entry =
+      _mesa_hash_table_search(cache->variant_cache, sha1_key);
+
+   if (entry) {
+      struct v3dv_shader_variant *variant =
+         (struct v3dv_shader_variant *) entry->data;
+
+      if (unlikely(dump_stats)) {
+         fprintf(stderr, "\tcache hit: %p\n", variant);
+         cache->variant_stats.hit++;
+         cache_dump_stats(cache);
+      }
+
+      if (variant)
+         v3dv_shader_variant_ref(variant);
+
+      pthread_mutex_unlock(&cache->mutex);
+      return variant;
+   }
+
+   if (unlikely(dump_stats)) {
+      fprintf(stderr, "\tcache miss\n");
+      cache->variant_stats.miss++;
+      cache_dump_stats(cache);
+   }
+
+   pthread_mutex_unlock(&cache->mutex);
+   return NULL;
+}
+
+void
+v3dv_pipeline_cache_upload_variant(struct v3dv_pipeline *pipeline,
+                                   struct v3dv_pipeline_cache *cache,
+                                   struct v3dv_shader_variant  *variant)
+{
+   if (!cache || !cache->variant_cache)
+      return;
+
+   pthread_mutex_lock(&cache->mutex);
+   struct hash_entry *entry =
+      _mesa_hash_table_search(cache->variant_cache, variant->variant_sha1);
+
+   if (entry) {
+      pthread_mutex_unlock(&cache->mutex);
+      return;
+   }
+
+   v3dv_shader_variant_ref(variant);
+   _mesa_hash_table_insert(cache->variant_cache, variant->variant_sha1, variant);
+   if (unlikely(dump_stats)) {
+      char sha1buf[41];
+      _mesa_sha1_format(sha1buf, variant->variant_sha1);
+
+      fprintf(stderr, "pipeline cache %p, new variant entry with key %s\n\t%p\n",
+              cache, sha1buf, variant);
+      cache->variant_stats.count++;
+      cache_dump_stats(cache);
+   }
+
+   pthread_mutex_unlock(&cache->mutex);
+}
+
+static struct v3dv_shader_variant*
+shader_variant_create_from_blob(struct v3dv_device *device,
+                                struct blob_reader *blob)
+{
+   VkResult result;
+
+   gl_shader_stage stage = blob_read_uint32(blob);
+   bool is_coord = blob_read_uint8(blob);
+
+   const unsigned char *variant_sha1 = blob_read_bytes(blob, 20);
+
+   uint32_t prog_data_size = blob_read_uint32(blob);
+   /* FIXME: as we include the stage perhaps we can avoid prog_data_size? */
+   assert(prog_data_size == v3d_prog_data_size(stage));
+
+   const void *prog_data = blob_read_bytes(blob, prog_data_size);
+   if (blob->overrun)
+      return NULL;
+
+   uint32_t ulist_count = blob_read_uint32(blob);
+   uint32_t contents_size = sizeof(enum quniform_contents) * ulist_count;
+   const void *contents_data = blob_read_bytes(blob, contents_size);
+   if (blob->overrun)
+      return NULL;
+
+   uint ulist_data_size = sizeof(uint32_t) * ulist_count;
+   const void *ulist_data_data = blob_read_bytes(blob, ulist_data_size);
+   if (blob->overrun)
+      return NULL;
+
+   uint32_t qpu_insts_size = blob_read_uint32(blob);
+   const uint64_t *qpu_insts = blob_read_bytes(blob, qpu_insts_size);
+   if (blob->overrun)
+      return NULL;
+
+   /* shader_variant_create expects a newly created prog_data for their own,
+    * as it is what the v3d compiler returns. So we are also allocating one
+    * (including the uniform list) and filled it up with the data that we read
+    * from the blob
+    */
+   struct v3d_prog_data *new_prog_data = rzalloc_size(NULL, prog_data_size);
+   memcpy(new_prog_data, prog_data, prog_data_size);
+   struct v3d_uniform_list *ulist = &new_prog_data->uniforms;
+   ulist->count = ulist_count;
+   ulist->contents = ralloc_array(new_prog_data, enum quniform_contents, ulist->count);
+   memcpy(ulist->contents, contents_data, contents_size);
+   ulist->data = ralloc_array(new_prog_data, uint32_t, ulist->count);
+   memcpy(ulist->data, ulist_data_data, ulist_data_size);
+
+   return v3dv_shader_variant_create(device, stage, is_coord,
+                                     variant_sha1,
+                                     new_prog_data, prog_data_size,
+                                     qpu_insts, qpu_insts_size,
+                                     &result);
 }
 
 static void
@@ -200,6 +346,21 @@ pipeline_cache_load(struct v3dv_pipeline_cache *cache,
    struct v3dv_device *device = cache->device;
    struct v3dv_physical_device *pdevice = &device->instance->physicalDevice;
    struct vk_pipeline_cache_header header;
+
+   if (cache->variant_cache == NULL)
+      return;
+
+   struct blob_reader blob;
+   blob_reader_init(&blob, data, size);
+
+   blob_copy_bytes(&blob, &header, sizeof(header));
+   uint32_t count = blob_read_uint32(&blob);
+   if (blob.overrun)
+      return;
+
+   if (unlikely(dump_stats)) {
+      fprintf(stderr, "pipeline cache %p, loading %i variant entries\n", cache, count);
+   }
 
    if (size < sizeof(header))
       return;
@@ -215,9 +376,16 @@ pipeline_cache_load(struct v3dv_pipeline_cache *cache,
    if (memcmp(header.uuid, pdevice->pipeline_cache_uuid, VK_UUID_SIZE) != 0)
       return;
 
-   /* FIXME: at this point we only verify the header but we dont really load
-    * any data. pending to implement serialize/deserialize among other things.
-    */
+   for (uint32_t i = 0; i < count; i++) {
+      struct v3dv_shader_variant *variant =
+         shader_variant_create_from_blob(device, &blob);
+      if (!variant)
+         break;
+      _mesa_hash_table_insert(cache->variant_cache, variant->variant_sha1, variant);
+      if (unlikely(dump_stats))
+         cache->variant_stats.count++;
+   }
+
 }
 
 VkResult
@@ -271,6 +439,15 @@ v3dv_DestroyPipelineCache(VkDevice _device,
          ralloc_free(entry->data);
 
       _mesa_hash_table_destroy(cache->nir_cache, NULL);
+
+      hash_table_foreach(cache->variant_cache, entry) {
+         struct v3dv_shader_variant *variant = entry->data;
+         if (variant)
+            v3dv_shader_variant_unref(device, variant);
+      }
+
+      _mesa_hash_table_destroy(cache->variant_cache, NULL);
+
    }
 
    vk_free2(&device->alloc, pAllocator, cache);
@@ -288,6 +465,30 @@ v3dv_MergePipelineCaches(VkDevice device,
    return VK_SUCCESS;
 }
 
+static bool
+shader_variant_write_to_blob(const struct v3dv_shader_variant *variant,
+                             struct blob *blob)
+{
+   blob_write_uint32(blob, variant->stage);
+   blob_write_uint8(blob, variant->is_coord);
+
+   blob_write_bytes(blob, variant->variant_sha1, sizeof(variant->variant_sha1));
+
+   blob_write_uint32(blob, variant->prog_data_size);
+   blob_write_bytes(blob, variant->prog_data.base, variant->prog_data_size);
+
+   struct v3d_uniform_list *ulist = &variant->prog_data.base->uniforms;
+   blob_write_uint32(blob, ulist->count);
+   blob_write_bytes(blob, ulist->contents, sizeof(enum quniform_contents) * ulist->count);
+   blob_write_bytes(blob, ulist->data, sizeof(uint32_t) * ulist->count);
+
+   blob_write_uint32(blob, variant->qpu_insts_size);
+   assert(variant->assembly_bo->map);
+   blob_write_bytes(blob, variant->assembly_bo->map, variant->qpu_insts_size);
+
+   return !blob->out_of_memory;
+}
+
 VkResult
 v3dv_GetPipelineCacheData(VkDevice _device,
                           VkPipelineCache _cache,
@@ -296,32 +497,68 @@ v3dv_GetPipelineCacheData(VkDevice _device,
 {
    V3DV_FROM_HANDLE(v3dv_device, device, _device);
    V3DV_FROM_HANDLE(v3dv_pipeline_cache, cache, _cache);
+
+   struct blob blob;
+   if (pData) {
+      blob_init_fixed(&blob, pData, *pDataSize);
+   } else {
+      blob_init_fixed(&blob, NULL, SIZE_MAX);
+   }
+
    struct v3dv_physical_device *pdevice = &device->instance->physicalDevice;
-   struct vk_pipeline_cache_header *header;
    VkResult result = VK_SUCCESS;
 
    pthread_mutex_lock(&cache->mutex);
 
-   /* FIXME: at this point the cache data is just the header */
-   const size_t size = sizeof(*header);
-   if (pData == NULL) {
-      pthread_mutex_unlock(&cache->mutex);
-      *pDataSize = size;
-      return VK_SUCCESS;
-   }
-   if (*pDataSize < sizeof(*header)) {
-      pthread_mutex_unlock(&cache->mutex);
+   struct vk_pipeline_cache_header header = {
+      .header_size = sizeof(struct vk_pipeline_cache_header),
+      .header_version = VK_PIPELINE_CACHE_HEADER_VERSION_ONE,
+      .vendor_id = v3dv_physical_device_vendor_id(pdevice),
+      .device_id = v3dv_physical_device_device_id(pdevice),
+   };
+   memcpy(header.uuid, pdevice->pipeline_cache_uuid, VK_UUID_SIZE);
+   blob_write_bytes(&blob, &header, sizeof(header));
+
+   uint32_t count = 0;
+   intptr_t count_offset = blob_reserve_uint32(&blob);
+   if (count_offset < 0) {
       *pDataSize = 0;
+      blob_finish(&blob);
+      pthread_mutex_unlock(&cache->mutex);
       return VK_INCOMPLETE;
    }
 
-   header = pData;
-   header->header_size = sizeof(*header);
-   header->header_version = VK_PIPELINE_CACHE_HEADER_VERSION_ONE;
-   header->vendor_id = v3dv_physical_device_vendor_id(pdevice);
-   header->device_id = v3dv_physical_device_device_id(pdevice);
-   memcpy(header->uuid, pdevice->pipeline_cache_uuid, VK_UUID_SIZE);
+   if (cache->variant_cache) {
+      hash_table_foreach(cache->variant_cache, entry) {
+         struct v3dv_shader_variant *variant = entry->data;
+
+         size_t save_size = blob.size;
+         if (!shader_variant_write_to_blob(variant, &blob)) {
+            /* If it fails reset to the previous size and bail */
+            blob.size = save_size;
+            pthread_mutex_unlock(&cache->mutex);
+            result = VK_INCOMPLETE;
+            break;
+         }
+
+         count++;
+      }
+   }
+
+   blob_overwrite_uint32(&blob, count_offset, count);
+
+   *pDataSize = blob.size;
+
+   blob_finish(&blob);
+
+   if (unlikely(dump_stats)) {
+      assert(count <= cache->variant_stats.count);
+      fprintf(stderr, "GetPipelineCacheData: serializing cache %p, "
+              "%i variant entries, %u DataSize\n",
+              cache, count, (uint32_t) *pDataSize);
+   }
 
    pthread_mutex_unlock(&cache->mutex);
+
    return result;
 }

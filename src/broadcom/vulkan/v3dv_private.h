@@ -278,6 +278,9 @@ struct v3dv_pipeline_cache {
 
    struct hash_table *nir_cache;
    struct v3dv_pipeline_cache_stats nir_stats;
+
+   struct hash_table *variant_cache;
+   struct v3dv_pipeline_cache_stats variant_stats;
 };
 
 struct v3dv_device {
@@ -1221,6 +1224,14 @@ vk_to_mesa_shader_stage(VkShaderStageFlagBits vk_stage)
 struct v3dv_shader_variant {
    uint32_t ref_cnt;
 
+   gl_shader_stage stage;
+   bool is_coord;
+
+   /* key for the pipeline cache, it is p_stage shader_sha1 + v3d compiler
+    * sha1
+    */
+   unsigned char variant_sha1[20];
+
    union {
       struct v3d_prog_data *base;
       struct v3d_vs_prog_data *vs;
@@ -1228,11 +1239,16 @@ struct v3dv_shader_variant {
       struct v3d_compute_prog_data *cs;
    } prog_data;
 
+   /* We explicitly save the prog_data_size as it would make easier to
+    * serialize
+    */
+   uint32_t prog_data_size;
    /* FIXME: using one bo per shader. Eventually we would be interested on
     * reusing the same bo for all the shaders, like a bo per v3dv_pipeline for
     * shaders.
     */
    struct v3dv_bo *assembly_bo;
+   uint32_t qpu_insts_size;
 };
 
 /*
@@ -1278,11 +1294,13 @@ struct v3dv_pipeline_stage {
       struct v3d_fs_key fs;
    } key;
 
-   /* Cache with all the shader variant.
+   /* Cache with all the shader variants built for this pipeline. This one is
+    * required over the pipeline cache because we still allow to create shader
+    * variants after Pipeline creation.
     */
    struct hash_table *cache;
 
-   struct v3dv_shader_variant *current_variant;
+   struct v3dv_shader_variant*current_variant;
 
    /* FIXME: only make sense on vs, so perhaps a v3dv key like radv? or a kind
     * of pipe_draw_info
@@ -1712,10 +1730,22 @@ struct v3dv_cl_reloc v3dv_write_uniforms_wg_offsets(struct v3dv_cmd_buffer *cmd_
 
 struct v3dv_shader_variant *
 v3dv_get_shader_variant(struct v3dv_pipeline_stage *p_stage,
+                        struct v3dv_pipeline_cache *cache,
                         struct v3d_key *key,
                         size_t key_size,
                         const VkAllocationCallbacks *pAllocator,
                         VkResult *out_vk_result);
+
+struct v3dv_shader_variant *
+v3dv_shader_variant_create(struct v3dv_device *device,
+                           gl_shader_stage stage,
+                           bool is_coord,
+                           const unsigned char *variant_sha1,
+                           struct v3d_prog_data *prog_data,
+                           uint32_t prog_data_size,
+                           const uint64_t *qpu_insts,
+                           uint32_t qpu_insts_size,
+                           VkResult *out_vk_result);
 
 void
 v3dv_shader_variant_destroy(struct v3dv_device *device,
@@ -1785,6 +1815,16 @@ nir_shader* v3dv_pipeline_cache_search_for_nir(struct v3dv_pipeline *pipeline,
                                                struct v3dv_pipeline_cache *cache,
                                                const nir_shader_compiler_options *nir_options,
                                                unsigned char sha1_key[20]);
+
+struct v3dv_shader_variant*
+v3dv_pipeline_cache_search_for_variant(struct v3dv_pipeline *pipeline,
+                                       struct v3dv_pipeline_cache *cache,
+                                       unsigned char sha1_key[20]);
+
+void
+v3dv_pipeline_cache_upload_variant(struct v3dv_pipeline *pipeline,
+                                   struct v3dv_pipeline_cache *cache,
+                                   struct v3dv_shader_variant  *variant);
 
 
 #define V3DV_DEFINE_HANDLE_CASTS(__v3dv_type, __VkType)   \

@@ -1288,18 +1288,22 @@ pipeline_stage_create_vs_bin(const struct v3dv_pipeline_stage *src,
 }
 
 /* FIXME: right now this just asks for an bo for the exact size of the qpu
- * assembly. It would be good to be slighly smarter and having one "all
- * shaders" bo per pipeline, so each p_stage/variant would save their offset
- * on such. That is really relevant due the fact that bo are always aligned to
- * 4096, so that would allow to use less memory.
+ * assembly. It would be good to be able to re-use bos to avoid bo
+ * fragmentation. This could be tricky though, as right now we are uploading
+ * the assembly from two paths, when compiling a shader, or when deserializing
+ * from the pipeline cache. This also means that the same variant can be
+ * shared by different objects. So with the current approach it is clear who
+ * owns the assembly bo, but if shared, who owns the shared bo?
  *
  * For now one-bo per-assembly would work.
  *
  * Returns false if it was not able to allocate or map the assembly bo memory.
  */
 static bool
-upload_assembly(struct v3dv_pipeline_stage *p_stage,
+upload_assembly(struct v3dv_device *device,
                 struct v3dv_shader_variant *variant,
+                gl_shader_stage stage,
+                bool is_coord,
                 const void *data,
                 uint32_t size)
 {
@@ -1308,11 +1312,10 @@ upload_assembly(struct v3dv_pipeline_stage *p_stage,
     * have any bo
     */
    assert(variant->assembly_bo == NULL);
-   struct v3dv_device *device = p_stage->pipeline->device;
 
-   switch (p_stage->stage) {
+   switch (stage) {
    case MESA_SHADER_VERTEX:
-      name = (p_stage->is_coord == true) ? "coord_shader_assembly" :
+      name = (is_coord == true) ? "coord_shader_assembly" :
          "vertex_shader_assembly";
       break;
    case MESA_SHADER_FRAGMENT:
@@ -1340,92 +1343,30 @@ upload_assembly(struct v3dv_pipeline_stage *p_stage,
 
    memcpy(bo->map, data, size);
 
-   v3dv_bo_unmap(device, bo);
-
+   /* We don't unmap the assembly bo, as we would use to gather the assembly
+    * when serializing the variant.
+    */
    variant->assembly_bo = bo;
 
    return true;
 }
 
-/* For a given key, it returns the compiled version of the shader. If it was
- * already compiled, it gets it from the p_stage cache, if not it compiles is
- * through the v3d compiler
+/*
+ * Adds a shader variant to the pipeline shader variant cache, updates
+ * pipeline spill structures if needed.
  *
- * If the method returns NULL it means that it was not able to allocate the
- * resources for the variant. out_vk_result would return which OOM applies.
- *
- * Returns a new reference of the shader_variant to the caller.
+ * Assumes that the caller already checked that the variant is not on such
+ * cache.
  */
-struct v3dv_shader_variant*
-v3dv_get_shader_variant(struct v3dv_pipeline_stage *p_stage,
-                        struct v3d_key *key,
-                        size_t key_size,
-                        const VkAllocationCallbacks *pAllocator,
-                        VkResult *out_vk_result)
+static void
+pipeline_add_variant_to_cache(struct v3dv_pipeline_stage *p_stage,
+                              struct v3d_key *key,
+                              size_t key_size,
+                              struct v3dv_shader_variant *variant)
 {
    struct hash_table *ht = p_stage->cache;
-   struct hash_entry *entry = _mesa_hash_table_search(ht, key);
-
-   if (entry) {
-      *out_vk_result = VK_SUCCESS;
-      v3dv_shader_variant_ref(entry->data);
-      return entry->data;
-   }
-
    struct v3dv_pipeline *pipeline = p_stage->pipeline;
    struct v3dv_device *device = pipeline->device;
-   struct v3dv_shader_variant *variant =
-      vk_zalloc(&device->alloc, sizeof(*variant), 8,
-                VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
-
-   if (variant == NULL) {
-      *out_vk_result = VK_ERROR_OUT_OF_HOST_MEMORY;
-      return NULL;
-   }
-   variant->ref_cnt = 1;
-
-   struct v3dv_physical_device *physical_device =
-      &pipeline->device->instance->physicalDevice;
-   const struct v3d_compiler *compiler = physical_device->compiler;
-
-   uint32_t variant_id = p_atomic_inc_return(&p_stage->compiled_variant_count);
-
-   if (V3D_DEBUG & (V3D_DEBUG_NIR |
-                    v3d_debug_flag_for_shader_stage(p_stage->stage))) {
-      fprintf(stderr, "Just before v3d_compile: %s prog %d variant %d NIR:\n",
-              gl_shader_stage_name(p_stage->stage),
-              p_stage->program_id,
-              variant_id);
-      nir_print_shader(p_stage->nir, stderr);
-      fprintf(stderr, "\n");
-   }
-
-   uint64_t *qpu_insts;
-   uint32_t qpu_insts_size;
-
-   qpu_insts = v3d_compile(compiler,
-                           key, &variant->prog_data.base,
-                           p_stage->nir,
-                           shader_debug_output, NULL,
-                           p_stage->program_id,
-                           variant_id,
-                           &qpu_insts_size);
-
-   if (!qpu_insts) {
-      fprintf(stderr, "Failed to compile %s prog %d NIR to VIR\n",
-              gl_shader_stage_name(p_stage->stage),
-              p_stage->program_id);
-   } else {
-      if (!upload_assembly(p_stage, variant, qpu_insts, qpu_insts_size)) {
-         free(qpu_insts);
-         v3dv_shader_variant_unref(device, variant);
-
-         *out_vk_result = VK_ERROR_OUT_OF_DEVICE_MEMORY;
-         return NULL;
-      }
-   }
-
-   free(qpu_insts);
 
    if (ht) {
       struct v3d_key *dup_key;
@@ -1450,8 +1391,184 @@ v3dv_get_shader_variant(struct v3dv_pipeline_stage *p_stage,
          v3dv_bo_alloc(device, total_spill_size, "spill", true);
       pipeline->spill.size_per_thread = variant->prog_data.base->spill_size;
    }
+}
+
+
+static void
+pipeline_hash_variant(const struct v3dv_pipeline_stage *p_stage,
+                      struct v3d_key *key,
+                      size_t key_size,
+                      unsigned char *sha1_out)
+{
+   struct mesa_sha1 ctx;
+   struct v3dv_pipeline *pipeline = p_stage->pipeline;
+   _mesa_sha1_init(&ctx);
+
+   if (p_stage->stage == MESA_SHADER_COMPUTE) {
+      _mesa_sha1_update(&ctx, p_stage->shader_sha1, sizeof(p_stage->shader_sha1));
+   } else {
+      /* We need to include both on the sha1 key as one could affect the other
+       * during linking (like if vertex output are constants, then the
+       * fragment shader would load_const intead of load_input). An
+       * alternative would be to use the serialized nir, but that seems like
+       * an overkill
+       */
+      _mesa_sha1_update(&ctx, pipeline->vs->shader_sha1,
+                        sizeof(pipeline->vs->shader_sha1));
+      _mesa_sha1_update(&ctx, pipeline->fs->shader_sha1,
+                        sizeof(pipeline->fs->shader_sha1));
+   }
+   _mesa_sha1_update(&ctx, key, key_size);
+
+   _mesa_sha1_final(&ctx, sha1_out);
+}
+
+/*
+ * Creates a new shader_variant_create. Note that for prog_data is const, so
+ * it is used only to copy to their own prog_data
+ *
+ * Creation includes allocating a shader source bo, and filling it up.
+ */
+struct v3dv_shader_variant *
+v3dv_shader_variant_create(struct v3dv_device *device,
+                           gl_shader_stage stage,
+                           bool is_coord,
+                           const unsigned char *variant_sha1,
+                           struct v3d_prog_data *prog_data,
+                           uint32_t prog_data_size,
+                           const uint64_t *qpu_insts,
+                           uint32_t qpu_insts_size,
+                           VkResult *out_vk_result)
+{
+   struct v3dv_shader_variant *variant =
+      vk_zalloc(&device->alloc, sizeof(*variant), 8,
+                VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+
+   if (variant == NULL) {
+      *out_vk_result = VK_ERROR_OUT_OF_HOST_MEMORY;
+      return NULL;
+   }
+
+   variant->ref_cnt = 1;
+   variant->stage = stage;
+   variant->is_coord = is_coord;
+   memcpy(variant->variant_sha1, variant_sha1, sizeof(variant->variant_sha1));
+   variant->prog_data_size = prog_data_size;
+   variant->prog_data.base = prog_data;
+
+   if (qpu_insts) {
+      if (!upload_assembly(device, variant, stage, is_coord,
+                           qpu_insts, qpu_insts_size)) {
+         ralloc_free(variant->prog_data.base);
+         vk_free(&device->alloc, variant);
+
+         *out_vk_result = VK_ERROR_OUT_OF_DEVICE_MEMORY;
+         return NULL;
+      }
+      variant->qpu_insts_size = qpu_insts_size;
+   }
 
    *out_vk_result = VK_SUCCESS;
+
+   return variant;
+}
+
+/* For a given key, it returns the compiled version of the shader. If it was
+ * already compiled, it gets it from the p_stage cache, if not it compiles is
+ * through the v3d compiler
+ *
+ * If the method returns NULL it means that it was not able to allocate the
+ * resources for the variant. out_vk_result would return which OOM applies.
+ *
+ * Returns a new reference of the shader_variant to the caller.
+ */
+struct v3dv_shader_variant*
+v3dv_get_shader_variant(struct v3dv_pipeline_stage *p_stage,
+                        struct v3dv_pipeline_cache *cache,
+                        struct v3d_key *key,
+                        size_t key_size,
+                        const VkAllocationCallbacks *pAllocator,
+                        VkResult *out_vk_result)
+{
+   /* We first try to get the variant from the internal p_stage cache
+    * variant
+    */
+   struct hash_table *ht = p_stage->cache;
+   struct hash_entry *entry = _mesa_hash_table_search(ht, key);
+
+   if (entry) {
+      *out_vk_result = VK_SUCCESS;
+      v3dv_shader_variant_ref(entry->data);
+      return entry->data;
+   }
+
+   /* Now we search on the pipeline cache if available */
+   struct v3dv_pipeline *pipeline = p_stage->pipeline;
+   unsigned char variant_sha1[20];
+   pipeline_hash_variant(p_stage, key, key_size, variant_sha1);
+
+   struct v3dv_shader_variant *variant =
+      v3dv_pipeline_cache_search_for_variant(pipeline,
+                                             cache,
+                                             variant_sha1);
+
+   if (variant) {
+      pipeline_add_variant_to_cache(p_stage, key, key_size, variant);
+      *out_vk_result = VK_SUCCESS;
+      return variant;
+   }
+
+   /* If we don't find the variant in any cache, we compile one and add the
+    * variant to the cache
+    */
+   struct v3dv_device *device = pipeline->device;
+   struct v3dv_physical_device *physical_device =
+      &pipeline->device->instance->physicalDevice;
+   const struct v3d_compiler *compiler = physical_device->compiler;
+
+   uint32_t variant_id = p_atomic_inc_return(&p_stage->compiled_variant_count);
+
+   if (V3D_DEBUG & (V3D_DEBUG_NIR |
+                    v3d_debug_flag_for_shader_stage(p_stage->stage))) {
+      fprintf(stderr, "Just before v3d_compile: %s prog %d variant %d NIR:\n",
+              gl_shader_stage_name(p_stage->stage),
+              p_stage->program_id,
+              variant_id);
+      nir_print_shader(p_stage->nir, stderr);
+      fprintf(stderr, "\n");
+   }
+
+   uint64_t *qpu_insts;
+   uint32_t qpu_insts_size;
+   struct v3d_prog_data *prog_data;
+
+   qpu_insts = v3d_compile(compiler,
+                           key, &prog_data,
+                           p_stage->nir,
+                           shader_debug_output, NULL,
+                           p_stage->program_id,
+                           variant_id,
+                           &qpu_insts_size);
+
+   if (!qpu_insts) {
+      fprintf(stderr, "Failed to compile %s prog %d NIR to VIR\n",
+              gl_shader_stage_name(p_stage->stage),
+              p_stage->program_id);
+   }
+
+   variant = v3dv_shader_variant_create(device, p_stage->stage, p_stage->is_coord,
+                                        variant_sha1,
+                                        prog_data, v3d_prog_data_size(p_stage->stage),
+                                        qpu_insts, qpu_insts_size,
+                                        out_vk_result);
+   if (qpu_insts)
+      free(qpu_insts);
+
+   if (*out_vk_result == VK_SUCCESS) {
+      pipeline_add_variant_to_cache(p_stage, key, key_size, variant);
+      v3dv_pipeline_cache_upload_variant(pipeline, cache, variant);
+   }
+
    return variant;
 }
 
@@ -1731,6 +1848,12 @@ pipeline_compile_graphics(struct v3dv_pipeline *pipeline,
       next_stage = stages[stage];
    }
 
+   /* Assign p_stage to the pipeline. We need to do this before start to
+    * compile because p_stage sha1 is computed with all the stages
+    */
+   pipeline->vs = stages[MESA_SHADER_VERTEX];
+   pipeline->fs = stages[MESA_SHADER_FRAGMENT];
+
    /* Compiling to vir. Note that at this point we are compiling a default
     * variant. Binding to textures, and other stuff (that would need a
     * cmd_buffer) would need a recompile
@@ -1757,7 +1880,6 @@ pipeline_compile_graphics(struct v3dv_pipeline *pipeline,
           */
          lower_vs_io(p_stage->nir);
 
-         pipeline->vs = p_stage;
          pipeline->vs_bin = pipeline_stage_create_vs_bin(pipeline->vs, pAllocator);
 
          /* FIXME: likely this to be moved to a gather info method to a full
@@ -1776,7 +1898,7 @@ pipeline_compile_graphics(struct v3dv_pipeline *pipeline,
          pipeline_populate_v3d_vs_key(key, pCreateInfo, pipeline->vs);
          VkResult vk_result;
          pipeline->vs->current_variant =
-            v3dv_get_shader_variant(pipeline->vs, &key->base, sizeof(*key),
+            v3dv_get_shader_variant(pipeline->vs, cache, &key->base, sizeof(*key),
                                     pAllocator, &vk_result);
          if (vk_result != VK_SUCCESS)
             return vk_result;
@@ -1784,7 +1906,7 @@ pipeline_compile_graphics(struct v3dv_pipeline *pipeline,
          key = &pipeline->vs_bin->key.vs;
          pipeline_populate_v3d_vs_key(key, pCreateInfo, pipeline->vs_bin);
          pipeline->vs_bin->current_variant =
-            v3dv_get_shader_variant(pipeline->vs_bin, &key->base, sizeof(*key),
+            v3dv_get_shader_variant(pipeline->vs_bin, cache, &key->base, sizeof(*key),
                                     pAllocator, &vk_result);
          if (vk_result != VK_SUCCESS)
             return vk_result;
@@ -1794,8 +1916,6 @@ pipeline_compile_graphics(struct v3dv_pipeline *pipeline,
       case MESA_SHADER_FRAGMENT: {
          struct v3d_fs_key *key = &p_stage->key.fs;
 
-         pipeline->fs = p_stage;
-
          pipeline_populate_v3d_fs_key(key, pCreateInfo, p_stage,
                                       get_ucp_enable_mask(stages));
 
@@ -1803,7 +1923,7 @@ pipeline_compile_graphics(struct v3dv_pipeline *pipeline,
 
          VkResult vk_result;
          p_stage->current_variant =
-            v3dv_get_shader_variant(p_stage, &key->base, sizeof(*key),
+            v3dv_get_shader_variant(p_stage, cache, &key->base, sizeof(*key),
                                     pAllocator, &vk_result);
          if (vk_result != VK_SUCCESS)
             return vk_result;
@@ -2821,7 +2941,7 @@ pipeline_compile_compute(struct v3dv_pipeline *pipeline,
 
     VkResult result;
     p_stage->current_variant =
-      v3dv_get_shader_variant(p_stage, key, sizeof(*key), alloc, &result);
+       v3dv_get_shader_variant(p_stage, cache, key, sizeof(*key), alloc, &result);
    return result;
 }
 

@@ -2730,7 +2730,7 @@ update_fs_variant(struct v3dv_cmd_buffer *cmd_buffer)
                                VK_PIPELINE_BIND_POINT_GRAPHICS);
 
    VkResult vk_result;
-   variant = v3dv_get_shader_variant(p_stage, &local_key.base,
+   variant = v3dv_get_shader_variant(p_stage, NULL, &local_key.base,
                                      sizeof(struct v3d_fs_key),
                                      &cmd_buffer->device->alloc,
                                      &vk_result);
@@ -2761,7 +2761,7 @@ update_vs_variant(struct v3dv_cmd_buffer *cmd_buffer)
    cmd_buffer_populate_v3d_key(&local_key.base, cmd_buffer,
                                VK_PIPELINE_BIND_POINT_GRAPHICS);
 
-   variant = v3dv_get_shader_variant(p_stage, &local_key.base,
+   variant = v3dv_get_shader_variant(p_stage, NULL, &local_key.base,
                                      sizeof(struct v3d_vs_key),
                                      &cmd_buffer->device->alloc,
                                      &vk_result);
@@ -2782,7 +2782,7 @@ update_vs_variant(struct v3dv_cmd_buffer *cmd_buffer)
 
    cmd_buffer_populate_v3d_key(&local_key.base, cmd_buffer,
                                VK_PIPELINE_BIND_POINT_GRAPHICS);
-   variant = v3dv_get_shader_variant(p_stage, &local_key.base,
+   variant = v3dv_get_shader_variant(p_stage, NULL, &local_key.base,
                                      sizeof(struct v3d_vs_key),
                                      &cmd_buffer->device->alloc,
                                      &vk_result);
@@ -2813,7 +2813,7 @@ update_cs_variant(struct v3dv_cmd_buffer *cmd_buffer)
                                VK_PIPELINE_BIND_POINT_COMPUTE);
 
    VkResult result;
-   variant = v3dv_get_shader_variant(p_stage, &local_key,
+   variant = v3dv_get_shader_variant(p_stage, NULL, &local_key,
                                      sizeof(struct v3d_key),
                                      &cmd_buffer->device->alloc,
                                      &result);
