@@ -1822,6 +1822,14 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
 
                 ld.load_store.arg_2 = output_load_rt_addr(ctx->nir, instr);
 
+                if (nir_src_is_const(instr->src[0])) {
+                        ld.load_store.arg_1 = nir_src_as_uint(instr->src[0]);
+                } else {
+                        ld.load_store.varying_parameters = 2;
+                        ld.src[1] = nir_src_index(ctx, &instr->src[0]);
+                        ld.src_types[1] = nir_type_int32;
+                }
+
                 if (ctx->quirks & MIDGARD_OLD_BLEND) {
                         ld.load_store.op = midgard_op_ld_color_buffer_32u_old;
                         ld.load_store.address = 16;

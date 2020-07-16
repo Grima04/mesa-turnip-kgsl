@@ -660,16 +660,23 @@ pan_lower_fb_store(nir_shader *shader,
         nir_builder_instr_insert(b, &new->instr);
 }
 
+static nir_ssa_def *
+pan_sample_id(nir_builder *b, int sample)
+{
+        return (sample >= 0) ? nir_imm_int(b, sample) : nir_load_sample_id(b);
+}
+
 static void
 pan_lower_fb_load(nir_shader *shader,
                 nir_builder *b,
                 nir_intrinsic_instr *intr,
                 const struct util_format_description *desc,
-                unsigned base, unsigned quirks)
+                unsigned base, int sample, unsigned quirks)
 {
         nir_intrinsic_instr *new = nir_intrinsic_instr_create(shader,
                        nir_intrinsic_load_raw_output_pan);
         new->num_components = 4;
+        new->src[0] = nir_src_for_ssa(pan_sample_id(b, sample));
 
         nir_intrinsic_set_base(new, base);
 
@@ -765,6 +772,12 @@ pan_lower_framebuffer(nir_shader *shader, enum pipe_format *rt_fmts,
                                 if (fmt_class == PAN_FORMAT_NATIVE)
                                         continue;
 
+                                /* EXT_shader_framebuffer_fetch requires
+                                 * per-sample loads.
+                                 * MSAA blend shaders are not yet handled, so
+                                 * for now always load sample 0. */
+                                int sample = is_blend ? 0 : -1;
+
                                 nir_builder b;
                                 nir_builder_init(&b, func->impl);
 
@@ -773,7 +786,7 @@ pan_lower_framebuffer(nir_shader *shader, enum pipe_format *rt_fmts,
                                         pan_lower_fb_store(shader, &b, intr, desc, quirks);
                                 } else {
                                         b.cursor = nir_after_instr(instr);
-                                        pan_lower_fb_load(shader, &b, intr, desc, base, quirks);
+                                        pan_lower_fb_load(shader, &b, intr, desc, base, sample, quirks);
                                 }
 
                                 nir_instr_remove(instr);
