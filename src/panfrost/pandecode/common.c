@@ -141,8 +141,10 @@ pointer_as_memory_reference(uint64_t ptr)
 
 static int pandecode_dump_frame_count = 0;
 
-static void
-pandecode_dump_file_open(bool force_stderr)
+static bool force_stderr = false;
+
+void
+pandecode_dump_file_open(void)
 {
         if (pandecode_dump_stream)
                 return;
@@ -177,9 +179,9 @@ pandecode_dump_file_close(void)
 void
 pandecode_initialize(bool to_stderr)
 {
+        force_stderr = to_stderr;
         mmap_table = _mesa_hash_table_u64_create(NULL);
         util_dynarray_init(&ro_mappings, NULL);
-        pandecode_dump_file_open(to_stderr);
 }
 
 void
@@ -187,7 +189,6 @@ pandecode_next_frame(void)
 {
         pandecode_dump_file_close();
         pandecode_dump_frame_count++;
-        pandecode_dump_file_open(false);
 }
 
 void

@@ -31,6 +31,8 @@
 
 extern FILE *pandecode_dump_stream;
 
+void pandecode_dump_file_open(void);
+
 struct pandecode_mapped_memory {
         size_t length;
         void *addr;

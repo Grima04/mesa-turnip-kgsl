@@ -3173,6 +3173,8 @@ pandecode_fragment_job(const struct pandecode_mapped_memory *mem,
 void
 pandecode_jc(mali_ptr jc_gpu_va, bool bifrost, unsigned gpu_id, bool minimal)
 {
+        pandecode_dump_file_open();
+
         struct mali_job_descriptor_header *h;
         unsigned job_descriptor_number = 0;
 
