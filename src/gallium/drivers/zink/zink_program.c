@@ -422,13 +422,6 @@ zink_bind_vs_state(struct pipe_context *pctx,
    bind_stage(zink_context(pctx), PIPE_SHADER_VERTEX, cso);
 }
 
-static void
-zink_delete_vs_state(struct pipe_context *pctx,
-                     void *cso)
-{
-   zink_shader_free(zink_context(pctx), cso);
-}
-
 static void *
 zink_create_fs_state(struct pipe_context *pctx,
                      const struct pipe_shader_state *shader)
@@ -447,13 +440,6 @@ zink_bind_fs_state(struct pipe_context *pctx,
                    void *cso)
 {
    bind_stage(zink_context(pctx), PIPE_SHADER_FRAGMENT, cso);
-}
-
-static void
-zink_delete_fs_state(struct pipe_context *pctx,
-                     void *cso)
-{
-   zink_shader_free(zink_context(pctx), cso);
 }
 
 static void *
@@ -477,8 +463,7 @@ zink_bind_gs_state(struct pipe_context *pctx,
 }
 
 static void
-zink_delete_gs_state(struct pipe_context *pctx,
-                     void *cso)
+zink_delete_shader_state(struct pipe_context *pctx, void *cso)
 {
    zink_shader_free(zink_context(pctx), cso);
 }
@@ -489,13 +474,13 @@ zink_program_init(struct zink_context *ctx)
 {
    ctx->base.create_vs_state = zink_create_vs_state;
    ctx->base.bind_vs_state = zink_bind_vs_state;
-   ctx->base.delete_vs_state = zink_delete_vs_state;
+   ctx->base.delete_vs_state = zink_delete_shader_state;
 
    ctx->base.create_fs_state = zink_create_fs_state;
    ctx->base.bind_fs_state = zink_bind_fs_state;
-   ctx->base.delete_fs_state = zink_delete_fs_state;
+   ctx->base.delete_fs_state = zink_delete_shader_state;
 
    ctx->base.create_gs_state = zink_create_gs_state;
    ctx->base.bind_gs_state = zink_bind_gs_state;
-   ctx->base.delete_gs_state = zink_delete_gs_state;
+   ctx->base.delete_gs_state = zink_delete_shader_state;
 }
