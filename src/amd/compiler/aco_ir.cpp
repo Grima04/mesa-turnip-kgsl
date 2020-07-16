@@ -98,6 +98,10 @@ void init_program(Program *program, Stage stage, struct radv_shader_info *info,
    program->dev.lds_limit = chip_class >= GFX7 ? 65536 : 32768;
    /* apparently gfx702 also has 16-bank LDS but I can't find a family for that */
    program->dev.has_16bank_lds = family == CHIP_KABINI || family == CHIP_STONEY;
+   /* GFX10 WGP has a bug making naturally aligned access required. The LLVM
+    * subtarget feature is called "FeatureLdsMisalignedBug".
+    */
+   program->dev.has_unaligned_lds_access = chip_class >= GFX9 && !(chip_class == GFX10 && wgp_mode);
 
    program->dev.vgpr_limit = 256;
    program->dev.physical_vgprs = 256;

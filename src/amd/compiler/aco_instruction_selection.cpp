@@ -3466,31 +3466,35 @@ Temp lds_load_callback(Builder& bld, const LoadEmitInfo &info,
    bool large_ds_read = bld.program->chip_class >= GFX7;
    bool usable_read2 = bld.program->chip_class >= GFX7;
 
+   bool aligned2 = align % 2 == 0;
+   bool aligned4 = align % 4 == 0;
+   bool aligned8 = bld.program->dev.has_unaligned_lds_access ? aligned4 : (align % 8 == 0);
+   bool aligned16 = bld.program->dev.has_unaligned_lds_access ? aligned4 : (align % 16 == 0);
+
    bool read2 = false;
    unsigned size = 0;
    aco_opcode op;
-   //TODO: use ds_read_u8_d16_hi/ds_read_u16_d16_hi if beneficial
-   if (bytes_needed >= 16 && align % 16 == 0 && large_ds_read) {
+   if (bytes_needed >= 16 && aligned16 && large_ds_read) {
       size = 16;
       op = aco_opcode::ds_read_b128;
-   } else if (bytes_needed >= 16 && align % 8 == 0 && const_offset % 8 == 0 && usable_read2) {
+   } else if (bytes_needed >= 16 && aligned8 && const_offset % 8 == 0 && usable_read2) {
       size = 16;
       read2 = true;
       op = aco_opcode::ds_read2_b64;
-   } else if (bytes_needed >= 12 && align % 16 == 0 && large_ds_read) {
+   } else if (bytes_needed >= 12 && aligned16 && large_ds_read) {
       size = 12;
       op = aco_opcode::ds_read_b96;
-   } else if (bytes_needed >= 8 && align % 8 == 0) {
+   } else if (bytes_needed >= 8 && aligned8) {
       size = 8;
       op = aco_opcode::ds_read_b64;
-   } else if (bytes_needed >= 8 && align % 4 == 0 && const_offset % 4 == 0) {
+   } else if (bytes_needed >= 8 && aligned4 && const_offset % 4 == 0) {
       size = 8;
       read2 = true;
       op = aco_opcode::ds_read2_b32;
-   } else if (bytes_needed >= 4 && align % 4 == 0) {
+   } else if (bytes_needed >= 4 && aligned4) {
       size = 4;
       op = aco_opcode::ds_read_b32;
-   } else if (bytes_needed >= 2 && align % 2 == 0) {
+   } else if (bytes_needed >= 2 && aligned2) {
       size = 2;
       op = aco_opcode::ds_read_u16;
    } else {
@@ -3854,8 +3858,8 @@ void store_lds(isel_context *ctx, unsigned elem_size_bytes, Temp data, uint32_t 
 
       bool aligned2 = offset % 2 == 0 && align % 2 == 0;
       bool aligned4 = offset % 4 == 0 && align % 4 == 0;
-      bool aligned8 = offset % 8 == 0 && align % 8 == 0;
-      bool aligned16 = offset % 16 == 0 && align % 16 == 0;
+      bool aligned8 = bld.program->dev.has_unaligned_lds_access ? aligned4 : (offset % 8 == 0 && align % 8 == 0);
+      bool aligned16 = bld.program->dev.has_unaligned_lds_access ? aligned4 : (offset % 16 == 0 && align % 16 == 0);
 
       //TODO: use ds_write_b8_d16_hi/ds_write_b16_d16_hi if beneficial
       aco_opcode op = aco_opcode::num_opcodes;

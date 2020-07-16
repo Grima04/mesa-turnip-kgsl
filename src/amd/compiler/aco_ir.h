@@ -1799,6 +1799,7 @@ struct DeviceInfo {
    uint16_t lds_alloc_granule;
    uint32_t lds_limit; /* in bytes */
    bool has_16bank_lds;
+   bool has_unaligned_lds_access;
    uint16_t physical_sgprs;
    uint16_t physical_vgprs;
    uint16_t vgpr_limit;

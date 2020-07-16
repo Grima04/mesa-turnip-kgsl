@@ -3053,6 +3053,9 @@ mem_vectorize_callback(unsigned align_mul, unsigned align_offset,
                        nir_intrinsic_instr *low, nir_intrinsic_instr *high,
                        void *data)
 {
+	struct radv_device *device = data;
+	enum chip_class chip = device->physical_device->rad_info.chip_class;
+
 	if (num_components > 4)
 		return false;
 
@@ -3081,9 +3084,9 @@ mem_vectorize_callback(unsigned align_mul, unsigned align_offset,
 		FALLTHROUGH;
 	case nir_intrinsic_load_shared:
 	case nir_intrinsic_store_shared:
-		if (bit_size * num_components == 96) /* 96 bit loads require 128 bit alignment and are split otherwise */
+		if (chip < GFX9 && bit_size * num_components == 96) /* 96 bit loads require 128 bit alignment on GFX6-8 and are split otherwise */
 			return align % 16 == 0;
-		else if (bit_size * num_components == 128) /* 128 bit loads require 64 bit alignment and are split otherwise */
+		else if (chip < GFX9 && bit_size * num_components == 128) /* 128 bit loads require 64 bit alignment on GFX6-8 and are split otherwise */
 			return align % 8 == 0;
 		else
 			return align % (bit_size == 8 ? 2 : 4) == 0;
@@ -3330,6 +3333,7 @@ VkResult radv_create_shaders(struct radv_pipeline *pipeline,
 					 nir_var_mem_push_const | nir_var_mem_shared |
 					 nir_var_mem_global,
 				.callback = mem_vectorize_callback,
+				.cb_data = device,
 				.robust_modes = 0,
 			};
 
