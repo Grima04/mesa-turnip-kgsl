@@ -227,7 +227,7 @@ ir3_get_src(struct ir3_context *ctx, nir_src *src)
 		for (unsigned i = 0; i < num_components; i++) {
 			unsigned n = src->reg.base_offset * reg->num_components + i;
 			compile_assert(ctx, n < arr->length);
-			value[i] = ir3_create_array_load(ctx, arr, n, addr, reg->bit_size);
+			value[i] = ir3_create_array_load(ctx, arr, n, addr);
 		}
 
 		return value;
@@ -553,6 +553,10 @@ ir3_declare_array(struct ir3_context *ctx, nir_register *reg)
 	arr->length = reg->num_components * MAX2(1, reg->num_array_elems);
 	compile_assert(ctx, arr->length > 0);
 	arr->r = reg;
+	arr->half = reg->bit_size <= 16;
+	// HACK one-bit bools still end up as 32b:
+	if (reg->bit_size == 1)
+		arr->half = false;
 	list_addtail(&arr->node, &ctx->ir->array_list);
 }
 
@@ -570,7 +574,7 @@ ir3_get_array(struct ir3_context *ctx, nir_register *reg)
 /* relative (indirect) if address!=NULL */
 struct ir3_instruction *
 ir3_create_array_load(struct ir3_context *ctx, struct ir3_array *arr, int n,
-		struct ir3_instruction *address, unsigned bitsize)
+		struct ir3_instruction *address)
 {
 	struct ir3_block *block = ctx->block;
 	struct ir3_instruction *mov;
@@ -578,11 +582,10 @@ ir3_create_array_load(struct ir3_context *ctx, struct ir3_array *arr, int n,
 	unsigned flags = 0;
 
 	mov = ir3_instr_create(block, OPC_MOV);
-	if (bitsize == 16) {
+	if (arr->half) {
 		mov->cat1.src_type = TYPE_U16;
 		mov->cat1.dst_type = TYPE_U16;
 		flags |= IR3_REG_HALF;
-		arr->half = true;
 	} else {
 		mov->cat1.src_type = TYPE_U32;
 		mov->cat1.dst_type = TYPE_U32;
