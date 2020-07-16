@@ -1722,7 +1722,8 @@ indirectgenreg:
 directmsgreg:
 	MSGREG subregnum
 	{
-		$$ = brw_message_reg($1);
+		$$.file = BRW_MESSAGE_REGISTER_FILE;
+		$$.nr = $1;
 		$$.subnr = $2;
 	}
 	;
@@ -1799,7 +1800,9 @@ maskreg:
 			error(&@1, "Mask register number %d"
 				   " out of range\n", $1);
 
-		$$ = brw_mask_reg($2);
+		$$.file = BRW_ARCHITECTURE_REGISTER_FILE;
+		$$.nr = BRW_ARF_MASK;
+		$$.subnr = $2;
 	}
 	;
 
@@ -1815,7 +1818,8 @@ notifyreg:
 			error(&@2, "Notification sub register number %d"
 				   " out of range\n", $2);
 
-		$$ = brw_notification_reg();
+		$$.file = BRW_ARCHITECTURE_REGISTER_FILE;
+		$$.nr = BRW_ARF_NOTIFICATION_COUNT;
 		$$.subnr = $2;
 	}
 	;
@@ -1844,7 +1848,9 @@ controlreg:
 			error(&@2, "control sub register number %d"
 				   " out of range\n", $2);
 
-		$$ = brw_cr0_reg($2);
+		$$.file = BRW_ARCHITECTURE_REGISTER_FILE;
+		$$.nr = BRW_ARF_CONTROL;
+		$$.subnr = $2;
 	}
 	;
 
@@ -1859,15 +1865,12 @@ nullreg:
 threadcontrolreg:
 	THREADREG subregnum
 	{
-		if ($1 > 0)
-			error(&@1, "Thread control register number %d"
-				   " out of range\n", $1);
-
 		if ($2 > 7)
 			error(&@2, "Thread control sub register number %d"
 				   " out of range\n", $2);
 
-		$$ = brw_tdr_reg();
+		$$.file = BRW_ARCHITECTURE_REGISTER_FILE;
+		$$.nr = BRW_ARF_TDR;
 		$$.subnr = $2;
 	}
 	;
@@ -1889,6 +1892,7 @@ performancereg:
 
 		$$.file = BRW_ARCHITECTURE_REGISTER_FILE;
 		$$.nr = BRW_ARF_TIMESTAMP;
+		$$.subnr = $2;
 	}
 	;
 
@@ -1899,7 +1903,9 @@ channelenablereg:
 			error(&@1, "Channel enable register number %d"
 				   " out of range\n", $1);
 
-		$$ = brw_mask_reg($2);
+		$$.file = BRW_ARCHITECTURE_REGISTER_FILE;
+		$$.nr = BRW_ARF_MASK;
+		$$.subnr = $2;
 	}
 	;
 
