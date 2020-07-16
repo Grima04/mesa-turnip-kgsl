@@ -874,6 +874,101 @@ mi_ior(struct mi_builder *b,
                            MI_ALU_STORE, MI_ALU_ACCU);
 }
 
+#if GEN_VERSIONx10 >= 125
+static inline struct mi_value
+mi_ishl(struct mi_builder *b, struct mi_value src0, struct mi_value src1)
+{
+   if (src1.type == MI_VALUE_TYPE_IMM) {
+      assert(util_is_power_of_two_or_zero(mi_value_to_u64(src1)));
+      assert(mi_value_to_u64(src1) <= 32);
+   }
+
+   if (src0.type == MI_VALUE_TYPE_IMM && src1.type == MI_VALUE_TYPE_IMM)
+      return mi_imm(mi_value_to_u64(src0) << mi_value_to_u64(src1));
+
+   return mi_math_binop(b, MI_ALU_SHL, src0, src1,
+                            MI_ALU_STORE, MI_ALU_ACCU);
+}
+
+static inline struct mi_value
+mi_ushr(struct mi_builder *b, struct mi_value src0, struct mi_value src1)
+{
+   if (src1.type == MI_VALUE_TYPE_IMM) {
+      assert(util_is_power_of_two_or_zero(mi_value_to_u64(src1)));
+      assert(mi_value_to_u64(src1) <= 32);
+   }
+
+   if (src0.type == MI_VALUE_TYPE_IMM && src1.type == MI_VALUE_TYPE_IMM)
+      return mi_imm(mi_value_to_u64(src0) >> mi_value_to_u64(src1));
+
+   return mi_math_binop(b, MI_ALU_SHR, src0, src1,
+                            MI_ALU_STORE, MI_ALU_ACCU);
+}
+
+static inline struct mi_value
+mi_ushr_imm(struct mi_builder *b, struct mi_value src, uint32_t shift)
+{
+   if (shift == 0)
+      return src;
+
+   if (shift >= 64)
+      return mi_imm(0);
+
+   if (src.type == MI_VALUE_TYPE_IMM)
+      return mi_imm(mi_value_to_u64(src) >> shift);
+
+   struct mi_value res = mi_value_to_gpr(b, src);
+
+   /* Annoyingly, we only have power-of-two shifts */
+   while (shift) {
+      int bit = u_bit_scan(&shift);
+      assert(bit <= 5);
+      res = mi_ushr(b, res, mi_imm(1 << bit));
+   }
+
+   return res;
+}
+
+static inline struct mi_value
+mi_ishr(struct mi_builder *b, struct mi_value src0, struct mi_value src1)
+{
+   if (src1.type == MI_VALUE_TYPE_IMM) {
+      assert(util_is_power_of_two_or_zero(mi_value_to_u64(src1)));
+      assert(mi_value_to_u64(src1) <= 32);
+   }
+
+   if (src0.type == MI_VALUE_TYPE_IMM && src1.type == MI_VALUE_TYPE_IMM)
+      return mi_imm((int64_t)mi_value_to_u64(src0) >> mi_value_to_u64(src1));
+
+   return mi_math_binop(b, MI_ALU_SAR, src0, src1,
+                            MI_ALU_STORE, MI_ALU_ACCU);
+}
+
+static inline struct mi_value
+mi_ishr_imm(struct mi_builder *b, struct mi_value src, uint32_t shift)
+{
+   if (shift == 0)
+      return src;
+
+   if (shift >= 64)
+      return mi_imm(0);
+
+   if (src.type == MI_VALUE_TYPE_IMM)
+      return mi_imm((int64_t)mi_value_to_u64(src) >> shift);
+
+   struct mi_value res = mi_value_to_gpr(b, src);
+
+   /* Annoyingly, we only have power-of-two shifts */
+   while (shift) {
+      int bit = u_bit_scan(&shift);
+      assert(bit <= 5);
+      res = mi_ishr(b, res, mi_imm(1 << bit));
+   }
+
+   return res;
+}
+#endif /* if GEN_VERSIONx10 >= 125 */
+
 static inline struct mi_value
 mi_imul_imm(struct mi_builder *b, struct mi_value src, uint32_t N)
 {
@@ -918,8 +1013,17 @@ mi_ishl_imm(struct mi_builder *b, struct mi_value src, uint32_t shift)
 
    struct mi_value res = mi_value_to_gpr(b, src);
 
+#if GEN_VERSIONx10 >= 125
+   /* Annoyingly, we only have power-of-two shifts */
+   while (shift) {
+      int bit = u_bit_scan(&shift);
+      assert(bit <= 5);
+      res = mi_ishl(b, res, mi_imm(1 << bit));
+   }
+#else
    for (unsigned i = 0; i < shift; i++)
       res = mi_iadd(b, res, mi_value_ref(b, res));
+#endif
 
    return res;
 }

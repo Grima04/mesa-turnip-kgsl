@@ -659,6 +659,9 @@
       <value name="AND" value="0x102"/>
       <value name="OR" value="0x103"/>
       <value name="XOR" value="0x104"/>
+      <value name="SHL" value="0x105"/>
+      <value name="SHR" value="0x106"/>
+      <value name="SAR" value="0x107"/>
       <value name="STORE" value="0x180"/>
       <value name="STOREINV" value="0x580"/>
     </field>
