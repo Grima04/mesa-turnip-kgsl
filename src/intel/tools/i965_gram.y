@@ -883,15 +883,18 @@ ternaryopcodes:
 
 /* Sync instruction */
 syncinstruction:
-	WAIT execsize src instoptions
+	WAIT execsize dst instoptions
 	{
 		brw_next_insn(p, $1);
 		i965_asm_set_instruction_options(p, $4);
 		brw_inst_set_exec_size(p->devinfo, brw_last_inst, $2);
 		brw_set_default_access_mode(p, $4.access_mode);
-		struct brw_reg src = brw_notification_reg();
-		brw_set_dest(p, brw_last_inst, src);
-		brw_set_src0(p, brw_last_inst, src);
+		struct brw_reg dest = $3;
+		dest.swizzle = brw_swizzle_for_mask(dest.writemask);
+		if (dest.file != ARF || dest.nr != BRW_ARF_NOTIFICATION_COUNT)
+			error(&@1, "WAIT must use the notification register\n");
+		brw_set_dest(p, brw_last_inst, dest);
+		brw_set_src0(p, brw_last_inst, dest);
 		brw_set_src1(p, brw_last_inst, brw_null_reg());
 		brw_inst_set_mask_control(p->devinfo, brw_last_inst, BRW_MASK_DISABLE);
 	}
@@ -1474,6 +1477,7 @@ dstoperandex_typed:
 	| flagreg
 	| ipreg
 	| maskreg
+	| notifyreg
 	| performancereg
 	| statereg
 	;
