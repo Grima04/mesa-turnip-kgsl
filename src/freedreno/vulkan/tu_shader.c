@@ -64,6 +64,7 @@ tu_spirv_to_nir(struct ir3_compiler *compiler,
          .tessellation = true,
          .draw_parameters = true,
          .variable_pointers = true,
+         .stencil_export = true,
       },
    };
    const nir_shader_compiler_options *nir_options =

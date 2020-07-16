@@ -1229,10 +1229,11 @@ tu6_emit_fs_outputs(struct tu_cs *cs,
                     uint32_t render_components,
                     bool is_s8_uint)
 {
-   uint32_t smask_regid, posz_regid;
+   uint32_t smask_regid, posz_regid, stencilref_regid;
 
    posz_regid      = ir3_find_output_regid(fs, FRAG_RESULT_DEPTH);
    smask_regid     = ir3_find_output_regid(fs, FRAG_RESULT_SAMPLE_MASK);
+   stencilref_regid = ir3_find_output_regid(fs, FRAG_RESULT_STENCIL);
 
    uint32_t fragdata_regid[8];
    if (fs->color0_mrt) {
@@ -1247,8 +1248,8 @@ tu6_emit_fs_outputs(struct tu_cs *cs,
    tu_cs_emit_pkt4(cs, REG_A6XX_SP_FS_OUTPUT_CNTL0, 2);
    tu_cs_emit(cs, A6XX_SP_FS_OUTPUT_CNTL0_DEPTH_REGID(posz_regid) |
                   A6XX_SP_FS_OUTPUT_CNTL0_SAMPMASK_REGID(smask_regid) |
-                  COND(dual_src_blend, A6XX_SP_FS_OUTPUT_CNTL0_DUAL_COLOR_IN_ENABLE) |
-                  0xfc000000);
+                  A6XX_SP_FS_OUTPUT_CNTL0_STENCILREF_REGID(stencilref_regid) |
+                  COND(dual_src_blend, A6XX_SP_FS_OUTPUT_CNTL0_DUAL_COLOR_IN_ENABLE));
    tu_cs_emit(cs, A6XX_SP_FS_OUTPUT_CNTL1_MRT(mrt_count));
 
    tu_cs_emit_pkt4(cs, REG_A6XX_SP_FS_OUTPUT_REG(0), 8);
@@ -1265,6 +1266,7 @@ tu6_emit_fs_outputs(struct tu_cs *cs,
    tu_cs_emit_pkt4(cs, REG_A6XX_RB_FS_OUTPUT_CNTL0, 2);
    tu_cs_emit(cs, COND(fs->writes_pos, A6XX_RB_FS_OUTPUT_CNTL0_FRAG_WRITES_Z) |
                   COND(fs->writes_smask, A6XX_RB_FS_OUTPUT_CNTL0_FRAG_WRITES_SAMPMASK) |
+                  COND(fs->writes_stencilref, A6XX_RB_FS_OUTPUT_CNTL0_FRAG_WRITES_STENCILREF) |
                   COND(dual_src_blend, A6XX_RB_FS_OUTPUT_CNTL0_DUAL_COLOR_IN_ENABLE));
    tu_cs_emit(cs, A6XX_RB_FS_OUTPUT_CNTL1_MRT(mrt_count));
 
@@ -1273,7 +1275,7 @@ tu6_emit_fs_outputs(struct tu_cs *cs,
 
    enum a6xx_ztest_mode zmode;
 
-   if (fs->no_earlyz || fs->has_kill || fs->writes_pos || is_s8_uint) {
+   if (fs->no_earlyz || fs->has_kill || fs->writes_pos || fs->writes_stencilref || is_s8_uint) {
       zmode = A6XX_LATE_Z;
    } else {
       zmode = A6XX_EARLY_Z;
