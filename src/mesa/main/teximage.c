@@ -3703,7 +3703,7 @@ texturesubimage(struct gl_context *ctx, GLuint dims,
    if (!no_error) {
       /* check target (proxies not allowed) */
       if (!legal_texsubimage_target(ctx, dims, texObj->Target, true)) {
-         _mesa_error(ctx, GL_INVALID_ENUM, "%s(target=%s)",
+         _mesa_error(ctx, GL_INVALID_OPERATION, "%s(target=%s)",
                      callerName, _mesa_enum_to_string(texObj->Target));
          return;
       }
