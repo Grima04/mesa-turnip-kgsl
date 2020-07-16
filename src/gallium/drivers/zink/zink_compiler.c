@@ -204,7 +204,6 @@ lower_64bit_vertex_attribs(nir_shader *shader)
 }
 
 static const struct nir_shader_compiler_options nir_options = {
-   .lower_all_io_to_temps = true,
    .lower_ffma16 = true,
    .lower_ffma32 = true,
    .lower_ffma64 = true,
@@ -224,7 +223,6 @@ static const struct nir_shader_compiler_options nir_options = {
 };
 
 static const struct nir_shader_compiler_options softfp_nir_options = {
-   .lower_all_io_to_temps = true,
    .lower_ffma16 = true,
    .lower_ffma32 = true,
    .lower_ffma64 = true,
