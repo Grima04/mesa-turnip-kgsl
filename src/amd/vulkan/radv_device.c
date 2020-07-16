@@ -3796,7 +3796,7 @@ static VkResult radv_alloc_sem_counts(struct radv_device *device,
 				      VkFence _fence,
 				      bool is_signal)
 {
-	int syncobj_idx = 0, non_reset_idx = 0, sem_idx = 0;
+	int syncobj_idx = 0, non_reset_idx = 0, sem_idx = 0, timeline_idx = 0;
 
 	if (num_sems == 0 && _fence == VK_NULL_HANDLE)
 		return VK_SUCCESS;
@@ -3815,6 +3815,9 @@ static VkResult radv_alloc_sem_counts(struct radv_device *device,
 		case RADV_SEMAPHORE_TIMELINE:
 			counts->syncobj_count++;
 			break;
+		case RADV_SEMAPHORE_TIMELINE_SYNCOBJ:
+			counts->timeline_syncobj_count++;
+			break;
 		}
 	}
 
@@ -3828,10 +3831,13 @@ static VkResult radv_alloc_sem_counts(struct radv_device *device,
 			counts->syncobj_count++;
 	}
 
-	if (counts->syncobj_count) {
-		counts->syncobj = (uint32_t *)malloc(sizeof(uint32_t) * counts->syncobj_count);
-		if (!counts->syncobj)
+	if (counts->syncobj_count || counts->timeline_syncobj_count) {
+		counts->points = (uint64_t *)malloc(
+			sizeof(*counts->syncobj) * counts->syncobj_count +
+			(sizeof(*counts->syncobj) + sizeof(*counts->points)) * counts->timeline_syncobj_count);
+		if (!counts->points)
 			return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
+		counts->syncobj = (uint32_t*)(counts->points + counts->timeline_syncobj_count);
 	}
 
 	if (counts->sem_count) {
@@ -3875,6 +3881,11 @@ static VkResult radv_alloc_sem_counts(struct radv_device *device,
 			}
 			break;
 		}
+		case RADV_SEMAPHORE_TIMELINE_SYNCOBJ:
+			counts->syncobj[counts->syncobj_count + timeline_idx] = sems[i]->syncobj;
+			counts->points[timeline_idx] = timeline_values[i];
+			++timeline_idx;
+			break;
 		}
 	}
 
@@ -3897,9 +3908,9 @@ static VkResult radv_alloc_sem_counts(struct radv_device *device,
 static void
 radv_free_sem_info(struct radv_winsys_sem_info *sem_info)
 {
-	free(sem_info->wait.syncobj);
+	free(sem_info->wait.points);
 	free(sem_info->wait.sem);
-	free(sem_info->signal.syncobj);
+	free(sem_info->signal.points);
 	free(sem_info->signal.sem);
 }
 
@@ -3969,6 +3980,9 @@ radv_finalize_timelines(struct radv_device *device,
 			point->wait_count -= 2;
 			radv_timeline_trigger_waiters_locked(&signal_sems[i]->timeline, processing_list);
 			pthread_mutex_unlock(&signal_sems[i]->timeline.mutex);
+		} else if (signal_sems[i] && signal_sems[i]->kind == RADV_SEMAPHORE_TIMELINE_SYNCOBJ) {
+			signal_sems[i]->timeline_syncobj.max_point =
+				MAX2(signal_sems[i]->timeline_syncobj.max_point, signal_values[i]);
 		}
 	}
 }
@@ -4461,7 +4475,43 @@ static VkResult
 wait_for_submission_timelines_available(struct radv_deferred_queue_submission *submission,
                                         uint64_t timeout)
 {
-	return VK_SUCCESS; /* TODO: when we implement timeline syncobj. */
+	struct radv_device *device = submission->queue->device;
+	uint32_t syncobj_count = 0;
+	uint32_t syncobj_idx = 0;
+
+	for (uint32_t i = 0; i < submission->wait_semaphore_count; ++i) {
+		if (submission->wait_semaphores[i]->kind != RADV_SEMAPHORE_TIMELINE_SYNCOBJ)
+			continue;
+
+		if (submission->wait_semaphores[i]->timeline_syncobj.max_point >= submission->wait_values[i])
+			continue;
+		++syncobj_count;
+	}
+
+	if (!syncobj_count)
+		return VK_SUCCESS;
+
+	uint64_t *points = malloc((sizeof(uint64_t) + sizeof(uint32_t)) * syncobj_count);
+	if (!points)
+		return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
+
+	uint32_t *syncobj = (uint32_t*)(points + syncobj_count);
+
+	for (uint32_t i = 0; i < submission->wait_semaphore_count; ++i) {
+		if (submission->wait_semaphores[i]->kind != RADV_SEMAPHORE_TIMELINE_SYNCOBJ)
+			continue;
+
+		if (submission->wait_semaphores[i]->timeline_syncobj.max_point >= submission->wait_values[i])
+			continue;
+
+		syncobj[syncobj_idx] = submission->wait_semaphores[i]->syncobj;
+		points[syncobj_idx] = submission->wait_values[i];
+		++syncobj_idx;
+	}
+	bool success = device->ws->wait_timeline_syncobj(device->ws, syncobj, points, syncobj_idx, true, true, timeout);
+
+	free(points);
+	return success ? VK_SUCCESS : VK_TIMEOUT;
 }
 
 static void* radv_queue_submission_thread_run(void *q)
@@ -5871,6 +5921,7 @@ void radv_destroy_semaphore_part(struct radv_device *device,
 		radv_destroy_timeline(device, &part->timeline);
 		break;
 	case RADV_SEMAPHORE_SYNCOBJ:
+	case RADV_SEMAPHORE_TIMELINE_SYNCOBJ:
 		device->ws->destroy_syncobj(device->ws, part->syncobj);
 		break;
 	}
@@ -5928,7 +5979,17 @@ VkResult radv_CreateSemaphore(
 	sem->temporary.kind = RADV_SEMAPHORE_NONE;
 	sem->permanent.kind = RADV_SEMAPHORE_NONE;
 
-	if (type == VK_SEMAPHORE_TYPE_TIMELINE) {
+	if (type == VK_SEMAPHORE_TYPE_TIMELINE &&
+	    device->physical_device->rad_info.has_timeline_syncobj) {
+		int ret = device->ws->create_syncobj(device->ws, false, &sem->permanent.syncobj);
+		if (ret) {
+			radv_destroy_semaphore(device, pAllocator, sem);
+			return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
+		}
+		device->ws->signal_syncobj(device->ws, sem->permanent.syncobj, initial_value);
+		sem->permanent.timeline_syncobj.max_point = initial_value;
+		sem->permanent.kind = RADV_SEMAPHORE_TIMELINE_SYNCOBJ;
+	} else if (type == VK_SEMAPHORE_TYPE_TIMELINE) {
 		radv_create_timeline(&sem->permanent.timeline, initial_value);
 		sem->permanent.kind = RADV_SEMAPHORE_TIMELINE;
 	} else if (device->always_use_syncobj || handleTypes) {
@@ -5985,6 +6046,9 @@ radv_GetSemaphoreCounterValue(VkDevice _device,
 		pthread_mutex_unlock(&part->timeline.mutex);
 		return VK_SUCCESS;
 	}
+	case RADV_SEMAPHORE_TIMELINE_SYNCOBJ: {
+		return device->ws->query_syncobj(device->ws, part->syncobj, pValue);
+	}
 	case RADV_SEMAPHORE_NONE:
 	case RADV_SEMAPHORE_SYNCOBJ:
 	case RADV_SEMAPHORE_WINSYS:
@@ -6033,7 +6097,28 @@ radv_WaitSemaphores(VkDevice _device,
 {
 	RADV_FROM_HANDLE(radv_device, device, _device);
 	uint64_t abs_timeout = radv_get_absolute_timeout(timeout);
-	return radv_wait_timelines(device, pWaitInfo, abs_timeout);
+
+	if (radv_semaphore_from_handle(pWaitInfo->pSemaphores[0])->permanent.kind == RADV_SEMAPHORE_TIMELINE)
+		return radv_wait_timelines(device, pWaitInfo, abs_timeout);
+
+	if (pWaitInfo->semaphoreCount > UINT32_MAX / sizeof(uint32_t))
+		return vk_errorf(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY, "semaphoreCount integer overflow");
+
+	bool wait_all = !(pWaitInfo->flags & VK_SEMAPHORE_WAIT_ANY_BIT_KHR);
+	uint32_t *handles = malloc(sizeof(*handles) * pWaitInfo->semaphoreCount);
+	if (!handles)
+		return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
+
+	for (uint32_t i = 0; i < pWaitInfo->semaphoreCount; ++i) {
+		RADV_FROM_HANDLE(radv_semaphore, semaphore, pWaitInfo->pSemaphores[i]);
+		handles[i] = semaphore->permanent.syncobj;
+	}
+
+	bool success = device->ws->wait_timeline_syncobj(device->ws, handles, pWaitInfo->pValues,
+	                                                 pWaitInfo->semaphoreCount, wait_all, false,
+	                                                 abs_timeout);
+	free(handles);
+	return success ? VK_SUCCESS : VK_TIMEOUT;
 }
 
 VkResult
@@ -6059,6 +6144,11 @@ radv_SignalSemaphore(VkDevice _device,
 		pthread_mutex_unlock(&part->timeline.mutex);
 
 		return radv_process_submissions(&processing_list);
+	}
+	case RADV_SEMAPHORE_TIMELINE_SYNCOBJ: {
+		part->timeline_syncobj.max_point = MAX2(part->timeline_syncobj.max_point, pSignalInfo->value);
+		device->ws->signal_syncobj(device->ws, part->syncobj, pSignalInfo->value);
+		break;
 	}
 	case RADV_SEMAPHORE_NONE:
 	case RADV_SEMAPHORE_SYNCOBJ:
@@ -7347,20 +7437,24 @@ VkResult radv_ImportSemaphoreFdKHR(VkDevice _device,
 	RADV_FROM_HANDLE(radv_semaphore, sem, pImportSemaphoreFdInfo->semaphore);
 	VkResult result;
 	struct radv_semaphore_part *dst = NULL;
+	bool timeline = sem->permanent.kind == RADV_SEMAPHORE_TIMELINE_SYNCOBJ;
 
 	if (pImportSemaphoreFdInfo->flags & VK_SEMAPHORE_IMPORT_TEMPORARY_BIT) {
+		assert(!timeline);
 		dst = &sem->temporary;
 	} else {
 		dst = &sem->permanent;
 	}
 
-	uint32_t syncobj = dst->kind == RADV_SEMAPHORE_SYNCOBJ ? dst->syncobj : 0;
+	uint32_t syncobj = (dst->kind == RADV_SEMAPHORE_SYNCOBJ ||
+	                    dst->kind == RADV_SEMAPHORE_TIMELINE_SYNCOBJ) ? dst->syncobj : 0;
 
 	switch(pImportSemaphoreFdInfo->handleType) {
 		case VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_FD_BIT:
 			result = radv_import_opaque_fd(device, pImportSemaphoreFdInfo->fd, &syncobj);
 			break;
 		case VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_SYNC_FD_BIT:
+			assert(!timeline);
 			result = radv_import_sync_fd(device, pImportSemaphoreFdInfo->fd, &syncobj);
 			break;
 		default:
@@ -7370,6 +7464,10 @@ VkResult radv_ImportSemaphoreFdKHR(VkDevice _device,
 	if (result == VK_SUCCESS) {
 		dst->syncobj = syncobj;
 		dst->kind = RADV_SEMAPHORE_SYNCOBJ;
+		if (timeline) {
+			dst->kind = RADV_SEMAPHORE_TIMELINE_SYNCOBJ;
+			dst->timeline_syncobj.max_point = 0;
+		}
 	}
 
 	return result;
@@ -7385,10 +7483,12 @@ VkResult radv_GetSemaphoreFdKHR(VkDevice _device,
 	uint32_t syncobj_handle;
 
 	if (sem->temporary.kind != RADV_SEMAPHORE_NONE) {
-		assert(sem->temporary.kind == RADV_SEMAPHORE_SYNCOBJ);
+		assert(sem->temporary.kind == RADV_SEMAPHORE_SYNCOBJ ||
+		       sem->temporary.kind == RADV_SEMAPHORE_TIMELINE_SYNCOBJ);
 		syncobj_handle = sem->temporary.syncobj;
 	} else {
-		assert(sem->permanent.kind == RADV_SEMAPHORE_SYNCOBJ);
+		assert(sem->permanent.kind == RADV_SEMAPHORE_SYNCOBJ ||
+		       sem->permanent.kind == RADV_SEMAPHORE_TIMELINE_SYNCOBJ);
 		syncobj_handle = sem->permanent.syncobj;
 	}
 
@@ -7424,7 +7524,13 @@ void radv_GetPhysicalDeviceExternalSemaphoreProperties(
 	RADV_FROM_HANDLE(radv_physical_device, pdevice, physicalDevice);
 	VkSemaphoreTypeKHR type = radv_get_semaphore_type(pExternalSemaphoreInfo->pNext, NULL);
 	
-	if (type == VK_SEMAPHORE_TYPE_TIMELINE) {
+	if (type == VK_SEMAPHORE_TYPE_TIMELINE && pdevice->rad_info.has_timeline_syncobj &&
+	    pExternalSemaphoreInfo->handleType == VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_FD_BIT) {
+		pExternalSemaphoreProperties->exportFromImportedHandleTypes = VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_FD_BIT;
+		pExternalSemaphoreProperties->compatibleHandleTypes = VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_FD_BIT;
+		pExternalSemaphoreProperties->externalSemaphoreFeatures = VK_EXTERNAL_SEMAPHORE_FEATURE_EXPORTABLE_BIT |
+			VK_EXTERNAL_SEMAPHORE_FEATURE_IMPORTABLE_BIT;
+	} else if (type == VK_SEMAPHORE_TYPE_TIMELINE) {
 		pExternalSemaphoreProperties->exportFromImportedHandleTypes = 0;
 		pExternalSemaphoreProperties->compatibleHandleTypes = 0;
 		pExternalSemaphoreProperties->externalSemaphoreFeatures = 0;
