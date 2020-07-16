@@ -260,7 +260,7 @@ st_invalidate_state(struct gl_context *ctx)
 
    /* Update the vertex shader if ctx->Point was changed. */
    if (st->lower_point_size && new_state & _NEW_POINT)
-      st->dirty |= ST_NEW_VS_STATE | ST_NEW_GS_STATE;
+      st->dirty |= ST_NEW_VS_STATE | ST_NEW_TES_STATE | ST_NEW_GS_STATE;
 
    /* Which shaders are dirty will be determined manually. */
    if (new_state & _NEW_PROGRAM) {
@@ -723,15 +723,6 @@ st_create_context_priv(struct gl_context *ctx, struct pipe_context *pipe,
    st_init_limits(screen, &ctx->Const, &ctx->Extensions);
    st_init_extensions(screen, &ctx->Const,
                       &ctx->Extensions, &st->options, ctx->API);
-
-   /* FIXME: add support for geometry and tessellation shaders for
-    * lower_point_size
-    */
-   assert(!ctx->Extensions.OES_geometry_shader || !st->lower_point_size);
-   assert(!ctx->Extensions.ARB_tessellation_shader || !st->lower_point_size);
-
-   /* FIXME: add support for tessellation shaders for lower_ucp */
-   assert(!ctx->Extensions.ARB_tessellation_shader || !st->lower_ucp);
 
    if (st_have_perfmon(st)) {
       ctx->Extensions.AMD_performance_monitor = GL_TRUE;

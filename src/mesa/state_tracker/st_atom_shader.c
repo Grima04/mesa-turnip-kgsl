@@ -225,16 +225,16 @@ st_update_vp( struct st_context *st )
          key.clip_negative_one_to_one =
                st->ctx->Transform.ClipDepthMode == GL_NEGATIVE_ONE_TO_ONE;
 
-      if (!st->ctx->GeometryProgram._Current) {
+      if (!st->ctx->GeometryProgram._Current &&
+          !st->ctx->TessEvalProgram._Current) {
          /* _NEW_POINT */
          key.lower_point_size = st->lower_point_size &&
                                 !st_point_size_per_vertex(st->ctx);
-      }
 
-      /* _NEW_TRANSFORM */
-      if (st->lower_ucp && st_user_clip_planes_enabled(st->ctx) &&
-          !st->ctx->GeometryProgram._Current)
-         key.lower_ucp = st->ctx->Transform.ClipPlanesEnabled;
+         /* _NEW_TRANSFORM */
+         if (st->lower_ucp && st_user_clip_planes_enabled(st->ctx))
+            key.lower_ucp = st->ctx->Transform.ClipPlanesEnabled;
+      }
 
       simple_mtx_lock(&st->ctx->Shared->Mutex);
       st->vp_variant = st_get_vp_variant(st, stvp, &key);
