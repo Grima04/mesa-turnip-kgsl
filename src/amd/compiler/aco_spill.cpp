@@ -98,6 +98,16 @@ struct spill_ctx {
       }
    }
 
+   void add_interference(uint32_t first, uint32_t second)
+   {
+      if (interferences[first].first.type() != interferences[second].first.type())
+         return;
+
+      bool inserted = interferences[first].second.insert(second).second;
+      if (inserted)
+         interferences[second].second.insert(first);
+   }
+
    uint32_t allocate_spill_id(RegClass rc)
    {
       interferences.emplace_back(rc, std::unordered_set<uint32_t>());
@@ -797,8 +807,7 @@ void add_coupling_code(spill_ctx& ctx, Block* block, unsigned block_idx)
          for (std::pair<Temp, uint32_t> pair : ctx.spills_exit[pred_idx]) {
             if (var == pair.first)
                continue;
-            ctx.interferences[def_spill_id].second.emplace(pair.second);
-            ctx.interferences[pair.second].second.emplace(def_spill_id);
+            ctx.add_interference(def_spill_id, pair.second);
          }
 
          /* check if variable is already spilled at predecessor */
@@ -858,8 +867,7 @@ void add_coupling_code(spill_ctx& ctx, Block* block, unsigned block_idx)
          for (std::pair<Temp, uint32_t> exit_spill : ctx.spills_exit[pred_idx]) {
             if (exit_spill.first == pair.first)
                continue;
-            ctx.interferences[exit_spill.second].second.emplace(pair.second);
-            ctx.interferences[pair.second].second.emplace(exit_spill.second);
+            ctx.add_interference(exit_spill.second, pair.second);
          }
 
          /* variable is in register at predecessor and has to be spilled */
@@ -1124,14 +1132,10 @@ void process_block(spill_ctx& ctx, unsigned block_idx, Block* block,
             uint32_t spill_id = ctx.allocate_spill_id(to_spill.regClass());
 
             /* add interferences with currently spilled variables */
-            for (std::pair<Temp, uint32_t> pair : current_spills) {
-               ctx.interferences[spill_id].second.emplace(pair.second);
-               ctx.interferences[pair.second].second.emplace(spill_id);
-            }
-            for (std::pair<Temp, std::pair<Temp, uint32_t>> pair : reloads) {
-               ctx.interferences[spill_id].second.emplace(pair.second.second);
-               ctx.interferences[pair.second.second].second.emplace(spill_id);
-            }
+            for (std::pair<Temp, uint32_t> pair : current_spills)
+               ctx.add_interference(spill_id, pair.second);
+            for (std::pair<Temp, std::pair<Temp, uint32_t>> pair : reloads)
+               ctx.add_interference(spill_id, pair.second.second);
 
             current_spills[to_spill] = spill_id;
             spilled_registers += to_spill;
@@ -1170,10 +1174,9 @@ void spill_block(spill_ctx& ctx, unsigned block_idx)
    RegisterDemand spilled_registers = init_live_in_vars(ctx, block, block_idx);
 
    /* add interferences for spilled variables */
-   for (std::pair<Temp, uint32_t> x : ctx.spills_entry[block_idx]) {
-      for (std::pair<Temp, uint32_t> y : ctx.spills_entry[block_idx])
-         if (x.second != y.second)
-            ctx.interferences[x.second].second.emplace(y.second);
+   for (auto it = ctx.spills_entry[block_idx].begin(); it != ctx.spills_entry[block_idx].end(); ++it) {
+      for (auto it2 = std::next(it); it2 != ctx.spills_entry[block_idx].end(); ++it2)
+         ctx.add_interference(it->second, it2->second);
    }
 
    bool is_loop_header = block->loop_nest_depth && ctx.loop_header.top()->index == block_idx;
@@ -1331,17 +1334,13 @@ void add_interferences(spill_ctx& ctx, std::vector<bool>& is_assigned,
                        std::vector<uint32_t>& slots, std::vector<bool>& slots_used,
                        unsigned id)
 {
-   RegType type = ctx.interferences[id].first.type();
-
    for (unsigned other : ctx.interferences[id].second) {
       if (!is_assigned[other])
          continue;
 
       RegClass other_rc = ctx.interferences[other].first;
-      if (other_rc.type() == type) {
-         unsigned slot = slots[other];
-         std::fill(slots_used.begin() + slot, slots_used.begin() + slot + other_rc.size(), true);
-      }
+      unsigned slot = slots[other];
+      std::fill(slots_used.begin() + slot, slots_used.begin() + slot + other_rc.size(), true);
    }
 }
 
