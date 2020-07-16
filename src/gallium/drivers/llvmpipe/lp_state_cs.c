@@ -43,6 +43,7 @@
 #include "lp_perf.h"
 #include "lp_screen.h"
 #include "lp_memory.h"
+#include "lp_query.h"
 #include "lp_cs_tpool.h"
 #include "frontend/sw_winsys.h"
 #include "nir/nir_to_tgsi_info.h"
@@ -1315,6 +1316,9 @@ static void llvmpipe_launch_grid(struct pipe_context *pipe,
    struct llvmpipe_context *llvmpipe = llvmpipe_context(pipe);
    struct llvmpipe_screen *screen = llvmpipe_screen(pipe->screen);
    struct lp_cs_job_info job_info;
+
+   if (!llvmpipe_check_render_cond(llvmpipe))
+      return;
 
    memset(&job_info, 0, sizeof(job_info));
 
