@@ -2664,7 +2664,7 @@ spec/oes_texture_storage_multisample_2d_array/preprocessor/disabled-undefined-es
 summary:
        name:  results
        ----  --------
-       pass:    12169
+       pass:    12172
        fail:        2
       crash:        4
        skip:     2657
@@ -2676,4 +2676,4 @@ summary:
     changes:        0
       fixes:        0
 regressions:        0
-      total:    14832
+      total:    14835
