@@ -566,6 +566,27 @@ ra_init(struct ir3_ra_ctx *ctx)
 	/* Add vreg name for prefetch-exclusion range: */
 	ctx->prefetch_exclude_node = ctx->alloc_count++;
 
+	if (RA_DEBUG) {
+		d("INSTRUCTION VREG NAMES:");
+		foreach_block (block, &ctx->ir->block_list) {
+			foreach_instr (instr, &block->instr_list) {
+				if (!ctx->instrd[instr->ip].defn)
+					continue;
+				if (!writes_gpr(instr))
+					continue;
+				di(instr, "%04u", scalar_name(ctx, instr, 0));
+			}
+		}
+		d("ARRAY VREG NAMES:");
+		foreach_array (arr, &ctx->ir->array_list) {
+			d("%04u: arr%u", arr->base, arr->id);
+		}
+		d("EXTRA VREG NAMES:");
+		d("%04u: r0_xyz_nodes", ctx->r0_xyz_nodes);
+		d("%04u: hr0_xyz_nodes", ctx->hr0_xyz_nodes);
+		d("%04u: prefetch_exclude_node", ctx->prefetch_exclude_node);
+	}
+
 	ctx->g = ra_alloc_interference_graph(ctx->set->regs, ctx->alloc_count);
 	ralloc_steal(ctx->g, ctx->instrd);
 	ctx->def = rzalloc_array(ctx->g, unsigned, ctx->alloc_count);
@@ -1062,20 +1083,6 @@ ra_add_interference(struct ir3_ra_ctx *ctx)
 			d("   length:   %u", arr->length);
 			d("   start_ip: %u", arr->start_ip);
 			d("   end_ip:   %u", arr->end_ip);
-		}
-		d("INSTRUCTION VREG NAMES:");
-		foreach_block (block, &ctx->ir->block_list) {
-			foreach_instr (instr, &block->instr_list) {
-				if (!ctx->instrd[instr->ip].defn)
-					continue;
-				if (!writes_gpr(instr))
-					continue;
-				di(instr, "%04u", scalar_name(ctx, instr, 0));
-			}
-		}
-		d("ARRAY VREG NAMES:");
-		foreach_array (arr, &ctx->ir->array_list) {
-			d("%04u: arr%u", arr->base, arr->id);
 		}
 	}
 
