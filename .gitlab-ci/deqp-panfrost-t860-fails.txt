@@ -40,4 +40,6 @@ dEQP-GLES3.functional.fbo.msaa.4_samples.rgba16f
 dEQP-GLES3.functional.fbo.msaa.4_samples.rgba32f
 dEQP-GLES3.functional.fbo.msaa.4_samples.stencil_index8
 dEQP-GLES3.functional.fence_sync.client_wait_sync_finish
-dEQP-GLES3.functional.negative_api.buffer.read_pixels_fbo_format_mismatch
+dEQP-GLES3.functional.draw.random.156
+dEQP-GLES3.functional.draw.random.208
+dEQP-GLES3.functional.vertex_arrays.single_attribute.strides.int2_10_10_10.user_ptr_stride17_components4_quads256
