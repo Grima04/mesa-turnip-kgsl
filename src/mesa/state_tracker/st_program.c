@@ -1691,11 +1691,11 @@ st_get_common_variant(struct st_context *st,
       /* create new */
       v = (struct st_variant*)CALLOC_STRUCT(st_common_variant);
       if (v) {
-	 if (prog->state.type == PIPE_SHADER_IR_NIR) {
+         if (prog->state.type == PIPE_SHADER_IR_NIR) {
             bool finalize = false;
 
-	    state.type = PIPE_SHADER_IR_NIR;
-	    state.ir.nir = get_nir_shader(st, prog);
+            state.type = PIPE_SHADER_IR_NIR;
+            state.ir.nir = get_nir_shader(st, prog);
 
             if (key->clamp_color) {
                NIR_PASS_V(state.ir.nir, nir_lower_clamp_color_outputs);
@@ -1841,10 +1841,10 @@ destroy_shader_program_variants_cb(void *data, void *userData)
          struct gl_shader_program *shProg = (struct gl_shader_program *) data;
          GLuint i;
 
-	 for (i = 0; i < ARRAY_SIZE(shProg->_LinkedShaders); i++) {
-	    if (shProg->_LinkedShaders[i])
+         for (i = 0; i < ARRAY_SIZE(shProg->_LinkedShaders); i++) {
+            if (shProg->_LinkedShaders[i])
                destroy_program_variants(st, shProg->_LinkedShaders[i]->Program);
-	 }
+         }
       }
       break;
    case GL_VERTEX_SHADER:
