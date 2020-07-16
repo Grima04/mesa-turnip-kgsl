@@ -554,8 +554,13 @@ panfrost_frag_meta_rasterizer_update(struct panfrost_context *ctx,
         SET_BIT(fragmeta->unknown2_3, MALI_HAS_MSAA, msaa);
         SET_BIT(fragmeta->unknown2_4, MALI_NO_MSAA, !msaa);
 
-        SET_BIT(fragmeta->unknown2_3, MALI_PER_SAMPLE,
-                        msaa && ctx->min_samples > 1);
+        struct panfrost_shader_state *fs;
+        fs = panfrost_get_shader_state(ctx, PIPE_SHADER_FRAGMENT);
+
+        /* EXT_shader_framebuffer_fetch requires the shader to be run
+         * per-sample when outputs are read. */
+        bool per_sample = ctx->min_samples > 1 || fs->outputs_read;
+        SET_BIT(fragmeta->unknown2_3, MALI_PER_SAMPLE, msaa && per_sample);
 
         fragmeta->depth_units = rast->offset_units * 2.0f;
         fragmeta->depth_factor = rast->offset_scale;
