@@ -7325,7 +7325,7 @@ static VkResult radv_import_sync_fd(struct radv_device *device,
 		}
 	} else {
 		if (fd == -1)
-			device->ws->signal_syncobj(device->ws, syncobj_handle);
+			device->ws->signal_syncobj(device->ws, syncobj_handle, 0);
 	}
 
 	if (fd != -1) {

@@ -270,7 +270,7 @@ VkResult radv_AcquireNextImage2KHR(
 				device->ws->signal_fence(part->fence);
 				break;
 			case RADV_FENCE_SYNCOBJ:
-				device->ws->signal_syncobj(device->ws, part->syncobj);
+				device->ws->signal_syncobj(device->ws, part->syncobj, 0);
 				break;
 			default:
 				unreachable("Invalid WSI fence type");
@@ -289,7 +289,7 @@ VkResult radv_AcquireNextImage2KHR(
 			case RADV_SEMAPHORE_TIMELINE:
 				unreachable("WSI only allows binary semaphores.");
 			case RADV_SEMAPHORE_SYNCOBJ:
-				device->ws->signal_syncobj(device->ws, part->syncobj);
+				device->ws->signal_syncobj(device->ws, part->syncobj, 0);
 				break;
 			}
 		}

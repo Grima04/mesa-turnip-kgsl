@@ -328,9 +328,12 @@ struct radeon_winsys {
 	void (*destroy_syncobj)(struct radeon_winsys *ws, uint32_t handle);
 
 	void (*reset_syncobj)(struct radeon_winsys *ws, uint32_t handle);
-	void (*signal_syncobj)(struct radeon_winsys *ws, uint32_t handle);
+	void (*signal_syncobj)(struct radeon_winsys *ws, uint32_t handle, uint64_t point);
+	VkResult (*query_syncobj)(struct radeon_winsys *ws, uint32_t handle, uint64_t *point);
 	bool (*wait_syncobj)(struct radeon_winsys *ws, const uint32_t *handles, uint32_t handle_count,
 			     bool wait_all, uint64_t timeout);
+	bool (*wait_timeline_syncobj)(struct radeon_winsys *ws, const uint32_t *handles, const uint64_t *points,
+	                              uint32_t handle_count, bool wait_all, bool available, uint64_t timeout);
 
 	int (*export_syncobj)(struct radeon_winsys *ws, uint32_t syncobj, int *fd);
 	int (*import_syncobj)(struct radeon_winsys *ws, int fd, uint32_t *syncobj);

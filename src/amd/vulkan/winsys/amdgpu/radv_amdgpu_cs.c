@@ -1832,10 +1832,30 @@ static void radv_amdgpu_reset_syncobj(struct radeon_winsys *_ws,
 }
 
 static void radv_amdgpu_signal_syncobj(struct radeon_winsys *_ws,
-				    uint32_t handle)
+				    uint32_t handle, uint64_t point)
 {
 	struct radv_amdgpu_winsys *ws = radv_amdgpu_winsys(_ws);
-	amdgpu_cs_syncobj_signal(ws->dev, &handle, 1);
+	if (point)
+		amdgpu_cs_syncobj_timeline_signal(ws->dev, &handle, &point, 1);
+	else
+		amdgpu_cs_syncobj_signal(ws->dev, &handle, 1);
+}
+
+static VkResult radv_amdgpu_query_syncobj(struct radeon_winsys *_ws,
+                                      uint32_t handle, uint64_t *point)
+{
+	struct radv_amdgpu_winsys *ws = radv_amdgpu_winsys(_ws);
+	int ret = amdgpu_cs_syncobj_query(ws->dev, &handle, point, 1);
+	if (ret == 0)
+		return VK_SUCCESS;
+	else if (ret == -ENOMEM)
+		return VK_ERROR_OUT_OF_HOST_MEMORY;
+	else {
+		/* Remaining error are driver internal issues: EFAULT for
+		 * dangling pointers and ENOENT for non-existing syncobj. */
+		fprintf(stderr, "amdgpu: internal error in radv_amdgpu_query_syncobj. (%d)\n", ret);
+		return VK_ERROR_UNKNOWN;
+	}
 }
 
 static bool radv_amdgpu_wait_syncobj(struct radeon_winsys *_ws, const uint32_t *handles,
@@ -1860,6 +1880,32 @@ static bool radv_amdgpu_wait_syncobj(struct radeon_winsys *_ws, const uint32_t *
 		return false;
 	}
 }
+
+static bool radv_amdgpu_wait_timeline_syncobj(struct radeon_winsys *_ws, const uint32_t *handles,
+                                              const uint64_t *points, uint32_t handle_count,
+                                              bool wait_all, bool available, uint64_t timeout)
+{
+	struct radv_amdgpu_winsys *ws = radv_amdgpu_winsys(_ws);
+
+	/* The timeouts are signed, while vulkan timeouts are unsigned. */
+	timeout = MIN2(timeout, INT64_MAX);
+
+	int ret = amdgpu_cs_syncobj_timeline_wait(ws->dev, (uint32_t*)handles, (uint64_t*)points,
+	                                          handle_count, timeout,
+	                                          DRM_SYNCOBJ_WAIT_FLAGS_WAIT_FOR_SUBMIT |
+	                                          (wait_all ? DRM_SYNCOBJ_WAIT_FLAGS_WAIT_ALL : 0) |
+	                                          (available ? DRM_SYNCOBJ_WAIT_FLAGS_WAIT_AVAILABLE : 0),
+	                                          NULL);
+	if (ret == 0) {
+		return true;
+	} else if (ret == -ETIME) {
+		return false;
+	} else {
+		fprintf(stderr, "amdgpu: radv_amdgpu_wait_syncobj failed! (%d)\n", errno);
+		return false;
+	}
+}
+
 
 static int radv_amdgpu_export_syncobj(struct radeon_winsys *_ws,
 				      uint32_t syncobj,
@@ -1923,7 +1969,9 @@ void radv_amdgpu_cs_init_functions(struct radv_amdgpu_winsys *ws)
 	ws->base.destroy_syncobj = radv_amdgpu_destroy_syncobj;
 	ws->base.reset_syncobj = radv_amdgpu_reset_syncobj;
 	ws->base.signal_syncobj = radv_amdgpu_signal_syncobj;
+	ws->base.query_syncobj = radv_amdgpu_query_syncobj;
 	ws->base.wait_syncobj = radv_amdgpu_wait_syncobj;
+	ws->base.wait_timeline_syncobj = radv_amdgpu_wait_timeline_syncobj;
 	ws->base.export_syncobj = radv_amdgpu_export_syncobj;
 	ws->base.import_syncobj = radv_amdgpu_import_syncobj;
 	ws->base.export_syncobj_to_sync_file = radv_amdgpu_export_syncobj_to_sync_file;
