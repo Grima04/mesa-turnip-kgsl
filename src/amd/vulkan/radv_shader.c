@@ -76,6 +76,7 @@ static const struct nir_shader_compiler_options nir_options_llvm = {
 	.lower_fpow = true,
 	.lower_mul_2x32_64 = true,
 	.lower_rotate = true,
+	.use_scoped_barrier = true,
 	.max_unroll_iterations = 32,
 	.use_interpolated_input_intrinsics = true,
 	/* nir_lower_int64() isn't actually called for the LLVM backend, but
@@ -118,6 +119,7 @@ static const struct nir_shader_compiler_options nir_options_aco = {
 	.lower_fpow = true,
 	.lower_mul_2x32_64 = true,
 	.lower_rotate = true,
+	.use_scoped_barrier = true,
 	.max_unroll_iterations = 32,
 	.use_interpolated_input_intrinsics = true,
 	.lower_int64_options = nir_lower_imul64 |
@@ -130,7 +132,6 @@ static const struct nir_shader_compiler_options nir_options_aco = {
 				 nir_lower_dsqrt |
 				 nir_lower_drsq |
 				 nir_lower_ddiv,
-	.use_scoped_barrier = true,
 };
 
 bool
