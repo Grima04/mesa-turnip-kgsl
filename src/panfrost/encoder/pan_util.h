@@ -34,7 +34,7 @@
 #define PAN_DBG_AFBC            0x0008
 #define PAN_DBG_SYNC            0x0010
 #define PAN_DBG_PRECOMPILE      0x0020
-#define PAN_DBG_FP16            0x0040
+#define PAN_DBG_NOFP16          0x0040
 #define PAN_DBG_BIFROST         0x0080
 #define PAN_DBG_GL3             0x0100
 

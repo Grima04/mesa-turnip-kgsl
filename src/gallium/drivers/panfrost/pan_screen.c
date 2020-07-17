@@ -62,7 +62,7 @@ static const struct debug_named_value debug_options[] = {
         {"afbc",      PAN_DBG_AFBC,     "Enable non-conformant AFBC impl"},
         {"sync",      PAN_DBG_SYNC,     "Wait for each job's completion and check for any GPU fault"},
         {"precompile", PAN_DBG_PRECOMPILE, "Precompile shaders for shader-db"},
-        {"fp16",     PAN_DBG_FP16,     "Enable buggy experimental (don't use!) fp16"},
+        {"nofp16",     PAN_DBG_NOFP16,     "Disable 16-bit support"},
         {"bifrost",   PAN_DBG_BIFROST, "Enable experimental Mali G31 and G52 support"},
         {"gl3",       PAN_DBG_GL3,      "Enable experimental GL 3.x implementation, up to 3.3"},
         DEBUG_NAMED_VALUE_END
@@ -277,7 +277,7 @@ panfrost_get_shader_param(struct pipe_screen *screen,
 {
         struct panfrost_device *dev = pan_device(screen);
         bool is_deqp = dev->debug & PAN_DBG_DEQP;
-        bool is_fp16 = dev->debug & PAN_DBG_FP16;
+        bool is_nofp16 = dev->debug & PAN_DBG_NOFP16;
         bool is_bifrost = dev->quirks & IS_BIFROST;
 
         if (shader != PIPE_SHADER_VERTEX &&
@@ -335,11 +335,11 @@ panfrost_get_shader_param(struct pipe_screen *screen,
                 return 1;
 
         case PIPE_SHADER_CAP_FP16:
-                return !(dev->quirks & MIDGARD_BROKEN_FP16) || is_fp16;
+        case PIPE_SHADER_CAP_GLSL_16BIT_TEMPS:
+                return !is_nofp16;
 
         case PIPE_SHADER_CAP_FP16_DERIVATIVES:
         case PIPE_SHADER_CAP_INT16:
-        case PIPE_SHADER_CAP_GLSL_16BIT_TEMPS:
         case PIPE_SHADER_CAP_INT64_ATOMICS:
         case PIPE_SHADER_CAP_TGSI_DROUND_SUPPORTED:
         case PIPE_SHADER_CAP_TGSI_DFRACEXP_DLDEXP_SUPPORTED:
