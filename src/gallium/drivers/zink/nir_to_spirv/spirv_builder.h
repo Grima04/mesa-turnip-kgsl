@@ -351,6 +351,12 @@ SpvId
 spirv_builder_emit_var(struct spirv_builder *b, SpvId type,
                        SpvStorageClass storage_class);
 
+void
+spirv_builder_emit_memory_barrier(struct spirv_builder *b, SpvScope scope, SpvMemorySemanticsMask semantics);
+
+void
+spirv_builder_emit_control_barrier(struct spirv_builder *b, SpvScope scope, SpvScope mem_scope, SpvMemorySemanticsMask semantics);
+
 SpvId
 spirv_builder_import(struct spirv_builder *b, const char *name);
 
