@@ -28,6 +28,7 @@ USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "util/format_r11g11b10f.h"
 #include "main/varray.h"
 #include "vbo_util.h"
+#include "util/u_half.h"
 
 
 /* ATTR */
@@ -57,6 +58,31 @@ USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define ATTR2F( A, X, Y )       ATTRF( A, 2, X, Y, 0, 1 )
 #define ATTR3F( A, X, Y, Z )    ATTRF( A, 3, X, Y, Z, 1 )
 #define ATTR4F( A, X, Y, Z, W ) ATTRF( A, 4, X, Y, Z, W )
+
+
+/* half */
+#define ATTR1HV( A, V ) ATTRF( A, 1, util_half_to_float((uint16_t)(V)[0]), \
+                               0, 0, 1 )
+#define ATTR2HV( A, V ) ATTRF( A, 2, util_half_to_float((uint16_t)(V)[0]), \
+                               util_half_to_float((uint16_t)(V)[1]), 0, 1 )
+#define ATTR3HV( A, V ) ATTRF( A, 3, util_half_to_float((uint16_t)(V)[0]), \
+                               util_half_to_float((uint16_t)(V)[1]), \
+                               util_half_to_float((uint16_t)(V)[2]), 1 )
+#define ATTR4HV( A, V ) ATTRF( A, 4, util_half_to_float((uint16_t)(V)[0]), \
+                               util_half_to_float((uint16_t)(V)[1]), \
+                               util_half_to_float((uint16_t)(V)[2]), \
+                               util_half_to_float((uint16_t)(V)[3]) )
+
+#define ATTR1H( A, X )          ATTRF( A, 1, util_half_to_float(X), 0, 0, 1 )
+#define ATTR2H( A, X, Y )       ATTRF( A, 2, util_half_to_float(X), \
+                                       util_half_to_float(Y), 0, 1 )
+#define ATTR3H( A, X, Y, Z )    ATTRF( A, 3, util_half_to_float(X), \
+                                       util_half_to_float(Y), \
+                                       util_half_to_float(Z), 1 )
+#define ATTR4H( A, X, Y, Z, W ) ATTRF( A, 4, util_half_to_float(X), \
+                                       util_half_to_float(Y), \
+                                       util_half_to_float(Z), \
+                                       util_half_to_float(W) )
 
 
 /* int */
@@ -1233,6 +1259,251 @@ TAG(VertexAttribL1ui64vARB)(GLuint index, const GLuint64EXT *v)
       ATTR1UIV64(VBO_ATTRIB_GENERIC0 + index, v);
    else
       ERROR(GL_INVALID_VALUE);
+}
+
+/* GL_NV_half_float */
+static void GLAPIENTRY
+TAG(Vertex2hNV)(GLhalfNV x, GLhalfNV y)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   ATTR2H(VBO_ATTRIB_POS, x, y);
+}
+
+static void GLAPIENTRY
+TAG(Vertex2hvNV)(const GLhalfNV * v)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   ATTR2HV(VBO_ATTRIB_POS, v);
+}
+
+static void GLAPIENTRY
+TAG(Vertex3hNV)(GLhalfNV x, GLhalfNV y, GLhalfNV z)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   ATTR3H(VBO_ATTRIB_POS, x, y, z);
+}
+
+static void GLAPIENTRY
+TAG(Vertex3hvNV)(const GLhalfNV * v)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   ATTR3HV(VBO_ATTRIB_POS, v);
+}
+
+static void GLAPIENTRY
+TAG(Vertex4hNV)(GLhalfNV x, GLhalfNV y, GLhalfNV z, GLhalfNV w)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   ATTR4H(VBO_ATTRIB_POS, x, y, z, w);
+}
+
+static void GLAPIENTRY
+TAG(Vertex4hvNV)(const GLhalfNV * v)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   ATTR4HV(VBO_ATTRIB_POS, v);
+}
+
+
+
+static void GLAPIENTRY
+TAG(Normal3hNV)(GLhalfNV x, GLhalfNV y, GLhalfNV z)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   ATTR3H(VBO_ATTRIB_NORMAL, x, y, z);
+}
+
+static void GLAPIENTRY
+TAG(Normal3hvNV)(const GLhalfNV * v)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   ATTR3HV(VBO_ATTRIB_NORMAL, v);
+}
+
+
+
+static void GLAPIENTRY
+TAG(Color3hNV)(GLhalfNV x, GLhalfNV y, GLhalfNV z)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   ATTR3H(VBO_ATTRIB_COLOR0, x, y, z);
+}
+
+static void GLAPIENTRY
+TAG(Color3hvNV)(const GLhalfNV * v)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   ATTR3HV(VBO_ATTRIB_COLOR0, v);
+}
+
+static void GLAPIENTRY
+TAG(Color4hNV)(GLhalfNV x, GLhalfNV y, GLhalfNV z, GLhalfNV w)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   ATTR4H(VBO_ATTRIB_COLOR0, x, y, z, w);
+}
+
+static void GLAPIENTRY
+TAG(Color4hvNV)(const GLhalfNV * v)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   ATTR4HV(VBO_ATTRIB_COLOR0, v);
+}
+
+
+
+static void GLAPIENTRY
+TAG(TexCoord1hNV)(GLhalfNV x)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   ATTR1H(VBO_ATTRIB_TEX0, x);
+}
+
+static void GLAPIENTRY
+TAG(TexCoord1hvNV)(const GLhalfNV * v)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   ATTR1HV(VBO_ATTRIB_TEX0, v);
+}
+
+static void GLAPIENTRY
+TAG(TexCoord2hNV)(GLhalfNV x, GLhalfNV y)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   ATTR2H(VBO_ATTRIB_TEX0, x, y);
+}
+
+static void GLAPIENTRY
+TAG(TexCoord2hvNV)(const GLhalfNV * v)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   ATTR2HV(VBO_ATTRIB_TEX0, v);
+}
+
+static void GLAPIENTRY
+TAG(TexCoord3hNV)(GLhalfNV x, GLhalfNV y, GLhalfNV z)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   ATTR3H(VBO_ATTRIB_TEX0, x, y, z);
+}
+
+static void GLAPIENTRY
+TAG(TexCoord3hvNV)(const GLhalfNV * v)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   ATTR3HV(VBO_ATTRIB_TEX0, v);
+}
+
+static void GLAPIENTRY
+TAG(TexCoord4hNV)(GLhalfNV x, GLhalfNV y, GLhalfNV z, GLhalfNV w)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   ATTR4H(VBO_ATTRIB_TEX0, x, y, z, w);
+}
+
+static void GLAPIENTRY
+TAG(TexCoord4hvNV)(const GLhalfNV * v)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   ATTR4HV(VBO_ATTRIB_TEX0, v);
+}
+
+
+
+static void GLAPIENTRY
+TAG(MultiTexCoord1hNV)(GLenum target, GLhalfNV x)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   GLuint attr = (target & 0x7) + VBO_ATTRIB_TEX0;
+   ATTR1H(attr, x);
+}
+
+static void GLAPIENTRY
+TAG(MultiTexCoord1hvNV)(GLenum target, const GLhalfNV * v)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   GLuint attr = (target & 0x7) + VBO_ATTRIB_TEX0;
+   ATTR1HV(attr, v);
+}
+
+static void GLAPIENTRY
+TAG(MultiTexCoord2hNV)(GLenum target, GLhalfNV x, GLhalfNV y)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   GLuint attr = (target & 0x7) + VBO_ATTRIB_TEX0;
+   ATTR2H(attr, x, y);
+}
+
+static void GLAPIENTRY
+TAG(MultiTexCoord2hvNV)(GLenum target, const GLhalfNV * v)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   GLuint attr = (target & 0x7) + VBO_ATTRIB_TEX0;
+   ATTR2HV(attr, v);
+}
+
+static void GLAPIENTRY
+TAG(MultiTexCoord3hNV)(GLenum target, GLhalfNV x, GLhalfNV y, GLhalfNV z)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   GLuint attr = (target & 0x7) + VBO_ATTRIB_TEX0;
+   ATTR3H(attr, x, y, z);
+}
+
+static void GLAPIENTRY
+TAG(MultiTexCoord3hvNV)(GLenum target, const GLhalfNV * v)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   GLuint attr = (target & 0x7) + VBO_ATTRIB_TEX0;
+   ATTR3HV(attr, v);
+}
+
+static void GLAPIENTRY
+TAG(MultiTexCoord4hNV)(GLenum target, GLhalfNV x, GLhalfNV y, GLhalfNV z, GLhalfNV w)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   GLuint attr = (target & 0x7) + VBO_ATTRIB_TEX0;
+   ATTR4H(attr, x, y, z, w);
+}
+
+static void GLAPIENTRY
+TAG(MultiTexCoord4hvNV)(GLenum target, const GLhalfNV * v)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   GLuint attr = (target & 0x7) + VBO_ATTRIB_TEX0;
+   ATTR4HV(attr, v);
+}
+
+
+
+static void GLAPIENTRY
+TAG(FogCoordhNV)(GLhalf x)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   ATTR1H(VBO_ATTRIB_FOG, x);
+}
+
+static void GLAPIENTRY
+TAG(FogCoordhvNV)(const GLhalf * v)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   ATTR1HV(VBO_ATTRIB_FOG, v);
+}
+
+
+
+static void GLAPIENTRY
+TAG(SecondaryColor3hNV)(GLhalfNV x, GLhalfNV y, GLhalfNV z)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   ATTR3H(VBO_ATTRIB_COLOR1, x, y, z);
+}
+
+static void GLAPIENTRY
+TAG(SecondaryColor3hvNV)(const GLhalfNV * v)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   ATTR3HV(VBO_ATTRIB_COLOR1, v);
 }
 
 #undef ATTR1FV

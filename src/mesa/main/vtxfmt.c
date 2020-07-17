@@ -193,6 +193,40 @@ install_vtxfmt(struct gl_context *ctx, struct _glapi_table *tab,
 
       SET_SecondaryColorP3ui(tab, vfmt->SecondaryColorP3ui);
       SET_SecondaryColorP3uiv(tab, vfmt->SecondaryColorP3uiv);
+
+      /* GL_NV_half_float */
+      SET_Vertex2hNV(tab, vfmt->Vertex2hNV);
+      SET_Vertex2hvNV(tab, vfmt->Vertex2hvNV);
+      SET_Vertex3hNV(tab, vfmt->Vertex3hNV);
+      SET_Vertex3hvNV(tab, vfmt->Vertex3hvNV);
+      SET_Vertex4hNV(tab, vfmt->Vertex4hNV);
+      SET_Vertex4hvNV(tab, vfmt->Vertex4hvNV);
+      SET_Normal3hNV(tab, vfmt->Normal3hNV);
+      SET_Normal3hvNV(tab, vfmt->Normal3hvNV);
+      SET_Color3hNV(tab, vfmt->Color3hNV);
+      SET_Color3hvNV(tab, vfmt->Color4hvNV);
+      SET_Color4hNV(tab, vfmt->Color4hNV);
+      SET_Color4hvNV(tab, vfmt->Color3hvNV);
+      SET_TexCoord1hNV(tab, vfmt->TexCoord1hNV);
+      SET_TexCoord1hvNV(tab, vfmt->TexCoord1hvNV);
+      SET_TexCoord2hNV(tab, vfmt->TexCoord2hNV);
+      SET_TexCoord2hvNV(tab, vfmt->TexCoord2hvNV);
+      SET_TexCoord3hNV(tab, vfmt->TexCoord3hNV);
+      SET_TexCoord3hvNV(tab, vfmt->TexCoord3hvNV);
+      SET_TexCoord4hNV(tab, vfmt->TexCoord4hNV);
+      SET_TexCoord4hvNV(tab, vfmt->TexCoord4hvNV);
+      SET_MultiTexCoord1hNV(tab, vfmt->MultiTexCoord1hNV);
+      SET_MultiTexCoord1hvNV(tab, vfmt->MultiTexCoord1hvNV);
+      SET_MultiTexCoord2hNV(tab, vfmt->MultiTexCoord2hNV);
+      SET_MultiTexCoord2hvNV(tab, vfmt->MultiTexCoord2hvNV);
+      SET_MultiTexCoord3hNV(tab, vfmt->MultiTexCoord3hNV);
+      SET_MultiTexCoord3hvNV(tab, vfmt->MultiTexCoord3hvNV);
+      SET_MultiTexCoord4hNV(tab, vfmt->MultiTexCoord4hNV);
+      SET_MultiTexCoord4hvNV(tab, vfmt->MultiTexCoord4hvNV);
+      SET_FogCoordhNV(tab, vfmt->FogCoordhNV);
+      SET_FogCoordhvNV(tab, vfmt->FogCoordhvNV);
+      SET_SecondaryColor3hNV(tab, vfmt->SecondaryColor3hNV);
+      SET_SecondaryColor3hvNV(tab, vfmt->SecondaryColor3hvNV);
    }
 
    if (_mesa_is_desktop_gl(ctx)) {

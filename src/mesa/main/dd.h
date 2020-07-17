@@ -1503,6 +1503,41 @@ typedef struct {
 
    void (GLAPIENTRYP VertexAttribL1ui64ARB)( GLuint index, GLuint64EXT x);
    void (GLAPIENTRYP VertexAttribL1ui64vARB)( GLuint index, const GLuint64EXT *v);
+
+   /* GL_NV_half_float */
+   void (GLAPIENTRYP Vertex2hNV)( GLhalfNV, GLhalfNV );
+   void (GLAPIENTRYP Vertex2hvNV)( const GLhalfNV * );
+   void (GLAPIENTRYP Vertex3hNV)( GLhalfNV, GLhalfNV, GLhalfNV );
+   void (GLAPIENTRYP Vertex3hvNV)( const GLhalfNV * );
+   void (GLAPIENTRYP Vertex4hNV)( GLhalfNV, GLhalfNV, GLhalfNV, GLhalfNV );
+   void (GLAPIENTRYP Vertex4hvNV)( const GLhalfNV * );
+   void (GLAPIENTRYP Normal3hNV)( GLhalfNV, GLhalfNV, GLhalfNV );
+   void (GLAPIENTRYP Normal3hvNV)( const GLhalfNV * );
+   void (GLAPIENTRYP Color3hNV)( GLhalfNV, GLhalfNV, GLhalfNV );
+   void (GLAPIENTRYP Color3hvNV)( const GLhalfNV * );
+   void (GLAPIENTRYP Color4hNV)( GLhalfNV, GLhalfNV, GLhalfNV, GLhalfNV );
+   void (GLAPIENTRYP Color4hvNV)( const GLhalfNV * );
+   void (GLAPIENTRYP TexCoord1hNV)( GLhalfNV );
+   void (GLAPIENTRYP TexCoord1hvNV)( const GLhalfNV * );
+   void (GLAPIENTRYP TexCoord2hNV)( GLhalfNV, GLhalfNV );
+   void (GLAPIENTRYP TexCoord2hvNV)( const GLhalfNV * );
+   void (GLAPIENTRYP TexCoord3hNV)( GLhalfNV, GLhalfNV, GLhalfNV );
+   void (GLAPIENTRYP TexCoord3hvNV)( const GLhalfNV * );
+   void (GLAPIENTRYP TexCoord4hNV)( GLhalfNV, GLhalfNV, GLhalfNV, GLhalfNV );
+   void (GLAPIENTRYP TexCoord4hvNV)( const GLhalfNV * );
+   void (GLAPIENTRYP MultiTexCoord1hNV)( GLenum, GLhalfNV );
+   void (GLAPIENTRYP MultiTexCoord1hvNV)( GLenum, const GLhalfNV * );
+   void (GLAPIENTRYP MultiTexCoord2hNV)( GLenum, GLhalfNV, GLhalfNV );
+   void (GLAPIENTRYP MultiTexCoord2hvNV)( GLenum, const GLhalfNV * );
+   void (GLAPIENTRYP MultiTexCoord3hNV)( GLenum, GLhalfNV, GLhalfNV, GLhalfNV );
+   void (GLAPIENTRYP MultiTexCoord3hvNV)( GLenum, const GLhalfNV * );
+   void (GLAPIENTRYP MultiTexCoord4hNV)( GLenum, GLhalfNV, GLhalfNV, GLhalfNV, GLhalfNV );
+   void (GLAPIENTRYP MultiTexCoord4hvNV)( GLenum, const GLhalfNV * );
+   void (GLAPIENTRYP FogCoordhNV)( GLhalfNV );
+   void (GLAPIENTRYP FogCoordhvNV)( const GLhalfNV * );
+   void (GLAPIENTRYP SecondaryColor3hNV)( GLhalfNV, GLhalfNV, GLhalfNV );
+   void (GLAPIENTRYP SecondaryColor3hvNV)( const GLhalfNV * );
+
 } GLvertexformat;
 
 

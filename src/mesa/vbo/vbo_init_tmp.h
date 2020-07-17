@@ -94,6 +94,40 @@ if (ctx->API == API_OPENGLES2) {
    vfmt->VertexAttrib4fvARB = NAME(VertexAttrib4fvARB);
 }
 
+/* half float */
+vfmt->Vertex2hNV = NAME(Vertex2hNV);
+vfmt->Vertex2hvNV = NAME(Vertex2hvNV);
+vfmt->Vertex3hNV = NAME(Vertex3hNV);
+vfmt->Vertex3hvNV = NAME(Vertex3hvNV);
+vfmt->Vertex4hNV = NAME(Vertex4hNV);
+vfmt->Vertex4hvNV = NAME(Vertex4hvNV);
+vfmt->Normal3hNV = NAME(Normal3hNV);
+vfmt->Normal3hvNV = NAME(Normal3hvNV);
+vfmt->Color3hNV = NAME(Color3hNV);
+vfmt->Color3hvNV = NAME(Color3hvNV);
+vfmt->Color4hNV = NAME(Color4hNV);
+vfmt->Color4hvNV = NAME(Color4hvNV);
+vfmt->TexCoord1hNV = NAME(TexCoord1hNV);
+vfmt->TexCoord1hvNV = NAME(TexCoord1hvNV);
+vfmt->TexCoord2hNV = NAME(TexCoord2hNV);
+vfmt->TexCoord2hvNV = NAME(TexCoord2hvNV);
+vfmt->TexCoord3hNV = NAME(TexCoord3hNV);
+vfmt->TexCoord3hvNV = NAME(TexCoord3hvNV);
+vfmt->TexCoord4hNV = NAME(TexCoord4hNV);
+vfmt->TexCoord4hvNV = NAME(TexCoord4hvNV);
+vfmt->MultiTexCoord1hNV = NAME(MultiTexCoord1hNV);
+vfmt->MultiTexCoord1hvNV = NAME(MultiTexCoord1hvNV);
+vfmt->MultiTexCoord2hNV = NAME(MultiTexCoord2hNV);
+vfmt->MultiTexCoord2hvNV = NAME(MultiTexCoord2hvNV);
+vfmt->MultiTexCoord3hNV = NAME(MultiTexCoord3hNV);
+vfmt->MultiTexCoord3hvNV = NAME(MultiTexCoord3hvNV);
+vfmt->MultiTexCoord4hNV = NAME(MultiTexCoord4hNV);
+vfmt->MultiTexCoord4hvNV = NAME(MultiTexCoord4hvNV);
+vfmt->FogCoordhNV = NAME(FogCoordhNV);
+vfmt->FogCoordhvNV = NAME(FogCoordhvNV);
+vfmt->SecondaryColor3hNV = NAME(SecondaryColor3hNV);
+vfmt->SecondaryColor3hvNV = NAME(SecondaryColor3hvNV);
+
 /* Note that VertexAttrib4fNV is used from dlist.c and api_arrayelt.c so
  * they can have a single entrypoint for updating any of the legacy
  * attribs.

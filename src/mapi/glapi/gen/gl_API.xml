@@ -1088,6 +1088,7 @@
     <type name="double"  size="8"  float="true"    glx_name="FLOAT64"/>
     <type name="clampd"  size="8"  float="true"    glx_name="FLOAT64"/>
 
+    <type name="halfNV"  size="2"  float="true"    glx_name="FLOAT16"/>
     <type name="float"   size="4"  float="true"    glx_name="FLOAT32"/>
     <type name="clampf"  size="4"  float="true"    glx_name="FLOAT32"/>
 
@@ -13328,6 +13329,7 @@
 
 <xi:include href="NV_viewport_swizzle.xml" xmlns:xi="http://www.w3.org/2001/XInclude"/>
 
+<xi:include href="NV_half_float.xml" xmlns:xi="http://www.w3.org/2001/XInclude"/>
 <xi:include href="GL4x.xml" xmlns:xi="http://www.w3.org/2001/XInclude"/>
 
 </OpenGLAPI>

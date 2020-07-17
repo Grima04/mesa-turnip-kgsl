@@ -154,6 +154,7 @@ class PrintCode(gl_XML.gl_print_base):
             'GLubyte': 1,
             'GLshort': 2,
             'GLushort': 2,
+            'GLhalfNV': 2,
             'GLenum': 4,
             'GLint': 4,
             'GLuint': 4,
