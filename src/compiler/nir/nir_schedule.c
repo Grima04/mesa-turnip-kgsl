@@ -110,13 +110,8 @@ typedef struct {
     */
    int pressure;
 
-   /* Number of channels that may be in use before we switch to the
-    * pressure-prioritizing scheduling heuristic.
-    */
-   int threshold;
-
-   /* Mask of stages that share memory for inputs and outputs */
-   unsigned stages_with_shared_io_memory;
+   /* Options specified by the backend */
+   const nir_schedule_options *options;
 } nir_schedule_scoreboard;
 
 /* When walking the instructions in reverse, we use this flag to swap
@@ -329,7 +324,7 @@ nir_schedule_intrinsic_deps(nir_deps_state *state,
       /* For some hardware and stages, output stores affect the same shared
        * memory as input loads.
        */
-      if ((state->scoreboard->stages_with_shared_io_memory &
+      if ((state->scoreboard->options->stages_with_shared_io_memory &
            (1 << state->scoreboard->shader->info.stage)))
          add_write_dep(state, &state->load_input, n);
 
@@ -870,7 +865,7 @@ nir_schedule_instructions(nir_schedule_scoreboard *scoreboard, nir_block *block)
       }
 
       nir_schedule_node *chosen;
-      if (scoreboard->pressure < scoreboard->threshold)
+      if (scoreboard->pressure < scoreboard->options->threshold)
          chosen = nir_schedule_choose_instruction_csp(scoreboard);
       else
          chosen = nir_schedule_choose_instruction_csr(scoreboard);
@@ -991,9 +986,7 @@ nir_schedule_get_scoreboard(nir_shader *shader,
    scoreboard->shader = shader;
    scoreboard->live_values = _mesa_pointer_set_create(scoreboard);
    scoreboard->remaining_uses = _mesa_pointer_hash_table_create(scoreboard);
-   scoreboard->threshold = options->threshold;
-   scoreboard->stages_with_shared_io_memory =
-      options->stages_with_shared_io_memory;
+   scoreboard->options = options;
    scoreboard->pressure = 0;
 
    nir_foreach_function(function, shader) {
