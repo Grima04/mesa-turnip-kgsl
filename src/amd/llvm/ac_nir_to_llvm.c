@@ -3945,6 +3945,25 @@ static void visit_intrinsic(struct ac_nir_context *ctx,
 	case nir_intrinsic_memory_barrier_shared:
 		emit_membar(&ctx->ac, instr);
 		break;
+	case nir_intrinsic_scoped_barrier: {
+		assert(!(nir_intrinsic_memory_semantics(instr) &
+			 (NIR_MEMORY_MAKE_AVAILABLE | NIR_MEMORY_MAKE_VISIBLE)));
+
+		nir_variable_mode modes = nir_intrinsic_memory_modes(instr);
+
+		unsigned wait_flags = 0;
+		if (modes & (nir_var_mem_global | nir_var_mem_ssbo))
+			wait_flags |= AC_WAIT_VLOAD | AC_WAIT_VSTORE;
+		if (modes & nir_var_mem_shared)
+			wait_flags |= AC_WAIT_LGKM;
+
+		if (wait_flags)
+			ac_build_waitcnt(&ctx->ac, wait_flags);
+
+		if (nir_intrinsic_execution_scope(instr) == NIR_SCOPE_WORKGROUP)
+			ac_emit_barrier(&ctx->ac, ctx->stage);
+		break;
+	}
 	case nir_intrinsic_memory_barrier_tcs_patch:
 		break;
 	case nir_intrinsic_control_barrier:
