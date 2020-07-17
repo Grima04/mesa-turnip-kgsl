@@ -332,13 +332,19 @@ zink_shader_compile(struct zink_screen *screen, struct zink_shader *zs, struct z
    nir_shader *nir = zs->nir;
    /* TODO: use a separate mem ctx here for ralloc */
    if (zs->has_geometry_shader) {
-      if (zs->nir->info.stage == MESA_SHADER_GEOMETRY)
+      if (zs->nir->info.stage == MESA_SHADER_GEOMETRY) {
          streamout = &zs->streamout;
+         NIR_PASS_V(nir, nir_lower_clip_halfz);
+      }
    } else if (zs->has_tess_shader) {
-      if (zs->nir->info.stage == MESA_SHADER_TESS_EVAL)
+      if (zs->nir->info.stage == MESA_SHADER_TESS_EVAL) {
          streamout = &zs->streamout;
-   } else
+         NIR_PASS_V(nir, nir_lower_clip_halfz);
+      }
+   } else {
       streamout = &zs->streamout;
+      NIR_PASS_V(nir, nir_lower_clip_halfz);
+   }
    if (!zs->streamout.so_info_slots)
        streamout = NULL;
    if (zs->nir->info.stage == MESA_SHADER_FRAGMENT) {
@@ -403,7 +409,6 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
     */
    if (nir->num_uniforms)
       NIR_PASS_V(nir, nir_lower_uniforms_to_ubo, 16);
-   NIR_PASS_V(nir, nir_lower_clip_halfz);
    if (nir->info.stage < MESA_SHADER_FRAGMENT)
       have_psiz = check_psiz(nir);
    if (nir->info.stage == MESA_SHADER_GEOMETRY)

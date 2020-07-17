@@ -1744,28 +1744,6 @@ emit_load_deref(struct ntv_context *ctx, nir_intrinsic_instr *intr)
                                           ptr);
    unsigned num_components = nir_dest_num_components(intr->dest);
    unsigned bit_size = nir_dest_bit_size(intr->dest);
-   if (ctx->stage > MESA_SHADER_VERTEX && ctx->stage <= MESA_SHADER_GEOMETRY &&
-       (nir_deref_instr_get_variable(nir_src_as_deref(intr->src[0]))->data.location == VARYING_SLOT_POS)) {
-      /* we previously transformed opengl gl_Position -> vulkan gl_Position in vertex shader,
-       * so now we have to reverse that and construct a new gl_Position:
-
-         gl_Position.z = gl_Position.z * 2 - gl_Position.w
-
-       */
-      SpvId components[4];
-      SpvId f_type = get_fvec_type(ctx, 32, 1);
-      SpvId base_type = get_fvec_type(ctx, 32, 4);
-      for (unsigned c = 0; c < 4; c++) {
-         uint32_t member[] = { c };
-
-         components[c] = spirv_builder_emit_composite_extract(&ctx->builder, f_type, result, member, 1);
-      }
-      components[2] = emit_binop(ctx, SpvOpFMul, f_type, components[2], emit_float_const(ctx, 32, 2.0));
-      components[2] = emit_binop(ctx, SpvOpFSub, f_type, components[2], components[3]);
-
-      result = spirv_builder_emit_composite_construct(&ctx->builder, base_type,
-                                                      components, 4);
-   }
    result = bitcast_to_uvec(ctx, result, bit_size, num_components);
    store_dest(ctx, &intr->dest, result, nir_type_uint);
 }
