@@ -5329,7 +5329,7 @@ void visit_load_push_constant(isel_context *ctx, nir_intrinsic_instr *instr)
       unreachable("unimplemented or forbidden load_push_constant.");
    }
 
-   bld.smem(op, Definition(vec), ptr, index);
+   static_cast<SMEM_instruction*>(bld.smem(op, Definition(vec), ptr, index).instr)->prevent_overflow = true;
 
    if (!aligned) {
       Operand byte_offset = index_cv ? Operand((offset + index_cv->u32) % 4) : Operand(index);

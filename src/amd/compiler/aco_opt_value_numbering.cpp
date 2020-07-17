@@ -226,8 +226,11 @@ struct InstrPred {
          case Format::SMEM: {
             SMEM_instruction* aS = static_cast<SMEM_instruction*>(a);
             SMEM_instruction* bS = static_cast<SMEM_instruction*>(b);
+            /* isel shouldn't be creating situations where this assertion fails */
+            assert(aS->prevent_overflow == bS->prevent_overflow);
             return aS->can_reorder && bS->can_reorder &&
-                   aS->glc == bS->glc && aS->nv == bS->nv;
+                   aS->glc == bS->glc && aS->nv == bS->nv &&
+                   aS->prevent_overflow == bS->prevent_overflow;
          }
          case Format::VINTRP: {
             Interp_instruction* aI = static_cast<Interp_instruction*>(a);

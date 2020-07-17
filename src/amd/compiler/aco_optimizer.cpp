@@ -1001,13 +1001,14 @@ void label_instruction(opt_ctx &ctx, Block& block, aco_ptr<Instruction>& instr)
          SMEM_instruction *smem = static_cast<SMEM_instruction *>(instr.get());
          Temp base;
          uint32_t offset;
+         bool prevent_overflow = smem->operands[0].size() > 2 || smem->prevent_overflow;
          if (i == 1 && info.is_constant_or_literal(32) &&
              ((ctx.program->chip_class == GFX6 && info.val <= 0x3FF) ||
               (ctx.program->chip_class == GFX7 && info.val <= 0xFFFFFFFF) ||
               (ctx.program->chip_class >= GFX8 && info.val <= 0xFFFFF))) {
             instr->operands[i] = Operand(info.val);
             continue;
-         } else if (i == 1 && parse_base_offset(ctx, instr.get(), i, &base, &offset, true) && base.regClass() == s1 && offset <= 0xFFFFF && ctx.program->chip_class >= GFX9) {
+         } else if (i == 1 && parse_base_offset(ctx, instr.get(), i, &base, &offset, prevent_overflow) && base.regClass() == s1 && offset <= 0xFFFFF && ctx.program->chip_class >= GFX9) {
             bool soe = smem->operands.size() >= (!smem->definitions.empty() ? 3 : 4);
             if (soe &&
                 (!ctx.info[smem->operands.back().tempId()].is_constant_or_literal(32) ||

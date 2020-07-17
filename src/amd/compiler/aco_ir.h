@@ -924,7 +924,8 @@ struct SMEM_instruction : public Instruction {
    bool nv : 1; /* VEGA only: Non-volatile */
    bool can_reorder : 1;
    bool disable_wqm : 1;
-   uint32_t padding: 19;
+   bool prevent_overflow : 1; /* avoid overflow when combining additions */
+   uint32_t padding: 18;
 };
 static_assert(sizeof(SMEM_instruction) == sizeof(Instruction) + 4, "Unexpected padding");
 
