@@ -198,6 +198,10 @@ VkResult val_CreateBuffer(
 
    assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO);
 
+   /* gallium has max 32-bit buffer sizes */
+   if (pCreateInfo->size > UINT32_MAX)
+      return VK_ERROR_OUT_OF_DEVICE_MEMORY;
+
    buffer = vk_alloc2(&device->alloc, pAllocator, sizeof(*buffer), 8,
                        VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
    if (buffer == NULL)
