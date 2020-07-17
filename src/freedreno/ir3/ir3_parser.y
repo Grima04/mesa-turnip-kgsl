@@ -266,6 +266,9 @@ static void print_token(FILE *file, int type, YYSTYPE value)
 %token <tok> T_ABS
 %token <tok> T_R
 
+%token <tok> T_HR
+%token <tok> T_HC
+
 /* dst register flags */
 %token <tok> T_EVEN
 %token <tok> T_POS_INFINITY
@@ -873,6 +876,8 @@ offset:            { $$ = 0; }
 
 relative:          'r' '<' T_A0 offset '>'  { new_reg(0, IR3_REG_RELATIV)->array.offset = $4; }
 |                  'c' '<' T_A0 offset '>'  { new_reg(0, IR3_REG_RELATIV | IR3_REG_CONST)->array.offset = $4; }
+|                  T_HR '<' T_A0 offset '>'  { new_reg(0, IR3_REG_RELATIV | IR3_REG_HALF)->array.offset = $4; }
+|                  T_HC '<' T_A0 offset '>'  { new_reg(0, IR3_REG_RELATIV | IR3_REG_CONST | IR3_REG_HALF)->array.offset = $4; }
 
 immediate:         integer             { new_reg(0, IR3_REG_IMMED)->iim_val = $1; }
 |                  '(' integer ')'     { new_reg(0, IR3_REG_IMMED)->fim_val = $2; }
