@@ -988,6 +988,57 @@ vir_get_max_temps(struct v3d_compile *c)
         return max_temps;
 }
 
+enum v3d_dependency_class {
+        V3D_DEPENDENCY_CLASS_GS_VPM_OUTPUT_0
+};
+
+static bool
+v3d_intrinsic_dependency_cb(nir_intrinsic_instr *intr,
+                            nir_schedule_dependency *dep,
+                            void *user_data)
+{
+        struct v3d_compile *c = user_data;
+
+        switch (intr->intrinsic) {
+        case nir_intrinsic_store_output:
+                /* Writing to location 0 overwrites the value passed in for
+                 * gl_PrimitiveID on geometry shaders
+                 */
+                if (c->s->info.stage != MESA_SHADER_GEOMETRY ||
+                    nir_intrinsic_base(intr) != 0)
+                        break;
+
+                nir_const_value *const_value =
+                        nir_src_as_const_value(intr->src[1]);
+
+                if (const_value == NULL)
+                        break;
+
+                uint64_t offset =
+                        nir_const_value_as_uint(*const_value,
+                                                nir_src_bit_size(intr->src[1]));
+                if (offset != 0)
+                        break;
+
+                dep->klass = V3D_DEPENDENCY_CLASS_GS_VPM_OUTPUT_0;
+                dep->type = NIR_SCHEDULE_WRITE_DEPENDENCY;
+                return true;
+
+        case nir_intrinsic_load_primitive_id:
+                if (c->s->info.stage != MESA_SHADER_GEOMETRY)
+                        break;
+
+                dep->klass = V3D_DEPENDENCY_CLASS_GS_VPM_OUTPUT_0;
+                dep->type = NIR_SCHEDULE_READ_DEPENDENCY;
+                return true;
+
+        default:
+                break;
+        }
+
+        return false;
+}
+
 uint64_t *v3d_compile(const struct v3d_compiler *compiler,
                       struct v3d_key *key,
                       struct v3d_prog_data **out_prog_data,
@@ -1080,7 +1131,7 @@ uint64_t *v3d_compile(const struct v3d_compiler *compiler,
         NIR_PASS_V(c->s, nir_lower_bool_to_int32);
         NIR_PASS_V(c->s, nir_convert_from_ssa, true);
 
-        static const struct nir_schedule_options schedule_options = {
+        struct nir_schedule_options schedule_options = {
                 /* Schedule for about half our register space, to enable more
                  * shaders to hit 4 threads.
                  */
@@ -1093,6 +1144,9 @@ uint64_t *v3d_compile(const struct v3d_compiler *compiler,
                 (((1 << MESA_ALL_SHADER_STAGES) - 1) &
                  ~((1 << MESA_SHADER_FRAGMENT) |
                    (1 << MESA_SHADER_GEOMETRY))),
+
+                .intrinsic_cb = v3d_intrinsic_dependency_cb,
+                .intrinsic_cb_data = c,
         };
         NIR_PASS_V(c->s, nir_schedule, &schedule_options);
 
