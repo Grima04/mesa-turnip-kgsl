@@ -557,6 +557,11 @@ struct v3d_compile {
         bool writes_z;
         bool uses_implicit_point_line_varyings;
 
+        /* Whether we are using the fallback scheduler. This will be set after
+         * register allocation has failed once.
+         */
+        bool fallback_scheduler;
+
         /* State for whether we're executing on each channel currently.  0 if
          * yes, otherwise a block number + 1 that the channel jumped to.
          */

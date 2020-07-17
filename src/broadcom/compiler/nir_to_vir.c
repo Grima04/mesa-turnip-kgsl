@@ -3015,9 +3015,13 @@ v3d_nir_to_vir(struct v3d_compile *c)
                         break;
 
                 if (c->threads == min_threads) {
-                        fprintf(stderr, "Failed to register allocate at %d threads:\n",
-                                c->threads);
-                        vir_dump(c);
+                        if (c->fallback_scheduler) {
+                                fprintf(stderr,
+                                        "Failed to register allocate at %d "
+                                        "threads:\n",
+                                        c->threads);
+                                vir_dump(c);
+                        }
                         c->compilation_result =
                                 V3D_COMPILATION_FAILED_REGISTER_ALLOCATION;
                         return;

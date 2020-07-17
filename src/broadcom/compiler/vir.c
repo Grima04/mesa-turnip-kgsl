@@ -500,7 +500,8 @@ vir_compile_init(const struct v3d_compiler *compiler,
                  void (*debug_output)(const char *msg,
                                       void *debug_output_data),
                  void *debug_output_data,
-                 int program_id, int variant_id)
+                 int program_id, int variant_id,
+                 bool fallback_scheduler)
 {
         struct v3d_compile *c = rzalloc(NULL, struct v3d_compile);
 
@@ -513,6 +514,7 @@ vir_compile_init(const struct v3d_compiler *compiler,
         c->debug_output = debug_output;
         c->debug_output_data = debug_output_data;
         c->compilation_result = V3D_COMPILATION_SUCCEEDED;
+        c->fallback_scheduler = fallback_scheduler;
 
         s = nir_shader_clone(c, s);
         c->s = s;
@@ -1040,42 +1042,24 @@ v3d_intrinsic_dependency_cb(nir_intrinsic_instr *intr,
         return false;
 }
 
-uint64_t *v3d_compile(const struct v3d_compiler *compiler,
-                      struct v3d_key *key,
-                      struct v3d_prog_data **out_prog_data,
-                      nir_shader *s,
-                      void (*debug_output)(const char *msg,
-                                           void *debug_output_data),
-                      void *debug_output_data,
-                      int program_id, int variant_id,
-                      uint32_t *final_assembly_size)
+static void
+v3d_attempt_compile(struct v3d_compile *c)
 {
-        struct v3d_prog_data *prog_data;
-        struct v3d_compile *c = vir_compile_init(compiler, key, s,
-                                                 debug_output, debug_output_data,
-                                                 program_id, variant_id);
-
         switch (c->s->info.stage) {
         case MESA_SHADER_VERTEX:
-                c->vs_key = (struct v3d_vs_key *)key;
-                prog_data = rzalloc_size(NULL, sizeof(struct v3d_vs_prog_data));
+                c->vs_key = (struct v3d_vs_key *) c->key;
                 break;
         case MESA_SHADER_GEOMETRY:
-                c->gs_key = (struct v3d_gs_key *)key;
-                prog_data = rzalloc_size(NULL, sizeof(struct v3d_gs_prog_data));
+                c->gs_key = (struct v3d_gs_key *) c->key;
                 break;
         case MESA_SHADER_FRAGMENT:
-                c->fs_key = (struct v3d_fs_key *)key;
-                prog_data = rzalloc_size(NULL, sizeof(struct v3d_fs_prog_data));
+                c->fs_key = (struct v3d_fs_key *) c->key;
                 break;
         case MESA_SHADER_COMPUTE:
-                prog_data = rzalloc_size(NULL,
-                                         sizeof(struct v3d_compute_prog_data));
                 break;
         default:
                 unreachable("unsupported shader stage");
         }
-
 
         switch (c->s->info.stage) {
         case MESA_SHADER_VERTEX:
@@ -1146,12 +1130,71 @@ uint64_t *v3d_compile(const struct v3d_compiler *compiler,
                  ~((1 << MESA_SHADER_FRAGMENT) |
                    (1 << MESA_SHADER_GEOMETRY))),
 
+                .fallback = c->fallback_scheduler,
+
                 .intrinsic_cb = v3d_intrinsic_dependency_cb,
                 .intrinsic_cb_data = c,
         };
         NIR_PASS_V(c->s, nir_schedule, &schedule_options);
 
         v3d_nir_to_vir(c);
+}
+
+uint64_t *v3d_compile(const struct v3d_compiler *compiler,
+                      struct v3d_key *key,
+                      struct v3d_prog_data **out_prog_data,
+                      nir_shader *s,
+                      void (*debug_output)(const char *msg,
+                                           void *debug_output_data),
+                      void *debug_output_data,
+                      int program_id, int variant_id,
+                      uint32_t *final_assembly_size)
+{
+        struct v3d_compile *c;
+
+        for (int i = 0; true; i++) {
+                c = vir_compile_init(compiler, key, s,
+                                     debug_output, debug_output_data,
+                                     program_id, variant_id,
+                                     i > 0 /* fallback_scheduler */);
+
+                v3d_attempt_compile(c);
+
+                if (i > 0 ||
+                    c->compilation_result !=
+                    V3D_COMPILATION_FAILED_REGISTER_ALLOCATION)
+                        break;
+
+                char *debug_msg;
+                int ret = asprintf(&debug_msg,
+                                   "Using fallback scheduler for %s",
+                                   vir_get_stage_name(c));
+
+                if (ret >= 0) {
+                        if (unlikely(V3D_DEBUG & V3D_DEBUG_PERF))
+                                fprintf(stderr, "%s\n", debug_msg);
+
+                        c->debug_output(debug_msg, c->debug_output_data);
+                        free(debug_msg);
+                }
+
+                vir_compile_destroy(c);
+        }
+
+        struct v3d_prog_data *prog_data;
+
+        static const int prog_data_size[] = {
+                [MESA_SHADER_VERTEX] = sizeof(struct v3d_vs_prog_data),
+                [MESA_SHADER_GEOMETRY] = sizeof(struct v3d_gs_prog_data),
+                [MESA_SHADER_FRAGMENT] = sizeof(struct v3d_fs_prog_data),
+                [MESA_SHADER_COMPUTE] = sizeof(struct v3d_compute_prog_data),
+        };
+
+        assert(c->s->info.stage >= 0 &&
+               c->s->info.stage < ARRAY_SIZE(prog_data_size) &&
+               prog_data_size[c->s->info.stage]);
+
+        prog_data = rzalloc_size(NULL, prog_data_size[c->s->info.stage]);
 
         v3d_set_prog_data(c, prog_data);
 
