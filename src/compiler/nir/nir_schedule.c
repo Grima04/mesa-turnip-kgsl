@@ -584,6 +584,50 @@ nir_schedule_regs_freed(nir_schedule_scoreboard *scoreboard, nir_schedule_node *
 }
 
 /**
+ * Chooses an instruction that will minimise the register pressure as much as
+ * possible. This should only be used as a fallback when the regular scheduling
+ * generates a shader whose register allocation fails.
+ */
+static nir_schedule_node *
+nir_schedule_choose_instruction_fallback(nir_schedule_scoreboard *scoreboard)
+{
+   nir_schedule_node *chosen = NULL;
+
+   /* Find the leader in the ready (shouldn't-stall) set with the mininum
+    * cost.
+    */
+   list_for_each_entry(nir_schedule_node, n, &scoreboard->dag->heads, dag.link) {
+      if (scoreboard->time < n->ready_time)
+         continue;
+
+      if (!chosen || chosen->max_delay > n->max_delay)
+         chosen = n;
+   }
+   if (chosen) {
+      if (debug) {
+         fprintf(stderr, "chose (ready fallback):          ");
+         nir_print_instr(chosen->instr, stderr);
+         fprintf(stderr, "\n");
+      }
+
+      return chosen;
+   }
+
+   /* Otherwise, choose the leader with the minimum cost. */
+   list_for_each_entry(nir_schedule_node, n, &scoreboard->dag->heads, dag.link) {
+      if (!chosen || chosen->max_delay > n->max_delay)
+         chosen = n;
+   }
+   if (debug) {
+      fprintf(stderr, "chose (leader fallback):         ");
+      nir_print_instr(chosen->instr, stderr);
+      fprintf(stderr, "\n");
+   }
+
+   return chosen;
+}
+
+/**
  * Chooses an instruction to schedule using the Goodman/Hsu (1988) CSP (Code
  * Scheduling for Parallelism) heuristic.
  *
@@ -913,7 +957,9 @@ nir_schedule_instructions(nir_schedule_scoreboard *scoreboard, nir_block *block)
       }
 
       nir_schedule_node *chosen;
-      if (scoreboard->pressure < scoreboard->options->threshold)
+      if (scoreboard->options->fallback)
+         chosen = nir_schedule_choose_instruction_fallback(scoreboard);
+      else if (scoreboard->pressure < scoreboard->options->threshold)
          chosen = nir_schedule_choose_instruction_csp(scoreboard);
       else
          chosen = nir_schedule_choose_instruction_csr(scoreboard);

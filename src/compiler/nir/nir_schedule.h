@@ -58,6 +58,12 @@ typedef struct nir_schedule_options {
     * will try to reduce register usage.
     */
    int threshold;
+   /* If set, instead of trying to optimise parallelism, the scheduler will try
+    * to always minimise register pressure. This can be used as a fallback when
+    * register allocation fails so that it can at least try to generate a
+    * working shader even if it’s inefficient.
+    */
+   bool fallback;
    /* Callback used to add custom dependencies on intrinsics. If it returns
     * true then a dependency should be added and dep is filled in to describe
     * it.
