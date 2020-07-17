@@ -3896,11 +3896,15 @@ cmd_buffer_emit_pre_draw(struct v3dv_cmd_buffer *cmd_buffer)
    /* GL shader state binds shaders, uniform and vertex attribute state. The
     * compiler injects uniforms to handle some descriptor types (such as
     * textures), so we need to regen that when descriptor state changes.
+    *
+    * We also need to emit new shader state if we have a dirty viewport since
+    * that will require that we new uniform state for QUNIFORM_VIEWPORT_*.
     */
    if (*dirty & (V3DV_CMD_DIRTY_PIPELINE |
                  V3DV_CMD_DIRTY_VERTEX_BUFFER |
                  V3DV_CMD_DIRTY_DESCRIPTOR_SETS |
-                 V3DV_CMD_DIRTY_PUSH_CONSTANTS)) {
+                 V3DV_CMD_DIRTY_PUSH_CONSTANTS |
+                 V3DV_CMD_DIRTY_VIEWPORT)) {
       emit_gl_shader_state(cmd_buffer);
    }
 
