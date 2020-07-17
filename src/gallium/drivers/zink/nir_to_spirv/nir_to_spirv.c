@@ -2274,18 +2274,21 @@ nir_to_spirv(struct nir_shader *s, const struct pipe_stream_output_info *so_info
    nir_function_impl *entry = nir_shader_get_entrypoint(s);
    nir_metadata_require(entry, nir_metadata_block_index);
 
-   ctx.defs = (SpvId *)malloc(sizeof(SpvId) * entry->ssa_alloc);
+   ctx.defs = ralloc_array_size(ctx.mem_ctx,
+                                sizeof(SpvId), entry->ssa_alloc);
    if (!ctx.defs)
       goto fail;
    ctx.num_defs = entry->ssa_alloc;
 
    nir_index_local_regs(entry);
-   ctx.regs = malloc(sizeof(SpvId) * entry->reg_alloc);
+   ctx.regs = ralloc_array_size(ctx.mem_ctx,
+                                sizeof(SpvId), entry->reg_alloc);
    if (!ctx.regs)
       goto fail;
    ctx.num_regs = entry->reg_alloc;
 
-   SpvId *block_ids = (SpvId *)malloc(sizeof(SpvId) * entry->num_blocks);
+   SpvId *block_ids = ralloc_array_size(ctx.mem_ctx,
+                                        sizeof(SpvId), entry->num_blocks);
    if (!block_ids)
       goto fail;
 
@@ -2309,8 +2312,6 @@ nir_to_spirv(struct nir_shader *s, const struct pipe_stream_output_info *so_info
    }
 
    emit_cf_list(&ctx, &entry->body);
-
-   free(ctx.defs);
 
    if (so_info)
       emit_so_outputs(&ctx, so_info, local_so_info);
