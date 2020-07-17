@@ -30,6 +30,23 @@
 extern "C" {
 #endif
 
+/**
+ * Struct filled in by the intrinsic_cb callback of nir_schedule_options to
+ * specify a backend-specific dependency on an intrinsic.
+ */
+typedef struct nir_schedule_dependency {
+   /* Which class of dependency this is. The meanings of the classes are
+    * specific to the backend. This must be less than
+    * NIR_SCHEDULE_N_DEPENDENCY_CLASSES.
+    */
+   int klass;
+   /* The type of dependency */
+   enum {
+      NIR_SCHEDULE_READ_DEPENDENCY,
+      NIR_SCHEDULE_WRITE_DEPENDENCY,
+   } type;
+} nir_schedule_dependency;
+
 typedef struct nir_schedule_options {
    /* On some hardware with some stages the inputs and outputs to the shader
     * share the same memory. In that case the scheduler needs to ensure that
@@ -41,6 +58,15 @@ typedef struct nir_schedule_options {
     * will try to reduce register usage.
     */
    int threshold;
+   /* Callback used to add custom dependencies on intrinsics. If it returns
+    * true then a dependency should be added and dep is filled in to describe
+    * it.
+    */
+   bool (* intrinsic_cb)(nir_intrinsic_instr *intr,
+                         nir_schedule_dependency *dep,
+                         void *user_data);
+   /* Data to pass to the callback */
+   void *intrinsic_cb_data;
 } nir_schedule_options;
 
 void nir_schedule(nir_shader *shader, const nir_schedule_options *options);

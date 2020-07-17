@@ -119,6 +119,12 @@ typedef struct {
  */
 enum direction { F, R };
 
+struct nir_schedule_class_dep {
+   int klass;
+   nir_schedule_node *node;
+   struct nir_schedule_class_dep *next;
+};
+
 typedef struct {
    nir_schedule_scoreboard *scoreboard;
 
@@ -132,6 +138,8 @@ typedef struct {
    nir_schedule_node *unknown_intrinsic;
    nir_schedule_node *discard;
    nir_schedule_node *jump;
+
+   struct nir_schedule_class_dep *class_deps;
 
    enum direction dir;
 } nir_deps_state;
@@ -292,12 +300,52 @@ nir_schedule_ssa_deps(nir_ssa_def *def, void *in_state)
    return true;
 }
 
+static struct nir_schedule_class_dep *
+nir_schedule_get_class_dep(nir_deps_state *state,
+                           int klass)
+{
+   for (struct nir_schedule_class_dep *class_dep = state->class_deps;
+        class_dep != NULL;
+        class_dep = class_dep->next) {
+      if (class_dep->klass == klass)
+         return class_dep;
+   }
+
+   struct nir_schedule_class_dep *class_dep =
+      ralloc(state->reg_map, struct nir_schedule_class_dep);
+
+   class_dep->klass = klass;
+   class_dep->node = NULL;
+   class_dep->next = state->class_deps;
+
+   state->class_deps = class_dep;
+
+   return class_dep;
+}
+
 static void
 nir_schedule_intrinsic_deps(nir_deps_state *state,
                             nir_intrinsic_instr *instr)
 {
    nir_schedule_node *n = nir_schedule_get_node(state->scoreboard->instr_map,
                                                 &instr->instr);
+   const nir_schedule_options *options = state->scoreboard->options;
+   nir_schedule_dependency dep;
+
+   if (options->intrinsic_cb &&
+       options->intrinsic_cb(instr, &dep, options->intrinsic_cb_data)) {
+      struct nir_schedule_class_dep *class_dep =
+         nir_schedule_get_class_dep(state, dep.klass);
+
+      switch (dep.type) {
+      case NIR_SCHEDULE_READ_DEPENDENCY:
+         add_read_dep(state, class_dep->node, n);
+         break;
+      case NIR_SCHEDULE_WRITE_DEPENDENCY:
+         add_write_dep(state, &class_dep->node, n);
+         break;
+      }
+   }
 
    switch (instr->intrinsic) {
    case nir_intrinsic_load_uniform:
