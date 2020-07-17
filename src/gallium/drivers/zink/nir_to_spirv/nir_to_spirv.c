@@ -577,6 +577,10 @@ emit_output(struct ntv_context *ctx, struct nir_variable *var)
             spirv_builder_emit_builtin(&ctx->builder, var_id, SpvBuiltInSampleMask);
             break;
 
+         case FRAG_RESULT_STENCIL:
+            spirv_builder_emit_builtin(&ctx->builder, var_id, SpvBuiltInFragStencilRefEXT);
+            break;
+
          default:
             spirv_builder_emit_location(&ctx->builder, var_id, slot);
             spirv_builder_emit_index(&ctx->builder, var_id, var->data.index);
@@ -3650,6 +3654,11 @@ nir_to_spirv(struct nir_shader *s, const struct zink_so_info *so_info,
       spirv_builder_emit_mem_model(&ctx.builder, SpvAddressingModelLogical,
                                    SpvMemoryModelGLSL450);
 
+   if (s->info.outputs_written & BITFIELD64_BIT(FRAG_RESULT_STENCIL)) {
+      spirv_builder_emit_extension(&ctx.builder, "SPV_EXT_shader_stencil_export");
+      spirv_builder_emit_cap(&ctx.builder, SpvCapabilityStencilExportEXT);
+   }
+
    SpvExecutionModel exec_model;
    switch (s->info.stage) {
    case MESA_SHADER_VERTEX:
@@ -3715,6 +3724,9 @@ nir_to_spirv(struct nir_shader *s, const struct zink_so_info *so_info,
       if (s->info.outputs_written & BITFIELD64_BIT(FRAG_RESULT_DEPTH))
          spirv_builder_emit_exec_mode(&ctx.builder, entry_point,
                                       get_depth_layout_mode(s->info.fs.depth_layout));
+      if (s->info.outputs_written & BITFIELD64_BIT(FRAG_RESULT_STENCIL))
+         spirv_builder_emit_exec_mode(&ctx.builder, entry_point,
+                                      SpvExecutionModeStencilRefReplacingEXT);
       if (s->info.fs.early_fragment_tests)
          spirv_builder_emit_exec_mode(&ctx.builder, entry_point,
                                       SpvExecutionModeEarlyFragmentTests);
