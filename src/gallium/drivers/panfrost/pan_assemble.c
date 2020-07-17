@@ -171,7 +171,7 @@ panfrost_shader_compile(struct panfrost_context *ctx,
                 bifrost_compile_shader_nir(s, &program, dev->gpu_id);
         } else {
                 midgard_compile_shader_nir(s, &program, false, 0, dev->gpu_id,
-                                dev->debug & PAN_DBG_PRECOMPILE);
+                                dev->debug & PAN_DBG_PRECOMPILE, false);
         }
 
         /* Prepare the compiled binary for upload */
