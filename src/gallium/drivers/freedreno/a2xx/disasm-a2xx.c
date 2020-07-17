@@ -576,7 +576,8 @@ static void print_cf(instr_cf_t *cf, int level)
 {
 	printf("%s", levels[level]);
 	if (debug & PRINT_RAW) {
-		uint16_t *words = (uint16_t *)cf;
+		uint16_t words[3];
+		memcpy(&words, cf, sizeof(words));
 		printf("    %04x %04x %04x            \t",
 				words[0], words[1], words[2]);
 	}
