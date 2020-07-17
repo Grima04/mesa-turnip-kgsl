@@ -35,6 +35,7 @@
 #include "freedreno_log.h"
 #include "freedreno_resource.h"
 #include "freedreno_query_hw.h"
+#include "common/freedreno_guardband.h"
 
 #include "fd6_emit.h"
 #include "fd6_blend.h"
@@ -904,8 +905,12 @@ fd6_emit_state(struct fd_ringbuffer *ring, struct fd6_emit *emit)
 				)
 			);
 
-		unsigned guardband_x = fd_calc_guardband(scissor->maxx - scissor->minx);
-		unsigned guardband_y = fd_calc_guardband(scissor->maxy - scissor->miny);
+		unsigned guardband_x =
+			fd_calc_guardband(ctx->viewport.translate[0], ctx->viewport.scale[0],
+							  false);
+		unsigned guardband_y =
+			fd_calc_guardband(ctx->viewport.translate[1], ctx->viewport.scale[1],
+							  false);
 
 		OUT_REG(ring, A6XX_GRAS_CL_GUARDBAND_CLIP_ADJ(
 					.horz = guardband_x,

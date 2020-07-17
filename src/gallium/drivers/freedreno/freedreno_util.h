@@ -203,18 +203,6 @@ fd_half_precision(struct pipe_framebuffer_state *pfb)
 	return true;
 }
 
-/* Note sure if this is same on all gens, but seems to be same on the later
- * gen's
- */
-static inline unsigned
-fd_calc_guardband(unsigned x)
-{
-	float l = log2(x);
-	if (l <= 8)
-		return 511;
-	return 511 - ((l - 8) * 65);
-}
-
 static inline void emit_marker(struct fd_ringbuffer *ring, int scratch_idx);
 
 /* like OUT_RING() but appends a cmdstream patch point to 'buf' */
