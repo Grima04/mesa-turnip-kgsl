@@ -42,6 +42,7 @@ struct spirv_builder {
    void *mem_ctx;
 
    struct spirv_buffer capabilities;
+   struct spirv_buffer extensions;
    struct spirv_buffer imports;
    struct spirv_buffer memory_model;
    struct spirv_buffer entry_points;
@@ -65,6 +66,9 @@ spirv_builder_new_id(struct spirv_builder *b)
 
 void
 spirv_builder_emit_cap(struct spirv_builder *b, SpvCapability cap);
+
+void
+spirv_builder_emit_extension(struct spirv_builder *b, const char *ext);
 
 void
 spirv_builder_emit_source(struct spirv_builder *b, SpvSourceLanguage lang,

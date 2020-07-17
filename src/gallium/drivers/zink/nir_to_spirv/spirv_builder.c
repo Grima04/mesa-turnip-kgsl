@@ -97,6 +97,16 @@ spirv_builder_emit_cap(struct spirv_builder *b, SpvCapability cap)
 }
 
 void
+spirv_builder_emit_extension(struct spirv_builder *b, const char *name)
+{
+   size_t pos = b->extensions.num_words;
+   spirv_buffer_prepare(&b->extensions, b->mem_ctx, 1);
+   spirv_buffer_emit_word(&b->extensions, SpvOpExtension);
+   int len = spirv_buffer_emit_string(&b->extensions, b->mem_ctx, name);
+   b->extensions.words[pos] |= (1 + len) << 16;
+}
+
+void
 spirv_builder_emit_source(struct spirv_builder *b, SpvSourceLanguage lang,
                           uint32_t version)
 {
@@ -1106,6 +1116,7 @@ spirv_builder_get_num_words(struct spirv_builder *b)
    const size_t header_size = 5;
    return header_size +
           b->capabilities.num_words +
+          b->extensions.num_words +
           b->imports.num_words +
           b->memory_model.num_words +
           b->entry_points.num_words +
@@ -1131,6 +1142,7 @@ spirv_builder_get_words(struct spirv_builder *b, uint32_t *words,
 
    const struct spirv_buffer *buffers[] = {
       &b->capabilities,
+      &b->extensions,
       &b->imports,
       &b->memory_model,
       &b->entry_points,
