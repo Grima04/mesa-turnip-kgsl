@@ -115,15 +115,6 @@ intersects(unsigned a_start, unsigned a_end, unsigned b_start, unsigned b_end)
 	return !((a_start >= b_end) || (b_start >= a_end));
 }
 
-static unsigned
-reg_size_for_array(struct ir3_array *arr)
-{
-	if (arr->half)
-		return DIV_ROUND_UP(arr->length, 2);
-
-	return arr->length;
-}
-
 static bool
 instr_before(struct ir3_instruction *a, struct ir3_instruction *b)
 {
@@ -1246,6 +1237,15 @@ static void
 assign_arr_base(struct ir3_ra_ctx *ctx, struct ir3_array *arr,
 		struct ir3_instruction **precolor, unsigned nprecolor)
 {
+	/* In the mergedregs case, we convert full precision arrays
+	 * to their effective half-precision base, and find conflicts
+	 * amongst all other arrays/inputs.
+	 *
+	 * In the splitregs case (halfreg file and fullreg file do
+	 * not conflict), we ignore arrays and other pre-colors that
+	 * are not the same precision.
+	 */
+	bool mergedregs = ctx->v->mergedregs;
 	unsigned base = 0;
 
 	/* figure out what else we conflict with which has already
@@ -1255,14 +1255,34 @@ retry:
 	foreach_array (arr2, &ctx->ir->array_list) {
 		if (arr2 == arr)
 			break;
-		if (arr2->end_ip == 0)
+		ra_assert(ctx, arr2->start_ip <= arr2->end_ip);
+
+		unsigned base2 = arr2->reg;
+		unsigned len2  = arr2->length;
+		unsigned len   = arr->length;
+
+		if (mergedregs) {
+			/* convert into half-reg space: */
+			if (!arr2->half) {
+				base2 *= 2;
+				len2  *= 2;
+			}
+			if (!arr->half) {
+				len   *= 2;
+			}
+		} else if (arr2->half != arr->half) {
+			/* for split-register-file mode, we only conflict with
+			 * other arrays of same precision:
+			 */
 			continue;
+		}
+
 		/* if it intersects with liverange AND register range.. */
 		if (intersects(arr->start_ip, arr->end_ip,
 				arr2->start_ip, arr2->end_ip) &&
-			intersects(base, base + reg_size_for_array(arr),
-				arr2->reg, arr2->reg + reg_size_for_array(arr2))) {
-			base = MAX2(base, arr2->reg + reg_size_for_array(arr2));
+			intersects(base, base + len,
+				base2, base2 + len2)) {
+			base = MAX2(base, base2 + len2);
 			goto retry;
 		}
 	}
@@ -1280,19 +1300,42 @@ retry:
 		if (id->off > 0)
 			continue;
 
-		unsigned name = ra_name(ctx, id);
-		unsigned regid = instr->regs[0]->num;
+		unsigned name   = ra_name(ctx, id);
+		unsigned regid  = instr->regs[0]->num;
+		unsigned reglen = class_sizes[id->cls];
+		unsigned len    = arr->length;
+
+		if (mergedregs) {
+			/* convert into half-reg space: */
+			if (!is_half(instr)) {
+				regid  *= 2;
+				reglen *= 2;
+			}
+			if (!arr->half) {
+				len   *= 2;
+			}
+		} else if (is_half(instr) != arr->half) {
+			/* for split-register-file mode, we only conflict with
+			 * other arrays of same precision:
+			 */
+			continue;
+		}
 
 		/* Check if array intersects with liverange AND register
 		 * range of the input:
 		 */
 		if (intersects(arr->start_ip, arr->end_ip,
 						ctx->def[name], ctx->use[name]) &&
-				intersects(base, base + reg_size_for_array(arr),
-						regid, regid + class_sizes[id->cls])) {
-			base = MAX2(base, regid + class_sizes[id->cls]);
+				intersects(base, base + len,
+						regid, regid + reglen)) {
+			base = MAX2(base, regid + reglen);
 			goto retry;
 		}
+	}
+
+	/* convert back from half-reg space to fullreg space: */
+	if (mergedregs && !arr->half) {
+		base = DIV_ROUND_UP(base, 2);
 	}
 
 	arr->reg = base;
