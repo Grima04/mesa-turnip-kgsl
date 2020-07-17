@@ -578,7 +578,7 @@ panfrost_transfer_map(struct pipe_context *pctx,
                  * mitigates broken depth reload.
                  */
 
-                panfrost_flush_batches_accessing_bo(ctx, bo, PAN_BO_ACCESS_WRITE);
+                panfrost_flush_batches_accessing_bo(ctx, bo, false);
                 panfrost_bo_wait(bo, INT64_MAX, false);
 
                 create_new_bo = true;

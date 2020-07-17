@@ -1390,7 +1390,7 @@ panfrost_get_query_result(struct pipe_context *pipe,
         case PIPE_QUERY_OCCLUSION_COUNTER:
         case PIPE_QUERY_OCCLUSION_PREDICATE:
         case PIPE_QUERY_OCCLUSION_PREDICATE_CONSERVATIVE:
-                panfrost_flush_batches_accessing_bo(ctx, query->bo, PAN_BO_ACCESS_WRITE);
+                panfrost_flush_batches_accessing_bo(ctx, query->bo, false);
                 panfrost_bo_wait(query->bo, INT64_MAX, false);
 
                 /* Read back the query results */
