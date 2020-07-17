@@ -399,7 +399,9 @@ emit_alu(struct ir3_context *ctx, nir_alu_instr *alu)
 		/* i2b1 will appear when translating from nir_load_ubo or
 		 * nir_intrinsic_load_ssbo, where any non-zero value is true.
 		 */
-		dst[0] = ir3_CMPS_S(b, src[0], 0, create_immed(b, 0), 0);
+		dst[0] = ir3_CMPS_S(b,
+				src[0], 0,
+				create_immed_typed(b, 0, bs[0] == 16 ? TYPE_U16 : TYPE_U32), 0);
 		dst[0]->cat2.condition = IR3_COND_NE;
 		break;
 
