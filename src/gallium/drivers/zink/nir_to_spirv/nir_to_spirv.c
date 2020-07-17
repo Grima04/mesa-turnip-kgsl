@@ -90,6 +90,8 @@ static unsigned slot_pack_map[] = {
 #define NTV_MIN_RESERVED_SLOTS 11
 
 struct ntv_context {
+   void *mem_ctx;
+
    struct spirv_builder builder;
 
    SpvId GLSL_std_450;
@@ -2168,6 +2170,7 @@ nir_to_spirv(struct nir_shader *s, const struct pipe_stream_output_info *so_info
    struct spirv_shader *ret = NULL;
 
    struct ntv_context ctx = {};
+   ctx.mem_ctx = ralloc_context(NULL);
 
    switch (s->info.stage) {
    case MESA_SHADER_VERTEX:
@@ -2233,10 +2236,10 @@ nir_to_spirv(struct nir_shader *s, const struct pipe_stream_output_info *so_info
    SpvId entry_point = spirv_builder_new_id(&ctx.builder);
    spirv_builder_emit_name(&ctx.builder, entry_point, "main");
 
-   ctx.vars = _mesa_hash_table_create(NULL, _mesa_hash_pointer,
+   ctx.vars = _mesa_hash_table_create(ctx.mem_ctx, _mesa_hash_pointer,
                                       _mesa_key_pointer_equal);
 
-   ctx.so_outputs = _mesa_hash_table_create(NULL, _mesa_hash_u32,
+   ctx.so_outputs = _mesa_hash_table_create(ctx.mem_ctx, _mesa_hash_u32,
                                             _mesa_key_u32_equal);
 
    nir_foreach_variable(var, &s->inputs)
@@ -2332,18 +2335,15 @@ nir_to_spirv(struct nir_shader *s, const struct pipe_stream_output_info *so_info
    ret->num_words = spirv_builder_get_words(&ctx.builder, ret->words, num_words);
    assert(ret->num_words == num_words);
 
+   ralloc_free(ctx.mem_ctx);
+
    return ret;
 
 fail:
+   ralloc_free(ctx.mem_ctx);
 
    if (ret)
       spirv_shader_delete(ret);
-
-   if (ctx.vars)
-      _mesa_hash_table_destroy(ctx.vars, NULL);
-
-   if (ctx.so_outputs)
-      _mesa_hash_table_destroy(ctx.so_outputs, NULL);
 
    return NULL;
 }
