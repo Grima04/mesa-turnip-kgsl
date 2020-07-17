@@ -107,8 +107,7 @@ struct panfrost_bo {
 };
 
 bool
-panfrost_bo_wait(struct panfrost_bo *bo, int64_t timeout_ns,
-                 uint32_t access_type);
+panfrost_bo_wait(struct panfrost_bo *bo, int64_t timeout_ns, bool wait_readers);
 void
 panfrost_bo_reference(struct panfrost_bo *bo);
 void

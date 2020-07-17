@@ -579,7 +579,7 @@ panfrost_transfer_map(struct pipe_context *pctx,
                  */
 
                 panfrost_flush_batches_accessing_bo(ctx, bo, PAN_BO_ACCESS_WRITE);
-                panfrost_bo_wait(bo, INT64_MAX, PAN_BO_ACCESS_WRITE);
+                panfrost_bo_wait(bo, INT64_MAX, false);
 
                 create_new_bo = true;
                 copy_resource = true;
@@ -591,7 +591,7 @@ panfrost_transfer_map(struct pipe_context *pctx,
                  * batches), we try to allocate a new one to avoid waiting.
                  */
                 if (panfrost_pending_batches_access_bo(ctx, bo) ||
-                    !panfrost_bo_wait(bo, 0, PAN_BO_ACCESS_RW)) {
+                    !panfrost_bo_wait(bo, 0, true)) {
                         /* We want the BO to be MMAPed. */
                         uint32_t flags = bo->flags & ~PAN_BO_DELAY_MMAP;
                         struct panfrost_bo *newbo = NULL;
@@ -627,10 +627,10 @@ panfrost_transfer_map(struct pipe_context *pctx,
         } else if (!(usage & PIPE_TRANSFER_UNSYNCHRONIZED)) {
                 if (usage & PIPE_TRANSFER_WRITE) {
                         panfrost_flush_batches_accessing_bo(ctx, bo, true);
-                        panfrost_bo_wait(bo, INT64_MAX, PAN_BO_ACCESS_RW);
+                        panfrost_bo_wait(bo, INT64_MAX, true);
                 } else if (usage & PIPE_TRANSFER_READ) {
                         panfrost_flush_batches_accessing_bo(ctx, bo, false);
-                        panfrost_bo_wait(bo, INT64_MAX, PAN_BO_ACCESS_WRITE);
+                        panfrost_bo_wait(bo, INT64_MAX, false);
                 }
         }
 

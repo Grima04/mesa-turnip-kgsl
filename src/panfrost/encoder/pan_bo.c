@@ -105,25 +105,17 @@ panfrost_bo_free(struct panfrost_bo *bo)
 
 /* Returns true if the BO is ready, false otherwise.
  * access_type is encoding the type of access one wants to ensure is done.
- * Say you want to make sure all writers are done writing, you should pass
- * PAN_BO_ACCESS_WRITE.
- * If you want to wait for all users, you should pass PAN_BO_ACCESS_RW.
- * PAN_BO_ACCESS_READ would work too as waiting for readers implies
- * waiting for writers as well, but we want to make things explicit and waiting
- * only for readers is impossible.
+ * Waiting is always done for writers, but if wait_readers is set then readers
+ * are also waited for.
  */
 bool
-panfrost_bo_wait(struct panfrost_bo *bo, int64_t timeout_ns,
-                 uint32_t access_type)
+panfrost_bo_wait(struct panfrost_bo *bo, int64_t timeout_ns, bool wait_readers)
 {
         struct drm_panfrost_wait_bo req = {
                 .handle = bo->gem_handle,
 		.timeout_ns = timeout_ns,
         };
         int ret;
-
-        assert(access_type == PAN_BO_ACCESS_WRITE ||
-               access_type == PAN_BO_ACCESS_RW);
 
         /* If the BO has been exported or imported we can't rely on the cached
          * state, we need to call the WAIT_BO ioctl.
@@ -136,8 +128,7 @@ panfrost_bo_wait(struct panfrost_bo *bo, int64_t timeout_ns,
                 /* If the caller only wants to wait for writers and no
                  * writes are pending, we don't have to wait.
                  */
-                if (access_type == PAN_BO_ACCESS_WRITE &&
-                    !(bo->gpu_access & PAN_BO_ACCESS_WRITE))
+                if (!wait_readers && !(bo->gpu_access & PAN_BO_ACCESS_WRITE))
                         return true;
         }
 
