@@ -25,6 +25,7 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
+#include "common/freedreno_guardband.h"
 #include "tu_private.h"
 
 #include "ir3/ir3_nir.h"
@@ -1498,15 +1499,6 @@ tu6_emit_vertex_input(struct tu_cs *cs,
                      .decode_cnt = vfd_decode_idx));
 }
 
-static uint32_t
-tu6_guardband_adj(uint32_t v)
-{
-   if (v > 256)
-      return (uint32_t)(511.0 - 65.0 * (log2(v) - 8.0));
-   else
-      return 511;
-}
-
 void
 tu6_emit_viewport(struct tu_cs *cs, const VkViewport *viewport)
 {
@@ -1537,8 +1529,8 @@ tu6_emit_viewport(struct tu_cs *cs, const VkViewport *viewport)
    assert(min.y >= 0 && min.y < max.y);
 
    VkExtent2D guardband_adj;
-   guardband_adj.width = tu6_guardband_adj(max.x - min.x);
-   guardband_adj.height = tu6_guardband_adj(max.y - min.y);
+   guardband_adj.width = fd_calc_guardband(offsets[0], scales[0], false);
+   guardband_adj.height = fd_calc_guardband(offsets[1], scales[1], false);
 
    tu_cs_emit_regs(cs,
                    A6XX_GRAS_CL_VPORT_XOFFSET(0, offsets[0]),
