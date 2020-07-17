@@ -324,7 +324,8 @@ radv_amdgpu_cs_create(struct radeon_winsys *ws,
 						  RADEON_DOMAIN_GTT,
 						  RADEON_FLAG_CPU_ACCESS |
 						  RADEON_FLAG_NO_INTERPROCESS_SHARING |
-						  RADEON_FLAG_READ_ONLY,
+						  RADEON_FLAG_READ_ONLY |
+						  RADEON_FLAG_GTT_WC,
 						  RADV_BO_PRIORITY_CS);
 		if (!cs->ib_buffer) {
 			free(cs);
@@ -440,7 +441,8 @@ static void radv_amdgpu_cs_grow(struct radeon_cmdbuf *_cs, size_t min_size)
 						   RADEON_DOMAIN_GTT,
 						   RADEON_FLAG_CPU_ACCESS |
 						   RADEON_FLAG_NO_INTERPROCESS_SHARING |
-						   RADEON_FLAG_READ_ONLY,
+						   RADEON_FLAG_READ_ONLY |
+						   RADEON_FLAG_GTT_WC,
 						   RADV_BO_PRIORITY_CS);
 
 	if (!cs->ib_buffer) {
