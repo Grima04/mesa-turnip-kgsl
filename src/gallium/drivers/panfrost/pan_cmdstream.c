@@ -872,14 +872,21 @@ panfrost_frag_shader_meta_init(struct panfrost_context *ctx,
                 SET_BIT(fragmeta->midgard1.flags_lo, MALI_HELPER_INVOCATIONS,
                         fs->helper_invocations);
 
-                const struct pipe_depth_stencil_alpha_state *zsa = ctx->depth_stencil;
+                /* If discard is enabled, which bit we set to convey this
+                 * depends on if depth/stencil is used for the draw or not.
+                 * Just one of depth OR stencil is enough to trigger this. */
 
-                bool depth_enabled = fs->writes_depth ||
-                   (zsa && zsa->depth.enabled && zsa->depth.func != PIPE_FUNC_ALWAYS);
+                const struct pipe_depth_stencil_alpha_state *zsa = ctx->depth_stencil;
+                bool zs_enabled = fs->writes_depth || fs->writes_stencil;
+
+                if (zsa) {
+                        zs_enabled |= (zsa->depth.enabled && zsa->depth.func != PIPE_FUNC_ALWAYS);
+                        zs_enabled |= zsa->stencil[0].enabled;
+                }
 
                 SET_BIT(fragmeta->midgard1.flags_lo, MALI_READS_TILEBUFFER,
-                        fs->outputs_read || (!depth_enabled && fs->can_discard));
-                SET_BIT(fragmeta->midgard1.flags_lo, MALI_READS_ZS, depth_enabled && fs->can_discard);
+                        fs->outputs_read || (!zs_enabled && fs->can_discard));
+                SET_BIT(fragmeta->midgard1.flags_lo, MALI_READS_ZS, zs_enabled && fs->can_discard);
         }
 
         panfrost_frag_meta_rasterizer_update(ctx, fragmeta);
