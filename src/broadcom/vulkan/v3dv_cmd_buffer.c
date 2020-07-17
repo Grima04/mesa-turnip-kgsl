@@ -2046,11 +2046,13 @@ cmd_buffer_emit_subpass_clears(struct v3dv_cmd_buffer *cmd_buffer)
          if (att->desc.stencilLoadOp != VK_ATTACHMENT_LOAD_OP_CLEAR)
             aspects &= ~VK_IMAGE_ASPECT_STENCIL_BIT;
 
-         atts[att_count].aspectMask = aspects;
-         atts[att_count].colorAttachment = 0; /* Ignored */
-         atts[att_count].clearValue =
-            state->attachments[ds_att_idx].vk_clear_value;
-         att_count++;
+         if (aspects) {
+            atts[att_count].aspectMask = aspects;
+            atts[att_count].colorAttachment = 0; /* Ignored */
+            atts[att_count].clearValue =
+               state->attachments[ds_att_idx].vk_clear_value;
+            att_count++;
+         }
       }
    }
 
