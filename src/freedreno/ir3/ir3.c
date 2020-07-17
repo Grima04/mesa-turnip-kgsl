@@ -921,6 +921,7 @@ void * ir3_assemble(struct ir3_shader_variant *v)
 	uint32_t *ptr, *dwords;
 	struct ir3_info *info = &v->info;
 	struct ir3 *shader = v->ir;
+	const struct ir3_compiler *compiler = v->shader->compiler;
 
 	memset(info, 0, sizeof(*info));
 	info->data          = v;
@@ -928,21 +929,17 @@ void * ir3_assemble(struct ir3_shader_variant *v)
 	info->max_half_reg  = -1;
 	info->max_const     = -1;
 
+	uint32_t instr_count = 0;
 	foreach_block (block, &shader->block_list) {
 		foreach_instr (instr, &block->instr_list) {
-			info->sizedwords += 2;
+			instr_count++;
 		}
 	}
 
-	/* need an integer number of instruction "groups" (sets of 16
-	 * instructions on a4xx or sets of 4 instructions on a3xx),
-	 * so pad out w/ NOPs if needed: (NOTE each instruction is 64bits)
-	 */
-	if (v->shader->compiler->gpu_id >= 400) {
-		info->sizedwords = align(info->sizedwords, 16 * 2);
-	} else {
-		info->sizedwords = align(info->sizedwords, 4 * 2);
-	}
+	v->instrlen = DIV_ROUND_UP(instr_count, compiler->instr_align);
+
+	/* Pad out with NOPs to instrlen. */
+	info->sizedwords = v->instrlen * compiler->instr_align * sizeof(instr_t) / 4;
 
 	ptr = dwords = rzalloc_size(v, 4 * info->sizedwords);
 

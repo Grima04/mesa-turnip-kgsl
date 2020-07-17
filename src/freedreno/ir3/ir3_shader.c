@@ -124,18 +124,12 @@ fixup_regfootprint(struct ir3_shader_variant *v)
  */
 void * ir3_shader_assemble(struct ir3_shader_variant *v)
 {
-	unsigned gpu_id = v->shader->compiler->gpu_id;
+	const struct ir3_compiler *compiler = v->shader->compiler;
 	void *bin;
 
 	bin = ir3_assemble(v);
 	if (!bin)
 		return NULL;
-
-	if (gpu_id >= 400) {
-		v->instrlen = v->info.sizedwords / (2 * 16);
-	} else {
-		v->instrlen = v->info.sizedwords / (2 * 4);
-	}
 
 	/* NOTE: if relative addressing is used, we set constlen in
 	 * the compiler (to worst-case value) since we don't know in
@@ -147,7 +141,7 @@ void * ir3_shader_assemble(struct ir3_shader_variant *v)
 	 * uploads are in units of 4 dwords. Round it up here to make calculations
 	 * regarding the shared constlen simpler.
 	 */
-	if (gpu_id >= 400)
+	if (compiler->gpu_id >= 400)
 		v->constlen = align(v->constlen, 4);
 
 	fixup_regfootprint(v);
