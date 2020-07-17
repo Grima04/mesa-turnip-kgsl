@@ -39,6 +39,8 @@ struct spirv_buffer {
 };
 
 struct spirv_builder {
+   void *mem_ctx;
+
    struct spirv_buffer capabilities;
    struct spirv_buffer imports;
    struct spirv_buffer memory_model;

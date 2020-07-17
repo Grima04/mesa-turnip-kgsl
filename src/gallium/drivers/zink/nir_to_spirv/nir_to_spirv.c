@@ -2171,6 +2171,7 @@ nir_to_spirv(struct nir_shader *s, const struct pipe_stream_output_info *so_info
 
    struct ntv_context ctx = {};
    ctx.mem_ctx = ralloc_context(NULL);
+   ctx.builder.mem_ctx = ctx.mem_ctx;
 
    switch (s->info.stage) {
    case MESA_SHADER_VERTEX:
