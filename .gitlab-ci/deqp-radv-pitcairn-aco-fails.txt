@@ -1,5 +1,3 @@
-dEQP-VK.memory_model.message_passing.core11.u32.coherent.fence_fence.atomicwrite.device.payload_local.image.guard_nonlocal.workgroup.comp
-dEQP-VK.memory_model.message_passing.core11.u32.coherent.fence_fence.atomicwrite.device.payload_nonlocal.image.guard_nonlocal.workgroup.comp
 dEQP-VK.pipeline.depth.format.d16_unorm.compare_ops.never_zerodepthbounds_depthdisabled_stencilenabled
 dEQP-VK.pipeline.depth.format.d32_sfloat.compare_ops.never_zerodepthbounds_depthdisabled_stencilenabled
 dEQP-VK.rasterization.flatshading.line_strip_wide

@@ -3578,40 +3578,43 @@ vtn_emit_memory_barrier(struct vtn_builder *b, SpvScope scope,
    /* There's only two scopes thing left */
    vtn_assert(scope == SpvScopeInvocation || scope == SpvScopeDevice);
 
-   /* Map the GLSL memoryBarrier() construct to the corresponding NIR one. */
-   static const SpvMemorySemanticsMask glsl_memory_barrier =
-      SpvMemorySemanticsUniformMemoryMask |
-      SpvMemorySemanticsWorkgroupMemoryMask |
-      SpvMemorySemanticsImageMemoryMask;
-   if ((semantics & glsl_memory_barrier) == glsl_memory_barrier) {
-       vtn_emit_barrier(b, nir_intrinsic_memory_barrier);
-       semantics &= ~(glsl_memory_barrier | SpvMemorySemanticsAtomicCounterMemoryMask);
+   /* Map the GLSL memoryBarrier() construct and any barriers with more than one
+    * semantic to the corresponding NIR one.
+    */
+   if (util_bitcount(semantics & all_memory_semantics) > 1) {
+      vtn_emit_barrier(b, nir_intrinsic_memory_barrier);
+      if (semantics & SpvMemorySemanticsOutputMemoryMask) {
+         /* GLSL memoryBarrier() (and the corresponding NIR one) doesn't include
+          * TCS outputs, so we have to emit it's own intrinsic for that. We
+          * then need to emit another memory_barrier to prevent moving
+          * non-output operations to before the tcs_patch barrier.
+          */
+         vtn_emit_barrier(b, nir_intrinsic_memory_barrier_tcs_patch);
+         vtn_emit_barrier(b, nir_intrinsic_memory_barrier);
+      }
+      return;
    }
 
-   /* Issue a bunch of more specific barriers */
-   uint32_t bits = semantics;
-   while (bits) {
-      SpvMemorySemanticsMask semantic = 1 << u_bit_scan(&bits);
-      switch (semantic) {
-      case SpvMemorySemanticsUniformMemoryMask:
-         vtn_emit_barrier(b, nir_intrinsic_memory_barrier_buffer);
-         break;
-      case SpvMemorySemanticsWorkgroupMemoryMask:
-         vtn_emit_barrier(b, nir_intrinsic_memory_barrier_shared);
-         break;
-      case SpvMemorySemanticsAtomicCounterMemoryMask:
-         vtn_emit_barrier(b, nir_intrinsic_memory_barrier_atomic_counter);
-         break;
-      case SpvMemorySemanticsImageMemoryMask:
-         vtn_emit_barrier(b, nir_intrinsic_memory_barrier_image);
-         break;
-      case SpvMemorySemanticsOutputMemoryMask:
-         if (b->nb.shader->info.stage == MESA_SHADER_TESS_CTRL)
-            vtn_emit_barrier(b, nir_intrinsic_memory_barrier_tcs_patch);
-         break;
-      default:
-         break;;
-      }
+   /* Issue a more specific barrier */
+   switch (semantics & all_memory_semantics) {
+   case SpvMemorySemanticsUniformMemoryMask:
+      vtn_emit_barrier(b, nir_intrinsic_memory_barrier_buffer);
+      break;
+   case SpvMemorySemanticsWorkgroupMemoryMask:
+      vtn_emit_barrier(b, nir_intrinsic_memory_barrier_shared);
+      break;
+   case SpvMemorySemanticsAtomicCounterMemoryMask:
+      vtn_emit_barrier(b, nir_intrinsic_memory_barrier_atomic_counter);
+      break;
+   case SpvMemorySemanticsImageMemoryMask:
+      vtn_emit_barrier(b, nir_intrinsic_memory_barrier_image);
+      break;
+   case SpvMemorySemanticsOutputMemoryMask:
+      if (b->nb.shader->info.stage == MESA_SHADER_TESS_CTRL)
+         vtn_emit_barrier(b, nir_intrinsic_memory_barrier_tcs_patch);
+      break;
+   default:
+      break;
    }
 }
 
