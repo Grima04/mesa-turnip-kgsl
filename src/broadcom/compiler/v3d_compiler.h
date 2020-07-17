@@ -489,6 +489,12 @@ vir_after_block(struct qblock *block)
         return (struct vir_cursor){ vir_cursor_addtail, &block->instructions };
 }
 
+enum v3d_compilation_result {
+        V3D_COMPILATION_SUCCEEDED,
+        V3D_COMPILATION_FAILED_REGISTER_ALLOCATION,
+        V3D_COMPILATION_FAILED,
+};
+
 /**
  * Compiler state saved across compiler invocations, for any expensive global
  * setup.
@@ -666,7 +672,7 @@ struct v3d_compile {
         bool emitted_tlb_load;
         bool lock_scoreboard_on_first_thrsw;
 
-        bool failed;
+        enum v3d_compilation_result compilation_result;
 
         bool tmu_dirty_rcl;
 };

@@ -512,6 +512,7 @@ vir_compile_init(const struct v3d_compiler *compiler,
         c->threads = 4;
         c->debug_output = debug_output;
         c->debug_output_data = debug_output_data;
+        c->compilation_result = V3D_COMPILATION_SUCCEEDED;
 
         s = nir_shader_clone(c, s);
         c->s = s;
