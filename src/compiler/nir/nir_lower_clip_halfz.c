@@ -57,7 +57,8 @@ void
 nir_lower_clip_halfz(nir_shader *shader)
 {
    if (shader->info.stage != MESA_SHADER_VERTEX &&
-       shader->info.stage != MESA_SHADER_GEOMETRY)
+       shader->info.stage != MESA_SHADER_GEOMETRY &&
+       shader->info.stage != MESA_SHADER_TESS_EVAL)
       return;
 
    nir_foreach_function(function, shader) {
