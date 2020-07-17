@@ -53,6 +53,7 @@ def EXTENSIONS():
         Extension("VK_KHR_maintenance1",             required=True),
         Extension("VK_KHR_external_memory",          required=True),
         Extension("VK_KHR_external_memory_fd"),
+        Extension("VK_KHR_vulkan_memory_model"),
         Extension("VK_EXT_conditional_rendering",    alias="cond_render", feature="conditionalRendering"),
         Extension("VK_EXT_transform_feedback",       alias="tf", properties=True, feature="transformFeedback"),
         Extension("VK_EXT_index_type_uint8",         alias="index_uint8", feature="indexTypeUint8"),
