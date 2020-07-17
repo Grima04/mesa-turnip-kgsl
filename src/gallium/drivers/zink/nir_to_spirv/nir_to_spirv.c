@@ -917,7 +917,7 @@ emit_so_info(struct ntv_context *ctx, unsigned max_output_location,
       if (so_output.start_component)
          spirv_builder_emit_component(&ctx->builder, var_id, so_output.start_component);
 
-      uint32_t *key = ralloc_size(NULL, sizeof(uint32_t));
+      uint32_t *key = ralloc_size(ctx->mem_ctx, sizeof(uint32_t));
       *key = (uint32_t)so_output.register_index << 2 | so_output.start_component;
       _mesa_hash_table_insert(ctx->so_outputs, key, (void *)(intptr_t)var_id);
 
