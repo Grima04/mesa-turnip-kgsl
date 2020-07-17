@@ -21,7 +21,7 @@
  * IN THE SOFTWARE.
  */
 
-#include "nir.h"
+#include "nir_schedule.h"
 #include "util/dag.h"
 #include "util/u_dynarray.h"
 

@@ -220,6 +220,7 @@ files_libnir = files(
   'nir_remove_dead_variables.c',
   'nir_repair_ssa.c',
   'nir_schedule.c',
+  'nir_schedule.h',
   'nir_search.c',
   'nir_search.h',
   'nir_search_helpers.h',
