@@ -151,8 +151,14 @@ PValue ValuePool::from_nir(const nir_alu_src &v, unsigned component)
    return from_nir(v.src, component, v.swizzle[component]);
 }
 
-PValue ValuePool::get_temp_register()
+PValue ValuePool::get_temp_register(int channel)
 {
+   /* Skip to next register to get the channel we want */
+   if (next_temp_reg_comp <= channel)
+      next_temp_reg_comp = channel;
+   else
+      next_temp_reg_comp = 4;
+
    if (next_temp_reg_comp > 3) {
       current_temp_reg_index = allocate_temp_register();
       next_temp_reg_comp = 0;
