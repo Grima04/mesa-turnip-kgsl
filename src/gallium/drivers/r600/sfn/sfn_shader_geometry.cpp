@@ -66,7 +66,8 @@ bool GeometryShaderFromNir::do_emit_store_deref(const nir_variable *out_var, nir
    auto ir = new MemRingOutIntruction(cf_mem_ring, mem_write_ind, out_value,
                                       4 * out_var->data.driver_location,
                                       instr->num_components, m_export_base);
-   emit_instruction(ir);
+
+   streamout_data[out_var->data.location] = ir;
 
    return true;
 }
@@ -267,6 +268,14 @@ bool GeometryShaderFromNir::emit_vertex(nir_intrinsic_instr* instr, bool cut)
    int stream = nir_intrinsic_stream_id(instr);
    assert(stream < 4);
 
+   for(auto v: streamout_data) {
+      if (stream == 0 || v.first != VARYING_SLOT_POS) {
+         v.second->patch_ring(stream);
+         emit_instruction(v.second);
+      } else
+         delete v.second;
+   }
+   streamout_data.clear();
    emit_instruction(new EmitVertex(stream, cut));
 
    if (!cut)

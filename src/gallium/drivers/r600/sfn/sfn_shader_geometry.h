@@ -74,6 +74,8 @@ private:
    int m_num_clip_dist;
    unsigned m_cur_ring_output;
    bool m_gs_tri_strip_adj_fix;
+
+   std::map<int, MemRingOutIntruction *> streamout_data;
 };
 
 }
