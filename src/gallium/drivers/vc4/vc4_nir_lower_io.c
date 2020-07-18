@@ -240,7 +240,7 @@ vc4_nir_lower_fs_input(struct vc4_compile *c, nir_builder *b,
         }
 
         nir_variable *input_var = NULL;
-        nir_foreach_variable(var, &c->s->inputs) {
+        nir_foreach_shader_in_variable(var, c->s) {
                 if (var->data.driver_location == nir_intrinsic_base(intr)) {
                         input_var = var;
                         break;
@@ -291,7 +291,7 @@ vc4_nir_lower_output(struct vc4_compile *c, nir_builder *b,
                      nir_intrinsic_instr *intr)
 {
         nir_variable *output_var = NULL;
-        nir_foreach_variable(var, &c->s->outputs) {
+        nir_foreach_shader_out_variable(var, c->s) {
                 if (var->data.driver_location == nir_intrinsic_base(intr)) {
                         output_var = var;
                         break;

@@ -235,7 +235,7 @@ void si_llvm_load_vs_inputs(struct si_shader_context *ctx, struct nir_shader *ni
 {
    uint64_t processed_inputs = 0;
 
-   nir_foreach_variable (variable, &nir->inputs) {
+   nir_foreach_shader_in_variable (variable, nir) {
       unsigned attrib_count = glsl_count_attribute_slots(variable->type, true);
       unsigned input_idx = variable->data.driver_location;
       unsigned loc = variable->data.location;

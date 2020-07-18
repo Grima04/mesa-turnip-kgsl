@@ -586,7 +586,7 @@ type_size_vec4(const struct glsl_type *type, bool bindless)
 static nir_variable *
 find_layer_in_var(nir_shader *nir)
 {
-	nir_foreach_variable(var, &nir->inputs) {
+	nir_foreach_shader_in_variable(var, nir) {
 		if (var->data.location == VARYING_SLOT_LAYER) {
 			return var;
 		}

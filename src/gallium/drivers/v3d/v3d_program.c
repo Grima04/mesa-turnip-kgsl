@@ -47,7 +47,7 @@ v3d_setup_shared_precompile_key(struct v3d_uncompiled_shader *uncompiled,
 static gl_varying_slot
 v3d_get_slot_for_driver_location(nir_shader *s, uint32_t driver_location)
 {
-        nir_foreach_variable(var, &s->outputs) {
+        nir_foreach_shader_out_variable(var, s) {
                 if (var->data.driver_location == driver_location) {
                         return var->data.location;
                 }
@@ -180,7 +180,7 @@ precompile_all_outputs(nir_shader *s,
                        struct v3d_varying_slot *outputs,
                        uint8_t *num_outputs)
 {
-        nir_foreach_variable(var, &s->outputs) {
+        nir_foreach_shader_out_variable(var, s) {
                 const int array_len = MAX2(glsl_get_length(var->type), 1);
                 for (int j = 0; j < array_len; j++) {
                         const int slot = var->data.location + j;
@@ -212,7 +212,7 @@ v3d_shader_precompile(struct v3d_context *v3d,
                         .base.shader_state = so,
                 };
 
-                nir_foreach_variable(var, &s->outputs) {
+                nir_foreach_shader_out_variable(var, s) {
                         if (var->data.location == FRAG_RESULT_COLOR) {
                                 key.cbufs |= 1 << 0;
                         } else if (var->data.location >= FRAG_RESULT_DATA0) {

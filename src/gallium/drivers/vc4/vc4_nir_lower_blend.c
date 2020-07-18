@@ -589,7 +589,7 @@ vc4_nir_lower_blend_block(nir_block *block, struct vc4_compile *c)
                         continue;
 
                 nir_variable *output_var = NULL;
-                nir_foreach_variable(var, &c->s->outputs) {
+                nir_foreach_shader_out_variable(var, c->s) {
                         if (var->data.driver_location ==
                             nir_intrinsic_base(intr)) {
                                 output_var = var;

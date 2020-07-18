@@ -1103,11 +1103,11 @@ setup_vs_output_info(isel_context *ctx, nir_shader *nir,
 void
 setup_vs_variables(isel_context *ctx, nir_shader *nir)
 {
-   nir_foreach_variable(variable, &nir->inputs)
+   nir_foreach_shader_in_variable(variable, nir)
    {
       variable->data.driver_location = variable->data.location * 4;
    }
-   nir_foreach_variable(variable, &nir->outputs)
+   nir_foreach_shader_out_variable(variable, nir)
    {
       if (ctx->stage == vertex_vs || ctx->stage == ngg_vertex_gs)
          variable->data.driver_location = variable->data.location * 4;
@@ -1137,7 +1137,7 @@ void setup_gs_variables(isel_context *ctx, nir_shader *nir)
    if (ctx->stage == vertex_geometry_gs || ctx->stage == tess_eval_geometry_gs)
       ctx->program->config->lds_size = ctx->program->info->gs_ring_info.lds_size; /* Already in units of the alloc granularity */
 
-   nir_foreach_variable(variable, &nir->outputs) {
+   nir_foreach_shader_out_variable(variable, nir) {
       variable->data.driver_location = variable->data.location * 4;
    }
 
@@ -1201,7 +1201,7 @@ setup_tcs_info(isel_context *ctx, nir_shader *nir, nir_shader *vs)
 void
 setup_tcs_variables(isel_context *ctx, nir_shader *nir)
 {
-   nir_foreach_variable(variable, &nir->outputs) {
+   nir_foreach_shader_out_variable(variable, nir) {
       assert(variable->data.location >= 0 && variable->data.location <= UINT8_MAX);
 
       if (variable->data.location == VARYING_SLOT_TESS_LEVEL_OUTER)
@@ -1222,7 +1222,7 @@ setup_tes_variables(isel_context *ctx, nir_shader *nir)
    ctx->tcs_num_patches = ctx->args->options->key.tes.num_patches;
    ctx->tcs_num_outputs = ctx->program->info->tes.num_linked_inputs;
 
-   nir_foreach_variable(variable, &nir->outputs) {
+   nir_foreach_shader_out_variable(variable, nir) {
       if (ctx->stage == tess_eval_vs || ctx->stage == ngg_tess_eval_gs)
          variable->data.driver_location = variable->data.location * 4;
    }
@@ -1239,7 +1239,7 @@ setup_variables(isel_context *ctx, nir_shader *nir)
 {
    switch (nir->info.stage) {
    case MESA_SHADER_FRAGMENT: {
-      nir_foreach_variable(variable, &nir->outputs)
+      nir_foreach_shader_out_variable(variable, nir)
       {
          int idx = variable->data.location + variable->data.index;
          variable->data.driver_location = idx * 4;

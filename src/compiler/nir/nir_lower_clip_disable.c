@@ -101,7 +101,7 @@ nir_lower_clip_disable(nir_shader *shader, unsigned clip_plane_enable)
 {
    bool progress = false;
 
-   nir_foreach_variable(var, &shader->outputs) {
+   nir_foreach_shader_out_variable(var, shader) {
       if (var->data.location == VARYING_SLOT_CLIP_DIST0) {
          unsigned size = glsl_get_length(var->type);
          /* if currently-enabled planes match used planes then no-op */

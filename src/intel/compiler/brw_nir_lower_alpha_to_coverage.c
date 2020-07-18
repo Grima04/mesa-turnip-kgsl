@@ -89,7 +89,7 @@ brw_nir_lower_alpha_to_coverage(nir_shader *shader)
 
    /* Bail out early if we don't have gl_SampleMask */
    bool is_sample_mask = false;
-   nir_foreach_variable(var, &shader->outputs) {
+   nir_foreach_shader_out_variable(var, shader) {
       if (var->data.location == FRAG_RESULT_SAMPLE_MASK) {
          is_sample_mask = true;
          break;
@@ -115,7 +115,7 @@ brw_nir_lower_alpha_to_coverage(nir_shader *shader)
 
                switch (intr->intrinsic) {
                case nir_intrinsic_store_output:
-                  nir_foreach_variable(var, &shader->outputs) {
+                  nir_foreach_shader_out_variable(var, shader) {
                      int drvloc = var->data.driver_location;
                      if (nir_intrinsic_base(intr) == drvloc) {
                         out = var;

@@ -1963,7 +1963,7 @@ bool lp_build_nir_llvm(
    nir_remove_dead_derefs(nir);
    nir_remove_dead_variables(nir, nir_var_function_temp, NULL);
 
-   nir_foreach_variable(variable, &nir->outputs)
+   nir_foreach_shader_out_variable(variable, nir)
       handle_shader_output_decl(bld_base, nir, variable);
 
    bld_base->regs = _mesa_hash_table_create(NULL, _mesa_hash_pointer,

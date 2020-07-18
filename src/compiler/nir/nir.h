@@ -624,6 +624,18 @@ typedef struct nir_variable {
 #define nir_foreach_variable_safe(var, var_list) \
    foreach_list_typed_safe(nir_variable, var, node, var_list)
 
+#define nir_foreach_shader_in_variable(var, shader) \
+   nir_foreach_variable(var, &(shader)->inputs)
+
+#define nir_foreach_shader_in_variable_safe(var, shader) \
+   nir_foreach_variable_safe(var, &(shader)->inputs)
+
+#define nir_foreach_shader_out_variable(var, shader) \
+   nir_foreach_variable(var, &(shader)->outputs)
+
+#define nir_foreach_shader_out_variable_safe(var, shader) \
+   nir_foreach_variable_safe(var, &(shader)->outputs)
+
 static inline bool
 nir_variable_is_global(const nir_variable *var)
 {

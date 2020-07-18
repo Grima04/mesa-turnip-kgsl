@@ -928,8 +928,8 @@ ir3_link_geometry_stages(const struct ir3_shader_variant *producer,
 		unreachable("bad shader stage");
 	}
 
-	nir_foreach_variable(in_var, &consumer->shader->nir->inputs) {
-		nir_foreach_variable(out_var, &producer->shader->nir->outputs) {
+	nir_foreach_shader_in_variable(in_var, consumer->shader->nir) {
+		nir_foreach_shader_out_variable(out_var, producer->shader->nir) {
 			if (in_var->data.location == out_var->data.location) {
 				locs[in_var->data.driver_location] =
 					producer->output_loc[out_var->data.driver_location] * factor;

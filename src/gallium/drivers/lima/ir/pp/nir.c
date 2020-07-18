@@ -916,7 +916,7 @@ bool ppir_compile_nir(struct lima_fs_shader_state *prog, struct nir_shader *nir,
    }
 
    /* Validate outputs, we support only gl_FragColor */
-   nir_foreach_variable(var, &nir->outputs) {
+   nir_foreach_shader_out_variable(var, nir) {
       switch (var->data.location) {
       case FRAG_RESULT_COLOR:
       case FRAG_RESULT_DATA0:

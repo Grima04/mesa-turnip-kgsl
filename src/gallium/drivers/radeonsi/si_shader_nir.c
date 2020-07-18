@@ -610,7 +610,7 @@ void si_nir_scan_shader(const struct nir_shader *nir, struct si_shader_info *inf
 
    i = 0;
    uint64_t processed_inputs = 0;
-   nir_foreach_variable (variable, &nir->inputs) {
+   nir_foreach_shader_in_variable (variable, nir) {
       unsigned semantic_name, semantic_index;
 
       const struct glsl_type *type = variable->type;
@@ -691,7 +691,7 @@ void si_nir_scan_shader(const struct nir_shader *nir, struct si_shader_info *inf
       }
    }
 
-   nir_foreach_variable (variable, &nir->outputs) {
+   nir_foreach_shader_out_variable (variable, nir) {
       const struct glsl_type *type = variable->type;
       if (nir_is_per_vertex_io(variable, nir->info.stage)) {
          assert(glsl_type_is_array(type));
@@ -874,11 +874,11 @@ void si_nir_adjust_driver_locations(struct nir_shader *nir)
     * as individual components.
     */
    if (nir->info.stage != MESA_SHADER_FRAGMENT) {
-      nir_foreach_variable (variable, &nir->inputs)
+      nir_foreach_shader_in_variable (variable, nir)
          variable->data.driver_location *= 4;
    }
 
-   nir_foreach_variable (variable, &nir->outputs)
+   nir_foreach_shader_out_variable (variable, nir)
       variable->data.driver_location *= 4;
 }
 

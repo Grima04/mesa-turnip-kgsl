@@ -72,7 +72,7 @@ nir_lower_point_size_mov(nir_shader *shader,
           shader->info.stage != MESA_SHADER_COMPUTE);
 
    nir_variable *out = NULL;
-   nir_foreach_variable(var, &shader->outputs) {
+   nir_foreach_shader_out_variable(var, shader) {
       if (var->data.location == VARYING_SLOT_PSIZ) {
          out = var;
          break;

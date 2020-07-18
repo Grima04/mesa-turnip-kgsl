@@ -183,7 +183,7 @@ optimize_nir(struct nir_shader *s)
 static bool
 check_psiz(struct nir_shader *s)
 {
-   nir_foreach_variable(var, &s->outputs) {
+   nir_foreach_shader_out_variable(var, s) {
       if (var->data.location == VARYING_SLOT_PSIZ) {
          /* genuine PSIZ outputs will have this set */
          return !!var->data.explicit_location;

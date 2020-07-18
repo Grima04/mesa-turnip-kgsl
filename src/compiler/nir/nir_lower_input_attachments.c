@@ -27,7 +27,7 @@
 static nir_ssa_def *
 load_frag_coord(nir_builder *b)
 {
-   nir_foreach_variable(var, &b->shader->inputs) {
+   nir_foreach_shader_in_variable(var, b->shader) {
       if (var->data.location == VARYING_SLOT_POS)
          return nir_load_var(b, var);
    }

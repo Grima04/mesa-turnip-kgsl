@@ -101,7 +101,7 @@ module clover::nir::spirv_to_nir(const module &mod, const device &dev,
 
       // Calculate input offsets.
       unsigned offset = 0;
-      nir_foreach_variable_safe(var, &nir->inputs) {
+      nir_foreach_shader_in_variable_safe(var, nir) {
          offset = align(offset, glsl_get_cl_alignment(var->type));
          var->data.driver_location = offset;
          offset += glsl_get_cl_size(var->type);

@@ -859,7 +859,7 @@ v3d_nir_lower_gs_early(struct v3d_compile *c)
 static void
 v3d_fixup_fs_output_types(struct v3d_compile *c)
 {
-        nir_foreach_variable(var, &c->s->outputs) {
+        nir_foreach_shader_out_variable(var, c->s) {
                 uint32_t mask = 0;
 
                 switch (var->data.location) {

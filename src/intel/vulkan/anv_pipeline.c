@@ -1013,7 +1013,7 @@ anv_pipeline_link_fs(const struct brw_compiler *compiler,
     */
    nir_function_impl *impl = nir_shader_get_entrypoint(stage->nir);
    bool deleted_output = false;
-   nir_foreach_variable_safe(var, &stage->nir->outputs) {
+   nir_foreach_shader_out_variable_safe(var, stage->nir) {
       /* TODO: We don't delete depth/stencil writes.  We probably could if the
        * subpass doesn't have a depth/stencil attachment.
        */

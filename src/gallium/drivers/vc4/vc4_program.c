@@ -1580,13 +1580,13 @@ static void
 ntq_setup_inputs(struct vc4_compile *c)
 {
         unsigned num_entries = 0;
-        nir_foreach_variable(var, &c->s->inputs)
+        nir_foreach_shader_in_variable(var, c->s)
                 num_entries++;
 
         nir_variable *vars[num_entries];
 
         unsigned i = 0;
-        nir_foreach_variable(var, &c->s->inputs)
+        nir_foreach_shader_in_variable(var, c->s)
                 vars[i++] = var;
 
         /* Sort the variables so that we emit the input setup in
@@ -1625,7 +1625,7 @@ ntq_setup_inputs(struct vc4_compile *c)
 static void
 ntq_setup_outputs(struct vc4_compile *c)
 {
-        nir_foreach_variable(var, &c->s->outputs) {
+        nir_foreach_shader_out_variable(var, c->s) {
                 unsigned array_len = MAX2(glsl_get_length(var->type), 1);
                 unsigned loc = var->data.driver_location * 4;
 

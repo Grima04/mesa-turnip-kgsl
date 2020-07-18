@@ -2209,14 +2209,14 @@ nir_remap_dual_slot_attributes(nir_shader *shader, uint64_t *dual_slot)
    assert(shader->info.stage == MESA_SHADER_VERTEX);
 
    *dual_slot = 0;
-   nir_foreach_variable(var, &shader->inputs) {
+   nir_foreach_shader_in_variable(var, shader) {
       if (glsl_type_is_dual_slot(glsl_without_array(var->type))) {
          unsigned slots = glsl_count_attribute_slots(var->type, true);
          *dual_slot |= BITFIELD64_MASK(slots) << var->data.location;
       }
    }
 
-   nir_foreach_variable(var, &shader->inputs) {
+   nir_foreach_shader_in_variable(var, shader) {
       var->data.location +=
          util_bitcount64(*dual_slot & BITFIELD64_MASK(var->data.location));
    }

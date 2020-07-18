@@ -1068,7 +1068,7 @@ etna_compile_shader_nir(struct etna_shader_variant *v)
    /* setup input linking */
    struct etna_shader_io_file *sf = &v->infile;
    if (s->info.stage == MESA_SHADER_VERTEX) {
-      nir_foreach_variable(var, &s->inputs) {
+      nir_foreach_shader_in_variable(var, s) {
          unsigned idx = var->data.driver_location;
          sf->reg[idx].reg = idx;
          sf->reg[idx].slot = var->data.location;
@@ -1077,7 +1077,7 @@ etna_compile_shader_nir(struct etna_shader_variant *v)
       }
    } else {
       unsigned count = 0;
-      nir_foreach_variable(var, &s->inputs) {
+      nir_foreach_shader_in_variable(var, s) {
          unsigned idx = var->data.driver_location;
          sf->reg[idx].reg = idx + 1;
          sf->reg[idx].slot = var->data.location;

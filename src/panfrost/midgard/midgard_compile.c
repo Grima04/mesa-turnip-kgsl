@@ -279,7 +279,7 @@ midgard_nir_lower_zs_store(nir_shader *nir)
 
         nir_variable *z_var = NULL, *s_var = NULL;
 
-        nir_foreach_variable(var, &nir->outputs) {
+        nir_foreach_shader_out_variable(var, nir) {
                 if (var->data.location == FRAG_RESULT_DEPTH)
                         z_var = var;
                 else if (var->data.location == FRAG_RESULT_STENCIL)

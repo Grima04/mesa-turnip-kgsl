@@ -175,7 +175,7 @@ nir_remove_unused_varyings(nir_shader *producer, nir_shader *consumer)
    uint64_t read[4] = { 0 }, written[4] = { 0 };
    uint64_t patches_read[4] = { 0 }, patches_written[4] = { 0 };
 
-   nir_foreach_variable(var, &producer->outputs) {
+   nir_foreach_shader_out_variable(var, producer) {
       for (unsigned i = 0; i < get_num_components(var); i++) {
          if (var->data.patch) {
             patches_written[var->data.location_frac + i] |=
@@ -187,7 +187,7 @@ nir_remove_unused_varyings(nir_shader *producer, nir_shader *consumer)
       }
    }
 
-   nir_foreach_variable(var, &consumer->inputs) {
+   nir_foreach_shader_in_variable(var, consumer) {
       for (unsigned i = 0; i < get_num_components(var); i++) {
          if (var->data.patch) {
             patches_read[var->data.location_frac + i] |=
@@ -493,7 +493,7 @@ gather_varying_component_info(nir_shader *producer, nir_shader *consumer,
    /* Count the number of varying that can be packed and create a mapping
     * of those varyings to the array we will pass to qsort.
     */
-   nir_foreach_variable(var, &producer->outputs) {
+   nir_foreach_shader_out_variable(var, producer) {
 
       /* Only remap things that aren't builtins. */
       if (var->data.location >= VARYING_SLOT_VAR0 &&
@@ -838,7 +838,7 @@ nir_link_xfb_varyings(nir_shader *producer, nir_shader *consumer)
 {
    nir_variable *input_vars[MAX_VARYING] = { 0 };
 
-   nir_foreach_variable(var, &consumer->inputs) {
+   nir_foreach_shader_in_variable(var, consumer) {
       if (var->data.location >= VARYING_SLOT_VAR0 &&
           var->data.location - VARYING_SLOT_VAR0 < MAX_VARYING) {
 
@@ -847,7 +847,7 @@ nir_link_xfb_varyings(nir_shader *producer, nir_shader *consumer)
       }
    }
 
-   nir_foreach_variable(var, &producer->outputs) {
+   nir_foreach_shader_out_variable(var, producer) {
       if (var->data.location >= VARYING_SLOT_VAR0 &&
           var->data.location - VARYING_SLOT_VAR0 < MAX_VARYING) {
 
@@ -872,7 +872,7 @@ does_varying_match(nir_variable *out_var, nir_variable *in_var)
 static nir_variable *
 get_matching_input_var(nir_shader *consumer, nir_variable *out_var)
 {
-   nir_foreach_variable(var, &consumer->inputs) {
+   nir_foreach_shader_in_variable(var, consumer) {
       if (does_varying_match(out_var, var))
          return var;
    }
@@ -1253,7 +1253,7 @@ nir_assign_linked_io_var_locations(nir_shader *producer, nir_shader *consumer)
    uint64_t producer_output_mask = 0;
    uint64_t producer_patch_output_mask = 0;
 
-   nir_foreach_variable(variable, &producer->outputs) {
+   nir_foreach_shader_out_variable(variable, producer) {
       uint64_t mask = get_linked_variable_io_mask(variable, producer->info.stage);
       uint64_t loc = get_linked_variable_location(variable->data.location, variable->data.patch);
 
@@ -1266,7 +1266,7 @@ nir_assign_linked_io_var_locations(nir_shader *producer, nir_shader *consumer)
    uint64_t consumer_input_mask = 0;
    uint64_t consumer_patch_input_mask = 0;
 
-   nir_foreach_variable(variable, &consumer->inputs) {
+   nir_foreach_shader_in_variable(variable, consumer) {
       uint64_t mask = get_linked_variable_io_mask(variable, consumer->info.stage);
       uint64_t loc = get_linked_variable_location(variable->data.location, variable->data.patch);
 
@@ -1279,7 +1279,7 @@ nir_assign_linked_io_var_locations(nir_shader *producer, nir_shader *consumer)
    uint64_t io_mask = producer_output_mask | consumer_input_mask;
    uint64_t patch_io_mask = producer_patch_output_mask | consumer_patch_input_mask;
 
-   nir_foreach_variable(variable, &producer->outputs) {
+   nir_foreach_shader_out_variable(variable, producer) {
       uint64_t loc = get_linked_variable_location(variable->data.location, variable->data.patch);
 
       if (variable->data.patch)
@@ -1288,7 +1288,7 @@ nir_assign_linked_io_var_locations(nir_shader *producer, nir_shader *consumer)
          variable->data.driver_location = util_bitcount64(io_mask & u_bit_consecutive64(0, loc)) * 4;
    }
 
-   nir_foreach_variable(variable, &consumer->inputs) {
+   nir_foreach_shader_in_variable(variable, consumer) {
       uint64_t loc = get_linked_variable_location(variable->data.location, variable->data.patch);
 
       if (variable->data.patch)

@@ -972,7 +972,7 @@ bool Converter::assignSlots() {
    if (prog->getType() == Program::TYPE_COMPUTE)
       return true;
 
-   nir_foreach_variable(var, &nir->inputs) {
+   nir_foreach_shader_in_variable(var, nir) {
       const glsl_type *type = var->type;
       int slot = var->data.location;
       uint16_t slots = calcSlots(type, prog->getType(), nir->info, true, var);
@@ -1028,7 +1028,7 @@ bool Converter::assignSlots() {
       info->numInputs = std::max<uint8_t>(info->numInputs, vary);
    }
 
-   nir_foreach_variable(var, &nir->outputs) {
+   nir_foreach_shader_out_variable(var, nir) {
       const glsl_type *type = var->type;
       int slot = var->data.location;
       uint16_t slots = calcSlots(type, prog->getType(), nir->info, false, var);

@@ -173,7 +173,7 @@ v3d_nir_lower_vpm_output(struct v3d_compile *c, nir_builder *b,
         nir_ssa_def *src = nir_ssa_for_src(b, intr->src[0],
                                            intr->num_components);
         nir_variable *var = NULL;
-        nir_foreach_variable(scan_var, &c->s->outputs) {
+        nir_foreach_shader_out_variable(scan_var, c->s) {
                 int components = scan_var->data.compact ?
                         glsl_get_length(scan_var->type) :
                         glsl_get_components(scan_var->type);
@@ -368,7 +368,7 @@ static void
 v3d_nir_lower_io_update_output_var_base(struct v3d_compile *c,
                                         struct v3d_nir_lower_io_state *state)
 {
-        nir_foreach_variable_safe(var, &c->s->outputs) {
+        nir_foreach_shader_out_variable_safe(var, c->s) {
                 if (var->data.location == VARYING_SLOT_POS &&
                     state->pos_vpm_offset != -1) {
                         var->data.driver_location = state->pos_vpm_offset;

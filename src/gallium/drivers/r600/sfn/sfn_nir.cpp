@@ -266,7 +266,7 @@ bool ShaderFromNir::emit_instruction(nir_instr *instr)
 bool ShaderFromNir::process_declaration()
 {
    // scan declarations
-   nir_foreach_variable(variable, &sh->inputs) {
+   nir_foreach_shader_in_variable(variable, sh) {
       if (!impl->process_inputs(variable)) {
          fprintf(stderr, "R600: error parsing input varible %s\n", variable->name);
          return false;
@@ -274,7 +274,7 @@ bool ShaderFromNir::process_declaration()
    }
 
    // scan declarations
-   nir_foreach_variable(variable, &sh->outputs) {
+   nir_foreach_shader_out_variable(variable, sh) {
       if (!impl->process_outputs(variable)) {
          fprintf(stderr, "R600: error parsing outputs varible %s\n", variable->name);
          return false;

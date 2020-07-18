@@ -310,7 +310,7 @@ static bool
 ir3_nir_lower_layer_id(nir_shader *nir)
 {
 	unsigned layer_id_loc = ~0;
-	nir_foreach_variable(var, &nir->inputs) {
+	nir_foreach_shader_in_variable(var, nir) {
 		if (var->data.location == VARYING_SLOT_LAYER) {
 			layer_id_loc = var->data.driver_location;
 			break;

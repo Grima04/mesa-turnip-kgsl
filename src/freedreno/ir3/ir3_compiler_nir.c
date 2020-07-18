@@ -3342,7 +3342,7 @@ emit_instructions(struct ir3_context *ctx)
 	}
 
 	/* Setup inputs: */
-	nir_foreach_variable (var, &ctx->s->inputs) {
+	nir_foreach_shader_in_variable (var, ctx->s) {
 		setup_input(ctx, var);
 	}
 
@@ -3390,7 +3390,7 @@ emit_instructions(struct ir3_context *ctx)
 	}
 
 	/* Setup outputs: */
-	nir_foreach_variable (var, &ctx->s->outputs) {
+	nir_foreach_shader_out_variable (var, ctx->s) {
 		setup_output(ctx, var);
 	}
 

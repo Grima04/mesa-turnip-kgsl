@@ -69,7 +69,7 @@ create_input(nir_shader *shader, gl_varying_slot slot,
 static nir_variable *
 create_face_input(nir_shader *shader)
 {
-   nir_foreach_variable(var, &shader->inputs) {
+   nir_foreach_shader_in_variable(var, shader) {
       if (var->data.location == VARYING_SLOT_FACE)
          return var;
    }
@@ -108,7 +108,7 @@ static int
 setup_inputs(lower_2side_state *state)
 {
    /* find color inputs: */
-   nir_foreach_variable(var, &state->shader->inputs) {
+   nir_foreach_shader_in_variable(var, state->shader) {
       switch (var->data.location) {
       case VARYING_SLOT_COL0:
       case VARYING_SLOT_COL1:

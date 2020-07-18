@@ -184,7 +184,7 @@ find_clipvertex_and_position_outputs(nir_shader *shader,
                                      nir_variable **clipvertex,
                                      nir_variable **position)
 {
-   nir_foreach_variable(var, &shader->outputs) {
+   nir_foreach_shader_out_variable(var, shader) {
       switch (var->data.location) {
       case VARYING_SLOT_POS:
          *position = var;
@@ -464,7 +464,7 @@ fs_has_clip_dist_input_var(nir_shader *shader, nir_variable **io_vars,
                             unsigned *ucp_enables)
 {
    assert(shader->info.stage == MESA_SHADER_FRAGMENT);
-   nir_foreach_variable(var, &shader->inputs) {
+   nir_foreach_shader_in_variable(var, shader) {
       switch (var->data.location) {
       case VARYING_SLOT_CLIP_DIST0:
          assert(var->data.compact);

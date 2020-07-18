@@ -47,7 +47,7 @@ nir_lower_mediump_outputs(nir_shader *nir)
          if (intr->intrinsic != nir_intrinsic_store_output)
             continue;
 
-         nir_foreach_variable (var, &nir->outputs) {
+         nir_foreach_shader_out_variable(var, nir) {
             if (var->data.driver_location != nir_intrinsic_base(intr))
                continue; /* not found yet */
 

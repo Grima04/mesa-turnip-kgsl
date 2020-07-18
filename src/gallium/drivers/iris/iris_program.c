@@ -274,7 +274,7 @@ iris_fix_edge_flags(nir_shader *nir)
    }
 
    nir_variable *var = NULL;
-   nir_foreach_variable(v, &nir->outputs) {
+   nir_foreach_shader_out_variable(v, nir) {
       if (v->data.location == VARYING_SLOT_EDGE) {
          var = v;
          break;

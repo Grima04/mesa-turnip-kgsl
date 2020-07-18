@@ -107,7 +107,7 @@ st_nir_assign_vs_in_locations(struct nir_shader *nir)
    bool removed_inputs = false;
 
    nir->num_inputs = util_bitcount64(nir->info.inputs_read);
-   nir_foreach_variable_safe(var, &nir->inputs) {
+   nir_foreach_shader_in_variable_safe(var, nir) {
       /* NIR already assigns dual-slot inputs to two locations so all we have
        * to do is compact everything down.
        */
