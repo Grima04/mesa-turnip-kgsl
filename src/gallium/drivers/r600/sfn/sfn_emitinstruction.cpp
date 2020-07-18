@@ -93,9 +93,9 @@ EmitInstruction::get_deref_location(const nir_src& v) const
    return m_proc.get_deref_location(v);
 }
 
-PValue EmitInstruction::from_nir_with_fetch_constant(const nir_src& src, unsigned component)
+PValue EmitInstruction::from_nir_with_fetch_constant(const nir_src& src, unsigned component, int channel)
 {
-   return m_proc.from_nir_with_fetch_constant(src, component);
+   return m_proc.from_nir_with_fetch_constant(src, component, channel);
 }
 
 GPRVector EmitInstruction::vec_from_nir_with_fetch_constant(const nir_src& src, unsigned mask,

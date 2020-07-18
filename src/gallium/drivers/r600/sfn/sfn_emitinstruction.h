@@ -76,7 +76,7 @@ protected:
                          std::vector<PValue> src0,
                          const std::set<AluModifiers>& m_flags);
 
-   PValue from_nir_with_fetch_constant(const nir_src& src, unsigned component);
+   PValue from_nir_with_fetch_constant(const nir_src& src, unsigned component, int channel = -1);
    GPRVector vec_from_nir_with_fetch_constant(const nir_src& src, unsigned mask,
                                               const GPRVector::Swizzle& swizzle, bool match = false);
 
