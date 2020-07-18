@@ -636,6 +636,14 @@ typedef struct nir_variable {
 #define nir_foreach_shader_out_variable_safe(var, shader) \
    nir_foreach_variable_safe(var, &(shader)->outputs)
 
+#define nir_foreach_uniform_variable(var, shader) \
+   nir_foreach_variable(var, &(shader)->uniforms) \
+      if (var->data.mode == nir_var_uniform)
+
+#define nir_foreach_uniform_variable_safe(var, shader) \
+   nir_foreach_variable_safe(var, &(shader)->uniforms) \
+      if (var->data.mode == nir_var_uniform)
+
 static inline bool
 nir_variable_is_global(const nir_variable *var)
 {

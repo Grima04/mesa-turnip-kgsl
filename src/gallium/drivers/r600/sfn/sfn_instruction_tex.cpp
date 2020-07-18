@@ -212,7 +212,7 @@ bool r600_nir_lower_int_tg4(nir_shader *shader)
    std::vector<bool> lower_sampler(shader->uniforms.length(), false);
    auto is = lower_sampler.begin();
 
-   nir_foreach_variable(var, &shader->uniforms) {
+   nir_foreach_uniform_variable(var, shader) {
       if (var->type->is_sampler()) {
          if (glsl_base_type_is_integer(var->type->sampled_type)) {
             need_lowering = *is = true;

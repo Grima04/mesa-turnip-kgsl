@@ -123,7 +123,7 @@ nir_lower_pstipple_fs(struct nir_shader *shader,
       return;
 
    int binding = 0;
-   nir_foreach_variable(var, &shader->uniforms) {
+   nir_foreach_uniform_variable(var, shader) {
       if (glsl_type_is_sampler(var->type)) {
          if (var->data.binding >= binding)
             binding = var->data.binding + 1;

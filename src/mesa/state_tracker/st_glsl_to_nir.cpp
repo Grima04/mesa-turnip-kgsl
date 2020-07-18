@@ -195,20 +195,13 @@ st_nir_lookup_parameter_index(struct gl_program *prog, nir_variable *var)
 static void
 st_nir_assign_uniform_locations(struct gl_context *ctx,
                                 struct gl_program *prog,
-                                struct exec_list *uniform_list)
+                                nir_shader *nir)
 {
    int shaderidx = 0;
    int imageidx = 0;
 
-   nir_foreach_variable(uniform, uniform_list) {
+   nir_foreach_uniform_variable(uniform, nir) {
       int loc;
-
-      /*
-       * UBO's have their own address spaces, so don't count them towards the
-       * number of global uniforms
-       */
-      if (uniform->data.mode == nir_var_mem_ubo || uniform->data.mode == nir_var_mem_ssbo)
-         continue;
 
       const struct glsl_type *type = glsl_without_array(uniform->type);
       if (!uniform->data.bindless && (type->is_sampler() || type->is_image())) {
@@ -448,7 +441,7 @@ st_glsl_to_nir_post_opts(struct st_context *st, struct gl_program *prog,
     * too late.  At that point, the values for the built-in uniforms won't
     * get sent to the shader.
     */
-   nir_foreach_variable(var, &nir->uniforms) {
+   nir_foreach_uniform_variable(var, nir) {
       const nir_state_slot *const slots = var->state_slots;
       if (slots != NULL) {
          const struct glsl_type *type = glsl_without_array(var->type);
@@ -949,8 +942,7 @@ st_finalize_nir(struct st_context *st, struct gl_program *prog,
    NIR_PASS_V(nir, nir_lower_var_copies);
 
    st_nir_assign_varying_locations(st, nir);
-   st_nir_assign_uniform_locations(st->ctx, prog,
-                                   &nir->uniforms);
+   st_nir_assign_uniform_locations(st->ctx, prog, nir);
 
    /* Set num_uniforms in number of attribute slots (vec4s) */
    nir->num_uniforms = DIV_ROUND_UP(prog->Parameters->NumParameterValues, 4);

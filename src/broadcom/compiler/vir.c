@@ -570,7 +570,7 @@ v3d_lower_nir(struct v3d_compile *c)
         }
 
         /* CS textures may not have return_size reflecting the shadow state. */
-        nir_foreach_variable(var, &c->s->uniforms) {
+        nir_foreach_uniform_variable(var, c->s) {
                 const struct glsl_type *type = glsl_without_array(var->type);
                 unsigned array_len = MAX2(glsl_get_length(var->type), 1);
 

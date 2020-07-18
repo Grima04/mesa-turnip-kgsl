@@ -601,7 +601,7 @@ nir_shader_gather_info(nir_shader *shader, nir_function_impl *entrypoint)
    shader->info.image_buffers = 0;
    shader->info.msaa_images = 0;
 
-   nir_foreach_variable(var, &shader->uniforms) {
+   nir_foreach_uniform_variable(var, shader) {
       /* Bindless textures and images don't use non-bindless slots.
        * Interface blocks imply inputs, outputs, UBO, or SSBO, which can only
        * mean bindless.
