@@ -701,6 +701,10 @@ bool FragmentShaderFromNir::emit_export_pixel(const nir_variable *out_var, nir_i
    std::array<uint32_t,4> swizzle;
    unsigned writemask = nir_intrinsic_write_mask(instr);
    switch (out_var->data.location) {
+   case FRAG_RESULT_DEPTH:
+      writemask = 1;
+      swizzle = {0,7,7,7};
+      break;
    case FRAG_RESULT_STENCIL:
       writemask = 2;
       swizzle = {7,0,7,7};
