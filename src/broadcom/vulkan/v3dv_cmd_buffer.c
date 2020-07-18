@@ -2740,6 +2740,9 @@ update_fs_variant(struct v3dv_cmd_buffer *cmd_buffer)
    assert(variant);
    assert(vk_result == VK_SUCCESS);
 
+   if (p_stage->current_variant != variant) {
+      v3dv_shader_variant_unref(cmd_buffer->device, p_stage->current_variant);
+   }
    p_stage->current_variant = variant;
 }
 
@@ -2768,6 +2771,9 @@ update_vs_variant(struct v3dv_cmd_buffer *cmd_buffer)
    assert(variant);
    assert(vk_result == VK_SUCCESS);
 
+   if (p_stage->current_variant != variant) {
+      v3dv_shader_variant_unref(cmd_buffer->device, p_stage->current_variant);
+   }
    p_stage->current_variant = variant;
 
    /* Now the vs_bin */
@@ -2787,6 +2793,9 @@ update_vs_variant(struct v3dv_cmd_buffer *cmd_buffer)
    assert(variant);
    assert(vk_result == VK_SUCCESS);
 
+   if (p_stage->current_variant != variant) {
+      v3dv_shader_variant_unref(cmd_buffer->device, p_stage->current_variant);
+   }
    p_stage->current_variant = variant;
 }
 
@@ -2814,6 +2823,9 @@ update_cs_variant(struct v3dv_cmd_buffer *cmd_buffer)
    assert(variant);
    assert(result == VK_SUCCESS);
 
+   if (p_stage->current_variant != variant) {
+      v3dv_shader_variant_unref(cmd_buffer->device, p_stage->current_variant);
+   }
    p_stage->current_variant = variant;
 }
 

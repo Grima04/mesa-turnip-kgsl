@@ -41,7 +41,6 @@
 
 #include "drm-uapi/v3d_drm.h"
 #include "format/u_format.h"
-#include "u_atomic.h"
 #include "vk_util.h"
 
 #include "util/build_id.h"

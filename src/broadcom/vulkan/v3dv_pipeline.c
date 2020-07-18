@@ -89,6 +89,16 @@ v3dv_DestroyShaderModule(VkDevice _device,
    vk_free2(&device->alloc, pAllocator, module);
 }
 
+void
+v3dv_shader_variant_destroy(struct v3dv_device *device,
+                            struct v3dv_shader_variant *variant)
+{
+   if (variant->assembly_bo)
+      v3dv_bo_free(device, variant->assembly_bo);
+   ralloc_free(variant->prog_data.base);
+   vk_free(&device->alloc, variant);
+}
+
 static void
 destroy_pipeline_stage(struct v3dv_device *device,
                        struct v3dv_pipeline_stage *p_stage,
@@ -99,18 +109,13 @@ destroy_pipeline_stage(struct v3dv_device *device,
 
    hash_table_foreach(p_stage->cache, entry) {
       struct v3dv_shader_variant *variant = entry->data;
-
-      if (variant->assembly_bo) {
-         v3dv_bo_free(device, variant->assembly_bo);
-         ralloc_free(variant->prog_data.base);
-         vk_free2(&device->alloc, pAllocator, variant);
-      }
+      if (variant)
+         v3dv_shader_variant_unref(device, variant);
    }
 
    ralloc_free(p_stage->nir);
-
+   v3dv_shader_variant_unref(device, p_stage->current_variant);
    _mesa_hash_table_destroy(p_stage->cache, NULL);
-
    vk_free2(&device->alloc, pAllocator, p_stage);
 }
 
@@ -1348,6 +1353,8 @@ upload_assembly(struct v3dv_pipeline_stage *p_stage,
  *
  * If the method returns NULL it means that it was not able to allocate the
  * resources for the variant. out_vk_result would return which OOM applies.
+ *
+ * Returns a new reference of the shader_variant to the caller.
  */
 struct v3dv_shader_variant*
 v3dv_get_shader_variant(struct v3dv_pipeline_stage *p_stage,
@@ -1361,6 +1368,7 @@ v3dv_get_shader_variant(struct v3dv_pipeline_stage *p_stage,
 
    if (entry) {
       *out_vk_result = VK_SUCCESS;
+      v3dv_shader_variant_ref(entry->data);
       return entry->data;
    }
 
@@ -1374,6 +1382,7 @@ v3dv_get_shader_variant(struct v3dv_pipeline_stage *p_stage,
       *out_vk_result = VK_ERROR_OUT_OF_HOST_MEMORY;
       return NULL;
    }
+   variant->ref_cnt = 1;
 
    struct v3dv_physical_device *physical_device =
       &pipeline->device->instance->physicalDevice;
@@ -1409,7 +1418,7 @@ v3dv_get_shader_variant(struct v3dv_pipeline_stage *p_stage,
    } else {
       if (!upload_assembly(p_stage, variant, qpu_insts, qpu_insts_size)) {
          free(qpu_insts);
-         vk_free2(&device->alloc, pAllocator, variant);
+         v3dv_shader_variant_unref(device, variant);
 
          *out_vk_result = VK_ERROR_OUT_OF_DEVICE_MEMORY;
          return NULL;

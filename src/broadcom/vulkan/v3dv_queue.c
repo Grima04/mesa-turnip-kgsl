@@ -26,8 +26,6 @@
 
 #include "broadcom/clif/clif_dump.h"
 
-#include "u_atomic.h"
-
 #include <errno.h>
 #include <time.h>
 

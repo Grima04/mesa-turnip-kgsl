@@ -58,6 +58,7 @@
 #include "util/set.h"
 #include "util/hash_table.h"
 #include "util/xmlconfig.h"
+#include "u_atomic.h"
 
 #include "v3dv_entrypoints.h"
 #include "v3dv_extensions.h"
@@ -1218,6 +1219,8 @@ vk_to_mesa_shader_stage(VkShaderStageFlagBits vk_stage)
 }
 
 struct v3dv_shader_variant {
+   uint32_t ref_cnt;
+
    union {
       struct v3d_prog_data *base;
       struct v3d_vs_prog_data *vs;
@@ -1713,6 +1716,26 @@ v3dv_get_shader_variant(struct v3dv_pipeline_stage *p_stage,
                         size_t key_size,
                         const VkAllocationCallbacks *pAllocator,
                         VkResult *out_vk_result);
+
+void
+v3dv_shader_variant_destroy(struct v3dv_device *device,
+                            struct v3dv_shader_variant *variant);
+
+static inline void
+v3dv_shader_variant_ref(struct v3dv_shader_variant *variant)
+{
+   assert(variant && variant->ref_cnt >= 1);
+   p_atomic_inc(&variant->ref_cnt);
+}
+
+static inline void
+v3dv_shader_variant_unref(struct v3dv_device *device,
+                          struct v3dv_shader_variant *variant)
+{
+   assert(variant && variant->ref_cnt >= 1);
+   if (p_atomic_dec_zero(&variant->ref_cnt))
+      v3dv_shader_variant_destroy(device, variant);
+}
 
 struct v3dv_descriptor *
 v3dv_descriptor_map_get_descriptor(struct v3dv_descriptor_state *descriptor_state,
