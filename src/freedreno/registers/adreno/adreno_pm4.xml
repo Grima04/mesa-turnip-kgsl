@@ -313,12 +313,30 @@ xsi:schemaLocation="http://nouveau.freedesktop.org/ rules-ng.xsd">
 	<value name="CP_DRAW_INDIRECT_MULTI" value="0x2a" varset="chip" variants="A6XX"/>
 	<value name="CP_DRAW_AUTO" value="0x24"/>
 
-	<value name="CP_UNKNOWN_19" value="0x19"/>
+	<doc>
+		Enable or disable predication globally. Also resets the
+		predicate to "passing" and the local bit to enabled when
+		enabling global predication.
+	</doc>
+	<value name="CP_DRAW_PRED_ENABLE_GLOBAL" value="0x19"/>
 
-	<doc>set to 1 for fastclear..:</doc>
-	<value name="CP_UNKNOWN_1A" value="0x1a"/>
+	<doc>
+		Enable or disable predication locally. Unlike globally enabling
+		predication, this packet doesn't touch any other state.
+		Predication only happens when enabled globally and locally and a
+		predicate has been set. This should be used for internal draws
+		which aren't supposed to use the predication state:
 
-	<value name="CP_UNKNOWN_4E" value="0x4e"/>
+		CP_DRAW_PRED_ENABLE_LOCAL(0)
+		... do draw...
+		CP_DRAW_PRED_ENABLE_LOCAL(1)
+	</doc>
+	<value name="CP_DRAW_PRED_ENABLE_LOCAL" value="0x1a"/>
+
+	<doc>
+		Latch a draw predicate into the internal register.
+	</doc>
+	<value name="CP_DRAW_PRED_SET" value="0x4e"/>
 
 	<doc>
 		for A4xx
@@ -830,6 +848,44 @@ opcode: CP_LOAD_STATE4 (30) (4 dwords)
 		<reg64 offset="8" name="INDIRECT_COUNT" type="address"/>
 		<reg32 offset="10" name="STRIDE" type="uint"/>
 	</stripe>
+</domain>
+
+<domain name="CP_DRAW_PRED_ENABLE_GLOBAL" width="32" varset="chip">
+	<reg32 offset="0" name="0">
+		<bitfield name="ENABLE" pos="0" type="boolean"/>
+	</reg32>
+</domain>
+
+<domain name="CP_DRAW_PRED_ENABLE_LOCAL" width="32" varset="chip">
+	<reg32 offset="0" name="0">
+		<bitfield name="ENABLE" pos="0" type="boolean"/>
+	</reg32>
+</domain>
+
+<domain name="CP_DRAW_PRED_SET" width="32" varset="chip">
+	<enum name="cp_draw_pred_src">
+		<!--
+			Sources 1-4 seem to be about combining reading
+			SO/primitive queries and setting the predicate, which is
+			a DX11-specific optimization (since in DX11 you can only
+			predicate on the result of queries).
+		-->
+		<value name="PRED_SRC_MEM" value="5">
+			<doc>
+				Read a 64-bit value at the given address and
+				test if it equals/doesn't equal 0.
+			</doc>
+		</value>
+	</enum>
+	<enum name="cp_draw_pred_test">
+		<value name="NE_0_PASS" value="0"/>
+		<value name="EQ_0_PASS" value="1"/>
+	</enum>
+	<reg32 offset="0" name="0">
+		<bitfield name="SRC" low="4" high="7" type="cp_draw_pred_src"/>
+		<bitfield name="TEST" pos="8" type="cp_draw_pred_test"/>
+	</reg32>
+	<reg64 offset="1" name="MEM_ADDR" type="address"/>
 </domain>
 
 <domain name="CP_SET_DRAW_STATE" width="32" varset="chip" variants="A4XX-">
