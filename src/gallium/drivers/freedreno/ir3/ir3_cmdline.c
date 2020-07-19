@@ -32,6 +32,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <err.h>
+#include <getopt.h>
 
 #include "nir/tgsi_to_nir.h"
 #include "tgsi/tgsi_parse.h"
@@ -54,14 +55,14 @@
 
 #include "pipe/p_context.h"
 
-static void dump_info(struct ir3_shader_variant *so, const char *str)
+static void
+dump_info(struct ir3_shader_variant *so, const char *str)
 {
 	uint32_t *bin;
 	const char *type = ir3_shader_stage(so);
 	bin = ir3_shader_assemble(so);
-	debug_printf("; %s: %s\n", type, str);
+	printf("; %s: %s\n", type, str);
 	ir3_shader_disasm(so, bin, stdout);
-	free(bin);
 }
 
 static void
@@ -107,8 +108,9 @@ static nir_shader *
 load_glsl(unsigned num_files, char* const* files, gl_shader_stage stage)
 {
 	static const struct standalone_options options = {
-			.glsl_version = 460,
+			.glsl_version = 310,
 			.do_link = true,
+			.lower_precision = true,
 	};
 	struct gl_shader_program *prog;
 	const nir_shader_compiler_options *nir_options =
@@ -142,6 +144,7 @@ load_glsl(unsigned num_files, char* const* files, gl_shader_stage stage)
 	NIR_PASS_V(nir, nir_lower_var_copies);
 	nir_print_shader(nir, stdout);
 	NIR_PASS_V(nir, gl_nir_lower_atomics, prog, true);
+	NIR_PASS_V(nir, gl_nir_lower_buffers, prog);
 	NIR_PASS_V(nir, nir_lower_atomics_to_ssbo);
 	nir_print_shader(nir, stdout);
 
@@ -184,7 +187,7 @@ load_glsl(unsigned num_files, char* const* files, gl_shader_stage stage)
 	NIR_PASS_V(nir, nir_lower_system_values);
 	NIR_PASS_V(nir, nir_lower_frexp);
 	NIR_PASS_V(nir, nir_lower_io,
-	           nir_var_shader_in | nir_var_shader_out,
+	           nir_var_shader_in | nir_var_shader_out | nir_var_uniform,
 	           ir3_glsl_type_size, (nir_lower_io_options)0);
 	NIR_PASS_V(nir, gl_nir_lower_samplers, prog);
 
@@ -260,33 +263,31 @@ load_spirv(const char *filename, const char *entry, gl_shader_stage stage)
 	return nir;
 }
 
-static void print_usage(void)
+static const char *shortopts = "g:hv";
+
+static const struct option longopts[] = {
+	{ "gpu",            required_argument, 0, 'g' },
+	{ "help",           no_argument,       0, 'h' },
+	{ "verbose",        no_argument,       0, 'v' },
+};
+
+static void
+print_usage(void)
 {
 	printf("Usage: ir3_compiler [OPTIONS]... <file.tgsi | file.spv entry_point | (file.vert | file.frag)*>\n");
-	printf("    --verbose         - verbose compiler/debug messages\n");
-	printf("    --binning-pass    - generate binning pass shader (VERT)\n");
-	printf("    --color-two-side  - emulate two-sided color (FRAG)\n");
-	printf("    --half-precision  - use half-precision\n");
-	printf("    --saturate-s MASK - bitmask of samplers to saturate S coord\n");
-	printf("    --saturate-t MASK - bitmask of samplers to saturate T coord\n");
-	printf("    --saturate-r MASK - bitmask of samplers to saturate R coord\n");
-	printf("    --astc-srgb MASK  - bitmask of samplers to enable astc-srgb workaround\n");
-	printf("    --stream-out      - enable stream-out (aka transform feedback)\n");
-	printf("    --ucp MASK        - bitmask of enabled user-clip-planes\n");
-	printf("    --gpu GPU_ID      - specify gpu-id (default 320)\n");
-	printf("    --help            - show this message\n");
+	printf("    -g, --gpu GPU_ID - specify gpu-id (default 320)\n");
+	printf("    -h, --help       - show this message\n");
+	printf("    -v, --verbose    - verbose compiler/debug messages\n");
 }
 
-int main(int argc, char **argv)
+int
+main(int argc, char **argv)
 {
-	int ret = 0, n = 1;
+	int ret = 0, opt;
 	char *filenames[2];
 	int num_files = 0;
 	unsigned stage = 0;
-	struct ir3_shader_variant v;
-	struct ir3_shader s;
 	struct ir3_shader_key key = {};
-	/* TODO cmdline option to target different gpus: */
 	unsigned gpu_id = 320;
 	const char *info;
 	const char *spirv_entry = NULL;
@@ -294,112 +295,30 @@ int main(int argc, char **argv)
 	bool from_tgsi = false;
 	size_t size;
 
-	memset(&s, 0, sizeof(s));
-	memset(&v, 0, sizeof(v));
-
-	/* cmdline args which impact shader variant get spit out in a
-	 * comment on the first line..  a quick/dirty way to preserve
-	 * that info so when ir3test recompiles the shader with a new
-	 * compiler version, we use the same shader-key settings:
-	 */
-	debug_printf("; options:");
-
-	while (n < argc) {
-		if (!strcmp(argv[n], "--verbose")) {
+	while ((opt = getopt_long_only(argc, argv, shortopts, longopts, NULL)) != -1) {
+		switch (opt) {
+		case 'g':
+			gpu_id = strtol(optarg, NULL, 0);
+			break;
+		case 'v':
 			ir3_shader_debug |= IR3_DBG_OPTMSGS | IR3_DBG_DISASM;
-			n++;
-			continue;
-		}
-
-		if (!strcmp(argv[n], "--binning-pass")) {
-			debug_printf(" %s", argv[n]);
-			v.binning_pass = true;
-			n++;
-			continue;
-		}
-
-		if (!strcmp(argv[n], "--color-two-side")) {
-			debug_printf(" %s", argv[n]);
-			key.color_two_side = true;
-			n++;
-			continue;
-		}
-
-		if (!strcmp(argv[n], "--half-precision")) {
-			debug_printf(" %s", argv[n]);
-			n++;
-			continue;
-		}
-
-		if (!strcmp(argv[n], "--saturate-s")) {
-			debug_printf(" %s %s", argv[n], argv[n+1]);
-			key.vsaturate_s = key.fsaturate_s = strtol(argv[n+1], NULL, 0);
-			n += 2;
-			continue;
-		}
-
-		if (!strcmp(argv[n], "--saturate-t")) {
-			debug_printf(" %s %s", argv[n], argv[n+1]);
-			key.vsaturate_t = key.fsaturate_t = strtol(argv[n+1], NULL, 0);
-			n += 2;
-			continue;
-		}
-
-		if (!strcmp(argv[n], "--saturate-r")) {
-			debug_printf(" %s %s", argv[n], argv[n+1]);
-			key.vsaturate_r = key.fsaturate_r = strtol(argv[n+1], NULL, 0);
-			n += 2;
-			continue;
-		}
-
-		if (!strcmp(argv[n], "--astc-srgb")) {
-			debug_printf(" %s %s", argv[n], argv[n+1]);
-			key.vastc_srgb = key.fastc_srgb = strtol(argv[n+1], NULL, 0);
-			n += 2;
-			continue;
-		}
-
-		if (!strcmp(argv[n], "--stream-out")) {
-			struct ir3_stream_output_info *so = &s.stream_output;
-			debug_printf(" %s", argv[n]);
-			/* TODO more dynamic config based on number of outputs, etc
-			 * rather than just hard-code for first output:
-			 */
-			so->num_outputs = 1;
-			so->stride[0] = 4;
-			so->output[0].register_index = 0;
-			so->output[0].start_component = 0;
-			so->output[0].num_components = 4;
-			so->output[0].output_buffer = 0;
-			so->output[0].dst_offset = 2;
-			so->output[0].stream = 0;
-			n++;
-			continue;
-		}
-
-		if (!strcmp(argv[n], "--ucp")) {
-			debug_printf(" %s %s", argv[n], argv[n+1]);
-			key.ucp_enables = strtol(argv[n+1], NULL, 0);
-			n += 2;
-			continue;
-		}
-
-		if (!strcmp(argv[n], "--gpu")) {
-			debug_printf(" %s %s", argv[n], argv[n+1]);
-			gpu_id = strtol(argv[n+1], NULL, 0);
-			n += 2;
-			continue;
-		}
-
-		if (!strcmp(argv[n], "--help")) {
+			break;
+		default:
+			printf("unrecognized arg: %c\n", opt);
+			/* fallthrough */
+		case 'h':
 			print_usage();
 			return 0;
 		}
-
-		break;
 	}
-	debug_printf("\n");
 
+	if (optind >= argc) {
+		fprintf(stderr, "no file specified!\n");
+		print_usage();
+		return 0;
+	}
+
+	unsigned n = optind;
 	while (n < argc) {
 		char *filename = argv[n];
 		char *ext = strrchr(filename, '.');
@@ -462,7 +381,7 @@ int main(int argc, char **argv)
 		}
 
 		if (ir3_shader_debug & IR3_DBG_OPTMSGS)
-			debug_printf("%s\n", (char *)ptr);
+			printf("%s\n", (char *)ptr);
 
 		if (!tgsi_text_translate(ptr, toks, ARRAY_SIZE(toks)))
 			errx(1, "could not parse `%s'", filenames[0]);
@@ -489,22 +408,32 @@ int main(int argc, char **argv)
 		return -1;
 	}
 
-	s.compiler = compiler;
-	s.nir = nir;
-
 	ir3_finalize_nir(compiler, nir);
+	ir3_nir_post_finalize(compiler, nir);
 
-	v.key = key;
-	v.shader = &s;
-	s.type = v.type = nir->info.stage;
+	struct ir3_shader *shader = rzalloc_size(NULL, sizeof(*shader));
+	shader->compiler = compiler;
+	shader->type = stage;
+	shader->nir = nir;
 
-	ir3_nir_lower_variant(&v, nir);
+	struct ir3_shader_variant *v = rzalloc_size(shader, sizeof(*v));
+	v->type = shader->type;
+	v->shader = shader;
+	v->key = key;
+	v->const_state = rzalloc_size(v, sizeof(*v->const_state));
+
+	shader->variants = v;
+	shader->variant_count = 1;
+
+	ir3_nir_lower_variant(v, nir);
 
 	info = "NIR compiler";
-	ret = ir3_compile_shader_nir(s.compiler, &v);
+	ret = ir3_compile_shader_nir(compiler, v);
 	if (ret) {
 		fprintf(stderr, "compiler failed!\n");
 		return ret;
 	}
-	dump_info(&v, info);
+	dump_info(v, info);
+
+	return 0;
 }
