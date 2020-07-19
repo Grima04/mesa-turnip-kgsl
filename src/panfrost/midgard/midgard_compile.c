@@ -1684,10 +1684,13 @@ mir_get_branch_cond(nir_src *src, bool *invert)
 }
 
 static uint8_t
-output_load_rt_addr(nir_shader *nir, nir_intrinsic_instr *instr)
+output_load_rt_addr(compiler_context *ctx, nir_intrinsic_instr *instr)
 {
+        if (ctx->is_blend)
+                return ctx->blend_rt;
+
         const nir_variable *var;
-        var = search_var(&nir->outputs, nir_intrinsic_base(instr));
+        var = search_var(&ctx->nir->outputs, nir_intrinsic_base(instr));
         assert(var);
 
         unsigned loc = var->data.location;
@@ -1820,7 +1823,7 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
 
                 midgard_instruction ld = m_ld_color_buffer_32u(reg, 0);
 
-                ld.load_store.arg_2 = output_load_rt_addr(ctx->nir, instr);
+                ld.load_store.arg_2 = output_load_rt_addr(ctx, instr);
 
                 if (nir_src_is_const(instr->src[0])) {
                         ld.load_store.arg_1 = nir_src_as_uint(instr->src[0]);
@@ -1851,7 +1854,7 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
                 else
                         ld = m_ld_color_buffer_as_fp32(reg, 0);
 
-                ld.load_store.arg_2 = output_load_rt_addr(ctx->nir, instr);
+                ld.load_store.arg_2 = output_load_rt_addr(ctx, instr);
 
                 for (unsigned c = 4; c < 16; ++c)
                         ld.swizzle[0][c] = 0;
