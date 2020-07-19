@@ -311,6 +311,8 @@ llvmpipe_get_param(struct pipe_screen *screen, enum pipe_cap param)
    case PIPE_CAP_MULTI_DRAW_INDIRECT:
    case PIPE_CAP_MULTI_DRAW_INDIRECT_PARAMS:
       return 1;
+   case PIPE_CAP_DEVICE_RESET_STATUS_QUERY:
+      return 1;
    case PIPE_CAP_MAX_SHADER_PATCH_VARYINGS:
       return 32;
    case PIPE_CAP_RASTERIZER_SUBPIXEL_BITS:

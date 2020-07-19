@@ -154,6 +154,12 @@ static void lp_draw_disk_cache_insert_shader(void *cookie,
    lp_disk_cache_insert_shader(screen, cache, ir_sha1_cache_key);
 }
 
+static enum pipe_reset_status
+llvmpipe_get_device_reset_status(struct pipe_context *pipe)
+{
+   return PIPE_NO_RESET;
+}
+
 struct pipe_context *
 llvmpipe_create_context(struct pipe_screen *screen, void *priv,
                         unsigned flags)
@@ -186,6 +192,7 @@ llvmpipe_create_context(struct pipe_screen *screen, void *priv,
 
    llvmpipe->pipe.render_condition = llvmpipe_render_condition;
 
+   llvmpipe->pipe.get_device_reset_status = llvmpipe_get_device_reset_status;
    llvmpipe_init_blend_funcs(llvmpipe);
    llvmpipe_init_clip_funcs(llvmpipe);
    llvmpipe_init_draw_funcs(llvmpipe);
