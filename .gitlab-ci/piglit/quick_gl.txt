@@ -1,4 +1,3 @@
-fast_color_clear/fcc-write-after-clear: skip
 glx/extension string sanity: fail
 glx/glx-buffer-age: skip
 glx/glx-buffer-age vblank_mode=0: skip
@@ -27,6 +26,7 @@ glx/glx-visuals-depth: fail
 glx/glx-visuals-depth -pixmap: fail
 glx/glx-visuals-stencil: fail
 glx/glx-visuals-stencil -pixmap: fail
+glx/glx_arb_create_context/invalid flag: fail
 glx/glx_arb_create_context_es2_profile/invalid opengl es version: fail
 glx/glx_arb_create_context_no_error/no error: skip
 glx/glx_arb_create_context_robustness/invalid reset notification strategy: skip
@@ -80,7 +80,6 @@ shaders/activeprogram-bad-program: skip
 shaders/activeprogram-get: skip
 shaders/createshaderprogram-attached-shaders: skip
 shaders/createshaderprogram-bad-type: skip
-shaders/glsl-bug-110796: fail
 shaders/glsl-fs-fogscale/gs-out and fs: skip
 shaders/glsl-fs-fogscale/vs, gs and fs: skip
 shaders/sso-simple: skip
@@ -391,7 +390,6 @@ spec/!opengl 3.1/draw-buffers-errors: skip
 spec/!opengl 3.2/gl-3.2-adj-prims pv-first: fail
 spec/!opengl 3.2/layered-rendering/clear-color-mismatched-layer-count: fail
 spec/!opengl 4.2/gl-max-vertex-attrib-stride: skip
-spec/!opengl 4.3/get_glsl_version: skip
 spec/!opengl 4.5/compare-framebuffer-parameter-with-get: skip
 spec/!opengl 4.5/named-framebuffer-draw-buffers-errors: skip
 spec/!opengl 4.5/named-framebuffer-read-buffer-errors: skip
@@ -500,9 +498,7 @@ spec/arb_internalformat_query/misc. api error checks: skip
 spec/arb_pipeline_statistics_query/arb_pipeline_statistics_query-frag: fail
 spec/arb_pixel_buffer_object/cubemap npot pbo: fail
 spec/arb_pixel_buffer_object/cubemap pbo: fail
-spec/arb_post_depth_coverage/arb_post_depth_coverage-basic: skip
-spec/arb_post_depth_coverage/arb_post_depth_coverage-multisampling: skip
-spec/arb_post_depth_coverage/arb_post_depth_coverage-sample-shading: skip
+spec/arb_post_depth_coverage/arb_post_depth_coverage-multisampling: fail
 spec/arb_program_interface_query/arb_program_interface_query-getprogramresourceindex/'vs_input2[1][0]' on gl_program_input: fail
 spec/arb_query_buffer_object/qbo/query-gl_time_elapsed-async_cpu_read_before-gl_int: fail
 spec/arb_query_buffer_object/qbo/query-gl_time_elapsed-async_cpu_read_before-gl_unsigned_int: fail
@@ -1521,7 +1517,7 @@ spec/intel_conservative_rasterization/intel_conservative_rasterization-invalid: 
 spec/intel_conservative_rasterization/intel_conservative_rasterization-invalid_gles3: skip
 spec/intel_conservative_rasterization/intel_conservative_rasterization-tri: skip
 spec/intel_conservative_rasterization/intel_conservative_rasterization-tri_gles3: skip
-spec/intel_performance_query/intel_performance_query-issue_2235: fail
+spec/intel_performance_query/intel_performance_query-issue_2235: skip
 spec/khr_texture_compression_astc/array-gl/12x12 block dim: fail
 spec/khr_texture_compression_astc/array-gl/5x5 block dim: fail
 spec/khr_texture_compression_astc/array-gles/12x12 block dim: fail
@@ -1672,10 +1668,10 @@ wgl/wgl-sanity: skip
 summary:
        name:  results
        ----  --------
-       pass:    23025
+       pass:    23029
        fail:      201
       crash:        0
-       skip:     1446
+       skip:     1442
     timeout:        0
        warn:        6
  incomplete:        0

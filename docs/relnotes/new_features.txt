@@ -1,8 +1,10 @@
 GL_ARB_compute_variable_group_size on Iris.
 GL_ARB_gpu_shader5 on llvmpipe
 GL_ARB_post_depth_coverage on llvmpipe
-GL 4.2 on llvmpipe
+GL 4.3 on llvmpipe
+GLES 3.2 on llvmpipe
 GL_EXT_shader_group_vote on GLES3.
+GL_EXT_texture_shadow_lod on llvmpipe
 VK_AMD_texture_gather_bias_lod on RADV.
 VK_AMD_gpu_shader_half_float on RADV/ACO.
 VK_AMD_gpu_shader_int16 on RADV/ACO.
