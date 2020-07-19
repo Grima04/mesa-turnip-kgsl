@@ -128,8 +128,13 @@ struct zink_context {
 
    struct pipe_stencil_ref stencil_ref;
 
-   float default_inner_level[2];
-   float default_outer_level[4];
+   union {
+      struct {
+         float default_inner_level[2];
+         float default_outer_level[4];
+      };
+      float tess_levels[6];
+   };
 
    struct list_head suspended_queries;
    struct list_head primitives_generated_queries;

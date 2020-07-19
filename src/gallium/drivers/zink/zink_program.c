@@ -151,6 +151,14 @@ create_pipeline_layout(VkDevice dev, VkDescriptorSetLayout dsl)
    plci.pSetLayouts = &dsl;
    plci.setLayoutCount = 1;
 
+
+   VkPushConstantRange pcr = {};
+   pcr.stageFlags = VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
+   pcr.offset = 0;
+   pcr.size = sizeof(float) * 6;
+   plci.pushConstantRangeCount = 1;
+   plci.pPushConstantRanges = &pcr;
+
    VkPipelineLayout layout;
    if (vkCreatePipelineLayout(dev, &plci, NULL, &layout) != VK_SUCCESS) {
       debug_printf("vkCreatePipelineLayout failed!\n");
@@ -180,6 +188,18 @@ shader_key_fs_gen(struct zink_context *ctx, struct zink_shader *zs,
 }
 
 static void
+shader_key_tcs_gen(struct zink_context *ctx, struct zink_shader *zs,
+                   struct zink_shader *shaders[ZINK_SHADER_COUNT], struct zink_shader_key *key)
+{
+   struct zink_tcs_key *tcs_key = &key->key.tcs;
+   key->size = sizeof(struct zink_tcs_key);
+
+   tcs_key->shader_id = zs->shader_id;
+   tcs_key->vertices_per_patch = ctx->gfx_pipeline_state.vertices_per_patch;
+   tcs_key->vs_outputs_written = shaders[PIPE_SHADER_VERTEX]->nir->info.outputs_written;
+}
+
+static void
 shader_key_dummy_gen(struct zink_context *ctx, struct zink_shader *zs,
                      struct zink_shader *shaders[ZINK_SHADER_COUNT], struct zink_shader_key *key)
 {
@@ -195,7 +215,7 @@ typedef void (*zink_shader_key_gen)(struct zink_context *ctx, struct zink_shader
 static zink_shader_key_gen shader_key_vtbl[] =
 {
    [MESA_SHADER_VERTEX] = shader_key_dummy_gen,
-   [MESA_SHADER_TESS_CTRL] = shader_key_dummy_gen,
+   [MESA_SHADER_TESS_CTRL] = shader_key_tcs_gen,
    [MESA_SHADER_TESS_EVAL] = shader_key_dummy_gen,
    [MESA_SHADER_GEOMETRY] = shader_key_dummy_gen,
    [MESA_SHADER_FRAGMENT] = shader_key_fs_gen,
@@ -297,6 +317,12 @@ update_shader_modules(struct zink_context *ctx, struct zink_shader *stages[ZINK_
    while (dirty_shader_stages) {
       unsigned type = u_bit_scan(&dirty_shader_stages);
       dirty[tgsi_processor_to_shader_stage(type)] = stages[type];
+   }
+   if (ctx->dirty_shader_stages & (1 << PIPE_SHADER_TESS_EVAL)) {
+      if (dirty[MESA_SHADER_TESS_EVAL] && !dirty[MESA_SHADER_TESS_CTRL]) {
+         dirty[MESA_SHADER_TESS_CTRL] = stages[PIPE_SHADER_TESS_CTRL] = zink_shader_tcs_create(ctx, stages[PIPE_SHADER_VERTEX]);
+         dirty[MESA_SHADER_TESS_EVAL]->generated = stages[PIPE_SHADER_TESS_CTRL];
+      }
    }
 
    for (int i = 0; i < ZINK_SHADER_COUNT; ++i) {

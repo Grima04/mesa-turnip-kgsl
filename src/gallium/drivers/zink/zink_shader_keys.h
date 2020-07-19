@@ -32,6 +32,12 @@ struct zink_fs_key {
    bool samples;
 };
 
+struct zink_tcs_key {
+   unsigned shader_id;
+   unsigned vertices_per_patch;
+   uint64_t vs_outputs_written;
+};
+
 /* a shader key is used for swapping out shader modules based on pipeline states,
  * e.g., if sampleCount changes, we must verify that the fs doesn't need a recompile
  *       to account for GL ignoring gl_SampleMask in some cases when VK will not
@@ -40,6 +46,7 @@ struct zink_fs_key {
 struct zink_shader_key {
    union {
       struct zink_fs_key fs;
+      struct zink_tcs_key tcs;
    } key;
    uint32_t size;
 };

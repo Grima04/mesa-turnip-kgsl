@@ -72,7 +72,8 @@ struct ntv_context {
    SpvId front_face_var, instance_id_var, vertex_id_var,
          primitive_id_var, invocation_id_var, // geometry
          sample_mask_type, sample_id_var, sample_pos_var,
-         tess_patch_vertices_in, tess_coord_var; // tess
+         tess_patch_vertices_in, tess_coord_var, // tess
+         push_const_var;
 };
 
 static SpvId
@@ -320,19 +321,28 @@ handle_handle_slot(struct ntv_context *ctx, struct nir_variable *var)
    return handle_slot(ctx, var->data.location);
 }
 
-static void
-emit_input(struct ntv_context *ctx, struct nir_variable *var)
+static SpvId
+input_var_init(struct ntv_context *ctx, struct nir_variable *var)
 {
    SpvId var_type = get_glsl_type(ctx, var->type);
+   SpvStorageClass sc = get_storage_class(var);
+   if (sc == SpvStorageClassPushConstant)
+      spirv_builder_emit_decoration(&ctx->builder, var_type, SpvDecorationBlock);
    SpvId pointer_type = spirv_builder_type_pointer(&ctx->builder,
-                                                   SpvStorageClassInput,
-                                                   var_type);
-   SpvId var_id = spirv_builder_emit_var(&ctx->builder, pointer_type,
-                                         SpvStorageClassInput);
+                                                   sc, var_type);
+   SpvId var_id = spirv_builder_emit_var(&ctx->builder, pointer_type, sc);
 
    if (var->name)
       spirv_builder_emit_name(&ctx->builder, var_id, var->name);
+   if (var->data.mode == nir_var_mem_push_const)
+      ctx->push_const_var = var_id;
+   return var_id;
+}
 
+static void
+emit_input(struct ntv_context *ctx, struct nir_variable *var)
+{
+   SpvId var_id = input_var_init(ctx, var);
    unsigned slot = var->data.location;
    if (ctx->stage == MESA_SHADER_VERTEX)
       spirv_builder_emit_location(&ctx->builder, var_id,
@@ -1768,6 +1778,81 @@ emit_store_deref(struct ntv_context *ctx, nir_intrinsic_instr *intr)
    spirv_builder_emit_store(&ctx->builder, ptr, result);
 }
 
+/* FIXME: this is currently VERY specific to injected TCS usage */
+static void
+emit_load_push_const(struct ntv_context *ctx, nir_intrinsic_instr *intr)
+{
+   unsigned bit_size = nir_dest_bit_size(intr->dest);
+   SpvId uint_type = get_uvec_type(ctx, 32, 1);
+   SpvId load_type = get_uvec_type(ctx, 32, 1);
+
+   /* number of components being loaded */
+   unsigned num_components = nir_dest_num_components(intr->dest);
+   /* we need to grab 2x32 to fill the 64bit value */
+   if (bit_size == 64)
+      num_components *= 2;
+   SpvId constituents[num_components];
+   SpvId result;
+
+   /* destination type for the load */
+   SpvId type = get_dest_uvec_type(ctx, &intr->dest);
+   /* an id of an array member in bytes */
+   SpvId uint_size = emit_uint_const(ctx, 32, sizeof(uint32_t));
+   SpvId one = emit_uint_const(ctx, 32, 1);
+
+   /* we grab a single array member at a time, so it's a pointer to a uint */
+   SpvId pointer_type = spirv_builder_type_pointer(&ctx->builder,
+                                                   SpvStorageClassPushConstant,
+                                                   load_type);
+
+   SpvId member = emit_uint_const(ctx, 32, 0);
+   /* this is the offset (in bytes) that we're accessing:
+    * it may be a const value or it may be dynamic in the shader
+    */
+   SpvId offset = get_src(ctx, &intr->src[0]);
+   offset = emit_binop(ctx, SpvOpUDiv, uint_type, offset, uint_size);
+   /* OpAccessChain takes an array of indices that drill into a hierarchy based on the type:
+    * index 0 is accessing 'base'
+    * index 1 is accessing 'base[index 1]'
+    *
+    */
+   for (unsigned i = 0; i < num_components; i++) {
+      SpvId indices[2] = { member, offset };
+      SpvId ptr = spirv_builder_emit_access_chain(&ctx->builder, pointer_type,
+                                                  ctx->push_const_var, indices,
+                                                  ARRAY_SIZE(indices));
+      /* load a single value into the constituents array */
+      constituents[i] = spirv_builder_emit_load(&ctx->builder, load_type, ptr);
+      /* increment to the next vec4 member index for the next load */
+      offset = emit_binop(ctx, SpvOpIAdd, uint_type, offset, one);
+   }
+
+   /* if we're loading a 64bit value, we have to reassemble all the u32 values we've loaded into u64 values
+    * by creating uvec2 composites and bitcasting them to u64 values
+    */
+   if (bit_size == 64) {
+      num_components /= 2;
+      type = get_uvec_type(ctx, 64, num_components);
+      SpvId u64_type = get_uvec_type(ctx, 64, 1);
+      for (unsigned i = 0; i < num_components; i++) {
+         constituents[i] = spirv_builder_emit_composite_construct(&ctx->builder, get_uvec_type(ctx, 32, 2), constituents + i * 2, 2);
+         constituents[i] = emit_bitcast(ctx, u64_type, constituents[i]);
+      }
+   }
+   /* if loading more than 1 value, reassemble the results into the desired type,
+    * otherwise just use the loaded result
+    */
+   if (num_components > 1) {
+      result = spirv_builder_emit_composite_construct(&ctx->builder,
+                                                      type,
+                                                      constituents,
+                                                      num_components);
+   } else
+      result = constituents[0];
+
+   store_dest(ctx, &intr->dest, result, nir_type_uint);
+}
+
 static SpvId
 create_builtin_var(struct ntv_context *ctx, SpvId var_type,
                    SpvStorageClass storage_class,
@@ -1880,6 +1965,10 @@ emit_intrinsic(struct ntv_context *ctx, nir_intrinsic_instr *intr)
 
    case nir_intrinsic_store_deref:
       emit_store_deref(ctx, intr);
+      break;
+
+   case nir_intrinsic_load_push_constant:
+      emit_load_push_const(ctx, intr);
       break;
 
    case nir_intrinsic_load_front_face:
@@ -2659,6 +2748,9 @@ nir_to_spirv(struct nir_shader *s, const struct zink_so_info *so_info,
 
    ctx.so_outputs = _mesa_hash_table_create(ctx.mem_ctx, _mesa_hash_u32,
                                             _mesa_key_u32_equal);
+
+   nir_foreach_variable_with_modes(var, s, nir_var_mem_push_const)
+      input_var_init(&ctx, var);
 
    nir_foreach_shader_in_variable(var, s)
       emit_input(&ctx, var);

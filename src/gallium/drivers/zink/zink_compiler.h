@@ -74,6 +74,10 @@ struct zink_shader {
 
    bool has_tess_shader; // vertex shaders need to know if a tesseval shader exists
    bool has_geometry_shader; // vertex shaders need to know if a geometry shader exists
+   union {
+      struct zink_shader *generated; // a generated shader that this shader "owns"
+      bool is_generated; // if this is a driver-created shader (e.g., tcs)
+   };
 };
 
 VkShaderModule
@@ -86,5 +90,8 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
 
 void
 zink_shader_free(struct zink_context *ctx, struct zink_shader *shader);
+
+struct zink_shader *
+zink_shader_tcs_create(struct zink_context *ctx, struct zink_shader *vs);
 
 #endif

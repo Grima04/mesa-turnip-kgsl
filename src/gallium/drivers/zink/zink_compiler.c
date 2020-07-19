@@ -507,10 +507,145 @@ zink_shader_free(struct zink_context *ctx, struct zink_shader *shader)
       struct zink_gfx_program *prog = (void*)entry->key;
       _mesa_hash_table_remove_key(ctx->program_cache, prog->shaders);
       prog->shaders[pipe_shader_type_from_mesa(shader->nir->info.stage)] = NULL;
+      if (shader->nir->info.stage == MESA_SHADER_TESS_EVAL && shader->generated)
+            /* automatically destroy generated tcs shaders when tes is destroyed */
+            zink_shader_free(ctx, shader->generated);
       zink_gfx_program_reference(screen, &prog, NULL);
    }
    _mesa_set_destroy(shader->programs, NULL);
    free(shader->streamout.so_info_slots);
    ralloc_free(shader->nir);
    FREE(shader);
+}
+
+
+/* creating a passthrough tcs shader that's roughly:
+
+#version 150
+#extension GL_ARB_tessellation_shader : require
+
+in vec4 some_var[gl_MaxPatchVertices];
+out vec4 some_var_out;
+
+layout(push_constant) uniform tcsPushConstants {
+    layout(offset = 0) float TessLevelInner[2];
+    layout(offset = 8) float TessLevelOuter[4];
+} u_tcsPushConstants;
+layout(vertices = $vertices_per_patch) out;
+void main()
+{
+  gl_TessLevelInner = u_tcsPushConstants.TessLevelInner;
+  gl_TessLevelOuter = u_tcsPushConstants.TessLevelOuter;
+  some_var_out = some_var[gl_InvocationID];
+}
+
+*/
+struct zink_shader *
+zink_shader_tcs_create(struct zink_context *ctx, struct zink_shader *vs)
+{
+   unsigned vertices_per_patch = ctx->gfx_pipeline_state.vertices_per_patch;
+   struct zink_shader *ret = CALLOC_STRUCT(zink_shader);
+   ret->shader_id = 0; //special value for internal shaders
+   ret->programs = _mesa_pointer_set_create(NULL);
+
+   nir_shader *nir = nir_shader_create(NULL, MESA_SHADER_TESS_CTRL, &nir_options, NULL);
+   nir_function *fn = nir_function_create(nir, "main");
+   fn->is_entrypoint = true;
+   nir_function_impl *impl = nir_function_impl_create(fn);
+
+   nir_builder b;
+   nir_builder_init(&b, impl);
+   b.cursor = nir_before_block(nir_start_block(impl));
+
+   nir_intrinsic_instr *invocation_id = nir_intrinsic_instr_create(b.shader, nir_intrinsic_load_invocation_id);
+   nir_ssa_dest_init(&invocation_id->instr, &invocation_id->dest, 1, 32, "gl_InvocationID");
+   nir_builder_instr_insert(&b, &invocation_id->instr);
+
+   nir_foreach_shader_out_variable(var, vs->nir) {
+      const struct glsl_type *type = var->type;
+      const struct glsl_type *in_type = var->type;
+      const struct glsl_type *out_type = var->type;
+      char buf[1024];
+      snprintf(buf, sizeof(buf), "%s_out", var->name);
+      in_type = glsl_array_type(type, 32 /* MAX_PATCH_VERTICES */, 0);
+      out_type = glsl_array_type(type, vertices_per_patch, 0);
+
+      nir_variable *in = nir_variable_create(nir, nir_var_shader_in, in_type, var->name);
+      nir_variable *out = nir_variable_create(nir, nir_var_shader_out, out_type, buf);
+      out->data.location = in->data.location = var->data.location;
+      out->data.location_frac = in->data.location_frac = var->data.location_frac;
+
+      /* gl_in[] receives values from equivalent built-in output
+         variables written by the vertex shader (section 2.14.7).  Each array
+         element of gl_in[] is a structure holding values for a specific vertex of
+         the input patch.  The length of gl_in[] is equal to the
+         implementation-dependent maximum patch size (gl_MaxPatchVertices).
+         - ARB_tessellation_shader
+       */
+      for (unsigned i = 0; i < vertices_per_patch; i++) {
+         /* we need to load the invocation-specific value of the vertex output and then store it to the per-patch output */
+         nir_if *start_block = nir_push_if(&b, nir_ieq(&b, &invocation_id->dest.ssa, nir_imm_int(&b, i)));
+         nir_deref_instr *in_array_var = nir_build_deref_array(&b, nir_build_deref_var(&b, in), &invocation_id->dest.ssa);
+         nir_ssa_def *load = nir_load_deref(&b, in_array_var);
+         nir_deref_instr *out_array_var = nir_build_deref_array_imm(&b, nir_build_deref_var(&b, out), i);
+         nir_store_deref(&b, out_array_var, load, 0xff);
+         nir_pop_if(&b, start_block);
+      }
+   }
+   nir_variable *gl_TessLevelInner = nir_variable_create(nir, nir_var_shader_out, glsl_array_type(glsl_float_type(), 2, 0), "gl_TessLevelInner");
+   gl_TessLevelInner->data.location = VARYING_SLOT_TESS_LEVEL_INNER;
+   gl_TessLevelInner->data.patch = 1;
+   nir_variable *gl_TessLevelOuter = nir_variable_create(nir, nir_var_shader_out, glsl_array_type(glsl_float_type(), 4, 0), "gl_TessLevelOuter");
+   gl_TessLevelOuter->data.location = VARYING_SLOT_TESS_LEVEL_OUTER;
+   gl_TessLevelOuter->data.patch = 1;
+
+   /* hacks so we can size these right for now */
+   struct glsl_struct_field *fields = ralloc_size(nir, 2 * sizeof(struct glsl_struct_field));
+   fields[0].type = glsl_array_type(glsl_uint_type(), 2, 0);
+   fields[0].name = ralloc_asprintf(nir, "gl_TessLevelInner");
+   fields[0].offset = 0;
+   fields[1].type = glsl_array_type(glsl_uint_type(), 4, 0);
+   fields[1].name = ralloc_asprintf(nir, "gl_TessLevelOuter");
+   fields[1].offset = 8;
+   nir_variable *pushconst = nir_variable_create(nir, nir_var_mem_push_const,
+                                                 glsl_struct_type(fields, 2, "struct", false), "pushconst");
+   pushconst->data.location = VARYING_SLOT_VAR0;
+
+   nir_intrinsic_instr *load_inner = nir_intrinsic_instr_create(b.shader, nir_intrinsic_load_push_constant);
+   load_inner->src[0] = nir_src_for_ssa(nir_imm_int(&b, 0));
+   nir_intrinsic_set_base(load_inner, 0);
+   nir_intrinsic_set_range(load_inner, 8);
+   load_inner->num_components = 2;
+   nir_ssa_dest_init(&load_inner->instr, &load_inner->dest, 2, 32, "TessLevelInner");
+   nir_builder_instr_insert(&b, &load_inner->instr);
+
+   nir_intrinsic_instr *load_outer = nir_intrinsic_instr_create(b.shader, nir_intrinsic_load_push_constant);
+   load_outer->src[0] = nir_src_for_ssa(nir_imm_int(&b, 8));
+   nir_intrinsic_set_base(load_outer, 8);
+   nir_intrinsic_set_range(load_outer, 16);
+   load_outer->num_components = 4;
+   nir_ssa_dest_init(&load_outer->instr, &load_outer->dest, 4, 32, "TessLevelOuter");
+   nir_builder_instr_insert(&b, &load_outer->instr);
+
+   for (unsigned i = 0; i < 2; i++) {
+      nir_deref_instr *store_idx = nir_build_deref_array_imm(&b, nir_build_deref_var(&b, gl_TessLevelInner), i);
+      nir_store_deref(&b, store_idx, nir_channel(&b, &load_inner->dest.ssa, i), 0xff);
+   }
+   for (unsigned i = 0; i < 4; i++) {
+      nir_deref_instr *store_idx = nir_build_deref_array_imm(&b, nir_build_deref_var(&b, gl_TessLevelOuter), i);
+      nir_store_deref(&b, store_idx, nir_channel(&b, &load_outer->dest.ssa, i), 0xff);
+   }
+
+   nir->info.tess.tcs_vertices_out = vertices_per_patch;
+   nir_validate_shader(nir, "created");
+
+   NIR_PASS_V(nir, nir_lower_regs_to_ssa);
+   optimize_nir(nir);
+   NIR_PASS_V(nir, nir_remove_dead_variables, nir_var_function_temp, NULL);
+   NIR_PASS_V(nir, lower_discard_if);
+   NIR_PASS_V(nir, nir_convert_from_ssa, true);
+
+   ret->nir = nir;
+   ret->is_generated = true;
+   return ret;
 }

@@ -241,7 +241,9 @@ zink_draw_vbo(struct pipe_context *pctx,
       util_primconvert_draw_vbo(ctx->primconvert, dinfo, &draws[0]);
       return;
    }
-
+   if (ctx->gfx_pipeline_state.vertices_per_patch != dinfo->vertices_per_patch)
+      ctx->gfx_pipeline_state.hash = 0;
+   ctx->gfx_pipeline_state.vertices_per_patch = dinfo->vertices_per_patch;
    struct zink_gfx_program *gfx_program = get_gfx_program(ctx);
    if (!gfx_program)
       return;
@@ -249,7 +251,6 @@ zink_draw_vbo(struct pipe_context *pctx,
    if (ctx->gfx_pipeline_state.primitive_restart != !!dinfo->primitive_restart)
       ctx->gfx_pipeline_state.hash = 0;
    ctx->gfx_pipeline_state.primitive_restart = !!dinfo->primitive_restart;
-   ctx->gfx_pipeline_state.vertices_per_patch = dinfo->vertices_per_patch;
 
    VkPipeline pipeline = zink_get_gfx_pipeline(screen, gfx_program,
                                                &ctx->gfx_pipeline_state,
@@ -476,6 +477,11 @@ zink_draw_vbo(struct pipe_context *pctx,
    vkCmdBindDescriptorSets(batch->cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS,
                            gfx_program->layout, 0, 1, &desc_set, 0, NULL);
    zink_bind_vertex_buffers(batch, ctx);
+
+   if (gfx_program->shaders[PIPE_SHADER_TESS_CTRL] && gfx_program->shaders[PIPE_SHADER_TESS_CTRL]->is_generated)
+      vkCmdPushConstants(batch->cmdbuf, gfx_program->layout, VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT,
+                         0, sizeof(float) * 6,
+                         &ctx->tess_levels[0]);
 
    zink_query_update_gs_states(ctx);
 
