@@ -9,5 +9,6 @@ OPT_BOOL(vs_fetch_always_opencode, false,
 OPT_BOOL(prim_restart_tri_strips_only, false, "Only enable primitive restart for triangle strips")
 OPT_BOOL(no_infinite_interp, false, "Kill PS with infinite interp coeff")
 OPT_BOOL(clamp_div_by_zero, false, "Clamp div by zero (x / 0 becomes FLT_MAX instead of NaN)")
+OPT_BOOL(no_trunc_coord, false, "Always set TRUNC_COORD=0")
 
 #undef OPT_BOOL
