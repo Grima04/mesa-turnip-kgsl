@@ -156,6 +156,7 @@ static bool
 split_var_list_structs(nir_shader *shader,
                        nir_function_impl *impl,
                        struct exec_list *vars,
+                       nir_variable_mode mode,
                        struct hash_table *var_field_map,
                        struct set **complex_vars,
                        void *mem_ctx)
@@ -173,6 +174,9 @@ split_var_list_structs(nir_shader *shader,
     * pull all of the variables we plan to split off of the list
     */
    nir_foreach_variable_safe(var, vars) {
+      if (var->data.mode != mode)
+         continue;
+
       if (!glsl_type_is_struct_or_ifc(glsl_without_array(var->type)))
          continue;
 
@@ -305,6 +309,7 @@ nir_split_struct_vars(nir_shader *shader, nir_variable_mode modes)
    if (modes & nir_var_shader_temp) {
       has_global_splits = split_var_list_structs(shader, NULL,
                                                  &shader->globals,
+                                                 nir_var_shader_temp,
                                                  var_field_map,
                                                  &complex_vars,
                                                  mem_ctx);
@@ -319,6 +324,7 @@ nir_split_struct_vars(nir_shader *shader, nir_variable_mode modes)
       if (modes & nir_var_function_temp) {
          has_local_splits = split_var_list_structs(shader, function->impl,
                                                    &function->impl->locals,
+                                                   nir_var_function_temp,
                                                    var_field_map,
                                                    &complex_vars,
                                                    mem_ctx);
@@ -369,6 +375,7 @@ struct array_var_info {
 static bool
 init_var_list_array_infos(nir_shader *shader,
                           struct exec_list *vars,
+                          nir_variable_mode mode,
                           struct hash_table *var_info_map,
                           struct set **complex_vars,
                           void *mem_ctx)
@@ -376,6 +383,9 @@ init_var_list_array_infos(nir_shader *shader,
    bool has_array = false;
 
    nir_foreach_variable(var, vars) {
+      if (var->data.mode != mode)
+         continue;
+
       int num_levels = num_array_levels_in_array_of_vector_type(var->type);
       if (num_levels <= 0)
          continue;
@@ -537,6 +547,7 @@ static bool
 split_var_list_arrays(nir_shader *shader,
                       nir_function_impl *impl,
                       struct exec_list *vars,
+                      nir_variable_mode mode,
                       struct hash_table *var_info_map,
                       void *mem_ctx)
 {
@@ -544,6 +555,9 @@ split_var_list_arrays(nir_shader *shader,
    exec_list_make_empty(&split_vars);
 
    nir_foreach_variable_safe(var, vars) {
+      if (var->data.mode != mode)
+         continue;
+
       struct array_var_info *info = get_array_var_info(var, var_info_map);
       if (!info)
          continue;
@@ -859,6 +873,7 @@ nir_split_array_vars(nir_shader *shader, nir_variable_mode modes)
    if (modes & nir_var_shader_temp) {
       has_global_array = init_var_list_array_infos(shader,
                                                    &shader->globals,
+                                                   nir_var_shader_temp,
                                                    var_info_map,
                                                    &complex_vars,
                                                    mem_ctx);
@@ -873,6 +888,7 @@ nir_split_array_vars(nir_shader *shader, nir_variable_mode modes)
       if (modes & nir_var_function_temp) {
          has_local_array = init_var_list_array_infos(shader,
                                                      &function->impl->locals,
+                                                     nir_var_function_temp,
                                                      var_info_map,
                                                      &complex_vars,
                                                      mem_ctx);
@@ -895,6 +911,7 @@ nir_split_array_vars(nir_shader *shader, nir_variable_mode modes)
    if (modes & nir_var_shader_temp) {
       has_global_splits = split_var_list_arrays(shader, NULL,
                                                 &shader->globals,
+                                                nir_var_shader_temp,
                                                 var_info_map, mem_ctx);
    }
 
@@ -907,6 +924,7 @@ nir_split_array_vars(nir_shader *shader, nir_variable_mode modes)
       if (modes & nir_var_function_temp) {
          has_local_splits = split_var_list_arrays(shader, function->impl,
                                                   &function->impl->locals,
+                                                  nir_var_function_temp,
                                                   var_info_map, mem_ctx);
       }
 
@@ -1233,6 +1251,7 @@ find_used_components_impl(nir_function_impl *impl,
 
 static bool
 shrink_vec_var_list(struct exec_list *vars,
+                    nir_variable_mode mode,
                     struct hash_table *var_usage_map)
 {
    /* Initialize the components kept field of each variable.  This is the
@@ -1252,6 +1271,9 @@ shrink_vec_var_list(struct exec_list *vars,
     * to leave components and array_len of any wildcards alone.
     */
    nir_foreach_variable(var, vars) {
+      if (var->data.mode != mode)
+         continue;
+
       struct vec_var_usage *usage =
          get_vec_var_usage(var, var_usage_map, false, NULL);
       if (!usage)
@@ -1285,6 +1307,9 @@ shrink_vec_var_list(struct exec_list *vars,
    do {
       fp_progress = false;
       nir_foreach_variable(var, vars) {
+         if (var->data.mode != mode)
+            continue;
+
          struct vec_var_usage *var_usage =
             get_vec_var_usage(var, var_usage_map, false, NULL);
          if (!var_usage || !var_usage->vars_copied)
@@ -1322,6 +1347,9 @@ shrink_vec_var_list(struct exec_list *vars,
 
    bool vars_shrunk = false;
    nir_foreach_variable_safe(var, vars) {
+      if (var->data.mode != mode)
+         continue;
+
       struct vec_var_usage *usage =
          get_vec_var_usage(var, var_usage_map, false, NULL);
       if (!usage)
@@ -1640,8 +1668,11 @@ nir_shrink_vec_array_vars(nir_shader *shader, nir_variable_mode modes)
    }
 
    bool globals_shrunk = false;
-   if (modes & nir_var_shader_temp)
-      globals_shrunk = shrink_vec_var_list(&shader->globals, var_usage_map);
+   if (modes & nir_var_shader_temp) {
+      globals_shrunk = shrink_vec_var_list(&shader->globals,
+                                           nir_var_shader_temp,
+                                           var_usage_map);
+   }
 
    bool progress = false;
    nir_foreach_function(function, shader) {
@@ -1651,6 +1682,7 @@ nir_shrink_vec_array_vars(nir_shader *shader, nir_variable_mode modes)
       bool locals_shrunk = false;
       if (modes & nir_var_function_temp) {
          locals_shrunk = shrink_vec_var_list(&function->impl->locals,
+                                             nir_var_function_temp,
                                              var_usage_map);
       }
 
