@@ -261,7 +261,7 @@ drm_shim_ioctl(int fd, unsigned long request, void *arg)
               nr, request);
    }
 
-   abort();
+   return -EINVAL;
 }
 
 void
