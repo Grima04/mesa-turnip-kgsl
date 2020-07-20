@@ -176,8 +176,7 @@ nir_opt_large_constants(nir_shader *shader,
    /* This pass can only be run once */
    assert(shader->constant_data == NULL && shader->constant_data_size == 0);
 
-   unsigned num_locals = exec_list_length(&impl->locals);
-   nir_index_vars(shader, impl, nir_var_function_temp);
+   unsigned num_locals = nir_function_impl_index_vars(impl);
 
    if (num_locals == 0) {
       nir_shader_preserve_all_metadata(shader);

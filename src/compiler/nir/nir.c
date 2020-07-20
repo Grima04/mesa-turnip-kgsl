@@ -1821,36 +1821,43 @@ nir_index_instrs(nir_function_impl *impl)
 }
 
 static void
-index_var_list(struct exec_list *list)
+index_var_list(struct exec_list *list, unsigned *count)
 {
-   unsigned next_index = 0;
    nir_foreach_variable(var, list)
-      var->index = next_index++;
+      var->index = (*count)++;
 }
 
-void
-nir_index_vars(nir_shader *shader, nir_function_impl *impl, nir_variable_mode modes)
+unsigned
+nir_shader_index_vars(nir_shader *shader, nir_variable_mode modes)
 {
-   if ((modes & nir_var_function_temp) && impl)
-      index_var_list(&impl->locals);
-
+   unsigned count = 0;
    if (modes & nir_var_shader_temp)
-      index_var_list(&shader->globals);
+      index_var_list(&shader->globals, &count);
 
    if (modes & nir_var_shader_in)
-      index_var_list(&shader->inputs);
+      index_var_list(&shader->inputs, &count);
 
    if (modes & nir_var_shader_out)
-      index_var_list(&shader->outputs);
+      index_var_list(&shader->outputs, &count);
 
    if (modes & (nir_var_uniform | nir_var_mem_ubo | nir_var_mem_ssbo))
-      index_var_list(&shader->uniforms);
+      index_var_list(&shader->uniforms, &count);
 
    if (modes & nir_var_mem_shared)
-      index_var_list(&shader->shared);
+      index_var_list(&shader->shared, &count);
 
    if (modes & nir_var_system_value)
-      index_var_list(&shader->system_values);
+      index_var_list(&shader->system_values, &count);
+
+   return count;
+}
+
+unsigned
+nir_function_impl_index_vars(nir_function_impl *impl)
+{
+   unsigned count = 0;
+   index_var_list(&impl->locals, &count);
+   return count;
 }
 
 static nir_instr *
