@@ -483,7 +483,8 @@ radv_cmd_buffer_resize_upload_buf(struct radv_cmd_buffer *cmd_buffer,
 				       RADEON_DOMAIN_GTT,
 				       RADEON_FLAG_CPU_ACCESS|
 				       RADEON_FLAG_NO_INTERPROCESS_SHARING |
-				       RADEON_FLAG_32BIT,
+				       RADEON_FLAG_32BIT |
+				       RADEON_FLAG_GTT_WC,
 				       RADV_BO_PRIORITY_UPLOAD_BUFFER);
 
 	if (!bo) {
