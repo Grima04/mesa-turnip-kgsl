@@ -52,11 +52,6 @@ struct panfrost_batch_fence {
          * will stay a bit longer.
          */
         struct panfrost_context *ctx;
-
-        /* Cached value of the signaled state to avoid calling WAIT_SYNCOBJs
-         * when we know the fence has already been signaled.
-         */
-        bool signaled;
 };
 
 #define PAN_REQ_MSAA            (1 << 0)

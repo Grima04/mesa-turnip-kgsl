@@ -1082,13 +1082,8 @@ panfrost_batch_submit(struct panfrost_batch *batch, uint32_t out_sync)
         int ret;
 
         /* Nothing to do! */
-        if (!batch->scoreboard.first_job && !batch->clear) {
-                /* Mark the fence as signaled so the fence logic does not try
-                 * to wait on it.
-                 */
-                batch->out_sync->signaled = true;
+        if (!batch->scoreboard.first_job && !batch->clear)
                 goto out;
-        }
 
         panfrost_batch_draw_wallpaper(batch);
 
