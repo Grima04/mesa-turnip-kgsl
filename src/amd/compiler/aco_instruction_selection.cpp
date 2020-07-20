@@ -6719,61 +6719,33 @@ sync_scope translate_nir_scope(nir_scope scope)
    unreachable("invalid scope");
 }
 
-void emit_memory_barrier(isel_context *ctx, nir_intrinsic_instr *instr) {
+void emit_scoped_barrier(isel_context *ctx, nir_intrinsic_instr *instr) {
    Builder bld(ctx->program, ctx->block);
-   storage_class all_mem = (storage_class)(storage_buffer | storage_image | storage_atomic_counter | storage_shared);
-   switch(instr->intrinsic) {
-      case nir_intrinsic_group_memory_barrier:
-         bld.barrier(aco_opcode::p_barrier,
-                     memory_sync_info(all_mem, semantic_acqrel, scope_workgroup));
-         break;
-      case nir_intrinsic_memory_barrier:
-         bld.barrier(aco_opcode::p_barrier,
-                     memory_sync_info(all_mem, semantic_acqrel, scope_device));
-         break;
-      case nir_intrinsic_memory_barrier_buffer:
-         bld.barrier(aco_opcode::p_barrier,
-                     memory_sync_info((storage_class)storage_buffer, semantic_acqrel, scope_device));
-      case nir_intrinsic_memory_barrier_image:
-         bld.barrier(aco_opcode::p_barrier,
-                     memory_sync_info((storage_class)storage_image, semantic_acqrel, scope_device));
-         break;
-      case nir_intrinsic_memory_barrier_tcs_patch:
-      case nir_intrinsic_memory_barrier_shared:
-         bld.barrier(aco_opcode::p_barrier,
-                     memory_sync_info(storage_shared, semantic_acqrel, scope_workgroup));
-         break;
-      case nir_intrinsic_scoped_barrier: {
-         unsigned semantics = 0;
-         unsigned storage = 0;
-         sync_scope mem_scope = translate_nir_scope(nir_intrinsic_memory_scope(instr));
-         sync_scope exec_scope = translate_nir_scope(nir_intrinsic_execution_scope(instr));
 
-         unsigned nir_storage = nir_intrinsic_memory_modes(instr);
-         if (nir_storage & (nir_var_mem_ssbo | nir_var_mem_global))
-            storage |= storage_buffer | storage_image; //TODO: split this when NIR gets nir_var_mem_image
-         if (ctx->shader->info.stage == MESA_SHADER_COMPUTE && (nir_storage & nir_var_mem_shared))
-            storage |= storage_shared;
-         if (ctx->shader->info.stage == MESA_SHADER_TESS_CTRL && (nir_storage & nir_var_shader_out))
-            storage |= storage_shared;
+   unsigned semantics = 0;
+   unsigned storage = 0;
+   sync_scope mem_scope = translate_nir_scope(nir_intrinsic_memory_scope(instr));
+   sync_scope exec_scope = translate_nir_scope(nir_intrinsic_execution_scope(instr));
 
-         unsigned nir_semantics = nir_intrinsic_memory_semantics(instr);
-         if (nir_semantics & NIR_MEMORY_ACQUIRE)
-            semantics |= semantic_acquire | semantic_release;
-         if (nir_semantics & NIR_MEMORY_RELEASE)
-            semantics |= semantic_acquire | semantic_release;
+   unsigned nir_storage = nir_intrinsic_memory_modes(instr);
+   if (nir_storage & (nir_var_mem_ssbo | nir_var_mem_global))
+      storage |= storage_buffer | storage_image; //TODO: split this when NIR gets nir_var_mem_image
+   if (ctx->shader->info.stage == MESA_SHADER_COMPUTE && (nir_storage & nir_var_mem_shared))
+      storage |= storage_shared;
+   if (ctx->shader->info.stage == MESA_SHADER_TESS_CTRL && (nir_storage & nir_var_shader_out))
+      storage |= storage_shared;
 
-         assert(!(nir_semantics & (NIR_MEMORY_MAKE_AVAILABLE | NIR_MEMORY_MAKE_VISIBLE)));
+   unsigned nir_semantics = nir_intrinsic_memory_semantics(instr);
+   if (nir_semantics & NIR_MEMORY_ACQUIRE)
+      semantics |= semantic_acquire | semantic_release;
+   if (nir_semantics & NIR_MEMORY_RELEASE)
+      semantics |= semantic_acquire | semantic_release;
 
-         bld.barrier(aco_opcode::p_barrier,
-                     memory_sync_info((storage_class)storage, (memory_semantics)semantics, mem_scope),
-                     exec_scope);
-         break;
-      }
-      default:
-         unreachable("Unimplemented memory barrier intrinsic");
-         break;
-   }
+   assert(!(nir_semantics & (NIR_MEMORY_MAKE_AVAILABLE | NIR_MEMORY_MAKE_VISIBLE)));
+
+   bld.barrier(aco_opcode::p_barrier,
+               memory_sync_info((storage_class)storage, (memory_semantics)semantics, mem_scope),
+               exec_scope);
 }
 
 void visit_load_shared(isel_context *ctx, nir_intrinsic_instr *instr)
@@ -7601,18 +7573,8 @@ void visit_intrinsic(isel_context *ctx, nir_intrinsic_instr *instr)
    case nir_intrinsic_get_buffer_size:
       visit_get_buffer_size(ctx, instr);
       break;
-   case nir_intrinsic_control_barrier: {
-      bld.barrier(aco_opcode::p_barrier, memory_sync_info(0, 0, scope_invocation), scope_workgroup);
-      break;
-   }
-   case nir_intrinsic_memory_barrier_tcs_patch:
-   case nir_intrinsic_group_memory_barrier:
-   case nir_intrinsic_memory_barrier:
-   case nir_intrinsic_memory_barrier_buffer:
-   case nir_intrinsic_memory_barrier_image:
-   case nir_intrinsic_memory_barrier_shared:
    case nir_intrinsic_scoped_barrier:
-      emit_memory_barrier(ctx, instr);
+      emit_scoped_barrier(ctx, instr);
       break;
    case nir_intrinsic_load_num_work_groups: {
       Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
