@@ -367,29 +367,25 @@ panfrost_setup_slices(struct panfrost_resource *pres, size_t *bo_size)
         }
 }
 
-static void
-panfrost_resource_create_bo(struct panfrost_device *dev, struct panfrost_resource *pres)
+/* Based on the usage, determine if it makes sense to use u-inteleaved tiling.
+ * We only have routines to tile 2D textures of sane bpps. On the hardware
+ * level, not all usages are valid for tiling. Finally, if the app is hinting
+ * that the contents frequently change, tiling will be a loss.
+ *
+ * Due to incomplete information on some platforms, we may need to force tiling
+ * in some cases */
+
+static bool
+panfrost_can_linear(struct panfrost_device *dev, const struct panfrost_resource *pres)
 {
-        struct pipe_resource *res = &pres->base;
+        /* XXX: We should be able to do linear Z/S with the right bits.. */
+        return !((pres->base.bind & PIPE_BIND_DEPTH_STENCIL) &&
+                (dev->quirks & (MIDGARD_SFBD | IS_BIFROST)));
+}
 
-        /* Based on the usage, figure out what storing will be used. There are
-         * various tradeoffs:
-         *
-         * Linear: the basic format, bad for memory bandwidth, bad for cache
-         * use. Zero-copy, though. Renderable.
-         *
-         * Tiled: Not compressed, but cache-optimized. Expensive to write into
-         * (due to software tiling), but cheap to sample from. Ideal for most
-         * textures.
-         *
-         * AFBC: Compressed and renderable (so always desirable for non-scanout
-         * rendertargets). Cheap to sample from. The format is black box, so we
-         * can't read/write from software.
-         *
-         * Tiling textures is almost always faster, unless we only use it once.
-         * Only a few types of resources can be tiled, ensure the bind is only
-         * (a combination of) one of the following */
-
+static bool
+panfrost_should_tile(struct panfrost_device *dev, const struct panfrost_resource *pres)
+{
         const unsigned valid_binding =
                 PIPE_BIND_DEPTH_STENCIL |
                 PIPE_BIND_RENDER_TARGET |
@@ -398,25 +394,50 @@ panfrost_resource_create_bo(struct panfrost_device *dev, struct panfrost_resourc
                 PIPE_BIND_DISPLAY_TARGET;
 
         unsigned bpp = util_format_get_blocksizebits(pres->internal_format);
-        bool is_2d = (res->target == PIPE_TEXTURE_2D) || (res->target == PIPE_TEXTURE_RECT);
-        bool is_sane_bpp = bpp == 8 || bpp == 16 || bpp == 24 || bpp == 32 || bpp == 64 || bpp == 128;
-        bool should_tile = (res->usage != PIPE_USAGE_STREAM);
-        bool must_tile = (res->bind & PIPE_BIND_DEPTH_STENCIL) &&
-                (dev->quirks & (MIDGARD_SFBD | IS_BIFROST));
-        bool can_tile = is_2d && is_sane_bpp && ((res->bind & ~valid_binding) == 0);
 
-        /* FBOs we would like to checksum, if at all possible */
-        bool can_checksum = !(res->bind & ~valid_binding);
-        bool should_checksum = res->bind & PIPE_BIND_RENDER_TARGET;
+        bool is_sane_bpp =
+                bpp == 8 || bpp == 16 || bpp == 24 || bpp == 32 ||
+                bpp == 64 || bpp == 128;
 
-        pres->checksummed = can_checksum && should_checksum;
+        bool is_2d = (pres->base.target == PIPE_TEXTURE_2D)
+                || (pres->base.target == PIPE_TEXTURE_RECT);
 
-        /* Set the modifier appropriately */
-        assert(!(must_tile && !can_tile)); /* must_tile => can_tile */
-        pres->modifier = ((can_tile && should_tile) || must_tile) ?
-                DRM_FORMAT_MOD_ARM_16X16_BLOCK_U_INTERLEAVED :
-                DRM_FORMAT_MOD_LINEAR;
-        pres->modifier_constant = must_tile || !can_tile;
+        bool can_tile = is_2d && is_sane_bpp && ((pres->base.bind & ~valid_binding) == 0);
+
+        if (!panfrost_can_linear(dev, pres)) {
+                assert(can_tile);
+                return true;
+        }
+
+        return can_tile && (pres->base.usage != PIPE_USAGE_STREAM);
+}
+
+static uint64_t
+panfrost_best_modifier(struct panfrost_device *dev,
+                const struct panfrost_resource *pres)
+{
+        if (panfrost_should_tile(dev, pres))
+                return DRM_FORMAT_MOD_ARM_16X16_BLOCK_U_INTERLEAVED;
+        else
+                return DRM_FORMAT_MOD_LINEAR;
+}
+
+static void
+panfrost_resource_create_bo(struct panfrost_device *dev, struct panfrost_resource *pres,
+                uint64_t modifier)
+{
+        struct pipe_resource *res = &pres->base;
+
+        pres->modifier = (modifier != DRM_FORMAT_MOD_INVALID) ? modifier :
+                panfrost_best_modifier(dev, pres);
+        pres->checksummed = (res->bind & PIPE_BIND_RENDER_TARGET);
+
+        /* We can only switch tiled->linear if the resource isn't already
+         * linear, and if we control the modifier, and if the resource can be
+         * linear. */
+        pres->modifier_constant = !((pres->modifier != DRM_FORMAT_MOD_LINEAR)
+                        && (modifier == DRM_FORMAT_INVALID)
+                        && panfrost_can_linear(dev, pres));
 
         size_t bo_size;
 
@@ -509,7 +530,7 @@ panfrost_resource_create_with_modifier(struct pipe_screen *screen,
 
         util_range_init(&so->valid_buffer_range);
 
-        panfrost_resource_create_bo(dev, so);
+        panfrost_resource_create_bo(dev, so, modifier);
         panfrost_resource_set_damage_region(NULL, &so->base, 0, NULL);
 
         if (template->bind & PIPE_BIND_INDEX_BUFFER)
