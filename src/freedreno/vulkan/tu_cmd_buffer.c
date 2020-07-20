@@ -159,8 +159,12 @@ tu6_emit_flushes(struct tu_cmd_buffer *cmd_buffer,
       tu6_emit_event_write(cmd_buffer, cs, CACHE_FLUSH_TS);
    if (flushes & TU_CMD_FLAG_CACHE_INVALIDATE)
       tu6_emit_event_write(cmd_buffer, cs, CACHE_INVALIDATE);
-   if (flushes & TU_CMD_FLAG_WFI)
+   if (flushes & TU_CMD_FLAG_WAIT_MEM_WRITES)
+      tu_cs_emit_pkt7(cs, CP_WAIT_MEM_WRITES, 0);
+   if (flushes & TU_CMD_FLAG_WAIT_FOR_IDLE)
       tu_cs_emit_wfi(cs);
+   if (flushes & TU_CMD_FLAG_WAIT_FOR_ME)
+      tu_cs_emit_pkt7(cs, CP_WAIT_FOR_ME, 0);
 }
 
 /* "Normal" cache flushes, that don't require any special handling */
@@ -214,10 +218,11 @@ tu_emit_cache_flush_ccu(struct tu_cmd_buffer *cmd_buffer,
       flushes |=
          TU_CMD_FLAG_CCU_INVALIDATE_COLOR |
          TU_CMD_FLAG_CCU_INVALIDATE_DEPTH |
-         TU_CMD_FLAG_WFI;
+         TU_CMD_FLAG_WAIT_FOR_IDLE;
       cmd_buffer->state.cache.pending_flush_bits &= ~(
          TU_CMD_FLAG_CCU_INVALIDATE_COLOR |
-         TU_CMD_FLAG_CCU_INVALIDATE_DEPTH);
+         TU_CMD_FLAG_CCU_INVALIDATE_DEPTH |
+         TU_CMD_FLAG_WAIT_FOR_IDLE);
    }
 
    tu6_emit_flushes(cmd_buffer, cs, flushes);
@@ -2192,8 +2197,26 @@ tu_flush_for_access(struct tu_cache_state *cache,
 {
    enum tu_cmd_flush_bits flush_bits = 0;
 
+   if (src_mask & TU_ACCESS_HOST_WRITE) {
+      /* Host writes are always visible to CP, so only invalidate GPU caches */
+      cache->pending_flush_bits |= TU_CMD_FLAG_GPU_INVALIDATE;
+   }
+
    if (src_mask & TU_ACCESS_SYSMEM_WRITE) {
+      /* Invalidate CP and 2D engine (make it do WFI + WFM if necessary) as
+       * well.
+       */
       cache->pending_flush_bits |= TU_CMD_FLAG_ALL_INVALIDATE;
+   }
+
+   if (src_mask & TU_ACCESS_CP_WRITE) {
+      /* Flush the CP write queue. However a WFI shouldn't be necessary as
+       * WAIT_MEM_WRITES should cover it.
+       */
+      cache->pending_flush_bits |=
+         TU_CMD_FLAG_WAIT_MEM_WRITES |
+         TU_CMD_FLAG_GPU_INVALIDATE |
+         TU_CMD_FLAG_WAIT_FOR_ME;
    }
 
 #define SRC_FLUSH(domain, flush, invalidate) \
@@ -2220,7 +2243,11 @@ tu_flush_for_access(struct tu_cache_state *cache,
 
 #undef SRC_INCOHERENT_FLUSH
 
-   if (dst_mask & (TU_ACCESS_SYSMEM_READ | TU_ACCESS_SYSMEM_WRITE)) {
+   /* Treat host & sysmem write accesses the same, since the kernel implicitly
+    * drains the queue before signalling completion to the host.
+    */
+   if (dst_mask & (TU_ACCESS_SYSMEM_READ | TU_ACCESS_SYSMEM_WRITE |
+                   TU_ACCESS_HOST_READ | TU_ACCESS_HOST_WRITE)) {
       flush_bits |= cache->pending_flush_bits & TU_CMD_FLAG_ALL_FLUSH;
    }
 
@@ -2252,7 +2279,13 @@ tu_flush_for_access(struct tu_cache_state *cache,
 #undef DST_INCOHERENT_FLUSH
 
    if (dst_mask & TU_ACCESS_WFI_READ) {
-      flush_bits |= TU_CMD_FLAG_WFI;
+      flush_bits |= cache->pending_flush_bits &
+         (TU_CMD_FLAG_ALL_FLUSH | TU_CMD_FLAG_WAIT_FOR_IDLE);
+   }
+
+   if (dst_mask & TU_ACCESS_WFM_READ) {
+      flush_bits |= cache->pending_flush_bits &
+         (TU_CMD_FLAG_ALL_FLUSH | TU_CMD_FLAG_WAIT_FOR_ME);
    }
 
    cache->flush_bits |= flush_bits;
@@ -2265,30 +2298,45 @@ vk2tu_access(VkAccessFlags flags, bool gmem)
    enum tu_cmd_access_mask mask = 0;
 
    /* If the GPU writes a buffer that is then read by an indirect draw
-    * command, we theoretically need a WFI + WAIT_FOR_ME combination to
-    * wait for the writes to complete. The WAIT_FOR_ME is performed as part
-    * of the draw by the firmware, so we just need to execute a WFI.
+    * command, we theoretically need to emit a WFI to wait for any cache
+    * flushes, and then a WAIT_FOR_ME to wait on the CP for the WFI to
+    * complete. Waiting for the WFI to complete is performed as part of the
+    * draw by the firmware, so we just need to execute the WFI.
+    *
+    * Transform feedback counters are read via CP_MEM_TO_REG, which implicitly
+    * does CP_WAIT_FOR_ME, but we still need a WFI if the GPU writes it.
     */
    if (flags &
        (VK_ACCESS_INDIRECT_COMMAND_READ_BIT |
+        VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_READ_BIT_EXT |
         VK_ACCESS_MEMORY_READ_BIT)) {
       mask |= TU_ACCESS_WFI_READ;
    }
 
    if (flags &
        (VK_ACCESS_INDIRECT_COMMAND_READ_BIT | /* Read performed by CP */
-        VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_READ_BIT_EXT | /* Read performed by CP, I think */
         VK_ACCESS_CONDITIONAL_RENDERING_READ_BIT_EXT | /* Read performed by CP */
-        VK_ACCESS_HOST_READ_BIT | /* sysmem by definition */
+        VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_READ_BIT_EXT | /* Read performed by CP */
         VK_ACCESS_MEMORY_READ_BIT)) {
       mask |= TU_ACCESS_SYSMEM_READ;
    }
 
    if (flags &
-       (VK_ACCESS_HOST_WRITE_BIT |
-        VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_WRITE_BIT_EXT | /* Write performed by CP, I think */
+       (VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_WRITE_BIT_EXT |
         VK_ACCESS_MEMORY_WRITE_BIT)) {
-      mask |= TU_ACCESS_SYSMEM_WRITE;
+      mask |= TU_ACCESS_CP_WRITE;
+   }
+
+   if (flags &
+       (VK_ACCESS_HOST_READ_BIT |
+        VK_ACCESS_MEMORY_WRITE_BIT)) {
+      mask |= TU_ACCESS_HOST_READ;
+   }
+
+   if (flags &
+       (VK_ACCESS_HOST_WRITE_BIT |
+        VK_ACCESS_MEMORY_WRITE_BIT)) {
+      mask |= TU_ACCESS_HOST_WRITE;
    }
 
    if (flags &
@@ -3166,6 +3214,20 @@ tu_CmdDrawIndexed(VkCommandBuffer commandBuffer,
    tu_cs_emit(cs, cmd->state.max_index_count);
 }
 
+/* Various firmware bugs/inconsistencies mean that some indirect draw opcodes
+ * do not wait for WFI's to complete before executing. Add a WAIT_FOR_ME if
+ * pending for these opcodes. This may result in a few extra WAIT_FOR_ME's
+ * with these opcodes, but the alternative would add unnecessary WAIT_FOR_ME's
+ * before draw opcodes that don't need it.
+ */
+static void
+draw_wfm(struct tu_cmd_buffer *cmd)
+{
+   cmd->state.renderpass_cache.flush_bits |=
+      cmd->state.renderpass_cache.pending_flush_bits & TU_CMD_FLAG_WAIT_FOR_ME;
+   cmd->state.renderpass_cache.pending_flush_bits &= ~TU_CMD_FLAG_WAIT_FOR_ME;
+}
+
 void
 tu_CmdDrawIndirect(VkCommandBuffer commandBuffer,
                    VkBuffer _buffer,
@@ -3179,15 +3241,17 @@ tu_CmdDrawIndirect(VkCommandBuffer commandBuffer,
 
    cmd->state.vs_params = (struct tu_draw_state) {};
 
-   tu6_draw_common(cmd, cs, false, 0);
-
-   /* workaround for a firmware bug with CP_DRAW_INDIRECT_MULTI, where it
-    * doesn't wait for WFIs to be completed and leads to GPU fault/hang
-    * TODO: this could be worked around in a more performant way,
-    * or there may exist newer firmware that has been fixed
+   /* The latest known a630_sqe.fw fails to wait for WFI before reading the
+    * indirect buffer when using CP_DRAW_INDIRECT_MULTI, so we have to fall
+    * back to CP_WAIT_FOR_ME except for a650 which has a fixed firmware.
+    *
+    * TODO: There may be newer a630_sqe.fw released in the future which fixes
+    * this, if so we should detect it and avoid this workaround.
     */
    if (cmd->device->physical_device->gpu_id != 650)
-      tu_cs_emit_pkt7(cs, CP_WAIT_FOR_ME, 0);
+      draw_wfm(cmd);
+
+   tu6_draw_common(cmd, cs, false, 0);
 
    tu_cs_emit_pkt7(cs, CP_DRAW_INDIRECT_MULTI, 6);
    tu_cs_emit(cs, tu_draw_initiator(cmd, DI_SRC_SEL_AUTO_INDEX));
@@ -3213,15 +3277,10 @@ tu_CmdDrawIndexedIndirect(VkCommandBuffer commandBuffer,
 
    cmd->state.vs_params = (struct tu_draw_state) {};
 
-   tu6_draw_common(cmd, cs, true, 0);
-
-   /* workaround for a firmware bug with CP_DRAW_INDIRECT_MULTI, where it
-    * doesn't wait for WFIs to be completed and leads to GPU fault/hang
-    * TODO: this could be worked around in a more performant way,
-    * or there may exist newer firmware that has been fixed
-    */
    if (cmd->device->physical_device->gpu_id != 650)
-      tu_cs_emit_pkt7(cs, CP_WAIT_FOR_ME, 0);
+      draw_wfm(cmd);
+
+   tu6_draw_common(cmd, cs, true, 0);
 
    tu_cs_emit_pkt7(cs, CP_DRAW_INDIRECT_MULTI, 9);
    tu_cs_emit(cs, tu_draw_initiator(cmd, DI_SRC_SEL_DMA));
@@ -3247,6 +3306,13 @@ void tu_CmdDrawIndirectByteCountEXT(VkCommandBuffer commandBuffer,
    TU_FROM_HANDLE(tu_cmd_buffer, cmd, commandBuffer);
    TU_FROM_HANDLE(tu_buffer, buf, _counterBuffer);
    struct tu_cs *cs = &cmd->draw_cs;
+
+   /* All known firmware versions do not wait for WFI's with CP_DRAW_AUTO.
+    * Plus, for the common case where the counter buffer is written by
+    * vkCmdEndTransformFeedback, we need to wait for the CP_WAIT_MEM_WRITES to
+    * complete which means we need a WAIT_FOR_ME anyway.
+    */
+   draw_wfm(cmd);
 
    cmd->state.vs_params = tu6_emit_vs_params(cmd, 0, firstInstance);
 

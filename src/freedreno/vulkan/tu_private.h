@@ -752,13 +752,34 @@ enum tu_cmd_access_mask {
    TU_ACCESS_CCU_DEPTH_INCOHERENT_READ = 1 << 8,
    TU_ACCESS_CCU_DEPTH_INCOHERENT_WRITE = 1 << 9,
 
-   TU_ACCESS_SYSMEM_READ = 1 << 10,
-   TU_ACCESS_SYSMEM_WRITE = 1 << 11,
+   /* Accesses by the host */
+   TU_ACCESS_HOST_READ = 1 << 10,
+   TU_ACCESS_HOST_WRITE = 1 << 11,
 
-   /* Set if a WFI is required due to data being read by the CP or the 2D
-    * engine.
+   /* Accesses by a GPU engine which bypasses any cache. e.g. writes via
+    * CP_EVENT_WRITE::BLIT and the CP are SYSMEM_WRITE.
     */
-   TU_ACCESS_WFI_READ = 1 << 12,
+   TU_ACCESS_SYSMEM_READ = 1 << 12,
+   TU_ACCESS_SYSMEM_WRITE = 1 << 13,
+
+   /* Set if a WFI is required. This can be required for:
+    * - 2D engine which (on some models) doesn't wait for flushes to complete
+    *   before starting
+    * - CP draw indirect opcodes, where we need to wait for any flushes to
+    *   complete but the CP implicitly waits for WFI's to complete and
+    *   therefore we only need a WFI after the flushes.
+    */
+   TU_ACCESS_WFI_READ = 1 << 14,
+
+   /* Set if a CP_WAIT_FOR_ME is required due to the data being read by the CP
+    * without it waiting for any WFI.
+    */
+   TU_ACCESS_WFM_READ = 1 << 15,
+
+   /* Memory writes from the CP start in-order with draws and event writes,
+    * but execute asynchronously and hence need a CP_WAIT_MEM_WRITES if read.
+    */
+   TU_ACCESS_CP_WRITE = 1 << 16,
 
    TU_ACCESS_READ =
       TU_ACCESS_UCHE_READ |
@@ -766,7 +787,10 @@ enum tu_cmd_access_mask {
       TU_ACCESS_CCU_DEPTH_READ |
       TU_ACCESS_CCU_COLOR_INCOHERENT_READ |
       TU_ACCESS_CCU_DEPTH_INCOHERENT_READ |
-      TU_ACCESS_SYSMEM_READ,
+      TU_ACCESS_HOST_READ |
+      TU_ACCESS_SYSMEM_READ |
+      TU_ACCESS_WFI_READ |
+      TU_ACCESS_WFM_READ,
 
    TU_ACCESS_WRITE =
       TU_ACCESS_UCHE_WRITE |
@@ -774,7 +798,9 @@ enum tu_cmd_access_mask {
       TU_ACCESS_CCU_COLOR_INCOHERENT_WRITE |
       TU_ACCESS_CCU_DEPTH_WRITE |
       TU_ACCESS_CCU_DEPTH_INCOHERENT_WRITE |
-      TU_ACCESS_SYSMEM_WRITE,
+      TU_ACCESS_HOST_WRITE |
+      TU_ACCESS_SYSMEM_WRITE |
+      TU_ACCESS_CP_WRITE,
 
    TU_ACCESS_ALL =
       TU_ACCESS_READ |
@@ -788,18 +814,31 @@ enum tu_cmd_flush_bits {
    TU_CMD_FLAG_CCU_INVALIDATE_COLOR = 1 << 3,
    TU_CMD_FLAG_CACHE_FLUSH = 1 << 4,
    TU_CMD_FLAG_CACHE_INVALIDATE = 1 << 5,
+   TU_CMD_FLAG_WAIT_MEM_WRITES = 1 << 6,
+   TU_CMD_FLAG_WAIT_FOR_IDLE = 1 << 7,
+   TU_CMD_FLAG_WAIT_FOR_ME = 1 << 8,
 
    TU_CMD_FLAG_ALL_FLUSH =
       TU_CMD_FLAG_CCU_FLUSH_DEPTH |
       TU_CMD_FLAG_CCU_FLUSH_COLOR |
-      TU_CMD_FLAG_CACHE_FLUSH,
+      TU_CMD_FLAG_CACHE_FLUSH |
+      /* Treat the CP as a sort of "cache" which may need to be "flushed" via
+       * waiting for writes to land with WAIT_FOR_MEM_WRITES.
+       */
+      TU_CMD_FLAG_WAIT_MEM_WRITES,
 
-   TU_CMD_FLAG_ALL_INVALIDATE =
+   TU_CMD_FLAG_GPU_INVALIDATE =
       TU_CMD_FLAG_CCU_INVALIDATE_DEPTH |
       TU_CMD_FLAG_CCU_INVALIDATE_COLOR |
       TU_CMD_FLAG_CACHE_INVALIDATE,
 
-   TU_CMD_FLAG_WFI = 1 << 6,
+   TU_CMD_FLAG_ALL_INVALIDATE =
+      TU_CMD_FLAG_GPU_INVALIDATE |
+      /* Treat the CP as a sort of "cache" which may need to be "invalidated"
+       * via waiting for UCHE/CCU flushes to land with WFI/WFM.
+       */
+      TU_CMD_FLAG_WAIT_FOR_IDLE |
+      TU_CMD_FLAG_WAIT_FOR_ME,
 };
 
 /* Changing the CCU from sysmem mode to gmem mode or vice-versa is pretty
