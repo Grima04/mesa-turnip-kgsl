@@ -1340,6 +1340,24 @@ void radv_GetPhysicalDeviceFeatures2(
 			features->robustImageAccess = true;
 			break;
 		}
+		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_FLOAT_FEATURES_EXT: {
+			VkPhysicalDeviceShaderAtomicFloatFeaturesEXT *features =
+				(VkPhysicalDeviceShaderAtomicFloatFeaturesEXT *)ext;
+			features->shaderBufferFloat32Atomics = true;
+			features->shaderBufferFloat32AtomicAdd = false;
+			features->shaderBufferFloat64Atomics = true;
+			features->shaderBufferFloat64AtomicAdd = false;
+			features->shaderSharedFloat32Atomics = true;
+			features->shaderSharedFloat32AtomicAdd = pdevice->rad_info.chip_class >= GFX8 &&
+								 (!pdevice->use_llvm || LLVM_VERSION_MAJOR >= 10);
+			features->shaderSharedFloat64Atomics = true;
+			features->shaderSharedFloat64AtomicAdd = false;
+			features->shaderImageFloat32Atomics = true;
+			features->shaderImageFloat32AtomicAdd = false;
+			features->sparseImageFloat32Atomics = false;
+			features->sparseImageFloat32AtomicAdd = false;
+			break;
+		}
 		default:
 			break;
 		}
