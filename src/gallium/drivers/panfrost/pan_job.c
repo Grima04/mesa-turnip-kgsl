@@ -1001,36 +1001,9 @@ panfrost_batch_submit_ioctl(struct panfrost_batch *batch,
         struct pipe_context *gallium = (struct pipe_context *) ctx;
         struct panfrost_device *dev = pan_device(gallium->screen);
         struct drm_panfrost_submit submit = {0,};
-        uint32_t *bo_handles, *in_syncs = NULL;
-        bool is_fragment_shader;
+        uint32_t *bo_handles;
         int ret;
 
-        is_fragment_shader = (reqs & PANFROST_JD_REQ_FS) && batch->scoreboard.first_job;
-        if (is_fragment_shader)
-                submit.in_sync_count = 1;
-        else
-                submit.in_sync_count = util_dynarray_num_elements(&batch->dependencies,
-                                                                  struct panfrost_batch_fence *);
-
-        if (submit.in_sync_count) {
-                in_syncs = calloc(submit.in_sync_count, sizeof(*in_syncs));
-                assert(in_syncs);
-        }
-
-        /* The fragment job always depends on the vertex/tiler job if there's
-         * one
-         */
-        if (is_fragment_shader) {
-                in_syncs[0] = batch->out_sync->syncobj;
-        } else {
-                unsigned int i = 0;
-
-                util_dynarray_foreach(&batch->dependencies,
-                                      struct panfrost_batch_fence *, dep)
-                        in_syncs[i++] = (*dep)->syncobj;
-        }
-
-        submit.in_syncs = (uintptr_t)in_syncs;
         submit.out_sync = batch->out_sync->syncobj;
         submit.jc = first_job_desc;
         submit.requirements = reqs;
@@ -1047,7 +1020,6 @@ panfrost_batch_submit_ioctl(struct panfrost_batch *batch,
         submit.bo_handles = (u64) (uintptr_t) bo_handles;
         ret = drmIoctl(dev->fd, DRM_IOCTL_PANFROST_SUBMIT, &submit);
         free(bo_handles);
-        free(in_syncs);
 
         if (ret) {
                 if (dev->debug & PAN_DBG_MSGS)
