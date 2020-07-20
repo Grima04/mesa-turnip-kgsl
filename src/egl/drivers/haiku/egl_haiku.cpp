@@ -73,7 +73,7 @@ struct haiku_egl_surface
 
 
 /**
- * Called via eglCreateWindowSurface(), drv->API.CreateWindowSurface().
+ * Called via eglCreateWindowSurface(), drv->CreateWindowSurface().
  */
 static _EGLSurface *
 haiku_create_window_surface(_EGLDriver *drv, _EGLDisplay *disp,
@@ -321,17 +321,17 @@ _eglInitDriver(_EGLDriver *driver)
 {
 	CALLED();
 
-	driver->API.Initialize = init_haiku;
-	driver->API.Terminate = haiku_terminate;
-	driver->API.CreateContext = haiku_create_context;
-	driver->API.DestroyContext = haiku_destroy_context;
-	driver->API.MakeCurrent = haiku_make_current;
-	driver->API.CreateWindowSurface = haiku_create_window_surface;
-	driver->API.CreatePixmapSurface = haiku_create_pixmap_surface;
-	driver->API.CreatePbufferSurface = haiku_create_pbuffer_surface;
-	driver->API.DestroySurface = haiku_destroy_surface;
+	driver->Initialize = init_haiku;
+	driver->Terminate = haiku_terminate;
+	driver->CreateContext = haiku_create_context;
+	driver->DestroyContext = haiku_destroy_context;
+	driver->MakeCurrent = haiku_make_current;
+	driver->CreateWindowSurface = haiku_create_window_surface;
+	driver->CreatePixmapSurface = haiku_create_pixmap_surface;
+	driver->CreatePbufferSurface = haiku_create_pbuffer_surface;
+	driver->DestroySurface = haiku_destroy_surface;
 
-	driver->API.SwapBuffers = haiku_swap_buffers;
+	driver->SwapBuffers = haiku_swap_buffers;
 
 	TRACE("API Calls defined\n");
 }

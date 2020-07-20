@@ -72,7 +72,7 @@ static _EGLDriver *
 _eglMatchAndInitialize(_EGLDisplay *disp)
 {
    if (_eglGetDriver())
-      if (_eglDriver->API.Initialize(_eglDriver, disp))
+      if (_eglDriver->Initialize(_eglDriver, disp))
          return _eglDriver;
 
    return NULL;
@@ -112,8 +112,8 @@ _eglMatchDriver(_EGLDisplay *disp)
 __eglMustCastToProperFunctionPointerType
 _eglGetDriverProc(const char *procname)
 {
-   if (_eglGetDriver() && _eglDriver->API.GetProcAddress)
-      return _eglDriver->API.GetProcAddress(_eglDriver, procname);
+   if (_eglGetDriver() && _eglDriver->GetProcAddress)
+      return _eglDriver->GetProcAddress(_eglDriver, procname);
 
    return NULL;
 }

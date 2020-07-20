@@ -1,6 +1,5 @@
 LIBEGL_C_FILES := \
 	main/eglapi.c \
-	main/eglapi.h \
 	main/eglarray.c \
 	main/eglarray.h \
 	main/eglconfig.c \

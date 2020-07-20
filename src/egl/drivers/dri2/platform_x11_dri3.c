@@ -219,7 +219,7 @@ dri3_authenticate(_EGLDisplay *disp, uint32_t id)
 }
 
 /**
- * Called via eglCreateWindowSurface(), drv->API.CreateWindowSurface().
+ * Called via eglCreateWindowSurface(), drv->CreateWindowSurface().
  */
 static _EGLSurface *
 dri3_create_window_surface(_EGLDriver *drv, _EGLDisplay *disp,

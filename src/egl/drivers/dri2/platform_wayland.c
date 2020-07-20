@@ -304,7 +304,7 @@ get_wl_surface_proxy(struct wl_egl_window *window)
 }
 
 /**
- * Called via eglCreateWindowSurface(), drv->API.CreateWindowSurface().
+ * Called via eglCreateWindowSurface(), drv->CreateWindowSurface().
  */
 static _EGLSurface *
 dri2_wl_create_window_surface(_EGLDriver *drv, _EGLDisplay *disp,
@@ -426,7 +426,7 @@ dri2_wl_create_pixmap_surface(_EGLDriver *drv, _EGLDisplay *disp,
 }
 
 /**
- * Called via eglDestroySurface(), drv->API.DestroySurface().
+ * Called via eglDestroySurface(), drv->DestroySurface().
  */
 static EGLBoolean
 dri2_wl_destroy_surface(_EGLDriver *drv, _EGLDisplay *disp, _EGLSurface *surf)
@@ -1050,7 +1050,7 @@ try_damage_buffer(struct dri2_egl_surface *dri2_surf,
 }
 
 /**
- * Called via eglSwapBuffers(), drv->API.SwapBuffers().
+ * Called via eglSwapBuffers(), drv->SwapBuffers().
  */
 static EGLBoolean
 dri2_wl_swap_buffers_with_damage(_EGLDriver *drv,

@@ -28,7 +28,6 @@ incs_for_egl = [inc_include, inc_src, inc_egl]
 
 files_egl = files(
   'main/eglapi.c',
-  'main/eglapi.h',
   'main/eglarray.c',
   'main/eglarray.h',
   'main/eglconfig.c',

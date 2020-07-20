@@ -1136,7 +1136,7 @@ dri2_setup_extensions(_EGLDisplay *disp)
 }
 
 /**
- * Called via eglInitialize(), GLX_drv->API.Initialize().
+ * Called via eglInitialize(), drv->Initialize().
  *
  * This must be guaranteed to be called exactly once, even if eglInitialize is
  * called many times (without a eglTerminate in between).
@@ -1305,7 +1305,7 @@ dri2_egl_surface_free_local_buffers(struct dri2_egl_surface *dri2_surf)
 }
 
 /**
- * Called via eglTerminate(), drv->API.Terminate().
+ * Called via eglTerminate(), drv->Terminate().
  *
  * This must be guaranteed to be called exactly once, even if eglTerminate is
  * called many times (without a eglInitialize in between).
@@ -1463,7 +1463,7 @@ dri2_fill_context_attribs(struct dri2_egl_context *dri2_ctx,
 }
 
 /**
- * Called via eglCreateContext(), drv->API.CreateContext().
+ * Called via eglCreateContext(), drv->CreateContext().
  */
 static _EGLContext *
 dri2_create_context(_EGLDriver *drv, _EGLDisplay *disp, _EGLConfig *conf,
@@ -1638,7 +1638,7 @@ dri2_create_context(_EGLDriver *drv, _EGLDisplay *disp, _EGLConfig *conf,
 }
 
 /**
- * Called via eglDestroyContext(), drv->API.DestroyContext().
+ * Called via eglDestroyContext(), drv->DestroyContext().
  */
 static EGLBoolean
 dri2_destroy_context(_EGLDriver *drv, _EGLDisplay *disp, _EGLContext *ctx)
@@ -1753,7 +1753,7 @@ dri2_create_drawable(struct dri2_egl_display *dri2_dpy,
 }
 
 /**
- * Called via eglMakeCurrent(), drv->API.MakeCurrent().
+ * Called via eglMakeCurrent(), drv->MakeCurrent().
  */
 static EGLBoolean
 dri2_make_current(_EGLDriver *drv, _EGLDisplay *disp, _EGLSurface *dsurf,
@@ -1871,7 +1871,7 @@ dri2_surface_get_dri_drawable(_EGLSurface *surf)
 }
 
 /*
- * Called from eglGetProcAddress() via drv->API.GetProcAddress().
+ * Called from eglGetProcAddress() via drv->GetProcAddress().
  */
 static _EGLProc
 dri2_get_proc_address(_EGLDriver *drv, const char *procname)
@@ -3655,55 +3655,55 @@ dri2_interop_export_object(_EGLDisplay *disp, _EGLContext *ctx,
 void
 _eglInitDriver(_EGLDriver *dri2_drv)
 {
-   dri2_drv->API.Initialize = dri2_initialize;
-   dri2_drv->API.Terminate = dri2_terminate;
-   dri2_drv->API.CreateContext = dri2_create_context;
-   dri2_drv->API.DestroyContext = dri2_destroy_context;
-   dri2_drv->API.MakeCurrent = dri2_make_current;
-   dri2_drv->API.CreateWindowSurface = dri2_create_window_surface;
-   dri2_drv->API.CreatePixmapSurface = dri2_create_pixmap_surface;
-   dri2_drv->API.CreatePbufferSurface = dri2_create_pbuffer_surface;
-   dri2_drv->API.DestroySurface = dri2_destroy_surface;
-   dri2_drv->API.GetProcAddress = dri2_get_proc_address;
-   dri2_drv->API.WaitClient = dri2_wait_client;
-   dri2_drv->API.WaitNative = dri2_wait_native;
-   dri2_drv->API.BindTexImage = dri2_bind_tex_image;
-   dri2_drv->API.ReleaseTexImage = dri2_release_tex_image;
-   dri2_drv->API.SwapInterval = dri2_swap_interval;
-   dri2_drv->API.SwapBuffers = dri2_swap_buffers;
-   dri2_drv->API.SwapBuffersWithDamageEXT = dri2_swap_buffers_with_damage;
-   dri2_drv->API.SwapBuffersRegionNOK = dri2_swap_buffers_region;
-   dri2_drv->API.SetDamageRegion = dri2_set_damage_region;
-   dri2_drv->API.PostSubBufferNV = dri2_post_sub_buffer;
-   dri2_drv->API.CopyBuffers = dri2_copy_buffers,
-   dri2_drv->API.QueryBufferAge = dri2_query_buffer_age;
-   dri2_drv->API.CreateImageKHR = dri2_create_image;
-   dri2_drv->API.DestroyImageKHR = dri2_destroy_image_khr;
-   dri2_drv->API.CreateWaylandBufferFromImageWL = dri2_create_wayland_buffer_from_image;
-   dri2_drv->API.QuerySurface = dri2_query_surface;
-   dri2_drv->API.QueryDriverName = dri2_query_driver_name;
-   dri2_drv->API.QueryDriverConfig = dri2_query_driver_config;
+   dri2_drv->Initialize = dri2_initialize;
+   dri2_drv->Terminate = dri2_terminate;
+   dri2_drv->CreateContext = dri2_create_context;
+   dri2_drv->DestroyContext = dri2_destroy_context;
+   dri2_drv->MakeCurrent = dri2_make_current;
+   dri2_drv->CreateWindowSurface = dri2_create_window_surface;
+   dri2_drv->CreatePixmapSurface = dri2_create_pixmap_surface;
+   dri2_drv->CreatePbufferSurface = dri2_create_pbuffer_surface;
+   dri2_drv->DestroySurface = dri2_destroy_surface;
+   dri2_drv->GetProcAddress = dri2_get_proc_address;
+   dri2_drv->WaitClient = dri2_wait_client;
+   dri2_drv->WaitNative = dri2_wait_native;
+   dri2_drv->BindTexImage = dri2_bind_tex_image;
+   dri2_drv->ReleaseTexImage = dri2_release_tex_image;
+   dri2_drv->SwapInterval = dri2_swap_interval;
+   dri2_drv->SwapBuffers = dri2_swap_buffers;
+   dri2_drv->SwapBuffersWithDamageEXT = dri2_swap_buffers_with_damage;
+   dri2_drv->SwapBuffersRegionNOK = dri2_swap_buffers_region;
+   dri2_drv->SetDamageRegion = dri2_set_damage_region;
+   dri2_drv->PostSubBufferNV = dri2_post_sub_buffer;
+   dri2_drv->CopyBuffers = dri2_copy_buffers,
+   dri2_drv->QueryBufferAge = dri2_query_buffer_age;
+   dri2_drv->CreateImageKHR = dri2_create_image;
+   dri2_drv->DestroyImageKHR = dri2_destroy_image_khr;
+   dri2_drv->CreateWaylandBufferFromImageWL = dri2_create_wayland_buffer_from_image;
+   dri2_drv->QuerySurface = dri2_query_surface;
+   dri2_drv->QueryDriverName = dri2_query_driver_name;
+   dri2_drv->QueryDriverConfig = dri2_query_driver_config;
 #ifdef HAVE_LIBDRM
-   dri2_drv->API.CreateDRMImageMESA = dri2_create_drm_image_mesa;
-   dri2_drv->API.ExportDRMImageMESA = dri2_export_drm_image_mesa;
-   dri2_drv->API.ExportDMABUFImageQueryMESA = dri2_export_dma_buf_image_query_mesa;
-   dri2_drv->API.ExportDMABUFImageMESA = dri2_export_dma_buf_image_mesa;
-   dri2_drv->API.QueryDmaBufFormatsEXT = dri2_query_dma_buf_formats;
-   dri2_drv->API.QueryDmaBufModifiersEXT = dri2_query_dma_buf_modifiers;
+   dri2_drv->CreateDRMImageMESA = dri2_create_drm_image_mesa;
+   dri2_drv->ExportDRMImageMESA = dri2_export_drm_image_mesa;
+   dri2_drv->ExportDMABUFImageQueryMESA = dri2_export_dma_buf_image_query_mesa;
+   dri2_drv->ExportDMABUFImageMESA = dri2_export_dma_buf_image_mesa;
+   dri2_drv->QueryDmaBufFormatsEXT = dri2_query_dma_buf_formats;
+   dri2_drv->QueryDmaBufModifiersEXT = dri2_query_dma_buf_modifiers;
 #endif
 #ifdef HAVE_WAYLAND_PLATFORM
-   dri2_drv->API.BindWaylandDisplayWL = dri2_bind_wayland_display_wl;
-   dri2_drv->API.UnbindWaylandDisplayWL = dri2_unbind_wayland_display_wl;
-   dri2_drv->API.QueryWaylandBufferWL = dri2_query_wayland_buffer_wl;
+   dri2_drv->BindWaylandDisplayWL = dri2_bind_wayland_display_wl;
+   dri2_drv->UnbindWaylandDisplayWL = dri2_unbind_wayland_display_wl;
+   dri2_drv->QueryWaylandBufferWL = dri2_query_wayland_buffer_wl;
 #endif
-   dri2_drv->API.GetSyncValuesCHROMIUM = dri2_get_sync_values_chromium;
-   dri2_drv->API.CreateSyncKHR = dri2_create_sync;
-   dri2_drv->API.ClientWaitSyncKHR = dri2_client_wait_sync;
-   dri2_drv->API.SignalSyncKHR = dri2_signal_sync;
-   dri2_drv->API.WaitSyncKHR = dri2_server_wait_sync;
-   dri2_drv->API.DestroySyncKHR = dri2_destroy_sync;
-   dri2_drv->API.GLInteropQueryDeviceInfo = dri2_interop_query_device_info;
-   dri2_drv->API.GLInteropExportObject = dri2_interop_export_object;
-   dri2_drv->API.DupNativeFenceFDANDROID = dri2_dup_native_fence_fd;
-   dri2_drv->API.SetBlobCacheFuncsANDROID = dri2_set_blob_cache_funcs;
+   dri2_drv->GetSyncValuesCHROMIUM = dri2_get_sync_values_chromium;
+   dri2_drv->CreateSyncKHR = dri2_create_sync;
+   dri2_drv->ClientWaitSyncKHR = dri2_client_wait_sync;
+   dri2_drv->SignalSyncKHR = dri2_signal_sync;
+   dri2_drv->WaitSyncKHR = dri2_server_wait_sync;
+   dri2_drv->DestroySyncKHR = dri2_destroy_sync;
+   dri2_drv->GLInteropQueryDeviceInfo = dri2_interop_query_device_info;
+   dri2_drv->GLInteropExportObject = dri2_interop_export_object;
+   dri2_drv->DupNativeFenceFDANDROID = dri2_dup_native_fence_fd;
+   dri2_drv->SetBlobCacheFuncsANDROID = dri2_set_blob_cache_funcs;
 }
