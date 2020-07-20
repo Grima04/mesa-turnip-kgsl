@@ -73,9 +73,9 @@ build_local_primitive_id(nir_builder *b, struct state *state)
 }
 
 static nir_variable *
-get_var(struct exec_list *list, int driver_location)
+get_var(nir_shader *shader, nir_variable_mode mode, int driver_location)
 {
-	nir_foreach_variable (v, list) {
+	nir_foreach_variable_with_modes (v, shader, mode) {
 		if (v->data.driver_location == driver_location) {
 			return v;
 		}
@@ -152,9 +152,9 @@ replace_intrinsic(nir_builder *b, nir_intrinsic_instr *intr,
 }
 
 static void
-build_primitive_map(nir_shader *shader, struct primitive_map *map, struct exec_list *list)
+build_primitive_map(nir_shader *shader, nir_variable_mode mode, struct primitive_map *map)
 {
-	nir_foreach_variable (var, list) {
+	nir_foreach_variable_with_modes (var, shader, mode) {
 		switch (var->data.location) {
 		case VARYING_SLOT_TESS_LEVEL_OUTER:
 		case VARYING_SLOT_TESS_LEVEL_INNER:
@@ -172,7 +172,7 @@ build_primitive_map(nir_shader *shader, struct primitive_map *map, struct exec_l
 	for (uint32_t i = 0; i < ARRAY_SIZE(map->size); i++) {
 		if (map->size[i] == 0)
 				continue;
-		nir_variable *var = get_var(list, i);
+		nir_variable *var = get_var(shader, mode, i);
 		map->loc[i] = loc;
 		loc += map->size[i];
 
@@ -239,7 +239,7 @@ ir3_nir_lower_to_explicit_output(nir_shader *shader, struct ir3_shader_variant *
 {
 	struct state state = { };
 
-	build_primitive_map(shader, &state.map, &shader->outputs);
+	build_primitive_map(shader, nir_var_shader_out, &state.map);
 	memcpy(v->output_loc, state.map.loc, sizeof(v->output_loc));
 
 	nir_function_impl *impl = nir_shader_get_entrypoint(shader);
@@ -443,7 +443,7 @@ lower_tess_ctrl_block(nir_block *block, nir_builder *b, struct state *state)
 			b->cursor = nir_before_instr(&intr->instr);
 
 			nir_ssa_def *address = nir_load_tess_param_base_ir3(b);
-			nir_variable *var = get_var(&b->shader->outputs, nir_intrinsic_base(intr));
+			nir_variable *var = get_var(b->shader, nir_var_shader_out, nir_intrinsic_base(intr));
 			nir_ssa_def *offset = build_per_vertex_offset(b, state,
 					intr->src[0].ssa, intr->src[1].ssa, var);
 
@@ -461,7 +461,7 @@ lower_tess_ctrl_block(nir_block *block, nir_builder *b, struct state *state)
 
 			nir_ssa_def *value = intr->src[0].ssa;
 			nir_ssa_def *address = nir_load_tess_param_base_ir3(b);
-			nir_variable *var = get_var(&b->shader->outputs, nir_intrinsic_base(intr));
+			nir_variable *var = get_var(b->shader, nir_var_shader_out, nir_intrinsic_base(intr));
 			nir_ssa_def *offset = build_per_vertex_offset(b, state,
 					intr->src[1].ssa, intr->src[2].ssa, var);
 
@@ -474,7 +474,7 @@ lower_tess_ctrl_block(nir_block *block, nir_builder *b, struct state *state)
 		case nir_intrinsic_load_output: {
 			// src[] = { offset }.
 
-			nir_variable *var = get_var(&b->shader->outputs, nir_intrinsic_base(intr));
+			nir_variable *var = get_var(b->shader, nir_var_shader_out, nir_intrinsic_base(intr));
 
 			b->cursor = nir_before_instr(&intr->instr);
 
@@ -503,7 +503,7 @@ lower_tess_ctrl_block(nir_block *block, nir_builder *b, struct state *state)
 
 			/* write patch output to bo */
 
-			nir_variable *var = get_var(&b->shader->outputs, nir_intrinsic_base(intr));
+			nir_variable *var = get_var(b->shader, nir_var_shader_out, nir_intrinsic_base(intr));
 
 			b->cursor = nir_before_instr(&intr->instr);
 
@@ -579,7 +579,7 @@ ir3_nir_lower_tess_ctrl(nir_shader *shader, struct ir3_shader_variant *v,
 		nir_print_shader(shader, stderr);
 	}
 
-	build_primitive_map(shader, &state.map, &shader->outputs);
+	build_primitive_map(shader, nir_var_shader_out, &state.map);
 	memcpy(v->output_loc, state.map.loc, sizeof(v->output_loc));
 	v->output_size = state.map.stride;
 
@@ -671,7 +671,7 @@ lower_tess_eval_block(nir_block *block, nir_builder *b, struct state *state)
 			b->cursor = nir_before_instr(&intr->instr);
 
 			nir_ssa_def *address = nir_load_tess_param_base_ir3(b);
-			nir_variable *var = get_var(&b->shader->inputs, nir_intrinsic_base(intr));
+			nir_variable *var = get_var(b->shader, nir_var_shader_in, nir_intrinsic_base(intr));
 			nir_ssa_def *offset = build_per_vertex_offset(b, state,
 					intr->src[0].ssa, intr->src[1].ssa, var);
 
@@ -682,7 +682,7 @@ lower_tess_eval_block(nir_block *block, nir_builder *b, struct state *state)
 		case nir_intrinsic_load_input: {
 			// src[] = { offset }.
 
-			nir_variable *var = get_var(&b->shader->inputs, nir_intrinsic_base(intr));
+			nir_variable *var = get_var(b->shader, nir_var_shader_in, nir_intrinsic_base(intr));
 
 			debug_assert(var->data.patch);
 
@@ -728,7 +728,7 @@ ir3_nir_lower_tess_eval(nir_shader *shader, unsigned topology)
 	}
 
 	/* Build map of inputs so we have the sizes. */
-	build_primitive_map(shader, &state.map, &shader->inputs);
+	build_primitive_map(shader, nir_var_shader_in, &state.map);
 
 	nir_function_impl *impl = nir_shader_get_entrypoint(shader);
 	assert(impl);
@@ -803,7 +803,7 @@ ir3_nir_lower_gs(nir_shader *shader)
 		nir_print_shader(shader, stderr);
 	}
 
-	build_primitive_map(shader, &state.map, &shader->inputs);
+	build_primitive_map(shader, nir_var_shader_in, &state.map);
 
 	/* Create an output var for vertex_flags. This will be shadowed below,
 	 * same way regular outputs get shadowed, and this variable will become a
