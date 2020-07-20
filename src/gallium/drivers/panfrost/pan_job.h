@@ -46,12 +46,6 @@ struct panfrost_batch_fence {
          * batch has been flushed or not.
          */
         struct panfrost_batch *batch;
-
-        /* Context this fence is attached to. We need both ctx and batch, as
-         * the batch will go away after it's been submitted, but the fence
-         * will stay a bit longer.
-         */
-        struct panfrost_context *ctx;
 };
 
 #define PAN_REQ_MSAA            (1 << 0)

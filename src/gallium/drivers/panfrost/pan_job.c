@@ -68,7 +68,6 @@ panfrost_create_batch_fence(struct panfrost_batch *batch)
         fence = rzalloc(NULL, struct panfrost_batch_fence);
         assert(fence);
         pipe_reference_init(&fence->reference, 1);
-        fence->ctx = batch->ctx;
         fence->batch = batch;
 
         return fence;
