@@ -257,9 +257,9 @@ midgard_nir_lower_fdot2(nir_shader *shader)
 }
 
 static const nir_variable *
-search_var(struct exec_list *vars, unsigned driver_loc)
+search_var(nir_shader *nir, nir_variable_mode mode, unsigned driver_loc)
 {
-        nir_foreach_variable(var, vars) {
+        nir_foreach_variable_with_modes(var, nir, mode) {
                 if (var->data.driver_location == driver_loc)
                         return var;
         }
@@ -330,7 +330,7 @@ midgard_nir_lower_zs_store(nir_shader *nir)
                                 if (intr->intrinsic != nir_intrinsic_store_output)
                                         continue;
 
-                                const nir_variable *var = search_var(&nir->outputs, nir_intrinsic_base(intr));
+                                const nir_variable *var = search_var(nir, nir_var_shader_out, nir_intrinsic_base(intr));
                                 assert(var);
 
                                 if (var->data.location != FRAG_RESULT_COLOR &&
@@ -469,7 +469,7 @@ midgard_nir_reorder_writeout(nir_shader *nir)
                                 if (intr->intrinsic != nir_intrinsic_store_output)
                                         continue;
 
-                                const nir_variable *var = search_var(&nir->outputs, nir_intrinsic_base(intr));
+                                const nir_variable *var = search_var(nir, nir_var_shader_out, nir_intrinsic_base(intr));
 
                                 if (var->data.index) {
                                         if (!last_writeout)
@@ -1690,7 +1690,7 @@ output_load_rt_addr(compiler_context *ctx, nir_intrinsic_instr *instr)
                 return ctx->blend_rt;
 
         const nir_variable *var;
-        var = search_var(&ctx->nir->outputs, nir_intrinsic_base(instr));
+        var = search_var(ctx->nir, nir_var_shader_out, nir_intrinsic_base(instr));
         assert(var);
 
         unsigned loc = var->data.location;
@@ -1899,7 +1899,7 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
                                 nir_intrinsic_store_combined_output_pan;
 
                         const nir_variable *var;
-                        var = search_var(&ctx->nir->outputs,
+                        var = search_var(ctx->nir, nir_var_shader_out,
                                          nir_intrinsic_base(instr));
                         assert(var);
 
