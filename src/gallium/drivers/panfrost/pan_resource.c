@@ -472,8 +472,9 @@ panfrost_resource_set_damage_region(struct pipe_screen *screen,
 }
 
 static struct pipe_resource *
-panfrost_resource_create(struct pipe_screen *screen,
-                         const struct pipe_resource *template)
+panfrost_resource_create_with_modifier(struct pipe_screen *screen,
+                         const struct pipe_resource *template,
+                         uint64_t modifier)
 {
         struct panfrost_device *dev = pan_device(screen);
 
@@ -512,6 +513,16 @@ panfrost_resource_create(struct pipe_screen *screen,
                 so->index_cache = rzalloc(so, struct panfrost_minmax_cache);
 
         return (struct pipe_resource *)so;
+}
+
+/* Default is to create a resource as don't care */
+
+static struct pipe_resource *
+panfrost_resource_create(struct pipe_screen *screen,
+                         const struct pipe_resource *template)
+{
+        return panfrost_resource_create_with_modifier(screen, template,
+                        DRM_FORMAT_MOD_INVALID);
 }
 
 static void
