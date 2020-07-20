@@ -1171,27 +1171,11 @@ out:
 }
 
 void
-panfrost_flush_all_batches(struct panfrost_context *ctx, bool wait)
+panfrost_flush_all_batches(struct panfrost_context *ctx)
 {
-        struct util_dynarray fences, syncobjs;
-
-        if (wait) {
-                util_dynarray_init(&fences, NULL);
-                util_dynarray_init(&syncobjs, NULL);
-        }
-
         hash_table_foreach(ctx->batches, hentry) {
                 struct panfrost_batch *batch = hentry->data;
-
                 assert(batch);
-
-                if (wait) {
-                        panfrost_batch_fence_reference(batch->out_sync);
-                        util_dynarray_append(&fences, struct panfrost_batch_fence *,
-                                             batch->out_sync);
-                        util_dynarray_append(&syncobjs, uint32_t,
-                                             batch->out_sync->syncobj);
-                }
 
                 panfrost_batch_submit(batch);
         }
@@ -1200,20 +1184,6 @@ panfrost_flush_all_batches(struct panfrost_context *ctx, bool wait)
 
         /* Collect batch fences before returning */
         panfrost_gc_fences(ctx);
-
-        if (!wait)
-                return;
-
-        drmSyncobjWait(pan_device(ctx->base.screen)->fd,
-                       util_dynarray_begin(&syncobjs),
-                       util_dynarray_num_elements(&syncobjs, uint32_t),
-                       INT64_MAX, DRM_SYNCOBJ_WAIT_FLAGS_WAIT_ALL, NULL);
-
-        util_dynarray_foreach(&fences, struct panfrost_batch_fence *, fence)
-                panfrost_batch_fence_unreference(*fence);
-
-        util_dynarray_fini(&fences);
-        util_dynarray_fini(&syncobjs);
 }
 
 bool

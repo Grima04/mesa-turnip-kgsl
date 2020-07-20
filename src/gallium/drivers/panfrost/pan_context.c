@@ -258,7 +258,7 @@ panfrost_flush(
         }
 
         /* Submit all pending jobs */
-        panfrost_flush_all_batches(ctx, false);
+        panfrost_flush_all_batches(ctx);
 
         if (fence) {
                 struct panfrost_fence *f = panfrost_fence_create(ctx, &fences);
@@ -279,7 +279,7 @@ static void
 panfrost_texture_barrier(struct pipe_context *pipe, unsigned flags)
 {
         struct panfrost_context *ctx = pan_context(pipe);
-        panfrost_flush_all_batches(ctx, false);
+        panfrost_flush_all_batches(ctx);
 }
 
 #define DEFINE_CASE(c) case PIPE_PRIM_##c: return MALI_##c;
@@ -1417,7 +1417,7 @@ panfrost_get_query_result(struct pipe_context *pipe,
 
         case PIPE_QUERY_PRIMITIVES_GENERATED:
         case PIPE_QUERY_PRIMITIVES_EMITTED:
-                panfrost_flush_all_batches(ctx, false);
+                panfrost_flush_all_batches(ctx);
                 vresult->u64 = query->end - query->start;
                 break;
 

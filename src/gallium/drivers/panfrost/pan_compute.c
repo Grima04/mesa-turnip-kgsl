@@ -135,7 +135,7 @@ panfrost_launch_grid(struct pipe_context *pipe,
         panfrost_new_job(&batch->pool, &batch->scoreboard,
                         JOB_TYPE_COMPUTE, true, 0, &payload,
                          sizeof(payload), false);
-        panfrost_flush_all_batches(ctx, false);
+        panfrost_flush_all_batches(ctx);
 }
 
 static void
