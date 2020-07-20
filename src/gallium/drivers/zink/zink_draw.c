@@ -210,8 +210,7 @@ zink_draw_vbo(struct pipe_context *pctx,
    bool need_index_buffer_unref = false;
 
    if (dinfo->mode >= PIPE_PRIM_QUADS ||
-       dinfo->mode == PIPE_PRIM_LINE_LOOP ||
-       (dinfo->index_size == 1 && !screen->have_EXT_index_type_uint8)) {
+       dinfo->mode == PIPE_PRIM_LINE_LOOP) {
       if (!u_trim_pipe_prim(dinfo->mode, (unsigned *)&dinfo->count))
          return;
 
@@ -255,7 +254,8 @@ zink_draw_vbo(struct pipe_context *pctx,
    struct pipe_resource *index_buffer = NULL;
    if (dinfo->index_size > 0) {
        uint32_t restart_index = util_prim_restart_index_from_size(dinfo->index_size);
-       if ((dinfo->primitive_restart && (dinfo->restart_index != restart_index))) {
+       if ((dinfo->primitive_restart && (dinfo->restart_index != restart_index)) ||
+           (!screen->have_EXT_index_type_uint8 && dinfo->index_size == 8)) {
           util_translate_prim_restart_ib(pctx, dinfo, &index_buffer);
           need_index_buffer_unref = true;
        } else {
