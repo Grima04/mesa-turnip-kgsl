@@ -850,6 +850,14 @@ dri2_get_modifier_num_planes(uint64_t modifier, int fourcc)
    case I915_FORMAT_MOD_Y_TILED_GEN12_RC_CCS:
    case I915_FORMAT_MOD_Y_TILED_CCS:
       return 2;
+   case DRM_FORMAT_MOD_ARM_16X16_BLOCK_U_INTERLEAVED:
+   case DRM_FORMAT_MOD_ARM_AFBC(
+                        AFBC_FORMAT_MOD_BLOCK_SIZE_16x16 |
+                        AFBC_FORMAT_MOD_SPARSE |
+                        AFBC_FORMAT_MOD_YTR):
+   case DRM_FORMAT_MOD_ARM_AFBC(
+                        AFBC_FORMAT_MOD_BLOCK_SIZE_16x16 |
+                        AFBC_FORMAT_MOD_SPARSE):
    case DRM_FORMAT_MOD_BROADCOM_UIF:
    case DRM_FORMAT_MOD_BROADCOM_VC4_T_TILED:
    case DRM_FORMAT_MOD_LINEAR:
