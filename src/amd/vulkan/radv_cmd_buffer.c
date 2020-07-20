@@ -2716,13 +2716,10 @@ radv_flush_vertex_descriptors(struct radv_cmd_buffer *cmd_buffer,
 			if (cmd_buffer->device->physical_device->rad_info.chip_class != GFX8 && stride)
 				num_records /= stride;
 
-			desc[0] = va;
-			desc[1] = S_008F04_BASE_ADDRESS_HI(va >> 32) | S_008F04_STRIDE(stride);
-			desc[2] = num_records;
-			desc[3] = S_008F0C_DST_SEL_X(V_008F0C_SQ_SEL_X) |
-				  S_008F0C_DST_SEL_Y(V_008F0C_SQ_SEL_Y) |
-				  S_008F0C_DST_SEL_Z(V_008F0C_SQ_SEL_Z) |
-				  S_008F0C_DST_SEL_W(V_008F0C_SQ_SEL_W);
+			uint32_t rsrc_word3 = S_008F0C_DST_SEL_X(V_008F0C_SQ_SEL_X) |
+					      S_008F0C_DST_SEL_Y(V_008F0C_SQ_SEL_Y) |
+					      S_008F0C_DST_SEL_Z(V_008F0C_SQ_SEL_Z) |
+					      S_008F0C_DST_SEL_W(V_008F0C_SQ_SEL_W);
 
 			if (cmd_buffer->device->physical_device->rad_info.chip_class >= GFX10) {
 				/* OOB_SELECT chooses the out-of-bounds check:
@@ -2731,13 +2728,18 @@ radv_flush_vertex_descriptors(struct radv_cmd_buffer *cmd_buffer,
 				 */
                                int oob_select = stride ? V_008F0C_OOB_SELECT_STRUCTURED : V_008F0C_OOB_SELECT_RAW;
 
-                               desc[3] |= S_008F0C_FORMAT(V_008F0C_IMG_FORMAT_32_UINT) |
-                                          S_008F0C_OOB_SELECT(oob_select) |
-                                          S_008F0C_RESOURCE_LEVEL(1);
+                               rsrc_word3 |= S_008F0C_FORMAT(V_008F0C_IMG_FORMAT_32_UINT) |
+					     S_008F0C_OOB_SELECT(oob_select) |
+					     S_008F0C_RESOURCE_LEVEL(1);
                        } else {
-                               desc[3] |= S_008F0C_NUM_FORMAT(V_008F0C_BUF_NUM_FORMAT_UINT) |
-                                          S_008F0C_DATA_FORMAT(V_008F0C_BUF_DATA_FORMAT_32);
+                               rsrc_word3 |= S_008F0C_NUM_FORMAT(V_008F0C_BUF_NUM_FORMAT_UINT) |
+					     S_008F0C_DATA_FORMAT(V_008F0C_BUF_DATA_FORMAT_32);
                        }
+
+			desc[0] = va;
+			desc[1] = S_008F04_BASE_ADDRESS_HI(va >> 32) | S_008F04_STRIDE(stride);
+			desc[2] = num_records;
+			desc[3] = rsrc_word3;
 		}
 
 		va = radv_buffer_get_va(cmd_buffer->upload.upload_bo);
@@ -2828,21 +2830,23 @@ radv_flush_streamout_descriptors(struct radv_cmd_buffer *cmd_buffer)
 			if (cmd_buffer->device->physical_device->use_ngg_streamout)
 				size = buffer->size - sb[i].offset;
 
+			uint32_t rsrc_word3 = S_008F0C_DST_SEL_X(V_008F0C_SQ_SEL_X) |
+					      S_008F0C_DST_SEL_Y(V_008F0C_SQ_SEL_Y) |
+					      S_008F0C_DST_SEL_Z(V_008F0C_SQ_SEL_Z) |
+					      S_008F0C_DST_SEL_W(V_008F0C_SQ_SEL_W);
+
+			if (cmd_buffer->device->physical_device->rad_info.chip_class >= GFX10) {
+				rsrc_word3 |= S_008F0C_FORMAT(V_008F0C_IMG_FORMAT_32_FLOAT) |
+					      S_008F0C_OOB_SELECT(V_008F0C_OOB_SELECT_RAW) |
+					      S_008F0C_RESOURCE_LEVEL(1);
+			} else {
+				rsrc_word3 |= S_008F0C_DATA_FORMAT(V_008F0C_BUF_DATA_FORMAT_32);
+			}
+
 			desc[0] = va;
 			desc[1] = S_008F04_BASE_ADDRESS_HI(va >> 32);
 			desc[2] = size;
-			desc[3] = S_008F0C_DST_SEL_X(V_008F0C_SQ_SEL_X) |
-				  S_008F0C_DST_SEL_Y(V_008F0C_SQ_SEL_Y) |
-				  S_008F0C_DST_SEL_Z(V_008F0C_SQ_SEL_Z) |
-				  S_008F0C_DST_SEL_W(V_008F0C_SQ_SEL_W);
-
-			if (cmd_buffer->device->physical_device->rad_info.chip_class >= GFX10) {
-				desc[3] |= S_008F0C_FORMAT(V_008F0C_IMG_FORMAT_32_FLOAT) |
-					   S_008F0C_OOB_SELECT(V_008F0C_OOB_SELECT_RAW) |
-					   S_008F0C_RESOURCE_LEVEL(1);
-			} else {
-				desc[3] |= S_008F0C_DATA_FORMAT(V_008F0C_BUF_DATA_FORMAT_32);
-			}
+			desc[3] = rsrc_word3;
 		}
 
 		va = radv_buffer_get_va(cmd_buffer->upload.upload_bo);
