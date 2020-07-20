@@ -174,14 +174,14 @@ struct nv50_ir_prog_info_out
       } gp;
       struct {
          unsigned numColourResults;
-         bool writesDepth;
-         bool earlyFragTests;
-         bool postDepthCoverage;
-         bool usesDiscard;
-         bool usesSampleMaskIn;
-         bool readsFramebuffer;
-         bool readsSampleLocations;
-         bool separateFragData;
+         bool writesDepth           : 1;
+         bool earlyFragTests        : 1;
+         bool postDepthCoverage     : 1;
+         bool usesDiscard           : 1;
+         bool usesSampleMaskIn      : 1;
+         bool readsFramebuffer      : 1;
+         bool readsSampleLocations  : 1;
+         bool separateFragData      : 1;
       } fp;
    } prop;
 
