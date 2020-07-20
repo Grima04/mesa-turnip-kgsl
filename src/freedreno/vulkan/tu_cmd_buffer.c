@@ -31,6 +31,7 @@
 #include "adreno_common.xml.h"
 
 #include "vk_format.h"
+#include "vk_util.h"
 
 #include "tu_cs.h"
 
@@ -568,6 +569,29 @@ use_hw_binning(struct tu_cmd_buffer *cmd)
    if (cmd->state.xfb_used)
       return true;
 
+   /* Some devices have a newer a630_sqe.fw in which, only in CP_DRAW_INDX and
+    * CP_DRAW_INDX_OFFSET, visibility-based skipping happens *before*
+    * predication-based skipping. It seems this breaks predication, because
+    * draws skipped by predication will not be executed in the binning phase,
+    * and therefore won't have an entry in the draw stream, but the
+    * visibility-based skipping will expect it to have an entry. The result is
+    * a GPU hang when actually executing the first non-predicated draw.
+    * However, it seems that things still work if the whole renderpass is
+    * predicated. Affected tests are
+    * dEQP-VK.conditional_rendering.draw_clear.draw.case_2 as well as a few
+    * other case_N.
+    *
+    * Broken FW version: 016ee181
+    * linux-firmware (working) FW version: 016ee176
+    *
+    * All known a650_sqe.fw versions don't have this bug.
+    *
+    * TODO: we should do version detection of the FW so that devices using the
+    * linux-firmware version of a630_sqe.fw don't need this workaround.
+    */
+   if (cmd->state.has_subpass_predication && cmd->device->physical_device->gpu_id != 650)
+      return false;
+
    if (unlikely(cmd->device->physical_device->instance->debug_flags & TU_DEBUG_NOBIN))
       return false;
 
@@ -581,6 +605,13 @@ static bool
 use_sysmem_rendering(struct tu_cmd_buffer *cmd)
 {
    if (unlikely(cmd->device->physical_device->instance->debug_flags & TU_DEBUG_SYSMEM))
+      return true;
+
+   /* If hw binning is required because of XFB but doesn't work because of the
+    * conditional rendering bug, fallback to sysmem.
+    */
+   if (cmd->state.xfb_used && cmd->state.has_subpass_predication &&
+       cmd->device->physical_device->gpu_id != 650)
       return true;
 
    /* can't fit attachments into gmem */
@@ -1591,8 +1622,21 @@ tu_BeginCommandBuffer(VkCommandBuffer commandBuffer,
          break;
       }
    } else if (cmd_buffer->level == VK_COMMAND_BUFFER_LEVEL_SECONDARY) {
+      assert(pBeginInfo->pInheritanceInfo);
+
+      vk_foreach_struct(ext, pBeginInfo->pInheritanceInfo) {
+         switch (ext->sType) {
+         case VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_CONDITIONAL_RENDERING_INFO_EXT: {
+            const VkCommandBufferInheritanceConditionalRenderingInfoEXT *cond_rend = (void *) ext;
+            cmd_buffer->state.predication_active = cond_rend->conditionalRenderingEnable;
+            break;
+         default:
+            break;
+         }
+         }
+      }
+
       if (pBeginInfo->flags & VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT) {
-         assert(pBeginInfo->pInheritanceInfo);
          cmd_buffer->state.pass = tu_render_pass_from_handle(pBeginInfo->pInheritanceInfo->renderPass);
          cmd_buffer->state.subpass =
             &cmd_buffer->state.pass->subpasses[pBeginInfo->pInheritanceInfo->subpass];
@@ -2356,10 +2400,19 @@ vk2tu_access(VkAccessFlags flags, bool gmem)
     *
     * Transform feedback counters are read via CP_MEM_TO_REG, which implicitly
     * does CP_WAIT_FOR_ME, but we still need a WFI if the GPU writes it.
+    *
+    * Currently we read the draw predicate using CP_MEM_TO_MEM, which
+    * also implicitly does CP_WAIT_FOR_ME. However CP_DRAW_PRED_SET does *not*
+    * implicitly do CP_WAIT_FOR_ME, it seems to only wait for counters to
+    * complete since it's written for DX11 where you can only predicate on the
+    * result of a query object. So if we implement 64-bit comparisons in the
+    * future, or if CP_DRAW_PRED_SET grows the capability to do 32-bit
+    * comparisons, then this will have to be dealt with.
     */
    if (flags &
        (VK_ACCESS_INDIRECT_COMMAND_READ_BIT |
         VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_READ_BIT_EXT |
+        VK_ACCESS_CONDITIONAL_RENDERING_READ_BIT_EXT |
         VK_ACCESS_MEMORY_READ_BIT)) {
       mask |= TU_ACCESS_WFI_READ;
    }
@@ -2531,6 +2584,8 @@ tu_CmdExecuteCommands(VkCommandBuffer commandBuffer,
 
          if (secondary->state.has_tess)
             cmd->state.has_tess = true;
+         if (secondary->state.has_subpass_predication)
+            cmd->state.has_subpass_predication = true;
       } else {
          assert(tu_cs_is_empty(&secondary->draw_cs));
          assert(tu_cs_is_empty(&secondary->draw_epilogue_cs));
@@ -3671,6 +3726,7 @@ tu_CmdEndRenderPass(VkCommandBuffer commandBuffer)
    cmd_buffer->state.subpass = NULL;
    cmd_buffer->state.framebuffer = NULL;
    cmd_buffer->state.has_tess = false;
+   cmd_buffer->state.has_subpass_predication = false;
 }
 
 void
@@ -3870,3 +3926,64 @@ tu_CmdSetDeviceMask(VkCommandBuffer commandBuffer, uint32_t deviceMask)
 {
    /* No-op */
 }
+
+
+void
+tu_CmdBeginConditionalRenderingEXT(VkCommandBuffer commandBuffer,
+                                   const VkConditionalRenderingBeginInfoEXT *pConditionalRenderingBegin)
+{
+   TU_FROM_HANDLE(tu_cmd_buffer, cmd, commandBuffer);
+
+   cmd->state.predication_active = true;
+   if (cmd->state.pass)
+      cmd->state.has_subpass_predication = true;
+
+   struct tu_cs *cs = cmd->state.pass ? &cmd->draw_cs : &cmd->cs;
+
+   tu_cs_emit_pkt7(cs, CP_DRAW_PRED_ENABLE_GLOBAL, 1);
+   tu_cs_emit(cs, 1);
+
+   /* Wait for any writes to the predicate to land */
+   if (cmd->state.pass)
+      tu_emit_cache_flush_renderpass(cmd, cs);
+   else
+      tu_emit_cache_flush(cmd, cs);
+
+   TU_FROM_HANDLE(tu_buffer, buf, pConditionalRenderingBegin->buffer);
+   uint64_t iova = tu_buffer_iova(buf) + pConditionalRenderingBegin->offset;
+
+   /* qcom doesn't support 32-bit reference values, only 64-bit, but Vulkan
+    * mandates 32-bit comparisons. Our workaround is to copy the the reference
+    * value to the low 32-bits of a location where the high 32 bits are known
+    * to be 0 and then compare that.
+    */
+   tu_cs_emit_pkt7(cs, CP_MEM_TO_MEM, 5);
+   tu_cs_emit(cs, 0);
+   tu_cs_emit_qw(cs, global_iova(cmd, predicate));
+   tu_cs_emit_qw(cs, iova);
+
+   tu_cs_emit_pkt7(cs, CP_WAIT_MEM_WRITES, 0);
+   tu_cs_emit_pkt7(cs, CP_WAIT_FOR_ME, 0);
+
+   bool inv = pConditionalRenderingBegin->flags & VK_CONDITIONAL_RENDERING_INVERTED_BIT_EXT;
+   tu_cs_emit_pkt7(cs, CP_DRAW_PRED_SET, 3);
+   tu_cs_emit(cs, CP_DRAW_PRED_SET_0_SRC(PRED_SRC_MEM) |
+                  CP_DRAW_PRED_SET_0_TEST(inv ? EQ_0_PASS : NE_0_PASS));
+   tu_cs_emit_qw(cs, global_iova(cmd, predicate));
+
+   tu_bo_list_add(&cmd->bo_list, buf->bo, MSM_SUBMIT_BO_READ);
+}
+
+void
+tu_CmdEndConditionalRenderingEXT(VkCommandBuffer commandBuffer)
+{
+   TU_FROM_HANDLE(tu_cmd_buffer, cmd, commandBuffer);
+
+   cmd->state.predication_active = false;
+
+   struct tu_cs *cs = cmd->state.pass ? &cmd->draw_cs : &cmd->cs;
+
+   tu_cs_emit_pkt7(cs, CP_DRAW_PRED_ENABLE_GLOBAL, 1);
+   tu_cs_emit(cs, 0);
+}
+

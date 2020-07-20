@@ -368,7 +368,8 @@ struct tu6_global
    volatile uint32_t vsc_draw_overflow;
    uint32_t _pad1;
    volatile uint32_t vsc_prim_overflow;
-   uint32_t _pad2[3];
+   uint32_t _pad2;
+   uint64_t predicate;
 
    /* scratch space for VPC_SO[i].FLUSH_BASE_LO/HI, start on 32 byte boundary. */
    struct {
@@ -923,6 +924,8 @@ struct tu_cmd_state
 
    bool xfb_used;
    bool has_tess;
+   bool has_subpass_predication;
+   bool predication_active;
 };
 
 struct tu_cmd_pool

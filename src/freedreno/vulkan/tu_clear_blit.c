@@ -328,6 +328,13 @@ r2d_setup(struct tu_cmd_buffer *cmd,
 }
 
 static void
+r2d_teardown(struct tu_cmd_buffer *cmd,
+             struct tu_cs *cs)
+{
+   /* nothing to do here */
+}
+
+static void
 r2d_run(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
 {
    tu_cs_emit_pkt7(cs, CP_BLIT, 1);
@@ -803,6 +810,11 @@ r3d_setup(struct tu_cmd_buffer *cmd,
       .component_enable = aspect_write_mask(vk_format, aspect_mask)));
    tu_cs_emit_regs(cs, A6XX_RB_SRGB_CNTL(vk_format_is_srgb(vk_format)));
    tu_cs_emit_regs(cs, A6XX_SP_SRGB_CNTL(vk_format_is_srgb(vk_format)));
+
+   if (cmd->state.predication_active) {
+      tu_cs_emit_pkt7(cs, CP_DRAW_PRED_ENABLE_LOCAL, 1);
+      tu_cs_emit(cs, 0);
+   }
 }
 
 static void
@@ -814,6 +826,15 @@ r3d_run(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
                   CP_DRAW_INDX_OFFSET_0_VIS_CULL(IGNORE_VISIBILITY));
    tu_cs_emit(cs, 1); /* instance count */
    tu_cs_emit(cs, 2); /* vertex count */
+}
+
+static void
+r3d_teardown(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
+{
+   if (cmd->state.predication_active) {
+      tu_cs_emit_pkt7(cs, CP_DRAW_PRED_ENABLE_LOCAL, 1);
+      tu_cs_emit(cs, 1);
+   }
 }
 
 /* blit ops - common interface for 2d/shader paths */
@@ -844,6 +865,8 @@ struct blit_ops {
                  bool clear,
                  bool ubwc);
    void (*run)(struct tu_cmd_buffer *cmd, struct tu_cs *cs);
+   void (*teardown)(struct tu_cmd_buffer *cmd,
+                    struct tu_cs *cs);
 };
 
 static const struct blit_ops r2d_ops = {
@@ -855,6 +878,7 @@ static const struct blit_ops r2d_ops = {
    .dst_buffer = r2d_dst_buffer,
    .setup = r2d_setup,
    .run = r2d_run,
+   .teardown = r2d_teardown,
 };
 
 static const struct blit_ops r3d_ops = {
@@ -866,6 +890,7 @@ static const struct blit_ops r3d_ops = {
    .dst_buffer = r3d_dst_buffer,
    .setup = r3d_setup,
    .run = r3d_run,
+   .teardown = r3d_teardown,
 };
 
 /* passthrough set coords from 3D extents */
@@ -1061,6 +1086,8 @@ tu6_blit_image(struct tu_cmd_buffer *cmd,
       ops->src(cmd, cs, &src, i, filter);
       ops->run(cmd, cs);
    }
+
+   ops->teardown(cmd, cs);
 }
 
 void
@@ -1170,6 +1197,8 @@ tu_copy_buffer_to_image(struct tu_cmd_buffer *cmd,
          ops->run(cmd, cs);
       }
    }
+
+   ops->teardown(cmd, cs);
 }
 
 void
@@ -1243,6 +1272,8 @@ tu_copy_image_to_buffer(struct tu_cmd_buffer *cmd,
          ops->run(cmd, cs);
       }
    }
+
+   ops->teardown(cmd, cs);
 }
 
 void
@@ -1464,6 +1495,8 @@ tu_copy_image_to_image(struct tu_cmd_buffer *cmd,
          ops->run(cmd, cs);
       }
    }
+
+   ops->teardown(cmd, cs);
 }
 
 void
@@ -1514,6 +1547,8 @@ copy_buffer(struct tu_cmd_buffer *cmd,
       dst_va += width * block_size;
       blocks -= width;
    }
+
+   ops->teardown(cmd, cs);
 }
 
 void
@@ -1595,6 +1630,8 @@ tu_CmdFillBuffer(VkCommandBuffer commandBuffer,
       dst_va += width * 4;
       blocks -= width;
    }
+
+   ops->teardown(cmd, cs);
 }
 
 void
@@ -1637,6 +1674,8 @@ tu_CmdResolveImage(VkCommandBuffer commandBuffer,
          ops->run(cmd, cs);
       }
    }
+
+   ops->teardown(cmd, cs);
 }
 
 void
@@ -1663,6 +1702,8 @@ tu_resolve_sysmem(struct tu_cmd_buffer *cmd,
       ops->dst(cs, dst, i);
       ops->run(cmd, cs);
    }
+
+   ops->teardown(cmd, cs);
 }
 
 static void
@@ -1714,6 +1755,8 @@ clear_image(struct tu_cmd_buffer *cmd,
          ops->run(cmd, cs);
       }
    }
+
+   ops->teardown(cmd, cs);
 }
 
 void
@@ -2050,6 +2093,22 @@ tu_CmdClearAttachments(VkCommandBuffer commandBuffer,
     */
    tu_emit_cache_flush_renderpass(cmd, cs);
 
+   /* vkCmdClearAttachments is supposed to respect the predicate if active.
+    * The easiest way to do this is to always use the 3d path, which always
+    * works even with GMEM because it's just a simple draw using the existing
+    * attachment state. However it seems that IGNORE_VISIBILITY draws must be
+    * skipped in the binning pass, since otherwise they produce binning data
+    * which isn't consumed and leads to the wrong binning data being read, so
+    * condition on GMEM | SYSMEM.
+    */
+   if (cmd->state.predication_active) {
+      tu_cond_exec_start(cs, CP_COND_EXEC_0_RENDER_MODE_GMEM |
+                             CP_COND_EXEC_0_RENDER_MODE_SYSMEM);
+      tu_clear_sysmem_attachments(cmd, attachmentCount, pAttachments, rectCount, pRects);
+      tu_cond_exec_end(cs);
+      return;
+   }
+
    tu_cond_exec_start(cs, CP_COND_EXEC_0_RENDER_MODE_GMEM);
    tu_clear_gmem_attachments(cmd, attachmentCount, pAttachments, rectCount, pRects);
    tu_cond_exec_end(cs);
@@ -2089,6 +2148,8 @@ clear_sysmem_attachment(struct tu_cmd_buffer *cmd,
       }
       ops->run(cmd, cs);
    }
+
+   ops->teardown(cmd, cs);
 }
 
 void
