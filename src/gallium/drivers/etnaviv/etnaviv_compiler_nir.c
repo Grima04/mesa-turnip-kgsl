@@ -1088,7 +1088,7 @@ etna_compile_shader_nir(struct etna_shader_variant *v)
       assert(sf->num_reg == count);
    }
 
-   NIR_PASS_V(s, nir_lower_io, ~nir_var_shader_out, etna_glsl_type_size,
+   NIR_PASS_V(s, nir_lower_io, nir_var_shader_in | nir_var_uniform, etna_glsl_type_size,
             (nir_lower_io_options)0);
 
    NIR_PASS_V(s, nir_lower_regs_to_ssa);
