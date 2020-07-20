@@ -1,4 +1,3 @@
-shaders/glsl-idiv-const-opt: skip
 spec/arb_bindless_texture/execution/images/basic-arithmetic-uvec2-imagestore: skip
 spec/arb_bindless_texture/execution/images/basic-imageatomicexchange: skip
 spec/arb_bindless_texture/execution/images/basic-imagestore: skip
@@ -303,7 +302,6 @@ spec/arb_shader_ballot/execution/fs-readinvocation-uint: skip
 spec/arb_shader_ballot/execution/fs-readinvocation-uint-uniform: skip
 spec/arb_shader_clock/execution/clock: skip
 spec/arb_shader_clock/execution/clock2x32: skip
-spec/arb_shader_image_load_store/execution/gl45-imageatomicexchange-float: skip
 spec/arb_shader_precision/fs-pow-float-float: fail
 spec/arb_shader_precision/fs-pow-vec2-vec2: fail
 spec/arb_shader_precision/fs-pow-vec3-vec3: fail
@@ -506,12 +504,7 @@ spec/glsl-4.00/execution/inout/vs-out-fs-in-s2/3-double-float: crash
 spec/glsl-4.00/execution/inout/vs-out-fs-in-s2/3-dvec2-float: crash
 spec/glsl-4.00/execution/inout/vs-out-fs-in-s2/3-dvec3-float: crash
 spec/glsl-4.30/execution/built-in-functions/cs-pow-float-float: fail
-spec/glsl-4.40/execution/fs-interpolateatcentroid-swizzle: skip
-spec/glsl-4.40/execution/fs-interpolateatoffset-swizzle: skip
-spec/glsl-4.40/execution/fs-interpolateatsample-swizzle: skip
-spec/glsl-4.50/execution/glsl-mul-const: skip
-spec/glsl-4.50/execution/helper-invocation: skip
-spec/glsl-4.50/execution/ssbo-atomiccompswap-int: skip
+spec/glsl-4.50/execution/ssbo-atomiccompswap-int: fail
 spec/intel_shader_atomic_float_minmax/execution/shared-atomiccompswap-float: skip
 spec/intel_shader_atomic_float_minmax/execution/shared-atomicexchange-float: skip
 spec/intel_shader_atomic_float_minmax/execution/shared-atomicmax-float: skip
@@ -605,10 +598,10 @@ spec/nv_viewport_swizzle/viewport_swizzle: skip
 summary:
        name:  results
        ----  --------
-       pass:    15771
-       fail:      103
+       pass:    15778
+       fail:      104
       crash:      178
-       skip:      323
+       skip:      315
     timeout:        0
        warn:        0
  incomplete:        0

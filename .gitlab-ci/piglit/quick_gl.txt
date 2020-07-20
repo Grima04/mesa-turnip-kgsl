@@ -389,10 +389,6 @@ spec/!opengl 2.0/vertex-program-two-side/vs, tcs, tes and fs: skip
 spec/!opengl 3.1/draw-buffers-errors: skip
 spec/!opengl 3.2/gl-3.2-adj-prims pv-first: fail
 spec/!opengl 3.2/layered-rendering/clear-color-mismatched-layer-count: fail
-spec/!opengl 4.2/gl-max-vertex-attrib-stride: skip
-spec/!opengl 4.5/compare-framebuffer-parameter-with-get: skip
-spec/!opengl 4.5/named-framebuffer-draw-buffers-errors: skip
-spec/!opengl 4.5/named-framebuffer-read-buffer-errors: skip
 spec/!opengl es 2.0/invalid-es3-queries_gles2: skip
 spec/3dfx_texture_compression_fxt1/compressedteximage gl_compressed_rgb_fxt1_3dfx: skip
 spec/3dfx_texture_compression_fxt1/compressedteximage gl_compressed_rgba_fxt1_3dfx: skip
@@ -490,7 +486,6 @@ spec/arb_geometry_shader4/arb_geometry_shader4-program-parameter-vertices-out ma
 spec/arb_geometry_shader4/arb_geometry_shader4-program-parameter-vertices-out tf 1: skip
 spec/arb_geometry_shader4/arb_geometry_shader4-program-parameter-vertices-out tf max: skip
 spec/arb_geometry_shader4/arb_geometry_shader4-vertices-in: skip
-spec/arb_gpu_shader5/arb_gpu_shader5-xfb-streams-without-invocations: fail
 spec/arb_gpu_shader5/arb_gpu_shader5-xfb-streams-without-invocations spirv: skip
 spec/arb_gpu_shader_fp64/execution/arb_gpu_shader_fp64-dlist-uniforms: skip
 spec/arb_internalformat_query/minmax: skip
@@ -1666,10 +1661,10 @@ wgl/wgl-sanity: skip
 summary:
        name:  results
        ----  --------
-       pass:    23031
-       fail:      199
+       pass:    23064
+       fail:      198
       crash:        0
-       skip:     1442
+       skip:     1438
     timeout:        0
        warn:        6
  incomplete:        0
@@ -1678,4 +1673,4 @@ summary:
     changes:        0
       fixes:        0
 regressions:        0
-      total:    24696
+      total:    24724

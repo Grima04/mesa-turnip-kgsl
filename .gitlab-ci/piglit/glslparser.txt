@@ -2303,7 +2303,6 @@ spec/glsl-1.50/compiler/compatibility/gl_secondarycolor.vert: skip
 spec/glsl-1.50/compiler/compatibility/gl_textureenvcolor.frag: skip
 spec/glsl-1.50/compiler/compatibility/gl_texturematrix.frag: skip
 spec/glsl-1.50/compiler/compatibility/gl_vertex.vert: skip
-spec/glsl-4.40/compiler/inout-parameter-qualifier.frag: skip
 spec/intel_conservative_rasterization/compiler/inner_coverage.gl.frag: skip
 spec/intel_conservative_rasterization/compiler/inner_coverage.gl.vert: skip
 spec/intel_conservative_rasterization/compiler/inner_coverage.gles.frag: skip
@@ -2573,10 +2572,10 @@ spec/oes_texture_storage_multisample_2d_array/preprocessor/disabled-undefined-es
 summary:
        name:  results
        ----  --------
-       pass:    12263
+       pass:    12264
        fail:        2
       crash:        4
-       skip:     2566
+       skip:     2565
     timeout:        0
        warn:        0
  incomplete:        0
