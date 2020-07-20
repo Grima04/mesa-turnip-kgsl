@@ -2693,18 +2693,25 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
       break;
    }
    case nir_op_b2b32:
-   case nir_op_b2i32: {
+   case nir_op_b2i8:
+   case nir_op_b2i16:
+   case nir_op_b2i32:
+   case nir_op_b2i64: {
       Temp src = get_alu_src(ctx, instr->src[0]);
       assert(src.regClass() == bld.lm);
 
-      if (dst.regClass() == s1) {
+      Temp tmp = dst.bytes() == 8 ? bld.tmp(RegClass::get(dst.type(), 4)) : dst;
+      if (tmp.regClass() == s1) {
          // TODO: in a post-RA optimization, we can check if src is in VCC, and directly use VCCNZ
-         bool_to_scalar_condition(ctx, src, dst);
-      } else if (dst.regClass() == v1) {
-         bld.vop2_e64(aco_opcode::v_cndmask_b32, Definition(dst), Operand(0u), Operand(1u), src);
+         bool_to_scalar_condition(ctx, src, tmp);
+      } else if (tmp.type() == RegType::vgpr) {
+         bld.vop2_e64(aco_opcode::v_cndmask_b32, Definition(tmp), Operand(0u), Operand(1u), src);
       } else {
          unreachable("Invalid register class for b2i32");
       }
+
+      if (tmp != dst)
+         bld.pseudo(aco_opcode::p_create_vector, Definition(dst), tmp, Operand(0u));
       break;
    }
    case nir_op_b2b1:
