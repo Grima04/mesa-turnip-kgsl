@@ -1333,6 +1333,12 @@ void radv_GetPhysicalDeviceFeatures2(
 			features->extendedDynamicState = true;
 			break;
 		}
+		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_ROBUSTNESS_FEATURES_EXT: {
+			VkPhysicalDeviceImageRobustnessFeaturesEXT *features =
+				(VkPhysicalDeviceImageRobustnessFeaturesEXT *)ext;
+			features->robustImageAccess = true;
+			break;
+		}
 		default:
 			break;
 		}
