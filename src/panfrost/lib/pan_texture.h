@@ -35,6 +35,9 @@
 #include "panfrost-job.h"
 #include "pan_bo.h"
 
+#define PAN_MODIFIER_COUNT 4
+extern uint64_t pan_best_modifiers[PAN_MODIFIER_COUNT];
+
 struct panfrost_slice {
         unsigned offset;
         unsigned stride;

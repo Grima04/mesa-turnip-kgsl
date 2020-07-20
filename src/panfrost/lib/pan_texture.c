@@ -43,6 +43,24 @@
  * to us here.
  */
 
+/* List of supported modifiers, in descending order of preference. AFBC is
+ * faster than u-interleaved tiling which is faster than linear. Within AFBC,
+ * enabling the YUV-like transform is typically a win where possible. */
+
+uint64_t pan_best_modifiers[PAN_MODIFIER_COUNT] = {
+        DRM_FORMAT_MOD_ARM_AFBC(
+                AFBC_FORMAT_MOD_BLOCK_SIZE_16x16 |
+                AFBC_FORMAT_MOD_SPARSE |
+                AFBC_FORMAT_MOD_YTR),
+
+        DRM_FORMAT_MOD_ARM_AFBC(
+                AFBC_FORMAT_MOD_BLOCK_SIZE_16x16 |
+                AFBC_FORMAT_MOD_SPARSE),
+
+        DRM_FORMAT_MOD_ARM_16X16_BLOCK_U_INTERLEAVED,
+        DRM_FORMAT_MOD_LINEAR
+};
+
 /* Map modifiers to mali_texture_layout for packing in a texture descriptor */
 
 static enum mali_texture_layout

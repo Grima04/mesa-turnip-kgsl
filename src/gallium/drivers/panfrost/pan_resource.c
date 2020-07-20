@@ -40,6 +40,7 @@
 #include "util/u_transfer.h"
 #include "util/u_transfer_helper.h"
 #include "util/u_gen_mipmap.h"
+#include "util/u_drm.h"
 
 #include "pan_bo.h"
 #include "pan_context.h"
@@ -75,7 +76,8 @@ panfrost_resource_from_handle(struct pipe_screen *pscreen,
 
         rsc->bo = panfrost_bo_import(dev, whandle->handle);
         rsc->internal_format = templat->format;
-        rsc->modifier = DRM_FORMAT_MOD_LINEAR;
+        rsc->modifier = (whandle->modifier == DRM_FORMAT_MOD_INVALID) ?
+                DRM_FORMAT_MOD_LINEAR : whandle->modifier;
         rsc->slices[0].stride = whandle->stride;
         rsc->slices[0].offset = whandle->offset;
         rsc->slices[0].initialized = true;
@@ -87,6 +89,11 @@ panfrost_resource_from_handle(struct pipe_screen *pscreen,
                                         &rsc->slices[0], templat->width0, templat->height0);
                 rsc->slices[0].checksum_bo = panfrost_bo_create(dev, size, 0);
                 rsc->checksummed = true;
+        }
+
+        if (drm_is_afbc(whandle->modifier)) {
+                rsc->slices[0].header_size =
+                        panfrost_afbc_header_size(templat->width0, templat->height0);
         }
 
         if (dev->ro) {
@@ -109,7 +116,7 @@ panfrost_resource_get_handle(struct pipe_screen *pscreen,
         struct panfrost_resource *rsrc = (struct panfrost_resource *) pt;
         struct renderonly_scanout *scanout = rsrc->scanout;
 
-        handle->modifier = DRM_FORMAT_MOD_INVALID;
+        handle->modifier = rsrc->modifier;
 
         if (handle->type == WINSYS_HANDLE_TYPE_SHARED) {
                 return false;
@@ -206,7 +213,8 @@ panfrost_surface_destroy(struct pipe_context *pipe,
 
 static struct pipe_resource *
 panfrost_create_scanout_res(struct pipe_screen *screen,
-                            const struct pipe_resource *template)
+                            const struct pipe_resource *template,
+                            uint64_t modifier)
 {
         struct panfrost_device *dev = pan_device(screen);
         struct pipe_resource scanout_templat = *template;
@@ -220,7 +228,7 @@ panfrost_create_scanout_res(struct pipe_screen *screen,
                 return NULL;
 
         assert(handle.type == WINSYS_HANDLE_TYPE_FD);
-        /* TODO: handle modifiers? */
+        handle.modifier = modifier;
         res = screen->resource_from_handle(screen, template, &handle,
                                            PIPE_HANDLE_USAGE_FRAMEBUFFER_WRITE);
         close(handle.handle);
@@ -519,7 +527,7 @@ panfrost_resource_create_with_modifier(struct pipe_screen *screen,
 
         if (dev->ro && (template->bind &
             (PIPE_BIND_DISPLAY_TARGET | PIPE_BIND_SCANOUT | PIPE_BIND_SHARED)))
-                return panfrost_create_scanout_res(screen, template);
+                return panfrost_create_scanout_res(screen, template, modifier);
 
         struct panfrost_resource *so = rzalloc(screen, struct panfrost_resource);
         so->base = *template;
@@ -547,6 +555,26 @@ panfrost_resource_create(struct pipe_screen *screen,
 {
         return panfrost_resource_create_with_modifier(screen, template,
                         DRM_FORMAT_MOD_INVALID);
+}
+
+/* If no modifier is specified, we'll choose. Otherwise, the order of
+ * preference is compressed, tiled, linear. */
+
+static struct pipe_resource *
+panfrost_resource_create_with_modifiers(struct pipe_screen *screen,
+                         const struct pipe_resource *template,
+                         const uint64_t *modifiers, int count)
+{
+        for (unsigned i = 0; i < PAN_MODIFIER_COUNT; ++i) {
+                if (drm_find_modifier(pan_best_modifiers[i], modifiers, count)) {
+                        return panfrost_resource_create_with_modifier(screen, template,
+                                        pan_best_modifiers[i]);
+                }
+        }
+
+        /* If we didn't find one, app specified invalid */
+        assert(count == 1 && modifiers[0] == DRM_FORMAT_MOD_INVALID);
+        return panfrost_resource_create(screen, template);
 }
 
 static void
@@ -913,8 +941,8 @@ panfrost_resource_screen_init(struct pipe_screen *pscreen)
 
         bool fake_rgtc = !panfrost_supports_compressed_format(dev, MALI_BC4_UNORM);
 
-        //pscreen->base.resource_create_with_modifiers =
-        //        panfrost_resource_create_with_modifiers;
+        pscreen->resource_create_with_modifiers =
+                panfrost_resource_create_with_modifiers;
         pscreen->resource_create = u_transfer_helper_resource_create;
         pscreen->resource_destroy = u_transfer_helper_resource_destroy;
         pscreen->resource_from_handle = panfrost_resource_from_handle;
