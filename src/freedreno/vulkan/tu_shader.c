@@ -764,8 +764,8 @@ tu_shader_create(struct tu_device *dev,
 
    NIR_PASS_V(nir, nir_lower_io_arrays_to_elements_no_indirects, false);
 
-   nir_assign_io_var_locations(&nir->inputs, &nir->num_inputs, stage);
-   nir_assign_io_var_locations(&nir->outputs, &nir->num_outputs, stage);
+   nir_assign_io_var_locations(nir, nir_var_shader_in, &nir->num_inputs, stage);
+   nir_assign_io_var_locations(nir, nir_var_shader_out, &nir->num_outputs, stage);
 
    NIR_PASS_V(nir, nir_lower_system_values);
    NIR_PASS_V(nir, nir_lower_frexp);

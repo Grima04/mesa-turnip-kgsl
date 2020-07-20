@@ -648,7 +648,7 @@ void
 radv_lower_fs_io(nir_shader *nir)
 {
 	NIR_PASS_V(nir, lower_view_index);
-	nir_assign_io_var_locations(&nir->inputs, &nir->num_inputs,
+	nir_assign_io_var_locations(nir, nir_var_shader_in, &nir->num_inputs,
 				    MESA_SHADER_FRAGMENT);
 
 	NIR_PASS_V(nir, nir_lower_io, nir_var_shader_in, type_size_vec4, 0);

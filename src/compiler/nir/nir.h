@@ -3999,7 +3999,8 @@ bool nir_link_opt_varyings(nir_shader *producer, nir_shader *consumer);
 bool nir_lower_amul(nir_shader *shader,
                     int (*type_size)(const struct glsl_type *, bool));
 
-void nir_assign_io_var_locations(struct exec_list *var_list,
+void nir_assign_io_var_locations(nir_shader *shader,
+                                 nir_variable_mode mode,
                                  unsigned *size,
                                  gl_shader_stage stage);
 

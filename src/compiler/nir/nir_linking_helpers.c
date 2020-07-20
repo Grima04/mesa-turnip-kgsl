@@ -1075,30 +1075,30 @@ insert_sorted(struct exec_list *var_list, nir_variable *new_var)
 }
 
 static void
-sort_varyings(struct exec_list *var_list)
+sort_varyings(nir_shader *shader, nir_variable_mode mode,
+              struct exec_list *sorted_list)
 {
-   struct exec_list new_list;
-   exec_list_make_empty(&new_list);
-   nir_foreach_variable_safe(var, var_list) {
+   exec_list_make_empty(sorted_list);
+   nir_foreach_variable_with_modes_safe(var, shader, mode) {
       exec_node_remove(&var->node);
-      insert_sorted(&new_list, var);
+      insert_sorted(sorted_list, var);
    }
-   exec_list_move_nodes_to(&new_list, var_list);
 }
 
 void
-nir_assign_io_var_locations(struct exec_list *var_list, unsigned *size,
-                            gl_shader_stage stage)
+nir_assign_io_var_locations(nir_shader *shader, nir_variable_mode mode,
+                            unsigned *size, gl_shader_stage stage)
 {
    unsigned location = 0;
    unsigned assigned_locations[VARYING_SLOT_TESS_MAX];
    uint64_t processed_locs[2] = {0};
 
-   sort_varyings(var_list);
+   struct exec_list io_vars;
+   sort_varyings(shader, mode, &io_vars);
 
    int UNUSED last_loc = 0;
    bool last_partial = false;
-   nir_foreach_variable(var, var_list) {
+   nir_foreach_variable(var, &io_vars) {
       const struct glsl_type *type = var->type;
       if (nir_is_per_vertex_io(var, stage) || var->data.per_view) {
          assert(glsl_type_is_array(type));
@@ -1201,6 +1201,8 @@ nir_assign_io_var_locations(struct exec_list *var_list, unsigned *size,
    if (last_partial)
       location++;
 
+   struct exec_list *var_list = nir_variable_list_for_mode(shader, mode);
+   exec_list_append(var_list, &io_vars);
    *size = location;
 }
 

@@ -853,28 +853,28 @@ void
 st_nir_assign_varying_locations(struct st_context *st, nir_shader *nir)
 {
    if (nir->info.stage == MESA_SHADER_VERTEX) {
-      nir_assign_io_var_locations(&nir->outputs,
+      nir_assign_io_var_locations(nir, nir_var_shader_out,
                                   &nir->num_outputs,
                                   nir->info.stage);
       st_nir_fixup_varying_slots(st, &nir->outputs);
    } else if (nir->info.stage == MESA_SHADER_GEOMETRY ||
               nir->info.stage == MESA_SHADER_TESS_CTRL ||
               nir->info.stage == MESA_SHADER_TESS_EVAL) {
-      nir_assign_io_var_locations(&nir->inputs,
+      nir_assign_io_var_locations(nir, nir_var_shader_in,
                                   &nir->num_inputs,
                                   nir->info.stage);
       st_nir_fixup_varying_slots(st, &nir->inputs);
 
-      nir_assign_io_var_locations(&nir->outputs,
+      nir_assign_io_var_locations(nir, nir_var_shader_out,
                                   &nir->num_outputs,
                                   nir->info.stage);
       st_nir_fixup_varying_slots(st, &nir->outputs);
    } else if (nir->info.stage == MESA_SHADER_FRAGMENT) {
-      nir_assign_io_var_locations(&nir->inputs,
+      nir_assign_io_var_locations(nir, nir_var_shader_in,
                                   &nir->num_inputs,
                                   nir->info.stage);
       st_nir_fixup_varying_slots(st, &nir->inputs);
-      nir_assign_io_var_locations(&nir->outputs,
+      nir_assign_io_var_locations(nir, nir_var_shader_out,
                                   &nir->num_outputs,
                                   nir->info.stage);
    } else if (nir->info.stage == MESA_SHADER_COMPUTE) {
