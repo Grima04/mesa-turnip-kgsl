@@ -59,11 +59,11 @@ insert_sorted(struct exec_list *var_list, nir_variable *new_var)
 }
 
 static void
-sort_varyings(struct exec_list *var_list)
+sort_varyings(nir_shader *nir, nir_variable_mode mode)
 {
    struct exec_list new_list;
    exec_list_make_empty(&new_list);
-   nir_foreach_variable_safe(var, var_list) {
+   nir_foreach_variable_with_modes_safe(var, nir, mode) {
       exec_node_remove(&var->node);
       insert_sorted(&new_list, var);
    }
@@ -71,9 +71,9 @@ sort_varyings(struct exec_list *var_list)
 }
 
 static void
-fixup_varying_slots(struct exec_list *var_list)
+fixup_varying_slots(nir_shader *nir, nir_variable_mode mode)
 {
-   nir_foreach_variable(var, var_list) {
+   nir_foreach_variable_with_modes(var, nir, mode) {
       if (var->data.location >= VARYING_SLOT_VAR0) {
          var->data.location += 9;
       } else if ((var->data.location >= VARYING_SLOT_TEX0) &&
@@ -146,16 +146,16 @@ load_glsl(unsigned num_files, char* const* files, gl_shader_stage stage)
       /* Re-lower global vars, to deal with any dead VS inputs. */
       NIR_PASS_V(nir, nir_lower_global_vars_to_local);
 
-      sort_varyings(&nir->outputs);
+      sort_varyings(nir, nir_var_shader_out);
       nir_assign_var_locations(nir, nir_var_shader_out, &nir->num_outputs,
                                st_glsl_type_size);
-      fixup_varying_slots(&nir->outputs);
+      fixup_varying_slots(nir, nir_var_shader_out);
       break;
    case MESA_SHADER_FRAGMENT:
-      sort_varyings(&nir->inputs);
+      sort_varyings(nir, nir_var_shader_in);
       nir_assign_var_locations(nir, nir_var_shader_in, &nir->num_inputs,
                                st_glsl_type_size);
-      fixup_varying_slots(&nir->inputs);
+      fixup_varying_slots(nir, nir_var_shader_in);
       nir_assign_var_locations(nir, nir_var_shader_out, &nir->num_outputs,
                                st_glsl_type_size);
       break;
