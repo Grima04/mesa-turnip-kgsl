@@ -1515,8 +1515,7 @@ gl_nir_link_uniforms(struct gl_context *ctx,
          if (!sh)
             continue;
 
-         nir_shader *nir = sh->Program->nir;
-         nir_foreach_variable(var, &nir->uniforms)
+         nir_foreach_gl_uniform_variable(var, sh->Program->nir)
             update_array_sizes(prog, var, state.referenced_uniforms, stage);
       }
    }
@@ -1531,7 +1530,7 @@ gl_nir_link_uniforms(struct gl_context *ctx,
          if (!sh)
             continue;
 
-         nir_foreach_variable(var, &sh->Program->nir->uniforms) {
+         nir_foreach_gl_uniform_variable(var, sh->Program->nir) {
             const struct glsl_type *type = var->type;
             const char *name = var->name;
             if (nir_variable_is_in_block(var) &&
@@ -1582,7 +1581,7 @@ gl_nir_link_uniforms(struct gl_context *ctx,
       state.shader_shadow_samplers = 0;
       state.params = fill_parameters ? sh->Program->Parameters : NULL;
 
-      nir_foreach_variable(var, &nir->uniforms) {
+      nir_foreach_gl_uniform_variable(var, nir) {
          state.current_var = var;
          state.current_ifc_type = NULL;
          state.offset = 0;
