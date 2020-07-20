@@ -104,54 +104,56 @@ nir_reg_remove(nir_register *reg)
    exec_node_remove(&reg->node);
 }
 
-void
-nir_shader_add_variable(nir_shader *shader, nir_variable *var)
+struct exec_list *
+nir_variable_list_for_mode(nir_shader *shader, nir_variable_mode mode)
 {
-   switch (var->data.mode) {
-   case nir_num_variable_modes:
-   case nir_var_all:
-      assert(!"invalid mode");
-      break;
-
+   switch (mode) {
    case nir_var_function_temp:
       assert(!"nir_shader_add_variable cannot be used for local variables");
-      break;
+      return NULL;
 
    case nir_var_shader_temp:
-      exec_list_push_tail(&shader->globals, &var->node);
-      break;
+      return &shader->globals;
 
    case nir_var_shader_in:
-      exec_list_push_tail(&shader->inputs, &var->node);
-      break;
+      return &shader->inputs;
 
    case nir_var_shader_out:
-      exec_list_push_tail(&shader->outputs, &var->node);
-      break;
+      return &shader->outputs;
 
    case nir_var_uniform:
    case nir_var_mem_ubo:
    case nir_var_mem_ssbo:
-      exec_list_push_tail(&shader->uniforms, &var->node);
-      break;
+      return &shader->uniforms;
 
    case nir_var_mem_shared:
       assert(gl_shader_stage_is_compute(shader->info.stage));
-      exec_list_push_tail(&shader->shared, &var->node);
-      break;
+      return &shader->shared;
 
    case nir_var_mem_global:
       assert(!"nir_shader_add_variable cannot be used for global memory");
-      break;
+      return NULL;
 
    case nir_var_system_value:
-      exec_list_push_tail(&shader->system_values, &var->node);
-      break;
+      return &shader->system_values;
 
    case nir_var_mem_push_const:
       assert(!"nir_var_push_constant is not supposed to be used for variables");
-      break;
+      return NULL;
+
+   default:
+      assert(!"invalid mode");
+      return NULL;
    }
+}
+
+void
+nir_shader_add_variable(nir_shader *shader, nir_variable *var)
+{
+   struct exec_list *var_list =
+      nir_variable_list_for_mode(shader, var->data.mode);
+   if (var_list)
+      exec_list_push_tail(var_list, &var->node);
 }
 
 nir_variable *

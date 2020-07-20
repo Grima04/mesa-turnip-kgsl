@@ -618,11 +618,28 @@ typedef struct nir_variable {
    struct nir_variable_data *members;
 } nir_variable;
 
+
+static inline bool
+_nir_shader_variable_has_mode(nir_variable *var, unsigned modes)
+{
+   /* This isn't a shader variable */
+   assert(!(modes & nir_var_function_temp));
+   return var->data.mode & modes;
+}
+
 #define nir_foreach_variable(var, var_list) \
    foreach_list_typed(nir_variable, var, node, var_list)
 
 #define nir_foreach_variable_safe(var, var_list) \
    foreach_list_typed_safe(nir_variable, var, node, var_list)
+
+#define nir_foreach_variable_with_modes(var, shader, modes) \
+   nir_foreach_variable(var, nir_variable_list_for_mode(shader, modes)) \
+      if (_nir_shader_variable_has_mode(var, modes))
+
+#define nir_foreach_variable_with_modes_safe(var, shader, modes) \
+   nir_foreach_variable_safe(var, nir_variable_list_for_mode(shader, modes)) \
+      if (_nir_shader_variable_has_mode(var, modes))
 
 #define nir_foreach_shader_in_variable(var, shader) \
    nir_foreach_variable(var, &(shader)->inputs)
@@ -3282,6 +3299,9 @@ nir_shader *nir_shader_create(void *mem_ctx,
 nir_register *nir_local_reg_create(nir_function_impl *impl);
 
 void nir_reg_remove(nir_register *reg);
+
+struct exec_list *
+nir_variable_list_for_mode(nir_shader *shader, nir_variable_mode mode);
 
 /** Adds a variable to the appropriate list in nir_shader */
 void nir_shader_add_variable(nir_shader *shader, nir_variable *var);

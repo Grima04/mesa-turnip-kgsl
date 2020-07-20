@@ -128,8 +128,7 @@ nir_remove_unused_io_vars(nir_shader *shader,
    uint64_t *used;
 
    assert(mode == nir_var_shader_in || mode == nir_var_shader_out);
-   struct exec_list *var_list =
-      mode == nir_var_shader_in ? &shader->inputs : &shader->outputs;
+   struct exec_list *var_list = nir_variable_list_for_mode(shader, mode);
 
    nir_foreach_variable_safe(var, var_list) {
       if (var->data.patch)
