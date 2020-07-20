@@ -883,6 +883,7 @@ find_precision_visitor::visit_enter(ir_call *ir)
     */
 
    if (!ir->callee->is_builtin() ||
+       ir->callee->is_intrinsic() ||
        return_var == NULL ||
        (return_var->data.precision != GLSL_PRECISION_MEDIUM &&
         return_var->data.precision != GLSL_PRECISION_LOW))
