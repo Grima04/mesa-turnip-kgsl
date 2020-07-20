@@ -269,12 +269,13 @@ struct assigned_comps
  * TODO: allow better packing of complex types.
  */
 static void
-get_unmoveable_components_masks(struct exec_list *var_list,
+get_unmoveable_components_masks(nir_shader *shader,
+                                nir_variable_mode mode,
                                 struct assigned_comps *comps,
                                 gl_shader_stage stage,
                                 bool default_to_smooth_interp)
 {
-   nir_foreach_variable_safe(var, var_list) {
+   nir_foreach_variable_with_modes_safe(var, shader, mode) {
       assert(var->data.location >= 0);
 
       /* Only remap things that aren't built-ins. */
@@ -360,18 +361,19 @@ mark_used_slot(nir_variable *var, uint64_t *slots_used, unsigned offset)
 }
 
 static void
-remap_slots_and_components(struct exec_list *var_list, gl_shader_stage stage,
+remap_slots_and_components(nir_shader *shader, nir_variable_mode mode,
                            struct varying_loc (*remap)[4],
                            uint64_t *slots_used, uint64_t *out_slots_read,
                            uint32_t *p_slots_used, uint32_t *p_out_slots_read)
  {
+   const gl_shader_stage stage = shader->info.stage;
    uint64_t out_slots_read_tmp[2] = {0};
    uint64_t slots_used_tmp[2] = {0};
 
    /* We don't touch builtins so just copy the bitmask */
    slots_used_tmp[0] = *slots_used & BITFIELD64_RANGE(0, VARYING_SLOT_VAR0);
 
-   nir_foreach_variable(var, var_list) {
+   nir_foreach_variable_with_modes(var, shader, mode) {
       assert(var->data.location >= 0);
 
       /* Only remap things that aren't built-ins */
@@ -729,8 +731,6 @@ compact_components(nir_shader *producer, nir_shader *consumer,
                    struct assigned_comps *assigned_comps,
                    bool default_to_smooth_interp)
 {
-   struct exec_list *input_list = &consumer->inputs;
-   struct exec_list *output_list = &producer->outputs;
    struct varying_loc remap[MAX_VARYINGS_INCL_PATCH][4] = {{{0}, {0}}};
    struct varying_component *varying_comp_info;
    unsigned varying_comp_info_size;
@@ -788,10 +788,10 @@ compact_components(nir_shader *producer, nir_shader *consumer,
 
    uint64_t zero = 0;
    uint32_t zero32 = 0;
-   remap_slots_and_components(input_list, consumer->info.stage, remap,
+   remap_slots_and_components(consumer, nir_var_shader_in, remap,
                               &consumer->info.inputs_read, &zero,
                               &consumer->info.patch_inputs_read, &zero32);
-   remap_slots_and_components(output_list, producer->info.stage, remap,
+   remap_slots_and_components(producer, nir_var_shader_out, remap,
                               &producer->info.outputs_written,
                               &producer->info.outputs_read,
                               &producer->info.patch_outputs_written,
@@ -817,10 +817,12 @@ nir_compact_varyings(nir_shader *producer, nir_shader *consumer,
 
    struct assigned_comps assigned_comps[MAX_VARYINGS_INCL_PATCH] = {{0}};
 
-   get_unmoveable_components_masks(&producer->outputs, assigned_comps,
+   get_unmoveable_components_masks(producer, nir_var_shader_out,
+                                   assigned_comps,
                                    producer->info.stage,
                                    default_to_smooth_interp);
-   get_unmoveable_components_masks(&consumer->inputs, assigned_comps,
+   get_unmoveable_components_masks(consumer, nir_var_shader_in,
+                                   assigned_comps,
                                    consumer->info.stage,
                                    default_to_smooth_interp);
 
