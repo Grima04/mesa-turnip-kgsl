@@ -44,10 +44,7 @@ nir_shader_create(void *mem_ctx,
 {
    nir_shader *shader = rzalloc(mem_ctx, nir_shader);
 
-   exec_list_make_empty(&shader->uniforms);
-   exec_list_make_empty(&shader->inputs);
-   exec_list_make_empty(&shader->outputs);
-   exec_list_make_empty(&shader->shared);
+   exec_list_make_empty(&shader->variables);
 
    shader->options = options;
 
@@ -59,8 +56,6 @@ nir_shader_create(void *mem_ctx,
    }
 
    exec_list_make_empty(&shader->functions);
-   exec_list_make_empty(&shader->globals);
-   exec_list_make_empty(&shader->system_values);
 
    shader->num_inputs = 0;
    shader->num_outputs = 0;
@@ -104,56 +99,38 @@ nir_reg_remove(nir_register *reg)
    exec_node_remove(&reg->node);
 }
 
-struct exec_list *
-nir_variable_list_for_mode(nir_shader *shader, nir_variable_mode mode)
-{
-   switch (mode) {
-   case nir_var_function_temp:
-      assert(!"nir_shader_add_variable cannot be used for local variables");
-      return NULL;
-
-   case nir_var_shader_temp:
-      return &shader->globals;
-
-   case nir_var_shader_in:
-      return &shader->inputs;
-
-   case nir_var_shader_out:
-      return &shader->outputs;
-
-   case nir_var_uniform:
-   case nir_var_mem_ubo:
-   case nir_var_mem_ssbo:
-      return &shader->uniforms;
-
-   case nir_var_mem_shared:
-      assert(gl_shader_stage_is_compute(shader->info.stage));
-      return &shader->shared;
-
-   case nir_var_mem_global:
-      assert(!"nir_shader_add_variable cannot be used for global memory");
-      return NULL;
-
-   case nir_var_system_value:
-      return &shader->system_values;
-
-   case nir_var_mem_push_const:
-      assert(!"nir_var_push_constant is not supposed to be used for variables");
-      return NULL;
-
-   default:
-      assert(!"invalid mode");
-      return NULL;
-   }
-}
-
 void
 nir_shader_add_variable(nir_shader *shader, nir_variable *var)
 {
-   struct exec_list *var_list =
-      nir_variable_list_for_mode(shader, var->data.mode);
-   if (var_list)
-      exec_list_push_tail(var_list, &var->node);
+   switch (var->data.mode) {
+   case nir_var_function_temp:
+      assert(!"nir_shader_add_variable cannot be used for local variables");
+      return;
+
+   case nir_var_shader_temp:
+   case nir_var_shader_in:
+   case nir_var_shader_out:
+   case nir_var_uniform:
+   case nir_var_mem_ubo:
+   case nir_var_mem_ssbo:
+   case nir_var_mem_shared:
+   case nir_var_system_value:
+      break;
+
+   case nir_var_mem_global:
+      assert(!"nir_shader_add_variable cannot be used for global memory");
+      return;
+
+   case nir_var_mem_push_const:
+      assert(!"nir_var_push_constant is not supposed to be used for variables");
+      return;
+
+   default:
+      assert(!"invalid mode");
+      return;
+   }
+
+   exec_list_push_tail(&shader->variables, &var->node);
 }
 
 nir_variable *
@@ -1820,35 +1797,12 @@ nir_index_instrs(nir_function_impl *impl)
    return index;
 }
 
-static void
-index_var_list(struct exec_list *list, unsigned *count)
-{
-   nir_foreach_variable(var, list)
-      var->index = (*count)++;
-}
-
 unsigned
 nir_shader_index_vars(nir_shader *shader, nir_variable_mode modes)
 {
    unsigned count = 0;
-   if (modes & nir_var_shader_temp)
-      index_var_list(&shader->globals, &count);
-
-   if (modes & nir_var_shader_in)
-      index_var_list(&shader->inputs, &count);
-
-   if (modes & nir_var_shader_out)
-      index_var_list(&shader->outputs, &count);
-
-   if (modes & (nir_var_uniform | nir_var_mem_ubo | nir_var_mem_ssbo))
-      index_var_list(&shader->uniforms, &count);
-
-   if (modes & nir_var_mem_shared)
-      index_var_list(&shader->shared, &count);
-
-   if (modes & nir_var_system_value)
-      index_var_list(&shader->system_values, &count);
-
+   nir_foreach_variable_with_modes(var, shader, modes)
+      var->index = count++;
    return count;
 }
 
@@ -1856,7 +1810,8 @@ unsigned
 nir_function_impl_index_vars(nir_function_impl *impl)
 {
    unsigned count = 0;
-   index_var_list(&impl->locals, &count);
+   nir_foreach_function_temp_variable(var, impl)
+      var->index = count++;
    return count;
 }
 

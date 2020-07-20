@@ -41,6 +41,7 @@ struct state {
 	nir_variable *vertex_flags_out;
 
 	struct exec_list old_outputs;
+	struct exec_list new_outputs;
 	struct exec_list emit_outputs;
 
 	/* tess ctrl shader on a650 gets the local primitive id at different bits: */
@@ -830,14 +831,19 @@ ir3_nir_lower_gs(nir_shader *shader)
 	 * we copy the emit_outputs to the real outputs, so that we get
 	 * store_output in uniform control flow.
 	 */
-	exec_list_move_nodes_to(&shader->outputs, &state.old_outputs);
+	exec_list_make_empty(&state.old_outputs);
+	nir_foreach_shader_out_variable_safe(var, shader) {
+		exec_node_remove(&var->node);
+		exec_list_push_tail(&state.old_outputs, &var->node);
+	}
+	exec_list_make_empty(&state.new_outputs);
 	exec_list_make_empty(&state.emit_outputs);
-	nir_foreach_variable(var, &state.old_outputs) {
+	nir_foreach_variable_in_list(var, &state.old_outputs) {
 		/* Create a new output var by cloning the original output var and
 		 * stealing the name.
 		 */
 		nir_variable *output = nir_variable_clone(var, shader);
-		exec_list_push_tail(&shader->outputs, &output->node);
+		exec_list_push_tail(&state.new_outputs, &output->node);
 
 		/* Rewrite the original output to be a shadow variable. */
 		var->name = ralloc_asprintf(var, "%s@gs-temp", output->name);
@@ -883,15 +889,16 @@ ir3_nir_lower_gs(nir_shader *shader)
 
 		nir_builder_instr_insert(&b, &discard_if->instr);
 
-		foreach_two_lists(dest_node, &shader->outputs, src_node, &state.emit_outputs) {
+		foreach_two_lists(dest_node, &state.new_outputs, src_node, &state.emit_outputs) {
 			nir_variable *dest = exec_node_data(nir_variable, dest_node, node);
 			nir_variable *src = exec_node_data(nir_variable, src_node, node);
 			nir_copy_var(&b, dest, src);
 		}
 	}
 
-	exec_list_append(&shader->globals, &state.old_outputs);
-	exec_list_append(&shader->globals, &state.emit_outputs);
+	exec_list_append(&shader->variables, &state.old_outputs);
+	exec_list_append(&shader->variables, &state.emit_outputs);
+	exec_list_append(&shader->variables, &state.new_outputs);
 
 	nir_metadata_preserve(impl, 0);
 

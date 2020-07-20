@@ -235,10 +235,8 @@ nir_lower_amul(nir_shader *shader,
    /* uniforms list actually includes ubo's and ssbo's: */
    int max_slot = 0;
 
-   nir_foreach_variable (var, &shader->uniforms) {
-      if (!(var->data.mode & (nir_var_mem_ubo | nir_var_mem_ssbo)))
-         continue;
-
+   nir_foreach_variable_with_modes (var, shader,
+                                    nir_var_mem_ubo | nir_var_mem_ssbo) {
       int base = var->data.binding;
       int size = MAX2(1, glsl_array_size(var->type));
 
@@ -258,7 +256,7 @@ nir_lower_amul(nir_shader *shader,
    /* Figure out which UBOs or SSBOs are large enough to be
     * disqualified from imul24:
     */
-   nir_foreach_variable(var, &shader->uniforms) {
+   nir_foreach_variable_in_shader (var, shader) {
       if (var->data.mode == nir_var_mem_ubo) {
          if (is_large(&state, var)) {
             state.has_large_ubo = true;

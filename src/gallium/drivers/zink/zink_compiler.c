@@ -242,7 +242,8 @@ zink_compile_nir(struct zink_screen *screen, struct nir_shader *nir,
    }
 
    ret->num_bindings = 0;
-   nir_foreach_variable(var, &nir->uniforms) {
+   nir_foreach_variable_with_modes(var, nir, nir_var_uniform |
+                                             nir_var_mem_ubo) {
       if (var->data.mode == nir_var_mem_ubo) {
          int binding = zink_binding(nir->info.stage,
                                     VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,

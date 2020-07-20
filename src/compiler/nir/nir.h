@@ -618,7 +618,6 @@ typedef struct nir_variable {
    struct nir_variable_data *members;
 } nir_variable;
 
-
 static inline bool
 _nir_shader_variable_has_mode(nir_variable *var, unsigned modes)
 {
@@ -627,39 +626,43 @@ _nir_shader_variable_has_mode(nir_variable *var, unsigned modes)
    return var->data.mode & modes;
 }
 
-#define nir_foreach_variable(var, var_list) \
+#define nir_foreach_variable_in_list(var, var_list) \
    foreach_list_typed(nir_variable, var, node, var_list)
 
-#define nir_foreach_variable_safe(var, var_list) \
+#define nir_foreach_variable_in_list_safe(var, var_list) \
    foreach_list_typed_safe(nir_variable, var, node, var_list)
 
+#define nir_foreach_variable_in_shader(var, shader) \
+   nir_foreach_variable_in_list(var, &(shader)->variables)
+
+#define nir_foreach_variable_in_shader_safe(var, shader) \
+   nir_foreach_variable_in_list_safe(var, &(shader)->variables)
+
 #define nir_foreach_variable_with_modes(var, shader, modes) \
-   nir_foreach_variable(var, nir_variable_list_for_mode(shader, modes)) \
+   nir_foreach_variable_in_shader(var, shader) \
       if (_nir_shader_variable_has_mode(var, modes))
 
 #define nir_foreach_variable_with_modes_safe(var, shader, modes) \
-   nir_foreach_variable_safe(var, nir_variable_list_for_mode(shader, modes)) \
+   nir_foreach_variable_in_shader_safe(var, shader) \
       if (_nir_shader_variable_has_mode(var, modes))
 
 #define nir_foreach_shader_in_variable(var, shader) \
-   nir_foreach_variable(var, &(shader)->inputs)
+   nir_foreach_variable_with_modes(var, shader, nir_var_shader_in)
 
 #define nir_foreach_shader_in_variable_safe(var, shader) \
-   nir_foreach_variable_safe(var, &(shader)->inputs)
+   nir_foreach_variable_with_modes_safe(var, shader, nir_var_shader_in)
 
 #define nir_foreach_shader_out_variable(var, shader) \
-   nir_foreach_variable(var, &(shader)->outputs)
+   nir_foreach_variable_with_modes(var, shader, nir_var_shader_out)
 
 #define nir_foreach_shader_out_variable_safe(var, shader) \
-   nir_foreach_variable_safe(var, &(shader)->outputs)
+   nir_foreach_variable_with_modes_safe(var, shader, nir_var_shader_out)
 
 #define nir_foreach_uniform_variable(var, shader) \
-   nir_foreach_variable(var, &(shader)->uniforms) \
-      if (var->data.mode == nir_var_uniform)
+   nir_foreach_variable_with_modes(var, shader, nir_var_uniform)
 
 #define nir_foreach_uniform_variable_safe(var, shader) \
-   nir_foreach_variable_safe(var, &(shader)->uniforms) \
-      if (var->data.mode == nir_var_uniform)
+   nir_foreach_variable_with_modes_safe(var, shader, nir_var_uniform)
 
 static inline bool
 nir_variable_is_global(const nir_variable *var)
@@ -3218,16 +3221,7 @@ typedef struct nir_shader_compiler_options {
 
 typedef struct nir_shader {
    /** list of uniforms (nir_variable) */
-   struct exec_list uniforms;
-
-   /** list of inputs (nir_variable) */
-   struct exec_list inputs;
-
-   /** list of outputs (nir_variable) */
-   struct exec_list outputs;
-
-   /** list of shared compute variables (nir_variable) */
-   struct exec_list shared;
+   struct exec_list variables;
 
    /** Set of driver-specific options for the shader.
     *
@@ -3238,12 +3232,6 @@ typedef struct nir_shader {
 
    /** Various bits of compile-time information about a given shader */
    struct shader_info info;
-
-   /** list of global variables in the shader (nir_variable) */
-   struct exec_list globals;
-
-   /** list of system value variables in the shader (nir_variable) */
-   struct exec_list system_values;
 
    struct exec_list functions; /** < list of nir_function */
 
@@ -3299,9 +3287,6 @@ nir_shader *nir_shader_create(void *mem_ctx,
 nir_register *nir_local_reg_create(nir_function_impl *impl);
 
 void nir_reg_remove(nir_register *reg);
-
-struct exec_list *
-nir_variable_list_for_mode(nir_shader *shader, nir_variable_mode mode);
 
 /** Adds a variable to the appropriate list in nir_shader */
 void nir_shader_add_variable(nir_shader *shader, nir_variable *var);

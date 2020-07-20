@@ -128,9 +128,8 @@ nir_remove_unused_io_vars(nir_shader *shader,
    uint64_t *used;
 
    assert(mode == nir_var_shader_in || mode == nir_var_shader_out);
-   struct exec_list *var_list = nir_variable_list_for_mode(shader, mode);
 
-   nir_foreach_variable_safe(var, var_list) {
+   nir_foreach_variable_with_modes_safe(var, shader, mode) {
       if (var->data.patch)
          used = used_by_other_stage_patches;
       else
@@ -151,9 +150,6 @@ nir_remove_unused_io_vars(nir_shader *shader,
          /* This one is invalid, make it a global variable instead */
          var->data.location = 0;
          var->data.mode = nir_var_shader_temp;
-
-         exec_node_remove(&var->node);
-         exec_list_push_tail(&shader->globals, &var->node);
 
          progress = true;
       }
@@ -1067,7 +1063,7 @@ nir_link_opt_varyings(nir_shader *producer, nir_shader *consumer)
 static void
 insert_sorted(struct exec_list *var_list, nir_variable *new_var)
 {
-   nir_foreach_variable(var, var_list) {
+   nir_foreach_variable_in_list(var, var_list) {
       if (var->data.location > new_var->data.location) {
          exec_node_insert_node_before(&var->node, &new_var->node);
          return;
@@ -1100,7 +1096,7 @@ nir_assign_io_var_locations(nir_shader *shader, nir_variable_mode mode,
 
    int UNUSED last_loc = 0;
    bool last_partial = false;
-   nir_foreach_variable(var, &io_vars) {
+   nir_foreach_variable_in_list(var, &io_vars) {
       const struct glsl_type *type = var->type;
       if (nir_is_per_vertex_io(var, stage) || var->data.per_view) {
          assert(glsl_type_is_array(type));
@@ -1203,8 +1199,7 @@ nir_assign_io_var_locations(nir_shader *shader, nir_variable_mode mode,
    if (last_partial)
       location++;
 
-   struct exec_list *var_list = nir_variable_list_for_mode(shader, mode);
-   exec_list_append(var_list, &io_vars);
+   exec_list_append(&shader->variables, &io_vars);
    *size = location;
 }
 

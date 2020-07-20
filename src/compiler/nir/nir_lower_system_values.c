@@ -328,7 +328,8 @@ nir_lower_system_values(nir_shader *shader)
    if (progress)
       nir_remove_dead_derefs(shader);
 
-   exec_list_make_empty(&shader->system_values);
+   nir_foreach_variable_with_modes_safe(var, shader, nir_var_system_value)
+      exec_node_remove(&var->node);
 
    return progress;
 }

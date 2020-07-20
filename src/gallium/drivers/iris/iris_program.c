@@ -286,9 +286,7 @@ iris_fix_edge_flags(nir_shader *nir)
       return false;
    }
 
-   exec_node_remove(&var->node);
    var->data.mode = nir_var_shader_temp;
-   exec_list_push_tail(&nir->globals, &var->node);
    nir->info.outputs_written &= ~VARYING_BIT_EDGE;
    nir->info.inputs_read &= ~VERT_BIT_EDGEFLAG;
    nir_fixup_deref_modes(nir);

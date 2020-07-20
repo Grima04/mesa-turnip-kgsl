@@ -67,7 +67,7 @@ static void dump_info(struct ir3_shader_variant *so, const char *str)
 static void
 insert_sorted(struct exec_list *var_list, nir_variable *new_var)
 {
-	nir_foreach_variable(var, var_list) {
+	nir_foreach_variable_in_list(var, var_list) {
 		if (var->data.location > new_var->data.location) {
 			exec_node_insert_node_before(&var->node, &new_var->node);
 			return;
@@ -85,7 +85,7 @@ sort_varyings(nir_shader *nir, nir_variable_mode mode)
 		exec_node_remove(&var->node);
 		insert_sorted(&new_list, var);
 	}
-	exec_list_move_nodes_to(&new_list, var_list);
+	exec_list_append(&nir->variables, &new_list);
 }
 
 static void

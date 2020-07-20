@@ -312,6 +312,16 @@ create_shadow_temp(struct lower_io_state *state, nir_variable *var)
    return nvar;
 }
 
+static void
+move_variables_to_list(nir_shader *shader, nir_variable_mode mode,
+                       struct exec_list *dst_list)
+{
+   nir_foreach_variable_with_modes_safe(var, shader, mode) {
+      exec_node_remove(&var->node);
+      exec_list_push_tail(dst_list, &var->node);
+   }
+}
+
 void
 nir_lower_io_to_temporaries(nir_shader *shader, nir_function_impl *entrypoint,
                             bool outputs, bool inputs)
@@ -325,15 +335,13 @@ nir_lower_io_to_temporaries(nir_shader *shader, nir_function_impl *entrypoint,
    state.entrypoint = entrypoint;
    state.input_map = _mesa_pointer_hash_table_create(NULL);
 
+   exec_list_make_empty(&state.old_inputs);
    if (inputs)
-      exec_list_move_nodes_to(&shader->inputs, &state.old_inputs);
-   else
-      exec_list_make_empty(&state.old_inputs);
+      move_variables_to_list(shader, nir_var_shader_in, &state.old_inputs);
 
+   exec_list_make_empty(&state.old_outputs);
    if (outputs)
-      exec_list_move_nodes_to(&shader->outputs, &state.old_outputs);
-   else
-      exec_list_make_empty(&state.old_outputs);
+      move_variables_to_list(shader, nir_var_shader_out, &state.old_outputs);
 
    exec_list_make_empty(&state.new_inputs);
    exec_list_make_empty(&state.new_outputs);
@@ -341,13 +349,13 @@ nir_lower_io_to_temporaries(nir_shader *shader, nir_function_impl *entrypoint,
    /* Walk over all of the outputs turn each output into a temporary and
     * make a new variable for the actual output.
     */
-   nir_foreach_variable(var, &state.old_outputs) {
+   nir_foreach_variable_in_list(var, &state.old_outputs) {
       nir_variable *output = create_shadow_temp(&state, var);
       exec_list_push_tail(&state.new_outputs, &output->node);
    }
 
    /* and same for inputs: */
-   nir_foreach_variable(var, &state.old_inputs) {
+   nir_foreach_variable_in_list(var, &state.old_inputs) {
       nir_variable *input = create_shadow_temp(&state, var);
       exec_list_push_tail(&state.new_inputs, &input->node);
       _mesa_hash_table_insert(state.input_map, var, input);
@@ -367,10 +375,10 @@ nir_lower_io_to_temporaries(nir_shader *shader, nir_function_impl *entrypoint,
                                             nir_metadata_dominance);
    }
 
-   exec_list_append(&shader->inputs, &state.new_inputs);
-   exec_list_append(&shader->outputs, &state.new_outputs);
-   exec_list_append(&shader->globals, &state.old_inputs);
-   exec_list_append(&shader->globals, &state.old_outputs);
+   exec_list_append(&shader->variables, &state.old_inputs);
+   exec_list_append(&shader->variables, &state.old_outputs);
+   exec_list_append(&shader->variables, &state.new_inputs);
+   exec_list_append(&shader->variables, &state.new_outputs);
 
    nir_fixup_deref_modes(shader);
 

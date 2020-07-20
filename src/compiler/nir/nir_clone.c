@@ -728,12 +728,7 @@ nir_shader_clone(void *mem_ctx, const nir_shader *s)
    nir_shader *ns = nir_shader_create(mem_ctx, s->info.stage, s->options, NULL);
    state.ns = ns;
 
-   clone_var_list(&state, &ns->uniforms, &s->uniforms);
-   clone_var_list(&state, &ns->inputs,   &s->inputs);
-   clone_var_list(&state, &ns->outputs,  &s->outputs);
-   clone_var_list(&state, &ns->shared,   &s->shared);
-   clone_var_list(&state, &ns->globals,  &s->globals);
-   clone_var_list(&state, &ns->system_values, &s->system_values);
+   clone_var_list(&state, &ns->variables, &s->variables);
 
    /* Go through and clone functions */
    foreach_list_typed(nir_function, fxn, node, &s->functions)
@@ -796,12 +791,7 @@ nir_shader_replace(nir_shader *dst, nir_shader *src)
    /* We have to move all the linked lists over separately because we need the
     * pointers in the list elements to point to the lists in dst and not src.
     */
-   exec_list_move_nodes_to(&src->uniforms,      &dst->uniforms);
-   exec_list_move_nodes_to(&src->inputs,        &dst->inputs);
-   exec_list_move_nodes_to(&src->outputs,       &dst->outputs);
-   exec_list_move_nodes_to(&src->shared,        &dst->shared);
-   exec_list_move_nodes_to(&src->globals,       &dst->globals);
-   exec_list_move_nodes_to(&src->system_values, &dst->system_values);
+   exec_list_move_nodes_to(&src->variables, &dst->variables);
 
    /* Now move the functions over.  This takes a tiny bit more work */
    exec_list_move_nodes_to(&src->functions, &dst->functions);

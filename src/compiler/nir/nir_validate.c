@@ -1288,38 +1288,19 @@ nir_validate_shader(nir_shader *shader, const char *when)
 
    state.shader = shader;
 
-   exec_list_validate(&shader->uniforms);
-   nir_foreach_variable(var, &shader->uniforms) {
-      validate_var_decl(var, nir_var_uniform |
-                             nir_var_mem_ubo |
-                             nir_var_mem_ssbo,
-                        &state);
-   }
+   nir_variable_mode valid_modes =
+      nir_var_shader_in |
+      nir_var_shader_out |
+      nir_var_shader_temp |
+      nir_var_uniform |
+      nir_var_mem_ubo |
+      nir_var_system_value |
+      nir_var_mem_ssbo |
+      nir_var_mem_shared;
 
-   exec_list_validate(&shader->inputs);
-   nir_foreach_variable(var, &shader->inputs) {
-     validate_var_decl(var, nir_var_shader_in, &state);
-   }
-
-   exec_list_validate(&shader->outputs);
-   nir_foreach_variable(var, &shader->outputs) {
-     validate_var_decl(var, nir_var_shader_out, &state);
-   }
-
-   exec_list_validate(&shader->shared);
-   nir_foreach_variable(var, &shader->shared) {
-      validate_var_decl(var, nir_var_mem_shared, &state);
-   }
-
-   exec_list_validate(&shader->globals);
-   nir_foreach_variable(var, &shader->globals) {
-     validate_var_decl(var, nir_var_shader_temp, &state);
-   }
-
-   exec_list_validate(&shader->system_values);
-   nir_foreach_variable(var, &shader->system_values) {
-     validate_var_decl(var, nir_var_system_value, &state);
-   }
+   exec_list_validate(&shader->variables);
+   nir_foreach_variable_in_shader(var, shader)
+     validate_var_decl(var, valid_modes, &state);
 
    exec_list_validate(&shader->functions);
    foreach_list_typed(nir_function, func, node, &shader->functions) {

@@ -117,14 +117,12 @@ st_nir_assign_vs_in_locations(struct nir_shader *nir)
             util_bitcount64(nir->info.inputs_read &
                               BITFIELD64_MASK(var->data.location));
       } else {
-         /* Move unused input variables to the globals list (with no
+         /* Convert unused input variables to shader_temp (with no
           * initialization), to avoid confusing drivers looking through the
           * inputs array and expecting to find inputs with a driver_location
           * set.
           */
-         exec_node_remove(&var->node);
          var->data.mode = nir_var_shader_temp;
-         exec_list_push_tail(&nir->globals, &var->node);
          removed_inputs = true;
       }
    }

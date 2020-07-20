@@ -936,27 +936,26 @@ print_intrinsic_instr(nir_intrinsic_instr *instr, print_state *state)
    if (!state->shader)
       return;
 
-   struct exec_list *var_list = NULL;
-
+   nir_variable_mode var_mode;
    switch (instr->intrinsic) {
    case nir_intrinsic_load_uniform:
-      var_list = &state->shader->uniforms;
+      var_mode = nir_var_uniform;
       break;
    case nir_intrinsic_load_input:
    case nir_intrinsic_load_interpolated_input:
    case nir_intrinsic_load_per_vertex_input:
-      var_list = &state->shader->inputs;
+      var_mode = nir_var_shader_in;
       break;
    case nir_intrinsic_load_output:
    case nir_intrinsic_store_output:
    case nir_intrinsic_store_per_vertex_output:
-      var_list = &state->shader->outputs;
+      var_mode = nir_var_shader_out;
       break;
    default:
       return;
    }
 
-   nir_foreach_variable(var, var_list) {
+   nir_foreach_variable_with_modes(var, state->shader, var_mode) {
       if ((var->data.driver_location == nir_intrinsic_base(instr)) &&
           (instr->intrinsic == nir_intrinsic_load_uniform ||
            (nir_intrinsic_component(instr) >= var->data.location_frac  &&
@@ -1519,29 +1518,8 @@ nir_print_shader_annotated(nir_shader *shader, FILE *fp,
    if (shader->scratch_size)
       fprintf(fp, "scratch: %u\n", shader->scratch_size);
 
-   nir_foreach_variable(var, &shader->uniforms) {
+   nir_foreach_variable_in_shader(var, shader)
       print_var_decl(var, &state);
-   }
-
-   nir_foreach_variable(var, &shader->inputs) {
-      print_var_decl(var, &state);
-   }
-
-   nir_foreach_variable(var, &shader->outputs) {
-      print_var_decl(var, &state);
-   }
-
-   nir_foreach_variable(var, &shader->shared) {
-      print_var_decl(var, &state);
-   }
-
-   nir_foreach_variable(var, &shader->globals) {
-      print_var_decl(var, &state);
-   }
-
-   nir_foreach_variable(var, &shader->system_values) {
-      print_var_decl(var, &state);
-   }
 
    foreach_list_typed(nir_function, func, node, &shader->functions) {
       print_function(func, &state);

@@ -65,12 +65,7 @@ create_clipdist_var(nir_shader *shader,
    } else
       var->type = glsl_vec4_type();
 
-   if (output) {
-      exec_list_push_tail(&shader->outputs, &var->node);
-   }
-   else {
-      exec_list_push_tail(&shader->inputs, &var->node);
-   }
+   nir_shader_add_variable(shader, var);
    return var;
 }
 
@@ -245,9 +240,7 @@ lower_clip_outputs(nir_builder *b, nir_variable *position,
       cv = nir_load_var(b, clipvertex ? clipvertex : position);
 
       if (clipvertex) {
-         exec_node_remove(&clipvertex->node);
          clipvertex->data.mode = nir_var_shader_temp;
-         exec_list_push_tail(&b->shader->globals, &clipvertex->node);
          nir_fixup_deref_modes(b->shader);
       }
    } else {

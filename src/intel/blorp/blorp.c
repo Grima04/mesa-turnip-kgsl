@@ -180,7 +180,6 @@ blorp_compile_fs(struct blorp_context *blorp, void *mem_ctx,
 
    memset(wm_prog_data, 0, sizeof(*wm_prog_data));
 
-   assert(exec_list_is_empty(&nir->uniforms));
    wm_prog_data->base.nr_params = 0;
    wm_prog_data->base.param = NULL;
 

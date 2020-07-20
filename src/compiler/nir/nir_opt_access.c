@@ -322,7 +322,9 @@ nir_opt_access(nir_shader *shader)
       }
    }
 
-   nir_foreach_variable(var, &shader->uniforms)
+   nir_foreach_variable_with_modes(var, shader, nir_var_uniform |
+                                                nir_var_mem_ubo |
+                                                nir_var_mem_ssbo)
       var_progress |= process_variable(&state, var);
 
    nir_foreach_function(func, shader) {

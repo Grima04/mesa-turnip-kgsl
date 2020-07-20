@@ -1470,7 +1470,10 @@ lower_vars_to_explicit(nir_shader *shader,
    default:
       unreachable("Unsupported mode");
    }
-   nir_foreach_variable(var, vars) {
+   nir_foreach_variable_in_list(var, vars) {
+      if (var->data.mode != mode)
+         continue;
+
       unsigned size, align;
       const struct glsl_type *explicit_type =
          glsl_get_explicit_type_for_size_align(var->type, type_info, &size, &align);
@@ -1517,9 +1520,9 @@ nir_lower_vars_to_explicit_types(nir_shader *shader,
    bool progress = false;
 
    if (modes & nir_var_mem_shared)
-      progress |= lower_vars_to_explicit(shader, &shader->shared, nir_var_mem_shared, type_info);
+      progress |= lower_vars_to_explicit(shader, &shader->variables, nir_var_mem_shared, type_info);
    if (modes & nir_var_shader_temp)
-      progress |= lower_vars_to_explicit(shader, &shader->globals, nir_var_shader_temp, type_info);
+      progress |= lower_vars_to_explicit(shader, &shader->variables, nir_var_shader_temp, type_info);
 
    nir_foreach_function(function, shader) {
       if (function->impl) {

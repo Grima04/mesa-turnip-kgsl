@@ -2313,7 +2313,9 @@ nir_to_spirv(struct nir_shader *s, const struct pipe_stream_output_info *so_info
 
    if (so_info)
       emit_so_info(&ctx, util_last_bit64(s->info.outputs_written), so_info, local_so_info);
-   nir_foreach_variable(var, &s->uniforms)
+   nir_foreach_variable_with_modes(var, s, nir_var_uniform |
+                                           nir_var_mem_ubo |
+                                           nir_var_mem_ssbo)
       emit_uniform(&ctx, var);
 
    if (s->info.stage == MESA_SHADER_FRAGMENT) {
