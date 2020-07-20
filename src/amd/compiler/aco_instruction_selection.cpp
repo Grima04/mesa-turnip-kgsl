@@ -3231,7 +3231,9 @@ void emit_load(isel_context *ctx, Builder& bld, const LoadEmitInfo *info)
 
       /* align offset down if needed */
       Operand aligned_offset = offset;
+      unsigned align = align_offset ? 1 << (ffs(align_offset) - 1) : align_mul;
       if (need_to_align_offset) {
+         align = 4;
          Temp offset_tmp = offset.isTemp() ? offset.getTemp() : Temp();
          if (offset.isConstant()) {
             aligned_offset = Operand(offset.constantValue() & 0xfffffffcu);
@@ -3251,7 +3253,6 @@ void emit_load(isel_context *ctx, Builder& bld, const LoadEmitInfo *info)
       Temp aligned_offset_tmp = aligned_offset.isTemp() ? aligned_offset.getTemp() :
                                 bld.copy(bld.def(s1), aligned_offset);
 
-      unsigned align = align_offset ? 1 << (ffs(align_offset) - 1) : align_mul;
       Temp val = callback(bld, info, aligned_offset_tmp, bytes_needed, align,
                           reduced_const_offset, byte_align ? Temp() : info->dst);
 
@@ -3313,7 +3314,7 @@ void emit_load(isel_context *ctx, Builder& bld, const LoadEmitInfo *info)
       if (num_tmps > 1) {
          aco_ptr<Pseudo_instruction> vec{create_instruction<Pseudo_instruction>(
             aco_opcode::p_create_vector, Format::PSEUDO, num_tmps, 1)};
-         for (unsigned i = 0; i < num_vals; i++)
+         for (unsigned i = 0; i < num_tmps; i++)
             vec->operands[i] = Operand(tmp[i]);
          tmp[0] = bld.tmp(RegClass::get(reg_type, tmp_size));
          vec->definitions[0] = Definition(tmp[0]);
@@ -3512,10 +3513,10 @@ Temp mubuf_load_callback(Builder& bld, const LoadEmitInfo *info,
 
    unsigned bytes_size = 0;
    aco_opcode op;
-   if (bytes_needed == 1) {
+   if (bytes_needed == 1 || align_ % 2) {
       bytes_size = 1;
       op = aco_opcode::buffer_load_ubyte;
-   } else if (bytes_needed == 2) {
+   } else if (bytes_needed == 2 || align_ % 4) {
       bytes_size = 2;
       op = aco_opcode::buffer_load_ushort;
    } else if (bytes_needed <= 4) {
@@ -3542,7 +3543,7 @@ Temp mubuf_load_callback(Builder& bld, const LoadEmitInfo *info,
    mubuf->can_reorder = info->can_reorder;
    mubuf->offset = const_offset;
    mubuf->swizzled = info->swizzle_component_size != 0;
-   RegClass rc = RegClass::get(RegType::vgpr, align(bytes_size, 4));
+   RegClass rc = RegClass::get(RegType::vgpr, bytes_size);
    Temp val = dst_hint.id() && rc == dst_hint.regClass() ? dst_hint : bld.tmp(rc);
    mubuf->definitions[0] = Definition(val);
    bld.insert(std::move(mubuf));
@@ -3551,6 +3552,7 @@ Temp mubuf_load_callback(Builder& bld, const LoadEmitInfo *info,
 }
 
 static auto emit_mubuf_load = emit_load<mubuf_load_callback, true, true, 4096>;
+static auto emit_scratch_load = emit_load<mubuf_load_callback, false, true, 4096>;
 
 Temp get_gfx6_global_rsrc(Builder& bld, Temp addr)
 {
@@ -6849,7 +6851,7 @@ Temp get_scratch_resource(isel_context *ctx)
       scratch_addr = bld.smem(aco_opcode::s_load_dwordx2, bld.def(s2), scratch_addr, Operand(0u));
 
    uint32_t rsrc_conf = S_008F0C_ADD_TID_ENABLE(1) |
-                        S_008F0C_INDEX_STRIDE(ctx->program->wave_size == 64 ? 3 : 2);;
+                        S_008F0C_INDEX_STRIDE(ctx->program->wave_size == 64 ? 3 : 2);
 
    if (ctx->program->chip_class >= GFX10) {
       rsrc_conf |= S_008F0C_FORMAT(V_008F0C_IMG_FORMAT_32_FLOAT) |
@@ -6860,9 +6862,9 @@ Temp get_scratch_resource(isel_context *ctx)
                    S_008F0C_DATA_FORMAT(V_008F0C_BUF_DATA_FORMAT_32);
    }
 
-   /* older generations need element size = 16 bytes. element size removed in GFX9 */
+   /* older generations need element size = 4 bytes. element size removed in GFX9 */
    if (ctx->program->chip_class <= GFX8)
-      rsrc_conf |= S_008F0C_ELEMENT_SIZE(3);
+      rsrc_conf |= S_008F0C_ELEMENT_SIZE(1);
 
    return bld.pseudo(aco_opcode::p_create_vector, bld.def(s4), scratch_addr, Operand(-1u), Operand(rsrc_conf));
 }
@@ -6877,10 +6879,10 @@ void visit_load_scratch(isel_context *ctx, nir_intrinsic_instr *instr) {
                         instr->dest.ssa.bit_size / 8u, rsrc};
    info.align_mul = nir_intrinsic_align_mul(instr);
    info.align_offset = nir_intrinsic_align_offset(instr);
-   info.swizzle_component_size = 16;
+   info.swizzle_component_size = ctx->program->chip_class <= GFX8 ? 4 : 0;
    info.can_reorder = false;
    info.soffset = ctx->program->scratch_offset;
-   emit_mubuf_load(ctx, bld, &info);
+   emit_scratch_load(ctx, bld, &info);
 }
 
 void visit_store_scratch(isel_context *ctx, nir_intrinsic_instr *instr) {
@@ -6895,8 +6897,9 @@ void visit_store_scratch(isel_context *ctx, nir_intrinsic_instr *instr) {
    unsigned write_count = 0;
    Temp write_datas[32];
    unsigned offsets[32];
+   unsigned swizzle_component_size = ctx->program->chip_class <= GFX8 ? 4 : 16;
    split_buffer_store(ctx, instr, false, RegType::vgpr, data, writemask,
-                      16, &write_count, write_datas, offsets);
+                      swizzle_component_size, &write_count, write_datas, offsets);
 
    for (unsigned i = 0; i < write_count; i++) {
       aco_opcode op = get_buffer_store_op(false, write_datas[i].bytes());
