@@ -7,8 +7,12 @@ mount -t sysfs none /sys
 mount -t devtmpfs none /dev || echo possibly already mounted
 mkdir -p /dev/pts
 mount -t devpts devpts /dev/pts
+mount -t tmpfs tmpfs /tmp
 
 . /set-job-env-vars.sh
+
+# Store Mesa's disk cache under /tmp, rather than sending it out over NFS.
+export XDG_CACHE_HOME=/tmp
 
 echo "nameserver 8.8.8.8" > /etc/resolv.conf
 
