@@ -219,6 +219,7 @@ files_libnouveau = files(
   'nvc0/nve4_compute.c',
   'nvc0/nve4_compute.h',
   'nvc0/nve4_compute.xml.h',
+  'nvc0/nve4_copy.xml.h',
   'nvc0/nve4_p2mf.xml.h',
 )
 
