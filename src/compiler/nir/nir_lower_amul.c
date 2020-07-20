@@ -236,6 +236,9 @@ nir_lower_amul(nir_shader *shader,
    int max_slot = 0;
 
    nir_foreach_variable (var, &shader->uniforms) {
+      if (!(var->data.mode & (nir_var_mem_ubo | nir_var_mem_ssbo)))
+         continue;
+
       int base = var->data.binding;
       int size = MAX2(1, glsl_array_size(var->type));
 
