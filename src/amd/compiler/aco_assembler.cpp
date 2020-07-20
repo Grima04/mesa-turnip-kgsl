@@ -622,6 +622,8 @@ void emit_instruction(asm_context& ctx, std::vector<uint32_t>& out, Instruction*
          encoding |= dpp->neg[1] << 22;
          encoding |= dpp->abs[0] << 21;
          encoding |= dpp->neg[0] << 20;
+         if (ctx.chip_class >= GFX10)
+            encoding |= 1 << 18; /* set Fetch Inactive to match GFX9 behaviour */
          encoding |= dpp->bound_ctrl << 19;
          encoding |= dpp->dpp_ctrl << 8;
          encoding |= (0xFF) & dpp_op.physReg();
