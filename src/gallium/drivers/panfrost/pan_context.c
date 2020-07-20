@@ -1417,7 +1417,7 @@ panfrost_get_query_result(struct pipe_context *pipe,
 
         case PIPE_QUERY_PRIMITIVES_GENERATED:
         case PIPE_QUERY_PRIMITIVES_EMITTED:
-                panfrost_flush_all_batches(ctx, true);
+                panfrost_flush_all_batches(ctx, false);
                 vresult->u64 = query->end - query->start;
                 break;
 
