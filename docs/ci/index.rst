@@ -126,6 +126,28 @@ report to mesa-dev@lists.freedesktop.org after the fact explaining
 what happened and what the mitigation plan is for that failure next
 time.
 
+Personal runners
+----------------
+
+Mesa's CI is currently run primarily on packet.net's m1xlarge nodes
+(2.2Ghz Sandybridge), with each job getting 8 cores allocated.  You
+can speed up your personal CI builds (and marge-bot merges) by using a
+faster personal machine as a runner.  You can find the gitlab-runner
+package in debian, or use gitlab's own builds.
+
+To do so, follow `gitlab's instructions
+<https://docs.gitlab.com/ce/ci/runners/#create-a-specific-runner>`__ to
+register your personal gitlab runner in your Mesa fork.  Then, tell
+Mesa how many jobs it should serve (``concurrent=``) and how many
+cores those jobs should use (``FDO_CI_CONCURRENT=``) by editing these
+lines in ``/etc/gitlab-runner/config.toml``, for example::
+
+  concurrent = 2
+
+  [[runners]]
+    environment = ["FDO_CI_CONCURRENT=16"]
+
+
 Docker caching
 --------------
 
