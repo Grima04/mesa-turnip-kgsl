@@ -140,30 +140,30 @@ load_glsl(unsigned num_files, char* const* files, gl_shader_stage stage)
 
    switch (stage) {
    case MESA_SHADER_VERTEX:
-      nir_assign_var_locations(&nir->inputs, &nir->num_inputs,
+      nir_assign_var_locations(nir, nir_var_shader_in, &nir->num_inputs,
                                st_glsl_type_size);
 
       /* Re-lower global vars, to deal with any dead VS inputs. */
       NIR_PASS_V(nir, nir_lower_global_vars_to_local);
 
       sort_varyings(&nir->outputs);
-      nir_assign_var_locations(&nir->outputs, &nir->num_outputs,
+      nir_assign_var_locations(nir, nir_var_shader_out, &nir->num_outputs,
                                st_glsl_type_size);
       fixup_varying_slots(&nir->outputs);
       break;
    case MESA_SHADER_FRAGMENT:
       sort_varyings(&nir->inputs);
-      nir_assign_var_locations(&nir->inputs, &nir->num_inputs,
+      nir_assign_var_locations(nir, nir_var_shader_in, &nir->num_inputs,
                                st_glsl_type_size);
       fixup_varying_slots(&nir->inputs);
-      nir_assign_var_locations(&nir->outputs, &nir->num_outputs,
+      nir_assign_var_locations(nir, nir_var_shader_out, &nir->num_outputs,
                                st_glsl_type_size);
       break;
    default:
       errx(1, "unhandled shader stage: %d", stage);
    }
 
-   nir_assign_var_locations(&nir->uniforms,
+   nir_assign_var_locations(nir, nir_var_uniform,
                             &nir->num_uniforms,
                             st_glsl_type_size);
 

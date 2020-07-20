@@ -121,19 +121,13 @@ shared_atomic_for_deref(nir_intrinsic_op deref_op)
 }
 
 void
-nir_assign_var_locations(struct exec_list *var_list, unsigned *size,
+nir_assign_var_locations(nir_shader *shader, nir_variable_mode mode,
+                         unsigned *size,
                          int (*type_size)(const struct glsl_type *, bool))
 {
    unsigned location = 0;
 
-   nir_foreach_variable(var, var_list) {
-      /*
-       * UBOs have their own address spaces, so don't count them towards the
-       * number of global uniforms
-       */
-      if (var->data.mode == nir_var_mem_ubo || var->data.mode == nir_var_mem_ssbo)
-         continue;
-
+   nir_foreach_variable_with_modes(var, shader, mode) {
       var->data.driver_location = location;
       bool bindless_type_size = var->data.mode == nir_var_shader_in ||
                                 var->data.mode == nir_var_shader_out ||
