@@ -841,7 +841,6 @@ piglit-quick_gl:
     NIR_VALIDATE: 0
     PIGLIT_OPTIONS: >
       --process-isolation false
-      -x arb_gpu_shader5
       -x egl_ext_device_
       -x egl_ext_platform_device
       -x ext_timer_query@time-elapsed
