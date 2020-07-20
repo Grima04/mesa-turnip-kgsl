@@ -63,12 +63,13 @@ type_size(const struct glsl_type *type)
  * with the anything->tgsi->nir path.
  */
 static void
-st_nir_fixup_varying_slots(struct st_context *st, struct exec_list *var_list)
+st_nir_fixup_varying_slots(struct st_context *st, nir_shader *shader,
+                           nir_variable_mode mode)
 {
    if (st->needs_texcoord_semantic)
       return;
 
-   nir_foreach_variable(var, var_list) {
+   nir_foreach_variable_with_modes(var, shader, mode) {
       if (var->data.location >= VARYING_SLOT_VAR0) {
          var->data.location += 9;
       } else if (var->data.location == VARYING_SLOT_PNTC) {
@@ -856,24 +857,24 @@ st_nir_assign_varying_locations(struct st_context *st, nir_shader *nir)
       nir_assign_io_var_locations(nir, nir_var_shader_out,
                                   &nir->num_outputs,
                                   nir->info.stage);
-      st_nir_fixup_varying_slots(st, &nir->outputs);
+      st_nir_fixup_varying_slots(st, nir, nir_var_shader_out);
    } else if (nir->info.stage == MESA_SHADER_GEOMETRY ||
               nir->info.stage == MESA_SHADER_TESS_CTRL ||
               nir->info.stage == MESA_SHADER_TESS_EVAL) {
       nir_assign_io_var_locations(nir, nir_var_shader_in,
                                   &nir->num_inputs,
                                   nir->info.stage);
-      st_nir_fixup_varying_slots(st, &nir->inputs);
+      st_nir_fixup_varying_slots(st, nir, nir_var_shader_in);
 
       nir_assign_io_var_locations(nir, nir_var_shader_out,
                                   &nir->num_outputs,
                                   nir->info.stage);
-      st_nir_fixup_varying_slots(st, &nir->outputs);
+      st_nir_fixup_varying_slots(st, nir, nir_var_shader_out);
    } else if (nir->info.stage == MESA_SHADER_FRAGMENT) {
       nir_assign_io_var_locations(nir, nir_var_shader_in,
                                   &nir->num_inputs,
                                   nir->info.stage);
-      st_nir_fixup_varying_slots(st, &nir->inputs);
+      st_nir_fixup_varying_slots(st, nir, nir_var_shader_in);
       nir_assign_io_var_locations(nir, nir_var_shader_out,
                                   &nir->num_outputs,
                                   nir->info.stage);
