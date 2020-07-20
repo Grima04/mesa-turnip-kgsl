@@ -571,14 +571,13 @@ panfrost_fence_reference(struct pipe_screen *pscreen,
                          struct pipe_fence_handle **ptr,
                          struct pipe_fence_handle *fence)
 {
+        struct panfrost_device *dev = pan_device(pscreen);
         struct panfrost_fence **p = (struct panfrost_fence **)ptr;
         struct panfrost_fence *f = (struct panfrost_fence *)fence;
         struct panfrost_fence *old = *p;
 
         if (pipe_reference(&(*p)->reference, &f->reference)) {
-                util_dynarray_foreach(&old->syncfds, int, fd)
-                        close(*fd);
-                util_dynarray_fini(&old->syncfds);
+                drmSyncobjDestroy(dev->fd, old->syncobj);
                 free(old);
         }
         *p = f;
@@ -592,68 +591,34 @@ panfrost_fence_finish(struct pipe_screen *pscreen,
 {
         struct panfrost_device *dev = pan_device(pscreen);
         struct panfrost_fence *f = (struct panfrost_fence *)fence;
-        struct util_dynarray syncobjs;
         int ret;
 
-        /* All fences were already signaled */
-        if (!util_dynarray_num_elements(&f->syncfds, int))
+        if (f->signaled)
                 return true;
-
-        util_dynarray_init(&syncobjs, NULL);
-        util_dynarray_foreach(&f->syncfds, int, fd) {
-                uint32_t syncobj;
-
-                ret = drmSyncobjCreate(dev->fd, 0, &syncobj);
-                assert(!ret);
-
-                ret = drmSyncobjImportSyncFile(dev->fd, syncobj, *fd);
-                assert(!ret);
-                util_dynarray_append(&syncobjs, uint32_t, syncobj);
-        }
 
         uint64_t abs_timeout = os_time_get_absolute_timeout(timeout);
         if (abs_timeout == OS_TIMEOUT_INFINITE)
                 abs_timeout = INT64_MAX;
 
-        ret = drmSyncobjWait(dev->fd, util_dynarray_begin(&syncobjs),
-                             util_dynarray_num_elements(&syncobjs, uint32_t),
+        ret = drmSyncobjWait(dev->fd, &f->syncobj,
+                             1,
                              abs_timeout, DRM_SYNCOBJ_WAIT_FLAGS_WAIT_ALL,
                              NULL);
 
-        util_dynarray_foreach(&syncobjs, uint32_t, syncobj)
-                drmSyncobjDestroy(dev->fd, *syncobj);
-
-        return ret >= 0;
+        f->signaled = (ret >= 0);
+        return f->signaled;
 }
 
 struct panfrost_fence *
 panfrost_fence_create(struct panfrost_context *ctx,
-                      struct util_dynarray *fences)
+                      uint32_t syncobj)
 {
-        struct panfrost_device *device = pan_device(ctx->base.screen);
         struct panfrost_fence *f = calloc(1, sizeof(*f));
         if (!f)
                 return NULL;
 
-        util_dynarray_init(&f->syncfds, NULL);
-
-        /* Export fences from all pending batches. */
-        util_dynarray_foreach(fences, struct panfrost_batch_fence *, fence) {
-                int fd = -1;
-
-                /* The fence is already signaled, no need to export it. */
-                if ((*fence)->signaled)
-                        continue;
-
-                drmSyncobjExportSyncFile(device->fd, (*fence)->syncobj, &fd);
-                if (fd == -1)
-                        fprintf(stderr, "export failed: %m\n");
-
-                assert(fd != -1);
-                util_dynarray_append(&f->syncfds, int, fd);
-        }
-
         pipe_reference_init(&f->reference, 1);
+        f->syncobj = syncobj;
 
         return f;
 }

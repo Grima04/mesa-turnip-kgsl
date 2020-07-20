@@ -240,35 +240,18 @@ panfrost_flush(
 {
         struct panfrost_context *ctx = pan_context(pipe);
         struct panfrost_device *dev = pan_device(pipe->screen);
-        struct util_dynarray fences;
+        uint32_t syncobj = 0;
 
-        /* We must collect the fences before the flush is done, otherwise we'll
-         * lose track of them.
-         */
-        if (fence) {
-                util_dynarray_init(&fences, NULL);
-                hash_table_foreach(ctx->batches, hentry) {
-                        struct panfrost_batch *batch = hentry->data;
-
-                        panfrost_batch_fence_reference(batch->out_sync);
-                        util_dynarray_append(&fences,
-                                             struct panfrost_batch_fence *,
-                                             batch->out_sync);
-                }
-        }
+        if (fence)
+                drmSyncobjCreate(dev->fd, 0, &syncobj);
 
         /* Submit all pending jobs */
-        panfrost_flush_all_batches(ctx);
+        panfrost_flush_all_batches(ctx, syncobj);
 
         if (fence) {
-                struct panfrost_fence *f = panfrost_fence_create(ctx, &fences);
+                struct panfrost_fence *f = panfrost_fence_create(ctx, syncobj);
                 pipe->screen->fence_reference(pipe->screen, fence, NULL);
                 *fence = (struct pipe_fence_handle *)f;
-
-                util_dynarray_foreach(&fences, struct panfrost_batch_fence *, fence)
-                        panfrost_batch_fence_unreference(*fence);
-
-                util_dynarray_fini(&fences);
         }
 
         if (dev->debug & PAN_DBG_TRACE)
@@ -279,7 +262,7 @@ static void
 panfrost_texture_barrier(struct pipe_context *pipe, unsigned flags)
 {
         struct panfrost_context *ctx = pan_context(pipe);
-        panfrost_flush_all_batches(ctx);
+        panfrost_flush_all_batches(ctx, 0);
 }
 
 #define DEFINE_CASE(c) case PIPE_PRIM_##c: return MALI_##c;
@@ -1417,7 +1400,7 @@ panfrost_get_query_result(struct pipe_context *pipe,
 
         case PIPE_QUERY_PRIMITIVES_GENERATED:
         case PIPE_QUERY_PRIMITIVES_EMITTED:
-                panfrost_flush_all_batches(ctx);
+                panfrost_flush_all_batches(ctx, 0);
                 vresult->u64 = query->end - query->start;
                 break;
 

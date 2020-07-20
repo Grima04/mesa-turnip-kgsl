@@ -82,7 +82,8 @@ struct panfrost_query {
 
 struct panfrost_fence {
         struct pipe_reference reference;
-        struct util_dynarray syncfds;
+        uint32_t syncobj;
+        bool signaled;
 };
 
 struct panfrost_streamout {
