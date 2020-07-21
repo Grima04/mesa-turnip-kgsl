@@ -30,6 +30,8 @@ kernel+rootfs_armhf:
 .lava-test:
   extends:
     - .ci-run-policy
+  # Cancel job if a newer commit is pushed to the same branch
+  interruptible: true
   variables:
     GIT_STRATEGY: none # testing doesn't build anything from source
     ENV_VARS: "DEQP_PARALLEL=6"

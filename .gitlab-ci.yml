@@ -64,6 +64,8 @@ pages:
 
 test-docs:
   extends: .docs-base
+  # Cancel job if a newer commit is pushed to the same branch
+  interruptible: true
   stage: container+docs
   rules:
     - *ignore_scheduled_pipelines
@@ -109,8 +111,6 @@ test-docs:
     max: 2
     when:
       - runner_system_failure
-  # Cancel CI run if a newer commit is pushed to the same branch
-  interruptible: true
 
 success:
   stage: success
@@ -449,6 +449,8 @@ make git archive:
 # Shared between windows and Linux
 .build-common:
   extends: .ci-run-policy
+  # Cancel job if a newer commit is pushed to the same branch
+  interruptible: true
   artifacts:
     name: "mesa_${CI_JOB_NAME}"
     when: always
@@ -784,6 +786,8 @@ meson-mingw32-x86_64:
 .test:
   extends:
     - .ci-run-policy
+  # Cancel job if a newer commit is pushed to the same branch
+  interruptible: true
   variables:
     GIT_STRATEGY: none # testing doesn't build anything from source
   before_script:
@@ -1115,6 +1119,8 @@ arm64_a630_vk_sysmem:
   extends:
     - .ci-run-policy
     - .test
+  # Cancel job if a newer commit is pushed to the same branch
+  interruptible: true
   stage: test
   artifacts:
     when: always
