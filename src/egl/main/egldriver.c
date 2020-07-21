@@ -49,17 +49,10 @@
 extern _EGLDriver _eglDriver;
 
 static _EGLDriver *
-_eglGetDriver(void)
-{
-   return &_eglDriver;
-}
-
-static _EGLDriver *
 _eglMatchAndInitialize(_EGLDisplay *disp)
 {
-   if (_eglGetDriver())
-      if (_eglDriver.Initialize(&_eglDriver, disp))
-         return &_eglDriver;
+   if (_eglDriver.Initialize(&_eglDriver, disp))
+      return &_eglDriver;
 
    return NULL;
 }
@@ -98,7 +91,7 @@ _eglMatchDriver(_EGLDisplay *disp)
 __eglMustCastToProperFunctionPointerType
 _eglGetDriverProc(const char *procname)
 {
-   if (_eglGetDriver() && _eglDriver.GetProcAddress)
+   if (_eglDriver.GetProcAddress)
       return _eglDriver.GetProcAddress(&_eglDriver, procname);
 
    return NULL;
