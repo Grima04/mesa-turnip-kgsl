@@ -32,6 +32,7 @@ private:
    bool emit_image_load(const nir_intrinsic_instr *intrin);
    bool emit_image_store(const nir_intrinsic_instr *intrin);
    bool emit_ssbo_atomic_op(const nir_intrinsic_instr *intrin);
+   bool emit_buffer_size(const nir_intrinsic_instr *intrin);
 
    bool fetch_return_value(const nir_intrinsic_instr *intrin);
 

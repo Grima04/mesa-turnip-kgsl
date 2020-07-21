@@ -98,6 +98,8 @@ bool EmitSSBOInstruction::do_emit(nir_instr* instr)
       return emit_image_load(intr);
    case nir_intrinsic_image_size:
       return emit_image_size(intr);
+   case nir_intrinsic_get_buffer_size:
+      return emit_buffer_size(intr);
    default:
       return false;
    }
@@ -583,6 +585,32 @@ bool EmitSSBOInstruction::emit_image_size(const nir_intrinsic_instr *intrin)
          EmitInstruction::last_write));
       }
    }
+   return true;
+}
+
+bool EmitSSBOInstruction::emit_buffer_size(const nir_intrinsic_instr *intr)
+{
+   std::array<PValue,4> dst_elms;
+
+
+   for (uint16_t i = 0; i < 4; ++i) {
+      dst_elms[i] = from_nir(intr->dest, (i < intr->dest.ssa.num_components) ? i : 7);
+   }
+
+   GPRVector dst(dst_elms);
+   GPRVector src(0,{4,4,4,4});
+
+   auto const_offset = nir_src_as_const_value(intr->src[0]);
+   auto dyn_offset = PValue();
+   int res_id = R600_IMAGE_REAL_RESOURCE_OFFSET;
+   if (const_offset)
+      res_id += const_offset[0].u32;
+   else
+      assert(0 && "dynamic buffer offset not supported in buffer_size");
+
+   emit_instruction(new FetchInstruction(dst, PValue(new GPRValue(0, 7)),
+                    res_id, bim_none));
+
    return true;
 }
 
