@@ -104,12 +104,12 @@ split_variable(struct nir_variable *var, nir_shader *shader,
 }
 
 static bool
-split_variables_in_list(struct exec_list *var_list, nir_shader *shader,
+split_variables_in_list(nir_shader *shader, nir_variable_mode mode,
                         struct hash_table *var_to_member_map, void *dead_ctx)
 {
    bool progress = false;
 
-   nir_foreach_variable_safe(var, var_list) {
+   nir_foreach_variable_with_modes_safe(var, shader, mode) {
       if (var->num_members == 0)
          continue;
 
@@ -177,11 +177,11 @@ nir_split_per_member_structs(nir_shader *shader)
    struct hash_table *var_to_member_map =
       _mesa_pointer_hash_table_create(dead_ctx);
 
-   progress |= split_variables_in_list(&shader->inputs, shader,
+   progress |= split_variables_in_list(shader, nir_var_shader_in,
                                        var_to_member_map, dead_ctx);
-   progress |= split_variables_in_list(&shader->outputs, shader,
+   progress |= split_variables_in_list(shader, nir_var_shader_out,
                                        var_to_member_map, dead_ctx);
-   progress |= split_variables_in_list(&shader->system_values, shader,
+   progress |= split_variables_in_list(shader, nir_var_system_value,
                                        var_to_member_map, dead_ctx);
    if (!progress) {
       ralloc_free(dead_ctx);
