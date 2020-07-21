@@ -96,6 +96,7 @@ struct etna_resource {
 
    enum etna_resource_status status;
 
+   mtx_t lock; /* Lock to protect pending_ctx */
    struct set *pending_ctx;
 };
 
