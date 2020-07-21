@@ -88,6 +88,7 @@ EXTENSIONS = [
     Extension('VK_EXT_private_data',                      1, True),
     Extension('VK_EXT_shader_stencil_export',             1, True),
     Extension('VK_EXT_depth_clip_enable',                 1, True),
+    Extension('VK_KHR_draw_indirect_count',               1, True),
 ]
 
 MAX_API_VERSION = VkVersion(MAX_API_VERSION)

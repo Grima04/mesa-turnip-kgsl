@@ -669,6 +669,59 @@ tu_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
          features->shaderDrawParameters                = true;
          break;
       }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES: {
+         VkPhysicalDeviceVulkan12Features *features = (void *) ext;
+         features->samplerMirrorClampToEdge            = true;
+         features->drawIndirectCount                   = true;
+         features->storageBuffer8BitAccess             = false;
+         features->uniformAndStorageBuffer8BitAccess   = false;
+         features->storagePushConstant8                = false;
+         features->shaderBufferInt64Atomics            = false;
+         features->shaderSharedInt64Atomics            = false;
+         features->shaderFloat16                       = false;
+         features->shaderInt8                          = false;
+
+         features->descriptorIndexing                                 = false;
+         features->shaderInputAttachmentArrayDynamicIndexing          = false;
+         features->shaderUniformTexelBufferArrayDynamicIndexing       = false;
+         features->shaderStorageTexelBufferArrayDynamicIndexing       = false;
+         features->shaderUniformBufferArrayNonUniformIndexing         = false;
+         features->shaderSampledImageArrayNonUniformIndexing          = false;
+         features->shaderStorageBufferArrayNonUniformIndexing         = false;
+         features->shaderStorageImageArrayNonUniformIndexing          = false;
+         features->shaderInputAttachmentArrayNonUniformIndexing       = false;
+         features->shaderUniformTexelBufferArrayNonUniformIndexing    = false;
+         features->shaderStorageTexelBufferArrayNonUniformIndexing    = false;
+         features->descriptorBindingUniformBufferUpdateAfterBind      = false;
+         features->descriptorBindingSampledImageUpdateAfterBind       = false;
+         features->descriptorBindingStorageImageUpdateAfterBind       = false;
+         features->descriptorBindingStorageBufferUpdateAfterBind      = false;
+         features->descriptorBindingUniformTexelBufferUpdateAfterBind = false;
+         features->descriptorBindingStorageTexelBufferUpdateAfterBind = false;
+         features->descriptorBindingUpdateUnusedWhilePending          = false;
+         features->descriptorBindingPartiallyBound                    = false;
+         features->descriptorBindingVariableDescriptorCount           = false;
+         features->runtimeDescriptorArray                             = false;
+
+         features->samplerFilterMinmax                 = true;
+         features->scalarBlockLayout                   = false;
+         features->imagelessFramebuffer                = false;
+         features->uniformBufferStandardLayout         = false;
+         features->shaderSubgroupExtendedTypes         = false;
+         features->separateDepthStencilLayouts         = false;
+         features->hostQueryReset                      = false;
+         features->timelineSemaphore                   = false;
+         features->bufferDeviceAddress                 = false;
+         features->bufferDeviceAddressCaptureReplay    = false;
+         features->bufferDeviceAddressMultiDevice      = false;
+         features->vulkanMemoryModel                   = false;
+         features->vulkanMemoryModelDeviceScope        = false;
+         features->vulkanMemoryModelAvailabilityVisibilityChains = false;
+         features->shaderOutputViewportIndex           = false;
+         features->shaderOutputLayer                   = false;
+         features->subgroupBroadcastDynamicId          = false;
+         break;
+      }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VARIABLE_POINTERS_FEATURES: {
          VkPhysicalDeviceVariablePointersFeatures *features = (void *) ext;
          features->variablePointersStorageBuffer = true;

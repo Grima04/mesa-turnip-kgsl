@@ -3300,6 +3300,79 @@ tu_CmdDrawIndexedIndirect(VkCommandBuffer commandBuffer,
    tu_bo_list_add(&cmd->bo_list, buf->bo, MSM_SUBMIT_BO_READ);
 }
 
+void
+tu_CmdDrawIndirectCount(VkCommandBuffer commandBuffer,
+                        VkBuffer _buffer,
+                        VkDeviceSize offset,
+                        VkBuffer countBuffer,
+                        VkDeviceSize countBufferOffset,
+                        uint32_t drawCount,
+                        uint32_t stride)
+{
+   TU_FROM_HANDLE(tu_cmd_buffer, cmd, commandBuffer);
+   TU_FROM_HANDLE(tu_buffer, buf, _buffer);
+   TU_FROM_HANDLE(tu_buffer, count_buf, countBuffer);
+   struct tu_cs *cs = &cmd->draw_cs;
+
+   cmd->state.vs_params = (struct tu_draw_state) {};
+
+   /* It turns out that the firmware we have for a650 only partially fixed the
+    * problem with CP_DRAW_INDIRECT_MULTI not waiting for WFI's to complete
+    * before reading indirect parameters. It waits for WFI's before reading
+    * the draw parameters, but after reading the indirect count :(.
+    */
+   draw_wfm(cmd);
+
+   tu6_draw_common(cmd, cs, false, 0);
+
+   tu_cs_emit_pkt7(cs, CP_DRAW_INDIRECT_MULTI, 8);
+   tu_cs_emit(cs, tu_draw_initiator(cmd, DI_SRC_SEL_AUTO_INDEX));
+   tu_cs_emit(cs, A6XX_CP_DRAW_INDIRECT_MULTI_1_OPCODE(INDIRECT_OP_INDIRECT_COUNT) |
+                  A6XX_CP_DRAW_INDIRECT_MULTI_1_DST_OFF(vs_params_offset(cmd)));
+   tu_cs_emit(cs, drawCount);
+   tu_cs_emit_qw(cs, buf->bo->iova + buf->bo_offset + offset);
+   tu_cs_emit_qw(cs, count_buf->bo->iova + count_buf->bo_offset + countBufferOffset);
+   tu_cs_emit(cs, stride);
+
+   tu_bo_list_add(&cmd->bo_list, buf->bo, MSM_SUBMIT_BO_READ);
+   tu_bo_list_add(&cmd->bo_list, count_buf->bo, MSM_SUBMIT_BO_READ);
+}
+
+void
+tu_CmdDrawIndexedIndirectCount(VkCommandBuffer commandBuffer,
+                               VkBuffer _buffer,
+                               VkDeviceSize offset,
+                               VkBuffer countBuffer,
+                               VkDeviceSize countBufferOffset,
+                               uint32_t drawCount,
+                               uint32_t stride)
+{
+   TU_FROM_HANDLE(tu_cmd_buffer, cmd, commandBuffer);
+   TU_FROM_HANDLE(tu_buffer, buf, _buffer);
+   TU_FROM_HANDLE(tu_buffer, count_buf, countBuffer);
+   struct tu_cs *cs = &cmd->draw_cs;
+
+   cmd->state.vs_params = (struct tu_draw_state) {};
+
+   draw_wfm(cmd);
+
+   tu6_draw_common(cmd, cs, true, 0);
+
+   tu_cs_emit_pkt7(cs, CP_DRAW_INDIRECT_MULTI, 11);
+   tu_cs_emit(cs, tu_draw_initiator(cmd, DI_SRC_SEL_DMA));
+   tu_cs_emit(cs, A6XX_CP_DRAW_INDIRECT_MULTI_1_OPCODE(INDIRECT_OP_INDIRECT_COUNT_INDEXED) |
+                  A6XX_CP_DRAW_INDIRECT_MULTI_1_DST_OFF(vs_params_offset(cmd)));
+   tu_cs_emit(cs, drawCount);
+   tu_cs_emit_qw(cs, cmd->state.index_va);
+   tu_cs_emit(cs, cmd->state.max_index_count);
+   tu_cs_emit_qw(cs, buf->bo->iova + buf->bo_offset + offset);
+   tu_cs_emit_qw(cs, count_buf->bo->iova + count_buf->bo_offset + countBufferOffset);
+   tu_cs_emit(cs, stride);
+
+   tu_bo_list_add(&cmd->bo_list, buf->bo, MSM_SUBMIT_BO_READ);
+   tu_bo_list_add(&cmd->bo_list, count_buf->bo, MSM_SUBMIT_BO_READ);
+}
+
 void tu_CmdDrawIndirectByteCountEXT(VkCommandBuffer commandBuffer,
                                     uint32_t instanceCount,
                                     uint32_t firstInstance,
