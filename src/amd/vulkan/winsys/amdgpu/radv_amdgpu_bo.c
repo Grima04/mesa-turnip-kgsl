@@ -127,7 +127,7 @@ static int bo_comparator(const void *ap, const void *bp) {
 	return (a > b) ? 1 : (a < b) ? -1 : 0;
 }
 
-static void
+static VkResult
 radv_amdgpu_winsys_rebuild_bo_list(struct radv_amdgpu_winsys_bo *bo)
 {
 	if (bo->bo_capacity < bo->range_count) {
@@ -135,7 +135,7 @@ radv_amdgpu_winsys_rebuild_bo_list(struct radv_amdgpu_winsys_bo *bo)
 		struct radv_amdgpu_winsys_bo **bos =
 			realloc(bo->bos, new_count * sizeof(struct radv_amdgpu_winsys_bo *));
 		if (!bos)
-			return;
+			return VK_ERROR_OUT_OF_HOST_MEMORY;
 		bo->bos = bos;
 		bo->bo_capacity = new_count;
 	}
@@ -153,9 +153,11 @@ radv_amdgpu_winsys_rebuild_bo_list(struct radv_amdgpu_winsys_bo *bo)
 			bo->bos[final_bo_count++] = bo->bos[i];
 
 	bo->bo_count = final_bo_count;
+
+	return VK_SUCCESS;
 }
 
-static void
+static VkResult
 radv_amdgpu_winsys_bo_virtual_bind(struct radeon_winsys_bo *_parent,
                                    uint64_t offset, uint64_t size,
                                    struct radeon_winsys_bo *_bo, uint64_t bo_offset)
@@ -165,6 +167,7 @@ radv_amdgpu_winsys_bo_virtual_bind(struct radeon_winsys_bo *_parent,
 	int range_count_delta, new_idx;
 	int first = 0, last;
 	struct radv_amdgpu_map_range new_first, new_last;
+	VkResult result;
 
 	assert(parent->is_virtual);
 	assert(!bo || !bo->is_virtual);
@@ -176,7 +179,7 @@ radv_amdgpu_winsys_bo_virtual_bind(struct radeon_winsys_bo *_parent,
 			realloc(parent->ranges,
 				range_capacity * sizeof(struct radv_amdgpu_map_range));
 		if (!ranges)
-			return;
+			return VK_ERROR_OUT_OF_HOST_MEMORY;
 		parent->ranges = ranges;
 		parent->range_capacity = range_capacity;
 	}
@@ -272,7 +275,11 @@ radv_amdgpu_winsys_bo_virtual_bind(struct radeon_winsys_bo *_parent,
 
 	parent->range_count += range_count_delta;
 
-	radv_amdgpu_winsys_rebuild_bo_list(parent);
+	result = radv_amdgpu_winsys_rebuild_bo_list(parent);
+	if (result != VK_SUCCESS)
+		return result;
+
+	return VK_SUCCESS;
 }
 
 static void radv_amdgpu_winsys_bo_destroy(struct radeon_winsys_bo *_bo)

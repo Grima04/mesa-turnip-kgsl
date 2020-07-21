@@ -255,9 +255,9 @@ struct radeon_winsys {
 	void (*buffer_get_metadata)(struct radeon_winsys_bo *bo,
 				    struct radeon_bo_metadata *md);
 
-	void (*buffer_virtual_bind)(struct radeon_winsys_bo *parent,
-	                            uint64_t offset, uint64_t size,
-	                            struct radeon_winsys_bo *bo, uint64_t bo_offset);
+	VkResult (*buffer_virtual_bind)(struct radeon_winsys_bo *parent,
+					uint64_t offset, uint64_t size,
+					struct radeon_winsys_bo *bo, uint64_t bo_offset);
 	VkResult (*ctx_create)(struct radeon_winsys *ws,
 	                       enum radeon_ctx_priority priority,
 	                       struct radeon_winsys_ctx **ctx);
