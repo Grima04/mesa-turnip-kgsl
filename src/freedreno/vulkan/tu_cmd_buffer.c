@@ -433,7 +433,19 @@ tu6_emit_render_cntl(struct tu_cmd_buffer *cmd,
 static void
 tu6_emit_blit_scissor(struct tu_cmd_buffer *cmd, struct tu_cs *cs, bool align)
 {
+
    const VkRect2D *render_area = &cmd->state.render_area;
+
+   /* Avoid assertion fails with an empty render area at (0, 0) where the
+    * subtraction below wraps around. Empty render areas should be forced to
+    * the sysmem path by use_sysmem_rendering(). It's not even clear whether
+    * an empty scissor here works, and the blob seems to force sysmem too as
+    * it sets something wrong (non-empty) for the scissor.
+    */
+   if (render_area->extent.width == 0 ||
+       render_area->extent.height == 0)
+      return;
+
    uint32_t x1 = render_area->offset.x;
    uint32_t y1 = render_area->offset.y;
    uint32_t x2 = x1 + render_area->extent.width - 1;
@@ -569,6 +581,11 @@ use_sysmem_rendering(struct tu_cmd_buffer *cmd)
       return true;
 
    if (cmd->state.framebuffer->layers > 1)
+      return true;
+
+   /* Use sysmem for empty render areas */
+   if (cmd->state.render_area.extent.width == 0 ||
+       cmd->state.render_area.extent.height == 0)
       return true;
 
    if (cmd->has_tess)
