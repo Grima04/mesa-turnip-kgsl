@@ -68,13 +68,17 @@
 /* Has some missing formats for typed loads */
 #define MIDGARD_MISSING_LOADS (1 << 9)
 
+/* Lack support for AFBC */
+#define MIDGARD_NO_AFBC (1 << 10)
+
 /* Quirk collections common to particular uarchs */
 
 #define MIDGARD_QUIRKS (MIDGARD_BROKEN_FP16 | HAS_SWIZZLES \
                 | MIDGARD_NO_TYPED_BLEND_STORES \
                 | MIDGARD_MISSING_LOADS)
 
-#define BIFROST_QUIRKS (IS_BIFROST | NO_BLEND_PACKS)
+/* TODO: AFBC on Bifrost */
+#define BIFROST_QUIRKS (IS_BIFROST | NO_BLEND_PACKS | MIDGARD_NO_AFBC)
 
 static inline unsigned
 panfrost_get_quirks(unsigned gpu_id)
@@ -84,10 +88,11 @@ panfrost_get_quirks(unsigned gpu_id)
         case 0x620:
                 return MIDGARD_QUIRKS | MIDGARD_SFBD
                         | MIDGARD_NO_TYPED_BLEND_LOADS
-                        | NO_BLEND_PACKS;
+                        | NO_BLEND_PACKS | MIDGARD_NO_AFBC;
 
         case 0x720:
-                return MIDGARD_QUIRKS | MIDGARD_SFBD | MIDGARD_NO_HIER_TILING;
+                return MIDGARD_QUIRKS | MIDGARD_SFBD | MIDGARD_NO_HIER_TILING
+                        | MIDGARD_NO_AFBC;
 
         case 0x820:
         case 0x830:

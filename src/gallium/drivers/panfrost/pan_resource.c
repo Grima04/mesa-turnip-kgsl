@@ -382,7 +382,9 @@ panfrost_setup_slices(struct panfrost_resource *pres, size_t *bo_size)
  * that the contents frequently change, tiling will be a loss.
  *
  * Due to incomplete information on some platforms, we may need to force tiling
- * in some cases */
+ * in some cases.
+ *
+ * On platforms where it is supported, AFBC is even better. */
 
 static bool
 panfrost_can_linear(struct panfrost_device *dev, const struct panfrost_resource *pres)
@@ -393,6 +395,53 @@ panfrost_can_linear(struct panfrost_device *dev, const struct panfrost_resource 
 }
 
 static bool
+panfrost_should_afbc(struct panfrost_device *dev, const struct panfrost_resource *pres)
+{
+        /* AFBC resources may be rendered to, textured from, or shared across
+         * processes, but may not be used as e.g buffers */
+        const unsigned valid_binding =
+                PIPE_BIND_DEPTH_STENCIL |
+                PIPE_BIND_RENDER_TARGET |
+                PIPE_BIND_BLENDABLE |
+                PIPE_BIND_SAMPLER_VIEW |
+                PIPE_BIND_DISPLAY_TARGET |
+                PIPE_BIND_SCANOUT |
+                PIPE_BIND_SHARED;
+
+        if (pres->base.bind & ~valid_binding)
+                return false;
+
+        /* AFBC introduced with Mali T760 */
+        if (dev->quirks & MIDGARD_NO_AFBC)
+                return false;
+
+        /* AFBC<-->staging is expensive */
+        if (pres->base.usage == PIPE_USAGE_STREAM)
+                return false;
+
+        /* Only a small selection of formats are AFBC'able */
+        if (!panfrost_format_supports_afbc(pres->internal_format))
+                return false;
+
+        /* AFBC does not support layered (GLES3 style) multisampling. Use
+         * EXT_multisampled_render_to_texture instead */
+        if (pres->base.nr_samples > 1)
+                return false;
+
+        /* TODO: Is AFBC of 3D textures possible? */
+        if ((pres->base.target != PIPE_TEXTURE_2D) && (pres->base.target != PIPE_TEXTURE_RECT))
+                return false;
+
+        /* For one tile, AFBC is a loss compared to u-interleaved */
+        if (pres->base.width0 <= 16 && pres->base.height0 <= 16)
+                return false;
+
+        /* Otherwise, we'd prefer AFBC as it is dramatically more efficient
+         * than linear or usually even u-interleaved */
+        return true;
+}
+
+static bool
 panfrost_should_tile(struct panfrost_device *dev, const struct panfrost_resource *pres)
 {
         const unsigned valid_binding =
@@ -400,7 +449,9 @@ panfrost_should_tile(struct panfrost_device *dev, const struct panfrost_resource
                 PIPE_BIND_RENDER_TARGET |
                 PIPE_BIND_BLENDABLE |
                 PIPE_BIND_SAMPLER_VIEW |
-                PIPE_BIND_DISPLAY_TARGET;
+                PIPE_BIND_DISPLAY_TARGET |
+                PIPE_BIND_SCANOUT |
+                PIPE_BIND_SHARED;
 
         unsigned bpp = util_format_get_blocksizebits(pres->internal_format);
 
@@ -425,7 +476,13 @@ static uint64_t
 panfrost_best_modifier(struct panfrost_device *dev,
                 const struct panfrost_resource *pres)
 {
-        if (panfrost_should_tile(dev, pres))
+        if (panfrost_should_afbc(dev, pres)) {
+                uint64_t afbc =
+                        AFBC_FORMAT_MOD_BLOCK_SIZE_16x16 |
+                        AFBC_FORMAT_MOD_SPARSE;
+
+                return DRM_FORMAT_MOD_ARM_AFBC(afbc);
+        } else if (panfrost_should_tile(dev, pres))
                 return DRM_FORMAT_MOD_ARM_16X16_BLOCK_U_INTERLEAVED;
         else
                 return DRM_FORMAT_MOD_LINEAR;
