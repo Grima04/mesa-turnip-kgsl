@@ -860,102 +860,40 @@ void si_print_texture_info(struct si_screen *sscreen, struct si_texture *tex,
                            struct u_log_context *log)
 {
    int i;
+   FILE *f;
+   char *surf_info = NULL;
+   size_t surf_info_size;
 
    /* Common parameters. */
    u_log_printf(log,
-                "  Info: npix_x=%u, npix_y=%u, npix_z=%u, blk_w=%u, "
-                "blk_h=%u, array_size=%u, last_level=%u, "
-                "bpe=%u, nsamples=%u, flags=0x%x, %s\n",
-                tex->buffer.b.b.width0, tex->buffer.b.b.height0, tex->buffer.b.b.depth0,
-                tex->surface.blk_w, tex->surface.blk_h, tex->buffer.b.b.array_size,
-                tex->buffer.b.b.last_level, tex->surface.bpe, tex->buffer.b.b.nr_samples,
-                tex->surface.flags, util_format_short_name(tex->buffer.b.b.format));
+                "  Info: npix_x=%u, npix_y=%u, npix_z=%u, "
+                "array_size=%u, last_level=%u, nsamples=%u",
+                tex->buffer.b.b.width0, tex->buffer.b.b.height0,
+                tex->buffer.b.b.depth0, tex->buffer.b.b.array_size,
+                tex->buffer.b.b.last_level, tex->buffer.b.b.nr_samples);
+
+   if (tex->surface.htile_offset)
+      u_log_printf(log, ", tc_compatible_htile=%u", tex->tc_compatible_htile);
+
+   u_log_printf(log, ", %s\n",
+                util_format_short_name(tex->buffer.b.b.format));
+
+   f = open_memstream(&surf_info, &surf_info_size);
+   if (!f)
+      return;
+   ac_surface_print_info(f, &sscreen->info, &tex->surface);
+   fclose(f);
+   u_log_printf(log, "%s", surf_info);
+   free(surf_info);
 
    if (sscreen->info.chip_class >= GFX9) {
-      u_log_printf(log,
-                   "  Surf: size=%" PRIu64 ", slice_size=%" PRIu64 ", "
-                   "alignment=%u, swmode=%u, epitch=%u, pitch=%u\n",
-                   tex->surface.surf_size, tex->surface.u.gfx9.surf_slice_size,
-                   tex->surface.surf_alignment, tex->surface.u.gfx9.surf.swizzle_mode,
-                   tex->surface.u.gfx9.surf.epitch, tex->surface.u.gfx9.surf_pitch);
-
-      if (tex->surface.fmask_offset) {
-         u_log_printf(log,
-                      "  FMASK: offset=%" PRIu64 ", size=%" PRIu64 ", "
-                      "alignment=%u, swmode=%u, epitch=%u\n",
-                      tex->surface.fmask_offset, tex->surface.fmask_size,
-                      tex->surface.fmask_alignment, tex->surface.u.gfx9.fmask.swizzle_mode,
-                      tex->surface.u.gfx9.fmask.epitch);
-      }
-
-      if (tex->cmask_buffer) {
-         u_log_printf(log,
-                      "  CMask: offset=%" PRIu64 ", size=%u, "
-                      "alignment=%u\n",
-                      tex->surface.cmask_offset, tex->surface.cmask_size,
-                      tex->surface.cmask_alignment);
-      }
-
-      if (tex->surface.htile_offset) {
-         u_log_printf(log,
-                      "  HTile: offset=%" PRIu64 ", size=%u, alignment=%u\n",
-                      tex->surface.htile_offset, tex->surface.htile_size,
-                      tex->surface.htile_alignment);
-      }
-
-      if (tex->surface.dcc_offset) {
-         u_log_printf(log,
-                      "  DCC: offset=%" PRIu64 ", size=%u, "
-                      "alignment=%u, pitch_max=%u, num_dcc_levels=%u\n",
-                      tex->surface.dcc_offset, tex->surface.dcc_size, tex->surface.dcc_alignment,
-                      tex->surface.u.gfx9.display_dcc_pitch_max, tex->surface.num_dcc_levels);
-      }
-
-      if (tex->surface.u.gfx9.stencil_offset) {
-         u_log_printf(log, "  Stencil: offset=%" PRIu64 ", swmode=%u, epitch=%u\n",
-                      tex->surface.u.gfx9.stencil_offset, tex->surface.u.gfx9.stencil.swizzle_mode,
-                      tex->surface.u.gfx9.stencil.epitch);
-      }
       return;
    }
 
-   u_log_printf(log,
-                "  Layout: size=%" PRIu64 ", alignment=%u, bankw=%u, "
-                "bankh=%u, nbanks=%u, mtilea=%u, tilesplit=%u, pipeconfig=%u, scanout=%u\n",
-                tex->surface.surf_size, tex->surface.surf_alignment, tex->surface.u.legacy.bankw,
-                tex->surface.u.legacy.bankh, tex->surface.u.legacy.num_banks,
-                tex->surface.u.legacy.mtilea, tex->surface.u.legacy.tile_split,
-                tex->surface.u.legacy.pipe_config, (tex->surface.flags & RADEON_SURF_SCANOUT) != 0);
-
-   if (tex->surface.fmask_offset)
-      u_log_printf(
-         log,
-         "  FMask: offset=%" PRIu64 ", size=%" PRIu64 ", alignment=%u, pitch_in_pixels=%u, "
-         "bankh=%u, slice_tile_max=%u, tile_mode_index=%u\n",
-         tex->surface.fmask_offset, tex->surface.fmask_size, tex->surface.fmask_alignment,
-         tex->surface.u.legacy.fmask.pitch_in_pixels, tex->surface.u.legacy.fmask.bankh,
-         tex->surface.u.legacy.fmask.slice_tile_max, tex->surface.u.legacy.fmask.tiling_index);
-
-   if (tex->cmask_buffer)
-      u_log_printf(log,
-                   "  CMask: offset=%" PRIu64 ", size=%u, alignment=%u, "
-                   "slice_tile_max=%u\n",
-                   tex->surface.cmask_offset, tex->surface.cmask_size, tex->surface.cmask_alignment,
-                   tex->surface.u.legacy.cmask_slice_tile_max);
-
-   if (tex->surface.htile_offset)
-      u_log_printf(log,
-                   "  HTile: offset=%" PRIu64 ", size=%u, "
-                   "alignment=%u, TC_compatible = %u\n",
-                   tex->surface.htile_offset, tex->surface.htile_size, tex->surface.htile_alignment,
-                   tex->tc_compatible_htile);
-
    if (tex->surface.dcc_offset) {
-      u_log_printf(log, "  DCC: offset=%" PRIu64 ", size=%u, alignment=%u\n",
-                   tex->surface.dcc_offset, tex->surface.dcc_size, tex->surface.dcc_alignment);
       for (i = 0; i <= tex->buffer.b.b.last_level; i++)
          u_log_printf(log,
-                      "  DCCLevel[%i]: enabled=%u, offset=%u, "
+                      "    DCCLevel[%i]: enabled=%u, offset=%u, "
                       "fast_clear_size=%u\n",
                       i, i < tex->surface.num_dcc_levels, tex->surface.u.legacy.level[i].dcc_offset,
                       tex->surface.u.legacy.level[i].dcc_fast_clear_size);
@@ -963,7 +901,7 @@ void si_print_texture_info(struct si_screen *sscreen, struct si_texture *tex,
 
    for (i = 0; i <= tex->buffer.b.b.last_level; i++)
       u_log_printf(log,
-                   "  Level[%i]: offset=%" PRIu64 ", slice_size=%" PRIu64 ", "
+                   "    Level[%i]: offset=%" PRIu64 ", slice_size=%" PRIu64 ", "
                    "npix_x=%u, npix_y=%u, npix_z=%u, nblk_x=%u, nblk_y=%u, "
                    "mode=%u, tiling_index = %u\n",
                    i, tex->surface.u.legacy.level[i].offset,
@@ -974,11 +912,9 @@ void si_print_texture_info(struct si_screen *sscreen, struct si_texture *tex,
                    tex->surface.u.legacy.tiling_index[i]);
 
    if (tex->surface.has_stencil) {
-      u_log_printf(log, "  StencilLayout: tilesplit=%u\n",
-                   tex->surface.u.legacy.stencil_tile_split);
       for (i = 0; i <= tex->buffer.b.b.last_level; i++) {
          u_log_printf(log,
-                      "  StencilLevel[%i]: offset=%" PRIu64 ", "
+                      "    StencilLevel[%i]: offset=%" PRIu64 ", "
                       "slice_size=%" PRIu64 ", npix_x=%u, "
                       "npix_y=%u, npix_z=%u, nblk_x=%u, nblk_y=%u, "
                       "mode=%u, tiling_index = %u\n",
