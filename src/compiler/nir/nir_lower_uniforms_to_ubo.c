@@ -105,10 +105,8 @@ nir_lower_uniforms_to_ubo(nir_shader *shader, int multiplier)
 
    if (progress) {
       if (!shader->info.first_ubo_is_default_ubo) {
-         nir_foreach_variable(var, &shader->uniforms) {
-            if (var->data.mode == nir_var_mem_ubo)
-               var->data.binding++;
-         }
+         nir_foreach_variable_with_modes(var, shader, nir_var_mem_ubo)
+            var->data.binding++;
       }
       shader->info.num_ubos++;
 
