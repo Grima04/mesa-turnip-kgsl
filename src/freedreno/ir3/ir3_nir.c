@@ -503,6 +503,8 @@ ir3_nir_scan_driver_consts(nir_shader *shader,
 
 				switch (intr->intrinsic) {
 				case nir_intrinsic_get_buffer_size:
+					if (ir3_bindless_resource(intr->src[0]))
+						break;
 					idx = nir_src_as_uint(intr->src[0]);
 					if (layout->ssbo_size.mask & (1 << idx))
 						break;
