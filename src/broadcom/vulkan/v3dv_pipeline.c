@@ -936,7 +936,8 @@ shader_debug_output(const char *message, void *data)
 
 static void
 pipeline_populate_v3d_key(struct v3d_key *key,
-                          const struct v3dv_pipeline_stage *p_stage)
+                          const struct v3dv_pipeline_stage *p_stage,
+                          uint32_t ucp_enables)
 {
    /* The following values are default values used at pipeline create, that
     * lack the info about the real sampler/texture format used, needed to
@@ -974,11 +975,17 @@ pipeline_populate_v3d_key(struct v3d_key *key,
     */
    key->is_last_geometry_stage = true;
 
-   /* Vulkan provides a way to define clip distances, but not clip planes, so
-    * we understand that this would be always zero. Probably would need to be
-    * revisited based on all the clip related extensions available.
+   /* Vulkan doesn't have fixed function state for user clip planes. Instead,
+    * shaders can write to gl_ClipDistance[], in which case the SPIR-V compiler
+    * takes care of adding a single compact array variable at
+    * VARYING_SLOT_CLIP_DIST0, so we don't need any user clip plane lowering.
+    *
+    * The only lowering we are interested is specific to the fragment shader,
+    * where we want to emit discards to honor writes to gl_ClipDistance[] in
+    * previous stages. This is done via nir_lower_clip_fs() so we only set up
+    * the ucp enable mask for that stage.
     */
-   key->ucp_enables = 0;
+   key->ucp_enables = ucp_enables;
 
    key->environment = V3D_ENVIRONMENT_VULKAN;
 }
@@ -1021,11 +1028,12 @@ static const enum pipe_logicop vk_to_pipe_logicop[] = {
 static void
 pipeline_populate_v3d_fs_key(struct v3d_fs_key *key,
                              const VkGraphicsPipelineCreateInfo *pCreateInfo,
-                             const struct v3dv_pipeline_stage *p_stage)
+                             const struct v3dv_pipeline_stage *p_stage,
+                             uint32_t ucp_enables)
 {
    memset(key, 0, sizeof(*key));
 
-   pipeline_populate_v3d_key(&key->base, p_stage);
+   pipeline_populate_v3d_key(&key->base, p_stage, ucp_enables);
 
    const VkPipelineInputAssemblyStateCreateInfo *ia_info =
       pCreateInfo->pInputAssemblyState;
@@ -1144,7 +1152,7 @@ pipeline_populate_v3d_vs_key(struct v3d_vs_key *key,
 {
    memset(key, 0, sizeof(*key));
 
-   pipeline_populate_v3d_key(&key->base, p_stage);
+   pipeline_populate_v3d_key(&key->base, p_stage, 0);
 
    /* Vulkan doesn't appear to specify (anv does the same) */
    key->clamp_color = false;
@@ -1539,6 +1547,26 @@ pipeline_lower_nir(struct v3dv_pipeline *pipeline,
    NIR_PASS_V(p_stage->nir, lower_pipeline_layout_info, pipeline, layout);
 }
 
+/**
+ * The SPIR-V compiler will insert a sized compact array for
+ * VARYING_SLOT_CLIP_DIST0 if the vertex shader writes to gl_ClipDistance[],
+ * where the size of the array determines the number of active clip planes.
+ */
+static uint32_t
+get_ucp_enable_mask(struct v3dv_pipeline_stage **stages)
+{
+   const nir_shader *shader = stages[MESA_SHADER_VERTEX]->nir;
+   assert(shader);
+
+   nir_foreach_variable_with_modes(var, shader, nir_var_shader_out) {
+      if (var->data.location == VARYING_SLOT_CLIP_DIST0) {
+         assert(var->data.compact);
+         return (1 << glsl_get_length(var->type)) - 1;
+      }
+   }
+   return 0;
+}
+
 static VkResult
 pipeline_compile_graphics(struct v3dv_pipeline *pipeline,
                           const VkGraphicsPipelineCreateInfo *pCreateInfo,
@@ -1702,7 +1730,8 @@ pipeline_compile_graphics(struct v3dv_pipeline *pipeline,
 
          pipeline->fs = p_stage;
 
-         pipeline_populate_v3d_fs_key(key, pCreateInfo, p_stage);
+         pipeline_populate_v3d_fs_key(key, pCreateInfo, p_stage,
+                                      get_ucp_enable_mask(stages));
 
          lower_fs_io(p_stage->nir);
 
@@ -2706,7 +2735,7 @@ pipeline_compile_compute(struct v3dv_pipeline *pipeline,
 
    struct v3d_key *key = &p_stage->key.base;
    memset(key, 0, sizeof(*key));
-   pipeline_populate_v3d_key(key, p_stage);
+   pipeline_populate_v3d_key(key, p_stage, 0);
 
     VkResult result;
     p_stage->current_variant =
