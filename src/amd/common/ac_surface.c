@@ -2896,3 +2896,99 @@ uint64_t ac_surface_get_plane_stride(enum chip_class chip_class,
       unreachable("Invalid plane index");
    }
 }
+
+void ac_surface_print_info(FILE *out, const struct radeon_info *info,
+                           const struct radeon_surf *surf)
+{
+   if (info->chip_class >= GFX9) {
+      fprintf(out,
+              "    Surf: size=%" PRIu64 ", slice_size=%" PRIu64 ", "
+              "alignment=%u, swmode=%u, epitch=%u, pitch=%u, blk_w=%u, "
+              "blk_h=%u, bpe=%u, flags=0x%x\n",
+              surf->surf_size, surf->u.gfx9.surf_slice_size,
+              surf->surf_alignment, surf->u.gfx9.surf.swizzle_mode,
+              surf->u.gfx9.surf.epitch, surf->u.gfx9.surf_pitch,
+              surf->blk_w, surf->blk_h, surf->bpe, surf->flags);
+
+      if (surf->fmask_offset)
+         fprintf(out,
+                 "    FMask: offset=%" PRIu64 ", size=%" PRIu64 ", "
+                 "alignment=%u, swmode=%u, epitch=%u\n",
+                 surf->fmask_offset, surf->fmask_size,
+                 surf->fmask_alignment, surf->u.gfx9.fmask.swizzle_mode,
+                 surf->u.gfx9.fmask.epitch);
+
+      if (surf->cmask_offset)
+         fprintf(out,
+                 "    CMask: offset=%" PRIu64 ", size=%u, "
+                 "alignment=%u\n",
+                 surf->cmask_offset, surf->cmask_size,
+                 surf->cmask_alignment);
+
+      if (surf->htile_offset)
+         fprintf(out,
+                 "    HTile: offset=%" PRIu64 ", size=%u, alignment=%u\n",
+                 surf->htile_offset, surf->htile_size,
+                 surf->htile_alignment);
+
+      if (surf->dcc_offset)
+         fprintf(out,
+                 "    DCC: offset=%" PRIu64 ", size=%u, "
+                 "alignment=%u, pitch_max=%u, num_dcc_levels=%u\n",
+                 surf->dcc_offset, surf->dcc_size, surf->dcc_alignment,
+                 surf->u.gfx9.display_dcc_pitch_max, surf->num_dcc_levels);
+
+      if (surf->u.gfx9.stencil_offset)
+         fprintf(out,
+                 "    Stencil: offset=%" PRIu64 ", swmode=%u, epitch=%u\n",
+                 surf->u.gfx9.stencil_offset,
+                 surf->u.gfx9.stencil.swizzle_mode,
+                 surf->u.gfx9.stencil.epitch);
+   } else {
+      fprintf(out,
+              "    Surf: size=%" PRIu64 ", alignment=%u, blk_w=%u, blk_h=%u, "
+              "bpe=%u, flags=0x%x\n",
+              surf->surf_size, surf->surf_alignment, surf->blk_w,
+              surf->blk_h, surf->bpe, surf->flags);
+
+      fprintf(out,
+              "    Layout: size=%" PRIu64 ", alignment=%u, bankw=%u, bankh=%u, "
+              "nbanks=%u, mtilea=%u, tilesplit=%u, pipeconfig=%u, scanout=%u\n",
+              surf->surf_size, surf->surf_alignment,
+              surf->u.legacy.bankw, surf->u.legacy.bankh,
+              surf->u.legacy.num_banks, surf->u.legacy.mtilea,
+              surf->u.legacy.tile_split, surf->u.legacy.pipe_config,
+              (surf->flags & RADEON_SURF_SCANOUT) != 0);
+
+      if (surf->fmask_offset)
+         fprintf(out,
+                 "    FMask: offset=%" PRIu64 ", size=%" PRIu64 ", "
+                 "alignment=%u, pitch_in_pixels=%u, bankh=%u, "
+                 "slice_tile_max=%u, tile_mode_index=%u\n",
+                 surf->fmask_offset, surf->fmask_size,
+                 surf->fmask_alignment, surf->u.legacy.fmask.pitch_in_pixels,
+                 surf->u.legacy.fmask.bankh,
+                 surf->u.legacy.fmask.slice_tile_max,
+                 surf->u.legacy.fmask.tiling_index);
+
+      if (surf->cmask_offset)
+         fprintf(out,
+                 "    CMask: offset=%" PRIu64 ", size=%u, alignment=%u, "
+                 "slice_tile_max=%u\n",
+                 surf->cmask_offset, surf->cmask_size,
+                 surf->cmask_alignment, surf->u.legacy.cmask_slice_tile_max);
+
+      if (surf->htile_offset)
+         fprintf(out, "    HTile: offset=%" PRIu64 ", size=%u, alignment=%u\n",
+                 surf->htile_offset, surf->htile_size,
+                 surf->htile_alignment);
+
+      if (surf->dcc_offset)
+         fprintf(out, "    DCC: offset=%" PRIu64 ", size=%u, alignment=%u\n",
+                 surf->dcc_offset, surf->dcc_size, surf->dcc_alignment);
+
+      if (surf->has_stencil)
+         fprintf(out, "    StencilLayout: tilesplit=%u\n",
+                 surf->u.legacy.stencil_tile_split);
+   }
+}

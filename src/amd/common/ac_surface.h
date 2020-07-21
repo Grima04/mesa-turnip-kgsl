@@ -31,6 +31,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include <stdio.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -321,7 +322,6 @@ void ac_surface_get_umd_metadata(const struct radeon_info *info, struct radeon_s
 bool ac_surface_override_offset_stride(const struct radeon_info *info, struct radeon_surf *surf,
                                        unsigned num_mipmap_levels, uint64_t offset, unsigned pitch);
 
-
 struct ac_modifier_options {
 	bool dcc; /* Whether to allow DCC. */
 	bool dcc_retile; /* Whether to allow use of a DCC retile map. */
@@ -346,6 +346,9 @@ uint64_t ac_surface_get_plane_offset(enum chip_class chip_class,
 uint64_t ac_surface_get_plane_stride(enum chip_class chip_class,
                                      const struct radeon_surf *surf,
                                      unsigned plane);
+
+void ac_surface_print_info(FILE *out, const struct radeon_info *info,
+                           const struct radeon_surf *surf);
 
 #ifdef __cplusplus
 }
