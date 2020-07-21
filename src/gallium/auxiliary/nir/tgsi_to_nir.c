@@ -243,13 +243,11 @@ ttn_emit_declaration(struct ttn_compile *c)
    if (file == TGSI_FILE_TEMPORARY) {
       if (decl->Declaration.Array) {
          /* for arrays, we create variables instead of registers: */
-         nir_variable *var = rzalloc(b->shader, nir_variable);
-
-         var->type = glsl_array_type(glsl_vec4_type(), array_size, 0);
-         var->data.mode = nir_var_shader_temp;
-         var->name = ralloc_asprintf(var, "arr_%d", decl->Array.ArrayID);
-
-         exec_list_push_tail(&b->shader->globals, &var->node);
+         nir_variable *var =
+            nir_variable_create(b->shader, nir_var_shader_temp,
+                                glsl_array_type(glsl_vec4_type(), array_size, 0),
+                                ralloc_asprintf(b->shader, "arr_%d",
+                                                decl->Array.ArrayID));
 
          for (i = 0; i < array_size; i++) {
             /* point all the matching slots to the same var,
@@ -380,7 +378,6 @@ ttn_emit_declaration(struct ttn_compile *c)
             var->data.interpolation =
                ttn_translate_interp_mode(decl->Interp.Interpolate);
 
-            exec_list_push_tail(&b->shader->inputs, &var->node);
             c->inputs[idx] = var;
 
             for (int i = 0; i < array_size; i++)
@@ -461,7 +458,6 @@ ttn_emit_declaration(struct ttn_compile *c)
                c->output_regs[idx].reg = reg;
             }
 
-            exec_list_push_tail(&b->shader->outputs, &var->node);
             c->outputs[idx] = var;
 
             for (int i = 0; i < array_size; i++)
@@ -472,13 +468,13 @@ ttn_emit_declaration(struct ttn_compile *c)
             var->data.mode = nir_var_uniform;
             var->name = ralloc_asprintf(var, "uniform_%d", idx);
             var->data.location = idx;
-
-            exec_list_push_tail(&b->shader->uniforms, &var->node);
             break;
          default:
             unreachable("bad declaration file");
             return;
          }
+
+         nir_shader_add_variable(b->shader, var);
 
          if (is_array)
             break;
