@@ -44,3 +44,65 @@ traces:
     expectations:
       - device: vk-amd-polaris10
         checksum: 6b6d27df609b8d086cc3335e6d103581
+  - path: 0ad/0ad.trace
+    expectations:
+      - device: gl-vmware-llvmpipe
+        checksum: d76d0f5b5b064bba3e6a2a122c0799cf
+  - path: pathfinder/demo.trace
+    expectations:
+      - device: gl-vmware-llvmpipe
+        checksum: e624d76c70cc3c532f4f54439e13659a
+      - device: gl-panfrost-t860
+        checksum: c4f5e6bfe0cba230b1aef631c2fa4584
+      - device: gl-panfrost-t760
+        checksum: c4f5e6bfe0cba230b1aef631c2fa4584
+  - path: pathfinder/canvas_moire.trace
+    expectations:
+      - device: gl-vmware-llvmpipe
+        checksum: c4ee0eef519f1a32ba24b7b392b31b28
+      - device: gl-panfrost-t860
+        checksum: 2fb2c8e83719526cb6c02b6c2e069d61
+      - device: gl-panfrost-t760
+        checksum: 2fb2c8e83719526cb6c02b6c2e069d61
+  - path: pathfinder/canvas_text.trace
+    expectations:
+      - device: gl-vmware-llvmpipe
+        checksum: f8c6d9a5c9248821ed9aaa376bef05c3
+      - device: gl-panfrost-t860
+        checksum: 939038749a5204ec2b1448d3b9208fb3
+      - device: gl-panfrost-t760
+        checksum: 939038749a5204ec2b1448d3b9208fb3
+  - path: gputest/furmark.trace
+    expectations:
+      - device: gl-vmware-llvmpipe
+        checksum: 248ee9534a1f333b479e599646f56f63
+      - device: gl-virgl
+        checksum: 87ffd45be95f2d55f82325c86ce32f20
+      - device: gl-panfrost-t860
+        checksum: dc4ece101ed145228840d1f0654118c6
+  - path: gputest/pixmark-piano.trace
+    expectations:
+      - device: gl-vmware-llvmpipe
+        checksum: 022b43b7fff9e8623dcfcd91e6bbe7aa
+      - device: gl-virgl
+        checksum: 24eb95484e5b8288b3d5d65117c98641
+  - path: gputest/triangle.trace
+    expectations:
+      - device: gl-vmware-llvmpipe
+        checksum: c8848dec77ee0c55292417f54c0a1a49
+      - device: gl-virgl
+        checksum: 848436d1a2448bdc76fd6220382d8606
+      - device: gl-panfrost-t860
+        checksum: 6def0c34ade7d4ec930b45d0eef6e46a
+      - device: gl-panfrost-t760
+        checksum: 6def0c34ade7d4ec930b45d0eef6e46a
+  - path: humus/Portals.trace
+    expectations:
+      - device: gl-vmware-llvmpipe
+        checksum: d6eb6aee7a8a1c85d504a498cbf94659
+      - device: gl-virgl
+        checksum: 7caf9a1b50b7fc312a623be7c45553cb
+      - device: gl-panfrost-t860
+        checksum: 5415bbf2a69b605bb1052a0e0b0f7040
+      - device: gl-panfrost-t760
+        checksum: a41f53e9318cbd32c27b48d304df1ea6
