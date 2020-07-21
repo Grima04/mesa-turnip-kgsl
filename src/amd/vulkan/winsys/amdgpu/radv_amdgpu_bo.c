@@ -169,9 +169,6 @@ radv_amdgpu_winsys_bo_virtual_bind(struct radeon_winsys_bo *_parent,
 	assert(parent->is_virtual);
 	assert(!bo || !bo->is_virtual);
 
-	if (!size)
-		return;
-
 	/* We have at most 2 new ranges (1 by the bind, and another one by splitting a range that contains the newly bound range). */
 	if (parent->range_capacity - parent->range_count < 2) {
 		uint32_t range_capacity = parent->range_capacity + 2;
