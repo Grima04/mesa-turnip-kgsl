@@ -46,7 +46,17 @@
 #include "sp_fence.h"
 #include "sp_public.h"
 
-DEBUG_GET_ONCE_BOOL_OPTION(use_llvm, "SOFTPIPE_USE_LLVM", FALSE)
+static const struct debug_named_value sp_debug_options[] = {
+   {"vs",        SP_DBG_VS,         "dump vertex shader assembly to stderr"},
+   {"gs",        SP_DBG_GS,         "dump geometry shader assembly to stderr"},
+   {"fs",        SP_DBG_FS,         "dump fragment shader assembly to stderr"},
+   {"cs",        SP_DBG_CS,         "dump compute shader assembly to stderr"},
+   {"no_rast",   SP_DBG_NO_RAST,    "no-ops rasterization, for profiling purposes"},
+   {"use_llvm",  SP_DBG_USE_LLVM,   "Use LLVM if available for shaders"},
+};
+
+int sp_debug;
+DEBUG_GET_ONCE_FLAGS_OPTION(sp_debug, "SOFTPIPE_DEBUG", sp_debug_options, 0)
 
 static const char *
 softpipe_get_vendor(struct pipe_screen *screen)
@@ -519,6 +529,8 @@ softpipe_create_screen(struct sw_winsys *winsys)
    if (!screen)
       return NULL;
 
+   sp_debug = debug_get_option_sp_debug();
+
    screen->winsys = winsys;
 
    screen->base.destroy = softpipe_destroy_screen;
@@ -534,7 +546,7 @@ softpipe_create_screen(struct sw_winsys *winsys)
    screen->base.context_create = softpipe_create_context;
    screen->base.flush_frontbuffer = softpipe_flush_frontbuffer;
    screen->base.get_compute_param = softpipe_get_compute_param;
-   screen->use_llvm = debug_get_option_use_llvm();
+   screen->use_llvm = sp_debug & SP_DBG_USE_LLVM;
 
    softpipe_init_screen_texture_funcs(&screen->base);
    softpipe_init_screen_fence_funcs(&screen->base);

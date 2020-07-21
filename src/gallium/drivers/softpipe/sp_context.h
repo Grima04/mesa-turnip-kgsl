@@ -204,11 +204,6 @@ struct softpipe_context {
     * of sp_sampler_view?
     */
    struct softpipe_tex_tile_cache *tex_cache[PIPE_SHADER_TYPES][PIPE_MAX_SHADER_SAMPLER_VIEWS];
-
-   unsigned dump_fs : 1;
-   unsigned dump_gs : 1;
-   unsigned dump_cs : 1;
-   unsigned no_rast : 1;
 };
 
 

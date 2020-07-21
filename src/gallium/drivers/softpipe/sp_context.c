@@ -214,10 +214,6 @@ softpipe_create_context(struct pipe_screen *screen,
       softpipe->tgsi.buffer[i] = sp_create_tgsi_buffer();
    }
 
-   softpipe->dump_fs = debug_get_bool_option( "SOFTPIPE_DUMP_FS", false );
-   softpipe->dump_gs = debug_get_bool_option( "SOFTPIPE_DUMP_GS", false );
-   softpipe->dump_cs = debug_get_bool_option( "SOFTPIPE_DUMP_CS", false );
-
    softpipe->pipe.screen = screen;
    softpipe->pipe.destroy = softpipe_destroy;
    softpipe->pipe.priv = priv;
@@ -315,9 +311,6 @@ softpipe_create_context(struct pipe_screen *screen,
               PIPE_SHADER_GEOMETRY,
               (struct tgsi_buffer *)
               softpipe->tgsi.buffer[PIPE_SHADER_GEOMETRY]);
-
-   if (debug_get_bool_option( "SOFTPIPE_NO_RAST", false ))
-      softpipe->no_rast = TRUE;
 
    softpipe->vbuf_backend = sp_create_vbuf_backend(softpipe);
    if (!softpipe->vbuf_backend)

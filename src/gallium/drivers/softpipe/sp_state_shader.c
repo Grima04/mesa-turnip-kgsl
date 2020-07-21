@@ -26,6 +26,7 @@
  **************************************************************************/
 
 #include "sp_context.h"
+#include "sp_screen.h"
 #include "sp_state.h"
 #include "sp_fs.h"
 #include "sp_texture.h"
@@ -137,7 +138,7 @@ softpipe_create_fs_state(struct pipe_context *pipe,
    struct softpipe_context *softpipe = softpipe_context(pipe);
    struct sp_fragment_shader *state = CALLOC_STRUCT(sp_fragment_shader);
 
-   softpipe_create_shader_state(&state->shader, templ, softpipe->dump_fs);
+   softpipe_create_shader_state(&state->shader, templ, sp_debug & SP_DBG_FS);
 
    /* draw's fs state */
    state->draw_shader = draw_create_fragment_shader(softpipe->draw,
@@ -221,7 +222,7 @@ softpipe_create_vs_state(struct pipe_context *pipe,
    if (!state)
       goto fail;
 
-   softpipe_create_shader_state(&state->shader, templ, false);
+   softpipe_create_shader_state(&state->shader, templ, sp_debug & SP_DBG_VS);
    if (!state->shader.tokens)
       goto fail;
 
@@ -281,7 +282,7 @@ softpipe_create_gs_state(struct pipe_context *pipe,
    if (!state)
       goto fail;
 
-   softpipe_create_shader_state(&state->shader, templ, softpipe->dump_gs);
+   softpipe_create_shader_state(&state->shader, templ, sp_debug & SP_DBG_GS);
 
    if (templ->tokens) {
       state->draw_data = draw_create_geometry_shader(softpipe->draw, templ);
@@ -380,7 +381,6 @@ static void *
 softpipe_create_compute_state(struct pipe_context *pipe,
                               const struct pipe_compute_state *templ)
 {
-   struct softpipe_context *softpipe = softpipe_context(pipe);
    const struct tgsi_token *tokens;
    struct sp_compute_shader *state;
    if (templ->ir_type != PIPE_SHADER_IR_TGSI)
@@ -388,7 +388,7 @@ softpipe_create_compute_state(struct pipe_context *pipe,
 
    tokens = templ->prog;
    /* debug */
-   if (softpipe->dump_cs)
+   if (sp_debug & SP_DBG_CS)
       tgsi_dump(tokens, 0);
 
    state = CALLOC_STRUCT(sp_compute_shader);
