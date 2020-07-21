@@ -35,6 +35,7 @@
 #include "c99_compat.h"
 
 #include "egltypedefs.h"
+#include <stdbool.h>
 #include <stddef.h>
 
 
@@ -223,7 +224,7 @@ struct _egl_driver
 };
 
 
-extern _EGLDriver *
+extern bool
 _eglMatchDriver(_EGLDisplay *disp);
 
 

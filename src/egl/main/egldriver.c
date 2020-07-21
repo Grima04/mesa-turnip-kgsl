@@ -61,7 +61,7 @@ _eglMatchAndInitialize(_EGLDisplay *disp)
  * Match a display to a driver.  The matching is done by finding the first
  * driver that can initialize the display.
  */
-_EGLDriver *
+bool
 _eglMatchDriver(_EGLDisplay *disp)
 {
    _EGLDriver *best_drv;
@@ -85,7 +85,7 @@ _eglMatchDriver(_EGLDisplay *disp)
       disp->Initialized = EGL_TRUE;
    }
 
-   return best_drv;
+   return best_drv != NULL;
 }
 
 __eglMustCastToProperFunctionPointerType
