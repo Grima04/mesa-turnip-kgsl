@@ -51,17 +51,14 @@ static nir_variable *
 create_input(nir_shader *shader, gl_varying_slot slot,
              enum glsl_interp_mode interpolation)
 {
-   nir_variable *var = rzalloc(shader, nir_variable);
+   nir_variable *var = nir_variable_create(shader, nir_var_shader_in,
+                                           glsl_vec4_type(), NULL);
 
    var->data.driver_location = shader->num_inputs++;
-   var->type = glsl_vec4_type();
-   var->data.mode = nir_var_shader_in;
    var->name = ralloc_asprintf(var, "in_%d", var->data.driver_location);
    var->data.index = 0;
    var->data.location = slot;
    var->data.interpolation = interpolation;
-
-   exec_list_push_tail(&shader->inputs, &var->node);
 
    return var;
 }
@@ -74,17 +71,13 @@ create_face_input(nir_shader *shader)
          return var;
    }
 
-   nir_variable *var = rzalloc(shader, nir_variable);
+   nir_variable *var = nir_variable_create(shader, nir_var_shader_in,
+                                           glsl_bool_type(), "gl_FrontFacing");
 
    var->data.driver_location = shader->num_inputs++;
-   var->type = glsl_bool_type();
-   var->data.mode = nir_var_shader_in;
-   var->name = "gl_FrontFacing";
    var->data.index = 0;
    var->data.location = VARYING_SLOT_FACE;
    var->data.interpolation = INTERP_MODE_FLAT;
-
-   exec_list_push_tail(&shader->inputs, &var->node);
 
    return var;
 }
