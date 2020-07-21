@@ -38,7 +38,7 @@ vklayer_files = files(
 
 vklayer_mesa_overlay = shared_library(
   'VkLayer_MESA_overlay',
-  vklayer_files, overlay_spv,
+  vklayer_files, overlay_spv, sha1_h,
   c_args : [no_override_init_args, vulkan_wsi_args],
   cpp_args : [vulkan_wsi_args],
   gnu_symbol_visibility : 'hidden',
