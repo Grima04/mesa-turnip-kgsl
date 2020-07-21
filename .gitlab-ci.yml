@@ -919,13 +919,12 @@ softpipe-gles2:
     DEQP_EXPECTED_RENDERER: softpipe
 
 softpipe-gles3:
-  parallel: 2
   variables:
     DEQP_VER: gles3
   extends: softpipe-gles2
 
 softpipe-gles31:
-  parallel: 4
+  parallel: 2
   variables:
     DEQP_VER: gles31
   extends: softpipe-gles2
@@ -948,14 +947,13 @@ virgl-gles2-on-gl:
     - .virgl-rules
 
 virgl-gles3-on-gl:
-  parallel: 2
   variables:
     DEQP_VER: gles3
     DEQP_RUNNER_OPTIONS: "--timeout 180"
   extends: virgl-gles2-on-gl
 
 virgl-gles31-on-gl:
-  parallel: 4
+  parallel: 2
   variables:
     DEQP_VER: gles31
     MESA_GLES_VERSION_OVERRIDE: "3.1"
