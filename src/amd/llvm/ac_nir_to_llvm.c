@@ -3404,11 +3404,26 @@ static LLVMValueRef visit_var_atomic(struct ac_nir_context *ctx,
 		case nir_intrinsic_deref_atomic_exchange:
 			op = LLVMAtomicRMWBinOpXchg;
 			break;
+#if LLVM_VERSION_MAJOR >= 10
+		case nir_intrinsic_shared_atomic_fadd:
+		case nir_intrinsic_deref_atomic_fadd:
+			op = LLVMAtomicRMWBinOpFAdd;
+			break;
+#endif
 		default:
 			return NULL;
 		}
 
-		result = ac_build_atomic_rmw(&ctx->ac, op, ptr, ac_to_integer(&ctx->ac, src), sync_scope);
+		LLVMValueRef val;
+
+		if (instr->intrinsic == nir_intrinsic_shared_atomic_fadd ||
+		    instr->intrinsic == nir_intrinsic_deref_atomic_fadd) {
+			val = ac_to_float(&ctx->ac, src);
+		} else {
+			val = ac_to_integer(&ctx->ac, src);
+		}
+
+		result = ac_build_atomic_rmw(&ctx->ac, op, ptr, val, sync_scope);
 	}
 
 	if (ctx->ac.postponed_kill)
@@ -3944,7 +3959,8 @@ static void visit_intrinsic(struct ac_nir_context *ctx,
 	case nir_intrinsic_shared_atomic_or:
 	case nir_intrinsic_shared_atomic_xor:
 	case nir_intrinsic_shared_atomic_exchange:
-	case nir_intrinsic_shared_atomic_comp_swap: {
+	case nir_intrinsic_shared_atomic_comp_swap:
+	case nir_intrinsic_shared_atomic_fadd: {
 		LLVMValueRef ptr = get_memory_ptr(ctx, instr->src[0],
 						  instr->src[1].ssa->bit_size);
 		result = visit_var_atomic(ctx, instr, ptr, 1);
@@ -3959,7 +3975,8 @@ static void visit_intrinsic(struct ac_nir_context *ctx,
 	case nir_intrinsic_deref_atomic_or:
 	case nir_intrinsic_deref_atomic_xor:
 	case nir_intrinsic_deref_atomic_exchange:
-	case nir_intrinsic_deref_atomic_comp_swap: {
+	case nir_intrinsic_deref_atomic_comp_swap:
+	case nir_intrinsic_deref_atomic_fadd: {
 		LLVMValueRef ptr = get_src(ctx, instr->src[0]);
 		result = visit_var_atomic(ctx, instr, ptr, 1);
 		break;
