@@ -103,7 +103,7 @@ bool EmitSSBOInstruction::emit_atomic(const nir_intrinsic_instr* instr)
 
    GPRVector dest = make_dest(instr);
 
-   int base = nir_intrinsic_base(instr);
+   int base = remap_atomic_base(nir_intrinsic_base(instr));
 
    PValue uav_id = from_nir(instr->src[0], 0);
 
@@ -111,7 +111,7 @@ bool EmitSSBOInstruction::emit_atomic(const nir_intrinsic_instr* instr)
 
    GDSInstr *ir = nullptr;
    if (instr->intrinsic == nir_intrinsic_atomic_counter_comp_swap)  {
-      PValue value2 = from_nir_with_fetch_constant(instr->src[1], 1);
+      PValue value2 = from_nir_with_fetch_constant(instr->src[2], 0);
       ir = new GDSInstr(op, dest, value, value2, uav_id, base);
    } else {
       ir = new GDSInstr(op, dest, value, uav_id, base);
@@ -132,7 +132,7 @@ bool EmitSSBOInstruction::emit_unary_atomic(const nir_intrinsic_instr* instr)
 
    PValue uav_id = from_nir(instr->src[0], 0);
 
-   auto ir = new GDSInstr(op, dest, uav_id, nir_intrinsic_base(instr));
+   auto ir = new GDSInstr(op, dest, uav_id, remap_atomic_base(nir_intrinsic_base(instr)));
 
    emit_instruction(ir);
    return true;
@@ -221,7 +221,7 @@ bool EmitSSBOInstruction::emit_atomic_add(const nir_intrinsic_instr* instr)
    PValue uav_id = from_nir(instr->src[0], 0);
 
    auto ir = new GDSInstr(DS_OP_ADD_RET, dest, value, uav_id,
-                          nir_intrinsic_base(instr));
+                          remap_atomic_base(nir_intrinsic_base(instr)));
 
    emit_instruction(ir);
    return true;
@@ -240,7 +240,7 @@ bool EmitSSBOInstruction::emit_atomic_inc(const nir_intrinsic_instr* instr)
    PValue uav_id = from_nir(instr->src[0], 0);
    GPRVector dest = make_dest(instr);
    auto ir = new GDSInstr(DS_OP_ADD_RET, dest, m_atomic_update, uav_id,
-                          nir_intrinsic_base(instr));
+                          remap_atomic_base(nir_intrinsic_base(instr)));
    emit_instruction(ir);
    return true;
 }
@@ -252,8 +252,10 @@ bool EmitSSBOInstruction::emit_atomic_pre_dec(const nir_intrinsic_instr *instr)
    PValue uav_id = from_nir(instr->src[0], 0);
 
    auto ir = new GDSInstr(DS_OP_SUB_RET, dest, m_atomic_update, uav_id,
-                          nir_intrinsic_base(instr));
+                          remap_atomic_base(nir_intrinsic_base(instr)));
    emit_instruction(ir);
+
+   emit_instruction(new AluInstruction(op2_sub_int,  dest.x(), dest.x(), literal(1), last_write));
 
    return true;
 }
@@ -263,7 +265,7 @@ bool EmitSSBOInstruction::emit_load_ssbo(const nir_intrinsic_instr* instr)
    GPRVector dest = make_dest(instr);
 
    /** src0 not used, should be some offset */
-   auto addr = from_nir_with_fetch_constant(instr->src[1], 0);
+   auto addr = from_nir(instr->src[1], 0);
    PValue addr_temp = create_register_from_nir_src(instr->src[1], 1);
 
    /** Should be lowered in nir */

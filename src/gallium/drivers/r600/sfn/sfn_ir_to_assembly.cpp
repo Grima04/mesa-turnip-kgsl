@@ -893,26 +893,12 @@ bool AssemblyFromShaderLegacyImpl::emit_gds(const GDSInstr& instr)
          struct r600_bytecode_alu alu;
 
          memset(&alu, 0, sizeof(alu));
-         alu.op = opcode_map.at(op2_lshr_int);
-         alu.dst.sel = addr->sel();
-         alu.dst.chan = addr->chan();
-         alu.src[0].sel = addr->sel();
-         alu.src[0].chan = addr->chan();
-         alu.src[1].sel = ALU_SRC_LITERAL;
-         alu.src[1].value = 2;
-         alu.last = 1;
-         alu.dst.write = 1;
-         int r = r600_bytecode_add_alu(m_bc, &alu);
-         if (r)
-            return false;
-
-         memset(&alu, 0, sizeof(alu));
          alu.op = opcode_map.at(op1_mova_int);
          alu.dst.chan = 0;
          alu.src[0].sel = addr->sel();
          alu.src[0].chan = addr->chan();
          alu.last = 1;
-         r = r600_bytecode_add_alu(m_bc, &alu);
+         int r = r600_bytecode_add_alu(m_bc, &alu);
          if (r)
             return false;
 
@@ -934,7 +920,7 @@ bool AssemblyFromShaderLegacyImpl::emit_gds(const GDSInstr& instr)
       }
    } else {
       const LiteralValue& addr_reg = static_cast<const LiteralValue&>(*addr);
-      uav_idx = addr_reg.value() >> 2;
+      uav_idx = addr_reg.value();
    }
 
    memset(&gds, 0, sizeof(struct r600_bytecode_gds));

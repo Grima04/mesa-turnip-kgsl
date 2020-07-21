@@ -252,10 +252,15 @@ bool ShaderFromNirProcessor::process_uniforms(nir_variable *uniform)
       ++sh_info().nhwatomic_ranges;
       atom.buffer_id = uniform->data.binding;
       atom.hw_idx = m_atomic_base + m_next_hwatomic_loc;
-      atom.start = m_next_hwatomic_loc;
+
+      atom.start = uniform->data.offset >> 2;
       atom.end = atom.start + natomics - 1;
-      m_next_hwatomic_loc = atom.end + 1;
-      //atom.array_id = uniform->type->is_array() ? 1 : 0;
+
+      if (m_atomic_base_map.find(uniform->data.binding) ==
+          m_atomic_base_map.end())
+         m_atomic_base_map[uniform->data.binding] = m_next_hwatomic_loc;
+
+      m_next_hwatomic_loc += natomics;
 
       m_sel.info.file_count[TGSI_FILE_HW_ATOMIC] += atom.end  - atom.start + 1;
 
@@ -263,8 +268,11 @@ bool ShaderFromNirProcessor::process_uniforms(nir_variable *uniform)
               << m_sel.info.file_count[TGSI_FILE_HW_ATOMIC] << "\n";
    }
 
-   if (uniform->type->is_image() || uniform->data.mode == nir_var_mem_ssbo) {
+   auto type = uniform->type->is_array() ? uniform->type->without_array(): uniform->type;
+   if (type->is_image() || uniform->data.mode == nir_var_mem_ssbo) {
       sh_info().uses_images = 1;
+      if (uniform->type->is_array())
+         sh_info().indirect_files |= TGSI_FILE_IMAGE;
    }
 
    if (uniform->type->is_image()) {
