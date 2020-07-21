@@ -512,6 +512,138 @@ void sort_uniforms(nir_shader *shader)
 
 }
 
+static nir_intrinsic_op
+r600_map_atomic(nir_intrinsic_op op)
+{
+   switch (op) {
+   case nir_intrinsic_atomic_counter_read_deref:
+      return nir_intrinsic_atomic_counter_read;
+   case nir_intrinsic_atomic_counter_inc_deref:
+      return nir_intrinsic_atomic_counter_inc;
+   case nir_intrinsic_atomic_counter_pre_dec_deref:
+      return nir_intrinsic_atomic_counter_pre_dec;
+   case nir_intrinsic_atomic_counter_post_dec_deref:
+      return nir_intrinsic_atomic_counter_post_dec;
+   case nir_intrinsic_atomic_counter_add_deref:
+      return nir_intrinsic_atomic_counter_add;
+   case nir_intrinsic_atomic_counter_min_deref:
+      return nir_intrinsic_atomic_counter_min;
+   case nir_intrinsic_atomic_counter_max_deref:
+      return nir_intrinsic_atomic_counter_max;
+   case nir_intrinsic_atomic_counter_and_deref:
+      return nir_intrinsic_atomic_counter_and;
+   case nir_intrinsic_atomic_counter_or_deref:
+      return nir_intrinsic_atomic_counter_or;
+   case nir_intrinsic_atomic_counter_xor_deref:
+      return nir_intrinsic_atomic_counter_xor;
+   case nir_intrinsic_atomic_counter_exchange_deref:
+      return nir_intrinsic_atomic_counter_exchange;
+   case nir_intrinsic_atomic_counter_comp_swap_deref:
+      return nir_intrinsic_atomic_counter_comp_swap;
+   default:
+      return nir_num_intrinsics;
+   }
+}
+
+static bool
+r600_lower_deref_instr(nir_builder *b, nir_intrinsic_instr *instr,
+                       nir_shader *shader)
+{
+   nir_intrinsic_op op = r600_map_atomic(instr->intrinsic);
+   if (nir_num_intrinsics == op)
+      return false;
+
+   nir_deref_instr *deref = nir_src_as_deref(instr->src[0]);
+   nir_variable *var = nir_deref_instr_get_variable(deref);
+
+   if (var->data.mode != nir_var_uniform &&
+       var->data.mode != nir_var_mem_ssbo &&
+       var->data.mode != nir_var_mem_shared)
+      return false; /* atomics passed as function arguments can't be lowered */
+
+   const unsigned idx = var->data.binding;
+
+   b->cursor = nir_before_instr(&instr->instr);
+
+   nir_ssa_def *offset = nir_imm_int(b, var->data.index);
+   for (nir_deref_instr *d = deref; d->deref_type != nir_deref_type_var;
+        d = nir_deref_instr_parent(d)) {
+      assert(d->deref_type == nir_deref_type_array);
+      assert(d->arr.index.is_ssa);
+
+      unsigned array_stride = 1;
+      if (glsl_type_is_array(d->type))
+         array_stride *= glsl_get_aoa_size(d->type);
+
+      offset = nir_iadd(b, offset, nir_imul(b, d->arr.index.ssa,
+                                            nir_imm_int(b, array_stride)));
+   }
+
+   /* Since the first source is a deref and the first source in the lowered
+    * instruction is the offset, we can just swap it out and change the
+    * opcode.
+    */
+   instr->intrinsic = op;
+   nir_instr_rewrite_src(&instr->instr, &instr->src[0],
+                         nir_src_for_ssa(offset));
+   nir_intrinsic_set_base(instr, idx);
+
+   nir_deref_instr_remove_if_unused(deref);
+
+   return true;
+}
+
+static bool
+r600_nir_lower_atomics(nir_shader *shader)
+{
+   bool progress = false;
+
+   /* First re-do the offsets, in Hardware we start at zero for each new
+    * binding, and we use an offset of one per counter */
+   int current_binding = -1;
+   int current_offset = 0;
+   nir_foreach_variable_with_modes(var, shader, nir_var_uniform) {
+      if (!var->type->contains_atomic())
+         continue;
+
+      if (current_binding == (int)var->data.binding) {
+         var->data.index = current_offset;
+         current_offset += var->type->atomic_size() / ATOMIC_COUNTER_SIZE;
+      } else {
+         current_binding = var->data.binding;
+         var->data.index = 0;
+         current_offset = var->type->atomic_size() / ATOMIC_COUNTER_SIZE;
+      }
+   }
+
+   nir_foreach_function(function, shader) {
+      if (!function->impl)
+         continue;
+
+      bool impl_progress = false;
+
+      nir_builder build;
+      nir_builder_init(&build, function->impl);
+
+      nir_foreach_block(block, function->impl) {
+         nir_foreach_instr_safe(instr, block) {
+            if (instr->type != nir_instr_type_intrinsic)
+               continue;
+
+            impl_progress |= r600_lower_deref_instr(&build,
+                                                    nir_instr_as_intrinsic(instr), shader);
+         }
+      }
+
+      if (impl_progress) {
+         nir_metadata_preserve(function->impl, (nir_metadata)(nir_metadata_block_index |
+                                                              nir_metadata_dominance));
+         progress = true;
+      }
+   }
+
+   return progress;
+}
 using r600::r600_nir_lower_int_tg4;
 using r600::r600_nir_lower_pack_unpack_2x16;
 using r600::r600_lower_scratch_addresses;
@@ -694,6 +826,7 @@ int r600_shader_from_nir(struct r600_context *rctx,
    NIR_PASS_V(sel->nir, nir_lower_phis_to_scalar);
 
    NIR_PASS_V(sel->nir, r600_lower_shared_io);
+   NIR_PASS_V(sel->nir, r600_nir_lower_atomics);
 
    static const struct nir_lower_tex_options lower_tex_options = {
       .lower_txp = ~0u,
