@@ -603,34 +603,6 @@ etna_resource_get_handle(struct pipe_screen *pscreen,
    }
 }
 
-enum etna_resource_status
-etna_resource_get_status(struct etna_context *ctx, struct etna_resource *rsc)
-{
-   enum etna_resource_status newstatus = 0;
-
-   set_foreach(rsc->pending_ctx, entry) {
-      struct etna_context *extctx = (struct etna_context *)entry->key;
-
-      set_foreach(extctx->used_resources_read, entry2) {
-         struct etna_resource *rsc2 = (struct etna_resource *)entry2->key;
-         if (ctx == extctx || rsc2 != rsc)
-            continue;
-
-         newstatus |= ETNA_PENDING_READ;
-      }
-
-      set_foreach(extctx->used_resources_write, entry2) {
-         struct etna_resource *rsc2 = (struct etna_resource *)entry2->key;
-         if (ctx == extctx || rsc2 != rsc)
-            continue;
-
-         newstatus |= ETNA_PENDING_WRITE;
-      }
-   }
-
-   return newstatus;
-}
-
 void
 etna_resource_used(struct etna_context *ctx, struct pipe_resource *prsc,
                    enum etna_resource_status status)
