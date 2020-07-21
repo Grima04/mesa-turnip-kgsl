@@ -1693,14 +1693,22 @@ struct mali_single_framebuffer {
         /* More below this, maybe */
 } __attribute__((packed));
 
-/* Format bits for the render target flags. Setting MSAA alone works for on
- * chip MSAA. Setting MSAA with the LAYERED flag works for MSAA where each
- * sample is its own image (implements the ES3 spec directly but inefficient on
- * mobile). */
 
-#define MALI_MFBD_FORMAT_LAYERED  (1 << 0)
-#define MALI_MFBD_FORMAT_MSAA 	  (1 << 1)
-#define MALI_MFBD_FORMAT_SRGB 	  (1 << 2)
+/* SINGLE to disable multisampling, AVERAGE for
+ * EXT_multisampled_render_to_texture operation where multiple tilebuffer
+ * samples are implicitly resolved before writeout, MULTIPLE to write multiple
+ * samples inline, and LAYERED for ES3-style multisampling with each sample in
+ * a different buffer.
+ */
+
+enum mali_msaa_mode {
+        MALI_MSAA_SINGLE = 0,
+        MALI_MSAA_AVERAGE = 1,
+        MALI_MSAA_MULTIPLE = 2,
+        MALI_MSAA_LAYERED = 3,
+};
+
+#define MALI_MFBD_FORMAT_SRGB 	  (1 << 0)
 
 struct mali_rt_format {
         unsigned unk1 : 32;
@@ -1711,7 +1719,8 @@ struct mali_rt_format {
         unsigned unk3 : 4;
         unsigned unk4 : 1;
         enum mali_block_format block : 2;
-        unsigned flags : 4;
+        enum mali_msaa_mode msaa : 2;
+        unsigned flags : 2;
 
         unsigned swizzle : 12;
 

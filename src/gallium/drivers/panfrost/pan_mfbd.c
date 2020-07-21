@@ -48,7 +48,7 @@ panfrost_mfbd_format(struct pipe_surface *surf)
                 .unk2 = 0x1,
                 .nr_channels = MALI_POSITIVE(desc->nr_channels),
                 .unk3 = 0x4,
-                .flags = 0x8,
+                .flags = 0x2,
                 .swizzle = panfrost_translate_swizzle_4(swizzle),
                 .no_preload = true
         };
@@ -225,7 +225,11 @@ panfrost_mfbd_set_cbuf(
         rt->format = panfrost_mfbd_format(surf);
 
         if (layer_stride)
-                rt->format.flags |= MALI_MFBD_FORMAT_MSAA | MALI_MFBD_FORMAT_LAYERED;
+                rt->format.msaa = MALI_MSAA_LAYERED;
+        else if (surf->nr_samples)
+                rt->format.msaa = MALI_MSAA_AVERAGE;
+        else
+                rt->format.msaa = MALI_MSAA_SINGLE;
 
         /* Now, we set the layout specific pieces */
 
@@ -580,7 +584,7 @@ panfrost_mfbd_fragment(struct panfrost_batch *batch, bool has_draws)
                         };
 
                         if (is_bifrost) {
-                                null_rt.flags = 0x8;
+                                null_rt.flags = 0x2;
                                 null_rt.unk3 = 0x8;
                         }
 
@@ -613,8 +617,6 @@ panfrost_mfbd_fragment(struct panfrost_batch *batch, bool has_draws)
         /* Actualize the requirements */
 
         if (batch->requirements & PAN_REQ_MSAA) {
-                rts[0].format.flags |= MALI_MFBD_FORMAT_MSAA;
-
                 /* XXX */
                 fb.unk1 |= (1 << 4) | (1 << 1);
                 fb.rt_count_2 = 4;

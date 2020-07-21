@@ -245,8 +245,6 @@ static const struct pandecode_flag_info u4_flag_info[] = {
 
 #define FLAG_INFO(flag) { MALI_MFBD_FORMAT_##flag, "MALI_MFBD_FORMAT_" #flag }
 static const struct pandecode_flag_info mfbd_fmt_flag_info[] = {
-        FLAG_INFO(LAYERED),
-        FLAG_INFO(MSAA),
         FLAG_INFO(SRGB),
         {}
 };
@@ -406,6 +404,22 @@ pandecode_func(enum mali_func mode)
 
         default:
                 pandecode_msg("XXX: invalid func %X\n", mode);
+                return "";
+        }
+}
+#undef DEFINE_CASE
+
+#define DEFINE_CASE(name) case MALI_MSAA_ ## name: return "MALI_MSAA_" #name
+static char *
+pandecode_msaa_mode(enum mali_msaa_mode mode)
+{
+        switch (mode) {
+                DEFINE_CASE(SINGLE);
+                DEFINE_CASE(AVERAGE);
+                DEFINE_CASE(MULTIPLE);
+                DEFINE_CASE(LAYERED);
+        default:
+                unreachable("Impossible");
                 return "";
         }
 }
@@ -1027,6 +1041,8 @@ pandecode_rt_format(struct mali_rt_format format)
         pandecode_log(".flags = ");
         pandecode_log_decoded_flags(mfbd_fmt_flag_info, format.flags);
         pandecode_log_cont(",\n");
+
+        pandecode_prop("msaa = %s", pandecode_msaa_mode(format.msaa));
 
         /* In theory, the no_preload bit can be cleared to enable MFBD preload,
          * which is a faster hardware-based alternative to the wallpaper method
