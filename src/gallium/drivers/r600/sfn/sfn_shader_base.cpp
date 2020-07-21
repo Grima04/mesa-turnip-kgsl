@@ -117,9 +117,12 @@ bool ShaderFromNirProcessor::scan_instruction(nir_instr *instr)
       case nir_intrinsic_image_atomic_umin:
       case nir_intrinsic_ssbo_atomic_umax:
       case nir_intrinsic_image_atomic_umax:
+      case nir_intrinsic_ssbo_atomic_xor:
       case nir_intrinsic_image_atomic_xor:
+      case nir_intrinsic_ssbo_atomic_exchange:
       case nir_intrinsic_image_atomic_exchange:
       case nir_intrinsic_image_atomic_comp_swap:
+      case nir_intrinsic_ssbo_atomic_comp_swap:
          m_sel.info.writes_memory = 1;
          /* fallthrough */
       case nir_intrinsic_image_load:

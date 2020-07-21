@@ -72,6 +72,15 @@ bool EmitSSBOInstruction::do_emit(nir_instr* instr)
    case nir_intrinsic_store_ssbo:
       return emit_store_ssbo(intr);
    case nir_intrinsic_ssbo_atomic_add:
+   case nir_intrinsic_ssbo_atomic_comp_swap:
+   case nir_intrinsic_ssbo_atomic_or:
+   case nir_intrinsic_ssbo_atomic_xor:
+   case nir_intrinsic_ssbo_atomic_imax:
+   case nir_intrinsic_ssbo_atomic_imin:
+   case nir_intrinsic_ssbo_atomic_umax:
+   case nir_intrinsic_ssbo_atomic_umin:
+   case nir_intrinsic_ssbo_atomic_and:
+   case nir_intrinsic_ssbo_atomic_exchange:
       return emit_ssbo_atomic_op(intr);
    case nir_intrinsic_image_store:
       return emit_image_store(intr);
@@ -197,8 +206,10 @@ EmitSSBOInstruction::get_rat_opcode(const nir_intrinsic_op opcode, pipe_format f
    case nir_intrinsic_ssbo_atomic_umax:
    case nir_intrinsic_image_atomic_umax:
       return RatInstruction::MAX_UINT_RTN;
+   case nir_intrinsic_ssbo_atomic_xor:
    case nir_intrinsic_image_atomic_xor:
       return RatInstruction::XOR_RTN;
+   case nir_intrinsic_ssbo_atomic_comp_swap:
    case nir_intrinsic_image_atomic_comp_swap:
       if (util_format_is_float(format))
          return RatInstruction::CMPXCHG_FLT_RTN;
@@ -309,6 +320,8 @@ bool EmitSSBOInstruction::emit_store_ssbo(const nir_intrinsic_instr* instr)
    int temp1 = allocate_temp_register();
    GPRVector addr_vec(temp1, {0,1,2,7});
 
+   auto temp2 = get_temp_vec4();
+
    auto rat_id = from_nir(instr->src[1], 0);
 
    emit_instruction(new AluInstruction(op2_lshr_int, addr_vec.reg_i(0), orig_addr,
@@ -339,12 +352,13 @@ bool EmitSSBOInstruction::emit_store_ssbo(const nir_intrinsic_instr* instr)
    emit_instruction(new RatInstruction(cf_mem_rat, RatInstruction::STORE_TYPED,
                                        values, addr_vec, m_ssbo_image_offset, rat_id, 1,
                                        1, 0, false));
+
    for (unsigned i = 1; i < nir_src_num_components(instr->src[0]); ++i) {
-      emit_instruction(new AluInstruction(op1_mov, values.reg_i(0), from_nir(instr->src[0], i), write));
+      emit_instruction(new AluInstruction(op1_mov, temp2.reg_i(0), from_nir(instr->src[0], i), write));
       emit_instruction(new AluInstruction(op2_add_int, addr_vec.reg_i(0),
                                           {addr_vec.reg_i(0), Value::one_i}, last_write));
       emit_instruction(new RatInstruction(cf_mem_rat, RatInstruction::STORE_TYPED,
-                                          values, addr_vec, 0, rat_id, 1,
+                                          temp2, addr_vec, 0, rat_id, 1,
                                           1, 0, false));
    }
 #endif
@@ -392,10 +406,24 @@ EmitSSBOInstruction::emit_ssbo_atomic_op(const nir_intrinsic_instr *intrin)
 
    auto opcode = EmitSSBOInstruction::get_rat_opcode(intrin->intrinsic, PIPE_FORMAT_R32_UINT);
 
-   auto coord =  from_nir_with_fetch_constant(intrin->src[1], 0);
 
-   emit_instruction(new AluInstruction(op1_mov, m_rat_return_address.reg_i(0), from_nir(intrin->src[2], 0), write));
-   emit_instruction(new AluInstruction(op1_mov, m_rat_return_address.reg_i(2), Value::zero, last_write));
+   auto coord_orig =  from_nir(intrin->src[1], 0, 0);
+   auto coord = get_temp_register(0);
+
+   emit_instruction(new AluInstruction(op2_lshr_int, coord, coord_orig, literal(2), last_write));
+
+   if (intrin->intrinsic == nir_intrinsic_ssbo_atomic_comp_swap) {
+      emit_instruction(new AluInstruction(op1_mov, m_rat_return_address.reg_i(0),
+                                          from_nir(intrin->src[3], 0), {alu_write}));
+      // TODO: cayman wants channel 2 here
+      emit_instruction(new AluInstruction(op1_mov, m_rat_return_address.reg_i(3),
+                                          from_nir(intrin->src[2], 0), {alu_last_instr, alu_write}));
+   } else {
+      emit_instruction(new AluInstruction(op1_mov, m_rat_return_address.reg_i(0),
+                                          from_nir(intrin->src[2], 0), {alu_write}));
+      emit_instruction(new AluInstruction(op1_mov, m_rat_return_address.reg_i(2), Value::zero, last_write));
+   }
+
 
    GPRVector out_vec({coord, coord, coord, coord});
 
@@ -415,7 +443,7 @@ EmitSSBOInstruction::emit_ssbo_atomic_op(const nir_intrinsic_instr *intrin)
                                      0,
                                      false,
                                      0xf,
-                                     R600_IMAGE_IMMED_RESOURCE_OFFSET,
+                                     R600_IMAGE_IMMED_RESOURCE_OFFSET + imageid,
                                      0,
                                      bim_none,
                                      false,
@@ -423,7 +451,7 @@ EmitSSBOInstruction::emit_ssbo_atomic_op(const nir_intrinsic_instr *intrin)
                                      0,
                                      0,
                                      0,
-                                     PValue(),
+                                     image_offset,
                                      {0,7,7,7});
    fetch->set_flag(vtx_srf_mode);
    fetch->set_flag(vtx_use_tc);
