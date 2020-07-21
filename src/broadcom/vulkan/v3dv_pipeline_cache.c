@@ -495,9 +495,71 @@ v3dv_MergePipelineCaches(VkDevice device,
                          uint32_t srcCacheCount,
                          const VkPipelineCache *pSrcCaches)
 {
-   /* FIXME: at this point there are not other content that the header cache,
-    * so merging pipeline caches would be always successful
-    */
+   V3DV_FROM_HANDLE(v3dv_pipeline_cache, dst, dstCache);
+
+   if (!dst->variant_cache || !dst->nir_cache)
+      return VK_SUCCESS;
+
+   for (uint32_t i = 0; i < srcCacheCount; i++) {
+      V3DV_FROM_HANDLE(v3dv_pipeline_cache, src, pSrcCaches[i]);
+      if (!src->variant_cache || !src->nir_cache)
+         continue;
+
+      hash_table_foreach(src->nir_cache, entry) {
+         struct serialized_nir *src_snir = entry->data;
+         assert(src_snir);
+
+         if (_mesa_hash_table_search(dst->nir_cache, src_snir->sha1_key))
+            continue;
+
+         /* FIXME: we are using serialized nir shaders because they are
+          * convenient to create and store on the cache, but requires to do a
+          * copy here (and some other places) of the serialized NIR. Perhaps
+          * it would make sense to move to handle the NIR shaders with shared
+          * structures with ref counts, as the variants.
+          */
+         struct serialized_nir *snir_dst =
+            ralloc_size(dst->nir_cache, sizeof(*snir_dst) + src_snir->size);
+         memcpy(snir_dst->sha1_key, src_snir->sha1_key, 20);
+         snir_dst->size = src_snir->size;
+         memcpy(snir_dst->data, src_snir->data, src_snir->size);
+
+         _mesa_hash_table_insert(dst->nir_cache, snir_dst->sha1_key, snir_dst);
+         if (unlikely(dump_stats)) {
+            char sha1buf[41];
+            _mesa_sha1_format(sha1buf, snir_dst->sha1_key);
+
+            fprintf(stderr, "pipeline cache %p, added nir entry %s "
+                    "from pipeline cache %p\n",
+                    dst, sha1buf, src);
+            dst->nir_stats.count++;
+            cache_dump_stats(dst);
+         }
+      }
+
+      hash_table_foreach(src->variant_cache, entry) {
+         struct v3dv_shader_variant *variant = entry->data;
+         assert(variant);
+
+         if (_mesa_hash_table_search(dst->variant_cache, variant->variant_sha1))
+            continue;
+
+         v3dv_shader_variant_ref(variant);
+         _mesa_hash_table_insert(dst->variant_cache, variant->variant_sha1, variant);
+
+         if (unlikely(dump_stats)) {
+            char sha1buf[41];
+            _mesa_sha1_format(sha1buf, variant->variant_sha1);
+
+            fprintf(stderr, "pipeline cache %p, added variant entry %s "
+                    "from pipeline cache %p\n",
+                    dst, sha1buf, src);
+            dst->variant_stats.count++;
+            cache_dump_stats(dst);
+         }
+      }
+   }
+
    return VK_SUCCESS;
 }
 
