@@ -68,14 +68,14 @@ def sign_with_hmac(key, message):
 
     return base64.encodebytes(signature).strip().decode()
 
-def upload_artifact(file_name, content_type):
+def upload_artifact(file_name, content_type, device_name):
     with open('.minio_credentials', 'r') as f:
         credentials = json.load(f)["minio-packet.freedesktop.org"]
         minio_key = credentials["AccessKeyId"]
         minio_secret = credentials["SecretAccessKey"]
         minio_token = credentials["SessionToken"]
 
-    resource = '/artifacts/%s/%s/%s' % (os.environ['CI_PROJECT_PATH'], os.environ['CI_PIPELINE_ID'], os.path.basename(file_name))
+    resource = '/artifacts/%s/%s/%s/%s' % (os.environ['CI_PROJECT_PATH'], os.environ['CI_PIPELINE_ID'], device_name, os.path.basename(file_name))
     date = formatdate(timeval=None, localtime=False, usegmt=True)
     url = 'https://minio-packet.freedesktop.org%s' % (resource)
     to_sign = "PUT\n\n%s\n%s\nx-amz-security-token:%s\n%s" % (content_type, date, minio_token, resource)
@@ -120,7 +120,7 @@ def gitlab_check_trace(project_url, device_name, trace, expectation):
     os.makedirs(results_path, exist_ok=True)
     shutil.move(log_file, os.path.join(results_path, os.path.split(log_file)[1]))
     if not ok and os.environ.get('TRACIE_UPLOAD_TO_MINIO', '0') == '1':
-        upload_artifact(image_file, 'image/png')
+        upload_artifact(image_file, 'image/png', device_name)
     if not ok or os.environ.get('TRACIE_STORE_IMAGES', '0') == '1':
         image_name = os.path.split(image_file)[1]
         shutil.move(image_file, os.path.join(results_path, image_name))
@@ -156,7 +156,7 @@ def run(filename, device_name):
     with open(os.path.join(RESULTS_PATH, 'results.yml'), 'w') as f:
         yaml.safe_dump(results, f, default_flow_style=False)
     if os.environ.get('TRACIE_UPLOAD_TO_MINIO', '0') == '1':
-        upload_artifact(os.path.join(RESULTS_PATH, 'results.yml'), 'text/yaml')
+        upload_artifact(os.path.join(RESULTS_PATH, 'results.yml'), 'text/yaml', device_name)
 
     return all_ok
 
