@@ -46,6 +46,7 @@
 #include <vector>
 #include <set>
 #include <stack>
+#include <unordered_map>
 
 struct nir_instr;
 
@@ -85,6 +86,11 @@ public:
    void evaluate_spi_sid(r600_shader_io &io);
 
    enum chip_class get_chip_class() const;
+
+   int remap_atomic_base(int base) {
+      return m_atomic_base_map[base];
+   }
+
 protected:
 
    void set_var_address(nir_deref_instr *instr);
@@ -210,6 +216,8 @@ private:
    r600_pipe_shader_selector& m_sel;
    int m_atomic_base ;
    int m_image_count;
+
+   std::unordered_map<int, int> m_atomic_base_map;
 };
 
 }

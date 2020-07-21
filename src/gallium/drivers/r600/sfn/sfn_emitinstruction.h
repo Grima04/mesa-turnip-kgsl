@@ -93,6 +93,8 @@ protected:
    bool inject_register(unsigned sel, unsigned swizzle,
                         const PValue& reg, bool map);
 
+   int remap_atomic_base(int base);
+
 private:
 
    ShaderFromNirProcessor& m_proc;

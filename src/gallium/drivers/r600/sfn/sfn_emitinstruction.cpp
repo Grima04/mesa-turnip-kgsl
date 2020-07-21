@@ -174,6 +174,10 @@ bool EmitInstruction::inject_register(unsigned sel, unsigned swizzle,
    return m_proc.inject_register(sel, swizzle, reg, map);
 }
 
+int EmitInstruction::remap_atomic_base(int base)
+{
+	return m_proc.remap_atomic_base(base);
+}
 
 
 const std::set<AluModifiers> EmitInstruction::empty = {};
