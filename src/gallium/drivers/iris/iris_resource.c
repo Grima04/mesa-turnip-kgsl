@@ -2095,7 +2095,8 @@ iris_texture_subdata(struct pipe_context *ctx,
     * stall-avoidance blits.
     */
    if (surf->tiling == ISL_TILING_LINEAR ||
-       res->aux.usage == ISL_AUX_USAGE_CCS_E ||
+       (isl_aux_usage_has_ccs(res->aux.usage) &&
+        res->aux.usage != ISL_AUX_USAGE_CCS_D) ||
        resource_is_busy(ice, res)) {
       return u_default_texture_subdata(ctx, resource, level, usage, box,
                                        data, stride, layer_stride);
