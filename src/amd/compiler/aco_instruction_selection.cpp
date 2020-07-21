@@ -6793,6 +6793,12 @@ void visit_shared_atomic(isel_context *ctx, nir_intrinsic_instr *instr)
          op64_rtn = aco_opcode::ds_cmpst_rtn_b64;
          num_operands = 4;
          break;
+      case nir_intrinsic_shared_atomic_fadd:
+         op32 = aco_opcode::ds_add_f32;
+         op32_rtn = aco_opcode::ds_add_rtn_f32;
+         op64 = aco_opcode::num_opcodes;
+         op64_rtn = aco_opcode::num_opcodes;
+         break;
       default:
          unreachable("Unhandled shared atomic intrinsic");
    }
@@ -7448,6 +7454,7 @@ void visit_intrinsic(isel_context *ctx, nir_intrinsic_instr *instr)
    case nir_intrinsic_shared_atomic_xor:
    case nir_intrinsic_shared_atomic_exchange:
    case nir_intrinsic_shared_atomic_comp_swap:
+   case nir_intrinsic_shared_atomic_fadd:
       visit_shared_atomic(ctx, instr);
       break;
    case nir_intrinsic_image_deref_load:

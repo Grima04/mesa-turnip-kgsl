@@ -773,6 +773,7 @@ void init_context(isel_context *ctx, nir_shader *shader)
                   case nir_intrinsic_shared_atomic_xor:
                   case nir_intrinsic_shared_atomic_exchange:
                   case nir_intrinsic_shared_atomic_comp_swap:
+                  case nir_intrinsic_shared_atomic_fadd:
                   case nir_intrinsic_load_scratch:
                   case nir_intrinsic_load_invocation_id:
                   case nir_intrinsic_load_primitive_id:
