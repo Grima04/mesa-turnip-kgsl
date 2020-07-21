@@ -327,8 +327,8 @@ void fill_desc_set_info(isel_context *ctx, nir_function_impl *impl)
    }
    ctx->buffer_resource_flags = std::vector<uint8_t>(resource_flag_count);
 
-   nir_foreach_variable(var, &impl->function->shader->uniforms) {
-      if (var->data.mode == nir_var_mem_ssbo && (var->data.access & ACCESS_RESTRICT)) {
+   nir_foreach_variable_with_modes(var, impl->function->shader, nir_var_mem_ssbo) {
+      if (var->data.access & ACCESS_RESTRICT) {
          uint32_t offset = ctx->resource_flag_offsets[var->data.descriptor_set];
          ctx->buffer_resource_flags[offset + var->data.binding] |= buffer_is_restrict;
       }
