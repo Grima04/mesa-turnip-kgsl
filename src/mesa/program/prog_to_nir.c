@@ -913,22 +913,21 @@ setup_registers_and_variables(struct ptn_compile *c)
       nir_register *reg = nir_local_reg_create(b->impl);
       reg->num_components = 4;
 
-      nir_variable *var = rzalloc(shader, nir_variable);
+      const struct glsl_type *type;
       if ((c->prog->Target == GL_FRAGMENT_PROGRAM_ARB && i == FRAG_RESULT_DEPTH) ||
           (c->prog->Target == GL_VERTEX_PROGRAM_ARB && i == VARYING_SLOT_FOGC) ||
           (c->prog->Target == GL_VERTEX_PROGRAM_ARB && i == VARYING_SLOT_PSIZ))
-         var->type = glsl_float_type();
+         type = glsl_float_type();
       else
-         var->type = glsl_vec4_type();
-      var->data.mode = nir_var_shader_out;
-      var->name = ralloc_asprintf(var, "out_%d", i);
+         type = glsl_vec4_type();
 
+      nir_variable *var =
+         nir_variable_create(shader, nir_var_shader_out, type,
+                             ralloc_asprintf(shader, "out_%d", i));
       var->data.location = i;
       var->data.index = 0;
 
       c->output_regs[i] = reg;
-
-      exec_list_push_tail(&shader->outputs, &var->node);
       c->output_vars[i] = var;
    }
 
