@@ -680,7 +680,7 @@ panfrost_transfer_map(struct pipe_context *pctx,
                 /* By mapping direct-write, we're implicitly already
                  * initialized (maybe), so be conservative */
 
-                if ((usage & PIPE_TRANSFER_WRITE) && (usage & PIPE_TRANSFER_MAP_DIRECTLY)) {
+                if (usage & PIPE_TRANSFER_WRITE) {
                         rsrc->slices[level].initialized = true;
                         panfrost_minmax_cache_invalidate(rsrc->index_cache, &transfer->base);
                 }
