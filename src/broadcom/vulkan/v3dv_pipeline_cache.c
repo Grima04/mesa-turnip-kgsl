@@ -282,6 +282,25 @@ v3dv_pipeline_cache_upload_variant(struct v3dv_pipeline *pipeline,
    pthread_mutex_unlock(&cache->mutex);
 }
 
+static struct serialized_nir*
+serialized_nir_create_from_blob(struct v3dv_pipeline_cache *cache,
+                                struct blob_reader *blob)
+{
+   const unsigned char *sha1_key = blob_read_bytes(blob, 20);
+   uint32_t snir_size = blob_read_uint32(blob);
+   const char* snir_data = blob_read_bytes(blob, snir_size);
+   if (blob->overrun)
+      return NULL;
+
+   struct serialized_nir *snir =
+      ralloc_size(cache->nir_cache, sizeof(*snir) + snir_size);
+   memcpy(snir->sha1_key, sha1_key, 20);
+   snir->size = snir_size;
+   memcpy(snir->data, snir_data, snir_size);
+
+   return snir;
+}
+
 static struct v3dv_shader_variant*
 shader_variant_create_from_blob(struct v3dv_device *device,
                                 struct blob_reader *blob)
@@ -354,14 +373,6 @@ pipeline_cache_load(struct v3dv_pipeline_cache *cache,
    blob_reader_init(&blob, data, size);
 
    blob_copy_bytes(&blob, &header, sizeof(header));
-   uint32_t count = blob_read_uint32(&blob);
-   if (blob.overrun)
-      return;
-
-   if (unlikely(dump_stats)) {
-      fprintf(stderr, "pipeline cache %p, loading %i variant entries\n", cache, count);
-   }
-
    if (size < sizeof(header))
       return;
    memcpy(&header, data, sizeof(header));
@@ -376,6 +387,26 @@ pipeline_cache_load(struct v3dv_pipeline_cache *cache,
    if (memcmp(header.uuid, pdevice->pipeline_cache_uuid, VK_UUID_SIZE) != 0)
       return;
 
+   uint32_t nir_count = blob_read_uint32(&blob);
+   if (blob.overrun)
+      return;
+
+   for (uint32_t i = 0; i < nir_count; i++) {
+      struct serialized_nir *snir =
+         serialized_nir_create_from_blob(cache, &blob);
+
+      if (!snir)
+         break;
+
+      _mesa_hash_table_insert(cache->nir_cache, snir->sha1_key, snir);
+      if (unlikely(dump_stats))
+         cache->nir_stats.count++;
+   }
+
+   uint32_t count = blob_read_uint32(&blob);
+   if (blob.overrun)
+      return;
+
    for (uint32_t i = 0; i < count; i++) {
       struct v3dv_shader_variant *variant =
          shader_variant_create_from_blob(device, &blob);
@@ -386,6 +417,11 @@ pipeline_cache_load(struct v3dv_pipeline_cache *cache,
          cache->variant_stats.count++;
    }
 
+   if (unlikely(dump_stats)) {
+      fprintf(stderr, "pipeline cache %p, loaded %i nir shaders and "
+              "%i variant entries\n", cache, nir_count, count);
+      cache_dump_stats(cache);
+   }
 }
 
 VkResult
@@ -519,6 +555,37 @@ v3dv_GetPipelineCacheData(VkDevice _device,
    memcpy(header.uuid, pdevice->pipeline_cache_uuid, VK_UUID_SIZE);
    blob_write_bytes(&blob, &header, sizeof(header));
 
+   uint32_t nir_count = 0;
+   intptr_t nir_count_offset = blob_reserve_uint32(&blob);
+   if (nir_count_offset < 0) {
+      *pDataSize = 0;
+      blob_finish(&blob);
+      pthread_mutex_unlock(&cache->mutex);
+      return VK_INCOMPLETE;
+   }
+
+   if (cache->nir_cache) {
+      hash_table_foreach(cache->nir_cache, entry) {
+         const struct serialized_nir *snir = entry->data;
+
+         size_t save_size = blob.size;
+
+         blob_write_bytes(&blob, snir->sha1_key, 20);
+         blob_write_uint32(&blob, snir->size);
+         blob_write_bytes(&blob, snir->data, snir->size);
+
+         if (blob.out_of_memory) {
+            blob.size = save_size;
+            pthread_mutex_unlock(&cache->mutex);
+            result = VK_INCOMPLETE;
+            break;
+         }
+
+         nir_count++;
+      }
+   }
+   blob_overwrite_uint32(&blob, nir_count_offset, nir_count);
+
    uint32_t count = 0;
    intptr_t count_offset = blob_reserve_uint32(&blob);
    if (count_offset < 0) {
@@ -554,8 +621,9 @@ v3dv_GetPipelineCacheData(VkDevice _device,
    if (unlikely(dump_stats)) {
       assert(count <= cache->variant_stats.count);
       fprintf(stderr, "GetPipelineCacheData: serializing cache %p, "
+              "%i nir shader entries "
               "%i variant entries, %u DataSize\n",
-              cache, count, (uint32_t) *pDataSize);
+              cache, nir_count, count, (uint32_t) *pDataSize);
    }
 
    pthread_mutex_unlock(&cache->mutex);
