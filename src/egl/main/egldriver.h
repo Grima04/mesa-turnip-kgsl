@@ -225,7 +225,7 @@ struct _egl_driver
 
 
 extern bool
-_eglMatchDriver(_EGLDisplay *disp);
+_eglInitializeDisplay(_EGLDisplay *disp);
 
 
 extern __eglMustCastToProperFunctionPointerType

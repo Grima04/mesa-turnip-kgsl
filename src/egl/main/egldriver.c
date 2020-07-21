@@ -49,11 +49,11 @@
 extern _EGLDriver _eglDriver;
 
 /**
- * Match a display to a driver.  The matching is done by finding the first
- * driver that can initialize the display.
+ * Initialize the display using the driver's function.
+ * If the initialisation fails, try again using only software rendering.
  */
 bool
-_eglMatchDriver(_EGLDisplay *disp)
+_eglInitializeDisplay(_EGLDisplay *disp)
 {
    assert(!disp->Initialized);
 
