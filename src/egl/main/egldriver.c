@@ -48,15 +48,6 @@
 
 extern _EGLDriver _eglDriver;
 
-static _EGLDriver *
-_eglMatchAndInitialize(_EGLDisplay *disp)
-{
-   if (_eglDriver.Initialize(&_eglDriver, disp))
-      return &_eglDriver;
-
-   return NULL;
-}
-
 /**
  * Match a display to a driver.  The matching is done by finding the first
  * driver that can initialize the display.
@@ -64,8 +55,6 @@ _eglMatchAndInitialize(_EGLDisplay *disp)
 bool
 _eglMatchDriver(_EGLDisplay *disp)
 {
-   _EGLDriver *best_drv;
-
    assert(!disp->Initialized);
 
    /* set options */
@@ -74,18 +63,22 @@ _eglMatchDriver(_EGLDisplay *disp)
    if (disp->Options.ForceSoftware)
       _eglLog(_EGL_DEBUG, "Found 'LIBGL_ALWAYS_SOFTWARE' set, will use a CPU renderer");
 
-   best_drv = _eglMatchAndInitialize(disp);
-   if (!best_drv && !disp->Options.ForceSoftware) {
-      disp->Options.ForceSoftware = EGL_TRUE;
-      best_drv = _eglMatchAndInitialize(disp);
-   }
-
-   if (best_drv) {
-      disp->Driver = best_drv;
+   if (_eglDriver.Initialize(&_eglDriver, disp)) {
+      disp->Driver = &_eglDriver;
       disp->Initialized = EGL_TRUE;
+      return true;
    }
 
-   return best_drv != NULL;
+   if (disp->Options.ForceSoftware)
+      return false;
+
+   disp->Options.ForceSoftware = EGL_TRUE;
+   if (!_eglDriver.Initialize(&_eglDriver, disp))
+      return false;
+
+   disp->Driver = &_eglDriver;
+   disp->Initialized = EGL_TRUE;
+   return true;
 }
 
 __eglMustCastToProperFunctionPointerType
