@@ -1,6 +1,7 @@
 /*
  * Copyright (C) 2008 VMware, Inc.
- * Copyright (C) 2014 Broadcom
+ * Copyright (C) 2012 Rob Clark <robclark@freedesktop.org>
+ * Copyright (C) 2014-2017 Broadcom
  * Copyright (C) 2018-2019 Alyssa Rosenzweig
  * Copyright (C) 2019 Collabora, Ltd.
  *
@@ -597,6 +598,81 @@ panfrost_resource_destroy(struct pipe_screen *screen,
         ralloc_free(rsrc);
 }
 
+/* Most of the time we can do CPU-side transfers, but sometimes we need to use
+ * the 3D pipe for this. Let's wrap u_blitter to blit to/from staging textures.
+ * Code adapted from freedreno */
+
+static struct panfrost_resource *
+pan_alloc_staging(struct panfrost_context *ctx, struct panfrost_resource *rsc,
+		unsigned level, const struct pipe_box *box)
+{
+        struct pipe_context *pctx = &ctx->base;
+        struct pipe_resource tmpl = rsc->base;
+
+        tmpl.width0  = box->width;
+        tmpl.height0 = box->height;
+        /* for array textures, box->depth is the array_size, otherwise
+         * for 3d textures, it is the depth:
+         */
+        if (tmpl.array_size > 1) {
+                if (tmpl.target == PIPE_TEXTURE_CUBE)
+                        tmpl.target = PIPE_TEXTURE_2D_ARRAY;
+                tmpl.array_size = box->depth;
+                tmpl.depth0 = 1;
+        } else {
+                tmpl.array_size = 1;
+                tmpl.depth0 = box->depth;
+        }
+        tmpl.last_level = 0;
+        tmpl.bind |= PIPE_BIND_LINEAR;
+
+        struct pipe_resource *pstaging =
+                pctx->screen->resource_create(pctx->screen, &tmpl);
+        if (!pstaging)
+                return NULL;
+
+        return pan_resource(pstaging);
+}
+
+static void
+pan_blit_from_staging(struct pipe_context *pctx, struct panfrost_gtransfer *trans)
+{
+        struct pipe_resource *dst = trans->base.resource;
+        struct pipe_blit_info blit = {};
+
+        blit.dst.resource = dst;
+        blit.dst.format   = dst->format;
+        blit.dst.level    = trans->base.level;
+        blit.dst.box      = trans->base.box;
+        blit.src.resource = trans->staging.rsrc;
+        blit.src.format   = trans->staging.rsrc->format;
+        blit.src.level    = 0;
+        blit.src.box      = trans->staging.box;
+        blit.mask = util_format_get_mask(trans->staging.rsrc->format);
+        blit.filter = PIPE_TEX_FILTER_NEAREST;
+
+        panfrost_blit(pctx, &blit);
+}
+
+static void
+pan_blit_to_staging(struct pipe_context *pctx, struct panfrost_gtransfer *trans)
+{
+        struct pipe_resource *src = trans->base.resource;
+        struct pipe_blit_info blit = {};
+
+        blit.src.resource = src;
+        blit.src.format   = src->format;
+        blit.src.level    = trans->base.level;
+        blit.src.box      = trans->base.box;
+        blit.dst.resource = trans->staging.rsrc;
+        blit.dst.format   = trans->staging.rsrc->format;
+        blit.dst.level    = 0;
+        blit.dst.box      = trans->staging.box;
+        blit.mask = util_format_get_mask(trans->staging.rsrc->format);
+        blit.filter = PIPE_TEX_FILTER_NEAREST;
+
+        panfrost_blit(pctx, &blit);
+}
 
 static void *
 panfrost_transfer_map(struct pipe_context *pctx,
@@ -612,14 +688,47 @@ panfrost_transfer_map(struct pipe_context *pctx,
         int bytes_per_pixel = util_format_get_blocksize(rsrc->internal_format);
         struct panfrost_bo *bo = rsrc->bo;
 
+        /* Can't map tiled/compressed directly */
+        if ((usage & PIPE_TRANSFER_MAP_DIRECTLY) && rsrc->modifier != DRM_FORMAT_MOD_LINEAR)
+                return NULL;
+
         struct panfrost_gtransfer *transfer = rzalloc(pctx, struct panfrost_gtransfer);
         transfer->base.level = level;
         transfer->base.usage = usage;
         transfer->base.box = *box;
 
         pipe_resource_reference(&transfer->base.resource, resource);
-
         *out_transfer = &transfer->base;
+
+        /* We don't have s/w routines for AFBC, so use a staging texture */
+        if (drm_is_afbc(rsrc->modifier)) {
+                struct panfrost_resource *staging = pan_alloc_staging(ctx, rsrc, level, box);
+                transfer->base.stride = staging->slices[0].stride;
+                transfer->base.layer_stride = transfer->base.stride * box->height;
+
+                transfer->staging.rsrc = &staging->base;
+
+                transfer->staging.box = *box;
+                transfer->staging.box.x = 0;
+                transfer->staging.box.y = 0;
+                transfer->staging.box.z = 0;
+
+                assert(transfer->staging.rsrc != NULL);
+
+                /* TODO: Eliminate this flush. It's only there to determine if
+                 * we're initialized or not, when the initialization could come
+                 * from a pending batch XXX */
+                panfrost_flush_batches_accessing_bo(ctx, rsrc->bo, true);
+
+                if ((usage & PIPE_TRANSFER_READ) && rsrc->slices[level].initialized) {
+                        pan_blit_to_staging(pctx, transfer);
+                        panfrost_flush_batches_accessing_bo(ctx, staging->bo, true);
+                        panfrost_bo_wait(staging->bo, INT64_MAX, false);
+                }
+
+                panfrost_bo_mmap(staging->bo);
+                return staging->bo->cpu;
+        }
 
         /* If we haven't already mmaped, now's the time */
         panfrost_bo_mmap(bo);
@@ -699,33 +808,26 @@ panfrost_transfer_map(struct pipe_context *pctx,
                 }
         }
 
-        if (rsrc->modifier != DRM_FORMAT_MOD_LINEAR) {
-                /* Non-linear resources need to be indirectly mapped */
-
-                if (usage & PIPE_TRANSFER_MAP_DIRECTLY)
-                        return NULL;
-
+        if (rsrc->modifier == DRM_FORMAT_MOD_ARM_16X16_BLOCK_U_INTERLEAVED) {
                 transfer->base.stride = box->width * bytes_per_pixel;
                 transfer->base.layer_stride = transfer->base.stride * box->height;
                 transfer->map = ralloc_size(transfer, transfer->base.layer_stride * box->depth);
                 assert(box->depth == 1);
 
                 if ((usage & PIPE_TRANSFER_READ) && rsrc->slices[level].initialized) {
-                        if (drm_is_afbc(rsrc->modifier)) {
-                                unreachable("Unimplemented: reads from AFBC");
-                        } else if (rsrc->modifier == DRM_FORMAT_MOD_ARM_16X16_BLOCK_U_INTERLEAVED) {
-                                panfrost_load_tiled_image(
+                        panfrost_load_tiled_image(
                                         transfer->map,
                                         bo->cpu + rsrc->slices[level].offset,
                                         box->x, box->y, box->width, box->height,
                                         transfer->base.stride,
                                         rsrc->slices[level].stride,
                                         rsrc->internal_format);
-                        }
                 }
 
                 return transfer->map;
         } else {
+                assert (rsrc->modifier == DRM_FORMAT_MOD_LINEAR);
+
                 /* Direct, persistent writes create holes in time for
                  * caching... I don't know if this is actually possible but we
                  * should still get it right */
@@ -765,17 +867,28 @@ panfrost_transfer_unmap(struct pipe_context *pctx,
         struct panfrost_gtransfer *trans = pan_transfer(transfer);
         struct panfrost_resource *prsrc = (struct panfrost_resource *) transfer->resource;
 
-        /* Mark whatever we wrote as written */
-        if (transfer->usage & PIPE_TRANSFER_WRITE)
-                prsrc->slices[transfer->level].initialized = true;
+        /* AFBC will use a staging resource. `initialized` will be set when the
+         * fragment job is created; this is deferred to prevent useless surface
+         * reloads that can cascade into DATA_INVALID_FAULTs due to reading
+         * malformed AFBC data if uninitialized */
 
+        if (trans->staging.rsrc) {
+		if (transfer->usage & PIPE_TRANSFER_WRITE) {
+			pan_blit_from_staging(pctx, trans);
+                        panfrost_flush_batches_accessing_bo(pan_context(pctx), pan_resource(trans->staging.rsrc)->bo, true);
+                }
+
+		pipe_resource_reference(&trans->staging.rsrc, NULL);
+        }
+
+        /* Tiling will occur in software from a staging cpu buffer */
         if (trans->map) {
                 struct panfrost_bo *bo = prsrc->bo;
 
                 if (transfer->usage & PIPE_TRANSFER_WRITE) {
-                        if (drm_is_afbc(prsrc->modifier)) {
-                                unreachable("Unimplemented: writes to AFBC\n");
-                        } else if (prsrc->modifier == DRM_FORMAT_MOD_ARM_16X16_BLOCK_U_INTERLEAVED) {
+                        prsrc->slices[transfer->level].initialized = true;
+
+                        if (prsrc->modifier == DRM_FORMAT_MOD_ARM_16X16_BLOCK_U_INTERLEAVED) {
                                 assert(transfer->box.depth == 1);
 
                                 /* Do we overwrite the entire resource? If so,

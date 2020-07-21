@@ -85,6 +85,10 @@ pan_resource(struct pipe_resource *p)
 struct panfrost_gtransfer {
         struct pipe_transfer base;
         void *map;
+        struct {
+                struct pipe_resource *rsrc;
+                struct pipe_box box;
+        } staging;
 };
 
 static inline struct panfrost_gtransfer *
