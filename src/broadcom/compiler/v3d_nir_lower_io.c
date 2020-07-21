@@ -172,13 +172,14 @@ v3d_nir_lower_vpm_output(struct v3d_compile *c, nir_builder *b,
         int start_comp = nir_intrinsic_component(intr);
         nir_ssa_def *src = nir_ssa_for_src(b, intr->src[0],
                                            intr->num_components);
-
         nir_variable *var = NULL;
         nir_foreach_variable(scan_var, &c->s->outputs) {
+                int components = scan_var->data.compact ?
+                        glsl_get_length(scan_var->type) :
+                        glsl_get_components(scan_var->type);
                 if (scan_var->data.driver_location != nir_intrinsic_base(intr) ||
                     start_comp < scan_var->data.location_frac ||
-                    start_comp >= scan_var->data.location_frac +
-                    glsl_get_components(scan_var->type)) {
+                    start_comp >= scan_var->data.location_frac + components) {
                         continue;
                 }
                 var = scan_var;
@@ -252,6 +253,9 @@ v3d_nir_lower_vpm_output(struct v3d_compile *c, nir_builder *b,
 
                 if (vpm_offset == -1)
                         continue;
+
+                if (var->data.compact)
+                    vpm_offset += nir_src_as_uint(intr->src[1]) * 4;
 
                 BITSET_SET(state->varyings_stored, vpm_offset);
 

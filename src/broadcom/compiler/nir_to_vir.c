@@ -738,6 +738,19 @@ emit_fragment_input(struct v3d_compile *c, int attr, nir_variable *var,
 }
 
 static void
+emit_compact_fragment_input(struct v3d_compile *c, int attr, nir_variable *var,
+                            int array_index)
+{
+        /* Compact variables are scalar arrays where each set of 4 elements
+         * consumes a single location.
+         */
+        int loc_offset = array_index / 4;
+        int chan = var->data.location_frac + array_index % 4;
+        c->inputs[(attr + loc_offset) * 4  + chan] =
+              emit_fragment_varying(c, var, chan, loc_offset);
+}
+
+static void
 add_output(struct v3d_compile *c,
            uint32_t decl_offset,
            uint8_t slot,
@@ -1658,6 +1671,9 @@ ntq_setup_fs_inputs(struct v3d_compile *c)
                                                        c->fs_key->point_sprite_mask)) {
                         c->inputs[loc * 4 + 0] = c->point_x;
                         c->inputs[loc * 4 + 1] = c->point_y;
+                } else if (var->data.compact) {
+                        for (int j = 0; j < array_len; j++)
+                                emit_compact_fragment_input(c, loc, var, j);
                 } else {
                         for (int j = 0; j < array_len; j++)
                                 emit_fragment_input(c, loc + j, var, j);
