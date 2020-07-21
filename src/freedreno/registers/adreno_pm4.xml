@@ -794,6 +794,8 @@ opcode: CP_LOAD_STATE4 (30) (4 dwords)
 	<enum name="a6xx_draw_indirect_opcode">
 		<value name="INDIRECT_OP_NORMAL"  value="0x2"/>
 		<value name="INDIRECT_OP_INDEXED" value="0x4"/>
+		<value name="INDIRECT_OP_INDIRECT_COUNT" value="0x6"/>
+		<value name="INDIRECT_OP_INDIRECT_COUNT_INDEXED" value="0x7"/>
 	</enum>
 	<reg32 offset="0" name="0" type="vgt_draw_initiator_a4xx"/>
 	<reg32 offset="1" name="1">
@@ -815,6 +817,18 @@ opcode: CP_LOAD_STATE4 (30) (4 dwords)
 		<reg32 offset="5" name="MAX_INDICES" type="uint"/>
 		<reg64 offset="6" name="INDIRECT" type="address"/>
 		<reg32 offset="8" name="STRIDE" type="uint"/>
+	</stripe>
+	<stripe varset="a6xx_draw_indirect_opcode" variants="INDIRECT_OP_INDIRECT_COUNT">
+		<reg64 offset="3" name="INDIRECT" type="address"/>
+		<reg64 offset="5" name="INDIRECT_COUNT" type="address"/>
+		<reg32 offset="7" name="STRIDE" type="uint"/>
+	</stripe>
+	<stripe varset="a6xx_draw_indirect_opcode" variants="INDIRECT_OP_INDIRECT_COUNT_INDEXED">
+		<reg64 offset="3" name="INDEX" type="address"/>
+		<reg32 offset="5" name="MAX_INDICES" type="uint"/>
+		<reg64 offset="6" name="INDIRECT" type="address"/>
+		<reg64 offset="8" name="INDIRECT_COUNT" type="address"/>
+		<reg32 offset="10" name="STRIDE" type="uint"/>
 	</stripe>
 </domain>
 

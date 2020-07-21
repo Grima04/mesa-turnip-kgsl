@@ -93,7 +93,7 @@ class Field(object):
 
 def tab_to(name, value):
 	tab_count = (68 - (len(name) & ~7)) // 8
-	if tab_count == 0:
+	if tab_count <= 0:
 		tab_count = 1
 	print(name + ('\t' * tab_count) + value)
 
