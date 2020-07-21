@@ -214,26 +214,6 @@ iris_query_dmabuf_modifiers(struct pipe_screen *pscreen,
    *count = supported_mods;
 }
 
-static isl_surf_usage_flags_t
-pipe_bind_to_isl_usage(unsigned bindings)
-{
-   isl_surf_usage_flags_t usage = 0;
-
-   if (bindings & PIPE_BIND_RENDER_TARGET)
-      usage |= ISL_SURF_USAGE_RENDER_TARGET_BIT;
-
-   if (bindings & PIPE_BIND_SAMPLER_VIEW)
-      usage |= ISL_SURF_USAGE_TEXTURE_BIT;
-
-   if (bindings & (PIPE_BIND_SHADER_IMAGE | PIPE_BIND_SHADER_BUFFER))
-      usage |= ISL_SURF_USAGE_STORAGE_BIT;
-
-   if (bindings & PIPE_BIND_SCANOUT)
-      usage |= ISL_SURF_USAGE_DISPLAY_BIT;
-
-   return usage;
-}
-
 enum isl_format
 iris_image_view_get_format(struct iris_context *ice,
                            const struct pipe_image_view *img)
@@ -471,6 +451,86 @@ want_ccs_e_for_format(const struct gen_device_info *devinfo,
     */
    if (fmtl->channels.r.bits == 32 && fmtl->channels.r.type == ISL_SFLOAT)
       return false;
+
+   return true;
+}
+
+static bool
+iris_resource_configure_main(const struct iris_screen *screen,
+                             struct iris_resource *res,
+                             const struct pipe_resource *templ,
+                             uint64_t modifier, uint32_t row_pitch_B)
+{
+   res->mod_info = isl_drm_modifier_get_info(modifier);
+
+   if (modifier != DRM_FORMAT_MOD_INVALID && res->mod_info == NULL)
+      return false;
+
+   isl_tiling_flags_t tiling_flags = 0;
+
+   if (res->mod_info != NULL) {
+      tiling_flags = 1 << res->mod_info->tiling;
+   } else if (templ->usage == PIPE_USAGE_STAGING ||
+              templ->bind & (PIPE_BIND_LINEAR | PIPE_BIND_CURSOR)) {
+      tiling_flags = ISL_TILING_LINEAR_BIT;
+   } else if (templ->bind & PIPE_BIND_SCANOUT) {
+      tiling_flags = screen->devinfo.has_tiling_uapi ?
+                     ISL_TILING_X_BIT : ISL_TILING_LINEAR_BIT;
+   } else {
+      tiling_flags = ISL_TILING_ANY_MASK;
+   }
+
+   isl_surf_usage_flags_t usage = 0;
+
+   if (templ->bind & PIPE_BIND_RENDER_TARGET)
+      usage |= ISL_SURF_USAGE_RENDER_TARGET_BIT;
+
+   if (templ->bind & PIPE_BIND_SAMPLER_VIEW)
+      usage |= ISL_SURF_USAGE_TEXTURE_BIT;
+
+   if (templ->bind & PIPE_BIND_SHADER_IMAGE)
+      usage |= ISL_SURF_USAGE_STORAGE_BIT;
+
+   if (templ->bind & PIPE_BIND_SCANOUT)
+      usage |= ISL_SURF_USAGE_DISPLAY_BIT;
+
+   if (templ->target == PIPE_TEXTURE_CUBE ||
+       templ->target == PIPE_TEXTURE_CUBE_ARRAY) {
+      usage |= ISL_SURF_USAGE_CUBE_BIT;
+   }
+
+   if (templ->usage != PIPE_USAGE_STAGING &&
+       util_format_is_depth_or_stencil(templ->format)) {
+
+      /* Should be handled by u_transfer_helper */
+      assert(!util_format_is_depth_and_stencil(templ->format));
+
+      usage |= templ->format == PIPE_FORMAT_S8_UINT ?
+               ISL_SURF_USAGE_STENCIL_BIT : ISL_SURF_USAGE_DEPTH_BIT;
+   }
+
+   const enum isl_format format =
+      iris_format_for_usage(&screen->devinfo, templ->format, usage).fmt;
+
+   const struct isl_surf_init_info init_info = {
+      .dim = target_to_isl_surf_dim(templ->target),
+      .format = format,
+      .width = templ->width0,
+      .height = templ->height0,
+      .depth = templ->depth0,
+      .levels = templ->last_level + 1,
+      .array_len = templ->array_size,
+      .samples = MAX2(templ->nr_samples, 1),
+      .min_alignment_B = 0,
+      .row_pitch_B = row_pitch_B,
+      .usage = usage,
+      .tiling_flags = tiling_flags
+   };
+
+   if (!isl_surf_init_s(&screen->isl_dev, &res->surf, &init_info))
+      return false;
+
+   res->internal_format = templ->format;
 
    return true;
 }
@@ -774,72 +834,16 @@ iris_resource_create_with_modifiers(struct pipe_screen *pscreen,
    if (!res)
       return NULL;
 
-   const struct util_format_description *format_desc =
-      util_format_description(templ->format);
-   const bool has_depth = util_format_has_depth(format_desc);
    uint64_t modifier =
       select_best_modifier(devinfo, templ->format, modifiers, modifiers_count);
 
-   isl_tiling_flags_t tiling_flags = ISL_TILING_ANY_MASK;
-
-   if (modifier != DRM_FORMAT_MOD_INVALID) {
-      res->mod_info = isl_drm_modifier_get_info(modifier);
-
-      tiling_flags = 1 << res->mod_info->tiling;
-   } else {
-      if (modifiers_count > 0) {
-         fprintf(stderr, "Unsupported modifier, resource creation failed.\n");
-         goto fail;
-      }
-
-      /* Use linear for staging buffers */
-      if (templ->usage == PIPE_USAGE_STAGING ||
-          templ->bind & (PIPE_BIND_LINEAR | PIPE_BIND_CURSOR) ) {
-         tiling_flags = ISL_TILING_LINEAR_BIT;
-      } else if (templ->bind & PIPE_BIND_SCANOUT) {
-         if (devinfo->has_tiling_uapi)
-            tiling_flags = ISL_TILING_X_BIT;
-         else
-            tiling_flags = ISL_TILING_LINEAR_BIT;
-      }
+   if (modifier == DRM_FORMAT_MOD_INVALID && modifiers_count > 0) {
+      fprintf(stderr, "Unsupported modifier, resource creation failed.\n");
+      goto fail;
    }
-
-   isl_surf_usage_flags_t usage = pipe_bind_to_isl_usage(templ->bind);
-
-   if (templ->target == PIPE_TEXTURE_CUBE ||
-       templ->target == PIPE_TEXTURE_CUBE_ARRAY)
-      usage |= ISL_SURF_USAGE_CUBE_BIT;
-
-   if (templ->usage != PIPE_USAGE_STAGING) {
-      if (templ->format == PIPE_FORMAT_S8_UINT)
-         usage |= ISL_SURF_USAGE_STENCIL_BIT;
-      else if (has_depth)
-         usage |= ISL_SURF_USAGE_DEPTH_BIT;
-   }
-
-   enum pipe_format pfmt = templ->format;
-   res->internal_format = pfmt;
-
-   /* Should be handled by u_transfer_helper */
-   assert(!util_format_is_depth_and_stencil(pfmt));
-
-   struct iris_format_info fmt = iris_format_for_usage(devinfo, pfmt, usage);
-   assert(fmt.fmt != ISL_FORMAT_UNSUPPORTED);
 
    UNUSED const bool isl_surf_created_successfully =
-      isl_surf_init(&screen->isl_dev, &res->surf,
-                    .dim = target_to_isl_surf_dim(templ->target),
-                    .format = fmt.fmt,
-                    .width = templ->width0,
-                    .height = templ->height0,
-                    .depth = templ->depth0,
-                    .levels = templ->last_level + 1,
-                    .array_len = templ->array_size,
-                    .samples = MAX2(templ->nr_samples, 1),
-                    .min_alignment_B = 0,
-                    .row_pitch_B = 0,
-                    .usage = usage,
-                    .tiling_flags = tiling_flags);
+      iris_resource_configure_main(screen, res, templ, modifier, 0);
    assert(isl_surf_created_successfully);
 
    const char *name = "miptree";
@@ -976,12 +980,8 @@ iris_resource_from_handle(struct pipe_screen *pscreen,
                           unsigned usage)
 {
    struct iris_screen *screen = (struct iris_screen *)pscreen;
-   struct gen_device_info *devinfo = &screen->devinfo;
    struct iris_bufmgr *bufmgr = screen->bufmgr;
    struct iris_resource *res = iris_alloc_resource(pscreen, templ);
-   const struct isl_drm_modifier_info *mod_inf =
-	   isl_drm_modifier_get_info(whandle->modifier);
-
    if (!res)
       return NULL;
 
@@ -1001,41 +1001,21 @@ iris_resource_from_handle(struct pipe_screen *pscreen,
       goto fail;
 
    res->offset = whandle->offset;
-
-   if (mod_inf == NULL) {
-      mod_inf =
-         isl_drm_modifier_get_info(tiling_to_modifier(res->bo->tiling_mode));
-   }
-   assert(mod_inf);
-
    res->external_format = whandle->format;
-   res->mod_info = mod_inf;
-
-   isl_surf_usage_flags_t isl_usage = pipe_bind_to_isl_usage(templ->bind);
-
-   const struct iris_format_info fmt =
-      iris_format_for_usage(devinfo, templ->format, isl_usage);
-   res->internal_format = templ->format;
 
    if (templ->target == PIPE_BUFFER) {
       res->surf.tiling = ISL_TILING_LINEAR;
    } else {
       /* Create a surface for each plane specified by the external format. */
       if (whandle->plane < util_format_get_num_planes(whandle->format)) {
+
+         const uint64_t modifier =
+            whandle->modifier != DRM_FORMAT_MOD_INVALID ?
+            whandle->modifier : tiling_to_modifier(res->bo->tiling_mode);
+
          UNUSED const bool isl_surf_created_successfully =
-            isl_surf_init(&screen->isl_dev, &res->surf,
-                          .dim = target_to_isl_surf_dim(templ->target),
-                          .format = fmt.fmt,
-                          .width = templ->width0,
-                          .height = templ->height0,
-                          .depth = templ->depth0,
-                          .levels = templ->last_level + 1,
-                          .array_len = templ->array_size,
-                          .samples = MAX2(templ->nr_samples, 1),
-                          .min_alignment_B = 0,
-                          .row_pitch_B = whandle->stride,
-                          .usage = isl_usage,
-                          .tiling_flags = 1 << res->mod_info->tiling);
+            iris_resource_configure_main(screen, res, templ, modifier,
+                                         whandle->stride);
          assert(isl_surf_created_successfully);
          assert(res->bo->tiling_mode ==
                 isl_tiling_to_i915_tiling(res->surf.tiling));
