@@ -211,13 +211,9 @@ panfrost_mfbd_set_cbuf(
         assert(surf->u.tex.last_layer == first_layer);
         int stride = rsrc->slices[level].stride;
 
-        /* Only set layer_stride for MSAA rendering */
+        /* Only set layer_stride for layered MSAA rendering  */
 
-        unsigned nr_samples = surf->nr_samples;
-
-        if (!nr_samples)
-                nr_samples = surf->texture->nr_samples;
-
+        unsigned nr_samples = surf->texture->nr_samples;
         unsigned layer_stride = (nr_samples > 1) ? rsrc->slices[level].size0 : 0;
 
         mali_ptr base = panfrost_get_texture_address(rsrc, level, first_layer, 0);
@@ -289,11 +285,7 @@ panfrost_mfbd_set_zsbuf(
         bool is_bifrost = dev->quirks & IS_BIFROST;
         struct panfrost_resource *rsrc = pan_resource(surf->texture);
 
-        unsigned nr_samples = surf->nr_samples;
-
-        if (!nr_samples)
-                nr_samples = surf->texture->nr_samples;
-
+        unsigned nr_samples = surf->texture->nr_samples;
         nr_samples = MAX2(nr_samples, 1);
 
         fbx->zs_samples = MALI_POSITIVE(nr_samples);
@@ -566,12 +558,7 @@ panfrost_mfbd_fragment(struct panfrost_batch *batch, bool has_draws)
                 unsigned rt_offset = offset << tib_shift;
 
                 if (surf && ((batch->clear | batch->draws) & (PIPE_CLEAR_COLOR0 << cb))) {
-                        unsigned nr_samples = surf->nr_samples;
-
-                        if (!nr_samples)
-                                nr_samples = surf->texture->nr_samples;
-
-                        if (nr_samples > 1)
+                        if (MAX2(surf->nr_samples, surf->texture->nr_samples) > 1)
                                 batch->requirements |= PAN_REQ_MSAA;
 
                         panfrost_mfbd_set_cbuf(&rts[cb], surf);
@@ -600,6 +587,9 @@ panfrost_mfbd_fragment(struct panfrost_batch *batch, bool has_draws)
         fb.rt_count_2 = MAX2(DIV_ROUND_UP(offset, 1 << (10 - tib_shift)), 1);
 
         if (batch->key.zsbuf && ((batch->clear | batch->draws) & PIPE_CLEAR_DEPTHSTENCIL)) {
+                if (MAX2(batch->key.zsbuf->nr_samples, batch->key.zsbuf->nr_samples) > 1)
+                        batch->requirements |= PAN_REQ_MSAA;
+
                 panfrost_mfbd_set_zsbuf(&fb, &fbx, batch->key.zsbuf);
         }
 

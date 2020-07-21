@@ -839,11 +839,6 @@ panfrost_load_surface(struct panfrost_batch *batch, struct pipe_surface *surf, u
         enum mali_texture_type type =
                 panfrost_translate_texture_type(rsrc->base.target);
 
-        unsigned nr_samples = surf->nr_samples;
-
-        if (!nr_samples)
-                nr_samples = surf->texture->nr_samples;
-
         struct pan_image img = {
                 .width0 = rsrc->base.width0,
                 .height0 = rsrc->base.height0,
@@ -856,7 +851,7 @@ panfrost_load_surface(struct panfrost_batch *batch, struct pipe_surface *surf, u
                 .last_level = level,
                 .first_layer = surf->u.tex.first_layer,
                 .last_layer = surf->u.tex.last_layer,
-                .nr_samples = nr_samples,
+                .nr_samples = rsrc->base.nr_samples,
                 .cubemap_stride = rsrc->cubemap_stride,
                 .bo = rsrc->bo,
                 .slices = rsrc->slices

@@ -134,6 +134,7 @@ panfrost_get_param(struct pipe_screen *screen, enum pipe_cap param)
         case PIPE_CAP_OCCLUSION_QUERY:
         case PIPE_CAP_TGSI_INSTANCEID:
         case PIPE_CAP_TEXTURE_MULTISAMPLE:
+        case PIPE_CAP_SURFACE_SAMPLE_COUNT:
         case PIPE_CAP_PRIMITIVE_RESTART:
         case PIPE_CAP_PRIMITIVE_RESTART_FIXED_INDEX:
                 return !is_bifrost;
