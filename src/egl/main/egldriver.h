@@ -223,20 +223,12 @@ struct _egl_driver
 };
 
 
-extern void
-_eglInitDriver(_EGLDriver *driver);
-
-
 extern _EGLDriver *
 _eglMatchDriver(_EGLDisplay *disp);
 
 
 extern __eglMustCastToProperFunctionPointerType
 _eglGetDriverProc(const char *procname);
-
-
-extern void
-_eglUnloadDrivers(void);
 
 
 extern void

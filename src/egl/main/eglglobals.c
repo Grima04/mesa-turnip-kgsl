@@ -54,11 +54,10 @@ struct _egl_global _eglGlobal =
    .Mutex = &_eglGlobalMutex,
    .DisplayList = NULL,
    .DeviceList = &_eglSoftwareDevice,
-   .NumAtExitCalls = 3,
+   .NumAtExitCalls = 2,
    .AtExitCalls = {
       /* default AtExitCalls, called in reverse order */
       _eglFiniDevice, /* always called last */
-      _eglUnloadDrivers,
       _eglFiniDisplay,
    },
 

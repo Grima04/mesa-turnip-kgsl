@@ -311,27 +311,16 @@ haiku_swap_buffers(_EGLDriver *drv, _EGLDisplay *disp, _EGLSurface *surf)
 }
 
 
-/**
- * This is the main entrypoint into the driver, called by libEGL.
- * Gets an _EGLDriver object and init its dispatch table.
- */
 extern "C"
-void
-_eglInitDriver(_EGLDriver *driver)
-{
-	CALLED();
-
-	driver->Initialize = init_haiku;
-	driver->Terminate = haiku_terminate;
-	driver->CreateContext = haiku_create_context;
-	driver->DestroyContext = haiku_destroy_context;
-	driver->MakeCurrent = haiku_make_current;
-	driver->CreateWindowSurface = haiku_create_window_surface;
-	driver->CreatePixmapSurface = haiku_create_pixmap_surface;
-	driver->CreatePbufferSurface = haiku_create_pbuffer_surface;
-	driver->DestroySurface = haiku_destroy_surface;
-
-	driver->SwapBuffers = haiku_swap_buffers;
-
-	TRACE("API Calls defined\n");
-}
+_EGLDriver _eglDriver = {
+	.Initialize = init_haiku,
+	.Terminate = haiku_terminate,
+	.CreateContext = haiku_create_context,
+	.DestroyContext = haiku_destroy_context,
+	.MakeCurrent = haiku_make_current,
+	.CreateWindowSurface = haiku_create_window_surface,
+	.CreatePixmapSurface = haiku_create_pixmap_surface,
+	.CreatePbufferSurface = haiku_create_pbuffer_surface,
+	.DestroySurface = haiku_destroy_surface,
+	.SwapBuffers = haiku_swap_buffers,
+};

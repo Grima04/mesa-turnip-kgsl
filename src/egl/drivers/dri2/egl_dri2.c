@@ -3674,62 +3674,56 @@ dri2_interop_export_object(_EGLDisplay *disp, _EGLContext *ctx,
    return dri2_dpy->interop->export_object(dri2_ctx->dri_context, in, out);
 }
 
-/**
- * This is the main entrypoint into the driver, called by libEGL.
- * Gets an _EGLDriver object and init its dispatch table.
- */
-void
-_eglInitDriver(_EGLDriver *dri2_drv)
-{
-   dri2_drv->Initialize = dri2_initialize;
-   dri2_drv->Terminate = dri2_terminate;
-   dri2_drv->CreateContext = dri2_create_context;
-   dri2_drv->DestroyContext = dri2_destroy_context;
-   dri2_drv->MakeCurrent = dri2_make_current;
-   dri2_drv->CreateWindowSurface = dri2_create_window_surface;
-   dri2_drv->CreatePixmapSurface = dri2_create_pixmap_surface;
-   dri2_drv->CreatePbufferSurface = dri2_create_pbuffer_surface;
-   dri2_drv->DestroySurface = dri2_destroy_surface;
-   dri2_drv->GetProcAddress = dri2_get_proc_address;
-   dri2_drv->WaitClient = dri2_wait_client;
-   dri2_drv->WaitNative = dri2_wait_native;
-   dri2_drv->BindTexImage = dri2_bind_tex_image;
-   dri2_drv->ReleaseTexImage = dri2_release_tex_image;
-   dri2_drv->SwapInterval = dri2_swap_interval;
-   dri2_drv->SwapBuffers = dri2_swap_buffers;
-   dri2_drv->SwapBuffersWithDamageEXT = dri2_swap_buffers_with_damage;
-   dri2_drv->SwapBuffersRegionNOK = dri2_swap_buffers_region;
-   dri2_drv->SetDamageRegion = dri2_set_damage_region;
-   dri2_drv->PostSubBufferNV = dri2_post_sub_buffer;
-   dri2_drv->CopyBuffers = dri2_copy_buffers,
-   dri2_drv->QueryBufferAge = dri2_query_buffer_age;
-   dri2_drv->CreateImageKHR = dri2_create_image;
-   dri2_drv->DestroyImageKHR = dri2_destroy_image_khr;
-   dri2_drv->CreateWaylandBufferFromImageWL = dri2_create_wayland_buffer_from_image;
-   dri2_drv->QuerySurface = dri2_query_surface;
-   dri2_drv->QueryDriverName = dri2_query_driver_name;
-   dri2_drv->QueryDriverConfig = dri2_query_driver_config;
+_EGLDriver _eglDriver = {
+   .Initialize = dri2_initialize,
+   .Terminate = dri2_terminate,
+   .CreateContext = dri2_create_context,
+   .DestroyContext = dri2_destroy_context,
+   .MakeCurrent = dri2_make_current,
+   .CreateWindowSurface = dri2_create_window_surface,
+   .CreatePixmapSurface = dri2_create_pixmap_surface,
+   .CreatePbufferSurface = dri2_create_pbuffer_surface,
+   .DestroySurface = dri2_destroy_surface,
+   .GetProcAddress = dri2_get_proc_address,
+   .WaitClient = dri2_wait_client,
+   .WaitNative = dri2_wait_native,
+   .BindTexImage = dri2_bind_tex_image,
+   .ReleaseTexImage = dri2_release_tex_image,
+   .SwapInterval = dri2_swap_interval,
+   .SwapBuffers = dri2_swap_buffers,
+   .SwapBuffersWithDamageEXT = dri2_swap_buffers_with_damage,
+   .SwapBuffersRegionNOK = dri2_swap_buffers_region,
+   .SetDamageRegion = dri2_set_damage_region,
+   .PostSubBufferNV = dri2_post_sub_buffer,
+   .CopyBuffers = dri2_copy_buffers,
+   .QueryBufferAge = dri2_query_buffer_age,
+   .CreateImageKHR = dri2_create_image,
+   .DestroyImageKHR = dri2_destroy_image_khr,
+   .CreateWaylandBufferFromImageWL = dri2_create_wayland_buffer_from_image,
+   .QuerySurface = dri2_query_surface,
+   .QueryDriverName = dri2_query_driver_name,
+   .QueryDriverConfig = dri2_query_driver_config,
 #ifdef HAVE_LIBDRM
-   dri2_drv->CreateDRMImageMESA = dri2_create_drm_image_mesa;
-   dri2_drv->ExportDRMImageMESA = dri2_export_drm_image_mesa;
-   dri2_drv->ExportDMABUFImageQueryMESA = dri2_export_dma_buf_image_query_mesa;
-   dri2_drv->ExportDMABUFImageMESA = dri2_export_dma_buf_image_mesa;
-   dri2_drv->QueryDmaBufFormatsEXT = dri2_query_dma_buf_formats;
-   dri2_drv->QueryDmaBufModifiersEXT = dri2_query_dma_buf_modifiers;
+   .CreateDRMImageMESA = dri2_create_drm_image_mesa,
+   .ExportDRMImageMESA = dri2_export_drm_image_mesa,
+   .ExportDMABUFImageQueryMESA = dri2_export_dma_buf_image_query_mesa,
+   .ExportDMABUFImageMESA = dri2_export_dma_buf_image_mesa,
+   .QueryDmaBufFormatsEXT = dri2_query_dma_buf_formats,
+   .QueryDmaBufModifiersEXT = dri2_query_dma_buf_modifiers,
 #endif
 #ifdef HAVE_WAYLAND_PLATFORM
-   dri2_drv->BindWaylandDisplayWL = dri2_bind_wayland_display_wl;
-   dri2_drv->UnbindWaylandDisplayWL = dri2_unbind_wayland_display_wl;
-   dri2_drv->QueryWaylandBufferWL = dri2_query_wayland_buffer_wl;
+   .BindWaylandDisplayWL = dri2_bind_wayland_display_wl,
+   .UnbindWaylandDisplayWL = dri2_unbind_wayland_display_wl,
+   .QueryWaylandBufferWL = dri2_query_wayland_buffer_wl,
 #endif
-   dri2_drv->GetSyncValuesCHROMIUM = dri2_get_sync_values_chromium;
-   dri2_drv->CreateSyncKHR = dri2_create_sync;
-   dri2_drv->ClientWaitSyncKHR = dri2_client_wait_sync;
-   dri2_drv->SignalSyncKHR = dri2_signal_sync;
-   dri2_drv->WaitSyncKHR = dri2_server_wait_sync;
-   dri2_drv->DestroySyncKHR = dri2_destroy_sync;
-   dri2_drv->GLInteropQueryDeviceInfo = dri2_interop_query_device_info;
-   dri2_drv->GLInteropExportObject = dri2_interop_export_object;
-   dri2_drv->DupNativeFenceFDANDROID = dri2_dup_native_fence_fd;
-   dri2_drv->SetBlobCacheFuncsANDROID = dri2_set_blob_cache_funcs;
-}
+   .GetSyncValuesCHROMIUM = dri2_get_sync_values_chromium,
+   .CreateSyncKHR = dri2_create_sync,
+   .ClientWaitSyncKHR = dri2_client_wait_sync,
+   .SignalSyncKHR = dri2_signal_sync,
+   .WaitSyncKHR = dri2_server_wait_sync,
+   .DestroySyncKHR = dri2_destroy_sync,
+   .GLInteropQueryDeviceInfo = dri2_interop_query_device_info,
+   .GLInteropExportObject = dri2_interop_export_object,
+   .DupNativeFenceFDANDROID = dri2_dup_native_fence_fd,
+   .SetBlobCacheFuncsANDROID = dri2_set_blob_cache_funcs,
+};

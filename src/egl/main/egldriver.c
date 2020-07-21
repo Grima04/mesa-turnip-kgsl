@@ -46,34 +46,20 @@
 
 #include "util/debug.h"
 
-static mtx_t _eglModuleMutex = _MTX_INITIALIZER_NP;
-static _EGLDriver *_eglDriver;
+extern _EGLDriver _eglDriver;
 
 static _EGLDriver *
 _eglGetDriver(void)
 {
-   mtx_lock(&_eglModuleMutex);
-
-   if (!_eglDriver) {
-      _eglDriver = calloc(1, sizeof(*_eglDriver));
-      if (!_eglDriver) {
-         mtx_unlock(&_eglModuleMutex);
-         return NULL;
-      }
-      _eglInitDriver(_eglDriver);
-   }
-
-   mtx_unlock(&_eglModuleMutex);
-
-   return _eglDriver;
+   return &_eglDriver;
 }
 
 static _EGLDriver *
 _eglMatchAndInitialize(_EGLDisplay *disp)
 {
    if (_eglGetDriver())
-      if (_eglDriver->Initialize(_eglDriver, disp))
-         return _eglDriver;
+      if (_eglDriver.Initialize(&_eglDriver, disp))
+         return &_eglDriver;
 
    return NULL;
 }
@@ -112,19 +98,8 @@ _eglMatchDriver(_EGLDisplay *disp)
 __eglMustCastToProperFunctionPointerType
 _eglGetDriverProc(const char *procname)
 {
-   if (_eglGetDriver() && _eglDriver->GetProcAddress)
-      return _eglDriver->GetProcAddress(_eglDriver, procname);
+   if (_eglGetDriver() && _eglDriver.GetProcAddress)
+      return _eglDriver.GetProcAddress(&_eglDriver, procname);
 
    return NULL;
-}
-
-/**
- * Unload all drivers.
- */
-void
-_eglUnloadDrivers(void)
-{
-   /* this is called at atexit time */
-   free(_eglDriver);
-   _eglDriver = NULL;
 }
