@@ -23,6 +23,8 @@
  */
 #include "aco_ir.h"
 #include "vulkan/radv_shader.h"
+#include "c11/threads.h"
+#include "util/debug.h"
 
 namespace aco {
 
