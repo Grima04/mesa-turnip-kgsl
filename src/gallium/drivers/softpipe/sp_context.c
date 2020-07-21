@@ -191,6 +191,18 @@ softpipe_render_condition(struct pipe_context *pipe,
 }
 
 
+static void
+softpipe_set_debug_callback(struct pipe_context *pipe,
+                            const struct pipe_debug_callback *cb)
+{
+   struct softpipe_context *softpipe = softpipe_context(pipe);
+
+   if (cb)
+      softpipe->debug = *cb;
+   else
+      memset(&softpipe->debug, 0, sizeof(softpipe->debug));
+}
+
 
 struct pipe_context *
 softpipe_create_context(struct pipe_screen *screen,
@@ -231,6 +243,7 @@ softpipe_create_context(struct pipe_screen *screen,
    softpipe_init_image_funcs(&softpipe->pipe);
 
    softpipe->pipe.set_framebuffer_state = softpipe_set_framebuffer_state;
+   softpipe->pipe.set_debug_callback = softpipe_set_debug_callback;
 
    softpipe->pipe.draw_vbo = softpipe_draw_vbo;
 
