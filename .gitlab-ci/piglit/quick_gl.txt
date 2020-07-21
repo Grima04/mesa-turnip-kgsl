@@ -769,8 +769,6 @@ spec/arb_texture_multisample/sample-position/16: skip
 spec/arb_texture_multisample/sample-position/32: skip
 spec/arb_texture_multisample/sample-position/6: skip
 spec/arb_texture_multisample/sample-position/8: skip
-spec/arb_texture_multisample/texelfetch fs sampler2dms 4 1x130-501x130: fail
-spec/arb_texture_multisample/texelfetch fs sampler2dms 4 1x71-501x71: fail
 spec/arb_texture_multisample/texelfetch/16-fs-isampler2dms: skip
 spec/arb_texture_multisample/texelfetch/16-fs-isampler2dmsarray: skip
 spec/arb_texture_multisample/texelfetch/16-fs-sampler2dms: skip
@@ -1668,8 +1666,8 @@ wgl/wgl-sanity: skip
 summary:
        name:  results
        ----  --------
-       pass:    23029
-       fail:      201
+       pass:    23031
+       fail:      199
       crash:        0
        skip:     1442
     timeout:        0

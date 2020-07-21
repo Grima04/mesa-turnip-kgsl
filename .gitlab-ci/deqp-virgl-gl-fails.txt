@@ -637,7 +637,6 @@ dEQP-GLES31.functional.draw_indirect.compute_interop.separate.drawelements_compu
 dEQP-GLES31.functional.draw_indirect.compute_interop.separate.drawelements_compute_data_and_indices
 dEQP-GLES31.functional.draw_indirect.compute_interop.separate.drawelements_compute_indices
 dEQP-GLES31.functional.draw_indirect.random.20
-dEQP-GLES31.functional.fbo.no_attachments.maximums.all
 dEQP-GLES31.functional.image_load_store.2d_array.atomic.add_r32i_result
 dEQP-GLES31.functional.image_load_store.2d_array.atomic.add_r32i_return_value
 dEQP-GLES31.functional.image_load_store.2d_array.atomic.add_r32ui_result

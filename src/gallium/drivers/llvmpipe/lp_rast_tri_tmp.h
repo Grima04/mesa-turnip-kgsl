@@ -69,7 +69,7 @@ TAG(do_block_4)(struct lp_rasterizer_task *task,
          int64_t new_c = (c[j]) + ((IMUL64(task->scene->fixed_sample_pos[s][1], plane[j].dcdy) + IMUL64(task->scene->fixed_sample_pos[s][0], -plane[j].dcdx)) >> FIXED_ORDER);
          uint32_t build_mask;
 #ifdef RASTER_64
-         build_mask = BUILD_MASK_LINEAR((new_c - 1) >> (int64_t)FIXED_ORDER,
+         build_mask = BUILD_MASK_LINEAR((int32_t)((new_c - 1) >> (int64_t)FIXED_ORDER),
                                         -plane[j].dcdx >> FIXED_ORDER,
                                         plane[j].dcdy >> FIXED_ORDER);
 #else
