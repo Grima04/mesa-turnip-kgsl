@@ -197,6 +197,7 @@ if __name__ == '__main__':
             source.sync()
 
         # Make sure all the API files are handled by this script
-        for file in pathlib.Path('include/' + group['inc_folder']).iterdir():
-            if file not in [source.file for source in group['sources']]:
-                error('{} is unknown, please add it to SOURCES'.format(file))
+        if 'inc_folder' in group:
+            for file in pathlib.Path('include/' + group['inc_folder']).iterdir():
+                if file not in [source.file for source in group['sources']]:
+                    error('{} is unknown, please add it to SOURCES'.format(file))
