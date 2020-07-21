@@ -1252,6 +1252,8 @@ radv-fossils:
     key: ${CI_JOB_NAME}
     paths:
       - traces-db/
+  variables:
+    TRACIE_UPLOAD_TO_MINIO: 1
 
 .traces-test-gl:
   extends:
