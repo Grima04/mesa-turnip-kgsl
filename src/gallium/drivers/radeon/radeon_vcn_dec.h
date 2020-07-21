@@ -781,7 +781,7 @@ struct radeon_decoder {
 
    unsigned bs_size;
    unsigned cur_buffer;
-   void *render_pic_list[16];
+   void *render_pic_list[32];
    bool show_frame;
    unsigned ref_idx;
    struct {

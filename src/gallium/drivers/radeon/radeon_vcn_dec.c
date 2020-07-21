@@ -256,17 +256,19 @@ static rvcn_dec_message_hevc_t get_h265_msg(struct radeon_decoder *dec,
    result.num_delta_pocs_ref_rps_idx = pic->NumDeltaPocsOfRefRpsIdx;
    result.curr_poc = pic->CurrPicOrderCntVal;
 
-   for (i = 0; i < 16; i++) {
-      for (j = 0; (pic->ref[j] != NULL) && (j < 16); j++) {
+   for (i = 0; i < ARRAY_SIZE(dec->render_pic_list); i++) {
+      for (j = 0; 
+           (pic->ref[j] != NULL) && (j < ARRAY_SIZE(dec->render_pic_list));
+           j++) {
          if (dec->render_pic_list[i] == pic->ref[j])
             break;
-         if (j == 15)
+         if (j == ARRAY_SIZE(dec->render_pic_list) - 1)
             dec->render_pic_list[i] = NULL;
          else if (pic->ref[j + 1] == NULL)
             dec->render_pic_list[i] = NULL;
       }
    }
-   for (i = 0; i < 16; i++) {
+   for (i = 0; i < ARRAY_SIZE(dec->render_pic_list); i++) {
       if (dec->render_pic_list[i] == NULL) {
          dec->render_pic_list[i] = target;
          result.curr_idx = i;
@@ -482,9 +484,9 @@ static rvcn_dec_message_vp9_t get_vp9_msg(struct radeon_decoder *dec,
    result.uncompressed_header_size = pic->picture_parameter.frame_header_length_in_bytes;
    result.compressed_header_size = pic->picture_parameter.first_partition_size;
 
-   assert(dec->base.max_references + 1 <= 16);
+   assert(dec->base.max_references + 1 <= ARRAY_SIZE(dec->render_pic_list));
 
-   for (i = 0; i < 16; ++i) {
+   for (i = 0; i < ARRAY_SIZE(dec->render_pic_list); ++i) {
       if (dec->render_pic_list[i] && dec->render_pic_list[i] == target) {
          result.curr_pic_idx = (uintptr_t)vl_video_buffer_get_associated_data(target, &dec->base);
          break;
@@ -1504,7 +1506,7 @@ struct pipe_video_codec *radeon_create_decoder(struct pipe_context *context,
       goto error;
    }
 
-   for (i = 0; i < 16; i++)
+   for (i = 0; i < ARRAY_SIZE(dec->render_pic_list); i++)
       dec->render_pic_list[i] = NULL;
    bs_buf_size = width * height * (512 / (16 * 16));
    for (i = 0; i < NUM_BUFFERS; ++i) {
