@@ -1182,6 +1182,7 @@ Program::Program(Type type, Target *arch)
 
    maxGPR = -1;
    fp64 = false;
+   persampleInvocation = false;
 
    main = new Function(this, "MAIN", ~0);
    calls.insert(&main->call);
