@@ -232,11 +232,6 @@ extern __eglMustCastToProperFunctionPointerType
 _eglGetDriverProc(const char *procname);
 
 
-extern void
-_eglSearchPathForEach(EGLBoolean (*callback)(const char *, size_t, void *),
-                      void *callback_data);
-
-
 #ifdef __cplusplus
 }
 #endif
