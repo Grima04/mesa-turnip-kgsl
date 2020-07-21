@@ -484,6 +484,32 @@ bool r600_lower_ubo_to_align16(nir_shader *shader)
                                         nullptr);
 }
 
+static void
+insert_uniform_sorted(struct exec_list *var_list, nir_variable *new_var)
+{
+   nir_foreach_variable_in_list(var, var_list) {
+      if (var->data.binding > new_var->data.binding ||
+          (var->data.binding == new_var->data.binding &&
+           var->data.offset > new_var->data.offset)) {
+         exec_node_insert_node_before(&var->node, &new_var->node);
+         return;
+      }
+   }
+   exec_list_push_tail(var_list, &new_var->node);
+}
+
+void sort_uniforms(nir_shader *shader)
+{
+   struct exec_list new_list;
+   exec_list_make_empty(&new_list);
+
+   nir_foreach_uniform_variable_safe(var, shader) {
+      exec_node_remove(&var->node);
+      insert_uniform_sorted(&new_list, var);
+   }
+   exec_list_append(&shader->variables, &new_list);
+}
+
 }
 
 using r600::r600_nir_lower_int_tg4;
@@ -660,6 +686,8 @@ int r600_shader_from_nir(struct r600_context *rctx,
       nir_print_shader(sel->nir, stderr);
       fprintf(stderr, "END PRE-OPT-NIR--------------------------------------\n\n");
    }
+
+   r600::sort_uniforms(sel->nir);
 
    NIR_PASS_V(sel->nir, nir_lower_vars_to_ssa);
    NIR_PASS_V(sel->nir, nir_lower_regs_to_ssa);
