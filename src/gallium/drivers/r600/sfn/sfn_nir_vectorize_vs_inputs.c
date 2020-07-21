@@ -376,18 +376,20 @@ r600_variables_can_merge(const nir_variable *lhs, const nir_variable *rhs)
 }
 
 static void
-r600_create_new_io_vars(nir_shader *shader, struct exec_list *io_list,
+r600_create_new_io_vars(nir_shader *shader, nir_variable_mode mode,
                    nir_variable *vars[16][4])
 {
-   if (exec_list_is_empty(io_list))
-      return;
-
-   nir_foreach_variable(var, io_list) {
+   bool can_rewrite_vars = false;
+   nir_foreach_variable_with_modes(var, shader, mode) {
       if (r600_variable_can_rewrite(var)) {
+         can_rewrite_vars = true;
          unsigned loc = r600_correct_location(var);
          vars[loc][var->data.location_frac] = var;
       }
    }
+
+   if (!can_rewrite_vars)
+      return;
 
    /* We don't handle combining vars of different type e.g. different array
     * lengths.
@@ -432,7 +434,7 @@ r600_vectorize_io_impl(nir_function_impl *impl)
    nir_shader *shader = impl->function->shader;
    nir_variable *updated_vars[16][4] = {0};
 
-   r600_create_new_io_vars(shader, &shader->inputs, updated_vars);
+   r600_create_new_io_vars(shader, nir_var_shader_in, updated_vars);
 
    struct set *instr_set = r600_vec_instr_set_create();
    bool progress = r600_vectorize_block(&b, nir_start_block(impl), instr_set,
