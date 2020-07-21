@@ -311,12 +311,12 @@ add_shader_variable(const struct gl_context *ctx,
 }
 
 static bool
-add_vars_with_mode(const struct gl_context *ctx,
-                   struct gl_shader_program *prog, struct set *resource_set,
-                   nir_shader *nir, nir_variable_mode mode,
-                   unsigned stage, GLenum programInterface)
+add_vars_with_modes(const struct gl_context *ctx,
+                    struct gl_shader_program *prog, struct set *resource_set,
+                    nir_shader *nir, nir_variable_mode modes,
+                    unsigned stage, GLenum programInterface)
 {
-   nir_foreach_variable_with_modes(var, nir, mode) {
+   nir_foreach_variable_with_modes(var, nir, modes) {
       if (var->data.how_declared == nir_var_hidden)
          continue;
 
@@ -405,18 +405,14 @@ add_interface_variables(const struct gl_context *ctx,
 
    switch (programInterface) {
    case GL_PROGRAM_INPUT: {
-      bool result = add_vars_with_mode(ctx, prog, resource_set,
-                                       nir, nir_var_shader_in,
-                                       stage, programInterface);
-      result &= add_vars_with_mode(ctx, prog, resource_set,
-                                   nir, nir_var_system_value,
-                                   stage, programInterface);
-      return result;
+      return add_vars_with_modes(ctx, prog, resource_set,
+                                 nir, nir_var_shader_in | nir_var_system_value,
+                                 stage, programInterface);
    }
    case GL_PROGRAM_OUTPUT:
-      return add_vars_with_mode(ctx, prog, resource_set,
-                                nir, nir_var_shader_out,
-                                stage, programInterface);
+      return add_vars_with_modes(ctx, prog, resource_set,
+                                 nir, nir_var_shader_out,
+                                 stage, programInterface);
    default:
       assert("!Should not get here");
       break;
