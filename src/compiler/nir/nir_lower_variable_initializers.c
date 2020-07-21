@@ -88,6 +88,16 @@ nir_lower_variable_initializers(nir_shader *shader, nir_variable_mode modes)
 {
    bool progress = false;
 
+   /* Only some variables have initializers that we want to lower.  Others
+    * such as uniforms have initializers which are useful later during linking
+    * so we want to skip over those.  Restrict to only variable types where
+    * initializers make sense so that callers can use nir_var_all.
+    */
+   modes &= nir_var_shader_out |
+            nir_var_shader_temp |
+            nir_var_function_temp |
+            nir_var_system_value;
+
    nir_foreach_function(function, shader) {
       if (!function->impl)
 	 continue;
