@@ -19,6 +19,10 @@ echo "nameserver 8.8.8.8" > /etc/resolv.conf
 # Overwrite traces.yml file with the baremetal version
 cp /install/traces-baremetal.yml /install/traces.yml
 
+# Start a little daemon to capture the first devcoredump we encounter.  (They
+# expire after 5 minutes, so we poll for them).
+./capture-devcoredump.sh &
+
 if sh $BARE_METAL_TEST_SCRIPT; then
   OK=1
 else

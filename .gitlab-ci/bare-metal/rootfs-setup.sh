@@ -7,6 +7,8 @@ mkdir -p $rootfs_dst/results
 # Set up the init script that brings up the system.
 cp $BM/init.sh $rootfs_dst/init
 
+cp $BM/capture-devcoredump.sh $rootfs_dst/
+
 set +x
 # Pass through relevant env vars from the gitlab job to the baremetal init script
 touch $rootfs_dst/set-job-env-vars.sh
