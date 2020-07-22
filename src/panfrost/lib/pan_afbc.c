@@ -128,3 +128,19 @@ panfrost_afbc_header_size(unsigned width, unsigned height)
         return ALIGN_POT(header_bytes, AFBC_CACHE_ALIGN);
 
 }
+
+/* The lossless colour transform (AFBC_FORMAT_MOD_YTR) requires RGB. */
+
+bool
+panfrost_afbc_can_ytr(enum pipe_format format)
+{
+        const struct util_format_description *desc =
+                util_format_description(format);
+
+        /* YTR is only defined for RGB(A) */
+        if (desc->nr_channels != 3 && desc->nr_channels != 4)
+                return false;
+
+        /* The fourth channel if it exists doesn't matter */
+        return desc->colorspace == UTIL_FORMAT_COLORSPACE_RGB;
+}

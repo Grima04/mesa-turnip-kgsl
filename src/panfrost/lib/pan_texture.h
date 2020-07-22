@@ -85,6 +85,9 @@ panfrost_format_supports_afbc(enum pipe_format format);
 unsigned
 panfrost_afbc_header_size(unsigned width, unsigned height);
 
+bool
+panfrost_afbc_can_ytr(enum pipe_format format);
+
 /* mali_texture_descriptor */
 
 unsigned
