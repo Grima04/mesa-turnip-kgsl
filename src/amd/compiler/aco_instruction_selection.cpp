@@ -472,7 +472,7 @@ void byte_align_vector(isel_context *ctx, Temp vec, Operand offset, Temp dst, un
       offset = Operand(0u);
    }
 
-   unsigned num_components = dst.bytes() / component_size;
+   unsigned num_components = vec.bytes() / component_size;
    if (vec.regClass() == dst.regClass()) {
       assert(offset.constantValue() == 0);
       bld.copy(Definition(dst), vec);
@@ -480,17 +480,18 @@ void byte_align_vector(isel_context *ctx, Temp vec, Operand offset, Temp dst, un
       return;
    }
 
-   emit_split_vector(ctx, vec, vec.bytes() / component_size);
+   emit_split_vector(ctx, vec, num_components);
    std::array<Temp, NIR_MAX_VEC_COMPONENTS> elems;
    RegClass rc = RegClass(RegType::vgpr, component_size).as_subdword();
 
    assert(offset.constantValue() % component_size == 0);
    unsigned skip = offset.constantValue() / component_size;
-   for (unsigned i = 0; i < num_components; i++)
-      elems[i] = emit_extract_vector(ctx, vec, i + skip, rc);
+   for (unsigned i = skip; i < num_components; i++)
+      elems[i - skip] = emit_extract_vector(ctx, vec, i, rc);
 
    /* if dst is vgpr - split the src and create a shrunk version according to the mask. */
    if (dst.type() == RegType::vgpr) {
+      num_components = dst.bytes() / component_size;
       aco_ptr<Pseudo_instruction> create_vec{create_instruction<Pseudo_instruction>(aco_opcode::p_create_vector, Format::PSEUDO, num_components, 1)};
       for (unsigned i = 0; i < num_components; i++)
          create_vec->operands[i] = Operand(elems[i]);
