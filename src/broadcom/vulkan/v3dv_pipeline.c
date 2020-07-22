@@ -1522,8 +1522,13 @@ v3dv_get_shader_variant(struct v3dv_pipeline_stage *p_stage,
       return entry->data;
    }
 
-   /* Now we search on the pipeline cache if available */
+   /* Now we search on the pipeline cache if provided by the user, or the
+    * default one*/
    struct v3dv_pipeline *pipeline = p_stage->pipeline;
+   struct v3dv_device *device = pipeline->device;
+   if (cache == NULL && device->instance->pipeline_cache_enabled)
+       cache = &device->default_pipeline_cache;
+
    unsigned char variant_sha1[20];
    pipeline_hash_variant(p_stage, key, key_size, variant_sha1);
 
@@ -1541,7 +1546,6 @@ v3dv_get_shader_variant(struct v3dv_pipeline_stage *p_stage,
    /* If we don't find the variant in any cache, we compile one and add the
     * variant to the cache
     */
-   struct v3dv_device *device = pipeline->device;
    struct v3dv_physical_device *physical_device =
       &pipeline->device->instance->physicalDevice;
    const struct v3d_compiler *compiler = physical_device->compiler;
@@ -2849,6 +2853,10 @@ graphics_pipeline_create(VkDevice _device,
    struct v3dv_pipeline *pipeline;
    VkResult result;
 
+   /* Use the default pipeline cache if none is specified */
+   if (cache == NULL && device->instance->pipeline_cache_enabled)
+       cache = &device->default_pipeline_cache;
+
    pipeline = vk_zalloc2(&device->alloc, pAllocator, sizeof(*pipeline), 8,
                          VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
    if (pipeline == NULL)
@@ -2999,6 +3007,10 @@ compute_pipeline_create(VkDevice _device,
 
    struct v3dv_pipeline *pipeline;
    VkResult result;
+
+   /* Use the default pipeline cache if none is specified */
+   if (cache == NULL && device->instance->pipeline_cache_enabled)
+       cache = &device->default_pipeline_cache;
 
    pipeline = vk_zalloc2(&device->alloc, pAllocator, sizeof(*pipeline), 8,
                          VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);

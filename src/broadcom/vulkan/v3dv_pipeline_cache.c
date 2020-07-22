@@ -174,10 +174,10 @@ v3dv_pipeline_cache_search_for_nir(struct v3dv_pipeline *pipeline,
    return NULL;
 }
 
-static void
-pipeline_cache_init(struct v3dv_pipeline_cache *cache,
-                    struct v3dv_device *device,
-                    bool cache_enabled)
+void
+v3dv_pipeline_cache_init(struct v3dv_pipeline_cache *cache,
+                         struct v3dv_device *device,
+                         bool cache_enabled)
 {
    cache->_loader_data.loaderMagic = ICD_LOADER_MAGIC;
 
@@ -208,7 +208,7 @@ v3dv_pipeline_cache_search_for_variant(struct v3dv_pipeline *pipeline,
                                        struct v3dv_pipeline_cache *cache,
                                        unsigned char sha1_key[20])
 {
-   if (!cache || !cache->nir_cache)
+   if (!cache || !cache->variant_cache)
       return NULL;
 
    if (unlikely(dump_stats)) {
@@ -443,8 +443,8 @@ v3dv_CreatePipelineCache(VkDevice _device,
    if (cache == NULL)
       return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
-   pipeline_cache_init(cache, device,
-                       device->instance->pipeline_cache_enabled);
+   v3dv_pipeline_cache_init(cache, device,
+                            device->instance->pipeline_cache_enabled);
 
    if (pCreateInfo->initialDataSize > 0) {
       pipeline_cache_load(cache,
@@ -458,6 +458,30 @@ v3dv_CreatePipelineCache(VkDevice _device,
 }
 
 void
+v3dv_pipeline_cache_finish(struct v3dv_pipeline_cache *cache)
+{
+   pthread_mutex_destroy(&cache->mutex);
+
+   if (cache->nir_cache) {
+      hash_table_foreach(cache->nir_cache, entry)
+         ralloc_free(entry->data);
+
+      _mesa_hash_table_destroy(cache->nir_cache, NULL);
+   }
+
+   if (cache->variant_cache) {
+      hash_table_foreach(cache->variant_cache, entry) {
+         struct v3dv_shader_variant *variant = entry->data;
+         if (variant)
+            v3dv_shader_variant_unref(cache->device, variant);
+      }
+
+      _mesa_hash_table_destroy(cache->variant_cache, NULL);
+
+   }
+}
+
+void
 v3dv_DestroyPipelineCache(VkDevice _device,
                           VkPipelineCache _cache,
                           const VkAllocationCallbacks *pAllocator)
@@ -468,23 +492,7 @@ v3dv_DestroyPipelineCache(VkDevice _device,
    if (!cache)
       return;
 
-   pthread_mutex_destroy(&cache->mutex);
-
-   if (cache->nir_cache) {
-      hash_table_foreach(cache->nir_cache, entry)
-         ralloc_free(entry->data);
-
-      _mesa_hash_table_destroy(cache->nir_cache, NULL);
-
-      hash_table_foreach(cache->variant_cache, entry) {
-         struct v3dv_shader_variant *variant = entry->data;
-         if (variant)
-            v3dv_shader_variant_unref(device, variant);
-      }
-
-      _mesa_hash_table_destroy(cache->variant_cache, NULL);
-
-   }
+   v3dv_pipeline_cache_finish(cache);
 
    vk_free2(&device->alloc, pAllocator, cache);
 }

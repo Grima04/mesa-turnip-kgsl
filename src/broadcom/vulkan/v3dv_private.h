@@ -338,6 +338,8 @@ struct v3dv_device {
 
    uint32_t bo_size;
    uint32_t bo_count;
+
+   struct v3dv_pipeline_cache default_pipeline_cache;
 };
 
 struct v3dv_device_memory {
@@ -1296,7 +1298,9 @@ struct v3dv_pipeline_stage {
 
    /* Cache with all the shader variants built for this pipeline. This one is
     * required over the pipeline cache because we still allow to create shader
-    * variants after Pipeline creation.
+    * variants after Pipeline creation. Note that it would be possible to
+    * remove it and rely completely on the default pipeline cache, but then,
+    * we would need to stop to support the envvar V3DV_ENABLE_PIPELINE_CACHE
     */
    struct hash_table *cache;
 
@@ -1805,6 +1809,12 @@ v3dv_immutable_samplers(const struct v3dv_descriptor_set_layout *set,
    assert(binding->immutable_samplers_offset);
    return (const struct v3dv_sampler *) ((const char *) set + binding->immutable_samplers_offset);
 }
+
+void v3dv_pipeline_cache_init(struct v3dv_pipeline_cache *cache,
+                              struct v3dv_device *device,
+                              bool cache_enabled);
+
+void v3dv_pipeline_cache_finish(struct v3dv_pipeline_cache *cache);
 
 void v3dv_pipeline_cache_upload_nir(struct v3dv_pipeline *pipeline,
                                     struct v3dv_pipeline_cache *cache,
