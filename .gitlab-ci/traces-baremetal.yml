@@ -55,7 +55,7 @@ traces:
   - path: humus/AmbientAperture.trace
     expectations:
       - device: freedreno-a630
-        checksum: 531c54b2d1af670f698fb47d3fe321d4
+        checksum: 894a9398f597258cb634bedfb8f2d31e
   - path: humus/CelShading.trace
     expectations:
       - device: freedreno-a630
@@ -63,7 +63,7 @@ traces:
   - path: humus/DynamicBranching3.trace
     expectations:
       - device: freedreno-a630
-        checksum: 1f168d54278d95100ad0f9e94c2eb111
+        checksum: 238f06550db39c36e5b880d3b3d7440f
   - path: humus/HDR.trace
     expectations:
       - device: freedreno-a630
@@ -72,15 +72,15 @@ traces:
     expectations:
       # Bad rendering -- some sort of gap in the upper right of the image.
       - device: freedreno-a630
-        checksum: c6d7e9712631762b6acdd53bc1dd2aa3
+        checksum: 38bcb0a348010c7591efe41b3cc0a9e6
   - path: humus/RaytracedShadows.trace
     expectations:
       - device: freedreno-a630
-        checksum: 992ffe18dfac0030368494b4367150f1
+        checksum: fa2d20bf642cd413341d83c4ec5ef1d4
   - path: humus/VolumetricFogging2.trace
     expectations:
       - device: freedreno-a630
-        checksum: 00670c5b830a7b8098fdcd347f7e0d6c
+        checksum: 6027f10cbffa8c68ffe7d8208f84d32d
   - path: pathfinder/canvas_moire.trace
     expectations:
       - device: freedreno-a630
