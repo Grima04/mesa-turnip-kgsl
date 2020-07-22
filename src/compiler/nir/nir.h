@@ -3477,6 +3477,26 @@ nir_shader_get_entrypoint(nir_shader *shader)
    return func->impl;
 }
 
+typedef struct nir_liveness_bounds {
+   uint32_t start;
+   uint32_t end;
+} nir_liveness_bounds;
+
+typedef struct nir_instr_liveness {
+   /**
+    * nir_instr->index for the start and end of a single live interval for SSA
+    * defs.  ssa values last used by a nir_if condition will have an interval
+    * ending at the first instruction after the last one before the if
+    * condition.
+    *
+    * Indexed by def->index (impl->ssa_alloc elements).
+    */
+   struct nir_liveness_bounds *defs;
+} nir_instr_liveness;
+
+nir_instr_liveness *
+nir_live_ssa_defs_per_instr(nir_function_impl *impl);
+
 nir_shader *nir_shader_create(void *mem_ctx,
                               gl_shader_stage stage,
                               const nir_shader_compiler_options *options,
