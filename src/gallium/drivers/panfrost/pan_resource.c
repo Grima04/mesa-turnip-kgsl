@@ -309,7 +309,7 @@ panfrost_setup_slices(struct panfrost_resource *pres, size_t *bo_size)
         bool afbc = drm_is_afbc(pres->modifier);
         bool tiled = pres->modifier == DRM_FORMAT_MOD_ARM_16X16_BLOCK_U_INTERLEAVED;
         bool linear = pres->modifier == DRM_FORMAT_MOD_LINEAR;
-        bool should_align = renderable || tiled;
+        bool should_align = renderable || tiled || afbc;
 
         /* We don't know how to specify a 2D stride for 3D textures */
 
