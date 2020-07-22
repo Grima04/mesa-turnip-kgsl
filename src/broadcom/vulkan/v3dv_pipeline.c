@@ -2023,6 +2023,12 @@ pack_cfg_bits(struct v3dv_pipeline *pipeline,
        */
       config.line_rasterization = 1; /* perp end caps */
 
+      if (rs_info && rs_info->polygonMode != VK_POLYGON_MODE_FILL) {
+         config.direct3d_wireframe_triangles_mode = true;
+         config.direct3d_point_fill_mode =
+            rs_info->polygonMode == VK_POLYGON_MODE_POINT;
+      }
+
       /* FIXME: oversample_mode postponed until msaa gets supported */
       config.rasterizer_oversample_mode = false;
 
