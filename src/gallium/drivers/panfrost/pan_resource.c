@@ -218,10 +218,42 @@ panfrost_create_scanout_res(struct pipe_screen *screen,
                             uint64_t modifier)
 {
         struct panfrost_device *dev = pan_device(screen);
-        struct pipe_resource scanout_templat = *template;
         struct renderonly_scanout *scanout;
         struct winsys_handle handle;
         struct pipe_resource *res;
+        struct pipe_resource scanout_templat = *template;
+
+        /* Tiled formats need to be tile aligned */
+        if (modifier == DRM_FORMAT_MOD_ARM_16X16_BLOCK_U_INTERLEAVED) {
+                scanout_templat.width0 = ALIGN_POT(template->width0, 16);
+                scanout_templat.height0 = ALIGN_POT(template->height0, 16);
+        }
+
+        /* AFBC formats need a header. Thankfully we don't care about the
+         * stride so we can just use wonky dimensions as long as the right
+         * number of bytes are allocated at the end of the day... this implies
+         * that stride/pitch is invalid for AFBC buffers */
+
+        if (drm_is_afbc(modifier)) {
+                /* Space for the header. We need to keep vaguely similar
+                 * dimensions because... reasons... to allocate with renderonly
+                 * as a dumb buffer. To do so, after the usual 16x16 alignment,
+                 * we add on extra rows for the header. The order of operations
+                 * matters here, the extra rows of padding can in fact be
+                 * needed and missing them can lead to faults. */
+
+                unsigned header_size = panfrost_afbc_header_size(
+                                template->width0, template->height0);
+
+                unsigned pitch = ALIGN_POT(template->width0, 16) *
+                        util_format_get_blocksize(template->format);
+
+                unsigned header_rows =
+                        DIV_ROUND_UP(header_size, pitch);
+
+                scanout_templat.width0 = ALIGN_POT(template->width0, 16);
+                scanout_templat.height0 = ALIGN_POT(template->height0, 16) + header_rows;
+        }
 
         scanout = renderonly_scanout_for_resource(&scanout_templat,
                         dev->ro, &handle);
