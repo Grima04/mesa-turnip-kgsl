@@ -481,6 +481,9 @@ panfrost_best_modifier(struct panfrost_device *dev,
                         AFBC_FORMAT_MOD_BLOCK_SIZE_16x16 |
                         AFBC_FORMAT_MOD_SPARSE;
 
+                if (panfrost_afbc_can_ytr(pres->base.format))
+                        afbc |= AFBC_FORMAT_MOD_YTR;
+
                 return DRM_FORMAT_MOD_ARM_AFBC(afbc);
         } else if (panfrost_should_tile(dev, pres))
                 return DRM_FORMAT_MOD_ARM_16X16_BLOCK_U_INTERLEAVED;
