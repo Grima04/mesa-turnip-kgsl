@@ -944,7 +944,7 @@ panfrost_create_sampler_view_bo(struct panfrost_sampler_view *so,
         }
 
         so->texture_bo = prsrc->bo->gpu;
-        so->layout = prsrc->layout;
+        so->modifier = prsrc->modifier;
 
         unsigned char user_swizzle[4] = {
                 so->base.swizzle_r,
@@ -989,7 +989,7 @@ panfrost_create_sampler_view_bo(struct panfrost_sampler_view *so,
                                 so->base.u.tex.first_layer,
                                 so->base.u.tex.last_layer,
                                 texture->nr_samples,
-                                type, prsrc->layout);
+                                type, prsrc->modifier);
 
                 so->bo = panfrost_bo_create(device, size, 0);
 
@@ -999,7 +999,7 @@ panfrost_create_sampler_view_bo(struct panfrost_sampler_view *so,
                                 texture->width0, texture->height0,
                                 depth, array_size,
                                 format,
-                                type, prsrc->layout,
+                                type, prsrc->modifier,
                                 so->base.u.tex.first_level,
                                 so->base.u.tex.last_level,
                                 so->base.u.tex.first_layer,
@@ -1017,7 +1017,7 @@ panfrost_create_sampler_view_bo(struct panfrost_sampler_view *so,
                                 so->base.u.tex.first_layer,
                                 so->base.u.tex.last_layer,
                                 texture->nr_samples,
-                                type, prsrc->layout);
+                                type, prsrc->modifier);
                 size += sizeof(struct mali_texture_descriptor);
 
                 so->bo = panfrost_bo_create(device, size, 0);
@@ -1027,7 +1027,7 @@ panfrost_create_sampler_view_bo(struct panfrost_sampler_view *so,
                                 texture->width0, texture->height0,
                                 depth, array_size,
                                 format,
-                                type, prsrc->layout,
+                                type, prsrc->modifier,
                                 so->base.u.tex.first_level,
                                 so->base.u.tex.last_level,
                                 so->base.u.tex.first_layer,

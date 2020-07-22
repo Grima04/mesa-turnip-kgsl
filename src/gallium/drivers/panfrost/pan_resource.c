@@ -75,7 +75,7 @@ panfrost_resource_from_handle(struct pipe_screen *pscreen,
 
         rsc->bo = panfrost_bo_import(dev, whandle->handle);
         rsc->internal_format = templat->format;
-        rsc->layout = MALI_TEXTURE_LINEAR;
+        rsc->modifier = DRM_FORMAT_MOD_LINEAR;
         rsc->slices[0].stride = whandle->stride;
         rsc->slices[0].offset = whandle->offset;
         rsc->slices[0].initialized = true;
@@ -234,7 +234,7 @@ panfrost_create_scanout_res(struct pipe_screen *screen,
         return res;
 }
 
-/* Setup the mip tree given a particular layout, possibly with checksumming */
+/* Setup the mip tree given a particular modifier, possibly with checksumming */
 
 static void
 panfrost_setup_slices(struct panfrost_resource *pres, size_t *bo_size)
@@ -265,8 +265,9 @@ panfrost_setup_slices(struct panfrost_resource *pres, size_t *bo_size)
         bool renderable = res->bind &
                           (PIPE_BIND_RENDER_TARGET | PIPE_BIND_DEPTH_STENCIL) &&
                           res->target != PIPE_BUFFER;
-        bool afbc = pres->layout == MALI_TEXTURE_AFBC;
-        bool tiled = pres->layout == MALI_TEXTURE_TILED;
+        bool afbc = drm_is_afbc(pres->modifier);
+        bool tiled = pres->modifier == DRM_FORMAT_MOD_ARM_16X16_BLOCK_U_INTERLEAVED;
+        bool linear = pres->modifier == DRM_FORMAT_MOD_LINEAR;
         bool should_align = renderable || tiled;
 
         /* We don't know how to specify a 2D stride for 3D textures */
@@ -307,7 +308,7 @@ panfrost_setup_slices(struct panfrost_resource *pres, size_t *bo_size)
                         stride /= 4;
 
                 /* ..but cache-line align it for performance */
-                if (can_align_stride && pres->layout == MALI_TEXTURE_LINEAR)
+                if (can_align_stride && linear)
                         stride = ALIGN_POT(stride, 64);
 
                 slice->stride = stride;
@@ -410,10 +411,12 @@ panfrost_resource_create_bo(struct panfrost_device *dev, struct panfrost_resourc
 
         pres->checksummed = can_checksum && should_checksum;
 
-        /* Set the layout appropriately */
+        /* Set the modifier appropriately */
         assert(!(must_tile && !can_tile)); /* must_tile => can_tile */
-        pres->layout = ((can_tile && should_tile) || must_tile) ? MALI_TEXTURE_TILED : MALI_TEXTURE_LINEAR;
-        pres->layout_constant = must_tile || !can_tile;
+        pres->modifier = ((can_tile && should_tile) || must_tile) ?
+                DRM_FORMAT_MOD_ARM_16X16_BLOCK_U_INTERLEAVED :
+                DRM_FORMAT_MOD_LINEAR;
+        pres->modifier_constant = must_tile || !can_tile;
 
         size_t bo_size;
 
@@ -647,7 +650,7 @@ panfrost_transfer_map(struct pipe_context *pctx,
                 }
         }
 
-        if (rsrc->layout != MALI_TEXTURE_LINEAR) {
+        if (rsrc->modifier != DRM_FORMAT_MOD_LINEAR) {
                 /* Non-linear resources need to be indirectly mapped */
 
                 if (usage & PIPE_TRANSFER_MAP_DIRECTLY)
@@ -659,9 +662,9 @@ panfrost_transfer_map(struct pipe_context *pctx,
                 assert(box->depth == 1);
 
                 if ((usage & PIPE_TRANSFER_READ) && rsrc->slices[level].initialized) {
-                        if (rsrc->layout == MALI_TEXTURE_AFBC) {
+                        if (drm_is_afbc(rsrc->modifier)) {
                                 unreachable("Unimplemented: reads from AFBC");
-                        } else if (rsrc->layout == MALI_TEXTURE_TILED) {
+                        } else if (rsrc->modifier == DRM_FORMAT_MOD_ARM_16X16_BLOCK_U_INTERLEAVED) {
                                 panfrost_load_tiled_image(
                                         transfer->map,
                                         bo->cpu + rsrc->slices[level].offset,
@@ -721,32 +724,32 @@ panfrost_transfer_unmap(struct pipe_context *pctx,
                 struct panfrost_bo *bo = prsrc->bo;
 
                 if (transfer->usage & PIPE_TRANSFER_WRITE) {
-                        if (prsrc->layout == MALI_TEXTURE_AFBC) {
+                        if (drm_is_afbc(prsrc->modifier)) {
                                 unreachable("Unimplemented: writes to AFBC\n");
-                        } else if (prsrc->layout == MALI_TEXTURE_TILED) {
+                        } else if (prsrc->modifier == DRM_FORMAT_MOD_ARM_16X16_BLOCK_U_INTERLEAVED) {
                                 assert(transfer->box.depth == 1);
 
                                 /* Do we overwrite the entire resource? If so,
                                  * we don't need an intermediate blit so it's a
-                                 * good time to switch the layout. */
+                                 * good time to switch the modifier. */
 
                                 bool discards_content = prsrc->base.last_level == 0
                                     && transfer->box.width == prsrc->base.width0
                                     && transfer->box.height == prsrc->base.height0
                                     && transfer->box.x == 0
                                     && transfer->box.y == 0
-                                    && !prsrc->layout_constant;
+                                    && !prsrc->modifier_constant;
 
                                 /* It also serves as a good heuristic for
                                  * streaming textures (e.g. in video players),
                                  * but we could do better */
 
                                 if (discards_content)
-                                        ++prsrc->layout_updates;
+                                        ++prsrc->modifier_updates;
 
-                                if (prsrc->layout_updates >= LAYOUT_CONVERT_THRESHOLD)
+                                if (prsrc->modifier_updates >= LAYOUT_CONVERT_THRESHOLD)
                                 {
-                                        prsrc->layout = MALI_TEXTURE_LINEAR;
+                                        prsrc->modifier = DRM_FORMAT_MOD_LINEAR;
 
                                         util_copy_rect(
                                                 bo->cpu + prsrc->slices[0].offset,

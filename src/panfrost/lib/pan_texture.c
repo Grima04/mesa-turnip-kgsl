@@ -43,6 +43,21 @@
  * to us here.
  */
 
+/* Map modifiers to mali_texture_layout for packing in a texture descriptor */
+
+static enum mali_texture_layout
+panfrost_modifier_to_layout(uint64_t modifier)
+{
+        if (drm_is_afbc(modifier))
+                return MALI_TEXTURE_AFBC;
+        else if (modifier == DRM_FORMAT_MOD_ARM_16X16_BLOCK_U_INTERLEAVED)
+                return MALI_TEXTURE_TILED;
+        else if (modifier == DRM_FORMAT_MOD_LINEAR)
+                return MALI_TEXTURE_LINEAR;
+        else
+                unreachable("Invalid modifer");
+}
+
 /* Check if we need to set a custom stride by computing the "expected"
  * stride and comparing it to what the user actually wants. Only applies
  * to linear textures, since tiled/compressed textures have strict
@@ -90,10 +105,10 @@ panfrost_astc_stretch(unsigned dim)
 static unsigned
 panfrost_compression_tag(
                 const struct util_format_description *desc,
-                enum mali_format format, enum mali_texture_layout layout)
+                enum mali_format format, uint64_t modifier)
 {
-        if (layout == MALI_TEXTURE_AFBC)
-                return desc->nr_channels >= 3;
+        if (drm_is_afbc(modifier))
+                return (modifier & AFBC_FORMAT_MOD_YTR) ? 1 : 0;
         else if (format == MALI_ASTC_2D_LDR || format == MALI_ASTC_2D_HDR)
                 return (panfrost_astc_stretch(desc->block.height) << 3) |
                         panfrost_astc_stretch(desc->block.width);
@@ -157,10 +172,10 @@ panfrost_estimate_texture_payload_size(
                 unsigned first_level, unsigned last_level,
                 unsigned first_layer, unsigned last_layer,
                 unsigned nr_samples,
-                enum mali_texture_type type, enum mali_texture_layout layout)
+                enum mali_texture_type type, uint64_t modifier)
 {
         /* Assume worst case */
-        unsigned manual_stride = (layout == MALI_TEXTURE_LINEAR);
+        unsigned manual_stride = (modifier == DRM_FORMAT_MOD_LINEAR);
 
         unsigned elements = panfrost_texture_num_elements(
                         first_level, last_level,
@@ -178,12 +193,12 @@ panfrost_estimate_texture_payload_size(
  */
 
 static unsigned
-panfrost_nonlinear_stride(enum mali_texture_layout layout,
+panfrost_nonlinear_stride(uint64_t modifier,
                 unsigned bytes_per_pixel,
                 unsigned width,
                 unsigned height)
 {
-        if (layout == MALI_TEXTURE_TILED) {
+        if (modifier == DRM_FORMAT_MOD_ARM_16X16_BLOCK_U_INTERLEAVED) {
                 return (height <= 16) ? 0 : (16 * bytes_per_pixel * ALIGN_POT(width, 16));
         } else {
                 unreachable("TODO: AFBC on Bifrost");
@@ -196,7 +211,7 @@ panfrost_emit_texture_payload(
         const struct util_format_description *desc,
         enum mali_format mali_format,
         enum mali_texture_type type,
-        enum mali_texture_layout layout,
+        uint64_t modifier,
         unsigned width, unsigned height,
         unsigned first_level, unsigned last_level,
         unsigned first_layer, unsigned last_layer,
@@ -206,7 +221,7 @@ panfrost_emit_texture_payload(
         mali_ptr base,
         struct panfrost_slice *slices)
 {
-        base |= panfrost_compression_tag(desc, mali_format, layout);
+        base |= panfrost_compression_tag(desc, mali_format, modifier);
 
         /* Inject the addresses in, interleaving array indices, mip levels,
          * cube faces, and strides in that order */
@@ -231,9 +246,9 @@ panfrost_emit_texture_payload(
                                                         cube_stride, l, w * face_mult + f, s);
 
                                         if (manual_stride) {
-                                                payload[idx++] = (layout == MALI_TEXTURE_LINEAR) ?
+                                                payload[idx++] = (modifier == DRM_FORMAT_MOD_LINEAR) ?
                                                         slices[l].stride :
-                                                        panfrost_nonlinear_stride(layout,
+                                                        panfrost_nonlinear_stride(modifier,
                                                                         MAX2(desc->block.bits / 8, 1),
                                                                         u_minify(width, l),
                                                                         u_minify(height, l));
@@ -264,7 +279,7 @@ panfrost_new_texture(
         uint16_t depth, uint16_t array_size,
         enum pipe_format format,
         enum mali_texture_type type,
-        enum mali_texture_layout layout,
+        uint64_t modifier,
         unsigned first_level, unsigned last_level,
         unsigned first_layer, unsigned last_layer,
         unsigned nr_samples,
@@ -281,7 +296,7 @@ panfrost_new_texture(
         enum mali_format mali_format = panfrost_pipe_format_table[desc->format].hw;
         assert(mali_format);
 
-        bool manual_stride = (layout == MALI_TEXTURE_LINEAR)
+        bool manual_stride = (modifier == DRM_FORMAT_MOD_LINEAR)
                 && panfrost_needs_explicit_stride(slices, width,
                                 first_level, last_level, bytes_per_pixel);
 
@@ -299,7 +314,7 @@ panfrost_new_texture(
                         .format = mali_format,
                         .srgb = (desc->colorspace == UTIL_FORMAT_COLORSPACE_SRGB),
                         .type = type,
-                        .layout = layout,
+                        .layout = panfrost_modifier_to_layout(modifier),
                         .manual_stride = manual_stride,
                         .unknown2 = 1,
                 },
@@ -315,7 +330,7 @@ panfrost_new_texture(
                 desc,
                 mali_format,
                 type,
-                layout,
+                modifier,
                 width, height,
                 first_level, last_level,
                 first_layer, last_layer,
@@ -333,7 +348,7 @@ panfrost_new_texture_bifrost(
         uint16_t depth, uint16_t array_size,
         enum pipe_format format,
         enum mali_texture_type type,
-        enum mali_texture_layout layout,
+        uint64_t modifier,
         unsigned first_level, unsigned last_level,
         unsigned first_layer, unsigned last_layer,
         unsigned nr_samples,
@@ -354,7 +369,7 @@ panfrost_new_texture_bifrost(
                 desc,
                 mali_format,
                 type,
-                layout,
+                modifier,
                 width, height,
                 first_level, last_level,
                 first_layer, last_layer,
@@ -372,7 +387,7 @@ panfrost_new_texture_bifrost(
         descriptor->width = MALI_POSITIVE(u_minify(width, first_level));
         descriptor->height = MALI_POSITIVE(u_minify(height, first_level));
         descriptor->swizzle = swizzle;
-        descriptor->layout = layout;
+        descriptor->layout = panfrost_modifier_to_layout(modifier),
         descriptor->levels = last_level - first_level;
         descriptor->unk1 = 0x0;
         descriptor->levels_unk = 0;

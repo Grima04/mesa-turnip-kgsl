@@ -274,7 +274,7 @@ struct panfrost_sampler_view {
         struct panfrost_bo *bo;
         struct bifrost_texture_descriptor *bifrost_descriptor;
         mali_ptr texture_bo;
-        enum mali_texture_layout layout;
+        uint64_t modifier;
 };
 
 static inline struct panfrost_context *

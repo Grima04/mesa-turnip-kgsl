@@ -141,13 +141,13 @@ panfrost_sfbd_set_cbuf(
         fb->framebuffer = base;
         fb->stride = stride;
 
-        if (rsrc->layout == MALI_TEXTURE_LINEAR)
+        if (rsrc->modifier == DRM_FORMAT_MOD_LINEAR)
                 fb->format.block = MALI_BLOCK_LINEAR;
-        else if (rsrc->layout == MALI_TEXTURE_TILED) {
+        else if (rsrc->modifier == DRM_FORMAT_MOD_ARM_16X16_BLOCK_U_INTERLEAVED) {
                 fb->format.block = MALI_BLOCK_TILED;
                 fb->stride *= 16;
         } else {
-                fprintf(stderr, "Invalid render layout\n");
+                fprintf(stderr, "Invalid render modifier\n");
                 assert(0);
         }
 }
@@ -163,8 +163,8 @@ panfrost_sfbd_set_zsbuf(
         unsigned level = surf->u.tex.level;
         assert(surf->u.tex.first_layer == 0);
 
-        if (rsrc->layout != MALI_TEXTURE_TILED)
-                unreachable("Invalid render layout.");
+        if (rsrc->modifier != DRM_FORMAT_MOD_ARM_16X16_BLOCK_U_INTERLEAVED)
+                unreachable("Invalid render modifier.");
 
         fb->depth_buffer = rsrc->bo->gpu + rsrc->slices[level].offset;
         fb->depth_stride = rsrc->slices[level].stride;

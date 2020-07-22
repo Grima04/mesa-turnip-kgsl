@@ -58,17 +58,17 @@ struct panfrost_resource {
         /* Distance from tree to tree */
         unsigned cubemap_stride;
 
-        /* Internal layout (tiled?) */
-        enum mali_texture_layout layout;
+        /* DRM fourcc code: linear, 16x16 u-interleaved, AFBC */
+        uint64_t modifier;
 
-        /* Whether the layout can be changed */
-        bool layout_constant;
+        /* Whether the modifier can be changed */
+        bool modifier_constant;
 
         /* Is transaciton elimination enabled? */
         bool checksummed;
 
-        /* Used to decide when to convert to another layout */
-        uint16_t layout_updates;
+        /* Used to decide when to convert to another modifier */
+        uint16_t modifier_updates;
 
         enum pipe_format internal_format;
 

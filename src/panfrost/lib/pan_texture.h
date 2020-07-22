@@ -29,6 +29,7 @@
 #define __PAN_TEXTURE_H
 
 #include <stdbool.h>
+#include "drm-uapi/drm_fourcc.h"
 #include "util/format/u_format.h"
 #include "compiler/shader_enums.h"
 #include "panfrost-job.h"
@@ -64,7 +65,7 @@ struct pan_image {
         struct panfrost_bo *bo;
         struct panfrost_slice *slices;
         unsigned cubemap_stride;
-        enum mali_texture_layout layout;
+        uint64_t modifier;
 };
 
 unsigned
@@ -88,7 +89,7 @@ panfrost_estimate_texture_payload_size(
                 unsigned first_level, unsigned last_level,
                 unsigned first_layer, unsigned last_layer,
                 unsigned nr_samples,
-                enum mali_texture_type type, enum mali_texture_layout layout);
+                enum mali_texture_type type, uint64_t modifier);
 
 void
 panfrost_new_texture(
@@ -97,7 +98,7 @@ panfrost_new_texture(
         uint16_t depth, uint16_t array_size,
         enum pipe_format format,
         enum mali_texture_type type,
-        enum mali_texture_layout layout,
+        uint64_t modifier,
         unsigned first_level, unsigned last_level,
         unsigned first_layer, unsigned last_layer,
         unsigned nr_samples,
@@ -113,7 +114,7 @@ panfrost_new_texture_bifrost(
         uint16_t depth, uint16_t array_size,
         enum pipe_format format,
         enum mali_texture_type type,
-        enum mali_texture_layout layout,
+        uint64_t modifier,
         unsigned first_level, unsigned last_level,
         unsigned first_layer, unsigned last_layer,
         unsigned nr_samples,
@@ -194,5 +195,11 @@ panfrost_load_midg(
                 mali_ptr coordinates, unsigned vertex_count,
                 struct pan_image *image,
                 unsigned loc);
+
+/* DRM modifier helper */
+
+#define drm_is_afbc(mod) \
+        ((mod >> 52) == (DRM_FORMAT_MOD_ARM_TYPE_AFBC | \
+                (DRM_FORMAT_MOD_VENDOR_ARM << 4)))
 
 #endif

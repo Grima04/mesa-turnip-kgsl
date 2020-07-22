@@ -227,9 +227,9 @@ panfrost_mfbd_set_cbuf(
         else
                 rt->format.msaa = MALI_MSAA_SINGLE;
 
-        /* Now, we set the layout specific pieces */
+        /* Now, we set the modifier specific pieces */
 
-        if (rsrc->layout == MALI_TEXTURE_LINEAR) {
+        if (rsrc->modifier == DRM_FORMAT_MOD_LINEAR) {
                 if (is_bifrost) {
                         rt->format.unk4 = 0x1;
                 } else {
@@ -239,7 +239,7 @@ panfrost_mfbd_set_cbuf(
                 rt->framebuffer = base;
                 rt->framebuffer_stride = stride / 16;
                 rt->layer_stride = layer_stride;
-        } else if (rsrc->layout == MALI_TEXTURE_TILED) {
+        } else if (rsrc->modifier == DRM_FORMAT_MOD_ARM_16X16_BLOCK_U_INTERLEAVED) {
                 if (is_bifrost) {
                         rt->format.unk3 |= 0x8;
                 } else {
@@ -249,7 +249,7 @@ panfrost_mfbd_set_cbuf(
                 rt->framebuffer = base;
                 rt->framebuffer_stride = stride;
                 rt->layer_stride = layer_stride;
-        } else if (rsrc->layout == MALI_TEXTURE_AFBC) {
+        } else if (drm_is_afbc(rsrc->modifier)) {
                 rt->format.block = MALI_BLOCK_AFBC;
 
                 unsigned header_size = rsrc->slices[level].header_size;
@@ -260,18 +260,14 @@ panfrost_mfbd_set_cbuf(
                 rt->afbc.stride = 0;
                 rt->afbc.flags = MALI_AFBC_FLAGS;
 
-                unsigned components = util_format_get_nr_components(surf->format);
-
-                /* The "lossless colorspace transform" is lossy for R and RG formats */
-                if (components >= 3)
-                   rt->afbc.flags |= MALI_AFBC_YTR;
+                if (rsrc->modifier & AFBC_FORMAT_MOD_YTR)
+                        rt->afbc.flags |= MALI_AFBC_YTR;
 
                 /* TODO: The blob sets this to something nonzero, but it's not
                  * clear what/how to calculate/if it matters */
                 rt->framebuffer_stride = 0;
         } else {
-                fprintf(stderr, "Invalid render layout (cbuf)");
-                assert(0);
+                unreachable("Invalid mod");
         }
 }
 
@@ -296,7 +292,7 @@ panfrost_mfbd_set_zsbuf(
 
         mali_ptr base = panfrost_get_texture_address(rsrc, level, first_layer, 0);
 
-        if (rsrc->layout == MALI_TEXTURE_AFBC) {
+        if (drm_is_afbc(rsrc->modifier)) {
                 /* The only Z/S format we can compress is Z24S8 or variants
                  * thereof (handled by the gallium frontend) */
                 assert(panfrost_is_z24s8_variant(surf->format));
@@ -315,7 +311,9 @@ panfrost_mfbd_set_zsbuf(
 
                 fbx->ds_afbc.flags = MALI_AFBC_FLAGS;
                 fbx->ds_afbc.padding = 0x1000;
-        } else if (rsrc->layout == MALI_TEXTURE_LINEAR || rsrc->layout == MALI_TEXTURE_TILED) {
+        } else {
+                assert(rsrc->modifier == DRM_FORMAT_MOD_ARM_16X16_BLOCK_U_INTERLEAVED || rsrc->modifier == DRM_FORMAT_MOD_LINEAR);
+
                 /* TODO: Z32F(S8) support, which is always linear */
 
                 int stride = rsrc->slices[level].stride;
@@ -328,7 +326,7 @@ panfrost_mfbd_set_zsbuf(
 
                 fbx->ds_linear.depth = base;
 
-                if (rsrc->layout == MALI_TEXTURE_LINEAR) {
+                if (rsrc->modifier == DRM_FORMAT_MOD_LINEAR) {
                         fbx->zs_block = MALI_BLOCK_LINEAR;
                         fbx->ds_linear.depth_stride = stride / 16;
                         fbx->ds_linear.depth_layer_stride = layer_stride;
@@ -365,9 +363,6 @@ panfrost_mfbd_set_zsbuf(
                         fbx->ds_linear.stencil_stride = stencil_slice.stride;
                         fbx->ds_linear.stencil_layer_stride = stencil_layer_stride;
                 }
-
-        } else {
-                assert(0);
         }
 }
 

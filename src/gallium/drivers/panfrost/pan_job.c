@@ -845,7 +845,7 @@ panfrost_load_surface(struct panfrost_batch *batch, struct pipe_surface *surf, u
                 .depth0 = rsrc->base.depth0,
                 .format = format,
                 .type = type,
-                .layout = rsrc->layout,
+                .modifier = rsrc->modifier,
                 .array_size = rsrc->base.array_size,
                 .first_level = level,
                 .last_level = level,

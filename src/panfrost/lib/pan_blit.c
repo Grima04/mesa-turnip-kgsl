@@ -299,7 +299,7 @@ panfrost_load_midg(
                         image->width0, image->height0,
                         MAX2(image->nr_samples, 1), 1,
                         image->format, MALI_TEX_2D,
-                        image->layout,
+                        image->modifier,
                         image->first_level, image->last_level,
                         0, 0,
                         image->nr_samples,
