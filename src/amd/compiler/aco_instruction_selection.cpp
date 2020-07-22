@@ -3678,13 +3678,15 @@ void split_store_data(isel_context *ctx, RegType dst_type, unsigned count, Temp 
       /* use allocated_vec if possible */
       auto it = ctx->allocated_vec.find(src.id());
       if (it != ctx->allocated_vec.end()) {
-         unsigned total_size = 0;
-         for (unsigned i = 0; it->second[i].bytes() && (i < NIR_MAX_VEC_COMPONENTS); i++)
-            total_size += it->second[i].bytes();
-         if (total_size != src.bytes())
+         if (!it->second[0].id())
             goto split;
-
          unsigned elem_size = it->second[0].bytes();
+         assert(src.bytes() % elem_size == 0);
+
+         for (unsigned i = 0; i < src.bytes() / elem_size; i++) {
+            if (!it->second[i].id())
+               goto split;
+         }
 
          for (unsigned i = 0; i < count; i++) {
             if (offsets[i] % elem_size || dst[i].bytes() % elem_size)
@@ -3716,10 +3718,11 @@ void split_store_data(isel_context *ctx, RegType dst_type, unsigned count, Temp 
       }
    }
 
+   split:
+
    if (dst_type == RegType::sgpr)
       src = bld.as_uniform(src);
 
-   split:
    /* just split it */
    aco_ptr<Instruction> split{create_instruction<Pseudo_instruction>(aco_opcode::p_split_vector, Format::PSEUDO, 1, count)};
    split->operands[0] = Operand(src);
