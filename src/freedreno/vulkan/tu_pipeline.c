@@ -847,6 +847,14 @@ tu6_emit_vpc(struct tu_cs *cs,
 
    tu6_setup_streamout(cs, last_shader, &linkage);
 
+   /* The GPU hangs on some models when there are no outputs (xs_pack::CNT),
+    * at least when a DS is the last stage, so add a dummy output to keep it
+    * happy if there aren't any. We do this late in order to avoid emitting
+    * any unused code and make sure that optimizations don't remove it.
+    */
+   if (linkage.cnt == 0)
+      ir3_link_add(&linkage, 0, 0x1, linkage.max_loc);
+
    /* map outputs of the last shader to VPC */
    assert(linkage.cnt <= 32);
    const uint32_t sp_out_count = DIV_ROUND_UP(linkage.cnt, 2);
