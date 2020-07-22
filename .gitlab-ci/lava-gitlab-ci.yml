@@ -142,7 +142,7 @@ panfrost-t760-gles2:armhf:
   tags:
     - mesa-ci-aarch64-lava-collabora
 
-panfrost-t760-traces:armhf:
+.panfrost-t760-traces:armhf:
   extends:
     - .lava-traces:armhf
     - .panfrost-rules
