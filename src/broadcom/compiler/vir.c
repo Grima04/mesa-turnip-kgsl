@@ -954,9 +954,15 @@ v3d_nir_lower_fs_late(struct v3d_compile *c)
                            false, NULL);
         }
 
+        /* In OpenGL the fragment shader can't read gl_ClipDistance[], but
+         * Vulkan allows it, in which case the SPIR-V compiler will declare
+         * VARING_SLOT_CLIP_DIST0 as compact array variable. Pass true as
+         * the last parameter to always operate with a compact array in both
+         * OpenGL and Vulkan so we do't have to care about the API we
+         * are using.
+         */
         if (c->key->ucp_enables)
-                NIR_PASS_V(c->s, nir_lower_clip_fs, c->key->ucp_enables,
-                           false);
+                NIR_PASS_V(c->s, nir_lower_clip_fs, c->key->ucp_enables, true);
 
         /* Note: FS input scalarizing must happen after
          * nir_lower_two_sided_color, which only handles a vec4 at a time.
