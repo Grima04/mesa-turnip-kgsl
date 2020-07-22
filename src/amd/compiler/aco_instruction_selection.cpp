@@ -6759,9 +6759,9 @@ void emit_memory_barrier(isel_context *ctx, nir_intrinsic_instr *instr) {
 
          unsigned nir_semantics = nir_intrinsic_memory_semantics(instr);
          if (nir_semantics & NIR_MEMORY_ACQUIRE)
-            semantics |= semantic_acquire;
+            semantics |= semantic_acquire | semantic_release;
          if (nir_semantics & NIR_MEMORY_RELEASE)
-            semantics |= semantic_release;
+            semantics |= semantic_acquire | semantic_release;
 
          assert(!(nir_semantics & (NIR_MEMORY_MAKE_AVAILABLE | NIR_MEMORY_MAKE_VISIBLE)));
 
