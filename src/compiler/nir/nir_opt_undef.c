@@ -96,9 +96,36 @@ opt_undef_vecN(nir_builder *b, nir_alu_instr *alu)
    return true;
 }
 
+static uint32_t
+nir_get_undef_mask(nir_ssa_def *def)
+{
+   nir_instr *instr = def->parent_instr;
+
+   if (instr->type == nir_instr_type_ssa_undef)
+      return BITSET_MASK(def->num_components);
+
+   if (instr->type != nir_instr_type_alu)
+      return 0;
+
+   nir_alu_instr *alu = nir_instr_as_alu(instr);
+   unsigned undef = 0;
+
+   if (nir_op_is_vec(alu->op)) {
+      for (int i = 0; i < nir_op_infos[alu->op].num_inputs; i++) {
+         if (alu->src[i].src.is_ssa &&
+             alu->src[i].src.ssa->parent_instr->type ==
+             nir_instr_type_ssa_undef) {
+            undef |= BITSET_MASK(nir_ssa_alu_instr_src_components(alu, i)) << i;
+         }
+      }
+   }
+
+   return undef;
+}
+
 /**
- * Remove any store intrinsics whose value is undefined (the existing
- * value is a fine representation of "undefined").
+ * Remove any store intrinsic writemask channels whose value is undefined (the
+ * existing value is a fine representation of "undefined").
  */
 static bool
 opt_undef_store(nir_intrinsic_instr *intrin)
@@ -120,11 +147,22 @@ opt_undef_store(nir_intrinsic_instr *intrin)
       return false;
    }
 
-   if (!intrin->src[arg_index].is_ssa ||
-       intrin->src[arg_index].ssa->parent_instr->type != nir_instr_type_ssa_undef)
+   if (!intrin->src[arg_index].is_ssa)
       return false;
 
-   nir_instr_remove(&intrin->instr);
+   nir_ssa_def *def = intrin->src[arg_index].ssa;
+
+   unsigned write_mask = nir_intrinsic_write_mask(intrin);
+   unsigned undef_mask = nir_get_undef_mask(def);
+
+   if (!(write_mask & undef_mask))
+      return false;
+
+   write_mask &= ~undef_mask;
+   if (!write_mask)
+      nir_instr_remove(&intrin->instr);
+   else
+      nir_intrinsic_set_write_mask(intrin, write_mask);
 
    return true;
 }
