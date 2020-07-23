@@ -3666,9 +3666,7 @@ v3dv_cmd_buffer_meta_state_push(struct v3dv_cmd_buffer *cmd_buffer,
    }
 
    state->meta.pipeline = v3dv_pipeline_to_handle(state->pipeline);
-   if (state->meta.pipeline) {
-      memcpy(&state->meta.dynamic, &state->dynamic, sizeof(state->dynamic));
-   }
+   memcpy(&state->meta.dynamic, &state->dynamic, sizeof(state->dynamic));
 
    /* We expect that meta operations are graphics-only and won't alter
     * compute state.
@@ -3736,12 +3734,13 @@ v3dv_cmd_buffer_meta_state_pop(struct v3dv_cmd_buffer *cmd_buffer,
       v3dv_CmdBindPipeline(v3dv_cmd_buffer_to_handle(cmd_buffer),
                            pipeline_binding,
                            state->meta.pipeline);
-      if (pipeline_binding == VK_PIPELINE_BIND_POINT_GRAPHICS) {
-         memcpy(&state->dynamic, &state->meta.dynamic, sizeof(state->dynamic));
-         state->dirty |= dirty_dynamic_state;
-      }
    } else {
       state->pipeline = VK_NULL_HANDLE;
+   }
+
+   if (dirty_dynamic_state) {
+      memcpy(&state->dynamic, &state->meta.dynamic, sizeof(state->dynamic));
+      state->dirty |= dirty_dynamic_state;
    }
 
    if (state->meta.has_descriptor_state) {
