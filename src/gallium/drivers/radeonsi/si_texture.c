@@ -1634,6 +1634,9 @@ static void *si_texture_transfer_map(struct pipe_context *ctx, struct pipe_resou
    assert(!(texture->flags & SI_RESOURCE_FLAG_FORCE_LINEAR));
    assert(box->width && box->height && box->depth);
 
+   if (tex->buffer.flags & RADEON_FLAG_ENCRYPTED)
+      return NULL;
+
    if (tex->is_depth) {
       /* Depth textures use staging unconditionally. */
       use_staging_texture = true;
