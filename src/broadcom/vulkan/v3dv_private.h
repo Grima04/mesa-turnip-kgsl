@@ -1826,6 +1826,8 @@ v3dv_pipeline_cache_upload_variant(struct v3dv_pipeline *pipeline,
                                    struct v3dv_pipeline_cache *cache,
                                    struct v3dv_shader_variant  *variant);
 
+void v3dv_shader_module_internal_init(struct v3dv_shader_module *module,
+                                      nir_shader *nir);
 
 #define V3DV_DEFINE_HANDLE_CASTS(__v3dv_type, __VkType)   \
                                                         \

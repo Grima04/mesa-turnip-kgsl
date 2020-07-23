@@ -3219,8 +3219,11 @@ create_pipeline(struct v3dv_device *device,
                 const VkPipelineLayout layout,
                 VkPipeline *pipeline)
 {
-   struct v3dv_shader_module vs_m = { .nir = vs_nir };
-   struct v3dv_shader_module fs_m = { .nir = fs_nir };
+   struct v3dv_shader_module vs_m;
+   struct v3dv_shader_module fs_m;
+
+   v3dv_shader_module_internal_init(&vs_m, vs_nir);
+   v3dv_shader_module_internal_init(&fs_m, fs_nir);
 
    VkPipelineShaderStageCreateInfo stages[2] = {
       {
