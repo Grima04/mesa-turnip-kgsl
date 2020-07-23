@@ -2729,6 +2729,25 @@ bool si_gfx_resources_check_encrypted(struct si_context *sctx)
       }
    }
 
+#ifndef NDEBUG
+   if (use_encrypted_bo) {
+      /* Verify that color buffers are encrypted */
+      for (int i = 0; i < sctx->framebuffer.state.nr_cbufs; i++) {
+         struct pipe_surface *surf = sctx->framebuffer.state.cbufs[i];
+         if (!surf)
+            continue;
+         struct si_texture *tex = (struct si_texture *)surf->texture;
+         assert(!surf->texture || (tex->buffer.flags & RADEON_FLAG_ENCRYPTED));
+      }
+      /* Verify that depth/stencil buffer is encrypted */
+      if (sctx->framebuffer.state.zsbuf) {
+         struct pipe_surface *surf = sctx->framebuffer.state.zsbuf;
+         struct si_texture *tex = (struct si_texture *)surf->texture;
+         assert(!surf->texture || (tex->buffer.flags & RADEON_FLAG_ENCRYPTED));
+      }
+   }
+#endif
+
    return use_encrypted_bo;
 }
 
