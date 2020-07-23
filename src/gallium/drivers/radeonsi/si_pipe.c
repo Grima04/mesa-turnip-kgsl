@@ -303,6 +303,7 @@ static void si_destroy_context(struct pipe_context *context)
    sctx->ws->fence_reference(&sctx->last_sdma_fence, NULL);
    sctx->ws->fence_reference(&sctx->last_ib_barrier_fence, NULL);
    si_resource_reference(&sctx->eop_bug_scratch, NULL);
+   si_resource_reference(&sctx->eop_bug_scratch_tmz, NULL);
    si_resource_reference(&sctx->index_ring, NULL);
    si_resource_reference(&sctx->barrier_buf, NULL);
    si_resource_reference(&sctx->last_ib_barrier_buf, NULL);
@@ -458,8 +459,13 @@ static struct pipe_context *si_create_context(struct pipe_screen *screen, unsign
    sctx->chip_class = sscreen->info.chip_class;
 
    if (sctx->chip_class == GFX7 || sctx->chip_class == GFX8 || sctx->chip_class == GFX9) {
-      sctx->eop_bug_scratch = si_resource(pipe_buffer_create(
-         &sscreen->b, 0, PIPE_USAGE_DEFAULT, 16 * sscreen->info.num_render_backends));
+      sctx->eop_bug_scratch = si_aligned_buffer_create(
+         &sscreen->b, SI_RESOURCE_FLAG_DRIVER_INTERNAL,
+         PIPE_USAGE_DEFAULT, 16 * sscreen->info.num_render_backends, 256);
+      if (sctx->screen->info.has_tmz_support)
+         sctx->eop_bug_scratch_tmz = si_aligned_buffer_create(
+            &sscreen->b, PIPE_RESOURCE_FLAG_ENCRYPTED | SI_RESOURCE_FLAG_DRIVER_INTERNAL,
+            PIPE_USAGE_DEFAULT, 16 * sscreen->info.num_render_backends, 256);
       if (!sctx->eop_bug_scratch)
          goto fail;
    }

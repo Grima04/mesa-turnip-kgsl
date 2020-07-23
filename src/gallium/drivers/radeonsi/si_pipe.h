@@ -908,6 +908,7 @@ struct si_context {
    struct pipe_fence_handle *last_gfx_fence;
    struct pipe_fence_handle *last_sdma_fence;
    struct si_resource *eop_bug_scratch;
+   struct si_resource *eop_bug_scratch_tmz;
    struct u_upload_mgr *cached_gtt_allocator;
    struct threaded_context *tc;
    struct u_suballocator *allocator_zeroed_memory;
