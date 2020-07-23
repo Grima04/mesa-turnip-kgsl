@@ -516,6 +516,8 @@ brw_nir_optimize(nir_shader *nir, const struct brw_compiler *compiler,
 
       if (is_scalar) {
          OPT(nir_lower_alu_to_scalar, NULL, NULL);
+      } else {
+         OPT(nir_opt_shrink_vectors);
       }
 
       OPT(nir_copy_prop);
