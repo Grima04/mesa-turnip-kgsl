@@ -470,7 +470,7 @@ enum isl_format iris_image_view_get_format(struct iris_context *ice,
 static inline bool
 iris_resource_unfinished_aux_import(struct iris_resource *res)
 {
-   return res->base.next != NULL && res->mod_info &&
+   return res->aux.bo == NULL && res->mod_info &&
       res->mod_info->aux_usage != ISL_AUX_USAGE_NONE;
 }
 

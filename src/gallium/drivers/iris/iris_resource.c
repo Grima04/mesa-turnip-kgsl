@@ -419,7 +419,8 @@ iris_get_aux_clear_color_state_size(struct iris_screen *screen)
 }
 
 static void
-map_aux_addresses(struct iris_screen *screen, struct iris_resource *res)
+map_aux_addresses(struct iris_screen *screen, struct iris_resource *res,
+                  enum isl_format format, unsigned plane)
 {
    const struct gen_device_info *devinfo = &screen->devinfo;
    if (devinfo->gen >= 12 && isl_aux_usage_has_ccs(res->aux.usage)) {
@@ -427,8 +428,11 @@ map_aux_addresses(struct iris_screen *screen, struct iris_resource *res)
       assert(aux_map_ctx);
       const unsigned aux_offset = res->aux.extra_aux.surf.size_B > 0 ?
          res->aux.extra_aux.offset : res->aux.offset;
-      gen_aux_map_add_image(aux_map_ctx, &res->surf, res->bo->gtt_offset,
-                            res->aux.bo->gtt_offset + aux_offset);
+      const uint64_t format_bits =
+         gen_aux_map_format_bits(res->surf.tiling, format, plane);
+      gen_aux_map_add_mapping(aux_map_ctx, res->bo->gtt_offset + res->offset,
+                              res->aux.bo->gtt_offset + aux_offset,
+                              res->surf.size_B, format_bits);
       res->bo->aux_map_address = res->aux.bo->gtt_offset;
    }
 }
@@ -741,6 +745,20 @@ iris_resource_init_aux_buf(struct iris_resource *res,
    return true;
 }
 
+static void
+import_aux_info(struct iris_resource *res,
+                const struct iris_resource *aux_res)
+{
+   assert(aux_res->aux.surf.row_pitch_B && aux_res->aux.offset);
+   assert(res->bo == aux_res->aux.bo);
+   assert(res->aux.surf.row_pitch_B == aux_res->aux.surf.row_pitch_B);
+   assert(res->bo->size >= aux_res->aux.offset + res->aux.surf.size_B);
+
+   iris_bo_reference(aux_res->aux.bo);
+   res->aux.bo = aux_res->aux.bo;
+   res->aux.offset = aux_res->aux.offset;
+}
+
 void
 iris_resource_finish_aux_import(struct pipe_screen *pscreen,
                                 struct iris_resource *res)
@@ -749,21 +767,49 @@ iris_resource_finish_aux_import(struct pipe_screen *pscreen,
    assert(iris_resource_unfinished_aux_import(res));
    assert(!res->mod_info->supports_clear_color);
 
-   struct iris_resource *aux_res = (void *) res->base.next;
-   assert(aux_res->aux.surf.row_pitch_B && aux_res->aux.offset &&
-          aux_res->aux.bo);
+   /* Create an array of resources. Combining main and aux planes is easier
+    * with indexing as opposed to scanning the linked list.
+    */
+   struct iris_resource *r[4] = { NULL, };
+   unsigned num_planes = 0;
+   unsigned num_main_planes = 0;
+   for (struct pipe_resource *p_res = &res->base; p_res; p_res = p_res->next) {
+      r[num_planes] = (struct iris_resource *)p_res;
+      num_main_planes += r[num_planes++]->bo != NULL;
+   }
 
-   assert(res->bo == aux_res->aux.bo);
-   iris_bo_reference(aux_res->aux.bo);
-   res->aux.bo = aux_res->aux.bo;
+   /* Get an ISL format to use with the aux-map. */
+   enum isl_format format;
+   switch (res->external_format) {
+   case PIPE_FORMAT_NV12: format = ISL_FORMAT_PLANAR_420_8; break;
+   case PIPE_FORMAT_P010: format = ISL_FORMAT_PLANAR_420_10; break;
+   case PIPE_FORMAT_P012: format = ISL_FORMAT_PLANAR_420_12; break;
+   case PIPE_FORMAT_P016: format = ISL_FORMAT_PLANAR_420_16; break;
+   case PIPE_FORMAT_YUYV: format = ISL_FORMAT_YCRCB_NORMAL; break;
+   case PIPE_FORMAT_UYVY: format = ISL_FORMAT_YCRCB_SWAPY; break;
+   default: format = res->surf.format; break;
+   }
 
-   res->aux.offset = aux_res->aux.offset;
+   /* Combine main and aux plane information. */
+   if (num_main_planes == 1 && num_planes == 2) {
+      import_aux_info(r[0], r[1]);
+      map_aux_addresses(screen, r[0], format, 0);
+   } else if (num_main_planes == 2 && num_planes == 4) {
+      import_aux_info(r[0], r[2]);
+      import_aux_info(r[1], r[3]);
+      map_aux_addresses(screen, r[0], format, 0);
+      map_aux_addresses(screen, r[1], format, 1);
+   } else {
+      /* Gallium has lowered a single main plane into two. */
+      assert(num_main_planes == 2 && num_planes == 3);
+      assert(isl_format_is_yuv(format) && !isl_format_is_planar(format));
+      import_aux_info(r[0], r[2]);
+      import_aux_info(r[1], r[2]);
+      map_aux_addresses(screen, r[0], format, 0);
+   }
 
-   assert(res->bo->size >= (res->aux.offset + res->aux.surf.size_B));
+   /* Add on a clear color BO. */
    assert(res->aux.clear_color_bo == NULL);
-
-   assert(aux_res->aux.surf.row_pitch_B == res->aux.surf.row_pitch_B);
-
    unsigned clear_color_state_size =
       iris_get_aux_clear_color_state_size(screen);
 
@@ -773,11 +819,6 @@ iris_resource_finish_aux_import(struct pipe_screen *pscreen,
                              clear_color_state_size, 1, IRIS_MEMZONE_OTHER,
                              I915_TILING_NONE, 0, BO_ALLOC_ZEROED);
    }
-
-   iris_resource_destroy(&screen->base, res->base.next);
-   res->base.next = NULL;
-
-   map_aux_addresses(screen, res);
 }
 
 static struct pipe_resource *
@@ -907,7 +948,7 @@ iris_resource_create_with_modifiers(struct pipe_screen *pscreen,
          iris_get_aux_clear_color_state_size(screen);
       if (!iris_resource_init_aux_buf(res, clear_color_state_size))
          goto fail;
-      map_aux_addresses(screen, res);
+      map_aux_addresses(screen, res, res->surf.format, 0);
    }
 
    if (templ->bind & PIPE_BIND_SHARED)
