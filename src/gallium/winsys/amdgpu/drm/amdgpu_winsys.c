@@ -339,12 +339,6 @@ static bool amdgpu_cs_is_secure(struct radeon_cmdbuf *rcs)
    return cs->csc->secure;
 }
 
-static void amdgpu_cs_set_secure(struct radeon_cmdbuf *rcs, bool secure)
-{
-   struct amdgpu_cs *cs = amdgpu_cs(rcs);
-   cs->csc->secure = secure;
-}
-
 PUBLIC struct radeon_winsys *
 amdgpu_winsys_create(int fd, const struct pipe_screen_config *config,
 		     radeon_screen_create_t screen_create)
@@ -520,7 +514,6 @@ amdgpu_winsys_create(int fd, const struct pipe_screen_config *config,
    ws->base.pin_threads_to_L3_cache = amdgpu_pin_threads_to_L3_cache;
    ws->base.ws_uses_secure_bo = amdgpu_ws_uses_secure_bo;
    ws->base.cs_is_secure = amdgpu_cs_is_secure;
-   ws->base.cs_set_secure = amdgpu_cs_set_secure;
 
    amdgpu_bo_init_functions(ws);
    amdgpu_cs_init_functions(ws);

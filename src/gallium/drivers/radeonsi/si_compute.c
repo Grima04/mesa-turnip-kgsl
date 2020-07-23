@@ -851,8 +851,9 @@ static void si_launch_grid(struct pipe_context *ctx, const struct pipe_grid_info
    if (unlikely(sctx->ws->ws_uses_secure_bo(sctx->ws))) {
       bool secure = si_compute_resources_check_encrypted(sctx);
       if (secure != sctx->ws->cs_is_secure(sctx->gfx_cs)) {
-         si_flush_gfx_cs(sctx, RADEON_FLUSH_ASYNC_START_NEXT_GFX_IB_NOW, NULL);
-         sctx->ws->cs_set_secure(sctx->gfx_cs, secure);
+         si_flush_gfx_cs(sctx, RADEON_FLUSH_ASYNC_START_NEXT_GFX_IB_NOW |
+                               RADEON_FLUSH_TOGGLE_SECURE_SUBMISSION,
+                         NULL);
       }
    }
 

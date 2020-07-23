@@ -32,6 +32,9 @@
  * dispatches from the current IB to finish. */
 #define RADEON_FLUSH_START_NEXT_GFX_IB_NOW (1u << 31)
 
+/* Toggle the secure submission boolean after the flush */
+#define RADEON_FLUSH_TOGGLE_SECURE_SUBMISSION (1u << 30)
+
 #define RADEON_FLUSH_ASYNC_START_NEXT_GFX_IB_NOW                                                   \
    (PIPE_FLUSH_ASYNC | RADEON_FLUSH_START_NEXT_GFX_IB_NOW)
 
@@ -692,7 +695,6 @@ struct radeon_winsys {
     */
    bool (*ws_uses_secure_bo)(struct radeon_winsys *ws);
    bool (*cs_is_secure)(struct radeon_cmdbuf *cs);
-   void (*cs_set_secure)(struct radeon_cmdbuf *cs, bool secure);
 };
 
 static inline bool radeon_emitted(struct radeon_cmdbuf *cs, unsigned num_dw)

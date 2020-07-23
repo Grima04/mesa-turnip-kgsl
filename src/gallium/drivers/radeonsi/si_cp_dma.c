@@ -343,8 +343,8 @@ void si_cp_dma_copy_buffer(struct si_context *sctx, struct pipe_resource *dst,
       bool secure = src && (si_resource(src)->flags & RADEON_FLAG_ENCRYPTED);
       assert(!secure || (!dst || (si_resource(dst)->flags & RADEON_FLAG_ENCRYPTED)));
       if (secure != sctx->ws->cs_is_secure(sctx->gfx_cs)) {
-         si_flush_gfx_cs(sctx, RADEON_FLUSH_ASYNC_START_NEXT_GFX_IB_NOW, NULL);
-         sctx->ws->cs_set_secure(sctx->gfx_cs, secure);
+         si_flush_gfx_cs(sctx, RADEON_FLUSH_ASYNC_START_NEXT_GFX_IB_NOW |
+                               RADEON_FLUSH_TOGGLE_SECURE_SUBMISSION, NULL);
       }
    }
 

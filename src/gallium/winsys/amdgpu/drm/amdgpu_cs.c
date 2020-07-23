@@ -1420,7 +1420,7 @@ static bool amdgpu_add_sparse_backing_buffers(struct amdgpu_cs_context *cs)
    return true;
 }
 
-void amdgpu_cs_submit_ib(void *job, int thread_index)
+static void amdgpu_cs_submit_ib(void *job, int thread_index)
 {
    struct amdgpu_cs *acs = (struct amdgpu_cs*)job;
    struct amdgpu_winsys *ws = acs->ctx->ws;
@@ -1839,6 +1839,12 @@ static int amdgpu_cs_flush(struct radeon_cmdbuf *rcs,
       /* Submit. */
       util_queue_add_job(&ws->cs_queue, cs, &cs->flush_completed,
                          amdgpu_cs_submit_ib, NULL, 0);
+
+      if (flags & RADEON_FLUSH_TOGGLE_SECURE_SUBMISSION)
+         cs->csc->secure = !cs->cst->secure;
+      else
+         cs->csc->secure = cs->cst->secure;
+
       /* The submission has been queued, unlock the fence now. */
       simple_mtx_unlock(&ws->bo_fence_lock);
 
@@ -1847,6 +1853,8 @@ static int amdgpu_cs_flush(struct radeon_cmdbuf *rcs,
          error_code = cur->error_code;
       }
    } else {
+      if (flags & RADEON_FLUSH_TOGGLE_SECURE_SUBMISSION)
+         cs->csc->secure = !cs->csc->secure;
       amdgpu_cs_context_cleanup(cs->csc);
    }
 
