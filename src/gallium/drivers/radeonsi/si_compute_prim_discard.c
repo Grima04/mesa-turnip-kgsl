@@ -912,7 +912,8 @@ static bool si_initialize_prim_discard_cmdbuf(struct si_context *sctx)
       unsigned num_oa_counters = VERTEX_COUNTER_GDS_MODE == 2 ? 2 : 0;
 
       if (gds_size) {
-         sctx->gds = ws->buffer_create(ws, gds_size, 4, RADEON_DOMAIN_GDS, 0);
+         sctx->gds = ws->buffer_create(ws, gds_size, 4, RADEON_DOMAIN_GDS,
+                                       RADEON_FLAG_DRIVER_INTERNAL);
          if (!sctx->gds)
             return false;
 
@@ -920,7 +921,8 @@ static bool si_initialize_prim_discard_cmdbuf(struct si_context *sctx)
       }
       if (num_oa_counters) {
          assert(gds_size);
-         sctx->gds_oa = ws->buffer_create(ws, num_oa_counters, 1, RADEON_DOMAIN_OA, 0);
+         sctx->gds_oa = ws->buffer_create(ws, num_oa_counters, 1, RADEON_DOMAIN_OA,
+                                          RADEON_FLAG_DRIVER_INTERNAL);
          if (!sctx->gds_oa)
             return false;
 
@@ -935,7 +937,8 @@ static bool si_initialize_prim_discard_cmdbuf(struct si_context *sctx)
 
    if (!sctx->index_ring) {
       sctx->index_ring = si_aligned_buffer_create(
-         sctx->b.screen, SI_RESOURCE_FLAG_UNMAPPABLE, PIPE_USAGE_DEFAULT,
+         sctx->b.screen, SI_RESOURCE_FLAG_UNMAPPABLE | SI_RESOURCE_FLAG_DRIVER_INTERNAL,
+         PIPE_USAGE_DEFAULT,
          sctx->index_ring_size_per_ib * 2, sctx->screen->info.pte_fragment_size);
       if (!sctx->index_ring)
          return false;

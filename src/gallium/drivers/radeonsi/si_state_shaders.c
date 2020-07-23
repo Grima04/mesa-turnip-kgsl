@@ -3400,7 +3400,9 @@ static bool si_update_gs_ring_buffers(struct si_context *sctx)
    if (update_esgs) {
       pipe_resource_reference(&sctx->esgs_ring, NULL);
       sctx->esgs_ring =
-         pipe_aligned_buffer_create(sctx->b.screen, SI_RESOURCE_FLAG_UNMAPPABLE, PIPE_USAGE_DEFAULT,
+         pipe_aligned_buffer_create(sctx->b.screen,
+                                    SI_RESOURCE_FLAG_UNMAPPABLE | SI_RESOURCE_FLAG_DRIVER_INTERNAL,
+                                    PIPE_USAGE_DEFAULT,
                                     esgs_ring_size, sctx->screen->info.pte_fragment_size);
       if (!sctx->esgs_ring)
          return false;
@@ -3409,7 +3411,9 @@ static bool si_update_gs_ring_buffers(struct si_context *sctx)
    if (update_gsvs) {
       pipe_resource_reference(&sctx->gsvs_ring, NULL);
       sctx->gsvs_ring =
-         pipe_aligned_buffer_create(sctx->b.screen, SI_RESOURCE_FLAG_UNMAPPABLE, PIPE_USAGE_DEFAULT,
+         pipe_aligned_buffer_create(sctx->b.screen,
+                                    SI_RESOURCE_FLAG_UNMAPPABLE | SI_RESOURCE_FLAG_DRIVER_INTERNAL,
+                                    PIPE_USAGE_DEFAULT,
                                     gsvs_ring_size, sctx->screen->info.pte_fragment_size);
       if (!sctx->gsvs_ring)
          return false;
@@ -3655,7 +3659,9 @@ static bool si_update_spi_tmpring_size(struct si_context *sctx)
          si_resource_reference(&sctx->scratch_buffer, NULL);
 
          sctx->scratch_buffer = si_aligned_buffer_create(
-            &sctx->screen->b, SI_RESOURCE_FLAG_UNMAPPABLE, PIPE_USAGE_DEFAULT, scratch_needed_size,
+            &sctx->screen->b,
+            SI_RESOURCE_FLAG_UNMAPPABLE | SI_RESOURCE_FLAG_DRIVER_INTERNAL,
+            PIPE_USAGE_DEFAULT, scratch_needed_size,
             sctx->screen->info.pte_fragment_size);
          if (!sctx->scratch_buffer)
             return false;
@@ -3690,7 +3696,7 @@ static void si_init_tess_factor_ring(struct si_context *sctx)
     * receives the high 13 bits.
     */
    sctx->tess_rings = pipe_aligned_buffer_create(
-      sctx->b.screen, SI_RESOURCE_FLAG_32BIT, PIPE_USAGE_DEFAULT,
+      sctx->b.screen, SI_RESOURCE_FLAG_32BIT | SI_RESOURCE_FLAG_DRIVER_INTERNAL, PIPE_USAGE_DEFAULT,
       sctx->screen->tess_offchip_ring_size + sctx->screen->tess_factor_ring_size, 1 << 19);
    if (!sctx->tess_rings)
       return;

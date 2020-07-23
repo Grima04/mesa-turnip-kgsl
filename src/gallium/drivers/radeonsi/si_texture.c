@@ -1165,10 +1165,12 @@ static struct si_texture *si_texture_create_object(struct pipe_screen *screen,
       unsigned num_elements = tex->surface.u.gfx9.dcc_retile_num_elements;
       unsigned dcc_retile_map_size = num_elements * (use_uint16 ? 2 : 4);
 
-      tex->dcc_retile_buffer = si_aligned_buffer_create(screen, 0, PIPE_USAGE_DEFAULT,
+      tex->dcc_retile_buffer = si_aligned_buffer_create(screen,
+                                                        SI_RESOURCE_FLAG_DRIVER_INTERNAL, PIPE_USAGE_DEFAULT,
                                                         dcc_retile_map_size,
                                                         sscreen->info.tcc_cache_line_size);
-      struct si_resource *buf = si_aligned_buffer_create(screen, 0, PIPE_USAGE_STREAM,
+      struct si_resource *buf = si_aligned_buffer_create(screen,
+                                                         SI_RESOURCE_FLAG_DRIVER_INTERNAL, PIPE_USAGE_STREAM,
                                                          dcc_retile_map_size,
                                                          sscreen->info.tcc_cache_line_size);
       void *map = sscreen->ws->buffer_map(buf->buf, NULL, PIPE_MAP_WRITE);
@@ -1684,7 +1686,7 @@ static void *si_texture_transfer_map(struct pipe_context *ctx, struct pipe_resou
       struct pipe_resource resource;
       struct si_texture *staging;
       unsigned bo_usage = usage & PIPE_MAP_READ ? PIPE_USAGE_STAGING : PIPE_USAGE_STREAM;
-      unsigned bo_flags = SI_RESOURCE_FLAG_FORCE_LINEAR;
+      unsigned bo_flags = SI_RESOURCE_FLAG_FORCE_LINEAR | SI_RESOURCE_FLAG_DRIVER_INTERNAL;
 
       /* The pixel shader has a bad access pattern for linear textures.
        * If a pixel shader is used to blit to/from staging, don't disable caches.

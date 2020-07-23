@@ -69,6 +69,7 @@ enum radeon_bo_flag
   RADEON_FLAG_32BIT = (1 << 6),
   RADEON_FLAG_ENCRYPTED = (1 << 7),
   RADEON_FLAG_UNCACHED = (1 << 8), /* only gfx9 and newer */
+  RADEON_FLAG_DRIVER_INTERNAL = (1 << 9),
 };
 
 enum radeon_dependency_flag
@@ -834,7 +835,8 @@ static inline int radeon_get_heap_index(enum radeon_bo_domain domain, enum radeo
 
    /* Unsupported flags: NO_SUBALLOC, SPARSE. */
    if (flags & ~(RADEON_FLAG_GTT_WC | RADEON_FLAG_NO_CPU_ACCESS | RADEON_FLAG_UNCACHED |
-                 RADEON_FLAG_NO_INTERPROCESS_SHARING | RADEON_FLAG_READ_ONLY | RADEON_FLAG_32BIT))
+                 RADEON_FLAG_NO_INTERPROCESS_SHARING | RADEON_FLAG_READ_ONLY | RADEON_FLAG_32BIT |
+                 RADEON_FLAG_DRIVER_INTERNAL))
       return -1;
 
    switch (domain) {

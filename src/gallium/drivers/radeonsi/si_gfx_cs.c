@@ -306,8 +306,8 @@ void si_allocate_gds(struct si_context *sctx)
    /* 4 streamout GDS counters.
     * We need 256B (64 dw) of GDS, otherwise streamout hangs.
     */
-   sctx->gds = ws->buffer_create(ws, 256, 4, RADEON_DOMAIN_GDS, 0);
-   sctx->gds_oa = ws->buffer_create(ws, 4, 1, RADEON_DOMAIN_OA, 0);
+   sctx->gds = ws->buffer_create(ws, 256, 4, RADEON_DOMAIN_GDS, RADEON_FLAG_DRIVER_INTERNAL);
+   sctx->gds_oa = ws->buffer_create(ws, 4, 1, RADEON_DOMAIN_OA, RADEON_FLAG_DRIVER_INTERNAL);
 
    assert(sctx->gds && sctx->gds_oa);
    si_add_gds_to_buffer_list(sctx);

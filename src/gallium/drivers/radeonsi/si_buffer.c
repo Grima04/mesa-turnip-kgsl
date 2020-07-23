@@ -182,6 +182,9 @@ void si_init_resource_fields(struct si_screen *sscreen, struct si_resource *res,
    if (res->b.b.flags & SI_RESOURCE_FLAG_32BIT)
       res->flags |= RADEON_FLAG_32BIT;
 
+   if (res->b.b.flags & SI_RESOURCE_FLAG_DRIVER_INTERNAL)
+      res->flags |= RADEON_FLAG_DRIVER_INTERNAL;
+
    /* For higher throughput and lower latency over PCIe assuming sequential access.
     * Only CP DMA, SDMA, and optimized compute benefit from this.
     * GFX8 and older don't support RADEON_FLAG_UNCACHED.
@@ -479,7 +482,8 @@ static void *si_buffer_transfer_map(struct pipe_context *ctx, struct pipe_resour
       struct si_resource *staging;
 
       assert(!(usage & (TC_TRANSFER_MAP_THREADED_UNSYNC | PIPE_MAP_THREAD_SAFE)));
-      staging = si_aligned_buffer_create(ctx->screen, SI_RESOURCE_FLAG_UNCACHED,
+      staging = si_aligned_buffer_create(ctx->screen,
+                                         SI_RESOURCE_FLAG_UNCACHED | SI_RESOURCE_FLAG_DRIVER_INTERNAL,
                                          PIPE_USAGE_STAGING,
                                          box->width + (box->x % SI_MAP_BUFFER_ALIGNMENT), 256);
       if (staging) {
