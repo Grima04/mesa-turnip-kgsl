@@ -694,6 +694,7 @@ ir_expression::constant_expression_value(void *mem_ctx,
    if (this->type->is_error())
       return NULL;
 
+   const glsl_type *return_type = this->type;
    ir_constant *op[ARRAY_SIZE(this->operands)] = { NULL, };
    ir_constant_data data;
 
@@ -758,6 +759,33 @@ ir_expression::constant_expression_value(void *mem_ctx,
          /* nothing to do */
          break;
       }
+   }
+
+   switch (return_type->base_type) {
+   case GLSL_TYPE_FLOAT16:
+      return_type = glsl_type::get_instance(GLSL_TYPE_FLOAT,
+                                            return_type->vector_elements,
+                                            return_type->matrix_columns,
+                                            return_type->explicit_stride,
+                                            return_type->interface_row_major);
+      break;
+   case GLSL_TYPE_INT16:
+      return_type = glsl_type::get_instance(GLSL_TYPE_INT,
+                                            return_type->vector_elements,
+                                            return_type->matrix_columns,
+                                            return_type->explicit_stride,
+                                            return_type->interface_row_major);
+      break;
+   case GLSL_TYPE_UINT16:
+      return_type = glsl_type::get_instance(GLSL_TYPE_UINT,
+                                            return_type->vector_elements,
+                                            return_type->matrix_columns,
+                                            return_type->explicit_stride,
+                                            return_type->interface_row_major);
+      break;
+   default:
+      /* nothing to do */
+      break;
    }
 
    if (op[1] != NULL)

@@ -247,7 +247,7 @@ constant_template_vector_insert = mako.template.Template("""\
 
       memcpy(&data, &op[0]->value, sizeof(data));
 
-      switch (this->type->base_type) {
+      switch (return_type->base_type) {
     % for dst_type, src_types in op.signatures():
       case ${src_types[0].glsl_type}:
          data.${dst_type.union_field}[idx] = op[1]->value.${src_types[0].union_field}[0];
@@ -262,8 +262,8 @@ constant_template_vector_insert = mako.template.Template("""\
 # This template is for ir_quadop_vector.
 constant_template_vector = mako.template.Template("""\
    case ${op.get_enum_name()}:
-      for (unsigned c = 0; c < this->type->vector_elements; c++) {
-         switch (this->type->base_type) {
+      for (unsigned c = 0; c < return_type->vector_elements; c++) {
+         switch (return_type->base_type) {
     % for dst_type, src_types in op.signatures():
          case ${src_types[0].glsl_type}:
             data.${dst_type.union_field}[c] = op[c]->value.${src_types[0].union_field}[0];
@@ -284,7 +284,7 @@ constant_template_lrp = mako.template.Template("""\
 
       unsigned c2_inc = op[2]->type->is_scalar() ? 0 : 1;
       for (unsigned c = 0, c2 = 0; c < components; c2 += c2_inc, c++) {
-         switch (this->type->base_type) {
+         switch (return_type->base_type) {
     % for dst_type, src_types in op.signatures():
          case ${src_types[0].glsl_type}:
             data.${dst_type.union_field}[c] = ${op.get_c_expression(src_types, ("c", "c", "c2"))};
@@ -303,7 +303,7 @@ constant_template_lrp = mako.template.Template("""\
 constant_template_csel = mako.template.Template("""\
    case ${op.get_enum_name()}:
       for (unsigned c = 0; c < components; c++) {
-         switch (this->type->base_type) {
+         switch (return_type->base_type) {
     % for dst_type, src_types in op.signatures():
          case ${src_types[1].glsl_type}:
             data.${dst_type.union_field}[c] = ${op.get_c_expression(src_types)};
