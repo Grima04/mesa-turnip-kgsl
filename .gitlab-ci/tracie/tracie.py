@@ -24,6 +24,7 @@ import dump_trace_images
 TRACES_DB_PATH = "./traces-db/"
 RESULTS_PATH = "./results/"
 MINIO_HOST = "minio-packet.freedesktop.org"
+DASHBOARD_URL = "https://tracie.freedesktop.org/dashboard"
 
 def replay(trace_path, device_name):
     success = dump_trace_images.dump_from_trace(trace_path, [], device_name)
@@ -128,6 +129,13 @@ def gitlab_check_trace(project_url, device_name, trace, expectation):
                 (trace['path'], expectation['checksum'], checksum))
         print("[check_image] For more information see "
                 "https://gitlab.freedesktop.org/mesa/mesa/blob/master/.gitlab-ci/tracie/README.md")
+        image_diff_url = "%s/imagediff/%s/%s/%s/%s/%s" % (DASHBOARD_URL,
+                                                       os.environ['CI_PROJECT_PATH'],
+                                                       os.environ['CI_PIPELINE_ID'],
+                                                       os.environ['CI_JOB_ID'],
+                                                       expectation['checksum'],
+                                                       checksum)
+        print("[check_image] %s" % image_diff_url)
         ok = False
 
     trace_dir = os.path.split(trace['path'])[0]
