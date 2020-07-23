@@ -506,7 +506,9 @@ is_lowerable_builtin(ir_call *ir,
         */
        !strcmp(ir->callee_name(), "packHalf2x16") ||
        !strcmp(ir->callee_name(), "packUnorm4x8") ||
-       !strcmp(ir->callee_name(), "packSnorm4x8"))
+       !strcmp(ir->callee_name(), "packSnorm4x8") ||
+       /* Atomic functions are not lowered. */
+       strstr(ir->callee_name(), "atomic") == ir->callee_name())
       return false;
 
    assert(ir->callee->return_precision == GLSL_PRECISION_NONE);
