@@ -1022,6 +1022,8 @@ struct si_context {
 
    /* Precomputed states. */
    struct si_pm4_state *cs_preamble_state;
+   struct si_pm4_state *cs_preamble_tess_rings;
+   struct si_pm4_state *cs_preamble_tess_rings_tmz;
    struct si_pm4_state *cs_preamble_gs_rings;
    bool cs_preamble_has_vgt_flush;
    struct si_pm4_state *vgt_shader_config[SI_NUM_VGT_STAGES_STATES];
@@ -1063,6 +1065,7 @@ struct si_context {
    struct pipe_resource *esgs_ring;
    struct pipe_resource *gsvs_ring;
    struct pipe_resource *tess_rings;
+   struct pipe_resource *tess_rings_tmz;
    union pipe_color_union *border_color_table; /* in CPU memory, any endian */
    struct si_resource *border_color_buffer;
    union pipe_color_union *border_color_map; /* in VRAM (slow access), little endian */

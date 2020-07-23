@@ -189,6 +189,7 @@ static void si_destroy_context(struct pipe_context *context)
    pipe_resource_reference(&sctx->esgs_ring, NULL);
    pipe_resource_reference(&sctx->gsvs_ring, NULL);
    pipe_resource_reference(&sctx->tess_rings, NULL);
+   pipe_resource_reference(&sctx->tess_rings_tmz, NULL);
    pipe_resource_reference(&sctx->null_const_buf.buffer, NULL);
    pipe_resource_reference(&sctx->sample_pos_buffer, NULL);
    si_resource_reference(&sctx->border_color_buffer, NULL);
@@ -201,6 +202,10 @@ static void si_destroy_context(struct pipe_context *context)
 
    if (sctx->cs_preamble_state)
       si_pm4_free_state(sctx, sctx->cs_preamble_state, ~0);
+   if (sctx->cs_preamble_tess_rings)
+      si_pm4_free_state(sctx, sctx->cs_preamble_tess_rings, ~0);
+   if (sctx->cs_preamble_tess_rings_tmz)
+      si_pm4_free_state(sctx, sctx->cs_preamble_tess_rings_tmz, ~0);
    if (sctx->cs_preamble_gs_rings)
       si_pm4_free_state(sctx, sctx->cs_preamble_gs_rings, ~0);
    for (i = 0; i < ARRAY_SIZE(sctx->vgt_shader_config); i++)

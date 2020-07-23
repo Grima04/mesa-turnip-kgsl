@@ -387,6 +387,7 @@ void si_set_tracked_regs_to_clear_state(struct si_context *ctx)
 
 void si_begin_new_gfx_cs(struct si_context *ctx, bool first_cs)
 {
+   bool is_secure = ctx->ws->cs_is_secure(ctx->gfx_cs);
    if (ctx->is_debug)
       si_begin_gfx_cs_debug(ctx);
 
@@ -426,7 +427,8 @@ void si_begin_new_gfx_cs(struct si_context *ctx, bool first_cs)
    }
 
    if (ctx->tess_rings) {
-      radeon_add_to_buffer_list(ctx, ctx->gfx_cs, si_resource(ctx->tess_rings),
+      radeon_add_to_buffer_list(ctx, ctx->gfx_cs,
+                                unlikely(is_secure) ? si_resource(ctx->tess_rings_tmz) : si_resource(ctx->tess_rings),
                                 RADEON_USAGE_READWRITE, RADEON_PRIO_SHADER_RINGS);
    }
 
@@ -438,6 +440,9 @@ void si_begin_new_gfx_cs(struct si_context *ctx, bool first_cs)
    /* The CS initialization should be emitted before everything else. */
    if (ctx->cs_preamble_state)
       si_pm4_emit(ctx, ctx->cs_preamble_state);
+   if (ctx->cs_preamble_tess_rings)
+      si_pm4_emit(ctx, unlikely(is_secure) ? ctx->cs_preamble_tess_rings_tmz :
+         ctx->cs_preamble_tess_rings);
    if (ctx->cs_preamble_gs_rings)
       si_pm4_emit(ctx, ctx->cs_preamble_gs_rings);
 

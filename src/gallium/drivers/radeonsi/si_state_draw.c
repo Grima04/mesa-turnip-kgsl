@@ -215,7 +215,8 @@ static void si_emit_derived_tess_state(struct si_context *sctx, const struct pip
    assert(num_tcs_input_cp <= 32);
    assert(num_tcs_output_cp <= 32);
 
-   uint64_t ring_va = si_resource(sctx->tess_rings)->gpu_address;
+   uint64_t ring_va = (unlikely(sctx->ws->cs_is_secure(sctx->gfx_cs)) ?
+      si_resource(sctx->tess_rings_tmz) : si_resource(sctx->tess_rings))->gpu_address;
    assert((ring_va & u_bit_consecutive(0, 19)) == 0);
 
    tcs_in_layout = S_VS_STATE_LS_OUT_PATCH_SIZE(input_patch_size / 4) |
