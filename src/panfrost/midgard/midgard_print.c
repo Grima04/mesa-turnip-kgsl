@@ -340,7 +340,7 @@ mir_print_instruction(midgard_instruction *ins)
         }
 
         case TAG_LOAD_STORE_4: {
-                midgard_load_store_op op = ins->load_store.op;
+                midgard_load_store_op op = ins->op;
                 const char *name = load_store_opcode_props[op].name;
 
                 assert(name);

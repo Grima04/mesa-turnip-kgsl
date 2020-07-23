@@ -43,7 +43,7 @@ mir_is_promoteable_ubo(midgard_instruction *ins)
         /* TODO: promote unaligned access via swizzle? */
 
         return (ins->type == TAG_LOAD_STORE_4) &&
-                (OP_IS_UBO_READ(ins->load_store.op)) &&
+                (OP_IS_UBO_READ(ins->op)) &&
                 !(ins->constants.u32[0] & 0xF) &&
                 !(ins->load_store.arg_1) &&
                 (ins->load_store.arg_2 == 0x1E) &&

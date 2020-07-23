@@ -107,7 +107,7 @@ midgard_opt_copy_prop(compiler_context *ctx, midgard_block *block)
 
                         unsigned start =
                                 is_tex ? 2 :
-                                OP_IS_STORE(q->load_store.op) ? 1 : 0;
+                                OP_IS_STORE(q->op) ? 1 : 0;
 
                         mir_foreach_src(q, s) {
                                 if ((s >= start) && q->src[s] == to) {

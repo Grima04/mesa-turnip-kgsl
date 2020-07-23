@@ -487,6 +487,14 @@ mir_lower_roundmode(midgard_instruction *ins)
         }
 }
 
+static midgard_load_store_word
+load_store_from_instr(midgard_instruction *ins)
+{
+        midgard_load_store_word ldst = ins->load_store;
+        ldst.op = ins->op;
+        return ldst;
+}
+
 static midgard_texture_word
 texture_word_from_instr(midgard_instruction *ins)
 {
@@ -643,7 +651,7 @@ emit_binary_bundle(compiler_context *ctx,
                         unsigned offset = bundle->instructions[i]->constants.u32[0];
 
                         if (offset) {
-                                unsigned shift = mir_ldst_imm_shift(bundle->instructions[i]->load_store.op);
+                                unsigned shift = mir_ldst_imm_shift(bundle->instructions[i]->op);
                                 unsigned upper_shift = 10 - shift;
 
                                 bundle->instructions[i]->load_store.varying_parameters |= (offset & ((1 << upper_shift) - 1)) << shift;
@@ -651,10 +659,15 @@ emit_binary_bundle(compiler_context *ctx,
                         }
                 }
 
-                memcpy(&current64, &bundle->instructions[0]->load_store, sizeof(current64));
+                midgard_load_store_word ldst0 =
+                        load_store_from_instr(bundle->instructions[0]);
+                memcpy(&current64, &ldst0, sizeof(current64));
 
-                if (bundle->instruction_count == 2)
-                        memcpy(&next64, &bundle->instructions[1]->load_store, sizeof(next64));
+                if (bundle->instruction_count == 2) {
+                        midgard_load_store_word ldst1 =
+                                load_store_from_instr(bundle->instructions[1]);
+                        memcpy(&next64, &ldst1, sizeof(next64));
+                }
 
                 midgard_load_store instruction = {
                         .type = bundle->tag,

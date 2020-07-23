@@ -110,8 +110,8 @@ schedule_barrier(compiler_context *ctx)
                         .dest = ~0, \
                         .src = { ~0, ~0, ~0, ~0 }, \
                         .swizzle = SWIZZLE_IDENTITY_4, \
+                        .op = midgard_op_##name, \
 			.load_store = { \
-				.op = midgard_op_##name, \
 				.address = address \
 			} \
 		}; \
@@ -1412,16 +1412,16 @@ emit_varying_read(
         switch (type) {
         case nir_type_uint32:
         case nir_type_bool32:
-                ins.load_store.op = midgard_op_ld_vary_32u;
+                ins.op = midgard_op_ld_vary_32u;
                 break;
         case nir_type_int32:
-                ins.load_store.op = midgard_op_ld_vary_32i;
+                ins.op = midgard_op_ld_vary_32i;
                 break;
         case nir_type_float32:
-                ins.load_store.op = midgard_op_ld_vary_32;
+                ins.op = midgard_op_ld_vary_32;
                 break;
         case nir_type_float16:
-                ins.load_store.op = midgard_op_ld_vary_16;
+                ins.op = midgard_op_ld_vary_16;
                 break;
         default:
                 unreachable("Attempted to load unknown type");
@@ -1446,13 +1446,13 @@ emit_attr_read(
         switch (t) {
         case nir_type_uint:
         case nir_type_bool:
-                ins.load_store.op = midgard_op_ld_attr_32u;
+                ins.op = midgard_op_ld_attr_32u;
                 break;
         case nir_type_int:
-                ins.load_store.op = midgard_op_ld_attr_32i;
+                ins.op = midgard_op_ld_attr_32i;
                 break;
         case nir_type_float:
-                ins.load_store.op = midgard_op_ld_attr_32;
+                ins.op = midgard_op_ld_attr_32;
                 break;
         default:
                 unreachable("Attempted to load unknown type");
@@ -1583,7 +1583,7 @@ emit_msaa_builtin(compiler_context *ctx, nir_intrinsic_instr *instr)
         unsigned reg = nir_dest_index(&instr->dest);
 
         midgard_instruction ld = m_ld_color_buffer_32u(reg, 0);
-        ld.load_store.op = midgard_op_ld_color_buffer_32u_old;
+        ld.op = midgard_op_ld_color_buffer_32u_old;
         ld.load_store.address = 97;
         ld.load_store.arg_2 = 0x1E;
 
@@ -1775,7 +1775,7 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
                 }
 
                 if (ctx->quirks & MIDGARD_OLD_BLEND) {
-                        ld.load_store.op = midgard_op_ld_color_buffer_32u_old;
+                        ld.op = midgard_op_ld_color_buffer_32u_old;
                         ld.load_store.address = 16;
                         ld.load_store.arg_2 = 0x1E;
                 }
@@ -1802,9 +1802,9 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
 
                 if (ctx->quirks & MIDGARD_OLD_BLEND) {
                         if (bits == 16)
-                                ld.load_store.op = midgard_op_ld_color_buffer_as_fp16_old;
+                                ld.op = midgard_op_ld_color_buffer_as_fp16_old;
                         else
-                                ld.load_store.op = midgard_op_ld_color_buffer_as_fp32_old;
+                                ld.op = midgard_op_ld_color_buffer_as_fp32_old;
                         ld.load_store.address = 1;
                         ld.load_store.arg_2 = 0x1E;
                 }
@@ -1907,13 +1907,13 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
                         switch (nir_alu_type_get_base_type(nir_intrinsic_type(instr))) {
                         case nir_type_uint:
                         case nir_type_bool:
-                                st.load_store.op = midgard_op_st_vary_32u;
+                                st.op = midgard_op_st_vary_32u;
                                 break;
                         case nir_type_int:
-                                st.load_store.op = midgard_op_st_vary_32i;
+                                st.op = midgard_op_st_vary_32i;
                                 break;
                         case nir_type_float:
-                                st.load_store.op = midgard_op_st_vary_32;
+                                st.op = midgard_op_st_vary_32;
                                 break;
                         default:
                                 unreachable("Attempted to store unknown type");

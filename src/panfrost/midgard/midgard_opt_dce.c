@@ -40,7 +40,7 @@ can_cull_mask(compiler_context *ctx, midgard_instruction *ins)
                 return false;
 
         if (ins->type == TAG_LOAD_STORE_4)
-                if (load_store_opcode_props[ins->load_store.op].props & LDST_SPECIAL_MASK)
+                if (load_store_opcode_props[ins->op].props & LDST_SPECIAL_MASK)
                         return false;
 
         return true;
@@ -56,7 +56,7 @@ can_dce(midgard_instruction *ins)
                 return false;
 
         if (ins->type == TAG_LOAD_STORE_4)
-                if (load_store_opcode_props[ins->load_store.op].props & LDST_SIDE_FX)
+                if (load_store_opcode_props[ins->op].props & LDST_SIDE_FX)
                         return false;
 
         if (ins->type == TAG_TEXTURE_4)

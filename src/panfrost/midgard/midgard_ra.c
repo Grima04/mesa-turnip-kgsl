@@ -450,7 +450,7 @@ allocate_registers(compiler_context *ctx, bool *spilled)
                         }
                 }
 
-                if (ins->type == TAG_LOAD_STORE_4 && OP_HAS_ADDRESS(ins->load_store.op)) {
+                if (ins->type == TAG_LOAD_STORE_4 && OP_HAS_ADDRESS(ins->op)) {
                         mir_foreach_src(ins, v) {
                                 unsigned s = ins->src[v];
                                 unsigned size = nir_alu_type_get_type_size(ins->src_types[v]);
@@ -530,7 +530,7 @@ allocate_registers(compiler_context *ctx, bool *spilled)
                         set_class(l->class, ins->src[1], REG_CLASS_LDST);
                         set_class(l->class, ins->src[2], REG_CLASS_LDST);
 
-                        if (OP_IS_VEC4_ONLY(ins->load_store.op)) {
+                        if (OP_IS_VEC4_ONLY(ins->op)) {
                                 lcra_restrict_range(l, ins->dest, 16);
                                 lcra_restrict_range(l, ins->src[0], 16);
                                 lcra_restrict_range(l, ins->src[1], 16);
@@ -716,7 +716,7 @@ install_registers_instr(
                  * whether we are loading or storing -- think about the
                  * logical dataflow */
 
-                bool encodes_src = OP_IS_STORE(ins->load_store.op);
+                bool encodes_src = OP_IS_STORE(ins->op);
 
                 if (encodes_src) {
                         struct phys_reg src = index_to_reg(ctx, l, ins->src[0], src_shift[0]);
