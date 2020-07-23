@@ -112,6 +112,8 @@ opt_undef_store(nir_intrinsic_instr *intrin)
    case nir_intrinsic_store_per_vertex_output:
    case nir_intrinsic_store_ssbo:
    case nir_intrinsic_store_shared:
+   case nir_intrinsic_store_global:
+   case nir_intrinsic_store_scratch:
       arg_index =  0;
       break;
    default:
