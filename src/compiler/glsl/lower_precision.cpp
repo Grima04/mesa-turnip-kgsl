@@ -690,7 +690,7 @@ convert_precision(bool up, ir_rvalue *ir)
    unsigned op;
 
    if (up) {
-      switch (ir->type->without_array()->base_type) {
+      switch (ir->type->base_type) {
       case GLSL_TYPE_FLOAT16:
          op = ir_unop_f162f;
          break;
@@ -705,7 +705,7 @@ convert_precision(bool up, ir_rvalue *ir)
          return NULL;
       }
    } else {
-      switch (ir->type->without_array()->base_type) {
+      switch (ir->type->base_type) {
       case GLSL_TYPE_FLOAT:
          op = ir_unop_f2fmp;
          break;
@@ -1255,10 +1255,20 @@ void lower_variables_visitor::handle_rvalue(ir_rvalue **rvalue)
       if (var &&
           _mesa_set_search(lower_vars, var) &&
           deref->type->without_array()->is_32bit()) {
+         void *mem_ctx = ralloc_parent(ir);
+
+         /* Create a 32-bit temporary variable. */
+         ir_variable *new_var =
+            new(mem_ctx) ir_variable(deref->type, "lowerp", ir_var_temporary);
+         base_ir->insert_before(new_var);
+
+         /* Fix types in dereferences. */
          fix_types_in_deref_chain(deref);
 
-         /* Then convert the type up. Optimizations should eliminate this. */
-         *rvalue = convert_precision(true, deref);
+         /* Convert to 32 bits for the rvalue. */
+         convert_split_assignment(new(mem_ctx) ir_dereference_variable(new_var),
+                                  deref, true);
+         *rvalue = new(mem_ctx) ir_dereference_variable(new_var);
       }
    }
 }
