@@ -164,7 +164,7 @@ mir_pack_swizzle_64(unsigned *swizzle, unsigned max_component)
 }
 
 static void
-mir_pack_mask_alu(midgard_instruction *ins)
+mir_pack_mask_alu(midgard_instruction *ins, midgard_vector_alu *alu)
 {
         unsigned effective = ins->mask;
 
@@ -177,19 +177,19 @@ mir_pack_mask_alu(midgard_instruction *ins)
 
         if (upper_shift >= 0) {
                 effective >>= upper_shift;
-                ins->alu.dest_override = upper_shift ?
+                alu->dest_override = upper_shift ?
                         midgard_dest_override_upper :
                         midgard_dest_override_lower;
         } else {
-                ins->alu.dest_override = midgard_dest_override_none;
+                alu->dest_override = midgard_dest_override_none;
         }
 
         if (inst_size == 32)
-                ins->alu.mask = expand_writemask(effective, 2);
+                alu->mask = expand_writemask(effective, 2);
         else if (inst_size == 64)
-                ins->alu.mask = expand_writemask(effective, 1);
+                alu->mask = expand_writemask(effective, 1);
         else
-                ins->alu.mask = effective;
+                alu->mask = effective;
 }
 
 static unsigned
@@ -559,10 +559,11 @@ texture_word_from_instr(midgard_instruction *ins)
 static midgard_vector_alu
 vector_alu_from_instr(midgard_instruction *ins)
 {
-        midgard_vector_alu alu = ins->alu;
-        alu.op = ins->op;
-        alu.outmod = ins->outmod;
-        alu.reg_mode = reg_mode_for_bitsize(max_bitsize_for_alu(ins));
+        midgard_vector_alu alu = {
+                .op = ins->op,
+                .outmod = ins->outmod,
+                .reg_mode = reg_mode_for_bitsize(max_bitsize_for_alu(ins))
+        };
 
         if (ins->has_inline_constant) {
                 /* Encode inline 16-bit constant. See disassembler for
@@ -631,8 +632,8 @@ emit_alu_bundle(compiler_context *ctx,
                 }
 
                 if (ins->unit & UNITS_ANY_VECTOR) {
-                        mir_pack_mask_alu(ins);
                         source_alu = vector_alu_from_instr(ins);
+                        mir_pack_mask_alu(ins, &source_alu);
                         mir_pack_vector_srcs(ins, &source_alu);
                         size = sizeof(midgard_vector_alu);
                         source = &source_alu;

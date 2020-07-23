@@ -129,9 +129,6 @@ typedef struct midgard_instruction {
         /* If the op supports it */
         enum midgard_roundmode roundmode;
 
-        /* Special fields for an ALU instruction */
-        midgard_reg_info registers;
-
         /* For textures: should helpers execute this instruction (instead of
          * just helping with derivatives)? Should helpers terminate after? */
         bool helper_terminate;
@@ -186,7 +183,6 @@ typedef struct midgard_instruction {
 
         union {
                 midgard_load_store_word load_store;
-                midgard_vector_alu alu;
                 midgard_texture_word texture;
                 midgard_branch_extended branch_extended;
                 uint16_t br_compact;

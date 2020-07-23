@@ -424,10 +424,6 @@ mir_flip(midgard_instruction *ins)
 
         assert(ins->type == TAG_ALU_4);
 
-        temp = ins->alu.src1;
-        ins->alu.src1 = ins->alu.src2;
-        ins->alu.src2 = temp;
-
         temp = ins->src_types[0];
         ins->src_types[0] = ins->src_types[1];
         ins->src_types[1] = temp;
