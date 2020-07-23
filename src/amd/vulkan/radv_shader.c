@@ -261,8 +261,7 @@ radv_optimize_nir(struct nir_shader *shader, bool optimize_conservatively,
                                  shader,
                                  nir_lower_flrp,
                                  lower_flrp,
-                                 false /* always_precise */,
-                                 shader->options->lower_ffma);
+                                 false /* always_precise */);
                         if (lower_flrp_progress) {
                                 NIR_PASS(progress, shader,
                                          nir_opt_constant_folding);

@@ -173,7 +173,7 @@ traces:
   - path: godot/Material Testers.x86_64_2020.04.08_13.38_frame799.rdc
     expectations:
       - device: gl-radeonsi-stoney
-        checksum: 2ddcda6b1c136ce1448714a3ff8432eb
+        checksum: 5164e238381e7d77a64e3de771cc005f
   - path: gputest/gimark.trace
     expectations:
       - device: gl-radeonsi-stoney

@@ -590,7 +590,7 @@ val_shader_compile_to_ir(struct val_pipeline *pipeline,
    do {
       progress = false;
 
-      progress |= OPT(nir_lower_flrp, 32|64, true, false);
+      progress |= OPT(nir_lower_flrp, 32|64, true);
       progress |= OPT(nir_split_array_vars, nir_var_function_temp);
       progress |= OPT(nir_shrink_vec_array_vars, nir_var_function_temp);
       progress |= OPT(nir_opt_deref);

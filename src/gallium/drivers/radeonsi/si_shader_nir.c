@@ -644,8 +644,7 @@ static void si_nir_opts(struct nir_shader *nir, bool first)
          assert(lower_flrp);
          bool lower_flrp_progress = false;
 
-         NIR_PASS(lower_flrp_progress, nir, nir_lower_flrp, lower_flrp, false /* always_precise */,
-                  nir->options->lower_ffma);
+         NIR_PASS(lower_flrp_progress, nir, nir_lower_flrp, lower_flrp, false /* always_precise */);
          if (lower_flrp_progress) {
             NIR_PASS(progress, nir, nir_opt_constant_folding);
             progress = true;

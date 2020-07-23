@@ -185,8 +185,7 @@ ir3_optimize_loop(nir_shader *s)
 		if (lower_flrp != 0) {
 			if (OPT(s, nir_lower_flrp,
 					lower_flrp,
-					false /* always_precise */,
-					s->options->lower_ffma)) {
+					false /* always_precise */)) {
 				OPT(s, nir_opt_constant_folding);
 				progress = true;
 			}

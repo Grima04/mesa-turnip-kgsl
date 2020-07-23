@@ -364,9 +364,10 @@ static void
 convert_flrp_instruction(nir_builder *bld,
                          struct u_vector *dead_flrp,
                          nir_alu_instr *alu,
-                         bool always_precise,
-                         bool have_ffma)
+                         bool always_precise)
 {
+   bool have_ffma = !bld->shader->options->lower_ffma;
+
    bld->cursor = nir_before_instr(&alu->instr);
 
    /* There are two methods to implement flrp(x, y, t).  The strictly correct
@@ -586,8 +587,7 @@ static void
 lower_flrp_impl(nir_function_impl *impl,
                 struct u_vector *dead_flrp,
                 unsigned lowering_mask,
-                bool always_precise,
-                bool have_ffma)
+                bool always_precise)
 {
    nir_builder b;
    nir_builder_init(&b, impl);
@@ -599,8 +599,7 @@ lower_flrp_impl(nir_function_impl *impl,
 
             if (alu->op == nir_op_flrp &&
                 (alu->dest.dest.ssa.bit_size & lowering_mask)) {
-               convert_flrp_instruction(&b, dead_flrp, alu, always_precise,
-                                        have_ffma);
+               convert_flrp_instruction(&b, dead_flrp, alu, always_precise);
             }
          }
       }
@@ -622,8 +621,7 @@ lower_flrp_impl(nir_function_impl *impl,
 bool
 nir_lower_flrp(nir_shader *shader,
                unsigned lowering_mask,
-               bool always_precise,
-               bool have_ffma)
+               bool always_precise)
 {
    struct u_vector dead_flrp;
 
@@ -633,7 +631,7 @@ nir_lower_flrp(nir_shader *shader,
    nir_foreach_function(function, shader) {
       if (function->impl) {
          lower_flrp_impl(function->impl, &dead_flrp, lowering_mask,
-                         always_precise, have_ffma);
+                         always_precise);
       }
    }
 

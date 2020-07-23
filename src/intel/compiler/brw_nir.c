@@ -597,8 +597,7 @@ brw_nir_optimize(nir_shader *nir, const struct brw_compiler *compiler,
       if (lower_flrp != 0) {
          if (OPT(nir_lower_flrp,
                  lower_flrp,
-                 false /* always_precise */,
-                 compiler->devinfo->gen >= 6)) {
+                 false /* always_precise */)) {
             OPT(nir_opt_constant_folding);
          }
 

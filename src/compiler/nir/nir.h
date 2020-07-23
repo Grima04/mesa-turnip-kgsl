@@ -4314,7 +4314,7 @@ void nir_lower_alpha_test(nir_shader *shader, enum compare_func func,
 bool nir_lower_alu(nir_shader *shader);
 
 bool nir_lower_flrp(nir_shader *shader, unsigned lowering_mask,
-                    bool always_precise, bool have_ffma);
+                    bool always_precise);
 
 bool nir_lower_alu_to_scalar(nir_shader *shader, nir_instr_filter_cb cb, const void *data);
 bool nir_lower_bool_to_bitsize(nir_shader *shader);
