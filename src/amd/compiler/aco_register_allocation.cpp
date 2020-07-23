@@ -318,6 +318,9 @@ void print_regs(ra_ctx& ctx, bool vgprs, RegisterFile& reg_file)
 
 unsigned get_subdword_operand_stride(chip_class chip, const aco_ptr<Instruction>& instr, unsigned idx, RegClass rc)
 {
+   /* v_readfirstlane_b32 cannot use SDWA */
+   if (instr->opcode == aco_opcode::p_as_uniform)
+      return 4;
    if (instr->format == Format::PSEUDO && chip >= GFX8)
       return rc.bytes() % 2 == 0 ? 2 : 1;
 

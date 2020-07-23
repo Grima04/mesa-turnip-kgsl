@@ -483,6 +483,8 @@ bool validate_subdword_operand(chip_class chip, const aco_ptr<Instruction>& inst
    Operand op = instr->operands[index];
    unsigned byte = op.physReg().byte();
 
+   if (instr->opcode == aco_opcode::p_as_uniform)
+      return byte == 0;
    if (instr->format == Format::PSEUDO && chip >= GFX8)
       return true;
    if (instr->isSDWA() && (static_cast<SDWA_instruction *>(instr.get())->sel[index] & sdwa_asuint) == (sdwa_isra | op.bytes()))
