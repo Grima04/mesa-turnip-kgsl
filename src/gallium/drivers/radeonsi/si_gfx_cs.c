@@ -387,7 +387,17 @@ void si_set_tracked_regs_to_clear_state(struct si_context *ctx)
 
 void si_begin_new_gfx_cs(struct si_context *ctx, bool first_cs)
 {
-   bool is_secure = ctx->ws->cs_is_secure(ctx->gfx_cs);
+   bool is_secure = false;
+
+   if (unlikely(ctx->ws->ws_uses_secure_bo(ctx->ws))) {
+      /* Disable features that don't work with TMZ:
+       *   - primitive discard
+       */
+      ctx->prim_discard_vertex_count_threshold = UINT_MAX;
+
+      is_secure = ctx->ws->cs_is_secure(ctx->gfx_cs);
+   }
+
    if (ctx->is_debug)
       si_begin_gfx_cs_debug(ctx);
 
