@@ -332,7 +332,14 @@ class Parser(object):
 			raise self.error(e);
 
 	def do_parse(self, filename):
-		file = open(filename, "rb")
+		try:
+			file = open(filename, "rb")
+		except FileNotFoundError as e:
+			# Look for the file in the parent directory if not
+			# found in same directory:
+			path = os.path.dirname(filename)
+			base = os.path.basename(filename)
+			file = open(path + "/../" + base, "rb")
 		parser = xml.parsers.expat.ParserCreate()
 		self.stack.append((parser, filename))
 		parser.StartElementHandler = self.start_element
