@@ -2216,13 +2216,21 @@ tu_pipeline_builder_parse_rasterization(struct tu_pipeline_builder *builder,
 
    enum a6xx_polygon_mode mode = tu6_polygon_mode(rast_info->polygonMode);
 
+   bool depth_clip_disable = rast_info->depthClampEnable;
+
+   const VkPipelineRasterizationDepthClipStateCreateInfoEXT *depth_clip_state =
+      vk_find_struct_const(rast_info, PIPELINE_RASTERIZATION_DEPTH_CLIP_STATE_CREATE_INFO_EXT);
+   if (depth_clip_state)
+      depth_clip_disable = !depth_clip_state->depthClipEnable;
+
    struct tu_cs cs;
    pipeline->rast_state = tu_cs_draw_state(&pipeline->cs, &cs, 9);
 
    tu_cs_emit_regs(&cs,
                    A6XX_GRAS_CL_CNTL(
-                     .znear_clip_disable = rast_info->depthClampEnable,
-                     .zfar_clip_disable = rast_info->depthClampEnable,
+                     .znear_clip_disable = depth_clip_disable,
+                     .zfar_clip_disable = depth_clip_disable,
+                     /* TODO should this be depth_clip_disable instead? */
                      .unk5 = rast_info->depthClampEnable,
                      .zero_gb_scale_z = 1,
                      .vp_clip_code_ignore = 1));
