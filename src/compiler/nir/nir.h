@@ -768,7 +768,7 @@ typedef struct nir_ssa_def {
    /** generic SSA definition index. */
    unsigned index;
 
-   /** Index into the live_in and live_out bitfields */
+   /** Ordered SSA definition index used by nir_liveness. */
    unsigned live_index;
 
    /** Instruction which produces this SSA value. */
@@ -2603,7 +2603,9 @@ typedef struct nir_block {
     */
    int16_t dom_pre_index, dom_post_index;
 
-   /* live in and out for this block; used for liveness analysis */
+   /* SSA def live in and out for this block; used for liveness analysis.
+    * Indexed by ssa_def->index
+    */
    BITSET_WORD *live_in;
    BITSET_WORD *live_out;
 } nir_block;

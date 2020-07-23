@@ -1847,6 +1847,8 @@ nir_index_ssa_defs(nir_function_impl *impl)
 {
    unsigned index = 0;
 
+   impl->valid_metadata &= ~nir_metadata_live_ssa_defs;
+
    nir_foreach_block_unstructured(block, impl) {
       nir_foreach_instr(instr, block)
          nir_foreach_ssa_def(instr, index_ssa_def_cb, &index);
