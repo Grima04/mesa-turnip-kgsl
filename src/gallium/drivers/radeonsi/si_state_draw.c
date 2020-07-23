@@ -1112,6 +1112,8 @@ void gfx10_emit_cache_flush(struct si_context *ctx)
    }
 
    if (cb_db_event) {
+      struct si_resource* wait_mem_scratch = unlikely(ctx->ws->cs_is_secure(cs)) ?
+        ctx->wait_mem_scratch_tmz : ctx->wait_mem_scratch;
       /* CB/DB flush and invalidate (or possibly just a wait for a
        * meta flush) via RELEASE_MEM.
        *
@@ -1123,7 +1125,7 @@ void gfx10_emit_cache_flush(struct si_context *ctx)
       uint64_t va;
 
       /* Do the flush (enqueue the event and wait for it). */
-      va = ctx->wait_mem_scratch->gpu_address;
+      va = wait_mem_scratch->gpu_address;
       ctx->wait_mem_number++;
 
       /* Get GCR_CNTL fields, because the encoding is different in RELEASE_MEM. */
@@ -1146,7 +1148,7 @@ void gfx10_emit_cache_flush(struct si_context *ctx)
                            S_490_GL1_INV(gl1_inv) | S_490_GL2_INV(gl2_inv) | S_490_GL2_WB(gl2_wb) |
                            S_490_SEQ(gcr_seq),
                         EOP_DST_SEL_MEM, EOP_INT_SEL_SEND_DATA_AFTER_WR_CONFIRM,
-                        EOP_DATA_SEL_VALUE_32BIT, ctx->wait_mem_scratch, va, ctx->wait_mem_number,
+                        EOP_DATA_SEL_VALUE_32BIT, wait_mem_scratch, va, ctx->wait_mem_number,
                         SI_NOT_QUERY);
       si_cp_wait_mem(ctx, ctx->gfx_cs, va, ctx->wait_mem_number, 0xffffffff, WAIT_REG_MEM_EQUAL);
    }
@@ -1340,12 +1342,14 @@ void si_emit_cache_flush(struct si_context *sctx)
       }
 
       /* Do the flush (enqueue the event and wait for it). */
-      va = sctx->wait_mem_scratch->gpu_address;
+      struct si_resource* wait_mem_scratch = unlikely(sctx->ws->cs_is_secure(cs)) ?
+        sctx->wait_mem_scratch_tmz : sctx->wait_mem_scratch;
+      va = wait_mem_scratch->gpu_address;
       sctx->wait_mem_number++;
 
       si_cp_release_mem(sctx, cs, cb_db_event, tc_flags, EOP_DST_SEL_MEM,
                         EOP_INT_SEL_SEND_DATA_AFTER_WR_CONFIRM, EOP_DATA_SEL_VALUE_32BIT,
-                        sctx->wait_mem_scratch, va, sctx->wait_mem_number, SI_NOT_QUERY);
+                        wait_mem_scratch, va, sctx->wait_mem_number, SI_NOT_QUERY);
       si_cp_wait_mem(sctx, cs, va, sctx->wait_mem_number, 0xffffffff, WAIT_REG_MEM_EQUAL);
    }
 

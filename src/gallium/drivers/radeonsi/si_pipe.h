@@ -951,6 +951,7 @@ struct si_context {
    struct si_shader_ctx_state fixed_func_tcs_shader;
    /* Offset 0: EOP flush number; Offset 4: GDS prim restart counter */
    struct si_resource *wait_mem_scratch;
+   struct si_resource *wait_mem_scratch_tmz;
    unsigned wait_mem_number;
    uint16_t prefetch_L2_mask;
 

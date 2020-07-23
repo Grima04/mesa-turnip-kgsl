@@ -196,6 +196,7 @@ static void si_destroy_context(struct pipe_context *context)
    si_resource_reference(&sctx->scratch_buffer, NULL);
    si_resource_reference(&sctx->compute_scratch_buffer, NULL);
    si_resource_reference(&sctx->wait_mem_scratch, NULL);
+   si_resource_reference(&sctx->wait_mem_scratch_tmz, NULL);
    si_resource_reference(&sctx->small_prim_cull_info_buf, NULL);
 
    if (sctx->cs_preamble_state)
@@ -619,6 +620,17 @@ static struct pipe_context *si_create_context(struct pipe_screen *screen, unsign
                                     sscreen->info.tcc_cache_line_size);
       if (!sctx->wait_mem_scratch)
          goto fail;
+
+      if (sscreen->info.has_tmz_support) {
+         sctx->wait_mem_scratch_tmz =
+              si_aligned_buffer_create(screen,
+                                       SI_RESOURCE_FLAG_UNMAPPABLE | SI_RESOURCE_FLAG_DRIVER_INTERNAL |
+                                       PIPE_RESOURCE_FLAG_ENCRYPTED,
+                                       PIPE_USAGE_DEFAULT, 8,
+                                       sscreen->info.tcc_cache_line_size);
+         if (!sctx->wait_mem_scratch_tmz)
+            goto fail;
+      }
    }
 
    /* GFX7 cannot unbind a constant buffer (S_BUFFER_LOAD doesn't skip loads
@@ -692,10 +704,12 @@ static struct pipe_context *si_create_context(struct pipe_screen *screen, unsign
    assert(sctx->gfx_cs->current.cdw == sctx->initial_gfx_cs_size);
 
    /* Initialize per-context buffers. */
-   if (sctx->wait_mem_scratch) {
+   if (sctx->wait_mem_scratch)
       si_cp_write_data(sctx, sctx->wait_mem_scratch, 0, 4, V_370_MEM, V_370_ME,
                        &sctx->wait_mem_number);
-   }
+   if (sctx->wait_mem_scratch_tmz)
+      si_cp_write_data(sctx, sctx->wait_mem_scratch_tmz, 0, 4, V_370_MEM, V_370_ME,
+                       &sctx->wait_mem_number);
 
    if (sctx->chip_class == GFX7) {
       /* Clear the NULL constant buffer, because loads should return zeros.
