@@ -39,6 +39,7 @@ static const struct {
    const char *name;
    int pci_id;
 } name_map[] = {
+   { "lpt", 0x27a2 },
    { "brw", 0x2a02 },
    { "g4x", 0x2a42 },
    { "ilk", 0x0042 },
@@ -80,6 +81,11 @@ gen_device_name_to_pci_device_id(const char *name)
 
    return -1;
 }
+
+static const struct gen_device_info gen_device_info_gen3 = {
+   .gen = 3,
+   .simulator_id = -1,
+};
 
 static const struct gen_device_info gen_device_info_i965 = {
    .gen = 4,
@@ -1255,6 +1261,12 @@ gen_get_device_info_from_pci_id(int pci_id,
       case id: *devinfo = gen_device_info_##family; break;
 #include "pci_ids/i965_pci_ids.h"
 #include "pci_ids/iris_pci_ids.h"
+
+#undef CHIPSET
+#define CHIPSET(id, fam_str, name) \
+      case id: *devinfo = gen_device_info_gen3; break;
+#include "pci_ids/i915_pci_ids.h"
+
    default:
       fprintf(stderr, "Driver does not support the 0x%x PCI ID.\n", pci_id);
       return false;
