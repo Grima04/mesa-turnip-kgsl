@@ -586,14 +586,12 @@ type_size_vec4(const struct glsl_type *type, bool bindless)
 static nir_variable *
 find_layer_in_var(nir_shader *nir)
 {
-	nir_foreach_shader_in_variable(var, nir) {
-		if (var->data.location == VARYING_SLOT_LAYER) {
-			return var;
-		}
-	}
-
 	nir_variable *var =
-		nir_variable_create(nir, nir_var_shader_in, glsl_int_type(), "layer id");
+		nir_find_variable_with_location(nir, nir_var_shader_in, VARYING_SLOT_LAYER);
+	if (var != NULL)
+		return var;
+
+	var = nir_variable_create(nir, nir_var_shader_in, glsl_int_type(), "layer id");
 	var->data.location = VARYING_SLOT_LAYER;
 	var->data.interpolation = INTERP_MODE_FLAT;
 	return var;

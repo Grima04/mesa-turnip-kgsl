@@ -171,6 +171,32 @@ nir_local_variable_create(nir_function_impl *impl,
    return var;
 }
 
+nir_variable *
+nir_find_variable_with_location(nir_shader *shader,
+                                nir_variable_mode mode,
+                                unsigned location)
+{
+   assert(util_bitcount(mode) == 1 && mode != nir_var_function_temp);
+   nir_foreach_variable_with_modes(var, shader, mode) {
+      if (var->data.location == location)
+         return var;
+   }
+   return NULL;
+}
+
+nir_variable *
+nir_find_variable_with_driver_location(nir_shader *shader,
+                                       nir_variable_mode mode,
+                                       unsigned location)
+{
+   assert(util_bitcount(mode) == 1 && mode != nir_var_function_temp);
+   nir_foreach_variable_with_modes(var, shader, mode) {
+      if (var->data.driver_location == location)
+         return var;
+   }
+   return NULL;
+}
+
 nir_function *
 nir_function_create(nir_shader *shader, const char *name)
 {

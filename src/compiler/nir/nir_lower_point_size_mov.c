@@ -71,13 +71,9 @@ nir_lower_point_size_mov(nir_shader *shader,
    assert(shader->info.stage != MESA_SHADER_FRAGMENT &&
           shader->info.stage != MESA_SHADER_COMPUTE);
 
-   nir_variable *out = NULL;
-   nir_foreach_shader_out_variable(var, shader) {
-      if (var->data.location == VARYING_SLOT_PSIZ) {
-         out = var;
-         break;
-      }
-   }
+   nir_variable *out =
+      nir_find_variable_with_location(shader, nir_var_shader_out,
+                                      VARYING_SLOT_PSIZ);
 
    lower_impl(nir_shader_get_entrypoint(shader), pointsize_state_tokens,
               out);

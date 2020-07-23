@@ -1141,11 +1141,8 @@ search_phi_bcsel(nir_ssa_scalar scalar, nir_ssa_scalar *buf, unsigned buf_size, 
 static nir_variable *
 lookup_input(nir_shader *shader, unsigned driver_location)
 {
-   nir_foreach_shader_in_variable(var, shader) {
-      if (driver_location == var->data.driver_location)
-         return var;
-   }
-   return NULL;
+   return nir_find_variable_with_driver_location(shader, nir_var_shader_in,
+                                                 driver_location);
 }
 
 uint32_t

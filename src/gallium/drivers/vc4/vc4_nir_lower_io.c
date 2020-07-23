@@ -239,13 +239,9 @@ vc4_nir_lower_fs_input(struct vc4_compile *c, nir_builder *b,
                 return;
         }
 
-        nir_variable *input_var = NULL;
-        nir_foreach_shader_in_variable(var, c->s) {
-                if (var->data.driver_location == nir_intrinsic_base(intr)) {
-                        input_var = var;
-                        break;
-                }
-        }
+        nir_variable *input_var =
+                nir_find_variable_with_driver_location(c->s, nir_var_shader_in,
+                                                       nir_intrinsic_base(intr));
         assert(input_var);
 
         int comp = nir_intrinsic_component(intr);
@@ -290,13 +286,9 @@ static void
 vc4_nir_lower_output(struct vc4_compile *c, nir_builder *b,
                      nir_intrinsic_instr *intr)
 {
-        nir_variable *output_var = NULL;
-        nir_foreach_shader_out_variable(var, c->s) {
-                if (var->data.driver_location == nir_intrinsic_base(intr)) {
-                        output_var = var;
-                        break;
-                }
-        }
+        nir_variable *output_var =
+                nir_find_variable_with_driver_location(c->s, nir_var_shader_out,
+                                                       nir_intrinsic_base(intr));
         assert(output_var);
 
         if (c->stage == QSTAGE_COORD &&

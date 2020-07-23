@@ -66,18 +66,19 @@ create_input(nir_shader *shader, gl_varying_slot slot,
 static nir_variable *
 create_face_input(nir_shader *shader)
 {
-   nir_foreach_shader_in_variable(var, shader) {
-      if (var->data.location == VARYING_SLOT_FACE)
-         return var;
+   nir_variable *var =
+      nir_find_variable_with_location(shader, nir_var_shader_in,
+                                      VARYING_SLOT_FACE);
+
+   if (var == NULL) {
+      var = nir_variable_create(shader, nir_var_shader_in,
+                                glsl_bool_type(), "gl_FrontFacing");
+
+      var->data.driver_location = shader->num_inputs++;
+      var->data.index = 0;
+      var->data.location = VARYING_SLOT_FACE;
+      var->data.interpolation = INTERP_MODE_FLAT;
    }
-
-   nir_variable *var = nir_variable_create(shader, nir_var_shader_in,
-                                           glsl_bool_type(), "gl_FrontFacing");
-
-   var->data.driver_location = shader->num_inputs++;
-   var->data.index = 0;
-   var->data.location = VARYING_SLOT_FACE;
-   var->data.interpolation = INTERP_MODE_FLAT;
 
    return var;
 }

@@ -273,14 +273,8 @@ iris_fix_edge_flags(nir_shader *nir)
       return false;
    }
 
-   nir_variable *var = NULL;
-   nir_foreach_shader_out_variable(v, nir) {
-      if (v->data.location == VARYING_SLOT_EDGE) {
-         var = v;
-         break;
-      }
-   }
-
+   nir_variable *var = nir_find_variable_with_location(nir, nir_var_shader_out,
+                                                       VARYING_SLOT_EDGE);
    if (!var) {
       nir_shader_preserve_all_metadata(nir);
       return false;

@@ -3308,6 +3308,14 @@ nir_variable *nir_local_variable_create(nir_function_impl *impl,
                                         const struct glsl_type *type,
                                         const char *name);
 
+nir_variable *nir_find_variable_with_location(nir_shader *shader,
+                                              nir_variable_mode mode,
+                                              unsigned location);
+
+nir_variable *nir_find_variable_with_driver_location(nir_shader *shader,
+                                                     nir_variable_mode mode,
+                                                     unsigned location);
+
 /** creates a function and adds it to the shader's list of functions */
 nir_function *nir_function_create(nir_shader *shader, const char *name);
 
