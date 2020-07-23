@@ -1114,10 +1114,12 @@ lower_variables_visitor::visit_enter(ir_assignment *ir)
    if (lhs->type->is_array() &&
        (rhs_var || rhs_const) &&
        (!rhs_var ||
-        var->type->without_array()->is_16bit() !=
-        rhs_var->type->without_array()->is_16bit()) &&
+        (var &&
+         var->type->without_array()->is_16bit() !=
+         rhs_var->type->without_array()->is_16bit())) &&
        (!rhs_const ||
-        (var->type->without_array()->is_16bit() &&
+        (var &&
+         var->type->without_array()->is_16bit() &&
          rhs_const->type->without_array()->is_32bit()))) {
       assert(ir->rhs->type->is_array());
 
@@ -1131,7 +1133,8 @@ lower_variables_visitor::visit_enter(ir_assignment *ir)
       }
 
       /* Fix array assignments from non-lowered to lowered. */
-      if (_mesa_set_search(lower_vars, var) &&
+      if (var &&
+          _mesa_set_search(lower_vars, var) &&
           ir->rhs->type->without_array()->is_32bit()) {
          fix_types_in_deref_chain(lhs);
          /* Convert to 16 bits for LHS. */
@@ -1142,7 +1145,8 @@ lower_variables_visitor::visit_enter(ir_assignment *ir)
    }
 
    /* Fix assignment types. */
-   if (_mesa_set_search(lower_vars, var)) {
+   if (var &&
+       _mesa_set_search(lower_vars, var)) {
       /* Fix the LHS type. */
       if (lhs->type->without_array()->is_32bit())
          fix_types_in_deref_chain(lhs);
@@ -1188,7 +1192,8 @@ lower_variables_visitor::visit_enter(ir_return *ir)
       ir_variable *var = deref->variable_referenced();
 
       /* Fix the type of the return value. */
-      if (_mesa_set_search(lower_vars, var) &&
+      if (var &&
+          _mesa_set_search(lower_vars, var) &&
           deref->type->without_array()->is_32bit()) {
          /* Create a 32-bit temporary variable. */
          ir_variable *new_var =
@@ -1229,6 +1234,7 @@ void lower_variables_visitor::handle_rvalue(ir_rvalue **rvalue)
         expr->operation == ir_unop_u2u) &&
        expr->type->without_array()->is_16bit() &&
        expr_op0_deref->type->without_array()->is_32bit() &&
+       expr_op0_deref->variable_referenced() &&
        _mesa_set_search(lower_vars, expr_op0_deref->variable_referenced())) {
       fix_types_in_deref_chain(expr_op0_deref);
 
@@ -1241,9 +1247,10 @@ void lower_variables_visitor::handle_rvalue(ir_rvalue **rvalue)
 
    if (deref) {
       ir_variable *var = deref->variable_referenced();
-      assert(var);
 
-      if (_mesa_set_search(lower_vars, var) &&
+      /* var can be NULL if we are dereferencing ir_constant. */
+      if (var &&
+          _mesa_set_search(lower_vars, var) &&
           deref->type->without_array()->is_32bit()) {
          fix_types_in_deref_chain(deref);
 
@@ -1270,7 +1277,9 @@ lower_variables_visitor::visit_enter(ir_call *ir)
 
       ir_variable *var = param_deref->variable_referenced();
 
-      if (_mesa_set_search(lower_vars, var) &&
+      /* var can be NULL if we are dereferencing ir_constant. */
+      if (var &&
+          _mesa_set_search(lower_vars, var) &&
           param->type->without_array()->is_32bit()) {
          fix_types_in_deref_chain(param_deref);
 
