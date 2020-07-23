@@ -1068,8 +1068,8 @@ xsi:schemaLocation="http://nouveau.freedesktop.org/ rules-ng.xsd">
 	<reg32 offset="0x0043" name="MH_MMU_PAGE_FAULT"/>
 	<reg32 offset="0x0044" name="MH_MMU_TRAN_ERROR"/>
 	<reg32 offset="0x0045" name="MH_MMU_INVALIDATE">
-		<bitfield name="INVALIDATE_ALL" pos="0"/>
-		<bitfield name="INVALIDATE_TC" pos="1"/>
+		<bitfield name="INVALIDATE_ALL" pos="0" type="boolean"/>
+		<bitfield name="INVALIDATE_TC" pos="1" type="boolean"/>
 	</reg32>
 	<reg32 offset="0x0046" name="MH_MMU_MPU_BASE"/>
 	<reg32 offset="0x0047" name="MH_MMU_MPU_END"/>
@@ -1080,38 +1080,38 @@ xsi:schemaLocation="http://nouveau.freedesktop.org/ rules-ng.xsd">
 	<reg32 offset="0x0398" name="RBBM_PERFCOUNTER1_HI"/>
 	<reg32 offset="0x039b" name="RBBM_DEBUG"/>
 	<reg32 offset="0x039c" name="RBBM_PM_OVERRIDE1">
-		<bitfield name="RBBM_AHBCLK_PM_OVERRIDE" pos="0"/>
-		<bitfield name="SC_REG_SCLK_PM_OVERRIDE" pos="1"/>
-		<bitfield name="SC_SCLK_PM_OVERRIDE" pos="2"/>
-		<bitfield name="SP_TOP_SCLK_PM_OVERRIDE" pos="3"/>
-		<bitfield name="SP_V0_SCLK_PM_OVERRIDE" pos="4"/>
-		<bitfield name="SQ_REG_SCLK_PM_OVERRIDE" pos="5"/>
-		<bitfield name="SQ_REG_FIFOS_SCLK_PM_OVERRIDE" pos="6"/>
-		<bitfield name="SQ_CONST_MEM_SCLK_PM_OVERRIDE" pos="7"/>
-		<bitfield name="SQ_SQ_SCLK_PM_OVERRIDE" pos="8"/>
-		<bitfield name="SX_SCLK_PM_OVERRIDE" pos="9"/>
-		<bitfield name="SX_REG_SCLK_PM_OVERRIDE" pos="10"/>
-		<bitfield name="TCM_TCO_SCLK_PM_OVERRIDE" pos="11"/>
-		<bitfield name="TCM_TCM_SCLK_PM_OVERRIDE" pos="12"/>
-		<bitfield name="TCM_TCD_SCLK_PM_OVERRIDE" pos="13"/>
-		<bitfield name="TCM_REG_SCLK_PM_OVERRIDE" pos="14"/>
-		<bitfield name="TPC_TPC_SCLK_PM_OVERRIDE" pos="15"/>
-		<bitfield name="TPC_REG_SCLK_PM_OVERRIDE" pos="16"/>
-		<bitfield name="TCF_TCA_SCLK_PM_OVERRIDE" pos="17"/>
-		<bitfield name="TCF_TCB_SCLK_PM_OVERRIDE" pos="18"/>
-		<bitfield name="TCF_TCB_READ_SCLK_PM_OVERRIDE" pos="19"/>
-		<bitfield name="TP_TP_SCLK_PM_OVERRIDE" pos="20"/>
-		<bitfield name="TP_REG_SCLK_PM_OVERRIDE" pos="21"/>
-		<bitfield name="CP_G_SCLK_PM_OVERRIDE" pos="22"/>
-		<bitfield name="CP_REG_SCLK_PM_OVERRIDE" pos="23"/>
-		<bitfield name="CP_G_REG_SCLK_PM_OVERRIDE" pos="24"/>
-		<bitfield name="SPI_SCLK_PM_OVERRIDE" pos="25"/>
-		<bitfield name="RB_REG_SCLK_PM_OVERRIDE" pos="26"/>
-		<bitfield name="RB_SCLK_PM_OVERRIDE" pos="27"/>
-		<bitfield name="MH_MH_SCLK_PM_OVERRIDE" pos="28"/>
-		<bitfield name="MH_REG_SCLK_PM_OVERRIDE" pos="29"/>
-		<bitfield name="MH_MMU_SCLK_PM_OVERRIDE" pos="30"/>
-		<bitfield name="MH_TCROQ_SCLK_PM_OVERRIDE" pos="31"/>
+		<bitfield name="RBBM_AHBCLK_PM_OVERRIDE" pos="0" type="boolean"/>
+		<bitfield name="SC_REG_SCLK_PM_OVERRIDE" pos="1" type="boolean"/>
+		<bitfield name="SC_SCLK_PM_OVERRIDE" pos="2" type="boolean"/>
+		<bitfield name="SP_TOP_SCLK_PM_OVERRIDE" pos="3" type="boolean"/>
+		<bitfield name="SP_V0_SCLK_PM_OVERRIDE" pos="4" type="boolean"/>
+		<bitfield name="SQ_REG_SCLK_PM_OVERRIDE" pos="5" type="boolean"/>
+		<bitfield name="SQ_REG_FIFOS_SCLK_PM_OVERRIDE" pos="6" type="boolean"/>
+		<bitfield name="SQ_CONST_MEM_SCLK_PM_OVERRIDE" pos="7" type="boolean"/>
+		<bitfield name="SQ_SQ_SCLK_PM_OVERRIDE" pos="8" type="boolean"/>
+		<bitfield name="SX_SCLK_PM_OVERRIDE" pos="9" type="boolean"/>
+		<bitfield name="SX_REG_SCLK_PM_OVERRIDE" pos="10" type="boolean"/>
+		<bitfield name="TCM_TCO_SCLK_PM_OVERRIDE" pos="11" type="boolean"/>
+		<bitfield name="TCM_TCM_SCLK_PM_OVERRIDE" pos="12" type="boolean"/>
+		<bitfield name="TCM_TCD_SCLK_PM_OVERRIDE" pos="13" type="boolean"/>
+		<bitfield name="TCM_REG_SCLK_PM_OVERRIDE" pos="14" type="boolean"/>
+		<bitfield name="TPC_TPC_SCLK_PM_OVERRIDE" pos="15" type="boolean"/>
+		<bitfield name="TPC_REG_SCLK_PM_OVERRIDE" pos="16" type="boolean"/>
+		<bitfield name="TCF_TCA_SCLK_PM_OVERRIDE" pos="17" type="boolean"/>
+		<bitfield name="TCF_TCB_SCLK_PM_OVERRIDE" pos="18" type="boolean"/>
+		<bitfield name="TCF_TCB_READ_SCLK_PM_OVERRIDE" pos="19" type="boolean"/>
+		<bitfield name="TP_TP_SCLK_PM_OVERRIDE" pos="20" type="boolean"/>
+		<bitfield name="TP_REG_SCLK_PM_OVERRIDE" pos="21" type="boolean"/>
+		<bitfield name="CP_G_SCLK_PM_OVERRIDE" pos="22" type="boolean"/>
+		<bitfield name="CP_REG_SCLK_PM_OVERRIDE" pos="23" type="boolean"/>
+		<bitfield name="CP_G_REG_SCLK_PM_OVERRIDE" pos="24" type="boolean"/>
+		<bitfield name="SPI_SCLK_PM_OVERRIDE" pos="25" type="boolean"/>
+		<bitfield name="RB_REG_SCLK_PM_OVERRIDE" pos="26" type="boolean"/>
+		<bitfield name="RB_SCLK_PM_OVERRIDE" pos="27" type="boolean"/>
+		<bitfield name="MH_MH_SCLK_PM_OVERRIDE" pos="28" type="boolean"/>
+		<bitfield name="MH_REG_SCLK_PM_OVERRIDE" pos="29" type="boolean"/>
+		<bitfield name="MH_MMU_SCLK_PM_OVERRIDE" pos="30" type="boolean"/>
+		<bitfield name="MH_TCROQ_SCLK_PM_OVERRIDE" pos="31" type="boolean"/>
 	</reg32>
 	<reg32 offset="0x039d" name="RBBM_PM_OVERRIDE2"/>
 	<reg32 offset="0x03a0" name="RBBM_DEBUG_OUT"/>

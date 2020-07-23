@@ -360,5 +360,11 @@ xsi:schemaLocation="http://nouveau.freedesktop.org/ rules-ng.xsd">
 	<value name="EVEN_SPACING" value="3"/>
 </enum>
 
+<doc>Address mode for a5xx+</doc>
+<enum name="a5xx_address_mode">
+	<value name="ADDR_32B" value="0"/>
+	<value name="ADDR_64B" value="1"/>
+</enum>
+
 </database>
 

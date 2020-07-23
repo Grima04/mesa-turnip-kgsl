@@ -175,7 +175,7 @@ xsi:schemaLocation="http://nouveau.freedesktop.org/ rules-ng.xsd">
 <bitset name="a6x_cp_protect" inline="yes">
 	<bitfield name="BASE_ADDR" low="0" high="17"/>
 	<bitfield name="MASK_LEN" low="18" high="30"/>
-	<bitfield name="READ" pos="31"/>
+	<bitfield name="READ" pos="31" type="boolean"/>
 </bitset>
 
 <enum name="a6xx_shader_id">
@@ -929,39 +929,39 @@ to upconvert to 32b float internally?
 
 <domain name="A6XX" width="32">
 	<bitset name="A6XX_RBBM_INT_0_MASK" inline="no">
-		<bitfield name="RBBM_GPU_IDLE" pos="0"/>
-		<bitfield name="CP_AHB_ERROR" pos="1"/>
-		<bitfield name="RBBM_ATB_ASYNCFIFO_OVERFLOW" pos="6"/>
-		<bitfield name="RBBM_GPC_ERROR" pos="7"/>
-		<bitfield name="CP_SW" pos="8"/>
-		<bitfield name="CP_HW_ERROR" pos="9"/>
-		<bitfield name="CP_CCU_FLUSH_DEPTH_TS" pos="10"/>
-		<bitfield name="CP_CCU_FLUSH_COLOR_TS" pos="11"/>
-		<bitfield name="CP_CCU_RESOLVE_TS" pos="12"/>
-		<bitfield name="CP_IB2" pos="13"/>
-		<bitfield name="CP_IB1" pos="14"/>
-		<bitfield name="CP_RB" pos="15"/>
-		<bitfield name="CP_RB_DONE_TS" pos="17"/>
-		<bitfield name="CP_WT_DONE_TS" pos="18"/>
-		<bitfield name="CP_CACHE_FLUSH_TS" pos="20"/>
-		<bitfield name="RBBM_ATB_BUS_OVERFLOW" pos="22"/>
-		<bitfield name="RBBM_HANG_DETECT" pos="23"/>
-		<bitfield name="UCHE_OOB_ACCESS" pos="24"/>
-		<bitfield name="UCHE_TRAP_INTR" pos="25"/>
-		<bitfield name="DEBBUS_INTR_0" pos="26"/>
-		<bitfield name="DEBBUS_INTR_1" pos="27"/>
-		<bitfield name="ISDB_CPU_IRQ" pos="30"/>
-		<bitfield name="ISDB_UNDER_DEBUG" pos="31"/>
+		<bitfield name="RBBM_GPU_IDLE" pos="0" type="boolean"/>
+		<bitfield name="CP_AHB_ERROR" pos="1" type="boolean"/>
+		<bitfield name="RBBM_ATB_ASYNCFIFO_OVERFLOW" pos="6" type="boolean"/>
+		<bitfield name="RBBM_GPC_ERROR" pos="7" type="boolean"/>
+		<bitfield name="CP_SW" pos="8" type="boolean"/>
+		<bitfield name="CP_HW_ERROR" pos="9" type="boolean"/>
+		<bitfield name="CP_CCU_FLUSH_DEPTH_TS" pos="10" type="boolean"/>
+		<bitfield name="CP_CCU_FLUSH_COLOR_TS" pos="11" type="boolean"/>
+		<bitfield name="CP_CCU_RESOLVE_TS" pos="12" type="boolean"/>
+		<bitfield name="CP_IB2" pos="13" type="boolean"/>
+		<bitfield name="CP_IB1" pos="14" type="boolean"/>
+		<bitfield name="CP_RB" pos="15" type="boolean"/>
+		<bitfield name="CP_RB_DONE_TS" pos="17" type="boolean"/>
+		<bitfield name="CP_WT_DONE_TS" pos="18" type="boolean"/>
+		<bitfield name="CP_CACHE_FLUSH_TS" pos="20" type="boolean"/>
+		<bitfield name="RBBM_ATB_BUS_OVERFLOW" pos="22" type="boolean"/>
+		<bitfield name="RBBM_HANG_DETECT" pos="23" type="boolean"/>
+		<bitfield name="UCHE_OOB_ACCESS" pos="24" type="boolean"/>
+		<bitfield name="UCHE_TRAP_INTR" pos="25" type="boolean"/>
+		<bitfield name="DEBBUS_INTR_0" pos="26" type="boolean"/>
+		<bitfield name="DEBBUS_INTR_1" pos="27" type="boolean"/>
+		<bitfield name="ISDB_CPU_IRQ" pos="30" type="boolean"/>
+		<bitfield name="ISDB_UNDER_DEBUG" pos="31" type="boolean"/>
 	</bitset>
 
 	<bitset name="A6XX_CP_INT">
-		<bitfield name="CP_OPCODE_ERROR" pos="0"/>
-		<bitfield name="CP_UCODE_ERROR" pos="1"/>
-		<bitfield name="CP_HW_FAULT_ERROR" pos="2"/>
-		<bitfield name="CP_REGISTER_PROTECTION_ERROR" pos="4"/>
-		<bitfield name="CP_AHB_ERROR" pos="5"/>
-		<bitfield name="CP_VSD_PARITY_ERROR" pos="6"/>
-		<bitfield name="CP_ILLEGAL_INSTR_ERROR" pos="7"/>
+		<bitfield name="CP_OPCODE_ERROR" pos="0" type="boolean"/>
+		<bitfield name="CP_UCODE_ERROR" pos="1" type="boolean"/>
+		<bitfield name="CP_HW_FAULT_ERROR" pos="2" type="boolean"/>
+		<bitfield name="CP_REGISTER_PROTECTION_ERROR" pos="4" type="boolean"/>
+		<bitfield name="CP_AHB_ERROR" pos="5" type="boolean"/>
+		<bitfield name="CP_VSD_PARITY_ERROR" pos="6" type="boolean"/>
+		<bitfield name="CP_ILLEGAL_INSTR_ERROR" pos="7" type="boolean"/>
 	</bitset>
 
 	<reg32 offset="0x0800" name="CP_RB_BASE"/>
@@ -1016,7 +1016,7 @@ to upconvert to 32b float internally?
 	</reg32>
 	<reg32 offset="0x08C3" name="CP_MEM_POOL_SIZE"/>
 	<reg32 offset="0x0841" name="CP_CHICKEN_DBG"/>
-	<reg32 offset="0x0842" name="CP_ADDR_MODE_CNTL"/>
+	<reg32 offset="0x0842" name="CP_ADDR_MODE_CNTL" type="a5xx_address_mode"/>
 	<reg32 offset="0x0843" name="CP_DBG_ECO_CNTL"/>
 	<reg32 offset="0x084F" name="CP_PROTECT_CNTL"/>
 
@@ -1095,33 +1095,33 @@ to upconvert to 32b float internally?
 	<reg32 offset="0x098D" name="CP_AHB_CNTL"/>
 	<reg32 offset="0x0A00" name="CP_APERTURE_CNTL_HOST"/>
 	<reg32 offset="0x0A03" name="CP_APERTURE_CNTL_CD"/>
-	<reg32 offset="0x0C01" name="VSC_ADDR_MODE_CNTL"/>
+	<reg32 offset="0x0C01" name="VSC_ADDR_MODE_CNTL" type="a5xx_address_mode"/>
 	<reg32 offset="0x0201" name="RBBM_INT_0_STATUS" type="A6XX_RBBM_INT_0_MASK"/>
 	<reg32 offset="0x0210" name="RBBM_STATUS">
-		<bitfield high="23" low="23" name="GPU_BUSY_IGN_AHB" />
-		<bitfield high="22" low="22" name="GPU_BUSY_IGN_AHB_CP" />
-		<bitfield high="21" low="21" name="HLSQ_BUSY" />
-		<bitfield high="20" low="20" name="VSC_BUSY" />
-		<bitfield high="19" low="19" name="TPL1_BUSY" />
-		<bitfield high="18" low="18" name="SP_BUSY" />
-		<bitfield high="17" low="17" name="UCHE_BUSY" />
-		<bitfield high="16" low="16" name="VPC_BUSY" />
-		<bitfield high="15" low="15" name="VFD_BUSY" />
-		<bitfield high="14" low="14" name="TESS_BUSY" />
-		<bitfield high="13" low="13" name="PC_VSD_BUSY" />
-		<bitfield high="12" low="12" name="PC_DCALL_BUSY" />
-		<bitfield high="11" low="11" name="COM_DCOM_BUSY" />
-		<bitfield high="10" low="10" name="LRZ_BUSY" />
-		<bitfield high="9" low="9" name="A2D_BUSY" />
-		<bitfield high="8" low="8" name="CCU_BUSY" />
-		<bitfield high="7" low="7" name="RB_BUSY" />
-		<bitfield high="6" low="6" name="RAS_BUSY" />
-		<bitfield high="5" low="5" name="TSE_BUSY" />
-		<bitfield high="4" low="4" name="VBIF_BUSY" />
-		<bitfield high="3" low="3" name="GFX_DBGC_BUSY" />
-		<bitfield high="2" low="2" name="CP_BUSY" />
-		<bitfield high="1" low="1" name="CP_AHB_BUSY_CP_MASTER" />
-		<bitfield high="0" low="0" name="CP_AHB_BUSY_CX_MASTER"/>
+		<bitfield pos="23" name="GPU_BUSY_IGN_AHB" type="boolean"/>
+		<bitfield pos="22" name="GPU_BUSY_IGN_AHB_CP" type="boolean"/>
+		<bitfield pos="21" name="HLSQ_BUSY" type="boolean"/>
+		<bitfield pos="20" name="VSC_BUSY" type="boolean"/>
+		<bitfield pos="19" name="TPL1_BUSY" type="boolean"/>
+		<bitfield pos="18" name="SP_BUSY" type="boolean"/>
+		<bitfield pos="17" name="UCHE_BUSY" type="boolean"/>
+		<bitfield pos="16" name="VPC_BUSY" type="boolean"/>
+		<bitfield pos="15" name="VFD_BUSY" type="boolean"/>
+		<bitfield pos="14" name="TESS_BUSY" type="boolean"/>
+		<bitfield pos="13" name="PC_VSD_BUSY" type="boolean"/>
+		<bitfield pos="12" name="PC_DCALL_BUSY" type="boolean"/>
+		<bitfield pos="11" name="COM_DCOM_BUSY" type="boolean"/>
+		<bitfield pos="10" name="LRZ_BUSY" type="boolean"/>
+		<bitfield pos="9"  name="A2D_BUSY" type="boolean"/>
+		<bitfield pos="8"  name="CCU_BUSY" type="boolean"/>
+		<bitfield pos="7"  name="RB_BUSY" type="boolean"/>
+		<bitfield pos="6"  name="RAS_BUSY" type="boolean"/>
+		<bitfield pos="5"  name="TSE_BUSY" type="boolean"/>
+		<bitfield pos="4"  name="VBIF_BUSY" type="boolean"/>
+		<bitfield pos="3"  name="GFX_DBGC_BUSY" type="boolean"/>
+		<bitfield pos="2"  name="CP_BUSY" type="boolean"/>
+		<bitfield pos="1"  name="CP_AHB_BUSY_CP_MASTER" type="boolean"/>
+		<bitfield pos="0"  name="CP_AHB_BUSY_CX_MASTER" type="boolean"/>
 	</reg32>
 	<reg32 offset="0x0213" name="RBBM_STATUS3">
 		<bitfield pos="24" name="SMMU_STALLED_ON_FAULT" type="boolean"/>
@@ -1425,7 +1425,7 @@ to upconvert to 32b float internally?
 	<reg32 offset="0xF801" name="RBBM_SECVID_TSB_TRUSTED_BASE_HI"/>
 	<reg32 offset="0xF802" name="RBBM_SECVID_TSB_TRUSTED_SIZE"/>
 	<reg32 offset="0xF803" name="RBBM_SECVID_TSB_CNTL"/>
-	<reg32 offset="0xF810" name="RBBM_SECVID_TSB_ADDR_MODE_CNTL"/>
+	<reg32 offset="0xF810" name="RBBM_SECVID_TSB_ADDR_MODE_CNTL" type="a5xx_address_mode"/>
 	<reg32 offset="0x00010" name="RBBM_VBIF_CLIENT_QOS_CNTL"/>
 	<reg32 offset="0x00011" name="RBBM_GBIF_CLIENT_QOS_CNTL"/>
 	<reg32 offset="0x0001c" name="RBBM_WAIT_FOR_GPU_IDLE_CMD">
@@ -1545,6 +1545,11 @@ to upconvert to 32b float internally?
 	<reg32 offset="0x0011a" name="RBBM_CLOCK_HYST_GMU_GX"/>
 	<reg32 offset="0x0011b" name="RBBM_CLOCK_MODE_HLSQ"/>
 	<reg32 offset="0x0011c" name="RBBM_CLOCK_DELAY_HLSQ"/>
+	<reg32 offset="0x0011d" name="RBBM_CLOCK_HYST_HLSQ"/>
+	<reg32 offset="0x00120" name="RBBM_CLOCK_CNTL_TEX_FCHE"/>
+	<reg32 offset="0x00121" name="RBBM_CLOCK_DELAY_TEX_FCHE"/>
+	<reg32 offset="0x00122" name="RBBM_CLOCK_HYST_TEX_FCHE"/>
+
 	<reg32 offset="0x0600" name="DBGC_CFG_DBGBUS_SEL_A"/>
 	<reg32 offset="0x0601" name="DBGC_CFG_DBGBUS_SEL_B"/>
 	<reg32 offset="0x0602" name="DBGC_CFG_DBGBUS_SEL_C"/>
@@ -1592,7 +1597,7 @@ to upconvert to 32b float internally?
 	<reg32 offset="0x0630" name="DBGC_CFG_DBGBUS_TRACE_BUF2"/>
 	<reg32 offset="0x0CD8" name="VSC_PERFCTR_VSC_SEL_0"/>
 	<reg32 offset="0x0CD9" name="VSC_PERFCTR_VSC_SEL_1"/>
-	<reg32 offset="0xBE05" name="HLSQ_ADDR_MODE_CNTL"/>
+	<reg32 offset="0xBE05" name="HLSQ_ADDR_MODE_CNTL" type="a5xx_address_mode"/>
 	<reg32 offset="0xBE10" name="HLSQ_PERFCTR_HLSQ_SEL_0"/>
 	<reg32 offset="0xBE11" name="HLSQ_PERFCTR_HLSQ_SEL_1"/>
 	<reg32 offset="0xBE12" name="HLSQ_PERFCTR_HLSQ_SEL_2"/>
@@ -1601,7 +1606,7 @@ to upconvert to 32b float internally?
 	<reg32 offset="0xBE15" name="HLSQ_PERFCTR_HLSQ_SEL_5"/>
 	<reg32 offset="0xC800" name="HLSQ_DBG_AHB_READ_APERTURE"/>
 	<reg32 offset="0xD000" name="HLSQ_DBG_READ_SEL"/>
-	<reg32 offset="0xA601" name="VFD_ADDR_MODE_CNTL"/>
+	<reg32 offset="0xA601" name="VFD_ADDR_MODE_CNTL" type="a5xx_address_mode"/>
 	<reg32 offset="0xA610" name="VFD_PERFCTR_VFD_SEL_0"/>
 	<reg32 offset="0xA611" name="VFD_PERFCTR_VFD_SEL_1"/>
 	<reg32 offset="0xA612" name="VFD_PERFCTR_VFD_SEL_2"/>
@@ -1610,7 +1615,7 @@ to upconvert to 32b float internally?
 	<reg32 offset="0xA615" name="VFD_PERFCTR_VFD_SEL_5"/>
 	<reg32 offset="0xA616" name="VFD_PERFCTR_VFD_SEL_6"/>
 	<reg32 offset="0xA617" name="VFD_PERFCTR_VFD_SEL_7"/>
-	<reg32 offset="0x0E00" name="UCHE_ADDR_MODE_CNTL"/>
+	<reg32 offset="0x0E00" name="UCHE_ADDR_MODE_CNTL" type="a5xx_address_mode"/>
 	<reg32 offset="0x0E01" name="UCHE_MODE_CNTL"/>
 	<reg32 offset="0x0E05" name="UCHE_WRITE_RANGE_MAX_LO"/>
 	<reg32 offset="0x0E06" name="UCHE_WRITE_RANGE_MAX_HI"/>
@@ -1639,7 +1644,7 @@ to upconvert to 32b float internally?
 	<reg32 offset="0x0E25" name="UCHE_PERFCTR_UCHE_SEL_9"/>
 	<reg32 offset="0x0E26" name="UCHE_PERFCTR_UCHE_SEL_10"/>
 	<reg32 offset="0x0E27" name="UCHE_PERFCTR_UCHE_SEL_11"/>
-	<reg32 offset="0xAE01" name="SP_ADDR_MODE_CNTL"/>
+	<reg32 offset="0xAE01" name="SP_ADDR_MODE_CNTL" type="a5xx_address_mode"/>
 	<reg32 offset="0xAE02" name="SP_NC_MODE_CNTL"/>
 	<reg32 offset="0xAE10" name="SP_PERFCTR_SP_SEL_0"/>
 	<reg32 offset="0xAE11" name="SP_PERFCTR_SP_SEL_1"/>
@@ -1665,7 +1670,7 @@ to upconvert to 32b float internally?
 	<reg32 offset="0xAE25" name="SP_PERFCTR_SP_SEL_21"/>
 	<reg32 offset="0xAE26" name="SP_PERFCTR_SP_SEL_22"/>
 	<reg32 offset="0xAE27" name="SP_PERFCTR_SP_SEL_23"/>
-	<reg32 offset="0xB601" name="TPL1_ADDR_MODE_CNTL"/>
+	<reg32 offset="0xB601" name="TPL1_ADDR_MODE_CNTL" type="a5xx_address_mode"/>
 	<reg32 offset="0xB604" name="TPL1_NC_MODE_CNTL"/>
 	<reg32 offset="0xB608" name="TPL1_BICUBIC_WEIGHTS_TABLE_0"/>
 	<reg32 offset="0xB609" name="TPL1_BICUBIC_WEIGHTS_TABLE_1"/>
@@ -1686,7 +1691,7 @@ to upconvert to 32b float internally?
 	<reg32 offset="0xB61B" name="TPL1_PERFCTR_TP_SEL_11"/>
 	<reg32 offset="0x3000" name="VBIF_VERSION"/>
 	<reg32 offset="0x3001" name="VBIF_CLKON">
-		<bitfield pos="1" name="FORCE_ON_TESTBUS"/>
+		<bitfield pos="1" name="FORCE_ON_TESTBUS" type="boolean"/>
 	</reg32>
 	<reg32 offset="0x302A" name="VBIF_GATE_OFF_WRREQ_EN"/>
 	<reg32 offset="0x3080" name="VBIF_XIN_HALT_CTRL0"/>
@@ -2116,7 +2121,7 @@ to upconvert to 32b float internally?
 
 	<!-- always 0x880 ? (and 0 in a640/a650 traces?) -->
 	<reg32 offset="0x8600" name="GRAS_UNKNOWN_8600" low="0" high="12" />
-	<reg32 offset="0x8601" name="GRAS_ADDR_MODE_CNTL" pos="0" type="boolean"/>
+	<reg32 offset="0x8601" name="GRAS_ADDR_MODE_CNTL" pos="0" type="a5xx_address_mode"/>
 	<reg32 offset="0x8610" name="GRAS_PERFCTR_TSE_SEL_0"/>
 	<reg32 offset="0x8611" name="GRAS_PERFCTR_TSE_SEL_1"/>
 	<reg32 offset="0x8612" name="GRAS_PERFCTR_TSE_SEL_2"/>
@@ -2560,7 +2565,7 @@ to upconvert to 32b float internally?
 	<reg32 offset="0x8e01" name="RB_UNKNOWN_8E01"/>
 	<!-- 0x8e00-0x8e03 invalid -->
 	<reg32 offset="0x8e04" name="RB_UNKNOWN_8E04"/> <!-- TODO: valid mask 0xfffffeff -->
-	<reg32 offset="0x8e05" name="RB_ADDR_MODE_CNTL" pos="0" type="boolean"/>
+	<reg32 offset="0x8e05" name="RB_ADDR_MODE_CNTL" pos="0" type="a5xx_address_mode"/>
 	<!-- 0x8e06 invalid -->
 	<reg32 offset="0x8e07" name="RB_CCU_CNTL">
 		<!-- offset into GMEM for something.
@@ -2744,7 +2749,7 @@ to upconvert to 32b float internally?
 
 	<!-- TODO: 0x9600-0x97ff range -->
 	<reg32 offset="0x9600" name="VPC_UNKNOWN_9600"/> <!-- always 0x0 ? TODO: 0x1fbf37ff valid mask -->
-	<reg32 offset="0x9601" name="VPC_ADDR_MODE_CNTL" pos="0" type="boolean"/>
+	<reg32 offset="0x9601" name="VPC_ADDR_MODE_CNTL" pos="0" type="a5xx_address_mode"/>
 	<reg32 offset="0x9602" name="VPC_UNKNOWN_9602" pos="0"/> <!-- always 0x0 ? -->
 	<reg32 offset="0x9603" name="VPC_UNKNOWN_9603" low="0" high="26"/>
 	<reg32 offset="0x9604" name="VPC_PERFCTR_VPC_SEL_0"/>
@@ -2873,7 +2878,7 @@ to upconvert to 32b float internally?
 	<!-- 0x9c01-0x9dff invalid -->
 	<!-- TODO: 0x9e00-0xa000 range incomplete -->
 	<reg32 offset="0x9e00" name="PC_DBG_ECO_CNTL"/>
-	<reg32 offset="0x9e01" name="PC_ADDR_MODE_CNTL"/>
+	<reg32 offset="0x9e01" name="PC_ADDR_MODE_CNTL" type="a5xx_address_mode"/>
 	<reg32 offset="0x9e08" name="PC_TESSFACTOR_ADDR_LO"/>
 	<reg32 offset="0x9e09" name="PC_TESSFACTOR_ADDR_HI"/>
 	<reg32 offset="0x9e08" name="PC_TESSFACTOR_ADDR" type="waddress" align="32"/>
@@ -2884,8 +2889,8 @@ to upconvert to 32b float internally?
 		<bitfield name="VSC_SIZE" low="16" high="21" type="uint"/>
 		<bitfield name="VSC_N" low="22" high="26" type="uint"/>
 	</reg32>
-	<reg32 offset="0x9e12" name="PC_BIN_DATA_ADDR2" type="waddress" align="32"/>
-	<reg32 offset="0x9e14" name="PC_BIN_DATA_ADDR" type="waddress" align="32"/>
+	<reg64 offset="0x9e12" name="PC_BIN_PRIM_STRM" type="waddress" align="32"/>
+	<reg64 offset="0x9e14" name="PC_BIN_DRAW_STRM" type="waddress" align="32"/>
 
 	<reg32 offset="0x9e34" name="PC_PERFCTR_PC_SEL_0"/>
 	<reg32 offset="0x9e35" name="PC_PERFCTR_PC_SEL_1"/>

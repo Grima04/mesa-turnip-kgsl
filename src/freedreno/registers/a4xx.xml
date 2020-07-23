@@ -1401,30 +1401,30 @@ perhaps they should be taken with a grain of salt
 		<reg32 offset="0x0" name="REG"/>
 	</array>
 	<bitset name="A4XX_INT0">
-		<bitfield name="RBBM_GPU_IDLE" pos="0"/>
-		<bitfield name="RBBM_AHB_ERROR" pos="1"/>
-		<bitfield name="RBBM_REG_TIMEOUT" pos="2"/>
-		<bitfield name="RBBM_ME_MS_TIMEOUT" pos="3"/>
-		<bitfield name="RBBM_PFP_MS_TIMEOUT" pos="4"/>
-		<bitfield name="RBBM_ATB_BUS_OVERFLOW" pos="5"/>
-		<bitfield name="VFD_ERROR" pos="6"/>
-		<bitfield name="CP_SW_INT" pos="7"/>
-		<bitfield name="CP_T0_PACKET_IN_IB" pos="8"/>
-		<bitfield name="CP_OPCODE_ERROR" pos="9"/>
-		<bitfield name="CP_RESERVED_BIT_ERROR" pos="10"/>
-		<bitfield name="CP_HW_FAULT" pos="11"/>
-		<bitfield name="CP_DMA" pos="12"/>
-		<bitfield name="CP_IB2_INT" pos="13"/>
-		<bitfield name="CP_IB1_INT" pos="14"/>
-		<bitfield name="CP_RB_INT" pos="15"/>
-		<bitfield name="CP_REG_PROTECT_FAULT" pos="16"/>
-		<bitfield name="CP_RB_DONE_TS" pos="17"/>
-		<bitfield name="CP_VS_DONE_TS" pos="18"/>
-		<bitfield name="CP_PS_DONE_TS" pos="19"/>
-		<bitfield name="CACHE_FLUSH_TS" pos="20"/>
-		<bitfield name="CP_AHB_ERROR_HALT" pos="21"/>
-		<bitfield name="MISC_HANG_DETECT" pos="24"/>
-		<bitfield name="UCHE_OOB_ACCESS" pos="25"/>
+		<bitfield name="RBBM_GPU_IDLE" pos="0" type="boolean"/>
+		<bitfield name="RBBM_AHB_ERROR" pos="1" type="boolean"/>
+		<bitfield name="RBBM_REG_TIMEOUT" pos="2" type="boolean"/>
+		<bitfield name="RBBM_ME_MS_TIMEOUT" pos="3" type="boolean"/>
+		<bitfield name="RBBM_PFP_MS_TIMEOUT" pos="4" type="boolean"/>
+		<bitfield name="RBBM_ATB_BUS_OVERFLOW" pos="5" type="boolean"/>
+		<bitfield name="VFD_ERROR" pos="6" type="boolean"/>
+		<bitfield name="CP_SW_INT" pos="7" type="boolean"/>
+		<bitfield name="CP_T0_PACKET_IN_IB" pos="8" type="boolean"/>
+		<bitfield name="CP_OPCODE_ERROR" pos="9" type="boolean"/>
+		<bitfield name="CP_RESERVED_BIT_ERROR" pos="10" type="boolean"/>
+		<bitfield name="CP_HW_FAULT" pos="11" type="boolean"/>
+		<bitfield name="CP_DMA" pos="12" type="boolean"/>
+		<bitfield name="CP_IB2_INT" pos="13" type="boolean"/>
+		<bitfield name="CP_IB1_INT" pos="14" type="boolean"/>
+		<bitfield name="CP_RB_INT" pos="15" type="boolean"/>
+		<bitfield name="CP_REG_PROTECT_FAULT" pos="16" type="boolean"/>
+		<bitfield name="CP_RB_DONE_TS" pos="17" type="boolean"/>
+		<bitfield name="CP_VS_DONE_TS" pos="18" type="boolean"/>
+		<bitfield name="CP_PS_DONE_TS" pos="19" type="boolean"/>
+		<bitfield name="CACHE_FLUSH_TS" pos="20" type="boolean"/>
+		<bitfield name="CP_AHB_ERROR_HALT" pos="21" type="boolean"/>
+		<bitfield name="MISC_HANG_DETECT" pos="24" type="boolean"/>
+		<bitfield name="UCHE_OOB_ACCESS" pos="25" type="boolean"/>
 	</bitset>
 
 	<reg32 offset="0x0099" name="RBBM_SP_REGFILE_SLEEP_CNTL_0"/>
@@ -2066,8 +2066,8 @@ perhaps they should be taken with a grain of salt
 	<bitset name="a4xx_xs_control_reg" inline="yes">
 		<bitfield name="CONSTLENGTH" low="0" high="7" type="uint"/>
 		<bitfield name="CONSTOBJECTOFFSET" low="8" high="14" type="uint"/>
-		<bitfield name="SSBO_ENABLE" pos="15"/>
-		<bitfield name="ENABLED" pos="16"/>
+		<bitfield name="SSBO_ENABLE" pos="15" type="boolean"/>
+		<bitfield name="ENABLED" pos="16" type="boolean"/>
 		<bitfield name="SHADEROBJOFFSET" low="17" high="23" type="uint"/>
 		<bitfield name="INSTRLENGTH" low="24" high="31" type="uint"/>
 	</bitset>

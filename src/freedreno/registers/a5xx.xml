@@ -814,48 +814,48 @@ xsi:schemaLocation="http://nouveau.freedesktop.org/ rules-ng.xsd">
 
 <domain name="A5XX" width="32">
 	<bitset name="A5XX_INT0">
-		<bitfield name="RBBM_GPU_IDLE" pos="0"/>
-		<bitfield name="RBBM_AHB_ERROR" pos="1"/>
-		<bitfield name="RBBM_TRANSFER_TIMEOUT" pos="2"/>
-		<bitfield name="RBBM_ME_MS_TIMEOUT" pos="3"/>
-		<bitfield name="RBBM_PFP_MS_TIMEOUT" pos="4"/>
-		<bitfield name="RBBM_ETS_MS_TIMEOUT" pos="5"/>
-		<bitfield name="RBBM_ATB_ASYNC_OVERFLOW" pos="6"/>
-		<bitfield name="RBBM_GPC_ERROR" pos="7"/>
-		<bitfield name="CP_SW" pos="8"/>
-		<bitfield name="CP_HW_ERROR" pos="9"/>
-		<bitfield name="CP_CCU_FLUSH_DEPTH_TS" pos="10"/>
-		<bitfield name="CP_CCU_FLUSH_COLOR_TS" pos="11"/>
-		<bitfield name="CP_CCU_RESOLVE_TS" pos="12"/>
-		<bitfield name="CP_IB2" pos="13"/>
-		<bitfield name="CP_IB1" pos="14"/>
-		<bitfield name="CP_RB" pos="15"/>
-		<bitfield name="CP_UNUSED_1" pos="16"/>
-		<bitfield name="CP_RB_DONE_TS" pos="17"/>
-		<bitfield name="CP_WT_DONE_TS" pos="18"/>
-		<bitfield name="UNKNOWN_1" pos="19"/>
-		<bitfield name="CP_CACHE_FLUSH_TS" pos="20"/>
-		<bitfield name="UNUSED_2" pos="21"/>
-		<bitfield name="RBBM_ATB_BUS_OVERFLOW" pos="22"/>
-		<bitfield name="MISC_HANG_DETECT" pos="23"/>
-		<bitfield name="UCHE_OOB_ACCESS" pos="24"/>
-		<bitfield name="UCHE_TRAP_INTR" pos="25"/>
-		<bitfield name="DEBBUS_INTR_0" pos="26"/>
-		<bitfield name="DEBBUS_INTR_1" pos="27"/>
-		<bitfield name="GPMU_VOLTAGE_DROOP" pos="28"/>
-		<bitfield name="GPMU_FIRMWARE" pos="29"/>
-		<bitfield name="ISDB_CPU_IRQ" pos="30"/>
-		<bitfield name="ISDB_UNDER_DEBUG" pos="31"/>
+		<bitfield name="RBBM_GPU_IDLE" pos="0" type="boolean"/>
+		<bitfield name="RBBM_AHB_ERROR" pos="1" type="boolean"/>
+		<bitfield name="RBBM_TRANSFER_TIMEOUT" pos="2" type="boolean"/>
+		<bitfield name="RBBM_ME_MS_TIMEOUT" pos="3" type="boolean"/>
+		<bitfield name="RBBM_PFP_MS_TIMEOUT" pos="4" type="boolean"/>
+		<bitfield name="RBBM_ETS_MS_TIMEOUT" pos="5" type="boolean"/>
+		<bitfield name="RBBM_ATB_ASYNC_OVERFLOW" pos="6" type="boolean"/>
+		<bitfield name="RBBM_GPC_ERROR" pos="7" type="boolean"/>
+		<bitfield name="CP_SW" pos="8" type="boolean"/>
+		<bitfield name="CP_HW_ERROR" pos="9" type="boolean"/>
+		<bitfield name="CP_CCU_FLUSH_DEPTH_TS" pos="10" type="boolean"/>
+		<bitfield name="CP_CCU_FLUSH_COLOR_TS" pos="11" type="boolean"/>
+		<bitfield name="CP_CCU_RESOLVE_TS" pos="12" type="boolean"/>
+		<bitfield name="CP_IB2" pos="13" type="boolean"/>
+		<bitfield name="CP_IB1" pos="14" type="boolean"/>
+		<bitfield name="CP_RB" pos="15" type="boolean"/>
+		<bitfield name="CP_UNUSED_1" pos="16" type="boolean"/>
+		<bitfield name="CP_RB_DONE_TS" pos="17" type="boolean"/>
+		<bitfield name="CP_WT_DONE_TS" pos="18" type="boolean"/>
+		<bitfield name="UNKNOWN_1" pos="19" type="boolean"/>
+		<bitfield name="CP_CACHE_FLUSH_TS" pos="20" type="boolean"/>
+		<bitfield name="UNUSED_2" pos="21" type="boolean"/>
+		<bitfield name="RBBM_ATB_BUS_OVERFLOW" pos="22" type="boolean"/>
+		<bitfield name="MISC_HANG_DETECT" pos="23" type="boolean"/>
+		<bitfield name="UCHE_OOB_ACCESS" pos="24" type="boolean"/>
+		<bitfield name="UCHE_TRAP_INTR" pos="25" type="boolean"/>
+		<bitfield name="DEBBUS_INTR_0" pos="26" type="boolean"/>
+		<bitfield name="DEBBUS_INTR_1" pos="27" type="boolean"/>
+		<bitfield name="GPMU_VOLTAGE_DROOP" pos="28" type="boolean"/>
+		<bitfield name="GPMU_FIRMWARE" pos="29" type="boolean"/>
+		<bitfield name="ISDB_CPU_IRQ" pos="30" type="boolean"/>
+		<bitfield name="ISDB_UNDER_DEBUG" pos="31" type="boolean"/>
 	</bitset>
 
 	<!-- CP Interrupt bits -->
 	<bitset name="A5XX_CP_INT">
-		<bitfield name="CP_OPCODE_ERROR" pos="0"/>
-		<bitfield name="CP_RESERVED_BIT_ERROR" pos="1"/>
-		<bitfield name="CP_HW_FAULT_ERROR" pos="2"/>
-		<bitfield name="CP_DMA_ERROR" pos="3"/>
-		<bitfield name="CP_REGISTER_PROTECTION_ERROR" pos="4"/>
-		<bitfield name="CP_AHB_ERROR" pos="5"/>
+		<bitfield name="CP_OPCODE_ERROR" pos="0" type="boolean"/>
+		<bitfield name="CP_RESERVED_BIT_ERROR" pos="1" type="boolean"/>
+		<bitfield name="CP_HW_FAULT_ERROR" pos="2" type="boolean"/>
+		<bitfield name="CP_DMA_ERROR" pos="3" type="boolean"/>
+		<bitfield name="CP_REGISTER_PROTECTION_ERROR" pos="4" type="boolean"/>
+		<bitfield name="CP_AHB_ERROR" pos="5" type="boolean"/>
 	</bitset>
 
 	<!-- CP registers -->
@@ -906,7 +906,7 @@ xsi:schemaLocation="http://nouveau.freedesktop.org/ rules-ng.xsd">
 	<reg32 offset="0x083f" name="CP_CONTEXT_SWITCH_SAVE_ADDR_HI"/>
 	<reg32 offset="0x0840" name="CP_CONTEXT_SWITCH_SMMU_INFO_LO"/>
 	<reg32 offset="0x0841" name="CP_CONTEXT_SWITCH_SMMU_INFO_HI"/>
-	<reg32 offset="0x0860" name="CP_ADDR_MODE_CNTL"/>
+	<reg32 offset="0x0860" name="CP_ADDR_MODE_CNTL" type="a5xx_address_mode"/>
 	<reg32 offset="0x0b14" name="CP_ME_STAT_DATA"/>
 	<reg32 offset="0x0b15" name="CP_WFI_PEND_CTR"/>
 	<reg32 offset="0x0b18" name="CP_INTERRUPT_STATUS"/>
@@ -934,7 +934,7 @@ xsi:schemaLocation="http://nouveau.freedesktop.org/ rules-ng.xsd">
 	<reg32 offset="0x0bb5" name="CP_PERFCTR_CP_SEL_5" type="a5xx_cp_perfcounter_select"/>
 	<reg32 offset="0x0bb6" name="CP_PERFCTR_CP_SEL_6" type="a5xx_cp_perfcounter_select"/>
 	<reg32 offset="0x0bb7" name="CP_PERFCTR_CP_SEL_7" type="a5xx_cp_perfcounter_select"/>
-	<reg32 offset="0x0bc1" name="VSC_ADDR_MODE_CNTL"/>
+	<reg32 offset="0x0bc1" name="VSC_ADDR_MODE_CNTL" type="a5xx_address_mode"/>
 	<reg32 offset="0x0bba" name="CP_POWERCTR_CP_SEL_0"/>
 	<reg32 offset="0x0bbb" name="CP_POWERCTR_CP_SEL_1"/>
 	<reg32 offset="0x0bbc" name="CP_POWERCTR_CP_SEL_2"/>
@@ -984,35 +984,35 @@ xsi:schemaLocation="http://nouveau.freedesktop.org/ rules-ng.xsd">
 	<reg32 offset="0x002f" name="RBBM_INTERFACE_HANG_INT_CNTL"/>
 	<reg32 offset="0x0037" name="RBBM_INT_CLEAR_CMD"/>
 	<reg32 offset="0x0038" name="RBBM_INT_0_MASK">
-		<bitfield name="RBBM_GPU_IDLE" pos="0"/>
-		<bitfield name="RBBM_AHB_ERROR" pos="1"/>
-		<bitfield name="RBBM_TRANSFER_TIMEOUT" pos="2"/>
-		<bitfield name="RBBM_ME_MS_TIMEOUT" pos="3"/>
-		<bitfield name="RBBM_PFP_MS_TIMEOUT" pos="4"/>
-		<bitfield name="RBBM_ETS_MS_TIMEOUT" pos="5"/>
-		<bitfield name="RBBM_ATB_ASYNC_OVERFLOW" pos="6"/>
-		<bitfield name="RBBM_GPC_ERROR" pos="7"/>
-		<bitfield name="CP_SW" pos="8"/>
-		<bitfield name="CP_HW_ERROR" pos="9"/>
-		<bitfield name="CP_CCU_FLUSH_DEPTH_TS" pos="10"/>
-		<bitfield name="CP_CCU_FLUSH_COLOR_TS" pos="11"/>
-		<bitfield name="CP_CCU_RESOLVE_TS" pos="12"/>
-		<bitfield name="CP_IB2" pos="13"/>
-		<bitfield name="CP_IB1" pos="14"/>
-		<bitfield name="CP_RB" pos="15"/>
-		<bitfield name="CP_RB_DONE_TS" pos="17"/>
-		<bitfield name="CP_WT_DONE_TS" pos="18"/>
-		<bitfield name="CP_CACHE_FLUSH_TS" pos="20"/>
-		<bitfield name="RBBM_ATB_BUS_OVERFLOW" pos="22"/>
-		<bitfield name="MISC_HANG_DETECT" pos="23"/>
-		<bitfield name="UCHE_OOB_ACCESS" pos="24"/>
-		<bitfield name="UCHE_TRAP_INTR" pos="25"/>
-		<bitfield name="DEBBUS_INTR_0" pos="26"/>
-		<bitfield name="DEBBUS_INTR_1" pos="27"/>
-		<bitfield name="GPMU_VOLTAGE_DROOP" pos="28"/>
-		<bitfield name="GPMU_FIRMWARE" pos="29"/>
-		<bitfield name="ISDB_CPU_IRQ" pos="30"/>
-		<bitfield name="ISDB_UNDER_DEBUG" pos="31"/>
+		<bitfield name="RBBM_GPU_IDLE" pos="0" type="boolean"/>
+		<bitfield name="RBBM_AHB_ERROR" pos="1" type="boolean"/>
+		<bitfield name="RBBM_TRANSFER_TIMEOUT" pos="2" type="boolean"/>
+		<bitfield name="RBBM_ME_MS_TIMEOUT" pos="3" type="boolean"/>
+		<bitfield name="RBBM_PFP_MS_TIMEOUT" pos="4" type="boolean"/>
+		<bitfield name="RBBM_ETS_MS_TIMEOUT" pos="5" type="boolean"/>
+		<bitfield name="RBBM_ATB_ASYNC_OVERFLOW" pos="6" type="boolean"/>
+		<bitfield name="RBBM_GPC_ERROR" pos="7" type="boolean"/>
+		<bitfield name="CP_SW" pos="8" type="boolean"/>
+		<bitfield name="CP_HW_ERROR" pos="9" type="boolean"/>
+		<bitfield name="CP_CCU_FLUSH_DEPTH_TS" pos="10" type="boolean"/>
+		<bitfield name="CP_CCU_FLUSH_COLOR_TS" pos="11" type="boolean"/>
+		<bitfield name="CP_CCU_RESOLVE_TS" pos="12" type="boolean"/>
+		<bitfield name="CP_IB2" pos="13" type="boolean"/>
+		<bitfield name="CP_IB1" pos="14" type="boolean"/>
+		<bitfield name="CP_RB" pos="15" type="boolean"/>
+		<bitfield name="CP_RB_DONE_TS" pos="17" type="boolean"/>
+		<bitfield name="CP_WT_DONE_TS" pos="18" type="boolean"/>
+		<bitfield name="CP_CACHE_FLUSH_TS" pos="20" type="boolean"/>
+		<bitfield name="RBBM_ATB_BUS_OVERFLOW" pos="22" type="boolean"/>
+		<bitfield name="MISC_HANG_DETECT" pos="23" type="boolean"/>
+		<bitfield name="UCHE_OOB_ACCESS" pos="24" type="boolean"/>
+		<bitfield name="UCHE_TRAP_INTR" pos="25" type="boolean"/>
+		<bitfield name="DEBBUS_INTR_0" pos="26" type="boolean"/>
+		<bitfield name="DEBBUS_INTR_1" pos="27" type="boolean"/>
+		<bitfield name="GPMU_VOLTAGE_DROOP" pos="28" type="boolean"/>
+		<bitfield name="GPMU_FIRMWARE" pos="29" type="boolean"/>
+		<bitfield name="ISDB_CPU_IRQ" pos="30" type="boolean"/>
+		<bitfield name="ISDB_UNDER_DEBUG" pos="31" type="boolean"/>
 	</reg32>
 	<reg32 offset="0x003f" name="RBBM_AHB_DBG_CNTL"/>
 	<reg32 offset="0x0041" name="RBBM_EXT_VBIF_DBG_CNTL"/>
@@ -1408,7 +1408,7 @@ xsi:schemaLocation="http://nouveau.freedesktop.org/ rules-ng.xsd">
 	<reg32 offset="0xf805" name="RBBM_SECVID_TSB_COMP_STATUS_HI"/>
 	<reg32 offset="0xf806" name="RBBM_SECVID_TSB_UCHE_STATUS_LO"/>
 	<reg32 offset="0xf807" name="RBBM_SECVID_TSB_UCHE_STATUS_HI"/>
-	<reg32 offset="0xf810" name="RBBM_SECVID_TSB_ADDR_MODE_CNTL"/>
+	<reg32 offset="0xf810" name="RBBM_SECVID_TSB_ADDR_MODE_CNTL" type="a5xx_address_mode"/>
 
 	<!-- VSC registers -->
 	<reg32 offset="0x0bc2" name="VSC_BIN_SIZE">
@@ -1450,7 +1450,7 @@ xsi:schemaLocation="http://nouveau.freedesktop.org/ rules-ng.xsd">
 	<reg32 offset="0x0cdd" name="VSC_RESOLVE_CNTL" type="adreno_reg_xy"/>
 
 	<!-- GRAS registers -->
-	<reg32 offset="0x0c81" name="GRAS_ADDR_MODE_CNTL"/>
+	<reg32 offset="0x0c81" name="GRAS_ADDR_MODE_CNTL" type="a5xx_address_mode"/>
 	<reg32 offset="0x0c90" name="GRAS_PERFCTR_TSE_SEL_0" type="a5xx_tse_perfcounter_select"/>
 	<reg32 offset="0x0c91" name="GRAS_PERFCTR_TSE_SEL_1" type="a5xx_tse_perfcounter_select"/>
 	<reg32 offset="0x0c92" name="GRAS_PERFCTR_TSE_SEL_2" type="a5xx_tse_perfcounter_select"/>
@@ -1465,7 +1465,7 @@ xsi:schemaLocation="http://nouveau.freedesktop.org/ rules-ng.xsd">
 	<reg32 offset="0x0c9b" name="GRAS_PERFCTR_LRZ_SEL_3" type="a5xx_lrz_perfcounter_select"/>
 
 	<reg32 offset="0x0cc4" name="RB_DBG_ECO_CNTL"/> <!-- always 00100000? -->
-	<reg32 offset="0x0cc5" name="RB_ADDR_MODE_CNTL"/>
+	<reg32 offset="0x0cc5" name="RB_ADDR_MODE_CNTL" type="a5xx_address_mode"/>
 	<reg32 offset="0x0cc6" name="RB_MODE_CNTL"/> <!-- always 00000044? -->
 	<reg32 offset="0x0cc7" name="RB_CCU_CNTL"/> <!-- always b0056080 or 10000000? -->
 	<reg32 offset="0x0cd0" name="RB_PERFCTR_RB_SEL_0" type="a5xx_rb_perfcounter_select"/>
@@ -1494,7 +1494,7 @@ xsi:schemaLocation="http://nouveau.freedesktop.org/ rules-ng.xsd">
 	<reg32 offset="0x0d00" name="PC_DBG_ECO_CNTL">
 		<bitfield name="TWOPASSUSEWFI" pos="8" type="boolean"/>
 	</reg32>
-	<reg32 offset="0x0d01" name="PC_ADDR_MODE_CNTL"/>
+	<reg32 offset="0x0d01" name="PC_ADDR_MODE_CNTL" type="a5xx_address_mode"/>
 	<reg32 offset="0x0d02" name="PC_MODE_CNTL"/> <!-- always 0000001f? -->
 	<reg32 offset="0x0d04" name="PC_INDEX_BUF_LO"/>
 	<reg32 offset="0x0d05" name="PC_INDEX_BUF_HI"/>
@@ -1514,7 +1514,7 @@ xsi:schemaLocation="http://nouveau.freedesktop.org/ rules-ng.xsd">
 	<reg32 offset="0x0e00" name="HLSQ_TIMEOUT_THRESHOLD_0"/>
 	<reg32 offset="0x0e01" name="HLSQ_TIMEOUT_THRESHOLD_1"/>
 	<reg32 offset="0x0e04" name="HLSQ_DBG_ECO_CNTL"/>
-	<reg32 offset="0x0e05" name="HLSQ_ADDR_MODE_CNTL"/>
+	<reg32 offset="0x0e05" name="HLSQ_ADDR_MODE_CNTL" type="a5xx_address_mode"/>
 	<reg32 offset="0x0e06" name="HLSQ_MODE_CNTL"/> <!-- always 00000001? -->
 	<reg32 offset="0x0e10" name="HLSQ_PERFCTR_HLSQ_SEL_0" type="a5xx_hlsq_perfcounter_select"/>
 	<reg32 offset="0x0e11" name="HLSQ_PERFCTR_HLSQ_SEL_1" type="a5xx_hlsq_perfcounter_select"/>
@@ -1528,7 +1528,7 @@ xsi:schemaLocation="http://nouveau.freedesktop.org/ rules-ng.xsd">
 	<reg32 offset="0xbc00" name="HLSQ_DBG_READ_SEL"/>
 	<reg32 offset="0xa000" name="HLSQ_DBG_AHB_READ_APERTURE"/>
 
-	<reg32 offset="0x0e41" name="VFD_ADDR_MODE_CNTL"/>
+	<reg32 offset="0x0e41" name="VFD_ADDR_MODE_CNTL" type="a5xx_address_mode"/>
 	<reg32 offset="0x0e42" name="VFD_MODE_CNTL"/> <!-- always 00000000? -->
 	<reg32 offset="0x0e50" name="VFD_PERFCTR_VFD_SEL_0" type="a5xx_vfd_perfcounter_select"/>
 	<reg32 offset="0x0e51" name="VFD_PERFCTR_VFD_SEL_1" type="a5xx_vfd_perfcounter_select"/>
@@ -1539,7 +1539,7 @@ xsi:schemaLocation="http://nouveau.freedesktop.org/ rules-ng.xsd">
 	<reg32 offset="0x0e56" name="VFD_PERFCTR_VFD_SEL_6" type="a5xx_vfd_perfcounter_select"/>
 	<reg32 offset="0x0e57" name="VFD_PERFCTR_VFD_SEL_7" type="a5xx_vfd_perfcounter_select"/>
 	<reg32 offset="0x0e60" name="VPC_DBG_ECO_CNTL"/> <!-- always 00000400? -->
-	<reg32 offset="0x0e61" name="VPC_ADDR_MODE_CNTL"/>
+	<reg32 offset="0x0e61" name="VPC_ADDR_MODE_CNTL" type="a5xx_address_mode"/>
 	<reg32 offset="0x0e62" name="VPC_MODE_CNTL">
 		<bitfield name="BINNING_PASS" pos="0" type="boolean"/>
 	</reg32>
@@ -1548,7 +1548,7 @@ xsi:schemaLocation="http://nouveau.freedesktop.org/ rules-ng.xsd">
 	<reg32 offset="0x0e66" name="VPC_PERFCTR_VPC_SEL_2" type="a5xx_vpc_perfcounter_select"/>
 	<reg32 offset="0x0e67" name="VPC_PERFCTR_VPC_SEL_3" type="a5xx_vpc_perfcounter_select"/>
 
-	<reg32 offset="0x0e80" name="UCHE_ADDR_MODE_CNTL"/>
+	<reg32 offset="0x0e80" name="UCHE_ADDR_MODE_CNTL" type="a5xx_address_mode"/>
 	<reg32 offset="0x0e82" name="UCHE_SVM_CNTL"/>
 	<reg32 offset="0x0e87" name="UCHE_WRITE_THRU_BASE_LO"/>
 	<reg32 offset="0x0e88" name="UCHE_WRITE_THRU_BASE_HI"/>
@@ -1582,7 +1582,7 @@ xsi:schemaLocation="http://nouveau.freedesktop.org/ rules-ng.xsd">
 	<reg32 offset="0x0eb2" name="UCHE_TRAP_LOG_HI"/>
 
 	<reg32 offset="0x0ec0" name="SP_DBG_ECO_CNTL"/>
-	<reg32 offset="0x0ec1" name="SP_ADDR_MODE_CNTL"/>
+	<reg32 offset="0x0ec1" name="SP_ADDR_MODE_CNTL" type="a5xx_address_mode"/>
 	<reg32 offset="0x0ec2" name="SP_MODE_CNTL"/> <!-- always 0000001e? -->
 	<reg32 offset="0x0ed0" name="SP_PERFCTR_SP_SEL_0"  type="a5xx_sp_perfcounter_select"/>
 	<reg32 offset="0x0ed1" name="SP_PERFCTR_SP_SEL_1"  type="a5xx_sp_perfcounter_select"/>
@@ -1601,7 +1601,7 @@ xsi:schemaLocation="http://nouveau.freedesktop.org/ rules-ng.xsd">
 	<reg32 offset="0x0ede" name="SP_POWERCTR_SP_SEL_2"/>
 	<reg32 offset="0x0edf" name="SP_POWERCTR_SP_SEL_3"/>
 
-	<reg32 offset="0x0f01" name="TPL1_ADDR_MODE_CNTL"/>
+	<reg32 offset="0x0f01" name="TPL1_ADDR_MODE_CNTL" type="a5xx_address_mode"/>
 	<reg32 offset="0x0f02" name="TPL1_MODE_CNTL"/> <!-- always 00000544? -->
 	<reg32 offset="0x0f10" name="TPL1_PERFCTR_TP_SEL_0" type="a5xx_tp_perfcounter_select"/>
 	<reg32 offset="0x0f11" name="TPL1_PERFCTR_TP_SEL_1" type="a5xx_tp_perfcounter_select"/>
