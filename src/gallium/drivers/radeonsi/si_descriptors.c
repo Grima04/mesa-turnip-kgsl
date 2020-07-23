@@ -2711,9 +2711,10 @@ bool si_gfx_resources_check_encrypted(struct si_context *sctx)
          struct si_texture *tex = (struct si_texture *)surf->texture;
          if (!(tex->buffer.flags & RADEON_FLAG_ENCRYPTED))
             continue;
-         /* Are we reading from this framebuffer (blend) */
-         if ((blend->blend_enable_4bit >> (4 * i)) & 0xf) {
-            /* TODO: blend op */
+
+         /* Are we reading from this framebuffer */
+         if (((blend->blend_enable_4bit >> (4 * i)) & 0xf) ||
+             vi_dcc_enabled(tex, 0)) {
             use_encrypted_bo = true;
          }
       }
