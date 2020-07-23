@@ -2980,6 +2980,12 @@ isl_format_get_aux_map_encoding(enum isl_format format)
    case ISL_FORMAT_R8_SINT: return 0x1C;
    case ISL_FORMAT_R8_UINT: return 0x1D;
    case ISL_FORMAT_A8_UNORM: return 0xA;
+   case ISL_FORMAT_PLANAR_420_8: return 0xF;
+   case ISL_FORMAT_PLANAR_420_10: return 0x7;
+   case ISL_FORMAT_PLANAR_420_12: return 0x8;
+   case ISL_FORMAT_PLANAR_420_16: return 0x8;
+   case ISL_FORMAT_YCRCB_NORMAL: return 0x3;
+   case ISL_FORMAT_YCRCB_SWAPY: return 0xB;
    default:
       unreachable("Unsupported aux-map format!");
       return 0;

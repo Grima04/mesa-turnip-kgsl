@@ -298,6 +298,7 @@ enum isl_format {
    ISL_FORMAT_BC7_UNORM_SRGB =                                 419,
    ISL_FORMAT_BC6H_UF16 =                                      420,
    ISL_FORMAT_PLANAR_420_8 =                                   421,
+   ISL_FORMAT_PLANAR_420_16 =                                  422,
    ISL_FORMAT_R8G8B8_UNORM_SRGB =                              424,
    ISL_FORMAT_ETC1_RGB8 =                                      425,
    ISL_FORMAT_ETC2_RGB8 =                                      426,
@@ -374,6 +375,10 @@ enum isl_format {
     * explicit number.  We'll just let the C compiler assign it for us.  Any
     * actual hardware formats *must* come before these in the list.
     */
+
+   /* Formats for the aux-map */
+   ISL_FORMAT_PLANAR_420_10,
+   ISL_FORMAT_PLANAR_420_12,
 
    /* Formats for auxiliary surfaces */
    ISL_FORMAT_HIZ,
@@ -1633,7 +1638,10 @@ isl_format_has_bc_compression(enum isl_format fmt)
 static inline bool
 isl_format_is_planar(enum isl_format fmt)
 {
-   return fmt == ISL_FORMAT_PLANAR_420_8;
+   return fmt == ISL_FORMAT_PLANAR_420_8 ||
+          fmt == ISL_FORMAT_PLANAR_420_10 ||
+          fmt == ISL_FORMAT_PLANAR_420_12 ||
+          fmt == ISL_FORMAT_PLANAR_420_16;
 }
 
 static inline bool
