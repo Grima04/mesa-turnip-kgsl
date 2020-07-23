@@ -1,4 +1,4 @@
-# Copyright © 2018 Rob Clark
+# Copyright © 2020 Google, Inc
 
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -18,27 +18,42 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-inc_freedreno = include_directories(['.', './registers'])
+libfreedreno_rnn_files = files(
+  'aprintf.c',
+  'colors.c',
+  'colors.h',
+  'path.c',
+  'rnn.c',
+  'rnn.h',
+  'rnndec.c',
+  'rnndec.h',
+  'rnn_path.h',
+  'util.h',
+)
 
-subdir('common')
-subdir('registers')
-subdir('drm')
-subdir('ir3')
-subdir('fdl')
-subdir('perfcntrs')
-subdir('computerator')
+libfreedreno_rnn = static_library(
+  'freedreno_rnn',
+  libfreedreno_rnn_files,
+  include_directories: [],
+  c_args : [
+    no_override_init_args,
+    '-DSOURCE_DIR="' + meson.source_root() + '"',
+# TODO how do we get install prefix??
+    '-DINSTALL_DIR=""',
+  ],
+  gnu_symbol_visibility: 'hidden',
+  dependencies: [ dep_libxml2 ],
+  build_by_default: false,
+)
 
-dep_libxml2 = dependency('libxml-2.0', required: false)
-
-# Everything that depends on rnn requires (indirectly) libxml2:
-if dep_libxml2.found()
-  subdir('rnn')
-endif
-
-if with_tools.contains('drm-shim')
-  subdir('drm-shim')
-endif
-
-if with_freedreno_vk
-  subdir('vulkan')
-endif
+headergen2 = executable(
+  'headergen2',
+  'headergen2.c',
+  include_directories: [],
+  c_args : [no_override_init_args],
+  gnu_symbol_visibility: 'hidden',
+  dependencies: [],
+  link_with: libfreedreno_rnn,
+  build_by_default: with_tools.contains('freedreno'),
+  install: false
+)
