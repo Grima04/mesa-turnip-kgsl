@@ -1344,6 +1344,8 @@ setup_nir(isel_context *ctx, nir_shader *nir)
    if (nir->info.stage != MESA_SHADER_COMPUTE)
       nir_lower_io(nir, (nir_variable_mode)(nir_var_shader_in | nir_var_shader_out), type_size, (nir_lower_io_options)0);
 
+   lower_to_scalar |= nir_opt_shrink_vectors(nir);
+
    if (lower_to_scalar)
       nir_lower_alu_to_scalar(nir, NULL, NULL);
    if (lower_pack)
@@ -1385,7 +1387,6 @@ setup_nir(isel_context *ctx, nir_shader *nir)
 
    /* cleanup passes */
    nir_lower_load_const_to_scalar(nir);
-   nir_opt_shrink_load(nir);
    nir_move_options move_opts = (nir_move_options)(
       nir_move_const_undef | nir_move_load_ubo | nir_move_load_input |
       nir_move_comparisons | nir_move_copies);
