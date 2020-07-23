@@ -166,12 +166,13 @@ void si_init_resource_fields(struct si_screen *sscreen, struct si_resource *res,
    else
       res->flags |= RADEON_FLAG_NO_INTERPROCESS_SHARING;
 
-   if (sscreen->ws->ws_is_secure(sscreen->ws)) {
-      if (res->b.b.bind & (PIPE_BIND_SCANOUT | PIPE_BIND_DEPTH_STENCIL))
-         res->flags |= RADEON_FLAG_ENCRYPTED;
-      if (res->b.b.flags & PIPE_RESOURCE_FLAG_ENCRYPTED)
-         res->flags |= RADEON_FLAG_ENCRYPTED;
-   }
+   /* Force scanout/depth/stencil buffer allocation to be encrypted */
+   if (sscreen->debug_flags & DBG(TMZ) &&
+       res->b.b.bind & (PIPE_BIND_SCANOUT | PIPE_BIND_DEPTH_STENCIL))
+      res->flags |= RADEON_FLAG_ENCRYPTED;
+
+   if (res->b.b.flags & PIPE_RESOURCE_FLAG_ENCRYPTED)
+      res->flags |= RADEON_FLAG_ENCRYPTED;
 
    if (sscreen->debug_flags & DBG(NO_WC))
       res->flags &= ~RADEON_FLAG_GTT_WC;

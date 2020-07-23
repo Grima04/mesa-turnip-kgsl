@@ -848,7 +848,7 @@ static void si_launch_grid(struct pipe_context *ctx, const struct pipe_grid_info
    si_need_gfx_cs_space(sctx);
 
    /* If we're using a secure context, determine if cs must be secure or not */
-   if (unlikely(sctx->ws->ws_is_secure(sctx->ws))) {
+   if (unlikely(sctx->ws->ws_uses_secure_bo(sctx->ws))) {
       bool secure = si_compute_resources_check_encrypted(sctx);
       if (secure != sctx->ws->cs_is_secure(sctx->gfx_cs)) {
          si_flush_gfx_cs(sctx, RADEON_FLUSH_ASYNC_START_NEXT_GFX_IB_NOW, NULL);

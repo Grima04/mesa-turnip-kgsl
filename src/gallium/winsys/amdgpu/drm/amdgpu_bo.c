@@ -238,8 +238,8 @@ static void amdgpu_clean_up_buffer_managers(struct amdgpu_winsys *ws)
 {
    for (unsigned i = 0; i < NUM_SLAB_ALLOCATORS; i++) {
       pb_slabs_reclaim(&ws->bo_slabs[i]);
-      if (ws->secure)
-        pb_slabs_reclaim(&ws->bo_slabs_encrypted[i]);
+      if (ws->info.has_tmz_support)
+         pb_slabs_reclaim(&ws->bo_slabs_encrypted[i]);
    }
 
    pb_cache_release_all_buffers(&ws->bo_cache);
@@ -521,8 +521,13 @@ static struct amdgpu_winsys_bo *amdgpu_create_bo(struct amdgpu_winsys *ws,
    if (ws->zero_all_vram_allocs &&
        (request.preferred_heap & AMDGPU_GEM_DOMAIN_VRAM))
       request.flags |= AMDGPU_GEM_CREATE_VRAM_CLEARED;
-   if ((flags & RADEON_FLAG_ENCRYPTED) && ws->secure)
+   if ((flags & RADEON_FLAG_ENCRYPTED) &&
+       ws->info.has_tmz_support) {
       request.flags |= AMDGPU_GEM_CREATE_ENCRYPTED;
+
+      if (!(flags & RADEON_FLAG_DRIVER_INTERNAL))
+        ws->uses_secure_bos = true;
+   }
 
    r = amdgpu_bo_alloc(ws->dev, &request, &buf_handle);
    if (r) {
@@ -619,7 +624,7 @@ bool amdgpu_bo_can_reclaim_slab(void *priv, struct pb_slab_entry *entry)
 static struct pb_slabs *get_slabs(struct amdgpu_winsys *ws, uint64_t size,
                                   enum radeon_bo_flag flags)
 {
-   struct pb_slabs *bo_slabs = ((flags & RADEON_FLAG_ENCRYPTED) && ws->secure) ?
+   struct pb_slabs *bo_slabs = ((flags & RADEON_FLAG_ENCRYPTED) && ws->info.has_tmz_support) ?
       ws->bo_slabs_encrypted : ws->bo_slabs;
    /* Find the correct slab allocator for the given size. */
    for (unsigned i = 0; i < NUM_SLAB_ALLOCATORS; i++) {
@@ -672,7 +677,7 @@ static struct pb_slab *amdgpu_bo_slab_alloc(void *priv, unsigned heap,
    if (encrypted)
       flags |= RADEON_FLAG_ENCRYPTED;
 
-   struct pb_slabs *slabs = (flags & RADEON_FLAG_ENCRYPTED && ws->secure) ?
+   struct pb_slabs *slabs = ((flags & RADEON_FLAG_ENCRYPTED) && ws->info.has_tmz_support) ?
       ws->bo_slabs_encrypted : ws->bo_slabs;
 
    /* Determine the slab buffer size. */
@@ -1291,7 +1296,7 @@ amdgpu_bo_create(struct amdgpu_winsys *ws,
    /* Sparse buffers must have NO_CPU_ACCESS set. */
    assert(!(flags & RADEON_FLAG_SPARSE) || flags & RADEON_FLAG_NO_CPU_ACCESS);
 
-   struct pb_slabs *slabs = (flags & RADEON_FLAG_ENCRYPTED && ws->secure) ?
+   struct pb_slabs *slabs = ((flags & RADEON_FLAG_ENCRYPTED) && ws->info.has_tmz_support) ?
       ws->bo_slabs_encrypted : ws->bo_slabs;
    struct pb_slabs *last_slab = &slabs[NUM_SLAB_ALLOCATORS - 1];
    unsigned max_slab_entry_size = 1 << (last_slab->min_order + last_slab->num_orders - 1);

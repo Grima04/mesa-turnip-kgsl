@@ -338,7 +338,7 @@ void si_cp_dma_copy_buffer(struct si_context *sctx, struct pipe_resource *dst,
    }
 
    /* TMZ handling */
-   if (unlikely(sctx->ws->ws_is_secure(sctx->ws) &&
+   if (unlikely(sctx->ws->ws_uses_secure_bo(sctx->ws) &&
                 !(user_flags & SI_CPDMA_SKIP_TMZ))) {
       bool secure = src && (si_resource(src)->flags & RADEON_FLAG_ENCRYPTED);
       assert(!secure || (!dst || (si_resource(dst)->flags & RADEON_FLAG_ENCRYPTED)));

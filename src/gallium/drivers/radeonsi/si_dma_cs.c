@@ -74,7 +74,8 @@ void si_sdma_clear_buffer(struct si_context *sctx, struct pipe_resource *dst, ui
    assert(size % 4 == 0);
 
    if (!cs || dst->flags & PIPE_RESOURCE_FLAG_SPARSE ||
-       sctx->screen->debug_flags & DBG(NO_SDMA_CLEARS) || sctx->ws->ws_is_secure(sctx->ws)) {
+       sctx->screen->debug_flags & DBG(NO_SDMA_CLEARS) ||
+       sctx->ws->ws_uses_secure_bo(sctx->ws)) {
       sctx->b.clear_buffer(&sctx->b, dst, offset, size, &clear_value, 4);
       return;
    }
@@ -232,8 +233,7 @@ void si_need_dma_space(struct si_context *ctx, unsigned num_dw, struct si_resour
       si_flush_gfx_cs(ctx, RADEON_FLUSH_ASYNC_START_NEXT_GFX_IB_NOW, NULL);
 
    bool use_secure_cmd = false;
-   /* if TMZ is supported and enabled */
-   if (ctx->ws->ws_is_secure(ctx->ws)) {
+   if (unlikely(ctx->ws->ws_uses_secure_bo(ctx->ws))) {
       if (src && src->flags & RADEON_FLAG_ENCRYPTED) {
          assert(!dst || (dst->flags & RADEON_FLAG_ENCRYPTED));
          use_secure_cmd = true;

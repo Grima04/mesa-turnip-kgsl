@@ -803,7 +803,7 @@ static void radeon_pin_threads_to_L3_cache(struct radeon_winsys *ws,
    }
 }
 
-static bool radeon_ws_is_secure(struct radeon_winsys* ws)
+static bool radeon_ws_uses_secure_bo(struct radeon_winsys* ws)
 {
     return false;
 }
@@ -888,9 +888,9 @@ radeon_drm_winsys_create(int fd, const struct pipe_screen_config *config,
    ws->base.cs_request_feature = radeon_cs_request_feature;
    ws->base.query_value = radeon_query_value;
    ws->base.read_registers = radeon_read_registers;
-    ws->base.ws_is_secure = radeon_ws_is_secure;
-    ws->base.cs_is_secure = radeon_cs_is_secure;
-    ws->base.cs_set_secure = radeon_cs_set_secure;
+   ws->base.ws_uses_secure_bo = radeon_ws_uses_secure_bo;
+   ws->base.cs_is_secure = radeon_cs_is_secure;
+   ws->base.cs_set_secure = radeon_cs_set_secure;
 
    radeon_drm_bo_init_functions(ws);
    radeon_drm_cs_init_functions(ws);

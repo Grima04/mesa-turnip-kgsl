@@ -117,6 +117,8 @@ static const struct debug_named_value debug_options[] = {
    {"nodccmsaa", DBG(NO_DCC_MSAA), "Disable DCC for MSAA"},
    {"nofmask", DBG(NO_FMASK), "Disable MSAA compression"},
 
+   {"tmz", DBG(TMZ), "Force allocation of scanout/depth/stencil buffer as encrypted"},
+
    DEBUG_NAMED_VALUE_END /* must be last */
 };
 
@@ -972,6 +974,14 @@ static struct pipe_screen *radeonsi_screen_create_impl(struct radeon_winsys *ws,
 
    if (sscreen->debug_flags & DBG(NO_GFX))
       sscreen->info.has_graphics = false;
+
+   if ((sscreen->debug_flags & DBG(TMZ)) &&
+       !sscreen->info.has_tmz_support) {
+      fprintf(stderr, "radeonsi: requesting TMZ features but TMZ is not supported\n");
+      FREE(sscreen);
+      return NULL;
+   }
+
 
    /* Set functions first. */
    sscreen->b.context_create = si_pipe_create_context;

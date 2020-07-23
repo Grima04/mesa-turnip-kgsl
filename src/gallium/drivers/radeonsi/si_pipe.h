@@ -211,6 +211,8 @@ enum
    DBG_NO_DCC_MSAA,
    DBG_NO_FMASK,
 
+   DBG_TMZ,
+
    DBG_COUNT
 };
 

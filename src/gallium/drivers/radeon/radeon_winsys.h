@@ -690,7 +690,7 @@ struct radeon_winsys {
    /**
     * Secure context
     */
-   bool (*ws_is_secure)(struct radeon_winsys *ws);
+   bool (*ws_uses_secure_bo)(struct radeon_winsys *ws);
    bool (*cs_is_secure)(struct radeon_cmdbuf *cs);
    void (*cs_set_secure)(struct radeon_cmdbuf *cs, bool secure);
 };
