@@ -33,7 +33,7 @@ foreach f : xml_files
   _name = f + '.h'
   freedreno_xml_header_files += custom_target(
     _name,
-    input : ['gen_header.py', f],
+    input : ['gen_header.py', 'adreno/' + f],
     output : _name,
     command : [prog_python, '@INPUT@'],
     capture : true,
@@ -42,14 +42,14 @@ endforeach
 
 freedreno_xml_header_files += custom_target(
     'a6xx-pack.xml.h',
-    input : ['gen_header.py', 'a6xx.xml'],
+    input : ['gen_header.py', 'adreno/a6xx.xml'],
     output : 'a6xx-pack.xml.h',
     command : [prog_python, '@INPUT@', '--pack-structs'],
     capture : true,
   )
 freedreno_xml_header_files += custom_target(
     'adreno-pm4-pack.xml.h',
-     input : ['gen_header.py', 'adreno_pm4.xml'],
+     input : ['gen_header.py', 'adreno/adreno_pm4.xml'],
      output : 'adreno-pm4-pack.xml.h',
      command : [prog_python, '@INPUT@', '--pack-structs'],
      capture : true,
