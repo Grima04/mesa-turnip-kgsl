@@ -23,6 +23,7 @@ import dump_trace_images
 
 TRACES_DB_PATH = "./traces-db/"
 RESULTS_PATH = "./results/"
+MINIO_HOST = "minio-packet.freedesktop.org"
 
 def replay(trace_path, device_name):
     success = dump_trace_images.dump_from_trace(trace_path, [], device_name)
@@ -68,24 +69,20 @@ def sign_with_hmac(key, message):
 
     return base64.encodebytes(signature).strip().decode()
 
-def upload_artifact(file_name, key, content_type):
+def upload_to_minio(file_name, resource, content_type):
     with open('.minio_credentials', 'r') as f:
-        credentials = json.load(f)["minio-packet.freedesktop.org"]
+        credentials = json.load(f)[MINIO_HOST]
         minio_key = credentials["AccessKeyId"]
         minio_secret = credentials["SecretAccessKey"]
         minio_token = credentials["SessionToken"]
 
-    resource = '/artifacts/%s/%s/%s/%s' % (os.environ['CI_PROJECT_PATH'],
-                                           os.environ['CI_PIPELINE_ID'],
-                                           os.environ['CI_JOB_ID'],
-                                           key)
     date = formatdate(timeval=None, localtime=False, usegmt=True)
-    url = 'https://minio-packet.freedesktop.org%s' % (resource)
+    url = 'https://%s%s' % (MINIO_HOST, resource)
     to_sign = "PUT\n\n%s\n%s\nx-amz-security-token:%s\n%s" % (content_type, date, minio_token, resource)
     signature = sign_with_hmac(minio_secret, to_sign)
 
     with open(file_name, 'rb') as data:
-        headers = {'Host': 'minio-packet.freedesktop.org',
+        headers = {'Host': MINIO_HOST,
                    'Date': date,
                    'Content-Type': content_type,
                    'Authorization': 'AWS %s:%s' % (minio_key, signature),
@@ -95,6 +92,21 @@ def upload_artifact(file_name, key, content_type):
         if r.status_code >= 400:
             print(r.text)
         r.raise_for_status()
+
+def upload_artifact(file_name, key, content_type):
+    resource = '/artifacts/%s/%s/%s/%s' % (os.environ['CI_PROJECT_PATH'],
+                                           os.environ['CI_PIPELINE_ID'],
+                                           os.environ['CI_JOB_ID'],
+                                           key)
+    upload_to_minio(file_name, resource, content_type)
+
+def ensure_reference_image(file_name, checksum):
+    resource = '/mesa-tracie-results/%s/%s.png' % (os.environ['CI_PROJECT_PATH'], checksum)
+    url = 'https://%s%s' % (MINIO_HOST, resource)
+    r = requests.head(url, allow_redirects=True)
+    if r.status_code == 200:
+        return
+    upload_to_minio(file_name, resource, 'image/png')
 
 def gitlab_check_trace(project_url, device_name, trace, expectation):
     gitlab_ensure_trace(project_url, trace)
@@ -123,8 +135,12 @@ def gitlab_check_trace(project_url, device_name, trace, expectation):
     results_path = os.path.join(RESULTS_PATH, dir_in_results)
     os.makedirs(results_path, exist_ok=True)
     shutil.move(log_file, os.path.join(results_path, os.path.split(log_file)[1]))
-    if not ok and os.environ.get('TRACIE_UPLOAD_TO_MINIO', '0') == '1':
-        upload_artifact(image_file, 'traces/%s.png' % checksum, 'image/png')
+    if os.environ.get('TRACIE_UPLOAD_TO_MINIO', '0') == '1':
+        if ok:
+            if os.environ['CI_PROJECT_PATH'] == 'mesa/mesa':
+                ensure_reference_image(image_file, checksum)
+        else:
+            upload_artifact(image_file, 'traces/%s.png' % checksum, 'image/png')
     if not ok or os.environ.get('TRACIE_STORE_IMAGES', '0') == '1':
         image_name = os.path.split(image_file)[1]
         shutil.move(image_file, os.path.join(results_path, image_name))
