@@ -19,6 +19,7 @@
 # SOFTWARE.
 
 inc_freedreno = include_directories(['.', './registers'])
+inc_freedreno_rnn = include_directories('rnn')
 
 subdir('common')
 subdir('registers')
@@ -33,6 +34,7 @@ dep_libxml2 = dependency('libxml-2.0', required: false)
 # Everything that depends on rnn requires (indirectly) libxml2:
 if dep_libxml2.found()
   subdir('rnn')
+  subdir('decode')
 endif
 
 if with_tools.contains('drm-shim')
