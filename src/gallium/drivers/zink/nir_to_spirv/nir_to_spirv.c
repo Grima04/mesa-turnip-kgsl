@@ -1531,6 +1531,11 @@ emit_alu(struct ntv_context *ctx, nir_alu_instr *alu)
       result = emit_triop(ctx, SpvOpBitFieldUExtract, dest_type, src[0], src[1], src[2]);
       break;
 
+   case nir_op_ibitfield_extract:
+      assert(nir_op_infos[alu->op].num_inputs == 3);
+      result = emit_triop(ctx, SpvOpBitFieldSExtract, dest_type, src[0], src[1], src[2]);
+      break;
+
    case nir_op_bitfield_insert:
       assert(nir_op_infos[alu->op].num_inputs == 4);
       result = spirv_builder_emit_quadop(&ctx->builder, SpvOpBitFieldInsert, dest_type, src[0], src[1], src[2], src[3]);
