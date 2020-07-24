@@ -296,6 +296,7 @@ get_attachment(struct gl_context *ctx, struct gl_framebuffer *fb,
           || (i > 0 && ctx->API == API_OPENGLES)) {
          return NULL;
       }
+      assert(BUFFER_COLOR0 + i < ARRAY_SIZE(fb->Attachment));
       return &fb->Attachment[BUFFER_COLOR0 + i];
    case GL_DEPTH_STENCIL_ATTACHMENT:
       if (!_mesa_is_desktop_gl(ctx) && !_mesa_is_gles3(ctx))
@@ -5027,6 +5028,7 @@ get_fb_attachment(struct gl_context *ctx, struct gl_framebuffer *fb,
       const unsigned i = attachment - GL_COLOR_ATTACHMENT0;
       if (i >= ctx->Const.MaxColorAttachments)
          return NULL;
+      assert(BUFFER_COLOR0 + i < ARRAY_SIZE(fb->Attachment));
       return &fb->Attachment[BUFFER_COLOR0 + i];
    }
    case GL_DEPTH:
