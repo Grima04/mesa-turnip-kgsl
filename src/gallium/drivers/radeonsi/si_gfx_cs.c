@@ -97,7 +97,12 @@ void si_flush_gfx_cs(struct si_context *ctx, unsigned flags, struct pipe_fence_h
    } else if (ctx->chip_class == GFX6) {
       /* The kernel flushes L2 before shaders are finished. */
       wait_flags |= wait_ps_cs;
-   } else if (!(flags & RADEON_FLUSH_START_NEXT_GFX_IB_NOW)) {
+   } else if (!(flags & RADEON_FLUSH_START_NEXT_GFX_IB_NOW) ||
+              ((flags & RADEON_FLUSH_TOGGLE_SECURE_SUBMISSION) &&
+                !ws->cs_is_secure(cs))) {
+      /* TODO: this workaround fixes subtitles rendering with mpv -vo=vaapi and
+       * tmz but shouldn't be necessary.
+       */
       wait_flags |= wait_ps_cs;
    }
 
