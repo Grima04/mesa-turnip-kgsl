@@ -1958,6 +1958,37 @@ emit_load_vec_input(struct ntv_context *ctx, nir_intrinsic_instr *intr, SpvId *v
 }
 
 static void
+emit_interpolate(struct ntv_context *ctx, nir_intrinsic_instr *intr)
+{
+   SpvId op;
+   spirv_builder_emit_cap(&ctx->builder, SpvCapabilityInterpolationFunction);
+   switch (intr->intrinsic) {
+   case nir_intrinsic_interp_deref_at_centroid:
+      op = GLSLstd450InterpolateAtCentroid;
+      break;
+   case nir_intrinsic_interp_deref_at_sample:
+      op = GLSLstd450InterpolateAtSample;
+      break;
+   case nir_intrinsic_interp_deref_at_offset:
+      op = GLSLstd450InterpolateAtOffset;
+      break;
+   default:
+      unreachable("unknown interp op");
+   }
+   SpvId ptr = get_src(ctx, &intr->src[0]);
+   SpvId result;
+   if (intr->intrinsic == nir_intrinsic_interp_deref_at_centroid)
+      result = emit_builtin_unop(ctx, op, get_glsl_type(ctx, nir_src_as_deref(intr->src[0])->type), ptr);
+   else
+      result = emit_builtin_binop(ctx, op, get_glsl_type(ctx, nir_src_as_deref(intr->src[0])->type),
+                                  ptr, get_src(ctx, &intr->src[1]));
+   unsigned num_components = nir_dest_num_components(intr->dest);
+   unsigned bit_size = nir_dest_bit_size(intr->dest);
+   result = bitcast_to_uvec(ctx, result, bit_size, num_components);
+   store_dest(ctx, &intr->dest, result, nir_type_uint);
+}
+
+static void
 emit_intrinsic(struct ntv_context *ctx, nir_intrinsic_instr *intr)
 {
    switch (intr->intrinsic) {
@@ -2045,6 +2076,12 @@ emit_intrinsic(struct ntv_context *ctx, nir_intrinsic_instr *intr)
       spirv_builder_emit_control_barrier(&ctx->builder, SpvScopeWorkgroup,
                                          SpvScopeWorkgroup,
                                          SpvMemorySemanticsWorkgroupMemoryMask | SpvMemorySemanticsAcquireMask);
+      break;
+
+   case nir_intrinsic_interp_deref_at_centroid:
+   case nir_intrinsic_interp_deref_at_sample:
+   case nir_intrinsic_interp_deref_at_offset:
+      emit_interpolate(ctx, intr);
       break;
 
    default:
