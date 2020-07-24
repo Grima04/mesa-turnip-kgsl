@@ -110,6 +110,7 @@ EXTENSIONS = [
     Extension('VK_KHR_timeline_semaphore',                2, 'device->rad_info.has_syncobj_wait_for_submit'),
     Extension('VK_KHR_uniform_buffer_standard_layout',    1, True),
     Extension('VK_KHR_variable_pointers',                 1, True),
+    Extension('VK_KHR_vulkan_memory_model',               3, '!device->use_llvm'),
     Extension('VK_KHR_wayland_surface',                   6, 'VK_USE_PLATFORM_WAYLAND_KHR'),
     Extension('VK_KHR_xcb_surface',                       6, 'VK_USE_PLATFORM_XCB_KHR'),
     Extension('VK_KHR_xlib_surface',                      6, 'VK_USE_PLATFORM_XLIB_KHR'),

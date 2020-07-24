@@ -1041,8 +1041,8 @@ radv_get_physical_device_features_1_2(struct radv_physical_device *pdevice,
 	f->bufferDeviceAddress = true;
 	f->bufferDeviceAddressCaptureReplay = false;
 	f->bufferDeviceAddressMultiDevice = false;
-	f->vulkanMemoryModel = false;
-	f->vulkanMemoryModelDeviceScope = false;
+	f->vulkanMemoryModel = !pdevice->use_llvm;
+	f->vulkanMemoryModelDeviceScope = !pdevice->use_llvm;
 	f->vulkanMemoryModelAvailabilityVisibilityChains = false;
 	f->shaderOutputViewportIndex = true;
 	f->shaderOutputLayer = true;
@@ -1364,6 +1364,14 @@ void radv_GetPhysicalDeviceFeatures2(
 			VkPhysicalDevicePipelineCreationCacheControlFeaturesEXT *features =
 				(VkPhysicalDevicePipelineCreationCacheControlFeaturesEXT *)ext;
 			features-> pipelineCreationCacheControl = true;
+			break;
+		}
+		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_MEMORY_MODEL_FEATURES_KHR: {
+			VkPhysicalDeviceVulkanMemoryModelFeaturesKHR *features =
+				(VkPhysicalDeviceVulkanMemoryModelFeaturesKHR *)ext;
+			CORE_FEATURE(1, 2, vulkanMemoryModel);
+			CORE_FEATURE(1, 2, vulkanMemoryModelDeviceScope);
+			CORE_FEATURE(1, 2, vulkanMemoryModelAvailabilityVisibilityChains);
 			break;
 		}
 		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_FEATURES_EXT: {
