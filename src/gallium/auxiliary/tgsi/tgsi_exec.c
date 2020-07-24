@@ -379,6 +379,16 @@ micro_dfrac(union tgsi_double_channel *dst,
 }
 
 static void
+micro_dflr(union tgsi_double_channel *dst,
+           const union tgsi_double_channel *src)
+{
+   dst->d[0] = floor(src->d[0]);
+   dst->d[1] = floor(src->d[1]);
+   dst->d[2] = floor(src->d[2]);
+   dst->d[3] = floor(src->d[3]);
+}
+
+static void
 micro_dldexp(union tgsi_double_channel *dst,
              const union tgsi_double_channel *src0,
              union tgsi_exec_channel *src1)
@@ -6108,6 +6118,10 @@ exec_instruction(
 
    case TGSI_OPCODE_DFRAC:
       exec_double_unary(mach, inst, micro_dfrac);
+      break;
+
+   case TGSI_OPCODE_DFLR:
+      exec_double_unary(mach, inst, micro_dflr);
       break;
 
    case TGSI_OPCODE_DLDEXP:
