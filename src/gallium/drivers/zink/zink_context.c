@@ -612,6 +612,7 @@ zink_set_framebuffer_state(struct pipe_context *pctx,
 
    ctx->gfx_pipeline_state.rast_samples = MAX2(state->samples, 1);
    ctx->gfx_pipeline_state.num_attachments = state->nr_cbufs;
+   ctx->gfx_pipeline_state.hash = 0;
 
    struct zink_batch *batch = zink_batch_no_rp(ctx);
 
@@ -1049,6 +1050,8 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
    struct zink_context *ctx = CALLOC_STRUCT(zink_context);
    if (!ctx)
       goto fail;
+
+   ctx->gfx_pipeline_state.hash = 0;
 
    ctx->base.screen = pscreen;
    ctx->base.priv = priv;

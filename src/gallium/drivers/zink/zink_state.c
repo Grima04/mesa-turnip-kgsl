@@ -81,6 +81,7 @@ zink_bind_vertex_elements_state(struct pipe_context *pctx,
    struct zink_context *ctx = zink_context(pctx);
    struct zink_gfx_pipeline_state *state = &ctx->gfx_pipeline_state;
    ctx->element_state = cso;
+   state->hash = 0;
    if (cso) {
       state->element_state = &ctx->element_state->hw_state;
       struct zink_vertex_elements_state *ves = cso;
@@ -256,7 +257,12 @@ zink_create_blend_state(struct pipe_context *pctx,
 static void
 zink_bind_blend_state(struct pipe_context *pctx, void *cso)
 {
-   zink_context(pctx)->gfx_pipeline_state.blend_state = cso;
+   struct zink_gfx_pipeline_state* state = &zink_context(pctx)->gfx_pipeline_state;
+
+   if (state->blend_state != cso) {
+      state->blend_state = cso;
+      state->hash = 0;
+   }
 }
 
 static void
@@ -348,7 +354,12 @@ zink_create_depth_stencil_alpha_state(struct pipe_context *pctx,
 static void
 zink_bind_depth_stencil_alpha_state(struct pipe_context *pctx, void *cso)
 {
-   zink_context(pctx)->gfx_pipeline_state.depth_stencil_alpha_state = cso;
+   struct zink_gfx_pipeline_state* state = &zink_context(pctx)->gfx_pipeline_state;
+
+   if (state->depth_stencil_alpha_state != cso) {
+      state->depth_stencil_alpha_state = cso;
+      state->hash = 0;
+   }
 }
 
 static void
@@ -423,8 +434,15 @@ zink_bind_rasterizer_state(struct pipe_context *pctx, void *cso)
    ctx->rast_state = cso;
 
    if (ctx->rast_state) {
-      ctx->gfx_pipeline_state.rast_state = &ctx->rast_state->hw_state;
-      ctx->line_width = ctx->rast_state->line_width;
+      if (ctx->gfx_pipeline_state.rast_state != &ctx->rast_state->hw_state) {
+         ctx->gfx_pipeline_state.rast_state = &ctx->rast_state->hw_state;
+         ctx->gfx_pipeline_state.hash = 0;
+      }
+
+      if (ctx->line_width != ctx->rast_state->line_width) {
+         ctx->line_width = ctx->rast_state->line_width;
+         ctx->gfx_pipeline_state.hash = 0;
+      }
    }
 }
 

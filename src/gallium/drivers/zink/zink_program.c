@@ -163,13 +163,13 @@ update_shader_modules(struct zink_context *ctx, struct zink_shader *stages[ZINK_
 static uint32_t
 hash_gfx_pipeline_state(const void *key)
 {
-   return _mesa_hash_data(key, sizeof(struct zink_gfx_pipeline_state));
+   return _mesa_hash_data(key, offsetof(struct zink_gfx_pipeline_state, hash));
 }
 
 static bool
 equals_gfx_pipeline_state(const void *a, const void *b)
 {
-   return memcmp(a, b, sizeof(struct zink_gfx_pipeline_state)) == 0;
+   return memcmp(a, b, offsetof(struct zink_gfx_pipeline_state, hash)) == 0;
 }
 
 struct zink_gfx_program *
@@ -319,9 +319,16 @@ zink_get_gfx_pipeline(struct zink_screen *screen,
 {
    assert(mode <= ARRAY_SIZE(prog->pipelines));
 
-   /* TODO: use pre-hashed versions to save some time (can re-hash only when
-      state changes) */
-   struct hash_entry *entry = _mesa_hash_table_search(prog->pipelines[mode], state);
+   struct hash_entry *entry = NULL;
+   
+   if (!state->hash) {
+      state->hash = hash_gfx_pipeline_state(state);
+      /* make sure the hash is not zero, as we take it as invalid.
+       * TODO: rework this using a separate dirty-bit */
+      assert(state->hash != 0);
+   }
+   entry = _mesa_hash_table_search_pre_hashed(prog->pipelines[mode], state->hash, state);
+
    if (!entry) {
       VkPrimitiveTopology vkmode = primitive_topology(mode);
       VkPipeline pipeline = zink_create_gfx_pipeline(screen, prog,
@@ -336,7 +343,8 @@ zink_get_gfx_pipeline(struct zink_screen *screen,
       memcpy(&pc_entry->state, state, sizeof(*state));
       pc_entry->pipeline = pipeline;
 
-      entry = _mesa_hash_table_insert(prog->pipelines[mode], &pc_entry->state, pc_entry);
+      assert(state->hash);
+      entry = _mesa_hash_table_insert_pre_hashed(prog->pipelines[mode], state->hash, state, pc_entry);
       assert(entry);
 
       reference_render_pass(screen, prog, state->render_pass);
