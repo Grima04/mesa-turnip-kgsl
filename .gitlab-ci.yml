@@ -221,7 +221,7 @@ x86_build:
   extends:
     - .use-x86_build-base
   variables:
-    FDO_DISTRIBUTION_TAG: &x86_build "2020-07-21-tracie"
+    FDO_DISTRIBUTION_TAG: &x86_build "2020-07-27-fdtools"
 
 .use-x86_build:
   variables:
@@ -554,6 +554,7 @@ meson-gallium:
   script:
     - .gitlab-ci/meson-build.sh
     - .gitlab-ci/run-shader-db.sh
+    - src/freedreno/.gitlab-ci/run-fdtools.sh
 
 meson-classic:
   extends: .meson-build

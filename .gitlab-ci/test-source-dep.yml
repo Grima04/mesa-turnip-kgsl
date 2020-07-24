@@ -89,7 +89,17 @@
         *gallium_core_file_list
       when: on_success
     - changes:
-      - src/freedreno/**/*
+      # Note: when https://gitlab.com/gitlab-org/gitlab/-/issues/198688
+      # is supported, we can change the src/freedreno/ rule to explicitly
+      # exclude tools, rather than having to explicitly list everything
+      # else
+      - src/freedreno/common/**/*
+      - src/freedreno/drm/**/*
+      - src/freedreno/fdl/**/*
+      - src/freedreno/ir3/**/*
+      - src/freedreno/perfcntrs/**/*
+      - src/freedreno/registers/**/*
+      - src/freedreno/vulkan/**/*
       - src/gallium/drivers/freedreno/**/*
       - src/gallium/winsys/freedreno/**/*
       when: on_success
