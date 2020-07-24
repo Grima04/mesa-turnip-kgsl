@@ -465,12 +465,29 @@ void si_nir_scan_shader(const struct nir_shader *nir, struct si_shader_info *inf
       info->output_readmask[i] &= info->output_usagemask[i];
 }
 
-static void si_nir_opts(struct nir_shader *nir, bool first)
+static bool si_alu_to_scalar_filter(const nir_instr *instr, const void *data)
+{
+   struct si_screen *sscreen = (struct si_screen *)data;
+
+   if (sscreen->info.has_packed_math_16bit &&
+       instr->type == nir_instr_type_alu) {
+      nir_alu_instr *alu = nir_instr_as_alu(instr);
+
+      if (alu->dest.dest.is_ssa &&
+          alu->dest.dest.ssa.bit_size == 16 &&
+          alu->dest.dest.ssa.num_components == 2)
+         return false;
+   }
+
+   return true;
+}
+
+static void si_nir_opts(struct si_screen *sscreen, struct nir_shader *nir, bool first)
 {
    bool progress;
 
    NIR_PASS_V(nir, nir_lower_vars_to_ssa);
-   NIR_PASS_V(nir, nir_lower_alu_to_scalar, NULL, NULL);
+   NIR_PASS_V(nir, nir_lower_alu_to_scalar, si_alu_to_scalar_filter, sscreen);
    NIR_PASS_V(nir, nir_lower_phis_to_scalar);
 
    do {
@@ -507,7 +524,7 @@ static void si_nir_opts(struct nir_shader *nir, bool first)
       NIR_PASS(progress, nir, nir_opt_dead_cf);
 
       if (lower_alu_to_scalar)
-         NIR_PASS_V(nir, nir_lower_alu_to_scalar, NULL, NULL);
+         NIR_PASS_V(nir, nir_lower_alu_to_scalar, si_alu_to_scalar_filter, sscreen);
       if (lower_phis_to_scalar)
          NIR_PASS_V(nir, nir_lower_phis_to_scalar);
       progress |= lower_alu_to_scalar | lower_phis_to_scalar;
@@ -720,7 +737,7 @@ static void si_lower_nir(struct si_screen *sscreen, struct nir_shader *nir)
        sscreen->b.get_shader_param(&sscreen->b, PIPE_SHADER_FRAGMENT, PIPE_SHADER_CAP_FP16))
       NIR_PASS_V(nir, nir_lower_mediump_outputs);
 
-   si_nir_opts(nir, true);
+   si_nir_opts(sscreen, nir, true);
 
    /* Lower large variables that are always constant with load_constant
     * intrinsics, which get turned into PC-relative loads from a data
@@ -737,7 +754,7 @@ static void si_lower_nir(struct si_screen *sscreen, struct nir_shader *nir)
 
    changed |= ac_lower_indirect_derefs(nir, sscreen->info.chip_class);
    if (changed)
-      si_nir_opts(nir, false);
+      si_nir_opts(sscreen, nir, false);
 
    /* Run late optimizations to fuse ffma. */
    bool more_late_algebraic = true;
