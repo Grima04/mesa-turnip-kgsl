@@ -134,8 +134,8 @@ module clover::nir::spirv_to_nir(const module &mod, const device &dev,
       NIR_PASS_V(nir, nir_lower_vars_to_ssa);
       NIR_PASS_V(nir, nir_opt_dce);
 
+      NIR_PASS_V(nir, nir_lower_explicit_io, nir_var_shader_in, nir_address_format_32bit_offset);
       nir_variable_mode modes = (nir_variable_mode)(
-         nir_var_shader_in |
          nir_var_mem_global |
          nir_var_mem_shared);
       nir_address_format format = nir->info.cs.ptr_size == 64 ?

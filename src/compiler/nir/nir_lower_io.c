@@ -845,7 +845,7 @@ build_explicit_io_load(nir_builder *b, nir_intrinsic_instr *intrin,
       op = nir_intrinsic_load_global;
       break;
    case nir_var_shader_in:
-      assert(addr_format_is_global(addr_format));
+      assert(addr_format_is_offset(addr_format));
       op = nir_intrinsic_load_kernel_input;
       break;
    case nir_var_mem_shared:
