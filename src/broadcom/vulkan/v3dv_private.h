@@ -559,9 +559,10 @@ struct v3dv_framebuffer {
 struct v3dv_frame_tiling {
    uint32_t width;
    uint32_t height;
+   uint32_t layers;
    uint32_t render_target_count;
    uint32_t internal_bpp;
-   uint32_t layers;
+   bool     msaa;
    uint32_t tile_width;
    uint32_t tile_height;
    uint32_t draw_tiles_x;
@@ -572,8 +573,9 @@ struct v3dv_frame_tiling {
    uint32_t frame_height_in_supertiles;
 };
 
-uint8_t v3dv_framebuffer_compute_internal_bpp(const struct v3dv_framebuffer *framebuffer,
-                                              const struct v3dv_subpass *subpass);
+void v3dv_framebuffer_compute_internal_bpp_msaa(const struct v3dv_framebuffer *framebuffer,
+                                                const struct v3dv_subpass *subpass,
+                                                uint8_t *max_bpp, bool *msaa);
 
 struct v3dv_cmd_pool {
    VkAllocationCallbacks alloc;
@@ -880,7 +882,8 @@ void v3dv_job_start_frame(struct v3dv_job *job,
                           uint32_t height,
                           uint32_t layers,
                           uint32_t render_target_count,
-                          uint8_t max_internal_bpp);
+                          uint8_t max_internal_bpp,
+                          bool msaa);
 struct v3dv_job *v3dv_cmd_buffer_create_cpu_job(struct v3dv_device *device,
                                                 enum v3dv_job_type type,
                                                 struct v3dv_cmd_buffer *cmd_buffer,

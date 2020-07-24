@@ -114,7 +114,9 @@ v3d_setup_slices(struct v3dv_image *image)
    uint32_t block_width = vk_format_get_blockwidth(image->vk_format);
    uint32_t block_height = vk_format_get_blockheight(image->vk_format);
 
-   bool msaa = image->samples > VK_SAMPLE_COUNT_1_BIT;
+   assert(image->samples == VK_SAMPLE_COUNT_1_BIT ||
+          image->samples == VK_SAMPLE_COUNT_4_BIT);
+   bool msaa = image->samples != VK_SAMPLE_COUNT_1_BIT;
 
    bool uif_top = msaa;
 
@@ -327,6 +329,9 @@ v3dv_CreateImage(VkDevice _device,
                       VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
    if (!image)
       return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
+
+   assert(pCreateInfo->samples == VK_SAMPLE_COUNT_1_BIT ||
+          pCreateInfo->samples == VK_SAMPLE_COUNT_4_BIT);
 
    image->type = pCreateInfo->imageType;
    image->extent = pCreateInfo->extent;

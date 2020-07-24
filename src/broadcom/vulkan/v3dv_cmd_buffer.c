@@ -445,7 +445,8 @@ job_compute_frame_tiling(struct v3dv_job *job,
                          uint32_t height,
                          uint32_t layers,
                          uint32_t render_target_count,
-                         uint8_t max_internal_bpp)
+                         uint8_t max_internal_bpp,
+                         bool msaa)
 {
    static const uint8_t tile_sizes[] = {
       64, 64,
@@ -462,15 +463,17 @@ job_compute_frame_tiling(struct v3dv_job *job,
    tiling->height = height;
    tiling->layers = layers;
    tiling->render_target_count = render_target_count;
+   tiling->msaa = msaa;
 
    uint32_t tile_size_index = 0;
-
-   /* FIXME: MSAA */
 
    if (render_target_count > 2)
       tile_size_index += 2;
    else if (render_target_count > 1)
       tile_size_index += 1;
+
+   if (msaa)
+      tile_size_index += 2;
 
    tiling->internal_bpp = max_internal_bpp;
    tile_size_index += tiling->internal_bpp;
@@ -511,7 +514,8 @@ v3dv_job_start_frame(struct v3dv_job *job,
                      uint32_t height,
                      uint32_t layers,
                      uint32_t render_target_count,
-                     uint8_t max_internal_bpp)
+                     uint8_t max_internal_bpp,
+                     bool msaa)
 {
    assert(job);
 
@@ -519,7 +523,7 @@ v3dv_job_start_frame(struct v3dv_job *job,
    const struct v3dv_frame_tiling *tiling =
       job_compute_frame_tiling(job,
                                width, height, layers,
-                               render_target_count, max_internal_bpp);
+                               render_target_count, max_internal_bpp, msaa);
 
    v3dv_cl_ensure_space_with_branch(&job->bcl, 256);
    v3dv_return_if_oom(NULL, job);
@@ -2115,15 +2119,18 @@ cmd_buffer_subpass_create_job(struct v3dv_cmd_buffer *cmd_buffer,
 
       const struct v3dv_framebuffer *framebuffer = state->framebuffer;
 
-      const uint8_t internal_bpp =
-         v3dv_framebuffer_compute_internal_bpp(framebuffer, subpass);
+      uint8_t internal_bpp;
+      bool msaa;
+      v3dv_framebuffer_compute_internal_bpp_msaa(framebuffer, subpass,
+                                                 &internal_bpp, &msaa);
 
       v3dv_job_start_frame(job,
                            framebuffer->width,
                            framebuffer->height,
                            framebuffer->layers,
                            subpass->color_count,
-                           internal_bpp);
+                           internal_bpp,
+                           msaa);
 
       /* FIXME: we don't suppport resolve attachments yet */
       assert(subpass->resolve_attachments == NULL);

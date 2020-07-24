@@ -713,7 +713,7 @@ queue_submit_job(struct v3dv_queue *queue,
 static void
 emit_noop_bin(struct v3dv_job *job)
 {
-   v3dv_job_start_frame(job, 1, 1, 1, 1, V3D_INTERNAL_BPP_32);
+   v3dv_job_start_frame(job, 1, 1, 1, 1, V3D_INTERNAL_BPP_32, false);
    v3dv_job_emit_binning_flush(job);
 }
 

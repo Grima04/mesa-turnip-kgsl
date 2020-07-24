@@ -691,7 +691,7 @@ copy_image_to_buffer_tlb(struct v3dv_cmd_buffer *cmd_buffer,
    const uint32_t width = DIV_ROUND_UP(region->imageExtent.width, block_w);
    const uint32_t height = DIV_ROUND_UP(region->imageExtent.height, block_h);
 
-   v3dv_job_start_frame(job, width, height, num_layers, 1, internal_bpp);
+   v3dv_job_start_frame(job, width, height, num_layers, 1, internal_bpp, false);
 
    struct framebuffer_data framebuffer;
    setup_framebuffer_data(&framebuffer, fb_format, internal_type,
@@ -1185,7 +1185,7 @@ copy_image_tlb(struct v3dv_cmd_buffer *cmd_buffer,
    const uint32_t width = DIV_ROUND_UP(region->extent.width, block_w);
    const uint32_t height = DIV_ROUND_UP(region->extent.height, block_h);
 
-   v3dv_job_start_frame(job, width, height, num_layers, 1, internal_bpp);
+   v3dv_job_start_frame(job, width, height, num_layers, 1, internal_bpp, false);
 
    struct framebuffer_data framebuffer;
    setup_framebuffer_data(&framebuffer, fb_format, internal_type,
@@ -1501,7 +1501,7 @@ clear_image_tlb(struct v3dv_cmd_buffer *cmd_buffer,
             return true;
 
          /* We start a a new job for each layer so the frame "depth" is 1 */
-         v3dv_job_start_frame(job, width, height, 1, 1, internal_bpp);
+         v3dv_job_start_frame(job, width, height, 1, 1, internal_bpp, false);
 
          struct framebuffer_data framebuffer;
          setup_framebuffer_data(&framebuffer, fb_format, internal_type,
@@ -1728,7 +1728,7 @@ copy_buffer(struct v3dv_cmd_buffer *cmd_buffer,
       uint32_t width, height;
       framebuffer_size_for_pixel_count(num_items, &width, &height);
 
-      v3dv_job_start_frame(job, width, height, 1, 1, internal_bpp);
+      v3dv_job_start_frame(job, width, height, 1, 1, internal_bpp, false);
 
       struct framebuffer_data framebuffer;
       setup_framebuffer_data(&framebuffer, vk_format, internal_type,
@@ -1917,7 +1917,7 @@ fill_buffer(struct v3dv_cmd_buffer *cmd_buffer,
       uint32_t width, height;
       framebuffer_size_for_pixel_count(num_items, &width, &height);
 
-      v3dv_job_start_frame(job, width, height, 1, 1, internal_bpp);
+      v3dv_job_start_frame(job, width, height, 1, 1, internal_bpp, false);
 
       struct framebuffer_data framebuffer;
       setup_framebuffer_data(&framebuffer, VK_FORMAT_R8G8B8A8_UINT,
@@ -2270,7 +2270,7 @@ copy_buffer_to_image_tlb(struct v3dv_cmd_buffer *cmd_buffer,
    const uint32_t width = DIV_ROUND_UP(region->imageExtent.width, block_w);
    const uint32_t height = DIV_ROUND_UP(region->imageExtent.height, block_h);
 
-   v3dv_job_start_frame(job, width, height, num_layers, 1, internal_bpp);
+   v3dv_job_start_frame(job, width, height, num_layers, 1, internal_bpp, false);
 
    struct framebuffer_data framebuffer;
    setup_framebuffer_data(&framebuffer, fb_format, internal_type,

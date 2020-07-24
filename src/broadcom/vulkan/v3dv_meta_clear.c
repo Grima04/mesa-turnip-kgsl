@@ -1300,15 +1300,17 @@ emit_tlb_clear_job(struct v3dv_cmd_buffer *cmd_buffer,
       }
    }
 
-   const uint8_t internal_bpp =
-      v3dv_framebuffer_compute_internal_bpp(framebuffer, subpass);
+   uint8_t internal_bpp;
+   bool msaa;
+   v3dv_framebuffer_compute_internal_bpp_msaa(framebuffer, subpass,
+                                              &internal_bpp, &msaa);
 
    v3dv_job_start_frame(job,
                         framebuffer->width,
                         framebuffer->height,
                         framebuffer->layers,
                         color_attachment_count,
-                        internal_bpp);
+                        internal_bpp, msaa);
 
    struct v3dv_cl *rcl = &job->rcl;
    v3dv_cl_ensure_space_with_branch(rcl, 200 +

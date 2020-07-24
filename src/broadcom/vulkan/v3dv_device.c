@@ -1917,15 +1917,20 @@ v3dv_DestroyBuffer(VkDevice _device,
 
 /**
  * This computes the maximum bpp used by any of the render targets used by
- * a particular subpass. If we don't have a subpass (when we are not inside a
+ * a particular subpass and checks if any of those render targets are
+ * multisampled. If we don't have a subpass (when we are not inside a
  * render pass), then we assume that all framebuffer attachments are used.
  */
-uint8_t
-v3dv_framebuffer_compute_internal_bpp(const struct v3dv_framebuffer *framebuffer,
-                                      const struct v3dv_subpass *subpass)
+void
+v3dv_framebuffer_compute_internal_bpp_msaa(
+   const struct v3dv_framebuffer *framebuffer,
+   const struct v3dv_subpass *subpass,
+   uint8_t *max_bpp,
+   bool *msaa)
 {
    STATIC_ASSERT(RENDER_TARGET_MAXIMUM_32BPP == 0);
-   uint8_t max_bpp = RENDER_TARGET_MAXIMUM_32BPP;
+   *max_bpp = RENDER_TARGET_MAXIMUM_32BPP;
+   *msaa = false;
 
    if (subpass) {
       for (uint32_t i = 0; i < subpass->color_count; i++) {
@@ -1937,10 +1942,22 @@ v3dv_framebuffer_compute_internal_bpp(const struct v3dv_framebuffer *framebuffer
          assert(att);
 
          if (att->aspects & VK_IMAGE_ASPECT_COLOR_BIT)
-            max_bpp = MAX2(max_bpp, att->internal_bpp);
+            *max_bpp = MAX2(*max_bpp, att->internal_bpp);
+
+         if (att->image->samples > VK_SAMPLE_COUNT_1_BIT)
+            *msaa = true;
       }
 
-      return max_bpp;
+      if (!*msaa && subpass->ds_attachment.attachment != VK_ATTACHMENT_UNUSED) {
+         const struct v3dv_image_view *att =
+            framebuffer->attachments[subpass->ds_attachment.attachment];
+         assert(att);
+
+         if (att->image->samples > VK_SAMPLE_COUNT_1_BIT)
+            *msaa = true;
+      }
+
+      return;
    }
 
    assert(framebuffer->attachment_count <= 4);
@@ -1949,10 +1966,13 @@ v3dv_framebuffer_compute_internal_bpp(const struct v3dv_framebuffer *framebuffer
       assert(att);
 
       if (att->aspects & VK_IMAGE_ASPECT_COLOR_BIT)
-         max_bpp = MAX2(max_bpp, att->internal_bpp);
+         *max_bpp = MAX2(*max_bpp, att->internal_bpp);
+
+      if (att->image->samples > VK_SAMPLE_COUNT_1_BIT)
+         *msaa = true;
    }
 
-   return max_bpp;
+   return;
 }
 
 VkResult
