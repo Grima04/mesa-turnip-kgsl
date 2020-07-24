@@ -2276,7 +2276,7 @@ emit_tex(struct ntv_context *ctx, nir_tex_instr *tex)
       if (tex->op == nir_texop_tg4)
          result = spirv_builder_emit_image_gather(&ctx->builder, dest_type,
                                                  load, coord, emit_uint_const(ctx, 32, tex->component),
-                                                 lod, sample, offset);
+                                                 lod, sample, offset, dref);
       else
          result = spirv_builder_emit_image_fetch(&ctx->builder, dest_type,
                                                  image, coord, lod, sample, offset);
@@ -2292,7 +2292,7 @@ emit_tex(struct ntv_context *ctx, nir_tex_instr *tex)
    spirv_builder_emit_decoration(&ctx->builder, result,
                                  SpvDecorationRelaxedPrecision);
 
-   if (dref && nir_dest_num_components(tex->dest) > 1) {
+   if (dref && nir_dest_num_components(tex->dest) > 1 && tex->op != nir_texop_tg4) {
       SpvId components[4] = { result, result, result, result };
       result = spirv_builder_emit_composite_construct(&ctx->builder,
                                                       dest_type,

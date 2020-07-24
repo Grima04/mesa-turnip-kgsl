@@ -718,9 +718,11 @@ spirv_builder_emit_image_gather(struct spirv_builder *b,
                                SpvId component,
                                SpvId lod,
                                SpvId sample,
-                               SpvId offset)
+                               SpvId offset,
+                               SpvId dref)
 {
    SpvId result = spirv_builder_new_id(b);
+   SpvId op = SpvOpImageGather;
 
    SpvImageOperandsMask operand_mask = SpvImageOperandsMaskNone;
    SpvId extra_operands[4];
@@ -737,6 +739,8 @@ spirv_builder_emit_image_gather(struct spirv_builder *b,
       extra_operands[++num_extra_operands] = offset;
       operand_mask |= SpvImageOperandsOffsetMask;
    }
+   if (dref)
+      op = SpvOpImageDrefGather;
    /* finalize num_extra_operands / extra_operands */
    if (num_extra_operands > 0) {
       extra_operands[0] = operand_mask;
@@ -744,13 +748,16 @@ spirv_builder_emit_image_gather(struct spirv_builder *b,
    }
 
    spirv_buffer_prepare(&b->instructions, b->mem_ctx, 6 + num_extra_operands);
-   spirv_buffer_emit_word(&b->instructions, SpvOpImageGather |
+   spirv_buffer_emit_word(&b->instructions, op |
                           ((6 + num_extra_operands) << 16));
    spirv_buffer_emit_word(&b->instructions, result_type);
    spirv_buffer_emit_word(&b->instructions, result);
    spirv_buffer_emit_word(&b->instructions, image);
    spirv_buffer_emit_word(&b->instructions, coordinate);
-   spirv_buffer_emit_word(&b->instructions, component);
+   if (dref)
+      spirv_buffer_emit_word(&b->instructions, dref);
+   else
+      spirv_buffer_emit_word(&b->instructions, component);
    for (int i = 0; i < num_extra_operands; ++i)
       spirv_buffer_emit_word(&b->instructions, extra_operands[i]);
    return result;
