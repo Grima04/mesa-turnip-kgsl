@@ -361,6 +361,13 @@ glsl_sampler_type_is_array(const struct glsl_type *type)
 }
 
 bool
+glsl_struct_type_is_packed(const struct glsl_type *type)
+{
+   assert(glsl_type_is_struct(type));
+   return type->packed;
+}
+
+bool
 glsl_type_is_dual_slot(const struct glsl_type *type)
 {
    return type->is_dual_slot();
