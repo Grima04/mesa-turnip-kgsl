@@ -560,6 +560,9 @@ static void si_nir_opts(struct si_screen *sscreen, struct nir_shader *nir, bool 
       if (nir->options->max_unroll_iterations) {
          NIR_PASS(progress, nir, nir_opt_loop_unroll, 0);
       }
+
+      if (sscreen->info.has_packed_math_16bit)
+         NIR_PASS(progress, nir, nir_opt_vectorize, NULL, NULL);
    } while (progress);
 }
 
