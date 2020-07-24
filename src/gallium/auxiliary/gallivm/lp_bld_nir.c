@@ -1581,6 +1581,9 @@ static void visit_intrinsic(struct lp_build_nir_context *bld_base,
       visit_interp(bld_base, instr, result);
       break;
    default:
+      fprintf(stderr, "Unsupported intrinsic: ");
+      nir_print_instr(&instr->instr, stderr);
+      fprintf(stderr, "\n");
       assert(0);
       break;
    }
