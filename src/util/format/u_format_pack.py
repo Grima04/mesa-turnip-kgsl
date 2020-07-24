@@ -593,7 +593,7 @@ def generate_pack_kernel(format, src_channel, src_native_type):
     def pack_into_struct(channels, swizzles):
         inv_swizzle = inv_swizzles(swizzles)
 
-        print('         struct util_format_%s pixel;' % format.short_name())
+        print('         struct util_format_%s pixel = {0};' % format.short_name())
     
         for i in range(4):
             dst_channel = channels[i]
