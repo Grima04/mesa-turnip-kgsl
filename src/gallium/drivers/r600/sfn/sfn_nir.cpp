@@ -844,7 +844,9 @@ int r600_shader_from_nir(struct r600_context *rctx,
 
    //NIR_PASS_V(sel->nir, nir_opt_algebraic);
    //NIR_PASS_V(sel->nir, nir_copy_prop);
-   NIR_PASS_V(sh, nir_lower_to_source_mods, nir_lower_float_source_mods);
+   NIR_PASS_V(sh, nir_lower_to_source_mods,
+	      (nir_lower_to_source_mods_flags)(nir_lower_float_source_mods |
+					       nir_lower_64bit_source_mods));
    NIR_PASS_V(sh, nir_convert_from_ssa, true);
    NIR_PASS_V(sh, nir_opt_dce);
 
