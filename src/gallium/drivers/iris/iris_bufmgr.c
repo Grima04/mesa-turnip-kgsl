@@ -333,6 +333,8 @@ vma_free(struct iris_bufmgr *bufmgr,
    if (memzone == IRIS_MEMZONE_BINDER)
       return;
 
+   assert(memzone < ARRAY_SIZE(bufmgr->vma_allocator));
+
    util_vma_heap_free(&bufmgr->vma_allocator[memzone], address, size);
 }
 
