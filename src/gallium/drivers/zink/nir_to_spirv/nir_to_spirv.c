@@ -1298,6 +1298,8 @@ emit_alu(struct ntv_context *ctx, nir_alu_instr *alu)
    BUILTIN_UNOP(nir_op_fsin, GLSLstd450Sin)
    BUILTIN_UNOP(nir_op_fcos, GLSLstd450Cos)
    BUILTIN_UNOP(nir_op_ufind_msb, GLSLstd450FindUMsb)
+   BUILTIN_UNOP(nir_op_find_lsb, GLSLstd450FindILsb)
+   BUILTIN_UNOP(nir_op_ifind_msb, GLSLstd450FindSMsb)
 #undef BUILTIN_UNOP
 
    case nir_op_frcp:
