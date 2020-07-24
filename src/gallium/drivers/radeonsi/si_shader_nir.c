@@ -627,6 +627,30 @@ static void si_lower_io(struct nir_shader *nir)
       NIR_PASS_V(nir, nir_lower_global_vars_to_local);
    }
 
+   /* The vectorization must be done after nir_lower_io_to_temporaries, because
+    * nir_lower_io_to_temporaries after vectorization breaks:
+    *    piglit/bin/arb_gpu_shader5-interpolateAtOffset -auto -fbo
+    * TODO: It's probably a bug in nir_lower_io_to_temporaries.
+    *
+    * The vectorizer can only vectorize this:
+    *    op src0.x, src1.x
+    *    op src0.y, src1.y
+    *
+    * So it requires that inputs are already vectors and it must be the same
+    * vector between instructions. The vectorizer doesn't create vectors
+    * from independent scalar sources, so vectorize inputs.
+    *
+    * TODO: The pass fails this for VS: assert(b.shader->info.stage != MESA_SHADER_VERTEX);
+    */
+   if (nir->info.stage != MESA_SHADER_VERTEX)
+      NIR_PASS_V(nir, nir_lower_io_to_vector, nir_var_shader_in);
+
+   /* Vectorize outputs, so that we don't split vectors before storing outputs. */
+   /* TODO: The pass fails an assertion for other shader stages. */
+   if (nir->info.stage == MESA_SHADER_TESS_CTRL ||
+       nir->info.stage == MESA_SHADER_FRAGMENT)
+      NIR_PASS_V(nir, nir_lower_io_to_vector, nir_var_shader_out);
+
    if (nir->info.stage == MESA_SHADER_FRAGMENT)
       si_nir_lower_color(nir);
 
