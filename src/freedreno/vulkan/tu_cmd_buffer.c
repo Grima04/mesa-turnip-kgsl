@@ -740,6 +740,11 @@ tu6_init_hw(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
          .gfx_bindless = 0x1f,
          .cs_bindless = 0x1f));
 
+   tu_cs_emit_wfi(cs);
+
+   cmd->state.cache.pending_flush_bits &=
+      ~(TU_CMD_FLAG_WAIT_FOR_IDLE | TU_CMD_FLAG_CACHE_INVALIDATE);
+
    tu_cs_emit_regs(cs,
                    A6XX_RB_CCU_CNTL(.offset = phys_dev->ccu_offset_bypass));
    cmd->state.ccu_state = TU_CMD_CCU_SYSMEM;
