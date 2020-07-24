@@ -701,6 +701,7 @@ void schedule_VMEM(sched_ctx& ctx, Block* block,
          continue;
       }
 
+      Instruction *candidate_ptr = candidate.get();
       MoveResult res = ctx.mv.downwards_move(part_of_clause);
       if (res == move_fail_ssa || res == move_fail_rar) {
          add_to_hazard_query(&indep_hq, candidate.get());
@@ -710,6 +711,8 @@ void schedule_VMEM(sched_ctx& ctx, Block* block,
       } else if (res == move_fail_pressure) {
          break;
       }
+      if (part_of_clause)
+         add_to_hazard_query(&indep_hq, candidate_ptr);
       k++;
       if (candidate_idx < ctx.last_SMEM_dep_idx)
          ctx.last_SMEM_stall++;
