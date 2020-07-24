@@ -26,6 +26,9 @@
 #include "parser.h"
 #include "asm.h"
 
+#define YY_NO_INPUT
+#define YY_NO_UNPUT
+
 #define TOKEN(t) (yylval.tok = t)
 extern YYSTYPE yylval;
 

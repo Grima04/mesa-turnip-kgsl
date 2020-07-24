@@ -118,15 +118,6 @@ label(const char *str)
 	const char *str;
 }
 
-%{
-static void print_token(FILE *file, int type, YYSTYPE value)
-{
-	fprintf(file, "\ntype: %d\n", type);
-}
-
-#define YYPRINT(file, type, value) print_token(file, type, value)
-%}
-
 %token <num> T_INT
 %token <num> T_HEX
 %token <num> T_CONTROL_REG
