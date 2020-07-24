@@ -26,7 +26,6 @@
  *    Rob Clark <robclark@freedesktop.org>
  */
 
-#define _GNU_SOURCE
 #define LUA_COMPAT_APIINTCASTS
 
 #include <stdio.h>
