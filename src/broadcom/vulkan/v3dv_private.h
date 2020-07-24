@@ -1296,14 +1296,6 @@ struct v3dv_pipeline_stage {
       struct v3d_fs_key fs;
    } key;
 
-   /* Cache with all the shader variants built for this pipeline. This one is
-    * required over the pipeline cache because we still allow to create shader
-    * variants after Pipeline creation. Note that it would be possible to
-    * remove it and rely completely on the default pipeline cache, but then,
-    * we would need to stop to support the envvar V3DV_ENABLE_PIPELINE_CACHE
-    */
-   struct hash_table *cache;
-
    struct v3dv_shader_variant*current_variant;
 
    /* FIXME: only make sense on vs, so perhaps a v3dv key like radv? or a kind

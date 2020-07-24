@@ -127,15 +127,8 @@ destroy_pipeline_stage(struct v3dv_device *device,
    if (!p_stage)
       return;
 
-   hash_table_foreach(p_stage->cache, entry) {
-      struct v3dv_shader_variant *variant = entry->data;
-      if (variant)
-         v3dv_shader_variant_unref(device, variant);
-   }
-
    ralloc_free(p_stage->nir);
    v3dv_shader_variant_unref(device, p_stage->current_variant);
-   _mesa_hash_table_destroy(p_stage->cache, NULL);
    vk_free2(&device->alloc, pAllocator, p_stage);
 }
 
@@ -1222,58 +1215,6 @@ pipeline_populate_v3d_vs_key(struct v3d_vs_key *key,
    }
 }
 
-/* FIXME: following hash/compare methods are C&P from v3d. Common place? */
-static uint32_t
-fs_cache_hash(const void *key)
-{
-   return _mesa_hash_data(key, sizeof(struct v3d_fs_key));
-}
-
-static uint32_t
-vs_cache_hash(const void *key)
-{
-   return _mesa_hash_data(key, sizeof(struct v3d_vs_key));
-}
-
-static uint32_t
-cs_cache_hash(const void *key)
-{
-   return _mesa_hash_data(key, sizeof(struct v3d_key));
-}
-
-static bool
-fs_cache_compare(const void *key1, const void *key2)
-{
-   return memcmp(key1, key2, sizeof(struct v3d_fs_key)) == 0;
-}
-
-static bool
-vs_cache_compare(const void *key1, const void *key2)
-{
-   return memcmp(key1, key2, sizeof(struct v3d_vs_key)) == 0;
-}
-
-static bool
-cs_cache_compare(const void *key1, const void *key2)
-{
-   return memcmp(key1, key2, sizeof(struct v3d_key)) == 0;
-}
-
-static struct hash_table*
-create_variant_cache(gl_shader_stage stage)
-{
-   switch (stage) {
-   case MESA_SHADER_VERTEX:
-      return _mesa_hash_table_create(NULL, vs_cache_hash, vs_cache_compare);
-   case MESA_SHADER_FRAGMENT:
-      return _mesa_hash_table_create(NULL, fs_cache_hash, fs_cache_compare);
-   case MESA_SHADER_COMPUTE:
-      return _mesa_hash_table_create(NULL, cs_cache_hash, cs_cache_compare);
-   default:
-      unreachable("not supported shader stage");
-   }
-}
-
 /*
  * Creates the pipeline_stage for the coordinate shader. Initially a clone of
  * the vs pipeline_stage, with is_coord to true;
@@ -1296,11 +1237,6 @@ pipeline_stage_create_vs_bin(const struct v3dv_pipeline_stage *src,
    p_stage->nir = nir_shader_clone(NULL, src->nir);
    p_stage->spec_info = src->spec_info;
    memcpy(p_stage->shader_sha1, src->shader_sha1, 20);
-
-   /* Technically we could share the hash_table, but having their own makes
-    * destroy p_stage more straightforward
-    */
-   p_stage->cache = create_variant_cache(MESA_SHADER_VERTEX);
 
    p_stage->is_coord = true;
 
@@ -1371,49 +1307,6 @@ upload_assembly(struct v3dv_device *device,
    return true;
 }
 
-/*
- * Adds a shader variant to the pipeline shader variant cache, updates
- * pipeline spill structures if needed.
- *
- * Assumes that the caller already checked that the variant is not on such
- * cache.
- */
-static void
-pipeline_add_variant_to_cache(struct v3dv_pipeline_stage *p_stage,
-                              struct v3d_key *key,
-                              size_t key_size,
-                              struct v3dv_shader_variant *variant)
-{
-   struct hash_table *ht = p_stage->cache;
-   struct v3dv_pipeline *pipeline = p_stage->pipeline;
-   struct v3dv_device *device = pipeline->device;
-
-   if (ht) {
-      struct v3d_key *dup_key;
-      dup_key = ralloc_size(ht, key_size);
-      memcpy(dup_key, key, key_size);
-      _mesa_hash_table_insert(ht, dup_key, variant);
-   }
-
-   if (variant->prog_data.base->spill_size > pipeline->spill.size_per_thread) {
-      /* The TIDX register we use for choosing the area to access
-       * for scratch space is: (core << 6) | (qpu << 2) | thread.
-       * Even at minimum threadcount in a particular shader, that
-       * means we still multiply by qpus by 4.
-       */
-      const uint32_t total_spill_size =
-         4 * device->devinfo.qpu_count * variant->prog_data.base->spill_size;
-      if (pipeline->spill.bo) {
-         assert(pipeline->spill.size_per_thread > 0);
-         v3dv_bo_free(device, pipeline->spill.bo);
-      }
-      pipeline->spill.bo =
-         v3dv_bo_alloc(device, total_spill_size, "spill", true);
-      pipeline->spill.size_per_thread = variant->prog_data.base->spill_size;
-   }
-}
-
-
 static void
 pipeline_hash_variant(const struct v3dv_pipeline_stage *p_stage,
                       struct v3d_key *key,
@@ -1441,6 +1334,31 @@ pipeline_hash_variant(const struct v3dv_pipeline_stage *p_stage,
    _mesa_sha1_update(&ctx, key, key_size);
 
    _mesa_sha1_final(&ctx, sha1_out);
+}
+
+/* Checks that the pipeline has enough spill size to use a specific variant */
+static void
+pipeline_check_spill_size(struct v3dv_pipeline *pipeline,
+                          struct v3dv_shader_variant *variant)
+{
+   if (variant->prog_data.base->spill_size > pipeline->spill.size_per_thread) {
+      struct v3dv_device *device = pipeline->device;
+
+      /* The TIDX register we use for choosing the area to access
+       * for scratch space is: (core << 6) | (qpu << 2) | thread.
+       * Even at minimum threadcount in a particular shader, that
+       * means we still multiply by qpus by 4.
+       */
+      const uint32_t total_spill_size =
+         4 * device->devinfo.qpu_count * variant->prog_data.base->spill_size;
+      if (pipeline->spill.bo) {
+         assert(pipeline->spill.size_per_thread > 0);
+         v3dv_bo_free(device, pipeline->spill.bo);
+      }
+      pipeline->spill.bo =
+         v3dv_bo_alloc(device, total_spill_size, "spill", true);
+      pipeline->spill.size_per_thread = variant->prog_data.base->spill_size;
+   }
 }
 
 /*
@@ -1510,20 +1428,9 @@ v3dv_get_shader_variant(struct v3dv_pipeline_stage *p_stage,
                         const VkAllocationCallbacks *pAllocator,
                         VkResult *out_vk_result)
 {
-   /* We first try to get the variant from the internal p_stage cache
-    * variant
+   /* First we search on the pipeline cache if provided by the user, or the
+    * default one
     */
-   struct hash_table *ht = p_stage->cache;
-   struct hash_entry *entry = _mesa_hash_table_search(ht, key);
-
-   if (entry) {
-      *out_vk_result = VK_SUCCESS;
-      v3dv_shader_variant_ref(entry->data);
-      return entry->data;
-   }
-
-   /* Now we search on the pipeline cache if provided by the user, or the
-    * default one*/
    struct v3dv_pipeline *pipeline = p_stage->pipeline;
    struct v3dv_device *device = pipeline->device;
    if (cache == NULL && device->instance->pipeline_cache_enabled)
@@ -1538,11 +1445,10 @@ v3dv_get_shader_variant(struct v3dv_pipeline_stage *p_stage,
                                              variant_sha1);
 
    if (variant) {
-      pipeline_add_variant_to_cache(p_stage, key, key_size, variant);
+      pipeline_check_spill_size(pipeline, variant);
       *out_vk_result = VK_SUCCESS;
       return variant;
    }
-
    /* If we don't find the variant in any cache, we compile one and add the
     * variant to the cache
     */
@@ -1588,9 +1494,21 @@ v3dv_get_shader_variant(struct v3dv_pipeline_stage *p_stage,
    if (qpu_insts)
       free(qpu_insts);
 
+   if (variant)
+      pipeline_check_spill_size(pipeline, variant);
+
    if (*out_vk_result == VK_SUCCESS) {
-      pipeline_add_variant_to_cache(p_stage, key, key_size, variant);
+      struct v3dv_pipeline_cache *default_cache =
+         &pipeline->device->default_pipeline_cache;
+
       v3dv_pipeline_cache_upload_variant(pipeline, cache, variant);
+
+      /* Ensure that the NIR shader is on the default cache, as cmd_buffer could
+       * need to change the current variant.
+       */
+      if (default_cache != cache) {
+         v3dv_pipeline_cache_upload_variant(pipeline, default_cache, variant);
+      }
    }
 
    return variant;
@@ -1737,8 +1655,19 @@ pipeline_stage_get_nir(struct v3dv_pipeline_stage *p_stage,
    nir = shader_module_compile_to_nir(pipeline->device, p_stage);
 
    if (nir) {
+      struct v3dv_pipeline_cache *default_cache =
+         &pipeline->device->default_pipeline_cache;
+
       v3dv_pipeline_cache_upload_nir(pipeline, cache, nir,
                                      p_stage->shader_sha1);
+
+      /* Ensure that the variant is on the default cache, as cmd_buffer could
+       * need to change the current variant
+       */
+      if (default_cache != cache) {
+         v3dv_pipeline_cache_upload_nir(pipeline, default_cache, nir,
+                                        p_stage->shader_sha1);
+      }
       return nir;
    }
 
@@ -1801,7 +1730,6 @@ pipeline_compile_graphics(struct v3dv_pipeline *pipeline,
       p_stage->program_id =
          p_atomic_inc_return(&physical_device->next_program_id);
       p_stage->compiled_variant_count = 0;
-      p_stage->cache = create_variant_cache(stage);
 
       p_stage->pipeline = pipeline;
       p_stage->stage = stage;
@@ -1849,7 +1777,6 @@ pipeline_compile_graphics(struct v3dv_pipeline *pipeline,
       p_stage->program_id =
          p_atomic_inc_return(&physical_device->next_program_id);
       p_stage->compiled_variant_count = 0;
-      p_stage->cache = create_variant_cache(MESA_SHADER_FRAGMENT);
 
       stages[MESA_SHADER_FRAGMENT] = p_stage;
       pipeline->active_stages |= MESA_SHADER_FRAGMENT;
@@ -2946,7 +2873,6 @@ pipeline_compile_compute(struct v3dv_pipeline *pipeline,
 
    p_stage->program_id = p_atomic_inc_return(&physical_device->next_program_id);
    p_stage->compiled_variant_count = 0;
-   p_stage->cache = create_variant_cache(MESA_SHADER_COMPUTE);
    p_stage->pipeline = pipeline;
    p_stage->stage = stage;
    p_stage->entrypoint = sinfo->pName;
