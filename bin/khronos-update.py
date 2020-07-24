@@ -191,7 +191,10 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
     parser.add_argument('apis', nargs='*',
-                        choices=[group['api'] for group in SOURCES],
+                        # the `[[]]` here is a workaround for python bug 9625
+                        # where having `choices` breaks `nargs='*'`:
+                        # https://bugs.python.org/issue9625
+                        choices=[group['api'] for group in SOURCES] + [[]],
                         help='Only update the APIs specified.')
     args = parser.parse_args()
 
