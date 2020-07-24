@@ -3548,6 +3548,7 @@ radv_cmd_state_setup_attachments(struct radv_cmd_buffer *cmd_buffer,
 		}
 
 		state->attachments[i].current_layout = att->initial_layout;
+		state->attachments[i].current_in_render_loop = false;
 		state->attachments[i].current_stencil_layout = att->stencil_initial_layout;
 		state->attachments[i].sample_location.count = 0;
 
