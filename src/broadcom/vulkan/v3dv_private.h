@@ -1519,6 +1519,8 @@ struct v3dv_pipeline {
 
    enum v3dv_ez_state ez_state;
 
+   uint32_t sample_mask;
+
    bool primitive_restart;
 
    /* Accessed by binding. So vb[binding]->stride is the stride of the vertex

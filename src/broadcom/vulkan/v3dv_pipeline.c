@@ -1068,22 +1068,25 @@ pipeline_populate_v3d_fs_key(struct v3d_fs_key *key,
                        vk_to_pipe_logicop[cb_info->logicOp] :
                        PIPE_LOGICOP_COPY;
 
-   const VkPipelineMultisampleStateCreateInfo *ms_info =
-      pCreateInfo->pMultisampleState;
+   const bool raster_enabled =
+      !pCreateInfo->pRasterizationState->rasterizerDiscardEnable;
 
-   /* FIXME: msaa not supported yet (although we add some of the code to
-    * translate vk sample info in advance)
+   /* Multisample rasterization state must be ignored if rasterization
+    * is disabled.
     */
-   key->msaa = false;
-   if (key->msaa & (ms_info != NULL)) {
-      uint32_t sample_mask = 0xffff;
+   const VkPipelineMultisampleStateCreateInfo *ms_info =
+      raster_enabled ? pCreateInfo->pMultisampleState : NULL;
+   if (ms_info) {
+      assert(ms_info->rasterizationSamples == VK_SAMPLE_COUNT_1_BIT ||
+             ms_info->rasterizationSamples == VK_SAMPLE_COUNT_4_BIT);
+      key->msaa = ms_info->rasterizationSamples > VK_SAMPLE_COUNT_1_BIT;
 
-      if (ms_info->pSampleMask)
-         sample_mask = ms_info->pSampleMask[0] & 0xffff;
-
-      key->sample_coverage = (sample_mask != (1 << V3D_MAX_SAMPLES) - 1);
-      key->sample_alpha_to_coverage = ms_info->alphaToCoverageEnable;
-      key->sample_alpha_to_one = ms_info->alphaToOneEnable;
+      if (key->msaa) {
+         key->sample_coverage =
+            p_stage->pipeline->sample_mask != (1 << V3D_MAX_SAMPLES) - 1;
+         key->sample_alpha_to_coverage = ms_info->alphaToCoverageEnable;
+         key->sample_alpha_to_one = ms_info->alphaToOneEnable;
+      }
    }
 
    const VkPipelineDepthStencilStateCreateInfo *ds_info =
@@ -2229,7 +2232,8 @@ pack_blend(struct v3dv_pipeline *pipeline,
 static void
 pack_cfg_bits(struct v3dv_pipeline *pipeline,
               const VkPipelineDepthStencilStateCreateInfo *ds_info,
-              const VkPipelineRasterizationStateCreateInfo *rs_info)
+              const VkPipelineRasterizationStateCreateInfo *rs_info,
+              const VkPipelineMultisampleStateCreateInfo *ms_info)
 {
    assert(sizeof(pipeline->cfg_bits) == cl_packet_length(CFG_BITS));
 
@@ -2258,8 +2262,8 @@ pack_cfg_bits(struct v3dv_pipeline *pipeline,
             rs_info->polygonMode == VK_POLYGON_MODE_POINT;
       }
 
-      /* FIXME: oversample_mode postponed until msaa gets supported */
-      config.rasterizer_oversample_mode = false;
+      config.rasterizer_oversample_mode =
+         ms_info && ms_info->rasterizationSamples > VK_SAMPLE_COUNT_1_BIT ? 1 : 0;
 
       /* From the Vulkan spec:
        *
@@ -2745,6 +2749,21 @@ pack_shader_state_attribute_record(struct v3dv_pipeline *pipeline,
    }
 }
 
+static void
+pipeline_set_sample_mask(struct v3dv_pipeline *pipeline,
+                         const VkPipelineMultisampleStateCreateInfo *ms_info)
+{
+   pipeline->sample_mask = (1 << V3D_MAX_SAMPLES) - 1;
+
+   /* Ignore pSampleMask if we are not enabling multisampling. The hardware
+    * requires this to be 0xf or 0x0 if using a single sample.
+    */
+   if (ms_info && ms_info->pSampleMask &&
+       ms_info->rasterizationSamples > VK_SAMPLE_COUNT_1_BIT) {
+      pipeline->sample_mask &= ms_info->pSampleMask[0];
+   }
+}
+
 static VkResult
 pipeline_init(struct v3dv_pipeline *pipeline,
               struct v3dv_device *device,
@@ -2782,6 +2801,9 @@ pipeline_init(struct v3dv_pipeline *pipeline,
    const VkPipelineColorBlendStateCreateInfo *cb_info =
       raster_enabled ? pCreateInfo->pColorBlendState : NULL;
 
+   const VkPipelineMultisampleStateCreateInfo *ms_info =
+      raster_enabled ? pCreateInfo->pMultisampleState : NULL;
+
    pipeline_init_dynamic_state(pipeline,
                                pCreateInfo->pDynamicState,
                                vp_info, ds_info, cb_info, rs_info);
@@ -2792,10 +2814,11 @@ pipeline_init(struct v3dv_pipeline *pipeline,
    assert(!ds_info || !ds_info->depthBoundsTestEnable);
 
    pack_blend(pipeline, cb_info);
-   pack_cfg_bits(pipeline, ds_info, rs_info);
+   pack_cfg_bits(pipeline, ds_info, rs_info, ms_info);
    pack_stencil_cfg(pipeline, ds_info);
    pipeline_set_ez_state(pipeline, ds_info);
    enable_depth_bias(pipeline, rs_info);
+   pipeline_set_sample_mask(pipeline, ms_info);
 
    pipeline->primitive_restart =
       pCreateInfo->pInputAssemblyState->primitiveRestartEnable;

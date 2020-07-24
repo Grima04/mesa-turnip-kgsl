@@ -3253,6 +3253,24 @@ emit_line_width(struct v3dv_cmd_buffer *cmd_buffer)
 }
 
 static void
+emit_sample_state(struct v3dv_cmd_buffer *cmd_buffer)
+{
+   struct v3dv_pipeline *pipeline = cmd_buffer->state.pipeline;
+   assert(pipeline);
+
+   struct v3dv_job *job = cmd_buffer->state.job;
+   assert(job);
+
+   v3dv_cl_ensure_space_with_branch(&job->bcl, cl_packet_length(SAMPLE_STATE));
+   v3dv_return_if_oom(cmd_buffer, NULL);
+
+   cl_emit(&job->bcl, SAMPLE_STATE, state) {
+      state.coverage = 1.0f;
+      state.mask = pipeline->sample_mask;
+   }
+}
+
+static void
 emit_blend(struct v3dv_cmd_buffer *cmd_buffer)
 {
    struct v3dv_job *job = cmd_buffer->state.job;
@@ -3970,6 +3988,9 @@ cmd_buffer_emit_pre_draw(struct v3dv_cmd_buffer *cmd_buffer)
 
    if (*dirty & V3DV_CMD_DIRTY_LINE_WIDTH)
       emit_line_width(cmd_buffer);
+
+   if (*dirty & V3DV_CMD_DIRTY_PIPELINE)
+      emit_sample_state(cmd_buffer);
 
    cmd_buffer->state.dirty &= ~V3DV_CMD_DIRTY_PIPELINE;
 }
