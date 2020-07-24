@@ -445,8 +445,9 @@ is_lowerable_builtin(ir_call *ir,
        */
       const struct util_format_description *desc =
          util_format_description(resource->data.image_format);
-      unsigned i =
+      int i =
          util_format_get_first_non_void_channel(resource->data.image_format);
+      assert(i >= 0);
 
       if (desc->channel[i].pure_integer ||
           desc->channel[i].type == UTIL_FORMAT_TYPE_FLOAT)
