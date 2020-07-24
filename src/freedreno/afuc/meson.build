@@ -1,4 +1,4 @@
-# Copyright © 2018 Rob Clark
+# Copyright © 2020 Google, Inc
 
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -18,30 +18,52 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-inc_freedreno = include_directories(['.', './registers'])
-inc_freedreno_rnn = include_directories('rnn')
+afuc_parser = custom_target(
+  'parser.[ch]',
+  input: 'parser.y',
+  output: ['parser.c', 'parser.h'],
+  command: [
+    prog_bison, '@INPUT@', '--defines=@OUTPUT1@', '--output=@OUTPUT0@'
+  ]
+)
 
-subdir('common')
-subdir('registers')
-subdir('drm')
-subdir('ir3')
-subdir('fdl')
-subdir('perfcntrs')
-subdir('computerator')
+afuc_lexer = custom_target(
+  'lexer.c',
+  input: 'lexer.l',
+  output: 'lexer.c',
+  command: [
+    prog_flex, '-o', '@OUTPUT@', '@INPUT@'
+  ]
+)
 
-dep_libxml2 = dependency('libxml-2.0', required: false)
+asm = executable(
+  'asm',
+  [
+    'asm.c',
+    afuc_lexer,
+    afuc_parser,
+  ],
+  include_directories: [
+    inc_freedreno_rnn,
+  ],
+  link_with: [
+    libfreedreno_rnn,
+  ],
+  dependencies: [],
+  build_by_default : with_tools.contains('freedreno'),
+  install: false,
+)
 
-# Everything that depends on rnn requires (indirectly) libxml2:
-if dep_libxml2.found()
-  subdir('rnn')
-  subdir('decode')
-  subdir('afuc')
-endif
-
-if with_tools.contains('drm-shim')
-  subdir('drm-shim')
-endif
-
-if with_freedreno_vk
-  subdir('vulkan')
-endif
+disasm = executable(
+  'disasm',
+  'disasm.c',
+  include_directories: [
+    inc_freedreno_rnn,
+  ],
+  link_with: [
+    libfreedreno_rnn,
+  ],
+  dependencies: [],
+  build_by_default : with_tools.contains('freedreno'),
+  install: false
+)
