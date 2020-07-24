@@ -653,25 +653,6 @@ x11_surface_get_present_modes(VkIcdSurfaceBase *surface,
       VK_INCOMPLETE : VK_SUCCESS;
 }
 
-static bool
-x11_surface_is_local_to_gpu(struct wsi_device *wsi_dev,
-                            xcb_connection_t *conn)
-{
-   struct wsi_x11_connection *wsi_conn =
-      wsi_x11_get_connection(wsi_dev, conn);
-
-   if (!wsi_conn)
-      return false;
-
-   if (!wsi_x11_check_for_dri3(wsi_conn))
-      return false;
-
-   if (!wsi_x11_check_dri3_compatible(wsi_dev, conn))
-      return false;
-
-   return true;
-}
-
 static VkResult
 x11_surface_get_present_rectangles(VkIcdSurfaceBase *icd_surface,
                                    struct wsi_device *wsi_device,
@@ -682,30 +663,28 @@ x11_surface_get_present_rectangles(VkIcdSurfaceBase *icd_surface,
    xcb_window_t window = x11_surface_get_window(icd_surface);
    VK_OUTARRAY_MAKE(out, pRects, pRectCount);
 
-   if (x11_surface_is_local_to_gpu(wsi_device, conn)) {
-      vk_outarray_append(&out, rect) {
-         xcb_generic_error_t *err = NULL;
-         xcb_get_geometry_cookie_t geom_cookie = xcb_get_geometry(conn, window);
-         xcb_get_geometry_reply_t *geom =
-            xcb_get_geometry_reply(conn, geom_cookie, &err);
-         free(err);
-         if (geom) {
-            *rect = (VkRect2D) {
-               .offset = { 0, 0 },
-               .extent = { geom->width, geom->height },
-            };
-         } else {
-            /* This can happen if the client didn't wait for the configure event
-             * to come back from the compositor.  In that case, we don't know the
-             * size of the window so we just return valid "I don't know" stuff.
-             */
-            *rect = (VkRect2D) {
-               .offset = { 0, 0 },
-               .extent = { -1, -1 },
-            };
-         }
-         free(geom);
+   vk_outarray_append(&out, rect) {
+      xcb_generic_error_t *err = NULL;
+      xcb_get_geometry_cookie_t geom_cookie = xcb_get_geometry(conn, window);
+      xcb_get_geometry_reply_t *geom =
+         xcb_get_geometry_reply(conn, geom_cookie, &err);
+      free(err);
+      if (geom) {
+         *rect = (VkRect2D) {
+            .offset = { 0, 0 },
+            .extent = { geom->width, geom->height },
+         };
+      } else {
+         /* This can happen if the client didn't wait for the configure event
+          * to come back from the compositor.  In that case, we don't know the
+          * size of the window so we just return valid "I don't know" stuff.
+          */
+         *rect = (VkRect2D) {
+            .offset = { 0, 0 },
+            .extent = { -1, -1 },
+         };
       }
+      free(geom);
    }
 
    return vk_outarray_status(&out);
