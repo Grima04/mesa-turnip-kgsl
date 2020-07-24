@@ -100,10 +100,15 @@ private:
 
 private:
    void make_last(AluInstruction *ir) const;
-   void split_alu_modifiers(const nir_alu_src &src, GPRVector::Values& s, GPRVector::Values& v, int ncomp);
+   void split_alu_modifiers(const nir_alu_src &src, GPRVector::Values& v, int ncomp);
+
+   void preload_src(const nir_alu_instr& instr);
+   unsigned num_src_comp(const nir_alu_instr& instr);
 
    using vreg = std::array<PValue, 4>;
 
+   unsigned m_num_src_comp;
+   std::array<PValue, 4> m_src[4];
 };
 
 inline void EmitAluInstruction::make_last(AluInstruction *ir) const

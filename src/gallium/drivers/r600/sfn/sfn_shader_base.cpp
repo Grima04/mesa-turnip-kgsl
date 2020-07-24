@@ -857,7 +857,7 @@ bool ShaderFromNirProcessor::emit_load_ubo(nir_intrinsic_instr* instr)
             assert(cmp < 4);
             auto u = PValue(new UniformValue(512 +  buf_ofs, cmp, bufid + 1));
             if (instr->dest.is_ssa)
-               add_uniform((instr->dest.ssa.index << 2) + i, u);
+               load_preloaded_value(instr->dest, i, u);
             else {
                ir = new AluInstruction(op1_mov, from_nir(instr->dest, i), u, {alu_write});
                emit_instruction(ir);
@@ -946,7 +946,7 @@ bool ShaderFromNirProcessor::reserve_uniform(nir_intrinsic_instr* instr)
                  << instr->dest.ssa.index << " const["<< i << "]: "<< instr->const_index[i] << "\n";
 
          if (instr->dest.is_ssa)
-            add_uniform((instr->dest.ssa.index << 2) + i, u);
+            load_preloaded_value(instr->dest, i, u);
          else {
             ir = new AluInstruction(op1_mov, from_nir(instr->dest, i),
                                                    u, {alu_write});
@@ -982,9 +982,6 @@ bool ShaderFromNirProcessor::load_uniform_indirect(nir_intrinsic_instr* instr, P
    auto ir = new FetchInstruction(vc_fetch, no_index_offset, trgt, addr, offest,
                                   bufferid, PValue(), bim_none);
    emit_instruction(ir);
-   for (int i = 0; i < instr->num_components ; ++i) {
-      add_uniform((instr->dest.ssa.index << 2) + i, trgt.reg_i(i));
-   }
    m_sh_info.indirect_files |= 1 << TGSI_FILE_CONSTANT;
    return true;
 }

@@ -101,6 +101,7 @@ public:
    PValue z() const {return m_elms[2];}
    PValue w() const {return m_elms[3];}
 
+   Values& values() { return m_elms;}
 
 private:
    void do_print(std::ostream& os) const override;
