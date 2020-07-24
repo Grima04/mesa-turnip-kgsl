@@ -2933,6 +2933,8 @@ vtn_handle_image(struct vtn_builder *b, SpvOp opcode,
    SpvScope scope = SpvScopeInvocation;
    SpvMemorySemanticsMask semantics = 0;
 
+   enum gl_access_qualifier access = 0;
+
    struct vtn_value *res_val;
    switch (opcode) {
    case SpvOpAtomicExchange:
@@ -2955,6 +2957,7 @@ vtn_handle_image(struct vtn_builder *b, SpvOp opcode,
       image = *res_val->image;
       scope = vtn_constant_uint(b, w[4]);
       semantics = vtn_constant_uint(b, w[5]);
+      access |= ACCESS_COHERENT;
       break;
 
    case SpvOpAtomicStore:
@@ -2962,6 +2965,7 @@ vtn_handle_image(struct vtn_builder *b, SpvOp opcode,
       image = *res_val->image;
       scope = vtn_constant_uint(b, w[2]);
       semantics = vtn_constant_uint(b, w[3]);
+      access |= ACCESS_COHERENT;
       break;
 
    case SpvOpImageQuerySize:
@@ -3108,7 +3112,6 @@ vtn_handle_image(struct vtn_builder *b, SpvOp opcode,
     * chains to find the NonUniform decoration.  It's either right there or we
     * can assume it doesn't exist.
     */
-   enum gl_access_qualifier access = 0;
    vtn_foreach_decoration(b, res_val, non_uniform_decoration_cb, &access);
    nir_intrinsic_set_access(intrin, access);
 
@@ -3376,6 +3379,8 @@ vtn_handle_atomics(struct vtn_builder *b, SpvOp opcode,
       nir_intrinsic_op op  = get_ssbo_nir_atomic_op(b, opcode);
       atomic = nir_intrinsic_instr_create(b->nb.shader, op);
 
+      nir_intrinsic_set_access(atomic, ACCESS_COHERENT);
+
       int src = 0;
       switch (opcode) {
       case SpvOpAtomicLoad:
@@ -3426,6 +3431,9 @@ vtn_handle_atomics(struct vtn_builder *b, SpvOp opcode,
       nir_intrinsic_op op = get_deref_nir_atomic_op(b, opcode);
       atomic = nir_intrinsic_instr_create(b->nb.shader, op);
       atomic->src[0] = nir_src_for_ssa(&deref->dest.ssa);
+
+      if (ptr->mode != vtn_variable_mode_workgroup)
+         nir_intrinsic_set_access(atomic, ACCESS_COHERENT);
 
       switch (opcode) {
       case SpvOpAtomicLoad:
