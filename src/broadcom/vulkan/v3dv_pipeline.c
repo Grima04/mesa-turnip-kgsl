@@ -1372,6 +1372,8 @@ v3dv_shader_variant_create(struct v3dv_device *device,
                            gl_shader_stage stage,
                            bool is_coord,
                            const unsigned char *variant_sha1,
+                           const struct v3d_key *key,
+                           uint32_t key_size,
                            struct v3d_prog_data *prog_data,
                            uint32_t prog_data_size,
                            const uint64_t *qpu_insts,
@@ -1390,6 +1392,8 @@ v3dv_shader_variant_create(struct v3dv_device *device,
    variant->ref_cnt = 1;
    variant->stage = stage;
    variant->is_coord = is_coord;
+   memcpy(&variant->key, key, key_size);
+   variant->v3d_key_size = key_size;
    memcpy(variant->variant_sha1, variant_sha1, sizeof(variant->variant_sha1));
    variant->prog_data_size = prog_data_size;
    variant->prog_data.base = prog_data;
@@ -1428,16 +1432,26 @@ v3dv_get_shader_variant(struct v3dv_pipeline_stage *p_stage,
                         const VkAllocationCallbacks *pAllocator,
                         VkResult *out_vk_result)
 {
-   /* First we search on the pipeline cache if provided by the user, or the
-    * default one
+   /* First we check if the current pipeline variant is such variant. For this
+    * we can just use the v3d_key
     */
+
+   if (p_stage->current_variant &&
+       memcmp(key, &p_stage->current_variant->key, key_size) == 0) {
+      *out_vk_result = VK_SUCCESS;
+      return p_stage->current_variant;
+   }
+
+   /* We search on the pipeline cache if provided by the user, or the default
+    * one
+    */
+   unsigned char variant_sha1[20];
+   pipeline_hash_variant(p_stage, key, key_size, variant_sha1);
+
    struct v3dv_pipeline *pipeline = p_stage->pipeline;
    struct v3dv_device *device = pipeline->device;
    if (cache == NULL && device->instance->pipeline_cache_enabled)
        cache = &device->default_pipeline_cache;
-
-   unsigned char variant_sha1[20];
-   pipeline_hash_variant(p_stage, key, key_size, variant_sha1);
 
    struct v3dv_shader_variant *variant =
       v3dv_pipeline_cache_search_for_variant(pipeline,
@@ -1488,6 +1502,7 @@ v3dv_get_shader_variant(struct v3dv_pipeline_stage *p_stage,
 
    variant = v3dv_shader_variant_create(device, p_stage->stage, p_stage->is_coord,
                                         variant_sha1,
+                                        key, key_size,
                                         prog_data, v3d_prog_data_size(p_stage->stage),
                                         qpu_insts, qpu_insts_size,
                                         out_vk_result);
