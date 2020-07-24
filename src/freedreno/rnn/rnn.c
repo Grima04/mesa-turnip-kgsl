@@ -26,6 +26,9 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  */
 
+/* workaround libxml2 silliness: */
+#pragma GCC diagnostic ignored "-Wpointer-sign"
+
 #include <libxml/xmlversion.h>
 #include <libxml/parser.h>
 #include <libxml/xpath.h>

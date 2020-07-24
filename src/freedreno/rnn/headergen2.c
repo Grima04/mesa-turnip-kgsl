@@ -28,7 +28,6 @@
 /* modified version of headergen which uses enums and inline fxns for
  * type safety.. based on original headergen
  */
-#define _GNU_SOURCE
 
 #include "rnn.h"
 #include "util.h"
@@ -158,6 +157,8 @@ static void printtypeinfo (struct rnntypeinfo *ti, struct rnnbitfield *bf,
 			break;
 		case RNN_TTYPE_ENUM:
 			asprintf(&typename, "enum %s", ti->name);
+			break;
+		default:
 			break;
 		}
 	}

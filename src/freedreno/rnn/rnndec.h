@@ -48,7 +48,7 @@ struct rnndecaddrinfo {
 };
 
 struct rnndeccontext *rnndec_newcontext(struct rnndb *db);
-int rnndec_varadd(struct rnndeccontext *ctx, char *varset, char *variant);
+int rnndec_varadd(struct rnndeccontext *ctx, char *varset, const char *variant);
 int rnndec_varmatch(struct rnndeccontext *ctx, struct rnnvarinfo *vi);
 char *rnndec_decode_enum(struct rnndeccontext *ctx, const char *enumname, uint64_t enumval);
 char *rnndec_decodeval(struct rnndeccontext *ctx, struct rnntypeinfo *ti, uint64_t value);

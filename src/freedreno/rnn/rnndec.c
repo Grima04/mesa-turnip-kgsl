@@ -23,7 +23,6 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#define _GNU_SOURCE // for asprintf
 #include "rnndec.h"
 #include <assert.h>
 #include <stdio.h>
@@ -39,7 +38,7 @@ struct rnndeccontext *rnndec_newcontext(struct rnndb *db) {
 	return res;
 }
 
-int rnndec_varadd(struct rnndeccontext *ctx, char *varset, char *variant) {
+int rnndec_varadd(struct rnndeccontext *ctx, char *varset, const char *variant) {
 	struct rnnenum *en = rnn_findenum(ctx->db, varset);
 	if (!en) {
 		fprintf (stderr, "Enum %s doesn't exist in database!\n", varset);
@@ -168,6 +167,7 @@ char *rnndec_decodeval(struct rnndeccontext *ctx, struct rnntypeinfo *ti, uint64
 	struct rnnbitfield **bitfields;
 	int bitfieldsnum;
 	char *tmp;
+	const char *ctmp;
 	uint64_t mask, value_orig;
 	if (!ti)
 		goto failhex;
@@ -185,11 +185,11 @@ char *rnndec_decodeval(struct rnndeccontext *ctx, struct rnntypeinfo *ti, uint64
 			valsnum = ti->valsnum;
 			goto doenum;
 		doenum:
-			tmp = rnndec_decode_enum_val(ctx, vals, valsnum, value);
-			if (tmp) {
-				asprintf (&res, "%s%s%s", ctx->colors->eval, tmp, ctx->colors->reset);
+			ctmp = rnndec_decode_enum_val(ctx, vals, valsnum, value);
+			if (ctmp) {
+				asprintf (&res, "%s%s%s", ctx->colors->eval, ctmp, ctx->colors->reset);
 				if (ti->addvariant) {
-					rnndec_varadd(ctx, ti->eenum->name, tmp);
+					rnndec_varadd(ctx, ti->eenum->name, ctmp);
 				}
 				break;
 			}
@@ -325,7 +325,8 @@ char *rnndec_decodeval(struct rnndeccontext *ctx, struct rnntypeinfo *ti, uint64
 }
 
 static char *appendidx (struct rnndeccontext *ctx, char *name, uint64_t idx, struct rnnenum *index) {
-	char *res, *index_name = NULL;
+	char *res;
+	const char *index_name = NULL;
 
 	if (index)
 		index_name = rnndec_decode_enum_val(ctx, index->vals, index->valsnum, idx);
