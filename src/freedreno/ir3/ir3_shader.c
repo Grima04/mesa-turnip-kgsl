@@ -36,6 +36,8 @@
 #include "ir3_compiler.h"
 #include "ir3_nir.h"
 
+#include "disasm.h"
+
 int
 ir3_glsl_type_size(const struct glsl_type *type, bool bindless)
 {

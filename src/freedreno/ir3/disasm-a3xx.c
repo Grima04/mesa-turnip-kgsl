@@ -30,14 +30,9 @@
 
 #include <util/u_debug.h>
 
+#include "disasm.h"
 #include "instr-a3xx.h"
-
-/* bitmask of debug flags */
-enum debug_t {
-	PRINT_RAW      = 0x1,    /* dump raw hexdump */
-	PRINT_VERBOSE  = 0x2,
-	EXPAND_REPEAT  = 0x4,
-};
+#include "regmask.h"
 
 static enum debug_t debug;
 
@@ -80,12 +75,28 @@ struct disasm_ctx {
 	int level;
 	unsigned gpu_id;
 
+	struct shader_stats *stats;
+
+	/* we have to process the dst register after src to avoid tripping up
+	 * the read-before-write detection
+	 */
+	unsigned last_dst;
+	bool last_dst_full;
+	bool last_dst_valid;
+
 	/* current instruction repeat flag: */
 	unsigned repeat;
 	/* current instruction repeat indx/offset (for --expand): */
 	unsigned repeatidx;
 
-	unsigned instructions;
+	/* tracking for register usage */
+	struct {
+		regmask_t used;
+		regmask_t used_merged;
+		regmask_t rbw;      /* read before write */
+		regmask_t war;      /* write after read */
+		unsigned max_const;
+	} regs;
 };
 
 static const char *float_imms[] = {
@@ -157,6 +168,24 @@ static void print_reg(struct disasm_ctx *ctx, reg_t reg, bool full,
 	}
 }
 
+static void regmask_set(regmask_t *regmask, unsigned num, bool full)
+{
+	ir3_assert(num < MAX_REG);
+	__regmask_set(regmask, !full, num);
+}
+
+static void regmask_clear(regmask_t *regmask, unsigned num, bool full)
+{
+	ir3_assert(num < MAX_REG);
+	__regmask_clear(regmask, !full, num);
+}
+
+static unsigned regmask_get(regmask_t *regmask, unsigned num, bool full)
+{
+	ir3_assert(num < MAX_REG);
+	return __regmask_get(regmask, !full, num);
+}
+
 static unsigned regidx(reg_t reg)
 {
 	return (4 * reg.num) + reg.comp;
@@ -170,8 +199,127 @@ static reg_t idxreg(unsigned idx)
 	};
 }
 
+static void print_sequence(struct disasm_ctx *ctx, int first, int last)
+{
+	if (first != MAX_REG) {
+		if (first == last) {
+			fprintf(ctx->out, " %d", first);
+		} else {
+			fprintf(ctx->out, " %d-%d", first, last);
+		}
+	}
+}
+
+static int print_regs(struct disasm_ctx *ctx, regmask_t *regmask, bool full)
+{
+	int num, max = 0, cnt = 0;
+	int first, last;
+
+	first = last = MAX_REG;
+
+	for (num = 0; num < MAX_REG; num++) {
+		if (regmask_get(regmask, num, full)) {
+			if (num != (last + 1)) {
+				print_sequence(ctx, first, last);
+				first = num;
+			}
+			last = num;
+			if (num < (48*4))
+				max = num;
+			cnt++;
+		}
+	}
+
+	print_sequence(ctx, first, last);
+
+	fprintf(ctx->out, " (cnt=%d, max=%d)", cnt, max);
+
+	return max;
+}
+
+static void print_reg_stats(struct disasm_ctx *ctx)
+{
+	int fullreg, halfreg;
+
+	fprintf(ctx->out, "%sRegister Stats:\n", levels[ctx->level]);
+	fprintf(ctx->out, "%s- used (half):", levels[ctx->level]);
+	halfreg = print_regs(ctx, &ctx->regs.used, false);
+	fprintf(ctx->out, "\n");
+	fprintf(ctx->out, "%s- used (full):", levels[ctx->level]);
+	fullreg = print_regs(ctx, &ctx->regs.used, true);
+	fprintf(ctx->out, "\n");
+	if (ctx->gpu_id >= 600) {
+		fprintf(ctx->out, "%s- used (merged):", levels[ctx->level]);
+		print_regs(ctx, &ctx->regs.used_merged, false);
+		fprintf(ctx->out, "\n");
+	}
+	fprintf(ctx->out, "%s- input (half):", levels[ctx->level]);
+	print_regs(ctx, &ctx->regs.rbw, false);
+	fprintf(ctx->out, "\n");
+	fprintf(ctx->out, "%s- input (full):", levels[ctx->level]);
+	print_regs(ctx, &ctx->regs.rbw, true);
+	fprintf(ctx->out, "\n");
+	fprintf(ctx->out, "%s- max const: %u\n", levels[ctx->level], ctx->regs.max_const);
+	fprintf(ctx->out, "\n");
+	fprintf(ctx->out, "%s- output (half):", levels[ctx->level]);
+	print_regs(ctx, &ctx->regs.war, false);
+	fprintf(ctx->out, "  (estimated)\n");
+	fprintf(ctx->out, "%s- output (full):", levels[ctx->level]);
+	print_regs(ctx, &ctx->regs.war, true);
+	fprintf(ctx->out, "  (estimated)\n");
+
+	/* convert to vec4, which is the granularity that registers are
+	 * assigned to shader:
+	 */
+	fullreg = (fullreg + 3) / 4;
+	halfreg = (halfreg + 3) / 4;
+
+	// Note this count of instructions includes rptN, which matches
+	// up to how mesa prints this:
+	fprintf(ctx->out, "%s- shaderdb: %d instructions, %d nops, %d non-nops, "
+			"(%d instlen), %d half, %d full\n",
+			levels[ctx->level], ctx->stats->instructions, ctx->stats->nops,
+			ctx->stats->instructions - ctx->stats->nops, ctx->stats->instlen,
+			halfreg, fullreg);
+	fprintf(ctx->out, "%s- shaderdb: %d (ss), %d (sy)\n", levels[ctx->level],
+			ctx->stats->ss, ctx->stats->sy);
+}
+
+static void process_reg_dst(struct disasm_ctx *ctx)
+{
+	if (!ctx->last_dst_valid)
+		return;
+
+	/* ignore dummy writes (ie. r63.x): */
+	if (!VALIDREG(ctx->last_dst))
+		return;
+
+	for (unsigned i = 0; i <= ctx->repeat; i++) {
+		unsigned dst = ctx->last_dst + i;
+
+		regmask_set(&ctx->regs.war, dst, ctx->last_dst_full);
+		regmask_set(&ctx->regs.used, dst, ctx->last_dst_full);
+
+		if (ctx->gpu_id >= 600) {
+			if (ctx->last_dst_full) {
+				regmask_set(&ctx->regs.used_merged, (dst*2)+0, false);
+				regmask_set(&ctx->regs.used_merged, (dst*2)+1, false);
+			} else {
+				regmask_set(&ctx->regs.used_merged, dst, false);
+			}
+		}
+	}
+
+	ctx->last_dst_valid = false;
+}
 static void print_reg_dst(struct disasm_ctx *ctx, reg_t reg, bool full, bool addr_rel)
 {
+	/* presumably the special registers a0.c and p0.c don't count.. */
+	if (!(addr_rel || (reg.num == REG_A0) || (reg.num == REG_P0))) {
+		ctx->last_dst = regidx(reg);
+		ctx->last_dst_full = full;
+		ctx->last_dst_valid = true;
+	}
 	reg = idxreg(regidx(reg) + ctx->repeatidx);
 	print_reg(ctx, reg, full, false, false, false, false, false, false, addr_rel);
 }
@@ -195,6 +343,45 @@ struct reginfo {
 static void print_src(struct disasm_ctx *ctx, struct reginfo *info)
 {
 	reg_t reg = info->reg;
+
+	/* presumably the special registers a0.c and p0.c don't count.. */
+	if (!(info->addr_rel || info->c || info->im ||
+			(reg.num == REG_A0) || (reg.num == REG_P0))) {
+		int i, num = regidx(reg);
+		for (i = 0; i <= ctx->repeat; i++) {
+			unsigned src = num + i;
+
+			if (!regmask_get(&ctx->regs.used, src, info->full))
+				regmask_set(&ctx->regs.rbw, src, info->full);
+
+			regmask_clear(&ctx->regs.war, src, info->full);
+			regmask_set(&ctx->regs.used, src, info->full);
+
+			if (info->full) {
+				regmask_set(&ctx->regs.used_merged, (src*2)+0, false);
+				regmask_set(&ctx->regs.used_merged, (src*2)+1, false);
+			} else {
+				regmask_set(&ctx->regs.used_merged, src, false);
+			}
+
+			if (!info->r)
+				break;
+		}
+	} else if (info->c) {
+		int i, num = regidx(reg);
+		for (i = 0; i <= ctx->repeat; i++) {
+			unsigned src = num + i;
+
+			ctx->regs.max_const = MAX2(ctx->regs.max_const, src);
+
+			if (!info->r)
+				break;
+		}
+
+		unsigned max = (num + ctx->repeat + 1 + 3) / 4;
+		if (max > ctx->stats->constlen)
+			ctx->stats->constlen = max;
+	}
 
 	if (info->r)
 		reg = idxreg(regidx(info->reg) + ctx->repeatidx);
@@ -1309,12 +1496,10 @@ static const struct opc_info {
 
 #define GETINFO(instr) (&(opcs[((instr)->opc_cat << NOPC_BITS) | instr_opc(instr, ctx->gpu_id)]))
 
-// XXX hack.. probably should move this table somewhere common:
-#include "ir3.h"
-const char *ir3_instr_name(struct ir3_instruction *instr)
+const char *disasm_a3xx_instr_name(opc_t opc)
 {
-	if (opc_cat(instr->opc) == -1) return "??meta??";
-	return opcs[instr->opc].name;
+	if (opc_cat(opc) == -1) return "??meta??";
+	return opcs[opc].name;
 }
 
 static void print_single_instr(struct disasm_ctx *ctx, instr_t *instr)
@@ -1346,11 +1531,11 @@ static bool print_instr(struct disasm_ctx *ctx, uint32_t *dwords, int n)
 	instr_t *instr = (instr_t *)dwords;
 	uint32_t opc = instr_opc(instr, ctx->gpu_id);
 	unsigned nop = 0;
-	unsigned cycles = ctx->instructions;
+	unsigned cycles = ctx->stats->instructions;
 
-	if (debug & PRINT_VERBOSE) {
-		fprintf(ctx->out, "%s%04d:%04d[%08xx_%08xx] ", levels[ctx->level],
-				n, cycles++, dwords[1], dwords[0]);
+	if (debug & PRINT_RAW) {
+		fprintf(ctx->out, "%s:%d:%04d:%04d[%08xx_%08xx] ", levels[ctx->level],
+				instr->opc_cat, n, cycles++, dwords[1], dwords[0]);
 	}
 
 	/* NOTE: order flags are printed is a bit fugly.. but for now I
@@ -1359,13 +1544,16 @@ static bool print_instr(struct disasm_ctx *ctx, uint32_t *dwords, int n)
 	 */
 
 	ctx->repeat = instr_repeat(instr);
-	ctx->instructions += 1 + ctx->repeat;
+	ctx->stats->instructions += 1 + ctx->repeat;
+	ctx->stats->instlen++;
 
 	if (instr->sync) {
 		fprintf(ctx->out, "(sy)");
+		ctx->stats->sy++;
 	}
 	if (instr->ss && ((instr->opc_cat <= 4) || (instr->opc_cat == 7))) {
 		fprintf(ctx->out, "(ss)");
+		ctx->stats->ss++;
 	}
 	if (instr->jmp_tgt)
 		fprintf(ctx->out, "(jp)");
@@ -1379,7 +1567,10 @@ static bool print_instr(struct disasm_ctx *ctx, uint32_t *dwords, int n)
 		nop = (instr->cat2.src2_r * 2) + instr->cat2.src1_r;
 	else if ((instr->opc_cat == 3) && (instr->cat3.src1_r || instr->cat3.src2_r))
 		nop = (instr->cat3.src2_r * 2) + instr->cat3.src1_r;
-	ctx->instructions += nop;
+	ctx->stats->instructions += nop;
+	ctx->stats->nops += nop;
+	if (opc == OPC_NOP)
+		ctx->stats->nops += 1 + ctx->repeat;
 	if (nop)
 		fprintf(ctx->out, "(nop%d) ", nop);
 
@@ -1389,20 +1580,22 @@ static bool print_instr(struct disasm_ctx *ctx, uint32_t *dwords, int n)
 	print_single_instr(ctx, instr);
 	fprintf(ctx->out, "\n");
 
+	process_reg_dst(ctx);
+
 	if ((instr->opc_cat <= 4) && (debug & EXPAND_REPEAT)) {
 		int i;
 		for (i = 0; i < nop; i++) {
 			if (debug & PRINT_VERBOSE) {
-				fprintf(ctx->out, "%s%04d:%04d[                   ] ",
-						levels[ctx->level], n, cycles++);
+				fprintf(ctx->out, "%s:%d:%04d:%04d[                   ] ",
+						levels[ctx->level], instr->opc_cat, n, cycles++);
 			}
 			fprintf(ctx->out, "nop\n");
 		}
 		for (i = 0; i < ctx->repeat; i++) {
 			ctx->repeatidx = i + 1;
 			if (debug & PRINT_VERBOSE) {
-				fprintf(ctx->out, "%s%04d:%04d[                   ] ",
-						levels[ctx->level], n, cycles++);
+				fprintf(ctx->out, "%s:%d:%04d:%04d[                   ] ",
+						levels[ctx->level], instr->opc_cat, n, cycles++);
 			}
 			print_single_instr(ctx, instr);
 			fprintf(ctx->out, "\n");
@@ -1410,24 +1603,37 @@ static bool print_instr(struct disasm_ctx *ctx, uint32_t *dwords, int n)
 		ctx->repeatidx = 0;
 	}
 
-	return (instr->opc_cat == 0) && (opc == OPC_END);
+	return (instr->opc_cat == 0) &&
+		((opc == OPC_END) || (opc == OPC_CHSH));
 }
 
 int disasm_a3xx(uint32_t *dwords, int sizedwords, int level, FILE *out, unsigned gpu_id)
 {
+	struct shader_stats stats;
+	return disasm_a3xx_stat(dwords, sizedwords, level, out, gpu_id, &stats);
+}
+
+int disasm_a3xx_stat(uint32_t *dwords, int sizedwords, int level, FILE *out,
+		unsigned gpu_id, struct shader_stats *stats)
+{
 	struct disasm_ctx ctx;
 	int i;
 	int nop_count = 0;
+	bool has_end = false;
 
-	assert((sizedwords % 2) == 0);
+	ir3_assert((sizedwords % 2) == 0);
 
 	memset(&ctx, 0, sizeof(ctx));
 	ctx.out = out;
 	ctx.level = level;
 	ctx.gpu_id = gpu_id;
+	ctx.stats = stats;
+	memset(ctx.stats, 0, sizeof(*ctx.stats));
 
 	for (i = 0; i < sizedwords; i += 2) {
-		print_instr(&ctx, &dwords[i], i/2);
+		has_end |= print_instr(&ctx, &dwords[i], i/2);
+		if (!has_end)
+			continue;
 		if (dwords[i] == 0 && dwords[i + 1] == 0)
 			nop_count++;
 		else
@@ -1436,5 +1642,13 @@ int disasm_a3xx(uint32_t *dwords, int sizedwords, int level, FILE *out, unsigned
 			break;
 	}
 
+	if (debug & PRINT_STATS)
+		print_reg_stats(&ctx);
+
 	return 0;
+}
+
+void disasm_a3xx_set_debug(enum debug_t d)
+{
+	debug = d;
 }

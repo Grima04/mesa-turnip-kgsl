@@ -139,6 +139,7 @@ static const struct option opts[] = {
 
 int main(int argc, char **argv)
 {
+	enum debug_t debug = PRINT_RAW | PRINT_STATS;
 	int ret = -1;
 	int start = 0, end = 0x7ffffff, draw = -1;
 	int c;
@@ -153,7 +154,7 @@ int main(int argc, char **argv)
 			/* option that set a flag, nothing to do */
 			break;
 		case 'v':
-			disasm_set_debug(PRINT_RAW | EXPAND_REPEAT | PRINT_VERBOSE);
+			debug |= (PRINT_RAW | EXPAND_REPEAT | PRINT_VERBOSE);
 			break;
 		case 's':
 			options.summary = true;
@@ -191,6 +192,9 @@ int main(int argc, char **argv)
 			print_usage(argv[0]);
 		}
 	}
+
+	disasm_a2xx_set_debug(debug);
+	disasm_a3xx_set_debug(debug);
 
 	if (interactive) {
 		pager_open();

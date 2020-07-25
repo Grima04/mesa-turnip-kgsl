@@ -891,7 +891,7 @@ static void dump_program(struct state *state)
 int main(int argc, char **argv)
 {
 	enum rd_sect_type type = RD_NONE;
-	enum debug_t debug = 0;
+	enum debug_t debug = PRINT_RAW | PRINT_STATS;
 	void *buf = NULL;
 	int sz;
 	struct io *io;
@@ -945,7 +945,8 @@ int main(int argc, char **argv)
 		return -1;
 	}
 
-	disasm_set_debug(debug);
+	disasm_a2xx_set_debug(debug);
+	disasm_a3xx_set_debug(debug);
 
 	infile = argv[1];
 

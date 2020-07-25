@@ -55,7 +55,7 @@
 #include "pager.h"
 #include "rnnutil.h"
 #include "util.h"
-#include "instr-a3xx.h"
+#include "ir3/instr-a3xx.h"
 
 
 static FILE *in;
@@ -223,7 +223,7 @@ void
 ir3_assert_handler(const char *expr, const char *file, int line,
 		const char *func)
 {
-	printf("%s:%u: %s: Assertion `%s' failed.\n", file, line, func, expr);
+	printf("\n%s:%u: %s: Assertion `%s' failed.\n", file, line, func, expr);
 	if (jmp_env_valid)
 		longjmp(jmp_env, 1);
 	abort();
@@ -1102,6 +1102,8 @@ main(int argc, char **argv)
 			usage();
 		}
 	}
+
+	disasm_a3xx_set_debug(PRINT_RAW);
 
 	if (interactive) {
 		pager_open();

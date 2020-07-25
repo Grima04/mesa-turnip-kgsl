@@ -37,10 +37,7 @@ libfreedreno_cffdec = static_library(
     'cffdec.c',
     'cffdec.h',
     'disasm-a2xx.c',
-    'disasm-a3xx.c',
-    'disasm.h',
     'instr-a2xx.h',
-    'instr-a3xx.h',
     'pager.c',
     'pager.h',
     'rnnutil.c',
@@ -48,6 +45,7 @@ libfreedreno_cffdec = static_library(
     'util.h',
   ],
   include_directories: [
+    inc_freedreno,
     inc_freedreno_rnn,
     inc_include,
     inc_src,
@@ -55,7 +53,10 @@ libfreedreno_cffdec = static_library(
   c_args : [ no_override_init_args ],
   gnu_symbol_visibility: 'hidden',
   dependencies: [],
-  link_with: libfreedreno_rnn,
+  link_with: [
+    libfreedreno_rnn,
+    libfreedreno_ir3,  # for disasm_a3xx
+  ],
   build_by_default: false,
 )
 
@@ -85,6 +86,7 @@ if dep_lua.found() and dep_libarchive.found()
       'script.h'
     ],
     include_directories: [
+      inc_freedreno,
       inc_freedreno_rnn,
       inc_include,
       inc_src,
@@ -107,6 +109,7 @@ crashdec = executable(
   'crashdec',
   'crashdec.c',
   include_directories: [
+    inc_freedreno,
     inc_freedreno_rnn,
     inc_include,
     inc_src,
@@ -125,6 +128,7 @@ if dep_libarchive.found()
     'pgmdump',
     'pgmdump.c',
     include_directories: [
+      inc_freedreno,
       inc_include,
       inc_src,
     ],
@@ -133,6 +137,7 @@ if dep_libarchive.found()
     link_with: [
       libfreedreno_cffdec,
       libfreedreno_io,
+      libfreedreno_ir3,  # for disasm_a3xx
     ],
     build_by_default: with_tools.contains('freedreno'),
     install: false,
@@ -141,6 +146,7 @@ if dep_libarchive.found()
     'pgmdump2',
     'pgmdump2.c',
     include_directories: [
+      inc_freedreno,
       inc_include,
       inc_src,
     ],
@@ -149,6 +155,7 @@ if dep_libarchive.found()
     link_with: [
       libfreedreno_cffdec,
       libfreedreno_io,
+      libfreedreno_ir3,  # for disasm_a3xx
     ],
     build_by_default: with_tools.contains('freedreno'),
     install: false,

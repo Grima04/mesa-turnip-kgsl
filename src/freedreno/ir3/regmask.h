@@ -87,6 +87,31 @@ __regmask_set(regmask_t *regmask, bool half, unsigned n)
 }
 
 static inline void
+__regmask_clear(regmask_t *regmask, bool half, unsigned n)
+{
+	if (regmask->mergedregs) {
+		/* a6xx+ case, with merged register file, we track things in terms
+		 * of half-precision registers, with a full precisions register
+		 * using two half-precision slots:
+		 */
+		if (half) {
+			BITSET_CLEAR(regmask->mask, n);
+		} else {
+			n *= 2;
+			BITSET_CLEAR(regmask->mask, n);
+			BITSET_CLEAR(regmask->mask, n+1);
+		}
+	} else {
+		/* pre a6xx case, with separate register file for half and full
+		 * precision:
+		 */
+		if (half)
+			n += MAX_REG;
+		BITSET_CLEAR(regmask->mask, n);
+	}
+}
+
+static inline void
 regmask_init(regmask_t *regmask, bool mergedregs)
 {
 	memset(&regmask->mask, 0, sizeof(regmask->mask));

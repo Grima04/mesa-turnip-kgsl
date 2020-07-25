@@ -19,7 +19,6 @@
 # SOFTWARE.
 
 files_libfreedreno = files(
-  'disasm.h',
   'freedreno_batch.c',
   'freedreno_batch.h',
   'freedreno_batch_cache.c',

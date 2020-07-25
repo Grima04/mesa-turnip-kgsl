@@ -35,7 +35,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "util/macros.h"
-#include "instr-a3xx.h"
+#include "disasm.h"
 
 #define INSTR_5XX(i, d) { .gpu_id = 540, .instr = #i, .expected = d }
 #define INSTR_6XX(i, d) { .gpu_id = 630, .instr = #i, .expected = d }

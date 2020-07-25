@@ -631,19 +631,6 @@ bool ir3_valid_flags(struct ir3_instruction *instr, unsigned n, unsigned flags);
 		set_foreach ((__instr)->uses, __entry) \
 			if ((__use = (void *)__entry->key))
 
-#define MAX_ARRAYS 16
-
-/* comp:
- *   0 - x
- *   1 - y
- *   2 - z
- *   3 - w
- */
-static inline uint32_t regid(int num, int comp)
-{
-	return (num << 2) | (comp & 0x3);
-}
-
 static inline uint32_t reg_num(struct ir3_register *reg)
 {
 	return reg->num >> 2;
@@ -653,10 +640,6 @@ static inline uint32_t reg_comp(struct ir3_register *reg)
 {
 	return reg->num & 0x3;
 }
-
-#define INVALID_REG      regid(63, 0)
-#define VALIDREG(r)      ((r) != INVALID_REG)
-#define CONDREG(r, val)  COND(VALIDREG(r), (val))
 
 static inline bool is_flow(struct ir3_instruction *instr)
 {

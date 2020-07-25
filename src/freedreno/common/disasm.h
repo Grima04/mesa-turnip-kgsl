@@ -24,20 +24,34 @@
 #ifndef DISASM_H_
 #define DISASM_H_
 
-#include <stdio.h>
 #include <stdbool.h>
+#include <stdint.h>
+#include <stdio.h>
 
 #include "compiler/shader_enums.h"
-#include "util/u_debug.h"
 
 /* bitmask of debug flags */
 enum debug_t {
 	PRINT_RAW      = 0x1,    /* dump raw hexdump */
 	PRINT_VERBOSE  = 0x2,
+	PRINT_STATS    = 0x4,
+	EXPAND_REPEAT  = 0x8,
+};
+
+struct shader_stats {
+	/* instructions counts rpnN, and instlen does not */
+	int instructions, instlen;
+	int nops;
+	int ss, sy;
+	int constlen;
 };
 
 int disasm_a2xx(uint32_t *dwords, int sizedwords, int level, gl_shader_stage type);
 int disasm_a3xx(uint32_t *dwords, int sizedwords, int level, FILE *out, unsigned gpu_id);
-void disasm_set_debug(enum debug_t debug);
+int disasm_a3xx_stat(uint32_t *dwords, int sizedwords, int level, FILE *out,
+		unsigned gpu_id, struct shader_stats *stats);
+
+void disasm_a2xx_set_debug(enum debug_t debug);
+void disasm_a3xx_set_debug(enum debug_t debug);
 
 #endif /* DISASM_H_ */

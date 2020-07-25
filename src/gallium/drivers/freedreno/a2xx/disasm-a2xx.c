@@ -112,7 +112,7 @@ static void print_export_comment(uint32_t num, gl_shader_stage type)
 		}
 		break;
 	default:
-		unreachable("not reached");
+		assert(!"not reached");
 	}
 	/* if we had a symbol table here, we could look
 	 * up the name of the varying..
@@ -629,7 +629,7 @@ int disasm_a2xx(uint32_t *dwords, int sizedwords, int level, gl_shader_stage typ
 	return 0;
 }
 
-void disasm_set_debug(enum debug_t d)
+void disasm_a2xx_set_debug(enum debug_t d)
 {
 	debug = d;
 }

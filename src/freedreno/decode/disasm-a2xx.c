@@ -49,7 +49,7 @@ static const char *levels[] = {
 		"x",
 };
 
-enum debug_t debug;
+static enum debug_t debug;
 
 static struct rnn *rnn;
 
@@ -618,7 +618,7 @@ int disasm_a2xx(uint32_t *dwords, int sizedwords, int level, gl_shader_stage typ
 	return 0;
 }
 
-void disasm_set_debug(enum debug_t d)
+void disasm_a2xx_set_debug(enum debug_t d)
 {
 	debug = d;
 }
