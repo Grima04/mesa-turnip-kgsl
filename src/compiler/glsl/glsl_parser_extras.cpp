@@ -2249,7 +2249,8 @@ _mesa_glsl_compile_shader(struct gl_context *ctx, struct gl_shader *shader,
       &ctx->Const.ShaderCompilerOptions[shader->Stage];
 
    if (!state->error && !shader->ir->is_empty()) {
-      if (options->LowerPrecisionFloat16 || options->LowerPrecisionInt16)
+      if (state->es_shader &&
+          (options->LowerPrecisionFloat16 || options->LowerPrecisionInt16))
          lower_precision(options, shader->ir);
       lower_builtins(shader->ir);
       assign_subroutine_indexes(state);
