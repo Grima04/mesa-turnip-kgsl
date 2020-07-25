@@ -444,7 +444,7 @@ static void dump_shaders_a2xx(struct state *state)
 		} else {
 			dump_short_summary(state, vs_hdr->unknown1 - 1, constants);
 		}
-		disasm_a2xx((uint32_t *)(ptr + 32), (sect_size - 32) / 4, level+1, SHADER_VERTEX);
+		disasm_a2xx((uint32_t *)(ptr + 32), (sect_size - 32) / 4, level+1, MESA_SHADER_VERTEX);
 		dump_raw_shader((uint32_t *)(ptr + 32), (sect_size - 32) / 4, i, "vo");
 		free(ptr);
 
@@ -495,7 +495,7 @@ static void dump_shaders_a2xx(struct state *state)
 		} else {
 			dump_short_summary(state, fs_hdr->unknown1 - 1, constants);
 		}
-		disasm_a2xx((uint32_t *)(ptr + 32), (sect_size - 32) / 4, level+1, SHADER_FRAGMENT);
+		disasm_a2xx((uint32_t *)(ptr + 32), (sect_size - 32) / 4, level+1, MESA_SHADER_FRAGMENT);
 		dump_raw_shader((uint32_t *)(ptr + 32), (sect_size - 32) / 4, i, "fo");
 		free(ptr);
 
@@ -585,7 +585,7 @@ printf("hdr_size=%d\n", hdr_size);
 			instrs_size -= 32;
 		}
 
-		disasm_a3xx((uint32_t *)instrs, instrs_size / 4, level+1, SHADER_VERTEX, gpu_id);
+		disasm_a3xx((uint32_t *)instrs, instrs_size / 4, level+1, stdout, gpu_id);
 		dump_raw_shader((uint32_t *)instrs, instrs_size / 4, i, "vo3");
 		free(vs_hdr);
 	}
@@ -980,12 +980,12 @@ int main(int argc, char **argv)
 
 	/* figure out what sort of input we are dealing with: */
 	if (!(check_extension(infile, ".rd") || check_extension(infile, ".rd.gz"))) {
-		enum shader_t shader = ~0;
+		gl_shader_stage shader = ~0;
 		int ret;
 		if (check_extension(infile, ".vo")) {
-			shader = SHADER_VERTEX;
+			shader = MESA_SHADER_VERTEX;
 		} else if (check_extension(infile, ".fo")) {
-			shader = SHADER_FRAGMENT;
+			shader = MESA_SHADER_FRAGMENT;
 		} else if (check_extension(infile, ".vo3")) {
 		} else if (check_extension(infile, ".fo3")) {
 		} else if (check_extension(infile, ".co3")) {

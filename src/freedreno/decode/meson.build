@@ -49,6 +49,8 @@ libfreedreno_cffdec = static_library(
   ],
   include_directories: [
     inc_freedreno_rnn,
+    inc_include,
+    inc_src,
   ],
   c_args : [ no_override_init_args ],
   gnu_symbol_visibility: 'hidden',
@@ -84,6 +86,8 @@ if dep_lua.found() and dep_libarchive.found()
     ],
     include_directories: [
       inc_freedreno_rnn,
+      inc_include,
+      inc_src,
     ],
     c_args : [no_override_init_args],
     gnu_symbol_visibility: 'hidden',
@@ -104,6 +108,8 @@ crashdec = executable(
   'crashdec.c',
   include_directories: [
     inc_freedreno_rnn,
+    inc_include,
+    inc_src,
   ],
   gnu_symbol_visibility: 'hidden',
   dependencies: [],
@@ -118,7 +124,10 @@ if dep_libarchive.found()
   pgmdump = executable(
     'pgmdump',
     'pgmdump.c',
-    include_directories: [],
+    include_directories: [
+      inc_include,
+      inc_src,
+    ],
     gnu_symbol_visibility: 'hidden',
     dependencies: [],
     link_with: [
@@ -131,7 +140,10 @@ if dep_libarchive.found()
   pgmdump2 = executable(
     'pgmdump2',
     'pgmdump2.c',
-    include_directories: [],
+    include_directories: [
+      inc_include,
+      inc_src,
+    ],
     gnu_symbol_visibility: 'hidden',
     dependencies: [],
     link_with: [

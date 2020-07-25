@@ -1114,18 +1114,18 @@ cp_im_loadi(uint32_t *dwords, uint32_t sizedwords, int level)
 	uint32_t start = dwords[1] >> 16;
 	uint32_t size  = dwords[1] & 0xffff;
 	const char *type = NULL, *ext = NULL;
-	enum shader_t disasm_type;
+	gl_shader_stage disasm_type;
 
 	switch (dwords[0]) {
 	case 0:
 		type = "vertex";
 		ext = "vo";
-		disasm_type = SHADER_VERTEX;
+		disasm_type = MESA_SHADER_VERTEX;
 		break;
 	case 1:
 		type = "fragment";
 		ext = "fo";
-		disasm_type = SHADER_FRAGMENT;
+		disasm_type = MESA_SHADER_FRAGMENT;
 		break;
 	default:
 		type = "<unknown>";
@@ -1189,23 +1189,23 @@ enum adreno_state_block {
  */
 
 static void
-a3xx_get_state_type(uint32_t *dwords, enum shader_t *stage, enum state_t *state,
+a3xx_get_state_type(uint32_t *dwords, gl_shader_stage *stage, enum state_t *state,
 		    enum state_src_t *src)
 {
 	unsigned state_block_id = (dwords[0] >> 19) & 0x7;
 	unsigned state_type = dwords[1] & 0x3;
 	static const struct {
-		enum shader_t stage;
+		gl_shader_stage stage;
 		enum state_t state;
 	} lookup[0xf][0x3] = {
-		[SB_VERT_TEX][0]    = { SHADER_VERTEX,    TEX_SAMP },
-		[SB_VERT_TEX][1]    = { SHADER_VERTEX,    TEX_CONST },
-		[SB_FRAG_TEX][0]    = { SHADER_FRAGMENT,  TEX_SAMP },
-		[SB_FRAG_TEX][1]    = { SHADER_FRAGMENT,  TEX_CONST },
-		[SB_VERT_SHADER][0] = { SHADER_VERTEX,    SHADER_PROG },
-		[SB_VERT_SHADER][1] = { SHADER_VERTEX,    SHADER_CONST },
-		[SB_FRAG_SHADER][0] = { SHADER_FRAGMENT,  SHADER_PROG },
-		[SB_FRAG_SHADER][1] = { SHADER_FRAGMENT,  SHADER_CONST },
+		[SB_VERT_TEX][0]    = { MESA_SHADER_VERTEX,    TEX_SAMP },
+		[SB_VERT_TEX][1]    = { MESA_SHADER_VERTEX,    TEX_CONST },
+		[SB_FRAG_TEX][0]    = { MESA_SHADER_FRAGMENT,  TEX_SAMP },
+		[SB_FRAG_TEX][1]    = { MESA_SHADER_FRAGMENT,  TEX_CONST },
+		[SB_VERT_SHADER][0] = { MESA_SHADER_VERTEX,    SHADER_PROG },
+		[SB_VERT_SHADER][1] = { MESA_SHADER_VERTEX,    SHADER_CONST },
+		[SB_FRAG_SHADER][0] = { MESA_SHADER_FRAGMENT,  SHADER_PROG },
+		[SB_FRAG_SHADER][1] = { MESA_SHADER_FRAGMENT,  SHADER_CONST },
 	};
 
 	*stage = lookup[state_block_id][state_type].stage;
@@ -1234,69 +1234,69 @@ _get_state_src(unsigned dword0)
 
 static void
 _get_state_type(unsigned state_block_id, unsigned state_type,
-		enum shader_t *stage, enum state_t *state)
+		gl_shader_stage *stage, enum state_t *state)
 {
 	static const struct {
-		enum shader_t stage;
+		gl_shader_stage stage;
 		enum state_t  state;
 	} lookup[0x10][0x4] = {
 		// SB4_VS_TEX:
-		[0x0][0] = { SHADER_VERTEX,    TEX_SAMP },
-		[0x0][1] = { SHADER_VERTEX,    TEX_CONST },
-		[0x0][2] = { SHADER_VERTEX,    UBO },
+		[0x0][0] = { MESA_SHADER_VERTEX,    TEX_SAMP },
+		[0x0][1] = { MESA_SHADER_VERTEX,    TEX_CONST },
+		[0x0][2] = { MESA_SHADER_VERTEX,    UBO },
 		// SB4_HS_TEX:
-		[0x1][0] = { SHADER_TCS,       TEX_SAMP },
-		[0x1][1] = { SHADER_TCS,       TEX_CONST },
-		[0x1][2] = { SHADER_TCS,       UBO },
+		[0x1][0] = { MESA_SHADER_TESS_CTRL, TEX_SAMP },
+		[0x1][1] = { MESA_SHADER_TESS_CTRL, TEX_CONST },
+		[0x1][2] = { MESA_SHADER_TESS_CTRL, UBO },
 		// SB4_DS_TEX:
-		[0x2][0] = { SHADER_TES,       TEX_SAMP },
-		[0x2][1] = { SHADER_TES,       TEX_CONST },
-		[0x2][2] = { SHADER_TES,       UBO },
+		[0x2][0] = { MESA_SHADER_TESS_EVAL, TEX_SAMP },
+		[0x2][1] = { MESA_SHADER_TESS_EVAL, TEX_CONST },
+		[0x2][2] = { MESA_SHADER_TESS_EVAL, UBO },
 		// SB4_GS_TEX:
-		[0x3][0] = { SHADER_GEOM,      TEX_SAMP },
-		[0x3][1] = { SHADER_GEOM,      TEX_CONST },
-		[0x3][2] = { SHADER_GEOM,      UBO },
+		[0x3][0] = { MESA_SHADER_GEOMETRY,  TEX_SAMP },
+		[0x3][1] = { MESA_SHADER_GEOMETRY,  TEX_CONST },
+		[0x3][2] = { MESA_SHADER_GEOMETRY,  UBO },
 		// SB4_FS_TEX:
-		[0x4][0] = { SHADER_FRAGMENT,  TEX_SAMP },
-		[0x4][1] = { SHADER_FRAGMENT,  TEX_CONST },
-		[0x4][2] = { SHADER_FRAGMENT,  UBO },
+		[0x4][0] = { MESA_SHADER_FRAGMENT,  TEX_SAMP },
+		[0x4][1] = { MESA_SHADER_FRAGMENT,  TEX_CONST },
+		[0x4][2] = { MESA_SHADER_FRAGMENT,  UBO },
 		// SB4_CS_TEX:
-		[0x5][0] = { SHADER_COMPUTE,   TEX_SAMP },
-		[0x5][1] = { SHADER_COMPUTE,   TEX_CONST },
-		[0x5][2] = { SHADER_COMPUTE,   UBO },
+		[0x5][0] = { MESA_SHADER_COMPUTE,   TEX_SAMP },
+		[0x5][1] = { MESA_SHADER_COMPUTE,   TEX_CONST },
+		[0x5][2] = { MESA_SHADER_COMPUTE,   UBO },
 		// SB4_VS_SHADER:
-		[0x8][0] = { SHADER_VERTEX,    SHADER_PROG },
-		[0x8][1] = { SHADER_VERTEX,    SHADER_CONST },
-		[0x8][2] = { SHADER_VERTEX,    UBO },
+		[0x8][0] = { MESA_SHADER_VERTEX,    SHADER_PROG },
+		[0x8][1] = { MESA_SHADER_VERTEX,    SHADER_CONST },
+		[0x8][2] = { MESA_SHADER_VERTEX,    UBO },
 		// SB4_HS_SHADER
-		[0x9][0] = { SHADER_TCS,       SHADER_PROG },
-		[0x9][1] = { SHADER_TCS,       SHADER_CONST },
-		[0x9][2] = { SHADER_TCS,       UBO },
+		[0x9][0] = { MESA_SHADER_TESS_CTRL, SHADER_PROG },
+		[0x9][1] = { MESA_SHADER_TESS_CTRL, SHADER_CONST },
+		[0x9][2] = { MESA_SHADER_TESS_CTRL, UBO },
 		// SB4_DS_SHADER
-		[0xa][0] = { SHADER_TES,       SHADER_PROG },
-		[0xa][1] = { SHADER_TES,       SHADER_CONST },
-		[0xa][2] = { SHADER_TES,       UBO },
+		[0xa][0] = { MESA_SHADER_TESS_EVAL, SHADER_PROG },
+		[0xa][1] = { MESA_SHADER_TESS_EVAL, SHADER_CONST },
+		[0xa][2] = { MESA_SHADER_TESS_EVAL, UBO },
 		// SB4_GS_SHADER
-		[0xb][0] = { SHADER_GEOM,      SHADER_PROG },
-		[0xb][1] = { SHADER_GEOM,      SHADER_CONST },
-		[0xb][2] = { SHADER_GEOM,      UBO },
+		[0xb][0] = { MESA_SHADER_GEOMETRY,  SHADER_PROG },
+		[0xb][1] = { MESA_SHADER_GEOMETRY,  SHADER_CONST },
+		[0xb][2] = { MESA_SHADER_GEOMETRY,  UBO },
 		// SB4_FS_SHADER:
-		[0xc][0] = { SHADER_FRAGMENT,  SHADER_PROG },
-		[0xc][1] = { SHADER_FRAGMENT,  SHADER_CONST },
-		[0xc][2] = { SHADER_FRAGMENT,  UBO },
+		[0xc][0] = { MESA_SHADER_FRAGMENT,  SHADER_PROG },
+		[0xc][1] = { MESA_SHADER_FRAGMENT,  SHADER_CONST },
+		[0xc][2] = { MESA_SHADER_FRAGMENT,  UBO },
 		// SB4_CS_SHADER:
-		[0xd][0] = { SHADER_COMPUTE,   SHADER_PROG },
-		[0xd][1] = { SHADER_COMPUTE,   SHADER_CONST },
-		[0xd][2] = { SHADER_COMPUTE,   UBO },
-		[0xd][3] = { SHADER_COMPUTE,   SSBO_0 },      /* a6xx location */
+		[0xd][0] = { MESA_SHADER_COMPUTE,   SHADER_PROG },
+		[0xd][1] = { MESA_SHADER_COMPUTE,   SHADER_CONST },
+		[0xd][2] = { MESA_SHADER_COMPUTE,   UBO },
+		[0xd][3] = { MESA_SHADER_COMPUTE,   SSBO_0 },      /* a6xx location */
 		// SB4_SSBO (shared across all stages)
 		[0xe][0] = { 0, SSBO_0 },                     /* a5xx (and a4xx?) location */
 		[0xe][1] = { 0, SSBO_1 },
 		[0xe][2] = { 0, SSBO_2 },
 		// SB4_CS_SSBO
-		[0xf][0] = { SHADER_COMPUTE, SSBO_0 },
-		[0xf][1] = { SHADER_COMPUTE, SSBO_1 },
-		[0xf][2] = { SHADER_COMPUTE, SSBO_2 },
+		[0xf][0] = { MESA_SHADER_COMPUTE, SSBO_0 },
+		[0xf][1] = { MESA_SHADER_COMPUTE, SSBO_1 },
+		[0xf][2] = { MESA_SHADER_COMPUTE, SSBO_2 },
 		// unknown things
 		/* This looks like combined UBO state for 3d stages (a5xx and
 		 * before??  I think a6xx has UBO state per shader stage:
@@ -1310,7 +1310,7 @@ _get_state_type(unsigned state_block_id, unsigned state_type,
 }
 
 static void
-a4xx_get_state_type(uint32_t *dwords, enum shader_t *stage, enum state_t *state,
+a4xx_get_state_type(uint32_t *dwords, gl_shader_stage *stage, enum state_t *state,
 		    enum state_src_t *src)
 {
 	unsigned state_block_id = (dwords[0] >> 18) & 0xf;
@@ -1320,7 +1320,7 @@ a4xx_get_state_type(uint32_t *dwords, enum shader_t *stage, enum state_t *state,
 }
 
 static void
-a6xx_get_state_type(uint32_t *dwords, enum shader_t *stage, enum state_t *state,
+a6xx_get_state_type(uint32_t *dwords, gl_shader_stage *stage, enum state_t *state,
 		    enum state_src_t *src)
 {
 	unsigned state_block_id = (dwords[0] >> 18) & 0xf;
@@ -1406,7 +1406,7 @@ dump_tex_const(uint32_t *texconst, int num_unit, int level)
 static void
 cp_load_state(uint32_t *dwords, uint32_t sizedwords, int level)
 {
-	enum shader_t stage;
+	gl_shader_stage stage;
 	enum state_t state;
 	enum state_src_t src;
 	uint32_t num_unit = (dwords[0] >> 22) & 0x1ff;
@@ -1437,7 +1437,9 @@ cp_load_state(uint32_t *dwords, uint32_t sizedwords, int level)
 		break;
 	case STATE_SRC_BINDLESS: {
 		const unsigned base_reg =
-			stage == SHADER_COMPUTE ? regbase("HLSQ_CS_BINDLESS_BASE[0]") : regbase("HLSQ_BINDLESS_BASE[0]");
+			stage == MESA_SHADER_COMPUTE ?
+				regbase("HLSQ_CS_BINDLESS_BASE[0]") :
+				regbase("HLSQ_BINDLESS_BASE[0]");
 
 		if (is_64b()) {
 			const unsigned reg = base_reg + (dwords[1] >> 28) * 2;
@@ -1478,13 +1480,13 @@ cp_load_state(uint32_t *dwords, uint32_t sizedwords, int level)
 		 * note: num_unit seems to be # of instruction groups, where
 		 * an instruction group has 4 64bit instructions.
 		 */
-		if (stage == SHADER_VERTEX) {
+		if (stage == MESA_SHADER_VERTEX) {
 			ext = "vo3";
-		} else if (stage == SHADER_GEOM) {
+		} else if (stage == MESA_SHADER_GEOMETRY) {
 			ext = "go3";
-		} else if (stage == SHADER_COMPUTE) {
+		} else if (stage == MESA_SHADER_COMPUTE) {
 			ext = "co3";
-		} else if (stage == SHADER_FRAGMENT){
+		} else if (stage == MESA_SHADER_FRAGMENT){
 			ext = "fo3";
 		}
 

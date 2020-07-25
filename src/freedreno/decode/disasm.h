@@ -26,14 +26,7 @@
 
 #include <stdio.h>
 
-enum shader_t {
-	SHADER_VERTEX,
-	SHADER_TCS,
-	SHADER_TES,
-	SHADER_GEOM,
-	SHADER_FRAGMENT,
-	SHADER_COMPUTE,
-};
+#include "compiler/shader_enums.h"
 
 /* bitmask of debug flags */
 enum debug_t {
@@ -50,7 +43,7 @@ struct shader_stats {
 	int constlen;
 };
 
-int disasm_a2xx(uint32_t *dwords, int sizedwords, int level, enum shader_t type);
+int disasm_a2xx(uint32_t *dwords, int sizedwords, int level, gl_shader_stage type);
 int disasm_a3xx(uint32_t *dwords, int sizedwords, int level, FILE *out, unsigned gpu_id);
 int disasm_a3xx_stat(uint32_t *dwords, int sizedwords, int level, FILE *out,
 		unsigned gpu_id, struct shader_stats *stats);
