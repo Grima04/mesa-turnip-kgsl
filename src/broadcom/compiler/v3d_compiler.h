@@ -808,6 +808,7 @@ uint64_t *v3d_compile(const struct v3d_compiler *compiler,
                       int program_id, int variant_id,
                       uint32_t *final_assembly_size);
 
+uint32_t v3d_prog_data_size(gl_shader_stage stage);
 void v3d_nir_to_vir(struct v3d_compile *c);
 
 void vir_compile_destroy(struct v3d_compile *c);
