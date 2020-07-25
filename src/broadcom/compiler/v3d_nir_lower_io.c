@@ -180,9 +180,7 @@ v3d_nir_lower_vpm_output(struct v3d_compile *c, nir_builder *b,
                                            intr->num_components);
         nir_variable *var = NULL;
         nir_foreach_shader_out_variable(scan_var, c->s) {
-                int components = scan_var->data.compact ?
-                        glsl_get_length(scan_var->type) :
-                        glsl_get_components(scan_var->type);
+                int components = glsl_get_component_slots(scan_var->type);
                 if (scan_var->data.driver_location != nir_intrinsic_base(intr) ||
                     start_comp < scan_var->data.location_frac ||
                     start_comp >= scan_var->data.location_frac + components) {
@@ -260,7 +258,7 @@ v3d_nir_lower_vpm_output(struct v3d_compile *c, nir_builder *b,
                 if (vpm_offset == -1)
                         continue;
 
-                if (var->data.compact)
+                if (var->data.compact || glsl_type_is_struct(var->type))
                     vpm_offset += nir_src_as_uint(intr->src[1]) * 4;
 
                 BITSET_SET(state->varyings_stored, vpm_offset);

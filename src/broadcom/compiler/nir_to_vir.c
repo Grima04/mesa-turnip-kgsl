@@ -738,12 +738,12 @@ emit_fragment_varying(struct v3d_compile *c, nir_variable *var,
 }
 
 static void
-emit_fragment_input(struct v3d_compile *c, int attr, nir_variable *var,
-                    int array_index)
+emit_fragment_input(struct v3d_compile *c, int base_attr, nir_variable *var,
+                    int array_index, unsigned nelem)
 {
-        for (int i = 0; i < glsl_get_vector_elements(var->type); i++) {
+        for (int i = 0; i < nelem ; i++) {
                 int chan = var->data.location_frac + i;
-                c->inputs[attr * 4 + chan] =
+                c->inputs[(base_attr + array_index) * 4 + chan] =
                         emit_fragment_varying(c, var, chan, array_index);
         }
 }
@@ -1702,11 +1702,11 @@ ntq_setup_fs_inputs(struct v3d_compile *c)
 
         for (unsigned i = 0; i < num_entries; i++) {
                 nir_variable *var = vars[i];
-                unsigned array_len = MAX2(glsl_get_length(var->type), 1);
+                unsigned var_len = glsl_count_vec4_slots(var->type, false, false);
                 unsigned loc = var->data.driver_location;
 
                 resize_qreg_array(c, &c->inputs, &c->inputs_array_size,
-                                  (loc + array_len) * 4);
+                                  (loc + var_len) * 4);
 
                 if (var->data.location == VARYING_SLOT_POS) {
                         emit_fragcoord_input(c, loc);
@@ -1715,11 +1715,16 @@ ntq_setup_fs_inputs(struct v3d_compile *c)
                         c->inputs[loc * 4 + 0] = c->point_x;
                         c->inputs[loc * 4 + 1] = c->point_y;
                 } else if (var->data.compact) {
-                        for (int j = 0; j < array_len; j++)
+                        for (int j = 0; j < var_len; j++)
                                 emit_compact_fragment_input(c, loc, var, j);
+                } else if (glsl_type_is_struct(var->type)) {
+                        for (int j = 0; j < var_len; j++) {
+                           emit_fragment_input(c, loc, var, j, 4);
+                        }
                 } else {
-                        for (int j = 0; j < array_len; j++)
-                                emit_fragment_input(c, loc + j, var, j);
+                        for (int j = 0; j < var_len; j++) {
+                                emit_fragment_input(c, loc, var, j, glsl_get_vector_elements(var->type));
+                        }
                 }
         }
 }
@@ -2130,12 +2135,20 @@ ntq_emit_store_output(struct v3d_compile *c, nir_intrinsic_instr *instr)
                assert(c->s->info.stage == MESA_SHADER_VERTEX);
                assert(instr->num_components == 1);
 
-               vir_VPM_WRITE(c,
-                             ntq_get_src(c, instr->src[0], 0),
-                             nir_intrinsic_base(instr));
+               uint32_t base = nir_intrinsic_base(instr);
+               if (nir_src_is_const(instr->src[1])) {
+                  vir_VPM_WRITE(c,
+                                ntq_get_src(c, instr->src[0], 0),
+                                base + nir_src_as_uint(instr->src[1]));
+               } else {
+                  vir_VPM_WRITE_indirect(c,
+                                         ntq_get_src(c, instr->src[0], 0),
+                                         vir_ADD(c,
+                                                 ntq_get_src(c, instr->src[1], 1),
+                                                 vir_uniform_ui(c, base)));
+               }
         }
 }
-
 static void
 ntq_emit_intrinsic(struct v3d_compile *c, nir_intrinsic_instr *instr)
 {
