@@ -1734,6 +1734,8 @@ struct v3dv_cl_reloc v3dv_write_uniforms_wg_offsets(struct v3dv_cmd_buffer *cmd_
                                                     struct v3dv_pipeline_stage *p_stage,
                                                     uint32_t **wg_count_offsets);
 
+void v3dv_update_v3d_key(struct v3d_key *key, uint32_t return_size);
+
 struct v3dv_shader_variant *
 v3dv_get_shader_variant(struct v3dv_pipeline_stage *p_stage,
                         struct v3dv_pipeline_cache *cache,

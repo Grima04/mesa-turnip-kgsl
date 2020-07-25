@@ -2654,6 +2654,11 @@ cmd_buffer_populate_v3d_key(struct v3d_key *key,
       struct v3dv_descriptor_state *descriptor_state =
          &cmd_buffer->state.descriptor_state[pipeline_binding];
 
+      /* At pipeline creation time it was pre-generated an all-16 bit and an
+       * all-32 bit variant, so let's do the same here to avoid as much as
+       * possible a new compilation.
+       */
+      uint32_t v3d_key_return_size = 16;
       hash_table_foreach(cmd_buffer->state.pipeline->combined_index_map, entry) {
          uint32_t combined_idx = (uint32_t)(uintptr_t) (entry->data);
          uint32_t combined_idx_key =
@@ -2686,10 +2691,8 @@ cmd_buffer_populate_v3d_key(struct v3d_key *key,
             v3dv_get_tex_return_size(image_view->format,
                                      sampler ? sampler->compare_enable : false);
 
-         if (key->tex[combined_idx].return_size == 16) {
-            key->tex[combined_idx].return_channels = 2;
-         } else {
-            key->tex[combined_idx].return_channels = 4;
+         if (key->tex[combined_idx].return_size == 32) {
+            v3d_key_return_size = 32;
          }
 
          /* Note: In general, we don't need to do anything for the swizzle, as
@@ -2713,6 +2716,7 @@ cmd_buffer_populate_v3d_key(struct v3d_key *key,
             }
          }
       }
+      v3dv_update_v3d_key(key, v3d_key_return_size);
    }
 }
 

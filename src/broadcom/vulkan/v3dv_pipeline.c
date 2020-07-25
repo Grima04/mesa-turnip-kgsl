@@ -957,12 +957,8 @@ pipeline_populate_v3d_key(struct v3d_key *key,
                           const struct v3dv_pipeline_stage *p_stage,
                           uint32_t ucp_enables)
 {
-   /* The following values are default values used at pipeline create, that
-    * lack the info about the real sampler/texture format used, needed to
-    * decide about lowerings and other stuff affecting the final
-    * assembly. When all that info is in place, it would be needed to check if
-    * it is needed a shader variant (if we are lucky the default values would
-    * be the same and no new compilation will be done)
+   /* The following values are default values used at pipeline create. We use
+    * there 16 bit as default return size.
     */
 
    /* We don't use the nir shader info.num_textures because that doesn't take
@@ -1529,6 +1525,66 @@ v3dv_get_shader_variant(struct v3dv_pipeline_stage *p_stage,
    return variant;
 }
 
+/* This methods updates the return size for a given key. It assumes that it
+ * was already properly populated. So for example values for key->num_tex_used
+ * should be correct at this point
+ */
+void
+v3dv_update_v3d_key(struct v3d_key *key,
+                    uint32_t return_size)
+{
+   assert(return_size == 32 || return_size == 16);
+
+   for (uint32_t tex_idx = 0; tex_idx < key->num_tex_used; tex_idx++) {
+      key->tex[tex_idx].return_size = return_size;
+      key->tex[tex_idx].return_channels = return_size == 16 ? 2 : 4;
+   }
+}
+
+/*
+ * To avoid needed too many shader re-compilation after pipeline creation
+ * time, we pre-generate several options, so they are available on the default
+ * cache. The poster boy here is return size for texture acceses, as the real
+ * value needed would depend on the texture format used.
+ */
+static struct v3dv_shader_variant*
+pregenerate_shader_variants(struct v3dv_pipeline_stage *p_stage,
+                            struct v3dv_pipeline_cache *cache,
+                            struct v3d_key *key,
+                            size_t key_size,
+                            const VkAllocationCallbacks *pAllocator,
+                            VkResult *out_vk_result)
+{
+   /* We assume that we receive the default 16 return size*/
+   struct v3dv_shader_variant *variant_16 =
+      v3dv_get_shader_variant(p_stage, cache, key, key_size,
+                              pAllocator, out_vk_result);
+
+   if (*out_vk_result != VK_SUCCESS)
+      return variant_16;
+
+   if (!p_stage->pipeline->device->instance->pipeline_cache_enabled) {
+      /* If pipeline cache is disabled it doesn't make sense to pre-generate,
+       * as we are relying on the default pipeline cache to save the different
+       * pre-compiled variants
+       */
+      return variant_16;
+   }
+
+   v3dv_update_v3d_key(key, 32);
+
+   struct v3dv_shader_variant *variant_32 =
+      v3dv_get_shader_variant(p_stage, cache, key, key_size,
+                              pAllocator, out_vk_result);
+
+   /* get_shader_variant returns a new ref, so as we are going to use
+    * variant_16, we need to unref this.
+    */
+   v3dv_shader_variant_unref(p_stage->pipeline->device, variant_32);
+
+   return variant_16;
+}
+
 /* FIXME: C&P from st, common place? */
 static void
 st_nir_opts(nir_shader *nir)
@@ -1869,16 +1925,16 @@ pipeline_compile_graphics(struct v3dv_pipeline *pipeline,
          pipeline_populate_v3d_vs_key(key, pCreateInfo, pipeline->vs);
          VkResult vk_result;
          pipeline->vs->current_variant =
-            v3dv_get_shader_variant(pipeline->vs, cache, &key->base, sizeof(*key),
-                                    pAllocator, &vk_result);
+            pregenerate_shader_variants(pipeline->vs, cache, &key->base, sizeof(*key),
+                                        pAllocator, &vk_result);
          if (vk_result != VK_SUCCESS)
             return vk_result;
 
          key = &pipeline->vs_bin->key.vs;
          pipeline_populate_v3d_vs_key(key, pCreateInfo, pipeline->vs_bin);
          pipeline->vs_bin->current_variant =
-            v3dv_get_shader_variant(pipeline->vs_bin, cache, &key->base, sizeof(*key),
-                                    pAllocator, &vk_result);
+            pregenerate_shader_variants(pipeline->vs_bin, cache, &key->base, sizeof(*key),
+                                        pAllocator, &vk_result);
          if (vk_result != VK_SUCCESS)
             return vk_result;
 
@@ -1894,8 +1950,8 @@ pipeline_compile_graphics(struct v3dv_pipeline *pipeline,
 
          VkResult vk_result;
          p_stage->current_variant =
-            v3dv_get_shader_variant(p_stage, cache, &key->base, sizeof(*key),
-                                    pAllocator, &vk_result);
+            pregenerate_shader_variants(p_stage, cache, &key->base, sizeof(*key),
+                                        pAllocator, &vk_result);
          if (vk_result != VK_SUCCESS)
             return vk_result;
 
@@ -2913,9 +2969,9 @@ pipeline_compile_compute(struct v3dv_pipeline *pipeline,
    memset(key, 0, sizeof(*key));
    pipeline_populate_v3d_key(key, p_stage, 0);
 
-    VkResult result;
-    p_stage->current_variant =
-       v3dv_get_shader_variant(p_stage, cache, key, sizeof(*key), alloc, &result);
+   VkResult result;
+   p_stage->current_variant =
+      pregenerate_shader_variants(p_stage, cache, key, sizeof(*key), alloc, &result);
    return result;
 }
 
