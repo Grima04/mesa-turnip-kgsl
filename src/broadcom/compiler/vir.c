@@ -821,8 +821,11 @@ v3d_nir_lower_vs_early(struct v3d_compile *c)
         NIR_PASS_V(c->s, nir_lower_io, nir_var_shader_in | nir_var_shader_out,
                    type_size_vec4,
                    (nir_lower_io_options)0);
-        /* clean up nir_lower_io's deref_var remains */
+        /* clean up nir_lower_io's deref_var remains and do a constant folding pass
+         * on the code it generated.
+         */
         NIR_PASS_V(c->s, nir_opt_dce);
+        NIR_PASS_V(c->s, nir_opt_constant_folding);
 }
 
 static void
