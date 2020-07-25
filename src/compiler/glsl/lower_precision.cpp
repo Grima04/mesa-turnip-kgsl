@@ -419,9 +419,8 @@ function_always_returns_mediump_or_lowp(const char *name)
           !strcmp(name, "unpackSnorm4x8");
 }
 
-static bool
-is_lowerable_builtin(ir_call *ir,
-                     const struct set *lowerable_rvalues)
+static unsigned
+handle_call(ir_call *ir, const struct set *lowerable_rvalues)
 {
    /* The intrinsic call is inside the wrapper imageLoad function that will
     * be inlined. We have to handle both of them.
@@ -447,14 +446,22 @@ is_lowerable_builtin(ir_call *ir,
          util_format_description(resource->data.image_format);
       int i =
          util_format_get_first_non_void_channel(resource->data.image_format);
+      bool mediump;
+
       assert(i >= 0);
 
       if (desc->channel[i].pure_integer ||
           desc->channel[i].type == UTIL_FORMAT_TYPE_FLOAT)
-         return desc->channel[i].size <= 16;
+         mediump = desc->channel[i].size <= 16;
       else
-         return desc->channel[i].size <= 10; /* unorm/snorm */
+         mediump = desc->channel[i].size <= 10; /* unorm/snorm */
+
+      return mediump ? GLSL_PRECISION_MEDIUM : GLSL_PRECISION_HIGH;
    }
+
+   /* Return the declared precision for user-defined functions. */
+   if (!ir->callee->is_builtin())
+      return ir->callee->return_precision;
 
    /* Handle special calls. */
    if (ir->callee->is_builtin() && ir->actual_parameters.length()) {
@@ -471,15 +478,13 @@ is_lowerable_builtin(ir_call *ir,
       if (var && var->type->without_array()->is_sampler()) {
          /* textureSize always returns highp. */
          if (!strcmp(ir->callee_name(), "textureSize"))
-            return false;
+            return GLSL_PRECISION_HIGH;
 
-         return var->data.precision == GLSL_PRECISION_MEDIUM ||
-                var->data.precision == GLSL_PRECISION_LOW;
+         return var->data.precision;
       }
    }
 
-   if (!ir->callee->is_builtin() ||
-       /* Parameters are always highp: */
+   if (/* Parameters are always highp: */
        !strcmp(ir->callee_name(), "floatBitsToInt") ||
        !strcmp(ir->callee_name(), "floatBitsToUint") ||
        !strcmp(ir->callee_name(), "intBitsToFloat") ||
@@ -509,7 +514,7 @@ is_lowerable_builtin(ir_call *ir,
        !strcmp(ir->callee_name(), "packSnorm4x8") ||
        /* Atomic functions are not lowered. */
        strstr(ir->callee_name(), "atomic") == ir->callee_name())
-      return false;
+      return GLSL_PRECISION_HIGH;
 
    assert(ir->callee->return_precision == GLSL_PRECISION_NONE);
 
@@ -531,18 +536,21 @@ is_lowerable_builtin(ir_call *ir,
       check_parameters = 0;
    }
 
+   /* If the call is to a builtin, then the function won’t have a return
+    * precision and we should determine it from the precision of the arguments.
+    */
    foreach_in_list(ir_rvalue, param, &ir->actual_parameters) {
       if (!check_parameters)
          break;
 
       if (!param->as_constant() &&
           _mesa_set_search(lowerable_rvalues, param) == NULL)
-         return false;
+         return GLSL_PRECISION_HIGH;
 
       --check_parameters;
    }
 
-   return true;
+   return GLSL_PRECISION_MEDIUM;
 }
 
 ir_visitor_status
@@ -564,13 +572,7 @@ find_lowerable_rvalues_visitor::visit_leave(ir_call *ir)
 
    assert(var->data.mode == ir_var_temporary);
 
-   unsigned return_precision = ir->callee->return_precision;
-
-   /* If the call is to a builtin, then the function won’t have a return
-    * precision and we should determine it from the precision of the arguments.
-    */
-   if (is_lowerable_builtin(ir, lowerable_rvalues))
-      return_precision = GLSL_PRECISION_MEDIUM;
+   unsigned return_precision = handle_call(ir, lowerable_rvalues);
 
    can_lower_state lower_state =
       handle_precision(var->type, return_precision);
