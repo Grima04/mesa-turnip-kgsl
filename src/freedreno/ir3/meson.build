@@ -103,6 +103,7 @@ libfreedreno_ir3_files = files(
   'ir3_shader.c',
   'ir3_shader.h',
   'ir3_validate.c',
+  'regmask.h',
 )
 
 libfreedreno_ir3 = static_library(
