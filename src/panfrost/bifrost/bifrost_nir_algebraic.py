@@ -87,7 +87,8 @@ for op in SPECIAL:
         converts += [((op + '@16', a), ('f2f16', (op, ('f2f32', a))))]
 
 converts += [(('f2b32', a), ('fne32', a, 0.0)),
-             (('i2b32', a), ('ine32', a, 0))]
+             (('i2b32', a), ('ine32', a, 0)),
+             (('b2i32', a), ('iand', 'a@32', 1))]
 
 def main():
     parser = argparse.ArgumentParser()
