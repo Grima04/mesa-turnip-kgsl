@@ -36,8 +36,6 @@ libfreedreno_cffdec = static_library(
     'buffers.h',
     'cffdec.c',
     'cffdec.h',
-    'disasm-a2xx.c',
-    'instr-a2xx.h',
     'pager.c',
     'pager.h',
     'rnnutil.c',
@@ -55,6 +53,7 @@ libfreedreno_cffdec = static_library(
   dependencies: [],
   link_with: [
     libfreedreno_rnn,
+    libfreedreno_ir2,  # for disasm_a2xx
     libfreedreno_ir3,  # for disasm_a3xx
   ],
   build_by_default: false,
@@ -137,6 +136,7 @@ if dep_libarchive.found()
     link_with: [
       libfreedreno_cffdec,
       libfreedreno_io,
+      libfreedreno_ir2,  # for disasm_a2xx
       libfreedreno_ir3,  # for disasm_a3xx
     ],
     build_by_default: with_tools.contains('freedreno'),
@@ -155,6 +155,7 @@ if dep_libarchive.found()
     link_with: [
       libfreedreno_cffdec,
       libfreedreno_io,
+      libfreedreno_ir2,  # for disasm_a2xx
       libfreedreno_ir3,  # for disasm_a3xx
     ],
     build_by_default: with_tools.contains('freedreno'),
