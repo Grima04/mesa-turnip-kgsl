@@ -515,6 +515,7 @@ bi_class_for_nir_alu(nir_op op)
         case nir_op_iand:
         case nir_op_ior:
         case nir_op_ixor:
+        case nir_op_inot:
                 return BI_BITWISE;
 
         BI_CASE_CMP(nir_op_flt)
@@ -800,6 +801,12 @@ emit_alu(bi_context *ctx, nir_alu_instr *instr)
                 break;
         case nir_op_isub:
                 alu.op.imath = BI_IMATH_SUB;
+                break;
+        case nir_op_inot:
+                /* no dedicated bitwise not, but we can invert sources. convert to ~a | 0 */
+                alu.op.bitwise = BI_BITWISE_OR;
+                alu.bitwise.src_invert[0] = true;
+                alu.src[1] = BIR_INDEX_ZERO;
                 break;
         case nir_op_fmax:
         case nir_op_imax:
