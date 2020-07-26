@@ -527,6 +527,7 @@ bi_class_for_nir_alu(nir_op op)
         BI_CASE_CMP(nir_op_ige)
         BI_CASE_CMP(nir_op_ieq)
         BI_CASE_CMP(nir_op_ine)
+        BI_CASE_CMP(nir_op_uge)
                 return BI_CMP;
 
         case nir_op_b8csel:
@@ -618,6 +619,7 @@ bi_cond_for_nir(nir_op op, bool soft)
 
         BI_CASE_CMP(nir_op_fge)
         BI_CASE_CMP(nir_op_ige)
+        BI_CASE_CMP(nir_op_uge)
                 return BI_COND_GE;
 
         BI_CASE_CMP(nir_op_feq)
@@ -838,6 +840,7 @@ emit_alu(bi_context *ctx, nir_alu_instr *instr)
         BI_CASE_CMP(nir_op_ieq)
         BI_CASE_CMP(nir_op_fne)
         BI_CASE_CMP(nir_op_ine)
+        BI_CASE_CMP(nir_op_uge)
                 alu.cond = bi_cond_for_nir(instr->op, false);
                 break;
         case nir_op_fround_even:
