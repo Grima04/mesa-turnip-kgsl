@@ -1022,7 +1022,7 @@ bi_pack_fma_cmp(bi_instruction *ins, bi_registers *regs)
                         .src_expand = 0,
                         .unk1 = 0,
                         .cond = cond,
-                        .op = BIFROST_FMA_OP_FCMP_GL
+                        .op = BIFROST_FMA_OP_FCMP_D3D
                 };
 
                 RETURN_PACKED(pack);
@@ -1042,7 +1042,7 @@ bi_pack_fma_cmp(bi_instruction *ins, bi_registers *regs)
                         .abs1 = l,
                         .unk = 0,
                         .cond = cond,
-                        .op = BIFROST_FMA_OP_FCMP_GL_16,
+                        .op = BIFROST_FMA_OP_FCMP_D3D_16,
                 };
 
                 RETURN_PACKED(pack);
@@ -1552,7 +1552,7 @@ bi_pack_add_icmp32(bi_instruction *ins, bi_registers *regs, bool flip,
                 .src1 = bi_get_src(ins, regs, flip ? 0 : 1),
                 .cond = cond,
                 .sz = 1,
-                .d3d = false,
+                .d3d = true,
                 .op = BIFROST_ADD_OP_ICMP_32
         };
 
@@ -1569,7 +1569,7 @@ bi_pack_add_icmp16(bi_instruction *ins, bi_registers *regs, bool flip,
                 .src0_swizzle = bi_swiz16(ins, flip ? 1 : 0),
                 .src1_swizzle = bi_swiz16(ins, flip ? 0 : 1),
                 .cond = cond,
-                .d3d = false,
+                .d3d = true,
                 .op = BIFROST_ADD_OP_ICMP_16
         };
 
