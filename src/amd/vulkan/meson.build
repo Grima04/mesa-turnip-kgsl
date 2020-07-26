@@ -164,7 +164,7 @@ libvulkan_radeon = shared_library(
   ],
   c_args : [no_override_init_args, radv_flags],
   cpp_args : [radv_flags],
-  link_args : [ld_args_bsymbolic, ld_args_gc_sections],
+  link_args : [ld_args_build_id, ld_args_bsymbolic, ld_args_gc_sections],
   gnu_symbol_visibility : 'hidden',
   install : true,
 )
