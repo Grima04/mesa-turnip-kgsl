@@ -76,6 +76,7 @@ enum bi_class {
         BI_TABLE,
         BI_TEX,
         BI_ROUND,
+        BI_IMUL,
         BI_NUM_CLASSES
 };
 
@@ -169,6 +170,10 @@ enum bi_bitwise_op {
 enum bi_imath_op {
         BI_IMATH_ADD,
         BI_IMATH_SUB,
+};
+
+enum bi_imul_op {
+        BI_IMUL_IMUL,
 };
 
 enum bi_table_op {
@@ -281,6 +286,7 @@ typedef struct {
                 enum bi_frexp_op frexp;
                 enum bi_tex_op texture;
                 enum bi_imath_op imath;
+                enum bi_imul_op imul;
 
                 /* For FMA/ADD, should we add a biased exponent? */
                 bool mscale;

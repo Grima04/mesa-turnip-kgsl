@@ -155,6 +155,7 @@ bi_class_name(enum bi_class cl)
         case BI_TABLE: return "table";
         case BI_TEX: return "tex";
         case BI_ROUND: return "round";
+        case BI_IMUL: return "imul";
         default: return "unknown_class";
         }
 }

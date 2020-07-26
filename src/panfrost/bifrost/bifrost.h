@@ -117,6 +117,7 @@ struct bifrost_fma_inst {
 
 #define BIFROST_FMA_IADD_32 (0x4ff98 >> 3)
 #define BIFROST_FMA_ISUB_32 (0x4ffd8 >> 3)
+#define BIFROST_FMA_IMUL_32 ((BIFROST_FMA_EXT | 0x7818) >> 3)
 
 struct bifrost_fma_2src {
         unsigned src0 : 3;

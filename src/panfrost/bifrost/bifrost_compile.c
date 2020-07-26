@@ -512,6 +512,9 @@ bi_class_for_nir_alu(nir_op op)
         case nir_op_isub:
                 return BI_IMATH;
 
+        case nir_op_imul:
+                return BI_IMUL;
+
         case nir_op_iand:
         case nir_op_ior:
         case nir_op_ixor:
@@ -820,6 +823,9 @@ emit_alu(bi_context *ctx, nir_alu_instr *instr)
                 alu.src[2] = alu.src[1];
                 alu.src_types[2] = alu.src_types[1];
                 alu.src[1] = BIR_INDEX_ZERO;
+                break;
+        case nir_op_imul:
+                alu.op.imul = BI_IMUL_IMUL;
                 break;
         case nir_op_fmax:
         case nir_op_imax:

@@ -1142,6 +1142,14 @@ bi_pack_fma_imath(bi_instruction *ins, bi_registers *regs)
 }
 
 static unsigned
+bi_pack_fma_imul(bi_instruction *ins, bi_registers *regs)
+{
+        assert(ins->op.imul == BI_IMUL_IMUL);
+        unsigned op = BIFROST_FMA_IMUL_32;
+        return bi_pack_fma_2src(ins, regs, op);
+}
+
+static unsigned
 bi_pack_fma(bi_clause *clause, bi_bundle bundle, bi_registers *regs)
 {
         if (!bundle.fma)
@@ -1174,6 +1182,8 @@ bi_pack_fma(bi_clause *clause, bi_bundle bundle, bi_registers *regs)
                 return bi_pack_fma_round(bundle.fma, regs);
         case BI_REDUCE_FMA:
                 return bi_pack_fma_reduce(bundle.fma, regs);
+        case BI_IMUL:
+                return bi_pack_fma_imul(bundle.fma, regs);
         default:
                 unreachable("Cannot encode class as FMA");
         }
