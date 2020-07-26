@@ -473,7 +473,7 @@ radv_shader_compile_to_nir(struct radv_device *device,
 
 		NIR_PASS_V(nir, nir_lower_system_values);
 		NIR_PASS_V(nir, nir_lower_clip_cull_distance_arrays);
-		NIR_PASS_V(nir, radv_nir_lower_ycbcr_textures, layout);
+
 		if (device->instance->debug_flags & RADV_DEBUG_DISCARD_TO_DEMOTE)
 			NIR_PASS_V(nir, nir_lower_discard_to_demote);
 
@@ -540,6 +540,10 @@ radv_shader_compile_to_nir(struct radv_device *device,
 
 	if (!(flags & VK_PIPELINE_CREATE_DISABLE_OPTIMIZATION_BIT))
 		radv_optimize_nir(nir, false, true);
+
+	/* call radv_nir_lower_ycbcr_textures() late as there might still be
+	 * tex with undef texture/sampler before first optimization */
+	NIR_PASS_V(nir, radv_nir_lower_ycbcr_textures, layout);
 
 	/* We call nir_lower_var_copies() after the first radv_optimize_nir()
 	 * to remove any copies introduced by nir_opt_find_array_copies().
