@@ -40,7 +40,7 @@
 #include "fd2_util.h"
 #include "fd2_zsa.h"
 #include "fd2_draw.h"
-#include "instr-a2xx.h"
+#include "ir2/instr-a2xx.h"
 
 static uint32_t fmt2swap(enum pipe_format format)
 {

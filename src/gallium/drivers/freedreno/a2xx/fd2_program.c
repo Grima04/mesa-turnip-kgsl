@@ -40,7 +40,7 @@
 #include "fd2_program.h"
 #include "fd2_texture.h"
 #include "fd2_util.h"
-#include "instr-a2xx.h"
+#include "ir2/instr-a2xx.h"
 
 static struct fd2_shader_stateobj *
 create_shader(struct pipe_context *pctx, gl_shader_stage type)

@@ -96,6 +96,7 @@
       - src/freedreno/common/**/*
       - src/freedreno/drm/**/*
       - src/freedreno/fdl/**/*
+      - src/freedreno/ir2/**/*
       - src/freedreno/ir3/**/*
       - src/freedreno/perfcntrs/**/*
       - src/freedreno/registers/**/*
