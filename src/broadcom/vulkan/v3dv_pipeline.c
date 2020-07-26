@@ -128,7 +128,8 @@ destroy_pipeline_stage(struct v3dv_device *device,
       return;
 
    ralloc_free(p_stage->nir);
-   v3dv_shader_variant_unref(device, p_stage->current_variant);
+   if (p_stage->current_variant)
+      v3dv_shader_variant_unref(device, p_stage->current_variant);
    vk_free2(&device->alloc, pAllocator, p_stage);
 }
 
@@ -1213,7 +1214,10 @@ pipeline_populate_v3d_vs_key(struct v3d_vs_key *key,
 
 /*
  * Creates the pipeline_stage for the coordinate shader. Initially a clone of
- * the vs pipeline_stage, with is_coord to true;
+ * the vs pipeline_stage, with is_coord to true
+ *
+ * Returns NULL if it was not able to allocate the object, so it should be
+ * handled as a VK_ERROR_OUT_OF_HOST_MEMORY error.
  */
 static struct v3dv_pipeline_stage*
 pipeline_stage_create_vs_bin(const struct v3dv_pipeline_stage *src,
@@ -1224,6 +1228,9 @@ pipeline_stage_create_vs_bin(const struct v3dv_pipeline_stage *src,
    struct v3dv_pipeline_stage *p_stage =
       vk_zalloc2(&device->alloc, pAllocator, sizeof(*p_stage), 8,
                  VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+
+   if (p_stage == NULL)
+      return NULL;
 
    p_stage->pipeline = src->pipeline;
    assert(src->stage == MESA_SHADER_VERTEX);
@@ -1693,9 +1700,10 @@ pipeline_lower_nir(struct v3dv_pipeline *pipeline,
  * where the size of the array determines the number of active clip planes.
  */
 static uint32_t
-get_ucp_enable_mask(struct v3dv_pipeline_stage **stages)
+get_ucp_enable_mask(struct v3dv_pipeline_stage *p_stage)
 {
-   const nir_shader *shader = stages[MESA_SHADER_VERTEX]->nir;
+   assert(p_stage->stage == MESA_SHADER_VERTEX);
+   const nir_shader *shader = p_stage->nir;
    assert(shader);
 
    nir_foreach_variable_with_modes(var, shader, nir_var_shader_out) {
@@ -1770,13 +1778,99 @@ pipeline_hash_shader(const struct v3dv_shader_module *module,
    _mesa_sha1_final(&ctx, sha1_out);
 }
 
+
+static VkResult
+pipeline_compile_vertex_shader(struct v3dv_pipeline *pipeline,
+                               struct v3dv_pipeline_cache *cache,
+                               const VkGraphicsPipelineCreateInfo *pCreateInfo,
+                               const VkAllocationCallbacks *pAllocator)
+{
+   struct v3dv_pipeline_stage *p_stage = pipeline->vs;
+
+   pipeline_lower_nir(pipeline, p_stage, pipeline->layout);
+   /* Right now we only support pipelines with both vertex and fragment
+    * shader.
+    */
+   assert(pipeline->fs);
+
+   /* Make sure we do all our common lowering *before* we create the vs
+    * and vs_bin pipeline stages, since from that point forward we need to
+    * run lowerings for both of them separately, since each stage will
+    * own its NIR code.
+    */
+   lower_vs_io(p_stage->nir);
+
+   pipeline->vs_bin = pipeline_stage_create_vs_bin(pipeline->vs, pAllocator);
+   if (pipeline->vs_bin == NULL)
+      return VK_ERROR_OUT_OF_HOST_MEMORY;
+
+   /* FIXME: likely this to be moved to a gather info method to a full
+    * struct inside pipeline_stage
+    */
+   const VkPipelineInputAssemblyStateCreateInfo *ia_info =
+      pCreateInfo->pInputAssemblyState;
+   pipeline->vs->topology = vk_to_pipe_prim_type[ia_info->topology];
+
+   struct v3d_vs_key *key = &pipeline->vs->key.vs;
+   pipeline_populate_v3d_vs_key(key, pCreateInfo, pipeline->vs);
+   VkResult vk_result;
+   pipeline->vs->current_variant =
+      pregenerate_shader_variants(pipeline->vs, cache, &key->base, sizeof(*key),
+                                  pAllocator, &vk_result);
+   if (vk_result != VK_SUCCESS)
+      return vk_result;
+
+   key = &pipeline->vs_bin->key.vs;
+   pipeline_populate_v3d_vs_key(key, pCreateInfo, pipeline->vs_bin);
+   pipeline->vs_bin->current_variant =
+      pregenerate_shader_variants(pipeline->vs_bin, cache, &key->base, sizeof(*key),
+                                  pAllocator, &vk_result);
+
+   return vk_result;
+}
+
+static VkResult
+pipeline_compile_fragment_shader(struct v3dv_pipeline *pipeline,
+                                 struct v3dv_pipeline_cache *cache,
+                                 const VkGraphicsPipelineCreateInfo *pCreateInfo,
+                                 const VkAllocationCallbacks *pAllocator)
+{
+   struct v3dv_pipeline_stage *p_stage = pipeline->vs;
+
+   p_stage = pipeline->fs;
+   pipeline_lower_nir(pipeline, p_stage, pipeline->layout);
+
+   struct v3d_fs_key *key = &p_stage->key.fs;
+
+   pipeline_populate_v3d_fs_key(key, pCreateInfo, p_stage,
+                                get_ucp_enable_mask(pipeline->vs));
+
+   lower_fs_io(p_stage->nir);
+
+   VkResult vk_result;
+   p_stage->current_variant =
+      pregenerate_shader_variants(p_stage, cache, &key->base, sizeof(*key),
+                                  pAllocator, &vk_result);
+
+   return vk_result;
+}
+
+/*
+ * It compiles a pipeline. Note that it also allocate internal object, but if
+ * some allocations success, but other fails, the method is not freeing the
+ * successful ones.
+ *
+ * This is done to simplify the code, as what we do in this case is just call
+ * the pipeline destroy method, and this would handle freeing the internal
+ * objects allocated. We just need to be careful setting to NULL the objects
+ * not allocated.
+ */
 static VkResult
 pipeline_compile_graphics(struct v3dv_pipeline *pipeline,
                           struct v3dv_pipeline_cache *cache,
                           const VkGraphicsPipelineCreateInfo *pCreateInfo,
                           const VkAllocationCallbacks *pAllocator)
 {
-   struct v3dv_pipeline_stage *stages[MESA_SHADER_STAGES] = { };
    struct v3dv_device *device = pipeline->device;
    struct v3dv_physical_device *physical_device =
       &device->instance->physicalDevice;
@@ -1791,6 +1885,9 @@ pipeline_compile_graphics(struct v3dv_pipeline *pipeline,
       struct v3dv_pipeline_stage *p_stage =
          vk_zalloc2(&device->alloc, pAllocator, sizeof(*p_stage), 8,
                     VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+
+      if (p_stage == NULL)
+         return VK_ERROR_OUT_OF_HOST_MEMORY;
 
       /* Note that we are assigning program_id slightly differently that
        * v3d. Here we are assigning one per pipeline stage, so vs and vs_bin
@@ -1820,11 +1917,20 @@ pipeline_compile_graphics(struct v3dv_pipeline *pipeline,
 
       p_stage->nir = pipeline_stage_get_nir(p_stage, pipeline, cache);
 
-      stages[stage] = p_stage;
+      switch(stage) {
+      case MESA_SHADER_VERTEX:
+         pipeline->vs = p_stage;
+         break;
+      case MESA_SHADER_FRAGMENT:
+         pipeline->fs = p_stage;
+         break;
+      default:
+         unreachable("not supported shader stage");
+      }
    }
 
    /* Add a no-op fragment shader if needed */
-   if (!stages[MESA_SHADER_FRAGMENT]) {
+   if (!pipeline->fs) {
       nir_builder b;
       nir_builder_init_simple_shader(&b, NULL, MESA_SHADER_FRAGMENT,
                                      &v3dv_nir_options);
@@ -1833,6 +1939,9 @@ pipeline_compile_graphics(struct v3dv_pipeline *pipeline,
       struct v3dv_pipeline_stage *p_stage =
          vk_zalloc2(&device->alloc, pAllocator, sizeof(*p_stage), 8,
                     VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+
+      if (p_stage == NULL)
+         return VK_ERROR_OUT_OF_HOST_MEMORY;
 
       p_stage->pipeline = pipeline;
       p_stage->stage = MESA_SHADER_FRAGMENT;
@@ -1849,118 +1958,25 @@ pipeline_compile_graphics(struct v3dv_pipeline *pipeline,
          p_atomic_inc_return(&physical_device->next_program_id);
       p_stage->compiled_variant_count = 0;
 
-      stages[MESA_SHADER_FRAGMENT] = p_stage;
+      pipeline->fs = p_stage;
       pipeline->active_stages |= MESA_SHADER_FRAGMENT;
    }
 
    /* Linking */
-   struct v3dv_pipeline_stage *next_stage = NULL;
-   for (int stage = MESA_SHADER_STAGES - 1; stage >= 0; stage--) {
-      if (stages[stage] == NULL || stages[stage]->entrypoint == NULL)
-         continue;
+   link_shaders(pipeline->vs->nir, pipeline->fs->nir);
 
-      struct v3dv_pipeline_stage *p_stage = stages[stage];
-
-      switch(stage) {
-      case MESA_SHADER_VERTEX:
-         link_shaders(p_stage->nir, next_stage->nir);
-         break;
-      case MESA_SHADER_FRAGMENT:
-         /* FIXME: not doing any specific linking stuff here yet */
-         break;
-      default:
-         unreachable("not supported shader stage");
-      }
-
-      next_stage = stages[stage];
-   }
-
-   /* Assign p_stage to the pipeline. We need to do this before start to
-    * compile because p_stage sha1 is computed with all the stages
+   /* Compiling to vir (or getting it from a cache);
     */
-   pipeline->vs = stages[MESA_SHADER_VERTEX];
-   pipeline->fs = stages[MESA_SHADER_FRAGMENT];
+   VkResult vk_result;
+   vk_result = pipeline_compile_fragment_shader(pipeline, cache,
+                                                pCreateInfo, pAllocator);
+   if (vk_result != VK_SUCCESS)
+      return vk_result;
 
-   /* Compiling to vir. Note that at this point we are compiling a default
-    * variant. Binding to textures, and other stuff (that would need a
-    * cmd_buffer) would need a recompile
-    */
-   for (int stage = MESA_SHADER_STAGES - 1; stage >= 0; stage--) {
-      if (stages[stage] == NULL || stages[stage]->entrypoint == NULL)
-         continue;
-
-      struct v3dv_pipeline_stage *p_stage = stages[stage];
-
-      pipeline_lower_nir(pipeline, p_stage, pipeline->layout);
-
-      switch(stage) {
-      case MESA_SHADER_VERTEX: {
-         /* Right now we only support pipelines with both vertex and fragment
-          * shader.
-          */
-         assert(pipeline->fs);
-
-         /* Make sure we do all our common lowering *before* we create the vs
-          * and vs_bin pipeline stages, since from that point forward we need to
-          * run lowerings for both of them separately, since each stage will
-          * own its NIR code.
-          */
-         lower_vs_io(p_stage->nir);
-
-         pipeline->vs_bin = pipeline_stage_create_vs_bin(pipeline->vs, pAllocator);
-
-         /* FIXME: likely this to be moved to a gather info method to a full
-          * struct inside pipeline_stage
-          */
-         const VkPipelineInputAssemblyStateCreateInfo *ia_info =
-            pCreateInfo->pInputAssemblyState;
-         pipeline->vs->topology = vk_to_pipe_prim_type[ia_info->topology];
-
-         /* Note that at this point we would compile twice, one for vs and
-          * other for vs_bin. For now we are maintaining two pipeline_stages.
-          *
-          * FIXME: this leads to two caches, when it shouldnt, revisit
-          */
-         struct v3d_vs_key *key = &pipeline->vs->key.vs;
-         pipeline_populate_v3d_vs_key(key, pCreateInfo, pipeline->vs);
-         VkResult vk_result;
-         pipeline->vs->current_variant =
-            pregenerate_shader_variants(pipeline->vs, cache, &key->base, sizeof(*key),
-                                        pAllocator, &vk_result);
-         if (vk_result != VK_SUCCESS)
-            return vk_result;
-
-         key = &pipeline->vs_bin->key.vs;
-         pipeline_populate_v3d_vs_key(key, pCreateInfo, pipeline->vs_bin);
-         pipeline->vs_bin->current_variant =
-            pregenerate_shader_variants(pipeline->vs_bin, cache, &key->base, sizeof(*key),
-                                        pAllocator, &vk_result);
-         if (vk_result != VK_SUCCESS)
-            return vk_result;
-
-         break;
-      }
-      case MESA_SHADER_FRAGMENT: {
-         struct v3d_fs_key *key = &p_stage->key.fs;
-
-         pipeline_populate_v3d_fs_key(key, pCreateInfo, p_stage,
-                                      get_ucp_enable_mask(stages));
-
-         lower_fs_io(p_stage->nir);
-
-         VkResult vk_result;
-         p_stage->current_variant =
-            pregenerate_shader_variants(p_stage, cache, &key->base, sizeof(*key),
-                                        pAllocator, &vk_result);
-         if (vk_result != VK_SUCCESS)
-            return vk_result;
-
-         break;
-      }
-      default:
-         unreachable("not supported shader stage");
-      }
-   }
+   vk_result = pipeline_compile_vertex_shader(pipeline, cache,
+                                              pCreateInfo, pAllocator);
+   if (vk_result != VK_SUCCESS)
+      return vk_result;
 
    /* FIXME: values below are default when non-GS is available. Would need to
     * provide real values if GS gets supported
