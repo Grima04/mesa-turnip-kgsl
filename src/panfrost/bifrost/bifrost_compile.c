@@ -516,6 +516,7 @@ bi_class_for_nir_alu(nir_op op)
         case nir_op_ior:
         case nir_op_ixor:
         case nir_op_inot:
+        case nir_op_ishl:
                 return BI_BITWISE;
 
         BI_CASE_CMP(nir_op_flt)
@@ -807,6 +808,16 @@ emit_alu(bi_context *ctx, nir_alu_instr *instr)
                 alu.op.bitwise = BI_BITWISE_OR;
                 alu.bitwise.src_invert[0] = true;
                 alu.src[1] = BIR_INDEX_ZERO;
+                /* zero shift */
+                alu.src[2] = BIR_INDEX_ZERO;
+                alu.src_types[2] = alu.src_types[1];
+                break;
+        case nir_op_ishl:
+                alu.op.bitwise = BI_BITWISE_OR;
+                /* move src1 to src2 and replace with zero. underlying op is (src0 << src2) | src1 */
+                alu.src[2] = alu.src[1];
+                alu.src_types[2] = alu.src_types[1];
+                alu.src[1] = BIR_INDEX_ZERO;
                 break;
         case nir_op_fmax:
         case nir_op_imax:
@@ -843,12 +854,21 @@ emit_alu(bi_context *ctx, nir_alu_instr *instr)
                 break;
         case nir_op_iand:
                 alu.op.bitwise = BI_BITWISE_AND;
+                /* zero shift */
+                alu.src[2] = BIR_INDEX_ZERO;
+                alu.src_types[2] = alu.src_types[1];
                 break;
         case nir_op_ior:
                 alu.op.bitwise = BI_BITWISE_OR;
+                /* zero shift */
+                alu.src[2] = BIR_INDEX_ZERO;
+                alu.src_types[2] = alu.src_types[1];
                 break;
         case nir_op_ixor:
                 alu.op.bitwise = BI_BITWISE_XOR;
+                /* zero shift */
+                alu.src[2] = BIR_INDEX_ZERO;
+                alu.src_types[2] = alu.src_types[1];
                 break;
         case nir_op_f2i32:
                 alu.roundmode = BIFROST_RTZ;
@@ -889,10 +909,6 @@ emit_alu(bi_context *ctx, nir_alu_instr *instr)
                 bi_fuse_cond(&alu, instr->src[0],
                                 &constants_left, &constant_shift, comps, false);
 #endif
-        } else if (alu.type == BI_BITWISE) {
-                /* Implicit shift argument... at some point we should fold */
-                alu.src[2] = BIR_INDEX_ZERO;
-                alu.src_types[2] = alu.src_types[1];
         }
 
         bi_emit(ctx, alu);

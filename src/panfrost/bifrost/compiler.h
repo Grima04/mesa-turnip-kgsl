@@ -70,7 +70,6 @@ enum bi_class {
         BI_MOV,
         BI_REDUCE_FMA,
         BI_SELECT,
-        BI_SHIFT,
         BI_STORE,
         BI_STORE_VAR,
         BI_SPECIAL, /* _FAST on supported GPUs */

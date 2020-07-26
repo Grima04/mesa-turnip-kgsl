@@ -1168,8 +1168,6 @@ bi_pack_fma(bi_clause *clause, bi_bundle bundle, bi_registers *regs)
                 return bi_pack_fma_addmin(bundle.fma, regs);
         case BI_MOV:
                 return bi_pack_fma_1src(bundle.fma, regs, BIFROST_FMA_OP_MOV);
-        case BI_SHIFT:
-                unreachable("Packing todo");
         case BI_SELECT:
                 return bi_pack_fma_select(bundle.fma, regs);
         case BI_ROUND:
@@ -1733,7 +1731,6 @@ bi_pack_add(bi_clause *clause, bi_bundle bundle, bi_registers *regs, gl_shader_s
         case BI_MINMAX:
                 return bi_pack_add_addmin(bundle.add, regs);
         case BI_MOV:
-        case BI_SHIFT:
         case BI_STORE:
                 unreachable("Packing todo");
         case BI_STORE_VAR:
