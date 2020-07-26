@@ -447,6 +447,7 @@ enum bifrost_fcmp_cond {
         BIFROST_OLE = 5,
 };
 
+/* "gl" version produces 0/1. "d3d" version produces 0/~0 */
 #define BIFROST_FMA_OP_FCMP_GL (0x48000 >> 13)
 #define BIFROST_FMA_OP_FCMP_D3D (0x4c000 >> 13)
 
@@ -473,6 +474,7 @@ struct bifrost_add_fcmp {
         unsigned op   : 6;
 } __attribute__((packed));
 
+/* "gl" version produces 0/1. "d3d" version produces 0/~0 */
 #define BIFROST_FMA_OP_FCMP_GL_16 (0xc8000 >> 13)
 #define BIFROST_FMA_OP_FCMP_D3D_16 (0xcc000 >> 13)
 
@@ -521,7 +523,7 @@ struct bifrost_fma_icmp32 {
         unsigned src1 : 3;
         enum bifrost_icmp_cond cond : 3;
         unsigned unk1 : 1; /* set */
-        unsigned d3d : 1;
+        unsigned d3d : 1;  /* if set, true is ~0. otherwise, true is 1 */
         unsigned op : 12;
 } __attribute__((packed));
 
@@ -541,7 +543,7 @@ struct bifrost_add_icmp {
         unsigned src1 : 3;
         enum bifrost_icmp_cond cond : 3;
         unsigned sz : 1; /* 1 for 32, 0 for 8 */
-        unsigned d3d : 1;
+        unsigned d3d : 1; /* if set, true is ~0. otherwise, true is 1 */
         unsigned op : 9;
 } __attribute__((packed));
 
@@ -550,7 +552,7 @@ struct bifrost_add_icmp16 {
         unsigned src1 : 3;
         unsigned src0_swizzle : 2;
         unsigned src1_swizzle : 2;
-        unsigned d3d : 1;
+        unsigned d3d : 1; /* if set, true is ~0. otherwise, true is 1 */
         enum bifrost_icmp_cond cond : 3;
         unsigned op : 6;
 } __attribute__((packed));
