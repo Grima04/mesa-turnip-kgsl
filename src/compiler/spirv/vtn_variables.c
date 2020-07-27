@@ -2478,6 +2478,28 @@ vtn_get_mem_operands(struct vtn_builder *b, const uint32_t *w, unsigned count,
    return true;
 }
 
+SpvMemorySemanticsMask
+vtn_mode_to_memory_semantics(enum vtn_variable_mode mode)
+{
+   switch (mode) {
+   case vtn_variable_mode_ssbo:
+   case vtn_variable_mode_phys_ssbo:
+      return SpvMemorySemanticsUniformMemoryMask;
+   case vtn_variable_mode_workgroup:
+      return SpvMemorySemanticsWorkgroupMemoryMask;
+   case vtn_variable_mode_cross_workgroup:
+      return SpvMemorySemanticsCrossWorkgroupMemoryMask;
+   case vtn_variable_mode_atomic_counter:
+      return SpvMemorySemanticsAtomicCounterMemoryMask;
+   case vtn_variable_mode_image:
+      return SpvMemorySemanticsImageMemoryMask;
+   case vtn_variable_mode_output:
+      return SpvMemorySemanticsOutputMemoryMask;
+   default:
+      return SpvMemorySemanticsMaskNone;
+   }
+}
+
 void
 vtn_handle_variables(struct vtn_builder *b, SpvOp opcode,
                      const uint32_t *w, unsigned count)
@@ -2598,7 +2620,7 @@ vtn_handle_variables(struct vtn_builder *b, SpvOp opcode,
       if (access & SpvMemoryAccessMakePointerVisibleMask) {
          SpvMemorySemanticsMask semantics =
             SpvMemorySemanticsMakeVisibleMask |
-            vtn_storage_class_to_memory_semantics(src->ptr_type->storage_class);
+            vtn_mode_to_memory_semantics(src->mode);
          vtn_emit_memory_barrier(b, scope, semantics);
       }
 
@@ -2647,7 +2669,7 @@ vtn_handle_variables(struct vtn_builder *b, SpvOp opcode,
       if (access & SpvMemoryAccessMakePointerAvailableMask) {
          SpvMemorySemanticsMask semantics =
             SpvMemorySemanticsMakeAvailableMask |
-            vtn_storage_class_to_memory_semantics(dest->ptr_type->storage_class);
+            vtn_mode_to_memory_semantics(dest->mode);
          vtn_emit_memory_barrier(b, scope, semantics);
       }
       break;

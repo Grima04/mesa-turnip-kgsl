@@ -927,7 +927,7 @@ bool vtn_handle_amd_shader_explicit_vertex_parameter_instruction(struct vtn_buil
                                                                  const uint32_t *words,
                                                                  unsigned count);
 
-SpvMemorySemanticsMask vtn_storage_class_to_memory_semantics(SpvStorageClass sc);
+SpvMemorySemanticsMask vtn_mode_to_memory_semantics(enum vtn_variable_mode mode);
 
 void vtn_emit_memory_barrier(struct vtn_builder *b, SpvScope scope,
                              SpvMemorySemanticsMask semantics);

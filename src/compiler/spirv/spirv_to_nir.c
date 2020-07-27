@@ -2103,20 +2103,6 @@ vtn_handle_constant(struct vtn_builder *b, SpvOp opcode,
    vtn_foreach_decoration(b, val, handle_workgroup_size_decoration_cb, NULL);
 }
 
-SpvMemorySemanticsMask
-vtn_storage_class_to_memory_semantics(SpvStorageClass sc)
-{
-   switch (sc) {
-   case SpvStorageClassStorageBuffer:
-   case SpvStorageClassPhysicalStorageBuffer:
-      return SpvMemorySemanticsUniformMemoryMask;
-   case SpvStorageClassWorkgroup:
-      return SpvMemorySemanticsWorkgroupMemoryMask;
-   default:
-      return SpvMemorySemanticsMaskNone;
-   }
-}
-
 static void
 vtn_split_barrier_semantics(struct vtn_builder *b,
                             SpvMemorySemanticsMask semantics,
@@ -3539,7 +3525,7 @@ vtn_handle_atomics(struct vtn_builder *b, SpvOp opcode,
    /* Atomic ordering operations will implicitly apply to the atomic operation
     * storage class, so include that too.
     */
-   semantics |= vtn_storage_class_to_memory_semantics(ptr->ptr_type->storage_class);
+   semantics |= vtn_mode_to_memory_semantics(ptr->mode);
 
    SpvMemorySemanticsMask before_semantics;
    SpvMemorySemanticsMask after_semantics;
