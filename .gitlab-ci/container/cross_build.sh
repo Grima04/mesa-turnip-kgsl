@@ -39,16 +39,8 @@ apt-get install -y --no-remove -t buster-backports \
 
 
 # dependencies where we want a specific version
-export LIBDRM_VERSION=libdrm-2.4.102
-
-wget https://dri.freedesktop.org/libdrm/$LIBDRM_VERSION.tar.xz
-tar -xvf $LIBDRM_VERSION.tar.xz && rm $LIBDRM_VERSION.tar.xz
-cd $LIBDRM_VERSION
-meson --cross-file=/cross_file-${arch}.txt build -D libdir=lib/$(dpkg-architecture -A $arch -qDEB_TARGET_MULTIARCH)
-ninja -C build install
-cd ..
-rm -rf $LIBDRM_VERSION
-
+EXTRA_MESON_ARGS="--cross-file=/cross_file-${arch}.txt -D libdir=lib/$(dpkg-architecture -A $arch -qDEB_TARGET_MULTIARCH)"
+. .gitlab-ci/build-libdrm.sh
 
 apt-get purge -y \
         $STABLE_EPHEMERAL

@@ -15,6 +15,7 @@ STABLE_EPHEMERAL=" \
       libgbm-dev \
       libgles2-mesa-dev \
       libpcre3-dev \
+      libpciaccess-dev \
       libpng-dev \
       libvulkan-dev \
       libwaffle-dev \
@@ -60,6 +61,10 @@ apt-get install -y --no-remove \
 ############### Build renderdoc
 
 . .gitlab-ci/build-renderdoc.sh
+
+############### Build libdrm
+
+. .gitlab-ci/build-libdrm.sh
 
 ############### Uninstall the build software
 

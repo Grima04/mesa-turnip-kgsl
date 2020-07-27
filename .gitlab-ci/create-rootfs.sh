@@ -10,8 +10,6 @@ apt-get -y install --no-install-recommends \
     strace \
     libsensors5 \
     libexpat1 \
-    libdrm2 \
-    libdrm-nouveau2 \
     libx11-6 \
     libx11-xcb1 \
     firmware-qcom-media \

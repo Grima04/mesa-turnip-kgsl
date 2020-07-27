@@ -22,6 +22,7 @@ BAREMETAL_EPHEMERAL=" \
         libffi-dev:$arch \
         libgbm-dev:$arch \
         libgles2-mesa-dev:$arch \
+        libpciaccess-dev:$arch \
         libpcre3-dev:$arch \
         libpng-dev:$arch \
         libpython3-dev:$arch \
