@@ -484,6 +484,7 @@ panfrost_resource_create(struct pipe_screen *screen,
         case PIPE_TEXTURE_3D:
         case PIPE_TEXTURE_CUBE:
         case PIPE_TEXTURE_RECT:
+        case PIPE_TEXTURE_1D_ARRAY:
         case PIPE_TEXTURE_2D_ARRAY:
                 break;
         default:
