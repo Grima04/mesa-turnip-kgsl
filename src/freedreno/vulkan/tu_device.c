@@ -603,6 +603,12 @@ tu_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
          features->formatA4B4G4R4 = true;
          break;
       }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CUSTOM_BORDER_COLOR_FEATURES_EXT: {
+         VkPhysicalDeviceCustomBorderColorFeaturesEXT *features = (void *) ext;
+         features->customBorderColors = true;
+         features->customBorderColorWithoutFormat = true;
+         break;
+      }
       default:
          break;
       }
@@ -851,6 +857,11 @@ tu_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
          props->maxVertexAttribDivisor = UINT32_MAX;
          break;
       }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CUSTOM_BORDER_COLOR_PROPERTIES_EXT: {
+         VkPhysicalDeviceCustomBorderColorPropertiesEXT *props = (void *)ext;
+         props->maxCustomBorderColorSamplers = TU_BORDER_COLOR_COUNT;
+         break;
+      }
       default:
          break;
       }
@@ -976,60 +987,6 @@ tu_get_device_extension_index(const char *name)
    return -1;
 }
 
-struct PACKED bcolor_entry {
-   uint32_t fp32[4];
-   uint16_t ui16[4];
-   int16_t  si16[4];
-   uint16_t fp16[4];
-   uint16_t rgb565;
-   uint16_t rgb5a1;
-   uint16_t rgba4;
-   uint8_t __pad0[2];
-   uint8_t  ui8[4];
-   int8_t   si8[4];
-   uint32_t rgb10a2;
-   uint32_t z24; /* also s8? */
-   uint16_t srgb[4];      /* appears to duplicate fp16[], but clamped, used for srgb */
-   uint8_t  __pad1[56];
-} border_color[] = {
-   [VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK] = {},
-   [VK_BORDER_COLOR_INT_TRANSPARENT_BLACK] = {},
-   [VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK] = {
-      .fp32[3] = 0x3f800000,
-      .ui16[3] = 0xffff,
-      .si16[3] = 0x7fff,
-      .fp16[3] = 0x3c00,
-      .rgb5a1 = 0x8000,
-      .rgba4 = 0xf000,
-      .ui8[3] = 0xff,
-      .si8[3] = 0x7f,
-      .rgb10a2 = 0xc0000000,
-      .srgb[3] = 0x3c00,
-   },
-   [VK_BORDER_COLOR_INT_OPAQUE_BLACK] = {
-      .fp32[3] = 1,
-      .fp16[3] = 1,
-   },
-   [VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE] = {
-      .fp32[0 ... 3] = 0x3f800000,
-      .ui16[0 ... 3] = 0xffff,
-      .si16[0 ... 3] = 0x7fff,
-      .fp16[0 ... 3] = 0x3c00,
-      .rgb565 = 0xffff,
-      .rgb5a1 = 0xffff,
-      .rgba4 = 0xffff,
-      .ui8[0 ... 3] = 0xff,
-      .si8[0 ... 3] = 0x7f,
-      .rgb10a2 = 0xffffffff,
-      .z24 = 0xffffff,
-      .srgb[0 ... 3] = 0x3c00,
-   },
-   [VK_BORDER_COLOR_INT_OPAQUE_WHITE] = {
-      .fp32[0 ... 3] = 1,
-      .fp16[0 ... 3] = 1,
-   },
-};
-
 VkResult
 tu_CreateDevice(VkPhysicalDevice physicalDevice,
                 const VkDeviceCreateInfo *pCreateInfo,
@@ -1039,6 +996,7 @@ tu_CreateDevice(VkPhysicalDevice physicalDevice,
    TU_FROM_HANDLE(tu_physical_device, physical_device, physicalDevice);
    VkResult result;
    struct tu_device *device;
+   bool custom_border_colors = false;
 
    /* Check enabled features */
    if (pCreateInfo->pEnabledFeatures) {
@@ -1052,6 +1010,18 @@ tu_CreateDevice(VkPhysicalDevice physicalDevice,
          if (enabled_feature[i] && !supported_feature[i])
             return vk_error(physical_device->instance,
                             VK_ERROR_FEATURE_NOT_PRESENT);
+      }
+   }
+
+   vk_foreach_struct_const(ext, pCreateInfo->pNext) {
+      switch (ext->sType) {
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CUSTOM_BORDER_COLOR_FEATURES_EXT: {
+         const VkPhysicalDeviceCustomBorderColorFeaturesEXT *border_color_features = (const void *)ext;
+         custom_border_colors = border_color_features->customBorderColors;
+         break;
+      }
+      default:
+         break;
       }
    }
 
@@ -1113,8 +1083,11 @@ tu_CreateDevice(VkPhysicalDevice physicalDevice,
    device->vsc_draw_strm_pitch = 0x1000 + VSC_PAD;
    device->vsc_prim_strm_pitch = 0x4000 + VSC_PAD;
 
-   STATIC_ASSERT(sizeof(border_color) == sizeof(((struct tu6_global*) 0)->border_color));
-   result = tu_bo_init_new(device, &device->global_bo, sizeof(struct tu6_global));
+   uint32_t global_size = sizeof(struct tu6_global);
+   if (custom_border_colors)
+      global_size += TU_BORDER_COLOR_COUNT * sizeof(struct bcolor_entry);
+
+   result = tu_bo_init_new(device, &device->global_bo, global_size);
    if (result != VK_SUCCESS)
       goto fail_global_bo;
 
@@ -1123,9 +1096,23 @@ tu_CreateDevice(VkPhysicalDevice physicalDevice,
       goto fail_global_bo_map;
 
    struct tu6_global *global = device->global_bo.map;
-   memcpy(global->border_color, border_color, sizeof(border_color));
+   tu_init_clear_blit_shaders(device->global_bo.map);
    global->predicate = 0;
-   tu_init_clear_blit_shaders(global);
+   tu6_pack_border_color(&global->bcolor_builtin[VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK],
+                         &(VkClearColorValue) {}, false);
+   tu6_pack_border_color(&global->bcolor_builtin[VK_BORDER_COLOR_INT_TRANSPARENT_BLACK],
+                         &(VkClearColorValue) {}, true);
+   tu6_pack_border_color(&global->bcolor_builtin[VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK],
+                         &(VkClearColorValue) { .float32[3] = 1.0f }, false);
+   tu6_pack_border_color(&global->bcolor_builtin[VK_BORDER_COLOR_INT_OPAQUE_BLACK],
+                         &(VkClearColorValue) { .int32[3] = 1 }, true);
+   tu6_pack_border_color(&global->bcolor_builtin[VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE],
+                         &(VkClearColorValue) { .float32[0 ... 3] = 1.0f }, false);
+   tu6_pack_border_color(&global->bcolor_builtin[VK_BORDER_COLOR_INT_OPAQUE_WHITE],
+                         &(VkClearColorValue) { .int32[0 ... 3] = 1 }, true);
+
+   /* initialize to ones so ffs can be used to find unused slots */
+   BITSET_ONES(device->custom_border_color);
 
    VkPipelineCacheCreateInfo ci;
    ci.sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO;
@@ -1144,7 +1131,7 @@ tu_CreateDevice(VkPhysicalDevice physicalDevice,
    for (unsigned i = 0; i < ARRAY_SIZE(device->scratch_bos); i++)
       mtx_init(&device->scratch_bos[i].construct_mtx, mtx_plain);
 
-   mtx_init(&device->vsc_pitch_mtx, mtx_plain);
+   mtx_init(&device->mutex, mtx_plain);
 
    *pDevice = tu_device_to_handle(device);
    return VK_SUCCESS;
@@ -1901,6 +1888,24 @@ tu_init_sampler(struct tu_device *device,
       vk_find_struct_const(pCreateInfo->pNext, SAMPLER_REDUCTION_MODE_CREATE_INFO);
    const struct VkSamplerYcbcrConversionInfo *ycbcr_conversion =
       vk_find_struct_const(pCreateInfo->pNext,  SAMPLER_YCBCR_CONVERSION_INFO);
+   const VkSamplerCustomBorderColorCreateInfoEXT *custom_border_color =
+      vk_find_struct_const(pCreateInfo->pNext, SAMPLER_CUSTOM_BORDER_COLOR_CREATE_INFO_EXT);
+   /* for non-custom border colors, the VK enum is translated directly to an offset in
+    * the border color buffer. custom border colors are located immediately after the
+    * builtin colors, and thus an offset of TU_BORDER_COLOR_BUILTIN is added.
+    */
+   uint32_t border_color = (unsigned) pCreateInfo->borderColor;
+   if (pCreateInfo->borderColor == VK_BORDER_COLOR_FLOAT_CUSTOM_EXT ||
+       pCreateInfo->borderColor == VK_BORDER_COLOR_INT_CUSTOM_EXT) {
+      mtx_lock(&device->mutex);
+      border_color = BITSET_FFS(device->custom_border_color);
+      BITSET_CLEAR(device->custom_border_color, border_color);
+      mtx_unlock(&device->mutex);
+      tu6_pack_border_color(device->global_bo.map + gb_offset(bcolor[border_color]),
+                            &custom_border_color->customBorderColor,
+                            pCreateInfo->borderColor == VK_BORDER_COLOR_INT_CUSTOM_EXT);
+      border_color += TU_BORDER_COLOR_BUILTIN;
+   }
 
    unsigned aniso = pCreateInfo->anisotropyEnable ?
       util_last_bit(MIN2((uint32_t)pCreateInfo->maxAnisotropy >> 1, 8)) : 0;
@@ -1924,13 +1929,7 @@ tu_init_sampler(struct tu_device *device,
       A6XX_TEX_SAMP_1_MAX_LOD(max_lod) |
       COND(pCreateInfo->compareEnable,
            A6XX_TEX_SAMP_1_COMPARE_FUNC(tu6_compare_func(pCreateInfo->compareOp)));
-   /* This is an offset into the border_color BO, which we fill with all the
-    * possible Vulkan border colors in the correct order, so we can just use
-    * the Vulkan enum with no translation necessary.
-    */
-   sampler->descriptor[2] =
-      A6XX_TEX_SAMP_2_BCOLOR_OFFSET((unsigned) pCreateInfo->borderColor *
-                                    sizeof(struct bcolor_entry));
+   sampler->descriptor[2] = A6XX_TEX_SAMP_2_BCOLOR(border_color);
    sampler->descriptor[3] = 0;
 
    if (reduction) {
@@ -1980,9 +1979,20 @@ tu_DestroySampler(VkDevice _device,
 {
    TU_FROM_HANDLE(tu_device, device, _device);
    TU_FROM_HANDLE(tu_sampler, sampler, _sampler);
+   uint32_t border_color;
 
    if (!sampler)
       return;
+
+   border_color = (sampler->descriptor[2] & A6XX_TEX_SAMP_2_BCOLOR__MASK) >> A6XX_TEX_SAMP_2_BCOLOR__SHIFT;
+   if (border_color >= TU_BORDER_COLOR_BUILTIN) {
+      border_color -= TU_BORDER_COLOR_BUILTIN;
+      /* if the sampler had a custom border color, free it. TODO: no lock */
+      mtx_lock(&device->mutex);
+      assert(!BITSET_TEST(device->custom_border_color, border_color));
+      BITSET_SET(device->custom_border_color, border_color);
+      mtx_unlock(&device->mutex);
+   }
 
    vk_object_free(&device->vk, pAllocator, sampler);
 }

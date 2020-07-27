@@ -14,6 +14,8 @@
 
 #include "util/macros.h"
 #include "util/u_math.h"
+#include "util/format/u_format_pack.h"
+#include "util/format/u_format_zs.h"
 #include "compiler/shader_enums.h"
 
 #include "adreno_common.xml.h"
@@ -248,6 +250,50 @@ tu6_polygon_mode(VkPolygonMode mode)
    default:
       unreachable("bad polygon mode");
    }
+}
+
+struct bcolor_entry {
+   uint32_t fp32[4];
+   uint64_t ui16;
+   uint64_t si16;
+   uint64_t fp16;
+   uint16_t rgb565;
+   uint16_t rgb5a1;
+   uint16_t rgba4;
+   uint8_t __pad0[2];
+   uint32_t ui8;
+   uint32_t si8;
+   uint32_t rgb10a2;
+   uint32_t z24; /* also s8? */
+   uint64_t srgb;
+   uint8_t  __pad1[56];
+} __attribute__((aligned(128)));
+
+static inline void
+tu6_pack_border_color(struct bcolor_entry *bcolor, const VkClearColorValue *val, bool is_int)
+{
+   memcpy(bcolor->fp32, val, 4 * sizeof(float));
+   if (is_int) {
+      /* TODO: clamp? */
+      util_format_r16g16b16a16_uint_pack_unsigned((uint8_t*) &bcolor->fp16,
+                                                  0, val->uint32, 0, 1, 1);
+      return;
+   }
+#define PACK_F(x, type) util_format_##type##_pack_rgba_float \
+   ( (uint8_t*) (&bcolor->x), 0, val->float32, 0, 1, 1)
+   PACK_F(ui16, r16g16b16a16_unorm);
+   PACK_F(si16, r16g16b16a16_snorm);
+   PACK_F(fp16, r16g16b16a16_float);
+   PACK_F(rgb565, r5g6b5_unorm);
+   PACK_F(rgb5a1, r5g5b5a1_unorm);
+   PACK_F(rgba4, r4g4b4a4_unorm);
+   PACK_F(ui8, r8g8b8a8_unorm);
+   PACK_F(si8, r8g8b8a8_snorm);
+   PACK_F(rgb10a2, r10g10b10a2_unorm);
+   util_format_x8z24_unorm_pack_z_float((uint8_t*) &bcolor->z24,
+                                        0, val->float32, 0, 1, 1);
+   PACK_F(srgb, r16g16b16a16_float); /* TODO: clamp? */
+#undef PACK_F
 }
 
 #endif /* TU_UTIL_H */

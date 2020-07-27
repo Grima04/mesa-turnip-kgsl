@@ -902,10 +902,10 @@ tu6_init_hw(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
 
    tu_cs_emit_regs(cs,
                    A6XX_SP_TP_BORDER_COLOR_BASE_ADDR(.bo = &dev->global_bo,
-                                                     .bo_offset = gb_offset(border_color)));
+                                                     .bo_offset = gb_offset(bcolor_builtin)));
    tu_cs_emit_regs(cs,
                    A6XX_SP_PS_TP_BORDER_COLOR_BASE_ADDR(.bo = &dev->global_bo,
-                                                        .bo_offset = gb_offset(border_color)));
+                                                        .bo_offset = gb_offset(bcolor_builtin)));
 
    /* VSC buffers:
     * use vsc pitches from the largest values used so far with this device
@@ -914,7 +914,7 @@ tu6_init_hw(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
     *
     * if overflow is detected, the stream size is increased by 2x
     */
-   mtx_lock(&dev->vsc_pitch_mtx);
+   mtx_lock(&dev->mutex);
 
    struct tu6_global *global = dev->global_bo.map;
 
@@ -930,7 +930,7 @@ tu6_init_hw(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
    cmd->vsc_prim_strm_pitch = dev->vsc_prim_strm_pitch;
    cmd->vsc_draw_strm_pitch = dev->vsc_draw_strm_pitch;
 
-   mtx_unlock(&dev->vsc_pitch_mtx);
+   mtx_unlock(&dev->mutex);
 
    struct tu_bo *vsc_bo;
    uint32_t size0 = cmd->vsc_prim_strm_pitch * MAX_VSC_PIPES +

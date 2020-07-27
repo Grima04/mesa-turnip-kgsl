@@ -3689,7 +3689,7 @@ to upconvert to 32b float internally?
 	<reg32 offset="2" name="2">
 		<bitfield name="REDUCTION_MODE" low="0" high="1" type="a6xx_reduction_mode"/>
 		<bitfield name="CHROMA_LINEAR" pos="5" type="boolean"/>
-		<bitfield name="BCOLOR_OFFSET" low="7" high="31" shr="7"/>
+		<bitfield name="BCOLOR" low="7" high="31"/>
 	</reg32>
 	<reg32 offset="3" name="3"/>
 </domain>

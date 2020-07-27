@@ -353,12 +353,12 @@ enum global_shader {
    GLOBAL_SH_COUNT,
 };
 
+#define TU_BORDER_COLOR_COUNT 4096
+#define TU_BORDER_COLOR_BUILTIN 6
+
 /* This struct defines the layout of the global_bo */
 struct tu6_global
 {
-   /* 6 bcolor_entry entries, one for each VK_BORDER_COLOR */
-   uint8_t border_color[128 * 6];
-
    /* clear/blit shaders, all <= 16 instrs (16 instr = 1 instrlen unit) */
    instr_t shaders[GLOBAL_SH_COUNT][16];
 
@@ -375,6 +375,9 @@ struct tu6_global
       uint32_t offset;
       uint32_t pad[7];
    } flush_base[4];
+
+   /* note: larger global bo will be used for customBorderColors */
+   struct bcolor_entry bcolor_builtin[TU_BORDER_COLOR_BUILTIN], bcolor[];
 };
 #define gb_offset(member) offsetof(struct tu6_global, member)
 #define global_iova(cmd, member) ((cmd)->device->global_bo.iova + gb_offset(member))
@@ -417,7 +420,8 @@ struct tu_device
 
    uint32_t vsc_draw_strm_pitch;
    uint32_t vsc_prim_strm_pitch;
-   mtx_t vsc_pitch_mtx;
+   BITSET_DECLARE(custom_border_color, TU_BORDER_COLOR_COUNT);
+   mtx_t mutex;
 };
 
 VkResult _tu_device_set_lost(struct tu_device *device,
