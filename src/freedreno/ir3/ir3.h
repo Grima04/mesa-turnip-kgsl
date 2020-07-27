@@ -1681,7 +1681,7 @@ ir3_SAM(struct ir3_block *block, opc_t opc, type_t type,
 	sam->flags |= flags;
 	__ssa_dst(sam)->wrmask = wrmask;
 	if (flags & IR3_INSTR_S2EN) {
-		__ssa_src(sam, samp_tex, IR3_REG_HALF);
+		__ssa_src(sam, samp_tex, (flags & IR3_INSTR_B) ? 0 : IR3_REG_HALF);
 	}
 	if (src0) {
 		__ssa_src(sam, src0, 0);
