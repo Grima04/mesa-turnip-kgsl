@@ -2620,6 +2620,7 @@ vtn_handle_variables(struct vtn_builder *b, SpvOp opcode,
       if (access & SpvMemoryAccessMakePointerVisibleMask) {
          SpvMemorySemanticsMask semantics =
             SpvMemorySemanticsMakeVisibleMask |
+            SpvMemorySemanticsAcquireMask |
             vtn_mode_to_memory_semantics(src->mode);
          vtn_emit_memory_barrier(b, scope, semantics);
       }
@@ -2669,6 +2670,7 @@ vtn_handle_variables(struct vtn_builder *b, SpvOp opcode,
       if (access & SpvMemoryAccessMakePointerAvailableMask) {
          SpvMemorySemanticsMask semantics =
             SpvMemorySemanticsMakeAvailableMask |
+            SpvMemorySemanticsReleaseMask |
             vtn_mode_to_memory_semantics(dest->mode);
          vtn_emit_memory_barrier(b, scope, semantics);
       }
