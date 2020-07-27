@@ -1161,8 +1161,7 @@ tu_update_descriptor_set_with_template(
                                           buffer_list, *(VkBufferView *) src);
             break;
          case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
-         case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
-         case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT: {
+         case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE: {
             write_image_descriptor(device, cmd_buffer, ptr, buffer_list,
                                    templ->entry[i].descriptor_type,
                                    src);
@@ -1178,6 +1177,9 @@ tu_update_descriptor_set_with_template(
             break;
          case VK_DESCRIPTOR_TYPE_SAMPLER:
             write_sampler_descriptor(device, ptr, src);
+            break;
+         case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
+            /* nothing in descriptor set - framebuffer state is used instead */
             break;
          default:
             unreachable("unimplemented descriptor type");
