@@ -512,7 +512,7 @@ x11_surface_get_capabilities(VkIcdSurfaceBase *icd_surface,
        * to come back from the compositor.  In that case, we don't know the
        * size of the window so we just return valid "I don't know" stuff.
        */
-      caps->currentExtent = (VkExtent2D) { -1, -1 };
+      caps->currentExtent = (VkExtent2D) { UINT32_MAX, UINT32_MAX };
       caps->minImageExtent = (VkExtent2D) { 1, 1 };
       caps->maxImageExtent = (VkExtent2D) {
          wsi_device->maxImageDimension2D,
@@ -681,7 +681,7 @@ x11_surface_get_present_rectangles(VkIcdSurfaceBase *icd_surface,
           */
          *rect = (VkRect2D) {
             .offset = { 0, 0 },
-            .extent = { -1, -1 },
+            .extent = { UINT32_MAX, UINT32_MAX },
          };
       }
       free(geom);
