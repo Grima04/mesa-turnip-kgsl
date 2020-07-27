@@ -204,6 +204,7 @@ enum bi_special_op {
          * exp2() in GL. In the first argument, it takes f2i_rte(x * 2^24). In
          * the second, it takes x itself. */
         BI_SPECIAL_EXP2_LOW,
+        BI_SPECIAL_IABS,
 };
 
 enum bi_tex_op {

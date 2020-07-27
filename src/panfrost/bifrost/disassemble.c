@@ -1013,6 +1013,7 @@ static const struct add_op_info add_op_infos[] = {
         { 0x07ba5, "FSQRT_FREXPE", ADD_ONE_SRC },
         { 0x07bad, "FRSQ_FREXPE", ADD_ONE_SRC },
         { 0x07bc5, "FLOG_FREXPE", ADD_ONE_SRC },
+        { 0x07bd4, "IABS.i32", ADD_ONE_SRC },
         { 0x07d42, "CEIL.v2f16", ADD_ONE_SRC },
         { 0x07d45, "CEIL.f32", ADD_ONE_SRC },
         { 0x07d82, "FLOOR.v2f16", ADD_ONE_SRC },

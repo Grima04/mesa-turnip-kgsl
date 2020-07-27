@@ -600,6 +600,7 @@ bi_class_for_nir_alu(nir_op op)
 
         case nir_op_frcp:
         case nir_op_frsq:
+        case nir_op_iabs:
                 return BI_SPECIAL;
 
         default:
@@ -807,6 +808,9 @@ emit_alu(bi_context *ctx, nir_alu_instr *instr)
                 break;
         case nir_op_isub:
                 alu.op.imath = BI_IMATH_SUB;
+                break;
+        case nir_op_iabs:
+                alu.op.special = BI_SPECIAL_IABS;
                 break;
         case nir_op_inot:
                 /* no dedicated bitwise not, but we can invert sources. convert to ~a | 0 */

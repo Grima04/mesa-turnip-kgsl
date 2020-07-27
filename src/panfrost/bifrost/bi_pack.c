@@ -1434,6 +1434,9 @@ bi_pack_add_special(bi_instruction *ins, bi_registers *regs)
         } else if (ins->op.special == BI_SPECIAL_EXP2_LOW) {
                 assert(!fp16);
                 op = BIFROST_ADD_OP_FEXP2_FAST;
+        } else if (ins->op.special == BI_SPECIAL_IABS) {
+                assert(ins->src_types[0] == nir_type_int32);
+                op = BIFROST_ADD_OP_IABS_32;
         } else {
                 unreachable("Unknown special op");
         }
