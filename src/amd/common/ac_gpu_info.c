@@ -410,6 +410,7 @@ bool ac_query_gpu_info(int fd, void *dev_p,
 		identify_chip(NAVI12);
 		identify_chip(NAVI14);
 		identify_chip(SIENNA_CICHLID);
+		identify_chip(NAVY_FLOUNDER);
 		break;
 	}
 
@@ -742,6 +743,7 @@ bool ac_query_gpu_info(int fd, void *dev_p,
 		case CHIP_NAVI10:
 		case CHIP_NAVI12:
 		case CHIP_SIENNA_CICHLID:
+		case CHIP_NAVY_FLOUNDER:
 			pc_lines = 1024;
 			break;
 		case CHIP_NAVI14:
