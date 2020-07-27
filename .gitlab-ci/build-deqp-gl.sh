@@ -60,6 +60,7 @@ rm -rf /deqp/modules/egl
 rm -rf /deqp/framework
 rm -rf /deqp/external/openglcts/modules/gl_cts/data/mustpass
 rm -rf /deqp/external/openglcts/modules/cts-runner
+rm -rf /deqp/external/vulkancts/modules/vulkan/vk-build-programs
 find -iname '*cmake*' -o -name '*ninja*' -o -name '*.o' -o -name '*.a' | xargs rm -rf
 ${STRIP_CMD:-strip} modules/*/deqp-* external/openglcts/modules/glcts
 du -sh *
