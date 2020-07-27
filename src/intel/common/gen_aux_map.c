@@ -466,15 +466,6 @@ gen_aux_map_add_mapping(struct gen_aux_map_context *ctx, uint64_t address,
       p_atomic_inc(&ctx->state_num);
 }
 
-void
-gen_aux_map_add_image(struct gen_aux_map_context *ctx,
-                      const struct isl_surf *isl_surf, uint64_t address,
-                      uint64_t aux_address)
-{
-   gen_aux_map_add_mapping(ctx, address, aux_address, isl_surf->size_B,
-                           gen_aux_map_format_bits_for_isl_surf(isl_surf));
-}
-
 /**
  * We mark the leaf entry as invalid, but we don't attempt to cleanup the
  * other levels of translation mappings. Since we attempt to re-use VMA

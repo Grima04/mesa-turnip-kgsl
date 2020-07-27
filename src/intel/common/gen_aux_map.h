@@ -102,11 +102,6 @@ gen_aux_map_add_mapping(struct gen_aux_map_context *ctx, uint64_t address,
                         uint64_t format_bits);
 
 void
-gen_aux_map_add_image(struct gen_aux_map_context *ctx,
-                      const struct isl_surf *isl_surf, uint64_t address,
-                      uint64_t aux_address);
-
-void
 gen_aux_map_unmap_range(struct gen_aux_map_context *ctx, uint64_t address,
                         uint64_t size);
 
