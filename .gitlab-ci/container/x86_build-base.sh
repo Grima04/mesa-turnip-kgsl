@@ -80,7 +80,7 @@ apt-get install -y --no-remove -t buster-backports \
 pip3 install git+http://gitlab.freedesktop.org/freedesktop/ci-templates@6f5af7e5574509726c79109e3c147cee95e81366
 
 # for the vulkan overlay layer
-wget https://github.com/KhronosGroup/glslang/releases/download/master-tot/glslang-master-linux-Release.zip
+wget https://github.com/KhronosGroup/glslang/releases/download/SDK-candidate-26-Jul-2020/glslang-master-linux-Release.zip
 unzip glslang-master-linux-Release.zip bin/glslangValidator
 install -m755 bin/glslangValidator /usr/local/bin/
 rm bin/glslangValidator glslang-master-linux-Release.zip
