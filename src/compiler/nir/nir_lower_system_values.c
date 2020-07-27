@@ -44,9 +44,9 @@ static nir_ssa_def*
 build_global_group_size(nir_builder *b, unsigned bit_size)
 {
    nir_ssa_def *group_size = nir_load_local_group_size(b);
-   nir_ssa_def *num_work_groups = nir_load_num_work_groups(b);
+   nir_ssa_def *num_work_groups = nir_load_num_work_groups(b, bit_size);
    return nir_imul(b, nir_u2u(b, group_size, bit_size),
-                      nir_u2u(b, num_work_groups, bit_size));
+                      num_work_groups);
 }
 
 static bool
@@ -189,10 +189,10 @@ lower_system_value_instr(nir_builder *b, nir_instr *instr, void *_state)
 
    case nir_intrinsic_load_global_invocation_id: {
       nir_ssa_def *group_size = nir_load_local_group_size(b);
-      nir_ssa_def *group_id = nir_load_work_group_id(b);
+      nir_ssa_def *group_id = nir_load_work_group_id(b, bit_size);
       nir_ssa_def *local_id = nir_load_local_invocation_id(b);
 
-      return nir_iadd(b, nir_imul(b, nir_u2u(b, group_id, bit_size),
+      return nir_iadd(b, nir_imul(b, group_id,
                                      nir_u2u(b, group_size, bit_size)),
                          nir_u2u(b, local_id, bit_size));
    }
@@ -221,10 +221,6 @@ lower_system_value_instr(nir_builder *b, nir_instr *instr, void *_state)
       } else {
          return NULL;
       }
-
-   case nir_intrinsic_load_num_work_groups:
-   case nir_intrinsic_load_work_group_id:
-      return sanitize_32bit_sysval(b, intrin);
 
    case nir_intrinsic_load_deref: {
       nir_deref_instr *deref = nir_src_as_deref(intrin->src[0]);

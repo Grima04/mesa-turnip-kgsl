@@ -2121,6 +2121,8 @@ nir_intrinsic_from_system_value(gl_system_value val)
       return nir_intrinsic_load_local_group_size;
    case SYSTEM_VALUE_GLOBAL_INVOCATION_ID:
       return nir_intrinsic_load_global_invocation_id;
+   case SYSTEM_VALUE_BASE_GLOBAL_INVOCATION_ID:
+      return nir_intrinsic_load_base_global_invocation_id;
    case SYSTEM_VALUE_GLOBAL_INVOCATION_INDEX:
       return nir_intrinsic_load_global_invocation_index;
    case SYSTEM_VALUE_WORK_DIM:
@@ -2220,6 +2222,8 @@ nir_system_value_from_intrinsic(nir_intrinsic_op intrin)
       return SYSTEM_VALUE_LOCAL_GROUP_SIZE;
    case nir_intrinsic_load_global_invocation_id:
       return SYSTEM_VALUE_GLOBAL_INVOCATION_ID;
+   case nir_intrinsic_load_base_global_invocation_id:
+      return SYSTEM_VALUE_BASE_GLOBAL_INVOCATION_ID;
    case nir_intrinsic_load_global_invocation_index:
       return SYSTEM_VALUE_GLOBAL_INVOCATION_INDEX;
    case nir_intrinsic_load_work_dim:

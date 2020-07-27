@@ -586,9 +586,13 @@ system_value("tess_level_inner_default", 2)
 system_value("patch_vertices_in", 1)
 system_value("local_invocation_id", 3)
 system_value("local_invocation_index", 1)
-system_value("work_group_id", 3)
+# zero_base indicates it starts from 0 for the current dispatch
+# non-zero_base indicates the base is included
+system_value("work_group_id", 3, bit_sizes=[32, 64])
+system_value("work_group_id_zero_base", 3)
+system_value("base_work_group_id", 3, bit_sizes=[32, 64])
 system_value("user_clip_plane", 4, indices=[UCP_ID])
-system_value("num_work_groups", 3)
+system_value("num_work_groups", 3, bit_sizes=[32, 64])
 system_value("helper_invocation", 1, bit_sizes=[1, 32])
 system_value("alpha_ref_float", 1)
 system_value("layer_id", 1)
@@ -603,7 +607,13 @@ system_value("subgroup_lt_mask", 0, bit_sizes=[32, 64])
 system_value("num_subgroups", 1)
 system_value("subgroup_id", 1)
 system_value("local_group_size", 3)
+# note: the definition of global_invocation_id_zero_base is based on
+# (work_group_id * local_group_size) + local_invocation_id.
+# it is *not* based on work_group_id_zero_base, meaning the work group
+# base is already accounted for, and the global base is additive on top of that
 system_value("global_invocation_id", 3, bit_sizes=[32, 64])
+system_value("global_invocation_id_zero_base", 3, bit_sizes=[32, 64])
+system_value("base_global_invocation_id", 3, bit_sizes=[32, 64])
 system_value("global_invocation_index", 1, bit_sizes=[32, 64])
 system_value("work_dim", 1)
 system_value("line_width", 1)
