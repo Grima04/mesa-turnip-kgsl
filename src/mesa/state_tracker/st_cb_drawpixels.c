@@ -1717,8 +1717,9 @@ st_CopyPixels(struct gl_context *ctx, GLint srcx, GLint srcy,
    if (blit_copy_pixels(ctx, srcx, srcy, width, height, dstx, dsty, type))
       return;
 
-   if (type == GL_DEPTH_STENCIL) {
-      /* XXX make this more efficient */
+   /* fallback if the driver can't do stencil exports */
+   if (type == GL_DEPTH_STENCIL &&
+      !pipe->screen->get_param(pipe->screen, PIPE_CAP_SHADER_STENCIL_EXPORT)) {
       st_CopyPixels(ctx, srcx, srcy, width, height, dstx, dsty, GL_STENCIL);
       st_CopyPixels(ctx, srcx, srcy, width, height, dstx, dsty, GL_DEPTH);
       return;
@@ -1764,12 +1765,17 @@ st_CopyPixels(struct gl_context *ctx, GLint srcx, GLint srcy,
       rbRead = st_renderbuffer(ctx->ReadBuffer->
                                Attachment[BUFFER_DEPTH].Renderbuffer);
       driver_fp = get_drawpix_z_stencil_program(st, GL_TRUE, GL_FALSE);
-   } else {
-      assert(type == GL_STENCIL);
+   } else if (type == GL_STENCIL) {
       rbRead = st_renderbuffer(ctx->ReadBuffer->
                                Attachment[BUFFER_STENCIL].Renderbuffer);
       driver_fp = get_drawpix_z_stencil_program(st, GL_FALSE, GL_TRUE);
+   } else {
+      assert(type == GL_DEPTH_STENCIL);
+      rbRead = st_renderbuffer(ctx->ReadBuffer->
+                               Attachment[BUFFER_DEPTH].Renderbuffer);
+      driver_fp = get_drawpix_z_stencil_program(st, GL_TRUE, GL_TRUE);
    }
+
 
    /* Choose the format for the temporary texture. */
    srcFormat = rbRead->texture->format;
@@ -1865,8 +1871,10 @@ st_CopyPixels(struct gl_context *ctx, GLint srcx, GLint srcy,
    }
 
    /* Create a second sampler view to read stencil */
-   if (type == GL_STENCIL) {
+   if (type == GL_STENCIL || type == GL_DEPTH_STENCIL) {
       write_stencil = GL_TRUE;
+      if (type == GL_DEPTH_STENCIL)
+         write_depth = GL_TRUE;
       enum pipe_format stencil_format =
          util_format_stencil_only(pt->format);
       /* we should not be doing pixel map/transfer (see above) */
@@ -1904,10 +1912,12 @@ st_CopyPixels(struct gl_context *ctx, GLint srcx, GLint srcy,
       blit.dst.box.width = readW;
       blit.dst.box.height = readH;
       blit.dst.box.depth = 1;
-      if (type != GL_STENCIL)
-         blit.mask = util_format_get_mask(pt->format) & ~PIPE_MASK_S;
+      if (type == GL_DEPTH)
+          blit.mask = util_format_get_mask(pt->format) & ~PIPE_MASK_S;
+      else if (type == GL_STENCIL)
+          blit.mask = util_format_get_mask(pt->format) & ~PIPE_MASK_Z;
       else
-         blit.mask = util_format_get_mask(pt->format) & ~PIPE_MASK_Z;
+         blit.mask = util_format_get_mask(pt->format);
       blit.filter = PIPE_TEX_FILTER_NEAREST;
 
       pipe->blit(pipe, &blit);
