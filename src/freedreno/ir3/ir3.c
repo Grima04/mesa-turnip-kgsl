@@ -488,7 +488,6 @@ static int emit_cat5(struct ir3_instruction *instr, void *ptr,
 
 	if (instr->flags & IR3_INSTR_S2EN) {
 		struct ir3_register *samp_tex = instr->regs[1];
-		iassert(samp_tex->flags & IR3_REG_HALF);
 		cat5->s2en_bindless.src3 = reg(samp_tex, info, instr->repeat,
 									   (instr->flags & IR3_INSTR_B) ? 0 : IR3_REG_HALF);
 		if (instr->flags & IR3_INSTR_B) {
