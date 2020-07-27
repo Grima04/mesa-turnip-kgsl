@@ -979,6 +979,8 @@ iris_resource_from_handle(struct pipe_screen *pscreen,
                           struct winsys_handle *whandle,
                           unsigned usage)
 {
+   assert(templ->target != PIPE_BUFFER);
+
    struct iris_screen *screen = (struct iris_screen *)pscreen;
    struct iris_bufmgr *bufmgr = screen->bufmgr;
    struct iris_resource *res = iris_alloc_resource(pscreen, templ);
@@ -1003,41 +1005,35 @@ iris_resource_from_handle(struct pipe_screen *pscreen,
    res->offset = whandle->offset;
    res->external_format = whandle->format;
 
-   if (templ->target == PIPE_BUFFER) {
-      res->surf.tiling = ISL_TILING_LINEAR;
+   /* Create a surface for each plane specified by the external format. */
+   if (whandle->plane < util_format_get_num_planes(whandle->format)) {
+
+      const uint64_t modifier =
+         whandle->modifier != DRM_FORMAT_MOD_INVALID ?
+         whandle->modifier : tiling_to_modifier(res->bo->tiling_mode);
+
+      UNUSED const bool isl_surf_created_successfully =
+         iris_resource_configure_main(screen, res, templ, modifier,
+                                      whandle->stride);
+      assert(isl_surf_created_successfully);
+      assert(res->bo->tiling_mode ==
+             isl_tiling_to_i915_tiling(res->surf.tiling));
+
+      UNUSED const bool ok = iris_resource_configure_aux(screen, res, true);
+      assert(ok);
+      /* The gallium dri layer will create a separate plane resource for the
+       * aux image. iris_resource_finish_aux_import will merge the separate aux
+       * parameters back into a single iris_resource.
+       */
    } else {
-      /* Create a surface for each plane specified by the external format. */
-      if (whandle->plane < util_format_get_num_planes(whandle->format)) {
-
-         const uint64_t modifier =
-            whandle->modifier != DRM_FORMAT_MOD_INVALID ?
-            whandle->modifier : tiling_to_modifier(res->bo->tiling_mode);
-
-         UNUSED const bool isl_surf_created_successfully =
-            iris_resource_configure_main(screen, res, templ, modifier,
-                                         whandle->stride);
-         assert(isl_surf_created_successfully);
-         assert(res->bo->tiling_mode ==
-                isl_tiling_to_i915_tiling(res->surf.tiling));
-
-         UNUSED const bool ok = iris_resource_configure_aux(screen, res, true);
-         assert(ok);
-         /* The gallium dri layer will create a separate plane resource
-          * for the aux image. iris_resource_finish_aux_import will
-          * merge the separate aux parameters back into a single
-          * iris_resource.
-          */
-      } else {
-         /* Save modifier import information to reconstruct later. After
-          * import, this will be available under a second image accessible
-          * from the main image with res->base.next. See
-          * iris_resource_finish_aux_import.
-          */
-         res->aux.surf.row_pitch_B = whandle->stride;
-         res->aux.offset = whandle->offset;
-         res->aux.bo = res->bo;
-         res->bo = NULL;
-      }
+      /* Save modifier import information to reconstruct later. After import,
+       * this will be available under a second image accessible from the main
+       * image with res->base.next. See iris_resource_finish_aux_import.
+       */
+      res->aux.surf.row_pitch_B = whandle->stride;
+      res->aux.offset = whandle->offset;
+      res->aux.bo = res->bo;
+      res->bo = NULL;
    }
 
    return &res->base;
