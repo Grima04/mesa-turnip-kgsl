@@ -525,8 +525,14 @@ static struct amdgpu_winsys_bo *amdgpu_create_bo(struct amdgpu_winsys *ws,
        ws->info.has_tmz_support) {
       request.flags |= AMDGPU_GEM_CREATE_ENCRYPTED;
 
-      if (!(flags & RADEON_FLAG_DRIVER_INTERNAL))
-        ws->uses_secure_bos = true;
+      if (!(flags & RADEON_FLAG_DRIVER_INTERNAL)) {
+         struct amdgpu_screen_winsys *sws_iter;
+         simple_mtx_lock(&ws->sws_list_lock);
+         for (sws_iter = ws->sws_list; sws_iter; sws_iter = sws_iter->next) {
+            *((bool*) &sws_iter->base.uses_secure_bos) = true;
+         }
+         simple_mtx_unlock(&ws->sws_list_lock);
+      }
    }
 
    r = amdgpu_bo_alloc(ws->dev, &request, &buf_handle);

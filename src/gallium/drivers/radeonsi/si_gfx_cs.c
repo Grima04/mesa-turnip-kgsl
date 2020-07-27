@@ -394,7 +394,7 @@ void si_begin_new_gfx_cs(struct si_context *ctx, bool first_cs)
 {
    bool is_secure = false;
 
-   if (unlikely(ctx->ws->ws_uses_secure_bo(ctx->ws))) {
+   if (unlikely(radeon_uses_secure_bos(ctx->ws))) {
       /* Disable features that don't work with TMZ:
        *   - primitive discard
        */

@@ -252,6 +252,10 @@ struct radeon_winsys {
     * The screen object this winsys was created for
     */
    struct pipe_screen *screen;
+   /**
+    * Has the application created at least one TMZ buffer.
+    */
+   const bool uses_secure_bos;
 
    /**
     * Decrement the winsys reference count.
@@ -693,7 +697,6 @@ struct radeon_winsys {
    /**
     * Secure context
     */
-   bool (*ws_uses_secure_bo)(struct radeon_winsys *ws);
    bool (*cs_is_secure)(struct radeon_cmdbuf *cs);
 };
 
@@ -712,6 +715,11 @@ static inline void radeon_emit_array(struct radeon_cmdbuf *cs, const uint32_t *v
 {
    memcpy(cs->current.buf + cs->current.cdw, values, count * 4);
    cs->current.cdw += count;
+}
+
+static inline bool radeon_uses_secure_bos(struct radeon_winsys* ws)
+{
+  return ws->uses_secure_bos;
 }
 
 enum radeon_heap

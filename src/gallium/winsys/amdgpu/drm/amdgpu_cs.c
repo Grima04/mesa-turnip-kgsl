@@ -1657,7 +1657,6 @@ static void amdgpu_cs_submit_ib(void *job, int thread_index)
       num_chunks++;
 
       if (cs->secure) {
-         assert(ws->uses_secure_bos);
          cs->ib[IB_PREAMBLE].flags |= AMDGPU_IB_FLAGS_SECURE;
          cs->ib[IB_MAIN].flags |= AMDGPU_IB_FLAGS_SECURE;
       } else {

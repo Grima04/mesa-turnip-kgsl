@@ -327,12 +327,6 @@ static bool kms_handle_equals(const void *a, const void *b)
    return a == b;
 }
 
-static bool amdgpu_ws_uses_secure_bo(struct radeon_winsys *rws)
-{
-   struct amdgpu_winsys *ws = amdgpu_winsys(rws);
-   return ws->uses_secure_bos;
-}
-
 static bool amdgpu_cs_is_secure(struct radeon_cmdbuf *rcs)
 {
    struct amdgpu_cs *cs = amdgpu_cs(rcs);
@@ -512,7 +506,6 @@ amdgpu_winsys_create(int fd, const struct pipe_screen_config *config,
    ws->base.query_value = amdgpu_query_value;
    ws->base.read_registers = amdgpu_read_registers;
    ws->base.pin_threads_to_L3_cache = amdgpu_pin_threads_to_L3_cache;
-   ws->base.ws_uses_secure_bo = amdgpu_ws_uses_secure_bo;
    ws->base.cs_is_secure = amdgpu_cs_is_secure;
 
    amdgpu_bo_init_functions(ws);
