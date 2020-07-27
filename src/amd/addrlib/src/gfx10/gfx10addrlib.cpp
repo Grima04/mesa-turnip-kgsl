@@ -922,7 +922,7 @@ ChipFamily Gfx10Lib::HwlConvertChipFamily(
         case FAMILY_NV:
             m_settings.isDcn2 = 1;
 
-            if (ASICREV_IS_SIENNA_M(chipRevision))
+            if (ASICREV_IS_SIENNA_CICHLID(chipRevision))
             {
                 m_settings.supportRbPlus   = 1;
                 m_settings.dccUnsup3DSwDis = 0;

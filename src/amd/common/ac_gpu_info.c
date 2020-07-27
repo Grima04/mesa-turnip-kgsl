@@ -409,7 +409,7 @@ bool ac_query_gpu_info(int fd, void *dev_p,
 		identify_chip(NAVI10);
 		identify_chip(NAVI12);
 		identify_chip(NAVI14);
-		identify_chip(SIENNA);
+		identify_chip(SIENNA_CICHLID);
 		break;
 	}
 
@@ -419,7 +419,7 @@ bool ac_query_gpu_info(int fd, void *dev_p,
 		return false;
 	}
 
-	if (info->family >= CHIP_SIENNA)
+	if (info->family >= CHIP_SIENNA_CICHLID)
 		info->chip_class = GFX10_3;
 	else if (info->family >= CHIP_NAVI10)
 		info->chip_class = GFX10;
@@ -741,7 +741,7 @@ bool ac_query_gpu_info(int fd, void *dev_p,
 		case CHIP_RENOIR:
 		case CHIP_NAVI10:
 		case CHIP_NAVI12:
-		case CHIP_SIENNA:
+		case CHIP_SIENNA_CICHLID:
 			pc_lines = 1024;
 			break;
 		case CHIP_NAVI14:

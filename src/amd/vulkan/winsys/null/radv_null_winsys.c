@@ -80,7 +80,7 @@ static void radv_null_winsys_query_info(struct radeon_winsys *rws,
 			info->family = i;
 			info->name = "OVERRIDDEN";
 
-			if (i >= CHIP_SIENNA)
+			if (i >= CHIP_SIENNA_CICHLID)
 				info->chip_class = GFX10_3;
 			else if (i >= CHIP_NAVI10)
 				info->chip_class = GFX10;

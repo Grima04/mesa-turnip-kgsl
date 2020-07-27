@@ -826,7 +826,7 @@ static struct pb_buffer *rvcn_dec_message_decode(struct radeon_decoder *dec,
                        dec->base.width > 32 && dec->stream_type == RDECODE_CODEC_VP9)
                          ? align(dec->base.width, 64)
                          : align(dec->base.width, 32);
-   if (((struct si_screen*)dec->screen)->info.family >= CHIP_SIENNA &&
+   if (((struct si_screen*)dec->screen)->info.family >= CHIP_SIENNA_CICHLID &&
        dec->stream_type == RDECODE_CODEC_VP9)
       decode->db_aligned_height = align(dec->base.height, 64);
 
@@ -1589,7 +1589,7 @@ struct pipe_video_codec *radeon_create_decoder(struct pipe_context *context,
       dec->jpg.direct_reg = true;
       break;
    case CHIP_ARCTURUS:
-   case CHIP_SIENNA:
+   case CHIP_SIENNA_CICHLID:
       dec->reg.data0 = RDECODE_VCN2_5_GPCOM_VCPU_DATA0;
       dec->reg.data1 = RDECODE_VCN2_5_GPCOM_VCPU_DATA1;
       dec->reg.cmd = RDECODE_VCN2_5_GPCOM_VCPU_CMD;
