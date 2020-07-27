@@ -940,6 +940,17 @@ ChipFamily Gfx10Lib::HwlConvertChipFamily(
                 m_settings.dccUnsup3DSwDis = 0;
             }
             break;
+
+        case FAMILY_VGH:
+            m_settings.isDcn2 = 1;
+
+            if (ASICREV_IS_VANGOGH(chipRevision))
+            {
+                m_settings.supportRbPlus   = 1;
+                m_settings.dccUnsup3DSwDis = 0;
+            }
+            break;
+
         default:
             ADDR_ASSERT(!"Unknown chip family");
             break;

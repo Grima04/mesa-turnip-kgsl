@@ -402,6 +402,9 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
       identify_chip(NAVY_FLOUNDER);
       identify_chip(DIMGREY_CAVEFISH);
       break;
+   case FAMILY_VGH:
+      identify_chip(VANGOGH);
+      break;
    }
 
    if (!info->name) {
@@ -712,6 +715,9 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
          break;
       case CHIP_NAVI14:
          pc_lines = 512;
+         break;
+      case CHIP_VANGOGH:
+         pc_lines = 256;
          break;
       case CHIP_ARCTURUS:
          break;
