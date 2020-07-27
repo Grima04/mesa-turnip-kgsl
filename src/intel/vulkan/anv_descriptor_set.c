@@ -850,6 +850,7 @@ anv_descriptor_pool_alloc_set(struct anv_descriptor_pool *pool,
 {
    if (size <= pool->size - pool->next) {
       *set = (struct anv_descriptor_set *) (pool->data + pool->next);
+      (*set)->size = size;
       pool->next += size;
       return VK_SUCCESS;
    } else {
@@ -860,6 +861,7 @@ anv_descriptor_pool_alloc_set(struct anv_descriptor_pool *pool,
          if (size <= entry->size) {
             *link = entry->next;
             *set = (struct anv_descriptor_set *) entry;
+            (*set)->size = entry->size;
             return VK_SUCCESS;
          }
          link = &entry->next;
@@ -979,7 +981,6 @@ anv_descriptor_set_create(struct anv_device *device,
    set->layout = layout;
    anv_descriptor_set_layout_ref(layout);
 
-   set->size = size;
    set->buffer_views =
       (struct anv_buffer_view *) &set->descriptors[layout->size];
    set->buffer_view_count = layout->buffer_view_count;
