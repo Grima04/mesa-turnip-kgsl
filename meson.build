@@ -836,15 +836,23 @@ endif
 if with_gbm
   pre_args += '-DHAVE_DRM_PLATFORM'
 endif
+
+with_android_stub = get_option('android-stub')
+if with_android_stub and not with_platform_android
+  error('`-D android-stub=true` makes no sense without `-D platforms=android`')
+endif
+
 if with_platform_android
-  dep_android = [
-    dependency('cutils'),
-    dependency('hardware'),
-    dependency('sync'),
-    dependency('backtrace')
-  ]
-  if get_option('platform-sdk-version') >= 26
-    dep_android += dependency('nativewindow')
+  if not with_android_stub
+    dep_android = [
+      dependency('cutils'),
+      dependency('hardware'),
+      dependency('sync'),
+      dependency('backtrace')
+    ]
+    if get_option('platform-sdk-version') >= 26
+      dep_android += dependency('nativewindow')
+    endif
   endif
   pre_args += '-DHAVE_ANDROID_PLATFORM'
 endif

@@ -29,6 +29,13 @@ option(
   description : 'window systems to support. If this is set to `auto`, all platforms applicable will be enabled.'
 )
 option(
+  'android-stub',
+  type : 'boolean',
+  value : false,
+  description : 'Build against android-stub',
+)
+
+option(
   'dri3',
   type : 'combo',
   value : 'auto',

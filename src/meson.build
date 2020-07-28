@@ -53,6 +53,7 @@ if cc.get_id() == 'msvc'
 else
   idep_getopt = null_dep
 endif
+subdir('android_stub')
 subdir('util')
 subdir('mapi')
 # TODO: opengl
