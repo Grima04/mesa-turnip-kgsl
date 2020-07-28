@@ -280,6 +280,9 @@ FLAKESFILE=$RESULTS/cts-runner-flakes$DEQP_RUN_SUFFIX.txt
 run_cts $DEQP /tmp/case-list.txt $RESULTSFILE
 DEQP_EXITCODE=$?
 
+echo "System load: $(cut -d' ' -f1-3 < /proc/loadavg)"
+echo "# of CPU cores: $(cat /proc/cpuinfo | grep processor | wc -l)"
+
 # junit is disabled, because it overloads gitlab.freedesktop.org to parse it.
 #quiet generate_junit $RESULTSFILE > $RESULTS/results.xml
 
