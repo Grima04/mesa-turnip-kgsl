@@ -878,10 +878,10 @@ static int trytop (struct rnndb *db, char *file, xmlNode *node) {
 	return 0;
 }
 
-void rnn_parsefile (struct rnndb *db, char *file_orig) {
-	int i;
-	char *fname;
+static char * find_file(const char *file_orig)
+{
 	const char *rnn_path = getenv("RNN_PATH");
+	char *fname;
 
 	if (!rnn_path)
 		rnn_path = RNN_DEF_PATH;
@@ -889,10 +889,22 @@ void rnn_parsefile (struct rnndb *db, char *file_orig) {
 	FILE *file = find_in_path(file_orig, rnn_path, &fname);
 	if (!file) {
 		fprintf (stderr, "%s: couldn't find database file. Please set the env var RNN_PATH.\n", file_orig);
+		return NULL;
+	}
+	fclose(file);
+
+	return fname;
+}
+
+void rnn_parsefile (struct rnndb *db, char *file_orig) {
+	int i;
+	char *fname;
+
+	fname = find_file(file_orig);
+	if (!fname) {
 		db->estatus = 1;
 		return;
 	}
-	fclose(file);
 
 	for (i = 0; i < db->filesnum; i++)
 		if (!strcmp(db->files[i], fname))
