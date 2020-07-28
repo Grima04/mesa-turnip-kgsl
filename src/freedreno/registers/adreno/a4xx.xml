@@ -1637,7 +1637,7 @@ perhaps they should be taken with a grain of salt
 		<bitfield name="SHADEROBJOFFSET" low="25" high="31" type="uint"/>
 	</reg32>
 	<reg32 offset="0x22e1" name="SP_VS_OBJ_START"/>
-	<reg32 offset="0x22e2" name="SP_VS_PVT_MEM_PARAM"/>"
+	<reg32 offset="0x22e2" name="SP_VS_PVT_MEM_PARAM"/>
 	<reg32 offset="0x22e3" name="SP_VS_PVT_MEM_ADDR"/>
 	<reg32 offset="0x22e5" name="SP_VS_LENGTH_REG" type="uint"/>
 	<reg32 offset="0x22e8" name="SP_FS_CTRL_REG0" type="a4xx_sp_vs_fs_ctrl_reg0"/>
@@ -1652,7 +1652,7 @@ perhaps they should be taken with a grain of salt
 		<bitfield name="SHADEROBJOFFSET" low="25" high="31" type="uint"/>
 	</reg32>
 	<reg32 offset="0x22eb" name="SP_FS_OBJ_START"/>
-	<reg32 offset="0x22ec" name="SP_FS_PVT_MEM_PARAM"/>"
+	<reg32 offset="0x22ec" name="SP_FS_PVT_MEM_PARAM"/>
 	<reg32 offset="0x22ed" name="SP_FS_PVT_MEM_ADDR"/>
 	<reg32 offset="0x22ef" name="SP_FS_LENGTH_REG" type="uint"/>
 	<reg32 offset="0x22f0" name="SP_FS_OUTPUT_REG">
@@ -1682,7 +1682,7 @@ perhaps they should be taken with a grain of salt
 		<bitfield name="SHADEROBJOFFSET" low="25" high="31" type="uint"/>
 	</reg32>
 	<reg32 offset="0x230e" name="SP_HS_OBJ_START"/>
-	<reg32 offset="0x230f" name="SP_HS_PVT_MEM_PARAM"/>"
+	<reg32 offset="0x230f" name="SP_HS_PVT_MEM_PARAM"/>
 	<reg32 offset="0x2310" name="SP_HS_PVT_MEM_ADDR"/>
 	<reg32 offset="0x2312" name="SP_HS_LENGTH_REG" type="uint"/>
 
@@ -1716,7 +1716,7 @@ perhaps they should be taken with a grain of salt
 		<bitfield name="SHADEROBJOFFSET" low="25" high="31" type="uint"/>
 	</reg32>
 	<reg32 offset="0x2335" name="SP_DS_OBJ_START"/>
-	<reg32 offset="0x2336" name="SP_DS_PVT_MEM_PARAM"/>"
+	<reg32 offset="0x2336" name="SP_DS_PVT_MEM_PARAM"/>
 	<reg32 offset="0x2337" name="SP_DS_PVT_MEM_ADDR"/>
 	<reg32 offset="0x2339" name="SP_DS_LENGTH_REG" type="uint"/>
 
@@ -1751,7 +1751,7 @@ perhaps they should be taken with a grain of salt
 		<bitfield name="SHADEROBJOFFSET" low="25" high="31" type="uint"/>
 	</reg32>
 	<reg32 offset="0x235c" name="SP_GS_OBJ_START"/>
-	<reg32 offset="0x235d" name="SP_GS_PVT_MEM_PARAM"/>"
+	<reg32 offset="0x235d" name="SP_GS_PVT_MEM_PARAM"/>
 	<reg32 offset="0x235e" name="SP_GS_PVT_MEM_ADDR"/>
 	<reg32 offset="0x2360" name="SP_GS_LENGTH_REG" type="uint"/>
 
