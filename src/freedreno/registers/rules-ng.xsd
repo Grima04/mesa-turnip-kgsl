@@ -157,6 +157,8 @@
 		<attribute name="high" type="nonNegativeInteger" use="optional" />
 		<attribute name="low" type="nonNegativeInteger" use="optional" />
 		<attribute name="pos" type="nonNegativeInteger" use="optional" />
+		<attribute name="align" type="nonNegativeInteger" use="optional" />
+		<attribute name="radix" type="nonNegativeInteger" use="optional" />
 	</complexType>
 
 	<complexType name="bitsetType">
@@ -187,6 +189,8 @@
 		<attribute name="high" type="nonNegativeInteger" use="optional" />
 		<attribute name="low" type="nonNegativeInteger" use="optional" />
 		<attribute name="pos" type="nonNegativeInteger" use="optional" />
+		<attribute name="radix" type="nonNegativeInteger" use="optional" />
+		<attribute name="align" type="nonNegativeInteger" use="optional" />
 		<attribute name="type" type="NMTOKENS" use="optional" />
 		<attribute name="varset" type="NMTOKEN" use="optional" />
 		<attribute name="variants" type="string" use="optional" />
