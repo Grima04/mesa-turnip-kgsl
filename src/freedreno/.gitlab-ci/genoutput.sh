@@ -43,6 +43,7 @@ $cffdump --frame 0 --once $traces/fd-clouds.rd.gz | filter $output/fd-clouds.log
 $cffdump --frame 0 --once $traces/es2gears-a320.rd.gz | filter $output/es2gears-a320.log
 $cffdump --frame 1 --once $traces/glxgears-a420.rd.gz | filter $output/glxgears-a420.log
 $cffdump --once $traces/dEQP-GLES2.functional.texture.specification.basic_teximage2d.rgba16f_2d.rd.gz | filter $output/dEQP-GLES2.functional.texture.specification.basic_teximage2d.rgba16f_2d.log
+$cffdump --frame 0 --once $traces/dEQP-VK.draw.indirect_draw.indexed.indirect_draw_count.triangle_list.rd.gz | filter $output/dEQP-VK.draw.indirect_draw.indexed.indirect_draw_count.triangle_list.log
 
 # test a lua script to ensure we don't break scripting API:
 $cffdump --script $base/decode/scripts/parse-submits.lua $traces/shadow.rd.gz | filter $output/shadow.log
