@@ -83,7 +83,7 @@
 		<attribute name="bare" type="rng:Boolean" use="optional" />
 		<attribute name="prefix" type="NMTOKENS" use="optional" />
 		<attribute name="width" type="rng:DomainWidth" use="optional" />
-		<attribute name="size" type="rng:Hexadecimal" use="optional" />
+		<attribute name="size" type="rng:HexOrNumber" use="optional" />
 	</complexType>
 
 	<complexType name="groupType">
@@ -108,7 +108,7 @@
 			<group ref="rng:regarrayGroup" />
 		</choice>
 		<attribute name="name" type="NMTOKEN" use="required" />
-		<attribute name="offset" type="rng:Hexadecimal" use="required" />
+		<attribute name="offset" type="rng:HexOrNumber" use="required" />
 		<attribute name="stride" type="rng:HexOrNumber" use="required" />
 		<attribute name="length" type="rng:HexOrNumber" use="required" />
 		<attribute name="varset" type="NMTOKEN" use="optional" />
@@ -125,7 +125,7 @@
 			<group ref="rng:regarrayGroup" minOccurs="0" />
 		</choice>
 		<attribute name="name" type="NMTOKEN" use="optional" />
-		<attribute name="offset" type="rng:Hexadecimal" use="optional" />
+		<attribute name="offset" type="rng:HexOrNumber" use="optional" />
 		<attribute name="stride" type="rng:HexOrNumber" use="optional" />
 		<attribute name="length" type="rng:HexOrNumber" use="optional" />
 		<attribute name="varset" type="NMTOKEN" use="optional" />
@@ -146,7 +146,7 @@
 			<element ref="rng:bitfield" />
 		</choice>
 		<attribute name="name" type="NMTOKEN" use="required" />
-		<attribute name="offset" type="rng:Hexadecimal" use="required" />
+		<attribute name="offset" type="rng:HexOrNumber" use="required" />
 		<attribute name="access" type="rng:Access" default="rw" use="optional" />
 		<attribute name="type" type="NMTOKENS" use="optional" />
 		<attribute name="shr" type="nonNegativeInteger" use="optional" />
