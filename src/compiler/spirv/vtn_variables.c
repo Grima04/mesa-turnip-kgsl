@@ -1397,6 +1397,10 @@ vtn_get_builtin_location(struct vtn_builder *b,
       *location = SYSTEM_VALUE_GLOBAL_INVOCATION_INDEX;
       set_mode_system_value(b, mode);
       break;
+   case SpvBuiltInGlobalOffset:
+      *location = SYSTEM_VALUE_BASE_GLOBAL_INVOCATION_ID;
+      set_mode_system_value(b, mode);
+      break;
    case SpvBuiltInBaseVertex:
       /* OpenGL gl_BaseVertex (SYSTEM_VALUE_BASE_VERTEX) is not the same
        * semantic as Vulkan BaseVertex (SYSTEM_VALUE_FIRST_VERTEX).
