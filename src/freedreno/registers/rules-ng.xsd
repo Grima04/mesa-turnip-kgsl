@@ -80,7 +80,7 @@
 			<group ref="rng:regarrayGroup" />
 		</choice>
 		<attribute name="name" type="NMTOKEN" use="required" />
-		<attribute name="bare" type="boolean" use="optional" />
+		<attribute name="bare" type="rng:Boolean" use="optional" />
 		<attribute name="prefix" type="NMTOKENS" use="optional" />
 		<attribute name="width" type="rng:DomainWidth" use="optional" />
 		<attribute name="size" type="rng:Hexadecimal" use="optional" />
@@ -166,8 +166,8 @@
 			<group ref="rng:topGroup" />
 		</choice>
 		<attribute name="name" type="NMTOKEN" use="required" />
-		<attribute name="inline" type="boolean" use="optional" />
-		<attribute name="bare" type="boolean" use="optional" />
+		<attribute name="inline" type="rng:Boolean" use="optional" />
+		<attribute name="bare" type="rng:Boolean" use="optional" />
 		<attribute name="prefix" type="NMTOKENS" use="optional" />
 	</complexType>
 
@@ -200,8 +200,8 @@
 			<group ref="rng:topGroup" />
 		</choice>
 		<attribute name="name" type="NMTOKEN" use="required" />
-		<attribute name="inline" type="boolean" use="optional" />
-		<attribute name="bare" type="boolean" use="optional" />
+		<attribute name="inline" type="rng:Boolean" use="optional" />
+		<attribute name="bare" type="rng:Boolean" use="optional" />
 		<attribute name="prefix" type="NMTOKENS" use="optional" />
 	</complexType>
 
@@ -313,6 +313,17 @@
 			<documentation>HexOrNumber</documentation>
 		</annotation>
 		<union memberTypes="rng:Hexadecimal nonNegativeInteger" />
+	</simpleType>
+
+	<simpleType name="Boolean">
+		<restriction base="string">
+			<enumeration value="true" />
+			<enumeration value="1" />
+			<enumeration value="yes" />
+			<enumeration value="false" />
+			<enumeration value="0" />
+			<enumeration value="no" />
+		</restriction>
 	</simpleType>
 
 	<simpleType name="Access">
