@@ -481,12 +481,15 @@ struct rnndecaddrinfo *rnndec_decodeaddr(struct rnndeccontext *ctx, struct rnndo
 	return res;
 }
 
-static uint64_t tryreg(struct rnndeccontext *ctx, struct rnndelem **elems, int elemsnum,
-		int dwidth, const char *name)
+static unsigned tryreg(struct rnndeccontext *ctx, struct rnndelem **elems, int elemsnum,
+		int dwidth, const char *name, uint64_t *offset)
 {
 	int i;
+	unsigned ret;
 	const char *suffix = strchr(name, '[');
 	unsigned n = suffix ? (suffix - name) : strlen(name);
+	const char *dotsuffix = strchr(name, '.');
+	unsigned dotn = dotsuffix ? (dotsuffix - name) : strlen(name);
 
 	const char *child = NULL;
 	unsigned idx = 0;
@@ -501,22 +504,35 @@ static uint64_t tryreg(struct rnndeccontext *ctx, struct rnndelem **elems, int e
 		struct rnndelem *elem = elems[i];
 		if (!rnndec_varmatch(ctx, &elem->varinfo))
 			continue;
-		int match = (strlen(elem->name) == n) && !strncmp(elem->name, name, n);
+		int match = elem->name && (strlen(elem->name) == n) && !strncmp(elem->name, name, n);
 		switch (elem->type) {
 			case RNN_ETYPE_REG:
 				if (match) {
 					assert(!suffix);
-					return elem->offset;
+					*offset = elem->offset;
+					return 1;
 				}
 				break;
 			case RNN_ETYPE_STRIPE:
-				assert(0); // TODO
+				if (elem->name) {
+					if (!dotsuffix)
+						break;
+					if (strlen(elem->name) != dotn || strncmp(elem->name, name, dotn))
+						break;
+				}
+				ret = tryreg(ctx, elem->subelems, elem->subelemsnum, dwidth,
+					elem->name ? dotsuffix : name, offset);
+				if (ret)
+					return 1;
 				break;
 			case RNN_ETYPE_ARRAY:
 				if (match) {
 					assert(suffix);
-					return elem->offset + (idx * elem->stride) +
-						tryreg(ctx, elem->subelems, elem->subelemsnum, dwidth, child);
+					ret = tryreg(ctx, elem->subelems, elem->subelemsnum, dwidth, child, offset);
+					if (ret) {
+						*offset += elem->offset + (idx * elem->stride);
+						return 1;
+					}
 				}
 				break;
 			default:
@@ -528,5 +544,10 @@ static uint64_t tryreg(struct rnndeccontext *ctx, struct rnndelem **elems, int e
 
 uint64_t rnndec_decodereg(struct rnndeccontext *ctx, struct rnndomain *domain, const char *name)
 {
-	return tryreg(ctx, domain->subelems, domain->subelemsnum, domain->width, name);
+	uint64_t offset;
+	if (tryreg(ctx, domain->subelems, domain->subelemsnum, domain->width, name, &offset)) {
+		return offset;
+	} else {
+		return 0;
+	}
 }
