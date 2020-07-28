@@ -235,6 +235,7 @@
 		<attribute name="type" type="NMTOKENS" use="optional" />
 		<attribute name="varset" type="NMTOKEN" use="optional" />
 		<attribute name="variants" type="string" use="optional" />
+		<attribute name="addvariant" type="rng:Boolean" use="optional" />
 		<attribute name="shr" type="nonNegativeInteger" use="optional" />
 	</complexType>
 
