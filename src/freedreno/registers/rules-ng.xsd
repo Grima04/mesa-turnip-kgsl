@@ -154,6 +154,9 @@
 		<attribute name="variants" type="string" use="optional" />
 		<attribute name="stride" type="rng:HexOrNumber" use="optional" />
 		<attribute name="length" type="rng:HexOrNumber" use="optional" />
+		<attribute name="high" type="nonNegativeInteger" use="optional" />
+		<attribute name="low" type="nonNegativeInteger" use="optional" />
+		<attribute name="pos" type="nonNegativeInteger" use="optional" />
 	</complexType>
 
 	<complexType name="bitsetType">
