@@ -797,7 +797,8 @@ lower_image_deref(nir_builder *b,
 
    uint32_t array_index = deref->var->data.index + base_index;
 
-   assert(binding_layout->type == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
+   assert(binding_layout->type == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE ||
+          binding_layout->type == VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER);
 
    int desc_index =
       descriptor_map_add(&pipeline->texture_map,

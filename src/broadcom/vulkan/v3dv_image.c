@@ -684,6 +684,48 @@ v3dv_DestroyImageView(VkDevice _device,
    vk_free2(&device->alloc, pAllocator, image_view);
 }
 
+static void
+pack_texture_shader_state_from_buffer_view(struct v3dv_device *device,
+                                           struct v3dv_buffer_view *buffer_view)
+{
+   assert(buffer_view->buffer);
+   const struct v3dv_buffer *buffer = buffer_view->buffer;
+
+   v3dv_pack(buffer_view->texture_shader_state, TEXTURE_SHADER_STATE, tex) {
+      tex.swizzle_r = translate_swizzle(PIPE_SWIZZLE_X);
+      tex.swizzle_g = translate_swizzle(PIPE_SWIZZLE_Y);
+      tex.swizzle_b = translate_swizzle(PIPE_SWIZZLE_Z);
+      tex.swizzle_a = translate_swizzle(PIPE_SWIZZLE_W);
+
+      tex.image_depth = 1;
+
+      /* On 4.x, the height of a 1D texture is redefined to be the upper 14
+       * bits of the width (which is only usable with txf) (or in other words,
+       * we are providing a 28 bit field for size, but split on the usual
+       * 14bit height/width).
+       */
+      tex.image_width = buffer_view->size;
+      tex.image_height = tex.image_width >> 14;
+      tex.image_width &= (1 << 14) - 1;
+      tex.image_height &= (1 << 14) - 1;
+
+      tex.texture_type = buffer_view->format->tex_type;
+      tex.srgb = vk_format_is_srgb(buffer_view->vk_format);
+
+      /* At this point we don't have the job. That's the reason the first
+       * parameter is NULL, to avoid a crash when cl_pack_emit_reloc tries to
+       * add the bo to the job. This also means that we need to add manually
+       * the image bo to the job using the texture.
+       */
+      const uint32_t base_offset =
+         buffer->mem->bo->offset +
+         buffer->mem_offset +
+         buffer_view->offset;
+
+      tex.texture_base_pointer = v3dv_cl_address(NULL, base_offset);
+   }
+}
+
 VkResult
 v3dv_CreateBufferView(VkDevice _device,
                       const VkBufferViewCreateInfo *pCreateInfo,
@@ -720,6 +762,10 @@ v3dv_CreateBufferView(VkDevice _device,
    v3dv_get_internal_type_bpp_for_output_format(view->format->rt_type,
                                                 &view->internal_type,
                                                 &view->internal_bpp);
+
+   if (buffer->usage & VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT ||
+       buffer->usage & VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT)
+      pack_texture_shader_state_from_buffer_view(device, view);
 
    *pView = v3dv_buffer_view_to_handle(view);
 

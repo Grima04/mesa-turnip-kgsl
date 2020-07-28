@@ -40,6 +40,8 @@ descriptor_bo_size(VkDescriptorType type)
    case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
    case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
    case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
+   case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
+   case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
       return sizeof(struct v3dv_sampled_image_descriptor);
    default:
       return 0;
@@ -237,6 +239,62 @@ v3dv_descriptor_map_get_sampler_state(struct v3dv_descriptor_state *descriptor_s
    return reloc;
 }
 
+const struct v3dv_format*
+v3dv_descriptor_map_get_texture_format(struct v3dv_descriptor_state *descriptor_state,
+                                       struct v3dv_descriptor_map *map,
+                                       struct v3dv_pipeline_layout *pipeline_layout,
+                                       uint32_t index,
+                                       VkFormat *out_vk_format)
+{
+   struct v3dv_descriptor *descriptor =
+      v3dv_descriptor_map_get_descriptor(descriptor_state, map,
+                                         pipeline_layout, index, NULL);
+
+   switch (descriptor->type) {
+   case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
+   case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
+      assert(descriptor->buffer_view);
+      *out_vk_format = descriptor->buffer_view->vk_format;
+      return descriptor->buffer_view->format;
+   case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
+   case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
+   case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
+   case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
+      assert(descriptor->image_view);
+      *out_vk_format = descriptor->image_view->vk_format;
+      return descriptor->image_view->format;
+   default:
+      unreachable("descriptor type doesn't has a texture format");
+   }
+}
+
+struct v3dv_bo*
+v3dv_descriptor_map_get_texture_bo(struct v3dv_descriptor_state *descriptor_state,
+                                   struct v3dv_descriptor_map *map,
+                                   struct v3dv_pipeline_layout *pipeline_layout,
+                                   uint32_t index)
+
+{
+   struct v3dv_descriptor *descriptor =
+      v3dv_descriptor_map_get_descriptor(descriptor_state, map,
+                                         pipeline_layout, index, NULL);
+
+   switch (descriptor->type) {
+   case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
+   case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
+      assert(descriptor->buffer_view);
+      return descriptor->buffer_view->buffer->mem->bo;
+   case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
+   case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
+   case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
+   case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
+      assert(descriptor->image_view);
+      return descriptor->image_view->image->mem->bo;
+   default:
+      unreachable("descriptor type doesn't has a texture bo");
+   }
+}
+
 struct v3dv_cl_reloc
 v3dv_descriptor_map_get_texture_shader_state(struct v3dv_descriptor_state *descriptor_state,
                                              struct v3dv_descriptor_map *map,
@@ -252,7 +310,9 @@ v3dv_descriptor_map_get_texture_shader_state(struct v3dv_descriptor_state *descr
    assert(type == VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE ||
           type == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER ||
           type == VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT ||
-          type == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
+          type == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE ||
+          type == VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER ||
+          type == VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER);
 
    if (type == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER) {
       reloc.offset += offsetof(struct v3dv_combined_image_sampler_descriptor,
@@ -385,6 +445,8 @@ v3dv_CreateDescriptorPool(VkDevice _device,
       case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
       case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
       case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
+      case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
+      case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
          break;
       default:
          unreachable("Unimplemented descriptor type");
@@ -634,6 +696,8 @@ v3dv_CreateDescriptorSetLayout(VkDevice _device,
       case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
       case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
       case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
+      case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
+      case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
          /* Nothing here, just to keep the descriptor type filtering below */
          break;
       default:
@@ -913,6 +977,23 @@ write_image_descriptor(VkDescriptorType desc_type,
    }
 }
 
+
+static void
+write_buffer_view_descriptor(VkDescriptorType desc_type,
+                             struct v3dv_descriptor_set *set,
+                             const struct v3dv_descriptor_set_binding_layout *binding_layout,
+                             struct v3dv_buffer_view *bview,
+                             uint32_t array_index)
+{
+   void *desc_map = descriptor_bo_map(set, binding_layout, array_index);
+
+   assert(bview);
+
+   memcpy(desc_map,
+          bview->texture_shader_state,
+          sizeof(bview->texture_shader_state));
+}
+
 void
 v3dv_UpdateDescriptorSets(VkDevice  _device,
                           uint32_t descriptorWriteCount,
@@ -996,6 +1077,20 @@ v3dv_UpdateDescriptorSets(VkDevice  _device,
                                    set, binding_layout, iview, sampler,
                                    writeset->dstArrayElement + j);
 
+            break;
+         }
+         case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
+         case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER: {
+            V3DV_FROM_HANDLE(v3dv_buffer_view, buffer_view,
+                             writeset->pTexelBufferView[j]);
+
+            assert(buffer_view);
+
+            descriptor->buffer_view = buffer_view;
+
+            write_buffer_view_descriptor(writeset->descriptorType,
+                                         set, binding_layout, buffer_view,
+                                         writeset->dstArrayElement + j);
             break;
          }
          default:

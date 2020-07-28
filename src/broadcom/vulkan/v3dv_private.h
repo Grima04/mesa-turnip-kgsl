@@ -506,6 +506,9 @@ struct v3dv_buffer_view {
    uint32_t offset;
    uint32_t size;
    uint32_t num_elements;
+
+   /* Prepacked TEXTURE_SHADER_STATE. */
+   uint8_t texture_shader_state[cl_packet_length(TEXTURE_SHADER_STATE)];
 };
 
 struct v3dv_subpass_attachment {
@@ -1015,6 +1018,8 @@ struct v3dv_descriptor {
          uint32_t offset;
          uint32_t range;
       };
+
+      struct v3dv_buffer_view *buffer_view;
    };
 };
 
@@ -1813,6 +1818,19 @@ v3dv_descriptor_map_get_texture_shader_state(struct v3dv_descriptor_state *descr
                                              struct v3dv_descriptor_map *map,
                                              struct v3dv_pipeline_layout *pipeline_layout,
                                              uint32_t index);
+
+const struct v3dv_format*
+v3dv_descriptor_map_get_texture_format(struct v3dv_descriptor_state *descriptor_state,
+                                       struct v3dv_descriptor_map *map,
+                                       struct v3dv_pipeline_layout *pipeline_layout,
+                                       uint32_t index,
+                                       VkFormat *out_vk_format);
+
+struct v3dv_bo*
+v3dv_descriptor_map_get_texture_bo(struct v3dv_descriptor_state *descriptor_state,
+                                   struct v3dv_descriptor_map *map,
+                                   struct v3dv_pipeline_layout *pipeline_layout,
+                                   uint32_t index);
 
 static inline const struct v3dv_sampler *
 v3dv_immutable_samplers(const struct v3dv_descriptor_set_layout *set,

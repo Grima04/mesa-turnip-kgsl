@@ -2712,13 +2712,15 @@ cmd_buffer_populate_v3d_key(struct v3d_key *key,
          v3dv_pipeline_combined_index_key_unpack(combined_idx_key,
                                                  &texture_idx, &sampler_idx);
 
-         struct v3dv_image_view *image_view =
-            v3dv_descriptor_map_get_image_view(descriptor_state,
-                                               texture_map,
-                                               cmd_buffer->state.pipeline->layout,
-                                               texture_idx);
+         VkFormat vk_format;
+         const struct v3dv_format *format;
 
-         assert(image_view);
+         format =
+            v3dv_descriptor_map_get_texture_format(descriptor_state,
+                                                   texture_map,
+                                                   cmd_buffer->state.pipeline->layout,
+                                                   texture_idx,
+                                                   &vk_format);
 
          const struct v3dv_sampler *sampler = NULL;
          if (sampler_idx != V3DV_NO_SAMPLER_IDX) {
@@ -2731,7 +2733,7 @@ cmd_buffer_populate_v3d_key(struct v3d_key *key,
          }
 
          key->tex[combined_idx].return_size =
-            v3dv_get_tex_return_size(image_view->format,
+            v3dv_get_tex_return_size(format,
                                      sampler ? sampler->compare_enable : false);
 
          if (key->tex[combined_idx].return_size == 32) {
@@ -2749,7 +2751,7 @@ cmd_buffer_populate_v3d_key(struct v3d_key *key,
           * formats.
           */
          if (sampler && sampler->clamp_to_transparent_black_border) {
-            switch (image_view->vk_format) {
+            switch (vk_format) {
             case VK_FORMAT_E5B9G9R9_UFLOAT_PACK32:
             case VK_FORMAT_B10G11R11_UFLOAT_PACK32:
                key->tex[combined_idx].swizzle[3] = PIPE_SWIZZLE_1;

@@ -100,12 +100,11 @@ write_tmu_p0(struct v3dv_cmd_buffer *cmd_buffer,
                                            NULL);
 
    /* We need to ensure that the texture bo is added to the job */
-   struct v3dv_image_view *image_view =
-      v3dv_descriptor_map_get_image_view(descriptor_state, &pipeline->texture_map,
+   struct v3dv_bo *texture_bo =
+      v3dv_descriptor_map_get_texture_bo(descriptor_state, &pipeline->texture_map,
                                          pipeline->layout, texture_idx);
-
-   assert(image_view);
-   v3dv_job_add_bo(job, image_view->image->mem->bo);
+   assert(texture_bo);
+   v3dv_job_add_bo(job, texture_bo);
 
    struct v3dv_cl_reloc state_reloc =
       v3dv_descriptor_map_get_texture_shader_state(descriptor_state,
