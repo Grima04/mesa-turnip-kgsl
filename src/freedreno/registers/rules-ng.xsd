@@ -181,8 +181,9 @@
 			<group ref="rng:topGroup" />
 		</choice>
 		<attribute name="name" type="NMTOKEN" use="required" />
-		<attribute name="high" type="nonNegativeInteger" use="required" />
-		<attribute name="low" type="nonNegativeInteger" use="required" />
+		<attribute name="high" type="nonNegativeInteger" use="optional" />
+		<attribute name="low" type="nonNegativeInteger" use="optional" />
+		<attribute name="pos" type="nonNegativeInteger" use="optional" />
 		<attribute name="type" type="NMTOKENS" use="optional" />
 		<attribute name="varset" type="NMTOKEN" use="optional" />
 		<attribute name="variants" type="string" use="optional" />
