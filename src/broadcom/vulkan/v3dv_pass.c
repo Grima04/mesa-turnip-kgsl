@@ -72,8 +72,18 @@ pass_find_subpass_range_for_attachments(struct v3dv_render_pass *pass)
          if (i > pass->attachments[input_attachment_idx].last_subpass)
             pass->attachments[input_attachment_idx].last_subpass = i;
       }
-      /* FIXME: we don't support resolve attachments yet */
-      assert(subpass->resolve_attachments == NULL);
+
+      if (subpass->resolve_attachments) {
+         for (uint32_t j = 0; j < subpass->color_count; j++) {
+            uint32_t attachment_idx = subpass->resolve_attachments[j].attachment;
+            if (attachment_idx == VK_ATTACHMENT_UNUSED)
+               continue;
+            if (i < pass->attachments[attachment_idx].first_subpass)
+               pass->attachments[attachment_idx].first_subpass = i;
+            if (i > pass->attachments[attachment_idx].last_subpass)
+               pass->attachments[attachment_idx].last_subpass = i;
+         }
+      }
    }
 }
 

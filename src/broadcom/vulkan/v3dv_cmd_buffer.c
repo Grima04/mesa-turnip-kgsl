@@ -426,11 +426,30 @@ cmd_buffer_can_merge_subpass(struct v3dv_cmd_buffer *cmd_buffer,
    if (!compatible)
       return false;
 
-   /* FIXME: resolve attachments */
-
    if (subpass->ds_attachment.attachment !=
        prev_subpass->ds_attachment.attachment)
       return false;
+
+   if (prev_subpass->resolve_attachments) {
+      if (!subpass->resolve_attachments)
+         return false;
+
+      compatible =
+         attachment_list_is_subset(prev_subpass->resolve_attachments,
+                                   prev_subpass->color_count,
+                                   subpass->resolve_attachments,
+                                   subpass->color_count);
+      if (!compatible)
+         return false;
+
+      compatible =
+         attachment_list_is_subset(subpass->resolve_attachments,
+                                   subpass->color_count,
+                                   prev_subpass->resolve_attachments,
+                                   prev_subpass->color_count);
+      if (!compatible)
+         return false;
+   }
 
    return true;
 }
@@ -583,7 +602,7 @@ v3dv_job_start_frame(struct v3dv_job *job,
       config.width_in_pixels = tiling->width;
       config.height_in_pixels = tiling->height;
       config.number_of_render_targets = MAX2(tiling->render_target_count, 1);
-      config.multisample_mode_4x = false; /* FIXME */
+      config.multisample_mode_4x = tiling->msaa;
       config.maximum_bpp_of_all_render_targets = tiling->internal_bpp;
    }
 
@@ -1071,6 +1090,7 @@ v3dv_ResetCommandPool(VkDevice device,
 
    return VK_SUCCESS;
 }
+
 static void
 emit_clip_window(struct v3dv_job *job, const VkRect2D *rect)
 {
@@ -1508,7 +1528,8 @@ cmd_buffer_render_pass_emit_store(struct v3dv_cmd_buffer *cmd_buffer,
                                   uint32_t attachment_idx,
                                   uint32_t layer,
                                   uint32_t buffer,
-                                  bool clear)
+                                  bool clear,
+                                  bool is_multisample_resolve)
 {
    const struct v3dv_image_view *iview =
       cmd_buffer->state.framebuffer->attachments[attachment_idx];
@@ -1537,6 +1558,8 @@ cmd_buffer_render_pass_emit_store(struct v3dv_cmd_buffer *cmd_buffer,
 
       if (image->samples > VK_SAMPLE_COUNT_1_BIT)
          store.decimate_mode = V3D_DECIMATE_MODE_ALL_SAMPLES;
+      else if (is_multisample_resolve)
+         store.decimate_mode = V3D_DECIMATE_MODE_4X;
       else
          store.decimate_mode = V3D_DECIMATE_MODE_SAMPLE_0;
    }
@@ -1625,7 +1648,7 @@ cmd_buffer_render_pass_emit_stores(struct v3dv_cmd_buffer *cmd_buffer,
             v3dv_zs_buffer(needs_depth_store, needs_stencil_store);
          cmd_buffer_render_pass_emit_store(cmd_buffer, cl,
                                            ds_attachment_idx, layer,
-                                           zs_buffer, false);
+                                           zs_buffer, false, false);
          has_stores = true;
       }
    }
@@ -1656,11 +1679,30 @@ cmd_buffer_render_pass_emit_stores(struct v3dv_cmd_buffer *cmd_buffer,
          attachment->desc.storeOp == VK_ATTACHMENT_STORE_OP_STORE ||
          !state->job->is_subpass_finish;
 
+      /* If we need to resolve this attachment emit that store first. Notice
+       * that we must not request a tile buffer clear here in that case, since
+       * that would clear the tile buffer before we get to emit the actual
+       * color attachment store below, since the clear happens after the
+       * store is completed.
+       */
+      if (subpass->resolve_attachments &&
+          subpass->resolve_attachments[i].attachment != VK_ATTACHMENT_UNUSED) {
+         const uint32_t resolve_attachment_idx =
+            subpass->resolve_attachments[i].attachment;
+         cmd_buffer_render_pass_emit_store(cmd_buffer, cl,
+                                           resolve_attachment_idx, layer,
+                                           RENDER_TARGET_0 + i,
+                                           false, true);
+         has_stores = true;
+      }
+
+      /* Emit the color attachment store if needed */
       if (needs_store) {
          cmd_buffer_render_pass_emit_store(cmd_buffer, cl,
                                            attachment_idx, layer,
                                            RENDER_TARGET_0 + i,
-                                           needs_clear && !use_global_clear);
+                                           needs_clear && !use_global_clear,
+                                           false);
          has_stores = true;
       } else if (needs_clear) {
          use_global_clear = true;
@@ -1890,7 +1932,7 @@ cmd_buffer_emit_render_pass_rcl(struct v3dv_cmd_buffer *cmd_buffer)
       config.image_width_pixels = framebuffer->width;
       config.image_height_pixels = framebuffer->height;
       config.number_of_render_targets = MAX2(subpass->color_count, 1);
-      config.multisample_mode_4x = false; /* FIXME */
+      config.multisample_mode_4x = tiling->msaa;
       config.maximum_bpp_of_all_render_targets = tiling->internal_bpp;
 
       if (ds_attachment_idx != VK_ATTACHMENT_UNUSED) {
@@ -1914,9 +1956,6 @@ cmd_buffer_emit_render_pass_rcl(struct v3dv_cmd_buffer *cmd_buffer)
 
       const struct v3dv_image *image = iview->image;
       const struct v3d_resource_slice *slice = &image->slices[iview->base_level];
-
-      /* FIXME */
-      assert(image->samples == VK_SAMPLE_COUNT_1_BIT);
 
       const uint32_t *clear_color =
          &state->attachments[attachment_idx].clear_value.color[0];
@@ -2131,9 +2170,6 @@ cmd_buffer_subpass_create_job(struct v3dv_cmd_buffer *cmd_buffer,
                            subpass->color_count,
                            internal_bpp,
                            msaa);
-
-      /* FIXME: we don't suppport resolve attachments yet */
-      assert(subpass->resolve_attachments == NULL);
    }
 
    return job;
