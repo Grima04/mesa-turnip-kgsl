@@ -866,6 +866,54 @@ static char * find_file(const char *file_orig)
 	return fname;
 }
 
+static int validate_doc(struct rnndb *db, xmlDocPtr doc, xmlNodePtr database)
+{
+	/* find the schemaLocation property: */
+	xmlAttrPtr attr = database->properties;
+	const char *schema_name = NULL;
+	char *schema_path;
+
+	while (attr) {
+		if (!strcmp(attr->name, "schemaLocation")) {
+			xmlNodePtr data = attr->children;
+			schema_name = data->content;
+			/* we expect this to look like <namespace url> schema.xsd.. I think
+			 * technically it is supposed to be just a URL, but that doesn't
+			 * quite match up to what we do.. Just skip over everything up to
+			 * and including the first whitespace character:
+			 */
+			while (schema_name && (schema_name[0] != ' '))
+				schema_name++;
+			schema_name++;
+			break;
+		}
+	}
+
+	if (!schema_name) {
+		rnn_err(db, "could not find schema.  Missing schemaLocation?");
+		return 0;
+	}
+
+	schema_path = find_file(schema_name);
+	if (!schema_path) {
+		rnn_err(db, "%s: couldn't find database file. Please set the env var RNN_PATH.\n", schema_name);
+		return 0;
+	}
+
+	xmlSchemaParserCtxtPtr parser = xmlSchemaNewParserCtxt(schema_path);
+	xmlSchemaPtr schema = xmlSchemaParse(parser);
+	xmlSchemaValidCtxtPtr validCtxt = xmlSchemaNewValidCtxt(schema);
+	int ret = xmlSchemaValidateDoc(validCtxt, doc);
+
+	xmlSchemaFreeValidCtxt(validCtxt);
+	xmlSchemaFree(schema);
+	xmlSchemaFreeParserCtxt(parser);
+
+	free(schema_path);
+
+	return ret;
+}
+
 void rnn_parsefile (struct rnndb *db, char *file_orig) {
 	int i;
 	char *fname;
@@ -893,6 +941,10 @@ void rnn_parsefile (struct rnndb *db, char *file_orig) {
 			rnn_err(db, "%s:%d: wrong top-level tag <%s>\n", fname, root->line, root->name);
 		} else {
 			xmlNode *chain = root->children;
+			if (validate_doc(db, doc, root)) {
+				rnn_err(db, "%s: database file has errors\n", fname);
+				return;
+			}
 			while (chain) {
 				if (chain->type != XML_ELEMENT_NODE) {
 				} else if (!trytop(db, fname, chain) && !trydoc(db, fname, chain)) {
