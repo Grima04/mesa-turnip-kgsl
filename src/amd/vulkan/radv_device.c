@@ -5865,31 +5865,35 @@ radv_timeline_add_point_locked(struct radv_device *device,
 
 
 static VkResult
-radv_timeline_wait_locked(struct radv_device *device,
-                          struct radv_timeline *timeline,
-                          uint64_t value,
-                          uint64_t abs_timeout)
+radv_timeline_wait(struct radv_device *device,
+                   struct radv_timeline *timeline,
+                   uint64_t value,
+                   uint64_t abs_timeout)
 {
+	pthread_mutex_lock(&timeline->mutex);
+
 	while(timeline->highest_submitted < value) {
 		struct timespec abstime;
 		timespec_from_nsec(&abstime, abs_timeout);
 
 		pthread_cond_timedwait(&device->timeline_cond, &timeline->mutex, &abstime);
 
-		if (radv_get_current_time() >= abs_timeout && timeline->highest_submitted < value)
+		if (radv_get_current_time() >= abs_timeout && timeline->highest_submitted < value) {
+			pthread_mutex_unlock(&timeline->mutex);
 			return VK_TIMEOUT;
+		}
 	}
 
 	struct radv_timeline_point *point = radv_timeline_find_point_at_least_locked(device, timeline, value);
+	pthread_mutex_unlock(&timeline->mutex);
 	if (!point)
 		return VK_SUCCESS;
-
-	pthread_mutex_unlock(&timeline->mutex);
 
 	bool success = device->ws->wait_syncobj(device->ws, &point->syncobj, 1, true, abs_timeout);
 
 	pthread_mutex_lock(&timeline->mutex);
 	point->wait_count--;
+	pthread_mutex_unlock(&timeline->mutex);
 	return success ? VK_SUCCESS : VK_TIMEOUT;
 }
 
@@ -6067,9 +6071,7 @@ radv_wait_timelines(struct radv_device *device,
 		for (;;) {
 			for(uint32_t i = 0; i < pWaitInfo->semaphoreCount; ++i) {
 				RADV_FROM_HANDLE(radv_semaphore, semaphore, pWaitInfo->pSemaphores[i]);
-				pthread_mutex_lock(&semaphore->permanent.timeline.mutex);
-				VkResult result = radv_timeline_wait_locked(device, &semaphore->permanent.timeline, pWaitInfo->pValues[i], 0);
-				pthread_mutex_unlock(&semaphore->permanent.timeline.mutex);
+				VkResult result = radv_timeline_wait(device, &semaphore->permanent.timeline, pWaitInfo->pValues[i], 0);
 
 				if (result == VK_SUCCESS)
 					return VK_SUCCESS;
@@ -6081,9 +6083,7 @@ radv_wait_timelines(struct radv_device *device,
 
 	for(uint32_t i = 0; i < pWaitInfo->semaphoreCount; ++i) {
 		RADV_FROM_HANDLE(radv_semaphore, semaphore, pWaitInfo->pSemaphores[i]);
-		pthread_mutex_lock(&semaphore->permanent.timeline.mutex);
-		VkResult result = radv_timeline_wait_locked(device, &semaphore->permanent.timeline, pWaitInfo->pValues[i], abs_timeout);
-		pthread_mutex_unlock(&semaphore->permanent.timeline.mutex);
+		VkResult result = radv_timeline_wait(device, &semaphore->permanent.timeline, pWaitInfo->pValues[i], abs_timeout);
 
 		if (result != VK_SUCCESS)
 			return result;
