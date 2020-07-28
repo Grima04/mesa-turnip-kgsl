@@ -84,6 +84,8 @@
 		<attribute name="prefix" type="NMTOKENS" use="optional" />
 		<attribute name="width" type="rng:DomainWidth" use="optional" />
 		<attribute name="size" type="rng:HexOrNumber" use="optional" />
+		<attribute name="varset" type="NMTOKEN" use="optional" />
+		<attribute name="variants" type="string" use="optional" />
 	</complexType>
 
 	<complexType name="groupType">
