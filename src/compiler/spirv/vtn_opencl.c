@@ -282,6 +282,21 @@ handle_printf(struct vtn_builder *b, enum OpenCLstd_Entrypoints opcode,
 }
 
 static nir_ssa_def *
+handle_round(struct vtn_builder *b, enum OpenCLstd_Entrypoints opcode,
+             unsigned num_srcs, nir_ssa_def **srcs,
+             const struct glsl_type *dest_type)
+{
+   nir_ssa_def *src = srcs[0];
+   nir_builder *nb = &b->nb;
+   nir_ssa_def *half = nir_imm_floatN_t(nb, 0.5, src->bit_size);
+   nir_ssa_def *truncated = nir_ftrunc(nb, src);
+   nir_ssa_def *remainder = nir_fsub(nb, src, truncated);
+
+   return nir_bcsel(nb, nir_fge(nb, nir_fabs(nb, remainder), half),
+                    nir_fadd(nb, truncated, nir_fsign(nb, src)), truncated);
+}
+
+static nir_ssa_def *
 handle_shuffle(struct vtn_builder *b, enum OpenCLstd_Entrypoints opcode, unsigned num_srcs,
                nir_ssa_def **srcs, const struct glsl_type *dest_type)
 {
@@ -434,6 +449,9 @@ vtn_handle_opencl_instruction(struct vtn_builder *b, SpvOp ext_opcode,
       return true;
    case OpenCLstd_Shuffle2:
       handle_instr(b, cl_opcode, w, count, handle_shuffle2);
+      return true;
+   case OpenCLstd_Round:
+      handle_instr(b, cl_opcode, w, count, handle_round);
       return true;
    case OpenCLstd_Printf:
       handle_instr(b, cl_opcode, w, count, handle_printf);
