@@ -63,6 +63,8 @@ xsi:schemaLocation="http://nouveau.freedesktop.org/ rules-ng.xsd">
 	</enum>
 
 	<enum name="mdp5_format">
+		<!-- TODO -->
+		<value name="DUMMY" value="0"/>
 	</enum>
 
 	<enum name="mdp5_ctl_mode">
