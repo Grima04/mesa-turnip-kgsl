@@ -2016,6 +2016,63 @@ cp_draw_indirect(uint32_t *dwords, uint32_t sizedwords, int level)
 }
 
 static void
+cp_draw_indirect_multi(uint32_t *dwords, uint32_t sizedwords, int level)
+{
+	uint32_t prim_type = dwords[0] & 0x1f;
+	uint32_t count = dwords[2];
+
+	do_query(rnn_enumname(rnn, "pc_di_primtype", prim_type), 0);
+	print_mode(level);
+
+	struct rnndomain *domain = rnn_finddomain(rnn->db, "CP_DRAW_INDIRECT_MULTI");
+	uint32_t count_dword = rnndec_decodereg(rnn->vc, domain, "INDIRECT_COUNT");
+	uint32_t addr_dword = rnndec_decodereg(rnn->vc, domain, "INDIRECT");
+	uint64_t stride_dword = rnndec_decodereg(rnn->vc, domain, "STRIDE");
+
+	if (count_dword) {
+		uint64_t count_addr = ((uint64_t)dwords[count_dword + 1] << 32) | dwords[count_dword];
+		uint32_t *buf = hostptr(count_addr);
+
+		/* Don't print more draws than this if we don't know the indirect
+		 * count. It's possible the user will give ~0 or some other large
+		 * value, expecting the GPU to fill in the draw count, and we don't
+		 * want to print a gazillion draws in that case:
+		 */
+		const uint32_t max_draw_count = 0x100;
+
+		/* Assume the indirect count is garbage if it's larger than this
+		 * (quite large) value or 0. Hopefully this catches most cases.
+		 */
+		const uint32_t max_indirect_draw_count = 0x10000;
+
+		if (buf) {
+			printf("%sindirect count: %u\n", levels[level], *buf);
+			if (*buf == 0 || *buf > max_indirect_draw_count) {
+				/* garbage value */
+				count = min(count, max_draw_count);
+			} else {
+				/* not garbage */
+				count = min(count, *buf);
+			}
+		} else {
+			count = min(count, max_draw_count);
+		}
+	}
+
+	if (addr_dword && stride_dword) {
+		uint64_t addr = ((uint64_t)dwords[addr_dword + 1] << 32) | dwords[addr_dword];
+		uint32_t stride = dwords[stride_dword];
+
+		for (unsigned i = 0; i < count; i++, addr += stride) {
+			printf("%sdraw %d:\n", levels[level], i);
+			dump_gpuaddr_size(addr, level, 0x10, 2);
+		}
+	}
+
+	dump_register_summary(level);
+}
+
+static void
 cp_run_cl(uint32_t *dwords, uint32_t sizedwords, int level)
 {
 	do_query("COMPUTE", 1);
@@ -2546,6 +2603,7 @@ static const struct type3_op {
 		CP(CONTEXT_REG_BUNCH, cp_context_reg_bunch),
 		CP(DRAW_INDIRECT, cp_draw_indirect, {.load_all_groups=true}),
 		CP(DRAW_INDX_INDIRECT, cp_draw_indx_indirect, {.load_all_groups=true}),
+		CP(DRAW_INDIRECT_MULTI, cp_draw_indirect_multi, {.load_all_groups=true}),
 		CP(SKIP_IB2_ENABLE_GLOBAL, cp_skip_ib2_enable_global),
 		CP(SKIP_IB2_ENABLE_LOCAL, cp_skip_ib2_enable_local),
 
