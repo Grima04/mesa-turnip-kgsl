@@ -1051,6 +1051,8 @@ v3dv_CmdCopyImageToBuffer(VkCommandBuffer commandBuffer,
    V3DV_FROM_HANDLE(v3dv_image, image, srcImage);
    V3DV_FROM_HANDLE(v3dv_buffer, buffer, destBuffer);
 
+   assert(image->samples == VK_SAMPLE_COUNT_1_BIT);
+
    for (uint32_t i = 0; i < regionCount; i++) {
       if (copy_image_to_buffer_tlb(cmd_buffer, buffer, image, &pRegions[i]))
          continue;
@@ -1188,7 +1190,8 @@ copy_image_tlb(struct v3dv_cmd_buffer *cmd_buffer,
    const uint32_t width = DIV_ROUND_UP(region->extent.width, block_w);
    const uint32_t height = DIV_ROUND_UP(region->extent.height, block_h);
 
-   v3dv_job_start_frame(job, width, height, num_layers, 1, internal_bpp, false);
+   v3dv_job_start_frame(job, width, height, num_layers, 1, internal_bpp,
+                        src->samples > VK_SAMPLE_COUNT_1_BIT);
 
    struct framebuffer_data framebuffer;
    setup_framebuffer_data(&framebuffer, fb_format, internal_type,
@@ -1331,6 +1334,8 @@ v3dv_CmdCopyImage(VkCommandBuffer commandBuffer,
    V3DV_FROM_HANDLE(v3dv_cmd_buffer, cmd_buffer, commandBuffer);
    V3DV_FROM_HANDLE(v3dv_image, src, srcImage);
    V3DV_FROM_HANDLE(v3dv_image, dst, dstImage);
+
+   assert(src->samples == dst->samples);
 
    for (uint32_t i = 0; i < regionCount; i++) {
       if (copy_image_tlb(cmd_buffer, dst, src, &pRegions[i]))
@@ -2635,6 +2640,8 @@ v3dv_CmdCopyBufferToImage(VkCommandBuffer commandBuffer,
    V3DV_FROM_HANDLE(v3dv_cmd_buffer, cmd_buffer, commandBuffer);
    V3DV_FROM_HANDLE(v3dv_buffer, buffer, srcBuffer);
    V3DV_FROM_HANDLE(v3dv_image, image, dstImage);
+
+   assert(image->samples == VK_SAMPLE_COUNT_1_BIT);
 
    for (uint32_t i = 0; i < regionCount; i++) {
       if (copy_buffer_to_image_tfu(cmd_buffer, image, buffer, &pRegions[i]))
