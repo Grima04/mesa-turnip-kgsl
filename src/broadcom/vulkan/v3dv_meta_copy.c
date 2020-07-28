@@ -221,7 +221,7 @@ emit_rcl_prologue(struct v3dv_job *job,
       config.image_width_pixels = tiling->width;
       config.image_height_pixels = tiling->height;
       config.number_of_render_targets = 1;
-      config.multisample_mode_4x = false;
+      config.multisample_mode_4x = tiling->msaa;
       config.maximum_bpp_of_all_render_targets = tiling->internal_bpp;
    }
 
@@ -495,7 +495,8 @@ emit_image_store(struct v3dv_cl *cl,
                  uint32_t layer,
                  uint32_t mip_level,
                  bool is_copy_to_buffer,
-                 bool is_copy_from_buffer)
+                 bool is_copy_from_buffer,
+                 bool is_multisample_resolve)
 {
    uint32_t layer_offset = v3dv_layer_offset(image, mip_level, layer);
 
@@ -541,6 +542,8 @@ emit_image_store(struct v3dv_cl *cl,
 
       if (image->samples > VK_SAMPLE_COUNT_1_BIT)
          store.decimate_mode = V3D_DECIMATE_MODE_ALL_SAMPLES;
+      else if (is_multisample_resolve)
+         store.decimate_mode = V3D_DECIMATE_MODE_4X;
       else
          store.decimate_mode = V3D_DECIMATE_MODE_SAMPLE_0;
    }
@@ -1091,7 +1094,7 @@ emit_copy_image_layer_per_tile_list(struct v3dv_job *job,
 
    emit_image_store(cl, framebuffer, dst, dstrsc->aspectMask,
                     dstrsc->baseArrayLayer + layer, dstrsc->mipLevel,
-                    false, false);
+                    false, false, false);
 
    cl_emit(cl, END_OF_TILE_MARKER, end);
 
@@ -1358,7 +1361,8 @@ emit_clear_image_per_tile_list(struct v3dv_job *job,
 
    cl_emit(cl, BRANCH_TO_IMPLICIT_TILE_LIST, branch);
 
-   emit_image_store(cl, framebuffer, image, aspects, layer, level, false, false);
+   emit_image_store(cl, framebuffer, image, aspects, layer, level,
+                    false, false, false);
 
    cl_emit(cl, END_OF_TILE_MARKER, end);
 
@@ -2178,18 +2182,18 @@ emit_copy_buffer_to_layer_per_tile_list(struct v3dv_job *job,
    /* Store TLB to image */
    emit_image_store(cl, framebuffer, image, imgrsc->aspectMask,
                     imgrsc->baseArrayLayer + layer, imgrsc->mipLevel,
-                    false, true);
+                    false, true, false);
 
    if (framebuffer->vk_format == VK_FORMAT_D24_UNORM_S8_UINT) {
       if (imgrsc->aspectMask & VK_IMAGE_ASPECT_DEPTH_BIT) {
          emit_image_store(cl, framebuffer, image, VK_IMAGE_ASPECT_STENCIL_BIT,
                           imgrsc->baseArrayLayer + layer, imgrsc->mipLevel,
-                          false, false);
+                          false, false, false);
       } else {
          assert(imgrsc->aspectMask & VK_IMAGE_ASPECT_STENCIL_BIT);
          emit_image_store(cl, framebuffer, image, VK_IMAGE_ASPECT_DEPTH_BIT,
                           imgrsc->baseArrayLayer + layer, imgrsc->mipLevel,
-                          false, false);
+                          false, false, false);
       }
    }
 
@@ -3936,5 +3940,156 @@ v3dv_CmdBlitImage(VkCommandBuffer commandBuffer,
          continue;
       }
       unreachable("Unsupported blit operation");
+   }
+}
+
+static void
+emit_resolve_image_layer_per_tile_list(struct v3dv_job *job,
+                                       struct framebuffer_data *framebuffer,
+                                       struct v3dv_image *dst,
+                                       struct v3dv_image *src,
+                                       uint32_t layer,
+                                       const VkImageResolve *region)
+{
+   struct v3dv_cl *cl = &job->indirect;
+   v3dv_cl_ensure_space(cl, 200, 1);
+   v3dv_return_if_oom(NULL, job);
+
+   struct v3dv_cl_reloc tile_list_start = v3dv_cl_get_address(cl);
+
+   cl_emit(cl, TILE_COORDINATES_IMPLICIT, coords);
+
+   const VkImageSubresourceLayers *srcrsc = &region->srcSubresource;
+   assert((src->type != VK_IMAGE_TYPE_3D && layer < srcrsc->layerCount) ||
+          layer < src->extent.depth);
+
+   emit_image_load(cl, framebuffer, src, srcrsc->aspectMask,
+                   srcrsc->baseArrayLayer + layer, srcrsc->mipLevel,
+                   false, false);
+
+   cl_emit(cl, END_OF_LOADS, end);
+
+   cl_emit(cl, BRANCH_TO_IMPLICIT_TILE_LIST, branch);
+
+   const VkImageSubresourceLayers *dstrsc = &region->dstSubresource;
+   assert((dst->type != VK_IMAGE_TYPE_3D && layer < dstrsc->layerCount) ||
+          layer < dst->extent.depth);
+
+   emit_image_store(cl, framebuffer, dst, dstrsc->aspectMask,
+                    dstrsc->baseArrayLayer + layer, dstrsc->mipLevel,
+                    false, false, true);
+
+   cl_emit(cl, END_OF_TILE_MARKER, end);
+
+   cl_emit(cl, RETURN_FROM_SUB_LIST, ret);
+
+   cl_emit(&job->rcl, START_ADDRESS_OF_GENERIC_TILE_LIST, branch) {
+      branch.start = tile_list_start;
+      branch.end = v3dv_cl_get_address(cl);
+   }
+}
+
+static void
+emit_resolve_image_layer(struct v3dv_job *job,
+                         struct v3dv_image *dst,
+                         struct v3dv_image *src,
+                         struct framebuffer_data *framebuffer,
+                         uint32_t layer,
+                         const VkImageResolve *region)
+{
+   emit_frame_setup(job, layer, NULL);
+   emit_resolve_image_layer_per_tile_list(job, framebuffer,
+                                          dst, src, layer, region);
+   emit_supertile_coordinates(job, framebuffer);
+}
+
+static void
+emit_resolve_image_rcl(struct v3dv_job *job,
+                       struct v3dv_image *dst,
+                       struct v3dv_image *src,
+                       struct framebuffer_data *framebuffer,
+                       const VkImageResolve *region)
+{
+   struct v3dv_cl *rcl =
+      emit_rcl_prologue(job, framebuffer->internal_type, NULL);
+   v3dv_return_if_oom(NULL, job);
+
+   for (int layer = 0; layer < job->frame_tiling.layers; layer++)
+      emit_resolve_image_layer(job, dst, src, framebuffer, layer, region);
+   cl_emit(rcl, END_OF_RENDERING, end);
+}
+
+static bool
+resolve_image_tlb(struct v3dv_cmd_buffer *cmd_buffer,
+                  struct v3dv_image *dst,
+                  struct v3dv_image *src,
+                  const VkImageResolve *region)
+{
+   if (!can_use_tlb(src, &region->srcOffset, NULL) ||
+       !can_use_tlb(dst, &region->dstOffset, NULL)) {
+      return false;
+   }
+
+   const VkFormat fb_format = src->vk_format;
+
+   uint32_t num_layers;
+   if (dst->type != VK_IMAGE_TYPE_3D)
+      num_layers = region->dstSubresource.layerCount;
+   else
+      num_layers = region->extent.depth;
+   assert(num_layers > 0);
+
+   struct v3dv_job *job =
+      v3dv_cmd_buffer_start_job(cmd_buffer, -1, V3DV_JOB_TYPE_GPU_CL);
+   if (!job)
+      return true;
+
+   const uint32_t block_w = vk_format_get_blockwidth(dst->vk_format);
+   const uint32_t block_h = vk_format_get_blockheight(dst->vk_format);
+   const uint32_t width = DIV_ROUND_UP(region->extent.width, block_w);
+   const uint32_t height = DIV_ROUND_UP(region->extent.height, block_h);
+
+   uint32_t internal_type, internal_bpp;
+   get_internal_type_bpp_for_image_aspects(fb_format,
+                                           region->srcSubresource.aspectMask,
+                                           &internal_type, &internal_bpp);
+
+   v3dv_job_start_frame(job, width, height, num_layers, 1, internal_bpp, true);
+
+   struct framebuffer_data framebuffer;
+   setup_framebuffer_data(&framebuffer, fb_format, internal_type,
+                          &job->frame_tiling);
+
+   v3dv_job_emit_binning_flush(job);
+   emit_resolve_image_rcl(job, dst, src, &framebuffer, region);
+
+   v3dv_cmd_buffer_finish_job(cmd_buffer);
+   return true;
+}
+
+void
+v3dv_CmdResolveImage(VkCommandBuffer commandBuffer,
+                     VkImage srcImage,
+                     VkImageLayout srcImageLayout,
+                     VkImage dstImage,
+                     VkImageLayout dstImageLayout,
+                     uint32_t regionCount,
+                     const VkImageResolve *pRegions)
+{
+   V3DV_FROM_HANDLE(v3dv_cmd_buffer, cmd_buffer, commandBuffer);
+   V3DV_FROM_HANDLE(v3dv_image, src, srcImage);
+   V3DV_FROM_HANDLE(v3dv_image, dst, dstImage);
+
+    /* This command can only happen outside a render pass */
+   assert(cmd_buffer->state.pass == NULL);
+   assert(cmd_buffer->state.job == NULL);
+
+   assert(src->samples == VK_SAMPLE_COUNT_4_BIT);
+   assert(dst->samples == VK_SAMPLE_COUNT_1_BIT);
+
+   for (uint32_t i = 0; i < regionCount; i++) {
+      if (resolve_image_tlb(cmd_buffer, dst, src, &pRegions[i]))
+         continue;
+      unreachable("Unsupported multismaple resolve operation");
    }
 }

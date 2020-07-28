@@ -5012,15 +5012,3 @@ v3dv_CmdDispatchIndirect(VkCommandBuffer commandBuffer,
    cmd_buffer_emit_pre_dispatch(cmd_buffer);
    cmd_buffer_dispatch_indirect(cmd_buffer, buffer, offset);
 }
-
-void
-v3dv_CmdResolveImage(VkCommandBuffer commandBuffer,
-                     VkImage srcImage,
-                     VkImageLayout srcImageLayout,
-                     VkImage dstImage,
-                     VkImageLayout dstImageLayout,
-                     uint32_t regionCount,
-                     const VkImageResolve *pRegions)
-{
-   unreachable("vkCmdResolveImage not implemented");
-}
