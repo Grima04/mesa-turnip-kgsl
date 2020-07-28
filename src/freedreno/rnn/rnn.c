@@ -42,6 +42,8 @@
 #include "rnn_path.h"
 #include "util.h"
 
+#include "util/u_debug.h"
+
 static char *catstr (char *a, char *b) {
 	if (!a)
 		return b;
@@ -54,6 +56,17 @@ static int strdiff (const char *a, const char *b) {
 	if (!a || !b)
 		return 1;
 	return strcmp (a, b);
+}
+
+static void rnn_err(struct rnndb *db, const char *format, ...) _util_printf_format(2, 3);
+
+static void rnn_err(struct rnndb *db, const char *format, ...)
+{
+	va_list ap;
+	va_start(ap, format);
+	vfprintf(stderr, format, ap);
+	va_end(ap);
+	db->estatus = 1;
 }
 
 void rnn_init(void) {
@@ -100,8 +113,7 @@ static char *getattrib (struct rnndb *db, char *file, int line, xmlAttr *attr) {
 	xmlNode *chain = attr->children;
 	while (chain) {
 		if (chain->type != XML_TEXT_NODE) {
-			fprintf (stderr, "%s:%d: unknown attribute child \"%s\" in attribute \"%s\"\n", file, line, chain->name, attr->name);
-			db->estatus = 1;
+			rnn_err(db, "%s:%d: unknown attribute child \"%s\" in attribute \"%s\"\n", file, line, chain->name, attr->name);
 		} else {
 			return chain->content;
 		}
@@ -116,8 +128,7 @@ static int getboolattrib (struct rnndb *db, char *file, int line, xmlAttr *attr)
 		return 1;
 	if (!strcmp(c, "no") || !strcmp(c, "0"))
 		return 0;
-	fprintf (stderr, "%s:%d: invalid boolean value \"%s\" in attribute \"%s\"\n", file, line, c, attr->name);
-	db->estatus = 1;
+	rnn_err(db, "%s:%d: invalid boolean value \"%s\" in attribute \"%s\"\n", file, line, c, attr->name);
 	return 0;
 }
 
@@ -130,8 +141,7 @@ static uint64_t getnum(struct rnndb *db, char *file, int line, xmlAttr *attr, ch
 	else
 		res = strtoull(c, &cc, 10);
 	if (*cc)  {
-		fprintf (stderr, "%s:%d: invalid numeric value \"%s\" in attribute \"%s\"\n", file, line, c, attr->name);
-		db->estatus = 1;
+		rnn_err(db, "%s:%d: invalid numeric value \"%s\" in attribute \"%s\"\n", file, line, c, attr->name);
 	}
 	return res;
 }
@@ -223,8 +233,7 @@ static struct rnnvalue *parsevalue(struct rnndb *db, char *file, xmlNode *node) 
 		} else if (!strcmp(attr->name, "variants")) {
 			val->varinfo.variantsstr = strdup(getattrib(db, file, node->line, attr));
 		} else {
-			fprintf (stderr, "%s:%d: wrong attribute \"%s\" for value\n", file, node->line, attr->name);
-			db->estatus = 1;
+			rnn_err(db, "%s:%d: wrong attribute \"%s\" for value\n", file, node->line, attr->name);
 		}
 		attr = attr->next;
 	}
@@ -232,14 +241,12 @@ static struct rnnvalue *parsevalue(struct rnndb *db, char *file, xmlNode *node) 
 	while (chain) {
 		if (chain->type != XML_ELEMENT_NODE) {
 		} else if (!trytop(db, file, chain) && !trydoc(db, file, chain)) {
-			fprintf (stderr, "%s:%d: wrong tag in %s: <%s>\n", file, chain->line, node->name, chain->name);
-			db->estatus = 1;
+			rnn_err(db, "%s:%d: wrong tag in %s: <%s>\n", file, chain->line, node->name, chain->name);
 		}
 		chain = chain->next;
 	}
 	if (!val->name) {
-		fprintf (stderr, "%s:%d: nameless value\n", file, node->line);
-		db->estatus = 1;
+		rnn_err(db, "%s:%d: nameless value\n", file, node->line);
 		return 0;
 	} else {
 		return val;
@@ -255,20 +262,17 @@ static void parsespectype(struct rnndb *db, char *file, xmlNode *node) {
 		if (!strcmp(attr->name, "name")) {
 			res->name = strdup(getattrib(db, file, node->line, attr));
 		} else if (!trytypeattr(db, file, node, attr, &res->typeinfo)) {
-			fprintf (stderr, "%s:%d: wrong attribute \"%s\" for spectype\n", file, node->line, attr->name);
-			db->estatus = 1;
+			rnn_err(db, "%s:%d: wrong attribute \"%s\" for spectype\n", file, node->line, attr->name);
 		}
 		attr = attr->next;
 	}
 	if (!res->name) {
-		fprintf (stderr, "%s:%d: nameless spectype\n", file, node->line);
-		db->estatus = 1;
+		rnn_err(db, "%s:%d: nameless spectype\n", file, node->line);
 		return;
 	}
 	for (i = 0; i < db->spectypesnum; i++)
 		if (!strcmp(db->spectypes[i]->name, res->name)) {
-			fprintf (stderr, "%s:%d: duplicated spectype name %s\n", file, node->line, res->name);
-			db->estatus = 1;
+			rnn_err(db, "%s:%d: duplicated spectype name %s\n", file, node->line, res->name);
 			return;
 		}
 	ADDARRAY(db->spectypes, res);
@@ -276,8 +280,7 @@ static void parsespectype(struct rnndb *db, char *file, xmlNode *node) {
 	while (chain) {
 		if (chain->type != XML_ELEMENT_NODE) {
 		} else if (!trytypetag(db, file, chain, &res->typeinfo) && !trytop(db, file, chain) && !trydoc(db, file, chain)) {
-			fprintf (stderr, "%s:%d: wrong tag in spectype: <%s>\n", file, chain->line, chain->name);
-			db->estatus = 1;
+			rnn_err(db, "%s:%d: wrong tag in spectype: <%s>\n", file, chain->line, chain->name);
 		}
 		chain = chain->next;
 	}
@@ -306,14 +309,12 @@ static void parseenum(struct rnndb *db, char *file, xmlNode *node) {
 		} else if (!strcmp(attr->name, "variants")) {
 			variantsstr = strdup(getattrib(db, file, node->line, attr));
 		} else {
-			fprintf (stderr, "%s:%d: wrong attribute \"%s\" for enum\n", file, node->line, attr->name);
-			db->estatus = 1;
+			rnn_err(db, "%s:%d: wrong attribute \"%s\" for enum\n", file, node->line, attr->name);
 		}
 		attr = attr->next;
 	}
 	if (!name) {
-		fprintf (stderr, "%s:%d: nameless enum\n", file, node->line);
-		db->estatus = 1;
+		rnn_err(db, "%s:%d: nameless enum\n", file, node->line);
 		return;
 	}
 	struct rnnenum *cur = 0;
@@ -327,8 +328,7 @@ static void parseenum(struct rnndb *db, char *file, xmlNode *node) {
 				strdiff(cur->varinfo.varsetstr, varsetstr) ||
 				strdiff(cur->varinfo.variantsstr, variantsstr) ||
 				cur->isinline != isinline || cur->bare != bare) {
-			fprintf (stderr, "%s:%d: merge fail for enum %s\n", file, node->line, node->name);
-			db->estatus = 1;
+			rnn_err(db, "%s:%d: merge fail for enum %s\n", file, node->line, node->name);
 		}
 	} else {
 		cur = calloc(sizeof *cur, 1);
@@ -349,8 +349,7 @@ static void parseenum(struct rnndb *db, char *file, xmlNode *node) {
 			if (val)
 				ADDARRAY(cur->vals, val);
 		} else if (!trytop(db, file, chain) && !trydoc(db, file, chain)) {
-			fprintf (stderr, "%s:%d: wrong tag in enum: <%s>\n", file, chain->line, chain->name);
-			db->estatus = 1;
+			rnn_err(db, "%s:%d: wrong tag in enum: <%s>\n", file, chain->line, chain->name);
 		}
 		chain = chain->next;
 	}
@@ -369,8 +368,7 @@ static struct rnnbitfield *parsebitfield(struct rnndb *db, char *file, xmlNode *
 		} else if (!strcmp(attr->name, "variants")) {
 			bf->varinfo.variantsstr = strdup(getattrib(db, file, node->line, attr));
 		} else if (!trytypeattr(db, file, node, attr, &bf->typeinfo)) {
-			fprintf (stderr, "%s:%d: wrong attribute \"%s\" for bitfield\n", file, node->line, attr->name);
-			db->estatus = 1;
+			rnn_err(db, "%s:%d: wrong attribute \"%s\" for bitfield\n", file, node->line, attr->name);
 		}
 		attr = attr->next;
 	}
@@ -378,18 +376,15 @@ static struct rnnbitfield *parsebitfield(struct rnndb *db, char *file, xmlNode *
 	while (chain) {
 		if (chain->type != XML_ELEMENT_NODE) {
 		} else if (!trytypetag(db, file, chain, &bf->typeinfo) && !trytop(db, file, chain) && !trydoc(db, file, chain)) {
-			fprintf (stderr, "%s:%d: wrong tag in %s: <%s>\n", file, chain->line, node->name, chain->name);
-			db->estatus = 1;
+			rnn_err(db, "%s:%d: wrong tag in %s: <%s>\n", file, chain->line, node->name, chain->name);
 		}
 		chain = chain->next;
 	}
 	if (!bf->name) {
-		fprintf (stderr, "%s:%d: nameless bitfield\n", file, node->line);
-		db->estatus = 1;
+		rnn_err(db, "%s:%d: nameless bitfield\n", file, node->line);
 		return 0;
 	} else if (bf->typeinfo.low < 0|| bf->typeinfo.high < 0 || bf->typeinfo.high < bf->typeinfo.low) {
-		fprintf (stderr, "%s:%d: bitfield has wrong placement\n", file, node->line);
-		db->estatus = 1;
+		rnn_err(db, "%s:%d: bitfield has wrong placement\n", file, node->line);
 		return 0;
 	} else {
 		return bf;
@@ -419,14 +414,12 @@ static void parsebitset(struct rnndb *db, char *file, xmlNode *node) {
 		} else if (!strcmp(attr->name, "variants")) {
 			variantsstr = strdup(getattrib(db, file, node->line, attr));
 		} else {
-			fprintf (stderr, "%s:%d: wrong attribute \"%s\" for bitset\n", file, node->line, attr->name);
-			db->estatus = 1;
+			rnn_err(db, "%s:%d: wrong attribute \"%s\" for bitset\n", file, node->line, attr->name);
 		}
 		attr = attr->next;
 	}
 	if (!name) {
-		fprintf (stderr, "%s:%d: nameless bitset\n", file, node->line);
-		db->estatus = 1;
+		rnn_err(db, "%s:%d: nameless bitset\n", file, node->line);
 		return;
 	}
 	struct rnnbitset *cur = 0;
@@ -440,8 +433,7 @@ static void parsebitset(struct rnndb *db, char *file, xmlNode *node) {
 				strdiff(cur->varinfo.varsetstr, varsetstr) ||
 				strdiff(cur->varinfo.variantsstr, variantsstr) ||
 				cur->isinline != isinline || cur->bare != bare) {
-			fprintf (stderr, "%s:%d: merge fail for bitset %s\n", file, node->line, node->name);
-			db->estatus = 1;
+			rnn_err(db, "%s:%d: merge fail for bitset %s\n", file, node->line, node->name);
 		}
 	} else {
 		cur = calloc(sizeof *cur, 1);
@@ -462,8 +454,7 @@ static void parsebitset(struct rnndb *db, char *file, xmlNode *node) {
 			if (bf)
 				ADDARRAY(cur->bitfields, bf);
 		} else if (!trytop(db, file, chain) && !trydoc(db, file, chain)) {
-			fprintf (stderr, "%s:%d: wrong tag in bitset: <%s>\n", file, chain->line, chain->name);
-			db->estatus = 1;
+			rnn_err(db, "%s:%d: wrong tag in bitset: <%s>\n", file, chain->line, chain->name);
 		}
 		chain = chain->next;
 	}
@@ -479,14 +470,12 @@ static struct rnndelem *trydelem(struct rnndb *db, char *file, xmlNode *node) {
 			if (!strcmp(attr->name, "name")) {
 				res->name = strdup(getattrib(db, file, node->line, attr));
 			} else {
-				fprintf (stderr, "%s:%d: wrong attribute \"%s\" for %s\n", file, node->line, attr->name, node->name);
-				db->estatus = 1;
+				rnn_err(db, "%s:%d: wrong attribute \"%s\" for %s\n", file, node->line, attr->name, node->name);
 			}
 			attr = attr->next;
 		}
 		if (!res->name) {
-			fprintf (stderr, "%s:%d: nameless use-group\n", file, node->line);
-			db->estatus = 1;
+			rnn_err(db, "%s:%d: nameless use-group\n", file, node->line);
 			return 0;
 		}
 		return res;
@@ -541,12 +530,10 @@ static struct rnndelem *trydelem(struct rnndb *db, char *file, xmlNode *node) {
 				const char *enumname = getattrib(db, file, node->line, attr);
 				res->index = rnn_findenum(db, enumname);
 				if (!res->index) {
-					fprintf(stderr, "%s:%d: invalid enum name \"%s\"\n", file, node->line, enumname);
-					db->estatus = 1;
+					rnn_err(db, "%s:%d: invalid enum name \"%s\"\n", file, node->line, enumname);
 				}
 			} else {
-				fprintf (stderr, "%s:%d: wrong attribute \"%s\" for %s\n", file, node->line, attr->name, node->name);
-				db->estatus = 1;
+				rnn_err(db, "%s:%d: wrong attribute \"%s\" for %s\n", file, node->line, attr->name, node->name);
 			}
 			attr = attr->next;
 		}
@@ -557,8 +544,7 @@ static struct rnndelem *trydelem(struct rnndb *db, char *file, xmlNode *node) {
 			} else if ((delem = trydelem(db, file, chain))) {
 				ADDARRAY(res->subelems, delem);
 			} else if (!trytop(db, file, chain) && !trydoc(db, file, chain)) {
-				fprintf (stderr, "%s:%d: wrong tag in %s: <%s>\n", file, chain->line, node->name, chain->name);
-				db->estatus = 1;
+				rnn_err(db, "%s:%d: wrong tag in %s: <%s>\n", file, chain->line, node->name, chain->name);
 			}
 			chain = chain->next;
 		}
@@ -615,8 +601,7 @@ static struct rnndelem *trydelem(struct rnndb *db, char *file, xmlNode *node) {
 			else
 				fprintf (stderr, "%s:%d: wrong access type \"%s\" for register\n", file, node->line, str);
 		} else if (!trytypeattr(db, file, node, attr, &res->typeinfo)) {
-			fprintf (stderr, "%s:%d: wrong attribute \"%s\" for register\n", file, node->line, attr->name);
-			db->estatus = 1;
+			rnn_err(db, "%s:%d: wrong attribute \"%s\" for register\n", file, node->line, attr->name);
 		}
 		attr = attr->next;
 	}
@@ -624,14 +609,12 @@ static struct rnndelem *trydelem(struct rnndb *db, char *file, xmlNode *node) {
 	while (chain) {
 		if (chain->type != XML_ELEMENT_NODE) {
 		} else if (!trytypetag(db, file, chain, &res->typeinfo) && !trytop(db, file, chain) && !trydoc(db, file, chain)) {
-			fprintf (stderr, "%s:%d: wrong tag in %s: <%s>\n", file, chain->line, node->name, chain->name);
-			db->estatus = 1;
+			rnn_err(db, "%s:%d: wrong tag in %s: <%s>\n", file, chain->line, node->name, chain->name);
 		}
 		chain = chain->next;
 	}
 	if (!res->name) {
-		fprintf (stderr, "%s:%d: nameless register\n", file, node->line);
-		db->estatus = 1;
+		rnn_err(db, "%s:%d: nameless register\n", file, node->line);
 		return 0;
 	} else {
 	}
@@ -646,14 +629,12 @@ static void parsegroup(struct rnndb *db, char *file, xmlNode *node) {
 		if (!strcmp(attr->name, "name")) {
 			name = getattrib(db, file, node->line, attr);
 		} else {
-			fprintf (stderr, "%s:%d: wrong attribute \"%s\" for group\n", file, node->line, attr->name);
-			db->estatus = 1;
+			rnn_err(db, "%s:%d: wrong attribute \"%s\" for group\n", file, node->line, attr->name);
 		}
 		attr = attr->next;
 	}
 	if (!name) {
-		fprintf (stderr, "%s:%d: nameless group\n", file, node->line);
-		db->estatus = 1;
+		rnn_err(db, "%s:%d: nameless group\n", file, node->line);
 		return;
 	}
 	struct rnngroup *cur = 0;
@@ -674,8 +655,7 @@ static void parsegroup(struct rnndb *db, char *file, xmlNode *node) {
 		} else if ((delem = trydelem(db, file, chain))) {
 			ADDARRAY(cur->subelems, delem);
 		} else if (!trytop(db, file, chain) && !trydoc(db, file, chain)) {
-			fprintf (stderr, "%s:%d: wrong tag in group: <%s>\n", file, chain->line, chain->name);
-			db->estatus = 1;
+			rnn_err(db, "%s:%d: wrong tag in group: <%s>\n", file, chain->line, chain->name);
 		}
 		chain = chain->next;
 	}
@@ -706,14 +686,12 @@ static void parsedomain(struct rnndb *db, char *file, xmlNode *node) {
 		} else if (!strcmp(attr->name, "variants")) {
 			variantsstr = strdup(getattrib(db, file, node->line, attr));
 		} else {
-			fprintf (stderr, "%s:%d: wrong attribute \"%s\" for domain\n", file, node->line, attr->name);
-			db->estatus = 1;
+			rnn_err(db, "%s:%d: wrong attribute \"%s\" for domain\n", file, node->line, attr->name);
 		}
 		attr = attr->next;
 	}
 	if (!name) {
-		fprintf (stderr, "%s:%d: nameless domain\n", file, node->line);
-		db->estatus = 1;
+		rnn_err(db, "%s:%d: nameless domain\n", file, node->line);
 		return;
 	}
 	struct rnndomain *cur = 0;
@@ -729,8 +707,7 @@ static void parsedomain(struct rnndb *db, char *file, xmlNode *node) {
 				cur->width != width ||
 				cur->bare != bare ||
 				(size && cur->size && size != cur->size)) {
-			fprintf (stderr, "%s:%d: merge fail for domain %s\n", file, node->line, node->name);
-			db->estatus = 1;
+			rnn_err(db, "%s:%d: merge fail for domain %s\n", file, node->line, node->name);
 		} else {
 			if (size)
 				cur->size = size;
@@ -754,8 +731,7 @@ static void parsedomain(struct rnndb *db, char *file, xmlNode *node) {
 		} else if ((delem = trydelem(db, file, chain))) {
 			ADDARRAY(cur->subelems, delem);
 		} else if (!trytop(db, file, chain) && !trydoc(db, file, chain)) {
-			fprintf (stderr, "%s:%d: wrong tag in domain: <%s>\n", file, chain->line, chain->name);
-			db->estatus = 1;
+			rnn_err(db, "%s:%d: wrong tag in domain: <%s>\n", file, chain->line, chain->name);
 		}
 		chain = chain->next;
 	}
@@ -770,8 +746,7 @@ static void parsecopyright(struct rnndb *db, char *file, xmlNode *node) {
 			if(!copyright->firstyear || firstyear < copyright->firstyear)
 				copyright->firstyear = firstyear;
 		} else {
-			fprintf (stderr, "%s:%d: wrong attribute \"%s\" for copyright\n", file, node->line, attr->name);
-			db->estatus = 1;
+			rnn_err(db, "%s:%d: wrong attribute \"%s\" for copyright\n", file, node->line, attr->name);
 		}
 		attr = attr->next;
 	}
@@ -797,8 +772,7 @@ static void parsecopyright(struct rnndb *db, char *file, xmlNode *node) {
 				else if (!strcmp(authorattr->name, "email"))
 					author->email = strdup(getattrib(db, file, chain->line, authorattr));
 				else {
-					fprintf (stderr, "%s:%d: wrong attribute \"%s\" for author\n", file, chain->line, authorattr->name);
-					db->estatus = 1;
+					rnn_err(db, "%s:%d: wrong attribute \"%s\" for author\n", file, chain->line, authorattr->name);
 				}
 				authorattr = authorattr->next;
 			}
@@ -811,26 +785,22 @@ static void parsecopyright(struct rnndb *db, char *file, xmlNode *node) {
 						if (!strcmp(nickattr->name, "name"))
 							nickname = strdup(getattrib(db, file, authorchild->line, nickattr));
 						else {
-							fprintf (stderr, "%s:%d: wrong attribute \"%s\" for nick\n", file, authorchild->line, nickattr->name);
-							db->estatus = 1;
+							rnn_err(db, "%s:%d: wrong attribute \"%s\" for nick\n", file, authorchild->line, nickattr->name);
 						}
 						nickattr = nickattr->next;
 					}
 					if(!nickname) {
-						fprintf (stderr, "%s:%d: missing \"name\" attribute for nick\n", file, authorchild->line);
-						db->estatus = 1;
+						rnn_err(db, "%s:%d: missing \"name\" attribute for nick\n", file, authorchild->line);
 					} else
 						ADDARRAY(author->nicknames, nickname);
 				} else {
-					fprintf (stderr, "%s:%d: wrong tag in author: <%s>\n", file, authorchild->line, authorchild->name);
-					db->estatus = 1;
+					rnn_err(db, "%s:%d: wrong tag in author: <%s>\n", file, authorchild->line, authorchild->name);
 				}
 				authorchild = authorchild->next;
 			}
 			ADDARRAY(copyright->authors, author);
 		} else {
-			fprintf (stderr, "%s:%d: wrong tag in copyright: <%s>\n", file, chain->line, chain->name);
-			db->estatus = 1;
+			rnn_err(db, "%s:%d: wrong tag in copyright: <%s>\n", file, chain->line, chain->name);
 		}
 		chain = chain->next;
 	}
@@ -859,14 +829,12 @@ static int trytop (struct rnndb *db, char *file, xmlNode *node) {
 			if (!strcmp(attr->name, "file")) {
 				subfile = getattrib(db, file, node->line, attr);
 			} else {
-				fprintf (stderr, "%s:%d: wrong attribute \"%s\" for import\n", file, node->line, attr->name);
-				db->estatus = 1;
+				rnn_err(db, "%s:%d: wrong attribute \"%s\" for import\n", file, node->line, attr->name);
 			}
 			attr = attr->next;
 		}
 		if (!subfile) {
-			fprintf (stderr, "%s:%d: missing \"file\" attribute for import\n", file, node->line);
-			db->estatus = 1;
+			rnn_err(db, "%s:%d: missing \"file\" attribute for import\n", file, node->line);
 		} else {
 			rnn_parsefile(db, subfile);
 		}
@@ -913,23 +881,20 @@ void rnn_parsefile (struct rnndb *db, char *file_orig) {
 	ADDARRAY(db->files, fname);
 	xmlDocPtr doc = xmlParseFile(fname);
 	if (!doc) {
-		fprintf (stderr, "%s: couldn't open database file. Please set the env var RNN_PATH.\n", fname);
-		db->estatus = 1;
+		rnn_err(db, "%s: couldn't open database file. Please set the env var RNN_PATH.\n", fname);
 		return;
 	}
 	xmlNode *root = doc->children;
 	while (root) {
 		if (root->type != XML_ELEMENT_NODE) {
 		} else if (strcmp(root->name, "database")) {
-			fprintf (stderr, "%s:%d: wrong top-level tag <%s>\n", fname, root->line, root->name);
-			db->estatus = 1;
+			rnn_err(db, "%s:%d: wrong top-level tag <%s>\n", fname, root->line, root->name);
 		} else {
 			xmlNode *chain = root->children;
 			while (chain) {
 				if (chain->type != XML_ELEMENT_NODE) {
 				} else if (!trytop(db, fname, chain) && !trydoc(db, fname, chain)) {
-					fprintf (stderr, "%s:%d: wrong tag in database: <%s>\n", fname, chain->line, chain->name);
-					db->estatus = 1;
+					rnn_err(db, "%s:%d: wrong tag in database: <%s>\n", fname, chain->line, chain->name);
 				}
 				chain = chain->next;
 			}
@@ -1014,8 +979,7 @@ static int findvidx (struct rnndb *db, struct rnnenum *en, char *name) {
 	for (i = 0; i < en->valsnum; i++)
 		if (!strcmp(en->vals[i]->name, name))
 			return i;
-	fprintf (stderr, "Cannot find variant %s in enum %s!\n", name, en->name);
-	db->estatus = 1;
+	rnn_err(db, "Cannot find variant %s in enum %s!\n", name, en->name);
 	return -1;
 }
 
@@ -1040,8 +1004,7 @@ static void prepvarinfo (struct rnndb *db, char *what, struct rnnvarinfo *vi, st
 	if (vi->variantsstr) {
 		char *vars = vi->variantsstr;
 		if (!varset) {
-			fprintf (stderr, "%s: tried to use variants without active varset!\n", what);
-			db->estatus = 1;
+			rnn_err(db, "%s: tried to use variants without active varset!\n", what);
 			return;
 		}
 		struct rnnvarset *vs = 0;
@@ -1190,8 +1153,7 @@ static void preptypeinfo(struct rnndb *db, struct rnntypeinfo *ti, char *prefix,
 			ti->type = RNN_TTYPE_HEX;
 		} else {
 			ti->type = RNN_TTYPE_HEX;
-			fprintf (stderr, "%s: unknown type %s\n", prefix, ti->name);
-			db->estatus = 1;
+			rnn_err(db, "%s: unknown type %s\n", prefix, ti->name);
 		}
 	} else if (ti->bitfieldsnum) {
 		ti->name = "bitfield";
@@ -1207,8 +1169,7 @@ static void preptypeinfo(struct rnndb *db, struct rnntypeinfo *ti, char *prefix,
 		ti->type = RNN_TTYPE_HEX;
 	}
 	if (ti->addvariant && ti->type != RNN_TTYPE_ENUM) {
-		fprintf (stderr, "%s: addvariant specified on non-enum type %s\n", prefix, ti->name);
-		db->estatus = 1;
+		rnn_err(db, "%s: addvariant specified on non-enum type %s\n", prefix, ti->name);
 	}
 	for (i = 0; i < ti->bitfieldsnum; i++)
 		prepbitfield(db,  ti->bitfields[i], prefix, vi);
@@ -1239,8 +1200,7 @@ static void prepdelem(struct rnndb *db, struct rnndelem *elem, char *prefix, str
 			for (i = 0; i < gr->subelemsnum; i++)
 				ADDARRAY(elem->subelems, copydelem(gr->subelems[i], elem->file));
 		} else {
-			fprintf (stderr, "group %s not found!\n", elem->name);
-			db->estatus = 1;
+			rnn_err(db, "group %s not found!\n", elem->name);
 		}
 		elem->type = RNN_ETYPE_STRIPE;
 		elem->length = 1;
@@ -1253,8 +1213,7 @@ static void prepdelem(struct rnndb *db, struct rnndelem *elem, char *prefix, str
 		return;
 	if (elem->length != 1 && !elem->stride) {
 		if (elem->type != RNN_ETYPE_REG) {
-			fprintf (stderr, "%s has non-1 length, but no stride!\n", elem->fullname);
-			db->estatus = 1;
+			rnn_err(db, "%s has non-1 length, but no stride!\n", elem->fullname);
 		} else {
 			elem->stride = elem->width/width;
 		}

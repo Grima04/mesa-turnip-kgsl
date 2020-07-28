@@ -34,7 +34,10 @@ libfreedreno_rnn_files = files(
 libfreedreno_rnn = static_library(
   'freedreno_rnn',
   libfreedreno_rnn_files,
-  include_directories: [],
+  include_directories: [
+    inc_src,
+    inc_include,
+  ],
   c_args : [
     no_override_init_args,
     '-DSOURCE_DIR="' + meson.source_root() + '"',
