@@ -203,6 +203,7 @@ static int trytypeattr (struct rnndb *db, char *file, xmlNode *node, xmlAttr *at
 		return 1;
 	} else if (!strcmp(attr->name, "addvariant")) {
 		ti->addvariant = getboolattrib(db, file, node->line, attr);
+		return 1;
 	}
 	return 0;
 }
