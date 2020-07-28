@@ -16,7 +16,6 @@ apt-get -y install \
 	bison \
 	ccache \
 	cmake \
-	cpio \
 	debootstrap \
 	fastboot \
 	flex \

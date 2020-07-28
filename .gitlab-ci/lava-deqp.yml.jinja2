@@ -1,5 +1,7 @@
 job_name: mesa-deqp-{{ deqp_version }}-{{ gpu_version }} {{ pipeline_info }}
 device_type: {{ device_type }}
+context:
+  extra_nfsroot_args: " init=/init rootwait"
 timeouts:
   job:
     minutes: 40
@@ -27,8 +29,8 @@ actions:
 {% if kernel_image_type %}
       {{ kernel_image_type }}
 {% endif %}
-    ramdisk:
-      url: {{ base_artifacts_url }}/lava-rootfs.cpio.gz
+    nfsrootfs:
+      url: {{ base_artifacts_url }}/lava-rootfs.tgz
       compression: gz
 {% if dtb %}
     dtb:
@@ -48,7 +50,7 @@ actions:
       download_command: wget -S --progress=dot:giga
       unpack_command: tar -C / -xzf
 {% else %}
-    commands: ramdisk
+    commands: nfs
 {% endif %}
     prompts:
       - 'lava-shell:'

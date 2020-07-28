@@ -322,7 +322,7 @@ arm_build:
     - .fdo.container-build@debian@arm64v8
     - .container
   variables:
-    FDO_DISTRIBUTION_TAG: &arm_build "2020-07-28-libdrm"
+    FDO_DISTRIBUTION_TAG: &arm_build "2020-08-04-nfs-2"
 
 .use-arm_build:
   variables:
@@ -355,7 +355,7 @@ arm64_test:
   extends:
     - .use-arm_test-base
   variables:
-    FDO_DISTRIBUTION_TAG: &arm64_test "2020-08-04-ramdisk-fix"
+    FDO_DISTRIBUTION_TAG: &arm64_test "2020-08-04-nfs-2"
 
 .use-arm64_test:
   variables:

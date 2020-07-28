@@ -52,7 +52,6 @@ apt-get install -y automake \
                    git \
                    bc \
                    cmake \
-                   cpio \
                    wget \
                    debootstrap \
                    libboost-dev \
@@ -180,7 +179,7 @@ rm /lava-files/rootfs-${DEBIAN_ARCH}/create-rootfs.sh
 rm /lava-files/rootfs-${DEBIAN_ARCH}/llvm-snapshot.gpg.key
 du -ah /lava-files/rootfs-${DEBIAN_ARCH} | sort -h | tail -100
 pushd /lava-files/rootfs-${DEBIAN_ARCH}
-  find -H  |  cpio -H newc -o | gzip -c - > /lava-files/lava-rootfs.cpio.gz
+  tar cvzf /lava-files/lava-rootfs.tgz .
 popd
 
 if [ ${DEBIAN_ARCH} = arm64 ]; then
@@ -222,7 +221,7 @@ fi
 ############### Upload the files!
 if [ -n "$UPLOAD_FOR_LAVA" ]; then
     ci-fairy minio login $CI_JOB_JWT
-    FILES_TO_UPLOAD="lava-rootfs.cpio.gz \
+    FILES_TO_UPLOAD="lava-rootfs.tgz \
                      $KERNEL_IMAGE_NAME"
 
     if [[ -n $DEVICE_TREES ]]; then

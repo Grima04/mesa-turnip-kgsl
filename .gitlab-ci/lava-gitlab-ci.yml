@@ -1,5 +1,5 @@
 variables:
-  DISTRIBUTION_TAG: "2020-08-04-ramdisk-fix"
+  DISTRIBUTION_TAG: "2020-08-03-nfs-2"
 
 .kernel+rootfs:
   stage: container-2
