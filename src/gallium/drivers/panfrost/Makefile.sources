@@ -19,6 +19,8 @@ C_SOURCES := \
 	pan_job.c \
 	pan_job.h \
 	pan_mfbd.c \
+	pan_partial_update.c \
+	pan_partial_update.h \
 	pan_public.h \
 	pan_resource.c \
 	pan_resource.h \
