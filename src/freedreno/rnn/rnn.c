@@ -467,7 +467,7 @@ static struct rnndelem *trydelem(struct rnndb *db, char *file, xmlNode *node) {
 		res->type = RNN_ETYPE_USE_GROUP;
 		xmlAttr *attr = node->properties;
 		while (attr) {
-			if (!strcmp(attr->name, "name")) {
+			if (!strcmp(attr->name, "ref")) {
 				res->name = strdup(getattrib(db, file, node->line, attr));
 			} else {
 				rnn_err(db, "%s:%d: wrong attribute \"%s\" for %s\n", file, node->line, attr->name, node->name);

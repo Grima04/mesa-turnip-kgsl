@@ -210,7 +210,7 @@ xsi:schemaLocation="http://nouveau.freedesktop.org/ rules-ng.xsd">
 		<reg32 offset="0x0200" name="CSC_CONFIG"/>
 
 		<array offset="0x2000" name="CSC" length="1" stride="0x700">
-			<use-group name="mdp4_csc"/>
+			<use-group ref="mdp4_csc"/>
 		</array>
 	</array>
 
@@ -265,7 +265,7 @@ xsi:schemaLocation="http://nouveau.freedesktop.org/ rules-ng.xsd">
 
 		<reg32 offset="0x1004" name="FETCH_CONFIG"/>
 		<array offset="0x3000" name="CSC" length="1" stride="0x700">
-			<use-group name="mdp4_csc"/>
+			<use-group ref="mdp4_csc"/>
 		</array>
 	</array>
 
@@ -331,7 +331,7 @@ xsi:schemaLocation="http://nouveau.freedesktop.org/ rules-ng.xsd">
 		<reg32 offset="0x1008" name="SOLID_COLOR"/>
 
 		<array offset="0x4000" name="CSC" length="1" stride="0x700">
-			<use-group name="mdp4_csc"/>
+			<use-group ref="mdp4_csc"/>
 		</array>
 	</array>
 
