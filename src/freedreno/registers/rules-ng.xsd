@@ -21,6 +21,7 @@
 
 	<element name="database"       type="rng:databaseType" />
 	<element name="import"         type="rng:importType" />
+	<element name="copyright"      type="rng:copyrightType" />
 	<element name="domain"         type="rng:domainType" />
 	<element name="group"          type="rng:groupType" />
 	<element name="use-group"      type="rng:refType" />
@@ -34,7 +35,12 @@
 	<element name="bitfield"       type="rng:bitfieldType" />
 	<element name="enum"           type="rng:enumType" />
 	<element name="value"          type="rng:valueType" />
-	
+
+	<!-- Copyright elements -->
+	<element name="author"         type="rng:authorType" />
+	<element name="nick"           type="rng:nickType" />
+	<element name="license"        type="rng:docType" />
+
 	<!-- Documentation elements -->
 	
 	<!-- FIXME: allowed only one  per parent element -->
@@ -49,7 +55,27 @@
 	<element name="ol"   type="rng:listType" />
 	<element name="li"   type="rng:listitemType" />
 
+	<!-- Copyright element types -->
 
+	<complexType name="authorType" mixed="true">
+		<annotation>
+			<documentation>
+				register database author
+			</documentation>
+		</annotation>
+		<choice minOccurs="0" maxOccurs="unbounded">
+			<element ref="rng:nick" />
+		</choice>
+		<attribute name="name" type="string" use="required" />
+		<attribute name="email" type="string" use="required" />
+	</complexType>
+
+	<complexType name="nickType">
+		<annotation>
+			<documentation>nickType</documentation>
+		</annotation>
+		<attribute name="name" type="string" use="required" />
+	</complexType>
 
 	<!-- Database element types -->
 
@@ -68,6 +94,19 @@
 			<documentation>importType</documentation>
 		</annotation>
 		<attribute name="file" type="string" use="required" />
+	</complexType>
+
+	<complexType name="copyrightType">
+		<annotation>
+			<documentation>copyrightType</documentation>
+		</annotation>
+		<choice minOccurs="0" maxOccurs="unbounded">
+			<group ref="rng:docGroup" />
+			<group ref="rng:topGroup" />
+			<element ref="rng:author" />
+			<element ref="rng:license" />
+		</choice>
+		<attribute name="year" type="nonNegativeInteger" use="optional" />
 	</complexType>
 
 	<complexType name="domainType">
@@ -364,6 +403,7 @@
 
 	<group name="topGroup">
 		<choice>
+			<element ref="rng:copyright" />
 			<element ref="rng:domain" />
 			<element ref="rng:enum" />
 			<element ref="rng:group" />
