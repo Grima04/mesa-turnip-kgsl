@@ -574,6 +574,30 @@ meson-classic:
       -D tools=all
       -D werror=true
 
+meson-android:
+  extends: .meson-build
+  variables:
+    UNWIND: "disabled"
+    DRI_LOADERS: >
+      -D glx=disabled
+      -D gbm=disabled
+      -D egl=enabled
+      -D platforms=android
+    GALLIUM_DRIVERS: freedreno
+    VULKAN_DRIVERS: freedreno,intel,amd
+    EXTRA_OPTION: >
+      -D android-stub=true
+      -D werror=true
+    GALLIUM_ST: >
+      -D dri3=disabled
+      -D gallium-vdpau=disabled
+      -D gallium-xvmc=disabled
+      -D gallium-omx=disabled
+      -D gallium-va=disabled
+      -D gallium-xa=disabled
+      -D gallium-nine=false
+      -D gallium-opencl=disabled
+
 .meson-cross:
   extends:
     - .meson-build
