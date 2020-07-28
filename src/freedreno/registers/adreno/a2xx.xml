@@ -1762,10 +1762,10 @@ xsi:schemaLocation="http://nouveau.freedesktop.org/ rules-ng.xsd">
 		<value name="SQ_TEX_NUM_FORMAT_INT" value="1"/>
 	</enum>
 	<enum name="sq_tex_type">
-	<value name="SQ_TEX_TYPE_0" value="0"/>
-	<value name="SQ_TEX_TYPE_1" value="1"/>
-	<value name="SQ_TEX_TYPE_2" value="2"/>
-	<value name="SQ_TEX_TYPE_3" value="3"/>
+		<value name="SQ_TEX_TYPE_0" value="0"/>
+		<value name="SQ_TEX_TYPE_1" value="1"/>
+		<value name="SQ_TEX_TYPE_2" value="2"/>
+		<value name="SQ_TEX_TYPE_3" value="3"/>
 	</enum>
 	<reg32 offset="0" name="0">
 		<bitfield name="TYPE" low="0" high="1" type="sq_tex_type"/>
@@ -1774,8 +1774,8 @@ xsi:schemaLocation="http://nouveau.freedesktop.org/ rules-ng.xsd">
 		<bitfield name="SIGN_Z" low="6" high="7" type="sq_tex_sign"/>
 		<bitfield name="SIGN_W" low="8" high="9" type="sq_tex_sign"/>
 		<bitfield name="CLAMP_X" low="10" high="12" type="sq_tex_clamp"/>
-		<bitfield name="CLAMP_Y" low="13" high="15" type="sq_tex_clamp"/>"
-		<bitfield name="CLAMP_Z" low="16" high="18" type="sq_tex_clamp"/>"
+		<bitfield name="CLAMP_Y" low="13" high="15" type="sq_tex_clamp"/>
+		<bitfield name="CLAMP_Z" low="16" high="18" type="sq_tex_clamp"/>
 		<bitfield name="PITCH" low="22" high="30" shr="5" type="uint"/>
 		<bitfield name="TILED" pos="31" type="boolean"/>
 	</reg32>
