@@ -112,7 +112,7 @@ The ``Fixes:`` tag
 If a patch addresses a issue introduced with earlier commit, that
 should be noted in the commit message. For example::
 
-    Fixes: d7b3707c612 "util/disk_cache: use stat() to check if entry is a directory"
+    Fixes: d7b3707c612 ("util/disk_cache: use stat() to check if entry is a directory")
 
 You can produce those fixes lines by running this command once::
 
