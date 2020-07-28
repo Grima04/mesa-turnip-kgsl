@@ -149,7 +149,10 @@
 			<group ref="rng:regarrayGroup" />
 		</choice>
 		<attribute name="name" type="NMTOKEN" use="optional" />
-		<attribute name="offset" type="rng:HexOrNumber" use="required" />
+		<attribute name="offset" type="rng:HexOrNumber" use="optional" />
+		<attribute name="offsets" type="string" use="optional"/>
+		<attribute name="doffsets" type="string" use="optional"/>
+		<attribute name="index" type="NMTOKENS" use="optional"/>
 		<attribute name="stride" type="rng:HexOrNumber" use="required" />
 		<attribute name="length" type="rng:HexOrNumber" use="required" />
 		<attribute name="varset" type="NMTOKEN" use="optional" />
