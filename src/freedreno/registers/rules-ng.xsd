@@ -148,7 +148,7 @@
 			<group ref="rng:topGroup" />
 			<group ref="rng:regarrayGroup" />
 		</choice>
-		<attribute name="name" type="NMTOKEN" use="required" />
+		<attribute name="name" type="NMTOKEN" use="optional" />
 		<attribute name="offset" type="rng:HexOrNumber" use="required" />
 		<attribute name="stride" type="rng:HexOrNumber" use="required" />
 		<attribute name="length" type="rng:HexOrNumber" use="required" />

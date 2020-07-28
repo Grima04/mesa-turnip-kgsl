@@ -833,7 +833,7 @@ opcode: CP_LOAD_STATE4 (30) (4 dwords)
 </domain>
 
 <domain name="CP_SET_DRAW_STATE" width="32" varset="chip" variants="A4XX-">
-	<array offset="0" name="" stride="3" length="100">
+	<array offset="0" stride="3" length="100">
 		<reg32 offset="0" name="0">
 			<bitfield name="COUNT" low="0" high="15" type="uint"/>
 			<bitfield name="DIRTY" pos="16" type="boolean"/>
@@ -1497,7 +1497,7 @@ opcode: CP_LOAD_STATE4 (30) (4 dwords)
 		<value value="3" name="NON_PRIV_SAVE_ADDR"/>
 		<value value="4" name="COUNTER"/>
 	</enum>
-	<array offset="0" name="" stride="3" length="100">
+	<array offset="0" stride="3" length="100">
 		<reg32 offset="0" name="0">
 			<bitfield name="PSEUDO_REG" low="0" high="2" type="pseudo_reg"/>
 		</reg32>

@@ -227,7 +227,10 @@ class Bitset(object):
 
 class Array(object):
 	def __init__(self, attrs, domain):
-		self.name = attrs["name"]
+		if "name" in attrs:
+			self.name = attrs["name"]
+		else:
+			self.name = ""
 		self.domain = domain
 		self.offset = int(attrs["offset"], 0)
 		self.stride = int(attrs["stride"], 0)

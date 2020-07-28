@@ -481,6 +481,8 @@ static struct rnndelem *trydelem(struct rnndb *db, char *file, xmlNode *node) {
 		return res;
 	} else if (!strcmp(node->name, "stripe") || !strcmp(node->name, "array")) {
 		struct rnndelem *res = calloc(sizeof *res, 1);
+		if (!strcmp(node->name, "array"))
+			res->name = "";
 		res->type = (strcmp(node->name, "stripe")?RNN_ETYPE_ARRAY:RNN_ETYPE_STRIPE);
 		res->length = 1;
 		res->file = file;
