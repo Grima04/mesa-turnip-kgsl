@@ -11720,7 +11720,7 @@ void select_gs_copy_shader(Program *program, struct nir_shader *gs_shader,
 
    Temp vtx_offset = bld.vop2(aco_opcode::v_lshlrev_b32, bld.def(v1), Operand(2u), get_arg(&ctx, ctx.args->ac.vertex_id));
 
-   std::stack<Block> endif_blocks;
+   std::stack<if_context> if_contexts;
 
    for (unsigned stream = 0; stream < 4; stream++) {
       if (stream_id.isConstant() && stream != stream_id.constantValue())
@@ -11732,21 +11732,11 @@ void select_gs_copy_shader(Program *program, struct nir_shader *gs_shader,
 
       memset(ctx.outputs.mask, 0, sizeof(ctx.outputs.mask));
 
-      unsigned BB_if_idx = ctx.block->index;
-      Block BB_endif = Block();
       if (!stream_id.isConstant()) {
-         /* begin IF */
          Temp cond = bld.sopc(aco_opcode::s_cmp_eq_u32, bld.def(s1, scc), stream_id, Operand(stream));
-         append_logical_end(ctx.block);
-         ctx.block->kind |= block_kind_uniform;
-         bld.branch(aco_opcode::p_cbranch_z, bld.hint_vcc(bld.def(s2)), cond);
-
-         BB_endif.kind |= ctx.block->kind & block_kind_top_level;
-
-         ctx.block = ctx.program->create_and_insert_block();
-         add_edge(BB_if_idx, ctx.block);
+         if_contexts.emplace();
+         begin_uniform_if_then(&ctx, &if_contexts.top(), cond);
          bld.reset(ctx.block);
-         append_logical_start(ctx.block);
       }
 
       unsigned offset = 0;
@@ -11798,45 +11788,21 @@ void select_gs_copy_shader(Program *program, struct nir_shader *gs_shader,
       }
 
       if (!stream_id.isConstant()) {
-         append_logical_end(ctx.block);
-
-         /* branch from then block to endif block */
-         bld.branch(aco_opcode::p_branch, bld.hint_vcc(bld.def(s2)));
-         add_edge(ctx.block->index, &BB_endif);
-         ctx.block->kind |= block_kind_uniform;
-
-         /* emit else block */
-         ctx.block = ctx.program->create_and_insert_block();
-         add_edge(BB_if_idx, ctx.block);
+         begin_uniform_if_else(&ctx, &if_contexts.top());
          bld.reset(ctx.block);
-         append_logical_start(ctx.block);
-
-         endif_blocks.push(std::move(BB_endif));
       }
    }
 
-   while (!endif_blocks.empty()) {
-      Block BB_endif = std::move(endif_blocks.top());
-      endif_blocks.pop();
-
-      Block *BB_else = ctx.block;
-
-      append_logical_end(BB_else);
-      /* branch from else block to endif block */
-      bld.branch(aco_opcode::p_branch, bld.hint_vcc(bld.def(s2)));
-      add_edge(BB_else->index, &BB_endif);
-      BB_else->kind |= block_kind_uniform;
-
-      /** emit endif merge block */
-      ctx.block = program->insert_block(std::move(BB_endif));
-      bld.reset(ctx.block);
-      append_logical_start(ctx.block);
+   while (!if_contexts.empty()) {
+      end_uniform_if(&ctx, &if_contexts.top());
+      if_contexts.pop();
    }
 
    program->config->float_mode = program->blocks[0].fp_mode.val;
 
    append_logical_end(ctx.block);
    ctx.block->kind |= block_kind_uniform;
+   bld.reset(ctx.block);
    bld.sopp(aco_opcode::s_endpgm);
 
    cleanup_cfg(program);
