@@ -2439,7 +2439,7 @@ glsl_type::get_explicit_type_for_size_align(glsl_type_size_align_func type_info,
       *size = stride * (this->length - 1) + elem_size;
       *alignment = elem_align;
       return glsl_type::get_array_instance(explicit_element, this->length, stride);
-   } else if (this->is_struct()) {
+   } else if (this->is_struct() || this->is_interface()) {
       struct glsl_struct_field *fields = (struct glsl_struct_field *)
          malloc(sizeof(struct glsl_struct_field) * this->length);
 
@@ -2458,7 +2458,15 @@ glsl_type::get_explicit_type_for_size_align(glsl_type_size_align_func type_info,
          *alignment = MAX2(*alignment, field_align);
       }
 
-      const glsl_type *type = glsl_type::get_struct_instance(fields, this->length, this->name, false);
+      const glsl_type *type;
+      if (this->is_struct()) {
+         type = get_struct_instance(fields, this->length, this->name, false);
+      } else {
+         type = get_interface_instance(fields, this->length,
+                                       (enum glsl_interface_packing)this->interface_packing,
+                                       this->interface_row_major,
+                                       this->name);
+      }
       free(fields);
       return type;
    } else if (this->is_matrix()) {
