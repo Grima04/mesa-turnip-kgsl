@@ -21,6 +21,7 @@
  * SOFTWARE.
  */
 
+#include <err.h>
 #include <stdint.h>
 #include <stdbool.h>
 #include <unistd.h>
@@ -416,6 +417,8 @@ int main(int argc, char **argv)
 	ctx = rnndec_newcontext(db);
 
 	rnn_parsefile(db, "adreno.xml");
+	if (db->estatus)
+		errx(db->estatus, "failed to parse register database");
 	dom[0] = rnn_finddomain(db, name);
 	dom[1] = rnn_finddomain(db, "AXXX");
 	control_regs = rnn_finddomain(db, control_reg_name);

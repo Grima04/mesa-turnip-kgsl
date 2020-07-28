@@ -26,6 +26,7 @@
  *    Rob Clark <robclark@freedesktop.org>
  */
 
+#include <err.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -87,6 +88,8 @@ static void init(struct rnn *rnn, char *file, char *domain)
 	rnndec_varadd(rnn->vc, "chip", domain);
 	if (rnn->vc != rnn->vc_nocolor)
 		rnndec_varadd(rnn->vc_nocolor, "chip", domain);
+	if (rnn->db->estatus)
+		errx(rnn->db->estatus, "failed to parse register database");
 }
 
 void rnn_load_file(struct rnn *rnn, char *file, char *domain)
