@@ -6143,7 +6143,16 @@ radv_SignalSemaphore(VkDevice _device,
 		radv_timeline_trigger_waiters_locked(&part->timeline, &processing_list);
 		pthread_mutex_unlock(&part->timeline.mutex);
 
-		return radv_process_submissions(&processing_list);
+		VkResult result = radv_process_submissions(&processing_list);
+
+		/* This needs to happen after radv_process_submissions, so
+		 * that any submitted submissions that are now unblocked get
+		 * processed before we wake the application. This way we
+		 * ensure that any binary semaphores that are now unblocked
+		 * are usable by the application. */
+		pthread_cond_broadcast(&device->timeline_cond);
+
+		return result;
 	}
 	case RADV_SEMAPHORE_TIMELINE_SYNCOBJ: {
 		part->timeline_syncobj.max_point = MAX2(part->timeline_syncobj.max_point, pSignalInfo->value);
