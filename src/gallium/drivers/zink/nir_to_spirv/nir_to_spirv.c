@@ -45,6 +45,7 @@ struct ntv_context {
    size_t num_ubos;
    SpvId image_types[PIPE_MAX_SAMPLERS];
    SpvId samplers[PIPE_MAX_SAMPLERS];
+   unsigned char sampler_array_sizes[PIPE_MAX_SAMPLERS];
    unsigned samplers_used : PIPE_MAX_SAMPLERS;
    SpvId entry_ifaces[PIPE_MAX_SHADER_INPUTS * 4 + PIPE_MAX_SHADER_OUTPUTS * 4];
    size_t num_entry_ifaces;
@@ -582,58 +583,36 @@ emit_sampler(struct ntv_context *ctx, struct nir_variable *var)
 
    SpvId sampled_type = spirv_builder_type_sampled_image(&ctx->builder,
                                                          image_type);
+
+   int index = var->data.binding;
+   assert(!(ctx->samplers_used & (1 << index)));
+   assert(!ctx->image_types[index]);
+
+   if (glsl_type_is_array(var->type)) {
+      sampled_type = spirv_builder_type_array(&ctx->builder, sampled_type,
+                                              emit_uint_const(ctx, 32, glsl_get_aoa_size(var->type)));
+      spirv_builder_emit_array_stride(&ctx->builder, sampled_type, sizeof(void*));
+      ctx->sampler_array_sizes[index] = glsl_get_aoa_size(var->type);
+   }
    SpvId pointer_type = spirv_builder_type_pointer(&ctx->builder,
                                                    SpvStorageClassUniformConstant,
                                                    sampled_type);
 
-   if (glsl_type_is_array(var->type)) {
-      /* ARB_arrays_of_arrays from GLSL 1.30 allows nesting of arrays, so we just
-       * use the total array size if we encounter a nested array
-       */
-      unsigned size = glsl_get_aoa_size(var->type);
-      for (int i = 0; i < size; ++i) {
-         SpvId var_id = spirv_builder_emit_var(&ctx->builder, pointer_type,
-                                               SpvStorageClassUniformConstant);
+   SpvId var_id = spirv_builder_emit_var(&ctx->builder, pointer_type,
+                                         SpvStorageClassUniformConstant);
 
-         if (var->name) {
-            char element_name[100];
-            snprintf(element_name, sizeof(element_name), "%s_%d", var->name, i);
-            spirv_builder_emit_name(&ctx->builder, var_id, var->name);
-         }
+   if (var->name)
+      spirv_builder_emit_name(&ctx->builder, var_id, var->name);
 
-         int index = var->data.binding + i;
-         assert(!(ctx->samplers_used & (1 << index)));
-         assert(!ctx->image_types[index]);
-         ctx->image_types[index] = image_type;
-         ctx->samplers[index] = var_id;
-         ctx->samplers_used |= 1 << index;
+   ctx->image_types[index] = image_type;
+   ctx->samplers[index] = var_id;
+   ctx->samplers_used |= 1 << index;
 
-         spirv_builder_emit_descriptor_set(&ctx->builder, var_id, 0);
-         int binding = zink_binding(ctx->stage,
-                                    zink_sampler_type(glsl_without_array(var->type)),
-                                    var->data.binding + i);
-         spirv_builder_emit_binding(&ctx->builder, var_id, binding);
-      }
-   } else {
-      SpvId var_id = spirv_builder_emit_var(&ctx->builder, pointer_type,
-                                            SpvStorageClassUniformConstant);
-
-      if (var->name)
-         spirv_builder_emit_name(&ctx->builder, var_id, var->name);
-
-      int index = var->data.binding;
-      assert(!(ctx->samplers_used & (1 << index)));
-      assert(!ctx->image_types[index]);
-      ctx->image_types[index] = image_type;
-      ctx->samplers[index] = var_id;
-      ctx->samplers_used |= 1 << index;
-
-      spirv_builder_emit_descriptor_set(&ctx->builder, var_id, 0);
-      int binding = zink_binding(ctx->stage,
-                                 zink_sampler_type(var->type),
-                                 var->data.binding);
-      spirv_builder_emit_binding(&ctx->builder, var_id, binding);
-   }
+   spirv_builder_emit_descriptor_set(&ctx->builder, var_id, 0);
+   int binding = zink_binding(ctx->stage,
+                              zink_sampler_type(type),
+                              var->data.binding);
+   spirv_builder_emit_binding(&ctx->builder, var_id, binding);
 }
 
 static void
@@ -2153,7 +2132,7 @@ emit_tex(struct ntv_context *ctx, nir_tex_instr *tex)
    assert(tex->texture_index == tex->sampler_index);
 
    SpvId coord = 0, proj = 0, bias = 0, lod = 0, dref = 0, dx = 0, dy = 0,
-         offset = 0, sample = 0;
+         offset = 0, sample = 0, tex_offset = 0;
    unsigned coord_components = 0, coord_bitsize = 0, offset_components = 0;
    for (unsigned i = 0; i < tex->num_srcs; i++) {
       switch (tex->src[i].src_type) {
@@ -2216,6 +2195,14 @@ emit_tex(struct ntv_context *ctx, nir_tex_instr *tex)
          assert(dy != 0);
          break;
 
+      case nir_tex_src_texture_offset:
+         tex_offset = get_src_int(ctx, &tex->src[i].src);
+         break;
+
+      case nir_tex_src_sampler_offset:
+         /* don't care */
+         break;
+
       default:
          fprintf(stderr, "texture source: %d\n", tex->src[i].src_type);
          unreachable("unknown texture source");
@@ -2227,13 +2214,35 @@ emit_tex(struct ntv_context *ctx, nir_tex_instr *tex)
       assert(lod != 0);
    }
 
-   SpvId image_type = ctx->image_types[tex->texture_index];
+   unsigned texture_index = tex->texture_index;
+   if (!tex_offset) {
+      /* convert constant index back to base + offset */
+      unsigned last_sampler = util_last_bit(ctx->samplers_used);
+      for (unsigned i = 0; i < last_sampler; i++) {
+         if (!ctx->sampler_array_sizes[i]) {
+            if (i == texture_index)
+               /* this is a non-array sampler, so we don't need an access chain */
+               break;
+         } else if (texture_index <= i + ctx->sampler_array_sizes[i] - 1) {
+            /* this is the first member of a sampler array */
+            tex_offset = emit_uint_const(ctx, 32, texture_index - i);
+            texture_index = i;
+            break;
+         }
+      }
+   }
+   SpvId image_type = ctx->image_types[texture_index];
+   assert(image_type);
    SpvId sampled_type = spirv_builder_type_sampled_image(&ctx->builder,
                                                          image_type);
-
-   assert(ctx->samplers_used & (1u << tex->texture_index));
-   SpvId load = spirv_builder_emit_load(&ctx->builder, sampled_type,
-                                        ctx->samplers[tex->texture_index]);
+   assert(sampled_type);
+   assert(ctx->samplers_used & (1u << texture_index));
+   SpvId sampler_id = ctx->samplers[texture_index];
+   if (tex_offset) {
+       SpvId ptr = spirv_builder_type_pointer(&ctx->builder, SpvStorageClassUniformConstant, sampled_type);
+       sampler_id = spirv_builder_emit_access_chain(&ctx->builder, ptr, sampler_id, &tex_offset, 1);
+   }
+   SpvId load = spirv_builder_emit_load(&ctx->builder, sampled_type, sampler_id);
 
    SpvId dest_type = get_dest_type(ctx, &tex->dest, tex->dest_type);
 

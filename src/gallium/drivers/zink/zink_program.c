@@ -116,7 +116,7 @@ create_desc_set_layout(VkDevice dev,
          assert(num_bindings < ARRAY_SIZE(bindings));
          bindings[num_bindings].binding = shader->bindings[j].binding;
          bindings[num_bindings].descriptorType = shader->bindings[j].type;
-         bindings[num_bindings].descriptorCount = 1;
+         bindings[num_bindings].descriptorCount = shader->bindings[j].size;
          bindings[num_bindings].stageFlags = stage_flags;
          bindings[num_bindings].pImmutableSamplers = NULL;
          ++num_bindings;

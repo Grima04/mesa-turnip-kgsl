@@ -337,35 +337,39 @@ zink_draw_vbo(struct pipe_context *pctx,
             wds[num_wds].pBufferInfo = buffer_infos + num_buffer_info;
             ++num_buffer_info;
          } else {
-            struct pipe_sampler_view *psampler_view = ctx->image_views[i][index];
-            struct zink_sampler_view *sampler_view = zink_sampler_view(psampler_view);
+            for (unsigned k = 0; k < shader->bindings[j].size; k++) {
+               struct pipe_sampler_view *psampler_view = ctx->image_views[i][index + k];
+               struct zink_sampler_view *sampler_view = zink_sampler_view(psampler_view);
 
-            struct zink_resource *res = psampler_view ? zink_resource(psampler_view->texture) : NULL;
-            write_desc_resources[num_wds] = res;
-            if (!res) {
-               /* if we're hitting this assert often, we can probably just throw a junk buffer in since
-                * the results of this codepath are undefined in ARB_texture_buffer_object spec
-                */
-               assert(screen->info.rb2_feats.nullDescriptor);
-               if (shader->bindings[j].type == VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER)
-                  wds[num_wds].pTexelBufferView = &buffer_view[0];
+               struct zink_resource *res = psampler_view ? zink_resource(psampler_view->texture) : NULL;
+               write_desc_resources[num_wds] = res;
+               if (!res) {
+                  /* if we're hitting this assert often, we can probably just throw a junk buffer in since
+                   * the results of this codepath are undefined in ARB_texture_buffer_object spec
+                   */
+                  assert(screen->info.rb2_feats.nullDescriptor);
+                  if (shader->bindings[j].type == VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER)
+                     wds[num_wds].pTexelBufferView = &buffer_view[0];
+                  else {
+                     image_infos[num_image_info].imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+                     image_infos[num_image_info].imageView = VK_NULL_HANDLE;
+                     image_infos[num_image_info].sampler = ctx->samplers[i][index + k];
+                     if (!k)
+                        wds[num_wds].pImageInfo = image_infos + num_image_info;
+                     ++num_image_info;
+                  }
+               } else if (res->base.target == PIPE_BUFFER)
+                  wds[num_wds].pTexelBufferView = &sampler_view->buffer_view;
                else {
-                  image_infos[num_image_info].imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-                  image_infos[num_image_info].imageView = VK_NULL_HANDLE;
-                  image_infos[num_image_info].sampler = ctx->samplers[i][index];
-                  wds[num_wds].pImageInfo = image_infos + num_image_info;
+                  if (res->layout != VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+                     transitions[num_transitions++] = res;
+                  image_infos[num_image_info].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+                  image_infos[num_image_info].imageView = sampler_view->image_view;
+                  image_infos[num_image_info].sampler = ctx->samplers[i][index + k];
+                  if (!k)
+                     wds[num_wds].pImageInfo = image_infos + num_image_info;
                   ++num_image_info;
                }
-            } else if (res->base.target == PIPE_BUFFER)
-               wds[num_wds].pTexelBufferView = &sampler_view->buffer_view;
-            else {
-               if (res->layout != VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
-                  transitions[num_transitions++] = res;
-               image_infos[num_image_info].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-               image_infos[num_image_info].imageView = sampler_view->image_view;
-               image_infos[num_image_info].sampler = ctx->samplers[i][index];
-               wds[num_wds].pImageInfo = image_infos + num_image_info;
-               ++num_image_info;
             }
          }
 
@@ -373,7 +377,7 @@ zink_draw_vbo(struct pipe_context *pctx,
          wds[num_wds].pNext = NULL;
          wds[num_wds].dstBinding = shader->bindings[j].binding;
          wds[num_wds].dstArrayElement = 0;
-         wds[num_wds].descriptorCount = 1;
+         wds[num_wds].descriptorCount = shader->bindings[j].size;
          wds[num_wds].descriptorType = shader->bindings[j].type;
          ++num_wds;
       }

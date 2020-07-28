@@ -68,6 +68,7 @@ struct zink_shader {
       int index;
       int binding;
       VkDescriptorType type;
+      unsigned char size;
    } bindings[PIPE_MAX_CONSTANT_BUFFERS + PIPE_MAX_SHADER_SAMPLER_VIEWS];
    size_t num_bindings;
    struct set *programs;
