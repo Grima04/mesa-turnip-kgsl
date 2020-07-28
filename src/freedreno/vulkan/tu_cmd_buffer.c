@@ -3290,7 +3290,7 @@ tu_CmdDrawIndirect(VkCommandBuffer commandBuffer,
    tu_cs_emit_qw(cs, buf->bo->iova + buf->bo_offset + offset);
    tu_cs_emit(cs, stride);
 
-   tu_bo_list_add(&cmd->bo_list, buf->bo, MSM_SUBMIT_BO_READ);
+   tu_bo_list_add(&cmd->bo_list, buf->bo, MSM_SUBMIT_BO_READ | MSM_SUBMIT_BO_DUMP);
 }
 
 void
@@ -3321,7 +3321,7 @@ tu_CmdDrawIndexedIndirect(VkCommandBuffer commandBuffer,
    tu_cs_emit_qw(cs, buf->bo->iova + buf->bo_offset + offset);
    tu_cs_emit(cs, stride);
 
-   tu_bo_list_add(&cmd->bo_list, buf->bo, MSM_SUBMIT_BO_READ);
+   tu_bo_list_add(&cmd->bo_list, buf->bo, MSM_SUBMIT_BO_READ | MSM_SUBMIT_BO_DUMP);
 }
 
 void
@@ -3358,8 +3358,8 @@ tu_CmdDrawIndirectCount(VkCommandBuffer commandBuffer,
    tu_cs_emit_qw(cs, count_buf->bo->iova + count_buf->bo_offset + countBufferOffset);
    tu_cs_emit(cs, stride);
 
-   tu_bo_list_add(&cmd->bo_list, buf->bo, MSM_SUBMIT_BO_READ);
-   tu_bo_list_add(&cmd->bo_list, count_buf->bo, MSM_SUBMIT_BO_READ);
+   tu_bo_list_add(&cmd->bo_list, buf->bo, MSM_SUBMIT_BO_READ | MSM_SUBMIT_BO_DUMP);
+   tu_bo_list_add(&cmd->bo_list, count_buf->bo, MSM_SUBMIT_BO_READ | MSM_SUBMIT_BO_DUMP);
 }
 
 void
@@ -3393,8 +3393,8 @@ tu_CmdDrawIndexedIndirectCount(VkCommandBuffer commandBuffer,
    tu_cs_emit_qw(cs, count_buf->bo->iova + count_buf->bo_offset + countBufferOffset);
    tu_cs_emit(cs, stride);
 
-   tu_bo_list_add(&cmd->bo_list, buf->bo, MSM_SUBMIT_BO_READ);
-   tu_bo_list_add(&cmd->bo_list, count_buf->bo, MSM_SUBMIT_BO_READ);
+   tu_bo_list_add(&cmd->bo_list, buf->bo, MSM_SUBMIT_BO_READ | MSM_SUBMIT_BO_DUMP);
+   tu_bo_list_add(&cmd->bo_list, count_buf->bo, MSM_SUBMIT_BO_READ | MSM_SUBMIT_BO_DUMP);
 }
 
 void tu_CmdDrawIndirectByteCountEXT(VkCommandBuffer commandBuffer,
