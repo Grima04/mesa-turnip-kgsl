@@ -92,7 +92,8 @@ def upload_artifact(file_name, key, content_type):
                    'x-amz-security-token': minio_token}
         print("Uploading artifact to %s" % url);
         r = requests.put(url, headers=headers, data=data)
-        #print(r.text)
+        if r.status_code >= 400:
+            print(r.text)
         r.raise_for_status()
 
 def gitlab_check_trace(project_url, device_name, trace, expectation):
