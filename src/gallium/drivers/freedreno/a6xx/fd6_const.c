@@ -273,7 +273,7 @@ fd6_emit_ubos(struct fd_context *ctx, const struct ir3_shader_variant *v,
 					0);
 		} else {
 			OUT_RING(ring, 0xbad00000 | (i << 16));
-			OUT_RING(ring, 0xbad00000 | (i << 16));
+			OUT_RING(ring, A6XX_UBO_1_SIZE(0));
 		}
 	}
 }
