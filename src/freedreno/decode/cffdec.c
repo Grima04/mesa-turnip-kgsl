@@ -227,7 +227,7 @@ dump_hex(uint32_t *dwords, uint32_t sizedwords, int level)
 			printf("\x1b[0;1;31m");
 
 		if (is_64b()) {
-			printf("%016lx:%s", addr, levels[level]);
+			printf("%016"PRIx64":%s", addr, levels[level]);
 		} else {
 			printf("%08x:%s", (uint32_t)addr, levels[level]);
 		}
@@ -252,7 +252,7 @@ dump_float(float *dwords, uint32_t sizedwords, int level)
 	for (i = 0; i < sizedwords; i++) {
 		if ((i % 8) == 0) {
 			if (is_64b()) {
-				printf("%016lx:%s", gpuaddr(dwords), levels[level]);
+				printf("%016"PRIx64":%s", gpuaddr(dwords), levels[level]);
 			} else {
 				printf("%08x:%s", (uint32_t)gpuaddr(dwords), levels[level]);
 			}
@@ -834,7 +834,7 @@ dump_register_val(uint32_t regbase, uint32_t dword, int level)
 		}
 
 		if (gpuaddr && hostptr(gpuaddr)) {
-			printf("\t\tbase=%lx, offset=%lu, size=%u",
+			printf("\t\tbase=%"PRIx64", offset=%"PRIu64", size=%u",
 					gpubaseaddr(gpuaddr),
 					gpuaddr - gpubaseaddr(gpuaddr),
 					hostlen(gpubaseaddr(gpuaddr)));
@@ -2123,7 +2123,7 @@ cp_indirect(uint32_t *dwords, uint32_t sizedwords, int level)
 
 	if (!quiet(3)) {
 		if (is_64b()) {
-			printf("%sibaddr:%016lx\n", levels[level], ibaddr);
+			printf("%sibaddr:%016"PRIx64"\n", levels[level], ibaddr);
 		} else {
 			printf("%sibaddr:%08x\n", levels[level], (uint32_t)ibaddr);
 		}
@@ -2177,7 +2177,7 @@ cp_mem_write(uint32_t *dwords, uint32_t sizedwords, int level)
 
 	if (is_64b()) {
 		uint64_t gpuaddr = dwords[0] | (((uint64_t)dwords[1]) << 32);
-		printf("%sgpuaddr:%016lx\n", levels[level], gpuaddr);
+		printf("%sgpuaddr:%016"PRIx64"\n", levels[level], gpuaddr);
 		dump_hex(&dwords[2], sizedwords-2, level+1);
 
 		if (pkt_is_type4(dwords[2]) || pkt_is_type7(dwords[2]))
@@ -2211,7 +2211,7 @@ cp_reg_mem(uint32_t *dwords, uint32_t sizedwords, int level)
 		return;
 
 	uint64_t gpuaddr = dwords[1] | (((uint64_t)dwords[2]) << 32);
-	printf("%sgpuaddr:%016lx\n", levels[level], gpuaddr);
+	printf("%sgpuaddr:%016"PRIx64"\n", levels[level], gpuaddr);
 	void *ptr = hostptr(gpuaddr);
 	if (ptr) {
 		uint32_t cnt = (dwords[0] >> 19) & 0x3ff;
@@ -2481,7 +2481,7 @@ cp_compute_checkpoint(uint32_t *dwords, uint32_t sizedwords, int level)
 	addr |= ((uint64_t)dwords[6]) << 32;
 	len = dwords[7];
 
-	printl(3, "%saddr: 0x%016lx\n", levels[level], addr);
+	printl(3, "%saddr: 0x%016"PRIx64"\n", levels[level], addr);
 	printl(3, "%slen:  0x%x\n", levels[level], len);
 
 	ptr = hostptr(addr);
@@ -2542,7 +2542,7 @@ cp_set_ctxswitch_ib(uint32_t *dwords, uint32_t sizedwords, int level)
 
 	addr = dwords[0] | ((uint64_t)dwords[1] << 32);
 
-	printf("addr=%lx\n", addr);
+	printf("addr=%"PRIx64"\n", addr);
 	ptr = hostptr(addr);
 	if (ptr) {
 		dump_commands(ptr, size, level+1);
