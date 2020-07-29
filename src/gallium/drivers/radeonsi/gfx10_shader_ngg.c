@@ -1920,6 +1920,7 @@ bool gfx10_ngg_calculate_subgroup_info(struct si_shader *shader)
    unsigned gsprim_lds_size = 0;
 
    /* All these are per subgroup: */
+   const unsigned min_esverts = gs_sel->screen->info.chip_class >= GFX10_3 ? 29 : 24;
    bool max_vert_out_per_gs_instance = false;
    unsigned max_gsprims_base = 128; /* default prim group size clamp */
    unsigned max_esverts_base = 128;
@@ -2033,7 +2034,7 @@ retry_select_mode:
    }
 
    /* Hardware restriction: minimum value of max_esverts */
-   max_esverts = MAX2(max_esverts, 23 + max_verts_per_prim);
+   max_esverts = MAX2(max_esverts, min_esverts - 1 + max_verts_per_prim);
 
    unsigned max_out_vertices =
       max_vert_out_per_gs_instance
@@ -2064,10 +2065,10 @@ retry_select_mode:
    shader->gs_info.esgs_ring_size = max_esverts * esvert_lds_size;
    shader->ngg.ngg_emit_size = max_gsprims * gsprim_lds_size;
 
-   assert(shader->ngg.hw_max_esverts >= 24); /* HW limitation */
+   assert(shader->ngg.hw_max_esverts >= min_esverts); /* HW limitation */
 
    /* If asserts are disabled, we use the same conditions to return false */
    return max_esverts >= max_verts_per_prim && max_gsprims >= 1 &&
           max_out_vertices <= 256 &&
-          shader->ngg.hw_max_esverts >= 24;
+          shader->ngg.hw_max_esverts >= min_esverts;
 }
