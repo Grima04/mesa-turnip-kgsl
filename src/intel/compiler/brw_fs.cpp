@@ -7328,6 +7328,9 @@ fs_visitor::dump_instruction(const backend_instruction *be_inst, FILE *file) con
          break;
       case IMM:
          switch (inst->src[i].type) {
+         case BRW_REGISTER_TYPE_HF:
+            fprintf(file, "%-ghf", _mesa_half_to_float(inst->src[i].ud & 0xffff));
+            break;
          case BRW_REGISTER_TYPE_F:
             fprintf(file, "%-gf", inst->src[i].f);
             break;
