@@ -617,40 +617,30 @@ emit_alu_bundle(compiler_context *ctx,
         for (unsigned i = 0; i < bundle->instruction_count; ++i) {
                 midgard_instruction *ins = bundle->instructions[i];
 
-                /* Where is this body */
-                unsigned size = 0;
-                void *source = NULL;
-
-                midgard_vector_alu source_alu;
-
-                /* In case we demote to a scalar */
-                midgard_scalar_alu scalarized;
-
                 if (!ins->compact_branch) {
                         mir_lower_inverts(ins);
                         mir_lower_roundmode(ins);
                 }
 
                 if (ins->unit & UNITS_ANY_VECTOR) {
-                        source_alu = vector_alu_from_instr(ins);
-                        mir_pack_mask_alu(ins, &source_alu);
-                        mir_pack_vector_srcs(ins, &source_alu);
-                        size = sizeof(midgard_vector_alu);
-                        source = &source_alu;
+                        midgard_vector_alu source = vector_alu_from_instr(ins);
+                        mir_pack_mask_alu(ins, &source);
+                        mir_pack_vector_srcs(ins, &source);
+                        unsigned size = sizeof(source);
+                        memcpy(util_dynarray_grow_bytes(emission, size, 1), &source, size);
                 } else if (ins->unit == ALU_ENAB_BR_COMPACT) {
-                        size = sizeof(midgard_branch_cond);
-                        source = &ins->br_compact;
+                        uint16_t source = ins->br_compact;
+                        unsigned size = sizeof(source);
+                        memcpy(util_dynarray_grow_bytes(emission, size, 1), &source, size);
                 } else if (ins->compact_branch) { /* misnomer */
-                        size = sizeof(midgard_branch_extended);
-                        source = &ins->branch_extended;
+                        midgard_branch_extended source = ins->branch_extended;
+                        unsigned size = sizeof(source);
+                        memcpy(util_dynarray_grow_bytes(emission, size, 1), &source, size);
                 } else {
-                        size = sizeof(midgard_scalar_alu);
-                        source_alu = vector_alu_from_instr(ins);
-                        scalarized = vector_to_scalar_alu(source_alu, ins);
-                        source = &scalarized;
+                        midgard_scalar_alu source = vector_to_scalar_alu(vector_alu_from_instr(ins), ins);
+                        unsigned size = sizeof(source);
+                        memcpy(util_dynarray_grow_bytes(emission, size, 1), &source, size);
                 }
-
-                memcpy(util_dynarray_grow_bytes(emission, size, 1), source, size);
         }
 
         /* Emit padding (all zero) */
