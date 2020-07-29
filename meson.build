@@ -854,7 +854,11 @@ if with_platform_android
       dep_android += dependency('nativewindow')
     endif
   endif
-  pre_args += '-DHAVE_ANDROID_PLATFORM'
+  pre_args += [
+    '-DHAVE_ANDROID_PLATFORM',
+    '-DANDROID',
+    '-DANDROID_API_LEVEL=' + get_option('platform-sdk-version').to_string()
+  ]
 endif
 if with_platform_haiku
   pre_args += '-DHAVE_HAIKU_PLATFORM'
