@@ -451,7 +451,10 @@ pack_texture_shader_state_helper(struct v3dv_device *device,
    assert(image_view->image);
    const struct v3dv_image *image = image_view->image;
 
-   int msaa_scale = 1; /* FIXME: hardcoded. Revisit when msaa get supported */
+   assert(image->samples == VK_SAMPLE_COUNT_1_BIT ||
+          image->samples == VK_SAMPLE_COUNT_4_BIT);
+   const uint32_t msaa_scale = image->samples == VK_SAMPLE_COUNT_1_BIT ? 1 : 2;
+
    v3dv_pack(image_view->texture_shader_state[index], TEXTURE_SHADER_STATE, tex) {
 
       tex.level_0_is_strictly_uif =
