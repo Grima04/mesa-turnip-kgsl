@@ -179,11 +179,11 @@ static void printtypeinfo (struct rnntypeinfo *ti, struct rnnbitfield *bf,
 		if ((ti->minvalid || ti->maxvalid || ti->alignvalid) && !no_asserts) {
 			fprintf(dst, "\tassert(1");
 			if (ti->minvalid)
-				fprintf(dst, " && (val >= %lu)", ti->min);
+				fprintf(dst, " && (val >= %"PRIu64")", ti->min);
 			if (ti->maxvalid)
-				fprintf(dst, " && (val <= %lu)", ti->max);
+				fprintf(dst, " && (val <= %"PRIu64")", ti->max);
 			if (ti->alignvalid)
-				fprintf(dst, " && !(val %% %lu)", ti->align);
+				fprintf(dst, " && !(val %% %"PRIu64")", ti->align);
 			fprintf(dst, ");\n");
 		}
 
@@ -289,7 +289,7 @@ static void printdelem (struct rnndelem *elem, uint64_t offset) {
 							fprintf(dst, "%d", i);
 						}
 						if (elem->offsets) {
-							fprintf(dst, ": return 0x%08lx;\n", elem->offsets[i]);
+							fprintf(dst, ": return 0x%08"PRIx64";\n", elem->offsets[i]);
 						} else {
 							fprintf(dst, ": return (%s);\n", elem->doffsets[i]);
 						}
@@ -470,10 +470,10 @@ int main(int argc, char **argv) {
 				fprintf(dst, "enum %s {\n", db->enums[i]->name);
 			}
 			if (0xffff0000 & db->enums[i]->vals[j]->value)
-				fprintf(dst, "\t%s = 0x%08lx,\n", db->enums[i]->vals[j]->name,
+				fprintf(dst, "\t%s = 0x%08"PRIx64",\n", db->enums[i]->vals[j]->name,
 						db->enums[i]->vals[j]->value);
 			else
-				fprintf(dst, "\t%s = %lu,\n", db->enums[i]->vals[j]->name,
+				fprintf(dst, "\t%s = %"PRIu64",\n", db->enums[i]->vals[j]->name,
 						db->enums[i]->vals[j]->value);
 		}
 		if (dst) {
