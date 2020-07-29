@@ -210,6 +210,8 @@ fd6_draw_vbo(struct fd_context *ctx, const struct pipe_draw_info *info,
 	if (!fd6_ctx->prog)
 		return NULL;
 
+	fixup_draw_state(ctx, &emit);
+
 	emit.dirty = ctx->dirty;      /* *after* fixup_shader_state() */
 	emit.bs = fd6_emit_get_prog(&emit)->bs;
 	emit.vs = fd6_emit_get_prog(&emit)->vs;
@@ -302,8 +304,6 @@ fd6_draw_vbo(struct fd_context *ctx, const struct pipe_draw_info *info,
 		OUT_RING(ring, restart_index); /* PC_RESTART_INDEX */
 		ctx->last.restart_index = restart_index;
 	}
-
-	fixup_draw_state(ctx, &emit);
 
 	fd6_emit_state(ring, &emit);
 
