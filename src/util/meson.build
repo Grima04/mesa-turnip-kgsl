@@ -289,6 +289,18 @@ if with_tests
      suite : ['util'],
   )
 
+  test(
+    'u_debug_stack',
+    executable(
+      'u_debug_stack_test',
+      files('u_debug_stack_test.cpp'),
+      include_directories : [inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_gallium_aux],
+      dependencies : [idep_mesautil, idep_gtest],
+      c_args : [c_msvc_compat_args],
+    ),
+     suite : ['util'],
+  )
+
   process_test_exe = executable(
     'process_test',
     files('process_test.c'),
