@@ -52,7 +52,9 @@
  * XXX Check max texture size values against core and sampler.
  */
 #define SWR_MAX_TEXTURE_SIZE (2 * 1024 * 1024 * 1024ULL) /* 2GB */
-#define SWR_MAX_TEXTURE_2D_SIZE 8192
+/* Not all texture formats can fit into 2GB limit, but we have to
+   live with that. See lp_limits.h for more details */
+#define SWR_MAX_TEXTURE_2D_SIZE 16384
 #define SWR_MAX_TEXTURE_3D_LEVELS 12  /* 2K x 2K x 2K for now */
 #define SWR_MAX_TEXTURE_CUBE_LEVELS 14  /* 8K x 8K for now */
 #define SWR_MAX_TEXTURE_ARRAY_LAYERS 512 /* 8K x 512 / 8K x 8K x 512 */
