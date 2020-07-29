@@ -184,11 +184,7 @@ typedef struct midgard_instruction {
         union {
                 midgard_load_store_word load_store;
                 midgard_texture_word texture;
-                midgard_branch_extended branch_extended;
-                uint16_t br_compact;
 
-                /* General branch, rather than packed br_compact. Higher level
-                 * than the other components */
                 midgard_branch branch;
         };
 } midgard_instruction;

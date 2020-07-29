@@ -225,7 +225,7 @@ bytes_for_instruction(midgard_instruction *ains)
         else if (ains->unit == ALU_ENAB_BRANCH)
                 return sizeof(midgard_branch_extended);
         else if (ains->compact_branch)
-                return sizeof(ains->br_compact);
+                return sizeof(uint16_t);
         else
                 return sizeof(midgard_reg_info) + sizeof(midgard_scalar_alu);
 }
