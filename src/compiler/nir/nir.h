@@ -134,9 +134,13 @@ typedef enum {
                               nir_var_mem_global),
    nir_var_mem_push_const  = (1 << 10), /* not actually used for variables */
    nir_var_mem_constant    = (1 << 11),
+   /** Incoming call or ray payload data for ray-tracing shaders */
+   nir_var_shader_call_data = (1 << 12),
+   /** Ray hit attributes */
+   nir_var_ray_hit_attrib  = (1 << 13),
    nir_var_read_only_modes = nir_var_shader_in | nir_var_uniform |
                              nir_var_system_value | nir_var_mem_constant,
-   nir_num_variable_modes  = 12,
+   nir_num_variable_modes  = 14,
    nir_var_all             = (1 << nir_num_variable_modes) - 1,
 } nir_variable_mode;
 MESA_DEFINE_CPP_ENUM_BITFIELD_OPERATORS(nir_variable_mode)
@@ -345,7 +349,7 @@ typedef struct nir_variable {
        *
        * \sa nir_variable_mode
        */
-      unsigned mode:12;
+      unsigned mode:14;
 
       /**
        * Is the variable read-only?

@@ -72,6 +72,16 @@ gl_shader_stage_is_compute(gl_shader_stage stage)
    return stage == MESA_SHADER_COMPUTE || stage == MESA_SHADER_KERNEL;
 }
 
+static inline bool
+gl_shader_stage_is_callable(gl_shader_stage stage)
+{
+   return stage == MESA_SHADER_ANY_HIT ||
+          stage == MESA_SHADER_CLOSEST_HIT ||
+          stage == MESA_SHADER_MISS ||
+          stage == MESA_SHADER_INTERSECTION ||
+          stage == MESA_SHADER_CALLABLE;
+}
+
 /**
  * Number of STATE_* values we need to address any GL state.
  * Used to dimension arrays.
