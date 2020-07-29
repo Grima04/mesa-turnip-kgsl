@@ -916,6 +916,8 @@ void vtn_handle_alu(struct vtn_builder *b, SpvOp opcode,
 void vtn_handle_bitcast(struct vtn_builder *b, const uint32_t *w,
                         unsigned count);
 
+void vtn_handle_no_contraction(struct vtn_builder *b, struct vtn_value *val);
+
 void vtn_handle_subgroup(struct vtn_builder *b, SpvOp opcode,
                          const uint32_t *w, unsigned count);
 
