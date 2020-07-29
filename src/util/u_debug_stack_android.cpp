@@ -28,84 +28,94 @@
 #include "util/hash_table.h"
 #include "os/os_thread.h"
 
-static hash_table *backtrace_table;
+static hash_table *symbol_table;
 static mtx_t table_mutex = _MTX_INITIALIZER_NP;
 
-void
-debug_backtrace_capture(debug_stack_frame *mesa_backtrace,
-                        unsigned start_frame,
-                        unsigned nr_frames)
+static const char *
+intern_symbol(const char *symbol)
 {
-   hash_entry *backtrace_entry;
-   Backtrace *backtrace;
-   pid_t tid = gettid();
+   if (!symbol_table)
+      symbol_table = _mesa_hash_table_create(NULL, NULL, _mesa_key_string_equal);
 
-   if (!nr_frames)
-      return;
+   uint32_t hash = _mesa_hash_string(symbol);
+   hash_entry *entry =
+      _mesa_hash_table_search_pre_hashed(symbol_table, hash, symbol);
+   if (!entry)
+      entry = _mesa_hash_table_insert_pre_hashed(symbol_table, hash, symbol, strdup(symbol));
 
-   /* We keep an Android Backtrace handler around for each thread */
-   mtx_lock(&table_mutex);
-   if (!backtrace_table)
-      backtrace_table = _mesa_hash_table_create(NULL, _mesa_hash_pointer,
-                                                _mesa_key_pointer_equal);
-
-   backtrace_entry = _mesa_hash_table_search(backtrace_table, (void*) (uintptr_t)tid);
-   if (!backtrace_entry) {
-      backtrace = Backtrace::Create(getpid(), tid);
-      _mesa_hash_table_insert(backtrace_table, (void*) (uintptr_t)tid, backtrace);
-   } else {
-      backtrace = (Backtrace *) backtrace_entry->data;
-   }
-   mtx_unlock(&table_mutex);
-
-   /* Add one to exclude this call. Unwind already ignores itself. */
-   backtrace->Unwind(start_frame + 1);
-
-   /* Store the Backtrace handler in the first mesa frame for reference.
-    * Unwind will generally return less frames than nr_frames specified
-    * but we have no good way of storing the real count otherwise.
-    * The Backtrace handler only stores the results until the next Unwind,
-    * but that is how u_debug_stack is used anyway.
-    */
-   mesa_backtrace->function = backtrace;
+   return (const char *) entry->data;
 }
 
 void
-debug_backtrace_dump(const debug_stack_frame *mesa_backtrace,
-                     unsigned nr_frames)
+debug_backtrace_capture(debug_stack_frame *backtrace,
+                        unsigned start_frame,
+                        unsigned nr_frames)
 {
-   Backtrace *backtrace = (Backtrace *) mesa_backtrace->function;
-   size_t i;
+   Backtrace *bt;
 
    if (!nr_frames)
       return;
 
-   if (nr_frames > backtrace->NumFrames())
-      nr_frames = backtrace->NumFrames();
-   for (i = 0; i < nr_frames; i++) {
-      /* There is no prescribed format and this isn't interpreted further,
-       * so we simply use the default Android format.
-       */
-      const std::string& frame_line = backtrace->FormatFrameData(i);
-      debug_printf("%s\n", frame_line.c_str());
+   bt = Backtrace::Create(BACKTRACE_CURRENT_PROCESS,
+                          BACKTRACE_CURRENT_THREAD);
+   if (bt == NULL) {
+      for (unsigned i = 0; i < nr_frames; i++)
+         backtrace[i].procname = NULL;
+      return;
+   }
+
+   /* Add one to exclude this call. Unwind already ignores itself. */
+   bt->Unwind(start_frame + 1);
+
+   mtx_lock(&table_mutex);
+
+   for (unsigned i = 0; i < nr_frames; i++) {
+      const backtrace_frame_data_t* frame = bt->GetFrame(i);
+      if (frame) {
+         backtrace[i].procname = intern_symbol(frame->func_name.c_str());
+         backtrace[i].start_ip = frame->pc;
+         backtrace[i].off = frame->func_offset;
+         backtrace[i].map = intern_symbol(frame->map.Name().c_str());
+         backtrace[i].map_off = frame->rel_pc;
+      } else {
+         backtrace[i].procname = NULL;
+      }
+   }
+
+   mtx_unlock(&table_mutex);
+
+   delete bt;
+}
+
+void
+debug_backtrace_dump(const debug_stack_frame *backtrace,
+                     unsigned nr_frames)
+{
+   for (unsigned i = 0; i < nr_frames; i++) {
+      if (backtrace[i].procname)
+         debug_printf(
+            "%s(+0x%x)\t%012" PRIx64 ": %s+0x%x\n",
+            backtrace[i].map,
+            backtrace[i].map_off,
+            backtrace[i].start_ip,
+            backtrace[i].procname,
+            backtrace[i].off);
    }
 }
 
 void
 debug_backtrace_print(FILE *f,
-                      const debug_stack_frame *mesa_backtrace,
+                      const debug_stack_frame *backtrace,
                       unsigned nr_frames)
 {
-   Backtrace *backtrace = (Backtrace *) mesa_backtrace->function;
-   size_t i;
-
-   if (!nr_frames)
-      return;
-
-   if (nr_frames > backtrace->NumFrames())
-      nr_frames = backtrace->NumFrames();
-   for (i = 0; i < nr_frames; i++) {
-      const std::string& frame_line = backtrace->FormatFrameData(i);
-      fprintf(f, "%s\n", frame_line.c_str());
+   for (unsigned i = 0; i < nr_frames; i++) {
+      if (backtrace[i].procname)
+         fprintf(f,
+                 "%s(+0x%x)\t%012" PRIx64 ": %s+0x%x\n",
+                 backtrace[i].map,
+                 backtrace[i].map_off,
+                 backtrace[i].start_ip,
+                 backtrace[i].procname,
+                 backtrace[i].off);
    }
 }

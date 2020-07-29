@@ -59,10 +59,12 @@ extern "C" {
  */
 struct debug_stack_frame 
 {
-#ifdef HAVE_LIBUNWIND
-   unw_word_t start_ip;
-   unsigned int off;
+#if defined(HAVE_ANDROID_PLATFORM) || defined(HAVE_LIBUNWIND)
    const char *procname;
+   uint64_t start_ip;
+   unsigned off;
+   const char *map;
+   unsigned int map_off;
 #else
    const void *function;
 #endif
