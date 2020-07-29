@@ -104,6 +104,12 @@ anv_gem_set_tiling(struct anv_device *device,
 }
 
 int
+anv_gem_get_tiling(struct anv_device *device, uint32_t gem_handle)
+{
+   return 0;
+}
+
+int
 anv_gem_set_caching(struct anv_device *device, uint32_t gem_handle,
                     uint32_t caching)
 {
