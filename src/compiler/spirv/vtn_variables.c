@@ -2197,10 +2197,6 @@ vtn_create_variable(struct vtn_builder *b, struct vtn_value *val,
       /* Create the variable normally */
       var->var = rzalloc(b->shader, nir_variable);
       var->var->name = ralloc_strdup(var->var, val->name);
-      /* Workgroup variables don't have any explicit layout but some
-       * layouts may have leaked through due to type deduplication in the
-       * SPIR-V.
-       */
       var->var->type = vtn_type_get_nir_type(b, var->type, var->mode);
       var->var->data.mode = nir_var_mem_shared;
       break;
@@ -2253,11 +2249,6 @@ vtn_create_variable(struct vtn_builder *b, struct vtn_value *val,
 
       var->var = rzalloc(b->shader, nir_variable);
       var->var->name = ralloc_strdup(var->var, val->name);
-      /* In Vulkan, shader I/O variables don't have any explicit layout but
-       * some layouts may have leaked through due to type deduplication in
-       * the SPIR-V.  We do, however, keep the layouts in the variable's
-       * interface_type because we need offsets for XFB arrays of blocks.
-       */
       var->var->type = vtn_type_get_nir_type(b, var->type, var->mode);
       var->var->data.mode = nir_mode;
       var->var->data.patch = var->patch;

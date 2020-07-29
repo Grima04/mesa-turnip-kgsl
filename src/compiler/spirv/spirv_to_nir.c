@@ -775,6 +775,33 @@ wrap_type_in_array(const struct glsl_type *type,
                           glsl_get_explicit_stride(array_type));
 }
 
+static bool
+vtn_type_needs_explicit_layout(struct vtn_builder *b, enum vtn_variable_mode mode)
+{
+   /* For OpenCL we never want to strip the info from the types, and it makes
+    * type comparisons easier in later stages.
+    */
+   if (b->options->environment == NIR_SPIRV_OPENCL)
+      return true;
+
+   switch (mode) {
+   case vtn_variable_mode_input:
+   case vtn_variable_mode_output:
+      /* Layout decorations kept because we need offsets for XFB arrays of
+       * blocks.
+       */
+      return b->shader->info.has_transform_feedback_varyings;
+
+   case vtn_variable_mode_ssbo:
+   case vtn_variable_mode_phys_ssbo:
+   case vtn_variable_mode_ubo:
+      return true;
+
+   default:
+      return false;
+   }
+}
+
 const struct glsl_type *
 vtn_type_get_nir_type(struct vtn_builder *b, struct vtn_type *type,
                       enum vtn_variable_mode mode)
@@ -838,6 +865,13 @@ vtn_type_get_nir_type(struct vtn_builder *b, struct vtn_type *type,
          return type->type;
       }
    }
+
+   /* Layout decorations are allowed but ignored in certain conditions,
+    * to allow SPIR-V generators perform type deduplication.  Discard
+    * unnecessary ones when passing to NIR.
+    */
+   if (!vtn_type_needs_explicit_layout(b, mode))
+      return glsl_get_bare_type(type->type);
 
    return type->type;
 }
