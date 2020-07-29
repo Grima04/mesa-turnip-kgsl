@@ -435,6 +435,29 @@ void si_compute_copy_image(struct si_context *sctx, struct pipe_resource *dst, u
 
    assert(util_format_is_subsampled_422(src_format) == util_format_is_subsampled_422(dst_format));
 
+   if (!vi_dcc_enabled((struct si_texture*)src, src_level) &&
+       src_format == dst_format &&
+       util_format_is_float(src_format) &&
+       !util_format_is_compressed(src_format)) {
+      /* Interpret as integer values to avoid NaN issues */
+      switch(util_format_get_blocksizebits(src_format)) {
+        case 16:
+          src_format = dst_format = PIPE_FORMAT_R16_UINT;
+          break;
+        case 32:
+          src_format = dst_format = PIPE_FORMAT_R32_UINT;
+          break;
+        case 64:
+          src_format = dst_format = PIPE_FORMAT_R32G32_UINT;
+          break;
+        case 128:
+          src_format = dst_format = PIPE_FORMAT_R32G32B32A32_UINT;
+          break;
+        default:
+          assert(false);
+      }
+   }
+
    if (util_format_is_subsampled_422(src_format)) {
       src_format = dst_format = PIPE_FORMAT_R32_UINT;
       /* Interpreting 422 subsampled format (16 bpp) as 32 bpp
@@ -494,10 +517,6 @@ void si_compute_copy_image(struct si_context *sctx, struct pipe_resource *dst, u
    image[1].u.tex.first_layer = 0;
    image[1].u.tex.last_layer = dst->target == PIPE_TEXTURE_3D ? u_minify(dst->depth0, dst_level) - 1
                                                               : (unsigned)(dst->array_size - 1);
-
-   if (sctx->chip_class < GFX10_3 &&
-       src->format == PIPE_FORMAT_R9G9B9E5_FLOAT)
-      image[0].format = image[1].format = PIPE_FORMAT_R32_UINT;
 
    /* SNORM8 blitting has precision issues on some chips. Use the SINT
     * equivalent instead, which doesn't force DCC decompression.

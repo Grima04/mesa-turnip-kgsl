@@ -824,6 +824,28 @@ struct texture_orig_info {
    unsigned npix0_y;
 };
 
+static void si_use_compute_copy_for_float_formats(struct si_context *sctx,
+                                                  struct pipe_resource *texture,
+                                                  unsigned level) {
+   struct si_texture *tex = (struct si_texture *)texture;
+
+   /* If we are uploading into FP16 or R11G11B10_FLOAT via a blit, CB clobbers NaNs,
+    * so in order to preserve them exactly, we have to use the compute blit.
+    * The compute blit is used only when the destination doesn't have DCC, so
+    * disable it here, which is kinda a hack.
+    * If we are uploading into 32-bit floats with DCC via a blit, NaNs will also get
+    * lost so we need to disable DCC as well.
+    *
+    * This makes KHR-GL45.texture_view.view_classes pass on gfx9.
+    * gfx10 has the same issue, but the test doesn't use a large enough texture
+    * to enable DCC and fail, so it always passes.
+    */
+   if (vi_dcc_enabled(tex, level) &&
+       util_format_is_float(texture->format)) {
+      si_texture_disable_dcc(sctx, tex);
+   }
+}
+
 void si_resource_copy_region(struct pipe_context *ctx, struct pipe_resource *dst,
                              unsigned dst_level, unsigned dstx, unsigned dsty, unsigned dstz,
                              struct pipe_resource *src, unsigned src_level,
@@ -843,6 +865,8 @@ void si_resource_copy_region(struct pipe_context *ctx, struct pipe_resource *dst
       si_copy_buffer(sctx, dst, src, dstx, src_box->x, src_box->width);
       return;
    }
+
+   si_use_compute_copy_for_float_formats(sctx, dst, dst_level);
 
    if (!util_format_is_compressed(src->format) && !util_format_is_compressed(dst->format) &&
        !util_format_is_depth_or_stencil(src->format) && src->nr_samples <= 1 &&
