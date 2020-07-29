@@ -1875,6 +1875,8 @@ emit_alu(struct ntv_context *ctx, nir_alu_instr *alu)
       unreachable("unsupported opcode");
       return;
    }
+   if (alu->exact)
+      spirv_builder_emit_decoration(&ctx->builder, result, SpvDecorationNoContraction);
 
    store_alu_result(ctx, alu, result);
 }
