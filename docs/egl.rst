@@ -100,16 +100,6 @@ at runtime
    This changes the log level of the main library and the drivers. The
    valid values are: ``debug``, ``info``, ``warning``, and ``fatal``.
 
-EGL Drivers
------------
-
-``egl_dri2``
-   This driver supports both ``x11`` and ``drm`` platforms. It functions
-   as a DRI driver loader. For ``x11`` support, it talks to the X server
-   directly using (XCB-)DRI2 protocol.
-
-   This driver can share DRI drivers with ``libGL``.
-
 Packaging
 ---------
 
@@ -121,6 +111,16 @@ Developers
 
 The sources of the main library and drivers can be found at
 ``src/egl/``.
+
+EGL Drivers
+-----------
+
+``egl_dri2``
+   This driver supports both ``x11`` and ``drm`` platforms. It functions
+   as a DRI driver loader. For ``x11`` support, it talks to the X server
+   directly using (XCB-)DRI2 protocol.
+
+   This driver can share DRI drivers with ``libGL``.
 
 Lifetime of Display Resources
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
