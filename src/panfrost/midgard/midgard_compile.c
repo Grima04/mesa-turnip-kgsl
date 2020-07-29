@@ -1600,9 +1600,8 @@ emit_control_barrier(compiler_context *ctx)
                 .type = TAG_TEXTURE_4,
                 .dest = ~0,
                 .src = { ~0, ~0, ~0, ~0 },
+                .op = TEXTURE_OP_BARRIER,
                 .texture = {
-                        .op = TEXTURE_OP_BARRIER,
-
                         /* TODO: optimize */
                         .out_of_order = MIDGARD_BARRIER_BUFFER |
                                 MIDGARD_BARRIER_SHARED ,
@@ -2094,8 +2093,8 @@ emit_texop_native(compiler_context *ctx, nir_tex_instr *instr,
                 .dest_type = dest_type,
                 .swizzle = SWIZZLE_IDENTITY_4,
                 .outmod = outmod,
+                .op = midgard_texop,
                 .texture = {
-                        .op = midgard_texop,
                         .format = midgard_tex_format(instr->sampler_dim),
                         .texture_handle = texture_index,
                         .sampler_handle = sampler_index,

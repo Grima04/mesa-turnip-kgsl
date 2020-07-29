@@ -106,8 +106,8 @@ midgard_emit_derivatives(compiler_context *ctx, nir_alu_instr *instr)
                 .src = { ~0, nir_src_index(ctx, &instr->src[0].src), ~0, ~0 },
                 .swizzle = SWIZZLE_IDENTITY_4,
                 .src_types = { nir_type_float32, nir_type_float32 },
+                .op = mir_derivative_op(instr->op),
                 .texture = {
-                        .op = mir_derivative_op(instr->op),
                         .format = MALI_TEX_2D,
                         .in_reg_full = 1,
                         .out_full = 1,
@@ -126,7 +126,7 @@ midgard_lower_derivatives(compiler_context *ctx, midgard_block *block)
 {
         mir_foreach_instr_in_block_safe(block, ins) {
                 if (ins->type != TAG_TEXTURE_4) continue;
-                if (!OP_IS_DERIVATIVE(ins->texture.op)) continue;
+                if (!OP_IS_DERIVATIVE(ins->op)) continue;
 
                 /* Check if we need to split */
 

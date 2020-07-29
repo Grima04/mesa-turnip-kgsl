@@ -970,9 +970,9 @@ mir_schedule_texture(
         mir_update_worklist(worklist, len, instructions, ins);
 
         struct midgard_bundle out = {
-                .tag = ins->texture.op == TEXTURE_OP_BARRIER ?
+                .tag = ins->op == TEXTURE_OP_BARRIER ?
                         TAG_TEXTURE_4_BARRIER :
-                        (ins->texture.op == TEXTURE_OP_TEXEL_FETCH) || is_vertex ?
+                        (ins->op == TEXTURE_OP_TEXEL_FETCH) || is_vertex ?
                         TAG_TEXTURE_4_VTX : TAG_TEXTURE_4,
                 .instruction_count = 1,
                 .instructions = { ins }

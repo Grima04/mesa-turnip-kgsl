@@ -487,6 +487,14 @@ mir_lower_roundmode(midgard_instruction *ins)
         }
 }
 
+static midgard_texture_word
+texture_word_from_instr(midgard_instruction *ins)
+{
+        midgard_texture_word tex = ins->texture;
+        tex.op = ins->op;
+        return tex;
+}
+
 static midgard_vector_alu
 vector_alu_from_instr(midgard_instruction *ins)
 {
@@ -673,7 +681,7 @@ emit_binary_bundle(compiler_context *ctx,
                 ins->texture.next_type = next_tag;
 
                 /* Nothing else to pack for barriers */
-                if (ins->texture.op == TEXTURE_OP_BARRIER) {
+                if (ins->op == TEXTURE_OP_BARRIER) {
                         ins->texture.cont = ins->texture.last = 1;
                         util_dynarray_append(emission, midgard_texture_word, ins->texture);
                         return;
@@ -702,14 +710,15 @@ emit_binary_bundle(compiler_context *ctx,
                 ins->texture.sampler_type = midgard_sampler_type(ins->dest_type);
                 ins->texture.outmod = ins->outmod;
 
-                if (mir_op_computes_derivatives(ctx->stage, ins->texture.op)) {
+                if (mir_op_computes_derivatives(ctx->stage, ins->op)) {
                         ins->texture.cont = !ins->helper_terminate;
                         ins->texture.last = ins->helper_terminate || ins->helper_execute;
                 } else {
                         ins->texture.cont = ins->texture.last = 1;
                 }
 
-                util_dynarray_append(emission, midgard_texture_word, ins->texture);
+                midgard_texture_word texture = texture_word_from_instr(ins);
+                util_dynarray_append(emission, midgard_texture_word, texture);
                 break;
         }
 

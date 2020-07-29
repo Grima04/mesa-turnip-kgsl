@@ -60,7 +60,7 @@ can_dce(midgard_instruction *ins)
                         return false;
 
         if (ins->type == TAG_TEXTURE_4)
-                if (ins->texture.op == TEXTURE_OP_BARRIER)
+                if (ins->op == TEXTURE_OP_BARRIER)
                         return false;
 
         return true;

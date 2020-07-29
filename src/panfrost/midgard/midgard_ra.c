@@ -755,7 +755,7 @@ install_registers_instr(
         }
 
         case TAG_TEXTURE_4: {
-                if (ins->texture.op == TEXTURE_OP_BARRIER)
+                if (ins->op == TEXTURE_OP_BARRIER)
                         break;
 
                 /* Grab RA results */
