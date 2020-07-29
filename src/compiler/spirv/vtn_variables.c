@@ -410,6 +410,16 @@ vtn_pointer_dereference(struct vtn_builder *b,
       tail = nir_build_deref_cast(&b->nb, desc, nir_mode,
                                   vtn_type_get_nir_type(b, type, base->mode),
                                   base->ptr_type->stride);
+   } else if (base->mode == vtn_variable_mode_shader_record) {
+      /* For ShaderRecordBufferKHR variables, we don't have a nir_variable.
+       * It's just a fancy handle around a pointer to the shader record for
+       * the current shader.
+       */
+      tail = nir_build_deref_cast(&b->nb, nir_load_shader_record_ptr(&b->nb),
+                                  nir_var_mem_constant,
+                                  vtn_type_get_nir_type(b, base->type,
+                                                           base->mode),
+                                  0 /* ptr_as_array stride */);
    } else {
       assert(base->var && base->var->var);
       tail = nir_build_deref_var(&b->nb, base->var->var);
@@ -1325,6 +1335,9 @@ var_decoration_cb(struct vtn_builder *b, struct vtn_value *val, int member,
       } else if (vtn_var->mode == vtn_variable_mode_input ||
                  vtn_var->mode == vtn_variable_mode_output) {
          location += vtn_var->patch ? VARYING_SLOT_PATCH0 : VARYING_SLOT_VAR0;
+      } else if (vtn_var->mode == vtn_variable_mode_call_data ||
+                 vtn_var->mode == vtn_variable_mode_ray_payload) {
+         /* This location is fine as-is */
       } else if (vtn_var->mode != vtn_variable_mode_uniform) {
          vtn_warn("Location must be on input, output, uniform, sampler or "
                   "image variable");
@@ -1463,6 +1476,31 @@ vtn_storage_class_to_mode(struct vtn_builder *b,
       mode = vtn_variable_mode_image;
       nir_mode = nir_var_mem_ubo;
       break;
+   case SpvStorageClassCallableDataKHR:
+      mode = vtn_variable_mode_call_data;
+      nir_mode = nir_var_shader_temp;
+      break;
+   case SpvStorageClassIncomingCallableDataKHR:
+      mode = vtn_variable_mode_call_data_in;
+      nir_mode = nir_var_shader_call_data;
+      break;
+   case SpvStorageClassRayPayloadKHR:
+      mode = vtn_variable_mode_ray_payload;
+      nir_mode = nir_var_shader_temp;
+      break;
+   case SpvStorageClassIncomingRayPayloadKHR:
+      mode = vtn_variable_mode_ray_payload_in;
+      nir_mode = nir_var_shader_call_data;
+      break;
+   case SpvStorageClassHitAttributeKHR:
+      mode = vtn_variable_mode_hit_attrib;
+      nir_mode = nir_var_ray_hit_attrib;
+      break;
+   case SpvStorageClassShaderRecordBufferKHR:
+      mode = vtn_variable_mode_shader_record;
+      nir_mode = nir_var_mem_constant;
+      break;
+
    case SpvStorageClassGeneric:
       mode = vtn_variable_mode_generic;
       nir_mode = nir_var_mem_generic;
@@ -1501,6 +1539,7 @@ vtn_mode_to_address_format(struct vtn_builder *b, enum vtn_variable_mode mode)
    case vtn_variable_mode_cross_workgroup:
       return b->options->global_addr_format;
 
+   case vtn_variable_mode_shader_record:
    case vtn_variable_mode_constant:
       return b->options->constant_addr_format;
 
@@ -1518,6 +1557,11 @@ vtn_mode_to_address_format(struct vtn_builder *b, enum vtn_variable_mode mode)
    case vtn_variable_mode_input:
    case vtn_variable_mode_output:
    case vtn_variable_mode_image:
+   case vtn_variable_mode_call_data:
+   case vtn_variable_mode_call_data_in:
+   case vtn_variable_mode_ray_payload:
+   case vtn_variable_mode_ray_payload_in:
+   case vtn_variable_mode_hit_attrib:
       return nir_address_format_logical;
    }
 
@@ -1760,6 +1804,11 @@ vtn_create_variable(struct vtn_builder *b, struct vtn_value *val,
    case vtn_variable_mode_uniform:
    case vtn_variable_mode_atomic_counter:
    case vtn_variable_mode_constant:
+   case vtn_variable_mode_call_data:
+   case vtn_variable_mode_call_data_in:
+   case vtn_variable_mode_ray_payload:
+   case vtn_variable_mode_ray_payload_in:
+   case vtn_variable_mode_hit_attrib:
       /* For these, we create the variable normally */
       var->var = rzalloc(b->shader, nir_variable);
       var->var->name = ralloc_strdup(var->var, val->name);
@@ -1885,6 +1934,7 @@ vtn_create_variable(struct vtn_builder *b, struct vtn_value *val,
    }
 
    case vtn_variable_mode_accel_struct:
+   case vtn_variable_mode_shader_record:
       /* These don't need actual variables. */
       break;
 
@@ -1945,7 +1995,8 @@ vtn_create_variable(struct vtn_builder *b, struct vtn_value *val,
       nir_shader_add_variable(b->shader, var->var);
    } else {
       vtn_assert(vtn_pointer_is_external_block(b, val->pointer) ||
-                 var->mode == vtn_variable_mode_accel_struct);
+                 var->mode == vtn_variable_mode_accel_struct ||
+                 var->mode == vtn_variable_mode_shader_record);
    }
 }
 

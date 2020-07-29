@@ -494,6 +494,12 @@ enum vtn_variable_mode {
    vtn_variable_mode_output,
    vtn_variable_mode_image,
    vtn_variable_mode_accel_struct,
+   vtn_variable_mode_call_data,
+   vtn_variable_mode_call_data_in,
+   vtn_variable_mode_ray_payload,
+   vtn_variable_mode_ray_payload_in,
+   vtn_variable_mode_hit_attrib,
+   vtn_variable_mode_shader_record,
 };
 
 struct vtn_pointer {
