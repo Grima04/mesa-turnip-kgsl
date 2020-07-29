@@ -192,6 +192,6 @@ renders to the specified render buffer for pixmap and pbuffer surfaces.
 The ``EGLDisplay`` will be locked before calling any of the dispatch
 functions (well, except for GetProcAddress which does not take an
 ``EGLDisplay``). This guarantees that the same dispatch function will
-not be called with the sample display at the same time. If a driver has
+not be called with the same display at the same time. If a driver has
 access to an ``EGLDisplay`` without going through the EGL APIs, the
 driver should as well lock the display before using it.
