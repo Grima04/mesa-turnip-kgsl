@@ -249,9 +249,6 @@ files_libgallium = files(
   'util/u_debug_image.h',
   'util/u_debug_refcnt.c',
   'util/u_debug_refcnt.h',
-  'util/u_debug_stack.h',
-  'util/u_debug_symbol.c',
-  'util/u_debug_symbol.h',
   'util/u_dirty_flags.h',
   'util/u_dirty_surfaces.h',
   'util/u_dl.c',
@@ -340,16 +337,6 @@ files_libgallium = files(
   'nir/nir_draw_helpers.c',
   'nir/nir_draw_helpers.h',
 )
-
-if with_platform_android
-  files_libgallium += files(
-    'util/u_debug_stack_android.cpp',
-  )
-else
-  files_libgallium += files(
-    'util/u_debug_stack.c',
-  )
-endif
 
 if dep_libdrm.found()
   files_libgallium += files(
@@ -522,7 +509,7 @@ libgallium = static_library(
   cpp_args : [cpp_msvc_compat_args],
   gnu_symbol_visibility : 'hidden',
   dependencies : [
-    dep_libdrm, dep_llvm, dep_unwind, dep_dl, dep_m, dep_thread, dep_lmsensors,
+    dep_libdrm, dep_llvm, dep_dl, dep_m, dep_thread, dep_lmsensors,
     idep_nir, idep_nir_headers, idep_mesautil,
   ],
   build_by_default : false

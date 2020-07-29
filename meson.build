@@ -841,10 +841,8 @@ if with_platform_android
     dependency('cutils'),
     dependency('hardware'),
     dependency('sync'),
+    dependency('backtrace')
   ]
-  if with_gallium
-    dep_android += dependency('backtrace')
-  endif
   if get_option('platform-sdk-version') >= 26
     dep_android += dependency('nativewindow')
   endif
