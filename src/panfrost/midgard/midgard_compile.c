@@ -160,37 +160,6 @@ v_branch(bool conditional, bool invert)
         return ins;
 }
 
-static midgard_branch_extended
-midgard_create_branch_extended( midgard_condition cond,
-                                midgard_jmp_writeout_op op,
-                                unsigned dest_tag,
-                                signed quadword_offset)
-{
-        /* The condition code is actually a LUT describing a function to
-         * combine multiple condition codes. However, we only support a single
-         * condition code at the moment, so we just duplicate over a bunch of
-         * times. */
-
-        uint16_t duplicated_cond =
-                (cond << 14) |
-                (cond << 12) |
-                (cond << 10) |
-                (cond << 8) |
-                (cond << 6) |
-                (cond << 4) |
-                (cond << 2) |
-                (cond << 0);
-
-        midgard_branch_extended branch = {
-                .op = op,
-                .dest_tag = dest_tag,
-                .offset = quadword_offset,
-                .cond = duplicated_cond
-        };
-
-        return branch;
-}
-
 static void
 attach_constants(compiler_context *ctx, midgard_instruction *ins, void *constants, int name)
 {
@@ -2811,7 +2780,7 @@ emit_cf_list(struct compiler_context *ctx, struct exec_list *list)
  * stream and in branch targets. An initial block might be empty, so iterate
  * until we find one that 'works' */
 
-static unsigned
+unsigned
 midgard_get_first_tag_from_block(compiler_context *ctx, unsigned block_idx)
 {
         midgard_block *initial_block = mir_get_block(ctx, block_idx);
@@ -3006,124 +2975,6 @@ midgard_compile_shader_nir(nir_shader *nir, panfrost_program *program, bool is_b
         /* Schedule! */
         midgard_schedule_program(ctx);
         mir_ra(ctx);
-
-        /* Now that all the bundles are scheduled and we can calculate block
-         * sizes, emit actual branch instructions rather than placeholders */
-
-        int br_block_idx = 0;
-
-        mir_foreach_block(ctx, _block) {
-                midgard_block *block = (midgard_block *) _block;
-                util_dynarray_foreach(&block->bundles, midgard_bundle, bundle) {
-                        for (int c = 0; c < bundle->instruction_count; ++c) {
-                                midgard_instruction *ins = bundle->instructions[c];
-
-                                if (!midgard_is_branch_unit(ins->unit)) continue;
-
-                                /* Parse some basic branch info */
-                                bool is_compact = ins->unit == ALU_ENAB_BR_COMPACT;
-                                bool is_conditional = ins->branch.conditional;
-                                bool is_inverted = ins->branch.invert_conditional;
-                                bool is_discard = ins->branch.target_type == TARGET_DISCARD;
-                                bool is_tilebuf_wait = ins->branch.target_type == TARGET_TILEBUF_WAIT;
-                                bool is_special = is_discard || is_tilebuf_wait;
-                                bool is_writeout = ins->writeout;
-
-                                /* Determine the block we're jumping to */
-                                int target_number = ins->branch.target_block;
-
-                                /* Report the destination tag */
-                                int dest_tag = is_discard ? 0 :
-                                        is_tilebuf_wait ? bundle->tag :
-                                        midgard_get_first_tag_from_block(ctx, target_number);
-
-                                /* Count up the number of quadwords we're
-                                 * jumping over = number of quadwords until
-                                 * (br_block_idx, target_number) */
-
-                                int quadword_offset = 0;
-
-                                if (is_discard) {
-                                        /* Ignored */
-                                } else if (is_tilebuf_wait) {
-                                        quadword_offset = -1;
-                                } else if (target_number > br_block_idx) {
-                                        /* Jump forward */
-
-                                        for (int idx = br_block_idx + 1; idx < target_number; ++idx) {
-                                                midgard_block *blk = mir_get_block(ctx, idx);
-                                                assert(blk);
-
-                                                quadword_offset += blk->quadword_count;
-                                        }
-                                } else {
-                                        /* Jump backwards */
-
-                                        for (int idx = br_block_idx; idx >= target_number; --idx) {
-                                                midgard_block *blk = mir_get_block(ctx, idx);
-                                                assert(blk);
-
-                                                quadword_offset -= blk->quadword_count;
-                                        }
-                                }
-
-                                /* Unconditional extended branches (far jumps)
-                                 * have issues, so we always use a conditional
-                                 * branch, setting the condition to always for
-                                 * unconditional. For compact unconditional
-                                 * branches, cond isn't used so it doesn't
-                                 * matter what we pick. */
-
-                                midgard_condition cond =
-                                        !is_conditional ? midgard_condition_always :
-                                        is_inverted ? midgard_condition_false :
-                                        midgard_condition_true;
-
-                                midgard_jmp_writeout_op op =
-                                        is_discard ? midgard_jmp_writeout_op_discard :
-                                        is_tilebuf_wait ? midgard_jmp_writeout_op_tilebuffer_pending :
-                                        is_writeout ? midgard_jmp_writeout_op_writeout :
-                                        (is_compact && !is_conditional) ? midgard_jmp_writeout_op_branch_uncond :
-                                        midgard_jmp_writeout_op_branch_cond;
-
-                                if (!is_compact) {
-                                        midgard_branch_extended branch =
-                                                midgard_create_branch_extended(
-                                                        cond, op,
-                                                        dest_tag,
-                                                        quadword_offset);
-
-                                        memcpy(&ins->branch_extended, &branch, sizeof(branch));
-                                } else if (is_conditional || is_special) {
-                                        midgard_branch_cond branch = {
-                                                .op = op,
-                                                .dest_tag = dest_tag,
-                                                .offset = quadword_offset,
-                                                .cond = cond
-                                        };
-
-                                        assert(branch.offset == quadword_offset);
-
-                                        memcpy(&ins->br_compact, &branch, sizeof(branch));
-                                } else {
-                                        assert(op == midgard_jmp_writeout_op_branch_uncond);
-
-                                        midgard_branch_uncond branch = {
-                                                .op = op,
-                                                .dest_tag = dest_tag,
-                                                .offset = quadword_offset,
-                                                .unknown = 1
-                                        };
-
-                                        assert(branch.offset == quadword_offset);
-
-                                        memcpy(&ins->br_compact, &branch, sizeof(branch));
-                                }
-                        }
-                }
-
-                ++br_block_idx;
-        }
 
         /* Emit flat binary from the instruction arrays. Iterate each block in
          * sequence. Save instruction boundaries such that lookahead tags can

@@ -579,8 +579,149 @@ vector_alu_from_instr(midgard_instruction *ins)
         return alu;
 }
 
+static midgard_branch_extended
+midgard_create_branch_extended( midgard_condition cond,
+                                midgard_jmp_writeout_op op,
+                                unsigned dest_tag,
+                                signed quadword_offset)
+{
+        /* The condition code is actually a LUT describing a function to
+         * combine multiple condition codes. However, we only support a single
+         * condition code at the moment, so we just duplicate over a bunch of
+         * times. */
+
+        uint16_t duplicated_cond =
+                (cond << 14) |
+                (cond << 12) |
+                (cond << 10) |
+                (cond << 8) |
+                (cond << 6) |
+                (cond << 4) |
+                (cond << 2) |
+                (cond << 0);
+
+        midgard_branch_extended branch = {
+                .op = op,
+                .dest_tag = dest_tag,
+                .offset = quadword_offset,
+                .cond = duplicated_cond
+        };
+
+        return branch;
+}
+
+static void
+emit_branch(midgard_instruction *ins,
+            compiler_context *ctx,
+            midgard_block *block,
+            midgard_bundle *bundle,
+            struct util_dynarray *emission)
+{
+        /* Parse some basic branch info */
+        bool is_compact = ins->unit == ALU_ENAB_BR_COMPACT;
+        bool is_conditional = ins->branch.conditional;
+        bool is_inverted = ins->branch.invert_conditional;
+        bool is_discard = ins->branch.target_type == TARGET_DISCARD;
+        bool is_tilebuf_wait = ins->branch.target_type == TARGET_TILEBUF_WAIT;
+        bool is_special = is_discard || is_tilebuf_wait;
+        bool is_writeout = ins->writeout;
+
+        /* Determine the block we're jumping to */
+        int target_number = ins->branch.target_block;
+
+        /* Report the destination tag */
+        int dest_tag = is_discard ? 0 :
+                is_tilebuf_wait ? bundle->tag :
+                midgard_get_first_tag_from_block(ctx, target_number);
+
+        /* Count up the number of quadwords we're
+         * jumping over = number of quadwords until
+         * (br_block_idx, target_number) */
+
+        int quadword_offset = 0;
+
+        if (is_discard) {
+                /* Ignored */
+        } else if (is_tilebuf_wait) {
+                quadword_offset = -1;
+        } else if (target_number > block->base.name) {
+                /* Jump forward */
+
+                for (int idx = block->base.name+1; idx < target_number; ++idx) {
+                        midgard_block *blk = mir_get_block(ctx, idx);
+                        assert(blk);
+
+                        quadword_offset += blk->quadword_count;
+                }
+        } else {
+                /* Jump backwards */
+
+                for (int idx = block->base.name; idx >= target_number; --idx) {
+                        midgard_block *blk = mir_get_block(ctx, idx);
+                        assert(blk);
+
+                        quadword_offset -= blk->quadword_count;
+                }
+        }
+
+        /* Unconditional extended branches (far jumps)
+         * have issues, so we always use a conditional
+         * branch, setting the condition to always for
+         * unconditional. For compact unconditional
+         * branches, cond isn't used so it doesn't
+         * matter what we pick. */
+
+        midgard_condition cond =
+                !is_conditional ? midgard_condition_always :
+                is_inverted ? midgard_condition_false :
+                midgard_condition_true;
+
+        midgard_jmp_writeout_op op =
+                is_discard ? midgard_jmp_writeout_op_discard :
+                is_tilebuf_wait ? midgard_jmp_writeout_op_tilebuffer_pending :
+                is_writeout ? midgard_jmp_writeout_op_writeout :
+                (is_compact && !is_conditional) ?
+                midgard_jmp_writeout_op_branch_uncond :
+                midgard_jmp_writeout_op_branch_cond;
+
+        if (is_compact) {
+                unsigned size = sizeof(midgard_branch_cond);
+
+                if (is_conditional || is_special) {
+                        midgard_branch_cond branch = {
+                                .op = op,
+                                .dest_tag = dest_tag,
+                                .offset = quadword_offset,
+                                .cond = cond
+                        };
+                        memcpy(util_dynarray_grow_bytes(emission, size, 1), &branch, size);
+                } else {
+                        assert(op == midgard_jmp_writeout_op_branch_uncond);
+                        midgard_branch_uncond branch = {
+                                .op = op,
+                                .dest_tag = dest_tag,
+                                .offset = quadword_offset,
+                                .unknown = 1
+                        };
+                        assert(branch.offset == quadword_offset);
+                        memcpy(util_dynarray_grow_bytes(emission, size, 1), &branch, size);
+                }
+        } else { /* `ins->compact_branch`,  misnomer */
+                unsigned size = sizeof(midgard_branch_extended);
+
+                midgard_branch_extended branch =
+                        midgard_create_branch_extended(
+                                        cond, op,
+                                        dest_tag,
+                                        quadword_offset);
+
+                memcpy(util_dynarray_grow_bytes(emission, size, 1), &branch, size);
+        }
+}
+
 static void
 emit_alu_bundle(compiler_context *ctx,
+                midgard_block *block,
                 midgard_bundle *bundle,
                 struct util_dynarray *emission,
                 unsigned lookahead)
@@ -622,18 +763,12 @@ emit_alu_bundle(compiler_context *ctx,
                         mir_lower_roundmode(ins);
                 }
 
-                if (ins->unit & UNITS_ANY_VECTOR) {
+                if (midgard_is_branch_unit(ins->unit)) {
+                        emit_branch(ins, ctx, block, bundle, emission);
+                } else if (ins->unit & UNITS_ANY_VECTOR) {
                         midgard_vector_alu source = vector_alu_from_instr(ins);
                         mir_pack_mask_alu(ins, &source);
                         mir_pack_vector_srcs(ins, &source);
-                        unsigned size = sizeof(source);
-                        memcpy(util_dynarray_grow_bytes(emission, size, 1), &source, size);
-                } else if (ins->unit == ALU_ENAB_BR_COMPACT) {
-                        uint16_t source = ins->br_compact;
-                        unsigned size = sizeof(source);
-                        memcpy(util_dynarray_grow_bytes(emission, size, 1), &source, size);
-                } else if (ins->compact_branch) { /* misnomer */
-                        midgard_branch_extended source = ins->branch_extended;
                         unsigned size = sizeof(source);
                         memcpy(util_dynarray_grow_bytes(emission, size, 1), &source, size);
                 } else {
@@ -700,7 +835,7 @@ emit_binary_bundle(compiler_context *ctx,
         case TAG_ALU_8 + 4:
         case TAG_ALU_12 + 4:
         case TAG_ALU_16 + 4:
-                emit_alu_bundle(ctx, bundle, emission, lookahead);
+                emit_alu_bundle(ctx, block, bundle, emission, lookahead);
                 break;
 
         case TAG_LOAD_STORE_4: {

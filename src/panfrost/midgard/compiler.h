@@ -676,6 +676,8 @@ bool nir_fuse_io_16(nir_shader *shader);
 
 void midgard_nir_lod_errata(nir_shader *shader);
 
+unsigned midgard_get_first_tag_from_block(compiler_context *ctx, unsigned block_idx);
+
 /* Optimizations */
 
 bool midgard_opt_copy_prop(compiler_context *ctx, midgard_block *block);
