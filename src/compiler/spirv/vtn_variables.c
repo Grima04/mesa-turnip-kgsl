@@ -243,10 +243,6 @@ vtn_variable_resource_index(struct vtn_builder *b, struct vtn_variable *var,
    nir_intrinsic_set_binding(instr, var->binding);
    nir_intrinsic_set_desc_type(instr, vk_desc_type_for_mode(b, var->mode));
 
-   vtn_fail_if(var->mode != vtn_variable_mode_ubo &&
-               var->mode != vtn_variable_mode_ssbo,
-               "Invalid mode for vulkan_resource_index");
-
    nir_address_format addr_format = vtn_mode_to_address_format(b, var->mode);
    nir_ssa_dest_init(&instr->instr, &instr->dest,
                      nir_address_format_num_components(addr_format),
@@ -270,9 +266,6 @@ vtn_resource_reindex(struct vtn_builder *b, enum vtn_variable_mode mode,
    instr->src[1] = nir_src_for_ssa(offset_index);
    nir_intrinsic_set_desc_type(instr, vk_desc_type_for_mode(b, mode));
 
-   vtn_fail_if(mode != vtn_variable_mode_ubo && mode != vtn_variable_mode_ssbo,
-               "Invalid mode for vulkan_resource_reindex");
-
    nir_address_format addr_format = vtn_mode_to_address_format(b, mode);
    nir_ssa_dest_init(&instr->instr, &instr->dest,
                      nir_address_format_num_components(addr_format),
@@ -294,9 +287,6 @@ vtn_descriptor_load(struct vtn_builder *b, enum vtn_variable_mode mode,
                                  nir_intrinsic_load_vulkan_descriptor);
    desc_load->src[0] = nir_src_for_ssa(desc_index);
    nir_intrinsic_set_desc_type(desc_load, vk_desc_type_for_mode(b, mode));
-
-   vtn_fail_if(mode != vtn_variable_mode_ubo && mode != vtn_variable_mode_ssbo,
-               "Invalid mode for load_vulkan_descriptor");
 
    nir_address_format addr_format = vtn_mode_to_address_format(b, mode);
    nir_ssa_dest_init(&desc_load->instr, &desc_load->dest,
