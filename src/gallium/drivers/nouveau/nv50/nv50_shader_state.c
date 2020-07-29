@@ -40,10 +40,10 @@ nv50_constbufs_validate(struct nv50_context *nv50)
    for (s = 0; s < NV50_MAX_3D_SHADER_STAGES; ++s) {
       unsigned p;
 
-      if (s == PIPE_SHADER_FRAGMENT)
+      if (s == NV50_SHADER_STAGE_FRAGMENT)
          p = NV50_3D_SET_PROGRAM_CB_PROGRAM_FRAGMENT;
       else
-      if (s == PIPE_SHADER_GEOMETRY)
+      if (s == NV50_SHADER_STAGE_GEOMETRY)
          p = NV50_3D_SET_PROGRAM_CB_PROGRAM_GEOMETRY;
       else
          p = NV50_3D_SET_PROGRAM_CB_PROGRAM_VERTEX;

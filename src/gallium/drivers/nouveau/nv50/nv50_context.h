@@ -26,9 +26,11 @@
 #include "nv50/nv50_3d.xml.h"
 #include "nv50/nv50_2d.xml.h"
 
+// NOTE: the VS/GS/FS order is based on how command methods are laid out for
+// TSC/TIC setting.
 #define NV50_SHADER_STAGE_VERTEX   0
-#define NV50_SHADER_STAGE_FRAGMENT 1
-#define NV50_SHADER_STAGE_GEOMETRY 2
+#define NV50_SHADER_STAGE_GEOMETRY 1
+#define NV50_SHADER_STAGE_FRAGMENT 2
 #define NV50_SHADER_STAGE_COMPUTE  3
 #define NV50_MAX_SHADER_STAGES     4
 

@@ -631,43 +631,16 @@ nv50_stage_sampler_states_bind(struct nv50_context *nv50, int s,
 }
 
 static void
-nv50_vp_sampler_states_bind(struct pipe_context *pipe, unsigned nr, void **s)
-{
-   nv50_stage_sampler_states_bind(nv50_context(pipe), 0, nr, s);
-}
-
-static void
-nv50_fp_sampler_states_bind(struct pipe_context *pipe, unsigned nr, void **s)
-{
-   nv50_stage_sampler_states_bind(nv50_context(pipe), 2, nr, s);
-}
-
-static void
-nv50_gp_sampler_states_bind(struct pipe_context *pipe, unsigned nr, void **s)
-{
-   nv50_stage_sampler_states_bind(nv50_context(pipe), 1, nr, s);
-}
-
-static void
 nv50_bind_sampler_states(struct pipe_context *pipe,
                          enum pipe_shader_type shader, unsigned start,
                          unsigned num_samplers, void **samplers)
 {
+   unsigned s = nv50_context_shader_stage(shader);
+
    assert(start == 0);
-   switch (shader) {
-   case PIPE_SHADER_VERTEX:
-      nv50_vp_sampler_states_bind(pipe, num_samplers, samplers);
-      break;
-   case PIPE_SHADER_GEOMETRY:
-      nv50_gp_sampler_states_bind(pipe, num_samplers, samplers);
-      break;
-   case PIPE_SHADER_FRAGMENT:
-      nv50_fp_sampler_states_bind(pipe, num_samplers, samplers);
-      break;
-   default:
-      assert(!"unexpected shader type");
-      break;
-   }
+   assert(s != NV50_SHADER_STAGE_COMPUTE);
+   nv50_stage_sampler_states_bind(nv50_context(pipe), s, num_samplers,
+                                  samplers);
 }
 
 
@@ -735,20 +708,11 @@ nv50_set_sampler_views(struct pipe_context *pipe, enum pipe_shader_type shader,
                        unsigned unbind_num_trailing_slots,
                        struct pipe_sampler_view **views)
 {
+   unsigned s = nv50_context_shader_stage(shader);
+
    assert(start == 0);
-   switch (shader) {
-   case PIPE_SHADER_VERTEX:
-      nv50_stage_set_sampler_views(nv50_context(pipe), 0, nr, views);
-      break;
-   case PIPE_SHADER_GEOMETRY:
-      nv50_stage_set_sampler_views(nv50_context(pipe), 1, nr, views);
-      break;
-   case PIPE_SHADER_FRAGMENT:
-      nv50_stage_set_sampler_views(nv50_context(pipe), 2, nr, views);
-      break;
-   default:
-      ;
-   }
+   assert(s != NV50_SHADER_STAGE_COMPUTE);
+   nv50_stage_set_sampler_views(nv50_context(pipe), s, nr, views);
 }
 
 
@@ -758,7 +722,8 @@ nv50_set_sampler_views(struct pipe_context *pipe, enum pipe_shader_type shader,
 
 static void *
 nv50_sp_state_create(struct pipe_context *pipe,
-                     const struct pipe_shader_state *cso, unsigned type)
+                     const struct pipe_shader_state *cso,
+                     enum pipe_shader_type type)
 {
    struct nv50_program *prog;
 

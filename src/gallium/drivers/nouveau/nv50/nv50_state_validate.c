@@ -460,9 +460,9 @@ nv50_switch_pipe_context(struct nv50_context *ctx_to)
    ctx_to->viewports_dirty = ~0;
    ctx_to->scissors_dirty = ~0;
 
-   ctx_to->constbuf_dirty[0] =
-   ctx_to->constbuf_dirty[1] =
-   ctx_to->constbuf_dirty[2] = (1 << NV50_MAX_PIPE_CONSTBUFS) - 1;
+   ctx_to->constbuf_dirty[NV50_SHADER_STAGE_VERTEX] =
+   ctx_to->constbuf_dirty[NV50_SHADER_STAGE_GEOMETRY] =
+   ctx_to->constbuf_dirty[NV50_SHADER_STAGE_FRAGMENT] = (1 << NV50_MAX_PIPE_CONSTBUFS) - 1;
 
    if (!ctx_to->vertex)
       ctx_to->dirty_3d &= ~(NV50_NEW_3D_VERTEX | NV50_NEW_3D_ARRAYS);
