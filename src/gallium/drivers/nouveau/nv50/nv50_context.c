@@ -68,7 +68,7 @@ nv50_memory_barrier(struct pipe_context *pipe, unsigned flags)
             nv50->base.vbo_dirty = true;
       }
 
-      for (s = 0; s < 3 && !nv50->cb_dirty; ++s) {
+      for (s = 0; s < NV50_MAX_3D_SHADER_STAGES && !nv50->cb_dirty; ++s) {
          uint32_t valid = nv50->constbuf_valid[s];
 
          while (valid && !nv50->cb_dirty) {
@@ -142,7 +142,7 @@ nv50_context_unreference_resources(struct nv50_context *nv50)
    for (i = 0; i < nv50->num_vtxbufs; ++i)
       pipe_vertex_buffer_unreference(&nv50->vtxbuf[i]);
 
-   for (s = 0; s < 3; ++s) {
+   for (s = 0; s < NV50_MAX_3D_SHADER_STAGES; ++s) {
       assert(nv50->num_textures[s] <= PIPE_MAX_SAMPLERS);
       for (i = 0; i < nv50->num_textures[s]; ++i)
          pipe_sampler_view_reference(&nv50->textures[s][i], NULL);
@@ -232,7 +232,7 @@ nv50_invalidate_resource_storage(struct nouveau_context *ctx,
          }
       }
 
-      for (s = 0; s < 3; ++s) {
+      for (s = 0; s < NV50_MAX_3D_SHADER_STAGES; ++s) {
       assert(nv50->num_textures[s] <= PIPE_MAX_SAMPLERS);
       for (i = 0; i < nv50->num_textures[s]; ++i) {
          if (nv50->textures[s][i] &&
@@ -245,7 +245,7 @@ nv50_invalidate_resource_storage(struct nouveau_context *ctx,
       }
       }
 
-      for (s = 0; s < 3; ++s) {
+      for (s = 0; s < NV50_MAX_3D_SHADER_STAGES; ++s) {
       for (i = 0; i < NV50_MAX_PIPE_CONSTBUFS; ++i) {
          if (!(nv50->constbuf_valid[s] & (1 << i)))
             continue;

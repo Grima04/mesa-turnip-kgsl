@@ -331,11 +331,11 @@ nv50_validate_tic(struct nv50_context *nv50, int s)
 
 void nv50_validate_textures(struct nv50_context *nv50)
 {
-   bool need_flush;
+   unsigned s;
+   bool need_flush = false;
 
-   need_flush  = nv50_validate_tic(nv50, 0);
-   need_flush |= nv50_validate_tic(nv50, 1);
-   need_flush |= nv50_validate_tic(nv50, 2);
+   for (s = 0; s < NV50_MAX_3D_SHADER_STAGES; ++s)
+      need_flush |= nv50_validate_tic(nv50, s);
 
    if (need_flush) {
       BEGIN_NV04(nv50->base.pushbuf, NV50_3D(TIC_FLUSH), 1);
@@ -394,11 +394,11 @@ nv50_validate_tsc(struct nv50_context *nv50, int s)
 
 void nv50_validate_samplers(struct nv50_context *nv50)
 {
-   bool need_flush;
+   unsigned s;
+   bool need_flush = false;
 
-   need_flush  = nv50_validate_tsc(nv50, 0);
-   need_flush |= nv50_validate_tsc(nv50, 1);
-   need_flush |= nv50_validate_tsc(nv50, 2);
+   for (s = 0; s < NV50_MAX_3D_SHADER_STAGES; ++s)
+      need_flush |= nv50_validate_tsc(nv50, s);
 
    if (need_flush) {
       BEGIN_NV04(nv50->base.pushbuf, NV50_3D(TSC_FLUSH), 1);

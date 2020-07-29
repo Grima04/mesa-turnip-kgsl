@@ -26,6 +26,14 @@
 #include "nv50/nv50_3d.xml.h"
 #include "nv50/nv50_2d.xml.h"
 
+#define NV50_SHADER_STAGE_VERTEX   0
+#define NV50_SHADER_STAGE_FRAGMENT 1
+#define NV50_SHADER_STAGE_GEOMETRY 2
+#define NV50_SHADER_STAGE_COMPUTE  3
+#define NV50_MAX_SHADER_STAGES     4
+
+#define NV50_MAX_3D_SHADER_STAGES  3
+
 #define NV50_NEW_3D_BLEND        (1 << 0)
 #define NV50_NEW_3D_RASTERIZER   (1 << 1)
 #define NV50_NEW_3D_ZSA          (1 << 2)
@@ -88,9 +96,9 @@
 /* 8 user clip planes, at 4 32-bit floats each */
 #define NV50_CB_AUX_UCP_OFFSET    0x0000
 #define NV50_CB_AUX_UCP_SIZE      (8 * 4 * 4)
-/* 16 textures * 3 shaders, each with ms_x, ms_y u32 pairs */
+/* 16 textures * NV50_MAX_3D_SHADER_STAGES shaders, each with ms_x, ms_y u32 pairs */
 #define NV50_CB_AUX_TEX_MS_OFFSET 0x0080
-#define NV50_CB_AUX_TEX_MS_SIZE   (16 * 3 * 2 * 4)
+#define NV50_CB_AUX_TEX_MS_SIZE   (16 * NV50_MAX_3D_SHADER_STAGES * 2 * 4)
 /* For each MS level (4), 8 sets of 32-bit integer pairs sample offsets */
 #define NV50_CB_AUX_MS_OFFSET     0x200
 #define NV50_CB_AUX_MS_SIZE       (4 * 8 * 4 * 2)
@@ -135,10 +143,10 @@ struct nv50_context {
    struct nv50_program *fragprog;
    struct nv50_program *compprog;
 
-   struct nv50_constbuf constbuf[3][NV50_MAX_PIPE_CONSTBUFS];
-   uint16_t constbuf_dirty[3];
-   uint16_t constbuf_valid[3];
-   uint16_t constbuf_coherent[3];
+   struct nv50_constbuf constbuf[NV50_MAX_3D_SHADER_STAGES][NV50_MAX_PIPE_CONSTBUFS];
+   uint16_t constbuf_dirty[NV50_MAX_3D_SHADER_STAGES];
+   uint16_t constbuf_valid[NV50_MAX_3D_SHADER_STAGES];
+   uint16_t constbuf_coherent[NV50_MAX_3D_SHADER_STAGES];
 
    struct pipe_vertex_buffer vtxbuf[PIPE_MAX_ATTRIBS];
    unsigned num_vtxbufs;
@@ -151,11 +159,11 @@ struct nv50_context {
    uint32_t instance_off; /* base vertex for instanced arrays */
    uint32_t instance_max; /* max instance for current draw call */
 
-   struct pipe_sampler_view *textures[3][PIPE_MAX_SAMPLERS];
-   unsigned num_textures[3];
-   uint32_t textures_coherent[3];
-   struct nv50_tsc_entry *samplers[3][PIPE_MAX_SAMPLERS];
-   unsigned num_samplers[3];
+   struct pipe_sampler_view *textures[NV50_MAX_3D_SHADER_STAGES][PIPE_MAX_SAMPLERS];
+   unsigned num_textures[NV50_MAX_3D_SHADER_STAGES];
+   uint32_t textures_coherent[NV50_MAX_3D_SHADER_STAGES];
+   struct nv50_tsc_entry *samplers[NV50_MAX_3D_SHADER_STAGES][PIPE_MAX_SAMPLERS];
+   unsigned num_samplers[NV50_MAX_3D_SHADER_STAGES];
    bool seamless_cube_map;
 
    uint8_t num_so_targets;
@@ -206,10 +214,10 @@ static inline unsigned
 nv50_context_shader_stage(unsigned pipe)
 {
    switch (pipe) {
-   case PIPE_SHADER_VERTEX: return 0;
-   case PIPE_SHADER_FRAGMENT: return 1;
-   case PIPE_SHADER_GEOMETRY: return 2;
-   case PIPE_SHADER_COMPUTE: return 3;
+   case PIPE_SHADER_VERTEX: return NV50_SHADER_STAGE_VERTEX;
+   case PIPE_SHADER_FRAGMENT: return NV50_SHADER_STAGE_FRAGMENT;
+   case PIPE_SHADER_GEOMETRY: return NV50_SHADER_STAGE_GEOMETRY;
+   case PIPE_SHADER_COMPUTE: return NV50_SHADER_STAGE_COMPUTE;
    default:
       assert(!"invalid/unhandled shader type");
       return 0;

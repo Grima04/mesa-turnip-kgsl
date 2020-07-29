@@ -793,7 +793,7 @@ nv50_screen_init_hwctx(struct nv50_screen *screen)
    nv50_upload_ms_info(push);
 
    /* max TIC (bits 4:8) & TSC bindings, per program type */
-   for (i = 0; i < 3; ++i) {
+   for (i = 0; i < NV50_MAX_3D_SHADER_STAGES; ++i) {
       BEGIN_NV04(push, NV50_3D(TEX_LIMITS(i)), 1);
       PUSH_DATA (push, 0x54);
    }

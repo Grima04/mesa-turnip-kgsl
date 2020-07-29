@@ -37,7 +37,7 @@ nv50_constbufs_validate(struct nv50_context *nv50)
    struct nouveau_pushbuf *push = nv50->base.pushbuf;
    unsigned s;
 
-   for (s = 0; s < 3; ++s) {
+   for (s = 0; s < NV50_MAX_3D_SHADER_STAGES; ++s) {
       unsigned p;
 
       if (s == PIPE_SHADER_FRAGMENT)

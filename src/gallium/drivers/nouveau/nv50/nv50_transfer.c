@@ -536,7 +536,7 @@ nv50_cb_push(struct nouveau_context *nv,
     * find one which contains the region to be updated.
     */
    /* XXX compute? */
-   for (s = 0; s < 3 && !cb; s++) {
+   for (s = 0; s < NV50_MAX_3D_SHADER_STAGES && !cb; s++) {
       uint16_t bindings = res->cb_bindings[s];
       while (bindings) {
          int i = ffs(bindings) - 1;

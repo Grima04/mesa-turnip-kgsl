@@ -810,7 +810,7 @@ nv50_draw_vbo(struct pipe_context *pipe, const struct pipe_draw_info *info,
 
    push->kick_notify = nv50_draw_vbo_kick_notify;
 
-   for (s = 0; s < 3 && !nv50->cb_dirty; ++s) {
+   for (s = 0; s < NV50_MAX_3D_SHADER_STAGES && !nv50->cb_dirty; ++s) {
       if (nv50->constbuf_coherent[s])
          nv50->cb_dirty = true;
    }
@@ -822,7 +822,7 @@ nv50_draw_vbo(struct pipe_context *pipe, const struct pipe_draw_info *info,
       nv50->cb_dirty = false;
    }
 
-   for (s = 0; s < 3 && !tex_dirty; ++s) {
+   for (s = 0; s < NV50_MAX_3D_SHADER_STAGES && !tex_dirty; ++s) {
       if (nv50->textures_coherent[s])
          tex_dirty = true;
    }
