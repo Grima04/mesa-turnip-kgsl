@@ -164,7 +164,7 @@ tu_image_from_gralloc(VkDevice device_h,
                         &(VkMemoryAllocateInfo) {
                            .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
                            .pNext = &import_info,
-                           .allocationSize = image->layout.size,
+                           .allocationSize = image->total_size,
                            .memoryTypeIndex = 0,
                         },
                         alloc, &memory_h);
