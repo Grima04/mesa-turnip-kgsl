@@ -221,8 +221,6 @@ init_haiku(const _EGLDriver *drv, _EGLDisplay *disp)
 	if (!haiku_add_configs_for_visuals(disp))
 		return EGL_FALSE;
 
-	disp->Version = 14;
-
 	TRACE("Initialization finished\n");
 
 	return EGL_TRUE;
