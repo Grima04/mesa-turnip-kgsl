@@ -45,7 +45,7 @@
 #include <dlfcn.h>
 
 #include "os/os_thread.h"
-#include "u_hash_table.h"
+#include "util/hash_table.h"
 
 static struct hash_table* symbols_hash;
 static mtx_t symbols_mutex = _MTX_INITIALIZER_NP;
@@ -62,10 +62,9 @@ symbol_name_cached(unw_cursor_t *cursor, unw_proc_info_t *pip)
 
    mtx_lock(&symbols_mutex);
    if(!symbols_hash)
-      symbols_hash = util_hash_table_create_ptr_keys();
-   name = util_hash_table_get(symbols_hash, addr);
-   if(!name)
-   {
+      symbols_hash = _mesa_pointer_hash_table_create(NULL);
+   struct hash_entry *entry = _mesa_hash_table_search(symbols_hash, addr);
+   if (!entry) {
       char procname[256];
       unw_word_t off;
       int ret;
@@ -78,11 +77,11 @@ symbol_name_cached(unw_cursor_t *cursor, unw_proc_info_t *pip)
 
       if (asprintf(&name, "%s%s", procname, ret == -UNW_ENOMEM ? "..." : "") == -1) 
          name = "??";
-      _mesa_hash_table_insert(symbols_hash, addr, (void*)name);
+      entry = _mesa_hash_table_insert(symbols_hash, addr, (void*)name);
    }
    mtx_unlock(&symbols_mutex);
 
-   return name;
+   return entry->data;
 }
 
 void

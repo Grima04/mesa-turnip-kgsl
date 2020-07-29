@@ -38,7 +38,7 @@
 
 #include "util/u_debug.h"
 #include "u_debug_symbol.h"
-#include "u_hash_table.h"
+#include "util/hash_table.h"
 
 
 #if defined(PIPE_OS_WINDOWS)
@@ -292,16 +292,15 @@ debug_symbol_name_cached(const void *addr)
 
    mtx_lock(&symbols_mutex);
    if(!symbols_hash)
-      symbols_hash = util_hash_table_create_ptr_keys();
-   name = util_hash_table_get(symbols_hash, (void*)addr);
-   if(!name)
-   {
+      symbols_hash = _mesa_pointer_hash_table_create(NULL);
+   struct hash_entry *entry = _mesa_hash_table_search(symbols_hash, addr);
+   if (!entry) {
       char buf[1024];
       debug_symbol_name(addr, buf, sizeof(buf));
       name = strdup(buf);
 
-      _mesa_hash_table_insert(symbols_hash, (void*)addr, (void*)name);
+      entry = _mesa_hash_table_insert(symbols_hash, addr, (void*)name);
    }
    mtx_unlock(&symbols_mutex);
-   return name;
+   return entry->data;
 }
