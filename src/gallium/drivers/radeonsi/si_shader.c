@@ -1392,12 +1392,8 @@ static bool si_build_main_function(struct si_shader_context *ctx, struct si_shad
             ctx->gs_generated_prims[i] = ac_build_alloca(&ctx->ac, ctx->ac.i32, "");
          }
 
-         unsigned scratch_size = 8;
-         if (sel->so.num_outputs)
-            scratch_size = 44;
-
          assert(!ctx->gs_ngg_scratch);
-         LLVMTypeRef ai32 = LLVMArrayType(ctx->ac.i32, scratch_size);
+         LLVMTypeRef ai32 = LLVMArrayType(ctx->ac.i32, gfx10_ngg_get_scratch_dw_size(shader));
          ctx->gs_ngg_scratch =
             LLVMAddGlobalInAddressSpace(ctx->ac.module, ai32, "ngg_scratch", AC_ADDR_SPACE_LDS);
          LLVMSetInitializer(ctx->gs_ngg_scratch, LLVMGetUndef(ai32));
@@ -1425,7 +1421,7 @@ static bool si_build_main_function(struct si_shader_context *ctx, struct si_shad
        * compaction is enabled.
        */
       if (!ctx->gs_ngg_scratch && (sel->so.num_outputs || shader->key.opt.ngg_culling)) {
-         LLVMTypeRef asi32 = LLVMArrayType(ctx->ac.i32, 8);
+         LLVMTypeRef asi32 = LLVMArrayType(ctx->ac.i32, gfx10_ngg_get_scratch_dw_size(shader));
          ctx->gs_ngg_scratch =
             LLVMAddGlobalInAddressSpace(ctx->ac.module, asi32, "ngg_scratch", AC_ADDR_SPACE_LDS);
          LLVMSetInitializer(ctx->gs_ngg_scratch, LLVMGetUndef(asi32));

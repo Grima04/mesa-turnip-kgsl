@@ -1887,6 +1887,16 @@ static void clamp_gsprims_to_esverts(unsigned *max_gsprims, unsigned max_esverts
    *max_gsprims = MIN2(*max_gsprims, 1 + max_reuse);
 }
 
+unsigned gfx10_ngg_get_scratch_dw_size(struct si_shader *shader)
+{
+   const struct si_shader_selector *sel = shader->selector;
+
+   if (sel->type == PIPE_SHADER_GEOMETRY && sel->so.num_outputs)
+      return 44;
+
+   return 8;
+}
+
 /**
  * Determine subgroup information like maximum number of vertices and prims.
  *
