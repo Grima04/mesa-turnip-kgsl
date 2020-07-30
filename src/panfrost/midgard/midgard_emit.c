@@ -43,7 +43,7 @@ mir_get_imod(bool shift, nir_alu_type T, bool half, bool scalar)
                 return midgard_int_zero_extend;
 }
 
-static unsigned
+unsigned
 mir_pack_mod(midgard_instruction *ins, unsigned i, bool scalar)
 {
         bool integer = midgard_is_integer_op(ins->op);

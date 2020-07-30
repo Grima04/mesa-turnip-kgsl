@@ -328,6 +328,10 @@ midgard_is_branch_unit(unsigned unit)
         return (unit == ALU_ENAB_BRANCH) || (unit == ALU_ENAB_BR_COMPACT);
 }
 
+/* Packs ALU mod argument */
+struct midgard_instruction;
+unsigned mir_pack_mod(struct midgard_instruction *ins, unsigned i, bool scalar);
+
 void
 mir_print_constant_component(FILE *fp, const midgard_constants *consts,
                              unsigned c, midgard_reg_mode reg_mode, bool half,
