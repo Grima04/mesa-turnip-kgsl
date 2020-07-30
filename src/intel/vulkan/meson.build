@@ -209,12 +209,22 @@ libvulkan_intel = shared_library(
 )
 
 if with_symbols_check
+  if get_option('buildtype') == 'debug'  # Same rule as `-DDEBUG` in /meson.build
+    _extra_args = [
+      '--ignore-symbol', 'anv_dump_start',
+      '--ignore-symbol', 'anv_dump_finish',
+    ]
+  else
+    _extra_args = []
+  endif
+
   test(
     'anv symbols check',
     symbols_check,
     args : [
       '--lib', libvulkan_intel,
       '--symbols-file', vulkan_icd_symbols,
+      _extra_args,
       symbols_check_args,
     ],
     suite : ['intel'],

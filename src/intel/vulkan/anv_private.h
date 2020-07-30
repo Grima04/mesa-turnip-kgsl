@@ -4424,7 +4424,13 @@ enum anv_dump_action {
    ANV_DUMP_FRAMEBUFFERS_BIT = 0x1,
 };
 
+#ifdef DEBUG
+PUBLIC
+#endif
 void anv_dump_start(struct anv_device *device, enum anv_dump_action actions);
+#ifdef DEBUG
+PUBLIC
+#endif
 void anv_dump_finish(void);
 
 void anv_dump_add_attachments(struct anv_cmd_buffer *cmd_buffer);
