@@ -703,7 +703,7 @@ void gfx9_get_gs_info(struct si_shader_selector *es, struct si_shader_selector *
    out->gs_prims_per_subgroup = gs_prims;
    out->gs_inst_prims_in_subgroup = gs_prims * gs_num_invocations;
    out->max_prims_per_subgroup = out->gs_inst_prims_in_subgroup * gs->gs_max_out_vertices;
-   out->esgs_ring_size = 4 * esgs_lds_size;
+   out->esgs_ring_size = esgs_lds_size;
 
    assert(out->max_prims_per_subgroup <= max_out_prims);
 }

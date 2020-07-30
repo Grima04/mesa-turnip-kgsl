@@ -2061,7 +2061,7 @@ retry_select_mode:
    shader->ngg.prim_amp_factor = prim_amp_factor;
    shader->ngg.max_vert_out_per_gs_instance = max_vert_out_per_gs_instance;
 
-   shader->gs_info.esgs_ring_size = 4 * max_esverts * esvert_lds_size;
+   shader->gs_info.esgs_ring_size = max_esverts * esvert_lds_size;
    shader->ngg.ngg_emit_size = max_gsprims * gsprim_lds_size;
 
    assert(shader->ngg.hw_max_esverts >= 24); /* HW limitation */

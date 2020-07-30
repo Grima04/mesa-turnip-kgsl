@@ -816,7 +816,7 @@ static bool si_shader_binary_open(struct si_screen *screen, struct si_shader *sh
        */
       struct ac_rtld_symbol *sym = &lds_symbols[num_lds_symbols++];
       sym->name = "esgs_ring";
-      sym->size = shader->gs_info.esgs_ring_size;
+      sym->size = shader->gs_info.esgs_ring_size * 4;
       sym->align = 64 * 1024;
    }
 
