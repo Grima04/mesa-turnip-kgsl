@@ -9072,7 +9072,7 @@ cs_fill_push_const_info(const struct gen_device_info *devinfo,
 }
 
 static bool
-filter_simd(const nir_instr *instr, const void *_options)
+filter_simd(const nir_instr *instr, const void * /* options */)
 {
    if (instr->type != nir_instr_type_intrinsic)
       return false;
