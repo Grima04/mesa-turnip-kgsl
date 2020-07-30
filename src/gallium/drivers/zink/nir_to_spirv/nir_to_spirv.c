@@ -949,6 +949,8 @@ emit_so_info(struct ntv_context *ctx, const struct zink_so_info *so_info)
       spirv_builder_emit_offset(&ctx->builder, var_id, (so_output.dst_offset * 4));
       spirv_builder_emit_xfb_buffer(&ctx->builder, var_id, so_output.output_buffer);
       spirv_builder_emit_xfb_stride(&ctx->builder, var_id, so_info->so_info.stride[so_output.output_buffer] * 4);
+      if (so_output.stream)
+         spirv_builder_emit_stream(&ctx->builder, var_id, so_output.stream);
 
       /* output location is incremented by VARYING_SLOT_VAR0 for non-builtins in vtn,
        * so we need to ensure that the new xfb location slot doesn't conflict with any previously-emitted
@@ -2056,7 +2058,7 @@ emit_intrinsic(struct ntv_context *ctx, nir_intrinsic_instr *intr)
        */
       if (ctx->so_info)
          emit_so_outputs(ctx, ctx->so_info);
-      spirv_builder_emit_vertex(&ctx->builder);
+      spirv_builder_emit_vertex(&ctx->builder, nir_intrinsic_stream_id(intr));
       break;
 
    case nir_intrinsic_set_vertex_and_primitive_count:
@@ -2064,7 +2066,7 @@ emit_intrinsic(struct ntv_context *ctx, nir_intrinsic_instr *intr)
       break;
 
    case nir_intrinsic_end_primitive_with_counter:
-      spirv_builder_end_primitive(&ctx->builder);
+      spirv_builder_end_primitive(&ctx->builder, nir_intrinsic_stream_id(intr));
       break;
 
    case nir_intrinsic_load_patch_vertices_in:

@@ -227,17 +227,33 @@ spirv_builder_emit_builtin(struct spirv_builder *b, SpvId target,
 }
 
 void
-spirv_builder_emit_vertex(struct spirv_builder *b)
+spirv_builder_emit_vertex(struct spirv_builder *b, uint32_t stream)
 {
-   spirv_buffer_prepare(&b->instructions, b->mem_ctx, 1);
-   spirv_buffer_emit_word(&b->instructions, SpvOpEmitVertex | (1 << 16));
+   unsigned words = 1;
+   SpvOp op = SpvOpEmitVertex;
+   if (stream > 0) {
+      op = SpvOpEmitStreamVertex;
+      words++;
+   }
+   spirv_buffer_prepare(&b->instructions, b->mem_ctx, words);
+   spirv_buffer_emit_word(&b->instructions, op | (words << 16));
+   if (stream)
+      spirv_buffer_emit_word(&b->instructions, spirv_builder_const_uint(b, 32, stream));
 }
 
 void
-spirv_builder_end_primitive(struct spirv_builder *b)
+spirv_builder_end_primitive(struct spirv_builder *b, uint32_t stream)
 {
-   spirv_buffer_prepare(&b->instructions, b->mem_ctx, 1);
-   spirv_buffer_emit_word(&b->instructions, SpvOpEndPrimitive | (1 << 16));
+   unsigned words = 1;
+   SpvOp op = SpvOpEndPrimitive;
+   if (stream > 0) {
+      op = SpvOpEndStreamPrimitive;
+      words++;
+   }
+   spirv_buffer_prepare(&b->instructions, b->mem_ctx, words);
+   spirv_buffer_emit_word(&b->instructions, op | (words << 16));
+   if (stream)
+      spirv_buffer_emit_word(&b->instructions, spirv_builder_const_uint(b, 32, stream));
 }
 
 void
@@ -294,6 +310,13 @@ spirv_builder_emit_index(struct spirv_builder *b, SpvId target, int index)
 {
    uint32_t args[] = { index };
    emit_decoration(b, target, SpvDecorationIndex, args, ARRAY_SIZE(args));
+}
+
+void
+spirv_builder_emit_stream(struct spirv_builder *b, SpvId target, int stream)
+{
+   uint32_t args[] = { stream };
+   emit_decoration(b, target, SpvDecorationStream, args, ARRAY_SIZE(args));
 }
 
 static void

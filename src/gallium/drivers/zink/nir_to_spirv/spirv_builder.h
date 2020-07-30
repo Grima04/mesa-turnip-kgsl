@@ -105,6 +105,9 @@ void
 spirv_builder_emit_index(struct spirv_builder *b, SpvId target, int index);
 
 void
+spirv_builder_emit_stream(struct spirv_builder *b, SpvId target, int stream);
+
+void
 spirv_builder_emit_descriptor_set(struct spirv_builder *b, SpvId target,
                                   uint32_t descriptor_set);
 
@@ -381,7 +384,7 @@ spirv_builder_get_words(struct spirv_builder *b, uint32_t *words,
                         size_t num_words);
 
 void
-spirv_builder_emit_vertex(struct spirv_builder *b);
+spirv_builder_emit_vertex(struct spirv_builder *b, uint32_t stream);
 void
-spirv_builder_end_primitive(struct spirv_builder *b);
+spirv_builder_end_primitive(struct spirv_builder *b, uint32_t stream);
 #endif
