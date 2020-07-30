@@ -1712,7 +1712,8 @@ bool radv_layout_can_fast_clear(const struct radv_image *image,
 				bool in_render_loop,
 			        unsigned queue_mask)
 {
-	return layout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+	return layout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL &&
+	       queue_mask == (1u << RADV_QUEUE_GENERAL);
 }
 
 bool radv_layout_dcc_compressed(const struct radv_device *device,
