@@ -210,6 +210,8 @@ struct brw_sampler_prog_key_data {
    uint32_t xy_uxvx_image_mask;
    uint32_t ayuv_image_mask;
    uint32_t xyuv_image_mask;
+   uint32_t bt709_mask;
+   uint32_t bt2020_mask;
 
    /* Scale factor for each texture. */
    float scale_factors[32];

@@ -1073,6 +1073,8 @@ brw_nir_apply_sampler_key(nir_shader *nir,
    tex_options.lower_xy_uxvx_external = key_tex->xy_uxvx_image_mask;
    tex_options.lower_ayuv_external = key_tex->ayuv_image_mask;
    tex_options.lower_xyuv_external = key_tex->xyuv_image_mask;
+   tex_options.bt709_external = key_tex->bt709_mask;
+   tex_options.bt2020_external = key_tex->bt2020_mask;
 
    /* Setup array of scaling factors for each texture. */
    memcpy(&tex_options.scale_factors, &key_tex->scale_factors,

@@ -323,6 +323,17 @@ brw_populate_sampler_prog_key_data(struct gl_context *ctx,
             default:
                break;
             }
+
+            switch (intel_tex->yuv_color_space) {
+            case __DRI_YUV_COLOR_SPACE_ITU_REC709:
+              key->bt709_mask |= 1 << s;
+              break;
+            case __DRI_YUV_COLOR_SPACE_ITU_REC2020:
+              key->bt2020_mask |= 1 << s;
+              break;
+            default:
+              break;
+            }
          }
 
       }
