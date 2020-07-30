@@ -1073,11 +1073,19 @@ to upconvert to 32b float internally?
 	<!-- SDS == CP_SET_DRAW_STATE: -->
 	<reg32 offset="0x092e" name="CP_SDS_BASE"/>
 	<reg32 offset="0x092f" name="CP_SDS_BASE_HI"/>
-	<reg32 offset="0x092e" name="CP_SDS_REM_SIZE"/>
-	<reg32 offset="0x0931" name="CP_BIN_SIZE_ADDRESS"/>
-	<reg32 offset="0x0932" name="CP_BIN_SIZE_ADDRESS_HI"/>
-	<reg32 offset="0x0934" name="CP_BIN_DATA_ADDR"/>
-	<reg32 offset="0x0935" name="CP_BIN_DATA_ADDR_HI"/>
+	<reg32 offset="0x0930" name="CP_SDS_REM_SIZE"/>
+	<!-- MRB == MEM_READ_ADDR/$addr in SQE firmware -->
+	<reg32 offset="0x0931" name="CP_MRB_BASE"/>
+	<reg32 offset="0x0932" name="CP_MRB_BASE_HI"/>
+	<reg32 offset="0x0933" name="CP_MRB_REM_SIZE"/>
+	<!--
+	VSD == Visibility Stream Decode
+	This is used by CP to read the draw stream and skip empty draws
+	-->
+	<reg32 offset="0x0934" name="CP_VSD_BASE"/>
+	<reg32 offset="0x0935" name="CP_VSD_BASE_HI"/>
+	<reg32 offset="0x0946" name="CP_MRB_DWORDS"/>
+	<reg32 offset="0x0947" name="CP_VSD_DWORDS"/>
 	<!--
 	There are probably similar registers for RB and SDS, teasing out SDS will
 	take a slightly better test case..
@@ -1088,6 +1096,10 @@ to upconvert to 32b float internally?
 	</reg32>
 	<reg32 offset="0x094a" name="CP_CSQ_IB2_STAT">
 		<doc>number of remaining dwords incl current dword being consumed?</doc>
+		<bitfield name="REM" low="16" high="31"/>
+	</reg32>
+	<reg32 offset="0x094c" name="CP_MRQ_MRB_STAT">
+		<doc>number of dwords that have already been read but haven't been consumed by $addr</doc>
 		<bitfield name="REM" low="16" high="31"/>
 	</reg32>
 	<reg32 offset="0x0980" name="CP_ALWAYS_ON_COUNTER_LO"/>
