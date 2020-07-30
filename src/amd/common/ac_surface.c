@@ -1642,34 +1642,32 @@ static int gfx9_compute_miptree(struct ac_addrlib *addrlib, const struct radeon_
             /* Align the size to 4 (for the compute shader). */
             surf->u.gfx9.dcc_retile_num_elements = align(surf->u.gfx9.dcc_retile_num_elements, 4);
 
-            if (!(surf->flags & RADEON_SURF_IMPORTED)) {
-               /* Compute address mapping from non-displayable to displayable DCC. */
-               ADDR2_COMPUTE_DCC_ADDRFROMCOORD_INPUT addrin;
-               memset(&addrin, 0, sizeof(addrin));
-               addrin.size = sizeof(addrin);
-               addrin.swizzleMode = din.swizzleMode;
-               addrin.resourceType = din.resourceType;
-               addrin.bpp = din.bpp;
-               addrin.numSlices = 1;
-               addrin.numMipLevels = 1;
-               addrin.numFrags = 1;
-               addrin.pitch = dout.pitch;
-               addrin.height = dout.height;
-               addrin.compressBlkWidth = dout.compressBlkWidth;
-               addrin.compressBlkHeight = dout.compressBlkHeight;
-               addrin.compressBlkDepth = dout.compressBlkDepth;
-               addrin.metaBlkWidth = dout.metaBlkWidth;
-               addrin.metaBlkHeight = dout.metaBlkHeight;
-               addrin.metaBlkDepth = dout.metaBlkDepth;
-               addrin.dccRamSliceSize = 0; /* Don't care for non-layered images. */
+            /* Compute address mapping from non-displayable to displayable DCC. */
+            ADDR2_COMPUTE_DCC_ADDRFROMCOORD_INPUT addrin;
+            memset(&addrin, 0, sizeof(addrin));
+            addrin.size = sizeof(addrin);
+            addrin.swizzleMode = din.swizzleMode;
+            addrin.resourceType = din.resourceType;
+            addrin.bpp = din.bpp;
+            addrin.numSlices = 1;
+            addrin.numMipLevels = 1;
+            addrin.numFrags = 1;
+            addrin.pitch = dout.pitch;
+            addrin.height = dout.height;
+            addrin.compressBlkWidth = dout.compressBlkWidth;
+            addrin.compressBlkHeight = dout.compressBlkHeight;
+            addrin.compressBlkDepth = dout.compressBlkDepth;
+            addrin.metaBlkWidth = dout.metaBlkWidth;
+            addrin.metaBlkHeight = dout.metaBlkHeight;
+            addrin.metaBlkDepth = dout.metaBlkDepth;
+            addrin.dccRamSliceSize = 0; /* Don't care for non-layered images. */
 
-               surf->u.gfx9.dcc_retile_map = ac_compute_dcc_retile_map(
-                  addrlib, info, retile_dim[0], retile_dim[1], surf->u.gfx9.dcc.rb_aligned,
-                  surf->u.gfx9.dcc.pipe_aligned, surf->u.gfx9.dcc_retile_use_uint16,
-                  surf->u.gfx9.dcc_retile_num_elements, &addrin);
-               if (!surf->u.gfx9.dcc_retile_map)
-                  return ADDR_OUTOFMEMORY;
-            }
+            surf->u.gfx9.dcc_retile_map = ac_compute_dcc_retile_map(
+               addrlib, info, retile_dim[0], retile_dim[1], surf->u.gfx9.dcc.rb_aligned,
+               surf->u.gfx9.dcc.pipe_aligned, surf->u.gfx9.dcc_retile_use_uint16,
+               surf->u.gfx9.dcc_retile_num_elements, &addrin);
+            if (!surf->u.gfx9.dcc_retile_map)
+               return ADDR_OUTOFMEMORY;
          }
       }
 
@@ -2102,6 +2100,11 @@ int ac_compute_surface(struct ac_addrlib *addrlib, const struct radeon_info *inf
    surf->total_size = surf->surf_size;
    surf->alignment = surf->surf_alignment;
 
+   /* Ensure the offsets are always 0 if not available. */
+   surf->dcc_offset = surf->display_dcc_offset = 0;
+   surf->fmask_offset = surf->cmask_offset = 0;
+   surf->htile_offset = 0;
+
    if (surf->htile_size) {
       surf->htile_offset = align64(surf->total_size, surf->htile_alignment);
       surf->total_size = surf->htile_offset + surf->htile_size;
@@ -2135,17 +2138,6 @@ int ac_compute_surface(struct ac_addrlib *addrlib, const struct radeon_info *inf
          /* Add space for the displayable DCC buffer. */
          surf->display_dcc_offset = align64(surf->total_size, surf->u.gfx9.display_dcc_alignment);
          surf->total_size = surf->display_dcc_offset + surf->u.gfx9.display_dcc_size;
-
-         /* Add space for the DCC retile buffer. (16-bit or 32-bit elements) */
-         surf->dcc_retile_map_offset = align64(surf->total_size, info->tcc_cache_line_size);
-
-         if (surf->u.gfx9.dcc_retile_use_uint16) {
-            surf->total_size =
-               surf->dcc_retile_map_offset + surf->u.gfx9.dcc_retile_num_elements * 2;
-         } else {
-            surf->total_size =
-               surf->dcc_retile_map_offset + surf->u.gfx9.dcc_retile_num_elements * 4;
-         }
       }
 
       surf->dcc_offset = align64(surf->total_size, surf->dcc_alignment);
@@ -2161,7 +2153,6 @@ void ac_surface_zero_dcc_fields(struct radeon_surf *surf)
 {
    surf->dcc_offset = 0;
    surf->display_dcc_offset = 0;
-   surf->dcc_retile_map_offset = 0;
 }
 
 static unsigned eg_tile_split(unsigned tile_split)
@@ -2493,6 +2484,4 @@ void ac_surface_override_offset_stride(const struct radeon_info *info, struct ra
       surf->dcc_offset += offset;
    if (surf->display_dcc_offset)
       surf->display_dcc_offset += offset;
-   if (surf->dcc_retile_map_offset)
-      surf->dcc_retile_map_offset += offset;
 }

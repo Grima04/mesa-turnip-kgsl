@@ -249,7 +249,6 @@ struct radeon_surf {
    uint64_t cmask_offset;
    uint64_t dcc_offset;
    uint64_t display_dcc_offset;
-   uint64_t dcc_retile_map_offset;
    uint64_t total_size;
    uint32_t alignment;
 

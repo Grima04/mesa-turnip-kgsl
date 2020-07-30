@@ -534,6 +534,7 @@ static void si_reallocate_texture_inplace(struct si_context *sctx, struct si_tex
    tex->dcc_gather_statistics = new_tex->dcc_gather_statistics;
    si_resource_reference(&tex->dcc_separate_buffer, new_tex->dcc_separate_buffer);
    si_resource_reference(&tex->last_dcc_separate_buffer, new_tex->last_dcc_separate_buffer);
+   si_resource_reference(&tex->dcc_retile_buffer, new_tex->dcc_retile_buffer);
 
    if (new_bind_flag == PIPE_BIND_LINEAR) {
       assert(!tex->surface.htile_offset);
@@ -813,6 +814,7 @@ static void si_texture_destroy(struct pipe_screen *screen, struct pipe_resource 
    pb_reference(&resource->buf, NULL);
    si_resource_reference(&tex->dcc_separate_buffer, NULL);
    si_resource_reference(&tex->last_dcc_separate_buffer, NULL);
+   si_resource_reference(&tex->dcc_retile_buffer, NULL);
    FREE(tex);
 }
 
@@ -1145,41 +1147,44 @@ static struct si_texture *si_texture_create_object(struct pipe_screen *screen,
             }
          }
       }
+   }
 
-      /* Initialize displayable DCC that requires the retile blit. */
-      if (tex->surface.dcc_retile_map_offset) {
-         /* Uninitialized DCC can hang the display hw.
-          * Clear to white to indicate that. */
-         si_screen_clear_buffer(sscreen, &tex->buffer.b.b, tex->surface.display_dcc_offset,
-                                tex->surface.u.gfx9.display_dcc_size, DCC_CLEAR_COLOR_1111);
+   /* Initialize displayable DCC that requires the retile blit. */
+   if (tex->surface.display_dcc_offset) {
+      /* Uninitialized DCC can hang the display hw.
+       * Clear to white to indicate that. */
+      si_screen_clear_buffer(sscreen, &tex->buffer.b.b, tex->surface.display_dcc_offset,
+                             tex->surface.u.gfx9.display_dcc_size, DCC_CLEAR_COLOR_1111);
 
-         /* Upload the DCC retile map.
-          * Use a staging buffer for the upload, because
-          * the buffer backing the texture is unmappable.
-          */
-         bool use_uint16 = tex->surface.u.gfx9.dcc_retile_use_uint16;
-         unsigned num_elements = tex->surface.u.gfx9.dcc_retile_num_elements;
-         unsigned dcc_retile_map_size = num_elements * (use_uint16 ? 2 : 4);
-         struct si_resource *buf = si_aligned_buffer_create(screen, 0, PIPE_USAGE_STREAM,
-                                                            dcc_retile_map_size,
-                                                            sscreen->info.tcc_cache_line_size);
-         void *map = sscreen->ws->buffer_map(buf->buf, NULL, PIPE_TRANSFER_WRITE);
+      /* Upload the DCC retile map.
+       * Use a staging buffer for the upload, because
+       * the buffer backing the texture is unmappable.
+       */
+      bool use_uint16 = tex->surface.u.gfx9.dcc_retile_use_uint16;
+      unsigned num_elements = tex->surface.u.gfx9.dcc_retile_num_elements;
+      unsigned dcc_retile_map_size = num_elements * (use_uint16 ? 2 : 4);
 
-         /* Upload the retile map into the staging buffer. */
-         memcpy(map, tex->surface.u.gfx9.dcc_retile_map, dcc_retile_map_size);
+      tex->dcc_retile_buffer = si_aligned_buffer_create(screen, 0, PIPE_USAGE_DEFAULT,
+                                                        dcc_retile_map_size,
+                                                        sscreen->info.tcc_cache_line_size);
+      struct si_resource *buf = si_aligned_buffer_create(screen, 0, PIPE_USAGE_STREAM,
+                                                         dcc_retile_map_size,
+                                                         sscreen->info.tcc_cache_line_size);
+      void *map = sscreen->ws->buffer_map(buf->buf, NULL, PIPE_TRANSFER_WRITE);
 
-         /* Copy the staging buffer to the buffer backing the texture. */
-         struct si_context *sctx = (struct si_context *)sscreen->aux_context;
+      /* Upload the retile map into the staging buffer. */
+      memcpy(map, tex->surface.u.gfx9.dcc_retile_map, dcc_retile_map_size);
 
-         assert(tex->surface.dcc_retile_map_offset <= UINT_MAX);
-         simple_mtx_lock(&sscreen->aux_context_lock);
-         si_sdma_copy_buffer(sctx, &tex->buffer.b.b, &buf->b.b, tex->surface.dcc_retile_map_offset,
-                             0, buf->b.b.width0);
-         sscreen->aux_context->flush(sscreen->aux_context, NULL, 0);
-         simple_mtx_unlock(&sscreen->aux_context_lock);
+      /* Copy the staging buffer to the buffer backing the texture. */
+      struct si_context *sctx = (struct si_context *)sscreen->aux_context;
 
-         si_resource_reference(&buf, NULL);
-      }
+      simple_mtx_lock(&sscreen->aux_context_lock);
+      si_sdma_copy_buffer(sctx, &tex->dcc_retile_buffer->b.b, &buf->b.b, 0,
+                          0, buf->b.b.width0);
+      sscreen->aux_context->flush(sscreen->aux_context, NULL, 0);
+      simple_mtx_unlock(&sscreen->aux_context_lock);
+
+      si_resource_reference(&buf, NULL);
    }
 
    /* Initialize the CMASK base register value. */

@@ -384,6 +384,8 @@ struct si_texture {
    unsigned ps_draw_ratio;
    /* The number of clears since the last DCC usage analysis. */
    unsigned num_slow_clears;
+
+   struct si_resource *dcc_retile_buffer;
 };
 
 struct si_surface {
