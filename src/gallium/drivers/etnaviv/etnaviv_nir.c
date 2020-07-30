@@ -88,6 +88,7 @@ etna_lower_io(nir_shader *shader, struct etna_shader_variant *v)
                   nir_intrinsic_instr *load_ubo =
                      nir_intrinsic_instr_create(b.shader, nir_intrinsic_load_ubo);
                   load_ubo->num_components = intr->num_components;
+                  nir_intrinsic_set_align(load_ubo, intr->dest.ssa.bit_size / 8, 0);
                   nir_ssa_dest_init(&load_ubo->instr, &load_ubo->dest,
                                     load_ubo->num_components, 32, NULL);
 
