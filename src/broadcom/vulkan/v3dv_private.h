@@ -46,6 +46,8 @@
 #define VG(x) ((void)0)
 #endif
 
+#include "v3dv_limits.h"
+
 #include "common/v3d_device_info.h"
 #include "common/v3d_limits.h"
 
@@ -114,27 +116,6 @@ pack_emit_reloc(void *cl, const void *reloc) {}
 			STATIC_ASSERT(sizeof(*src) == sizeof(*dest)); \
 			memcpy((dest), (src), (count) * sizeof(*(src))); \
 		})
-
-#define NSEC_PER_SEC 1000000000ull
-
-/* From vulkan spec "If the multiple viewports feature is not enabled,
- * scissorCount must be 1", ditto for viewportCount. For now we don't support
- * that feature.
- */
-#define MAX_VIEWPORTS 1
-#define MAX_SCISSORS  1
-
-#define MAX_VBS 16
-#define MAX_VERTEX_ATTRIBS 16
-
-#define MAX_SETS 16
-
-#define MAX_PUSH_CONSTANTS_SIZE 128
-
-#define MAX_DYNAMIC_UNIFORM_BUFFERS 16
-#define MAX_DYNAMIC_STORAGE_BUFFERS 8
-#define MAX_DYNAMIC_BUFFERS                                                  \
-   (MAX_DYNAMIC_UNIFORM_BUFFERS + MAX_DYNAMIC_STORAGE_BUFFERS)
 
 struct v3dv_instance;
 
