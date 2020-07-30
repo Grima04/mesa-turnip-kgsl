@@ -685,29 +685,14 @@ install_registers_instr(
                         dest.offset;
 
                 offset_swizzle(ins->swizzle[0], src1.offset, src1.shift, dest.shift, dest_offset);
-
-                ins->registers.src1_reg = src1.reg;
-
-                ins->registers.src2_imm = ins->has_inline_constant;
-
-                if (ins->has_inline_constant) {
-                        /* Encode inline 16-bit constant. See disassembler for
-                         * where the algorithm is from */
-
-                        ins->registers.src2_reg = ins->inline_constant >> 11;
-
-                        int lower_11 = ins->inline_constant & ((1 << 12) - 1);
-                        uint16_t imm = ((lower_11 >> 8) & 0x7) |
-                                       ((lower_11 & 0xFF) << 3);
-
-                        ins->alu.src2 = imm << 2;
-                } else {
+                if (!ins->has_inline_constant)
                         offset_swizzle(ins->swizzle[1], src2.offset, src2.shift, dest.shift, dest_offset);
-
-                        ins->registers.src2_reg = src2.reg;
-                }
-
-                ins->registers.out_reg = dest.reg;
+                if (ins->src[0] != ~0)
+                        ins->src[0] = SSA_FIXED_REGISTER(src1.reg);
+                if (ins->src[1] != ~0)
+                        ins->src[1] = SSA_FIXED_REGISTER(src2.reg);
+                if (ins->dest != ~0)
+                        ins->dest = SSA_FIXED_REGISTER(dest.reg);
                 break;
         }
 
@@ -722,12 +707,12 @@ install_registers_instr(
                         struct phys_reg src = index_to_reg(ctx, l, ins->src[0], src_shift[0]);
                         assert(src.reg == 26 || src.reg == 27);
 
-                        ins->load_store.reg = src.reg - 26;
+                        ins->src[0] = SSA_FIXED_REGISTER(src.reg);
                         offset_swizzle(ins->swizzle[0], src.offset, src.shift, 0, 0);
                } else {
                         struct phys_reg dst = index_to_reg(ctx, l, ins->dest, dest_shift);
 
-                        ins->load_store.reg = dst.reg;
+                        ins->dest = SSA_FIXED_REGISTER(dst.reg);
                         offset_swizzle(ins->swizzle[0], 0, 2, 2, dst.offset);
                         mir_set_bytemask(ins, mir_bytemask(ins) << dst.offset);
                 }
@@ -741,14 +726,16 @@ install_registers_instr(
                         struct phys_reg src = index_to_reg(ctx, l, src2, 2);
                         unsigned component = src.offset >> src.shift;
                         assert(component << src.shift == src.offset);
-                        ins->load_store.arg_1 |= midgard_ldst_reg(src.reg, component);
+                        ins->src[1] = SSA_FIXED_REGISTER(src.reg);
+                        ins->swizzle[1][0] = component;
                 }
 
                 if (src3 != ~0) {
                         struct phys_reg src = index_to_reg(ctx, l, src3, 2);
                         unsigned component = src.offset >> src.shift;
                         assert(component << src.shift == src.offset);
-                        ins->load_store.arg_2 |= midgard_ldst_reg(src.reg, component);
+                        ins->src[2] = SSA_FIXED_REGISTER(src.reg);
+                        ins->swizzle[2][0] = component;
                 }
  
                 break;
@@ -765,11 +752,13 @@ install_registers_instr(
                 struct phys_reg offset = index_to_reg(ctx, l, ins->src[3], src_shift[3]);
 
                 /* First, install the texture coordinate */
-                ins->texture.in_reg_select = coord.reg & 1;
+                if (ins->src[1] != ~0)
+                        ins->src[1] = SSA_FIXED_REGISTER(coord.reg);
                 offset_swizzle(ins->swizzle[1], coord.offset, coord.shift, dest.shift, 0);
 
                 /* Next, install the destination */
-                ins->texture.out_reg_select = dest.reg & 1;
+                if (ins->dest != ~0)
+                        ins->dest = SSA_FIXED_REGISTER(dest.reg);
                 offset_swizzle(ins->swizzle[0], 0, 2, dest.shift,
                                 dest_shift == 1 ? dest.offset % 8 :
                                 dest.offset);
@@ -778,33 +767,14 @@ install_registers_instr(
                 /* If there is a register LOD/bias, use it */
                 if (ins->src[2] != ~0) {
                         assert(!(lod.offset & 3));
-                        midgard_tex_register_select sel = {
-                                .select = lod.reg & 1,
-                                .full = 1,
-                                .component = lod.offset / 4
-                        };
-
-                        uint8_t packed;
-                        memcpy(&packed, &sel, sizeof(packed));
-                        ins->texture.bias = packed;
+                        ins->src[2] = SSA_FIXED_REGISTER(lod.reg);
+                        ins->swizzle[2][0] = lod.offset / 4;
                 }
 
                 /* If there is an offset register, install it */
                 if (ins->src[3] != ~0) {
-                        unsigned x = offset.offset / 4;
-                        unsigned y = x + 1;
-                        unsigned z = x + 2;
-
-                        /* Check range, TODO: half-registers */
-                        assert(z < 4);
-
-                        ins->texture.offset =
-                                (1)                   | /* full */
-                                (offset.reg & 1) << 1 | /* select */
-                                (0 << 2)              | /* upper */
-                                (x << 3)              | /* swizzle */
-                                (y << 5)              | /* swizzle */
-                                (z << 7);               /* swizzle */
+                        ins->src[3] = SSA_FIXED_REGISTER(offset.reg);
+                        ins->swizzle[3][0] = offset.offset / 4;
                 }
 
                 break;

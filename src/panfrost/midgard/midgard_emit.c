@@ -276,7 +276,7 @@ mir_pack_swizzle(unsigned mask, unsigned *swizzle,
 }
 
 static void
-mir_pack_vector_srcs(midgard_instruction *ins)
+mir_pack_vector_srcs(midgard_instruction *ins, midgard_vector_alu *alu)
 {
         bool channeled = GET_CHANNEL_COUNT(alu_opcode_props[ins->op].props);
 
@@ -306,13 +306,13 @@ mir_pack_vector_srcs(midgard_instruction *ins)
                         .half = half,
                         .swizzle = swizzle
                 };
- 
+
                 unsigned p = vector_alu_srco_unsigned(pack);
                 
                 if (i == 0)
-                        ins->alu.src1 = p;
+                        alu->src1 = p;
                 else
-                        ins->alu.src2 = p;
+                        alu->src2 = p;
         }
 }
 
@@ -492,6 +492,23 @@ load_store_from_instr(midgard_instruction *ins)
 {
         midgard_load_store_word ldst = ins->load_store;
         ldst.op = ins->op;
+
+        if (OP_IS_STORE(ldst.op)) {
+                ldst.reg = SSA_REG_FROM_FIXED(ins->src[0]) & 1;
+        } else {
+                ldst.reg = SSA_REG_FROM_FIXED(ins->dest);
+        }
+
+        if (ins->src[1] != ~0) {
+                unsigned src = SSA_REG_FROM_FIXED(ins->src[1]);
+                ldst.arg_1 |= midgard_ldst_reg(src, ins->swizzle[1][0]);
+        }
+
+        if (ins->src[2] != ~0) {
+                unsigned src = SSA_REG_FROM_FIXED(ins->src[2]);
+                ldst.arg_2 |= midgard_ldst_reg(src, ins->swizzle[2][0]);
+        }
+
         return ldst;
 }
 
@@ -500,6 +517,42 @@ texture_word_from_instr(midgard_instruction *ins)
 {
         midgard_texture_word tex = ins->texture;
         tex.op = ins->op;
+
+        unsigned src1 = ins->src[1] == ~0 ? REGISTER_UNUSED : SSA_REG_FROM_FIXED(ins->src[1]);
+        tex.in_reg_select = src1 & 1;
+
+        unsigned dest = ins->dest == ~0 ? REGISTER_UNUSED : SSA_REG_FROM_FIXED(ins->dest);
+        tex.out_reg_select = dest & 1;
+
+        if (ins->src[2] != ~0) {
+                midgard_tex_register_select sel = {
+                        .select = SSA_REG_FROM_FIXED(ins->src[2]) & 1,
+                        .full = 1,
+                        .component = ins->swizzle[2][0]
+                };
+                uint8_t packed;
+                memcpy(&packed, &sel, sizeof(packed));
+                tex.bias = packed;
+        }
+
+        if (ins->src[3] != ~0) {
+                unsigned x = ins->swizzle[3][0];
+                unsigned y = x + 1;
+                unsigned z = x + 2;
+
+                /* Check range, TODO: half-registers */
+                assert(z < 4);
+
+                unsigned offset_reg = SSA_REG_FROM_FIXED(ins->src[3]);
+                tex.offset =
+                        (1)                   | /* full */
+                        (offset_reg & 1) << 1 | /* select */
+                        (0 << 2)              | /* upper */
+                        (x << 3)              | /* swizzle */
+                        (y << 5)              | /* swizzle */
+                        (z << 7);               /* swizzle */
+        }
+
         return tex;
 }
 
@@ -510,6 +563,18 @@ vector_alu_from_instr(midgard_instruction *ins)
         alu.op = ins->op;
         alu.outmod = ins->outmod;
         alu.reg_mode = reg_mode_for_bitsize(max_bitsize_for_alu(ins));
+
+        if (ins->has_inline_constant) {
+                /* Encode inline 16-bit constant. See disassembler for
+                 * where the algorithm is from */
+
+                int lower_11 = ins->inline_constant & ((1 << 12) - 1);
+                uint16_t imm = ((lower_11 >> 8) & 0x7) |
+                               ((lower_11 & 0xFF) << 3);
+
+                alu.src2 = imm << 2;
+        }
+
         return alu;
 }
 
@@ -531,7 +596,19 @@ emit_alu_bundle(compiler_context *ctx,
 
                 /* Otherwise, just emit the registers */
                 uint16_t reg_word = 0;
-                memcpy(&reg_word, &ins->registers, sizeof(uint16_t));
+                midgard_reg_info registers = {
+                        .src1_reg = (ins->src[0] == ~0 ?
+                                        REGISTER_UNUSED :
+                                        SSA_REG_FROM_FIXED(ins->src[0])),
+                        .src2_reg = (ins->src[1] == ~0 ?
+                                        ins->inline_constant >> 11 :
+                                        SSA_REG_FROM_FIXED(ins->src[1])),
+                        .src2_imm = ins->has_inline_constant,
+                        .out_reg = (ins->dest == ~0 ?
+                                        REGISTER_UNUSED :
+                                        SSA_REG_FROM_FIXED(ins->dest)),
+                };
+                memcpy(&reg_word, &registers, sizeof(uint16_t));
                 util_dynarray_append(emission, uint16_t, reg_word);
         }
 
@@ -555,9 +632,9 @@ emit_alu_bundle(compiler_context *ctx,
 
                 if (ins->unit & UNITS_ANY_VECTOR) {
                         mir_pack_mask_alu(ins);
-                        mir_pack_vector_srcs(ins);
-                        size = sizeof(midgard_vector_alu);
                         source_alu = vector_alu_from_instr(ins);
+                        mir_pack_vector_srcs(ins, &source_alu);
+                        size = sizeof(midgard_vector_alu);
                         source = &source_alu;
                 } else if (ins->unit == ALU_ENAB_BR_COMPACT) {
                         size = sizeof(midgard_branch_cond);
