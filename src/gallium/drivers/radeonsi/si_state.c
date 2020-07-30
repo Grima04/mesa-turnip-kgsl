@@ -763,6 +763,7 @@ static void si_emit_clip_regs(struct si_context *sctx)
    unsigned initial_cdw = sctx->gfx_cs->current.cdw;
    unsigned pa_cl_cntl = S_02881C_VS_OUT_CCDIST0_VEC_ENA((total_mask & 0x0F) != 0) |
                          S_02881C_VS_OUT_CCDIST1_VEC_ENA((total_mask & 0xF0) != 0) |
+                         S_02881C_BYPASS_VTX_RATE_COMBINER_GFX103(sctx->chip_class >= GFX10_3) |
                          S_02881C_BYPASS_PRIM_RATE_COMBINER_GFX103(sctx->chip_class >= GFX10_3) |
                          clipdist_mask | (culldist_mask << 8);
 
@@ -5353,6 +5354,7 @@ void si_init_cs_preamble_state(struct si_context *sctx, bool uses_reg_shadowing)
 
    if (sctx->chip_class >= GFX10_3) {
       si_pm4_set_reg(pm4, R_028750_SX_PS_DOWNCONVERT_CONTROL_GFX103, 0xff);
+      si_pm4_set_reg(pm4, 0x28848, 1 << 9); /* This fixes sample shading. */
    }
 
    sctx->cs_preamble_state = pm4;
