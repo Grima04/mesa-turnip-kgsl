@@ -41,6 +41,8 @@ files_mesa_util = files(
   'debug.h',
   'disk_cache.c',
   'disk_cache.h',
+  'disk_cache_os.c',
+  'disk_cache_os.h',
   'double.c',
   'double.h',
   'enum_operators.h',
