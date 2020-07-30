@@ -190,11 +190,10 @@ bool VertexShaderFromNir::do_process_outputs(nir_variable *output)
 bool VertexShaderFromNir::do_emit_load_deref(const nir_variable *in_var, nir_intrinsic_instr* instr)
 {
    if (in_var->data.location < VERT_ATTRIB_MAX) {
-      for (int i = 0; i < instr->num_components ; ++i) {
+      for (unsigned i = 0; i < nir_dest_num_components(instr->dest); ++i) {
          auto s = new GPRValue(in_var->data.driver_location + 1, i);
          s->set_as_input();
          auto src = PValue(s);
-         inject_register(in_var->data.driver_location + 1, i, src, false);
 
          if (i == 0)
             set_input(in_var->data.driver_location, src);
