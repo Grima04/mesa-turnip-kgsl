@@ -736,15 +736,19 @@ emit_alu_bundle(compiler_context *ctx,
                 /* Check if this instruction has registers */
                 if (ins->compact_branch) continue;
 
+                unsigned src2_reg = REGISTER_UNUSED;
+                if (ins->has_inline_constant)
+                        src2_reg = ins->inline_constant >> 11;
+                else if (ins->src[1] != ~0)
+                        src2_reg = SSA_REG_FROM_FIXED(ins->src[1]);
+
                 /* Otherwise, just emit the registers */
                 uint16_t reg_word = 0;
                 midgard_reg_info registers = {
                         .src1_reg = (ins->src[0] == ~0 ?
                                         REGISTER_UNUSED :
                                         SSA_REG_FROM_FIXED(ins->src[0])),
-                        .src2_reg = (ins->src[1] == ~0 ?
-                                        ins->inline_constant >> 11 :
-                                        SSA_REG_FROM_FIXED(ins->src[1])),
+                        .src2_reg = src2_reg,
                         .src2_imm = ins->has_inline_constant,
                         .out_reg = (ins->dest == ~0 ?
                                         REGISTER_UNUSED :
