@@ -1917,14 +1917,9 @@ bool gfx10_ngg_calculate_subgroup_info(struct si_shader *shader)
    const unsigned min_verts_per_prim = gs_type == PIPE_SHADER_GEOMETRY ? max_verts_per_prim : 1;
 
    /* All these are in dwords: */
-   /* We can't allow using the whole LDS, because GS waves compete with
-    * other shader stages for LDS space.
-    *
-    * TODO: We should really take the shader's internal LDS use into
-    *       account. The linker will fail if the size is greater than
-    *       8K dwords.
+   /* GE can only use 8K dwords (32KB) of LDS per workgroup.
     */
-   const unsigned max_lds_size = 8 * 1024 - 768;
+   const unsigned max_lds_size = 8 * 1024 - gfx10_ngg_get_scratch_dw_size(shader);
    const unsigned target_lds_size = max_lds_size;
    unsigned esvert_lds_size = 0;
    unsigned gsprim_lds_size = 0;
