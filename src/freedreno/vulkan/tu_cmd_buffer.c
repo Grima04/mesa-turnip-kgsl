@@ -834,13 +834,8 @@ tu6_init_hw(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
    tu_cs_emit_write_reg(cs, REG_A6XX_RB_UNKNOWN_8811, 0x00000010);
    tu_cs_emit_write_reg(cs, REG_A6XX_PC_MODE_CNTL, 0x1f);
 
-   tu_cs_emit_write_reg(cs, REG_A6XX_RB_SRGB_CNTL, 0);
-
    tu_cs_emit_write_reg(cs, REG_A6XX_GRAS_UNKNOWN_8110, 0);
 
-   tu_cs_emit_write_reg(cs, REG_A6XX_RB_RENDER_CONTROL0, 0x401);
-   tu_cs_emit_write_reg(cs, REG_A6XX_RB_RENDER_CONTROL1, 0);
-   tu_cs_emit_write_reg(cs, REG_A6XX_RB_FS_OUTPUT_CNTL0, 0);
    tu_cs_emit_write_reg(cs, REG_A6XX_RB_UNKNOWN_8818, 0);
    tu_cs_emit_write_reg(cs, REG_A6XX_RB_UNKNOWN_8819, 0);
    tu_cs_emit_write_reg(cs, REG_A6XX_RB_UNKNOWN_881A, 0);
@@ -858,8 +853,6 @@ tu6_init_hw(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
    tu_cs_emit_regs(cs, A6XX_VPC_SO_DISABLE(true));
 
    tu_cs_emit_write_reg(cs, REG_A6XX_PC_UNKNOWN_9980, 0);
-
-   tu_cs_emit_write_reg(cs, REG_A6XX_PC_PRIMITIVE_CNTL_6, 0);
 
    tu_cs_emit_write_reg(cs, REG_A6XX_SP_UNKNOWN_A81B, 0);
 
@@ -886,12 +879,6 @@ tu6_init_hw(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
                      CP_SET_DRAW_STATE__0_GROUP_ID(0));
    tu_cs_emit(cs, CP_SET_DRAW_STATE__1_ADDR_LO(0));
    tu_cs_emit(cs, CP_SET_DRAW_STATE__2_ADDR_HI(0));
-
-   tu_cs_emit_regs(cs,
-                   A6XX_SP_HS_CTRL_REG0(0));
-
-   tu_cs_emit_regs(cs,
-                   A6XX_SP_GS_CTRL_REG0(0));
 
    tu_cs_emit_regs(cs,
                    A6XX_GRAS_LRZ_CNTL(0));
