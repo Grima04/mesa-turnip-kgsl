@@ -1328,11 +1328,12 @@ vir_emit_tlb_color_write(struct v3d_compile *c, unsigned rt)
 static void
 emit_frag_end(struct v3d_compile *c)
 {
-        /* XXX
         if (c->output_sample_mask_index != -1) {
-                vir_MS_MASK(c, c->outputs[c->output_sample_mask_index]);
+                vir_SETMSF_dest(c, vir_nop_reg(),
+                                vir_AND(c,
+                                        vir_MSF(c),
+                                        c->outputs[c->output_sample_mask_index]));
         }
-        */
 
         bool has_any_tlb_color_write = false;
         for (int rt = 0; rt < V3D_MAX_DRAW_BUFFERS; rt++) {
