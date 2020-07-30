@@ -900,6 +900,9 @@ enum vtn_variable_mode vtn_storage_class_to_mode(struct vtn_builder *b,
 nir_address_format vtn_mode_to_address_format(struct vtn_builder *b,
                                               enum vtn_variable_mode);
 
+nir_rounding_mode vtn_rounding_mode_to_nir(struct vtn_builder *b,
+                                           SpvFPRoundingMode mode);
+
 static inline uint32_t
 vtn_align_u32(uint32_t v, uint32_t a)
 {
