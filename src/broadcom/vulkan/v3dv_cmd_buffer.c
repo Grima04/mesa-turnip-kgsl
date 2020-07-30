@@ -1526,18 +1526,8 @@ cmd_buffer_emit_graphics_pipeline(struct v3dv_cmd_buffer *cmd_buffer)
    job->tmu_dirty_rcl |= pipeline->vs->prog_data.vs->base.tmu_dirty_rcl;
    job->tmu_dirty_rcl |= pipeline->fs->prog_data.fs->base.tmu_dirty_rcl;
 
-   /* FIXME: fake vtx->num_elements, that is the vertex state that includes
-    * data from the buffers used on the vertex. Such info is still not
-    * supported or filled in any place. On Gallium that is filled by
-    * st_update_array, that eventually calls v3d_vertex_state_create
-    *
-    * We area handling it mostly to the GFXH-930 workaround mentioned below,
-    * as it would provide more context of why it is needed and to the code.
-    */
-   uint32_t vtx_num_elements = 0;
-
    /* See GFXH-930 workaround below */
-   uint32_t num_elements_to_emit = MAX2(vtx_num_elements, 1);
+   uint32_t num_elements_to_emit = MAX2(pipeline->va_count, 1);
 
    uint32_t shader_rec_offset =
       v3dv_cl_ensure_space(&job->indirect,
@@ -1570,16 +1560,53 @@ cmd_buffer_emit_graphics_pipeline(struct v3dv_cmd_buffer *cmd_buffer)
       shader.vertex_shader_uniforms_address = vs_uniforms;
       shader.fragment_shader_uniforms_address = fs_uniforms;
 
-      /* FIXME: I understand that the following is needed only if
-       * vtx_num_elements > 0
-       */
-/*       shader.address_of_default_attribute_values = */
+      /* FIXME: pending */
+      /* shader.address_of_default_attribute_values = */
    }
 
    /* Upload vertex element attributes (SHADER_STATE_ATTRIBUTE_RECORD) */
+   bool cs_loaded_any = false;
+   const uint32_t packet_length =
+      cl_packet_length(GL_SHADER_STATE_ATTRIBUTE_RECORD);
 
-   /* FIXME: vertex elements not supported yet (vtx_num_elements == 0) */
-   if (vtx_num_elements == 0) {
+   for (uint32_t i = 0; i < pipeline->va_count; i++) {
+      uint32_t binding = pipeline->va[i].binding;
+      uint32_t location = pipeline->va[i].driver_location;
+
+      struct v3dv_vertex_binding *c_vb = &cmd_buffer->state.vertex_bindings[binding];
+
+      cl_emit_with_prepacked(&job->indirect, GL_SHADER_STATE_ATTRIBUTE_RECORD,
+                             &pipeline->vertex_attrs[i * packet_length], attr) {
+
+         assert(c_vb->buffer->mem->bo);
+         attr.address = v3dv_cl_address(c_vb->buffer->mem->bo,
+                                        c_vb->buffer->mem_offset +
+                                        pipeline->va[i].offset +
+                                        c_vb->offset);
+
+         attr.number_of_values_read_by_coordinate_shader =
+            pipeline->vs_bin->prog_data.vs->vattr_sizes[location];
+         attr.number_of_values_read_by_vertex_shader =
+            pipeline->vs->prog_data.vs->vattr_sizes[location];
+
+         /* GFXH-930: At least one attribute must be enabled and read by CS
+          * and VS.  If we have attributes being consumed by the VS but not
+          * the CS, then set up a dummy load of the last attribute into the
+          * CS's VPM inputs.  (Since CS is just dead-code-elimination compared
+          * to VS, we can't have CS loading but not VS).
+          */
+         if (pipeline->vs_bin->prog_data.vs->vattr_sizes[location])
+            cs_loaded_any = true;
+
+         if (binding == pipeline->va_count - 1 && !cs_loaded_any) {
+            attr.number_of_values_read_by_coordinate_shader = 1;
+         }
+
+         attr.maximum_index = 0xffffff;
+      }
+   }
+
+   if (pipeline->va_count == 0) {
       /* GFXH-930: At least one attribute must be enabled and read
        * by CS and VS.  If we have no attributes being consumed by
        * the shader, set up a dummy to be loaded into the VPM.
@@ -1673,7 +1700,8 @@ cmd_buffer_draw(struct v3dv_cmd_buffer *cmd_buffer,
    uint32_t states = cmd_buffer->state.dirty;
    struct v3dv_dynamic_state *dynamic = &cmd_buffer->state.dynamic;
 
-   if (states & (V3DV_CMD_DIRTY_PIPELINE)) {
+   /* vertex buffers info are emitted as part of the shader_state_record */
+   if (states & (V3DV_CMD_DIRTY_PIPELINE | V3DV_CMD_DIRTY_VERTEX_BUFFER)) {
       cmd_buffer_emit_graphics_pipeline(cmd_buffer);
    }
    /* Emit(flush) dynamic state */
@@ -1730,4 +1758,27 @@ v3dv_CmdPipelineBarrier(VkCommandBuffer commandBuffer,
       return;
 
    v3dv_cmd_buffer_finish_job(cmd_buffer);
+}
+
+void
+v3dv_CmdBindVertexBuffers(VkCommandBuffer commandBuffer,
+                          uint32_t firstBinding,
+                          uint32_t bindingCount,
+                          const VkBuffer *pBuffers,
+                          const VkDeviceSize *pOffsets)
+{
+   V3DV_FROM_HANDLE(v3dv_cmd_buffer, cmd_buffer, commandBuffer);
+   struct v3dv_vertex_binding *vb = cmd_buffer->state.vertex_bindings;
+
+   /* We have to defer setting up vertex buffer since we need the buffer
+    * stride from the pipeline.
+    */
+
+   assert(firstBinding + bindingCount <= MAX_VBS);
+   for (uint32_t i = 0; i < bindingCount; i++) {
+      vb[firstBinding + i].buffer = v3dv_buffer_from_handle(pBuffers[i]);
+      vb[firstBinding + i].offset = pOffsets[i];
+   }
+
+   cmd_buffer->state.dirty |= V3DV_CMD_DIRTY_VERTEX_BUFFER;
 }

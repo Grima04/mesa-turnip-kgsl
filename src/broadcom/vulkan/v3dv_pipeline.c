@@ -983,6 +983,87 @@ pack_vcm_cache_size(struct v3dv_pipeline *pipeline)
    }
 }
 
+/* As defined on the GL_SHADER_STATE_ATTRIBUTE_RECORD */
+static uint8_t
+get_attr_type(const struct util_format_description *desc)
+{
+   uint32_t r_size = desc->channel[0].size;
+   uint8_t attr_type = ATTRIBUTE_FLOAT;
+
+   switch (desc->channel[0].type) {
+   case UTIL_FORMAT_TYPE_FLOAT:
+      if (r_size == 32) {
+         attr_type = ATTRIBUTE_FLOAT;
+      } else {
+         assert(r_size == 16);
+         attr_type = ATTRIBUTE_HALF_FLOAT;
+      }
+      break;
+
+   case UTIL_FORMAT_TYPE_SIGNED:
+   case UTIL_FORMAT_TYPE_UNSIGNED:
+      switch (r_size) {
+      case 32:
+         attr_type = ATTRIBUTE_INT;
+         break;
+      case 16:
+         attr_type = ATTRIBUTE_SHORT;
+         break;
+      case 10:
+         attr_type = ATTRIBUTE_INT2_10_10_10;
+         break;
+      case 8:
+         attr_type = ATTRIBUTE_BYTE;
+         break;
+      default:
+         fprintf(stderr,
+                 "format %s unsupported\n",
+                 desc->name);
+         attr_type = ATTRIBUTE_BYTE;
+         abort();
+      }
+      break;
+
+   default:
+      fprintf(stderr,
+              "format %s unsupported\n",
+              desc->name);
+      abort();
+   }
+
+   return attr_type;
+}
+
+static void
+pack_shader_state_attribute_record(struct v3dv_pipeline *pipeline,
+                                   uint32_t index,
+                                   const VkVertexInputAttributeDescription *vi_desc)
+{
+   const uint32_t packet_length =
+      cl_packet_length(GL_SHADER_STATE_ATTRIBUTE_RECORD);
+
+   const struct util_format_description *desc =
+      vk_format_description(vi_desc->format);
+
+   uint32_t binding = vi_desc->binding;
+
+   v3dv_pack(&pipeline->vertex_attrs[index * packet_length],
+             GL_SHADER_STATE_ATTRIBUTE_RECORD, attr) {
+
+      /* vec_size == 0 means 4 */
+      attr.vec_size = desc->nr_channels & 3;
+      attr.signed_int_type = (desc->channel[0].type ==
+                              UTIL_FORMAT_TYPE_SIGNED);
+      attr.normalized_int_type = desc->channel[0].normalized;
+      attr.read_as_int_uint = desc->channel[0].pure_integer;
+
+      attr.instance_divisor = MIN2(pipeline->vb[binding].instance_divisor,
+                                   0xffff);
+      attr.stride = pipeline->vb[binding].stride;
+      attr.type = get_attr_type(desc);
+   }
+}
+
 static VkResult
 pipeline_init(struct v3dv_pipeline *pipeline,
               struct v3dv_device *device,
@@ -1027,6 +1108,41 @@ pipeline_init(struct v3dv_pipeline *pipeline,
 
    pack_shader_state_record(pipeline);
    pack_vcm_cache_size(pipeline);
+
+   const VkPipelineVertexInputStateCreateInfo *vi_info =
+      pCreateInfo->pVertexInputState;
+
+   pipeline->vb_count = vi_info->vertexBindingDescriptionCount;
+   for (uint32_t i = 0; i < vi_info->vertexBindingDescriptionCount; i++) {
+      const VkVertexInputBindingDescription *desc =
+         &vi_info->pVertexBindingDescriptions[i];
+
+      pipeline->vb[desc->binding].stride = desc->stride;
+      pipeline->vb[desc->binding].instance_divisor = desc->inputRate;
+   }
+
+   pipeline->va_count = 0;
+   nir_shader *shader = pipeline->vs->nir;
+
+   for (uint32_t i = 0; i < vi_info->vertexAttributeDescriptionCount; i++) {
+      const VkVertexInputAttributeDescription *desc =
+         &vi_info->pVertexAttributeDescriptions[i];
+      uint32_t location = desc->location + VERT_ATTRIB_GENERIC0;
+
+      nir_variable *var = nir_find_variable_with_location(shader, nir_var_shader_in, location);
+
+      if (var != NULL) {
+         unsigned driver_location = var->data.driver_location;
+
+         pipeline->va[pipeline->va_count].offset = desc->offset;
+         pipeline->va[pipeline->va_count].binding = desc->binding;
+         pipeline->va[pipeline->va_count].driver_location = driver_location;
+
+         pack_shader_state_attribute_record(pipeline, pipeline->va_count, desc);
+
+         pipeline->va_count++;
+      }
+   }
 
    return result;
 }

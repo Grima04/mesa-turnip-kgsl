@@ -110,6 +110,9 @@ pack_emit_reloc(void *cl, const void *reloc) {}
 #define MAX_VIEWPORTS 1
 #define MAX_SCISSORS  1
 
+#define MAX_VBS 16
+#define MAX_VERTEX_ATTRIBS 16
+
 struct v3dv_instance;
 
 #ifdef USE_V3D_SIMULATOR
@@ -434,6 +437,7 @@ enum v3dv_cmd_dirty_bits {
    V3DV_CMD_DIRTY_DYNAMIC_SCISSOR                   = 1 << 1,
    V3DV_CMD_DIRTY_DYNAMIC_ALL                       = (1 << 2) - 1,
    V3DV_CMD_DIRTY_PIPELINE                          = 1 << 2,
+   V3DV_CMD_DIRTY_VERTEX_BUFFER                     = 1 << 3,
 };
 
 
@@ -478,6 +482,11 @@ struct v3dv_job {
 void v3dv_job_add_bo(struct v3dv_job *job, struct v3dv_bo *bo);
 void v3dv_job_emit_binning_flush(struct v3dv_job *job);
 
+struct v3dv_vertex_binding {
+   struct v3dv_buffer *buffer;
+   VkDeviceSize offset;
+};
+
 struct v3dv_cmd_buffer_state {
    const struct v3dv_render_pass *pass;
    const struct v3dv_framebuffer *framebuffer;
@@ -495,6 +504,8 @@ struct v3dv_cmd_buffer_state {
 
    uint32_t attachment_count;
    struct v3dv_cmd_buffer_attachment_state *attachments;
+
+   struct v3dv_vertex_binding vertex_bindings[MAX_VBS];
 };
 
 struct v3dv_cmd_buffer {
@@ -634,6 +645,32 @@ struct v3dv_pipeline {
 
    struct v3dv_dynamic_state dynamic_state;
 
+   /* Accessed by binding. So vb[binding]->stride is the stride of the vertex
+    * array with such binding
+    */
+   struct v3dv_pipeline_vertex_binding {
+      uint32_t stride;
+      uint32_t instance_divisor;
+   } vb[MAX_VBS];
+   uint32_t vb_count;
+
+   /* Note that a lot of info from VkVertexInputAttributeDescription is
+    * already prepacked, so storing here only those that need recheck later
+    *
+    * Note that they are not indexed by the location or nir driver location,
+    * as we are defining here only the inputs that the shader are really
+    * using.
+    */
+   struct v3dv_pipeline_vertex_attrib {
+      uint32_t binding;
+      uint32_t offset;
+      /* We store driver_location instead of location because most v3d structs
+       * are indexed by driver_location
+       */
+      uint32_t driver_location;
+   } va[MAX_VERTEX_ATTRIBS];
+   uint32_t va_count;
+
    struct vpm_config vpm_cfg;
    struct vpm_config vpm_cfg_bin;
    /* Packets prepacked during pipeline creation
@@ -641,6 +678,8 @@ struct v3dv_pipeline {
    uint8_t cfg_bits[cl_packet_length(CFG_BITS)];
    uint8_t shader_state_record[cl_packet_length(GL_SHADER_STATE_RECORD)];
    uint8_t vcm_cache_size[cl_packet_length(VCM_CACHE_SIZE)];
+   uint8_t vertex_attrs[cl_packet_length(GL_SHADER_STATE_ATTRIBUTE_RECORD) *
+                        (MAX_VBS / 4)];
 };
 
 uint32_t v3dv_physical_device_api_version(struct v3dv_physical_device *dev);

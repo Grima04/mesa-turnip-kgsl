@@ -500,7 +500,6 @@ v3dv_GetPhysicalDeviceProperties(VkPhysicalDevice physicalDevice,
    const uint32_t max_sampled_images = 16;
    const uint32_t max_storage_images = 4;
 
-   const uint32_t max_vertex_attributes = 16;
    const uint32_t max_varying_components = 16 * 4;
    const uint32_t max_render_targets = 4;
 
@@ -547,8 +546,8 @@ v3dv_GetPhysicalDeviceProperties(VkPhysicalDevice physicalDevice,
       .maxDescriptorSetInputAttachments         = 4,
 
       /* Vertex limits */
-      .maxVertexInputAttributes                 = max_vertex_attributes,
-      .maxVertexInputBindings                   = max_vertex_attributes,
+      .maxVertexInputAttributes                 = MAX_VERTEX_ATTRIBS,
+      .maxVertexInputBindings                   = MAX_VBS,
       .maxVertexInputAttributeOffset            = 0xffffffff,
       .maxVertexInputBindingStride              = 0xffffffff,
       .maxVertexOutputComponents                = max_varying_components,
