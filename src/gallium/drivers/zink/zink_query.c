@@ -17,6 +17,7 @@ struct zink_query {
    enum pipe_query_type type;
 
    VkQueryPool query_pool;
+   VkQueryPool xfb_query_pool;
    unsigned last_checked_query, curr_query, num_queries;
 
    VkQueryType vkqtype;
@@ -34,6 +35,7 @@ struct zink_query {
 
    struct list_head stats_list; /* when active, statistics queries are added to ctx->primitives_generated_queries */
    bool have_gs[4]; /* geometry shaders use GEOMETRY_SHADER_PRIMITIVES_BIT; sized by ctx->batches[] array size */
+   bool have_xfb[4]; /* xfb was active during this query; sized by ctx->batches[] array size */
 
    union pipe_query_result accumulated_result;
 };
@@ -121,8 +123,23 @@ zink_create_query(struct pipe_context *pctx,
       FREE(query);
       return NULL;
    }
+   if (query_type == PIPE_QUERY_PRIMITIVES_GENERATED) {
+      /* if xfb is active, we need to use an xfb query, otherwise we need pipeline statistics */
+      pool_create.sType = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO;
+      pool_create.queryType = VK_QUERY_TYPE_TRANSFORM_FEEDBACK_STREAM_EXT;
+      pool_create.queryCount = query->num_queries;
+
+      status = vkCreateQueryPool(screen->dev, &pool_create, NULL, &query->xfb_query_pool);
+      if (status != VK_SUCCESS) {
+         vkDestroyQueryPool(screen->dev, query->query_pool, NULL);
+         FREE(query);
+         return NULL;
+      }
+   }
    struct zink_batch *batch = zink_batch_no_rp(zink_context(pctx));
    vkCmdResetQueryPool(batch->cmdbuf, query->query_pool, 0, query->num_queries);
+   if (query->type == PIPE_QUERY_PRIMITIVES_GENERATED)
+      vkCmdResetQueryPool(batch->cmdbuf, query->xfb_query_pool, 0, query->num_queries);
    if (query->type == PIPE_QUERY_TIMESTAMP)
       query->active = true;
    return (struct pipe_query *)query;
@@ -133,6 +150,8 @@ destroy_query(struct zink_screen *screen, struct zink_query *query)
 {
    assert(!p_atomic_read(&query->fences));
    vkDestroyQueryPool(screen->dev, query->query_pool, NULL);
+   if (query->type == PIPE_QUERY_PRIMITIVES_GENERATED)
+      vkDestroyQueryPool(screen->dev, query->xfb_query_pool, NULL);
    FREE(query);
 }
 
@@ -197,11 +216,13 @@ get_query_result(struct pipe_context *pctx,
    /* xfb queries return 2 results */
    uint64_t results[NUM_QUERIES * 2];
    memset(results, 0, sizeof(results));
+   uint64_t xfb_results[NUM_QUERIES * 2];
+   memset(xfb_results, 0, sizeof(xfb_results));
    int num_results = query->curr_query - query->last_checked_query;
    int result_size = 1;
       /* these query types emit 2 values */
-   if (query->vkqtype == VK_QUERY_TYPE_TRANSFORM_FEEDBACK_STREAM_EXT ||
-       query->vkqtype == VK_QUERY_TYPE_PIPELINE_STATISTICS)
+   if (query->type == PIPE_QUERY_PRIMITIVES_GENERATED ||
+       query->type == PIPE_QUERY_PRIMITIVES_EMITTED)
       result_size = 2;
 
    /* verify that we have the expected number of results pending */
@@ -214,6 +235,18 @@ get_query_result(struct pipe_context *pctx,
                                            flags);
    if (status != VK_SUCCESS)
       return false;
+
+   if (query->type == PIPE_QUERY_PRIMITIVES_GENERATED) {
+      status = vkGetQueryPoolResults(screen->dev, query->xfb_query_pool,
+                                              query->last_checked_query, num_results,
+                                              sizeof(xfb_results),
+                                              xfb_results,
+                                              2 * sizeof(uint64_t),
+                                              flags | VK_QUERY_RESULT_64_BIT);
+      if (status != VK_SUCCESS)
+         return false;
+
+   }
 
    uint64_t last_val = 0;
    for (int i = 0; i < num_results * result_size; i += result_size) {
@@ -239,8 +272,11 @@ get_query_result(struct pipe_context *pctx,
          result->u64 += results[i];
          break;
       case PIPE_QUERY_PRIMITIVES_GENERATED:
-         /* if a given draw had a geometry shader, we need to use the second result */
-         result->u32 += ((uint32_t*)results)[i + query->have_gs[i / 2]];
+         if (query->have_xfb[i / 2] || query->index)
+            result->u64 += xfb_results[i + 1];
+         else
+            /* if a given draw had a geometry shader, we need to use the second result */
+            result->u32 += ((uint32_t*)results)[i + query->have_gs[i / 2]];
          break;
       case PIPE_QUERY_PRIMITIVES_EMITTED:
          /* A query pool created with this type will capture 2 integers -
@@ -279,6 +315,8 @@ reset_pool(struct zink_context *ctx, struct zink_batch *batch, struct zink_query
    if (q->type != PIPE_QUERY_TIMESTAMP)
       get_query_result(&ctx->base, (struct pipe_query*)q, false, &q->accumulated_result);
    vkCmdResetQueryPool(batch->cmdbuf, q->query_pool, 0, q->num_queries);
+   if (q->type == PIPE_QUERY_PRIMITIVES_GENERATED)
+      vkCmdResetQueryPool(batch->cmdbuf, q->xfb_query_pool, 0, q->num_queries);
    q->last_checked_query = q->curr_query = 0;
    q->needs_reset = false;
 }
@@ -299,14 +337,15 @@ begin_query(struct zink_context *ctx, struct zink_batch *batch, struct zink_quer
       return;
    if (q->precise)
       flags |= VK_QUERY_CONTROL_PRECISE_BIT;
-   if (q->vkqtype == VK_QUERY_TYPE_TRANSFORM_FEEDBACK_STREAM_EXT) {
+   if (q->vkqtype == VK_QUERY_TYPE_TRANSFORM_FEEDBACK_STREAM_EXT || q->type == PIPE_QUERY_PRIMITIVES_GENERATED) {
       zink_screen(ctx->base.screen)->vk_CmdBeginQueryIndexedEXT(batch->cmdbuf,
-                                                                q->query_pool,
+                                                                q->xfb_query_pool ? q->xfb_query_pool : q->query_pool,
                                                                 q->curr_query,
                                                                 flags,
                                                                 q->index);
       q->xfb_running = true;
-   } else
+   }
+   if (q->vkqtype != VK_QUERY_TYPE_TRANSFORM_FEEDBACK_STREAM_EXT)
       vkCmdBeginQuery(batch->cmdbuf, q->query_pool, q->curr_query, flags);
    if (!batch->active_queries)
       batch->active_queries = _mesa_set_create(NULL, _mesa_hash_pointer, _mesa_key_pointer_equal);
@@ -340,9 +379,9 @@ end_query(struct zink_context *ctx, struct zink_batch *batch, struct zink_query 
    if (is_time_query(q))
       vkCmdWriteTimestamp(batch->cmdbuf, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
                           q->query_pool, q->curr_query);
-   else if (q->vkqtype == VK_QUERY_TYPE_TRANSFORM_FEEDBACK_STREAM_EXT)
-      screen->vk_CmdEndQueryIndexedEXT(batch->cmdbuf, q->query_pool, q->curr_query, q->index);
-   else
+   else if (q->vkqtype == VK_QUERY_TYPE_TRANSFORM_FEEDBACK_STREAM_EXT || q->type == PIPE_QUERY_PRIMITIVES_GENERATED)
+      screen->vk_CmdEndQueryIndexedEXT(batch->cmdbuf, q->xfb_query_pool ? q->xfb_query_pool : q->query_pool, q->curr_query, q->index);
+   if (q->vkqtype != VK_QUERY_TYPE_TRANSFORM_FEEDBACK_STREAM_EXT && !is_time_query(q))
       vkCmdEndQuery(batch->cmdbuf, q->query_pool, q->curr_query);
    if (q->type == PIPE_QUERY_PRIMITIVES_GENERATED)
       list_delinit(&q->stats_list);
@@ -419,6 +458,7 @@ zink_query_update_gs_states(struct zink_context *ctx)
    LIST_FOR_EACH_ENTRY(query, &ctx->primitives_generated_queries, stats_list) {
       assert(query->curr_query - query->last_checked_query < ARRAY_SIZE(query->have_gs));
       query->have_gs[query->curr_query - query->last_checked_query] = !!ctx->gfx_stages[PIPE_SHADER_GEOMETRY];
+      query->have_xfb[query->curr_query - query->last_checked_query] = !!ctx->num_so_targets;
    }
 }
 
