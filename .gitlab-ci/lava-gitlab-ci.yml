@@ -43,7 +43,7 @@ kernel+rootfs_armhf:
   variables:
     GIT_STRATEGY: none # testing doesn't build anything from source
     ENV_VARS: "DEQP_PARALLEL=6"
-    FIXED_ENV_VARS: "CI_PIPELINE_ID=${CI_PIPELINE_ID} CI_JOB_ID=${CI_JOB_ID} CI_PROJECT_PATH=${CI_PROJECT_PATH} TRACIE_NO_UNIT_TESTS=1 TRACIE_UPLOAD_TO_MINIO=1"
+    FIXED_ENV_VARS: "CI_PIPELINE_ID=${CI_PIPELINE_ID} CI_JOB_ID=${CI_JOB_ID} CI_PROJECT_PATH=${CI_PROJECT_PATH} CI_JOB_JWT=${CI_JOB_JWT} TRACIE_NO_UNIT_TESTS=1 TRACIE_UPLOAD_TO_MINIO=1"
     DEQP_VERSION: gles2
     ARTIFACTS_PREFIX: "https://minio-packet.freedesktop.org/mesa-lava/"
     MESA_URL: "https://minio-packet.freedesktop.org/artifacts/${CI_PROJECT_PATH}/${CI_PIPELINE_ID}/mesa-${ARCH}.tar.gz"

@@ -31,9 +31,6 @@ export PAGER=cat
 RESULTS=`pwd`/results
 mkdir -p $RESULTS
 
-# For artifact uploads to MinIO
-cp install/.minio_credentials .
-
 # Perform a self-test to ensure tracie is working properly.
 if [ -z "$TRACIE_NO_UNIT_TESTS" ]; then
     TRACIE_UPLOAD_TO_MINIO=0 python3 -m pytest -v --pyargs $INSTALL/tracie/tests/test.py

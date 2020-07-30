@@ -13,6 +13,7 @@ import tempfile
 import time
 import yaml
 import shutil
+import xml.etree.ElementTree as ET
 
 from email.utils import formatdate
 from pathlib import Path
@@ -25,6 +26,8 @@ TRACES_DB_PATH = "./traces-db/"
 RESULTS_PATH = "./results/"
 MINIO_HOST = "minio-packet.freedesktop.org"
 DASHBOARD_URL = "https://tracie.freedesktop.org/dashboard"
+
+minio_credentials = None
 
 def replay(trace_path, device_name):
     success = dump_trace_images.dump_from_trace(trace_path, [], device_name)
@@ -70,12 +73,38 @@ def sign_with_hmac(key, message):
 
     return base64.encodebytes(signature).strip().decode()
 
+def ensure_minio_credentials():
+    global minio_credentials
+
+    if minio_credentials is None:
+        minio_credentials = {}
+
+    params = {'Action': 'AssumeRoleWithWebIdentity',
+              'Version': '2011-06-15',
+              'RoleArn': 'arn:aws:iam::123456789012:role/FederatedWebIdentityRole',
+              'RoleSessionName': '%s:%s' % (os.environ['CI_PROJECT_PATH'], os.environ['CI_JOB_ID']),
+              'DurationSeconds': 900,
+              'WebIdentityToken': os.environ['CI_JOB_JWT']}
+    r = requests.post('https://%s' % (MINIO_HOST), params=params)
+    if r.status_code >= 400:
+        print(r.text)
+    r.raise_for_status()
+
+    root = ET.fromstring(r.text)
+    for attr in root.iter():
+        if attr.tag == '{https://sts.amazonaws.com/doc/2011-06-15/}AccessKeyId':
+            minio_credentials['AccessKeyId'] = attr.text
+        elif attr.tag == '{https://sts.amazonaws.com/doc/2011-06-15/}SecretAccessKey':
+            minio_credentials['SecretAccessKey'] = attr.text
+        elif attr.tag == '{https://sts.amazonaws.com/doc/2011-06-15/}SessionToken':
+            minio_credentials['SessionToken'] = attr.text
+
 def upload_to_minio(file_name, resource, content_type):
-    with open('.minio_credentials', 'r') as f:
-        credentials = json.load(f)[MINIO_HOST]
-        minio_key = credentials["AccessKeyId"]
-        minio_secret = credentials["SecretAccessKey"]
-        minio_token = credentials["SessionToken"]
+    ensure_minio_credentials()
+
+    minio_key = minio_credentials['AccessKeyId']
+    minio_secret = minio_credentials['SecretAccessKey']
+    minio_token = minio_credentials['SessionToken']
 
     date = formatdate(timeval=None, localtime=False, usegmt=True)
     url = 'https://%s%s' % (MINIO_HOST, resource)

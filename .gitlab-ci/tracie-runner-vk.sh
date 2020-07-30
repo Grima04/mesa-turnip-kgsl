@@ -20,9 +20,6 @@ export WINEESYNC=1
 export DXVK_LOG_LEVEL="none"
 export DXVK_STATE_CACHE=0
 
-# For artifact uploads to MinIO
-cp install/.minio_credentials .
-
 # Perform a self-test to ensure tracie is working properly.
 python3 -m pytest -v --pyargs $INSTALL/tracie/tests/test.py
 
