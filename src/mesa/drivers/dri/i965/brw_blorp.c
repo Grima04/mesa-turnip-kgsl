@@ -853,7 +853,6 @@ blorp_get_client_bo(struct brw_context *brw,
                                                    format, type,
                                                    d - 1, h - 1, w);
    const uint32_t stride = _mesa_image_row_stride(packing, w, format, type);
-   const uint32_t cpp = _mesa_bytes_per_pixel(format, type);
    const uint32_t size = last_pixel - first_pixel;
 
    *row_stride_out = stride;
@@ -861,9 +860,15 @@ blorp_get_client_bo(struct brw_context *brw,
 
    if (packing->BufferObj) {
       const uint32_t offset = first_pixel + (intptr_t)pixels;
-      if (!read_only && ((offset % cpp) || (stride % cpp))) {
-         perf_debug("Bad PBO alignment; fallback to CPU mapping\n");
-         return NULL;
+
+      if (!read_only) {
+         const int32_t cpp = _mesa_bytes_per_pixel(format, type);
+         assert(cpp > 0);
+
+         if ((offset % cpp) || (stride % cpp)) {
+            perf_debug("Bad PBO alignment; fallback to CPU mapping\n");
+            return NULL;
+         }
       }
 
       /* This is a user-provided PBO. We just need to get the BO out */
