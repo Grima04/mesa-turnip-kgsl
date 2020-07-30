@@ -119,7 +119,6 @@ radv_image_from_gralloc(VkDevice device_h,
 	RADV_FROM_HANDLE(radv_device, device, device_h);
 	VkImage image_h = VK_NULL_HANDLE;
 	struct radv_image *image = NULL;
-	struct radv_bo *bo = NULL;
 	VkResult result;
 
 	if (gralloc_info->handle->numFds != 1) {
