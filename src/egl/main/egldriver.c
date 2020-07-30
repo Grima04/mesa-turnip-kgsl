@@ -46,7 +46,7 @@
 
 #include "util/debug.h"
 
-extern _EGLDriver _eglDriver;
+extern const _EGLDriver _eglDriver;
 
 /**
  * Initialize the display using the driver's function.

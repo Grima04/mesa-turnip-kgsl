@@ -108,7 +108,7 @@ surfaceless_image_get_buffers(__DRIdrawable *driDrawable,
 }
 
 static _EGLSurface *
-dri2_surfaceless_create_surface(_EGLDriver *drv, _EGLDisplay *disp, EGLint type,
+dri2_surfaceless_create_surface(const _EGLDriver *drv, _EGLDisplay *disp, EGLint type,
                         _EGLConfig *conf, const EGLint *attrib_list)
 {
    struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
@@ -153,7 +153,7 @@ dri2_surfaceless_create_surface(_EGLDriver *drv, _EGLDisplay *disp, EGLint type,
 }
 
 static EGLBoolean
-surfaceless_destroy_surface(_EGLDriver *drv, _EGLDisplay *disp, _EGLSurface *surf)
+surfaceless_destroy_surface(const _EGLDriver *drv, _EGLDisplay *disp, _EGLSurface *surf)
 {
    struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
    struct dri2_egl_surface *dri2_surf = dri2_egl_surface(surf);
@@ -168,7 +168,7 @@ surfaceless_destroy_surface(_EGLDriver *drv, _EGLDisplay *disp, _EGLSurface *sur
 }
 
 static _EGLSurface *
-dri2_surfaceless_create_pbuffer_surface(_EGLDriver *drv, _EGLDisplay *disp,
+dri2_surfaceless_create_pbuffer_surface(const _EGLDriver *drv, _EGLDisplay *disp,
                                 _EGLConfig *conf, const EGLint *attrib_list)
 {
    return dri2_surfaceless_create_surface(drv, disp, EGL_PBUFFER_BIT, conf,
@@ -313,7 +313,7 @@ surfaceless_probe_device_sw(_EGLDisplay *disp)
 }
 
 EGLBoolean
-dri2_initialize_surfaceless(_EGLDriver *drv, _EGLDisplay *disp)
+dri2_initialize_surfaceless(const _EGLDriver *drv, _EGLDisplay *disp)
 {
    struct dri2_egl_display *dri2_dpy;
    const char* err;

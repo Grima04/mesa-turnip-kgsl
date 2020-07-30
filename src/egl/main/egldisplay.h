@@ -161,7 +161,7 @@ struct _egl_display
    void *PlatformDisplay;     /**< A pointer to the platform display */
 
    _EGLDevice *Device;        /**< Device backing the display */
-   _EGLDriver *Driver;        /**< Matched driver of the display */
+   const _EGLDriver *Driver;  /**< Matched driver of the display */
    EGLBoolean Initialized;    /**< True if the display is initialized */
 
    /* options that affect how the driver initializes the display */
@@ -207,7 +207,7 @@ _eglFindDisplay(_EGLPlatformType plat, void *plat_dpy, const EGLAttrib *attr);
 
 
 extern void
-_eglReleaseDisplayResources(_EGLDriver *drv, _EGLDisplay *disp);
+_eglReleaseDisplayResources(const _EGLDriver *drv, _EGLDisplay *disp);
 
 
 extern void

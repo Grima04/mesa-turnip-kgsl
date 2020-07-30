@@ -138,7 +138,7 @@ dri2_drm_config_is_compatible(struct dri2_egl_display *dri2_dpy,
 }
 
 static _EGLSurface *
-dri2_drm_create_window_surface(_EGLDriver *drv, _EGLDisplay *disp,
+dri2_drm_create_window_surface(const _EGLDriver *drv, _EGLDisplay *disp,
                                _EGLConfig *conf, void *native_surface,
                                const EGLint *attrib_list)
 {
@@ -192,7 +192,7 @@ dri2_drm_create_window_surface(_EGLDriver *drv, _EGLDisplay *disp,
 }
 
 static _EGLSurface *
-dri2_drm_create_pixmap_surface(_EGLDriver *drv, _EGLDisplay *disp,
+dri2_drm_create_pixmap_surface(const _EGLDriver *drv, _EGLDisplay *disp,
                                _EGLConfig *conf, void *native_window,
                                const EGLint *attrib_list)
 {
@@ -207,7 +207,7 @@ dri2_drm_create_pixmap_surface(_EGLDriver *drv, _EGLDisplay *disp,
 }
 
 static EGLBoolean
-dri2_drm_destroy_surface(_EGLDriver *drv, _EGLDisplay *disp, _EGLSurface *surf)
+dri2_drm_destroy_surface(const _EGLDriver *drv, _EGLDisplay *disp, _EGLSurface *surf)
 {
    struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
    struct dri2_egl_surface *dri2_surf = dri2_egl_surface(surf);
@@ -418,7 +418,7 @@ dri2_drm_flush_front_buffer(__DRIdrawable * driDrawable, void *loaderPrivate)
 }
 
 static EGLBoolean
-dri2_drm_swap_buffers(_EGLDriver *drv, _EGLDisplay *disp, _EGLSurface *draw)
+dri2_drm_swap_buffers(const _EGLDriver *drv, _EGLDisplay *disp, _EGLSurface *draw)
 {
    struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
    struct dri2_egl_surface *dri2_surf = dri2_egl_surface(draw);
@@ -450,7 +450,7 @@ dri2_drm_swap_buffers(_EGLDriver *drv, _EGLDisplay *disp, _EGLSurface *draw)
 }
 
 static EGLint
-dri2_drm_query_buffer_age(_EGLDriver *drv,
+dri2_drm_query_buffer_age(const _EGLDriver *drv,
                           _EGLDisplay *disp, _EGLSurface *surface)
 {
    struct dri2_egl_surface *dri2_surf = dri2_egl_surface(surface);
@@ -490,7 +490,7 @@ dri2_drm_create_image_khr_pixmap(_EGLDisplay *disp, _EGLContext *ctx,
 }
 
 static _EGLImage *
-dri2_drm_create_image_khr(_EGLDriver *drv, _EGLDisplay *disp,
+dri2_drm_create_image_khr(const _EGLDriver *drv, _EGLDisplay *disp,
                           _EGLContext *ctx, EGLenum target,
                           EGLClientBuffer buffer, const EGLint *attr_list)
 {
@@ -610,7 +610,7 @@ swrast_get_image(__DRIdrawable *driDrawable,
 }
 
 static EGLBoolean
-drm_add_configs_for_visuals(_EGLDriver *drv, _EGLDisplay *disp)
+drm_add_configs_for_visuals(const _EGLDriver *drv, _EGLDisplay *disp)
 {
    struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
    const struct gbm_dri_visual *visuals = dri2_dpy->gbm_dri->visual_table;
@@ -682,7 +682,7 @@ static const struct dri2_egl_display_vtbl dri2_drm_display_vtbl = {
 };
 
 EGLBoolean
-dri2_initialize_drm(_EGLDriver *drv, _EGLDisplay *disp)
+dri2_initialize_drm(const _EGLDriver *drv, _EGLDisplay *disp)
 {
    _EGLDevice *dev;
    struct dri2_egl_display *dri2_dpy;

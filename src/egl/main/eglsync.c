@@ -120,7 +120,7 @@ _eglInitSync(_EGLSync *sync, _EGLDisplay *disp, EGLenum type,
 
 
 EGLBoolean
-_eglGetSyncAttrib(_EGLDriver *drv, _EGLDisplay *disp, _EGLSync *sync,
+_eglGetSyncAttrib(const _EGLDriver *drv, _EGLDisplay *disp, _EGLSync *sync,
                   EGLint attribute, EGLAttrib *value)
 {
    switch (attribute) {

@@ -104,7 +104,7 @@ static const struct loader_dri3_vtable egl_dri3_vtable = {
 };
 
 static EGLBoolean
-dri3_destroy_surface(_EGLDriver *drv, _EGLDisplay *disp, _EGLSurface *surf)
+dri3_destroy_surface(const _EGLDriver *drv, _EGLDisplay *disp, _EGLSurface *surf)
 {
    struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
    struct dri3_egl_surface *dri3_surf = dri3_egl_surface(surf);
@@ -124,7 +124,7 @@ dri3_destroy_surface(_EGLDriver *drv, _EGLDisplay *disp, _EGLSurface *surf)
 }
 
 static EGLBoolean
-dri3_set_swap_interval(_EGLDriver *drv, _EGLDisplay *disp, _EGLSurface *surf,
+dri3_set_swap_interval(const _EGLDriver *drv, _EGLDisplay *disp, _EGLSurface *surf,
                        EGLint interval)
 {
    struct dri3_egl_surface *dri3_surf = dri3_egl_surface(surf);
@@ -136,7 +136,7 @@ dri3_set_swap_interval(_EGLDriver *drv, _EGLDisplay *disp, _EGLSurface *surf,
 }
 
 static _EGLSurface *
-dri3_create_surface(_EGLDriver *drv, _EGLDisplay *disp, EGLint type,
+dri3_create_surface(const _EGLDriver *drv, _EGLDisplay *disp, EGLint type,
                     _EGLConfig *conf, void *native_surface,
                     const EGLint *attrib_list)
 {
@@ -222,7 +222,7 @@ dri3_authenticate(_EGLDisplay *disp, uint32_t id)
  * Called via eglCreateWindowSurface(), drv->CreateWindowSurface().
  */
 static _EGLSurface *
-dri3_create_window_surface(_EGLDriver *drv, _EGLDisplay *disp,
+dri3_create_window_surface(const _EGLDriver *drv, _EGLDisplay *disp,
                            _EGLConfig *conf, void *native_window,
                            const EGLint *attrib_list)
 {
@@ -238,7 +238,7 @@ dri3_create_window_surface(_EGLDriver *drv, _EGLDisplay *disp,
 }
 
 static _EGLSurface *
-dri3_create_pixmap_surface(_EGLDriver *drv, _EGLDisplay *disp,
+dri3_create_pixmap_surface(const _EGLDriver *drv, _EGLDisplay *disp,
                            _EGLConfig *conf, void *native_pixmap,
                            const EGLint *attrib_list)
 {
@@ -247,7 +247,7 @@ dri3_create_pixmap_surface(_EGLDriver *drv, _EGLDisplay *disp,
 }
 
 static _EGLSurface *
-dri3_create_pbuffer_surface(_EGLDriver *drv, _EGLDisplay *disp,
+dri3_create_pbuffer_surface(const _EGLDriver *drv, _EGLDisplay *disp,
                                 _EGLConfig *conf, const EGLint *attrib_list)
 {
    return dri3_create_surface(drv, disp, EGL_PBUFFER_BIT, conf,
@@ -374,7 +374,7 @@ dri3_create_image_khr_pixmap_from_buffers(_EGLDisplay *disp, _EGLContext *ctx,
 #endif
 
 static _EGLImage *
-dri3_create_image_khr(_EGLDriver *drv, _EGLDisplay *disp,
+dri3_create_image_khr(const _EGLDriver *drv, _EGLDisplay *disp,
                       _EGLContext *ctx, EGLenum target,
                       EGLClientBuffer buffer, const EGLint *attr_list)
 {
@@ -421,7 +421,7 @@ const __DRIimageLoaderExtension dri3_image_loader_extension = {
 };
 
 static EGLBoolean
-dri3_swap_buffers(_EGLDriver *drv, _EGLDisplay *disp, _EGLSurface *draw)
+dri3_swap_buffers(const _EGLDriver *drv, _EGLDisplay *disp, _EGLSurface *draw)
 {
    struct dri3_egl_surface *dri3_surf = dri3_egl_surface(draw);
 
@@ -431,7 +431,7 @@ dri3_swap_buffers(_EGLDriver *drv, _EGLDisplay *disp, _EGLSurface *draw)
 }
 
 static EGLBoolean
-dri3_copy_buffers(_EGLDriver *drv, _EGLDisplay *disp, _EGLSurface *surf,
+dri3_copy_buffers(const _EGLDriver *drv, _EGLDisplay *disp, _EGLSurface *surf,
                   void *native_pixmap_target)
 {
    struct dri3_egl_surface *dri3_surf = dri3_egl_surface(surf);
@@ -447,7 +447,7 @@ dri3_copy_buffers(_EGLDriver *drv, _EGLDisplay *disp, _EGLSurface *surf,
 }
 
 static int
-dri3_query_buffer_age(_EGLDriver *drv, _EGLDisplay *disp, _EGLSurface *surf)
+dri3_query_buffer_age(const _EGLDriver *drv, _EGLDisplay *disp, _EGLSurface *surf)
 {
    struct dri3_egl_surface *dri3_surf = dri3_egl_surface(surf);
 
@@ -455,7 +455,7 @@ dri3_query_buffer_age(_EGLDriver *drv, _EGLDisplay *disp, _EGLSurface *surf)
 }
 
 static EGLBoolean
-dri3_query_surface(_EGLDriver *drv, _EGLDisplay *disp,
+dri3_query_surface(const _EGLDriver *drv, _EGLDisplay *disp,
                    _EGLSurface *surf, EGLint attribute,
                    EGLint *value)
 {
