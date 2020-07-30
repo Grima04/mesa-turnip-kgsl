@@ -1,3 +1,9 @@
+common_SOURCES := \
+	common/disasm.h \
+	common/freedreno_uuid.c \
+	common/freedreno_uuid.h \
+	common/freedreno_guardband.h
+
 drm_SOURCES := \
 	drm/freedreno_bo.c \
 	drm/freedreno_drmif.h \

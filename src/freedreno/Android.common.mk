@@ -20,13 +20,22 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
-# Android.mk for libfreedreno_*
+# Android.mk for libfreedreno_common.a
 
-LOCAL_PATH := $(call my-dir)
+# ---------------------------------------
+# Build libfreedreno_common
+# ---------------------------------------
 
-include $(LOCAL_PATH)/Makefile.sources
-include $(LOCAL_PATH)/Android.common.mk
-include $(LOCAL_PATH)/Android.drm.mk
-include $(LOCAL_PATH)/Android.ir3.mk
-include $(LOCAL_PATH)/Android.perfcntrs.mk
-include $(LOCAL_PATH)/Android.registers.mk
+include $(CLEAR_VARS)
+
+LOCAL_SRC_FILES := \
+	$(common_SOURCES)
+
+LOCAL_C_INCLUDES := \
+	$(MESA_TOP)/src/gallium/include \
+	$(MESA_TOP)/src/gallium/auxiliary
+
+LOCAL_MODULE := libfreedreno_common
+
+include $(MESA_COMMON_MK)
+include $(BUILD_STATIC_LIBRARY)
