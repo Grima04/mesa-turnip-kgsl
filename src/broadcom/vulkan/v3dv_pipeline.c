@@ -2527,6 +2527,8 @@ pack_shader_state_record(struct v3dv_pipeline *pipeline)
       shader.fragment_shader_uses_real_pixel_centre_w_in_addition_to_centroid_w2 =
          prog_data_fs->uses_center_w;
 
+      shader.enable_sample_rate_shading = pipeline->sample_rate_shading;
+
       shader.any_shader_reads_hardware_written_primitive_id = false;
 
       shader.do_scoreboard_wait_on_first_thread_switch =
@@ -2764,6 +2766,15 @@ pipeline_set_sample_mask(struct v3dv_pipeline *pipeline,
    }
 }
 
+static void
+pipeline_set_sample_rate_shading(struct v3dv_pipeline *pipeline,
+                                 const VkPipelineMultisampleStateCreateInfo *ms_info)
+{
+   pipeline->sample_rate_shading =
+      ms_info && ms_info->rasterizationSamples > VK_SAMPLE_COUNT_1_BIT &&
+      ms_info->sampleShadingEnable;
+}
+
 static VkResult
 pipeline_init(struct v3dv_pipeline *pipeline,
               struct v3dv_device *device,
@@ -2819,6 +2830,7 @@ pipeline_init(struct v3dv_pipeline *pipeline,
    pipeline_set_ez_state(pipeline, ds_info);
    enable_depth_bias(pipeline, rs_info);
    pipeline_set_sample_mask(pipeline, ms_info);
+   pipeline_set_sample_rate_shading(pipeline, ms_info);
 
    pipeline->primitive_restart =
       pCreateInfo->pInputAssemblyState->primitiveRestartEnable;

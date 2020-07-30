@@ -2846,6 +2846,7 @@ static void
 get_blit_pipeline_cache_key(VkFormat dst_format,
                             VkFormat src_format,
                             VkColorComponentFlags cmask,
+                            VkSampleCountFlagBits dst_samples,
                             VkSampleCountFlagBits src_samples,
                             uint8_t *key)
 {
@@ -2872,7 +2873,7 @@ get_blit_pipeline_cache_key(VkFormat dst_format,
    *p = cmask;
    p++;
 
-   *p = src_samples;
+   *p = (dst_samples << 8) | src_samples;
    p++;
 
    assert(((uint8_t*)p - key) == V3DV_META_BLIT_CACHE_KEY_SIZE);
@@ -3071,11 +3072,10 @@ gen_tex_coords(nir_builder *b)
 }
 
 static nir_ssa_def *
-build_nir_tex_op_default(struct nir_builder *b,
-                         struct v3dv_device *device,
-                         nir_ssa_def *tex_pos,
-                         enum glsl_base_type tex_type,
-                         enum glsl_sampler_dim dim)
+build_nir_tex_op_read(struct nir_builder *b,
+                      nir_ssa_def *tex_pos,
+                      enum glsl_base_type tex_type,
+                      enum glsl_sampler_dim dim)
 {
    assert(dim != GLSL_SAMPLER_DIM_MS);
 
@@ -3106,59 +3106,81 @@ build_nir_tex_op_default(struct nir_builder *b,
    return &tex->dest.ssa;
 }
 
+static nir_ssa_def *
+build_nir_tex_op_ms_fetch_sample(struct nir_builder *b,
+                                 nir_variable *sampler,
+                                 nir_ssa_def *tex_deref,
+                                 enum glsl_base_type tex_type,
+                                 nir_ssa_def *tex_pos,
+                                 nir_ssa_def *sample_idx)
+{
+   nir_tex_instr *tex = nir_tex_instr_create(b->shader, 4);
+   tex->sampler_dim = GLSL_SAMPLER_DIM_MS;
+   tex->op = nir_texop_txf_ms;
+   tex->src[0].src_type = nir_tex_src_coord;
+   tex->src[0].src = nir_src_for_ssa(tex_pos);
+   tex->src[1].src_type = nir_tex_src_texture_deref;
+   tex->src[1].src = nir_src_for_ssa(tex_deref);
+   tex->src[2].src_type = nir_tex_src_sampler_deref;
+   tex->src[2].src = nir_src_for_ssa(tex_deref);
+   tex->src[3].src_type = nir_tex_src_ms_index;
+   tex->src[3].src = nir_src_for_ssa(sample_idx);
+   tex->dest_type =
+      nir_alu_type_get_base_type(nir_get_nir_type_for_glsl_base_type(tex_type));
+   tex->is_array = false;
+   tex->coord_components = tex_pos->num_components;
+
+   nir_ssa_dest_init(&tex->instr, &tex->dest, 4, 32, "tex");
+   nir_builder_instr_insert(b, &tex->instr);
+   return &tex->dest.ssa;
+}
+
 /* Fetches all samples at the given position and averages them */
 static nir_ssa_def *
-build_nir_tex_op_ms(struct nir_builder *b,
-                    struct v3dv_device *device,
-                    nir_ssa_def *tex_pos,
-                    enum glsl_base_type tex_type,
-                    VkSampleCountFlagBits src_samples)
+build_nir_tex_op_ms_resolve(struct nir_builder *b,
+                            nir_ssa_def *tex_pos,
+                            enum glsl_base_type tex_type,
+                            VkSampleCountFlagBits src_samples)
 {
    assert(src_samples > VK_SAMPLE_COUNT_1_BIT);
-   const  enum glsl_sampler_dim dim = GLSL_SAMPLER_DIM_MS;
-
    const struct glsl_type *sampler_type =
-      glsl_sampler_type(dim, false, false, tex_type);
+      glsl_sampler_type(GLSL_SAMPLER_DIM_MS, false, false, tex_type);
    nir_variable *sampler =
       nir_variable_create(b->shader, nir_var_uniform, sampler_type, "s_tex");
    sampler->data.descriptor_set = 0;
    sampler->data.binding = 0;
 
-   /* For multisampled texture sources we need to use fetching instead of
-    * normalized texture coordinates. We already configured our blit coordinates
-    * to be in texel units, but here we still need to convert them from
-    * floating point to integer.
-    */
-   nir_ssa_def *itex_pos = nir_f2i32(b, tex_pos);
-
    nir_ssa_def *tmp;
    nir_ssa_def *tex_deref = &nir_build_deref_var(b, sampler)->dest.ssa;
    for (uint32_t i = 0; i < src_samples; i++) {
-      nir_tex_instr *tex = nir_tex_instr_create(b->shader, 4);
-      tex->sampler_dim = dim;
-      tex->op = nir_texop_txf_ms;
-      tex->src[0].src_type = nir_tex_src_coord;
-      tex->src[0].src = nir_src_for_ssa(itex_pos);
-      tex->src[1].src_type = nir_tex_src_texture_deref;
-      tex->src[1].src = nir_src_for_ssa(tex_deref);
-      tex->src[2].src_type = nir_tex_src_sampler_deref;
-      tex->src[2].src = nir_src_for_ssa(tex_deref);
-      tex->src[3].src_type = nir_tex_src_ms_index;
-      tex->src[3].src = nir_src_for_ssa(nir_imm_int(b, i));
-      tex->dest_type =
-         nir_alu_type_get_base_type(nir_get_nir_type_for_glsl_base_type(tex_type));
-      tex->is_array = false;
-      tex->coord_components = tex_pos->num_components;
-
-      nir_ssa_dest_init(&tex->instr, &tex->dest, 4, 32, "tex");
-      nir_builder_instr_insert(b, &tex->instr);
-      if (i == 0)
-         tmp = &tex->dest.ssa;
-      else
-         tmp = nir_fadd(b, tmp, &tex->dest.ssa);
+      nir_ssa_def *s =
+         build_nir_tex_op_ms_fetch_sample(b, sampler, tex_deref,
+                                         tex_type, tex_pos,
+                                         nir_imm_int(b, i));
+      tmp = i == 0 ? s : nir_fadd(b, tmp, s);
    }
 
    return nir_fmul(b, tmp, nir_imm_float(b, 1.0f / src_samples));
+}
+
+/* Fetches the current sample (gl_SampleID) at the given position */
+static nir_ssa_def *
+build_nir_tex_op_ms_read(struct nir_builder *b,
+                         nir_ssa_def *tex_pos,
+                         enum glsl_base_type tex_type)
+{
+   const struct glsl_type *sampler_type =
+      glsl_sampler_type(GLSL_SAMPLER_DIM_MS, false, false, tex_type);
+   nir_variable *sampler =
+      nir_variable_create(b->shader, nir_var_uniform, sampler_type, "s_tex");
+   sampler->data.descriptor_set = 0;
+   sampler->data.binding = 0;
+
+   nir_ssa_def *tex_deref = &nir_build_deref_var(b, sampler)->dest.ssa;
+
+   return build_nir_tex_op_ms_fetch_sample(b, sampler, tex_deref,
+                                           tex_type, tex_pos,
+                                           nir_load_sample_id(b));
 }
 
 static nir_ssa_def *
@@ -3166,16 +3188,27 @@ build_nir_tex_op(struct nir_builder *b,
                  struct v3dv_device *device,
                  nir_ssa_def *tex_pos,
                  enum glsl_base_type tex_type,
+                 VkSampleCountFlagBits dst_samples,
                  VkSampleCountFlagBits src_samples,
                  enum glsl_sampler_dim dim)
 {
    switch (dim) {
    case GLSL_SAMPLER_DIM_MS:
       assert(src_samples == VK_SAMPLE_COUNT_4_BIT);
-      return build_nir_tex_op_ms(b, device, tex_pos, tex_type, src_samples);
+      /* For multisampled texture sources we need to use fetching instead of
+       * normalized texture coordinates. We already configured our blit
+       * coordinates to be in texel units, but here we still need to convert
+       * them from floating point to integer.
+       */
+      tex_pos = nir_f2i32(b, tex_pos);
+
+      if (dst_samples == VK_SAMPLE_COUNT_1_BIT)
+         return build_nir_tex_op_ms_resolve(b, tex_pos, tex_type, src_samples);
+      else
+         return build_nir_tex_op_ms_read(b, tex_pos, tex_type);
    default:
       assert(src_samples == VK_SAMPLE_COUNT_1_BIT);
-      return build_nir_tex_op_default(b, device, tex_pos, tex_type, dim);
+      return build_nir_tex_op_read(b, tex_pos, tex_type, dim);
    }
 }
 
@@ -3224,6 +3257,7 @@ static nir_shader *
 get_color_blit_fs(struct v3dv_device *device,
                   VkFormat dst_format,
                   VkFormat src_format,
+                  VkSampleCountFlagBits dst_samples,
                   VkSampleCountFlagBits src_samples,
                   enum glsl_sampler_dim sampler_dim)
 {
@@ -3252,7 +3286,7 @@ get_color_blit_fs(struct v3dv_device *device,
 
    nir_ssa_def *color = build_nir_tex_op(&b, device, tex_coord,
                                          glsl_get_base_type(fs_out_type),
-                                         src_samples, sampler_dim);
+                                         dst_samples, src_samples, sampler_dim);
 
    /* For integer textures, if the bit-size of the destination is too small to
     * hold source value, Vulkan (CTS) expects the implementation to clamp to the
@@ -3308,6 +3342,7 @@ create_pipeline(struct v3dv_device *device,
                 const VkPipelineVertexInputStateCreateInfo *vi_state,
                 const VkPipelineDepthStencilStateCreateInfo *ds_state,
                 const VkPipelineColorBlendStateCreateInfo *cb_state,
+                const VkPipelineMultisampleStateCreateInfo *ms_state,
                 const VkPipelineLayout layout,
                 VkPipeline *pipeline)
 {
@@ -3361,14 +3396,7 @@ create_pipeline(struct v3dv_device *device,
          .depthBiasEnable = false,
       },
 
-      .pMultisampleState = &(VkPipelineMultisampleStateCreateInfo) {
-         .sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
-         .rasterizationSamples = VK_SAMPLE_COUNT_1_BIT,
-         .sampleShadingEnable = false,
-         .pSampleMask = NULL,
-         .alphaToCoverageEnable = false,
-         .alphaToOneEnable = false,
-      },
+      .pMultisampleState = ms_state,
 
       .pDepthStencilState = ds_state,
 
@@ -3440,6 +3468,7 @@ create_blit_pipeline(struct v3dv_device *device,
                      VkFormat src_format,
                      VkColorComponentFlags cmask,
                      VkImageType src_type,
+                     VkSampleCountFlagBits dst_samples,
                      VkSampleCountFlagBits src_samples,
                      VkRenderPass _pass,
                      VkPipelineLayout pipeline_layout,
@@ -3456,7 +3485,8 @@ create_blit_pipeline(struct v3dv_device *device,
 
    nir_shader *vs_nir = get_blit_vs();
    nir_shader *fs_nir =
-      get_color_blit_fs(device, dst_format, src_format, src_samples, sampler_dim);
+      get_color_blit_fs(device, dst_format, src_format,
+                        dst_samples, src_samples, sampler_dim);
 
    const VkPipelineVertexInputStateCreateInfo vi_state = {
       .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
@@ -3481,12 +3511,22 @@ create_blit_pipeline(struct v3dv_device *device,
       .pAttachments = blend_att_state
    };
 
+   const VkPipelineMultisampleStateCreateInfo ms_state = {
+      .sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
+      .rasterizationSamples = dst_samples,
+      .sampleShadingEnable = dst_samples > VK_SAMPLE_COUNT_1_BIT,
+      .pSampleMask = NULL,
+      .alphaToCoverageEnable = false,
+      .alphaToOneEnable = false,
+   };
+
    return create_pipeline(device,
                           pass,
                           vs_nir, fs_nir,
                           &vi_state,
                           &ds_state,
                           &cb_state,
+                          &ms_state,
                           pipeline_layout,
                           pipeline);
 }
@@ -3501,6 +3541,7 @@ get_blit_pipeline(struct v3dv_device *device,
                   VkFormat src_format,
                   VkColorComponentFlags cmask,
                   VkImageType src_type,
+                  VkSampleCountFlagBits dst_samples,
                   VkSampleCountFlagBits src_samples,
                   struct v3dv_meta_blit_pipeline **pipeline)
 {
@@ -3517,7 +3558,8 @@ get_blit_pipeline(struct v3dv_device *device,
       return false;
 
    uint8_t key[V3DV_META_BLIT_CACHE_KEY_SIZE];
-   get_blit_pipeline_cache_key(dst_format, src_format, cmask, src_samples, key);
+   get_blit_pipeline_cache_key(dst_format, src_format, cmask,
+                               dst_samples, src_samples, key);
    mtx_lock(&device->meta.mtx);
    struct hash_entry *entry =
       _mesa_hash_table_search(device->meta.blit.cache[src_type], &key);
@@ -3543,6 +3585,7 @@ get_blit_pipeline(struct v3dv_device *device,
                              src_format,
                              cmask,
                              src_type,
+                             dst_samples,
                              src_samples,
                              (*pipeline)->pass,
                              device->meta.blit.playout,
@@ -3814,8 +3857,9 @@ blit_shader(struct v3dv_cmd_buffer *cmd_buffer,
    /* Get the blit pipeline */
    struct v3dv_meta_blit_pipeline *pipeline = NULL;
    bool ok = get_blit_pipeline(cmd_buffer->device,
-                               dst_format, src_format, cmask,
-                               src->type, src->samples, &pipeline);
+                               dst_format, src_format, cmask, src->type,
+                               dst->samples, src->samples,
+                               &pipeline);
    if (!ok)
       return handled;
    assert(pipeline && pipeline->pipeline && pipeline->pass);
