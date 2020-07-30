@@ -334,6 +334,8 @@ struct radv_instance {
 
 	uint32_t                                    apiVersion;
 
+	char *                                      applicationName;
+	uint32_t                                    applicationVersion;
 	char *                                      engineName;
 	uint32_t                                    engineVersion;
 
