@@ -2418,6 +2418,9 @@ static LLVMValueRef visit_load_var(struct ac_nir_context *ctx,
 				LLVMValueRef offset = LLVMConstInt(ctx->ac.i32, i * stride / natural_stride, 0);
 				values[i] = LLVMBuildLoad(ctx->ac.builder,
 				                          ac_build_gep_ptr(&ctx->ac, address, offset), "");
+
+				if (nir_intrinsic_access(instr) & (ACCESS_COHERENT | ACCESS_VOLATILE))
+					LLVMSetOrdering(values[i], LLVMAtomicOrderingMonotonic);
 			}
 			return ac_build_gather_values(&ctx->ac, values, instr->dest.ssa.num_components);
 		} else {
@@ -2425,6 +2428,9 @@ static LLVMValueRef visit_load_var(struct ac_nir_context *ctx,
 			                                        LLVMGetPointerAddressSpace(LLVMTypeOf(address)));
 			address = LLVMBuildBitCast(ctx->ac.builder, address, ptr_type , "");
 			LLVMValueRef val = LLVMBuildLoad(ctx->ac.builder, address, "");
+
+			if (nir_intrinsic_access(instr) & (ACCESS_COHERENT | ACCESS_VOLATILE))
+				LLVMSetOrdering(val, LLVMAtomicOrderingMonotonic);
 			return val;
 		}
 	}
@@ -2580,7 +2586,10 @@ visit_store_var(struct ac_nir_context *ctx,
 
 			val = LLVMBuildBitCast(ctx->ac.builder, val,
 			                       LLVMGetElementType(LLVMTypeOf(address)), "");
-			LLVMBuildStore(ctx->ac.builder, val, address);
+			LLVMValueRef store = LLVMBuildStore(ctx->ac.builder, val, address);
+
+			if (nir_intrinsic_access(instr) & (ACCESS_COHERENT | ACCESS_VOLATILE))
+				LLVMSetOrdering(store, LLVMAtomicOrderingMonotonic);
 		} else {
 			LLVMTypeRef val_type = LLVMTypeOf(val);
 			if (LLVMGetTypeKind(LLVMTypeOf(val)) == LLVMVectorTypeKind)
@@ -2600,7 +2609,10 @@ visit_store_var(struct ac_nir_context *ctx,
 									chan);
 				src = LLVMBuildBitCast(ctx->ac.builder, src,
 				                       LLVMGetElementType(LLVMTypeOf(ptr)), "");
-				LLVMBuildStore(ctx->ac.builder, src, ptr);
+				LLVMValueRef store = LLVMBuildStore(ctx->ac.builder, src, ptr);
+
+				if (nir_intrinsic_access(instr) & (ACCESS_COHERENT | ACCESS_VOLATILE))
+					LLVMSetOrdering(store, LLVMAtomicOrderingMonotonic);
 			}
 		}
 		break;
