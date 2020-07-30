@@ -618,10 +618,11 @@ emit_sampler(struct ntv_context *ctx, struct nir_variable *var)
 static void
 emit_ubo(struct ntv_context *ctx, struct nir_variable *var)
 {
+   bool is_ubo_array = glsl_type_is_array(var->type) && glsl_type_is_interface(glsl_without_array(var->type));
    /* variables accessed inside a uniform block will get merged into a big
     * memory blob and accessed by offset
     */
-   if (var->data.location)
+   if (var->data.location && !is_ubo_array)
       return;
 
    uint32_t size = glsl_count_attribute_slots(var->interface_type, false);
@@ -643,24 +644,36 @@ emit_ubo(struct ntv_context *ctx, struct nir_variable *var)
                                  SpvDecorationBlock);
    spirv_builder_emit_member_offset(&ctx->builder, struct_type, 0, 0);
 
-
    SpvId pointer_type = spirv_builder_type_pointer(&ctx->builder,
                                                    SpvStorageClassUniform,
                                                    struct_type);
 
-   SpvId var_id = spirv_builder_emit_var(&ctx->builder, pointer_type,
-                                         SpvStorageClassUniform);
-   if (var->name)
-      spirv_builder_emit_name(&ctx->builder, var_id, var->name);
+   /* if this is a ubo array, create a binding point for each array member:
+    * 
+      "For uniform blocks declared as arrays, each individual array element
+       corresponds to a separate buffer object backing one instance of the block."
+       - ARB_gpu_shader5
 
-   assert(ctx->num_ubos < ARRAY_SIZE(ctx->ubos));
-   ctx->ubos[ctx->num_ubos++] = var_id;
+      (also it's just easier)
+    */
+   for (unsigned i = 0; i < (is_ubo_array ? glsl_get_aoa_size(var->type) : 1); i++) {
+      SpvId var_id = spirv_builder_emit_var(&ctx->builder, pointer_type,
+                                            SpvStorageClassUniform);
+      if (var->name) {
+         char struct_name[100];
+         snprintf(struct_name, sizeof(struct_name), "%s[%u]", var->name, i);
+         spirv_builder_emit_name(&ctx->builder, var_id, var->name);
+      }
 
-   spirv_builder_emit_descriptor_set(&ctx->builder, var_id, 0);
-   int binding = zink_binding(ctx->stage,
-                              VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-                              var->data.binding);
-   spirv_builder_emit_binding(&ctx->builder, var_id, binding);
+      assert(ctx->num_ubos < ARRAY_SIZE(ctx->ubos));
+      ctx->ubos[ctx->num_ubos++] = var_id;
+
+      spirv_builder_emit_descriptor_set(&ctx->builder, var_id, 0);
+      int binding = zink_binding(ctx->stage,
+                                 VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                                 var->data.binding + i);
+      spirv_builder_emit_binding(&ctx->builder, var_id, binding);
+   }
 }
 
 static void

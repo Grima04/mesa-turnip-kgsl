@@ -476,18 +476,29 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
                                         nir_var_mem_ssbo)) {
          if (var->data.mode == nir_var_mem_ubo) {
             /* ignore variables being accessed if they aren't the base of the UBO */
-            if (var->data.location)
+            bool ubo_array = glsl_type_is_array(var->type) && glsl_type_is_interface(glsl_without_array(var->type));
+            if (var->data.location && !ubo_array)
                continue;
-            var->data.binding = cur_ubo++;
+            var->data.binding = cur_ubo;
+            /* if this is a ubo array, create a binding point for each array member:
+             * 
+               "For uniform blocks declared as arrays, each individual array element
+                corresponds to a separate buffer object backing one instance of the block."
+                - ARB_gpu_shader5
 
-            int binding = zink_binding(nir->info.stage,
-                                       VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-                                       var->data.binding);
-            ret->bindings[ret->num_bindings].index = ubo_index++;
-            ret->bindings[ret->num_bindings].binding = binding;
-            ret->bindings[ret->num_bindings].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-            ret->bindings[ret->num_bindings].size = 1;
-            ret->num_bindings++;
+               (also it's just easier)
+             */
+            for (unsigned i = 0; i < (ubo_array ? glsl_get_aoa_size(var->type) : 1); i++) {
+
+               int binding = zink_binding(nir->info.stage,
+                                          VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                                          cur_ubo++);
+               ret->bindings[ret->num_bindings].index = ubo_index++;
+               ret->bindings[ret->num_bindings].binding = binding;
+               ret->bindings[ret->num_bindings].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+               ret->bindings[ret->num_bindings].size = 1;
+               ret->num_bindings++;
+            }
          } else {
             assert(var->data.mode == nir_var_uniform);
             const struct glsl_type *type = glsl_without_array(var->type);
