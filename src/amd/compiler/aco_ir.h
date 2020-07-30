@@ -1640,7 +1640,6 @@ public:
    Stage stage;
    bool needs_exact = false; /* there exists an instruction with disable_wqm = true */
    bool needs_wqm = false; /* there exists a p_wqm instruction */
-   bool wb_smem_l1_on_end = false;
 
    std::vector<uint8_t> constant_data;
    Temp private_segment_buffer;

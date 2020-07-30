@@ -3801,24 +3801,21 @@ unsigned calculate_lds_alignment(isel_context *ctx, unsigned const_offset)
 }
 
 
-aco_opcode get_buffer_store_op(bool smem, unsigned bytes)
+aco_opcode get_buffer_store_op(unsigned bytes)
 {
    switch (bytes) {
    case 1:
-      assert(!smem);
       return aco_opcode::buffer_store_byte;
    case 2:
-      assert(!smem);
       return aco_opcode::buffer_store_short;
    case 4:
-      return smem ? aco_opcode::s_buffer_store_dword : aco_opcode::buffer_store_dword;
+      return aco_opcode::buffer_store_dword;
    case 8:
-      return smem ? aco_opcode::s_buffer_store_dwordx2 : aco_opcode::buffer_store_dwordx2;
+      return aco_opcode::buffer_store_dwordx2;
    case 12:
-      assert(!smem);
       return aco_opcode::buffer_store_dwordx3;
    case 16:
-      return smem ? aco_opcode::s_buffer_store_dwordx4 : aco_opcode::buffer_store_dwordx4;
+      return aco_opcode::buffer_store_dwordx4;
    }
    unreachable("Unexpected store size");
    return aco_opcode::num_opcodes;
@@ -3943,7 +3940,7 @@ void emit_single_mubuf_store(isel_context *ctx, Temp descriptor, Temp voffset, T
    assert(vdata.size() >= 1 && vdata.size() <= 4);
 
    Builder bld(ctx->program, ctx->block);
-   aco_opcode op = get_buffer_store_op(false, vdata.bytes());
+   aco_opcode op = get_buffer_store_op(vdata.bytes());
    const_offset = resolve_excess_vmem_const_offset(bld, voffset, const_offset);
 
    Operand voffset_op = voffset.id() ? Operand(as_vgpr(ctx, voffset)) : Operand(v1);
@@ -6198,70 +6195,29 @@ void visit_store_ssbo(isel_context *ctx, nir_intrinsic_instr *instr)
 
    memory_sync_info sync = get_memory_sync_info(instr, storage_buffer, 0);
    bool glc = nir_intrinsic_access(instr) & (ACCESS_VOLATILE | ACCESS_COHERENT | ACCESS_NON_READABLE);
-   uint32_t flags = get_all_buffer_resource_flags(ctx, instr->src[1].ssa, nir_intrinsic_access(instr));
-   /* GLC bypasses VMEM/SMEM caches, so GLC SMEM loads/stores are coherent with GLC VMEM loads/stores
-    * TODO: this optimization is disabled for now because we still need to ensure correct ordering
-    */
-   bool allow_smem = !(flags & (0 && glc ? has_nonglc_vmem_loadstore : has_vmem_loadstore));
-
-   bool smem = !nir_src_is_divergent(instr->src[2]) &&
-               ctx->options->chip_class >= GFX8 &&
-               ctx->options->chip_class < GFX10_3 &&
-               (elem_size_bytes >= 4 || can_subdword_ssbo_store_use_smem(instr)) &&
-               allow_smem;
-   if (smem)
-      offset = bld.as_uniform(offset);
-   bool smem_nonfs = smem && ctx->stage != fragment_fs;
 
    unsigned write_count = 0;
    Temp write_datas[32];
    unsigned offsets[32];
-   split_buffer_store(ctx, instr, smem, smem_nonfs ? RegType::sgpr : (smem ? data.type() : RegType::vgpr),
+   split_buffer_store(ctx, instr, false, RegType::vgpr,
                       data, writemask, 16, &write_count, write_datas, offsets);
 
    for (unsigned i = 0; i < write_count; i++) {
-      aco_opcode op = get_buffer_store_op(smem, write_datas[i].bytes());
-      if (smem && ctx->stage == fragment_fs)
-         op = aco_opcode::p_fs_buffer_store_smem;
+      aco_opcode op = get_buffer_store_op(write_datas[i].bytes());
 
-      if (smem) {
-         aco_ptr<SMEM_instruction> store{create_instruction<SMEM_instruction>(op, Format::SMEM, 3, 0)};
-         store->operands[0] = Operand(rsrc);
-         if (offsets[i]) {
-            Temp off = bld.nuw().sop2(aco_opcode::s_add_i32, bld.def(s1), bld.def(s1, scc),
-                                      offset, Operand(offsets[i]));
-            store->operands[1] = Operand(off);
-         } else {
-            store->operands[1] = Operand(offset);
-         }
-         if (op != aco_opcode::p_fs_buffer_store_smem)
-            store->operands[1].setFixed(m0);
-         store->operands[2] = Operand(write_datas[i]);
-         store->glc = glc;
-         store->dlc = false;
-         store->disable_wqm = true;
-         store->sync = sync;
-         ctx->block->instructions.emplace_back(std::move(store));
-         ctx->program->wb_smem_l1_on_end = true;
-         if (op == aco_opcode::p_fs_buffer_store_smem) {
-            ctx->block->kind |= block_kind_needs_lowering;
-            ctx->program->needs_exact = true;
-         }
-      } else {
-         aco_ptr<MUBUF_instruction> store{create_instruction<MUBUF_instruction>(op, Format::MUBUF, 4, 0)};
-         store->operands[0] = Operand(rsrc);
-         store->operands[1] = offset.type() == RegType::vgpr ? Operand(offset) : Operand(v1);
-         store->operands[2] = offset.type() == RegType::sgpr ? Operand(offset) : Operand((uint32_t) 0);
-         store->operands[3] = Operand(write_datas[i]);
-         store->offset = offsets[i];
-         store->offen = (offset.type() == RegType::vgpr);
-         store->glc = glc;
-         store->dlc = false;
-         store->disable_wqm = true;
-         store->sync = sync;
-         ctx->program->needs_exact = true;
-         ctx->block->instructions.emplace_back(std::move(store));
-      }
+      aco_ptr<MUBUF_instruction> store{create_instruction<MUBUF_instruction>(op, Format::MUBUF, 4, 0)};
+      store->operands[0] = Operand(rsrc);
+      store->operands[1] = offset.type() == RegType::vgpr ? Operand(offset) : Operand(v1);
+      store->operands[2] = offset.type() == RegType::sgpr ? Operand(offset) : Operand((uint32_t) 0);
+      store->operands[3] = Operand(write_datas[i]);
+      store->offset = offsets[i];
+      store->offen = (offset.type() == RegType::vgpr);
+      store->glc = glc;
+      store->dlc = false;
+      store->disable_wqm = true;
+      store->sync = sync;
+      ctx->program->needs_exact = true;
+      ctx->block->instructions.emplace_back(std::move(store));
    }
 }
 
@@ -6469,7 +6425,7 @@ void visit_store_global(isel_context *ctx, nir_intrinsic_instr *instr)
       } else {
          assert(ctx->options->chip_class == GFX6);
 
-         aco_opcode op = get_buffer_store_op(false, write_datas[i].bytes());
+         aco_opcode op = get_buffer_store_op(write_datas[i].bytes());
 
          Temp rsrc = get_gfx6_global_rsrc(bld, addr);
 
@@ -6906,7 +6862,7 @@ void visit_store_scratch(isel_context *ctx, nir_intrinsic_instr *instr) {
                       swizzle_component_size, &write_count, write_datas, offsets);
 
    for (unsigned i = 0; i < write_count; i++) {
-      aco_opcode op = get_buffer_store_op(false, write_datas[i].bytes());
+      aco_opcode op = get_buffer_store_op(write_datas[i].bytes());
       Instruction *instr = bld.mubuf(op, rsrc, offset, ctx->program->scratch_offset, write_datas[i], offsets[i], true, true);
       static_cast<MUBUF_instruction *>(instr)->sync = memory_sync_info(storage_scratch, semantic_private);
    }
@@ -11863,8 +11819,6 @@ void select_program(Program *program,
    append_logical_end(ctx.block);
    ctx.block->kind |= block_kind_uniform;
    Builder bld(ctx.program, ctx.block);
-   if (ctx.program->wb_smem_l1_on_end)
-      bld.smem(aco_opcode::s_dcache_wb, memory_sync_info(storage_buffer, semantic_volatile));
    bld.sopp(aco_opcode::s_endpgm);
 
    cleanup_cfg(program);

@@ -46,8 +46,6 @@ enum resource_flags {
    has_nonglc_vmem_store = 0x8,
 
    has_vmem_store = has_glc_vmem_store | has_nonglc_vmem_store,
-   has_vmem_loadstore = has_vmem_store | has_glc_vmem_load | has_nonglc_vmem_load,
-   has_nonglc_vmem_loadstore = has_nonglc_vmem_load | has_nonglc_vmem_store,
 
    buffer_is_restrict = 0x10,
 };
@@ -198,20 +196,6 @@ inline uint8_t get_all_buffer_resource_flags(isel_context *ctx, nir_ssa_def *def
    for (unsigned i = 0; i < count; i++)
       res |= flags[i];
    return res;
-}
-
-inline bool can_subdword_ssbo_store_use_smem(nir_intrinsic_instr *intrin)
-{
-   unsigned wrmask = nir_intrinsic_write_mask(intrin);
-   if (util_last_bit(wrmask) != util_bitcount(wrmask) ||
-       util_bitcount(wrmask) * intrin->src[0].ssa->bit_size % 32 ||
-       util_bitcount(wrmask) != intrin->src[0].ssa->num_components)
-      return false;
-
-   if (nir_intrinsic_align_mul(intrin) % 4 || nir_intrinsic_align_offset(intrin) % 4)
-      return false;
-
-   return true;
 }
 
 void init_context(isel_context *ctx, nir_shader *shader);

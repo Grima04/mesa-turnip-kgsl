@@ -189,10 +189,7 @@ void fill_desc_set_info(isel_context *ctx, nir_function_impl *impl)
             res = intrin->src[0].ssa;
             break;
          case nir_intrinsic_store_ssbo:
-            if (nir_src_is_divergent(intrin->src[2]) ||
-                ctx->program->chip_class < GFX8 || ctx->program->chip_class >= GFX10_3 ||
-                (intrin->src[0].ssa->bit_size < 32 && !can_subdword_ssbo_store_use_smem(intrin)))
-               flags |= glc ? has_glc_vmem_store : has_nonglc_vmem_store;
+            flags |= glc ? has_glc_vmem_store : has_nonglc_vmem_store;
             res = intrin->src[1].ssa;
             break;
          case nir_intrinsic_load_global:

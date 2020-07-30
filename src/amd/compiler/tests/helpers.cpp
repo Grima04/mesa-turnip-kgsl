@@ -136,10 +136,7 @@ void finish_program(Program *program)
    for (Block& block : program->blocks) {
       if (block.linear_succs.size() == 0) {
          block.kind |= block_kind_uniform;
-         Builder bld(program, &block);
-         if (program->wb_smem_l1_on_end)
-            bld.smem(aco_opcode::s_dcache_wb, false);
-         bld.sopp(aco_opcode::s_endpgm);
+         Builder(program, &block).sopp(aco_opcode::s_endpgm);
       }
    }
 }

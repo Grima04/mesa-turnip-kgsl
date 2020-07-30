@@ -146,7 +146,7 @@ bool needs_exact(aco_ptr<Instruction>& instr) {
       FLAT_instruction *flat = static_cast<FLAT_instruction *>(instr.get());
       return flat->disable_wqm;
    } else {
-      return instr->format == Format::EXP || instr->opcode == aco_opcode::p_fs_buffer_store_smem;
+      return instr->format == Format::EXP;
    }
 }
 
@@ -648,43 +648,6 @@ unsigned add_coupling_code(exec_ctx& ctx, Block* block,
    return i;
 }
 
-void lower_fs_buffer_store_smem(Builder& bld, bool need_check, aco_ptr<Instruction>& instr, Temp cur_exec)
-{
-   Operand offset = instr->operands[1];
-   if (need_check) {
-      /* if exec is zero, then use UINT32_MAX as an offset and make this store a no-op */
-      Temp nonempty = bld.sopc(Builder::s_cmp_lg, bld.def(s1, scc), cur_exec, Operand(0u, bld.lm == s2));
-
-      if (offset.isLiteral())
-         offset = bld.copy(bld.def(s1), offset);
-
-      offset = bld.sop2(aco_opcode::s_cselect_b32, bld.hint_m0(bld.def(s1)),
-                        offset, Operand(UINT32_MAX), bld.scc(nonempty));
-   } else if (offset.isConstant() && offset.constantValue() > 0xFFFFF) {
-      offset = bld.copy(bld.hint_m0(bld.def(s1)), offset);
-   }
-   if (!offset.isConstant())
-      offset.setFixed(m0);
-
-   switch (instr->operands[2].size()) {
-   case 1:
-      instr->opcode = aco_opcode::s_buffer_store_dword;
-      break;
-   case 2:
-      instr->opcode = aco_opcode::s_buffer_store_dwordx2;
-      break;
-   case 4:
-      instr->opcode = aco_opcode::s_buffer_store_dwordx4;
-      break;
-   default:
-      unreachable("Invalid SMEM buffer store size");
-   }
-   instr->operands[1] = offset;
-   /* as_uniform() needs to be done here so it's done in exact mode and helper
-    * lanes don't contribute. */
-   instr->operands[2] = Operand(bld.as_uniform(instr->operands[2]));
-}
-
 void process_instructions(exec_ctx& ctx, Block* block,
                           std::vector<aco_ptr<Instruction>>& instructions,
                           unsigned idx)
@@ -831,10 +794,6 @@ void process_instructions(exec_ctx& ctx, Block* block,
          instr->operands[0] = bld.scc(exit_cond);
          state = Exact;
 
-      } else if (instr->opcode == aco_opcode::p_fs_buffer_store_smem) {
-         bool need_check = ctx.info[block->index].exec.size() != 1 &&
-                           !(ctx.info[block->index].exec[ctx.info[block->index].exec.size() - 2].second & Exact);
-         lower_fs_buffer_store_smem(bld, need_check, instr, ctx.info[block->index].exec.back().first);
       }
 
       bld.insert(std::move(instr));

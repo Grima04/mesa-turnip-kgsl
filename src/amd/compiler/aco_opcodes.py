@@ -285,8 +285,6 @@ opcode("p_demote_to_helper")
 opcode("p_is_helper")
 opcode("p_exit_early_if")
 
-opcode("p_fs_buffer_store_smem", format=Format.SMEM)
-
 # simulates proper bpermute behavior when it's unsupported, eg. GFX10 wave64
 opcode("p_bpermute")
 
