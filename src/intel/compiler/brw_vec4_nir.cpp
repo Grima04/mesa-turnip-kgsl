@@ -2203,32 +2203,29 @@ vec4_visitor::shuffle_64bit_data(dst_reg dst, src_reg src, bool for_write,
                                    vec4_builder(this).at(block, ref->next);
 
    /* Resolve swizzle in src */
-   vec4_instruction *inst;
    if (src.swizzle != BRW_SWIZZLE_XYZW) {
       dst_reg data = dst_reg(this, glsl_type::dvec4_type);
-      inst = bld.MOV(data, src);
+      bld.MOV(data, src);
       src = src_reg(data);
    }
 
    /* dst+0.XY = src+0.XY */
-   inst = bld.group(4, 0).MOV(writemask(dst, WRITEMASK_XY), src);
+   bld.group(4, 0).MOV(writemask(dst, WRITEMASK_XY), src);
 
    /* dst+0.ZW = src+1.XY */
-   inst = bld.group(4, for_write ? 1 : 0)
+   bld.group(4, for_write ? 1 : 0)
              .MOV(writemask(dst, WRITEMASK_ZW),
                   swizzle(byte_offset(src, REG_SIZE), BRW_SWIZZLE_XYXY));
 
    /* dst+1.XY = src+0.ZW */
-   inst = bld.group(4, for_write ? 0 : 1)
+   bld.group(4, for_write ? 0 : 1)
             .MOV(writemask(byte_offset(dst, REG_SIZE), WRITEMASK_XY),
                  swizzle(src, BRW_SWIZZLE_ZWZW));
 
    /* dst+1.ZW = src+1.ZW */
-   inst = bld.group(4, 1)
+   return bld.group(4, 1)
              .MOV(writemask(byte_offset(dst, REG_SIZE), WRITEMASK_ZW),
                  byte_offset(src, REG_SIZE));
-
-   return inst;
 }
 
 }

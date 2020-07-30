@@ -1030,10 +1030,10 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr,
             continue;
 
          if (instr->op == nir_op_mov) {
-            inst = bld.MOV(offset(temp, bld, i),
+            bld.MOV(offset(temp, bld, i),
                            offset(op[0], bld, instr->src[0].swizzle[i]));
          } else {
-            inst = bld.MOV(offset(temp, bld, i),
+            bld.MOV(offset(temp, bld, i),
                            offset(op[i], bld, instr->src[i].swizzle[0]));
          }
       }
