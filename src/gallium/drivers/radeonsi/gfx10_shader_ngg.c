@@ -2027,9 +2027,15 @@ retry_select_mode:
 
          max_gsprims = align(max_gsprims, wavesize);
          max_gsprims = MIN2(max_gsprims, max_gsprims_base);
-         if (gsprim_lds_size)
+         if (gsprim_lds_size) {
+            /* Don't count unusable vertices to the LDS size. Those are vertices above
+             * the maximum number of vertices that can occur in the workgroup,
+             * which is e.g. max_gsprims * 3 for triangles.
+             */
+            unsigned usable_esverts = MIN2(max_esverts, max_gsprims * max_verts_per_prim);
             max_gsprims =
-               MIN2(max_gsprims, (max_lds_size - max_esverts * esvert_lds_size) / gsprim_lds_size);
+               MIN2(max_gsprims, (max_lds_size - usable_esverts * esvert_lds_size) / gsprim_lds_size);
+         }
          clamp_gsprims_to_esverts(&max_gsprims, max_esverts, min_verts_per_prim, use_adjacency);
          assert(max_esverts >= max_verts_per_prim && max_gsprims >= 1);
       } while (orig_max_esverts != max_esverts || orig_max_gsprims != max_gsprims);
@@ -2067,7 +2073,9 @@ retry_select_mode:
    shader->ngg.prim_amp_factor = prim_amp_factor;
    shader->ngg.max_vert_out_per_gs_instance = max_vert_out_per_gs_instance;
 
-   shader->gs_info.esgs_ring_size = max_esverts * esvert_lds_size;
+   /* Don't count unusable vertices. */
+   shader->gs_info.esgs_ring_size = MIN2(max_esverts, max_gsprims * max_verts_per_prim) *
+                                    esvert_lds_size;
    shader->ngg.ngg_emit_size = max_gsprims * gsprim_lds_size;
 
    assert(shader->ngg.hw_max_esverts >= min_esverts); /* HW limitation */
