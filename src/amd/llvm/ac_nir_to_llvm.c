@@ -2803,18 +2803,17 @@ static LLVMValueRef visit_image_load(struct ac_nir_context *ctx,
 	LLVMValueRef res;
 
 	enum glsl_sampler_dim dim;
-	enum gl_access_qualifier access;
+	enum gl_access_qualifier access = nir_intrinsic_access(instr);
 	bool is_array;
 	if (bindless) {
 		dim = nir_intrinsic_image_dim(instr);
-		access = nir_intrinsic_access(instr);
 		is_array = nir_intrinsic_image_array(instr);
 	} else {
 		const nir_deref_instr *image_deref = get_image_deref(instr);
 		const struct glsl_type *type = image_deref->type;
 		const nir_variable *var = nir_deref_instr_get_variable(image_deref);
 		dim = glsl_get_sampler_dim(type);
-		access = var->data.access;
+		access |= var->data.access;
 		is_array = glsl_sampler_type_is_array(type);
 	}
 
@@ -2876,19 +2875,18 @@ static void visit_image_store(struct ac_nir_context *ctx,
         }
 
 	enum glsl_sampler_dim dim;
-	enum gl_access_qualifier access;
+	enum gl_access_qualifier access = nir_intrinsic_access(instr);
 	bool is_array;
 
 	if (bindless) {
 		dim = nir_intrinsic_image_dim(instr);
-		access = nir_intrinsic_access(instr);
 		is_array = nir_intrinsic_image_array(instr);
 	} else {
 		const nir_deref_instr *image_deref = get_image_deref(instr);
 		const struct glsl_type *type = image_deref->type;
 		const nir_variable *var = nir_deref_instr_get_variable(image_deref);
 		dim = glsl_get_sampler_dim(type);
-		access = var->data.access;
+		access |= var->data.access;
 		is_array = glsl_sampler_type_is_array(type);
 	}
 
