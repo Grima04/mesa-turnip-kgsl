@@ -540,7 +540,7 @@ bool ac_query_gpu_info(int fd, void *dev_p,
 		info->tcc_cache_line_size = 64;
 	}
 	info->gb_addr_config = amdinfo->gb_addr_cfg;
-	if (info->chip_class == GFX9) {
+	if (info->chip_class >= GFX9) {
 		info->num_tile_pipes = 1 << G_0098F8_NUM_PIPES(amdinfo->gb_addr_cfg);
 		info->pipe_interleave_bytes =
 			256 << G_0098F8_PIPE_INTERLEAVE_SIZE_GFX9(amdinfo->gb_addr_cfg);
