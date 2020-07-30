@@ -112,6 +112,46 @@ Developers
 The sources of the main library and drivers can be found at
 ``src/egl/``.
 
+The code basically consists of two things:
+
+1. An EGL API dispatcher. This directly routes all the ``eglFooBar()``
+   API calls into driver-specific functions.
+
+2. Two EGL drivers (``dri2`` and ``haiku``), implementing the API
+   functions handling the platforms' specifics.
+
+Two of API functions are optional (``eglQuerySurface()`` and
+``eglSwapInterval()``); the former provides fallback for all the
+platform-agnostic attributes (ie. everything except ``EGL_WIDTH``
+& ``EGL_HEIGHT``), and the latter just silently pretends the API call
+succeeded (as per EGL spec).
+
+A driver _could_ implement all the other EGL API functions, but several of
+them are only needed for extensions, like ``eglSwapBuffersWithDamageEXT()``.
+
+Bootstrapping
+~~~~~~~~~~~~~
+
+When the apps calls ``eglInitialize()``, the driver's ``Initialize()``
+function is called. If the first driver initialisation attempt fails,
+a second one is tried using only software components (this can be forced
+using the ``LIBGL_ALWAYS_SOFTWARE`` environment variable). Typically,
+this function takes care of setting up visual configs, creating EGL
+devices, etc.
+
+Teardown
+~~~~~~~~
+
+When ``eglTerminate()`` is called, the ``driver->Terminate()`` function
+is called. The driver should clean up after itself.
+
+Subclassing
+~~~~~~~~~~~
+
+The internal libEGL data structures such as ``_EGLDisplay``,
+``_EGLContext``, ``_EGLSurface``, etc. should be considered base classes
+from which drivers will derive subclasses.
+
 EGL Drivers
 -----------
 
