@@ -1034,19 +1034,14 @@ iris_resource_from_handle(struct pipe_screen *pscreen,
    struct iris_resource *res = iris_alloc_resource(pscreen, templ);
    const struct isl_drm_modifier_info *mod_inf =
 	   isl_drm_modifier_get_info(whandle->modifier);
-   int tiling;
 
    if (!res)
       return NULL;
 
    switch (whandle->type) {
    case WINSYS_HANDLE_TYPE_FD:
-      if (mod_inf)
-         tiling = isl_tiling_to_i915_tiling(mod_inf->tiling);
-      else
-         tiling = -1;
       res->bo = iris_bo_import_dmabuf(bufmgr, whandle->handle,
-                                      tiling);
+                                      whandle->modifier);
       break;
    case WINSYS_HANDLE_TYPE_SHARED:
       res->bo = iris_bo_gem_create_from_name(bufmgr, "winsys image",
