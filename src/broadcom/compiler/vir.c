@@ -651,6 +651,14 @@ v3d_vs_set_prog_data(struct v3d_compile *c,
                 prog_data->vpm_input_size += c->vattr_sizes[i];
         }
 
+        memset(prog_data->driver_location_map, -1,
+               sizeof(prog_data->driver_location_map));
+
+        nir_foreach_shader_in_variable(var, c->s) {
+                prog_data->driver_location_map[var->data.location] =
+                        var->data.driver_location;
+        }
+
         prog_data->uses_vid = BITSET_TEST(c->s->info.system_values_read,
                                           SYSTEM_VALUE_VERTEX_ID) ||
                               BITSET_TEST(c->s->info.system_values_read,

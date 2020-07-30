@@ -834,6 +834,15 @@ struct v3d_vs_prog_data {
 
         /* Value to be programmed in VCM_CACHE_SIZE. */
         uint8_t vcm_cache_size;
+
+        /* Maps the nir->data.location to its
+         * nir->data.driver_location. In general we are using the
+         * driver location as index (like vattr_sizes above), so this
+         * map is useful when what we have is the location
+         *
+         * Returns -1 if the location is not used
+         */
+        int32_t driver_location_map[V3D_MAX_VS_INPUTS];
 };
 
 struct v3d_gs_prog_data {
