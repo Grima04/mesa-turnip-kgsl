@@ -1041,8 +1041,8 @@ radv_get_physical_device_features_1_2(struct radv_physical_device *pdevice,
 	f->bufferDeviceAddress = true;
 	f->bufferDeviceAddressCaptureReplay = false;
 	f->bufferDeviceAddressMultiDevice = false;
-	f->vulkanMemoryModel = !pdevice->use_llvm;
-	f->vulkanMemoryModelDeviceScope = !pdevice->use_llvm;
+	f->vulkanMemoryModel = true;
+	f->vulkanMemoryModelDeviceScope = true;
 	f->vulkanMemoryModelAvailabilityVisibilityChains = false;
 	f->shaderOutputViewportIndex = true;
 	f->shaderOutputLayer = true;
