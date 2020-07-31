@@ -234,6 +234,8 @@ v3dv_subpass_get_granularity(struct v3dv_render_pass *pass,
       32, 32,
       32, 16,
       16, 16,
+      16,  8,
+       8,  8
    };
 
    /* Our tile size depends on the number of color attachments and the maximum

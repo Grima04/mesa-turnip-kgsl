@@ -473,6 +473,8 @@ job_compute_frame_tiling(struct v3dv_job *job,
       32, 32,
       32, 16,
       16, 16,
+      16,  8,
+       8,  8
    };
 
    assert(job);
