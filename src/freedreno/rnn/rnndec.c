@@ -137,14 +137,11 @@ static const char *rnndec_decode_enum_val(struct rnndeccontext *ctx,
 	return NULL;
 }
 
-char *rnndec_decode_enum(struct rnndeccontext *ctx, const char *enumname, uint64_t enumval)
+const char *rnndec_decode_enum(struct rnndeccontext *ctx, const char *enumname, uint64_t enumval)
 {
 	struct rnnenum *en = rnn_findenum (ctx->db, enumname);
 	if (en) {
-		int i;
-		for (i = 0; i < en->valsnum; i++)
-			if (en->vals[i]->valvalid && en->vals[i]->value == enumval)
-				return en->vals[i]->name;
+		return rnndec_decode_enum_val(ctx, en->vals, en->valsnum, enumval);
 	}
 	return NULL;
 }
