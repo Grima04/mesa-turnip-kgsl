@@ -46,22 +46,12 @@
 #include "util/debug.h"
 #include "util/rand_xor.h"
 #include "util/u_atomic.h"
-#include "util/u_queue.h"
 #include "util/mesa-sha1.h"
 #include "util/ralloc.h"
 #include "util/compiler.h"
 
 #include "disk_cache.h"
 #include "disk_cache_os.h"
-
-/* Number of bits to mask off from a cache key to get an index. */
-#define CACHE_INDEX_KEY_BITS 16
-
-/* Mask for computing an index from a key. */
-#define CACHE_INDEX_KEY_MASK ((1 << CACHE_INDEX_KEY_BITS) - 1)
-
-/* The number of keys that can be stored in the index. */
-#define CACHE_INDEX_MAX_KEYS (1 << CACHE_INDEX_KEY_BITS)
 
 /* The cache version should be bumped whenever a change is made to the
  * structure of cache entries or the index. This will give any 3rd party
@@ -79,38 +69,6 @@
 
 /* 3 is the recomended level, with 22 as the absolute maximum */
 #define ZSTD_COMPRESSION_LEVEL 3
-
-struct disk_cache {
-   /* The path to the cache directory. */
-   char *path;
-   bool path_init_failed;
-
-   /* Thread queue for compressing and writing cache entries to disk */
-   struct util_queue cache_queue;
-
-   /* Seed for rand, which is used to pick a random directory */
-   uint64_t seed_xorshift128plus[2];
-
-   /* A pointer to the mmapped index file within the cache directory. */
-   uint8_t *index_mmap;
-   size_t index_mmap_size;
-
-   /* Pointer to total size of all objects in cache (within index_mmap) */
-   uint64_t *size;
-
-   /* Pointer to stored keys, (within index_mmap). */
-   uint8_t *stored_keys;
-
-   /* Maximum size of all cached objects (in bytes). */
-   uint64_t max_size;
-
-   /* Driver cache keys. */
-   uint8_t *driver_keys_blob;
-   size_t driver_keys_blob_size;
-
-   disk_cache_put_cb blob_put_cb;
-   disk_cache_get_cb blob_get_cb;
-};
 
 struct disk_cache_put_job {
    struct util_queue_fence fence;
@@ -175,9 +133,6 @@ disk_cache_create(const char *gpu_name, const char *driver_id,
    struct disk_cache *cache = NULL;
    char *max_size_str;
    uint64_t max_size;
-   int fd = -1;
-   struct stat sb;
-   size_t size;
 
    uint8_t cache_version = CACHE_VERSION;
    size_t cv_size = sizeof(cache_version);
@@ -201,51 +156,8 @@ disk_cache_create(const char *gpu_name, const char *driver_id,
    if (!path)
       goto path_fail;
 
-   cache->path = ralloc_strdup(cache, path);
-   if (cache->path == NULL)
+   if (!disk_cache_mmap_cache_index(local, cache, path))
       goto path_fail;
-
-   path = ralloc_asprintf(local, "%s/index", cache->path);
-   if (path == NULL)
-      goto path_fail;
-
-   fd = open(path, O_RDWR | O_CREAT | O_CLOEXEC, 0644);
-   if (fd == -1)
-      goto path_fail;
-
-   if (fstat(fd, &sb) == -1)
-      goto path_fail;
-
-   /* Force the index file to be the expected size. */
-   size = sizeof(*cache->size) + CACHE_INDEX_MAX_KEYS * CACHE_KEY_SIZE;
-   if (sb.st_size != size) {
-      if (ftruncate(fd, size) == -1)
-         goto path_fail;
-   }
-
-   /* We map this shared so that other processes see updates that we
-    * make.
-    *
-    * Note: We do use atomic addition to ensure that multiple
-    * processes don't scramble the cache size recorded in the
-    * index. But we don't use any locking to prevent multiple
-    * processes from updating the same entry simultaneously. The idea
-    * is that if either result lands entirely in the index, then
-    * that's equivalent to a well-ordered write followed by an
-    * eviction and a write. On the other hand, if the simultaneous
-    * writes result in a corrupt entry, that's not really any
-    * different than both entries being evicted, (since within the
-    * guarantees of the cryptographic hash, a corrupt entry is
-    * unlikely to ever match a real cache key).
-    */
-   cache->index_mmap = mmap(NULL, size, PROT_READ | PROT_WRITE,
-                            MAP_SHARED, fd, 0);
-   if (cache->index_mmap == MAP_FAILED)
-      goto path_fail;
-   cache->index_mmap_size = size;
-
-   cache->size = (uint64_t *) cache->index_mmap;
-   cache->stored_keys = cache->index_mmap + sizeof(uint64_t);
 
    max_size = 0;
 
@@ -300,9 +212,6 @@ disk_cache_create(const char *gpu_name, const char *driver_id,
    cache->path_init_failed = false;
 
  path_fail:
-
-   if (fd != -1)
-      close(fd);
 
    cache->driver_keys_blob_size = cv_size;
 

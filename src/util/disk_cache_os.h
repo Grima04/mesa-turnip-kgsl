@@ -24,17 +24,64 @@
 #ifndef DISK_CACHE_OS_H
 #define DISK_CACHE_OS_H
 
+#include "util/u_queue.h"
+
 #if DETECT_OS_WINDOWS
 
 /* TODO: implement disk cache support on windows */
 
 #else
 
+/* Number of bits to mask off from a cache key to get an index. */
+#define CACHE_INDEX_KEY_BITS 16
+
+/* Mask for computing an index from a key. */
+#define CACHE_INDEX_KEY_MASK ((1 << CACHE_INDEX_KEY_BITS) - 1)
+
+/* The number of keys that can be stored in the index. */
+#define CACHE_INDEX_MAX_KEYS (1 << CACHE_INDEX_KEY_BITS)
+
+struct disk_cache {
+   /* The path to the cache directory. */
+   char *path;
+   bool path_init_failed;
+
+   /* Thread queue for compressing and writing cache entries to disk */
+   struct util_queue cache_queue;
+
+   /* Seed for rand, which is used to pick a random directory */
+   uint64_t seed_xorshift128plus[2];
+
+   /* A pointer to the mmapped index file within the cache directory. */
+   uint8_t *index_mmap;
+   size_t index_mmap_size;
+
+   /* Pointer to total size of all objects in cache (within index_mmap) */
+   uint64_t *size;
+
+   /* Pointer to stored keys, (within index_mmap). */
+   uint8_t *stored_keys;
+
+   /* Maximum size of all cached objects (in bytes). */
+   uint64_t max_size;
+
+   /* Driver cache keys. */
+   uint8_t *driver_keys_blob;
+   size_t driver_keys_blob_size;
+
+   disk_cache_put_cb blob_put_cb;
+   disk_cache_get_cb blob_get_cb;
+};
+
 char *
 disk_cache_generate_cache_dir(void *mem_ctx);
 
 bool
 disk_cache_enabled(void);
+
+bool
+disk_cache_mmap_cache_index(void *mem_ctx, struct disk_cache *cache,
+                            char *path);
 
 #endif
 

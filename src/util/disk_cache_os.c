@@ -34,6 +34,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/file.h>
+#include <sys/mman.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -185,6 +186,68 @@ disk_cache_enabled()
       return false;
 
    return true;
+}
+
+bool
+disk_cache_mmap_cache_index(void *mem_ctx, struct disk_cache *cache,
+                            char *path)
+{
+   int fd = -1;
+   bool mapped = false;
+
+   cache->path = ralloc_strdup(cache, path);
+   if (cache->path == NULL)
+      goto path_fail;
+
+   path = ralloc_asprintf(mem_ctx, "%s/index", cache->path);
+   if (path == NULL)
+      goto path_fail;
+
+   fd = open(path, O_RDWR | O_CREAT | O_CLOEXEC, 0644);
+   if (fd == -1)
+      goto path_fail;
+
+   struct stat sb;
+   if (fstat(fd, &sb) == -1)
+      goto path_fail;
+
+   /* Force the index file to be the expected size. */
+   size_t size = sizeof(*cache->size) + CACHE_INDEX_MAX_KEYS * CACHE_KEY_SIZE;
+   if (sb.st_size != size) {
+      if (ftruncate(fd, size) == -1)
+         goto path_fail;
+   }
+
+   /* We map this shared so that other processes see updates that we
+    * make.
+    *
+    * Note: We do use atomic addition to ensure that multiple
+    * processes don't scramble the cache size recorded in the
+    * index. But we don't use any locking to prevent multiple
+    * processes from updating the same entry simultaneously. The idea
+    * is that if either result lands entirely in the index, then
+    * that's equivalent to a well-ordered write followed by an
+    * eviction and a write. On the other hand, if the simultaneous
+    * writes result in a corrupt entry, that's not really any
+    * different than both entries being evicted, (since within the
+    * guarantees of the cryptographic hash, a corrupt entry is
+    * unlikely to ever match a real cache key).
+    */
+   cache->index_mmap = mmap(NULL, size, PROT_READ | PROT_WRITE,
+                            MAP_SHARED, fd, 0);
+   if (cache->index_mmap == MAP_FAILED)
+      goto path_fail;
+   cache->index_mmap_size = size;
+
+   cache->size = (uint64_t *) cache->index_mmap;
+   cache->stored_keys = cache->index_mmap + sizeof(uint64_t);
+   mapped = true;
+
+path_fail:
+   if (fd != -1)
+      close(fd);
+
+   return mapped;
 }
 #endif
 
