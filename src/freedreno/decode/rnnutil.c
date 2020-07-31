@@ -143,19 +143,7 @@ struct rnndecaddrinfo *rnn_reginfo(struct rnn *rnn, uint32_t regbase)
 
 const char *rnn_enumname(struct rnn *rnn, const char *name, uint32_t val)
 {
-	struct rnndeccontext *ctx = rnn->vc;
-	struct rnnenum *en = rnn_findenum(ctx->db, name);
-	if (en) {
-		int i;
-		for (i = 0; i < en->valsnum; i++) {
-			struct rnnvalue *eval = en->vals[i];
-			if (eval->valvalid && eval->value == val &&
-					rnndec_varmatch(ctx, &eval->varinfo)) {
-				return en->vals[i]->name;
-			}
-		}
-	}
-	return NULL;
+	return rnndec_decode_enum(rnn->vc, name, val);
 }
 
 static struct rnndelem *regelem(struct rnndomain *domain, const char *name)
