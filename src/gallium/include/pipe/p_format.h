@@ -464,6 +464,7 @@ enum pipe_format {
    PIPE_FORMAT_FXT1_RGBA,
 
    PIPE_FORMAT_P010,
+   PIPE_FORMAT_P012,
    PIPE_FORMAT_P016,
 
    PIPE_FORMAT_R10G10B10X2_UNORM,
@@ -582,6 +583,7 @@ pipe_format_to_chroma_format(enum pipe_format format)
       case PIPE_FORMAT_YV12:
       case PIPE_FORMAT_IYUV:
       case PIPE_FORMAT_P010:
+      case PIPE_FORMAT_P012:
       case PIPE_FORMAT_P016:
       case PIPE_FORMAT_Y16_U16_V16_420_UNORM:
          return PIPE_VIDEO_CHROMA_FORMAT_420;
