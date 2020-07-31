@@ -873,9 +873,9 @@ int r600_shader_from_nir(struct r600_context *rctx,
 
 
    const nir_function *func = reinterpret_cast<const nir_function *>(exec_list_get_head_const(&sel->nir->functions));
-   bool optimize = func->impl->registers.length() == 0 && !has_saturate(func);
+   assert(func->impl->registers.length() == 0 && !has_saturate(func));
 
-   if (optimize) {
+   if (true) {
       optimize_once(sel->nir);
       NIR_PASS_V(sel->nir, r600_lower_ubo_to_align16);
    }
@@ -883,7 +883,7 @@ int r600_shader_from_nir(struct r600_context *rctx,
     * when there are registers, then we can no longer copy propagate, so
     * skip the optimization then. (There is probably a better way, but yeah)
     */
-   if (optimize)
+   if (true)
       while(optimize_once(sel->nir));
 
    NIR_PASS_V(sel->nir, nir_remove_dead_variables, nir_var_shader_in, NULL);
@@ -895,21 +895,23 @@ int r600_shader_from_nir(struct r600_context *rctx,
               40,
               r600_get_natural_size_align_bytes);
 
-   while (optimize && optimize_once(sel->nir));
+   while (optimize_once(sel->nir));
 
-   NIR_PASS_V(sel->nir, nir_lower_locals_to_regs);
+   auto sh = nir_shader_clone(sel->nir, sel->nir);
+
+   NIR_PASS_V(sh, nir_lower_locals_to_regs);
    //NIR_PASS_V(sel->nir, nir_opt_algebraic);
    //NIR_PASS_V(sel->nir, nir_copy_prop);
-   NIR_PASS_V(sel->nir, nir_lower_to_source_mods, nir_lower_float_source_mods);
-   NIR_PASS_V(sel->nir, nir_convert_from_ssa, true);
-   NIR_PASS_V(sel->nir, nir_opt_dce);
+   NIR_PASS_V(sh, nir_lower_to_source_mods, nir_lower_float_source_mods);
+   NIR_PASS_V(sh, nir_convert_from_ssa, true);
+   NIR_PASS_V(sh, nir_opt_dce);
 
    if ((rctx->screen->b.debug_flags & DBG_NIR) &&
        (rctx->screen->b.debug_flags & DBG_ALL_SHADERS)) {
       fprintf(stderr, "-- NIR --------------------------------------------------------\n");
-      struct nir_function *func = (struct nir_function *)exec_list_get_head(&sel->nir->functions);
+      struct nir_function *func = (struct nir_function *)exec_list_get_head(&sh->functions);
       nir_index_ssa_defs(func->impl);
-      nir_print_shader(sel->nir, stderr);
+      nir_print_shader(sh, stderr);
       fprintf(stderr, "-- END --------------------------------------------------------\n");
    }
 
@@ -931,7 +933,7 @@ int r600_shader_from_nir(struct r600_context *rctx,
       gs_shader = &rctx->gs_shader->current->shader;
    r600_screen *rscreen = rctx->screen;
 
-   bool r = convert.lower(sel->nir, pipeshader, sel, *key, gs_shader, rscreen->b.chip_class);
+   bool r = convert.lower(sh, pipeshader, sel, *key, gs_shader, rscreen->b.chip_class);
    if (!r || rctx->screen->b.debug_flags & DBG_ALL_SHADERS) {
       static int shnr = 0;
 
@@ -942,7 +944,7 @@ int r600_shader_from_nir(struct r600_context *rctx,
 
          if (f) {
             fprintf(f, "const char *shader_blob_%s = {\nR\"(", sel->nir->info.name);
-            nir_print_shader(sel->nir, f);
+            nir_print_shader(sh, f);
             fprintf(f, ")\";\n");
             fclose(f);
          }
