@@ -488,6 +488,13 @@ bit_convert_helper(struct panfrost_device *dev, unsigned from_size,
                         ins.swizzle[0][0] = cx;
                         ins.swizzle[0][1] = cy;
 
+                        if (to_size == 16 && from_size == 32) {
+                                ins.src_types[1] = ins.src_types[0];
+                                ins.src[1] = ins.src[0];
+                        } else {
+                                ins.src[1] = ins.src_types[1] = 0;
+                        }
+
                         bit_test_single(dev, &ins, input, FMA, debug);
                 }
         }
