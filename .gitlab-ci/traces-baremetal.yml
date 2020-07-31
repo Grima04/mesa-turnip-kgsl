@@ -1,6 +1,5 @@
-# bare-metal has traces-db baked into the container until we can sort
-# out LFS caching, so we use a separate yml without the git repo
-# declaration at the top.
+traces-db:
+  download-url: "https://minio-packet.freedesktop.org/mesa-tracie-public/"
 
 traces:
 # This trace takes an egregious amount of time in replay (5 minutes)

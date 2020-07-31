@@ -53,20 +53,6 @@ KERNEL_URL=https://gitlab.freedesktop.org/drm/msm/-/archive/drm-msm-fixes-2020-0
 
 DEBIAN_ARCH=$arch INCLUDE_VK_CTS=1 . .gitlab-ci/container/lava_build.sh
 
-############### Store traces
-# Clone the traces-db at container build time so we don't have to pull traces
-# per run (too much egress cost for fd.o).
-git clone \
-    --depth 1 \
-    -b mesa-ci-2020-06-08 \
-    https://gitlab.freedesktop.org/gfx-ci/tracie/traces-db.git \
-    $ROOTFS/traces-db
-rm -rf $ROOTFS/traces-db/.git
-find $ROOTFS/traces-db -type f \
-     -a -not -name '*.trace' \
-     -a -not -name '*.rdc' \
-     -delete
-
 ccache --show-stats
 
 . .gitlab-ci/container/container_post_build.sh
