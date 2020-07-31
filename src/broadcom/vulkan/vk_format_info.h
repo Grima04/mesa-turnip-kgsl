@@ -96,6 +96,18 @@ vk_format_is_int(VkFormat format)
 }
 
 static inline bool
+vk_format_is_sint(VkFormat format)
+{
+   return util_format_is_pure_sint(vk_format_to_pipe_format(format));
+}
+
+static inline bool
+vk_format_is_uint(VkFormat format)
+{
+   return util_format_is_pure_uint(vk_format_to_pipe_format(format));
+}
+
+static inline bool
 vk_format_is_srgb(VkFormat format)
 {
    return util_format_is_srgb(vk_format_to_pipe_format(format));

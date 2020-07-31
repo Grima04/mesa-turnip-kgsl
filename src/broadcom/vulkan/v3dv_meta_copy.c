@@ -3272,9 +3272,15 @@ get_color_blit_fs(struct v3dv_device *device,
       nir_variable_create(b.shader, nir_var_shader_in, vec4, "in_tex_coord");
    fs_in_tex_coord->data.location = VARYING_SLOT_VAR0;
 
-   const bool is_int_blit = vk_format_is_int(dst_format);
    const struct glsl_type *fs_out_type =
-      is_int_blit ? glsl_uvec4_type() : glsl_vec4_type();
+      vk_format_is_sint(dst_format) ? glsl_ivec4_type() :
+      vk_format_is_uint(dst_format) ? glsl_uvec4_type() :
+                                      glsl_vec4_type();
+
+   enum glsl_base_type src_base_type =
+      vk_format_is_sint(src_format) ? GLSL_TYPE_INT :
+      vk_format_is_uint(src_format) ? GLSL_TYPE_UINT :
+                                      GLSL_TYPE_FLOAT;
 
    nir_variable *fs_out_color =
       nir_variable_create(b.shader, nir_var_shader_out, fs_out_type, "out_color");
@@ -3284,8 +3290,7 @@ get_color_blit_fs(struct v3dv_device *device,
    const uint32_t channel_mask = get_channel_mask_for_sampler_dim(sampler_dim);
    tex_coord = nir_channels(&b, tex_coord, channel_mask);
 
-   nir_ssa_def *color = build_nir_tex_op(&b, device, tex_coord,
-                                         glsl_get_base_type(fs_out_type),
+   nir_ssa_def *color = build_nir_tex_op(&b, device, tex_coord, src_base_type,
                                          dst_samples, src_samples, sampler_dim);
 
    /* For integer textures, if the bit-size of the destination is too small to
@@ -3296,7 +3301,7 @@ get_color_blit_fs(struct v3dv_device *device,
     * render target type, so in these cases we need to clamp manually.
     */
    if (format_needs_software_int_clamp(dst_format)) {
-      assert(is_int_blit);
+      assert(vk_format_is_int(dst_format));
       enum pipe_format src_pformat = vk_format_to_pipe_format(src_format);
       enum pipe_format dst_pformat = vk_format_to_pipe_format(dst_format);
 
