@@ -417,6 +417,7 @@ int main(int argc, char **argv)
 	ctx = rnndec_newcontext(db);
 
 	rnn_parsefile(db, "adreno.xml");
+	rnn_prepdb(db);
 	if (db->estatus)
 		errx(db->estatus, "failed to parse register database");
 	dom[0] = rnn_finddomain(db, name);

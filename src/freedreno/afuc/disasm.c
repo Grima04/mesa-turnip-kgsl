@@ -816,6 +816,7 @@ int main(int argc, char **argv)
 	ctx->colors = colors ? &envy_def_colors : &envy_null_colors;
 
 	rnn_parsefile(db, "adreno.xml");
+	rnn_prepdb(db);
 	if (db->estatus)
 		errx(db->estatus, "failed to parse register database");
 	dom[0] = rnn_finddomain(db, variant);
