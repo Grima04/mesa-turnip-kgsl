@@ -1,4 +1,6 @@
-# Copyright (C) 2014 Emil Velikov <emil.l.velikov@gmail.com>
+# Mesa 3-D graphics library
+#
+# Copyright (C)
 #
 # Permission is hereby granted, free of charge, to any person obtaining a
 # copy of this software and associated documentation files (the "Software"),
@@ -18,22 +20,27 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
-LOCAL_PATH := $(call my-dir)
+# Android.mk for libfreedreno_ir2.a
 
-# get C_SOURCES
-include $(LOCAL_PATH)/Makefile.sources
+# ---------------------------------------
+# Build libfreedreno_ir2
+# ---------------------------------------
 
 include $(CLEAR_VARS)
 
-LOCAL_SRC_FILES := $(C_SOURCES)
+LOCAL_SRC_FILES := \
+	$(ir2_SOURCES)
+
+LOCAL_MODULE := libfreedreno_ir2
 
 LOCAL_C_INCLUDES := \
+	$(MESA_TOP)/src/gallium/include \
+	$(MESA_TOP)/src/gallium/auxiliary \
 	$(MESA_TOP)/src/freedreno/common
 
-LOCAL_SHARED_LIBRARIES := libdrm_freedreno
-LOCAL_STATIC_LIBRARIES := libfreedreno_registers
+# We need libfreedreno_registers to get xml generated headers
+LOCAL_STATIC_LIBRARIES := \
+	libfreedreno_registers
 
-LOCAL_MODULE := libmesa_winsys_freedreno
-
-include $(GALLIUM_COMMON_MK)
+include $(MESA_COMMON_MK)
 include $(BUILD_STATIC_LIBRARY)
