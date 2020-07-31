@@ -1489,6 +1489,7 @@ nir_ssa_def_init(nir_instr *instr, nir_ssa_def *def,
                  unsigned bit_size, const char *name)
 {
    def->name = ralloc_strdup(instr, name);
+   def->live_index = UINT_MAX; /* Something clearly OOB */
    def->parent_instr = instr;
    list_inithead(&def->uses);
    list_inithead(&def->if_uses);
