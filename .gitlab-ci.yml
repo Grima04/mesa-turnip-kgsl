@@ -1078,6 +1078,7 @@ arm64_a630_traces:
     BARE_METAL_TEST_SCRIPT: "/install/tracie-runner-gl.sh"
     DEVICE_NAME: "freedreno-a630"
     TRACIE_NO_UNIT_TESTS: 1
+    TRACIE_UPLOAD_TO_MINIO: 1
     # This lets us run several more traces which don't use any features we're
     # missing.
     MESA_GLSL_VERSION_OVERRIDE: "460"

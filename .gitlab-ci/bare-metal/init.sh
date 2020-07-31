@@ -16,6 +16,9 @@ export XDG_CACHE_HOME=/tmp
 
 echo "nameserver 8.8.8.8" > /etc/resolv.conf
 
+# Not all DUTs have network
+sntp -sS pool.ntp.org || true
+
 # Overwrite traces.yml file with the baremetal version
 cp /install/traces-baremetal.yml /install/traces.yml
 
