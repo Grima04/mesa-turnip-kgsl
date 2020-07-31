@@ -430,26 +430,13 @@ cmd_buffer_can_merge_subpass(struct v3dv_cmd_buffer *cmd_buffer,
        prev_subpass->ds_attachment.attachment)
       return false;
 
-   if (prev_subpass->resolve_attachments) {
-      if (!subpass->resolve_attachments)
-         return false;
-
-      compatible =
-         attachment_list_is_subset(prev_subpass->resolve_attachments,
-                                   prev_subpass->color_count,
-                                   subpass->resolve_attachments,
-                                   subpass->color_count);
-      if (!compatible)
-         return false;
-
-      compatible =
-         attachment_list_is_subset(subpass->resolve_attachments,
-                                   subpass->color_count,
-                                   prev_subpass->resolve_attachments,
-                                   prev_subpass->color_count);
-      if (!compatible)
-         return false;
-   }
+   /* FIXME: Since some attachment formats can't be resolved using the TLB we
+    * need to emit separate resolve jobs for them and that would not be
+    * compatible with subpass merges. We could fix that by testing if any of
+    * the attachments to resolve doesn't suppotr TLB resolves.
+    */
+   if (prev_subpass->resolve_attachments || subpass->resolve_attachments)
+      return false;
 
    return true;
 }
@@ -976,6 +963,91 @@ v3dv_DestroyCommandPool(VkDevice _device,
    vk_free2(&device->alloc, pAllocator, pool);
 }
 
+static void
+cmd_buffer_subpass_handle_pending_resolves(struct v3dv_cmd_buffer *cmd_buffer)
+{
+   assert(cmd_buffer->state.subpass_idx < cmd_buffer->state.pass->subpass_count);
+   const struct v3dv_render_pass *pass = cmd_buffer->state.pass;
+   const struct v3dv_subpass *subpass =
+      &pass->subpasses[cmd_buffer->state.subpass_idx];
+
+   if (!subpass->resolve_attachments)
+      return;
+
+   struct v3dv_framebuffer *fb = cmd_buffer->state.framebuffer;
+
+   /* At this point we have already ended the current subpass and now we are
+    * about to emit vkCmdResolveImage calls to get the resolves we can't handle
+    * handle in the subpass RCL.
+    *
+    * vkCmdResolveImage is not supposed to be called inside a render pass so
+    * before we call that we need to make sure our command buffer state reflects
+    * that we are no longer in a subpass by finishing the current job and
+    * resetting the framebuffer and render pass state temporarily and then
+    * restoring it after we are done with the resolves.
+    */
+   if (cmd_buffer->state.job)
+      v3dv_cmd_buffer_finish_job(cmd_buffer);
+   struct v3dv_framebuffer *restore_fb = cmd_buffer->state.framebuffer;
+   struct v3dv_render_pass *restore_pass = cmd_buffer->state.pass;
+   uint32_t restore_subpass_idx = cmd_buffer->state.subpass_idx;
+   cmd_buffer->state.framebuffer = NULL;
+   cmd_buffer->state.pass = NULL;
+   cmd_buffer->state.subpass_idx = -1;
+
+   VkCommandBuffer cmd_buffer_handle = v3dv_cmd_buffer_to_handle(cmd_buffer);
+   for (uint32_t i = 0; i < subpass->color_count; i++) {
+      const uint32_t src_attachment_idx =
+         subpass->color_attachments[i].attachment;
+      if (src_attachment_idx == VK_ATTACHMENT_UNUSED)
+         continue;
+
+      if (pass->attachments[src_attachment_idx].use_tlb_resolve)
+         continue;
+
+      const uint32_t dst_attachment_idx =
+         subpass->resolve_attachments[i].attachment;
+      if (dst_attachment_idx == VK_ATTACHMENT_UNUSED)
+         continue;
+
+      struct v3dv_image_view *src_iview = fb->attachments[src_attachment_idx];
+      struct v3dv_image_view *dst_iview = fb->attachments[dst_attachment_idx];
+
+      VkImageResolve region = {
+         .srcSubresource = {
+            VK_IMAGE_ASPECT_COLOR_BIT,
+            src_iview->base_level,
+            src_iview->first_layer,
+            src_iview->last_layer - src_iview->first_layer + 1,
+         },
+         .srcOffset = { 0, 0, 0 },
+         .dstSubresource =  {
+            VK_IMAGE_ASPECT_COLOR_BIT,
+            dst_iview->base_level,
+            dst_iview->first_layer,
+            dst_iview->last_layer - dst_iview->first_layer + 1,
+         },
+         .dstOffset = { 0, 0, 0 },
+         .extent = src_iview->image->extent,
+      };
+
+      VkImage src_image_handle =
+         v3dv_image_to_handle((struct v3dv_image *) src_iview->image);
+      VkImage dst_image_handle =
+         v3dv_image_to_handle((struct v3dv_image *) dst_iview->image);
+      v3dv_CmdResolveImage(cmd_buffer_handle,
+                           src_image_handle,
+                           VK_IMAGE_LAYOUT_GENERAL,
+                           dst_image_handle,
+                           VK_IMAGE_LAYOUT_GENERAL,
+                           1, &region);
+   }
+
+   cmd_buffer->state.framebuffer = restore_fb;
+   cmd_buffer->state.pass = restore_pass;
+   cmd_buffer->state.subpass_idx = restore_subpass_idx;
+}
+
 static VkResult
 cmd_buffer_begin_render_pass_secondary(
    struct v3dv_cmd_buffer *cmd_buffer,
@@ -1356,6 +1428,7 @@ v3dv_CmdNextSubpass(VkCommandBuffer commandBuffer, VkSubpassContents contents)
 
    /* Finish the previous subpass */
    v3dv_cmd_buffer_subpass_finish(cmd_buffer);
+   cmd_buffer_subpass_handle_pending_resolves(cmd_buffer);
 
    /* Start the next subpass */
    v3dv_cmd_buffer_subpass_start(cmd_buffer, state->subpass_idx + 1);
@@ -1686,9 +1759,16 @@ cmd_buffer_render_pass_emit_stores(struct v3dv_cmd_buffer *cmd_buffer,
        * that would clear the tile buffer before we get to emit the actual
        * color attachment store below, since the clear happens after the
        * store is completed.
+       *
+       * If the attachment doesn't support TLB resolves then we will have to
+       * fallback to doing the resolve in a shader separately after this
+       * job, so we will need to store the multisampled sttachment even if that
+       * wansn't requested by the client.
        */
-      if (subpass->resolve_attachments &&
-          subpass->resolve_attachments[i].attachment != VK_ATTACHMENT_UNUSED) {
+      const bool needs_resolve =
+         subpass->resolve_attachments &&
+         subpass->resolve_attachments[i].attachment != VK_ATTACHMENT_UNUSED;
+      if (needs_resolve && attachment->use_tlb_resolve) {
          const uint32_t resolve_attachment_idx =
             subpass->resolve_attachments[i].attachment;
          cmd_buffer_render_pass_emit_store(cmd_buffer, cl,
@@ -1696,6 +1776,8 @@ cmd_buffer_render_pass_emit_stores(struct v3dv_cmd_buffer *cmd_buffer,
                                            RENDER_TARGET_0 + i,
                                            false, true);
          has_stores = true;
+      } else if (needs_resolve) {
+         needs_store = true;
       }
 
       /* Emit the color attachment store if needed */
@@ -2262,6 +2344,8 @@ v3dv_CmdEndRenderPass(VkCommandBuffer commandBuffer)
    assert(state->subpass_idx == state->pass->subpass_count - 1);
    v3dv_cmd_buffer_subpass_finish(cmd_buffer);
    v3dv_cmd_buffer_finish_job(cmd_buffer);
+
+   cmd_buffer_subpass_handle_pending_resolves(cmd_buffer);
 
    /* We are no longer inside a render pass */
    state->framebuffer = NULL;

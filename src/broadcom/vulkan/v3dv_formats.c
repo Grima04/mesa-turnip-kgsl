@@ -297,6 +297,14 @@ v3dv_get_internal_type_bpp_for_output_format(uint32_t format,
    }
 }
 
+bool
+v3dv_format_supports_tlb_resolve(const struct v3dv_format *format)
+{
+   uint32_t type, bpp;
+   v3dv_get_internal_type_bpp_for_output_format(format->rt_type, &type, &bpp);
+   return type == V3D_INTERNAL_TYPE_8 || type == V3D_INTERNAL_TYPE_16F;
+}
+
 const uint8_t *
 v3dv_get_format_swizzle(VkFormat f)
 {

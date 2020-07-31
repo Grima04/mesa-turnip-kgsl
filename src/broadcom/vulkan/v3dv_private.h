@@ -514,6 +514,11 @@ struct v3dv_render_pass_attachment {
    VkAttachmentDescription desc;
    uint32_t first_subpass;
    uint32_t last_subpass;
+
+   /* If this is a multismapled attachment that is going to be resolved,
+    * whether we can use the TLB resolve on store.
+    */
+   bool use_tlb_resolve;
 };
 
 struct v3dv_render_pass {
@@ -1702,8 +1707,7 @@ void v3dv_get_internal_type_bpp_for_output_format(uint32_t format, uint32_t *typ
 uint8_t v3dv_get_tex_return_size(const struct v3dv_format *vf, bool compare_enable);
 bool v3dv_tfu_supports_tex_format(const struct v3d_device_info *devinfo,
                                   uint32_t tex_format);
-
-
+bool v3dv_format_supports_tlb_resolve(const struct v3dv_format *format);
 
 uint32_t v3d_utile_width(int cpp);
 uint32_t v3d_utile_height(int cpp);

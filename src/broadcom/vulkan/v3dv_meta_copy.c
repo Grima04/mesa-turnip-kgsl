@@ -4198,6 +4198,9 @@ resolve_image_tlb(struct v3dv_cmd_buffer *cmd_buffer,
       return false;
    }
 
+   if (!v3dv_format_supports_tlb_resolve(src->format))
+      return false;
+
    const VkFormat fb_format = src->vk_format;
 
    uint32_t num_layers;

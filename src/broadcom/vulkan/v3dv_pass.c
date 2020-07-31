@@ -34,6 +34,13 @@ num_subpass_attachments(const VkSubpassDescription *desc)
 }
 
 static void
+set_use_tlb_resolve(struct v3dv_render_pass_attachment *att)
+{
+   const struct v3dv_format *format = v3dv_get_format(att->desc.format);
+   att->use_tlb_resolve = v3dv_format_supports_tlb_resolve(format);
+}
+
+static void
 pass_find_subpass_range_for_attachments(struct v3dv_render_pass *pass)
 {
    for (uint32_t i = 0; i < pass->attachment_count; i++) {
@@ -53,6 +60,11 @@ pass_find_subpass_range_for_attachments(struct v3dv_render_pass *pass)
             pass->attachments[attachment_idx].first_subpass = i;
          if (i > pass->attachments[attachment_idx].last_subpass)
             pass->attachments[attachment_idx].last_subpass = i;
+
+         if (subpass->resolve_attachments &&
+             subpass->resolve_attachments[j].attachment != VK_ATTACHMENT_UNUSED) {
+            set_use_tlb_resolve(&pass->attachments[attachment_idx]);
+         }
       }
 
       uint32_t ds_attachment_idx = subpass->ds_attachment.attachment;
