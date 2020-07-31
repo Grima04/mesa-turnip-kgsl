@@ -286,6 +286,9 @@ typedef struct {
         /* Source types if required by the class */
         nir_alu_type src_types[BIR_SRC_COUNT];
 
+        /* register_format if applicable */
+        nir_alu_type format;
+
         /* If the source type is 8-bit or 16-bit such that SIMD is possible,
          * and the class has BI_SWIZZLABLE, this is a swizzle in the usual
          * sense. On non-SIMD instructions, it can be used for component

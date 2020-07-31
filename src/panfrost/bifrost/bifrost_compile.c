@@ -111,6 +111,7 @@ bi_emit_ld_vary(bi_context *ctx, nir_intrinsic_instr *instr)
         ins.load_vary.reuse = false; /* TODO */
         ins.load_vary.flat = instr->intrinsic != nir_intrinsic_load_interpolated_input;
         ins.dest_type = nir_type_float | nir_dest_bit_size(instr->dest);
+        ins.format = ins.dest_type;
 
         if (nir_src_is_const(*nir_get_io_offset_src(instr))) {
                 /* Zero it out for direct */
@@ -187,6 +188,7 @@ bi_load_with_r61(enum bi_class T, nir_intrinsic_instr *instr)
         ld.src_types[1] = nir_type_uint32;
         ld.src_types[2] = nir_type_uint32;
         ld.src_types[3] = nir_intrinsic_type(instr);
+        ld.format = nir_intrinsic_type(instr);
         return ld;
 }
 
@@ -333,6 +335,7 @@ bi_emit_ld_frag_coord(bi_context *ctx, nir_intrinsic_instr *instr)
                         },
                         .vector_channels = 1,
                         .dest_type = nir_type_float32,
+                        .format = nir_type_float32,
                         .dest = bi_make_temp(ctx),
                         .src = { BIR_INDEX_CONSTANT, BIR_INDEX_ZERO },
                         .src_types = { nir_type_uint32, nir_type_uint32 },

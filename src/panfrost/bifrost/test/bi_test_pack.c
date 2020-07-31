@@ -65,6 +65,7 @@ bit_test_single(struct panfrost_device *dev,
                 .vector_channels = 3,
                 .dest = BIR_INDEX_REGISTER | 32,
                 .dest_type = nir_type_uint32,
+                .format = nir_type_uint32,
                 .src = {
                         BIR_INDEX_CONSTANT,
                         BIR_INDEX_REGISTER | 61,

@@ -293,6 +293,9 @@ bi_print_instruction(bi_instruction *ins, FILE *fp)
         if (ins->dest)
                 pan_print_alu_type(ins->dest_type, fp);
 
+        if (ins->format && ins->dest != ins->format)
+                pan_print_alu_type(ins->format, fp);
+
         if (bi_has_outmod(ins))
                 fprintf(fp, "%s", bi_output_mod_name(ins->outmod));
 
