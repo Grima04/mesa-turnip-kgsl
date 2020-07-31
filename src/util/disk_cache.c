@@ -182,17 +182,12 @@ disk_cache_create(const char *gpu_name, const char *driver_id,
    uint8_t cache_version = CACHE_VERSION;
    size_t cv_size = sizeof(cache_version);
 
-   /* If running as a users other than the real user disable cache */
-   if (geteuid() != getuid())
+   if (!disk_cache_enabled())
       return NULL;
 
    /* A ralloc context for transient data during this invocation. */
    local = ralloc_context(NULL);
    if (local == NULL)
-      goto fail;
-
-   /* At user request, disable shader cache entirely. */
-   if (env_var_as_boolean("MESA_GLSL_CACHE_DISABLE", false))
       goto fail;
 
    cache = rzalloc(NULL, struct disk_cache);

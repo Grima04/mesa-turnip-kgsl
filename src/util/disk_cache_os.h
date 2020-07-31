@@ -33,6 +33,9 @@
 char *
 disk_cache_generate_cache_dir(void *mem_ctx);
 
+bool
+disk_cache_enabled(void);
+
 #endif
 
 #endif /* DISK_CACHE_OS_H */

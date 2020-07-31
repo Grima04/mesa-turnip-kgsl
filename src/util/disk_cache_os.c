@@ -38,6 +38,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#include "util/debug.h"
 #include "util/disk_cache.h"
 #include "util/disk_cache_os.h"
 #include "util/ralloc.h"
@@ -170,6 +171,20 @@ disk_cache_generate_cache_dir(void *mem_ctx)
    }
 
    return path;
+}
+
+bool
+disk_cache_enabled()
+{
+   /* If running as a users other than the real user disable cache */
+   if (geteuid() != getuid())
+      return false;
+
+   /* At user request, disable shader cache entirely. */
+   if (env_var_as_boolean("MESA_GLSL_CACHE_DISABLE", false))
+      return false;
+
+   return true;
 }
 #endif
 
