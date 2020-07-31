@@ -83,6 +83,9 @@ bool
 disk_cache_mmap_cache_index(void *mem_ctx, struct disk_cache *cache,
                             char *path);
 
+void
+disk_cache_destroy_mmap(struct disk_cache *cache);
+
 #endif
 
 #endif /* DISK_CACHE_OS_H */

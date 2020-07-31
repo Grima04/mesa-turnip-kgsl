@@ -249,6 +249,12 @@ path_fail:
 
    return mapped;
 }
+
+void
+disk_cache_destroy_mmap(struct disk_cache *cache)
+{
+   munmap(cache->index_mmap, cache->index_mmap_size);
+}
 #endif
 
 #endif /* ENABLE_SHADER_CACHE */

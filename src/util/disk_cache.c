@@ -264,7 +264,7 @@ disk_cache_destroy(struct disk_cache *cache)
    if (cache && !cache->path_init_failed) {
       util_queue_finish(&cache->cache_queue);
       util_queue_destroy(&cache->cache_queue);
-      munmap(cache->index_mmap, cache->index_mmap_size);
+      disk_cache_destroy_mmap(cache);
    }
 
    ralloc_free(cache);
