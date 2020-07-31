@@ -43,10 +43,6 @@ values['tags'] = args.lava_tags
 values['env_vars'] = env_vars
 values['deqp_version'] = args.deqp_version
 
-# We need a sane date to check certificates, but don't want to wait to get
-# time from the network after boot.
-values['date'] = datetime.datetime.now().strftime("%Y%m%d %H%M")
-
 f = open(os.path.splitext(os.path.basename(args.template))[0], "w")
 f.write(template.render(values))
 f.close()

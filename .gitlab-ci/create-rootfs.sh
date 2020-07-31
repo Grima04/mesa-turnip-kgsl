@@ -41,6 +41,7 @@ apt-get -y install --no-install-recommends \
     python3-pytest \
     python3-requests \
     python3-yaml \
+    sntp \
     wget \
     xz-utils
 

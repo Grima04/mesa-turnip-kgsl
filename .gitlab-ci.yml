@@ -355,7 +355,7 @@ arm64_test:
   extends:
     - .use-arm_test-base
   variables:
-    FDO_DISTRIBUTION_TAG: &arm64_test "2020-07-28-libdrm"
+    FDO_DISTRIBUTION_TAG: &arm64_test "2020-07-31-ntp"
 
 .use-arm64_test:
   variables:
