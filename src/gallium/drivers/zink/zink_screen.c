@@ -192,6 +192,7 @@ zink_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
       return screen->feats.imageCubeArray;
 
    case PIPE_CAP_TEXTURE_BUFFER_OBJECTS:
+   case PIPE_CAP_PRIMITIVE_RESTART:
       return 1;
 
    case PIPE_CAP_TEXTURE_BUFFER_OFFSET_ALIGNMENT:
