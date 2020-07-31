@@ -637,9 +637,6 @@ bit_step(struct bit_state *s, bi_instruction *ins, bool FMA)
                 break;
         }
 
-        case BI_SHIFT:
-                unreachable("Unsupported op");
-
         case BI_ROUND: {
                 if (ins->roundmode == BIFROST_RTP) {
                         bfloat(bit_f64ceil, bit_f32ceil);
