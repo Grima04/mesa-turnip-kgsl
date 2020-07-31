@@ -46,6 +46,7 @@ bit_test_single(struct panfrost_device *dev,
 
         bi_instruction ldubo = {
                 .type = BI_LOAD_UNIFORM,
+                .segment = BI_SEGMENT_UBO,
                 .src = {
                         BIR_INDEX_CONSTANT,
                         BIR_INDEX_ZERO

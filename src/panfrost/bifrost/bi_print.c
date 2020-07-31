@@ -27,6 +27,18 @@
 #include "bi_print.h"
 #include "bi_print_common.h"
 
+static const char *
+bi_segment_name(enum bi_segment seg)
+{
+        switch (seg) {
+        case BI_SEGMENT_NONE: return "global";
+        case BI_SEGMENT_WLS:  return "wls";
+        case BI_SEGMENT_UBO:  return "ubo";
+        case BI_SEGMENT_TLS:  return "tls";
+        default: return "invalid";
+        }
+}
+
 const char *
 bi_class_name(enum bi_class cl)
 {
@@ -274,6 +286,9 @@ bi_print_instruction(bi_instruction *ins, FILE *fp)
 
         if (ins->vector_channels)
                 fprintf(fp, ".v%u", ins->vector_channels);
+
+        if (ins->segment)
+                fprintf(fp, ".%s", bi_segment_name(ins->segment));
 
         if (ins->dest)
                 pan_print_alu_type(ins->dest_type, fp);

@@ -230,6 +230,7 @@ bi_emit_ld_uniform(bi_context *ctx, nir_intrinsic_instr *instr)
 {
         bi_instruction ld = bi_load(BI_LOAD_UNIFORM, instr);
         ld.src[1] = BIR_INDEX_ZERO; /* TODO: UBO index */
+        ld.segment = BI_SEGMENT_UBO;
 
         /* TODO: Indirect access, since we need to multiply by the element
          * size. I believe we can get this lowering automatically via
@@ -259,6 +260,7 @@ bi_emit_sysval(bi_context *ctx, nir_instr *instr,
 
         bi_instruction load = {
                 .type = BI_LOAD_UNIFORM,
+                .segment = BI_SEGMENT_UBO,
                 .vector_channels = nr_components,
                 .src = { BIR_INDEX_CONSTANT, BIR_INDEX_ZERO },
                 .src_types = { nir_type_uint32, nir_type_uint32 },

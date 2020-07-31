@@ -155,6 +155,29 @@ enum bi_cond {
         BI_COND_NE,
 };
 
+/* Segments, as synced with ISA. Used as an immediate in LOAD/STORE
+ * instructions for address calculation, and directly in SEG_ADD/SEG_SUB
+ * instructions. */
+
+enum bi_segment {
+        /* No segment (use global addressing, offset from GPU VA 0x0) */
+        BI_SEGMENT_NONE = 1,
+
+        /* Within workgroup local memory (shared memory). Relative to
+         * wls_base_pointer in the draw's thread storage descriptor */
+        BI_SEGMENT_WLS = 2,
+
+        /* Within one of the bound uniform buffers. Low 32-bits are the index
+         * within the uniform buffer; high 32-bits are the index of the uniform
+         * buffer itself. Relative to the uniform_array_pointer indexed within
+         * the draw's uniform remap table indexed by the high 32-bits. */
+        BI_SEGMENT_UBO = 4,
+
+        /* Within thread local storage (for spilling). Relative to
+         * tls_base_pointer in the draw's thread storage descriptor */
+        BI_SEGMENT_TLS = 7
+};
+
 /* Opcodes within a class */
 enum bi_minmax_op {
         BI_MINMAX_MIN,
@@ -274,6 +297,9 @@ typedef struct {
 
         /* The comparison op. BI_COND_ALWAYS may not be valid. */
         enum bi_cond cond;
+
+        /* For memory ops, base address */
+        enum bi_segment segment;
 
         /* A class-specific op from which the actual opcode can be derived
          * (along with the above information) */
