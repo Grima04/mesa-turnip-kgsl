@@ -79,13 +79,22 @@ fd3_emit_const_bo(struct fd_ringbuffer *ring, const struct ir3_shader_variant *v
 		uint32_t regid, uint32_t offset, uint32_t sizedwords,
 		struct fd_bo *bo)
 {
+	uint32_t dst_off = regid / 2;
+	/* The blob driver aligns all const uploads dst_off to 64.  We've been
+	 * successfully aligning to 8 vec4s as const_upload_unit so far with no
+	 * ill effects.
+	 */
+	assert(dst_off % 16 == 0);
+	uint32_t num_unit = sizedwords / 2;
+	assert(num_unit % 2 == 0);
+
 	emit_const_asserts(ring, v, regid, sizedwords);
 
 	OUT_PKT3(ring, CP_LOAD_STATE, 2);
-	OUT_RING(ring, CP_LOAD_STATE_0_DST_OFF(regid/2) |
+	OUT_RING(ring, CP_LOAD_STATE_0_DST_OFF(dst_off) |
 			CP_LOAD_STATE_0_STATE_SRC(SS_INDIRECT) |
 			CP_LOAD_STATE_0_STATE_BLOCK(sb[v->type]) |
-			CP_LOAD_STATE_0_NUM_UNIT(sizedwords/2));
+			CP_LOAD_STATE_0_NUM_UNIT(num_unit));
 	OUT_RELOC(ring, bo, offset,
 			CP_LOAD_STATE_1_STATE_TYPE(ST_CONSTANTS), 0);
 }

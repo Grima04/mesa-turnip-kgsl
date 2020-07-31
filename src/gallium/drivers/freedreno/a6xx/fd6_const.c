@@ -77,16 +77,21 @@ fd6_emit_const_bo(struct fd_ringbuffer *ring,
 		const struct ir3_shader_variant *v, uint32_t regid,
 		uint32_t offset, uint32_t sizedwords, struct fd_bo *bo)
 {
+	uint32_t dst_off = regid / 4;
+	assert(dst_off % 4 == 0);
+	uint32_t num_unit = DIV_ROUND_UP(sizedwords, 4);
+	assert(num_unit % 4 == 0);
+
 	emit_const_asserts(ring, v, regid, sizedwords);
 
 	if (fd6_geom_stage(v->type)) {
 		OUT_PKT(ring, CP_LOAD_STATE6_GEOM,
 				CP_LOAD_STATE6_0(
-					.dst_off     = regid/4,
+					.dst_off     = dst_off,
 					.state_type  = ST6_CONSTANTS,
 					.state_src   = SS6_INDIRECT,
 					.state_block = fd6_stage2shadersb(v->type),
-					.num_unit    = DIV_ROUND_UP(sizedwords, 4)
+					.num_unit    = num_unit,
 					),
 				CP_LOAD_STATE6_EXT_SRC_ADDR(
 					.bo          = bo,
@@ -96,11 +101,11 @@ fd6_emit_const_bo(struct fd_ringbuffer *ring,
 	} else {
 		OUT_PKT(ring, CP_LOAD_STATE6_FRAG,
 				CP_LOAD_STATE6_0(
-					.dst_off     = regid/4,
+					.dst_off     = dst_off,
 					.state_type  = ST6_CONSTANTS,
 					.state_src   = SS6_INDIRECT,
 					.state_block = fd6_stage2shadersb(v->type),
-					.num_unit    = DIV_ROUND_UP(sizedwords, 4)
+					.num_unit    = num_unit,
 					),
 				CP_LOAD_STATE6_EXT_SRC_ADDR(
 					.bo          = bo,

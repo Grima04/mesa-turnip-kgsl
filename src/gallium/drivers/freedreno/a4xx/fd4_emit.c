@@ -74,13 +74,18 @@ fd4_emit_const_bo(struct fd_ringbuffer *ring, const struct ir3_shader_variant *v
 		uint32_t regid, uint32_t offset, uint32_t sizedwords,
 		struct fd_bo *bo)
 {
+	uint32_t dst_off = regid / 4;
+	assert(dst_off % 4 == 0);
+	uint32_t num_unit = sizedwords / 4;
+	assert(num_unit % 4 == 0);
+
 	emit_const_asserts(ring, v, regid, sizedwords);
 
 	OUT_PKT3(ring, CP_LOAD_STATE4, 2);
-	OUT_RING(ring, CP_LOAD_STATE4_0_DST_OFF(regid/4) |
+	OUT_RING(ring, CP_LOAD_STATE4_0_DST_OFF(dst_off) |
 			CP_LOAD_STATE4_0_STATE_SRC(SS4_INDIRECT) |
 			CP_LOAD_STATE4_0_STATE_BLOCK(fd4_stage2shadersb(v->type)) |
-			CP_LOAD_STATE4_0_NUM_UNIT(sizedwords/4));
+			CP_LOAD_STATE4_0_NUM_UNIT(num_unit));
 	OUT_RELOC(ring, bo, offset,
 			CP_LOAD_STATE4_1_STATE_TYPE(ST4_CONSTANTS), 0);
 }
