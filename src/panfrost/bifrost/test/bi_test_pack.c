@@ -557,6 +557,7 @@ bit_imath_helper(struct panfrost_device *dev, uint32_t *input, unsigned size, en
 {
         bi_instruction ins = bit_ins(BI_IMATH, 2, nir_type_uint, size);
         bit_swizzle_identity(&ins, 2, size);
+        ins.src[2] = BIR_INDEX_ZERO; /* carry/borrow for FMA */
 
         for (unsigned op = BI_IMATH_ADD; op <= BI_IMATH_SUB; ++op) {
                 ins.op.imath = op;

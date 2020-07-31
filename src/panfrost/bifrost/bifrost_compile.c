@@ -805,9 +805,13 @@ emit_alu(bi_context *ctx, nir_alu_instr *instr)
                 break;
         case nir_op_iadd:
                 alu.op.imath = BI_IMATH_ADD;
+                /* Carry */
+                alu.src[2] = BIR_INDEX_ZERO;
                 break;
         case nir_op_isub:
                 alu.op.imath = BI_IMATH_SUB;
+                /* Borrow */
+                alu.src[2] = BIR_INDEX_ZERO;
                 break;
         case nir_op_iabs:
                 alu.op.special = BI_SPECIAL_IABS;
