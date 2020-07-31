@@ -611,7 +611,7 @@ ir3_emit_cs_consts(const struct ir3_shader_variant *v, struct fd_ringbuffer *rin
 				indirect_offset = info->indirect_offset;
 			}
 
-			emit_const_prsc(ring, v, offset * 4, indirect_offset, 4, indirect);
+			emit_const_prsc(ring, v, offset * 4, indirect_offset, 16, indirect);
 
 			pipe_resource_reference(&indirect, NULL);
 		} else {
