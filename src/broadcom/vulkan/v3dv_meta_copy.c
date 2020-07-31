@@ -1510,7 +1510,8 @@ clear_image_tlb(struct v3dv_cmd_buffer *cmd_buffer,
             return true;
 
          /* We start a a new job for each layer so the frame "depth" is 1 */
-         v3dv_job_start_frame(job, width, height, 1, 1, internal_bpp, false);
+         v3dv_job_start_frame(job, width, height, 1, 1, internal_bpp,
+                              image->samples > VK_SAMPLE_COUNT_1_BIT);
 
          struct framebuffer_data framebuffer;
          setup_framebuffer_data(&framebuffer, fb_format, internal_type,
