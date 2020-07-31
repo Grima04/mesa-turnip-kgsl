@@ -457,6 +457,12 @@ glsl_uvec4_type(void)
 }
 
 const glsl_type *
+glsl_ivec4_type(void)
+{
+   return glsl_type::ivec4_type;
+}
+
+const glsl_type *
 glsl_int_type(void)
 {
    return glsl_type::int_type;
