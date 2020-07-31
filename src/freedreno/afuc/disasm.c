@@ -158,20 +158,9 @@ static void print_alu_name(afuc_opc opc, uint32_t instr)
 	}
 }
 
-static char *getpm4(uint32_t id)
+static const char *getpm4(uint32_t id)
 {
-	struct rnnenum *en = rnn_findenum(ctx->db, "adreno_pm4_type3_packets");
-	if (en) {
-		int i;
-		for (i = 0; i < en->valsnum; i++)
-			if (en->vals[i]->valvalid && en->vals[i]->value == id) {
-				const char *v = en->vals[i]->varinfo.variantsstr;
-				if (v && !strstr(v, variant))
-					continue;
-				return en->vals[i]->name;
-			}
-	}
-	return NULL;
+	return rnndec_decode_enum(ctx, "adreno_pm4_type3_packets", id);
 }
 
 static inline unsigned
@@ -253,7 +242,7 @@ label_name(uint32_t offset, bool allow_jt)
 			int j;
 			for (j = 0; j < jump_labels[lidx].num_jump_labels; j++) {
 				uint32_t jump_label = jump_labels[lidx].jump_labels[j];
-				char *str = getpm4(jump_label);
+				const char *str = getpm4(jump_label);
 				if (str)
 					return str;
 			}
@@ -373,7 +362,7 @@ static void disasm(uint32_t *buf, int sizedwords)
 			printf("\n");
 			for (j = 0; j < jump_labels[jump_label_idx].num_jump_labels; j++) {
 				uint32_t jump_label = jump_labels[jump_label_idx].jump_labels[j];
-				char *name = getpm4(jump_label);
+				const char *name = getpm4(jump_label);
 				if (name) {
 					printlbl("%s", name);
 				} else {
@@ -701,7 +690,7 @@ static void disasm(uint32_t *buf, int sizedwords)
 		for (i = 0; i < 0x7f; i++) {
 			int n = i;// + CP_NOP;
 			uint32_t offset = jmptbl[i];
-			char *name = getpm4(n);
+			const char *name = getpm4(n);
 			printf("%3d %02x: ", n, n);
 			printf("%04x", offset);
 			if (name) {
@@ -822,6 +811,8 @@ int main(int argc, char **argv)
 	dom[0] = rnn_finddomain(db, variant);
 	dom[1] = rnn_finddomain(db, "AXXX");
 	control_regs = rnn_finddomain(db, control_reg_name);
+
+	rnndec_varadd(ctx, "chip", variant);
 
 	buf = (uint32_t *)readfile(file, &sz);
 
