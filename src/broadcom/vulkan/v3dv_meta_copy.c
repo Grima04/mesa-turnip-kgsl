@@ -3150,16 +3150,26 @@ build_nir_tex_op_ms_resolve(struct nir_builder *b,
    sampler->data.descriptor_set = 0;
    sampler->data.binding = 0;
 
+   const bool is_int = glsl_base_type_is_integer(tex_type);
+
    nir_ssa_def *tmp;
    nir_ssa_def *tex_deref = &nir_build_deref_var(b, sampler)->dest.ssa;
    for (uint32_t i = 0; i < src_samples; i++) {
       nir_ssa_def *s =
          build_nir_tex_op_ms_fetch_sample(b, sampler, tex_deref,
-                                         tex_type, tex_pos,
-                                         nir_imm_int(b, i));
+                                          tex_type, tex_pos,
+                                          nir_imm_int(b, i));
+
+      /* For integer formats, the multisample resolve operation is expected to
+       * return one of the samples, we just return the first one.
+       */
+      if (is_int)
+         return s;
+
       tmp = i == 0 ? s : nir_fadd(b, tmp, s);
    }
 
+   assert(!is_int);
    return nir_fmul(b, tmp, nir_imm_float(b, 1.0f / src_samples));
 }
 
