@@ -159,7 +159,8 @@ EGL Drivers
    This driver supports several platforms: ``android``, ``device``,
    ``drm, ``surfaceless``, ``wayland`` and ``x11``. It functions as
    a DRI driver loader. For ``x11`` support, it talks to the X server
-   directly using (XCB-)DRI2 protocol.
+   directly using (XCB-)DRI3 protocol when available, and falls back to
+   DRI2 if necessary (can be forced with ``LIBGL_DRI3_DISABLE``).
 
    This driver can share DRI drivers with ``libGL``.
 
