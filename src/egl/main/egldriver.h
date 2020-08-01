@@ -86,8 +86,6 @@ struct _egl_driver
    /* driver funcs */
    EGLBoolean (*Initialize)(_EGLDisplay *disp);
    EGLBoolean (*Terminate)(_EGLDisplay *disp);
-   const char *(*QueryDriverName)(_EGLDisplay *disp);
-   char *(*QueryDriverConfig)(_EGLDisplay *disp);
 
    /* context funcs */
    _EGLContext *(*CreateContext)(_EGLDisplay *disp, _EGLConfig *config,
@@ -174,6 +172,9 @@ struct _egl_driver
    EGLBoolean (*ExportDMABUFImageMESA)(_EGLDisplay *disp, _EGLImage *img,
                                        EGLint *fds, EGLint *strides,
                                        EGLint *offsets);
+
+   const char *(*QueryDriverName)(_EGLDisplay *disp);
+   char *(*QueryDriverConfig)(_EGLDisplay *disp);
 
    int (*GLInteropQueryDeviceInfo)(_EGLDisplay *disp, _EGLContext *ctx,
                                    struct mesa_glinterop_device_info *out);
