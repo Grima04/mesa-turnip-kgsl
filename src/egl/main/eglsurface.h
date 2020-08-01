@@ -197,9 +197,6 @@ _eglReleaseTexImage(_EGLDisplay *disp, _EGLSurface *surf, EGLint buffer);
 
 
 extern EGLBoolean
-_eglSwapInterval(_EGLDisplay *disp, _EGLSurface *surf, EGLint interval);
-
-extern EGLBoolean
 _eglSurfaceHasMutableRenderBuffer(_EGLSurface *surf);
 
 extern EGLBoolean

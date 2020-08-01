@@ -781,13 +781,6 @@ _eglReleaseTexImage(_EGLDisplay *disp, _EGLSurface *surf, EGLint buffer)
    return EGL_TRUE;
 }
 
-
-EGLBoolean
-_eglSwapInterval(_EGLDisplay *disp, _EGLSurface *surf, EGLint interval)
-{
-   return EGL_TRUE;
-}
-
 EGLBoolean
 _eglSurfaceHasMutableRenderBuffer(_EGLSurface *surf)
 {
