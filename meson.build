@@ -389,7 +389,7 @@ elif _xlib_lease == 'false'
   warning('xlib_lease option "false" deprecated, please use "disabled" instead.')
 endif
 if _xlib_lease == 'auto'
-  with_xlib_lease = with_platform_x11 and with_gbm
+  with_xlib_lease = with_platform_x11 and system_has_kms_drm
 else
   with_xlib_lease = _xlib_lease == 'enabled'
 endif
