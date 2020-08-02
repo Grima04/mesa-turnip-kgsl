@@ -128,6 +128,8 @@ succeeded (as per EGL spec).
 
 A driver _could_ implement all the other EGL API functions, but several of
 them are only needed for extensions, like ``eglSwapBuffersWithDamageEXT()``.
+See ``src/egl/main/egldriver.h`` to see which driver hooks are only
+required by extensions.
 
 Bootstrapping
 ~~~~~~~~~~~~~
