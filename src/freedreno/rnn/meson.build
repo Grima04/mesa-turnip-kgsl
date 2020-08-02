@@ -27,7 +27,6 @@ libfreedreno_rnn_files = files(
   'rnn.h',
   'rnndec.c',
   'rnndec.h',
-  'rnn_path.h',
   'util.h',
 )
 
@@ -40,9 +39,7 @@ libfreedreno_rnn = static_library(
   ],
   c_args : [
     no_override_init_args,
-    '-DSOURCE_DIR="' + meson.source_root() + '"',
-# TODO how do we get install prefix??
-    '-DINSTALL_DIR=""',
+    '-DRNN_DEF_PATH="' + rnn_path + '"',
   ],
   gnu_symbol_visibility: 'hidden',
   dependencies: [ dep_libxml2 ],

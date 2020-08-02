@@ -21,6 +21,10 @@
 inc_freedreno = include_directories(['.', './registers', './common'])
 inc_freedreno_rnn = include_directories('rnn')
 
+rnn_src_path = meson.source_root() + '/src/freedreno/registers'
+rnn_install_path = get_option('datadir') + '/freedreno/registers'
+rnn_path = rnn_src_path + ':' + get_option('prefix') + '/' + rnn_install_path
+
 subdir('common')
 subdir('registers')
 subdir('drm')

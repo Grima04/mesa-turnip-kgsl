@@ -39,7 +39,6 @@
 #include <ctype.h>
 #include <stdio.h>
 #include "rnn.h"
-#include "rnn_path.h"
 #include "util.h"
 
 #include "util/u_debug.h"
