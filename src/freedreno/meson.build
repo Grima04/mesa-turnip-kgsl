@@ -25,6 +25,12 @@ rnn_src_path = meson.source_root() + '/src/freedreno/registers'
 rnn_install_path = get_option('datadir') + '/freedreno/registers'
 rnn_path = rnn_src_path + ':' + get_option('prefix') + '/' + rnn_install_path
 
+dep_libxml2 = dependency('libxml-2.0', required: false)
+prog_gzip = find_program('gzip', required: false)
+
+install_fd_decode_tools = dep_libxml2.found() and prog_gzip.found() and \
+  with_tools.contains('freedreno')
+
 subdir('common')
 subdir('registers')
 subdir('drm')
@@ -33,8 +39,6 @@ subdir('ir3')
 subdir('fdl')
 subdir('perfcntrs')
 subdir('computerator')
-
-dep_libxml2 = dependency('libxml-2.0', required: false)
 
 # Everything that depends on rnn requires (indirectly) libxml2:
 if dep_libxml2.found()

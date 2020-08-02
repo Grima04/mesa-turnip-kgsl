@@ -37,6 +37,17 @@ foreach f : xml_files
     command: [prog_python, '@INPUT0@', rnn_src_path, '@INPUT1@'],
     capture: true,
   )
+  _gzname = f + '.gz'
+  custom_target(
+    _gzname,
+    input: f,
+    output: _gzname,
+    command: [prog_gzip, '-kc', '@INPUT@'],
+    capture: true,
+    install_dir: rnn_install_path + '/adreno',
+    install: install_fd_decode_tools,
+    build_by_default: install_fd_decode_tools,
+  )
 endforeach
 
 freedreno_xml_header_files += custom_target(

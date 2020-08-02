@@ -20,6 +20,8 @@
 
 xml_files = [
   'adreno.xml',
+  'freedreno_copyright.xml',
+  'rules-ng.xsd',
 ]
 
 gen_header_py = files('gen_header.py')
@@ -34,6 +36,17 @@ foreach f : xml_files
     output: _name,
     command: [prog_python, '@INPUT0@', rnn_src_path, '@INPUT1@'],
     capture: true,
+  )
+  _gzname = f + '.gz'
+  custom_target(
+    _gzname,
+    input: f,
+    output: _gzname,
+    command: [prog_gzip, '-kc', '@INPUT@'],
+    capture: true,
+    install_dir: rnn_install_path,
+    install: install_fd_decode_tools,
+    build_by_default: install_fd_decode_tools,
   )
 endforeach
 
