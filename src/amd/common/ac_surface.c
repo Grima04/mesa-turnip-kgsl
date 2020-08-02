@@ -1569,6 +1569,7 @@ static int gfx9_compute_miptree(struct ac_addrlib *addrlib, const struct radeon_
          surf->u.gfx9.display_dcc_size = surf->dcc_size;
          surf->u.gfx9.display_dcc_alignment = surf->dcc_alignment;
          surf->u.gfx9.display_dcc_pitch_max = dout.pitch - 1;
+         surf->u.gfx9.dcc_pitch_max = dout.pitch - 1;
 
          /* Compute displayable DCC. */
          if (in->flags.display && surf->num_dcc_levels && info->use_display_dcc_with_retile_blit) {

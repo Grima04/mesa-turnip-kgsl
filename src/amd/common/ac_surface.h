@@ -180,6 +180,7 @@ struct gfx9_surf_layout {
    uint32_t display_dcc_size;
    uint32_t display_dcc_alignment;
    uint16_t display_dcc_pitch_max; /* (mip chain pitch - 1) */
+   uint16_t dcc_pitch_max;
    bool dcc_retile_use_uint16;     /* if all values fit into uint16_t */
    uint32_t dcc_retile_num_elements;
    void *dcc_retile_map;
