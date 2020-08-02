@@ -539,14 +539,14 @@ bool EmitTexInstruction::emit_tex_txl(nir_tex_instr* instr, TexInputs& src)
                  << "' (" << __func__ << ")\n";
 
    auto tex_op = TexInstruction::sample_l;
-   emit_instruction(new AluInstruction(op1_mov, src.coord.reg_i(3), src.lod,
-                                       {alu_last_instr, alu_write}));
-
    if (instr->is_shadow)  {
       emit_instruction(new AluInstruction(op1_mov, src.coord.reg_i(2), src.comperator,
-                       {alu_last_instr, alu_write}));
+                       {alu_write}));
       tex_op = TexInstruction::sample_c_l;
    }
+
+   emit_instruction(new AluInstruction(op1_mov, src.coord.reg_i(3), src.lod,
+                                       {alu_last_instr, alu_write}));
 
    auto sampler = get_samplerr_id(instr->sampler_index, src.sampler_deref);
    assert(!sampler.indirect && "Indirect sampler selection not yet supported");
@@ -571,14 +571,15 @@ bool EmitTexInstruction::emit_tex_txb(nir_tex_instr* instr, TexInputs& src)
 
    std::array<uint8_t, 4> in_swizzle = {0,1,2,3};
 
+   if (instr->is_shadow) {
+      emit_instruction(new AluInstruction(op1_mov, src.coord.reg_i(2), src.comperator,
+                                          {alu_write}));
+      tex_op = TexInstruction::sample_c_lb;
+   }
+
    emit_instruction(new AluInstruction(op1_mov, src.coord.reg_i(3), src.bias,
                                        {alu_last_instr, alu_write}));
 
-   if (instr->is_shadow) {
-      emit_instruction(new AluInstruction(op1_mov, src.coord.reg_i(2), src.comperator,
-                                          {alu_last_instr, alu_write}));
-      tex_op = TexInstruction::sample_c_lb;
-   }
 
    GPRVector tex_src(src.coord, in_swizzle);
 
