@@ -38,20 +38,25 @@ FILE *find_in_path(const char *name, const char *path, char **pfullname) {
 			plen = strlen(path);
 		}
 		if (plen) {
-			char *fullname = malloc(strlen(name) + plen + 2);
-			strncpy(fullname, path, plen);
-			fullname[plen] = '/';
-			fullname[plen+1] = 0;
-			strcat(fullname, name);
-			FILE *file = fopen(fullname, "r");
-			if (file) {
-				if (pfullname)
-					*pfullname = fullname;
-				else
-					free(fullname);
-				return file;
+			/* also look for .gz compressed xml: */
+			const char *exts[] = { "", ".gz" };
+			for (int i = 0; i < ARRAY_SIZE(exts); i++) {
+				char *fullname;
+
+				int ret = asprintf(&fullname, "%.*s/%s%s", (int)plen, path, name, exts[i]);
+				if (ret < 0)
+					return NULL;
+
+				FILE *file = fopen(fullname, "r");
+				if (file) {
+					if (pfullname)
+						*pfullname = fullname;
+					else
+						free(fullname);
+					return file;
+				}
+				free(fullname);
 			}
-			free(fullname);
 		}
 		path = npath;
 	}
