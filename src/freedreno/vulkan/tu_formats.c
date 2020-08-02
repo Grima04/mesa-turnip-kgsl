@@ -25,8 +25,8 @@
 
 #include "tu_private.h"
 
-#include "registers/adreno_common.xml.h"
-#include "registers/a6xx.xml.h"
+#include "adreno_common.xml.h"
+#include "a6xx.xml.h"
 
 #include "vk_format.h"
 #include "vk_util.h"

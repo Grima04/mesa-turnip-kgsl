@@ -18,7 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-inc_freedreno = include_directories(['.', './registers', './common'])
+inc_freedreno = include_directories(['.', './registers', './registers/adreno', './common'])
 inc_freedreno_rnn = include_directories('rnn')
 
 rnn_src_path = meson.source_root() + '/src/freedreno/registers'

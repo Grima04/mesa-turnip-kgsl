@@ -335,14 +335,7 @@ class Parser(object):
 			raise self.error(e);
 
 	def do_parse(self, filename):
-		try:
-			file = open(filename, "rb")
-		except FileNotFoundError as e:
-			# Look for the file in the parent directory if not
-			# found in same directory:
-			path = os.path.dirname(filename)
-			base = os.path.basename(filename)
-			file = open(path + "/../" + base, "rb")
+		file = open(filename, "rb")
 		parser = xml.parsers.expat.ParserCreate()
 		self.stack.append((parser, filename))
 		parser.StartElementHandler = self.start_element
@@ -351,8 +344,8 @@ class Parser(object):
 		self.stack.pop()
 		file.close()
 
-	def parse(self, filename):
-		self.path = os.path.dirname(filename)
+	def parse(self, rnn_path, filename):
+		self.path = rnn_path
 		self.stack = []
 		self.do_parse(filename)
 
@@ -373,7 +366,7 @@ class Parser(object):
 
 	def start_element(self, name, attrs):
 		if name == "import":
-			filename = os.path.basename(attrs["file"])
+			filename = attrs["file"]
 			self.do_parse(os.path.join(self.path, filename))
 		elif name == "domain":
 			self.current_domain = attrs["name"]
@@ -449,8 +442,9 @@ class Parser(object):
 
 def main():
 	p = Parser()
-	xml_file = sys.argv[1]
-	if len(sys.argv) > 2 and sys.argv[2] == '--pack-structs':
+	rnn_path = sys.argv[1]
+	xml_file = sys.argv[2]
+	if len(sys.argv) > 3 and sys.argv[3] == '--pack-structs':
 		do_structs = True
 		guard = str.replace(os.path.basename(xml_file), '.', '_').upper() + '_STRUCTS'
 	else:
@@ -460,7 +454,7 @@ def main():
 	print("#ifndef %s\n#define %s\n" % (guard, guard))
 
 	try:
-		p.parse(xml_file)
+		p.parse(rnn_path, xml_file)
 	except Error as e:
 		print(e)
 		exit(1)

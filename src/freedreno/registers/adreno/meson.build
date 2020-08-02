@@ -19,12 +19,14 @@
 # SOFTWARE.
 
 xml_files = [
-  'adreno.xml',
+  'a2xx.xml',
+  'a3xx.xml',
+  'a4xx.xml',
+  'a5xx.xml',
+  'a6xx.xml',
+  'adreno_common.xml',
+  'adreno_pm4.xml',
 ]
-
-gen_header_py = files('gen_header.py')
-
-freedreno_xml_header_files = []
 
 foreach f : xml_files
   _name = f + '.h'
@@ -37,4 +39,18 @@ foreach f : xml_files
   )
 endforeach
 
-subdir('adreno')
+freedreno_xml_header_files += custom_target(
+    'a6xx-pack.xml.h',
+    input: [gen_header_py, 'a6xx.xml'],
+    output: 'a6xx-pack.xml.h',
+    command: [prog_python, '@INPUT0@', rnn_src_path, '@INPUT1@', '--pack-structs'],
+    capture: true,
+)
+
+freedreno_xml_header_files += custom_target(
+    'adreno-pm4-pack.xml.h',
+    input: [gen_header_py, 'adreno_pm4.xml'],
+    output: 'adreno-pm4-pack.xml.h',
+    command: [prog_python, '@INPUT0@', rnn_src_path, '@INPUT1@', '--pack-structs'],
+    capture: true,
+)

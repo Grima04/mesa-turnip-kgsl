@@ -27,8 +27,8 @@
 
 #include "tu_private.h"
 
-#include "registers/adreno_pm4.xml.h"
-#include "registers/adreno_common.xml.h"
+#include "adreno_pm4.xml.h"
+#include "adreno_common.xml.h"
 
 #include "vk_format.h"
 

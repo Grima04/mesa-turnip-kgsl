@@ -25,9 +25,9 @@
 
 #include "util/u_math.h"
 
-#include "registers/adreno_pm4.xml.h"
-#include "registers/adreno_common.xml.h"
-#include "registers/a6xx.xml.h"
+#include "adreno_pm4.xml.h"
+#include "adreno_common.xml.h"
+#include "a6xx.xml.h"
 
 #include "main.h"
 #include "ir3_asm.h"

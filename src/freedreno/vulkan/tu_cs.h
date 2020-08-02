@@ -25,7 +25,7 @@
 
 #include "tu_private.h"
 
-#include "registers/adreno_pm4.xml.h"
+#include "adreno_pm4.xml.h"
 
 void
 tu_cs_init(struct tu_cs *cs,
