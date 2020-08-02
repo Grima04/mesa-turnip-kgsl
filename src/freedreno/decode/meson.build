@@ -18,16 +18,6 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-dep_lua = dependency('lua53', required: false)
-if not dep_lua.found()
-  dep_lua = dependency('lua52', required: false)
-endif
-if not dep_lua.found()
-  dep_lua = dependency('lua', required: false)
-endif
-
-dep_libarchive = dependency('libarchive', required: false)
-
 # Shared cmdstream decoding:
 libfreedreno_cffdec = static_library(
   'freedreno_cffdec',
