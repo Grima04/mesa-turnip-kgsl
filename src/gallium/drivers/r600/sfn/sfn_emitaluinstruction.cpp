@@ -1225,12 +1225,12 @@ bool EmitAluInstruction::emit_alu_div_int(const nir_alu_instr& instr, bool use_s
 }
 
 void EmitAluInstruction::split_alu_modifiers(const nir_alu_src& src,
-                                             GPRVector::Values& v, int ncomp)
+                                             const GPRVector::Values& v, GPRVector::Values& out, int ncomp)
 {
 
    AluInstruction *alu = nullptr;
    for (int i = 0; i < ncomp; ++i) {
-      alu  = new AluInstruction(op1_mov,  v[i], v[i], {alu_write});
+      alu  = new AluInstruction(op1_mov,  out[i], v[i], {alu_write});
       if (src.abs)
          alu->set_flag(alu_src0_abs);
       if (src.negate)
@@ -1251,8 +1251,12 @@ bool EmitAluInstruction::emit_tex_fdd(const nir_alu_instr& instr, TexInstruction
    auto src = vec_from_nir_with_fetch_constant(instr.src[0].src, (1 << ncomp) - 1, {0,1,2,3});
 
 
-   if (instr.src[0].abs || instr.src[0].negate)
-      split_alu_modifiers(instr.src[0], src.values(), ncomp);
+
+   if (instr.src[0].abs || instr.src[0].negate) {
+      GPRVector tmp = get_temp_vec4();
+      split_alu_modifiers(instr.src[0], src.values(), tmp.values(), ncomp);
+      src = tmp;
+   }
 
    for (int i = 0; i < 4; ++i) {
       writemask[i] = (instr.dest.write_mask & (1 << i)) ? i : 7;
