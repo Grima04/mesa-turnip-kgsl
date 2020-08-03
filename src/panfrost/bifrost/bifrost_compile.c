@@ -156,6 +156,9 @@ bi_emit_frag_out(bi_context *ctx, nir_intrinsic_instr *instr)
                 .src = {
                         pan_src_index(&instr->src[0]),
                         BIR_INDEX_REGISTER | 60 /* Can this be arbitrary? */,
+                        /* Blend descriptor */
+                        BIR_INDEX_PASS | BIFROST_SRC_CONST_LO,
+                        BIR_INDEX_PASS | BIFROST_SRC_CONST_HI,
                 },
                 .src_types = {
                         nir_intrinsic_type(instr),
