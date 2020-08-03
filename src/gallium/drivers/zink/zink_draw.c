@@ -397,10 +397,13 @@ zink_draw_vbo(struct pipe_context *pctx,
    if (ctx->rast_state->base.scissor)
       vkCmdSetScissor(batch->cmdbuf, 0, ctx->gfx_pipeline_state.num_viewports, ctx->scissors);
    else if (ctx->fb_state.width && ctx->fb_state.height) {
-      VkRect2D fb_scissor = {};
-      fb_scissor.extent.width = ctx->fb_state.width;
-      fb_scissor.extent.height = ctx->fb_state.height;
-      vkCmdSetScissor(batch->cmdbuf, 0, 1, &fb_scissor);
+      VkRect2D fb_scissor[ctx->gfx_pipeline_state.num_viewports];
+      for (unsigned i = 0; i < ctx->gfx_pipeline_state.num_viewports; i++) {
+         fb_scissor[i].offset.x = fb_scissor[i].offset.y = 0;
+         fb_scissor[i].extent.width = ctx->fb_state.width;
+         fb_scissor[i].extent.height = ctx->fb_state.height;
+      }
+      vkCmdSetScissor(batch->cmdbuf, 0, ctx->gfx_pipeline_state.num_viewports, fb_scissor);
    }
 
    if (line_width_needed(reduced_prim, rast_state->hw_state.polygon_mode)) {
