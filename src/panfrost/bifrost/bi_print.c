@@ -243,8 +243,9 @@ bi_cond_name(enum bi_cond cond)
 static void
 bi_print_texture(struct bi_texture *tex, FILE *fp)
 {
-        fprintf(fp, " - texture %u, sampler %u",
-                        tex->texture_index, tex->sampler_index);
+        fprintf(fp, " - texture %u, sampler %u%s",
+                        tex->texture_index, tex->sampler_index,
+                        tex->compute_lod ? ", compute lod" : "");
 }
 
 void

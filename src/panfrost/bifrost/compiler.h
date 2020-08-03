@@ -245,6 +245,10 @@ struct bi_texture {
         /* Constant indices. Indirect would need to be in src[..] like normal,
          * we can reserve some sentinels there for that for future. */
         unsigned texture_index, sampler_index;
+
+        /* Should the LOD be computed based on neighboring pixels? Only valid
+         * in fragment shaders. */
+        bool compute_lod;
 };
 
 typedef struct {

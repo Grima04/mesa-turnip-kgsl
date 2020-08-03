@@ -948,6 +948,7 @@ emit_tex_compact(bi_context *ctx, nir_tex_instr *instr)
                 .texture = {
                         .texture_index = instr->texture_index,
                         .sampler_index = instr->sampler_index,
+                        .compute_lod = instr->op == nir_texop_tex,
                 },
                 .dest = pan_dest_index(&instr->dest),
                 .dest_type = instr->dest_type,
