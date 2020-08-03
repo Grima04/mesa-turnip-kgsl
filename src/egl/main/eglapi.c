@@ -1221,7 +1221,7 @@ eglSurfaceAttrib(EGLDisplay dpy, EGLSurface surface,
    _EGL_FUNC_START(disp, EGL_OBJECT_SURFACE_KHR, surf, EGL_FALSE);
    _EGL_CHECK_SURFACE(disp, surf, EGL_FALSE, drv);
 
-   ret = _eglSurfaceAttrib(drv, disp, surf, attribute, value);
+   ret = _eglSurfaceAttrib(disp, surf, attribute, value);
 
    RETURN_EGL_EVAL(disp, ret);
 }

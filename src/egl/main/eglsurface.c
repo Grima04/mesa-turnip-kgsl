@@ -593,7 +593,7 @@ _eglQuerySurface(_EGLDisplay *disp, _EGLSurface *surface,
  * Default fallback routine - drivers might override this.
  */
 EGLBoolean
-_eglSurfaceAttrib(const _EGLDriver *drv, _EGLDisplay *disp, _EGLSurface *surface,
+_eglSurfaceAttrib(_EGLDisplay *disp, _EGLSurface *surface,
                   EGLint attribute, EGLint value)
 {
    EGLint confval;
