@@ -1792,12 +1792,6 @@ v3dv_descriptor_map_get_sampler_state(struct v3dv_descriptor_state *descriptor_s
                                       struct v3dv_pipeline_layout *pipeline_layout,
                                       uint32_t index);
 
-struct v3dv_image_view *
-v3dv_descriptor_map_get_image_view(struct v3dv_descriptor_state *descriptor_state,
-                                   struct v3dv_descriptor_map *map,
-                                   struct v3dv_pipeline_layout *pipeline_layout,
-                                   uint32_t index);
-
 struct v3dv_cl_reloc
 v3dv_descriptor_map_get_texture_shader_state(struct v3dv_descriptor_state *descriptor_state,
                                              struct v3dv_descriptor_map *map,

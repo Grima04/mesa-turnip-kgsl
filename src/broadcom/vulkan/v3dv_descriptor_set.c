@@ -322,30 +322,6 @@ v3dv_descriptor_map_get_texture_shader_state(struct v3dv_descriptor_state *descr
    return reloc;
 }
 
-struct v3dv_image_view *
-v3dv_descriptor_map_get_image_view(struct v3dv_descriptor_state *descriptor_state,
-                                   struct v3dv_descriptor_map *map,
-                                   struct v3dv_pipeline_layout *pipeline_layout,
-                                   uint32_t index)
-{
-   struct v3dv_descriptor *image_descriptor =
-      v3dv_descriptor_map_get_descriptor(descriptor_state,
-                                         map,
-                                         pipeline_layout,
-                                         index, NULL);
-
-   assert(image_descriptor);
-   assert(image_descriptor->type == VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE ||
-          image_descriptor->type == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER ||
-          image_descriptor->type == VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT ||
-          image_descriptor->type == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
-
-   assert(image_descriptor->image_view);
-   assert(image_descriptor->image_view->image);
-
-   return image_descriptor->image_view;
-}
-
 /*
  * As anv and tu already points:
  *
