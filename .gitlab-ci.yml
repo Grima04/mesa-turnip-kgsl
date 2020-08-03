@@ -642,6 +642,8 @@ meson-arm64-build-test:
     - .ci-deqp-artifacts
   variables:
     VULKAN_DRIVERS: "amd"
+    EXTRA_OPTION: >
+      -Dtools=panfrost
   script:
     - .gitlab-ci/meson-build.sh
 
