@@ -217,8 +217,8 @@ typedef struct PACKED {
 	uint8_t             count                    : 3;
 	uint8_t             yeild                    : 1;
 	uint16_t            serialize                : 12;
-	uint8_t             vc                       : 6;   /* vertex cache? */
-	uint8_t             bool_addr                : 8;
+	uint32_t            vc                       : 6;   /* vertex cache? */
+	uint32_t            bool_addr                : 8;
 	uint8_t             condition                : 1;
 	instr_addr_mode_t   address_mode             : 1;
 	instr_cf_opc_t      opc                      : 4;
@@ -240,7 +240,7 @@ typedef struct PACKED {
 	uint8_t             predicated_jmp           : 1;
 	uint32_t            reserved1                : 18;
 	uint8_t             direction                : 1;
-	uint8_t             bool_addr                : 8;
+	uint32_t            bool_addr                : 8;
 	uint8_t             condition                : 1;
 	instr_addr_mode_t   address_mode             : 1;
 	instr_cf_opc_t      opc                      : 4;
@@ -322,12 +322,12 @@ typedef enum a2xx_sq_surfaceformat instr_surf_fmt_t;
 typedef struct PACKED {
 	/* dword0: */
 	instr_fetch_opc_t   opc                      : 5;
-	uint8_t             src_reg                  : 6;
+	uint32_t            src_reg                  : 6;
 	uint8_t             src_reg_am               : 1;
-	uint8_t             dst_reg                  : 6;
+	uint32_t            dst_reg                  : 6;
 	uint8_t             dst_reg_am               : 1;
 	uint8_t             fetch_valid_only         : 1;
-	uint8_t             const_idx                : 5;
+	uint32_t            const_idx                : 5;
 	uint8_t             tx_coord_denorm          : 1;
 	uint8_t             src_swiz                 : 6;
 	/* dword1: */
@@ -345,10 +345,10 @@ typedef struct PACKED {
 	/* dword2: */
 	uint8_t             use_reg_gradients        : 1;
 	instr_sample_loc_t  sample_location          : 1;
-	uint8_t             lod_bias                 : 7;
+	uint32_t            lod_bias                 : 7;
 	uint8_t             unused                   : 7;
 	uint8_t             offset_x                 : 5;
-	uint8_t             offset_y                 : 5;
+	uint32_t            offset_y                 : 5;
 	uint8_t             offset_z                 : 5;
 	uint8_t             pred_condition           : 1;
 } instr_fetch_tex_t;
@@ -356,12 +356,12 @@ typedef struct PACKED {
 typedef struct PACKED {
 	/* dword0: */
 	instr_fetch_opc_t   opc                      : 5;
-	uint8_t             src_reg                  : 6;
+	uint32_t            src_reg                  : 6;
 	uint8_t             src_reg_am               : 1;
-	uint8_t             dst_reg                  : 6;
+	uint32_t            dst_reg                  : 6;
 	uint8_t             dst_reg_am               : 1;
 	uint8_t             must_be_one              : 1;
-	uint8_t             const_index              : 5;
+	uint32_t            const_index              : 5;
 	uint8_t             const_index_sel          : 2;
 	uint8_t             reserved0                : 3;
 	uint8_t             src_swiz                 : 2;
