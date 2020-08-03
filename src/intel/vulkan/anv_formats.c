@@ -24,6 +24,7 @@
 #include "anv_private.h"
 #include "drm-uapi/drm_fourcc.h"
 #include "vk_enum_to_str.h"
+#include "vk_format.h"
 #include "vk_format_info.h"
 #include "vk_util.h"
 
@@ -443,8 +444,29 @@ anv_get_format(VkFormat vk_format)
    return format;
 }
 
+/** Return true if any format plane has non-power-of-two bits-per-block. */
+static bool
+anv_format_has_npot_plane(const struct anv_format *anv_format) {
+   for (uint32_t i = 0; i < anv_format->n_planes; ++i) {
+      const struct isl_format_layout *isl_layout =
+         isl_format_get_layout(anv_format->planes[i].isl_format);
+
+      if (!util_is_power_of_two_or_zero(isl_layout->bpb))
+         return true;
+   }
+
+   return false;
+}
+
 /**
  * Exactly one bit must be set in \a aspect.
+ *
+ * If tiling is VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT, then return the
+ * requested anv_format_plane without checking for compatibility with modifiers.
+ * It is the caller's responsibility to verify that the the returned
+ * anv_format_plane is compatible with a particular modifier.  (Observe that
+ * this function has no parameter for the DRM format modifier, and therefore
+ * _cannot_ check for compatibility).
  */
 struct anv_format_plane
 anv_get_format_plane(const struct gen_device_info *devinfo, VkFormat vk_format,
@@ -463,6 +485,9 @@ anv_get_format_plane(const struct gen_device_info *devinfo, VkFormat vk_format,
    if (plane_format.isl_format == ISL_FORMAT_UNSUPPORTED)
       return unsupported;
 
+   if (tiling == VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT)
+      return plane_format;
+
    if (aspect & (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)) {
       assert(vk_format_aspects(vk_format) &
              (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT));
@@ -470,9 +495,6 @@ anv_get_format_plane(const struct gen_device_info *devinfo, VkFormat vk_format,
       /* There's no reason why we strictly can't support depth or stencil with
        * modifiers but there's also no reason why we should.
        */
-      if (tiling == VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT)
-         return unsupported;
-
       return plane_format;
    }
 
@@ -488,15 +510,6 @@ anv_get_format_plane(const struct gen_device_info *devinfo, VkFormat vk_format,
    if (devinfo->gen == 7 && !devinfo->is_haswell &&
        (isl_layout->bpb == 24 || isl_layout->bpb == 48))
       return unsupported;
-
-   if (tiling == VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT) {
-      /* No non-power-of-two fourcc formats exist */
-      if (!util_is_power_of_two_or_zero(isl_layout->bpb))
-         return unsupported;
-
-      if (isl_format_is_compressed(plane_format.isl_format))
-         return unsupported;
-   }
 
    if (tiling == VK_IMAGE_TILING_OPTIMAL &&
        !util_is_power_of_two_or_zero(isl_layout->bpb)) {
@@ -533,17 +546,22 @@ VkFormatFeatureFlags
 anv_get_image_format_features(const struct gen_device_info *devinfo,
                               VkFormat vk_format,
                               const struct anv_format *anv_format,
-                              VkImageTiling vk_tiling)
+                              VkImageTiling vk_tiling,
+                              const struct isl_drm_modifier_info *isl_mod_info)
 {
    VkFormatFeatureFlags flags = 0;
 
    if (anv_format == NULL)
       return 0;
 
+   assert((isl_mod_info != NULL) ==
+          (vk_tiling == VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT));
+
    const VkImageAspectFlags aspects = vk_format_aspects(vk_format);
 
    if (aspects & (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)) {
-      if (vk_tiling == VK_IMAGE_TILING_LINEAR)
+      if (vk_tiling == VK_IMAGE_TILING_LINEAR ||
+          vk_tiling == VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT)
          return 0;
 
       flags |= VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT |
@@ -575,8 +593,10 @@ anv_get_image_format_features(const struct gen_device_info *devinfo,
 
    enum isl_format base_isl_format = base_plane_format.isl_format;
 
-   /* ASTC textures must be in Y-tiled memory */
-   if (vk_tiling == VK_IMAGE_TILING_LINEAR &&
+   /* ASTC textures must be in Y-tiled memory, and we reject compressed formats
+    * with modifiers.
+    */
+   if (vk_tiling != VK_IMAGE_TILING_OPTIMAL &&
        isl_format_get_layout(plane_format.isl_format)->txc == ISL_TXC_ASTC)
       return 0;
 
@@ -683,6 +703,76 @@ anv_get_image_format_features(const struct gen_device_info *devinfo,
       flags &= ~disallowed_ycbcr_image_features;
    }
 
+   if (vk_tiling == VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT) {
+      if (!isl_drm_modifier_get_score(devinfo, isl_mod_info->modifier))
+         return 0;
+
+      /* Try to restrict the supported formats to those in drm_fourcc.h. The
+       * VK_EXT_image_drm_format_modifier does not require this (after all, two
+       * Vulkan apps could share an image by exchanging its VkFormat instead of
+       * a DRM_FORMAT), but there exist no users of such non-drm_fourcc formats
+       * yet. And the restriction shrinks our test surface.
+       */
+      const struct isl_format_layout *isl_layout =
+         isl_format_get_layout(plane_format.isl_format);
+
+      switch (isl_layout->colorspace) {
+      case ISL_COLORSPACE_LINEAR:
+      case ISL_COLORSPACE_SRGB:
+         /* Each DRM_FORMAT in in the rgb/srgb space uses unorm (if the DRM
+          * format name has no type suffix) or sfloat (if it has suffix F). No
+          * format contains mixed types. (as of 2020-10-16)
+          */
+         if (isl_layout->uniform_channel_type != ISL_UNORM &&
+             isl_layout->uniform_channel_type != ISL_SFLOAT)
+            return 0;
+         break;
+      case ISL_COLORSPACE_YUV:
+         anv_finishme("support YUV formats with DRM format modifiers");
+         return 0;
+      case ISL_COLORSPACE_NONE:
+         return 0;
+      }
+
+      /* We could support compressed formats if we wanted to. */
+      if (isl_format_is_compressed(plane_format.isl_format))
+         return 0;
+
+      /* No non-power-of-two fourcc formats exist.
+       *
+       * Even if non-power-of-two fourcc formats existed, we could support them
+       * only with DRM_FORMAT_MOD_LINEAR.  Tiled formats must be power-of-two
+       * because we implement transfers with the render pipeline.
+       */
+      if (anv_format_has_npot_plane(anv_format))
+         return 0;
+
+      if (anv_format->n_planes > 1) {
+         anv_finishme("support multi-planar formats with DRM format modifiers");
+         return 0;
+      }
+
+      if (isl_mod_info->aux_usage == ISL_AUX_USAGE_CCS_E &&
+          !isl_format_supports_ccs_e(devinfo, plane_format.isl_format)) {
+         return 0;
+      }
+
+      if (isl_mod_info->aux_usage != ISL_AUX_USAGE_NONE) {
+         /* Rejection DISJOINT for consistency with the GL driver. In
+          * eglCreateImage, we require that the dma_buf for the primary surface
+          * and the dma_buf for its aux surface refer to the same bo.
+          */
+         flags &= ~VK_FORMAT_FEATURE_DISJOINT_BIT;
+
+         /* When the hardware accesses a storage image, it bypasses the aux
+          * surface. We could support storage access on images with aux
+          * modifiers by resolving the aux surface prior to the storage access.
+          */
+         flags &= ~VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT;
+         flags &= ~VK_FORMAT_FEATURE_STORAGE_IMAGE_ATOMIC_BIT;
+      }
+   }
+
    return flags;
 }
 
@@ -784,10 +874,10 @@ void anv_GetPhysicalDeviceFormatProperties(
    *pFormatProperties = (VkFormatProperties) {
       .linearTilingFeatures =
          anv_get_image_format_features(devinfo, vk_format, anv_format,
-                                       VK_IMAGE_TILING_LINEAR),
+                                       VK_IMAGE_TILING_LINEAR, NULL),
       .optimalTilingFeatures =
          anv_get_image_format_features(devinfo, vk_format, anv_format,
-                                       VK_IMAGE_TILING_OPTIMAL),
+                                       VK_IMAGE_TILING_OPTIMAL, NULL),
       .bufferFeatures =
          get_buffer_format_features(devinfo, vk_format, anv_format),
    };
@@ -830,13 +920,24 @@ anv_get_image_format_properties(
    VkSampleCountFlags sampleCounts = VK_SAMPLE_COUNT_1_BIT;
    const struct gen_device_info *devinfo = &physical_device->info;
    const struct anv_format *format = anv_get_format(info->format);
+   const struct isl_drm_modifier_info *isl_mod_info = NULL;
 
    if (format == NULL)
       goto unsupported;
 
+   if (info->tiling == VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT) {
+      const VkPhysicalDeviceImageDrmFormatModifierInfoEXT *vk_mod_info =
+         vk_find_struct_const(info->pNext, PHYSICAL_DEVICE_IMAGE_DRM_FORMAT_MODIFIER_INFO_EXT);
+
+      isl_mod_info = isl_drm_modifier_get_info(vk_mod_info->drmFormatModifier);
+      if (isl_mod_info == NULL)
+         goto unsupported;
+   }
+
    assert(format->vk_format == info->format);
    format_feature_flags = anv_get_image_format_features(devinfo, info->format,
-                                                        format, info->tiling);
+                                                        format, info->tiling,
+                                                        isl_mod_info);
 
    switch (info->type) {
    default:
@@ -945,6 +1046,15 @@ anv_get_image_format_properties(
           !(info->flags & VK_IMAGE_CREATE_ALIAS_BIT)) {
           goto unsupported;
       }
+
+      if (info->tiling == VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT &&
+          isl_mod_info->aux_usage != ISL_AUX_USAGE_NONE) {
+         /* Rejection DISJOINT for consistency with the GL driver. In
+          * eglCreateImage, we require that the dma_buf for the primary surface
+          * and the dma_buf for its aux surface refer to the same bo.
+          */
+         goto unsupported;
+      }
    }
 
    if (info->usage & VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT) {
@@ -958,10 +1068,6 @@ anv_get_image_format_properties(
    }
 
    if (info->tiling == VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT) {
-      const VkPhysicalDeviceImageDrmFormatModifierInfoEXT *modifier_info =
-         vk_find_struct_const(info->pNext,
-                              PHYSICAL_DEVICE_IMAGE_DRM_FORMAT_MODIFIER_INFO_EXT);
-
       /* Modifiers are only supported on simple 2D images */
       if (info->type != VK_IMAGE_TYPE_2D)
          goto unsupported;
@@ -974,8 +1080,6 @@ anv_get_image_format_properties(
       if (format->n_planes > 1)
          goto unsupported;
 
-      const struct isl_drm_modifier_info *isl_mod_info =
-         isl_drm_modifier_get_info(modifier_info->drmFormatModifier);
       if (isl_mod_info->aux_usage == ISL_AUX_USAGE_CCS_E) {
          /* If we have a CCS modifier, ensure that the format supports CCS
           * and, if VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT is set, all of the
