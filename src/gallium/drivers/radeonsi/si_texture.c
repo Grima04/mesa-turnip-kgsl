@@ -580,11 +580,16 @@ static void si_set_tex_bo_metadata(struct si_screen *sscreen, struct si_texture 
    sscreen->ws->buffer_set_metadata(tex->buffer.buf, &md, &tex->surface);
 }
 
-static bool si_has_displayable_dcc(struct si_texture *tex)
+static bool si_displayable_dcc_needs_explicit_flush(struct si_texture *tex)
 {
    struct si_screen *sscreen = (struct si_screen *)tex->buffer.b.b.screen;
 
    if (sscreen->info.chip_class <= GFX8)
+      return false;
+
+   /* With modifiers and > 1 planes any applications will know that they
+    * cannot do frontbuffer rendering with the texture. */
+   if (ac_surface_get_nplanes(&tex->surface) > 1)
       return false;
 
    return tex->surface.is_displayable && tex->surface.dcc_offset;
@@ -719,7 +724,8 @@ static bool si_texture_get_handle(struct pipe_screen *screen, struct pipe_contex
        */
       if ((usage & PIPE_HANDLE_USAGE_SHADER_WRITE && tex->surface.dcc_offset) ||
           /* Displayable DCC requires an explicit flush. */
-          (!(usage & PIPE_HANDLE_USAGE_EXPLICIT_FLUSH) && si_has_displayable_dcc(tex))) {
+          (!(usage & PIPE_HANDLE_USAGE_EXPLICIT_FLUSH) &&
+           si_displayable_dcc_needs_explicit_flush(tex))) {
          if (si_texture_disable_dcc(sctx, tex)) {
             update_metadata = true;
             /* si_texture_disable_dcc flushes the context */
@@ -1607,7 +1613,7 @@ static struct pipe_resource *si_texture_from_winsys_buffer(struct si_screen *ssc
 
    /* Displayable DCC requires an explicit flush. */
    if (dedicated && offset == 0 && !(usage & PIPE_HANDLE_USAGE_EXPLICIT_FLUSH) &&
-       si_has_displayable_dcc(tex)) {
+       si_displayable_dcc_needs_explicit_flush(tex)) {
       /* TODO: do we need to decompress DCC? */
       if (si_texture_discard_dcc(sscreen, tex)) {
          /* Update BO metadata after disabling DCC. */
