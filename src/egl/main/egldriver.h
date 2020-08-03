@@ -195,10 +195,6 @@ struct _egl_driver
 };
 
 
-extern bool
-_eglInitializeDisplay(_EGLDisplay *disp);
-
-
 #ifdef __cplusplus
 }
 #endif

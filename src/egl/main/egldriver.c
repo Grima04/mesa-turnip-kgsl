@@ -33,50 +33,9 @@
  */
 
 
-#include <assert.h>
-#include <string.h>
-#include <stdio.h>
 #include <stdlib.h>
-#include "c11/threads.h"
 
 #include "egldefines.h"
 #include "egldisplay.h"
 #include "egldriver.h"
-#include "egllog.h"
 
-#include "util/debug.h"
-
-extern const _EGLDriver _eglDriver;
-
-/**
- * Initialize the display using the driver's function.
- * If the initialisation fails, try again using only software rendering.
- */
-bool
-_eglInitializeDisplay(_EGLDisplay *disp)
-{
-   assert(!disp->Initialized);
-
-   /* set options */
-   disp->Options.ForceSoftware =
-      env_var_as_boolean("LIBGL_ALWAYS_SOFTWARE", false);
-   if (disp->Options.ForceSoftware)
-      _eglLog(_EGL_DEBUG, "Found 'LIBGL_ALWAYS_SOFTWARE' set, will use a CPU renderer");
-
-   if (_eglDriver.Initialize(disp)) {
-      disp->Driver = &_eglDriver;
-      disp->Initialized = EGL_TRUE;
-      return true;
-   }
-
-   if (disp->Options.ForceSoftware)
-      return false;
-
-   disp->Options.ForceSoftware = EGL_TRUE;
-   if (!_eglDriver.Initialize(disp))
-      return false;
-
-   disp->Driver = &_eglDriver;
-   disp->Initialized = EGL_TRUE;
-   return true;
-}

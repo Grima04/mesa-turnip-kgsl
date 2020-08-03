@@ -89,11 +89,13 @@
 #define PUBLIC
 #endif
 
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include "c99_compat.h"
 #include "c11/threads.h"
+#include "util/debug.h"
 #include "util/macros.h"
 
 #include "egldefines.h"
@@ -108,6 +110,7 @@
 #include "eglconfig.h"
 #include "eglimage.h"
 #include "eglsync.h"
+#include "egllog.h"
 
 #include "GL/mesa_glinterop.h"
 
@@ -613,8 +616,28 @@ eglInitialize(EGLDisplay dpy, EGLint *major, EGLint *minor)
       RETURN_EGL_ERROR(NULL, EGL_BAD_DISPLAY, EGL_FALSE);
 
    if (!disp->Initialized) {
-      if (!_eglInitializeDisplay(disp))
-         RETURN_EGL_ERROR(disp, EGL_NOT_INITIALIZED, EGL_FALSE);
+      /* set options */
+      disp->Options.ForceSoftware =
+         env_var_as_boolean("LIBGL_ALWAYS_SOFTWARE", false);
+      if (disp->Options.ForceSoftware)
+         _eglLog(_EGL_DEBUG, "Found 'LIBGL_ALWAYS_SOFTWARE' set, will use a CPU renderer");
+
+      /**
+       * Initialize the display using the driver's function.
+       * If the initialisation fails, try again using only software rendering.
+       */
+      if (!_eglDriver.Initialize(disp)) {
+         if (disp->Options.ForceSoftware)
+            RETURN_EGL_ERROR(disp, EGL_NOT_INITIALIZED, EGL_FALSE);
+         else {
+            disp->Options.ForceSoftware = EGL_TRUE;
+            if (!_eglDriver.Initialize(disp))
+               RETURN_EGL_ERROR(disp, EGL_NOT_INITIALIZED, EGL_FALSE);
+         }
+      }
+
+      disp->Initialized = EGL_TRUE;
+      disp->Driver = &_eglDriver;
 
       /* limit to APIs supported by core */
       disp->ClientAPIs &= _EGL_API_ALL_BITS;
