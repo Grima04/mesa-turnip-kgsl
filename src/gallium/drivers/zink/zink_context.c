@@ -348,7 +348,9 @@ zink_set_viewport_states(struct pipe_context *pctx,
       ctx->viewport_states[start_slot + i] = state[i];
       ctx->viewports[start_slot + i] = viewport;
    }
-   ctx->num_viewports = start_slot + num_viewports;
+   if (ctx->gfx_pipeline_state.num_viewports != start_slot + num_viewports)
+      ctx->gfx_pipeline_state.hash = 0;
+   ctx->gfx_pipeline_state.num_viewports = start_slot + num_viewports;
 }
 
 static void

@@ -393,9 +393,9 @@ zink_draw_vbo(struct pipe_context *pctx,
       }
    }
 
-   vkCmdSetViewport(batch->cmdbuf, 0, ctx->num_viewports, ctx->viewports);
+   vkCmdSetViewport(batch->cmdbuf, 0, ctx->gfx_pipeline_state.num_viewports, ctx->viewports);
    if (ctx->rast_state->base.scissor)
-      vkCmdSetScissor(batch->cmdbuf, 0, ctx->num_viewports, ctx->scissors);
+      vkCmdSetScissor(batch->cmdbuf, 0, ctx->gfx_pipeline_state.num_viewports, ctx->scissors);
    else if (ctx->fb_state.width && ctx->fb_state.height) {
       VkRect2D fb_scissor = {};
       fb_scissor.extent.width = ctx->fb_state.width;

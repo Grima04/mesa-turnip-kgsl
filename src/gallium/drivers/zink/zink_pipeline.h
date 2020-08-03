@@ -54,6 +54,8 @@ struct zink_gfx_pipeline_state {
    VkSampleMask sample_mask;
    uint8_t rast_samples;
 
+   unsigned num_viewports;
+
    bool primitive_restart;
 
    /* Pre-hashed value for table lookup, invalid when zero.

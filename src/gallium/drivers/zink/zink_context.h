@@ -107,8 +107,6 @@ struct zink_context {
    struct pipe_scissor_state scissor_states[PIPE_MAX_VIEWPORTS];
    VkViewport viewports[PIPE_MAX_VIEWPORTS];
    VkRect2D scissors[PIPE_MAX_VIEWPORTS];
-   unsigned num_viewports;
-
    struct pipe_vertex_buffer buffers[PIPE_MAX_ATTRIBS];
    uint32_t buffers_enabled_mask;
 
