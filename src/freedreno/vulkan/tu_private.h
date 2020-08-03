@@ -922,6 +922,7 @@ struct tu_cmd_state
    struct tu_cs_entry tile_store_ib;
 
    bool xfb_used;
+   bool has_tess;
 };
 
 struct tu_cmd_pool
@@ -1006,8 +1007,6 @@ struct tu_cmd_buffer
    struct tu_cs draw_cs;
    struct tu_cs draw_epilogue_cs;
    struct tu_cs sub_cs;
-
-   bool has_tess;
 
    uint32_t vsc_draw_strm_pitch;
    uint32_t vsc_prim_strm_pitch;

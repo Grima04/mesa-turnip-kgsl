@@ -595,7 +595,7 @@ use_sysmem_rendering(struct tu_cmd_buffer *cmd)
        cmd->state.render_area.extent.height == 0)
       return true;
 
-   if (cmd->has_tess)
+   if (cmd->state.has_tess)
       return true;
 
    return false;
@@ -2529,8 +2529,8 @@ tu_CmdExecuteCommands(VkCommandBuffer commandBuffer,
             break;
          }
 
-         if (secondary->has_tess)
-            cmd->has_tess = true;
+         if (secondary->state.has_tess)
+            cmd->state.has_tess = true;
       } else {
          assert(tu_cs_is_empty(&secondary->draw_cs));
          assert(tu_cs_is_empty(&secondary->draw_epilogue_cs));
@@ -3037,7 +3037,7 @@ tu6_draw_common(struct tu_cmd_buffer *cmd,
    if (has_tess) {
       uint64_t tess_factor_iova = 0;
 
-      cmd->has_tess = true;
+      cmd->state.has_tess = true;
       result = tu6_emit_tess_consts(cmd, draw_count, pipeline, &tess_consts, &tess_factor_iova);
       if (result != VK_SUCCESS)
          return result;
@@ -3670,6 +3670,7 @@ tu_CmdEndRenderPass(VkCommandBuffer commandBuffer)
    cmd_buffer->state.pass = NULL;
    cmd_buffer->state.subpass = NULL;
    cmd_buffer->state.framebuffer = NULL;
+   cmd_buffer->state.has_tess = false;
 }
 
 void
