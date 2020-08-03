@@ -163,6 +163,9 @@
    _EGL_CHECK_OBJECT(disp, Sync, s, ret)
 
 
+extern const _EGLDriver _eglDriver;
+
+
 struct _egl_entrypoint {
    const char *name;
    _EGLProc function;
@@ -2703,8 +2706,8 @@ eglGetProcAddress(const char *procname)
          ret = entrypoint->function;
    }
 
-   if (!ret)
-      ret = _eglGetDriverProc(procname);
+   if (!ret && _eglDriver.GetProcAddress)
+      ret = _eglDriver.GetProcAddress(procname);
 
    RETURN_EGL_SUCCESS(NULL, ret);
 }

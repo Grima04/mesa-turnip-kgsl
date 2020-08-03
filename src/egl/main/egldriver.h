@@ -199,10 +199,6 @@ extern bool
 _eglInitializeDisplay(_EGLDisplay *disp);
 
 
-extern __eglMustCastToProperFunctionPointerType
-_eglGetDriverProc(const char *procname);
-
-
 #ifdef __cplusplus
 }
 #endif

@@ -80,12 +80,3 @@ _eglInitializeDisplay(_EGLDisplay *disp)
    disp->Initialized = EGL_TRUE;
    return true;
 }
-
-__eglMustCastToProperFunctionPointerType
-_eglGetDriverProc(const char *procname)
-{
-   if (_eglDriver.GetProcAddress)
-      return _eglDriver.GetProcAddress(procname);
-
-   return NULL;
-}
