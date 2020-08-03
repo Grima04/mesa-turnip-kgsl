@@ -2764,8 +2764,7 @@ eglGetProcAddress(const char *procname)
 
 static int
 _eglLockDisplayInterop(EGLDisplay dpy, EGLContext context,
-                       _EGLDisplay **disp, const _EGLDriver **drv,
-                       _EGLContext **ctx)
+                       _EGLDisplay **disp, _EGLContext **ctx)
 {
 
    *disp = _eglLockDisplay(dpy);
@@ -2774,8 +2773,6 @@ _eglLockDisplayInterop(EGLDisplay dpy, EGLContext context,
          _eglUnlockDisplay(*disp);
       return MESA_GLINTEROP_INVALID_DISPLAY;
    }
-
-   *drv = (*disp)->Driver;
 
    *ctx = _eglLookupContext(context, *disp);
    if (!*ctx ||
@@ -2793,11 +2790,10 @@ MesaGLInteropEGLQueryDeviceInfo(EGLDisplay dpy, EGLContext context,
                                 struct mesa_glinterop_device_info *out)
 {
    _EGLDisplay *disp;
-   const _EGLDriver *drv;
    _EGLContext *ctx;
    int ret;
 
-   ret = _eglLockDisplayInterop(dpy, context, &disp, &drv, &ctx);
+   ret = _eglLockDisplayInterop(dpy, context, &disp, &ctx);
    if (ret != MESA_GLINTEROP_SUCCESS)
       return ret;
 
@@ -2816,11 +2812,10 @@ MesaGLInteropEGLExportObject(EGLDisplay dpy, EGLContext context,
                              struct mesa_glinterop_export_out *out)
 {
    _EGLDisplay *disp;
-   const _EGLDriver *drv;
    _EGLContext *ctx;
    int ret;
 
-   ret = _eglLockDisplayInterop(dpy, context, &disp, &drv, &ctx);
+   ret = _eglLockDisplayInterop(dpy, context, &disp, &ctx);
    if (ret != MESA_GLINTEROP_SUCCESS)
       return ret;
 
