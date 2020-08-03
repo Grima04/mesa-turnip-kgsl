@@ -2444,6 +2444,13 @@ ntq_emit_intrinsic(struct v3d_compile *c, nir_intrinsic_instr *instr)
                 ntq_store_dest(c, &instr->dest, 0, vir_SAMPID(c));
                 break;
 
+        case nir_intrinsic_load_sample_pos:
+                ntq_store_dest(c, &instr->dest, 0,
+                               vir_FSUB(c, vir_FXCD(c), vir_ITOF(c, vir_XCD(c))));
+                ntq_store_dest(c, &instr->dest, 1,
+                               vir_FSUB(c, vir_FYCD(c), vir_ITOF(c, vir_YCD(c))));
+                break;
+
         default:
                 fprintf(stderr, "Unknown intrinsic: ");
                 nir_print_instr(&instr->instr, stderr);
