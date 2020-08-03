@@ -60,6 +60,7 @@ def EXTENSIONS():
         Extension("VK_EXT_robustness2",              alias="rb2", properties=True, feature="nullDescriptor"),
         Extension("VK_EXT_vertex_attribute_divisor", alias="vdiv", properties=True, feature="vertexAttributeInstanceRateDivisor"),
         Extension("VK_EXT_calibrated_timestamps"),
+        Extension("VK_EXT_custom_border_color",      alias="border_color", properties=True, feature="customBorderColors"),
     ]
 
 # There exists some inconsistencies regarding the enum constants, fix them.
