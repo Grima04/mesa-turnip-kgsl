@@ -898,7 +898,7 @@ eglQueryContext(EGLDisplay dpy, EGLContext ctx,
 
    _EGL_CHECK_CONTEXT(disp, context, EGL_FALSE, drv);
 
-   ret = _eglQueryContext(drv, disp, context, attribute, value);
+   ret = _eglQueryContext(context, attribute, value);
 
    RETURN_EGL_EVAL(disp, ret);
 }
