@@ -2093,7 +2093,7 @@ _eglGetSyncAttribCommon(_EGLDisplay *disp, _EGLSync *s, EGLint attribute, EGLAtt
           disp->Extensions.KHR_fence_sync ||
           disp->Extensions.ANDROID_native_fence_sync);
 
-   ret = _eglGetSyncAttrib(drv, disp, s, attribute, value);
+   ret = _eglGetSyncAttrib(disp, s, attribute, value);
 
    RETURN_EGL_EVAL(disp, ret);
 }
