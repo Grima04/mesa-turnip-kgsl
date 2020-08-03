@@ -110,6 +110,10 @@ zink_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
       return screen->vk_CmdDrawIndirectCount &&
              screen->vk_CmdDrawIndexedIndirectCount;
 
+   case PIPE_CAP_START_INSTANCE:
+      return screen->loader_version >= VK_MAKE_VERSION(1,1,0) &&
+             screen->info.feats11.shaderDrawParameters;
+
    case PIPE_CAP_VERTEX_ELEMENT_INSTANCE_DIVISOR:
       return screen->info.have_EXT_vertex_attribute_divisor;
 
