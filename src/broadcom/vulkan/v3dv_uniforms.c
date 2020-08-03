@@ -227,26 +227,10 @@ write_ubo_ssbo_uniforms(struct v3dv_cmd_buffer *cmd_buffer,
 }
 
 static uint32_t
-get_texture_size(struct v3dv_cmd_buffer *cmd_buffer,
-                 struct v3dv_pipeline *pipeline,
-                 enum quniform_contents contents,
-                 uint32_t data)
+get_texture_size_from_image_view(struct v3dv_image_view *image_view,
+                                 enum quniform_contents contents,
+                                 uint32_t data)
 {
-   int unit = v3d_unit_data_get_unit(data);
-   uint32_t texture_idx;
-   struct v3dv_descriptor_state *descriptor_state =
-      &cmd_buffer->state.descriptor_state[v3dv_pipeline_get_binding_point(pipeline)];
-
-   v3dv_pipeline_combined_index_key_unpack(pipeline->combined_index_to_key_map[unit],
-                                           &texture_idx,
-                                           NULL);
-
-   struct v3dv_image_view *image_view =
-      v3dv_descriptor_map_get_image_view(descriptor_state, &pipeline->texture_map,
-                                         pipeline->layout, texture_idx);
-
-   assert(image_view);
-
    switch(contents) {
    case QUNIFORM_IMAGE_WIDTH:
    case QUNIFORM_TEXTURE_WIDTH:
@@ -272,6 +256,61 @@ get_texture_size(struct v3dv_cmd_buffer *cmd_buffer,
       return image_view->max_level - image_view->base_level + 1;
    default:
       unreachable("Bad texture size field");
+   }
+}
+
+
+static uint32_t
+get_texture_size_from_buffer_view(struct v3dv_buffer_view *buffer_view,
+                                  enum quniform_contents contents,
+                                  uint32_t data)
+{
+   switch(contents) {
+   case QUNIFORM_IMAGE_WIDTH:
+   case QUNIFORM_TEXTURE_WIDTH:
+      return buffer_view->num_elements;
+   /* Only size can be queried for texel buffers  */
+   default:
+      unreachable("Bad texture size field for texel buffers");
+   }
+}
+
+static uint32_t
+get_texture_size(struct v3dv_cmd_buffer *cmd_buffer,
+                 struct v3dv_pipeline *pipeline,
+                 enum quniform_contents contents,
+                 uint32_t data)
+{
+   int unit = v3d_unit_data_get_unit(data);
+   uint32_t texture_idx;
+   struct v3dv_descriptor_state *descriptor_state =
+      &cmd_buffer->state.descriptor_state[v3dv_pipeline_get_binding_point(pipeline)];
+
+   v3dv_pipeline_combined_index_key_unpack(pipeline->combined_index_to_key_map[unit],
+                                           &texture_idx,
+                                           NULL);
+
+   struct v3dv_descriptor *descriptor =
+      v3dv_descriptor_map_get_descriptor(descriptor_state,
+                                         &pipeline->texture_map,
+                                         pipeline->layout,
+                                         texture_idx, NULL);
+
+   assert(descriptor);
+
+   switch (descriptor->type) {
+   case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
+   case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
+   case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
+   case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
+      return get_texture_size_from_image_view(descriptor->image_view,
+                                              contents, data);
+   case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
+   case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
+      return get_texture_size_from_buffer_view(descriptor->buffer_view,
+                                               contents, data);
+   default:
+      unreachable("Wrong descriptor for getting texture size");
    }
 }
 
