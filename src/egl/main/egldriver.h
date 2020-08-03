@@ -55,14 +55,13 @@ extern "C" {
 
 
 /**
- * Define the driver typecast functions for _EGLDriver, _EGLDisplay,
+ * Define the driver typecast functions for _EGLDisplay,
  * _EGLContext, _EGLSurface, and _EGLConfig.
  *
  * Note that this macro defines several functions and should not be ended with
  * a semicolon when used.
  */
 #define _EGL_DRIVER_STANDARD_TYPECASTS(drvname)                            \
-   _EGL_DRIVER_TYPECAST(drvname ## _driver, _EGLDriver, obj)               \
    /* note that this is not a direct cast */                               \
    _EGL_DRIVER_TYPECAST(drvname ## _display, _EGLDisplay, obj->DriverData) \
    _EGL_DRIVER_TYPECAST(drvname ## _context, _EGLContext, obj)             \
