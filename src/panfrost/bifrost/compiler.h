@@ -145,8 +145,9 @@ struct bi_load_vary {
 
 struct bi_block;
 
+/* Sync with gen-pack.py */
 enum bi_cond {
-        BI_COND_ALWAYS,
+        BI_COND_ALWAYS = 0,
         BI_COND_LT,
         BI_COND_LE,
         BI_COND_GE,

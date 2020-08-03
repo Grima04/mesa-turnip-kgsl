@@ -187,10 +187,8 @@ bi_load_with_r61(enum bi_class T, nir_intrinsic_instr *instr)
         bi_instruction ld = bi_load(T, instr);
         ld.src[1] = BIR_INDEX_REGISTER | 61; /* TODO: RA */
         ld.src[2] = BIR_INDEX_REGISTER | 62;
-        ld.src[3] = 0;
         ld.src_types[1] = nir_type_uint32;
         ld.src_types[2] = nir_type_uint32;
-        ld.src_types[3] = nir_intrinsic_type(instr);
         ld.format = nir_intrinsic_type(instr);
         return ld;
 }
@@ -340,7 +338,10 @@ bi_emit_ld_frag_coord(bi_context *ctx, nir_intrinsic_instr *instr)
                         .dest_type = nir_type_float32,
                         .format = nir_type_float32,
                         .dest = bi_make_temp(ctx),
-                        .src = { BIR_INDEX_CONSTANT, BIR_INDEX_ZERO },
+                        .src = {
+                                BIR_INDEX_CONSTANT,
+                                BIR_INDEX_PASS | BIFROST_SRC_CONST_LO
+                        },
                         .src_types = { nir_type_uint32, nir_type_uint32 },
                         .constant = {
                                 .u32 = (i == 0) ? BIFROST_FRAGZ : BIFROST_FRAGW
