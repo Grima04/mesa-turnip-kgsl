@@ -307,6 +307,8 @@ tu6_get_native_format(VkFormat format)
       TU6_xTx(B8G8R8G8_422_UNORM,         G8R8B8R8_422_UNORM,        WZYX)
       TU6_xTx(G8_B8_R8_3PLANE_420_UNORM,  R8_G8_B8_3PLANE_420_UNORM, WZYX)
       TU6_xTx(G8_B8R8_2PLANE_420_UNORM,   R8_G8B8_2PLANE_420_UNORM,  WZYX)
+      TU6_xTC(A4R4G4B4_UNORM_PACK16_EXT,  4_4_4_4_UNORM,             WXYZ)
+      TU6_xTC(A4B4G4R4_UNORM_PACK16_EXT,  4_4_4_4_UNORM,             WZYX)
       default:
          break;
       }
