@@ -152,13 +152,22 @@ compare_op(enum pipe_compare_func op)
    unreachable("unexpected compare");
 }
 
+static inline bool
+wrap_needs_border_color(unsigned wrap)
+{
+   return wrap == PIPE_TEX_WRAP_CLAMP || wrap == PIPE_TEX_WRAP_CLAMP_TO_BORDER ||
+          wrap == PIPE_TEX_WRAP_MIRROR_CLAMP || wrap == PIPE_TEX_WRAP_MIRROR_CLAMP_TO_BORDER;
+}
+
 static void *
 zink_create_sampler_state(struct pipe_context *pctx,
                           const struct pipe_sampler_state *state)
 {
    struct zink_screen *screen = zink_screen(pctx->screen);
+   bool need_custom = false;
 
    VkSamplerCreateInfo sci = {};
+   VkSamplerCustomBorderColorCreateInfoEXT cbci = {};
    sci.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
    sci.magFilter = zink_filter(state->mag_img_filter);
    sci.minFilter = zink_filter(state->min_img_filter);
@@ -178,6 +187,10 @@ zink_create_sampler_state(struct pipe_context *pctx,
    sci.addressModeW = sampler_address_mode(state->wrap_r);
    sci.mipLodBias = state->lod_bias;
 
+   need_custom |= wrap_needs_border_color(state->wrap_s);
+   need_custom |= wrap_needs_border_color(state->wrap_t);
+   need_custom |= wrap_needs_border_color(state->wrap_r);
+
    if (state->compare_mode == PIPE_TEX_COMPARE_NONE)
       sci.compareOp = VK_COMPARE_OP_NEVER;
    else {
@@ -185,7 +198,16 @@ zink_create_sampler_state(struct pipe_context *pctx,
       sci.compareEnable = VK_TRUE;
    }
 
-   sci.borderColor = VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK; // TODO
+   if (screen->info.have_EXT_custom_border_color &&
+       screen->info.border_color_feats.customBorderColorWithoutFormat && need_custom) {
+      cbci.sType = VK_STRUCTURE_TYPE_SAMPLER_CUSTOM_BORDER_COLOR_CREATE_INFO_EXT;
+      cbci.format = VK_FORMAT_UNDEFINED;
+      /* these are identical unions */
+      memcpy(&cbci.customBorderColor, &state->border_color, sizeof(union pipe_color_union));
+      sci.pNext = &cbci;
+      sci.borderColor = VK_BORDER_COLOR_INT_CUSTOM_EXT;
+   } else
+      sci.borderColor = VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK; // TODO with custom shader if we're super interested?
    sci.unnormalizedCoordinates = !state->normalized_coords;
 
    if (state->max_anisotropy > 1) {
