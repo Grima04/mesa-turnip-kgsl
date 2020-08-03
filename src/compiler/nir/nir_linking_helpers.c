@@ -1001,6 +1001,71 @@ replace_duplicate_input(nir_shader *shader, nir_variable *input_var,
    return progress;
 }
 
+/* The GLSL ES 3.20 spec says:
+ *
+ * "The precision of a vertex output does not need to match the precision of
+ * the corresponding fragment input. The minimum precision at which vertex
+ * outputs are interpolated is the minimum of the vertex output precision and
+ * the fragment input precision, with the exception that for highp,
+ * implementations do not have to support full IEEE 754 precision." (9.1 "Input
+ * Output Matching by Name in Linked Programs")
+ *
+ * To implement this, when linking shaders we will take the minimum precision
+ * qualifier (allowing drivers to interpolate at lower precision). For
+ * input/output between non-fragment stages (e.g. VERTEX to GEOMETRY), the spec
+ * requires we use the *last* specified precision if there is a conflict.
+ *
+ * Precisions are ordered as (NONE, HIGH, MEDIUM, LOW). If either precision is
+ * NONE, we'll return the other precision, since there is no conflict.
+ * Otherwise for fragment interpolation, we'll pick the smallest of (HIGH,
+ * MEDIUM, LOW) by picking the maximum of the raw values - note the ordering is
+ * "backwards". For non-fragment stages, we'll pick the latter precision to
+ * comply with the spec. (Note that the order matters.)
+ *
+ * For streamout, "Variables declared with lowp or mediump precision are
+ * promoted to highp before being written." (12.2 "Transform Feedback", p. 341
+ * of OpenGL ES 3.2 specification). So drivers should promote them
+ * the transform feedback memory store, but not the output store.
+ */
+
+static unsigned
+nir_link_precision(unsigned producer, unsigned consumer, bool fs)
+{
+   if (producer == GLSL_PRECISION_NONE)
+      return consumer;
+   else if (consumer == GLSL_PRECISION_NONE)
+      return producer;
+   else
+      return fs ? MAX2(producer, consumer) : consumer;
+}
+
+void
+nir_link_varying_precision(nir_shader *producer, nir_shader *consumer)
+{
+   bool frag = consumer->info.stage == MESA_SHADER_FRAGMENT;
+
+   nir_foreach_shader_out_variable(producer_var, producer) {
+      /* Skip if the slot is not assigned */
+      if (producer_var->data.location < 0)
+         continue;
+
+      nir_variable *consumer_var = nir_find_variable_with_location(consumer,
+            nir_var_shader_in, producer_var->data.location);
+
+      /* Skip if the variable will be eliminated */
+      if (!consumer_var)
+         continue;
+
+      /* Now we have a pair of variables. Let's pick the smaller precision. */
+      unsigned precision_1 = producer_var->data.precision;
+      unsigned precision_2 = consumer_var->data.precision;
+      unsigned minimum = nir_link_precision(precision_1, precision_2, frag);
+
+      /* Propagate the new precision */
+      producer_var->data.precision = consumer_var->data.precision = minimum;
+   }
+}
+
 bool
 nir_link_opt_varyings(nir_shader *producer, nir_shader *consumer)
 {

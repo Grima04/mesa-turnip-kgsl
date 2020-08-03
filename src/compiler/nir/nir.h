@@ -4355,6 +4355,7 @@ void nir_compact_varyings(nir_shader *producer, nir_shader *consumer,
                           bool default_to_smooth_interp);
 void nir_link_xfb_varyings(nir_shader *producer, nir_shader *consumer);
 bool nir_link_opt_varyings(nir_shader *producer, nir_shader *consumer);
+void nir_link_varying_precision(nir_shader *producer, nir_shader *consumer);
 
 bool nir_lower_amul(nir_shader *shader,
                     int (*type_size)(const struct glsl_type *, bool));

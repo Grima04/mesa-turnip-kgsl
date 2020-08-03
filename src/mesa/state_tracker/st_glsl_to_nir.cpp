@@ -634,6 +634,8 @@ st_nir_link_shaders(nir_shader *producer, nir_shader *consumer)
       NIR_PASS_V(consumer, nir_remove_dead_variables, nir_var_shader_in,
                  NULL);
    }
+
+   nir_link_varying_precision(producer, consumer);
 }
 
 static void
