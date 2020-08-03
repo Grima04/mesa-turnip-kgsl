@@ -285,21 +285,14 @@ static const struct tu_native_format tu6_format_table[] = {
    TU6_xTx(ASTC_12x12_SRGB_BLOCK,      ASTC_12x12,        WZYX), /* 184 */
 };
 
-#define FMT_EXT_BASE VK_FORMAT_G8B8G8R8_422_UNORM
 #undef TU6_FMT
-#define TU6_FMT(vkfmt, hwfmt, swapfmt, valid) \
-   [VK_FORMAT_##vkfmt - FMT_EXT_BASE] = {                   \
-      .fmt = FMT6_##hwfmt,                     \
-      .swap = swapfmt,                       \
-      .supported = valid,                    \
-   }
-
-static const struct tu_native_format tu6_format_table_ext[] = {
-   TU6_xTx(G8B8G8R8_422_UNORM,         R8G8R8B8_422_UNORM,        WZYX), /* 0 */
-   TU6_xTx(B8G8R8G8_422_UNORM,         G8R8B8R8_422_UNORM,        WZYX), /* 1 */
-   TU6_xTx(G8_B8_R8_3PLANE_420_UNORM,  R8_G8_B8_3PLANE_420_UNORM, WZYX), /* 2 */
-   TU6_xTx(G8_B8R8_2PLANE_420_UNORM,   R8_G8B8_2PLANE_420_UNORM,  WZYX), /* 3 */
-};
+#define TU6_FMT(vkfmt, hwfmt, swapfmt, valid)   \
+   case VK_FORMAT_##vkfmt:                      \
+      fmt = (struct tu_native_format) {         \
+         .fmt = FMT6_##hwfmt,                   \
+         .swap = swapfmt,                       \
+         .supported = valid,                    \
+      }; break;
 
 static struct tu_native_format
 tu6_get_native_format(VkFormat format)
@@ -308,10 +301,15 @@ tu6_get_native_format(VkFormat format)
 
    if (format < ARRAY_SIZE(tu6_format_table)) {
       fmt = tu6_format_table[format];
-   } else if (format >= FMT_EXT_BASE) {
-      unsigned idx = format - FMT_EXT_BASE;
-      if (idx < ARRAY_SIZE(tu6_format_table_ext))
-         fmt = tu6_format_table_ext[idx];
+   } else {
+      switch (format) {
+      TU6_xTx(G8B8G8R8_422_UNORM,         R8G8R8B8_422_UNORM,        WZYX)
+      TU6_xTx(B8G8R8G8_422_UNORM,         G8R8B8R8_422_UNORM,        WZYX)
+      TU6_xTx(G8_B8_R8_3PLANE_420_UNORM,  R8_G8_B8_3PLANE_420_UNORM, WZYX)
+      TU6_xTx(G8_B8R8_2PLANE_420_UNORM,   R8_G8B8_2PLANE_420_UNORM,  WZYX)
+      default:
+         break;
+      }
    }
 
    if (fmt.supported && vk_format_to_pipe_format(format) == PIPE_FORMAT_NONE) {
@@ -392,8 +390,10 @@ tu_physical_device_get_format_properties(
 
       buffer |= VK_FORMAT_FEATURE_UNIFORM_TEXEL_BUFFER_BIT;
 
-      /* no blit src bit for extended (YUYV/NV12/I420) formats */
-      if (format < FMT_EXT_BASE)
+      /* no blit src bit for YUYV/NV12/I420 formats */
+      if (desc->layout != UTIL_FORMAT_LAYOUT_SUBSAMPLED &&
+          desc->layout != UTIL_FORMAT_LAYOUT_PLANAR2 &&
+          desc->layout != UTIL_FORMAT_LAYOUT_PLANAR3)
          optimal |= VK_FORMAT_FEATURE_BLIT_SRC_BIT;
 
       if (desc->layout != UTIL_FORMAT_LAYOUT_SUBSAMPLED)
