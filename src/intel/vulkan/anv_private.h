@@ -1974,8 +1974,10 @@ struct anv_descriptor_set_layout {
    /* Number of dynamic offsets used by this descriptor set */
    uint16_t dynamic_offset_count;
 
-   /* For each shader stage, which offsets apply to that stage */
-   uint16_t stage_dynamic_offsets[MESA_SHADER_STAGES];
+   /* For each dynamic buffer, which VkShaderStageFlagBits stages are using
+    * this buffer
+    */
+   VkShaderStageFlags dynamic_offset_stages[MAX_DYNAMIC_BUFFERS];
 
    /* Size of the descriptor buffer for this descriptor set */
    uint32_t descriptor_buffer_size;
@@ -2807,6 +2809,11 @@ struct anv_vb_cache_range {
 struct anv_cmd_pipeline_state {
    struct anv_descriptor_set *descriptors[MAX_SETS];
    struct anv_push_descriptor_set *push_descriptors[MAX_SETS];
+
+   struct anv_push_constants push_constants;
+
+   /* Push constant state allocated when flushing push constants. */
+   struct anv_state          push_constants_state;
 };
 
 /** State tracking for graphics pipeline
@@ -2881,7 +2888,6 @@ struct anv_cmd_state {
    struct anv_vertex_binding                    vertex_bindings[MAX_VBS];
    bool                                         xfb_enabled;
    struct anv_xfb_binding                       xfb_bindings[MAX_XFB_BUFFERS];
-   struct anv_push_constants                    push_constants[MESA_SHADER_STAGES];
    struct anv_state                             binding_tables[MESA_SHADER_STAGES];
    struct anv_state                             samplers[MESA_SHADER_STAGES];
 
@@ -3056,8 +3062,7 @@ void anv_cmd_buffer_setup_attachments(struct anv_cmd_buffer *cmd_buffer,
 void anv_cmd_buffer_emit_state_base_address(struct anv_cmd_buffer *cmd_buffer);
 
 struct anv_state
-anv_cmd_buffer_push_constants(struct anv_cmd_buffer *cmd_buffer,
-                              gl_shader_stage stage);
+anv_cmd_buffer_gfx_push_constants(struct anv_cmd_buffer *cmd_buffer);
 struct anv_state
 anv_cmd_buffer_cs_push_constants(struct anv_cmd_buffer *cmd_buffer);
 

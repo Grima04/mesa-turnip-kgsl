@@ -848,28 +848,25 @@ anv_cmd_buffer_bind_descriptor_set(struct anv_cmd_buffer *cmd_buffer,
 
    if (dynamic_offsets) {
       if (set_layout->dynamic_offset_count > 0) {
+         struct anv_push_constants *push = &pipe_state->push_constants;
          uint32_t dynamic_offset_start =
             layout->set[set_index].dynamic_offset_start;
+         uint32_t *push_offsets =
+            &push->dynamic_offsets[dynamic_offset_start];
 
-         anv_foreach_stage(stage, stages) {
-            struct anv_push_constants *push =
-               &cmd_buffer->state.push_constants[stage];
-            uint32_t *push_offsets =
-               &push->dynamic_offsets[dynamic_offset_start];
+         /* Assert that everything is in range */
+         assert(set_layout->dynamic_offset_count <= *dynamic_offset_count);
+         assert(dynamic_offset_start + set_layout->dynamic_offset_count <=
+                ARRAY_SIZE(push->dynamic_offsets));
 
-            /* Assert that everything is in range */
-            assert(set_layout->dynamic_offset_count <= *dynamic_offset_count);
-            assert(dynamic_offset_start + set_layout->dynamic_offset_count <=
-                   ARRAY_SIZE(push->dynamic_offsets));
-
-            unsigned mask = set_layout->stage_dynamic_offsets[stage];
-            STATIC_ASSERT(MAX_DYNAMIC_BUFFERS <= sizeof(mask) * 8);
-            while (mask) {
-               int i = u_bit_scan(&mask);
-               if (push_offsets[i] != (*dynamic_offsets)[i]) {
-                  push_offsets[i] = (*dynamic_offsets)[i];
-                  dirty_stages |= mesa_to_vk_shader_stage(stage);
-               }
+         for (uint32_t i = 0; i < set_layout->dynamic_offset_count; i++) {
+            if (push_offsets[i] != (*dynamic_offsets)[i]) {
+               push_offsets[i] = (*dynamic_offsets)[i];
+               /* dynamic_offset_stages[] elements could contain blanket
+                * values like VK_SHADER_STAGE_ALL, so limit this to the
+                * binding point's bits.
+                */
+               dirty_stages |= set_layout->dynamic_offset_stages[i] & stages;
             }
          }
 
@@ -1028,11 +1025,10 @@ anv_cmd_buffer_merge_dynamic(struct anv_cmd_buffer *cmd_buffer,
 }
 
 struct anv_state
-anv_cmd_buffer_push_constants(struct anv_cmd_buffer *cmd_buffer,
-                              gl_shader_stage stage)
+anv_cmd_buffer_gfx_push_constants(struct anv_cmd_buffer *cmd_buffer)
 {
    struct anv_push_constants *data =
-      &cmd_buffer->state.push_constants[stage];
+      &cmd_buffer->state.gfx.base.push_constants;
 
    struct anv_state state =
       anv_cmd_buffer_alloc_dynamic_state(cmd_buffer,
@@ -1047,7 +1043,7 @@ struct anv_state
 anv_cmd_buffer_cs_push_constants(struct anv_cmd_buffer *cmd_buffer)
 {
    struct anv_push_constants *data =
-      &cmd_buffer->state.push_constants[MESA_SHADER_COMPUTE];
+      &cmd_buffer->state.compute.base.push_constants;
    struct anv_compute_pipeline *pipeline = cmd_buffer->state.compute.pipeline;
    const struct brw_cs_prog_data *cs_prog_data = get_cs_prog_data(pipeline);
    const struct anv_push_range *range = &pipeline->cs->bind_map.push_ranges[0];
@@ -1102,9 +1098,17 @@ void anv_CmdPushConstants(
 {
    ANV_FROM_HANDLE(anv_cmd_buffer, cmd_buffer, commandBuffer);
 
-   anv_foreach_stage(stage, stageFlags) {
-      memcpy(cmd_buffer->state.push_constants[stage].client_data + offset,
-             pValues, size);
+   if (stageFlags & VK_SHADER_STAGE_ALL_GRAPHICS) {
+      struct anv_cmd_pipeline_state *pipe_state =
+         &cmd_buffer->state.gfx.base;
+
+      memcpy(pipe_state->push_constants.client_data + offset, pValues, size);
+   }
+   if (stageFlags & VK_SHADER_STAGE_COMPUTE_BIT) {
+      struct anv_cmd_pipeline_state *pipe_state =
+         &cmd_buffer->state.compute.base;
+
+      memcpy(pipe_state->push_constants.client_data + offset, pValues, size);
    }
 
    cmd_buffer->state.push_constants_dirty |= stageFlags;

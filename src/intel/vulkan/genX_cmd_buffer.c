@@ -2469,6 +2469,7 @@ emit_binding_table(struct anv_cmd_buffer *cmd_buffer,
     */
    const bool need_client_mem_relocs =
       !cmd_buffer->device->physical->use_softpin;
+   struct anv_push_constants *push = &pipe_state->push_constants;
 
    for (uint32_t s = 0; s < map->surface_count; s++) {
       struct anv_pipeline_binding *binding = &map->surface_to_descriptor[s];
@@ -2653,9 +2654,6 @@ emit_binding_table(struct anv_cmd_buffer *cmd_buffer,
          case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC: {
             if (desc->buffer) {
                /* Compute the offset within the buffer */
-               struct anv_push_constants *push =
-                  &cmd_buffer->state.push_constants[shader->stage];
-
                uint32_t dynamic_offset =
                   push->dynamic_offsets[binding->dynamic_offset_index];
                uint64_t offset = desc->offset + dynamic_offset;
@@ -2880,7 +2878,7 @@ get_push_range_address(struct anv_cmd_buffer *cmd_buffer,
                        gl_shader_stage stage,
                        const struct anv_push_range *range)
 {
-   const struct anv_cmd_graphics_state *gfx_state = &cmd_buffer->state.gfx;
+   struct anv_cmd_graphics_state *gfx_state = &cmd_buffer->state.gfx;
    switch (range->set) {
    case ANV_DESCRIPTOR_SET_DESCRIPTORS: {
       /* This is a descriptor set buffer so the set index is
@@ -2893,11 +2891,13 @@ get_push_range_address(struct anv_cmd_buffer *cmd_buffer,
    }
 
    case ANV_DESCRIPTOR_SET_PUSH_CONSTANTS: {
-      struct anv_state state =
-         anv_cmd_buffer_push_constants(cmd_buffer, stage);
+      if (gfx_state->base.push_constants_state.alloc_size == 0) {
+         gfx_state->base.push_constants_state =
+            anv_cmd_buffer_gfx_push_constants(cmd_buffer);
+      }
       return (struct anv_address) {
          .bo = cmd_buffer->device->dynamic_state_pool.block_pool.bo,
-         .offset = state.offset,
+         .offset = gfx_state->base.push_constants_state.offset,
       };
    }
 
@@ -2914,8 +2914,8 @@ get_push_range_address(struct anv_cmd_buffer *cmd_buffer,
       } else {
          assert(desc->type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC);
          if (desc->buffer) {
-            struct anv_push_constants *push =
-               &cmd_buffer->state.push_constants[stage];
+            const struct anv_push_constants *push =
+               &gfx_state->base.push_constants;
             uint32_t dynamic_offset =
                push->dynamic_offsets[range->dynamic_offset_index];
             return anv_address_add(desc->buffer->address,
@@ -2984,8 +2984,8 @@ get_push_range_bound_size(struct anv_cmd_buffer *cmd_buffer,
 
          assert(desc->type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC);
          /* Compute the offset within the buffer */
-         struct anv_push_constants *push =
-            &cmd_buffer->state.push_constants[stage];
+         const struct anv_push_constants *push =
+            &gfx_state->base.push_constants;
          uint32_t dynamic_offset =
             push->dynamic_offsets[range->dynamic_offset_index];
          uint64_t offset = desc->offset + dynamic_offset;
@@ -3162,12 +3162,17 @@ cmd_buffer_flush_push_constants(struct anv_cmd_buffer *cmd_buffer,
                                 VkShaderStageFlags dirty_stages)
 {
    VkShaderStageFlags flushed = 0;
-   const struct anv_cmd_graphics_state *gfx_state = &cmd_buffer->state.gfx;
+   struct anv_cmd_graphics_state *gfx_state = &cmd_buffer->state.gfx;
    const struct anv_graphics_pipeline *pipeline = gfx_state->pipeline;
 
 #if GEN_GEN >= 12
    uint32_t nobuffer_stages = 0;
 #endif
+
+   /* Resets the push constant state so that we allocate a new one if
+    * needed.
+    */
+   gfx_state->base.push_constants_state = ANV_STATE_NULL;
 
    anv_foreach_stage(stage, dirty_stages) {
       unsigned buffer_count = 0;
@@ -3178,8 +3183,7 @@ cmd_buffer_flush_push_constants(struct anv_cmd_buffer *cmd_buffer,
       if (anv_pipeline_has_stage(pipeline, stage)) {
          const struct anv_pipeline_bind_map *bind_map =
             &pipeline->shaders[stage]->bind_map;
-         struct anv_push_constants *push =
-            &cmd_buffer->state.push_constants[stage];
+         struct anv_push_constants *push = &gfx_state->base.push_constants;
 
          if (cmd_buffer->device->robust_buffer_access) {
             push->push_reg_mask = 0;
@@ -4355,7 +4359,7 @@ anv_cmd_buffer_push_base_group_id(struct anv_cmd_buffer *cmd_buffer,
       return;
 
    struct anv_push_constants *push =
-      &cmd_buffer->state.push_constants[MESA_SHADER_COMPUTE];
+      &cmd_buffer->state.compute.base.push_constants;
    if (push->cs.base_work_group_id[0] != baseGroupX ||
        push->cs.base_work_group_id[1] != baseGroupY ||
        push->cs.base_work_group_id[2] != baseGroupZ) {

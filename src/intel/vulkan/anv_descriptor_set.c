@@ -470,13 +470,7 @@ VkResult anv_CreateDescriptorSetLayout(
       case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
       case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
          set_layout->binding[b].dynamic_offset_index = dynamic_offset_count;
-         anv_foreach_stage(s, binding->stageFlags) {
-            STATIC_ASSERT(MAX_DYNAMIC_BUFFERS <=
-                          sizeof(set_layout->stage_dynamic_offsets[s]) * 8);
-            set_layout->stage_dynamic_offsets[s] |=
-               BITFIELD_RANGE(set_layout->binding[b].dynamic_offset_index,
-                              binding->descriptorCount);
-         }
+         set_layout->dynamic_offset_stages[dynamic_offset_count] = binding->stageFlags;
          dynamic_offset_count += binding->descriptorCount;
          assert(dynamic_offset_count < MAX_DYNAMIC_BUFFERS);
          break;
