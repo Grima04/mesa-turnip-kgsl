@@ -1653,10 +1653,13 @@ emit_load_const(struct ntv_context *ctx, nir_load_const_instr *load_const)
 }
 
 static void
-emit_load_ubo(struct ntv_context *ctx, nir_intrinsic_instr *intr)
+emit_load_bo(struct ntv_context *ctx, nir_intrinsic_instr *intr)
 {
    ASSERTED nir_const_value *const_block_index = nir_src_as_const_value(intr->src[0]);
+   bool ssbo = intr->intrinsic == nir_intrinsic_load_ssbo;
    assert(const_block_index); // no dynamic indexing for now
+
+   SpvId bo = ssbo ? ctx->ssbos[const_block_index->u32] : ctx->ubos[const_block_index->u32];
 
    unsigned bit_size = nir_dest_bit_size(intr->dest);
    SpvId uint_type = get_uvec_type(ctx, 32, 1);
@@ -1679,7 +1682,7 @@ emit_load_ubo(struct ntv_context *ctx, nir_intrinsic_instr *intr)
 
    /* we grab a single array member at a time, so it's a pointer to a uint */
    SpvId pointer_type = spirv_builder_type_pointer(&ctx->builder,
-                                                   SpvStorageClassUniform,
+                                                   ssbo ? SpvStorageClassStorageBuffer : SpvStorageClassUniform,
                                                    uint_type);
 
    /* our generated uniform has a memory layout like
@@ -1718,10 +1721,13 @@ emit_load_ubo(struct ntv_context *ctx, nir_intrinsic_instr *intr)
    for (unsigned i = 0; i < num_components; i++) {
       SpvId indices[3] = { member, vec_offset, vec_member_offset };
       SpvId ptr = spirv_builder_emit_access_chain(&ctx->builder, pointer_type,
-                                                  ctx->ubos[const_block_index->u32], indices,
+                                                  bo, indices,
                                                   ARRAY_SIZE(indices));
       /* load a single value into the constituents array */
-      constituents[i] = spirv_builder_emit_load(&ctx->builder, uint_type, ptr);
+      if (ssbo)
+         constituents[i] = emit_atomic(ctx, SpvOpAtomicLoad, uint_type, ptr, 0);
+      else
+         constituents[i] = spirv_builder_emit_load(&ctx->builder, uint_type, ptr);
       /* increment to the next vec4 member index for the next load */
       vec_member_offset = emit_binop(ctx, SpvOpIAdd, uint_type, vec_member_offset, one);
       if (i == 3 && num_components > 4) {
@@ -2037,7 +2043,8 @@ emit_intrinsic(struct ntv_context *ctx, nir_intrinsic_instr *intr)
 {
    switch (intr->intrinsic) {
    case nir_intrinsic_load_ubo:
-      emit_load_ubo(ctx, intr);
+   case nir_intrinsic_load_ssbo:
+      emit_load_bo(ctx, intr);
       break;
 
    case nir_intrinsic_discard:
