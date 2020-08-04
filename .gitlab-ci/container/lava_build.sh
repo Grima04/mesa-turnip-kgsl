@@ -136,7 +136,7 @@ mkdir -p kernel
 wget -qO- ${KERNEL_URL} | tar -xz --strip-components=1 -C kernel
 pushd kernel
 ./scripts/kconfig/merge_config.sh ${DEFCONFIG} ../.gitlab-ci/${KERNEL_ARCH}.config
-make ${KERNEL_IMAGE_NAME} modules
+make ${KERNEL_IMAGE_NAME}
 for image in ${KERNEL_IMAGE_NAME}; do
     cp arch/${KERNEL_ARCH}/boot/${image} /lava-files/.
 done
@@ -144,9 +144,6 @@ if [[ -n ${DEVICE_TREES} ]]; then
     make dtbs
     cp ${DEVICE_TREES} /lava-files/.
 fi
-
-make -j12 modules
-INSTALL_MOD_PATH=/lava-files/rootfs-${DEBIAN_ARCH}/ make modules_install
 
 if [[ ${DEBIAN_ARCH} = "arm64" ]] && which mkimage > /dev/null; then
     make Image.lzma
