@@ -376,7 +376,7 @@ zink_draw_vbo(struct pipe_context *pctx,
             ++num_buffer_info;
          } else {
             for (unsigned k = 0; k < shader->bindings[j].size; k++) {
-               struct pipe_sampler_view *psampler_view = ctx->image_views[i][index + k];
+               struct pipe_sampler_view *psampler_view = ctx->sampler_views[i][index + k];
                struct zink_sampler_view *sampler_view = zink_sampler_view(psampler_view);
 
                struct zink_resource *res = psampler_view ? zink_resource(psampler_view->texture) : NULL;
@@ -462,7 +462,7 @@ zink_draw_vbo(struct pipe_context *pctx,
       for (int j = 0; j < shader->num_bindings; j++) {
          int index = shader->bindings[j].index;
          if (shader->bindings[j].type != VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER) {
-            struct zink_sampler_view *sampler_view = zink_sampler_view(ctx->image_views[i][index]);
+            struct zink_sampler_view *sampler_view = zink_sampler_view(ctx->sampler_views[i][index]);
             if (sampler_view)
                zink_batch_reference_sampler_view(batch, sampler_view);
          }
