@@ -301,6 +301,10 @@ d3d9_to_pipe_format_checked(struct pipe_screen *screen,
 {
     enum pipe_format result;
 
+    /* We cannot render to depth textures as a render target */
+    if (depth_stencil_format(format) && (bindings & PIPE_BIND_RENDER_TARGET))
+        return PIPE_FORMAT_NONE;
+
     result = d3d9_to_pipe_format_internal(format);
     if (result == PIPE_FORMAT_NONE)
         return PIPE_FORMAT_NONE;
