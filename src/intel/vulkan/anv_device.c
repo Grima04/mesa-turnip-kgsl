@@ -2916,8 +2916,8 @@ VkResult anv_CreateDevice(
        */
       anv_state_reserved_pool_init(&device->custom_border_colors,
                                    &device->dynamic_state_pool,
-                                   sizeof(struct gen8_border_color),
-                                   MAX_CUSTOM_BORDER_COLORS, 64);
+                                   MAX_CUSTOM_BORDER_COLORS,
+                                   sizeof(struct gen8_border_color), 64);
    }
 
    result = anv_state_pool_init(&device->instruction_state_pool, device,
