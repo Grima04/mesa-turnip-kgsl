@@ -2484,6 +2484,10 @@ cmd_buffer_execute_inside_pass(struct v3dv_cmd_buffer *primary,
    if (primary->state.dirty & V3DV_CMD_DIRTY_OCCLUSION_QUERY)
       emit_occlusion_query(primary);
 
+   /* FIXME: if our primary job tiling doesn't enable MSSA but any of the
+    * pipelines used by the secondaries do, we need to re-start the primary
+    * job to enable MSAA. See cmd_buffer_restart_job_for_msaa_if_needed.
+    */
    for (uint32_t i = 0; i < cmd_buffer_count; i++) {
       V3DV_FROM_HANDLE(v3dv_cmd_buffer, secondary, cmd_buffers[i]);
 
@@ -2993,7 +2997,6 @@ bind_graphics_pipeline(struct v3dv_cmd_buffer *cmd_buffer,
    assert(pipeline && !(pipeline->active_stages & VK_SHADER_STAGE_COMPUTE_BIT));
    if (cmd_buffer->state.pipeline == pipeline)
       return;
-
 
    /* Enable always flush if we are blending to sRGB render targets. This
     * fixes test failures in:
@@ -4011,16 +4014,8 @@ cmd_buffer_emit_draw(struct v3dv_cmd_buffer *cmd_buffer,
 static struct v3dv_job *
 cmd_buffer_pre_draw_split_job(struct v3dv_cmd_buffer *cmd_buffer)
 {
-   /* If we emitted a pipeline barrier right before this draw we won't have
-    * an active job. In that case, create a new job continuing the current
-    * subpass.
-    */
    struct v3dv_job *job = cmd_buffer->state.job;
-   if (!job) {
-      job = v3dv_cmd_buffer_subpass_resume(cmd_buffer,
-                                           cmd_buffer->state.subpass_idx);
-      return job;
-   }
+   assert(job);
 
    /* If the job has been flagged with 'always_flush' and it has already
     * recorded any draw calls then we need to start a new job for it.
@@ -4047,16 +4042,107 @@ cmd_buffer_pre_draw_split_job(struct v3dv_cmd_buffer *cmd_buffer)
    return job;
 }
 
+/**
+ * The Vulkan spec states:
+ *
+ *   "It is legal for a subpass to use no color or depth/stencil
+ *    attachments (...)  This kind of subpass can use shader side effects such
+ *    as image stores and atomics to produce an output. In this case, the
+ *    subpass continues to use the width, height, and layers of the framebuffer
+ *    to define the dimensions of the rendering area, and the
+ *    rasterizationSamples from each pipeline’s
+ *    VkPipelineMultisampleStateCreateInfo to define the number of samples used
+ *    in rasterization."
+ *
+ * We need to enable MSAA in the TILE_BINNING_MODE_CFG packet, which we
+ * emit when we start a new frame at the begining of a subpass. At that point,
+ * if the framebuffer doesn't have any attachments we won't enable MSAA and
+ * the job won't be valid in the scenario described by the spec.
+ *
+ * This function is intended to be called before a draw call and will test if
+ * we are in that scenario, in which case, it will restart the current job
+ * with MSAA enabled.
+ */
+static void
+cmd_buffer_restart_job_for_msaa_if_needed(struct v3dv_cmd_buffer *cmd_buffer)
+{
+   assert(cmd_buffer->state.job);
+
+   /* We don't support variableMultisampleRate so we know that all pipelines
+    * bound in the same subpass must have matching number of samples, so we
+    * can do this check only on the first draw call.
+    */
+   if (cmd_buffer->state.job->draw_count > 0)
+      return;
+
+   /* We only need to restart the frame if the pipeline requires MSAA but
+    * our frame tiling didn't enable it.
+    */
+   if (!cmd_buffer->state.pipeline->msaa ||
+       cmd_buffer->state.job->frame_tiling.msaa) {
+      return;
+   }
+
+   /* FIXME: Secondary command buffers don't start frames. Instead, they are
+    * recorded into primary jobs that start them. For secondaries, we should
+    * still handle this scenario, but we should do that when we record them
+    * into primaries by testing if any of the secondaries has multisampled
+    * draw calls in them, and then using that info to decide if we need to
+    * restart the primary job into which they are being recorded.
+    */
+   if (cmd_buffer->level != VK_COMMAND_BUFFER_LEVEL_PRIMARY)
+      return;
+
+   /* Drop the current job and restart it with MSAA enabled */
+   struct v3dv_job *old_job = cmd_buffer->state.job;
+   cmd_buffer->state.job = NULL;
+
+   struct v3dv_job *job = vk_zalloc(&cmd_buffer->device->alloc,
+                                    sizeof(struct v3dv_job), 8,
+                                    VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
+   if (!job) {
+      v3dv_flag_oom(cmd_buffer, NULL);
+      return;
+   }
+
+   v3dv_job_init(job, V3DV_JOB_TYPE_GPU_CL, cmd_buffer->device, cmd_buffer,
+                 cmd_buffer->state.subpass_idx);
+   cmd_buffer->state.job = job;
+
+   v3dv_job_start_frame(job,
+                        old_job->frame_tiling.width,
+                        old_job->frame_tiling.height,
+                        old_job->frame_tiling.layers,
+                        old_job->frame_tiling.render_target_count,
+                        old_job->frame_tiling.internal_bpp,
+                        true /* msaa */);
+
+   v3dv_job_destroy(old_job);
+}
+
 static void
 cmd_buffer_emit_pre_draw(struct v3dv_cmd_buffer *cmd_buffer)
 {
    assert(cmd_buffer->state.pipeline);
    assert(!(cmd_buffer->state.pipeline->active_stages & VK_SHADER_STAGE_COMPUTE_BIT));
 
+   /* If we emitted a pipeline barrier right before this draw we won't have
+    * an active job. In that case, create a new job continuing the current
+    * subpass.
+    */
+   struct v3dv_job *job = cmd_buffer->state.job;
+   if (!job) {
+      job = v3dv_cmd_buffer_subpass_resume(cmd_buffer,
+                                           cmd_buffer->state.subpass_idx);
+   }
+
+   /* Restart single sample job for MSAA pipeline if needed */
+   cmd_buffer_restart_job_for_msaa_if_needed(cmd_buffer);
+
    /* If the job is configured to flush on every draw call we need to create
     * a new job now.
     */
-   struct v3dv_job *job = cmd_buffer_pre_draw_split_job(cmd_buffer);
+   job = cmd_buffer_pre_draw_split_job(cmd_buffer);
    job->draw_count++;
 
    /* We may need to compile shader variants based on bound textures */

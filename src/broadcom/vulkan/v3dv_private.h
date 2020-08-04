@@ -1510,6 +1510,7 @@ struct v3dv_pipeline {
 
    enum v3dv_ez_state ez_state;
 
+   bool msaa;
    bool sample_rate_shading;
    uint32_t sample_mask;
 

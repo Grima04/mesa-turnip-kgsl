@@ -2238,6 +2238,9 @@ pack_cfg_bits(struct v3dv_pipeline *pipeline,
 {
    assert(sizeof(pipeline->cfg_bits) == cl_packet_length(CFG_BITS));
 
+   pipeline->msaa =
+      ms_info && ms_info->rasterizationSamples > VK_SAMPLE_COUNT_1_BIT;
+
    v3dv_pack(pipeline->cfg_bits, CFG_BITS, config) {
       config.enable_forward_facing_primitive =
          rs_info ? !(rs_info->cullMode & VK_CULL_MODE_FRONT_BIT) : false;
@@ -2263,8 +2266,7 @@ pack_cfg_bits(struct v3dv_pipeline *pipeline,
             rs_info->polygonMode == VK_POLYGON_MODE_POINT;
       }
 
-      config.rasterizer_oversample_mode =
-         ms_info && ms_info->rasterizationSamples > VK_SAMPLE_COUNT_1_BIT ? 1 : 0;
+      config.rasterizer_oversample_mode = pipeline->msaa ? 1 : 0;
 
       /* From the Vulkan spec:
        *
@@ -2528,8 +2530,24 @@ pack_shader_state_record(struct v3dv_pipeline *pipeline)
       shader.fragment_shader_uses_real_pixel_centre_w_in_addition_to_centroid_w2 =
          prog_data_fs->uses_center_w;
 
-      shader.enable_sample_rate_shading = pipeline->sample_rate_shading ||
-                                          prog_data_fs->force_per_sample_msaa;
+      /* The description for gl_SampleID states that if a fragment shader reads
+       * it, then we should automatically activate per-sample shading. However,
+       * the Vulkan spec also states that if a framebuffer has no attachments:
+       *
+       *    "The subpass continues to use the width, height, and layers of the
+       *     framebuffer to define the dimensions of the rendering area, and the
+       *     rasterizationSamples from each pipeline’s
+       *     VkPipelineMultisampleStateCreateInfo to define the number of
+       *     samples used in rasterization multisample rasterization."
+       *
+       * So in this scenario, if the pipeline doesn't enable multiple samples
+       * but the fragment shader accesses gl_SampleID we would be requested
+       * to do per-sample shading in single sample rasterization mode, which
+       * is pointless, so just disable it in that case.
+       */
+      shader.enable_sample_rate_shading =
+         pipeline->sample_rate_shading ||
+         (pipeline->msaa && prog_data_fs->force_per_sample_msaa);
 
       shader.any_shader_reads_hardware_written_primitive_id = false;
 
