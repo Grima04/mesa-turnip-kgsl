@@ -1055,6 +1055,25 @@ emit_so_outputs(struct ntv_context *ctx,
 }
 
 static SpvId
+emit_atomic(struct ntv_context *ctx, SpvId op, SpvId type, SpvId src0, SpvId src1)
+{
+   if (!type) //AtomicStore
+      return spirv_builder_emit_triop(&ctx->builder, op, src0,
+                                      emit_uint_const(ctx, 32, SpvScopeWorkgroup),
+                                      emit_uint_const(ctx, 32, SpvMemorySemanticsUniformMemoryMask | SpvMemorySemanticsReleaseMask),
+                                      src1);
+   if (src1)
+      return spirv_builder_emit_quadop(&ctx->builder, op, type, src0,
+                                       emit_uint_const(ctx, 32, SpvScopeWorkgroup),
+                                       emit_uint_const(ctx, 32, SpvMemorySemanticsUniformMemoryMask | SpvMemorySemanticsReleaseMask),
+                                       src1);
+   //AtomicLoad
+   return spirv_builder_emit_triop(&ctx->builder, op, type, src0,
+                                   emit_uint_const(ctx, 32, SpvScopeWorkgroup),
+                                   emit_uint_const(ctx, 32, SpvMemorySemanticsUniformMemoryMask | SpvMemorySemanticsAcquireMask));
+}
+
+static SpvId
 emit_binop(struct ntv_context *ctx, SpvOp op, SpvId type,
            SpvId src0, SpvId src1)
 {
