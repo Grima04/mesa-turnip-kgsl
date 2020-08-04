@@ -1939,6 +1939,7 @@ gfx10_get_ngg_info(const struct radv_pipeline_key *key,
 	unsigned gsprim_lds_size = 0;
 
 	/* All these are per subgroup: */
+	const unsigned min_esverts = pipeline->device->physical_device->rad_info.chip_class >= GFX10_3 ? 29 : 24;
 	bool max_vert_out_per_gs_instance = false;
 	unsigned max_esverts_base = 256;
 	unsigned max_gsprims_base = 128; /* default prim group size clamp */
@@ -2064,7 +2065,7 @@ gfx10_get_ngg_info(const struct radv_pipeline_key *key,
 	}
 
 	/* Hardware restriction: minimum value of max_esverts */
-	max_esverts = MAX2(max_esverts, 23 + max_verts_per_prim);
+	max_esverts = MAX2(max_esverts, min_esverts - 1 + max_verts_per_prim);
 
 	unsigned max_out_vertices =
 		max_vert_out_per_gs_instance ? gs_info->gs.vertices_out :
@@ -2101,7 +2102,7 @@ gfx10_get_ngg_info(const struct radv_pipeline_key *key,
 
 	pipeline->graphics.esgs_ring_size = ngg->esgs_ring_size;
 
-	assert(ngg->hw_max_esverts >= 24); /* HW limitation */
+	assert(ngg->hw_max_esverts >= min_esverts); /* HW limitation */
 }
 
 static void
