@@ -43,6 +43,8 @@ struct ntv_context {
 
    SpvId ubos[128];
    size_t num_ubos;
+
+   SpvId ssbos[PIPE_MAX_SHADER_BUFFERS];
    SpvId image_types[PIPE_MAX_SAMPLERS];
    SpvId samplers[PIPE_MAX_SAMPLERS];
    unsigned char sampler_array_sizes[PIPE_MAX_SAMPLERS];
@@ -620,6 +622,46 @@ emit_sampler(struct ntv_context *ctx, struct nir_variable *var)
 }
 
 static void
+emit_ssbo(struct ntv_context *ctx, struct nir_variable *var)
+{
+   SpvId vec4_type = get_uvec_type(ctx, 32, 4);
+   SpvId array_type = spirv_builder_type_runtime_array(&ctx->builder, vec4_type);
+   spirv_builder_emit_array_stride(&ctx->builder, array_type, 16);
+
+   SpvId struct_type = spirv_builder_type_struct(&ctx->builder, &array_type, 1);
+   if (var->name) {
+      char struct_name[100];
+      snprintf(struct_name, sizeof(struct_name), "struct_%s", var->name);
+      spirv_builder_emit_name(&ctx->builder, struct_type, struct_name);
+   }
+
+   spirv_builder_emit_decoration(&ctx->builder, struct_type,
+                                 SpvDecorationBlock);
+   spirv_builder_emit_member_offset(&ctx->builder, struct_type, 0, 0);
+
+   SpvId pointer_type = spirv_builder_type_pointer(&ctx->builder,
+                                                   SpvStorageClassStorageBuffer,
+                                                   struct_type);
+
+   SpvId var_id = spirv_builder_emit_var(&ctx->builder, pointer_type,
+                                         SpvStorageClassStorageBuffer);
+   if (var->name) {
+      char struct_name[100];
+      snprintf(struct_name, sizeof(struct_name), "%s", var->name);
+      spirv_builder_emit_name(&ctx->builder, var_id, var->name);
+   }
+
+   assert(var->data.binding < ARRAY_SIZE(ctx->ssbos));
+   ctx->ssbos[var->data.binding] = var_id;
+
+   spirv_builder_emit_descriptor_set(&ctx->builder, var_id, 0);
+   int binding = zink_binding(ctx->stage,
+                              VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                              var->data.binding);
+   spirv_builder_emit_binding(&ctx->builder, var_id, binding);
+}
+
+static void
 emit_ubo(struct ntv_context *ctx, struct nir_variable *var)
 {
    bool is_ubo_array = glsl_type_is_array(var->type) && glsl_type_is_interface(glsl_without_array(var->type));
@@ -685,6 +727,8 @@ emit_uniform(struct ntv_context *ctx, struct nir_variable *var)
 {
    if (var->data.mode == nir_var_mem_ubo)
       emit_ubo(ctx, var);
+   else if (var->data.mode == nir_var_mem_ssbo)
+      emit_ssbo(ctx, var);
    else {
       assert(var->data.mode == nir_var_uniform);
       if (glsl_type_is_sampler(glsl_without_array(var->type)))
@@ -2739,6 +2783,9 @@ nir_to_spirv(struct nir_shader *s, const struct zink_so_info *so_info,
    default:
       unreachable("invalid stage");
    }
+
+   if (s->info.num_ssbos)
+      spirv_builder_emit_extension(&ctx.builder, "SPV_KHR_storage_buffer_storage_class");
 
    if (s->info.outputs_written & BITFIELD64_BIT(VARYING_SLOT_VIEWPORT)) {
       if (s->info.stage < MESA_SHADER_GEOMETRY)
