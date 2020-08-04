@@ -2369,7 +2369,6 @@ nir_tex_instr_is_query(const nir_tex_instr *instr)
    case nir_texop_lod:
    case nir_texop_texture_samples:
    case nir_texop_query_levels:
-   case nir_texop_txf_ms_mcs:
       return true;
    case nir_texop_tex:
    case nir_texop_txb:
@@ -2378,6 +2377,7 @@ nir_tex_instr_is_query(const nir_tex_instr *instr)
    case nir_texop_txf:
    case nir_texop_txf_ms:
    case nir_texop_txf_ms_fb:
+   case nir_texop_txf_ms_mcs:
    case nir_texop_tg4:
       return false;
    default:
