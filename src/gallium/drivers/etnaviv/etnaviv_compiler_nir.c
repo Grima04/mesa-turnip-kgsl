@@ -1138,6 +1138,7 @@ etna_compile_shader_nir(struct etna_shader_variant *v)
 
    NIR_PASS_V(s, nir_opt_dce);
 
+   NIR_PASS_V(s, nir_lower_bool_to_bitsize);
    NIR_PASS_V(s, etna_lower_alu, c->specs->has_new_transcendentals);
 
    if (DBG_ENABLED(ETNA_DBG_DUMP_SHADERS))
