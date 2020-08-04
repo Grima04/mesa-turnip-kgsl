@@ -254,6 +254,9 @@ get_texture_size_from_image_view(struct v3dv_image_view *image_view,
       }
    case QUNIFORM_TEXTURE_LEVELS:
       return image_view->max_level - image_view->base_level + 1;
+   case QUNIFORM_TEXTURE_SAMPLES:
+      assert(image_view->image);
+      return image_view->image->samples;
    default:
       unreachable("Bad texture size field");
    }
@@ -395,6 +398,7 @@ v3dv_write_uniforms_wg_offsets(struct v3dv_cmd_buffer *cmd_buffer,
       case QUNIFORM_TEXTURE_DEPTH:
       case QUNIFORM_TEXTURE_ARRAY_SIZE:
       case QUNIFORM_TEXTURE_LEVELS:
+      case QUNIFORM_TEXTURE_SAMPLES:
          cl_aligned_u32(&uniforms,
                         get_texture_size(cmd_buffer,
                                          pipeline,

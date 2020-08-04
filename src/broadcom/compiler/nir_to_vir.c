@@ -609,6 +609,10 @@ ntq_emit_tex(struct v3d_compile *c, nir_tex_instr *instr)
                 ntq_store_dest(c, &instr->dest, 0,
                                vir_uniform(c, QUNIFORM_TEXTURE_LEVELS, unit));
                 return;
+        case nir_texop_texture_samples:
+                ntq_store_dest(c, &instr->dest, 0,
+                               vir_uniform(c, QUNIFORM_TEXTURE_SAMPLES, unit));
+                return;
         case nir_texop_txs:
                 ntq_emit_txs(c, instr);
                 return;
@@ -3022,7 +3026,6 @@ vir_check_payload_w(struct v3d_compile *c)
                         }
                 }
         }
-
 }
 
 void
