@@ -290,10 +290,10 @@ static void
 copy_entry_remove(struct util_dynarray *copies,
                   struct copy_entry *entry)
 {
-   /* This also works when removing the last element since pop don't shrink
-    * the memory used by the array, so the swap is useless but not invalid.
-    */
-   *entry = util_dynarray_pop(copies, struct copy_entry);
+   const struct copy_entry *src =
+      util_dynarray_pop_ptr(copies, struct copy_entry);
+   if (src != entry)
+      *entry = *src;
 }
 
 static bool
