@@ -985,7 +985,7 @@ void add_branch_code(exec_ctx& ctx, Block* block)
 
       if (need_parallelcopy)
          ctx.info[idx].exec.back().first = bld.pseudo(aco_opcode::p_parallelcopy, bld.def(bld.lm, exec), ctx.info[idx].exec.back().first);
-      bld.branch(aco_opcode::p_cbranch_nz, bld.exec(ctx.info[idx].exec.back().first), block->linear_succs[1], block->linear_succs[0]);
+      bld.branch(aco_opcode::p_cbranch_nz, bld.hint_vcc(bld.def(s2)), bld.exec(ctx.info[idx].exec.back().first), block->linear_succs[1], block->linear_succs[0]);
       return;
    }
 
@@ -1032,7 +1032,7 @@ void add_branch_code(exec_ctx& ctx, Block* block)
       /* add next current exec to the stack */
       ctx.info[idx].exec.emplace_back(then_mask, mask_type);
 
-      bld.branch(aco_opcode::p_cbranch_z, bld.exec(then_mask), block->linear_succs[1], block->linear_succs[0]);
+      bld.branch(aco_opcode::p_cbranch_z, bld.hint_vcc(bld.def(s2)), bld.exec(then_mask), block->linear_succs[1], block->linear_succs[0]);
       return;
    }
 
@@ -1050,7 +1050,7 @@ void add_branch_code(exec_ctx& ctx, Block* block)
       /* add next current exec to the stack */
       ctx.info[idx].exec.emplace_back(else_mask, mask_type);
 
-      bld.branch(aco_opcode::p_cbranch_z, bld.exec(else_mask), block->linear_succs[1], block->linear_succs[0]);
+      bld.branch(aco_opcode::p_cbranch_z, bld.hint_vcc(bld.def(s2)), bld.exec(else_mask), block->linear_succs[1], block->linear_succs[0]);
       return;
    }
 
@@ -1078,7 +1078,7 @@ void add_branch_code(exec_ctx& ctx, Block* block)
          ctx.info[idx].exec.back().first = bld.sop1(Builder::s_mov, bld.def(bld.lm, exec), Operand(0u));
       }
 
-      bld.branch(aco_opcode::p_cbranch_nz, bld.scc(cond), block->linear_succs[1], block->linear_succs[0]);
+      bld.branch(aco_opcode::p_cbranch_nz, bld.hint_vcc(bld.def(s2)), bld.scc(cond), block->linear_succs[1], block->linear_succs[0]);
       return;
    }
 
@@ -1107,7 +1107,7 @@ void add_branch_code(exec_ctx& ctx, Block* block)
          ctx.info[idx].exec.back().first = bld.sop1(Builder::s_mov, bld.def(bld.lm, exec), Operand(0u));
       }
 
-      bld.branch(aco_opcode::p_cbranch_nz, bld.scc(cond), block->linear_succs[1], block->linear_succs[0]);
+      bld.branch(aco_opcode::p_cbranch_nz, bld.hint_vcc(bld.def(s2)), bld.scc(cond), block->linear_succs[1], block->linear_succs[0]);
       return;
    }
 }
