@@ -159,6 +159,11 @@ wrap_needs_border_color(unsigned wrap)
           wrap == PIPE_TEX_WRAP_MIRROR_CLAMP || wrap == PIPE_TEX_WRAP_MIRROR_CLAMP_TO_BORDER;
 }
 
+struct zink_sampler_state {
+   VkSampler sampler;
+   bool custom_border_color;
+};
+
 static void *
 zink_create_sampler_state(struct pipe_context *pctx,
                           const struct pipe_sampler_state *state)
@@ -206,6 +211,8 @@ zink_create_sampler_state(struct pipe_context *pctx,
       memcpy(&cbci.customBorderColor, &state->border_color, sizeof(union pipe_color_union));
       sci.pNext = &cbci;
       sci.borderColor = VK_BORDER_COLOR_INT_CUSTOM_EXT;
+      UNUSED uint32_t check = p_atomic_inc_return(&screen->cur_custom_border_color_samplers);
+      assert(check <= screen->info.border_color_props.maxCustomBorderColorSamplers);
    } else
       sci.borderColor = VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK; // TODO with custom shader if we're super interested?
    sci.unnormalizedCoordinates = !state->normalized_coords;
@@ -215,11 +222,11 @@ zink_create_sampler_state(struct pipe_context *pctx,
       sci.anisotropyEnable = VK_TRUE;
    }
 
-   VkSampler *sampler = CALLOC(1, sizeof(VkSampler));
+   struct zink_sampler_state *sampler = CALLOC(1, sizeof(struct zink_sampler_state));
    if (!sampler)
       return NULL;
 
-   if (vkCreateSampler(screen->dev, &sci, NULL, sampler) != VK_SUCCESS) {
+   if (vkCreateSampler(screen->dev, &sci, NULL, &sampler->sampler) != VK_SUCCESS) {
       FREE(sampler);
       return NULL;
    }
@@ -247,10 +254,13 @@ static void
 zink_delete_sampler_state(struct pipe_context *pctx,
                           void *sampler_state)
 {
+   struct zink_sampler_state *sampler = sampler_state;
    struct zink_batch *batch = zink_curr_batch(zink_context(pctx));
    util_dynarray_append(&batch->zombie_samplers, VkSampler,
-                        *(VkSampler *)sampler_state);
-   FREE(sampler_state);
+                        sampler->sampler);
+   if (sampler->custom_border_color)
+      p_atomic_dec(&zink_screen(pctx->screen)->cur_custom_border_color_samplers);
+   FREE(sampler);
 }
 
 

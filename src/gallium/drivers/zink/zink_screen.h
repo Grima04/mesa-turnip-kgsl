@@ -66,8 +66,11 @@ struct zink_screen {
    VkDevice dev;
    VkDebugUtilsMessengerEXT debugUtilsCallbackHandle;
 
+   uint32_t cur_custom_border_color_samplers;
+
    uint32_t loader_version;
    bool have_physical_device_prop2_ext;
+
    bool have_debug_utils_ext;
 
    bool needs_mesa_wsi;
