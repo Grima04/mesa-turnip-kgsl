@@ -23,6 +23,7 @@
 
 #include "aco_interface.h"
 #include "aco_ir.h"
+#include "util/memstream.h"
 #include "vulkan/radv_shader.h"
 #include "vulkan/radv_shader_args.h"
 
@@ -110,11 +111,12 @@ void aco_compile_shader(unsigned shader_count,
    if (args->options->record_ir) {
       char *data = NULL;
       size_t size = 0;
-      FILE *f = open_memstream(&data, &size);
-      if (f) {
-         aco_print_program(program.get(), f);
-         fputc(0, f);
-         fclose(f);
+      u_memstream mem;
+      if (u_memstream_open(&mem, &data, &size)) {
+         FILE *const memf = u_memstream_get(&mem);
+         aco_print_program(program.get(), memf);
+         fputc(0, memf);
+         u_memstream_close(&mem);
       }
 
       llvm_ir = std::string(data, data + size);

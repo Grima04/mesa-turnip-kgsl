@@ -61,6 +61,8 @@ files_mesa_util = files(
   'list.h',
   'log.c',
   'macros.h',
+  'memstream.c',
+  'memstream.h',
   'mesa-sha1.c',
   'mesa-sha1.h',
   'os_time.c',

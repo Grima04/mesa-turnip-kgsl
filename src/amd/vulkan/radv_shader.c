@@ -25,6 +25,7 @@
  * IN THE SOFTWARE.
  */
 
+#include "util/memstream.h"
 #include "util/mesa-sha1.h"
 #include "util/u_atomic.h"
 #include "radv_debug.h"
@@ -1224,11 +1225,12 @@ radv_dump_nir_shaders(struct nir_shader * const *shaders,
 	char *data = NULL;
 	char *ret = NULL;
 	size_t size = 0;
-	FILE *f = open_memstream(&data, &size);
-	if (f) {
+	struct u_memstream mem;
+	if (u_memstream_open(&mem, &data, &size)) {
+		FILE *const memf = u_memstream_get(&mem);
 		for (int i = 0; i < shader_count; ++i)
-			nir_print_shader(shaders[i], f);
-		fclose(f);
+			nir_print_shader(shaders[i], memf);
+		u_memstream_close(&mem);
 	}
 
 	ret = malloc(size + 1);
@@ -1601,13 +1603,15 @@ radv_GetShaderInfoAMD(VkDevice _device,
 	case VK_SHADER_INFO_TYPE_DISASSEMBLY_AMD: {
 		char *out;
 	        size_t outsize;
-	        FILE *memf = open_memstream(&out, &outsize);
+		struct u_memstream mem;
+		u_memstream_open(&mem, &out, &outsize);
+		FILE *const memf = u_memstream_get(&mem);
 
 		fprintf(memf, "%s:\n", radv_get_shader_name(&variant->info, stage));
 		fprintf(memf, "%s\n\n", variant->ir_string);
 		fprintf(memf, "%s\n\n", variant->disasm_string);
 		radv_dump_shader_stats(device, pipeline, stage, memf);
-		fclose(memf);
+		u_memstream_close(&mem);
 
 		/* Need to include the null terminator. */
 		size_t length = outsize + 1;

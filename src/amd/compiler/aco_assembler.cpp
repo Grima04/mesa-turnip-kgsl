@@ -5,6 +5,7 @@
 #include "aco_builder.h"
 #include "common/sid.h"
 #include "ac_shader_util.h"
+#include "util/memstream.h"
 #include "util/u_math.h"
 
 namespace aco {
@@ -83,11 +84,13 @@ void emit_instruction(asm_context& ctx, std::vector<uint32_t>& out, Instruction*
    if (opcode == (uint32_t)-1) {
       char *out;
       size_t outsize;
-      FILE *memf = open_memstream(&out, &outsize);
+      struct u_memstream mem;
+      u_memstream_open(&mem, &out, &outsize);
+      FILE *const memf = u_memstream_get(&mem);
 
       fprintf(memf, "Unsupported opcode: ");
       aco_print_instr(instr, memf);
-      fclose(memf);
+      u_memstream_close(&mem);
 
       aco_err(ctx.program, out);
       free(out);

@@ -30,6 +30,7 @@
 
 #include "aco_ir.h"
 #include "util/half_float.h"
+#include "util/memstream.h"
 #include "util/u_math.h"
 
 namespace aco {
@@ -40,11 +41,13 @@ void perfwarn(Program *program, bool cond, const char *msg, Instruction *instr)
    if (cond) {
       char *out;
       size_t outsize;
-      FILE *memf = open_memstream(&out, &outsize);
+      struct u_memstream mem;
+      u_memstream_open(&mem, &out, &outsize);
+      FILE *const memf = u_memstream_get(&mem);
 
       fprintf(memf, "%s: ", msg);
       aco_print_instr(instr, memf);
-      fclose(memf);
+      u_memstream_close(&mem);
 
       aco_perfwarn(program, out);
       free(out);

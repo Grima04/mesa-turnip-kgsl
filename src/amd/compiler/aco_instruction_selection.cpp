@@ -34,6 +34,7 @@
 #include "aco_interface.h"
 #include "aco_instruction_selection.h"
 #include "util/fast_idiv_by_const.h"
+#include "util/memstream.h"
 
 #include "ac_exp_param.h"
 #include "sid.h"
@@ -50,11 +51,13 @@ static void _isel_err(isel_context *ctx, const char *file, unsigned line,
 {
    char *out;
    size_t outsize;
-   FILE *memf = open_memstream(&out, &outsize);
+   struct u_memstream mem;
+   u_memstream_open(&mem, &out, &outsize);
+   FILE *const memf = u_memstream_get(&mem);
 
    fprintf(memf, "%s: ", msg);
    nir_print_instr(instr, memf);
-   fclose(memf);
+   u_memstream_close(&mem);
 
    _aco_err(ctx->program, file, line, out);
    free(out);

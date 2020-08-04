@@ -27,6 +27,8 @@
 #include <array>
 #include <map>
 
+#include "util/memstream.h"
+
 namespace aco {
 
 static void aco_log(Program *program, enum radv_compiler_debug_level level,
@@ -78,11 +80,13 @@ bool validate_ir(Program* program)
       if (!check) {
          char *out;
          size_t outsize;
-         FILE *memf = open_memstream(&out, &outsize);
+         struct u_memstream mem;
+         u_memstream_open(&mem, &out, &outsize);
+         FILE *const memf = u_memstream_get(&mem);
 
          fprintf(memf, "%s: ", msg);
          aco_print_instr(instr, memf);
-         fclose(memf);
+         u_memstream_close(&mem);
 
          aco_err(program, out);
          free(out);
@@ -520,7 +524,9 @@ bool ra_fail(Program *program, Location loc, Location loc2, const char *fmt, ...
 
    char *out;
    size_t outsize;
-   FILE *memf = open_memstream(&out, &outsize);
+   struct u_memstream mem;
+   u_memstream_open(&mem, &out, &outsize);
+   FILE *const memf = u_memstream_get(&mem);
 
    fprintf(memf, "RA error found at instruction in BB%d:\n", loc.block->index);
    if (loc.instr) {
@@ -534,7 +540,7 @@ bool ra_fail(Program *program, Location loc, Location loc2, const char *fmt, ...
       aco_print_instr(loc2.instr, memf);
    }
    fprintf(memf, "\n\n");
-   fclose(memf);
+   u_memstream_close(&mem);
 
    aco_err(program, out);
    free(out);
