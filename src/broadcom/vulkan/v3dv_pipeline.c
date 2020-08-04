@@ -2528,7 +2528,8 @@ pack_shader_state_record(struct v3dv_pipeline *pipeline)
       shader.fragment_shader_uses_real_pixel_centre_w_in_addition_to_centroid_w2 =
          prog_data_fs->uses_center_w;
 
-      shader.enable_sample_rate_shading = pipeline->sample_rate_shading;
+      shader.enable_sample_rate_shading = pipeline->sample_rate_shading ||
+                                          prog_data_fs->force_per_sample_msaa;
 
       shader.any_shader_reads_hardware_written_primitive_id = false;
 
