@@ -488,6 +488,15 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
                ret->bindings[ret->num_bindings].size = 1;
                ret->num_bindings++;
             }
+         } else if (var->data.mode == nir_var_mem_ssbo) {
+            int binding = zink_binding(nir->info.stage,
+                                       VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                                       var->data.binding);
+            ret->bindings[ret->num_bindings].index = var->data.binding;
+            ret->bindings[ret->num_bindings].binding = binding;
+            ret->bindings[ret->num_bindings].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+            ret->bindings[ret->num_bindings].size = 1;
+            ret->num_bindings++;
          } else {
             assert(var->data.mode == nir_var_uniform);
             const struct glsl_type *type = glsl_without_array(var->type);
