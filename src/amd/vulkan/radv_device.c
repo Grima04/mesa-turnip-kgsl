@@ -26,20 +26,10 @@
  */
 
 #include "dirent.h"
-#include <errno.h>
-#include <fcntl.h>
-#include <linux/audit.h>
-#include <linux/bpf.h>
-#include <linux/filter.h>
-#include <linux/seccomp.h>
-#include <linux/unistd.h>
+
 #include <stdatomic.h>
 #include <stdbool.h>
-#include <stddef.h>
-#include <stdio.h>
 #include <string.h>
-#include <sys/prctl.h>
-#include <sys/wait.h>
 #include <unistd.h>
 #include <fcntl.h>
 
