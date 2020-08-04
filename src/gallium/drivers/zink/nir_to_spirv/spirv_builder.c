@@ -1087,6 +1087,17 @@ spirv_builder_type_matrix(struct spirv_builder *b, SpvId component_type,
 }
 
 SpvId
+spirv_builder_type_runtime_array(struct spirv_builder *b, SpvId component_type)
+{
+   SpvId type = spirv_builder_new_id(b);
+   spirv_buffer_prepare(&b->types_const_defs, b->mem_ctx, 3);
+   spirv_buffer_emit_word(&b->types_const_defs, SpvOpTypeRuntimeArray | (3 << 16));
+   spirv_buffer_emit_word(&b->types_const_defs, type);
+   spirv_buffer_emit_word(&b->types_const_defs, component_type);
+   return type;
+}
+
+SpvId
 spirv_builder_type_array(struct spirv_builder *b, SpvId component_type,
                          SpvId length)
 {
