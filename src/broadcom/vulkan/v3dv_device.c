@@ -759,6 +759,9 @@ v3dv_GetPhysicalDeviceProperties(VkPhysicalDevice physicalDevice,
    const uint32_t max_dynamic_storage_buffers = 6;
    const uint32_t max_sampled_images = 16;
    const uint32_t max_storage_images = 4;
+   const uint32_t max_input_attachments = 4;
+   assert(max_sampled_images + max_storage_images + max_input_attachments
+          <= V3D_MAX_TEXTURE_SAMPLERS);
 
    const uint32_t max_varying_components = 16 * 4;
    const uint32_t max_render_targets = 4;
@@ -791,7 +794,7 @@ v3dv_GetPhysicalDeviceProperties(VkPhysicalDevice physicalDevice,
       .maxPerStageDescriptorStorageBuffers      = max_storage_buffers,
       .maxPerStageDescriptorSampledImages       = max_sampled_images,
       .maxPerStageDescriptorStorageImages       = max_storage_images,
-      .maxPerStageDescriptorInputAttachments    = 4,
+      .maxPerStageDescriptorInputAttachments    = max_input_attachments,
       .maxPerStageResources                     = 128,
 
       /* We multiply some limits by 6 to account for all shader stages */
