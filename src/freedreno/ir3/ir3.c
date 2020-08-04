@@ -938,8 +938,17 @@ void * ir3_assemble(struct ir3_shader_variant *v)
 
 	v->instrlen = DIV_ROUND_UP(instr_count, compiler->instr_align);
 
-	/* Pad out with NOPs to instrlen. */
-	info->sizedwords = v->instrlen * compiler->instr_align * sizeof(instr_t) / 4;
+	/* Pad out with NOPs to instrlen, including at least 4 so that cffdump
+	 * doesn't try to decode the following data as instructions (such as the
+	 * next stage's shader in turnip)
+	 */
+	info->sizedwords = MAX2(v->instrlen * compiler->instr_align,
+			instr_count + 4) * sizeof(instr_t) / 4;
+
+	/* Pad out the size so that when turnip uploads the shaders in
+	 * sequence, the starting offset of the next one is properly aligned.
+	 */
+	info->sizedwords = align(info->sizedwords, compiler->instr_align * sizeof(instr_t) / 4);
 
 	ptr = dwords = rzalloc_size(v, 4 * info->sizedwords);
 
