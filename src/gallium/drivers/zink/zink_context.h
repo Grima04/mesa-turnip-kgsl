@@ -92,6 +92,7 @@ struct zink_context {
 
    struct pipe_constant_buffer ubos[PIPE_SHADER_TYPES][PIPE_MAX_CONSTANT_BUFFERS];
    struct pipe_shader_buffer ssbos[PIPE_SHADER_TYPES][PIPE_MAX_SHADER_BUFFERS];
+   uint32_t writable_ssbos;
    struct pipe_framebuffer_state fb_state;
 
    struct zink_vertex_elements_state *element_state;
