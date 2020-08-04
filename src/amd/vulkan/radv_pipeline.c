@@ -3921,6 +3921,7 @@ radv_pipeline_generate_hw_vs(struct radeon_cmdbuf *ctx_cs,
 	                       S_02881C_VS_OUT_CCDIST0_VEC_ENA((total_mask & 0x0f) != 0) |
 	                       S_02881C_VS_OUT_CCDIST1_VEC_ENA((total_mask & 0xf0) != 0) |
 			       S_02881C_BYPASS_PRIM_RATE_COMBINER_GFX103(pipeline->device->physical_device->rad_info.chip_class >= GFX10_3) |
+			       S_02881C_BYPASS_VTX_RATE_COMBINER_GFX103(pipeline->device->physical_device->rad_info.chip_class >= GFX10_3) |
 	                       cull_dist_mask << 8 |
 	                       clip_dist_mask);
 
@@ -4036,6 +4037,7 @@ radv_pipeline_generate_hw_ngg(struct radeon_cmdbuf *ctx_cs,
 	                       S_02881C_VS_OUT_CCDIST0_VEC_ENA((total_mask & 0x0f) != 0) |
 	                       S_02881C_VS_OUT_CCDIST1_VEC_ENA((total_mask & 0xf0) != 0) |
 			       S_02881C_BYPASS_PRIM_RATE_COMBINER_GFX103(pipeline->device->physical_device->rad_info.chip_class >= GFX10_3) |
+			       S_02881C_BYPASS_VTX_RATE_COMBINER_GFX103(pipeline->device->physical_device->rad_info.chip_class >= GFX10_3) |
 	                       cull_dist_mask << 8 |
 	                       clip_dist_mask);
 
