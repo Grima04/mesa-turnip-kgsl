@@ -451,6 +451,13 @@ RegisterDemand init_live_in_vars(spill_ctx& ctx, Block* block, unsigned block_id
       assert(idx != 0 && "loop without phis: TODO");
       idx--;
       RegisterDemand reg_pressure = ctx.register_demand[block_idx][idx] - spilled_registers;
+      /* Consider register pressure from linear predecessors. This can affect
+       * reg_pressure if the branch instructions define sgprs. */
+      for (unsigned pred : block->linear_preds) {
+         reg_pressure.sgpr = std::max<int16_t>(
+            reg_pressure.sgpr, ctx.register_demand[pred].back().sgpr - spilled_registers.sgpr);
+      }
+
       while (reg_pressure.sgpr > ctx.target_pressure.sgpr) {
          unsigned distance = 0;
          Temp to_spill;
@@ -628,6 +635,13 @@ RegisterDemand init_live_in_vars(spill_ctx& ctx, Block* block, unsigned block_id
       idx--;
    }
    reg_pressure += ctx.register_demand[block_idx][idx] - spilled_registers;
+
+   /* Consider register pressure from linear predecessors. This can affect
+    * reg_pressure if the branch instructions define sgprs. */
+   for (unsigned pred : block->linear_preds) {
+      reg_pressure.sgpr = std::max<int16_t>(
+         reg_pressure.sgpr, ctx.register_demand[pred].back().sgpr - spilled_registers.sgpr);
+   }
 
    while (reg_pressure.sgpr > ctx.target_pressure.sgpr) {
       assert(!partial_spills.empty());
