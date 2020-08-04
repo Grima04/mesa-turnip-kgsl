@@ -1086,7 +1086,8 @@ nir_lower_tex_block(nir_block *block, nir_builder *b,
       if (options->lower_tex_packing[tex->sampler_index] !=
           nir_lower_tex_packing_none &&
           tex->op != nir_texop_txs &&
-          tex->op != nir_texop_query_levels) {
+          tex->op != nir_texop_query_levels &&
+          tex->op != nir_texop_texture_samples) {
          lower_tex_packing(b, tex, options);
          progress = true;
       }
