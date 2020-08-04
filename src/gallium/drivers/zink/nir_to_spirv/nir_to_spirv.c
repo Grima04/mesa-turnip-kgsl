@@ -2039,6 +2039,50 @@ emit_interpolate(struct ntv_context *ctx, nir_intrinsic_instr *intr)
 }
 
 static void
+emit_atomic_intrinsic(struct ntv_context *ctx, nir_intrinsic_instr *intr)
+{
+   SpvId result = 0;
+   SpvId ssbo;
+   SpvId param;
+   SpvId dest_type = get_dest_type(ctx, &intr->dest, nir_type_uint32);
+
+   nir_const_value *const_block_index = nir_src_as_const_value(intr->src[0]);
+   assert(const_block_index); // no dynamic indexing for now
+   ssbo = ctx->ssbos[const_block_index->u32];
+   param = get_src(ctx, &intr->src[2]);
+
+   SpvId pointer_type = spirv_builder_type_pointer(&ctx->builder,
+                                                   SpvStorageClassStorageBuffer,
+                                                   dest_type);
+   SpvId uint_type = get_uvec_type(ctx, 32, 1);
+   /* an id of the array stride in bytes */
+   SpvId vec4_size = emit_uint_const(ctx, 32, sizeof(uint32_t) * 4);
+   /* an id of an array member in bytes */
+   SpvId uint_size = emit_uint_const(ctx, 32, sizeof(uint32_t));
+   SpvId member = emit_uint_const(ctx, 32, 0);
+   SpvId offset = get_src(ctx, &intr->src[1]);
+   SpvId vec_offset = emit_binop(ctx, SpvOpUDiv, uint_type, offset, vec4_size);
+   SpvId vec_member_offset = emit_binop(ctx, SpvOpUDiv, uint_type,
+                                        emit_binop(ctx, SpvOpUMod, uint_type, offset, vec4_size),
+                                        uint_size);
+   SpvId indices[3] = { member, vec_offset, vec_member_offset };
+   SpvId ptr = spirv_builder_emit_access_chain(&ctx->builder, pointer_type,
+                                               ssbo, indices,
+                                               ARRAY_SIZE(indices));
+   switch (intr->intrinsic) {
+   case nir_intrinsic_ssbo_atomic_add:
+      result = emit_atomic(ctx, SpvOpAtomicIAdd, dest_type, ptr, param);
+      break;
+   default:
+      fprintf(stderr, "emit_atomic_intrinsic: not implemented (%s)\n",
+              nir_intrinsic_infos[intr->intrinsic].name);
+      unreachable("unsupported intrinsic");
+   }
+   assert(result);
+   store_dest(ctx, &intr->dest, result, nir_type_uint);
+}
+
+static void
 emit_intrinsic(struct ntv_context *ctx, nir_intrinsic_instr *intr)
 {
    switch (intr->intrinsic) {
@@ -2143,6 +2187,10 @@ emit_intrinsic(struct ntv_context *ctx, nir_intrinsic_instr *intr)
    case nir_intrinsic_interp_deref_at_sample:
    case nir_intrinsic_interp_deref_at_offset:
       emit_interpolate(ctx, intr);
+      break;
+
+   case nir_intrinsic_ssbo_atomic_add:
+      emit_atomic_intrinsic(ctx, intr);
       break;
 
    default:
