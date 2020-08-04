@@ -2827,6 +2827,11 @@ nir_to_vir(struct v3d_compile *c)
                         c->line_x = emit_fragment_varying(c, NULL, 0, 0);
                         c->uses_implicit_point_line_varyings = true;
                 }
+
+                c->force_per_sample_msaa =
+                   c->s->info.fs.uses_sample_qualifier ||
+                   (c->s->info.system_values_read & (SYSTEM_BIT_SAMPLE_ID |
+                                                     SYSTEM_BIT_SAMPLE_POS));
                 break;
         case MESA_SHADER_COMPUTE:
                 /* Set up the TSO for barriers, assuming we do some. */

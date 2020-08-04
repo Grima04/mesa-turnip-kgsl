@@ -571,6 +571,11 @@ struct v3d_compile {
         bool writes_z;
         bool uses_implicit_point_line_varyings;
 
+        /* If the fragment shader does anything that requires to force
+         * per-sample MSAA, such as reading gl_SampleID.
+         */
+        bool force_per_sample_msaa;
+
         /* Whether we are using the fallback scheduler. This will be set after
          * register allocation has failed once.
          */
@@ -798,6 +803,7 @@ struct v3d_fs_prog_data {
         bool uses_center_w;
         bool uses_implicit_point_line_varyings;
         bool lock_scoreboard_on_first_thrsw;
+        bool force_per_sample_msaa;
 };
 
 struct v3d_compute_prog_data {
