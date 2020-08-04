@@ -575,6 +575,30 @@ zink_set_constant_buffer(struct pipe_context *pctx,
 }
 
 static void
+zink_set_shader_buffers(struct pipe_context *pctx,
+                        enum pipe_shader_type p_stage,
+                        unsigned start_slot, unsigned count,
+                        const struct pipe_shader_buffer *buffers,
+                        unsigned writable_bitmask)
+{
+   struct zink_context *ctx = zink_context(pctx);
+
+   for (unsigned i = 0; i < count; i++) {
+      struct pipe_shader_buffer *ssbo = &ctx->ssbos[p_stage][start_slot + i];
+      if (buffers && buffers[i].buffer) {
+         struct zink_resource *res = zink_resource(buffers[i].buffer);
+         pipe_resource_reference(&ssbo->buffer, &res->base);
+         ssbo->buffer_offset = buffers[i].buffer_offset;
+         ssbo->buffer_size = MIN2(buffers[i].buffer_size, res->size - ssbo->buffer_offset);
+      } else {
+         pipe_resource_reference(&ssbo->buffer, NULL);
+         ssbo->buffer_offset = 0;
+         ssbo->buffer_size = 0;
+      }
+   }
+}
+
+static void
 zink_set_sampler_views(struct pipe_context *pctx,
                        enum pipe_shader_type shader_type,
                        unsigned start_slot,
@@ -1308,6 +1332,7 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
    ctx->base.set_viewport_states = zink_set_viewport_states;
    ctx->base.set_scissor_states = zink_set_scissor_states;
    ctx->base.set_constant_buffer = zink_set_constant_buffer;
+   ctx->base.set_shader_buffers = zink_set_shader_buffers;
    ctx->base.set_framebuffer_state = zink_set_framebuffer_state;
    ctx->base.set_stencil_ref = zink_set_stencil_ref;
    ctx->base.set_clip_state = zink_set_clip_state;
