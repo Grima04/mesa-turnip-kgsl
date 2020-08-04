@@ -150,6 +150,11 @@ int fd_fence_get_fd(struct pipe_screen *pscreen,
 	return os_dupfd_cloexec(fence->fence_fd);
 }
 
+bool fd_fence_is_fd(struct pipe_fence_handle *fence)
+{
+	return fence->fence_fd != -1;
+}
+
 struct pipe_fence_handle * fd_fence_create(struct fd_batch *batch)
 {
 	return fence_create(batch->ctx, batch, 0, -1);

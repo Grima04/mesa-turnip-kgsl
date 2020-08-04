@@ -60,7 +60,8 @@ fd_context_flush(struct pipe_context *pctx, struct pipe_fence_handle **fencep,
 	 * not an "fd" fence, which results in eglDupNativeFenceFDANDROID()
 	 * errors.
 	 */
-	if (flags & PIPE_FLUSH_FENCE_FD)
+	if ((flags & PIPE_FLUSH_FENCE_FD) && ctx->last_fence &&
+			!fd_fence_is_fd(ctx->last_fence))
 		fd_fence_ref(&ctx->last_fence, NULL);
 
 	/* if no rendering since last flush, ie. app just decided it needed
