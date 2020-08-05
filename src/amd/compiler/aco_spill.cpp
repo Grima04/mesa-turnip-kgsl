@@ -647,8 +647,8 @@ RegisterDemand init_live_in_vars(spill_ctx& ctx, Block* block, unsigned block_id
       assert(!partial_spills.empty());
 
       std::set<Temp>::iterator it = partial_spills.begin();
-      Temp to_spill = *it;
-      unsigned distance = ctx.next_use_distances_start[block_idx][*it].second;
+      Temp to_spill = Temp();
+      unsigned distance = 0;
       while (it != partial_spills.end()) {
          assert(ctx.spills_entry[block_idx].find(*it) == ctx.spills_entry[block_idx].end());
 
@@ -670,8 +670,8 @@ RegisterDemand init_live_in_vars(spill_ctx& ctx, Block* block, unsigned block_id
       assert(!partial_spills.empty());
 
       std::set<Temp>::iterator it = partial_spills.begin();
-      Temp to_spill = *it;
-      unsigned distance = ctx.next_use_distances_start[block_idx][*it].second;
+      Temp to_spill = Temp();
+      unsigned distance = 0;
       while (it != partial_spills.end()) {
          assert(ctx.spills_entry[block_idx].find(*it) == ctx.spills_entry[block_idx].end());
 
