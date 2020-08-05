@@ -57,6 +57,19 @@ static void pandecode_swizzle(unsigned swizzle, enum mali_format format);
         } \
 }
 
+#define DUMP_CL(title, T, cl, indent) {\
+        fprintf(pandecode_dump_stream, "%s\n", title); \
+        struct MALI_ ## T temp; \
+        MALI_ ## T ## _unpack((const uint8_t *) cl, &temp); \
+        MALI_ ## T ## _print(pandecode_dump_stream, &temp, 0); \
+}
+
+#define DUMP_ADDR(title, T, addr, indent) {\
+        struct pandecode_mapped_memory *mapped_mem = pandecode_find_mapped_gpu_mem_containing(addr); \
+        const uint8_t *cl = pandecode_fetch_gpu_mem(mapped_mem, addr, MALI_ ## T ## _LENGTH); \
+        DUMP_CL(title, T, cl, indent); \
+}
+
 FILE *pandecode_dump_stream;
 
 /* Semantic logging type.
