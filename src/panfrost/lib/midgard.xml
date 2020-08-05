@@ -38,4 +38,15 @@
     <value name="Always" value="7"/>
   </enum>
 
+  <enum name="Stencil Op">
+    <value name="Keep" value="0"/>
+    <value name="Replace" value="1"/>
+    <value name="Zero" value="2"/>
+    <value name="Invert" value="3"/>
+    <value name="Incr Wrap" value="4"/>
+    <value name="Decr Wrap" value="5"/>
+    <value name="Incr Sat" value="6"/>
+    <value name="Decr Sat" value="7"/>
+  </enum>
+
 </panxml>

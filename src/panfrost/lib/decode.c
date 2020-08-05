@@ -480,28 +480,6 @@ pandecode_msaa_mode(enum mali_msaa_mode mode)
 }
 #undef DEFINE_CASE
 
-#define DEFINE_CASE(name) case MALI_STENCIL_ ## name: return "MALI_STENCIL_" #name
-static char *
-pandecode_stencil_op(enum mali_stencil_op op)
-{
-        switch (op) {
-                DEFINE_CASE(KEEP);
-                DEFINE_CASE(REPLACE);
-                DEFINE_CASE(ZERO);
-                DEFINE_CASE(INVERT);
-                DEFINE_CASE(INCR_WRAP);
-                DEFINE_CASE(DECR_WRAP);
-                DEFINE_CASE(INCR);
-                DEFINE_CASE(DECR);
-
-        default:
-                pandecode_msg("XXX: invalid stencil op %X\n", op);
-                return "";
-        }
-}
-
-#undef DEFINE_CASE
-
 static char *pandecode_attr_mode_short(enum mali_attr_mode mode)
 {
         switch(mode) {
@@ -1642,9 +1620,9 @@ pandecode_stencil(const char *name, const struct mali_stencil_test *stencil)
                 return;
 
         const char *func = mali_func_as_str(stencil->func);
-        const char *sfail = pandecode_stencil_op(stencil->sfail);
-        const char *dpfail = pandecode_stencil_op(stencil->dpfail);
-        const char *dppass = pandecode_stencil_op(stencil->dppass);
+        const char *sfail = mali_stencil_op_as_str(stencil->sfail);
+        const char *dpfail = mali_stencil_op_as_str(stencil->dpfail);
+        const char *dppass = mali_stencil_op_as_str(stencil->dppass);
 
         if (stencil->zero)
                 pandecode_msg("XXX: stencil zero tripped: %X\n", stencil->zero);

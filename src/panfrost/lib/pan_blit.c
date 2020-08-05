@@ -214,9 +214,9 @@ panfrost_load_midg(
         struct mali_stencil_test stencil = {
                 .mask = 0xFF,
                 .func = MALI_FUNC_ALWAYS,
-                .sfail = MALI_STENCIL_REPLACE,
-                .dpfail = MALI_STENCIL_REPLACE,
-                .dppass = MALI_STENCIL_REPLACE,
+                .sfail = MALI_STENCIL_OP_REPLACE,
+                .dpfail = MALI_STENCIL_OP_REPLACE,
+                .dppass = MALI_STENCIL_OP_REPLACE,
         };
 
         union midgard_blend replace = {

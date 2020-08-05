@@ -88,17 +88,6 @@ typedef uint64_t mali_ptr;
 /* Stencil test state is all encoded in a single u32, just with a lot of
  * enums... */
 
-enum mali_stencil_op {
-        MALI_STENCIL_KEEP 	= 0,
-        MALI_STENCIL_REPLACE 	= 1,
-        MALI_STENCIL_ZERO 	= 2,
-        MALI_STENCIL_INVERT 	= 3,
-        MALI_STENCIL_INCR_WRAP 	= 4,
-        MALI_STENCIL_DECR_WRAP 	= 5,
-        MALI_STENCIL_INCR 	= 6,
-        MALI_STENCIL_DECR 	= 7
-};
-
 struct mali_stencil_test {
         unsigned ref  			: 8;
         unsigned mask 			: 8;

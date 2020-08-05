@@ -387,28 +387,28 @@ panfrost_translate_stencil_op(enum pipe_stencil_op in)
 {
         switch (in) {
         case PIPE_STENCIL_OP_KEEP:
-                return MALI_STENCIL_KEEP;
+                return MALI_STENCIL_OP_KEEP;
 
         case PIPE_STENCIL_OP_ZERO:
-                return MALI_STENCIL_ZERO;
+                return MALI_STENCIL_OP_ZERO;
 
         case PIPE_STENCIL_OP_REPLACE:
-               return MALI_STENCIL_REPLACE;
+               return MALI_STENCIL_OP_REPLACE;
 
         case PIPE_STENCIL_OP_INCR:
-                return MALI_STENCIL_INCR;
+                return MALI_STENCIL_OP_INCR_SAT;
 
         case PIPE_STENCIL_OP_DECR:
-                return MALI_STENCIL_DECR;
+                return MALI_STENCIL_OP_DECR_SAT;
 
         case PIPE_STENCIL_OP_INCR_WRAP:
-                return MALI_STENCIL_INCR_WRAP;
+                return MALI_STENCIL_OP_INCR_WRAP;
 
         case PIPE_STENCIL_OP_DECR_WRAP:
-                return MALI_STENCIL_DECR_WRAP;
+                return MALI_STENCIL_OP_DECR_WRAP;
 
         case PIPE_STENCIL_OP_INVERT:
-                return MALI_STENCIL_INVERT;
+                return MALI_STENCIL_OP_INVERT;
 
         default:
                 unreachable("Invalid stencil op");
@@ -585,9 +585,9 @@ panfrost_frag_meta_zsa_update(struct panfrost_context *ctx,
                 struct pipe_stencil_state default_stencil = {
                         .enabled = 0,
                         .func = PIPE_FUNC_ALWAYS,
-                        .fail_op = MALI_STENCIL_KEEP,
-                        .zfail_op = MALI_STENCIL_KEEP,
-                        .zpass_op = MALI_STENCIL_KEEP,
+                        .fail_op = PIPE_STENCIL_OP_KEEP,
+                        .zfail_op = PIPE_STENCIL_OP_KEEP,
+                        .zpass_op = PIPE_STENCIL_OP_KEEP,
                         .writemask = 0xFF,
                         .valuemask = 0xFF
                 };
