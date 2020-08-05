@@ -32,7 +32,7 @@
 
 #include "pan_bo.h"
 #include "pan_util.h"
-#include "../pandecode/public.h"
+#include "wrap.h"
 
 #include "os/os_mman.h"
 

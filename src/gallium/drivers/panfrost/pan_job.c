@@ -36,7 +36,7 @@
 #include "util/rounding.h"
 #include "pan_util.h"
 #include "pan_blending.h"
-#include "pandecode/decode.h"
+#include "decode.h"
 #include "panfrost-quirks.h"
 
 /* panfrost_bo_access is here to help us keep track of batch accesses to BOs

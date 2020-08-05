@@ -53,7 +53,7 @@
 #include "pan_blend_shaders.h"
 #include "pan_cmdstream.h"
 #include "pan_util.h"
-#include "pandecode/decode.h"
+#include "decode.h"
 #include "util/pan_lower_framebuffer.h"
 
 struct midgard_tiler_descriptor

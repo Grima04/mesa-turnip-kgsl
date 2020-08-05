@@ -47,7 +47,7 @@
 #include "pan_resource.h"
 #include "pan_util.h"
 #include "pan_tiling.h"
-#include "pandecode/decode.h"
+#include "decode.h"
 #include "panfrost-quirks.h"
 
 static struct pipe_resource *

@@ -19,7 +19,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-libpanfrost_encoder_files = files(
+libpanfrost_lib_files = files(
   'pan_encoder.h',
 
   'pan_afbc.c',
@@ -37,9 +37,9 @@ libpanfrost_encoder_files = files(
   'pan_props.c',
 )
 
-libpanfrost_encoder = static_library(
-  'panfrost_encoder',
-  [libpanfrost_encoder_files],
+libpanfrost_lib = static_library(
+  'panfrost_lib',
+  [libpanfrost_lib_files],
   include_directories : [inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_gallium_aux, inc_panfrost_hw],
   c_args : [no_override_init_args],
   gnu_symbol_visibility : 'hidden',

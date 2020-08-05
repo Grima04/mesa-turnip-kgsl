@@ -48,7 +48,7 @@
 #include "pan_resource.h"
 #include "pan_public.h"
 #include "pan_util.h"
-#include "pandecode/decode.h"
+#include "decode.h"
 
 #include "pan_context.h"
 #include "midgard/midgard_compile.h"

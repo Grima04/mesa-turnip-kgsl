@@ -25,7 +25,7 @@
  */
 
 #include "bit.h"
-#include "panfrost/pandecode/decode.h"
+#include "panfrost/lib/decode.h"
 #include "drm-uapi/panfrost_drm.h"
 #include "panfrost/encoder/pan_encoder.h"
 
