@@ -420,28 +420,28 @@ translate_tex_wrap(enum pipe_tex_wrap w)
 {
         switch (w) {
         case PIPE_TEX_WRAP_REPEAT:
-                return MALI_WRAP_REPEAT;
+                return MALI_WRAP_MODE_REPEAT;
 
         case PIPE_TEX_WRAP_CLAMP:
-                return MALI_WRAP_CLAMP;
+                return MALI_WRAP_MODE_CLAMP;
 
         case PIPE_TEX_WRAP_CLAMP_TO_EDGE:
-                return MALI_WRAP_CLAMP_TO_EDGE;
+                return MALI_WRAP_MODE_CLAMP_TO_EDGE;
 
         case PIPE_TEX_WRAP_CLAMP_TO_BORDER:
-                return MALI_WRAP_CLAMP_TO_BORDER;
+                return MALI_WRAP_MODE_CLAMP_TO_BORDER;
 
         case PIPE_TEX_WRAP_MIRROR_REPEAT:
-                return MALI_WRAP_MIRRORED_REPEAT;
+                return MALI_WRAP_MODE_MIRRORED_REPEAT;
 
         case PIPE_TEX_WRAP_MIRROR_CLAMP:
-                return MALI_WRAP_MIRRORED_CLAMP;
+                return MALI_WRAP_MODE_MIRRORED_CLAMP;
 
         case PIPE_TEX_WRAP_MIRROR_CLAMP_TO_EDGE:
-                return MALI_WRAP_MIRRORED_CLAMP_TO_EDGE;
+                return MALI_WRAP_MODE_MIRRORED_CLAMP_TO_EDGE;
 
         case PIPE_TEX_WRAP_MIRROR_CLAMP_TO_BORDER:
-                return MALI_WRAP_MIRRORED_CLAMP_TO_BORDER;
+                return MALI_WRAP_MODE_MIRRORED_CLAMP_TO_BORDER;
 
         default:
                 unreachable("Invalid wrap");

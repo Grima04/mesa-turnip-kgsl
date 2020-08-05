@@ -313,9 +313,9 @@ panfrost_load_midg(
 
         struct mali_sampler_descriptor sampler = {
                 .filter_mode = MALI_SAMP_MAG_NEAREST | MALI_SAMP_MIN_NEAREST,
-                .wrap_s = MALI_WRAP_CLAMP_TO_EDGE,
-                .wrap_t = MALI_WRAP_CLAMP_TO_EDGE,
-                .wrap_r = MALI_WRAP_CLAMP_TO_EDGE,
+                .wrap_s = MALI_WRAP_MODE_CLAMP_TO_EDGE,
+                .wrap_t = MALI_WRAP_MODE_CLAMP_TO_EDGE,
+                .wrap_r = MALI_WRAP_MODE_CLAMP_TO_EDGE,
         };
 
         struct panfrost_transfer shader_meta_t = panfrost_pool_alloc(pool, sizeof(shader_meta) + 8 * sizeof(struct midgard_blend_rt));

@@ -521,27 +521,6 @@ pandecode_special_record(uint64_t v, bool* attribute)
         }
 }
 
-#define DEFINE_CASE(name) case MALI_WRAP_## name: return "MALI_WRAP_" #name
-static char *
-pandecode_wrap_mode(enum mali_wrap_mode op)
-{
-        switch (op) {
-                DEFINE_CASE(REPEAT);
-                DEFINE_CASE(CLAMP_TO_EDGE);
-                DEFINE_CASE(CLAMP);
-                DEFINE_CASE(CLAMP_TO_BORDER);
-                DEFINE_CASE(MIRRORED_REPEAT);
-                DEFINE_CASE(MIRRORED_CLAMP_TO_EDGE);
-                DEFINE_CASE(MIRRORED_CLAMP);
-                DEFINE_CASE(MIRRORED_CLAMP_TO_BORDER);
-
-        default:
-                pandecode_msg("XXX: invalid wrap mode %X\n", op);
-                return "";
-        }
-}
-#undef DEFINE_CASE
-
 #define DEFINE_CASE(name) case MALI_BLOCK_## name: return "MALI_BLOCK_" #name
 static char *
 pandecode_block_format(enum mali_block_format fmt)
@@ -2503,9 +2482,9 @@ pandecode_samplers(mali_ptr samplers, unsigned sampler_count, int job_no, bool i
                                 pandecode_prop("unk1 = 0x%x", s->unk1);
                         }
 
-                        pandecode_prop("wrap_s = %s", pandecode_wrap_mode(s->wrap_s));
-                        pandecode_prop("wrap_t = %s", pandecode_wrap_mode(s->wrap_t));
-                        pandecode_prop("wrap_r = %s", pandecode_wrap_mode(s->wrap_r));
+                        pandecode_prop("wrap_s = %s", mali_wrap_mode_as_str(s->wrap_s));
+                        pandecode_prop("wrap_t = %s", mali_wrap_mode_as_str(s->wrap_t));
+                        pandecode_prop("wrap_r = %s", mali_wrap_mode_as_str(s->wrap_r));
 
                         if (s->unk8 != 0x8) {
                                 pandecode_msg("XXX: unk8 tripped\n");
@@ -2550,9 +2529,9 @@ pandecode_samplers(mali_ptr samplers, unsigned sampler_count, int job_no, bool i
                         if (s->lod_bias)
                                 pandecode_prop("lod_bias = FIXED_16(%f)", DECODE_FIXED_16(s->lod_bias));
 
-                        pandecode_prop("wrap_s = %s", pandecode_wrap_mode(s->wrap_s));
-                        pandecode_prop("wrap_t = %s", pandecode_wrap_mode(s->wrap_t));
-                        pandecode_prop("wrap_r = %s", pandecode_wrap_mode(s->wrap_r));
+                        pandecode_prop("wrap_s = %s", mali_wrap_mode_as_str(s->wrap_s));
+                        pandecode_prop("wrap_t = %s", mali_wrap_mode_as_str(s->wrap_t));
+                        pandecode_prop("wrap_r = %s", mali_wrap_mode_as_str(s->wrap_r));
 
                         pandecode_prop("compare_func = %s", mali_func_as_str(s->compare_func));
 

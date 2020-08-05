@@ -49,4 +49,15 @@
     <value name="Decr Sat" value="7"/>
   </enum>
 
+  <enum name="Wrap Mode">
+    <value name="Repeat" value="8"/>
+    <value name="Clamp to Edge" value="9"/>
+    <value name="Clamp" value="10"/>
+    <value name="Clamp to Border" value="11"/>
+    <value name="Mirrored Repeat" value="12"/>
+    <value name="Mirrored Clamp to Edge" value="13"/>
+    <value name="Mirrored Clamp" value="14"/>
+    <value name="Mirrored Clamp to Border" value="15"/>
+  </enum>
+
 </panxml>
