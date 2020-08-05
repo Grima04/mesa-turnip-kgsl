@@ -51,27 +51,6 @@ ir3_handle_bindless_cat6(struct ir3_instruction *instr, nir_src rsrc)
 }
 
 static struct ir3_instruction *
-create_indirect_load(struct ir3_context *ctx, unsigned arrsz, int n,
-		struct ir3_instruction *address, struct ir3_instruction *collect)
-{
-	struct ir3_block *block = ctx->block;
-	struct ir3_instruction *mov;
-	struct ir3_register *src;
-
-	mov = ir3_instr_create(block, OPC_MOV);
-	mov->cat1.src_type = TYPE_U32;
-	mov->cat1.dst_type = TYPE_U32;
-	__ssa_dst(mov);
-	src = __ssa_src(mov, collect, IR3_REG_RELATIV);
-	src->size  = arrsz;
-	src->array.offset = n;
-
-	ir3_instr_set_address(mov, address);
-
-	return mov;
-}
-
-static struct ir3_instruction *
 create_input(struct ir3_context *ctx, unsigned compmask)
 {
 	struct ir3_instruction *in;
@@ -1714,15 +1693,7 @@ emit_intrinsic(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 				compile_assert(ctx, ctx->inputs[n]);
 			}
 		} else {
-			src = ir3_get_src(ctx, &intr->src[0]);
-			struct ir3_instruction *collect =
-					ir3_create_collect(ctx, ctx->ir->inputs, ctx->ninputs);
-			struct ir3_instruction *addr = ir3_get_addr0(ctx, src[0], 4);
-			for (int i = 0; i < dest_components; i++) {
-				unsigned n = idx * 4 + i + comp;
-				dst[i] = create_indirect_load(ctx, ctx->ninputs,
-						n, addr, collect);
-			}
+			ir3_context_error(ctx, "unhandled");
 		}
 		break;
 	/* All SSBO intrinsics should have been lowered by 'lower_io_offsets'
