@@ -3629,8 +3629,8 @@ fs_visitor::nir_emit_fs_intrinsic(const fs_builder &bld,
 
       if (const_offset) {
          assert(nir_src_bit_size(instr->src[0]) == 32);
-         unsigned off_x = MIN2((int)(const_offset[0].f32 * 16), 7) & 0xf;
-         unsigned off_y = MIN2((int)(const_offset[1].f32 * 16), 7) & 0xf;
+         unsigned off_x = const_offset[0].u32 & 0xf;
+         unsigned off_y = const_offset[1].u32 & 0xf;
 
          emit_pixel_interpolater_send(bld,
                                       FS_OPCODE_INTERPOLATE_AT_SHARED_OFFSET,
@@ -3639,35 +3639,7 @@ fs_visitor::nir_emit_fs_intrinsic(const fs_builder &bld,
                                       brw_imm_ud(off_x | (off_y << 4)),
                                       interpolation);
       } else {
-         fs_reg src = vgrf(glsl_type::ivec2_type);
-         fs_reg offset_src = retype(get_nir_src(instr->src[0]),
-                                    BRW_REGISTER_TYPE_F);
-         for (int i = 0; i < 2; i++) {
-            fs_reg temp = vgrf(glsl_type::float_type);
-            bld.MUL(temp, offset(offset_src, bld, i), brw_imm_f(16.0f));
-            fs_reg itemp = vgrf(glsl_type::int_type);
-            /* float to int */
-            bld.MOV(itemp, temp);
-
-            /* Clamp the upper end of the range to +7/16.
-             * ARB_gpu_shader5 requires that we support a maximum offset
-             * of +0.5, which isn't representable in a S0.4 value -- if
-             * we didn't clamp it, we'd end up with -8/16, which is the
-             * opposite of what the shader author wanted.
-             *
-             * This is legal due to ARB_gpu_shader5's quantization
-             * rules:
-             *
-             * "Not all values of <offset> may be supported; x and y
-             * offsets may be rounded to fixed-point values with the
-             * number of fraction bits given by the
-             * implementation-dependent constant
-             * FRAGMENT_INTERPOLATION_OFFSET_BITS"
-             */
-            set_condmod(BRW_CONDITIONAL_L,
-                        bld.SEL(offset(src, bld, i), itemp, brw_imm_d(7)));
-         }
-
+         fs_reg src = retype(get_nir_src(instr->src[0]), BRW_REGISTER_TYPE_D);
          const enum opcode opcode = FS_OPCODE_INTERPOLATE_AT_PER_SLOT_OFFSET;
          emit_pixel_interpolater_send(bld,
                                       opcode,
