@@ -1383,8 +1383,16 @@ radv_image_create_layout(struct radv_device *device,
 
 		device->ws->surface_init(device->ws, &info, &image->planes[plane].surface);
 
-		if (!create_info.no_metadata_planes && image->plane_count == 1 &&
-		    !mod_info)
+		if (create_info.bo_metadata && !mod_info &&
+		    !ac_surface_set_umd_metadata(&device->physical_device->rad_info,
+		                                 &image->planes[plane].surface,
+		                                 image_info.storage_samples, image_info.levels,
+		                                 create_info.bo_metadata->size_metadata,
+		                                 create_info.bo_metadata->metadata))
+			return VK_ERROR_INVALID_EXTERNAL_HANDLE;
+
+		if (!create_info.no_metadata_planes && !create_info.bo_metadata &&
+		    image->plane_count == 1 && !mod_info)
 			radv_image_alloc_single_sample_cmask(device, image, &image->planes[plane].surface);
 
 		if (mod_info) {
