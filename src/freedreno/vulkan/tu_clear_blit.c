@@ -25,69 +25,32 @@ tu_pack_float32_for_unorm(float val, int bits)
 /* r2d_ = BLIT_OP_SCALE operations */
 
 static enum a6xx_2d_ifmt
-format_to_ifmt(enum a6xx_format fmt)
+format_to_ifmt(VkFormat format)
 {
-   switch (fmt) {
-   case FMT6_A8_UNORM:
-   case FMT6_8_UNORM:
-   case FMT6_8_SNORM:
-   case FMT6_8_8_UNORM:
-   case FMT6_8_8_SNORM:
-   case FMT6_8_8_8_8_UNORM:
-   case FMT6_8_8_8_X8_UNORM:
-   case FMT6_8_8_8_8_SNORM:
-   case FMT6_4_4_4_4_UNORM:
-   case FMT6_5_5_5_1_UNORM:
-   case FMT6_5_6_5_UNORM:
-   case FMT6_Z24_UNORM_S8_UINT:
-   case FMT6_Z24_UNORM_S8_UINT_AS_R8G8B8A8:
+   if (format == VK_FORMAT_D24_UNORM_S8_UINT ||
+       format == VK_FORMAT_X8_D24_UNORM_PACK32)
       return R2D_UNORM8;
 
-   case FMT6_32_UINT:
-   case FMT6_32_SINT:
-   case FMT6_32_32_UINT:
-   case FMT6_32_32_SINT:
-   case FMT6_32_32_32_32_UINT:
-   case FMT6_32_32_32_32_SINT:
-      return R2D_INT32;
-
-   case FMT6_16_UINT:
-   case FMT6_16_SINT:
-   case FMT6_16_16_UINT:
-   case FMT6_16_16_SINT:
-   case FMT6_16_16_16_16_UINT:
-   case FMT6_16_16_16_16_SINT:
-   case FMT6_10_10_10_2_UINT:
-      return R2D_INT16;
-
-   case FMT6_8_UINT:
-   case FMT6_8_SINT:
-   case FMT6_8_8_UINT:
-   case FMT6_8_8_SINT:
-   case FMT6_8_8_8_8_UINT:
-   case FMT6_8_8_8_8_SINT:
+   /* get_component_bits doesn't work with depth/stencil formats: */
+   if (format == VK_FORMAT_D16_UNORM || format == VK_FORMAT_D32_SFLOAT)
+      return R2D_FLOAT32;
+   if (format == VK_FORMAT_S8_UINT)
       return R2D_INT8;
 
-   case FMT6_16_UNORM:
-   case FMT6_16_SNORM:
-   case FMT6_16_16_UNORM:
-   case FMT6_16_16_SNORM:
-   case FMT6_16_16_16_16_UNORM:
-   case FMT6_16_16_16_16_SNORM:
-   case FMT6_32_FLOAT:
-   case FMT6_32_32_FLOAT:
-   case FMT6_32_32_32_32_FLOAT:
-      return R2D_FLOAT32;
-
-   case FMT6_16_FLOAT:
-   case FMT6_16_16_FLOAT:
-   case FMT6_16_16_16_16_FLOAT:
-   case FMT6_11_11_10_FLOAT:
-   case FMT6_10_10_10_2_UNORM:
-   case FMT6_10_10_10_2_UNORM_DEST:
-      return R2D_FLOAT16;
-
-   default:
+   /* use the size of the red channel to find the corresponding "ifmt" */
+   bool is_int = vk_format_is_int(format);
+   switch (vk_format_get_component_bits(format, UTIL_FORMAT_COLORSPACE_RGB, PIPE_SWIZZLE_X)) {
+   case 4: case 5: case 8:
+      return is_int ? R2D_INT8 : R2D_UNORM8;
+   case 10: case 11:
+      return is_int ? R2D_INT16 : R2D_FLOAT16;
+   case 16:
+      if (vk_format_is_float(format))
+         return R2D_FLOAT16;
+      return is_int ? R2D_INT16 : R2D_FLOAT32;
+   case 32:
+      return is_int ? R2D_INT32 : R2D_FLOAT32;
+    default:
       unreachable("bad format");
       return 0;
    }
@@ -142,7 +105,7 @@ r2d_clear_value(struct tu_cs *cs, VkFormat format, const VkClearValue *val)
    default:
       assert(!vk_format_is_depth_or_stencil(format));
       const struct util_format_description *desc = vk_format_description(format);
-      enum a6xx_2d_ifmt ifmt = format_to_ifmt(tu6_base_format(format));
+      enum a6xx_2d_ifmt ifmt = format_to_ifmt(format);
 
       assert(desc && (desc->layout == UTIL_FORMAT_LAYOUT_PLAIN ||
                       format == VK_FORMAT_B10G11R11_UFLOAT_PACK32));
@@ -265,7 +228,7 @@ r2d_setup_common(struct tu_cmd_buffer *cmd,
                  bool scissor)
 {
    enum a6xx_format format = tu6_base_format(vk_format);
-   enum a6xx_2d_ifmt ifmt = format_to_ifmt(format);
+   enum a6xx_2d_ifmt ifmt = format_to_ifmt(vk_format);
    uint32_t unknown_8c01 = 0;
 
    if ((vk_format == VK_FORMAT_D24_UNORM_S8_UINT ||
