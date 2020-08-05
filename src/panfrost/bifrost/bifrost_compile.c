@@ -169,7 +169,7 @@ bi_emit_frag_out(bi_context *ctx, nir_intrinsic_instr *instr)
                 .vector_channels = 4
         };
 
-        assert(blend.blend_location < BIFROST_MAX_RENDER_TARGET_COUNT);
+        assert(blend.blend_location < 8);
         assert(ctx->blend_types);
         assert(blend.src_types[0]);
         ctx->blend_types[blend.blend_location] = blend.src_types[0];
