@@ -42,9 +42,17 @@ libpanfrost_decode_files = files(
   'decode.c',
 )
 
+midgard_pack = custom_target(
+  'midgard_pack.h',
+  input : ['gen_pack.py', 'midgard.xml'],
+  output : 'midgard_pack.h',
+  command : [prog_python, '@INPUT@'],
+  capture : true,
+)
+
 libpanfrost_lib = static_library(
   'panfrost_lib',
-  [libpanfrost_lib_files],
+  [libpanfrost_lib_files, midgard_pack],
   include_directories : [inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_gallium_aux, inc_panfrost_hw],
   c_args : [no_override_init_args],
   gnu_symbol_visibility : 'hidden',
@@ -54,7 +62,7 @@ libpanfrost_lib = static_library(
 
 libpanfrost_decode = static_library(
   'panfrost_decode',
-  [libpanfrost_decode_files],
+  [libpanfrost_decode_files, midgard_pack],
   include_directories : [inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_gallium_aux, inc_panfrost],
   c_args : [no_override_init_args],
   gnu_symbol_visibility : 'hidden',

@@ -42,7 +42,7 @@ files_bifrost = files(
 
 bifrost_compiler = executable(
   'bifrost_compiler',
-  [files_bifrost],
+  [files_bifrost, midgard_pack],
   include_directories : [
     inc_mapi,
     inc_mesa,
