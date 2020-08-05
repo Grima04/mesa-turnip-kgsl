@@ -663,8 +663,8 @@ MOV OUT[0], CONST[0][3]  # copy vector 3 of constbuf 0
   DDX and DDY opcodes are supported.
 * ``PIPE_SHADER_CAP_INT16``: Whether 16-bit signed and unsigned integer types
   are supported.
-* ``PIPE_SHADER_CAP_GLSL_16BIT_TEMPS``: Lower mediump temporaries to 16-bit.
-  This generates 16-bit phis in NIR, 16-bit loop counters, and 16-bit indirect arrays.
+* ``PIPE_SHADER_CAP_GLSL_16BIT_CONSTS``: Lower mediump constants to 16-bit.
+  Note that 16-bit constants are not lowered to uniforms in GLSL.
 * ``PIPE_SHADER_CAP_MAX_TEXTURE_SAMPLERS``: The maximum number of texture
   samplers.
 * ``PIPE_SHADER_CAP_PREFERRED_IR``: Preferred representation of the

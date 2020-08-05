@@ -107,15 +107,15 @@ traces:
   - path: glmark2/bump-bump-render=height.rdc
     expectations:
       - device: freedreno-a630
-        checksum: ed8ef7fcd88f20c5814bbdd95f62824a
+        checksum: 6d06bb78d918ef6376aee4d417c9e9c1
   - path: glmark2/bump-bump-render=high-poly.rdc
     expectations:
       - device: freedreno-a630
-        checksum: 39e9e510819758910efc7b58bd08b981
+        checksum: 55312be6739a7142958bdef174e90269
   - path: glmark2/bump-bump-render=normals.rdc
     expectations:
       - device: freedreno-a630
-        checksum: 3b270da5fcb3c1ee49c889644a5cc439
+        checksum: 9deea36f896b9aea01169839e1913e9b
   - path: glmark2/conditionals-fragment-steps=0:vertex-steps=0.rdc
     expectations:
       # Incorrect rendering, a bunch of the area is uniform gray when it should
@@ -207,11 +207,11 @@ traces:
   - path: glmark2/shading-shading=blinn-phong-inf.rdc
     expectations:
       - device: freedreno-a630
-        checksum: 5a4aa8bebb324d0319ae1ebd95c7ce57
+        checksum: b9af27ae43986f6441235044a7f18e2a
   - path: glmark2/shading-shading=cel.rdc
     expectations:
       - device: freedreno-a630
-        checksum: 444fc5f23e3ce564d9945c20ed5d5e67
+        checksum: fc2c2a68a89ad2ee145819e2a6edcbc5
   - path: glmark2/shading-shading=gouraud.rdc
     expectations:
       - device: freedreno-a630

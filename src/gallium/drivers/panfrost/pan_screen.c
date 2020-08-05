@@ -336,7 +336,7 @@ panfrost_get_shader_param(struct pipe_screen *screen,
                 return 1;
 
         case PIPE_SHADER_CAP_FP16:
-        case PIPE_SHADER_CAP_GLSL_16BIT_TEMPS:
+        case PIPE_SHADER_CAP_GLSL_16BIT_CONSTS:
                 return !is_nofp16;
 
         case PIPE_SHADER_CAP_FP16_DERIVATIVES:
