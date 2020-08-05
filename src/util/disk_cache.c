@@ -224,34 +224,12 @@ disk_cache_wait_for_idle(struct disk_cache *cache)
    util_queue_finish(&cache->cache_queue);
 }
 
-/* Return a filename within the cache's directory corresponding to 'key'. The
- * returned filename is ralloced with 'cache' as the parent context.
- *
- * Returns NULL if out of memory.
- */
-static char *
-get_cache_file(struct disk_cache *cache, const cache_key key)
-{
-   char buf[41];
-   char *filename;
-
-   if (cache->path_init_failed)
-      return NULL;
-
-   _mesa_sha1_format(buf, key);
-   if (asprintf(&filename, "%s/%c%c/%s", cache->path, buf[0],
-                buf[1], buf + 2) == -1)
-      return NULL;
-
-   return filename;
-}
-
 void
 disk_cache_remove(struct disk_cache *cache, const cache_key key)
 {
    struct stat sb;
 
-   char *filename = get_cache_file(cache, key);
+   char *filename = disk_cache_get_cache_filename(cache, key);
    if (filename == NULL) {
       return;
    }
@@ -348,7 +326,7 @@ cache_put(void *job, int thread_index)
    char *filename = NULL;
    struct disk_cache_put_job *dc_job = (struct disk_cache_put_job *) job;
 
-   filename = get_cache_file(dc_job->cache, dc_job->key);
+   filename = disk_cache_get_cache_filename(dc_job->cache, dc_job->key);
    if (filename == NULL)
       goto done;
 
@@ -474,7 +452,7 @@ disk_cache_get(struct disk_cache *cache, const cache_key key, size_t *size)
       return blob;
    }
 
-   filename = get_cache_file(cache, key);
+   filename = disk_cache_get_cache_filename(cache, key);
    if (filename == NULL)
       goto fail;
 

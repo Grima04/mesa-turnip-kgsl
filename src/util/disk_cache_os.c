@@ -438,6 +438,28 @@ disk_cache_evict_lru_item(struct disk_cache *cache)
       p_atomic_add(cache->size, - (uint64_t)size);
 }
 
+/* Return a filename within the cache's directory corresponding to 'key'. The
+ * returned filename is ralloced with 'cache' as the parent context.
+ *
+ * Returns NULL if out of memory.
+ */
+char *
+disk_cache_get_cache_filename(struct disk_cache *cache, const cache_key key)
+{
+   char buf[41];
+   char *filename;
+
+   if (cache->path_init_failed)
+      return NULL;
+
+   _mesa_sha1_format(buf, key);
+   if (asprintf(&filename, "%s/%c%c/%s", cache->path, buf[0],
+                buf[1], buf + 2) == -1)
+      return NULL;
+
+   return filename;
+}
+
 void
 disk_cache_write_item_to_disk(struct disk_cache_put_job *dc_job,
                               struct cache_entry_file_data *cf_data,
