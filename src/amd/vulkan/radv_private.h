@@ -652,6 +652,12 @@ struct radv_meta_state {
 		VkPipelineLayout p_layout;
 		VkPipeline pipeline[MAX_SAMPLES_LOG2];
 	} fmask_expand;
+
+	struct {
+		VkDescriptorSetLayout ds_layout;
+		VkPipelineLayout p_layout;
+		VkPipeline pipeline;
+	} dcc_retile;
 };
 
 /* queue types */

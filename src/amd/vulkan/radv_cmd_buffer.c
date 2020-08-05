@@ -6348,6 +6348,10 @@ static void radv_handle_color_image_transition(struct radv_cmd_buffer *cmd_buffe
 					       dst_layout, dst_render_loop,
 					       src_queue_mask, dst_queue_mask,
 					       range);
+
+		if (dst_layout == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR &&
+		    image->retile_map)
+			radv_retile_dcc(cmd_buffer, image);
 		return;
 	}
 
@@ -6363,6 +6367,11 @@ static void radv_handle_color_image_transition(struct radv_cmd_buffer *cmd_buffe
 		                                       dst_render_loop, dst_queue_mask)) {
 			radv_fast_clear_flush_image_inplace(cmd_buffer, image, range);
 		}
+
+		if (src_layout != VK_IMAGE_LAYOUT_PRESENT_SRC_KHR &&
+		    dst_layout == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR &&
+		    image->retile_map)
+			radv_retile_dcc(cmd_buffer, image);
 	} else if (radv_image_has_cmask(image) || radv_image_has_fmask(image)) {
 		bool fce_eliminate = false, fmask_expand = false;
 
