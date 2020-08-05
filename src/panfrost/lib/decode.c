@@ -464,32 +464,6 @@ static char *pandecode_format(enum mali_format format)
 
 #undef DEFINE_CASE
 
-static char *
-pandecode_draw_mode(enum mali_draw_mode mode)
-{
-#define DEFINE_CASE(name) case MALI_ ## name: return "MALI_" #name
-
-        switch (mode) {
-                DEFINE_CASE(DRAW_NONE);
-                DEFINE_CASE(POINTS);
-                DEFINE_CASE(LINES);
-                DEFINE_CASE(TRIANGLES);
-                DEFINE_CASE(TRIANGLE_STRIP);
-                DEFINE_CASE(TRIANGLE_FAN);
-                DEFINE_CASE(LINE_STRIP);
-                DEFINE_CASE(LINE_LOOP);
-                DEFINE_CASE(POLYGON);
-                DEFINE_CASE(QUADS);
-                DEFINE_CASE(QUAD_STRIP);
-
-        default:
-                pandecode_msg("XXX: invalid draw mode %X\n", mode);
-                return "";
-        }
-
-#undef DEFINE_CASE
-}
-
 #define DEFINE_CASE(name) case MALI_FUNC_ ## name: return "MALI_FUNC_" #name
 static char *
 pandecode_func(enum mali_func mode)
@@ -2013,8 +1987,8 @@ pandecode_vertex_tiler_prefix(struct mali_vertex_tiler_prefix *p, int job_no, bo
 
         pandecode_prop("workgroups_x_shift_3 = 0x%" PRIx32, p->workgroups_x_shift_3);
 
-        if (p->draw_mode != MALI_DRAW_NONE)
-                pandecode_prop("draw_mode = %s", pandecode_draw_mode(p->draw_mode));
+        if (p->draw_mode != MALI_DRAW_MODE_NONE)
+                pandecode_prop("draw_mode = %s", mali_draw_mode_as_str(p->draw_mode));
 
         /* Index count only exists for tiler jobs anyway */
 

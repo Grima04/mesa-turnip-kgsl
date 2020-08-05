@@ -38,22 +38,6 @@ typedef uint32_t u32;
 typedef uint64_t u64;
 typedef uint64_t mali_ptr;
 
-enum mali_draw_mode {
-        MALI_DRAW_NONE      = 0x0,
-        MALI_POINTS         = 0x1,
-        MALI_LINES          = 0x2,
-        MALI_LINE_STRIP     = 0x4,
-        MALI_LINE_LOOP      = 0x6,
-        MALI_TRIANGLES      = 0x8,
-        MALI_TRIANGLE_STRIP = 0xA,
-        MALI_TRIANGLE_FAN   = 0xC,
-        MALI_POLYGON        = 0xD,
-        MALI_QUADS          = 0xE,
-        MALI_QUAD_STRIP     = 0xF,
-
-        /* All other modes invalid */
-};
-
 /* Applies to tiler_gl_enables */
 
 #define MALI_OCCLUSION_QUERY    (1 << 3)

@@ -346,7 +346,7 @@ panfrost_load_midg(
 
         struct midgard_payload_vertex_tiler payload = {
                 .prefix = {
-                        .draw_mode = MALI_TRIANGLES,
+                        .draw_mode = MALI_DRAW_MODE_TRIANGLES,
                         .unknown_draw = 0x3000,
                         .index_count = MALI_POSITIVE(vertex_count)
                 },

@@ -265,7 +265,7 @@ panfrost_texture_barrier(struct pipe_context *pipe, unsigned flags)
         panfrost_flush_all_batches(ctx, 0);
 }
 
-#define DEFINE_CASE(c) case PIPE_PRIM_##c: return MALI_##c;
+#define DEFINE_CASE(c) case PIPE_PRIM_##c: return MALI_DRAW_MODE_##c;
 
 static int
 g2m_draw_mode(enum pipe_prim_type mode)

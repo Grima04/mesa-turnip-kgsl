@@ -13,4 +13,18 @@
     <value name="Fragment" value="9"/>
   </enum>
 
+  <enum name="Draw Mode">
+    <value name="None" value="0"/>
+    <value name="Points" value="1"/>
+    <value name="Lines" value="2"/>
+    <value name="Line strip" value="4"/>
+    <value name="Line loop" value="6"/>
+    <value name="Triangles" value="8"/>
+    <value name="Triangle strip" value="10"/>
+    <value name="Triangle fan" value="12"/>
+    <value name="Polygon" value="13"/>
+    <value name="Quads" value="14"/>
+    <value name="Quad strip" value="15"/>
+  </enum>
+
 </panxml>

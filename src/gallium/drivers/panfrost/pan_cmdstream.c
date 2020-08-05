@@ -101,7 +101,7 @@ panfrost_vt_update_primitive_size(struct panfrost_context *ctx,
         struct panfrost_rasterizer *rasterizer = ctx->rasterizer;
 
         if (!panfrost_writes_point_size(ctx)) {
-                bool points = prefix->draw_mode == MALI_POINTS;
+                bool points = prefix->draw_mode == MALI_DRAW_MODE_POINTS;
                 float val = 0.0f;
 
                 if (rasterizer)
