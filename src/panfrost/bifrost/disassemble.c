@@ -32,7 +32,7 @@
 
 #include "bifrost.h"
 #include "disassemble.h"
-#include "bi_print.h"
+#include "bi_print_common.h"
 #include "util/macros.h"
 
 // return bits (high, lo]

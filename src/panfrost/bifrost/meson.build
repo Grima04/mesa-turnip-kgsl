@@ -20,7 +20,6 @@
 # SOFTWARE.
 
 libpanfrost_bifrost_files = files(
-  'disassemble.c',
   'bi_layout.c',
   'bi_liveness.c',
   'bi_lower_combine.c',
@@ -47,12 +46,23 @@ bifrost_nir_algebraic_c = custom_target(
   depend_files : nir_algebraic_py,
 )
 
+libpanfrost_bifrost_disasm = static_library(
+  'panfrost_bifrost_disasm',
+  ['disassemble.c', 'bi_print_common.c'],
+  include_directories : [inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_gallium_aux, inc_panfrost_hw],
+  dependencies: [idep_nir],
+  link_with: [libpanfrost_util],
+  c_args : [no_override_init_args],
+  gnu_symbol_visibility : 'hidden',
+  build_by_default : false,
+)
+
 libpanfrost_bifrost = static_library(
   'panfrost_bifrost',
   [libpanfrost_bifrost_files, bifrost_nir_algebraic_c],
   include_directories : [inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_gallium_aux, inc_panfrost_hw],
   dependencies: [idep_nir],
-  link_with: [libpanfrost_util],
+  link_with: [libpanfrost_util, libpanfrost_bifrost_disasm],
   c_args : [no_override_init_args],
   gnu_symbol_visibility : 'hidden',
   build_by_default : false,
