@@ -1219,7 +1219,7 @@ bi_pack_add_ld_vary(bi_clause *clause, bi_instruction *ins, bi_registers *regs)
         struct bifrost_ld_var pack = {
                 .src0 = bi_get_src(ins, regs, 1),
                 .addr = packed_addr,
-                .channels = MALI_POSITIVE(channels),
+                .channels = channels - 1,
                 .interp_mode = ins->load_vary.interp_mode,
                 .reuse = ins->load_vary.reuse,
                 .flat = ins->load_vary.flat,
@@ -1352,7 +1352,7 @@ bi_pack_add_ld_attr(bi_clause *clause, bi_instruction *ins, bi_registers *regs)
                 .src0 = bi_get_src(ins, regs, 1),
                 .src1 = bi_get_src(ins, regs, 2),
                 .location = bi_get_immediate(ins, 0),
-                .channels = MALI_POSITIVE(ins->vector_channels),
+                .channels = ins->vector_channels - 1,
                 .type = bi_pack_ldst_type(ins->dest_type),
                 .op = BIFROST_ADD_OP_LD_ATTR
         };
@@ -1370,7 +1370,7 @@ bi_pack_add_st_vary(bi_clause *clause, bi_instruction *ins, bi_registers *regs)
                 .src0 = bi_get_src(ins, regs, 1),
                 .src1 = bi_get_src(ins, regs, 2),
                 .src2 = bi_get_src(ins, regs, 3),
-                .channels = MALI_POSITIVE(ins->vector_channels),
+                .channels = ins->vector_channels - 1,
                 .op = BIFROST_ADD_OP_ST_VAR
         };
 
