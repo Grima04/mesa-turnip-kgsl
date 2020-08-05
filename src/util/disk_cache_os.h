@@ -73,11 +73,37 @@ struct disk_cache {
    disk_cache_get_cb blob_get_cb;
 };
 
+struct disk_cache_put_job {
+   struct util_queue_fence fence;
+
+   struct disk_cache *cache;
+
+   cache_key key;
+
+   /* Copy of cache data to be compressed and written. */
+   void *data;
+
+   /* Size of data to be compressed and written. */
+   size_t size;
+
+   struct cache_item_metadata cache_item_metadata;
+};
+
+struct cache_entry_file_data {
+   uint32_t crc32;
+   uint32_t uncompressed_size;
+};
+
 char *
 disk_cache_generate_cache_dir(void *mem_ctx);
 
 void
 disk_cache_evict_lru_item(struct disk_cache *cache);
+
+void
+disk_cache_write_item_to_disk(struct disk_cache_put_job *dc_job,
+                              struct cache_entry_file_data *cf_data,
+                              char *filename);
 
 bool
 disk_cache_enabled(void);

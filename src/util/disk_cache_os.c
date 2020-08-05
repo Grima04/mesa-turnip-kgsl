@@ -23,6 +23,120 @@
 
 #ifdef ENABLE_SHADER_CACHE
 
+#include <assert.h>
+#include <stddef.h>
+#include <stdlib.h>
+
+#include "zlib.h"
+
+#ifdef HAVE_ZSTD
+#include "zstd.h"
+#endif
+
+/* 3 is the recomended level, with 22 as the absolute maximum */
+#define ZSTD_COMPRESSION_LEVEL 3
+
+/* From the zlib docs:
+ *    "If the memory is available, buffers sizes on the order of 128K or 256K
+ *    bytes should be used."
+ */
+#define BUFSIZE 256 * 1024
+
+static ssize_t
+write_all(int fd, const void *buf, size_t count);
+
+/**
+ * Compresses cache entry in memory and writes it to disk. Returns the size
+ * of the data written to disk.
+ */
+static size_t
+deflate_and_write_to_disk(const void *in_data, size_t in_data_size, int dest,
+                          const char *filename)
+{
+#ifdef HAVE_ZSTD
+   /* from the zstd docs (https://facebook.github.io/zstd/zstd_manual.html):
+    * compression runs faster if `dstCapacity` >= `ZSTD_compressBound(srcSize)`.
+    */
+   size_t out_size = ZSTD_compressBound(in_data_size);
+   void * out = malloc(out_size);
+
+   size_t ret = ZSTD_compress(out, out_size, in_data, in_data_size,
+                              ZSTD_COMPRESSION_LEVEL);
+   if (ZSTD_isError(ret)) {
+      free(out);
+      return 0;
+   }
+   ssize_t written = write_all(dest, out, ret);
+   if (written == -1) {
+      free(out);
+      return 0;
+   }
+   free(out);
+   return ret;
+#else
+   unsigned char *out;
+
+   /* allocate deflate state */
+   z_stream strm;
+   strm.zalloc = Z_NULL;
+   strm.zfree = Z_NULL;
+   strm.opaque = Z_NULL;
+   strm.next_in = (uint8_t *) in_data;
+   strm.avail_in = in_data_size;
+
+   int ret = deflateInit(&strm, Z_BEST_COMPRESSION);
+   if (ret != Z_OK)
+       return 0;
+
+   /* compress until end of in_data */
+   size_t compressed_size = 0;
+   int flush;
+
+   out = malloc(BUFSIZE * sizeof(unsigned char));
+   if (out == NULL)
+      return 0;
+
+   do {
+      int remaining = in_data_size - BUFSIZE;
+      flush = remaining > 0 ? Z_NO_FLUSH : Z_FINISH;
+      in_data_size -= BUFSIZE;
+
+      /* Run deflate() on input until the output buffer is not full (which
+       * means there is no more data to deflate).
+       */
+      do {
+         strm.avail_out = BUFSIZE;
+         strm.next_out = out;
+
+         ret = deflate(&strm, flush);    /* no bad return value */
+         assert(ret != Z_STREAM_ERROR);  /* state not clobbered */
+
+         size_t have = BUFSIZE - strm.avail_out;
+         compressed_size += have;
+
+         ssize_t written = write_all(dest, out, have);
+         if (written == -1) {
+            (void)deflateEnd(&strm);
+            free(out);
+            return 0;
+         }
+      } while (strm.avail_out == 0);
+
+      /* all input should be used */
+      assert(strm.avail_in == 0);
+
+   } while (flush != Z_FINISH);
+
+   /* stream should be complete */
+   assert(ret == Z_STREAM_END);
+
+   /* clean up and return */
+   (void)deflateEnd(&strm);
+   free(out);
+   return compressed_size;
+# endif
+}
+
 #if DETECT_OS_WINDOWS
 /* TODO: implement disk cache support on windows */
 
@@ -33,7 +147,6 @@
 #include <inttypes.h>
 #include <pwd.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 #include <sys/file.h>
 #include <sys/mman.h>
@@ -246,6 +359,40 @@ is_two_character_sub_directory(const char *path, const struct stat *sb,
    return true;
 }
 
+/* Create the directory that will be needed for the cache file for \key.
+ *
+ * Obviously, the implementation here must closely match
+ * _get_cache_file above.
+*/
+static void
+make_cache_file_directory(struct disk_cache *cache, const cache_key key)
+{
+   char *dir;
+   char buf[41];
+
+   _mesa_sha1_format(buf, key);
+   if (asprintf(&dir, "%s/%c%c", cache->path, buf[0], buf[1]) == -1)
+      return;
+
+   mkdir_if_needed(dir);
+   free(dir);
+}
+
+static ssize_t
+write_all(int fd, const void *buf, size_t count)
+{
+   const char *out = buf;
+   ssize_t written;
+   size_t done;
+
+   for (done = 0; done < count; done += written) {
+      written = write(fd, out + done, count - done);
+      if (written == -1)
+         return -1;
+   }
+   return done;
+}
+
 /* Evict least recently used cache item */
 void
 disk_cache_evict_lru_item(struct disk_cache *cache)
@@ -289,6 +436,153 @@ disk_cache_evict_lru_item(struct disk_cache *cache)
 
    if (size)
       p_atomic_add(cache->size, - (uint64_t)size);
+}
+
+void
+disk_cache_write_item_to_disk(struct disk_cache_put_job *dc_job,
+                              struct cache_entry_file_data *cf_data,
+                              char *filename)
+{
+   int fd = -1, fd_final = -1;
+
+   /* Write to a temporary file to allow for an atomic rename to the
+    * final destination filename, (to prevent any readers from seeing
+    * a partially written file).
+    */
+   char *filename_tmp = NULL;
+   if (asprintf(&filename_tmp, "%s.tmp", filename) == -1)
+      goto done;
+
+   fd = open(filename_tmp, O_WRONLY | O_CLOEXEC | O_CREAT, 0644);
+
+   /* Make the two-character subdirectory within the cache as needed. */
+   if (fd == -1) {
+      if (errno != ENOENT)
+         goto done;
+
+      make_cache_file_directory(dc_job->cache, dc_job->key);
+
+      fd = open(filename_tmp, O_WRONLY | O_CLOEXEC | O_CREAT, 0644);
+      if (fd == -1)
+         goto done;
+   }
+
+   /* With the temporary file open, we take an exclusive flock on
+    * it. If the flock fails, then another process still has the file
+    * open with the flock held. So just let that file be responsible
+    * for writing the file.
+    */
+#ifdef HAVE_FLOCK
+   int err = flock(fd, LOCK_EX | LOCK_NB);
+#else
+   struct flock lock = {
+      .l_start = 0,
+      .l_len = 0, /* entire file */
+      .l_type = F_WRLCK,
+      .l_whence = SEEK_SET
+   };
+   int err = fcntl(fd, F_SETLK, &lock);
+#endif
+   if (err == -1)
+      goto done;
+
+   /* Now that we have the lock on the open temporary file, we can
+    * check to see if the destination file already exists. If so,
+    * another process won the race between when we saw that the file
+    * didn't exist and now. In this case, we don't do anything more,
+    * (to ensure the size accounting of the cache doesn't get off).
+    */
+   fd_final = open(filename, O_RDONLY | O_CLOEXEC);
+   if (fd_final != -1) {
+      unlink(filename_tmp);
+      goto done;
+   }
+
+   /* OK, we're now on the hook to write out a file that we know is
+    * not in the cache, and is also not being written out to the cache
+    * by some other process.
+    */
+
+   /* Write the driver_keys_blob, this can be used find information about the
+    * mesa version that produced the entry or deal with hash collisions,
+    * should that ever become a real problem.
+    */
+   int ret = write_all(fd, dc_job->cache->driver_keys_blob,
+                       dc_job->cache->driver_keys_blob_size);
+   if (ret == -1) {
+      unlink(filename_tmp);
+      goto done;
+   }
+
+   /* Write the cache item metadata. This data can be used to deal with
+    * hash collisions, as well as providing useful information to 3rd party
+    * tools reading the cache files.
+    */
+   ret = write_all(fd, &dc_job->cache_item_metadata.type,
+                   sizeof(uint32_t));
+   if (ret == -1) {
+      unlink(filename_tmp);
+      goto done;
+   }
+
+   if (dc_job->cache_item_metadata.type == CACHE_ITEM_TYPE_GLSL) {
+      ret = write_all(fd, &dc_job->cache_item_metadata.num_keys,
+                      sizeof(uint32_t));
+      if (ret == -1) {
+         unlink(filename_tmp);
+         goto done;
+      }
+
+      ret = write_all(fd, dc_job->cache_item_metadata.keys[0],
+                      dc_job->cache_item_metadata.num_keys *
+                      sizeof(cache_key));
+      if (ret == -1) {
+         unlink(filename_tmp);
+         goto done;
+      }
+   }
+
+   size_t cf_data_size = sizeof(*cf_data);
+   ret = write_all(fd, cf_data, cf_data_size);
+   if (ret == -1) {
+      unlink(filename_tmp);
+      goto done;
+   }
+
+   /* Now, finally, write out the contents to the temporary file, then
+    * rename them atomically to the destination filename, and also
+    * perform an atomic increment of the total cache size.
+    */
+   size_t file_size = deflate_and_write_to_disk(dc_job->data, dc_job->size,
+                                                fd, filename_tmp);
+   if (file_size == 0) {
+      unlink(filename_tmp);
+      goto done;
+   }
+   ret = rename(filename_tmp, filename);
+   if (ret == -1) {
+      unlink(filename_tmp);
+      goto done;
+   }
+
+   struct stat sb;
+   if (stat(filename, &sb) == -1) {
+      /* Something went wrong remove the file */
+      unlink(filename);
+      goto done;
+   }
+
+   p_atomic_add(dc_job->cache->size, sb.st_blocks * 512);
+
+ done:
+   if (fd_final != -1)
+      close(fd_final);
+   /* This close finally releases the flock, (now that the final file
+    * has been renamed into place and the size has been added).
+    */
+   if (fd != -1)
+      close(fd);
+   free(filename_tmp);
 }
 
 /* Determine path for cache based on the first defined name as follows:
