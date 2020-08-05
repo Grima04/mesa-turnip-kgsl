@@ -817,7 +817,7 @@ get_buffer_format_features(const struct gen_device_info *devinfo,
 }
 
 static void
-get_wsi_format_modifier_properties_list(const struct anv_physical_device *physical_device,
+get_drm_format_modifier_properties_list(const struct anv_physical_device *physical_device,
                                         VkFormat vk_format,
                                         VkDrmFormatModifierPropertiesListEXT *list)
 {
@@ -883,7 +883,7 @@ void anv_GetPhysicalDeviceFormatProperties2(
       /* Use unsigned since some cases are not in the VkStructureType enum. */
       switch ((unsigned)ext->sType) {
       case VK_STRUCTURE_TYPE_DRM_FORMAT_MODIFIER_PROPERTIES_LIST_EXT:
-         get_wsi_format_modifier_properties_list(physical_device, format,
+         get_drm_format_modifier_properties_list(physical_device, format,
                                                  (void *)ext);
          break;
       default:
