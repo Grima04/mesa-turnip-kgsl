@@ -73,7 +73,9 @@ isl_tiling_from_i915_tiling(uint32_t tiling)
    unreachable("Invalid i915 tiling");
 }
 
-static const struct isl_drm_modifier_info modifier_info[] = {
+/** Sentinel is DRM_FORMAT_MOD_INVALID. */
+const struct isl_drm_modifier_info
+isl_drm_modifier_info_list[] = {
    {
       .modifier = DRM_FORMAT_MOD_NONE,
       .name = "DRM_FORMAT_MOD_NONE",
@@ -110,14 +112,17 @@ static const struct isl_drm_modifier_info modifier_info[] = {
       .aux_usage = ISL_AUX_USAGE_MC,
       .supports_clear_color = false,
    },
+   {
+      .modifier = DRM_FORMAT_MOD_INVALID,
+   },
 };
 
 const struct isl_drm_modifier_info *
 isl_drm_modifier_get_info(uint64_t modifier)
 {
-   for (unsigned i = 0; i < ARRAY_SIZE(modifier_info); i++) {
-      if (modifier_info[i].modifier == modifier)
-         return &modifier_info[i];
+   isl_drm_modifier_info_for_each(info) {
+      if (info->modifier == modifier)
+         return info;
    }
 
    return NULL;

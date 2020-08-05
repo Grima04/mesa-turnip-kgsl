@@ -1848,6 +1848,13 @@ isl_aux_state_has_valid_aux(enum isl_aux_state state)
    return state != ISL_AUX_STATE_AUX_INVALID;
 }
 
+extern const struct isl_drm_modifier_info isl_drm_modifier_info_list[];
+
+#define isl_drm_modifier_info_for_each(__info) \
+   for (const struct isl_drm_modifier_info *__info = isl_drm_modifier_info_list; \
+        __info->modifier != DRM_FORMAT_MOD_INVALID; \
+        ++__info)
+
 const struct isl_drm_modifier_info * ATTRIBUTE_CONST
 isl_drm_modifier_get_info(uint64_t modifier);
 
