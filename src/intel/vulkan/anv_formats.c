@@ -827,12 +827,6 @@ get_wsi_format_modifier_properties_list(const struct anv_physical_device *physic
    VK_OUTARRAY_MAKE(out, list->pDrmFormatModifierProperties,
                     &list->drmFormatModifierCount);
 
-   /* This is a simplified list where all the modifiers are available */
-   assert(vk_format == VK_FORMAT_B8G8R8_SRGB ||
-          vk_format == VK_FORMAT_B8G8R8_UNORM ||
-          vk_format == VK_FORMAT_B8G8R8A8_SRGB ||
-          vk_format == VK_FORMAT_B8G8R8A8_UNORM);
-
    isl_drm_modifier_info_for_each(isl_mod_info) {
       VkFormatFeatureFlags features =
          anv_get_image_format_features(devinfo, vk_format, anv_format,
