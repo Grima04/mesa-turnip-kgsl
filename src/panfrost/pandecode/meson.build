@@ -20,7 +20,6 @@
 # SOFTWARE.
 
 libpanfrost_decode_files = files(
-  'pan_pretty_print.c',
   'common.c',
   'decode.c',
 )
