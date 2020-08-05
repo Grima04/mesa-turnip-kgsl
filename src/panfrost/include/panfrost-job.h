@@ -30,7 +30,13 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-#include <panfrost-misc.h>
+#include <inttypes.h>
+
+typedef uint8_t  u8;
+typedef uint16_t u16;
+typedef uint32_t u32;
+typedef uint64_t u64;
+typedef uint64_t mali_ptr;
 
 enum mali_job_type {
         JOB_NOT_STARTED	= 0,

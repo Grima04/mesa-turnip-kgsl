@@ -26,7 +26,6 @@
 #ifndef __PAN_BO_H__
 #define __PAN_BO_H__
 
-#include <panfrost-misc.h>
 #include "util/list.h"
 #include "pan_device.h"
 #include <time.h>
