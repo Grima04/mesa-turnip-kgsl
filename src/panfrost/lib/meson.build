@@ -37,6 +37,11 @@ libpanfrost_lib_files = files(
   'pan_props.c',
 )
 
+libpanfrost_decode_files = files(
+  'decode_common.c',
+  'decode.c',
+)
+
 libpanfrost_lib = static_library(
   'panfrost_lib',
   [libpanfrost_lib_files],
@@ -44,5 +49,14 @@ libpanfrost_lib = static_library(
   c_args : [no_override_init_args],
   gnu_symbol_visibility : 'hidden',
   dependencies: [dep_libdrm, idep_nir],
+  build_by_default : false,
+)
+
+libpanfrost_decode = static_library(
+  'panfrost_decode',
+  [libpanfrost_decode_files],
+  include_directories : [inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_gallium_aux, inc_panfrost],
+  c_args : [no_override_init_args],
+  gnu_symbol_visibility : 'hidden',
   build_by_default : false,
 )

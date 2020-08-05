@@ -31,7 +31,6 @@ subdir('shared')
 subdir('util')
 subdir('midgard')
 subdir('bifrost')
-subdir('pandecode')
 subdir('lib')
 
 files_bifrost = files(
