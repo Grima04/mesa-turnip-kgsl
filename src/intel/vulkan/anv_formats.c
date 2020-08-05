@@ -841,24 +841,30 @@ get_wsi_format_modifier_properties_list(const struct anv_physical_device *physic
    };
 
    for (uint32_t i = 0; i < ARRAY_SIZE(modifiers); i++) {
-      const struct isl_drm_modifier_info *mod_info =
+      const struct isl_drm_modifier_info *isl_mod_info =
          isl_drm_modifier_get_info(modifiers[i]);
 
-      if (!isl_drm_modifier_get_score(devinfo, mod_info->modifier))
+      if (!isl_mod_info)
          continue;
 
-      if (mod_info->aux_usage == ISL_AUX_USAGE_CCS_E &&
-          !isl_format_supports_ccs_e(&physical_device->info,
-                                     anv_format->planes[0].isl_format))
+      VkFormatFeatureFlags features =
+         anv_get_image_format_features(devinfo, vk_format, anv_format,
+                                       VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT,
+                                       isl_mod_info);
+      if (!features)
          continue;
 
-      vk_outarray_append(&out, mod_props) {
-         mod_props->drmFormatModifier = modifiers[i];
-         if (isl_drm_modifier_has_aux(modifiers[i]))
-            mod_props->drmFormatModifierPlaneCount = 2;
-         else
-            mod_props->drmFormatModifierPlaneCount = anv_format->n_planes;
-      }
+      uint32_t planes = anv_format->n_planes;
+      if (isl_mod_info->aux_usage != ISL_AUX_USAGE_NONE)
+         ++planes;
+
+      vk_outarray_append(&out, out_props) {
+         *out_props = (VkDrmFormatModifierPropertiesEXT) {
+            .drmFormatModifier = isl_mod_info->modifier,
+            .drmFormatModifierPlaneCount = planes,
+            .drmFormatModifierTilingFeatures = features,
+         };
+      };
    }
 }
 
