@@ -29,7 +29,6 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-#include "panfrost-job.h"
 
 #define MIDGARD_DBG_MSGS		0x0001
 #define MIDGARD_DBG_SHADERS		0x0002

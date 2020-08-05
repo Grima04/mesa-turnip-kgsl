@@ -26,7 +26,6 @@
 
 #include "compiler/nir/nir.h"
 #include "util/u_dynarray.h"
-#include "panfrost-job.h"
 #include "panfrost/util/pan_ir.h"
 
 int

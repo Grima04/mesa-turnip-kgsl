@@ -25,7 +25,6 @@
 #define __PAN_IR_H
 
 #include <stdint.h>
-#include "panfrost-job.h"
 #include "compiler/nir/nir.h"
 #include "util/u_dynarray.h"
 #include "util/hash_table.h"

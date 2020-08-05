@@ -22,6 +22,7 @@
  */
 
 #include <math.h>
+#include <inttypes.h>
 #include "util/half_float.h"
 #include "midgard.h"
 #include "helpers.h"
