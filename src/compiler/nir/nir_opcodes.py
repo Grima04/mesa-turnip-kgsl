@@ -785,7 +785,7 @@ binop("sne", tfloat32, _2src_commutative, "(src0 != src1) ? 1.0f : 0.0f") # Set 
 # but SM5 shifts are defined to use the least significant bits, only
 # The NIR definition is according to the SM5 specification.
 opcode("ishl", 0, tint, [0, 0], [tint, tuint32], False, "",
-       "src0 << (src1 & (sizeof(src0) * 8 - 1))")
+       "(uint64_t)src0 << (src1 & (sizeof(src0) * 8 - 1))")
 opcode("ishr", 0, tint, [0, 0], [tint, tuint32], False, "",
        "src0 >> (src1 & (sizeof(src0) * 8 - 1))")
 opcode("ushr", 0, tuint, [0, 0], [tuint, tuint32], False, "",
