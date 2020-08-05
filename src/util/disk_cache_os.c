@@ -438,6 +438,22 @@ disk_cache_evict_lru_item(struct disk_cache *cache)
       p_atomic_add(cache->size, - (uint64_t)size);
 }
 
+void
+disk_cache_evict_item(struct disk_cache *cache, char *filename)
+{
+   struct stat sb;
+   if (stat(filename, &sb) == -1) {
+      free(filename);
+      return;
+   }
+
+   unlink(filename);
+   free(filename);
+
+   if (sb.st_blocks)
+      p_atomic_add(cache->size, - (uint64_t)sb.st_blocks * 512);
+}
+
 /* Return a filename within the cache's directory corresponding to 'key'. The
  * returned filename is ralloced with 'cache' as the parent context.
  *

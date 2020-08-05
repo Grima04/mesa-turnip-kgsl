@@ -227,23 +227,12 @@ disk_cache_wait_for_idle(struct disk_cache *cache)
 void
 disk_cache_remove(struct disk_cache *cache, const cache_key key)
 {
-   struct stat sb;
-
    char *filename = disk_cache_get_cache_filename(cache, key);
    if (filename == NULL) {
       return;
    }
 
-   if (stat(filename, &sb) == -1) {
-      free(filename);
-      return;
-   }
-
-   unlink(filename);
-   free(filename);
-
-   if (sb.st_blocks)
-      p_atomic_add(cache->size, - (uint64_t)sb.st_blocks * 512);
+   disk_cache_evict_item(cache, filename);
 }
 
 static ssize_t
