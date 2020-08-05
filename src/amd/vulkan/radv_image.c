@@ -1320,6 +1320,36 @@ radv_image_reset_layout(struct radv_image *image)
 	}
 }
 
+static VkResult
+radv_image_init_retile_map(struct radv_device *device, struct radv_image *image)
+{
+	/* If we do a relayout we have to free the old buffer. */
+	if(image->retile_map)
+		device->ws->buffer_destroy(device->ws, image->retile_map);
+
+	image->retile_map = NULL;
+	if (!radv_image_has_dcc(image) || !image->planes[0].surface.display_dcc_offset ||
+	    image->planes[0].surface.display_dcc_offset == image->planes[0].surface.dcc_offset)
+		return VK_SUCCESS;
+
+	uint32_t retile_map_size = ac_surface_get_retile_map_size(&image->planes[0].surface);
+	image->retile_map = device->ws->buffer_create(device->ws, retile_map_size, 4096,
+						      RADEON_DOMAIN_VRAM, RADEON_FLAG_READ_ONLY |
+						                          RADEON_FLAG_NO_INTERPROCESS_SHARING,
+						      RADV_BO_PRIORITY_METADATA);
+	if (!image->retile_map) {
+		return vk_error(device->instance, VK_ERROR_OUT_OF_DEVICE_MEMORY);
+	}
+	void *data = device->ws->buffer_map(image->retile_map);
+	if (!data) {
+		device->ws->buffer_destroy(device->ws, image->retile_map);
+		return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
+	}
+
+	memcpy(data, image->planes[0].surface.u.gfx9.dcc_retile_map, retile_map_size);
+	return VK_SUCCESS;
+}
+
 VkResult
 radv_image_create_layout(struct radv_device *device,
                          struct radv_image_create_info create_info,
@@ -1411,6 +1441,10 @@ radv_image_create_layout(struct radv_device *device,
 
 	radv_image_alloc_values(device, image);
 
+	result = radv_image_init_retile_map(device, image);
+	if (result != VK_SUCCESS)
+		return result;
+
 	assert(image->planes[0].surface.surf_size);
 	assert(image->planes[0].surface.modifier == DRM_FORMAT_MOD_INVALID ||
 	       ac_modifier_has_dcc(image->planes[0].surface.modifier) == radv_image_has_dcc(image));
@@ -1424,6 +1458,9 @@ radv_destroy_image(struct radv_device *device,
 {
 	if ((image->flags & VK_IMAGE_CREATE_SPARSE_BINDING_BIT) && image->bo)
 		device->ws->buffer_destroy(device->ws, image->bo);
+
+	if(image->retile_map)
+		device->ws->buffer_destroy(device->ws, image->retile_map);
 
 	if (image->owned_memory != VK_NULL_HANDLE) {
 		RADV_FROM_HANDLE(radv_device_memory, mem, image->owned_memory);

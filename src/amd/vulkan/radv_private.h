@@ -1870,6 +1870,15 @@ struct radv_image {
 	uint64_t fce_pred_offset;
 	uint64_t dcc_pred_offset;
 
+	/* On some GPUs DCC needs different tiling of the metadata for
+	 * rendering and for display, so we're stuck with having the metadata
+	 * two times and then occasionally copying one into the other.
+	 * 
+	 * The retile map is an array of (src index, dst index) pairs to
+	 * determine how it should be copied between the two.
+	 */
+	struct radeon_winsys_bo *retile_map;
+
 	/*
 	 * Metadata for the TC-compat zrange workaround. If the 32-bit value
 	 * stored at this offset is UINT_MAX, the driver will emit

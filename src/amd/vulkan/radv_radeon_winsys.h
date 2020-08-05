@@ -192,6 +192,7 @@ enum {
 	/* virtual buffers have 0 priority since the priority is not used. */
 	RADV_BO_PRIORITY_VIRTUAL = 0,
 
+	RADV_BO_PRIORITY_METADATA = 10,
 	/* This should be considerably lower than most of the stuff below,
 	 * but how much lower is hard to say since we don't know application
 	 * assignments. Put it pretty high since it is GTT anyway. */
