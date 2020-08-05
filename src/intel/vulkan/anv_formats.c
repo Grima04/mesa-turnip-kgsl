@@ -731,6 +731,7 @@ get_wsi_format_modifier_properties_list(const struct anv_physical_device *physic
                                         VkFormat vk_format,
                                         VkDrmFormatModifierPropertiesListEXT *list)
 {
+   const struct gen_device_info *devinfo = &physical_device->info;
    const struct anv_format *anv_format = anv_get_format(vk_format);
 
    VK_OUTARRAY_MAKE(out, list->pDrmFormatModifierProperties,
@@ -753,14 +754,12 @@ get_wsi_format_modifier_properties_list(const struct anv_physical_device *physic
       const struct isl_drm_modifier_info *mod_info =
          isl_drm_modifier_get_info(modifiers[i]);
 
+      if (!isl_drm_modifier_get_score(devinfo, mod_info->modifier))
+         continue;
+
       if (mod_info->aux_usage == ISL_AUX_USAGE_CCS_E &&
           !isl_format_supports_ccs_e(&physical_device->info,
                                      anv_format->planes[0].isl_format))
-         continue;
-
-      /* Gen12's CCS layout changes compared to Gen9-11. */
-      if (mod_info->modifier == I915_FORMAT_MOD_Y_TILED_CCS &&
-          physical_device->info.gen >= 12)
          continue;
 
       vk_outarray_append(&out, mod_props) {

@@ -651,18 +651,6 @@ make_surface(struct anv_device *device,
    return VK_SUCCESS;
 }
 
-static uint32_t
-score_drm_format_mod(uint64_t modifier)
-{
-   switch (modifier) {
-   case DRM_FORMAT_MOD_LINEAR: return 1;
-   case I915_FORMAT_MOD_X_TILED: return 2;
-   case I915_FORMAT_MOD_Y_TILED: return 3;
-   case I915_FORMAT_MOD_Y_TILED_CCS: return 4;
-   default: unreachable("bad DRM format modifier");
-   }
-}
-
 static const struct isl_drm_modifier_info *
 choose_drm_format_mod(const struct anv_physical_device *device,
                       uint32_t modifier_count, const uint64_t *modifiers)
@@ -671,7 +659,7 @@ choose_drm_format_mod(const struct anv_physical_device *device,
    uint32_t best_score = 0;
 
    for (uint32_t i = 0; i < modifier_count; ++i) {
-      uint32_t score = score_drm_format_mod(modifiers[i]);
+      uint32_t score = isl_drm_modifier_get_score(&device->info, modifiers[i]);
       if (score > best_score) {
          best_mod = modifiers[i];
          best_score = score;
