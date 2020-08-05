@@ -53,7 +53,6 @@
 #include "vk_debug_report.h"
 #include "wsi_common.h"
 
-#include "drm-uapi/msm_drm.h"
 #include "ir3/ir3_compiler.h"
 #include "ir3/ir3_shader.h"
 
@@ -954,6 +953,18 @@ enum tu_cmd_buffer_status
    TU_CMD_BUFFER_STATUS_EXECUTABLE,
    TU_CMD_BUFFER_STATUS_PENDING,
 };
+
+#ifndef MSM_SUBMIT_BO_READ
+#define MSM_SUBMIT_BO_READ             0x0001
+#define MSM_SUBMIT_BO_WRITE            0x0002
+#define MSM_SUBMIT_BO_DUMP             0x0004
+
+struct drm_msm_gem_submit_bo {
+   uint32_t flags;          /* in, mask of MSM_SUBMIT_BO_x */
+   uint32_t handle;         /* in, GEM handle */
+   uint64_t presumed;       /* in/out, presumed buffer address */
+};
+#endif
 
 struct tu_bo_list
 {

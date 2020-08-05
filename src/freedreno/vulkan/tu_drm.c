@@ -22,8 +22,6 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
-#include "tu_private.h"
-
 #include <errno.h>
 #include <fcntl.h>
 #include <stdint.h>
@@ -34,6 +32,8 @@
 #include "vk_util.h"
 
 #include "drm-uapi/msm_drm.h"
+
+#include "tu_private.h"
 
 static int
 tu_drm_get_param(const struct tu_physical_device *dev,
