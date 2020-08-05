@@ -2678,9 +2678,9 @@ static uint32_t ac_get_umd_metadata_word1(const struct radeon_info *info)
 /* This should be called after ac_compute_surface. */
 bool ac_surface_set_umd_metadata(const struct radeon_info *info, struct radeon_surf *surf,
                                  unsigned num_storage_samples, unsigned num_mipmap_levels,
-                                 unsigned size_metadata, uint32_t metadata[64])
+                                 unsigned size_metadata, const uint32_t metadata[64])
 {
-   uint32_t *desc = &metadata[2];
+   const uint32_t *desc = &metadata[2];
    uint64_t offset;
 
    if (surf->modifier != DRM_FORMAT_MOD_INVALID)
