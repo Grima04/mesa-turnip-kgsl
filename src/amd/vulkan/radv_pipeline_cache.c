@@ -133,7 +133,7 @@ radv_hash_shaders(unsigned char *hash,
 
 			_mesa_sha1_update(&ctx, module->sha1, sizeof(module->sha1));
 			_mesa_sha1_update(&ctx, stages[i]->pName, strlen(stages[i]->pName));
-			if (spec_info) {
+			if (spec_info && spec_info->mapEntryCount) {
 				_mesa_sha1_update(&ctx, spec_info->pMapEntries,
 				                  spec_info->mapEntryCount * sizeof spec_info->pMapEntries[0]);
 				_mesa_sha1_update(&ctx, spec_info->pData, spec_info->dataSize);
