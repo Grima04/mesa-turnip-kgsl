@@ -1333,8 +1333,6 @@ lower_precision(const struct gl_shader_compiler_options *options,
    find_lowerable_rvalues(options, instructions, v.lowerable_rvalues);
    visit_list_elements(&v, instructions);
 
-   if (options->LowerPrecisionTemporaries) {
-      lower_variables_visitor vars(options);
-      visit_list_elements(&vars, instructions);
-   }
+   lower_variables_visitor vars(options);
+   visit_list_elements(&vars, instructions);
 }

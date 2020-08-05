@@ -348,7 +348,6 @@ void st_init_limits(struct pipe_screen *screen,
          screen->get_shader_param(screen, sh, PIPE_SHADER_CAP_INT16);
       options->LowerPrecisionConstants =
          screen->get_shader_param(screen, sh, PIPE_SHADER_CAP_GLSL_16BIT_CONSTS);
-      options->LowerPrecisionTemporaries = true;
    }
 
    c->MaxUserAssignableUniformLocations =
