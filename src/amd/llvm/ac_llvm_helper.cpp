@@ -25,12 +25,6 @@
 
 #include <cstring>
 
-#include "ac_binary.h"
-#include "ac_llvm_util.h"
-#include "ac_llvm_build.h"
-
-#include "util/macros.h"
-
 #include <llvm-c/Core.h>
 #include <llvm/Target/TargetMachine.h>
 #include <llvm/IR/IRBuilder.h>
@@ -38,6 +32,18 @@
 #include <llvm/Transforms/IPO.h>
 
 #include <llvm/IR/LegacyPassManager.h>
+
+/* DO NOT REORDER THE HEADERS
+ * The LLVM headers need to all be included before any Mesa header,
+ * as they use the `restrict` keyword in ways that are incompatible
+ * with our #define in include/c99_compat.h
+ */
+
+#include "ac_binary.h"
+#include "ac_llvm_util.h"
+#include "ac_llvm_build.h"
+
+#include "util/macros.h"
 
 void ac_add_attr_dereferenceable(LLVMValueRef val, uint64_t bytes)
 {
