@@ -975,6 +975,7 @@ print_intrinsic_instr(nir_intrinsic_instr *instr, print_state *state)
          case NIR_SCOPE_DEVICE:       fprintf(fp, "DEVICE");       break;
          case NIR_SCOPE_QUEUE_FAMILY: fprintf(fp, "QUEUE_FAMILY"); break;
          case NIR_SCOPE_WORKGROUP:    fprintf(fp, "WORKGROUP");    break;
+         case NIR_SCOPE_SHADER_CALL:  fprintf(fp, "SHADER_CALL");  break;
          case NIR_SCOPE_SUBGROUP:     fprintf(fp, "SUBGROUP");     break;
          case NIR_SCOPE_INVOCATION:   fprintf(fp, "INVOCATION");   break;
          }
