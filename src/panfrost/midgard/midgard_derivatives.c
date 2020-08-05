@@ -108,7 +108,7 @@ midgard_emit_derivatives(compiler_context *ctx, nir_alu_instr *instr)
                 .src_types = { nir_type_float32, nir_type_float32 },
                 .op = mir_derivative_op(instr->op),
                 .texture = {
-                        .format = MALI_TEX_2D,
+                        .format = 2,
                         .in_reg_full = 1,
                         .out_full = 1,
                         .sampler_type = MALI_SAMPLER_FLOAT,

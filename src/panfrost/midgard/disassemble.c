@@ -1282,10 +1282,10 @@ print_texture_format(FILE *fp, int format)
         fprintf(fp, ".");
 
         switch (format) {
-                DEFINE_CASE(MALI_TEX_1D, "1d");
-                DEFINE_CASE(MALI_TEX_2D, "2d");
-                DEFINE_CASE(MALI_TEX_3D, "3d");
-                DEFINE_CASE(MALI_TEX_CUBE, "cube");
+                DEFINE_CASE(1, "1d");
+                DEFINE_CASE(2, "2d");
+                DEFINE_CASE(3, "3d");
+                DEFINE_CASE(0, "cube");
 
         default:
                 unreachable("Bad format");

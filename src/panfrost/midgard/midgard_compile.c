@@ -1973,25 +1973,26 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
         }
 }
 
+/* Returns dimension with 0 special casing cubemaps */
 static unsigned
 midgard_tex_format(enum glsl_sampler_dim dim)
 {
         switch (dim) {
         case GLSL_SAMPLER_DIM_1D:
         case GLSL_SAMPLER_DIM_BUF:
-                return MALI_TEX_1D;
+                return 1;
 
         case GLSL_SAMPLER_DIM_2D:
         case GLSL_SAMPLER_DIM_MS:
         case GLSL_SAMPLER_DIM_EXTERNAL:
         case GLSL_SAMPLER_DIM_RECT:
-                return MALI_TEX_2D;
+                return 2;
 
         case GLSL_SAMPLER_DIM_3D:
-                return MALI_TEX_3D;
+                return 3;
 
         case GLSL_SAMPLER_DIM_CUBE:
-                return MALI_TEX_CUBE;
+                return 0;
 
         default:
                 DBG("Unknown sampler dim type\n");
