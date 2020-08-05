@@ -1375,25 +1375,6 @@ struct bifrost_sampler_descriptor {
         uint64_t zero4;
 } __attribute__((packed));
 
-/* viewport0/viewport1 form the arguments to glViewport. viewport1 is
- * modified by MALI_POSITIVE; viewport0 is as-is.
- */
-
-struct mali_viewport {
-        /* XY clipping planes */
-        float clip_minx;
-        float clip_miny;
-        float clip_maxx;
-        float clip_maxy;
-
-        /* Depth clipping planes */
-        float clip_minz;
-        float clip_maxz;
-
-        u16 viewport0[2];
-        u16 viewport1[2];
-} __attribute__((packed));
-
 /* From presentations, 16x16 tiles externally. Use shift for fast computation
  * of tile numbers. */
 

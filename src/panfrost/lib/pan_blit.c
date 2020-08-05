@@ -186,17 +186,12 @@ panfrost_load_midg(
         unsigned width = u_minify(image->width0, image->first_level);
         unsigned height = u_minify(image->height0, image->first_level);
 
-        struct mali_viewport viewport = {
-                .clip_minx = -INFINITY,
-                .clip_miny = -INFINITY,
-                .clip_maxx = INFINITY,
-                .clip_maxy = INFINITY,
-                .clip_minz = 0.0,
-                .clip_maxz = 1.0,
+        struct panfrost_transfer viewport = panfrost_pool_alloc(pool, MALI_VIEWPORT_LENGTH);
 
-                .viewport0 = { 0, 0 },
-                .viewport1 = { MALI_POSITIVE(width), MALI_POSITIVE(height) }
-        };
+        pan_pack(viewport.cpu, VIEWPORT, cfg) {
+                cfg.scissor_maximum_x = width - 1; /* Inclusive */
+                cfg.scissor_maximum_y = height - 1;
+        }
 
         union mali_attr varying = {
 		.elements = coordinates | MALI_ATTR_LINEAR,
@@ -358,7 +353,7 @@ panfrost_load_midg(
                         .shader = shader_meta_t.gpu,
                         .varyings = panfrost_pool_upload(pool, &varying, sizeof(varying)),
                         .varying_meta = panfrost_pool_upload(pool, &varying_meta, sizeof(varying_meta)),
-                        .viewport = panfrost_pool_upload(pool, &viewport, sizeof(viewport)),
+                        .viewport = viewport.gpu,
                         .shared_memory = fbd
                 }
         };

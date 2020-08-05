@@ -60,4 +60,17 @@
     <value name="Mirrored Clamp to Border" value="15"/>
   </enum>
 
+  <struct name="Viewport">
+    <field name="Minimum X" size="32" start="0:0" default="-INFINITY" type="float"/>
+    <field name="Minimum Y" size="32" start="1:0" default="-INFINITY" type="float"/>
+    <field name="Maximum X" size="32" start="2:0" default="+INFINITY" type="float"/>
+    <field name="Maximum Y" size="32" start="3:0" default="+INFINITY" type="float"/>
+    <field name="Minimum Z" size="32" start="4:0" default="0.0" type="float"/>
+    <field name="Maximum Z" size="32" start="5:0" default="1.0" type="float"/>
+    <field name="Scissor Minimum X" size="16" start="6:0" default="0" type="uint"/>
+    <field name="Scissor Minimum Y" size="16" start="6:16" default="0" type="uint"/>
+    <field name="Scissor Maximum X" size="16" start="7:0" type="uint"/>
+    <field name="Scissor Maximum Y" size="16" start="7:16" type="uint"/>
+  </struct>
+
 </panxml>

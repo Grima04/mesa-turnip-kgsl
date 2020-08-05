@@ -2768,31 +2768,8 @@ pandecode_vertex_tiler_postfix_pre(
         } else
                 pandecode_msg("XXX: missing shader descriptor\n");
 
-        if (p->viewport) {
-                struct pandecode_mapped_memory *fmem = pandecode_find_mapped_gpu_mem_containing(p->viewport);
-                struct mali_viewport *PANDECODE_PTR_VAR(f, fmem, p->viewport);
-
-                pandecode_log("struct mali_viewport viewport_%"PRIx64"_%d%s = {\n", p->viewport, job_no, suffix);
-                pandecode_indent++;
-
-                pandecode_prop("clip_minx = %f", f->clip_minx);
-                pandecode_prop("clip_miny = %f", f->clip_miny);
-                pandecode_prop("clip_minz = %f", f->clip_minz);
-                pandecode_prop("clip_maxx = %f", f->clip_maxx);
-                pandecode_prop("clip_maxy = %f", f->clip_maxy);
-                pandecode_prop("clip_maxz = %f", f->clip_maxz);
-
-                /* Only the higher coordinates are MALI_POSITIVE scaled */
-
-                pandecode_prop("viewport0 = { %d, %d }",
-                               f->viewport0[0], f->viewport0[1]);
-
-                pandecode_prop("viewport1 = { MALI_POSITIVE(%d), MALI_POSITIVE(%d) }",
-                               f->viewport1[0] + 1, f->viewport1[1] + 1);
-
-                pandecode_indent--;
-                pandecode_log("};\n");
-        }
+        if (p->viewport)
+                DUMP_ADDR("Viewport", VIEWPORT, p->viewport, 1);
 
         unsigned max_attr_index = 0;
 
