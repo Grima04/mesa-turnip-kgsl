@@ -465,32 +465,6 @@ static char *pandecode_format(enum mali_format format)
 #undef DEFINE_CASE
 
 static char *
-pandecode_job_type(enum mali_job_type type)
-{
-#define DEFINE_CASE(name) case JOB_TYPE_ ## name: return "JOB_TYPE_" #name
-
-        switch (type) {
-                DEFINE_CASE(NULL);
-                DEFINE_CASE(WRITE_VALUE);
-                DEFINE_CASE(CACHE_FLUSH);
-                DEFINE_CASE(COMPUTE);
-                DEFINE_CASE(VERTEX);
-                DEFINE_CASE(TILER);
-                DEFINE_CASE(FUSED);
-                DEFINE_CASE(FRAGMENT);
-
-        case JOB_NOT_STARTED:
-                return "NOT_STARTED";
-
-        default:
-                pandecode_log("Warning! Unknown job type %x\n", type);
-                return "!?!?!?";
-        }
-
-#undef DEFINE_CASE
-}
-
-static char *
 pandecode_draw_mode(enum mali_draw_mode mode)
 {
 #define DEFINE_CASE(name) case MALI_ ## name: return "MALI_" #name
@@ -2115,9 +2089,9 @@ static const char *
 shader_type_for_job(unsigned type)
 {
         switch (type) {
-        case JOB_TYPE_VERTEX:  return "VERTEX";
-        case JOB_TYPE_TILER:   return "FRAGMENT";
-        case JOB_TYPE_COMPUTE: return "COMPUTE";
+        case MALI_JOB_TYPE_VERTEX:  return "VERTEX";
+        case MALI_JOB_TYPE_TILER:   return "FRAGMENT";
+        case MALI_JOB_TYPE_COMPUTE: return "COMPUTE";
         default:
                                return "UNKNOWN";
         }
@@ -2161,14 +2135,14 @@ pandecode_shader_disassemble(mali_ptr shader_ptr, int shader_no, int type,
         } else {
                 stats = disassemble_midgard(pandecode_dump_stream,
                                 code, sz, gpu_id,
-                                type == JOB_TYPE_TILER ?
+                                type == MALI_JOB_TYPE_TILER ?
                                 MESA_SHADER_FRAGMENT : MESA_SHADER_VERTEX);
         }
 
         /* Print shader-db stats. Skip COMPUTE jobs since they are used for
          * driver-internal purposes with the blob and interfere */
 
-        bool should_shaderdb = type != JOB_TYPE_COMPUTE;
+        bool should_shaderdb = type != MALI_JOB_TYPE_COMPUTE;
 
         if (should_shaderdb) {
                 unsigned nr_threads =
@@ -2693,8 +2667,8 @@ pandecode_vertex_tiler_postfix_pre(
                 pandecode_log_cont("\t/* %X %/\n", p->shared_memory & 1);
                 pandecode_compute_fbd(p->shared_memory & ~1, job_no);
         } else if (p->shared_memory & MALI_MFBD)
-                fbd_info = pandecode_mfbd_bfr((u64) ((uintptr_t) p->shared_memory) & FBD_MASK, job_no, false, job_type == JOB_TYPE_COMPUTE, false);
-        else if (job_type == JOB_TYPE_COMPUTE)
+                fbd_info = pandecode_mfbd_bfr((u64) ((uintptr_t) p->shared_memory) & FBD_MASK, job_no, false, job_type == MALI_JOB_TYPE_COMPUTE, false);
+        else if (job_type == MALI_JOB_TYPE_COMPUTE)
                 pandecode_compute_fbd((u64) (uintptr_t) p->shared_memory, job_no);
         else
                 fbd_info = pandecode_sfbd((u64) (uintptr_t) p->shared_memory, job_no, false, gpu_id);
@@ -2865,7 +2839,7 @@ pandecode_vertex_tiler_postfix_pre(
                 /* MRT blend fields are used whenever MFBD is used, with
                  * per-RT descriptors */
 
-                if (job_type == JOB_TYPE_TILER && (is_bifrost || p->shared_memory & MALI_MFBD)) {
+                if (job_type == MALI_JOB_TYPE_TILER && (is_bifrost || p->shared_memory & MALI_MFBD)) {
                         void* blend_base = (void *) (s + 1);
 
                         for (unsigned i = 0; i < fbd_info.rt_count; i++) {
@@ -2982,7 +2956,7 @@ pandecode_vertex_tiler_postfix(const struct mali_vertex_tiler_postfix *p, int jo
         pandecode_log(".postfix = {\n");
         pandecode_indent++;
 
-        pandecode_gl_enables(p->gl_enables, JOB_TYPE_TILER);
+        pandecode_gl_enables(p->gl_enables, MALI_JOB_TYPE_TILER);
         pandecode_prop("instance_shift = 0x%x", p->instance_shift);
         pandecode_prop("instance_odd = 0x%x", p->instance_odd);
 
@@ -3197,7 +3171,7 @@ pandecode_vertex_or_tiler_job_mdg(const struct mali_job_descriptor_header *h,
                 mali_ptr payload, int job_no, unsigned gpu_id)
 {
         struct midgard_payload_vertex_tiler *PANDECODE_PTR_VAR(v, mem, payload);
-        bool is_graphics = (h->job_type == JOB_TYPE_VERTEX) || (h->job_type == JOB_TYPE_TILER);
+        bool is_graphics = (h->job_type == MALI_JOB_TYPE_VERTEX) || (h->job_type == MALI_JOB_TYPE_TILER);
 
         pandecode_vertex_tiler_postfix_pre(&v->postfix, job_no, h->job_type, "", false, gpu_id);
 
@@ -3335,7 +3309,7 @@ pandecode_jc(mali_ptr jc_gpu_va, bool bifrost, unsigned gpu_id, bool minimal)
                  * something else.
                  */
                 int offset = h->job_descriptor_size == MALI_JOB_32 &&
-                             h->job_type != JOB_TYPE_FRAGMENT ? 4 : 0;
+                             h->job_type != MALI_JOB_TYPE_FRAGMENT ? 4 : 0;
                 mali_ptr payload_ptr = jc_gpu_va + sizeof(*h) - offset;
 
                 payload = pandecode_fetch_gpu_mem(mem, payload_ptr, 256);
@@ -3349,7 +3323,7 @@ pandecode_jc(mali_ptr jc_gpu_va, bool bifrost, unsigned gpu_id, bool minimal)
                 pandecode_log("struct mali_job_descriptor_header job_%"PRIx64"_%d = {\n", jc_gpu_va, job_no);
                 pandecode_indent++;
 
-                pandecode_prop("job_type = %s", pandecode_job_type(h->job_type));
+                pandecode_prop("job_type = %s", mali_job_type_as_str(h->job_type));
 
                 if (h->job_descriptor_size)
                         pandecode_prop("job_descriptor_size = %d", h->job_descriptor_size);
@@ -3385,7 +3359,7 @@ pandecode_jc(mali_ptr jc_gpu_va, bool bifrost, unsigned gpu_id, bool minimal)
                 pandecode_log("};\n");
 
                 switch (h->job_type) {
-                case JOB_TYPE_WRITE_VALUE: {
+                case MALI_JOB_TYPE_WRITE_VALUE: {
                         struct mali_payload_write_value *s = payload;
                         pandecode_log("struct mali_payload_write_value payload_%"PRIx64"_%d = {\n", payload_ptr, job_no);
                         pandecode_indent++;
@@ -3408,11 +3382,11 @@ pandecode_jc(mali_ptr jc_gpu_va, bool bifrost, unsigned gpu_id, bool minimal)
                         break;
                 }
 
-                case JOB_TYPE_TILER:
-                case JOB_TYPE_VERTEX:
-                case JOB_TYPE_COMPUTE:
+                case MALI_JOB_TYPE_TILER:
+                case MALI_JOB_TYPE_VERTEX:
+                case MALI_JOB_TYPE_COMPUTE:
                         if (bifrost) {
-                                if (h->job_type == JOB_TYPE_TILER)
+                                if (h->job_type == MALI_JOB_TYPE_TILER)
                                         pandecode_tiler_job_bfr(h, mem, payload_ptr, job_no, gpu_id);
                                 else
                                         pandecode_vertex_job_bfr(h, mem, payload_ptr, job_no, gpu_id);
@@ -3421,7 +3395,7 @@ pandecode_jc(mali_ptr jc_gpu_va, bool bifrost, unsigned gpu_id, bool minimal)
 
                         break;
 
-                case JOB_TYPE_FRAGMENT:
+                case MALI_JOB_TYPE_FRAGMENT:
                         pandecode_fragment_job(mem, payload_ptr, job_no, bifrost, gpu_id);
                         break;
 

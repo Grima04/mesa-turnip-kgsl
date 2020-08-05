@@ -1,3 +1,16 @@
 <panxml>
 
+  <enum name="Job Type">
+    <value name="Not started" value="0"/>
+    <value name="Null" value="1"/>
+    <value name="Write value" value="2"/>
+    <value name="Cache flush" value="3"/>
+    <value name="Compute" value="4"/>
+    <value name="Vertex" value="5"/>
+    <value name="Geometry" value="6"/>
+    <value name="Tiler" value="7"/>
+    <value name="Fused" value="8"/>
+    <value name="Fragment" value="9"/>
+  </enum>
+
 </panxml>

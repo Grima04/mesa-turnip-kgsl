@@ -69,7 +69,7 @@ panfrost_fragment_job(struct panfrost_batch *batch, bool has_draws)
                 panfrost_initialize_surface(batch, fb->zsbuf);
 
         struct mali_job_descriptor_header header = {
-                .job_type = JOB_TYPE_FRAGMENT,
+                .job_type = MALI_JOB_TYPE_FRAGMENT,
                 .job_index = 1,
                 .job_descriptor_size = 1
         };

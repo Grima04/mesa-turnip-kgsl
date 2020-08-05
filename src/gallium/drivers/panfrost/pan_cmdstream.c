@@ -2207,9 +2207,9 @@ panfrost_emit_vertex_tiler_jobs(struct panfrost_batch *batch,
         if (wallpapering) {
                 /* Inject in reverse order, with "predicted" job indices.
                  * THIS IS A HACK XXX */
-                panfrost_new_job(&batch->pool, &batch->scoreboard, JOB_TYPE_TILER, false,
+                panfrost_new_job(&batch->pool, &batch->scoreboard, MALI_JOB_TYPE_TILER, false,
                                  batch->scoreboard.job_index + 2, tp, tp_size, true);
-                panfrost_new_job(&batch->pool, &batch->scoreboard, JOB_TYPE_VERTEX, false, 0,
+                panfrost_new_job(&batch->pool, &batch->scoreboard, MALI_JOB_TYPE_VERTEX, false, 0,
                                  vp, vp_size, true);
                 return;
         }
@@ -2219,13 +2219,13 @@ panfrost_emit_vertex_tiler_jobs(struct panfrost_batch *batch,
         bool rasterizer_discard = ctx->rasterizer &&
                                   ctx->rasterizer->base.rasterizer_discard;
 
-        unsigned vertex = panfrost_new_job(&batch->pool, &batch->scoreboard, JOB_TYPE_VERTEX, false, 0,
+        unsigned vertex = panfrost_new_job(&batch->pool, &batch->scoreboard, MALI_JOB_TYPE_VERTEX, false, 0,
                                            vp, vp_size, false);
 
         if (rasterizer_discard)
                 return;
 
-        panfrost_new_job(&batch->pool, &batch->scoreboard, JOB_TYPE_TILER, false, vertex, tp, tp_size,
+        panfrost_new_job(&batch->pool, &batch->scoreboard, MALI_JOB_TYPE_TILER, false, vertex, tp, tp_size,
                          false);
 }
 

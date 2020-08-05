@@ -117,7 +117,7 @@ panfrost_new_job(
 {
         unsigned global_dep = 0;
 
-        if (type == JOB_TYPE_TILER) {
+        if (type == MALI_JOB_TYPE_TILER) {
                 /* Tiler jobs must be chained, and on Midgard, the first tiler
                  * job must depend on the write value job, whose index we
                  * reserve now */
@@ -155,7 +155,7 @@ panfrost_new_job(
         }
 
         /* Form a chain */
-        if (type == JOB_TYPE_TILER)
+        if (type == MALI_JOB_TYPE_TILER)
                 scoreboard->tiler_dep = index;
 
         if (scoreboard->prev_job)
@@ -183,7 +183,7 @@ panfrost_scoreboard_initialize_tiler(struct pan_pool *pool,
          * regardless of size. */
 
         struct mali_job_descriptor_header job = {
-                .job_type = JOB_TYPE_WRITE_VALUE,
+                .job_type = MALI_JOB_TYPE_WRITE_VALUE,
                 .job_index = scoreboard->write_value_index,
                 .job_descriptor_size = 1,
                 .next_job = scoreboard->first_job

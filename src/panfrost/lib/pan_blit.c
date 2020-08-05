@@ -366,5 +366,5 @@ panfrost_load_midg(
         panfrost_pack_work_groups_compute(&payload.prefix, 1, vertex_count, 1, 1, 1, 1, true);
         payload.prefix.workgroups_x_shift_3 = 6;
 
-        panfrost_new_job(pool, scoreboard, JOB_TYPE_TILER, false, 0, &payload, sizeof(payload), true);
+        panfrost_new_job(pool, scoreboard, MALI_JOB_TYPE_TILER, false, 0, &payload, sizeof(payload), true);
 }

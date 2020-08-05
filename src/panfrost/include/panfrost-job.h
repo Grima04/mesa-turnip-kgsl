@@ -38,19 +38,6 @@ typedef uint32_t u32;
 typedef uint64_t u64;
 typedef uint64_t mali_ptr;
 
-enum mali_job_type {
-        JOB_NOT_STARTED	= 0,
-        JOB_TYPE_NULL = 1,
-        JOB_TYPE_WRITE_VALUE = 2,
-        JOB_TYPE_CACHE_FLUSH = 3,
-        JOB_TYPE_COMPUTE = 4,
-        JOB_TYPE_VERTEX = 5,
-        JOB_TYPE_GEOMETRY = 6,
-        JOB_TYPE_TILER = 7,
-        JOB_TYPE_FUSED = 8,
-        JOB_TYPE_FRAGMENT = 9,
-};
-
 enum mali_draw_mode {
         MALI_DRAW_NONE      = 0x0,
         MALI_POINTS         = 0x1,

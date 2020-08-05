@@ -117,7 +117,7 @@ bit_sanity_check(struct panfrost_device *dev)
         };
 
         struct panfrost_bo *bos[] = { scratch };
-        bool success = bit_submit(dev, JOB_TYPE_WRITE_VALUE,
+        bool success = bit_submit(dev, MALI_JOB_TYPE_WRITE_VALUE,
                         &payload, sizeof(payload), bos, 1, false);
 
         return success && (((uint8_t *) scratch->cpu)[0] == 0x0);
@@ -224,7 +224,7 @@ bit_vertex(struct panfrost_device *dev, panfrost_program prog,
                 scratchpad, shmem, shader, shader_desc, ubo, var, attr
         };
 
-        bool succ = bit_submit(dev, JOB_TYPE_VERTEX, &payload,
+        bool succ = bit_submit(dev, MALI_JOB_TYPE_VERTEX, &payload,
                         sizeof(payload), bos, ARRAY_SIZE(bos), debug);
 
         /* Check the output varyings */
