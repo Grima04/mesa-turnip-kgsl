@@ -833,20 +833,7 @@ get_wsi_format_modifier_properties_list(const struct anv_physical_device *physic
           vk_format == VK_FORMAT_B8G8R8A8_SRGB ||
           vk_format == VK_FORMAT_B8G8R8A8_UNORM);
 
-   uint64_t modifiers[] = {
-      DRM_FORMAT_MOD_LINEAR,
-      I915_FORMAT_MOD_X_TILED,
-      I915_FORMAT_MOD_Y_TILED,
-      I915_FORMAT_MOD_Y_TILED_CCS,
-   };
-
-   for (uint32_t i = 0; i < ARRAY_SIZE(modifiers); i++) {
-      const struct isl_drm_modifier_info *isl_mod_info =
-         isl_drm_modifier_get_info(modifiers[i]);
-
-      if (!isl_mod_info)
-         continue;
-
+   isl_drm_modifier_info_for_each(isl_mod_info) {
       VkFormatFeatureFlags features =
          anv_get_image_format_features(devinfo, vk_format, anv_format,
                                        VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT,
