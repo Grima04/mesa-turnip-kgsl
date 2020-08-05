@@ -3211,6 +3211,13 @@ struct gl_shader_compiler_options
    GLboolean LowerPrecisionDerivatives;
 
    /**
+    * This enables lowering of 16b constants.  Some drivers may not
+    * to lower constants to 16b (ie. if the hw can do automatic
+    * narrowing on constant load)
+    */
+   GLboolean LowerPrecisionConstants;
+
+   /**
     * This enables 16-bit phis in NIR, 16-bit loop counters, 16-bit indirect
     * arrays, etc.
     */

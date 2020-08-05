@@ -1028,6 +1028,8 @@ lower_variables_visitor::visit(ir_variable *var)
    /* Lower constant initializers. */
    if (var->constant_value &&
        var->type == var->constant_value->type) {
+      if (!options->LowerPrecisionConstants)
+         return visit_continue;
       var->constant_value =
          var->constant_value->clone(ralloc_parent(var), NULL);
       lower_constant(var->constant_value);
@@ -1035,6 +1037,8 @@ lower_variables_visitor::visit(ir_variable *var)
 
    if (var->constant_initializer &&
        var->type == var->constant_initializer->type) {
+      if (!options->LowerPrecisionConstants)
+         return visit_continue;
       var->constant_initializer =
          var->constant_initializer->clone(ralloc_parent(var), NULL);
       lower_constant(var->constant_initializer);
