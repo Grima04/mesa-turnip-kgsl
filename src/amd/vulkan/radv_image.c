@@ -1211,7 +1211,14 @@ radv_init_metadata(struct radv_device *device,
 	memset(metadata, 0, sizeof(*metadata));
 
 	if (device->physical_device->rad_info.chip_class >= GFX9) {
+		uint64_t dcc_offset = image->offset + (surface->display_dcc_offset ?
+			surface->display_dcc_offset : surface->dcc_offset);
 		metadata->u.gfx9.swizzle_mode = surface->u.gfx9.surf.swizzle_mode;
+		metadata->u.gfx9.dcc_offset_256b = dcc_offset >> 8;
+		metadata->u.gfx9.dcc_pitch_max = surface->u.gfx9.display_dcc_pitch_max;
+		metadata->u.gfx9.dcc_independent_64b_blocks = surface->u.gfx9.dcc.independent_64B_blocks;
+		metadata->u.gfx9.dcc_independent_128b_blocks = surface->u.gfx9.dcc.independent_128B_blocks;
+		metadata->u.gfx9.dcc_max_compressed_block_size = surface->u.gfx9.dcc.max_compressed_block_size;
 		metadata->u.gfx9.scanout = (surface->flags & RADEON_SURF_SCANOUT) != 0;
 	} else {
 		metadata->u.legacy.microtile = surface->u.legacy.level[0].mode >= RADEON_SURF_MODE_1D ?

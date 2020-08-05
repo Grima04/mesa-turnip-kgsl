@@ -141,6 +141,11 @@ struct radeon_bo_metadata {
 			/* surface flags */
 			unsigned swizzle_mode:5;
 			bool scanout;
+			uint32_t dcc_offset_256b;
+			uint32_t dcc_pitch_max;
+			bool dcc_independent_64b_blocks;
+			bool dcc_independent_128b_blocks;
+			unsigned dcc_max_compressed_block_size;
 		} gfx9;
 	} u;
 

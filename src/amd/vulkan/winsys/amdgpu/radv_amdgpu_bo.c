@@ -868,6 +868,9 @@ static unsigned radv_eg_tile_split_rev(unsigned eg_tile_split)
 	}
 }
 
+#define AMDGPU_TILING_DCC_MAX_COMPRESSED_BLOCK_SIZE_SHIFT  45
+#define AMDGPU_TILING_DCC_MAX_COMPRESSED_BLOCK_SIZE_MASK   0x3
+
 static void
 radv_amdgpu_winsys_bo_set_metadata(struct radeon_winsys *_ws,
 				   struct radeon_winsys_bo *_bo,
@@ -880,6 +883,11 @@ radv_amdgpu_winsys_bo_set_metadata(struct radeon_winsys *_ws,
 
 	if (ws->info.chip_class >= GFX9) {
 		tiling_flags |= AMDGPU_TILING_SET(SWIZZLE_MODE, md->u.gfx9.swizzle_mode);
+		tiling_flags |= AMDGPU_TILING_SET(DCC_OFFSET_256B, md->u.gfx9.dcc_offset_256b);
+		tiling_flags |= AMDGPU_TILING_SET(DCC_PITCH_MAX, md->u.gfx9.dcc_pitch_max);
+		tiling_flags |= AMDGPU_TILING_SET(DCC_INDEPENDENT_64B, md->u.gfx9.dcc_independent_64b_blocks);
+		tiling_flags |= AMDGPU_TILING_SET(DCC_INDEPENDENT_128B, md->u.gfx9.dcc_independent_128b_blocks);
+		tiling_flags |= AMDGPU_TILING_SET(DCC_MAX_COMPRESSED_BLOCK_SIZE, md->u.gfx9.dcc_max_compressed_block_size);
 		tiling_flags |= AMDGPU_TILING_SET(SCANOUT, md->u.gfx9.scanout);
 	} else {
 		if (md->u.legacy.macrotile == RADEON_LAYOUT_TILED)
