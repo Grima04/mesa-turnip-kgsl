@@ -49,7 +49,6 @@ if sys.version_info < (3, 0):
 else:
     integer_types = (int, )
 
-
 def inv_swizzles(swizzles):
     '''Return an array[4] of inverse swizzle terms'''
     '''Only pick the first matching value to avoid l8 getting blue and i8 getting alpha'''
@@ -658,9 +657,11 @@ def generate_format_pack(format, src_channel, src_native_type, src_suffix):
 
     name = format.short_name()
 
-    print('static inline void')
+    print('void')
     print('util_format_%s_pack_%s(uint8_t *dst_row, unsigned dst_stride, const %s *src_row, unsigned src_stride, unsigned width, unsigned height)' % (name, src_suffix, src_native_type))
     print('{')
+
+    print('void util_format_%s_pack_%s(uint8_t *dst_row, unsigned dst_stride, const %s *src_row, unsigned src_stride, unsigned width, unsigned height);' % (name, src_suffix, src_native_type), file=sys.stdout2)
     
     if is_format_supported(format):
         print('   unsigned x, y;')
@@ -712,6 +713,7 @@ def generate(formats):
     print('#include "util/format_srgb.h"')
     print('#include "u_format_yuv.h"')
     print('#include "u_format_zs.h"')
+    print('#include "u_format_pack.h"')
     print()
 
     for format in formats:
@@ -761,4 +763,3 @@ def generate(formats):
 
                 generate_format_unpack(format, channel, native_type, suffix)
                 generate_format_pack(format, channel, native_type, suffix)
-

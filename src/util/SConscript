@@ -27,6 +27,18 @@ env.CodeGenerate(
 )
 
 env.CodeGenerate(
+    target = 'format/u_format_pack.h',
+    script = 'format/u_format_table.py',
+    source = ['format/u_format.csv'],
+    command = python_cmd + ' $SCRIPT $SOURCE --header > $TARGET'
+)
+
+env.Depends('format/u_format_pack.h', [
+    'format/u_format_parse.py',
+    'format/u_format_pack.py',
+])
+
+env.CodeGenerate(
     target = 'format/u_format_table.c',
     script = 'format/u_format_table.py',
     source = ['format/u_format.csv'],

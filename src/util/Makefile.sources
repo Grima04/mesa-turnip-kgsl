@@ -130,7 +130,8 @@ MESA_UTIL_FILES := \
 
 MESA_UTIL_GENERATED_FILES = \
 	format_srgb.c \
-	format/u_format_table.c
+	format/u_format_table.c \
+	format/u_format_pack.h
 
 XMLCONFIG_FILES := \
 	xmlconfig.c \
