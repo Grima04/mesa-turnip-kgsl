@@ -1,0 +1,56 @@
+traces-db:
+  download-url: "https://minio-packet.freedesktop.org/mesa-tracie-public/"
+
+traces:
+  - path: glmark2/desktop-blur-radius=5:effect=blur:passes=1:separable=true:windows=4.rdc
+    expectations:
+      - device: gl-panfrost-t860
+        checksum: 95df5e619a36e88fe408e45567a2d149
+      - device: gl-panfrost-t760
+        checksum: 30663eac9a4767d26fbf9b6db9712d9f
+  - path: glmark2/jellyfish.rdc
+    expectations:
+      - device: gl-panfrost-t860
+        checksum: 1d609b089732be5b6e3e78370abcb149
+      - device: gl-panfrost-t760
+        checksum: f98ef9118eeaba660c15065dac46e580
+  - path: glxgears/glxgears-2.trace
+    expectations:
+      - device: gl-panfrost-t860
+        checksum: bcc73608b6e2b5d92bf926d1c21889c7
+      - device: gl-panfrost-t760
+        checksum: bcc73608b6e2b5d92bf926d1c21889c7
+  - path: pathfinder/demo.trace
+    expectations:
+      - device: gl-panfrost-t860
+        checksum: c4f5e6bfe0cba230b1aef631c2fa4584
+      - device: gl-panfrost-t760
+        checksum: c4f5e6bfe0cba230b1aef631c2fa4584
+  - path: pathfinder/canvas_moire.trace
+    expectations:
+      - device: gl-panfrost-t860
+        checksum: 2fb2c8e83719526cb6c02b6c2e069d61
+      - device: gl-panfrost-t760
+        checksum: 2fb2c8e83719526cb6c02b6c2e069d61
+  - path: pathfinder/canvas_text.trace
+    expectations:
+      - device: gl-panfrost-t860
+        checksum: 939038749a5204ec2b1448d3b9208fb3
+      - device: gl-panfrost-t760
+        checksum: 939038749a5204ec2b1448d3b9208fb3
+  - path: gputest/furmark.trace
+    expectations:
+      - device: gl-panfrost-t860
+        checksum: dc4ece101ed145228840d1f0654118c6
+  - path: gputest/triangle.trace
+    expectations:
+      - device: gl-panfrost-t860
+        checksum: 6def0c34ade7d4ec930b45d0eef6e46a
+      - device: gl-panfrost-t760
+        checksum: 6def0c34ade7d4ec930b45d0eef6e46a
+  - path: humus/Portals.trace
+    expectations:
+      - device: gl-panfrost-t860
+        checksum: 5415bbf2a69b605bb1052a0e0b0f7040
+      - device: gl-panfrost-t760
+        checksum: a41f53e9318cbd32c27b48d304df1ea6

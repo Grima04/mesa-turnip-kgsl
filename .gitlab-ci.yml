@@ -1103,6 +1103,7 @@ arm64_a630_traces:
   variables:
     BARE_METAL_TEST_SCRIPT: "/install/tracie-runner-gl.sh"
     DEVICE_NAME: "freedreno-a630"
+    DRIVER_NAME: "freedreno"
     TRACIE_NO_UNIT_TESTS: 1
     TRACIE_UPLOAD_TO_MINIO: 1
     # This lets us run several more traces which don't use any features we're
@@ -1318,6 +1319,7 @@ llvmpipe-traces:
     LIBGL_ALWAYS_SOFTWARE: "true"
     GALLIUM_DRIVER: "llvmpipe"
     DEVICE_NAME: "gl-vmware-llvmpipe"
+    DRIVER_NAME: "llvmpipe"
 
 radv-polaris10-traces:
   extends:
@@ -1326,6 +1328,7 @@ radv-polaris10-traces:
     - .test-manual
   variables:
     DEVICE_NAME: "vk-amd-polaris10"
+    DRIVER_NAME: "radv"
   tags:
     - polaris10
 
@@ -1336,6 +1339,7 @@ radv-raven-traces:
     - .test-manual
   variables:
     DEVICE_NAME: "vk-amd-raven"
+    DRIVER_NAME: "radv"
   tags:
     - raven
 
@@ -1347,5 +1351,6 @@ virgl-traces:
     LIBGL_ALWAYS_SOFTWARE: "true"
     GALLIUM_DRIVER: "virpipe"
     DEVICE_NAME: "gl-virgl"
+    DRIVER_NAME: "virgl"
     MESA_GLES_VERSION_OVERRIDE: "3.1"
     MESA_GLSL_VERSION_OVERRIDE: "310"

@@ -36,6 +36,7 @@ for var in \
     DEQP_SKIPS \
     DEQP_VER \
     DEVICE_NAME \
+    DRIVER_NAME \
     FD_MESA_DEBUG \
     FLAKES_CHANNEL \
     IR3_SHADER_DEBUG \

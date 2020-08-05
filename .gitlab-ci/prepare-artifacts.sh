@@ -26,8 +26,7 @@ echo "$(cat VERSION) (git-$(git rev-parse HEAD | cut -b -10))" >> install/VERSIO
 cp -Rp .gitlab-ci/bare-metal install/
 cp -Rp .gitlab-ci/deqp* install/
 cp -Rp .gitlab-ci/piglit install/
-cp -Rp .gitlab-ci/traces-baremetal.yml install/
-cp -Rp .gitlab-ci/traces.yml install/
+cp -Rp .gitlab-ci/traces*.yml install/
 cp -Rp .gitlab-ci/tracie install/
 cp -Rp .gitlab-ci/tracie-runner-gl.sh install/
 cp -Rp .gitlab-ci/tracie-runner-vk.sh install/

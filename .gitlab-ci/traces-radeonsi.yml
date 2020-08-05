@@ -4,134 +4,46 @@ traces-db:
 traces:
   - path: glmark2/desktop-blur-radius=5:effect=blur:passes=1:separable=true:windows=4.rdc
     expectations:
-      - device: gl-vmware-llvmpipe
-        checksum: 8867f3a41f180626d0d4b7661ff5c0f4
-      - device: gl-virgl
-        checksum: 8867f3a41f180626d0d4b7661ff5c0f4
-      - device: gl-panfrost-t860
-        checksum: 95df5e619a36e88fe408e45567a2d149
-      - device: gl-panfrost-t760
-        checksum: 30663eac9a4767d26fbf9b6db9712d9f
       - device: gl-radeonsi-stoney
         checksum: 316650141be869c8afe76b42d3573b49
   - path: glmark2/jellyfish.rdc
     expectations:
-      - device: gl-vmware-llvmpipe
-        checksum: e0fe979fee129c0ed42a3059d1a4e1c9
-      - device: gl-virgl
-        checksum: e0fe979fee129c0ed42a3059d1a4e1c9
-      - device: gl-panfrost-t860
-        checksum: 1d609b089732be5b6e3e78370abcb149
-      - device: gl-panfrost-t760
-        checksum: f98ef9118eeaba660c15065dac46e580
       - device: gl-radeonsi-stoney
         checksum: 2c57f9d33489dd43c8807bd0f06c3ed8
   - path: glxgears/glxgears-2.trace
     expectations:
-      - device: gl-vmware-llvmpipe
-        checksum: f8eba0fec6e3e0af9cb09844bc73bdc8
-      - device: gl-virgl
-        checksum: f8eba0fec6e3e0af9cb09844bc73bdc8
-      - device: gl-panfrost-t860
-        checksum: bcc73608b6e2b5d92bf926d1c21889c7
-      - device: gl-panfrost-t760
-        checksum: bcc73608b6e2b5d92bf926d1c21889c7
       - device: gl-radeonsi-stoney
         checksum: eb9b3d497be567f02a6e039fa32f2b13
-  - path: KhronosGroup-Vulkan-Tools/amd/polaris10/vkcube.gfxr
-    expectations:
-      - device: vk-amd-polaris10
-        checksum: 917cbbf4f09dd62ea26d247a1c70c16e
-      - device: vk-amd-raven
-        checksum: 45f9a89c7eabdaee5bc52ad4f45e598f
-  - path: LunarG-VulkanSamples/amd/polaris10/Hologram:-w:640:-h:480.gfxr
-    expectations:
-      - device: vk-amd-polaris10
-        checksum: cfde36cd7377068a739c30e3fd171d08
-      - device: vk-amd-raven
-        checksum: cfde36cd7377068a739c30e3fd171d08
-  - path: Wicked-Engine/Tests:Cloth_Physics_Test.trace-dxgi
-    expectations:
-      - device: vk-amd-polaris10
-        checksum: 6b6d27df609b8d086cc3335e6d103581
-      - device: vk-amd-raven
-        checksum: f013465b97fd8ba0217bcde74c262384
   - path: 0ad/0ad.trace
     expectations:
-      - device: gl-vmware-llvmpipe
-        checksum: d76d0f5b5b064bba3e6a2a122c0799cf
       - device: gl-radeonsi-stoney
         checksum: bfd97a7190f2b9de24ddfd446fcc4850
   - path: pathfinder/demo.trace
     expectations:
-      - device: gl-vmware-llvmpipe
-        checksum: e624d76c70cc3c532f4f54439e13659a
-      - device: gl-panfrost-t860
-        checksum: c4f5e6bfe0cba230b1aef631c2fa4584
-      - device: gl-panfrost-t760
-        checksum: c4f5e6bfe0cba230b1aef631c2fa4584
       - device: gl-radeonsi-stoney
         checksum: c81c85f9b247dd1b06c3dd5b669cc283
   - path: pathfinder/canvas_moire.trace
     expectations:
-      - device: gl-vmware-llvmpipe
-        checksum: c4ee0eef519f1a32ba24b7b392b31b28
-      - device: gl-panfrost-t860
-        checksum: 2fb2c8e83719526cb6c02b6c2e069d61
-      - device: gl-panfrost-t760
-        checksum: 2fb2c8e83719526cb6c02b6c2e069d61
       - device: gl-radeonsi-stoney
         checksum: 78dd2357ad6e5ffc049a75bfb11c5497
   - path: pathfinder/canvas_text.trace
     expectations:
-      - device: gl-vmware-llvmpipe
-        checksum: f8c6d9a5c9248821ed9aaa376bef05c3
-      - device: gl-panfrost-t860
-        checksum: 939038749a5204ec2b1448d3b9208fb3
-      - device: gl-panfrost-t760
-        checksum: 939038749a5204ec2b1448d3b9208fb3
       - device: gl-radeonsi-stoney
         checksum: 56d1398206ceea45562f80f8ea9d3814
   - path: gputest/furmark.trace
     expectations:
-      - device: gl-vmware-llvmpipe
-        checksum: 248ee9534a1f333b479e599646f56f63
-      - device: gl-virgl
-        checksum: 87ffd45be95f2d55f82325c86ce32f20
-      - device: gl-panfrost-t860
-        checksum: dc4ece101ed145228840d1f0654118c6
       - device: gl-radeonsi-stoney
         checksum: 1c569668d608c644f353caa177d577c6
   - path: gputest/pixmark-piano.trace
     expectations:
-      - device: gl-vmware-llvmpipe
-        checksum: 022b43b7fff9e8623dcfcd91e6bbe7aa
-      - device: gl-virgl
-        checksum: 24eb95484e5b8288b3d5d65117c98641
       - device: gl-radeonsi-stoney
         checksum: 061226c3fd179c611b8d60acaa44474f
   - path: gputest/triangle.trace
     expectations:
-      - device: gl-vmware-llvmpipe
-        checksum: c8848dec77ee0c55292417f54c0a1a49
-      - device: gl-virgl
-        checksum: 848436d1a2448bdc76fd6220382d8606
-      - device: gl-panfrost-t860
-        checksum: 6def0c34ade7d4ec930b45d0eef6e46a
-      - device: gl-panfrost-t760
-        checksum: 6def0c34ade7d4ec930b45d0eef6e46a
       - device: gl-radeonsi-stoney
         checksum: 2d0527e7288a0fc31099404546dadbfb
   - path: humus/Portals.trace
     expectations:
-      - device: gl-vmware-llvmpipe
-        checksum: d6eb6aee7a8a1c85d504a498cbf94659
-      - device: gl-virgl
-        checksum: 7caf9a1b50b7fc312a623be7c45553cb
-      - device: gl-panfrost-t860
-        checksum: 5415bbf2a69b605bb1052a0e0b0f7040
-      - device: gl-panfrost-t760
-        checksum: a41f53e9318cbd32c27b48d304df1ea6
       - device: gl-radeonsi-stoney
         checksum: b6f00f39566152c3c8462903b7a1f258
   - path: glmark2/buffer-columns=200:interleave=false:update-dispersion=0.9:update-fraction=0.5:update-method=map.rdc

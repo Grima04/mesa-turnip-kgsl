@@ -43,7 +43,7 @@ kernel+rootfs_armhf:
   variables:
     GIT_STRATEGY: none # testing doesn't build anything from source
     ENV_VARS: "DEQP_PARALLEL=6"
-    FIXED_ENV_VARS: "CI_PIPELINE_ID=${CI_PIPELINE_ID} CI_JOB_ID=${CI_JOB_ID} CI_PROJECT_PATH=${CI_PROJECT_PATH} CI_JOB_JWT=${CI_JOB_JWT} TRACIE_NO_UNIT_TESTS=1 TRACIE_UPLOAD_TO_MINIO=1"
+    FIXED_ENV_VARS: "CI_PIPELINE_ID=${CI_PIPELINE_ID} CI_JOB_ID=${CI_JOB_ID} CI_PROJECT_PATH=${CI_PROJECT_PATH} CI_JOB_JWT=${CI_JOB_JWT} TRACIE_NO_UNIT_TESTS=1 TRACIE_UPLOAD_TO_MINIO=1 DRIVER_NAME=${DRIVER_NAME}"
     DEQP_VERSION: gles2
     ARTIFACTS_PREFIX: "https://minio-packet.freedesktop.org/mesa-lava/"
     MESA_URL: "https://minio-packet.freedesktop.org/artifacts/${CI_PROJECT_PATH}/${CI_PIPELINE_ID}/mesa-${ARCH}.tar.gz"
@@ -183,6 +183,7 @@ panfrost-t760-gles2:armhf:
     DEVICE_TYPE: rk3288-veyron-jaq
     DTB: ${DEVICE_TYPE}
     GPU_VERSION: panfrost-t760
+    DRIVER_NAME: panfrost
     BOOT_METHOD: depthcharge
     KERNEL_IMAGE_TYPE: ""
     ENV_VARS: "PAN_MESA_DEBUG=deqp MESA_GLES_VERSION_OVERRIDE=3.1 MESA_GL_VERSION_OVERRIDE=3.3 MESA_GLSL_VERSION_OVERRIDE=330"
@@ -196,6 +197,7 @@ panfrost-t760-gles2:armhf:
     DEVICE_TYPE: rk3399-gru-kevin
     DTB: ${DEVICE_TYPE}
     GPU_VERSION: panfrost-t860
+    DRIVER_NAME: panfrost
     BOOT_METHOD: depthcharge
     KERNEL_IMAGE_TYPE: ""
   tags:
@@ -294,6 +296,7 @@ radeonsi-stoney-traces:amd64:
     DEVICE_TYPE: hp-11A-G6-EE-grunt
     DTB: ""
     GPU_VERSION: radeonsi-stoney
+    DRIVER_NAME: radeonsi
     BOOT_METHOD: depthcharge
     KERNEL_IMAGE_TYPE: ""
   tags:

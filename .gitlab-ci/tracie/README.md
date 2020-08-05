@@ -52,13 +52,14 @@ To enable trace testing on a new device:
 
    1. If you mean to test GL traces, use the `.traces-test-gl`
       template jobs as a base, and make sure you set a unique value for the
-     `DEVICE_NAME` variable:
+     `DEVICE_NAME` variable and the name of the Mesa driver as `DRIVER_NAME`:
 
    ```yaml
    my-hardware-gl-traces:
      extends: .traces-test-gl
      variables:
        DEVICE_NAME: "gl-myhardware"
+       DRIVER_NAME: "mydriver"
    ```
 
    2. If you mean to test Vulkan traces, use the `.traces-test-vk`
@@ -71,12 +72,14 @@ To enable trace testing on a new device:
      variables:
        VK_DRIVER: "radeon"
        DEVICE_NAME: "vk-myhardware"
+       DRIVER_NAME: "radv"
    ```
 
-2. Update the .gitlab-ci/traces.yml file with expectations for the new device.
-   Ensure that the device name used in the expectations matches the one
-   set in the job. For more information, and tips about how to calculate
-   the checksums, see the section describing the trace definition files.
+2. Update the .gitlab-ci/traces-$DRIVER_NAME.yml file with expectations for
+   the new device. Ensure that the device name used in the expectations
+   matches the one set in the job. For more information, and tips about how to
+   calculate the checksums, see the section describing the trace definition
+   files.
 
 ### Trace files
 
@@ -102,7 +105,7 @@ against reference checksums.
 The high level script [tracie.py](.gitlab-ci/tracie/tracie.py) accepts
 a traces definition file and the name of the device to be tested:
 
-    tracie.py --file .gitlab-ci/traces.yml --device-name gl-vmware-llvmpipe
+    tracie.py --file .gitlab-ci/traces-llvmpipe.yml --device-name gl-vmware-llvmpipe
 
 tracie.py copies the produced artifacts to the `$CI_PROJECT_DIR/result`
 directory. By default, created images from traces are only stored in case of a
