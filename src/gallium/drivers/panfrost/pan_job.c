@@ -1076,8 +1076,11 @@ panfrost_batch_submit(struct panfrost_batch *batch, uint32_t out_sync)
         int ret;
 
         /* Nothing to do! */
-        if (!batch->scoreboard.first_job && !batch->clear)
+        if (!batch->scoreboard.first_job && !batch->clear) {
+                if (out_sync)
+                        drmSyncobjSignal(dev->fd, &out_sync, 1);
                 goto out;
+	}
 
         panfrost_batch_draw_wallpaper(batch);
 
