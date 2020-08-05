@@ -1651,7 +1651,7 @@ static uint32_t si_translate_texformat(struct pipe_screen *screen, enum pipe_for
 
    if (desc->layout == UTIL_FORMAT_LAYOUT_ETC &&
        (sscreen->info.family == CHIP_STONEY || sscreen->info.family == CHIP_VEGA10 ||
-        sscreen->info.family == CHIP_RAVEN)) {
+        sscreen->info.family == CHIP_RAVEN || sscreen->info.family == CHIP_RAVEN2)) {
       switch (format) {
       case PIPE_FORMAT_ETC1_RGB8:
       case PIPE_FORMAT_ETC2_RGB8:
