@@ -39,3 +39,22 @@ BEGIN_TEST(assembler.s_memtime)
       finish_assembler_test();
    }
 END_TEST
+
+BEGIN_TEST(assembler.branch_3f)
+   if (!setup_cs(NULL, (chip_class)GFX10))
+      return;
+
+   //! BB0:
+   //! s_branch BB1                                                ; bf820040
+   //! s_nop 0                                                     ; bf800000
+   bld.sopp(aco_opcode::s_branch, Definition(PhysReg(0), s2), 1);
+
+   for (unsigned i = 0; i < 0x3f; i++)
+      bld.vop1(aco_opcode::v_nop);
+
+   bld.reset(program->create_and_insert_block());
+
+   program->blocks[1].linear_preds.push_back(0u);
+
+   finish_assembler_test();
+END_TEST
