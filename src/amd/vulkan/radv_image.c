@@ -1182,24 +1182,9 @@ radv_query_opaque_metadata(struct radv_device *device,
 			   struct radeon_bo_metadata *md)
 {
 	static const VkComponentMapping fixedmapping;
-	uint32_t desc[8], i;
+	uint32_t desc[8];
 
 	assert(image->plane_count == 1);
-
-	/* Metadata image format format version 1:
-	 * [0] = 1 (metadata format identifier)
-	 * [1] = (VENDOR_ID << 16) | PCI_ID
-	 * [2:9] = image descriptor for the whole resource
-	 *         [2] is always 0, because the base address is cleared
-	 *         [9] is the DCC offset bits [39:8] from the beginning of
-	 *             the buffer
-	 * [10:10+LAST_LEVEL] = mipmap level offset bits [39:8] for each level
-	 */
-	md->metadata[0] = 1; /* metadata image format version 1 */
-
-	/* TILE_MODE_INDEX is ambiguous without a PCI ID. */
-	md->metadata[1] = si_get_bo_metadata_word1(device);
-
 
 	radv_make_texture_descriptor(device, image, false,
 				     (VkImageViewType)image->type, image->vk_format,
@@ -1212,21 +1197,8 @@ radv_query_opaque_metadata(struct radv_device *device,
 	si_set_mutable_tex_desc_fields(device, image, &image->planes[0].surface.u.legacy.level[0], 0, 0, 0,
 				       image->planes[0].surface.blk_w, false, false, false, desc);
 
-	/* Clear the base address and set the relative DCC offset. */
-	desc[0] = 0;
-	desc[1] &= C_008F14_BASE_ADDRESS_HI;
-	desc[7] = image->planes[0].surface.dcc_offset >> 8;
-
-	/* Dwords [2:9] contain the image descriptor. */
-	memcpy(&md->metadata[2], desc, sizeof(desc));
-
-	/* Dwords [10:..] contain the mipmap level offsets. */
-	if (device->physical_device->rad_info.chip_class <= GFX8) {
-		for (i = 0; i <= image->info.levels - 1; i++)
-			md->metadata[10+i] = image->planes[0].surface.u.legacy.level[i].offset >> 8;
-		md->size_metadata = (11 + image->info.levels - 1) * 4;
-	} else
-		md->size_metadata = 10 * 4;
+	ac_surface_get_umd_metadata(&device->physical_device->rad_info, &image->planes[0].surface,
+				    image->info.levels, desc, &md->size_metadata, md->metadata);
 }
 
 void
