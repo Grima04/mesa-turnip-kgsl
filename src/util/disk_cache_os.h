@@ -76,6 +76,9 @@ struct disk_cache {
 char *
 disk_cache_generate_cache_dir(void *mem_ctx);
 
+void
+disk_cache_evict_lru_item(struct disk_cache *cache);
+
 bool
 disk_cache_enabled(void);
 
