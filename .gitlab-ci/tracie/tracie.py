@@ -158,12 +158,10 @@ def gitlab_check_trace(project_url, device_name, trace, expectation):
                 (trace['path'], expectation['checksum'], checksum))
         print("[check_image] For more information see "
                 "https://gitlab.freedesktop.org/mesa/mesa/blob/master/.gitlab-ci/tracie/README.md")
-        image_diff_url = "%s/imagediff/%s/%s/%s/%s/%s" % (DASHBOARD_URL,
-                                                       os.environ['CI_PROJECT_PATH'],
-                                                       os.environ['CI_PIPELINE_ID'],
-                                                       os.environ['CI_JOB_ID'],
-                                                       expectation['checksum'],
-                                                       checksum)
+        image_diff_url = "%s/imagediff/%s/%s/%s" % (DASHBOARD_URL,
+                                                    os.environ['CI_PROJECT_PATH'],
+                                                    os.environ['CI_JOB_ID'],
+                                                    trace['path'])
         print("[check_image] %s" % image_diff_url)
         ok = False
 
