@@ -2,9 +2,10 @@ goto %1
 
 :install
 rem Check pip
+python --version
+python -m pip install --upgrade pip
+python -m pip --version
 if "%buildsystem%" == "scons" (
-    python --version
-    python -m pip --version
     rem Install Mako
     python -m pip install Mako==1.0.7
     rem Install pywin32 extensions, needed by SCons
@@ -15,7 +16,6 @@ if "%buildsystem%" == "scons" (
     python -m pip install scons==3.0.1
     call scons --version
 ) else (
-    python --version
     python -m pip install Mako meson
     meson --version
 
