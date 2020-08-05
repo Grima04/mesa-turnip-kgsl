@@ -53,19 +53,6 @@ typedef uint64_t mali_ptr;
 #define MALI_CULL_FACE_FRONT    (1 << 6)
 #define MALI_CULL_FACE_BACK     (1 << 7)
 
-/* Used in stencil and depth tests */
-
-enum mali_func {
-        MALI_FUNC_NEVER    = 0,
-        MALI_FUNC_LESS     = 1,
-        MALI_FUNC_EQUAL    = 2,
-        MALI_FUNC_LEQUAL   = 3,
-        MALI_FUNC_GREATER  = 4,
-        MALI_FUNC_NOTEQUAL = 5,
-        MALI_FUNC_GEQUAL   = 6,
-        MALI_FUNC_ALWAYS   = 7
-};
-
 /* Flags apply to unknown2_3? */
 
 #define MALI_HAS_MSAA		(1 << 0)

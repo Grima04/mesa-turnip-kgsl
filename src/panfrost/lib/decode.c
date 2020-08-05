@@ -464,27 +464,6 @@ static char *pandecode_format(enum mali_format format)
 
 #undef DEFINE_CASE
 
-#define DEFINE_CASE(name) case MALI_FUNC_ ## name: return "MALI_FUNC_" #name
-static char *
-pandecode_func(enum mali_func mode)
-{
-        switch (mode) {
-                DEFINE_CASE(NEVER);
-                DEFINE_CASE(LESS);
-                DEFINE_CASE(EQUAL);
-                DEFINE_CASE(LEQUAL);
-                DEFINE_CASE(GREATER);
-                DEFINE_CASE(NOTEQUAL);
-                DEFINE_CASE(GEQUAL);
-                DEFINE_CASE(ALWAYS);
-
-        default:
-                pandecode_msg("XXX: invalid func %X\n", mode);
-                return "";
-        }
-}
-#undef DEFINE_CASE
-
 #define DEFINE_CASE(name) case MALI_MSAA_ ## name: return "MALI_MSAA_" #name
 static char *
 pandecode_msaa_mode(enum mali_msaa_mode mode)
@@ -1662,7 +1641,7 @@ pandecode_stencil(const char *name, const struct mali_stencil_test *stencil)
         if (any_nonzero == 0)
                 return;
 
-        const char *func = pandecode_func(stencil->func);
+        const char *func = mali_func_as_str(stencil->func);
         const char *sfail = pandecode_stencil_op(stencil->sfail);
         const char *dpfail = pandecode_stencil_op(stencil->dpfail);
         const char *dppass = pandecode_stencil_op(stencil->dppass);
@@ -2597,7 +2576,7 @@ pandecode_samplers(mali_ptr samplers, unsigned sampler_count, int job_no, bool i
                         pandecode_prop("wrap_t = %s", pandecode_wrap_mode(s->wrap_t));
                         pandecode_prop("wrap_r = %s", pandecode_wrap_mode(s->wrap_r));
 
-                        pandecode_prop("compare_func = %s", pandecode_func(s->compare_func));
+                        pandecode_prop("compare_func = %s", mali_func_as_str(s->compare_func));
 
                         if (s->zero || s->zero2) {
                                 pandecode_msg("XXX: sampler zero tripped\n");
@@ -2750,7 +2729,7 @@ pandecode_vertex_tiler_postfix_pre(
                         /* We're not quite sure what these flags mean without the depth test, if anything */
 
                         if (unknown2_3 & (MALI_DEPTH_WRITEMASK | MALI_DEPTH_FUNC_MASK)) {
-                                const char *func = pandecode_func(MALI_GET_DEPTH_FUNC(unknown2_3));
+                                const char *func = mali_func_as_str(MALI_GET_DEPTH_FUNC(unknown2_3));
                                 unknown2_3 &= ~MALI_DEPTH_FUNC_MASK;
 
                                 pandecode_log_cont("MALI_DEPTH_FUNC(%s) | ", func);

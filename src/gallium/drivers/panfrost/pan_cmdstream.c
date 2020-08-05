@@ -369,7 +369,7 @@ panfrost_translate_compare_func(enum pipe_compare_func in)
                 return MALI_FUNC_GREATER;
 
         case PIPE_FUNC_NOTEQUAL:
-                return MALI_FUNC_NOTEQUAL;
+                return MALI_FUNC_NOT_EQUAL;
 
         case PIPE_FUNC_GEQUAL:
                 return MALI_FUNC_GEQUAL;
