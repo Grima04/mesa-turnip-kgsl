@@ -332,9 +332,6 @@ static const struct pandecode_flag_info sfbd_unk2_info [] = {
 };
 #undef FLAG_INFO
 
-extern char *replace_fragment;
-extern char *replace_vertex;
-
 #define DEFINE_CASE(name) case MALI_## name: return "MALI_" #name
 static char *pandecode_format(enum mali_format format)
 {
