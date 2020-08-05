@@ -27,7 +27,7 @@
 #ifndef __BIFROST_TEST_H
 #define __BIFROST_TEST_H
 
-#include "panfrost/include/panfrost-job.h"
+#include "panfrost/lib/midgard_pack.h"
 #include "panfrost/lib/pan_device.h"
 #include "panfrost/lib/pan_bo.h"
 #include "bifrost_compile.h"

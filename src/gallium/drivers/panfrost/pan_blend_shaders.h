@@ -27,7 +27,7 @@
 
 #include "pipe/p_state.h"
 #include "pipe/p_defines.h"
-#include <panfrost-job.h>
+#include <midgard_pack.h>
 #include "pan_context.h"
 #include "pan_blend.h"
 

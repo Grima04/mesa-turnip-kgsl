@@ -37,7 +37,7 @@
 #include "util/list.h"
 #include "util/sparse_array.h"
 
-#include <panfrost-job.h>
+#include <midgard_pack.h>
 
 /* Driver limits */
 #define PAN_MAX_CONST_BUFFERS 16

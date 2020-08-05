@@ -27,7 +27,7 @@
 #ifndef __PAN_SCOREBOARD_H__
 #define __PAN_SCOREBOARD_H__
 
-#include "panfrost-job.h"
+#include "midgard_pack.h"
 #include "pan_pool.h"
 
 struct pan_scoreboard {

@@ -32,7 +32,7 @@
 #include "drm-uapi/drm_fourcc.h"
 #include "util/format/u_format.h"
 #include "compiler/shader_enums.h"
-#include "panfrost-job.h"
+#include "midgard_pack.h"
 #include "pan_bo.h"
 
 #define PAN_MODIFIER_COUNT 4

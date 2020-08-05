@@ -25,7 +25,7 @@
  */
 
 #include <stdio.h>
-#include "panfrost-job.h"
+#include "midgard_pack.h"
 #include "pan_texture.h"
 
 /* Convenience */

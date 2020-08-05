@@ -28,7 +28,7 @@
 #include "pipe/p_defines.h"
 #include "pipe/p_state.h"
 
-#include "panfrost-job.h"
+#include "midgard_pack.h"
 
 #include "pan_job.h"
 

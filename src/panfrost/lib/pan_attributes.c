@@ -23,7 +23,7 @@
  */
 
 #include "util/u_math.h"
-#include "panfrost-job.h"
+#include "midgard_pack.h"
 #include "pan_encoder.h"
 
 /* This file handles attribute descriptors (mali_attr_meta). The

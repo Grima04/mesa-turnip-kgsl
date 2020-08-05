@@ -26,7 +26,7 @@
 #define __PAN_POOL_H__
 
 #include <stddef.h>
-#include <panfrost-job.h>
+#include <midgard_pack.h>
 
 /* Represents a pool of memory that can only grow, used to allocate objects
  * with the same lifetime as the pool itself. In OpenGL, a pool is owned by the

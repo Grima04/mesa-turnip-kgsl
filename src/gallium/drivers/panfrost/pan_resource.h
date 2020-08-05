@@ -26,7 +26,7 @@
 #ifndef PAN_RESOURCE_H
 #define PAN_RESOURCE_H
 
-#include <panfrost-job.h>
+#include <midgard_pack.h>
 #include "pan_screen.h"
 #include "pan_pool.h"
 #include "pan_minmax_cache.h"

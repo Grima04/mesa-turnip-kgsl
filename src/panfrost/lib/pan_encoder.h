@@ -28,7 +28,7 @@
 #define __PAN_ENCODER_H
 
 #include <stdbool.h>
-#include "panfrost-job.h"
+#include "midgard_pack.h"
 
 /* Invocation packing */
 

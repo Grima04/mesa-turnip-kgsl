@@ -23,7 +23,7 @@
  * SOFTWARE.
  */
 
-#include <panfrost-job.h>
+#include <midgard_pack.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <memory.h>
