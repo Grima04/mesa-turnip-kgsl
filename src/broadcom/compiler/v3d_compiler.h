@@ -525,6 +525,17 @@ struct v3d_compiler {
         unsigned int reg_class_phys_or_acc[3];
 };
 
+/**
+ * This holds partially interpolated inputs as provided by hardware
+ * (The Vp = A*(x - x0) + B*(y - y0) term), as well as the C coefficient
+ * required to compute the final interpolated value.
+ */
+struct v3d_interp_input {
+   struct qreg vp;
+   struct qreg C;
+   unsigned mode; /* interpolation mode */
+};
+
 struct v3d_compile {
         const struct v3d_device_info *devinfo;
         nir_shader *s;
@@ -552,6 +563,10 @@ struct v3d_compile {
          * Not all fragment shader QFILE_VARY reads are present in this array.
          */
         struct qreg *inputs;
+        /**
+         * Partially interpolated inputs to the shader.
+         */
+        struct v3d_interp_input *interp;
         struct qreg *outputs;
         bool msaa_per_sample_output;
         struct qreg color_reads[V3D_MAX_DRAW_BUFFERS * V3D_MAX_SAMPLES * 4];

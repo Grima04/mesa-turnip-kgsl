@@ -92,6 +92,29 @@ resize_qreg_array(struct v3d_compile *c,
                 (*regs)[i] = c->undef;
 }
 
+static void
+resize_interp_array(struct v3d_compile *c,
+                    struct v3d_interp_input **regs,
+                    uint32_t *size,
+                    uint32_t decl_size)
+{
+        if (*size >= decl_size)
+                return;
+
+        uint32_t old_size = *size;
+        *size = MAX2(*size * 2, decl_size);
+        *regs = reralloc(c, *regs, struct v3d_interp_input, *size);
+        if (!*regs) {
+                fprintf(stderr, "Malloc failure\n");
+                abort();
+        }
+
+        for (uint32_t i = old_size; i < *size; i++) {
+                (*regs)[i].vp = c->undef;
+                (*regs)[i].C = c->undef;
+        }
+}
+
 void
 vir_emit_thrsw(struct v3d_compile *c)
 {
@@ -665,7 +688,7 @@ emit_fragcoord_input(struct v3d_compile *c, int attr)
 
 static struct qreg
 emit_fragment_varying(struct v3d_compile *c, nir_variable *var,
-                      uint8_t swizzle, int array_index)
+                      int8_t input_idx, uint8_t swizzle, int array_index)
 {
         struct qreg r3 = vir_reg(QFILE_MAGIC, V3D_QPU_WADDR_R3);
         struct qreg r5 = vir_reg(QFILE_MAGIC, V3D_QPU_WADDR_R5);
@@ -681,11 +704,22 @@ emit_fragment_varying(struct v3d_compile *c, nir_variable *var,
                 vary = r3;
         }
 
+        /* Store the input value before interpolation so we can implement
+         * GLSL's interpolateAt functions if the shader uses them.
+         */
+        if (input_idx >= 0) {
+           assert(var);
+           c->interp[input_idx].vp = vary;
+           c->interp[input_idx].C = vir_MOV(c, r5);
+           c->interp[input_idx].mode = var->data.interpolation;
+        }
+
         /* For gl_PointCoord input or distance along a line, we'll be called
          * with no nir_variable, and we don't count toward VPM size so we
          * don't track an input slot.
          */
         if (!var) {
+                assert(input_idx < 0);
                 return vir_FADD(c, vir_FMUL(c, vary, c->payload_w), r5);
         }
 
@@ -694,6 +728,7 @@ emit_fragment_varying(struct v3d_compile *c, nir_variable *var,
                 v3d_slot_from_slot_and_component(var->data.location +
                                                  array_index, swizzle);
 
+        struct qreg result;
         switch (var->data.interpolation) {
         case INTERP_MODE_NONE:
                 /* If a gl_FrontColor or gl_BackColor input has no interp
@@ -708,11 +743,12 @@ emit_fragment_varying(struct v3d_compile *c, nir_variable *var,
                         if (c->fs_key->shade_model_flat) {
                                 BITSET_SET(c->flat_shade_flags, i);
                                 vir_MOV_dest(c, c->undef, vary);
-                                return vir_MOV(c, r5);
+                                result = vir_MOV(c, r5);
                         } else {
-                                return vir_FADD(c, vir_FMUL(c, vary,
-                                                            c->payload_w), r5);
+                                result = vir_FADD(c, vir_FMUL(c, vary,
+                                                              c->payload_w), r5);
                         }
+                        goto done;
                 default:
                         break;
                 }
@@ -720,21 +756,32 @@ emit_fragment_varying(struct v3d_compile *c, nir_variable *var,
         case INTERP_MODE_SMOOTH:
                 if (var->data.centroid) {
                         BITSET_SET(c->centroid_flags, i);
-                        return vir_FADD(c, vir_FMUL(c, vary,
-                                                    c->payload_w_centroid), r5);
+                        result = vir_FADD(c, vir_FMUL(c, vary,
+                                                      c->payload_w_centroid), r5);
                 } else {
-                        return vir_FADD(c, vir_FMUL(c, vary, c->payload_w), r5);
+                        result = vir_FADD(c, vir_FMUL(c, vary, c->payload_w), r5);
                 }
+                break;
+
         case INTERP_MODE_NOPERSPECTIVE:
                 BITSET_SET(c->noperspective_flags, i);
-                return vir_FADD(c, vir_MOV(c, vary), r5);
+                result = vir_FADD(c, vir_MOV(c, vary), r5);
+                break;
+
         case INTERP_MODE_FLAT:
                 BITSET_SET(c->flat_shade_flags, i);
                 vir_MOV_dest(c, c->undef, vary);
-                return vir_MOV(c, r5);
+                result = vir_MOV(c, r5);
+                break;
+
         default:
                 unreachable("Bad interp mode");
         }
+
+done:
+        if (input_idx >= 0)
+                c->inputs[input_idx] = result;
+        return result;
 }
 
 static void
@@ -743,8 +790,8 @@ emit_fragment_input(struct v3d_compile *c, int base_attr, nir_variable *var,
 {
         for (int i = 0; i < nelem ; i++) {
                 int chan = var->data.location_frac + i;
-                c->inputs[(base_attr + array_index) * 4 + chan] =
-                        emit_fragment_varying(c, var, chan, array_index);
+                int input_idx = (base_attr + array_index) * 4 + chan;
+                emit_fragment_varying(c, var, input_idx, chan, array_index);
         }
 }
 
@@ -757,8 +804,8 @@ emit_compact_fragment_input(struct v3d_compile *c, int attr, nir_variable *var,
          */
         int loc_offset = array_index / 4;
         int chan = var->data.location_frac + array_index % 4;
-        c->inputs[(attr + loc_offset) * 4  + chan] =
-              emit_fragment_varying(c, var, chan, loc_offset);
+        int input_idx = (attr + loc_offset) * 4  + chan;
+        emit_fragment_varying(c, var, input_idx, chan, loc_offset);
 }
 
 static void
@@ -1705,8 +1752,12 @@ ntq_setup_fs_inputs(struct v3d_compile *c)
                 unsigned var_len = glsl_count_vec4_slots(var->type, false, false);
                 unsigned loc = var->data.driver_location;
 
+                uint32_t inputs_array_size = c->inputs_array_size;
+                uint32_t inputs_array_required_size = (loc + var_len) * 4;
                 resize_qreg_array(c, &c->inputs, &c->inputs_array_size,
-                                  (loc + var_len) * 4);
+                                  inputs_array_required_size);
+                resize_interp_array(c, &c->interp, &inputs_array_size,
+                                    inputs_array_required_size);
 
                 if (var->data.location == VARYING_SLOT_POS) {
                         emit_fragcoord_input(c, loc);
@@ -2841,14 +2892,14 @@ nir_to_vir(struct v3d_compile *c)
                  */
                 if (c->fs_key->is_points &&
                     (c->devinfo->ver < 40 || program_reads_point_coord(c))) {
-                        c->point_x = emit_fragment_varying(c, NULL, 0, 0);
-                        c->point_y = emit_fragment_varying(c, NULL, 0, 0);
+                        c->point_x = emit_fragment_varying(c, NULL, -1, 0, 0);
+                        c->point_y = emit_fragment_varying(c, NULL, -1, 0, 0);
                         c->uses_implicit_point_line_varyings = true;
                 } else if (c->fs_key->is_lines &&
                            (c->devinfo->ver < 40 ||
                             (c->s->info.system_values_read &
                              BITFIELD64_BIT(SYSTEM_VALUE_LINE_COORD)))) {
-                        c->line_x = emit_fragment_varying(c, NULL, 0, 0);
+                        c->line_x = emit_fragment_varying(c, NULL, -1, 0, 0);
                         c->uses_implicit_point_line_varyings = true;
                 }
 
