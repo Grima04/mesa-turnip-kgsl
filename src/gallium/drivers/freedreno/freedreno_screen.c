@@ -269,6 +269,9 @@ fd_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
 	case PIPE_CAP_POLYGON_OFFSET_CLAMP:
 		return is_a4xx(screen) || is_a5xx(screen) || is_a6xx(screen);
 
+	case PIPE_CAP_PREFER_IMM_ARRAYS_AS_CONSTBUF:
+		return 0;
+
 	case PIPE_CAP_TEXTURE_BUFFER_OFFSET_ALIGNMENT:
 		if (is_a3xx(screen)) return 16;
 		if (is_a4xx(screen)) return 32;
