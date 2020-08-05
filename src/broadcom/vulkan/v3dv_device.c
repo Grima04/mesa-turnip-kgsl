@@ -223,6 +223,11 @@ v3dv_CreateInstance(const VkInstanceCreateInfo *pCreateInfo,
    instance->pipeline_cache_enabled =
       env_var_as_boolean("V3DV_ENABLE_PIPELINE_CACHE", true);
 
+   if (instance->pipeline_cache_enabled == false) {
+      fprintf(stderr, "WARNING: v3dv pipeline cache is disabled. Performance "
+              "can be affected negatively\n");
+   }
+
    glsl_type_singleton_init_or_ref();
 
    VG(VALGRIND_CREATE_MEMPOOL(instance, 0, false));
