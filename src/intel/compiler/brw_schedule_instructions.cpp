@@ -525,6 +525,7 @@ schedule_node::set_latency_gen7(bool is_haswell)
          break;
 
       case GEN_RT_SFID_BINDLESS_THREAD_DISPATCH:
+      case GEN_RT_SFID_RAY_TRACE_ACCELERATOR:
          /* TODO.
           *
           * We'll assume for the moment that this is pretty quick as it

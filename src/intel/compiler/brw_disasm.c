@@ -315,6 +315,7 @@ static const char *const gen6_sfid[16] = {
    [GEN7_SFID_PIXEL_INTERPOLATOR]      = "pixel interp",
    [HSW_SFID_DATAPORT_DATA_CACHE_1]    = "dp data 1",
    [HSW_SFID_CRE]                      = "cre",
+   [GEN_RT_SFID_RAY_TRACE_ACCELERATOR] = "rt accel",
 };
 
 static const char *const gen7_gateway_subfuncid[8] = {
@@ -2098,6 +2099,14 @@ brw_disassemble_inst(FILE *file, const struct gen_device_info *devinfo,
                       brw_inst_pi_nopersp(devinfo, inst) ? "linear" : "persp",
                       pixel_interpolator_msg_types[brw_inst_pi_message_type(devinfo, inst)],
                       brw_inst_pi_message_data(devinfo, inst));
+               break;
+            }
+            /* FALLTHROUGH */
+
+         case GEN_RT_SFID_RAY_TRACE_ACCELERATOR:
+            if (devinfo->has_ray_tracing) {
+               format(file, " SIMD%d,",
+                      brw_rt_trace_ray_desc_exec_size(devinfo, imm_desc));
                break;
             }
             /* FALLTHROUGH */

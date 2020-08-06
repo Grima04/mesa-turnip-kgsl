@@ -6103,6 +6103,54 @@ lower_btd_logical_send(const fs_builder &bld, fs_inst *inst)
    inst->src[3] = payload;
 }
 
+static void
+lower_trace_ray_logical_send(const fs_builder &bld, fs_inst *inst)
+{
+   const gen_device_info *devinfo = bld.shader->devinfo;
+   const fs_reg &bvh_level = inst->src[0];
+   assert(inst->src[1].file == BRW_IMMEDIATE_VALUE);
+   const uint32_t trace_ray_control = inst->src[1].ud;
+
+   const unsigned mlen = 1;
+   const fs_builder ubld = bld.exec_all().group(8, 0);
+   fs_reg header = ubld.vgrf(BRW_REGISTER_TYPE_UD);
+   ubld.MOV(header, brw_imm_ud(0));
+   ubld.group(2, 0).MOV(header,
+      retype(brw_vec2_grf(2, 0), BRW_REGISTER_TYPE_UD));
+   /* TODO: Bit 128 is ray_query */
+
+   const unsigned ex_mlen = inst->exec_size / 8;
+   fs_reg payload = bld.vgrf(BRW_REGISTER_TYPE_UD);
+   const uint32_t trc_bits = SET_BITS(trace_ray_control, 9, 8);
+   if (bvh_level.file == BRW_IMMEDIATE_VALUE) {
+      bld.MOV(payload, brw_imm_ud(trc_bits | (bvh_level.ud & 0x7)));
+   } else {
+      bld.AND(payload, bvh_level, brw_imm_ud(0x7));
+      if (trc_bits != 0)
+         bld.OR(payload, payload, brw_imm_ud(trc_bits));
+   }
+   bld.AND(subscript(payload, BRW_REGISTER_TYPE_UW, 1),
+           retype(brw_vec8_grf(1, 0), BRW_REGISTER_TYPE_UW),
+           brw_imm_uw(0x7ff));
+
+   /* Update the original instruction. */
+   inst->opcode = SHADER_OPCODE_SEND;
+   inst->mlen = mlen;
+   inst->ex_mlen = ex_mlen;
+   inst->header_size = 0; /* HW docs require has_header = false */
+   inst->send_has_side_effects = true;
+   inst->send_is_volatile = false;
+
+   /* Set up SFID and descriptors */
+   inst->sfid = GEN_RT_SFID_RAY_TRACE_ACCELERATOR;
+   inst->desc = brw_rt_trace_ray_desc(devinfo, inst->exec_size);
+   inst->resize_sources(4);
+   inst->src[0] = brw_imm_ud(0); /* desc */
+   inst->src[1] = brw_imm_ud(0); /* ex_desc */
+   inst->src[2] = header;
+   inst->src[3] = payload;
+}
+
 bool
 fs_visitor::lower_logical_sends()
 {
@@ -6250,6 +6298,10 @@ fs_visitor::lower_logical_sends()
       case SHADER_OPCODE_BTD_SPAWN_LOGICAL:
       case SHADER_OPCODE_BTD_RETIRE_LOGICAL:
          lower_btd_logical_send(ibld, inst);
+         break;
+
+      case RT_OPCODE_TRACE_RAY_LOGICAL:
+         lower_trace_ray_logical_send(ibld, inst);
          break;
 
       default:

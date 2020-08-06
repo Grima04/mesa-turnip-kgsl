@@ -1050,6 +1050,24 @@ brw_btd_spawn_exec_size(const struct gen_device_info *devinfo,
    return brw_mdc_sm2_exec_size(GET_BITS(desc, 8, 8));
 }
 
+static inline uint32_t
+brw_rt_trace_ray_desc(const struct gen_device_info *devinfo,
+                      unsigned exec_size)
+{
+   assert(devinfo->has_ray_tracing);
+
+   return SET_BITS(0, 19, 19) | /* No header */
+          SET_BITS(0, 17, 14) | /* Message type */
+          SET_BITS(brw_mdc_sm2(exec_size), 8, 8);
+}
+
+static inline uint32_t
+brw_rt_trace_ray_desc_exec_size(const struct gen_device_info *devinfo,
+                                uint32_t desc)
+{
+   return brw_mdc_sm2_exec_size(GET_BITS(desc, 8, 8));
+}
+
 /**
  * Construct a message descriptor immediate with the specified pixel
  * interpolator function controls.

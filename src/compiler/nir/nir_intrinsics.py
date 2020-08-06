@@ -1103,6 +1103,11 @@ intrinsic("btd_resume_intel", indices=[BASE, RANGE])
 # src[] = { }
 intrinsic("btd_retire_intel")
 
+# Intel-specific ray-tracing intrinsics
+intrinsic("trace_ray_initial_intel")
+intrinsic("trace_ray_commit_intel")
+intrinsic("trace_ray_continue_intel")
+
 # System values used for ray-tracing on Intel
 system_value("ray_base_mem_addr_intel", 1, bit_sizes=[64])
 system_value("ray_hw_stack_size_intel", 1)
