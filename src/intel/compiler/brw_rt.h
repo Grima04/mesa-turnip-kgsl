@@ -43,6 +43,22 @@ enum brw_rt_bvh_level {
 };
 #define BRW_RT_MAX_BVH_LEVELS 2
 
+enum brw_rt_bvh_node_type {
+   BRW_RT_BVH_NODE_TYPE_INTERNAL = 0,
+   BRW_RT_BVH_NODE_TYPE_INSTANCE = 1,
+   BRW_RT_BVH_NODE_TYPE_PROCEDURAL = 3,
+   BRW_RT_BVH_NODE_TYPE_QUAD = 4,
+};
+
+/** HitKind values returned for triangle geometry
+ *
+ * This enum must match the SPIR-V enum.
+ */
+enum brw_rt_hit_kind {
+   BRW_RT_HIT_KIND_FRONT_FACE = 0xfe,
+   BRW_RT_HIT_KIND_BACK_FACE = 0xff,
+};
+
 struct brw_rt_scratch_layout {
    /** Number of stack IDs per DSS */
    uint32_t stack_ids_per_dss;

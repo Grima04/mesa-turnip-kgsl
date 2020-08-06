@@ -24,6 +24,26 @@
 #include "brw_nir_rt.h"
 #include "brw_nir_rt_builder.h"
 
+static nir_ssa_def *
+build_leaf_is_procedural(nir_builder *b, struct brw_nir_rt_mem_hit_defs *hit)
+{
+   switch (b->shader->info.stage) {
+   case MESA_SHADER_ANY_HIT:
+      /* Any-hit shaders are always compiled into intersection shaders for
+       * procedural geometry.  If we got here in an any-hit shader, it's for
+       * triangles.
+       */
+      return nir_imm_false(b);
+
+   case MESA_SHADER_INTERSECTION:
+      return nir_imm_true(b);
+
+   default:
+      return nir_ieq(b, hit->leaf_type,
+                        nir_imm_int(b, BRW_RT_BVH_NODE_TYPE_PROCEDURAL));
+   }
+}
+
 static void
 lower_rt_intrinsics_impl(nir_function_impl *impl,
                          const struct gen_device_info *devinfo)
@@ -39,6 +59,29 @@ lower_rt_intrinsics_impl(nir_function_impl *impl,
 
    nir_ssa_def *hotzone_addr = brw_nir_rt_sw_hotzone_addr(b, devinfo);
    nir_ssa_def *hotzone = nir_load_global(b, hotzone_addr, 16, 4, 32);
+
+   gl_shader_stage stage = b->shader->info.stage;
+   struct brw_nir_rt_mem_ray_defs world_ray_in = {};
+   struct brw_nir_rt_mem_ray_defs object_ray_in = {};
+   struct brw_nir_rt_mem_hit_defs hit_in = {};
+   switch (stage) {
+   case MESA_SHADER_ANY_HIT:
+   case MESA_SHADER_CLOSEST_HIT:
+   case MESA_SHADER_INTERSECTION:
+      brw_nir_rt_load_mem_hit(b, &hit_in,
+                              stage == MESA_SHADER_CLOSEST_HIT);
+      brw_nir_rt_load_mem_ray(b, &object_ray_in,
+                              BRW_RT_BVH_LEVEL_OBJECT);
+      /* Fall through */
+
+   case MESA_SHADER_MISS:
+      brw_nir_rt_load_mem_ray(b, &world_ray_in,
+                              BRW_RT_BVH_LEVEL_WORLD);
+      break;
+
+   default:
+      break;
+   }
 
    nir_ssa_def *thread_stack_base_addr = brw_nir_rt_sw_stack_addr(b, devinfo);
    nir_ssa_def *stack_base_offset = nir_channel(b, hotzone, 0);
@@ -89,6 +132,107 @@ lower_rt_intrinsics_impl(nir_function_impl *impl,
             }
             nir_instr_remove(instr);
             break;
+
+         case nir_intrinsic_load_ray_launch_id:
+            sysval = nir_channels(b, hotzone, 0xe);
+            break;
+
+         case nir_intrinsic_load_ray_launch_size:
+            sysval = globals.launch_size;
+            break;
+
+         case nir_intrinsic_load_ray_world_origin:
+            sysval = world_ray_in.orig;
+            break;
+
+         case nir_intrinsic_load_ray_world_direction:
+            sysval = world_ray_in.dir;
+            break;
+
+         case nir_intrinsic_load_ray_object_origin:
+            sysval = object_ray_in.orig;
+            break;
+
+         case nir_intrinsic_load_ray_object_direction:
+            sysval = object_ray_in.dir;
+            break;
+
+         case nir_intrinsic_load_ray_t_min:
+            /* It shouldn't matter which we pull this from */
+            sysval = world_ray_in.t_near;
+            break;
+
+         case nir_intrinsic_load_ray_t_max:
+            if (stage == MESA_SHADER_MISS)
+               sysval = world_ray_in.t_far;
+            else
+               sysval = hit_in.t;
+            break;
+
+         case nir_intrinsic_load_primitive_id: {
+            /* It's in dw[3] for procedural and dw[2] for quad
+             *
+             * TODO: We really need some helpers here.
+             */
+            nir_ssa_def *offset =
+               nir_bcsel(b, build_leaf_is_procedural(b, &hit_in),
+                            nir_iadd_imm(b, hit_in.prim_leaf_index, 12),
+                            nir_imm_int(b, 8));
+            sysval = nir_load_global(b, nir_iadd(b, hit_in.prim_leaf_ptr,
+                                                    nir_u2u64(b, offset)),
+                                     4, /* align */ 1, 32);
+            break;
+         }
+
+         case nir_intrinsic_load_instance_id: {
+            struct brw_nir_rt_bvh_instance_leaf_defs leaf;
+            brw_nir_rt_load_bvh_instance_leaf(b, &leaf, hit_in.inst_leaf_ptr);
+            sysval = leaf.instance_index;
+            break;
+         }
+
+         case nir_intrinsic_load_ray_object_to_world: {
+            struct brw_nir_rt_bvh_instance_leaf_defs leaf;
+            brw_nir_rt_load_bvh_instance_leaf(b, &leaf, hit_in.inst_leaf_ptr);
+            sysval = leaf.object_to_world[nir_intrinsic_column(intrin)];
+            break;
+         }
+
+         case nir_intrinsic_load_ray_world_to_object: {
+            struct brw_nir_rt_bvh_instance_leaf_defs leaf;
+            brw_nir_rt_load_bvh_instance_leaf(b, &leaf, hit_in.inst_leaf_ptr);
+            sysval = leaf.world_to_object[nir_intrinsic_column(intrin)];
+            break;
+         }
+
+         case nir_intrinsic_load_ray_hit_kind: {
+            nir_ssa_def *tri_hit_kind =
+               nir_bcsel(b, hit_in.front_face,
+                            nir_imm_int(b, BRW_RT_HIT_KIND_FRONT_FACE),
+                            nir_imm_int(b, BRW_RT_HIT_KIND_BACK_FACE));
+            sysval = nir_bcsel(b, build_leaf_is_procedural(b, &hit_in),
+                                  hit_in.aabb_hit_kind, tri_hit_kind);
+            break;
+         }
+
+         case nir_intrinsic_load_ray_flags:
+            sysval = nir_u2u32(b, world_ray_in.ray_flags);
+            break;
+
+         case nir_intrinsic_load_ray_geometry_index: {
+            nir_ssa_def *geometry_index_dw =
+               nir_load_global(b, nir_iadd_imm(b, hit_in.prim_leaf_ptr, 4), 4,
+                               1, 32);
+            sysval = nir_iand_imm(b, geometry_index_dw, BITFIELD_MASK(29));
+            break;
+         }
+
+         case nir_intrinsic_load_ray_instance_custom_index: {
+            struct brw_nir_rt_bvh_instance_leaf_defs leaf;
+            brw_nir_rt_load_bvh_instance_leaf(b, &leaf, hit_in.inst_leaf_ptr);
+            sysval = leaf.instance_id;
+            break;
+         }
 
          case nir_intrinsic_load_ray_base_mem_addr_intel:
             sysval = globals.base_mem_addr;
@@ -151,6 +295,28 @@ lower_rt_intrinsics_impl(nir_function_impl *impl,
                                nir_metadata_dominance);
 }
 
+/** Lower ray-tracing system values and intrinsics
+ *
+ * In most 3D shader stages, intrinsics are a fairly thin wrapper around
+ * hardware functionality and system values represent magic bits that come
+ * into the shader from FF hardware.  Ray-tracing, however, looks a bit more
+ * like the OpenGL 1.0 world where the underlying hardware is simple and most
+ * of the API implementation is software.
+ *
+ * In particular, most things that are treated as system values (or built-ins
+ * in SPIR-V) don't get magically dropped into registers for us.  Instead, we
+ * have to fetch them from the relevant data structures shared with the
+ * ray-tracing hardware.  Most come from either the RT_DISPATCH_GLOBALS or
+ * from one of the MemHit data structures.  Some, such as primitive_id require
+ * us to fetch the leaf address from the MemHit struct and then manually read
+ * the data out of the BVH.  Instead of trying to emit all this code deep in
+ * the back-end where we can't effectively optimize it, we lower it all to
+ * global memory access in NIR.
+ *
+ * Once this pass is complete, the only real system values left are the two
+ * argument pointer system values for BTD dispatch: btd_local_arg_addr and
+ * btd_global_arg_addr.
+ */
 void
 brw_nir_lower_rt_intrinsics(nir_shader *nir,
                             const struct gen_device_info *devinfo)
