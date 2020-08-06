@@ -41,6 +41,30 @@ nir_load_global_const_block_intel(nir_builder *b, nir_ssa_def *addr,
    return &load->dest.ssa;
 }
 
+/* We have our own load/store scratch helpers because they emit a global
+ * memory read or write based on the scratch_base_ptr system value rather
+ * than a load/store_scratch intrinsic.
+ */
+static inline nir_ssa_def *
+brw_nir_rt_load_scratch(nir_builder *b, uint32_t offset, unsigned align,
+                        unsigned num_components, unsigned bit_size)
+{
+   nir_ssa_def *addr =
+      nir_iadd_imm(b, nir_load_scratch_base_ptr(b, 1, 1, 64), offset);
+   return nir_load_global(b, addr, MIN2(align, BRW_BTD_STACK_ALIGN),
+                          num_components, bit_size);
+}
+
+static inline void
+brw_nir_rt_store_scratch(nir_builder *b, uint32_t offset, unsigned align,
+                         nir_ssa_def *value, nir_component_mask_t write_mask)
+{
+   nir_ssa_def *addr =
+      nir_iadd_imm(b, nir_load_scratch_base_ptr(b, 1, 1, 64), offset);
+   nir_store_global(b, addr, MIN2(align, BRW_BTD_STACK_ALIGN),
+                    value, write_mask);
+}
+
 static inline void
 assert_def_size(nir_ssa_def *def, unsigned num_components, unsigned bit_size)
 {

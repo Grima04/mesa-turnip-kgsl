@@ -41,6 +41,9 @@ void brw_nir_lower_combined_intersection_any_hit(nir_shader *intersection,
                                                  const nir_shader *any_hit,
                                                  const struct gen_device_info *devinfo);
 
+/* We require the stack to be 8B aligned at the start of a shader */
+#define BRW_BTD_STACK_ALIGN 8
+
 void brw_nir_lower_rt_intrinsics(nir_shader *shader,
                                  const struct gen_device_info *devinfo);
 

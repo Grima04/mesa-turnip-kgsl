@@ -37,6 +37,14 @@ lower_rt_intrinsics_impl(nir_function_impl *impl,
    struct brw_nir_rt_globals_defs globals;
    brw_nir_rt_load_globals(b, &globals);
 
+   nir_ssa_def *hotzone_addr = brw_nir_rt_sw_hotzone_addr(b, devinfo);
+   nir_ssa_def *hotzone = nir_load_global(b, hotzone_addr, 16, 4, 32);
+
+   nir_ssa_def *thread_stack_base_addr = brw_nir_rt_sw_stack_addr(b, devinfo);
+   nir_ssa_def *stack_base_offset = nir_channel(b, hotzone, 0);
+   nir_ssa_def *stack_base_addr =
+      nir_iadd(b, thread_stack_base_addr, nir_u2u64(b, stack_base_offset));
+
    nir_foreach_block(block, impl) {
       nir_foreach_instr_safe(instr, block) {
          if (instr->type != nir_instr_type_intrinsic)
@@ -48,6 +56,11 @@ lower_rt_intrinsics_impl(nir_function_impl *impl,
 
          nir_ssa_def *sysval = NULL;
          switch (intrin->intrinsic) {
+         case nir_intrinsic_load_scratch_base_ptr:
+            assert(nir_intrinsic_base(intrin) == 1);
+            sysval = stack_base_addr;
+            break;
+
          case nir_intrinsic_load_ray_base_mem_addr_intel:
             sysval = globals.base_mem_addr;
             break;
