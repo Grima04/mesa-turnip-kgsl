@@ -88,6 +88,7 @@ lower_rt_intrinsics_impl(nir_function_impl *impl,
    nir_ssa_def *stack_base_addr =
       nir_iadd(b, thread_stack_base_addr, nir_u2u64(b, stack_base_offset));
    ASSERTED bool seen_scratch_base_ptr_load = false;
+   ASSERTED bool found_resume = false;
 
    nir_foreach_block(block, impl) {
       nir_foreach_instr_safe(instr, block) {
@@ -121,6 +122,7 @@ lower_rt_intrinsics_impl(nir_function_impl *impl,
             /* This is the first "interesting" instruction */
             assert(block == nir_start_block(impl));
             assert(!seen_scratch_base_ptr_load);
+            found_resume = true;
 
             int32_t stack_size = nir_intrinsic_range(intrin);
             if (stack_size > 0) {
@@ -233,6 +235,17 @@ lower_rt_intrinsics_impl(nir_function_impl *impl,
             sysval = leaf.instance_id;
             break;
          }
+
+         case nir_intrinsic_load_shader_record_ptr:
+            /* We can't handle this intrinsic in resume shaders because the
+             * handle we get there won't be from the original SBT.  The shader
+             * call lowering/splitting pass should have ensured that this
+             * value was spilled from the initial shader and unspilled in any
+             * resume shaders that need it.
+             */
+            assert(!found_resume);
+            sysval = nir_load_btd_local_arg_addr_intel(b);
+            break;
 
          case nir_intrinsic_load_ray_base_mem_addr_intel:
             sysval = globals.base_mem_addr;
