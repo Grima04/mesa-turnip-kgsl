@@ -245,7 +245,7 @@ panfrost_load_midg(
                         .flags_lo = 0x20,
                         .work_count = 4,
                 },
-                .coverage_mask = 0xF,
+                .coverage_mask = ~0,
                 .unknown2_3 = MALI_DEPTH_FUNC(MALI_FUNC_ALWAYS) | 0x10,
                 .unknown2_4 = 0x4e0,
                 .stencil_mask_front = ~0,
