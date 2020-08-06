@@ -383,6 +383,20 @@ RegisterDemand init_live_in_vars(spill_ctx& ctx, Block* block, unsigned block_id
       }
       unsigned loop_end = i;
 
+      /* keep live-through spilled */
+      for (std::pair<Temp, std::pair<uint32_t, uint32_t>> pair : ctx.next_use_distances_end[block_idx - 1]) {
+         if (pair.second.first < loop_end)
+            continue;
+
+         Temp to_spill = pair.first;
+         auto it = ctx.spills_exit[block_idx - 1].find(to_spill);
+         if (it == ctx.spills_exit[block_idx - 1].end())
+            continue;
+
+         ctx.spills_entry[block_idx][to_spill] = it->second;
+         spilled_registers += to_spill;
+      }
+
       /* select live-through vgpr variables */
       while (new_demand.vgpr - spilled_registers.vgpr > ctx.target_pressure.vgpr) {
          unsigned distance = 0;
