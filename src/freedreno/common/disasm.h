@@ -44,6 +44,10 @@ struct shader_stats {
 	int nops;
 	int ss, sy;
 	int constlen;
+	uint16_t mov_count;
+	uint16_t cov_count;
+	uint16_t last_baryf;
+	uint16_t instrs_per_cat[8];
 };
 
 int disasm_a2xx(uint32_t *dwords, int sizedwords, int level, gl_shader_stage type);
