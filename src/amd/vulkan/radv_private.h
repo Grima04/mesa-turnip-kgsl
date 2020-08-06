@@ -2604,6 +2604,16 @@ static inline uint32_t si_translate_stencil_op(enum VkStencilOp op)
 	}
 }
 
+/**
+ * Helper used for debugging compiler issues by enabling/disabling LLVM for a
+ * specific shader stage (developers only).
+ */
+static inline bool
+radv_use_llvm_for_stage(struct radv_device *device, UNUSED gl_shader_stage stage)
+{
+	return device->physical_device->use_llvm;
+}
+
 #define RADV_DEFINE_HANDLE_CASTS(__radv_type, __VkType)		\
 								\
 	static inline struct __radv_type *			\

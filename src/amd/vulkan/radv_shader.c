@@ -311,8 +311,7 @@ radv_shader_compile_to_nir(struct radv_device *device,
 {
 	nir_shader *nir;
 	const nir_shader_compiler_options *nir_options =
-		device->physical_device->use_llvm ? &nir_options_llvm :
-						    &nir_options_aco;
+		radv_use_llvm_for_stage(device, stage) ? &nir_options_llvm : &nir_options_aco;
 
 	if (module->nir) {
 		/* Some things such as our meta clear/blit code will give us a NIR
@@ -464,7 +463,7 @@ radv_shader_compile_to_nir(struct radv_device *device,
 		NIR_PASS_V(nir, nir_split_per_member_structs);
 
 		if (nir->info.stage == MESA_SHADER_FRAGMENT &&
-		    !device->physical_device->use_llvm)
+		    !radv_use_llvm_for_stage(device, nir->info.stage))
                         NIR_PASS_V(nir, nir_lower_io_to_vector, nir_var_shader_out);
 		if (nir->info.stage == MESA_SHADER_FRAGMENT)
 			NIR_PASS_V(nir, nir_lower_input_attachments, true);
@@ -1170,11 +1169,11 @@ shader_variant_compile(struct radv_device *device,
 				 shader_count >= 2 ? shaders[shader_count - 2]->info.stage
 						   : MESA_SHADER_VERTEX);
 
-	if (device->physical_device->use_llvm ||
+	if (radv_use_llvm_for_stage(device, stage) ||
 	    options->dump_shader || options->record_ir)
 		ac_init_llvm_once();
 
-	if (device->physical_device->use_llvm) {
+	if (radv_use_llvm_for_stage(device, stage)) {
 		llvm_compile_shader(device, shader_count, shaders, &binary, &args);
 	} else {
 		aco_compile_shader(shader_count, shaders, &binary, &args);
@@ -1232,16 +1231,17 @@ radv_shader_variant_compile(struct radv_device *device,
 			   bool keep_shader_info, bool keep_statistic_info,
 			   struct radv_shader_binary **binary_out)
 {
+	gl_shader_stage stage =  shaders[shader_count - 1]->info.stage;
 	struct radv_nir_compiler_options options = {0};
 
 	options.layout = layout;
 	if (key)
 		options.key = *key;
 
-	options.explicit_scratch_args = !device->physical_device->use_llvm;
+	options.explicit_scratch_args = !radv_use_llvm_for_stage(device, stage);
 	options.robust_buffer_access = device->robust_buffer_access;
 
-	return shader_variant_compile(device, module, shaders, shader_count, shaders[shader_count - 1]->info.stage, info,
+	return shader_variant_compile(device, module, shaders, shader_count, stage, info,
 				     &options, false, keep_shader_info, keep_statistic_info, binary_out);
 }
 
@@ -1254,11 +1254,12 @@ radv_create_gs_copy_shader(struct radv_device *device,
 			   bool multiview)
 {
 	struct radv_nir_compiler_options options = {0};
+	gl_shader_stage stage = MESA_SHADER_VERTEX;
 
-	options.explicit_scratch_args = !device->physical_device->use_llvm;
+	options.explicit_scratch_args = !radv_use_llvm_for_stage(device, stage);
 	options.key.has_multiview_view_index = multiview;
 
-	return shader_variant_compile(device, NULL, &shader, 1, MESA_SHADER_VERTEX,
+	return shader_variant_compile(device, NULL, &shader, 1, stage,
 				      info, &options, true, keep_shader_info, keep_statistic_info, binary_out);
 }
 

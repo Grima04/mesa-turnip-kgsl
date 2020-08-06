@@ -2625,7 +2625,7 @@ radv_fill_shader_info(struct radv_pipeline *pipeline,
 					  pipeline->layout,
 					  &keys[MESA_SHADER_FRAGMENT],
 					  &infos[MESA_SHADER_FRAGMENT],
-					  pipeline->device->physical_device->use_llvm);
+					  radv_use_llvm_for_stage(pipeline->device, MESA_SHADER_FRAGMENT));
 
 		/* TODO: These are no longer used as keys we should refactor this */
 		keys[MESA_SHADER_VERTEX].vs_common_out.export_prim_id =
@@ -2677,7 +2677,7 @@ radv_fill_shader_info(struct radv_pipeline *pipeline,
 			radv_nir_shader_info_pass(combined_nir[i],
 						  pipeline->layout, &key,
 						  &infos[MESA_SHADER_TESS_CTRL],
-						  pipeline->device->physical_device->use_llvm);
+						  radv_use_llvm_for_stage(pipeline->device, MESA_SHADER_TESS_CTRL));
 		}
 
 		keys[MESA_SHADER_TESS_EVAL].tes.num_patches =
@@ -2701,7 +2701,7 @@ radv_fill_shader_info(struct radv_pipeline *pipeline,
 						  pipeline->layout,
 						  &keys[pre_stage],
 						  &infos[MESA_SHADER_GEOMETRY],
-						  pipeline->device->physical_device->use_llvm);
+						  radv_use_llvm_for_stage(pipeline->device, MESA_SHADER_GEOMETRY));
 		}
 
 		filled_stages |= (1 << pre_stage);
@@ -2726,7 +2726,8 @@ radv_fill_shader_info(struct radv_pipeline *pipeline,
 
 		radv_nir_shader_info_init(&infos[i]);
 		radv_nir_shader_info_pass(nir[i], pipeline->layout,
-					  &keys[i], &infos[i], pipeline->device->physical_device->use_llvm);
+					  &keys[i], &infos[i],
+					  radv_use_llvm_for_stage(pipeline->device, i));
 	}
 
 	for (int i = 0; i < MESA_SHADER_STAGES; i++) {
@@ -2936,7 +2937,7 @@ VkResult radv_create_shaders(struct radv_pipeline *pipeline,
 			/* do this again since information such as outputs_read can be out-of-date */
 			nir_shader_gather_info(nir[i], nir_shader_get_entrypoint(nir[i]));
 
-			if (device->physical_device->use_llvm) {
+			if (radv_use_llvm_for_stage(device, i)) {
 				NIR_PASS_V(nir[i], nir_lower_bool_to_int32);
 			} else {
 				NIR_PASS_V(nir[i], nir_lower_non_uniform_access,
@@ -2994,7 +2995,8 @@ VkResult radv_create_shaders(struct radv_pipeline *pipeline,
 
 			radv_nir_shader_info_pass(nir[MESA_SHADER_GEOMETRY],
 						  pipeline->layout, &key,
-						  &info, pipeline->device->physical_device->use_llvm);
+						  &info,
+						  radv_use_llvm_for_stage(pipeline->device, MESA_SHADER_GEOMETRY));
 			info.wave_size = 64; /* Wave32 not supported. */
 			info.ballot_bit_size = 64;
 
@@ -5513,7 +5515,7 @@ VkResult radv_GetPipelineExecutableInternalRepresentationsKHR(
 	/* backend IR */
 	if (p < end) {
 		p->isText = true;
-		if (pipeline->device->physical_device->use_llvm) {
+		if (radv_use_llvm_for_stage(pipeline->device, stage)) {
 			desc_copy(p->name, "LLVM IR");
 			desc_copy(p->description, "The LLVM IR after some optimizations");
 		} else {
