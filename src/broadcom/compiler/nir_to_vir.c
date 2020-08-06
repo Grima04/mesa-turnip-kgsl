@@ -2200,6 +2200,145 @@ ntq_emit_store_output(struct v3d_compile *c, nir_intrinsic_instr *instr)
                }
         }
 }
+
+/**
+ * This implementation is based on v3d_sample_{x,y}_offset() from
+ * v3d_sample_offset.h.
+ */
+static void
+ntq_get_sample_offset(struct v3d_compile *c, struct qreg sample_idx,
+                      struct qreg *sx, struct qreg *sy)
+{
+        sample_idx = vir_ITOF(c, sample_idx);
+
+        struct qreg offset_x =
+                vir_FADD(c, vir_uniform_f(c, -0.125f),
+                            vir_FMUL(c, sample_idx,
+                                        vir_uniform_f(c, 0.5f)));
+        vir_set_pf(vir_FCMP_dest(c, vir_nop_reg(),
+                                    vir_uniform_f(c, 2.0f), sample_idx),
+                   V3D_QPU_PF_PUSHC);
+        offset_x = vir_SEL(c, V3D_QPU_COND_IFA,
+                              vir_FSUB(c, offset_x, vir_uniform_f(c, 1.25f)),
+                              offset_x);
+
+        struct qreg offset_y =
+                   vir_FADD(c, vir_uniform_f(c, -0.375f),
+                               vir_FMUL(c, sample_idx,
+                                           vir_uniform_f(c, 0.25f)));
+        *sx = offset_x;
+        *sy = offset_y;
+}
+
+/**
+ * This implementation is based on get_centroid_offset() from fep.c.
+ */
+static void
+ntq_get_barycentric_centroid(struct v3d_compile *c,
+                             struct qreg *out_x,
+                             struct qreg *out_y)
+{
+        struct qreg sample_mask;
+        if (c->output_sample_mask_index != -1)
+                sample_mask = c->outputs[c->output_sample_mask_index];
+        else
+                sample_mask = vir_MSF(c);
+
+        struct qreg i0 = vir_uniform_ui(c, 0);
+        struct qreg i1 = vir_uniform_ui(c, 1);
+        struct qreg i2 = vir_uniform_ui(c, 2);
+        struct qreg i3 = vir_uniform_ui(c, 3);
+        struct qreg i4 = vir_uniform_ui(c, 4);
+        struct qreg i8 = vir_uniform_ui(c, 8);
+
+        /* sN = TRUE if sample N enabled in sample mask, FALSE otherwise */
+        struct qreg F = vir_uniform_ui(c, 0);
+        struct qreg T = vir_uniform_ui(c, ~0);
+        struct qreg s0 = vir_XOR(c, vir_AND(c, sample_mask, i1), i1);
+        vir_set_pf(vir_MOV_dest(c, vir_nop_reg(), s0), V3D_QPU_PF_PUSHZ);
+        s0 = vir_SEL(c, V3D_QPU_COND_IFA, T, F);
+        struct qreg s1 = vir_XOR(c, vir_AND(c, sample_mask, i2), i2);
+        vir_set_pf(vir_MOV_dest(c, vir_nop_reg(), s1), V3D_QPU_PF_PUSHZ);
+        s1 = vir_SEL(c, V3D_QPU_COND_IFA, T, F);
+        struct qreg s2 = vir_XOR(c, vir_AND(c, sample_mask, i4), i4);
+        vir_set_pf(vir_MOV_dest(c, vir_nop_reg(), s2), V3D_QPU_PF_PUSHZ);
+        s2 = vir_SEL(c, V3D_QPU_COND_IFA, T, F);
+        struct qreg s3 = vir_XOR(c, vir_AND(c, sample_mask, i8), i8);
+        vir_set_pf(vir_MOV_dest(c, vir_nop_reg(), s3), V3D_QPU_PF_PUSHZ);
+        s3 = vir_SEL(c, V3D_QPU_COND_IFA, T, F);
+
+        /* sample_idx = s0 ? 0 : s2 ? 2 : s1 ? 1 : 3 */
+        struct qreg sample_idx = i3;
+        vir_set_pf(vir_MOV_dest(c, vir_nop_reg(), s1), V3D_QPU_PF_PUSHZ);
+        sample_idx = vir_SEL(c, V3D_QPU_COND_IFNA, i1, sample_idx);
+        vir_set_pf(vir_MOV_dest(c, vir_nop_reg(), s2), V3D_QPU_PF_PUSHZ);
+        sample_idx = vir_SEL(c, V3D_QPU_COND_IFNA, i2, sample_idx);
+        vir_set_pf(vir_MOV_dest(c, vir_nop_reg(), s0), V3D_QPU_PF_PUSHZ);
+        sample_idx = vir_SEL(c, V3D_QPU_COND_IFNA, i0, sample_idx);
+
+        /* Get offset at selected sample index */
+        struct qreg offset_x, offset_y;
+        ntq_get_sample_offset(c, sample_idx, &offset_x, &offset_y);
+
+        /* Select pixel center [offset=(0,0)] if two opposing samples (or none)
+         * are selected.
+         */
+        struct qreg s0_and_s3 = vir_AND(c, s0, s3);
+        struct qreg s1_and_s2 = vir_AND(c, s1, s2);
+
+        struct qreg use_center = vir_XOR(c, sample_mask, vir_uniform_ui(c, 0));
+        vir_set_pf(vir_MOV_dest(c, vir_nop_reg(), use_center), V3D_QPU_PF_PUSHZ);
+        use_center = vir_SEL(c, V3D_QPU_COND_IFA, T, F);
+        use_center = vir_OR(c, use_center, s0_and_s3);
+        use_center = vir_OR(c, use_center, s1_and_s2);
+
+        struct qreg zero = vir_uniform_f(c, 0.0f);
+        vir_set_pf(vir_MOV_dest(c, vir_nop_reg(), use_center), V3D_QPU_PF_PUSHZ);
+        offset_x = vir_SEL(c, V3D_QPU_COND_IFNA, zero, offset_x);
+        offset_y = vir_SEL(c, V3D_QPU_COND_IFNA, zero, offset_y);
+
+        *out_x = offset_x;
+        *out_y = offset_y;
+}
+
+static struct qreg
+ntq_emit_load_interpolated_input(struct v3d_compile *c,
+                                 struct qreg p,
+                                 struct qreg C,
+                                 struct qreg offset_x,
+                                 struct qreg offset_y,
+                                 unsigned mode)
+{
+        if (mode == INTERP_MODE_FLAT)
+                return C;
+
+        struct qreg sample_offset_x =
+                vir_FSUB(c, vir_FXCD(c), vir_ITOF(c, vir_XCD(c)));
+        struct qreg sample_offset_y =
+                vir_FSUB(c, vir_FYCD(c), vir_ITOF(c, vir_YCD(c)));
+
+        struct qreg scaleX =
+                vir_FADD(c, vir_FSUB(c, vir_uniform_f(c, 0.5f), sample_offset_x),
+                            offset_x);
+        struct qreg scaleY =
+                vir_FADD(c, vir_FSUB(c, vir_uniform_f(c, 0.5f), sample_offset_y),
+                            offset_y);
+
+        struct qreg pInterp =
+                vir_FADD(c, p, vir_FADD(c, vir_FMUL(c, vir_FDX(c, p), scaleX),
+                                           vir_FMUL(c, vir_FDY(c, p), scaleY)));
+
+        if (mode == INTERP_MODE_NOPERSPECTIVE)
+                return vir_FADD(c, pInterp, C);
+
+        struct qreg w = c->payload_w;
+        struct qreg wInterp =
+                vir_FADD(c, w, vir_FADD(c, vir_FMUL(c, vir_FDX(c, w), scaleX),
+                                           vir_FMUL(c, vir_FDY(c, w), scaleY)));
+
+        return vir_FADD(c, vir_FMUL(c, pInterp, wInterp), C);
+}
+
 static void
 ntq_emit_intrinsic(struct v3d_compile *c, nir_intrinsic_instr *instr)
 {
@@ -2525,6 +2664,94 @@ ntq_emit_intrinsic(struct v3d_compile *c, nir_intrinsic_instr *instr)
                 ntq_store_dest(c, &instr->dest, 1,
                                vir_FSUB(c, vir_FYCD(c), vir_ITOF(c, vir_YCD(c))));
                 break;
+
+        case nir_intrinsic_load_barycentric_at_offset:
+                ntq_store_dest(c, &instr->dest, 0,
+                               vir_MOV(c, ntq_get_src(c, instr->src[0], 0)));
+                ntq_store_dest(c, &instr->dest, 1,
+                               vir_MOV(c, ntq_get_src(c, instr->src[0], 1)));
+                break;
+
+        case nir_intrinsic_load_barycentric_pixel:
+                ntq_store_dest(c, &instr->dest, 0, vir_uniform_f(c, 0.0f));
+                ntq_store_dest(c, &instr->dest, 1, vir_uniform_f(c, 0.0f));
+                break;
+
+        case nir_intrinsic_load_barycentric_at_sample: {
+                if (!c->fs_key->msaa) {
+                        ntq_store_dest(c, &instr->dest, 0, vir_uniform_f(c, 0.0f));
+                        ntq_store_dest(c, &instr->dest, 1, vir_uniform_f(c, 0.0f));
+                        return;
+                }
+
+                struct qreg offset_x, offset_y;
+                struct qreg sample_idx = ntq_get_src(c, instr->src[0], 0);
+                ntq_get_sample_offset(c, sample_idx, &offset_x, &offset_y);
+
+                ntq_store_dest(c, &instr->dest, 0, vir_MOV(c, offset_x));
+                ntq_store_dest(c, &instr->dest, 1, vir_MOV(c, offset_y));
+                break;
+        }
+
+        case nir_intrinsic_load_barycentric_sample: {
+                struct qreg offset_x =
+                        vir_FSUB(c, vir_FXCD(c), vir_ITOF(c, vir_XCD(c)));
+                struct qreg offset_y =
+                        vir_FSUB(c, vir_FYCD(c), vir_ITOF(c, vir_YCD(c)));
+
+                ntq_store_dest(c, &instr->dest, 0,
+                                  vir_FSUB(c, offset_x, vir_uniform_f(c, 0.5f)));
+                ntq_store_dest(c, &instr->dest, 1,
+                                  vir_FSUB(c, offset_y, vir_uniform_f(c, 0.5f)));
+                break;
+        }
+
+        case nir_intrinsic_load_barycentric_centroid: {
+                struct qreg offset_x, offset_y;
+                ntq_get_barycentric_centroid(c, &offset_x, &offset_y);
+                ntq_store_dest(c, &instr->dest, 0, vir_MOV(c, offset_x));
+                ntq_store_dest(c, &instr->dest, 1, vir_MOV(c, offset_y));
+                break;
+        }
+
+        case nir_intrinsic_load_interpolated_input: {
+                assert(nir_src_is_const(instr->src[1]));
+                const uint32_t offset = nir_src_as_uint(instr->src[1]);
+
+                for (int i = 0; i < instr->num_components; i++) {
+                        const uint32_t input_idx =
+                                (nir_intrinsic_base(instr) + offset) * 4 +
+                                nir_intrinsic_component(instr) + i;
+
+                        /* If we are not in MSAA or if we are not interpolating
+                         * a user varying, just return the pre-computed
+                         * interpolated input.
+                         */
+                        if (!c->fs_key->msaa ||
+                            c->interp[input_idx].vp.file == QFILE_NULL) {
+                                ntq_store_dest(c, &instr->dest, i,
+                                               vir_MOV(c, c->inputs[input_idx]));
+                                continue;
+                        }
+
+                        /* Otherwise compute interpolation at the specified
+                         * offset.
+                         */
+                        struct qreg p = c->interp[input_idx].vp;
+                        struct qreg C = c->interp[input_idx].C;
+                        unsigned interp_mode =  c->interp[input_idx].mode;
+
+                        struct qreg offset_x = ntq_get_src(c, instr->src[0], 0);
+                        struct qreg offset_y = ntq_get_src(c, instr->src[0], 1);
+
+                        struct qreg result =
+                              ntq_emit_load_interpolated_input(c, p, C,
+                                                               offset_x, offset_y,
+                                                               interp_mode);
+                        ntq_store_dest(c, &instr->dest, i, result);
+                }
+                break;
+        }
 
         default:
                 fprintf(stderr, "Unknown intrinsic: ");
