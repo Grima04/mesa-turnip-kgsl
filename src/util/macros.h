@@ -351,4 +351,14 @@ enum pipe_debug_type
    PIPE_DEBUG_TYPE_CONFORMANCE,
 };
 
+#if !defined(alignof) && !defined(__cplusplus)
+#if __STDC_VERSION__ >= 201112L
+#define alignof(t) _Alignof(t)
+#elif defined(_MSC_VER)
+#define alignof(t) __alignof(t)
+#else
+#define alignof(t) __alignof__(t)
+#endif
+#endif
+
 #endif /* UTIL_MACROS_H */
