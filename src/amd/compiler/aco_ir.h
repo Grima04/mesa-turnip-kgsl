@@ -174,7 +174,7 @@ struct memory_sync_info {
       return (!storage || (semantics & semantic_can_reorder)) && !(semantics & semantic_volatile);
    }
 };
-static_assert(sizeof(memory_sync_info) == 3);
+static_assert(sizeof(memory_sync_info) == 3, "Unexpected padding");
 
 enum fp_round {
    fp_round_ne = 0,
