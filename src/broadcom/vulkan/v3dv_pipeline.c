@@ -39,6 +39,24 @@
 
 #include "broadcom/cle/v3dx_pack.h"
 
+void
+v3dv_print_v3d_key(struct v3d_key *key,
+                   uint32_t v3d_key_size)
+{
+   struct mesa_sha1 ctx;
+   unsigned char sha1[20];
+   char sha1buf[41];
+
+   _mesa_sha1_init(&ctx);
+
+   _mesa_sha1_update(&ctx, key, v3d_key_size);
+
+   _mesa_sha1_final(&ctx, sha1);
+   _mesa_sha1_format(sha1buf, sha1);
+
+   fprintf(stderr, "key %p: %s\n", key, sha1buf);
+}
+
 VkResult
 v3dv_CreateShaderModule(VkDevice _device,
                         const VkShaderModuleCreateInfo *pCreateInfo,
