@@ -64,6 +64,9 @@ void brw_nir_lower_intersection_shader(nir_shader *intersection,
                                        const struct gen_device_info *devinfo);
 
 nir_shader *
+brw_nir_create_raygen_trampoline(const struct brw_compiler *compiler,
+                                 void *mem_ctx);
+nir_shader *
 brw_nir_create_trivial_return_shader(const struct brw_compiler *compiler,
                                      void *mem_ctx);
 

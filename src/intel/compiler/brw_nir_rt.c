@@ -368,3 +368,126 @@ brw_nir_lower_combined_intersection_any_hit(nir_shader *intersection,
    NIR_PASS_V(intersection, lower_ray_walk_intrinsics, devinfo);
    lower_rt_io_and_scratch(intersection);
 }
+
+static nir_ssa_def *
+build_load_uniform(nir_builder *b, unsigned offset,
+                   unsigned num_components, unsigned bit_size)
+{
+   nir_intrinsic_instr *load =
+      nir_intrinsic_instr_create(b->shader, nir_intrinsic_load_uniform);
+   load->num_components = num_components;
+   load->src[0] = nir_src_for_ssa(nir_imm_int(b, 0));
+   nir_intrinsic_set_base(load, offset);
+   nir_intrinsic_set_range(load, num_components * bit_size / 8);
+   nir_ssa_dest_init(&load->instr, &load->dest,
+                     num_components, bit_size, NULL);
+   nir_builder_instr_insert(b, &load->instr);
+   return &load->dest.ssa;
+}
+
+#define load_trampoline_param(b, name, num_components, bit_size) \
+   build_load_uniform((b), offsetof(struct brw_rt_raygen_trampoline_params, name), \
+                      (num_components), (bit_size))
+
+nir_shader *
+brw_nir_create_raygen_trampoline(const struct brw_compiler *compiler,
+                                 void *mem_ctx)
+{
+   const struct gen_device_info *devinfo = compiler->devinfo;
+   const nir_shader_compiler_options *nir_options =
+      compiler->glsl_compiler_options[MESA_SHADER_COMPUTE].NirOptions;
+
+   STATIC_ASSERT(sizeof(struct brw_rt_raygen_trampoline_params) == 32);
+
+   nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_COMPUTE,
+                                                  nir_options,
+                                                  "RT Ray-Gen Trampoline");
+   ralloc_steal(mem_ctx, b.shader);
+
+   b.shader->info.cs.local_size_variable = true;
+
+   /* The RT global data and raygen BINDLESS_SHADER_RECORD addresses are
+    * passed in as push constants in the first register.  We deal with the
+    * raygen BSR address here; the global data we'll deal with later.
+    */
+   b.shader->num_uniforms = 32;
+   nir_ssa_def *raygen_bsr_addr =
+      load_trampoline_param(&b, raygen_bsr_addr, 1, 64);
+   nir_ssa_def *local_shift =
+      nir_u2u32(&b, load_trampoline_param(&b, local_group_size_log2, 3, 8));
+
+   nir_ssa_def *global_id = nir_load_work_group_id(&b, 32);
+   nir_ssa_def *simd_channel = nir_load_subgroup_invocation(&b);
+   nir_ssa_def *local_x =
+      nir_ubfe(&b, simd_channel, nir_imm_int(&b, 0),
+                  nir_channel(&b, local_shift, 0));
+   nir_ssa_def *local_y =
+      nir_ubfe(&b, simd_channel, nir_channel(&b, local_shift, 0),
+                  nir_channel(&b, local_shift, 1));
+   nir_ssa_def *local_z =
+      nir_ubfe(&b, simd_channel,
+                  nir_iadd(&b, nir_channel(&b, local_shift, 0),
+                              nir_channel(&b, local_shift, 1)),
+                  nir_channel(&b, local_shift, 2));
+   nir_ssa_def *launch_id =
+      nir_iadd(&b, nir_ishl(&b, global_id, local_shift),
+                  nir_vec3(&b, local_x, local_y, local_z));
+
+   nir_ssa_def *launch_size = nir_load_ray_launch_size(&b);
+   nir_push_if(&b, nir_ball(&b, nir_ult(&b, launch_id, launch_size)));
+   {
+      nir_store_global(&b, brw_nir_rt_sw_hotzone_addr(&b, devinfo), 16,
+                       nir_vec4(&b, nir_imm_int(&b, 0), /* Stack ptr */
+                                    nir_channel(&b, launch_id, 0),
+                                    nir_channel(&b, launch_id, 1),
+                                    nir_channel(&b, launch_id, 2)),
+                       0xf /* write mask */);
+
+      brw_nir_btd_spawn(&b, raygen_bsr_addr);
+   }
+   nir_push_else(&b, NULL);
+   {
+      /* Even though these invocations aren't being used for anything, the
+       * hardware allocated stack IDs for them.  They need to retire them.
+       */
+      brw_nir_btd_retire(&b);
+   }
+   nir_pop_if(&b, NULL);
+
+   nir_shader *nir = b.shader;
+   nir->info.name = ralloc_strdup(nir, "RT: TraceRay trampoline");
+   nir_validate_shader(nir, "in brw_nir_create_raygen_trampoline");
+   brw_preprocess_nir(compiler, nir, NULL);
+
+   NIR_PASS_V(nir, brw_nir_lower_rt_intrinsics, devinfo);
+
+   /* brw_nir_lower_rt_intrinsics will leave us with a btd_global_arg_addr
+    * intrinsic which doesn't exist in compute shaders.  We also created one
+    * above when we generated the BTD spawn intrinsic.  Now we go through and
+    * replace them with a uniform load.
+    */
+   nir_foreach_block(block, b.impl) {
+      nir_foreach_instr_safe(instr, block) {
+         if (instr->type != nir_instr_type_intrinsic)
+            continue;
+
+         nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
+         if (intrin->intrinsic != nir_intrinsic_load_btd_global_arg_addr_intel)
+            continue;
+
+         b.cursor = nir_before_instr(&intrin->instr);
+         nir_ssa_def *global_arg_addr =
+            load_trampoline_param(&b, rt_disp_globals_addr, 1, 64);
+         assert(intrin->dest.is_ssa);
+         nir_ssa_def_rewrite_uses(&intrin->dest.ssa,
+                                  nir_src_for_ssa(global_arg_addr));
+         nir_instr_remove(instr);
+      }
+   }
+
+   NIR_PASS_V(nir, brw_nir_lower_cs_intrinsics);
+
+   brw_nir_optimize(nir, compiler, true, false);
+
+   return nir;
+}

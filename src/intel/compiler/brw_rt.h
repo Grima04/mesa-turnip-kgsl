@@ -96,6 +96,39 @@ struct brw_rt_scratch_layout {
    uint64_t total_size;
 };
 
+/** Parameters passed to the raygen trampoline shader
+ *
+ * This struct is carefully construected to be 32B and must be passed to the
+ * raygen trampoline shader as as inline constant data.
+ */
+struct brw_rt_raygen_trampoline_params {
+   /** The GPU address of the RT_DISPATCH_GLOBALS */
+   uint64_t rt_disp_globals_addr;
+
+   /** The GPU address of the BINDLESS_SHADER_RECORD for the raygen shader */
+   uint64_t raygen_bsr_addr;
+
+   /** 1 if this is an indirect dispatch, 0 otherwise */
+   uint8_t is_indirect;
+
+   /** The integer log2 of the local group size
+    *
+    * Ray-tracing shaders don't have a concept of local vs. global workgroup
+    * size.  They only have a single 3D launch size.  The raygen trampoline
+    * shader is always dispatched with a local workgroup size equal to the
+    * SIMD width but the shape of the local workgroup is determined at
+    * dispatch time based on the shape of the launch and passed to the
+    * trampoline via this field.  (There's no sense having a Z dimension on
+    * the local workgroup if the launch is 2D.)
+    *
+    * We use the integer log2 of the size because there's no point in
+    * non-power-of-two sizes and  shifts are cheaper than division.
+    */
+   uint8_t local_group_size_log2[3];
+
+   uint32_t pad[3];
+};
+
 /** Size of the "hot zone" in bytes
  *
  * The hot zone is a SW-defined data structure which is a single uvec4
