@@ -936,6 +936,14 @@ void init_context(isel_context *ctx, nir_shader *shader)
 
    ctx->allocated.reset(allocated.release());
    ctx->cf_info.nir_to_aco.reset(nir_to_aco.release());
+
+   /* align and copy constant data */
+   while (ctx->program->constant_data.size() % 4u)
+      ctx->program->constant_data.push_back(0);
+   ctx->constant_data_offset = ctx->program->constant_data.size();
+   ctx->program->constant_data.insert(ctx->program->constant_data.end(),
+                                      (uint8_t*)shader->constant_data,
+                                      (uint8_t*)shader->constant_data + shader->constant_data_size);
 }
 
 Pseudo_instruction *add_startpgm(struct isel_context *ctx)
@@ -1304,16 +1312,6 @@ lower_bit_size_callback(const nir_alu_instr *alu, void *_)
 void
 setup_nir(isel_context *ctx, nir_shader *nir)
 {
-   Program *program = ctx->program;
-
-   /* align and copy constant data */
-   while (program->constant_data.size() % 4u)
-      program->constant_data.push_back(0);
-   ctx->constant_data_offset = program->constant_data.size();
-   program->constant_data.insert(program->constant_data.end(),
-                                 (uint8_t*)nir->constant_data,
-                                 (uint8_t*)nir->constant_data + nir->constant_data_size);
-
    /* the variable setup has to be done before lower_io / CSE */
    setup_variables(ctx, nir);
 
