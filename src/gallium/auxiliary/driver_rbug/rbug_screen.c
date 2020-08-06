@@ -165,6 +165,21 @@ rbug_screen_query_dmabuf_modifiers(struct pipe_screen *_screen,
                                   count);
 }
 
+static bool
+rbug_screen_is_dmabuf_modifier_supported(struct pipe_screen *_screen,
+                                         uint64_t modifier,
+                                         enum pipe_format format,
+                                         bool *external_only)
+{
+   struct rbug_screen *rb_screen = rbug_screen(_screen);
+   struct pipe_screen *screen = rb_screen->screen;
+
+   return screen->is_dmabuf_modifier_supported(screen,
+                                               modifier,
+                                               format,
+                                               external_only);
+}
+
 static struct pipe_context *
 rbug_screen_context_create(struct pipe_screen *_screen,
                            void *priv, unsigned flags)
@@ -427,6 +442,7 @@ rbug_screen_create(struct pipe_screen *screen)
    rb_screen->base.get_paramf = rbug_screen_get_paramf;
    rb_screen->base.is_format_supported = rbug_screen_is_format_supported;
    SCR_INIT(query_dmabuf_modifiers);
+   SCR_INIT(is_dmabuf_modifier_supported);
    rb_screen->base.context_create = rbug_screen_context_create;
    SCR_INIT(can_create_resource);
    rb_screen->base.resource_create = rbug_screen_resource_create;

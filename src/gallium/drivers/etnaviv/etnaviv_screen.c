@@ -578,13 +578,24 @@ const uint64_t supported_modifiers[] = {
    DRM_FORMAT_MOD_VIVANTE_SPLIT_SUPER_TILED,
 };
 
+static bool modifier_num_supported(struct pipe_screen *pscreen, int num)
+{
+   struct etna_screen *screen = etna_screen(pscreen);
+
+   /* don't advertise split tiled formats on single pipe/buffer GPUs */
+   if ((screen->specs.pixel_pipes == 1 || screen->specs.single_buffer) &&
+       num >= 3)
+      return false;
+
+   return true;
+}
+
 static void
 etna_screen_query_dmabuf_modifiers(struct pipe_screen *pscreen,
                                    enum pipe_format format, int max,
                                    uint64_t *modifiers,
                                    unsigned int *external_only, int *count)
 {
-   struct etna_screen *screen = etna_screen(pscreen);
    int i, num_modifiers = 0;
 
    if (max > ARRAY_SIZE(supported_modifiers))
@@ -596,9 +607,7 @@ etna_screen_query_dmabuf_modifiers(struct pipe_screen *pscreen,
    }
 
    for (i = 0; num_modifiers < max; i++) {
-      /* don't advertise split tiled formats on single pipe/buffer GPUs */
-      if ((screen->specs.pixel_pipes == 1 || screen->specs.single_buffer) &&
-          i >= 3)
+      if (!modifier_num_supported(pscreen, i))
          break;
 
       if (modifiers)
@@ -609,6 +618,29 @@ etna_screen_query_dmabuf_modifiers(struct pipe_screen *pscreen,
    }
 
    *count = num_modifiers;
+}
+
+static bool
+etna_screen_is_dmabuf_modifier_supported(struct pipe_screen *pscreen,
+                                         uint64_t modifier,
+                                         enum pipe_format format,
+                                         bool *external_only)
+{
+   int i;
+
+   for (i = 0; i < ARRAY_SIZE(supported_modifiers); i++) {
+      if (!modifier_num_supported(pscreen, i))
+         break;
+
+      if (modifier == supported_modifiers[i]) {
+         if (external_only)
+            *external_only = util_format_is_yuv(format) ? 1 : 0;
+
+         return true;
+      }
+   }
+
+   return false;
 }
 
 static void
@@ -1047,6 +1079,7 @@ etna_screen_create(struct etna_device *dev, struct etna_gpu *gpu,
    pscreen->context_create = etna_context_create;
    pscreen->is_format_supported = etna_screen_is_format_supported;
    pscreen->query_dmabuf_modifiers = etna_screen_query_dmabuf_modifiers;
+   pscreen->is_dmabuf_modifier_supported = etna_screen_is_dmabuf_modifier_supported;
 
    screen->compiler = etna_compiler_create(etna_screen_get_name(pscreen));
    if (!screen->compiler)

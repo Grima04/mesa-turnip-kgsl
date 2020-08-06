@@ -797,6 +797,27 @@ fd_screen_query_dmabuf_modifiers(struct pipe_screen *pscreen,
 	*count = num;
 }
 
+static bool
+fd_screen_is_dmabuf_modifier_supported(struct pipe_screen *pscreen,
+		uint64_t modifier,
+		enum pipe_format format,
+		bool *external_only)
+{
+	struct fd_screen *screen = fd_screen(pscreen);
+	int i;
+
+	for (i = 0; i < screen->num_supported_modifiers; i++) {
+		if (modifier == screen->supported_modifiers[i]) {
+			if (external_only)
+				*external_only = false;
+
+			return true;
+		}
+	}
+
+	return false;
+}
+
 struct fd_bo *
 fd_screen_bo_from_handle(struct pipe_screen *pscreen,
 		struct winsys_handle *whandle)
@@ -1038,6 +1059,7 @@ fd_screen_create(struct fd_device *dev, struct renderonly *ro)
 	pscreen->fence_get_fd = fd_fence_get_fd;
 
 	pscreen->query_dmabuf_modifiers = fd_screen_query_dmabuf_modifiers;
+	pscreen->is_dmabuf_modifier_supported = fd_screen_is_dmabuf_modifier_supported;
 
 	pscreen->get_device_uuid = fd_screen_get_device_uuid;
 	pscreen->get_driver_uuid = fd_screen_get_driver_uuid;

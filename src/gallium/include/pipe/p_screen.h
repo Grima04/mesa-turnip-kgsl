@@ -559,6 +559,23 @@ struct pipe_screen {
     */
    void (*unmap_memory)(struct pipe_screen *screen,
                         struct pipe_memory_allocation *pmem);
+
+   /**
+    * Determine whether the screen supports the specified modifier
+    *
+    * Query whether the driver supports a \p modifier in combination with
+    * \p format.  If \p external_only is not NULL, the value it points to will
+    * be set to 0 or a non-zero value to indicate whether the modifier and
+    * format combination is supported only with external, or also with non-
+    * external texture targets respectively.  The \p external_only parameter is
+    * not used when the function returns false.
+    *
+    * \return true if the format+modifier pair is supported on \p screen, false
+    *         otherwise.
+    */
+   bool (*is_dmabuf_modifier_supported)(struct pipe_screen *screen,
+                                        uint64_t modifier, enum pipe_format,
+                                        bool *external_only);
 };
 
 

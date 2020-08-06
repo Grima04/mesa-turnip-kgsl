@@ -1033,6 +1033,17 @@ returned. The callback itself may also be NULL if the driver doesn't support
 an on-disk shader cache.
 
 
+is_dmabuf_modifier_supported
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Query whether the driver supports a **modifier** in combination with a
+**format**, and whether it is only supported with "external" texture targets.
+If the combination is supported in any fashion, true is returned.  If the
+**external_only** parameter is not NULL, the bool it points to is set to
+false if non-external texture targets are supported with the specified modifier+
+format, or true if only external texture targets are supported.
+
+
 Thread safety
 -------------
 

@@ -514,6 +514,18 @@ static void tegra_screen_query_dmabuf_modifiers(struct pipe_screen *pscreen,
                                        external_only, count);
 }
 
+static bool
+tegra_screen_is_dmabuf_modifier_supported(struct pipe_screen *pscreen,
+                                          uint64_t modifier,
+                                          enum pipe_format format,
+                                          bool *external_only)
+{
+   struct tegra_screen *screen = to_tegra_screen(pscreen);
+
+   return screen->gpu->is_dmabuf_modifier_supported(screen->gpu, modifier,
+                                                    format, external_only);
+}
+
 static struct pipe_memory_object *
 tegra_screen_memobj_create_from_handle(struct pipe_screen *pscreen,
                                        struct winsys_handle *handle,
@@ -592,6 +604,7 @@ tegra_screen_create(int fd)
 
    screen->base.resource_create_with_modifiers = tegra_screen_resource_create_with_modifiers;
    screen->base.query_dmabuf_modifiers = tegra_screen_query_dmabuf_modifiers;
+   screen->base.is_dmabuf_modifier_supported = tegra_screen_is_dmabuf_modifier_supported;
    screen->base.memobj_create_from_handle = tegra_screen_memobj_create_from_handle;
 
    return &screen->base;

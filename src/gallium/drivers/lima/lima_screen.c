@@ -487,6 +487,11 @@ lima_screen_query_info(struct lima_screen *screen)
    return true;
 }
 
+static const uint64_t lima_available_modifiers[] = {
+   DRM_FORMAT_MOD_ARM_16X16_BLOCK_U_INTERLEAVED,
+   DRM_FORMAT_MOD_LINEAR,
+};
+
 static void
 lima_screen_query_dmabuf_modifiers(struct pipe_screen *pscreen,
                                    enum pipe_format format, int max,
@@ -494,12 +499,7 @@ lima_screen_query_dmabuf_modifiers(struct pipe_screen *pscreen,
                                    unsigned int *external_only,
                                    int *count)
 {
-   uint64_t available_modifiers[] = {
-      DRM_FORMAT_MOD_ARM_16X16_BLOCK_U_INTERLEAVED,
-      DRM_FORMAT_MOD_LINEAR,
-   };
-
-   int num_modifiers = ARRAY_SIZE(available_modifiers);
+   int num_modifiers = ARRAY_SIZE(lima_available_modifiers);
 
    if (!modifiers) {
       *count = num_modifiers;
@@ -508,10 +508,28 @@ lima_screen_query_dmabuf_modifiers(struct pipe_screen *pscreen,
 
    *count = MIN2(max, num_modifiers);
    for (int i = 0; i < *count; i++) {
-      modifiers[i] = available_modifiers[i];
+      modifiers[i] = lima_available_modifiers[i];
       if (external_only)
          external_only[i] = false;
    }
+}
+
+static bool
+lima_screen_is_dmabuf_modifier_supported(struct pipe_screen *pscreen,
+                                         uint64_t modifier,
+                                         enum pipe_format format,
+                                         bool *external_only)
+{
+   for (int i = 0; i < ARRAY_SIZE(lima_available_modifiers); i++) {
+      if (lima_available_modifiers[i] == modifier) {
+         if (external_only)
+            *external_only = false;
+
+         return true;
+      }
+   }
+
+   return false;
 }
 
 static const struct debug_named_value debug_options[] = {
@@ -676,6 +694,7 @@ lima_screen_create(int fd, struct renderonly *ro)
    screen->base.is_format_supported = lima_screen_is_format_supported;
    screen->base.get_compiler_options = lima_screen_get_compiler_options;
    screen->base.query_dmabuf_modifiers = lima_screen_query_dmabuf_modifiers;
+   screen->base.is_dmabuf_modifier_supported = lima_screen_is_dmabuf_modifier_supported;
 
    lima_resource_screen_init(screen);
    lima_fence_screen_init(screen);

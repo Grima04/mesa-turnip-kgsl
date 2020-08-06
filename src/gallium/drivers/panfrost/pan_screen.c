@@ -507,9 +507,9 @@ panfrost_is_format_supported( struct pipe_screen *screen,
  * subset of those. */
 
 static void
-panfrost_query_dmabuf_modifiers(struct pipe_screen *screen,
+panfrost_walk_dmabuf_modifiers(struct pipe_screen *screen,
                 enum pipe_format format, int max, uint64_t *modifiers, unsigned
-                int *external_only, int *out_count)
+                int *external_only, int *out_count, uint64_t test_modifier)
 {
         /* Query AFBC status */
         bool afbc = panfrost_format_supports_afbc(format);
@@ -531,6 +531,10 @@ panfrost_query_dmabuf_modifiers(struct pipe_screen *screen,
                 if ((pan_best_modifiers[i] & AFBC_FORMAT_MOD_YTR) && !ytr)
                         continue;
 
+                if (test_modifier != DRM_FORMAT_MOD_INVALID &&
+                    test_modifier != pan_best_modifiers[i])
+                        continue;
+
                 count++;
 
                 if (max > (int) count) {
@@ -542,6 +546,33 @@ panfrost_query_dmabuf_modifiers(struct pipe_screen *screen,
         }
 
         *out_count = count;
+}
+
+static void
+panfrost_query_dmabuf_modifiers(struct pipe_screen *screen,
+                enum pipe_format format, int max, uint64_t *modifiers, unsigned
+                int *external_only, int *out_count)
+{
+        panfrost_walk_dmabuf_modifiers(screen, format, max, modifiers,
+                external_only, out_count, DRM_FORMAT_MOD_INVALID);
+}
+
+static bool
+panfrost_is_dmabuf_modifier_supported(struct pipe_screen *screen,
+                uint64_t modifier, enum pipe_format format,
+                bool *external_only)
+{
+        uint64_t unused;
+        unsigned int uint_extern_only = 0;
+        int count;
+
+        panfrost_walk_dmabuf_modifiers(screen, format, 1, &unused,
+                &uint_extern_only, &count, modifier);
+
+        if (external_only)
+           *external_only = uint_extern_only ? true : false;
+
+        return count > 0;
 }
 
 static int
@@ -755,6 +786,8 @@ panfrost_create_screen(int fd, struct renderonly *ro)
         screen->base.get_timestamp = panfrost_get_timestamp;
         screen->base.is_format_supported = panfrost_is_format_supported;
         screen->base.query_dmabuf_modifiers = panfrost_query_dmabuf_modifiers;
+        screen->base.is_dmabuf_modifier_supported =
+               panfrost_is_dmabuf_modifier_supported;
         screen->base.context_create = panfrost_create_context;
         screen->base.get_compiler_options = panfrost_screen_get_compiler_options;
         screen->base.fence_reference = panfrost_fence_reference;

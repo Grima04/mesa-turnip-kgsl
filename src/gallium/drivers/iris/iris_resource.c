@@ -190,6 +190,19 @@ target_to_isl_surf_dim(enum pipe_texture_target target)
    unreachable("invalid texture type");
 }
 
+static inline bool is_modifier_external_only(enum pipe_format pfmt,
+                                             uint64_t modifier)
+{
+   /* Only allow external usage for the following cases: YUV formats
+    * and the media-compression modifier. The render engine lacks
+    * support for rendering to a media-compressed surface if the
+    * compression ratio is large enough. By requiring external usage
+    * of media-compressed surfaces, resolves are avoided.
+    */
+   return util_format_is_yuv(pfmt) ||
+      modifier == I915_FORMAT_MOD_Y_TILED_GEN12_MC_CCS;
+}
+
 static void
 iris_query_dmabuf_modifiers(struct pipe_screen *pscreen,
                             enum pipe_format pfmt,
@@ -221,15 +234,8 @@ iris_query_dmabuf_modifiers(struct pipe_screen *pscreen,
             modifiers[supported_mods] = all_modifiers[i];
 
          if (external_only) {
-            /* Only allow external usage for the following cases: YUV formats
-             * and the media-compression modifier. The render engine lacks
-             * support for rendering to a media-compressed surface if the
-             * compression ratio is large enough. By requiring external usage
-             * of media-compressed surfaces, resolves are avoided.
-             */
             external_only[supported_mods] =
-               util_format_is_yuv(pfmt) ||
-               all_modifiers[i] == I915_FORMAT_MOD_Y_TILED_GEN12_MC_CCS;
+               is_modifier_external_only(pfmt, all_modifiers[i]);
          }
       }
 
@@ -237,6 +243,24 @@ iris_query_dmabuf_modifiers(struct pipe_screen *pscreen,
    }
 
    *count = supported_mods;
+}
+
+static bool
+iris_is_dmabuf_modifier_supported(struct pipe_screen *pscreen,
+                                  uint64_t modifier, enum pipe_format pfmt,
+                                  bool *external_only)
+{
+   struct iris_screen *screen = (void *) pscreen;
+   const struct gen_device_info *devinfo = &screen->devinfo;
+
+   if (modifier_is_supported(devinfo, pfmt, modifier)) {
+      if (external_only)
+         *external_only = is_modifier_external_only(pfmt, modifier);
+
+      return true;
+   }
+
+   return false;
 }
 
 enum isl_format
@@ -2225,6 +2249,7 @@ void
 iris_init_screen_resource_functions(struct pipe_screen *pscreen)
 {
    pscreen->query_dmabuf_modifiers = iris_query_dmabuf_modifiers;
+   pscreen->is_dmabuf_modifier_supported = iris_is_dmabuf_modifier_supported;
    pscreen->resource_create_with_modifiers =
       iris_resource_create_with_modifiers;
    pscreen->resource_create = u_transfer_helper_resource_create;
