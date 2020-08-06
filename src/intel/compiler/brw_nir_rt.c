@@ -21,31 +21,43 @@
  * IN THE SOFTWARE.
  */
 
-#ifndef BRW_NIR_RT_H
-#define BRW_NIR_RT_H
+#include "brw_nir_rt.h"
 
-#include "brw_nir.h"
-#include "brw_rt.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-void brw_nir_lower_raygen(nir_shader *nir);
-void brw_nir_lower_any_hit(nir_shader *nir,
-                           const struct gen_device_info *devinfo);
-void brw_nir_lower_closest_hit(nir_shader *nir);
-void brw_nir_lower_miss(nir_shader *nir);
-void brw_nir_lower_callable(nir_shader *nir);
-void brw_nir_lower_combined_intersection_any_hit(nir_shader *intersection,
-                                                 const nir_shader *any_hit,
-                                                 const struct gen_device_info *devinfo);
-
-void brw_nir_lower_rt_intrinsics(nir_shader *shader,
-                                 const struct gen_device_info *devinfo);
-
-#ifdef __cplusplus
+void
+brw_nir_lower_raygen(nir_shader *nir)
+{
+   assert(nir->info.stage == MESA_SHADER_RAYGEN);
 }
-#endif
 
-#endif /* BRW_NIR_RT_H */
+void
+brw_nir_lower_any_hit(nir_shader *nir, const struct gen_device_info *devinfo)
+{
+   assert(nir->info.stage == MESA_SHADER_ANY_HIT);
+}
+
+void
+brw_nir_lower_closest_hit(nir_shader *nir)
+{
+   assert(nir->info.stage == MESA_SHADER_CLOSEST_HIT);
+}
+
+void
+brw_nir_lower_miss(nir_shader *nir)
+{
+   assert(nir->info.stage == MESA_SHADER_MISS);
+}
+
+void
+brw_nir_lower_callable(nir_shader *nir)
+{
+   assert(nir->info.stage == MESA_SHADER_CALLABLE);
+}
+
+void
+brw_nir_lower_combined_intersection_any_hit(nir_shader *intersection,
+                                            const nir_shader *any_hit,
+                                            const struct gen_device_info *devinfo)
+{
+   assert(intersection->info.stage == MESA_SHADER_INTERSECTION);
+   assert(any_hit == NULL || any_hit->info.stage == MESA_SHADER_ANY_HIT);
+}

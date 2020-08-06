@@ -89,6 +89,7 @@ libintel_compiler_files = files(
   'brw_nir_lower_scoped_barriers.c',
   'brw_nir_opt_peephole_ffma.c',
   'brw_nir_rt.h',
+  'brw_nir_rt.c',
   'brw_nir_rt_builder.h',
   'brw_nir_tcs_workarounds.c',
   'brw_nir_clamp_image_1d_2d_array_sizes.c',
