@@ -16,7 +16,7 @@ include:
   - local: '.gitlab-ci/test-source-dep.yml'
 
 stages:
-  - container+docs
+  - container
   - container-2
   - git-archive
   - deploy
@@ -97,7 +97,8 @@ test-docs:
   extends: .docs-base
   # Cancel job if a newer commit is pushed to the same branch
   interruptible: true
-  stage: container+docs
+  stage: deploy
+  needs: []
   rules:
     - *ignore_scheduled_pipelines
     - if: *is-main-master
@@ -196,7 +197,7 @@ success:
 # repository's registry will be used there as well.
 
 .container:
-  stage: container+docs
+  stage: container
   extends:
     - .ci-run-policy
   rules:
@@ -436,7 +437,7 @@ arm64_test:
   extends:
     - .container
     - .windows-docker-vs2019
-  stage: container+docs
+  stage: container
   variables:
     GIT_STRATEGY: fetch # we do actually need the full repository though
   timeout: 4h # LLVM takes ages
@@ -456,7 +457,7 @@ arm64_test:
 
 git_archive:
   extends: .fdo.container-build@alpine
-  stage: container+docs
+  stage: container
   rules:
     - if: *is-scheduled-pipeline
       when: always
