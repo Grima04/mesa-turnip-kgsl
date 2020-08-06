@@ -44,6 +44,7 @@ lower_rt_intrinsics_impl(nir_function_impl *impl,
    nir_ssa_def *stack_base_offset = nir_channel(b, hotzone, 0);
    nir_ssa_def *stack_base_addr =
       nir_iadd(b, thread_stack_base_addr, nir_u2u64(b, stack_base_offset));
+   ASSERTED bool seen_scratch_base_ptr_load = false;
 
    nir_foreach_block(block, impl) {
       nir_foreach_instr_safe(instr, block) {
@@ -58,7 +59,35 @@ lower_rt_intrinsics_impl(nir_function_impl *impl,
          switch (intrin->intrinsic) {
          case nir_intrinsic_load_scratch_base_ptr:
             assert(nir_intrinsic_base(intrin) == 1);
+            seen_scratch_base_ptr_load = true;
             sysval = stack_base_addr;
+            break;
+
+         case nir_intrinsic_btd_stack_push_intel: {
+            int32_t stack_size = nir_intrinsic_range(intrin);
+            if (stack_size > 0) {
+               nir_ssa_def *child_stack_offset =
+                  nir_iadd_imm(b, stack_base_offset, stack_size);
+               nir_store_global(b, hotzone_addr, 16, child_stack_offset, 0x1);
+            }
+            nir_instr_remove(instr);
+            break;
+         }
+
+         case nir_intrinsic_btd_resume_intel:
+            /* This is the first "interesting" instruction */
+            assert(block == nir_start_block(impl));
+            assert(!seen_scratch_base_ptr_load);
+
+            int32_t stack_size = nir_intrinsic_range(intrin);
+            if (stack_size > 0) {
+               stack_base_offset =
+                  nir_iadd_imm(b, stack_base_offset, -stack_size);
+               nir_store_global(b, hotzone_addr, 16, stack_base_offset, 0x1);
+               stack_base_addr = nir_iadd(b, thread_stack_base_addr,
+                                          nir_u2u64(b, stack_base_offset));
+            }
+            nir_instr_remove(instr);
             break;
 
          case nir_intrinsic_load_ray_base_mem_addr_intel:
@@ -75,6 +104,19 @@ lower_rt_intrinsics_impl(nir_function_impl *impl,
 
          case nir_intrinsic_load_ray_num_dss_rt_stacks_intel:
             sysval = globals.num_dss_rt_stacks;
+            break;
+
+         case nir_intrinsic_load_callable_sbt_addr_intel:
+            sysval = globals.call_sbt_addr;
+            break;
+
+         case nir_intrinsic_load_callable_sbt_stride_intel:
+            sysval = globals.call_sbt_stride;
+            break;
+
+         case nir_intrinsic_load_btd_resume_sbt_addr_intel:
+            /* The call stack handler is just the first in our resume SBT */
+            sysval = globals.resume_sbt_addr;
             break;
 
          default:

@@ -1093,8 +1093,13 @@ system_value("btd_dss_id_intel", 1)
 system_value("btd_stack_id_intel", 1)
 system_value("btd_global_arg_addr_intel", 1, bit_sizes=[64])
 system_value("btd_local_arg_addr_intel", 1, bit_sizes=[64])
+system_value("btd_resume_sbt_addr_intel", 1, bit_sizes=[64])
 # src[] = { global_arg_addr, btd_record }
 intrinsic("btd_spawn_intel", src_comp=[1, 1])
+# RANGE=stack_size
+intrinsic("btd_stack_push_intel", indices=[RANGE])
+# BASE=call_idx RANGE=stack_size
+intrinsic("btd_resume_intel", indices=[BASE, RANGE])
 # src[] = { }
 intrinsic("btd_retire_intel")
 
@@ -1103,3 +1108,5 @@ system_value("ray_base_mem_addr_intel", 1, bit_sizes=[64])
 system_value("ray_hw_stack_size_intel", 1)
 system_value("ray_sw_stack_size_intel", 1)
 system_value("ray_num_dss_rt_stacks_intel", 1)
+system_value("callable_sbt_addr_intel", 1, bit_sizes=[64])
+system_value("callable_sbt_stride_intel", 1, bit_sizes=[16])

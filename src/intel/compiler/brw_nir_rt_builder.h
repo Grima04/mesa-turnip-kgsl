@@ -94,6 +94,17 @@ brw_nir_btd_retire(nir_builder *b)
    nir_builder_instr_insert(b, &retire->instr);
 }
 
+static inline void
+brw_nir_btd_resume(nir_builder *b, uint32_t call_idx, unsigned stack_size)
+{
+   nir_intrinsic_instr *resume =
+      nir_intrinsic_instr_create(b->shader,
+                                 nir_intrinsic_btd_resume_intel);
+   nir_intrinsic_set_base(resume, call_idx);
+   nir_intrinsic_set_range(resume, stack_size);
+   nir_builder_instr_insert(b, &resume->instr);
+}
+
 /** This is a pseudo-op which does a bindless return
  *
  * It loads the return address from the stack and calls btd_spawn to spawn the
