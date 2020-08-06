@@ -103,6 +103,9 @@ disk_cache_evict_lru_item(struct disk_cache *cache);
 void
 disk_cache_evict_item(struct disk_cache *cache, char *filename);
 
+void *
+disk_cache_load_item(struct disk_cache *cache, char *filename, size_t *size);
+
 char *
 disk_cache_get_cache_filename(struct disk_cache *cache, const cache_key key);
 

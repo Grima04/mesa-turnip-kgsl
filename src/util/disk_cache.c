@@ -36,11 +36,6 @@
 #include <errno.h>
 #include <dirent.h>
 #include <inttypes.h>
-#include "zlib.h"
-
-#ifdef HAVE_ZSTD
-#include "zstd.h"
-#endif
 
 #include "util/crc32.h"
 #include "util/debug.h"
@@ -235,21 +230,6 @@ disk_cache_remove(struct disk_cache *cache, const cache_key key)
    disk_cache_evict_item(cache, filename);
 }
 
-static ssize_t
-read_all(int fd, void *buf, size_t count)
-{
-   char *in = buf;
-   ssize_t read_ret;
-   size_t done;
-
-   for (done = 0; done < count; done += read_ret) {
-      read_ret = read(fd, in + done, count - done);
-      if (read_ret == -1 || read_ret == 0)
-         return -1;
-   }
-   return done;
-}
-
 static struct disk_cache_put_job *
 create_put_job(struct disk_cache *cache, const cache_key key,
                const void *data, size_t size,
@@ -362,60 +342,9 @@ disk_cache_put(struct disk_cache *cache, const cache_key key,
    }
 }
 
-/**
- * Decompresses cache entry, returns true if successful.
- */
-static bool
-inflate_cache_data(uint8_t *in_data, size_t in_data_size,
-                   uint8_t *out_data, size_t out_data_size)
-{
-#ifdef HAVE_ZSTD
-   size_t ret = ZSTD_decompress(out_data, out_data_size, in_data, in_data_size);
-   return !ZSTD_isError(ret);
-#else
-   z_stream strm;
-
-   /* allocate inflate state */
-   strm.zalloc = Z_NULL;
-   strm.zfree = Z_NULL;
-   strm.opaque = Z_NULL;
-   strm.next_in = in_data;
-   strm.avail_in = in_data_size;
-   strm.next_out = out_data;
-   strm.avail_out = out_data_size;
-
-   int ret = inflateInit(&strm);
-   if (ret != Z_OK)
-      return false;
-
-   ret = inflate(&strm, Z_NO_FLUSH);
-   assert(ret != Z_STREAM_ERROR);  /* state not clobbered */
-
-   /* Unless there was an error we should have decompressed everything in one
-    * go as we know the uncompressed file size.
-    */
-   if (ret != Z_STREAM_END) {
-      (void)inflateEnd(&strm);
-      return false;
-   }
-   assert(strm.avail_out == 0);
-
-   /* clean up and return */
-   (void)inflateEnd(&strm);
-   return true;
-#endif
-}
-
 void *
 disk_cache_get(struct disk_cache *cache, const cache_key key, size_t *size)
 {
-   int fd = -1, ret;
-   struct stat sb;
-   char *filename = NULL;
-   uint8_t *data = NULL;
-   uint8_t *uncompressed_data = NULL;
-   uint8_t *file_header = NULL;
-
    if (size)
       *size = 0;
 
@@ -441,110 +370,15 @@ disk_cache_get(struct disk_cache *cache, const cache_key key, size_t *size)
       return blob;
    }
 
-   filename = disk_cache_get_cache_filename(cache, key);
+   char *filename = disk_cache_get_cache_filename(cache, key);
    if (filename == NULL)
       goto fail;
 
-   fd = open(filename, O_RDONLY | O_CLOEXEC);
-   if (fd == -1)
-      goto fail;
+   return disk_cache_load_item(cache, filename, size);
 
-   if (fstat(fd, &sb) == -1)
-      goto fail;
-
-   data = malloc(sb.st_size);
-   if (data == NULL)
-      goto fail;
-
-   size_t ck_size = cache->driver_keys_blob_size;
-   file_header = malloc(ck_size);
-   if (!file_header)
-      goto fail;
-
-   if (sb.st_size < ck_size)
-      goto fail;
-
-   ret = read_all(fd, file_header, ck_size);
-   if (ret == -1)
-      goto fail;
-
-   /* Check for extremely unlikely hash collisions */
-   if (memcmp(cache->driver_keys_blob, file_header, ck_size) != 0) {
-      assert(!"Mesa cache keys mismatch!");
-      goto fail;
-   }
-
-   size_t cache_item_md_size = sizeof(uint32_t);
-   uint32_t md_type;
-   ret = read_all(fd, &md_type, cache_item_md_size);
-   if (ret == -1)
-      goto fail;
-
-   if (md_type == CACHE_ITEM_TYPE_GLSL) {
-      uint32_t num_keys;
-      cache_item_md_size += sizeof(uint32_t);
-      ret = read_all(fd, &num_keys, sizeof(uint32_t));
-      if (ret == -1)
-         goto fail;
-
-      /* The cache item metadata is currently just used for distributing
-       * precompiled shaders, they are not used by Mesa so just skip them for
-       * now.
-       * TODO: pass the metadata back to the caller and do some basic
-       * validation.
-       */
-      cache_item_md_size += num_keys * sizeof(cache_key);
-      ret = lseek(fd, num_keys * sizeof(cache_key), SEEK_CUR);
-      if (ret == -1)
-         goto fail;
-   }
-
-   /* Load the CRC that was created when the file was written. */
-   struct cache_entry_file_data cf_data;
-   size_t cf_data_size = sizeof(cf_data);
-   ret = read_all(fd, &cf_data, cf_data_size);
-   if (ret == -1)
-      goto fail;
-
-   /* Load the actual cache data. */
-   size_t cache_data_size =
-      sb.st_size - cf_data_size - ck_size - cache_item_md_size;
-   ret = read_all(fd, data, cache_data_size);
-   if (ret == -1)
-      goto fail;
-
-   /* Uncompress the cache data */
-   uncompressed_data = malloc(cf_data.uncompressed_size);
-   if (!inflate_cache_data(data, cache_data_size, uncompressed_data,
-                           cf_data.uncompressed_size))
-      goto fail;
-
-   /* Check the data for corruption */
-   if (cf_data.crc32 != util_hash_crc32(uncompressed_data,
-                                        cf_data.uncompressed_size))
-      goto fail;
-
-   free(data);
-   free(filename);
-   free(file_header);
-   close(fd);
-
-   if (size)
-      *size = cf_data.uncompressed_size;
-
-   return uncompressed_data;
-
- fail:
-   if (data)
-      free(data);
-   if (uncompressed_data)
-      free(uncompressed_data);
+fail:
    if (filename)
       free(filename);
-   if (file_header)
-      free(file_header);
-   if (fd != -1)
-      close(fd);
 
    return NULL;
 }
