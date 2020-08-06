@@ -21,6 +21,7 @@
  * IN THE SOFTWARE.
  */
 
+#include "util/macros.h"
 #include "util/mesa-sha1.h"
 #include "util/debug.h"
 #include "util/disk_cache.h"
@@ -108,6 +109,7 @@ entry_size(struct cache_entry *entry)
 	for (int i = 0; i < MESA_SHADER_STAGES; ++i)
 		if (entry->binary_sizes[i])
 			ret += entry->binary_sizes[i];
+	ret = align(ret, alignof(struct cache_entry));
 	return ret;
 }
 
@@ -391,6 +393,7 @@ radv_pipeline_cache_insert_shaders(struct radv_device *device,
 	for (int i = 0; i < MESA_SHADER_STAGES; ++i)
 		if (variants[i])
 			size += binaries[i]->total_size;
+	size = align(size, alignof(struct cache_entry));
 
 
 	entry = vk_alloc(&cache->alloc, size, 8,
@@ -580,7 +583,7 @@ VkResult radv_GetPipelineCacheData(
 	}
 	void *p = pData, *end = pData + *pDataSize;
 	header = p;
-	header->header_size = sizeof(*header);
+	header->header_size = align(sizeof(*header), alignof(struct cache_entry));
 	header->header_version = VK_PIPELINE_CACHE_HEADER_VERSION_ONE;
 	header->vendor_id = ATI_VENDOR_ID;
 	header->device_id = device->physical_device->rad_info.pci_id;
