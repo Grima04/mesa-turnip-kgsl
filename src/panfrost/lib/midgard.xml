@@ -129,6 +129,20 @@
     <field name="LOD bias" size="16" start="2:0" type="uint" default="0"/>
   </struct>
 
+  <struct name="Bifrost Texture" size="8">
+    <field name="Type" size="4" start="0:0" type="uint" default="2"/>
+    <field name="Dimension" size="2" start="0:4" type="Texture Dimension"/>
+    <field name="Format" size="22" start="0:10" type="uint"/>
+    <field name="Width" size="16" start="1:0" type="uint" modifier="minus(1)"/>
+    <field name="Height" size="16" start="1:16" type="uint" modifier="minus(1)"/>
+    <field name="Swizzle" size="12" start="2:0" type="uint"/>
+    <field name="Texel ordering" size="4" start="2:12" type="Texture Layout"/>
+    <field name="Levels" size="5" start="2:16" type="uint"/>
+    <field name="Minimum LOD" size="13" start="3:0" type="uint" default="0"/>
+    <field name="Maximum LOD" size="13" start="3:16" type="uint" default="0"/>
+    <field name="Surfaces" size="64" start="4:0" type="address"/>
+  </struct>
+
   <struct name="Stencil">
     <field name="Reference Value" size="8" start="0" type="uint"/>
     <field name="Mask" size="8" start="8" type="uint" default="0xFF"/>

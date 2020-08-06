@@ -2109,102 +2109,17 @@ pandecode_texture(mali_ptr u,
 
 static void
 pandecode_bifrost_texture(
-                const struct bifrost_texture_descriptor *t,
+                const void *cl,
                 unsigned job_no,
                 unsigned tex)
 {
-        pandecode_log("struct bifrost_texture_descriptor texture_descriptor_%d_%d = {\n", job_no, tex);
-        pandecode_indent++;
+        struct MALI_BIFROST_TEXTURE temp;
+        MALI_BIFROST_TEXTURE_unpack(cl, &temp);
+        MALI_BIFROST_TEXTURE_print(pandecode_dump_stream, &temp, 2);
 
-        pandecode_prop("format_unk = 0x%" PRIx32, t->format_unk);
-        pandecode_prop("type = %" PRId32, t->type);
-
-        if (t->zero) {
-                pandecode_msg("XXX: zero tripped\n");
-                pandecode_prop("zero = 0x%" PRIx32, t->zero);
-        }
-
-        pandecode_prop("format_swizzle = 0x%" PRIx32, t->format_swizzle);
-        pandecode_prop("format = 0x%" PRIx32, t->format);
-        pandecode_prop("srgb = 0x%" PRIx32, t->srgb);
-        pandecode_prop("format_unk3 = 0x%" PRIx32, t->format_unk3);
-        pandecode_prop("width = %" PRId32, t->width);
-        pandecode_prop("height = %" PRId32, t->height);
-        pandecode_prop("swizzle = 0x%" PRIx32, t->swizzle);
-        pandecode_prop("levels = %" PRId32, t->levels);
-        pandecode_prop("unk1 = 0x%" PRIx32, t->unk1);
-        pandecode_prop("levels_unk = %" PRId32, t->levels_unk);
-        pandecode_prop("level_2 = %" PRId32, t->level_2);
-        pandecode_prop("payload = 0x%" PRIx64, t->payload);
-        pandecode_prop("array_size = %" PRId32, t->array_size);
-        pandecode_prop("unk4 = 0x%" PRIx32, t->unk4);
-        pandecode_prop("depth = %" PRId32, t->depth);
-        pandecode_prop("unk5 = 0x%" PRIx32, t->unk5);
-        pandecode_log("\n");
-
-        bool is_cube = t->type == MALI_TEXTURE_DIMENSION_CUBE;
-        unsigned dimension = is_cube ? 2 : t->type;
-
-        /* Print the layout. Default is linear; a modifier can denote AFBC or
-         * u-interleaved/tiled modes */
-
-        if (t->layout == MALI_TEXTURE_LAYOUT_AFBC)
-                pandecode_log_cont("afbc");
-        else if (t->layout == MALI_TEXTURE_LAYOUT_TILED)
-                pandecode_log_cont("tiled");
-        else if (t->layout == MALI_TEXTURE_LAYOUT_LINEAR)
-                pandecode_log_cont("linear");
-        else
-                pandecode_msg("XXX: invalid texture layout 0x%X\n", t->layout);
-
-        pandecode_swizzle(t->swizzle, t->format);
-        pandecode_log_cont(" ");
-
-        /* Distinguish cube/2D with modifier */
-
-        if (is_cube)
-                pandecode_log_cont("cube ");
-
-        pandecode_format_short(t->format, t->srgb);
-
-        /* All four width/height/depth/array_size dimensions are present
-         * regardless of the type of texture, but it is an error to have
-         * non-zero dimensions for unused dimensions. Verify this. array_size
-         * can always be set, as can width. */
-
-        if (t->height && dimension < 2)
-                pandecode_msg("XXX: nonzero height for <2D texture\n");
-
-        if (t->depth && dimension < 3)
-                pandecode_msg("XXX: nonzero depth for <2D texture\n");
-
-        /* Print only the dimensions that are actually there */
-
-        pandecode_log_cont(": %d", t->width + 1);
-
-        if (dimension >= 2)
-                pandecode_log_cont("x%u", t->height + 1);
-
-        if (dimension >= 3)
-                pandecode_log_cont("x%u", t->depth + 1);
-
-        if (t->array_size)
-                pandecode_log_cont("[%u]", t->array_size + 1);
-
-        if (t->levels)
-                pandecode_log_cont(" mip %u", t->levels);
-
-        pandecode_log_cont("\n");
-
-        struct pandecode_mapped_memory *tmem = pandecode_find_mapped_gpu_mem_containing(t->payload);
-        if (t->payload) {
-                pandecode_texture_payload(t->payload, t->type, t->layout,
-                                          true, t->levels, t->depth,
-                                          t->array_size, tmem);
-        }
-
-        pandecode_indent--;
-        pandecode_log("};\n");
+        struct pandecode_mapped_memory *tmem = pandecode_find_mapped_gpu_mem_containing(temp.surfaces);
+        pandecode_texture_payload(temp.surfaces, temp.dimension, temp.texel_ordering,
+                                  true, temp.levels, 1, 1, tmem);
 }
 
 /* For shader properties like texture_count, we have a claimed property in the shader_meta, and the actual Truth from static analysis (this may just be an upper limit). We validate accordingly */
@@ -2270,22 +2185,20 @@ pandecode_textures(mali_ptr textures, unsigned texture_count, int job_no, bool i
         if (!mmem)
                 return;
 
+        pandecode_log("Textures (%"PRIx64"):\n", textures);
+
         if (is_bifrost) {
-                const struct bifrost_texture_descriptor *PANDECODE_PTR_VAR(t, mmem, textures);
+                const void *cl = pandecode_fetch_gpu_mem(mmem,
+                                textures, MALI_BIFROST_TEXTURE_LENGTH *
+                                texture_count);
 
-                pandecode_log("uint64_t textures_%"PRIx64"_%d[] = {\n", textures, job_no);
-                pandecode_indent++;
-
-                for (unsigned tex = 0; tex < texture_count; ++tex)
-                        pandecode_bifrost_texture(&t[tex], job_no, tex);
-
-                pandecode_indent--;
-                pandecode_log("};\n");
+                for (unsigned tex = 0; tex < texture_count; ++tex) {
+                        pandecode_bifrost_texture(cl +
+                                        MALI_BIFROST_TEXTURE_LENGTH * tex,
+                                        job_no, tex);
+                }
         } else {
                 mali_ptr *PANDECODE_PTR_VAR(u, mmem, textures);
-
-                pandecode_log("uint64_t textures_%"PRIx64"_%d[] = {\n", textures, job_no);
-                pandecode_indent++;
 
                 for (int tex = 0; tex < texture_count; ++tex) {
                         mali_ptr *PANDECODE_PTR_VAR(u, mmem, textures + tex * sizeof(mali_ptr));
@@ -2293,9 +2206,6 @@ pandecode_textures(mali_ptr textures, unsigned texture_count, int job_no, bool i
                         pandecode_log("%s,\n", a);
                         free(a);
                 }
-
-                pandecode_indent--;
-                pandecode_log("};\n");
 
                 /* Now, finally, descend down into the texture descriptor */
                 for (unsigned tex = 0; tex < texture_count; ++tex) {

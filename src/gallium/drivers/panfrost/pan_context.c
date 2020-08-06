@@ -975,9 +975,8 @@ panfrost_create_sampler_view_bo(struct panfrost_sampler_view *so,
 
                 so->bo = panfrost_bo_create(device, size, 0);
 
-                so->bifrost_descriptor = rzalloc(pctx, struct bifrost_texture_descriptor);
                 panfrost_new_texture_bifrost(
-                                so->bifrost_descriptor,
+                                &so->bifrost_descriptor,
                                 texture->width0, texture->height0,
                                 depth, array_size,
                                 format,
@@ -1078,8 +1077,6 @@ panfrost_sampler_view_destroy(
 
         pipe_resource_reference(&pview->texture, NULL);
         panfrost_bo_unreference(view->bo);
-        if (view->bifrost_descriptor)
-                ralloc_free(view->bifrost_descriptor);
         ralloc_free(view);
 }
 

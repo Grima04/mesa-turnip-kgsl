@@ -1269,16 +1269,20 @@ panfrost_emit_texture_descriptors(struct panfrost_batch *batch,
                 return;
 
         if (device->quirks & IS_BIFROST) {
-                struct bifrost_texture_descriptor *descriptors;
+                struct panfrost_transfer T = panfrost_pool_alloc(&batch->pool,
+                                MALI_BIFROST_TEXTURE_LENGTH *
+                                ctx->sampler_view_count[stage]);
 
-                descriptors = malloc(sizeof(struct bifrost_texture_descriptor) *
-                                     ctx->sampler_view_count[stage]);
+                struct mali_bifrost_texture_packed *out =
+                        (struct mali_bifrost_texture_packed *) T.cpu;
 
                 for (int i = 0; i < ctx->sampler_view_count[stage]; ++i) {
                         struct panfrost_sampler_view *view = ctx->sampler_views[stage][i];
                         struct pipe_sampler_view *pview = &view->base;
                         struct panfrost_resource *rsrc = pan_resource(pview->texture);
+
                         panfrost_update_sampler_view(view, &ctx->base);
+                        out[i] = view->bifrost_descriptor;
 
                         /* Add the BOs to the job so they are retained until the job is done. */
 
@@ -1289,16 +1293,9 @@ panfrost_emit_texture_descriptors(struct panfrost_batch *batch,
                         panfrost_batch_add_bo(batch, view->bo,
                                               PAN_BO_ACCESS_SHARED | PAN_BO_ACCESS_READ |
                                               panfrost_bo_access_for_stage(stage));
-
-                        memcpy(&descriptors[i], view->bifrost_descriptor, sizeof(*view->bifrost_descriptor));
                 }
 
-                postfix->textures = panfrost_pool_upload(&batch->pool,
-                                                              descriptors,
-                                                              sizeof(struct bifrost_texture_descriptor) *
-                                                                      ctx->sampler_view_count[stage]);
-
-                free(descriptors);
+                postfix->textures = T.gpu;
         } else {
                 uint64_t trampolines[PIPE_MAX_SHADER_SAMPLER_VIEWS];
 

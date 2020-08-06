@@ -352,7 +352,7 @@ panfrost_new_texture(
 
 void
 panfrost_new_texture_bifrost(
-        struct bifrost_texture_descriptor *descriptor,
+        struct mali_bifrost_texture_packed *out,
         uint16_t width, uint16_t height,
         uint16_t depth, uint16_t array_size,
         enum pipe_format format,
@@ -388,24 +388,22 @@ panfrost_new_texture_bifrost(
                 base,
                 slices);
 
-        descriptor->format_unk = 0x2;
-        descriptor->type = dim;
-        descriptor->format = mali_format;
-        descriptor->srgb = (desc->colorspace == UTIL_FORMAT_COLORSPACE_SRGB);
-        descriptor->format_unk3 = 0x0;
-        descriptor->width = MALI_POSITIVE(u_minify(width, first_level));
-        descriptor->height = MALI_POSITIVE(u_minify(height, first_level));
-        descriptor->swizzle = swizzle;
-        descriptor->layout = panfrost_modifier_to_layout(modifier),
-        descriptor->levels = last_level - first_level;
-        descriptor->unk1 = 0x0;
-        descriptor->levels_unk = 0;
-        descriptor->level_2 = last_level - first_level;
-        descriptor->payload = payload->gpu;
-        descriptor->array_size = MALI_POSITIVE(array_size);
-        descriptor->unk4 = 0x0;
-        descriptor->depth = MALI_POSITIVE(u_minify(depth, first_level));
-        descriptor->unk5 = 0x0;
+        bool srgb = (desc->colorspace == UTIL_FORMAT_COLORSPACE_SRGB);
+
+        pan_pack(out, BIFROST_TEXTURE, cfg) {
+                cfg.dimension = dim;
+                cfg.format = (mali_format << 12) | (srgb << 20);
+                cfg.width = u_minify(width, first_level);
+                cfg.height = u_minify(height, first_level);
+                cfg.swizzle = swizzle;
+                cfg.texel_ordering = panfrost_modifier_to_layout(modifier);
+                cfg.levels = last_level - first_level;
+                cfg.surfaces = payload->gpu;
+
+                /* Use the sampler descriptor for LOD clamping */
+                cfg.minimum_lod = 0;
+                cfg.maximum_lod = last_level - first_level;
+        }
 }
 
 /* Computes sizes for checksumming, which is 8 bytes per 16x16 tile.

@@ -1148,39 +1148,6 @@ struct bifrost_payload_fused {
 /* For each pointer, there is an address and optionally also a stride */
 #define MAX_ELEMENTS (2)
 
-/* While Midgard texture descriptors are variable length, Bifrost descriptors
- * are fixed like samplers with more pointers to expand if necessary */
-
-struct bifrost_texture_descriptor {
-        unsigned format_unk : 4; /* 2 */
-        enum mali_texture_dimension type : 2;
-        unsigned zero : 4;
-        unsigned format_swizzle : 12;
-        enum mali_format format : 8;
-        unsigned srgb : 1;
-        unsigned format_unk3 : 1; /* 0 */
-
-        uint16_t width; /* MALI_POSITIVE */
-        uint16_t height; /* MALI_POSITIVE */
-
-        /* OpenGL swizzle */
-        unsigned swizzle : 12;
-        enum mali_texture_layout layout : 4;
-        uint8_t levels : 8; /* Number of levels-1 if mipmapped, 0 if not */
-        unsigned unk1 : 8;
-
-        unsigned levels_unk : 24; /* 0 */
-        unsigned level_2 : 8; /* Number of levels, again? */
-
-        mali_ptr payload;
-
-        uint16_t array_size;
-        uint16_t unk4;
-
-        uint16_t depth;
-        uint16_t unk5;
-} __attribute__((packed));
-
 /* Used for lod encoding. Thanks @urjaman for pointing out these routines can
  * be cleaned up a lot. */
 

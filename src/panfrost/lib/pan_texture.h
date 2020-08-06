@@ -113,7 +113,7 @@ panfrost_new_texture(
 
 void
 panfrost_new_texture_bifrost(
-        struct bifrost_texture_descriptor *descriptor,
+        struct mali_bifrost_texture_packed *out,
         uint16_t width, uint16_t height,
         uint16_t depth, uint16_t array_size,
         enum pipe_format format,
