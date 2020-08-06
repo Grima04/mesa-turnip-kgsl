@@ -87,6 +87,7 @@ libintel_compiler_files = files(
   'brw_nir_lower_mem_access_bit_sizes.c',
   'brw_nir_lower_rt_intrinsics.c',
   'brw_nir_lower_scoped_barriers.c',
+  'brw_nir_lower_shader_calls.c',
   'brw_nir_opt_peephole_ffma.c',
   'brw_nir_rt.h',
   'brw_nir_rt.c',

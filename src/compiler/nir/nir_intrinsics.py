@@ -391,6 +391,7 @@ intrinsic("trace_ray", src_comp=[-1, 1, 1, 1, 1, 1, 3, 1, 3, 1, -1])
 # src[] = { hit_t, hit_kind }
 intrinsic("report_ray_intersection", src_comp=[1, 1], dest_comp=1)
 intrinsic("ignore_ray_intersection")
+intrinsic("accept_ray_intersection") # Not in SPIR-V; useful for lowering
 intrinsic("terminate_ray")
 # src[] = { sbt_index, payload }
 intrinsic("execute_callable", src_comp=[1, -1])

@@ -111,6 +111,7 @@ void
 brw_nir_lower_raygen(nir_shader *nir)
 {
    assert(nir->info.stage == MESA_SHADER_RAYGEN);
+   NIR_PASS_V(nir, brw_nir_lower_shader_returns);
    lower_rt_scratch(nir);
 }
 
@@ -118,6 +119,7 @@ void
 brw_nir_lower_any_hit(nir_shader *nir, const struct gen_device_info *devinfo)
 {
    assert(nir->info.stage == MESA_SHADER_ANY_HIT);
+   NIR_PASS_V(nir, brw_nir_lower_shader_returns);
    lower_rt_scratch(nir);
 }
 
@@ -125,6 +127,7 @@ void
 brw_nir_lower_closest_hit(nir_shader *nir)
 {
    assert(nir->info.stage == MESA_SHADER_CLOSEST_HIT);
+   NIR_PASS_V(nir, brw_nir_lower_shader_returns);
    lower_rt_scratch(nir);
 }
 
@@ -132,6 +135,7 @@ void
 brw_nir_lower_miss(nir_shader *nir)
 {
    assert(nir->info.stage == MESA_SHADER_MISS);
+   NIR_PASS_V(nir, brw_nir_lower_shader_returns);
    lower_rt_scratch(nir);
 }
 
@@ -139,6 +143,7 @@ void
 brw_nir_lower_callable(nir_shader *nir)
 {
    assert(nir->info.stage == MESA_SHADER_CALLABLE);
+   NIR_PASS_V(nir, brw_nir_lower_shader_returns);
    lower_rt_scratch(nir);
 }
 
@@ -149,5 +154,6 @@ brw_nir_lower_combined_intersection_any_hit(nir_shader *intersection,
 {
    assert(intersection->info.stage == MESA_SHADER_INTERSECTION);
    assert(any_hit == NULL || any_hit->info.stage == MESA_SHADER_ANY_HIT);
+   NIR_PASS_V(intersection, brw_nir_lower_shader_returns);
    lower_rt_scratch(intersection);
 }

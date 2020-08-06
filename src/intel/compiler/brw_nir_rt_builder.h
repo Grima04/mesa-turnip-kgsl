@@ -66,6 +66,50 @@ brw_nir_rt_store_scratch(nir_builder *b, uint32_t offset, unsigned align,
 }
 
 static inline void
+nir_accept_ray_intersection(nir_builder *b)
+{
+   nir_intrinsic_instr *accept =
+      nir_intrinsic_instr_create(b->shader,
+                                 nir_intrinsic_accept_ray_intersection);
+   nir_builder_instr_insert(b, &accept->instr);
+}
+
+static inline void
+brw_nir_btd_spawn(nir_builder *b, nir_ssa_def *record_addr)
+{
+   nir_intrinsic_instr *spawn =
+      nir_intrinsic_instr_create(b->shader,
+                                 nir_intrinsic_btd_spawn_intel);
+   spawn->src[0] = nir_src_for_ssa(nir_load_btd_global_arg_addr_intel(b));
+   spawn->src[1] = nir_src_for_ssa(record_addr);
+   nir_builder_instr_insert(b, &spawn->instr);
+}
+
+static inline void
+brw_nir_btd_retire(nir_builder *b)
+{
+   nir_intrinsic_instr *retire =
+      nir_intrinsic_instr_create(b->shader,
+                                 nir_intrinsic_btd_retire_intel);
+   nir_builder_instr_insert(b, &retire->instr);
+}
+
+/** This is a pseudo-op which does a bindless return
+ *
+ * It loads the return address from the stack and calls btd_spawn to spawn the
+ * resume shader.
+ */
+static inline void
+brw_nir_btd_return(struct nir_builder *b)
+{
+   assert(b->shader->scratch_size == BRW_BTD_STACK_CALLEE_DATA_SIZE);
+   nir_ssa_def *resume_addr =
+      brw_nir_rt_load_scratch(b, BRW_BTD_STACK_RESUME_BSR_ADDR_OFFSET,
+                              8 /* align */, 1, 64);
+   brw_nir_btd_spawn(b, resume_addr);
+}
+
+static inline void
 assert_def_size(nir_ssa_def *def, unsigned num_components, unsigned bit_size)
 {
    assert(def->num_components == num_components);
