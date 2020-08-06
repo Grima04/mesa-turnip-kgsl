@@ -582,21 +582,7 @@ panfrost_frag_meta_zsa_update(struct panfrost_context *ctx,
         int zfunc = PIPE_FUNC_ALWAYS;
 
         if (!zsa) {
-                struct pipe_stencil_state default_stencil = {
-                        .enabled = 0,
-                        .func = PIPE_FUNC_ALWAYS,
-                        .fail_op = PIPE_STENCIL_OP_KEEP,
-                        .zfail_op = PIPE_STENCIL_OP_KEEP,
-                        .zpass_op = PIPE_STENCIL_OP_KEEP,
-                        .writemask = 0xFF,
-                        .valuemask = 0xFF
-                };
-
-                panfrost_make_stencil_state(&default_stencil,
-                                            &fragmeta->stencil_front);
-                fragmeta->stencil_mask_front = default_stencil.writemask;
-                fragmeta->stencil_back = fragmeta->stencil_front;
-                fragmeta->stencil_mask_back = default_stencil.writemask;
+                /* If stenciling is disabled, the state is irrelevant */
                 SET_BIT(fragmeta->unknown2_4, MALI_STENCIL_TEST, false);
                 SET_BIT(fragmeta->unknown2_3, MALI_DEPTH_WRITEMASK, false);
         } else {
