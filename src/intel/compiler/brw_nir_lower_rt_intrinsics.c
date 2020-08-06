@@ -106,6 +106,22 @@ lower_rt_intrinsics_impl(nir_function_impl *impl,
             sysval = globals.num_dss_rt_stacks;
             break;
 
+         case nir_intrinsic_load_ray_hit_sbt_addr_intel:
+            sysval = globals.hit_sbt_addr;
+            break;
+
+         case nir_intrinsic_load_ray_hit_sbt_stride_intel:
+            sysval = globals.hit_sbt_stride;
+            break;
+
+         case nir_intrinsic_load_ray_miss_sbt_addr_intel:
+            sysval = globals.miss_sbt_addr;
+            break;
+
+         case nir_intrinsic_load_ray_miss_sbt_stride_intel:
+            sysval = globals.miss_sbt_stride;
+            break;
+
          case nir_intrinsic_load_callable_sbt_addr_intel:
             sysval = globals.call_sbt_addr;
             break;
