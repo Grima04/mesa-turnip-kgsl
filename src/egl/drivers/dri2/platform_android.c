@@ -858,11 +858,17 @@ droid_create_image_from_prime_fds_yuv(_EGLDisplay *disp, _EGLContext *ctx,
 
 static __DRIimage *
 droid_create_image_from_prime_fds(_EGLDisplay *disp, _EGLContext *ctx,
-                                  struct ANativeWindowBuffer *buf, int num_fds, int fds[3])
+                                  struct ANativeWindowBuffer *buf)
 {
    struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
    int pitches[4] = { 0 }, offsets[4] = { 0 };
    unsigned error;
+   int num_fds;
+   int fds[3];
+
+   num_fds = get_native_buffer_fds(buf, fds);
+   if (num_fds == 0)
+      return NULL;
 
    if (is_yuv(buf->format)) {
       __DRIimage *image;
@@ -1006,9 +1012,6 @@ dri2_create_image_android_native_buffer(_EGLDisplay *disp,
                                         _EGLContext *ctx,
                                         struct ANativeWindowBuffer *buf)
 {
-   int fds[3];
-   unsigned num_fds;
-
    if (ctx != NULL) {
       /* From the EGL_ANDROID_image_native_buffer spec:
        *
@@ -1027,15 +1030,10 @@ dri2_create_image_android_native_buffer(_EGLDisplay *disp,
       return NULL;
    }
 
-   num_fds = get_native_buffer_fds(buf, fds);
-   if (num_fds > 0) {
-      __DRIimage *dri_image =
-         droid_create_image_from_prime_fds(disp, ctx, buf, num_fds, fds);
-      if (!dri_image)
-         return EGL_NO_IMAGE_KHR;
-
+   __DRIimage *dri_image =
+      droid_create_image_from_prime_fds(disp, ctx, buf);
+   if (dri_image)
       return dri2_create_image_from_dri(disp, dri_image);
-   }
 
 #ifdef HAVE_DRM_GRALLOC
    return droid_create_image_from_name(disp, ctx, buf);
