@@ -109,7 +109,7 @@ static void si_dump_shader(struct si_screen *sscreen, struct si_shader *shader, 
 
       const char *mapped = sscreen->ws->buffer_map(
          shader->bo->buf, NULL,
-         PIPE_MAP_UNSYNCHRONIZED | PIPE_MAP_READ | RADEON_TRANSFER_TEMPORARY);
+         PIPE_MAP_UNSYNCHRONIZED | PIPE_MAP_READ | RADEON_MAP_TEMPORARY);
 
       for (unsigned i = 0; i < size; i += 4) {
          fprintf(f, " %4x: %08x\n", i, *(uint32_t *)(mapped + i));

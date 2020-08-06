@@ -370,7 +370,7 @@ void *amdgpu_bo_map(struct pb_buffer *buf,
       offset = bo->va - real->va;
    }
 
-   if (usage & RADEON_TRANSFER_TEMPORARY) {
+   if (usage & RADEON_MAP_TEMPORARY) {
       if (real->is_user_ptr) {
          cpu = real->cpu_ptr;
       } else {
@@ -412,7 +412,7 @@ void amdgpu_bo_unmap(struct pb_buffer *buf)
    assert(real->u.real.map_count != 0 && "too many unmaps");
    if (p_atomic_dec_zero(&real->u.real.map_count)) {
       assert(!real->cpu_ptr &&
-             "too many unmaps or forgot RADEON_TRANSFER_TEMPORARY flag");
+             "too many unmaps or forgot RADEON_MAP_TEMPORARY flag");
 
       if (real->initial_domain & RADEON_DOMAIN_VRAM)
          real->ws->mapped_vram -= real->base.size;

@@ -899,7 +899,7 @@ bool si_shader_binary_upload(struct si_screen *sscreen, struct si_shader *shader
    u.rx_va = shader->bo->gpu_address;
    u.rx_ptr = sscreen->ws->buffer_map(
       shader->bo->buf, NULL,
-      PIPE_MAP_READ_WRITE | PIPE_MAP_UNSYNCHRONIZED | RADEON_TRANSFER_TEMPORARY);
+      PIPE_MAP_READ_WRITE | PIPE_MAP_UNSYNCHRONIZED | RADEON_MAP_TEMPORARY);
    if (!u.rx_ptr)
       return false;
 

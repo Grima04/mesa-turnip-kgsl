@@ -247,7 +247,7 @@ static void radeon_uvd_enc_get_feedback(struct pipe_video_codec *encoder, void *
 
    if (NULL != size) {
       radeon_uvd_enc_feedback_t *fb_data = (radeon_uvd_enc_feedback_t *)enc->ws->buffer_map(
-         fb->res->buf, enc->cs, PIPE_MAP_READ_WRITE | RADEON_TRANSFER_TEMPORARY);
+         fb->res->buf, enc->cs, PIPE_MAP_READ_WRITE | RADEON_MAP_TEMPORARY);
 
       if (!fb_data->status)
          *size = fb_data->bitstream_size;

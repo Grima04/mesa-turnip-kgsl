@@ -1738,7 +1738,7 @@ static void *si_texture_transfer_map(struct pipe_context *ctx, struct pipe_resou
     * we don't run out of the CPU address space.
     */
    if (sizeof(void *) == 4)
-      usage |= RADEON_TRANSFER_TEMPORARY;
+      usage |= RADEON_MAP_TEMPORARY;
 
    if (!(map = si_buffer_map_sync_with_rings(sctx, buf, usage)))
       goto fail_trans;

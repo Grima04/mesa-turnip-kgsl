@@ -94,14 +94,14 @@ enum radeon_bo_usage
   RADEON_USAGE_SYNCHRONIZED = 8
 };
 
-enum radeon_transfer_flags
+enum radeon_map_flags
 {
    /* Indicates that the caller will unmap the buffer.
     *
     * Not unmapping buffers is an important performance optimization for
     * OpenGL (avoids kernel overhead for frequently mapped buffers).
     */
-   RADEON_TRANSFER_TEMPORARY = (PIPE_MAP_DRV_PRV << 0),
+   RADEON_MAP_TEMPORARY = (PIPE_MAP_DRV_PRV << 0),
 };
 
 #define RADEON_SPARSE_PAGE_SIZE (64 * 1024)
@@ -306,11 +306,11 @@ struct radeon_winsys {
     * space.
     *
     * Callers are expected to unmap buffers again if and only if the
-    * RADEON_TRANSFER_TEMPORARY flag is set in \p usage.
+    * RADEON_MAP_TEMPORARY flag is set in \p usage.
     *
     * \param buf       A winsys buffer object to map.
     * \param cs        A command stream to flush if the buffer is referenced by it.
-    * \param usage     A bitmask of the PIPE_MAP_* and RADEON_TRANSFER_* flags.
+    * \param usage     A bitmask of the PIPE_MAP_* and RADEON_MAP_* flags.
     * \return          The pointer at the beginning of the buffer.
     */
    void *(*buffer_map)(struct pb_buffer *buf, struct radeon_cmdbuf *cs,

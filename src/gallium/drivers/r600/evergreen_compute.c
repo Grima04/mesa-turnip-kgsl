@@ -458,7 +458,7 @@ static void *evergreen_create_compute_state(struct pipe_context *ctx,
 							shader->bc.ndw * 4);
 	p = r600_buffer_map_sync_with_rings(
 		&rctx->b, shader->code_bo,
-		PIPE_MAP_WRITE | RADEON_TRANSFER_TEMPORARY);
+		PIPE_MAP_WRITE | RADEON_MAP_TEMPORARY);
 	//TODO: use util_memcpy_cpu_to_le32 ?
 	memcpy(p, shader->bc.bytecode, shader->bc.ndw * 4);
 	rctx->b.ws->buffer_unmap(shader->code_bo->buf);

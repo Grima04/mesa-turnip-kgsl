@@ -1054,7 +1054,7 @@ amdgpu_cs_setup_preemption(struct radeon_cmdbuf *rcs, const uint32_t *preamble_i
       return false;
 
    map = (uint32_t*)amdgpu_bo_map(preamble_bo, NULL,
-                                  PIPE_MAP_WRITE | RADEON_TRANSFER_TEMPORARY);
+                                  PIPE_MAP_WRITE | RADEON_MAP_TEMPORARY);
    if (!map) {
       pb_reference(&preamble_bo, NULL);
       return false;

@@ -346,7 +346,7 @@ static void rvce_get_feedback(struct pipe_video_codec *encoder, void *feedback, 
 
    if (size) {
       uint32_t *ptr = enc->ws->buffer_map(fb->res->buf, enc->cs,
-                                          PIPE_MAP_READ_WRITE | RADEON_TRANSFER_TEMPORARY);
+                                          PIPE_MAP_READ_WRITE | RADEON_MAP_TEMPORARY);
 
       if (ptr[1]) {
          *size = ptr[4] - ptr[9];
