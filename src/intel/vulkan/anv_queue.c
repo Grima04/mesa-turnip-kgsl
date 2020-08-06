@@ -405,14 +405,14 @@ anv_queue_submit_add_fence_bo(struct anv_queue_submit *submit,
 {
    if (submit->fence_bo_count >= submit->fence_bo_array_length) {
       uint32_t new_len = MAX2(submit->fence_bo_array_length * 2, 64);
-
-      submit->fence_bos =
+      uintptr_t *new_fence_bos =
          vk_realloc(submit->alloc,
                     submit->fence_bos, new_len * sizeof(*submit->fence_bos),
                     8, submit->alloc_scope);
-      if (submit->fence_bos == NULL)
+      if (new_fence_bos == NULL)
          return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
 
+      submit->fence_bos = new_fence_bos;
       submit->fence_bo_array_length = new_len;
    }
 
@@ -433,14 +433,14 @@ anv_queue_submit_add_syncobj(struct anv_queue_submit* submit,
 
    if (submit->fence_count >= submit->fence_array_length) {
       uint32_t new_len = MAX2(submit->fence_array_length * 2, 64);
-
-      submit->fences =
+      struct drm_i915_gem_exec_fence *new_fences =
          vk_realloc(submit->alloc,
                     submit->fences, new_len * sizeof(*submit->fences),
                     8, submit->alloc_scope);
-      if (submit->fences == NULL)
+      if (new_fences == NULL)
          return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
 
+      submit->fences = new_fences;
       submit->fence_array_length = new_len;
    }
 
@@ -483,20 +483,23 @@ anv_queue_submit_add_timeline_wait(struct anv_queue_submit* submit,
 {
    if (submit->wait_timeline_count >= submit->wait_timeline_array_length) {
       uint32_t new_len = MAX2(submit->wait_timeline_array_length * 2, 64);
-
-      submit->wait_timelines =
+      struct anv_timeline **new_wait_timelines =
          vk_realloc(submit->alloc,
                     submit->wait_timelines, new_len * sizeof(*submit->wait_timelines),
                     8, submit->alloc_scope);
-      if (submit->wait_timelines == NULL)
+      if (new_wait_timelines == NULL)
          return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
 
-      submit->wait_timeline_values =
+      submit->wait_timelines = new_wait_timelines;
+
+      uint64_t *new_wait_timeline_values =
          vk_realloc(submit->alloc,
                     submit->wait_timeline_values, new_len * sizeof(*submit->wait_timeline_values),
                     8, submit->alloc_scope);
-      if (submit->wait_timeline_values == NULL)
+      if (new_wait_timeline_values == NULL)
          return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
+
+      submit->wait_timeline_values = new_wait_timeline_values;
 
       submit->wait_timeline_array_length = new_len;
    }
@@ -519,20 +522,23 @@ anv_queue_submit_add_timeline_signal(struct anv_queue_submit* submit,
 
    if (submit->signal_timeline_count >= submit->signal_timeline_array_length) {
       uint32_t new_len = MAX2(submit->signal_timeline_array_length * 2, 64);
-
-      submit->signal_timelines =
+      struct anv_timeline **new_signal_timelines =
          vk_realloc(submit->alloc,
                     submit->signal_timelines, new_len * sizeof(*submit->signal_timelines),
                     8, submit->alloc_scope);
-      if (submit->signal_timelines == NULL)
+      if (new_signal_timelines == NULL)
             return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
 
-      submit->signal_timeline_values =
+      submit->signal_timelines = new_signal_timelines;
+
+      uint64_t *new_signal_timeline_values =
          vk_realloc(submit->alloc,
                     submit->signal_timeline_values, new_len * sizeof(*submit->signal_timeline_values),
                     8, submit->alloc_scope);
-      if (submit->signal_timeline_values == NULL)
+      if (new_signal_timeline_values == NULL)
          return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
+
+      submit->signal_timeline_values = new_signal_timeline_values;
 
       submit->signal_timeline_array_length = new_len;
    }
