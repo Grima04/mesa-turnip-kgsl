@@ -84,6 +84,7 @@ pages:
   artifacts:
     paths:
     - public
+  needs: []
   rules:
     - *ignore_scheduled_pipelines
     - if: *is-main-master
