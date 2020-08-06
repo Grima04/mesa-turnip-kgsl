@@ -159,13 +159,6 @@ enum mali_channel {
 	MALI_CHANNEL_RESERVED_1 = 7,
 };
 
-struct mali_channel_swizzle {
-	enum mali_channel r : 3;
-	enum mali_channel g : 3;
-	enum mali_channel b : 3;
-	enum mali_channel a : 3;
-} __attribute__((packed));
-
 /* Compressed per-pixel formats. Each of these formats expands to one to four
  * floating-point or integer numbers, as defined by the OpenGL specification.
  * There are various places in OpenGL where the user can specify a compressed
