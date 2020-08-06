@@ -769,18 +769,19 @@ droid_swap_buffers(_EGLDisplay *disp, _EGLSurface *draw)
    return EGL_TRUE;
 }
 
-static _EGLImage *
+static __DRIimage *
 droid_create_image_from_prime_fds_yuv(_EGLDisplay *disp, _EGLContext *ctx,
                                      struct ANativeWindowBuffer *buf,
                                      int num_fds, int fds[3])
 {
    struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
    struct android_ycbcr ycbcr;
-   size_t offsets[3];
-   size_t pitches[3];
+   int offsets[3];
+   int pitches[3];
    enum chroma_order chroma_order;
    int fourcc;
    int ret;
+   unsigned error;
 
    if (!dri2_dpy->gralloc->lock_ycbcr) {
       _eglLog(_EGL_WARNING, "Gralloc does not support lock_ycbcr");
@@ -844,52 +845,27 @@ droid_create_image_from_prime_fds_yuv(_EGLDisplay *disp, _EGLContext *ctx,
       assert(num_fds == expected_planes);
    }
 
-   if (ycbcr.chroma_step == 2) {
-      /* Semi-planar Y + CbCr or Y + CrCb format. */
-      const EGLint attr_list_2plane[] = {
-         EGL_WIDTH, buf->width,
-         EGL_HEIGHT, buf->height,
-         EGL_LINUX_DRM_FOURCC_EXT, fourcc,
-         EGL_DMA_BUF_PLANE0_FD_EXT, fds[0],
-         EGL_DMA_BUF_PLANE0_PITCH_EXT, pitches[0],
-         EGL_DMA_BUF_PLANE0_OFFSET_EXT, offsets[0],
-         EGL_DMA_BUF_PLANE1_FD_EXT, fds[1],
-         EGL_DMA_BUF_PLANE1_PITCH_EXT, pitches[1],
-         EGL_DMA_BUF_PLANE1_OFFSET_EXT, offsets[1],
-         EGL_NONE, 0
-      };
-
-      return dri2_create_image_dma_buf(disp, ctx, NULL, attr_list_2plane);
-   } else {
-      /* Fully planar Y + Cb + Cr or Y + Cr + Cb format. */
-      const EGLint attr_list_3plane[] = {
-         EGL_WIDTH, buf->width,
-         EGL_HEIGHT, buf->height,
-         EGL_LINUX_DRM_FOURCC_EXT, fourcc,
-         EGL_DMA_BUF_PLANE0_FD_EXT, fds[0],
-         EGL_DMA_BUF_PLANE0_PITCH_EXT, pitches[0],
-         EGL_DMA_BUF_PLANE0_OFFSET_EXT, offsets[0],
-         EGL_DMA_BUF_PLANE1_FD_EXT, fds[1],
-         EGL_DMA_BUF_PLANE1_PITCH_EXT, pitches[1],
-         EGL_DMA_BUF_PLANE1_OFFSET_EXT, offsets[1],
-         EGL_DMA_BUF_PLANE2_FD_EXT, fds[2],
-         EGL_DMA_BUF_PLANE2_PITCH_EXT, pitches[2],
-         EGL_DMA_BUF_PLANE2_OFFSET_EXT, offsets[2],
-         EGL_NONE, 0
-      };
-
-      return dri2_create_image_dma_buf(disp, ctx, NULL, attr_list_3plane);
-   }
+   return dri2_dpy->image->createImageFromDmaBufs(dri2_dpy->dri_screen,
+      buf->width, buf->height, fourcc,
+      fds, num_fds, pitches, offsets,
+      EGL_ITU_REC601_EXT,
+      EGL_YUV_NARROW_RANGE_EXT,
+      EGL_YUV_CHROMA_SITING_0_EXT,
+      EGL_YUV_CHROMA_SITING_0_EXT,
+      &error,
+      NULL);
 }
 
-static _EGLImage *
+static __DRIimage *
 droid_create_image_from_prime_fds(_EGLDisplay *disp, _EGLContext *ctx,
                                   struct ANativeWindowBuffer *buf, int num_fds, int fds[3])
 {
-   unsigned int pitch;
+   struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
+   int pitches[4] = { 0 }, offsets[4] = { 0 };
+   unsigned error;
 
    if (is_yuv(buf->format)) {
-      _EGLImage *image;
+      __DRIimage *image;
 
       image = droid_create_image_from_prime_fds_yuv(disp, ctx, buf, num_fds, fds);
       /*
@@ -916,23 +892,21 @@ droid_create_image_from_prime_fds(_EGLDisplay *disp, _EGLContext *ctx,
       return NULL;
    }
 
-   pitch = buf->stride * get_format_bpp(buf->format);
-   if (pitch == 0) {
+   pitches[0] = buf->stride * get_format_bpp(buf->format);
+   if (pitches[0] == 0) {
       _eglError(EGL_BAD_PARAMETER, "eglCreateEGLImageKHR");
       return NULL;
    }
 
-   const EGLint attr_list[] = {
-      EGL_WIDTH, buf->width,
-      EGL_HEIGHT, buf->height,
-      EGL_LINUX_DRM_FOURCC_EXT, fourcc,
-      EGL_DMA_BUF_PLANE0_FD_EXT, fds[0],
-      EGL_DMA_BUF_PLANE0_PITCH_EXT, pitch,
-      EGL_DMA_BUF_PLANE0_OFFSET_EXT, 0,
-      EGL_NONE, 0
-   };
-
-   return dri2_create_image_dma_buf(disp, ctx, NULL, attr_list);
+   return dri2_dpy->image->createImageFromDmaBufs(dri2_dpy->dri_screen,
+      buf->width, buf->height, fourcc,
+      fds, num_fds, pitches, offsets,
+      EGL_ITU_REC601_EXT,
+      EGL_YUV_NARROW_RANGE_EXT,
+      EGL_YUV_CHROMA_SITING_0_EXT,
+      EGL_YUV_CHROMA_SITING_0_EXT,
+      &error,
+      NULL);
 }
 
 #ifdef HAVE_DRM_GRALLOC
@@ -1054,8 +1028,14 @@ dri2_create_image_android_native_buffer(_EGLDisplay *disp,
    }
 
    num_fds = get_native_buffer_fds(buf, fds);
-   if (num_fds > 0)
-      return droid_create_image_from_prime_fds(disp, ctx, buf, num_fds, fds);
+   if (num_fds > 0) {
+      __DRIimage *dri_image =
+         droid_create_image_from_prime_fds(disp, ctx, buf, num_fds, fds);
+      if (!dri_image)
+         return EGL_NO_IMAGE_KHR;
+
+      return dri2_create_image_from_dri(disp, dri_image);
+   }
 
 #ifdef HAVE_DRM_GRALLOC
    return droid_create_image_from_name(disp, ctx, buf);

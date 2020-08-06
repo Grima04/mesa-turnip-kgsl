@@ -2201,7 +2201,7 @@ dri2_create_image(_EGLDisplay *disp, _EGLContext *ctx, EGLenum target,
                                        attr_list);
 }
 
-static _EGLImage *
+_EGLImage *
 dri2_create_image_from_dri(_EGLDisplay *disp, __DRIimage *dri_image)
 {
    struct dri2_egl_image *dri2_img;
