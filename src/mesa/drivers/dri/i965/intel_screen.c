@@ -91,6 +91,7 @@ DRI_CONF_BEGIN
       DRI_CONF_ALLOW_HIGHER_COMPAT_VERSION("false")
       DRI_CONF_FORCE_COMPAT_PROFILE("false")
       DRI_CONF_FORCE_GLSL_ABS_SQRT("false")
+      DRI_CONF_FORCE_GL_VENDOR()
 
       DRI_CONF_OPT_BEGIN_B(shader_precompile, "true")
 	 DRI_CONF_DESC("Perform code generation at shader link time.")
