@@ -502,7 +502,7 @@ RegisterDemand init_live_in_vars(spill_ctx& ctx, Block* block, unsigned block_id
       for (std::pair<Temp, uint32_t> pair : ctx.spills_exit[pred_idx]) {
          if (pair.first.type() == RegType::sgpr &&
              ctx.next_use_distances_start[block_idx].find(pair.first) != ctx.next_use_distances_start[block_idx].end() &&
-             ctx.next_use_distances_start[block_idx][pair.first].second > block_idx) {
+             ctx.next_use_distances_start[block_idx][pair.first].first != block_idx) {
             ctx.spills_entry[block_idx].insert(pair);
             spilled_registers.sgpr += pair.first.size();
          }
@@ -512,7 +512,7 @@ RegisterDemand init_live_in_vars(spill_ctx& ctx, Block* block, unsigned block_id
          for (std::pair<Temp, uint32_t> pair : ctx.spills_exit[pred_idx]) {
             if (pair.first.type() == RegType::vgpr &&
                 ctx.next_use_distances_start[block_idx].find(pair.first) != ctx.next_use_distances_start[block_idx].end() &&
-                ctx.next_use_distances_start[block_idx][pair.first].second > block_idx) {
+                ctx.next_use_distances_start[block_idx][pair.first].first != block_idx) {
                ctx.spills_entry[block_idx].insert(pair);
                spilled_registers.vgpr += pair.first.size();
             }
