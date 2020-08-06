@@ -258,6 +258,7 @@ const nir_shader_compiler_options v3dv_nir_options = {
    .lower_to_scalar = true,
    .vertex_id_zero_based = false, /* FIXME: to set this to true, the intrinsic
                                    * needs to be supported */
+   .lower_interpolate_at = true,
 };
 
 const nir_shader_compiler_options *
