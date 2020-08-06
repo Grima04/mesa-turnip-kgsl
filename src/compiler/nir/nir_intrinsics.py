@@ -1096,3 +1096,9 @@ system_value("btd_local_arg_addr_intel", 1, bit_sizes=[64])
 intrinsic("btd_spawn_intel", src_comp=[1, 1])
 # src[] = { }
 intrinsic("btd_retire_intel")
+
+# System values used for ray-tracing on Intel
+system_value("ray_base_mem_addr_intel", 1, bit_sizes=[64])
+system_value("ray_hw_stack_size_intel", 1)
+system_value("ray_sw_stack_size_intel", 1)
+system_value("ray_num_dss_rt_stacks_intel", 1)

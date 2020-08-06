@@ -96,6 +96,7 @@ COMPILER_FILES = \
 	compiler/brw_nir_lower_mem_access_bit_sizes.c \
 	compiler/brw_nir_lower_scoped_barriers.c \
 	compiler/brw_nir_opt_peephole_ffma.c \
+	compiler/brw_nir_rt_builder.h \
 	compiler/brw_nir_tcs_workarounds.c \
 	compiler/brw_packed_float.c \
 	compiler/brw_predicated_break.cpp \
