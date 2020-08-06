@@ -214,7 +214,7 @@ DRI_CONF_OPT_END
 
 #define DRI_CONF_FORCE_GL_VENDOR(def) \
 DRI_CONF_OPT_BEGIN(force_gl_vendor, string, def) \
-        DRI_CONF_DESC("Allow GPU vendor to be overridden.") \
+        DRI_CONF_DESC("Override GPU vendor string.") \
 DRI_CONF_OPT_END
 
 #define DRI_CONF_FORCE_COMPAT_PROFILE(def) \
