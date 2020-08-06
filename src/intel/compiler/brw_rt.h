@@ -59,6 +59,23 @@ enum brw_rt_hit_kind {
    BRW_RT_HIT_KIND_BACK_FACE = 0xff,
 };
 
+/** Ray flags
+ *
+ * This enum must match the SPIR-V RayFlags enum.
+ */
+enum brw_rt_ray_flags {
+   BRW_RT_RAY_FLAG_FORCE_OPAQUE                    = 0x01,
+   BRW_RT_RAY_FLAG_FORCE_NON_OPAQUE                = 0x02,
+   BRW_RT_RAY_FLAG_TERMINATE_ON_FIRST_HIT          = 0x04,
+   BRW_RT_RAY_FLAG_SKIP_CLOSEST_HIT_SHADER         = 0x08,
+   BRW_RT_RAY_FLAG_CULL_BACK_FACING_TRIANGLES      = 0x10,
+   BRW_RT_RAY_FLAG_CULL_FRONT_FACING_TRIANGLES     = 0x20,
+   BRW_RT_RAY_FLAG_CULL_OPAQUE                     = 0x40,
+   BRW_RT_RAY_FLAG_CULL_NON_OPAQUE                 = 0x80,
+   BRW_RT_RAY_FLAG_SKIP_TRIANGLES                  = 0x100,
+   BRW_RT_RAY_FLAG_SKIP_AABBS                      = 0x200,
+};
+
 struct brw_rt_scratch_layout {
    /** Number of stack IDs per DSS */
    uint32_t stack_ids_per_dss;

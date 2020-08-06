@@ -187,6 +187,133 @@ lower_rt_io_and_scratch(nir_shader *nir)
               nir_address_format_64bit_global);
 }
 
+static void
+build_terminate_ray(nir_builder *b)
+{
+   nir_ssa_def *skip_closest_hit =
+      nir_i2b(b, nir_iand_imm(b, nir_load_ray_flags(b),
+                              BRW_RT_RAY_FLAG_SKIP_CLOSEST_HIT_SHADER));
+   nir_push_if(b, skip_closest_hit);
+   {
+      /* The shader that calls traceRay() is unable to access any ray hit
+       * information except for that which is explicitly written into the ray
+       * payload by shaders invoked during the trace.  If there's no closest-
+       * hit shader, then accepting the hit has no observable effect; it's
+       * just extra memory traffic for no reason.
+       */
+      brw_nir_btd_return(b);
+      nir_jump(b, nir_jump_halt);
+   }
+   nir_push_else(b, NULL);
+   {
+      /* The closest hit shader is in the same shader group as the any-hit
+       * shader that we're currently in.  We can get the address for its SBT
+       * handle by looking at the shader record pointer and subtracting the
+       * size of a SBT handle.  The BINDLESS_SHADER_RECORD for a closest hit
+       * shader is the first one in the SBT handle.
+       */
+      nir_ssa_def *closest_hit =
+         nir_iadd_imm(b, nir_load_shader_record_ptr(b),
+                        -BRW_RT_SBT_HANDLE_SIZE);
+
+      brw_nir_rt_commit_hit(b);
+      brw_nir_btd_spawn(b, closest_hit);
+      nir_jump(b, nir_jump_halt);
+   }
+   nir_pop_if(b, NULL);
+}
+
+/** Lowers away ray walk intrinsics
+ *
+ * This lowers terminate_ray, ignore_ray_intersection, and the NIR-specific
+ * accept_ray_intersection intrinsics to the appropriate Intel-specific
+ * intrinsics.
+ */
+static bool
+lower_ray_walk_intrinsics(nir_shader *shader,
+                          const struct gen_device_info *devinfo)
+{
+   assert(shader->info.stage == MESA_SHADER_ANY_HIT ||
+          shader->info.stage == MESA_SHADER_INTERSECTION);
+
+   nir_function_impl *impl = nir_shader_get_entrypoint(shader);
+
+   nir_builder b;
+   nir_builder_init(&b, impl);
+
+   bool progress = false;
+   nir_foreach_block_safe(block, impl) {
+      nir_foreach_instr_safe(instr, block) {
+         if (instr->type != nir_instr_type_intrinsic)
+            continue;
+
+         nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
+
+         switch (intrin->intrinsic) {
+         case nir_intrinsic_ignore_ray_intersection: {
+            b.cursor = nir_instr_remove(&intrin->instr);
+
+            /* We put the newly emitted code inside a dummy if because it's
+             * going to contain a jump instruction and we don't want to deal
+             * with that mess here.  It'll get dealt with by our control-flow
+             * optimization passes.
+             */
+            nir_push_if(&b, nir_imm_true(&b));
+            nir_intrinsic_instr *ray_continue =
+               nir_intrinsic_instr_create(b.shader,
+                                          nir_intrinsic_trace_ray_continue_intel);
+            nir_builder_instr_insert(&b, &ray_continue->instr);
+            nir_jump(&b, nir_jump_halt);
+            nir_pop_if(&b, NULL);
+            progress = true;
+            break;
+         }
+
+         case nir_intrinsic_accept_ray_intersection: {
+            b.cursor = nir_instr_remove(&intrin->instr);
+
+            nir_ssa_def *terminate =
+               nir_i2b(&b, nir_iand_imm(&b, nir_load_ray_flags(&b),
+                                        BRW_RT_RAY_FLAG_TERMINATE_ON_FIRST_HIT));
+            nir_push_if(&b, terminate);
+            {
+               build_terminate_ray(&b);
+            }
+            nir_push_else(&b, NULL);
+            {
+               nir_intrinsic_instr *ray_commit =
+                  nir_intrinsic_instr_create(b.shader,
+                                             nir_intrinsic_trace_ray_commit_intel);
+               nir_builder_instr_insert(&b, &ray_commit->instr);
+               nir_jump(&b, nir_jump_halt);
+            }
+            nir_pop_if(&b, NULL);
+            progress = true;
+            break;
+         }
+
+         case nir_intrinsic_terminate_ray: {
+            b.cursor = nir_instr_remove(&intrin->instr);
+            build_terminate_ray(&b);
+            progress = true;
+            break;
+         }
+
+         default:
+            break;
+         }
+      }
+   }
+
+   if (progress) {
+      nir_metadata_preserve(impl, nir_metadata_none);
+   } else {
+      nir_metadata_preserve(impl, nir_metadata_all);
+   }
+
+   return progress;
+}
+
 void
 brw_nir_lower_raygen(nir_shader *nir)
 {
@@ -200,6 +327,7 @@ brw_nir_lower_any_hit(nir_shader *nir, const struct gen_device_info *devinfo)
 {
    assert(nir->info.stage == MESA_SHADER_ANY_HIT);
    NIR_PASS_V(nir, brw_nir_lower_shader_returns);
+   NIR_PASS_V(nir, lower_ray_walk_intrinsics, devinfo);
    lower_rt_io_and_scratch(nir);
 }
 

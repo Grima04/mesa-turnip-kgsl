@@ -341,6 +341,34 @@ brw_nir_rt_load_mem_hit(nir_builder *b,
       brw_nir_rt_unpack_leaf_ptr(b, nir_channels(b, data, 0x3 << 2));
 }
 
+static inline void
+brw_nir_memcpy_global(nir_builder *b,
+                      nir_ssa_def *dst_addr, uint32_t dst_align,
+                      nir_ssa_def *src_addr, uint32_t src_align,
+                      uint32_t size)
+{
+   /* We're going to copy in 16B chunks */
+   assert(size % 16 == 0);
+   dst_align = MIN2(dst_align, 16);
+   src_align = MIN2(src_align, 16);
+
+   for (unsigned offset = 0; offset < size; offset += 16) {
+      nir_ssa_def *data =
+         nir_load_global(b, nir_iadd_imm(b, src_addr, offset), src_align,
+                         4, 32);
+      nir_store_global(b, nir_iadd_imm(b, dst_addr, offset), dst_align,
+                       data, 0xf /* write_mask */);
+   }
+}
+
+static inline void
+brw_nir_rt_commit_hit(nir_builder *b)
+{
+   brw_nir_memcpy_global(b, brw_nir_rt_mem_hit_addr(b, true), 16,
+                            brw_nir_rt_mem_hit_addr(b, false), 16,
+                            BRW_RT_SIZEOF_HIT_INFO);
+}
+
 struct brw_nir_rt_mem_ray_defs {
    nir_ssa_def *orig;
    nir_ssa_def *dir;

@@ -292,6 +292,25 @@ lower_rt_intrinsics_impl(nir_function_impl *impl,
             sysval = globals.resume_sbt_addr;
             break;
 
+         case nir_intrinsic_load_leaf_procedural_intel:
+            sysval = build_leaf_is_procedural(b, &hit_in);
+            break;
+
+         case nir_intrinsic_load_leaf_opaque_intel: {
+            if (stage == MESA_SHADER_INTERSECTION) {
+               /* In intersection shaders, the opaque bit is passed to us in
+                * the front_face bit.
+                */
+               sysval = hit_in.front_face;
+            } else {
+               nir_ssa_def *flags_dw =
+                  nir_load_global(b, nir_iadd_imm(b, hit_in.prim_leaf_ptr, 4), 4,
+                                  1, 32);
+               sysval = nir_i2b(b, nir_iand_imm(b, flags_dw, 1u << 30));
+            }
+            break;
+         }
+
          default:
             continue;
          }
