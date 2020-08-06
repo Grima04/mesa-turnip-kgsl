@@ -656,6 +656,9 @@ nir_cf_list_clone(nir_cf_list *dst, nir_cf_list *src, nir_cf_node *parent,
    clone_cf_list(&state, &dst->list, &src->list);
 
    fixup_phi_srcs(&state);
+
+   if (!remap_table)
+      free_clone_state(&state);
 }
 
 static nir_function_impl *
