@@ -18,6 +18,7 @@ include:
 stages:
   - container
   - container-2
+  - sanity
   - git-archive
   - deploy
   - meson-x86_64
@@ -462,6 +463,11 @@ git_archive:
   rules:
     - if: *is-scheduled-pipeline
       when: always
+    - if: *is-pre-merge
+      when: on_success
+    - if: *is-forked-branch
+      when: manual
+    # Other cases default to never
   variables:
     FDO_REPO_SUFFIX: &git-archive-suffix "alpine/git_archive"
     FDO_DISTRIBUTION_EXEC: 'pip3 install git+http://gitlab.freedesktop.org/freedesktop/ci-templates@6f5af7e5574509726c79109e3c147cee95e81366'
@@ -470,24 +476,26 @@ git_archive:
     FDO_DISTRIBUTION_TAG: &git-archive-tag "2020-07-07"
     FDO_DISTRIBUTION_PACKAGES: git py3-pip
 
-
-# Git archive
-
-make git archive:
-  stage: git-archive
+.use-git_archive:
   extends: .fdo.suffixed-image@alpine
-  rules:
-    - if: *is-scheduled-pipeline
-      when: on_success
-  # ensure we are running on packet
-  tags:
-    - packet.net
   variables:
     FDO_DISTRIBUTION_TAG: *git-archive-tag
     FDO_REPO_SUFFIX: *git-archive-suffix
   needs:
     - git_archive
 
+
+# Git archive
+
+make git archive:
+  extends: .use-git_archive
+  stage: git-archive
+  rules:
+    - if: *is-scheduled-pipeline
+      when: on_success
+  # ensure we are running on packet
+  tags:
+    - packet.net
   script:
     # compress the current folder
     - tar -cvzf ../$CI_PROJECT_NAME.tar.gz .
@@ -495,6 +503,38 @@ make git archive:
     # login with the JWT token
     - ci-fairy minio login $CI_JOB_JWT
     - ci-fairy minio cp ../$CI_PROJECT_NAME.tar.gz minio://minio-packet.freedesktop.org/git-cache/$CI_PROJECT_NAMESPACE/$CI_PROJECT_NAME/$CI_PROJECT_NAME.tar.gz
+
+
+# Sanity checks of MR settings and commit logs
+.sanity-check:
+  extends: .use-git_archive
+  stage: sanity
+  artifacts:
+    when: on_failure
+    reports:
+      junit: check-*.xml
+
+check mr:
+  extends: .sanity-check
+  rules:
+    - if: *is-pre-merge
+      when: on_success
+    # Other cases default to never
+  variables:
+    GIT_STRATEGY: none
+  script:
+    - ci-fairy check-merge-request --require-allow-collaboration --junit-xml=check-merge-request.xml
+
+check commits:
+  extends: .sanity-check
+  rules:
+    - if: *is-pre-merge
+      when: on_success
+    - if: *is-forked-branch
+      when: manual
+    # Other cases default to never
+  script:
+    - ci-fairy check-commits --junit-xml=check-commits.xml
 
 
 # BUILD
