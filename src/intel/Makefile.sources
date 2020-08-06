@@ -102,6 +102,7 @@ COMPILER_FILES = \
 	compiler/brw_reg.h \
 	compiler/brw_reg_type.c \
 	compiler/brw_reg_type.h \
+	compiler/brw_rt.h \
 	compiler/brw_schedule_instructions.cpp \
 	compiler/brw_shader.cpp \
 	compiler/brw_shader.h \

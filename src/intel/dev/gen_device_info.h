@@ -294,6 +294,12 @@ gen_device_info_eu_available(const struct gen_device_info *devinfo,
    return (devinfo->eu_masks[subslice_offset + eu / 8] & (1U << eu % 8)) != 0;
 }
 
+static inline unsigned
+gen_device_info_num_dual_subslices(const struct gen_device_info *devinfo)
+{
+   unreachable("TODO");
+}
+
 int gen_device_name_to_pci_device_id(const char *name);
 const char *gen_get_device_name(int devid);
 

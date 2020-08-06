@@ -94,6 +94,7 @@ libintel_compiler_files = files(
   'brw_reg.h',
   'brw_reg_type.c',
   'brw_reg_type.h',
+  'brw_rt.h',
   'brw_schedule_instructions.cpp',
   'brw_shader.cpp',
   'brw_shader.h',
