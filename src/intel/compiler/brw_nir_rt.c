@@ -363,5 +363,8 @@ brw_nir_lower_combined_intersection_any_hit(nir_shader *intersection,
    assert(intersection->info.stage == MESA_SHADER_INTERSECTION);
    assert(any_hit == NULL || any_hit->info.stage == MESA_SHADER_ANY_HIT);
    NIR_PASS_V(intersection, brw_nir_lower_shader_returns);
+   NIR_PASS_V(intersection, brw_nir_lower_intersection_shader,
+              any_hit, devinfo);
+   NIR_PASS_V(intersection, lower_ray_walk_intrinsics, devinfo);
    lower_rt_io_and_scratch(intersection);
 }

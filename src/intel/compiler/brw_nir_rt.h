@@ -59,6 +59,9 @@ bool brw_nir_lower_shader_calls(nir_shader *shader,
 
 void brw_nir_lower_rt_intrinsics(nir_shader *shader,
                                  const struct gen_device_info *devinfo);
+void brw_nir_lower_intersection_shader(nir_shader *intersection,
+                                       const nir_shader *any_hit,
+                                       const struct gen_device_info *devinfo);
 
 nir_shader *
 brw_nir_create_trivial_return_shader(const struct brw_compiler *compiler,

@@ -84,7 +84,8 @@ brw_nir_lower_shader_returns(nir_shader *shader)
          break;
 
       case MESA_SHADER_INTERSECTION:
-         unreachable("TODO");
+         /* This will be handled by brw_nir_lower_intersection_shader */
+         break;
 
       default:
          unreachable("Invalid callable shader stage");
