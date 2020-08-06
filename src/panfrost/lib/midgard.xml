@@ -60,6 +60,15 @@
     <value name="Mirrored Clamp to Border" value="15"/>
   </enum>
 
+  <struct name="Stencil">
+    <field name="Reference Value" size="8" start="0" type="uint"/>
+    <field name="Mask" size="8" start="8" type="uint" default="0xFF"/>
+    <field name="Compare Function" size="3" start="16" type="Func"/>
+    <field name="Stencil Fail" size="3" start="19" type="Stencil Op"/>
+    <field name="Depth Fail" size="3" start="22" type="Stencil Op"/>
+    <field name="Depth Pass" size="3" start="25" type="Stencil Op"/>
+  </struct>
+
   <struct name="Uniform Buffer">
     <field name="Entries" size="12" start="0" type="uint" modifier="minus(1)"/>
     <field name="Pointer" size="52" start="12" type="address" modifier="shr(4)" element="16" count="Entries"/>

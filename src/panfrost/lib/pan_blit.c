@@ -206,12 +206,12 @@ panfrost_load_midg(
                 .format = MALI_RGBA32F
         };
 
-        struct mali_stencil_test stencil = {
-                .mask = 0xFF,
-                .func = MALI_FUNC_ALWAYS,
-                .sfail = MALI_STENCIL_OP_REPLACE,
-                .dpfail = MALI_STENCIL_OP_REPLACE,
-                .dppass = MALI_STENCIL_OP_REPLACE,
+        struct mali_stencil_packed stencil;
+        pan_pack(&stencil, STENCIL, cfg) {
+                cfg.compare_function = MALI_FUNC_ALWAYS;
+                cfg.stencil_fail = MALI_STENCIL_OP_REPLACE;
+                cfg.depth_fail = MALI_STENCIL_OP_REPLACE;
+                cfg.depth_pass = MALI_STENCIL_OP_REPLACE;
         };
 
         union midgard_blend replace = {

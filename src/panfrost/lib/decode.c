@@ -1589,36 +1589,6 @@ pandecode_shader_address(const char *name, mali_ptr ptr)
 }
 
 static void
-pandecode_stencil(const char *name, const struct mali_stencil_test *stencil)
-{
-        unsigned any_nonzero =
-                stencil->ref | stencil->mask | stencil->func |
-                stencil->sfail | stencil->dpfail | stencil->dppass;
-
-        if (any_nonzero == 0)
-                return;
-
-        const char *func = mali_func_as_str(stencil->func);
-        const char *sfail = mali_stencil_op_as_str(stencil->sfail);
-        const char *dpfail = mali_stencil_op_as_str(stencil->dpfail);
-        const char *dppass = mali_stencil_op_as_str(stencil->dppass);
-
-        if (stencil->zero)
-                pandecode_msg("XXX: stencil zero tripped: %X\n", stencil->zero);
-
-        pandecode_log(".stencil_%s = {\n", name);
-        pandecode_indent++;
-        pandecode_prop("ref = %d", stencil->ref);
-        pandecode_prop("mask = 0x%02X", stencil->mask);
-        pandecode_prop("func = %s", func);
-        pandecode_prop("sfail = %s", sfail);
-        pandecode_prop("dpfail = %s", dpfail);
-        pandecode_prop("dppass = %s", dppass);
-        pandecode_indent--;
-        pandecode_log("},\n");
-}
-
-static void
 pandecode_blend_equation(const struct mali_blend_equation *blend)
 {
         if (blend->zero1)
@@ -2705,8 +2675,8 @@ pandecode_vertex_tiler_postfix_pre(
                         pandecode_prop("stencil_mask_back = 0x%02X", s->stencil_mask_back);
                 }
 
-                pandecode_stencil("front", &s->stencil_front);
-                pandecode_stencil("back", &s->stencil_back);
+                DUMP_CL("Stencil front", STENCIL, &s->stencil_front, 1);
+                DUMP_CL("Stencil back", STENCIL, &s->stencil_back, 1);
 
                 if (is_bifrost) {
                         pandecode_log(".bifrost2 = {\n");

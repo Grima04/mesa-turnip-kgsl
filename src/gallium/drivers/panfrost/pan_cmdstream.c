@@ -519,15 +519,15 @@ void panfrost_sampler_desc_init_bifrost(const struct pipe_sampler_state *cso,
 
 static void
 panfrost_make_stencil_state(const struct pipe_stencil_state *in,
-                            struct mali_stencil_test *out)
+                            void *out)
 {
-        out->ref = 0; /* Gallium gets it from elsewhere */
-
-        out->mask = in->valuemask;
-        out->func = panfrost_translate_compare_func(in->func);
-        out->sfail = panfrost_translate_stencil_op(in->fail_op);
-        out->dpfail = panfrost_translate_stencil_op(in->zfail_op);
-        out->dppass = panfrost_translate_stencil_op(in->zpass_op);
+        pan_pack(out, STENCIL, cfg) {
+                cfg.mask = in->valuemask;
+                cfg.compare_function = panfrost_translate_compare_func(in->func);
+                cfg.stencil_fail = panfrost_translate_stencil_op(in->fail_op);
+                cfg.depth_fail = panfrost_translate_stencil_op(in->zfail_op);
+                cfg.depth_pass = panfrost_translate_stencil_op(in->zpass_op);
+        }
 }
 
 static void
@@ -605,7 +605,10 @@ panfrost_frag_meta_zsa_update(struct panfrost_context *ctx,
                 panfrost_make_stencil_state(&zsa->stencil[0],
                                             &fragmeta->stencil_front);
                 fragmeta->stencil_mask_front = zsa->stencil[0].writemask;
-                fragmeta->stencil_front.ref = ctx->stencil_ref.ref_value[0];
+
+                /* Bottom 8-bits of stencil state is the stencil ref, ref is no
+                 * more than 8-bits. Be extra careful. */
+                fragmeta->stencil_front.opaque[0] |= ctx->stencil_ref.ref_value[0];
 
                 /* If back-stencil is not enabled, use the front values */
 
@@ -613,11 +616,10 @@ panfrost_frag_meta_zsa_update(struct panfrost_context *ctx,
                         panfrost_make_stencil_state(&zsa->stencil[1],
                                                     &fragmeta->stencil_back);
                         fragmeta->stencil_mask_back = zsa->stencil[1].writemask;
-                        fragmeta->stencil_back.ref = ctx->stencil_ref.ref_value[1];
+                        fragmeta->stencil_back.opaque[0] |= ctx->stencil_ref.ref_value[1];
                 } else {
                         fragmeta->stencil_back = fragmeta->stencil_front;
                         fragmeta->stencil_mask_back = fragmeta->stencil_mask_front;
-                        fragmeta->stencil_back.ref = fragmeta->stencil_front.ref;
                 }
 
                 if (zsa->depth.enabled)

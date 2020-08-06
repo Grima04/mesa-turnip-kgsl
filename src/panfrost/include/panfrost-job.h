@@ -85,19 +85,6 @@ typedef uint64_t mali_ptr;
 #define MALI_DEPTH_RANGE_B	(1 << 13)
 #define MALI_NO_MSAA		(1 << 14)
 
-/* Stencil test state is all encoded in a single u32, just with a lot of
- * enums... */
-
-struct mali_stencil_test {
-        unsigned ref  			: 8;
-        unsigned mask 			: 8;
-        enum mali_func func 		: 3;
-        enum mali_stencil_op sfail 	: 3;
-        enum mali_stencil_op dpfail 	: 3;
-        enum mali_stencil_op dppass 	: 3;
-        unsigned zero			: 4;
-} __attribute__((packed));
-
 #define MALI_MASK_R (1 << 0)
 #define MALI_MASK_G (1 << 1)
 #define MALI_MASK_B (1 << 2)
@@ -590,8 +577,8 @@ struct mali_shader_meta {
         u8 stencil_mask_back;
         u16 unknown2_4;
 
-        struct mali_stencil_test stencil_front;
-        struct mali_stencil_test stencil_back;
+        struct mali_stencil_packed stencil_front;
+        struct mali_stencil_packed stencil_back;
 
         union {
                 struct {
