@@ -154,9 +154,11 @@ bit_vertex(struct panfrost_device *dev, panfrost_program prog,
                 .size = 1024
         };
 
-        uint64_t my_ubo = MALI_MAKE_UBO(64, ubo->gpu + 1024);
+        pan_pack(ubo->cpu, UNIFORM_BUFFER, cfg) {
+                cfg.entries = 64;
+                cfg.pointer = ubo->gpu + 1024;
+        }
 
-        memcpy(ubo->cpu, &my_ubo, sizeof(my_ubo));
         memcpy(var->cpu, &vmeta, sizeof(vmeta));
 
         vmeta.unknown1 = 0x2; /* XXX: only attrib? */

@@ -60,6 +60,11 @@
     <value name="Mirrored Clamp to Border" value="15"/>
   </enum>
 
+  <struct name="Uniform Buffer">
+    <field name="Entries" size="12" start="0" type="uint" modifier="minus(1)"/>
+    <field name="Pointer" size="52" start="12" type="address" modifier="shr(4)" element="16" count="Entries"/>
+  </struct>
+
   <struct name="Viewport">
     <field name="Minimum X" size="32" start="0:0" default="-INFINITY" type="float"/>
     <field name="Minimum Y" size="32" start="1:0" default="-INFINITY" type="float"/>

@@ -1251,12 +1251,20 @@ panfrost_emit_const_buf(struct panfrost_batch *batch,
         unsigned ubo_count = panfrost_ubo_count(ctx, stage);
         assert(ubo_count >= 1);
 
-        size_t sz = sizeof(uint64_t) * ubo_count;
-        uint64_t ubos[PAN_MAX_CONST_BUFFERS];
-        int uniform_count = ss->uniform_count;
+        size_t sz = MALI_UNIFORM_BUFFER_LENGTH * ubo_count;
+        struct panfrost_transfer ubos = panfrost_pool_alloc(&batch->pool, sz);
+        uint64_t *ubo_ptr = (uint64_t *) ubos.cpu;
 
         /* Upload uniforms as a UBO */
-        ubos[0] = MALI_MAKE_UBO(2 + uniform_count, transfer.gpu);
+
+        if (ss->uniform_count) {
+                pan_pack(ubo_ptr, UNIFORM_BUFFER, cfg) {
+                        cfg.entries = ss->uniform_count;
+                        cfg.pointer = transfer.gpu;
+                }
+        } else {
+                *ubo_ptr = 0;
+        }
 
         /* The rest are honest-to-goodness UBOs */
 
@@ -1266,22 +1274,19 @@ panfrost_emit_const_buf(struct panfrost_batch *batch,
                 bool empty = usz == 0;
 
                 if (!enabled || empty) {
-                        /* Stub out disabled UBOs to catch accesses */
-                        ubos[ubo] = MALI_MAKE_UBO(0, 0xDEAD0000);
+                        ubo_ptr[ubo] = 0;
                         continue;
                 }
 
-                mali_ptr gpu = panfrost_map_constant_buffer_gpu(batch, stage,
-                                                                buf, ubo);
-
-                unsigned bytes_per_field = 16;
-                unsigned aligned = ALIGN_POT(usz, bytes_per_field);
-                ubos[ubo] = MALI_MAKE_UBO(aligned / bytes_per_field, gpu);
+                pan_pack(ubo_ptr + ubo, UNIFORM_BUFFER, cfg) {
+                        cfg.entries = DIV_ROUND_UP(usz, 16);
+                        cfg.pointer = panfrost_map_constant_buffer_gpu(batch,
+                                        stage, buf, ubo);
+                }
         }
 
-        mali_ptr ubufs = panfrost_pool_upload(&batch->pool, ubos, sz);
         postfix->uniforms = transfer.gpu;
-        postfix->uniform_buffers = ubufs;
+        postfix->uniform_buffers = ubos.gpu;
 
         buf->dirty_mask = 0;
 }
