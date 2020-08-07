@@ -88,7 +88,8 @@ void radv_printflike(3, 4)
 }
 
 VkResult
-__vk_errorv(struct radv_instance *instance, VkResult error, const char *file,
+__vk_errorv(struct radv_instance *instance, const void *object,
+	    VkDebugReportObjectTypeEXT type, VkResult error, const char *file,
 	    int line, const char *format, va_list ap)
 {
 	char buffer[256];
@@ -111,19 +112,27 @@ __vk_errorv(struct radv_instance *instance, VkResult error, const char *file,
 			 error_str);
 	}
 
+	if (instance) {
+		vk_debug_report(&instance->debug_report_callbacks,
+				VK_DEBUG_REPORT_ERROR_BIT_EXT, type,
+				(uint64_t)(uintptr_t) object, line, 0, "radv",
+				report);
+	}
+
 	fprintf(stderr, "%s\n", report);
 
 	return error;
 }
 
 VkResult
-__vk_errorf(struct radv_instance *instance, VkResult error, const char *file,
+__vk_errorf(struct radv_instance *instance, const void *object,
+	    VkDebugReportObjectTypeEXT type, VkResult error, const char *file,
 	    int line, const char *format, ...)
 {
 	va_list ap;
 
 	va_start(ap, format);
-	__vk_errorv(instance, error, file, line, format, ap);
+	__vk_errorv(instance, object, type, error, file, line, format, ap);
 	va_end(ap);
 
 	return error;

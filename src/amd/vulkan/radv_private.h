@@ -194,16 +194,24 @@ radv_clear_mask(uint32_t *inout_mask, uint32_t clear_mask)
 struct radv_image_view;
 struct radv_instance;
 
-VkResult __vk_errorv(struct radv_instance *instance, VkResult error,
+VkResult __vk_errorv(struct radv_instance *instance, const void *object,
+		     VkDebugReportObjectTypeEXT type, VkResult error,
 		     const char *file, int line, const char *format,
 		     va_list args);
 
-VkResult __vk_errorf(struct radv_instance *instance, VkResult error,
+VkResult __vk_errorf(struct radv_instance *instance, const void *object,
+		     VkDebugReportObjectTypeEXT type, VkResult error,
 		     const char *file, int line, const char *format, ...)
-	radv_printflike(5, 6);
+	radv_printflike(7, 8);
 
-#define vk_error(instance, error) __vk_errorf(instance, error, __FILE__, __LINE__, NULL);
-#define vk_errorf(instance, error, format, ...) __vk_errorf(instance, error, __FILE__, __LINE__, format, ## __VA_ARGS__);
+#define vk_error(instance, error) \
+	__vk_errorf(instance, NULL, \
+		    VK_DEBUG_REPORT_OBJECT_TYPE_UNKNOWN_EXT, \
+		    error, __FILE__, __LINE__, NULL);
+#define vk_errorf(instance, error, format, ...) \
+	__vk_errorf(instance, NULL, \
+		    VK_DEBUG_REPORT_OBJECT_TYPE_UNKNOWN_EXT, \
+		    error, __FILE__, __LINE__, format, ## __VA_ARGS__);
 
 void __radv_finishme(const char *file, int line, const char *format, ...)
 	radv_printflike(3, 4);
