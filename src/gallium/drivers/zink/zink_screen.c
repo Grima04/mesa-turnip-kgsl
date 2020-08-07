@@ -301,10 +301,8 @@ zink_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_SHAREABLE_SHADERS:
       return 1;
 
-#if 0 /* TODO: Enable me. Enables GL_ARB_shader_storage_buffer_object */
    case PIPE_CAP_SHADER_BUFFER_OFFSET_ALIGNMENT:
       return screen->info.props.limits.minStorageBufferOffsetAlignment;
-#endif
 
    case PIPE_CAP_PCI_GROUP:
    case PIPE_CAP_PCI_BUS:
