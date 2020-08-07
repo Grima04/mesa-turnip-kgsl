@@ -1803,11 +1803,25 @@ static void
 emit_load_uint_input(struct ntv_context *ctx, nir_intrinsic_instr *intr, SpvId *var_id, const char *var_name, SpvBuiltIn builtin)
 {
    SpvId var_type = spirv_builder_type_uint(&ctx->builder, 32);
-   if (!*var_id)
+   if (builtin == SpvBuiltInSampleMask) {
+      /* gl_SampleMaskIn is an array[1] in spirv... */
+      var_type = spirv_builder_type_array(&ctx->builder, var_type, emit_uint_const(ctx, 32, 1));
+      spirv_builder_emit_array_stride(&ctx->builder, var_type, sizeof(uint32_t));
+   }
+   if (!*var_id) {
       *var_id = create_builtin_var(ctx, var_type,
                                    SpvStorageClassInput,
                                    var_name,
                                    builtin);
+      if (builtin == SpvBuiltInSampleMask) {
+         SpvId zero = emit_uint_const(ctx, 32, 0);
+         var_type = spirv_builder_type_uint(&ctx->builder, 32);
+         SpvId pointer_type = spirv_builder_type_pointer(&ctx->builder,
+                                                         SpvStorageClassInput,
+                                                         var_type);
+         *var_id = spirv_builder_emit_access_chain(&ctx->builder, pointer_type, *var_id, &zero, 1);
+      }
+   }
 
    SpvId result = spirv_builder_emit_load(&ctx->builder, var_type, *var_id);
    assert(1 == nir_dest_num_components(intr->dest));
