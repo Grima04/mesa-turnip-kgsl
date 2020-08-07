@@ -941,7 +941,7 @@ droid_create_image_from_name(_EGLDisplay *disp,
                              struct ANativeWindowBuffer *buf)
 {
    struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
-   struct dri2_egl_image *dri2_img;
+   __DRIimage *dri_image;
    int name;
    int format;
 
@@ -955,15 +955,7 @@ droid_create_image_from_name(_EGLDisplay *disp,
    if (format == -1)
        return NULL;
 
-   dri2_img = calloc(1, sizeof(*dri2_img));
-   if (!dri2_img) {
-      _eglError(EGL_BAD_ALLOC, "droid_create_image_mesa_drm");
-      return NULL;
-   }
-
-   _eglInitImage(&dri2_img->base, disp);
-
-   dri2_img->dri_image =
+   return
       dri2_dpy->image->createImageFromName(dri2_dpy->dri_screen,
 					   buf->width,
 					   buf->height,
@@ -971,13 +963,6 @@ droid_create_image_from_name(_EGLDisplay *disp,
 					   name,
 					   buf->stride,
 					   dri2_img);
-   if (!dri2_img->dri_image) {
-      free(dri2_img);
-      _eglError(EGL_BAD_ALLOC, "droid_create_image_mesa_drm");
-      return NULL;
-   }
-
-   return &dri2_img->base;
 }
 #endif /* HAVE_DRM_GRALLOC */
 
@@ -1032,14 +1017,16 @@ dri2_create_image_android_native_buffer(_EGLDisplay *disp,
 
    __DRIimage *dri_image =
       droid_create_image_from_prime_fds(disp, buf);
+
+#ifdef HAVE_DRM_GRALLOC
+   if (dri_image == NULL)
+      dri_image = droid_create_image_from_name(disp, buf);
+#endif
+
    if (dri_image)
       return dri2_create_image_from_dri(disp, dri_image);
 
-#ifdef HAVE_DRM_GRALLOC
-   return droid_create_image_from_name(disp, buf);
-#else
    return NULL;
-#endif
 }
 
 static _EGLImage *
