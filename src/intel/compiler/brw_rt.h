@@ -31,6 +31,9 @@ extern "C" {
 /** Vulkan defines shaderGroupHandleSize = 32 */
 #define BRW_RT_SBT_HANDLE_SIZE 32
 
+/** Offset after the RT dispatch globals at which "push" constants live */
+#define BRW_RT_PUSH_CONST_OFFSET 128
+
 /** Stride of the resume SBT */
 #define BRW_BTD_RESUME_SBT_STRIDE 8
 
