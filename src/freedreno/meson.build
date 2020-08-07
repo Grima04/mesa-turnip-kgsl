@@ -30,7 +30,7 @@ if not dep_lua.found()
   dep_lua = dependency('lua52', required: false)
 endif
 if not dep_lua.found()
-  dep_lua = dependency('lua', required: false)
+  dep_lua = dependency('lua', required: false, version : '>=5.2')
 endif
 
 dep_libarchive = dependency('libarchive', required: false)
