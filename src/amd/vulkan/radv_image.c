@@ -1233,12 +1233,12 @@ static void
 radv_image_alloc_single_sample_cmask(const struct radv_image *image,
                                      struct radeon_surf *surf)
 {
-	assert(image->info.storage_samples == 1 || surf->cmask_offset);
-
 	if (!surf->cmask_size || surf->cmask_offset || surf->bpe > 8 ||
 	    image->info.levels > 1 || image->info.depth > 1 ||
 	    radv_image_has_dcc(image) || !radv_image_use_fast_clear_for_image(image))
 		return;
+
+	assert(image->info.storage_samples == 1);
 
 	surf->cmask_offset = align64(surf->total_size, surf->cmask_alignment);
 	surf->total_size = surf->cmask_offset + surf->cmask_size;
