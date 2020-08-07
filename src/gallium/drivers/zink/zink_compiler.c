@@ -463,6 +463,7 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
    /* need to set up var->data.binding for UBOs, which means we need to start at
     * the "first" UBO, which is at the end of the list
     */
+   int ssbo_array_index = 0;
    foreach_list_typed_reverse(nir_variable, var, node, &nir->variables) {
       if (_nir_shader_variable_has_mode(var, nir_var_uniform |
                                         nir_var_mem_ubo |
@@ -493,14 +494,26 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
                ret->num_bindings++;
             }
          } else if (var->data.mode == nir_var_mem_ssbo) {
-            int binding = zink_binding(nir->info.stage,
-                                       VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-                                       var->data.binding);
-            ret->bindings[ret->num_bindings].index = var->data.binding;
-            ret->bindings[ret->num_bindings].binding = binding;
-            ret->bindings[ret->num_bindings].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-            ret->bindings[ret->num_bindings].size = 1;
-            ret->num_bindings++;
+            /* same-ish mechanics as ubos */
+            bool bo_array = glsl_type_is_array(var->type) && glsl_type_is_interface(glsl_without_array(var->type));
+            if (var->data.location && !bo_array)
+               continue;
+            if (!var->data.explicit_binding) {
+               var->data.binding = ssbo_array_index;
+            }
+            for (unsigned i = 0; i < (bo_array ? glsl_get_aoa_size(var->type) : 1); i++) {
+               int binding = zink_binding(nir->info.stage,
+                                          VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                                          var->data.binding + i);
+               if (strcmp(glsl_get_type_name(var->interface_type), "counters"))
+                  ret->bindings[ret->num_bindings].index = ssbo_array_index++;
+               else
+                  ret->bindings[ret->num_bindings].index = var->data.binding;
+               ret->bindings[ret->num_bindings].binding = binding;
+               ret->bindings[ret->num_bindings].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+               ret->bindings[ret->num_bindings].size = 1;
+               ret->num_bindings++;
+            }
          } else {
             assert(var->data.mode == nir_var_uniform);
             const struct glsl_type *type = glsl_without_array(var->type);
