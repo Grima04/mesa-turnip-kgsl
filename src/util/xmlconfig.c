@@ -27,7 +27,7 @@
  * \author Felix Kuehling
  */
 
-#ifdef ANDROID
+#if defined(ANDROID) || defined(_WIN32)
 #define WITH_XMLCONFIG 0
 #else
 #define WITH_XMLCONFIG 1
@@ -43,14 +43,14 @@
 #include <assert.h>
 #if WITH_XMLCONFIG
 #include <expat.h>
-#endif
-#include <fcntl.h>
-#include <math.h>
 #include <unistd.h>
 #include <errno.h>
 #include <dirent.h>
 #include <sys/stat.h>
 #include <regex.h>
+#endif
+#include <fcntl.h>
+#include <math.h>
 #include "strndup.h"
 #include "xmlconfig.h"
 #include "u_process.h"

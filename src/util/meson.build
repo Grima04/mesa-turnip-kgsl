@@ -200,7 +200,7 @@ idep_mesautil = declare_dependency(
 )
 
 xmlconfig_deps = []
-if not with_platform_android
+if not (with_platform_android or with_platform_windows)
   xmlconfig_deps += dep_expat
 endif
 
