@@ -706,7 +706,6 @@ struct si_framebuffer {
    ubyte nr_color_samples; /* at most 8xAA */
    ubyte compressed_cb_mask;
    ubyte uncompressed_cb_mask;
-   ubyte displayable_dcc_cb_mask;
    ubyte color_is_int8;
    ubyte color_is_int10;
    ubyte dirty_cbufs;

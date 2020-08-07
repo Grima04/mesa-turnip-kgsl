@@ -2567,6 +2567,27 @@ static void si_dec_framebuffer_counters(const struct pipe_framebuffer_state *sta
    }
 }
 
+static void si_update_display_dcc_dirty(struct si_context *sctx)
+{
+   const struct pipe_framebuffer_state *state = &sctx->framebuffer.state;
+   struct si_surface *surf;
+   struct si_texture *tex;
+   int i;
+
+   for (i = 0; i < state->nr_cbufs; i++) {
+      if (!state->cbufs[i])
+         continue;
+
+      surf = (struct si_surface *)state->cbufs[i];
+      tex = (struct si_texture *)surf->base.texture;
+
+      if (!tex->surface.display_dcc_offset)
+         continue;
+
+      tex->displayable_dcc_dirty = true;
+   }
+}
+
 static void si_set_framebuffer_state(struct pipe_context *ctx,
                                      const struct pipe_framebuffer_state *state)
 {
@@ -2694,7 +2715,6 @@ static void si_set_framebuffer_state(struct pipe_context *ctx,
 
    sctx->framebuffer.compressed_cb_mask = 0;
    sctx->framebuffer.uncompressed_cb_mask = 0;
-   sctx->framebuffer.displayable_dcc_cb_mask = 0;
    sctx->framebuffer.nr_samples = util_framebuffer_get_num_samples(state);
    sctx->framebuffer.nr_color_samples = sctx->framebuffer.nr_samples;
    sctx->framebuffer.log_samples = util_logbase2(sctx->framebuffer.nr_samples);
@@ -2731,9 +2751,6 @@ static void si_set_framebuffer_state(struct pipe_context *ctx,
          sctx->framebuffer.compressed_cb_mask |= 1 << i;
       else
          sctx->framebuffer.uncompressed_cb_mask |= 1 << i;
-
-      if (tex->surface.display_dcc_offset)
-         sctx->framebuffer.displayable_dcc_cb_mask |= 1 << i;
 
       /* Don't update nr_color_samples for non-AA buffers.
        * (e.g. destination of MSAA resolve)
@@ -3225,6 +3242,8 @@ static void si_emit_framebuffer_state(struct si_context *sctx)
       radeon_emit(cs, PKT3(PKT3_EVENT_WRITE, 0, 0));
       radeon_emit(cs, EVENT_TYPE(V_028A90_BREAK_BATCH) | EVENT_INDEX(0));
    }
+
+   si_update_display_dcc_dirty(sctx);
 
    sctx->framebuffer.dirty_cbufs = 0;
    sctx->framebuffer.dirty_zsbuf = false;
