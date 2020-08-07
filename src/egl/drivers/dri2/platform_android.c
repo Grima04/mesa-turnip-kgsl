@@ -770,7 +770,7 @@ droid_swap_buffers(_EGLDisplay *disp, _EGLSurface *draw)
 }
 
 static __DRIimage *
-droid_create_image_from_prime_fds_yuv(_EGLDisplay *disp, _EGLContext *ctx,
+droid_create_image_from_prime_fds_yuv(_EGLDisplay *disp,
                                      struct ANativeWindowBuffer *buf,
                                      int num_fds, int fds[3])
 {
@@ -857,7 +857,7 @@ droid_create_image_from_prime_fds_yuv(_EGLDisplay *disp, _EGLContext *ctx,
 }
 
 static __DRIimage *
-droid_create_image_from_prime_fds(_EGLDisplay *disp, _EGLContext *ctx,
+droid_create_image_from_prime_fds(_EGLDisplay *disp,
                                   struct ANativeWindowBuffer *buf)
 {
    struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
@@ -873,7 +873,7 @@ droid_create_image_from_prime_fds(_EGLDisplay *disp, _EGLContext *ctx,
    if (is_yuv(buf->format)) {
       __DRIimage *image;
 
-      image = droid_create_image_from_prime_fds_yuv(disp, ctx, buf, num_fds, fds);
+      image = droid_create_image_from_prime_fds_yuv(disp, buf, num_fds, fds);
       /*
        * HACK: https://issuetracker.google.com/32077885
        * There is no API available to properly query the IMPLEMENTATION_DEFINED
@@ -937,7 +937,7 @@ static int get_format(int format)
 }
 
 static _EGLImage *
-droid_create_image_from_name(_EGLDisplay *disp, _EGLContext *ctx,
+droid_create_image_from_name(_EGLDisplay *disp,
                              struct ANativeWindowBuffer *buf)
 {
    struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
@@ -1031,12 +1031,12 @@ dri2_create_image_android_native_buffer(_EGLDisplay *disp,
    }
 
    __DRIimage *dri_image =
-      droid_create_image_from_prime_fds(disp, ctx, buf);
+      droid_create_image_from_prime_fds(disp, buf);
    if (dri_image)
       return dri2_create_image_from_dri(disp, dri_image);
 
 #ifdef HAVE_DRM_GRALLOC
-   return droid_create_image_from_name(disp, ctx, buf);
+   return droid_create_image_from_name(disp, buf);
 #else
    return NULL;
 #endif
