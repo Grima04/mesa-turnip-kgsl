@@ -575,7 +575,9 @@ get_color_clear_pipeline(struct v3dv_device *device,
    if (result != VK_SUCCESS)
       goto fail;
 
-   _mesa_hash_table_insert(device->meta.color_clear.cache, &key, *pipeline);
+   (*pipeline)->key = key;
+   _mesa_hash_table_insert(device->meta.color_clear.cache,
+                           &(*pipeline)->key, *pipeline);
 
    mtx_unlock(&device->meta.mtx);
    return VK_SUCCESS;
@@ -653,7 +655,9 @@ get_depth_clear_pipeline(struct v3dv_device *device,
    if (result != VK_SUCCESS)
       goto fail;
 
-   _mesa_hash_table_insert(device->meta.depth_clear.cache, &key, *pipeline);
+   (*pipeline)->key = key;
+   _mesa_hash_table_insert(device->meta.depth_clear.cache,
+                           &(*pipeline)->key, *pipeline);
 
    mtx_unlock(&device->meta.mtx);
    return VK_SUCCESS;

@@ -3609,7 +3609,9 @@ get_blit_pipeline(struct v3dv_device *device,
    if (!ok)
       goto fail;
 
-   _mesa_hash_table_insert(device->meta.blit.cache[src_type], &key, *pipeline);
+   memcpy((*pipeline)->key, key, sizeof((*pipeline)->key));
+   _mesa_hash_table_insert(device->meta.blit.cache[src_type],
+                           &(*pipeline)->key, *pipeline);
 
    mtx_unlock(&device->meta.mtx);
    return true;

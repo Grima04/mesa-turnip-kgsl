@@ -228,22 +228,25 @@ struct v3dv_queue {
    mtx_t mutex;
 };
 
+#define V3DV_META_BLIT_CACHE_KEY_SIZE (4 * sizeof(uint32_t))
+
 struct v3dv_meta_color_clear_pipeline {
    VkPipeline pipeline;
    VkRenderPass pass;
    bool free_render_pass;
+   uint64_t key;
 };
 
 struct v3dv_meta_depth_clear_pipeline {
    VkPipeline pipeline;
+   uint64_t key;
 };
 
 struct v3dv_meta_blit_pipeline {
    VkPipeline pipeline;
    VkRenderPass pass;
+   uint8_t key[V3DV_META_BLIT_CACHE_KEY_SIZE];
 };
-
-#define V3DV_META_BLIT_CACHE_KEY_SIZE (4 * sizeof(uint32_t))
 
 struct v3dv_pipeline_cache_stats {
    uint32_t miss;
