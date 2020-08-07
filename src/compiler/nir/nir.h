@@ -3321,6 +3321,16 @@ typedef struct nir_shader_compiler_options {
     */
    bool use_interpolated_input_intrinsics;
 
+
+   /**
+    * Whether nir_lower_io() will lower interpolateAt functions to
+    * load_interpolated_input intrinsics.
+    *
+    * Unlike use_interpolated_input_intrinsics this will only lower these
+    * functions and leave input load intrinsics untouched.
+    */
+   bool lower_interpolate_at;
+
    /* Lowers when 32x32->64 bit multiplication is not supported */
    bool lower_mul_2x32_64;
 

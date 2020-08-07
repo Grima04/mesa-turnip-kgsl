@@ -610,7 +610,8 @@ nir_lower_io_block(nir_block *block,
       case nir_intrinsic_interp_deref_at_offset:
       case nir_intrinsic_interp_deref_at_vertex:
          /* We can optionally lower these to load_interpolated_input */
-         if (options->use_interpolated_input_intrinsics)
+         if (options->use_interpolated_input_intrinsics ||
+             options->lower_interpolate_at)
             break;
       default:
          /* We can't lower the io for this nir instrinsic, so skip it */
