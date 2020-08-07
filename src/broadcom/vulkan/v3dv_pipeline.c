@@ -643,10 +643,11 @@ get_combined_index(struct v3dv_pipeline *pipeline,
       return (uint32_t)(uintptr_t) (entry->data);
 
    uint32_t new_index = pipeline->next_combined_index;
-
-   _mesa_hash_table_insert(ht, &key, (void *)(uintptr_t) (new_index));
-   pipeline->combined_index_to_key_map[new_index] = key;
    pipeline->next_combined_index++;
+
+   pipeline->combined_index_to_key_map[new_index] = key;
+   _mesa_hash_table_insert(ht, &pipeline->combined_index_to_key_map[new_index],
+                           (void *)(uintptr_t) (new_index));
 
    return new_index;
 }
