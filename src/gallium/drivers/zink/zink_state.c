@@ -434,6 +434,7 @@ zink_create_rasterizer_state(struct pipe_context *pctx,
    assert(rs_state->depth_clip_far == rs_state->depth_clip_near);
    state->hw_state.depth_clamp = rs_state->depth_clip_near == 0;
    state->hw_state.rasterizer_discard = rs_state->rasterizer_discard;
+   state->hw_state.force_persample_interp = rs_state->force_persample_interp;
 
    assert(rs_state->fill_front <= PIPE_POLYGON_MODE_POINT);
    if (rs_state->fill_back != rs_state->fill_front)
