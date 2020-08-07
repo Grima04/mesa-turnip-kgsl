@@ -299,6 +299,36 @@ shared_var_info(const struct glsl_type *type, unsigned *size, unsigned *align)
 	*align = comp_size;
 }
 
+struct radv_spirv_debug_data {
+	struct radv_device *device;
+	const struct radv_shader_module *module;
+};
+
+static void radv_spirv_nir_debug(void *private_data,
+				 enum nir_spirv_debug_level level,
+				 size_t spirv_offset,
+				 const char *message)
+{
+	struct radv_spirv_debug_data *debug_data = private_data;
+	struct radv_instance *instance = debug_data->device->instance;
+
+	static const VkDebugReportFlagsEXT vk_flags[] = {
+		[NIR_SPIRV_DEBUG_LEVEL_INFO] = VK_DEBUG_REPORT_INFORMATION_BIT_EXT,
+		[NIR_SPIRV_DEBUG_LEVEL_WARNING] = VK_DEBUG_REPORT_WARNING_BIT_EXT,
+		[NIR_SPIRV_DEBUG_LEVEL_ERROR] = VK_DEBUG_REPORT_ERROR_BIT_EXT,
+	};
+	char buffer[256];
+
+	snprintf(buffer, sizeof(buffer), "SPIR-V offset %lu: %s",
+		 (unsigned long)spirv_offset, message);
+
+	vk_debug_report(&instance->debug_report_callbacks,
+			vk_flags[level],
+			VK_DEBUG_REPORT_OBJECT_TYPE_SHADER_MODULE_EXT,
+			(uint64_t)(uintptr_t)debug_data->module,
+			0, 0, "radv", buffer);
+}
+
 nir_shader *
 radv_shader_compile_to_nir(struct radv_device *device,
 			   struct radv_shader_module *module,
@@ -359,6 +389,11 @@ radv_shader_compile_to_nir(struct radv_device *device,
 				}
 			}
 		}
+
+		struct radv_spirv_debug_data spirv_debug_data = {
+			.device = device,
+			.module = module,
+		};
 		const struct spirv_to_nir_options spirv_options = {
 			.lower_ubo_ssbo_access_to_offsets = true,
 			.caps = {
@@ -417,6 +452,10 @@ radv_shader_compile_to_nir(struct radv_device *device,
 			.push_const_addr_format = nir_address_format_logical,
 			.shared_addr_format = nir_address_format_32bit_offset,
 			.frag_coord_is_sysval = true,
+			.debug = {
+				.func = radv_spirv_nir_debug,
+				.private_data = &spirv_debug_data,
+			},
 		};
 		nir = spirv_to_nir(spirv, module->size / 4,
 				   spec_entries, num_spec_entries,
