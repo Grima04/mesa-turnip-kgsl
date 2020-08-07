@@ -4749,6 +4749,21 @@ VkResult radv_QueueSubmit(
 	return VK_SUCCESS;
 }
 
+static const char *
+radv_get_queue_family_name(struct radv_queue *queue)
+{
+	switch (queue->queue_family_index) {
+	case RADV_QUEUE_GENERAL:
+		return "graphics";
+	case RADV_QUEUE_COMPUTE:
+		return "compute";
+	case RADV_QUEUE_TRANSFER:
+		return "transfer";
+	default:
+		unreachable("Unknown queue family");
+	}
+}
+
 VkResult radv_QueueWaitIdle(
 	VkQueue                                     _queue)
 {
@@ -4762,8 +4777,11 @@ VkResult radv_QueueWaitIdle(
 
 	if (!queue->device->ws->ctx_wait_idle(queue->hw_ctx,
 					      radv_queue_family_to_ring(queue->queue_family_index),
-					      queue->queue_idx))
-		return VK_ERROR_DEVICE_LOST;
+					      queue->queue_idx)) {
+		return vk_errorf(queue->device->instance, VK_ERROR_DEVICE_LOST,
+				 "Failed to wait for a '%s' queue to be idle. "
+				 "GPU hang ?", radv_get_queue_family_name(queue));
+	}
 
 	return VK_SUCCESS;
 }
