@@ -24,6 +24,10 @@ xml_files = [
   'a4xx.xml',
   'a5xx.xml',
   'a6xx.xml',
+  'a6xx_gmu.xml',
+  'ocmem.xml',
+  'adreno_control_regs.xml',
+  'adreno_pipe_regs.xml',
   'adreno_common.xml',
   'adreno_pm4.xml',
 ]
