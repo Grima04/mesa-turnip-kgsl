@@ -56,30 +56,30 @@
  *  1.0000 1111111111111111
  */
 static nir_ssa_def *
-build_dither_mask(nir_builder b, nir_intrinsic_instr *store_instr)
+build_dither_mask(nir_builder *b, nir_intrinsic_instr *store_instr)
 {
    nir_ssa_def *alpha =
-      nir_channel(&b, nir_ssa_for_src(&b, store_instr->src[0], 4), 3);
+      nir_channel(b, nir_ssa_for_src(b, store_instr->src[0], 4), 3);
 
    nir_ssa_def *m =
-      nir_f2i32(&b, nir_fmul_imm(&b, nir_fsat(&b, alpha), 16.0));
+      nir_f2i32(b, nir_fmul_imm(b, nir_fsat(b, alpha), 16.0));
 
    nir_ssa_def *part_a =
-      nir_iand(&b,
-               nir_imm_int(&b, 0xf),
-               nir_ushr(&b,
-                        nir_imm_int(&b, 0xfea80),
-                        nir_iand(&b, m, nir_imm_int(&b, ~3))));
+      nir_iand(b,
+               nir_imm_int(b, 0xf),
+               nir_ushr(b,
+                        nir_imm_int(b, 0xfea80),
+                        nir_iand(b, m, nir_imm_int(b, ~3))));
 
-   nir_ssa_def *part_b = nir_iand(&b, m, nir_imm_int(&b, 2));
+   nir_ssa_def *part_b = nir_iand(b, m, nir_imm_int(b, 2));
 
-   nir_ssa_def *part_c = nir_iand(&b, m, nir_imm_int(&b, 1));
+   nir_ssa_def *part_c = nir_iand(b, m, nir_imm_int(b, 1));
 
-   return nir_ior(&b,
-                  nir_imul_imm(&b, part_a, 0x1111),
-                  nir_ior(&b,
-                          nir_imul_imm(&b, part_b, 0x0808),
-                          nir_imul_imm(&b, part_c, 0x0100)));
+   return nir_ior(b,
+                  nir_imul_imm(b, part_a, 0x1111),
+                  nir_ior(b,
+                          nir_imul_imm(b, part_b, 0x0808),
+                          nir_imul_imm(b, part_c, 0x0100)));
 }
 
 void
@@ -136,7 +136,7 @@ brw_nir_lower_alpha_to_coverage(nir_shader *shader)
 
          if (sample_mask_instr && store_instr) {
             b.cursor = nir_before_instr(&store_instr->instr);
-            nir_ssa_def *dither_mask = build_dither_mask(b, store_instr);
+            nir_ssa_def *dither_mask = build_dither_mask(&b, store_instr);
 
             /* Combine dither_mask and reorder gl_SampleMask store instruction
              * after render target 0 store instruction.
