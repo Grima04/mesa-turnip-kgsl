@@ -1559,9 +1559,10 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
       ctx->batches[i].resources = _mesa_pointer_set_create(NULL);
       ctx->batches[i].sampler_views = _mesa_pointer_set_create(NULL);
       ctx->batches[i].programs = _mesa_pointer_set_create(NULL);
+      ctx->batches[i].surfaces = _mesa_pointer_set_create(NULL);
 
       if (!ctx->batches[i].resources || !ctx->batches[i].sampler_views ||
-          !ctx->batches[i].programs)
+          !ctx->batches[i].programs || !ctx->batches[i].surfaces)
          goto fail;
 
       util_dynarray_init(&ctx->batches[i].zombie_samplers, NULL);

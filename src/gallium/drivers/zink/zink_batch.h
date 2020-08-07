@@ -37,6 +37,7 @@ struct zink_render_pass;
 struct zink_resource;
 struct zink_screen;
 struct zink_sampler_view;
+struct zink_surface;
 
 #define ZINK_BATCH_DESC_SIZE 1000
 
@@ -52,6 +53,7 @@ struct zink_batch {
 
    struct set *resources;
    struct set *sampler_views;
+   struct set *surfaces;
 
    struct util_dynarray zombie_samplers;
 
@@ -83,4 +85,8 @@ zink_batch_reference_sampler_view(struct zink_batch *batch,
 void
 zink_batch_reference_program(struct zink_batch *batch,
                              struct zink_gfx_program *prog);
+
+void
+zink_batch_reference_surface(struct zink_batch *batch,
+                             struct zink_surface *surface);
 #endif
