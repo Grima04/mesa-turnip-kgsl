@@ -2342,6 +2342,104 @@ emit_intrinsic(struct ntv_context *ctx, nir_intrinsic_instr *intr)
       emit_load_bo(ctx, intr);
       break;
 
+   /* TODO: would be great to refactor this in with emit_load_bo() */
+   case nir_intrinsic_store_ssbo: {
+      nir_const_value *const_block_index = nir_src_as_const_value(intr->src[1]);
+      assert(const_block_index);
+
+      SpvId bo = ctx->ssbos[const_block_index->u32];
+
+      unsigned bit_size = nir_src_bit_size(intr->src[0]);
+      SpvId uint_type = get_uvec_type(ctx, 32, 1);
+      SpvId one = emit_uint_const(ctx, 32, 1);
+
+      /* number of components being stored */
+      unsigned wrmask = nir_intrinsic_write_mask(intr);
+      unsigned num_components = util_bitcount(wrmask);
+
+      /* we need to grab 2x32 to fill the 64bit value */
+      bool is_64bit = bit_size == 64;
+
+      /* an id of the array stride in bytes */
+      SpvId vec4_size = emit_uint_const(ctx, 32, sizeof(uint32_t) * 4);
+      /* an id of an array member in bytes */
+      SpvId uint_size = emit_uint_const(ctx, 32, sizeof(uint32_t));
+      /* we grab a single array member at a time, so it's a pointer to a uint */
+      SpvId pointer_type = spirv_builder_type_pointer(&ctx->builder,
+                                                      SpvStorageClassStorageBuffer,
+                                                      uint_type);
+
+      /* our generated uniform has a memory layout like
+       *
+       * struct {
+       *    vec4 base[array_size];
+       * };
+       *
+       * where 'array_size' is set as though every member of the ubo takes up a vec4,
+       * even if it's only a vec2 or a float.
+       *
+       * first, access 'base'
+       */
+      SpvId member = emit_uint_const(ctx, 32, 0);
+      /* this is the offset (in bytes) that we're accessing:
+       * it may be a const value or it may be dynamic in the shader
+       */
+      SpvId offset = get_src(ctx, &intr->src[2]);
+      /* convert offset to an array index for 'base' to determine which vec4 to access */
+      SpvId vec_offset = emit_binop(ctx, SpvOpUDiv, uint_type, offset, vec4_size);
+      /* use the remainder to calculate the byte offset in the vec, which tells us the member
+       * that we're going to access
+       */
+      SpvId vec_member_offset = emit_binop(ctx, SpvOpUDiv, uint_type,
+                                           emit_binop(ctx, SpvOpUMod, uint_type, offset, vec4_size),
+                                           uint_size);
+
+      SpvId value = get_src(ctx, &intr->src[0]);
+      /* OpAccessChain takes an array of indices that drill into a hierarchy based on the type:
+       * index 0 is accessing 'base'
+       * index 1 is accessing 'base[index 1]'
+       * index 2 is accessing 'base[index 1][index 2]'
+       *
+       * we must perform the access this way in case src[1] is dynamic because there's
+       * no other spirv method for using an id to access a member of a composite, as
+       * (composite|vector)_extract both take literals
+       */
+      unsigned write_count = 0;
+      SpvId src_base_type = get_uvec_type(ctx, nir_src_bit_size(intr->src[0]), 1);
+      for (unsigned i = 0; write_count < num_components; i++) {
+         if (wrmask & (1 << i)) {
+            SpvId component = nir_src_num_components(intr->src[0]) > 1 ?
+                              spirv_builder_emit_composite_extract(&ctx->builder, src_base_type, value, &i, 1) :
+                              value;
+            SpvId component_split;
+            if (is_64bit)
+               component_split = emit_bitcast(ctx, get_uvec_type(ctx, 32, 2), component);
+            for (unsigned j = 0; j < 1 + !!is_64bit; j++) {
+               if (j)
+                  vec_member_offset = emit_binop(ctx, SpvOpIAdd, uint_type, vec_member_offset, one);
+               SpvId indices[3] = { member, vec_offset, vec_member_offset };
+               SpvId ptr = spirv_builder_emit_access_chain(&ctx->builder, pointer_type,
+                                                           bo, indices,
+                                                           ARRAY_SIZE(indices));
+               if (is_64bit)
+                  component = spirv_builder_emit_composite_extract(&ctx->builder, uint_type, component_split, &j, 1);
+               spirv_builder_emit_atomic_store(&ctx->builder, ptr, SpvScopeWorkgroup, 0, component);
+            }
+            write_count++;
+         } else if (is_64bit)
+            /* we're doing 32bit stores here, so we need to increment correctly here */
+            vec_member_offset = emit_binop(ctx, SpvOpIAdd, uint_type, vec_member_offset, one);
+
+         /* increment to the next vec4 member index for the next store */
+         vec_member_offset = emit_binop(ctx, SpvOpIAdd, uint_type, vec_member_offset, one);
+         if (i == 1 && is_64bit) {
+            vec_offset = emit_binop(ctx, SpvOpIAdd, uint_type, vec_offset, one);
+            vec_member_offset = emit_uint_const(ctx, 32, 0);
+         }
+      }
+      break;
+   }
+
    case nir_intrinsic_discard:
       emit_discard(ctx, intr);
       break;
