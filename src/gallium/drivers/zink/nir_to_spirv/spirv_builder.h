@@ -170,6 +170,10 @@ spirv_builder_emit_load(struct spirv_builder *b, SpvId result_type,
                         SpvId pointer);
 
 void
+spirv_builder_emit_atomic_store(struct spirv_builder *b, SpvId pointer, SpvScope scope,
+                                SpvMemorySemanticsMask semantics, SpvId object);
+
+void
 spirv_builder_emit_store(struct spirv_builder *b, SpvId pointer, SpvId object);
 
 SpvId

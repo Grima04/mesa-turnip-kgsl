@@ -407,6 +407,18 @@ spirv_builder_emit_store(struct spirv_builder *b, SpvId pointer, SpvId object)
    spirv_buffer_emit_word(&b->instructions, object);
 }
 
+void
+spirv_builder_emit_atomic_store(struct spirv_builder *b, SpvId pointer, SpvScope scope,
+                                SpvMemorySemanticsMask semantics, SpvId object)
+{
+   spirv_buffer_prepare(&b->instructions, b->mem_ctx, 5);
+   spirv_buffer_emit_word(&b->instructions, SpvOpAtomicStore | (5 << 16));
+   spirv_buffer_emit_word(&b->instructions, pointer);
+   spirv_buffer_emit_word(&b->instructions, spirv_builder_const_uint(b, 32, scope));
+   spirv_buffer_emit_word(&b->instructions, spirv_builder_const_uint(b, 32, semantics));
+   spirv_buffer_emit_word(&b->instructions, object);
+}
+
 SpvId
 spirv_builder_emit_access_chain(struct spirv_builder *b, SpvId result_type,
                                 SpvId base, const SpvId indexes[],
