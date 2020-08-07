@@ -887,7 +887,8 @@ VkResult radv_EnumeratePhysicalDevices(
 	VkPhysicalDevice*                           pPhysicalDevices)
 {
 	RADV_FROM_HANDLE(radv_instance, instance, _instance);
-	VK_OUTARRAY_MAKE(out, pPhysicalDevices, pPhysicalDeviceCount);
+	VK_OUTARRAY_MAKE_TYPED(VkPhysicalDevice, out, pPhysicalDevices,
+			       pPhysicalDeviceCount);
 
 	VkResult result = radv_enumerate_physical_devices(instance);
 	if (result != VK_SUCCESS)
@@ -895,7 +896,7 @@ VkResult radv_EnumeratePhysicalDevices(
 
 	list_for_each_entry(struct radv_physical_device, pdevice,
 			    &instance->physical_devices, link) {
-		vk_outarray_append(&out, i) {
+		vk_outarray_append_typed(VkPhysicalDevice , &out, i) {
 			*i = radv_physical_device_to_handle(pdevice);
 		}
 	}
@@ -909,8 +910,9 @@ VkResult radv_EnumeratePhysicalDeviceGroups(
     VkPhysicalDeviceGroupProperties*            pPhysicalDeviceGroupProperties)
 {
 	RADV_FROM_HANDLE(radv_instance, instance, _instance);
-	VK_OUTARRAY_MAKE(out, pPhysicalDeviceGroupProperties,
-			      pPhysicalDeviceGroupCount);
+	VK_OUTARRAY_MAKE_TYPED(VkPhysicalDeviceGroupProperties, out,
+			       pPhysicalDeviceGroupProperties,
+			       pPhysicalDeviceGroupCount);
 
 	VkResult result = radv_enumerate_physical_devices(instance);
 	if (result != VK_SUCCESS)
@@ -918,7 +920,7 @@ VkResult radv_EnumeratePhysicalDeviceGroups(
 
 	list_for_each_entry(struct radv_physical_device, pdevice,
 			    &instance->physical_devices, link) {
-		vk_outarray_append(&out, p) {
+		vk_outarray_append_typed(VkPhysicalDeviceGroupProperties, &out, p) {
 			p->physicalDeviceCount = 1;
 			memset(p->physicalDevices, 0, sizeof(p->physicalDevices));
 			p->physicalDevices[0] = radv_physical_device_to_handle(pdevice);
@@ -4977,11 +4979,12 @@ VkResult radv_EnumerateInstanceExtensionProperties(
     uint32_t*                                   pPropertyCount,
     VkExtensionProperties*                      pProperties)
 {
-	VK_OUTARRAY_MAKE(out, pProperties, pPropertyCount);
+	VK_OUTARRAY_MAKE_TYPED(VkExtensionProperties, out, pProperties,
+			       pPropertyCount);
 
 	for (int i = 0; i < RADV_INSTANCE_EXTENSION_COUNT; i++) {
 		if (radv_instance_extensions_supported.extensions[i]) {
-			vk_outarray_append(&out, prop) {
+			vk_outarray_append_typed(VkExtensionProperties, &out, prop) {
 				*prop = radv_instance_extensions[i];
 			}
 		}
@@ -4997,11 +5000,12 @@ VkResult radv_EnumerateDeviceExtensionProperties(
     VkExtensionProperties*                      pProperties)
 {
 	RADV_FROM_HANDLE(radv_physical_device, device, physicalDevice);
-	VK_OUTARRAY_MAKE(out, pProperties, pPropertyCount);
+	VK_OUTARRAY_MAKE_TYPED(VkExtensionProperties, out, pProperties,
+			       pPropertyCount);
 
 	for (int i = 0; i < RADV_DEVICE_EXTENSION_COUNT; i++) {
 		if (device->supported_extensions.extensions[i]) {
-			vk_outarray_append(&out, prop) {
+			vk_outarray_append_typed(VkExtensionProperties, &out, prop) {
 				*prop = radv_device_extensions[i];
 			}
 		}
@@ -7967,10 +7971,11 @@ VkResult radv_GetPhysicalDeviceCalibrateableTimeDomainsEXT(
 	VkTimeDomainEXT                              *pTimeDomains)
 {
 	int d;
-	VK_OUTARRAY_MAKE(out, pTimeDomains, pTimeDomainCount);
+	VK_OUTARRAY_MAKE_TYPED(VkTimeDomainEXT, out, pTimeDomains,
+			       pTimeDomainCount);
 
 	for (d = 0; d < ARRAY_SIZE(radv_time_domains); d++) {
-		vk_outarray_append(&out, i) {
+		vk_outarray_append_typed(VkTimeDomainEXT, &out, i) {
 			*i = radv_time_domains[d];
 		}
 	}

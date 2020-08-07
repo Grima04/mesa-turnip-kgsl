@@ -1088,10 +1088,10 @@ wsi_common_get_images(VkSwapchainKHR _swapchain,
                       VkImage *pSwapchainImages)
 {
    VK_FROM_HANDLE(wsi_swapchain, swapchain, _swapchain);
-   VK_OUTARRAY_MAKE(images, pSwapchainImages, pSwapchainImageCount);
+   VK_OUTARRAY_MAKE_TYPED(VkImage, images, pSwapchainImages, pSwapchainImageCount);
 
    for (uint32_t i = 0; i < swapchain->image_count; i++) {
-      vk_outarray_append(&images, image) {
+      vk_outarray_append_typed(VkImage, &images, image) {
          *image = swapchain->get_wsi_image(swapchain, i)->image;
       }
    }
