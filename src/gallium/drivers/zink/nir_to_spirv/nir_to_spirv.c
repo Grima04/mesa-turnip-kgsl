@@ -163,33 +163,36 @@ static SpvOp
 get_atomic_op(nir_intrinsic_op op)
 {
    switch (op) {
-   case nir_intrinsic_ssbo_atomic_add:
-   case nir_intrinsic_image_deref_atomic_add:
+#define CASE_ATOMIC_OP(type) \
+   case nir_intrinsic_ssbo_atomic_##type: \
+   case nir_intrinsic_image_deref_atomic_##type
+
+   CASE_ATOMIC_OP(add):
       return SpvOpAtomicIAdd;
-   case nir_intrinsic_image_deref_atomic_umin:
+   CASE_ATOMIC_OP(umin):
       return SpvOpAtomicUMin;
-   case nir_intrinsic_image_deref_atomic_imin:
+   CASE_ATOMIC_OP(imin):
       return SpvOpAtomicSMin;
-   case nir_intrinsic_image_deref_atomic_umax:
+   CASE_ATOMIC_OP(umax):
       return SpvOpAtomicUMax;
-   case nir_intrinsic_image_deref_atomic_imax:
+   CASE_ATOMIC_OP(imax):
       return SpvOpAtomicSMax;
-   case nir_intrinsic_image_deref_atomic_and:
+   CASE_ATOMIC_OP(and):
       return SpvOpAtomicAnd;
-   case nir_intrinsic_image_deref_atomic_or:
+   CASE_ATOMIC_OP(or):
       return SpvOpAtomicOr;
-   case nir_intrinsic_image_deref_atomic_xor:
+   CASE_ATOMIC_OP(xor):
       return SpvOpAtomicXor;
-   case nir_intrinsic_image_deref_atomic_exchange:
+   CASE_ATOMIC_OP(exchange):
       return SpvOpAtomicExchange;
-   case nir_intrinsic_image_deref_atomic_comp_swap:
+   CASE_ATOMIC_OP(comp_swap):
       return SpvOpAtomicCompareExchange;
    default:
       unreachable("unhandled atomic op");
    }
    return 0;
 }
-
+#undef CASE_ATOMIC_OP
 static SpvId
 emit_float_const(struct ntv_context *ctx, int bit_size, double value)
 {
@@ -2271,7 +2274,13 @@ emit_atomic_intrinsic(struct ntv_context *ctx, nir_intrinsic_instr *intr)
    SpvId ptr = spirv_builder_emit_access_chain(&ctx->builder, pointer_type,
                                                ssbo, indices,
                                                ARRAY_SIZE(indices));
-   handle_atomic_op(ctx, intr, ptr, param, 0);
+
+   SpvId param2 = 0;
+
+   if (intr->intrinsic == nir_intrinsic_ssbo_atomic_comp_swap)
+      param2 = get_src(ctx, &intr->src[3]);
+
+   handle_atomic_op(ctx, intr, ptr, param, param2);
 }
 
 static inline nir_variable *
@@ -2436,6 +2445,15 @@ emit_intrinsic(struct ntv_context *ctx, nir_intrinsic_instr *intr)
       break;
 
    case nir_intrinsic_ssbo_atomic_add:
+   case nir_intrinsic_ssbo_atomic_umin:
+   case nir_intrinsic_ssbo_atomic_imin:
+   case nir_intrinsic_ssbo_atomic_umax:
+   case nir_intrinsic_ssbo_atomic_imax:
+   case nir_intrinsic_ssbo_atomic_and:
+   case nir_intrinsic_ssbo_atomic_or:
+   case nir_intrinsic_ssbo_atomic_xor:
+   case nir_intrinsic_ssbo_atomic_exchange:
+   case nir_intrinsic_ssbo_atomic_comp_swap:
       emit_atomic_intrinsic(ctx, intr);
       break;
 
