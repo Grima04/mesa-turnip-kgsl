@@ -3930,7 +3930,20 @@ fs_visitor::lower_mul_dword_inst(fs_inst *inst, bblock_t *block)
       high.offset = inst->dst.offset % REG_SIZE;
 
       if (devinfo->gen >= 7) {
-         if (inst->src[1].abs)
+         /* From GEN:BUG:1604601757:
+          *
+          * "When multiplying a DW and any lower precision integer, source modifier
+          *  is not supported."
+          *
+          * An unsupported negate modifier on src[1] would ordinarily be
+          * lowered by the subsequent lower_regioning pass.  In this case that
+          * pass would spawn another dword multiply.  Instead, lower the
+          * modifier first.
+          */
+         const bool source_mods_unsupported = (devinfo->gen >= 12);
+
+         if (inst->src[1].abs || (inst->src[1].negate &&
+                                  source_mods_unsupported))
             lower_src_modifiers(this, block, inst, 1);
 
          if (inst->src[1].file == IMM) {
