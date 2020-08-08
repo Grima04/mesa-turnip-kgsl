@@ -2446,6 +2446,15 @@ brw_compact_instructions(struct brw_codegen *p, int start_offset,
    }
    p->nr_insn = p->next_insn_offset / sizeof(brw_inst);
 
+   for (int i = 0; i < p->num_relocs; i++) {
+      if (p->relocs[i].offset < (uint32_t)start_offset)
+         continue;
+
+      assert(p->relocs[i].offset % 16 == 0);
+      unsigned idx = (p->relocs[i].offset - start_offset) / 16;
+      p->relocs[i].offset -= compacted_counts[idx] * 8;
+   }
+
    /* Update the instruction offsets for each group. */
    if (disasm) {
       int offset = 0;

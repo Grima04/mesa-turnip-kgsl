@@ -363,6 +363,13 @@ const unsigned *brw_get_program( struct brw_codegen *p,
    return (const unsigned *)p->store;
 }
 
+const brw_shader_reloc *
+brw_get_shader_relocs(struct brw_codegen *p, unsigned *num_relocs)
+{
+   *num_relocs = p->num_relocs;
+   return p->relocs;
+}
+
 bool brw_try_override_assembly(struct brw_codegen *p, int start_offset,
                                const char *identifier)
 {

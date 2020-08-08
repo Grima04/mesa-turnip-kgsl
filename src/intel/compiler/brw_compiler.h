@@ -642,6 +642,32 @@ enum brw_param_builtin {
 #define BRW_PARAM_BUILTIN_CLIP_PLANE_COMP(param) \
    (((param) - BRW_PARAM_BUILTIN_CLIP_PLANE_0_X) & 0x3)
 
+/** Represents a code relocation
+ *
+ * Relocatable constants are immediates in the code which we want to be able
+ * to replace post-compile with the actual value.
+ */
+struct brw_shader_reloc {
+   /** The 32-bit ID of the relocatable constant */
+   uint32_t id;
+
+   /** The offset in the shader to the relocatable instruction
+    *
+    * This is the offset to the instruction rather than the immediate value
+    * itself.  This allows us to do some sanity checking while we relocate.
+    */
+   uint32_t offset;
+};
+
+/** A value to write to a relocation */
+struct brw_shader_reloc_value {
+   /** The 32-bit ID of the relocatable constant */
+   uint32_t id;
+
+   /** The value with which to replace the relocated immediate */
+   uint32_t value;
+};
+
 struct brw_stage_prog_data {
    struct {
       /** size of our binding table. */
@@ -687,6 +713,9 @@ struct brw_stage_prog_data {
 
    unsigned const_data_size;
    unsigned const_data_offset;
+
+   unsigned num_relocs;
+   const struct brw_shader_reloc *relocs;
 
    /** Does this program pull from any UBO or other constant buffers? */
    bool has_ubo_pull;
@@ -1534,6 +1563,13 @@ unsigned
 brw_cs_simd_size_for_group_size(const struct gen_device_info *devinfo,
                                 const struct brw_cs_prog_data *cs_prog_data,
                                 unsigned group_size);
+
+void
+brw_write_shader_relocs(const struct gen_device_info *devinfo,
+                        void *program,
+                        const struct brw_stage_prog_data *prog_data,
+                        struct brw_shader_reloc_value *values,
+                        unsigned num_values);
 
 /**
  * Calculate the RightExecutionMask field used in GPGPU_WALKER.

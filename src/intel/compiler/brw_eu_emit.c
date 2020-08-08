@@ -3641,3 +3641,46 @@ brw_float_controls_mode(struct brw_codegen *p,
    if (p->devinfo->gen >= 12)
       brw_SYNC(p, TGL_SYNC_NOP);
 }
+
+void
+brw_update_reloc_imm(const struct gen_device_info *devinfo,
+                     brw_inst *inst,
+                     uint32_t value)
+{
+   /* Sanity check that the instruction is a MOV of an immediate */
+   assert(brw_inst_opcode(devinfo, inst) == BRW_OPCODE_MOV);
+   assert(brw_inst_src0_reg_file(devinfo, inst) == BRW_IMMEDIATE_VALUE);
+
+   /* If it was compacted, we can't safely rewrite */
+   assert(brw_inst_cmpt_control(devinfo, inst) == 0);
+
+   brw_inst_set_imm_ud(devinfo, inst, value);
+}
+
+/* A default value for constants that will be patched at run-time.
+ * We pick an arbitrary value that prevents instruction compaction.
+ */
+#define DEFAULT_PATCH_IMM 0x4a7cc037
+
+void
+brw_MOV_reloc_imm(struct brw_codegen *p,
+                  struct brw_reg dst,
+                  enum brw_reg_type src_type,
+                  uint32_t id)
+{
+   assert(type_sz(src_type) == 4);
+   assert(type_sz(dst.type) == 4);
+
+   if (p->num_relocs + 1 > p->reloc_array_size) {
+      p->reloc_array_size = MAX2(16, p->reloc_array_size * 2);
+      p->relocs = reralloc(p->mem_ctx, p->relocs,
+                           struct brw_shader_reloc, p->reloc_array_size);
+   }
+
+   p->relocs[p->num_relocs++] = (struct brw_shader_reloc) {
+      .id = id,
+      .offset = p->next_insn_offset,
+   };
+
+   brw_MOV(p, dst, retype(brw_imm_ud(DEFAULT_PATCH_IMM), src_type));
+}

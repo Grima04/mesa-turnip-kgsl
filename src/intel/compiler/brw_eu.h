@@ -136,6 +136,10 @@ struct brw_codegen {
    int *if_depth_in_loop;
    int loop_stack_depth;
    int loop_stack_array_size;
+
+   struct brw_shader_reloc *relocs;
+   int num_relocs;
+   int reloc_array_size;
 };
 
 struct brw_label {
@@ -184,6 +188,8 @@ void brw_disassemble_with_labels(const struct gen_device_info *devinfo,
 void brw_disassemble(const struct gen_device_info *devinfo,
                      const void *assembly, int start, int end,
                      const struct brw_label *root_label, FILE *out);
+const struct brw_shader_reloc *brw_get_shader_relocs(struct brw_codegen *p,
+                                                     unsigned *num_relocs);
 const unsigned *brw_get_program( struct brw_codegen *p, unsigned *sz );
 
 bool brw_try_override_assembly(struct brw_codegen *p, int start_offset,
@@ -1237,6 +1243,17 @@ brw_broadcast(struct brw_codegen *p,
 void
 brw_float_controls_mode(struct brw_codegen *p,
                         unsigned mode, unsigned mask);
+
+void
+brw_update_reloc_imm(const struct gen_device_info *devinfo,
+                     brw_inst *inst,
+                     uint32_t value);
+
+void
+brw_MOV_reloc_imm(struct brw_codegen *p,
+                  struct brw_reg dst,
+                  enum brw_reg_type src_type,
+                  uint32_t id);
 
 /***********************************************************************
  * brw_eu_util.c:

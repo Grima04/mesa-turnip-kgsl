@@ -267,3 +267,22 @@ brw_prog_key_size(gl_shader_stage stage)
    assert((int)stage >= 0 && stage < ARRAY_SIZE(stage_sizes));
    return stage_sizes[stage];
 }
+
+void
+brw_write_shader_relocs(const struct gen_device_info *devinfo,
+                        void *program,
+                        const struct brw_stage_prog_data *prog_data,
+                        struct brw_shader_reloc_value *values,
+                        unsigned num_values)
+{
+   for (unsigned i = 0; i < prog_data->num_relocs; i++) {
+      assert(prog_data->relocs[i].offset % 8 == 0);
+      brw_inst *inst = (brw_inst *)(program + prog_data->relocs[i].offset);
+      for (unsigned j = 0; j < num_values; j++) {
+         if (prog_data->relocs[i].id == values[j].id) {
+            brw_update_reloc_imm(devinfo, inst, values[j].value);
+            break;
+         }
+      }
+   }
+}
