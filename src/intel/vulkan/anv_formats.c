@@ -904,7 +904,7 @@ anv_get_image_format_properties(
    VkExtent3D maxExtent;
    uint32_t maxMipLevels;
    uint32_t maxArraySize;
-   VkSampleCountFlags sampleCounts = VK_SAMPLE_COUNT_1_BIT;
+   VkSampleCountFlags sampleCounts;
    const struct gen_device_info *devinfo = &physical_device->info;
    const struct anv_format *format = anv_get_format(info->format);
    const struct isl_drm_modifier_info *isl_mod_info = NULL;
@@ -946,6 +946,7 @@ anv_get_image_format_properties(
       maxExtent.depth = 1;
       maxMipLevels = 15; /* log2(maxWidth) + 1 */
       maxArraySize = 2048;
+      sampleCounts = VK_SAMPLE_COUNT_1_BIT;
       break;
    case VK_IMAGE_TYPE_3D:
       maxExtent.width = 2048;
@@ -953,6 +954,7 @@ anv_get_image_format_properties(
       maxExtent.depth = 2048;
       maxMipLevels = 12; /* log2(maxWidth) + 1 */
       maxArraySize = 1;
+      sampleCounts = VK_SAMPLE_COUNT_1_BIT;
       break;
    }
 
@@ -1060,7 +1062,7 @@ anv_get_image_format_properties(
          goto unsupported;
       maxArraySize = 1;
       maxMipLevels = 1;
-      assert(sampleCounts == VK_SAMPLE_COUNT_1_BIT);
+      sampleCounts = VK_SAMPLE_COUNT_1_BIT;
 
       /* Modifiers are not yet supported for YCbCr */
       const struct anv_format *format = anv_get_format(info->format);
