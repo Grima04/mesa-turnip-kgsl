@@ -1783,8 +1783,7 @@ fs_generator::generate_code(const cfg_t *cfg, int dispatch_width,
                             struct brw_compile_stats *stats)
 {
    /* align to 64 byte boundary. */
-   while (p->next_insn_offset % 64)
-      brw_NOP(p);
+   brw_realign(p, 64);
 
    this->dispatch_width = dispatch_width;
 

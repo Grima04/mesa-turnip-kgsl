@@ -188,6 +188,9 @@ const unsigned *brw_get_program( struct brw_codegen *p, unsigned *sz );
 bool brw_try_override_assembly(struct brw_codegen *p, int start_offset,
                                const char *identifier);
 
+void brw_realign(struct brw_codegen *p, unsigned align);
+int brw_append_data(struct brw_codegen *p, void *data,
+                    unsigned size, unsigned align);
 brw_inst *brw_next_insn(struct brw_codegen *p, unsigned opcode);
 void brw_set_dest(struct brw_codegen *p, brw_inst *insn, struct brw_reg dest);
 void brw_set_src0(struct brw_codegen *p, brw_inst *insn, struct brw_reg reg);

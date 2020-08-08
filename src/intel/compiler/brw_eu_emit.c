@@ -640,20 +640,62 @@ brw_inst_set_state(const struct gen_device_info *devinfo,
       brw_inst_set_acc_wr_control(devinfo, insn, state->acc_wr_control);
 }
 
+static brw_inst *
+brw_append_insns(struct brw_codegen *p, unsigned nr_insn, unsigned align)
+{
+   assert(util_is_power_of_two_or_zero(sizeof(brw_inst)));
+   assert(util_is_power_of_two_or_zero(align));
+   const unsigned align_insn = MAX2(align / sizeof(brw_inst), 1);
+   const unsigned start_insn = ALIGN(p->nr_insn, align_insn);
+   const unsigned new_nr_insn = start_insn + nr_insn;
+
+   if (p->store_size < new_nr_insn) {
+      p->store_size = util_next_power_of_two(new_nr_insn * sizeof(brw_inst));
+      p->store = reralloc(p->mem_ctx, p->store, brw_inst, p->store_size);
+   }
+
+   /* Memset any padding due to alignment to 0.  We don't want to be hashing
+    * or caching a bunch of random bits we got from a memory allocation.
+    */
+   if (p->nr_insn < start_insn) {
+      memset(&p->store[p->nr_insn], 0,
+             (start_insn - p->nr_insn) * sizeof(brw_inst));
+   }
+
+   assert(p->next_insn_offset == p->nr_insn * sizeof(brw_inst));
+   p->nr_insn = new_nr_insn;
+   p->next_insn_offset = new_nr_insn * sizeof(brw_inst);
+
+   return &p->store[start_insn];
+}
+
+void
+brw_realign(struct brw_codegen *p, unsigned align)
+{
+   brw_append_insns(p, 0, align);
+}
+
+int
+brw_append_data(struct brw_codegen *p, void *data,
+                unsigned size, unsigned align)
+{
+   unsigned nr_insn = DIV_ROUND_UP(size, sizeof(brw_inst));
+   void *dst = brw_append_insns(p, nr_insn, align);
+   memcpy(dst, data, size);
+
+   /* If it's not a whole number of instructions, memset the end */
+   if (size < nr_insn * sizeof(brw_inst))
+      memset(dst + size, 0, nr_insn * sizeof(brw_inst) - size);
+
+   return dst - (void *)p->store;
+}
+
 #define next_insn brw_next_insn
 brw_inst *
 brw_next_insn(struct brw_codegen *p, unsigned opcode)
 {
    const struct gen_device_info *devinfo = p->devinfo;
-   brw_inst *insn;
-
-   if (p->nr_insn + 1 > p->store_size) {
-      p->store_size <<= 1;
-      p->store = reralloc(p->mem_ctx, p->store, brw_inst, p->store_size);
-   }
-
-   p->next_insn_offset += 16;
-   insn = &p->store[p->nr_insn++];
+   brw_inst *insn = brw_append_insns(p, 1, sizeof(brw_inst));
 
    memset(insn, 0, sizeof(*insn));
    brw_inst_set_opcode(devinfo, insn, opcode);
