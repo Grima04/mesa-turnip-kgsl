@@ -285,11 +285,15 @@ v3dv_DestroyInstance(VkInstance _instance,
 static uint64_t
 compute_heap_size()
 {
+#if !using_v3d_simulator
    /* Query the total ram from the system */
    struct sysinfo info;
    sysinfo(&info);
 
    uint64_t total_ram = (uint64_t)info.totalram * (uint64_t)info.mem_unit;
+#else
+   uint64_t total_ram = (uint64_t) v3d_simulator_get_mem_size();
+#endif
 
    /* We don't want to burn too much ram with the GPU.  If the user has 4GiB
     * or less, we use at most half.  If they have more than 4GiB, we use 3/4.
