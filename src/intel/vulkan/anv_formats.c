@@ -1151,11 +1151,23 @@ VkResult anv_GetPhysicalDeviceImageFormatProperties(
                                           pImageFormatProperties, NULL);
 }
 
-static const VkExternalMemoryProperties prime_fd_props = {
-   /* If we can handle external, then we can both import and export it. */
-   .externalMemoryFeatures = VK_EXTERNAL_MEMORY_FEATURE_EXPORTABLE_BIT |
-                             VK_EXTERNAL_MEMORY_FEATURE_IMPORTABLE_BIT,
-   /* For the moment, let's not support mixing and matching */
+
+/* Supports opaque fd but not dma_buf. */
+static const VkExternalMemoryProperties opaque_fd_only_props = {
+   .externalMemoryFeatures =
+      VK_EXTERNAL_MEMORY_FEATURE_EXPORTABLE_BIT |
+      VK_EXTERNAL_MEMORY_FEATURE_IMPORTABLE_BIT,
+   .exportFromImportedHandleTypes =
+      VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT,
+   .compatibleHandleTypes =
+      VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT,
+};
+
+/* Supports opaque fd and dma_buf. */
+static const VkExternalMemoryProperties opaque_fd_dma_buf_props = {
+   .externalMemoryFeatures =
+      VK_EXTERNAL_MEMORY_FEATURE_EXPORTABLE_BIT |
+      VK_EXTERNAL_MEMORY_FEATURE_IMPORTABLE_BIT,
    .exportFromImportedHandleTypes =
       VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT |
       VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT,
@@ -1197,6 +1209,7 @@ VkResult anv_GetPhysicalDeviceImageFormatProperties2(
     VkImageFormatProperties2*                   base_props)
 {
    ANV_FROM_HANDLE(anv_physical_device, physical_device, physicalDevice);
+   struct anv_instance *instance = physical_device->instance;
    const VkPhysicalDeviceExternalImageFormatInfo *external_info = NULL;
    VkExternalImageFormatProperties *external_props = NULL;
    VkSamplerYcbcrConversionImageFormatProperties *ycbcr_props = NULL;
@@ -1263,17 +1276,112 @@ VkResult anv_GetPhysicalDeviceImageFormatProperties2(
     *    present and VkExternalImageFormatProperties will be ignored.
     */
    if (external_info && external_info->handleType != 0) {
+      /* Does there exist a method for app and driver to explicitly communicate
+       * to each other the image's memory layout?
+       */
+      bool tiling_has_explicit_layout;
+
+      switch (base_info->tiling) {
+      default:
+         unreachable("bad VkImageTiling");
+      case VK_IMAGE_TILING_LINEAR:
+         /* The app can query the image's memory layout with
+          * vkGetImageSubresourceLayout.
+          */
+         tiling_has_explicit_layout = true;
+         break;
+      case VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT:
+         /* The app can provide the image's memory layout with
+          * VkImageDrmFormatModifierExplicitCreateInfoEXT;
+          * or the app can query it with vkGetImageSubresourceLayout.
+          */
+         tiling_has_explicit_layout = true;
+         break;
+      case VK_IMAGE_TILING_OPTIMAL:
+         /* The app can neither query nor provide the image's memory layout. */
+         tiling_has_explicit_layout = false;
+         break;
+      }
+
+      /* Compatibility between tiling and external memory handles
+       * --------------------------------------------------------
+       * When importing or exporting an image, there must exist a method that
+       * enables the app and driver to agree on the image's memory layout. If no
+       * method exists, then we reject image creation here.
+       *
+       * If the memory handle requires matching
+       * VkPhysicalDeviceIDPropertiesKHR::driverUUID and ::deviceUUID, then the
+       * match-requirement guarantees that all users of the image agree on the
+       * image's memory layout.
+       *
+       * If the memory handle does not require matching
+       * VkPhysicalDeviceIDPropertiesKHR::driverUUID nor ::deviceUUID, then we
+       * require that the app and driver be able to explicitly communicate to
+       * each other the image's memory layout.
+       *
+       * (For restrictions on driverUUID and deviceUUID, see the Vulkan 1.2.149
+       * spec, Table 73 "External memory handle types").
+       */
       switch (external_info->handleType) {
       case VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT:
+         if (external_props) {
+            if (tiling_has_explicit_layout) {
+               /* With an explicit memory layout, we don't care which type of fd
+                * the image belongs too. Both OPAQUE_FD and DMA_BUF are
+                * interchangeable here.
+                */
+               external_props->externalMemoryProperties = opaque_fd_dma_buf_props;
+            } else {
+               /* With an implicit memory layout, we must rely on deviceUUID
+                * and driverUUID to determine the layout. Therefore DMA_BUF is
+                * incompatible here.
+                */
+               external_props->externalMemoryProperties = opaque_fd_only_props;
+            }
+         }
+         break;
       case VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT:
+         /* This memory handle has no restrictions on driverUUID nor deviceUUID,
+          * and therefore requires explicit memory layout.
+          */
+         if (!tiling_has_explicit_layout) {
+            result = vk_errorfi(instance, physical_device,
+                                VK_ERROR_FORMAT_NOT_SUPPORTED,
+                                "VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT "
+                                "requires VK_IMAGE_TILING_LINEAR or "
+                                "VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT");
+            goto fail;
+         }
+
+         /* With an explicit memory layout, we don't care which type of fd
+          * the image belongs too. Both OPAQUE_FD and DMA_BUF are
+          * interchangeable here.
+          */
          if (external_props)
-            external_props->externalMemoryProperties = prime_fd_props;
+            external_props->externalMemoryProperties = opaque_fd_dma_buf_props;
          break;
       case VK_EXTERNAL_MEMORY_HANDLE_TYPE_HOST_ALLOCATION_BIT_EXT:
+         /* This memory handle has no restrictions on driverUUID nor deviceUUID,
+          * and therefore requires explicit memory layout.
+          */
+         if (!tiling_has_explicit_layout) {
+            result = vk_errorfi(instance, physical_device,
+                                VK_ERROR_FORMAT_NOT_SUPPORTED,
+                                "VK_EXTERNAL_MEMORY_HANDLE_TYPE_HOST_ALLOCATION_BIT_EXT "
+                                "requires VK_IMAGE_TILING_LINEAR or "
+                                "VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT");
+            goto fail;
+         }
+
          if (external_props)
             external_props->externalMemoryProperties = userptr_props;
          break;
       case VK_EXTERNAL_MEMORY_HANDLE_TYPE_ANDROID_HARDWARE_BUFFER_BIT_ANDROID:
+         /* This memory handle is magic. The Vulkan spec says it has no
+          * requirements regarding deviceUUID nor driverUUID, but Android still
+          * requires support for VK_IMAGE_TILING_OPTIMAL. Android systems
+          * communicate the image's memory layout through backdoor channels.
+          */
          if (ahw_supported && external_props) {
             external_props->externalMemoryProperties = android_image_props;
             break;
@@ -1361,7 +1469,7 @@ void anv_GetPhysicalDeviceExternalBufferProperties(
    switch (pExternalBufferInfo->handleType) {
    case VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT:
    case VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT:
-      pExternalBufferProperties->externalMemoryProperties = prime_fd_props;
+      pExternalBufferProperties->externalMemoryProperties = opaque_fd_dma_buf_props;
       return;
    case VK_EXTERNAL_MEMORY_HANDLE_TYPE_HOST_ALLOCATION_BIT_EXT:
       pExternalBufferProperties->externalMemoryProperties = userptr_props;
