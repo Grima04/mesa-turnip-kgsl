@@ -6350,6 +6350,7 @@ get_lowered_simd_width(const struct gen_device_info *devinfo,
    case FS_OPCODE_PACK:
    case SHADER_OPCODE_SEL_EXEC:
    case SHADER_OPCODE_CLUSTER_BROADCAST:
+   case SHADER_OPCODE_MOV_RELOC_IMM:
       return get_fpu_lowered_simd_width(devinfo, inst);
 
    case BRW_OPCODE_CMP: {

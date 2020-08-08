@@ -1386,6 +1386,18 @@ nir_load_param(nir_builder *build, uint32_t param_idx)
    return &load->dest.ssa;
 }
 
+static inline nir_ssa_def *
+nir_load_reloc_const_intel(nir_builder *b, uint32_t id)
+{
+   nir_intrinsic_instr *load =
+      nir_intrinsic_instr_create(b->shader,
+                                 nir_intrinsic_load_reloc_const_intel);
+   nir_intrinsic_set_param_idx(load, id);
+   nir_ssa_dest_init(&load->instr, &load->dest, 1, 32, NULL);
+   nir_builder_instr_insert(b, &load->instr);
+   return &load->dest.ssa;
+}
+
 #include "nir_builder_opcodes.h"
 
 static inline nir_ssa_def *

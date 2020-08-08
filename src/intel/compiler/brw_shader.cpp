@@ -502,6 +502,8 @@ brw_instruction_name(const struct gen_device_info *devinfo, enum opcode op)
       return "usub_sat";
    case SHADER_OPCODE_MOV_INDIRECT:
       return "mov_indirect";
+   case SHADER_OPCODE_MOV_RELOC_IMM:
+      return "mov_reloc_imm";
 
    case VEC4_OPCODE_URB_READ:
       return "urb_read";

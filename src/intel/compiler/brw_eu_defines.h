@@ -768,6 +768,9 @@ enum opcode {
     */
    SHADER_OPCODE_MOV_INDIRECT,
 
+   /** Fills out a relocatable immediate */
+   SHADER_OPCODE_MOV_RELOC_IMM,
+
    VEC4_OPCODE_URB_READ,
    TCS_OPCODE_GET_INSTANCE_ID,
    TCS_OPCODE_URB_WRITE,

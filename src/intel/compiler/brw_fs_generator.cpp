@@ -2230,6 +2230,11 @@ fs_generator::generate_code(const cfg_t *cfg, int dispatch_width,
          generate_mov_indirect(inst, dst, src[0], src[1]);
          break;
 
+      case SHADER_OPCODE_MOV_RELOC_IMM:
+         assert(src[0].file == BRW_IMMEDIATE_VALUE);
+         brw_MOV_reloc_imm(p, dst, dst.type, src[0].ud);
+         break;
+
       case SHADER_OPCODE_URB_READ_SIMD8:
       case SHADER_OPCODE_URB_READ_SIMD8_PER_SLOT:
          generate_urb_read(inst, dst, src[0]);
@@ -2608,5 +2613,7 @@ fs_generator::add_const_data(void *data, unsigned size)
 const unsigned *
 fs_generator::get_assembly()
 {
+   prog_data->relocs = brw_get_shader_relocs(p, &prog_data->num_relocs);
+
    return brw_get_program(p, &prog_data->program_size);
 }
