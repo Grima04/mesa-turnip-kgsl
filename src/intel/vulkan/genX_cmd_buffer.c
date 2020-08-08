@@ -2362,7 +2362,7 @@ cmd_buffer_alloc_push_constants(struct anv_cmd_buffer *cmd_buffer)
     */
    stages |= VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_VERTEX_BIT;
 
-   if (stages == cmd_buffer->state.push_constant_stages)
+   if (stages == cmd_buffer->state.gfx.push_constant_stages)
       return;
 
 #if GEN_GEN >= 8
@@ -2402,7 +2402,7 @@ cmd_buffer_alloc_push_constants(struct anv_cmd_buffer *cmd_buffer)
       alloc.ConstantBufferSize = push_constant_kb - kb_used;
    }
 
-   cmd_buffer->state.push_constant_stages = stages;
+   cmd_buffer->state.gfx.push_constant_stages = stages;
 
    /* From the BDW PRM for 3DSTATE_PUSH_CONSTANT_ALLOC_VS:
     *
