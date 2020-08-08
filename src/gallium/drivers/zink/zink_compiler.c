@@ -217,7 +217,7 @@ update_so_info(struct zink_shader *sh,
 VkShaderModule
 zink_shader_compile(struct zink_screen *screen, struct zink_shader *zs)
 {
-   VkShaderModule mod = NULL;
+   VkShaderModule mod = VK_NULL_HANDLE;
    void *streamout = zs->streamout.so_info_slots ? &zs->streamout : NULL;
    struct spirv_shader *spirv = nir_to_spirv(zs->nir, streamout);
    assert(spirv);
@@ -240,7 +240,7 @@ zink_shader_compile(struct zink_screen *screen, struct zink_shader *zs)
    smci.pCode = spirv->words;
 
    if (vkCreateShaderModule(screen->dev, &smci, NULL, &mod) != VK_SUCCESS)
-      mod = NULL;
+      mod = VK_NULL_HANDLE;
 
    /* TODO: determine if there's any reason to cache spirv output? */
    free(spirv->words);
