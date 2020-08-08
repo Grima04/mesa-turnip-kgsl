@@ -925,6 +925,8 @@ anv_get_image_format_properties(
    format_feature_flags = anv_get_image_format_features(devinfo, info->format,
                                                         format, info->tiling,
                                                         isl_mod_info);
+   if (!format_feature_flags)
+      goto unsupported;
 
    switch (info->type) {
    default:
