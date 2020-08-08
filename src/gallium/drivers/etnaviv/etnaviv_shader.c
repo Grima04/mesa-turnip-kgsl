@@ -29,6 +29,7 @@
 #include "etnaviv_compiler.h"
 #include "etnaviv_context.h"
 #include "etnaviv_debug.h"
+#include "etnaviv_disk_cache.h"
 #include "etnaviv_screen.h"
 #include "etnaviv_util.h"
 
@@ -353,6 +354,10 @@ create_variant(struct etna_shader *shader, struct etna_shader_key key)
 
    v->shader = shader;
    v->key = key;
+   v->id = ++shader->variant_count;
+
+   if (etna_disk_cache_retrieve(shader->compiler, v))
+      return v;
 
    ret = etna_compile_shader(v);
    if (!ret) {
@@ -360,7 +365,7 @@ create_variant(struct etna_shader *shader, struct etna_shader_key key)
       goto fail;
    }
 
-   v->id = ++shader->variant_count;
+   etna_disk_cache_store(shader->compiler, v);
 
    return v;
 
@@ -412,7 +417,7 @@ etna_create_shader_state(struct pipe_context *pctx,
    else
       shader->tokens = tgsi_dup_tokens(pss->tokens);
 
-
+   etna_disk_cache_init_shader_key(compiler, shader);
 
    if (etna_mesa_debug & ETNA_DBG_SHADERDB) {
       /* if shader-db run, create a standard variant immediately

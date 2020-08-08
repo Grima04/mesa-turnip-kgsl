@@ -1,4 +1,5 @@
 /*
+ * Copyright © 2020 Google, Inc.
  * Copyright (c) 2020 Etnaviv Project
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
@@ -24,33 +25,21 @@
  *    Christian Gmeiner <christian.gmeiner@gmail.com>
  */
 
+#ifndef H_ETNAVIV_DISK_CACHE
+#define H_ETNAVIV_DISK_CACHE
+
 #include "etnaviv_compiler.h"
-#include "etnaviv_compiler_nir.h"
-#include "etnaviv_debug.h"
-#include "etnaviv_disk_cache.h"
-#include "util/ralloc.h"
-
-struct etna_compiler *
-etna_compiler_create(const char *renderer)
-{
-   struct etna_compiler *compiler = rzalloc(NULL, struct etna_compiler);
-
-   if (!DBG_ENABLED(ETNA_DBG_NIR))
-      return compiler;
-
-   compiler->regs = etna_ra_setup(compiler);
-   if (!compiler->regs) {
-      ralloc_free((void *)compiler);
-      compiler = NULL;
-   }
-
-   etna_disk_cache_init(compiler, renderer);
-
-   return compiler;
-}
 
 void
-etna_compiler_destroy(const struct etna_compiler *compiler)
-{
-   ralloc_free((void *)compiler);
-}
+etna_disk_cache_init(struct etna_compiler *compiler, const char *renderer);
+
+void
+etna_disk_cache_init_shader_key(struct etna_compiler *compiler, struct etna_shader *shader);
+
+bool
+etna_disk_cache_retrieve(struct etna_compiler *compiler, struct etna_shader_variant *v);
+
+void
+etna_disk_cache_store(struct etna_compiler *compiler, struct etna_shader_variant *v);
+
+#endif

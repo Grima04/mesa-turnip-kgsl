@@ -33,6 +33,7 @@
 #include "pipe/p_compiler.h"
 #include "pipe/p_shader_tokens.h"
 #include "compiler/shader_enums.h"
+#include "util/disk_cache.h"
 
 /* XXX some of these are pretty arbitrary limits, may be better to switch
  * to dynamic allocation at some point.
@@ -51,6 +52,8 @@
 struct etna_compiler {
    uint32_t shader_count;
    struct ra_regs *regs;
+
+   struct disk_cache *disk_cache;
 };
 
 /* compiler output per input/output */
@@ -84,13 +87,26 @@ struct etna_shader_variant {
 
    struct etna_bo *bo; /* cached code memory bo handle (for icache) */
 
+   /*
+    * Below here is serialized when written to disk cache:
+    */
+   uint32_t *code;
+   struct etna_shader_uniform_info uniforms;
+
+   /*
+    * The following macros are used by the shader disk cache save/
+    * restore paths to serialize/deserialize the variant.  Any
+    * pointers that require special handling in store_variant()
+    * and retrieve_variant() should go above here.
+    */
+#define VARIANT_CACHE_START    offsetof(struct etna_shader_variant, stage)
+#define VARIANT_CACHE_PTR(v)   (((char *)v) + VARIANT_CACHE_START)
+#define VARIANT_CACHE_SIZE     (sizeof(struct etna_shader_variant) - VARIANT_CACHE_START)
+
    gl_shader_stage stage;
    uint32_t code_size; /* code size in uint32 words */
-   uint32_t *code;
    unsigned num_loops;
    unsigned num_temps;
-
-   struct etna_shader_uniform_info uniforms;
 
    /* ETNA_DIRTY_* flags that, when set in context dirty, mean that the
     * uniforms have to get (partial) reloaded. */
@@ -134,7 +150,7 @@ struct etna_shader_link_info {
 };
 
 struct etna_compiler *
-etna_compiler_create(void);
+etna_compiler_create(const char *renderer);
 
 void
 etna_compiler_destroy(const struct etna_compiler *compiler);
