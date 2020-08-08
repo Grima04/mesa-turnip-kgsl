@@ -2512,10 +2512,11 @@ emit_binding_table(struct anv_cmd_buffer *cmd_buffer,
             anv_cmd_buffer_alloc_surface_state(cmd_buffer);
 
          struct anv_address constant_data = {
-            .bo = cmd_buffer->device->dynamic_state_pool.block_pool.bo,
-            .offset = shader->constant_data.offset,
+            .bo = cmd_buffer->device->instruction_state_pool.block_pool.bo,
+            .offset = shader->kernel.offset +
+                      shader->prog_data->const_data_offset,
          };
-         unsigned constant_data_size = shader->constant_data_size;
+         unsigned constant_data_size = shader->prog_data->const_data_size;
 
          const enum isl_format format =
             anv_isl_format_for_descriptor_type(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);

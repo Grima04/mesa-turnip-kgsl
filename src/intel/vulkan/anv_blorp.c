@@ -72,7 +72,6 @@ upload_blorp_shader(struct blorp_batch *batch, uint32_t stage,
    struct anv_shader_bin *bin =
       anv_pipeline_cache_upload_kernel(&device->default_pipeline_cache, stage,
                                        key, key_size, kernel, kernel_size,
-                                       NULL, 0,
                                        prog_data, prog_data_size,
                                        NULL, 0, NULL, &bind_map);
 
