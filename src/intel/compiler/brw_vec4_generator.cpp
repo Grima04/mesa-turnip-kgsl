@@ -2281,5 +2281,12 @@ brw_vec4_generate_assembly(const struct brw_compiler *compiler,
 
    generate_code(p, compiler, log_data, nir, prog_data, cfg, perf, stats);
 
+   assert(prog_data->base.const_data_size == 0);
+   if (nir->constant_data_size > 0) {
+      prog_data->base.const_data_size = nir->constant_data_size;
+      prog_data->base.const_data_offset =
+         brw_append_data(p, nir->constant_data, nir->constant_data_size, 32);
+   }
+
    return brw_get_program(p, &prog_data->base.program_size);
 }

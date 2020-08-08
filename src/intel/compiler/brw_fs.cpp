@@ -8784,6 +8784,8 @@ brw_compile_fs(const struct brw_compiler *compiler, void *log_data,
       stats = stats ? stats + 1 : NULL;
    }
 
+   g.add_const_data(shader->constant_data, shader->constant_data_size);
+
    delete v8;
    delete v16;
    delete v32;
@@ -9166,6 +9168,8 @@ brw_compile_cs(const struct brw_compiler *compiler, void *log_data,
       g.generate_code(v->cfg, v->dispatch_width, v->shader_stats,
                       v->performance_analysis.require(), stats);
    }
+
+   g.add_const_data(src_shader->constant_data, src_shader->constant_data_size);
 
    ret = g.get_assembly();
 

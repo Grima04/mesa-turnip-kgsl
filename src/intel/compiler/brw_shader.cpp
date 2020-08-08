@@ -1374,6 +1374,8 @@ brw_compile_tes(const struct brw_compiler *compiler,
       g.generate_code(v.cfg, 8, v.shader_stats,
                       v.performance_analysis.require(), stats);
 
+      g.add_const_data(nir->constant_data, nir->constant_data_size);
+
       assembly = g.get_assembly();
    } else {
       brw::vec4_tes_visitor v(compiler, log_data, key, prog_data,

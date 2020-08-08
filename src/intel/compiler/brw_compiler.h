@@ -685,6 +685,9 @@ struct brw_stage_prog_data {
 
    unsigned program_size;
 
+   unsigned const_data_size;
+   unsigned const_data_offset;
+
    /** Does this program pull from any UBO or other constant buffers? */
    bool has_ubo_pull;
 

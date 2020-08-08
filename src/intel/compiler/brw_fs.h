@@ -478,6 +478,7 @@ public:
                      struct shader_stats shader_stats,
                      const brw::performance &perf,
                      struct brw_compile_stats *stats);
+   void add_const_data(void *data, unsigned size);
    const unsigned *get_assembly();
 
 private:

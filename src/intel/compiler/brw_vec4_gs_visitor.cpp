@@ -867,6 +867,7 @@ brw_compile_gs(const struct brw_compiler *compiler, void *log_data,
          }
          g.generate_code(v.cfg, 8, v.shader_stats,
                          v.performance_analysis.require(), stats);
+         g.add_const_data(shader->constant_data, shader->constant_data_size);
          return g.get_assembly();
       }
    }

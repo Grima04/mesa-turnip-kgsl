@@ -2595,6 +2595,16 @@ fs_generator::generate_code(const cfg_t *cfg, int dispatch_width,
    return start_offset;
 }
 
+void
+fs_generator::add_const_data(void *data, unsigned size)
+{
+   assert(prog_data->const_data_size == 0);
+   if (size > 0) {
+      prog_data->const_data_size = size;
+      prog_data->const_data_offset = brw_append_data(p, data, size, 32);
+   }
+}
+
 const unsigned *
 fs_generator::get_assembly()
 {
