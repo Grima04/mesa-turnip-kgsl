@@ -28,6 +28,7 @@
 #include <xcb/xcb.h>
 #include <xcb/dri3.h>
 #include <xcb/present.h>
+#include <xcb/xfixes.h>
 
 #include <xf86drm.h>
 #include "util/macros.h"
@@ -514,17 +515,24 @@ dri3_x11_connect(struct dri2_egl_display *dri2_dpy)
    xcb_dri3_query_version_cookie_t dri3_query_cookie;
    xcb_present_query_version_reply_t *present_query;
    xcb_present_query_version_cookie_t present_query_cookie;
+   xcb_xfixes_query_version_reply_t *xfixes_query;
+   xcb_xfixes_query_version_cookie_t xfixes_query_cookie;
    xcb_generic_error_t *error;
    const xcb_query_extension_reply_t *extension;
 
    xcb_prefetch_extension_data (dri2_dpy->conn, &xcb_dri3_id);
    xcb_prefetch_extension_data (dri2_dpy->conn, &xcb_present_id);
+   xcb_prefetch_extension_data (dri2_dpy->conn, &xcb_xfixes_id);
 
    extension = xcb_get_extension_data(dri2_dpy->conn, &xcb_dri3_id);
    if (!(extension && extension->present))
       return EGL_FALSE;
 
    extension = xcb_get_extension_data(dri2_dpy->conn, &xcb_present_id);
+   if (!(extension && extension->present))
+      return EGL_FALSE;
+
+   extension = xcb_get_extension_data(dri2_dpy->conn, &xcb_xfixes_id);
    if (!(extension && extension->present))
       return EGL_FALSE;
 
@@ -535,6 +543,10 @@ dri3_x11_connect(struct dri2_egl_display *dri2_dpy)
    present_query_cookie = xcb_present_query_version(dri2_dpy->conn,
                                                     PRESENT_SUPPORTED_MAJOR,
                                                     PRESENT_SUPPORTED_MINOR);
+
+   xfixes_query_cookie = xcb_xfixes_query_version(dri2_dpy->conn,
+                                                  XCB_XFIXES_MAJOR_VERSION,
+                                                  XCB_XFIXES_MINOR_VERSION);
 
    dri3_query =
       xcb_dri3_query_version_reply(dri2_dpy->conn, dri3_query_cookie, &error);
@@ -562,6 +574,18 @@ dri3_x11_connect(struct dri2_egl_display *dri2_dpy)
    dri2_dpy->present_major_version = present_query->major_version;
    dri2_dpy->present_minor_version = present_query->minor_version;
    free(present_query);
+
+   xfixes_query =
+      xcb_xfixes_query_version_reply(dri2_dpy->conn,
+                                      xfixes_query_cookie, &error);
+   if (xfixes_query == NULL || error != NULL ||
+       xfixes_query->major_version < 2) {
+      _eglLog(_EGL_WARNING, "DRI3: failed to query xfixes version");
+      free(error);
+      free(xfixes_query);
+      return EGL_FALSE;
+   }
+   free(xfixes_query);
 
    dri2_dpy->fd = loader_dri3_open(dri2_dpy->conn, dri2_dpy->screen->root, 0);
    if (dri2_dpy->fd < 0) {
