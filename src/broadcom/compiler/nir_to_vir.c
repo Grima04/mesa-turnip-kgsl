@@ -577,6 +577,7 @@ ntq_emit_txs(struct v3d_compile *c, nir_tex_instr *instr)
                 case GLSL_SAMPLER_DIM_MS:
                 case GLSL_SAMPLER_DIM_3D:
                 case GLSL_SAMPLER_DIM_CUBE:
+                case GLSL_SAMPLER_DIM_BUF:
                         /* Don't minify the array size. */
                         if (!(instr->is_array && i == dest_size - 1)) {
                                 size = ntq_minify(c, size, lod);
