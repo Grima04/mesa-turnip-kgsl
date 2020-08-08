@@ -784,31 +784,51 @@ lower_load_constant(nir_intrinsic_instr *intrin,
 {
    nir_builder *b = &state->builder;
 
-   b->cursor = nir_before_instr(&intrin->instr);
+   b->cursor = nir_instr_remove(&intrin->instr);
 
    /* Any constant-offset load_constant instructions should have been removed
     * by constant folding.
     */
    assert(!nir_src_is_const(intrin->src[0]));
+   nir_ssa_def *offset = nir_iadd_imm(b, nir_ssa_for_src(b, intrin->src[0], 1),
+                                      nir_intrinsic_base(intrin));
 
-   nir_ssa_def *index = nir_imm_int(b, state->constants_offset);
-   nir_ssa_def *offset = nir_iadd(b, nir_ssa_for_src(b, intrin->src[0], 1),
-                                  nir_imm_int(b, nir_intrinsic_base(intrin)));
+   nir_ssa_def *data;
+   if (state->pdevice->use_softpin) {
+      unsigned load_size = intrin->dest.ssa.num_components *
+                           intrin->dest.ssa.bit_size / 8;
+      unsigned load_align = intrin->dest.ssa.bit_size / 8;
 
-   nir_intrinsic_instr *load_ubo =
-      nir_intrinsic_instr_create(b->shader, nir_intrinsic_load_ubo);
-   load_ubo->num_components = intrin->num_components;
-   load_ubo->src[0] = nir_src_for_ssa(index);
-   load_ubo->src[1] = nir_src_for_ssa(offset);
-   nir_intrinsic_set_align(load_ubo, intrin->dest.ssa.bit_size / 8, 0);
-   nir_ssa_dest_init(&load_ubo->instr, &load_ubo->dest,
-                     intrin->dest.ssa.num_components,
-                     intrin->dest.ssa.bit_size, NULL);
-   nir_builder_instr_insert(b, &load_ubo->instr);
+      assert(load_size < b->shader->constant_data_size);
+      unsigned max_offset = b->shader->constant_data_size - load_size;
+      offset = nir_umin(b, offset, nir_imm_int(b, max_offset));
 
-   nir_ssa_def_rewrite_uses(&intrin->dest.ssa,
-                            nir_src_for_ssa(&load_ubo->dest.ssa));
-   nir_instr_remove(&intrin->instr);
+      nir_ssa_def *const_data_base_addr = nir_pack_64_2x32_split(b,
+         nir_load_reloc_const_intel(b, ANV_SHADER_RELOC_CONST_DATA_ADDR_LOW),
+         nir_load_reloc_const_intel(b, ANV_SHADER_RELOC_CONST_DATA_ADDR_HIGH));
+
+      data = nir_load_global(b, nir_iadd(b, const_data_base_addr,
+                                            nir_u2u64(b, offset)),
+                             load_align,
+                             intrin->dest.ssa.num_components,
+                             intrin->dest.ssa.bit_size);
+   } else {
+      nir_ssa_def *index = nir_imm_int(b, state->constants_offset);
+
+      nir_intrinsic_instr *load_ubo =
+         nir_intrinsic_instr_create(b->shader, nir_intrinsic_load_ubo);
+      load_ubo->num_components = intrin->num_components;
+      load_ubo->src[0] = nir_src_for_ssa(index);
+      load_ubo->src[1] = nir_src_for_ssa(offset);
+      nir_intrinsic_set_align(load_ubo, intrin->dest.ssa.bit_size / 8, 0);
+      nir_ssa_dest_init(&load_ubo->instr, &load_ubo->dest,
+                        intrin->dest.ssa.num_components,
+                        intrin->dest.ssa.bit_size, NULL);
+      nir_builder_instr_insert(b, &load_ubo->instr);
+      data = &load_ubo->dest.ssa;
+   }
+
+   nir_ssa_def_rewrite_uses(&intrin->dest.ssa, nir_src_for_ssa(data));
 }
 
 static void
@@ -1147,7 +1167,7 @@ anv_nir_apply_pipeline_layout(const struct anv_physical_device *pdevice,
       }
    }
 
-   if (state.uses_constants) {
+   if (state.uses_constants && !pdevice->use_softpin) {
       state.constants_offset = map->surface_count;
       map->surface_to_descriptor[map->surface_count].set =
          ANV_DESCRIPTOR_SET_SHADER_CONSTANTS;

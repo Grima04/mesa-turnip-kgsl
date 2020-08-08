@@ -82,6 +82,23 @@ anv_shader_bin_create(struct anv_device *device,
    memcpy(shader->kernel.map, kernel_data, kernel_size);
    shader->kernel_size = kernel_size;
 
+   uint64_t shader_data_addr = INSTRUCTION_STATE_POOL_MIN_ADDRESS +
+                               shader->kernel.offset +
+                               prog_data_in->const_data_offset;
+
+   struct brw_shader_reloc_value reloc_values[] = {
+      {
+         .id = ANV_SHADER_RELOC_CONST_DATA_ADDR_LOW,
+         .value = shader_data_addr,
+      },
+      {
+         .id = ANV_SHADER_RELOC_CONST_DATA_ADDR_HIGH,
+         .value = shader_data_addr >> 32,
+      },
+   };
+   brw_write_shader_relocs(&device->info, shader->kernel.map, prog_data_in,
+                           reloc_values, ARRAY_SIZE(reloc_values));
+
    memcpy(prog_data, prog_data_in, prog_data_size);
    typed_memcpy(prog_data_relocs, prog_data_in->relocs,
                 prog_data_in->num_relocs);
