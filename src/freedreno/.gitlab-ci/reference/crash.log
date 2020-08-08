@@ -2452,7 +2452,7 @@ registers-gmu:
 	00000000	0x12b: 00000000
 	00000000	0x140: 00000000
 indexed-registers:
-  - regs-name: CP_SEQ_STAT
+  - regs-name: CP_SQE_STAT
     dwords: 51
 	 PC: 00c5
 	$01: deadd00d		$11: 00000000
