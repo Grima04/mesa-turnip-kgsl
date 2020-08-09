@@ -101,6 +101,9 @@ choose_isl_tiling_flags(const struct gen_device_info *devinfo,
    const VkImageCreateInfo *base_info = anv_info->vk_info;
    isl_tiling_flags_t flags = 0;
 
+   assert((isl_mod_info != NULL) ==
+          (base_info->tiling == VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT));
+
    switch (base_info->tiling) {
    default:
       unreachable("bad VkImageTiling");
@@ -111,12 +114,13 @@ choose_isl_tiling_flags(const struct gen_device_info *devinfo,
       flags = ISL_TILING_LINEAR_BIT;
       break;
    case VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT:
-      assert(isl_mod_info);
       flags = 1 << isl_mod_info->tiling;
    }
 
-   if (anv_info->isl_tiling_flags)
+   if (anv_info->isl_tiling_flags) {
+      assert(isl_mod_info == NULL);
       flags &= anv_info->isl_tiling_flags;
+   }
 
    if (legacy_scanout) {
       isl_tiling_flags_t legacy_mask = ISL_TILING_LINEAR_BIT;
