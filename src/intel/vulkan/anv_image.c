@@ -655,6 +655,28 @@ make_surface(struct anv_device *device,
    return VK_SUCCESS;
 }
 
+static VkResult
+add_all_surfaces(struct anv_device *device,
+                 struct anv_image *image,
+                 const VkImageFormatListCreateInfo *format_list_info,
+                 uint32_t stride,
+                 isl_tiling_flags_t isl_tiling_flags,
+                 isl_surf_usage_flags_t isl_extra_usage_flags)
+{
+   VkResult result;
+
+   uint32_t b;
+   for_each_bit(b, image->aspects) {
+      VkImageAspectFlagBits aspect = 1 << b;
+      result = make_surface(device, image, format_list_info, stride,
+                            isl_tiling_flags, isl_extra_usage_flags, aspect);
+      if (result != VK_SUCCESS)
+         return result;
+   }
+
+   return VK_SUCCESS;
+}
+
 static const struct isl_drm_modifier_info *
 choose_drm_format_mod(const struct anv_physical_device *device,
                       uint32_t modifier_count, const uint64_t *modifiers)
@@ -763,14 +785,10 @@ anv_image_create(VkDevice _device,
       vk_find_struct_const(pCreateInfo->pNext,
                            IMAGE_FORMAT_LIST_CREATE_INFO_KHR);
 
-   uint32_t b;
-   for_each_bit(b, image->aspects) {
-      r = make_surface(device, image, fmt_list, create_info->stride,
-                       isl_tiling_flags, create_info->isl_extra_usage_flags,
-                       (1 << b));
-      if (r != VK_SUCCESS)
-         goto fail;
-   }
+   r = add_all_surfaces(device, image, fmt_list, create_info->stride,
+                        isl_tiling_flags, create_info->isl_extra_usage_flags);
+   if (r != VK_SUCCESS)
+      goto fail;
 
    *pImage = anv_image_to_handle(image);
 
@@ -951,6 +969,7 @@ resolve_ahw_image(struct anv_device *device,
    assert(mem->ahw);
    AHardwareBuffer_Desc desc;
    AHardwareBuffer_describe(mem->ahw, &desc);
+   VkResult result;
 
    /* Check tiling. */
    int i915_tiling = anv_gem_get_tiling(device, mem->bo->gem_handle);
@@ -1006,12 +1025,9 @@ resolve_ahw_image(struct anv_device *device,
    uint32_t stride = desc.stride *
                      (isl_format_get_layout(isl_fmt)->bpb / 8);
 
-   uint32_t b;
-   for_each_bit(b, image->aspects) {
-      VkResult r = make_surface(device, image, NULL, stride, isl_tiling_flags,
-                                ISL_SURF_USAGE_DISABLE_AUX_BIT, (1 << b));
-      assert(r == VK_SUCCESS);
-   }
+   result = add_all_surfaces(device, image, NULL, stride, isl_tiling_flags,
+                             ISL_SURF_USAGE_DISABLE_AUX_BIT);
+   assert(result == VK_SUCCESS);
 #endif
 }
 
