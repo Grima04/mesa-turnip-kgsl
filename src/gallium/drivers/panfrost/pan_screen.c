@@ -161,6 +161,7 @@ panfrost_get_param(struct pipe_screen *screen, enum pipe_cap param)
         case PIPE_CAP_MAX_STREAM_OUTPUT_SEPARATE_COMPONENTS:
         case PIPE_CAP_MAX_STREAM_OUTPUT_INTERLEAVED_COMPONENTS:
                 return is_bifrost ? 0 : 64;
+        case PIPE_CAP_STREAM_OUTPUT_PAUSE_RESUME:
         case PIPE_CAP_STREAM_OUTPUT_INTERLEAVE_BUFFERS:
                 return is_bifrost ? 0 : 1;
 

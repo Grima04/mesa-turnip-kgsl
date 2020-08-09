@@ -86,9 +86,13 @@ struct panfrost_fence {
         bool signaled;
 };
 
+struct panfrost_streamout_target {
+        struct pipe_stream_output_target base;
+        uint32_t offset;
+};
+
 struct panfrost_streamout {
         struct pipe_stream_output_target *targets[PIPE_MAX_SO_BUFFERS];
-        uint32_t offsets[PIPE_MAX_SO_BUFFERS];
         unsigned num_targets;
 };
 
@@ -299,6 +303,12 @@ static inline struct panfrost_context *
 pan_context(struct pipe_context *pcontext)
 {
         return (struct panfrost_context *) pcontext;
+}
+
+static inline struct panfrost_streamout_target *
+pan_so_target(struct pipe_stream_output_target *target)
+{
+        return (struct panfrost_streamout_target *)target;
 }
 
 static inline struct panfrost_shader_state *

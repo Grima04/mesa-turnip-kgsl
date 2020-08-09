@@ -1271,16 +1271,16 @@ panfrost_emit_varyings(struct panfrost_batch *batch,
 }
 
 static unsigned
-panfrost_streamout_offset(unsigned stride, unsigned offset,
+panfrost_streamout_offset(unsigned stride,
                         struct pipe_stream_output_target *target)
 {
-        return (target->buffer_offset + (offset * stride * 4)) & 63;
+        return (target->buffer_offset + (pan_so_target(target)->offset * stride * 4)) & 63;
 }
 
 static void
 panfrost_emit_streamout(struct panfrost_batch *batch,
                         struct mali_attribute_buffer_packed *slot,
-                        unsigned stride_words, unsigned offset, unsigned count,
+                        unsigned stride_words, unsigned count,
                         struct pipe_stream_output_target *target)
 {
         unsigned stride = stride_words * 4;
@@ -1300,7 +1300,7 @@ panfrost_emit_streamout(struct panfrost_batch *batch,
                               PAN_BO_ACCESS_FRAGMENT);
 
         /* We will have an offset applied to get alignment */
-        mali_ptr addr = bo->gpu + target->buffer_offset + (offset * stride);
+        mali_ptr addr = bo->gpu + target->buffer_offset + (pan_so_target(target)->offset * stride);
 
         pan_pack(slot, ATTRIBUTE_BUFFER, cfg) {
                 cfg.pointer = (addr & ~63);
@@ -1713,7 +1713,6 @@ panfrost_emit_varying_descriptor(struct panfrost_batch *batch,
         for (unsigned i = 0; i < ctx->streamout.num_targets; ++i) {
                 streamout_offsets[i] = panfrost_streamout_offset(
                                         so->stride[i],
-                                        ctx->streamout.offsets[i],
                                         ctx->streamout.targets[i]);
         }
 
@@ -1749,7 +1748,6 @@ panfrost_emit_varying_descriptor(struct panfrost_batch *batch,
         for (unsigned i = 0; i < ctx->streamout.num_targets; ++i) {
                 panfrost_emit_streamout(batch, &varyings[xfb_base + i],
                                         so->stride[i],
-                                        ctx->streamout.offsets[i],
                                         out_count,
                                         ctx->streamout.targets[i]);
         }

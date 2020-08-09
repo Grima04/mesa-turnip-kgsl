@@ -245,7 +245,7 @@ panfrost_update_streamout_offsets(struct panfrost_context *ctx)
 
                 count = u_stream_outputs_for_vertices(ctx->active_prim,
                                                       ctx->vertex_count);
-                ctx->streamout.offsets[i] += count;
+                pan_so_target(ctx->streamout.targets[i])->offset += count;
         }
 }
 
@@ -358,7 +358,9 @@ panfrost_draw_vbo(
                         cfg.index_count = info->count;
                 } else {
                         ctx->offset_start = info->start;
-                        cfg.index_count = ctx->vertex_count;
+                        cfg.index_count = info->count_from_stream_output ?
+                                pan_so_target(info->count_from_stream_output)->offset :
+                                ctx->vertex_count;
                 }
         }
 
@@ -1360,7 +1362,7 @@ panfrost_create_stream_output_target(struct pipe_context *pctx,
 {
         struct pipe_stream_output_target *target;
 
-        target = rzalloc(pctx, struct pipe_stream_output_target);
+        target = &rzalloc(pctx, struct panfrost_streamout_target)->base;
 
         if (!target)
                 return NULL;
@@ -1396,7 +1398,7 @@ panfrost_set_stream_output_targets(struct pipe_context *pctx,
 
         for (unsigned i = 0; i < num_targets; i++) {
                 if (offsets[i] != -1)
-                        so->offsets[i] = offsets[i];
+                        pan_so_target(targets[i])->offset = offsets[i];
 
                 pipe_so_target_reference(&so->targets[i], targets[i]);
         }
