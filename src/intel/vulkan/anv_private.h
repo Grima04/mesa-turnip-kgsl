@@ -3805,7 +3805,7 @@ struct anv_image {
     * |                     |
     * -----------------------
     */
-   struct {
+   struct anv_image_plane {
       /**
        * Offset of the entire plane (whenever the image is disjoint this is
        * set to 0).

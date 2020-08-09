@@ -621,27 +621,35 @@ add_primary_surface(struct anv_device *device,
    return VK_SUCCESS;
 }
 
+/**
+ * 'plane' must be the most recently added plane.
+ */
 static void
-check_surfaces(const struct anv_image *image, uint32_t plane)
+check_surfaces(const struct anv_image *image,
+               const struct anv_image_plane *plane)
 {
-   assert((image->planes[plane].offset + image->planes[plane].size) == image->size);
+#ifdef DEBUG
+   /* FINISHME: Check the shadow surface. */
 
-   /* Upper bound of the last surface should be smaller than the plane's
-    * size.
+   /* XXX: This looks buggy. If the aux surface starts before the primary
+    * surface, then it derives a meaningless value by adding the primary's size
+    * to the aux's offset.
     */
-   assert((MAX2(image->planes[plane].surface.offset,
-                image->planes[plane].aux_surface.offset) +
-           (image->planes[plane].aux_surface.isl.size_B > 0 ?
-            image->planes[plane].aux_surface.isl.size_B :
-            image->planes[plane].surface.isl.size_B)) <=
-          (image->planes[plane].offset + image->planes[plane].size));
+   uintmax_t plane_end = plane->offset + plane->size;
+   const struct anv_surface *primary_surface = &plane->surface;
+   const struct anv_surface *aux_surface = &plane->aux_surface;
+   uintmax_t last_surface_offset = MAX2(primary_surface->offset, aux_surface->offset);
+   uintmax_t last_surface_size = aux_surface->isl.size_B > 0
+                               ? aux_surface->isl.size_B
+                               : primary_surface->isl.size_B;
+   uintmax_t last_surface_end = last_surface_offset + last_surface_size;
 
-   if (image->planes[plane].aux_usage != ISL_AUX_USAGE_NONE) {
-      /* assert(image->planes[plane].fast_clear_state_offset == */
-      /*        (image->planes[plane].aux_surface.offset + image->planes[plane].aux_surface.isl.size_B)); */
-      assert(image->planes[plane].fast_clear_state_offset <
-             (image->planes[plane].offset + image->planes[plane].size));
-   }
+   if (plane->aux_usage != ISL_AUX_USAGE_NONE)
+      assert(plane->fast_clear_state_offset < plane_end);
+
+   assert(last_surface_end <= plane_end);
+   assert(plane_end == image->size);
+#endif
 }
 
 static VkResult
@@ -697,7 +705,7 @@ add_all_surfaces(struct anv_device *device,
       if (result != VK_SUCCESS)
          return result;
 
-      check_surfaces(image, plane);
+      check_surfaces(image, &image->planes[plane]);
    }
 
    return VK_SUCCESS;
