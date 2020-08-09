@@ -691,12 +691,14 @@ add_all_surfaces(struct anv_device *device,
                                    isl_tiling_flags, isl_usage);
       if (result != VK_SUCCESS)
          return result;
+      check_surfaces(image, &image->planes[plane]);
 
       if (needs_shadow) {
          result = add_shadow_surface(device, image, plane, plane_format, stride,
                                      vk_usage);
          if (result != VK_SUCCESS)
             return result;
+         check_surfaces(image, &image->planes[plane]);
       }
 
       result = add_aux_surface_if_supported(device, image, plane, plane_format,
@@ -704,7 +706,6 @@ add_all_surfaces(struct anv_device *device,
                                             isl_extra_usage_flags);
       if (result != VK_SUCCESS)
          return result;
-
       check_surfaces(image, &image->planes[plane]);
    }
 
