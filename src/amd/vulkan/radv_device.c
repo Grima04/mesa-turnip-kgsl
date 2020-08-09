@@ -523,6 +523,7 @@ static const struct debug_control radv_debug_options[] = {
 	{"metashaders", RADV_DEBUG_DUMP_META_SHADERS},
 	{"nomemorycache", RADV_DEBUG_NO_MEMORY_CACHE},
 	{"llvm", RADV_DEBUG_LLVM},
+	{"forcecompress", RADV_DEBUG_FORCE_COMPRESS},
 	{NULL, 0}
 };
 

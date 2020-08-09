@@ -527,6 +527,9 @@ RADV driver environment variables
       validate the LLVM IR before LLVM compiles the shader
    ``errors``
       display more info about errors
+   ``forcecompress``
+      Enables DCC,FMASK,CMASK,HTILE in situations where the driver supports it
+      but normally does not deem it beneficial.
    ``info``
       show GPU-related information
    ``metashaders``

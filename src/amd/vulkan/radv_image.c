@@ -150,8 +150,12 @@ radv_surface_has_scanout(struct radv_device *device, const struct radv_image_cre
 }
 
 static bool
-radv_image_use_fast_clear_for_image(const struct radv_image *image)
+radv_image_use_fast_clear_for_image(const struct radv_device *device,
+                                    const struct radv_image *image)
 {
+	if (device->instance->debug_flags & RADV_DEBUG_FORCE_COMPRESS)
+		return true;
+
 	if (image->info.samples <= 1 &&
 	    image->info.width * image->info.height <= 512 * 512) {
 		/* Do not enable CMASK or DCC for small surfaces where the cost
@@ -196,7 +200,7 @@ radv_use_dcc_for_image(struct radv_device *device,
 	    vk_format_get_plane_count(format) > 1)
 		return false;
 
-	if (!radv_image_use_fast_clear_for_image(image))
+	if (!radv_image_use_fast_clear_for_image(device, image))
 		return false;
 
 	/* TODO: Enable DCC for mipmaps on GFX9+. */
@@ -251,17 +255,21 @@ radv_use_dcc_for_image(struct radv_device *device,
 }
 
 static inline bool
-radv_use_fmask_for_image(const struct radv_image *image)
+radv_use_fmask_for_image(const struct radv_device *device,
+                         const struct radv_image *image)
 {
 	return image->info.samples > 1 &&
-	       image->usage & VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+	       ((image->usage & VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) ||
+	        (device->instance->debug_flags & RADV_DEBUG_FORCE_COMPRESS));
 }
 
 static inline bool
-radv_use_htile_for_image(const struct radv_image *image)
+radv_use_htile_for_image(const struct radv_device *device,
+                         const struct radv_image *image)
 {
 	return image->info.levels == 1 &&
-	       image->info.width * image->info.height >= 8 * 8;
+	       ((image->info.width * image->info.height >= 8 * 8) ||
+	        (device->instance->debug_flags & RADV_DEBUG_FORCE_COMPRESS));
 }
 
 static bool
@@ -479,7 +487,7 @@ radv_init_surface(struct radv_device *device,
 
 	if (is_depth) {
 		surface->flags |= RADEON_SURF_ZBUFFER;
-		if (!radv_use_htile_for_image(image) ||
+		if (!radv_use_htile_for_image(device, image) ||
 		    (device->instance->debug_flags & RADV_DEBUG_NO_HIZ))
 			surface->flags |= RADEON_SURF_NO_HTILE;
 		if (radv_use_tc_compat_htile_for_image(device, pCreateInfo, image_format))
@@ -498,7 +506,7 @@ radv_init_surface(struct radv_device *device,
 	if (!radv_use_dcc_for_image(device, image, pCreateInfo, image_format))
 		surface->flags |= RADEON_SURF_DISABLE_DCC;
 
-	if (!radv_use_fmask_for_image(image))
+	if (!radv_use_fmask_for_image(device, image))
 		surface->flags |= RADEON_SURF_NO_FMASK;
 
 	return 0;
@@ -1230,12 +1238,14 @@ radv_image_override_offset_stride(struct radv_device *device,
 }
 
 static void
-radv_image_alloc_single_sample_cmask(const struct radv_image *image,
+radv_image_alloc_single_sample_cmask(const struct radv_device *device,
+                                     const struct radv_image *image,
                                      struct radeon_surf *surf)
 {
 	if (!surf->cmask_size || surf->cmask_offset || surf->bpe > 8 ||
 	    image->info.levels > 1 || image->info.depth > 1 ||
-	    radv_image_has_dcc(image) || !radv_image_use_fast_clear_for_image(image))
+	    radv_image_has_dcc(image) ||
+	    !radv_image_use_fast_clear_for_image(device, image))
 		return;
 
 	assert(image->info.storage_samples == 1);
@@ -1313,7 +1323,7 @@ radv_image_create_layout(struct radv_device *device,
 		device->ws->surface_init(device->ws, &info, &image->planes[plane].surface);
 
 		if (!create_info.no_metadata_planes && image->plane_count == 1)
-			radv_image_alloc_single_sample_cmask(image, &image->planes[plane].surface);
+			radv_image_alloc_single_sample_cmask(device, image, &image->planes[plane].surface);
 
 		image->planes[plane].offset = align(image->size, image->planes[plane].surface.alignment);
 		image->size = image->planes[plane].offset + image->planes[plane].surface.total_size;
