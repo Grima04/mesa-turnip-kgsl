@@ -908,6 +908,8 @@ anv_get_image_format_properties(
    const struct gen_device_info *devinfo = &physical_device->info;
    const struct anv_format *format = anv_get_format(info->format);
    const struct isl_drm_modifier_info *isl_mod_info = NULL;
+   const VkImageFormatListCreateInfo *format_list_info =
+      vk_find_struct_const(info->pNext, IMAGE_FORMAT_LIST_CREATE_INFO);
 
    if (format == NULL)
       goto unsupported;
@@ -925,6 +927,24 @@ anv_get_image_format_properties(
    format_feature_flags = anv_get_image_format_features(devinfo, info->format,
                                                         format, info->tiling,
                                                         isl_mod_info);
+
+   /* Remove the VkFormatFeatureFlags that are incompatible with any declared
+    * image view format. (Removals are more likely to occur when a DRM format
+    * modifier is present).
+    */
+   if ((info->flags & VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT) && format_list_info) {
+      for (uint32_t i = 0; i < format_list_info->viewFormatCount; ++i) {
+         VkFormat vk_view_format = format_list_info->pViewFormats[i];
+         const struct anv_format *anv_view_format = anv_get_format(vk_view_format);
+         VkFormatFeatureFlags view_format_features =
+            anv_get_image_format_features(devinfo, vk_view_format,
+                                          anv_view_format,
+                                          info->tiling,
+                                          isl_mod_info);
+         format_feature_flags &= view_format_features;
+      }
+   }
+
    if (!format_feature_flags)
       goto unsupported;
 
@@ -1071,18 +1091,10 @@ anv_get_image_format_properties(
       if (format->n_planes > 1)
          goto unsupported;
 
-      if (isl_mod_info->aux_usage == ISL_AUX_USAGE_CCS_E) {
-         /* If we have a CCS modifier, ensure that the format supports CCS
-          * and, if VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT is set, all of the
-          * formats in the format list are CCS compatible.
-          */
-         const VkImageFormatListCreateInfoKHR *fmt_list =
-            vk_find_struct_const(info->pNext,
-                                 IMAGE_FORMAT_LIST_CREATE_INFO_KHR);
-         if (!anv_formats_ccs_e_compatible(devinfo, info->flags,
-                                           info->format, info->tiling,
-                                           fmt_list))
-            goto unsupported;
+      if (isl_mod_info->aux_usage == ISL_AUX_USAGE_CCS_E &&
+          !anv_formats_ccs_e_compatible(devinfo, info->flags, info->format,
+                                        info->tiling, format_list_info)) {
+         goto unsupported;
       }
    }
 
