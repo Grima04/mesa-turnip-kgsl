@@ -106,6 +106,9 @@ TEST(u_debug_stack_test, capture_not_overwritten)
    if (size > 0) {
       EXPECT_STRNE(bt1, bt2);
    }
+
+   free(bt1);
+   free(bt2);
 }
 
 #endif
