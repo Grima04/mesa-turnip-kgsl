@@ -905,6 +905,7 @@ anv_get_image_format_properties(
    uint32_t maxMipLevels;
    uint32_t maxArraySize;
    VkSampleCountFlags sampleCounts;
+   struct anv_instance *instance = physical_device->instance;
    const struct gen_device_info *devinfo = &physical_device->info;
    const struct anv_format *format = anv_get_format(info->format);
    const struct isl_drm_modifier_info *isl_mod_info = NULL;
@@ -1079,9 +1080,16 @@ anv_get_image_format_properties(
    }
 
    if (info->tiling == VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT) {
-      /* Modifiers are only supported on simple 2D images */
-      if (info->type != VK_IMAGE_TYPE_2D)
+      /* We support modifiers only for "simple" (that is, non-array
+       * non-mipmapped single-sample) 2D images.
+       */
+      if (info->type != VK_IMAGE_TYPE_2D) {
+         vk_errorfi(instance, physical_device, VK_ERROR_FORMAT_NOT_SUPPORTED,
+                    "VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT "
+                    "requires VK_IMAGE_TYPE_2D");
          goto unsupported;
+      }
+
       maxArraySize = 1;
       maxMipLevels = 1;
       sampleCounts = VK_SAMPLE_COUNT_1_BIT;
