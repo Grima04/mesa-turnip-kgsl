@@ -1086,11 +1086,6 @@ anv_get_image_format_properties(
       maxMipLevels = 1;
       sampleCounts = VK_SAMPLE_COUNT_1_BIT;
 
-      /* Modifiers are not yet supported for YCbCr */
-      const struct anv_format *format = anv_get_format(info->format);
-      if (format->n_planes > 1)
-         goto unsupported;
-
       if (isl_mod_info->aux_usage == ISL_AUX_USAGE_CCS_E &&
           !anv_formats_ccs_e_compatible(devinfo, info->flags, info->format,
                                         info->tiling, format_list_info)) {
