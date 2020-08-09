@@ -981,6 +981,28 @@ anv_get_image_format_properties(
       break;
    }
 
+   if (info->tiling == VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT) {
+      /* We support modifiers only for "simple" (that is, non-array
+       * non-mipmapped single-sample) 2D images.
+       */
+      if (info->type != VK_IMAGE_TYPE_2D) {
+         vk_errorfi(instance, physical_device, VK_ERROR_FORMAT_NOT_SUPPORTED,
+                    "VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT "
+                    "requires VK_IMAGE_TYPE_2D");
+         goto unsupported;
+      }
+
+      maxArraySize = 1;
+      maxMipLevels = 1;
+      sampleCounts = VK_SAMPLE_COUNT_1_BIT;
+
+      if (isl_mod_info->aux_usage == ISL_AUX_USAGE_CCS_E &&
+          !anv_formats_ccs_e_compatible(devinfo, info->flags, info->format,
+                                        info->tiling, format_list_info)) {
+         goto unsupported;
+      }
+   }
+
    /* Our hardware doesn't support 1D compressed textures.
     *    From the SKL PRM, RENDER_SURFACE_STATE::SurfaceFormat:
     *    * This field cannot be a compressed (BC*, DXT*, FXT*, ETC*, EAC*) format
@@ -1077,28 +1099,6 @@ anv_get_image_format_properties(
       /* Ignore this flag because it was removed from the
        * provisional_I_20150910 header.
        */
-   }
-
-   if (info->tiling == VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT) {
-      /* We support modifiers only for "simple" (that is, non-array
-       * non-mipmapped single-sample) 2D images.
-       */
-      if (info->type != VK_IMAGE_TYPE_2D) {
-         vk_errorfi(instance, physical_device, VK_ERROR_FORMAT_NOT_SUPPORTED,
-                    "VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT "
-                    "requires VK_IMAGE_TYPE_2D");
-         goto unsupported;
-      }
-
-      maxArraySize = 1;
-      maxMipLevels = 1;
-      sampleCounts = VK_SAMPLE_COUNT_1_BIT;
-
-      if (isl_mod_info->aux_usage == ISL_AUX_USAGE_CCS_E &&
-          !anv_formats_ccs_e_compatible(devinfo, info->flags, info->format,
-                                        info->tiling, format_list_info)) {
-         goto unsupported;
-      }
    }
 
    /* From the bspec section entitled "Surface Layout and Tiling",
