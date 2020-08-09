@@ -45,6 +45,7 @@ struct ntv_context {
    size_t num_ubos;
 
    SpvId ssbos[PIPE_MAX_SHADER_BUFFERS];
+   nir_variable *ssbo_vars[PIPE_MAX_SHADER_BUFFERS];
    uint32_t ssbo_mask;
    uint32_t num_ssbos;
    SpvId image_types[PIPE_MAX_SAMPLERS];
@@ -827,18 +828,30 @@ emit_bo(struct ntv_context *ctx, struct nir_variable *var)
 
    SpvId array_type;
    SpvId vec4_type = get_uvec_type(ctx, 32, 4);
+   uint32_t array_size = glsl_count_attribute_slots(var->interface_type, false);
    if (glsl_type_is_unsized_array(var->type))
       array_type = spirv_builder_type_runtime_array(&ctx->builder, vec4_type);
    else {
-      uint32_t size = glsl_count_attribute_slots(var->interface_type, false);
-      SpvId array_length = emit_uint_const(ctx, 32, size);
+      SpvId array_length = emit_uint_const(ctx, 32, array_size);
       array_type = spirv_builder_type_array(&ctx->builder, vec4_type,
                                                array_length);
    }
    spirv_builder_emit_array_stride(&ctx->builder, array_type, 16);
 
    // wrap UBO-array in a struct
-   SpvId struct_type = spirv_builder_type_struct(&ctx->builder, &array_type, 1);
+   SpvId runtime_array = 0;
+   if (ssbo) {
+      if (glsl_type_is_interface(var->interface_type) && !glsl_type_is_unsized_array(var->type)) {
+          const struct glsl_type *last_member = glsl_get_struct_field(var->interface_type, glsl_get_length(var->interface_type) - 1);
+          if (glsl_type_is_unsized_array(last_member)) {
+             bool is_64bit = glsl_type_is_64bit(glsl_without_array(last_member));
+             runtime_array = spirv_builder_type_runtime_array(&ctx->builder, get_uvec_type(ctx, is_64bit ? 64 : 32, 1));
+             spirv_builder_emit_array_stride(&ctx->builder, runtime_array, glsl_get_explicit_stride(last_member));
+          }
+      }
+   }
+   SpvId types[] = {array_type, runtime_array};
+   SpvId struct_type = spirv_builder_type_struct(&ctx->builder, types, 1 + !!runtime_array);
    if (var->name) {
       char struct_name[100];
       snprintf(struct_name, sizeof(struct_name), "struct_%s", var->name);
@@ -848,6 +861,11 @@ emit_bo(struct ntv_context *ctx, struct nir_variable *var)
    spirv_builder_emit_decoration(&ctx->builder, struct_type,
                                  SpvDecorationBlock);
    spirv_builder_emit_member_offset(&ctx->builder, struct_type, 0, 0);
+   if (runtime_array) {
+      spirv_builder_emit_member_offset(&ctx->builder, struct_type, 1,
+                                      glsl_get_struct_field_offset(var->interface_type,
+                                                                   glsl_get_length(var->interface_type) - 1));
+   }
 
    SpvId pointer_type = spirv_builder_type_pointer(&ctx->builder,
                                                    ssbo ? SpvStorageClassStorageBuffer : SpvStorageClassUniform,
@@ -904,6 +922,7 @@ emit_bo(struct ntv_context *ctx, struct nir_variable *var)
          assert(!ctx->ssbos[ssbo_idx]);
          ctx->ssbos[ssbo_idx] = var_id;
          ctx->ssbo_mask |= 1 << ssbo_idx;
+         ctx->ssbo_vars[ssbo_idx] = var;
       } else {
          assert(ctx->num_ubos < ARRAY_SIZE(ctx->ubos));
          ctx->ubos[ctx->num_ubos++] = var_id;
@@ -2556,6 +2575,29 @@ emit_intrinsic(struct ntv_context *ctx, nir_intrinsic_instr *intr)
    case nir_intrinsic_ssbo_atomic_comp_swap:
       emit_atomic_intrinsic(ctx, intr);
       break;
+
+   case nir_intrinsic_get_ssbo_size: {
+      SpvId uint_type = get_uvec_type(ctx, 32, 1);
+      nir_variable *var = ctx->ssbo_vars[nir_src_as_const_value(intr->src[0])->u32];
+      SpvId result = spirv_builder_emit_binop(&ctx->builder, SpvOpArrayLength, uint_type,
+                                              ctx->ssbos[nir_src_as_const_value(intr->src[0])->u32], 1);
+      /* this is going to be converted by nir to:
+
+         length = (buffer_size - offset) / stride
+
+        * so we need to un-convert it to avoid having the calculation performed twice
+        */
+      unsigned last_member_idx = glsl_get_length(var->interface_type) - 1;
+      const struct glsl_type *last_member = glsl_get_struct_field(var->interface_type, last_member_idx);
+      /* multiply by stride */
+      result = emit_binop(ctx, SpvOpIMul, uint_type, result, emit_uint_const(ctx, 32, glsl_get_explicit_stride(last_member)));
+      /* get total ssbo size by adding offset */
+      result = emit_binop(ctx, SpvOpIAdd, uint_type, result,
+                          emit_uint_const(ctx, 32,
+                                          glsl_get_struct_field_offset(var->interface_type, last_member_idx)));
+      store_dest(ctx, &intr->dest, result, nir_type_uint);
+      break;
+   }
 
    case nir_intrinsic_image_deref_store: {
       SpvId img_var = get_src(ctx, &intr->src[0]);
