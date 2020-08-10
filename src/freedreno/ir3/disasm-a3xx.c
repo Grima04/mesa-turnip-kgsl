@@ -1635,12 +1635,6 @@ static bool print_instr(struct disasm_ctx *ctx, uint32_t *dwords, int n)
 		((opc == OPC_END) || (opc == OPC_CHSH));
 }
 
-int disasm_a3xx(uint32_t *dwords, int sizedwords, int level, FILE *out, unsigned gpu_id)
-{
-	struct shader_stats stats;
-	return disasm_a3xx_stat(dwords, sizedwords, level, out, gpu_id, &stats);
-}
-
 int disasm_a3xx_stat(uint32_t *dwords, int sizedwords, int level, FILE *out,
 		unsigned gpu_id, struct shader_stats *stats)
 {
@@ -1679,4 +1673,43 @@ int disasm_a3xx_stat(uint32_t *dwords, int sizedwords, int level, FILE *out,
 void disasm_a3xx_set_debug(enum debug_t d)
 {
 	debug = d;
+}
+
+#include <setjmp.h>
+
+static bool jmp_env_valid;
+static jmp_buf jmp_env;
+
+void
+ir3_assert_handler(const char *expr, const char *file, int line,
+		const char *func)
+{
+	fprintf(stdout, "\n%s:%u: %s: Assertion `%s' failed.\n", file, line, func, expr);
+	if (jmp_env_valid)
+		longjmp(jmp_env, 1);
+	abort();
+}
+
+#define TRY(x) do { \
+		assert(!jmp_env_valid); \
+		if (setjmp(jmp_env) == 0) { \
+			jmp_env_valid = true; \
+			x; \
+		} \
+		jmp_env_valid = false; \
+	} while (0)
+
+
+int disasm_a3xx(uint32_t *dwords, int sizedwords, int level, FILE *out, unsigned gpu_id)
+{
+	struct shader_stats stats;
+	return disasm_a3xx_stat(dwords, sizedwords, level, out, gpu_id, &stats);
+}
+
+int try_disasm_a3xx(uint32_t *dwords, int sizedwords, int level, FILE *out, unsigned gpu_id)
+{
+	struct shader_stats stats;
+	int ret;
+	TRY(ret = disasm_a3xx_stat(dwords, sizedwords, level, out, gpu_id, &stats));
+	return ret;
 }

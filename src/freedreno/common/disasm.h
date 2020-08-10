@@ -54,6 +54,7 @@ int disasm_a2xx(uint32_t *dwords, int sizedwords, int level, gl_shader_stage typ
 int disasm_a3xx(uint32_t *dwords, int sizedwords, int level, FILE *out, unsigned gpu_id);
 int disasm_a3xx_stat(uint32_t *dwords, int sizedwords, int level, FILE *out,
 		unsigned gpu_id, struct shader_stats *stats);
+int try_disasm_a3xx(uint32_t *dwords, int sizedwords, int level, FILE *out, unsigned gpu_id);
 
 void disasm_a2xx_set_debug(enum debug_t debug);
 void disasm_a3xx_set_debug(enum debug_t debug);
