@@ -330,14 +330,20 @@ zink_create_sampler_view(struct pipe_context *pctx, struct pipe_resource *pres,
       ivci.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
       ivci.image = res->image;
       ivci.viewType = image_view_type(state->target);
-      ivci.format = zink_get_format(screen, state->format);
-      assert(ivci.format);
+
       ivci.components.r = component_mapping(state->swizzle_r);
       ivci.components.g = component_mapping(state->swizzle_g);
       ivci.components.b = component_mapping(state->swizzle_b);
       ivci.components.a = component_mapping(state->swizzle_a);
-
       ivci.subresourceRange.aspectMask = sampler_aspect_from_format(state->format);
+      /* samplers for stencil aspects of packed formats need to always use stencil type */
+      if (ivci.subresourceRange.aspectMask == VK_IMAGE_ASPECT_STENCIL_BIT) {
+         ivci.format = VK_FORMAT_S8_UINT;
+         ivci.components.g = VK_COMPONENT_SWIZZLE_R;
+      } else
+         ivci.format = zink_get_format(screen, state->format);
+      assert(ivci.format);
+
       ivci.subresourceRange.baseMipLevel = state->u.tex.first_level;
       ivci.subresourceRange.baseArrayLayer = state->u.tex.first_layer;
       ivci.subresourceRange.levelCount = state->u.tex.last_level - state->u.tex.first_level + 1;
