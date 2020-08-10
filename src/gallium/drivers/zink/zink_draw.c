@@ -234,6 +234,8 @@ zink_draw_vbo(struct pipe_context *pctx,
    if (!gfx_program)
       return;
 
+   if (ctx->gfx_pipeline_state.primitive_restart != !!dinfo->primitive_restart)
+      ctx->gfx_pipeline_state.hash = 0;
    ctx->gfx_pipeline_state.primitive_restart = !!dinfo->primitive_restart;
 
    VkPipeline pipeline = zink_get_gfx_pipeline(screen, gfx_program,

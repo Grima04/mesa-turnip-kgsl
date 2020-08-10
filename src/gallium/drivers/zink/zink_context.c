@@ -321,6 +321,7 @@ zink_set_vertex_buffers(struct pipe_context *pctx,
             res->needs_xfb_barrier = false;
          }
       }
+      ctx->gfx_pipeline_state.hash = 0;
    }
 
    util_set_vertex_buffers_mask(ctx->buffers, &ctx->buffers_enabled_mask,
@@ -632,6 +633,7 @@ zink_set_sample_mask(struct pipe_context *pctx, unsigned sample_mask)
 {
    struct zink_context *ctx = zink_context(pctx);
    ctx->gfx_pipeline_state.sample_mask = sample_mask;
+   ctx->gfx_pipeline_state.hash = 0;
 }
 
 static VkAccessFlags
