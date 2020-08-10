@@ -1513,6 +1513,7 @@ endif
 if with_llvm
   pre_args += '-DLLVM_AVAILABLE'
   pre_args += '-DMESA_LLVM_VERSION_STRING="@0@"'.format(dep_llvm.version())
+  pre_args += '-DLLVM_IS_SHARED=@0@'.format(_shared_llvm.to_int())
 
   # LLVM can be built without rtti, turning off rtti changes the ABI of C++
   # programs, so we need to build all C++ code in mesa without rtti as well to
