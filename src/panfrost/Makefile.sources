@@ -21,6 +21,8 @@ bifrost_FILES := \
         bifrost/disassemble.h
 
 lib_FILES := \
+        lib/decode_common.c \
+        lib/decode.c \
         lib/pan_afbc.c \
         lib/pan_attributes.c \
         lib/pan_bo.c \
@@ -77,14 +79,6 @@ shared_FILES := \
         shared/pan_tiling.c \
         shared/pan_minmax_cache.h \
         shared/pan_tiling.h \
-
-pandecode_FILES := \
-        pandecode/common.c \
-        pandecode/decode.c \
-        pandecode/decode.h \
-        pandecode/pan_pretty_print.c \
-        pandecode/pan_pretty_print.h \
-        pandecode/public.h
 
 util_FILES := \
         util/lcra.c \
