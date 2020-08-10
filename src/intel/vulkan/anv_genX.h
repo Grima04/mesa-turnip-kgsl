@@ -72,8 +72,6 @@ void genX(flush_pipeline_select_gpgpu)(struct anv_cmd_buffer *cmd_buffer);
 void genX(cmd_buffer_config_l3)(struct anv_cmd_buffer *cmd_buffer,
                                 const struct gen_l3_config *cfg);
 
-void genX(cmd_buffer_emit_clip)(struct anv_cmd_buffer *cmd_buffer);
-
 void genX(cmd_buffer_flush_state)(struct anv_cmd_buffer *cmd_buffer);
 void genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer);
 
