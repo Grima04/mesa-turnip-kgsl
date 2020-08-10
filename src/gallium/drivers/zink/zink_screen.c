@@ -837,6 +837,11 @@ zink_get_format(struct zink_screen *screen, enum pipe_format format)
         !screen->info.format_4444_feats.formatA4R4G4B4))
       return VK_FORMAT_UNDEFINED;
 
+   if (format == PIPE_FORMAT_X24S8_UINT)
+      /* valid when using aspects to extract stencil,
+       * fails format test because it's emulated */
+      return VK_FORMAT_X8_D24_UNORM_PACK32;
+
    return ret;
 }
 
