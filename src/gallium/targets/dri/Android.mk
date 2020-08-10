@@ -63,7 +63,7 @@ LOCAL_STATIC_LIBRARIES += \
 	libmesa_gallium \
 	libpanfrost_bifrost \
 	libpanfrost_decode \
-	libpanfrost_encoder \
+	libpanfrost_lib \
 	libpanfrost_midgard \
 	libpanfrost_shared \
 	libpanfrost_util \

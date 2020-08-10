@@ -29,11 +29,11 @@ LOCAL_C_INCLUDES := \
 	$(MESA_TOP)/src/gallium/auxiliary/ \
 	$(MESA_TOP)/src/gallium/include/ \
 	$(MESA_TOP)/src/panfrost/include/ \
-	$(MESA_TOP)/src/panfrost/encoder/ \
+	$(MESA_TOP)/src/panfrost/lib/ \
 	$(MESA_TOP)/src/panfrost/pandecode/
 
 LOCAL_STATIC_LIBRARIES := \
-	libpanfrost_encoder
+	libpanfrost_lib
 
 LOCAL_GENERATED_SOURCES := \
 

@@ -20,15 +20,15 @@
 
 include $(CLEAR_VARS)
 
-LOCAL_MODULE := libpanfrost_encoder
+LOCAL_MODULE := libpanfrost_lib
 
 LOCAL_SRC_FILES := \
-	$(encoder_FILES)
+	$(lib_FILES)
 
 LOCAL_C_INCLUDES := \
 	$(MESA_TOP)/src/gallium/auxiliary/ \
 	$(MESA_TOP)/src/gallium/include/ \
-	$(MESA_TOP)/src/panfrost/encoder/ \
+	$(MESA_TOP)/src/panfrost/lib/ \
 	$(MESA_TOP)/src/panfrost/include/
 
 LOCAL_STATIC_LIBRARIES := \
@@ -37,7 +37,7 @@ LOCAL_STATIC_LIBRARIES := \
 LOCAL_GENERATED_SOURCES := \
 
 LOCAL_EXPORT_C_INCLUDE_DIRS := \
-	$(MESA_TOP)/src/panfrost/encoder/ \
+	$(MESA_TOP)/src/panfrost/lib/ \
 
 include $(MESA_COMMON_MK)
 include $(BUILD_STATIC_LIBRARY)
