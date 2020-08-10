@@ -327,7 +327,10 @@ zink_draw_vbo(struct pipe_context *pctx,
    VkBufferView buffer_view[] = {VK_NULL_HANDLE};
    int num_wds = 0, num_buffer_info = 0, num_image_info = 0;
 
-   struct zink_resource *transitions[PIPE_SHADER_TYPES * (PIPE_MAX_SAMPLERS + PIPE_MAX_SHADER_IMAGES)];
+   struct {
+      struct zink_resource *res;
+      VkImageLayout layout;
+   } transitions[PIPE_SHADER_TYPES * (PIPE_MAX_SAMPLERS + PIPE_MAX_SHADER_IMAGES)];
    int num_transitions = 0;
 
    for (int i = 0; i < ARRAY_SIZE(ctx->gfx_stages); i++) {
@@ -396,8 +399,10 @@ zink_draw_vbo(struct pipe_context *pctx,
                   else {
                      imageview =sampler_view->image_view;
                      layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-                     if (res->layout != VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
-                        transitions[num_transitions++] = res;
+                     if (res->layout != VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) {
+                        transitions[num_transitions].layout = layout;
+                        transitions[num_transitions++].res = res;
+                     }
                      sampler = ctx->samplers[i][index + k];
                   }
                   read_desc_resources[num_wds] = res;
@@ -418,8 +423,8 @@ zink_draw_vbo(struct pipe_context *pctx,
                      layout = res->layout;
                      if (res->layout != VK_IMAGE_LAYOUT_GENERAL &&
                          res->layout != VK_IMAGE_LAYOUT_SHARED_PRESENT_KHR) {
-                        transitions[num_transitions++] = res;
-                        layout = VK_IMAGE_LAYOUT_GENERAL;
+                        transitions[num_transitions].res = res;
+                        transitions[num_transitions++].layout = VK_IMAGE_LAYOUT_GENERAL;
                      }
                   }
                   if (image_view->base.access & PIPE_IMAGE_ACCESS_WRITE)
@@ -482,9 +487,9 @@ zink_draw_vbo(struct pipe_context *pctx,
       batch = zink_batch_no_rp(ctx);
 
       for (int i = 0; i < num_transitions; ++i)
-         zink_resource_barrier(batch->cmdbuf, transitions[i],
-                               transitions[i]->aspect,
-                               VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+         zink_resource_barrier(batch->cmdbuf, transitions[i].res,
+                               transitions[i].res->aspect,
+                               transitions[i].layout);
    }
 
    if (ctx->xfb_barrier)
