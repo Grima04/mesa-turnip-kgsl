@@ -16,9 +16,13 @@ bifrost_FILES := \
         bifrost/bi_quirks.h \
         bifrost/bir.c \
         bifrost/compiler.h \
-        bifrost/cmdline.c \
+        bifrost/cmdline.c
+
+bifrost_disasm_FILES := \
         bifrost/disassemble.c \
-        bifrost/disassemble.h
+        bifrost/disassemble.h \
+        bifrost/bi_print_common.c \
+        bifrost/bi_print_common.h
 
 lib_FILES := \
         lib/decode_common.c \

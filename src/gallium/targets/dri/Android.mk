@@ -62,6 +62,7 @@ LOCAL_STATIC_LIBRARIES += \
 	libfreedreno_perfcntrs \
 	libmesa_gallium \
 	libpanfrost_bifrost \
+	libpanfrost_bifrost_disasm \
 	libpanfrost_lib \
 	libpanfrost_midgard \
 	libpanfrost_midgard_disasm \

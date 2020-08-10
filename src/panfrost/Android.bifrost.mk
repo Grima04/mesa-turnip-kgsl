@@ -18,6 +18,31 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
+# build libpanfrost_bifrost_disasm
+include $(CLEAR_VARS)
+
+LOCAL_MODULE := libpanfrost_bifrost_disasm
+
+LOCAL_SRC_FILES := \
+	$(bifrost_disasm_FILES)
+
+LOCAL_C_INCLUDES := \
+	$(MESA_TOP)/include \
+	$(MESA_TOP)/src/compiler/nir/ \
+	$(MESA_TOP)/src/gallium/auxiliary/ \
+	$(MESA_TOP)/src/gallium/include/ \
+	$(MESA_TOP)/src/mapi/ \
+	$(MESA_TOP)/src/mesa/ \
+	$(MESA_TOP)/src/panfrost/bifrost/ \
+	$(MESA_TOP)/src/panfrost/include/
+
+LOCAL_EXPORT_C_INCLUDE_DIRS := \
+	$(MESA_TOP)/src/panfrost/bifrost/ \
+
+include $(MESA_COMMON_MK)
+include $(BUILD_STATIC_LIBRARY)
+
+# build libpanfrost_bifrost
 include $(CLEAR_VARS)
 
 LOCAL_MODULE := libpanfrost_bifrost
