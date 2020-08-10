@@ -74,6 +74,13 @@ midgard_FILES := \
         midgard/nir_undef_to_zero.c \
         midgard/nir_fuse_io_16.c \
 
+midgard_disasm_FILES := \
+        midgard/disassemble.c \
+        midgard/disassemble.h \
+        midgard/midgard_ops.c \
+        midgard/midgard_ops.h \
+        midgard/midgard_print_constant.c
+
 shared_FILES := \
         shared/pan_minmax_cache.c \
         shared/pan_tiling.c \

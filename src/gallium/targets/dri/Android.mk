@@ -64,6 +64,7 @@ LOCAL_STATIC_LIBRARIES += \
 	libpanfrost_bifrost \
 	libpanfrost_lib \
 	libpanfrost_midgard \
+	libpanfrost_midgard_disasm \
 	libpanfrost_shared \
 	libpanfrost_util \
 
