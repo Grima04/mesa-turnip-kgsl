@@ -353,6 +353,16 @@ enum pipe_transfer_usage
    PIPE_TRANSFER_THREAD_SAFE = 1 << 15,
 
    /**
+    * Map only the depth aspect of a resource
+    */
+   PIPE_TRANSFER_DEPTH_ONLY = 1 << 16,
+
+   /**
+    * Map only the stencil aspect of a resource
+    */
+   PIPE_TRANSFER_STENCIL_ONLY = 1 << 17,
+
+   /**
     * This and higher bits are reserved for private use by drivers. Drivers
     * should use this as (PIPE_TRANSFER_DRV_PRV << i).
     */
