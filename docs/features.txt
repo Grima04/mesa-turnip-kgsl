@@ -444,17 +444,38 @@ Vulkan 1.1 -- all DONE: anv, radv
   VK_KHR_storage_buffer_storage_class                   DONE (anv, radv)
   VK_KHR_variable_pointers                              DONE (anv, radv)
 
-Khronos extensions that are not part of any Vulkan version:
+Vulkan 1.2 -- all DONE: anv
 
   VK_KHR_8bit_storage                                   DONE (anv/gen8+, radv)
-  VK_KHR_android_surface                                not started
   VK_KHR_buffer_device_address                          DONE (anv/gen8+, radv)
   VK_KHR_create_renderpass2                             DONE (anv, radv)
   VK_KHR_depth_stencil_resolve                          DONE (anv, radv)
-  VK_KHR_display                                        DONE (anv, radv)
-  VK_KHR_display_swapchain                              not started
   VK_KHR_draw_indirect_count                            DONE (anv, radv)
   VK_KHR_driver_properties                              DONE (anv, radv)
+  VK_KHR_image_format_list                              DONE (anv, radv)
+  VK_KHR_imageless_framebuffer                          DONE (anv, radv)
+  VK_KHR_sampler_mirror_clamp_to_edge                   DONE (anv, radv)
+  VK_KHR_separate_depth_stencil_layouts                 DONE (anv, radv)
+  VK_KHR_shader_atomic_int64                            DONE (anv, radv)
+  VK_KHR_shader_float16_int8                            DONE (anv/gen8+, radv)
+  VK_KHR_shader_float_controls                          DONE (anv/gen8+, radv)
+  VK_KHR_shader_subgroup_extended_types                 DONE (anv/gen8+, radv)
+  VK_KHR_spirv_1_4                                      DONE (anv, radv)
+  VK_KHR_timeline_semaphore                             DONE (anv, radv)
+  VK_KHR_uniform_buffer_standard_layout                 DONE (anv, radv)
+  VK_KHR_vulkan_memory_model                            DONE (anv, radv)
+  VK_EXT_descriptor_indexing                            DONE (anv/gen9+, radv)
+  VK_EXT_host_query_reset                               DONE (anv, radv)
+  VK_EXT_sampler_filter_minmax                          DONE (anv/gen9+, radv)
+  VK_EXT_scalar_block_layout                            DONE (anv, radv/gfx7+)
+  VK_EXT_separate_stencil_usage                         DONE (anv)
+  VK_EXT_shader_viewport_index_layer                    DONE (anv, radv)
+
+Khronos extensions that are not part of any Vulkan version:
+
+  VK_KHR_android_surface                                not started
+  VK_KHR_display                                        DONE (anv, radv)
+  VK_KHR_display_swapchain                              not started
   VK_KHR_external_fence_fd                              DONE (anv, radv)
   VK_KHR_external_fence_win32                           not started
   VK_KHR_external_memory_fd                             DONE (anv, radv, v3dv)
@@ -463,30 +484,18 @@ Khronos extensions that are not part of any Vulkan version:
   VK_KHR_external_semaphore_win32                       not started
   VK_KHR_get_display_properties2                        DONE (anv, radv)
   VK_KHR_get_surface_capabilities2                      DONE (anv, radv)
-  VK_KHR_image_format_list                              DONE (anv, radv)
-  VK_KHR_imageless_framebuffer                          DONE (anv, radv)
   VK_KHR_incremental_present                            DONE (anv, radv)
   VK_KHR_mir_surface                                    not started
   VK_KHR_performance_query                              DONE (anv/gen8+)
   VK_KHR_pipeline_executable_properties                 DONE (anv, radv)
   VK_KHR_push_descriptor                                DONE (anv, radv)
-  VK_KHR_sampler_mirror_clamp_to_edge                   DONE (anv, radv)
-  VK_KHR_shader_atomic_int64                            DONE (anv, radv)
   VK_KHR_shader_clock                                   DONE (anv, radv)
-  VK_KHR_shader_float16_int8                            DONE (anv/gen8+, radv)
-  VK_KHR_shader_float_controls                          DONE (anv/gen8+, radv)
   VK_KHR_shader_non_semantic_info                       DONE (anv, radv)
-  VK_KHR_shader_subgroup_extended_types                 DONE (anv/gen8+, radv)
   VK_KHR_shared_presentable_image                       not started
-  VK_KHR_separate_depth_stencil_layouts                 DONE (anv, radv)
-  VK_KHR_spirv_1_4                                      DONE (anv, radv)
   VK_KHR_surface                                        DONE (anv, radv)
   VK_KHR_surface_protected_capabilities                 DONE (anv, radv)
   VK_KHR_swapchain                                      DONE (anv, radv)
   VK_KHR_swapchain_mutable_format                       DONE (anv, radv)
-  VK_KHR_timeline_semaphore                             DONE (anv, radv)
-  VK_KHR_uniform_buffer_standard_layout                 DONE (anv, radv)
-  VK_KHR_vulkan_memory_model                            DONE (anv, radv)
   VK_KHR_wayland_surface                                DONE (anv, radv)
   VK_KHR_win32_keyed_mutex                              not started
   VK_KHR_win32_surface                                  not started
