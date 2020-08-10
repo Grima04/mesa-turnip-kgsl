@@ -288,10 +288,8 @@ zink_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_MAX_VERTEX_ATTRIB_STRIDE:
       return screen->info.props.limits.maxVertexInputBindingStride;
 
-#if 0 /* TODO: Enable me */
    case PIPE_CAP_SAMPLER_VIEW_TARGET:
       return 1;
-#endif
 
 #if 0 /* TODO: Enable me */
    case PIPE_CAP_CLIP_HALFZ:
