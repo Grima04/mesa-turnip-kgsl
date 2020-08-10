@@ -438,24 +438,6 @@ emit_3dstate_sbe(struct anv_graphics_pipeline *pipeline)
 #endif
 }
 
-static const uint32_t vk_to_gen_cullmode[] = {
-   [VK_CULL_MODE_NONE]                       = CULLMODE_NONE,
-   [VK_CULL_MODE_FRONT_BIT]                  = CULLMODE_FRONT,
-   [VK_CULL_MODE_BACK_BIT]                   = CULLMODE_BACK,
-   [VK_CULL_MODE_FRONT_AND_BACK]             = CULLMODE_BOTH
-};
-
-static const uint32_t vk_to_gen_fillmode[] = {
-   [VK_POLYGON_MODE_FILL]                    = FILL_MODE_SOLID,
-   [VK_POLYGON_MODE_LINE]                    = FILL_MODE_WIREFRAME,
-   [VK_POLYGON_MODE_POINT]                   = FILL_MODE_POINT,
-};
-
-static const uint32_t vk_to_gen_front_face[] = {
-   [VK_FRONT_FACE_COUNTER_CLOCKWISE]         = 1,
-   [VK_FRONT_FACE_CLOCKWISE]                 = 0
-};
-
 static VkLineRasterizationModeEXT
 vk_line_rasterization_mode(const VkPipelineRasterizationLineStateCreateInfoEXT *line_info,
                            const VkPipelineMultisampleStateCreateInfo *ms_info)
@@ -574,6 +556,24 @@ gen7_ms_rast_mode(struct anv_graphics_pipeline *pipeline,
 }
 #endif
 
+const uint32_t genX(vk_to_gen_cullmode)[] = {
+   [VK_CULL_MODE_NONE]                       = CULLMODE_NONE,
+   [VK_CULL_MODE_FRONT_BIT]                  = CULLMODE_FRONT,
+   [VK_CULL_MODE_BACK_BIT]                   = CULLMODE_BACK,
+   [VK_CULL_MODE_FRONT_AND_BACK]             = CULLMODE_BOTH
+};
+
+const uint32_t genX(vk_to_gen_fillmode)[] = {
+   [VK_POLYGON_MODE_FILL]                    = FILL_MODE_SOLID,
+   [VK_POLYGON_MODE_LINE]                    = FILL_MODE_WIREFRAME,
+   [VK_POLYGON_MODE_POINT]                   = FILL_MODE_POINT,
+};
+
+const uint32_t genX(vk_to_gen_front_face)[] = {
+   [VK_FRONT_FACE_COUNTER_CLOCKWISE]         = 1,
+   [VK_FRONT_FACE_CLOCKWISE]                 = 0
+};
+
 static void
 emit_rs_state(struct anv_graphics_pipeline *pipeline,
               const VkPipelineInputAssemblyStateCreateInfo *ia_info,
@@ -681,13 +681,13 @@ emit_rs_state(struct anv_graphics_pipeline *pipeline,
 
    raster.FrontWinding =
       dynamic_states & ANV_CMD_DIRTY_DYNAMIC_FRONT_FACE ?
-         0 : vk_to_gen_front_face[rs_info->frontFace];
+         0 : genX(vk_to_gen_front_face)[rs_info->frontFace];
    raster.CullMode =
       dynamic_states & ANV_CMD_DIRTY_DYNAMIC_CULL_MODE ?
-         0 : vk_to_gen_cullmode[rs_info->cullMode];
+         0 : genX(vk_to_gen_cullmode)[rs_info->cullMode];
 
-   raster.FrontFaceFillMode = vk_to_gen_fillmode[rs_info->polygonMode];
-   raster.BackFaceFillMode = vk_to_gen_fillmode[rs_info->polygonMode];
+   raster.FrontFaceFillMode = genX(vk_to_gen_fillmode)[rs_info->polygonMode];
+   raster.BackFaceFillMode = genX(vk_to_gen_fillmode)[rs_info->polygonMode];
    raster.ScissorRectangleEnable = true;
 
 #if GEN_GEN >= 9
@@ -843,7 +843,7 @@ static const uint32_t vk_to_gen_blend_op[] = {
    [VK_BLEND_OP_MAX]                         = BLENDFUNCTION_MAX,
 };
 
-static const uint32_t vk_to_gen_compare_op[] = {
+const uint32_t genX(vk_to_gen_compare_op)[] = {
    [VK_COMPARE_OP_NEVER]                        = PREFILTEROPNEVER,
    [VK_COMPARE_OP_LESS]                         = PREFILTEROPLESS,
    [VK_COMPARE_OP_EQUAL]                        = PREFILTEROPEQUAL,
@@ -854,7 +854,7 @@ static const uint32_t vk_to_gen_compare_op[] = {
    [VK_COMPARE_OP_ALWAYS]                       = PREFILTEROPALWAYS,
 };
 
-static const uint32_t vk_to_gen_stencil_op[] = {
+const uint32_t genX(vk_to_gen_stencil_op)[] = {
    [VK_STENCIL_OP_KEEP]                         = STENCILOP_KEEP,
    [VK_STENCIL_OP_ZERO]                         = STENCILOP_ZERO,
    [VK_STENCIL_OP_REPLACE]                      = STENCILOP_REPLACE,
@@ -863,6 +863,19 @@ static const uint32_t vk_to_gen_stencil_op[] = {
    [VK_STENCIL_OP_INVERT]                       = STENCILOP_INVERT,
    [VK_STENCIL_OP_INCREMENT_AND_WRAP]           = STENCILOP_INCR,
    [VK_STENCIL_OP_DECREMENT_AND_WRAP]           = STENCILOP_DECR,
+};
+
+const uint32_t genX(vk_to_gen_primitive_type)[] = {
+   [VK_PRIMITIVE_TOPOLOGY_POINT_LIST]                    = _3DPRIM_POINTLIST,
+   [VK_PRIMITIVE_TOPOLOGY_LINE_LIST]                     = _3DPRIM_LINELIST,
+   [VK_PRIMITIVE_TOPOLOGY_LINE_STRIP]                    = _3DPRIM_LINESTRIP,
+   [VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST]                 = _3DPRIM_TRILIST,
+   [VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP]                = _3DPRIM_TRISTRIP,
+   [VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN]                  = _3DPRIM_TRIFAN,
+   [VK_PRIMITIVE_TOPOLOGY_LINE_LIST_WITH_ADJACENCY]      = _3DPRIM_LINELIST_ADJ,
+   [VK_PRIMITIVE_TOPOLOGY_LINE_STRIP_WITH_ADJACENCY]     = _3DPRIM_LINESTRIP_ADJ,
+   [VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST_WITH_ADJACENCY]  = _3DPRIM_TRILIST_ADJ,
+   [VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP_WITH_ADJACENCY] = _3DPRIM_TRISTRIP_ADJ,
 };
 
 /* This function sanitizes the VkStencilOpState by looking at the compare ops
@@ -1056,7 +1069,7 @@ emit_ds_state(struct anv_graphics_pipeline *pipeline,
 
       .DepthTestFunction =
          dynamic_states & ANV_CMD_DIRTY_DYNAMIC_DEPTH_COMPARE_OP ?
-            0 : vk_to_gen_compare_op[info.depthCompareOp],
+            0 : genX(vk_to_gen_compare_op)[info.depthCompareOp],
 
       .DoubleSidedStencilEnable = true,
 
@@ -1064,14 +1077,14 @@ emit_ds_state(struct anv_graphics_pipeline *pipeline,
          dynamic_states & ANV_CMD_DIRTY_DYNAMIC_STENCIL_TEST_ENABLE ?
             0 : info.stencilTestEnable,
 
-      .StencilFailOp = vk_to_gen_stencil_op[info.front.failOp],
-      .StencilPassDepthPassOp = vk_to_gen_stencil_op[info.front.passOp],
-      .StencilPassDepthFailOp = vk_to_gen_stencil_op[info.front.depthFailOp],
-      .StencilTestFunction = vk_to_gen_compare_op[info.front.compareOp],
-      .BackfaceStencilFailOp = vk_to_gen_stencil_op[info.back.failOp],
-      .BackfaceStencilPassDepthPassOp = vk_to_gen_stencil_op[info.back.passOp],
-      .BackfaceStencilPassDepthFailOp =vk_to_gen_stencil_op[info.back.depthFailOp],
-      .BackfaceStencilTestFunction = vk_to_gen_compare_op[info.back.compareOp],
+      .StencilFailOp = genX(vk_to_gen_stencil_op)[info.front.failOp],
+      .StencilPassDepthPassOp = genX(vk_to_gen_stencil_op)[info.front.passOp],
+      .StencilPassDepthFailOp = genX(vk_to_gen_stencil_op)[info.front.depthFailOp],
+      .StencilTestFunction = genX(vk_to_gen_compare_op)[info.front.compareOp],
+      .BackfaceStencilFailOp = genX(vk_to_gen_stencil_op)[info.back.failOp],
+      .BackfaceStencilPassDepthPassOp = genX(vk_to_gen_stencil_op)[info.back.passOp],
+      .BackfaceStencilPassDepthFailOp = genX(vk_to_gen_stencil_op)[info.back.depthFailOp],
+      .BackfaceStencilTestFunction = genX(vk_to_gen_compare_op)[info.back.compareOp],
    };
 
    if (dynamic_stencil_op) {
@@ -1339,8 +1352,8 @@ emit_3dstate_clip(struct anv_graphics_pipeline *pipeline,
       !(last->vue_map.slots_valid & VARYING_BIT_LAYER);
 
 #if GEN_GEN == 7
-   clip.FrontWinding            = vk_to_gen_front_face[rs_info->frontFace];
-   clip.CullMode                = vk_to_gen_cullmode[rs_info->cullMode];
+   clip.FrontWinding            = genX(vk_to_gen_front_face)[rs_info->frontFace];
+   clip.CullMode                = genX(vk_to_gen_cullmode)[rs_info->cullMode];
    clip.ViewportZClipTestEnable = pipeline->depth_clip_enable;
    clip.UserClipDistanceClipTestEnableBitmask = last->clip_distance_mask;
    clip.UserClipDistanceCullTestEnableBitmask = last->cull_distance_mask;

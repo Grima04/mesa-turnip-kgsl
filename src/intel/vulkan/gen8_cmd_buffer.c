@@ -439,51 +439,6 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
       anv_batch_emit_merge(&cmd_buffer->batch, sf_dw, pipeline->gen8.sf);
    }
 
-   static const uint32_t vk_to_gen_cullmode[] = {
-      [VK_CULL_MODE_NONE]                       = CULLMODE_NONE,
-      [VK_CULL_MODE_FRONT_BIT]                  = CULLMODE_FRONT,
-      [VK_CULL_MODE_BACK_BIT]                   = CULLMODE_BACK,
-      [VK_CULL_MODE_FRONT_AND_BACK]             = CULLMODE_BOTH
-   };
-   static const uint32_t vk_to_gen_front_face[] = {
-      [VK_FRONT_FACE_COUNTER_CLOCKWISE]         = 1,
-      [VK_FRONT_FACE_CLOCKWISE]                 = 0
-   };
-   static const uint32_t vk_to_gen_primitive_type[] = {
-      [VK_PRIMITIVE_TOPOLOGY_POINT_LIST]                    = _3DPRIM_POINTLIST,
-      [VK_PRIMITIVE_TOPOLOGY_LINE_LIST]                     = _3DPRIM_LINELIST,
-      [VK_PRIMITIVE_TOPOLOGY_LINE_STRIP]                    = _3DPRIM_LINESTRIP,
-      [VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST]                 = _3DPRIM_TRILIST,
-      [VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP]                = _3DPRIM_TRISTRIP,
-      [VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN]                  = _3DPRIM_TRIFAN,
-      [VK_PRIMITIVE_TOPOLOGY_LINE_LIST_WITH_ADJACENCY]      = _3DPRIM_LINELIST_ADJ,
-      [VK_PRIMITIVE_TOPOLOGY_LINE_STRIP_WITH_ADJACENCY]     = _3DPRIM_LINESTRIP_ADJ,
-      [VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST_WITH_ADJACENCY]  = _3DPRIM_TRILIST_ADJ,
-      [VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP_WITH_ADJACENCY] = _3DPRIM_TRISTRIP_ADJ,
-   };
-
-   static const uint32_t vk_to_gen_compare_op[] = {
-      [VK_COMPARE_OP_NEVER]                        = PREFILTEROPNEVER,
-      [VK_COMPARE_OP_LESS]                         = PREFILTEROPLESS,
-      [VK_COMPARE_OP_EQUAL]                        = PREFILTEROPEQUAL,
-      [VK_COMPARE_OP_LESS_OR_EQUAL]                = PREFILTEROPLEQUAL,
-      [VK_COMPARE_OP_GREATER]                      = PREFILTEROPGREATER,
-      [VK_COMPARE_OP_NOT_EQUAL]                    = PREFILTEROPNOTEQUAL,
-      [VK_COMPARE_OP_GREATER_OR_EQUAL]             = PREFILTEROPGEQUAL,
-      [VK_COMPARE_OP_ALWAYS]                       = PREFILTEROPALWAYS,
-   };
-
-   static const uint32_t vk_to_gen_stencil_op[] = {
-      [VK_STENCIL_OP_KEEP]                         = STENCILOP_KEEP,
-      [VK_STENCIL_OP_ZERO]                         = STENCILOP_ZERO,
-      [VK_STENCIL_OP_REPLACE]                      = STENCILOP_REPLACE,
-      [VK_STENCIL_OP_INCREMENT_AND_CLAMP]          = STENCILOP_INCRSAT,
-      [VK_STENCIL_OP_DECREMENT_AND_CLAMP]          = STENCILOP_DECRSAT,
-      [VK_STENCIL_OP_INVERT]                       = STENCILOP_INVERT,
-      [VK_STENCIL_OP_INCREMENT_AND_WRAP]           = STENCILOP_INCR,
-      [VK_STENCIL_OP_DECREMENT_AND_WRAP]           = STENCILOP_DECR,
-   };
-
    if (cmd_buffer->state.gfx.dirty & (ANV_CMD_DIRTY_PIPELINE |
                                       ANV_CMD_DIRTY_DYNAMIC_DEPTH_BIAS |
                                       ANV_CMD_DIRTY_DYNAMIC_CULL_MODE |
@@ -494,8 +449,8 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
          .GlobalDepthOffsetConstant = d->depth_bias.bias,
          .GlobalDepthOffsetScale = d->depth_bias.slope,
          .GlobalDepthOffsetClamp = d->depth_bias.clamp,
-         .CullMode = vk_to_gen_cullmode[d->cull_mode],
-         .FrontWinding = vk_to_gen_front_face[d->front_face],
+         .CullMode = genX(vk_to_gen_cullmode)[d->cull_mode],
+         .FrontWinding = genX(vk_to_gen_front_face)[d->front_face],
       };
       GENX(3DSTATE_RASTER_pack)(NULL, raster_dw, &raster);
       anv_batch_emit_merge(&cmd_buffer->batch, raster_dw,
@@ -556,16 +511,16 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
 
          .DepthTestEnable = d->depth_test_enable,
          .DepthBufferWriteEnable = d->depth_test_enable && d->depth_write_enable,
-         .DepthTestFunction = vk_to_gen_compare_op[d->depth_compare_op],
+         .DepthTestFunction = genX(vk_to_gen_compare_op)[d->depth_compare_op],
          .StencilTestEnable = d->stencil_test_enable,
-         .StencilFailOp = vk_to_gen_stencil_op[d->stencil_op.front.fail_op],
-         .StencilPassDepthPassOp = vk_to_gen_stencil_op[d->stencil_op.front.pass_op],
-         .StencilPassDepthFailOp = vk_to_gen_stencil_op[d->stencil_op.front.depth_fail_op],
-         .StencilTestFunction = vk_to_gen_compare_op[d->stencil_op.front.compare_op],
-         .BackfaceStencilFailOp = vk_to_gen_stencil_op[d->stencil_op.back.fail_op],
-         .BackfaceStencilPassDepthPassOp = vk_to_gen_stencil_op[d->stencil_op.back.pass_op],
-         .BackfaceStencilPassDepthFailOp = vk_to_gen_stencil_op[d->stencil_op.back.depth_fail_op],
-         .BackfaceStencilTestFunction = vk_to_gen_compare_op[d->stencil_op.back.compare_op],
+         .StencilFailOp = genX(vk_to_gen_stencil_op)[d->stencil_op.front.fail_op],
+         .StencilPassDepthPassOp = genX(vk_to_gen_stencil_op)[d->stencil_op.front.pass_op],
+         .StencilPassDepthFailOp = genX(vk_to_gen_stencil_op)[d->stencil_op.front.depth_fail_op],
+         .StencilTestFunction = genX(vk_to_gen_compare_op)[d->stencil_op.front.compare_op],
+         .BackfaceStencilFailOp = genX(vk_to_gen_stencil_op)[d->stencil_op.back.fail_op],
+         .BackfaceStencilPassDepthPassOp = genX(vk_to_gen_stencil_op)[d->stencil_op.back.pass_op],
+         .BackfaceStencilPassDepthFailOp = genX(vk_to_gen_stencil_op)[d->stencil_op.back.depth_fail_op],
+         .BackfaceStencilTestFunction = genX(vk_to_gen_compare_op)[d->stencil_op.back.compare_op],
       };
       GENX(3DSTATE_WM_DEPTH_STENCIL_pack)(NULL, wm_depth_stencil_dw,
                                           &wm_depth_stencil);
@@ -625,16 +580,16 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
 
          .DepthTestEnable = d->depth_test_enable,
          .DepthBufferWriteEnable = d->depth_test_enable && d->depth_write_enable,
-         .DepthTestFunction = vk_to_gen_compare_op[d->depth_compare_op],
+         .DepthTestFunction = genX(vk_to_gen_compare_op)[d->depth_compare_op],
          .StencilTestEnable = d->stencil_test_enable,
-         .StencilFailOp = vk_to_gen_stencil_op[d->stencil_op.front.fail_op],
-         .StencilPassDepthPassOp = vk_to_gen_stencil_op[d->stencil_op.front.pass_op],
-         .StencilPassDepthFailOp = vk_to_gen_stencil_op[d->stencil_op.front.depth_fail_op],
-         .StencilTestFunction = vk_to_gen_compare_op[d->stencil_op.front.compare_op],
-         .BackfaceStencilFailOp = vk_to_gen_stencil_op[d->stencil_op.back.fail_op],
-         .BackfaceStencilPassDepthPassOp = vk_to_gen_stencil_op[d->stencil_op.back.pass_op],
-         .BackfaceStencilPassDepthFailOp =vk_to_gen_stencil_op[d->stencil_op.back.depth_fail_op],
-         .BackfaceStencilTestFunction = vk_to_gen_compare_op[d->stencil_op.back.compare_op],
+         .StencilFailOp = genX(vk_to_gen_stencil_op)[d->stencil_op.front.fail_op],
+         .StencilPassDepthPassOp = genX(vk_to_gen_stencil_op)[d->stencil_op.front.pass_op],
+         .StencilPassDepthFailOp = genX(vk_to_gen_stencil_op)[d->stencil_op.front.depth_fail_op],
+         .StencilTestFunction = genX(vk_to_gen_compare_op)[d->stencil_op.front.compare_op],
+         .BackfaceStencilFailOp = genX(vk_to_gen_stencil_op)[d->stencil_op.back.fail_op],
+         .BackfaceStencilPassDepthPassOp = genX(vk_to_gen_stencil_op)[d->stencil_op.back.pass_op],
+         .BackfaceStencilPassDepthFailOp = genX(vk_to_gen_stencil_op)[d->stencil_op.back.depth_fail_op],
+         .BackfaceStencilTestFunction = genX(vk_to_gen_compare_op)[d->stencil_op.back.compare_op],
 
       };
       GENX(3DSTATE_WM_DEPTH_STENCIL_pack)(NULL, dwords, &wm_depth_stencil);
@@ -684,7 +639,7 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
       if (anv_pipeline_has_stage(pipeline, MESA_SHADER_TESS_EVAL))
          topology = d->primitive_topology;
       else
-         topology = vk_to_gen_primitive_type[d->primitive_topology];
+         topology = genX(vk_to_gen_primitive_type)[d->primitive_topology];
 
       cmd_buffer->state.gfx.primitive_topology = topology;
 
