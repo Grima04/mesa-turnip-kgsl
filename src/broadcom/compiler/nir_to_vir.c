@@ -339,9 +339,12 @@ ntq_emit_tmu_general(struct v3d_compile *c, nir_intrinsic_instr *instr,
                         num_components = tmu_writes - 1;
                 }
 
+                uint32_t perquad = is_load
+                   ? GENERAL_TMU_LOOKUP_PER_QUAD
+                   : GENERAL_TMU_LOOKUP_PER_PIXEL;
                 uint32_t config = (0xffffff00 |
                                    tmu_op << 3|
-                                   GENERAL_TMU_LOOKUP_PER_PIXEL);
+                                   perquad);
                 if (num_components == 1) {
                         config |= GENERAL_TMU_LOOKUP_TYPE_32BIT_UI;
                 } else {
