@@ -36,6 +36,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include "brw_inst.h"
+#include "brw_compiler.h"
 #include "brw_eu_defines.h"
 #include "brw_reg.h"
 #include "brw_disasm_info.h"
