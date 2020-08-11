@@ -1149,6 +1149,20 @@ zink_fence_wait(struct pipe_context *pctx)
    }
 }
 
+void
+zink_wait_on_batch(struct zink_context *ctx, int batch_id)
+{
+   if (batch_id >= 0) {
+      struct zink_batch *batch = &ctx->batches[batch_id];
+      if (batch != zink_curr_batch(ctx)) {
+         ctx->base.screen->fence_finish(ctx->base.screen, NULL, (struct pipe_fence_handle*)batch->fence,
+                                        PIPE_TIMEOUT_INFINITE);
+         return;
+      }
+   }
+   zink_fence_wait(&ctx->base);
+}
+
 static void
 zink_memory_barrier(struct pipe_context *pctx, unsigned flags)
 {
