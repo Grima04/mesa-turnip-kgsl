@@ -353,81 +353,83 @@ static unsigned
 translate_tex_wrap(enum pipe_tex_wrap w)
 {
         switch (w) {
-        case PIPE_TEX_WRAP_REPEAT:
-                return MALI_WRAP_MODE_REPEAT;
+        case PIPE_TEX_WRAP_REPEAT: return MALI_WRAP_MODE_REPEAT;
+        case PIPE_TEX_WRAP_CLAMP: return MALI_WRAP_MODE_CLAMP;
+        case PIPE_TEX_WRAP_CLAMP_TO_EDGE: return MALI_WRAP_MODE_CLAMP_TO_EDGE;
+        case PIPE_TEX_WRAP_CLAMP_TO_BORDER: return MALI_WRAP_MODE_CLAMP_TO_BORDER;
+        case PIPE_TEX_WRAP_MIRROR_REPEAT: return MALI_WRAP_MODE_MIRRORED_REPEAT;
+        case PIPE_TEX_WRAP_MIRROR_CLAMP: return MALI_WRAP_MODE_MIRRORED_CLAMP;
+        case PIPE_TEX_WRAP_MIRROR_CLAMP_TO_EDGE: return MALI_WRAP_MODE_MIRRORED_CLAMP_TO_EDGE;
+        case PIPE_TEX_WRAP_MIRROR_CLAMP_TO_BORDER: return MALI_WRAP_MODE_MIRRORED_CLAMP_TO_BORDER;
+        default: unreachable("Invalid wrap");
+        }
+}
 
-        case PIPE_TEX_WRAP_CLAMP:
-                return MALI_WRAP_MODE_CLAMP;
+/* The hardware compares in the wrong order order, so we have to flip before
+ * encoding. Yes, really. */
 
-        case PIPE_TEX_WRAP_CLAMP_TO_EDGE:
-                return MALI_WRAP_MODE_CLAMP_TO_EDGE;
+static enum mali_func
+panfrost_sampler_compare_func(const struct pipe_sampler_state *cso)
+{
+        if (!cso->compare_mode)
+                return MALI_FUNC_NEVER;
 
-        case PIPE_TEX_WRAP_CLAMP_TO_BORDER:
-                return MALI_WRAP_MODE_CLAMP_TO_BORDER;
+        enum mali_func f = panfrost_translate_compare_func(cso->compare_func);
+        return panfrost_flip_compare_func(f);
+}
 
-        case PIPE_TEX_WRAP_MIRROR_REPEAT:
-                return MALI_WRAP_MODE_MIRRORED_REPEAT;
-
-        case PIPE_TEX_WRAP_MIRROR_CLAMP:
-                return MALI_WRAP_MODE_MIRRORED_CLAMP;
-
-        case PIPE_TEX_WRAP_MIRROR_CLAMP_TO_EDGE:
-                return MALI_WRAP_MODE_MIRRORED_CLAMP_TO_EDGE;
-
-        case PIPE_TEX_WRAP_MIRROR_CLAMP_TO_BORDER:
-                return MALI_WRAP_MODE_MIRRORED_CLAMP_TO_BORDER;
-
-        default:
-                unreachable("Invalid wrap");
+static enum mali_mipmap_mode
+pan_pipe_to_mipmode(enum pipe_tex_mipfilter f)
+{
+        switch (f) {
+        case PIPE_TEX_MIPFILTER_NEAREST: return MALI_MIPMAP_MODE_NEAREST;
+        case PIPE_TEX_MIPFILTER_LINEAR: return MALI_MIPMAP_MODE_TRILINEAR;
+        case PIPE_TEX_MIPFILTER_NONE: return MALI_MIPMAP_MODE_NONE;
+        default: unreachable("Invalid");
         }
 }
 
 void panfrost_sampler_desc_init(const struct pipe_sampler_state *cso,
-                                struct mali_sampler_descriptor *hw)
+                                struct mali_midgard_sampler_packed *hw)
 {
-        unsigned func = panfrost_translate_compare_func(cso->compare_func);
-        bool min_nearest = cso->min_img_filter == PIPE_TEX_FILTER_NEAREST;
-        bool mag_nearest = cso->mag_img_filter == PIPE_TEX_FILTER_NEAREST;
-        bool mip_linear  = cso->min_mip_filter == PIPE_TEX_MIPFILTER_LINEAR;
-        unsigned min_filter = min_nearest ? MALI_SAMP_MIN_NEAREST : 0;
-        unsigned mag_filter = mag_nearest ? MALI_SAMP_MAG_NEAREST : 0;
-        unsigned mip_filter = mip_linear  ?
-                              (MALI_SAMP_MIP_LINEAR_1 | MALI_SAMP_MIP_LINEAR_2) : 0;
-        unsigned normalized = cso->normalized_coords ? MALI_SAMP_NORM_COORDS : 0;
+        pan_pack(hw, MIDGARD_SAMPLER, cfg) {
+                cfg.magnify_nearest = cso->mag_img_filter == PIPE_TEX_FILTER_NEAREST;
+                cfg.minify_nearest = cso->min_img_filter == PIPE_TEX_FILTER_NEAREST;
+                cfg.mipmap_mode = (cso->min_mip_filter == PIPE_TEX_MIPFILTER_LINEAR) ?
+                        MALI_MIPMAP_MODE_TRILINEAR : MALI_MIPMAP_MODE_NEAREST;
+                cfg.normalized_coordinates = cso->normalized_coords;
 
-        *hw = (struct mali_sampler_descriptor) {
-                .filter_mode = min_filter | mag_filter | mip_filter |
-                               normalized,
-                .wrap_s = translate_tex_wrap(cso->wrap_s),
-                .wrap_t = translate_tex_wrap(cso->wrap_t),
-                .wrap_r = translate_tex_wrap(cso->wrap_r),
-                .compare_func = cso->compare_mode ?
-                        panfrost_flip_compare_func(func) :
-                        MALI_FUNC_NEVER,
-                .border_color = {
-                        cso->border_color.f[0],
-                        cso->border_color.f[1],
-                        cso->border_color.f[2],
-                        cso->border_color.f[3]
-                },
-                .min_lod = FIXED_16(cso->min_lod, false), /* clamp at 0 */
-                .max_lod = FIXED_16(cso->max_lod, false),
-                .lod_bias = FIXED_16(cso->lod_bias, true), /* can be negative */
-                .seamless_cube_map = cso->seamless_cube_map,
-        };
+                cfg.lod_bias = FIXED_16(cso->lod_bias, true);
 
-        /* If necessary, we disable mipmapping in the sampler descriptor by
-         * clamping the LOD as tight as possible (from 0 to epsilon,
-         * essentially -- remember these are fixed point numbers, so
-         * epsilon=1/256) */
+                cfg.minimum_lod = FIXED_16(cso->min_lod, false);
 
-        if (cso->min_mip_filter == PIPE_TEX_MIPFILTER_NONE)
-                hw->max_lod = hw->min_lod + 1;
+                /* If necessary, we disable mipmapping in the sampler descriptor by
+                 * clamping the LOD as tight as possible (from 0 to epsilon,
+                 * essentially -- remember these are fixed point numbers, so
+                 * epsilon=1/256) */
+
+                cfg.maximum_lod = (cso->min_mip_filter == PIPE_TEX_MIPFILTER_NONE) ?
+                        cfg.minimum_lod + 1 :
+                        FIXED_16(cso->max_lod, false);
+
+                cfg.wrap_mode_s = translate_tex_wrap(cso->wrap_s);
+                cfg.wrap_mode_t = translate_tex_wrap(cso->wrap_t);
+                cfg.wrap_mode_r = translate_tex_wrap(cso->wrap_r);
+
+                cfg.compare_function = panfrost_sampler_compare_func(cso);
+                cfg.seamless_cube_map = cso->seamless_cube_map;
+
+                cfg.border_color_r = cso->border_color.f[0];
+                cfg.border_color_g = cso->border_color.f[0];
+                cfg.border_color_b = cso->border_color.f[0];
+                cfg.border_color_a = cso->border_color.f[0];
+        }
 }
 
 void panfrost_sampler_desc_init_bifrost(const struct pipe_sampler_state *cso,
-                                        struct bifrost_sampler_descriptor *hw)
+                                        uint32_t *_hw)
 {
+        struct bifrost_sampler_descriptor *hw = (struct bifrost_sampler_descriptor *) _hw;
         *hw = (struct bifrost_sampler_descriptor) {
                 .unk1 = 0x1,
                 .wrap_s = translate_tex_wrap(cso->wrap_s),
@@ -1326,34 +1328,21 @@ panfrost_emit_sampler_descriptors(struct panfrost_batch *batch,
                                   struct mali_vertex_tiler_postfix *postfix)
 {
         struct panfrost_context *ctx = batch->ctx;
-        struct panfrost_device *device = pan_device(ctx->base.screen);
 
         if (!ctx->sampler_count[stage])
                 return;
 
-        if (device->quirks & IS_BIFROST) {
-                size_t desc_size = sizeof(struct bifrost_sampler_descriptor);
-                size_t transfer_size = desc_size * ctx->sampler_count[stage];
-                struct panfrost_transfer transfer = panfrost_pool_alloc(&batch->pool,
-                                                                                transfer_size);
-                struct bifrost_sampler_descriptor *desc = (struct bifrost_sampler_descriptor *)transfer.cpu;
+        size_t desc_size = sizeof(struct bifrost_sampler_descriptor);
+        assert(sizeof(struct bifrost_sampler_descriptor) == MALI_MIDGARD_SAMPLER_LENGTH);
 
-                for (int i = 0; i < ctx->sampler_count[stage]; ++i)
-                        desc[i] = ctx->samplers[stage][i]->bifrost_hw;
+        size_t sz = desc_size * ctx->sampler_count[stage];
+        struct panfrost_transfer T = panfrost_pool_alloc(&batch->pool, sz);
+        struct mali_midgard_sampler_packed *out = (struct mali_midgard_sampler_packed *) T.cpu;
 
-                postfix->sampler_descriptor = transfer.gpu;
-        } else {
-                size_t desc_size = sizeof(struct mali_sampler_descriptor);
-                size_t transfer_size = desc_size * ctx->sampler_count[stage];
-                struct panfrost_transfer transfer = panfrost_pool_alloc(&batch->pool,
-                                                                                transfer_size);
-                struct mali_sampler_descriptor *desc = (struct mali_sampler_descriptor *)transfer.cpu;
+        for (unsigned i = 0; i < ctx->sampler_count[stage]; ++i)
+                out[i] = ctx->samplers[stage][i]->hw;
 
-                for (int i = 0; i < ctx->sampler_count[stage]; ++i)
-                        desc[i] = ctx->samplers[stage][i]->midgard_hw;
-
-                postfix->sampler_descriptor = transfer.gpu;
-        }
+        postfix->sampler_descriptor = T.gpu;
 }
 
 void

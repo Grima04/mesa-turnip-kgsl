@@ -269,8 +269,7 @@ struct panfrost_zsa_state {
 
 struct panfrost_sampler_state {
         struct pipe_sampler_state base;
-        struct mali_sampler_descriptor midgard_hw;
-        struct bifrost_sampler_descriptor bifrost_hw;
+        struct mali_midgard_sampler_packed hw;
 };
 
 /* Misnomer: Sampler view corresponds to textures, not samplers */

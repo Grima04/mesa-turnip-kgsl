@@ -61,7 +61,7 @@ static void pandecode_swizzle(unsigned swizzle, enum mali_format format);
         fprintf(pandecode_dump_stream, "%s\n", title); \
         struct MALI_ ## T temp; \
         MALI_ ## T ## _unpack((const uint8_t *) cl, &temp); \
-        MALI_ ## T ## _print(pandecode_dump_stream, &temp, 0); \
+        MALI_ ## T ## _print(pandecode_dump_stream, &temp, indent * 2); \
 }
 
 #define DUMP_ADDR(title, T, addr, indent) {\
@@ -314,17 +314,6 @@ static const struct pandecode_flag_info shader_bifrost_info [] = {
 static const struct pandecode_flag_info mfbd_flag_info [] = {
         FLAG_INFO(DEPTH_WRITE),
         FLAG_INFO(EXTRA),
-        {}
-};
-#undef FLAG_INFO
-
-#define FLAG_INFO(flag) { MALI_SAMP_##flag, "MALI_SAMP_" #flag }
-static const struct pandecode_flag_info sampler_flag_info [] = {
-        FLAG_INFO(MAG_NEAREST),
-        FLAG_INFO(MIN_NEAREST),
-        FLAG_INFO(MIP_LINEAR_1),
-        FLAG_INFO(MIP_LINEAR_2),
-        FLAG_INFO(NORM_COORDS),
         {}
 };
 #undef FLAG_INFO
@@ -2481,46 +2470,8 @@ pandecode_samplers(mali_ptr samplers, unsigned sampler_count, int job_no, bool i
                         pandecode_log("};\n");
                 }
         } else {
-                struct mali_sampler_descriptor *s;
-
-                for (int i = 0; i < sampler_count; ++i) {
-                        s = pandecode_fetch_gpu_mem(smem, samplers + sizeof(*s) * i, sizeof(*s));
-
-                        pandecode_log("struct mali_sampler_descriptor sampler_descriptor_%"PRIx64"_%d_%d = {\n", samplers + sizeof(*s) * i, job_no, i);
-                        pandecode_indent++;
-
-                        pandecode_log(".filter_mode = ");
-                        pandecode_log_decoded_flags(sampler_flag_info, s->filter_mode);
-                        pandecode_log_cont(",\n");
-
-                        pandecode_prop("min_lod = FIXED_16(%f)", DECODE_FIXED_16(s->min_lod));
-                        pandecode_prop("max_lod = FIXED_16(%f)", DECODE_FIXED_16(s->max_lod));
-
-                        if (s->lod_bias)
-                                pandecode_prop("lod_bias = FIXED_16(%f)", DECODE_FIXED_16(s->lod_bias));
-
-                        pandecode_prop("wrap_s = %s", mali_wrap_mode_as_str(s->wrap_s));
-                        pandecode_prop("wrap_t = %s", mali_wrap_mode_as_str(s->wrap_t));
-                        pandecode_prop("wrap_r = %s", mali_wrap_mode_as_str(s->wrap_r));
-
-                        pandecode_prop("compare_func = %s", mali_func_as_str(s->compare_func));
-
-                        if (s->zero || s->zero2) {
-                                pandecode_msg("XXX: sampler zero tripped\n");
-                                pandecode_prop("zero = 0x%X, 0x%X\n", s->zero, s->zero2);
-                        }
-
-                        pandecode_prop("seamless_cube_map = %d", s->seamless_cube_map);
-
-                        pandecode_prop("border_color = { %f, %f, %f, %f }",
-                                       s->border_color[0],
-                                       s->border_color[1],
-                                       s->border_color[2],
-                                       s->border_color[3]);
-
-                        pandecode_indent--;
-                        pandecode_log("};\n");
-                }
+                for (int i = 0; i < sampler_count; ++i)
+                        DUMP_ADDR("Sampler", MIDGARD_SAMPLER, samplers + (MALI_MIDGARD_SAMPLER_LENGTH * i), 1);
         }
 }
 

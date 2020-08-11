@@ -187,6 +187,7 @@ panfrost_load_midg(
         unsigned height = u_minify(image->height0, image->first_level);
 
         struct panfrost_transfer viewport = panfrost_pool_alloc(pool, MALI_VIEWPORT_LENGTH);
+        struct panfrost_transfer sampler = panfrost_pool_alloc(pool, MALI_MIDGARD_SAMPLER_LENGTH);
 
         pan_pack(viewport.cpu, VIEWPORT, cfg) {
                 cfg.scissor_maximum_x = width - 1; /* Inclusive */
@@ -306,12 +307,8 @@ panfrost_load_midg(
                                         image->cubemap_stride, image->first_level),
                         image->slices);
 
-        struct mali_sampler_descriptor sampler = {
-                .filter_mode = MALI_SAMP_MAG_NEAREST | MALI_SAMP_MIN_NEAREST,
-                .wrap_s = MALI_WRAP_MODE_CLAMP_TO_EDGE,
-                .wrap_t = MALI_WRAP_MODE_CLAMP_TO_EDGE,
-                .wrap_r = MALI_WRAP_MODE_CLAMP_TO_EDGE,
-        };
+        pan_pack(sampler.cpu, MIDGARD_SAMPLER, cfg)
+                cfg.normalized_coordinates = false;
 
         struct panfrost_transfer shader_meta_t = panfrost_pool_alloc(pool, sizeof(shader_meta) + 8 * sizeof(struct midgard_blend_rt));
         memcpy(shader_meta_t.cpu, &shader_meta, sizeof(shader_meta));
@@ -349,7 +346,7 @@ panfrost_load_midg(
                         .gl_enables = 0x7,
                         .position_varying = coordinates,
                         .textures = panfrost_pool_upload(pool, &texture_t.gpu, sizeof(texture_t.gpu)),
-                        .sampler_descriptor = panfrost_pool_upload(pool, &sampler, sizeof(sampler)),
+                        .sampler_descriptor = sampler.gpu,
                         .shader = shader_meta_t.gpu,
                         .varyings = panfrost_pool_upload(pool, &varying, sizeof(varying)),
                         .varying_meta = panfrost_pool_upload(pool, &varying_meta, sizeof(varying_meta)),

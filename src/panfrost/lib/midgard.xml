@@ -38,6 +38,12 @@
     <value name="Always" value="7"/>
   </enum>
 
+  <enum name="Mipmap Mode">
+    <value name="Nearest" value="0"/>
+    <value name="None" value="1"/>
+    <value name="Trilinear" value="3"/>
+  </enum>
+
   <enum name="Stencil Op">
     <value name="Keep" value="0"/>
     <value name="Replace" value="1"/>
@@ -59,6 +65,25 @@
     <value name="Mirrored Clamp" value="14"/>
     <value name="Mirrored Clamp to Border" value="15"/>
   </enum>
+
+  <struct name="Midgard Sampler">
+    <field name="Magnify Nearest" size="1" start="0" type="bool" default="true"/>
+    <field name="Minify Nearest" size="1" start="1" type="bool" default="true"/>
+    <field name="Mipmap Mode" size="2" start="3" type="Mipmap Mode" default="Nearest"/>
+    <field name="Normalized Coordinates" size="1" start="5" type="bool" default="true"/>
+    <field name="LOD Bias" size="16" start="0:16" type="int" default="0"/>
+    <field name="Minimum LOD" size="16" start="1:0" type="uint" default="0"/>
+    <field name="Maximum LOD" size="16" start="1:16" type="uint" default="1"/>
+    <field name="Wrap Mode S" size="4" start="2:0" type="Wrap Mode" default="Clamp to Edge"/>
+    <field name="Wrap Mode T" size="4" start="2:4" type="Wrap Mode" default="Clamp to Edge"/>
+    <field name="Wrap Mode R" size="4" start="2:8" type="Wrap Mode" default="Clamp to Edge"/>
+    <field name="Compare Function" size="3" start="2:12" type="Func" default="Never"/>
+    <field name="Seamless Cube Map" size="1" start="2:15" type="bool" default="true"/>
+    <field name="Border Color R" size="32" start="4:0" type="float" default="0.0"/>
+    <field name="Border Color G" size="32" start="5:0" type="float" default="0.0"/>
+    <field name="Border Color B" size="32" start="6:0" type="float" default="0.0"/>
+    <field name="Border Color A" size="32" start="7:0" type="float" default="0.0"/>
+  </struct>
 
   <struct name="Stencil">
     <field name="Reference Value" size="8" start="0" type="uint"/>
