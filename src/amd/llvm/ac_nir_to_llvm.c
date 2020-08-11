@@ -1523,7 +1523,7 @@ static LLVMValueRef visit_load_push_constant(struct ac_nir_context *ctx, nir_int
 
       unsigned num_inline_push_consts = ctx->args->num_inline_push_consts;
       if (offset + count <= num_inline_push_consts) {
-         LLVMValueRef push_constants[num_inline_push_consts];
+         LLVMValueRef *const push_constants = alloca(num_inline_push_consts * sizeof(LLVMValueRef));
          for (unsigned i = 0; i < num_inline_push_consts; i++)
             push_constants[i] = ac_get_arg(&ctx->ac, ctx->args->inline_push_consts[i]);
          return ac_build_gather_values(&ctx->ac, push_constants + offset, count);
@@ -2118,7 +2118,7 @@ static LLVMValueRef visit_load_ubo_buffer(struct ac_nir_context *ctx, nir_intrin
 
    if (instr->dest.ssa.bit_size == 16 || instr->dest.ssa.bit_size == 8) {
       unsigned load_bytes = instr->dest.ssa.bit_size / 8;
-      LLVMValueRef results[num_components];
+      LLVMValueRef *const results = alloca(num_components * sizeof(LLVMValueRef));
       for (unsigned i = 0; i < num_components; ++i) {
          LLVMValueRef immoffset = LLVMConstInt(ctx->ac.i32, load_bytes * i, 0);
 
@@ -4491,7 +4491,7 @@ static LLVMTypeRef glsl_to_llvm_type(struct ac_llvm_context *ac, const struct gl
 
    assert(glsl_type_is_struct_or_ifc(type));
 
-   LLVMTypeRef member_types[glsl_get_length(type)];
+   LLVMTypeRef *const member_types = alloca(glsl_get_length(type) * sizeof(LLVMTypeRef));
 
    for (unsigned i = 0; i < glsl_get_length(type); i++) {
       member_types[i] = glsl_to_llvm_type(ac, glsl_get_struct_field(type, i));

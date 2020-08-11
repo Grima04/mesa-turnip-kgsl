@@ -678,10 +678,10 @@ void aco_print_instr(const Instruction *instr, FILE *output)
    }
    fprintf(output, "%s", instr_info.name[(int)instr->opcode]);
    if (instr->operands.size()) {
-      bool abs[instr->operands.size()];
-      bool neg[instr->operands.size()];
-      bool opsel[instr->operands.size()];
-      uint8_t sel[instr->operands.size()];
+      bool *const abs = (bool *)alloca(instr->operands.size() * sizeof(bool));
+      bool *const neg = (bool *)alloca(instr->operands.size() * sizeof(bool));
+      bool *const opsel = (bool *)alloca(instr->operands.size() * sizeof(bool));
+      uint8_t *const sel = (uint8_t *)alloca(instr->operands.size() * sizeof(uint8_t));
       if ((int)instr->format & (int)Format::VOP3A) {
          const VOP3A_instruction* vop3 = static_cast<const VOP3A_instruction*>(instr);
          for (unsigned i = 0; i < instr->operands.size(); ++i) {

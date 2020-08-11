@@ -572,7 +572,7 @@ static LLVMValueRef ac_build_expand(struct ac_llvm_context *ctx, LLVMValueRef va
                                     unsigned src_channels, unsigned dst_channels)
 {
    LLVMTypeRef elemtype;
-   LLVMValueRef chan[dst_channels];
+   LLVMValueRef *const chan = alloca(dst_channels * sizeof(LLVMValueRef));
 
    if (LLVMGetTypeKind(LLVMTypeOf(value)) == LLVMVectorTypeKind) {
       unsigned vec_size = LLVMGetVectorSize(LLVMTypeOf(value));
@@ -605,7 +605,7 @@ static LLVMValueRef ac_build_expand(struct ac_llvm_context *ctx, LLVMValueRef va
 LLVMValueRef ac_extract_components(struct ac_llvm_context *ctx, LLVMValueRef value, unsigned start,
                                    unsigned channels)
 {
-   LLVMValueRef chan[channels];
+   LLVMValueRef *const chan = alloca(channels * sizeof(LLVMValueRef));
 
    for (unsigned i = 0; i < channels; i++)
       chan[i] = ac_llvm_extract_elem(ctx, value, i + start);
@@ -3216,7 +3216,7 @@ LLVMValueRef ac_trim_vector(struct ac_llvm_context *ctx, LLVMValueRef value, uns
    if (count == num_components)
       return value;
 
-   LLVMValueRef masks[MAX2(count, 2)];
+   LLVMValueRef *const masks = alloca(MAX2(count, 2) * sizeof(LLVMValueRef));
    masks[0] = ctx->i32_0;
    masks[1] = ctx->i32_1;
    for (unsigned i = 2; i < count; i++)

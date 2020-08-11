@@ -1614,7 +1614,7 @@ Temp handle_live_in(ra_ctx& ctx, Temp val, Block* block)
       new_val = read_variable(ctx, val, preds[0]);
    } else {
       /* there are multiple predecessors and the block is sealed */
-      Temp ops[preds.size()];
+      Temp *const ops = (Temp *)alloca(preds.size() * sizeof(Temp));
 
       /* get the rename from each predecessor and check if they are the same */
       bool needs_phi = false;
