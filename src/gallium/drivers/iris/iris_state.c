@@ -3221,26 +3221,35 @@ iris_set_constant_buffer(struct pipe_context *ctx,
 
 static void
 upload_sysvals(struct iris_context *ice,
-                gl_shader_stage stage)
+               gl_shader_stage stage,
+               const struct pipe_grid_info *grid)
 {
    UNUSED struct iris_genx_state *genx = ice->state.genx;
    struct iris_shader_state *shs = &ice->state.shaders[stage];
 
    struct iris_compiled_shader *shader = ice->shaders.prog[stage];
-   if (!shader || shader->num_system_values == 0)
+   if (!shader || (shader->num_system_values == 0 &&
+                   shader->kernel_input_size == 0))
       return;
 
    assert(shader->num_cbufs > 0);
 
    unsigned sysval_cbuf_index = shader->num_cbufs - 1;
    struct pipe_shader_buffer *cbuf = &shs->constbuf[sysval_cbuf_index];
-   unsigned upload_size = shader->num_system_values * sizeof(uint32_t);
-   uint32_t *map = NULL;
+   unsigned system_values_start =
+      ALIGN(shader->kernel_input_size, sizeof(uint32_t));
+   unsigned upload_size = system_values_start +
+                          shader->num_system_values * sizeof(uint32_t);
+   void *map = NULL;
 
    assert(sysval_cbuf_index < PIPE_MAX_CONSTANT_BUFFERS);
    u_upload_alloc(ice->ctx.const_uploader, 0, upload_size, 64,
-                  &cbuf->buffer_offset, &cbuf->buffer, (void **) &map);
+                  &cbuf->buffer_offset, &cbuf->buffer, &map);
 
+   if (shader->kernel_input_size > 0)
+      memcpy(map, grid->input, shader->kernel_input_size);
+
+   uint32_t *sysval_map = map + system_values_start;
    for (int i = 0; i < shader->num_system_values; i++) {
       uint32_t sysval = shader->system_values[i];
       uint32_t value = 0;
@@ -3289,7 +3298,7 @@ upload_sysvals(struct iris_context *ice,
          assert(!"unhandled system value");
       }
 
-      *map++ = value;
+      *sysval_map++ = value;
    }
 
    cbuf->buffer_size = upload_size;
@@ -5641,7 +5650,7 @@ iris_upload_dirty_render_state(struct iris_context *ice,
          continue;
 
       if (shs->sysvals_need_upload)
-         upload_sysvals(ice, stage);
+         upload_sysvals(ice, stage, NULL);
 
       struct push_bos push_bos = {};
       setup_constant_buffers(ice, batch, stage, &push_bos);
@@ -6790,7 +6799,7 @@ iris_upload_compute_state(struct iris_context *ice,
 
    if ((stage_dirty & IRIS_STAGE_DIRTY_CONSTANTS_CS) &&
        shs->sysvals_need_upload)
-      upload_sysvals(ice, MESA_SHADER_COMPUTE);
+      upload_sysvals(ice, MESA_SHADER_COMPUTE, grid);
 
    if (stage_dirty & IRIS_STAGE_DIRTY_BINDINGS_CS)
       iris_populate_binding_table(ice, batch, MESA_SHADER_COMPUTE, false);

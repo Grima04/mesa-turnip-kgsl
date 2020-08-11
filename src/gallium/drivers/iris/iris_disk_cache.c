@@ -106,8 +106,9 @@ iris_disk_cache_store(struct disk_cache *cache,
     * 2. Assembly code
     * 3. Number of entries in the system value array
     * 4. System value array
-    * 5. Legacy param array (only used for compute workgroup ID)
-    * 6. Binding table
+    * 5. Size (in bytes) of kernel inputs
+    * 6. Legacy param array (only used for compute workgroup ID)
+    * 7. Binding table
     */
    blob_write_bytes(&blob, shader->prog_data, brw_prog_data_size(stage));
    blob_write_bytes(&blob, shader->map, shader->prog_data->program_size);
@@ -222,7 +223,7 @@ iris_disk_cache_retrieve(struct iris_context *ice,
    if (num_cbufs || ish->nir->num_uniforms)
       num_cbufs++;
 
-   if (num_system_values)
+   if (num_system_values || kernel_input_size)
       num_cbufs++;
 
    assert(stage < ARRAY_SIZE(cache_id_for_stage));

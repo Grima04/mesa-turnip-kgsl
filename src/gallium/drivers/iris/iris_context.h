@@ -378,6 +378,9 @@ struct iris_uncompiled_shader {
    /* Whether shader uses atomic operations. */
    bool uses_atomic_load_store;
 
+   /** Size (in bytes) of the kernel input data */
+   unsigned kernel_input_size;
+
    /** Constant data scraped from the shader by nir_opt_large_constants */
    struct pipe_resource *const_data;
 
