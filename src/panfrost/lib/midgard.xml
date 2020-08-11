@@ -55,6 +55,20 @@
     <value name="Decr Sat" value="7"/>
   </enum>
 
+  <enum name="Texture Dimension">
+    <value name="Cube" value="0"/>
+    <value name="1D" value="1"/>
+    <value name="2D" value="2"/>
+    <value name="3D" value="3"/>
+  </enum>
+
+  <enum name="Texture Layout">
+    <!--- 16x16 block u-interleaved -->
+    <value name="Tiled" value="1"/>
+    <value name="Linear" value="2"/>
+    <value name="AFBC" value="12"/>
+  </enum>
+
   <enum name="Wrap Mode">
     <value name="Repeat" value="8"/>
     <value name="Clamp to Edge" value="9"/>
@@ -83,6 +97,20 @@
     <field name="Border Color G" size="32" start="5:0" type="float" default="0.0"/>
     <field name="Border Color B" size="32" start="6:0" type="float" default="0.0"/>
     <field name="Border Color A" size="32" start="7:0" type="float" default="0.0"/>
+  </struct>
+
+  <struct name="Midgard Texture" size="8">
+    <field name="Width" size="16" start="0:0" type="uint" modifier="minus(1)"/>
+    <field name="Height" size="16" start="0:16" type="uint" modifier="minus(1)"/>
+    <field name="Depth" size="16" start="1:0" type="uint" modifier="minus(1)"/>
+    <field name="Array size" size="16" start="1:16" type="uint" modifier="minus(1)"/>
+    <field name="Format" size="22" start="2:0" type="uint"/>
+    <field name="Dimension" size="2" start="2:22" type="Texture Dimension"/>
+    <field name="Texel ordering" size="4" start="2:24" type="Texture Layout"/>
+    <field name="Unknown" size="1" start="2:28" type="bool" default="true"/>
+    <field name="Manual stride" size="1" start="2:29" type="bool" default="false"/>
+    <field name="Levels" size="8" start="3:24" type="uint"/>
+    <field name="Swizzle" size="12" start="4:0" type="uint"/>
   </struct>
 
   <struct name="Bifrost Sampler" size="8">

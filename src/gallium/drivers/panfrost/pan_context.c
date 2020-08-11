@@ -958,8 +958,8 @@ panfrost_create_sampler_view_bo(struct panfrost_sampler_view *so,
                 assert(texture->nr_samples <= 1);
         }
 
-        enum mali_texture_type type =
-                panfrost_translate_texture_type(so->base.target);
+        enum mali_texture_dimension type =
+                panfrost_translate_texture_dimension(so->base.target);
 
         if (device->quirks & IS_BIFROST) {
                 unsigned char composed_swizzle[4];
@@ -1000,7 +1000,7 @@ panfrost_create_sampler_view_bo(struct panfrost_sampler_view *so,
                                 so->base.u.tex.last_layer,
                                 texture->nr_samples,
                                 type, prsrc->modifier);
-                size += sizeof(struct mali_texture_descriptor);
+                size += MALI_MIDGARD_TEXTURE_LENGTH;
 
                 so->bo = panfrost_bo_create(device, size, 0);
 

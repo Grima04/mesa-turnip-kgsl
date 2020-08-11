@@ -1139,15 +1139,6 @@ struct bifrost_payload_fused {
 
 #define MALI_POSITIVE(dim) (dim - 1)
 
-/* Shared across both command stream and Midgard, and even with Bifrost */
-
-enum mali_texture_type {
-        MALI_TEX_CUBE = 0x0,
-        MALI_TEX_1D = 0x1,
-        MALI_TEX_2D = 0x2,
-        MALI_TEX_3D = 0x3
-};
-
 /* 8192x8192 */
 #define MAX_MIP_LEVELS (13)
 
@@ -1157,76 +1148,12 @@ enum mali_texture_type {
 /* For each pointer, there is an address and optionally also a stride */
 #define MAX_ELEMENTS (2)
 
-/* It's not known why there are 4-bits allocated -- this enum is almost
- * certainly incomplete */
-
-enum mali_texture_layout {
-        /* For a Z/S texture, this is linear */
-        MALI_TEXTURE_TILED = 0x1,
-
-        /* Z/S textures cannot be tiled */
-        MALI_TEXTURE_LINEAR = 0x2,
-
-        /* 16x16 sparse */
-        MALI_TEXTURE_AFBC = 0xC
-};
-
-/* Corresponds to the type passed to glTexImage2D and so forth */
-
-struct mali_texture_format {
-        unsigned swizzle : 12;
-        enum mali_format format : 8;
-
-        unsigned srgb : 1;
-        unsigned unknown1 : 1;
-
-        enum mali_texture_type type : 2;
-        enum mali_texture_layout layout : 4;
-
-        /* Always set */
-        unsigned unknown2 : 1;
-
-        /* Set to allow packing an explicit stride */
-        unsigned manual_stride : 1;
-
-        unsigned zero : 2;
-} __attribute__((packed));
-
-struct mali_texture_descriptor {
-        uint16_t width;
-        uint16_t height;
-        uint16_t depth;
-        uint16_t array_size;
-
-        struct mali_texture_format format;
-
-        uint16_t unknown3;
-
-        /* One for non-mipmapped, zero for mipmapped */
-        uint8_t unknown3A;
-
-        /* Zero for non-mipmapped, (number of levels - 1) for mipmapped */
-        uint8_t levels;
-
-        /* Swizzling is a single 32-bit word, broken up here for convenience.
-         * Here, swizzling refers to the ES 3.0 texture parameters for channel
-         * level swizzling, not the internal pixel-level swizzling which is
-         * below OpenGL's reach */
-
-        unsigned swizzle : 12;
-        unsigned swizzle_zero       : 20;
-
-        uint32_t unknown5;
-        uint32_t unknown6;
-        uint32_t unknown7;
-} __attribute__((packed));
-
 /* While Midgard texture descriptors are variable length, Bifrost descriptors
  * are fixed like samplers with more pointers to expand if necessary */
 
 struct bifrost_texture_descriptor {
         unsigned format_unk : 4; /* 2 */
-        enum mali_texture_type type : 2;
+        enum mali_texture_dimension type : 2;
         unsigned zero : 4;
         unsigned format_swizzle : 12;
         enum mali_format format : 8;

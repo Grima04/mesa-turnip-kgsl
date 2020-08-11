@@ -313,7 +313,6 @@ panfrost_mfbd_set_zsbuf(
                 fbx->ds_afbc.padding = 0x1000;
         } else {
                 assert(rsrc->modifier == DRM_FORMAT_MOD_ARM_16X16_BLOCK_U_INTERLEAVED || rsrc->modifier == DRM_FORMAT_MOD_LINEAR);
-
                 /* TODO: Z32F(S8) support, which is always linear */
 
                 int stride = rsrc->slices[level].stride;

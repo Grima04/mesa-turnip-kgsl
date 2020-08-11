@@ -34,13 +34,8 @@
  * dedicated BO and not have to worry. In practice there are some minor gotchas
  * with this (the driver sometimes will change the format of a texture on the
  * fly for compression) but it's fast enough to just regenerate the descriptor
- * in those cases, rather than monkeypatching at drawtime.
- *
- * A texture descriptor consists of a 32-byte mali_texture_descriptor structure
- * followed by a variable number of pointers. Due to this variance and
- * potentially large size, we actually upload directly rather than returning
- * the descriptor. Whether the user does a copy themselves or not is irrelevant
- * to us here.
+ * in those cases, rather than monkeypatching at drawtime. A texture descriptor
+ * consists of a 32-byte header followed by pointers. 
  */
 
 /* List of supported modifiers, in descending order of preference. AFBC is
@@ -67,11 +62,11 @@ static enum mali_texture_layout
 panfrost_modifier_to_layout(uint64_t modifier)
 {
         if (drm_is_afbc(modifier))
-                return MALI_TEXTURE_AFBC;
+                return MALI_TEXTURE_LAYOUT_AFBC;
         else if (modifier == DRM_FORMAT_MOD_ARM_16X16_BLOCK_U_INTERLEAVED)
-                return MALI_TEXTURE_TILED;
+                return MALI_TEXTURE_LAYOUT_TILED;
         else if (modifier == DRM_FORMAT_MOD_LINEAR)
-                return MALI_TEXTURE_LINEAR;
+                return MALI_TEXTURE_LAYOUT_LINEAR;
         else
                 unreachable("Invalid modifer");
 }
@@ -190,7 +185,7 @@ panfrost_estimate_texture_payload_size(
                 unsigned first_level, unsigned last_level,
                 unsigned first_layer, unsigned last_layer,
                 unsigned nr_samples,
-                enum mali_texture_type type, uint64_t modifier)
+                enum mali_texture_dimension dim, uint64_t modifier)
 {
         /* Assume worst case */
         unsigned manual_stride = (modifier == DRM_FORMAT_MOD_LINEAR);
@@ -199,7 +194,7 @@ panfrost_estimate_texture_payload_size(
                         first_level, last_level,
                         first_layer, last_layer,
                         nr_samples,
-                        type == MALI_TEX_CUBE, manual_stride);
+                        dim == MALI_TEXTURE_DIMENSION_CUBE, manual_stride);
 
         return sizeof(mali_ptr) * elements;
 }
@@ -228,7 +223,7 @@ panfrost_emit_texture_payload(
         mali_ptr *payload,
         const struct util_format_description *desc,
         enum mali_format mali_format,
-        enum mali_texture_type type,
+        enum mali_texture_dimension dim,
         uint64_t modifier,
         unsigned width, unsigned height,
         unsigned first_level, unsigned last_level,
@@ -246,7 +241,7 @@ panfrost_emit_texture_payload(
 
         unsigned first_face  = 0, last_face = 0, face_mult = 1;
 
-        if (type == MALI_TEX_CUBE) {
+        if (dim == MALI_TEXTURE_DIMENSION_CUBE) {
                 face_mult = 6;
                 panfrost_adjust_cube_dimensions(&first_face, &last_face, &first_layer, &last_layer);
         }
@@ -260,7 +255,7 @@ panfrost_emit_texture_payload(
                         for (unsigned f = first_face; f <= last_face; ++f) {
                                 for (unsigned s = 0; s < nr_samples; ++s) {
                                         payload[idx++] = base + panfrost_texture_offset(
-                                                        slices, type == MALI_TEX_3D,
+                                                        slices, dim == MALI_TEXTURE_DIMENSION_3D,
                                                         cube_stride, l, w * face_mult + f, s);
 
                                         if (manual_stride) {
@@ -296,7 +291,7 @@ panfrost_new_texture(
         uint16_t width, uint16_t height,
         uint16_t depth, uint16_t array_size,
         enum pipe_format format,
-        enum mali_texture_type type,
+        enum mali_texture_dimension dim,
         uint64_t modifier,
         unsigned first_level, unsigned last_level,
         unsigned first_layer, unsigned last_layer,
@@ -318,36 +313,32 @@ panfrost_new_texture(
                 && panfrost_needs_explicit_stride(slices, width,
                                 first_level, last_level, bytes_per_pixel);
 
-        struct mali_texture_descriptor descriptor = {
-                .width = MALI_POSITIVE(u_minify(width, first_level)),
-                .height = MALI_POSITIVE(u_minify(height, first_level)),
-                .depth = MALI_POSITIVE(u_minify(depth, first_level)),
-                .array_size = MALI_POSITIVE(array_size),
-                .format = {
-                        .swizzle = (format == PIPE_FORMAT_X24S8_UINT) ?
+        unsigned format_swizzle = (format == PIPE_FORMAT_X24S8_UINT) ?
                                 MALI_SWIZZLE_A001 :
                                 (format == PIPE_FORMAT_S8_UINT) ?
                                 MALI_SWIZZLE_R001 :
-                                panfrost_translate_swizzle_4(desc->swizzle),
-                        .format = mali_format,
-                        .srgb = (desc->colorspace == UTIL_FORMAT_COLORSPACE_SRGB),
-                        .type = type,
-                        .layout = panfrost_modifier_to_layout(modifier),
-                        .manual_stride = manual_stride,
-                        .unknown2 = 1,
-                },
-                .levels = last_level - first_level,
-                .swizzle = swizzle
+                                panfrost_translate_swizzle_4(desc->swizzle);
+
+        bool srgb = (desc->colorspace == UTIL_FORMAT_COLORSPACE_SRGB);
+
+        pan_pack(out, MIDGARD_TEXTURE, cfg) {
+                cfg.width = u_minify(width, first_level);
+                cfg.height = u_minify(height, first_level);
+                cfg.depth = u_minify(depth, first_level);
+                cfg.array_size = array_size;
+                cfg.format = format_swizzle | (mali_format << 12) | (srgb << 20);
+                cfg.dimension = dim;
+                cfg.texel_ordering = panfrost_modifier_to_layout(modifier);
+                cfg.manual_stride = manual_stride;
+                cfg.levels = last_level - first_level;
+                cfg.swizzle = swizzle;
         };
 
-        memcpy(out, &descriptor, sizeof(descriptor));
-
-        mali_ptr *payload = (mali_ptr *) (out + sizeof(struct mali_texture_descriptor));
         panfrost_emit_texture_payload(
-                payload,
+                (mali_ptr *) (out + MALI_MIDGARD_TEXTURE_LENGTH),
                 desc,
                 mali_format,
-                type,
+                dim,
                 modifier,
                 width, height,
                 first_level, last_level,
@@ -365,7 +356,7 @@ panfrost_new_texture_bifrost(
         uint16_t width, uint16_t height,
         uint16_t depth, uint16_t array_size,
         enum pipe_format format,
-        enum mali_texture_type type,
+        enum mali_texture_dimension dim,
         uint64_t modifier,
         unsigned first_level, unsigned last_level,
         unsigned first_layer, unsigned last_layer,
@@ -386,7 +377,7 @@ panfrost_new_texture_bifrost(
                 (mali_ptr *) payload->cpu,
                 desc,
                 mali_format,
-                type,
+                dim,
                 modifier,
                 width, height,
                 first_level, last_level,
@@ -398,7 +389,7 @@ panfrost_new_texture_bifrost(
                 slices);
 
         descriptor->format_unk = 0x2;
-        descriptor->type = type;
+        descriptor->type = dim;
         descriptor->format = mali_format;
         descriptor->srgb = (desc->colorspace == UTIL_FORMAT_COLORSPACE_SRGB);
         descriptor->format_unk3 = 0x0;

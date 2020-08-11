@@ -61,7 +61,7 @@ struct pan_image {
         /* Format and size */
         uint16_t width0, height0, depth0, array_size;
         enum pipe_format format;
-        enum mali_texture_type type;
+        enum mali_texture_dimension dim;
         unsigned first_level, last_level;
         unsigned first_layer, last_layer;
         unsigned nr_samples;
@@ -88,14 +88,12 @@ panfrost_afbc_header_size(unsigned width, unsigned height);
 bool
 panfrost_afbc_can_ytr(enum pipe_format format);
 
-/* mali_texture_descriptor */
-
 unsigned
 panfrost_estimate_texture_payload_size(
                 unsigned first_level, unsigned last_level,
                 unsigned first_layer, unsigned last_layer,
                 unsigned nr_samples,
-                enum mali_texture_type type, uint64_t modifier);
+                enum mali_texture_dimension dim, uint64_t modifier);
 
 void
 panfrost_new_texture(
@@ -103,7 +101,7 @@ panfrost_new_texture(
         uint16_t width, uint16_t height,
         uint16_t depth, uint16_t array_size,
         enum pipe_format format,
-        enum mali_texture_type type,
+        enum mali_texture_dimension dim,
         uint64_t modifier,
         unsigned first_level, unsigned last_level,
         unsigned first_layer, unsigned last_layer,
@@ -119,7 +117,7 @@ panfrost_new_texture_bifrost(
         uint16_t width, uint16_t height,
         uint16_t depth, uint16_t array_size,
         enum pipe_format format,
-        enum mali_texture_type type,
+        enum mali_texture_dimension dim,
         uint64_t modifier,
         unsigned first_level, unsigned last_level,
         unsigned first_layer, unsigned last_layer,

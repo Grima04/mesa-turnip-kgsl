@@ -836,15 +836,15 @@ panfrost_load_surface(struct panfrost_batch *batch, struct pipe_surface *surf, u
                 format = util_format_stencil_only(format);
         }
 
-        enum mali_texture_type type =
-                panfrost_translate_texture_type(rsrc->base.target);
+        enum mali_texture_dimension dim =
+                panfrost_translate_texture_dimension(rsrc->base.target);
 
         struct pan_image img = {
                 .width0 = rsrc->base.width0,
                 .height0 = rsrc->base.height0,
                 .depth0 = rsrc->base.depth0,
                 .format = format,
-                .type = type,
+                .dim = dim,
                 .modifier = rsrc->modifier,
                 .array_size = rsrc->base.array_size,
                 .first_level = level,

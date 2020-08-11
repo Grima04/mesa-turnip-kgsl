@@ -289,12 +289,12 @@ panfrost_load_midg(
          * textures, removing the need to separately key the blit shaders for
          * 2D and 3D variants */
 
-        struct panfrost_transfer texture_t = panfrost_pool_alloc(pool, sizeof(struct mali_texture_descriptor) + sizeof(mali_ptr) * 2 * MAX2(image->nr_samples, 1));
+        struct panfrost_transfer texture_t = panfrost_pool_alloc(pool, MALI_MIDGARD_TEXTURE_LENGTH + sizeof(mali_ptr) * 2 * MAX2(image->nr_samples, 1));
 
         panfrost_new_texture(texture_t.cpu,
                         image->width0, image->height0,
                         MAX2(image->nr_samples, 1), 1,
-                        image->format, MALI_TEX_2D,
+                        image->format, MALI_TEXTURE_DIMENSION_2D,
                         image->modifier,
                         image->first_level, image->last_level,
                         0, 0,
@@ -303,7 +303,7 @@ panfrost_load_midg(
                         (MALI_CHANNEL_RED << 0) | (MALI_CHANNEL_GREEN << 3) | (MALI_CHANNEL_BLUE << 6) | (MALI_CHANNEL_ALPHA << 9),
                         image->bo->gpu + image->first_layer *
                                 panfrost_get_layer_stride(image->slices,
-                                        image->type == MALI_TEX_3D,
+                                        image->dim == MALI_TEXTURE_DIMENSION_3D,
                                         image->cubemap_stride, image->first_level),
                         image->slices);
 

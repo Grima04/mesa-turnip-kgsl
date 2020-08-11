@@ -2034,7 +2034,7 @@ pandecode_shader_disassemble(mali_ptr shader_ptr, int shader_no, int type,
 
 static void
 pandecode_texture_payload(mali_ptr payload,
-                          enum mali_texture_type type,
+                          enum mali_texture_dimension dim,
                           enum mali_texture_layout layout,
                           bool manual_stride,
                           uint8_t levels,
@@ -2054,14 +2054,14 @@ pandecode_texture_payload(mali_ptr payload,
         int bitmap_count = levels + 1;
 
         /* Miptree for each face */
-        if (type == MALI_TEX_CUBE)
+        if (dim == MALI_TEXTURE_DIMENSION_CUBE)
                 bitmap_count *= 6;
 
         /* Array of layers */
-        bitmap_count *= (depth + 1);
+        bitmap_count *= depth;
 
         /* Array of textures */
-        bitmap_count *= (array_size + 1);
+        bitmap_count *= array_size;
 
         /* Stride for each element */
         if (manual_stride)
@@ -2095,126 +2095,16 @@ pandecode_texture(mali_ptr u,
                 struct pandecode_mapped_memory *tmem,
                 unsigned job_no, unsigned tex)
 {
-        struct mali_texture_descriptor *PANDECODE_PTR_VAR(t, tmem, u);
+        struct pandecode_mapped_memory *mapped_mem = pandecode_find_mapped_gpu_mem_containing(u);
+        const uint8_t *cl = pandecode_fetch_gpu_mem(mapped_mem, u, MALI_MIDGARD_TEXTURE_LENGTH);
 
-        pandecode_log("struct mali_texture_descriptor texture_descriptor_%"PRIx64"_%d_%d = {\n", u, job_no, tex);
-        pandecode_indent++;
+        struct MALI_MIDGARD_TEXTURE temp;
+        MALI_MIDGARD_TEXTURE_unpack(cl, &temp);
+        MALI_MIDGARD_TEXTURE_print(pandecode_dump_stream, &temp, 2);
 
-        pandecode_prop("width = %" PRId32, t->width);
-        pandecode_prop("height = %" PRId32, t->height);
-        pandecode_prop("depth = %" PRId32, t->depth);
-        pandecode_prop("array_size = %" PRId32, t->array_size);
-
-        pandecode_log("\n");
-        pandecode_prop("f.swizzle = 0x%" PRIx32, t->format.swizzle);
-        pandecode_prop("f.format = 0x%" PRIx32, t->format.format);
-        pandecode_prop("f.srgb = 0x%" PRIx32, t->format.srgb);
-        pandecode_prop("f.unknown1 = 0x%" PRIx32, t->format.unknown1);
-        pandecode_prop("f.type = %" PRId32, t->format.type);
-        pandecode_prop("f.layout = %" PRId32, t->format.layout);
-        pandecode_prop("f.unknown2 = 0x%" PRIx32, t->format.unknown2);
-        pandecode_prop("f.manual_stride = %" PRId32, t->format.manual_stride);
-        pandecode_prop("f.zero = 0x%" PRIx32, t->format.zero);
-        pandecode_log("\n");
-
-        pandecode_prop("unknown3 = 0x%" PRIx32, t->unknown3);
-        pandecode_prop("unknown3A = 0x%" PRIx32, t->unknown3A);
-        pandecode_prop("levels = %" PRId32, t->levels);
-        pandecode_prop("swizzle = 0x%" PRIx32, t->swizzle);
-        pandecode_prop("swizzle_zero = 0x%" PRIx32, t->swizzle_zero);
-
-        pandecode_prop("unknown5 = 0x%" PRIx32, t->unknown5);
-        pandecode_prop("unknown6 = 0x%" PRIx32, t->unknown6);
-        pandecode_prop("unknown7 = 0x%" PRIx32, t->unknown7);
-        pandecode_log("\n");
-
-        struct mali_texture_format f = t->format;
-
-        /* See the definiton of enum mali_texture_type */
-
-        bool is_cube = f.type == MALI_TEX_CUBE;
-        unsigned dimension = is_cube ? 2 : f.type;
-
-        pandecode_make_indent();
-
-        /* Print the layout. Default is linear; a modifier can denote AFBC or
-         * u-interleaved/tiled modes */
-
-        if (f.layout == MALI_TEXTURE_AFBC)
-                pandecode_log_cont("afbc");
-        else if (f.layout == MALI_TEXTURE_TILED)
-                pandecode_log_cont("tiled");
-        else if (f.layout == MALI_TEXTURE_LINEAR)
-                pandecode_log_cont("linear");
-        else
-                pandecode_msg("XXX: invalid texture layout 0x%X\n", f.layout);
-
-        pandecode_swizzle(t->swizzle, f.format);
-        pandecode_log_cont(" ");
-
-        /* Distinguish cube/2D with modifier */
-
-        if (is_cube)
-                pandecode_log_cont("cube ");
-
-        pandecode_format_short(f.format, f.srgb);
-        pandecode_swizzle(f.swizzle, f.format);
-
-        /* All four width/height/depth/array_size dimensions are present
-         * regardless of the type of texture, but it is an error to have
-         * non-zero dimensions for unused dimensions. Verify this. array_size
-         * can always be set, as can width. Depth used for MSAA. */
-
-        if (t->height && dimension < 2)
-                pandecode_msg("XXX: nonzero height for <2D texture\n");
-
-        /* Print only the dimensions that are actually there */
-
-        pandecode_log_cont(": %d", t->width + 1);
-
-        if (t->height || t->depth)
-                pandecode_log_cont("x%u", t->height + 1);
-
-        if (t->depth)
-                pandecode_log_cont("x%u", t->depth + 1);
-
-        if (t->array_size)
-                pandecode_log_cont("[%u]", t->array_size + 1);
-
-        if (t->levels)
-                pandecode_log_cont(" mip %u", t->levels);
-
-        pandecode_log_cont("\n");
-
-        if (f.unknown1 | f.zero) {
-                pandecode_msg("XXX: texture format zero tripped\n");
-                pandecode_prop("unknown1 = %" PRId32, f.unknown1);
-                pandecode_prop("zero = %" PRId32, f.zero);
-        }
-
-        if (!f.unknown2) {
-                pandecode_msg("XXX: expected unknown texture bit set\n");
-                pandecode_prop("unknown2 = %" PRId32, f.unknown2);
-        }
-
-        if (t->swizzle_zero) {
-                pandecode_msg("XXX: swizzle zero tripped\n");
-                pandecode_prop("swizzle_zero = %d", t->swizzle_zero);
-        }
-
-        if (t->unknown3 | t->unknown3A | t->unknown5 | t->unknown6 | t->unknown7) {
-                pandecode_msg("XXX: texture zero tripped\n");
-                pandecode_prop("unknown3 = %" PRId16, t->unknown3);
-                pandecode_prop("unknown3A = %" PRId8, t->unknown3A);
-                pandecode_prop("unknown5 = 0x%" PRIx32, t->unknown5);
-                pandecode_prop("unknown6 = 0x%" PRIx32, t->unknown6);
-                pandecode_prop("unknown7 = 0x%" PRIx32, t->unknown7);
-        }
-
-        pandecode_texture_payload(u + sizeof(*t), f.type, f.layout, f.manual_stride, t->levels, t->depth, t->array_size, tmem);
-
-        pandecode_indent--;
-        pandecode_log("};\n");
+        pandecode_texture_payload(u + MALI_MIDGARD_TEXTURE_LENGTH,
+                        temp.dimension, temp.texel_ordering, temp.manual_stride,
+                        temp.levels, temp.depth, temp.array_size, mapped_mem);
 }
 
 static void
@@ -2252,19 +2142,17 @@ pandecode_bifrost_texture(
         pandecode_prop("unk5 = 0x%" PRIx32, t->unk5);
         pandecode_log("\n");
 
-        /* See the definiton of enum mali_texture_type */
-
-        bool is_cube = t->type == MALI_TEX_CUBE;
+        bool is_cube = t->type == MALI_TEXTURE_DIMENSION_CUBE;
         unsigned dimension = is_cube ? 2 : t->type;
 
         /* Print the layout. Default is linear; a modifier can denote AFBC or
          * u-interleaved/tiled modes */
 
-        if (t->layout == MALI_TEXTURE_AFBC)
+        if (t->layout == MALI_TEXTURE_LAYOUT_AFBC)
                 pandecode_log_cont("afbc");
-        else if (t->layout == MALI_TEXTURE_TILED)
+        else if (t->layout == MALI_TEXTURE_LAYOUT_TILED)
                 pandecode_log_cont("tiled");
-        else if (t->layout == MALI_TEXTURE_LINEAR)
+        else if (t->layout == MALI_TEXTURE_LAYOUT_LINEAR)
                 pandecode_log_cont("linear");
         else
                 pandecode_msg("XXX: invalid texture layout 0x%X\n", t->layout);
