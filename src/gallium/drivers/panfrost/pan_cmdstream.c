@@ -427,30 +427,25 @@ void panfrost_sampler_desc_init(const struct pipe_sampler_state *cso,
 }
 
 void panfrost_sampler_desc_init_bifrost(const struct pipe_sampler_state *cso,
-                                        uint32_t *_hw)
+                                        struct mali_bifrost_sampler_packed *hw)
 {
-        struct bifrost_sampler_descriptor *hw = (struct bifrost_sampler_descriptor *) _hw;
-        *hw = (struct bifrost_sampler_descriptor) {
-                .unk1 = 0x1,
-                .wrap_s = translate_tex_wrap(cso->wrap_s),
-                .wrap_t = translate_tex_wrap(cso->wrap_t),
-                .wrap_r = translate_tex_wrap(cso->wrap_r),
-                .unk8 = 0x8,
-                .min_filter = cso->min_img_filter == PIPE_TEX_FILTER_NEAREST,
-                .norm_coords = cso->normalized_coords,
-                .mip_filter = cso->min_mip_filter == PIPE_TEX_MIPFILTER_LINEAR,
-                .mag_filter = cso->mag_img_filter == PIPE_TEX_FILTER_LINEAR,
-                .min_lod = FIXED_16(cso->min_lod, false), /* clamp at 0 */
-                .max_lod = FIXED_16(cso->max_lod, false),
-        };
+        pan_pack(hw, BIFROST_SAMPLER, cfg) {
+                cfg.magnify_linear = cso->mag_img_filter == PIPE_TEX_FILTER_LINEAR;
+                cfg.minify_linear = cso->min_img_filter == PIPE_TEX_FILTER_LINEAR;
+                cfg.mipmap_mode = pan_pipe_to_mipmode(cso->min_mip_filter);
+                cfg.normalized_coordinates = cso->normalized_coords;
 
-        /* If necessary, we disable mipmapping in the sampler descriptor by
-         * clamping the LOD as tight as possible (from 0 to epsilon,
-         * essentially -- remember these are fixed point numbers, so
-         * epsilon=1/256) */
+                cfg.lod_bias = FIXED_16(cso->lod_bias, true);
+                cfg.minimum_lod = FIXED_16(cso->min_lod, false);
+                cfg.maximum_lod = FIXED_16(cso->max_lod, false);
 
-        if (cso->min_mip_filter == PIPE_TEX_MIPFILTER_NONE)
-                hw->max_lod = hw->min_lod + 1;
+                cfg.wrap_mode_s = translate_tex_wrap(cso->wrap_s);
+                cfg.wrap_mode_t = translate_tex_wrap(cso->wrap_t);
+                cfg.wrap_mode_r = translate_tex_wrap(cso->wrap_r);
+
+                cfg.compare_function = panfrost_sampler_compare_func(cso);
+                cfg.seamless_cube_map = cso->seamless_cube_map;
+        }
 }
 
 static void
@@ -1332,8 +1327,8 @@ panfrost_emit_sampler_descriptors(struct panfrost_batch *batch,
         if (!ctx->sampler_count[stage])
                 return;
 
-        size_t desc_size = sizeof(struct bifrost_sampler_descriptor);
-        assert(sizeof(struct bifrost_sampler_descriptor) == MALI_MIDGARD_SAMPLER_LENGTH);
+        size_t desc_size = MALI_BIFROST_SAMPLER_LENGTH;
+        assert(MALI_BIFROST_SAMPLER_LENGTH == MALI_MIDGARD_SAMPLER_LENGTH);
 
         size_t sz = desc_size * ctx->sampler_count[stage];
         struct panfrost_transfer T = panfrost_pool_alloc(&batch->pool, sz);

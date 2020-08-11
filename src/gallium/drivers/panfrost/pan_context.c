@@ -605,7 +605,7 @@ panfrost_create_sampler_state(
         so->base = *cso;
 
         if (device->quirks & IS_BIFROST)
-                panfrost_sampler_desc_init_bifrost(cso, (uint32_t *) &so->hw);
+                panfrost_sampler_desc_init_bifrost(cso, (struct mali_bifrost_sampler_packed *) &so->hw);
         else
                 panfrost_sampler_desc_init(cso, &so->hw);
 

@@ -1271,35 +1271,6 @@ FIXED_16(float x, bool allow_negative)
         return (int) (x * 256.0);
 }
 
-/* Bifrost sampler descriptors look pretty similar */
-
-#define BIFROST_SAMP_MIN_NEAREST        (1)
-#define BIFROST_SAMP_MAG_LINEAR         (1)
-
-struct bifrost_sampler_descriptor {
-        uint8_t unk1;
-
-        enum mali_wrap_mode wrap_r : 4;
-        enum mali_wrap_mode wrap_t : 4;
-        enum mali_wrap_mode wrap_s : 4;
-        uint8_t unk8 : 4;
-
-        uint8_t unk2 : 1;
-        uint8_t norm_coords : 1;
-        uint8_t unk3 : 1;
-        uint8_t min_filter : 1;
-        uint8_t zero1 : 1;
-        uint8_t mag_filter : 1;
-        uint8_t mip_filter : 1;
-
-        int16_t min_lod;
-        int16_t max_lod;
-
-        uint64_t zero2;
-        uint64_t zero3;
-        uint64_t zero4;
-} __attribute__((packed));
-
 /* From presentations, 16x16 tiles externally. Use shift for fast computation
  * of tile numbers. */
 

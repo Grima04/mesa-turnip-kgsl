@@ -33,7 +33,7 @@
 #include "pan_job.h"
 
 void panfrost_sampler_desc_init(const struct pipe_sampler_state *cso, struct mali_midgard_sampler_packed *hw);
-void panfrost_sampler_desc_init_bifrost(const struct pipe_sampler_state *cso, uint32_t *hw);
+void panfrost_sampler_desc_init_bifrost(const struct pipe_sampler_state *cso, struct mali_bifrost_sampler_packed *hw);
 
 void
 panfrost_vt_init(struct panfrost_context *ctx,

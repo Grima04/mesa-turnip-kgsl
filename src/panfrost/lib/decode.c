@@ -2422,56 +2422,12 @@ pandecode_textures(mali_ptr textures, unsigned texture_count, int job_no, bool i
 static void
 pandecode_samplers(mali_ptr samplers, unsigned sampler_count, int job_no, bool is_bifrost)
 {
-        struct pandecode_mapped_memory *smem = pandecode_find_mapped_gpu_mem_containing(samplers);
-
-        if (!smem)
-                return;
-
-        if (is_bifrost) {
-                struct bifrost_sampler_descriptor *s;
-
-                for (int i = 0; i < sampler_count; ++i) {
-                        s = pandecode_fetch_gpu_mem(smem, samplers + sizeof(*s) * i, sizeof(*s));
-
-                        pandecode_log("struct bifrost_sampler_descriptor sampler_descriptor_%"PRIx64"_%d_%d = {\n", samplers + sizeof(*s) * i, job_no, i);
-                        pandecode_indent++;
-
-                        if (s->unk1 != 1) {
-                                pandecode_msg("XXX: unk1 tripped\n");
-                                pandecode_prop("unk1 = 0x%x", s->unk1);
-                        }
-
-                        pandecode_prop("wrap_s = %s", mali_wrap_mode_as_str(s->wrap_s));
-                        pandecode_prop("wrap_t = %s", mali_wrap_mode_as_str(s->wrap_t));
-                        pandecode_prop("wrap_r = %s", mali_wrap_mode_as_str(s->wrap_r));
-
-                        if (s->unk8 != 0x8) {
-                                pandecode_msg("XXX: unk8 tripped\n");
-                                pandecode_prop("unk8 = 0x%x", s->unk8);
-                        }
-
-                        pandecode_prop("unk2 = 0x%x", s->unk2);
-                        pandecode_prop("unk3 = 0x%x", s->unk3);
-                        pandecode_prop("min_filter = %s", s->min_filter ? "nearest" : "linear");
-                        pandecode_prop("norm_coords = 0x%x", s->norm_coords & 0x1);
-                        pandecode_prop("zero1 = 0x%x", s->zero1 & 0x1);
-                        pandecode_prop("mip_filter = %s", s->mip_filter ? "linear" : "nearest");
-                        pandecode_prop("mag_filter = %s", s->mag_filter ? "linear" : "nearest");
-
-                        pandecode_prop("min_lod = FIXED_16(%f)", DECODE_FIXED_16(s->min_lod));
-                        pandecode_prop("max_lod = FIXED_16(%f)", DECODE_FIXED_16(s->max_lod));
-
-                        if (s->zero1 || s->zero2 || s->zero3 || s->zero4) {
-                                pandecode_msg("XXX: sampler zero tripped\n");
-                                pandecode_prop("zero = 0x%" PRIx8 ", 0x%" PRIx64 ", 0x%" PRIx64 ", 0x%" PRIx64 "\n", s->zero1, s->zero2, s->zero3, s->zero4);
-                        }
-
-                        pandecode_indent--;
-                        pandecode_log("};\n");
-                }
-        } else {
-                for (int i = 0; i < sampler_count; ++i)
+        for (int i = 0; i < sampler_count; ++i) {
+                if (is_bifrost) {
+                        DUMP_ADDR("Sampler", BIFROST_SAMPLER, samplers + (MALI_BIFROST_SAMPLER_LENGTH * i), 1);
+                } else {
                         DUMP_ADDR("Sampler", MIDGARD_SAMPLER, samplers + (MALI_MIDGARD_SAMPLER_LENGTH * i), 1);
+                }
         }
 }
 
