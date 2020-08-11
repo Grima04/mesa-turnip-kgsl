@@ -336,6 +336,10 @@ si_emit_graphics(struct radv_device *device,
 				late_alloc_wave64_gs = 0;
 				cu_mask_gs = 0xffff;
 			}
+
+			/* Limit LATE_ALLOC_GS for prevent a hang (hw bug). */
+			if (physical_device->rad_info.chip_class == GFX10)
+				late_alloc_wave64_gs = MIN2(late_alloc_wave64_gs, 64);
 		} else {
 			if (!physical_device->rad_info.use_late_alloc) {
 				late_alloc_wave64 = 0;
