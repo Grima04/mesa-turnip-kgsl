@@ -717,11 +717,7 @@ get_front_bo(struct dri2_egl_surface *dri2_surf, unsigned int format)
 static int
 get_back_bo(struct dri2_egl_surface *dri2_surf)
 {
-   struct dri2_egl_display *dri2_dpy =
-      dri2_egl_display(dri2_surf->base.Resource.Display);
-   int fourcc, pitch;
-   int offset = 0, fds[3];
-   unsigned num_fds;
+   _EGLDisplay *disp = dri2_surf->base.Resource.Display;
 
    if (dri2_surf->dri_image_back)
       return 0;
@@ -732,33 +728,8 @@ get_back_bo(struct dri2_egl_surface *dri2_surf)
          return -1;
       }
 
-      num_fds = get_native_buffer_fds(dri2_surf->buffer, fds);
-      if (num_fds == 0) {
-         _eglLog(_EGL_WARNING, "Could not get native buffer FD");
-         return -1;
-      }
-
-      fourcc = get_fourcc(dri2_surf->buffer->format);
-
-      pitch = dri2_surf->buffer->stride *
-         get_format_bpp(dri2_surf->buffer->format);
-
-      if (fourcc == -1 || pitch == 0) {
-         _eglLog(_EGL_WARNING, "Invalid buffer fourcc(%x) or pitch(%d)",
-                 fourcc, pitch);
-         return -1;
-      }
-
       dri2_surf->dri_image_back =
-         dri2_dpy->image->createImageFromFds(dri2_dpy->dri_screen,
-                                             dri2_surf->base.Width,
-                                             dri2_surf->base.Height,
-                                             fourcc,
-                                             fds,
-                                             num_fds,
-                                             &pitch,
-                                             &offset,
-                                             dri2_surf);
+         droid_create_image_from_prime_fds(disp, dri2_surf->buffer);
       if (!dri2_surf->dri_image_back) {
          _eglLog(_EGL_WARNING, "failed to create DRI image from FD");
          return -1;
