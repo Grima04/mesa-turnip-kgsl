@@ -111,7 +111,7 @@ iris_disk_cache_store(struct disk_cache *cache,
     */
    blob_write_bytes(&blob, shader->prog_data, brw_prog_data_size(stage));
    blob_write_bytes(&blob, shader->map, shader->prog_data->program_size);
-   blob_write_bytes(&blob, &shader->num_system_values, sizeof(unsigned));
+   blob_write_uint32(&blob, shader->num_system_values);
    blob_write_bytes(&blob, shader->system_values,
                     shader->num_system_values * sizeof(enum brw_param_builtin));
    blob_write_bytes(&blob, prog_data->param,
