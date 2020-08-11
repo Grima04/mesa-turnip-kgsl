@@ -3399,8 +3399,7 @@ radv_init_graphics_state(struct radeon_cmdbuf *cs, struct radv_queue *queue)
 static void
 radv_init_compute_state(struct radeon_cmdbuf *cs, struct radv_queue *queue)
 {
-	struct radv_physical_device *physical_device = queue->device->physical_device;
-	si_emit_compute(physical_device, cs);
+	si_emit_compute(queue->device, cs);
 }
 
 static VkResult
