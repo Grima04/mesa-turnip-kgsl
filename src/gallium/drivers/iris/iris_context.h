@@ -438,6 +438,9 @@ struct iris_compiled_shader {
    enum brw_param_builtin *system_values;
    unsigned num_system_values;
 
+   /** Size (in bytes) of the kernel input data */
+   unsigned kernel_input_size;
+
    /** Number of constbufs expected by the shader. */
    unsigned num_cbufs;
 
@@ -886,6 +889,7 @@ struct iris_compiled_shader *iris_upload_shader(struct iris_context *ice,
                                                 uint32_t *streamout,
                                                 enum brw_param_builtin *sysv,
                                                 unsigned num_system_values,
+                                                unsigned kernel_input_size,
                                                 unsigned num_cbufs,
                                                 const struct iris_binding_table *bt);
 const void *iris_find_previous_compile(const struct iris_context *ice,

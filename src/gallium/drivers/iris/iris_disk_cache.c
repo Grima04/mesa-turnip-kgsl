@@ -114,6 +114,7 @@ iris_disk_cache_store(struct disk_cache *cache,
    blob_write_uint32(&blob, shader->num_system_values);
    blob_write_bytes(&blob, shader->system_values,
                     shader->num_system_values * sizeof(enum brw_param_builtin));
+   blob_write_uint32(&blob, shader->kernel_input_size);
    blob_write_bytes(&blob, prog_data->param,
                     prog_data->nr_params * sizeof(uint32_t));
    blob_write_bytes(&blob, &shader->bt, sizeof(shader->bt));
@@ -164,6 +165,7 @@ iris_disk_cache_retrieve(struct iris_context *ice,
    struct brw_stage_prog_data *prog_data = ralloc_size(NULL, prog_data_size);
    const void *assembly;
    uint32_t num_system_values;
+   uint32_t kernel_input_size;
    uint32_t *system_values = NULL;
    uint32_t *so_decls = NULL;
 
@@ -178,6 +180,8 @@ iris_disk_cache_retrieve(struct iris_context *ice,
       blob_copy_bytes(&blob, system_values,
                       num_system_values * sizeof(enum brw_param_builtin));
    }
+
+   kernel_input_size = blob_read_uint32(&blob);
 
    prog_data->param = NULL;
    prog_data->pull_param = NULL;
@@ -218,7 +222,7 @@ iris_disk_cache_retrieve(struct iris_context *ice,
    struct iris_compiled_shader *shader =
       iris_upload_shader(ice, stage, key_size, prog_key, assembly,
                          prog_data, so_decls, system_values,
-                         num_system_values, num_cbufs, &bt);
+                         num_system_values, kernel_input_size, num_cbufs, &bt);
 
    free(buffer);
 

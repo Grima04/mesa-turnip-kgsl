@@ -199,6 +199,7 @@ iris_upload_shader(struct iris_context *ice,
                    uint32_t *streamout,
                    enum brw_param_builtin *system_values,
                    unsigned num_system_values,
+                   unsigned kernel_input_size,
                    unsigned num_cbufs,
                    const struct iris_binding_table *bt)
 {
@@ -234,6 +235,7 @@ iris_upload_shader(struct iris_context *ice,
    shader->streamout = streamout;
    shader->system_values = system_values;
    shader->num_system_values = num_system_values;
+   shader->kernel_input_size = kernel_input_size;
    shader->num_cbufs = num_cbufs;
    shader->bt = *bt;
 
@@ -296,7 +298,7 @@ iris_blorp_upload_shader(struct blorp_batch *blorp_batch, uint32_t stage,
 
    struct iris_compiled_shader *shader =
       iris_upload_shader(ice, IRIS_CACHE_BLORP, key_size, key, kernel,
-                         prog_data, NULL, NULL, 0, 0, &bt);
+                         prog_data, NULL, NULL, 0, 0, 0, &bt);
 
    struct iris_bo *bo = iris_resource_bo(shader->assembly.res);
    *kernel_out =
