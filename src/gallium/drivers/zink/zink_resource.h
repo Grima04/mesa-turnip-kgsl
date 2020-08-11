@@ -33,7 +33,7 @@ struct zink_batch;
 #include <vulkan/vulkan.h>
 
 #define ZINK_RESOURCE_ACCESS_READ 1
-#define ZINK_RESOURCE_ACCESS_WRITE 16
+#define ZINK_RESOURCE_ACCESS_WRITE 32
 
 struct zink_resource {
    struct pipe_resource base;
