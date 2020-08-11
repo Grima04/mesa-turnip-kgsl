@@ -61,7 +61,7 @@ struct zink_resource {
    unsigned dt_stride;
 
    /* this has to be atomic for fence access, so we can't use a bitmask and make everything neat */
-   uint8_t batch_uses[4];
+   uint8_t batch_uses[5]; //ZINK_NUM_BATCHES
    bool needs_xfb_barrier;
 };
 

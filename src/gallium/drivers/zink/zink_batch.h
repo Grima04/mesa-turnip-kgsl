@@ -42,7 +42,7 @@ struct zink_surface;
 #define ZINK_BATCH_DESC_SIZE 1000
 
 struct zink_batch {
-   unsigned batch_id : 2;
+   unsigned batch_id : 3;
    VkCommandBuffer cmdbuf;
    VkDescriptorPool descpool;
    int descs_left;

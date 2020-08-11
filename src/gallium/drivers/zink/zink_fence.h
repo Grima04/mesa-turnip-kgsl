@@ -34,7 +34,7 @@ struct zink_screen;
 
 struct zink_fence {
    struct pipe_reference reference;
-   unsigned batch_id : 2;
+   unsigned batch_id : 3;
    VkFence fence;
    struct set *active_queries; /* zink_query objects which were active at some point in this batch */
    struct util_dynarray resources;

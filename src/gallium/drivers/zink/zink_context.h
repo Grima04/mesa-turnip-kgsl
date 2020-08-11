@@ -90,6 +90,10 @@ zink_so_target(struct pipe_stream_output_target *so_target)
 }
 
 #define ZINK_SHADER_COUNT (PIPE_SHADER_TYPES - 1)
+#define ZINK_NUM_GFX_BATCHES 4
+#define ZINK_COMPUTE_BATCH_ID ZINK_NUM_GFX_BATCHES
+#define ZINK_NUM_BATCHES (ZINK_NUM_GFX_BATCHES + 1)
+
 
 struct zink_context {
    struct pipe_context base;
@@ -99,7 +103,7 @@ struct zink_context {
    struct pipe_device_reset_callback reset;
 
    VkCommandPool cmdpool;
-   struct zink_batch batches[4];
+   struct zink_batch batches[ZINK_NUM_GFX_BATCHES];
    bool is_device_lost;
    unsigned curr_batch;
 
