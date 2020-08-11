@@ -847,68 +847,6 @@ panfrost_get_texture_address(
         return rsrc->bo->gpu + panfrost_texture_offset(rsrc->slices, is_3d, rsrc->cubemap_stride, level, face, sample);
 }
 
-/* Given a resource that has already been allocated, hint that it should use a
- * given layout. These are suggestions, not commands; it is perfectly legal to
- * stub out this function, but there will be performance implications. */
-
-void
-panfrost_resource_hint_layout(
-                struct panfrost_device *dev,
-                struct panfrost_resource *rsrc,
-                enum mali_texture_layout layout,
-                signed weight)
-{
-        /* Nothing to do, although a sophisticated implementation might store
-         * the hint */
-
-        if (rsrc->layout == layout)
-                return;
-
-        /* We don't use the weight yet, but we should check that it's positive
-         * (semantically meaning that we should choose the given `layout`) */
-
-        if (weight <= 0)
-                return;
-
-        /* Check if the preferred layout is legal for this buffer */
-
-        if (layout == MALI_TEXTURE_AFBC) {
-                bool can_afbc = panfrost_format_supports_afbc(rsrc->internal_format);
-                bool is_scanout = rsrc->base.bind &
-                        (PIPE_BIND_DISPLAY_TARGET | PIPE_BIND_SCANOUT | PIPE_BIND_SHARED);
-
-                if (!can_afbc || is_scanout)
-                        return;
-        }
-
-        /* Simple heuristic so far: if the resource is uninitialized, switch to
-         * the hinted layout. If it is initialized, keep the original layout.
-         * This misses some cases where it would be beneficial to switch and
-         * blit. */
-
-        bool is_initialized = false;
-
-        for (unsigned i = 0; i < MAX_MIP_LEVELS; ++i)
-                is_initialized |= rsrc->slices[i].initialized;
-
-        if (is_initialized)
-                return;
-
-        /* We're uninitialized, so do a layout switch. Reinitialize slices. */
-
-        size_t new_size;
-        rsrc->layout = layout;
-        panfrost_setup_slices(rsrc, &new_size);
-
-        /* If we grew in size, reallocate the BO */
-        if (new_size > rsrc->bo->size) {
-                panfrost_bo_unreference(rsrc->bo);
-                rsrc->bo = panfrost_bo_create(dev, new_size, PAN_BO_DELAY_MMAP);
-        }
-
-        /* TODO: If there are textures bound, regenerate their descriptors */
-}
-
 static void
 panfrost_resource_set_stencil(struct pipe_resource *prsrc,
                               struct pipe_resource *stencil)

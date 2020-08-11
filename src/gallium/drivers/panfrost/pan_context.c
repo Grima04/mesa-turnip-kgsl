@@ -1115,39 +1115,12 @@ panfrost_set_shader_buffers(
                         buffers, start, count);
 }
 
-/* Hints that a framebuffer should use AFBC where possible */
-
-static void
-panfrost_hint_afbc(
-                struct panfrost_device *device,
-                const struct pipe_framebuffer_state *fb)
-{
-        /* AFBC implemenation incomplete; hide it */
-        if (!(device->debug & PAN_DBG_AFBC)) return;
-
-        /* Hint AFBC to the resources bound to each color buffer */
-
-        for (unsigned i = 0; i < fb->nr_cbufs; ++i) {
-                struct pipe_surface *surf = fb->cbufs[i];
-                struct panfrost_resource *rsrc = pan_resource(surf->texture);
-                panfrost_resource_hint_layout(device, rsrc, MALI_TEXTURE_AFBC, 1);
-        }
-
-        /* Also hint it to the depth buffer */
-
-        if (fb->zsbuf) {
-                struct panfrost_resource *rsrc = pan_resource(fb->zsbuf->texture);
-                panfrost_resource_hint_layout(device, rsrc, MALI_TEXTURE_AFBC, 1);
-        }
-}
-
 static void
 panfrost_set_framebuffer_state(struct pipe_context *pctx,
                                const struct pipe_framebuffer_state *fb)
 {
         struct panfrost_context *ctx = pan_context(pctx);
 
-        panfrost_hint_afbc(pan_device(pctx->screen), fb);
         util_copy_framebuffer_state(&ctx->pipe_framebuffer, fb);
         ctx->batch = NULL;
         panfrost_invalidate_frame(ctx);
