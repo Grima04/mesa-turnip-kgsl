@@ -551,6 +551,9 @@ zink_transfer_map(struct pipe_context *pctx,
              * TODO: optimize/fix this to be much less obtrusive
              * mesa/mesa#2966
              */
+            if (batch_uses & ((ZINK_RESOURCE_ACCESS_READ << ZINK_COMPUTE_BATCH_ID) |
+                              ZINK_RESOURCE_ACCESS_WRITE << ZINK_COMPUTE_BATCH_ID))
+               zink_wait_on_batch(ctx, ZINK_COMPUTE_BATCH_ID);
             zink_fence_wait(pctx);
          }
       }
@@ -612,6 +615,9 @@ zink_transfer_map(struct pipe_context *pctx,
          struct zink_resource *staging_res = zink_resource(trans->staging_res);
 
          if (usage & PIPE_MAP_READ) {
+            /* TODO: can probably just do a full cs copy if it's already in a cs batch */
+            if (batch_uses & (ZINK_RESOURCE_ACCESS_WRITE << ZINK_COMPUTE_BATCH_ID))
+               zink_wait_on_batch(ctx, ZINK_COMPUTE_BATCH_ID);
             struct zink_context *ctx = zink_context(pctx);
             bool ret = zink_transfer_copy_bufimage(ctx, res,
                                                    staging_res, trans,
@@ -631,8 +637,11 @@ zink_transfer_map(struct pipe_context *pctx,
 
       } else {
          assert(!res->optimal_tiling);
-         if (batch_uses >= ZINK_RESOURCE_ACCESS_WRITE)
+         if (batch_uses >= ZINK_RESOURCE_ACCESS_WRITE) {
+            if (batch_uses & (ZINK_RESOURCE_ACCESS_WRITE << ZINK_COMPUTE_BATCH_ID))
+               zink_wait_on_batch(ctx, ZINK_COMPUTE_BATCH_ID);
             zink_fence_wait(pctx);
+         }
          VkResult result = vkMapMemory(screen->dev, res->mem, res->offset, res->size, 0, &ptr);
          if (result != VK_SUCCESS)
             return NULL;
@@ -673,8 +682,11 @@ zink_transfer_unmap(struct pipe_context *pctx,
       if (trans->base.usage & PIPE_MAP_WRITE) {
          struct zink_context *ctx = zink_context(pctx);
          uint32_t batch_uses = zink_get_resource_usage(res);
-         if (batch_uses >= ZINK_RESOURCE_ACCESS_WRITE)
+         if (batch_uses >= ZINK_RESOURCE_ACCESS_WRITE) {
+            if (batch_uses & (ZINK_RESOURCE_ACCESS_WRITE << ZINK_COMPUTE_BATCH_ID))
+               zink_wait_on_batch(ctx, ZINK_COMPUTE_BATCH_ID);
             zink_fence_wait(pctx);
+         }
          zink_transfer_copy_bufimage(ctx, res, staging_res, trans, true);
       }
 
