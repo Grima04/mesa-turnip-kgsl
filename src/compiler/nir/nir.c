@@ -1591,6 +1591,33 @@ nir_ssa_def_components_read(const nir_ssa_def *def)
 }
 
 nir_block *
+nir_block_unstructured_next(nir_block *block)
+{
+   if (block == NULL) {
+      /* nir_foreach_block_unstructured_safe() will call this function on a
+       * NULL block after the last iteration, but it won't use the result so
+       * just return NULL here.
+       */
+      return NULL;
+   }
+
+   nir_cf_node *cf_next = nir_cf_node_next(&block->cf_node);
+   if (cf_next == NULL && block->cf_node.parent->type == nir_cf_node_function)
+      return NULL;
+
+   if (cf_next && cf_next->type == nir_cf_node_block)
+      return nir_cf_node_as_block(cf_next);
+
+   return nir_block_cf_tree_next(block);
+}
+
+nir_block *
+nir_unstructured_start_block(nir_function_impl *impl)
+{
+   return nir_start_block(impl);
+}
+
+nir_block *
 nir_block_cf_tree_next(nir_block *block)
 {
    if (block == NULL) {
@@ -1775,7 +1802,7 @@ nir_index_blocks(nir_function_impl *impl)
    if (impl->valid_metadata & nir_metadata_block_index)
       return;
 
-   nir_foreach_block(block, impl) {
+   nir_foreach_block_unstructured(block, impl) {
       block->index = index++;
    }
 
@@ -1803,7 +1830,7 @@ nir_index_ssa_defs(nir_function_impl *impl)
 {
    unsigned index = 0;
 
-   nir_foreach_block(block, impl) {
+   nir_foreach_block_unstructured(block, impl) {
       nir_foreach_instr(instr, block)
          nir_foreach_ssa_def(instr, index_ssa_def_cb, &index);
    }

@@ -131,18 +131,18 @@ calc_dom_children(nir_function_impl* impl)
 {
    void *mem_ctx = ralloc_parent(impl);
 
-   nir_foreach_block(block, impl) {
+   nir_foreach_block_unstructured(block, impl) {
       if (block->imm_dom)
          block->imm_dom->num_dom_children++;
    }
 
-   nir_foreach_block(block, impl) {
+   nir_foreach_block_unstructured(block, impl) {
       block->dom_children = ralloc_array(mem_ctx, nir_block *,
                                          block->num_dom_children);
       block->num_dom_children = 0;
    }
 
-   nir_foreach_block(block, impl) {
+   nir_foreach_block_unstructured(block, impl) {
       if (block->imm_dom) {
          block->imm_dom->dom_children[block->imm_dom->num_dom_children++]
             = block;
@@ -170,20 +170,20 @@ nir_calc_dominance_impl(nir_function_impl *impl)
    nir_metadata_require(impl, nir_metadata_block_index);
 
 
-   nir_foreach_block(block, impl) {
+   nir_foreach_block_unstructured(block, impl) {
       init_block(block, impl);
    }
 
    bool progress = true;
    while (progress) {
       progress = false;
-      nir_foreach_block(block, impl) {
+      nir_foreach_block_unstructured(block, impl) {
          if (block != nir_start_block(impl))
             progress |= calc_dominance(block);
       }
    }
 
-   nir_foreach_block(block, impl) {
+   nir_foreach_block_unstructured(block, impl) {
       calc_dom_frontier(block);
    }
 
@@ -281,7 +281,7 @@ nir_dump_dom_tree_impl(nir_function_impl *impl, FILE *fp)
 {
    fprintf(fp, "digraph doms_%s {\n", impl->function->name);
 
-   nir_foreach_block(block, impl) {
+   nir_foreach_block_unstructured(block, impl) {
       if (block->imm_dom)
          fprintf(fp, "\t%u -> %u\n", block->imm_dom->index, block->index);
    }
@@ -301,7 +301,7 @@ nir_dump_dom_tree(nir_shader *shader, FILE *fp)
 void
 nir_dump_dom_frontier_impl(nir_function_impl *impl, FILE *fp)
 {
-   nir_foreach_block(block, impl) {
+   nir_foreach_block_unstructured(block, impl) {
       fprintf(fp, "DF(%u) = {", block->index);
       set_foreach(block->dom_frontier, entry) {
          nir_block *df = (nir_block *) entry->key;
@@ -325,7 +325,7 @@ nir_dump_cfg_impl(nir_function_impl *impl, FILE *fp)
 {
    fprintf(fp, "digraph cfg_%s {\n", impl->function->name);
 
-   nir_foreach_block(block, impl) {
+   nir_foreach_block_unstructured(block, impl) {
       if (block->successors[0])
          fprintf(fp, "\t%u -> %u\n", block->index, block->successors[0]->index);
       if (block->successors[1])

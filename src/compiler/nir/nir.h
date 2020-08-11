@@ -3677,6 +3677,25 @@ void nir_ssa_def_rewrite_uses_after(nir_ssa_def *def, nir_src new_src,
 
 nir_component_mask_t nir_ssa_def_components_read(const nir_ssa_def *def);
 
+
+/** Returns the next block, disregarding structure
+ *
+ * The ordering is deterministic but has no guarantees beyond that.  In
+ * particular, it is not guaranteed to be dominance-preserving.
+ */
+nir_block *nir_block_unstructured_next(nir_block *block);
+nir_block *nir_unstructured_start_block(nir_function_impl *impl);
+
+#define nir_foreach_block_unstructured(block, impl) \
+   for (nir_block *block = nir_unstructured_start_block(impl); block != NULL; \
+        block = nir_block_unstructured_next(block))
+
+#define nir_foreach_block_unstructured_safe(block, impl) \
+   for (nir_block *block = nir_unstructured_start_block(impl), \
+        *next = nir_block_unstructured_next(block); \
+        block != NULL; \
+        block = next, next = nir_block_unstructured_next(block))
+
 /*
  * finds the next basic block in source-code order, returns NULL if there is
  * none
