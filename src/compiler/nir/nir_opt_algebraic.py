@@ -2079,6 +2079,14 @@ late_optimizations = [
    (('~feq', ('fadd', a, b), 0.0), ('feq', a, ('fneg', b))),
    (('~fneu', ('fadd', a, b), 0.0), ('fneu', a, ('fneg', b))),
 
+   # If either source must be finite, then the original (a+b) cannot produce
+   # NaN due to Inf-Inf.  The patterns and the replacements produce the same
+   # result if b is NaN. Therefore, the replacements are exact.
+   (('fge',          ('fadd', 'a(is_finite)', b),  0.0), ('fge',          a, ('fneg', b))),
+   (('fge', ('fneg', ('fadd', 'a(is_finite)', b)), 0.0), ('fge', ('fneg', a),         b)),
+   (('feq',  ('fadd', 'a(is_finite)', b), 0.0), ('feq',  a, ('fneg', b))),
+   (('fneu', ('fadd', 'a(is_finite)', b), 0.0), ('fneu', a, ('fneg', b))),
+
    # nir_lower_to_source_mods will collapse this, but its existence during the
    # optimization loop can prevent other optimizations.
    (('fneg', ('fneg', a)), a),
