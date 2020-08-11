@@ -331,6 +331,71 @@ droid_create_image_from_prime_fds(_EGLDisplay *disp,
       NULL);
 }
 
+/* More recent CrOS gralloc has a perform op that fills out the struct below
+ * with canonical information about the buffer and its modifier, planes,
+ * offsets and strides.  If we have this, we can skip straight to
+ * createImageFromDmaBufs2() and avoid all the guessing and recalculations.
+ * This also gives us the modifier and plane offsets/strides for multiplanar
+ * compressed buffers (eg Intel CCS buffers) in order to make that work in Android.
+ */
+
+static const char cros_gralloc_module_name[] = "CrOS Gralloc";
+
+#define CROS_GRALLOC_DRM_GET_BUFFER_INFO 4
+
+struct cros_gralloc0_buffer_info {
+   uint32_t drm_fourcc;
+   int num_fds;
+   int fds[4];
+   uint64_t modifier;
+   int offset[4];
+   int stride[4];
+};
+
+static __DRIimage *
+droid_create_image_from_cros_info(_EGLDisplay *disp,
+                                  struct ANativeWindowBuffer *buf)
+{
+   struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
+   struct cros_gralloc0_buffer_info info;
+   unsigned error;
+
+   if (strcmp(dri2_dpy->gralloc->common.name, cros_gralloc_module_name) == 0 &&
+       dri2_dpy->gralloc->perform &&
+       dri2_dpy->image->base.version >= 15 &&
+       dri2_dpy->image->createImageFromDmaBufs2 != NULL &&
+       dri2_dpy->gralloc->perform(dri2_dpy->gralloc,
+                                  CROS_GRALLOC_DRM_GET_BUFFER_INFO,
+                                  buf->handle, &info) == 0) {
+      return dri2_dpy->image->createImageFromDmaBufs2(dri2_dpy->dri_screen,
+                                                      buf->width, buf->height,
+                                                      info.drm_fourcc, info.modifier,
+                                                      info.fds, info.num_fds,
+                                                      info.stride, info.offset,
+                                                      EGL_ITU_REC601_EXT,
+                                                      EGL_YUV_FULL_RANGE_EXT,
+                                                      EGL_YUV_CHROMA_SITING_0_EXT,
+                                                      EGL_YUV_CHROMA_SITING_0_EXT,
+                                                      &error,
+                                                      NULL);
+   }
+
+   return NULL;
+}
+
+static __DRIimage *
+droid_create_image_from_native_buffer(_EGLDisplay *disp,
+                                      struct ANativeWindowBuffer *buf)
+{
+   __DRIimage *dri_image;
+
+   dri_image = droid_create_image_from_cros_info(disp, buf);
+   if (dri_image)
+      return dri_image;
+
+   return droid_create_image_from_prime_fds(disp, buf);
+}
+
 static EGLBoolean
 droid_window_dequeue_buffer(struct dri2_egl_surface *dri2_surf)
 {
@@ -729,7 +794,7 @@ get_back_bo(struct dri2_egl_surface *dri2_surf)
       }
 
       dri2_surf->dri_image_back =
-         droid_create_image_from_prime_fds(disp, dri2_surf->buffer);
+         droid_create_image_from_native_buffer(disp, dri2_surf->buffer);
       if (!dri2_surf->dri_image_back) {
          _eglLog(_EGL_WARNING, "failed to create DRI image from FD");
          return -1;
@@ -987,7 +1052,7 @@ dri2_create_image_android_native_buffer(_EGLDisplay *disp,
    }
 
    __DRIimage *dri_image =
-      droid_create_image_from_prime_fds(disp, buf);
+      droid_create_image_from_native_buffer(disp, buf);
 
 #ifdef HAVE_DRM_GRALLOC
    if (dri_image == NULL)
