@@ -121,10 +121,14 @@ zink_end_batch(struct zink_context *ctx, struct zink_batch *batch)
    }
 }
 
-void
+/* returns either the compute batch id or 0 (gfx batch id) based on whether a resource
+   has usage on a different queue than 'batch' belongs to
+ */
+int
 zink_batch_reference_resource_rw(struct zink_batch *batch, struct zink_resource *res, bool write)
 {
    unsigned mask = write ? ZINK_RESOURCE_ACCESS_WRITE : ZINK_RESOURCE_ACCESS_READ;
+   int batch_to_flush = -1;
 
    /* u_transfer_helper unrefs the stencil buffer when the depth buffer is unrefed,
     * so we add an extra ref here to the stencil buffer to compensate
@@ -133,6 +137,17 @@ zink_batch_reference_resource_rw(struct zink_batch *batch, struct zink_resource 
 
    zink_get_depth_stencil_resources((struct pipe_resource*)res, NULL, &stencil);
 
+   uint32_t cur_uses = zink_get_resource_usage(res);
+   cur_uses &= ~(ZINK_RESOURCE_ACCESS_READ << batch->batch_id);
+   cur_uses &= ~(ZINK_RESOURCE_ACCESS_WRITE << batch->batch_id);
+   if (batch->batch_id == ZINK_COMPUTE_BATCH_ID) {
+      if (cur_uses >= ZINK_RESOURCE_ACCESS_WRITE || (write && cur_uses))
+         batch_to_flush = 0;
+   } else {
+      if (cur_uses & (ZINK_RESOURCE_ACCESS_WRITE << ZINK_COMPUTE_BATCH_ID) ||
+          (write && cur_uses & (ZINK_RESOURCE_ACCESS_READ << ZINK_COMPUTE_BATCH_ID)))
+         batch_to_flush = ZINK_COMPUTE_BATCH_ID;
+   }
 
    struct set_entry *entry = _mesa_set_search(batch->resources, res);
    if (!entry) {
@@ -148,6 +163,7 @@ zink_batch_reference_resource_rw(struct zink_batch *batch, struct zink_resource 
 
    if (stencil)
       stencil->batch_uses[batch->batch_id] |= mask;
+   return batch_to_flush;
 }
 
 void

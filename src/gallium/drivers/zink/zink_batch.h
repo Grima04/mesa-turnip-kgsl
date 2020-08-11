@@ -73,7 +73,7 @@ zink_start_batch(struct zink_context *ctx, struct zink_batch *batch);
 void
 zink_end_batch(struct zink_context *ctx, struct zink_batch *batch);
 
-void
+int
 zink_batch_reference_resource_rw(struct zink_batch *batch,
                                  struct zink_resource *res,
                                  bool write);
