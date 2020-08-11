@@ -184,6 +184,8 @@ struct vtn_if {
 struct vtn_case {
    struct vtn_cf_node node;
 
+   struct vtn_block *block;
+
    enum vtn_branch_type type;
    struct list_head body;
 
