@@ -87,7 +87,10 @@ static struct ssa_result_range
 analyze_constant(const struct nir_alu_instr *instr, unsigned src,
                  nir_alu_type use_type)
 {
-   uint8_t swizzle[4] = { 0, 1, 2, 3 };
+   uint8_t swizzle[NIR_MAX_VEC_COMPONENTS] = { 0, 1, 2, 3,
+                                               4, 5, 6, 7,
+                                               8, 9, 10, 11,
+                                               12, 13, 14, 15 };
 
    /* If the source is an explicitly sized source, then we need to reset
     * both the number of components and the swizzle.
