@@ -185,6 +185,152 @@ get_native_buffer_name(struct ANativeWindowBuffer *buf)
 }
 #endif /* HAVE_DRM_GRALLOC */
 
+static __DRIimage *
+droid_create_image_from_prime_fds_yuv(_EGLDisplay *disp,
+                                     struct ANativeWindowBuffer *buf,
+                                     int num_fds, int fds[3])
+{
+   struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
+   struct android_ycbcr ycbcr;
+   int offsets[3];
+   int pitches[3];
+   enum chroma_order chroma_order;
+   int fourcc;
+   int ret;
+   unsigned error;
+
+   if (!dri2_dpy->gralloc->lock_ycbcr) {
+      _eglLog(_EGL_WARNING, "Gralloc does not support lock_ycbcr");
+      return NULL;
+   }
+
+   memset(&ycbcr, 0, sizeof(ycbcr));
+   ret = dri2_dpy->gralloc->lock_ycbcr(dri2_dpy->gralloc, buf->handle,
+                                       0, 0, 0, 0, 0, &ycbcr);
+   if (ret) {
+      /* HACK: See droid_create_image_from_prime_fds() and
+       * https://issuetracker.google.com/32077885.*/
+      if (buf->format == HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED)
+         return NULL;
+
+      _eglLog(_EGL_WARNING, "gralloc->lock_ycbcr failed: %d", ret);
+      return NULL;
+   }
+   dri2_dpy->gralloc->unlock(dri2_dpy->gralloc, buf->handle);
+
+   /* When lock_ycbcr's usage argument contains no SW_READ/WRITE flags
+    * it will return the .y/.cb/.cr pointers based on a NULL pointer,
+    * so they can be interpreted as offsets. */
+   offsets[0] = (size_t)ycbcr.y;
+   /* We assume here that all the planes are located in one DMA-buf. */
+   if ((size_t)ycbcr.cr < (size_t)ycbcr.cb) {
+      chroma_order = YCrCb;
+      offsets[1] = (size_t)ycbcr.cr;
+      offsets[2] = (size_t)ycbcr.cb;
+   } else {
+      chroma_order = YCbCr;
+      offsets[1] = (size_t)ycbcr.cb;
+      offsets[2] = (size_t)ycbcr.cr;
+   }
+
+   /* .ystride is the line length (in bytes) of the Y plane,
+    * .cstride is the line length (in bytes) of any of the remaining
+    * Cb/Cr/CbCr planes, assumed to be the same for Cb and Cr for fully
+    * planar formats. */
+   pitches[0] = ycbcr.ystride;
+   pitches[1] = pitches[2] = ycbcr.cstride;
+
+   /* .chroma_step is the byte distance between the same chroma channel
+    * values of subsequent pixels, assumed to be the same for Cb and Cr. */
+   fourcc = get_fourcc_yuv(buf->format, chroma_order, ycbcr.chroma_step);
+   if (fourcc == -1) {
+      _eglLog(_EGL_WARNING, "unsupported YUV format, native = %x, chroma_order = %s, chroma_step = %d",
+              buf->format, chroma_order == YCbCr ? "YCbCr" : "YCrCb", ycbcr.chroma_step);
+      return NULL;
+   }
+
+   /*
+    * Since this is EGL_NATIVE_BUFFER_ANDROID don't assume that
+    * the single-fd case cannot happen.  So handle eithe single
+    * fd or fd-per-plane case:
+    */
+   if (num_fds == 1) {
+      fds[2] = fds[1] = fds[0];
+   } else {
+      int expected_planes = (ycbcr.chroma_step == 2) ? 2 : 3;
+      assert(num_fds == expected_planes);
+   }
+
+   return dri2_dpy->image->createImageFromDmaBufs(dri2_dpy->dri_screen,
+      buf->width, buf->height, fourcc,
+      fds, num_fds, pitches, offsets,
+      EGL_ITU_REC601_EXT,
+      EGL_YUV_NARROW_RANGE_EXT,
+      EGL_YUV_CHROMA_SITING_0_EXT,
+      EGL_YUV_CHROMA_SITING_0_EXT,
+      &error,
+      NULL);
+}
+
+static __DRIimage *
+droid_create_image_from_prime_fds(_EGLDisplay *disp,
+                                  struct ANativeWindowBuffer *buf)
+{
+   struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
+   int pitches[4] = { 0 }, offsets[4] = { 0 };
+   unsigned error;
+   int num_fds;
+   int fds[3];
+
+   num_fds = get_native_buffer_fds(buf, fds);
+   if (num_fds == 0)
+      return NULL;
+
+   if (is_yuv(buf->format)) {
+      __DRIimage *image;
+
+      image = droid_create_image_from_prime_fds_yuv(disp, buf, num_fds, fds);
+      /*
+       * HACK: https://issuetracker.google.com/32077885
+       * There is no API available to properly query the IMPLEMENTATION_DEFINED
+       * format. As a workaround we rely here on gralloc allocating either
+       * an arbitrary YCbCr 4:2:0 or RGBX_8888, with the latter being recognized
+       * by lock_ycbcr failing.
+       */
+      if (image || buf->format != HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED)
+         return image;
+   }
+
+   /*
+    * Non-YUV formats could *also* have multiple planes, such as ancillary
+    * color compression state buffer, but the rest of the code isn't ready
+    * yet to deal with modifiers:
+    */
+   assert(num_fds == 1);
+
+   const int fourcc = get_fourcc(buf->format);
+   if (fourcc == -1) {
+      _eglError(EGL_BAD_PARAMETER, "eglCreateEGLImageKHR");
+      return NULL;
+   }
+
+   pitches[0] = buf->stride * get_format_bpp(buf->format);
+   if (pitches[0] == 0) {
+      _eglError(EGL_BAD_PARAMETER, "eglCreateEGLImageKHR");
+      return NULL;
+   }
+
+   return dri2_dpy->image->createImageFromDmaBufs(dri2_dpy->dri_screen,
+      buf->width, buf->height, fourcc,
+      fds, num_fds, pitches, offsets,
+      EGL_ITU_REC601_EXT,
+      EGL_YUV_NARROW_RANGE_EXT,
+      EGL_YUV_CHROMA_SITING_0_EXT,
+      EGL_YUV_CHROMA_SITING_0_EXT,
+      &error,
+      NULL);
+}
+
 static EGLBoolean
 droid_window_dequeue_buffer(struct dri2_egl_surface *dri2_surf)
 {
@@ -767,152 +913,6 @@ droid_swap_buffers(_EGLDisplay *disp, _EGLSurface *draw)
    }
 
    return EGL_TRUE;
-}
-
-static __DRIimage *
-droid_create_image_from_prime_fds_yuv(_EGLDisplay *disp,
-                                     struct ANativeWindowBuffer *buf,
-                                     int num_fds, int fds[3])
-{
-   struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
-   struct android_ycbcr ycbcr;
-   int offsets[3];
-   int pitches[3];
-   enum chroma_order chroma_order;
-   int fourcc;
-   int ret;
-   unsigned error;
-
-   if (!dri2_dpy->gralloc->lock_ycbcr) {
-      _eglLog(_EGL_WARNING, "Gralloc does not support lock_ycbcr");
-      return NULL;
-   }
-
-   memset(&ycbcr, 0, sizeof(ycbcr));
-   ret = dri2_dpy->gralloc->lock_ycbcr(dri2_dpy->gralloc, buf->handle,
-                                       0, 0, 0, 0, 0, &ycbcr);
-   if (ret) {
-      /* HACK: See droid_create_image_from_prime_fds() and
-       * https://issuetracker.google.com/32077885.*/
-      if (buf->format == HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED)
-         return NULL;
-
-      _eglLog(_EGL_WARNING, "gralloc->lock_ycbcr failed: %d", ret);
-      return NULL;
-   }
-   dri2_dpy->gralloc->unlock(dri2_dpy->gralloc, buf->handle);
-
-   /* When lock_ycbcr's usage argument contains no SW_READ/WRITE flags
-    * it will return the .y/.cb/.cr pointers based on a NULL pointer,
-    * so they can be interpreted as offsets. */
-   offsets[0] = (size_t)ycbcr.y;
-   /* We assume here that all the planes are located in one DMA-buf. */
-   if ((size_t)ycbcr.cr < (size_t)ycbcr.cb) {
-      chroma_order = YCrCb;
-      offsets[1] = (size_t)ycbcr.cr;
-      offsets[2] = (size_t)ycbcr.cb;
-   } else {
-      chroma_order = YCbCr;
-      offsets[1] = (size_t)ycbcr.cb;
-      offsets[2] = (size_t)ycbcr.cr;
-   }
-
-   /* .ystride is the line length (in bytes) of the Y plane,
-    * .cstride is the line length (in bytes) of any of the remaining
-    * Cb/Cr/CbCr planes, assumed to be the same for Cb and Cr for fully
-    * planar formats. */
-   pitches[0] = ycbcr.ystride;
-   pitches[1] = pitches[2] = ycbcr.cstride;
-
-   /* .chroma_step is the byte distance between the same chroma channel
-    * values of subsequent pixels, assumed to be the same for Cb and Cr. */
-   fourcc = get_fourcc_yuv(buf->format, chroma_order, ycbcr.chroma_step);
-   if (fourcc == -1) {
-      _eglLog(_EGL_WARNING, "unsupported YUV format, native = %x, chroma_order = %s, chroma_step = %d",
-              buf->format, chroma_order == YCbCr ? "YCbCr" : "YCrCb", ycbcr.chroma_step);
-      return NULL;
-   }
-
-   /*
-    * Since this is EGL_NATIVE_BUFFER_ANDROID don't assume that
-    * the single-fd case cannot happen.  So handle eithe single
-    * fd or fd-per-plane case:
-    */
-   if (num_fds == 1) {
-      fds[2] = fds[1] = fds[0];
-   } else {
-      int expected_planes = (ycbcr.chroma_step == 2) ? 2 : 3;
-      assert(num_fds == expected_planes);
-   }
-
-   return dri2_dpy->image->createImageFromDmaBufs(dri2_dpy->dri_screen,
-      buf->width, buf->height, fourcc,
-      fds, num_fds, pitches, offsets,
-      EGL_ITU_REC601_EXT,
-      EGL_YUV_NARROW_RANGE_EXT,
-      EGL_YUV_CHROMA_SITING_0_EXT,
-      EGL_YUV_CHROMA_SITING_0_EXT,
-      &error,
-      NULL);
-}
-
-static __DRIimage *
-droid_create_image_from_prime_fds(_EGLDisplay *disp,
-                                  struct ANativeWindowBuffer *buf)
-{
-   struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
-   int pitches[4] = { 0 }, offsets[4] = { 0 };
-   unsigned error;
-   int num_fds;
-   int fds[3];
-
-   num_fds = get_native_buffer_fds(buf, fds);
-   if (num_fds == 0)
-      return NULL;
-
-   if (is_yuv(buf->format)) {
-      __DRIimage *image;
-
-      image = droid_create_image_from_prime_fds_yuv(disp, buf, num_fds, fds);
-      /*
-       * HACK: https://issuetracker.google.com/32077885
-       * There is no API available to properly query the IMPLEMENTATION_DEFINED
-       * format. As a workaround we rely here on gralloc allocating either
-       * an arbitrary YCbCr 4:2:0 or RGBX_8888, with the latter being recognized
-       * by lock_ycbcr failing.
-       */
-      if (image || buf->format != HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED)
-         return image;
-   }
-
-   /*
-    * Non-YUV formats could *also* have multiple planes, such as ancillary
-    * color compression state buffer, but the rest of the code isn't ready
-    * yet to deal with modifiers:
-    */
-   assert(num_fds == 1);
-
-   const int fourcc = get_fourcc(buf->format);
-   if (fourcc == -1) {
-      _eglError(EGL_BAD_PARAMETER, "eglCreateEGLImageKHR");
-      return NULL;
-   }
-
-   pitches[0] = buf->stride * get_format_bpp(buf->format);
-   if (pitches[0] == 0) {
-      _eglError(EGL_BAD_PARAMETER, "eglCreateEGLImageKHR");
-      return NULL;
-   }
-
-   return dri2_dpy->image->createImageFromDmaBufs(dri2_dpy->dri_screen,
-      buf->width, buf->height, fourcc,
-      fds, num_fds, pitches, offsets,
-      EGL_ITU_REC601_EXT,
-      EGL_YUV_NARROW_RANGE_EXT,
-      EGL_YUV_CHROMA_SITING_0_EXT,
-      EGL_YUV_CHROMA_SITING_0_EXT,
-      &error,
-      NULL);
 }
 
 #ifdef HAVE_DRM_GRALLOC
