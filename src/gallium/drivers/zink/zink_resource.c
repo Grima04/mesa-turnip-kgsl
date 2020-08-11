@@ -508,11 +508,11 @@ zink_transfer_copy_bufimage(struct zink_context *ctx,
    return true;
 }
 
-static uint32_t
-get_resource_usage(struct zink_resource *res)
+uint32_t
+zink_get_resource_usage(struct zink_resource *res)
 {
    uint32_t batch_uses = 0;
-   for (unsigned i = 0; i < 4; i++)
+   for (unsigned i = 0; i < ARRAY_SIZE(res->batch_uses); i++)
       batch_uses |= p_atomic_read(&res->batch_uses[i]) << i;
    return batch_uses;
 }
@@ -528,7 +528,7 @@ zink_transfer_map(struct pipe_context *pctx,
    struct zink_context *ctx = zink_context(pctx);
    struct zink_screen *screen = zink_screen(pctx->screen);
    struct zink_resource *res = zink_resource(pres);
-   uint32_t batch_uses = get_resource_usage(res);
+   uint32_t batch_uses = zink_get_resource_usage(res);
 
    struct zink_transfer *trans = slab_alloc(&ctx->transfer_pool);
    if (!trans)
@@ -672,7 +672,7 @@ zink_transfer_unmap(struct pipe_context *pctx,
 
       if (trans->base.usage & PIPE_MAP_WRITE) {
          struct zink_context *ctx = zink_context(pctx);
-         uint32_t batch_uses = get_resource_usage(res);
+         uint32_t batch_uses = zink_get_resource_usage(res);
          if (batch_uses >= ZINK_RESOURCE_ACCESS_WRITE)
             zink_fence_wait(pctx);
          zink_transfer_copy_bufimage(ctx, res, staging_res, trans, true);

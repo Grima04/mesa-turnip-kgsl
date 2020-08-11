@@ -89,4 +89,7 @@ zink_get_depth_stencil_resources(struct pipe_resource *res,
 
 void
 zink_resource_setup_transfer_layouts(struct zink_batch *batch, struct zink_resource *src, struct zink_resource *dst);
+
+uint32_t
+zink_get_resource_usage(struct zink_resource *res);
 #endif
