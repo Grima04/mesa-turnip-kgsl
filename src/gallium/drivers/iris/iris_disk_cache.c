@@ -124,6 +124,15 @@ iris_disk_cache_store(struct disk_cache *cache,
 #endif
 }
 
+static const enum iris_program_cache_id cache_id_for_stage[] = {
+   [MESA_SHADER_VERTEX]    = IRIS_CACHE_VS,
+   [MESA_SHADER_TESS_CTRL] = IRIS_CACHE_TCS,
+   [MESA_SHADER_TESS_EVAL] = IRIS_CACHE_TES,
+   [MESA_SHADER_GEOMETRY]  = IRIS_CACHE_GS,
+   [MESA_SHADER_FRAGMENT]  = IRIS_CACHE_FS,
+   [MESA_SHADER_COMPUTE]   = IRIS_CACHE_CS,
+};
+
 /**
  * Search for a compiled shader in the disk cache.  If found, upload it
  * to the in-memory program cache so we can use it.
@@ -216,11 +225,14 @@ iris_disk_cache_retrieve(struct iris_context *ice,
    if (num_system_values)
       num_cbufs++;
 
+   assert(stage < ARRAY_SIZE(cache_id_for_stage));
+   enum iris_program_cache_id cache_id = cache_id_for_stage[stage];
+
    /* Upload our newly read shader to the in-memory program cache and
     * return it to the caller.
     */
    struct iris_compiled_shader *shader =
-      iris_upload_shader(ice, stage, key_size, prog_key, assembly,
+      iris_upload_shader(ice, cache_id, key_size, prog_key, assembly,
                          prog_data, so_decls, system_values,
                          num_system_values, kernel_input_size, num_cbufs, &bt);
 
