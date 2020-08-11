@@ -435,14 +435,14 @@ radv_patch_image_from_extra_info(struct radv_device *device,
 	return VK_SUCCESS;
 }
 
-static int
-radv_init_surface(struct radv_device *device,
-		  const struct radv_image *image,
-		  struct radeon_surf *surface,
-		  unsigned plane_id,
-		  const VkImageCreateInfo *pCreateInfo,
-		  VkFormat image_format)
+static uint32_t
+radv_get_surface_flags(struct radv_device *device,
+                       const struct radv_image *image,
+                       unsigned plane_id,
+                       const VkImageCreateInfo *pCreateInfo,
+                       VkFormat image_format)
 {
+	uint32_t flags;
 	unsigned array_mode = radv_choose_tiling(device, pCreateInfo, image_format);
 	VkFormat format = vk_format_get_plane_format(image_format, plane_id);
 	const struct vk_format_description *desc = vk_format_description(format);
@@ -451,65 +451,57 @@ radv_init_surface(struct radv_device *device,
 	is_depth = vk_format_has_depth(desc);
 	is_stencil = vk_format_has_stencil(desc);
 
-	surface->blk_w = vk_format_get_blockwidth(format);
-	surface->blk_h = vk_format_get_blockheight(format);
 
-	surface->bpe = vk_format_get_blocksize(vk_format_depth_only(format));
-	/* align byte per element on dword */
-	if (surface->bpe == 3) {
-		surface->bpe = 4;
-	}
-
-	surface->flags = RADEON_SURF_SET(array_mode, MODE);
+	flags = RADEON_SURF_SET(array_mode, MODE);
 
 	switch (pCreateInfo->imageType){
 	case VK_IMAGE_TYPE_1D:
 		if (pCreateInfo->arrayLayers > 1)
-			surface->flags |= RADEON_SURF_SET(RADEON_SURF_TYPE_1D_ARRAY, TYPE);
+			flags |= RADEON_SURF_SET(RADEON_SURF_TYPE_1D_ARRAY, TYPE);
 		else
-			surface->flags |= RADEON_SURF_SET(RADEON_SURF_TYPE_1D, TYPE);
+			flags |= RADEON_SURF_SET(RADEON_SURF_TYPE_1D, TYPE);
 		break;
 	case VK_IMAGE_TYPE_2D:
 		if (pCreateInfo->arrayLayers > 1)
-			surface->flags |= RADEON_SURF_SET(RADEON_SURF_TYPE_2D_ARRAY, TYPE);
+			flags |= RADEON_SURF_SET(RADEON_SURF_TYPE_2D_ARRAY, TYPE);
 		else
-			surface->flags |= RADEON_SURF_SET(RADEON_SURF_TYPE_2D, TYPE);
+			flags |= RADEON_SURF_SET(RADEON_SURF_TYPE_2D, TYPE);
 		break;
 	case VK_IMAGE_TYPE_3D:
-		surface->flags |= RADEON_SURF_SET(RADEON_SURF_TYPE_3D, TYPE);
+		flags |= RADEON_SURF_SET(RADEON_SURF_TYPE_3D, TYPE);
 		break;
 	default:
 		unreachable("unhandled image type");
 	}
 
 	/* Required for clearing/initializing a specific layer on GFX8. */
-	surface->flags |= RADEON_SURF_CONTIGUOUS_DCC_LAYERS;
+	flags |= RADEON_SURF_CONTIGUOUS_DCC_LAYERS;
 
 	if (is_depth) {
-		surface->flags |= RADEON_SURF_ZBUFFER;
+		flags |= RADEON_SURF_ZBUFFER;
 		if (!radv_use_htile_for_image(device, image) ||
 		    (device->instance->debug_flags & RADV_DEBUG_NO_HIZ))
-			surface->flags |= RADEON_SURF_NO_HTILE;
+			flags |= RADEON_SURF_NO_HTILE;
 		if (radv_use_tc_compat_htile_for_image(device, pCreateInfo, image_format))
-			surface->flags |= RADEON_SURF_TC_COMPATIBLE_HTILE;
+			flags |= RADEON_SURF_TC_COMPATIBLE_HTILE;
 	}
 
 	if (is_stencil)
-		surface->flags |= RADEON_SURF_SBUFFER;
+		flags |= RADEON_SURF_SBUFFER;
 
 	if (device->physical_device->rad_info.chip_class >= GFX9 &&
 	    pCreateInfo->imageType == VK_IMAGE_TYPE_3D &&
 	    vk_format_get_blocksizebits(image_format) == 128 &&
 	    vk_format_is_compressed(image_format))
-		surface->flags |= RADEON_SURF_NO_RENDER_TARGET;
+		flags |= RADEON_SURF_NO_RENDER_TARGET;
 
 	if (!radv_use_dcc_for_image(device, image, pCreateInfo, image_format))
-		surface->flags |= RADEON_SURF_DISABLE_DCC;
+		flags |= RADEON_SURF_DISABLE_DCC;
 
 	if (!radv_use_fmask_for_image(device, image))
-		surface->flags |= RADEON_SURF_NO_FMASK;
+		flags |= RADEON_SURF_NO_FMASK;
 
-	return 0;
+	return flags;
 }
 
 static inline unsigned
@@ -1453,7 +1445,8 @@ radv_image_create(VkDevice _device,
 	}
 
 	for (unsigned plane = 0; plane < image->plane_count; ++plane) {
-		radv_init_surface(device, image, &image->planes[plane].surface, plane, pCreateInfo, format);
+		image->planes[plane].surface.flags =
+			radv_get_surface_flags(device, image, plane, pCreateInfo, format);
 	}
 
 	bool delay_layout = external_info &&
