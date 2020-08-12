@@ -160,11 +160,7 @@ panfrost_shader_compile(struct panfrost_context *ctx,
         s->info.stage = stage;
 
         /* Call out to Midgard compiler given the above NIR */
-
-        panfrost_program program = {
-                .alpha_ref = state->alpha_state.ref_value
-        };
-
+        panfrost_program program = {};
         memcpy(program.rt_formats, state->rt_formats, sizeof(program.rt_formats));
 
         if (dev->quirks & IS_BIFROST) {

@@ -162,7 +162,7 @@ struct panfrost_context {
         struct pipe_viewport_state pipe_viewport;
         struct pipe_scissor_state scissor;
         struct pipe_blend_color blend_color;
-        struct pipe_depth_stencil_alpha_state *depth_stencil;
+        struct panfrost_zsa_state *depth_stencil;
         struct pipe_stencil_ref stencil_ref;
         unsigned sample_mask;
         unsigned min_samples;
@@ -177,8 +177,7 @@ struct panfrost_rasterizer {
 };
 
 /* Variants bundle together to form the backing CSO, bundling multiple
- * shaders with varying emulated features baked in (alpha test
- * parameters, etc) */
+ * shaders with varying emulated features baked in */
 
 /* A shader state corresponds to the actual, current variant of the shader */
 struct panfrost_shader_state {
@@ -216,9 +215,6 @@ struct panfrost_shader_state {
 
         unsigned sysval_count;
         unsigned sysval[MAX_SYSVAL_COUNT];
-
-        /* Information on this particular shader variant */
-        struct pipe_alpha_state alpha_state;
 
         uint16_t point_sprite_mask;
         unsigned point_sprite_upper_left : 1;
@@ -259,6 +255,16 @@ struct panfrost_vertex_state {
 
         struct pipe_vertex_element pipe[PIPE_MAX_ATTRIBS];
         struct mali_attr_meta hw[PIPE_MAX_ATTRIBS];
+};
+
+struct panfrost_zsa_state {
+        struct pipe_depth_stencil_alpha_state base;
+
+        /* Precomputed stencil state */
+        struct mali_stencil_packed stencil_front;
+        struct mali_stencil_packed stencil_back;
+        u8 stencil_mask_front;
+        u8 stencil_mask_back;
 };
 
 struct panfrost_sampler_state {

@@ -311,9 +311,6 @@ typedef struct compiler_context {
         /* Count of instructions emitted from NIR overall, across all blocks */
         int instruction_count;
 
-        /* Alpha ref value passed in */
-        float alpha_ref;
-
         unsigned quadword_count;
 
         /* Bitmask of valid metadata */

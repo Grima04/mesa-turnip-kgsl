@@ -636,24 +636,8 @@ panfrost_variant_matches(
 {
         struct panfrost_device *dev = pan_device(ctx->base.screen);
         struct pipe_rasterizer_state *rasterizer = &ctx->rasterizer->base;
-        struct pipe_alpha_state *alpha = &ctx->depth_stencil->alpha;
 
         bool is_fragment = (type == PIPE_SHADER_FRAGMENT);
-
-        if (is_fragment && (alpha->enabled || variant->alpha_state.enabled)) {
-                /* Make sure enable state is at least the same */
-                if (alpha->enabled != variant->alpha_state.enabled) {
-                        return false;
-                }
-
-                /* Check that the contents of the test are the same */
-                bool same_func = alpha->func == variant->alpha_state.func;
-                bool same_ref = alpha->ref_value == variant->alpha_state.ref_value;
-
-                if (!(same_func && same_ref)) {
-                        return false;
-                }
-        }
 
         if (variant->outputs_read) {
                 struct pipe_framebuffer_state *fb = &ctx->pipe_framebuffer;
@@ -787,8 +771,6 @@ panfrost_bind_shader_state(
                                 &variants->variants[variant];
 
                 if (type == PIPE_SHADER_FRAGMENT) {
-                        v->alpha_state = ctx->depth_stencil->alpha;
-
                         struct pipe_framebuffer_state *fb = &ctx->pipe_framebuffer;
                         for (unsigned i = 0; i < fb->nr_cbufs; ++i) {
                                 enum pipe_format fmt = PIPE_FORMAT_R8G8B8A8_UNORM;
@@ -1133,11 +1115,58 @@ panfrost_set_framebuffer_state(struct pipe_context *pctx,
                 ctx->base.bind_fs_state(&ctx->base, fs);
 }
 
+static inline unsigned
+pan_pipe_to_stencil_op(enum pipe_stencil_op in)
+{
+        switch (in) {
+        case PIPE_STENCIL_OP_KEEP: return MALI_STENCIL_OP_KEEP;
+        case PIPE_STENCIL_OP_ZERO: return MALI_STENCIL_OP_ZERO;
+        case PIPE_STENCIL_OP_REPLACE: return MALI_STENCIL_OP_REPLACE;
+        case PIPE_STENCIL_OP_INCR: return MALI_STENCIL_OP_INCR_SAT;
+        case PIPE_STENCIL_OP_DECR: return MALI_STENCIL_OP_DECR_SAT;
+        case PIPE_STENCIL_OP_INCR_WRAP: return MALI_STENCIL_OP_INCR_WRAP;
+        case PIPE_STENCIL_OP_DECR_WRAP: return MALI_STENCIL_OP_DECR_WRAP;
+        case PIPE_STENCIL_OP_INVERT: return MALI_STENCIL_OP_INVERT;
+        default: unreachable("Invalid stencil op");
+        }
+}
+
+static inline void
+pan_pipe_to_stencil(const struct pipe_stencil_state *in, void *out)
+{
+        pan_pack(out, STENCIL, cfg) {
+                cfg.mask = in->valuemask;
+                cfg.compare_function = panfrost_translate_compare_func(in->func);
+                cfg.stencil_fail = pan_pipe_to_stencil_op(in->fail_op);
+                cfg.depth_fail = pan_pipe_to_stencil_op(in->zfail_op);
+                cfg.depth_pass = pan_pipe_to_stencil_op(in->zpass_op);
+        }
+}
+
 static void *
 panfrost_create_depth_stencil_state(struct pipe_context *pipe,
-                                    const struct pipe_depth_stencil_alpha_state *depth_stencil)
+                                    const struct pipe_depth_stencil_alpha_state *zsa)
 {
-        return mem_dup(depth_stencil, sizeof(*depth_stencil));
+        struct panfrost_zsa_state *so = CALLOC_STRUCT(panfrost_zsa_state);
+        so->base = *zsa;
+
+        pan_pipe_to_stencil(&zsa->stencil[0], &so->stencil_front);
+        pan_pipe_to_stencil(&zsa->stencil[1], &so->stencil_back);
+
+        so->stencil_mask_front = zsa->stencil[0].writemask;
+
+        if (zsa->stencil[1].enabled)
+                so->stencil_mask_back = zsa->stencil[1].writemask;
+        else
+                so->stencil_mask_back = so->stencil_mask_front;
+
+        /* Alpha lowered by frontend */
+        assert(!zsa->alpha.enabled);
+
+        /* TODO: Bounds test should be easy */
+        assert(!zsa->depth.bounds_test);
+
+        return so;
 }
 
 static void
@@ -1145,22 +1174,8 @@ panfrost_bind_depth_stencil_state(struct pipe_context *pipe,
                                   void *cso)
 {
         struct panfrost_context *ctx = pan_context(pipe);
-        struct pipe_depth_stencil_alpha_state *depth_stencil = cso;
-        ctx->depth_stencil = depth_stencil;
-
-        if (!depth_stencil)
-                return;
-
-        /* Alpha does not exist in the hardware (it's not in ES3), so it's
-         * emulated in the fragment shader */
-
-        if (depth_stencil->alpha.enabled) {
-                /* We need to trigger a new shader (maybe) */
-                ctx->base.bind_fs_state(&ctx->base, ctx->shader[PIPE_SHADER_FRAGMENT]);
-        }
-
-        /* Bounds test not implemented */
-        assert(!depth_stencil->depth.bounds_test);
+        struct panfrost_zsa_state *zsa = cso;
+        ctx->depth_stencil = zsa;
 }
 
 static void

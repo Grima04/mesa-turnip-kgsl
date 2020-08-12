@@ -170,7 +170,7 @@ panfrost_sfbd_set_zsbuf(
         fb->depth_stride = rsrc->slices[level].stride;
 
         /* No stencil? Job done. */
-        if (!ctx->depth_stencil || !ctx->depth_stencil->stencil[0].enabled)
+        if (!ctx->depth_stencil || !ctx->depth_stencil->base.stencil[0].enabled)
                 return;
 
         if (panfrost_is_z24s8_variant(surf->format)) {

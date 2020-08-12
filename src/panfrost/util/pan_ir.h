@@ -107,9 +107,6 @@ typedef struct {
          * (register spilling), or zero if no spilling is used */
         unsigned tls_size;
 
-        /* IN: For a fragment shader with a lowered alpha test, the ref value */
-        float alpha_ref;
-
         /* IN: Render target formats for output load/store lowering */
         enum pipe_format rt_formats[8];
 } panfrost_program;

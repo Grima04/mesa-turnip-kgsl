@@ -350,72 +350,6 @@ panfrost_shader_meta_init(struct panfrost_context *ctx,
 }
 
 static unsigned
-panfrost_translate_compare_func(enum pipe_compare_func in)
-{
-        switch (in) {
-        case PIPE_FUNC_NEVER:
-                return MALI_FUNC_NEVER;
-
-        case PIPE_FUNC_LESS:
-                return MALI_FUNC_LESS;
-
-        case PIPE_FUNC_EQUAL:
-                return MALI_FUNC_EQUAL;
-
-        case PIPE_FUNC_LEQUAL:
-                return MALI_FUNC_LEQUAL;
-
-        case PIPE_FUNC_GREATER:
-                return MALI_FUNC_GREATER;
-
-        case PIPE_FUNC_NOTEQUAL:
-                return MALI_FUNC_NOT_EQUAL;
-
-        case PIPE_FUNC_GEQUAL:
-                return MALI_FUNC_GEQUAL;
-
-        case PIPE_FUNC_ALWAYS:
-                return MALI_FUNC_ALWAYS;
-
-        default:
-                unreachable("Invalid func");
-        }
-}
-
-static unsigned
-panfrost_translate_stencil_op(enum pipe_stencil_op in)
-{
-        switch (in) {
-        case PIPE_STENCIL_OP_KEEP:
-                return MALI_STENCIL_OP_KEEP;
-
-        case PIPE_STENCIL_OP_ZERO:
-                return MALI_STENCIL_OP_ZERO;
-
-        case PIPE_STENCIL_OP_REPLACE:
-               return MALI_STENCIL_OP_REPLACE;
-
-        case PIPE_STENCIL_OP_INCR:
-                return MALI_STENCIL_OP_INCR_SAT;
-
-        case PIPE_STENCIL_OP_DECR:
-                return MALI_STENCIL_OP_DECR_SAT;
-
-        case PIPE_STENCIL_OP_INCR_WRAP:
-                return MALI_STENCIL_OP_INCR_WRAP;
-
-        case PIPE_STENCIL_OP_DECR_WRAP:
-                return MALI_STENCIL_OP_DECR_WRAP;
-
-        case PIPE_STENCIL_OP_INVERT:
-                return MALI_STENCIL_OP_INVERT;
-
-        default:
-                unreachable("Invalid stencil op");
-        }
-}
-
-static unsigned
 translate_tex_wrap(enum pipe_tex_wrap w)
 {
         switch (w) {
@@ -518,19 +452,6 @@ void panfrost_sampler_desc_init_bifrost(const struct pipe_sampler_state *cso,
 }
 
 static void
-panfrost_make_stencil_state(const struct pipe_stencil_state *in,
-                            void *out)
-{
-        pan_pack(out, STENCIL, cfg) {
-                cfg.mask = in->valuemask;
-                cfg.compare_function = panfrost_translate_compare_func(in->func);
-                cfg.stencil_fail = panfrost_translate_stencil_op(in->fail_op);
-                cfg.depth_fail = panfrost_translate_stencil_op(in->zfail_op);
-                cfg.depth_pass = panfrost_translate_stencil_op(in->zpass_op);
-        }
-}
-
-static void
 panfrost_frag_meta_rasterizer_update(struct panfrost_context *ctx,
                                      struct mali_shader_meta *fragmeta)
 {
@@ -578,43 +499,37 @@ static void
 panfrost_frag_meta_zsa_update(struct panfrost_context *ctx,
                               struct mali_shader_meta *fragmeta)
 {
-        const struct pipe_depth_stencil_alpha_state *zsa = ctx->depth_stencil;
+        const struct panfrost_zsa_state *so = ctx->depth_stencil;
         int zfunc = PIPE_FUNC_ALWAYS;
 
-        if (!zsa) {
+        if (!so) {
                 /* If stenciling is disabled, the state is irrelevant */
                 SET_BIT(fragmeta->unknown2_4, MALI_STENCIL_TEST, false);
                 SET_BIT(fragmeta->unknown2_3, MALI_DEPTH_WRITEMASK, false);
         } else {
                 SET_BIT(fragmeta->unknown2_4, MALI_STENCIL_TEST,
-                        zsa->stencil[0].enabled);
-                panfrost_make_stencil_state(&zsa->stencil[0],
-                                            &fragmeta->stencil_front);
-                fragmeta->stencil_mask_front = zsa->stencil[0].writemask;
+                        so->base.stencil[0].enabled);
 
-                /* Bottom 8-bits of stencil state is the stencil ref, ref is no
-                 * more than 8-bits. Be extra careful. */
-                fragmeta->stencil_front.opaque[0] |= ctx->stencil_ref.ref_value[0];
+                fragmeta->stencil_mask_front = so->stencil_mask_front;
+                fragmeta->stencil_mask_back = so->stencil_mask_back;
+
+                /* Bottom bits for stencil ref, exactly one word */
+                fragmeta->stencil_front.opaque[0] = so->stencil_front.opaque[0] | ctx->stencil_ref.ref_value[0];
 
                 /* If back-stencil is not enabled, use the front values */
 
-                if (zsa->stencil[1].enabled) {
-                        panfrost_make_stencil_state(&zsa->stencil[1],
-                                                    &fragmeta->stencil_back);
-                        fragmeta->stencil_mask_back = zsa->stencil[1].writemask;
-                        fragmeta->stencil_back.opaque[0] |= ctx->stencil_ref.ref_value[1];
-                } else {
+                if (so->base.stencil[1].enabled)
+                        fragmeta->stencil_back.opaque[0] = so->stencil_back.opaque[0] | ctx->stencil_ref.ref_value[1];
+                else
                         fragmeta->stencil_back = fragmeta->stencil_front;
-                        fragmeta->stencil_mask_back = fragmeta->stencil_mask_front;
-                }
 
-                if (zsa->depth.enabled)
-                        zfunc = zsa->depth.func;
+                if (so->base.depth.enabled)
+                        zfunc = so->base.depth.func;
 
                 /* Depth state (TODO: Refactor) */
 
                 SET_BIT(fragmeta->unknown2_3, MALI_DEPTH_WRITEMASK,
-                        zsa->depth.writemask);
+                        so->base.depth.writemask);
         }
 
         fragmeta->unknown2_3 &= ~MALI_DEPTH_FUNC_MASK;
@@ -864,7 +779,7 @@ panfrost_frag_shader_meta_init(struct panfrost_context *ctx,
                  * depends on if depth/stencil is used for the draw or not.
                  * Just one of depth OR stencil is enough to trigger this. */
 
-                const struct pipe_depth_stencil_alpha_state *zsa = ctx->depth_stencil;
+                const struct pipe_depth_stencil_alpha_state *zsa = &ctx->depth_stencil->base;
                 bool zs_enabled = fs->writes_depth || fs->writes_stencil;
 
                 if (zsa) {

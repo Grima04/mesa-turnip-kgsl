@@ -114,4 +114,20 @@ panfrost_vt_update_primitive_size(struct panfrost_context *ctx,
 mali_ptr
 panfrost_emit_sample_locations(struct panfrost_batch *batch);
 
+static inline unsigned
+panfrost_translate_compare_func(enum pipe_compare_func in)
+{
+        switch (in) {
+        case PIPE_FUNC_NEVER: return MALI_FUNC_NEVER;
+        case PIPE_FUNC_LESS: return MALI_FUNC_LESS;
+        case PIPE_FUNC_EQUAL: return MALI_FUNC_EQUAL;
+        case PIPE_FUNC_LEQUAL: return MALI_FUNC_LEQUAL;
+        case PIPE_FUNC_GREATER: return MALI_FUNC_GREATER;
+        case PIPE_FUNC_NOTEQUAL: return MALI_FUNC_NOT_EQUAL;
+        case PIPE_FUNC_GEQUAL: return MALI_FUNC_GEQUAL;
+        case PIPE_FUNC_ALWAYS: return MALI_FUNC_ALWAYS;
+        default: unreachable("Invalid func");
+        }
+}
+
 #endif /* __PAN_CMDSTREAM_H__ */

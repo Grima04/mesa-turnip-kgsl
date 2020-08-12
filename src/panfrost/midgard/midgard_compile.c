@@ -2847,7 +2847,6 @@ midgard_compile_shader_nir(nir_shader *nir, panfrost_program *program, bool is_b
         ctx->nir = nir;
         ctx->stage = nir->info.stage;
         ctx->is_blend = is_blend;
-        ctx->alpha_ref = program->alpha_ref;
         ctx->blend_rt = MIDGARD_COLOR_RT0 + blend_rt;
         ctx->blend_input = ~0;
         ctx->blend_src1 = ~0;
