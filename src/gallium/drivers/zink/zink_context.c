@@ -1417,6 +1417,13 @@ zink_memory_barrier(struct pipe_context *pctx, unsigned flags)
       vkCmdPipelineBarrier(batch->cmdbuf, src, dst, 0, 0, &b, 0, NULL, 0, NULL);
       flush_batch(ctx);
    }
+   batch = &ctx->compute_batch;
+   if (batch->has_draw) {
+      /* this should be the only call needed */
+      vkCmdPipelineBarrier(batch->cmdbuf, src, dst, 0, 0, &b, 0, NULL, 0, NULL);
+      zink_end_batch(ctx, batch);
+      zink_start_batch(ctx, batch);
+   }
 }
 
 static void
