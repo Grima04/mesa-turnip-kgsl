@@ -54,7 +54,7 @@ struct routes {
 };
 
 struct strct_lvl {
-   struct exec_node node;
+   struct list_head link;
 
    /** Set of blocks at the current level */
    struct set *blocks;
@@ -551,7 +551,7 @@ handle_irreducible(struct set *remaining, struct strct_lvl *curr_level,
  *                       zeroth level
  */
 static void
-organize_levels(struct exec_list *levels, struct set *remaining,
+organize_levels(struct list_head *levels, struct set *remaining,
                 struct set *reach, struct routes *routing,
                 nir_function_impl *impl, bool is_domminated, void *mem_ctx)
 {
@@ -561,7 +561,7 @@ organize_levels(struct exec_list *levels, struct set *remaining,
    /* targets of active skip path */
    struct set *skip_targets = _mesa_pointer_set_create(mem_ctx);
 
-   exec_list_make_empty(levels);
+   list_inithead(levels);
    while (remaining->entries) {
       _mesa_set_clear(remaining_frontier, NULL);
       set_foreach(remaining, entry) {
@@ -593,9 +593,8 @@ organize_levels(struct exec_list *levels, struct set *remaining,
       curr_level->skip_start = 0;
 
       struct strct_lvl *prev_level = NULL;
-      struct exec_node *tail;
-      if ((tail = exec_list_get_tail(levels)))
-         prev_level = exec_node_data(struct strct_lvl, tail, node);
+      if (!list_is_empty(levels))
+         prev_level = list_last_entry(levels, struct strct_lvl, link);
 
       if (skip_targets->entries) {
          set_foreach(skip_targets, entry) {
@@ -641,19 +640,17 @@ organize_levels(struct exec_list *levels, struct set *remaining,
       }
 
       curr_level->skip_end = 0;
-      exec_list_push_tail(levels, &curr_level->node);
+      list_addtail(&curr_level->link, levels);
    }
 
    if (skip_targets->entries)
-      exec_node_data(struct strct_lvl, exec_list_get_tail(levels), node)
-      ->skip_end = 1;
+      list_last_entry(levels, struct strct_lvl, link)->skip_end = 1;
 
    /* Iterate throught all levels reverse and create all the paths and forks */
    struct path path_after_skip;
 
-   foreach_list_typed_reverse(struct strct_lvl, level, node, levels) {
-      bool need_var = !(is_domminated && exec_node_get_prev(&level->node)
-                                         == &levels->head_sentinel);
+   list_for_each_entry_rev(struct strct_lvl, level, levels, link) {
+      bool need_var = !(is_domminated && level->link.prev == levels);
       level->out_path = routing->regular;
       if (level->skip_end) {
          path_after_skip = routing->regular;
@@ -706,15 +703,12 @@ select_blocks(struct routes *routing, nir_builder *b,
  * Builds the structurized nir code by the final level list.
  */
 static void
-plant_levels(struct exec_list *levels, struct routes *routing,
+plant_levels(struct list_head *levels, struct routes *routing,
              nir_builder *b, void *mem_ctx)
 {
    /* Place all dominated blocks and build the path forks */
-   struct exec_node *list_node;
-   while ((list_node = exec_list_pop_head(levels))) {
-      struct strct_lvl *curr_level =
-         exec_node_data(struct strct_lvl, list_node, node);
-      if (curr_level->skip_start) {
+   list_for_each_entry(struct strct_lvl, level, levels, link) {
+      if (level->skip_start) {
          assert(routing->regular.fork);
          assert(!(routing->regular.fork->is_var && strcmp(
              routing->regular.fork->path_var->name, "path_conditional")));
@@ -723,13 +717,13 @@ plant_levels(struct exec_list *levels, struct routes *routing,
          routing->regular = routing->regular.fork->paths[1];
       }
       struct path in_path = routing->regular;
-      routing->regular = curr_level->out_path;
-      if (curr_level->irreducible)
-         loop_routing_start(routing, b, in_path, curr_level->reach, mem_ctx);
+      routing->regular = level->out_path;
+      if (level->irreducible)
+         loop_routing_start(routing, b, in_path, level->reach, mem_ctx);
       select_blocks(routing, b, in_path, mem_ctx);
-      if (curr_level->irreducible)
+      if (level->irreducible)
          loop_routing_end(routing, b);
-      if (curr_level->skip_end)
+      if (level->skip_end)
          nir_pop_if(b, NULL);
    }
 }
@@ -750,7 +744,7 @@ nir_structurize(struct routes *routing, nir_builder *b, nir_block *block,
 
    /* If the block can reach back to itself, it is a loop head */
    int is_looped = _mesa_set_search(block->dom_frontier, block) != NULL;
-   struct exec_list outside_levels;
+   struct list_head outside_levels;
    if (is_looped) {
       struct set *loop_heads = _mesa_pointer_set_create(mem_ctx);
       _mesa_set_add(loop_heads, block);
@@ -781,7 +775,7 @@ nir_structurize(struct routes *routing, nir_builder *b, nir_block *block,
    if (block->successors[1] && block->successors[1]->successors[0])
       _mesa_set_add(reach, block->successors[1]);
 
-   struct exec_list levels;
+   struct list_head levels;
    organize_levels(&levels, remaining, reach, routing, b->impl, true, mem_ctx);
 
    /* Push all instructions of this block, without the jump instr */
