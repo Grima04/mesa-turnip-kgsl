@@ -35,6 +35,7 @@
 #include "pan_device.h"
 #include "panfrost-quirks.h"
 #include "pan_bo.h"
+#include "pan_texture.h"
 
 /* Abstraction over the raw drm_panfrost_get_param ioctl for fetching
  * information about devices */
@@ -209,6 +210,11 @@ panfrost_open_device(void *memctx, int fd, struct panfrost_device *dev)
         dev->kernel_version = drmGetVersion(fd);
         dev->quirks = panfrost_get_quirks(dev->gpu_id);
         dev->compressed_formats = panfrost_query_compressed_formats(fd);
+
+        if (dev->quirks & HAS_SWIZZLES)
+                dev->formats = panfrost_pipe_format_v6;
+        else
+                dev->formats = panfrost_pipe_format_v7;
 
         util_sparse_array_init(&dev->bo_map, sizeof(struct panfrost_bo), 512);
 

@@ -487,19 +487,20 @@ panfrost_is_format_supported( struct pipe_screen *screen,
                 ( PIPE_BIND_DEPTH_STENCIL | PIPE_BIND_RENDER_TARGET
                 | PIPE_BIND_VERTEX_BUFFER | PIPE_BIND_SAMPLER_VIEW);
 
-        struct panfrost_format fmt = panfrost_pipe_format_table[format];
+        struct panfrost_format fmt = dev->formats[format];
+        enum mali_format indexed = MALI_EXTRACT_INDEX(fmt.hw);
 
         /* Also check that compressed texture formats are supported on this
          * particular chip. They may not be depending on system integration
          * differences. RGTC can be emulated so is always supported. */
 
         bool is_rgtc = format_desc->layout == UTIL_FORMAT_LAYOUT_RGTC;
-        bool supported = panfrost_supports_compressed_format(dev, fmt.hw);
+        bool supported = panfrost_supports_compressed_format(dev, indexed);
 
         if (!is_rgtc && !supported)
                 return false;
 
-        return fmt.hw && ((relevant_bind & ~fmt.bind) == 0);
+        return indexed && ((relevant_bind & ~fmt.bind) == 0);
 }
 
 /* We always support linear and tiled operations, both external and internal.

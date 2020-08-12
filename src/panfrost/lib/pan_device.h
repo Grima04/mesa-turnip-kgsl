@@ -89,6 +89,13 @@ struct pan_blit_shaders {
         struct pan_blit_shader loads[PAN_BLIT_NUM_TARGETS][PAN_BLIT_NUM_TYPES][2];
 };
 
+typedef uint32_t mali_pixel_format;
+
+struct panfrost_format {
+        mali_pixel_format hw;
+        unsigned bind;
+};
+
 struct panfrost_device {
         /* For ralloc */
         void *memctx;
@@ -101,6 +108,9 @@ struct panfrost_device {
         unsigned core_count;
         unsigned thread_tls_alloc;
         unsigned quirks;
+
+        /* Table of formats, indexed by a PIPE format */
+        const struct panfrost_format *formats;
 
         /* Bitmask of supported compressed texture formats */
         uint32_t compressed_formats;

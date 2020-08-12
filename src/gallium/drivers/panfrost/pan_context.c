@@ -584,27 +584,13 @@ panfrost_create_vertex_elements_state(
         for (int i = 0; i < num_elements; ++i) {
                 enum pipe_format fmt = elements[i].src_format;
                 const struct util_format_description *desc = util_format_description(fmt);
-                unsigned swizzle = 0;
-                if (dev->quirks & HAS_SWIZZLES)
-                        swizzle = panfrost_translate_swizzle_4(desc->swizzle);
-                else
-                        swizzle = panfrost_bifrost_swizzle(desc->nr_channels);
-
-                enum mali_format hw_format = panfrost_pipe_format_table[desc->format].hw;
-                so->formats[i] = (hw_format << 12) | swizzle;
-                assert(hw_format);
+                so->formats[i] = dev->formats[desc->format].hw;
+                assert(so->formats[i]);
         }
 
         /* Let's also prepare vertex builtins */
-        if (dev->quirks & HAS_SWIZZLES)
-                so->formats[PAN_VERTEX_ID] = (MALI_R32UI << 12) | panfrost_get_default_swizzle(1);
-        else
-                so->formats[PAN_VERTEX_ID] = (MALI_R32UI << 12) | panfrost_bifrost_swizzle(1);
-
-        if (dev->quirks & HAS_SWIZZLES)
-                so->formats[PAN_INSTANCE_ID] = (MALI_R32UI << 12) | panfrost_get_default_swizzle(1);
-        else
-                so->formats[PAN_INSTANCE_ID] = (MALI_R32UI << 12) | panfrost_bifrost_swizzle(1);
+        so->formats[PAN_VERTEX_ID] = dev->formats[PIPE_FORMAT_R32_UINT].hw;
+        so->formats[PAN_INSTANCE_ID] = dev->formats[PIPE_FORMAT_R32_UINT].hw;
 
         return so;
 }

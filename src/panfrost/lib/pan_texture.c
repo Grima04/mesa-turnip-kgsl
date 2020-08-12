@@ -339,27 +339,16 @@ panfrost_new_texture(
 
         unsigned bytes_per_pixel = util_format_get_blocksize(format);
 
-        enum mali_format mali_format = panfrost_pipe_format_table[desc->format].hw;
-        assert(mali_format);
-
         bool manual_stride = (modifier == DRM_FORMAT_MOD_LINEAR)
                 && panfrost_needs_explicit_stride(slices, width,
                                 first_level, last_level, bytes_per_pixel);
-
-        unsigned format_swizzle = (format == PIPE_FORMAT_X24S8_UINT) ?
-                                MALI_SWIZZLE_A001 :
-                                (format == PIPE_FORMAT_S8_UINT) ?
-                                MALI_SWIZZLE_R001 :
-                                panfrost_translate_swizzle_4(desc->swizzle);
-
-        bool srgb = (desc->colorspace == UTIL_FORMAT_COLORSPACE_SRGB);
 
         pan_pack(out, MIDGARD_TEXTURE, cfg) {
                 cfg.width = u_minify(width, first_level);
                 cfg.height = u_minify(height, first_level);
                 cfg.depth = u_minify(depth, first_level);
                 cfg.array_size = array_size;
-                cfg.format = format_swizzle | (mali_format << 12) | (srgb << 20);
+                cfg.format = panfrost_pipe_format_v6[format].hw;
                 cfg.dimension = dim;
                 cfg.texel_ordering = panfrost_modifier_to_layout(modifier);
                 cfg.manual_stride = manual_stride;
@@ -403,9 +392,6 @@ panfrost_new_texture_bifrost(
         const struct util_format_description *desc =
                 util_format_description(format);
 
-        enum mali_format mali_format = panfrost_pipe_format_table[desc->format].hw;
-        assert(mali_format);
-
         panfrost_emit_texture_payload(
                 payload->cpu,
                 desc,
@@ -420,16 +406,9 @@ panfrost_new_texture_bifrost(
                 base,
                 slices);
 
-        bool srgb = (desc->colorspace == UTIL_FORMAT_COLORSPACE_SRGB);
-        bool swap_rb = desc->swizzle[0] == 2 && desc->swizzle[2] == 0;
-
         pan_pack(out, BIFROST_TEXTURE, cfg) {
                 cfg.dimension = dim;
-                cfg.format = (mali_format << 12) | (srgb << 20);
-                if (dev->quirks & HAS_SWIZZLES)
-	                cfg.format |= panfrost_get_default_swizzle(desc->nr_channels);
-                else if (swap_rb)
-                        cfg.format |= MALI_RGB_COMPONENT_ORDER_BGRA;
+                cfg.format = dev->formats[format].hw;
 
                 cfg.width = u_minify(width, first_level);
                 cfg.height = u_minify(height, first_level);

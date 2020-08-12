@@ -283,11 +283,7 @@ panfrost_load_emit_varying(struct pan_pool *pool, struct MALI_DRAW *draw,
         pan_pack(varying.cpu, ATTRIBUTE, cfg) {
                 cfg.buffer_index = 0;
                 cfg.offset_enable = !is_bifrost;
-                cfg.format = (MALI_RGBA32F << 12);
-                if (pool->dev->quirks & HAS_SWIZZLES)
-                        cfg.format |= panfrost_get_default_swizzle(2);
-                else
-                        cfg.format |= panfrost_bifrost_swizzle(2);
+                cfg.format = pool->dev->formats[PIPE_FORMAT_R32G32_FLOAT].hw;
         }
 
         draw->varyings = varying.gpu;
