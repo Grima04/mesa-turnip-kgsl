@@ -323,14 +323,7 @@ void transition_to_WQM(exec_ctx& ctx, Builder bld, unsigned idx)
       return;
    if (ctx.info[idx].exec.back().second & mask_type_global) {
       Temp exec_mask = ctx.info[idx].exec.back().first;
-      /* TODO: we might generate better code if we pass the uncopied "exec_mask"
-       * directly to the s_wqm (we still need to keep this parallelcopy for
-       * potential later uses of exec_mask though). We currently can't do this
-       * because of a RA bug. */
-      exec_mask = bld.pseudo(aco_opcode::p_parallelcopy, bld.def(bld.lm), bld.exec(exec_mask));
-      ctx.info[idx].exec.back().first = exec_mask;
-
-      exec_mask = bld.sop1(Builder::s_wqm, bld.def(bld.lm, exec), bld.def(s1, scc), exec_mask);
+      exec_mask = bld.sop1(Builder::s_wqm, bld.def(bld.lm, exec), bld.def(s1, scc), bld.exec(exec_mask));
       ctx.info[idx].exec.emplace_back(exec_mask, mask_type_global | mask_type_wqm);
       return;
    }
