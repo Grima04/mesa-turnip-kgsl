@@ -23,6 +23,7 @@
 
 #include "nir.h"
 #include "nir_builder.h"
+#include "nir_vla.h"
 
 struct path {
    /** Set of blocks which this path represents
@@ -74,6 +75,35 @@ struct strct_lvl {
    /** True if this level is irreducable */
    bool irreducible;
 };
+
+static int
+nir_block_ptr_cmp(const void *_a, const void *_b)
+{
+   nir_block *const *a = _a;
+   nir_block *const *b = _b;
+   return (int)(*a)->index - (int)(*b)->index;
+}
+
+/** Return a sorted array of blocks for a set
+ *
+ * Hash set ordering is non-deterministic.  We hash based on pointers and so,
+ * if any pointer ever changes from one run to another, the order of the set
+ * may change.  Any time we're going to make decisions which may affect the
+ * final structure which may depend on ordering, we should first sort the
+ * blocks.
+ */
+static nir_block **
+sorted_block_arr_for_set(const struct set *block_set, void *mem_ctx)
+{
+   const unsigned num_blocks = block_set->entries;
+   nir_block **block_arr = ralloc_array(mem_ctx, nir_block *, num_blocks);
+   unsigned i = 0;
+   set_foreach(block_set, entry)
+      block_arr[i++] = (nir_block *)entry->key;
+   assert(i == num_blocks);
+   qsort(block_arr, num_blocks, sizeof(*block_arr), nir_block_ptr_cmp);
+   return block_arr;
+}
 
 /**
  * Sets all path variables to reach the target block via a fork
@@ -411,6 +441,36 @@ inside_outside(nir_block *block, struct set *loop_heads, struct set *outside,
    }
 }
 
+static struct path_fork *
+select_fork_recur(struct nir_block **blocks, unsigned start, unsigned end,
+                  nir_function_impl *impl, bool need_var, void *mem_ctx)
+{
+   if (start == end - 1)
+      return NULL;
+
+   struct path_fork *fork = ralloc(mem_ctx, struct path_fork);
+   fork->is_var = need_var;
+   if (need_var)
+      fork->path_var = nir_local_variable_create(impl, glsl_bool_type(),
+                                                 "path_select");
+
+   unsigned mid = start + (end - start) / 2;
+
+   fork->paths[0].reachable = _mesa_pointer_set_create(fork);
+   for (unsigned i = start; i < mid; i++)
+      _mesa_set_add(fork->paths[0].reachable, blocks[i]);
+   fork->paths[0].fork =
+      select_fork_recur(blocks, start, mid, impl, need_var, mem_ctx);
+
+   fork->paths[1].reachable = _mesa_pointer_set_create(fork);
+   for (unsigned i = mid; i < end; i++)
+      _mesa_set_add(fork->paths[1].reachable, blocks[i]);
+   fork->paths[1].fork =
+      select_fork_recur(blocks, mid, end, impl, need_var, mem_ctx);
+
+   return fork;
+}
+
 /**
  * Gets a set of blocks organized into the same level by the organize_levels
  * function and creates enough forks to be able to route to them.
@@ -422,31 +482,15 @@ static struct path_fork *
 select_fork(struct set *reachable, nir_function_impl *impl, bool need_var,
             void *mem_ctx)
 {
-   struct path_fork *fork = NULL;
-   if (reachable->entries > 1) {
-      fork = ralloc(mem_ctx, struct path_fork);
-      fork->is_var = need_var;
-      if (need_var)
-         fork->path_var = nir_local_variable_create(impl, glsl_bool_type(),
-                                                    "path_select");
-      fork->paths[0].reachable = _mesa_pointer_set_create(fork);
-      struct set_entry *entry = NULL;
-      while (fork->paths[0].reachable->entries < reachable->entries / 2 &&
-             (entry = _mesa_set_next_entry(reachable, entry))) {
-         _mesa_set_add_pre_hashed(fork->paths[0].reachable,
-                                  entry->hash, entry->key);
-      }
-      fork->paths[0].fork = select_fork(fork->paths[0].reachable, impl,
-                                        need_var, mem_ctx);
-      fork->paths[1].reachable = _mesa_pointer_set_create(fork);
-      while ((entry = _mesa_set_next_entry(reachable, entry))) {
-         _mesa_set_add_pre_hashed(fork->paths[1].reachable,
-                                  entry->hash, entry->key);
-      }
-      fork->paths[1].fork = select_fork(fork->paths[1].reachable, impl,
-                                        need_var, mem_ctx);
-   }
-   return fork;
+   assert(reachable->entries > 0);
+   if (reachable->entries <= 1)
+      return NULL;
+
+   /* Hash set ordering is non-deterministic.  We're about to turn a set into
+    * a tree so we really want things to be in a deterministic ordering.
+    */
+   return select_fork_recur(sorted_block_arr_for_set(reachable, mem_ctx),
+                            0, reachable->entries, impl, need_var, mem_ctx);
 }
 
 /**
