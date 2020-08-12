@@ -216,143 +216,9 @@ get_gfx_program(struct zink_context *ctx)
    return ctx->curr_program;
 }
 
-static bool
-line_width_needed(enum pipe_prim_type reduced_prim,
-                  VkPolygonMode polygon_mode)
+static void
+update_descriptors(struct zink_context *ctx, struct zink_screen *screen, bool is_compute)
 {
-   switch (reduced_prim) {
-   case PIPE_PRIM_POINTS:
-      return false;
-
-   case PIPE_PRIM_LINES:
-      return true;
-
-   case PIPE_PRIM_TRIANGLES:
-      return polygon_mode == VK_POLYGON_MODE_LINE;
-
-   default:
-      unreachable("unexpected reduced prim");
-   }
-}
-
-static inline bool
-restart_supported(enum pipe_prim_type mode)
-{
-    return mode == PIPE_PRIM_LINE_STRIP || mode == PIPE_PRIM_TRIANGLE_STRIP || mode == PIPE_PRIM_TRIANGLE_FAN;
-}
-
-void
-zink_draw_vbo(struct pipe_context *pctx,
-              const struct pipe_draw_info *dinfo,
-              const struct pipe_draw_indirect_info *dindirect,
-              const struct pipe_draw_start_count *draws,
-              unsigned num_draws)
-{
-   if (num_draws > 1) {
-      struct pipe_draw_info tmp_info = *dinfo;
-
-      for (unsigned i = 0; i < num_draws; i++) {
-         zink_draw_vbo(pctx, &tmp_info, dindirect, &draws[i], 1);
-         if (tmp_info.increment_draw_id)
-            tmp_info.drawid++;
-      }
-      return;
-   }
-
-   if (!dindirect && (!draws[0].count || !dinfo->instance_count))
-      return;
-
-   struct zink_context *ctx = zink_context(pctx);
-   struct zink_screen *screen = zink_screen(pctx->screen);
-   struct zink_rasterizer_state *rast_state = ctx->rast_state;
-   struct zink_depth_stencil_alpha_state *dsa_state = ctx->dsa_state;
-   struct zink_so_target *so_target =
-      dindirect && dindirect->count_from_stream_output ?
-         zink_so_target(dindirect->count_from_stream_output) : NULL;
-   VkBuffer counter_buffers[PIPE_MAX_SO_OUTPUTS];
-   VkDeviceSize counter_buffer_offsets[PIPE_MAX_SO_OUTPUTS] = {};
-   bool need_index_buffer_unref = false;
-
-
-   if (dinfo->primitive_restart && !restart_supported(dinfo->mode)) {
-       util_draw_vbo_without_prim_restart(pctx, dinfo, dindirect, &draws[0]);
-       return;
-   }
-   if (dinfo->mode == PIPE_PRIM_QUADS ||
-       dinfo->mode == PIPE_PRIM_QUAD_STRIP ||
-       dinfo->mode == PIPE_PRIM_POLYGON ||
-       (dinfo->mode == PIPE_PRIM_TRIANGLE_FAN && !screen->have_triangle_fans) ||
-       dinfo->mode == PIPE_PRIM_LINE_LOOP) {
-      if (!u_trim_pipe_prim(dinfo->mode, (unsigned *)&draws[0].count))
-         return;
-
-      util_primconvert_save_rasterizer_state(ctx->primconvert, &rast_state->base);
-      util_primconvert_draw_vbo(ctx->primconvert, dinfo, &draws[0]);
-      return;
-   }
-   if (ctx->gfx_pipeline_state.vertices_per_patch != dinfo->vertices_per_patch)
-      ctx->gfx_pipeline_state.dirty = true;
-   ctx->gfx_pipeline_state.vertices_per_patch = dinfo->vertices_per_patch;
-   struct zink_gfx_program *gfx_program = get_gfx_program(ctx);
-   if (!gfx_program)
-      return;
-
-   if (ctx->gfx_pipeline_state.primitive_restart != !!dinfo->primitive_restart)
-      ctx->gfx_pipeline_state.dirty = true;
-   ctx->gfx_pipeline_state.primitive_restart = !!dinfo->primitive_restart;
-
-   for (unsigned i = 0; i < ctx->element_state->hw_state.num_bindings; i++) {
-      unsigned binding = ctx->element_state->binding_map[i];
-      const struct pipe_vertex_buffer *vb = ctx->buffers + binding;
-      if (ctx->gfx_pipeline_state.bindings[i].stride != vb->stride) {
-         ctx->gfx_pipeline_state.bindings[i].stride = vb->stride;
-         ctx->gfx_pipeline_state.dirty = true;
-      }
-   }
-
-   VkPipeline pipeline = zink_get_gfx_pipeline(screen, gfx_program,
-                                               &ctx->gfx_pipeline_state,
-                                               dinfo->mode);
-
-   enum pipe_prim_type reduced_prim = u_reduced_prim(dinfo->mode);
-
-   bool depth_bias = false;
-   switch (reduced_prim) {
-   case PIPE_PRIM_POINTS:
-      depth_bias = rast_state->offset_point;
-      break;
-
-   case PIPE_PRIM_LINES:
-      depth_bias = rast_state->offset_line;
-      break;
-
-   case PIPE_PRIM_TRIANGLES:
-      depth_bias = rast_state->offset_tri;
-      break;
-
-   default:
-      unreachable("unexpected reduced prim");
-   }
-
-   unsigned index_offset = 0;
-   struct pipe_resource *index_buffer = NULL;
-   if (dinfo->index_size > 0) {
-       uint32_t restart_index = util_prim_restart_index_from_size(dinfo->index_size);
-       if ((dinfo->primitive_restart && (dinfo->restart_index != restart_index)) ||
-           (!screen->info.have_EXT_index_type_uint8 && dinfo->index_size == 1)) {
-          util_translate_prim_restart_ib(pctx, dinfo, dindirect, &draws[0], &index_buffer);
-          need_index_buffer_unref = true;
-       } else {
-          if (dinfo->has_user_indices) {
-             if (!util_upload_index_buffer(pctx, dinfo, &draws[0], &index_buffer, &index_offset, 4)) {
-                debug_printf("util_upload_index_buffer() failed\n");
-                return;
-             }
-          } else
-             index_buffer = dinfo->index.resource;
-       }
-   }
-
    VkWriteDescriptorSet wds[PIPE_SHADER_TYPES * (PIPE_MAX_CONSTANT_BUFFERS + PIPE_MAX_SAMPLERS + PIPE_MAX_SHADER_BUFFERS + PIPE_MAX_SHADER_IMAGES)];
    struct zink_resource *read_desc_resources[PIPE_SHADER_TYPES * (PIPE_MAX_CONSTANT_BUFFERS + PIPE_MAX_SAMPLERS + PIPE_MAX_SHADER_BUFFERS + PIPE_MAX_SHADER_IMAGES)] = {};
    struct zink_resource *write_desc_resources[PIPE_SHADER_TYPES * (PIPE_MAX_CONSTANT_BUFFERS + PIPE_MAX_SAMPLERS + PIPE_MAX_SHADER_BUFFERS + PIPE_MAX_SHADER_IMAGES)] = {};
@@ -360,7 +226,11 @@ zink_draw_vbo(struct pipe_context *pctx,
    VkDescriptorBufferInfo buffer_infos[PIPE_SHADER_TYPES * (PIPE_MAX_CONSTANT_BUFFERS + PIPE_MAX_SHADER_BUFFERS + PIPE_MAX_SHADER_IMAGES)];
    VkDescriptorImageInfo image_infos[PIPE_SHADER_TYPES * (PIPE_MAX_SAMPLERS + PIPE_MAX_SHADER_IMAGES)];
    VkBufferView buffer_view[] = {VK_NULL_HANDLE};
-   int num_wds = 0, num_buffer_info = 0, num_image_info = 0, num_surface_refs = 0;
+   unsigned num_wds = 0, num_buffer_info = 0, num_image_info = 0, num_surface_refs = 0;
+   struct zink_shader **stages;
+
+   unsigned num_stages = ZINK_SHADER_COUNT;
+   stages = &ctx->gfx_stages[0];
 
    struct {
       struct zink_resource *res;
@@ -368,8 +238,8 @@ zink_draw_vbo(struct pipe_context *pctx,
    } transitions[PIPE_SHADER_TYPES * (PIPE_MAX_SAMPLERS + PIPE_MAX_SHADER_IMAGES)];
    int num_transitions = 0;
 
-   for (int i = 0; i < ARRAY_SIZE(ctx->gfx_stages); i++) {
-      struct zink_shader *shader = ctx->gfx_stages[i];
+   for (int i = 0; i < num_stages; i++) {
+      struct zink_shader *shader = stages[i];
       if (!shader)
          continue;
       enum pipe_shader_type stage = pipe_shader_type_from_mesa(shader->nir->info.stage);
@@ -534,31 +404,29 @@ zink_draw_vbo(struct pipe_context *pctx,
                                transitions[i].layout);
    }
 
-   if (ctx->xfb_barrier)
-      zink_emit_xfb_counter_barrier(ctx);
-
-   if (ctx->dirty_so_targets && ctx->num_so_targets)
-      zink_emit_stream_output_targets(pctx);
-
-   if (so_target && zink_resource(so_target->base.buffer)->needs_xfb_barrier)
-      zink_emit_xfb_vertex_input_barrier(ctx, zink_resource(so_target->base.buffer));
-
-
-   batch = zink_batch_rp(ctx);
-
-   if (batch->descs_left < gfx_program->num_descriptors) {
-      ctx->base.flush(&ctx->base, NULL, 0);
+   unsigned num_descriptors;
+   VkDescriptorSetLayout dsl;
+   if (!is_compute) {
       batch = zink_batch_rp(ctx);
-      assert(batch->descs_left >= gfx_program->num_descriptors);
+      num_descriptors = ctx->curr_program->num_descriptors;
+      dsl = ctx->curr_program->dsl;
+   }
+
+   if (batch->descs_left < num_descriptors) {
+      if (!is_compute) {
+         ctx->base.flush(&ctx->base, NULL, 0);
+         batch = zink_batch_rp(ctx);
+      }
+      assert(batch->descs_left >= num_descriptors);
    }
    zink_batch_reference_program(batch, &ctx->curr_program->reference);
 
    VkDescriptorSet desc_set = allocate_descriptor_set(screen, batch,
-                                                      gfx_program->dsl, gfx_program->num_descriptors);
+                                                      dsl, num_descriptors);
    assert(desc_set != VK_NULL_HANDLE);
 
-   for (int i = 0; i < ARRAY_SIZE(ctx->gfx_stages); i++) {
-      struct zink_shader *shader = ctx->gfx_stages[i];
+   for (int i = 0; i < num_stages; i++) {
+      struct zink_shader *shader = stages[i];
       if (!shader)
          continue;
       enum pipe_shader_type stage = pipe_shader_type_from_mesa(shader->nir->info.stage);
@@ -573,6 +441,174 @@ zink_draw_vbo(struct pipe_context *pctx,
       }
    }
 
+   if (num_wds > 0) {
+      for (int i = 0; i < num_wds; ++i) {
+         wds[i].dstSet = desc_set;
+         if (read_desc_resources[i])
+            zink_batch_reference_resource_rw(batch, read_desc_resources[i], false);
+         else if (write_desc_resources[i])
+            zink_batch_reference_resource_rw(batch, write_desc_resources[i], true);
+      }
+      vkUpdateDescriptorSets(screen->dev, num_wds, wds, 0, NULL);
+      for (int i = 0; i < num_surface_refs; i++) {
+         if (surface_refs[i])
+            zink_batch_reference_surface(batch, surface_refs[i]);
+      }
+   }
+
+   vkCmdBindDescriptorSets(batch->cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                           ctx->curr_program->layout, 0, 1, &desc_set, 0, NULL);
+}
+
+static bool
+line_width_needed(enum pipe_prim_type reduced_prim,
+                  VkPolygonMode polygon_mode)
+{
+   switch (reduced_prim) {
+   case PIPE_PRIM_POINTS:
+      return false;
+
+   case PIPE_PRIM_LINES:
+      return true;
+
+   case PIPE_PRIM_TRIANGLES:
+      return polygon_mode == VK_POLYGON_MODE_LINE;
+
+   default:
+      unreachable("unexpected reduced prim");
+   }
+}
+
+static inline bool
+restart_supported(enum pipe_prim_type mode)
+{
+    return mode == PIPE_PRIM_LINE_STRIP || mode == PIPE_PRIM_TRIANGLE_STRIP || mode == PIPE_PRIM_TRIANGLE_FAN;
+}
+
+
+void
+zink_draw_vbo(struct pipe_context *pctx,
+              const struct pipe_draw_info *dinfo,
+              const struct pipe_draw_indirect_info *dindirect,
+              const struct pipe_draw_start_count *draws,
+              unsigned num_draws)
+{
+   if (num_draws > 1) {
+      struct pipe_draw_info tmp_info = *dinfo;
+
+      for (unsigned i = 0; i < num_draws; i++) {
+         zink_draw_vbo(pctx, &tmp_info, dindirect, &draws[i], 1);
+         if (tmp_info.increment_draw_id)
+            tmp_info.drawid++;
+      }
+      return;
+   }
+
+   if (!dindirect && (!draws[0].count || !dinfo->instance_count))
+      return;
+
+   struct zink_context *ctx = zink_context(pctx);
+   struct zink_screen *screen = zink_screen(pctx->screen);
+   struct zink_rasterizer_state *rast_state = ctx->rast_state;
+   struct zink_depth_stencil_alpha_state *dsa_state = ctx->dsa_state;
+   struct zink_so_target *so_target =
+      dindirect && dindirect->count_from_stream_output ?
+         zink_so_target(dindirect->count_from_stream_output) : NULL;
+   VkBuffer counter_buffers[PIPE_MAX_SO_OUTPUTS];
+   VkDeviceSize counter_buffer_offsets[PIPE_MAX_SO_OUTPUTS] = {};
+   bool need_index_buffer_unref = false;
+
+
+   if (dinfo->primitive_restart && !restart_supported(dinfo->mode)) {
+       util_draw_vbo_without_prim_restart(pctx, dinfo, dindirect, &draws[0]);
+       return;
+   }
+   if (dinfo->mode == PIPE_PRIM_QUADS ||
+       dinfo->mode == PIPE_PRIM_QUAD_STRIP ||
+       dinfo->mode == PIPE_PRIM_POLYGON ||
+       (dinfo->mode == PIPE_PRIM_TRIANGLE_FAN && !screen->have_triangle_fans) ||
+       dinfo->mode == PIPE_PRIM_LINE_LOOP) {
+      if (!u_trim_pipe_prim(dinfo->mode, (unsigned *)&draws[0].count))
+         return;
+
+      util_primconvert_save_rasterizer_state(ctx->primconvert, &rast_state->base);
+      util_primconvert_draw_vbo(ctx->primconvert, dinfo, &draws[0]);
+      return;
+   }
+   if (ctx->gfx_pipeline_state.vertices_per_patch != dinfo->vertices_per_patch)
+      ctx->gfx_pipeline_state.dirty = true;
+   ctx->gfx_pipeline_state.vertices_per_patch = dinfo->vertices_per_patch;
+   struct zink_gfx_program *gfx_program = get_gfx_program(ctx);
+   if (!gfx_program)
+      return;
+
+   if (ctx->gfx_pipeline_state.primitive_restart != !!dinfo->primitive_restart)
+      ctx->gfx_pipeline_state.dirty = true;
+   ctx->gfx_pipeline_state.primitive_restart = !!dinfo->primitive_restart;
+
+   for (unsigned i = 0; i < ctx->element_state->hw_state.num_bindings; i++) {
+      unsigned binding = ctx->element_state->binding_map[i];
+      const struct pipe_vertex_buffer *vb = ctx->buffers + binding;
+      if (ctx->gfx_pipeline_state.bindings[i].stride != vb->stride) {
+         ctx->gfx_pipeline_state.bindings[i].stride = vb->stride;
+         ctx->gfx_pipeline_state.dirty = true;
+      }
+   }
+
+   VkPipeline pipeline = zink_get_gfx_pipeline(screen, gfx_program,
+                                               &ctx->gfx_pipeline_state,
+                                               dinfo->mode);
+
+   enum pipe_prim_type reduced_prim = u_reduced_prim(dinfo->mode);
+
+   bool depth_bias = false;
+   switch (reduced_prim) {
+   case PIPE_PRIM_POINTS:
+      depth_bias = rast_state->offset_point;
+      break;
+
+   case PIPE_PRIM_LINES:
+      depth_bias = rast_state->offset_line;
+      break;
+
+   case PIPE_PRIM_TRIANGLES:
+      depth_bias = rast_state->offset_tri;
+      break;
+
+   default:
+      unreachable("unexpected reduced prim");
+   }
+
+   unsigned index_offset = 0;
+   struct pipe_resource *index_buffer = NULL;
+   if (dinfo->index_size > 0) {
+       uint32_t restart_index = util_prim_restart_index_from_size(dinfo->index_size);
+       if ((dinfo->primitive_restart && (dinfo->restart_index != restart_index)) ||
+           (!screen->info.have_EXT_index_type_uint8 && dinfo->index_size == 1)) {
+          util_translate_prim_restart_ib(pctx, dinfo, dindirect, &draws[0], &index_buffer);
+          need_index_buffer_unref = true;
+       } else {
+          if (dinfo->has_user_indices) {
+             if (!util_upload_index_buffer(pctx, dinfo, &draws[0], &index_buffer, &index_offset, 4)) {
+                debug_printf("util_upload_index_buffer() failed\n");
+                return;
+             }
+          } else
+             index_buffer = dinfo->index.resource;
+       }
+   }
+   if (ctx->xfb_barrier)
+      zink_emit_xfb_counter_barrier(ctx);
+
+   if (ctx->dirty_so_targets && ctx->num_so_targets)
+      zink_emit_stream_output_targets(pctx);
+
+   if (so_target && zink_resource(so_target->base.buffer)->needs_xfb_barrier)
+      zink_emit_xfb_vertex_input_barrier(ctx, zink_resource(so_target->base.buffer));
+
+   update_descriptors(ctx, screen, false);
+
+   struct zink_batch *batch = zink_batch_rp(ctx);
    vkCmdSetViewport(batch->cmdbuf, 0, ctx->gfx_pipeline_state.num_viewports, ctx->viewports);
    if (ctx->rast_state->base.scissor)
       vkCmdSetScissor(batch->cmdbuf, 0, ctx->gfx_pipeline_state.num_viewports, ctx->scissors);
@@ -613,24 +649,8 @@ zink_draw_vbo(struct pipe_context *pctx,
    if (ctx->gfx_pipeline_state.blend_state->need_blend_constants)
       vkCmdSetBlendConstants(batch->cmdbuf, ctx->blend_constants);
 
-   if (num_wds > 0) {
-      for (int i = 0; i < num_wds; ++i) {
-         wds[i].dstSet = desc_set;
-         if (read_desc_resources[i])
-            zink_batch_reference_resource_rw(batch, read_desc_resources[i], false);
-         else if (write_desc_resources[i])
-            zink_batch_reference_resource_rw(batch, write_desc_resources[i], true);
-      }
-      vkUpdateDescriptorSets(screen->dev, num_wds, wds, 0, NULL);
-      for (int i = 0; i < num_surface_refs; i++) {
-         if (surface_refs[i])
-            zink_batch_reference_surface(batch, surface_refs[i]);
-      }
-   }
-
    vkCmdBindPipeline(batch->cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
-   vkCmdBindDescriptorSets(batch->cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                           gfx_program->layout, 0, 1, &desc_set, 0, NULL);
+
    zink_bind_vertex_buffers(batch, ctx);
 
    if (gfx_program->shaders[PIPE_SHADER_TESS_CTRL] && gfx_program->shaders[PIPE_SHADER_TESS_CTRL]->is_generated)
