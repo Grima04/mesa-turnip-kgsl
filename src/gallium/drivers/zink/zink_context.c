@@ -1558,6 +1558,53 @@ zink_set_stream_output_targets(struct pipe_context *pctx,
    }
 }
 
+static bool
+init_batch(struct zink_context *ctx, struct zink_batch *batch, unsigned idx)
+{
+   struct zink_screen *screen = zink_screen(ctx->base.screen);
+   VkCommandBufferAllocateInfo cbai = {};
+   cbai.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+   cbai.commandPool = ctx->cmdpool;
+   cbai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+   cbai.commandBufferCount = 1;
+
+   VkDescriptorPoolSize sizes[] = {
+      {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,         ZINK_BATCH_DESC_SIZE},
+      {VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER,   ZINK_BATCH_DESC_SIZE},
+      {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, ZINK_BATCH_DESC_SIZE},
+      {VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER,   ZINK_BATCH_DESC_SIZE},
+      {VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,          ZINK_BATCH_DESC_SIZE},
+      {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,         ZINK_BATCH_DESC_SIZE},
+   };
+   VkDescriptorPoolCreateInfo dpci = {};
+   dpci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+   dpci.pPoolSizes = sizes;
+   dpci.poolSizeCount = ARRAY_SIZE(sizes);
+   dpci.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
+   dpci.maxSets = ZINK_BATCH_DESC_SIZE;
+
+   if (vkAllocateCommandBuffers(screen->dev, &cbai, &batch->cmdbuf) != VK_SUCCESS)
+      return false;
+
+   batch->resources = _mesa_pointer_set_create(NULL);
+   batch->sampler_views = _mesa_pointer_set_create(NULL);
+   batch->programs = _mesa_pointer_set_create(NULL);
+   batch->surfaces = _mesa_pointer_set_create(NULL);
+
+   if (!batch->resources || !batch->sampler_views ||
+       !batch->programs || !batch->surfaces)
+      return false;
+
+   util_dynarray_init(&batch->zombie_samplers, NULL);
+
+   if (vkCreateDescriptorPool(screen->dev, &dpci, 0,
+                              &batch->descpool) != VK_SUCCESS)
+      return false;
+
+   batch->batch_id = idx;
+   return true;
+}
+
 struct pipe_context *
 zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
 {
@@ -1649,47 +1696,9 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
    if (vkCreateCommandPool(screen->dev, &cpci, NULL, &ctx->cmdpool) != VK_SUCCESS)
       goto fail;
 
-   VkCommandBufferAllocateInfo cbai = {};
-   cbai.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-   cbai.commandPool = ctx->cmdpool;
-   cbai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-   cbai.commandBufferCount = 1;
-
-   VkDescriptorPoolSize sizes[] = {
-      {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,         ZINK_BATCH_DESC_SIZE},
-      {VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER,   ZINK_BATCH_DESC_SIZE},
-      {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, ZINK_BATCH_DESC_SIZE},
-      {VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER,   ZINK_BATCH_DESC_SIZE},
-      {VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,          ZINK_BATCH_DESC_SIZE},
-      {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,         ZINK_BATCH_DESC_SIZE},
-   };
-   VkDescriptorPoolCreateInfo dpci = {};
-   dpci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-   dpci.pPoolSizes = sizes;
-   dpci.poolSizeCount = ARRAY_SIZE(sizes);
-   dpci.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
-   dpci.maxSets = ZINK_BATCH_DESC_SIZE;
-
    for (int i = 0; i < ARRAY_SIZE(ctx->batches); ++i) {
-      if (vkAllocateCommandBuffers(screen->dev, &cbai, &ctx->batches[i].cmdbuf) != VK_SUCCESS)
+      if (!init_batch(ctx, &ctx->batches[i], i))
          goto fail;
-
-      ctx->batches[i].resources = _mesa_pointer_set_create(NULL);
-      ctx->batches[i].sampler_views = _mesa_pointer_set_create(NULL);
-      ctx->batches[i].programs = _mesa_pointer_set_create(NULL);
-      ctx->batches[i].surfaces = _mesa_pointer_set_create(NULL);
-
-      if (!ctx->batches[i].resources || !ctx->batches[i].sampler_views ||
-          !ctx->batches[i].programs || !ctx->batches[i].surfaces)
-         goto fail;
-
-      util_dynarray_init(&ctx->batches[i].zombie_samplers, NULL);
-
-      if (vkCreateDescriptorPool(screen->dev, &dpci, 0,
-                                 &ctx->batches[i].descpool) != VK_SUCCESS)
-         goto fail;
-
-      ctx->batches[i].batch_id = i;
    }
 
    vkGetDeviceQueue(screen->dev, screen->gfx_queue, 0, &ctx->queue);
