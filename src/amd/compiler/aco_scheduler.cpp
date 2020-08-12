@@ -35,7 +35,7 @@
 #define SMEM_MAX_MOVES (64 - ctx.num_waves * 4)
 #define VMEM_MAX_MOVES (256 - ctx.num_waves * 16)
 /* creating clauses decreases def-use distances, so make it less aggressive the lower num_waves is */
-#define VMEM_CLAUSE_MAX_GRAB_DIST ((ctx.num_waves - 1) * 8)
+#define VMEM_CLAUSE_MAX_GRAB_DIST (ctx.num_waves * 8)
 #define POS_EXP_MAX_MOVES 512
 
 namespace aco {
