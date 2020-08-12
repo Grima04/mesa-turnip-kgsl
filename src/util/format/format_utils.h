@@ -94,7 +94,7 @@ _mesa_unorm_to_unorm(unsigned x, unsigned src_bits, unsigned dst_bits)
    if (src_bits < dst_bits) {
       return EXTEND_NORMALIZED_INT(x, src_bits, dst_bits);
    } else if (src_bits > dst_bits) {
-      unsigned src_half = (1 << (src_bits - 1)) - 1;
+      unsigned src_half = (1u << (src_bits - 1)) - 1;
 
       if (src_bits + dst_bits > sizeof(x) * 8) {
          assert(src_bits + dst_bits <= sizeof(uint64_t) * 8);
