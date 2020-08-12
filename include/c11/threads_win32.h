@@ -42,23 +42,14 @@ Configuration macro:
     (requires WinVista or later)
     Otherwise emulate by mtx_trylock() + *busy loop* for WinXP.
 
-  EMULATED_THREADS_USE_NATIVE_CV
-    Use native WindowsAPI condition variable object.
-    (requires WinVista or later)
-    Otherwise use emulated implementation for WinXP.
-
   EMULATED_THREADS_TSS_DTOR_SLOTNUM
     Max registerable TSS dtor number.
 */
 
-// XXX: Retain XP compatibility
-#if 0
 #if _WIN32_WINNT >= 0x0600
 // Prefer native WindowsAPI on newer environment.
 #if !defined(__MINGW32__)
-#define EMULATED_THREADS_USE_NATIVE_CALL_ONCE 
-#endif
-#define EMULATED_THREADS_USE_NATIVE_CV
+#define EMULATED_THREADS_USE_NATIVE_CALL_ONCE
 #endif
 #endif
 #define EMULATED_THREADS_TSS_DTOR_SLOTNUM 64  // see TLS_MINIMUM_AVAILABLE
@@ -69,10 +60,6 @@ Configuration macro:
 // check configuration
 #if defined(EMULATED_THREADS_USE_NATIVE_CALL_ONCE) && (_WIN32_WINNT < 0x0600)
 #error EMULATED_THREADS_USE_NATIVE_CALL_ONCE requires _WIN32_WINNT>=0x0600
-#endif
-
-#if defined(EMULATED_THREADS_USE_NATIVE_CV) && (_WIN32_WINNT < 0x0600)
-#error EMULATED_THREADS_USE_NATIVE_CV requires _WIN32_WINNT>=0x0600
 #endif
 
 /* Visual Studio 2015 and later */
@@ -92,18 +79,7 @@ Configuration macro:
 #define _MTX_INITIALIZER_NP {(PCRITICAL_SECTION_DEBUG)-1, -1, 0, 0, 0, 0}
 
 /*---------------------------- types ----------------------------*/
-typedef struct cnd_t {
-#ifdef EMULATED_THREADS_USE_NATIVE_CV
-    CONDITION_VARIABLE condvar;
-#else
-    int blocked;
-    int gone;
-    int to_unblock;
-    HANDLE sem_queue;
-    HANDLE sem_gate;
-    CRITICAL_SECTION monitor;
-#endif
-} cnd_t;
+typedef CONDITION_VARIABLE cnd_t;
 
 typedef HANDLE thrd_t;
 
@@ -178,103 +154,6 @@ static BOOL CALLBACK impl_call_once_callback(PINIT_ONCE InitOnce, PVOID Paramete
 }
 #endif  // ifdef EMULATED_THREADS_USE_NATIVE_CALL_ONCE
 
-#ifndef EMULATED_THREADS_USE_NATIVE_CV
-/*
-Note:
-  The implementation of condition variable is ported from Boost.Interprocess
-  See http://www.boost.org/boost/interprocess/sync/windows/condition.hpp
-*/
-static void impl_cond_do_signal(cnd_t *cond, int broadcast)
-{
-    int nsignal = 0;
-
-    EnterCriticalSection(&cond->monitor);
-    if (cond->to_unblock != 0) {
-        if (cond->blocked == 0) {
-            LeaveCriticalSection(&cond->monitor);
-            return;
-        }
-        if (broadcast) {
-            cond->to_unblock += nsignal = cond->blocked;
-            cond->blocked = 0;
-        } else {
-            nsignal = 1;
-            cond->to_unblock++;
-            cond->blocked--;
-        }
-    } else if (cond->blocked > cond->gone) {
-        WaitForSingleObject(cond->sem_gate, INFINITE);
-        if (cond->gone != 0) {
-            cond->blocked -= cond->gone;
-            cond->gone = 0;
-        }
-        if (broadcast) {
-            nsignal = cond->to_unblock = cond->blocked;
-            cond->blocked = 0;
-        } else {
-            nsignal = cond->to_unblock = 1;
-            cond->blocked--;
-        }
-    }
-    LeaveCriticalSection(&cond->monitor);
-
-    if (0 < nsignal)
-        ReleaseSemaphore(cond->sem_queue, nsignal, NULL);
-}
-
-static int impl_cond_do_wait(cnd_t *cond, mtx_t *mtx, DWORD rel_ms)
-{
-    int nleft = 0;
-    int ngone = 0;
-    int timeout = 0;
-    DWORD w;
-
-    WaitForSingleObject(cond->sem_gate, INFINITE);
-    cond->blocked++;
-    ReleaseSemaphore(cond->sem_gate, 1, NULL);
-
-    mtx_unlock(mtx);
-
-    w = WaitForSingleObject(cond->sem_queue, rel_ms);
-    timeout = (w == WAIT_TIMEOUT);
- 
-    EnterCriticalSection(&cond->monitor);
-    if ((nleft = cond->to_unblock) != 0) {
-        if (timeout) {
-            if (cond->blocked != 0) {
-                cond->blocked--;
-            } else {
-                cond->gone++;
-            }
-        }
-        if (--cond->to_unblock == 0) {
-            if (cond->blocked != 0) {
-                ReleaseSemaphore(cond->sem_gate, 1, NULL);
-                nleft = 0;
-            }
-            else if ((ngone = cond->gone) != 0) {
-                cond->gone = 0;
-            }
-        }
-    } else if (++cond->gone == INT_MAX/2) {
-        WaitForSingleObject(cond->sem_gate, INFINITE);
-        cond->blocked -= cond->gone;
-        ReleaseSemaphore(cond->sem_gate, 1, NULL);
-        cond->gone = 0;
-    }
-    LeaveCriticalSection(&cond->monitor);
-
-    if (nleft == 1) {
-        while (ngone--)
-            WaitForSingleObject(cond->sem_queue, INFINITE);
-        ReleaseSemaphore(cond->sem_gate, 1, NULL);
-    }
-
-    mtx_lock(mtx);
-    return timeout ? thrd_busy : thrd_success;
-}
-#endif  // ifndef EMULATED_THREADS_USE_NATIVE_CV
-
 static struct impl_tss_dtor_entry {
     tss_t key;
     tss_dtor_t dtor;
@@ -339,11 +218,7 @@ static inline int
 cnd_broadcast(cnd_t *cond)
 {
     assert(cond != NULL);
-#ifdef EMULATED_THREADS_USE_NATIVE_CV
-    WakeAllConditionVariable(&cond->condvar);
-#else
-    impl_cond_do_signal(cond, 1);
-#endif
+    WakeAllConditionVariable(cond);
     return thrd_success;
 }
 
@@ -352,13 +227,7 @@ static inline void
 cnd_destroy(cnd_t *cond)
 {
     assert(cond != NULL);
-#ifdef EMULATED_THREADS_USE_NATIVE_CV
     // do nothing
-#else
-    CloseHandle(cond->sem_queue);
-    CloseHandle(cond->sem_gate);
-    DeleteCriticalSection(&cond->monitor);
-#endif
 }
 
 // 7.25.3.3
@@ -366,16 +235,7 @@ static inline int
 cnd_init(cnd_t *cond)
 {
     assert(cond != NULL);
-#ifdef EMULATED_THREADS_USE_NATIVE_CV
-    InitializeConditionVariable(&cond->condvar);
-#else
-    cond->blocked = 0;
-    cond->gone = 0;
-    cond->to_unblock = 0;
-    cond->sem_queue = CreateSemaphore(NULL, 0, LONG_MAX, NULL);
-    cond->sem_gate = CreateSemaphore(NULL, 1, 1, NULL);
-    InitializeCriticalSection(&cond->monitor);
-#endif
+    InitializeConditionVariable(cond);
     return thrd_success;
 }
 
@@ -384,11 +244,7 @@ static inline int
 cnd_signal(cnd_t *cond)
 {
     assert(cond != NULL);
-#ifdef EMULATED_THREADS_USE_NATIVE_CV
-    WakeConditionVariable(&cond->condvar);
-#else
-    impl_cond_do_signal(cond, 0);
-#endif
+    WakeConditionVariable(cond);
     return thrd_success;
 }
 
@@ -401,13 +257,9 @@ cnd_timedwait(cnd_t *cond, mtx_t *mtx, const struct timespec *abs_time)
     assert(abs_time != NULL);
 #ifdef HAVE_TIMESPEC_GET
     const DWORD timeout = impl_abs2relmsec(abs_time);
-#ifdef EMULATED_THREADS_USE_NATIVE_CV
-    if (SleepConditionVariableCS(&cond->condvar, mtx, timeout))
+    if (SleepConditionVariableCS(cond, mtx, timeout))
         return thrd_success;
     return (GetLastError() == ERROR_TIMEOUT) ? thrd_busy : thrd_error;
-#else
-    return impl_cond_do_wait(cond, mtx, timeout);
-#endif
 #else
     return thrd_error;
 #endif
@@ -419,11 +271,7 @@ cnd_wait(cnd_t *cond, mtx_t *mtx)
 {
     assert(cond != NULL);
     assert(mtx != NULL);
-#ifdef EMULATED_THREADS_USE_NATIVE_CV
-    SleepConditionVariableCS(&cond->condvar, mtx, INFINITE);
-#else
-    impl_cond_do_wait(cond, mtx, INFINITE);
-#endif
+    SleepConditionVariableCS(cond, mtx, INFINITE);
     return thrd_success;
 }
 
