@@ -233,7 +233,7 @@ panfrost_mfbd_set_cbuf(
                 if (is_bifrost) {
                         rt->format.unk4 = 0x1;
                 } else {
-                        rt->format.block = MALI_BLOCK_LINEAR;
+                        rt->format.block = MALI_BLOCK_FORMAT_LINEAR;
                 }
 
                 rt->framebuffer = base;
@@ -243,14 +243,14 @@ panfrost_mfbd_set_cbuf(
                 if (is_bifrost) {
                         rt->format.unk3 |= 0x8;
                 } else {
-                        rt->format.block = MALI_BLOCK_TILED;
+                        rt->format.block = MALI_BLOCK_FORMAT_TILED;
                 }
 
                 rt->framebuffer = base;
                 rt->framebuffer_stride = stride;
                 rt->layer_stride = layer_stride;
         } else if (drm_is_afbc(rsrc->modifier)) {
-                rt->format.block = MALI_BLOCK_AFBC;
+                rt->format.block = MALI_BLOCK_FORMAT_AFBC;
 
                 unsigned header_size = rsrc->slices[level].header_size;
 
@@ -303,7 +303,7 @@ panfrost_mfbd_set_zsbuf(
 
                 fbx->flags_hi |= MALI_EXTRA_PRESENT;
                 fbx->flags_lo |= MALI_EXTRA_ZS | 0x1; /* unknown */
-                fbx->zs_block = MALI_BLOCK_AFBC;
+                fbx->zs_block = MALI_BLOCK_FORMAT_AFBC;
 
                 fbx->ds_afbc.depth_stencil = base + header_size;
                 fbx->ds_afbc.depth_stencil_afbc_metadata = base;
@@ -326,16 +326,17 @@ panfrost_mfbd_set_zsbuf(
                 fbx->ds_linear.depth = base;
 
                 if (rsrc->modifier == DRM_FORMAT_MOD_LINEAR) {
-                        fbx->zs_block = MALI_BLOCK_LINEAR;
+                        fbx->zs_block = MALI_BLOCK_FORMAT_LINEAR;
                         fbx->ds_linear.depth_stride = stride / 16;
                         fbx->ds_linear.depth_layer_stride = layer_stride;
                 } else {
                         if (is_bifrost) {
-                                fbx->zs_block = MALI_BLOCK_UNKNOWN;
+                                /* XXX: Bifrost fields are different here */
+                                fbx->zs_block = 1;
                                 fbx->flags_hi |= 0x440;
                                 fbx->flags_lo |= 0x1;
                         } else {
-                                fbx->zs_block = MALI_BLOCK_TILED;
+                                fbx->zs_block = MALI_BLOCK_FORMAT_TILED;
                         }
 
                         fbx->ds_linear.depth_stride = stride;

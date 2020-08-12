@@ -510,22 +510,6 @@ pandecode_special_record(uint64_t v, bool* attribute)
         }
 }
 
-#define DEFINE_CASE(name) case MALI_BLOCK_## name: return "MALI_BLOCK_" #name
-static char *
-pandecode_block_format(enum mali_block_format fmt)
-{
-        switch (fmt) {
-                DEFINE_CASE(TILED);
-                DEFINE_CASE(UNKNOWN);
-                DEFINE_CASE(LINEAR);
-                DEFINE_CASE(AFBC);
-
-        default:
-                unreachable("Invalid case");
-        }
-}
-#undef DEFINE_CASE
-
 #define DEFINE_CASE(name) case MALI_EXCEPTION_ACCESS_## name: return ""#name
 static char *
 pandecode_exception_access(unsigned access)
@@ -718,7 +702,7 @@ pandecode_sfbd_format(struct mali_sfbd_format format)
         pandecode_log_decoded_flags(sfbd_unk2_info, format.unk2);
         pandecode_log_cont(",\n");
 
-        pandecode_prop("block = %s", pandecode_block_format(format.block));
+        pandecode_prop("block = %s", mali_block_format_as_str(format.block));
 
         pandecode_prop("unk3 = 0x%" PRIx32, format.unk3);
 
@@ -1029,7 +1013,7 @@ pandecode_rt_format(struct mali_rt_format format)
         pandecode_prop("unk3 = 0x%" PRIx32, format.unk3);
         pandecode_prop("unk4 = 0x%" PRIx32, format.unk4);
 
-        pandecode_prop("block = %s", pandecode_block_format(format.block));
+        pandecode_prop("block = %s", mali_block_format_as_str(format.block));
 
         /* TODO: Map formats so we can check swizzles and print nicely */
         pandecode_log("swizzle");
@@ -1080,7 +1064,7 @@ pandecode_render_target(uint64_t gpu_va, unsigned job_no, const struct mali_fram
 
                 pandecode_rt_format(rt->format);
 
-                if (rt->format.block == MALI_BLOCK_AFBC) {
+                if (rt->format.block == MALI_BLOCK_FORMAT_AFBC) {
                         pandecode_log(".afbc = {\n");
                         pandecode_indent++;
 
@@ -1261,10 +1245,10 @@ pandecode_mfbd_bfr(uint64_t gpu_va, int job_no, bool is_fragment, bool is_comput
                 pandecode_log_decoded_flags(mfbd_extra_flag_lo_info, fbx->flags_lo);
                 pandecode_log_cont(",\n");
 
-                pandecode_prop("zs_block = %s", pandecode_block_format(fbx->zs_block));
+                pandecode_prop("zs_block = %s", mali_block_format_as_str(fbx->zs_block));
                 pandecode_prop("zs_samples = MALI_POSITIVE(%u)", fbx->zs_samples + 1);
 
-                if (fbx->zs_block == MALI_BLOCK_AFBC) {
+                if (fbx->zs_block == MALI_BLOCK_FORMAT_AFBC) {
                         pandecode_log(".ds_afbc = {\n");
                         pandecode_indent++;
 

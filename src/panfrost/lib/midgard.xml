@@ -38,6 +38,13 @@
     <value name="Always" value="7"/>
   </enum>
 
+  <enum name="Block Format">
+    <!--- 16x16 block u-interleaved -->
+    <value name="Tiled" value="0"/>
+    <value name="Linear" value="2"/>
+    <value name="AFBC" value="3"/>
+  </enum>
+
   <enum name="Mipmap Mode">
     <value name="Nearest" value="0"/>
     <value name="None" value="1"/>

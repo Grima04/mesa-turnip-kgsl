@@ -1267,13 +1267,6 @@ struct midgard_tiler_descriptor {
         u32 weights[8];
 };
 
-enum mali_block_format {
-        MALI_BLOCK_TILED   = 0x0,
-        MALI_BLOCK_UNKNOWN = 0x1,
-        MALI_BLOCK_LINEAR  = 0x2,
-        MALI_BLOCK_AFBC    = 0x3,
-};
-
 struct mali_sfbd_format {
         /* 0x1 */
         unsigned unk1 : 6;
