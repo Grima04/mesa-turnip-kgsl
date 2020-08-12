@@ -150,10 +150,22 @@ static unsigned __stdcall impl_thrd_routine(void *p)
     return (unsigned)code;
 }
 
-static DWORD impl_timespec2msec(const struct timespec *ts)
+static time_t impl_timespec2msec(const struct timespec *ts)
 {
-    return (DWORD)((ts->tv_sec * 1000U) + (ts->tv_nsec / 1000000L));
+    return (ts->tv_sec * 1000U) + (ts->tv_nsec / 1000000L);
 }
+
+#ifdef HAVE_TIMESPEC_GET
+static DWORD impl_abs2relmsec(const struct timespec *abs_time)
+{
+    const time_t abs_ms = impl_timespec2msec(abs_time);
+    struct timespec now;
+    timespec_get(&now, TIME_UTC);
+    const time_t now_ms = impl_timespec2msec(&now);
+    const DWORD rel_ms = (abs_ms > now_ms) ? (DWORD)(abs_ms - now_ms) : 0;
+    return rel_ms;
+}
+#endif
 
 #ifdef EMULATED_THREADS_USE_NATIVE_CALL_ONCE
 struct impl_call_once_param { void (*func)(void); };
@@ -210,7 +222,7 @@ static void impl_cond_do_signal(cnd_t *cond, int broadcast)
         ReleaseSemaphore(cond->sem_queue, nsignal, NULL);
 }
 
-static int impl_cond_do_wait(cnd_t *cond, mtx_t *mtx, const struct timespec *ts)
+static int impl_cond_do_wait(cnd_t *cond, mtx_t *mtx, DWORD rel_ms)
 {
     int nleft = 0;
     int ngone = 0;
@@ -223,7 +235,7 @@ static int impl_cond_do_wait(cnd_t *cond, mtx_t *mtx, const struct timespec *ts)
 
     mtx_unlock(mtx);
 
-    w = WaitForSingleObject(cond->sem_queue, ts ? impl_timespec2msec(ts) : INFINITE);
+    w = WaitForSingleObject(cond->sem_queue, rel_ms);
     timeout = (w == WAIT_TIMEOUT);
  
     EnterCriticalSection(&cond->monitor);
@@ -385,12 +397,17 @@ static inline int
 cnd_timedwait(cnd_t *cond, mtx_t *mtx, const struct timespec *abs_time)
 {
     if (!cond || !mtx || !abs_time) return thrd_error;
+#ifdef HAVE_TIMESPEC_GET
+    const DWORD timeout = impl_abs2relmsec(abs_time);
 #ifdef EMULATED_THREADS_USE_NATIVE_CV
-    if (SleepConditionVariableCS(&cond->condvar, mtx, impl_timespec2msec(abs_time)))
+    if (SleepConditionVariableCS(&cond->condvar, mtx, timeout))
         return thrd_success;
     return (GetLastError() == ERROR_TIMEOUT) ? thrd_busy : thrd_error;
 #else
-    return impl_cond_do_wait(cond, mtx, abs_time);
+    return impl_cond_do_wait(cond, mtx, timeout);
+#endif
+#else
+    return thrd_error;
 #endif
 }
 
@@ -402,7 +419,7 @@ cnd_wait(cnd_t *cond, mtx_t *mtx)
 #ifdef EMULATED_THREADS_USE_NATIVE_CV
     SleepConditionVariableCS(&cond->condvar, mtx, INFINITE);
 #else
-    impl_cond_do_wait(cond, mtx, NULL);
+    impl_cond_do_wait(cond, mtx, INFINITE);
 #endif
     return thrd_success;
 }
@@ -444,18 +461,18 @@ mtx_lock(mtx_t *mtx)
 static inline int
 mtx_timedlock(mtx_t *mtx, const struct timespec *ts)
 {
-    time_t expire, now;
     if (!mtx || !ts) return thrd_error;
-    expire = time(NULL);
-    expire += ts->tv_sec;
+#ifdef HAVE_TIMESPEC_GET
     while (mtx_trylock(mtx) != thrd_success) {
-        now = time(NULL);
-        if (expire < now)
+        if (impl_abs2relmsec(ts) == 0)
             return thrd_busy;
         // busy loop!
         thrd_yield();
     }
     return thrd_success;
+#else
+    return thrd_error;
+#endif
 }
 
 // 7.25.4.5
@@ -587,7 +604,7 @@ thrd_sleep(const struct timespec *time_point, struct timespec *remaining)
 {
     assert(time_point);
     assert(!remaining); /* not implemented */
-    Sleep(impl_timespec2msec(time_point));
+    Sleep((DWORD)impl_timespec2msec(time_point));
 }
 
 // 7.25.5.8
