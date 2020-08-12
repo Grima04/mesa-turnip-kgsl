@@ -158,17 +158,17 @@ panfrost_get_default_swizzle(unsigned components)
 {
         switch (components) {
         case 1:
-                return (MALI_CHANNEL_RED << 0) | (MALI_CHANNEL_ZERO << 3) |
-                        (MALI_CHANNEL_ZERO << 6) | (MALI_CHANNEL_ONE << 9);
+                return (MALI_CHANNEL_R << 0) | (MALI_CHANNEL_0 << 3) |
+                        (MALI_CHANNEL_0 << 6) | (MALI_CHANNEL_1 << 9);
         case 2:
-                return (MALI_CHANNEL_RED << 0) | (MALI_CHANNEL_GREEN << 3) |
-                        (MALI_CHANNEL_ZERO << 6) | (MALI_CHANNEL_ONE << 9);
+                return (MALI_CHANNEL_R << 0) | (MALI_CHANNEL_G << 3) |
+                        (MALI_CHANNEL_0 << 6) | (MALI_CHANNEL_1 << 9);
         case 3:
-                return (MALI_CHANNEL_RED << 0) | (MALI_CHANNEL_GREEN << 3) |
-                        (MALI_CHANNEL_BLUE << 6) | (MALI_CHANNEL_ONE << 9);
+                return (MALI_CHANNEL_R << 0) | (MALI_CHANNEL_G << 3) |
+                        (MALI_CHANNEL_B << 6) | (MALI_CHANNEL_1 << 9);
         case 4:
-                return (MALI_CHANNEL_RED << 0) | (MALI_CHANNEL_GREEN << 3) |
-                        (MALI_CHANNEL_BLUE << 6) | (MALI_CHANNEL_ALPHA << 9);
+                return (MALI_CHANNEL_R << 0) | (MALI_CHANNEL_G << 3) |
+                        (MALI_CHANNEL_B << 6) | (MALI_CHANNEL_A << 9);
         default:
                 unreachable("Invalid number of components");
         }

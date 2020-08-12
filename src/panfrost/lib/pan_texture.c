@@ -273,16 +273,16 @@ panfrost_emit_texture_payload(
 }
 
 #define MALI_SWIZZLE_R001 \
-        (MALI_CHANNEL_RED << 0) | \
-        (MALI_CHANNEL_ZERO << 3) | \
-        (MALI_CHANNEL_ZERO << 6) | \
-        (MALI_CHANNEL_ONE << 9)
+        (MALI_CHANNEL_R << 0) | \
+        (MALI_CHANNEL_0 << 3) | \
+        (MALI_CHANNEL_0 << 6) | \
+        (MALI_CHANNEL_1 << 9)
 
 #define MALI_SWIZZLE_A001 \
-        (MALI_CHANNEL_ALPHA << 0) | \
-        (MALI_CHANNEL_ZERO << 3) | \
-        (MALI_CHANNEL_ZERO << 6) | \
-        (MALI_CHANNEL_ONE << 9)
+        (MALI_CHANNEL_A << 0) | \
+        (MALI_CHANNEL_0 << 3) | \
+        (MALI_CHANNEL_0 << 6) | \
+        (MALI_CHANNEL_1 << 9)
 
 
 void

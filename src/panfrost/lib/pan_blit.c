@@ -203,7 +203,7 @@ panfrost_load_midg(
         struct mali_attr_meta varying_meta = {
                 .index = 0,
                 .unknown1 = 2,
-                .format = (MALI_CHANNEL_RED << 0) | (MALI_CHANNEL_GREEN << 3) | (MALI_RGBA32F << 12)
+                .format = (MALI_CHANNEL_R << 0) | (MALI_CHANNEL_G << 3) | (MALI_RGBA32F << 12)
         };
 
         struct mali_stencil_packed stencil;
@@ -299,7 +299,7 @@ panfrost_load_midg(
                         0, 0,
                         image->nr_samples,
                         0,
-                        (MALI_CHANNEL_RED << 0) | (MALI_CHANNEL_GREEN << 3) | (MALI_CHANNEL_BLUE << 6) | (MALI_CHANNEL_ALPHA << 9),
+                        (MALI_CHANNEL_R << 0) | (MALI_CHANNEL_G << 3) | (MALI_CHANNEL_B << 6) | (MALI_CHANNEL_A << 9),
                         image->bo->gpu + image->first_layer *
                                 panfrost_get_layer_stride(image->slices,
                                         image->dim == MALI_TEXTURE_DIMENSION_3D,

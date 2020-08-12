@@ -147,18 +147,6 @@ struct mali_blend_equation {
         unsigned color_mask : 4;
 } __attribute__((packed));
 
-/* Used with channel swizzling */
-enum mali_channel {
-	MALI_CHANNEL_RED = 0,
-	MALI_CHANNEL_GREEN = 1,
-	MALI_CHANNEL_BLUE = 2,
-	MALI_CHANNEL_ALPHA = 3,
-	MALI_CHANNEL_ZERO = 4,
-	MALI_CHANNEL_ONE = 5,
-	MALI_CHANNEL_RESERVED_0 = 6,
-	MALI_CHANNEL_RESERVED_1 = 7,
-};
-
 /* Compressed per-pixel formats. Each of these formats expands to one to four
  * floating-point or integer numbers, as defined by the OpenGL specification.
  * There are various places in OpenGL where the user can specify a compressed

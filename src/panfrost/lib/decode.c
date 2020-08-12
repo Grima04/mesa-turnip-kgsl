@@ -756,12 +756,12 @@ static unsigned
 pandecode_access_mask_from_channel_swizzle(unsigned swizzle)
 {
         unsigned mask = 0;
-        assert(MALI_CHANNEL_RED == 0);
+        assert(MALI_CHANNEL_R == 0);
 
         for (unsigned c = 0; c < 4; ++c) {
                 enum mali_channel chan = (swizzle >> (3*c)) & 0x7;
 
-                if (chan <= MALI_CHANNEL_ALPHA)
+                if (chan <= MALI_CHANNEL_A)
                         mask |= (1 << chan);
         }
 
@@ -790,10 +790,10 @@ pandecode_validate_format_swizzle(enum mali_format fmt, unsigned swizzle)
          * useless printing for the defaults */
 
         unsigned default_swizzles[4] = {
-                MALI_CHANNEL_RED | (MALI_CHANNEL_ZERO  << 3) | (MALI_CHANNEL_ZERO << 6) | (MALI_CHANNEL_ONE   << 9),
-                MALI_CHANNEL_RED | (MALI_CHANNEL_GREEN << 3) | (MALI_CHANNEL_ZERO << 6) | (MALI_CHANNEL_ONE   << 9),
-                MALI_CHANNEL_RED | (MALI_CHANNEL_GREEN << 3) | (MALI_CHANNEL_BLUE << 6) | (MALI_CHANNEL_ONE   << 9),
-                MALI_CHANNEL_RED | (MALI_CHANNEL_GREEN << 3) | (MALI_CHANNEL_BLUE << 6) | (MALI_CHANNEL_ALPHA << 9)
+                MALI_CHANNEL_R | (MALI_CHANNEL_0  << 3) | (MALI_CHANNEL_0 << 6) | (MALI_CHANNEL_1   << 9),
+                MALI_CHANNEL_R | (MALI_CHANNEL_G << 3) | (MALI_CHANNEL_0 << 6) | (MALI_CHANNEL_1   << 9),
+                MALI_CHANNEL_R | (MALI_CHANNEL_G << 3) | (MALI_CHANNEL_B << 6) | (MALI_CHANNEL_1   << 9),
+                MALI_CHANNEL_R | (MALI_CHANNEL_G << 3) | (MALI_CHANNEL_B << 6) | (MALI_CHANNEL_A << 9)
         };
 
         return (swizzle == default_swizzles[nr_comp - 1]);
@@ -817,7 +817,7 @@ pandecode_swizzle(unsigned swizzle, enum mali_format format)
         for (unsigned c = 0; c < 4; ++c) {
                 enum mali_channel chan = (swizzle >> (3 * c)) & 0x7;
 
-                if (chan >= MALI_CHANNEL_RESERVED_0) {
+                if (chan > MALI_CHANNEL_1) {
                         pandecode_log("XXX: invalid swizzle channel %d\n", chan);
                         continue;
                 }
