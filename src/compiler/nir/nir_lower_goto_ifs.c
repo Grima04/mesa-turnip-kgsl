@@ -612,9 +612,16 @@ organize_levels(struct list_head *levels, struct set *remaining,
       } else {
          set_foreach(curr_level->blocks, blocks_entry) {
             nir_block *level_block = (nir_block *) blocks_entry->key;
-            if (!prev_frontier) {
-               prev_frontier = curr_level->blocks->entries == 1 ?
-                  level_block->dom_frontier :
+            if (curr_level->blocks->entries == 1) {
+               /* If we only have one block, there's no union operation and we
+                * can just use the one from the one block.
+                */
+               prev_frontier = level_block->dom_frontier;
+               break;
+            }
+
+            if (prev_frontier == NULL) {
+               prev_frontier =
                   _mesa_set_clone(level_block->dom_frontier, prev_level);
             } else {
                set_foreach(level_block->dom_frontier, entry)
