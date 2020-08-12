@@ -366,6 +366,10 @@ preprocess_nir(nir_shader *nir,
                        });
    }
 
+   NIR_PASS_V(nir, nir_lower_explicit_io,
+              nir_var_mem_ubo | nir_var_mem_ssbo,
+              nir_address_format_32bit_index_offset);
+
    NIR_PASS_V(nir, nir_remove_dead_variables, nir_var_shader_in |
               nir_var_shader_out | nir_var_system_value | nir_var_mem_shared,
               NULL);
@@ -611,6 +615,12 @@ lower_vulkan_resource_index(nir_builder *b,
       break;
    }
 
+   /* Since we use the deref pass, both vulkan_resource_index and
+    * vulkan_load_descriptor returns a vec2. But for the index the backend
+    * expect just one scalar (like with get_ssbo_size), so lets return here
+    * just it. Then on load_descriptor we would recreate the vec2, keeping the
+    * second component (unused right now) to zero.
+    */
    nir_ssa_def_rewrite_uses(&instr->dest.ssa,
                             nir_src_for_ssa(nir_imm_int(b, index)));
    nir_instr_remove(&instr->instr);
@@ -860,6 +870,17 @@ lower_intrinsic(nir_builder *b, nir_intrinsic_instr *instr,
    case nir_intrinsic_vulkan_resource_index:
       lower_vulkan_resource_index(b, instr, pipeline, layout);
       return true;
+
+   case nir_intrinsic_load_vulkan_descriptor: {
+      /* We are not using it, as loading the descriptor happens as part of the
+       * load/store instruction, so the simpler is just doing a no-op. We just
+       * lower the desc back to a vec2, as it is what load_ssbo/ubo expects.
+       */
+      nir_ssa_def *desc = nir_vec2(b, instr->src[0].ssa, nir_imm_int(b, 0));
+      nir_ssa_def_rewrite_uses(&instr->dest.ssa, nir_src_for_ssa(desc));
+      nir_instr_remove(&instr->instr);
+      return true;
+   }
 
    case nir_intrinsic_image_deref_load:
    case nir_intrinsic_image_deref_store:
