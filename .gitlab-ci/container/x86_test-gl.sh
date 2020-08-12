@@ -33,6 +33,7 @@ STABLE_EPHEMERAL=" \
       "
 
 apt-get install -y --no-remove \
+      libxcb-shm0 \
       $STABLE_EPHEMERAL
 
 
