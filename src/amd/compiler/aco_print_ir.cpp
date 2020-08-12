@@ -732,7 +732,7 @@ void aco_print_instr(const Instruction *instr, FILE *output)
          if (opsel[i] || (sel[i] & sdwa_sext))
             fprintf(output, ")");
          if (!(sel[i] & sdwa_isra)) {
-            if (sel[i] & sdwa_udword) {
+            if (sel[i] == sdwa_udword || sel[i] == sdwa_sdword) {
                /* print nothing */
             } else if (sel[i] & sdwa_isword) {
                unsigned index = sel[i] & sdwa_wordnum;
