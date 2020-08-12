@@ -172,7 +172,8 @@ get_atomic_op(nir_intrinsic_op op)
    switch (op) {
 #define CASE_ATOMIC_OP(type) \
    case nir_intrinsic_ssbo_atomic_##type: \
-   case nir_intrinsic_image_deref_atomic_##type
+   case nir_intrinsic_image_deref_atomic_##type: \
+   case nir_intrinsic_shared_atomic_##type
 
    CASE_ATOMIC_OP(add):
       return SpvOpAtomicIAdd;
@@ -2359,7 +2360,7 @@ handle_atomic_op(struct ntv_context *ctx, nir_intrinsic_instr *intr, SpvId ptr, 
 }
 
 static void
-emit_atomic_intrinsic(struct ntv_context *ctx, nir_intrinsic_instr *intr)
+emit_ssbo_atomic_intrinsic(struct ntv_context *ctx, nir_intrinsic_instr *intr)
 {
    SpvId ssbo;
    SpvId param;
@@ -2388,6 +2389,27 @@ emit_atomic_intrinsic(struct ntv_context *ctx, nir_intrinsic_instr *intr)
 
    if (intr->intrinsic == nir_intrinsic_ssbo_atomic_comp_swap)
       param2 = get_src(ctx, &intr->src[3]);
+
+   handle_atomic_op(ctx, intr, ptr, param, param2);
+}
+
+static void
+emit_shared_atomic_intrinsic(struct ntv_context *ctx, nir_intrinsic_instr *intr)
+{
+   SpvId dest_type = get_dest_type(ctx, &intr->dest, nir_type_uint32);
+   SpvId param = get_src(ctx, &intr->src[1]);
+
+   SpvId pointer_type = spirv_builder_type_pointer(&ctx->builder,
+                                                   SpvStorageClassWorkgroup,
+                                                   dest_type);
+   SpvId offset = emit_binop(ctx, SpvOpUDiv, get_uvec_type(ctx, 32, 1), get_src(ctx, &intr->src[0]), emit_uint_const(ctx, 32, 4));
+   SpvId ptr = spirv_builder_emit_access_chain(&ctx->builder, pointer_type,
+                                               ctx->shared_block_var, &offset, 1);
+
+   SpvId param2 = 0;
+
+   if (intr->intrinsic == nir_intrinsic_shared_atomic_comp_swap)
+      param2 = get_src(ctx, &intr->src[2]);
 
    handle_atomic_op(ctx, intr, ptr, param, param2);
 }
@@ -2657,7 +2679,20 @@ emit_intrinsic(struct ntv_context *ctx, nir_intrinsic_instr *intr)
    case nir_intrinsic_ssbo_atomic_xor:
    case nir_intrinsic_ssbo_atomic_exchange:
    case nir_intrinsic_ssbo_atomic_comp_swap:
-      emit_atomic_intrinsic(ctx, intr);
+      emit_ssbo_atomic_intrinsic(ctx, intr);
+      break;
+
+   case nir_intrinsic_shared_atomic_add:
+   case nir_intrinsic_shared_atomic_umin:
+   case nir_intrinsic_shared_atomic_imin:
+   case nir_intrinsic_shared_atomic_umax:
+   case nir_intrinsic_shared_atomic_imax:
+   case nir_intrinsic_shared_atomic_and:
+   case nir_intrinsic_shared_atomic_or:
+   case nir_intrinsic_shared_atomic_xor:
+   case nir_intrinsic_shared_atomic_exchange:
+   case nir_intrinsic_shared_atomic_comp_swap:
+      emit_shared_atomic_intrinsic(ctx, intr);
       break;
 
    case nir_intrinsic_get_ssbo_size: {
