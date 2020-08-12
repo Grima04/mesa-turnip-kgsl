@@ -2651,6 +2651,12 @@ emit_intrinsic(struct ntv_context *ctx, nir_intrinsic_instr *intr)
                                         SpvMemorySemanticsMakeVisibleMask  | SpvMemorySemanticsAcquireReleaseMask);
       break;
 
+   case nir_intrinsic_memory_barrier_shared:
+      spirv_builder_emit_memory_barrier(&ctx->builder, SpvScopeWorkgroup,
+                                        SpvMemorySemanticsWorkgroupMemoryMask |
+                                        SpvMemorySemanticsAcquireReleaseMask);
+      break;
+
    case nir_intrinsic_control_barrier:
       spirv_builder_emit_control_barrier(&ctx->builder, SpvScopeWorkgroup,
                                          SpvScopeWorkgroup,
