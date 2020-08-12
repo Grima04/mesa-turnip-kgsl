@@ -9,3 +9,15 @@ dEQP-VK.rasterization.interpolation.basic.non_strict_lines_wide
 dEQP-VK.rasterization.interpolation.projected.lines_wide
 dEQP-VK.rasterization.interpolation.projected.non_strict_line_strip_wide
 dEQP-VK.rasterization.interpolation.projected.non_strict_lines_wide
+
+# https://github.com/KhronosGroup/glslang/issues/2357
+dEQP-VK.descriptor_indexing.storage_buffer
+dEQP-VK.descriptor_indexing.storage_buffer_after_bind
+dEQP-VK.descriptor_indexing.storage_buffer_after_bind_in_loop
+dEQP-VK.descriptor_indexing.storage_buffer_dynamic
+dEQP-VK.descriptor_indexing.storage_buffer_dynamic_in_loop
+dEQP-VK.descriptor_indexing.storage_buffer_in_loop
+dEQP-VK.descriptor_indexing.uniform_texel_buffer
+dEQP-VK.descriptor_indexing.uniform_texel_buffer_after_bind
+dEQP-VK.descriptor_indexing.uniform_texel_buffer_after_bind_in_loop
+dEQP-VK.descriptor_indexing.uniform_texel_buffer_in_loop
