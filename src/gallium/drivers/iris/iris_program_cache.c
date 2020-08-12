@@ -228,6 +228,23 @@ iris_upload_shader(struct iris_context *ice,
                      &shader->assembly.offset, &shader->assembly.res,
                      &shader->map);
       memcpy(shader->map, assembly, prog_data->program_size);
+
+      uint64_t shader_data_addr = IRIS_MEMZONE_SHADER_START +
+                                  shader->assembly.offset +
+                                  prog_data->const_data_offset;
+
+      struct brw_shader_reloc_value reloc_values[] = {
+         {
+            .id = IRIS_SHADER_RELOC_CONST_DATA_ADDR_LOW,
+            .value = shader_data_addr,
+         },
+         {
+            .id = IRIS_SHADER_RELOC_CONST_DATA_ADDR_HIGH,
+            .value = shader_data_addr >> 32,
+         },
+      };
+      brw_write_shader_relocs(&screen->devinfo, shader->map, prog_data,
+                              reloc_values, ARRAY_SIZE(reloc_values));
    }
 
    list_inithead(&shader->link);
@@ -241,6 +258,7 @@ iris_upload_shader(struct iris_context *ice,
    shader->bt = *bt;
 
    ralloc_steal(shader, shader->prog_data);
+   ralloc_steal(shader->prog_data, (void *)prog_data->relocs);
    ralloc_steal(shader->prog_data, prog_data->param);
    ralloc_steal(shader->prog_data, prog_data->pull_param);
    ralloc_steal(shader, shader->streamout);

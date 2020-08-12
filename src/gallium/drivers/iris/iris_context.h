@@ -56,6 +56,11 @@ enum iris_param_domain {
    BRW_PARAM_DOMAIN_IMAGE,
 };
 
+enum iris_shader_reloc {
+   IRIS_SHADER_RELOC_CONST_DATA_ADDR_LOW,
+   IRIS_SHADER_RELOC_CONST_DATA_ADDR_HIGH,
+};
+
 enum {
    DRI_CONF_BO_REUSE_DISABLED,
    DRI_CONF_BO_REUSE_ALL
@@ -380,12 +385,6 @@ struct iris_uncompiled_shader {
 
    /** Size (in bytes) of the kernel input data */
    unsigned kernel_input_size;
-
-   /** Constant data scraped from the shader by nir_opt_large_constants */
-   struct pipe_resource *const_data;
-
-   /** Surface state for const_data */
-   struct iris_state_ref const_data_state;
 };
 
 enum iris_surface_group {

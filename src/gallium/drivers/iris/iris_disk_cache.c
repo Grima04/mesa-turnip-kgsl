@@ -107,8 +107,9 @@ iris_disk_cache_store(struct disk_cache *cache,
     * 3. Number of entries in the system value array
     * 4. System value array
     * 5. Size (in bytes) of kernel inputs
-    * 6. Legacy param array (only used for compute workgroup ID)
-    * 7. Binding table
+    * 6. Shader relocations
+    * 7. Legacy param array (only used for compute workgroup ID)
+    * 8. Binding table
     */
    blob_write_bytes(&blob, shader->prog_data, brw_prog_data_size(stage));
    blob_write_bytes(&blob, shader->map, shader->prog_data->program_size);
@@ -116,6 +117,8 @@ iris_disk_cache_store(struct disk_cache *cache,
    blob_write_bytes(&blob, shader->system_values,
                     shader->num_system_values * sizeof(enum brw_param_builtin));
    blob_write_uint32(&blob, shader->kernel_input_size);
+   blob_write_bytes(&blob, prog_data->relocs,
+                    prog_data->num_relocs * sizeof(struct brw_shader_reloc));
    blob_write_bytes(&blob, prog_data->param,
                     prog_data->nr_params * sizeof(uint32_t));
    blob_write_bytes(&blob, &shader->bt, sizeof(shader->bt));
@@ -192,6 +195,15 @@ iris_disk_cache_retrieve(struct iris_context *ice,
    }
 
    kernel_input_size = blob_read_uint32(&blob);
+
+   prog_data->relocs = NULL;
+   if (prog_data->num_relocs) {
+      struct brw_shader_reloc *relocs =
+         ralloc_array(NULL, struct brw_shader_reloc, prog_data->num_relocs);
+      blob_copy_bytes(&blob, relocs,
+                      prog_data->num_relocs * sizeof(struct brw_shader_reloc));
+      prog_data->relocs = relocs;
+   }
 
    prog_data->param = NULL;
    prog_data->pull_param = NULL;

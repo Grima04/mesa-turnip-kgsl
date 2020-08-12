@@ -4826,7 +4826,6 @@ iris_populate_binding_table(struct iris_context *ice,
                             bool pin_only)
 {
    const struct iris_binder *binder = &ice->state.binder;
-   struct iris_uncompiled_shader *ish = ice->shaders.uncompiled[stage];
    struct iris_compiled_shader *shader = ice->shaders.prog[stage];
    if (!shader)
       return;
@@ -4909,25 +4908,9 @@ iris_populate_binding_table(struct iris_context *ice,
    }
 
    foreach_surface_used(i, IRIS_SURFACE_GROUP_UBO) {
-      uint32_t addr;
-
-      if (i == bt->sizes[IRIS_SURFACE_GROUP_UBO] - 1) {
-         if (ish->const_data) {
-            iris_use_pinned_bo(batch, iris_resource_bo(ish->const_data), false,
-                               IRIS_DOMAIN_OTHER_READ);
-            iris_use_pinned_bo(batch, iris_resource_bo(ish->const_data_state.res),
-                               false, IRIS_DOMAIN_NONE);
-            addr = ish->const_data_state.offset;
-         } else {
-            /* This can only happen with INTEL_DISABLE_COMPACT_BINDING_TABLE=1. */
-            addr = use_null_surface(batch, ice);
-         }
-      } else {
-         addr = use_ubo_ssbo(batch, ice, &shs->constbuf[i],
-                             &shs->constbuf_surf_state[i], false,
-                             IRIS_DOMAIN_OTHER_READ);
-      }
-
+      uint32_t addr = use_ubo_ssbo(batch, ice, &shs->constbuf[i],
+                                   &shs->constbuf_surf_state[i], false,
+                                   IRIS_DOMAIN_OTHER_READ);
       push_bt_entry(addr);
    }
 

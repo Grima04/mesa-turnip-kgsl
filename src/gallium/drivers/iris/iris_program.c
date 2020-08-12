@@ -406,7 +406,6 @@ iris_setup_uniforms(const struct brw_compiler *compiler,
 
    b.cursor = nir_before_block(nir_start_block(impl));
    nir_ssa_def *temp_ubo_name = nir_ssa_undef(&b, 1, 32);
-   nir_ssa_def *temp_const_ubo_name = NULL;
 
    /* Turn system value intrinsics into uniforms */
    nir_foreach_block(block, impl) {
@@ -419,34 +418,36 @@ iris_setup_uniforms(const struct brw_compiler *compiler,
 
          switch (intrin->intrinsic) {
          case nir_intrinsic_load_constant: {
+            unsigned load_size = intrin->dest.ssa.num_components *
+                                 intrin->dest.ssa.bit_size / 8;
+            unsigned load_align = intrin->dest.ssa.bit_size / 8;
+
             /* This one is special because it reads from the shader constant
              * data and not cbuf0 which gallium uploads for us.
              */
-            b.cursor = nir_before_instr(instr);
+            b.cursor = nir_instr_remove(&intrin->instr);
+
             nir_ssa_def *offset =
                nir_iadd_imm(&b, nir_ssa_for_src(&b, intrin->src[0], 1),
                                 nir_intrinsic_base(intrin));
 
-            if (temp_const_ubo_name == NULL)
-               temp_const_ubo_name = nir_imm_int(&b, 0);
+            assert(load_size < b.shader->constant_data_size);
+            unsigned max_offset = b.shader->constant_data_size - load_size;
+            offset = nir_umin(&b, offset, nir_imm_int(&b, max_offset));
 
-            nir_intrinsic_instr *load_ubo =
-               nir_intrinsic_instr_create(b.shader, nir_intrinsic_load_ubo);
-            load_ubo->num_components = intrin->num_components;
-            load_ubo->src[0] = nir_src_for_ssa(temp_const_ubo_name);
-            load_ubo->src[1] = nir_src_for_ssa(offset);
-            nir_intrinsic_set_align(load_ubo,
-                                    nir_intrinsic_align_mul(intrin),
-                                    nir_intrinsic_align_offset(intrin));
-            nir_ssa_dest_init(&load_ubo->instr, &load_ubo->dest,
-                              intrin->dest.ssa.num_components,
-                              intrin->dest.ssa.bit_size,
-                              intrin->dest.ssa.name);
-            nir_builder_instr_insert(&b, &load_ubo->instr);
+            nir_ssa_def *const_data_base_addr = nir_pack_64_2x32_split(&b,
+               nir_load_reloc_const_intel(&b, IRIS_SHADER_RELOC_CONST_DATA_ADDR_LOW),
+               nir_load_reloc_const_intel(&b, IRIS_SHADER_RELOC_CONST_DATA_ADDR_HIGH));
+
+            nir_ssa_def *data =
+               nir_load_global(&b, nir_iadd(&b, const_data_base_addr,
+                                                nir_u2u64(&b, offset)),
+                               load_align,
+                               intrin->dest.ssa.num_components,
+                               intrin->dest.ssa.bit_size);
 
             nir_ssa_def_rewrite_uses(&intrin->dest.ssa,
-                                     nir_src_for_ssa(&load_ubo->dest.ssa));
-            nir_instr_remove(&intrin->instr);
+                                     nir_src_for_ssa(data));
             continue;
          }
          case nir_intrinsic_load_user_clip_plane: {
@@ -622,16 +623,6 @@ iris_setup_uniforms(const struct brw_compiler *compiler,
     * when nr_params * 4 != num_uniforms != nr_params * 4.
     */
    nir->num_uniforms = 0;
-
-   /* Constant loads (if any) need to go at the end of the constant buffers so
-    * we need to know num_cbufs before we can lower to them.
-    */
-   if (temp_const_ubo_name != NULL) {
-      nir_load_const_instr *const_ubo_index =
-         nir_instr_as_load_const(temp_const_ubo_name->parent_instr);
-      assert(const_ubo_index->def.bit_size == 32);
-      const_ubo_index->value[0].u32 = num_cbufs;
-   }
 
    *out_system_values = system_values;
    *out_num_system_values = num_system_values;
@@ -2161,7 +2152,6 @@ iris_create_uncompiled_shader(struct pipe_context *ctx,
                               nir_shader *nir,
                               const struct pipe_stream_output_info *so_info)
 {
-   struct iris_context *ice = (void *)ctx;
    struct iris_screen *screen = (struct iris_screen *)ctx->screen;
    const struct gen_device_info *devinfo = &screen->devinfo;
 
@@ -2179,19 +2169,6 @@ iris_create_uncompiled_shader(struct pipe_context *ctx,
    NIR_PASS_V(nir, iris_lower_storage_image_derefs);
 
    nir_sweep(nir);
-
-   if (nir->constant_data_size > 0) {
-      unsigned data_offset;
-      u_upload_data(ice->shaders.uploader, 0, nir->constant_data_size,
-                    32, nir->constant_data, &data_offset, &ish->const_data);
-
-      struct pipe_shader_buffer psb = {
-         .buffer = ish->const_data,
-         .buffer_offset = data_offset,
-         .buffer_size = nir->constant_data_size,
-      };
-      iris_upload_ubo_ssbo_surf_state(ice, &psb, &ish->const_data_state, false);
-   }
 
    ish->program_id = get_new_program_id(screen);
    ish->nir = nir;
@@ -2453,11 +2430,6 @@ iris_delete_shader_state(struct pipe_context *ctx, void *state, gl_shader_stage 
    if (ice->shaders.uncompiled[stage] == ish) {
       ice->shaders.uncompiled[stage] = NULL;
       ice->state.stage_dirty |= IRIS_STAGE_DIRTY_UNCOMPILED_VS << stage;
-   }
-
-   if (ish->const_data) {
-      pipe_resource_reference(&ish->const_data, NULL);
-      pipe_resource_reference(&ish->const_data_state.res, NULL);
    }
 
    iris_delete_shader_variants(ice, ish);
