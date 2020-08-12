@@ -96,42 +96,6 @@ struct exec_ctx {
    exec_ctx(Program *program_) : program(program_), info(program->blocks.size()) {}
 };
 
-bool pred_by_exec_mask(aco_ptr<Instruction>& instr) {
-   if (instr->isSALU())
-      return instr->reads_exec();
-   if (instr->format == Format::SMEM || instr->isSALU())
-      return false;
-   if (instr->format == Format::PSEUDO_BARRIER)
-      return false;
-
-   if (instr->format == Format::PSEUDO) {
-      switch (instr->opcode) {
-      case aco_opcode::p_create_vector:
-      case aco_opcode::p_extract_vector:
-      case aco_opcode::p_split_vector:
-      case aco_opcode::p_parallelcopy:
-         for (Definition def : instr->definitions) {
-            if (def.getTemp().type() == RegType::vgpr)
-               return true;
-         }
-         return false;
-      case aco_opcode::p_spill:
-      case aco_opcode::p_reload:
-         return false;
-      default:
-         break;
-      }
-   }
-
-   if (instr->opcode == aco_opcode::v_readlane_b32 ||
-       instr->opcode == aco_opcode::v_readlane_b32_e64 ||
-       instr->opcode == aco_opcode::v_writelane_b32 ||
-       instr->opcode == aco_opcode::v_writelane_b32_e64)
-      return false;
-
-   return true;
-}
-
 bool needs_exact(aco_ptr<Instruction>& instr) {
    if (instr->format == Format::MUBUF) {
       MUBUF_instruction *mubuf = static_cast<MUBUF_instruction *>(instr.get());
@@ -218,7 +182,7 @@ void get_block_needs(wqm_ctx &ctx, exec_ctx &exec_ctx, Block* block)
       WQMState needs = needs_exact(instr) ? Exact : Unspecified;
       bool propagate_wqm = instr->opcode == aco_opcode::p_wqm;
       bool preserve_wqm = instr->opcode == aco_opcode::p_discard_if;
-      bool pred_by_exec = pred_by_exec_mask(instr);
+      bool pred_by_exec = needs_exec_mask(instr.get());
       for (const Definition& definition : instr->definitions) {
          if (!definition.isTemp())
             continue;

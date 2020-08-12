@@ -1463,6 +1463,7 @@ bool can_use_opsel(chip_class chip, aco_opcode op, int idx, bool high);
 bool can_use_SDWA(chip_class chip, const aco_ptr<Instruction>& instr);
 /* updates "instr" and returns the old instruction (or NULL if no update was needed) */
 aco_ptr<Instruction> convert_to_SDWA(chip_class chip, aco_ptr<Instruction>& instr);
+bool needs_exec_mask(const Instruction* instr);
 
 uint32_t get_reduction_identity(ReduceOp op, unsigned idx);
 
