@@ -259,4 +259,6 @@ zink_draw_vbo(struct pipe_context *pctx,
               const struct pipe_draw_start_count *draws,
               unsigned num_draws);
 
+void
+zink_launch_grid(struct pipe_context *pctx, const struct pipe_grid_info *info);
 #endif

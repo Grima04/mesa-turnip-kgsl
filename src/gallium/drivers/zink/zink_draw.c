@@ -780,3 +780,29 @@ zink_draw_vbo(struct pipe_context *pctx,
    }
    batch->has_draw = true;
 }
+
+void
+zink_launch_grid(struct pipe_context *pctx, const struct pipe_grid_info *info)
+{
+   struct zink_context *ctx = zink_context(pctx);
+   struct zink_screen *screen = zink_screen(pctx->screen);
+   struct zink_batch *batch = &ctx->compute_batch;
+   struct zink_compute_program *comp_program = get_compute_program(ctx);
+   if (!comp_program)
+      return;
+
+   VkPipeline pipeline = zink_get_compute_pipeline(screen, comp_program,
+                                               &ctx->compute_pipeline_state);
+
+   update_descriptors(ctx, screen, true);
+
+
+   vkCmdBindPipeline(batch->cmdbuf, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline);
+
+   if (info->indirect) {
+      vkCmdDispatchIndirect(batch->cmdbuf, zink_resource(info->indirect)->buffer, info->indirect_offset);
+      zink_batch_reference_resource_rw(batch, zink_resource(info->indirect), false);
+   } else
+      vkCmdDispatch(batch->cmdbuf, info->grid[0], info->grid[1], info->grid[2]);
+   batch->has_draw = true;
+}
