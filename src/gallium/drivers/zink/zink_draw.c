@@ -229,8 +229,11 @@ update_descriptors(struct zink_context *ctx, struct zink_screen *screen, bool is
    unsigned num_wds = 0, num_buffer_info = 0, num_image_info = 0, num_surface_refs = 0;
    struct zink_shader **stages;
 
-   unsigned num_stages = ZINK_SHADER_COUNT;
-   stages = &ctx->gfx_stages[0];
+   unsigned num_stages = is_compute ? 1 : ZINK_SHADER_COUNT;
+   if (is_compute)
+      stages = &ctx->curr_compute->shader;
+   else
+      stages = &ctx->gfx_stages[0];
 
    struct {
       struct zink_resource *res;
@@ -396,7 +399,10 @@ update_descriptors(struct zink_context *ctx, struct zink_screen *screen, bool is
 
    struct zink_batch *batch;
    if (num_transitions > 0) {
-      batch = zink_batch_no_rp(ctx);
+      if (is_compute)
+         batch = &ctx->compute_batch;
+      else
+         batch = zink_batch_no_rp(ctx);
 
       for (int i = 0; i < num_transitions; ++i)
          zink_resource_barrier(batch->cmdbuf, transitions[i].res,
@@ -406,20 +412,29 @@ update_descriptors(struct zink_context *ctx, struct zink_screen *screen, bool is
 
    unsigned num_descriptors;
    VkDescriptorSetLayout dsl;
-   if (!is_compute) {
+   if (is_compute) {
+      num_descriptors = ctx->curr_compute->num_descriptors;
+      dsl = ctx->curr_compute->dsl;
+      batch = &ctx->compute_batch;
+   } else {
       batch = zink_batch_rp(ctx);
       num_descriptors = ctx->curr_program->num_descriptors;
       dsl = ctx->curr_program->dsl;
    }
 
    if (batch->descs_left < num_descriptors) {
-      if (!is_compute) {
+      if (is_compute)
+         zink_wait_on_batch(ctx, ZINK_COMPUTE_BATCH_ID);
+      else {
          ctx->base.flush(&ctx->base, NULL, 0);
          batch = zink_batch_rp(ctx);
       }
       assert(batch->descs_left >= num_descriptors);
    }
-   zink_batch_reference_program(batch, &ctx->curr_program->reference);
+   if (is_compute)
+      zink_batch_reference_program(batch, &ctx->curr_compute->reference);
+   else
+      zink_batch_reference_program(batch, &ctx->curr_program->reference);
 
    VkDescriptorSet desc_set = allocate_descriptor_set(screen, batch,
                                                       dsl, num_descriptors);
@@ -456,8 +471,12 @@ update_descriptors(struct zink_context *ctx, struct zink_screen *screen, bool is
       }
    }
 
-   vkCmdBindDescriptorSets(batch->cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                           ctx->curr_program->layout, 0, 1, &desc_set, 0, NULL);
+   if (is_compute)
+      vkCmdBindDescriptorSets(batch->cmdbuf, VK_PIPELINE_BIND_POINT_COMPUTE,
+                              ctx->curr_compute->layout, 0, 1, &desc_set, 0, NULL);
+   else
+      vkCmdBindDescriptorSets(batch->cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                              ctx->curr_program->layout, 0, 1, &desc_set, 0, NULL);
 }
 
 static bool
