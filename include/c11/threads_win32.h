@@ -338,7 +338,7 @@ call_once(once_flag *flag, void (*func)(void))
 static inline int
 cnd_broadcast(cnd_t *cond)
 {
-    if (!cond) return thrd_error;
+    assert(cond != NULL);
 #ifdef EMULATED_THREADS_USE_NATIVE_CV
     WakeAllConditionVariable(&cond->condvar);
 #else
@@ -351,7 +351,7 @@ cnd_broadcast(cnd_t *cond)
 static inline void
 cnd_destroy(cnd_t *cond)
 {
-    assert(cond);
+    assert(cond != NULL);
 #ifdef EMULATED_THREADS_USE_NATIVE_CV
     // do nothing
 #else
@@ -365,7 +365,7 @@ cnd_destroy(cnd_t *cond)
 static inline int
 cnd_init(cnd_t *cond)
 {
-    if (!cond) return thrd_error;
+    assert(cond != NULL);
 #ifdef EMULATED_THREADS_USE_NATIVE_CV
     InitializeConditionVariable(&cond->condvar);
 #else
@@ -383,7 +383,7 @@ cnd_init(cnd_t *cond)
 static inline int
 cnd_signal(cnd_t *cond)
 {
-    if (!cond) return thrd_error;
+    assert(cond != NULL);
 #ifdef EMULATED_THREADS_USE_NATIVE_CV
     WakeConditionVariable(&cond->condvar);
 #else
@@ -396,7 +396,9 @@ cnd_signal(cnd_t *cond)
 static inline int
 cnd_timedwait(cnd_t *cond, mtx_t *mtx, const struct timespec *abs_time)
 {
-    if (!cond || !mtx || !abs_time) return thrd_error;
+    assert(cond != NULL);
+    assert(mtx != NULL);
+    assert(abs_time != NULL);
 #ifdef HAVE_TIMESPEC_GET
     const DWORD timeout = impl_abs2relmsec(abs_time);
 #ifdef EMULATED_THREADS_USE_NATIVE_CV
@@ -415,7 +417,8 @@ cnd_timedwait(cnd_t *cond, mtx_t *mtx, const struct timespec *abs_time)
 static inline int
 cnd_wait(cnd_t *cond, mtx_t *mtx)
 {
-    if (!cond || !mtx) return thrd_error;
+    assert(cond != NULL);
+    assert(mtx != NULL);
 #ifdef EMULATED_THREADS_USE_NATIVE_CV
     SleepConditionVariableCS(&cond->condvar, mtx, INFINITE);
 #else
@@ -438,7 +441,7 @@ mtx_destroy(mtx_t *mtx)
 static inline int
 mtx_init(mtx_t *mtx, int type)
 {
-    if (!mtx) return thrd_error;
+    assert(mtx != NULL);
     if (type != mtx_plain && type != mtx_timed && type != mtx_try
       && type != (mtx_plain|mtx_recursive)
       && type != (mtx_timed|mtx_recursive)
@@ -452,7 +455,7 @@ mtx_init(mtx_t *mtx, int type)
 static inline int
 mtx_lock(mtx_t *mtx)
 {
-    if (!mtx) return thrd_error;
+    assert(mtx != NULL);
     EnterCriticalSection(mtx);
     return thrd_success;
 }
@@ -461,7 +464,8 @@ mtx_lock(mtx_t *mtx)
 static inline int
 mtx_timedlock(mtx_t *mtx, const struct timespec *ts)
 {
-    if (!mtx || !ts) return thrd_error;
+    assert(mtx != NULL);
+    assert(ts != NULL);
 #ifdef HAVE_TIMESPEC_GET
     while (mtx_trylock(mtx) != thrd_success) {
         if (impl_abs2relmsec(ts) == 0)
@@ -479,7 +483,7 @@ mtx_timedlock(mtx_t *mtx, const struct timespec *ts)
 static inline int
 mtx_trylock(mtx_t *mtx)
 {
-    if (!mtx) return thrd_error;
+    assert(mtx != NULL);
     return TryEnterCriticalSection(mtx) ? thrd_success : thrd_busy;
 }
 
@@ -487,7 +491,7 @@ mtx_trylock(mtx_t *mtx)
 static inline int
 mtx_unlock(mtx_t *mtx)
 {
-    if (!mtx) return thrd_error;
+    assert(mtx != NULL);
     LeaveCriticalSection(mtx);
     return thrd_success;
 }
@@ -500,7 +504,7 @@ thrd_create(thrd_t *thr, thrd_start_t func, void *arg)
 {
     struct impl_thrd_param *pack;
     uintptr_t handle;
-    if (!thr) return thrd_error;
+    assert(thr != NULL);
     pack = (struct impl_thrd_param *)malloc(sizeof(struct impl_thrd_param));
     if (!pack) return thrd_nomem;
     pack->func = func;
@@ -620,7 +624,7 @@ thrd_yield(void)
 static inline int
 tss_create(tss_t *key, tss_dtor_t dtor)
 {
-    if (!key) return thrd_error;
+    assert(key != NULL);
     *key = TlsAlloc();
     if (dtor) {
         if (impl_tss_dtor_register(*key, dtor)) {
@@ -659,7 +663,7 @@ tss_set(tss_t key, void *val)
 static inline int
 timespec_get(struct timespec *ts, int base)
 {
-    if (!ts) return 0;
+    assert(ts != NULL);
     if (base == TIME_UTC) {
         ts->tv_sec = time(NULL);
         ts->tv_nsec = 0;
