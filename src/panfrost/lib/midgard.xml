@@ -50,7 +50,6 @@
     <value name="ETC2 R11 UNORM" value="2"/>
     <value name="ETC2 RGBA8" value="3"/>
     <value name="ETC2 RG11 UNORM" value="4"/>
-    <value name="NXR" value="6"/>
     <value name="BC1 UNORM" value="7"/>
     <value name="BC2 UNORM" value="8"/>
     <value name="BC3 UNORM" value="9"/>
