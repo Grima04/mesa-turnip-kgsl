@@ -125,6 +125,10 @@ static constexpr uint64_t temp_labels = label_abs | label_neg | label_temp | lab
                                         label_scc_invert | label_b2i;
 static constexpr uint32_t val_labels = label_constant_32bit | label_constant_64bit | label_constant_16bit | label_literal;
 
+static_assert((instr_labels & temp_labels) == 0, "labels cannot intersect");
+static_assert((instr_labels & val_labels) == 0, "labels cannot intersect");
+static_assert((temp_labels & val_labels) == 0, "labels cannot intersect");
+
 struct ssa_info {
    uint64_t label;
    union {
