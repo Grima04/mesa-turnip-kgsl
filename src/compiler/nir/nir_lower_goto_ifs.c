@@ -531,23 +531,21 @@ handle_irreducible(struct set *remaining, struct strct_lvl *curr_level,
    struct set *old_candidates = _mesa_pointer_set_create(mem_ctx);
    while (candidate) {
       _mesa_set_add(old_candidates, candidate);
-      nir_block *to_be_added = candidate;
-      candidate = NULL;
 
+      /* Start with just the candidate block */
       _mesa_set_clear(curr_level->blocks, NULL);
-      while (to_be_added) {
-         _mesa_set_add(curr_level->blocks, to_be_added);
-         to_be_added = NULL;
+      _mesa_set_add(curr_level->blocks, candidate);
 
-         set_foreach(remaining, entry) {
-            nir_block *remaining_block = (nir_block *) entry->key;
-            if (!_mesa_set_search(curr_level->blocks, remaining_block)
-                && _mesa_set_intersects(remaining_block->dom_frontier,
-                                        curr_level->blocks)) {
-               if (_mesa_set_search(old_candidates, remaining_block))
-                  to_be_added = remaining_block;
-               else
-                  candidate = remaining_block;
+      candidate = NULL;
+      set_foreach(remaining, entry) {
+         nir_block *remaining_block = (nir_block *) entry->key;
+         if (!_mesa_set_search(curr_level->blocks, remaining_block) &&
+             _mesa_set_intersects(remaining_block->dom_frontier,
+                                  curr_level->blocks)) {
+            if (_mesa_set_search(old_candidates, remaining_block)) {
+               _mesa_set_add(curr_level->blocks, remaining_block);
+            } else {
+               candidate = remaining_block;
                break;
             }
          }
