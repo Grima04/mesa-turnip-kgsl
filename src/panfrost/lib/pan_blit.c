@@ -203,8 +203,7 @@ panfrost_load_midg(
         struct mali_attr_meta varying_meta = {
                 .index = 0,
                 .unknown1 = 2,
-                .swizzle = (MALI_CHANNEL_RED << 0) | (MALI_CHANNEL_GREEN << 3),
-                .format = MALI_RGBA32F
+                .format = (MALI_CHANNEL_RED << 0) | (MALI_CHANNEL_GREEN << 3) | (MALI_RGBA32F << 12)
         };
 
         struct mali_stencil_packed stencil;

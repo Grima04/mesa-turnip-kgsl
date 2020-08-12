@@ -507,28 +507,28 @@ panfrost_create_vertex_elements_state(
                 const struct util_format_description *desc = util_format_description(fmt);
                 so->hw[i].unknown1 = 0x2;
 
+                unsigned swizzle = 0;
                 if (dev->quirks & HAS_SWIZZLES)
-                        so->hw[i].swizzle = panfrost_translate_swizzle_4(desc->swizzle);
+                        swizzle = panfrost_translate_swizzle_4(desc->swizzle);
                 else
-                        so->hw[i].swizzle = panfrost_bifrost_swizzle(desc->nr_channels);
+                        swizzle = panfrost_bifrost_swizzle(desc->nr_channels);
 
                 enum mali_format hw_format = panfrost_pipe_format_table[desc->format].hw;
-                so->hw[i].format = hw_format;
+                so->hw[i].format = (hw_format << 12) | swizzle;
                 assert(hw_format);
         }
 
         /* Let's also prepare vertex builtins */
         so->hw[PAN_VERTEX_ID].format = MALI_R32UI;
         if (dev->quirks & HAS_SWIZZLES)
-                so->hw[PAN_VERTEX_ID].swizzle = panfrost_get_default_swizzle(1);
+                so->hw[PAN_VERTEX_ID].format = (MALI_R32UI << 12) | panfrost_get_default_swizzle(1);
         else
-                so->hw[PAN_VERTEX_ID].swizzle = panfrost_bifrost_swizzle(1);
+                so->hw[PAN_VERTEX_ID].format = (MALI_R32UI << 12) | panfrost_bifrost_swizzle(1);
 
-        so->hw[PAN_INSTANCE_ID].format = MALI_R32UI;
         if (dev->quirks & HAS_SWIZZLES)
-                so->hw[PAN_INSTANCE_ID].swizzle = panfrost_get_default_swizzle(1);
+                so->hw[PAN_INSTANCE_ID].format = (MALI_R32UI << 12) | panfrost_get_default_swizzle(1);
         else
-                so->hw[PAN_INSTANCE_ID].swizzle = panfrost_bifrost_swizzle(1);
+                so->hw[PAN_INSTANCE_ID].format = (MALI_R32UI << 12) | panfrost_bifrost_swizzle(1);
 
         return so;
 }

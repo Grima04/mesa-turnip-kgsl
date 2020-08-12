@@ -1657,14 +1657,14 @@ pan_emit_vary(unsigned present, enum pan_special_varying buf,
                 unsigned offset)
 {
         unsigned nr_channels = MALI_EXTRACT_CHANNELS(format);
+        unsigned swizzle = quirks & HAS_SWIZZLES ?
+                        panfrost_get_default_swizzle(nr_channels) :
+                        panfrost_bifrost_swizzle(nr_channels);
 
         struct mali_attr_meta meta = {
                 .index = pan_varying_index(present, buf),
                 .unknown1 = quirks & IS_BIFROST ? 0x0 : 0x2,
-                .swizzle = quirks & HAS_SWIZZLES ?
-                        panfrost_get_default_swizzle(nr_channels) :
-                        panfrost_bifrost_swizzle(nr_channels),
-                .format = format,
+                .format = (format << 12) | swizzle,
                 .src_offset = offset
         };
 
@@ -1718,6 +1718,10 @@ pan_emit_vary_xfb(unsigned present,
                 enum mali_format format,
                 struct pipe_stream_output o)
 {
+        unsigned swizzle = quirks & HAS_SWIZZLES ?
+                        panfrost_get_default_swizzle(o.num_components) :
+                        panfrost_bifrost_swizzle(o.num_components);
+
         /* Otherwise construct a record for it */
         struct mali_attr_meta meta = {
                 /* XFB buffers come after everything else */
@@ -1726,13 +1730,8 @@ pan_emit_vary_xfb(unsigned present,
                 /* As usual unknown bit */
                 .unknown1 = quirks & IS_BIFROST ? 0x0 : 0x2,
 
-                /* Override swizzle with number of channels */
-                .swizzle = quirks & HAS_SWIZZLES ?
-                        panfrost_get_default_swizzle(o.num_components) :
-                        panfrost_bifrost_swizzle(o.num_components),
-
                 /* Override number of channels and precision to highp */
-                .format = pan_xfb_format(format, o.num_components),
+                .format = (pan_xfb_format(format, o.num_components) << 12) | swizzle,
 
                 /* Apply given offsets together */
                 .src_offset = (o.dst_offset * 4) /* dwords */

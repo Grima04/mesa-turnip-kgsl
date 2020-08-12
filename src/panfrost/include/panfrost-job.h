@@ -730,11 +730,7 @@ struct mali_attr_meta {
         u8 index;
 
         unsigned unknown1 : 2;
-        unsigned swizzle : 12;
-        enum mali_format format : 8;
-
-        /* Always observed to be zero at the moment */
-        unsigned unknown3 : 2;
+        unsigned format : 22;
 
         /* When packing multiple attributes in a buffer, offset addresses by
          * this value. Obscurely, this is signed. */
