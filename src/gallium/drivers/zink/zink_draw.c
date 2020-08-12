@@ -525,7 +525,7 @@ zink_draw_vbo(struct pipe_context *pctx,
       batch = zink_batch_rp(ctx);
       assert(batch->descs_left >= gfx_program->num_descriptors);
    }
-   zink_batch_reference_program(batch, ctx->curr_program);
+   zink_batch_reference_program(batch, &ctx->curr_program->reference);
 
    VkDescriptorSet desc_set = allocate_descriptor_set(screen, batch,
                                                       gfx_program);

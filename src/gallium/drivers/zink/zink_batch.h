@@ -29,10 +29,11 @@
 #include "util/list.h"
 #include "util/u_dynarray.h"
 
+struct pipe_reference;
+
 struct zink_context;
 struct zink_fence;
 struct zink_framebuffer;
-struct zink_gfx_program;
 struct zink_render_pass;
 struct zink_resource;
 struct zink_screen;
@@ -84,7 +85,7 @@ zink_batch_reference_sampler_view(struct zink_batch *batch,
 
 void
 zink_batch_reference_program(struct zink_batch *batch,
-                             struct zink_gfx_program *prog);
+                             struct pipe_reference *prog);
 
 void
 zink_batch_reference_surface(struct zink_batch *batch,

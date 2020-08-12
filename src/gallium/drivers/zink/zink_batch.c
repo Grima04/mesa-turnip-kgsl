@@ -179,12 +179,12 @@ zink_batch_reference_sampler_view(struct zink_batch *batch,
 
 void
 zink_batch_reference_program(struct zink_batch *batch,
-                             struct zink_gfx_program *prog)
+                             struct pipe_reference *prog)
 {
    struct set_entry *entry = _mesa_set_search(batch->programs, prog);
    if (!entry) {
       entry = _mesa_set_add(batch->programs, prog);
-      pipe_reference(NULL, &prog->reference);
+      pipe_reference(NULL, prog);
    }
 }
 
