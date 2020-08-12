@@ -456,13 +456,15 @@ update_descriptors(struct zink_context *ctx, struct zink_screen *screen, bool is
       }
    }
 
+   unsigned check_flush_id = is_compute ? 0 : ZINK_COMPUTE_BATCH_ID;
+   bool need_flush = false;
    if (num_wds > 0) {
       for (int i = 0; i < num_wds; ++i) {
          wds[i].dstSet = desc_set;
          if (read_desc_resources[i])
-            zink_batch_reference_resource_rw(batch, read_desc_resources[i], false);
+            need_flush |= zink_batch_reference_resource_rw(batch, read_desc_resources[i], false) == check_flush_id;
          else if (write_desc_resources[i])
-            zink_batch_reference_resource_rw(batch, write_desc_resources[i], true);
+            need_flush |= zink_batch_reference_resource_rw(batch, write_desc_resources[i], true) == check_flush_id;
       }
       vkUpdateDescriptorSets(screen->dev, num_wds, wds, 0, NULL);
       for (int i = 0; i < num_surface_refs; i++) {
@@ -477,6 +479,17 @@ update_descriptors(struct zink_context *ctx, struct zink_screen *screen, bool is
    else
       vkCmdBindDescriptorSets(batch->cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS,
                               ctx->curr_program->layout, 0, 1, &desc_set, 0, NULL);
+   if (!need_flush)
+      return;
+
+   if (is_compute)
+      /* flush gfx batch */
+      ctx->base.flush(&ctx->base, NULL, PIPE_FLUSH_HINT_FINISH);
+   else {
+      /* flush compute batch */
+      zink_end_batch(ctx, &ctx->compute_batch);
+      zink_start_batch(ctx, &ctx->compute_batch);
+   }
 }
 
 static bool
