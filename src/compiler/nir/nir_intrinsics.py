@@ -134,6 +134,7 @@ MEMORY_MODES = "NIR_INTRINSIC_MEMORY_MODES"
 MEMORY_SCOPE = "NIR_INTRINSIC_MEMORY_SCOPE"
 # Scope of a control barrier
 EXECUTION_SCOPE = "NIR_INTRINSIC_EXECUTION_SCOPE"
+IO_SEMANTICS = "NIR_INTRINSIC_IO_SEMANTICS"
 
 #
 # Possible flags:
@@ -738,22 +739,22 @@ load("ubo", [-1, 1], [ACCESS, ALIGN_MUL, ALIGN_OFFSET], flags=[CAN_ELIMINATE, CA
 # src[] = { buffer_index, offset in vec4 units }
 load("ubo_vec4", [-1, 1], [ACCESS, COMPONENT], flags=[CAN_ELIMINATE, CAN_REORDER])
 # src[] = { offset }.
-load("input", [1], [BASE, COMPONENT, TYPE], [CAN_ELIMINATE, CAN_REORDER])
+load("input", [1], [BASE, COMPONENT, TYPE, IO_SEMANTICS], [CAN_ELIMINATE, CAN_REORDER])
 # src[] = { vertex_id, offset }.
-load("input_vertex", [1, 1], [BASE, COMPONENT, TYPE], [CAN_ELIMINATE, CAN_REORDER])
+load("input_vertex", [1, 1], [BASE, COMPONENT, TYPE, IO_SEMANTICS], [CAN_ELIMINATE, CAN_REORDER])
 # src[] = { vertex, offset }.
-load("per_vertex_input", [1, 1], [BASE, COMPONENT], [CAN_ELIMINATE, CAN_REORDER])
+load("per_vertex_input", [1, 1], [BASE, COMPONENT, IO_SEMANTICS], [CAN_ELIMINATE, CAN_REORDER])
 # src[] = { barycoord, offset }.
-load("interpolated_input", [2, 1], [BASE, COMPONENT], [CAN_ELIMINATE, CAN_REORDER])
+load("interpolated_input", [2, 1], [BASE, COMPONENT, IO_SEMANTICS], [CAN_ELIMINATE, CAN_REORDER])
 
 # src[] = { buffer_index, offset }.
 load("ssbo", [-1, 1], [ACCESS, ALIGN_MUL, ALIGN_OFFSET], [CAN_ELIMINATE])
 # src[] = { buffer_index }
 load("ssbo_address", [1], [], [CAN_ELIMINATE, CAN_REORDER])
 # src[] = { offset }.
-load("output", [1], [BASE, COMPONENT], flags=[CAN_ELIMINATE])
+load("output", [1], [BASE, COMPONENT, IO_SEMANTICS], flags=[CAN_ELIMINATE])
 # src[] = { vertex, offset }.
-load("per_vertex_output", [1, 1], [BASE, COMPONENT], [CAN_ELIMINATE])
+load("per_vertex_output", [1, 1], [BASE, COMPONENT, IO_SEMANTICS], [CAN_ELIMINATE])
 # src[] = { offset }.
 load("shared", [1], [BASE, ALIGN_MUL, ALIGN_OFFSET], [CAN_ELIMINATE])
 # src[] = { offset }.
@@ -777,9 +778,9 @@ def store(name, srcs, indices=[], flags=[]):
     intrinsic("store_" + name, [0] + srcs, indices=indices, flags=flags)
 
 # src[] = { value, offset }.
-store("output", [1], [BASE, WRMASK, COMPONENT, TYPE])
+store("output", [1], [BASE, WRMASK, COMPONENT, TYPE, IO_SEMANTICS])
 # src[] = { value, vertex, offset }.
-store("per_vertex_output", [1, 1], [BASE, WRMASK, COMPONENT])
+store("per_vertex_output", [1, 1], [BASE, WRMASK, COMPONENT, IO_SEMANTICS])
 # src[] = { value, block_index, offset }
 store("ssbo", [-1, 1], [WRMASK, ACCESS, ALIGN_MUL, ALIGN_OFFSET])
 # src[] = { value, offset }.

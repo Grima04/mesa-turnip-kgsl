@@ -1499,7 +1499,7 @@ typedef struct {
 
 #include "nir_intrinsics.h"
 
-#define NIR_INTRINSIC_MAX_CONST_INDEX 4
+#define NIR_INTRINSIC_MAX_CONST_INDEX 5
 
 /** Represents an intrinsic
  *
@@ -1744,9 +1744,23 @@ typedef enum {
     */
    NIR_INTRINSIC_EXECUTION_SCOPE,
 
+   /**
+    * Value of nir_io_semantics.
+    */
+   NIR_INTRINSIC_IO_SEMANTICS,
+
    NIR_INTRINSIC_NUM_INDEX_FLAGS,
 
 } nir_intrinsic_index_flag;
+
+typedef struct {
+   unsigned location:7; /* gl_vert_attrib, gl_varying_slot, or gl_frag_result */
+   unsigned num_slots:6;  /* max 32, may be pessimistic with const indexing */
+   unsigned dual_source_blend_index:1;
+   unsigned fb_fetch_output:1; /* for GL_KHR_blend_equation_advanced */
+   unsigned gs_streams:8; /* xxyyzzww: 2-bit stream index for each component */
+   unsigned _pad:9;
+} nir_io_semantics;
 
 #define NIR_INTRINSIC_MAX_INPUTS 5
 
@@ -1915,6 +1929,30 @@ nir_intrinsic_align(const nir_intrinsic_instr *intrin)
    const unsigned align_offset = nir_intrinsic_align_offset(intrin);
    assert(align_offset < align_mul);
    return align_offset ? 1 << (ffs(align_offset) - 1) : align_mul;
+}
+
+static inline void
+nir_intrinsic_set_io_semantics(nir_intrinsic_instr *intrin,
+                               nir_io_semantics semantics)
+{
+   const nir_intrinsic_info *info = &nir_intrinsic_infos[intrin->intrinsic];
+   assert(info->index_map[NIR_INTRINSIC_IO_SEMANTICS] > 0);
+   STATIC_ASSERT(sizeof(nir_io_semantics) == sizeof(intrin->const_index[0]));
+   semantics._pad = 0; /* clear padding bits */
+   memcpy(&intrin->const_index[info->index_map[NIR_INTRINSIC_IO_SEMANTICS] - 1],
+          &semantics, sizeof(semantics));
+}
+
+static inline nir_io_semantics
+nir_intrinsic_io_semantics(const nir_intrinsic_instr *intrin)
+{
+   const nir_intrinsic_info *info = &nir_intrinsic_infos[intrin->intrinsic];
+   assert(info->index_map[NIR_INTRINSIC_IO_SEMANTICS] > 0);
+   nir_io_semantics semantics;
+   memcpy(&semantics,
+          &intrin->const_index[info->index_map[NIR_INTRINSIC_IO_SEMANTICS] - 1],
+          sizeof(semantics));
+   return semantics;
 }
 
 unsigned

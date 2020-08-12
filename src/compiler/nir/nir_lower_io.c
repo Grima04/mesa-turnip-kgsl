@@ -159,6 +159,19 @@ nir_is_per_vertex_io(const nir_variable *var, gl_shader_stage stage)
    return false;
 }
 
+static unsigned get_number_of_slots(struct lower_io_state *state,
+                                    const nir_variable *var)
+{
+   const struct glsl_type *type = var->type;
+
+   if (nir_is_per_vertex_io(var, state->builder.shader->info.stage)) {
+      assert(glsl_type_is_array(type));
+      type = glsl_get_array_element(type);
+   }
+
+   return state->type_size(type, var->data.bindless);
+}
+
 static nir_ssa_def *
 get_io_offset(nir_builder *b, nir_deref_instr *deref,
               nir_ssa_def **vertex_index,
@@ -291,6 +304,14 @@ emit_load(struct lower_io_state *state,
        load->intrinsic == nir_intrinsic_load_uniform)
       nir_intrinsic_set_type(load, type);
 
+   if (load->intrinsic != nir_intrinsic_load_uniform) {
+      nir_io_semantics semantics = {0};
+      semantics.location = var->data.location;
+      semantics.num_slots = get_number_of_slots(state, var);
+      semantics.fb_fetch_output = var->data.fb_fetch_output;
+      nir_intrinsic_set_io_semantics(load, semantics);
+   }
+
    if (vertex_index) {
       load->src[0] = nir_src_for_ssa(vertex_index);
       load->src[1] = nir_src_for_ssa(offset);
@@ -392,6 +413,25 @@ emit_store(struct lower_io_state *state, nir_ssa_def *data,
       store->src[1] = nir_src_for_ssa(vertex_index);
 
    store->src[vertex_index ? 2 : 1] = nir_src_for_ssa(offset);
+
+   unsigned gs_streams = 0;
+   if (state->builder.shader->info.stage == MESA_SHADER_GEOMETRY) {
+      if (var->data.stream & NIR_STREAM_PACKED) {
+         gs_streams = var->data.stream & ~NIR_STREAM_PACKED;
+      } else {
+         assert(var->data.stream < 4);
+         gs_streams = 0;
+         for (unsigned i = 0; i < num_components; ++i)
+            gs_streams |= var->data.stream << (2 * i);
+      }
+   }
+
+   nir_io_semantics semantics = {0};
+   semantics.location = var->data.location;
+   semantics.num_slots = get_number_of_slots(state, var);
+   semantics.dual_source_blend_index = var->data.index;
+   semantics.gs_streams = gs_streams;
+   nir_intrinsic_set_io_semantics(store, semantics);
 
    nir_builder_instr_insert(b, &store->instr);
 }
@@ -518,6 +558,11 @@ lower_interpolate_at(nir_intrinsic_instr *intrin, struct lower_io_state *state,
 
    nir_intrinsic_set_base(load, var->data.driver_location);
    nir_intrinsic_set_component(load, component);
+
+   nir_io_semantics semantics = {0};
+   semantics.location = var->data.location;
+   semantics.num_slots = get_number_of_slots(state, var);
+   nir_intrinsic_set_io_semantics(load, semantics);
 
    load->src[0] = nir_src_for_ssa(&bary_setup->dest.ssa);
    load->src[1] = nir_src_for_ssa(offset);
