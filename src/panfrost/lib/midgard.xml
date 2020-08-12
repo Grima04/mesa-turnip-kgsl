@@ -27,6 +27,13 @@
     <value name="Quad strip" value="15"/>
   </enum>
 
+  <enum name="Exception Access">
+    <value name="None" value="0"/>
+    <value name="Execute" value="2"/>
+    <value name="Read" value="1"/>
+    <value name="Write" value="3"/>
+  </enum>
+
   <enum name="Func">
     <value name="Never" value="0"/>
     <value name="Less" value="1"/>

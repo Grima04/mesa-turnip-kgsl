@@ -655,21 +655,6 @@ struct mali_job_descriptor_header {
         u64 next_job;
 } __attribute__((packed));
 
-/* These concern exception_status */
-
-/* Access type causing a fault, paralleling AS_FAULTSTATUS_* entries in the
- * kernel */
-
-enum mali_exception_access {
-        /* Atomic in the kernel for MMU, but that doesn't make sense for a job
-         * fault so it's just unused */
-        MALI_EXCEPTION_ACCESS_NONE    = 0,
-
-        MALI_EXCEPTION_ACCESS_EXECUTE = 1,
-        MALI_EXCEPTION_ACCESS_READ    = 2,
-        MALI_EXCEPTION_ACCESS_WRITE   = 3
-};
-
 /* Details about write_value from panfrost igt tests which use it as a generic
  * dword write primitive */
 
