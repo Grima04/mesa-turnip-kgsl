@@ -317,7 +317,8 @@ zink_get_gfx_pipeline(struct zink_screen *screen,
                       struct zink_gfx_pipeline_state *state,
                       enum pipe_prim_type mode)
 {
-   assert(mode <= ARRAY_SIZE(prog->pipelines));
+   VkPrimitiveTopology vkmode = primitive_topology(mode);
+   assert(vkmode <= ARRAY_SIZE(prog->pipelines));
 
    struct hash_entry *entry = NULL;
    
@@ -327,10 +328,9 @@ zink_get_gfx_pipeline(struct zink_screen *screen,
        * TODO: rework this using a separate dirty-bit */
       assert(state->hash != 0);
    }
-   entry = _mesa_hash_table_search_pre_hashed(prog->pipelines[mode], state->hash, state);
+   entry = _mesa_hash_table_search_pre_hashed(prog->pipelines[vkmode], state->hash, state);
 
    if (!entry) {
-      VkPrimitiveTopology vkmode = primitive_topology(mode);
       VkPipeline pipeline = zink_create_gfx_pipeline(screen, prog,
                                                      state, vkmode);
       if (pipeline == VK_NULL_HANDLE)
@@ -344,7 +344,7 @@ zink_get_gfx_pipeline(struct zink_screen *screen,
       pc_entry->pipeline = pipeline;
 
       assert(state->hash);
-      entry = _mesa_hash_table_insert_pre_hashed(prog->pipelines[mode], state->hash, state, pc_entry);
+      entry = _mesa_hash_table_insert_pre_hashed(prog->pipelines[vkmode], state->hash, state, pc_entry);
       assert(entry);
 
       reference_render_pass(screen, prog, state->render_pass);
