@@ -105,6 +105,13 @@ sorted_block_arr_for_set(const struct set *block_set, void *mem_ctx)
    return block_arr;
 }
 
+static nir_block *
+block_for_singular_set(const struct set *block_set)
+{
+   assert(block_set->entries == 1);
+   return (nir_block *)_mesa_set_next_entry(block_set, NULL)->key;
+}
+
 /**
  * Sets all path variables to reach the target block via a fork
  */
@@ -734,9 +741,8 @@ select_blocks(struct routes *routing, nir_builder *b,
               struct path in_path, void *mem_ctx)
 {
    if (!in_path.fork) {
-      nir_structurize(routing, b, (nir_block *)
-                      _mesa_set_next_entry(in_path.reachable, NULL)->key,
-                      mem_ctx);
+      nir_block *block = block_for_singular_set(in_path.reachable);
+      nir_structurize(routing, b, block, mem_ctx);
    } else {
       assert(!(in_path.fork->is_var &&
                strcmp(in_path.fork->path_var->name, "path_select")));
