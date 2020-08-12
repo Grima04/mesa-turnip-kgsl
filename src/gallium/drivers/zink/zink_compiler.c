@@ -542,13 +542,20 @@ zink_shader_free(struct zink_context *ctx, struct zink_shader *shader)
 {
    struct zink_screen *screen = zink_screen(ctx->base.screen);
    set_foreach(shader->programs, entry) {
-      struct zink_gfx_program *prog = (void*)entry->key;
-      _mesa_hash_table_remove_key(ctx->program_cache, prog->shaders);
-      prog->shaders[pipe_shader_type_from_mesa(shader->nir->info.stage)] = NULL;
-      if (shader->nir->info.stage == MESA_SHADER_TESS_EVAL && shader->generated)
+      if (shader->nir->info.stage == MESA_SHADER_COMPUTE) {
+         struct zink_compute_program *comp = (void*)entry->key;
+         _mesa_hash_table_remove_key(ctx->compute_program_cache, &comp->shader->shader_id);
+         comp->shader = NULL;
+         zink_compute_program_reference(screen, &comp, NULL);
+      } else {
+         struct zink_gfx_program *prog = (void*)entry->key;
+         _mesa_hash_table_remove_key(ctx->program_cache, prog->shaders);
+         prog->shaders[pipe_shader_type_from_mesa(shader->nir->info.stage)] = NULL;
+         if (shader->nir->info.stage == MESA_SHADER_TESS_EVAL && shader->generated)
             /* automatically destroy generated tcs shaders when tes is destroyed */
             zink_shader_free(ctx, shader->generated);
-      zink_gfx_program_reference(screen, &prog, NULL);
+         zink_gfx_program_reference(screen, &prog, NULL);
+      }
    }
    _mesa_set_destroy(shader->programs, NULL);
    free(shader->streamout.so_info_slots);

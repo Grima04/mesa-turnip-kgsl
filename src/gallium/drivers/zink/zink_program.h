@@ -69,6 +69,17 @@ struct zink_gfx_program {
    struct hash_table *pipelines[11]; // number of draw modes we support
 };
 
+struct zink_compute_program {
+   struct pipe_reference reference;
+
+   struct zink_shader_module *module;
+   struct zink_shader *shader;
+   struct zink_shader_cache *shader_cache;
+   VkDescriptorSetLayout dsl;
+   VkPipelineLayout layout;
+   unsigned num_descriptors;
+   struct hash_table *pipelines;
+};
 
 void
 zink_update_gfx_program(struct zink_context *ctx, struct zink_gfx_program *prog);
@@ -105,4 +116,31 @@ zink_gfx_program_reference(struct zink_screen *screen,
       zink_destroy_gfx_program(screen, old_dst);
    if (dst) *dst = src;
 }
+
+struct zink_compute_program *
+zink_create_compute_program(struct zink_context *ctx, struct zink_shader *shader);
+void
+zink_destroy_compute_program(struct zink_screen *screen,
+                         struct zink_compute_program *comp);
+
+void
+debug_describe_zink_compute_program(char* buf, const struct zink_compute_program *ptr);
+
+static inline void
+zink_compute_program_reference(struct zink_screen *screen,
+                           struct zink_compute_program **dst,
+                           struct zink_compute_program *src)
+{
+   struct zink_compute_program *old_dst = dst ? *dst : NULL;
+
+   if (pipe_reference_described(old_dst ? &old_dst->reference : NULL, &src->reference,
+                                (debug_reference_descriptor)debug_describe_zink_compute_program))
+      zink_destroy_compute_program(screen, old_dst);
+   if (dst) *dst = src;
+}
+
+VkPipeline
+zink_get_compute_pipeline(struct zink_screen *screen,
+                      struct zink_compute_program *comp,
+                      struct zink_compute_pipeline_state *state);
 #endif

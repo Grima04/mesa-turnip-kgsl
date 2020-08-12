@@ -189,3 +189,29 @@ zink_create_gfx_pipeline(struct zink_screen *screen,
 
    return pipeline;
 }
+
+VkPipeline
+zink_create_compute_pipeline(struct zink_screen *screen, struct zink_compute_program *comp, struct zink_compute_pipeline_state *state)
+{
+   VkComputePipelineCreateInfo pci = {};
+   pci.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
+   pci.flags = VK_PIPELINE_CREATE_DISABLE_OPTIMIZATION_BIT;
+   pci.layout = comp->layout;
+
+   VkPipelineShaderStageCreateInfo stage = {};
+   stage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+   stage.stage = VK_SHADER_STAGE_COMPUTE_BIT;
+   stage.module = comp->module->shader;
+   stage.pName = "main";
+
+   pci.stage = stage;
+
+   VkPipeline pipeline;
+   if (vkCreateComputePipelines(screen->dev, VK_NULL_HANDLE, 1, &pci,
+                                 NULL, &pipeline) != VK_SUCCESS) {
+      debug_printf("vkCreateComputePipelines failed\n");
+      return VK_NULL_HANDLE;
+   }
+
+   return pipeline;
+}

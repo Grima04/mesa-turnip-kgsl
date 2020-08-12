@@ -21,8 +21,13 @@ zink_batch_release(struct zink_screen *screen, struct zink_batch *batch)
 
    zink_framebuffer_reference(screen, &batch->fb, NULL);
    set_foreach(batch->programs, entry) {
-      struct zink_gfx_program *prog = (struct zink_gfx_program*)entry->key;
-      zink_gfx_program_reference(screen, &prog, NULL);
+      if (batch->batch_id == ZINK_COMPUTE_BATCH_ID) {
+         struct zink_compute_program *comp = (struct zink_compute_program*)entry->key;
+         zink_compute_program_reference(screen, &comp, NULL);
+      } else {
+         struct zink_gfx_program *prog = (struct zink_gfx_program*)entry->key;
+         zink_gfx_program_reference(screen, &prog, NULL);
+      }
    }
    _mesa_set_clear(batch->programs, NULL);
 
