@@ -626,8 +626,7 @@ type_to_dim(enum glsl_sampler_dim gdim, bool *is_ms)
 uint32_t
 zink_binding(gl_shader_stage stage, VkDescriptorType type, int index)
 {
-   if (stage == MESA_SHADER_NONE ||
-       stage >= MESA_SHADER_COMPUTE) {
+   if (stage == MESA_SHADER_NONE) {
       unreachable("not supported");
    } else {
       uint32_t stage_offset = (uint32_t)stage * (PIPE_MAX_CONSTANT_BUFFERS +
