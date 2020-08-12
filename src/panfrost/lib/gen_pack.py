@@ -592,11 +592,16 @@ class Parser(object):
         self.emit_unpack_function(self.struct, self.group)
         self.emit_print_function(self.struct, self.group)
 
+    def enum_prefix(self, name):
+        return 
+
     def emit_enum(self):
         e_name = enum_name(self.enum)
+        prefix = e_name if self.enum != 'Format' else global_prefix
         print('enum {} {{'.format(e_name))
+
         for value in self.values:
-            name = '{}_{}'.format(e_name, value.name)
+            name = '{}_{}'.format(prefix, value.name)
             name = safe_name(name).upper()
             print('        % -36s = %6d,' % (name, value.value))
         print('};\n')
@@ -605,7 +610,7 @@ class Parser(object):
         print("{}_as_str(enum {} imm)\n{{".format(e_name.lower(), e_name))
         print("    switch (imm) {")
         for value in self.values:
-            name = '{}_{}'.format(e_name, value.name)
+            name = '{}_{}'.format(prefix, value.name)
             name = safe_name(name).upper()
             print('    case {}: return "{}";'.format(name, value.name))
         print('    default: return "XXX: INVALID";')

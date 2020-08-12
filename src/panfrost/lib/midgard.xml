@@ -45,6 +45,109 @@
     <value name="Always" value="7"/>
   </enum>
 
+  <enum name="Format">
+    <value name="ETC2 RGB8" value="1"/>
+    <value name="ETC2 R11 UNORM" value="2"/>
+    <value name="ETC2 RGBA8" value="3"/>
+    <value name="ETC2 RG11 UNORM" value="4"/>
+    <value name="NXR" value="6"/>
+    <value name="BC1 UNORM" value="7"/>
+    <value name="BC2 UNORM" value="8"/>
+    <value name="BC3 UNORM" value="9"/>
+    <value name="BC4 UNORM" value="10"/>
+    <value name="BC4 SNORM" value="11"/>
+    <value name="BC5 UNORM" value="12"/>
+    <value name="BC5 SNORM" value="13"/>
+    <value name="BC6H UF16" value="14"/>
+    <value name="BC6H SF16" value="15"/>
+    <value name="BC7 UNORM" value="16"/>
+    <value name="ETC2 R11 SNORM" value="17"/>
+    <value name="ETC2 RG11 SNORM" value="18"/>
+    <value name="ETC2 RGB8A1" value="19"/>
+    <value name="ASTC 3D LDR" value="20"/>
+    <value name="ASTC 3D HDR" value="21"/>
+    <value name="ASTC 2D LDR" value="22"/>
+    <value name="ASTC 2D HDR" value="23"/>
+    <value name="RGB565" value="64"/>
+    <value name="RGB5 X1 UNORM" value="65"/>
+    <value name="RGB5 A1 UNORM" value="66"/>
+    <value name="RGB10 A2 UNORM" value="67"/>
+    <value name="RGB10 A2 SNORM" value="69"/>
+    <value name="RGB10 A2UI" value="71"/>
+    <value name="RGB10 A2I" value="73"/>
+    <value name="RGB332 UNORM" value="75"/>
+    <value name="RGB233 UNORM" value="76"/>
+    <value name="Z24X8 UNORM" value="77"/>
+    <value name="R32 FIXED" value="81"/>
+    <value name="RG32 FIXED" value="82"/>
+    <value name="RGB32 FIXED" value="83"/>
+    <value name="RGBA32 FIXED" value="84"/>
+    <value name="R11F G11F B10F" value="89"/>
+    <value name="R9F G9F B9F E5F" value="91"/>
+    <value name="VARYING POS" value="94"/>
+    <value name="VARYING DISCARD" value="95"/>
+    <value name="R8 SNORM" value="99"/>
+    <value name="R16 SNORM" value="100"/>
+    <value name="R32 SNORM" value="101"/>
+    <value name="RG8 SNORM" value="107"/>
+    <value name="RG16 SNORM" value="108"/>
+    <value name="RG32 SNORM" value="109"/>
+    <value name="RGB8 SNORM" value="115"/>
+    <value name="RGB16 SNORM" value="116"/>
+    <value name="RGB32 SNORM" value="117"/>
+    <value name="RGBA8 SNORM" value="123"/>
+    <value name="RGBA16 SNORM" value="124"/>
+    <value name="RGBA32 SNORM" value="125"/>
+    <value name="R8UI" value="131"/>
+    <value name="R16UI" value="132"/>
+    <value name="R32UI" value="133"/>
+    <value name="RG8UI" value="139"/>
+    <value name="RG16UI" value="140"/>
+    <value name="RG32UI" value="141"/>
+    <value name="RGB8UI" value="147"/>
+    <value name="RGB16UI" value="148"/>
+    <value name="RGB32UI" value="149"/>
+    <value name="RGBA8UI" value="155"/>
+    <value name="RGBA16UI" value="156"/>
+    <value name="RGBA32UI" value="157"/>
+    <value name="R8 UNORM" value="163"/>
+    <value name="R16 UNORM" value="164"/>
+    <value name="R32 UNORM" value="165"/>
+    <value name="R32F" value="167"/>
+    <value name="RG8 UNORM" value="171"/>
+    <value name="RG16 UNORM" value="172"/>
+    <value name="RG32 UNORM" value="173"/>
+    <value name="RG32F" value="175"/>
+    <value name="RGB8 UNORM" value="179"/>
+    <value name="RGB16 UNORM" value="180"/>
+    <value name="RGB32 UNORM" value="181"/>
+    <value name="RGB32F" value="183"/>
+    <value name="RGBA4 UNORM" value="186"/>
+    <value name="RGBA8 UNORM" value="187"/>
+    <value name="RGBA16 UNORM" value="188"/>
+    <value name="RGBA32 UNORM" value="189"/>
+    <value name="RGBA32F" value="191"/>
+    <value name="R8I" value="195"/>
+    <value name="R16I" value="196"/>
+    <value name="R32I" value="197"/>
+    <value name="R16F" value="199"/>
+    <value name="RG8I" value="203"/>
+    <value name="RG16I" value="204"/>
+    <value name="RG32I" value="205"/>
+    <value name="RG16F" value="207"/>
+    <value name="RGB8I" value="211"/>
+    <value name="RGB16I" value="212"/>
+    <value name="RGB32I" value="213"/>
+    <value name="RGB16F" value="215"/>
+    <value name="RGBA8I" value="219"/>
+    <value name="RGBA16I" value="220"/>
+    <value name="RGBA32I" value="221"/>
+    <value name="RGBA16F" value="223"/>
+    <value name="RGBA4" value="232"/>
+    <value name="RGBA8 2" value="237"/>
+    <value name="RGB10 A2 2" value="238"/>
+  </enum>
+
   <enum name="Block Format">
     <!--- 16x16 block u-interleaved -->
     <value name="Tiled" value="0"/>
