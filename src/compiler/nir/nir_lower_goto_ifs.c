@@ -590,22 +590,20 @@ organize_levels(struct list_head *levels, struct set *remaining,
                             routing->brk.reachable, mem_ctx);
       }
       assert(curr_level->blocks->entries);
-      curr_level->skip_start = 0;
 
       struct strct_lvl *prev_level = NULL;
       if (!list_is_empty(levels))
          prev_level = list_last_entry(levels, struct strct_lvl, link);
 
-      if (skip_targets->entries) {
-         set_foreach(skip_targets, entry) {
-            if (_mesa_set_search_pre_hashed(curr_level->blocks,
-                                            entry->hash, entry->key)) {
-               _mesa_set_remove(skip_targets, entry);
-               prev_level->skip_end = 1;
-               curr_level->skip_start = !!skip_targets->entries;
-            }
+      set_foreach(skip_targets, entry) {
+         if (_mesa_set_search_pre_hashed(curr_level->blocks,
+                                         entry->hash, entry->key)) {
+            _mesa_set_remove(skip_targets, entry);
+            prev_level->skip_end = 1;
          }
       }
+      curr_level->skip_start = skip_targets->entries != 0;
+
       struct set *prev_frontier = NULL;
       if (!prev_level) {
          prev_frontier = reach;
