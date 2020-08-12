@@ -18,16 +18,17 @@
 static VkDescriptorSet
 allocate_descriptor_set(struct zink_screen *screen,
                         struct zink_batch *batch,
-                        struct zink_gfx_program *prog)
+                        VkDescriptorSetLayout dsl,
+                        unsigned num_descriptors)
 {
-   assert(batch->descs_left >= prog->num_descriptors);
+   assert(batch->descs_left >= num_descriptors);
    VkDescriptorSetAllocateInfo dsai;
    memset((void *)&dsai, 0, sizeof(dsai));
    dsai.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
    dsai.pNext = NULL;
    dsai.descriptorPool = batch->descpool;
    dsai.descriptorSetCount = 1;
-   dsai.pSetLayouts = &prog->dsl;
+   dsai.pSetLayouts = &dsl;
 
    VkDescriptorSet desc_set;
    if (vkAllocateDescriptorSets(screen->dev, &dsai, &desc_set) != VK_SUCCESS) {
@@ -35,7 +36,7 @@ allocate_descriptor_set(struct zink_screen *screen,
       return VK_NULL_HANDLE;
    }
 
-   batch->descs_left -= prog->num_descriptors;
+   batch->descs_left -= num_descriptors;
    return desc_set;
 }
 
@@ -528,7 +529,7 @@ zink_draw_vbo(struct pipe_context *pctx,
    zink_batch_reference_program(batch, &ctx->curr_program->reference);
 
    VkDescriptorSet desc_set = allocate_descriptor_set(screen, batch,
-                                                      gfx_program);
+                                                      gfx_program->dsl, gfx_program->num_descriptors);
    assert(desc_set != VK_NULL_HANDLE);
 
    for (int i = 0; i < ARRAY_SIZE(ctx->gfx_stages); i++) {
