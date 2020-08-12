@@ -83,6 +83,9 @@ struct ntv_context {
          sample_mask_type, sample_id_var, sample_pos_var, sample_mask_in_var,
          tess_patch_vertices_in, tess_coord_var, // tess
          push_const_var,
+         workgroup_id_var, num_workgroups_var,
+         local_invocation_id_var, global_invocation_id_var,
+         local_invocation_index_var,
          shared_block_var;
 };
 
@@ -2665,6 +2668,26 @@ emit_intrinsic(struct ntv_context *ctx, nir_intrinsic_instr *intr)
    case nir_intrinsic_image_deref_atomic_exchange:
    case nir_intrinsic_image_deref_atomic_comp_swap:
       emit_image_intrinsic(ctx, intr);
+      break;
+
+   case nir_intrinsic_load_work_group_id:
+      emit_load_vec_input(ctx, intr, &ctx->workgroup_id_var, "gl_WorkGroupID", SpvBuiltInWorkgroupId, nir_type_uint);
+      break;
+
+   case nir_intrinsic_load_num_work_groups:
+      emit_load_vec_input(ctx, intr, &ctx->num_workgroups_var, "gl_NumWorkGroups", SpvBuiltInNumWorkgroups, nir_type_uint);
+      break;
+
+   case nir_intrinsic_load_local_invocation_id:
+      emit_load_vec_input(ctx, intr, &ctx->local_invocation_id_var, "gl_LocalInvocationID", SpvBuiltInLocalInvocationId, nir_type_uint);
+      break;
+
+   case nir_intrinsic_load_global_invocation_id:
+      emit_load_vec_input(ctx, intr, &ctx->global_invocation_id_var, "gl_GlobalInvocationID", SpvBuiltInGlobalInvocationId, nir_type_uint);
+      break;
+
+   case nir_intrinsic_load_local_invocation_index:
+      emit_load_uint_input(ctx, intr, &ctx->local_invocation_index_var, "gl_LocalInvocationIndex", SpvBuiltInLocalInvocationIndex);
       break;
 
    default:
