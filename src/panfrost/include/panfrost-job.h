@@ -1391,20 +1391,6 @@ struct mali_single_framebuffer {
 } __attribute__((packed));
 
 
-/* SINGLE to disable multisampling, AVERAGE for
- * EXT_multisampled_render_to_texture operation where multiple tilebuffer
- * samples are implicitly resolved before writeout, MULTIPLE to write multiple
- * samples inline, and LAYERED for ES3-style multisampling with each sample in
- * a different buffer.
- */
-
-enum mali_msaa_mode {
-        MALI_MSAA_SINGLE = 0,
-        MALI_MSAA_AVERAGE = 1,
-        MALI_MSAA_MULTIPLE = 2,
-        MALI_MSAA_LAYERED = 3,
-};
-
 #define MALI_MFBD_FORMAT_SRGB 	  (1 << 0)
 
 struct mali_rt_format {
@@ -1416,7 +1402,7 @@ struct mali_rt_format {
         unsigned unk3 : 4;
         unsigned unk4 : 1;
         enum mali_block_format block : 2;
-        enum mali_msaa_mode msaa : 2;
+        enum mali_msaa msaa : 2;
         unsigned flags : 2;
 
         unsigned swizzle : 12;

@@ -453,22 +453,6 @@ static char *pandecode_format(enum mali_format format)
 
 #undef DEFINE_CASE
 
-#define DEFINE_CASE(name) case MALI_MSAA_ ## name: return "MALI_MSAA_" #name
-static char *
-pandecode_msaa_mode(enum mali_msaa_mode mode)
-{
-        switch (mode) {
-                DEFINE_CASE(SINGLE);
-                DEFINE_CASE(AVERAGE);
-                DEFINE_CASE(MULTIPLE);
-                DEFINE_CASE(LAYERED);
-        default:
-                unreachable("Impossible");
-                return "";
-        }
-}
-#undef DEFINE_CASE
-
 static char *pandecode_attr_mode_short(enum mali_attr_mode mode)
 {
         switch(mode) {
@@ -1027,7 +1011,7 @@ pandecode_rt_format(struct mali_rt_format format)
         pandecode_log_decoded_flags(mfbd_fmt_flag_info, format.flags);
         pandecode_log_cont(",\n");
 
-        pandecode_prop("msaa = %s", pandecode_msaa_mode(format.msaa));
+        pandecode_prop("msaa = %s", mali_msaa_as_str(format.msaa));
 
         /* In theory, the no_preload bit can be cleared to enable MFBD preload,
          * which is a faster hardware-based alternative to the wallpaper method

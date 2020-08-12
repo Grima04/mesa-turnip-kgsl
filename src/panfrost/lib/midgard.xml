@@ -51,6 +51,16 @@
     <value name="Trilinear" value="3"/>
   </enum>
 
+  <enum name="MSAA">
+    <value name="Single" value="0"/>
+    <!-- N samples, 1 surface, resolved -->
+    <value name="Average" value="1"/>
+    <!-- N samples, 1 surface, unresolved -->
+    <value name="Multiple" value="2"/>
+    <!-- N samples, N surfaces --> 
+    <value name="Layered" value="3"/>
+  </enum>
+
   <enum name="Stencil Op">
     <value name="Keep" value="0"/>
     <value name="Replace" value="1"/>
