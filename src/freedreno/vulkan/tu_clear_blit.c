@@ -1050,7 +1050,20 @@ tu6_blit_image(struct tu_cmd_buffer *cmd,
        filter == VK_FILTER_CUBIC_EXT)
       ops = &r3d_ops;
 
-   ops->setup(cmd, cs, dst_image->vk_format, info->dstSubresource.aspectMask,
+   /* use the right format in setup() for D32_S8
+    * TODO: this probably should use a helper
+    */
+   VkFormat format = dst_image->vk_format;
+   if (format == VK_FORMAT_D32_SFLOAT_S8_UINT) {
+      if (info->dstSubresource.aspectMask == VK_IMAGE_ASPECT_DEPTH_BIT)
+         format = VK_FORMAT_D32_SFLOAT;
+      else if (info->dstSubresource.aspectMask == VK_IMAGE_ASPECT_STENCIL_BIT)
+         format = VK_FORMAT_S8_UINT;
+      else
+         unreachable("unexpected D32_S8 aspect mask in blit_image");
+   }
+
+   ops->setup(cmd, cs, format, info->dstSubresource.aspectMask,
               rotate[mirror_y][mirror_x], false, dst_image->layout[0].ubwc);
 
    if (ops == &r3d_ops) {
@@ -1104,8 +1117,23 @@ tu_CmdBlitImage(VkCommandBuffer commandBuffer,
    tu_bo_list_add(&cmd->bo_list, src_image->bo, MSM_SUBMIT_BO_READ);
    tu_bo_list_add(&cmd->bo_list, dst_image->bo, MSM_SUBMIT_BO_WRITE);
 
-   for (uint32_t i = 0; i < regionCount; ++i)
+   for (uint32_t i = 0; i < regionCount; ++i) {
+      /* can't blit both depth and stencil at once with D32_S8
+       * TODO: more advanced 3D blit path to support it instead?
+       */
+      if (src_image->vk_format == VK_FORMAT_D32_SFLOAT_S8_UINT ||
+          dst_image->vk_format == VK_FORMAT_D32_SFLOAT_S8_UINT) {
+         VkImageBlit region = pRegions[i];
+         uint32_t b;
+         for_each_bit(b, pRegions[i].dstSubresource.aspectMask) {
+            region.srcSubresource.aspectMask = BIT(b);
+            region.dstSubresource.aspectMask = BIT(b);
+            tu6_blit_image(cmd, src_image, dst_image, &region, filter);
+         }
+         continue;
+      }
       tu6_blit_image(cmd, src_image, dst_image, pRegions + i, filter);
+   }
 }
 
 static void
