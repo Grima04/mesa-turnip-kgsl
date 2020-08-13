@@ -1069,8 +1069,7 @@ tu6_vpc_varying_mode(const struct ir3_shader_variant *fs,
          *interp_mode |= INTERP_ONE << 6;
          shift += 2;
       }
-   } else if ((fs->inputs[index].interpolate == INTERP_MODE_FLAT) ||
-              fs->inputs[index].rasterflat) {
+   } else if (fs->inputs[index].flat) {
       for (int i = 0; i < 4; i++) {
          if (compmask & (1 << i)) {
             *interp_mode |= INTERP_FLAT << shift;

@@ -940,7 +940,7 @@ emit_interp_state(struct fd_ringbuffer *ring, struct ir3_shader_variant *fs,
 
 		uint32_t inloc = fs->inputs[j].inloc;
 
-		if ((fs->inputs[j].interpolate == INTERP_MODE_FLAT) ||
+		if (fs->inputs[j].flat ||
 				(fs->inputs[j].rasterflat && rasterflat)) {
 			uint32_t loc = inloc;
 
