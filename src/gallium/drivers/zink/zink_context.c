@@ -1293,6 +1293,8 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
    ctx->base.set_sample_mask = zink_set_sample_mask;
 
    ctx->base.clear = zink_clear;
+   ctx->base.clear_texture = zink_clear_texture;
+
    ctx->base.draw_vbo = zink_draw_vbo;
    ctx->base.flush = zink_flush;
 
