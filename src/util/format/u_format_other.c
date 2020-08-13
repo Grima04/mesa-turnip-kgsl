@@ -237,50 +237,6 @@ util_format_r11g11b10_float_pack_rgba_8unorm(uint8_t *dst_row, unsigned dst_stri
    }
 }
 
-
-void
-util_format_r1_unorm_unpack_rgba_float(UNUSED void *dst_row, UNUSED unsigned dst_stride,
-                                  UNUSED const uint8_t *src_row, UNUSED unsigned src_stride,
-                                  UNUSED unsigned width, UNUSED unsigned height)
-{
-
-}
-
-
-void
-util_format_r1_unorm_pack_rgba_float(UNUSED uint8_t *dst_row, UNUSED unsigned dst_stride,
-                                UNUSED const float *src_row, UNUSED unsigned src_stride,
-                                UNUSED unsigned width, UNUSED unsigned height)
-{
-
-}
-
-
-void
-util_format_r1_unorm_fetch_rgba_float(UNUSED float *dst, UNUSED const uint8_t *src,
-                                 UNUSED unsigned i, UNUSED unsigned j)
-{
-
-}
-
-
-void
-util_format_r1_unorm_unpack_rgba_8unorm(UNUSED uint8_t *dst_row, UNUSED unsigned dst_stride,
-                                   UNUSED const uint8_t *src_row, UNUSED unsigned src_stride,
-                                   UNUSED unsigned width, UNUSED unsigned height)
-{
-
-}
-
-
-void
-util_format_r1_unorm_pack_rgba_8unorm(UNUSED uint8_t *dst_row, UNUSED unsigned dst_stride,
-                                 UNUSED const uint8_t *src_row, UNUSED unsigned src_stride,
-                                 UNUSED unsigned width, UNUSED unsigned height)
-{
-}
-
-
 /*
  * PIPE_FORMAT_R8G8Bx_SNORM
  *

@@ -82,6 +82,7 @@ def has_access(format):
     # We don't generate code for YUV formats, and many of the new ones lack
     # pack/unpack functions for softpipe/llvmpipe.
     noaccess_formats = [
+        'r1_unorm',
         'yv12',
         'yv16',
         'iyuv',
