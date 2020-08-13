@@ -143,8 +143,8 @@ clear_zs_no_rp(struct zink_batch *batch, struct zink_resource *res, VkImageAspec
    vkCmdClearDepthStencilImage(batch->cmdbuf, res->image, res->layout, &zs_value, 1, &range);
 }
 
-static struct zink_batch *
-get_clear_batch(struct zink_context *ctx, unsigned width, unsigned height, struct u_rect *region)
+static bool
+clear_needs_rp(unsigned width, unsigned height, struct u_rect *region)
 {
    struct u_rect intersect = {0, width, 0, height};
 
@@ -155,14 +155,14 @@ get_clear_batch(struct zink_context *ctx, unsigned width, unsigned height, struc
     */
    if (!u_rect_test_intersection(region, &intersect))
       /* is this even a thing? */
-      return zink_batch_rp(ctx);
+      return true;
 
     u_rect_find_intersection(region, &intersect);
     if (intersect.x0 != 0 || intersect.y0 != 0 ||
         intersect.x1 != width || intersect.y1 != height)
-       return zink_batch_rp(ctx);
+       return true;
 
-   return zink_curr_batch(ctx);
+   return false;
 }
 
 void
@@ -174,16 +174,16 @@ zink_clear(struct pipe_context *pctx,
 {
    struct zink_context *ctx = zink_context(pctx);
    struct pipe_framebuffer_state *fb = &ctx->fb_state;
-   struct zink_batch *batch;
+   struct zink_batch *batch = zink_curr_batch(ctx);
+   bool needs_rp = false;
 
    if (scissor_state) {
       struct u_rect scissor = {scissor_state->minx, scissor_state->maxx, scissor_state->miny, scissor_state->maxy};
-      batch = get_clear_batch(ctx, fb->width, fb->height, &scissor);
-   } else
-      batch = zink_curr_batch(ctx);
+      needs_rp = clear_needs_rp(fb->width, fb->height, &scissor);
+   }
 
 
-   if (batch->in_rp || ctx->render_condition_active) {
+   if (needs_rp || batch->in_rp || ctx->render_condition_active) {
       clear_in_rp(pctx, buffers, scissor_state, pcolor, depth, stencil);
       return;
    }

@@ -46,6 +46,12 @@ struct zink_rasterizer_state;
 struct zink_resource;
 struct zink_vertex_elements_state;
 
+enum zink_blit_flags {
+   ZINK_BLIT_NORMAL = 1 << 0,
+   ZINK_BLIT_SAVE_FS = 1 << 1,
+   ZINK_BLIT_SAVE_FB = 1 << 2,
+};
+
 struct zink_sampler_view {
    struct pipe_sampler_view base;
    union {
@@ -190,6 +196,9 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags);
 
 void
 zink_context_query_init(struct pipe_context *ctx);
+
+void
+zink_blit_begin(struct zink_context *ctx, enum zink_blit_flags flags);
 
 void
 zink_blit(struct pipe_context *pctx,
