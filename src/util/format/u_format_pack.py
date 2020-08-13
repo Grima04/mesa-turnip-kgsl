@@ -628,8 +628,11 @@ def generate_format_unpack(format, dst_channel, dst_native_type, dst_suffix):
     else:
         dst_proto_type = 'void'
 
-    print('static inline void')
-    print('util_format_%s_unpack_%s(%s *dst_row, unsigned dst_stride, const uint8_t *src_row, unsigned src_stride, unsigned width, unsigned height)' % (name, dst_suffix, dst_proto_type))
+    proto = 'util_format_%s_unpack_%s(%s *dst_row, unsigned dst_stride, const uint8_t *src_row, unsigned src_stride, unsigned width, unsigned height)' % (name, dst_suffix, dst_proto_type)
+    print('void %s;' % proto, file=sys.stdout2)
+
+    print('void')
+    print(proto)
     print('{')
 
     if is_format_supported(format):
@@ -688,8 +691,13 @@ def generate_format_fetch(format, dst_channel, dst_native_type):
 
     name = format.short_name()
 
-    print('static inline void')
-    print('util_format_%s_fetch_rgba(void *in_dst, const uint8_t *src, UNUSED unsigned i, UNUSED unsigned j)' % (name))
+    proto = 'util_format_%s_fetch_rgba(void *in_dst, const uint8_t *src, UNUSED unsigned i, UNUSED unsigned j)' % (name)
+
+    print('void %s;' % proto, file=sys.stdout2)
+
+    print('void')
+    print(proto)
+
     print('{')
     print('   %s *dst = in_dst;' % dst_native_type)
 
