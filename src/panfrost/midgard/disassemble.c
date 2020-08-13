@@ -1391,18 +1391,8 @@ print_texture_barrier(FILE *fp, uint32_t *word)
         if (barrier->zero5)
                 fprintf(fp, "/* zero4 = 0x%" PRIx64 " */ ", barrier->zero5);
 
-
-        /* Control barriers are always implied, so include for obviousness */
-        fprintf(fp, " control");
-
-        if (barrier->buffer)
-                fprintf(fp, " | buffer");
-
-        if (barrier->shared)
-                fprintf(fp, " | shared");
-
-        if (barrier->stack)
-                fprintf(fp, " | stack");
+        if (barrier->out_of_order)
+                fprintf(fp, ".ooo%u", barrier->out_of_order);
 
         fprintf(fp, "\n");
 }

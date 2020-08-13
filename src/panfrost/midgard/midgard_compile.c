@@ -1570,11 +1570,6 @@ emit_control_barrier(compiler_context *ctx)
                 .dest = ~0,
                 .src = { ~0, ~0, ~0, ~0 },
                 .op = TEXTURE_OP_BARRIER,
-                .texture = {
-                        /* TODO: optimize */
-                        .out_of_order = MIDGARD_BARRIER_BUFFER |
-                                MIDGARD_BARRIER_SHARED ,
-                }
         };
 
         emit_mir_instruction(ctx, ins);
