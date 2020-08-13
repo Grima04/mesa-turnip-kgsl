@@ -1329,6 +1329,12 @@ void
 vtn_function_emit(struct vtn_builder *b, struct vtn_function *func,
                   vtn_instruction_handler instruction_handler)
 {
+   static int force_unstructured = -1;
+   if (force_unstructured < 0) {
+      force_unstructured =
+         env_var_as_boolean("MESA_SPIRV_FORCE_UNSTRUCTURED", false);
+   }
+
    nir_builder_init(&b->nb, func->impl);
    b->func = func;
    b->nb.cursor = nir_after_cf_list(&func->impl->body);
@@ -1336,7 +1342,7 @@ vtn_function_emit(struct vtn_builder *b, struct vtn_function *func,
    b->has_loop_continue = false;
    b->phi_table = _mesa_pointer_hash_table_create(b);
 
-   if (b->shader->info.stage == MESA_SHADER_KERNEL) {
+   if (b->shader->info.stage == MESA_SHADER_KERNEL || force_unstructured) {
       b->func->impl->structured = false;
       vtn_emit_cf_func_unstructured(b, func, instruction_handler);
    } else {
