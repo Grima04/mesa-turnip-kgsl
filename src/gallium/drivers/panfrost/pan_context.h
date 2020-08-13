@@ -245,9 +245,6 @@ struct panfrost_shader_state {
 
         struct panfrost_ubo_push push;
 
-        /* Should we enable helper invocations */
-        bool helper_invocations;
-
         /* GPU-executable memory */
         struct panfrost_bo *bo;
 
