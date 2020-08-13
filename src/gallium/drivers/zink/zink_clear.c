@@ -105,6 +105,44 @@ clear_in_rp(struct pipe_context *pctx,
    vkCmdClearAttachments(batch->cmdbuf, num_attachments, attachments, 1, &cr);
 }
 
+static void
+clear_color_no_rp(struct zink_batch *batch, struct zink_resource *res, const union pipe_color_union *pcolor, unsigned level, unsigned layer, unsigned layerCount)
+{
+   VkImageSubresourceRange range = {};
+   range.baseMipLevel = level;
+   range.levelCount = 1;
+   range.baseArrayLayer = layer;
+   range.layerCount = layerCount;
+   range.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+
+   VkClearColorValue color;
+   color.float32[0] = pcolor->f[0];
+   color.float32[1] = pcolor->f[1];
+   color.float32[2] = pcolor->f[2];
+   color.float32[3] = pcolor->f[3];
+
+   if (res->layout != VK_IMAGE_LAYOUT_GENERAL && res->layout != VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
+      zink_resource_barrier(batch->cmdbuf, res, range.aspectMask, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+   vkCmdClearColorImage(batch->cmdbuf, res->image, res->layout, &color, 1, &range);
+}
+
+static void
+clear_zs_no_rp(struct zink_batch *batch, struct zink_resource *res, VkImageAspectFlags aspects, double depth, unsigned stencil, unsigned level, unsigned layer, unsigned layerCount)
+{
+   VkImageSubresourceRange range = {};
+   range.baseMipLevel = level;
+   range.levelCount = 1;
+   range.baseArrayLayer = layer;
+   range.layerCount = layerCount;
+   range.aspectMask = aspects;
+
+   VkClearDepthStencilValue zs_value = {depth, stencil};
+
+   if (res->layout != VK_IMAGE_LAYOUT_GENERAL && res->layout != VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
+      zink_resource_barrier(batch->cmdbuf, res, res->aspect, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+   vkCmdClearDepthStencilImage(batch->cmdbuf, res->image, res->layout, &zs_value, 1, &range);
+}
+
 static struct zink_batch *
 get_clear_batch(struct zink_context *ctx, unsigned width, unsigned height, struct u_rect *region)
 {
@@ -150,65 +188,45 @@ zink_clear(struct pipe_context *pctx,
       return;
    }
 
-   VkImageSubresourceRange range = {};
-   range.levelCount = 1;
    if (buffers & PIPE_CLEAR_COLOR) {
-      range.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
       for (unsigned i = 0; i < fb->nr_cbufs; i++) {
-         if (!(buffers & (PIPE_CLEAR_COLOR0 << i)) || !fb->cbufs[i])
-            continue;
-          VkClearColorValue color;
-          struct pipe_surface *psurf = fb->cbufs[i];
+         if ((buffers & (PIPE_CLEAR_COLOR0 << i)) && fb->cbufs[i]) {
+            struct pipe_surface *psurf = fb->cbufs[i];
 
-          if (psurf->texture->target == PIPE_TEXTURE_3D && !check_3d_layers(psurf)) {
-             clear_in_rp(pctx, buffers, scissor_state, pcolor, depth, stencil);
-             return;
-          }
-
-          struct zink_resource *res = zink_resource(psurf->texture);
-          if (res->layout != VK_IMAGE_LAYOUT_GENERAL && res->layout != VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
-             zink_resource_barrier(batch->cmdbuf, res, range.aspectMask, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-          if (psurf->format != res->base.format &&
-              !util_format_is_srgb(psurf->format) && util_format_is_srgb(res->base.format)) {
-             /* if SRGB mode is disabled for the fb with a backing srgb image then we have to
-              * convert this to srgb color
-              */
-             color.float32[0] = util_format_srgb_to_linear_float(pcolor->f[0]);
-             color.float32[1] = util_format_srgb_to_linear_float(pcolor->f[1]);
-             color.float32[2] = util_format_srgb_to_linear_float(pcolor->f[2]);
-          } else {
-             color.float32[0] = pcolor->f[0];
-             color.float32[1] = pcolor->f[1];
-             color.float32[2] = pcolor->f[2];
-          }
-          color.float32[3] = pcolor->f[3];
-          range.baseMipLevel = psurf->u.tex.level;
-          range.baseArrayLayer = psurf->u.tex.first_layer;
-          range.layerCount = psurf->u.tex.last_layer - psurf->u.tex.first_layer + 1;
-
-          vkCmdClearColorImage(batch->cmdbuf, res->image, res->layout, &color, 1, &range);
+            if (psurf->texture->target == PIPE_TEXTURE_3D && !check_3d_layers(psurf)) {
+               clear_in_rp(pctx, buffers, scissor_state, pcolor, depth, stencil);
+               return;
+            }
+            struct zink_resource *res = zink_resource(psurf->texture);
+            union pipe_color_union color = *pcolor;
+            if (psurf->format != res->base.format &&
+                !util_format_is_srgb(psurf->format) && util_format_is_srgb(res->base.format)) {
+               /* if SRGB mode is disabled for the fb with a backing srgb image then we have to
+                * convert this to srgb color
+                */
+               color.f[0] = util_format_srgb_to_linear_float(pcolor->f[0]);
+               color.f[1] = util_format_srgb_to_linear_float(pcolor->f[1]);
+               color.f[2] = util_format_srgb_to_linear_float(pcolor->f[2]);
+            }
+            clear_color_no_rp(batch, zink_resource(fb->cbufs[i]->texture), &color,
+                              psurf->u.tex.level, psurf->u.tex.first_layer,
+                              psurf->u.tex.last_layer - psurf->u.tex.first_layer + 1);
+         }
       }
    }
 
-   range.aspectMask = 0;
    if (buffers & PIPE_CLEAR_DEPTHSTENCIL && fb->zsbuf) {
       if (fb->zsbuf->texture->target == PIPE_TEXTURE_3D && !check_3d_layers(fb->zsbuf)) {
          clear_in_rp(pctx, buffers, scissor_state, pcolor, depth, stencil);
          return;
       }
-
+      VkImageAspectFlags aspects = 0;
       if (buffers & PIPE_CLEAR_DEPTH)
-         range.aspectMask |= VK_IMAGE_ASPECT_DEPTH_BIT;
+         aspects |= VK_IMAGE_ASPECT_DEPTH_BIT;
       if (buffers & PIPE_CLEAR_STENCIL)
-         range.aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
-      VkClearDepthStencilValue zs_value = {depth, stencil};
-      range.baseMipLevel = fb->zsbuf->u.tex.level;
-      range.baseArrayLayer = fb->zsbuf->u.tex.first_layer;
-      range.layerCount = fb->zsbuf->u.tex.last_layer - fb->zsbuf->u.tex.first_layer + 1;
-
-      struct zink_resource *res = zink_resource(fb->zsbuf->texture);
-      if (res->layout != VK_IMAGE_LAYOUT_GENERAL && res->layout != VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
-         zink_resource_barrier(batch->cmdbuf, res, range.aspectMask, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-      vkCmdClearDepthStencilImage(batch->cmdbuf, res->image, res->layout, &zs_value, 1, &range);
+         aspects |= VK_IMAGE_ASPECT_STENCIL_BIT;
+      clear_zs_no_rp(batch, zink_resource(fb->zsbuf->texture), aspects,
+                     depth, stencil, fb->zsbuf->u.tex.level, fb->zsbuf->u.tex.first_layer,
+                     fb->zsbuf->u.tex.last_layer - fb->zsbuf->u.tex.first_layer + 1);
    }
 }
