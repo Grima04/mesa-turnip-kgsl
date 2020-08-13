@@ -64,7 +64,8 @@ libpanfrost = static_library(
   dependencies: [
     dep_thread,
     dep_libdrm,
-    idep_nir
+    idep_nir,
+    idep_midgard_pack
   ],
   include_directories : panfrost_includes,
   c_args : [c_msvc_compat_args, compile_args_panfrost],

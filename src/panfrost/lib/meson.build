@@ -50,6 +50,11 @@ midgard_pack = custom_target(
   capture : true,
 )
 
+idep_midgard_pack = declare_dependency(
+  sources : [midgard_pack],
+  include_directories : include_directories('.'),
+)
+
 libpanfrost_lib = static_library(
   'panfrost_lib',
   [libpanfrost_lib_files, midgard_pack],
