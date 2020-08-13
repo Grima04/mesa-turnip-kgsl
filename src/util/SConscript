@@ -17,6 +17,7 @@ env.Prepend(CPPPATH = [
     '#src/gallium/auxiliary',
     '#src/util',
     '#src/util/format',
+    env.Dir('format'), # Build path corresponding to src/util/format
 ])
 
 env.CodeGenerate(

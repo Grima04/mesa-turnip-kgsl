@@ -692,7 +692,6 @@ def generate_format_fetch(format, dst_channel, dst_native_type):
     name = format.short_name()
 
     proto = 'util_format_%s_fetch_rgba(void *in_dst, const uint8_t *src, UNUSED unsigned i, UNUSED unsigned j)' % (name)
-
     print('void %s;' % proto, file=sys.stdout2)
 
     print('void')
