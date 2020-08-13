@@ -27,6 +27,7 @@
 
 #include <string.h>
 #include <assert.h>
+#include <stdio.h>
 
 #include "shader_enums.h"
 #include "c11/threads.h"
@@ -55,6 +56,9 @@ glsl_type_singleton_decref();
 
 extern void
 _mesa_glsl_initialize_types(struct _mesa_glsl_parse_state *state);
+
+void
+glsl_print_type(FILE *f, const struct glsl_type *t);
 
 void encode_type_to_blob(struct blob *blob, const struct glsl_type *type);
 
