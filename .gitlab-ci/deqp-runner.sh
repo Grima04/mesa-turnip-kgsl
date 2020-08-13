@@ -238,7 +238,7 @@ check_vk_device_name() {
     $DEQP $DEQP_OPTIONS --deqp-case=dEQP-VK.info.device --deqp-log-filename=$RESULTS/deqp-info.qpa
     DEVICENAME=`grep deviceName $RESULTS/deqp-info.qpa | sed 's|deviceName: ||g'`
     echo "deviceName: $DEVICENAME"
-    if [ -n "$DEQP_EXPECTED_RENDERER" -a $DEVICENAME != "$DEQP_EXPECTED_RENDERER" ]; then
+    if [ -n "$DEQP_EXPECTED_RENDERER" -a "x$DEVICENAME" != "x$DEQP_EXPECTED_RENDERER" ]; then
         echo "Expected deviceName $DEQP_EXPECTED_RENDERER"
         exit 1
     fi
