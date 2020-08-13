@@ -5105,7 +5105,8 @@ vtn_handle_ray_intrinsic(struct vtn_builder *b, SpvOp opcode,
    nir_intrinsic_instr *intrin;
 
    switch (opcode) {
-   case SpvOpTraceNV: {
+   case SpvOpTraceNV:
+   case SpvOpTraceRayKHR: {
       intrin = nir_intrinsic_instr_create(b->nb.shader,
                                           nir_intrinsic_trace_ray);
 
@@ -5113,7 +5114,11 @@ vtn_handle_ray_intrinsic(struct vtn_builder *b, SpvOp opcode,
       for (unsigned i = 0; i < 10; i++)
          intrin->src[i] = nir_src_for_ssa(vtn_ssa_value(b, w[i + 1])->def);
 
-      nir_deref_instr *payload = vtn_get_call_payload_for_location(b, w[11]);
+      nir_deref_instr *payload;
+      if (opcode == SpvOpTraceNV)
+         payload = vtn_get_call_payload_for_location(b, w[11]);
+      else
+         payload = vtn_nir_deref(b, w[11]);
       intrin->src[10] = nir_src_for_ssa(&payload->dest.ssa);
       nir_builder_instr_insert(&b->nb, &intrin->instr);
       break;
@@ -5142,11 +5147,16 @@ vtn_handle_ray_intrinsic(struct vtn_builder *b, SpvOp opcode,
       nir_builder_instr_insert(&b->nb, &intrin->instr);
       break;
 
-   case SpvOpExecuteCallableNV: {
+   case SpvOpExecuteCallableNV:
+   case SpvOpExecuteCallableKHR: {
       intrin = nir_intrinsic_instr_create(b->nb.shader,
                                           nir_intrinsic_execute_callable);
       intrin->src[0] = nir_src_for_ssa(vtn_ssa_value(b, w[1])->def);
-      nir_deref_instr *payload = vtn_get_call_payload_for_location(b, w[2]);
+      nir_deref_instr *payload;
+      if (opcode == SpvOpExecuteCallableNV)
+         payload = vtn_get_call_payload_for_location(b, w[2]);
+      else
+         payload = vtn_nir_deref(b, w[2]);
       intrin->src[1] = nir_src_for_ssa(&payload->dest.ssa);
       nir_builder_instr_insert(&b->nb, &intrin->instr);
       break;
@@ -5567,10 +5577,12 @@ vtn_handle_body_instruction(struct vtn_builder *b, SpvOp opcode,
    }
 
    case SpvOpTraceNV:
+   case SpvOpTraceRayKHR:
    case SpvOpReportIntersectionKHR:
    case SpvOpIgnoreIntersectionNV:
    case SpvOpTerminateRayNV:
    case SpvOpExecuteCallableNV:
+   case SpvOpExecuteCallableKHR:
       vtn_handle_ray_intrinsic(b, opcode, w, count);
       break;
 
