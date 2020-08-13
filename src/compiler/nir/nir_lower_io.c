@@ -1553,6 +1553,7 @@ nir_get_io_offset_src(nir_intrinsic_instr *instr)
       return &instr->src[0];
    case nir_intrinsic_load_ubo:
    case nir_intrinsic_load_ssbo:
+   case nir_intrinsic_load_input_vertex:
    case nir_intrinsic_load_per_vertex_input:
    case nir_intrinsic_load_per_vertex_output:
    case nir_intrinsic_load_interpolated_input:
