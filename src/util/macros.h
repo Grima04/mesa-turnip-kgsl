@@ -264,6 +264,8 @@ do {                       \
 
 #if defined(__GNUC__)
 #define ATTRIBUTE_NOINLINE __attribute__((noinline))
+#elif defined(_MSC_VER)
+#define ATTRIBUTE_NOINLINE __declspec(noinline)
 #else
 #define ATTRIBUTE_NOINLINE
 #endif
