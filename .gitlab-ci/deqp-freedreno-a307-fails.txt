@@ -475,7 +475,6 @@ dEQP-GLES3.functional.transform_feedback.random.interleaved.lines.8
 dEQP-GLES3.functional.transform_feedback.random.interleaved.lines.9
 dEQP-GLES3.functional.transform_feedback.random.interleaved.triangles.1
 dEQP-GLES3.functional.transform_feedback.random.interleaved.triangles.3
-dEQP-GLES3.functional.transform_feedback.random.interleaved.triangles.8
 dEQP-GLES3.functional.transform_feedback.random.separate.lines.10
 dEQP-GLES3.functional.transform_feedback.random.separate.lines.2
 dEQP-GLES3.functional.transform_feedback.random.separate.lines.4

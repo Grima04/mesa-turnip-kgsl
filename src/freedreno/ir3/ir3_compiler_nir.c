@@ -2956,6 +2956,7 @@ setup_input(struct ir3_context *ctx, nir_variable *in)
 	unsigned n = in->data.driver_location;
 	unsigned frac = in->data.location_frac;
 	unsigned slot = in->data.location;
+	unsigned compmask;
 
 	/* Inputs are loaded using ldlw or ldg for these stages. */
 	if (ctx->so->type == MESA_SHADER_TESS_CTRL ||
@@ -2970,8 +2971,18 @@ setup_input(struct ir3_context *ctx, nir_variable *in)
 	if (ncomp > 4)
 		return;
 
+	if (ctx->so->type == MESA_SHADER_FRAGMENT)
+		compmask = BITFIELD_MASK(ncomp) << frac;
+	else
+		compmask = BITFIELD_MASK(ncomp + frac);
+
+	/* remove any already set set components */
+	compmask &= ~so->inputs[n].compmask;
+	if (!compmask)
+		return;
+
 	so->inputs[n].slot = slot;
-	so->inputs[n].compmask |= (1 << (ncomp + frac)) - 1;
+	so->inputs[n].compmask |= compmask;
 	so->inputs_count = MAX2(so->inputs_count, n + 1);
 	so->inputs[n].interpolate = in->data.interpolation;
 
@@ -2985,6 +2996,9 @@ setup_input(struct ir3_context *ctx, nir_variable *in)
 		for (int i = 0; i < ncomp; i++) {
 			struct ir3_instruction *instr = NULL;
 			unsigned idx = (n * 4) + i + frac;
+
+			if (!(compmask & (1 << (i + frac))))
+				continue;
 
 			if (slot == VARYING_SLOT_POS) {
 				ir3_context_error(ctx, "fragcoord should be a sysval!\n");
@@ -3017,17 +3031,11 @@ setup_input(struct ir3_context *ctx, nir_variable *in)
 				instr = create_frag_input(ctx, so->inputs[n].use_ldlv, idx);
 			}
 
-			compile_assert(ctx, idx < ctx->ninputs);
-
+			compile_assert(ctx, idx < ctx->ninputs && !ctx->inputs[idx]);
 			ctx->inputs[idx] = instr;
 		}
 	} else if (ctx->so->type == MESA_SHADER_VERTEX) {
 		struct ir3_instruction *input = NULL;
-		struct ir3_instruction *components[4];
-		/* input as setup as frac=0 with "ncomp + frac" components,
-		 * this avoids getting a sparse writemask
-		 */
-		unsigned mask = (1 << (ncomp + frac)) - 1;
 
 		foreach_input (in, ctx->ir) {
 			if (in->input.inidx == n) {
@@ -3037,57 +3045,32 @@ setup_input(struct ir3_context *ctx, nir_variable *in)
 		}
 
 		if (!input) {
-			input = create_input(ctx, mask);
+			input = create_input(ctx, compmask);
 			input->input.inidx = n;
 		} else {
 			/* For aliased inputs, just append to the wrmask.. ie. if we
 			 * first see a vec2 index at slot N, and then later a vec4,
 			 * the wrmask of the resulting overlapped vec2 and vec4 is 0xf
-			 *
-			 * If the new input that aliases a previously processed input
-			 * sets no new bits, then just bail as there is nothing to see
-			 * here.
 			 */
-			if (!(mask & ~input->regs[0]->wrmask))
-				return;
-			input->regs[0]->wrmask |= mask;
+			input->regs[0]->wrmask |= compmask;
 		}
-
-		ir3_split_dest(ctx->block, components, input, 0, ncomp + frac);
 
 		for (int i = 0; i < ncomp + frac; i++) {
 			unsigned idx = (n * 4) + i;
 			compile_assert(ctx, idx < ctx->ninputs);
 
-			/* With aliased inputs, since we add to the wrmask above, we
-			 * can end up with stale meta:split instructions in the inputs
-			 * table.  This is basically harmless, since eventually they
-			 * will get swept away by DCE, but the mismatch wrmask (since
-			 * they would be using the previous wrmask before we OR'd in
-			 * more bits) angers ir3_validate.  So just preemptively clean
-			 * them up.  See:
-			 *
-			 * dEQP-GLES2.functional.attribute_location.bind_aliasing.cond_vec2
-			 *
-			 * Note however that split_dest() will return the src if it is
-			 * scalar, so the previous ctx->inputs[idx] could be the input
-			 * itself (which we don't want to remove)
-			 */
+			/* fixup the src wrmask to avoid validation fail */
 			if (ctx->inputs[idx] && (ctx->inputs[idx] != input)) {
-				list_del(&ctx->inputs[idx]->node);
+				ctx->inputs[idx]->regs[1]->wrmask = input->regs[0]->wrmask;
+				continue;
 			}
 
-			ctx->inputs[idx] = components[i];
+			ir3_split_dest(ctx->block, &ctx->inputs[idx], input, i, 1);
 		}
-	} else {
-		ir3_context_error(ctx, "unknown shader type: %d\n", ctx->so->type);
 	}
 
-	/* note: this can be wrong for sparse vertex inputs, this happens with
-	 * vulkan, only a3xx/a4xx use this value for VS, so it shouldn't matter
-	 */
 	if (so->inputs[n].bary || (ctx->so->type == MESA_SHADER_VERTEX)) {
-		so->total_in += ncomp;
+		so->total_in += util_bitcount(compmask);
 	}
 }
 
