@@ -188,20 +188,21 @@ panfrost_load_midg(
 
         struct panfrost_transfer viewport = panfrost_pool_alloc(pool, MALI_VIEWPORT_LENGTH);
         struct panfrost_transfer sampler = panfrost_pool_alloc(pool, MALI_MIDGARD_SAMPLER_LENGTH);
-        struct panfrost_transfer varying_buf = panfrost_pool_alloc(pool, MALI_ATTRIBUTE_LENGTH);
+        struct panfrost_transfer varying = panfrost_pool_alloc(pool, MALI_ATTRIBUTE_LENGTH);
+        struct panfrost_transfer varying_buffer  = panfrost_pool_alloc(pool, MALI_ATTRIBUTE_BUFFER_LENGTH);
 
         pan_pack(viewport.cpu, VIEWPORT, cfg) {
                 cfg.scissor_maximum_x = width - 1; /* Inclusive */
                 cfg.scissor_maximum_y = height - 1;
         }
 
-        union mali_attr varying = {
-		.elements = coordinates | MALI_ATTR_LINEAR,
-		.stride = 4 * sizeof(float),
-		.size = 4 * sizeof(float) * vertex_count,
-	};
+        pan_pack(varying_buffer.cpu, ATTRIBUTE_BUFFER, cfg) {
+                cfg.pointer = coordinates;
+                cfg.stride = 4 * sizeof(float);
+                cfg.size = cfg.stride * vertex_count;
+        }
 
-        pan_pack(varying_buf.cpu, ATTRIBUTE, cfg) {
+        pan_pack(varying.cpu, ATTRIBUTE, cfg) {
                 cfg.buffer_index = 0;
                 cfg.format = (MALI_CHANNEL_R << 0) | (MALI_CHANNEL_G << 3) | (MALI_RGBA32F << 12);
         }
@@ -347,8 +348,8 @@ panfrost_load_midg(
                         .textures = panfrost_pool_upload(pool, &texture_t.gpu, sizeof(texture_t.gpu)),
                         .sampler_descriptor = sampler.gpu,
                         .shader = shader_meta_t.gpu,
-                        .varyings = panfrost_pool_upload(pool, &varying, sizeof(varying)),
-                        .varying_meta = varying_buf.gpu,
+                        .varyings = varying_buffer.gpu,
+                        .varying_meta = varying.gpu,
                         .viewport = viewport.gpu,
                         .shared_memory = fbd
                 }
