@@ -26,8 +26,8 @@
 #include "util/u_framebuffer.h"
 
 
-void
-zink_clear(struct pipe_context *pctx,
+static void
+clear_in_rp(struct pipe_context *pctx,
            unsigned buffers,
            const struct pipe_scissor_state *scissor_state,
            const union pipe_color_union *pcolor,
@@ -36,11 +36,6 @@ zink_clear(struct pipe_context *pctx,
    struct zink_context *ctx = zink_context(pctx);
    struct pipe_framebuffer_state *fb = &ctx->fb_state;
 
-   /* FIXME: this is very inefficient; if no renderpass has been started yet,
-    * we should record the clear if it's full-screen, and apply it as we
-    * start the render-pass. Otherwise we can do a partial out-of-renderpass
-    * clear.
-    */
    struct zink_batch *batch = zink_batch_rp(ctx);
 
    VkClearAttachment attachments[1 + PIPE_MAX_COLOR_BUFS];
@@ -85,4 +80,26 @@ zink_clear(struct pipe_context *pctx,
    cr.baseArrayLayer = 0;
    cr.layerCount = util_framebuffer_get_num_layers(fb);
    vkCmdClearAttachments(batch->cmdbuf, num_attachments, attachments, 1, &cr);
+}
+
+void
+zink_clear(struct pipe_context *pctx,
+           unsigned buffers,
+           const struct pipe_scissor_state *scissor_state,
+           const union pipe_color_union *pcolor,
+           double depth, unsigned stencil)
+{
+   struct zink_context *ctx = zink_context(pctx);
+
+   /* FIXME: this is very inefficient; if no renderpass has been started yet,
+    * we should record the clear if it's full-screen, and apply it as we
+    * start the render-pass. Otherwise we can do a partial out-of-renderpass
+    * clear.
+    */
+   zink_batch_rp(ctx);
+   assert(zink_curr_batch(ctx)->in_rp);
+   if (zink_curr_batch(ctx)->in_rp || ctx->render_condition_active) {
+      clear_in_rp(pctx, buffers, scissor_state, pcolor, depth, stencil);
+      return;
+   }
 }
