@@ -1,5 +1,21 @@
 <panxml>
 
+  <enum name="Attribute Type">
+    <value name="1D" value="1"/>
+    <value name="1D POT Divisor" value="2"/>
+    <value name="1D Modulus" value="3"/>
+    <value name="1D NPOT Divisor" value="4"/>
+    <value name="Continuation" value="32"/>
+  </enum>
+
+  <enum name="Attribute Special">
+    <value name="Vertex ID" value="34"/>
+    <value name="Instance ID" value="36"/>
+    <value name="Frag Coord" value="37"/>
+    <value name="Front Facing" value="38"/>
+    <value name="Point Coord" value="97"/>
+  </enum>
+
   <enum name="Channel">
     <value name="R" value="0"/>
     <value name="G" value="1"/>
@@ -220,6 +236,24 @@
     <field name="Unknown" size="1" start="9" type="bool" default="true"/>
     <field name="Format" size="22" start="10" type="uint"/>
     <field name="Offset" size="32" start="32" type="int"/>
+  </struct>
+
+  <struct name="Attribute Buffer">
+    <field name="Special" size="8" start="0" type="Attribute Special"/>
+    <field name="Type" size="6" start="0" type="Attribute Type" default="1D"/>
+    <field name="Pointer" size="50" start="6" type="address" modifier="shr(6)"/>
+    <field name="Stride" size="32" start="64" type="uint"/>
+    <field name="Size" size="32" start="96" type="uint"/>
+
+    <field name="Divisor R" size="5" start="56" type="uint"/>
+    <field name="Divisor P" size="3" start="61" type="uint"/>
+    <field name="Divisor E" size="1" start="61" type="uint"/>
+  </struct>
+
+  <struct name="Attribute Buffer Continuation NPOT">
+    <field name="Type" size="6" start="0:0" type="Attribute Type" default="Continuation"/>
+    <field name="Divisor Numerator" size="32" start="1:0" type="uint"/>
+    <field name="Divisor" size="32" start="3:0" type="uint"/>
   </struct>
 
   <struct name="Midgard Sampler">
