@@ -1166,24 +1166,26 @@ panfrost_emit_shared_memory(struct panfrost_batch *batch,
                             struct midgard_payload_vertex_tiler *vtp)
 {
         struct panfrost_context *ctx = batch->ctx;
+        struct panfrost_device *dev = pan_device(ctx->base.screen);
         struct panfrost_shader_variants *all = ctx->shader[PIPE_SHADER_COMPUTE];
         struct panfrost_shader_state *ss = &all->variants[all->active_variant];
         unsigned single_size = util_next_power_of_two(MAX2(ss->shared_size,
                                                            128));
-        unsigned shared_size = single_size * info->grid[0] * info->grid[1] *
-                               info->grid[2] * 4;
+
+        unsigned log2_instances =
+                util_logbase2_ceil(info->grid[0]) +
+                util_logbase2_ceil(info->grid[1]) +
+                util_logbase2_ceil(info->grid[2]);
+
+        unsigned shared_size = single_size * (1 << log2_instances) * dev->core_count;
         struct panfrost_bo *bo = panfrost_batch_get_shared_memory(batch,
                                                                   shared_size,
                                                                   1);
 
         struct mali_shared_memory shared = {
                 .shared_memory = bo->gpu,
-                .shared_workgroup_count =
-                        util_logbase2_ceil(info->grid[0]) +
-                        util_logbase2_ceil(info->grid[1]) +
-                        util_logbase2_ceil(info->grid[2]),
-                .shared_unk1 = 0x2,
-                .shared_shift = util_logbase2(single_size) - 1
+                .shared_workgroup_count = log2_instances,
+                .shared_shift = util_logbase2(single_size) + 1
         };
 
         vtp->postfix.shared_memory = panfrost_pool_upload(&batch->pool, &shared,
