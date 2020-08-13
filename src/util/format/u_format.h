@@ -391,10 +391,10 @@ const struct util_format_description *
 util_format_description(enum pipe_format format) ATTRIBUTE_CONST;
 
 const struct util_format_pack_description *
-util_format_pack_description(enum pipe_format format);
+util_format_pack_description(enum pipe_format format) ATTRIBUTE_CONST;
 
 const struct util_format_unpack_description *
-util_format_unpack_description(enum pipe_format format);
+util_format_unpack_description(enum pipe_format format) ATTRIBUTE_CONST;
 
 
 /*
@@ -676,46 +676,46 @@ util_format_colormask_full(const struct util_format_description *desc, unsigned 
 
 
 boolean
-util_format_is_float(enum pipe_format format);
+util_format_is_float(enum pipe_format format) ATTRIBUTE_CONST;
 
 
 boolean
-util_format_has_alpha(enum pipe_format format);
+util_format_has_alpha(enum pipe_format format) ATTRIBUTE_CONST;
 
 
 boolean
-util_format_is_luminance(enum pipe_format format);
+util_format_is_luminance(enum pipe_format format) ATTRIBUTE_CONST;
 
 boolean
-util_format_is_alpha(enum pipe_format format);
+util_format_is_alpha(enum pipe_format format) ATTRIBUTE_CONST;
 
 boolean
-util_format_is_luminance_alpha(enum pipe_format format);
+util_format_is_luminance_alpha(enum pipe_format format) ATTRIBUTE_CONST;
 
 
 boolean
-util_format_is_intensity(enum pipe_format format);
+util_format_is_intensity(enum pipe_format format) ATTRIBUTE_CONST;
 
 boolean
-util_format_is_subsampled_422(enum pipe_format format);
+util_format_is_subsampled_422(enum pipe_format format) ATTRIBUTE_CONST;
 
 boolean
-util_format_is_pure_integer(enum pipe_format format);
+util_format_is_pure_integer(enum pipe_format format) ATTRIBUTE_CONST;
 
 boolean
-util_format_is_pure_sint(enum pipe_format format);
+util_format_is_pure_sint(enum pipe_format format) ATTRIBUTE_CONST;
 
 boolean
-util_format_is_pure_uint(enum pipe_format format);
+util_format_is_pure_uint(enum pipe_format format) ATTRIBUTE_CONST;
 
 boolean
-util_format_is_snorm(enum pipe_format format);
+util_format_is_snorm(enum pipe_format format) ATTRIBUTE_CONST;
 
 boolean
-util_format_is_unorm(enum pipe_format format);
+util_format_is_unorm(enum pipe_format format) ATTRIBUTE_CONST;
 
 boolean
-util_format_is_snorm8(enum pipe_format format);
+util_format_is_snorm8(enum pipe_format format) ATTRIBUTE_CONST;
 
 /**
  * Check if the src format can be blitted to the destination format with
@@ -724,7 +724,7 @@ util_format_is_snorm8(enum pipe_format format);
  */
 boolean
 util_is_format_compatible(const struct util_format_description *src_desc,
-                          const struct util_format_description *dst_desc);
+                          const struct util_format_description *dst_desc) ATTRIBUTE_CONST;
 
 /**
  * Whether this format is a rgab8 variant.
@@ -1541,7 +1541,7 @@ util_format_write_4ub(enum pipe_format format,
  */
 
 boolean
-util_format_fits_8unorm(const struct util_format_description *format_desc);
+util_format_fits_8unorm(const struct util_format_description *format_desc) ATTRIBUTE_CONST;
 
 boolean
 util_format_translate(enum pipe_format dst_format,
@@ -1594,7 +1594,7 @@ void util_format_unswizzle_4f(float *dst, const float *src,
                               const unsigned char swz[4]);
 
 enum pipe_format
-util_format_snorm8_to_sint8(enum pipe_format format);
+util_format_snorm8_to_sint8(enum pipe_format format) ATTRIBUTE_CONST;
 
 
 extern void
