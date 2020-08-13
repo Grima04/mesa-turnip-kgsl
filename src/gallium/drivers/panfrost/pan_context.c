@@ -163,61 +163,6 @@ panfrost_writes_point_size(struct panfrost_context *ctx)
         return vs->writes_point_size && ctx->active_prim == PIPE_PRIM_POINTS;
 }
 
-void
-panfrost_vertex_state_upd_attr_offs(struct panfrost_context *ctx,
-                                    struct mali_vertex_tiler_postfix *vertex_postfix)
-{
-        if (!ctx->vertex)
-                return;
-
-        struct panfrost_vertex_state *so = ctx->vertex;
-
-        /* Fixup offsets for the second pass. Recall that the hardware
-         * calculates attribute addresses as:
-         *
-         *      addr = base + (stride * vtx) + src_offset;
-         *
-         * However, on Mali, base must be aligned to 64-bytes, so we
-         * instead let:
-         *
-         *      base' = base & ~63 = base - (base & 63)
-         *
-         * To compensate when using base' (see emit_vertex_data), we have
-         * to adjust src_offset by the masked off piece:
-         *
-         *      addr' = base' + (stride * vtx) + (src_offset + (base & 63))
-         *            = base - (base & 63) + (stride * vtx) + src_offset + (base & 63)
-         *            = base + (stride * vtx) + src_offset
-         *            = addr;
-         *
-         * QED.
-         */
-
-        unsigned start = vertex_postfix->offset_start;
-
-        for (unsigned i = 0; i < so->num_elements; ++i) {
-                unsigned vbi = so->pipe[i].vertex_buffer_index;
-                struct pipe_vertex_buffer *buf = &ctx->vertex_buffers[vbi];
-
-                /* Adjust by the masked off bits of the offset. Make sure we
-                 * read src_offset from so->hw (which is not GPU visible)
-                 * rather than target (which is) due to caching effects */
-
-                unsigned src_offset = so->pipe[i].src_offset;
-
-                /* BOs aligned to 4k so guaranteed aligned to 64 */
-                src_offset += (buf->buffer_offset & 63);
-
-                /* Also, somewhat obscurely per-instance data needs to be
-                 * offset in response to a delayed start in an indexed draw */
-
-                if (so->pipe[i].instance_divisor && ctx->instance_count > 1 && start)
-                        src_offset -= buf->stride * start;
-
-                so->hw[i].src_offset = src_offset;
-        }
-}
-
 /* Compute number of UBOs active (more specifically, compute the highest UBO
  * number addressable -- if there are gaps, include them in the count anyway).
  * We always include UBO #0 in the count, since we *need* uniforms enabled for
@@ -422,7 +367,6 @@ panfrost_draw_vbo(
                                          &primitive_size);
         panfrost_emit_shader_meta(batch, PIPE_SHADER_VERTEX, &vertex_postfix);
         panfrost_emit_shader_meta(batch, PIPE_SHADER_FRAGMENT, &tiler_postfix);
-        panfrost_emit_vertex_attr_meta(batch, &vertex_postfix);
         panfrost_emit_sampler_descriptors(batch, PIPE_SHADER_VERTEX, &vertex_postfix);
         panfrost_emit_sampler_descriptors(batch, PIPE_SHADER_FRAGMENT, &tiler_postfix);
         panfrost_emit_texture_descriptors(batch, PIPE_SHADER_VERTEX, &vertex_postfix);

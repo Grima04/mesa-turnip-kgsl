@@ -1338,23 +1338,6 @@ panfrost_emit_sampler_descriptors(struct panfrost_batch *batch,
 }
 
 void
-panfrost_emit_vertex_attr_meta(struct panfrost_batch *batch,
-                               struct mali_vertex_tiler_postfix *vertex_postfix)
-{
-        struct panfrost_context *ctx = batch->ctx;
-
-        if (!ctx->vertex)
-                return;
-
-        struct panfrost_vertex_state *so = ctx->vertex;
-
-        panfrost_vertex_state_upd_attr_offs(ctx, vertex_postfix);
-        vertex_postfix->attribute_meta = panfrost_pool_upload(&batch->pool, so->hw,
-                                                               sizeof(*so->hw) *
-                                                               PAN_MAX_ATTRIBUTE);
-}
-
-void
 panfrost_emit_vertex_data(struct panfrost_batch *batch,
                           struct mali_vertex_tiler_postfix *vertex_postfix)
 {
@@ -1456,10 +1439,58 @@ panfrost_emit_vertex_data(struct panfrost_batch *batch,
         panfrost_instance_id(ctx->padded_count, &attrs[k]);
         so->hw[PAN_INSTANCE_ID].index = k++;
 
-        /* Upload whatever we emitted and go */
+        /* Fixup offsets for the second pass. Recall that the hardware
+         * calculates attribute addresses as:
+         *
+         *      addr = base + (stride * vtx) + src_offset;
+         *
+         * However, on Mali, base must be aligned to 64-bytes, so we
+         * instead let:
+         *
+         *      base' = base & ~63 = base - (base & 63)
+         *
+         * To compensate when using base' (see emit_vertex_data), we have
+         * to adjust src_offset by the masked off piece:
+         *
+         *      addr' = base' + (stride * vtx) + (src_offset + (base & 63))
+         *            = base - (base & 63) + (stride * vtx) + src_offset + (base & 63)
+         *            = base + (stride * vtx) + src_offset
+         *            = addr;
+         *
+         * QED.
+         */
+
+        unsigned start = vertex_postfix->offset_start;
+
+        for (unsigned i = 0; i < so->num_elements; ++i) {
+                unsigned vbi = so->pipe[i].vertex_buffer_index;
+                struct pipe_vertex_buffer *buf = &ctx->vertex_buffers[vbi];
+
+                /* Adjust by the masked off bits of the offset. Make sure we
+                 * read src_offset from so->hw (which is not GPU visible)
+                 * rather than target (which is) due to caching effects */
+
+                unsigned src_offset = so->pipe[i].src_offset;
+
+                /* BOs aligned to 4k so guaranteed aligned to 64 */
+                src_offset += (buf->buffer_offset & 63);
+
+                /* Also, somewhat obscurely per-instance data needs to be
+                 * offset in response to a delayed start in an indexed draw */
+
+                if (so->pipe[i].instance_divisor && ctx->instance_count > 1 && start)
+                        src_offset -= buf->stride * start;
+
+                so->hw[i].src_offset = src_offset;
+        }
+
 
         vertex_postfix->attributes = panfrost_pool_upload(&batch->pool, attrs,
                                                            k * sizeof(*attrs));
+
+        vertex_postfix->attribute_meta = panfrost_pool_upload(&batch->pool, so->hw,
+                                                               sizeof(*so->hw) *
+                                                               PAN_MAX_ATTRIBUTE);
 }
 
 static mali_ptr

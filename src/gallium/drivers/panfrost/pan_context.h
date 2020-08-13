@@ -309,10 +309,6 @@ panfrost_invalidate_frame(struct panfrost_context *ctx);
 bool
 panfrost_writes_point_size(struct panfrost_context *ctx);
 
-void
-panfrost_vertex_state_upd_attr_offs(struct panfrost_context *ctx,
-                                    struct mali_vertex_tiler_postfix *vertex_postfix);
-
 struct panfrost_transfer
 panfrost_vertex_tiler_job(struct panfrost_context *ctx, bool is_tiler);
 

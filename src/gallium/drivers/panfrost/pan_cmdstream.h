@@ -81,10 +81,6 @@ panfrost_emit_sampler_descriptors(struct panfrost_batch *batch,
                                   struct mali_vertex_tiler_postfix *postfix);
 
 void
-panfrost_emit_vertex_attr_meta(struct panfrost_batch *batch,
-                               struct mali_vertex_tiler_postfix *vertex_postfix);
-
-void
 panfrost_emit_vertex_data(struct panfrost_batch *batch,
                           struct mali_vertex_tiler_postfix *vertex_postfix);
 
