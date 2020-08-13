@@ -24,6 +24,7 @@ files_libzink = files(
   'nir_to_spirv/spirv_builder.c',
   'zink_batch.c',
   'zink_blit.c',
+  'zink_clear.c',
   'zink_compiler.c',
   'zink_context.c',
   'zink_draw.c',

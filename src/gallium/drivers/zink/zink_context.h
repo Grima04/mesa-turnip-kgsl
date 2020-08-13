@@ -196,6 +196,13 @@ zink_blit(struct pipe_context *pctx,
           const struct pipe_blit_info *info);
 
 void
+zink_clear(struct pipe_context *pctx,
+           unsigned buffers,
+           const struct pipe_scissor_state *scissor_state,
+           const union pipe_color_union *pcolor,
+           double depth, unsigned stencil);
+
+void
 zink_draw_vbo(struct pipe_context *pctx,
               const struct pipe_draw_info *dinfo,
               const struct pipe_draw_indirect_info *indirect,

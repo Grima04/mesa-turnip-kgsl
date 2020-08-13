@@ -1026,67 +1026,6 @@ zink_resource_barrier(VkCommandBuffer cmdbuf, struct zink_resource *res,
    res->layout = new_layout;
 }
 
-static void
-zink_clear(struct pipe_context *pctx,
-           unsigned buffers,
-           const struct pipe_scissor_state *scissor_state,
-           const union pipe_color_union *pcolor,
-           double depth, unsigned stencil)
-{
-   struct zink_context *ctx = zink_context(pctx);
-   struct pipe_framebuffer_state *fb = &ctx->fb_state;
-
-   /* FIXME: this is very inefficient; if no renderpass has been started yet,
-    * we should record the clear if it's full-screen, and apply it as we
-    * start the render-pass. Otherwise we can do a partial out-of-renderpass
-    * clear.
-    */
-   struct zink_batch *batch = zink_batch_rp(ctx);
-
-   VkClearAttachment attachments[1 + PIPE_MAX_COLOR_BUFS];
-   int num_attachments = 0;
-
-   if (buffers & PIPE_CLEAR_COLOR) {
-      VkClearColorValue color;
-      color.float32[0] = pcolor->f[0];
-      color.float32[1] = pcolor->f[1];
-      color.float32[2] = pcolor->f[2];
-      color.float32[3] = pcolor->f[3];
-
-      for (unsigned i = 0; i < fb->nr_cbufs; i++) {
-         if (!(buffers & (PIPE_CLEAR_COLOR0 << i)) || !fb->cbufs[i])
-            continue;
-
-         attachments[num_attachments].aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-         attachments[num_attachments].colorAttachment = i;
-         attachments[num_attachments].clearValue.color = color;
-         ++num_attachments;
-      }
-   }
-
-   if (buffers & PIPE_CLEAR_DEPTHSTENCIL && fb->zsbuf) {
-      VkImageAspectFlags aspect = 0;
-      if (buffers & PIPE_CLEAR_DEPTH)
-         aspect |= VK_IMAGE_ASPECT_DEPTH_BIT;
-      if (buffers & PIPE_CLEAR_STENCIL)
-         aspect |= VK_IMAGE_ASPECT_STENCIL_BIT;
-
-      attachments[num_attachments].aspectMask = aspect;
-      attachments[num_attachments].clearValue.depthStencil.depth = depth;
-      attachments[num_attachments].clearValue.depthStencil.stencil = stencil;
-      ++num_attachments;
-   }
-
-   VkClearRect cr;
-   cr.rect.offset.x = 0;
-   cr.rect.offset.y = 0;
-   cr.rect.extent.width = fb->width;
-   cr.rect.extent.height = fb->height;
-   cr.baseArrayLayer = 0;
-   cr.layerCount = util_framebuffer_get_num_layers(fb);
-   vkCmdClearAttachments(batch->cmdbuf, num_attachments, attachments, 1, &cr);
-}
-
 VkShaderStageFlagBits
 zink_shader_stage(enum pipe_shader_type type)
 {
