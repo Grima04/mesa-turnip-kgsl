@@ -25,7 +25,15 @@
 #include "nir_builder.h"
 
 struct path {
+   /** Set of blocks which this path represents
+    *
+    * It's "reachable" not in the sense that these are all the nodes reachable
+    * through this path but in the sense that, when you see one of these
+    * blocks, you know you've reached this path.
+    */
    struct set *reachable;
+
+   /** Fork in the path, if reachable->entries > 1 */
    struct path_fork *fork;
 };
 
@@ -47,11 +55,23 @@ struct routes {
 
 struct strct_lvl {
    struct exec_node node;
+
+   /** Set of blocks at the current level */
    struct set *blocks;
+
+   /** Path for the next level */
    struct path out_path;
+
+   /** Reach set from inside_outside if irreducable */
    struct set *reach;
+
+   /** True if a skip region starts with this level */
    bool skip_start;
+
+   /** True if a skip region ends with this level */
    bool skip_end;
+
+   /** True if this level is irreducable */
    bool irreducible;
 };
 
