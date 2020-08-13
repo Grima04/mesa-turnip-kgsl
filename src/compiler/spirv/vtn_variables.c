@@ -2616,6 +2616,25 @@ vtn_handle_variables(struct vtn_builder *b, SpvOp opcode,
       break;
    }
 
+   case SpvOpConvertUToAccelerationStructureKHR: {
+      struct vtn_type *as_type = vtn_get_type(b, w[1]);
+      struct vtn_type *u_type = vtn_get_value_type(b, w[3]);
+      vtn_fail_if(!((u_type->base_type == vtn_base_type_vector &&
+                     u_type->type == glsl_vector_type(GLSL_TYPE_UINT, 2)) ||
+                    (u_type->base_type == vtn_base_type_scalar &&
+                     u_type->type == glsl_uint64_t_type())),
+                  "OpConvertUToAccelerationStructure may only be used to "
+                  "cast from a 64-bit scalar integer or a 2-component vector "
+                  "of 32-bit integers");
+      vtn_fail_if(as_type->base_type != vtn_base_type_accel_struct,
+                  "The result type of an OpConvertUToAccelerationStructure "
+                  "must be OpTypeAccelerationStructure");
+
+      nir_ssa_def *u = vtn_get_nir_ssa(b, w[3]);
+      vtn_push_nir_ssa(b, w[2], nir_sloppy_bitcast(&b->nb, u, as_type->type));
+      break;
+   }
+
    default:
       vtn_fail_with_opcode("Unhandled opcode", opcode);
    }
