@@ -105,6 +105,28 @@ clear_in_rp(struct pipe_context *pctx,
    vkCmdClearAttachments(batch->cmdbuf, num_attachments, attachments, 1, &cr);
 }
 
+static struct zink_batch *
+get_clear_batch(struct zink_context *ctx, unsigned width, unsigned height, struct u_rect *region)
+{
+   struct u_rect intersect = {0, width, 0, height};
+
+   /* FIXME: this is very inefficient; if no renderpass has been started yet,
+    * we should record the clear if it's full-screen, and apply it as we
+    * start the render-pass. Otherwise we can do a partial out-of-renderpass
+    * clear.
+    */
+   if (!u_rect_test_intersection(region, &intersect))
+      /* is this even a thing? */
+      return zink_batch_rp(ctx);
+
+    u_rect_find_intersection(region, &intersect);
+    if (intersect.x0 != 0 || intersect.y0 != 0 ||
+        intersect.x1 != width || intersect.y1 != height)
+       return zink_batch_rp(ctx);
+
+   return zink_curr_batch(ctx);
+}
+
 void
 zink_clear(struct pipe_context *pctx,
            unsigned buffers,
@@ -114,28 +136,14 @@ zink_clear(struct pipe_context *pctx,
 {
    struct zink_context *ctx = zink_context(pctx);
    struct pipe_framebuffer_state *fb = &ctx->fb_state;
-   struct zink_batch *batch = zink_curr_batch(ctx);
+   struct zink_batch *batch;
 
    if (scissor_state) {
-      bool need_rp = false;
-      struct u_rect intersect = {0, fb->width, 0, fb->height};
       struct u_rect scissor = {scissor_state->minx, scissor_state->maxx, scissor_state->miny, scissor_state->maxy};
-      if (!u_rect_test_intersection(&scissor, &intersect))
-         need_rp = true;
-      else {
-          u_rect_find_intersection(&scissor, &intersect);
-          if (intersect.x0 != 0 || intersect.y0 != 0 ||
-              intersect.x1 != fb->width || intersect.y1 != fb->height)
-             need_rp = true;
-      }
-      if (need_rp)
-         /* FIXME: this is very inefficient; if no renderpass has been started yet,
-          * we should record the clear if it's full-screen, and apply it as we
-          * start the render-pass. Otherwise we can do a partial out-of-renderpass
-          * clear.
-          */
-         batch = zink_batch_rp(ctx);
-   }
+      batch = get_clear_batch(ctx, fb->width, fb->height, &scissor);
+   } else
+      batch = zink_curr_batch(ctx);
+
 
    if (batch->in_rp || ctx->render_condition_active) {
       clear_in_rp(pctx, buffers, scissor_state, pcolor, depth, stencil);
