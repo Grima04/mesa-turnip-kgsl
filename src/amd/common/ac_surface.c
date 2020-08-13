@@ -975,7 +975,8 @@ static int gfx6_compute_surface(ADDR_HANDLE addrlib, const struct radeon_info *i
 
    /* Set preferred macrotile parameters. This is usually required
     * for shared resources. This is for 2D tiling only. */
-   if (AddrSurfInfoIn.tileMode >= ADDR_TM_2D_TILED_THIN1 && surf->u.legacy.bankw &&
+   if (!(surf->flags & RADEON_SURF_Z_OR_SBUFFER) &&
+       AddrSurfInfoIn.tileMode >= ADDR_TM_2D_TILED_THIN1 && surf->u.legacy.bankw &&
        surf->u.legacy.bankh && surf->u.legacy.mtilea && surf->u.legacy.tile_split) {
       /* If any of these parameters are incorrect, the calculation
        * will fail. */
