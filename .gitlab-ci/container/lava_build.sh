@@ -134,6 +134,17 @@ rm -rf /libdrm
 mkdir -p kernel
 wget -qO- ${KERNEL_URL} | tar -xz --strip-components=1 -C kernel
 pushd kernel
+
+# The kernel doesn't like the gold linker (or the old lld in our debians).
+# Sneak in some override symlinks during kernel build until we can update
+# debian (they'll get blown away by the rm of the kernel dir at the end).
+mkdir -p ld-links
+for i in /usr/bin/*-ld /usr/bin/ld; do
+    i=`basename $i`
+    ln -sf /usr/bin/$i.bfd ld-links/$i
+done
+export PATH=`pwd`/ld-links:$PATH
+
 ./scripts/kconfig/merge_config.sh ${DEFCONFIG} ../.gitlab-ci/${KERNEL_ARCH}.config
 make ${KERNEL_IMAGE_NAME}
 for image in ${KERNEL_IMAGE_NAME}; do
