@@ -1050,10 +1050,6 @@ tu6_blit_image(struct tu_cmd_buffer *cmd,
        filter == VK_FILTER_CUBIC_EXT)
       ops = &r3d_ops;
 
-   /* TODO: shader path fails some of blit_image.all_formats.generate_mipmaps.* tests,
-    * figure out why (should be able to pass all tests with only shader path)
-    */
-
    ops->setup(cmd, cs, dst_image->vk_format, info->dstSubresource.aspectMask,
               rotate[mirror_y][mirror_x], false, dst_image->layout[0].ubwc);
 
