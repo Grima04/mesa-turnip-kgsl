@@ -48,6 +48,7 @@ struct path_fork {
 };
 
 struct routes {
+   struct set *outside;
    struct path regular;
    struct path brk;
    struct path cont;
@@ -65,6 +66,9 @@ struct strct_lvl {
 
    /** Reach set from inside_outside if irreducable */
    struct set *reach;
+
+   /** Outside set from inside_outside if irreducable */
+   struct set *outside;
 
    /** True if a skip region starts with this level */
    bool skip_start;
@@ -270,7 +274,7 @@ fork_reachable(struct path_fork *fork)
 static void
 loop_routing_start(struct routes *routing, nir_builder *b,
                    struct path loop_path, struct set *reach,
-                   void *mem_ctx)
+                   struct set *outside, void *mem_ctx)
 {
    struct routes *routing_backup = ralloc(mem_ctx, struct routes);
    *routing_backup = *routing;
@@ -288,6 +292,12 @@ loop_routing_start(struct routes *routing, nir_builder *b,
       }
       assert(_mesa_set_search(routing->cont.reachable, entry->key));
       continue_needed = true;
+   }
+
+   if (outside && outside->entries) {
+      routing->outside = _mesa_set_clone(routing->outside, routing);
+      set_foreach(outside, entry)
+         _mesa_set_add_pre_hashed(routing->outside, entry->hash, entry->key);
    }
 
    routing->brk = routing_backup->regular;
@@ -561,6 +571,7 @@ handle_irreducible(struct set *remaining, struct strct_lvl *curr_level,
       inside_outside((nir_block *) entry->key, loop_heads, remaining,
                      curr_level->reach, brk_reachable, mem_ctx);
    }
+   curr_level->outside = remaining;
    _mesa_set_destroy(loop_heads, NULL);
 }
 
@@ -600,10 +611,13 @@ handle_irreducible(struct set *remaining, struct strct_lvl *curr_level,
  *                       zeroth level
  */
 static void
-organize_levels(struct list_head *levels, struct set *remaining,
+organize_levels(struct list_head *levels, struct set *children,
                 struct set *reach, struct routes *routing,
                 nir_function_impl *impl, bool is_domminated, void *mem_ctx)
 {
+   /* Duplicate remaining because we're going to destroy it */
+   struct set *remaining = _mesa_set_clone(children, mem_ctx);
+
    /* blocks that can be reached by the remaining blocks */
    struct set *remaining_frontier = _mesa_pointer_set_create(mem_ctx);
 
@@ -771,8 +785,10 @@ plant_levels(struct list_head *levels, struct routes *routing,
       }
       struct path in_path = routing->regular;
       routing->regular = level->out_path;
-      if (level->irreducible)
-         loop_routing_start(routing, b, in_path, level->reach, mem_ctx);
+      if (level->irreducible) {
+         loop_routing_start(routing, b, in_path, level->reach,
+                            level->outside, mem_ctx);
+      }
       select_blocks(routing, b, in_path, mem_ctx);
       if (level->irreducible)
          loop_routing_end(routing, b);
@@ -791,7 +807,7 @@ nir_structurize(struct routes *routing, nir_builder *b, nir_block *block,
 {
    struct set *remaining = _mesa_pointer_set_create(mem_ctx);
    for (int i = 0; i < block->num_dom_children; i++) {
-      if (!_mesa_set_search(routing->brk.reachable, block->dom_children[i]))
+      if (!_mesa_set_search(routing->outside, block->dom_children[i]))
          _mesa_set_add(remaining, block->dom_children[i]);
    }
 
@@ -819,7 +835,7 @@ nir_structurize(struct routes *routing, nir_builder *b, nir_block *block,
       };
       _mesa_set_add(loop_path.reachable, block);
 
-      loop_routing_start(routing, b, loop_path, reach, mem_ctx);
+      loop_routing_start(routing, b, loop_path, reach, outside, mem_ctx);
    }
 
    struct set *reach = _mesa_pointer_set_create(mem_ctx);
@@ -890,6 +906,7 @@ nir_lower_goto_ifs_impl(nir_function_impl *impl)
 
    struct routes *routing = ralloc(mem_ctx, struct routes);
    *routing = (struct routes) {
+      .outside = empty_set,
       .regular.reachable = end_set,
       .brk.reachable = empty_set,
       .cont.reachable = empty_set,
