@@ -268,6 +268,7 @@ radv_use_htile_for_image(const struct radv_device *device,
                          const struct radv_image *image)
 {
 	return image->info.levels == 1 &&
+	       !image->shareable &&
 	       ((image->info.width * image->info.height >= 8 * 8) ||
 	        (device->instance->debug_flags & RADV_DEBUG_FORCE_COMPRESS));
 }
