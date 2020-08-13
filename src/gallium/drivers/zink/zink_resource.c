@@ -290,6 +290,9 @@ resource_create(struct pipe_screen *pscreen,
         flags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
    }
 
+   if (templ->flags & PIPE_RESOURCE_FLAG_MAP_COHERENT)
+      flags |= VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+
    VkMemoryAllocateInfo mai = {};
    mai.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
    mai.allocationSize = reqs.size;
