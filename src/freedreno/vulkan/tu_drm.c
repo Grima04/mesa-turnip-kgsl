@@ -301,8 +301,6 @@ tu_drm_device_init(struct tu_physical_device *device,
 
    vk_object_base_init(NULL, &device->base, VK_OBJECT_TYPE_PHYSICAL_DEVICE);
    device->instance = instance;
-   assert(strlen(path) < ARRAY_SIZE(device->path));
-   strncpy(device->path, path, ARRAY_SIZE(device->path));
 
    if (instance->enabled_extensions.KHR_display) {
       master_fd =
