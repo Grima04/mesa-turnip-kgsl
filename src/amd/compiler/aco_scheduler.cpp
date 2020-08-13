@@ -858,6 +858,14 @@ void schedule_block(sched_ctx& ctx, Program *program, Block* block, live& live_v
    for (unsigned idx = 0; idx < block->instructions.size(); idx++) {
       Instruction* current = block->instructions[idx].get();
 
+      if (block->kind & block_kind_export_end && current->format == Format::EXP) {
+         unsigned target = static_cast<Export_instruction*>(current)->dest;
+         if (target >= V_008DFC_SQ_EXP_POS && target < V_008DFC_SQ_EXP_PRIM) {
+            ctx.mv.current = current;
+            schedule_position_export(ctx, block, live_vars.register_demand[block->index], current, idx);
+         }
+      }
+
       if (current->definitions.empty())
          continue;
 
@@ -869,23 +877,6 @@ void schedule_block(sched_ctx& ctx, Program *program, Block* block, live& live_v
       if (current->format == Format::SMEM) {
          ctx.mv.current = current;
          schedule_SMEM(ctx, block, live_vars.register_demand[block->index], current, idx);
-      }
-   }
-
-   if ((program->stage.hw == HWStage::VS || program->stage.hw == HWStage::NGG) &&
-       (block->kind & block_kind_export_end)) {
-      /* Try to move position exports as far up as possible, to reduce register
-       * usage and because ISA reference guides say so. */
-      for (unsigned idx = 0; idx < block->instructions.size(); idx++) {
-         Instruction* current = block->instructions[idx].get();
-
-         if (current->format == Format::EXP) {
-            unsigned target = static_cast<Export_instruction*>(current)->dest;
-            if (target >= V_008DFC_SQ_EXP_POS && target < V_008DFC_SQ_EXP_PARAM) {
-               ctx.mv.current = current;
-               schedule_position_export(ctx, block, live_vars.register_demand[block->index], current, idx);
-            }
-         }
       }
    }
 
