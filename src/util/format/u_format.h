@@ -351,9 +351,7 @@ struct util_format_unpack_description {
     * Only defined for non-depth-stencil and non-integer formats.
     */
    void
-   (*fetch_rgba_float)(float *dst,
-                       const uint8_t *src,
-                       unsigned i, unsigned j);
+   (*fetch_rgba)(void *dst, const uint8_t *src, unsigned i, unsigned j);
 
    /**
     * Unpack pixels to Z32_UNORM.
@@ -387,26 +385,6 @@ struct util_format_unpack_description {
    (*unpack_s_8uint)(uint8_t *dst, unsigned dst_stride,
                      const uint8_t *src, unsigned src_stride,
                      unsigned width, unsigned height);
-
-   /**
-    * Fetch a single pixel (i, j) from a block.
-    *
-    * Only defined for unsigned (pure) integer formats.
-    */
-   void
-   (*fetch_rgba_uint)(uint32_t *dst,
-                      const uint8_t *src,
-                      unsigned i, unsigned j);
-
-   /**
-    * Fetch a single pixel (i, j) from a block.
-    *
-    * Only defined for signed (pure) integer formats.
-    */
-   void
-   (*fetch_rgba_sint)(int32_t *dst,
-                      const uint8_t *src,
-                      unsigned i, unsigned j);
 };
 
 const struct util_format_description *

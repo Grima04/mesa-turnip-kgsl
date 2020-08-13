@@ -178,7 +178,7 @@ int main(int argc, char** argv)
       unsigned output_normalized = 0;
 
       if (!output_format_desc
-            || !output_format_unpack->fetch_rgba_float
+            || !output_format_unpack->fetch_rgba
             || !output_format_pack->pack_rgba_float
             || output_format_desc->colorspace != UTIL_FORMAT_COLORSPACE_RGB
             || output_format_desc->layout != UTIL_FORMAT_LAYOUT_PLAIN
@@ -206,7 +206,7 @@ int main(int argc, char** argv)
          boolean input_is_float = FALSE;
 
          if (!input_format_desc
-               || !input_format_unpack->fetch_rgba_float
+               || !input_format_unpack->fetch_rgba
                || !input_format_pack->pack_rgba_float
                || input_format_desc->colorspace != UTIL_FORMAT_COLORSPACE_RGB
                || input_format_desc->layout != UTIL_FORMAT_LAYOUT_PLAIN
@@ -277,8 +277,8 @@ int main(int argc, char** argv)
          {
             float a[4];
             float b[4];
-            input_format_unpack->fetch_rgba_float(a, buffer[2] + i * input_format_size, 0, 0);
-            input_format_unpack->fetch_rgba_float(b, buffer[4] + i * input_format_size, 0, 0);
+            input_format_unpack->fetch_rgba(a, buffer[2] + i * input_format_size, 0, 0);
+            input_format_unpack->fetch_rgba(b, buffer[4] + i * input_format_size, 0, 0);
 
             for (j = 0; j < count; ++j)
             {

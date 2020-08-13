@@ -240,12 +240,14 @@ def write_format_table(formats):
             continue
 
         print("   [%s] = {" % (format.name,))
+        if format.colorspace != ZS:
+            print("      .fetch_rgba = &util_format_%s_fetch_rgba," % sn)
+
         if format.colorspace != ZS and not format.is_pure_color():
             print("      .unpack_rgba_8unorm = &util_format_%s_unpack_rgba_8unorm," % sn)
             if format.layout == 's3tc' or format.layout == 'rgtc':
                 print("      .fetch_rgba_8unorm = &util_format_%s_fetch_rgba_8unorm," % sn)
             print("      .unpack_rgba = &util_format_%s_unpack_rgba_float," % sn)
-            print("      .fetch_rgba_float = &util_format_%s_fetch_rgba_float," % sn)
 
         if format.has_depth():
             print("      .unpack_z_32unorm = &util_format_%s_unpack_z_32unorm," % sn)
@@ -256,10 +258,8 @@ def write_format_table(formats):
 
         if format.is_pure_unsigned():
             print("      .unpack_rgba = &util_format_%s_unpack_unsigned," % sn)
-            print("      .fetch_rgba_uint = &util_format_%s_fetch_unsigned," % sn)
         elif format.is_pure_signed():
             print("      .unpack_rgba = &util_format_%s_unpack_signed," % sn)
-            print("      .fetch_rgba_sint = &util_format_%s_fetch_signed," % sn)
         print("   },")
     print("};")
     print()

@@ -683,14 +683,15 @@ def generate_format_pack(format, src_channel, src_native_type, src_suffix):
     print()
     
 
-def generate_format_fetch(format, dst_channel, dst_native_type, dst_suffix):
+def generate_format_fetch(format, dst_channel, dst_native_type):
     '''Generate the function to unpack pixels from a particular format'''
 
     name = format.short_name()
 
     print('static inline void')
-    print('util_format_%s_fetch_%s(%s *dst, const uint8_t *src, UNUSED unsigned i, UNUSED unsigned j)' % (name, dst_suffix, dst_native_type))
+    print('util_format_%s_fetch_rgba(void *in_dst, const uint8_t *src, UNUSED unsigned i, UNUSED unsigned j)' % (name))
     print('{')
+    print('   %s *dst = in_dst;' % dst_native_type)
 
     if is_format_supported(format):
         generate_unpack_kernel(format, dst_channel, dst_native_type)
@@ -729,7 +730,7 @@ def generate(formats):
 
                 generate_format_unpack(format, channel, native_type, suffix)
                 generate_format_pack(format, channel, native_type, suffix)
-                generate_format_fetch(format, channel, native_type, suffix)
+                generate_format_fetch(format, channel, native_type)
 
                 channel = Channel(SIGNED, False, True, 32)
                 native_type = 'int'
@@ -742,7 +743,7 @@ def generate(formats):
 
                 generate_format_unpack(format, channel, native_type, suffix)
                 generate_format_pack(format, channel, native_type, suffix)   
-                generate_format_fetch(format, channel, native_type, suffix)
+                generate_format_fetch(format, channel, native_type)
 
                 native_type = 'unsigned'
                 suffix = 'unsigned'
@@ -755,7 +756,7 @@ def generate(formats):
 
                 generate_format_unpack(format, channel, native_type, suffix)
                 generate_format_pack(format, channel, native_type, suffix)
-                generate_format_fetch(format, channel, native_type, suffix)
+                generate_format_fetch(format, channel, native_type)
 
                 channel = Channel(UNSIGNED, True, False, 8)
                 native_type = 'uint8_t'

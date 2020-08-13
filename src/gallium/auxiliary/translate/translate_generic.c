@@ -814,19 +814,9 @@ translate_generic_create(const struct translate_key *key)
             FREE(tg);
             return NULL;
          }
-
-         if (format_desc->channel[0].type == UTIL_FORMAT_TYPE_SIGNED) {
-            assert(unpack->fetch_rgba_sint);
-            tg->attrib[i].fetch = (fetch_func)unpack->fetch_rgba_sint;
-         } else {
-            assert(unpack->fetch_rgba_uint);
-            tg->attrib[i].fetch = (fetch_func)unpack->fetch_rgba_uint;
-         }
-      } else {
-         assert(unpack->fetch_rgba_float);
-         tg->attrib[i].fetch = (fetch_func)unpack->fetch_rgba_float;
       }
 
+      tg->attrib[i].fetch = (fetch_func)unpack->fetch_rgba;
       tg->attrib[i].buffer = key->element[i].input_buffer;
       tg->attrib[i].input_offset = key->element[i].input_offset;
       tg->attrib[i].instance_divisor = key->element[i].instance_divisor;

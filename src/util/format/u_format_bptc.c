@@ -86,7 +86,7 @@ util_format_bptc_rgba_unorm_pack_rgba_float(uint8_t *dst_row, unsigned dst_strid
 }
 
 void
-util_format_bptc_rgba_unorm_fetch_rgba_float(float *dst, const uint8_t *src,
+util_format_bptc_rgba_unorm_fetch_rgba(void *dst, const uint8_t *src,
                                              unsigned width, unsigned height)
 {
    uint8_t temp_block[4];
@@ -149,7 +149,7 @@ util_format_bptc_srgba_pack_rgba_float(uint8_t *dst_row, unsigned dst_stride,
 }
 
 void
-util_format_bptc_srgba_fetch_rgba_float(float *dst, const uint8_t *src,
+util_format_bptc_srgba_fetch_rgba(void *dst, const uint8_t *src,
                                         unsigned width, unsigned height)
 {
    uint8_t temp_block[4];
@@ -213,7 +213,7 @@ util_format_bptc_rgb_float_pack_rgba_float(uint8_t *dst_row, unsigned dst_stride
 }
 
 void
-util_format_bptc_rgb_float_fetch_rgba_float(float *dst, const uint8_t *src,
+util_format_bptc_rgb_float_fetch_rgba(void *dst, const uint8_t *src,
                                             unsigned width, unsigned height)
 {
    fetch_rgb_float_from_block(src + ((width * sizeof(uint8_t)) * (height / 4) + (width / 4)) * 16,
@@ -271,7 +271,7 @@ util_format_bptc_rgb_ufloat_pack_rgba_float(uint8_t *dst_row, unsigned dst_strid
 }
 
 void
-util_format_bptc_rgb_ufloat_fetch_rgba_float(float *dst, const uint8_t *src,
+util_format_bptc_rgb_ufloat_fetch_rgba(void *dst, const uint8_t *src,
                                              unsigned width, unsigned height)
 {
    fetch_rgb_float_from_block(src + ((width * sizeof(uint8_t)) * (height / 4) + (width / 4)) * 16,

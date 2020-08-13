@@ -201,7 +201,7 @@ print_unpacked_s_8uint(const struct util_format_description *format_desc,
 
 
 static boolean
-test_format_fetch_rgba_float(const struct util_format_description *format_desc,
+test_format_fetch_rgba(const struct util_format_description *format_desc,
                              const struct util_format_test_case *test)
 {
    const struct util_format_unpack_description *unpack =
@@ -213,7 +213,7 @@ test_format_fetch_rgba_float(const struct util_format_description *format_desc,
    success = TRUE;
    for (i = 0; i < format_desc->block.height; ++i) {
       for (j = 0; j < format_desc->block.width; ++j) {
-         unpack->fetch_rgba_float(unpacked[i][j], test->packed, j, i);
+         unpack->fetch_rgba(unpacked[i][j], test->packed, j, i);
          for (k = 0; k < 4; ++k) {
             if (!compare_float(test->unpacked[i][j][k], unpacked[i][j][k])) {
                success = FALSE;
@@ -818,7 +818,7 @@ test_all(void)
          success = FALSE; \
       } \
 
-      TEST_ONE_UNPACK_FUNC(fetch_rgba_float);
+      TEST_ONE_UNPACK_FUNC(fetch_rgba);
       TEST_ONE_PACK_FUNC(pack_rgba_float);
       TEST_ONE_UNPACK_FUNC(unpack_rgba);
       TEST_ONE_PACK_FUNC(pack_rgba_8unorm);
