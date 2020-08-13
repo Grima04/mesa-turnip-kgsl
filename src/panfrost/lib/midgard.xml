@@ -215,6 +215,13 @@
     <value name="Mirrored Clamp to Border" value="15"/>
   </enum>
 
+  <struct name="Attribute">
+    <field name="Buffer index" size="9" start="0" type="uint"/>
+    <field name="Unknown" size="1" start="9" type="bool" default="true"/>
+    <field name="Format" size="22" start="10" type="uint"/>
+    <field name="Offset" size="32" start="32" type="int"/>
+  </struct>
+
   <struct name="Midgard Sampler">
     <field name="Magnify Nearest" size="1" start="0" type="bool" default="true"/>
     <field name="Minify Nearest" size="1" start="1" type="bool" default="true"/>

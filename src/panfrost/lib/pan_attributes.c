@@ -26,7 +26,7 @@
 #include "midgard_pack.h"
 #include "pan_encoder.h"
 
-/* This file handles attribute descriptors (mali_attr_meta). The
+/* This file handles attribute descriptors. The
  * bulk of the complexity is from instancing. See mali_job for
  * notes on how this works. But basically, for small vertex
  * counts, we have a lookup table, and for large vertex counts,

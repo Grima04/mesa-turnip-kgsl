@@ -1311,7 +1311,6 @@ pandecode_attributes(const struct pandecode_mapped_memory *mem,
                 if (mode != MALI_ATTR_LINEAR)
                         pandecode_log_cont("%s ", pandecode_attr_mode_short(mode));
 
-                /* Print the name to link with attr_meta */
                 pandecode_log_cont("%s_%d", prefix, i);
 
                 /* Print the stride and size */
@@ -1537,41 +1536,13 @@ pandecode_midgard_blend_mrt(void *descs, int job_no, int rt_no)
 static int
 pandecode_attribute_meta(int job_no, int count, const struct mali_vertex_tiler_postfix *v, bool varying, char *suffix)
 {
-        char base[128];
-        char *prefix = varying ? "varying" : "attribute";
-        unsigned max_index = 0;
-        snprintf(base, sizeof(base), "%s_meta", prefix);
-
-        struct mali_attr_meta *attr_meta;
+        const char *prefix = varying ? "Varying" : "Attribute";
         mali_ptr p = varying ? v->varying_meta : v->attribute_meta;
 
-        struct pandecode_mapped_memory *attr_mem = pandecode_find_mapped_gpu_mem_containing(p);
+        for (int i = 0; i < count; ++i, p += MALI_ATTRIBUTE_LENGTH)
+                DUMP_ADDR(prefix, ATTRIBUTE, p, 1);
 
-        for (int i = 0; i < count; ++i, p += sizeof(struct mali_attr_meta)) {
-                attr_meta = pandecode_fetch_gpu_mem(attr_mem, p,
-                                                    sizeof(*attr_mem));
-
-                if (attr_meta->index > max_index)
-                        max_index = attr_meta->index;
-
-                if (attr_meta->unknown1 != 0x2) {
-                        pandecode_msg("XXX: expected unknown1 = 0x2\n");
-                        pandecode_prop("unknown1 = 0x%" PRIx64, (u64) attr_meta->unknown1);
-                }
-
-                pandecode_log_cont("%s %s_%u", mali_format_as_str(attr_meta->format >> 12), prefix, attr_meta->index);
-
-                if (attr_meta->src_offset)
-                        pandecode_log_cont("[%u]", attr_meta->src_offset);
-
-                pandecode_swizzle(attr_meta->format & ((1 << 12) - 1), attr_meta->format >> 12);
-
-                pandecode_log_cont(";\n");
-        }
-
-        pandecode_log("\n");
-
-        return count ? (max_index + 1) : 0;
+        return count;
 }
 
 /* return bits [lo, hi) of word */

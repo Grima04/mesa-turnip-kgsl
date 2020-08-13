@@ -188,6 +188,7 @@ panfrost_load_midg(
 
         struct panfrost_transfer viewport = panfrost_pool_alloc(pool, MALI_VIEWPORT_LENGTH);
         struct panfrost_transfer sampler = panfrost_pool_alloc(pool, MALI_MIDGARD_SAMPLER_LENGTH);
+        struct panfrost_transfer varying_buf = panfrost_pool_alloc(pool, MALI_ATTRIBUTE_LENGTH);
 
         pan_pack(viewport.cpu, VIEWPORT, cfg) {
                 cfg.scissor_maximum_x = width - 1; /* Inclusive */
@@ -200,11 +201,10 @@ panfrost_load_midg(
 		.size = 4 * sizeof(float) * vertex_count,
 	};
 
-        struct mali_attr_meta varying_meta = {
-                .index = 0,
-                .unknown1 = 2,
-                .format = (MALI_CHANNEL_R << 0) | (MALI_CHANNEL_G << 3) | (MALI_RGBA32F << 12)
-        };
+        pan_pack(varying_buf.cpu, ATTRIBUTE, cfg) {
+                cfg.buffer_index = 0;
+                cfg.format = (MALI_CHANNEL_R << 0) | (MALI_CHANNEL_G << 3) | (MALI_RGBA32F << 12);
+        }
 
         struct mali_stencil_packed stencil;
         pan_pack(&stencil, STENCIL, cfg) {
@@ -348,7 +348,7 @@ panfrost_load_midg(
                         .sampler_descriptor = sampler.gpu,
                         .shader = shader_meta_t.gpu,
                         .varyings = panfrost_pool_upload(pool, &varying, sizeof(varying)),
-                        .varying_meta = panfrost_pool_upload(pool, &varying_meta, sizeof(varying_meta)),
+                        .varying_meta = varying_buf.gpu,
                         .viewport = viewport.gpu,
                         .shared_memory = fbd
                 }
