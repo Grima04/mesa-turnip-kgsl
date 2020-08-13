@@ -903,6 +903,7 @@ emit_binary_bundle(compiler_context *ctx,
                 /* Nothing else to pack for barriers */
                 if (ins->op == TEXTURE_OP_BARRIER) {
                         ins->texture.cont = ins->texture.last = 1;
+                        ins->texture.op = ins->op;
                         util_dynarray_append(emission, midgard_texture_word, ins->texture);
                         return;
                 }
