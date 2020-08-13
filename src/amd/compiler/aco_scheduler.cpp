@@ -33,7 +33,7 @@
 #define VMEM_WINDOW_SIZE (1024 - ctx.num_waves * 64)
 #define POS_EXP_WINDOW_SIZE 512
 #define SMEM_MAX_MOVES (64 - ctx.num_waves * 4)
-#define VMEM_MAX_MOVES (128 - ctx.num_waves * 8)
+#define VMEM_MAX_MOVES (256 - ctx.num_waves * 16)
 /* creating clauses decreases def-use distances, so make it less aggressive the lower num_waves is */
 #define VMEM_CLAUSE_MAX_GRAB_DIST ((ctx.num_waves - 1) * 8)
 #define POS_EXP_MAX_MOVES 512
@@ -733,7 +733,8 @@ void schedule_VMEM(sched_ctx& ctx, Block* block,
       }
       if (part_of_clause)
          add_to_hazard_query(&indep_hq, candidate_ptr);
-      k++;
+      else
+         k++;
       if (candidate_idx < ctx.last_SMEM_dep_idx)
          ctx.last_SMEM_stall++;
    }
@@ -782,6 +783,8 @@ void schedule_VMEM(sched_ctx& ctx, Block* block,
       if (is_dependency || !found_dependency) {
          if (found_dependency)
             add_to_hazard_query(&indep_hq, candidate.get());
+         else
+            k++;
          ctx.mv.upwards_skip();
          continue;
       }
