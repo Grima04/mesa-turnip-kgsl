@@ -104,6 +104,7 @@ zink_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_DRAW_INDIRECT:
    case PIPE_CAP_TEXTURE_QUERY_LOD:
    case PIPE_CAP_GLSL_TESS_LEVELS_AS_INPUTS:
+   case PIPE_CAP_CLEAR_TEXTURE:
       return 1;
 
    case PIPE_CAP_MULTI_DRAW_INDIRECT:
