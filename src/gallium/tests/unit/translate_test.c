@@ -173,12 +173,13 @@ int main(int argc, char** argv)
    {
       const struct util_format_description* output_format_desc = util_format_description(output_format);
       const struct util_format_pack_description* output_format_pack = util_format_pack_description(output_format);
-      const struct util_format_unpack_description* output_format_unpack = util_format_unpack_description(output_format);
+      util_format_fetch_rgba_func_ptr fetch_rgba =
+         util_format_fetch_rgba_func(output_format);
       unsigned output_format_size;
       unsigned output_normalized = 0;
 
       if (!output_format_desc
-            || !output_format_unpack->fetch_rgba
+            || !fetch_rgba
             || !output_format_pack->pack_rgba_float
             || output_format_desc->colorspace != UTIL_FORMAT_COLORSPACE_RGB
             || output_format_desc->layout != UTIL_FORMAT_LAYOUT_PLAIN
@@ -196,8 +197,9 @@ int main(int argc, char** argv)
       for (input_format = 1; input_format < PIPE_FORMAT_COUNT; ++input_format)
       {
          const struct util_format_description* input_format_desc = util_format_description(input_format);
-      const struct util_format_pack_description* input_format_pack = util_format_pack_description(input_format);
-      const struct util_format_unpack_description* input_format_unpack = util_format_unpack_description(input_format);
+         const struct util_format_pack_description* input_format_pack = util_format_pack_description(input_format);
+         util_format_fetch_rgba_func_ptr fetch_rgba =
+            util_format_fetch_rgba_func(input_format);
          unsigned input_format_size;
          struct translate* translate[2];
          unsigned fail = 0;
@@ -206,7 +208,7 @@ int main(int argc, char** argv)
          boolean input_is_float = FALSE;
 
          if (!input_format_desc
-               || !input_format_unpack->fetch_rgba
+               || !fetch_rgba
                || !input_format_pack->pack_rgba_float
                || input_format_desc->colorspace != UTIL_FORMAT_COLORSPACE_RGB
                || input_format_desc->layout != UTIL_FORMAT_LAYOUT_PLAIN
@@ -277,8 +279,8 @@ int main(int argc, char** argv)
          {
             float a[4];
             float b[4];
-            input_format_unpack->fetch_rgba(a, buffer[2] + i * input_format_size, 0, 0);
-            input_format_unpack->fetch_rgba(b, buffer[4] + i * input_format_size, 0, 0);
+            fetch_rgba(a, buffer[2] + i * input_format_size, 0, 0);
+            fetch_rgba(b, buffer[4] + i * input_format_size, 0, 0);
 
             for (j = 0; j < count; ++j)
             {

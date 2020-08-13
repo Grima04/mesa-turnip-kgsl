@@ -204,8 +204,8 @@ static boolean
 test_format_fetch_rgba(const struct util_format_description *format_desc,
                              const struct util_format_test_case *test)
 {
-   const struct util_format_unpack_description *unpack =
-      util_format_unpack_description(format_desc->format);
+   util_format_fetch_rgba_func_ptr fetch_rgba =
+      util_format_fetch_rgba_func(format_desc->format);
    float unpacked[UTIL_FORMAT_MAX_UNPACKED_HEIGHT][UTIL_FORMAT_MAX_UNPACKED_WIDTH][4] = { { { 0 } } };
    unsigned i, j, k;
    boolean success;
@@ -213,7 +213,7 @@ test_format_fetch_rgba(const struct util_format_description *format_desc,
    success = TRUE;
    for (i = 0; i < format_desc->block.height; ++i) {
       for (j = 0; j < format_desc->block.width; ++j) {
-         unpack->fetch_rgba(unpacked[i][j], test->packed, j, i);
+         fetch_rgba(unpacked[i][j], test->packed, j, i);
          for (k = 0; k < 4; ++k) {
             if (!compare_float(test->unpacked[i][j][k], unpacked[i][j][k])) {
                success = FALSE;
@@ -818,7 +818,11 @@ test_all(void)
          success = FALSE; \
       } \
 
-      TEST_ONE_UNPACK_FUNC(fetch_rgba);
+      if (util_format_fetch_rgba_func(format)) {
+         if (!test_one_func(format_desc, test_format_fetch_rgba, "fetch_rgba"))
+            success = FALSE;
+      }
+
       TEST_ONE_PACK_FUNC(pack_rgba_float);
       TEST_ONE_UNPACK_FUNC(unpack_rgba);
       TEST_ONE_PACK_FUNC(pack_rgba_8unorm);

@@ -174,6 +174,17 @@ def write_format_table(formats):
         print("}")
         print()
 
+    def generate_function_getter(func):
+        print("util_format_%s_func_ptr" % func)
+        print("util_format_%s_func(enum pipe_format format)" % (func))
+        print("{")
+        print("   if (format >= ARRAY_SIZE(util_format_%s_table))" % (func))
+        print("      return NULL;")
+        print()
+        print("   return util_format_%s_table[format];" % (func))
+        print("}")
+        print()
+
     print('static const struct util_format_description')
     print('util_format_descriptions[] = {')
     for format in formats:
@@ -240,8 +251,6 @@ def write_format_table(formats):
             continue
 
         print("   [%s] = {" % (format.name,))
-        if format.colorspace != ZS:
-            print("      .fetch_rgba = &util_format_%s_fetch_rgba," % sn)
 
         if format.colorspace != ZS and not format.is_pure_color():
             print("      .unpack_rgba_8unorm = &util_format_%s_unpack_rgba_8unorm," % sn)
@@ -265,6 +274,20 @@ def write_format_table(formats):
     print()
 
     generate_table_getter("unpack_")
+
+    print('static const util_format_fetch_rgba_func_ptr util_format_fetch_rgba_table[] = {')
+    for format in formats:
+        sn = format.short_name()
+
+        if format.colorspace != ZS and has_access(format):
+            print("  [%s] = &util_format_%s_fetch_rgba," % (format.name, sn))
+        else:
+            print("  [%s] = NULL," % format.name)
+
+    print("};")
+    print()
+
+    generate_function_getter("fetch_rgba")
 
 def main():
     formats = []

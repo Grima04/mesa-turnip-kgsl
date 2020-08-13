@@ -894,10 +894,12 @@ lp_build_fetch_rgba_aos(struct gallivm_state *gallivm,
    }
 
    /*
-    * Fallback to util_format_description::fetch_rgba_float().
+    * Fallback to fetch_rgba().
     */
 
-   if (unpack->fetch_rgba) {
+   util_format_fetch_rgba_func_ptr fetch_rgba =
+      util_format_fetch_rgba_func(format_desc->format);
+   if (fetch_rgba) {
       /*
        * Fallback to calling util_format_description::fetch_rgba_float.
        *
@@ -944,7 +946,7 @@ lp_build_fetch_rgba_aos(struct gallivm_state *gallivm,
          if (gallivm->cache)
             gallivm->cache->dont_cache = true;
          function = lp_build_const_func_pointer(gallivm,
-                                                func_to_pointer((func_pointer) unpack->fetch_rgba),
+                                                func_to_pointer((func_pointer) fetch_rgba),
                                                 ret_type,
                                                 arg_types, ARRAY_SIZE(arg_types),
                                                 format_desc->short_name);

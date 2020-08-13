@@ -346,14 +346,6 @@ struct util_format_unpack_description {
                   unsigned width, unsigned height);
 
    /**
-    * Fetch a single pixel (i, j) from a block.
-    *
-    * Only defined for non-depth-stencil and non-integer formats.
-    */
-   void
-   (*fetch_rgba)(void *dst, const uint8_t *src, unsigned i, unsigned j);
-
-   /**
     * Unpack pixels to Z32_UNORM.
     * Note: strides are in bytes.
     *
@@ -387,6 +379,9 @@ struct util_format_unpack_description {
                      unsigned width, unsigned height);
 };
 
+typedef void (*util_format_fetch_rgba_func_ptr)(void *dst, const uint8_t *src,
+                                                unsigned i, unsigned j);
+
 const struct util_format_description *
 util_format_description(enum pipe_format format) ATTRIBUTE_CONST;
 
@@ -396,6 +391,13 @@ util_format_pack_description(enum pipe_format format) ATTRIBUTE_CONST;
 const struct util_format_unpack_description *
 util_format_unpack_description(enum pipe_format format) ATTRIBUTE_CONST;
 
+/**
+ * Returns a function to fetch a single pixel (i, j) from a block.
+ *
+ * Only defined for non-depth-stencil and non-integer formats.
+ */
+util_format_fetch_rgba_func_ptr
+util_format_fetch_rgba_func(enum pipe_format format) ATTRIBUTE_CONST;
 
 /*
  * Format query functions.

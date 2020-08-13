@@ -367,8 +367,6 @@ test_all(unsigned verbose, FILE *fp)
    for (use_cache = 0; use_cache < 2; use_cache++) {
       for (format = 1; format < PIPE_FORMAT_COUNT; ++format) {
          const struct util_format_description *format_desc;
-         const struct util_format_unpack_description *unpack =
-            util_format_unpack_description(format);
 
          format_desc = util_format_description(format);
          if (!format_desc) {
@@ -392,7 +390,7 @@ test_all(unsigned verbose, FILE *fp)
           * precompiled fetch func for any format before we write LLVM code to
           * fetch from it.
           */
-         if (!unpack->fetch_rgba)
+         if (!util_format_fetch_rgba_func(format))
             continue;
 
          /* only test twice with formats which can use cache */
