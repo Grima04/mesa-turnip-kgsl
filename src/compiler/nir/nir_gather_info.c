@@ -712,6 +712,28 @@ gather_intrinsic_info(nir_intrinsic_instr *instr, nir_shader *shader,
       update_memory_written_for_deref(shader, nir_src_as_deref(instr->src[0]));
       break;
 
+   case nir_intrinsic_control_barrier:
+      shader->info.uses_control_barrier = true;
+      break;
+
+   case nir_intrinsic_scoped_barrier:
+      shader->info.uses_control_barrier |=
+         nir_intrinsic_execution_scope(instr) != NIR_SCOPE_NONE;
+
+      shader->info.uses_memory_barrier |=
+         nir_intrinsic_memory_scope(instr) != NIR_SCOPE_NONE;
+      break;
+
+   case nir_intrinsic_memory_barrier:
+   case nir_intrinsic_group_memory_barrier:
+   case nir_intrinsic_memory_barrier_atomic_counter:
+   case nir_intrinsic_memory_barrier_buffer:
+   case nir_intrinsic_memory_barrier_image:
+   case nir_intrinsic_memory_barrier_shared:
+   case nir_intrinsic_memory_barrier_tcs_patch:
+      shader->info.uses_memory_barrier = true;
+      break;
+
    default:
       break;
    }
