@@ -25,6 +25,8 @@
 #include "nir_builder.h"
 #include "nir_vla.h"
 
+#define NIR_LOWER_GOTO_IFS_DEBUG 0
+
 struct path {
    /** Set of blocks which this path represents
     *
@@ -86,6 +88,21 @@ nir_block_ptr_cmp(const void *_a, const void *_b)
    nir_block *const *a = _a;
    nir_block *const *b = _b;
    return (int)(*a)->index - (int)(*b)->index;
+}
+
+static void
+print_block_set(const struct set *set)
+{
+   printf("{ ");
+   if (set != NULL) {
+      unsigned count = 0;
+      set_foreach(set, entry) {
+         if (count++)
+            printf(", ");
+         printf("%u", ((nir_block *)entry->key)->index);
+      }
+   }
+   printf(" }\n");
 }
 
 /** Return a sorted array of blocks for a set
@@ -276,6 +293,25 @@ loop_routing_start(struct routes *routing, nir_builder *b,
                    struct path loop_path, struct set *reach,
                    struct set *outside, void *mem_ctx)
 {
+   if (NIR_LOWER_GOTO_IFS_DEBUG) {
+      printf("loop_routing_start:\n");
+      printf("    reach =                       ");
+      print_block_set(reach);
+      printf("    outside =                     ");
+      print_block_set(outside);
+      printf("    loop_path.reachable =         ");
+      print_block_set(loop_path.reachable);
+      printf("    routing->outside =            ");
+      print_block_set(routing->outside);
+      printf("    routing->regular.reachable =  ");
+      print_block_set(routing->regular.reachable);
+      printf("    routing->brk.reachable =      ");
+      print_block_set(routing->brk.reachable);
+      printf("    routing->cont.reachable =     ");
+      print_block_set(routing->cont.reachable);
+      printf("\n");
+   }
+
    struct routes *routing_backup = ralloc(mem_ctx, struct routes);
    *routing_backup = *routing;
    bool break_needed = false;
@@ -411,6 +447,20 @@ inside_outside(nir_block *block, struct set *loop_heads, struct set *outside,
          _mesa_set_add(remaining, block->dom_children[i]);
    }
 
+
+   if (NIR_LOWER_GOTO_IFS_DEBUG) {
+      printf("inside_outside(%u):\n", block->index);
+      printf("    loop_heads = ");
+      print_block_set(loop_heads);
+      printf("    reach =      ");
+      print_block_set(reach);
+      printf("    brk_reach =  ");
+      print_block_set(brk_reachable);
+      printf("    remaining =  ");
+      print_block_set(remaining);
+      printf("\n");
+   }
+
    bool progress = true;
    while (remaining->entries && progress) {
       progress = false;
@@ -455,6 +505,13 @@ inside_outside(nir_block *block, struct set *loop_heads, struct set *outside,
           !_mesa_set_search(loop_heads, block->successors[i])) {
          _mesa_set_add(reach, block->successors[i]);
       }
+   }
+
+   if (NIR_LOWER_GOTO_IFS_DEBUG) {
+      printf("outside(%u) = ", block->index);
+      print_block_set(outside);
+      printf("reach(%u) =   ", block->index);
+      print_block_set(reach);
    }
 }
 
@@ -615,6 +672,14 @@ organize_levels(struct list_head *levels, struct set *children,
                 struct set *reach, struct routes *routing,
                 nir_function_impl *impl, bool is_domminated, void *mem_ctx)
 {
+   if (NIR_LOWER_GOTO_IFS_DEBUG) {
+      printf("organize_levels:\n");
+      printf("    children = ");
+      print_block_set(children);
+      printf("    reach =     ");
+      print_block_set(reach);
+   }
+
    /* Duplicate remaining because we're going to destroy it */
    struct set *remaining = _mesa_set_clone(children, mem_ctx);
 
@@ -709,6 +774,15 @@ organize_levels(struct list_head *levels, struct set *children,
 
       curr_level->skip_end = 0;
       list_addtail(&curr_level->link, levels);
+   }
+
+   if (NIR_LOWER_GOTO_IFS_DEBUG) {
+      printf("    levels:\n");
+      list_for_each_entry(struct strct_lvl, level, levels, link) {
+         printf("        ");
+         print_block_set(level->blocks);
+      }
+      printf("\n");
    }
 
    if (skip_targets->entries)
