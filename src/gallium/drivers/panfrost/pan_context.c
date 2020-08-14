@@ -139,8 +139,6 @@ panfrost_clear(
          * fragment jobs.
          */
         struct panfrost_batch *batch = panfrost_get_fresh_batch_for_fbo(ctx);
-
-        panfrost_batch_add_fbo_bos(batch);
         panfrost_batch_clear(batch, buffers, color, depth, stencil);
 }
 
@@ -309,12 +307,9 @@ panfrost_draw_vbo(
                 return;
         }
 
-        /* Now that we have a guaranteed terminating path, find the job.
-         * Assignment commented out to prevent unused warning */
+        /* Now that we have a guaranteed terminating path, find the job. */
 
         struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
-
-        panfrost_batch_add_fbo_bos(batch);
         panfrost_batch_set_requirements(batch);
 
         /* Take into account a negative bias */

@@ -92,6 +92,9 @@ panfrost_batch_fence_reference(struct panfrost_batch_fence *fence)
         pipe_reference(NULL, &fence->reference);
 }
 
+static void
+panfrost_batch_add_fbo_bos(struct panfrost_batch *batch);
+
 static struct panfrost_batch *
 panfrost_create_batch(struct panfrost_context *ctx,
                       const struct pipe_framebuffer_state *key)
@@ -110,6 +113,8 @@ panfrost_create_batch(struct panfrost_context *ctx,
         util_copy_framebuffer_state(&batch->key, key);
 
         batch->pool = panfrost_create_pool(batch, pan_device(ctx->base.screen));
+
+        panfrost_batch_add_fbo_bos(batch);
 
         return batch;
 }
@@ -559,7 +564,8 @@ panfrost_batch_add_resource_bos(struct panfrost_batch *batch,
                 panfrost_batch_add_bo(batch, rsrc->separate_stencil->bo, flags);
 }
 
-void panfrost_batch_add_fbo_bos(struct panfrost_batch *batch)
+static void
+panfrost_batch_add_fbo_bos(struct panfrost_batch *batch)
 {
         uint32_t flags = PAN_BO_ACCESS_SHARED | PAN_BO_ACCESS_WRITE |
                          PAN_BO_ACCESS_VERTEX_TILER |
