@@ -1953,8 +1953,8 @@ panfrost_emit_varying_descriptor(struct panfrost_batch *batch,
 
         vs = panfrost_get_shader_state(ctx, PIPE_SHADER_VERTEX);
         fs = panfrost_get_shader_state(ctx, PIPE_SHADER_FRAGMENT);
-        vs_size = sizeof(struct mali_attr_meta) * vs->varying_count;
-        fs_size = sizeof(struct mali_attr_meta) * fs->varying_count;
+        vs_size = MALI_ATTRIBUTE_LENGTH * vs->varying_count;
+        fs_size = MALI_ATTRIBUTE_LENGTH * fs->varying_count;
 
         struct panfrost_transfer trans = panfrost_pool_alloc(&batch->pool,
                                                                      vs_size +
