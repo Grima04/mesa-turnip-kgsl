@@ -1256,7 +1256,7 @@ Converter::parseNIR()
       info->prop.cp.numThreads[0] = nir->info.cs.local_size[0];
       info->prop.cp.numThreads[1] = nir->info.cs.local_size[1];
       info->prop.cp.numThreads[2] = nir->info.cs.local_size[2];
-      info->bin.smemSize = nir->info.cs.shared_size;
+      info->bin.smemSize += nir->info.cs.shared_size;
       break;
    case Program::TYPE_FRAGMENT:
       info->prop.fp.earlyFragTests = nir->info.fs.early_fragment_tests;
