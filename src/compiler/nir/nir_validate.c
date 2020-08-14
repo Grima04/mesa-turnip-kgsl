@@ -601,6 +601,9 @@ validate_intrinsic_instr(nir_intrinsic_instr *instr, validate_state *state)
    }
 
    case nir_intrinsic_load_ubo:
+      /* Make sure that the creator didn't forget to set the range_base+range. */
+      validate_assert(state, nir_intrinsic_range(instr) != 0);
+      /* Fall through */
    case nir_intrinsic_load_ssbo:
    case nir_intrinsic_load_shared:
    case nir_intrinsic_load_global:

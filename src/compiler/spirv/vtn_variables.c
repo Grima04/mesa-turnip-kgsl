@@ -853,6 +853,9 @@ _vtn_load_store_tail(struct vtn_builder *b, nir_intrinsic_op op, bool load,
    if (op == nir_intrinsic_load_push_constant) {
       nir_intrinsic_set_base(instr, access_offset);
       nir_intrinsic_set_range(instr, access_size);
+   } else if (op == nir_intrinsic_load_ubo) {
+      nir_intrinsic_set_range_base(instr, 0);
+      nir_intrinsic_set_range(instr, ~0);
    }
 
    if (op == nir_intrinsic_load_ubo ||

@@ -812,6 +812,16 @@ vectorize_loads(nir_builder *b, struct vectorize_ctx *ctx,
    if (first != low && nir_intrinsic_has_base(first->intrin))
       nir_intrinsic_set_base(first->intrin, nir_intrinsic_base(low->intrin));
 
+   if (nir_intrinsic_has_range_base(first->intrin)) {
+      uint32_t low_base = nir_intrinsic_range_base(low->intrin);
+      uint32_t high_base = nir_intrinsic_range_base(high->intrin);
+      uint32_t low_end = low_base + nir_intrinsic_range(low->intrin);
+      uint32_t high_end = high_base + nir_intrinsic_range(high->intrin);
+
+      nir_intrinsic_set_range_base(first->intrin, low_base);
+      nir_intrinsic_set_range(first->intrin, MAX2(low_end, high_end) - low_base);
+   }
+
    first->key = low->key;
    first->offset = low->offset;
 

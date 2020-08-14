@@ -1030,6 +1030,11 @@ build_explicit_io_load(nir_builder *b, nir_intrinsic_instr *intrin,
 
    nir_intrinsic_set_align(load, align_mul, align_offset);
 
+   if (op == nir_intrinsic_load_ubo) {
+      nir_intrinsic_set_range_base(load, 0);
+      nir_intrinsic_set_range(load, ~0);
+   }
+
    assert(intrin->dest.is_ssa);
    load->num_components = num_components;
    nir_ssa_dest_init(&load->instr, &load->dest, num_components,

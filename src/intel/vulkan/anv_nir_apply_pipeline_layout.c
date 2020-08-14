@@ -538,6 +538,8 @@ build_ssbo_descriptor_load(const VkDescriptorType desc_type,
    desc_load->num_components = 4;
    nir_ssa_dest_init(&desc_load->instr, &desc_load->dest, 4, 32, NULL);
    nir_builder_instr_insert(b, &desc_load->instr);
+   nir_intrinsic_set_range_base(desc_load, 0);
+   nir_intrinsic_set_range(desc_load, ~0);
 
    return &desc_load->dest.ssa;
 }
@@ -745,6 +747,8 @@ build_descriptor_load(nir_deref_instr *deref, unsigned offset,
    nir_ssa_dest_init(&desc_load->instr, &desc_load->dest,
                      num_components, bit_size, NULL);
    nir_builder_instr_insert(b, &desc_load->instr);
+   nir_intrinsic_set_range_base(desc_load, 0);
+   nir_intrinsic_set_range(desc_load, ~0);
 
    return &desc_load->dest.ssa;
 }
@@ -846,6 +850,8 @@ lower_load_constant(nir_intrinsic_instr *intrin,
       load_ubo->src[0] = nir_src_for_ssa(index);
       load_ubo->src[1] = nir_src_for_ssa(offset);
       nir_intrinsic_set_align(load_ubo, intrin->dest.ssa.bit_size / 8, 0);
+      nir_intrinsic_set_range_base(load_ubo, nir_intrinsic_base(intrin));
+      nir_intrinsic_set_range(load_ubo, nir_intrinsic_range(intrin));
       nir_ssa_dest_init(&load_ubo->instr, &load_ubo->dest,
                         intrin->dest.ssa.num_components,
                         intrin->dest.ssa.bit_size, NULL);

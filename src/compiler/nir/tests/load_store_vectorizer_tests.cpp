@@ -223,10 +223,27 @@ nir_load_store_vectorize_test::create_indirect_load(
    } else {
       load->src[0] = nir_src_for_ssa(offset);
    }
+   int byte_size = (bit_size == 1 ? 32 : bit_size) / 8;
+
    if (mode != nir_var_mem_push_const) {
-      nir_intrinsic_set_align(load, (bit_size == 1 ? 32 : bit_size) / 8, 0);
+      nir_intrinsic_set_align(load, byte_size, 0);
       nir_intrinsic_set_access(load, (gl_access_qualifier)access);
    }
+
+   if (nir_intrinsic_has_range_base(load)) {
+      uint32_t range = byte_size * components;
+      int offset_src = res ? 1 : 0;
+
+      if (nir_src_is_const(load->src[offset_src])) {
+         nir_intrinsic_set_range_base(load, nir_src_as_uint(load->src[offset_src]));
+         nir_intrinsic_set_range(load, range);
+      } else {
+         /* Unknown range */
+         nir_intrinsic_set_range_base(load, 0);
+         nir_intrinsic_set_range(load, ~0);
+      }
+   }
+
    nir_builder_instr_insert(b, &load->instr);
    nir_alu_instr *mov = nir_instr_as_alu(nir_mov(b, &load->dest.ssa)->parent_instr);
    movs[id] = mov;
@@ -380,6 +397,8 @@ TEST_F(nir_load_store_vectorize_test, ubo_load_adjacent)
    nir_intrinsic_instr *load = get_intrinsic(nir_intrinsic_load_ubo, 0);
    ASSERT_EQ(load->dest.ssa.bit_size, 32);
    ASSERT_EQ(load->dest.ssa.num_components, 2);
+   ASSERT_EQ(nir_intrinsic_range_base(load), 0);
+   ASSERT_EQ(nir_intrinsic_range(load), 8);
    ASSERT_EQ(nir_src_as_uint(load->src[1]), 0);
    EXPECT_INSTR_SWIZZLES(movs[0x1], load, "x");
    EXPECT_INSTR_SWIZZLES(movs[0x2], load, "y");
@@ -400,9 +419,39 @@ TEST_F(nir_load_store_vectorize_test, ubo_load_intersecting)
    nir_intrinsic_instr *load = get_intrinsic(nir_intrinsic_load_ubo, 0);
    ASSERT_EQ(load->dest.ssa.bit_size, 32);
    ASSERT_EQ(load->dest.ssa.num_components, 3);
+   ASSERT_EQ(nir_intrinsic_range_base(load), 0);
+   ASSERT_EQ(nir_intrinsic_range(load), 12);
    ASSERT_EQ(nir_src_as_uint(load->src[1]), 0);
    EXPECT_INSTR_SWIZZLES(movs[0x1], load, "xy");
    EXPECT_INSTR_SWIZZLES(movs[0x2], load, "yz");
+}
+
+/* Test for a bug in range handling */
+TEST_F(nir_load_store_vectorize_test, ubo_load_intersecting_range)
+{
+   create_load(nir_var_mem_ubo, 0, 0, 0x1, 32, 4);
+   create_load(nir_var_mem_ubo, 0, 4, 0x2, 32, 1);
+
+   nir_validate_shader(b->shader, NULL);
+   ASSERT_EQ(count_intrinsics(nir_intrinsic_load_ubo), 2);
+
+   EXPECT_TRUE(run_vectorizer(nir_var_mem_ubo));
+
+   ASSERT_EQ(count_intrinsics(nir_intrinsic_load_ubo), 1);
+
+   nir_intrinsic_instr *load = get_intrinsic(nir_intrinsic_load_ubo, 0);
+   ASSERT_EQ(load->dest.ssa.bit_size, 32);
+   ASSERT_EQ(load->dest.ssa.num_components, 4);
+   ASSERT_EQ(nir_intrinsic_range_base(load), 0);
+   ASSERT_EQ(nir_intrinsic_range(load), 16);
+   ASSERT_EQ(nir_src_as_uint(load->src[1]), 0);
+   ASSERT_EQ(loads[0x1]->src.ssa, &load->dest.ssa);
+   ASSERT_EQ(loads[0x2]->src.ssa, &load->dest.ssa);
+   ASSERT_EQ(loads[0x1]->swizzle[0], 0);
+   ASSERT_EQ(loads[0x1]->swizzle[1], 1);
+   ASSERT_EQ(loads[0x1]->swizzle[2], 2);
+   ASSERT_EQ(loads[0x1]->swizzle[3], 3);
+   ASSERT_EQ(loads[0x2]->swizzle[0], 1);
 }
 
 TEST_F(nir_load_store_vectorize_test, ubo_load_identical)
@@ -420,6 +469,8 @@ TEST_F(nir_load_store_vectorize_test, ubo_load_identical)
    nir_intrinsic_instr *load = get_intrinsic(nir_intrinsic_load_ubo, 0);
    ASSERT_EQ(load->dest.ssa.bit_size, 32);
    ASSERT_EQ(load->dest.ssa.num_components, 1);
+   ASSERT_EQ(nir_intrinsic_range_base(load), 0);
+   ASSERT_EQ(nir_intrinsic_range(load), 4);
    ASSERT_EQ(nir_src_as_uint(load->src[1]), 0);
    ASSERT_EQ(loads[0x1]->src.ssa, &load->dest.ssa);
    ASSERT_EQ(loads[0x2]->src.ssa, &load->dest.ssa);

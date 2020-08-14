@@ -75,6 +75,7 @@ struct ttn_compile {
    nir_variable *samplers[PIPE_MAX_SAMPLERS];
    nir_variable *images[PIPE_MAX_SHADER_IMAGES];
    nir_variable *ssbo[PIPE_MAX_SHADER_BUFFERS];
+   uint32_t ubo_sizes[PIPE_MAX_CONSTANT_BUFFERS];
 
    unsigned num_samplers;
    unsigned num_images;
@@ -315,6 +316,8 @@ ttn_emit_declaration(struct ttn_compile *c)
           decl->Dim.Index2D != 0) {
          b->shader->info.num_ubos =
             MAX2(b->shader->info.num_ubos, decl->Dim.Index2D);
+         c->ubo_sizes[decl->Dim.Index2D] =
+            MAX2(c->ubo_sizes[decl->Dim.Index2D], decl->Range.Last * 16);
          return;
       }
 
@@ -741,12 +744,27 @@ ttn_src_for_file_and_index(struct ttn_compile *c, unsigned file, unsigned index,
          /* UBO offsets are in bytes, but TGSI gives them to us in vec4's */
          offset = nir_ishl(b, offset, nir_imm_int(b, 4));
          nir_intrinsic_set_align(load, 16, 0);
+
+         /* Set a very conservative base/range of the access: 16 bytes if not
+          * indirect at all, offset to the end of the UBO if the offset is
+          * indirect, and totally unknown if the block number is indirect.
+          */
+         uint32_t base = index * 16;
+         nir_intrinsic_set_range_base(load, base);
+         if (dimind)
+            nir_intrinsic_set_range(load, ~0);
+         else if (indirect)
+            nir_intrinsic_set_range(load, c->ubo_sizes[dim->Index] - base);
+         else
+            nir_intrinsic_set_range(load, base + 16);
       } else {
          nir_intrinsic_set_base(load, index);
          if (indirect) {
             offset = ttn_src_for_indirect(c, indirect);
+            nir_intrinsic_set_range(load, c->ubo_sizes[0] - index);
          } else {
             offset = nir_imm_int(b, 0);
+            nir_intrinsic_set_range(load, 1);
          }
       }
       load->src[srcn++] = nir_src_for_ssa(offset);
