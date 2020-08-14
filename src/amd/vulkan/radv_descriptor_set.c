@@ -57,13 +57,14 @@ static int binding_compare(const void* av, const void *bv)
 
 static VkDescriptorSetLayoutBinding *
 create_sorted_bindings(const VkDescriptorSetLayoutBinding *bindings, unsigned count) {
-	VkDescriptorSetLayoutBinding *sorted_bindings = malloc(count * sizeof(VkDescriptorSetLayoutBinding));
+	VkDescriptorSetLayoutBinding *sorted_bindings = malloc(MAX2(count * sizeof(VkDescriptorSetLayoutBinding), 1));
 	if (!sorted_bindings)
 		return NULL;
 
-	memcpy(sorted_bindings, bindings, count * sizeof(VkDescriptorSetLayoutBinding));
-
-	qsort(sorted_bindings, count, sizeof(VkDescriptorSetLayoutBinding), binding_compare);
+	if (count) {
+		memcpy(sorted_bindings, bindings, count * sizeof(VkDescriptorSetLayoutBinding));
+		qsort(sorted_bindings, count, sizeof(VkDescriptorSetLayoutBinding), binding_compare);
+	}
 
 	return sorted_bindings;
 }
