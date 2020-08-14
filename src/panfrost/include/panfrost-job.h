@@ -713,18 +713,6 @@ union mali_attr {
 	};
 } __attribute__((packed));
 
-struct mali_attr_meta {
-        /* Vertex buffer index */
-        u8 index;
-
-        unsigned unknown1 : 2;
-        unsigned format : 22;
-
-        /* When packing multiple attributes in a buffer, offset addresses by
-         * this value. Obscurely, this is signed. */
-        int32_t src_offset;
-} __attribute__((packed));
-
 #define FBD_MASK (~0x3f)
 
 /* MFBD, rather than SFBD */
