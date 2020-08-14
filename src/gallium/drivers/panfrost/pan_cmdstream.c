@@ -1431,17 +1431,25 @@ panfrost_emit_vertex_data(struct panfrost_batch *batch,
 
         /* Add special gl_VertexID/gl_InstanceID buffers */
 
-        struct mali_attr_meta hw[PIPE_MAX_ATTRIBS];
+        struct panfrost_transfer T = panfrost_pool_alloc(&batch->pool,
+                        MALI_ATTRIBUTE_LENGTH * (PAN_INSTANCE_ID + 1));
+
+        struct mali_attribute_packed *out =
+                (struct mali_attribute_packed *) T.cpu;
 
         panfrost_vertex_id(ctx->padded_count, &attrs[k]);
-        hw[PAN_VERTEX_ID].index = k++;
-        hw[PAN_VERTEX_ID].format = so->formats[PAN_VERTEX_ID];
-        hw[PAN_VERTEX_ID].unknown1 = 0x2;
+
+        pan_pack(out + PAN_VERTEX_ID, ATTRIBUTE, cfg) {
+                cfg.buffer_index = k++;
+                cfg.format = so->formats[PAN_VERTEX_ID];
+        }
 
         panfrost_instance_id(ctx->padded_count, &attrs[k]);
-        hw[PAN_INSTANCE_ID].index = k++;
-        hw[PAN_INSTANCE_ID].format = so->formats[PAN_VERTEX_ID];
-        hw[PAN_INSTANCE_ID].unknown1 = 0x2;
+
+        pan_pack(out + PAN_INSTANCE_ID, ATTRIBUTE, cfg) {
+                cfg.buffer_index = k++;
+                cfg.format = so->formats[PAN_INSTANCE_ID];
+        }
 
         /* Attribute addresses require 64-byte alignment, so let:
          *
@@ -1473,19 +1481,18 @@ panfrost_emit_vertex_data(struct panfrost_batch *batch,
                 if (so->pipe[i].instance_divisor && ctx->instance_count > 1 && start)
                         src_offset -= buf->stride * start;
 
-                hw[i].src_offset = src_offset;
-                hw[i].index = attrib_to_buffer[i];
-                hw[i].format = so->formats[i];
-                hw[i].unknown1 = 0x2;
+                pan_pack(out + i, ATTRIBUTE, cfg) {
+                        cfg.buffer_index = attrib_to_buffer[i];
+                        cfg.format = so->formats[i];
+                        cfg.offset = src_offset;
+                }
         }
 
 
         vertex_postfix->attributes = panfrost_pool_upload(&batch->pool, attrs,
                                                            k * sizeof(*attrs));
 
-        vertex_postfix->attribute_meta = panfrost_pool_upload(&batch->pool, hw,
-                                                               sizeof(hw[0]) *
-                                                               PAN_MAX_ATTRIBUTE);
+        vertex_postfix->attribute_meta = T.gpu;
 }
 
 static mali_ptr
