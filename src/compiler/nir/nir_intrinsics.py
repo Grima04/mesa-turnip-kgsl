@@ -957,6 +957,10 @@ intrinsic("load_frag_shading_rate", dest_comp=1, bit_sizes=[32],
 # Second source is a deref to a struct containing the args
 # Dest is success or failure
 intrinsic("printf", src_comp=[1, 1], dest_comp=1, bit_sizes=[32])
+# Since most drivers will want to lower to just dumping args
+# in a buffer, nir_lower_printf will do that, but requires
+# the driver to at least provide a base location
+system_value("printf_buffer_address", 1, bit_sizes=[32,64])
 
 # IR3-specific version of most SSBO intrinsics. The only different
 # compare to the originals is that they add an extra source to hold

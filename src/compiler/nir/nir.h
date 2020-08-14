@@ -4878,6 +4878,13 @@ bool nir_rematerialize_derefs_in_use_blocks_impl(nir_function_impl *impl);
 bool nir_lower_samplers(nir_shader *shader);
 bool nir_lower_ssbo(nir_shader *shader);
 
+typedef struct nir_lower_printf_options {
+   bool treat_doubles_as_floats : 1;
+   unsigned max_buffer_size;
+} nir_lower_printf_options;
+
+bool nir_lower_printf(nir_shader *nir, const nir_lower_printf_options *options);
+
 /* This is here for unit tests. */
 bool nir_opt_comparison_pre_impl(nir_function_impl *impl);
 
