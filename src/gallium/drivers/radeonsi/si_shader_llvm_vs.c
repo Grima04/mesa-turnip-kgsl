@@ -132,8 +132,14 @@ static void load_input_vs(struct si_shader_context *ctx, unsigned input_index, L
       return;
    }
 
-   /* Do multiple loads for special formats. */
    unsigned required_channels = util_last_bit(info->input_usage_mask[input_index]);
+   if (required_channels == 0) {
+      for (unsigned i = 0; i < 4; ++i)
+         out[i] = LLVMGetUndef(ctx->ac.f32);
+      return;
+   }
+
+   /* Do multiple loads for special formats. */
    LLVMValueRef fetches[4];
    unsigned num_fetches;
    unsigned fetch_stride;
