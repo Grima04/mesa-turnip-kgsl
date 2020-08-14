@@ -1516,20 +1516,20 @@ panfrost_emit_vertex_data(struct panfrost_batch *batch,
 }
 
 static mali_ptr
-panfrost_emit_varyings(struct panfrost_batch *batch, union mali_attr *slot,
-                       unsigned stride, unsigned count)
+panfrost_emit_varyings(struct panfrost_batch *batch,
+                struct mali_attribute_buffer_packed *slot,
+                unsigned stride, unsigned count)
 {
-        /* Fill out the descriptor */
-        slot->stride = stride;
-        slot->size = stride * count;
-        slot->shift = slot->extra_flags = 0;
+        unsigned size = stride * count;
+        mali_ptr ptr = panfrost_pool_alloc(&batch->pool, size).gpu;
 
-        struct panfrost_transfer transfer = panfrost_pool_alloc(&batch->pool,
-                                                                        slot->size);
+        pan_pack(slot, ATTRIBUTE_BUFFER, cfg) {
+                cfg.stride = stride;
+                cfg.size = size;
+                cfg.pointer = ptr;
+        }
 
-        slot->elements = transfer.gpu | MALI_ATTR_LINEAR;
-
-        return transfer.gpu;
+        return ptr;
 }
 
 static unsigned
@@ -1540,16 +1540,14 @@ panfrost_streamout_offset(unsigned stride, unsigned offset,
 }
 
 static void
-panfrost_emit_streamout(struct panfrost_batch *batch, union mali_attr *slot,
-                        unsigned stride, unsigned offset, unsigned count,
+panfrost_emit_streamout(struct panfrost_batch *batch,
+                        struct mali_attribute_buffer_packed *slot,
+                        unsigned stride_words, unsigned offset, unsigned count,
                         struct pipe_stream_output_target *target)
 {
-        /* Fill out the descriptor */
-        slot->stride = stride * 4;
-        slot->shift = slot->extra_flags = 0;
-
+        unsigned stride = stride_words * 4;
         unsigned max_size = target->buffer_size;
-        unsigned expected_size = slot->stride * count;
+        unsigned expected_size = stride * count;
 
         /* Grab the BO and bind it to the batch */
         struct panfrost_bo *bo = pan_resource(target->buffer)->bo;
@@ -1564,9 +1562,13 @@ panfrost_emit_streamout(struct panfrost_batch *batch, union mali_attr *slot,
                               PAN_BO_ACCESS_FRAGMENT);
 
         /* We will have an offset applied to get alignment */
-        mali_ptr addr = bo->gpu + target->buffer_offset + (offset * slot->stride);
-        slot->elements = (addr & ~63) | MALI_ATTR_LINEAR;
-        slot->size = MIN2(max_size, expected_size) + (addr & 63);
+        mali_ptr addr = bo->gpu + target->buffer_offset + (offset * stride);
+
+        pan_pack(slot, ATTRIBUTE_BUFFER, cfg) {
+                cfg.pointer = (addr & ~63);
+                cfg.stride = stride;
+                cfg.size = MIN2(max_size, expected_size) + (addr & 63);
+        }
 }
 
 static bool
@@ -1919,20 +1921,18 @@ panfrost_emit_varying(
 }
 
 static void
-pan_emit_special_input(union mali_attr *varyings,
+pan_emit_special_input(struct mali_attribute_buffer_packed *out,
                 unsigned present,
                 enum pan_special_varying v,
-                mali_ptr addr)
+                unsigned special)
 {
         if (present & (1 << v)) {
-                /* Ensure we write exactly once for performance and with fields
-                 * zeroed appropriately to avoid flakes */
+                unsigned idx = pan_varying_index(present, v);
 
-                union mali_attr s = {
-                        .elements = addr
-                };
-
-                varyings[pan_varying_index(present, v)] = s;
+                pan_pack(out + idx, ATTRIBUTE_BUFFER, cfg) {
+                        cfg.special = special;
+                        cfg.type = 0;
+                }
         }
 }
 
@@ -2005,8 +2005,9 @@ panfrost_emit_varying_descriptor(struct panfrost_batch *batch,
 
         unsigned xfb_base = pan_xfb_base(present);
         struct panfrost_transfer T = panfrost_pool_alloc(&batch->pool,
-                        sizeof(union mali_attr) * (xfb_base + ctx->streamout.num_targets));
-        union mali_attr *varyings = (union mali_attr *) T.cpu;
+                        MALI_ATTRIBUTE_BUFFER_LENGTH * (xfb_base + ctx->streamout.num_targets));
+        struct mali_attribute_buffer_packed *varyings =
+                (struct mali_attribute_buffer_packed *) T.cpu;
 
         /* Emit the stream out buffers */
 
@@ -2036,9 +2037,9 @@ panfrost_emit_varying_descriptor(struct panfrost_batch *batch,
                                 2, vertex_count);
         }
 
-        pan_emit_special_input(varyings, present, PAN_VARY_PNTCOORD, MALI_VARYING_POINT_COORD);
-        pan_emit_special_input(varyings, present, PAN_VARY_FACE, MALI_VARYING_FRONT_FACING);
-        pan_emit_special_input(varyings, present, PAN_VARY_FRAGCOORD, MALI_VARYING_FRAG_COORD);
+        pan_emit_special_input(varyings, present, PAN_VARY_PNTCOORD, MALI_ATTRIBUTE_SPECIAL_POINT_COORD);
+        pan_emit_special_input(varyings, present, PAN_VARY_FACE, MALI_ATTRIBUTE_SPECIAL_FRONT_FACING);
+        pan_emit_special_input(varyings, present, PAN_VARY_FRAGCOORD, MALI_ATTRIBUTE_SPECIAL_FRAG_COORD);
 
         vertex_postfix->varyings = T.gpu;
         tiler_postfix->varyings = T.gpu;
