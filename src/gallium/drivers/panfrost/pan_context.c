@@ -384,6 +384,9 @@ panfrost_create_rasterizer_state(
 
         so->base = *cso;
 
+        /* Gauranteed with the core GL call, so don't expose ARB_polygon_offset */
+        assert(cso->offset_clamp == 0.0);
+
         return so;
 }
 
@@ -398,9 +401,6 @@ panfrost_bind_rasterizer_state(
 
         if (!hwcso)
                 return;
-
-        /* Gauranteed with the core GL call, so don't expose ARB_polygon_offset */
-        assert(ctx->rasterizer->base.offset_clamp == 0.0);
 
         /* Point sprites are emulated */
 
