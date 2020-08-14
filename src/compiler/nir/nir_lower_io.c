@@ -1794,6 +1794,17 @@ is_output(nir_intrinsic_instr *intrin)
           intrin->intrinsic == nir_intrinsic_store_per_vertex_output;
 }
 
+static bool is_dual_slot(nir_intrinsic_instr *intrin)
+{
+   if (intrin->intrinsic == nir_intrinsic_store_output ||
+       intrin->intrinsic == nir_intrinsic_store_per_vertex_output) {
+      return nir_src_bit_size(intrin->src[0]) == 64 &&
+             nir_src_num_components(intrin->src[0]) >= 3;
+   }
+
+   return nir_dest_bit_size(intrin->dest) &&
+          nir_dest_num_components(intrin->dest) >= 3;
+}
 
 /**
  * This pass adds constant offsets to instr->const_index[0] for input/output
@@ -1820,7 +1831,16 @@ add_const_offset_to_base_block(nir_block *block, nir_builder *b,
          nir_src *offset = nir_get_io_offset_src(intrin);
 
          if (nir_src_is_const(*offset)) {
-            intrin->const_index[0] += nir_src_as_uint(*offset);
+            unsigned off = nir_src_as_uint(*offset);
+
+            nir_intrinsic_set_base(intrin, nir_intrinsic_base(intrin) + off);
+
+            nir_io_semantics sem = nir_intrinsic_io_semantics(intrin);
+            sem.location += off;
+            /* non-indirect indexing should reduce num_slots */
+            sem.num_slots = is_dual_slot(intrin) ? 2 : 1;
+            nir_intrinsic_set_io_semantics(intrin, sem);
+
             b->cursor = nir_before_instr(&intrin->instr);
             nir_instr_rewrite_src(&intrin->instr, offset,
                                   nir_src_for_ssa(nir_imm_int(b, 0)));
