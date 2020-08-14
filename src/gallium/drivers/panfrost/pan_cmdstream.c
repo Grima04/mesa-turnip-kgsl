@@ -479,40 +479,29 @@ panfrost_frag_meta_zsa_update(struct panfrost_context *ctx,
                               struct mali_shader_meta *fragmeta)
 {
         const struct panfrost_zsa_state *so = ctx->depth_stencil;
-        int zfunc = PIPE_FUNC_ALWAYS;
 
-        if (!so) {
-                /* If stenciling is disabled, the state is irrelevant */
-                SET_BIT(fragmeta->unknown2_4, MALI_STENCIL_TEST, false);
-                SET_BIT(fragmeta->unknown2_3, MALI_DEPTH_WRITEMASK, false);
-        } else {
-                SET_BIT(fragmeta->unknown2_4, MALI_STENCIL_TEST,
-                        so->base.stencil[0].enabled);
+        SET_BIT(fragmeta->unknown2_4, MALI_STENCIL_TEST,
+                so->base.stencil[0].enabled);
 
-                fragmeta->stencil_mask_front = so->stencil_mask_front;
-                fragmeta->stencil_mask_back = so->stencil_mask_back;
+        fragmeta->stencil_mask_front = so->stencil_mask_front;
+        fragmeta->stencil_mask_back = so->stencil_mask_back;
 
-                /* Bottom bits for stencil ref, exactly one word */
-                fragmeta->stencil_front.opaque[0] = so->stencil_front.opaque[0] | ctx->stencil_ref.ref_value[0];
+        /* Bottom bits for stencil ref, exactly one word */
+        fragmeta->stencil_front.opaque[0] = so->stencil_front.opaque[0] | ctx->stencil_ref.ref_value[0];
 
-                /* If back-stencil is not enabled, use the front values */
+        /* If back-stencil is not enabled, use the front values */
 
-                if (so->base.stencil[1].enabled)
-                        fragmeta->stencil_back.opaque[0] = so->stencil_back.opaque[0] | ctx->stencil_ref.ref_value[1];
-                else
-                        fragmeta->stencil_back = fragmeta->stencil_front;
+        if (so->base.stencil[1].enabled)
+                fragmeta->stencil_back.opaque[0] = so->stencil_back.opaque[0] | ctx->stencil_ref.ref_value[1];
+        else
+                fragmeta->stencil_back = fragmeta->stencil_front;
 
-                if (so->base.depth.enabled)
-                        zfunc = so->base.depth.func;
-
-                /* Depth state (TODO: Refactor) */
-
-                SET_BIT(fragmeta->unknown2_3, MALI_DEPTH_WRITEMASK,
-                        so->base.depth.writemask);
-        }
+        SET_BIT(fragmeta->unknown2_3, MALI_DEPTH_WRITEMASK,
+                so->base.depth.writemask);
 
         fragmeta->unknown2_3 &= ~MALI_DEPTH_FUNC_MASK;
-        fragmeta->unknown2_3 |= MALI_DEPTH_FUNC(panfrost_translate_compare_func(zfunc));
+        fragmeta->unknown2_3 |= MALI_DEPTH_FUNC(panfrost_translate_compare_func(
+                so->base.depth.enabled ? so->base.depth.func : PIPE_FUNC_ALWAYS));
 }
 
 static bool
@@ -759,12 +748,10 @@ panfrost_frag_shader_meta_init(struct panfrost_context *ctx,
                  * Just one of depth OR stencil is enough to trigger this. */
 
                 const struct pipe_depth_stencil_alpha_state *zsa = &ctx->depth_stencil->base;
-                bool zs_enabled = fs->writes_depth || fs->writes_stencil;
-
-                if (zsa) {
-                        zs_enabled |= (zsa->depth.enabled && zsa->depth.func != PIPE_FUNC_ALWAYS);
-                        zs_enabled |= zsa->stencil[0].enabled;
-                }
+                bool zs_enabled =
+                        fs->writes_depth || fs->writes_stencil ||
+                        (zsa->depth.enabled && zsa->depth.func != PIPE_FUNC_ALWAYS) ||
+                        zsa->stencil[0].enabled;
 
                 SET_BIT(fragmeta->midgard1.flags_lo, MALI_READS_TILEBUFFER,
                         fs->outputs_read || (!zs_enabled && fs->can_discard));
