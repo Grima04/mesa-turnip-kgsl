@@ -193,6 +193,11 @@ typedef struct shader_info {
    /* Whether flrp has been lowered. */
    bool flrp_lowered:1;
 
+   /* Whether nir_lower_io has been called to lower derefs.
+    * nir_variables for inputs and outputs might not be present in the IR.
+    */
+   bool io_lowered:1;
+
    /* Whether the shader writes memory, including transform feedback. */
    bool writes_memory:1;
 
