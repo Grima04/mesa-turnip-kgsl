@@ -808,7 +808,9 @@ print_intrinsic_instr(nir_intrinsic_instr *instr, print_state *state)
       [NIR_INTRINSIC_MEMORY_MODES] = "mem_modes",
       [NIR_INTRINSIC_MEMORY_SCOPE] = "mem_scope",
       [NIR_INTRINSIC_EXECUTION_SCOPE] = "exec_scope",
+      [NIR_INTRINSIC_IO_SEMANTICS] = "io_semantics",
    };
+
    for (unsigned idx = 1; idx < NIR_INTRINSIC_NUM_INDEX_FLAGS; idx++) {
       if (!info->index_map[idx])
          continue;
@@ -922,6 +924,32 @@ print_intrinsic_instr(nir_intrinsic_instr *instr, print_state *state)
          }
          break;
       }
+
+      case NIR_INTRINSIC_IO_SEMANTICS:
+         fprintf(fp, " location=%u slots=%u",
+                 nir_intrinsic_io_semantics(instr).location,
+                 nir_intrinsic_io_semantics(instr).num_slots);
+         if (state->shader->info.stage == MESA_SHADER_FRAGMENT &&
+             instr->intrinsic == nir_intrinsic_store_output &&
+             nir_intrinsic_io_semantics(instr).dual_source_blend_index) {
+            fprintf(fp, " dualsrc=1");
+         }
+         if (state->shader->info.stage == MESA_SHADER_FRAGMENT &&
+             instr->intrinsic == nir_intrinsic_load_output &&
+             nir_intrinsic_io_semantics(instr).fb_fetch_output) {
+            fprintf(fp, " fbfetch=1");
+         }
+         if (state->shader->info.stage == MESA_SHADER_GEOMETRY &&
+             instr->intrinsic == nir_intrinsic_store_output) {
+            unsigned gs_streams = nir_intrinsic_io_semantics(instr).gs_streams;
+            fprintf(fp, " gs_streams(");
+            for (unsigned i = 0; i < 4; i++) {
+               fprintf(fp, "%s%c=%u", i ? " " : "", "xyzw"[i],
+                       (gs_streams >> (i * 2)) & 0x3);
+            }
+            fprintf(fp, ")");
+         }
+         break;
 
       default: {
          unsigned off = info->index_map[idx] - 1;
