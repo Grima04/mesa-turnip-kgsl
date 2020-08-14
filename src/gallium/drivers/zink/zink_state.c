@@ -201,6 +201,21 @@ logic_op(enum pipe_logicop func)
    unreachable("unexpected logicop function");
 }
 
+/* from iris */
+static enum pipe_blendfactor
+fix_blendfactor(enum pipe_blendfactor f, bool alpha_to_one)
+{
+   if (alpha_to_one) {
+      if (f == PIPE_BLENDFACTOR_SRC1_ALPHA)
+         return PIPE_BLENDFACTOR_ONE;
+
+      if (f == PIPE_BLENDFACTOR_INV_SRC1_ALPHA)
+         return PIPE_BLENDFACTOR_ZERO;
+   }
+
+   return f;
+}
+
 static void *
 zink_create_blend_state(struct pipe_context *pctx,
                         const struct pipe_blend_state *blend_state)
@@ -235,11 +250,11 @@ zink_create_blend_state(struct pipe_context *pctx,
 
       if (rt->blend_enable) {
          att.blendEnable = VK_TRUE;
-         att.srcColorBlendFactor = blend_factor(rt->rgb_src_factor);
-         att.dstColorBlendFactor = blend_factor(rt->rgb_dst_factor);
+         att.srcColorBlendFactor = blend_factor(fix_blendfactor(rt->rgb_src_factor, cso->alpha_to_one));
+         att.dstColorBlendFactor = blend_factor(fix_blendfactor(rt->rgb_dst_factor, cso->alpha_to_one));
          att.colorBlendOp = blend_op(rt->rgb_func);
-         att.srcAlphaBlendFactor = blend_factor(rt->alpha_src_factor);
-         att.dstAlphaBlendFactor = blend_factor(rt->alpha_dst_factor);
+         att.srcAlphaBlendFactor = blend_factor(fix_blendfactor(rt->alpha_src_factor, cso->alpha_to_one));
+         att.dstAlphaBlendFactor = blend_factor(fix_blendfactor(rt->alpha_dst_factor, cso->alpha_to_one));
          att.alphaBlendOp = blend_op(rt->alpha_func);
 
          if (need_blend_constants(rt->rgb_src_factor) ||
