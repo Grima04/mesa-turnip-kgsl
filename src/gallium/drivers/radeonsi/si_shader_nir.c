@@ -598,6 +598,15 @@ void si_nir_scan_shader(const struct nir_shader *nir, struct si_shader_info *inf
             unreachable("Unknow depth layout");
          }
       }
+
+      info->color_interpolate[0] = tgsi_get_interp_mode(nir->info.fs.color0_interp, true);
+      info->color_interpolate[1] = tgsi_get_interp_mode(nir->info.fs.color1_interp, true);
+      info->color_interpolate_loc[0] = nir->info.fs.color0_sample ? TGSI_INTERPOLATE_LOC_SAMPLE :
+                                       nir->info.fs.color0_centroid ? TGSI_INTERPOLATE_LOC_CENTROID :
+                                                                      TGSI_INTERPOLATE_LOC_CENTER;
+      info->color_interpolate_loc[1] = nir->info.fs.color1_sample ? TGSI_INTERPOLATE_LOC_SAMPLE :
+                                       nir->info.fs.color1_centroid ? TGSI_INTERPOLATE_LOC_CENTROID :
+                                                                      TGSI_INTERPOLATE_LOC_CENTER;
    }
 
    if (gl_shader_stage_is_compute(nir->info.stage)) {
@@ -646,16 +655,6 @@ void si_nir_scan_shader(const struct nir_shader *nir, struct si_shader_info *inf
 
          if (semantic_name == TGSI_SEMANTIC_PRIMID)
             info->uses_primid = true;
-
-         if (semantic_name == TGSI_SEMANTIC_COLOR) {
-            /* We only need this for color inputs. */
-            if (variable->data.sample)
-               info->input_interpolate_loc[i] = TGSI_INTERPOLATE_LOC_SAMPLE;
-            else if (variable->data.centroid)
-               info->input_interpolate_loc[i] = TGSI_INTERPOLATE_LOC_CENTROID;
-            else
-               info->input_interpolate_loc[i] = TGSI_INTERPOLATE_LOC_CENTER;
-         }
 
          enum glsl_base_type base_type = glsl_get_base_type(glsl_without_array(variable->type));
 
@@ -853,8 +852,14 @@ static void si_nir_lower_color(nir_shader *nir)
 
          if (var->data.location == VARYING_SLOT_COL0) {
             def = nir_load_color0(&b);
+            nir->info.fs.color0_interp = var->data.interpolation;
+            nir->info.fs.color0_sample = var->data.sample;
+            nir->info.fs.color0_centroid = var->data.centroid;
          } else if (var->data.location == VARYING_SLOT_COL1) {
             def = nir_load_color1(&b);
+            nir->info.fs.color1_interp = var->data.interpolation;
+            nir->info.fs.color1_sample = var->data.sample;
+            nir->info.fs.color1_centroid = var->data.centroid;
          } else {
             continue;
          }

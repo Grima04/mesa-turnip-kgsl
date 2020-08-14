@@ -2143,8 +2143,8 @@ void si_get_ps_prolog_key(struct si_shader *shader, union si_shader_part_key *ke
       }
 
       for (unsigned i = 0; i < 2; i++) {
-         unsigned interp = info->input_interpolate[color[i]];
-         unsigned location = info->input_interpolate_loc[color[i]];
+         unsigned interp = info->color_interpolate[i];
+         unsigned location = info->color_interpolate_loc[i];
 
          if (!(info->colors_read & (0xf << i * 4)))
             continue;
