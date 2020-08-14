@@ -40,5 +40,3 @@ dEQP-GLES3.functional.fbo.msaa.4_samples.rgba16f
 dEQP-GLES3.functional.fbo.msaa.4_samples.rgba32f
 dEQP-GLES3.functional.fbo.msaa.4_samples.stencil_index8
 dEQP-GLES3.functional.fence_sync.client_wait_sync_finish
-dEQP-GLES3.functional.draw.random.156
-dEQP-GLES3.functional.draw.random.208
