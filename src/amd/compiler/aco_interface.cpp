@@ -48,7 +48,7 @@ static void validate(aco::Program *program)
    if (!(aco::debug_flags & aco::DEBUG_VALIDATE_IR))
       return;
 
-   bool is_valid = aco::validate_ir(program, stderr);
+   bool is_valid = aco::validate_ir(program);
    assert(is_valid);
 }
 
@@ -121,7 +121,7 @@ void aco_compile_shader(unsigned shader_count,
       aco_print_program(program.get(), stderr);
    }
 
-   if (aco::validate_ra(program.get(), args->options, stderr)) {
+   if (aco::validate_ra(program.get(), args->options)) {
       std::cerr << "Program after RA validation failure:\n";
       aco_print_program(program.get(), stderr);
       abort();

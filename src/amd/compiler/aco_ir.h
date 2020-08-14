@@ -1665,10 +1665,10 @@ void insert_NOPs(Program* program);
 unsigned emit_program(Program* program, std::vector<uint32_t>& code);
 void print_asm(Program *program, std::vector<uint32_t>& binary,
                unsigned exec_size, std::ostream& out);
-bool validate_ir(Program* program, FILE *output);
-bool validate_ra(Program* program, const struct radv_nir_compiler_options *options, FILE *output);
+bool validate_ir(Program* program);
+bool validate_ra(Program* program, const struct radv_nir_compiler_options *options);
 #ifndef NDEBUG
-void perfwarn(bool cond, const char *msg, Instruction *instr=NULL);
+void perfwarn(Program *program, bool cond, const char *msg, Instruction *instr=NULL);
 #else
 #define perfwarn(program, cond, msg, ...) do {} while(0)
 #endif
@@ -1679,6 +1679,14 @@ void collect_postasm_stats(Program *program, const std::vector<uint32_t>& code);
 
 void aco_print_instr(const Instruction *instr, FILE *output);
 void aco_print_program(const Program *program, FILE *output);
+
+void _aco_perfwarn(Program *program, const char *file, unsigned line,
+                   const char *fmt, ...);
+void _aco_err(Program *program, const char *file, unsigned line,
+              const char *fmt, ...);
+
+#define aco_perfwarn(program, ...) _aco_perfwarn(program, __FILE__, __LINE__, __VA_ARGS__)
+#define aco_err(program, ...) _aco_err(program, __FILE__, __LINE__, __VA_ARGS__)
 
 /* utilities for dealing with register demand */
 RegisterDemand get_live_changes(aco_ptr<Instruction>& instr);

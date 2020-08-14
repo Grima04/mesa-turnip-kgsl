@@ -80,8 +80,17 @@ void emit_instruction(asm_context& ctx, std::vector<uint32_t>& out, Instruction*
 
    uint32_t opcode = ctx.opcode[(int)instr->opcode];
    if (opcode == (uint32_t)-1) {
-      fprintf(stderr, "Unsupported opcode: ");
-      aco_print_instr(instr, stderr);
+      char *out;
+      size_t outsize;
+      FILE *memf = open_memstream(&out, &outsize);
+
+      fprintf(memf, "Unsupported opcode: ");
+      aco_print_instr(instr, memf);
+      fclose(memf);
+
+      aco_err(ctx.program, out);
+      free(out);
+
       abort();
    }
 
@@ -737,7 +746,7 @@ void fix_exports(asm_context& ctx, std::vector<uint32_t>& out, Program* program)
 
    if (!exported) {
       /* Abort in order to avoid a GPU hang. */
-      fprintf(stderr, "Missing export in %s shader:\n", (program->stage & hw_vs) ? "vertex" : "fragment");
+      aco_err(program, "Missing export in %s shader:", (program->stage & hw_vs) ? "vertex" : "fragment");
       aco_print_program(program, stderr);
       abort();
    }

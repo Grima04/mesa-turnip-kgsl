@@ -214,7 +214,7 @@ void process_live_temps_per_block(Program *program, live& lives, Block* block,
 
 #ifndef NDEBUG
       if (preds.empty())
-         fprintf(stderr, "Temporary never defined or are defined after use: %%%d in BB%d\n", t.id(), block->index);
+         aco_err(program, "Temporary never defined or are defined after use: %%%d in BB%d", t.id(), block->index);
 #endif
 
       for (unsigned pred_idx : preds) {

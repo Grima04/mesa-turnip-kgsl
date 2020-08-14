@@ -1259,7 +1259,7 @@ PhysReg get_reg(ra_ctx& ctx,
 
    //FIXME: if nothing helps, shift-rotate the registers to make space
 
-   fprintf(stderr, "ACO: failed to allocate registers during shader compilation\n");
+   aco_err(ctx.program, "Failed to allocate registers during shader compilation.");
    abort();
 }
 

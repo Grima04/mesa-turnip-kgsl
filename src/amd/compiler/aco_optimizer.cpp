@@ -34,6 +34,27 @@
 
 namespace aco {
 
+#ifndef NDEBUG
+void perfwarn(Program *program, bool cond, const char *msg, Instruction *instr)
+{
+   if (cond) {
+      char *out;
+      size_t outsize;
+      FILE *memf = open_memstream(&out, &outsize);
+
+      fprintf(memf, "%s: ", msg);
+      aco_print_instr(instr, memf);
+      fclose(memf);
+
+      aco_perfwarn(program, out);
+      free(out);
+
+      if (debug_flags & DEBUG_PERFWARN)
+         exit(1);
+   }
+}
+#endif
+
 /**
  * The optimizer works in 4 phases:
  * (1) The first pass collects information for each ssa-def,
@@ -803,7 +824,7 @@ void label_instruction(opt_ctx &ctx, Block& block, aco_ptr<Instruction>& instr)
       ASSERTED bool all_const = false;
       for (Operand& op : instr->operands)
          all_const = all_const && (!op.isTemp() || ctx.info[op.tempId()].is_constant_or_literal(32));
-      perfwarn(all_const, "All instruction operands are constant", instr.get());
+      perfwarn(ctx.program, all_const, "All instruction operands are constant", instr.get());
    }
 
    for (unsigned i = 0; i < instr->operands.size(); i++)
@@ -905,7 +926,7 @@ void label_instruction(opt_ctx &ctx, Block& block, aco_ptr<Instruction>& instr)
          unsigned bits = get_operand_size(instr, i);
          if (info.is_constant(bits) && alu_can_accept_constant(instr->opcode, i)) {
             Operand op = get_constant_op(ctx, info, bits);
-            perfwarn(instr->opcode == aco_opcode::v_cndmask_b32 && i == 2, "v_cndmask_b32 with a constant selector", instr.get());
+            perfwarn(ctx.program, instr->opcode == aco_opcode::v_cndmask_b32 && i == 2, "v_cndmask_b32 with a constant selector", instr.get());
             if (i == 0 || instr->opcode == aco_opcode::v_readlane_b32 || instr->opcode == aco_opcode::v_writelane_b32) {
                instr->operands[i] = op;
                continue;
