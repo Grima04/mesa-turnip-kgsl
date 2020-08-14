@@ -332,9 +332,6 @@ panfrost_draw_vbo(
 
         panfrost_statistics_record(ctx, info);
 
-        /* Dispatch "compute jobs" for the vertex/tiler pair as (1,
-         * vertex_count, 1) */
-
         panfrost_pack_work_groups_fused(&vertex_prefix, &tiler_prefix,
                                         1, vertex_count, info->instance_count,
                                         1, 1, 1);
