@@ -82,13 +82,13 @@ panfrost_vt_update_rasterizer(struct panfrost_rasterizer *rasterizer,
 {
         postfix->gl_enables |= 0x7;
         SET_BIT(postfix->gl_enables, MALI_FRONT_CCW_TOP,
-                rasterizer && rasterizer->base.front_ccw);
+                rasterizer->base.front_ccw);
         SET_BIT(postfix->gl_enables, MALI_CULL_FACE_FRONT,
-                rasterizer && (rasterizer->base.cull_face & PIPE_FACE_FRONT));
+                (rasterizer->base.cull_face & PIPE_FACE_FRONT));
         SET_BIT(postfix->gl_enables, MALI_CULL_FACE_BACK,
-                rasterizer && (rasterizer->base.cull_face & PIPE_FACE_BACK));
+                (rasterizer->base.cull_face & PIPE_FACE_BACK));
         SET_BIT(prefix->unknown_draw, MALI_DRAW_FLATSHADE_FIRST,
-                rasterizer && rasterizer->base.flatshade_first);
+                rasterizer->base.flatshade_first);
 }
 
 void
@@ -99,11 +99,7 @@ panfrost_vt_update_primitive_size(struct panfrost_context *ctx,
         struct panfrost_rasterizer *rasterizer = ctx->rasterizer;
 
         if (!panfrost_writes_point_size(ctx)) {
-                bool points = prefix->draw_mode == MALI_DRAW_MODE_POINTS;
-                float val = 0.0f;
-
-                if (rasterizer)
-                        val = points ?
+                float val = (prefix->draw_mode == MALI_DRAW_MODE_POINTS) ?
                               rasterizer->base.point_size :
                               rasterizer->base.line_width;
 
@@ -450,18 +446,6 @@ static void
 panfrost_frag_meta_rasterizer_update(struct panfrost_context *ctx,
                                      struct mali_shader_meta *fragmeta)
 {
-        if (!ctx->rasterizer) {
-                SET_BIT(fragmeta->unknown2_4, MALI_NO_MSAA, true);
-                SET_BIT(fragmeta->unknown2_3, MALI_HAS_MSAA, false);
-                fragmeta->depth_units = 0.0f;
-                fragmeta->depth_factor = 0.0f;
-                SET_BIT(fragmeta->unknown2_4, MALI_DEPTH_RANGE_A, false);
-                SET_BIT(fragmeta->unknown2_4, MALI_DEPTH_RANGE_B, false);
-                SET_BIT(fragmeta->unknown2_3, MALI_DEPTH_CLIP_NEAR, true);
-                SET_BIT(fragmeta->unknown2_3, MALI_DEPTH_CLIP_FAR, true);
-                return;
-        }
-
         struct pipe_rasterizer_state *rast = &ctx->rasterizer->base;
 
         bool msaa = rast->multisample;
@@ -735,7 +719,7 @@ panfrost_frag_shader_meta_init(struct panfrost_context *ctx,
 
         fs = panfrost_get_shader_state(ctx, PIPE_SHADER_FRAGMENT);
 
-        bool msaa = ctx->rasterizer && ctx->rasterizer->base.multisample;
+        bool msaa = ctx->rasterizer->base.multisample;
         fragmeta->coverage_mask = msaa ? ctx->sample_mask : ~0;
 
         fragmeta->unknown2_3 = MALI_DEPTH_FUNC(MALI_FUNC_ALWAYS) | 0x10;
@@ -884,7 +868,7 @@ panfrost_emit_viewport(struct panfrost_batch *batch,
         unsigned miny = MIN2(fb->height, vp_miny);
         unsigned maxy = MIN2(fb->height, vp_maxy);
 
-        if (ss && rast && rast->scissor) {
+        if (ss && rast->scissor) {
                 minx = MAX2(ss->minx, minx);
                 miny = MAX2(ss->miny, miny);
                 maxx = MIN2(ss->maxx, maxx);
@@ -2101,13 +2085,10 @@ panfrost_emit_vertex_tiler_jobs(struct panfrost_batch *batch,
 
         /* If rasterizer discard is enable, only submit the vertex */
 
-        bool rasterizer_discard = ctx->rasterizer &&
-                                  ctx->rasterizer->base.rasterizer_discard;
-
         unsigned vertex = panfrost_new_job(&batch->pool, &batch->scoreboard, MALI_JOB_TYPE_VERTEX, false, 0,
                                            vp, vp_size, false);
 
-        if (rasterizer_discard)
+        if (ctx->rasterizer->base.rasterizer_discard)
                 return;
 
         panfrost_new_job(&batch->pool, &batch->scoreboard, MALI_JOB_TYPE_TILER, false, vertex, tp, tp_size,
