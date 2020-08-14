@@ -250,9 +250,12 @@ mir_print_instruction(midgard_instruction *ins)
 
         printf(", ");
 
+        /* Only ALU can have an embedded constant, r26 as read on load/store is
+         * something else entirely */
+        bool is_alu = ins->type == TAG_ALU_4;
         unsigned r_constant = SSA_FIXED_REGISTER(REGISTER_CONSTANT);
 
-        if (ins->src[0] == r_constant)
+        if (ins->src[0] == r_constant && is_alu)
                 mir_print_embedded_constant(ins, 0);
         else
                 PRINT_SRC(ins, 0);
@@ -261,7 +264,7 @@ mir_print_instruction(midgard_instruction *ins)
 
         if (ins->has_inline_constant)
                 printf("#%d", ins->inline_constant);
-        else if (ins->src[1] == r_constant)
+        else if (ins->src[1] == r_constant && is_alu)
                 mir_print_embedded_constant(ins, 1);
         else
                 PRINT_SRC(ins, 1);
