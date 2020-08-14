@@ -4678,8 +4678,6 @@ bool nir_opt_load_store_vectorize(nir_shader *shader, nir_variable_mode modes,
                                   nir_should_vectorize_mem_func callback,
                                   nir_variable_mode robust_modes);
 
-void nir_strip(nir_shader *shader);
-
 void nir_sweep(nir_shader *shader);
 
 void nir_remap_dual_slot_attributes(nir_shader *shader,
