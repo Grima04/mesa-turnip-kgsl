@@ -57,7 +57,7 @@ zink_emit_xfb_counter_barrier(struct zink_context *ctx)
 
    for (unsigned i = 0; i < ctx->num_so_targets; i++) {
       struct zink_so_target *t = zink_so_target(ctx->so_targets[i]);
-      if (t->counter_buffer_valid) {
+      if (t && t->counter_buffer_valid) {
           barriers[i].sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
           barriers[i].srcAccessMask = VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_WRITE_BIT_EXT;
           barriers[i].dstAccessMask = VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_READ_BIT_EXT;
@@ -117,12 +117,19 @@ zink_emit_stream_output_targets(struct pipe_context *pctx)
    struct zink_context *ctx = zink_context(pctx);
    struct zink_screen *screen = zink_screen(pctx->screen);
    struct zink_batch *batch = zink_curr_batch(ctx);
-   VkBuffer buffers[PIPE_MAX_SO_OUTPUTS];
-   VkDeviceSize buffer_offsets[PIPE_MAX_SO_OUTPUTS];
-   VkDeviceSize buffer_sizes[PIPE_MAX_SO_OUTPUTS];
+   VkBuffer buffers[PIPE_MAX_SO_OUTPUTS] = {};
+   VkDeviceSize buffer_offsets[PIPE_MAX_SO_OUTPUTS] = {};
+   VkDeviceSize buffer_sizes[PIPE_MAX_SO_OUTPUTS] = {};
 
    for (unsigned i = 0; i < ctx->num_so_targets; i++) {
       struct zink_so_target *t = (struct zink_so_target *)ctx->so_targets[i];
+      if (!t) {
+         /* no need to reference this or anything */
+         buffers[i] = zink_resource(ctx->dummy_xfb_buffer)->buffer;
+         buffer_offsets[i] = 0;
+         buffer_sizes[i] = sizeof(uint8_t);
+         continue;
+      }
       buffers[i] = zink_resource(t->base.buffer)->buffer;
       zink_batch_reference_resource_rw(batch, zink_resource(t->base.buffer), true);
       buffer_offsets[i] = t->base.buffer_offset;
@@ -252,7 +259,8 @@ update_descriptors(struct zink_context *ctx, struct zink_screen *screen, bool is
           (stage == PIPE_SHADER_VERTEX && !ctx->gfx_stages[PIPE_SHADER_GEOMETRY] && !ctx->gfx_stages[PIPE_SHADER_TESS_EVAL]))) {
          for (unsigned j = 0; j < ctx->num_so_targets; j++) {
             struct zink_so_target *t = zink_so_target(ctx->so_targets[j]);
-            t->stride = shader->streamout.so_info.stride[j] * sizeof(uint32_t);
+            if (t)
+               t->stride = shader->streamout.so_info.stride[j] * sizeof(uint32_t);
          }
       }
 
@@ -709,8 +717,8 @@ zink_draw_vbo(struct pipe_context *pctx,
    if (ctx->num_so_targets) {
       for (unsigned i = 0; i < ctx->num_so_targets; i++) {
          struct zink_so_target *t = zink_so_target(ctx->so_targets[i]);
-         struct zink_resource *res = zink_resource(t->counter_buffer);
-         if (t->counter_buffer_valid) {
+         if (t && t->counter_buffer_valid) {
+            struct zink_resource *res = zink_resource(t->counter_buffer);
             zink_batch_reference_resource_rw(batch, res, true);
             counter_buffers[i] = res->buffer;
             counter_buffer_offsets[i] = t->counter_buffer_offset;
@@ -785,10 +793,12 @@ zink_draw_vbo(struct pipe_context *pctx,
    if (ctx->num_so_targets) {
       for (unsigned i = 0; i < ctx->num_so_targets; i++) {
          struct zink_so_target *t = zink_so_target(ctx->so_targets[i]);
-         counter_buffers[i] = zink_resource(t->counter_buffer)->buffer;
-         counter_buffer_offsets[i] = t->counter_buffer_offset;
-         t->counter_buffer_valid = true;
-         zink_resource(ctx->so_targets[i]->buffer)->needs_xfb_barrier = true;
+         if (t) {
+            counter_buffers[i] = zink_resource(t->counter_buffer)->buffer;
+            counter_buffer_offsets[i] = t->counter_buffer_offset;
+            t->counter_buffer_valid = true;
+            zink_resource(ctx->so_targets[i]->buffer)->needs_xfb_barrier = true;
+         }
       }
       screen->vk_CmdEndTransformFeedbackEXT(batch->cmdbuf, 0, ctx->num_so_targets, counter_buffers, counter_buffer_offsets);
    }
