@@ -1715,14 +1715,12 @@ pan_emit_vary(struct mali_attribute_packed *out,
                         panfrost_get_default_swizzle(nr_channels) :
                         panfrost_bifrost_swizzle(nr_channels);
 
-        struct mali_attr_meta meta = {
-                .index = pan_varying_index(present, buf),
-                .unknown1 = quirks & IS_BIFROST ? 0x0 : 0x2,
-                .format = (format << 12) | swizzle,
-                .src_offset = offset
-        };
-
-        memcpy(out, &meta, sizeof(meta));
+        pan_pack(out, ATTRIBUTE, cfg) {
+                cfg.buffer_index = pan_varying_index(present, buf);
+                cfg.unknown = quirks & IS_BIFROST ? 0x0 : 0x1;
+                cfg.format = (format << 12) | swizzle;
+                cfg.offset = offset;
+        }
 }
 
 /* General varying that is unused */
