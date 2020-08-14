@@ -64,9 +64,15 @@ static void pandecode_swizzle(unsigned swizzle, enum mali_format format);
         MALI_ ## T ## _print(pandecode_dump_stream, &temp, indent * 2); \
 }
 
+#define MAP_ADDR(T, addr, cl) \
+        const uint8_t *cl = 0; \
+        { \
+                struct pandecode_mapped_memory *mapped_mem = pandecode_find_mapped_gpu_mem_containing(addr); \
+                cl = pandecode_fetch_gpu_mem(mapped_mem, addr, MALI_ ## T ## _LENGTH); \
+        }
+
 #define DUMP_ADDR(title, T, addr, indent) {\
-        struct pandecode_mapped_memory *mapped_mem = pandecode_find_mapped_gpu_mem_containing(addr); \
-        const uint8_t *cl = pandecode_fetch_gpu_mem(mapped_mem, addr, MALI_ ## T ## _LENGTH); \
+        MAP_ADDR(T, addr, cl) \
         DUMP_CL(title, T, cl, indent); \
 }
 
@@ -333,48 +339,6 @@ static const struct pandecode_flag_info sfbd_unk2_info [] = {
         {}
 };
 #undef FLAG_INFO
-
-static char *pandecode_attr_mode_short(enum mali_attr_mode mode)
-{
-        switch(mode) {
-                /* TODO: Combine to just "instanced" once this can be done
-                 * unambiguously in all known cases */
-        case MALI_ATTR_POT_DIVIDE:
-                return "instanced_pot";
-        case MALI_ATTR_MODULO:
-                return "instanced_mod";
-        case MALI_ATTR_NPOT_DIVIDE:
-                return "instanced_npot";
-        case MALI_ATTR_IMAGE:
-                return "image";
-        default:
-                pandecode_msg("XXX: invalid attribute mode %X\n", mode);
-                return "";
-        }
-}
-
-static const char *
-pandecode_special_record(uint64_t v, bool* attribute)
-{
-        switch(v) {
-        case MALI_ATTR_VERTEXID:
-                *attribute = true;
-                return "gl_VertexID";
-        case MALI_ATTR_INSTANCEID:
-                *attribute = true;
-                return "gl_InstanceID";
-        case MALI_VARYING_FRAG_COORD:
-                return "gl_FragCoord";
-        case MALI_VARYING_FRONT_FACING:
-                return "gl_FrontFacing";
-        case MALI_VARYING_POINT_COORD:
-                return "gl_PointCoord";
-        default:
-                pandecode_msg("XXX: invalid special record %" PRIx64 "\n", v);
-                return "";
-        }
-}
-
 
 /* Midgard's tiler descriptor is embedded within the
  * larger FBD */
@@ -1150,108 +1114,12 @@ pandecode_mfbd_bfr(uint64_t gpu_va, int job_no, bool is_fragment, bool is_comput
         return info;
 }
 
-/* Just add a comment decoding the shift/odd fields forming the padded vertices
- * count */
-
-static void
-pandecode_padded_vertices(unsigned shift, unsigned k)
-{
-        unsigned odd = 2*k + 1;
-        unsigned pot = 1 << shift;
-        pandecode_msg("padded_num_vertices = %d\n", odd * pot);
-}
-
-/* Given a magic divisor, recover what we were trying to divide by.
- *
- * Let m represent the magic divisor. By definition, m is an element on Z, whre
- * 0 <= m < 2^N, for N bits in m.
- *
- * Let q represent the number we would like to divide by.
- *
- * By definition of a magic divisor for N-bit unsigned integers (a number you
- * multiply by to magically get division), m is a number such that:
- *
- *      (m * x) & (2^N - 1) = floor(x/q).
- *      for all x on Z where 0 <= x < 2^N
- *
- * Ignore the case where any of the above values equals zero; it is irrelevant
- * for our purposes (instanced arrays).
- *
- * Choose x = q. Then:
- *
- *      (m * x) & (2^N - 1) = floor(x/q).
- *      (m * q) & (2^N - 1) = floor(q/q).
- *
- *      floor(q/q) = floor(1) = 1, therefore:
- *
- *      (m * q) & (2^N - 1) = 1
- *
- * Recall the identity that the bitwise AND of one less than a power-of-two
- * equals the modulo with that power of two, i.e. for all x:
- *
- *      x & (2^N - 1) = x % N
- *
- * Therefore:
- *
- *      mq % (2^N) = 1
- *
- * By definition, a modular multiplicative inverse of a number m is the number
- * q such that with respect to a modulos M:
- *
- *      mq % M = 1
- *
- * Therefore, q is the modular multiplicative inverse of m with modulus 2^N.
- *
- */
-
-static void
-pandecode_magic_divisor(uint32_t magic, unsigned shift, unsigned orig_divisor, unsigned extra)
-{
-#if 0
-        /* Compute the modular inverse of `magic` with respect to 2^(32 -
-         * shift) the most lame way possible... just repeatedly add.
-         * Asymptoptically slow but nobody cares in practice, unless you have
-         * massive numbers of vertices or high divisors. */
-
-        unsigned inverse = 0;
-
-        /* Magic implicitly has the highest bit set */
-        magic |= (1 << 31);
-
-        /* Depending on rounding direction */
-        if (extra)
-                magic++;
-
-        for (;;) {
-                uint32_t product = magic * inverse;
-
-                if (shift) {
-                        product >>= shift;
-                }
-
-                if (product == 1)
-                        break;
-
-                ++inverse;
-        }
-
-        pandecode_msg("dividing by %d (maybe off by two)\n", inverse);
-
-        /* Recall we're supposed to divide by (gl_level_divisor *
-         * padded_num_vertices) */
-
-        unsigned padded_num_vertices = inverse / orig_divisor;
-
-        pandecode_msg("padded_num_vertices = %d\n", padded_num_vertices);
-#endif
-}
-
 static void
 pandecode_attributes(const struct pandecode_mapped_memory *mem,
                             mali_ptr addr, int job_no, char *suffix,
                             int count, bool varying, enum mali_job_type job_type)
 {
-        char *prefix = varying ? "varying" : "attribute";
+        char *prefix = varying ? "Varying" : "Attribute";
         assert(addr);
 
         if (!count) {
@@ -1259,115 +1127,21 @@ pandecode_attributes(const struct pandecode_mapped_memory *mem,
                 return;
         }
 
-        union mali_attr *attr = pandecode_fetch_gpu_mem(mem, addr, sizeof(union mali_attr) * count);
+        MAP_ADDR(ATTRIBUTE_BUFFER, addr, cl);
 
         for (int i = 0; i < count; ++i) {
-                /* First, check for special records */
-                if (attr[i].elements < MALI_RECORD_SPECIAL) {
-                        if (attr[i].size)
-                                pandecode_msg("XXX: tripped size=%d\n", attr[i].size);
+                fprintf(pandecode_dump_stream, "%s\n", prefix);
 
-                        if (attr[i].stride) {
-                                /* gl_InstanceID passes a magic divisor in the
-                                 * stride field to divide by the padded vertex
-                                 * count. No other records should do so, so
-                                 * stride should otherwise be zero. Note that
-                                 * stride in the usual attribute sense doesn't
-                                 * apply to special records. */
+                struct MALI_ATTRIBUTE_BUFFER temp;
+                MALI_ATTRIBUTE_BUFFER_unpack(cl + i * MALI_ATTRIBUTE_BUFFER_LENGTH, &temp);
+                MALI_ATTRIBUTE_BUFFER_print(pandecode_dump_stream, &temp, 2);
 
-                                bool has_divisor = attr[i].elements == MALI_ATTR_INSTANCEID;
-
-                                pandecode_log_cont("/* %smagic divisor = %X */ ",
-                                                has_divisor ? "" : "XXX: ", attr[i].stride);
-                        }
-
-                        if (attr[i].shift || attr[i].extra_flags) {
-                                /* Attributes use these fields for
-                                 * instancing/padding/etc type issues, but
-                                 * varyings don't */
-
-                                pandecode_log_cont("/* %sshift=%d, extra=%d */ ",
-                                                varying ? "XXX: " : "",
-                                                attr[i].shift, attr[i].extra_flags);
-                        }
-
-                        /* Print the special record name */
-                        bool attribute = false;
-                        pandecode_log("%s_%d = %s;\n", prefix, i, pandecode_special_record(attr[i].elements, &attribute));
-
-                        /* Sanity check */
-                        if (attribute == varying)
-                                pandecode_msg("XXX: mismatched special record\n");
-
-                        continue;
+                if (temp.type == MALI_ATTRIBUTE_TYPE_1D_NPOT_DIVISOR) {
+                        struct MALI_ATTRIBUTE_BUFFER_CONTINUATION_NPOT temp2;
+                        MALI_ATTRIBUTE_BUFFER_CONTINUATION_NPOT_unpack(cl + (i + 1) * MALI_ATTRIBUTE_BUFFER_LENGTH, &temp2);
+                        MALI_ATTRIBUTE_BUFFER_CONTINUATION_NPOT_print(pandecode_dump_stream, &temp2, 2);
+                }
         }
-
-                enum mali_attr_mode mode = attr[i].elements & 7;
-
-                if (mode == MALI_ATTR_UNUSED)
-                        pandecode_msg("XXX: unused attribute record\n");
-
-                /* For non-linear records, we need to print the type of record */
-                if (mode != MALI_ATTR_LINEAR)
-                        pandecode_log_cont("%s ", pandecode_attr_mode_short(mode));
-
-                pandecode_log_cont("%s_%d", prefix, i);
-
-                /* Print the stride and size */
-                pandecode_log_cont("<%u>[%u]", attr[i].stride, attr[i].size);
-
-                /* TODO: Sanity check the quotient itself. It must be equal to
-                 * (or be greater than, if the driver added padding) the padded
-                 * vertex count. */
-
-                /* Finally, print the pointer */
-                mali_ptr raw_elements = attr[i].elements & ~7;
-                char *a = pointer_as_memory_reference(raw_elements);
-                pandecode_log_cont(" = (%s);\n", a);
-                free(a);
-
-                /* Check the pointer */
-                pandecode_validate_buffer(raw_elements, attr[i].size);
-
-                /* shift/extra_flags exist only for instanced */
-                if (attr[i].shift | attr[i].extra_flags) {
-                        /* These are set to random values by the blob for
-                         * varyings, most likely a symptom of uninitialized
-                         * memory where the hardware masked the bug. As such we
-                         * put this at a warning, not an error. */
-
-                        if (mode == MALI_ATTR_LINEAR)
-                                pandecode_msg("warn: instancing fields set for linear\n");
-
-                        pandecode_prop("shift = %d", attr[i].shift);
-                        pandecode_prop("extra_flags = %d", attr[i].extra_flags);
-                }
-
-                /* Decode further where possible */
-
-                if (mode == MALI_ATTR_MODULO) {
-                        pandecode_padded_vertices(
-                                attr[i].shift,
-                                attr[i].extra_flags);
-                }
-
-                if (mode == MALI_ATTR_NPOT_DIVIDE) {
-                        i++;
-                        pandecode_log("{\n");
-                        pandecode_indent++;
-                        pandecode_prop("unk = 0x%x", attr[i].unk);
-                        pandecode_prop("magic_divisor = 0x%08x", attr[i].magic_divisor);
-                        if (attr[i].zero != 0)
-                                pandecode_prop("XXX: zero tripped (0x%x)\n", attr[i].zero);
-                        pandecode_prop("divisor = %d", attr[i].divisor);
-                        pandecode_magic_divisor(attr[i].magic_divisor, attr[i - 1].shift, attr[i].divisor, attr[i - 1].extra_flags);
-                        pandecode_indent--;
-                        pandecode_log("}, \n");
-                }
-
-        }
-
-        pandecode_log("\n");
 }
 
 static mali_ptr
