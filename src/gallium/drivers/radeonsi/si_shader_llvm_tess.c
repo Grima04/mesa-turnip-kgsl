@@ -399,7 +399,7 @@ static LLVMValueRef si_nir_load_tcs_varyings(struct ac_shader_abi *abi, LLVMType
                                              LLVMValueRef vertex_index, LLVMValueRef param_index,
                                              unsigned const_index, unsigned location,
                                              unsigned driver_location, unsigned component,
-                                             unsigned num_components, bool is_patch,
+                                             unsigned num_components, bool unused,
                                              bool is_compact, bool load_input)
 {
    struct si_shader_context *ctx = si_shader_context_from_abi(abi);
@@ -417,6 +417,7 @@ static LLVMValueRef si_nir_load_tcs_varyings(struct ac_shader_abi *abi, LLVMType
       index = info->output_semantic_index[driver_location];
    }
 
+   bool is_patch = vertex_index == NULL;
    assert((name == TGSI_SEMANTIC_PATCH || name == TGSI_SEMANTIC_TESSINNER ||
            name == TGSI_SEMANTIC_TESSOUTER) == is_patch);
 
@@ -457,7 +458,7 @@ static LLVMValueRef si_nir_load_input_tes(struct ac_shader_abi *abi, LLVMTypeRef
                                           LLVMValueRef vertex_index, LLVMValueRef param_index,
                                           unsigned const_index, unsigned location,
                                           unsigned driver_location, unsigned component,
-                                          unsigned num_components, bool is_patch, bool is_compact,
+                                          unsigned num_components, bool unused, bool is_compact,
                                           bool load_input)
 {
    struct si_shader_context *ctx = si_shader_context_from_abi(abi);
@@ -469,7 +470,7 @@ static LLVMValueRef si_nir_load_input_tes(struct ac_shader_abi *abi, LLVMTypeRef
    ubyte index = info->input_semantic_index[driver_location];
 
    assert((name == TGSI_SEMANTIC_PATCH || name == TGSI_SEMANTIC_TESSINNER ||
-           name == TGSI_SEMANTIC_TESSOUTER) == is_patch);
+           name == TGSI_SEMANTIC_TESSOUTER) == (vertex_index == NULL));
 
    base = ac_get_arg(&ctx->ac, ctx->tcs_offchip_offset);
 
@@ -520,12 +521,6 @@ static void si_nir_store_output_tcs(struct ac_shader_abi *abi, const struct nir_
    bool skip_lds_store;
    bool is_tess_factor = false, is_tess_inner = false;
 
-   if (var->data.compact) {
-      component += const_index;
-      writemask <<= const_index;
-      const_index = 0;
-   }
-
    driver_location = driver_location / 4;
    ubyte name = info->output_semantic_name[driver_location];
    ubyte index = info->output_semantic_index[driver_location];
@@ -534,8 +529,7 @@ static void si_nir_store_output_tcs(struct ac_shader_abi *abi, const struct nir_
    if (!param_index)
       param_index = LLVMConstInt(ctx->ac.i32, const_index, 0);
 
-   const bool is_patch = var->data.patch || var->data.location == VARYING_SLOT_TESS_LEVEL_INNER ||
-                         var->data.location == VARYING_SLOT_TESS_LEVEL_OUTER;
+   const bool is_patch = vertex_index == NULL;
 
    /* Invalid SPIR-V can cause this. */
    if ((name == TGSI_SEMANTIC_PATCH || name == TGSI_SEMANTIC_TESSINNER ||

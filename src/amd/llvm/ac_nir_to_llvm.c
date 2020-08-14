@@ -5578,26 +5578,19 @@ ac_lower_indirect_derefs(struct nir_shader *nir, enum chip_class chip_class)
 static unsigned
 get_inst_tessfactor_writemask(nir_intrinsic_instr *intrin)
 {
-	if (intrin->intrinsic != nir_intrinsic_store_deref)
+	if (intrin->intrinsic != nir_intrinsic_store_output)
 		return 0;
 
-	nir_variable *var =
-		nir_deref_instr_get_variable(nir_src_as_deref(intrin->src[0]));
+	unsigned writemask = nir_intrinsic_write_mask(intrin) <<
+			     nir_intrinsic_component(intrin);
+	unsigned location = nir_intrinsic_io_semantics(intrin).location;
 
-	if (var->data.mode != nir_var_shader_out)
-		return 0;
+	if (location == VARYING_SLOT_TESS_LEVEL_OUTER)
+		return writemask << 4;
+	else if (location == VARYING_SLOT_TESS_LEVEL_INNER)
+		return writemask;
 
-	unsigned writemask = 0;
-	const int location = var->data.location;
-	unsigned first_component = var->data.location_frac;
-	unsigned num_comps = intrin->dest.ssa.num_components;
-
-	if (location == VARYING_SLOT_TESS_LEVEL_INNER)
-		writemask = ((1 << (num_comps + 1)) - 1) << first_component;
-	else if (location == VARYING_SLOT_TESS_LEVEL_OUTER)
-		writemask = (((1 << (num_comps + 1)) - 1) << first_component) << 4;
-
-	return writemask;
+	return 0;
 }
 
 static void

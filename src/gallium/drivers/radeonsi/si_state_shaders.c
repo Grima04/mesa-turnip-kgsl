@@ -2601,7 +2601,6 @@ static void *si_create_shader_selector(struct pipe_context *ctx,
    }
 
    si_nir_scan_shader(sel->nir, &sel->info);
-   si_nir_adjust_driver_locations(sel->nir);
 
    sel->type = sel->info.processor;
    p_atomic_inc(&sscreen->num_shaders_created);

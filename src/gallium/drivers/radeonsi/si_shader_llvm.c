@@ -466,6 +466,13 @@ bool si_nir_build_llvm(struct si_shader_context *ctx, struct nir_shader *nir)
       assert(gl_shader_stage_is_compute(nir->info.stage));
       si_llvm_declare_compute_memory(ctx);
    }
+
+   const struct si_shader_info *info = &ctx->shader->selector->info;
+   for (unsigned i = 0; i < info->num_outputs; i++) {
+      for (unsigned j = 0; j < 4; j++)
+         ctx->abi.outputs[i * 4 + j] = ac_build_alloca_undef(&ctx->ac, ctx->ac.f32, "");
+   }
+
    ac_nir_translate(&ctx->ac, &ctx->abi, &ctx->args, nir);
 
    return true;
