@@ -21,23 +21,35 @@
 include $(CLEAR_VARS)
 
 LOCAL_MODULE := libpanfrost_lib
+LOCAL_MODULE_CLASS := STATIC_LIBRARIES
+intermediates := $(call local-generated-sources-dir)
 
 LOCAL_SRC_FILES := \
 	$(lib_FILES)
+
+LOCAL_GENERATED_SOURCES := \
+	$(intermediates)/panfrost/lib/midgard_pack.h
 
 LOCAL_C_INCLUDES := \
 	$(MESA_TOP)/src/gallium/auxiliary/ \
 	$(MESA_TOP)/src/gallium/include/ \
 	$(MESA_TOP)/src/panfrost/lib/ \
-	$(MESA_TOP)/src/panfrost/include/
+	$(MESA_TOP)/src/panfrost/include/ \
+	$(intermediates)/panfrost/lib/
 
 LOCAL_STATIC_LIBRARIES := \
 	libmesa_nir
 
-LOCAL_GENERATED_SOURCES := \
+midgard_pack_gen := $(LOCAL_PATH)/lib/gen_pack.py
+midgard_pack_deps := $(LOCAL_PATH)/lib/midgard.xml
+
+$(intermediates)/panfrost/lib/midgard_pack.h: $(midgard_pack_deps)
+	@mkdir -p $(dir $@)
+	$(hide) $(MESA_PYTHON2) $(midgard_pack_gen) $< > $@
 
 LOCAL_EXPORT_C_INCLUDE_DIRS := \
 	$(MESA_TOP)/src/panfrost/lib/ \
+	$(intermediates)
 
 include $(MESA_COMMON_MK)
 include $(BUILD_STATIC_LIBRARY)
