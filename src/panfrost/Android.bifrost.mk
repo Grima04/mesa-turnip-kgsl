@@ -65,7 +65,8 @@ LOCAL_C_INCLUDES := \
 LOCAL_STATIC_LIBRARIES := \
 	libmesa_glsl \
 	libmesa_nir \
-	libmesa_st_mesa
+	libmesa_st_mesa \
+	libpanfrost_lib
 
 LOCAL_GENERATED_SOURCES := \
 	$(intermediates)/bifrost_nir_algebraic.c \
