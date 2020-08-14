@@ -93,11 +93,7 @@ unsigned
 panfrost_padded_vertex_count(unsigned vertex_count);
 
 unsigned
-panfrost_vertex_instanced(
-        unsigned padded_count,
-        unsigned instance_shift, unsigned instance_odd,
-        unsigned divisor,
-        union mali_attr *attrs);
+panfrost_compute_magic_divisor(unsigned hw_divisor, unsigned *o_shift, unsigned *extra_flags);
 
 void panfrost_vertex_id(unsigned padded_count, union mali_attr *attr);
 void panfrost_instance_id(unsigned padded_count, union mali_attr *attr);

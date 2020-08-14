@@ -91,7 +91,7 @@ panfrost_padded_vertex_count(unsigned vertex_count)
 /* The much, much more irritating case -- instancing is enabled. See
  * panfrost_job.h for notes on how this works */
 
-static unsigned
+unsigned
 panfrost_compute_magic_divisor(unsigned hw_divisor, unsigned *o_shift, unsigned *extra_flags)
 {
         /* We have a NPOT divisor. Here's the fun one (multipling by
@@ -127,57 +127,6 @@ panfrost_compute_magic_divisor(unsigned hw_divisor, unsigned *o_shift, unsigned 
         *o_shift = shift;
 
         return magic_divisor;
-}
-
-unsigned
-panfrost_vertex_instanced(
-        unsigned padded_count,
-        unsigned instance_shift, unsigned instance_odd,
-        unsigned divisor,
-        union mali_attr *attrs)
-{
-        /* Depending if there is an instance divisor or not, packing varies.
-         * When there is a divisor, the hardware-level divisor is actually the
-         * product of the instance divisor and the padded count */
-
-        unsigned hw_divisor = padded_count * divisor;
-
-        if (divisor == 0) {
-                /* Per-vertex attributes use the MODULO mode. First, compute
-                 * the modulus */
-
-                attrs->elements |= MALI_ATTR_MODULO;
-                attrs->shift = instance_shift;
-                attrs->extra_flags = instance_odd;
-
-                return 1;
-        } else if (util_is_power_of_two_or_zero(hw_divisor)) {
-                /* If there is a divisor but the hardware divisor works out to
-                 * a power of two (not terribly exceptional), we can use an
-                 * easy path (just shifting) */
-
-                attrs->elements |= MALI_ATTR_POT_DIVIDE;
-                attrs->shift = __builtin_ctz(hw_divisor);
-
-                return 1;
-        } else {
-                unsigned shift = 0, extra_flags = 0;
-
-                attrs[1].magic_divisor =
-                        panfrost_compute_magic_divisor(hw_divisor, &shift, &extra_flags);
-
-                /* Upload to two different slots */
-
-                attrs[0].elements |= MALI_ATTR_NPOT_DIVIDE;
-                attrs[0].shift = shift;
-                attrs[0].extra_flags = extra_flags;
-
-                attrs[1].unk = 0x20;
-                attrs[1].zero = 0;
-                attrs[1].divisor = divisor;
-
-                return 2;
-        }
 }
 
 /* Records for gl_VertexID and gl_InstanceID use a slightly special encoding,

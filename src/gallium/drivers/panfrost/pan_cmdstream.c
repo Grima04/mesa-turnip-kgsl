@@ -1409,6 +1409,12 @@ panfrost_emit_vertex_data(struct panfrost_batch *batch,
 
                 unsigned divisor = elem->instance_divisor;
 
+                /* Depending if there is an instance divisor or not, packing varies.
+                 * When there is a divisor, the hardware-level divisor is actually the
+                 * product of the instance divisor and the padded count */
+
+                unsigned hw_divisor = ctx->padded_count * divisor;
+
                 if (divisor && ctx->instance_count == 1) {
                         /* Silly corner case where there's a divisor(=1) but
                          * there's no legitimate instancing. So we want *every*
@@ -1421,11 +1427,34 @@ panfrost_emit_vertex_data(struct panfrost_batch *batch,
                 } else if (ctx->instance_count <= 1) {
                         /* Normal, non-instanced attributes */
                         attrs[k++].elements |= MALI_ATTR_LINEAR;
+                } else if (divisor == 0) {
+                        /* Per-vertex attributes use the MODULO mode. */
+                        attrs[k].elements |= MALI_ATTR_MODULO;
+                        attrs[k].shift = instance_shift;
+                        attrs[k++].extra_flags = instance_odd;
+                } else if (util_is_power_of_two_or_zero(hw_divisor)) {
+                        /* If there is a divisor but the hardware divisor works out to
+                         * a power of two (not terribly exceptional), we can use an
+                         * easy path (just shifting) */
+
+                        attrs[k].elements |= MALI_ATTR_POT_DIVIDE;
+                        attrs[k++].shift = __builtin_ctz(hw_divisor);
                 } else {
-                        k += panfrost_vertex_instanced(ctx->padded_count,
-                                                       instance_shift,
-                                                       instance_odd,
-                                                       divisor, &attrs[k]);
+                        unsigned shift = 0, extra_flags = 0;
+
+                        unsigned magic_divisor =
+                                panfrost_compute_magic_divisor(hw_divisor, &shift, &extra_flags);
+
+                        /* Upload to two different slots */
+
+                        attrs[k].elements |= MALI_ATTR_NPOT_DIVIDE;
+                        attrs[k].shift = shift;
+                        attrs[k++].extra_flags = extra_flags;
+
+                        attrs[k].unk = 0x20;
+                        attrs[k].zero = 0;
+                        attrs[k].magic_divisor = magic_divisor;
+                        attrs[k++].divisor = divisor;
                 }
         }
 
