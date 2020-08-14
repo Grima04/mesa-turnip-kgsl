@@ -653,65 +653,7 @@ struct mali_payload_write_value {
  * 3. If e <= 2^shift, then we need to use the round-down algorithm. Set
  * magic_divisor = m - 1 and extra_flags = 1.
  * 4. Otherwise, set magic_divisor = m and extra_flags = 0.
- *
- * Unrelated to instancing/actual attributes, images (the OpenCL kind) are
- * implemented as special attributes, denoted by MALI_ATTR_IMAGE. For images,
- * let shift=extra_flags=0. Stride is set to the image format's bytes-per-pixel
- * (*NOT the row stride*). Size is set to the size of the image itself.
- *
- * Special internal attribtues and varyings (gl_VertexID, gl_FrontFacing, etc)
- * use particular fixed addresses with modified structures.
  */
-
-enum mali_attr_mode {
-	MALI_ATTR_UNUSED = 0,
-	MALI_ATTR_LINEAR = 1,
-	MALI_ATTR_POT_DIVIDE = 2,
-	MALI_ATTR_MODULO = 3,
-	MALI_ATTR_NPOT_DIVIDE = 4,
-        MALI_ATTR_IMAGE = 5,
-};
-
-/* Pseudo-address for gl_VertexID, gl_FragCoord, gl_FrontFacing */
-
-#define MALI_ATTR_VERTEXID (0x22)
-#define MALI_ATTR_INSTANCEID (0x24)
-#define MALI_VARYING_FRAG_COORD (0x25)
-#define MALI_VARYING_FRONT_FACING (0x26)
-
-/* This magic "pseudo-address" is used as `elements` to implement
- * gl_PointCoord. When read from a fragment shader, it generates a point
- * coordinate per the OpenGL ES 2.0 specification. Flipped coordinate spaces
- * require an affine transformation in the shader. */
-
-#define MALI_VARYING_POINT_COORD (0x61)
-
-/* Used for comparison to check if an address is special. Mostly a guess, but
- * it doesn't really matter. */
-
-#define MALI_RECORD_SPECIAL (0x100)
-
-union mali_attr {
-	/* This is used for actual attributes. */
-	struct {
-		/* The bottom 3 bits are the mode */
-		mali_ptr elements : 64 - 8;
-		u32 shift : 5;
-		u32 extra_flags : 3;
-		u32 stride;
-		u32 size;
-	};
-	/* The entry after an NPOT_DIVIDE entry has this format. It stores
-	 * extra information that wouldn't fit in a normal entry.
-	 */
-	struct {
-		u32 unk; /* = 0x20 */
-		u32 magic_divisor;
-		u32 zero;
-		/* This is the original, GL-level divisor. */
-		u32 divisor;
-	};
-} __attribute__((packed));
 
 #define FBD_MASK (~0x3f)
 
