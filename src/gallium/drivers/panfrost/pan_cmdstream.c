@@ -1348,6 +1348,7 @@ panfrost_emit_vertex_data(struct panfrost_batch *batch,
          * vertex buffer mask and instancing. Twice as much room is allocated,
          * for a worst case of NPOT_DIVIDEs which take up extra slot */
         union mali_attr attrs[PIPE_MAX_ATTRIBS * 2];
+        unsigned attrib_to_buffer[PIPE_MAX_ATTRIBS] = { 0 };
         unsigned k = 0;
 
         for (unsigned i = 0; i < so->num_elements; ++i) {
@@ -1358,11 +1359,7 @@ panfrost_emit_vertex_data(struct panfrost_batch *batch,
 
                 struct pipe_vertex_element *elem = &so->pipe[i];
                 unsigned vbi = elem->vertex_buffer_index;
-
-                /* The exception to 1:1 mapping is that we can have multiple
-                 * entries (NPOT divisors), so we fixup anyways */
-
-                so->hw[i].index = k;
+                attrib_to_buffer[i] = k;
 
                 if (!(ctx->vb_mask & (1 << vbi)))
                         continue;
@@ -1470,6 +1467,7 @@ panfrost_emit_vertex_data(struct panfrost_batch *batch,
                         src_offset -= buf->stride * start;
 
                 so->hw[i].src_offset = src_offset;
+                so->hw[i].index = attrib_to_buffer[i];
         }
 
 
