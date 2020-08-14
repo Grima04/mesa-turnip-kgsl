@@ -1365,7 +1365,7 @@ panfrost_emit_vertex_data(struct panfrost_batch *batch,
         unsigned k = 0;
 
         for (unsigned i = 0; i < so->num_elements; ++i) {
-                /* We map a mali_attr to be 1:1 with the mali_attr_meta, which
+                /* We map buffers 1:1 with the attributes, which
                  * means duplicating some vertex buffers (who cares? aside from
                  * maybe some caching implications but I somehow doubt that
                  * matters) */
