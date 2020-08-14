@@ -723,19 +723,19 @@ install_registers_instr(
                 unsigned src3 = ins->src[2];
 
                 if (src2 != ~0) {
-                        struct phys_reg src = index_to_reg(ctx, l, src2, 2);
+                        struct phys_reg src = index_to_reg(ctx, l, src2, src_shift[1]);
                         unsigned component = src.offset >> src.shift;
                         assert(component << src.shift == src.offset);
                         ins->src[1] = SSA_FIXED_REGISTER(src.reg);
-                        ins->swizzle[1][0] = component;
+                        ins->swizzle[1][0] += component;
                 }
 
                 if (src3 != ~0) {
-                        struct phys_reg src = index_to_reg(ctx, l, src3, 2);
+                        struct phys_reg src = index_to_reg(ctx, l, src3, src_shift[2]);
                         unsigned component = src.offset >> src.shift;
                         assert(component << src.shift == src.offset);
                         ins->src[2] = SSA_FIXED_REGISTER(src.reg);
-                        ins->swizzle[2][0] = component;
+                        ins->swizzle[2][0] += component;
                 }
  
                 break;

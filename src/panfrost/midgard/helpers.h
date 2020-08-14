@@ -310,9 +310,19 @@ mir_is_simple_swizzle(unsigned *swizzle, unsigned mask)
 /* Packs a load/store argument */
 
 static inline uint8_t
-midgard_ldst_reg(unsigned reg, unsigned component)
+midgard_ldst_reg(unsigned reg, unsigned component, unsigned size)
 {
         assert((reg == REGISTER_LDST_BASE) || (reg == REGISTER_LDST_BASE + 1));
+        assert(size == 16 || size == 32 || size == 64);
+
+        /* Shift so everything is in terms of 32-bit units */
+        if (size == 64) {
+                assert(component < 2);
+                component <<= 1;
+        } else if (size == 16) {
+                assert((component & 1) == 0);
+                component >>= 1;
+        }
 
         midgard_ldst_register_select sel = {
                 .component = component,
