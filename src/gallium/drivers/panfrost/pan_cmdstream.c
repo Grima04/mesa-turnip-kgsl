@@ -76,12 +76,10 @@ panfrost_vt_attach_framebuffer(struct panfrost_context *ctx,
 }
 
 static void
-panfrost_vt_update_rasterizer(struct panfrost_context *ctx,
+panfrost_vt_update_rasterizer(struct panfrost_rasterizer *rasterizer,
                               struct mali_vertex_tiler_prefix *prefix,
                               struct mali_vertex_tiler_postfix *postfix)
 {
-        struct panfrost_rasterizer *rasterizer = ctx->rasterizer;
-
         postfix->gl_enables |= 0x7;
         SET_BIT(postfix->gl_enables, MALI_FRONT_CCW_TOP,
                 rasterizer && rasterizer->base.front_ccw);
@@ -153,7 +151,7 @@ panfrost_vt_init(struct panfrost_context *ctx,
 
         if (stage == PIPE_SHADER_FRAGMENT) {
                 panfrost_vt_update_occlusion_query(ctx, postfix);
-                panfrost_vt_update_rasterizer(ctx, prefix, postfix);
+                panfrost_vt_update_rasterizer(ctx->rasterizer, prefix, postfix);
         }
 }
 
