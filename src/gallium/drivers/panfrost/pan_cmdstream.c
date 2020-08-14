@@ -1813,58 +1813,21 @@ panfrost_xfb_captured(struct panfrost_shader_state *xfb,
         return o->output_buffer < max_xfb;
 }
 
-/* Higher-level wrapper around all of the above, classifying a varying into one
- * of the above types */
-
 static void
-panfrost_emit_varying(
-                struct mali_attribute_packed *out,
-                struct panfrost_shader_state *stage,
+pan_emit_general_varying(struct mali_attribute_packed *out,
                 struct panfrost_shader_state *other,
                 struct panfrost_shader_state *xfb,
+                gl_varying_slot loc,
+                enum mali_format format,
                 unsigned present,
-                unsigned max_xfb,
-                unsigned *streamout_offsets,
                 unsigned quirks,
                 unsigned *gen_offsets,
                 enum mali_format *gen_formats,
                 unsigned *gen_stride,
                 unsigned idx,
-                bool should_alloc,
-                bool is_fragment)
+                bool should_alloc)
 {
-        gl_varying_slot loc = stage->varyings_loc[idx];
-        enum mali_format format = stage->varyings[idx];
-
-        /* Override format to match linkage */
-        if (!should_alloc && gen_formats[idx])
-                format = gen_formats[idx];
-
-        if (has_point_coord(stage->point_sprite_mask, loc)) {
-                pan_emit_vary_special(out, present, PAN_VARY_PNTCOORD, quirks);
-                return;
-        } else if (panfrost_xfb_captured(xfb, loc, max_xfb)) {
-                struct pipe_stream_output *o = pan_get_so(&xfb->stream_output, loc);
-                pan_emit_vary_xfb(out, present, max_xfb, streamout_offsets, quirks, format, *o);
-                return;
-        } else if (loc == VARYING_SLOT_POS) {
-                if (is_fragment)
-                        pan_emit_vary_special(out, present, PAN_VARY_FRAGCOORD, quirks);
-                else
-                        pan_emit_vary_special(out, present, PAN_VARY_POSITION, quirks);
-                return;
-        } else if (loc == VARYING_SLOT_PSIZ) {
-                pan_emit_vary_special(out, present, PAN_VARY_PSIZ, quirks);
-                return;
-        } else if (loc == VARYING_SLOT_PNTC) {
-                pan_emit_vary_special(out, present, PAN_VARY_PNTCOORD, quirks);
-                return;
-        } else if (loc == VARYING_SLOT_FACE) {
-                pan_emit_vary_special(out, present, PAN_VARY_FACE, quirks);
-                return;
-        }
-
-        /* We've exhausted special cases, so it's otherwise a general varying. Check if we're linked */
+        /* Check if we're linked */
         signed other_idx = -1;
 
         for (unsigned j = 0; j < other->varying_count; ++j) {
@@ -1910,6 +1873,56 @@ panfrost_emit_varying(
         }
 
         pan_emit_vary(out, present, PAN_VARY_GENERAL, quirks, format, offset);
+}
+
+/* Higher-level wrapper around all of the above, classifying a varying into one
+ * of the above types */
+
+static void
+panfrost_emit_varying(
+                struct mali_attribute_packed *out,
+                struct panfrost_shader_state *stage,
+                struct panfrost_shader_state *other,
+                struct panfrost_shader_state *xfb,
+                unsigned present,
+                unsigned max_xfb,
+                unsigned *streamout_offsets,
+                unsigned quirks,
+                unsigned *gen_offsets,
+                enum mali_format *gen_formats,
+                unsigned *gen_stride,
+                unsigned idx,
+                bool should_alloc,
+                bool is_fragment)
+{
+        gl_varying_slot loc = stage->varyings_loc[idx];
+        enum mali_format format = stage->varyings[idx];
+
+        /* Override format to match linkage */
+        if (!should_alloc && gen_formats[idx])
+                format = gen_formats[idx];
+
+        if (has_point_coord(stage->point_sprite_mask, loc)) {
+                pan_emit_vary_special(out, present, PAN_VARY_PNTCOORD, quirks);
+        } else if (panfrost_xfb_captured(xfb, loc, max_xfb)) {
+                struct pipe_stream_output *o = pan_get_so(&xfb->stream_output, loc);
+                pan_emit_vary_xfb(out, present, max_xfb, streamout_offsets, quirks, format, *o);
+        } else if (loc == VARYING_SLOT_POS) {
+                if (is_fragment)
+                        pan_emit_vary_special(out, present, PAN_VARY_FRAGCOORD, quirks);
+                else
+                        pan_emit_vary_special(out, present, PAN_VARY_POSITION, quirks);
+        } else if (loc == VARYING_SLOT_PSIZ) {
+                pan_emit_vary_special(out, present, PAN_VARY_PSIZ, quirks);
+        } else if (loc == VARYING_SLOT_PNTC) {
+                pan_emit_vary_special(out, present, PAN_VARY_PNTCOORD, quirks);
+        } else if (loc == VARYING_SLOT_FACE) {
+                pan_emit_vary_special(out, present, PAN_VARY_FACE, quirks);
+        } else {
+                pan_emit_general_varying(out, other, xfb, loc, format, present,
+                                quirks, gen_offsets, gen_formats, gen_stride,
+                                idx, should_alloc);
+        }
 }
 
 static void
