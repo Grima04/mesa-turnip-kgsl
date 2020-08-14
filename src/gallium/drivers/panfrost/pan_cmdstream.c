@@ -1347,10 +1347,20 @@ panfrost_emit_vertex_data(struct panfrost_batch *batch,
         unsigned instance_shift = vertex_postfix->instance_shift;
         unsigned instance_odd = vertex_postfix->instance_odd;
 
-        /* Staged mali_attr, and index into them. i =/= k, depending on the
-         * vertex buffer mask and instancing. Twice as much room is allocated,
-         * for a worst case of NPOT_DIVIDEs which take up extra slot */
-        union mali_attr attrs[PIPE_MAX_ATTRIBS * 2];
+        /* Worst case: everything is NPOT */
+
+        struct panfrost_transfer S = panfrost_pool_alloc(&batch->pool,
+                        MALI_ATTRIBUTE_LENGTH * PIPE_MAX_ATTRIBS * 2);
+
+        struct panfrost_transfer T = panfrost_pool_alloc(&batch->pool,
+                        MALI_ATTRIBUTE_LENGTH * (PAN_INSTANCE_ID + 1));
+
+        struct mali_attribute_buffer_packed *bufs =
+                (struct mali_attribute_buffer_packed *) S.cpu;
+
+        struct mali_attribute_packed *out =
+                (struct mali_attribute_packed *) T.cpu;
+
         unsigned attrib_to_buffer[PIPE_MAX_ATTRIBS] = { 0 };
         unsigned k = 0;
 
@@ -1374,106 +1384,90 @@ panfrost_emit_vertex_data(struct panfrost_batch *batch,
                 if (!rsrc)
                         continue;
 
-                /* Align to 64 bytes by masking off the lower bits. This
-                 * will be adjusted back when we fixup the src_offset in
-                 * mali_attr_meta */
-
-                mali_ptr raw_addr = rsrc->bo->gpu + buf->buffer_offset;
-                mali_ptr addr = raw_addr & ~63;
-                unsigned chopped_addr = raw_addr - addr;
-
                 /* Add a dependency of the batch on the vertex buffer */
                 panfrost_batch_add_bo(batch, rsrc->bo,
                                       PAN_BO_ACCESS_SHARED |
                                       PAN_BO_ACCESS_READ |
                                       PAN_BO_ACCESS_VERTEX_TILER);
 
-                /* Set common fields */
-                attrs[k].elements = addr;
-                attrs[k].stride = buf->stride;
+                /* Mask off lower bits, see offset fixup below */
+                mali_ptr raw_addr = rsrc->bo->gpu + buf->buffer_offset;
+                mali_ptr addr = raw_addr & ~63;
 
                 /* Since we advanced the base pointer, we shrink the buffer
-                 * size */
-                attrs[k].size = rsrc->base.width0 - buf->buffer_offset;
+                 * size, but add the offset we subtracted */
+                unsigned size = rsrc->base.width0 + (raw_addr - addr)
+                        - buf->buffer_offset;
 
-                /* We need to add the extra size we masked off (for
-                 * correctness) so the data doesn't get clamped away */
-                attrs[k].size += chopped_addr;
-
-                /* For non-instancing make sure we initialize */
-                attrs[k].shift = attrs[k].extra_flags = 0;
-
-                /* Instancing uses a dramatically different code path than
-                 * linear, so dispatch for the actual emission now that the
-                 * common code is finished */
-
+                /* When there is a divisor, the hardware-level divisor is
+                 * the product of the instance divisor and the padded count */
                 unsigned divisor = elem->instance_divisor;
-
-                /* Depending if there is an instance divisor or not, packing varies.
-                 * When there is a divisor, the hardware-level divisor is actually the
-                 * product of the instance divisor and the padded count */
-
                 unsigned hw_divisor = ctx->padded_count * divisor;
+                unsigned stride = buf->stride;
 
-                if (divisor && ctx->instance_count == 1) {
-                        /* Silly corner case where there's a divisor(=1) but
-                         * there's no legitimate instancing. So we want *every*
-                         * attribute to be the same. So set stride to zero so
-                         * we don't go anywhere. */
+                /* If there's a divisor(=1) but no instancing, we want every
+                 * attribute to be the same */
 
-                        attrs[k].size = attrs[k].stride + chopped_addr;
-                        attrs[k].stride = 0;
-                        attrs[k++].elements |= MALI_ATTR_LINEAR;
-                } else if (ctx->instance_count <= 1) {
-                        /* Normal, non-instanced attributes */
-                        attrs[k++].elements |= MALI_ATTR_LINEAR;
-                } else if (divisor == 0) {
-                        /* Per-vertex attributes use the MODULO mode. */
-                        attrs[k].elements |= MALI_ATTR_MODULO;
-                        attrs[k].shift = instance_shift;
-                        attrs[k++].extra_flags = instance_odd;
+                if (divisor && ctx->instance_count == 1)
+                        stride = 0;
+
+                if (!divisor || ctx->instance_count <= 1) {
+                        pan_pack(bufs + k, ATTRIBUTE_BUFFER, cfg) {
+                                if (ctx->instance_count > 1)
+                                        cfg.type = MALI_ATTRIBUTE_TYPE_1D_MODULUS;
+
+                                cfg.pointer = addr;
+                                cfg.stride = stride;
+                                cfg.size = size;
+                                cfg.divisor_r = instance_shift;
+                                cfg.divisor_p = instance_odd;
+                        }
                 } else if (util_is_power_of_two_or_zero(hw_divisor)) {
-                        /* If there is a divisor but the hardware divisor works out to
-                         * a power of two (not terribly exceptional), we can use an
-                         * easy path (just shifting) */
+                        pan_pack(bufs + k, ATTRIBUTE_BUFFER, cfg) {
+                                cfg.type = MALI_ATTRIBUTE_TYPE_1D_POT_DIVISOR;
+                                cfg.pointer = addr;
+                                cfg.stride = stride;
+                                cfg.size = size;
+                                cfg.divisor_r = __builtin_ctz(hw_divisor);
+                        }
 
-                        attrs[k].elements |= MALI_ATTR_POT_DIVIDE;
-                        attrs[k++].shift = __builtin_ctz(hw_divisor);
                 } else {
                         unsigned shift = 0, extra_flags = 0;
 
                         unsigned magic_divisor =
                                 panfrost_compute_magic_divisor(hw_divisor, &shift, &extra_flags);
 
-                        /* Upload to two different slots */
+                        pan_pack(bufs + k, ATTRIBUTE_BUFFER, cfg) {
+                                cfg.type = MALI_ATTRIBUTE_TYPE_1D_NPOT_DIVISOR;
+                                cfg.pointer = addr;
+                                cfg.stride = stride;
+                                cfg.size = size;
 
-                        attrs[k].elements |= MALI_ATTR_NPOT_DIVIDE;
-                        attrs[k].shift = shift;
-                        attrs[k++].extra_flags = extra_flags;
+                                cfg.divisor_r = shift;
+                                cfg.divisor_e = extra_flags;
+                        }
 
-                        attrs[k].unk = 0x20;
-                        attrs[k].zero = 0;
-                        attrs[k].magic_divisor = magic_divisor;
-                        attrs[k++].divisor = divisor;
+                        pan_pack(bufs + k + 1, ATTRIBUTE_BUFFER_CONTINUATION_NPOT, cfg) {
+                                cfg.divisor_numerator = magic_divisor;
+                                cfg.divisor = divisor;
+                        }
+
+                        ++k;
                 }
+
+                ++k;
         }
 
         /* Add special gl_VertexID/gl_InstanceID buffers */
 
-        struct panfrost_transfer T = panfrost_pool_alloc(&batch->pool,
-                        MALI_ATTRIBUTE_LENGTH * (PAN_INSTANCE_ID + 1));
-
-        struct mali_attribute_packed *out =
-                (struct mali_attribute_packed *) T.cpu;
-
-        panfrost_vertex_id(ctx->padded_count, &attrs[k]);
+        panfrost_vertex_id(ctx->padded_count, (union mali_attr *) &bufs[k]);
 
         pan_pack(out + PAN_VERTEX_ID, ATTRIBUTE, cfg) {
                 cfg.buffer_index = k++;
                 cfg.format = so->formats[PAN_VERTEX_ID];
         }
 
-        panfrost_instance_id(ctx->padded_count, &attrs[k]);
+        panfrost_instance_id(ctx->padded_count, (union mali_attr *) &bufs[k]);
 
         pan_pack(out + PAN_INSTANCE_ID, ATTRIBUTE, cfg) {
                 cfg.buffer_index = k++;
@@ -1517,10 +1511,7 @@ panfrost_emit_vertex_data(struct panfrost_batch *batch,
                 }
         }
 
-
-        vertex_postfix->attributes = panfrost_pool_upload(&batch->pool, attrs,
-                                                           k * sizeof(*attrs));
-
+        vertex_postfix->attributes = S.gpu;
         vertex_postfix->attribute_meta = T.gpu;
 }
 
