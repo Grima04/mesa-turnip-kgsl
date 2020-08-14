@@ -1344,6 +1344,9 @@ panfrost_emit_vertex_data(struct panfrost_batch *batch,
         struct panfrost_context *ctx = batch->ctx;
         struct panfrost_vertex_state *so = ctx->vertex;
 
+        unsigned instance_shift = vertex_postfix->instance_shift;
+        unsigned instance_odd = vertex_postfix->instance_odd;
+
         /* Staged mali_attr, and index into them. i =/= k, depending on the
          * vertex buffer mask and instancing. Twice as much room is allocated,
          * for a worst case of NPOT_DIVIDEs which take up extra slot */
@@ -1419,9 +1422,6 @@ panfrost_emit_vertex_data(struct panfrost_batch *batch,
                         /* Normal, non-instanced attributes */
                         attrs[k++].elements |= MALI_ATTR_LINEAR;
                 } else {
-                        unsigned instance_shift = vertex_postfix->instance_shift;
-                        unsigned instance_odd = vertex_postfix->instance_odd;
-
                         k += panfrost_vertex_instanced(ctx->padded_count,
                                                        instance_shift,
                                                        instance_odd,
