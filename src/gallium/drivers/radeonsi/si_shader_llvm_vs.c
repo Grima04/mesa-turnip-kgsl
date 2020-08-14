@@ -225,44 +225,18 @@ static void load_input_vs(struct si_shader_context *ctx, unsigned input_index, L
       out[i] = ac_to_float(&ctx->ac, fetches[i]);
 }
 
-static void declare_input_vs(struct si_shader_context *ctx, unsigned input_index)
-{
-   LLVMValueRef input[4];
-
-   load_input_vs(ctx, input_index / 4, input);
-
-   for (unsigned chan = 0; chan < 4; chan++) {
-      ctx->inputs[input_index + chan] =
-         LLVMBuildBitCast(ctx->ac.builder, input[chan], ctx->ac.i32, "");
-   }
-}
-
 void si_llvm_load_vs_inputs(struct si_shader_context *ctx, struct nir_shader *nir)
 {
-   uint64_t processed_inputs = 0;
+   const struct si_shader_info *info = &ctx->shader->selector->info;
 
-   nir_foreach_shader_in_variable (variable, nir) {
-      unsigned attrib_count = glsl_count_attribute_slots(variable->type, true);
-      unsigned input_idx = variable->data.driver_location;
-      unsigned loc = variable->data.location;
+   for (unsigned i = 0; i < info->num_inputs; i++) {
+      LLVMValueRef values[4];
 
-      for (unsigned i = 0; i < attrib_count; i++) {
-         /* Packed components share the same location so skip
-          * them if we have already processed the location.
-          */
-         if (processed_inputs & ((uint64_t)1 << (loc + i))) {
-            input_idx += 4;
-            continue;
-         }
+      load_input_vs(ctx, i, values);
 
-         declare_input_vs(ctx, input_idx);
-         if (glsl_type_is_dual_slot(variable->type)) {
-            input_idx += 4;
-            declare_input_vs(ctx, input_idx);
-         }
-
-         processed_inputs |= ((uint64_t)1 << (loc + i));
-         input_idx += 4;
+      for (unsigned chan = 0; chan < 4; chan++) {
+         ctx->inputs[i * 4 + chan] =
+            LLVMBuildBitCast(ctx->ac.builder, values[chan], ctx->ac.i32, "");
       }
    }
 }
