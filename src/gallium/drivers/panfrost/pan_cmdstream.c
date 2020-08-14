@@ -1779,23 +1779,18 @@ pan_emit_vary_xfb(struct mali_attribute_packed *out,
                         panfrost_get_default_swizzle(o.num_components) :
                         panfrost_bifrost_swizzle(o.num_components);
 
-        /* Otherwise construct a record for it */
-        struct mali_attr_meta meta = {
+        pan_pack(out, ATTRIBUTE, cfg) {
                 /* XFB buffers come after everything else */
-                .index = pan_xfb_base(present) + o.output_buffer,
-
-                /* As usual unknown bit */
-                .unknown1 = quirks & IS_BIFROST ? 0x0 : 0x2,
+                cfg.buffer_index = pan_xfb_base(present) + o.output_buffer;
+                cfg.unknown = quirks & IS_BIFROST ? 0x0 : 0x1;
 
                 /* Override number of channels and precision to highp */
-                .format = (pan_xfb_format(format, o.num_components) << 12) | swizzle,
+                cfg.format = (pan_xfb_format(format, o.num_components) << 12) | swizzle;
 
                 /* Apply given offsets together */
-                .src_offset = (o.dst_offset * 4) /* dwords */
-                        + streamout_offsets[o.output_buffer]
-        };
-
-        memcpy(out, &meta, sizeof(meta));
+                cfg.offset = (o.dst_offset * 4) /* dwords */
+                        + streamout_offsets[o.output_buffer];
+        }
 }
 
 /* Determine if we should capture a varying for XFB. This requires actually
