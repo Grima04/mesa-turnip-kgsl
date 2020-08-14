@@ -299,18 +299,14 @@ panfrost_draw_vbo(
         assert(ctx->rasterizer != NULL);
 
         if (!(ctx->draw_modes & (1 << mode))) {
-                if (mode == PIPE_PRIM_QUADS && info->count == 4 && !ctx->rasterizer->base.flatshade) {
-                        mode = PIPE_PRIM_TRIANGLE_FAN;
-                } else {
-                        if (info->count < 4) {
-                                /* Degenerate case? */
-                                return;
-                        }
-
-                        util_primconvert_save_rasterizer_state(ctx->primconvert, &ctx->rasterizer->base);
-                        util_primconvert_draw_vbo(ctx->primconvert, info);
+                if (info->count < 4) {
+                        /* Degenerate case? */
                         return;
                 }
+
+                util_primconvert_save_rasterizer_state(ctx->primconvert, &ctx->rasterizer->base);
+                util_primconvert_draw_vbo(ctx->primconvert, info);
+                return;
         }
 
         /* Now that we have a guaranteed terminating path, find the job.
