@@ -546,7 +546,8 @@ st_translate_vertex_program(struct st_context *st,
          /* For st_draw_feedback, we need to generate TGSI too if draw doesn't
           * use LLVM.
           */
-         if (draw_has_llvm()) {
+         /* TODO: Draw can't handle lowered IO. */
+         if (draw_has_llvm() && !stp->Base.info.io_lowered) {
             st_prepare_vertex_program(stp);
             return true;
          }
@@ -731,7 +732,9 @@ st_create_vp_variant(struct st_context *st,
    state.stream_output = stvp->state.stream_output;
 
    if (stvp->state.type == PIPE_SHADER_IR_NIR &&
-       (!key->is_draw_shader || draw_has_llvm())) {
+       (!key->is_draw_shader ||
+        /* TODO: Draw can't handle lowered IO. */
+        (draw_has_llvm() && !stvp->Base.info.io_lowered))) {
       bool finalize = false;
 
       state.type = PIPE_SHADER_IR_NIR;
