@@ -34,11 +34,38 @@
  * into whereever we left off. If there isn't space, we allocate a new entry
  * into the pool and copy there */
 
+static struct panfrost_bo *
+panfrost_pool_alloc_backing(struct pan_pool *pool, size_t bo_sz)
+{
+        /* We don't know what the BO will be used for, so let's flag it
+         * RW and attach it to both the fragment and vertex/tiler jobs.
+         * TODO: if we want fine grained BO assignment we should pass
+         * flags to this function and keep the read/write,
+         * fragment/vertex+tiler pools separate.
+         */
+        struct panfrost_bo *bo = panfrost_bo_create(pool->dev, bo_sz,
+                        pool->create_flags);
+
+        uintptr_t flags = PAN_BO_ACCESS_PRIVATE |
+                PAN_BO_ACCESS_RW |
+                PAN_BO_ACCESS_VERTEX_TILER |
+                PAN_BO_ACCESS_FRAGMENT;
+
+        _mesa_hash_table_insert(pool->bos, bo, (void *) flags);
+
+        pool->transient_bo = bo;
+        pool->transient_offset = 0;
+
+        return bo;
+}
+
 struct pan_pool
-panfrost_create_pool(void *memctx, struct panfrost_device *dev)
+panfrost_create_pool(void *memctx, struct panfrost_device *dev,
+                unsigned create_flags, bool prealloc)
 {
         struct pan_pool pool = {
                 .dev = dev,
+                .create_flags = create_flags,
                 .transient_offset = 0,
                 .transient_bo = NULL
         };
@@ -46,6 +73,8 @@ panfrost_create_pool(void *memctx, struct panfrost_device *dev)
         pool.bos = _mesa_hash_table_create(memctx, _mesa_hash_pointer,
                         _mesa_key_pointer_equal);
 
+        if (prealloc)
+                panfrost_pool_alloc_backing(&pool, TRANSIENT_SLAB_SIZE);
 
         return pool;
 }
@@ -57,44 +86,17 @@ panfrost_pool_alloc(struct pan_pool *pool, size_t sz)
         sz = ALIGN_POT(sz, ALIGNMENT);
 
         /* Find or create a suitable BO */
-        struct panfrost_bo *bo = NULL;
+        struct panfrost_bo *bo = pool->transient_bo;
+        unsigned offset = pool->transient_offset;
 
-        unsigned offset = 0;
-
-        bool fits_in_current = (pool->transient_offset + sz) < TRANSIENT_SLAB_SIZE;
-
-        if (likely(pool->transient_bo && fits_in_current)) {
-                /* We can reuse the current BO, so get it */
-                bo = pool->transient_bo;
-
-                /* Use the specified offset */
-                offset = pool->transient_offset;
-                pool->transient_offset = offset + sz;
-        } else {
-                size_t bo_sz = sz < TRANSIENT_SLAB_SIZE ?
-                               TRANSIENT_SLAB_SIZE : ALIGN_POT(sz, 4096);
-
-                /* We can't reuse the current BO, but we can create a new one.
-                 * We don't know what the BO will be used for, so let's flag it
-                 * RW and attach it to both the fragment and vertex/tiler jobs.
-                 * TODO: if we want fine grained BO assignment we should pass
-                 * flags to this function and keep the read/write,
-                 * fragment/vertex+tiler pools separate.
-                 */
-                bo = panfrost_bo_create(pool->dev, bo_sz, 0);
-
-                uintptr_t flags = PAN_BO_ACCESS_PRIVATE |
-                                  PAN_BO_ACCESS_RW |
-                                  PAN_BO_ACCESS_VERTEX_TILER |
-                                  PAN_BO_ACCESS_FRAGMENT;
-
-                _mesa_hash_table_insert(pool->bos, bo, (void *) flags);
-
-                if (sz < TRANSIENT_SLAB_SIZE) {
-                        pool->transient_bo = bo;
-                        pool->transient_offset = offset + sz;
-                }
+        /* If we don't fit, allocate a new backing */
+        if (unlikely(bo == NULL || (offset + sz) >= TRANSIENT_SLAB_SIZE)) {
+                bo = panfrost_pool_alloc_backing(pool,
+                                ALIGN_POT(MAX2(TRANSIENT_SLAB_SIZE, sz), 4096));
+                offset = 0;
         }
+
+        pool->transient_offset += sz;
 
         struct panfrost_transfer ret = {
                 .cpu = bo->cpu + offset,

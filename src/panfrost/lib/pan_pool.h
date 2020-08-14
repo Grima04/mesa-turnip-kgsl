@@ -45,10 +45,13 @@ struct pan_pool {
 
         /* Within the topmost transient BO, how much has been used? */
         unsigned transient_offset;
+
+        /* BO flags to use in the pool */
+        unsigned create_flags;
 };
 
 struct pan_pool
-panfrost_create_pool(void *memctx, struct panfrost_device *dev);
+panfrost_create_pool(void *memctx, struct panfrost_device *dev, unsigned create_flags, bool prealloc);
 
 /* Represents a fat pointer for GPU-mapped memory, returned from the transient
  * allocator and not used for much else */
