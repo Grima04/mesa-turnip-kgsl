@@ -1704,8 +1704,9 @@ pan_varying_present(
 
 /* Emitters for varying records */
 
-static struct mali_attr_meta
-pan_emit_vary(unsigned present, enum pan_special_varying buf,
+static void
+pan_emit_vary(struct mali_attribute_packed *out,
+                unsigned present, enum pan_special_varying buf,
                 unsigned quirks, enum mali_format format,
                 unsigned offset)
 {
@@ -1721,15 +1722,16 @@ pan_emit_vary(unsigned present, enum pan_special_varying buf,
                 .src_offset = offset
         };
 
-        return meta;
+        memcpy(out, &meta, sizeof(meta));
 }
 
 /* General varying that is unused */
 
-static struct mali_attr_meta
-pan_emit_vary_only(unsigned present, unsigned quirks)
+static void
+pan_emit_vary_only(struct mali_attribute_packed *out,
+                unsigned present, unsigned quirks)
 {
-        return pan_emit_vary(present, 0, quirks, MALI_VARYING_DISCARD, 0);
+        pan_emit_vary(out, present, 0, quirks, MALI_VARYING_DISCARD, 0);
 }
 
 /* Special records */
@@ -1742,12 +1744,13 @@ static const enum mali_format pan_varying_formats[PAN_VARY_MAX] = {
         [PAN_VARY_FRAGCOORD]    = MALI_RGBA32F
 };
 
-static struct mali_attr_meta
-pan_emit_vary_special(unsigned present, enum pan_special_varying buf,
+static void
+pan_emit_vary_special(struct mali_attribute_packed *out,
+                unsigned present, enum pan_special_varying buf,
                 unsigned quirks)
 {
         assert(buf < PAN_VARY_MAX);
-        return pan_emit_vary(present, buf, quirks, pan_varying_formats[buf], 0);
+        pan_emit_vary(out, present, buf, quirks, pan_varying_formats[buf], 0);
 }
 
 static enum mali_format
@@ -1763,8 +1766,9 @@ pan_xfb_format(enum mali_format format, unsigned nr)
  * a bitfield) 32-bit, smaller than a 64-bit pointer, so may as well pass by
  * value. */
 
-static struct mali_attr_meta
-pan_emit_vary_xfb(unsigned present,
+static void
+pan_emit_vary_xfb(struct mali_attribute_packed *out,
+                unsigned present,
                 unsigned max_xfb,
                 unsigned *streamout_offsets,
                 unsigned quirks,
@@ -1791,7 +1795,7 @@ pan_emit_vary_xfb(unsigned present,
                         + streamout_offsets[o.output_buffer]
         };
 
-        return meta;
+        memcpy(out, &meta, sizeof(meta));
 }
 
 /* Determine if we should capture a varying for XFB. This requires actually
@@ -1812,8 +1816,9 @@ panfrost_xfb_captured(struct panfrost_shader_state *xfb,
 /* Higher-level wrapper around all of the above, classifying a varying into one
  * of the above types */
 
-static struct mali_attr_meta
+static void
 panfrost_emit_varying(
+                struct mali_attribute_packed *out,
                 struct panfrost_shader_state *stage,
                 struct panfrost_shader_state *other,
                 struct panfrost_shader_state *xfb,
@@ -1836,21 +1841,27 @@ panfrost_emit_varying(
                 format = gen_formats[idx];
 
         if (has_point_coord(stage->point_sprite_mask, loc)) {
-                return pan_emit_vary_special(present, PAN_VARY_PNTCOORD, quirks);
+                pan_emit_vary_special(out, present, PAN_VARY_PNTCOORD, quirks);
+                return;
         } else if (panfrost_xfb_captured(xfb, loc, max_xfb)) {
                 struct pipe_stream_output *o = pan_get_so(&xfb->stream_output, loc);
-                return pan_emit_vary_xfb(present, max_xfb, streamout_offsets, quirks, format, *o);
+                pan_emit_vary_xfb(out, present, max_xfb, streamout_offsets, quirks, format, *o);
+                return;
         } else if (loc == VARYING_SLOT_POS) {
                 if (is_fragment)
-                        return pan_emit_vary_special(present, PAN_VARY_FRAGCOORD, quirks);
+                        pan_emit_vary_special(out, present, PAN_VARY_FRAGCOORD, quirks);
                 else
-                        return pan_emit_vary_special(present, PAN_VARY_POSITION, quirks);
+                        pan_emit_vary_special(out, present, PAN_VARY_POSITION, quirks);
+                return;
         } else if (loc == VARYING_SLOT_PSIZ) {
-                return pan_emit_vary_special(present, PAN_VARY_PSIZ, quirks);
+                pan_emit_vary_special(out, present, PAN_VARY_PSIZ, quirks);
+                return;
         } else if (loc == VARYING_SLOT_PNTC) {
-                return pan_emit_vary_special(present, PAN_VARY_PNTCOORD, quirks);
+                pan_emit_vary_special(out, present, PAN_VARY_PNTCOORD, quirks);
+                return;
         } else if (loc == VARYING_SLOT_FACE) {
-                return pan_emit_vary_special(present, PAN_VARY_FACE, quirks);
+                pan_emit_vary_special(out, present, PAN_VARY_FACE, quirks);
+                return;
         }
 
         /* We've exhausted special cases, so it's otherwise a general varying. Check if we're linked */
@@ -1863,8 +1874,10 @@ panfrost_emit_varying(
                 }
         }
 
-        if (other_idx < 0)
-                return pan_emit_vary_only(present, quirks);
+        if (other_idx < 0) {
+                pan_emit_vary_only(out, present, quirks);
+                return;
+        }
 
         unsigned offset = gen_offsets[other_idx];
 
@@ -1896,8 +1909,7 @@ panfrost_emit_varying(
                 *gen_stride += size;
         }
 
-        return pan_emit_vary(present, PAN_VARY_GENERAL,
-                        quirks, format, offset);
+        pan_emit_vary(out, present, PAN_VARY_GENERAL, quirks, format, offset);
 }
 
 static void
@@ -1968,18 +1980,18 @@ panfrost_emit_varying_descriptor(struct panfrost_batch *batch,
                                         ctx->streamout.targets[i]);
         }
 
-        struct mali_attr_meta *ovs = (struct mali_attr_meta *)trans.cpu;
-        struct mali_attr_meta *ofs = ovs + vs->varying_count;
+        struct mali_attribute_packed *ovs = (struct mali_attribute_packed *)trans.cpu;
+        struct mali_attribute_packed *ofs = ovs + vs->varying_count;
 
         for (unsigned i = 0; i < vs->varying_count; i++) {
-                ovs[i] = panfrost_emit_varying(vs, fs, vs, present,
+                panfrost_emit_varying(ovs + i, vs, fs, vs, present,
                                 ctx->streamout.num_targets, streamout_offsets,
                                 dev->quirks,
                                 gen_offsets, gen_formats, &gen_stride, i, true, false);
         }
 
         for (unsigned i = 0; i < fs->varying_count; i++) {
-                ofs[i] = panfrost_emit_varying(fs, vs, vs, present,
+                panfrost_emit_varying(ofs + i, fs, vs, vs, present,
                                 ctx->streamout.num_targets, streamout_offsets,
                                 dev->quirks,
                                 gen_offsets, gen_formats, &gen_stride, i, false, true);
