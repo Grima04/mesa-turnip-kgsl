@@ -466,7 +466,7 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
          if (var->data.mode == nir_var_mem_ubo) {
             /* ignore variables being accessed if they aren't the base of the UBO */
             bool ubo_array = glsl_type_is_array(var->type) && glsl_type_is_interface(glsl_without_array(var->type));
-            if (var->data.location && !ubo_array)
+            if (var->data.location && !ubo_array && var->type != var->interface_type)
                continue;
             var->data.binding = cur_ubo;
             /* if this is a ubo array, create a binding point for each array member:
