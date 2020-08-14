@@ -85,6 +85,8 @@ libaco_files = files(
   'aco_validate.cpp',
 )
 
+cpp_args_aco = cpp.get_supported_arguments(['-fno-exceptions', '-fno-rtti'])
+
 _libaco = static_library(
   'aco',
   [libaco_files, aco_opcodes_c, aco_opcodes_h, aco_builder_h],
@@ -100,6 +102,7 @@ _libaco = static_library(
   ],
   gnu_symbol_visibility : 'hidden',
   build_by_default : true,
+  cpp_args : cpp_args_aco,
 )
 
 # Also link with aco
