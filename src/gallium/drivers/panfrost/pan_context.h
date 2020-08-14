@@ -254,7 +254,7 @@ struct panfrost_vertex_state {
         unsigned num_elements;
 
         struct pipe_vertex_element pipe[PIPE_MAX_ATTRIBS];
-        struct mali_attr_meta hw[PIPE_MAX_ATTRIBS];
+        unsigned formats[PIPE_MAX_ATTRIBS];
 };
 
 struct panfrost_zsa_state {

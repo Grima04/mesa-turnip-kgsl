@@ -1431,10 +1431,17 @@ panfrost_emit_vertex_data(struct panfrost_batch *batch,
 
         /* Add special gl_VertexID/gl_InstanceID buffers */
 
+        struct mali_attr_meta hw[PIPE_MAX_ATTRIBS];
+
         panfrost_vertex_id(ctx->padded_count, &attrs[k]);
-        so->hw[PAN_VERTEX_ID].index = k++;
+        hw[PAN_VERTEX_ID].index = k++;
+        hw[PAN_VERTEX_ID].format = so->formats[PAN_VERTEX_ID];
+        hw[PAN_VERTEX_ID].unknown1 = 0x2;
+
         panfrost_instance_id(ctx->padded_count, &attrs[k]);
-        so->hw[PAN_INSTANCE_ID].index = k++;
+        hw[PAN_INSTANCE_ID].index = k++;
+        hw[PAN_INSTANCE_ID].format = so->formats[PAN_VERTEX_ID];
+        hw[PAN_INSTANCE_ID].unknown1 = 0x2;
 
         /* Attribute addresses require 64-byte alignment, so let:
          *
@@ -1466,16 +1473,18 @@ panfrost_emit_vertex_data(struct panfrost_batch *batch,
                 if (so->pipe[i].instance_divisor && ctx->instance_count > 1 && start)
                         src_offset -= buf->stride * start;
 
-                so->hw[i].src_offset = src_offset;
-                so->hw[i].index = attrib_to_buffer[i];
+                hw[i].src_offset = src_offset;
+                hw[i].index = attrib_to_buffer[i];
+                hw[i].format = so->formats[i];
+                hw[i].unknown1 = 0x2;
         }
 
 
         vertex_postfix->attributes = panfrost_pool_upload(&batch->pool, attrs,
                                                            k * sizeof(*attrs));
 
-        vertex_postfix->attribute_meta = panfrost_pool_upload(&batch->pool, so->hw,
-                                                               sizeof(*so->hw) *
+        vertex_postfix->attribute_meta = panfrost_pool_upload(&batch->pool, hw,
+                                                               sizeof(hw[0]) *
                                                                PAN_MAX_ATTRIBUTE);
 }
 
