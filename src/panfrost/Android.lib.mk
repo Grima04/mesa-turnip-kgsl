@@ -49,6 +49,7 @@ $(intermediates)/panfrost/lib/midgard_pack.h: $(midgard_pack_deps)
 
 LOCAL_EXPORT_C_INCLUDE_DIRS := \
 	$(MESA_TOP)/src/panfrost/lib/ \
+	$(intermediates)/panfrost/lib/ \
 	$(intermediates)
 
 include $(MESA_COMMON_MK)
