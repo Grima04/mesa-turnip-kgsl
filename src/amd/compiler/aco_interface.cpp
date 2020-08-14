@@ -66,6 +66,9 @@ void aco_compile_shader(unsigned shader_count,
    if (program->collect_statistics)
       memset(program->statistics, 0, sizeof(program->statistics));
 
+   program->debug.func = args->options->debug.func;
+   program->debug.private_data = args->options->debug.private_data;
+
    /* Instruction Selection */
    if (args->is_gs_copy_shader)
       aco::select_gs_copy_shader(program.get(), shaders[0], &config, args);

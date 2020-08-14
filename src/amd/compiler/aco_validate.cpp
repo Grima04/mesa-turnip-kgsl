@@ -29,8 +29,8 @@
 
 namespace aco {
 
-static void aco_log(Program *program, const char *prefix,
-                    const char *file, unsigned line,
+static void aco_log(Program *program, enum radv_compiler_debug_level level,
+                    const char *prefix, const char *file, unsigned line,
                     const char *fmt, va_list args)
 {
    char *msg;
@@ -41,7 +41,8 @@ static void aco_log(Program *program, const char *prefix,
    ralloc_asprintf_append(&msg, "    ");
    ralloc_vasprintf_append(&msg, fmt, args);
 
-   /* TODO: log messages via callback if available too. */
+   if (program->debug.func)
+      program->debug.func(program->debug.private_data, level, msg);
 
    fprintf(stderr, "%s\n", msg);
 
@@ -54,7 +55,8 @@ void _aco_perfwarn(Program *program, const char *file, unsigned line,
    va_list args;
 
    va_start(args, fmt);
-   aco_log(program, "ACO PERFWARN:\n", file, line, fmt, args);
+   aco_log(program, RADV_COMPILER_DEBUG_LEVEL_PERFWARN,
+           "ACO PERFWARN:\n", file, line, fmt, args);
    va_end(args);
 }
 
@@ -64,7 +66,8 @@ void _aco_err(Program *program, const char *file, unsigned line,
    va_list args;
 
    va_start(args, fmt);
-   aco_log(program, "ACO ERROR:\n", file, line, fmt, args);
+   aco_log(program, RADV_COMPILER_DEBUG_LEVEL_ERROR,
+           "ACO ERROR:\n", file, line, fmt, args);
    va_end(args);
 }
 

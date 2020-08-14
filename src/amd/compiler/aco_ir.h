@@ -37,6 +37,8 @@
 #include "aco_opcodes.h"
 #include "aco_util.h"
 
+#include "vulkan/radv_shader.h"
+
 struct radv_nir_compiler_options;
 struct radv_shader_args;
 struct radv_shader_info;
@@ -1579,6 +1581,13 @@ public:
 
    bool collect_statistics = false;
    uint32_t statistics[num_statistics];
+
+   struct {
+      void (*func)(void *private_data,
+                   enum radv_compiler_debug_level level,
+                   const char *message);
+      void *private_data;
+   } debug;
 
    uint32_t allocateId()
    {

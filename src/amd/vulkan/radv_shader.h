@@ -129,6 +129,11 @@ struct radv_shader_variant_key {
 	bool has_multiview_view_index;
 };
 
+enum radv_compiler_debug_level {
+	RADV_COMPILER_DEBUG_LEVEL_PERFWARN,
+	RADV_COMPILER_DEBUG_LEVEL_ERROR,
+};
+
 struct radv_nir_compiler_options {
 	struct radv_pipeline_layout *layout;
 	struct radv_shader_variant_key key;
@@ -147,6 +152,13 @@ struct radv_nir_compiler_options {
 	enum chip_class chip_class;
 	uint32_t tess_offchip_block_dw_size;
 	uint32_t address32_hi;
+
+	struct {
+		void (*func)(void *private_data,
+			     enum radv_compiler_debug_level level,
+			     const char *message);
+		void *private_data;
+	} debug;
 };
 
 enum radv_ud_index {

@@ -299,7 +299,7 @@ shared_var_info(const struct glsl_type *type, unsigned *size, unsigned *align)
 	*align = comp_size;
 }
 
-struct radv_spirv_debug_data {
+struct radv_shader_debug_data {
 	struct radv_device *device;
 	const struct radv_shader_module *module;
 };
@@ -309,7 +309,7 @@ static void radv_spirv_nir_debug(void *private_data,
 				 size_t spirv_offset,
 				 const char *message)
 {
-	struct radv_spirv_debug_data *debug_data = private_data;
+	struct radv_shader_debug_data *debug_data = private_data;
 	struct radv_instance *instance = debug_data->device->instance;
 
 	static const VkDebugReportFlagsEXT vk_flags[] = {
@@ -327,6 +327,28 @@ static void radv_spirv_nir_debug(void *private_data,
 			VK_DEBUG_REPORT_OBJECT_TYPE_SHADER_MODULE_EXT,
 			(uint64_t)(uintptr_t)debug_data->module,
 			0, 0, "radv", buffer);
+}
+
+static void radv_compiler_debug(void *private_data,
+				enum radv_compiler_debug_level level,
+				const char *message)
+{
+	struct radv_shader_debug_data *debug_data = private_data;
+	struct radv_instance *instance = debug_data->device->instance;
+
+	static const VkDebugReportFlagsEXT vk_flags[] = {
+		[RADV_COMPILER_DEBUG_LEVEL_PERFWARN] = VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT,
+		[RADV_COMPILER_DEBUG_LEVEL_ERROR] = VK_DEBUG_REPORT_ERROR_BIT_EXT,
+	};
+
+	/* VK_DEBUG_REPORT_DEBUG_BIT_EXT specifies diagnostic information
+	 * from the implementation and layers.
+	 */
+	vk_debug_report(&instance->debug_report_callbacks,
+			vk_flags[level] | VK_DEBUG_REPORT_DEBUG_BIT_EXT,
+			VK_DEBUG_REPORT_OBJECT_TYPE_SHADER_MODULE_EXT,
+			(uint64_t)(uintptr_t)debug_data->module,
+			0, 0, "radv", message);
 }
 
 nir_shader *
@@ -390,7 +412,7 @@ radv_shader_compile_to_nir(struct radv_device *device,
 			}
 		}
 
-		struct radv_spirv_debug_data spirv_debug_data = {
+		struct radv_shader_debug_data spirv_debug_data = {
 			.device = device,
 			.module = module,
 		};
@@ -1185,6 +1207,11 @@ shader_variant_compile(struct radv_device *device,
 	enum radeon_family chip_family = device->physical_device->rad_info.family;
 	struct radv_shader_binary *binary = NULL;
 
+	struct radv_shader_debug_data debug_data = {
+		.device = device,
+                .module = module,
+        };
+
 	options->family = chip_family;
 	options->chip_class = device->physical_device->rad_info.chip_class;
 	options->dump_shader = radv_can_dump_shader(device, module, gs_copy_shader);
@@ -1198,6 +1225,8 @@ shader_variant_compile(struct radv_device *device,
 	options->has_ls_vgpr_init_bug = device->physical_device->rad_info.has_ls_vgpr_init_bug;
 	options->use_ngg_streamout = device->physical_device->use_ngg_streamout;
 	options->enable_mrt_output_nan_fixup = device->instance->enable_mrt_output_nan_fixup;
+	options->debug.func = radv_compiler_debug;
+	options->debug.private_data = &debug_data;
 
 	struct radv_shader_args args = {};
 	args.options = options;
