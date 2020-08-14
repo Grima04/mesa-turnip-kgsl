@@ -139,32 +139,23 @@ bit_vertex(struct panfrost_device *dev, panfrost_program prog,
         struct panfrost_bo *var = bit_bo_create(dev, 4096);
         struct panfrost_bo *attr = bit_bo_create(dev, 4096);
 
-        struct mali_attr_meta vmeta = {
-                .index = 0,
-                .format = MALI_RGBA32UI
-        };
-
-        union mali_attr vary = {
-                .elements = (var->gpu + 1024) | MALI_ATTR_LINEAR,
-                .size = 1024
-        };
-
-        union mali_attr attr_ = {
-                .elements = (attr->gpu + 1024) | MALI_ATTR_LINEAR,
-                .size = 1024
-        };
-
-        pan_pack(ubo->cpu, UNIFORM_BUFFER, cfg) {
-                cfg.entries = 64;
-                cfg.pointer = ubo->gpu + 1024;
+        pan_pack(var->cpu, ATTRIBUTE, cfg) {
+                cfg.format = (MALI_RGBA32UI << 12);
+                cfg.unknown = true;
         }
 
-        memcpy(var->cpu, &vmeta, sizeof(vmeta));
+        pan_pack(attr->cpu, ATTRIBUTE, cfg)
+                cfg.format = (MALI_RGBA32UI << 12);
 
-        vmeta.unknown1 = 0x2; /* XXX: only attrib? */
-        memcpy(attr->cpu, &vmeta, sizeof(vmeta));
-        memcpy(var->cpu + 256, &vary, sizeof(vary));
-        memcpy(attr->cpu + 256, &attr_, sizeof(vary));
+        pan_pack(var->cpu + 256, ATTRIBUTE_BUFFER, cfg) {
+                cfg.pointer = (var->gpu + 1024);
+                cfg.size = 1024;
+        }
+
+        pan_pack(attr->cpu + 256, ATTRIBUTE_BUFFER, cfg) {
+                cfg.pointer = (attr->gpu + 1024);
+                cfg.size = 1024;
+        }
 
         if (sz_ubo)
                 memcpy(ubo->cpu + 1024, iubo, sz_ubo);
