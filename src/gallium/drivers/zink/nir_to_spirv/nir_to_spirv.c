@@ -60,9 +60,9 @@ struct ntv_context {
 
    struct hash_table *vars; /* nir_variable -> SpvId */
    struct hash_table *so_outputs; /* pipe_stream_output -> SpvId */
-   unsigned outputs[VARYING_SLOT_MAX];
-   const struct glsl_type *so_output_gl_types[VARYING_SLOT_MAX];
-   SpvId so_output_types[VARYING_SLOT_MAX];
+   unsigned outputs[VARYING_SLOT_MAX * 4];
+   const struct glsl_type *so_output_gl_types[VARYING_SLOT_MAX * 4];
+   SpvId so_output_types[VARYING_SLOT_MAX * 4];
 
    const SpvId *block_ids;
    size_t num_blocks;
@@ -451,9 +451,10 @@ emit_output(struct ntv_context *ctx, struct nir_variable *var)
       }
       /* tcs can't do xfb */
       if (ctx->stage != MESA_SHADER_TESS_CTRL) {
-         ctx->outputs[var->data.location] = var_id;
-         ctx->so_output_gl_types[var->data.location] = var->type;
-         ctx->so_output_types[var->data.location] = var_type;
+         unsigned idx = var->data.location << 2 | var->data.location_frac;
+         ctx->outputs[idx] = var_id;
+         ctx->so_output_gl_types[idx] = var->type;
+         ctx->so_output_types[idx] = var_type;
       }
    } else {
       if (var->data.location >= FRAG_RESULT_DATA0) {
@@ -964,7 +965,10 @@ emit_unop(struct ntv_context *ctx, SpvOp op, SpvId type, SpvId src)
 static SpvId
 get_output_type(struct ntv_context *ctx, unsigned register_index, unsigned num_components)
 {
-   const struct glsl_type *out_type = ctx->so_output_gl_types[register_index];
+   const struct glsl_type *out_type = NULL;
+   /* index is based on component, so we might have to go back a few slots to get to the base */
+   while (!out_type)
+      out_type = ctx->so_output_gl_types[register_index--];
    enum glsl_base_type base_type = glsl_get_base_type(out_type);
    if (base_type == GLSL_TYPE_ARRAY)
       base_type = glsl_get_base_type(glsl_without_array(out_type));
@@ -996,7 +1000,7 @@ emit_so_info(struct ntv_context *ctx, const struct zink_so_info *so_info)
 {
    for (unsigned i = 0; i < so_info->so_info.num_outputs; i++) {
       struct pipe_stream_output so_output = so_info->so_info.output[i];
-      unsigned slot = so_info->so_info_slots[i];
+      unsigned slot = so_info->so_info_slots[i] << 2 | so_output.start_component;
       SpvId out_type = get_output_type(ctx, slot, so_output.num_components);
       SpvId pointer_type = spirv_builder_type_pointer(&ctx->builder,
                                                       SpvStorageClassOutput,
@@ -1040,24 +1044,28 @@ static void
 emit_so_outputs(struct ntv_context *ctx,
                 const struct zink_so_info *so_info)
 {
-   SpvId loaded_outputs[VARYING_SLOT_MAX] = {};
    for (unsigned i = 0; i < so_info->so_info.num_outputs; i++) {
       uint32_t components[NIR_MAX_VEC_COMPONENTS];
       unsigned slot = so_info->so_info_slots[i];
       struct pipe_stream_output so_output = so_info->so_info.output[i];
       uint32_t so_key = (uint32_t) so_output.register_index << 2 | so_output.start_component;
+      uint32_t location = (uint32_t) slot << 2 | so_output.start_component;
       struct hash_entry *he = _mesa_hash_table_search(ctx->so_outputs, &so_key);
       assert(he);
       SpvId so_output_var_id = (SpvId)(intptr_t)he->data;
 
-      SpvId type = get_output_type(ctx, slot, so_output.num_components);
-      SpvId output = ctx->outputs[slot];
-      SpvId output_type = ctx->so_output_types[slot];
-      const struct glsl_type *out_type = ctx->so_output_gl_types[slot];
+      SpvId type = get_output_type(ctx, location, so_output.num_components);
+      SpvId output = 0;
+      /* index is based on component, so we might have to go back a few slots to get to the base */
+      UNUSED uint32_t orig_location = location;
+      while (!output)
+         output = ctx->outputs[location--];
+      location++;
+      assert(orig_location - location < 4);
+      SpvId output_type = ctx->so_output_types[location];
+      const struct glsl_type *out_type = ctx->so_output_gl_types[location];
 
-      if (!loaded_outputs[slot])
-         loaded_outputs[slot] = spirv_builder_emit_load(&ctx->builder, output_type, output);
-      SpvId src = loaded_outputs[slot];
+      SpvId src = spirv_builder_emit_load(&ctx->builder, output_type, output);
 
       SpvId result;
 
