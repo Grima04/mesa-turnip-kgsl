@@ -52,6 +52,24 @@
 #include "util/u_upload_mgr.h"
 
 static void
+destroy_batch(struct zink_context* ctx, struct zink_batch* batch)
+{
+   struct zink_screen *screen = zink_screen(ctx->base.screen);
+
+   zink_reset_batch(ctx, batch);
+   vkDestroyDescriptorPool(screen->dev, batch->descpool, NULL);
+   vkFreeCommandBuffers(screen->dev, batch->cmdpool, 1, &batch->cmdbuf);
+   vkDestroyCommandPool(screen->dev, batch->cmdpool, NULL);
+   zink_fence_reference(screen, &batch->fence, NULL);
+   _mesa_set_destroy(batch->resources, NULL);
+   _mesa_set_destroy(batch->sampler_views, NULL);
+   util_dynarray_fini(&batch->zombie_samplers);
+   _mesa_set_destroy(batch->surfaces, NULL);
+   _mesa_set_destroy(batch->programs, NULL);
+   _mesa_set_destroy(batch->active_queries, NULL);
+}
+
+static void
 zink_context_destroy(struct pipe_context *pctx)
 {
    struct zink_context *ctx = zink_context(pctx);
@@ -67,28 +85,10 @@ zink_context_destroy(struct pipe_context *pctx)
    for (unsigned i = 0; i < ARRAY_SIZE(ctx->null_buffers); i++)
       pipe_resource_reference(&ctx->null_buffers[i], NULL);
 
-   for (int i = 0; i < ARRAY_SIZE(ctx->batches); ++i) {
-      zink_reset_batch(ctx, &ctx->batches[i]);
-      util_dynarray_fini(&ctx->batches[i].zombie_samplers);
-      vkDestroyDescriptorPool(screen->dev, ctx->batches[i].descpool, NULL);
-
-      _mesa_set_destroy(ctx->batches[i].resources, NULL);
-      _mesa_set_destroy(ctx->batches[i].sampler_views, NULL);
-      _mesa_set_destroy(ctx->batches[i].programs, NULL);
-      vkFreeCommandBuffers(screen->dev, ctx->batches[i].cmdpool, 1, &ctx->batches[i].cmdbuf);
-      vkDestroyCommandPool(screen->dev, ctx->batches[i].cmdpool, NULL);
-   }
-   if (ctx->compute_batch.cmdpool) {
-      zink_reset_batch(ctx, &ctx->compute_batch);
-      util_dynarray_fini(&ctx->compute_batch.zombie_samplers);
-      vkDestroyDescriptorPool(screen->dev, ctx->compute_batch.descpool, NULL);
-      vkFreeCommandBuffers(screen->dev, ctx->compute_batch.cmdpool, 1, &ctx->compute_batch.cmdbuf);
-
-      _mesa_set_destroy(ctx->compute_batch.resources, NULL);
-      _mesa_set_destroy(ctx->compute_batch.sampler_views, NULL);
-      _mesa_set_destroy(ctx->compute_batch.programs, NULL);
-      vkDestroyCommandPool(screen->dev, ctx->compute_batch.cmdpool, NULL);
-   }
+   for (int i = 0; i < ARRAY_SIZE(ctx->batches); ++i)
+      destroy_batch(ctx, &ctx->batches[i]);
+   if (ctx->compute_batch.cmdpool)
+      destroy_batch(ctx, &ctx->compute_batch);
 
    hash_table_foreach(ctx->render_pass_cache, he)
       zink_destroy_render_pass(screen, he->data);
