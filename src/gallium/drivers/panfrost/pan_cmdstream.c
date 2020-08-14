@@ -1439,25 +1439,13 @@ panfrost_emit_vertex_data(struct panfrost_batch *batch,
         panfrost_instance_id(ctx->padded_count, &attrs[k]);
         so->hw[PAN_INSTANCE_ID].index = k++;
 
-        /* Fixup offsets for the second pass. Recall that the hardware
-         * calculates attribute addresses as:
-         *
-         *      addr = base + (stride * vtx) + src_offset;
-         *
-         * However, on Mali, base must be aligned to 64-bytes, so we
-         * instead let:
+        /* Attribute addresses require 64-byte alignment, so let:
          *
          *      base' = base & ~63 = base - (base & 63)
+         *      offset' = offset + (base & 63)
          *
-         * To compensate when using base' (see emit_vertex_data), we have
-         * to adjust src_offset by the masked off piece:
-         *
-         *      addr' = base' + (stride * vtx) + (src_offset + (base & 63))
-         *            = base - (base & 63) + (stride * vtx) + src_offset + (base & 63)
-         *            = base + (stride * vtx) + src_offset
-         *            = addr;
-         *
-         * QED.
+         * Since base' + offset' = base + offset, these are equivalent
+         * addressing modes and now base is 64 aligned.
          */
 
         unsigned start = vertex_postfix->offset_start;
