@@ -1709,7 +1709,7 @@ int disasm_a3xx(uint32_t *dwords, int sizedwords, int level, FILE *out, unsigned
 int try_disasm_a3xx(uint32_t *dwords, int sizedwords, int level, FILE *out, unsigned gpu_id)
 {
 	struct shader_stats stats;
-	int ret;
+	int ret = -1;
 	TRY(ret = disasm_a3xx_stat(dwords, sizedwords, level, out, gpu_id, &stats));
 	return ret;
 }
