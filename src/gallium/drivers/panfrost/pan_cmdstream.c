@@ -1460,14 +1460,14 @@ panfrost_emit_vertex_data(struct panfrost_batch *batch,
 
         /* Add special gl_VertexID/gl_InstanceID buffers */
 
-        panfrost_vertex_id(ctx->padded_count, (union mali_attr *) &bufs[k]);
+        panfrost_vertex_id(ctx->padded_count, &bufs[k], ctx->instance_count > 1);
 
         pan_pack(out + PAN_VERTEX_ID, ATTRIBUTE, cfg) {
                 cfg.buffer_index = k++;
                 cfg.format = so->formats[PAN_VERTEX_ID];
         }
 
-        panfrost_instance_id(ctx->padded_count, (union mali_attr *) &bufs[k]);
+        panfrost_instance_id(ctx->padded_count, &bufs[k], ctx->instance_count > 1);
 
         pan_pack(out + PAN_INSTANCE_ID, ATTRIBUTE, cfg) {
                 cfg.buffer_index = k++;
