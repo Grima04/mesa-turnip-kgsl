@@ -303,9 +303,6 @@ panfrost_get_shader_state(struct panfrost_context *ctx,
 struct pipe_context *
 panfrost_create_context(struct pipe_screen *screen, void *priv, unsigned flags);
 
-void
-panfrost_invalidate_frame(struct panfrost_context *ctx);
-
 bool
 panfrost_writes_point_size(struct panfrost_context *ctx);
 

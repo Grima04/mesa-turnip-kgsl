@@ -121,22 +121,15 @@ panfrost_freeze_batch(struct panfrost_batch *batch)
         struct hash_entry *entry;
 
         /* Remove the entry in the FBO -> batch hash table if the batch
-         * matches. This way, next draws/clears targeting this FBO will trigger
-         * the creation of a new batch.
+         * matches and drop the context reference. This way, next draws/clears
+         * targeting this FBO will trigger the creation of a new batch.
          */
         entry = _mesa_hash_table_search(ctx->batches, &batch->key);
         if (entry && entry->data == batch)
                 _mesa_hash_table_remove(ctx->batches, entry);
 
-        /* If this is the bound batch, the panfrost_context parameters are
-         * relevant so submitting it invalidates those parameters, but if it's
-         * not bound, the context parameters are for some other batch so we
-         * can't invalidate them.
-         */
-        if (ctx->batch == batch) {
-                panfrost_invalidate_frame(ctx);
+        if (ctx->batch == batch)
                 ctx->batch = NULL;
-        }
 }
 
 #ifdef PAN_BATCH_DEBUG

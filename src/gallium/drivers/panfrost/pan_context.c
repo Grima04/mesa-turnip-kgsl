@@ -144,16 +144,6 @@ panfrost_clear(
         panfrost_batch_clear(batch, buffers, color, depth, stencil);
 }
 
-/* Reset per-frame context, called on context initialisation as well as after
- * flushing a frame */
-
-void
-panfrost_invalidate_frame(struct panfrost_context *ctx)
-{
-        /* TODO: When does this need to be handled? */
-        ctx->active_queries = true;
-}
-
 bool
 panfrost_writes_point_size(struct panfrost_context *ctx)
 {
@@ -1041,7 +1031,6 @@ panfrost_set_framebuffer_state(struct pipe_context *pctx,
 
         util_copy_framebuffer_state(&ctx->pipe_framebuffer, fb);
         ctx->batch = NULL;
-        panfrost_invalidate_frame(ctx);
 
         /* We may need to generate a new variant if the fragment shader is
          * keyed to the framebuffer format (due to EXT_framebuffer_fetch) */
@@ -1491,7 +1480,6 @@ panfrost_create_context(struct pipe_screen *screen, void *priv, unsigned flags)
         /* Prepare for render! */
 
         panfrost_batch_init(ctx);
-        panfrost_invalidate_frame(ctx);
 
         if (!(dev->quirks & IS_BIFROST)) {
                 for (unsigned c = 0; c < PIPE_MAX_COLOR_BUFS; ++c)
@@ -1500,6 +1488,7 @@ panfrost_create_context(struct pipe_screen *screen, void *priv, unsigned flags)
 
         /* By default mask everything on */
         ctx->sample_mask = ~0;
+        ctx->active_queries = true;
 
         return gallium;
 }
