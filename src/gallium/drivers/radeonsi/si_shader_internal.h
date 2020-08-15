@@ -49,7 +49,6 @@ struct si_shader_context {
    struct si_shader *shader;
    struct si_screen *screen;
 
-   unsigned type; /* PIPE_SHADER_* specifies the type of shader. */
    gl_shader_stage stage;
 
    /* For clamping the non-constant index in resource indexing: */

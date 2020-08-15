@@ -477,7 +477,6 @@ struct si_shader *si_generate_gs_copy_shader(struct si_screen *sscreen,
                         si_get_wave_size(sscreen, MESA_SHADER_VERTEX,
                                          false, false, false, false));
    ctx.shader = shader;
-   ctx.type = PIPE_SHADER_VERTEX;
    ctx.stage = MESA_SHADER_VERTEX;
 
    builder = ctx.ac.builder;
@@ -564,7 +563,6 @@ struct si_shader *si_generate_gs_copy_shader(struct si_screen *sscreen,
 
    LLVMBuildRetVoid(ctx.ac.builder);
 
-   ctx.type = PIPE_SHADER_GEOMETRY; /* override for shader dumping */
    ctx.stage = MESA_SHADER_GEOMETRY; /* override for shader dumping */
    si_llvm_optimize_module(&ctx);
 

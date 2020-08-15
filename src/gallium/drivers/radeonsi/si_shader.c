@@ -1333,7 +1333,6 @@ static bool si_build_main_function(struct si_shader_context *ctx, struct si_shad
    const struct si_shader_info *info = &sel->info;
 
    ctx->shader = shader;
-   ctx->type = sel->type;
    ctx->stage = sel->info.stage;
 
    ctx->num_const_buffers = util_last_bit(info->const_buffers_declared);
@@ -1725,7 +1724,6 @@ static bool si_llvm_compile_shader(struct si_screen *sscreen, struct ac_llvm_com
 
          /* Reset the shader context. */
          ctx.shader = shader;
-         ctx.type = PIPE_SHADER_TESS_CTRL;
          ctx.stage = MESA_SHADER_TESS_CTRL;
 
          si_build_wrapper_function(&ctx, parts + !vs_needs_prolog, 4 - !vs_needs_prolog,
@@ -1790,7 +1788,6 @@ static bool si_llvm_compile_shader(struct si_screen *sscreen, struct ac_llvm_com
 
          /* Reset the shader context. */
          ctx.shader = shader;
-         ctx.type = PIPE_SHADER_GEOMETRY;
          ctx.stage = MESA_SHADER_GEOMETRY;
 
          /* Prepare the array of shader parts. */
@@ -1998,7 +1995,6 @@ si_get_shader_part(struct si_screen *sscreen, struct si_shader_part **list,
                                          shader.key.opt.ngg_culling & SI_NGG_CULL_GS_FAST_LAUNCH_ALL,
                                          shader.key.opt.vs_as_prim_discard_cs));
    ctx.shader = &shader;
-   ctx.type = tgsi_processor_to_shader_stage(stage);
    ctx.stage = stage;
 
    build(&ctx, key);
