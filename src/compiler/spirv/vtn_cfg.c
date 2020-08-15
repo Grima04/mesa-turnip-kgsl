@@ -24,6 +24,7 @@
 #include "vtn_private.h"
 #include "spirv_info.h"
 #include "nir/nir_vla.h"
+#include "util/debug.h"
 
 static struct vtn_block *
 vtn_block(struct vtn_builder *b, uint32_t value_id)
