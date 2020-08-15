@@ -777,6 +777,7 @@ v3dv_GetPhysicalDeviceProperties(VkPhysicalDevice physicalDevice,
 
    const uint32_t v3d_coord_shift = 6;
 
+   const uint32_t v3d_point_line_granularity = 2.0f / (1 << v3d_coord_shift);
    const uint32_t max_fb_size = 4096;
 
    const VkSampleCountFlags supported_sample_counts =
@@ -897,10 +898,11 @@ v3dv_GetPhysicalDeviceProperties(VkPhysicalDevice physicalDevice,
       .maxCullDistances                         = 0,
       .maxCombinedClipAndCullDistances          = 8,
       .discreteQueuePriorities                  = 2,
-      .pointSizeRange                           = { 1.0f, 1.0f },
-      .lineWidthRange                           = { 1.0f, 32.0f },
-      .pointSizeGranularity                     = 0.0f,
-      .lineWidthGranularity                     = 2.0f / (1 << v3d_coord_shift),
+      .pointSizeRange                           = { v3d_point_line_granularity,
+                                                    V3D_MAX_POINT_SIZE },
+      .lineWidthRange                           = { 1.0f, V3D_MAX_LINE_WIDTH },
+      .pointSizeGranularity                     = v3d_point_line_granularity,
+      .lineWidthGranularity                     = v3d_point_line_granularity,
       .strictLines                              = true,
       .standardSampleLocations                  = false,
       .optimalBufferCopyOffsetAlignment         = 32,
