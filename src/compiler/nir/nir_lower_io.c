@@ -803,6 +803,50 @@ build_addr_iadd_imm(nir_builder *b, nir_ssa_def *addr,
 }
 
 static nir_ssa_def *
+build_addr_for_var(nir_builder *b, nir_variable *var,
+                   nir_address_format addr_format)
+{
+   assert(var->data.mode & (nir_var_uniform | nir_var_mem_shared |
+                            nir_var_shader_temp | nir_var_function_temp));
+
+   const unsigned num_comps = nir_address_format_num_components(addr_format);
+   const unsigned bit_size = nir_address_format_bit_size(addr_format);
+
+   switch (addr_format) {
+   case nir_address_format_32bit_global:
+   case nir_address_format_64bit_global: {
+      nir_ssa_def *base_addr;
+      switch (var->data.mode) {
+      case nir_var_shader_temp:
+         base_addr = nir_load_scratch_base_ptr(b, 0, num_comps, bit_size);
+         break;
+
+      case nir_var_function_temp:
+         base_addr = nir_load_scratch_base_ptr(b, 1, num_comps, bit_size);
+         break;
+
+      default:
+         unreachable("Unsupported variable mode");
+      }
+
+      return build_addr_iadd_imm(b, base_addr, addr_format,
+                                    var->data.driver_location);
+   }
+
+   case nir_address_format_32bit_offset:
+      assert(var->data.driver_location <= UINT32_MAX);
+      return nir_imm_int(b, var->data.driver_location);
+
+   case nir_address_format_32bit_offset_as_64bit:
+      assert(var->data.driver_location <= UINT32_MAX);
+      return nir_imm_int64(b, var->data.driver_location);
+
+   default:
+      unreachable("Unsupported address format");
+   }
+}
+
+static nir_ssa_def *
 addr_to_index(nir_builder *b, nir_ssa_def *addr,
               nir_address_format addr_format)
 {
@@ -1185,25 +1229,7 @@ nir_explicit_io_address_from_deref(nir_builder *b, nir_deref_instr *deref,
    assert(deref->dest.is_ssa);
    switch (deref->deref_type) {
    case nir_deref_type_var:
-      assert(deref->var->data.mode & (nir_var_uniform |
-                                      nir_var_mem_shared |
-                                      nir_var_shader_temp |
-                                      nir_var_function_temp));
-      if (addr_format_is_global(addr_format)) {
-         assert(deref->var->data.mode == nir_var_shader_temp ||
-                deref->var->data.mode == nir_var_function_temp);
-         bool is_function = deref->var->data.mode == nir_var_function_temp;
-         base_addr =
-            nir_load_scratch_base_ptr(b, is_function,
-                                      nir_address_format_num_components(addr_format),
-                                      nir_address_format_bit_size(addr_format));
-         return build_addr_iadd_imm(b, base_addr, addr_format,
-                                       deref->var->data.driver_location);
-      } else {
-         assert(deref->var->data.driver_location <= UINT32_MAX);
-         return nir_imm_intN_t(b, deref->var->data.driver_location,
-                               deref->dest.ssa.bit_size);
-      }
+      return build_addr_for_var(b, deref->var, addr_format);
 
    case nir_deref_type_array: {
       nir_deref_instr *parent = nir_deref_instr_parent(deref);
