@@ -277,7 +277,7 @@ lower_ssbo_ubo_intrinsic(nir_builder *b, nir_intrinsic_instr *intrin)
 
    for (unsigned i = 0; i < MAX_SETS + 1; i++) {
       /* if (base_idx == i) { ... */
-      nir_if *nif = nir_push_if(b, nir_ieq(b, base_idx, nir_imm_int(b, i)));
+      nir_if *nif = nir_push_if(b, nir_ieq_imm(b, base_idx, i));
 
       nir_intrinsic_instr *bindless =
          nir_intrinsic_instr_create(b->shader,

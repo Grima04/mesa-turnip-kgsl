@@ -637,7 +637,7 @@ lower_load_vulkan_descriptor(nir_intrinsic_instr *intrin,
          nir_builder_instr_insert(b, &dyn_load->instr);
 
          nir_ssa_def *dynamic_offset =
-            nir_bcsel(b, nir_ieq(b, dyn_offset_base, nir_imm_int(b, 0xff)),
+            nir_bcsel(b, nir_ieq_imm(b, dyn_offset_base, 0xff),
                          nir_imm_int(b, 0), &dyn_load->dest.ssa);
 
          switch (state->ssbo_addr_format) {

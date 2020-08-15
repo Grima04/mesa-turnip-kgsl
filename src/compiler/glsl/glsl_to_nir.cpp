@@ -2302,7 +2302,7 @@ nir_visitor::visit(ir_expression *ir)
       result = nir_channel(&b, srcs[0], 0);
       for (unsigned i = 1; i < ir->operands[0]->type->vector_elements; i++) {
          nir_ssa_def *swizzled = nir_channel(&b, srcs[0], i);
-         result = nir_bcsel(&b, nir_ieq(&b, srcs[1], nir_imm_int(&b, i)),
+         result = nir_bcsel(&b, nir_ieq_imm(&b, srcs[1], i),
                             swizzled, result);
       }
       break;

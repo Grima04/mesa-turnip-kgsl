@@ -704,7 +704,7 @@ ir3_nir_lower_tess_ctrl(nir_shader *shader, struct ir3_shader_variant *v,
 	b.cursor = nir_after_cf_list(&nif->then_list);
 
 	/* Insert conditional exit for threads invocation id != 0 */
-	nir_ssa_def *iid0_cond = nir_ieq(&b, iid, nir_imm_int(&b, 0));
+	nir_ssa_def *iid0_cond = nir_ieq_imm(&b, iid, 0);
 	nir_intrinsic_instr *cond_end =
 		nir_intrinsic_instr_create(shader, nir_intrinsic_cond_end_ir3);
 	cond_end->src[0] = nir_src_for_ssa(iid0_cond);
@@ -974,7 +974,7 @@ ir3_nir_lower_gs(nir_shader *shader)
 		nir_intrinsic_instr *discard_if =
 			nir_intrinsic_instr_create(b.shader, nir_intrinsic_discard_if);
 
-		nir_ssa_def *cond = nir_ieq(&b, nir_load_var(&b, state.emitted_vertex_var), nir_imm_int(&b, 0));
+		nir_ssa_def *cond = nir_ieq_imm(&b, nir_load_var(&b, state.emitted_vertex_var), 0);
 
 		discard_if->src[0] = nir_src_for_ssa(cond);
 

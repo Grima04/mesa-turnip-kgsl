@@ -244,7 +244,7 @@ nir_select(nir_builder *b, nir_ssa_def *x, nir_ssa_def *y, nir_ssa_def *s)
       uint64_t mask = 1ull << (s->bit_size - 1);
       s = nir_iand(b, s, nir_imm_intN_t(b, mask, s->bit_size));
    }
-   return nir_bcsel(b, nir_ieq(b, s, nir_imm_intN_t(b, 0, s->bit_size)), x, y);
+   return nir_bcsel(b, nir_ieq_imm(b, s, 0), x, y);
 }
 
 static inline nir_ssa_def *
