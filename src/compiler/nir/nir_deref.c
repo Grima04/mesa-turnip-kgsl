@@ -1116,22 +1116,28 @@ nir_opt_deref_impl(nir_function_impl *impl)
 
    nir_foreach_block(block, impl) {
       nir_foreach_instr_safe(instr, block) {
-         if (instr->type != nir_instr_type_deref)
-            continue;
-
          b.cursor = nir_before_instr(instr);
 
-         nir_deref_instr *deref = nir_instr_as_deref(instr);
-         switch (deref->deref_type) {
-         case nir_deref_type_ptr_as_array:
-            if (opt_deref_ptr_as_array(&b, deref))
-               progress = true;
-            break;
+         switch (instr->type) {
+         case nir_instr_type_deref: {
+            nir_deref_instr *deref = nir_instr_as_deref(instr);
+            switch (deref->deref_type) {
+            case nir_deref_type_ptr_as_array:
+               if (opt_deref_ptr_as_array(&b, deref))
+                  progress = true;
+               break;
 
-         case nir_deref_type_cast:
-            if (opt_deref_cast(&b, deref))
-               progress = true;
+            case nir_deref_type_cast:
+               if (opt_deref_cast(&b, deref))
+                  progress = true;
+               break;
+
+            default:
+               /* Do nothing */
+               break;
+            }
             break;
+         }
 
          default:
             /* Do nothing */
