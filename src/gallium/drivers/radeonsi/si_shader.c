@@ -360,7 +360,7 @@ static void declare_tes_input_vgprs(struct si_shader_context *ctx, bool ngg_cull
 enum
 {
    /* Convenient merged shader definitions. */
-   SI_SHADER_MERGED_VERTEX_TESSCTRL = PIPE_SHADER_TYPES,
+   SI_SHADER_MERGED_VERTEX_TESSCTRL = MESA_ALL_SHADER_STAGES,
    SI_SHADER_MERGED_VERTEX_OR_TESSEVAL_GEOMETRY,
 };
 
@@ -1936,7 +1936,7 @@ bool si_compile_shader(struct si_screen *sscreen, struct ac_llvm_compiler *compi
  */
 static struct si_shader_part *
 si_get_shader_part(struct si_screen *sscreen, struct si_shader_part **list,
-                   enum pipe_shader_type type, bool prolog, union si_shader_part_key *key,
+                   gl_shader_stage stage, bool prolog, union si_shader_part_key *key,
                    struct ac_llvm_compiler *compiler, struct pipe_debug_callback *debug,
                    void (*build)(struct si_shader_context *, union si_shader_part_key *),
                    const char *name)
@@ -1963,8 +1963,8 @@ si_get_shader_part(struct si_screen *sscreen, struct si_shader_part **list,
    struct si_shader shader = {};
    shader.selector = &sel;
 
-   switch (type) {
-   case PIPE_SHADER_VERTEX:
+   switch (stage) {
+   case MESA_SHADER_VERTEX:
       shader.key.as_ls = key->vs_prolog.as_ls;
       shader.key.as_es = key->vs_prolog.as_es;
       shader.key.as_ngg = key->vs_prolog.as_ngg;
@@ -1973,15 +1973,15 @@ si_get_shader_part(struct si_screen *sscreen, struct si_shader_part **list,
          (key->vs_prolog.gs_fast_launch_tri_strip ? SI_NGG_CULL_GS_FAST_LAUNCH_TRI_STRIP : 0);
       shader.key.opt.vs_as_prim_discard_cs = key->vs_prolog.as_prim_discard_cs;
       break;
-   case PIPE_SHADER_TESS_CTRL:
+   case MESA_SHADER_TESS_CTRL:
       assert(!prolog);
       shader.key.part.tcs.epilog = key->tcs_epilog.states;
       break;
-   case PIPE_SHADER_GEOMETRY:
+   case MESA_SHADER_GEOMETRY:
       assert(prolog);
       shader.key.as_ngg = key->gs_prolog.as_ngg;
       break;
-   case PIPE_SHADER_FRAGMENT:
+   case MESA_SHADER_FRAGMENT:
       if (prolog)
          shader.key.part.ps.prolog = key->ps_prolog.states;
       else
@@ -1993,13 +1993,13 @@ si_get_shader_part(struct si_screen *sscreen, struct si_shader_part **list,
 
    struct si_shader_context ctx;
    si_llvm_context_init(&ctx, sscreen, compiler,
-                        si_get_wave_size(sscreen, tgsi_processor_to_shader_stage(type),
+                        si_get_wave_size(sscreen, stage,
                                          shader.key.as_ngg, shader.key.as_es,
                                          shader.key.opt.ngg_culling & SI_NGG_CULL_GS_FAST_LAUNCH_ALL,
                                          shader.key.opt.vs_as_prim_discard_cs));
    ctx.shader = &shader;
-   ctx.type = type;
-   ctx.stage = tgsi_processor_to_shader_stage(type);
+   ctx.type = tgsi_processor_to_shader_stage(stage);
+   ctx.stage = stage;
 
    build(&ctx, key);
 
@@ -2037,7 +2037,7 @@ static bool si_get_vs_prolog(struct si_screen *sscreen, struct ac_llvm_compiler 
                         &prolog_key);
 
    shader->prolog =
-      si_get_shader_part(sscreen, &sscreen->vs_prologs, PIPE_SHADER_VERTEX, true, &prolog_key,
+      si_get_shader_part(sscreen, &sscreen->vs_prologs, MESA_SHADER_VERTEX, true, &prolog_key,
                          compiler, debug, si_llvm_build_vs_prolog, "Vertex Shader Prolog");
    return shader->prolog != NULL;
 }
@@ -2072,7 +2072,7 @@ static bool si_shader_select_tcs_parts(struct si_screen *sscreen, struct ac_llvm
    memset(&epilog_key, 0, sizeof(epilog_key));
    epilog_key.tcs_epilog.states = shader->key.part.tcs.epilog;
 
-   shader->epilog = si_get_shader_part(sscreen, &sscreen->tcs_epilogs, PIPE_SHADER_TESS_CTRL, false,
+   shader->epilog = si_get_shader_part(sscreen, &sscreen->tcs_epilogs, MESA_SHADER_TESS_CTRL, false,
                                        &epilog_key, compiler, debug, si_llvm_build_tcs_epilog,
                                        "Tessellation Control Shader Epilog");
    return shader->epilog != NULL;
@@ -2109,7 +2109,7 @@ static bool si_shader_select_gs_parts(struct si_screen *sscreen, struct ac_llvm_
    prolog_key.gs_prolog.as_ngg = shader->key.as_ngg;
 
    shader->prolog2 =
-      si_get_shader_part(sscreen, &sscreen->gs_prologs, PIPE_SHADER_GEOMETRY, true, &prolog_key,
+      si_get_shader_part(sscreen, &sscreen->gs_prologs, MESA_SHADER_GEOMETRY, true, &prolog_key,
                          compiler, debug, si_llvm_build_gs_prolog, "Geometry Shader Prolog");
    return shader->prolog2 != NULL;
 }
@@ -2280,7 +2280,7 @@ static bool si_shader_select_ps_parts(struct si_screen *sscreen, struct ac_llvm_
    /* The prolog is a no-op if these aren't set. */
    if (si_need_ps_prolog(&prolog_key)) {
       shader->prolog =
-         si_get_shader_part(sscreen, &sscreen->ps_prologs, PIPE_SHADER_FRAGMENT, true, &prolog_key,
+         si_get_shader_part(sscreen, &sscreen->ps_prologs, MESA_SHADER_FRAGMENT, true, &prolog_key,
                             compiler, debug, si_llvm_build_ps_prolog, "Fragment Shader Prolog");
       if (!shader->prolog)
          return false;
@@ -2290,7 +2290,7 @@ static bool si_shader_select_ps_parts(struct si_screen *sscreen, struct ac_llvm_
    si_get_ps_epilog_key(shader, &epilog_key);
 
    shader->epilog =
-      si_get_shader_part(sscreen, &sscreen->ps_epilogs, PIPE_SHADER_FRAGMENT, false, &epilog_key,
+      si_get_shader_part(sscreen, &sscreen->ps_epilogs, MESA_SHADER_FRAGMENT, false, &epilog_key,
                          compiler, debug, si_llvm_build_ps_epilog, "Fragment Shader Epilog");
    if (!shader->epilog)
       return false;
