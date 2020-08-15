@@ -963,10 +963,10 @@ nir_ssa_for_alu_src(nir_builder *build, nir_alu_instr *instr, unsigned srcn)
 }
 
 static inline unsigned
-nir_get_ptr_bitsize(nir_builder *build)
+nir_get_ptr_bitsize(nir_shader *shader)
 {
-   if (build->shader->info.stage == MESA_SHADER_KERNEL)
-      return build->shader->info.cs.ptr_size;
+   if (shader->info.stage == MESA_SHADER_KERNEL)
+      return shader->info.cs.ptr_size;
    return 32;
 }
 
@@ -981,7 +981,7 @@ nir_build_deref_var(nir_builder *build, nir_variable *var)
    deref->var = var;
 
    nir_ssa_dest_init(&deref->instr, &deref->dest, 1,
-                     nir_get_ptr_bitsize(build), NULL);
+                     nir_get_ptr_bitsize(build->shader), NULL);
 
    nir_builder_instr_insert(build, &deref->instr);
 
