@@ -518,7 +518,6 @@ static void si_nir_store_output_tcs(struct ac_shader_abi *abi, const struct nir_
    LLVMValueRef dw_addr, stride;
    LLVMValueRef buffer, base, addr;
    LLVMValueRef values[8];
-   bool skip_lds_store;
    bool is_tess_factor = false, is_tess_inner = false;
 
    driver_location = driver_location / 4;
@@ -541,23 +540,16 @@ static void si_nir_store_output_tcs(struct ac_shader_abi *abi, const struct nir_
       dw_addr = get_tcs_out_current_patch_offset(ctx);
       dw_addr = get_dw_address_from_generic_indices(ctx, stride, dw_addr, vertex_index, param_index,
                                                     name, index);
-
-      skip_lds_store = !info->reads_pervertex_outputs;
    } else {
       dw_addr = get_tcs_out_current_patch_data_offset(ctx);
       dw_addr = get_dw_address_from_generic_indices(ctx, NULL, dw_addr, vertex_index, param_index,
                                                     name, index);
-
-      skip_lds_store = !info->reads_perpatch_outputs;
 
       if (is_const && const_index == 0) {
          int name = info->output_semantic_name[driver_location];
 
          /* Always write tess factors into LDS for the TCS epilog. */
          if (name == TGSI_SEMANTIC_TESSINNER || name == TGSI_SEMANTIC_TESSOUTER) {
-            /* The epilog doesn't read LDS if invocation 0 defines tess factors. */
-            skip_lds_store = !info->reads_tessfactor_outputs &&
-                             ctx->shader->selector->info.tessfactors_are_def_in_all_invocs;
             is_tess_factor = true;
             is_tess_inner = name == TGSI_SEMANTIC_TESSINNER;
          }
@@ -585,7 +577,10 @@ static void si_nir_store_output_tcs(struct ac_shader_abi *abi, const struct nir_
       }
 
       /* Skip LDS stores if there is no LDS read of this output. */
-      if (!skip_lds_store)
+      if (info->output_readmask[driver_location + chan / 4] & (1 << (chan % 4)) ||
+          /* The epilog reads LDS if invocation 0 doesn't define tess factors. */
+          (is_tess_factor &&
+           !ctx->shader->selector->info.tessfactors_are_def_in_all_invocs))
          lshs_lds_store(ctx, chan, dw_addr, value);
 
       value = ac_to_integer(&ctx->ac, value);

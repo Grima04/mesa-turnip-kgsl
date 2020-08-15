@@ -328,6 +328,7 @@ struct si_shader_info {
    ubyte output_semantic_name[PIPE_MAX_SHADER_OUTPUTS]; /**< TGSI_SEMANTIC_x */
    ubyte output_semantic_index[PIPE_MAX_SHADER_OUTPUTS];
    ubyte output_usagemask[PIPE_MAX_SHADER_OUTPUTS];
+   ubyte output_readmask[PIPE_MAX_SHADER_OUTPUTS];
    ubyte output_streams[PIPE_MAX_SHADER_OUTPUTS];
 
    ubyte color_interpolate[2];
@@ -341,13 +342,6 @@ struct si_shader_info {
    ubyte num_stream_output_components[4];
 
    uint num_memory_instructions; /**< sampler, buffer, and image instructions */
-
-   /**
-    * If a tessellation control shader reads outputs, this describes which ones.
-    */
-   bool reads_pervertex_outputs;
-   bool reads_perpatch_outputs;
-   bool reads_tessfactor_outputs;
 
    ubyte colors_read; /**< which color components are read by the FS */
    ubyte colors_written;

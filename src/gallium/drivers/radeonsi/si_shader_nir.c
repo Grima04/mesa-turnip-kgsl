@@ -64,16 +64,18 @@ static void scan_io_usage(struct si_shader_info *info, nir_intrinsic_instr *intr
    }
 
    unsigned mask, bit_size;
-   bool dual_slot;
+   bool dual_slot, is_output_load;
 
    if (nir_intrinsic_infos[intr->intrinsic].index_map[NIR_INTRINSIC_WRMASK] > 0) {
       mask = nir_intrinsic_write_mask(intr); /* store */
       bit_size = nir_src_bit_size(intr->src[0]);
       dual_slot = bit_size == 64 && nir_src_num_components(intr->src[0]) >= 3;
+      is_output_load = false;
    } else {
       mask = nir_ssa_def_components_read(&intr->dest.ssa); /* load */
       bit_size = intr->dest.ssa.bit_size;
       dual_slot = bit_size == 64 && intr->dest.ssa.num_components >= 3;
+      is_output_load = !is_input;
    }
 
    /* Convert the 64-bit component mask to a 32-bit component mask. */
@@ -152,7 +154,15 @@ static void scan_io_usage(struct si_shader_info *info, nir_intrinsic_instr *intr
          info->output_semantic_name[loc] = name;
          info->output_semantic_index[loc] = index + i;
 
-         if (slot_mask) {
+         if (is_output_load) {
+            /* Output loads have only a few things that we need to track. */
+            info->output_readmask[loc] |= slot_mask;
+
+            if (info->processor == PIPE_SHADER_FRAGMENT &&
+                nir_intrinsic_io_semantics(intr).fb_fetch_output)
+               info->uses_fbfetch = true;
+         } else if (slot_mask) {
+            /* Output stores. */
             if (info->processor == PIPE_SHADER_GEOMETRY) {
                unsigned gs_streams = (uint32_t)nir_intrinsic_io_semantics(intr).gs_streams <<
                                      (nir_intrinsic_component(intr) * 2);
@@ -418,27 +428,11 @@ static void scan_instruction(const struct nir_shader *nir, struct si_shader_info
       case nir_intrinsic_load_interpolated_input:
          scan_io_usage(info, intr, true);
          break;
+      case nir_intrinsic_load_output:
+      case nir_intrinsic_load_per_vertex_output:
       case nir_intrinsic_store_output:
       case nir_intrinsic_store_per_vertex_output:
          scan_io_usage(info, intr, false);
-         break;
-      case nir_intrinsic_load_output: {
-         unsigned location = nir_intrinsic_io_semantics(intr).location;
-
-         if (nir->info.stage == MESA_SHADER_TESS_CTRL) {
-            if (location == VARYING_SLOT_TESS_LEVEL_INNER ||
-                location == VARYING_SLOT_TESS_LEVEL_OUTER)
-               info->reads_tessfactor_outputs = true;
-            else
-               info->reads_perpatch_outputs = true;
-         } else if (nir->info.stage == MESA_SHADER_FRAGMENT) {
-            if (nir_intrinsic_io_semantics(intr).fb_fetch_output)
-               info->uses_fbfetch = true;
-         }
-         break;
-      }
-      case nir_intrinsic_load_per_vertex_output:
-         info->reads_pervertex_outputs = true;
          break;
       case nir_intrinsic_load_deref:
       case nir_intrinsic_store_deref:
@@ -576,6 +570,10 @@ void si_nir_scan_shader(const struct nir_shader *nir, struct si_shader_info *inf
          }
       }
    }
+
+   /* Trim output read masks based on write masks. */
+   for (unsigned i = 0; i < info->num_outputs; i++)
+      info->output_readmask[i] &= info->output_usagemask[i];
 }
 
 static void si_nir_opts(struct nir_shader *nir, bool first)
