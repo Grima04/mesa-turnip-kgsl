@@ -671,6 +671,7 @@ validate_intrinsic_instr(nir_intrinsic_instr *instr, validate_state *state)
       break;
 
    case nir_intrinsic_deref_mode_is:
+   case nir_intrinsic_addr_mode_is:
       validate_assert(state,
          util_bitcount(nir_intrinsic_memory_modes(instr)) == 1);
       break;
