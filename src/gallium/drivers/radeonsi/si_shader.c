@@ -1603,7 +1603,8 @@ static struct nir_shader *get_nir_shader(struct si_shader_selector *sel, bool *f
       return sel->nir;
    } else if (sel->nir_binary) {
       struct pipe_screen *screen = &sel->screen->b;
-      const void *options = screen->get_compiler_options(screen, PIPE_SHADER_IR_NIR, sel->type);
+      const void *options = screen->get_compiler_options(screen, PIPE_SHADER_IR_NIR,
+                                                         pipe_shader_type_from_mesa(sel->info.stage));
 
       struct blob_reader blob_reader;
       blob_reader_init(&blob_reader, sel->nir_binary, sel->nir_size);

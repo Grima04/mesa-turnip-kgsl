@@ -431,8 +431,6 @@ struct si_shader_selector {
    struct pipe_stream_output_info so;
    struct si_shader_info info;
 
-   /* PIPE_SHADER_[VERTEX|FRAGMENT|...] */
-   enum pipe_shader_type type;
    ubyte const_and_shader_buf_descriptors_index;
    ubyte sampler_and_images_descriptors_index;
    bool vs_needs_prolog;

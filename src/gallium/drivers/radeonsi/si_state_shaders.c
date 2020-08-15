@@ -2603,11 +2603,11 @@ static void *si_create_shader_selector(struct pipe_context *ctx,
 
    si_nir_scan_shader(sel->nir, &sel->info);
 
-   sel->type = pipe_shader_type_from_mesa(sel->info.stage);
+   const enum pipe_shader_type type = pipe_shader_type_from_mesa(sel->info.stage);
    sel->const_and_shader_buf_descriptors_index =
-      si_const_and_shader_buffer_descriptors_idx(sel->type);
+      si_const_and_shader_buffer_descriptors_idx(type);
    sel->sampler_and_images_descriptors_index =
-      si_sampler_and_image_descriptors_idx(sel->type);
+      si_sampler_and_image_descriptors_idx(type);
 
    p_atomic_inc(&sscreen->num_shaders_created);
    si_get_active_slot_masks(&sel->info, &sel->active_const_and_shader_buffers,
