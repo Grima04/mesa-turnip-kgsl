@@ -935,6 +935,30 @@ opt_remove_cast_cast(nir_deref_instr *cast)
    return true;
 }
 
+/* Restrict variable modes in casts.
+ *
+ * If we know from something higher up the deref chain that the deref has a
+ * specific mode, we can cast to more general and back but we can never cast
+ * across modes.  For non-cast derefs, we should only ever do anything here if
+ * the parent eventually comes from a cast that we restricted earlier.
+ */
+static bool
+opt_restrict_deref_modes(nir_deref_instr *deref)
+{
+   if (deref->type == nir_deref_type_var) {
+      assert(deref->modes == deref->var->data.mode);
+      return false;
+   }
+
+   nir_deref_instr *parent = nir_src_as_deref(deref->parent);
+   if (parent == NULL || parent->modes == deref->modes)
+      return false;
+
+   assert(parent->modes & deref->modes);
+   deref->modes &= parent->modes;
+   return true;
+}
+
 static bool
 opt_remove_sampler_cast(nir_deref_instr *cast)
 {
@@ -1259,6 +1283,10 @@ nir_opt_deref_impl(nir_function_impl *impl)
          switch (instr->type) {
          case nir_instr_type_deref: {
             nir_deref_instr *deref = nir_instr_as_deref(instr);
+
+            if (opt_restrict_deref_modes(deref))
+               progress = true;
+
             switch (deref->deref_type) {
             case nir_deref_type_ptr_as_array:
                if (opt_deref_ptr_as_array(&b, deref))
