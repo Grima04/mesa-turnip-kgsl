@@ -32,6 +32,7 @@
 #include "util/u_handle_table.h"
 #include "util/u_surface.h"
 #include "util/u_video.h"
+#include "util/u_process.h"
 
 #include "vl/vl_winsys.h"
 #include "vl/vl_video_buffer.h"
@@ -208,6 +209,17 @@ vlVaDeriveImage(VADriverContextP ctx, VASurfaceID surface, VAImage *image)
    unsigned stride = 0;
    unsigned offset = 0;
 
+   /* This function is used by some programs to test for hardware decoding, but on
+    * AMD devices, the buffers default to interlaced, which causes this function to fail.
+    * Some programs expect this function to fail, while others, assume this means
+    * hardware acceleration is not available and give up without trying the fall-back 
+    * vaCreateImage + vaPutImage 
+    */
+   const char *proc = util_get_process_name();
+   const char *derive_interlaced_allowlist[] = {
+         "vlc",
+   };
+
    if (!ctx)
       return VA_STATUS_ERROR_INVALID_CONTEXT;
 
@@ -225,6 +237,15 @@ vlVaDeriveImage(VADriverContextP ctx, VASurfaceID surface, VAImage *image)
 
    if (!surf || !surf->buffer)
       return VA_STATUS_ERROR_INVALID_SURFACE;
+
+   if (surf->buffer->interlaced) {
+      for (i = 0; i < ARRAY_SIZE(derive_interlaced_allowlist); i++)
+         if ((strcmp(derive_interlaced_allowlist[i], proc) == 0))
+            break;
+
+      if (i >= ARRAY_SIZE(derive_interlaced_allowlist))
+         return VA_STATUS_ERROR_OPERATION_FAILED;
+   }
 
    surfaces = surf->buffer->get_surfaces(surf->buffer);
    if (!surfaces || !surfaces[0]->texture)
