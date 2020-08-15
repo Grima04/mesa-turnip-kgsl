@@ -1383,6 +1383,9 @@ vtn_storage_class_to_mode(struct vtn_builder *b,
       nir_mode = nir_var_mem_ubo;
       break;
    case SpvStorageClassGeneric:
+      mode = vtn_variable_mode_generic;
+      nir_mode = nir_var_mem_generic;
+      break;
    default:
       vtn_fail("Unhandled variable storage class: %s (%u)",
                spirv_storageclass_to_string(class), class);
@@ -1413,6 +1416,7 @@ vtn_mode_to_address_format(struct vtn_builder *b, enum vtn_variable_mode mode)
    case vtn_variable_mode_workgroup:
       return b->options->shared_addr_format;
 
+   case vtn_variable_mode_generic:
    case vtn_variable_mode_cross_workgroup:
       return b->options->global_addr_format;
 
@@ -1636,6 +1640,10 @@ vtn_create_variable(struct vtn_builder *b, struct vtn_value *val,
          glsl_get_explicit_size(without_array->type, false);
       break;
 
+   case vtn_variable_mode_generic:
+      vtn_fail("Cannot create a variable with the Generic storage class");
+      break;
+
    case vtn_variable_mode_image:
       vtn_fail("Cannot create a variable with the Image storage class");
       break;
@@ -1692,11 +1700,12 @@ vtn_create_variable(struct vtn_builder *b, struct vtn_value *val,
       break;
 
    case vtn_variable_mode_workgroup:
+   case vtn_variable_mode_cross_workgroup:
       /* Create the variable normally */
       var->var = rzalloc(b->shader, nir_variable);
       var->var->name = ralloc_strdup(var->var, val->name);
       var->var->type = vtn_type_get_nir_type(b, var->type, var->mode);
-      var->var->data.mode = nir_var_mem_shared;
+      var->var->data.mode = nir_mode;
       break;
 
    case vtn_variable_mode_input:
@@ -1791,12 +1800,9 @@ vtn_create_variable(struct vtn_builder *b, struct vtn_value *val,
       break;
    }
 
-   case vtn_variable_mode_cross_workgroup:
-      /* These don't need actual variables. */
-      break;
-
    case vtn_variable_mode_image:
    case vtn_variable_mode_phys_ssbo:
+   case vtn_variable_mode_generic:
       unreachable("Should have been caught before");
    }
 
@@ -2337,6 +2343,84 @@ vtn_handle_variables(struct vtn_builder *b, SpvOp opcode,
       nir_ssa_def *u = vtn_get_nir_ssa(b, w[3]);
       nir_ssa_def *ptr = nir_sloppy_bitcast(&b->nb, u, ptr_type->type);
       vtn_push_pointer(b, w[2], vtn_pointer_from_ssa(b, ptr, ptr_type));
+      break;
+   }
+
+   case SpvOpGenericCastToPtrExplicit: {
+      struct vtn_type *dst_type = vtn_get_type(b, w[1]);
+      struct vtn_type *src_type = vtn_get_value_type(b, w[3]);
+      SpvStorageClass storage_class = w[4];
+
+      vtn_fail_if(dst_type->base_type != vtn_base_type_pointer ||
+                  dst_type->storage_class != storage_class,
+                  "Result type of an SpvOpGenericCastToPtrExplicit must be "
+                  "an OpTypePointer. Its Storage Class must match the "
+                  "storage class specified in the instruction");
+
+      vtn_fail_if(src_type->base_type != vtn_base_type_pointer ||
+                  src_type->deref->id != dst_type->deref->id,
+                  "Source pointer of an SpvOpGenericCastToPtrExplicit must "
+                  "have a type of OpTypePointer whose Type is the same as "
+                  "the Type of Result Type");
+
+      vtn_fail_if(src_type->storage_class != SpvStorageClassGeneric,
+                  "Source pointer of an SpvOpGenericCastToPtrExplicit must "
+                  "point to the Generic Storage Class.");
+
+      vtn_fail_if(storage_class != SpvStorageClassWorkgroup &&
+                  storage_class != SpvStorageClassCrossWorkgroup &&
+                  storage_class != SpvStorageClassFunction,
+                  "Storage must be one of the following literal values from "
+                  "Storage Class: Workgroup, CrossWorkgroup, or Function.");
+
+      nir_deref_instr *src_deref = vtn_nir_deref(b, w[3]);
+
+      nir_variable_mode nir_mode;
+      enum vtn_variable_mode mode =
+         vtn_storage_class_to_mode(b, storage_class, dst_type->deref, &nir_mode);
+      nir_address_format addr_format = vtn_mode_to_address_format(b, mode);
+
+      nir_ssa_def *null_value =
+         nir_build_imm(&b->nb, nir_address_format_num_components(addr_format),
+                               nir_address_format_bit_size(addr_format),
+                               nir_address_format_null_value(addr_format));
+
+      nir_ssa_def *valid = nir_build_deref_mode_is(&b->nb, src_deref, nir_mode);
+      vtn_push_nir_ssa(b, w[2], nir_bcsel(&b->nb, valid,
+                                                  &src_deref->dest.ssa,
+                                                  null_value));
+      break;
+   }
+
+   case SpvOpGenericPtrMemSemantics: {
+      struct vtn_type *dst_type = vtn_get_type(b, w[1]);
+      struct vtn_type *src_type = vtn_get_value_type(b, w[3]);
+
+      vtn_fail_if(dst_type->base_type != vtn_base_type_scalar ||
+                  dst_type->type != glsl_uint_type(),
+                  "Result type of an SpvOpGenericPtrMemSemantics must be "
+                  "an OpTypeInt with 32-bit Width and 0 Signedness.");
+
+      vtn_fail_if(src_type->base_type != vtn_base_type_pointer ||
+                  src_type->storage_class != SpvStorageClassGeneric,
+                  "Source pointer of an SpvOpGenericPtrMemSemantics must "
+                  "point to the Generic Storage Class");
+
+      nir_deref_instr *src_deref = vtn_nir_deref(b, w[3]);
+
+      nir_ssa_def *global_bit =
+         nir_bcsel(&b->nb, nir_build_deref_mode_is(&b->nb, src_deref,
+                                                   nir_var_mem_global),
+                   nir_imm_int(&b->nb, SpvMemorySemanticsCrossWorkgroupMemoryMask),
+                   nir_imm_int(&b->nb, 0));
+
+      nir_ssa_def *shared_bit =
+         nir_bcsel(&b->nb, nir_build_deref_mode_is(&b->nb, src_deref,
+                                                   nir_var_mem_shared),
+                   nir_imm_int(&b->nb, SpvMemorySemanticsWorkgroupMemoryMask),
+                   nir_imm_int(&b->nb, 0));
+
+      vtn_push_nir_ssa(b, w[2], nir_iand(&b->nb, global_bit, shared_bit));
       break;
    }
 

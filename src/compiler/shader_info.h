@@ -49,6 +49,7 @@ struct spirv_supported_capabilities {
    bool float64_atomic_add;
    bool fragment_shader_sample_interlock;
    bool fragment_shader_pixel_interlock;
+   bool generic_pointers;
    bool geometry_streams;
    bool image_ms_array;
    bool image_read_without_format;

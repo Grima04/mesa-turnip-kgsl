@@ -355,6 +355,10 @@ vtn_nir_alu_op_for_spirv_opcode(struct vtn_builder *b,
       nir_alu_type dst_type = convert_op_dst_type(opcode) | dst_bit_size;
       return nir_type_conversion_op(src_type, dst_type, nir_rounding_mode_undef);
    }
+
+   case SpvOpPtrCastToGeneric:   return nir_op_mov;
+   case SpvOpGenericCastToPtr:   return nir_op_mov;
+
    /* Derivatives: */
    case SpvOpDPdx:         return nir_op_fddx;
    case SpvOpDPdy:         return nir_op_fddy;

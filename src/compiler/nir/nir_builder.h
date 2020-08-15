@@ -1416,6 +1416,19 @@ nir_memcpy_deref(nir_builder *build, nir_deref_instr *dest,
 }
 
 static inline nir_ssa_def *
+nir_build_deref_mode_is(nir_builder *build, nir_deref_instr *deref,
+                        nir_variable_mode mode)
+{
+   nir_intrinsic_instr *intrin =
+      nir_intrinsic_instr_create(build->shader, nir_intrinsic_deref_mode_is);
+   intrin->src[0] = nir_src_for_ssa(&deref->dest.ssa);
+   nir_intrinsic_set_memory_modes(intrin, mode);
+   nir_ssa_dest_init(&intrin->instr, &intrin->dest, 1, 1, NULL);
+   nir_builder_instr_insert(build, &intrin->instr);
+   return &intrin->dest.ssa;
+}
+
+static inline nir_ssa_def *
 nir_load_var(nir_builder *build, nir_variable *var)
 {
    return nir_load_deref(build, nir_build_deref_var(build, var));
