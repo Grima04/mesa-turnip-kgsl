@@ -327,6 +327,7 @@ struct si_shader_info {
    ubyte input_interpolate[PIPE_MAX_SHADER_INPUTS];
    ubyte input_usage_mask[PIPE_MAX_SHADER_INPUTS];
    ubyte output_semantic[PIPE_MAX_SHADER_OUTPUTS];
+   char output_semantic_to_slot[VARYING_SLOT_TESS_MAX];
    ubyte output_usagemask[PIPE_MAX_SHADER_OUTPUTS];
    ubyte output_readmask[PIPE_MAX_SHADER_OUTPUTS];
    ubyte output_streams[PIPE_MAX_SHADER_OUTPUTS];

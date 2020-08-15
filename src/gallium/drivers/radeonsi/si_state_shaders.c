@@ -3171,7 +3171,7 @@ static unsigned si_get_ps_input_cntl(struct si_context *sctx, struct si_shader *
                                      unsigned semantic, enum glsl_interp_mode interpolate)
 {
    struct si_shader_info *vsinfo = &vs->selector->info;
-   unsigned j, offset, ps_input_cntl = 0;
+   unsigned offset, ps_input_cntl = 0;
 
    if (interpolate == INTERP_MODE_FLAT ||
        (interpolate == INTERP_MODE_COLOR && sctx->flatshade) ||
@@ -3184,43 +3184,42 @@ static unsigned si_get_ps_input_cntl(struct si_context *sctx, struct si_shader *
       ps_input_cntl |= S_028644_PT_SPRITE_TEX(1);
    }
 
-   /* TODO: This search can be removed if we add a lookup table from semantic to index. */
-   for (j = 0; j < vsinfo->num_outputs; j++) {
-      if (semantic == vsinfo->output_semantic[j]) {
-         offset = vs->info.vs_output_param_offset[j];
+   int vs_slot = vsinfo->output_semantic_to_slot[semantic];
+   if (vs_slot >= 0) {
+      offset = vs->info.vs_output_param_offset[vs_slot];
 
-         if (offset <= AC_EXP_PARAM_OFFSET_31) {
-            /* The input is loaded from parameter memory. */
-            ps_input_cntl |= S_028644_OFFSET(offset);
-         } else if (!G_028644_PT_SPRITE_TEX(ps_input_cntl)) {
-            if (offset == AC_EXP_PARAM_UNDEFINED) {
-               /* This can happen with depth-only rendering. */
-               offset = 0;
-            } else {
-               /* The input is a DEFAULT_VAL constant. */
-               assert(offset >= AC_EXP_PARAM_DEFAULT_VAL_0000 &&
-                      offset <= AC_EXP_PARAM_DEFAULT_VAL_1111);
-               offset -= AC_EXP_PARAM_DEFAULT_VAL_0000;
-            }
-
-            ps_input_cntl = S_028644_OFFSET(0x20) | S_028644_DEFAULT_VAL(offset);
+      if (offset <= AC_EXP_PARAM_OFFSET_31) {
+         /* The input is loaded from parameter memory. */
+         ps_input_cntl |= S_028644_OFFSET(offset);
+      } else if (!G_028644_PT_SPRITE_TEX(ps_input_cntl)) {
+         if (offset == AC_EXP_PARAM_UNDEFINED) {
+            /* This can happen with depth-only rendering. */
+            offset = 0;
+         } else {
+            /* The input is a DEFAULT_VAL constant. */
+            assert(offset >= AC_EXP_PARAM_DEFAULT_VAL_0000 &&
+                   offset <= AC_EXP_PARAM_DEFAULT_VAL_1111);
+            offset -= AC_EXP_PARAM_DEFAULT_VAL_0000;
          }
-         break;
+
+         ps_input_cntl = S_028644_OFFSET(0x20) | S_028644_DEFAULT_VAL(offset);
+      }
+   } else {
+      /* VS output not found. */
+      if (semantic == VARYING_SLOT_PRIMITIVE_ID) {
+         /* PrimID is written after the last output when HW VS is used. */
+         ps_input_cntl |= S_028644_OFFSET(vs->info.vs_output_param_offset[vsinfo->num_outputs]);
+      } else if (!G_028644_PT_SPRITE_TEX(ps_input_cntl)) {
+         /* No corresponding output found, load defaults into input.
+          * Don't set any other bits.
+          * (FLAT_SHADE=1 completely changes behavior) */
+         ps_input_cntl = S_028644_OFFSET(0x20);
+         /* D3D 9 behaviour. GL is undefined */
+         if (semantic == VARYING_SLOT_COL0)
+            ps_input_cntl |= S_028644_DEFAULT_VAL(3);
       }
    }
 
-   if (j == vsinfo->num_outputs && semantic == VARYING_SLOT_PRIMITIVE_ID)
-      /* PrimID is written after the last output when HW VS is used. */
-      ps_input_cntl |= S_028644_OFFSET(vs->info.vs_output_param_offset[vsinfo->num_outputs]);
-   else if (j == vsinfo->num_outputs && !G_028644_PT_SPRITE_TEX(ps_input_cntl)) {
-      /* No corresponding output found, load defaults into input.
-       * Don't set any other bits.
-       * (FLAT_SHADE=1 completely changes behavior) */
-      ps_input_cntl = S_028644_OFFSET(0x20);
-      /* D3D 9 behaviour. GL is undefined */
-      if (semantic == VARYING_SLOT_COL0)
-         ps_input_cntl |= S_028644_DEFAULT_VAL(3);
-   }
    return ps_input_cntl;
 }
 

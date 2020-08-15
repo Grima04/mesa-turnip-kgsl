@@ -143,12 +143,14 @@ static void scan_io_usage(struct si_shader_info *info, nir_intrinsic_instr *intr
    } else {
       /* Outputs. */
       assert(driver_location + num_slots <= ARRAY_SIZE(info->output_usagemask));
+      assert(semantic + num_slots < ARRAY_SIZE(info->output_semantic_to_slot));
 
       for (unsigned i = 0; i < num_slots; i++) {
          unsigned loc = driver_location + i;
          unsigned slot_mask = (dual_slot && i % 2 ? mask >> 4 : mask) & 0xf;
 
          info->output_semantic[loc] = semantic + i;
+         info->output_semantic_to_slot[semantic + i] = loc;
 
          if (is_output_load) {
             /* Output loads have only a few things that we need to track. */
@@ -555,6 +557,8 @@ void si_nir_scan_shader(const struct nir_shader *nir, struct si_shader_info *inf
    if (nir->info.stage == MESA_SHADER_TESS_CTRL) {
       info->tessfactors_are_def_in_all_invocs = ac_are_tessfactors_def_in_all_invocs(nir);
    }
+
+   memset(info->output_semantic_to_slot, -1, sizeof(info->output_semantic_to_slot));
 
    func = (struct nir_function *)exec_list_get_head_const(&nir->functions);
    nir_foreach_block (block, func->impl) {
