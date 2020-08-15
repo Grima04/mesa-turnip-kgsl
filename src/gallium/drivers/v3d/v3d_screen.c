@@ -25,6 +25,7 @@
 #include <sys/sysinfo.h>
 
 #include "common/v3d_device_info.h"
+#include "common/v3d_limits.h"
 #include "util/os_misc.h"
 #include "pipe/p_defines.h"
 #include "pipe/p_screen.h"
@@ -279,11 +280,11 @@ v3d_screen_get_paramf(struct pipe_screen *pscreen, enum pipe_capf param)
         switch (param) {
         case PIPE_CAPF_MAX_LINE_WIDTH:
         case PIPE_CAPF_MAX_LINE_WIDTH_AA:
-                return 32;
+                return V3D_MAX_LINE_WIDTH;
 
         case PIPE_CAPF_MAX_POINT_WIDTH:
         case PIPE_CAPF_MAX_POINT_WIDTH_AA:
-                return 512.0f;
+                return V3D_MAX_POINT_SIZE;
 
         case PIPE_CAPF_MAX_TEXTURE_ANISOTROPY:
                 return 0.0f;

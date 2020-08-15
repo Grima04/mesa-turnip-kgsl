@@ -59,4 +59,7 @@
 
 #define V3D_MAX_DRAW_BUFFERS 4
 
+#define V3D_MAX_POINT_SIZE 512.0f
+#define V3D_MAX_LINE_WIDTH 32
+
 #endif /* V3D_LIMITS_H */
