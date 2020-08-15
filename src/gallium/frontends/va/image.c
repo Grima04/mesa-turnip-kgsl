@@ -262,11 +262,15 @@ vlVaDeriveImage(VADriverContextP ctx, VASurfaceID surface, VAImage *image)
          offset = 0;
    }
 
+   img->num_planes = 1;
+   img->offsets[0] = offset;
+
    switch (img->format.fourcc) {
    case VA_FOURCC('U','Y','V','Y'):
    case VA_FOURCC('Y','U','Y','V'):
       img->pitches[0] = stride > 0 ? stride : w * 2;
       assert(img->pitches[0] >= (w * 2));
+      img->data_size  = img->pitches[0] * h;
       break;
 
    case VA_FOURCC('B','G','R','A'):
@@ -275,6 +279,17 @@ vlVaDeriveImage(VADriverContextP ctx, VASurfaceID surface, VAImage *image)
    case VA_FOURCC('R','G','B','X'):
       img->pitches[0] = stride > 0 ? stride : w * 4;
       assert(img->pitches[0] >= (w * 4));
+      img->data_size  = img->pitches[0] * h;
+      break;
+
+   case VA_FOURCC('N','V','1','2'):
+   case VA_FOURCC('P','0','1','0'):
+   case VA_FOURCC('P','0','1','6'):
+      img->num_planes = 2;
+      img->pitches[0] = stride > 0 ? stride : w;
+      img->pitches[1] = stride > 0 ? stride : w;
+      img->offsets[1] = (stride > 0 ? stride : w) * h;
+      img->data_size  = (stride > 0 ? stride : w) * h * 3 / 2;
       break;
 
    default:
@@ -284,10 +299,6 @@ vlVaDeriveImage(VADriverContextP ctx, VASurfaceID surface, VAImage *image)
       mtx_unlock(&drv->mutex);
       return VA_STATUS_ERROR_OPERATION_FAILED;
    }
-
-   img->num_planes = 1;
-   img->offsets[0] = offset;
-   img->data_size  = img->pitches[0] * h;
 
    img_buf = CALLOC(1, sizeof(vlVaBuffer));
    if (!img_buf) {
