@@ -70,11 +70,11 @@ static void si_diagnostic_handler(LLVMDiagnosticInfoRef di, void *context)
 bool si_compile_llvm(struct si_screen *sscreen, struct si_shader_binary *binary,
                      struct ac_shader_config *conf, struct ac_llvm_compiler *compiler,
                      struct ac_llvm_context *ac, struct pipe_debug_callback *debug,
-                     enum pipe_shader_type shader_type, const char *name, bool less_optimized)
+                     gl_shader_stage stage, const char *name, bool less_optimized)
 {
    unsigned count = p_atomic_inc_return(&sscreen->num_compilations);
 
-   if (si_can_dump_shader(sscreen, tgsi_processor_to_shader_stage(shader_type))) {
+   if (si_can_dump_shader(sscreen, stage)) {
       fprintf(stderr, "radeonsi: Compiling shader %d\n", count);
 
       if (!(sscreen->debug_flags & (DBG(NO_IR) | DBG(PREOPT_IR)))) {
@@ -114,7 +114,7 @@ bool si_compile_llvm(struct si_screen *sscreen, struct si_shader_binary *binary,
    struct ac_rtld_binary rtld;
    if (!ac_rtld_open(&rtld, (struct ac_rtld_open_info){
                                .info = &sscreen->info,
-                               .shader_type = tgsi_processor_to_shader_stage(shader_type),
+                               .shader_type = stage,
                                .wave_size = ac->wave_size,
                                .num_parts = 1,
                                .elf_ptrs = &binary->elf_buffer,

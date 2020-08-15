@@ -1836,7 +1836,7 @@ static bool si_llvm_compile_shader(struct si_screen *sscreen, struct ac_llvm_com
 
    /* Compile to bytecode. */
    if (!si_compile_llvm(sscreen, &shader->binary, &shader->config, compiler, &ctx.ac, debug,
-                        ctx.type, si_get_shader_name(shader),
+                        ctx.stage, si_get_shader_name(shader),
                         si_should_optimize_less(compiler, shader->selector))) {
       si_llvm_dispose(&ctx);
       fprintf(stderr, "LLVM failed to compile shader\n");
@@ -2007,7 +2007,7 @@ si_get_shader_part(struct si_screen *sscreen, struct si_shader_part **list,
    si_llvm_optimize_module(&ctx);
 
    if (!si_compile_llvm(sscreen, &result->binary, &result->config, compiler, &ctx.ac, debug,
-                        ctx.type, name, false)) {
+                        ctx.stage, name, false)) {
       FREE(result);
       result = NULL;
       goto out;

@@ -227,7 +227,7 @@ bool gfx10_ngg_calculate_subgroup_info(struct si_shader *shader);
 bool si_compile_llvm(struct si_screen *sscreen, struct si_shader_binary *binary,
                      struct ac_shader_config *conf, struct ac_llvm_compiler *compiler,
                      struct ac_llvm_context *ac, struct pipe_debug_callback *debug,
-                     enum pipe_shader_type shader_type, const char *name, bool less_optimized);
+                     gl_shader_stage stage, const char *name, bool less_optimized);
 void si_llvm_context_init(struct si_shader_context *ctx, struct si_screen *sscreen,
                           struct ac_llvm_compiler *compiler, unsigned wave_size);
 void si_llvm_create_func(struct si_shader_context *ctx, const char *name, LLVMTypeRef *return_types,
