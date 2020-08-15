@@ -819,6 +819,24 @@ build_addr_iadd(nir_builder *b, nir_ssa_def *addr,
       return nir_vec3(b, nir_channel(b, addr, 0), nir_channel(b, addr, 1),
                          nir_iadd(b, nir_channel(b, addr, 2), offset));
 
+   case nir_address_format_62bit_generic:
+      assert(addr->num_components == 1);
+      assert(addr->bit_size == 64);
+      assert(offset->bit_size == 64);
+      if (!(modes & ~(nir_var_function_temp |
+                      nir_var_shader_temp |
+                      nir_var_mem_shared))) {
+         /* If we're sure it's one of these modes, we can do an easy 32-bit
+          * addition and don't need to bother with 64-bit math.
+          */
+         nir_ssa_def *addr32 = nir_unpack_64_2x32_split_x(b, addr);
+         nir_ssa_def *type = nir_unpack_64_2x32_split_y(b, addr);
+         addr32 = nir_iadd(b, addr32, nir_u2u32(b, offset));
+         return nir_pack_64_2x32_split(b, addr32, type);
+      } else {
+         return nir_iadd(b, addr, offset);
+      }
+
    case nir_address_format_logical:
       unreachable("Unsupported address format");
    }
@@ -893,6 +911,21 @@ build_addr_for_var(nir_builder *b, nir_variable *var,
       assert(var->data.driver_location <= UINT32_MAX);
       return nir_imm_int64(b, var->data.driver_location);
 
+   case nir_address_format_62bit_generic:
+      switch (var->data.mode) {
+      case nir_var_shader_temp:
+      case nir_var_function_temp:
+         assert(var->data.driver_location <= UINT32_MAX);
+         return nir_imm_intN_t(b, var->data.driver_location | 2ull << 62, 64);
+
+      case nir_var_mem_shared:
+         assert(var->data.driver_location <= UINT32_MAX);
+         return nir_imm_intN_t(b, var->data.driver_location | 1ull << 62, 64);
+
+      default:
+         unreachable("Unsupported variable mode");
+      }
+
    default:
       unreachable("Unsupported address format");
    }
@@ -905,6 +938,27 @@ build_runtime_addr_mode_check(nir_builder *b, nir_ssa_def *addr,
 {
    /* The compile-time check failed; do a run-time check */
    switch (addr_format) {
+   case nir_address_format_62bit_generic: {
+      assert(addr->num_components == 1);
+      assert(addr->bit_size == 64);
+      nir_ssa_def *mode_enum = nir_ushr(b, addr, nir_imm_int(b, 62));
+      switch (mode) {
+      case nir_var_function_temp:
+      case nir_var_shader_temp:
+         return nir_ieq_imm(b, mode_enum, 0x2);
+
+      case nir_var_mem_shared:
+         return nir_ieq_imm(b, mode_enum, 0x1);
+
+      case nir_var_mem_global:
+         return nir_ior(b, nir_ieq_imm(b, mode_enum, 0x0),
+                           nir_ieq_imm(b, mode_enum, 0x3));
+
+      default:
+         unreachable("Invalid mode check intrinsic");
+      }
+   }
+
    default:
       unreachable("Unsupported address mode");
    }
@@ -943,6 +997,7 @@ addr_to_offset(nir_builder *b, nir_ssa_def *addr,
    case nir_address_format_32bit_offset:
       return addr;
    case nir_address_format_32bit_offset_as_64bit:
+   case nir_address_format_62bit_generic:
       return nir_u2u32(b, addr);
    default:
       unreachable("Invalid address format");
@@ -954,6 +1009,9 @@ static bool
 addr_format_is_global(nir_address_format addr_format,
                       nir_variable_mode mode)
 {
+   if (addr_format == nir_address_format_62bit_generic)
+      return mode == nir_var_mem_global;
+
    return addr_format == nir_address_format_32bit_global ||
           addr_format == nir_address_format_64bit_global ||
           addr_format == nir_address_format_64bit_bounded_global;
@@ -963,6 +1021,9 @@ static bool
 addr_format_is_offset(nir_address_format addr_format,
                       nir_variable_mode mode)
 {
+   if (addr_format == nir_address_format_62bit_generic)
+      return mode != nir_var_mem_global;
+
    return addr_format == nir_address_format_32bit_offset ||
           addr_format == nir_address_format_32bit_offset_as_64bit;
 }
@@ -974,6 +1035,7 @@ addr_to_global(nir_builder *b, nir_ssa_def *addr,
    switch (addr_format) {
    case nir_address_format_32bit_global:
    case nir_address_format_64bit_global:
+   case nir_address_format_62bit_generic:
       assert(addr->num_components == 1);
       return addr;
 
@@ -2007,8 +2069,16 @@ nir_lower_explicit_io_impl(nir_function_impl *impl, nir_variable_mode modes,
  * row-major matrices in which case we may look down one additional level of
  * the deref chain.
  *
- * If nir_lower_explicit_io is called on any shader that contains generic
- * pointers, it must either be used on all of the generic modes or none.
+ * This pass is also capable of handling OpenCL generic pointers.  If the
+ * address mode is global, it will lowering any ambiguous (more than one mode)
+ * access to global and passing through the deref_mode_is run-time checks as
+ * addr_mode_is.  This assumes the driver has somehow mapped shared and
+ * scratch memory to the global address space.  For other modes such as
+ * 62bit_generic, there is an enum embedded in the address and we lower
+ * ambiguous access to an if-ladder and deref_mode_is to a check against the
+ * embedded enum.  If nir_lower_explicit_io is called on any shader that
+ * contains generic pointers, it must either be used on all of the generic
+ * modes or none.
  */
 bool
 nir_lower_explicit_io(nir_shader *shader, nir_variable_mode modes,
@@ -2364,6 +2434,7 @@ nir_address_format_null_value(nir_address_format addr_format)
       [nir_address_format_vec2_index_32bit_offset] = {{.u32 = ~0}, {.u32 = ~0}, {.u32 = ~0}},
       [nir_address_format_32bit_offset] = {{.u32 = ~0}},
       [nir_address_format_32bit_offset_as_64bit] = {{.u64 = ~0ull}},
+      [nir_address_format_62bit_generic] = {{.u64 = 0}},
       [nir_address_format_logical] = {{.u32 = ~0}},
    };
 
@@ -2382,6 +2453,7 @@ nir_build_addr_ieq(nir_builder *b, nir_ssa_def *addr0, nir_ssa_def *addr1,
    case nir_address_format_32bit_index_offset:
    case nir_address_format_vec2_index_32bit_offset:
    case nir_address_format_32bit_offset:
+   case nir_address_format_62bit_generic:
       return nir_ball_iequal(b, addr0, addr1);
 
    case nir_address_format_32bit_offset_as_64bit:
@@ -2408,6 +2480,7 @@ nir_build_addr_isub(nir_builder *b, nir_ssa_def *addr0, nir_ssa_def *addr1,
    case nir_address_format_64bit_global:
    case nir_address_format_32bit_offset:
    case nir_address_format_32bit_index_offset_pack64:
+   case nir_address_format_62bit_generic:
       assert(addr0->num_components == 1);
       assert(addr1->num_components == 1);
       return nir_isub(b, addr0, addr1);

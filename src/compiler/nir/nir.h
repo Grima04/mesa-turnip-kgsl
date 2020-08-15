@@ -4453,6 +4453,26 @@ typedef enum {
    nir_address_format_vec2_index_32bit_offset,
 
    /**
+    * An address format which represents generic pointers with a 62-bit
+    * pointer and a 2-bit enum in the top two bits.  The top two bits have
+    * the following meanings:
+    *
+    *  - 0x0: Global memory
+    *  - 0x1: Shared memory
+    *  - 0x2: Scratch memory
+    *  - 0x3: Global memory
+    *
+    * The redundancy between 0x0 and 0x3 is because of Intel sign-extension of
+    * addresses.  Valid global memory addresses may naturally have either 0 or
+    * ~0 as their high bits.
+    *
+    * Shared and scratch pointers are represented as 32-bit offsets with the
+    * top 32 bits only being used for the enum.  This allows us to avoid
+    * 64-bit address calculations in a bunch of cases.
+    */
+   nir_address_format_62bit_generic,
+
+   /**
     * An address format which is a simple 32-bit offset.
     */
    nir_address_format_32bit_offset,
@@ -4482,6 +4502,7 @@ nir_address_format_bit_size(nir_address_format addr_format)
    case nir_address_format_32bit_index_offset:        return 32;
    case nir_address_format_32bit_index_offset_pack64: return 64;
    case nir_address_format_vec2_index_32bit_offset:   return 32;
+   case nir_address_format_62bit_generic:             return 64;
    case nir_address_format_32bit_offset:              return 32;
    case nir_address_format_32bit_offset_as_64bit:     return 64;
    case nir_address_format_logical:                   return 32;
@@ -4499,6 +4520,7 @@ nir_address_format_num_components(nir_address_format addr_format)
    case nir_address_format_32bit_index_offset:        return 2;
    case nir_address_format_32bit_index_offset_pack64: return 1;
    case nir_address_format_vec2_index_32bit_offset:   return 3;
+   case nir_address_format_62bit_generic:             return 1;
    case nir_address_format_32bit_offset:              return 1;
    case nir_address_format_32bit_offset_as_64bit:     return 1;
    case nir_address_format_logical:                   return 1;
