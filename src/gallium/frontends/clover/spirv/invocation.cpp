@@ -433,6 +433,7 @@ namespace {
                     std::string &r_log) {
       const size_t length = source.size() / sizeof(uint32_t);
       size_t i = SPIRV_HEADER_WORD_SIZE; // Skip header
+      const auto spirv_extensions = spirv::supported_extensions();
 
       while (i < length) {
          const auto desc_word = get<uint32_t>(source.data(), i);
@@ -446,14 +447,9 @@ namespace {
          if (opcode != SpvOpExtension)
             break;
 
-         const char *extension = source.data() + (i + 1u) * sizeof(uint32_t);
-         const std::string device_extensions = dev.supported_extensions();
-         const std::string platform_extensions =
-            dev.platform.supported_extensions();
-         if (device_extensions.find(extension) == std::string::npos &&
-             platform_extensions.find(extension) == std::string::npos) {
-            r_log += "Extension '" + std::string(extension) +
-                     "' is not supported.\n";
+         const std::string extension = source.data() + (i + 1u) * sizeof(uint32_t);
+         if (spirv_extensions.count(extension) == 0) {
+            r_log += "Extension '" + extension + "' is not supported.\n";
             return false;
          }
 
@@ -709,6 +705,14 @@ clover::spirv::print_module(const std::vector<char> &binary,
    return disassemblyStr;
 }
 
+std::unordered_set<std::string>
+clover::spirv::supported_extensions() {
+   return {
+      /* this is only a hint so all devices support that */
+      "SPV_KHR_no_integer_wrap_decoration"
+   };
+}
+
 #else
 bool
 clover::spirv::is_valid_spirv(const std::vector<char> &/*binary*/,
@@ -736,5 +740,10 @@ std::string
 clover::spirv::print_module(const std::vector<char> &binary,
                             const std::string &opencl_version) {
    return std::string();
+}
+
+std::unordered_set<std::string>
+clover::spirv::supported_extensions() {
+   return {};
 }
 #endif

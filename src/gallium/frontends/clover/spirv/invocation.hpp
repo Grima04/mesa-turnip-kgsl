@@ -23,6 +23,8 @@
 #ifndef CLOVER_SPIRV_INVOCATION_HPP
 #define CLOVER_SPIRV_INVOCATION_HPP
 
+#include <unordered_set>
+
 #include "core/context.hpp"
 #include "core/module.hpp"
 #include "core/program.hpp"
@@ -50,6 +52,9 @@ namespace clover {
       // Returns a textual representation of the given binary.
       std::string print_module(const std::vector<char> &binary,
                                const std::string &opencl_version);
+
+      // Returns a set of supported SPIR-V extensions.
+      std::unordered_set<std::string> supported_extensions();
    }
 }
 
