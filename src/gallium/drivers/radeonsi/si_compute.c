@@ -238,6 +238,10 @@ static void *si_create_compute_state(struct pipe_context *ctx, const struct pipe
    sel->info.stage = MESA_SHADER_COMPUTE;
    sel->type = PIPE_SHADER_COMPUTE;
    sel->screen = sscreen;
+   sel->const_and_shader_buf_descriptors_index =
+      si_const_and_shader_buffer_descriptors_idx(sel->type);
+   sel->sampler_and_images_descriptors_index =
+      si_sampler_and_image_descriptors_idx(sel->type);
    program->shader.selector = &program->sel;
    program->ir_type = cso->ir_type;
    program->local_size = cso->req_local_mem;

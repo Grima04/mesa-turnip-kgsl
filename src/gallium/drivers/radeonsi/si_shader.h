@@ -433,6 +433,8 @@ struct si_shader_selector {
 
    /* PIPE_SHADER_[VERTEX|FRAGMENT|...] */
    enum pipe_shader_type type;
+   ubyte const_and_shader_buf_descriptors_index;
+   ubyte sampler_and_images_descriptors_index;
    bool vs_needs_prolog;
    bool prim_discard_cs_allowed;
    bool ngg_culling_allowed;
