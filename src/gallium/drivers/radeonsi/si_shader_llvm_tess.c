@@ -28,11 +28,11 @@
 
 static LLVMValueRef get_rel_patch_id(struct si_shader_context *ctx)
 {
-   switch (ctx->type) {
-   case PIPE_SHADER_TESS_CTRL:
+   switch (ctx->stage) {
+   case MESA_SHADER_TESS_CTRL:
       return si_unpack_param(ctx, ctx->args.tcs_rel_ids, 0, 8);
 
-   case PIPE_SHADER_TESS_EVAL:
+   case MESA_SHADER_TESS_EVAL:
       return ac_get_arg(&ctx->ac, ctx->tes_rel_patch_id);
 
    default:
@@ -69,7 +69,7 @@ static LLVMValueRef get_tcs_in_patch_stride(struct si_shader_context *ctx)
 
 static unsigned get_tcs_out_vertex_dw_stride_constant(struct si_shader_context *ctx)
 {
-   assert(ctx->type == PIPE_SHADER_TESS_CTRL);
+   assert(ctx->stage == MESA_SHADER_TESS_CTRL);
 
    if (ctx->shader->key.mono.u.ff_tcs_inputs_to_copy)
       return util_last_bit64(ctx->shader->key.mono.u.ff_tcs_inputs_to_copy) * 4;
@@ -142,7 +142,7 @@ static LLVMValueRef get_num_tcs_out_vertices(struct si_shader_context *ctx)
                             : 0;
 
    /* If !tcs_out_vertices, it's either the fixed-func TCS or the TCS epilog. */
-   if (ctx->type == PIPE_SHADER_TESS_CTRL && tcs_out_vertices)
+   if (ctx->stage == MESA_SHADER_TESS_CTRL && tcs_out_vertices)
       return LLVMConstInt(ctx->ac.i32, tcs_out_vertices, 0);
 
    return si_unpack_param(ctx, ctx->tcs_offchip_layout, 6, 6);
@@ -152,12 +152,12 @@ static LLVMValueRef get_tcs_in_vertex_dw_stride(struct si_shader_context *ctx)
 {
    unsigned stride;
 
-   switch (ctx->type) {
-   case PIPE_SHADER_VERTEX:
+   switch (ctx->stage) {
+   case MESA_SHADER_VERTEX:
       stride = ctx->shader->selector->lshs_vertex_stride / 4;
       return LLVMConstInt(ctx->ac.i32, stride, 0);
 
-   case PIPE_SHADER_TESS_CTRL:
+   case MESA_SHADER_TESS_CTRL:
       if (ctx->screen->info.chip_class >= GFX9 && ctx->shader->is_monolithic) {
          stride = ctx->shader->key.part.tcs.ls->lshs_vertex_stride / 4;
          return LLVMConstInt(ctx->ac.i32, stride, 0);
@@ -688,9 +688,9 @@ static LLVMValueRef si_load_tess_level(struct ac_shader_abi *abi, unsigned varyi
 static LLVMValueRef si_load_patch_vertices_in(struct ac_shader_abi *abi)
 {
    struct si_shader_context *ctx = si_shader_context_from_abi(abi);
-   if (ctx->type == PIPE_SHADER_TESS_CTRL)
+   if (ctx->stage == MESA_SHADER_TESS_CTRL)
       return si_unpack_param(ctx, ctx->tcs_out_lds_layout, 13, 6);
-   else if (ctx->type == PIPE_SHADER_TESS_EVAL)
+   else if (ctx->stage == MESA_SHADER_TESS_EVAL)
       return get_num_tcs_out_vertices(ctx);
    else
       unreachable("invalid shader stage for TGSI_SEMANTIC_VERTICESIN");

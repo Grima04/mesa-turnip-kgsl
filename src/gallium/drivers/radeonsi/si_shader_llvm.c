@@ -142,38 +142,37 @@ void si_llvm_create_func(struct si_shader_context *ctx, const char *name, LLVMTy
 {
    LLVMTypeRef ret_type;
    enum ac_llvm_calling_convention call_conv;
-   enum pipe_shader_type real_shader_type;
 
    if (num_return_elems)
       ret_type = LLVMStructTypeInContext(ctx->ac.context, return_types, num_return_elems, true);
    else
       ret_type = ctx->ac.voidt;
 
-   real_shader_type = ctx->type;
+   gl_shader_stage real_stage = ctx->stage;
 
    /* LS is merged into HS (TCS), and ES is merged into GS. */
    if (ctx->screen->info.chip_class >= GFX9) {
       if (ctx->shader->key.as_ls)
-         real_shader_type = PIPE_SHADER_TESS_CTRL;
+         real_stage = MESA_SHADER_TESS_CTRL;
       else if (ctx->shader->key.as_es || ctx->shader->key.as_ngg)
-         real_shader_type = PIPE_SHADER_GEOMETRY;
+         real_stage = MESA_SHADER_GEOMETRY;
    }
 
-   switch (real_shader_type) {
-   case PIPE_SHADER_VERTEX:
-   case PIPE_SHADER_TESS_EVAL:
+   switch (real_stage) {
+   case MESA_SHADER_VERTEX:
+   case MESA_SHADER_TESS_EVAL:
       call_conv = AC_LLVM_AMDGPU_VS;
       break;
-   case PIPE_SHADER_TESS_CTRL:
+   case MESA_SHADER_TESS_CTRL:
       call_conv = AC_LLVM_AMDGPU_HS;
       break;
-   case PIPE_SHADER_GEOMETRY:
+   case MESA_SHADER_GEOMETRY:
       call_conv = AC_LLVM_AMDGPU_GS;
       break;
-   case PIPE_SHADER_FRAGMENT:
+   case MESA_SHADER_FRAGMENT:
       call_conv = AC_LLVM_AMDGPU_PS;
       break;
-   case PIPE_SHADER_COMPUTE:
+   case MESA_SHADER_COMPUTE:
       call_conv = AC_LLVM_AMDGPU_CS;
       break;
    default:
@@ -282,7 +281,7 @@ void si_llvm_emit_barrier(struct si_shader_context *ctx)
     * The real barrier instruction isn’t needed, because an entire patch
     * always fits into a single wave.
     */
-   if (ctx->screen->info.chip_class == GFX6 && ctx->type == PIPE_SHADER_TESS_CTRL) {
+   if (ctx->screen->info.chip_class == GFX6 && ctx->stage == MESA_SHADER_TESS_CTRL) {
       ac_build_waitcnt(&ctx->ac, AC_WAIT_LGKM | AC_WAIT_VLOAD | AC_WAIT_VSTORE);
       return;
    }
@@ -351,14 +350,14 @@ LLVMValueRef si_get_primitive_id(struct si_shader_context *ctx, unsigned swizzle
    if (swizzle > 0)
       return ctx->ac.i32_0;
 
-   switch (ctx->type) {
-   case PIPE_SHADER_VERTEX:
+   switch (ctx->stage) {
+   case MESA_SHADER_VERTEX:
       return ac_get_arg(&ctx->ac, ctx->vs_prim_id);
-   case PIPE_SHADER_TESS_CTRL:
+   case MESA_SHADER_TESS_CTRL:
       return ac_get_arg(&ctx->ac, ctx->args.tcs_patch_id);
-   case PIPE_SHADER_TESS_EVAL:
+   case MESA_SHADER_TESS_EVAL:
       return ac_get_arg(&ctx->ac, ctx->args.tes_patch_id);
-   case PIPE_SHADER_GEOMETRY:
+   case MESA_SHADER_GEOMETRY:
       return ac_get_arg(&ctx->ac, ctx->args.gs_prim_id);
    default:
       assert(0);

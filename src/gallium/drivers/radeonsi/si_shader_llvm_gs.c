@@ -162,7 +162,7 @@ static void si_set_es_return_value_for_gs(struct si_shader_context *ctx)
    }
 
    unsigned vgpr;
-   if (ctx->type == PIPE_SHADER_VERTEX)
+   if (ctx->stage == MESA_SHADER_VERTEX)
       vgpr = 8 + GFX9_VSGS_NUM_USER_SGPR;
    else
       vgpr = 8 + GFX9_TESGS_NUM_USER_SGPR;
@@ -360,7 +360,7 @@ static void si_llvm_emit_primitive(struct ac_shader_abi *abi, unsigned stream)
 void si_preload_esgs_ring(struct si_shader_context *ctx)
 {
    if (ctx->screen->info.chip_class <= GFX8) {
-      unsigned ring = ctx->type == PIPE_SHADER_GEOMETRY ? SI_GS_RING_ESGS : SI_ES_RING_ESGS;
+      unsigned ring = ctx->stage == MESA_SHADER_GEOMETRY ? SI_GS_RING_ESGS : SI_ES_RING_ESGS;
       LLVMValueRef offset = LLVMConstInt(ctx->ac.i32, ring, 0);
       LLVMValueRef buf_ptr = ac_get_arg(&ctx->ac, ctx->rw_buffers);
 
@@ -478,6 +478,7 @@ struct si_shader *si_generate_gs_copy_shader(struct si_screen *sscreen,
                                          false, false, false, false));
    ctx.shader = shader;
    ctx.type = PIPE_SHADER_VERTEX;
+   ctx.stage = MESA_SHADER_VERTEX;
 
    builder = ctx.ac.builder;
 
@@ -564,6 +565,7 @@ struct si_shader *si_generate_gs_copy_shader(struct si_screen *sscreen,
    LLVMBuildRetVoid(ctx.ac.builder);
 
    ctx.type = PIPE_SHADER_GEOMETRY; /* override for shader dumping */
+   ctx.stage = MESA_SHADER_GEOMETRY; /* override for shader dumping */
    si_llvm_optimize_module(&ctx);
 
    bool ok = false;
