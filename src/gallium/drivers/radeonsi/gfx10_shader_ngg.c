@@ -126,7 +126,7 @@ bool gfx10_ngg_export_prim_early(struct si_shader *shader)
 
    assert(shader->key.as_ngg && !shader->key.as_es);
 
-   return sel->type != PIPE_SHADER_GEOMETRY && !sel->info.writes_edgeflag;
+   return sel->info.stage != MESA_SHADER_GEOMETRY && !sel->info.writes_edgeflag;
 }
 
 void gfx10_ngg_build_sendmsg_gs_alloc_req(struct si_shader_context *ctx)
@@ -600,15 +600,15 @@ static unsigned ngg_nogs_vertex_size(struct si_shader *shader)
     * to the ES thread of the provoking vertex. All ES threads
     * load and export PrimitiveID for their thread.
     */
-   if (shader->selector->type == PIPE_SHADER_VERTEX && shader->key.mono.u.vs_export_prim_id)
+   if (shader->selector->info.stage == MESA_SHADER_VERTEX && shader->key.mono.u.vs_export_prim_id)
       lds_vertex_size = MAX2(lds_vertex_size, 1);
 
    if (shader->key.opt.ngg_culling) {
-      if (shader->selector->type == PIPE_SHADER_VERTEX) {
+      if (shader->selector->info.stage == MESA_SHADER_VERTEX) {
          STATIC_ASSERT(lds_instance_id + 1 == 9);
          lds_vertex_size = MAX2(lds_vertex_size, 9);
       } else {
-         assert(shader->selector->type == PIPE_SHADER_TESS_EVAL);
+         assert(shader->selector->info.stage == MESA_SHADER_TESS_EVAL);
 
          if (shader->selector->info.uses_primid || shader->key.mono.u.vs_export_prim_id) {
             STATIC_ASSERT(lds_tes_patch_id + 2 == 11);
@@ -732,8 +732,8 @@ void gfx10_emit_ngg_culling_epilogue(struct ac_shader_abi *abi, unsigned max_out
 
    assert(shader->key.opt.ngg_culling);
    assert(shader->key.as_ngg);
-   assert(sel->type == PIPE_SHADER_VERTEX ||
-          (sel->type == PIPE_SHADER_TESS_EVAL && !shader->key.as_es));
+   assert(sel->info.stage == MESA_SHADER_VERTEX ||
+          (sel->info.stage == MESA_SHADER_TESS_EVAL && !shader->key.as_es));
 
    LLVMValueRef position[4] = {};
    for (unsigned i = 0; i < info->num_outputs; i++) {
@@ -1891,7 +1891,7 @@ unsigned gfx10_ngg_get_scratch_dw_size(struct si_shader *shader)
 {
    const struct si_shader_selector *sel = shader->selector;
 
-   if (sel->type == PIPE_SHADER_GEOMETRY && sel->so.num_outputs)
+   if (sel->info.stage == MESA_SHADER_GEOMETRY && sel->so.num_outputs)
       return 44;
 
    return 8;
@@ -1908,13 +1908,13 @@ bool gfx10_ngg_calculate_subgroup_info(struct si_shader *shader)
    const struct si_shader_selector *gs_sel = shader->selector;
    const struct si_shader_selector *es_sel =
       shader->previous_stage_sel ? shader->previous_stage_sel : gs_sel;
-   const enum pipe_shader_type gs_type = gs_sel->type;
+   const gl_shader_stage gs_stage = gs_sel->info.stage;
    const unsigned gs_num_invocations = MAX2(gs_sel->gs_num_invocations, 1);
    const unsigned input_prim = si_get_input_prim(gs_sel);
    const bool use_adjacency =
       input_prim >= PIPE_PRIM_LINES_ADJACENCY && input_prim <= PIPE_PRIM_TRIANGLE_STRIP_ADJACENCY;
    const unsigned max_verts_per_prim = u_vertices_per_prim(input_prim);
-   const unsigned min_verts_per_prim = gs_type == PIPE_SHADER_GEOMETRY ? max_verts_per_prim : 1;
+   const unsigned min_verts_per_prim = gs_stage == MESA_SHADER_GEOMETRY ? max_verts_per_prim : 1;
 
    /* All these are in dwords: */
    /* GE can only use 8K dwords (32KB) of LDS per workgroup.
@@ -1948,7 +1948,7 @@ bool gfx10_ngg_calculate_subgroup_info(struct si_shader *shader)
     */
    max_esverts_base = MIN2(max_esverts_base, 251 + max_verts_per_prim - 1);
 
-   if (gs_type == PIPE_SHADER_GEOMETRY) {
+   if (gs_stage == MESA_SHADER_GEOMETRY) {
       bool force_multi_cycling = false;
       unsigned max_out_verts_per_gsprim = gs_sel->gs_max_out_vertices * gs_num_invocations;
 
@@ -1970,7 +1970,7 @@ retry_select_mode:
       gsprim_lds_size = (gs_sel->gsvs_vertex_size / 4 + 1) * max_out_verts_per_gsprim;
 
       if (gsprim_lds_size > target_lds_size && !force_multi_cycling) {
-         if (gs_sel->tess_turns_off_ngg || es_sel->type != PIPE_SHADER_TESS_EVAL) {
+         if (gs_sel->tess_turns_off_ngg || es_sel->info.stage != MESA_SHADER_TESS_EVAL) {
             force_multi_cycling = true;
             goto retry_select_mode;
          }
@@ -2055,13 +2055,13 @@ retry_select_mode:
    unsigned max_out_vertices =
       max_vert_out_per_gs_instance
          ? gs_sel->gs_max_out_vertices
-         : gs_type == PIPE_SHADER_GEOMETRY
+         : gs_stage == MESA_SHADER_GEOMETRY
               ? max_gsprims * gs_num_invocations * gs_sel->gs_max_out_vertices
               : max_esverts;
    assert(max_out_vertices <= 256);
 
    unsigned prim_amp_factor = 1;
-   if (gs_type == PIPE_SHADER_GEOMETRY) {
+   if (gs_stage == MESA_SHADER_GEOMETRY) {
       /* Number of output primitives per GS input primitive after
        * GS instancing. */
       prim_amp_factor = gs_sel->gs_max_out_vertices;

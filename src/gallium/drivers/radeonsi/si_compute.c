@@ -235,6 +235,7 @@ static void *si_create_compute_state(struct pipe_context *ctx, const struct pipe
    struct si_shader_selector *sel = &program->sel;
 
    pipe_reference_init(&sel->base.reference, 1);
+   sel->info.stage = MESA_SHADER_COMPUTE;
    sel->type = PIPE_SHADER_COMPUTE;
    sel->screen = sscreen;
    program->shader.selector = &program->sel;
@@ -256,7 +257,7 @@ static void *si_create_compute_state(struct pipe_context *ctx, const struct pipe
       sel->compiler_ctx_state.is_debug_context = sctx->is_debug;
       p_atomic_inc(&sscreen->num_shaders_created);
 
-      si_schedule_initial_compile(sctx, PIPE_SHADER_COMPUTE, &sel->ready, &sel->compiler_ctx_state,
+      si_schedule_initial_compile(sctx, MESA_SHADER_COMPUTE, &sel->ready, &sel->compiler_ctx_state,
                                   program, si_create_compute_state_async);
    } else {
       const struct pipe_binary_program_header *header;

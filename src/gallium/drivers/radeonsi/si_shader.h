@@ -319,6 +319,8 @@ struct si_compiler_ctx_state {
 };
 
 struct si_shader_info {
+   gl_shader_stage stage;
+
    ubyte num_inputs;
    ubyte num_outputs;
    ubyte input_semantic_name[PIPE_MAX_SHADER_INPUTS]; /**< TGSI_SEMANTIC_x */
@@ -333,8 +335,6 @@ struct si_shader_info {
 
    ubyte color_interpolate[2];
    ubyte color_interpolate_loc[2];
-
-   ubyte processor;
 
    int constbuf0_num_slots;
    unsigned const_buffers_declared; /**< bitmask of declared const buffers */
@@ -889,9 +889,9 @@ static inline bool gfx10_is_ngg_passthrough(struct si_shader *shader)
 {
    struct si_shader_selector *sel = shader->selector;
 
-   return sel->type != PIPE_SHADER_GEOMETRY && !sel->so.num_outputs && !sel->info.writes_edgeflag &&
+   return sel->info.stage != MESA_SHADER_GEOMETRY && !sel->so.num_outputs && !sel->info.writes_edgeflag &&
           !shader->key.opt.ngg_culling &&
-          (sel->type != PIPE_SHADER_VERTEX || !shader->key.mono.u.vs_export_prim_id);
+          (sel->info.stage != MESA_SHADER_VERTEX || !shader->key.mono.u.vs_export_prim_id);
 }
 
 static inline bool si_shader_uses_bindless_samplers(struct si_shader_selector *selector)

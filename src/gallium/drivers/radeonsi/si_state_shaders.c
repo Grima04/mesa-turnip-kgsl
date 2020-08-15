@@ -35,6 +35,7 @@
 #include "util/u_async_debug.h"
 #include "util/u_memory.h"
 #include "util/u_prim.h"
+#include "tgsi/tgsi_from_mesa.h"
 
 /* SHADER_CACHE */
 
@@ -69,9 +70,9 @@ void si_get_ir_cache_key(struct si_shader_selector *sel, bool ngg, bool es,
       shader_variant_flags |= 1 << 0;
    if (sel->nir)
       shader_variant_flags |= 1 << 1;
-   if (si_get_wave_size(sel->screen, sel->type, ngg, es, false, false) == 32)
+   if (si_get_wave_size(sel->screen, sel->info.stage, ngg, es, false, false) == 32)
       shader_variant_flags |= 1 << 2;
-   if (sel->type == PIPE_SHADER_FRAGMENT && sel->info.uses_derivatives && sel->info.uses_kill &&
+   if (sel->info.stage == MESA_SHADER_FRAGMENT && sel->info.uses_derivatives && sel->info.uses_kill &&
        sel->screen->debug_flags & DBG(FS_CORRECT_DERIVS_AFTER_KILL))
       shader_variant_flags |= 1 << 3;
 
@@ -82,8 +83,8 @@ void si_get_ir_cache_key(struct si_shader_selector *sel, bool ngg, bool es,
    _mesa_sha1_init(&ctx);
    _mesa_sha1_update(&ctx, &shader_variant_flags, 4);
    _mesa_sha1_update(&ctx, ir_binary, ir_size);
-   if (sel->type == PIPE_SHADER_VERTEX || sel->type == PIPE_SHADER_TESS_EVAL ||
-       sel->type == PIPE_SHADER_GEOMETRY)
+   if (sel->info.stage == MESA_SHADER_VERTEX || sel->info.stage == MESA_SHADER_TESS_EVAL ||
+       sel->info.stage == MESA_SHADER_GEOMETRY)
       _mesa_sha1_update(&ctx, &sel->so, sizeof(sel->so));
    _mesa_sha1_final(&ctx, ir_sha1_cache_key);
 
@@ -388,19 +389,17 @@ static void si_set_tesseval_regs(struct si_screen *sscreen, const struct si_shad
 static void polaris_set_vgt_vertex_reuse(struct si_screen *sscreen, struct si_shader_selector *sel,
                                          struct si_shader *shader, struct si_pm4_state *pm4)
 {
-   unsigned type = sel->type;
-
    if (sscreen->info.family < CHIP_POLARIS10 || sscreen->info.chip_class >= GFX10)
       return;
 
    /* VS as VS, or VS as ES: */
-   if ((type == PIPE_SHADER_VERTEX &&
+   if ((sel->info.stage == MESA_SHADER_VERTEX &&
         (!shader || (!shader->key.as_ls && !shader->is_gs_copy_shader))) ||
        /* TES as VS, or TES as ES: */
-       type == PIPE_SHADER_TESS_EVAL) {
+       sel->info.stage == MESA_SHADER_TESS_EVAL) {
       unsigned vtx_reuse_depth = 30;
 
-      if (type == PIPE_SHADER_TESS_EVAL &&
+      if (sel->info.stage == MESA_SHADER_TESS_EVAL &&
           sel->info.properties[TGSI_PROPERTY_TES_SPACING] == PIPE_TESS_SPACING_FRACTIONAL_ODD)
          vtx_reuse_depth = 14;
 
@@ -446,8 +445,8 @@ static unsigned si_get_num_vs_user_sgprs(struct si_shader *shader,
 static unsigned si_get_vs_vgpr_comp_cnt(struct si_screen *sscreen, struct si_shader *shader,
                                         bool legacy_vs_prim_id)
 {
-   assert(shader->selector->type == PIPE_SHADER_VERTEX ||
-          (shader->previous_stage_sel && shader->previous_stage_sel->type == PIPE_SHADER_VERTEX));
+   assert(shader->selector->info.stage == MESA_SHADER_VERTEX ||
+          (shader->previous_stage_sel && shader->previous_stage_sel->info.stage == MESA_SHADER_VERTEX));
 
    /* GFX6-9 LS    (VertexID, RelAutoindex,                InstanceID / StepRate0(==1), ...).
     * GFX6-9 ES,VS (VertexID, InstanceID / StepRate0(==1), VSPrimID,                    ...)
@@ -455,7 +454,7 @@ static unsigned si_get_vs_vgpr_comp_cnt(struct si_screen *sscreen, struct si_sha
     * GFX10  ES,VS (VertexID, UserVGPR0,                   UserVGPR1 or VSPrimID,       UserVGPR2 or
     * InstanceID)
     */
-   bool is_ls = shader->selector->type == PIPE_SHADER_TESS_CTRL || shader->key.as_ls;
+   bool is_ls = shader->selector->info.stage == MESA_SHADER_TESS_CTRL || shader->key.as_ls;
 
    if (sscreen->info.chip_class >= GFX10 && shader->info.uses_instanceid)
       return 3;
@@ -557,7 +556,7 @@ static void si_emit_shader_es(struct si_context *sctx)
                               SI_TRACKED_VGT_ESGS_RING_ITEMSIZE,
                               shader->selector->esgs_itemsize / 4);
 
-   if (shader->selector->type == PIPE_SHADER_TESS_EVAL)
+   if (shader->selector->info.stage == MESA_SHADER_TESS_EVAL)
       radeon_opt_set_context_reg(sctx, R_028B6C_VGT_TF_PARAM, SI_TRACKED_VGT_TF_PARAM,
                                  shader->vgt_tf_param);
 
@@ -587,16 +586,16 @@ static void si_shader_es(struct si_screen *sscreen, struct si_shader *shader)
    pm4->atom.emit = si_emit_shader_es;
    va = shader->bo->gpu_address;
 
-   if (shader->selector->type == PIPE_SHADER_VERTEX) {
+   if (shader->selector->info.stage == MESA_SHADER_VERTEX) {
       vgpr_comp_cnt = si_get_vs_vgpr_comp_cnt(sscreen, shader, false);
       num_user_sgprs = si_get_num_vs_user_sgprs(shader, SI_VS_NUM_USER_SGPR);
-   } else if (shader->selector->type == PIPE_SHADER_TESS_EVAL) {
+   } else if (shader->selector->info.stage == MESA_SHADER_TESS_EVAL) {
       vgpr_comp_cnt = shader->selector->info.uses_primid ? 3 : 2;
       num_user_sgprs = SI_TES_NUM_USER_SGPR;
    } else
       unreachable("invalid shader selector type");
 
-   oc_lds_en = shader->selector->type == PIPE_SHADER_TESS_EVAL ? 1 : 0;
+   oc_lds_en = shader->selector->info.stage == MESA_SHADER_TESS_EVAL ? 1 : 0;
 
    si_pm4_set_reg(pm4, R_00B320_SPI_SHADER_PGM_LO_ES, va >> 8);
    si_pm4_set_reg(pm4, R_00B324_SPI_SHADER_PGM_HI_ES, S_00B324_MEM_BASE(va >> 40));
@@ -609,7 +608,7 @@ static void si_shader_es(struct si_screen *sscreen, struct si_shader *shader)
                   S_00B32C_USER_SGPR(num_user_sgprs) | S_00B32C_OC_LDS_EN(oc_lds_en) |
                      S_00B32C_SCRATCH_EN(shader->config.scratch_bytes_per_wave > 0));
 
-   if (shader->selector->type == PIPE_SHADER_TESS_EVAL)
+   if (shader->selector->info.stage == MESA_SHADER_TESS_EVAL)
       si_set_tesseval_regs(sscreen, shader->selector, pm4);
 
    polaris_set_vgt_vertex_reuse(sscreen, shader->selector, shader, pm4);
@@ -756,7 +755,7 @@ static void si_emit_shader_gs(struct si_context *sctx)
                                  SI_TRACKED_VGT_ESGS_RING_ITEMSIZE,
                                  shader->ctx_reg.gs.vgt_esgs_ring_itemsize);
 
-      if (shader->key.part.gs.es->type == PIPE_SHADER_TESS_EVAL)
+      if (shader->key.part.gs.es->info.stage == MESA_SHADER_TESS_EVAL)
          radeon_opt_set_context_reg(sctx, R_028B6C_VGT_TF_PARAM, SI_TRACKED_VGT_TF_PARAM,
                                     shader->vgt_tf_param);
       if (shader->vgt_vertex_reuse_block_cntl)
@@ -817,12 +816,12 @@ static void si_shader_gs(struct si_screen *sscreen, struct si_shader *shader)
 
    if (sscreen->info.chip_class >= GFX9) {
       unsigned input_prim = sel->info.properties[TGSI_PROPERTY_GS_INPUT_PRIM];
-      unsigned es_type = shader->key.part.gs.es->type;
+      gl_shader_stage es_stage = shader->key.part.gs.es->info.stage;
       unsigned es_vgpr_comp_cnt, gs_vgpr_comp_cnt;
 
-      if (es_type == PIPE_SHADER_VERTEX) {
+      if (es_stage == MESA_SHADER_VERTEX) {
          es_vgpr_comp_cnt = si_get_vs_vgpr_comp_cnt(sscreen, shader, false);
-      } else if (es_type == PIPE_SHADER_TESS_EVAL)
+      } else if (es_stage == MESA_SHADER_TESS_EVAL)
          es_vgpr_comp_cnt = shader->key.part.gs.es->info.uses_primid ? 3 : 2;
       else
          unreachable("invalid shader selector type");
@@ -840,7 +839,7 @@ static void si_shader_gs(struct si_screen *sscreen, struct si_shader *shader)
          gs_vgpr_comp_cnt = 0; /* VGPR0 contains offsets 0, 1 */
 
       unsigned num_user_sgprs;
-      if (es_type == PIPE_SHADER_VERTEX)
+      if (es_stage == MESA_SHADER_VERTEX)
          num_user_sgprs = si_get_num_vs_user_sgprs(shader, GFX9_VSGS_NUM_USER_SGPR);
       else
          num_user_sgprs = GFX9_TESGS_NUM_USER_SGPR;
@@ -860,7 +859,7 @@ static void si_shader_gs(struct si_screen *sscreen, struct si_shader *shader)
                        S_00B228_GS_VGPR_COMP_CNT(gs_vgpr_comp_cnt);
       uint32_t rsrc2 = S_00B22C_USER_SGPR(num_user_sgprs) |
                        S_00B22C_ES_VGPR_COMP_CNT(es_vgpr_comp_cnt) |
-                       S_00B22C_OC_LDS_EN(es_type == PIPE_SHADER_TESS_EVAL) |
+                       S_00B22C_OC_LDS_EN(es_stage == MESA_SHADER_TESS_EVAL) |
                        S_00B22C_LDS_SIZE(shader->config.lds_size) |
                        S_00B22C_SCRATCH_EN(shader->config.scratch_bytes_per_wave > 0);
 
@@ -887,7 +886,7 @@ static void si_shader_gs(struct si_screen *sscreen, struct si_shader *shader)
          S_028A94_MAX_PRIMS_PER_SUBGROUP(shader->gs_info.max_prims_per_subgroup);
       shader->ctx_reg.gs.vgt_esgs_ring_itemsize = shader->key.part.gs.es->esgs_itemsize / 4;
 
-      if (es_type == PIPE_SHADER_TESS_EVAL)
+      if (es_stage == MESA_SHADER_TESS_EVAL)
          si_set_tesseval_regs(sscreen, shader->key.part.gs.es, pm4);
 
       polaris_set_vgt_vertex_reuse(sscreen, shader->key.part.gs.es, NULL, pm4);
@@ -1022,10 +1021,10 @@ static void gfx10_emit_shader_ngg_tess_gs(struct si_context *sctx)
 
 unsigned si_get_input_prim(const struct si_shader_selector *gs)
 {
-   if (gs->type == PIPE_SHADER_GEOMETRY)
+   if (gs->info.stage == MESA_SHADER_GEOMETRY)
       return gs->info.properties[TGSI_PROPERTY_GS_INPUT_PRIM];
 
-   if (gs->type == PIPE_SHADER_TESS_EVAL) {
+   if (gs->info.stage == MESA_SHADER_TESS_EVAL) {
       if (gs->info.properties[TGSI_PROPERTY_TES_POINT_MODE])
          return PIPE_PRIM_POINTS;
       if (gs->info.properties[TGSI_PROPERTY_TES_PRIM_MODE] == PIPE_PRIM_LINES)
@@ -1057,11 +1056,11 @@ static void gfx10_shader_ngg(struct si_screen *sscreen, struct si_shader *shader
 {
    const struct si_shader_selector *gs_sel = shader->selector;
    const struct si_shader_info *gs_info = &gs_sel->info;
-   enum pipe_shader_type gs_type = shader->selector->type;
+   const gl_shader_stage gs_stage = shader->selector->info.stage;
    const struct si_shader_selector *es_sel =
       shader->previous_stage_sel ? shader->previous_stage_sel : shader->selector;
    const struct si_shader_info *es_info = &es_sel->info;
-   enum pipe_shader_type es_type = es_sel->type;
+   const gl_shader_stage es_stage = es_sel->info.stage;
    unsigned num_user_sgprs;
    unsigned nparams, es_vgpr_comp_cnt, gs_vgpr_comp_cnt;
    uint64_t va;
@@ -1074,17 +1073,17 @@ static void gfx10_shader_ngg(struct si_screen *sscreen, struct si_shader *shader
    if (!pm4)
       return;
 
-   if (es_type == PIPE_SHADER_TESS_EVAL) {
-      pm4->atom.emit = gs_type == PIPE_SHADER_GEOMETRY ? gfx10_emit_shader_ngg_tess_gs
+   if (es_stage == MESA_SHADER_TESS_EVAL) {
+      pm4->atom.emit = gs_stage == MESA_SHADER_GEOMETRY ? gfx10_emit_shader_ngg_tess_gs
                                                        : gfx10_emit_shader_ngg_tess_nogs;
    } else {
-      pm4->atom.emit = gs_type == PIPE_SHADER_GEOMETRY ? gfx10_emit_shader_ngg_notess_gs
+      pm4->atom.emit = gs_stage == MESA_SHADER_GEOMETRY ? gfx10_emit_shader_ngg_notess_gs
                                                        : gfx10_emit_shader_ngg_notess_nogs;
    }
 
    va = shader->bo->gpu_address;
 
-   if (es_type == PIPE_SHADER_VERTEX) {
+   if (es_stage == MESA_SHADER_VERTEX) {
       es_vgpr_comp_cnt = si_get_vs_vgpr_comp_cnt(sscreen, shader, false);
 
       if (es_info->properties[TGSI_PROPERTY_VS_BLIT_SGPRS_AMD]) {
@@ -1094,7 +1093,7 @@ static void gfx10_shader_ngg(struct si_screen *sscreen, struct si_shader *shader
          num_user_sgprs = si_get_num_vs_user_sgprs(shader, GFX9_VSGS_NUM_USER_SGPR);
       }
    } else {
-      assert(es_type == PIPE_SHADER_TESS_EVAL);
+      assert(es_stage == MESA_SHADER_TESS_EVAL);
       es_vgpr_comp_cnt = es_enable_prim_id ? 3 : 2;
       num_user_sgprs = GFX9_TESGS_NUM_USER_SGPR;
 
@@ -1110,10 +1109,10 @@ static void gfx10_shader_ngg(struct si_screen *sscreen, struct si_shader *shader
     * for the GL_LINE polygon mode to skip rendering lines on inner edges.
     */
    if (gs_info->uses_invocationid ||
-       (gs_type == PIPE_SHADER_VERTEX && !gfx10_is_ngg_passthrough(shader)))
+       (gs_stage == MESA_SHADER_VERTEX && !gfx10_is_ngg_passthrough(shader)))
       gs_vgpr_comp_cnt = 3; /* VGPR3 contains InvocationID, edge flags. */
-   else if ((gs_type == PIPE_SHADER_GEOMETRY && gs_info->uses_primid) ||
-            (gs_type == PIPE_SHADER_VERTEX && shader->key.mono.u.vs_export_prim_id))
+   else if ((gs_stage == MESA_SHADER_GEOMETRY && gs_info->uses_primid) ||
+            (gs_stage == MESA_SHADER_VERTEX && shader->key.mono.u.vs_export_prim_id))
       gs_vgpr_comp_cnt = 2; /* VGPR2 contains PrimitiveID. */
    else if (input_prim >= PIPE_PRIM_TRIANGLES && !gfx10_is_ngg_passthrough(shader))
       gs_vgpr_comp_cnt = 1; /* VGPR1 contains offsets 2, 3 */
@@ -1135,7 +1134,7 @@ static void gfx10_shader_ngg(struct si_screen *sscreen, struct si_shader *shader
                      S_00B22C_USER_SGPR(num_user_sgprs) |
                      S_00B22C_ES_VGPR_COMP_CNT(es_vgpr_comp_cnt) |
                      S_00B22C_USER_SGPR_MSB_GFX10(num_user_sgprs >> 5) |
-                     S_00B22C_OC_LDS_EN(es_type == PIPE_SHADER_TESS_EVAL) |
+                     S_00B22C_OC_LDS_EN(es_stage == MESA_SHADER_TESS_EVAL) |
                      S_00B22C_LDS_SIZE(shader->config.lds_size));
 
    /* Determine LATE_ALLOC_GS. */
@@ -1185,14 +1184,14 @@ static void gfx10_shader_ngg(struct si_screen *sscreen, struct si_shader *shader
       S_028A84_NGG_DISABLE_PROVOK_REUSE(shader->key.mono.u.vs_export_prim_id ||
                                         gs_sel->info.writes_primid);
 
-   if (gs_type == PIPE_SHADER_GEOMETRY) {
+   if (gs_stage == MESA_SHADER_GEOMETRY) {
       shader->ctx_reg.ngg.vgt_esgs_ring_itemsize = es_sel->esgs_itemsize / 4;
       shader->ctx_reg.ngg.vgt_gs_max_vert_out = gs_sel->gs_max_out_vertices;
    } else {
       shader->ctx_reg.ngg.vgt_esgs_ring_itemsize = 1;
    }
 
-   if (es_type == PIPE_SHADER_TESS_EVAL)
+   if (es_stage == MESA_SHADER_TESS_EVAL)
       si_set_tesseval_regs(sscreen, es_sel, pm4);
 
    shader->ctx_reg.ngg.vgt_gs_onchip_cntl =
@@ -1213,7 +1212,7 @@ static void gfx10_shader_ngg(struct si_screen *sscreen, struct si_shader *shader
     * this.
     */
    shader->ctx_reg.ngg.pa_cl_ngg_cntl =
-      S_028838_INDEX_BUF_EDGE_FLAG_ENA(gs_type == PIPE_SHADER_VERTEX) |
+      S_028838_INDEX_BUF_EDGE_FLAG_ENA(gs_stage == MESA_SHADER_VERTEX) |
       /* Reuse for NGG. */
       S_028838_VERTEX_REUSE_DEPTH(sscreen->info.chip_class >= GFX10_3 ? 30 : 0);
    shader->pa_cl_vs_out_cntl = si_get_vs_out_cntl(gs_sel, true);
@@ -1252,7 +1251,7 @@ static void gfx10_shader_ngg(struct si_screen *sscreen, struct si_shader *shader
        * Requirement: GE_CNTL.VERT_GRP_SIZE = VGT_GS_ONCHIP_CNTL.ES_VERTS_PER_SUBGRP - 5
        */
       if ((sscreen->info.chip_class == GFX10) &&
-          (es_type == PIPE_SHADER_VERTEX || gs_type == PIPE_SHADER_VERTEX) && /* = no tess */
+          (es_stage == MESA_SHADER_VERTEX || gs_stage == MESA_SHADER_VERTEX) && /* = no tess */
           shader->ngg.hw_max_esverts != 256) {
          shader->ge_cntl &= C_03096C_VERT_GRP_SIZE;
 
@@ -1300,7 +1299,7 @@ static void si_emit_shader_vs(struct si_context *sctx)
    radeon_opt_set_context_reg(sctx, R_028818_PA_CL_VTE_CNTL, SI_TRACKED_PA_CL_VTE_CNTL,
                               shader->ctx_reg.vs.pa_cl_vte_cntl);
 
-   if (shader->selector->type == PIPE_SHADER_TESS_EVAL)
+   if (shader->selector->info.stage == MESA_SHADER_TESS_EVAL)
       radeon_opt_set_context_reg(sctx, R_028B6C_VGT_TF_PARAM, SI_TRACKED_VGT_TF_PARAM,
                                  shader->vgt_tf_param);
 
@@ -1310,7 +1309,7 @@ static void si_emit_shader_vs(struct si_context *sctx)
                                  shader->vgt_vertex_reuse_block_cntl);
 
    /* Required programming for tessellation. (legacy pipeline only) */
-   if (sctx->chip_class >= GFX10 && shader->selector->type == PIPE_SHADER_TESS_EVAL) {
+   if (sctx->chip_class >= GFX10 && shader->selector->info.stage == MESA_SHADER_TESS_EVAL) {
       radeon_opt_set_context_reg(sctx, R_028A44_VGT_GS_ONCHIP_CNTL,
                                  SI_TRACKED_VGT_GS_ONCHIP_CNTL,
                                  S_028A44_ES_VERTS_PER_SUBGRP(250) |
@@ -1388,7 +1387,7 @@ static void si_shader_vs(struct si_screen *sscreen, struct si_shader *shader,
    if (gs) {
       vgpr_comp_cnt = 0; /* only VertexID is needed for GS-COPY. */
       num_user_sgprs = SI_GSCOPY_NUM_USER_SGPR;
-   } else if (shader->selector->type == PIPE_SHADER_VERTEX) {
+   } else if (shader->selector->info.stage == MESA_SHADER_VERTEX) {
       vgpr_comp_cnt = si_get_vs_vgpr_comp_cnt(sscreen, shader, enable_prim_id);
 
       if (info->properties[TGSI_PROPERTY_VS_BLIT_SGPRS_AMD]) {
@@ -1396,7 +1395,7 @@ static void si_shader_vs(struct si_screen *sscreen, struct si_shader *shader,
       } else {
          num_user_sgprs = si_get_num_vs_user_sgprs(shader, SI_VS_NUM_USER_SGPR);
       }
-   } else if (shader->selector->type == PIPE_SHADER_TESS_EVAL) {
+   } else if (shader->selector->info.stage == MESA_SHADER_TESS_EVAL) {
       vgpr_comp_cnt = enable_prim_id ? 3 : 2;
       num_user_sgprs = SI_TES_NUM_USER_SGPR;
    } else
@@ -1423,7 +1422,7 @@ static void si_shader_vs(struct si_screen *sscreen, struct si_shader *shader,
                                     S_030980_NUM_PC_LINES(sscreen->info.pc_lines / 4 - 1);
    shader->pa_cl_vs_out_cntl = si_get_vs_out_cntl(shader->selector, false);
 
-   oc_lds_en = shader->selector->type == PIPE_SHADER_TESS_EVAL ? 1 : 0;
+   oc_lds_en = shader->selector->info.stage == MESA_SHADER_TESS_EVAL ? 1 : 0;
 
    si_pm4_set_reg(pm4, R_00B120_SPI_SHADER_PGM_LO_VS, va >> 8);
    si_pm4_set_reg(pm4, R_00B124_SPI_SHADER_PGM_HI_VS, S_00B124_MEM_BASE(va >> 40));
@@ -1463,7 +1462,7 @@ static void si_shader_vs(struct si_screen *sscreen, struct si_shader *shader,
          S_028818_VPORT_Y_SCALE_ENA(1) | S_028818_VPORT_Y_OFFSET_ENA(1) |
          S_028818_VPORT_Z_SCALE_ENA(1) | S_028818_VPORT_Z_OFFSET_ENA(1);
 
-   if (shader->selector->type == PIPE_SHADER_TESS_EVAL)
+   if (shader->selector->info.stage == MESA_SHADER_TESS_EVAL)
       si_set_tesseval_regs(sscreen, shader->selector, pm4);
 
    polaris_set_vgt_vertex_reuse(sscreen, shader->selector, shader, pm4);
@@ -1657,8 +1656,8 @@ static void si_shader_ps(struct si_screen *sscreen, struct si_shader *shader)
 
 static void si_shader_init_pm4_state(struct si_screen *sscreen, struct si_shader *shader)
 {
-   switch (shader->selector->type) {
-   case PIPE_SHADER_VERTEX:
+   switch (shader->selector->info.stage) {
+   case MESA_SHADER_VERTEX:
       if (shader->key.as_ls)
          si_shader_ls(sscreen, shader);
       else if (shader->key.as_es)
@@ -1668,10 +1667,10 @@ static void si_shader_init_pm4_state(struct si_screen *sscreen, struct si_shader
       else
          si_shader_vs(sscreen, shader, NULL);
       break;
-   case PIPE_SHADER_TESS_CTRL:
+   case MESA_SHADER_TESS_CTRL:
       si_shader_hs(sscreen, shader);
       break;
-   case PIPE_SHADER_TESS_EVAL:
+   case MESA_SHADER_TESS_EVAL:
       if (shader->key.as_es)
          si_shader_es(sscreen, shader);
       else if (shader->key.as_ngg)
@@ -1679,13 +1678,13 @@ static void si_shader_init_pm4_state(struct si_screen *sscreen, struct si_shader
       else
          si_shader_vs(sscreen, shader, NULL);
       break;
-   case PIPE_SHADER_GEOMETRY:
+   case MESA_SHADER_GEOMETRY:
       if (shader->key.as_ngg)
          gfx10_shader_ngg(sscreen, shader);
       else
          si_shader_gs(sscreen, shader);
       break;
-   case PIPE_SHADER_FRAGMENT:
+   case MESA_SHADER_FRAGMENT:
       si_shader_ps(sscreen, shader);
       break;
    default:
@@ -1793,8 +1792,8 @@ static inline void si_shader_selector_key(struct pipe_context *ctx, struct si_sh
 
    memset(key, 0, sizeof(*key));
 
-   switch (sel->type) {
-   case PIPE_SHADER_VERTEX:
+   switch (sel->info.stage) {
+   case MESA_SHADER_VERTEX:
       si_shader_selector_key_vs(sctx, sel, key, &key->part.vs.prolog);
 
       if (sctx->tes_shader.cso)
@@ -1810,7 +1809,7 @@ static inline void si_shader_selector_key(struct pipe_context *ctx, struct si_sh
             key->mono.u.vs_export_prim_id = 1;
       }
       break;
-   case PIPE_SHADER_TESS_CTRL:
+   case MESA_SHADER_TESS_CTRL:
       if (sctx->chip_class >= GFX9) {
          si_shader_selector_key_vs(sctx, sctx->vs_shader.cso, key, &key->part.tcs.ls_prolog);
          key->part.tcs.ls = sctx->vs_shader.cso;
@@ -1839,7 +1838,7 @@ static inline void si_shader_selector_key(struct pipe_context *ctx, struct si_sh
       if (sel == sctx->fixed_func_tcs_shader.cso)
          key->mono.u.ff_tcs_inputs_to_copy = sctx->vs_shader.cso->outputs_written;
       break;
-   case PIPE_SHADER_TESS_EVAL:
+   case MESA_SHADER_TESS_EVAL:
       key->as_ngg = stages_key.u.ngg;
 
       if (sctx->gs_shader.cso)
@@ -1851,7 +1850,7 @@ static inline void si_shader_selector_key(struct pipe_context *ctx, struct si_sh
             key->mono.u.vs_export_prim_id = 1;
       }
       break;
-   case PIPE_SHADER_GEOMETRY:
+   case MESA_SHADER_GEOMETRY:
       if (sctx->chip_class >= GFX9) {
          if (sctx->tes_shader.cso) {
             key->part.gs.es = sctx->tes_shader.cso;
@@ -1884,7 +1883,7 @@ static inline void si_shader_selector_key(struct pipe_context *ctx, struct si_sh
       }
       key->part.gs.prolog.tri_strip_adj_fix = sctx->gs_tri_strip_adj_fix;
       break;
-   case PIPE_SHADER_FRAGMENT: {
+   case MESA_SHADER_FRAGMENT: {
       struct si_state_rasterizer *rs = sctx->queued.named.rasterizer;
       struct si_state_blend *blend = sctx->queued.named.blend;
 
@@ -2037,7 +2036,7 @@ static void si_build_shader_variant(struct si_shader *shader, int thread_index, 
       si_init_compiler(sscreen, compiler);
 
    if (unlikely(!si_create_shader_variant(sscreen, compiler, shader, debug))) {
-      PRINT_ERR("Failed to build shader variant (type=%u)\n", sel->type);
+      PRINT_ERR("Failed to build shader variant (type=%u)\n", sel->info.stage);
       shader->compilation_failed = true;
       return;
    }
@@ -2192,9 +2191,9 @@ current_not_ready:
 
    /* If this is a merged shader, get the first shader's selector. */
    if (sscreen->info.chip_class >= GFX9) {
-      if (sel->type == PIPE_SHADER_TESS_CTRL)
+      if (sel->info.stage == MESA_SHADER_TESS_CTRL)
          previous_stage_sel = key->part.tcs.ls;
-      else if (sel->type == PIPE_SHADER_GEOMETRY)
+      else if (sel->info.stage == MESA_SHADER_GEOMETRY)
          previous_stage_sel = key->part.gs.es;
 
       /* We need to wait for the previous shader. */
@@ -2226,9 +2225,9 @@ current_not_ready:
       if (previous_stage_sel) {
          struct si_shader_key shader1_key = zeroed;
 
-         if (sel->type == PIPE_SHADER_TESS_CTRL) {
+         if (sel->info.stage == MESA_SHADER_TESS_CTRL) {
             shader1_key.as_ls = 1;
-         } else if (sel->type == PIPE_SHADER_GEOMETRY) {
+         } else if (sel->info.stage == MESA_SHADER_GEOMETRY) {
             shader1_key.as_es = 1;
             shader1_key.as_ngg = key->as_ngg; /* for Wave32 vs Wave64 */
          } else {
@@ -2336,8 +2335,8 @@ static void si_parse_next_shader_property(const struct si_shader_info *info, boo
 {
    unsigned next_shader = info->properties[TGSI_PROPERTY_NEXT_SHADER];
 
-   switch (info->processor) {
-   case PIPE_SHADER_VERTEX:
+   switch (info->stage) {
+   case MESA_SHADER_VERTEX:
       switch (next_shader) {
       case PIPE_SHADER_GEOMETRY:
          key->as_es = 1;
@@ -2357,10 +2356,12 @@ static void si_parse_next_shader_property(const struct si_shader_info *info, boo
       }
       break;
 
-   case PIPE_SHADER_TESS_EVAL:
+   case MESA_SHADER_TESS_EVAL:
       if (next_shader == PIPE_SHADER_GEOMETRY || !info->writes_position)
          key->as_es = 1;
       break;
+
+   default:;
    }
 }
 
@@ -2423,8 +2424,8 @@ static void si_init_shader_selector_async(void *job, int thread_index)
       si_parse_next_shader_property(&sel->info, sel->so.num_outputs != 0, &shader->key);
 
       if (sscreen->use_ngg && (!sel->so.num_outputs || sscreen->use_ngg_streamout) &&
-          ((sel->type == PIPE_SHADER_VERTEX && !shader->key.as_ls) ||
-           sel->type == PIPE_SHADER_TESS_EVAL || sel->type == PIPE_SHADER_GEOMETRY))
+          ((sel->info.stage == MESA_SHADER_VERTEX && !shader->key.as_ls) ||
+           sel->info.stage == MESA_SHADER_TESS_EVAL || sel->info.stage == MESA_SHADER_GEOMETRY))
          shader->key.as_ngg = 1;
 
       if (sel->nir) {
@@ -2461,7 +2462,7 @@ static void si_init_shader_selector_async(void *job, int thread_index)
        *
        * This is only done if non-monolithic shaders are enabled.
        */
-      if ((sel->type == PIPE_SHADER_VERTEX || sel->type == PIPE_SHADER_TESS_EVAL) &&
+      if ((sel->info.stage == MESA_SHADER_VERTEX || sel->info.stage == MESA_SHADER_TESS_EVAL) &&
           !shader->key.as_ls && !shader->key.as_es) {
          unsigned i;
 
@@ -2496,7 +2497,7 @@ static void si_init_shader_selector_async(void *job, int thread_index)
    }
 
    /* The GS copy shader is always pre-compiled. */
-   if (sel->type == PIPE_SHADER_GEOMETRY &&
+   if (sel->info.stage == MESA_SHADER_GEOMETRY &&
        (!sscreen->use_ngg || !sscreen->use_ngg_streamout || /* also for PRIMITIVES_GENERATED */
         sel->tess_turns_off_ngg)) {
       sel->gs_copy_shader = si_generate_gs_copy_shader(sscreen, compiler, sel, debug);
@@ -2515,7 +2516,7 @@ static void si_init_shader_selector_async(void *job, int thread_index)
    }
 }
 
-void si_schedule_initial_compile(struct si_context *sctx, unsigned processor,
+void si_schedule_initial_compile(struct si_context *sctx, gl_shader_stage stage,
                                  struct util_queue_fence *ready_fence,
                                  struct si_compiler_ctx_state *compiler_ctx_state, void *job,
                                  util_queue_execute_func execute)
@@ -2524,7 +2525,7 @@ void si_schedule_initial_compile(struct si_context *sctx, unsigned processor,
 
    struct util_async_debug_callback async_debug;
    bool debug = (sctx->debug.debug_message && !sctx->debug.async) || sctx->is_debug ||
-                si_can_dump_shader(sctx->screen, processor);
+                si_can_dump_shader(sctx->screen, pipe_shader_type_from_mesa(stage));
 
    if (debug) {
       u_async_debug_init(&async_debug);
@@ -2602,7 +2603,7 @@ static void *si_create_shader_selector(struct pipe_context *ctx,
 
    si_nir_scan_shader(sel->nir, &sel->info);
 
-   sel->type = sel->info.processor;
+   sel->type = pipe_shader_type_from_mesa(sel->info.stage);
    p_atomic_inc(&sscreen->num_shaders_created);
    si_get_active_slot_masks(&sel->info, &sel->active_const_and_shader_buffers,
                             &sel->active_samplers_and_images);
@@ -2614,23 +2615,23 @@ static void *si_create_shader_selector(struct pipe_context *ctx,
    }
 
    sel->num_vs_inputs =
-      sel->type == PIPE_SHADER_VERTEX && !sel->info.properties[TGSI_PROPERTY_VS_BLIT_SGPRS_AMD]
+      sel->info.stage == MESA_SHADER_VERTEX && !sel->info.properties[TGSI_PROPERTY_VS_BLIT_SGPRS_AMD]
          ? sel->info.num_inputs
          : 0;
    sel->num_vbos_in_user_sgprs = MIN2(sel->num_vs_inputs, sscreen->num_vbos_in_user_sgprs);
 
    /* The prolog is a no-op if there are no inputs. */
-   sel->vs_needs_prolog = sel->type == PIPE_SHADER_VERTEX && sel->info.num_inputs &&
+   sel->vs_needs_prolog = sel->info.stage == MESA_SHADER_VERTEX && sel->info.num_inputs &&
                           !sel->info.properties[TGSI_PROPERTY_VS_BLIT_SGPRS_AMD];
 
    sel->prim_discard_cs_allowed =
-      sel->type == PIPE_SHADER_VERTEX && !sel->info.uses_bindless_images &&
+      sel->info.stage == MESA_SHADER_VERTEX && !sel->info.uses_bindless_images &&
       !sel->info.uses_bindless_samplers && !sel->info.writes_memory &&
       !sel->info.writes_viewport_index &&
       !sel->info.properties[TGSI_PROPERTY_VS_WINDOW_SPACE_POSITION] && !sel->so.num_outputs;
 
-   switch (sel->type) {
-   case PIPE_SHADER_GEOMETRY:
+   switch (sel->info.stage) {
+   case MESA_SHADER_GEOMETRY:
       sel->gs_output_prim = sel->info.properties[TGSI_PROPERTY_GS_OUTPUT_PRIM];
 
       /* Only possibilities: POINTS, LINE_STRIP, TRIANGLES */
@@ -2661,14 +2662,14 @@ static void *si_create_shader_selector(struct pipe_context *ctx,
                                  (sel->info.num_outputs * 4 + 1) > 6500 /* max dw per GS primitive */);
       break;
 
-   case PIPE_SHADER_TESS_CTRL:
+   case MESA_SHADER_TESS_CTRL:
       /* Always reserve space for these. */
       sel->patch_outputs_written |=
          (1ull << si_shader_io_get_unique_index_patch(TGSI_SEMANTIC_TESSINNER, 0)) |
          (1ull << si_shader_io_get_unique_index_patch(TGSI_SEMANTIC_TESSOUTER, 0));
       /* fall through */
-   case PIPE_SHADER_VERTEX:
-   case PIPE_SHADER_TESS_EVAL:
+   case MESA_SHADER_VERTEX:
+   case MESA_SHADER_TESS_EVAL:
       for (i = 0; i < sel->info.num_outputs; i++) {
          unsigned name = sel->info.output_semantic_name[i];
          unsigned index = sel->info.output_semantic_index[i];
@@ -2720,7 +2721,7 @@ static void *si_create_shader_selector(struct pipe_context *ctx,
          sel->rast_prim = PIPE_PRIM_TRIANGLES;
       break;
 
-   case PIPE_SHADER_FRAGMENT:
+   case MESA_SHADER_FRAGMENT:
       for (i = 0; i < sel->info.num_inputs; i++) {
          unsigned name = sel->info.input_semantic_name[i];
          unsigned index = sel->info.input_semantic_index[i];
@@ -2757,8 +2758,8 @@ static void *si_create_shader_selector(struct pipe_context *ctx,
       sscreen->info.chip_class >= GFX10 &&
       sscreen->info.has_dedicated_vram &&
       sscreen->use_ngg_culling &&
-      (sel->type == PIPE_SHADER_VERTEX ||
-       (sel->type == PIPE_SHADER_TESS_EVAL &&
+      (sel->info.stage == MESA_SHADER_VERTEX ||
+       (sel->info.stage == MESA_SHADER_TESS_EVAL &&
         (sscreen->always_use_ngg_culling_all ||
          sscreen->always_use_ngg_culling_tess))) &&
       sel->info.writes_position &&
@@ -2825,7 +2826,7 @@ static void *si_create_shader_selector(struct pipe_context *ctx,
 
    (void)simple_mtx_init(&sel->mutex, mtx_plain);
 
-   si_schedule_initial_compile(sctx, sel->info.processor, &sel->ready, &sel->compiler_ctx_state,
+   si_schedule_initial_compile(sctx, sel->info.stage, &sel->ready, &sel->compiler_ctx_state,
                                sel, si_init_shader_selector_async);
    return sel;
 }
@@ -3093,8 +3094,8 @@ static void si_delete_shader(struct si_context *sctx, struct si_shader *shader)
        * binding it to the same shader stage would be considered
        * a no-op, causing random behavior.
        */
-      switch (shader->selector->type) {
-      case PIPE_SHADER_VERTEX:
+      switch (shader->selector->info.stage) {
+      case MESA_SHADER_VERTEX:
          if (shader->key.as_ls) {
             assert(sctx->chip_class <= GFX8);
             si_pm4_delete_state(sctx, ls, shader->pm4);
@@ -3107,10 +3108,10 @@ static void si_delete_shader(struct si_context *sctx, struct si_shader *shader)
             si_pm4_delete_state(sctx, vs, shader->pm4);
          }
          break;
-      case PIPE_SHADER_TESS_CTRL:
+      case MESA_SHADER_TESS_CTRL:
          si_pm4_delete_state(sctx, hs, shader->pm4);
          break;
-      case PIPE_SHADER_TESS_EVAL:
+      case MESA_SHADER_TESS_EVAL:
          if (shader->key.as_es) {
             assert(sctx->chip_class <= GFX8);
             si_pm4_delete_state(sctx, es, shader->pm4);
@@ -3120,13 +3121,13 @@ static void si_delete_shader(struct si_context *sctx, struct si_shader *shader)
             si_pm4_delete_state(sctx, vs, shader->pm4);
          }
          break;
-      case PIPE_SHADER_GEOMETRY:
+      case MESA_SHADER_GEOMETRY:
          if (shader->is_gs_copy_shader)
             si_pm4_delete_state(sctx, vs, shader->pm4);
          else
             si_pm4_delete_state(sctx, gs, shader->pm4);
          break;
-      case PIPE_SHADER_FRAGMENT:
+      case MESA_SHADER_FRAGMENT:
          si_pm4_delete_state(sctx, ps, shader->pm4);
          break;
       default:;
@@ -3144,16 +3145,18 @@ static void si_destroy_shader_selector(struct pipe_context *ctx, void *cso)
    struct si_shader_selector *sel = (struct si_shader_selector *)cso;
    struct si_shader *p = sel->first_variant, *c;
    struct si_shader_ctx_state *current_shader[SI_NUM_SHADERS] = {
-      [PIPE_SHADER_VERTEX] = &sctx->vs_shader,     [PIPE_SHADER_TESS_CTRL] = &sctx->tcs_shader,
-      [PIPE_SHADER_TESS_EVAL] = &sctx->tes_shader, [PIPE_SHADER_GEOMETRY] = &sctx->gs_shader,
-      [PIPE_SHADER_FRAGMENT] = &sctx->ps_shader,
+      [MESA_SHADER_VERTEX] = &sctx->vs_shader,
+      [MESA_SHADER_TESS_CTRL] = &sctx->tcs_shader,
+      [MESA_SHADER_TESS_EVAL] = &sctx->tes_shader,
+      [MESA_SHADER_GEOMETRY] = &sctx->gs_shader,
+      [MESA_SHADER_FRAGMENT] = &sctx->ps_shader,
    };
 
    util_queue_drop_job(&sctx->screen->shader_compiler_queue, &sel->ready);
 
-   if (current_shader[sel->type]->cso == sel) {
-      current_shader[sel->type]->cso = NULL;
-      current_shader[sel->type]->current = NULL;
+   if (current_shader[sel->info.stage]->cso == sel) {
+      current_shader[sel->info.stage]->cso = NULL;
+      current_shader[sel->info.stage]->current = NULL;
    }
 
    while (p) {

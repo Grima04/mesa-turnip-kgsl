@@ -101,11 +101,11 @@ static void scan_io_usage(struct si_shader_info *info, nir_intrinsic_instr *intr
    mask <<= nir_intrinsic_component(intr);
 
    unsigned name, index;
-   if (info->processor == PIPE_SHADER_VERTEX && is_input) {
+   if (info->stage == MESA_SHADER_VERTEX && is_input) {
       /* VS doesn't have semantics. */
       name = 0;
       index = 0;
-   } else if (info->processor == PIPE_SHADER_FRAGMENT && !is_input) {
+   } else if (info->stage == MESA_SHADER_FRAGMENT && !is_input) {
       tgsi_get_gl_frag_result_semantic(nir_intrinsic_io_semantics(intr).location,
                                        &name, &index);
       /* Adjust for dual source blending. */
@@ -158,12 +158,12 @@ static void scan_io_usage(struct si_shader_info *info, nir_intrinsic_instr *intr
             /* Output loads have only a few things that we need to track. */
             info->output_readmask[loc] |= slot_mask;
 
-            if (info->processor == PIPE_SHADER_FRAGMENT &&
+            if (info->stage == MESA_SHADER_FRAGMENT &&
                 nir_intrinsic_io_semantics(intr).fb_fetch_output)
                info->uses_fbfetch = true;
          } else if (slot_mask) {
             /* Output stores. */
-            if (info->processor == PIPE_SHADER_GEOMETRY) {
+            if (info->stage == MESA_SHADER_GEOMETRY) {
                unsigned gs_streams = (uint32_t)nir_intrinsic_io_semantics(intr).gs_streams <<
                                      (nir_intrinsic_component(intr) * 2);
                unsigned new_mask = slot_mask & ~info->output_usagemask[loc];
@@ -200,7 +200,7 @@ static void scan_io_usage(struct si_shader_info *info, nir_intrinsic_instr *intr
             case TGSI_SEMANTIC_COLOR:
                info->colors_written |= 1 << (index + i);
 
-               if (info->processor == PIPE_SHADER_FRAGMENT &&
+               if (info->stage == MESA_SHADER_FRAGMENT &&
                    nir_intrinsic_io_semantics(intr).location == FRAG_RESULT_COLOR)
                   info->properties[TGSI_PROPERTY_FS_COLOR0_WRITES_ALL_CBUFS] = true;
                break;
@@ -214,7 +214,7 @@ static void scan_io_usage(struct si_shader_info *info, nir_intrinsic_instr *intr
                info->writes_edgeflag = true;
                break;
             case TGSI_SEMANTIC_POSITION:
-               if (info->processor == PIPE_SHADER_FRAGMENT)
+               if (info->stage == MESA_SHADER_FRAGMENT)
                   info->writes_z = true;
                else
                   info->writes_position = true;
@@ -451,8 +451,7 @@ void si_nir_scan_shader(const struct nir_shader *nir, struct si_shader_info *inf
 {
    nir_function *func;
 
-   info->processor = pipe_shader_type_from_mesa(nir->info.stage);
-
+   info->stage = nir->info.stage;
    info->properties[TGSI_PROPERTY_NEXT_SHADER] = pipe_shader_type_from_mesa(nir->info.next_stage);
 
    if (nir->info.stage == MESA_SHADER_VERTEX) {
@@ -545,7 +544,7 @@ void si_nir_scan_shader(const struct nir_shader *nir, struct si_shader_info *inf
    info->clipdist_writemask = u_bit_consecutive(0, info->num_written_clipdistance);
    info->culldist_writemask = u_bit_consecutive(0, info->num_written_culldistance);
 
-   if (info->processor == PIPE_SHADER_FRAGMENT)
+   if (info->stage == MESA_SHADER_FRAGMENT)
       info->uses_kill = nir->info.fs.uses_discard;
 
    if (nir->info.stage == MESA_SHADER_TESS_CTRL) {
