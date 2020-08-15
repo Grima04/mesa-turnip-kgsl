@@ -51,6 +51,7 @@
 #include "iris_pipe.h"
 #include "iris_resource.h"
 #include "iris_screen.h"
+#include "compiler/glsl_types.h"
 #include "intel/compiler/brw_compiler.h"
 #include "intel/common/gen_gem.h"
 #include "intel/common/gen_l3_config.h"
@@ -521,6 +522,7 @@ iris_get_timestamp(struct pipe_screen *pscreen)
 void
 iris_screen_destroy(struct iris_screen *screen)
 {
+   glsl_type_singleton_decref();
    iris_bo_unreference(screen->workaround_bo);
    u_transfer_helper_destroy(screen->base.transfer_helper);
    iris_bufmgr_unref(screen->bufmgr);
@@ -774,6 +776,8 @@ iris_screen_create(int fd, const struct pipe_screen_config *config)
    pscreen->query_memory_info = iris_query_memory_info;
    pscreen->get_driver_query_group_info = iris_get_monitor_group_info;
    pscreen->get_driver_query_info = iris_get_monitor_info;
+
+   glsl_type_singleton_init_or_ref();
 
    return pscreen;
 }
