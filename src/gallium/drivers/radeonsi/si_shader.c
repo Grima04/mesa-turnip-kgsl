@@ -909,7 +909,7 @@ bool si_shader_binary_upload(struct si_screen *sscreen, struct si_shader *shader
 
 static void si_shader_dump_disassembly(struct si_screen *screen,
                                        const struct si_shader_binary *binary,
-                                       enum pipe_shader_type shader_type, unsigned wave_size,
+                                       gl_shader_stage stage, unsigned wave_size,
                                        struct pipe_debug_callback *debug, const char *name,
                                        FILE *file)
 {
@@ -917,7 +917,7 @@ static void si_shader_dump_disassembly(struct si_screen *screen,
 
    if (!ac_rtld_open(&rtld_binary, (struct ac_rtld_open_info){
                                       .info = &screen->info,
-                                      .shader_type = tgsi_processor_to_shader_stage(shader_type),
+                                      .shader_type = stage,
                                       .wave_size = wave_size,
                                       .num_parts = 1,
                                       .elf_ptrs = &binary->elf_buffer,
@@ -1029,7 +1029,7 @@ void si_shader_dump_stats_for_shader_db(struct si_screen *screen, struct si_shad
    const struct ac_shader_config *conf = &shader->config;
 
    if (screen->options.debug_disassembly)
-      si_shader_dump_disassembly(screen, &shader->binary, shader->selector->type,
+      si_shader_dump_disassembly(screen, &shader->binary, shader->selector->info.stage,
                                  si_get_shader_wave_size(shader), debug, "main", NULL);
 
    pipe_debug_message(debug, SHADER_INFO,
@@ -1113,7 +1113,6 @@ const char *si_get_shader_name(const struct si_shader *shader)
 void si_shader_dump(struct si_screen *sscreen, struct si_shader *shader,
                     struct pipe_debug_callback *debug, FILE *file, bool check_debug_option)
 {
-   enum pipe_shader_type shader_type = shader->selector->type;
    gl_shader_stage stage = shader->selector->info.stage;
 
    if (!check_debug_option || si_can_dump_shader(sscreen, stage))
@@ -1136,20 +1135,20 @@ void si_shader_dump(struct si_screen *sscreen, struct si_shader *shader,
       fprintf(file, "\n%s:\n", si_get_shader_name(shader));
 
       if (shader->prolog)
-         si_shader_dump_disassembly(sscreen, &shader->prolog->binary, shader_type, wave_size, debug,
+         si_shader_dump_disassembly(sscreen, &shader->prolog->binary, stage, wave_size, debug,
                                     "prolog", file);
       if (shader->previous_stage)
-         si_shader_dump_disassembly(sscreen, &shader->previous_stage->binary, shader_type,
+         si_shader_dump_disassembly(sscreen, &shader->previous_stage->binary, stage,
                                     wave_size, debug, "previous stage", file);
       if (shader->prolog2)
-         si_shader_dump_disassembly(sscreen, &shader->prolog2->binary, shader_type, wave_size,
+         si_shader_dump_disassembly(sscreen, &shader->prolog2->binary, stage, wave_size,
                                     debug, "prolog2", file);
 
-      si_shader_dump_disassembly(sscreen, &shader->binary, shader_type, wave_size, debug, "main",
+      si_shader_dump_disassembly(sscreen, &shader->binary, stage, wave_size, debug, "main",
                                  file);
 
       if (shader->epilog)
-         si_shader_dump_disassembly(sscreen, &shader->epilog->binary, shader_type, wave_size, debug,
+         si_shader_dump_disassembly(sscreen, &shader->epilog->binary, stage, wave_size, debug,
                                     "epilog", file);
       fprintf(file, "\n");
    }
