@@ -1046,7 +1046,7 @@ static void si_shader_dump_stats(struct si_screen *sscreen, struct si_shader *sh
 {
    const struct ac_shader_config *conf = &shader->config;
 
-   if (!check_debug_option || si_can_dump_shader(sscreen, shader->selector->type)) {
+   if (!check_debug_option || si_can_dump_shader(sscreen, shader->selector->info.stage)) {
       if (shader->selector->info.stage == MESA_SHADER_FRAGMENT) {
          fprintf(file,
                  "*** SHADER CONFIG ***\n"
@@ -1114,8 +1114,9 @@ void si_shader_dump(struct si_screen *sscreen, struct si_shader *shader,
                     struct pipe_debug_callback *debug, FILE *file, bool check_debug_option)
 {
    enum pipe_shader_type shader_type = shader->selector->type;
+   gl_shader_stage stage = shader->selector->info.stage;
 
-   if (!check_debug_option || si_can_dump_shader(sscreen, shader_type))
+   if (!check_debug_option || si_can_dump_shader(sscreen, stage))
       si_dump_shader_key(shader, file);
 
    if (!check_debug_option && shader->binary.llvm_ir_string) {
@@ -1129,7 +1130,7 @@ void si_shader_dump(struct si_screen *sscreen, struct si_shader *shader,
    }
 
    if (!check_debug_option ||
-       (si_can_dump_shader(sscreen, shader_type) && !(sscreen->debug_flags & DBG(NO_ASM)))) {
+       (si_can_dump_shader(sscreen, stage) && !(sscreen->debug_flags & DBG(NO_ASM)))) {
       unsigned wave_size = si_get_shader_wave_size(shader);
 
       fprintf(file, "\n%s:\n", si_get_shader_name(shader));
@@ -1826,7 +1827,7 @@ static bool si_llvm_compile_shader(struct si_screen *sscreen, struct ac_llvm_com
    /* Post-optimization transformations and analysis. */
    si_optimize_vs_outputs(&ctx);
 
-   if ((debug && debug->debug_message) || si_can_dump_shader(sscreen, ctx.type)) {
+   if ((debug && debug->debug_message) || si_can_dump_shader(sscreen, ctx.stage)) {
       ctx.shader->info.private_mem_vgprs = ac_count_scratch_private_memory(ctx.main_fn);
    }
 
@@ -1855,7 +1856,8 @@ bool si_compile_shader(struct si_screen *sscreen, struct ac_llvm_compiler *compi
 
    /* Dump NIR before doing NIR->LLVM conversion in case the
     * conversion fails. */
-   if (si_can_dump_shader(sscreen, sel->type) && !(sscreen->debug_flags & DBG(NO_NIR))) {
+   if (si_can_dump_shader(sscreen, sel->info.stage) &&
+       !(sscreen->debug_flags & DBG(NO_NIR))) {
       nir_print_shader(nir, stderr);
       si_dump_streamout(&sel->so);
    }

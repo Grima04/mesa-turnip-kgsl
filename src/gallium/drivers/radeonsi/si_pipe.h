@@ -141,12 +141,12 @@ enum si_clear_code
 enum
 {
    /* Shader logging options: */
-   DBG_VS = PIPE_SHADER_VERTEX,
-   DBG_PS = PIPE_SHADER_FRAGMENT,
-   DBG_GS = PIPE_SHADER_GEOMETRY,
-   DBG_TCS = PIPE_SHADER_TESS_CTRL,
-   DBG_TES = PIPE_SHADER_TESS_EVAL,
-   DBG_CS = PIPE_SHADER_COMPUTE,
+   DBG_VS = MESA_SHADER_VERTEX,
+   DBG_TCS = MESA_SHADER_TESS_CTRL,
+   DBG_TES = MESA_SHADER_TESS_EVAL,
+   DBG_GS = MESA_SHADER_GEOMETRY,
+   DBG_PS = MESA_SHADER_FRAGMENT,
+   DBG_CS = MESA_SHADER_COMPUTE,
    DBG_NO_IR,
    DBG_NO_NIR,
    DBG_NO_ASM,
@@ -1658,9 +1658,9 @@ static inline struct si_shader *si_get_vs_state(struct si_context *sctx)
    return vs->current ? vs->current : NULL;
 }
 
-static inline bool si_can_dump_shader(struct si_screen *sscreen, unsigned processor)
+static inline bool si_can_dump_shader(struct si_screen *sscreen, gl_shader_stage stage)
 {
-   return sscreen->debug_flags & (1 << processor);
+   return sscreen->debug_flags & (1 << stage);
 }
 
 static inline bool si_get_strmout_en(struct si_context *sctx)

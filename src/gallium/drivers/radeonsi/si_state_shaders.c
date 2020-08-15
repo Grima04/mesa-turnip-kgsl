@@ -2525,7 +2525,7 @@ void si_schedule_initial_compile(struct si_context *sctx, gl_shader_stage stage,
 
    struct util_async_debug_callback async_debug;
    bool debug = (sctx->debug.debug_message && !sctx->debug.async) || sctx->is_debug ||
-                si_can_dump_shader(sctx->screen, pipe_shader_type_from_mesa(stage));
+                si_can_dump_shader(sctx->screen, stage);
 
    if (debug) {
       u_async_debug_init(&async_debug);
