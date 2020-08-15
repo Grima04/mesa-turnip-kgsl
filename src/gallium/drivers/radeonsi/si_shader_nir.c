@@ -100,26 +100,24 @@ static void scan_io_usage(struct si_shader_info *info, nir_intrinsic_instr *intr
 
    mask <<= nir_intrinsic_component(intr);
 
-   unsigned name, index;
-   if (info->stage == MESA_SHADER_VERTEX && is_input) {
-      /* VS doesn't have semantics. */
-      name = 0;
-      index = 0;
-   } else if (info->stage == MESA_SHADER_FRAGMENT && !is_input) {
-      tgsi_get_gl_frag_result_semantic(nir_intrinsic_io_semantics(intr).location,
-                                       &name, &index);
-      /* Adjust for dual source blending. */
-      if (nir_intrinsic_io_semantics(intr).dual_source_blend_index)
-         index++;
-   } else {
-      tgsi_get_gl_varying_semantic(nir_intrinsic_io_semantics(intr).location,
-                                   true, &name, &index);
-   }
-
    nir_src offset = *nir_get_io_offset_src(intr);
    bool indirect = !nir_src_is_const(offset);
    if (!indirect)
       assert(nir_src_as_uint(offset) == 0);
+
+   unsigned semantic = 0;
+   /* VS doesn't have semantics. */
+   if (info->stage != MESA_SHADER_VERTEX || !is_input)
+      semantic = nir_intrinsic_io_semantics(intr).location;
+
+   if (info->stage == MESA_SHADER_FRAGMENT && !is_input) {
+      /* Never use FRAG_RESULT_COLOR directly. */
+      if (semantic == FRAG_RESULT_COLOR) {
+         semantic = FRAG_RESULT_DATA0;
+         info->properties[TGSI_PROPERTY_FS_COLOR0_WRITES_ALL_CBUFS] = true;
+      }
+      semantic += nir_intrinsic_io_semantics(intr).dual_source_blend_index;
+   }
 
    unsigned driver_location = nir_intrinsic_base(intr);
    unsigned num_slots = indirect ? nir_intrinsic_io_semantics(intr).num_slots : (1 + dual_slot);
@@ -131,15 +129,14 @@ static void scan_io_usage(struct si_shader_info *info, nir_intrinsic_instr *intr
          unsigned loc = driver_location + i;
          unsigned slot_mask = (dual_slot && i % 2 ? mask >> 4 : mask) & 0xf;
 
-         info->input_semantic_name[loc] = name;
-         info->input_semantic_index[loc] = index + i;
+         info->input_semantic[loc] = semantic + i;
          info->input_interpolate[loc] = interp;
 
          if (slot_mask) {
             info->input_usage_mask[loc] |= slot_mask;
             info->num_inputs = MAX2(info->num_inputs, loc + 1);
 
-            if (name == TGSI_SEMANTIC_PRIMID)
+            if (semantic == VARYING_SLOT_PRIMITIVE_ID)
                info->uses_primid = true;
          }
       }
@@ -151,8 +148,7 @@ static void scan_io_usage(struct si_shader_info *info, nir_intrinsic_instr *intr
          unsigned loc = driver_location + i;
          unsigned slot_mask = (dual_slot && i % 2 ? mask >> 4 : mask) & 0xf;
 
-         info->output_semantic_name[loc] = name;
-         info->output_semantic_index[loc] = index + i;
+         info->output_semantic[loc] = semantic + i;
 
          if (is_output_load) {
             /* Output loads have only a few things that we need to track. */
@@ -181,44 +177,48 @@ static void scan_io_usage(struct si_shader_info *info, nir_intrinsic_instr *intr
             info->output_usagemask[loc] |= slot_mask;
             info->num_outputs = MAX2(info->num_outputs, loc + 1);
 
-            switch (name) {
-            case TGSI_SEMANTIC_PRIMID:
-               info->writes_primid = true;
-               break;
-            case TGSI_SEMANTIC_VIEWPORT_INDEX:
-               info->writes_viewport_index = true;
-               break;
-            case TGSI_SEMANTIC_LAYER:
-               info->writes_layer = true;
-               break;
-            case TGSI_SEMANTIC_PSIZE:
-               info->writes_psize = true;
-               break;
-            case TGSI_SEMANTIC_CLIPVERTEX:
-               info->writes_clipvertex = true;
-               break;
-            case TGSI_SEMANTIC_COLOR:
-               info->colors_written |= 1 << (index + i);
-
-               if (info->stage == MESA_SHADER_FRAGMENT &&
-                   nir_intrinsic_io_semantics(intr).location == FRAG_RESULT_COLOR)
-                  info->properties[TGSI_PROPERTY_FS_COLOR0_WRITES_ALL_CBUFS] = true;
-               break;
-            case TGSI_SEMANTIC_STENCIL:
-               info->writes_stencil = true;
-               break;
-            case TGSI_SEMANTIC_SAMPLEMASK:
-               info->writes_samplemask = true;
-               break;
-            case TGSI_SEMANTIC_EDGEFLAG:
-               info->writes_edgeflag = true;
-               break;
-            case TGSI_SEMANTIC_POSITION:
-               if (info->stage == MESA_SHADER_FRAGMENT)
+            if (info->stage == MESA_SHADER_FRAGMENT) {
+               switch (semantic) {
+               case FRAG_RESULT_DEPTH:
                   info->writes_z = true;
-               else
+                  break;
+               case FRAG_RESULT_STENCIL:
+                  info->writes_stencil = true;
+                  break;
+               case FRAG_RESULT_SAMPLE_MASK:
+                  info->writes_samplemask = true;
+                  break;
+               default:
+                  if (semantic >= FRAG_RESULT_DATA0 && semantic <= FRAG_RESULT_DATA7) {
+                     unsigned index = semantic - FRAG_RESULT_DATA0;
+                     info->colors_written |= 1 << (index + i);
+                  }
+                  break;
+               }
+            } else {
+               switch (semantic) {
+               case VARYING_SLOT_PRIMITIVE_ID:
+                  info->writes_primid = true;
+                  break;
+               case VARYING_SLOT_VIEWPORT:
+                  info->writes_viewport_index = true;
+                  break;
+               case VARYING_SLOT_LAYER:
+                  info->writes_layer = true;
+                  break;
+               case VARYING_SLOT_PSIZ:
+                  info->writes_psize = true;
+                  break;
+               case VARYING_SLOT_CLIP_VERTEX:
+                  info->writes_clipvertex = true;
+                  break;
+               case VARYING_SLOT_EDGE:
+                  info->writes_edgeflag = true;
+                  break;
+               case VARYING_SLOT_POS:
                   info->writes_position = true;
-               break;
+                  break;
+               }
             }
          }
       }
@@ -566,8 +566,7 @@ void si_nir_scan_shader(const struct nir_shader *nir, struct si_shader_info *inf
    if (nir->info.stage == MESA_SHADER_FRAGMENT) {
       for (unsigned i = 0; i < 2; i++) {
          if ((info->colors_read >> (i * 4)) & 0xf) {
-            info->input_semantic_name[info->num_inputs] = TGSI_SEMANTIC_COLOR;
-            info->input_semantic_index[info->num_inputs] = i;
+            info->input_semantic[info->num_inputs] = VARYING_SLOT_COL0 + i;
             info->input_interpolate[info->num_inputs] = info->color_interpolate[i];
             info->input_usage_mask[info->num_inputs] = info->colors_read >> (i * 4);
             info->num_inputs++;

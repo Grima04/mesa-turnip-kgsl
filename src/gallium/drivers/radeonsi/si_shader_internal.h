@@ -39,9 +39,8 @@ struct pipe_debug_callback;
 
 struct si_shader_output_values {
    LLVMValueRef values[4];
-   unsigned semantic_name;
-   unsigned semantic_index;
    ubyte vertex_stream[4];
+   ubyte semantic;
 };
 
 struct si_shader_context {

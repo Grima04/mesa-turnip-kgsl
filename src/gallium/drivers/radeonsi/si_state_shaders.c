@@ -1769,9 +1769,9 @@ static void si_shader_selector_key_hw_vs(struct si_context *sctx, struct si_shad
    uint64_t inputs_read = 0;
 
    /* Ignore outputs that are not passed from VS to PS. */
-   outputs_written &= ~((1ull << si_shader_io_get_unique_index(TGSI_SEMANTIC_POSITION, 0, true)) |
-                        (1ull << si_shader_io_get_unique_index(TGSI_SEMANTIC_PSIZE, 0, true)) |
-                        (1ull << si_shader_io_get_unique_index(TGSI_SEMANTIC_CLIPVERTEX, 0, true)));
+   outputs_written &= ~((1ull << si_shader_io_get_unique_index(VARYING_SLOT_POS, true)) |
+                        (1ull << si_shader_io_get_unique_index(VARYING_SLOT_PSIZ, true)) |
+                        (1ull << si_shader_io_get_unique_index(VARYING_SLOT_CLIP_VERTEX, true)));
 
    if (!ps_disabled) {
       inputs_read = ps->inputs_read;
@@ -2472,25 +2472,16 @@ static void si_init_shader_selector_async(void *job, int thread_index)
             if (offset <= AC_EXP_PARAM_OFFSET_31)
                continue;
 
-            unsigned name = sel->info.output_semantic_name[i];
-            unsigned index = sel->info.output_semantic_index[i];
+            unsigned semantic = sel->info.output_semantic[i];
             unsigned id;
 
-            switch (name) {
-            case TGSI_SEMANTIC_GENERIC:
-               /* don't process indices the function can't handle */
-               if (index >= SI_MAX_IO_GENERIC)
-                  break;
-               /* fall through */
-            default:
-               id = si_shader_io_get_unique_index(name, index, true);
+            if (semantic < VARYING_SLOT_MAX &&
+                semantic != VARYING_SLOT_POS &&
+                semantic != VARYING_SLOT_PSIZ &&
+                semantic != VARYING_SLOT_CLIP_VERTEX &&
+                semantic != VARYING_SLOT_EDGE) {
+               id = si_shader_io_get_unique_index(semantic, true);
                sel->outputs_written_before_ps &= ~(1ull << id);
-               break;
-            case TGSI_SEMANTIC_POSITION: /* ignore these */
-            case TGSI_SEMANTIC_PSIZE:
-            case TGSI_SEMANTIC_CLIPVERTEX:
-            case TGSI_SEMANTIC_EDGEFLAG:
-               break;
             }
          }
       }
@@ -2670,34 +2661,23 @@ static void *si_create_shader_selector(struct pipe_context *ctx,
    case MESA_SHADER_TESS_CTRL:
       /* Always reserve space for these. */
       sel->patch_outputs_written |=
-         (1ull << si_shader_io_get_unique_index_patch(TGSI_SEMANTIC_TESSINNER, 0)) |
-         (1ull << si_shader_io_get_unique_index_patch(TGSI_SEMANTIC_TESSOUTER, 0));
+         (1ull << si_shader_io_get_unique_index_patch(VARYING_SLOT_TESS_LEVEL_INNER)) |
+         (1ull << si_shader_io_get_unique_index_patch(VARYING_SLOT_TESS_LEVEL_OUTER));
       /* fall through */
    case MESA_SHADER_VERTEX:
    case MESA_SHADER_TESS_EVAL:
       for (i = 0; i < sel->info.num_outputs; i++) {
-         unsigned name = sel->info.output_semantic_name[i];
-         unsigned index = sel->info.output_semantic_index[i];
+         unsigned semantic = sel->info.output_semantic[i];
 
-         switch (name) {
-         case TGSI_SEMANTIC_TESSINNER:
-         case TGSI_SEMANTIC_TESSOUTER:
-         case TGSI_SEMANTIC_PATCH:
-            sel->patch_outputs_written |= 1ull << si_shader_io_get_unique_index_patch(name, index);
-            break;
-
-         case TGSI_SEMANTIC_GENERIC:
-            /* don't process indices the function can't handle */
-            if (index >= SI_MAX_IO_GENERIC)
-               break;
-            /* fall through */
-         default:
-            sel->outputs_written |= 1ull << si_shader_io_get_unique_index(name, index, false);
+         if (semantic == VARYING_SLOT_TESS_LEVEL_INNER ||
+             semantic == VARYING_SLOT_TESS_LEVEL_OUTER ||
+             (semantic >= VARYING_SLOT_PATCH0 && semantic < VARYING_SLOT_TESS_MAX)) {
+            sel->patch_outputs_written |= 1ull << si_shader_io_get_unique_index_patch(semantic);
+         } else if (semantic < VARYING_SLOT_MAX &&
+                    semantic != VARYING_SLOT_EDGE) {
+            sel->outputs_written |= 1ull << si_shader_io_get_unique_index(semantic, false);
             sel->outputs_written_before_ps |= 1ull
-                                              << si_shader_io_get_unique_index(name, index, true);
-            break;
-         case TGSI_SEMANTIC_EDGEFLAG:
-            break;
+                                              << si_shader_io_get_unique_index(semantic, true);
          }
       }
       sel->esgs_itemsize = util_last_bit64(sel->outputs_written) * 16;
@@ -2728,20 +2708,11 @@ static void *si_create_shader_selector(struct pipe_context *ctx,
 
    case MESA_SHADER_FRAGMENT:
       for (i = 0; i < sel->info.num_inputs; i++) {
-         unsigned name = sel->info.input_semantic_name[i];
-         unsigned index = sel->info.input_semantic_index[i];
+         unsigned semantic = sel->info.input_semantic[i];
 
-         switch (name) {
-         case TGSI_SEMANTIC_GENERIC:
-            /* don't process indices the function can't handle */
-            if (index >= SI_MAX_IO_GENERIC)
-               break;
-            /* fall through */
-         default:
-            sel->inputs_read |= 1ull << si_shader_io_get_unique_index(name, index, true);
-            break;
-         case TGSI_SEMANTIC_PCOORD: /* ignore this */
-            break;
+         if (semantic < VARYING_SLOT_MAX &&
+             semantic != VARYING_SLOT_PNTC) {
+            sel->inputs_read |= 1ull << si_shader_io_get_unique_index(semantic, true);
          }
       }
 
@@ -2750,10 +2721,10 @@ static void *si_create_shader_selector(struct pipe_context *ctx,
             sel->colors_written_4bit |= 0xf << (4 * i);
 
       for (i = 0; i < sel->info.num_inputs; i++) {
-         if (sel->info.input_semantic_name[i] == TGSI_SEMANTIC_COLOR) {
-            int index = sel->info.input_semantic_index[i];
-            sel->color_attr_index[index] = i;
-         }
+         if (sel->info.input_semantic[i] == VARYING_SLOT_COL0)
+            sel->color_attr_index[0] = i;
+         else if (sel->info.input_semantic[i] == VARYING_SLOT_COL1)
+            sel->color_attr_index[1] = i;
       }
       break;
    default:;
@@ -3196,23 +3167,26 @@ static void si_delete_shader_selector(struct pipe_context *ctx, void *state)
    si_shader_selector_reference(sctx, &sel, NULL);
 }
 
-static unsigned si_get_ps_input_cntl(struct si_context *sctx, struct si_shader *vs, unsigned name,
-                                     unsigned index, enum glsl_interp_mode interpolate)
+static unsigned si_get_ps_input_cntl(struct si_context *sctx, struct si_shader *vs,
+                                     unsigned semantic, enum glsl_interp_mode interpolate)
 {
    struct si_shader_info *vsinfo = &vs->selector->info;
    unsigned j, offset, ps_input_cntl = 0;
 
    if (interpolate == INTERP_MODE_FLAT ||
-       (interpolate == INTERP_MODE_COLOR && sctx->flatshade) || name == TGSI_SEMANTIC_PRIMID)
+       (interpolate == INTERP_MODE_COLOR && sctx->flatshade) ||
+       semantic == VARYING_SLOT_PRIMITIVE_ID)
       ps_input_cntl |= S_028644_FLAT_SHADE(1);
 
-   if (name == TGSI_SEMANTIC_PCOORD ||
-       (name == TGSI_SEMANTIC_TEXCOORD && sctx->sprite_coord_enable & (1 << index))) {
+   if (semantic == VARYING_SLOT_PNTC ||
+       (semantic >= VARYING_SLOT_TEX0 && semantic <= VARYING_SLOT_TEX7 &&
+        sctx->sprite_coord_enable & (1 << (semantic - VARYING_SLOT_TEX0)))) {
       ps_input_cntl |= S_028644_PT_SPRITE_TEX(1);
    }
 
+   /* TODO: This search can be removed if we add a lookup table from semantic to index. */
    for (j = 0; j < vsinfo->num_outputs; j++) {
-      if (name == vsinfo->output_semantic_name[j] && index == vsinfo->output_semantic_index[j]) {
+      if (semantic == vsinfo->output_semantic[j]) {
          offset = vs->info.vs_output_param_offset[j];
 
          if (offset <= AC_EXP_PARAM_OFFSET_31) {
@@ -3235,7 +3209,7 @@ static unsigned si_get_ps_input_cntl(struct si_context *sctx, struct si_shader *
       }
    }
 
-   if (j == vsinfo->num_outputs && name == TGSI_SEMANTIC_PRIMID)
+   if (j == vsinfo->num_outputs && semantic == VARYING_SLOT_PRIMITIVE_ID)
       /* PrimID is written after the last output when HW VS is used. */
       ps_input_cntl |= S_028644_OFFSET(vs->info.vs_output_param_offset[vsinfo->num_outputs]);
    else if (j == vsinfo->num_outputs && !G_028644_PT_SPRITE_TEX(ps_input_cntl)) {
@@ -3244,7 +3218,7 @@ static unsigned si_get_ps_input_cntl(struct si_context *sctx, struct si_shader *
        * (FLAT_SHADE=1 completely changes behavior) */
       ps_input_cntl = S_028644_OFFSET(0x20);
       /* D3D 9 behaviour. GL is undefined */
-      if (name == TGSI_SEMANTIC_COLOR && index == 0)
+      if (semantic == VARYING_SLOT_COL0)
          ps_input_cntl |= S_028644_DEFAULT_VAL(3);
    }
    return ps_input_cntl;
@@ -3265,21 +3239,19 @@ static void si_emit_spi_map(struct si_context *sctx)
    assert(num_interp > 0);
 
    for (i = 0; i < psinfo->num_inputs; i++) {
-      unsigned name = psinfo->input_semantic_name[i];
-      unsigned index = psinfo->input_semantic_index[i];
+      unsigned semantic = psinfo->input_semantic[i];
       unsigned interpolate = psinfo->input_interpolate[i];
 
-      spi_ps_input_cntl[num_written++] = si_get_ps_input_cntl(sctx, vs, name, index, interpolate);
+      spi_ps_input_cntl[num_written++] = si_get_ps_input_cntl(sctx, vs, semantic, interpolate);
    }
 
    if (ps->key.part.ps.prolog.color_two_side) {
-      unsigned bcol = TGSI_SEMANTIC_BCOLOR;
-
       for (i = 0; i < 2; i++) {
          if (!(psinfo->colors_read & (0xf << (i * 4))))
             continue;
 
-         spi_ps_input_cntl[num_written++] = si_get_ps_input_cntl(sctx, vs, bcol, i,
+         unsigned semantic = VARYING_SLOT_BFC0 + i;
+         spi_ps_input_cntl[num_written++] = si_get_ps_input_cntl(sctx, vs, semantic,
                                                                  psinfo->color_interpolate[i]);
       }
    }

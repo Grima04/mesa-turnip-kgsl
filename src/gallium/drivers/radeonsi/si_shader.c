@@ -61,19 +61,18 @@ bool si_is_merged_shader(struct si_shader *shader)
  * must be less than 32, so that a 32-bit bitmask of used inputs or outputs
  * can be calculated.
  */
-unsigned si_shader_io_get_unique_index_patch(unsigned semantic_name, unsigned index)
+unsigned si_shader_io_get_unique_index_patch(unsigned semantic)
 {
-   switch (semantic_name) {
-   case TGSI_SEMANTIC_TESSOUTER:
+   switch (semantic) {
+   case VARYING_SLOT_TESS_LEVEL_OUTER:
       return 0;
-   case TGSI_SEMANTIC_TESSINNER:
+   case VARYING_SLOT_TESS_LEVEL_INNER:
       return 1;
-   case TGSI_SEMANTIC_PATCH:
-      assert(index < 30);
-      return 2 + index;
-
    default:
-      assert(!"invalid semantic name");
+      if (semantic >= VARYING_SLOT_PATCH0 && semantic < VARYING_SLOT_PATCH0 + 30)
+         return 2 + (semantic - VARYING_SLOT_PATCH0);
+
+      assert(!"invalid semantic");
       return 0;
    }
 }
@@ -83,59 +82,68 @@ unsigned si_shader_io_get_unique_index_patch(unsigned semantic_name, unsigned in
  * less than 64, so that a 64-bit bitmask of used inputs or outputs can be
  * calculated.
  */
-unsigned si_shader_io_get_unique_index(unsigned semantic_name, unsigned index, unsigned is_varying)
+unsigned si_shader_io_get_unique_index(unsigned semantic, bool is_varying)
 {
-   switch (semantic_name) {
-   case TGSI_SEMANTIC_POSITION:
+   switch (semantic) {
+   case VARYING_SLOT_POS:
       return 0;
-   case TGSI_SEMANTIC_GENERIC:
+   default:
       /* Since some shader stages use the the highest used IO index
        * to determine the size to allocate for inputs/outputs
        * (in LDS, tess and GS rings). GENERIC should be placed right
        * after POSITION to make that size as small as possible.
        */
-      if (index < SI_MAX_IO_GENERIC)
-         return 1 + index;
+      if (semantic >= VARYING_SLOT_VAR0 &&
+          semantic < VARYING_SLOT_VAR0 + SI_MAX_IO_GENERIC)
+         return 1 + (semantic - VARYING_SLOT_VAR0);
 
       assert(!"invalid generic index");
       return 0;
-   case TGSI_SEMANTIC_FOG:
+   case VARYING_SLOT_FOGC:
       return SI_MAX_IO_GENERIC + 1;
-   case TGSI_SEMANTIC_COLOR:
-      assert(index < 2);
-      return SI_MAX_IO_GENERIC + 2 + index;
-   case TGSI_SEMANTIC_BCOLOR:
-      assert(index < 2);
+   case VARYING_SLOT_COL0:
+      return SI_MAX_IO_GENERIC + 2;
+   case VARYING_SLOT_COL1:
+      return SI_MAX_IO_GENERIC + 3;
+   case VARYING_SLOT_BFC0:
       /* If it's a varying, COLOR and BCOLOR alias. */
       if (is_varying)
-         return SI_MAX_IO_GENERIC + 2 + index;
+         return SI_MAX_IO_GENERIC + 2;
       else
-         return SI_MAX_IO_GENERIC + 4 + index;
-   case TGSI_SEMANTIC_TEXCOORD:
-      assert(index < 8);
-      return SI_MAX_IO_GENERIC + 6 + index;
+         return SI_MAX_IO_GENERIC + 4;
+   case VARYING_SLOT_BFC1:
+      if (is_varying)
+         return SI_MAX_IO_GENERIC + 3;
+      else
+         return SI_MAX_IO_GENERIC + 5;
+   case VARYING_SLOT_TEX0:
+   case VARYING_SLOT_TEX1:
+   case VARYING_SLOT_TEX2:
+   case VARYING_SLOT_TEX3:
+   case VARYING_SLOT_TEX4:
+   case VARYING_SLOT_TEX5:
+   case VARYING_SLOT_TEX6:
+   case VARYING_SLOT_TEX7:
+      return SI_MAX_IO_GENERIC + 6 + (semantic - VARYING_SLOT_TEX0);
 
    /* These are rarely used between LS and HS or ES and GS. */
-   case TGSI_SEMANTIC_CLIPDIST:
-      assert(index < 2);
-      return SI_MAX_IO_GENERIC + 6 + 8 + index;
-   case TGSI_SEMANTIC_CLIPVERTEX:
+   case VARYING_SLOT_CLIP_DIST0:
+      return SI_MAX_IO_GENERIC + 6 + 8;
+   case VARYING_SLOT_CLIP_DIST1:
+      return SI_MAX_IO_GENERIC + 6 + 8 + 1;
+   case VARYING_SLOT_CLIP_VERTEX:
       return SI_MAX_IO_GENERIC + 6 + 8 + 2;
-   case TGSI_SEMANTIC_PSIZE:
+   case VARYING_SLOT_PSIZ:
       return SI_MAX_IO_GENERIC + 6 + 8 + 3;
 
    /* These can't be written by LS, HS, and ES. */
-   case TGSI_SEMANTIC_LAYER:
+   case VARYING_SLOT_LAYER:
       return SI_MAX_IO_GENERIC + 6 + 8 + 4;
-   case TGSI_SEMANTIC_VIEWPORT_INDEX:
+   case VARYING_SLOT_VIEWPORT:
       return SI_MAX_IO_GENERIC + 6 + 8 + 5;
-   case TGSI_SEMANTIC_PRIMID:
+   case VARYING_SLOT_PRIMITIVE_ID:
       STATIC_ASSERT(SI_MAX_IO_GENERIC + 6 + 8 + 6 <= 63);
       return SI_MAX_IO_GENERIC + 6 + 8 + 6;
-   default:
-      fprintf(stderr, "invalid semantic name = %u\n", semantic_name);
-      assert(!"invalid semantic name");
-      return 0;
    }
 }
 
@@ -1303,8 +1311,9 @@ static void si_optimize_vs_outputs(struct si_shader_context *ctx)
    /* Optimizing these outputs is not possible, since they might be overriden
     * at runtime with S_028644_PT_SPRITE_TEX. */
    for (int i = 0; i < info->num_outputs; i++) {
-      if (info->output_semantic_name[i] == TGSI_SEMANTIC_PCOORD ||
-          info->output_semantic_name[i] == TGSI_SEMANTIC_TEXCOORD) {
+      if (info->output_semantic[i] == VARYING_SLOT_PNTC ||
+          (info->output_semantic[i] >= VARYING_SLOT_TEX0 &&
+           info->output_semantic[i] <= VARYING_SLOT_TEX7)) {
          skip_vs_optim_mask |= 1u << shader->info.vs_output_param_offset[i];
       }
    }

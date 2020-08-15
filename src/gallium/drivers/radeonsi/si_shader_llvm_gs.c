@@ -49,12 +49,10 @@ static LLVMValueRef si_llvm_load_input_gs(struct ac_shader_abi *abi, unsigned in
    struct si_shader *shader = ctx->shader;
    LLVMValueRef vtx_offset, soffset;
    struct si_shader_info *info = &shader->selector->info;
-   unsigned semantic_name = info->input_semantic_name[input_index];
-   unsigned semantic_index = info->input_semantic_index[input_index];
    unsigned param;
    LLVMValueRef value;
 
-   param = si_shader_io_get_unique_index(semantic_name, semantic_index, false);
+   param = si_shader_io_get_unique_index(info->input_semantic[input_index], false);
 
    /* GFX9 has the ESGS ring in LDS. */
    if (ctx->screen->info.chip_class >= GFX9) {
@@ -200,12 +198,11 @@ void si_llvm_emit_es_epilogue(struct ac_shader_abi *abi, unsigned max_outputs, L
    for (i = 0; i < info->num_outputs; i++) {
       int param;
 
-      if (info->output_semantic_name[i] == TGSI_SEMANTIC_VIEWPORT_INDEX ||
-          info->output_semantic_name[i] == TGSI_SEMANTIC_LAYER)
+      if (info->output_semantic[i] == VARYING_SLOT_VIEWPORT ||
+          info->output_semantic[i] == VARYING_SLOT_LAYER)
          continue;
 
-      param = si_shader_io_get_unique_index(info->output_semantic_name[i],
-                                            info->output_semantic_index[i], false);
+      param = si_shader_io_get_unique_index(info->output_semantic[i], false);
 
       for (chan = 0; chan < 4; chan++) {
          if (!(info->output_usagemask[i] & (1 << chan)))
@@ -500,8 +497,7 @@ struct si_shader *si_generate_gs_copy_shader(struct si_screen *sscreen,
 
    /* Fill in output information. */
    for (i = 0; i < gsinfo->num_outputs; ++i) {
-      outputs[i].semantic_name = gsinfo->output_semantic_name[i];
-      outputs[i].semantic_index = gsinfo->output_semantic_index[i];
+      outputs[i].semantic = gsinfo->output_semantic[i];
 
       for (int chan = 0; chan < 4; chan++) {
          outputs[i].vertex_stream[chan] = (gsinfo->output_streams[i] >> (2 * chan)) & 3;

@@ -152,7 +152,7 @@ struct si_context;
 #define SI_MAX_ATTRIBS    16
 #define SI_MAX_VS_OUTPUTS 40
 
-/* Shader IO unique indices are supported for TGSI_SEMANTIC_GENERIC with an
+/* Shader IO unique indices are supported for VARYING_SLOT_VARn with an
  * index smaller than this.
  */
 #define SI_MAX_IO_GENERIC 32
@@ -323,12 +323,10 @@ struct si_shader_info {
 
    ubyte num_inputs;
    ubyte num_outputs;
-   ubyte input_semantic_name[PIPE_MAX_SHADER_INPUTS]; /**< TGSI_SEMANTIC_x */
-   ubyte input_semantic_index[PIPE_MAX_SHADER_INPUTS];
+   ubyte input_semantic[PIPE_MAX_SHADER_INPUTS];
    ubyte input_interpolate[PIPE_MAX_SHADER_INPUTS];
    ubyte input_usage_mask[PIPE_MAX_SHADER_INPUTS];
-   ubyte output_semantic_name[PIPE_MAX_SHADER_OUTPUTS]; /**< TGSI_SEMANTIC_x */
-   ubyte output_semantic_index[PIPE_MAX_SHADER_OUTPUTS];
+   ubyte output_semantic[PIPE_MAX_SHADER_OUTPUTS];
    ubyte output_usagemask[PIPE_MAX_SHADER_OUTPUTS];
    ubyte output_readmask[PIPE_MAX_SHADER_OUTPUTS];
    ubyte output_streams[PIPE_MAX_SHADER_OUTPUTS];
@@ -842,8 +840,8 @@ bool si_compile_shader(struct si_screen *sscreen, struct ac_llvm_compiler *compi
 bool si_create_shader_variant(struct si_screen *sscreen, struct ac_llvm_compiler *compiler,
                               struct si_shader *shader, struct pipe_debug_callback *debug);
 void si_shader_destroy(struct si_shader *shader);
-unsigned si_shader_io_get_unique_index_patch(unsigned semantic_name, unsigned index);
-unsigned si_shader_io_get_unique_index(unsigned semantic_name, unsigned index, unsigned is_varying);
+unsigned si_shader_io_get_unique_index_patch(unsigned semantic);
+unsigned si_shader_io_get_unique_index(unsigned semantic, bool is_varying);
 bool si_shader_binary_upload(struct si_screen *sscreen, struct si_shader *shader,
                              uint64_t scratch_va);
 void si_shader_dump(struct si_screen *sscreen, struct si_shader *shader,

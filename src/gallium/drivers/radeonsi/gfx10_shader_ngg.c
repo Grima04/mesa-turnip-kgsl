@@ -232,8 +232,7 @@ static void build_streamout_vertex(struct si_shader_context *ctx, LLVMValueRef *
 
       unsigned reg = so->output[i].register_index;
       struct si_shader_output_values out;
-      out.semantic_name = info->output_semantic_name[reg];
-      out.semantic_index = info->output_semantic_index[reg];
+      out.semantic = info->output_semantic[reg];
 
       for (unsigned comp = 0; comp < 4; comp++) {
          tmp = ac_build_gep0(&ctx->ac, vertexptr, LLVMConstInt(ctx->ac.i32, 4 * reg + comp, false));
@@ -737,8 +736,8 @@ void gfx10_emit_ngg_culling_epilogue(struct ac_shader_abi *abi, unsigned max_out
 
    LLVMValueRef position[4] = {};
    for (unsigned i = 0; i < info->num_outputs; i++) {
-      switch (info->output_semantic_name[i]) {
-      case TGSI_SEMANTIC_POSITION:
+      switch (info->output_semantic[i]) {
+      case VARYING_SLOT_POS:
          for (unsigned j = 0; j < 4; j++) {
             position[j] = LLVMBuildLoad(ctx->ac.builder, addrs[4 * i + j], "");
          }
@@ -1201,8 +1200,7 @@ void gfx10_emit_ngg_epilogue(struct ac_shader_abi *abi, unsigned max_outputs, LL
       vertex_ptr = ngg_nogs_vertex_ptr(ctx, get_thread_id_in_tg(ctx));
 
    for (unsigned i = 0; i < info->num_outputs; i++) {
-      outputs[i].semantic_name = info->output_semantic_name[i];
-      outputs[i].semantic_index = info->output_semantic_index[i];
+      outputs[i].semantic = info->output_semantic[i];
 
       for (unsigned j = 0; j < 4; j++) {
          outputs[i].vertex_stream[j] = (info->output_streams[i] >> (2 * j)) & 3;
@@ -1219,7 +1217,7 @@ void gfx10_emit_ngg_epilogue(struct ac_shader_abi *abi, unsigned max_outputs, LL
       }
 
       /* Store the edgeflag at the end (if streamout is enabled) */
-      if (info->output_semantic_name[i] == TGSI_SEMANTIC_EDGEFLAG && sel->info.writes_edgeflag) {
+      if (info->output_semantic[i] == VARYING_SLOT_EDGE && sel->info.writes_edgeflag) {
          LLVMValueRef edgeflag = LLVMBuildLoad(builder, addrs[4 * i], "");
          /* The output is a float, but the hw expects a 1-bit integer. */
          edgeflag = LLVMBuildFPToUI(ctx->ac.builder, edgeflag, ctx->ac.i32, "");
@@ -1377,7 +1375,7 @@ void gfx10_emit_ngg_epilogue(struct ac_shader_abi *abi, unsigned max_outputs, LL
           * use the position from the current shader part. Instead,
           * load it from LDS.
           */
-         if (info->output_semantic_name[i] == TGSI_SEMANTIC_POSITION &&
+         if (info->output_semantic[i] == VARYING_SLOT_POS &&
              ctx->shader->key.opt.ngg_culling) {
             vertex_ptr = ngg_nogs_vertex_ptr(ctx, ac_get_arg(&ctx->ac, ctx->ngg_old_thread_id));
 
@@ -1395,8 +1393,7 @@ void gfx10_emit_ngg_epilogue(struct ac_shader_abi *abi, unsigned max_outputs, LL
       }
 
       if (ctx->shader->key.mono.u.vs_export_prim_id) {
-         outputs[i].semantic_name = TGSI_SEMANTIC_PRIMID;
-         outputs[i].semantic_index = 0;
+         outputs[i].semantic = VARYING_SLOT_PRIMITIVE_ID;
 
          if (ctx->stage == MESA_SHADER_VERTEX) {
             /* Wait for GS stores to finish. */
@@ -1862,8 +1859,7 @@ void gfx10_ngg_gs_emit_epilogue(struct si_shader_context *ctx)
 
       unsigned out_idx = 0;
       for (unsigned i = 0; i < info->num_outputs; i++) {
-         outputs[i].semantic_name = info->output_semantic_name[i];
-         outputs[i].semantic_index = info->output_semantic_index[i];
+         outputs[i].semantic = info->output_semantic[i];
 
          for (unsigned j = 0; j < 4; j++, out_idx++) {
             tmp = ngg_gs_get_emit_output_ptr(ctx, vertexptr, out_idx);
