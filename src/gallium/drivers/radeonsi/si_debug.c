@@ -777,9 +777,10 @@ static unsigned si_identity(unsigned slot)
    return slot;
 }
 
-static void si_dump_descriptors(struct si_context *sctx, enum pipe_shader_type processor,
+static void si_dump_descriptors(struct si_context *sctx, gl_shader_stage stage,
                                 const struct si_shader_info *info, struct u_log_context *log)
 {
+   enum pipe_shader_type processor = pipe_shader_type_from_mesa(stage);
    struct si_descriptors *descs =
       &sctx->descriptors[SI_DESCS_FIRST_SHADER + processor * SI_NUM_SHADER_DESCS];
    static const char *shader_name[] = {"VS", "PS", "GS", "TCS", "TES", "CS"};
@@ -807,7 +808,7 @@ static void si_dump_descriptors(struct si_context *sctx, enum pipe_shader_type p
       enabled_images = sctx->images[processor].enabled_mask;
    }
 
-   if (processor == PIPE_SHADER_VERTEX && sctx->vb_descriptors_buffer &&
+   if (stage == MESA_SHADER_VERTEX && sctx->vb_descriptors_buffer &&
        sctx->vb_descriptors_gpu_list && sctx->vertex_elements) {
       assert(info); /* only CS may not have an info struct */
       struct si_descriptors desc = {};
@@ -842,7 +843,7 @@ static void si_dump_gfx_descriptors(struct si_context *sctx,
    if (!state->cso || !state->current)
       return;
 
-   si_dump_descriptors(sctx, state->cso->type, &state->cso->info, log);
+   si_dump_descriptors(sctx, state->cso->info.stage, &state->cso->info, log);
 }
 
 static void si_dump_compute_descriptors(struct si_context *sctx, struct u_log_context *log)
@@ -850,7 +851,7 @@ static void si_dump_compute_descriptors(struct si_context *sctx, struct u_log_co
    if (!sctx->cs_shader_state.program)
       return;
 
-   si_dump_descriptors(sctx, PIPE_SHADER_COMPUTE, NULL, log);
+   si_dump_descriptors(sctx, MESA_SHADER_COMPUTE, NULL, log);
 }
 
 struct si_shader_inst {
