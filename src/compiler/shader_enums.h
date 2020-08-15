@@ -680,6 +680,7 @@ enum glsl_interp_mode
    INTERP_MODE_FLAT,
    INTERP_MODE_NOPERSPECTIVE,
    INTERP_MODE_EXPLICIT,
+   INTERP_MODE_COLOR, /**< glShadeModel determines the interp mode */
    INTERP_MODE_COUNT /**< Number of interpolation qualifiers */
 };
 

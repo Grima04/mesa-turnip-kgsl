@@ -198,7 +198,7 @@ void ir_print_visitor::visit(ir_variable *ir)
                                 "in ", "out ", "inout ",
 			        "const_in ", "sys ", "temporary " };
    STATIC_ASSERT(ARRAY_SIZE(mode) == ir_var_mode_count);
-   const char *const interp[] = { "", "smooth", "flat", "noperspective", "explicit" };
+   const char *const interp[] = { "", "smooth", "flat", "noperspective", "explicit", "color" };
    STATIC_ASSERT(ARRAY_SIZE(interp) == INTERP_MODE_COUNT);
    const char *const precision[] = { "", "highp ", "mediump ", "lowp "};
 
