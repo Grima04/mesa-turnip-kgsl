@@ -3247,7 +3247,7 @@ static void si_emit_spi_map(struct si_context *sctx)
    struct si_shader *ps = sctx->ps_shader.current;
    struct si_shader *vs = si_get_vs_state(sctx);
    struct si_shader_info *psinfo = ps ? &ps->selector->info : NULL;
-   unsigned i, num_interp, num_written = 0, bcol_interp[2];
+   unsigned i, num_interp, num_written = 0;
    unsigned spi_ps_input_cntl[32];
 
    if (!ps || !ps->selector->info.num_inputs)
@@ -3262,11 +3262,6 @@ static void si_emit_spi_map(struct si_context *sctx)
       unsigned interpolate = psinfo->input_interpolate[i];
 
       spi_ps_input_cntl[num_written++] = si_get_ps_input_cntl(sctx, vs, name, index, interpolate);
-
-      if (name == TGSI_SEMANTIC_COLOR) {
-         assert(index < ARRAY_SIZE(bcol_interp));
-         bcol_interp[index] = interpolate;
-      }
    }
 
    if (ps->key.part.ps.prolog.color_two_side) {
@@ -3276,7 +3271,8 @@ static void si_emit_spi_map(struct si_context *sctx)
          if (!(psinfo->colors_read & (0xf << (i * 4))))
             continue;
 
-         spi_ps_input_cntl[num_written++] = si_get_ps_input_cntl(sctx, vs, bcol, i, bcol_interp[i]);
+         spi_ps_input_cntl[num_written++] = si_get_ps_input_cntl(sctx, vs, bcol, i,
+                                                                 psinfo->color_interpolate[i]);
       }
    }
    assert(num_interp == num_written);
