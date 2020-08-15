@@ -128,6 +128,10 @@ typedef enum {
    nir_var_mem_ssbo        = (1 << 7),
    nir_var_mem_shared      = (1 << 8),
    nir_var_mem_global      = (1 << 9),
+   nir_var_mem_generic     = (nir_var_shader_temp |
+                              nir_var_function_temp |
+                              nir_var_mem_shared |
+                              nir_var_mem_global),
    nir_var_mem_push_const  = (1 << 10), /* not actually used for variables */
    nir_var_mem_constant    = (1 << 11),
    nir_var_read_only_modes = nir_var_shader_in | nir_var_uniform |

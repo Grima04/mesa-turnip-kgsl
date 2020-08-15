@@ -407,8 +407,6 @@ validate_var_use(nir_variable *var, validate_state *state)
 static void
 validate_deref_instr(nir_deref_instr *instr, validate_state *state)
 {
-   validate_assert(state, util_bitcount(instr->modes) == 1);
-
    if (instr->deref_type == nir_deref_type_var) {
       /* Variable dereferences are stupid simple. */
       validate_assert(state, instr->modes == instr->var->data.mode);
@@ -420,8 +418,22 @@ validate_deref_instr(nir_deref_instr *instr, validate_state *state)
        */
       validate_src(&instr->parent, state, 0, 0);
 
-      /* We just validate that the type and mode are there */
-      validate_assert(state, instr->modes);
+      /* Most variable modes in NIR can only exist by themselves. */
+      if (instr->modes & ~nir_var_mem_generic)
+         validate_assert(state, util_bitcount(instr->modes) == 1);
+
+      nir_deref_instr *parent = nir_src_as_deref(instr->parent);
+      if (parent) {
+         /* Casts can change the mode but it can't change completely.  The new
+          * mode must have some bits in common with the old.
+          */
+         validate_assert(state, instr->modes & parent->modes);
+      } else {
+         /* If our parent isn't a deref, just assert the mode is there */
+         validate_assert(state, instr->modes != 0);
+      }
+
+      /* We just validate that the type is there */
       validate_assert(state, instr->type);
       if (instr->cast.align_mul > 0) {
          validate_assert(state, util_is_power_of_two_nonzero(instr->cast.align_mul));
