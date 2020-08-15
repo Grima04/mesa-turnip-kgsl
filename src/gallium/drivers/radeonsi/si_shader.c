@@ -2153,15 +2153,15 @@ void si_get_ps_prolog_key(struct si_shader *shader, union si_shader_part_key *ke
 
          key->ps_prolog.color_attr_index[i] = color[i];
 
-         if (shader->key.part.ps.prolog.flatshade_colors && interp == TGSI_INTERPOLATE_COLOR)
-            interp = TGSI_INTERPOLATE_CONSTANT;
+         if (shader->key.part.ps.prolog.flatshade_colors && interp == INTERP_MODE_COLOR)
+            interp = INTERP_MODE_FLAT;
 
          switch (interp) {
-         case TGSI_INTERPOLATE_CONSTANT:
+         case INTERP_MODE_FLAT:
             key->ps_prolog.color_interp_vgpr_index[i] = -1;
             break;
-         case TGSI_INTERPOLATE_PERSPECTIVE:
-         case TGSI_INTERPOLATE_COLOR:
+         case INTERP_MODE_SMOOTH:
+         case INTERP_MODE_COLOR:
             /* Force the interpolation location for colors here. */
             if (shader->key.part.ps.prolog.force_persp_sample_interp)
                location = TGSI_INTERPOLATE_LOC_SAMPLE;
@@ -2191,7 +2191,7 @@ void si_get_ps_prolog_key(struct si_shader *shader, union si_shader_part_key *ke
                assert(0);
             }
             break;
-         case TGSI_INTERPOLATE_LINEAR:
+         case INTERP_MODE_NOPERSPECTIVE:
             /* Force the interpolation location for colors here. */
             if (shader->key.part.ps.prolog.force_linear_sample_interp)
                location = TGSI_INTERPOLATE_LOC_SAMPLE;

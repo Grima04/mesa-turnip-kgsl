@@ -3197,13 +3197,13 @@ static void si_delete_shader_selector(struct pipe_context *ctx, void *state)
 }
 
 static unsigned si_get_ps_input_cntl(struct si_context *sctx, struct si_shader *vs, unsigned name,
-                                     unsigned index, unsigned interpolate)
+                                     unsigned index, enum glsl_interp_mode interpolate)
 {
    struct si_shader_info *vsinfo = &vs->selector->info;
    unsigned j, offset, ps_input_cntl = 0;
 
-   if (interpolate == TGSI_INTERPOLATE_CONSTANT ||
-       (interpolate == TGSI_INTERPOLATE_COLOR && sctx->flatshade) || name == TGSI_SEMANTIC_PRIMID)
+   if (interpolate == INTERP_MODE_FLAT ||
+       (interpolate == INTERP_MODE_COLOR && sctx->flatshade) || name == TGSI_SEMANTIC_PRIMID)
       ps_input_cntl |= S_028644_FLAT_SHADE(1);
 
    if (name == TGSI_SEMANTIC_PCOORD ||

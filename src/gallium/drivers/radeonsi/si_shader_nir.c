@@ -48,14 +48,14 @@ static const nir_deref_instr *tex_get_texture_deref(nir_tex_instr *instr)
 static void scan_io_usage(struct si_shader_info *info, nir_intrinsic_instr *intr,
                           bool is_input)
 {
-   unsigned interp = TGSI_INTERPOLATE_CONSTANT; /* load_input uses flat shading */
+   unsigned interp = INTERP_MODE_FLAT; /* load_input uses flat shading */
 
    if (intr->intrinsic == nir_intrinsic_load_interpolated_input) {
       nir_intrinsic_instr *baryc = nir_instr_as_intrinsic(intr->src[0].ssa->parent_instr);
 
       if (baryc) {
          if (nir_intrinsic_infos[baryc->intrinsic].index_map[NIR_INTRINSIC_INTERP_MODE] > 0)
-            interp = tgsi_get_interp_mode(nir_intrinsic_interp_mode(baryc), false);
+            interp = nir_intrinsic_interp_mode(baryc);
          else
             unreachable("unknown barycentric intrinsic");
       } else {
@@ -513,8 +513,13 @@ void si_nir_scan_shader(const struct nir_shader *nir, struct si_shader_info *inf
          }
       }
 
-      info->color_interpolate[0] = tgsi_get_interp_mode(nir->info.fs.color0_interp, true);
-      info->color_interpolate[1] = tgsi_get_interp_mode(nir->info.fs.color1_interp, true);
+      info->color_interpolate[0] = nir->info.fs.color0_interp;
+      info->color_interpolate[1] = nir->info.fs.color1_interp;
+      for (unsigned i = 0; i < 2; i++) {
+         if (info->color_interpolate[i] == INTERP_MODE_NONE)
+            info->color_interpolate[i] = INTERP_MODE_COLOR;
+      }
+
       info->color_interpolate_loc[0] = nir->info.fs.color0_sample ? TGSI_INTERPOLATE_LOC_SAMPLE :
                                        nir->info.fs.color0_centroid ? TGSI_INTERPOLATE_LOC_CENTROID :
                                                                       TGSI_INTERPOLATE_LOC_CENTER;
