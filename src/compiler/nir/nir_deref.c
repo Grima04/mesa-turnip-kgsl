@@ -1268,6 +1268,30 @@ opt_store_vec_deref(nir_builder *b, nir_intrinsic_instr *store)
    return false;
 }
 
+static bool
+opt_known_deref_mode_is(nir_builder *b, nir_intrinsic_instr *intrin)
+{
+   nir_variable_mode modes = nir_intrinsic_memory_modes(intrin);
+   nir_deref_instr *deref = nir_src_as_deref(intrin->src[0]);
+   if (deref == NULL)
+      return false;
+
+   nir_ssa_def *deref_is = NULL;
+
+   if (nir_deref_mode_must_be(deref, modes))
+      deref_is = nir_imm_true(b);
+
+   if (!nir_deref_mode_may_be(deref, modes))
+      deref_is = nir_imm_false(b);
+
+   if (deref_is == NULL)
+      return false;
+
+   nir_ssa_def_rewrite_uses(&intrin->dest.ssa, nir_src_for_ssa(deref_is));
+   nir_instr_remove(&intrin->instr);
+   return true;
+}
+
 bool
 nir_opt_deref_impl(nir_function_impl *impl)
 {
@@ -1315,6 +1339,11 @@ nir_opt_deref_impl(nir_function_impl *impl)
 
             case nir_intrinsic_store_deref:
                if (opt_store_vec_deref(&b, intrin))
+                  progress = true;
+               break;
+
+            case nir_intrinsic_deref_mode_is:
+               if (opt_known_deref_mode_is(&b, intrin))
                   progress = true;
                break;
 
