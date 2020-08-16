@@ -59,6 +59,18 @@ type_size(const struct glsl_type *type, bool bindless)
    return glsl_count_attribute_slots(type, false);
 }
 
+static void
+function_temp_type_info(const struct glsl_type *type, unsigned *size, unsigned *align)
+{
+   assert(glsl_type_is_vector_or_scalar(type));
+
+   unsigned comp_size = glsl_type_is_boolean(type) ? 4 : glsl_get_bit_size(type) / 8;
+   unsigned length = glsl_get_vector_elements(type);
+
+   *size = comp_size * length;
+   *align = 0x10;
+}
+
 class Converter : public ConverterCommon
 {
 public:
@@ -69,7 +81,6 @@ private:
    typedef std::vector<LValue*> LValues;
    typedef unordered_map<unsigned, LValues> NirDefMap;
    typedef unordered_map<unsigned, nir_load_const_instr*> ImmediateMap;
-   typedef unordered_map<unsigned, uint32_t> NirArrayLMemOffsets;
    typedef unordered_map<unsigned, BasicBlock*> NirBlockMap;
 
    CacheMode convert(enum gl_access_qualifier);
@@ -124,6 +135,8 @@ private:
    DataType getDType(nir_intrinsic_instr *, bool isSigned);
    DataType getDType(nir_op, uint8_t);
 
+   DataFile getFile(nir_intrinsic_op);
+
    std::vector<DataType> getSTypes(nir_alu_instr *);
    DataType getSType(nir_src &, bool isFloat, bool isSigned);
 
@@ -162,7 +175,6 @@ private:
    NirDefMap ssaDefs;
    NirDefMap regDefs;
    ImmediateMap immediates;
-   NirArrayLMemOffsets regToLmemOffset;
    NirBlockMap blocks;
    unsigned int curLoopDepth;
    unsigned int curIfDepth;
@@ -334,6 +346,28 @@ Converter::getSType(nir_src &src, bool isFloat, bool isSigned)
       assert(false);
    }
    return ty;
+}
+
+DataFile
+Converter::getFile(nir_intrinsic_op op)
+{
+   switch (op) {
+   case nir_intrinsic_load_global:
+   case nir_intrinsic_store_global:
+      return FILE_MEMORY_GLOBAL;
+   case nir_intrinsic_load_scratch:
+   case nir_intrinsic_store_scratch:
+      return FILE_MEMORY_LOCAL;
+   case nir_intrinsic_load_shared:
+   case nir_intrinsic_store_shared:
+      return FILE_MEMORY_SHARED;
+   case nir_intrinsic_load_kernel_input:
+      return FILE_SHADER_INPUT;
+   default:
+      ERROR("couldn't get DateFile for op %s\n", nir_intrinsic_infos[op].name);
+      assert(false);
+   }
+   return FILE_NULL;
 }
 
 operation
@@ -702,6 +736,8 @@ Converter::convert(nir_dest *dest)
 Converter::LValues&
 Converter::convert(nir_register *reg)
 {
+   assert(!reg->num_array_elems);
+
    NirDefMap::iterator it = regDefs.find(reg->index);
    if (it != regDefs.end())
       return it->second;
@@ -1246,7 +1282,7 @@ Converter::storeTo(nir_intrinsic_instr *insn, DataFile file, operation op,
 bool
 Converter::parseNIR()
 {
-   info->bin.tlsSpace = 0;
+   info->bin.tlsSpace = nir->scratch_size;
    info->io.clipDistances = nir->info.clip_distance_array_size;
    info->io.cullDistances = nir->info.cull_distance_array_size;
    info->io.layer_viewport_relative = nir->info.layer_viewport_relative;
@@ -1334,16 +1370,6 @@ Converter::visit(nir_function *function)
    }
    default:
       break;
-   }
-
-   nir_foreach_register(reg, &function->impl->registers) {
-      if (reg->num_array_elems) {
-         // TODO: packed variables would be nice, but MemoryOpt fails
-         // replace 4 with reg->num_components
-         uint32_t size = 4 * reg->num_array_elems * (reg->bit_size / 8);
-         regToLmemOffset[reg->index] = info->bin.tlsSpace;
-         info->bin.tlsSpace += size;
-      }
    }
 
    nir_index_ssa_defs(function->impl);
@@ -1750,18 +1776,6 @@ Converter::visit(nir_intrinsic_instr *insn)
             mkLoad(dType, newDefs[i], sym, indirect)->perPatch = vary.patch;
          }
       }
-      break;
-   }
-   case nir_intrinsic_load_kernel_input: {
-      assert(prog->getType() == Program::TYPE_COMPUTE);
-      assert(insn->num_components == 1);
-
-      LValues &newDefs = convert(&insn->dest);
-      const DataType dType = getDType(insn);
-      Value *indirect;
-      uint32_t idx = getIndirect(insn, 0, 0, indirect, true);
-
-      mkLoad(dType, newDefs[0], mkSymbol(FILE_SHADER_INPUT, 0, dType, idx), indirect);
       break;
    }
    case nir_intrinsic_load_barycentric_at_offset:
@@ -2252,6 +2266,7 @@ Converter::visit(nir_intrinsic_instr *insn)
 
       break;
    }
+   case nir_intrinsic_store_scratch:
    case nir_intrinsic_store_shared: {
       DataType sType = getSType(insn->src[0], false, false);
       Value *indirectOffset;
@@ -2260,11 +2275,13 @@ Converter::visit(nir_intrinsic_instr *insn)
       for (uint8_t i = 0u; i < nir_intrinsic_src_components(insn, 0); ++i) {
          if (!((1u << i) & nir_intrinsic_write_mask(insn)))
             continue;
-         Symbol *sym = mkSymbol(FILE_MEMORY_SHARED, 0, sType, offset + i * typeSizeof(sType));
+         Symbol *sym = mkSymbol(getFile(op), 0, sType, offset + i * typeSizeof(sType));
          mkStore(OP_STORE, sType, sym, indirectOffset, getSrc(&insn->src[0], i));
       }
       break;
    }
+   case nir_intrinsic_load_kernel_input:
+   case nir_intrinsic_load_scratch:
    case nir_intrinsic_load_shared: {
       const DataType dType = getDType(insn);
       LValues &newDefs = convert(&insn->dest);
@@ -2272,7 +2289,7 @@ Converter::visit(nir_intrinsic_instr *insn)
       uint32_t offset = getIndirect(&insn->src[0], 0, indirectOffset);
 
       for (uint8_t i = 0u; i < dest_components; ++i)
-         loadFrom(FILE_MEMORY_SHARED, 0, dType, newDefs[i], offset, i, indirectOffset);
+         loadFrom(getFile(op), 0, dType, newDefs[i], offset, i, indirectOffset);
 
       break;
    }
@@ -2567,55 +2584,7 @@ Converter::visit(nir_alu_instr *insn)
       i->sType = sTypes[0];
       break;
    }
-   // those are weird ALU ops and need special handling, because
-   //   1. they are always componend based
-   //   2. they basically just merge multiple values into one data type
    case nir_op_mov:
-      if (!insn->dest.dest.is_ssa && insn->dest.dest.reg.reg->num_array_elems) {
-         nir_reg_dest& reg = insn->dest.dest.reg;
-         uint32_t goffset = regToLmemOffset[reg.reg->index];
-         uint8_t comps = reg.reg->num_components;
-         uint8_t size = reg.reg->bit_size / 8;
-         uint8_t csize = 4 * size; // TODO after fixing MemoryOpts: comps * size;
-         uint32_t aoffset = csize * reg.base_offset;
-         Value *indirect = NULL;
-
-         if (reg.indirect)
-            indirect = mkOp2v(OP_MUL, TYPE_U32, getSSA(4, FILE_ADDRESS),
-                              getSrc(reg.indirect, 0), mkImm(csize));
-
-         for (uint8_t i = 0u; i < comps; ++i) {
-            if (!((1u << i) & insn->dest.write_mask))
-               continue;
-
-            Symbol *sym = mkSymbol(FILE_MEMORY_LOCAL, 0, dType, goffset + aoffset + i * size);
-            mkStore(OP_STORE, dType, sym, indirect, getSrc(&insn->src[0], i));
-         }
-         break;
-      } else if (!insn->src[0].src.is_ssa && insn->src[0].src.reg.reg->num_array_elems) {
-         LValues &newDefs = convert(&insn->dest);
-         nir_reg_src& reg = insn->src[0].src.reg;
-         uint32_t goffset = regToLmemOffset[reg.reg->index];
-         // uint8_t comps = reg.reg->num_components;
-         uint8_t size = reg.reg->bit_size / 8;
-         uint8_t csize = 4 * size; // TODO after fixing MemoryOpts: comps * size;
-         uint32_t aoffset = csize * reg.base_offset;
-         Value *indirect = NULL;
-
-         if (reg.indirect)
-            indirect = mkOp2v(OP_MUL, TYPE_U32, getSSA(4, FILE_ADDRESS), getSrc(reg.indirect, 0), mkImm(csize));
-
-         for (uint8_t i = 0u; i < newDefs.size(); ++i)
-            loadFrom(FILE_MEMORY_LOCAL, 0, dType, newDefs[i], goffset + aoffset, i, indirect);
-
-         break;
-      } else {
-         LValues &newDefs = convert(&insn->dest);
-         for (LValues::size_type c = 0u; c < newDefs.size(); ++c) {
-            mkMov(newDefs[c], getSrc(&insn->src[0], c), dType);
-         }
-      }
-      break;
    case nir_op_vec2:
    case nir_op_vec3:
    case nir_op_vec4:
@@ -3135,13 +3104,23 @@ Converter::run()
       .ballot_bit_size = 32,
    };
 
+   /* prepare for IO lowering */
+   NIR_PASS_V(nir, nir_opt_deref);
+   NIR_PASS_V(nir, nir_lower_regs_to_ssa);
+   NIR_PASS_V(nir, nir_lower_vars_to_ssa);
+
+   /* codegen assumes vec4 alignment for memory */
+   NIR_PASS_V(nir, nir_lower_vars_to_explicit_types, nir_var_function_temp, function_temp_type_info);
+   NIR_PASS_V(nir, nir_lower_explicit_io, nir_var_function_temp, nir_address_format_32bit_offset);
+   NIR_PASS_V(nir, nir_remove_dead_variables, nir_var_function_temp, NULL);
+
    NIR_PASS_V(nir, nir_lower_io,
               (nir_variable_mode)(nir_var_shader_in | nir_var_shader_out),
               type_size, (nir_lower_io_options)0);
+
    NIR_PASS_V(nir, nir_lower_subgroups, &subgroup_options);
-   NIR_PASS_V(nir, nir_lower_regs_to_ssa);
+
    NIR_PASS_V(nir, nir_lower_load_const_to_scalar);
-   NIR_PASS_V(nir, nir_lower_vars_to_ssa);
    NIR_PASS_V(nir, nir_lower_alu_to_scalar, NULL, NULL);
    NIR_PASS_V(nir, nir_lower_phis_to_scalar);
 
@@ -3164,8 +3143,6 @@ Converter::run()
    } while (progress);
 
    NIR_PASS_V(nir, nir_lower_bool_to_int32);
-   NIR_PASS_V(nir, nir_lower_locals_to_regs);
-   NIR_PASS_V(nir, nir_remove_dead_variables, nir_var_function_temp, NULL);
    NIR_PASS_V(nir, nir_convert_from_ssa, true);
 
    // Garbage collect dead instructions
