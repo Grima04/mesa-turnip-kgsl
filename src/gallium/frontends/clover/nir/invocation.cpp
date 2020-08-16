@@ -226,7 +226,8 @@ module clover::nir::spirv_to_nir(const module &mod, const device &dev,
          offset += glsl_get_cl_size(var->type);
       }
 
-      NIR_PASS_V(nir, nir_lower_vars_to_explicit_types, nir_var_mem_shared,
+      NIR_PASS_V(nir, nir_lower_vars_to_explicit_types,
+                 nir_var_mem_shared | nir_var_function_temp,
                  glsl_get_cl_type_size_align);
 
       /* use offsets for uniform and shared memory */
@@ -236,8 +237,13 @@ module clover::nir::spirv_to_nir(const module &mod, const device &dev,
       NIR_PASS_V(nir, nir_lower_explicit_io, nir_var_mem_shared,
                  spirv_options.shared_addr_format);
 
+      NIR_PASS_V(nir, nir_lower_explicit_io, nir_var_function_temp,
+                 spirv_options.temp_addr_format);
+
       NIR_PASS_V(nir, nir_lower_explicit_io, nir_var_mem_global,
                  spirv_options.global_addr_format);
+
+      NIR_PASS_V(nir, nir_remove_dead_variables, nir_var_all, NULL);
 
       if (compiler_options->lower_int64_options)
          NIR_PASS_V(nir, nir_lower_int64);
