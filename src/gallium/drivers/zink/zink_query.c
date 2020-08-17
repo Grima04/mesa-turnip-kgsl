@@ -538,6 +538,109 @@ zink_render_condition(struct pipe_context *pctx,
    pipe_resource_reference(&pres, NULL);
 }
 
+static void
+zink_get_query_result_resource(struct pipe_context *pctx,
+                               struct pipe_query *pquery,
+                               bool wait,
+                               enum pipe_query_value_type result_type,
+                               int index,
+                               struct pipe_resource *pres,
+                               unsigned offset)
+{
+   struct zink_context *ctx = zink_context(pctx);
+   struct zink_screen *screen = zink_screen(pctx->screen);
+   struct zink_query *query = (struct zink_query*)pquery;
+   struct zink_resource *res = zink_resource(pres);
+   unsigned result_size = result_type <= PIPE_QUERY_TYPE_U32 ? sizeof(uint32_t) : sizeof(uint64_t);
+   VkQueryResultFlagBits size_flags = result_type <= PIPE_QUERY_TYPE_U32 ? 0 : VK_QUERY_RESULT_64_BIT;
+   unsigned num_queries = query->curr_query - query->last_start;
+   unsigned query_id = query->last_start;
+
+   if (index == -1) {
+      uint64_t u64[2] = {0};
+      /* TODO: this is awful. when we hook up valid regions for resources, we can at least check
+       * whether the preceding area has valid data and clobber it with a direct copy here for a
+       * big perf win
+       *
+       * VK_QUERY_RESULT_WITH_AVAILABILITY_BIT always writes result data at the specified offset,
+       * so we have to do a manual read
+       */
+      if (vkGetQueryPoolResults(screen->dev, query->query_pool, query_id, 1, 2 * result_size, u64,
+                                0, size_flags | VK_QUERY_RESULT_WITH_AVAILABILITY_BIT | VK_QUERY_RESULT_PARTIAL_BIT) != VK_SUCCESS) {
+         debug_printf("zink: getting query result failed\n");
+         return;
+      }
+      struct pipe_transfer *transfer = NULL;
+      void *map = pipe_buffer_map_range(pctx, pres, offset, result_size, PIPE_MAP_WRITE, &transfer);
+      if (!transfer) {
+         debug_printf("zink: mapping result buffer failed\n");
+         return;
+      }
+      if (result_type <= PIPE_QUERY_TYPE_U32) {
+         uint32_t *u32_map = map;
+         uint32_t *u32_u64 = (void*)u64;
+         u32_map[0] = u32_u64[1];
+      } else {
+         uint64_t *u64_map = map;
+         u64_map[0] = u64[1];
+      }
+      pipe_buffer_unmap(pctx, transfer);
+      return;
+   }
+
+   unsigned fences = p_atomic_read(&query->fences);
+   if (!is_time_query(query) && (!fences || wait)) {
+      /* result happens to be ready or we're waiting */
+      if (num_queries == 1 && query->type != PIPE_QUERY_PRIMITIVES_GENERATED &&
+                              query->type != PIPE_QUERY_PRIMITIVES_EMITTED &&
+                              /* FIXME: I don't know why, but occlusion is broken here */
+                              query->type != PIPE_QUERY_OCCLUSION_PREDICATE &&
+                              query->type != PIPE_QUERY_OCCLUSION_PREDICATE_CONSERVATIVE) {
+         struct zink_batch *batch = zink_batch_no_rp(ctx);
+         /* if it's a single query that doesn't need special handling, we can copy it and be done */
+         zink_batch_reference_resource_rw(batch, res, true);
+         zink_resource_buffer_barrier(batch->cmdbuf, res, VK_ACCESS_TRANSFER_WRITE_BIT, 0);
+         vkCmdCopyQueryPoolResults(batch->cmdbuf, query->query_pool, query_id, 1, res->buffer,
+                                   offset, 0, size_flags);
+         /* this is required for compute batch sync and will be removed later */
+         if (batch->batch_id != ZINK_COMPUTE_BATCH_ID)
+            pctx->flush(pctx, NULL, PIPE_FLUSH_HINT_FINISH);
+         return;
+      }
+   }
+   if (zink_curr_batch(ctx)->batch_id == query->batch_id)
+      pctx->flush(pctx, NULL, PIPE_FLUSH_HINT_FINISH);
+   /* unfortunately, there's no way to accumulate results from multiple queries on the gpu without either
+    * clobbering all but the last result or writing the results sequentially, so we have to manually write the result
+    */
+   union pipe_query_result result;
+   bool success = get_query_result(&ctx->base, pquery, wait, &result);
+   if (!success) {
+      debug_printf("zink: getting query result failed");
+      return;
+   }
+
+   struct pipe_transfer *transfer = NULL;
+   void *map = pipe_buffer_map_range(pctx, pres, offset, result_size, PIPE_MAP_WRITE, &transfer);
+   if (!transfer) {
+      debug_printf("zink: mapping result buffer failed");
+      return;
+   }
+   if (result_type <= PIPE_QUERY_TYPE_U32) {
+      uint32_t *u32 = map;
+      uint32_t limit;
+      if (result_type == PIPE_QUERY_TYPE_I32)
+         limit = INT_MAX;
+      else
+         limit = UINT_MAX;
+      u32[0] = MIN2(limit, result.u64);
+   } else {
+      uint64_t *u64 = map;
+      u64[0] = result.u64;
+   }
+   pipe_buffer_unmap(pctx, transfer);
+}
+
 static uint64_t
 zink_get_timestamp(struct pipe_context *pctx)
 {
@@ -564,6 +667,7 @@ zink_context_query_init(struct pipe_context *pctx)
    pctx->begin_query = zink_begin_query;
    pctx->end_query = zink_end_query;
    pctx->get_query_result = zink_get_query_result;
+   pctx->get_query_result_resource = zink_get_query_result_resource;
    pctx->set_active_query_state = zink_set_active_query_state;
    pctx->render_condition = zink_render_condition;
    pctx->get_timestamp = zink_get_timestamp;
