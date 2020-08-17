@@ -193,6 +193,9 @@ void
 zink_wait_on_batch(struct zink_context *ctx, int batch_id);
 
 void
+zink_resource_buffer_barrier(VkCommandBuffer cmdbuf, struct zink_resource *res, VkAccessFlags flags);
+
+void
 zink_resource_barrier(VkCommandBuffer cmdbuf, struct zink_resource *res,
                       VkImageAspectFlags aspect, VkImageLayout new_layout);
 

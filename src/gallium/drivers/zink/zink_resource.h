@@ -41,7 +41,10 @@ struct zink_resource {
    enum pipe_format internal_format:16;
 
    union {
-      VkBuffer buffer;
+      struct {
+         VkAccessFlags access;
+         VkBuffer buffer;
+      };
       struct {
          VkFormat format;
          VkImage image;

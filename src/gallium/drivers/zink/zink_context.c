@@ -1112,6 +1112,44 @@ zink_resource_barrier(VkCommandBuffer cmdbuf, struct zink_resource *res,
    res->layout = new_layout;
 }
 
+
+static VkPipelineStageFlags
+pipeline_access_stage(VkAccessFlags flags)
+{
+   switch (flags) {
+   default:
+      return VK_PIPELINE_STAGE_TRANSFER_BIT;
+   }
+}
+
+void
+zink_resource_buffer_barrier(VkCommandBuffer cmdbuf, struct zink_resource *res, VkAccessFlags flags)
+{
+   /* TODO: maybe make this more flexible using flags? */
+   VkBufferMemoryBarrier bmb = {
+      VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
+      NULL,
+      res->access,
+      flags,
+      VK_QUEUE_FAMILY_IGNORED,
+      VK_QUEUE_FAMILY_IGNORED,
+      res->buffer,
+      res->offset,
+      res->base.width0
+   };
+
+   vkCmdPipelineBarrier(
+      cmdbuf,
+      pipeline_access_stage(res->access),
+      pipeline_access_stage(flags),
+      0,
+      0, NULL,
+      1, &bmb,
+      0, NULL
+   );
+   res->access = flags;
+}
+
 VkShaderStageFlagBits
 zink_shader_stage(enum pipe_shader_type type)
 {
