@@ -1155,7 +1155,8 @@ static void
 _vtn_variable_copy(struct vtn_builder *b, struct vtn_pointer *dest,
                    struct vtn_pointer *src)
 {
-   vtn_assert(src->type->type == dest->type->type);
+   vtn_assert(glsl_get_bare_type(src->type->type) ==
+              glsl_get_bare_type(dest->type->type));
    enum glsl_base_type base_type = glsl_get_base_type(src->type->type);
    switch (base_type) {
    case GLSL_TYPE_UINT:
