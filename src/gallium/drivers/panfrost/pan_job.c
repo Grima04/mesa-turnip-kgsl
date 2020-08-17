@@ -639,11 +639,11 @@ panfrost_batch_get_polygon_list(struct panfrost_batch *batch, unsigned size)
 
 struct panfrost_bo *
 panfrost_batch_get_scratchpad(struct panfrost_batch *batch,
-                unsigned shift,
+                unsigned size_per_thread,
                 unsigned thread_tls_alloc,
                 unsigned core_count)
 {
-        unsigned size = panfrost_get_total_stack_size(shift,
+        unsigned size = panfrost_get_total_stack_size(size_per_thread,
                         thread_tls_alloc,
                         core_count);
 

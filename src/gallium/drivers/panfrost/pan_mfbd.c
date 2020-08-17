@@ -498,13 +498,16 @@ panfrost_emit_mfbd(struct panfrost_batch *batch, unsigned vertex_count)
                 mfbd.msaa.sample_locations = panfrost_emit_sample_locations(batch);
                 mfbd.tiler_meta = panfrost_batch_get_tiler_meta(batch, vertex_count);
         } else {
-                unsigned shift = panfrost_get_stack_shift(batch->stack_size);
-                struct panfrost_bo *bo = panfrost_batch_get_scratchpad(batch,
-                                                                       shift,
-                                                                       dev->thread_tls_alloc,
-                                                                       dev->core_count);
-                mfbd.shared_memory.stack_shift = shift;
-                mfbd.shared_memory.scratchpad = bo->gpu;
+                if (batch->stack_size) {
+                        unsigned shift = panfrost_get_stack_shift(batch->stack_size);
+                        struct panfrost_bo *bo = panfrost_batch_get_scratchpad(batch,
+                                                                               batch->stack_size,
+                                                                               dev->thread_tls_alloc,
+                                                                               dev->core_count);
+                        mfbd.shared_memory.stack_shift = shift;
+                        mfbd.shared_memory.scratchpad = bo->gpu;
+                }
+
                 mfbd.shared_memory.shared_workgroup_count = ~0;
 
                 mfbd.tiler = panfrost_emit_midg_tiler(batch, vertex_count);

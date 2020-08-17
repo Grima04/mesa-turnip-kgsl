@@ -174,7 +174,7 @@ void
 panfrost_batch_adjust_stack_size(struct panfrost_batch *batch);
 
 struct panfrost_bo *
-panfrost_batch_get_scratchpad(struct panfrost_batch *batch, unsigned shift, unsigned thread_tls_alloc, unsigned core_count);
+panfrost_batch_get_scratchpad(struct panfrost_batch *batch, unsigned size, unsigned thread_tls_alloc, unsigned core_count);
 
 struct panfrost_bo *
 panfrost_batch_get_shared_memory(struct panfrost_batch *batch, unsigned size, unsigned workgroup_count);

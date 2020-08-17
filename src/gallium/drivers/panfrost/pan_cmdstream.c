@@ -58,12 +58,20 @@ panfrost_vt_emit_shared_memory(struct panfrost_context *ctx,
         struct panfrost_device *dev = pan_device(ctx->base.screen);
         struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
 
-        unsigned shift = panfrost_get_stack_shift(batch->stack_size);
         struct mali_shared_memory shared = {
-                .stack_shift = shift,
-                .scratchpad = panfrost_batch_get_scratchpad(batch, shift, dev->thread_tls_alloc, dev->core_count)->gpu,
                 .shared_workgroup_count = ~0,
         };
+
+        if (batch->stack_size) {
+                struct panfrost_bo *stack =
+                        panfrost_batch_get_scratchpad(batch, batch->stack_size,
+                                        dev->thread_tls_alloc,
+                                        dev->core_count);
+
+                shared.stack_shift = panfrost_get_stack_shift(batch->stack_size);
+                shared.scratchpad = stack->gpu;
+        }
+
         postfix->shared_memory = panfrost_pool_upload(&batch->pool, &shared, sizeof(shared));
 }
 

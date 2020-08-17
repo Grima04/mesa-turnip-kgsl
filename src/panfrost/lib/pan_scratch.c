@@ -25,6 +25,7 @@
  */
 
 #include "util/u_math.h"
+#include "util/macros.h"
 #include "pan_encoder.h"
 
 /* Midgard has a small register file, so shaders with high register pressure
@@ -93,17 +94,16 @@ panfrost_get_stack_shift(unsigned stack_size)
                 return 0;
 }
 
-/* Computes the aligned stack size given the shift and thread count. The blob
- * reserves an extra page, and since this is hardware-internal, we do too. */
+/* Computes the aligned stack size given the shift and thread count. */
 
 unsigned
 panfrost_get_total_stack_size(
-                unsigned stack_shift,
+                unsigned thread_size,
                 unsigned threads_per_core,
                 unsigned core_count)
 {
-        unsigned size_per_thread = MAX2(1 << (stack_shift + 4), 32);
-        unsigned size = size_per_thread * threads_per_core * core_count;
+        unsigned size_per_thread = (thread_size == 0) ? 0 :
+                util_next_power_of_two(ALIGN_POT(thread_size, 16));
 
-        return size + 4096;
+        return size_per_thread * threads_per_core * core_count;
 }

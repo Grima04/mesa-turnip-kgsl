@@ -74,7 +74,7 @@ panfrost_get_stack_shift(unsigned stack_size);
 
 unsigned
 panfrost_get_total_stack_size(
-                unsigned stack_shift,
+                unsigned thread_size,
                 unsigned threads_per_core,
                 unsigned core_count);
 
