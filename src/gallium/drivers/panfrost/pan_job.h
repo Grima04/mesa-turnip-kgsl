@@ -183,9 +183,6 @@ mali_ptr
 panfrost_batch_get_polygon_list(struct panfrost_batch *batch, unsigned size);
 
 struct panfrost_bo *
-panfrost_batch_get_tiler_heap(struct panfrost_batch *batch);
-
-struct panfrost_bo *
 panfrost_batch_get_tiler_dummy(struct panfrost_batch *batch);
 
 void

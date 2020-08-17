@@ -172,12 +172,20 @@ panfrost_open_device(void *memctx, int fd, struct panfrost_device *dev)
 
         for (unsigned i = 0; i < ARRAY_SIZE(dev->bo_cache.buckets); ++i)
                 list_inithead(&dev->bo_cache.buckets[i]);
+
+        /* Tiler heap is internally required by the tiler, which can only be
+         * active for a single job chain at once, so a single heap can be
+         * shared across batches/contextes */
+
+        dev->tiler_heap = panfrost_bo_create(dev, 4096 * 4096,
+                        PAN_BO_INVISIBLE | PAN_BO_GROWABLE);
 }
 
 void
 panfrost_close_device(struct panfrost_device *dev)
 {
         panfrost_bo_unreference(dev->blit_shaders.bo);
+        panfrost_bo_unreference(dev->tiler_heap);
         panfrost_bo_cache_evict_all(dev);
         pthread_mutex_destroy(&dev->bo_cache.lock);
         drmFreeVersion(dev->kernel_version);

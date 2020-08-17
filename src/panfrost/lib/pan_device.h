@@ -127,6 +127,14 @@ struct panfrost_device {
         } bo_cache;
 
         struct pan_blit_shaders blit_shaders;
+
+        /* Tiler heap shared across all tiler jobs, allocated against the
+         * device since there's only a single tiler. Since this is invisible to
+         * the CPU, it's okay for multiple contexts to reference it
+         * simultaneously; by keeping on the device struct, we eliminate a
+         * costly per-context allocation. */
+
+        struct panfrost_bo *tiler_heap;
 };
 
 void

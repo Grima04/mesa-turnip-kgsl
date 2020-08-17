@@ -679,23 +679,6 @@ panfrost_batch_get_shared_memory(struct panfrost_batch *batch,
         return batch->shared_memory;
 }
 
-struct panfrost_bo *
-panfrost_batch_get_tiler_heap(struct panfrost_batch *batch)
-{
-        if (batch->tiler_heap)
-                return batch->tiler_heap;
-
-        batch->tiler_heap = panfrost_batch_create_bo(batch, 4096 * 4096,
-                                                     PAN_BO_INVISIBLE |
-                                                     PAN_BO_GROWABLE,
-                                                     PAN_BO_ACCESS_PRIVATE |
-                                                     PAN_BO_ACCESS_RW |
-                                                     PAN_BO_ACCESS_VERTEX_TILER |
-                                                     PAN_BO_ACCESS_FRAGMENT);
-        assert(batch->tiler_heap);
-        return batch->tiler_heap;
-}
-
 mali_ptr
 panfrost_batch_get_tiler_meta(struct panfrost_batch *batch, unsigned vertex_count)
 {
@@ -705,14 +688,13 @@ panfrost_batch_get_tiler_meta(struct panfrost_batch *batch, unsigned vertex_coun
         if (batch->tiler_meta)
                 return batch->tiler_meta;
 
-        struct panfrost_bo *tiler_heap;
-        tiler_heap = panfrost_batch_get_tiler_heap(batch);
+        struct panfrost_device *dev = pan_device(batch->ctx->base.screen);
 
         struct bifrost_tiler_heap_meta tiler_heap_meta = {
-            .heap_size = tiler_heap->size,
-            .tiler_heap_start = tiler_heap->gpu,
-            .tiler_heap_free = tiler_heap->gpu,
-            .tiler_heap_end = tiler_heap->gpu + tiler_heap->size,
+            .heap_size = dev->tiler_heap->size,
+            .tiler_heap_start = dev->tiler_heap->gpu,
+            .tiler_heap_free = dev->tiler_heap->gpu,
+            .tiler_heap_end = dev->tiler_heap->gpu + dev->tiler_heap->size,
             .unk1 = 0x1,
             .unk7e007e = 0x7e007e,
         };
@@ -997,7 +979,7 @@ panfrost_batch_submit_ioctl(struct panfrost_batch *batch,
         submit.jc = first_job_desc;
         submit.requirements = reqs;
 
-        bo_handles = calloc(batch->pool.bos->entries + batch->invisible_pool.bos->entries + batch->bos->entries, sizeof(*bo_handles));
+        bo_handles = calloc(batch->pool.bos->entries + batch->invisible_pool.bos->entries + batch->bos->entries + 1, sizeof(*bo_handles));
         assert(bo_handles);
 
         hash_table_foreach(batch->bos, entry)
@@ -1008,6 +990,10 @@ panfrost_batch_submit_ioctl(struct panfrost_batch *batch,
 
         hash_table_foreach(batch->invisible_pool.bos, entry)
                 panfrost_batch_record_bo(entry, bo_handles, submit.bo_handle_count++);
+
+        /* Used by all tiler jobs (XXX: skip for compute-only) */
+        if (!(reqs & PANFROST_JD_REQ_FS))
+                bo_handles[submit.bo_handle_count++] = dev->tiler_heap->gem_handle;
 
         submit.bo_handles = (u64) (uintptr_t) bo_handles;
         ret = drmIoctl(dev->fd, DRM_IOCTL_PANFROST_SUBMIT, &submit);

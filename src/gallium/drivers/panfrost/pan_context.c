@@ -76,20 +76,14 @@ panfrost_emit_midg_tiler(struct panfrost_batch *batch, unsigned vertex_count)
         t.polygon_list_size = panfrost_tiler_full_size(
                                      width, height, t.hierarchy_mask, hierarchy);
 
-        /* Sanity check */
-
         if (vertex_count) {
-                struct panfrost_bo *tiler_heap;
-
-                tiler_heap = panfrost_batch_get_tiler_heap(batch);
                 t.polygon_list = panfrost_batch_get_polygon_list(batch,
                                                                  header_size +
                                                                  t.polygon_list_size);
 
 
-                /* Allow the entire tiler heap */
-                t.heap_start = tiler_heap->gpu;
-                t.heap_end = tiler_heap->gpu + tiler_heap->size;
+                t.heap_start = device->tiler_heap->gpu;
+                t.heap_end = device->tiler_heap->gpu + device->tiler_heap->size;
         } else {
                 struct panfrost_bo *tiler_dummy;
 
