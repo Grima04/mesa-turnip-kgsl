@@ -45,7 +45,7 @@
 /* Transient slab size. This is a balance between fragmentation against cache
  * locality and ease of bookkeeping */
 
-#define TRANSIENT_SLAB_PAGES (32) /* 128kb */
+#define TRANSIENT_SLAB_PAGES (16) /* 64kb */
 #define TRANSIENT_SLAB_SIZE (4096 * TRANSIENT_SLAB_PAGES)
 
 /* Maximum number of transient slabs so we don't need dynamic arrays. Most

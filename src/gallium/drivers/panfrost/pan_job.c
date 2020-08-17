@@ -100,6 +100,7 @@ panfrost_create_batch(struct panfrost_context *ctx,
                       const struct pipe_framebuffer_state *key)
 {
         struct panfrost_batch *batch = rzalloc(ctx, struct panfrost_batch);
+        struct panfrost_device *dev = pan_device(ctx->base.screen);
 
         batch->ctx = ctx;
 
@@ -112,7 +113,15 @@ panfrost_create_batch(struct panfrost_context *ctx,
         batch->out_sync = panfrost_create_batch_fence(batch);
         util_copy_framebuffer_state(&batch->key, key);
 
-        batch->pool = panfrost_create_pool(batch, pan_device(ctx->base.screen), 0, true);
+        /* Preallocate the main pool, since every batch has at least one job
+         * structure so it will be used */
+        batch->pool = panfrost_create_pool(batch, dev, 0, true);
+
+        /* Don't preallocate the invisible pool, since not every batch will use
+         * the pre-allocation, particularly if the varyings are larger than the
+         * preallocation and a reallocation is needed after anyway. */
+        batch->invisible_pool =
+                panfrost_create_pool(batch, dev, PAN_BO_INVISIBLE, false);
 
         panfrost_batch_add_fbo_bos(batch);
 
@@ -168,6 +177,9 @@ panfrost_free_batch(struct panfrost_batch *batch)
                 panfrost_bo_unreference((struct panfrost_bo *)entry->key);
 
         hash_table_foreach(batch->pool.bos, entry)
+                panfrost_bo_unreference((struct panfrost_bo *)entry->key);
+
+        hash_table_foreach(batch->invisible_pool.bos, entry)
                 panfrost_bo_unreference((struct panfrost_bo *)entry->key);
 
         util_dynarray_foreach(&batch->dependencies,
@@ -985,13 +997,16 @@ panfrost_batch_submit_ioctl(struct panfrost_batch *batch,
         submit.jc = first_job_desc;
         submit.requirements = reqs;
 
-        bo_handles = calloc(batch->pool.bos->entries + batch->bos->entries, sizeof(*bo_handles));
+        bo_handles = calloc(batch->pool.bos->entries + batch->invisible_pool.bos->entries + batch->bos->entries, sizeof(*bo_handles));
         assert(bo_handles);
 
         hash_table_foreach(batch->bos, entry)
                 panfrost_batch_record_bo(entry, bo_handles, submit.bo_handle_count++);
 
         hash_table_foreach(batch->pool.bos, entry)
+                panfrost_batch_record_bo(entry, bo_handles, submit.bo_handle_count++);
+
+        hash_table_foreach(batch->invisible_pool.bos, entry)
                 panfrost_batch_record_bo(entry, bo_handles, submit.bo_handle_count++);
 
         submit.bo_handles = (u64) (uintptr_t) bo_handles;

@@ -1492,7 +1492,7 @@ panfrost_emit_varyings(struct panfrost_batch *batch,
                 unsigned stride, unsigned count)
 {
         unsigned size = stride * count;
-        mali_ptr ptr = panfrost_pool_alloc(&batch->pool, size).gpu;
+        mali_ptr ptr = panfrost_pool_alloc(&batch->invisible_pool, size).gpu;
 
         pan_pack(slot, ATTRIBUTE_BUFFER, cfg) {
                 cfg.stride = stride;
