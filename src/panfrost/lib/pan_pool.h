@@ -62,6 +62,17 @@ struct panfrost_transfer {
 };
 
 struct panfrost_transfer
+panfrost_pool_alloc_aligned(struct pan_pool *pool, size_t sz, unsigned alignment);
+
+/* Default to self-alignment */
+
+static inline struct panfrost_transfer
+panfrost_pool_alloc(struct pan_pool *pool, size_t sz)
+{
+        return panfrost_pool_alloc_aligned(pool, sz, util_next_power_of_two(sz));
+}
+
+struct panfrost_transfer
 panfrost_pool_alloc(struct pan_pool *pool, size_t sz);
 
 mali_ptr

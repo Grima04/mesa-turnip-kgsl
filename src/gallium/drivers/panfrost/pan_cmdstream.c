@@ -217,9 +217,13 @@ panfrost_get_index_buffer_bounded(struct panfrost_context *ctx,
         } else {
                 /* Otherwise, we need to upload to transient memory */
                 const uint8_t *ibuf8 = (const uint8_t *) info->index.user;
-                out = panfrost_pool_upload(&batch->pool, ibuf8 + offset,
-                                                info->count *
-                                                info->index_size);
+                struct panfrost_transfer T =
+                        panfrost_pool_alloc_aligned(&batch->pool,
+                                info->count * info->index_size,
+                                info->index_size);
+
+                memcpy(T.cpu, ibuf8 + offset, info->count * info->index_size);
+                out = T.gpu;
         }
 
         if (needs_indices) {
@@ -814,7 +818,7 @@ panfrost_emit_shader_meta(struct panfrost_batch *batch,
 
                 panfrost_frag_shader_meta_init(ctx, &meta, rts);
 
-                xfer = panfrost_pool_alloc(&batch->pool, desc_size);
+                xfer = panfrost_pool_alloc_aligned(&batch->pool, desc_size, sizeof(meta));
 
                 memcpy(xfer.cpu, &meta, sizeof(meta));
                 memcpy(xfer.cpu + sizeof(meta), rts, rt_size * rt_count);
@@ -1106,8 +1110,8 @@ panfrost_emit_const_buf(struct panfrost_batch *batch,
         size_t sys_size = sizeof(float) * 4 * ss->sysval_count;
         size_t uniform_size = has_uniforms ? (buf->cb[0].buffer_size) : 0;
         size_t size = sys_size + uniform_size;
-        struct panfrost_transfer transfer = panfrost_pool_alloc(&batch->pool,
-                                                                        size);
+        struct panfrost_transfer transfer =
+                panfrost_pool_alloc_aligned(&batch->pool, size, 16);
 
         /* Upload sysvals requested by the shader */
         panfrost_upload_sysvals(batch, transfer.cpu, ss, stage);
@@ -1125,7 +1129,10 @@ panfrost_emit_const_buf(struct panfrost_batch *batch,
         assert(ubo_count >= 1);
 
         size_t sz = MALI_UNIFORM_BUFFER_LENGTH * ubo_count;
-        struct panfrost_transfer ubos = panfrost_pool_alloc(&batch->pool, sz);
+        struct panfrost_transfer ubos =
+                panfrost_pool_alloc_aligned(&batch->pool, sz,
+                                MALI_UNIFORM_BUFFER_LENGTH);
+
         uint64_t *ubo_ptr = (uint64_t *) ubos.cpu;
 
         /* Upload uniforms as a UBO */
@@ -1244,9 +1251,10 @@ panfrost_emit_texture_descriptors(struct panfrost_batch *batch,
                 return;
 
         if (device->quirks & IS_BIFROST) {
-                struct panfrost_transfer T = panfrost_pool_alloc(&batch->pool,
+                struct panfrost_transfer T = panfrost_pool_alloc_aligned(&batch->pool,
                                 MALI_BIFROST_TEXTURE_LENGTH *
-                                ctx->sampler_view_count[stage]);
+                                ctx->sampler_view_count[stage],
+                                MALI_BIFROST_TEXTURE_LENGTH);
 
                 struct mali_bifrost_texture_packed *out =
                         (struct mali_bifrost_texture_packed *) T.cpu;
@@ -1303,7 +1311,7 @@ panfrost_emit_sampler_descriptors(struct panfrost_batch *batch,
         assert(MALI_BIFROST_SAMPLER_LENGTH == MALI_MIDGARD_SAMPLER_LENGTH);
 
         size_t sz = desc_size * ctx->sampler_count[stage];
-        struct panfrost_transfer T = panfrost_pool_alloc(&batch->pool, sz);
+        struct panfrost_transfer T = panfrost_pool_alloc_aligned(&batch->pool, sz, desc_size);
         struct mali_midgard_sampler_packed *out = (struct mali_midgard_sampler_packed *) T.cpu;
 
         for (unsigned i = 0; i < ctx->sampler_count[stage]; ++i)
@@ -1324,11 +1332,13 @@ panfrost_emit_vertex_data(struct panfrost_batch *batch,
 
         /* Worst case: everything is NPOT */
 
-        struct panfrost_transfer S = panfrost_pool_alloc(&batch->pool,
-                        MALI_ATTRIBUTE_LENGTH * PIPE_MAX_ATTRIBS * 2);
+        struct panfrost_transfer S = panfrost_pool_alloc_aligned(&batch->pool,
+                        MALI_ATTRIBUTE_LENGTH * PIPE_MAX_ATTRIBS * 2,
+                        MALI_ATTRIBUTE_LENGTH);
 
-        struct panfrost_transfer T = panfrost_pool_alloc(&batch->pool,
-                        MALI_ATTRIBUTE_LENGTH * (PAN_INSTANCE_ID + 1));
+        struct panfrost_transfer T = panfrost_pool_alloc_aligned(&batch->pool,
+                        MALI_ATTRIBUTE_LENGTH * (PAN_INSTANCE_ID + 1),
+                        MALI_ATTRIBUTE_LENGTH);
 
         struct mali_attribute_buffer_packed *bufs =
                 (struct mali_attribute_buffer_packed *) S.cpu;
@@ -1496,7 +1506,7 @@ panfrost_emit_varyings(struct panfrost_batch *batch,
                 unsigned stride, unsigned count)
 {
         unsigned size = stride * count;
-        mali_ptr ptr = panfrost_pool_alloc(&batch->invisible_pool, size).gpu;
+        mali_ptr ptr = panfrost_pool_alloc_aligned(&batch->invisible_pool, size, 64).gpu;
 
         pan_pack(slot, ATTRIBUTE_BUFFER, cfg) {
                 cfg.stride = stride;
@@ -1931,9 +1941,8 @@ panfrost_emit_varying_descriptor(struct panfrost_batch *batch,
         vs_size = MALI_ATTRIBUTE_LENGTH * vs->varying_count;
         fs_size = MALI_ATTRIBUTE_LENGTH * fs->varying_count;
 
-        struct panfrost_transfer trans = panfrost_pool_alloc(&batch->pool,
-                                                                     vs_size +
-                                                                     fs_size);
+        struct panfrost_transfer trans = panfrost_pool_alloc_aligned(
+                        &batch->pool, vs_size + fs_size, MALI_ATTRIBUTE_LENGTH);
 
         struct pipe_stream_output_info *so = &vs->stream_output;
         unsigned present = pan_varying_present(vs, fs, dev->quirks);
@@ -1979,8 +1988,9 @@ panfrost_emit_varying_descriptor(struct panfrost_batch *batch,
         }
 
         unsigned xfb_base = pan_xfb_base(present);
-        struct panfrost_transfer T = panfrost_pool_alloc(&batch->pool,
-                        MALI_ATTRIBUTE_BUFFER_LENGTH * (xfb_base + ctx->streamout.num_targets));
+        struct panfrost_transfer T = panfrost_pool_alloc_aligned(&batch->pool,
+                        MALI_ATTRIBUTE_BUFFER_LENGTH * (xfb_base + ctx->streamout.num_targets),
+                        MALI_ATTRIBUTE_BUFFER_LENGTH);
         struct mali_attribute_buffer_packed *varyings =
                 (struct mali_attribute_buffer_packed *) T.cpu;
 

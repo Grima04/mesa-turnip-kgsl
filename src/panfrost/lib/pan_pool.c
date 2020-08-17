@@ -27,9 +27,6 @@
 #include "pan_bo.h"
 #include "pan_pool.h"
 
-/* TODO: What does this actually have to be? */
-#define ALIGNMENT 128
-
 /* Transient command stream pooling: command stream uploads try to simply copy
  * into whereever we left off. If there isn't space, we allocate a new entry
  * into the pool and copy there */
@@ -80,14 +77,11 @@ panfrost_create_pool(void *memctx, struct panfrost_device *dev,
 }
 
 struct panfrost_transfer
-panfrost_pool_alloc(struct pan_pool *pool, size_t sz)
+panfrost_pool_alloc_aligned(struct pan_pool *pool, size_t sz, unsigned alignment)
 {
-        /* Pad the size */
-        sz = ALIGN_POT(sz, ALIGNMENT);
-
         /* Find or create a suitable BO */
         struct panfrost_bo *bo = pool->transient_bo;
-        unsigned offset = pool->transient_offset;
+        unsigned offset = ALIGN_POT(pool->transient_offset, alignment);
 
         /* If we don't fit, allocate a new backing */
         if (unlikely(bo == NULL || (offset + sz) >= TRANSIENT_SLAB_SIZE)) {
@@ -96,7 +90,7 @@ panfrost_pool_alloc(struct pan_pool *pool, size_t sz)
                 offset = 0;
         }
 
-        pool->transient_offset += sz;
+        pool->transient_offset = offset + sz;
 
         struct panfrost_transfer ret = {
                 .cpu = bo->cpu + offset,
@@ -104,7 +98,6 @@ panfrost_pool_alloc(struct pan_pool *pool, size_t sz)
         };
 
         return ret;
-
 }
 
 mali_ptr

@@ -748,7 +748,7 @@ panfrost_batch_reserve_framebuffer(struct panfrost_batch *batch)
                         sizeof(struct mali_single_framebuffer) :
                         sizeof(struct mali_framebuffer);
 
-                batch->framebuffer = panfrost_pool_alloc(&batch->pool, size);
+                batch->framebuffer = panfrost_pool_alloc_aligned(&batch->pool, size, 64);
 
                 /* Tag the pointer */
                 if (!(dev->quirks & MIDGARD_SFBD))
@@ -870,8 +870,8 @@ panfrost_load_surface(struct panfrost_batch *batch, struct pipe_surface *surf, u
                 blend_shader = bo->gpu | b->first_tag;
         }
 
-        struct panfrost_transfer transfer = panfrost_pool_alloc(&batch->pool,
-                        4 * 4 * 6 * rsrc->damage.inverted_len);
+        struct panfrost_transfer transfer = panfrost_pool_alloc_aligned(&batch->pool,
+                        4 * 4 * 6 * rsrc->damage.inverted_len, 64);
 
         for (unsigned i = 0; i < rsrc->damage.inverted_len; ++i) {
                 float *o = (float *) (transfer.cpu + (4 * 4 * 6 * i));

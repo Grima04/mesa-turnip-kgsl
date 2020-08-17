@@ -290,7 +290,8 @@ panfrost_load_midg(
          * textures, removing the need to separately key the blit shaders for
          * 2D and 3D variants */
 
-        struct panfrost_transfer texture_t = panfrost_pool_alloc(pool, MALI_MIDGARD_TEXTURE_LENGTH + sizeof(mali_ptr) * 2 * MAX2(image->nr_samples, 1));
+        struct panfrost_transfer texture_t = panfrost_pool_alloc_aligned(
+                        pool, MALI_MIDGARD_TEXTURE_LENGTH + sizeof(mali_ptr) * 2 * MAX2(image->nr_samples, 1), 128);
 
         panfrost_new_texture(texture_t.cpu,
                         image->width0, image->height0,
@@ -311,7 +312,9 @@ panfrost_load_midg(
         pan_pack(sampler.cpu, MIDGARD_SAMPLER, cfg)
                 cfg.normalized_coordinates = false;
 
-        struct panfrost_transfer shader_meta_t = panfrost_pool_alloc(pool, sizeof(shader_meta) + 8 * sizeof(struct midgard_blend_rt));
+        struct panfrost_transfer shader_meta_t = panfrost_pool_alloc_aligned(
+                pool, sizeof(shader_meta) + 8 * sizeof(struct midgard_blend_rt), 128);
+
         memcpy(shader_meta_t.cpu, &shader_meta, sizeof(shader_meta));
 
         for (unsigned i = 0; i < 8; ++i) {
