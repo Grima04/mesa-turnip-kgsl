@@ -292,7 +292,7 @@ public:
    virtual void visit(ir_barrier *);
    /*@}*/
 
-   void visit_expression(ir_expression *, st_src_reg *) ATTRIBUTE_NOINLINE;
+   void ATTRIBUTE_NOINLINE visit_expression(ir_expression *, st_src_reg *);
 
    void visit_atomic_counter_intrinsic(ir_call *);
    void visit_ssbo_intrinsic(ir_call *);
