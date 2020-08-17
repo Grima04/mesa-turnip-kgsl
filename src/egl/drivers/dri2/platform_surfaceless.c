@@ -326,15 +326,7 @@ dri2_initialize_surfaceless(_EGLDisplay *disp)
    dri2_dpy->fd = -1;
    disp->DriverData = (void *) dri2_dpy;
 
-   if (!disp->Options.ForceSoftware) {
-      driver_loaded = surfaceless_probe_device(disp, false);
-      if (!driver_loaded)
-         _eglLog(_EGL_WARNING,
-                 "No hardware driver found, falling back to software rendering");
-   }
-
-   if (!driver_loaded)
-      driver_loaded = surfaceless_probe_device(disp, true);
+   driver_loaded = surfaceless_probe_device(disp, disp->Options.ForceSoftware);
 
    if (!driver_loaded) {
       _eglLog(_EGL_DEBUG, "Falling back to surfaceless swrast without DRM.");
