@@ -1116,14 +1116,23 @@ zink_resource_barrier(VkCommandBuffer cmdbuf, struct zink_resource *res,
 static VkPipelineStageFlags
 pipeline_access_stage(VkAccessFlags flags)
 {
-   switch (flags) {
-   default:
-      return VK_PIPELINE_STAGE_TRANSFER_BIT;
-   }
+   if (flags & (VK_ACCESS_UNIFORM_READ_BIT |
+                VK_ACCESS_SHADER_READ_BIT |
+                VK_ACCESS_SHADER_WRITE_BIT))
+      return VK_PIPELINE_STAGE_TASK_SHADER_BIT_NV |
+             VK_PIPELINE_STAGE_MESH_SHADER_BIT_NV |
+             VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR |
+             VK_PIPELINE_STAGE_VERTEX_SHADER_BIT |
+             VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT |
+             VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT |
+             VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT |
+             VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT |
+             VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
+   return VK_PIPELINE_STAGE_TRANSFER_BIT;
 }
 
 void
-zink_resource_buffer_barrier(VkCommandBuffer cmdbuf, struct zink_resource *res, VkAccessFlags flags)
+zink_resource_buffer_barrier(VkCommandBuffer cmdbuf, struct zink_resource *res, VkAccessFlags flags, VkPipelineStageFlags pipeline)
 {
    /* TODO: maybe make this more flexible using flags? */
    VkBufferMemoryBarrier bmb = {
@@ -1140,14 +1149,15 @@ zink_resource_buffer_barrier(VkCommandBuffer cmdbuf, struct zink_resource *res, 
 
    vkCmdPipelineBarrier(
       cmdbuf,
-      pipeline_access_stage(res->access),
-      pipeline_access_stage(flags),
+      res->access_stage ? res->access_stage : pipeline_access_stage(res->access),
+      pipeline ? pipeline : pipeline_access_stage(flags),
       0,
       0, NULL,
       1, &bmb,
       0, NULL
    );
    res->access = flags;
+   res->access_stage = pipeline ? pipeline : pipeline_access_stage(flags);
 }
 
 VkShaderStageFlagBits
