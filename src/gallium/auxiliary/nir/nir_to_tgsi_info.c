@@ -63,10 +63,15 @@ static void gather_usage_helper(const nir_deref_instr **deref_ptr,
       const nir_deref_instr *deref = *deref_ptr;
       switch (deref->deref_type) {
       case nir_deref_type_array: {
-         unsigned elem_size =
+         bool is_compact = nir_deref_instr_get_variable(deref)->data.compact;
+         unsigned elem_size = is_compact ? DIV_ROUND_UP(glsl_get_length(deref->type), 4) :
             glsl_count_attribute_slots(deref->type, false);
          if (nir_src_is_const(deref->arr.index)) {
-            location += elem_size * nir_src_as_uint(deref->arr.index);
+            if (is_compact) {
+               location += nir_src_as_uint(deref->arr.index) / 4;
+               mask <<= nir_src_as_uint(deref->arr.index) % 4;
+            } else
+               location += elem_size * nir_src_as_uint(deref->arr.index);
          } else {
             unsigned array_elems =
                glsl_get_length(deref_ptr[-1]->type);
@@ -498,8 +503,8 @@ void nir_tgsi_scan_shader(const struct nir_shader *nir,
          type = glsl_get_array_element(type);
       }
 
-      unsigned attrib_count = glsl_count_attribute_slots(type,
-                                                         nir->info.stage == MESA_SHADER_VERTEX);
+      unsigned attrib_count = variable->data.compact ? DIV_ROUND_UP(glsl_get_length(type), 4) :
+         glsl_count_attribute_slots(type, nir->info.stage == MESA_SHADER_VERTEX);
 
       i = variable->data.driver_location;
 
@@ -584,7 +589,8 @@ void nir_tgsi_scan_shader(const struct nir_shader *nir,
          type = glsl_get_array_element(type);
       }
 
-      unsigned attrib_count = glsl_count_attribute_slots(type, false);
+      unsigned attrib_count = variable->data.compact ? DIV_ROUND_UP(glsl_get_length(type), 4) :
+         glsl_count_attribute_slots(type, false);
       for (unsigned k = 0; k < attrib_count; k++, i++) {
 
          if (nir->info.stage == MESA_SHADER_FRAGMENT) {
