@@ -63,6 +63,7 @@ convert_query_type(unsigned query_type, bool *use_64bit, bool *precise)
    case PIPE_QUERY_OCCLUSION_PREDICATE:
    case PIPE_QUERY_OCCLUSION_PREDICATE_CONSERVATIVE:
       return VK_QUERY_TYPE_OCCLUSION;
+   case PIPE_QUERY_TIME_ELAPSED:
    case PIPE_QUERY_TIMESTAMP:
       *use_64bit = true;
       return VK_QUERY_TYPE_TIMESTAMP;
@@ -77,6 +78,12 @@ convert_query_type(unsigned query_type, bool *use_64bit, bool *precise)
                    util_str_query_type(query_type, true));
       unreachable("zink: unknown query type");
    }
+}
+
+static bool
+is_time_query(struct zink_query *query)
+{
+   return query->type == PIPE_QUERY_TIMESTAMP || query->type == PIPE_QUERY_TIME_ELAPSED;
 }
 
 static struct pipe_query *
@@ -223,11 +230,13 @@ get_query_result(struct pipe_context *pctx,
          result->b |= results[i] != 0;
          break;
 
+      case PIPE_QUERY_TIME_ELAPSED:
       case PIPE_QUERY_TIMESTAMP:
          /* the application can sum the differences between all N queries to determine the total execution time.
           * - 17.5. Timestamp Queries
           */
-         result->u64 += results[i] - last_val;
+         if (query->type != PIPE_QUERY_TIME_ELAPSED || i > 0)
+            result->u64 += results[i] - last_val;
          last_val = results[i];
          break;
       case PIPE_QUERY_OCCLUSION_COUNTER:
@@ -254,7 +263,7 @@ get_query_result(struct pipe_context *pctx,
    }
    query->last_checked_query = query->curr_query;
 
-   if (query->type == PIPE_QUERY_TIMESTAMP)
+   if (is_time_query(query))
       timestamp_to_nanoseconds(screen, &result->u64);
 
    return TRUE;
@@ -285,8 +294,10 @@ begin_query(struct zink_context *ctx, struct zink_batch *batch, struct zink_quer
       reset_pool(ctx, batch, q);
    assert(q->curr_query < q->num_queries);
    q->active = true;
+   if (q->type == PIPE_QUERY_TIME_ELAPSED)
+      vkCmdWriteTimestamp(batch->cmdbuf, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, q->query_pool, q->curr_query++);
    /* ignore the rest of begin_query for timestamps */
-   if (q->type == PIPE_QUERY_TIMESTAMP)
+   if (is_time_query(q))
       return;
    if (q->precise)
       flags |= VK_QUERY_CONTROL_PRECISE_BIT;
@@ -325,7 +336,7 @@ end_query(struct zink_context *ctx, struct zink_batch *batch, struct zink_query 
 {
    struct zink_screen *screen = zink_screen(ctx->base.screen);
    q->active = q->type == PIPE_QUERY_TIMESTAMP;
-   if (q->type == PIPE_QUERY_TIMESTAMP)
+   if (is_time_query(q))
       vkCmdWriteTimestamp(batch->cmdbuf, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
                           q->query_pool, q->curr_query);
    else if (q->vkqtype == VK_QUERY_TYPE_TRANSFORM_FEEDBACK_STREAM_EXT)
