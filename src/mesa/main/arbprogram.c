@@ -217,7 +217,6 @@ _mesa_DeleteProgramsARB(GLsizei n, const GLuint *ids)
 void GLAPIENTRY
 _mesa_GenProgramsARB(GLsizei n, GLuint *ids)
 {
-   GLuint first;
    GLuint i;
    GET_CURRENT_CONTEXT(ctx);
 
@@ -231,20 +230,15 @@ _mesa_GenProgramsARB(GLsizei n, GLuint *ids)
 
    _mesa_HashLockMutex(ctx->Shared->Programs);
 
-   first = _mesa_HashFindFreeKeyBlock(ctx->Shared->Programs, n);
+   _mesa_HashFindFreeKeys(ctx->Shared->Programs, ids, n);
 
    /* Insert pointer to dummy program as placeholder */
    for (i = 0; i < (GLuint) n; i++) {
-      _mesa_HashInsertLocked(ctx->Shared->Programs, first + i,
+      _mesa_HashInsertLocked(ctx->Shared->Programs, ids[i],
                              &_mesa_DummyProgram, true);
    }
 
    _mesa_HashUnlockMutex(ctx->Shared->Programs);
-
-   /* Return the program names */
-   for (i = 0; i < (GLuint) n; i++) {
-      ids[i] = first + i;
-   }
 }
 
 

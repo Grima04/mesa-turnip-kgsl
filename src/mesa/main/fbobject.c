@@ -2026,7 +2026,6 @@ create_render_buffers(struct gl_context *ctx, GLsizei n, GLuint *renderbuffers,
                       bool dsa)
 {
    const char *func = dsa ? "glCreateRenderbuffers" : "glGenRenderbuffers";
-   GLuint first;
    GLint i;
 
    if (!renderbuffers)
@@ -2034,17 +2033,14 @@ create_render_buffers(struct gl_context *ctx, GLsizei n, GLuint *renderbuffers,
 
    _mesa_HashLockMutex(ctx->Shared->RenderBuffers);
 
-   first = _mesa_HashFindFreeKeyBlock(ctx->Shared->RenderBuffers, n);
+   _mesa_HashFindFreeKeys(ctx->Shared->RenderBuffers, renderbuffers, n);
 
    for (i = 0; i < n; i++) {
-      GLuint name = first + i;
-      renderbuffers[i] = name;
-
       if (dsa) {
-         allocate_renderbuffer_locked(ctx, name, true, func);
+         allocate_renderbuffer_locked(ctx, renderbuffers[i], true, func);
       } else {
          /* insert a dummy renderbuffer into the hash table */
-         _mesa_HashInsertLocked(ctx->Shared->RenderBuffers, name,
+         _mesa_HashInsertLocked(ctx->Shared->RenderBuffers, renderbuffers[i],
                                 &DummyRenderbuffer, true);
       }
    }
@@ -3211,7 +3207,6 @@ static void
 create_framebuffers(GLsizei n, GLuint *framebuffers, bool dsa)
 {
    GET_CURRENT_CONTEXT(ctx);
-   GLuint first;
    GLint i;
    struct gl_framebuffer *fb;
 
@@ -3227,12 +3222,9 @@ create_framebuffers(GLsizei n, GLuint *framebuffers, bool dsa)
 
    _mesa_HashLockMutex(ctx->Shared->FrameBuffers);
 
-   first = _mesa_HashFindFreeKeyBlock(ctx->Shared->FrameBuffers, n);
+   _mesa_HashFindFreeKeys(ctx->Shared->FrameBuffers, framebuffers, n);
 
    for (i = 0; i < n; i++) {
-      GLuint name = first + i;
-      framebuffers[i] = name;
-
       if (dsa) {
          fb = ctx->Driver.NewFramebuffer(ctx, framebuffers[i]);
          if (!fb) {
@@ -3244,7 +3236,8 @@ create_framebuffers(GLsizei n, GLuint *framebuffers, bool dsa)
       else
          fb = &DummyFramebuffer;
 
-      _mesa_HashInsertLocked(ctx->Shared->FrameBuffers, name, fb, true);
+      _mesa_HashInsertLocked(ctx->Shared->FrameBuffers, framebuffers[i],
+                             fb, true);
    }
 
    _mesa_HashUnlockMutex(ctx->Shared->FrameBuffers);

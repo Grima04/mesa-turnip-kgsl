@@ -1621,7 +1621,6 @@ _mesa_DeleteBuffers(GLsizei n, const GLuint *ids)
 static void
 create_buffers(struct gl_context *ctx, GLsizei n, GLuint *buffers, bool dsa)
 {
-   GLuint first;
    struct gl_buffer_object *buf;
 
    if (!buffers)
@@ -1632,14 +1631,13 @@ create_buffers(struct gl_context *ctx, GLsizei n, GLuint *buffers, bool dsa)
     */
    _mesa_HashLockMutex(ctx->Shared->BufferObjects);
 
-   first = _mesa_HashFindFreeKeyBlock(ctx->Shared->BufferObjects, n);
+   _mesa_HashFindFreeKeys(ctx->Shared->BufferObjects, buffers, n);
 
    /* Insert the ID and pointer into the hash table. If non-DSA, insert a
     * DummyBufferObject.  Otherwise, create a new buffer object and insert
     * it.
     */
    for (int i = 0; i < n; i++) {
-      buffers[i] = first + i;
       if (dsa) {
          assert(ctx->Driver.NewBufferObject);
          buf = ctx->Driver.NewBufferObject(ctx, buffers[i]);

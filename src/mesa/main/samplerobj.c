@@ -157,7 +157,6 @@ static void
 create_samplers(struct gl_context *ctx, GLsizei count, GLuint *samplers,
                 const char *caller)
 {
-   GLuint first;
    GLint i;
 
    if (!samplers)
@@ -165,22 +164,21 @@ create_samplers(struct gl_context *ctx, GLsizei count, GLuint *samplers,
 
    _mesa_HashLockMutex(ctx->Shared->SamplerObjects);
 
-   first = _mesa_HashFindFreeKeyBlock(ctx->Shared->SamplerObjects, count);
+   _mesa_HashFindFreeKeys(ctx->Shared->SamplerObjects, samplers, count);
 
    /* Insert the ID and pointer to new sampler object into hash table */
    for (i = 0; i < count; i++) {
       struct gl_sampler_object *sampObj;
-      GLuint name = first + i;
 
-      sampObj = ctx->Driver.NewSamplerObject(ctx, name);
+      sampObj = ctx->Driver.NewSamplerObject(ctx, samplers[i]);
       if (!sampObj) {
          _mesa_HashUnlockMutex(ctx->Shared->SamplerObjects);
          _mesa_error(ctx, GL_OUT_OF_MEMORY, "%s", caller);
          return;
       }
 
-      _mesa_HashInsertLocked(ctx->Shared->SamplerObjects, name, sampObj, true);
-      samplers[i] = name;
+      _mesa_HashInsertLocked(ctx->Shared->SamplerObjects, samplers[i],
+                             sampObj, true);
    }
 
    _mesa_HashUnlockMutex(ctx->Shared->SamplerObjects);
