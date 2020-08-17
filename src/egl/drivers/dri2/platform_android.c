@@ -1601,10 +1601,7 @@ dri2_initialize_android(_EGLDisplay *disp)
    }
 
    disp->DriverData = (void *) dri2_dpy;
-   if (!disp->Options.ForceSoftware)
-      device_opened = droid_open_device(disp, false);
-   if (!device_opened)
-      device_opened = droid_open_device(disp, true);
+   device_opened = droid_open_device(disp, disp->Options.ForceSoftware);
 
    if (!device_opened) {
       err = "DRI2: failed to open device";
