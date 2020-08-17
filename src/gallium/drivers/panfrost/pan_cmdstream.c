@@ -1326,6 +1326,7 @@ panfrost_emit_vertex_data(struct panfrost_batch *batch,
 {
         struct panfrost_context *ctx = batch->ctx;
         struct panfrost_vertex_state *so = ctx->vertex;
+        struct panfrost_shader_state *vs = panfrost_get_shader_state(ctx, PIPE_SHADER_VERTEX);
 
         unsigned instance_shift = vertex_postfix->instance_shift;
         unsigned instance_odd = vertex_postfix->instance_odd;
@@ -1337,7 +1338,7 @@ panfrost_emit_vertex_data(struct panfrost_batch *batch,
                         MALI_ATTRIBUTE_BUFFER_LENGTH);
 
         struct panfrost_transfer T = panfrost_pool_alloc_aligned(&batch->pool,
-                        MALI_ATTRIBUTE_LENGTH * (PAN_INSTANCE_ID + 1),
+                        MALI_ATTRIBUTE_LENGTH * vs->attribute_count,
                         MALI_ATTRIBUTE_LENGTH);
 
         struct mali_attribute_buffer_packed *bufs =
@@ -1445,18 +1446,20 @@ panfrost_emit_vertex_data(struct panfrost_batch *batch,
 
         /* Add special gl_VertexID/gl_InstanceID buffers */
 
-        panfrost_vertex_id(ctx->padded_count, &bufs[k], ctx->instance_count > 1);
+        if (unlikely(vs->attribute_count >= PAN_VERTEX_ID)) {
+                panfrost_vertex_id(ctx->padded_count, &bufs[k], ctx->instance_count > 1);
 
-        pan_pack(out + PAN_VERTEX_ID, ATTRIBUTE, cfg) {
-                cfg.buffer_index = k++;
-                cfg.format = so->formats[PAN_VERTEX_ID];
-        }
+                pan_pack(out + PAN_VERTEX_ID, ATTRIBUTE, cfg) {
+                        cfg.buffer_index = k++;
+                        cfg.format = so->formats[PAN_VERTEX_ID];
+                }
 
-        panfrost_instance_id(ctx->padded_count, &bufs[k], ctx->instance_count > 1);
+                panfrost_instance_id(ctx->padded_count, &bufs[k], ctx->instance_count > 1);
 
-        pan_pack(out + PAN_INSTANCE_ID, ATTRIBUTE, cfg) {
-                cfg.buffer_index = k++;
-                cfg.format = so->formats[PAN_INSTANCE_ID];
+                pan_pack(out + PAN_INSTANCE_ID, ATTRIBUTE, cfg) {
+                        cfg.buffer_index = k++;
+                        cfg.format = so->formats[PAN_INSTANCE_ID];
+                }
         }
 
         /* Attribute addresses require 64-byte alignment, so let:
