@@ -161,6 +161,7 @@ label(const char *str)
 %token <tok> T_OP_SETSECURE
 %token <tok> T_LSHIFT
 %token <tok> T_REP
+%token <num> T_XMOV
 
 %type <num> reg
 %type <num> immediate
@@ -182,6 +183,7 @@ instr_or_label:    instr_r
 
 /* instructions that can optionally have (rep) flag: */
 instr_r:           alu_instr
+|                  T_XMOV alu_instr { instr->xmov = $1; }
 |                  config_instr
 
 /* need to special case:

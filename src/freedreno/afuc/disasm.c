@@ -506,6 +506,8 @@ static void disasm(uint32_t *buf, int sizedwords)
 
 			if (rep)
 				printf("(rep)");
+			if (instr->alu.xmov)
+				printf("(xmov%d)", instr->alu.xmov);
 
 			/* special case mnemonics:
 			 *   reading $00 seems to always yield zero, and so:
@@ -531,10 +533,58 @@ static void disasm(uint32_t *buf, int sizedwords)
 			/* print out unexpected bits: */
 			if (verbose) {
 				if (instr->alu.pad)
-					printerr("  (pad=%03x)", instr->alu.pad);
+					printerr("  (pad=%01x)", instr->alu.pad);
 				if (instr->alu.src1 && !src1)
 					printerr("  (src1=%02x)", instr->alu.src1);
 			}
+
+			/* xmov is a modifier that makes the processor execute up to 3
+			 * extra mov's after the current instruction. Given an ALU
+			 * instruction:
+			 *
+			 * (xmovN) alu $dst, $src1, $src2
+			 *
+			 * In all of the uses in the firmware blob, $dst and $src2 are one
+			 * of the "special" registers $data, $addr, $addr2. I've observed
+			 * that if $dst isn't "special" then it's replaced with $00
+			 * instead of $data, but I haven't checked what happens if $src2
+			 * isn't "special".  Anyway, in the usual case, the HW produces a
+			 * count M = min(N, $rem) and then does the following:
+			 *
+			 * M = 1:
+			 * mov $data, $src2
+			 *
+			 * M = 2:
+			 * mov $data, $src2
+			 * mov $data, $src2
+			 *
+			 * M = 3:
+			 * mov $data, $src2
+			 * mov $dst, $src2 (special case for CP_CONTEXT_REG_BUNCH)
+			 * mov $data, $src2
+			 *
+			 * It seems to be frequently used in combination with (rep) to
+			 * provide a kind of hardware-based loop unrolling, and there's
+			 * even a special case in the ISA to be able to do this with
+			 * CP_CONTEXT_REG_BUNCH. However (rep) isn't required.
+			 *
+			 * This dumps the expected extra instructions, assuming that $rem
+			 * isn't too small.
+			 */
+			if (verbose && instr->alu.xmov) {
+				for (int i = 0; i < instr->alu.xmov; i++) {
+					printf("\n        ; mov ");
+					if (instr->alu.dst < 0x1d)
+						printf("$00");
+					else if (instr->alu.xmov == 3 && i == 1)
+						print_dst(instr->alu.dst);
+					else
+						printf("$data");
+					printf(", ");
+					print_src(instr->alu.src2);
+				}
+			}
+
 			break;
 		}
 		case OPC_CWRITE6:

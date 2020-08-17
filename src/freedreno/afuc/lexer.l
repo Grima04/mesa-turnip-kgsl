@@ -86,6 +86,7 @@ extern YYSTYPE yylval;
 "setsecure"			  return TOKEN(T_OP_SETSECURE);
 "<<"                              return TOKEN(T_LSHIFT);
 "(rep)"                           return TOKEN(T_REP);
+"(xmov"[1-3]")"	                  yylval.num = yytext[5] - '\0'; return T_XMOV;
 
 ","                               return ',';
 "["                               return '[';

@@ -129,7 +129,8 @@ typedef union PACKED {
 	} movi;
 	struct PACKED {
 		uint32_t alu     : 5;
-		uint32_t pad     : 6;
+		uint32_t pad     : 4;
+		uint32_t xmov    : 2; /* execute eXtra mov's based on $rem */
 		uint32_t dst     : 5;
 		uint32_t src2    : 5;
 		uint32_t src1    : 5;
