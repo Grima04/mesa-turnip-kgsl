@@ -1336,7 +1336,7 @@ panfrost_emit_vertex_data(struct panfrost_batch *batch,
         bool could_npot = instance_shift || instance_odd;
 
         struct panfrost_transfer S = panfrost_pool_alloc_aligned(&batch->pool,
-                        MALI_ATTRIBUTE_BUFFER_LENGTH * PIPE_MAX_ATTRIBS *
+                        MALI_ATTRIBUTE_BUFFER_LENGTH * vs->attribute_count *
                         (could_npot ? 2 : 1),
                         MALI_ATTRIBUTE_BUFFER_LENGTH);
 
