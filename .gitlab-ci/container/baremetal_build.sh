@@ -53,8 +53,8 @@ KERNEL_URL=https://gitlab.freedesktop.org/drm/msm/-/archive/drm-msm-fixes-2020-0
 
 DEBIAN_ARCH=$arch INCLUDE_VK_CTS=1 . .gitlab-ci/container/lava_build.sh
 
-ccache --show-stats
-
-. .gitlab-ci/container/container_post_build.sh
+############### Uninstall the build software
 
 apt-get purge -y $BAREMETAL_EPHEMERAL
+
+. .gitlab-ci/container/container_post_build.sh
