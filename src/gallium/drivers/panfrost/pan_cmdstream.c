@@ -1331,10 +1331,13 @@ panfrost_emit_vertex_data(struct panfrost_batch *batch,
         unsigned instance_shift = vertex_postfix->instance_shift;
         unsigned instance_odd = vertex_postfix->instance_odd;
 
-        /* Worst case: everything is NPOT */
+        /* Worst case: everything is NPOT, which is only possible if instancing
+         * is enabled. Otherwise single record is gauranteed */
+        bool could_npot = instance_shift || instance_odd;
 
         struct panfrost_transfer S = panfrost_pool_alloc_aligned(&batch->pool,
-                        MALI_ATTRIBUTE_BUFFER_LENGTH * PIPE_MAX_ATTRIBS * 2,
+                        MALI_ATTRIBUTE_BUFFER_LENGTH * PIPE_MAX_ATTRIBS *
+                        (could_npot ? 2 : 1),
                         MALI_ATTRIBUTE_BUFFER_LENGTH);
 
         struct panfrost_transfer T = panfrost_pool_alloc_aligned(&batch->pool,
