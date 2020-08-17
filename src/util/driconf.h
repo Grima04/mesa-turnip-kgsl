@@ -227,6 +227,11 @@ DRI_CONF_OPT_BEGIN_V(override_vram_size, int, -1, "-1:2147483647") \
         DRI_CONF_DESC("Override the VRAM size advertised to the application in MiB (-1 = default)") \
 DRI_CONF_OPT_END
 
+#define DRI_CONF_FORCE_GL_NAMES_REUSE(def) \
+DRI_CONF_OPT_BEGIN_B(force_gl_names_reuse, def) \
+        DRI_CONF_DESC("Force GL names reuse") \
+DRI_CONF_OPT_END
+
 /**
  * \brief Image quality-related options
  */

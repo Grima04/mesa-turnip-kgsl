@@ -1221,6 +1221,8 @@ void st_init_extensions(struct pipe_screen *screen,
       consts->GLSLZeroInit = screen->get_param(screen, PIPE_CAP_GLSL_ZERO_INIT);
    }
 
+   consts->ForceGLNamesReuse = options->force_gl_names_reuse;
+
    consts->ForceIntegerTexNearest = options->force_integer_tex_nearest;
 
    consts->VendorOverride = options->force_gl_vendor;

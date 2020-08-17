@@ -3891,6 +3891,11 @@ struct gl_constants
    GLchar GLSLZeroInit;
 
    /**
+    * Force GL names reuse. Needed by SPECviewperf13.
+    */
+   GLboolean ForceGLNamesReuse;
+
+   /**
     * Treat integer textures using GL_LINEAR filters as GL_NEAREST.
     */
    GLboolean ForceIntegerTexNearest;

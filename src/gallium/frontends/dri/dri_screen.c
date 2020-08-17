@@ -98,6 +98,8 @@ dri_fill_st_options(struct dri_screen *screen)
       driQueryOptionb(optionCache, "allow_glsl_layout_qualifier_on_function_parameters");
    options->allow_draw_out_of_order =
       driQueryOptionb(optionCache, "allow_draw_out_of_order");
+   options->force_gl_names_reuse =
+      driQueryOptionb(optionCache, "force_gl_names_reuse");
 
    char *vendor_str = driQueryOptionstr(optionCache, "force_gl_vendor");
    /* not an empty string */
