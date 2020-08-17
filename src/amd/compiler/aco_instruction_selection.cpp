@@ -2947,12 +2947,20 @@ struct LoadEmitInfo {
    Temp soffset = Temp(0, s1);
 };
 
-using LoadCallback = Temp(*)(
-   Builder& bld, const LoadEmitInfo* info, Temp offset, unsigned bytes_needed,
-   unsigned align, unsigned const_offset, Temp dst_hint);
+struct EmitLoadParameters {
+   using Callback = Temp (*)(Builder &bld, const LoadEmitInfo *info,
+                             Temp offset, unsigned bytes_needed,
+                             unsigned align, unsigned const_offset,
+                             Temp dst_hint);
 
-template <LoadCallback callback, bool byte_align_loads, bool supports_8bit_16bit_loads, unsigned max_const_offset_plus_one>
-void emit_load(isel_context *ctx, Builder& bld, const LoadEmitInfo *info)
+   Callback callback;
+   bool byte_align_loads;
+   bool supports_8bit_16bit_loads;
+   unsigned max_const_offset_plus_one;
+};
+
+void emit_load(isel_context *ctx, Builder &bld, const LoadEmitInfo *info,
+               const EmitLoadParameters &params)
 {
    unsigned load_size = info->num_components * info->component_size;
    unsigned component_size = info->component_size;
@@ -2973,11 +2981,11 @@ void emit_load(isel_context *ctx, Builder& bld, const LoadEmitInfo *info)
       int byte_align = align_mul % 4 == 0 ? align_offset % 4 : -1;
 
       if (byte_align) {
-         if ((bytes_needed > 2 ||
+         if (params.byte_align_loads && (bytes_needed > 2 ||
               (bytes_needed == 2 && (align_mul % 2 || align_offset % 2)) ||
-              !supports_8bit_16bit_loads) && byte_align_loads) {
+              !params.supports_8bit_16bit_loads)) {
             if (info->component_stride) {
-               assert(supports_8bit_16bit_loads && "unimplemented");
+               assert(params.supports_8bit_16bit_loads && "unimplemented");
                bytes_needed = 2;
                byte_align = 0;
             } else {
@@ -3000,13 +3008,16 @@ void emit_load(isel_context *ctx, Builder& bld, const LoadEmitInfo *info)
       Operand offset = info->offset;
       unsigned reduced_const_offset = const_offset;
       bool remove_const_offset_completely = need_to_align_offset;
-      if (const_offset && (remove_const_offset_completely || const_offset >= max_const_offset_plus_one)) {
+      if (const_offset &&
+          (remove_const_offset_completely ||
+           const_offset >= params.max_const_offset_plus_one)) {
          unsigned to_add = const_offset;
          if (remove_const_offset_completely) {
             reduced_const_offset = 0;
          } else {
-            to_add = const_offset / max_const_offset_plus_one * max_const_offset_plus_one;
-            reduced_const_offset %= max_const_offset_plus_one;
+            to_add = const_offset / params.max_const_offset_plus_one *
+                     params.max_const_offset_plus_one;
+            reduced_const_offset %= params.max_const_offset_plus_one;
          }
          Temp offset_tmp = offset.isTemp() ? offset.getTemp() : Temp();
          if (offset.isConstant()) {
@@ -3056,11 +3067,13 @@ void emit_load(isel_context *ctx, Builder& bld, const LoadEmitInfo *info)
             aligned_offset = bld.pseudo(aco_opcode::p_create_vector, bld.def(v2), lo, hi);
          }
       }
-      Temp aligned_offset_tmp = aligned_offset.isTemp() ? aligned_offset.getTemp() :
-                                bld.copy(bld.def(s1), aligned_offset);
+      Temp aligned_offset_tmp = aligned_offset.isTemp() ?
+                                   aligned_offset.getTemp() :
+                                   bld.copy(bld.def(s1), aligned_offset);
 
-      Temp val = callback(bld, info, aligned_offset_tmp, bytes_needed, align,
-                          reduced_const_offset, byte_align ? Temp() : info->dst);
+      Temp val = params.callback(bld, info, aligned_offset_tmp, bytes_needed,
+                                 align, reduced_const_offset,
+                                 byte_align ? Temp() : info->dst);
 
       /* the callback wrote directly to dst */
       if (val == info->dst) {
@@ -3070,7 +3083,7 @@ void emit_load(isel_context *ctx, Builder& bld, const LoadEmitInfo *info)
       }
 
       /* shift result right if needed */
-      if (info->component_size < 4 && byte_align_loads) {
+      if (params.byte_align_loads && info->component_size < 4) {
          Operand align((uint32_t)byte_align);
          if (byte_align == -1) {
             if (offset.isConstant())
@@ -3259,7 +3272,7 @@ Temp lds_load_callback(Builder& bld, const LoadEmitInfo *info,
    return val;
 }
 
-static auto emit_lds_load = emit_load<lds_load_callback, false, true, UINT32_MAX>;
+const EmitLoadParameters lds_load_params { lds_load_callback, false, true, UINT32_MAX };
 
 Temp smem_load_callback(Builder& bld, const LoadEmitInfo *info,
                         Temp offset, unsigned bytes_needed,
@@ -3302,7 +3315,7 @@ Temp smem_load_callback(Builder& bld, const LoadEmitInfo *info,
    return val;
 }
 
-static auto emit_smem_load = emit_load<smem_load_callback, true, false, 1024>;
+const EmitLoadParameters smem_load_params { smem_load_callback, true, false, 1024 };
 
 Temp mubuf_load_callback(Builder& bld, const LoadEmitInfo *info,
                          Temp offset, unsigned bytes_needed,
@@ -3357,8 +3370,8 @@ Temp mubuf_load_callback(Builder& bld, const LoadEmitInfo *info,
    return val;
 }
 
-static auto emit_mubuf_load = emit_load<mubuf_load_callback, true, true, 4096>;
-static auto emit_scratch_load = emit_load<mubuf_load_callback, false, true, 4096>;
+const EmitLoadParameters mubuf_load_params { mubuf_load_callback, true, true, 4096 };
+const EmitLoadParameters scratch_load_params { mubuf_load_callback, false, true, 4096 };
 
 Temp get_gfx6_global_rsrc(Builder& bld, Temp addr)
 {
@@ -3430,7 +3443,7 @@ Temp global_load_callback(Builder& bld, const LoadEmitInfo *info,
    return val;
 }
 
-static auto emit_global_load = emit_load<global_load_callback, true, true, 1>;
+const EmitLoadParameters global_load_params { global_load_callback, true, true, 1 };
 
 Temp load_lds(isel_context *ctx, unsigned elem_size_bytes, Temp dst,
               Temp address, unsigned base_offset, unsigned align)
@@ -3445,7 +3458,7 @@ Temp load_lds(isel_context *ctx, unsigned elem_size_bytes, Temp dst,
    info.align_offset = 0;
    info.sync = memory_sync_info(storage_shared);
    info.const_offset = base_offset;
-   emit_lds_load(ctx, bld, &info);
+   emit_load(ctx, bld, &info, lds_load_params);
 
    return dst;
 }
@@ -3866,7 +3879,7 @@ void load_vmem_mubuf(isel_context *ctx, Temp dst, Temp descriptor, Temp voffset,
    info.align_offset = 0;
    info.soffset = soffset;
    info.const_offset = base_const_offset;
-   emit_mubuf_load(ctx, bld, &info);
+   emit_load(ctx, bld, &info, mubuf_load_params);
 }
 
 std::pair<Temp, unsigned> offset_add_from_nir(isel_context *ctx, const std::pair<Temp, unsigned> &base_offset, nir_src *off_src, unsigned stride = 1u)
@@ -5021,9 +5034,9 @@ void load_buffer(isel_context *ctx, unsigned num_components, unsigned component_
    info.align_mul = align_mul;
    info.align_offset = align_offset;
    if (use_smem)
-      emit_smem_load(ctx, bld, &info);
+      emit_load(ctx, bld, &info, smem_load_params);
    else
-      emit_mubuf_load(ctx, bld, &info);
+      emit_load(ctx, bld, &info, mubuf_load_params);
 }
 
 void visit_load_ubo(isel_context *ctx, nir_intrinsic_instr *instr)
@@ -6236,10 +6249,10 @@ void visit_load_global(isel_context *ctx, nir_intrinsic_instr *instr)
     * it's safe to use SMEM */
    bool can_use_smem = nir_intrinsic_access(instr) & ACCESS_NON_WRITEABLE;
    if (info.dst.type() == RegType::vgpr || (info.glc && ctx->options->chip_class < GFX8) || !can_use_smem) {
-      emit_global_load(ctx, bld, &info);
+      emit_load(ctx, bld, &info, global_load_params);
    } else {
       info.offset = Operand(bld.as_uniform(info.offset));
-      emit_smem_load(ctx, bld, &info);
+      emit_load(ctx, bld, &info, smem_load_params);
    }
 }
 
@@ -6733,7 +6746,7 @@ void visit_load_scratch(isel_context *ctx, nir_intrinsic_instr *instr) {
    info.swizzle_component_size = ctx->program->chip_class <= GFX8 ? 4 : 0;
    info.sync = memory_sync_info(storage_scratch, semantic_private);
    info.soffset = ctx->program->scratch_offset;
-   emit_scratch_load(ctx, bld, &info);
+   emit_load(ctx, bld, &info, scratch_load_params);
 }
 
 void visit_store_scratch(isel_context *ctx, nir_intrinsic_instr *instr) {
