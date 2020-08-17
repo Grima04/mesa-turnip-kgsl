@@ -188,13 +188,10 @@ panfrost_set_blend_color(struct pipe_context *pipe,
 static bool
 panfrost_blend_constant(float *out, float *in, unsigned mask)
 {
-        /* If there is no components used, it automatically works. Do set a
-         * dummy constant just to avoid reading uninitialized memory. */
+        /* If there is no components used, it automatically works */
 
-        if (!mask) {
-                *out = 0.0;
+        if (!mask)
                 return true;
-        }
 
         /* Find some starter mask */
         unsigned first = ffs(mask) - 1;
@@ -205,10 +202,8 @@ panfrost_blend_constant(float *out, float *in, unsigned mask)
         while (mask) {
                 unsigned i = u_bit_scan(&mask);
 
-                if (in[i] != cons) {
-                        *out = 0.0;
+                if (in[i] != cons)
                         return false;
-                }
         }
 
         /* Otherwise, we're good to go */
@@ -229,24 +224,27 @@ panfrost_get_blend_for_context(struct panfrost_context *ctx, unsigned rti)
         struct panfrost_blend_state *blend = ctx->blend;
         struct panfrost_blend_rt *rt = &blend->rt[rti];
 
-        struct panfrost_blend_final final;
-
-        /* First, we'll try a fixed function path */
+        /* First, we'll try fixed function, matching equationn and constant */
         if (rt->has_fixed_function && panfrost_can_fixed_blend(fmt)) {
+                float constant = 0.0;
+
                 if (panfrost_blend_constant(
-                            &final.equation.constant,
+                            &constant,
                             ctx->blend_color.color,
                             rt->constant_mask)) {
-                        /* There's an equation and suitable constant, so we're good to go */
-                        final.is_shader = false;
-                        final.equation.equation = &rt->equation;
-
-                        final.no_blending =
+                        bool no_blending =
                                 (rt->equation.rgb_mode == 0x122) &&
                                 (rt->equation.alpha_mode == 0x122) &&
                                 (rt->equation.color_mask == 0xf);
 
-                        final.no_colour = (rt->equation.color_mask == 0x0);
+                        struct panfrost_blend_final final = {
+                                .equation = {
+                                        .equation = &rt->equation,
+                                        .constant = constant
+                                },
+                                .no_blending = no_blending,
+                                .no_colour = (rt->equation.color_mask == 0x0)
+                        };
 
                         return final;
                 }
@@ -254,13 +252,7 @@ panfrost_get_blend_for_context(struct panfrost_context *ctx, unsigned rti)
 
         /* Otherwise, we need to grab a shader */
         struct panfrost_blend_shader *shader = panfrost_get_blend_shader(ctx, blend, fmt, rti);
-        final.is_shader = true;
-        final.no_blending = false;
-        final.no_colour = false;
-        final.shader.work_count = shader->work_count;
-        final.shader.first_tag = shader->first_tag;
 
-        /* Upload the shader */
         struct panfrost_bo *bo = panfrost_batch_create_bo(batch, shader->size,
                    PAN_BO_EXECUTE,
                    PAN_BO_ACCESS_PRIVATE |
@@ -268,7 +260,6 @@ panfrost_get_blend_for_context(struct panfrost_context *ctx, unsigned rti)
                    PAN_BO_ACCESS_FRAGMENT);
 
         memcpy(bo->cpu, shader->buffer, shader->size);
-        final.shader.gpu = bo->gpu;
 
         if (shader->patch_index) {
                 /* We have to specialize the blend shader to use constants, so
@@ -277,6 +268,15 @@ panfrost_get_blend_for_context(struct panfrost_context *ctx, unsigned rti)
                 float *patch = (float *) (bo->cpu + shader->patch_index);
                 memcpy(patch, ctx->blend_color.color, sizeof(float) * 4);
         }
+
+        struct panfrost_blend_final final = {
+                .is_shader = true,
+                .shader = {
+                        .work_count = shader->work_count,
+                        .first_tag = shader->first_tag,
+                        .gpu = bo->gpu,
+                }
+        };
 
         return final;
 }
