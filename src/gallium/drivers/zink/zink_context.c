@@ -1153,6 +1153,27 @@ zink_resource_barrier(VkCommandBuffer cmdbuf, struct zink_resource *res,
 }
 
 
+VkPipelineStageFlags
+zink_pipeline_flags_from_stage(VkShaderStageFlagBits stage)
+{
+   switch (stage) {
+   case VK_SHADER_STAGE_VERTEX_BIT:
+      return VK_PIPELINE_STAGE_VERTEX_SHADER_BIT;
+   case VK_SHADER_STAGE_FRAGMENT_BIT:
+      return VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+   case VK_SHADER_STAGE_GEOMETRY_BIT:
+      return VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT;
+   case VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT:
+      return VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT;
+   case VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT:
+      return VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT;
+   case VK_SHADER_STAGE_COMPUTE_BIT:
+      return VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
+   default:
+      unreachable("unknown shader stage bit");
+   }
+}
+
 static VkPipelineStageFlags
 pipeline_access_stage(VkAccessFlags flags)
 {

@@ -225,6 +225,8 @@ zink_resource_barrier(VkCommandBuffer cmdbuf, struct zink_resource *res,
  zink_begin_render_pass(struct zink_context *ctx,
                         struct zink_batch *batch);
 
+VkPipelineStageFlags
+zink_pipeline_flags_from_stage(VkShaderStageFlagBits stage);
 
 VkShaderStageFlagBits
 zink_shader_stage(enum pipe_shader_type type);
