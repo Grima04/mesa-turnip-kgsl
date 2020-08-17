@@ -244,8 +244,9 @@ update_descriptors(struct zink_context *ctx, struct zink_screen *screen, bool is
 
    struct {
       struct zink_resource *res;
-      VkImageLayout layout;
-   } transitions[PIPE_SHADER_TYPES * (PIPE_MAX_SAMPLERS + PIPE_MAX_SHADER_IMAGES)];
+      unsigned layout;
+      VkPipelineStageFlagBits stage;
+   } transitions[PIPE_SHADER_TYPES * (PIPE_MAX_CONSTANT_BUFFERS + PIPE_MAX_SAMPLERS + PIPE_MAX_SHADER_BUFFERS + PIPE_MAX_SHADER_IMAGES)];
    int num_transitions = 0;
 
    for (int i = 0; i < num_stages; i++) {
@@ -278,6 +279,11 @@ update_descriptors(struct zink_context *ctx, struct zink_screen *screen, bool is
                                                     zink_resource(ctx->dummy_vertex_buffer)->buffer);
             buffer_infos[num_buffer_info].offset = res ? ctx->ubos[stage][index].buffer_offset : 0;
             buffer_infos[num_buffer_info].range  = res ? ctx->ubos[stage][index].buffer_size : VK_WHOLE_SIZE;
+            if (res && res->access != VK_ACCESS_UNIFORM_READ_BIT) {
+               transitions[num_transitions].layout = VK_ACCESS_UNIFORM_READ_BIT;
+               transitions[num_transitions].stage = zink_pipeline_flags_from_stage(zink_shader_stage(stage));
+               transitions[num_transitions++].res = res;
+            }
             wds[num_wds].pBufferInfo = buffer_infos + num_buffer_info;
             ++num_buffer_info;
          } else if (shader->bindings[j].type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER) {
@@ -285,10 +291,18 @@ update_descriptors(struct zink_context *ctx, struct zink_screen *screen, bool is
             if (res) {
                assert(ctx->ssbos[stage][index].buffer_size > 0);
                assert(ctx->ssbos[stage][index].buffer_size <= screen->info.props.limits.maxStorageBufferRange);
-               if (ctx->writable_ssbos[stage] & (1 << index))
+               unsigned flag = VK_ACCESS_SHADER_READ_BIT;
+               if (ctx->writable_ssbos[stage] & (1 << index)) {
                   write_desc_resources[num_wds] = res;
-               else
+                  flag |= VK_ACCESS_SHADER_WRITE_BIT;
+               } else {
                   read_desc_resources[num_wds] = res;
+               }
+               if (res->access != flag) {
+                  transitions[num_transitions].layout = flag;
+                  transitions[num_transitions].stage = zink_pipeline_flags_from_stage(zink_shader_stage(stage));
+                  transitions[num_transitions++].res = res;
+               }
                buffer_infos[num_buffer_info].buffer = res->buffer;
                buffer_infos[num_buffer_info].offset = ctx->ssbos[stage][index].buffer_offset;
                buffer_infos[num_buffer_info].range  = ctx->ssbos[stage][index].buffer_size;
@@ -323,6 +337,7 @@ update_descriptors(struct zink_context *ctx, struct zink_screen *screen, bool is
                      layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
                      if (res->layout != VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) {
                         transitions[num_transitions].layout = layout;
+                        transitions[num_transitions].stage = zink_pipeline_flags_from_stage(zink_shader_stage(stage));
                         transitions[num_transitions++].res = res;
                      }
                      sampler = ctx->samplers[stage][index + k];
@@ -346,8 +361,9 @@ update_descriptors(struct zink_context *ctx, struct zink_screen *screen, bool is
                      layout = res->layout;
                      if (res->layout != VK_IMAGE_LAYOUT_GENERAL &&
                          res->layout != VK_IMAGE_LAYOUT_SHARED_PRESENT_KHR) {
-                        transitions[num_transitions].res = res;
-                        transitions[num_transitions++].layout = VK_IMAGE_LAYOUT_GENERAL;
+                        transitions[num_transitions].layout = VK_IMAGE_LAYOUT_GENERAL;
+                        transitions[num_transitions].stage = zink_pipeline_flags_from_stage(zink_shader_stage(stage));
+                        transitions[num_transitions++].res = res;
                      }
                   }
                   if (image_view->base.access & PIPE_IMAGE_ACCESS_WRITE)
@@ -412,10 +428,15 @@ update_descriptors(struct zink_context *ctx, struct zink_screen *screen, bool is
       else
          batch = zink_batch_no_rp(ctx);
 
-      for (int i = 0; i < num_transitions; ++i)
-         zink_resource_barrier(batch->cmdbuf, transitions[i].res,
-                               transitions[i].res->aspect,
-                               transitions[i].layout);
+      for (int i = 0; i < num_transitions; ++i) {
+         if (transitions[i].res->base.target == PIPE_BUFFER)
+            zink_resource_buffer_barrier(batch->cmdbuf, transitions[i].res,
+                                         transitions[i].layout, transitions[i].stage);
+         else
+            zink_resource_barrier(batch->cmdbuf, transitions[i].res,
+                                  transitions[i].res->aspect,
+                                  transitions[i].layout);
+      }
    }
 
    unsigned num_descriptors;
