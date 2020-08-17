@@ -16,7 +16,7 @@ Please post `inxi -GSC -xx` output ([fenced with triple backticks](https://docs.
 
 
 - OS: (`cat /etc/os-release | grep "NAME"`)
-- GPU: (`lspci | grep VGA` or `lshw -C display`)
+- GPU: (`lspci -nn | grep VGA` or `lshw -C display -numeric`)
 - Kernel version: (run `uname -a`)
 - Mesa version: (`glxinfo -B | grep "OpenGL version string"`)
 - Xserver version (if applicable): (`sudo X -version`)
