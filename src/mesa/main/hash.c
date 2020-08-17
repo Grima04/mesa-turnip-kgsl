@@ -446,6 +446,25 @@ _mesa_HashFindFreeKeyBlock(struct _mesa_HashTable *table, GLuint numKeys)
 }
 
 
+bool
+_mesa_HashFindFreeKeys(struct _mesa_HashTable *table, GLuint* keys, GLuint numKeys)
+{
+   if (!table->id_alloc) {
+      GLuint first = _mesa_HashFindFreeKeyBlock(table, numKeys);
+      for (int i = 0; i < numKeys; i++) {
+         keys[i] = first + i;
+      }
+      return first != 0;
+   }
+
+   for (int i = 0; i < numKeys; i++) {
+      keys[i] = util_idalloc_alloc(table->id_alloc);
+   }
+
+   return true;
+}
+
+
 /**
  * Return the number of entries in the hash table.
  */
