@@ -272,7 +272,7 @@ static void print_reg_stats(struct disasm_ctx *ctx)
 	 * assigned to shader:
 	 */
 	fullreg = (fullreg + 3) / 4;
-	halfreg = (halfreg + 3) / 4;
+	halfreg = ctx->regs.used.mergedregs ? 0 : (halfreg + 3) / 4;
 
 	// Note this count of instructions includes rptN, which matches
 	// up to how mesa prints this:
