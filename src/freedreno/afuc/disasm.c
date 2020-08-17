@@ -338,6 +338,10 @@ static void disasm(uint32_t *buf, int sizedwords)
 		case OPC_CALL:
 			fxn_idx(instr->call.uoff, true);
 			break;
+		case OPC_SETSECURE:
+			/* this implicitly jumps to pc + 3 if successful */
+			label_idx(i + 3, true);
+			break;
 		default:
 			break;
 		}
@@ -671,6 +675,18 @@ static void disasm(uint32_t *buf, int sizedwords)
 				printf("preemptleave #");
 				printlbl("%s", label_name(instr->call.uoff, true));
 			}
+			break;
+		case OPC_SETSECURE:
+			/* Note: This seems to implicitly read the secure/not-secure state
+			 * to set from the low bit of $02, and implicitly jumps to pc + 3
+			 * (i.e. skipping the next two instructions) if it succeeds. We
+			 * print these implicit parameters to make reading the disassembly
+			 * easier.
+			 */
+			if (instr->pad)
+				printf("[%08x]  ; ", instrs[i]);
+			printf("setsecure $02, #");
+			printlbl("%s", label_name(i + 3, true));
 			break;
 		default:
 			printerr("[%08x]", instrs[i]);

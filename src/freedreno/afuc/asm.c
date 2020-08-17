@@ -262,6 +262,17 @@ static void emit_instructions(int outfd)
 			opc = OPC_PREEMPTLEAVE6;
 			instr.call.uoff = resolve_label(ai->label);
 			break;
+		case T_OP_SETSECURE:
+			opc = OPC_SETSECURE;
+			if (resolve_label(ai->label) != i + 3) {
+				fprintf(stderr, "jump label %s is incorrect for setsecure\n", ai->label);
+				exit(1);
+			}
+			if (ai->src1 != 0x2) {
+				fprintf(stderr, "source for setsecure must be $02\n");
+				exit(1);
+			}
+			break;
 		case T_OP_JUMP:
 			/* encode jump as: brne $00, b0, #label */
 			opc = OPC_BRNEB;

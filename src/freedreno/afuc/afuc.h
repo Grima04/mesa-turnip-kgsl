@@ -109,6 +109,7 @@ typedef enum {
 	OPC_CALL   = 0x35,  /* "function" call */
 	OPC_WIN    = 0x36,  /* wait for input (ie. wait for WPTR to advance) */
 	OPC_PREEMPTLEAVE6 = 0x38,  /* try to leave preemption */
+	OPC_SETSECURE = 0x3b, /* switch secure mode on/off */
 } afuc_opc;
 
 

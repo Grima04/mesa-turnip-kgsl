@@ -82,6 +82,7 @@ extern YYSTYPE yylval;
 "jump"                            return TOKEN(T_OP_JUMP);
 "waitin"                          return TOKEN(T_OP_WAITIN);
 "preemptleave"			  return TOKEN(T_OP_PREEMPTLEAVE);
+"setsecure"			  return TOKEN(T_OP_SETSECURE);
 "<<"                              return TOKEN(T_LSHIFT);
 "(rep)"                           return TOKEN(T_REP);
 
