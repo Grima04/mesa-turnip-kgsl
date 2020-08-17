@@ -38,6 +38,8 @@
 
 #include "c11/threads.h"
 
+struct util_idalloc;
+
 /**
  * Magic GLuint object name that gets stored outside of the struct hash_table.
  *
@@ -103,6 +105,9 @@ struct _mesa_HashTable {
    GLuint MaxKey;                        /**< highest key inserted so far */
    mtx_t Mutex;                          /**< mutual exclusion lock */
    GLboolean InDeleteAll;                /**< Debug check */
+   /* Used when name reuse is enabled */
+   struct util_idalloc* id_alloc;
+
    /** Value that would be in the table for DELETED_KEY_VALUE. */
    void *deleted_key_data;
 };
@@ -177,6 +182,8 @@ extern GLuint
 _mesa_HashNumEntries(const struct _mesa_HashTable *table);
 
 extern void _mesa_test_hash_functions(void);
+
+extern void _mesa_HashEnableNameReuse(struct _mesa_HashTable *table);
 
 
 #endif

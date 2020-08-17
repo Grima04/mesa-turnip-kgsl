@@ -39,6 +39,7 @@
 #include "hash.h"
 #include "util/hash_table.h"
 #include "util/u_memory.h"
+#include "util/u_idalloc.h"
 
 
 /**
@@ -94,11 +95,27 @@ _mesa_DeleteHashTable(struct _mesa_HashTable *table)
    }
 
    _mesa_hash_table_destroy(table->ht, NULL);
+   if (table->id_alloc) {
+      util_idalloc_fini(table->id_alloc);
+      free(table->id_alloc);
+   }
 
    mtx_destroy(&table->Mutex);
    free(table);
 }
 
+void
+_mesa_HashEnableNameReuse(struct _mesa_HashTable *table)
+{
+   _mesa_HashLockMutex(table);
+   assert(_mesa_hash_table_num_entries(table->ht) == 0);
+   table->id_alloc = MALLOC_STRUCT(util_idalloc);
+   util_idalloc_init(table->id_alloc);
+   util_idalloc_resize(table->id_alloc, 8);
+   ASSERTED GLuint reserve0 = util_idalloc_alloc(table->id_alloc);
+   assert (reserve0 == 0);
+   _mesa_HashUnlockMutex(table);
+}
 
 
 /**
@@ -205,6 +222,8 @@ _mesa_HashInsertLocked(struct _mesa_HashTable *table, GLuint key, void *data,
                        GLboolean isGenName)
 {
    _mesa_HashInsert_unlocked(table, key, data);
+   if (!isGenName && table->id_alloc)
+      util_idalloc_reserve(table->id_alloc, key);
 }
 
 
@@ -223,6 +242,8 @@ _mesa_HashInsert(struct _mesa_HashTable *table, GLuint key, void *data,
 {
    _mesa_HashLockMutex(table);
    _mesa_HashInsert_unlocked(table, key, data);
+   if (!isGenName && table->id_alloc)
+      util_idalloc_reserve(table->id_alloc, key);
    _mesa_HashUnlockMutex(table);
 }
 
@@ -257,6 +278,9 @@ _mesa_HashRemove_unlocked(struct _mesa_HashTable *table, GLuint key)
                                                  uint_key(key));
       _mesa_hash_table_remove(table->ht, entry);
    }
+
+   if (table->id_alloc)
+      util_idalloc_free(table->id_alloc, key);
 }
 
 
@@ -300,6 +324,12 @@ _mesa_HashDeleteAll(struct _mesa_HashTable *table,
       table->deleted_key_data = NULL;
    }
    table->InDeleteAll = GL_FALSE;
+   if (table->id_alloc) {
+      util_idalloc_fini(table->id_alloc);
+      free(table->id_alloc);
+      _mesa_HashEnableNameReuse(table);
+   }
+   table->MaxKey = 0;
    _mesa_HashUnlockMutex(table);
 }
 
@@ -385,7 +415,9 @@ GLuint
 _mesa_HashFindFreeKeyBlock(struct _mesa_HashTable *table, GLuint numKeys)
 {
    const GLuint maxKey = ~((GLuint) 0) - 1;
-   if (maxKey - numKeys > table->MaxKey) {
+   if (table->id_alloc && numKeys == 1) {
+      return util_idalloc_alloc(table->id_alloc);
+   } else if (maxKey - numKeys > table->MaxKey) {
       /* the quick solution */
       return table->MaxKey + 1;
    }
