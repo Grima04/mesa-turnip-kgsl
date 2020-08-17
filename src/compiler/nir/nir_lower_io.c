@@ -1185,12 +1185,16 @@ nir_explicit_io_address_from_deref(nir_builder *b, nir_deref_instr *deref,
    assert(deref->dest.is_ssa);
    switch (deref->deref_type) {
    case nir_deref_type_var:
-      assert(deref->mode & (nir_var_uniform | nir_var_mem_shared |
-                            nir_var_shader_temp | nir_var_function_temp));
+      assert(deref->var->data.mode & (nir_var_uniform |
+                                      nir_var_mem_shared |
+                                      nir_var_shader_temp |
+                                      nir_var_function_temp));
       if (addr_format_is_global(addr_format)) {
-         assert(nir_var_shader_temp | nir_var_function_temp);
+         assert(deref->var->data.mode == nir_var_shader_temp ||
+                deref->var->data.mode == nir_var_function_temp);
+         bool is_function = deref->var->data.mode == nir_var_function_temp;
          base_addr =
-            nir_load_scratch_base_ptr(b, !(deref->mode & nir_var_shader_temp),
+            nir_load_scratch_base_ptr(b, is_function,
                                       nir_address_format_num_components(addr_format),
                                       nir_address_format_bit_size(addr_format));
          return build_addr_iadd_imm(b, base_addr, addr_format,
