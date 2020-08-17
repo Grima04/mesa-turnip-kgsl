@@ -2100,7 +2100,7 @@ lp_build_sample_common(struct lp_build_sample_context *bld,
                       !explicit_lod);
       lp_build_cube_lookup(bld, coords, derivs, &cube_rho, &cube_derivs, need_derivs);
       derivs = &cube_derivs;
-      if (target == PIPE_TEXTURE_CUBE_ARRAY) {
+      if (target == PIPE_TEXTURE_CUBE_ARRAY && !is_lodq) {
          /* calculate cube layer coord now */
          LLVMValueRef layer = lp_build_iround(&bld->coord_bld, coords[3]);
          LLVMValueRef six = lp_build_const_int_vec(bld->gallivm, bld->int_coord_type, 6);
@@ -2109,8 +2109,8 @@ lp_build_sample_common(struct lp_build_sample_context *bld,
          /* because of seamless filtering can't add it to face (coords[2]) here. */
       }
    }
-   else if (target == PIPE_TEXTURE_1D_ARRAY ||
-            target == PIPE_TEXTURE_2D_ARRAY) {
+   else if ((target == PIPE_TEXTURE_1D_ARRAY ||
+             target == PIPE_TEXTURE_2D_ARRAY) && !is_lodq) {
       coords[2] = lp_build_iround(&bld->coord_bld, coords[2]);
       coords[2] = lp_build_layer_coord(bld, texture_index, FALSE, coords[2], NULL);
    }
@@ -3483,13 +3483,21 @@ lp_build_sample_gen_func(struct gallivm_state *gallivm,
    unsigned num_param = 0;
    unsigned i, num_coords, num_derivs, num_offsets, layer;
    enum lp_sampler_lod_control lod_control;
+   enum lp_sampler_op_type op_type;
    boolean need_cache = FALSE;
 
    lod_control = (sample_key & LP_SAMPLER_LOD_CONTROL_MASK) >>
                     LP_SAMPLER_LOD_CONTROL_SHIFT;
 
+   op_type = (sample_key & LP_SAMPLER_OP_TYPE_MASK) >>
+                    LP_SAMPLER_OP_TYPE_SHIFT;
+
    get_target_info(static_texture_state->target,
                    &num_coords, &num_derivs, &num_offsets, &layer);
+
+   /* lod query doesn't take a layer */
+   if (layer && op_type == LP_SAMPLER_OP_LODQ)
+      layer = 0;
 
    if (dynamic_state->cache_ptr) {
       const struct util_format_description *format_desc;
@@ -3601,13 +3609,21 @@ lp_build_sample_soa_func(struct gallivm_state *gallivm,
    const LLVMValueRef *offsets = params->offsets;
    const struct lp_derivatives *derivs = params->derivs;
    enum lp_sampler_lod_control lod_control;
+   enum lp_sampler_op_type op_type;
    boolean need_cache = FALSE;
 
    lod_control = (sample_key & LP_SAMPLER_LOD_CONTROL_MASK) >>
                     LP_SAMPLER_LOD_CONTROL_SHIFT;
 
+   op_type = (sample_key & LP_SAMPLER_OP_TYPE_MASK) >>
+                    LP_SAMPLER_OP_TYPE_SHIFT;
+
    get_target_info(static_texture_state->target,
                    &num_coords, &num_derivs, &num_offsets, &layer);
+
+   /* lod query doesn't take a layer */
+   if (layer && op_type == LP_SAMPLER_OP_LODQ)
+      layer = 0;
 
    if (dynamic_state->cache_ptr) {
       const struct util_format_description *format_desc;
