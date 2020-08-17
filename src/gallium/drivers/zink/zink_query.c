@@ -34,8 +34,8 @@ struct zink_query {
    struct list_head active_list;
 
    struct list_head stats_list; /* when active, statistics queries are added to ctx->primitives_generated_queries */
-   bool have_gs[4]; /* geometry shaders use GEOMETRY_SHADER_PRIMITIVES_BIT; sized by ctx->batches[] array size */
-   bool have_xfb[4]; /* xfb was active during this query; sized by ctx->batches[] array size */
+   bool have_gs[NUM_QUERIES]; /* geometry shaders use GEOMETRY_SHADER_PRIMITIVES_BIT */
+   bool have_xfb[NUM_QUERIES]; /* xfb was active during this query */
 
    unsigned batch_id : 2; //batch that the query was started in
 
@@ -274,11 +274,11 @@ get_query_result(struct pipe_context *pctx,
          result->u64 += results[i];
          break;
       case PIPE_QUERY_PRIMITIVES_GENERATED:
-         if (query->have_xfb[i / 2] || query->index)
+         if (query->have_xfb[query->last_checked_query + i / 2] || query->index)
             result->u64 += xfb_results[i + 1];
          else
             /* if a given draw had a geometry shader, we need to use the second result */
-            result->u32 += ((uint32_t*)results)[i + query->have_gs[i / 2]];
+            result->u32 += ((uint32_t*)results)[i + query->have_gs[query->last_checked_query + i / 2]];
          break;
       case PIPE_QUERY_PRIMITIVES_EMITTED:
          /* A query pool created with this type will capture 2 integers -
@@ -296,8 +296,6 @@ get_query_result(struct pipe_context *pctx,
       }
    }
    query->last_checked_query = query->curr_query;
-   for (unsigned i = 0; i < num_results; i++)
-      query->have_gs[i] = false;
 
    if (is_time_query(query))
       timestamp_to_nanoseconds(screen, &result->u64);
@@ -319,6 +317,8 @@ reset_pool(struct zink_context *ctx, struct zink_batch *batch, struct zink_query
    vkCmdResetQueryPool(batch->cmdbuf, q->query_pool, 0, q->num_queries);
    if (q->type == PIPE_QUERY_PRIMITIVES_GENERATED)
       vkCmdResetQueryPool(batch->cmdbuf, q->xfb_query_pool, 0, q->num_queries);
+   memset(q->have_gs, 0, sizeof(q->have_gs));
+   memset(q->have_xfb, 0, sizeof(q->have_xfb));
    q->last_checked_query = q->curr_query = 0;
    q->needs_reset = false;
 }
@@ -460,9 +460,10 @@ zink_query_update_gs_states(struct zink_context *ctx)
 {
    struct zink_query *query;
    LIST_FOR_EACH_ENTRY(query, &ctx->primitives_generated_queries, stats_list) {
-      assert(query->curr_query - query->last_checked_query < ARRAY_SIZE(query->have_gs));
-      query->have_gs[query->curr_query - query->last_checked_query] = !!ctx->gfx_stages[PIPE_SHADER_GEOMETRY];
-      query->have_xfb[query->curr_query - query->last_checked_query] = !!ctx->num_so_targets;
+      assert(query->curr_query < ARRAY_SIZE(query->have_gs));
+      assert(query->active);
+      query->have_gs[query->curr_query] = !!ctx->gfx_stages[PIPE_SHADER_GEOMETRY];
+      query->have_xfb[query->curr_query] = !!ctx->num_so_targets;
    }
 }
 
