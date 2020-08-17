@@ -2098,16 +2098,10 @@ dri2_initialize_wayland_swrast(_EGLDisplay *disp)
 EGLBoolean
 dri2_initialize_wayland(_EGLDisplay *disp)
 {
-   EGLBoolean initialized = EGL_FALSE;
-
-   if (!disp->Options.ForceSoftware)
-      initialized = dri2_initialize_wayland_drm(disp);
-
-   if (!initialized)
-      initialized = dri2_initialize_wayland_swrast(disp);
-
-   return initialized;
-
+   if (disp->Options.ForceSoftware)
+      return dri2_initialize_wayland_swrast(disp);
+   else
+      return dri2_initialize_wayland_drm(disp);
 }
 
 void
