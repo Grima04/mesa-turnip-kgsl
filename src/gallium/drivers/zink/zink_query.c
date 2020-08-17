@@ -384,7 +384,7 @@ end_query(struct zink_context *ctx, struct zink_batch *batch, struct zink_query 
       vkCmdWriteTimestamp(batch->cmdbuf, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
                           q->query_pool, q->curr_query);
       q->batch_id = batch->batch_id;
-   } else if (q->type == PIPE_QUERY_PRIMITIVES_EMITTED || q->type == PIPE_QUERY_PRIMITIVES_GENERATED)
+   } else if (q->vkqtype == VK_QUERY_TYPE_TRANSFORM_FEEDBACK_STREAM_EXT || q->type == PIPE_QUERY_PRIMITIVES_GENERATED)
       screen->vk_CmdEndQueryIndexedEXT(batch->cmdbuf, q->xfb_query_pool ? q->xfb_query_pool : q->query_pool, q->curr_query, q->index);
    if (q->vkqtype != VK_QUERY_TYPE_TRANSFORM_FEEDBACK_STREAM_EXT && !is_time_query(q))
       vkCmdEndQuery(batch->cmdbuf, q->query_pool, q->curr_query);
