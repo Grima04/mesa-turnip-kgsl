@@ -194,6 +194,7 @@ spec/amd_vertex_shader_layer/preprocessor/disabled-undefined-core.tese: skip
 spec/amd_vertex_shader_layer/preprocessor/disabled-undefined-core.vert: skip
 spec/amd_vertex_shader_layer/preprocessor/enabled-compat.frag: skip
 spec/amd_vertex_shader_layer/preprocessor/enabled-compat.vert: skip
+spec/amd_vertex_shader_viewport_index/compiler/vs-redeclares-pervertex-out-viewport-index-compat.vert: skip
 spec/amd_vertex_shader_viewport_index/preprocessor/disabled-defined-core.comp: skip
 spec/amd_vertex_shader_viewport_index/preprocessor/disabled-defined-core.frag: skip
 spec/amd_vertex_shader_viewport_index/preprocessor/disabled-defined-core.geom: skip
@@ -367,6 +368,8 @@ spec/arb_draw_instanced/preprocessor/disabled-undefined-core.geom: skip
 spec/arb_draw_instanced/preprocessor/disabled-undefined-core.tesc: skip
 spec/arb_draw_instanced/preprocessor/disabled-undefined-core.tese: skip
 spec/arb_draw_instanced/preprocessor/disabled-undefined-core.vert: skip
+spec/arb_enhanced_layouts/compiler/block-member-locations/arrayed-block-member-location.frag: fail
+spec/arb_enhanced_layouts/compiler/block-member-locations/arrayed-block-member-location.vert: fail
 spec/arb_enhanced_layouts/preprocessor/disabled-defined-core.comp: skip
 spec/arb_enhanced_layouts/preprocessor/disabled-defined-core.frag: skip
 spec/arb_enhanced_layouts/preprocessor/disabled-defined-core.geom: skip
@@ -2572,10 +2575,10 @@ spec/oes_texture_storage_multisample_2d_array/preprocessor/disabled-undefined-es
 summary:
        name:  results
        ----  --------
-       pass:    12264
-       fail:        2
+       pass:    12265
+       fail:        4
       crash:        4
-       skip:     2565
+       skip:     2566
     timeout:        0
        warn:        0
  incomplete:        0
@@ -2584,4 +2587,4 @@ summary:
     changes:        0
       fixes:        0
 regressions:        0
-      total:    14835
+      total:    14839

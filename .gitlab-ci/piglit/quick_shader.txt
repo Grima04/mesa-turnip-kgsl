@@ -15,6 +15,7 @@ spec/arb_bindless_texture/execution/samplers/basic-ubo-texture2d: skip
 spec/arb_bindless_texture/execution/samplers/explicit-texture-binding: skip
 spec/arb_bindless_texture/execution/samplers/fs-const-index-three-dimensions: skip
 spec/arb_bindless_texture/execution/samplers/fs-struct-non-const-index: skip
+spec/arb_bindless_texture/execution/samplers/sampler-in-struct: skip
 spec/arb_bindless_texture/execution/samplers/sampler-vertex-attrib-input-output: skip
 spec/arb_bindless_texture/execution/samplers/sampler-vertex-uniform-input-output: skip
 spec/arb_bindless_texture/execution/samplers/ubo-named-block: skip
@@ -561,6 +562,32 @@ spec/nv_shader_atomic_float/execution/shared-atomicadd-float: skip
 spec/nv_shader_atomic_float/execution/shared-atomicexchange-float: skip
 spec/nv_shader_atomic_float/execution/ssbo-atomicadd-float: skip
 spec/nv_shader_atomic_float/execution/ssbo-atomicexchange-float: skip
+spec/nv_shader_atomic_int64/execution/shared-atomicadd-int: skip
+spec/nv_shader_atomic_int64/execution/shared-atomicand-int: skip
+spec/nv_shader_atomic_int64/execution/shared-atomicand-uint: skip
+spec/nv_shader_atomic_int64/execution/shared-atomiccompswap-int: skip
+spec/nv_shader_atomic_int64/execution/shared-atomicexchange-int: skip
+spec/nv_shader_atomic_int64/execution/shared-atomicmax-int: skip
+spec/nv_shader_atomic_int64/execution/shared-atomicmax-uint: skip
+spec/nv_shader_atomic_int64/execution/shared-atomicmin-int: skip
+spec/nv_shader_atomic_int64/execution/shared-atomicmin-uint: skip
+spec/nv_shader_atomic_int64/execution/shared-atomicor-int: skip
+spec/nv_shader_atomic_int64/execution/shared-atomicor-uint: skip
+spec/nv_shader_atomic_int64/execution/shared-atomicxor-int: skip
+spec/nv_shader_atomic_int64/execution/shared-atomicxor-uint: skip
+spec/nv_shader_atomic_int64/execution/ssbo-atomicadd-int: skip
+spec/nv_shader_atomic_int64/execution/ssbo-atomicand-int: skip
+spec/nv_shader_atomic_int64/execution/ssbo-atomicand-uint: skip
+spec/nv_shader_atomic_int64/execution/ssbo-atomiccompswap-int: skip
+spec/nv_shader_atomic_int64/execution/ssbo-atomicexchange-int: skip
+spec/nv_shader_atomic_int64/execution/ssbo-atomicmax-int: skip
+spec/nv_shader_atomic_int64/execution/ssbo-atomicmax-uint: skip
+spec/nv_shader_atomic_int64/execution/ssbo-atomicmin-int: skip
+spec/nv_shader_atomic_int64/execution/ssbo-atomicmin-uint: skip
+spec/nv_shader_atomic_int64/execution/ssbo-atomicor-int: skip
+spec/nv_shader_atomic_int64/execution/ssbo-atomicor-uint: skip
+spec/nv_shader_atomic_int64/execution/ssbo-atomicxor-int: skip
+spec/nv_shader_atomic_int64/execution/ssbo-atomicxor-uint: skip
 spec/nv_viewport_array2/execution/viewport_broadcast: skip
 spec/nv_viewport_array2/execution/viewport_non_relative_broadcast: skip
 spec/nv_viewport_array2/execution/viewport_relative_broadcast: skip
@@ -569,10 +596,10 @@ spec/nv_viewport_swizzle/viewport_swizzle: skip
 summary:
        name:  results
        ----  --------
-       pass:    15807
+       pass:    15808
        fail:       83
       crash:      170
-       skip:      315
+       skip:      342
     timeout:        0
        warn:        0
  incomplete:        0
@@ -581,4 +608,4 @@ summary:
     changes:        0
       fixes:        0
 regressions:        0
-      total:    16375
+      total:    16403
