@@ -222,19 +222,11 @@ struct panfrost_blend_final
 panfrost_get_blend_for_context(struct panfrost_context *ctx, unsigned rti)
 {
         struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
-
-        /* Grab the format, falling back gracefully if called invalidly (which
-         * has to happen for no-color-attachment FBOs, for instance)  */
         struct pipe_framebuffer_state *fb = &ctx->pipe_framebuffer;
-        enum pipe_format fmt = PIPE_FORMAT_R8G8B8A8_UNORM;
-
-        if ((fb->nr_cbufs > rti) && fb->cbufs[rti])
-                fmt = fb->cbufs[rti]->format;
+        enum pipe_format fmt = fb->cbufs[rti]->format;
 
         /* Grab the blend state */
         struct panfrost_blend_state *blend = ctx->blend;
-        assert(blend);
-
         struct panfrost_blend_rt *rt = &blend->rt[rti];
 
         struct panfrost_blend_final final;
