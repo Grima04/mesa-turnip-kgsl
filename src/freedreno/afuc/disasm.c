@@ -656,9 +656,12 @@ static void disasm(uint32_t *buf, int sizedwords)
 			break;
 		case OPC_RET:
 			assert(!rep);
-			if (instr->pad)
+			if (instr->ret.pad)
 				printf("[%08x]  ; ", instrs[i]);
-			printf("ret");
+			if (instr->ret.interrupt)
+				printf("iret");
+			else
+				printf("ret");
 			break;
 		case OPC_WIN:
 			assert(!rep);

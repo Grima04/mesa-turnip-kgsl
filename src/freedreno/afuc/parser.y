@@ -153,6 +153,7 @@ label(const char *str)
 %token <tok> T_OP_BRNE
 %token <tok> T_OP_BREQ
 %token <tok> T_OP_RET
+%token <tok> T_OP_IRET
 %token <tok> T_OP_CALL
 %token <tok> T_OP_JUMP
 %token <tok> T_OP_WAITIN
@@ -248,6 +249,7 @@ other_instr:       T_OP_CALL T_LABEL_REF { new_instr($1); label($2); }
 |                  T_OP_PREEMPTLEAVE T_LABEL_REF { new_instr($1); label($2); }
 |                  T_OP_SETSECURE reg ',' T_LABEL_REF { new_instr($1); src1($2); label($4); }
 |                  T_OP_RET              { new_instr($1); }
+|                  T_OP_IRET             { new_instr($1); }
 |                  T_OP_JUMP T_LABEL_REF { new_instr($1); label($2); }
 |                  T_OP_WAITIN           { new_instr($1); }
 |                  T_OP_NOP              { new_instr($1); }

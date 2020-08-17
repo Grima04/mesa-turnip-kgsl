@@ -78,6 +78,7 @@ extern YYSTYPE yylval;
 "brne"                            return TOKEN(T_OP_BRNE);
 "breq"                            return TOKEN(T_OP_BREQ);
 "ret"                             return TOKEN(T_OP_RET);
+"iret"                            return TOKEN(T_OP_IRET);
 "call"                            return TOKEN(T_OP_CALL);
 "jump"                            return TOKEN(T_OP_JUMP);
 "waitin"                          return TOKEN(T_OP_WAITIN);

@@ -153,6 +153,11 @@ typedef union PACKED {
 		uint32_t hdr     : 6;
 	} call;
 	struct PACKED {
+		uint32_t pad       : 25;
+		uint32_t interrupt : 1; /* return from ctxt-switch interrupt handler */
+		uint32_t hdr       : 6;
+	} ret;
+	struct PACKED {
 		uint32_t pad     : 26;
 		uint32_t hdr     : 6;
 	} waitin;

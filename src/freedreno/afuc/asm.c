@@ -254,6 +254,10 @@ static void emit_instructions(int outfd)
 		case T_OP_RET:
 			opc = OPC_RET;
 			break;
+		case T_OP_IRET:
+			opc = OPC_RET;
+			instr.ret.interrupt = 1;
+			break;
 		case T_OP_CALL:
 			opc = OPC_CALL;
 			instr.call.uoff = resolve_label(ai->label);
