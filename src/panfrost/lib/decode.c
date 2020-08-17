@@ -393,9 +393,6 @@ pandecode_midgard_tiler_descriptor(
         MEMORY_PROP(t, heap_start);
         assert(t->heap_end >= t->heap_start);
 
-        struct pandecode_mapped_memory *heap =
-                pandecode_find_mapped_gpu_mem_containing(t->heap_start);
-
         unsigned heap_size = t->heap_end - t->heap_start;
 
         /* Tiling is enabled with a special flag */
@@ -405,13 +402,6 @@ pandecode_midgard_tiler_descriptor(
         bool tiling_enabled = hierarchy_mask;
 
         if (tiling_enabled) {
-                /* When tiling is enabled, the heap should be a tight fit */
-                unsigned heap_offset = t->heap_start - heap->gpu_va;
-                if ((heap_offset + heap_size) != heap->length) {
-                        pandecode_msg("XXX: heap size %u (expected %zu)\n",
-                                        heap_size, heap->length - heap_offset);
-                }
-
                 /* We should also have no other flags */
                 if (tiler_flags)
                         pandecode_msg("XXX: unexpected tiler %X\n", tiler_flags);
