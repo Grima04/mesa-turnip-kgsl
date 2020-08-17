@@ -1520,22 +1520,16 @@ dri2_initialize_x11_dri2(_EGLDisplay *disp)
 EGLBoolean
 dri2_initialize_x11(_EGLDisplay *disp)
 {
-   EGLBoolean initialized = EGL_FALSE;
+   if (disp->Options.ForceSoftware)
+      return dri2_initialize_x11_swrast(disp);
 
-   if (!disp->Options.ForceSoftware) {
 #ifdef HAVE_DRI3
-      if (!env_var_as_boolean("LIBGL_DRI3_DISABLE", false))
-         initialized = dri2_initialize_x11_dri3(disp);
+   if (!env_var_as_boolean("LIBGL_DRI3_DISABLE", false))
+      if (dri2_initialize_x11_dri3(disp))
+         return EGL_TRUE;
 #endif
 
-      if (!initialized)
-         initialized = dri2_initialize_x11_dri2(disp);
-   }
-
-   if (!initialized)
-      initialized = dri2_initialize_x11_swrast(disp);
-
-   return initialized;
+   return dri2_initialize_x11_dri2(disp);
 }
 
 void
