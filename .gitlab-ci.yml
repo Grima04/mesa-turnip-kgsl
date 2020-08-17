@@ -966,6 +966,7 @@ virgl-gles2-on-gl:
     DEQP_VER: gles2
     NIR_VALIDATE: 0
     DEQP_NO_SAVE_RESULTS: 1
+    DEQP_SKIPS: deqp-virgl-gl-skips.txt
     # Don't use threads inside llvmpipe, we've already got all cores
     # busy at the deqp-runner level.
     LP_NUM_THREADS: 0
