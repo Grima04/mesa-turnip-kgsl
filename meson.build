@@ -1650,7 +1650,7 @@ if with_osmesa != 'none'
   osmesa_bits = get_option('osmesa-bits')
   if osmesa_bits != '8'
     if with_dri or with_glx != 'disabled'
-      error('OSMesa bits must be 8 if building glx or dir based drivers')
+      error('OSMesa bits must be 8 if building glx or dri based drivers')
     endif
     osmesa_lib_name = osmesa_lib_name + osmesa_bits
     pre_args += [
