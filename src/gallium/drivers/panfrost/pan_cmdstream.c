@@ -1333,8 +1333,8 @@ panfrost_emit_vertex_data(struct panfrost_batch *batch,
         /* Worst case: everything is NPOT */
 
         struct panfrost_transfer S = panfrost_pool_alloc_aligned(&batch->pool,
-                        MALI_ATTRIBUTE_LENGTH * PIPE_MAX_ATTRIBS * 2,
-                        MALI_ATTRIBUTE_LENGTH);
+                        MALI_ATTRIBUTE_BUFFER_LENGTH * PIPE_MAX_ATTRIBS * 2,
+                        MALI_ATTRIBUTE_BUFFER_LENGTH);
 
         struct panfrost_transfer T = panfrost_pool_alloc_aligned(&batch->pool,
                         MALI_ATTRIBUTE_LENGTH * (PAN_INSTANCE_ID + 1),
