@@ -37,6 +37,8 @@ struct zink_query {
    bool have_gs[4]; /* geometry shaders use GEOMETRY_SHADER_PRIMITIVES_BIT; sized by ctx->batches[] array size */
    bool have_xfb[4]; /* xfb was active during this query; sized by ctx->batches[] array size */
 
+   unsigned batch_id : 2; //batch that the query was started in
+
    union pipe_query_result accumulated_result;
 };
 
@@ -353,6 +355,7 @@ begin_query(struct zink_context *ctx, struct zink_batch *batch, struct zink_quer
    if (q->type == PIPE_QUERY_PRIMITIVES_GENERATED)
       list_addtail(&q->stats_list, &ctx->primitives_generated_queries);
    p_atomic_inc(&q->fences);
+   q->batch_id = batch->batch_id;
    _mesa_set_add(batch->active_queries, q);
 }
 
@@ -376,10 +379,11 @@ end_query(struct zink_context *ctx, struct zink_batch *batch, struct zink_query 
 {
    struct zink_screen *screen = zink_screen(ctx->base.screen);
    q->active = q->type == PIPE_QUERY_TIMESTAMP;
-   if (is_time_query(q))
+   if (is_time_query(q)) {
       vkCmdWriteTimestamp(batch->cmdbuf, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
                           q->query_pool, q->curr_query);
-   else if (q->vkqtype == VK_QUERY_TYPE_TRANSFORM_FEEDBACK_STREAM_EXT || q->type == PIPE_QUERY_PRIMITIVES_GENERATED)
+      q->batch_id = batch->batch_id;
+   } else if (q->vkqtype == VK_QUERY_TYPE_TRANSFORM_FEEDBACK_STREAM_EXT || q->type == PIPE_QUERY_PRIMITIVES_GENERATED)
       screen->vk_CmdEndQueryIndexedEXT(batch->cmdbuf, q->xfb_query_pool ? q->xfb_query_pool : q->query_pool, q->curr_query, q->index);
    if (q->vkqtype != VK_QUERY_TYPE_TRANSFORM_FEEDBACK_STREAM_EXT && !is_time_query(q))
       vkCmdEndQuery(batch->cmdbuf, q->query_pool, q->curr_query);
