@@ -370,9 +370,6 @@ spec/glsl-1.10/execution/built-in-functions/vs-pow-float-float: fail
 spec/glsl-1.10/preprocessor/extension-defined-test: skip
 spec/glsl-1.10/preprocessor/extension-if-1: skip
 spec/glsl-1.20/execution/vector-out-of-bounds-access/fs-vec4-out-of-bounds-1: crash
-spec/glsl-1.20/execution/vector-out-of-bounds-access/fs-vec4-out-of-bounds-2: crash
-spec/glsl-1.20/execution/vector-out-of-bounds-access/fs-vec4-out-of-bounds-4: crash
-spec/glsl-1.20/execution/vector-out-of-bounds-access/fs-vec4-out-of-bounds-5: crash
 spec/glsl-1.20/execution/vector-out-of-bounds-access/fs-vec4-out-of-bounds-6: crash
 spec/glsl-1.30/execution/fs-texturegrad-miplevels: fail
 spec/glsl-1.30/execution/fs-texturelod-miplevels: fail
@@ -595,9 +592,9 @@ spec/nv_viewport_swizzle/viewport_swizzle: skip
 summary:
        name:  results
        ----  --------
-       pass:    15781
+       pass:    15784
        fail:      104
-      crash:      175
+      crash:      172
        skip:      315
     timeout:        0
        warn:        0
