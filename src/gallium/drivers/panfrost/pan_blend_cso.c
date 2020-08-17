@@ -219,7 +219,7 @@ panfrost_blend_constant(float *out, float *in, unsigned mask)
 /* Create a final blend given the context */
 
 struct panfrost_blend_final
-panfrost_get_blend_for_context(struct panfrost_context *ctx, unsigned rti, struct panfrost_bo **bo, unsigned *shader_offset)
+panfrost_get_blend_for_context(struct panfrost_context *ctx, unsigned rti)
 {
         struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
 
@@ -268,31 +268,23 @@ panfrost_get_blend_for_context(struct panfrost_context *ctx, unsigned rti, struc
         final.shader.work_count = shader->work_count;
         final.shader.first_tag = shader->first_tag;
 
-        /* Upload the shader, sharing a BO */
-        if (!(*bo)) {
-                *bo = panfrost_batch_create_bo(batch, 4096,
+        /* Upload the shader */
+        struct panfrost_bo *bo = panfrost_batch_create_bo(batch, shader->size,
                    PAN_BO_EXECUTE,
                    PAN_BO_ACCESS_PRIVATE |
                    PAN_BO_ACCESS_READ |
-                   PAN_BO_ACCESS_VERTEX_TILER |
                    PAN_BO_ACCESS_FRAGMENT);
-        }
 
-        /* Size check */
-        assert((*shader_offset + shader->size) < 4096);
-
-        memcpy((*bo)->cpu + *shader_offset, shader->buffer, shader->size);
-        final.shader.gpu = (*bo)->gpu + *shader_offset;
+        memcpy(bo->cpu, shader->buffer, shader->size);
+        final.shader.gpu = bo->gpu;
 
         if (shader->patch_index) {
                 /* We have to specialize the blend shader to use constants, so
                  * patch in the current constants */
 
-                float *patch = (float *) ((*bo)->cpu + *shader_offset + shader->patch_index);
+                float *patch = (float *) (bo->cpu + shader->patch_index);
                 memcpy(patch, ctx->blend_color.color, sizeof(float) * 4);
         }
-
-        *shader_offset += shader->size;
 
         return final;
 }

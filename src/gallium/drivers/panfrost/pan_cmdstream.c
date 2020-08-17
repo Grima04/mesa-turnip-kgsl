@@ -554,12 +554,9 @@ panfrost_frag_meta_blend_update(struct panfrost_context *ctx,
         unsigned rt_count = MAX2(ctx->pipe_framebuffer.nr_cbufs, 1);
 
         struct panfrost_blend_final blend[PIPE_MAX_COLOR_BUFS];
-        unsigned shader_offset = 0;
-        struct panfrost_bo *shader_bo = NULL;
 
         for (unsigned c = 0; c < rt_count; ++c)
-                blend[c] = panfrost_get_blend_for_context(ctx, c, &shader_bo,
-                                                          &shader_offset);
+                blend[c] = panfrost_get_blend_for_context(ctx, c);
 
         /* Disable shader execution if we can */
         if (dev->quirks & MIDGARD_SHADERLESS
