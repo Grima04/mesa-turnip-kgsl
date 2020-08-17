@@ -667,9 +667,10 @@ static void disasm(uint32_t *buf, int sizedwords)
 		case OPC_PREEMPTLEAVE6:
 			if (gpuver < 6) {
 				printf("[%08x]  ; op38", instrs[i]);
+			} else {
+				printf("preemptleave #");
+				printlbl("%s", label_name(instr->call.uoff, true));
 			}
-			printf("preemptleave #");
-			printlbl("%s", label_name(instr->call.uoff, true));
 			break;
 		default:
 			printerr("[%08x]", instrs[i]);
