@@ -1276,12 +1276,12 @@ pandecode_midgard_blend_mrt(void *descs, int job_no, int rt_no)
                 ((struct midgard_blend_rt *) descs) + rt_no;
 
         /* Flags determine presence of blend shader */
-        bool is_shader = (b->flags & 0xF) >= 0x2;
+        bool is_shader = b->flags.opaque[0] & 0x2;
 
         pandecode_log("struct midgard_blend_rt blend_rt_%d_%d = {\n", job_no, rt_no);
         pandecode_indent++;
 
-        pandecode_prop("flags = 0x%" PRIx64, b->flags);
+        DUMP_CL("Flags", BLEND_FLAGS, &b->flags, 2);
 
         union midgard_blend blend = b->blend;
         mali_ptr shader = pandecode_midgard_blend(&blend, is_shader);

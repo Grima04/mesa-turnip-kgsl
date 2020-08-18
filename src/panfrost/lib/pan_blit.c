@@ -322,17 +322,19 @@ panfrost_load_midg(
 
                 if (loc == (FRAG_RESULT_DATA0 + i)) {
                         struct midgard_blend_rt blend_rt = {
-                                .flags = 0x200 | MALI_BLEND_NO_DITHER,
                                 .blend = replace,
                         };
 
-                        if (util_format_is_srgb(image->format))
-                                blend_rt.flags |= MALI_BLEND_SRGB;
-
-                        if (blend_shader) {
-                                blend_rt.flags |= MALI_BLEND_MRT_SHADER;
-                                blend_rt.blend.shader = blend_shader;
+                        unsigned flags = 0;
+                        pan_pack(&flags, BLEND_FLAGS, cfg) {
+                                cfg.dither_disable = true;
+                                cfg.srgb = util_format_is_srgb(image->format);
+                                cfg.midgard_blend_shader = blend_shader;
                         }
+                        blend_rt.flags.opaque[0] = flags;
+
+                        if (blend_shader)
+                                blend_rt.blend.shader = blend_shader;
 
                         memcpy(dest, &blend_rt, sizeof(struct midgard_blend_rt));
                 } else {

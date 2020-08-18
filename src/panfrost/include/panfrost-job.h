@@ -286,30 +286,9 @@ union midgard_blend {
         };
 };
 
-/* We need to load the tilebuffer to blend (i.e. the destination factor is not
- * ZERO) */
-
-#define MALI_BLEND_LOAD_TIB (0x1)
-
-/* A blend shader is used to blend this render target */
-#define MALI_BLEND_MRT_SHADER (0x2)
-
-/* On MRT Midgard systems (using an MFBD), each render target gets its own
- * blend descriptor */
-
-#define MALI_BLEND_SRGB (0x400)
-
-/* Dithering is specified here for MFBD, otherwise NO_DITHER for SFBD */
-#define MALI_BLEND_NO_DITHER (0x800)
-
 struct midgard_blend_rt {
-        /* Flags base value of 0x200 to enable the render target.
-         * OR with 0x1 for blending (anything other than REPLACE).
-         * OR with 0x2 for programmable blending
-         * OR with MALI_BLEND_SRGB for implicit sRGB
-         */
-
-        u64 flags;
+        struct mali_blend_flags_packed flags;
+        u32 zero;
         union midgard_blend blend;
 } __attribute__((packed));
 

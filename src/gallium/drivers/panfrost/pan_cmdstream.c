@@ -651,16 +651,18 @@ panfrost_emit_blend(struct panfrost_batch *batch, void *rts,
         for (unsigned i = 0; i < rt_count; ++i) {
                 unsigned flags = 0;
 
-                if (!blend[i].no_colour) {
-                        flags = 0x200;
+                pan_pack(&flags, BLEND_FLAGS, cfg) {
+                        if (blend[i].no_colour)
+                                break;
+
                         batch->draws |= (PIPE_CLEAR_COLOR0 << i);
 
-                        bool is_srgb = util_format_is_srgb(batch->key.cbufs[i]->format);
+                        cfg.srgb = util_format_is_srgb(batch->key.cbufs[i]->format);
+                        cfg.load_destination = !blend[i].no_blending; /* XXX */
+                        cfg.dither_disable = !batch->ctx->blend->base.dither;
 
-                        SET_BIT(flags, MALI_BLEND_MRT_SHADER, blend[i].is_shader);
-                        SET_BIT(flags, MALI_BLEND_LOAD_TIB, !blend[i].no_blending);
-                        SET_BIT(flags, MALI_BLEND_SRGB, is_srgb);
-                        SET_BIT(flags, MALI_BLEND_NO_DITHER, !batch->ctx->blend->base.dither);
+                        if (!(dev->quirks & IS_BIFROST))
+                                cfg.midgard_blend_shader = blend[i].is_shader;
                 }
 
                 if (dev->quirks & IS_BIFROST) {
@@ -696,7 +698,7 @@ panfrost_emit_blend(struct panfrost_batch *batch, void *rts,
                                 brts[i].shader_type = fs->blend_types[i];
                         }
                 } else {
-                        mrts[i].flags = flags;
+                        memcpy(&mrts[i].flags, &flags, sizeof(flags));
 
                         if (blend[i].is_shader) {
                                 mrts[i].blend.shader = blend[i].shader.gpu | blend[i].shader.first_tag;
