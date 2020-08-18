@@ -833,50 +833,22 @@ fd_resource_layout_init(struct pipe_resource *prsc)
 }
 
 /**
- * Create a new texture object, using the given template info.
+ * Helper that allocates a resource and resolves its layout (but doesn't
+ * allocate its bo).
+ *
+ * It returns a pipe_resource (as fd_resource_create_with_modifiers()
+ * would do), and also bo's minimum required size as an output argument.
  */
 static struct pipe_resource *
-fd_resource_create_with_modifiers(struct pipe_screen *pscreen,
+fd_resource_allocate_and_resolve(struct pipe_screen *pscreen,
 		const struct pipe_resource *tmpl,
-		const uint64_t *modifiers, int count)
+		const uint64_t *modifiers, int count, uint32_t *psize)
 {
 	struct fd_screen *screen = fd_screen(pscreen);
 	struct fd_resource *rsc;
 	struct pipe_resource *prsc;
 	enum pipe_format format = tmpl->format;
 	uint32_t size;
-
-	/* when using kmsro, scanout buffers are allocated on the display device
-	 * create_with_modifiers() doesn't give us usage flags, so we have to
-	 * assume that all calls with modifiers are scanout-possible
-	 */
-	if (screen->ro &&
-		((tmpl->bind & PIPE_BIND_SCANOUT) ||
-		 !(count == 1 && modifiers[0] == DRM_FORMAT_MOD_INVALID))) {
-		struct pipe_resource scanout_templat = *tmpl;
-		struct renderonly_scanout *scanout;
-		struct winsys_handle handle;
-
-		/* note: alignment is wrong for a6xx */
-		scanout_templat.width0 = align(tmpl->width0, screen->gmem_alignw);
-
-		scanout = renderonly_scanout_for_resource(&scanout_templat,
-												  screen->ro, &handle);
-		if (!scanout)
-			return NULL;
-
-		renderonly_scanout_destroy(scanout, screen->ro);
-
-		assert(handle.type == WINSYS_HANDLE_TYPE_FD);
-		rsc = fd_resource(pscreen->resource_from_handle(pscreen, tmpl,
-														&handle,
-														PIPE_HANDLE_USAGE_FRAMEBUFFER_WRITE));
-		close(handle.handle);
-		if (!rsc)
-			return NULL;
-
-		return &rsc->base;
-	}
 
 	rsc = CALLOC_STRUCT(fd_resource);
 	prsc = &rsc->base;
@@ -963,6 +935,63 @@ fd_resource_create_with_modifiers(struct pipe_screen *pscreen,
 
 	if (fd_mesa_debug & FD_DBG_LAYOUT)
 		fdl_dump_layout(&rsc->layout);
+
+	/* Hand out the resolved size. */
+	if (psize)
+		*psize = size;
+
+	return prsc;
+}
+
+/**
+ * Create a new texture object, using the given template info.
+ */
+static struct pipe_resource *
+fd_resource_create_with_modifiers(struct pipe_screen *pscreen,
+		const struct pipe_resource *tmpl,
+		const uint64_t *modifiers, int count)
+{
+	struct fd_screen *screen = fd_screen(pscreen);
+	struct fd_resource *rsc;
+	struct pipe_resource *prsc;
+	uint32_t size;
+
+	/* when using kmsro, scanout buffers are allocated on the display device
+	 * create_with_modifiers() doesn't give us usage flags, so we have to
+	 * assume that all calls with modifiers are scanout-possible
+	 */
+	if (screen->ro &&
+		((tmpl->bind & PIPE_BIND_SCANOUT) ||
+		 !(count == 1 && modifiers[0] == DRM_FORMAT_MOD_INVALID))) {
+		struct pipe_resource scanout_templat = *tmpl;
+		struct renderonly_scanout *scanout;
+		struct winsys_handle handle;
+
+		/* note: alignment is wrong for a6xx */
+		scanout_templat.width0 = align(tmpl->width0, screen->gmem_alignw);
+
+		scanout = renderonly_scanout_for_resource(&scanout_templat,
+												  screen->ro, &handle);
+		if (!scanout)
+			return NULL;
+
+		renderonly_scanout_destroy(scanout, screen->ro);
+
+		assert(handle.type == WINSYS_HANDLE_TYPE_FD);
+		rsc = fd_resource(pscreen->resource_from_handle(pscreen, tmpl,
+														&handle,
+														PIPE_HANDLE_USAGE_FRAMEBUFFER_WRITE));
+		close(handle.handle);
+		if (!rsc)
+			return NULL;
+
+		return &rsc->base;
+	}
+
+	prsc = fd_resource_allocate_and_resolve(pscreen, tmpl, modifiers, count, &size);
+	if (!prsc)
+		return NULL;
+	rsc = fd_resource(prsc);
 
 	realloc_bo(rsc, size);
 	if (!rsc->bo)
