@@ -7914,6 +7914,66 @@
    "type_ref": "SPI_SHADER_TBA_HI_PS"
   },
   {
+   "chips": ["gfx7", "fiji", "gfx6", "stoney", "gfx8"],
+   "map": {"at": 45060, "to": "mm"},
+   "name": "SPI_SHADER_TBA_HI_PS"
+  },
+  {
+   "chips": ["gfx7", "fiji", "gfx6", "stoney", "gfx8"],
+   "map": {"at": 45316, "to": "mm"},
+   "name": "SPI_SHADER_TBA_HI_VS"
+  },
+  {
+   "chips": ["gfx7", "fiji", "gfx6", "stoney", "gfx8"],
+   "map": {"at": 45572, "to": "mm"},
+   "name": "SPI_SHADER_TBA_HI_GS"
+  },
+  {
+   "chips": ["gfx7", "fiji", "gfx6", "stoney", "gfx8"],
+   "map": {"at": 45828, "to": "mm"},
+   "name": "SPI_SHADER_TBA_HI_ES"
+  },
+  {
+   "chips": ["gfx7", "fiji", "gfx6", "stoney", "gfx8"],
+   "map": {"at": 46084, "to": "mm"},
+   "name": "SPI_SHADER_TBA_HI_HS"
+  },
+  {
+   "chips": ["gfx7", "fiji", "gfx6", "stoney", "gfx8"],
+   "map": {"at": 46340, "to": "mm"},
+   "name": "SPI_SHADER_TBA_HI_LS"
+  },
+  {
+   "chips": ["gfx7", "fiji", "gfx6", "stoney", "gfx8"],
+   "map": {"at": 45056, "to": "mm"},
+   "name": "SPI_SHADER_TBA_LO_PS"
+  },
+  {
+   "chips": ["gfx7", "fiji", "gfx6", "stoney", "gfx8"],
+   "map": {"at": 45312, "to": "mm"},
+   "name": "SPI_SHADER_TBA_LO_VS"
+  },
+  {
+   "chips": ["gfx7", "fiji", "gfx6", "stoney", "gfx8"],
+   "map": {"at": 45568, "to": "mm"},
+   "name": "SPI_SHADER_TBA_LO_GS"
+  },
+  {
+   "chips": ["gfx7", "fiji", "gfx6", "stoney", "gfx8"],
+   "map": {"at": 45824, "to": "mm"},
+   "name": "SPI_SHADER_TBA_LO_ES"
+  },
+  {
+   "chips": ["gfx7", "fiji", "gfx6", "stoney", "gfx8"],
+   "map": {"at": 46080, "to": "mm"},
+   "name": "SPI_SHADER_TBA_LO_HS"
+  },
+  {
+   "chips": ["gfx7", "fiji", "gfx6", "stoney", "gfx8"],
+   "map": {"at": 46336, "to": "mm"},
+   "name": "SPI_SHADER_TBA_LO_LS"
+  },
+  {
    "chips": ["gfx7", "fiji", "gfx9", "gfx6", "stoney", "gfx8"],
    "map": {"at": 46116, "to": "mm"},
    "name": "SPI_SHADER_PGM_HI_HS",
