@@ -129,12 +129,8 @@ panfrost_create_blend_state(struct pipe_context *pipe,
                                         &rt->equation,
                                         &rt->constant_mask);
 
-                if (rt->has_fixed_function) {
-                        rt->opaque =
-                                (rt->equation.rgb_mode == 0x122) &&
-                                (rt->equation.alpha_mode == 0x122) &&
-                                (rt->equation.color_mask == 0xf);
-                }
+                if (rt->has_fixed_function)
+                        rt->opaque = (rt->equation.opaque[0] == 0xf0122122);
 
                 rt->load_dest = util_blend_uses_dest(pipe)
                         || pipe.colormask != 0xF;
@@ -241,12 +237,12 @@ panfrost_get_blend_for_context(struct panfrost_context *ctx, unsigned rti)
                             rt->constant_mask)) {
                         struct panfrost_blend_final final = {
                                 .equation = {
-                                        .equation = &rt->equation,
+                                        .equation = rt->equation,
                                         .constant = constant
                                 },
                                 .load_dest = rt->load_dest,
                                 .opaque = rt->opaque,
-                                .no_colour = (rt->equation.color_mask == 0x0)
+                                .no_colour = rt->no_colour
                         };
 
                         return final;

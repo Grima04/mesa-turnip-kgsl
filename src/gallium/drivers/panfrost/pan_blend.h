@@ -66,7 +66,7 @@ struct panfrost_blend_shader_final {
 };
 
 struct panfrost_blend_equation_final {
-        struct mali_blend_equation *equation;
+        struct mali_blend_equation_packed equation;
         float constant;
 };
 
@@ -75,7 +75,7 @@ struct panfrost_blend_rt {
          * fixed-function configuration for this blend state */
 
         bool has_fixed_function;
-        struct mali_blend_equation equation;
+        struct mali_blend_equation_packed equation;
 
         /* Mask of blend color components read */
         unsigned constant_mask;

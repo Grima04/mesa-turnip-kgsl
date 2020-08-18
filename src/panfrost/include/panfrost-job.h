@@ -135,18 +135,6 @@ struct mali_blend_mode {
         unsigned complement_dominant : 1;
 } __attribute__((packed));
 
-struct mali_blend_equation {
-        /* Of type mali_blend_mode */
-        unsigned rgb_mode : 12;
-        unsigned alpha_mode : 12;
-
-        unsigned zero1 : 4;
-
-        /* Corresponds to MALI_MASK_* above and glColorMask arguments */
-
-        unsigned color_mask : 4;
-} __attribute__((packed));
-
 /* Compressed per-pixel formats. Each of these formats expands to one to four
  * floating-point or integer numbers, as defined by the OpenGL specification.
  * There are various places in OpenGL where the user can specify a compressed
@@ -281,7 +269,7 @@ union midgard_blend {
         mali_ptr shader;
 
         struct {
-                struct mali_blend_equation equation;
+                struct mali_blend_equation_packed equation;
                 float constant;
         };
 };
@@ -324,7 +312,7 @@ struct bifrost_blend_rt {
          */
         u16 constant;
 
-        struct mali_blend_equation equation;
+        struct mali_blend_equation_packed equation;
 
         /*
          * - 0x19 normally

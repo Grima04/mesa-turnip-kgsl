@@ -610,7 +610,7 @@ panfrost_frag_meta_blend_update(struct panfrost_context *ctx,
                         blend[0].is_shader);
 
                 if (!blend[0].is_shader) {
-                        fragmeta->blend.equation = *blend[0].equation.equation;
+                        fragmeta->blend.equation = blend[0].equation.equation;
                         fragmeta->blend.constant = blend[0].equation.constant;
                 }
 
@@ -684,7 +684,7 @@ panfrost_emit_blend(struct panfrost_batch *batch, void *rts,
                                 const struct util_format_description *format_desc;
                                 format_desc = util_format_description(format);
 
-                                brts[i].equation = *blend[i].equation.equation;
+                                brts[i].equation = blend[i].equation.equation;
 
                                 /* TODO: this is a bit more complicated */
                                 brts[i].constant = blend[i].equation.constant;
@@ -705,7 +705,7 @@ panfrost_emit_blend(struct panfrost_batch *batch, void *rts,
                         if (blend[i].is_shader) {
                                 mrts[i].blend.shader = blend[i].shader.gpu | blend[i].shader.first_tag;
                         } else {
-                                mrts[i].blend.equation = *blend[i].equation.equation;
+                                mrts[i].blend.equation = blend[i].equation.equation;
                                 mrts[i].blend.constant = blend[i].equation.constant;
                         }
                 }

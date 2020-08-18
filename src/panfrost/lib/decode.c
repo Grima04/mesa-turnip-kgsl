@@ -228,16 +228,6 @@ static const struct pandecode_flag_info clear_flag_info[] = {
 };
 #undef FLAG_INFO
 
-#define FLAG_INFO(flag) { MALI_MASK_##flag, "MALI_MASK_" #flag }
-static const struct pandecode_flag_info mask_flag_info[] = {
-        FLAG_INFO(R),
-        FLAG_INFO(G),
-        FLAG_INFO(B),
-        FLAG_INFO(A),
-        {}
-};
-#undef FLAG_INFO
-
 #define FLAG_INFO(flag) { MALI_##flag, "MALI_" #flag }
 static const struct pandecode_flag_info u3_flag_info[] = {
         FLAG_INFO(HAS_MSAA),
@@ -1147,26 +1137,6 @@ pandecode_shader_address(const char *name, mali_ptr ptr)
         return shader_ptr;
 }
 
-static void
-pandecode_blend_equation(const struct mali_blend_equation *blend)
-{
-        if (blend->zero1)
-                pandecode_msg("XXX: blend zero tripped: %X\n", blend->zero1);
-
-        pandecode_log(".equation = {\n");
-        pandecode_indent++;
-
-        pandecode_prop("rgb_mode = 0x%X", blend->rgb_mode);
-        pandecode_prop("alpha_mode = 0x%X", blend->alpha_mode);
-
-        pandecode_log(".color_mask = ");
-        pandecode_log_decoded_flags(mask_flag_info, blend->color_mask);
-        pandecode_log_cont(",\n");
-
-        pandecode_indent--;
-        pandecode_log("},\n");
-}
-
 /* Decodes a Bifrost blend constant. See the notes in bifrost_blend_rt */
 
 static unsigned
@@ -1192,7 +1162,7 @@ pandecode_bifrost_blend(void *descs, int job_no, int rt_no)
                        b->constant, decode_bifrost_constant(b->constant));
 
         /* TODO figure out blend shader enable bit */
-        pandecode_blend_equation(&b->equation);
+        DUMP_CL("Equation", BLEND_EQUATION, &b->equation, 2);
 
         pandecode_prop("unk2 = 0x%" PRIx16, b->unk2);
         pandecode_prop("index = 0x%" PRIx16, b->index);
@@ -1258,7 +1228,7 @@ pandecode_midgard_blend(union midgard_blend *blend, bool is_shader)
         if (is_shader) {
                 pandecode_shader_address("shader", blend->shader);
         } else {
-                pandecode_blend_equation(&blend->equation);
+                DUMP_CL("Equation", BLEND_EQUATION, &blend->equation, 2);
                 pandecode_prop("constant = %f", blend->constant);
         }
 

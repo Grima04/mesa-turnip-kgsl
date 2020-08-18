@@ -216,12 +216,18 @@ panfrost_load_midg(
                 cfg.depth_pass = MALI_STENCIL_OP_REPLACE;
         };
 
+        struct mali_blend_equation_packed eq;
+
+        pan_pack(&eq, BLEND_EQUATION, cfg) {
+                cfg.rgb_mode = 0x122;
+                cfg.alpha_mode = 0x122;
+
+                if (loc < FRAG_RESULT_DATA0)
+                        cfg.color_mask = 0x0;
+        }
+
         union midgard_blend replace = {
-                .equation = {
-                        .rgb_mode = 0x122,
-                        .alpha_mode = 0x122,
-                        .color_mask = MALI_MASK_R | MALI_MASK_G | MALI_MASK_B | MALI_MASK_A,
-                }
+                .equation = eq
         };
 
         if (blend_shader)
@@ -269,9 +275,6 @@ panfrost_load_midg(
         if (pool->dev->quirks & MIDGARD_SFBD) {
                 shader_meta.unknown2_4 |= (0x10 | MALI_NO_DITHER);
                 shader_meta.blend = replace;
-
-                if (loc < FRAG_RESULT_DATA0)
-                        shader_meta.blend.equation.color_mask = 0x0;
         }
 
         if (loc == FRAG_RESULT_DEPTH) {

@@ -342,19 +342,17 @@ panfrost_constant_mask(unsigned *factors, unsigned num_factors)
 bool
 panfrost_make_fixed_blend_mode(
         struct pipe_rt_blend_state blend,
-        struct mali_blend_equation *out,
+        struct mali_blend_equation_packed *out,
         unsigned *constant_mask)
 {
-        /* Gallium and Mali represent colour masks identically. XXX: Static
-         * assert for future proof */
-
-        out->color_mask = blend.colormask;
-
         /* If no blending is enabled, default back on `replace` mode */
 
         if (!blend.blend_enable) {
-                out->rgb_mode = 0x122;
-                out->alpha_mode = 0x122;
+                pan_pack(out, BLEND_EQUATION, cfg) {
+                        cfg.color_mask = blend.colormask;
+                        cfg.rgb_mode = cfg.alpha_mode = 0x122;
+                }
+
                 return true;
         }
 
@@ -384,8 +382,11 @@ panfrost_make_fixed_blend_mode(
                     &alpha_mode))
                 return false;
 
-        out->rgb_mode = rgb_mode;
-        out->alpha_mode = alpha_mode;
+        pan_pack(out, BLEND_EQUATION, cfg) {
+                cfg.color_mask = blend.colormask;
+                cfg.rgb_mode = rgb_mode;
+                cfg.alpha_mode = alpha_mode;
+        }
 
         return true;
 }

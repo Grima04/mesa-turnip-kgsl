@@ -256,6 +256,12 @@
     <field name="Divisor" size="32" start="3:0" type="uint"/>
   </struct>
 
+  <struct name="Blend Equation" size="1">
+    <field name="RGB Mode" size="12" start="0" type="uint"/>
+    <field name="Alpha Mode" size="12" start="12" type="uint"/>
+    <field name="Color mask" size="4" start="28" type="uint" default="15"/>
+  </struct>
+
   <struct name="Blend Flags" size="1">
     <field name="Load destination" size="1" start="0" type="bool" default="false"/>
     <field name="Midgard blend shader" size="1" start="1" type="bool" default="false"/>

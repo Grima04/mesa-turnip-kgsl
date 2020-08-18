@@ -34,7 +34,7 @@ struct panfrost_blend_state;
 bool
 panfrost_make_fixed_blend_mode(
         const struct pipe_rt_blend_state blend,
-        struct mali_blend_equation *out,
+        struct mali_blend_equation_packed *out,
         unsigned *constant_mask);
 
 bool
