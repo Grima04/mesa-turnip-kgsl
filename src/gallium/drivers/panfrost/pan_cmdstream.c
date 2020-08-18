@@ -540,7 +540,8 @@ panfrost_fs_required(
 static void
 panfrost_frag_meta_blend_update(struct panfrost_context *ctx,
                                 struct mali_shader_meta *fragmeta,
-                                void *rts)
+                                void *rts,
+                                struct panfrost_blend_final *blend)
 {
         struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
         const struct panfrost_device *dev = pan_device(ctx->base.screen);
@@ -556,11 +557,6 @@ panfrost_frag_meta_blend_update(struct panfrost_context *ctx,
 
         /* Get blending setup */
         unsigned rt_count = ctx->pipe_framebuffer.nr_cbufs;
-
-        struct panfrost_blend_final blend[PIPE_MAX_COLOR_BUFS];
-
-        for (unsigned c = 0; c < rt_count; ++c)
-                blend[c] = panfrost_get_blend_for_context(ctx, c);
 
         /* Disable shader execution if we can */
         if (dev->quirks & MIDGARD_SHADERLESS
@@ -709,7 +705,8 @@ panfrost_frag_meta_blend_update(struct panfrost_context *ctx,
 static void
 panfrost_frag_shader_meta_init(struct panfrost_context *ctx,
                                struct mali_shader_meta *fragmeta,
-                               void *rts)
+                               void *rts,
+                               struct panfrost_blend_final *blend)
 {
         const struct panfrost_device *dev = pan_device(ctx->base.screen);
         struct panfrost_shader_state *fs;
@@ -768,7 +765,7 @@ panfrost_frag_shader_meta_init(struct panfrost_context *ctx,
 
         panfrost_frag_meta_rasterizer_update(ctx, fragmeta);
         panfrost_frag_meta_zsa_update(ctx, fragmeta);
-        panfrost_frag_meta_blend_update(ctx, fragmeta, rts);
+        panfrost_frag_meta_blend_update(ctx, fragmeta, rts, blend);
 }
 
 void
@@ -816,7 +813,12 @@ panfrost_emit_shader_meta(struct panfrost_batch *batch,
                 if (rt_size)
                         rts = rzalloc_size(ctx, rt_size * rt_count);
 
-                panfrost_frag_shader_meta_init(ctx, &meta, rts);
+                struct panfrost_blend_final blend[PIPE_MAX_COLOR_BUFS];
+
+                for (unsigned c = 0; c < ctx->pipe_framebuffer.nr_cbufs; ++c)
+                        blend[c] = panfrost_get_blend_for_context(ctx, c);
+
+                panfrost_frag_shader_meta_init(ctx, &meta, rts, blend);
 
                 xfer = panfrost_pool_alloc_aligned(&batch->pool, desc_size, sizeof(meta));
 
