@@ -114,4 +114,22 @@ util_blend_factor_is_inverted(enum pipe_blendfactor factor)
    }
 }
 
+/* To determine if the destination needs to be read while blending */
+
+static inline bool
+util_blend_factor_uses_dest(enum pipe_blendfactor factor, bool alpha)
+{
+   switch (factor) {
+      case PIPE_BLENDFACTOR_DST_ALPHA:
+      case PIPE_BLENDFACTOR_DST_COLOR:
+      case PIPE_BLENDFACTOR_INV_DST_ALPHA:
+      case PIPE_BLENDFACTOR_INV_DST_COLOR:
+         return true;
+      case PIPE_BLENDFACTOR_SRC_ALPHA_SATURATE:
+         return !alpha;
+      default:
+         return false;
+   }
+}
+
 #endif /* U_BLEND_H */
