@@ -31,7 +31,7 @@ namespace aco {
 uint64_t debug_flags = 0;
 
 static const struct debug_control aco_debug_options[] = {
-   {"validateir", DEBUG_VALIDATE},
+   {"validateir", DEBUG_VALIDATE_IR},
    {"validatera", DEBUG_VALIDATE_RA},
    {"perfwarn", DEBUG_PERFWARN},
    {NULL, 0}
@@ -45,7 +45,7 @@ static void init_once()
 
    #ifndef NDEBUG
    /* enable some flags by default on debug builds */
-   debug_flags |= aco::DEBUG_VALIDATE;
+   debug_flags |= aco::DEBUG_VALIDATE_IR;
    #endif
 }
 

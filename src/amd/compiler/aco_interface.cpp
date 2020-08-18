@@ -45,10 +45,10 @@ static radv_compiler_statistic_info statistic_infos[] = {
 
 static void validate(aco::Program *program)
 {
-   if (!(aco::debug_flags & aco::DEBUG_VALIDATE))
+   if (!(aco::debug_flags & aco::DEBUG_VALIDATE_IR))
       return;
 
-   bool is_valid = aco::validate(program, stderr);
+   bool is_valid = aco::validate_ir(program, stderr);
    assert(is_valid);
 }
 

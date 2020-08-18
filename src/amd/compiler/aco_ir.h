@@ -46,7 +46,7 @@ namespace aco {
 extern uint64_t debug_flags;
 
 enum {
-   DEBUG_VALIDATE = 0x1,
+   DEBUG_VALIDATE_IR = 0x1,
    DEBUG_VALIDATE_RA = 0x2,
    DEBUG_PERFWARN = 0x4,
 };
@@ -1665,7 +1665,7 @@ void insert_NOPs(Program* program);
 unsigned emit_program(Program* program, std::vector<uint32_t>& code);
 void print_asm(Program *program, std::vector<uint32_t>& binary,
                unsigned exec_size, std::ostream& out);
-bool validate(Program* program, FILE *output);
+bool validate_ir(Program* program, FILE *output);
 bool validate_ra(Program* program, const struct radv_nir_compiler_options *options, FILE *output);
 #ifndef NDEBUG
 void perfwarn(bool cond, const char *msg, Instruction *instr=NULL);

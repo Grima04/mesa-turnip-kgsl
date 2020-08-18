@@ -146,7 +146,7 @@ void finish_validator_test()
    finish_program(program.get());
    aco_print_program(program.get(), output);
    fprintf(output, "Validation results:\n");
-   if (aco::validate(program.get(), output))
+   if (aco::validate_ir(program.get(), output))
       fprintf(output, "Validation passed\n");
    else
       fprintf(output, "Validation failed\n");
@@ -155,12 +155,12 @@ void finish_validator_test()
 void finish_opt_test()
 {
    finish_program(program.get());
-   if (!aco::validate(program.get(), output)) {
+   if (!aco::validate_ir(program.get(), output)) {
       fail_test("Validation before optimization failed");
       return;
    }
    aco::optimize(program.get());
-   if (!aco::validate(program.get(), output)) {
+   if (!aco::validate_ir(program.get(), output)) {
       fail_test("Validation after optimization failed");
       return;
    }

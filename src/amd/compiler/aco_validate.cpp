@@ -46,7 +46,7 @@ void perfwarn(bool cond, const char *msg, Instruction *instr)
 }
 #endif
 
-bool validate(Program* program, FILE *output)
+bool validate_ir(Program* program, FILE *output)
 {
    bool is_valid = true;
    auto check = [&output, &is_valid](bool check, const char * msg, aco::Instruction * instr) -> void {
