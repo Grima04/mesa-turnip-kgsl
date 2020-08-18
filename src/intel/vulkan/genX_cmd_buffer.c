@@ -3344,13 +3344,13 @@ genX(cmd_buffer_flush_state)(struct anv_cmd_buffer *cmd_buffer)
          bool dynamic_stride = cmd_buffer->state.gfx.dynamic.dyn_vbo_stride;
          bool dynamic_size = cmd_buffer->state.gfx.dynamic.dyn_vbo_size;
 
-         uint32_t stride = dynamic_stride ?
-            cmd_buffer->state.vertex_bindings[vb].stride : pipeline->vb[vb].stride;
-         uint32_t size = dynamic_size ?
-            cmd_buffer->state.vertex_bindings[vb].size : buffer->size;
-
          struct GENX(VERTEX_BUFFER_STATE) state;
          if (buffer) {
+            uint32_t stride = dynamic_stride ?
+               cmd_buffer->state.vertex_bindings[vb].stride : pipeline->vb[vb].stride;
+            uint32_t size = dynamic_size ?
+               cmd_buffer->state.vertex_bindings[vb].size : buffer->size;
+
             state = (struct GENX(VERTEX_BUFFER_STATE)) {
                .VertexBufferIndex = vb,
 
