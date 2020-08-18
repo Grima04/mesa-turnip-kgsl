@@ -241,7 +241,6 @@ nir_alu_op_for_opencl_opcode(struct vtn_builder *b,
    case OpenCLstd_Floor: return nir_op_ffloor;
    case OpenCLstd_SHadd: return nir_op_ihadd;
    case OpenCLstd_UHadd: return nir_op_uhadd;
-   case OpenCLstd_Fma: return nir_op_ffma;
    case OpenCLstd_Fmax: return nir_op_fmax;
    case OpenCLstd_SMax: return nir_op_imax;
    case OpenCLstd_UMax: return nir_op_umax;
@@ -554,6 +553,11 @@ handle_special(struct vtn_builder *b, uint32_t opcode,
       if (nb->shader->options->lower_ldexp)
          break;
       return nir_ldexp(nb, srcs[0], srcs[1]);
+   case OpenCLstd_Fma:
+      /* FIXME: the software implementation only supports fp32 for now. */
+      if (nb->shader->options->lower_ffma32 && srcs[0]->bit_size == 32)
+         break;
+      return nir_ffma(nb, srcs[0], srcs[1], srcs[2]);
    default:
       break;
    }
@@ -750,7 +754,6 @@ vtn_handle_opencl_instruction(struct vtn_builder *b, SpvOp ext_opcode,
    case OpenCLstd_UAdd_sat:
    case OpenCLstd_Ceil:
    case OpenCLstd_Floor:
-   case OpenCLstd_Fma:
    case OpenCLstd_Fmax:
    case OpenCLstd_SHadd:
    case OpenCLstd_UHadd:
@@ -801,6 +804,7 @@ vtn_handle_opencl_instruction(struct vtn_builder *b, SpvOp ext_opcode,
    case OpenCLstd_Cross:
    case OpenCLstd_Degrees:
    case OpenCLstd_Fdim:
+   case OpenCLstd_Fma:
    case OpenCLstd_Distance:
    case OpenCLstd_Fast_distance:
    case OpenCLstd_Fast_length:
