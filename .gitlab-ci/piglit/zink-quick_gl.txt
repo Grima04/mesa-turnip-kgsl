@@ -810,9 +810,6 @@ spec/arb_buffer_storage/bufferstorage-persistent_gles3 read coherent: skip
 spec/arb_buffer_storage/bufferstorage-persistent_gles3 read coherent client-storage: skip
 spec/arb_clear_texture/arb_clear_texture-error: crash
 spec/arb_clear_texture/arb_clear_texture-multisample: fail
-spec/arb_clip_control/arb_clip_control-clip-control: skip
-spec/arb_clip_control/arb_clip_control-depth-precision: skip
-spec/arb_clip_control/arb_clip_control-viewport: skip
 spec/arb_compute_shader/api_errors: skip
 spec/arb_compute_shader/built-in constants: skip
 spec/arb_compute_shader/compiler/work_group_size_too_large: skip
@@ -938,15 +935,13 @@ spec/arb_draw_indirect/arb_draw_indirect-draw-arrays-prim-restart: skip
 spec/arb_draw_indirect/arb_draw_indirect-draw-elements-base-instance: skip
 spec/arb_draw_indirect/arb_draw_indirect-draw-elements-compat: skip
 spec/arb_draw_indirect/arb_draw_indirect-transform-feedback: crash
-spec/arb_enhanced_layouts/arb_enhanced_layouts-transform-feedback-layout-qualifiers_gs: skip
-spec/arb_enhanced_layouts/arb_enhanced_layouts-transform-feedback-layout-qualifiers_gs_max: skip
-spec/arb_enhanced_layouts/arb_enhanced_layouts-transform-feedback-layout-qualifiers_vs: skip
-spec/arb_enhanced_layouts/arb_enhanced_layouts-transform-feedback-layout-qualifiers_vs_interface: skip
-spec/arb_enhanced_layouts/arb_enhanced_layouts-transform-feedback-layout-qualifiers_vs_named_interface: skip
-spec/arb_enhanced_layouts/arb_enhanced_layouts-transform-feedback-layout-qualifiers_vs_struct: skip
-spec/arb_enhanced_layouts/arb_enhanced_layouts-transform-feedback-layout-query-api: skip
-spec/arb_enhanced_layouts/explicit-offset-bufferstorage: skip
-spec/arb_enhanced_layouts/gs-stream-location-aliasing: skip
+spec/arb_enhanced_layouts/arb_enhanced_layouts-transform-feedback-layout-qualifiers_gs: crash
+spec/arb_enhanced_layouts/arb_enhanced_layouts-transform-feedback-layout-qualifiers_gs_max: crash
+spec/arb_enhanced_layouts/arb_enhanced_layouts-transform-feedback-layout-qualifiers_vs: crash
+spec/arb_enhanced_layouts/arb_enhanced_layouts-transform-feedback-layout-qualifiers_vs_interface: crash
+spec/arb_enhanced_layouts/arb_enhanced_layouts-transform-feedback-layout-qualifiers_vs_named_interface: crash
+spec/arb_enhanced_layouts/arb_enhanced_layouts-transform-feedback-layout-qualifiers_vs_struct: crash
+spec/arb_enhanced_layouts/gs-stream-location-aliasing: crash
 spec/arb_es2_compatibility/texwrap formats bordercolor-swizzled/gl_rgb565, swizzled, border color only: fail
 spec/arb_es2_compatibility/texwrap formats bordercolor/gl_rgb565, border color only: fail
 spec/arb_es3_compatibility/es3-drawarrays-primrestart-fixedindex: skip
@@ -1050,8 +1045,202 @@ spec/arb_program_interface_query/arb_program_interface_query-resource-query/gl_u
 spec/arb_provoking_vertex/arb-provoking-vertex-clipped-geometry-flatshading: fail
 spec/arb_provoking_vertex/arb-provoking-vertex-render: fail
 spec/arb_provoking_vertex/arb-xfb-before-flatshading: crash
-spec/arb_query_buffer_object/coherency: skip
-spec/arb_query_buffer_object/qbo: skip
+spec/arb_query_buffer_object/coherency: crash
+spec/arb_query_buffer_object/qbo/query-gl_clipping_input_primitives-async-gl_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_clipping_input_primitives-async-gl_unsigned_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_clipping_input_primitives-async-gl_unsigned_int64_arb: skip
+spec/arb_query_buffer_object/qbo/query-gl_clipping_input_primitives-async_cpu_read_after-gl_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_clipping_input_primitives-async_cpu_read_after-gl_unsigned_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_clipping_input_primitives-async_cpu_read_after-gl_unsigned_int64_arb: skip
+spec/arb_query_buffer_object/qbo/query-gl_clipping_input_primitives-async_cpu_read_before-gl_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_clipping_input_primitives-async_cpu_read_before-gl_unsigned_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_clipping_input_primitives-async_cpu_read_before-gl_unsigned_int64_arb: skip
+spec/arb_query_buffer_object/qbo/query-gl_clipping_input_primitives-sync-gl_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_clipping_input_primitives-sync-gl_unsigned_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_clipping_input_primitives-sync-gl_unsigned_int64_arb: skip
+spec/arb_query_buffer_object/qbo/query-gl_clipping_input_primitives-sync_cpu_read_after_cache_test-gl_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_clipping_input_primitives-sync_cpu_read_after_cache_test-gl_unsigned_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_clipping_input_primitives-sync_cpu_read_after_cache_test-gl_unsigned_int64_arb: skip
+spec/arb_query_buffer_object/qbo/query-gl_clipping_output_primitives-async-gl_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_clipping_output_primitives-async-gl_unsigned_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_clipping_output_primitives-async-gl_unsigned_int64_arb: skip
+spec/arb_query_buffer_object/qbo/query-gl_clipping_output_primitives-async_cpu_read_after-gl_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_clipping_output_primitives-async_cpu_read_after-gl_unsigned_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_clipping_output_primitives-async_cpu_read_after-gl_unsigned_int64_arb: skip
+spec/arb_query_buffer_object/qbo/query-gl_clipping_output_primitives-async_cpu_read_before-gl_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_clipping_output_primitives-async_cpu_read_before-gl_unsigned_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_clipping_output_primitives-async_cpu_read_before-gl_unsigned_int64_arb: skip
+spec/arb_query_buffer_object/qbo/query-gl_clipping_output_primitives-sync-gl_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_clipping_output_primitives-sync-gl_unsigned_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_clipping_output_primitives-sync-gl_unsigned_int64_arb: skip
+spec/arb_query_buffer_object/qbo/query-gl_clipping_output_primitives-sync_cpu_read_after_cache_test-gl_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_clipping_output_primitives-sync_cpu_read_after_cache_test-gl_unsigned_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_clipping_output_primitives-sync_cpu_read_after_cache_test-gl_unsigned_int64_arb: skip
+spec/arb_query_buffer_object/qbo/query-gl_compute_shader_invocations-async-gl_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_compute_shader_invocations-async-gl_unsigned_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_compute_shader_invocations-async-gl_unsigned_int64_arb: skip
+spec/arb_query_buffer_object/qbo/query-gl_compute_shader_invocations-async_cpu_read_after-gl_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_compute_shader_invocations-async_cpu_read_after-gl_unsigned_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_compute_shader_invocations-async_cpu_read_after-gl_unsigned_int64_arb: skip
+spec/arb_query_buffer_object/qbo/query-gl_compute_shader_invocations-async_cpu_read_before-gl_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_compute_shader_invocations-async_cpu_read_before-gl_unsigned_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_compute_shader_invocations-async_cpu_read_before-gl_unsigned_int64_arb: skip
+spec/arb_query_buffer_object/qbo/query-gl_compute_shader_invocations-sync-gl_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_compute_shader_invocations-sync-gl_unsigned_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_compute_shader_invocations-sync-gl_unsigned_int64_arb: skip
+spec/arb_query_buffer_object/qbo/query-gl_compute_shader_invocations-sync_cpu_read_after_cache_test-gl_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_compute_shader_invocations-sync_cpu_read_after_cache_test-gl_unsigned_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_compute_shader_invocations-sync_cpu_read_after_cache_test-gl_unsigned_int64_arb: skip
+spec/arb_query_buffer_object/qbo/query-gl_fragment_shader_invocations-async-gl_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_fragment_shader_invocations-async-gl_unsigned_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_fragment_shader_invocations-async-gl_unsigned_int64_arb: skip
+spec/arb_query_buffer_object/qbo/query-gl_fragment_shader_invocations-async_cpu_read_after-gl_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_fragment_shader_invocations-async_cpu_read_after-gl_unsigned_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_fragment_shader_invocations-async_cpu_read_after-gl_unsigned_int64_arb: skip
+spec/arb_query_buffer_object/qbo/query-gl_fragment_shader_invocations-async_cpu_read_before-gl_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_fragment_shader_invocations-async_cpu_read_before-gl_unsigned_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_fragment_shader_invocations-async_cpu_read_before-gl_unsigned_int64_arb: skip
+spec/arb_query_buffer_object/qbo/query-gl_fragment_shader_invocations-sync-gl_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_fragment_shader_invocations-sync-gl_unsigned_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_fragment_shader_invocations-sync-gl_unsigned_int64_arb: skip
+spec/arb_query_buffer_object/qbo/query-gl_fragment_shader_invocations-sync_cpu_read_after_cache_test-gl_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_fragment_shader_invocations-sync_cpu_read_after_cache_test-gl_unsigned_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_fragment_shader_invocations-sync_cpu_read_after_cache_test-gl_unsigned_int64_arb: skip
+spec/arb_query_buffer_object/qbo/query-gl_geometry_shader_invocations-async-gl_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_geometry_shader_invocations-async-gl_unsigned_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_geometry_shader_invocations-async-gl_unsigned_int64_arb: skip
+spec/arb_query_buffer_object/qbo/query-gl_geometry_shader_invocations-async_cpu_read_after-gl_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_geometry_shader_invocations-async_cpu_read_after-gl_unsigned_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_geometry_shader_invocations-async_cpu_read_after-gl_unsigned_int64_arb: skip
+spec/arb_query_buffer_object/qbo/query-gl_geometry_shader_invocations-async_cpu_read_before-gl_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_geometry_shader_invocations-async_cpu_read_before-gl_unsigned_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_geometry_shader_invocations-async_cpu_read_before-gl_unsigned_int64_arb: skip
+spec/arb_query_buffer_object/qbo/query-gl_geometry_shader_invocations-sync-gl_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_geometry_shader_invocations-sync-gl_unsigned_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_geometry_shader_invocations-sync-gl_unsigned_int64_arb: skip
+spec/arb_query_buffer_object/qbo/query-gl_geometry_shader_invocations-sync_cpu_read_after_cache_test-gl_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_geometry_shader_invocations-sync_cpu_read_after_cache_test-gl_unsigned_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_geometry_shader_invocations-sync_cpu_read_after_cache_test-gl_unsigned_int64_arb: skip
+spec/arb_query_buffer_object/qbo/query-gl_geometry_shader_primitives_emitted-async-gl_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_geometry_shader_primitives_emitted-async-gl_unsigned_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_geometry_shader_primitives_emitted-async-gl_unsigned_int64_arb: skip
+spec/arb_query_buffer_object/qbo/query-gl_geometry_shader_primitives_emitted-async_cpu_read_after-gl_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_geometry_shader_primitives_emitted-async_cpu_read_after-gl_unsigned_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_geometry_shader_primitives_emitted-async_cpu_read_after-gl_unsigned_int64_arb: skip
+spec/arb_query_buffer_object/qbo/query-gl_geometry_shader_primitives_emitted-async_cpu_read_before-gl_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_geometry_shader_primitives_emitted-async_cpu_read_before-gl_unsigned_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_geometry_shader_primitives_emitted-async_cpu_read_before-gl_unsigned_int64_arb: skip
+spec/arb_query_buffer_object/qbo/query-gl_geometry_shader_primitives_emitted-sync-gl_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_geometry_shader_primitives_emitted-sync-gl_unsigned_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_geometry_shader_primitives_emitted-sync-gl_unsigned_int64_arb: skip
+spec/arb_query_buffer_object/qbo/query-gl_geometry_shader_primitives_emitted-sync_cpu_read_after_cache_test-gl_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_geometry_shader_primitives_emitted-sync_cpu_read_after_cache_test-gl_unsigned_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_geometry_shader_primitives_emitted-sync_cpu_read_after_cache_test-gl_unsigned_int64_arb: skip
+spec/arb_query_buffer_object/qbo/query-gl_primitives_submitted-async-gl_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_primitives_submitted-async-gl_unsigned_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_primitives_submitted-async-gl_unsigned_int64_arb: skip
+spec/arb_query_buffer_object/qbo/query-gl_primitives_submitted-async_cpu_read_after-gl_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_primitives_submitted-async_cpu_read_after-gl_unsigned_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_primitives_submitted-async_cpu_read_after-gl_unsigned_int64_arb: skip
+spec/arb_query_buffer_object/qbo/query-gl_primitives_submitted-async_cpu_read_before-gl_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_primitives_submitted-async_cpu_read_before-gl_unsigned_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_primitives_submitted-async_cpu_read_before-gl_unsigned_int64_arb: skip
+spec/arb_query_buffer_object/qbo/query-gl_primitives_submitted-sync-gl_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_primitives_submitted-sync-gl_unsigned_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_primitives_submitted-sync-gl_unsigned_int64_arb: skip
+spec/arb_query_buffer_object/qbo/query-gl_primitives_submitted-sync_cpu_read_after_cache_test-gl_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_primitives_submitted-sync_cpu_read_after_cache_test-gl_unsigned_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_primitives_submitted-sync_cpu_read_after_cache_test-gl_unsigned_int64_arb: skip
+spec/arb_query_buffer_object/qbo/query-gl_tess_control_shader_patches-async-gl_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_tess_control_shader_patches-async-gl_unsigned_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_tess_control_shader_patches-async-gl_unsigned_int64_arb: skip
+spec/arb_query_buffer_object/qbo/query-gl_tess_control_shader_patches-async_cpu_read_after-gl_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_tess_control_shader_patches-async_cpu_read_after-gl_unsigned_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_tess_control_shader_patches-async_cpu_read_after-gl_unsigned_int64_arb: skip
+spec/arb_query_buffer_object/qbo/query-gl_tess_control_shader_patches-async_cpu_read_before-gl_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_tess_control_shader_patches-async_cpu_read_before-gl_unsigned_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_tess_control_shader_patches-async_cpu_read_before-gl_unsigned_int64_arb: skip
+spec/arb_query_buffer_object/qbo/query-gl_tess_control_shader_patches-sync-gl_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_tess_control_shader_patches-sync-gl_unsigned_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_tess_control_shader_patches-sync-gl_unsigned_int64_arb: skip
+spec/arb_query_buffer_object/qbo/query-gl_tess_control_shader_patches-sync_cpu_read_after_cache_test-gl_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_tess_control_shader_patches-sync_cpu_read_after_cache_test-gl_unsigned_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_tess_control_shader_patches-sync_cpu_read_after_cache_test-gl_unsigned_int64_arb: skip
+spec/arb_query_buffer_object/qbo/query-gl_tess_evaluation_shader_invocations-async-gl_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_tess_evaluation_shader_invocations-async-gl_unsigned_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_tess_evaluation_shader_invocations-async-gl_unsigned_int64_arb: skip
+spec/arb_query_buffer_object/qbo/query-gl_tess_evaluation_shader_invocations-async_cpu_read_after-gl_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_tess_evaluation_shader_invocations-async_cpu_read_after-gl_unsigned_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_tess_evaluation_shader_invocations-async_cpu_read_after-gl_unsigned_int64_arb: skip
+spec/arb_query_buffer_object/qbo/query-gl_tess_evaluation_shader_invocations-async_cpu_read_before-gl_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_tess_evaluation_shader_invocations-async_cpu_read_before-gl_unsigned_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_tess_evaluation_shader_invocations-async_cpu_read_before-gl_unsigned_int64_arb: skip
+spec/arb_query_buffer_object/qbo/query-gl_tess_evaluation_shader_invocations-sync-gl_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_tess_evaluation_shader_invocations-sync-gl_unsigned_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_tess_evaluation_shader_invocations-sync-gl_unsigned_int64_arb: skip
+spec/arb_query_buffer_object/qbo/query-gl_tess_evaluation_shader_invocations-sync_cpu_read_after_cache_test-gl_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_tess_evaluation_shader_invocations-sync_cpu_read_after_cache_test-gl_unsigned_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_tess_evaluation_shader_invocations-sync_cpu_read_after_cache_test-gl_unsigned_int64_arb: skip
+spec/arb_query_buffer_object/qbo/query-gl_time_elapsed-async-gl_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_time_elapsed-async-gl_unsigned_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_time_elapsed-async-gl_unsigned_int64_arb: skip
+spec/arb_query_buffer_object/qbo/query-gl_time_elapsed-async_cpu_read_after-gl_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_time_elapsed-async_cpu_read_after-gl_unsigned_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_time_elapsed-async_cpu_read_after-gl_unsigned_int64_arb: skip
+spec/arb_query_buffer_object/qbo/query-gl_time_elapsed-async_cpu_read_before-gl_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_time_elapsed-async_cpu_read_before-gl_unsigned_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_time_elapsed-async_cpu_read_before-gl_unsigned_int64_arb: skip
+spec/arb_query_buffer_object/qbo/query-gl_time_elapsed-sync-gl_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_time_elapsed-sync-gl_unsigned_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_time_elapsed-sync-gl_unsigned_int64_arb: skip
+spec/arb_query_buffer_object/qbo/query-gl_time_elapsed-sync_cpu_read_after_cache_test-gl_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_time_elapsed-sync_cpu_read_after_cache_test-gl_unsigned_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_time_elapsed-sync_cpu_read_after_cache_test-gl_unsigned_int64_arb: skip
+spec/arb_query_buffer_object/qbo/query-gl_timestamp-async-gl_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_timestamp-async-gl_unsigned_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_timestamp-async-gl_unsigned_int64_arb: skip
+spec/arb_query_buffer_object/qbo/query-gl_timestamp-async_cpu_read_after-gl_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_timestamp-async_cpu_read_after-gl_unsigned_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_timestamp-async_cpu_read_after-gl_unsigned_int64_arb: skip
+spec/arb_query_buffer_object/qbo/query-gl_timestamp-async_cpu_read_before-gl_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_timestamp-async_cpu_read_before-gl_unsigned_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_timestamp-async_cpu_read_before-gl_unsigned_int64_arb: skip
+spec/arb_query_buffer_object/qbo/query-gl_timestamp-sync-gl_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_timestamp-sync-gl_unsigned_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_timestamp-sync-gl_unsigned_int64_arb: skip
+spec/arb_query_buffer_object/qbo/query-gl_timestamp-sync_cpu_read_after_cache_test-gl_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_timestamp-sync_cpu_read_after_cache_test-gl_unsigned_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_timestamp-sync_cpu_read_after_cache_test-gl_unsigned_int64_arb: skip
+spec/arb_query_buffer_object/qbo/query-gl_vertex_shader_invocations-async-gl_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_vertex_shader_invocations-async-gl_unsigned_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_vertex_shader_invocations-async-gl_unsigned_int64_arb: skip
+spec/arb_query_buffer_object/qbo/query-gl_vertex_shader_invocations-async_cpu_read_after-gl_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_vertex_shader_invocations-async_cpu_read_after-gl_unsigned_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_vertex_shader_invocations-async_cpu_read_after-gl_unsigned_int64_arb: skip
+spec/arb_query_buffer_object/qbo/query-gl_vertex_shader_invocations-async_cpu_read_before-gl_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_vertex_shader_invocations-async_cpu_read_before-gl_unsigned_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_vertex_shader_invocations-async_cpu_read_before-gl_unsigned_int64_arb: skip
+spec/arb_query_buffer_object/qbo/query-gl_vertex_shader_invocations-sync-gl_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_vertex_shader_invocations-sync-gl_unsigned_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_vertex_shader_invocations-sync-gl_unsigned_int64_arb: skip
+spec/arb_query_buffer_object/qbo/query-gl_vertex_shader_invocations-sync_cpu_read_after_cache_test-gl_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_vertex_shader_invocations-sync_cpu_read_after_cache_test-gl_unsigned_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_vertex_shader_invocations-sync_cpu_read_after_cache_test-gl_unsigned_int64_arb: skip
+spec/arb_query_buffer_object/qbo/query-gl_vertices_submitted-async-gl_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_vertices_submitted-async-gl_unsigned_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_vertices_submitted-async-gl_unsigned_int64_arb: skip
+spec/arb_query_buffer_object/qbo/query-gl_vertices_submitted-async_cpu_read_after-gl_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_vertices_submitted-async_cpu_read_after-gl_unsigned_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_vertices_submitted-async_cpu_read_after-gl_unsigned_int64_arb: skip
+spec/arb_query_buffer_object/qbo/query-gl_vertices_submitted-async_cpu_read_before-gl_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_vertices_submitted-async_cpu_read_before-gl_unsigned_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_vertices_submitted-async_cpu_read_before-gl_unsigned_int64_arb: skip
+spec/arb_query_buffer_object/qbo/query-gl_vertices_submitted-sync-gl_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_vertices_submitted-sync-gl_unsigned_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_vertices_submitted-sync-gl_unsigned_int64_arb: skip
+spec/arb_query_buffer_object/qbo/query-gl_vertices_submitted-sync_cpu_read_after_cache_test-gl_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_vertices_submitted-sync_cpu_read_after_cache_test-gl_unsigned_int: skip
+spec/arb_query_buffer_object/qbo/query-gl_vertices_submitted-sync_cpu_read_after_cache_test-gl_unsigned_int64_arb: skip
 spec/arb_sample_locations/test: skip
 spec/arb_sample_shading/arb_sample_shading-builtin-gl-sample-mask-mrt-alpha-to-coverage-combinations: skip
 spec/arb_sample_shading/builtin-gl-num-samples 16: skip
@@ -1175,113 +1364,94 @@ spec/arb_shader_image_size/builtin: skip
 spec/arb_shader_storage_buffer_object/array-ssbo-binding: fail
 spec/arb_shader_storage_buffer_object/minmax: skip
 spec/arb_shader_storage_buffer_object/program-interface-query: fail
-spec/arb_shader_texture_image_samples/builtin-image: skip
 spec/arb_shader_texture_image_samples/texturesamples/fs-isampler2dms-16: skip
 spec/arb_shader_texture_image_samples/texturesamples/fs-isampler2dms-2: skip
 spec/arb_shader_texture_image_samples/texturesamples/fs-isampler2dms-32: skip
-spec/arb_shader_texture_image_samples/texturesamples/fs-isampler2dms-4: skip
 spec/arb_shader_texture_image_samples/texturesamples/fs-isampler2dms-6: skip
 spec/arb_shader_texture_image_samples/texturesamples/fs-isampler2dms-8: skip
 spec/arb_shader_texture_image_samples/texturesamples/fs-isampler2dmsarray-16: skip
 spec/arb_shader_texture_image_samples/texturesamples/fs-isampler2dmsarray-2: skip
 spec/arb_shader_texture_image_samples/texturesamples/fs-isampler2dmsarray-32: skip
-spec/arb_shader_texture_image_samples/texturesamples/fs-isampler2dmsarray-4: skip
 spec/arb_shader_texture_image_samples/texturesamples/fs-isampler2dmsarray-6: skip
 spec/arb_shader_texture_image_samples/texturesamples/fs-isampler2dmsarray-8: skip
 spec/arb_shader_texture_image_samples/texturesamples/fs-sampler2dms-16: skip
 spec/arb_shader_texture_image_samples/texturesamples/fs-sampler2dms-2: skip
 spec/arb_shader_texture_image_samples/texturesamples/fs-sampler2dms-32: skip
-spec/arb_shader_texture_image_samples/texturesamples/fs-sampler2dms-4: skip
 spec/arb_shader_texture_image_samples/texturesamples/fs-sampler2dms-6: skip
 spec/arb_shader_texture_image_samples/texturesamples/fs-sampler2dms-8: skip
 spec/arb_shader_texture_image_samples/texturesamples/fs-sampler2dmsarray-16: skip
 spec/arb_shader_texture_image_samples/texturesamples/fs-sampler2dmsarray-2: skip
 spec/arb_shader_texture_image_samples/texturesamples/fs-sampler2dmsarray-32: skip
-spec/arb_shader_texture_image_samples/texturesamples/fs-sampler2dmsarray-4: skip
 spec/arb_shader_texture_image_samples/texturesamples/fs-sampler2dmsarray-6: skip
 spec/arb_shader_texture_image_samples/texturesamples/fs-sampler2dmsarray-8: skip
 spec/arb_shader_texture_image_samples/texturesamples/fs-usampler2dms-16: skip
 spec/arb_shader_texture_image_samples/texturesamples/fs-usampler2dms-2: skip
 spec/arb_shader_texture_image_samples/texturesamples/fs-usampler2dms-32: skip
-spec/arb_shader_texture_image_samples/texturesamples/fs-usampler2dms-4: skip
 spec/arb_shader_texture_image_samples/texturesamples/fs-usampler2dms-6: skip
 spec/arb_shader_texture_image_samples/texturesamples/fs-usampler2dms-8: skip
 spec/arb_shader_texture_image_samples/texturesamples/fs-usampler2dmsarray-16: skip
 spec/arb_shader_texture_image_samples/texturesamples/fs-usampler2dmsarray-2: skip
 spec/arb_shader_texture_image_samples/texturesamples/fs-usampler2dmsarray-32: skip
-spec/arb_shader_texture_image_samples/texturesamples/fs-usampler2dmsarray-4: skip
 spec/arb_shader_texture_image_samples/texturesamples/fs-usampler2dmsarray-6: skip
 spec/arb_shader_texture_image_samples/texturesamples/fs-usampler2dmsarray-8: skip
 spec/arb_shader_texture_image_samples/texturesamples/gs-isampler2dms-16: skip
 spec/arb_shader_texture_image_samples/texturesamples/gs-isampler2dms-2: skip
 spec/arb_shader_texture_image_samples/texturesamples/gs-isampler2dms-32: skip
-spec/arb_shader_texture_image_samples/texturesamples/gs-isampler2dms-4: skip
 spec/arb_shader_texture_image_samples/texturesamples/gs-isampler2dms-6: skip
 spec/arb_shader_texture_image_samples/texturesamples/gs-isampler2dms-8: skip
 spec/arb_shader_texture_image_samples/texturesamples/gs-isampler2dmsarray-16: skip
 spec/arb_shader_texture_image_samples/texturesamples/gs-isampler2dmsarray-2: skip
 spec/arb_shader_texture_image_samples/texturesamples/gs-isampler2dmsarray-32: skip
-spec/arb_shader_texture_image_samples/texturesamples/gs-isampler2dmsarray-4: skip
 spec/arb_shader_texture_image_samples/texturesamples/gs-isampler2dmsarray-6: skip
 spec/arb_shader_texture_image_samples/texturesamples/gs-isampler2dmsarray-8: skip
 spec/arb_shader_texture_image_samples/texturesamples/gs-sampler2dms-16: skip
 spec/arb_shader_texture_image_samples/texturesamples/gs-sampler2dms-2: skip
 spec/arb_shader_texture_image_samples/texturesamples/gs-sampler2dms-32: skip
-spec/arb_shader_texture_image_samples/texturesamples/gs-sampler2dms-4: skip
 spec/arb_shader_texture_image_samples/texturesamples/gs-sampler2dms-6: skip
 spec/arb_shader_texture_image_samples/texturesamples/gs-sampler2dms-8: skip
 spec/arb_shader_texture_image_samples/texturesamples/gs-sampler2dmsarray-16: skip
 spec/arb_shader_texture_image_samples/texturesamples/gs-sampler2dmsarray-2: skip
 spec/arb_shader_texture_image_samples/texturesamples/gs-sampler2dmsarray-32: skip
-spec/arb_shader_texture_image_samples/texturesamples/gs-sampler2dmsarray-4: skip
 spec/arb_shader_texture_image_samples/texturesamples/gs-sampler2dmsarray-6: skip
 spec/arb_shader_texture_image_samples/texturesamples/gs-sampler2dmsarray-8: skip
 spec/arb_shader_texture_image_samples/texturesamples/gs-usampler2dms-16: skip
 spec/arb_shader_texture_image_samples/texturesamples/gs-usampler2dms-2: skip
 spec/arb_shader_texture_image_samples/texturesamples/gs-usampler2dms-32: skip
-spec/arb_shader_texture_image_samples/texturesamples/gs-usampler2dms-4: skip
 spec/arb_shader_texture_image_samples/texturesamples/gs-usampler2dms-6: skip
 spec/arb_shader_texture_image_samples/texturesamples/gs-usampler2dms-8: skip
 spec/arb_shader_texture_image_samples/texturesamples/gs-usampler2dmsarray-16: skip
 spec/arb_shader_texture_image_samples/texturesamples/gs-usampler2dmsarray-2: skip
 spec/arb_shader_texture_image_samples/texturesamples/gs-usampler2dmsarray-32: skip
-spec/arb_shader_texture_image_samples/texturesamples/gs-usampler2dmsarray-4: skip
 spec/arb_shader_texture_image_samples/texturesamples/gs-usampler2dmsarray-6: skip
 spec/arb_shader_texture_image_samples/texturesamples/gs-usampler2dmsarray-8: skip
 spec/arb_shader_texture_image_samples/texturesamples/vs-isampler2dms-16: skip
 spec/arb_shader_texture_image_samples/texturesamples/vs-isampler2dms-2: skip
 spec/arb_shader_texture_image_samples/texturesamples/vs-isampler2dms-32: skip
-spec/arb_shader_texture_image_samples/texturesamples/vs-isampler2dms-4: skip
 spec/arb_shader_texture_image_samples/texturesamples/vs-isampler2dms-6: skip
 spec/arb_shader_texture_image_samples/texturesamples/vs-isampler2dms-8: skip
 spec/arb_shader_texture_image_samples/texturesamples/vs-isampler2dmsarray-16: skip
 spec/arb_shader_texture_image_samples/texturesamples/vs-isampler2dmsarray-2: skip
 spec/arb_shader_texture_image_samples/texturesamples/vs-isampler2dmsarray-32: skip
-spec/arb_shader_texture_image_samples/texturesamples/vs-isampler2dmsarray-4: skip
 spec/arb_shader_texture_image_samples/texturesamples/vs-isampler2dmsarray-6: skip
 spec/arb_shader_texture_image_samples/texturesamples/vs-isampler2dmsarray-8: skip
 spec/arb_shader_texture_image_samples/texturesamples/vs-sampler2dms-16: skip
 spec/arb_shader_texture_image_samples/texturesamples/vs-sampler2dms-2: skip
 spec/arb_shader_texture_image_samples/texturesamples/vs-sampler2dms-32: skip
-spec/arb_shader_texture_image_samples/texturesamples/vs-sampler2dms-4: skip
 spec/arb_shader_texture_image_samples/texturesamples/vs-sampler2dms-6: skip
 spec/arb_shader_texture_image_samples/texturesamples/vs-sampler2dms-8: skip
 spec/arb_shader_texture_image_samples/texturesamples/vs-sampler2dmsarray-16: skip
 spec/arb_shader_texture_image_samples/texturesamples/vs-sampler2dmsarray-2: skip
 spec/arb_shader_texture_image_samples/texturesamples/vs-sampler2dmsarray-32: skip
-spec/arb_shader_texture_image_samples/texturesamples/vs-sampler2dmsarray-4: skip
 spec/arb_shader_texture_image_samples/texturesamples/vs-sampler2dmsarray-6: skip
 spec/arb_shader_texture_image_samples/texturesamples/vs-sampler2dmsarray-8: skip
 spec/arb_shader_texture_image_samples/texturesamples/vs-usampler2dms-16: skip
 spec/arb_shader_texture_image_samples/texturesamples/vs-usampler2dms-2: skip
 spec/arb_shader_texture_image_samples/texturesamples/vs-usampler2dms-32: skip
-spec/arb_shader_texture_image_samples/texturesamples/vs-usampler2dms-4: skip
 spec/arb_shader_texture_image_samples/texturesamples/vs-usampler2dms-6: skip
 spec/arb_shader_texture_image_samples/texturesamples/vs-usampler2dms-8: skip
 spec/arb_shader_texture_image_samples/texturesamples/vs-usampler2dmsarray-16: skip
 spec/arb_shader_texture_image_samples/texturesamples/vs-usampler2dmsarray-2: skip
 spec/arb_shader_texture_image_samples/texturesamples/vs-usampler2dmsarray-32: skip
-spec/arb_shader_texture_image_samples/texturesamples/vs-usampler2dmsarray-4: skip
 spec/arb_shader_texture_image_samples/texturesamples/vs-usampler2dmsarray-6: skip
 spec/arb_shader_texture_image_samples/texturesamples/vs-usampler2dmsarray-8: skip
 spec/arb_shader_texture_lod/execution/arb_shader_texture_lod-texgrad: fail
@@ -1302,150 +1472,6 @@ spec/arb_tessellation_shader/arb_tessellation_shader-layout-mismatch: skip
 spec/arb_tessellation_shader/arb_tessellation_shader-minmax: skip
 spec/arb_tessellation_shader/arb_tessellation_shader-tes-gs-max-output -small -scan 1 50: skip
 spec/arb_tessellation_shader/built-in-constants: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 1 1 128 1: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 1 1 128 2: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 1 1 128 3: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 1 1 128 4: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 1 1 128 7: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 1 1 128 8: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 1 1 64 1: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 1 1 64 2: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 1 1 64 3: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 1 1 64 4: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 1 1 64 7: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 1 1 64 8: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 1 1 8 1: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 1 1 8 2: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 1 1 8 3: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 1 1 8 4: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 1 1 8 7: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 1 1 8 8: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 1 8 128 1: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 1 8 128 2: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 1 8 128 3: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 1 8 128 4: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 1 8 128 7: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 1 8 128 8: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 1 8 64 1: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 1 8 64 2: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 1 8 64 3: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 1 8 64 4: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 1 8 64 7: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 1 8 64 8: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 1 8 8 1: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 1 8 8 2: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 1 8 8 3: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 1 8 8 4: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 1 8 8 7: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 1 8 8 8: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 42 1 128 1: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 42 1 128 2: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 42 1 128 3: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 42 1 128 4: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 42 1 128 7: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 42 1 128 8: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 42 1 64 1: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 42 1 64 2: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 42 1 64 3: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 42 1 64 4: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 42 1 64 7: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 42 1 64 8: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 42 1 8 1: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 42 1 8 2: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 42 1 8 3: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 42 1 8 4: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 42 1 8 7: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 42 1 8 8: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 42 8 128 1: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 42 8 128 2: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 42 8 128 3: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 42 8 128 4: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 42 8 128 7: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 42 8 128 8: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 42 8 64 1: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 42 8 64 2: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 42 8 64 3: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 42 8 64 4: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 42 8 64 7: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 42 8 64 8: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 42 8 8 1: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 42 8 8 2: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 42 8 8 3: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 42 8 8 4: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 42 8 8 7: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 32 42 8 8 8: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 1 1 128 1: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 1 1 128 2: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 1 1 128 3: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 1 1 128 4: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 1 1 128 7: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 1 1 128 8: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 1 1 64 1: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 1 1 64 2: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 1 1 64 3: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 1 1 64 4: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 1 1 64 7: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 1 1 64 8: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 1 1 8 1: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 1 1 8 2: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 1 1 8 3: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 1 1 8 4: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 1 1 8 7: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 1 1 8 8: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 1 8 128 1: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 1 8 128 2: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 1 8 128 3: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 1 8 128 4: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 1 8 128 7: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 1 8 128 8: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 1 8 64 1: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 1 8 64 2: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 1 8 64 3: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 1 8 64 4: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 1 8 64 7: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 1 8 64 8: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 1 8 8 1: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 1 8 8 2: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 1 8 8 3: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 1 8 8 4: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 1 8 8 7: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 1 8 8 8: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 42 1 128 1: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 42 1 128 2: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 42 1 128 3: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 42 1 128 4: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 42 1 128 7: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 42 1 128 8: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 42 1 64 1: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 42 1 64 2: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 42 1 64 3: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 42 1 64 4: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 42 1 64 7: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 42 1 64 8: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 42 1 8 1: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 42 1 8 2: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 42 1 8 3: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 42 1 8 4: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 42 1 8 7: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 42 1 8 8: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 42 8 128 1: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 42 8 128 2: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 42 8 128 3: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 42 8 128 4: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 42 8 128 7: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 42 8 128 8: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 42 8 64 1: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 42 8 64 2: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 42 8 64 3: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 42 8 64 4: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 42 8 64 7: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 42 8 64 8: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 42 8 8 1: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 42 8 8 2: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 42 8 8 3: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 42 8 8 4: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 42 8 8 7: skip
-spec/arb_texture_barrier/arb_texture_barrier-blending-in-shader 512 42 8 8 8: skip
 spec/arb_texture_buffer_object/formats (fs, arb): skip
 spec/arb_texture_buffer_object/formats (vs, arb): skip
 spec/arb_texture_buffer_object/indexed: crash
@@ -3291,8 +3317,6 @@ spec/nv_primitive_restart/primitive-restart-vbo_combined_vertex_and_index: fail
 spec/nv_primitive_restart/primitive-restart-vbo_index_only: fail
 spec/nv_primitive_restart/primitive-restart-vbo_separate_vertex_and_index: fail
 spec/nv_primitive_restart/primitive-restart-vbo_vertex_only: fail
-spec/nv_texture_barrier/arb_texture_barrier-texture-halves-ping-pong-operation-chain: skip
-spec/nv_texture_barrier/blending-in-shader: skip
 spec/nv_vertex_program2_option/vp-address-03: skip
 spec/nv_vertex_program2_option/vp-address-05: skip
 spec/nv_vertex_program2_option/vp-address-06: skip
@@ -3353,10 +3377,10 @@ wgl/wgl-sanity: skip
 summary:
        name:  results
        ----  --------
-       pass:    17914
+       pass:    18163
        fail:     1173
-      crash:      322
-       skip:     1829
+      crash:      330
+       skip:     1845
     timeout:        0
        warn:        4
  incomplete:        0
@@ -3365,4 +3389,4 @@ summary:
     changes:        0
       fixes:        0
 regressions:        0
-      total:    21266
+      total:    21539
