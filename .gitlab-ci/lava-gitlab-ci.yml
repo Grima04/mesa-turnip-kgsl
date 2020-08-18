@@ -1,5 +1,5 @@
 variables:
-  DISTRIBUTION_TAG: "2020-08-03-nfs-2"
+  DISTRIBUTION_TAG: "2020-08-18-new-kernel-6"
 
 .kernel+rootfs:
   stage: container-2
@@ -7,7 +7,7 @@ variables:
     - .ci-run-policy
   variables:
     GIT_STRATEGY: fetch
-    KERNEL_URL: "https://gitlab.freedesktop.org/tomeu/linux/-/archive/v5.5-panfrost-fixes/linux-v5.5-panfrost-fixes.tar.gz"
+    KERNEL_URL: "https://gitlab.freedesktop.org/tomeu/linux/-/archive/v5.8-for-mesa-ci/linux-v5.8-for-mesa-ci.tar.gz"
     UPLOAD_FOR_LAVA: 1
   script:
     - .gitlab-ci/container/lava_build.sh
