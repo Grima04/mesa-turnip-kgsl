@@ -327,8 +327,8 @@ instr_is_load_ubo(nir_instr *instr)
 
 	nir_intrinsic_op op = nir_instr_as_intrinsic(instr)->intrinsic;
 
-	/* ir3_nir_lower_io_offsets happens after this pass. */
-	assert(op != nir_intrinsic_load_ubo_ir3);
+	/* nir_lower_ubo_vec4 happens after this pass. */
+	assert(op != nir_intrinsic_load_ubo_vec4);
 
 	return op == nir_intrinsic_load_ubo;
 }

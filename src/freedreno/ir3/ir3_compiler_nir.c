@@ -754,7 +754,7 @@ emit_intrinsic_load_ubo_ldc(struct ir3_context *ctx, nir_intrinsic_instr *intr,
 	struct ir3_instruction *ldc = ir3_LDC(b, idx, 0, offset, 0);
 	ldc->regs[0]->wrmask = MASK(ncomp);
 	ldc->cat6.iim_val = ncomp;
-	ldc->cat6.d = nir_intrinsic_base(intr);
+	ldc->cat6.d = nir_intrinsic_component(intr);
 	ldc->cat6.type = TYPE_U32;
 
 	ir3_handle_bindless_cat6(ldc, intr->src[0]);
@@ -1647,7 +1647,7 @@ emit_intrinsic(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 	case nir_intrinsic_load_ubo:
 		emit_intrinsic_load_ubo(ctx, intr, dst);
 		break;
-	case nir_intrinsic_load_ubo_ir3:
+	case nir_intrinsic_load_ubo_vec4:
 		emit_intrinsic_load_ubo_ldc(ctx, intr, dst);
 		break;
 	case nir_intrinsic_load_frag_coord:
