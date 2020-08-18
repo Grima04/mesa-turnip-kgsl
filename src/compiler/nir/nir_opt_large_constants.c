@@ -173,9 +173,6 @@ nir_opt_large_constants(nir_shader *shader,
    /* This only works with a single entrypoint */
    nir_function_impl *impl = nir_shader_get_entrypoint(shader);
 
-   /* This pass can only be run once */
-   assert(shader->constant_data == NULL && shader->constant_data_size == 0);
-
    unsigned num_locals = nir_function_impl_index_vars(impl);
 
    if (num_locals == 0) {
@@ -293,7 +290,7 @@ nir_opt_large_constants(nir_shader *shader,
     * data.  We sort them by size and content so we can easily find
     * duplicates.
     */
-   shader->constant_data_size = 0;
+   const unsigned old_constant_data_size = shader->constant_data_size;
    qsort(var_infos, num_locals, sizeof(struct var_info), var_info_cmp);
    for (int i = 0; i < num_locals; i++) {
       struct var_info *info = &var_infos[i];
@@ -321,13 +318,16 @@ nir_opt_large_constants(nir_shader *shader,
       }
    }
 
-   if (shader->constant_data_size == 0) {
+   if (shader->constant_data_size == old_constant_data_size) {
       nir_shader_preserve_all_metadata(shader);
       ralloc_free(var_infos);
       return false;
    }
 
-   shader->constant_data = rzalloc_size(shader, shader->constant_data_size);
+   assert(shader->constant_data_size > old_constant_data_size);
+   shader->constant_data = rerzalloc_size(shader, shader->constant_data,
+                                          old_constant_data_size,
+                                          shader->constant_data_size);
    for (int i = 0; i < num_locals; i++) {
       struct var_info *info = &var_infos[i];
       if (!info->duplicate && info->is_constant) {
