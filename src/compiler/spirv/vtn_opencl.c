@@ -248,7 +248,6 @@ nir_alu_op_for_opencl_opcode(struct vtn_builder *b,
    case OpenCLstd_Fmin: return nir_op_fmin;
    case OpenCLstd_SMin: return nir_op_imin;
    case OpenCLstd_UMin: return nir_op_umin;
-   case OpenCLstd_Fmod: return nir_op_fmod;
    case OpenCLstd_Mix: return nir_op_flrp;
    case OpenCLstd_Native_cos: return nir_op_fcos;
    case OpenCLstd_Native_divide: return nir_op_fdiv;
@@ -262,7 +261,6 @@ nir_alu_op_for_opencl_opcode(struct vtn_builder *b,
    case OpenCLstd_SMul_hi: return nir_op_imul_high;
    case OpenCLstd_UMul_hi: return nir_op_umul_high;
    case OpenCLstd_Popcount: return nir_op_bit_count;
-   case OpenCLstd_Remainder: return nir_op_frem;
    case OpenCLstd_SRhadd: return nir_op_irhadd;
    case OpenCLstd_URhadd: return nir_op_urhadd;
    case OpenCLstd_Rsqrt: return nir_op_frsq;
@@ -272,6 +270,8 @@ nir_alu_op_for_opencl_opcode(struct vtn_builder *b,
    case OpenCLstd_USub_sat: return nir_op_usub_sat;
    case OpenCLstd_Trunc: return nir_op_ftrunc;
    case OpenCLstd_Rint: return nir_op_fround_even;
+   case OpenCLstd_Half_divide: return nir_op_fdiv;
+   case OpenCLstd_Half_recip: return nir_op_frcp;
    /* uhm... */
    case OpenCLstd_UAbs: return nir_op_mov;
    default:
@@ -528,6 +528,10 @@ handle_special(struct vtn_builder *b, uint32_t opcode,
       return nir_fast_normalize(nb, srcs[0]);
    case OpenCLstd_Length:
       return nir_length(nb, srcs[0]);
+   case OpenCLstd_Fmod:
+      if (nb->shader->options->lower_fmod)
+         break;
+      return nir_fmod(nb, srcs[0], srcs[1]);
    case OpenCLstd_Mad:
       return nir_fmad(nb, srcs[0], srcs[1], srcs[2]);
    case OpenCLstd_Maxmag:
@@ -781,11 +785,9 @@ vtn_handle_opencl_instruction(struct vtn_builder *b, SpvOp ext_opcode,
    case OpenCLstd_Native_rsqrt:
    case OpenCLstd_Native_sin:
    case OpenCLstd_Native_sqrt:
-   case OpenCLstd_Fmod:
    case OpenCLstd_SMul_hi:
    case OpenCLstd_UMul_hi:
    case OpenCLstd_Popcount:
-   case OpenCLstd_Remainder:
    case OpenCLstd_SRhadd:
    case OpenCLstd_URhadd:
    case OpenCLstd_Rsqrt:
@@ -795,6 +797,8 @@ vtn_handle_opencl_instruction(struct vtn_builder *b, SpvOp ext_opcode,
    case OpenCLstd_USub_sat:
    case OpenCLstd_Trunc:
    case OpenCLstd_Rint:
+   case OpenCLstd_Half_divide:
+   case OpenCLstd_Half_recip:
       handle_instr(b, ext_opcode, w + 5, count - 5, w + 1, handle_alu);
       return true;
    case OpenCLstd_SAbs_diff:
@@ -855,6 +859,7 @@ vtn_handle_opencl_instruction(struct vtn_builder *b, SpvOp ext_opcode,
    case OpenCLstd_Exp2:
    case OpenCLstd_Expm1:
    case OpenCLstd_Exp10:
+   case OpenCLstd_Fmod:
    case OpenCLstd_Ilogb:
    case OpenCLstd_Log:
    case OpenCLstd_Log2:
@@ -881,6 +886,7 @@ vtn_handle_opencl_instruction(struct vtn_builder *b, SpvOp ext_opcode,
    case OpenCLstd_Powr:
    case OpenCLstd_Pown:
    case OpenCLstd_Rootn:
+   case OpenCLstd_Remainder:
    case OpenCLstd_Remquo:
    case OpenCLstd_Hypot:
    case OpenCLstd_Sincos:
