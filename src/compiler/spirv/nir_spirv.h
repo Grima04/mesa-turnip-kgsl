@@ -83,6 +83,8 @@ struct spirv_to_nir_options {
    nir_address_format temp_addr_format;
    nir_address_format constant_addr_format;
 
+   nir_shader *clc_shader;
+
    struct {
       void (*func)(void *private_data,
                    enum nir_spirv_debug_level level,
