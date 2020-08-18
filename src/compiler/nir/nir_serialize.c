@@ -637,9 +637,9 @@ union packed_instr {
       unsigned instr_type:4;
       unsigned deref_type:3;
       unsigned cast_type_same_as_last:1;
-      unsigned mode:10; /* deref_var redefines this */
+      unsigned mode:12; /* deref_var redefines this */
       unsigned packed_src_ssa_16bit:1; /* deref_var redefines this */
-      unsigned _pad:5;  /* deref_var redefines this */
+      unsigned _pad:3;  /* deref_var redefines this */
       unsigned dest:8;
    } deref;
    struct {
@@ -981,7 +981,7 @@ static void
 write_deref(write_ctx *ctx, const nir_deref_instr *deref)
 {
    assert(deref->deref_type < 8);
-   assert(deref->mode < (1 << 10));
+   assert(deref->mode < (1 << 12));
 
    union packed_instr header;
    header.u32 = 0;

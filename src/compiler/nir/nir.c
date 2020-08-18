@@ -115,6 +115,7 @@ nir_shader_add_variable(nir_shader *shader, nir_variable *var)
    case nir_var_mem_ssbo:
    case nir_var_mem_shared:
    case nir_var_system_value:
+   case nir_var_mem_constant:
       break;
 
    case nir_var_mem_global:
