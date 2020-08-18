@@ -324,6 +324,7 @@ enum vtn_base_type {
    vtn_base_type_sampler,
    vtn_base_type_sampled_image,
    vtn_base_type_function,
+   vtn_base_type_event,
 };
 
 struct vtn_type {
