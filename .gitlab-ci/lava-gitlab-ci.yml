@@ -149,7 +149,7 @@ kernel+rootfs_armhf:
   extends:
     - .lava-test:arm64
 
-.panfrost-t720-gles2:arm64:
+panfrost-t720-gles2:arm64:
   extends:
     - .lava-test:arm64
     - .panfrost-rules
@@ -161,7 +161,7 @@ kernel+rootfs_armhf:
   tags:
     - mesa-ci-aarch64-lava-collabora
 
-.panfrost-t760-gles2:armhf:
+panfrost-t760-gles2:armhf:
   extends:
     - .lava-test:armhf
     - .panfrost-rules
@@ -201,14 +201,14 @@ kernel+rootfs_armhf:
   tags:
     - mesa-ci-aarch64-lava-collabora
 
-.panfrost-t860-gles2:arm64:
+panfrost-t860-gles2:arm64:
   extends:
     - .lava-test:arm64
     - .lava-rk3399-gru-kevin
   variables:
     ENV_VARS: "PAN_MESA_DEBUG=gles3 DEQP_PARALLEL=6 DEQP_EXPECTED_RENDERER=T860"
 
-.panfrost-t860-gles3:arm64:
+panfrost-t860-gles3:arm64:
   parallel: 2
   extends:
     - .lava-test:arm64
@@ -217,7 +217,7 @@ kernel+rootfs_armhf:
     DEQP_VERSION: gles3
     ENV_VARS: "PAN_MESA_DEBUG=gles3 DEQP_PARALLEL=6 DEQP_EXPECTED_RENDERER=T860"
 
-.panfrost-t860-traces:arm64:
+panfrost-t860-traces:arm64:
   extends:
     - .lava-traces:arm64
     - .lava-rk3399-gru-kevin
@@ -286,7 +286,7 @@ kernel+rootfs_armhf:
   tags:
     - mesa-ci-aarch64-lava-collabora
 
-.radeonsi-stoney-traces:amd64:
+radeonsi-stoney-traces:amd64:
   extends:
     - .lava-traces:amd64
     - .radeonsi-rules
