@@ -180,6 +180,7 @@ files_libnir = files(
   'nir_lower_wpos_ytransform.c',
   'nir_lower_wrmasks.c',
   'nir_lower_bit_size.c',
+  'nir_lower_ubo_vec4.c',
   'nir_lower_uniforms_to_ubo.c',
   'nir_metadata.c',
   'nir_move_vec_src_uses_to_dest.c',

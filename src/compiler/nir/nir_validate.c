@@ -585,6 +585,14 @@ validate_intrinsic_instr(nir_intrinsic_instr *instr, validate_state *state)
       break;
    }
 
+   case nir_intrinsic_load_ubo_vec4: {
+      int bit_size = nir_dest_bit_size(instr->dest);
+      validate_assert(state, bit_size >= 8);
+      validate_assert(state, (nir_intrinsic_component(instr) +
+                              instr->num_components) * (bit_size / 8) <= 16);
+      break;
+   }
+
    case nir_intrinsic_load_ubo:
    case nir_intrinsic_load_ssbo:
    case nir_intrinsic_load_shared:
