@@ -18,7 +18,7 @@ struct zink_query {
 
    VkQueryPool query_pool;
    VkQueryPool xfb_query_pool;
-   unsigned last_checked_query, curr_query, num_queries;
+   unsigned curr_query, num_queries, last_start;
 
    VkQueryType vkqtype;
    unsigned index;
@@ -220,7 +220,7 @@ get_query_result(struct pipe_context *pctx,
    memset(results, 0, sizeof(results));
    uint64_t xfb_results[NUM_QUERIES * 2];
    memset(xfb_results, 0, sizeof(xfb_results));
-   int num_results = query->curr_query - query->last_checked_query;
+   int num_results = query->curr_query - query->last_start;
    int result_size = 1;
       /* these query types emit 2 values */
    if (query->type == PIPE_QUERY_PRIMITIVES_GENERATED ||
@@ -230,7 +230,7 @@ get_query_result(struct pipe_context *pctx,
    /* verify that we have the expected number of results pending */
    assert(query->curr_query <= ARRAY_SIZE(results) / result_size);
    VkResult status = vkGetQueryPoolResults(screen->dev, query->query_pool,
-                                           query->last_checked_query, num_results,
+                                           query->last_start, num_results,
                                            sizeof(results),
                                            results,
                                            sizeof(uint64_t),
@@ -240,7 +240,7 @@ get_query_result(struct pipe_context *pctx,
 
    if (query->type == PIPE_QUERY_PRIMITIVES_GENERATED) {
       status = vkGetQueryPoolResults(screen->dev, query->xfb_query_pool,
-                                              query->last_checked_query, num_results,
+                                              query->last_start, num_results,
                                               sizeof(xfb_results),
                                               xfb_results,
                                               2 * sizeof(uint64_t),
@@ -274,11 +274,11 @@ get_query_result(struct pipe_context *pctx,
          result->u64 += results[i];
          break;
       case PIPE_QUERY_PRIMITIVES_GENERATED:
-         if (query->have_xfb[query->last_checked_query + i / 2] || query->index)
+         if (query->have_xfb[query->last_start + i / 2] || query->index)
             result->u64 += xfb_results[i + 1];
          else
             /* if a given draw had a geometry shader, we need to use the second result */
-            result->u32 += ((uint32_t*)results)[i + query->have_gs[query->last_checked_query + i / 2]];
+            result->u32 += ((uint32_t*)results)[i + query->have_gs[query->last_start + i / 2]];
          break;
       case PIPE_QUERY_PRIMITIVES_EMITTED:
          /* A query pool created with this type will capture 2 integers -
@@ -295,7 +295,6 @@ get_query_result(struct pipe_context *pctx,
          unreachable("unexpected query type");
       }
    }
-   query->last_checked_query = query->curr_query;
 
    if (is_time_query(query))
       timestamp_to_nanoseconds(screen, &result->u64);
@@ -319,7 +318,7 @@ reset_pool(struct zink_context *ctx, struct zink_batch *batch, struct zink_query
       vkCmdResetQueryPool(batch->cmdbuf, q->xfb_query_pool, 0, q->num_queries);
    memset(q->have_gs, 0, sizeof(q->have_gs));
    memset(q->have_xfb, 0, sizeof(q->have_xfb));
-   q->last_checked_query = q->curr_query = 0;
+   q->last_start = q->curr_query = 0;
    q->needs_reset = false;
 }
 
@@ -366,6 +365,8 @@ zink_begin_query(struct pipe_context *pctx,
    struct zink_query *query = (struct zink_query *)q;
    struct zink_context *ctx = zink_context(pctx);
    struct zink_batch *batch = zink_curr_batch(ctx);
+
+   query->last_start = query->curr_query;
 
    util_query_clear_result(&query->accumulated_result, query->type);
 
@@ -518,11 +519,10 @@ zink_render_condition(struct pipe_context *pctx,
 
    if (query->use_64bit)
       flags |= VK_QUERY_RESULT_64_BIT;
-   int num_results = query->curr_query - query->last_checked_query;
-   vkCmdCopyQueryPoolResults(batch->cmdbuf, query->query_pool, query->last_checked_query, num_results,
+   int num_results = query->curr_query - query->last_start;
+   vkCmdCopyQueryPoolResults(batch->cmdbuf, query->query_pool, query->last_start, num_results,
                              res->buffer, 0, 0, flags);
 
-   query->last_checked_query = query->curr_query;
    VkConditionalRenderingFlagsEXT begin_flags = 0;
    if (condition)
       begin_flags = VK_CONDITIONAL_RENDERING_INVERTED_BIT_EXT;
