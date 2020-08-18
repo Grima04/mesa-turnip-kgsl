@@ -641,7 +641,21 @@ zink_draw_vbo(struct pipe_context *pctx,
    update_descriptors(ctx, screen, false);
 
    struct zink_batch *batch = zink_batch_rp(ctx);
-   vkCmdSetViewport(batch->cmdbuf, 0, ctx->gfx_pipeline_state.num_viewports, ctx->viewports);
+   VkViewport viewports[PIPE_MAX_VIEWPORTS] = {};
+   for (unsigned i = 0; i < ctx->gfx_pipeline_state.num_viewports; i++) {
+      VkViewport viewport = {
+         ctx->viewport_states[i].translate[0] - ctx->viewport_states[i].scale[0],
+         ctx->viewport_states[i].translate[1] - ctx->viewport_states[i].scale[1],
+         ctx->viewport_states[i].scale[0] * 2,
+         ctx->viewport_states[i].scale[1] * 2,
+         ctx->rast_state->base.clip_halfz ?
+            ctx->viewport_states[i].translate[2] :
+            ctx->viewport_states[i].translate[2] - ctx->viewport_states[i].scale[2],
+         ctx->viewport_states[i].translate[2] + ctx->viewport_states[i].scale[2]
+      };
+      viewports[i] = viewport;
+   }
+   vkCmdSetViewport(batch->cmdbuf, 0, ctx->gfx_pipeline_state.num_viewports, viewports);
    if (ctx->rast_state->base.scissor)
       vkCmdSetScissor(batch->cmdbuf, 0, ctx->gfx_pipeline_state.num_viewports, ctx->scissors);
    else if (ctx->fb_state.width && ctx->fb_state.height) {

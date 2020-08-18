@@ -525,18 +525,8 @@ zink_set_viewport_states(struct pipe_context *pctx,
 {
    struct zink_context *ctx = zink_context(pctx);
 
-   for (unsigned i = 0; i < num_viewports; ++i) {
-      VkViewport viewport = {
-         state[i].translate[0] - state[i].scale[0],
-         state[i].translate[1] - state[i].scale[1],
-         state[i].scale[0] * 2,
-         state[i].scale[1] * 2,
-         state[i].translate[2] - state[i].scale[2],
-         state[i].translate[2] + state[i].scale[2]
-      };
+   for (unsigned i = 0; i < num_viewports; ++i)
       ctx->viewport_states[start_slot + i] = state[i];
-      ctx->viewports[start_slot + i] = viewport;
-   }
    if (ctx->gfx_pipeline_state.num_viewports != start_slot + num_viewports)
       ctx->gfx_pipeline_state.dirty = true;
    ctx->gfx_pipeline_state.num_viewports = start_slot + num_viewports;
