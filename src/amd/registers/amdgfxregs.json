@@ -1487,6 +1487,19 @@
     {"name": "RE_Z", "value": 2},
     {"name": "EARLY_Z_THEN_RE_Z", "value": 3}
    ]
+  },
+  "ExcpEn": {
+   "entries": [
+    {"name": "INVALID", "value": 1},
+    {"name": "INPUT_DENORMAL", "value": 2},
+    {"name": "DIVIDE_BY_ZERO", "value": 4},
+    {"name": "OVERFLOW", "value": 8},
+    {"name": "UNDERFLOW", "value": 16},
+    {"name": "INEXACT", "value": 32},
+    {"name": "INT_DIVIDE_BY_ZERO", "value": 64},
+    {"name": "ADDRESS_WATCH", "value": 128},
+    {"name": "MEMORY_VIOLATION", "value": 256}
+   ]
   }
  },
  "register_mappings": [
@@ -11457,6 +11470,42 @@
    "map": {"at": 198988, "to": "mm"},
    "name": "WD_POS_BUF_BASE_HI",
    "type_ref": "VGT_TF_MEMORY_BASE_HI"
+  },
+  {
+   "chips": ["gfx8"],
+   "map": {"at": 2, "to": "hw"},
+   "name": "SQ_HW_REG_STATUS",
+   "type_ref": "SQ_WAVE_STATUS_vi"
+  },
+  {
+   "chips": ["gfx8"],
+   "map": {"at": 3, "to": "hw"},
+   "name": "SQ_HW_REG_TRAP_STS",
+   "type_ref": "SQ_WAVE_TRAP_STS"
+  },
+  {
+   "chips": ["gfx8"],
+   "map": {"at": 4, "to": "hw"},
+   "name": "SQ_HW_REG_HW_ID",
+   "type_ref": "SQ_WAVE_HW_ID_cik_vi"
+  },
+  {
+   "chips": ["gfx8"],
+   "map": {"at": 5, "to": "hw"},
+   "name": "SQ_HW_REG_GPR_ALLOC",
+   "type_ref": "SQ_WAVE_GPR_ALLOC"
+  },
+  {
+   "chips": ["gfx8"],
+   "map": {"at": 6, "to": "hw"},
+   "name": "SQ_HW_REG_LDS_ALLOC",
+   "type_ref": "SQ_WAVE_LDS_ALLOC"
+  },
+  {
+   "chips": ["gfx8"],
+   "map": {"at": 7, "to": "hw"},
+   "name": "SQ_HW_REG_IB_STS",
+   "type_ref": "SQ_WAVE_IB_STS_cik_vi"
   }
  ],
  "register_types": {
@@ -16047,6 +16096,80 @@
    "fields": [
     {"bits": [0, 7], "name": "PERF_SEL"},
     {"bits": [28, 31], "name": "PERF_MODE"}
+   ]
+  },
+  "SQ_WAVE_GPR_ALLOC": {
+   "fields": [
+    {"bits": [0, 5], "name": "VGPR_BASE"},
+    {"bits": [8, 13], "name": "VGPR_SIZE"},
+    {"bits": [16, 21], "name": "SGPR_BASE"},
+    {"bits": [24, 27], "name": "SGPR_SIZE"}
+   ]
+  },
+  "SQ_WAVE_LDS_ALLOC": {
+   "fields": [
+    {"bits": [0, 7], "name": "LDS_BASE"},
+    {"bits": [12, 20], "name": "LDS_SIZE"}
+   ]
+  },
+  "SQ_WAVE_TRAP_STS": {
+   "fields": [
+    {"bits": [0, 8], "enum_ref": "ExcpEn", "name": "EXCP"},
+    {"bits": [10, 10], "name": "SAVE_CTX_vi"},
+    {"bits": [16, 21], "name": "EXCP_CYCLE"},
+    {"bits": [29, 31], "name": "DP_RATE"}
+   ]
+  },
+  "SQ_WAVE_STATUS_vi": {
+   "fields": [
+    {"bits": [0, 0], "name": "SCC"},
+    {"bits": [1, 2], "name": "SPI_PRIO"},
+    {"bits": [3, 4], "name": "USER_PRIO"},
+    {"bits": [5, 5], "name": "PRIV"},
+    {"bits": [6, 6], "name": "TRAP_EN"},
+    {"bits": [7, 7], "name": "TTRACE_EN"},
+    {"bits": [8, 8], "name": "EXPORT_RDY"},
+    {"bits": [9, 9], "name": "EXECZ"},
+    {"bits": [10, 10], "name": "VCCZ"},
+    {"bits": [11, 11], "name": "IN_TG"},
+    {"bits": [12, 12], "name": "IN_BARRIER"},
+    {"bits": [13, 13], "name": "HALT"},
+    {"bits": [14, 14], "name": "TRAP"},
+    {"bits": [15, 15], "name": "TTRACE_CU_EN"},
+    {"bits": [16, 16], "name": "VALID"},
+    {"bits": [17, 17], "name": "ECC_ERR"},
+    {"bits": [18, 18], "name": "SKIP_EXPORT"},
+    {"bits": [19, 19], "name": "PERF_EN"},
+    {"bits": [20, 20], "name": "COND_DBG_USER"},
+    {"bits": [21, 21], "name": "COND_DBG_SYS"},
+    {"bits": [22, 22], "name": "ALLOW_REPLAY"},
+    {"bits": [23, 23], "name": "INST_ATC"},
+    {"bits": [27, 27], "name": "MUST_EXPORT"}
+   ]
+  },
+  "SQ_WAVE_IB_STS_cik_vi": {
+   "fields": [
+    {"bits": [0, 3], "name": "VM_CNT"},
+    {"bits": [4, 6], "name": "EXP_CNT"},
+    {"bits": [8, 11], "name": "LGKM_CNT"},
+    {"bits": [12, 14], "name": "VALU_CNT"},
+    {"bits": [15, 15], "name": "FIRST_REPLAY_vi"},
+    {"bits": [16, 19], "name": "RCNT_vi"}
+   ]
+  },
+  "SQ_WAVE_HW_ID_cik_vi": {
+   "fields": [
+    {"bits": [0, 3], "name": "WAVE_ID"},
+    {"bits": [4, 5], "name": "SIMD_ID"},
+    {"bits": [6, 7], "name": "PIPE_ID"},
+    {"bits": [8, 11], "name": "CU_ID"},
+    {"bits": [12, 12], "name": "SH_ID"},
+    {"bits": [13, 14], "name": "SE_ID"},
+    {"bits": [16, 19], "name": "TG_ID"},
+    {"bits": [20, 23], "name": "VM_ID"},
+    {"bits": [24, 26], "name": "QUEUE_ID"},
+    {"bits": [27, 29], "name": "STATE_ID"},
+    {"bits": [30, 31], "name": "ME_ID"}
    ]
   }
  }
