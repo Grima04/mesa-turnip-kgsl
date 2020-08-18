@@ -49,9 +49,8 @@ for var in \
     TU_DEBUG \
     VK_DRIVER \
     ; do
-  val=`echo ${!var} | sed 's|"||g'`
   if [ -n "${!var+x}" ]; then
-    echo "export $var=\"${val}\"" >> $rootfs_dst/set-job-env-vars.sh
+    echo "export $var=${!var@Q}" >> $rootfs_dst/set-job-env-vars.sh
   fi
 done
 echo "Variables passed through:"
