@@ -540,7 +540,6 @@ panfrost_fs_required(
 static void
 panfrost_frag_meta_blend_update(struct panfrost_context *ctx,
                                 struct mali_shader_meta *fragmeta,
-                                void *rts,
                                 struct panfrost_blend_final *blend)
 {
         struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
@@ -631,8 +630,15 @@ panfrost_frag_meta_blend_update(struct panfrost_context *ctx,
                 SET_BIT(fragmeta->bifrost1.unk1, MALI_BIFROST_EARLY_Z,
                         !fs->can_discard && !fs->writes_depth && no_blend);
         }
+}
 
-        /* Additional blend descriptor tacked on for jobs using MFBD */
+static void
+panfrost_emit_blend(struct panfrost_batch *batch, void *rts,
+                struct panfrost_blend_final *blend)
+{
+        const struct panfrost_device *dev = pan_device(batch->ctx->base.screen);
+        struct panfrost_shader_state *fs = panfrost_get_shader_state(batch->ctx, PIPE_SHADER_FRAGMENT);
+        unsigned rt_count = batch->key.nr_cbufs;
 
         struct bifrost_blend_rt *brts = rts;
         struct midgard_blend_rt *mrts = rts;
@@ -649,12 +655,12 @@ panfrost_frag_meta_blend_update(struct panfrost_context *ctx,
                         flags = 0x200;
                         batch->draws |= (PIPE_CLEAR_COLOR0 << i);
 
-                        bool is_srgb = util_format_is_srgb(ctx->pipe_framebuffer.cbufs[i]->format);
+                        bool is_srgb = util_format_is_srgb(batch->key.cbufs[i]->format);
 
                         SET_BIT(flags, MALI_BLEND_MRT_SHADER, blend[i].is_shader);
                         SET_BIT(flags, MALI_BLEND_LOAD_TIB, !blend[i].no_blending);
                         SET_BIT(flags, MALI_BLEND_SRGB, is_srgb);
-                        SET_BIT(flags, MALI_BLEND_NO_DITHER, !ctx->blend->base.dither);
+                        SET_BIT(flags, MALI_BLEND_NO_DITHER, !batch->ctx->blend->base.dither);
                 }
 
                 if (dev->quirks & IS_BIFROST) {
@@ -670,7 +676,7 @@ panfrost_frag_meta_blend_update(struct panfrost_context *ctx,
                                 brts[i].shader = blend[i].shader.gpu;
                                 brts[i].unk2 = 0x0;
                         } else {
-                                enum pipe_format format = ctx->pipe_framebuffer.cbufs[i]->format;
+                                enum pipe_format format = batch->key.cbufs[i]->format;
                                 const struct util_format_description *format_desc;
                                 format_desc = util_format_description(format);
 
@@ -705,7 +711,6 @@ panfrost_frag_meta_blend_update(struct panfrost_context *ctx,
 static void
 panfrost_frag_shader_meta_init(struct panfrost_context *ctx,
                                struct mali_shader_meta *fragmeta,
-                               void *rts,
                                struct panfrost_blend_final *blend)
 {
         const struct panfrost_device *dev = pan_device(ctx->base.screen);
@@ -765,7 +770,7 @@ panfrost_frag_shader_meta_init(struct panfrost_context *ctx,
 
         panfrost_frag_meta_rasterizer_update(ctx, fragmeta);
         panfrost_frag_meta_zsa_update(ctx, fragmeta);
-        panfrost_frag_meta_blend_update(ctx, fragmeta, rts, blend);
+        panfrost_frag_meta_blend_update(ctx, fragmeta, blend);
 }
 
 void
@@ -818,7 +823,10 @@ panfrost_emit_shader_meta(struct panfrost_batch *batch,
                 for (unsigned c = 0; c < ctx->pipe_framebuffer.nr_cbufs; ++c)
                         blend[c] = panfrost_get_blend_for_context(ctx, c);
 
-                panfrost_frag_shader_meta_init(ctx, &meta, rts, blend);
+                panfrost_frag_shader_meta_init(ctx, &meta, blend);
+
+                if (!(dev->quirks & MIDGARD_SFBD))
+                        panfrost_emit_blend(batch, rts, blend);
 
                 xfer = panfrost_pool_alloc_aligned(&batch->pool, desc_size, sizeof(meta));
 
