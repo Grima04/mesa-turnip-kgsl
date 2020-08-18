@@ -380,6 +380,20 @@ struct PhysReg {
 static constexpr PhysReg m0{124};
 static constexpr PhysReg vcc{106};
 static constexpr PhysReg vcc_hi{107};
+static constexpr PhysReg tba{108}; /* GFX6-GFX8 */
+static constexpr PhysReg tma{110}; /* GFX6-GFX8 */
+static constexpr PhysReg ttmp0{112};
+static constexpr PhysReg ttmp1{113};
+static constexpr PhysReg ttmp2{114};
+static constexpr PhysReg ttmp3{115};
+static constexpr PhysReg ttmp4{116};
+static constexpr PhysReg ttmp5{117};
+static constexpr PhysReg ttmp6{118};
+static constexpr PhysReg ttmp7{119};
+static constexpr PhysReg ttmp8{120};
+static constexpr PhysReg ttmp9{121};
+static constexpr PhysReg ttmp10{122};
+static constexpr PhysReg ttmp11{123};
 static constexpr PhysReg sgpr_null{125}; /* GFX10+ */
 static constexpr PhysReg exec{126};
 static constexpr PhysReg exec_lo{126};
