@@ -255,31 +255,30 @@ _eglFindDisplay(_EGLPlatformType plat, void *plat_dpy,
    for (disp = _eglGlobal.DisplayList; disp; disp = disp->Next) {
       if (disp->Platform == plat && disp->PlatformDisplay == plat_dpy &&
           _eglSameAttribs(disp->Options.Attribs, attrib_list))
-         break;
+         goto out;
    }
 
    /* create a new display */
-   if (!disp) {
-      disp = calloc(1, sizeof(_EGLDisplay));
-      if (disp) {
-         mtx_init(&disp->Mutex, mtx_plain);
-         disp->Platform = plat;
-         disp->PlatformDisplay = plat_dpy;
-         num_attribs = _eglNumAttribs(attrib_list);
-         if (num_attribs) {
-            disp->Options.Attribs = calloc(num_attribs, sizeof(EGLAttrib));
-            if (!disp->Options.Attribs) {
-               free(disp);
-               disp = NULL;
-               goto out;
-            }
-            memcpy(disp->Options.Attribs, attrib_list,
-                   num_attribs * sizeof(EGLAttrib));
+   assert(!disp);
+   disp = calloc(1, sizeof(_EGLDisplay));
+   if (disp) {
+      mtx_init(&disp->Mutex, mtx_plain);
+      disp->Platform = plat;
+      disp->PlatformDisplay = plat_dpy;
+      num_attribs = _eglNumAttribs(attrib_list);
+      if (num_attribs) {
+         disp->Options.Attribs = calloc(num_attribs, sizeof(EGLAttrib));
+         if (!disp->Options.Attribs) {
+            free(disp);
+            disp = NULL;
+            goto out;
          }
-         /* add to the display list */
-         disp->Next = _eglGlobal.DisplayList;
-         _eglGlobal.DisplayList = disp;
+         memcpy(disp->Options.Attribs, attrib_list,
+                num_attribs * sizeof(EGLAttrib));
       }
+      /* add to the display list */
+      disp->Next = _eglGlobal.DisplayList;
+      _eglGlobal.DisplayList = disp;
    }
 
 out:
