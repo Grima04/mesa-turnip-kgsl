@@ -488,6 +488,9 @@ radv_create_gs_copy_shader(struct radv_device *device, struct nir_shader *nir,
 			   bool multiview,  bool keep_shader_info,
 			   bool keep_statistic_info);
 
+struct radv_shader_variant *
+radv_create_trap_handler_shader(struct radv_device *device);
+
 void
 radv_shader_variant_destroy(struct radv_device *device,
 			    struct radv_shader_variant *variant);

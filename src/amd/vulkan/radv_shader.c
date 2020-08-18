@@ -1202,6 +1202,7 @@ shader_variant_compile(struct radv_device *device,
 		       struct radv_shader_info *info,
 		       struct radv_nir_compiler_options *options,
 		       bool gs_copy_shader,
+		       bool trap_handler_shader,
 		       bool keep_shader_info,
 		       bool keep_statistic_info,
 		       struct radv_shader_binary **binary_out)
@@ -1234,6 +1235,8 @@ shader_variant_compile(struct radv_device *device,
 	args.options = options;
 	args.shader_info = info;
 	args.is_gs_copy_shader = gs_copy_shader;
+	args.is_trap_handler_shader = trap_handler_shader;
+
 	radv_declare_shader_args(&args, 
 				 gs_copy_shader ? MESA_SHADER_VERTEX
 						: shaders[shader_count - 1]->info.stage,
@@ -1271,7 +1274,7 @@ shader_variant_compile(struct radv_device *device,
 
 	if (keep_shader_info) {
 		variant->nir_string = radv_dump_nir_shaders(shaders, shader_count);
-		if (!gs_copy_shader && !module->nir) {
+		if (!gs_copy_shader && !trap_handler_shader && !module->nir) {
 			variant->spirv = malloc(module->size);
 			if (!variant->spirv) {
 				free(variant);
@@ -1314,7 +1317,8 @@ radv_shader_variant_compile(struct radv_device *device,
 	options.robust_buffer_access = device->robust_buffer_access;
 
 	return shader_variant_compile(device, module, shaders, shader_count, stage, info,
-				     &options, false, keep_shader_info, keep_statistic_info, binary_out);
+				      &options, false, false,
+				      keep_shader_info, keep_statistic_info, binary_out);
 }
 
 struct radv_shader_variant *
@@ -1332,7 +1336,33 @@ radv_create_gs_copy_shader(struct radv_device *device,
 	options.key.has_multiview_view_index = multiview;
 
 	return shader_variant_compile(device, NULL, &shader, 1, stage,
-				      info, &options, true, keep_shader_info, keep_statistic_info, binary_out);
+				      info, &options, true, false,
+				      keep_shader_info, keep_statistic_info, binary_out);
+}
+
+struct radv_shader_variant *
+radv_create_trap_handler_shader(struct radv_device *device)
+{
+	struct radv_nir_compiler_options options = {0};
+	struct radv_shader_variant *shader = NULL;
+	struct radv_shader_binary *binary = NULL;
+	struct radv_shader_info info = {0};
+
+	nir_builder b;
+	nir_builder_init_simple_shader(&b, NULL, MESA_SHADER_COMPUTE, NULL);
+	b.shader->info.name = ralloc_strdup(b.shader, "meta_trap_handler");
+
+	options.explicit_scratch_args = true;
+	info.wave_size = 64;
+
+	shader = shader_variant_compile(device, NULL, &b.shader, 1,
+					MESA_SHADER_COMPUTE, &info, &options,
+					false, true, true, false, &binary);
+
+	ralloc_free(b.shader);
+	free(binary);
+
+	return shader;
 }
 
 void

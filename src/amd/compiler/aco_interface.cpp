@@ -72,6 +72,8 @@ void aco_compile_shader(unsigned shader_count,
    /* Instruction Selection */
    if (args->is_gs_copy_shader)
       aco::select_gs_copy_shader(program.get(), shaders[0], &config, args);
+   else if (args->is_trap_handler_shader)
+      aco::select_trap_handler_shader(program.get(), shaders[0], &config, args);
    else
       aco::select_program(program.get(), shader_count, shaders, &config, args);
    if (args->options->dump_preoptir) {
