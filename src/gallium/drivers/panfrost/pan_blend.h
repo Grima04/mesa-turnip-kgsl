@@ -80,6 +80,9 @@ struct panfrost_blend_rt {
         /* Mask of blend color components read */
         unsigned constant_mask;
 
+        /* Properties of the blend mode */
+        bool opaque, load_dest, no_colour;
+
         /* Regardless of fixed-function blending, this is a map of pipe_format
          * to panfrost_blend_shader */
 
@@ -99,8 +102,11 @@ struct panfrost_blend_final {
         /* Set for a shader, clear for an equation */
         bool is_shader;
 
-        /* Clear if the destination needs to be loaded from the tilebuffer */
-        bool no_blending;
+        /* Set if this is the replace mode */
+        bool opaque;
+
+        /* Set if destination is loaded */
+        bool load_dest;
 
         /* Set if the colour mask is 0x0 (nothing is written) */
         bool no_colour;

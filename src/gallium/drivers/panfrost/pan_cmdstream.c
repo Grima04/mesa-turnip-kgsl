@@ -615,7 +615,7 @@ panfrost_frag_meta_blend_update(struct panfrost_context *ctx,
                 }
 
                 SET_BIT(fragmeta->unknown2_3, MALI_CAN_DISCARD,
-                        !blend[0].no_blending || fs->can_discard); 
+                        blend[0].load_dest);
 
                 batch->draws |= PIPE_CLEAR_COLOR0;
                 return;
@@ -625,7 +625,7 @@ panfrost_frag_meta_blend_update(struct panfrost_context *ctx,
                 bool no_blend = true;
 
                 for (unsigned i = 0; i < rt_count; ++i)
-                        no_blend &= (blend[i].no_blending | blend[i].no_colour);
+                        no_blend &= (!blend[i].load_dest | blend[i].no_colour);
 
                 SET_BIT(fragmeta->bifrost1.unk1, MALI_BIFROST_EARLY_Z,
                         !fs->can_discard && !fs->writes_depth && no_blend);
@@ -652,13 +652,15 @@ panfrost_emit_blend(struct panfrost_batch *batch, void *rts,
                 unsigned flags = 0;
 
                 pan_pack(&flags, BLEND_FLAGS, cfg) {
-                        if (blend[i].no_colour)
+                        if (blend[i].no_colour) {
+                                cfg.enable = false;
                                 break;
+                        }
 
                         batch->draws |= (PIPE_CLEAR_COLOR0 << i);
 
                         cfg.srgb = util_format_is_srgb(batch->key.cbufs[i]->format);
-                        cfg.load_destination = !blend[i].no_blending; /* XXX */
+                        cfg.load_destination = blend[i].load_dest;
                         cfg.dither_disable = !batch->ctx->blend->base.dither;
 
                         if (!(dev->quirks & IS_BIFROST))
@@ -693,7 +695,7 @@ panfrost_emit_blend(struct panfrost_batch *batch, void *rts,
                                  * mode (equivalent to rgb_mode = alpha_mode =
                                  * x122, colour mask = 0xF). 0x1a allows
                                  * blending. */
-                                brts[i].unk2 = blend[i].no_blending ? 0x19 : 0x1a;
+                                brts[i].unk2 = blend[i].opaque ? 0x19 : 0x1a;
 
                                 brts[i].shader_type = fs->blend_types[i];
                         }

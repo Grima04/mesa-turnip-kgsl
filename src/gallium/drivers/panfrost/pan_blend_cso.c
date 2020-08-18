@@ -27,6 +27,7 @@
 
 #include <stdio.h>
 #include "util/u_memory.h"
+#include "gallium/auxiliary/util/u_blend.h"
 #include "pan_blend_shaders.h"
 #include "pan_blending.h"
 #include "pan_bo.h"
@@ -118,6 +119,7 @@ panfrost_create_blend_state(struct pipe_context *pipe,
 
                 /* Logic ops are always shader */
                 if (blend->logicop_enable) {
+                        rt->load_dest = true;
                         continue;
                 }
 
@@ -127,10 +129,17 @@ panfrost_create_blend_state(struct pipe_context *pipe,
                                         &rt->equation,
                                         &rt->constant_mask);
 
-                /* Regardless if that works, we also need to initialize
-                 * the blend shaders */
+                if (rt->has_fixed_function) {
+                        rt->opaque =
+                                (rt->equation.rgb_mode == 0x122) &&
+                                (rt->equation.alpha_mode == 0x122) &&
+                                (rt->equation.color_mask == 0xf);
+                }
 
-                rt->shaders = _mesa_hash_table_u64_create(so);
+                rt->load_dest = util_blend_uses_dest(pipe)
+                        || pipe.colormask != 0xF;
+
+                rt->no_colour = pipe.colormask == 0x0;
         }
 
         return so;
@@ -230,17 +239,13 @@ panfrost_get_blend_for_context(struct panfrost_context *ctx, unsigned rti)
                             &constant,
                             ctx->blend_color.color,
                             rt->constant_mask)) {
-                        bool no_blending =
-                                (rt->equation.rgb_mode == 0x122) &&
-                                (rt->equation.alpha_mode == 0x122) &&
-                                (rt->equation.color_mask == 0xf);
-
                         struct panfrost_blend_final final = {
                                 .equation = {
                                         .equation = &rt->equation,
                                         .constant = constant
                                 },
-                                .no_blending = no_blending,
+                                .load_dest = rt->load_dest,
+                                .opaque = rt->opaque,
                                 .no_colour = (rt->equation.color_mask == 0x0)
                         };
 
@@ -273,7 +278,8 @@ panfrost_get_blend_for_context(struct panfrost_context *ctx, unsigned rti)
                         .work_count = shader->work_count,
                         .first_tag = shader->first_tag,
                         .gpu = bo->gpu,
-                }
+                },
+                .load_dest = rt->load_dest,
         };
 
         return final;
