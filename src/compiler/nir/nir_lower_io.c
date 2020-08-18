@@ -873,6 +873,10 @@ build_addr_for_var(nir_builder *b, nir_variable *var,
          base_addr = nir_load_constant_base_ptr(b, num_comps, bit_size);
          break;
 
+      case nir_var_mem_shared:
+         base_addr = nir_load_shared_base_ptr(b, num_comps, bit_size);
+         break;
+
       default:
          unreachable("Unsupported variable mode");
       }

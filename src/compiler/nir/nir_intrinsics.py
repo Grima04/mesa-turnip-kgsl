@@ -654,6 +654,7 @@ system_value("aa_line_width", 1)
 # BASE=0 for global/shader, BASE=1 for local/function
 system_value("scratch_base_ptr", 0, bit_sizes=[32,64], indices=[BASE])
 system_value("constant_base_ptr", 0, bit_sizes=[32,64])
+system_value("shared_base_ptr", 0, bit_sizes=[32,64])
 
 # Driver-specific viewport scale/offset parameters.
 #
