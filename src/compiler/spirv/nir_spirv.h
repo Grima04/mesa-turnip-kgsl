@@ -78,6 +78,7 @@ struct spirv_to_nir_options {
    nir_address_format shared_addr_format;
    nir_address_format global_addr_format;
    nir_address_format temp_addr_format;
+   nir_address_format constant_addr_format;
 
    /* Whether UniformConstant memory should be treated as normal global memory.
     * This is usefull for CL 2.0 implementations with fine grain system SVM

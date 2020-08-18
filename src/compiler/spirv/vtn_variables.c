@@ -1807,8 +1807,8 @@ vtn_storage_class_to_mode(struct vtn_builder *b,
             mode = vtn_variable_mode_cross_workgroup;
             nir_mode = nir_var_mem_global;
          } else {
-            mode = vtn_variable_mode_ubo;
-            nir_mode = nir_var_mem_ubo;
+            mode = vtn_variable_mode_constant;
+            nir_mode = nir_var_mem_constant;
          }
       } else {
          mode = vtn_variable_mode_uniform;
@@ -1884,6 +1884,9 @@ vtn_mode_to_address_format(struct vtn_builder *b, enum vtn_variable_mode mode)
 
    case vtn_variable_mode_cross_workgroup:
       return b->options->global_addr_format;
+
+   case vtn_variable_mode_constant:
+      return b->options->constant_addr_format;
 
    case vtn_variable_mode_function:
       if (b->physical_ptrs)
@@ -2175,6 +2178,7 @@ vtn_create_variable(struct vtn_builder *b, struct vtn_value *val,
    case vtn_variable_mode_private:
    case vtn_variable_mode_uniform:
    case vtn_variable_mode_atomic_counter:
+   case vtn_variable_mode_constant:
       /* For these, we create the variable normally */
       var->var = rzalloc(b->shader, nir_variable);
       var->var->name = ralloc_strdup(var->var, val->name);
