@@ -110,24 +110,22 @@ panfrost_create_blend_state(struct pipe_context *pipe,
         assert(!blend->alpha_to_one);
 
         for (unsigned c = 0; c < PIPE_MAX_COLOR_BUFS; ++c) {
+                unsigned g = blend->independent_blend_enable ? c : 0;
+                struct pipe_rt_blend_state pipe = blend->rt[g];
+
                 struct panfrost_blend_rt *rt = &so->rt[c];
+                rt->shaders = _mesa_hash_table_u64_create(so);
 
-                /* There are two paths. First, we would like to try a
-                 * fixed-function if we can */
-
-                /* Without indep blending, the first RT settings replicate */
-
-                if (!blend->logicop_enable) {
-                        unsigned g =
-                                blend->independent_blend_enable ? c : 0;
-
-                        rt->has_fixed_function =
-                                panfrost_make_fixed_blend_mode(
-                                        &blend->rt[g],
-                                        &rt->equation,
-                                        &rt->constant_mask,
-                                        blend->rt[g].colormask);
+                /* Logic ops are always shader */
+                if (blend->logicop_enable) {
+                        continue;
                 }
+
+                rt->has_fixed_function =
+                                panfrost_make_fixed_blend_mode(
+                                        pipe,
+                                        &rt->equation,
+                                        &rt->constant_mask);
 
                 /* Regardless if that works, we also need to initialize
                  * the blend shaders */
