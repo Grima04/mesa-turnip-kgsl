@@ -4551,6 +4551,10 @@ radv_queue_submit_deferred(struct radv_deferred_queue_submission *submission,
 			if (queue->device->trace_bo) {
 				radv_check_gpu_hangs(queue, cs_array[j]);
 			}
+
+			if (queue->device->tma_bo) {
+				radv_check_trap_handler(queue);
+			}
 		}
 
 		free(cs_array);

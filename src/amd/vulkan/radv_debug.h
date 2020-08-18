@@ -84,5 +84,6 @@ radv_dump_enabled_options(struct radv_device *device, FILE *f);
 
 bool radv_trap_handler_init(struct radv_device *device);
 void radv_trap_handler_finish(struct radv_device *device);
+void radv_check_trap_handler(struct radv_queue *queue);
 
 #endif
