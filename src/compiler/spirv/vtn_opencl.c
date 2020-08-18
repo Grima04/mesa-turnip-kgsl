@@ -238,8 +238,6 @@ nir_alu_op_for_opencl_opcode(struct vtn_builder *b,
    case OpenCLstd_SAdd_sat: return nir_op_iadd_sat;
    case OpenCLstd_UAdd_sat: return nir_op_uadd_sat;
    case OpenCLstd_Ceil: return nir_op_fceil;
-   case OpenCLstd_Exp2: return nir_op_fexp2;
-   case OpenCLstd_Log2: return nir_op_flog2;
    case OpenCLstd_Floor: return nir_op_ffloor;
    case OpenCLstd_SHadd: return nir_op_ihadd;
    case OpenCLstd_UHadd: return nir_op_uhadd;
@@ -264,7 +262,6 @@ nir_alu_op_for_opencl_opcode(struct vtn_builder *b,
    case OpenCLstd_SMul_hi: return nir_op_imul_high;
    case OpenCLstd_UMul_hi: return nir_op_umul_high;
    case OpenCLstd_Popcount: return nir_op_bit_count;
-   case OpenCLstd_Pow: return nir_op_fpow;
    case OpenCLstd_Remainder: return nir_op_frem;
    case OpenCLstd_SRhadd: return nir_op_irhadd;
    case OpenCLstd_URhadd: return nir_op_urhadd;
@@ -764,8 +761,6 @@ vtn_handle_opencl_instruction(struct vtn_builder *b, SpvOp ext_opcode,
    case OpenCLstd_SAdd_sat:
    case OpenCLstd_UAdd_sat:
    case OpenCLstd_Ceil:
-   case OpenCLstd_Exp2:
-   case OpenCLstd_Log2:
    case OpenCLstd_Floor:
    case OpenCLstd_Fma:
    case OpenCLstd_Fmax:
@@ -790,7 +785,6 @@ vtn_handle_opencl_instruction(struct vtn_builder *b, SpvOp ext_opcode,
    case OpenCLstd_SMul_hi:
    case OpenCLstd_UMul_hi:
    case OpenCLstd_Popcount:
-   case OpenCLstd_Pow:
    case OpenCLstd_Remainder:
    case OpenCLstd_SRhadd:
    case OpenCLstd_URhadd:
@@ -858,10 +852,12 @@ vtn_handle_opencl_instruction(struct vtn_builder *b, SpvOp ext_opcode,
    case OpenCLstd_Fract:
    case OpenCLstd_Frexp:
    case OpenCLstd_Exp:
+   case OpenCLstd_Exp2:
    case OpenCLstd_Expm1:
    case OpenCLstd_Exp10:
    case OpenCLstd_Ilogb:
    case OpenCLstd_Log:
+   case OpenCLstd_Log2:
    case OpenCLstd_Log10:
    case OpenCLstd_Log1p:
    case OpenCLstd_Logb:
@@ -881,6 +877,7 @@ vtn_handle_opencl_instruction(struct vtn_builder *b, SpvOp ext_opcode,
    case OpenCLstd_Lgamma:
    case OpenCLstd_Lgamma_r:
    case OpenCLstd_Tgamma:
+   case OpenCLstd_Pow:
    case OpenCLstd_Powr:
    case OpenCLstd_Pown:
    case OpenCLstd_Rootn:
