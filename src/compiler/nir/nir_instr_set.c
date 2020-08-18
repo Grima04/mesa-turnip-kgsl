@@ -249,6 +249,10 @@ hash_intrinsic(uint32_t hash, const nir_intrinsic_instr *instr)
    }
 
    hash = XXH32(instr->const_index, info->num_indices * sizeof(instr->const_index[0]), hash);
+
+   for (unsigned i = 0; i < nir_intrinsic_infos[instr->intrinsic].num_srcs; i++)
+      hash = hash_src(hash, &instr->src[i]);
+
    return hash;
 }
 
