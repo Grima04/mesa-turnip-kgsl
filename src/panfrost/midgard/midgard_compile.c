@@ -2855,7 +2855,6 @@ midgard_compile_shader_nir(nir_shader *nir, panfrost_program *program, bool is_b
         /* Initialize at a global (not block) level hash tables */
 
         ctx->ssa_constants = _mesa_hash_table_u64_create(NULL);
-        ctx->hash_to_temp = _mesa_hash_table_u64_create(NULL);
 
         /* Lower gl_Position pre-optimisation, but after lowering vars to ssa
          * (so we don't accidentally duplicate the epilogue since mesa/st has
