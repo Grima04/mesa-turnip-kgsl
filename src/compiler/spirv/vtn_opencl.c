@@ -550,6 +550,10 @@ handle_special(struct vtn_builder *b, uint32_t opcode,
       return nir_fmul_imm(nb, nir_flog2(nb, srcs[0]), log(2) / log(10));
    case OpenCLstd_Native_tan:
       return nir_ftan(nb, srcs[0]);
+   case OpenCLstd_Ldexp:
+      if (nb->shader->options->lower_ldexp)
+         break;
+      return nir_ldexp(nb, srcs[0], srcs[1]);
    default:
       break;
    }
