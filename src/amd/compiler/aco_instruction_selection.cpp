@@ -11104,4 +11104,64 @@ void select_gs_copy_shader(Program *program, struct nir_shader *gs_shader,
 
    cleanup_cfg(program);
 }
+
+void select_trap_handler_shader(Program *program, struct nir_shader *shader,
+                                ac_shader_config* config,
+                                struct radv_shader_args *args)
+{
+   assert(args->options->chip_class == GFX8);
+
+   init_program(program, compute_cs, args->shader_info,
+                args->options->chip_class, args->options->family, config);
+
+   isel_context ctx = {};
+   ctx.program = program;
+   ctx.args = args;
+   ctx.options = args->options;
+   ctx.stage = program->stage;
+
+   ctx.block = ctx.program->create_and_insert_block();
+   ctx.block->loop_nest_depth = 0;
+   ctx.block->kind = block_kind_top_level;
+
+   program->workgroup_size = 1; /* XXX */
+
+   add_startpgm(&ctx);
+   append_logical_start(ctx.block);
+
+   Builder bld(ctx.program, ctx.block);
+
+   /* Load the buffer descriptor from TMA. */
+   bld.smem(aco_opcode::s_load_dwordx4, Definition(PhysReg{ttmp4}, s4),
+            Operand(PhysReg{tma}, s2), Operand(0u));
+
+   /* Store TTMP0-TTMP1. */
+   bld.smem(aco_opcode::s_buffer_store_dwordx2, Operand(PhysReg{ttmp4}, s4),
+            Operand(0u), Operand(PhysReg{ttmp0}, s2), memory_sync_info(), true);
+
+   uint32_t hw_regs_idx[] = {
+      2, /* HW_REG_STATUS */
+      3, /* HW_REG_TRAP_STS */
+      4, /* HW_REG_HW_ID */
+      7, /* HW_REG_IB_STS */
+   };
+
+   /* Store some hardware registers. */
+   for (unsigned i = 0; i < ARRAY_SIZE(hw_regs_idx); i++) {
+      /* "((size - 1) << 11) | register" */
+      bld.sopk(aco_opcode::s_getreg_b32, Definition(PhysReg{ttmp8}, s1),
+               ((20 - 1) << 11) | hw_regs_idx[i]);
+
+      bld.smem(aco_opcode::s_buffer_store_dword, Operand(PhysReg{ttmp4}, s4),
+               Operand(8u + i * 4), Operand(PhysReg{ttmp8}, s1), memory_sync_info(), true);
+   }
+
+   program->config->float_mode = program->blocks[0].fp_mode.val;
+
+   append_logical_end(ctx.block);
+   ctx.block->kind |= block_kind_uniform;
+   bld.sopp(aco_opcode::s_endpgm);
+
+   cleanup_cfg(program);
+}
 }
