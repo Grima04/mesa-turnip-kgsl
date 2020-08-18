@@ -784,6 +784,8 @@ vtn_handle_opencl_instruction(struct vtn_builder *b, SpvOp ext_opcode,
    case OpenCLstd_Fast_distance:
    case OpenCLstd_Fast_length:
    case OpenCLstd_Fast_normalize:
+   case OpenCLstd_Half_rsqrt:
+   case OpenCLstd_Half_sqrt:
    case OpenCLstd_Length:
    case OpenCLstd_Mad:
    case OpenCLstd_Maxmag:
@@ -803,7 +805,61 @@ vtn_handle_opencl_instruction(struct vtn_builder *b, SpvOp ext_opcode,
    case OpenCLstd_Native_exp10:
    case OpenCLstd_Native_log:
    case OpenCLstd_Native_log10:
+   case OpenCLstd_Acos:
+   case OpenCLstd_Acosh:
+   case OpenCLstd_Acospi:
+   case OpenCLstd_Asin:
+   case OpenCLstd_Asinh:
+   case OpenCLstd_Asinpi:
+   case OpenCLstd_Atan:
+   case OpenCLstd_Atan2:
+   case OpenCLstd_Atanh:
+   case OpenCLstd_Atanpi:
+   case OpenCLstd_Atan2pi:
+   case OpenCLstd_Fract:
+   case OpenCLstd_Frexp:
+   case OpenCLstd_Exp:
+   case OpenCLstd_Expm1:
+   case OpenCLstd_Exp10:
+   case OpenCLstd_Ilogb:
+   case OpenCLstd_Log:
+   case OpenCLstd_Log10:
+   case OpenCLstd_Log1p:
+   case OpenCLstd_Logb:
+   case OpenCLstd_Ldexp:
+   case OpenCLstd_Cosh:
+   case OpenCLstd_Cospi:
+   case OpenCLstd_Sinh:
+   case OpenCLstd_Sinpi:
+   case OpenCLstd_Tan:
+   case OpenCLstd_Tanh:
+   case OpenCLstd_Tanpi:
+   case OpenCLstd_Cbrt:
+   case OpenCLstd_Erfc:
+   case OpenCLstd_Erf:
+   case OpenCLstd_Lgamma:
+   case OpenCLstd_Lgamma_r:
+   case OpenCLstd_Tgamma:
+   case OpenCLstd_Powr:
+   case OpenCLstd_Pown:
+   case OpenCLstd_Rootn:
+   case OpenCLstd_Remquo:
+   case OpenCLstd_Hypot:
+   case OpenCLstd_Sincos:
+   case OpenCLstd_Modf:
+   case OpenCLstd_UMad_sat:
+   case OpenCLstd_SMad_sat:
    case OpenCLstd_Native_tan:
+   case OpenCLstd_Half_cos:
+   case OpenCLstd_Half_exp:
+   case OpenCLstd_Half_exp2:
+   case OpenCLstd_Half_exp10:
+   case OpenCLstd_Half_log:
+   case OpenCLstd_Half_log2:
+   case OpenCLstd_Half_log10:
+   case OpenCLstd_Half_powr:
+   case OpenCLstd_Half_sin:
+   case OpenCLstd_Half_tan:
       handle_instr(b, cl_opcode, w, count, handle_special);
       return true;
    case OpenCLstd_Vloadn:
