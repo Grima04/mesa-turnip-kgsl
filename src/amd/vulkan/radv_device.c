@@ -2817,6 +2817,19 @@ VkResult radv_CreateDevice(
 			goto fail;
 	}
 
+	if (getenv("RADV_TRAP_HANDLER")) {
+		/* TODO: Add support for more hardware. */
+		assert(device->physical_device->rad_info.chip_class == GFX8);
+
+		/* To get the disassembly of the faulty shaders, we have to
+		 * keep some shader info around.
+		 */
+		keep_shader_info = true;
+
+		if (!radv_trap_handler_init(device))
+			goto fail;
+	}
+
 	device->keep_shader_info = keep_shader_info;
 	result = radv_device_init_meta(device);
 	if (result != VK_SUCCESS)
@@ -2893,6 +2906,8 @@ fail:
 
 	radv_thread_trace_finish(device);
 
+	radv_trap_handler_finish(device);
+
 	if (device->trace_bo)
 		device->ws->buffer_destroy(device->trace_bo);
 
@@ -2941,6 +2956,8 @@ void radv_DestroyDevice(
 
 	VkPipelineCache pc = radv_pipeline_cache_to_handle(device->mem_cache);
 	radv_DestroyPipelineCache(radv_device_to_handle(device), pc, NULL);
+
+	radv_trap_handler_finish(device);
 
 	radv_destroy_shader_slabs(device);
 
@@ -3421,6 +3438,50 @@ radv_emit_global_shader_pointers(struct radv_queue *queue,
 }
 
 static void
+radv_emit_trap_handler(struct radv_queue *queue,
+		       struct radeon_cmdbuf *cs,
+		       struct radeon_winsys_bo *tma_bo)
+{
+	struct radv_device *device = queue->device;
+	struct radeon_winsys_bo *tba_bo;
+	uint64_t tba_va, tma_va;
+
+	if (!device->trap_handler_shader || !tma_bo)
+		return;
+
+	tba_bo = device->trap_handler_shader->bo;
+
+	tba_va = radv_buffer_get_va(tba_bo) + device->trap_handler_shader->bo_offset;
+	tma_va = radv_buffer_get_va(tma_bo);
+
+	radv_cs_add_buffer(queue->device->ws, cs, tba_bo);
+	radv_cs_add_buffer(queue->device->ws, cs, tma_bo);
+
+	if (queue->queue_family_index == RADV_QUEUE_GENERAL) {
+		uint32_t regs[] = {R_00B000_SPI_SHADER_TBA_LO_PS,
+				   R_00B100_SPI_SHADER_TBA_LO_VS,
+				   R_00B200_SPI_SHADER_TBA_LO_GS,
+				   R_00B300_SPI_SHADER_TBA_LO_ES,
+				   R_00B400_SPI_SHADER_TBA_LO_HS,
+				   R_00B500_SPI_SHADER_TBA_LO_LS};
+
+		for (int i = 0; i < ARRAY_SIZE(regs); ++i) {
+			radeon_set_sh_reg_seq(cs, regs[i], 4);
+			radeon_emit(cs, tba_va >> 8);
+			radeon_emit(cs, tba_va >> 40);
+			radeon_emit(cs, tma_va >> 8);
+			radeon_emit(cs, tma_va >> 40);
+		}
+	} else {
+		radeon_set_sh_reg_seq(cs, R_00B838_COMPUTE_TBA_LO, 4);
+		radeon_emit(cs, tba_va >> 8);
+		radeon_emit(cs, tba_va >> 40);
+		radeon_emit(cs, tma_va >> 8);
+		radeon_emit(cs, tma_va >> 40);
+	}
+}
+
+static void
 radv_init_graphics_state(struct radeon_cmdbuf *cs, struct radv_queue *queue)
 {
 	struct radv_device *device = queue->device;
@@ -3724,6 +3785,7 @@ radv_get_preamble_cs(struct radv_queue *queue,
 		                          compute_scratch_waves, compute_scratch_bo);
 		radv_emit_graphics_scratch(queue, cs, scratch_size_per_wave,
 		                           scratch_waves, scratch_bo);
+		radv_emit_trap_handler(queue, cs, queue->device->tma_bo);
 
 		if (gds_bo)
 			radv_cs_add_buffer(queue->device->ws, cs, gds_bo);

@@ -36,6 +36,7 @@
 #include "radv_shader.h"
 
 #define TRACE_BO_SIZE 4096
+#define TMA_BO_SIZE 4096
 
 #define COLOR_RESET	"\033[0m"
 #define COLOR_RED	"\033[31m"
@@ -677,4 +678,59 @@ radv_print_spirv(const char *data, uint32_t size, FILE *fp)
 fail:
 	close(fd);
 	unlink(path);
+}
+
+bool
+radv_trap_handler_init(struct radv_device *device)
+{
+	struct radeon_winsys *ws = device->ws;
+
+	/* Create the trap handler shader and upload it like other shaders. */
+	device->trap_handler_shader = radv_create_trap_handler_shader(device);
+	if (!device->trap_handler_shader) {
+		fprintf(stderr, "radv: failed to create the trap handler shader.\n");
+		return false;
+	}
+
+	device->tma_bo = ws->buffer_create(ws, TMA_BO_SIZE, 8,
+					   RADEON_DOMAIN_VRAM,
+					   RADEON_FLAG_CPU_ACCESS |
+					   RADEON_FLAG_NO_INTERPROCESS_SHARING |
+					   RADEON_FLAG_ZERO_VRAM,
+					   RADV_BO_PRIORITY_SCRATCH);
+	if (!device->tma_bo)
+		return false;
+
+	device->tma_ptr = ws->buffer_map(device->tma_bo);
+	if (!device->tma_ptr)
+		return false;
+
+	/* Upload a buffer descriptor to store various info from the trap. */
+	uint64_t tma_va = radv_buffer_get_va(device->tma_bo) + 16;
+	uint32_t desc[4];
+
+	desc[0] = tma_va;
+	desc[1] = S_008F04_BASE_ADDRESS_HI(tma_va >> 32);
+	desc[2] = TMA_BO_SIZE;
+	desc[3] = S_008F0C_DST_SEL_X(V_008F0C_SQ_SEL_X) |
+		  S_008F0C_DST_SEL_Y(V_008F0C_SQ_SEL_Y) |
+		  S_008F0C_DST_SEL_Z(V_008F0C_SQ_SEL_Z) |
+		  S_008F0C_DST_SEL_W(V_008F0C_SQ_SEL_W) |
+		  S_008F0C_DATA_FORMAT(V_008F0C_BUF_DATA_FORMAT_32);
+
+	memcpy(device->tma_ptr, desc, sizeof(desc));
+
+	return true;
+}
+
+void
+radv_trap_handler_finish(struct radv_device *device)
+{
+	struct radeon_winsys *ws = device->ws;
+
+	if (unlikely(device->trap_handler_shader))
+		radv_shader_variant_destroy(device, device->trap_handler_shader);
+
+	if (unlikely(device->tma_bo))
+		ws->buffer_destroy(device->tma_bo);
 }

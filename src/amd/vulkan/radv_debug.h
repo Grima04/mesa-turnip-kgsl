@@ -82,4 +82,7 @@ radv_print_spirv(const char *data, uint32_t size, FILE *fp);
 void
 radv_dump_enabled_options(struct radv_device *device, FILE *f);
 
+bool radv_trap_handler_init(struct radv_device *device);
+void radv_trap_handler_finish(struct radv_device *device);
+
 #endif

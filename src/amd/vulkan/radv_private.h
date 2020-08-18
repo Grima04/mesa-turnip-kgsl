@@ -847,6 +847,11 @@ struct radv_device {
 	uint32_t thread_trace_buffer_size;
 	int thread_trace_start_frame;
 
+	/* Trap handler. */
+	struct radv_shader_variant *trap_handler_shader;
+	struct radeon_winsys_bo *tma_bo; /* Trap Memory Address */
+	uint32_t *tma_ptr;
+
 	/* Overallocation. */
 	bool overallocation_disallowed;
 	uint64_t allocated_memory_size[VK_MAX_MEMORY_HEAPS];
