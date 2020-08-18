@@ -33,26 +33,31 @@
 typedef nir_ssa_def *(*nir_handler)(struct vtn_builder *b,
                                     enum OpenCLstd_Entrypoints opcode,
                                     unsigned num_srcs, nir_ssa_def **srcs,
-                                    const struct glsl_type *dest_type);
+                                    struct vtn_type **src_types,
+                                    const struct vtn_type *dest_type);
 
 static void
 handle_instr(struct vtn_builder *b, enum OpenCLstd_Entrypoints opcode,
              const uint32_t *w, unsigned count, nir_handler handler)
 {
-   const struct glsl_type *dest_type = vtn_get_type(b, w[1])->type;
+   struct vtn_type *dest_type = vtn_get_type(b, w[1]);
 
    unsigned num_srcs = count - 5;
    nir_ssa_def *srcs[3] = { NULL };
+   struct vtn_type *src_types[3] = { NULL };
    vtn_assert(num_srcs <= ARRAY_SIZE(srcs));
    for (unsigned i = 0; i < num_srcs; i++) {
-      srcs[i] = vtn_get_nir_ssa(b, w[i + 5]);
+      struct vtn_value *val = vtn_untyped_value(b, w[i + 5]);
+      struct vtn_ssa_value *ssa = vtn_ssa_value(b, w[i + 5]);
+      srcs[i] = ssa->def;
+      src_types[i] = val->type;
    }
 
-   nir_ssa_def *result = handler(b, opcode, num_srcs, srcs, dest_type);
+   nir_ssa_def *result = handler(b, opcode, num_srcs, srcs, src_types, dest_type);
    if (result) {
       vtn_push_nir_ssa(b, w[2], result);
    } else {
-      vtn_assert(dest_type == glsl_void_type());
+      vtn_assert(dest_type->type == glsl_void_type());
    }
 }
 
@@ -114,20 +119,20 @@ nir_alu_op_for_opencl_opcode(struct vtn_builder *b,
 
 static nir_ssa_def *
 handle_alu(struct vtn_builder *b, enum OpenCLstd_Entrypoints opcode,
-           unsigned num_srcs, nir_ssa_def **srcs,
-           const struct glsl_type *dest_type)
+           unsigned num_srcs, nir_ssa_def **srcs, struct vtn_type **src_types,
+           const struct vtn_type *dest_type)
 {
    nir_ssa_def *ret = nir_build_alu(&b->nb, nir_alu_op_for_opencl_opcode(b, opcode),
                                     srcs[0], srcs[1], srcs[2], NULL);
    if (opcode == OpenCLstd_Popcount)
-      ret = nir_u2u(&b->nb, ret, glsl_get_bit_size(dest_type));
+      ret = nir_u2u(&b->nb, ret, glsl_get_bit_size(dest_type->type));
    return ret;
 }
 
 static nir_ssa_def *
 handle_special(struct vtn_builder *b, enum OpenCLstd_Entrypoints opcode,
-               unsigned num_srcs, nir_ssa_def **srcs,
-               const struct glsl_type *dest_type)
+               unsigned num_srcs, nir_ssa_def **srcs, struct vtn_type **src_types,
+               const struct vtn_type *dest_type)
 {
    nir_builder *nb = &b->nb;
 
@@ -159,7 +164,7 @@ handle_special(struct vtn_builder *b, enum OpenCLstd_Entrypoints opcode,
    case OpenCLstd_Copysign:
       return nir_copysign(nb, srcs[0], srcs[1]);
    case OpenCLstd_Cross:
-      if (glsl_get_components(dest_type) == 4)
+      if (dest_type->length == 4)
          return nir_cross4(nb, srcs[0], srcs[1]);
       return nir_cross3(nb, srcs[0], srcs[1]);
    case OpenCLstd_Degrees:
@@ -277,17 +282,17 @@ vtn_handle_opencl_vstore(struct vtn_builder *b, enum OpenCLstd_Entrypoints opcod
 
 static nir_ssa_def *
 handle_printf(struct vtn_builder *b, enum OpenCLstd_Entrypoints opcode,
-              unsigned num_srcs, nir_ssa_def **srcs,
-              const struct glsl_type *dest_type)
+              unsigned num_srcs, nir_ssa_def **srcs, struct vtn_type **src_types,
+              const struct vtn_type *dest_type)
 {
    /* hahah, yeah, right.. */
    return nir_imm_int(&b->nb, -1);
 }
 
 static nir_ssa_def *
-handle_round(struct vtn_builder *b, enum OpenCLstd_Entrypoints opcode,
-             unsigned num_srcs, nir_ssa_def **srcs,
-             const struct glsl_type *dest_type)
+handle_round(struct vtn_builder *b, enum OpenCLstd_Entrypoints opcode, unsigned num_srcs,
+             nir_ssa_def **srcs, struct vtn_type **src_types,
+             const struct vtn_type *dest_type)
 {
    nir_ssa_def *src = srcs[0];
    nir_builder *nb = &b->nb;
@@ -301,12 +306,13 @@ handle_round(struct vtn_builder *b, enum OpenCLstd_Entrypoints opcode,
 
 static nir_ssa_def *
 handle_shuffle(struct vtn_builder *b, enum OpenCLstd_Entrypoints opcode, unsigned num_srcs,
-               nir_ssa_def **srcs, const struct glsl_type *dest_type)
+               nir_ssa_def **srcs, struct vtn_type **src_types,
+               const struct vtn_type *dest_type)
 {
    struct nir_ssa_def *input = srcs[0];
    struct nir_ssa_def *mask = srcs[1];
 
-   unsigned out_elems = glsl_get_vector_elements(dest_type);
+   unsigned out_elems = dest_type->length;
    nir_ssa_def *outres[NIR_MAX_VEC_COMPONENTS];
    unsigned in_elems = input->num_components;
    if (mask->bit_size != 32)
@@ -320,13 +326,14 @@ handle_shuffle(struct vtn_builder *b, enum OpenCLstd_Entrypoints opcode, unsigne
 
 static nir_ssa_def *
 handle_shuffle2(struct vtn_builder *b, enum OpenCLstd_Entrypoints opcode, unsigned num_srcs,
-                nir_ssa_def **srcs, const struct glsl_type *dest_type)
+                nir_ssa_def **srcs, struct vtn_type **src_types,
+                const struct vtn_type *dest_type)
 {
    struct nir_ssa_def *input0 = srcs[0];
    struct nir_ssa_def *input1 = srcs[1];
    struct nir_ssa_def *mask = srcs[2];
 
-   unsigned out_elems = glsl_get_vector_elements(dest_type);
+   unsigned out_elems = dest_type->length;
    nir_ssa_def *outres[NIR_MAX_VEC_COMPONENTS];
    unsigned in_elems = input0->num_components;
    unsigned total_mask = 2 * in_elems - 1;
