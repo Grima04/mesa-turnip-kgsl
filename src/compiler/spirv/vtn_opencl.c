@@ -238,7 +238,6 @@ nir_alu_op_for_opencl_opcode(struct vtn_builder *b,
    case OpenCLstd_SAdd_sat: return nir_op_iadd_sat;
    case OpenCLstd_UAdd_sat: return nir_op_uadd_sat;
    case OpenCLstd_Ceil: return nir_op_fceil;
-   case OpenCLstd_Cos: return nir_op_fcos;
    case OpenCLstd_Exp2: return nir_op_fexp2;
    case OpenCLstd_Log2: return nir_op_flog2;
    case OpenCLstd_Floor: return nir_op_ffloor;
@@ -271,7 +270,6 @@ nir_alu_op_for_opencl_opcode(struct vtn_builder *b,
    case OpenCLstd_URhadd: return nir_op_urhadd;
    case OpenCLstd_Rsqrt: return nir_op_frsq;
    case OpenCLstd_Sign: return nir_op_fsign;
-   case OpenCLstd_Sin: return nir_op_fsin;
    case OpenCLstd_Sqrt: return nir_op_fsqrt;
    case OpenCLstd_SSub_sat: return nir_op_isub_sat;
    case OpenCLstd_USub_sat: return nir_op_usub_sat;
@@ -766,7 +764,6 @@ vtn_handle_opencl_instruction(struct vtn_builder *b, SpvOp ext_opcode,
    case OpenCLstd_SAdd_sat:
    case OpenCLstd_UAdd_sat:
    case OpenCLstd_Ceil:
-   case OpenCLstd_Cos:
    case OpenCLstd_Exp2:
    case OpenCLstd_Log2:
    case OpenCLstd_Floor:
@@ -799,7 +796,6 @@ vtn_handle_opencl_instruction(struct vtn_builder *b, SpvOp ext_opcode,
    case OpenCLstd_URhadd:
    case OpenCLstd_Rsqrt:
    case OpenCLstd_Sign:
-   case OpenCLstd_Sin:
    case OpenCLstd_Sqrt:
    case OpenCLstd_SSub_sat:
    case OpenCLstd_USub_sat:
@@ -870,8 +866,10 @@ vtn_handle_opencl_instruction(struct vtn_builder *b, SpvOp ext_opcode,
    case OpenCLstd_Log1p:
    case OpenCLstd_Logb:
    case OpenCLstd_Ldexp:
+   case OpenCLstd_Cos:
    case OpenCLstd_Cosh:
    case OpenCLstd_Cospi:
+   case OpenCLstd_Sin:
    case OpenCLstd_Sinh:
    case OpenCLstd_Sinpi:
    case OpenCLstd_Tan:
