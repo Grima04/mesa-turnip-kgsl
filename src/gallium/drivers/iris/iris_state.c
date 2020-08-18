@@ -906,6 +906,32 @@ init_aux_map_state(struct iris_batch *batch);
 #endif
 
 /**
+ * Upload initial GPU state for any kind of context.
+ *
+ * These need to happen for both render and compute.
+ */
+static void
+iris_init_common_context(struct iris_batch *batch)
+{
+#if GEN_GEN == 11
+   uint32_t reg_val;
+
+   iris_pack_state(GENX(SAMPLER_MODE), &reg_val, reg) {
+      reg.HeaderlessMessageforPreemptableContexts = 1;
+      reg.HeaderlessMessageforPreemptableContextsMask = 1;
+   }
+   iris_emit_lri(batch, SAMPLER_MODE, reg_val);
+
+   /* Bit 1 must be set in HALF_SLICE_CHICKEN7. */
+   iris_pack_state(GENX(HALF_SLICE_CHICKEN7), &reg_val, reg) {
+      reg.EnabledTexelOffsetPrecisionFix = 1;
+      reg.EnabledTexelOffsetPrecisionFixMask = 1;
+   }
+   iris_emit_lri(batch, HALF_SLICE_CHICKEN7, reg_val);
+#endif
+}
+
+/**
  * Upload the initial GPU state for a render context.
  *
  * This sets some invariant state that needs to be programmed a particular
@@ -924,6 +950,8 @@ iris_init_render_context(struct iris_batch *batch)
    iris_emit_l3_config(batch, batch->screen->l3_config_3d);
 
    init_state_base_address(batch);
+
+   iris_init_common_context(batch);
 
 #if GEN_GEN >= 9
    iris_pack_state(GENX(CS_DEBUG_MODE2), &reg_val, reg) {
@@ -960,19 +988,6 @@ iris_init_render_context(struct iris_batch *batch)
       reg.TCDisable = true;
    }
    iris_emit_lri(batch, TCCNTLREG, reg_val);
-
-   iris_pack_state(GENX(SAMPLER_MODE), &reg_val, reg) {
-      reg.HeaderlessMessageforPreemptableContexts = 1;
-      reg.HeaderlessMessageforPreemptableContextsMask = 1;
-   }
-   iris_emit_lri(batch, SAMPLER_MODE, reg_val);
-
-   /* Bit 1 must be set in HALF_SLICE_CHICKEN7. */
-   iris_pack_state(GENX(HALF_SLICE_CHICKEN7), &reg_val, reg) {
-      reg.EnabledTexelOffsetPrecisionFix = 1;
-      reg.EnabledTexelOffsetPrecisionFixMask = 1;
-   }
-   iris_emit_lri(batch, HALF_SLICE_CHICKEN7, reg_val);
 
    /* Hardware specification recommends disabling repacking for the
     * compatibility with decompression mechanism in display controller.
@@ -1052,6 +1067,8 @@ iris_init_compute_context(struct iris_batch *batch)
    iris_emit_l3_config(batch, batch->screen->l3_config_cs);
 
    init_state_base_address(batch);
+
+   iris_init_common_context(batch);
 
 #if GEN_GEN == 12
    emit_pipeline_select(batch, GPGPU);
