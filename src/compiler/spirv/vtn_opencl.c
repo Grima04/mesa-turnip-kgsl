@@ -514,20 +514,8 @@ handle_special(struct vtn_builder *b, uint32_t opcode,
       if (dest_type->length == 4)
          return nir_cross4(nb, srcs[0], srcs[1]);
       return nir_cross3(nb, srcs[0], srcs[1]);
-   case OpenCLstd_Degrees:
-      return nir_degrees(nb, srcs[0]);
    case OpenCLstd_Fdim:
       return nir_fdim(nb, srcs[0], srcs[1]);
-   case OpenCLstd_Distance:
-      return nir_distance(nb, srcs[0], srcs[1]);
-   case OpenCLstd_Fast_distance:
-      return nir_fast_distance(nb, srcs[0], srcs[1]);
-   case OpenCLstd_Fast_length:
-      return nir_fast_length(nb, srcs[0]);
-   case OpenCLstd_Fast_normalize:
-      return nir_fast_normalize(nb, srcs[0]);
-   case OpenCLstd_Length:
-      return nir_length(nb, srcs[0]);
    case OpenCLstd_Fmod:
       if (nb->shader->options->lower_fmod)
          break;
@@ -544,18 +532,10 @@ handle_special(struct vtn_builder *b, uint32_t opcode,
       return nir_nextafter(nb, srcs[0], srcs[1]);
    case OpenCLstd_Normalize:
       return nir_normalize(nb, srcs[0]);
-   case OpenCLstd_Radians:
-      return nir_radians(nb, srcs[0]);
-   case OpenCLstd_Rotate:
-      return nir_rotate(nb, srcs[0], srcs[1]);
-   case OpenCLstd_Smoothstep:
-      return nir_smoothstep(nb, srcs[0], srcs[1], srcs[2]);
    case OpenCLstd_Clz:
       return nir_clz_u(nb, srcs[0]);
    case OpenCLstd_Select:
       return nir_select(nb, srcs[0], srcs[1], srcs[2]);
-   case OpenCLstd_Step:
-      return nir_sge(nb, srcs[1], srcs[0]);
    case OpenCLstd_S_Upsample:
    case OpenCLstd_U_Upsample:
       /* SPIR-V and CL have different defs for upsample, just implement in nir */
