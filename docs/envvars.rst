@@ -391,6 +391,9 @@ Gallium environment variables
 ``GALLIUM_LOG_FILE``
    specifies a file for logging all errors, warnings, etc. rather than
    stderr.
+``GALLIUM_PIPE_SEARCH_DIR``
+   specifies an alternate search directory for pipe-loader which overrides
+   the compile-time path based on the install location.
 ``GALLIUM_PRINT_OPTIONS``
    if non-zero, print all the Gallium environment variables which are
    used, and their current values.

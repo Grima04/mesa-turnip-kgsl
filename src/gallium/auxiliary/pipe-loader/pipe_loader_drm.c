@@ -98,7 +98,11 @@ get_driver_descriptor(const char *driver_name, struct util_dl_library **plib)
    }
    return &kmsro_driver_descriptor;
 #else
-   *plib = pipe_loader_find_module(driver_name, PIPE_SEARCH_DIR);
+   const char *search_dir = getenv("GALLIUM_PIPE_SEARCH_DIR");
+   if (search_dir == NULL)
+      search_dir = PIPE_SEARCH_DIR;
+
+   *plib = pipe_loader_find_module(driver_name, search_dir);
    if (!*plib)
       return NULL;
 

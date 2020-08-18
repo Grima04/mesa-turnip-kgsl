@@ -105,7 +105,11 @@ pipe_loader_sw_probe_init_common(struct pipe_loader_sw_device *sdev)
    if (!sdev->dd)
       return false;
 #else
-   sdev->lib = pipe_loader_find_module("swrast", PIPE_SEARCH_DIR);
+   const char *search_dir = getenv("GALLIUM_PIPE_SEARCH_DIR");
+   if (search_dir == NULL)
+      search_dir = PIPE_SEARCH_DIR;
+
+   sdev->lib = pipe_loader_find_module("swrast", search_dir);
    if (!sdev->lib)
       return false;
 
