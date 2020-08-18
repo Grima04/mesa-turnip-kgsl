@@ -805,12 +805,13 @@ radv_get_shader_binary_size(size_t code_size)
 	return code_size + DEBUGGER_NUM_MARKERS * 4;
 }
 
-static void radv_postprocess_config(const struct radv_physical_device *pdevice,
+static void radv_postprocess_config(const struct radv_device *device,
 				    const struct ac_shader_config *config_in,
 				    const struct radv_shader_info *info,
 				    gl_shader_stage stage,
 				    struct ac_shader_config *config_out)
 {
+	const struct radv_physical_device *pdevice = device->physical_device;
 	bool scratch_enabled = config_in->scratch_bytes_per_wave > 0;
 	unsigned vgpr_comp_cnt = 0;
 	unsigned num_input_vgprs = info->num_input_vgprs;
@@ -835,6 +836,15 @@ static void radv_postprocess_config(const struct radv_physical_device *pdevice,
 
 	config_out->rsrc2 = S_00B12C_USER_SGPR(info->num_user_sgprs) |
 			    S_00B12C_SCRATCH_EN(scratch_enabled);
+
+	if (device->trap_handler_shader) {
+		/* Enable the trap handler if requested and configure the
+		 * shader exceptions like memory violation, etc.
+		 * TODO: Enable (and validate) more exceptions.
+		 */
+		config_out->rsrc2 |= S_00B12C_TRAP_PRESENT(1) |
+				     S_00B12C_EXCP_EN(1 << 8); /* mem_viol */
+	}
 
 	if (!pdevice->use_ngg_streamout) {
 		config_out->rsrc2 |= S_00B12C_SO_BASE0_EN(!!info->so.strides[0]) |
@@ -1108,7 +1118,7 @@ radv_shader_variant_create(struct radv_device *device,
 	}
 
 	variant->info = binary->info;
-	radv_postprocess_config(device->physical_device, &config, &binary->info,
+	radv_postprocess_config(device, &config, &binary->info,
 				binary->stage, &variant->config);
 
 	void *dest_ptr = radv_alloc_shader_memory(device, variant);
