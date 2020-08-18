@@ -32,7 +32,7 @@ load_frag_coord(nir_builder *b)
       nir_find_variable_with_location(b->shader, nir_var_shader_in,
                                       VARYING_SLOT_POS);
    if (pos == NULL) {
-      nir_variable *pos = nir_variable_create(b->shader, nir_var_shader_in,
+      pos = nir_variable_create(b->shader, nir_var_shader_in,
                                            glsl_vec4_type(), NULL);
       pos->data.location = VARYING_SLOT_POS;
    }
