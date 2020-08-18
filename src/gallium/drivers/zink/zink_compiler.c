@@ -338,8 +338,10 @@ zink_shader_compile(struct zink_screen *screen, struct zink_shader *zs, struct z
          if (zs->streamout.so_info_slots)
             streamout = &zs->streamout;
 
-         nir = nir_shader_clone(NULL, zs->nir);
-         NIR_PASS_V(nir, nir_lower_clip_halfz);
+         if (!zink_vs_key(key)->clip_halfz) {
+            nir = nir_shader_clone(NULL, zs->nir);
+            NIR_PASS_V(nir, nir_lower_clip_halfz);
+         }
       }
    } else {
       if (!zink_fs_key(key)->samples &&

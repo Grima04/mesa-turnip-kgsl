@@ -162,6 +162,14 @@ zink_bind_vertex_buffers(struct zink_batch *batch, struct zink_context *ctx)
 static struct zink_gfx_program *
 get_gfx_program(struct zink_context *ctx)
 {
+   if (ctx->last_vertex_stage_dirty) {
+      if (ctx->gfx_stages[PIPE_SHADER_GEOMETRY])
+         ctx->dirty_shader_stages |= BITFIELD_BIT(PIPE_SHADER_GEOMETRY);
+      else if (ctx->gfx_stages[PIPE_SHADER_TESS_EVAL])
+         ctx->dirty_shader_stages |= BITFIELD_BIT(PIPE_SHADER_TESS_EVAL);
+      else
+         ctx->dirty_shader_stages |= BITFIELD_BIT(PIPE_SHADER_VERTEX);
+   }
    if (ctx->dirty_shader_stages) {
       struct hash_entry *entry = _mesa_hash_table_search(ctx->program_cache,
                                                          ctx->gfx_stages);

@@ -121,6 +121,7 @@ struct zink_context {
    struct zink_gfx_program *curr_program;
 
    unsigned dirty_shader_stages : 6; /* mask of changed shader stages */
+   bool last_vertex_stage_dirty;
 
    struct hash_table *render_pass_cache;
 
