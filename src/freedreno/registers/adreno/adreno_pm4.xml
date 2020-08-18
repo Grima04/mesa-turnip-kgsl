@@ -14,7 +14,7 @@ xsi:schemaLocation="http://nouveau.freedesktop.org/ rules-ng.xsd">
 	<value name="VIZQUERY_START" value="7" varset="chip" variants="A2XX"/>
 	<value name="HLSQ_FLUSH" value="7" varset="chip" variants="A3XX-A4XX"/>
 	<value name="VIZQUERY_END" value="8" varset="chip" variants="A2XX"/>
-	<value name="SC_WAIT_WC" value="9"/>
+	<value name="SC_WAIT_WC" value="9" varset="chip" variants="A2XX"/>
 	<value name="WRITE_PRIMITIVE_COUNTS" value="9" varset="chip" variants="A6XX"/>
 	<value name="START_PRIMITIVE_CTRS" value="11" varset="chip" variants="A6XX"/>
 	<value name="STOP_PRIMITIVE_CTRS" value="12" varset="chip" variants="A6XX"/>
