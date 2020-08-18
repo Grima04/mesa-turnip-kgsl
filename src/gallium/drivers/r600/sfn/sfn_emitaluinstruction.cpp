@@ -118,7 +118,7 @@ bool EmitAluInstruction::do_emit(nir_instr* ir)
    case nir_op_flt: return emit_alu_op2(instr, op2_setgt_dx10, op2_opt_reverse);
 
    case nir_op_fge: return emit_alu_op2(instr, op2_setge_dx10);
-   case nir_op_fne: return emit_alu_op2(instr, op2_setne_dx10);
+   case nir_op_fneu: return emit_alu_op2(instr, op2_setne_dx10);
    case nir_op_feq: return emit_alu_op2(instr, op2_sete_dx10);
 
    case nir_op_fmin: return emit_alu_op2(instr, op2_min_dx10);

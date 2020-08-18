@@ -2225,7 +2225,7 @@ nir_visitor::visit(ir_expression *ir)
       break;
    case ir_binop_nequal:
       if (type_is_float(types[0]))
-         result = nir_fne(&b, srcs[0], srcs[1]);
+         result = nir_fneu(&b, srcs[0], srcs[1]);
       else
          result = nir_ine(&b, srcs[0], srcs[1]);
       break;
@@ -2253,7 +2253,7 @@ nir_visitor::visit(ir_expression *ir)
    case ir_binop_any_nequal:
       if (type_is_float(types[0])) {
          switch (ir->operands[0]->type->vector_elements) {
-            case 1: result = nir_fne(&b, srcs[0], srcs[1]); break;
+            case 1: result = nir_fneu(&b, srcs[0], srcs[1]); break;
             case 2: result = nir_bany_fnequal2(&b, srcs[0], srcs[1]); break;
             case 3: result = nir_bany_fnequal3(&b, srcs[0], srcs[1]); break;
             case 4: result = nir_bany_fnequal4(&b, srcs[0], srcs[1]); break;

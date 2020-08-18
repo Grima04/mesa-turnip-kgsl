@@ -576,7 +576,7 @@ static LLVMValueRef do_alu_action(struct lp_build_nir_context *bld_base,
    case nir_op_fmax:
       result = lp_build_max(get_flt_bld(bld_base, src_bit_size[0]), src[0], src[1]);
       break;
-   case nir_op_fne32:
+   case nir_op_fneu32:
       result = fcmp32(bld_base, PIPE_FUNC_NOTEQUAL, src_bit_size[0], src);
       break;
    case nir_op_fneg:

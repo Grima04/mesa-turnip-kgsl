@@ -1187,8 +1187,8 @@ brw_cmod_for_nir_comparison(nir_op op)
    case nir_op_b32all_iequal4:
       return BRW_CONDITIONAL_Z;
 
-   case nir_op_fne:
-   case nir_op_fne32:
+   case nir_op_fneu:
+   case nir_op_fneu32:
    case nir_op_ine:
    case nir_op_ine32:
    case nir_op_b32any_fnequal2:

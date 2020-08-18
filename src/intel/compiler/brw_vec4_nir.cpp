@@ -1465,7 +1465,7 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
    case nir_op_flt32:
    case nir_op_fge32:
    case nir_op_feq32:
-   case nir_op_fne32: {
+   case nir_op_fneu32: {
       enum brw_conditional_mod conditional_mod =
          brw_cmod_for_nir_comparison(instr->op);
 

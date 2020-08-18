@@ -888,7 +888,7 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
                 ALU_CASE(mov, imov);
 
                 ALU_CASE_CMP(feq32, feq, false);
-                ALU_CASE_CMP(fne32, fne, false);
+                ALU_CASE_CMP(fneu32, fne, false);
                 ALU_CASE_CMP(flt32, flt, false);
                 ALU_CASE_CMP(ieq32, ieq, true);
                 ALU_CASE_CMP(ine32, ine, true);

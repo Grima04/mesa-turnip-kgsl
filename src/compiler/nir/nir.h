@@ -1382,7 +1382,7 @@ nir_alu_instr_is_comparison(const nir_alu_instr *instr)
    case nir_op_flt:
    case nir_op_fge:
    case nir_op_feq:
-   case nir_op_fne:
+   case nir_op_fneu:
    case nir_op_ilt:
    case nir_op_ult:
    case nir_op_ige:
@@ -3024,7 +3024,7 @@ typedef struct nir_shader_compiler_options {
    /** lowers fsub and isub to fadd+fneg and iadd+ineg. */
    bool lower_sub;
 
-   /* lower {slt,sge,seq,sne} to {flt,fge,feq,fne} + b2f: */
+   /* lower {slt,sge,seq,sne} to {flt,fge,feq,fneu} + b2f: */
    bool lower_scmp;
 
    /* lower fall_equalN/fany_nequalN (ex:fany_nequal4 to sne+fdot4+fsat) */

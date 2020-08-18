@@ -503,7 +503,7 @@ emit_alu(struct ir3_context *ctx, nir_alu_instr *alu)
 		dst[0] = ir3_CMPS_F(b, src[0], 0, src[1], 0);
 		dst[0]->cat2.condition = IR3_COND_EQ;
 		break;
-	case nir_op_fne:
+	case nir_op_fneu:
 		dst[0] = ir3_CMPS_F(b, src[0], 0, src[1], 0);
 		dst[0]->cat2.condition = IR3_COND_NE;
 		break;

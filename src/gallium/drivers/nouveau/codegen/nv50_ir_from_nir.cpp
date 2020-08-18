@@ -469,7 +469,7 @@ Converter::getOperation(nir_op op)
    case nir_op_flt32:
    case nir_op_ilt32:
    case nir_op_ult32:
-   case nir_op_fne32:
+   case nir_op_fneu32:
    case nir_op_ine32:
       return OP_SET;
    case nir_op_ishl:
@@ -704,7 +704,7 @@ Converter::getCondCode(nir_op op)
    case nir_op_ilt32:
    case nir_op_ult32:
       return CC_LT;
-   case nir_op_fne32:
+   case nir_op_fneu32:
       return CC_NEU;
    case nir_op_ine32:
       return CC_NE;
@@ -2574,7 +2574,7 @@ Converter::visit(nir_alu_instr *insn)
    case nir_op_flt32:
    case nir_op_ilt32:
    case nir_op_ult32:
-   case nir_op_fne32:
+   case nir_op_fneu32:
    case nir_op_ine32: {
       DEFAULT_CHECKS;
       LValues &newDefs = convert(&insn->dest);

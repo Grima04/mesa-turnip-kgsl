@@ -104,7 +104,7 @@ fix_inv_result(nir_builder *b, nir_ssa_def *res, nir_ssa_def *src,
                    nir_imm_double(b, 0.0f), res);
 
    /* If the original input was 0, generate the correctly-signed infinity */
-   res = nir_bcsel(b, nir_fne(b, src, nir_imm_double(b, 0.0f)),
+   res = nir_bcsel(b, nir_fneu(b, src, nir_imm_double(b, 0.0f)),
                    res, get_signed_inf(b, src));
 
    return res;
@@ -541,8 +541,8 @@ lower_doubles_instr_to_soft(nir_builder *b, nir_alu_instr *instr,
       name = "__feq64";
       return_type = glsl_bool_type();
       break;
-   case nir_op_fne:
-      name = "__fne64";
+   case nir_op_fneu:
+      name = "__fneu64";
       return_type = glsl_bool_type();
       break;
    case nir_op_flt:

@@ -1385,7 +1385,7 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr,
    case nir_op_flt32:
    case nir_op_fge32:
    case nir_op_feq32:
-   case nir_op_fne32: {
+   case nir_op_fneu32: {
       fs_reg dest = result;
 
       const uint32_t bit_size =  nir_src_bit_size(instr->src[0].src);
@@ -3435,7 +3435,7 @@ fs_visitor::nir_emit_fs_intrinsic(const fs_builder &bld,
              alu->op != nir_op_bcsel &&
              (devinfo->gen > 5 ||
               (alu->instr.pass_flags & BRW_NIR_BOOLEAN_MASK) != BRW_NIR_BOOLEAN_NEEDS_RESOLVE ||
-              alu->op == nir_op_fne32 || alu->op == nir_op_feq32 ||
+              alu->op == nir_op_fneu32 || alu->op == nir_op_feq32 ||
               alu->op == nir_op_flt32 || alu->op == nir_op_fge32 ||
               alu->op == nir_op_ine32 || alu->op == nir_op_ieq32 ||
               alu->op == nir_op_ilt32 || alu->op == nir_op_ige32 ||

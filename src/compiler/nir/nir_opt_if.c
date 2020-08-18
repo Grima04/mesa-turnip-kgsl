@@ -275,7 +275,7 @@ alu_instr_is_comparison(const nir_alu_instr *alu)
    case nir_op_flt32:
    case nir_op_fge32:
    case nir_op_feq32:
-   case nir_op_fne32:
+   case nir_op_fneu32:
    case nir_op_ilt32:
    case nir_op_ult32:
    case nir_op_ige32:

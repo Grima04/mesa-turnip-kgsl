@@ -196,9 +196,9 @@ lower_alu_instr(nir_builder *b, nir_alu_instr *alu)
                                bit_size == 16 ? nir_op_feq16 : nir_op_feq32;
       break;
 
-   case nir_op_fne:
-      opcode = bit_size == 8 ? nir_op_fne8 :
-                               bit_size == 16 ? nir_op_fne16 : nir_op_fne32;
+   case nir_op_fneu:
+      opcode = bit_size == 8 ? nir_op_fneu8 :
+                               bit_size == 16 ? nir_op_fneu16 : nir_op_fneu32;
       break;
 
    case nir_op_ilt:

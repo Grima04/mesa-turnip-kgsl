@@ -942,7 +942,7 @@ analyze_expression(const nir_alu_instr *instr, unsigned src,
    case nir_op_flt:
    case nir_op_fge:
    case nir_op_feq:
-   case nir_op_fne:
+   case nir_op_fneu:
    case nir_op_ilt:
    case nir_op_ige:
    case nir_op_ieq:

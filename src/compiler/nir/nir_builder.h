@@ -1400,7 +1400,7 @@ nir_compare_func(nir_builder *b, enum compare_func func,
    case COMPARE_FUNC_EQUAL:
       return nir_feq(b, src0, src1);
    case COMPARE_FUNC_NOTEQUAL:
-      return nir_fne(b, src0, src1);
+      return nir_fneu(b, src0, src1);
    case COMPARE_FUNC_GREATER:
       return nir_flt(b, src1, src0);
    case COMPARE_FUNC_GEQUAL:

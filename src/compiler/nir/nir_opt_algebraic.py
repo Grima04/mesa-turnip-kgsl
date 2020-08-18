@@ -300,8 +300,8 @@ optimizations.extend([
    # Comparison simplifications
    (('~inot', ('flt', a, b)), ('fge', a, b)),
    (('~inot', ('fge', a, b)), ('flt', a, b)),
-   (('inot', ('feq', a, b)), ('fne', a, b)),
-   (('inot', ('fne', a, b)), ('feq', a, b)),
+   (('inot', ('feq', a, b)), ('fneu', a, b)),
+   (('inot', ('fneu', a, b)), ('feq', a, b)),
    (('inot', ('ilt', a, b)), ('ige', a, b)),
    (('inot', ('ult', a, b)), ('uge', a, b)),
    (('inot', ('ige', a, b)), ('ilt', a, b)),
@@ -309,7 +309,7 @@ optimizations.extend([
    (('inot', ('ieq', a, b)), ('ine', a, b)),
    (('inot', ('ine', a, b)), ('ieq', a, b)),
 
-   (('iand', ('feq', a, b), ('fne', a, b)), False),
+   (('iand', ('feq', a, b), ('fneu', a, b)), False),
    (('iand', ('flt', a, b), ('flt', b, a)), False),
    (('iand', ('ieq', a, b), ('ine', a, b)), False),
    (('iand', ('ilt', a, b), ('ilt', b, a)), False),
@@ -321,12 +321,12 @@ optimizations.extend([
    (('flt', ('fneg', a), ('fneg', b)), ('flt', b, a)),
    (('fge', ('fneg', a), ('fneg', b)), ('fge', b, a)),
    (('feq', ('fneg', a), ('fneg', b)), ('feq', b, a)),
-   (('fne', ('fneg', a), ('fneg', b)), ('fne', b, a)),
+   (('fneu', ('fneg', a), ('fneg', b)), ('fneu', b, a)),
    (('flt', ('fneg', a), -1.0), ('flt', 1.0, a)),
    (('flt', -1.0, ('fneg', a)), ('flt', a, 1.0)),
    (('fge', ('fneg', a), -1.0), ('fge', 1.0, a)),
    (('fge', -1.0, ('fneg', a)), ('fge', a, 1.0)),
-   (('fne', ('fneg', a), -1.0), ('fne', 1.0, a)),
+   (('fneu', ('fneg', a), -1.0), ('fneu', 1.0, a)),
    (('feq', -1.0, ('fneg', a)), ('feq', a, 1.0)),
 
    (('flt', ('fsat(is_used_once)', a), '#b(is_gt_0_and_lt_1)'), ('flt', a, b)),
@@ -334,7 +334,7 @@ optimizations.extend([
    (('fge', ('fsat(is_used_once)', a), '#b(is_gt_0_and_lt_1)'), ('fge', a, b)),
    (('fge', '#b(is_gt_0_and_lt_1)', ('fsat(is_used_once)', a)), ('fge', b, a)),
    (('feq', ('fsat(is_used_once)', a), '#b(is_gt_0_and_lt_1)'), ('feq', a, b)),
-   (('fne', ('fsat(is_used_once)', a), '#b(is_gt_0_and_lt_1)'), ('fne', a, b)),
+   (('fneu', ('fsat(is_used_once)', a), '#b(is_gt_0_and_lt_1)'), ('fneu', a, b)),
 
    (('fge', ('fsat(is_used_once)', a), 1.0), ('fge', a, 1.0)),
    (('flt', ('fsat(is_used_once)', a), 1.0), ('flt', a, 1.0)),
@@ -349,16 +349,16 @@ optimizations.extend([
 
    (('fge', ('fneg', ('b2f', 'a@1')), 0.0), ('inot', a)),
 
-   (('fne', ('fadd', ('b2f', 'a@1'), ('b2f', 'b@1')), 0.0), ('ior', a, b)),
-   (('fne', ('fmax', ('b2f', 'a@1'), ('b2f', 'b@1')), 0.0), ('ior', a, b)),
-   (('fne', ('bcsel', a, 1.0, ('b2f', 'b@1'))   , 0.0), ('ior', a, b)),
-   (('fne', ('b2f', 'a@1'), ('fneg', ('b2f', 'b@1'))),      ('ior', a, b)),
-   (('fne', ('fmul', ('b2f', 'a@1'), ('b2f', 'b@1')), 0.0), ('iand', a, b)),
-   (('fne', ('fmin', ('b2f', 'a@1'), ('b2f', 'b@1')), 0.0), ('iand', a, b)),
-   (('fne', ('bcsel', a, ('b2f', 'b@1'), 0.0)   , 0.0), ('iand', a, b)),
-   (('fne', ('fadd', ('b2f', 'a@1'), ('fneg', ('b2f', 'b@1'))), 0.0), ('ixor', a, b)),
-   (('fne',          ('b2f', 'a@1') ,          ('b2f', 'b@1') ),      ('ixor', a, b)),
-   (('fne', ('fneg', ('b2f', 'a@1')), ('fneg', ('b2f', 'b@1'))),      ('ixor', a, b)),
+   (('fneu', ('fadd', ('b2f', 'a@1'), ('b2f', 'b@1')), 0.0), ('ior', a, b)),
+   (('fneu', ('fmax', ('b2f', 'a@1'), ('b2f', 'b@1')), 0.0), ('ior', a, b)),
+   (('fneu', ('bcsel', a, 1.0, ('b2f', 'b@1'))   , 0.0), ('ior', a, b)),
+   (('fneu', ('b2f', 'a@1'), ('fneg', ('b2f', 'b@1'))),      ('ior', a, b)),
+   (('fneu', ('fmul', ('b2f', 'a@1'), ('b2f', 'b@1')), 0.0), ('iand', a, b)),
+   (('fneu', ('fmin', ('b2f', 'a@1'), ('b2f', 'b@1')), 0.0), ('iand', a, b)),
+   (('fneu', ('bcsel', a, ('b2f', 'b@1'), 0.0)   , 0.0), ('iand', a, b)),
+   (('fneu', ('fadd', ('b2f', 'a@1'), ('fneg', ('b2f', 'b@1'))), 0.0), ('ixor', a, b)),
+   (('fneu',          ('b2f', 'a@1') ,          ('b2f', 'b@1') ),      ('ixor', a, b)),
+   (('fneu', ('fneg', ('b2f', 'a@1')), ('fneg', ('b2f', 'b@1'))),      ('ixor', a, b)),
    (('feq', ('fadd', ('b2f', 'a@1'), ('b2f', 'b@1')), 0.0), ('inot', ('ior', a, b))),
    (('feq', ('fmax', ('b2f', 'a@1'), ('b2f', 'b@1')), 0.0), ('inot', ('ior', a, b))),
    (('feq', ('bcsel', a, 1.0, ('b2f', 'b@1'))   , 0.0), ('inot', ('ior', a, b))),
@@ -397,15 +397,15 @@ optimizations.extend([
    (('~flt', ('fadd', a, b), a), ('flt', b, 0.0)),
    (('~fge', ('fadd', a, b), a), ('fge', b, 0.0)),
    (('~feq', ('fadd', a, b), a), ('feq', b, 0.0)),
-   (('~fne', ('fadd', a, b), a), ('fne', b, 0.0)),
+   (('~fneu', ('fadd', a, b), a), ('fneu', b, 0.0)),
    (('~flt',                        ('fadd(is_used_once)', a, '#b'),  '#c'), ('flt', a, ('fadd', c, ('fneg', b)))),
    (('~flt', ('fneg(is_used_once)', ('fadd(is_used_once)', a, '#b')), '#c'), ('flt', ('fneg', ('fadd', c, b)), a)),
    (('~fge',                        ('fadd(is_used_once)', a, '#b'),  '#c'), ('fge', a, ('fadd', c, ('fneg', b)))),
    (('~fge', ('fneg(is_used_once)', ('fadd(is_used_once)', a, '#b')), '#c'), ('fge', ('fneg', ('fadd', c, b)), a)),
    (('~feq',                        ('fadd(is_used_once)', a, '#b'),  '#c'), ('feq', a, ('fadd', c, ('fneg', b)))),
    (('~feq', ('fneg(is_used_once)', ('fadd(is_used_once)', a, '#b')), '#c'), ('feq', ('fneg', ('fadd', c, b)), a)),
-   (('~fne',                        ('fadd(is_used_once)', a, '#b'),  '#c'), ('fne', a, ('fadd', c, ('fneg', b)))),
-   (('~fne', ('fneg(is_used_once)', ('fadd(is_used_once)', a, '#b')), '#c'), ('fne', ('fneg', ('fadd', c, b)), a)),
+   (('~fneu',                        ('fadd(is_used_once)', a, '#b'),  '#c'), ('fneu', a, ('fadd', c, ('fneg', b)))),
+   (('~fneu', ('fneg(is_used_once)', ('fadd(is_used_once)', a, '#b')), '#c'), ('fneu', ('fneg', ('fadd', c, b)), a)),
 
    # Cannot remove the addition from ilt or ige due to overflow.
    (('ieq', ('iadd', a, b), a), ('ieq', b, 0)),
@@ -425,17 +425,17 @@ optimizations.extend([
    (('feq', ('fmin', ('fneg', ('b2f', 'a@1')), 'b@1'), 0.0), ('iand', ('inot', a), ('fge', b, 0.0))),
 
    (('feq', ('b2f', 'a@1'), 0.0), ('inot', a)),
-   (('~fne', ('b2f', 'a@1'), 0.0), a),
+   (('~fneu', ('b2f', 'a@1'), 0.0), a),
    (('ieq', ('b2i', 'a@1'), 0),   ('inot', a)),
    (('ine', ('b2i', 'a@1'), 0),   a),
 
-   (('fne', ('u2f', a), 0.0), ('ine', a, 0)),
+   (('fneu', ('u2f', a), 0.0), ('ine', a, 0)),
    (('feq', ('u2f', a), 0.0), ('ieq', a, 0)),
    (('fge', ('u2f', a), 0.0), True),
    (('fge', 0.0, ('u2f', a)), ('uge', 0, a)),    # ieq instead?
    (('flt', ('u2f', a), 0.0), False),
    (('flt', 0.0, ('u2f', a)), ('ult', 0, a)),    # ine instead?
-   (('fne', ('i2f', a), 0.0), ('ine', a, 0)),
+   (('fneu', ('i2f', a), 0.0), ('ine', a, 0)),
    (('feq', ('i2f', a), 0.0), ('ieq', a, 0)),
    (('fge', ('i2f', a), 0.0), ('ige', a, 0)),
    (('fge', 0.0, ('i2f', a)), ('ige', 0, a)),
@@ -446,11 +446,11 @@ optimizations.extend([
    # fabs(a) > 0.0
    # fabs(a) != 0.0 because fabs(a) must be >= 0
    # a != 0.0
-   (('~flt', 0.0, ('fabs', a)), ('fne', a, 0.0)),
+   (('~flt', 0.0, ('fabs', a)), ('fneu', a, 0.0)),
 
    # -fabs(a) < 0.0
    # fabs(a) > 0.0
-   (('~flt', ('fneg', ('fabs', a)), 0.0), ('fne', a, 0.0)),
+   (('~flt', ('fneg', ('fabs', a)), 0.0), ('fneu', a, 0.0)),
 
    # 0.0 >= fabs(a)
    # 0.0 == fabs(a)   because fabs(a) must be >= 0
@@ -469,7 +469,7 @@ optimizations.extend([
    # !((a >= 0.0) && (a <= 1.0))
    # !(a == fsat(a))
    # a != fsat(a)
-   (('ior', ('flt', a, 0.0), ('flt', 1.0, a)), ('fne', a, ('fsat', a)), '!options->lower_fsat'),
+   (('ior', ('flt', a, 0.0), ('flt', 1.0, a)), ('fneu', a, ('fsat', a)), '!options->lower_fsat'),
 
    (('fmax',                        ('b2f(is_used_once)', 'a@1'),           ('b2f', 'b@1')),           ('b2f', ('ior', a, b))),
    (('fmax', ('fneg(is_used_once)', ('b2f(is_used_once)', 'a@1')), ('fneg', ('b2f', 'b@1'))), ('fneg', ('b2f', ('ior', a, b)))),
@@ -726,7 +726,7 @@ optimizations.extend([
    (('slt', a, b), ('b2f', ('flt', a, b)), 'options->lower_scmp'),
    (('sge', a, b), ('b2f', ('fge', a, b)), 'options->lower_scmp'),
    (('seq', a, b), ('b2f', ('feq', a, b)), 'options->lower_scmp'),
-   (('sne', a, b), ('b2f', ('fne', a, b)), 'options->lower_scmp'),
+   (('sne', a, b), ('b2f', ('fneu', a, b)), 'options->lower_scmp'),
    (('seq', ('seq', a, b), 1.0), ('seq', a, b)),
    (('seq', ('sne', a, b), 1.0), ('sne', a, b)),
    (('seq', ('slt', a, b), 1.0), ('slt', a, b)),
@@ -749,7 +749,7 @@ optimizations.extend([
    (('fany_nequal2', a, b), ('fmax', ('sne', 'a.x', 'b.x'), ('sne', 'a.y', 'b.y')), 'options->lower_vector_cmp'),
    (('fany_nequal3', a, b), ('fsat', ('fdot3', ('sne', a, b), ('sne', a, b))), 'options->lower_vector_cmp'),
    (('fany_nequal4', a, b), ('fsat', ('fdot4', ('sne', a, b), ('sne', a, b))), 'options->lower_vector_cmp'),
-   (('fne', ('fneg', a), a), ('fne', a, 0.0)),
+   (('fneu', ('fneg', a), a), ('fneu', a, 0.0)),
    (('feq', ('fneg', a), a), ('feq', a, 0.0)),
    # Emulating booleans
    (('imul', ('b2i', 'a@1'), ('b2i', 'b@1')), ('b2i', ('iand', a, b))),
@@ -954,7 +954,7 @@ optimizations.extend([
    (('fmax', ('fadd', ('fmul', ('fsat', a), ('fneg', ('fsat', a))), 1.0), 0.0), ('fadd', ('fmul', ('fsat', a), ('fneg', ('fsat', a))), 1.0)),
    (('fmax', ('fadd', ('fneg', ('fmul', ('fsat', a), ('fsat', a))), 1.0), 0.0), ('fadd', ('fneg', ('fmul', ('fsat', a), ('fsat', a))), 1.0)),
 
-   (('fne', 'a(is_not_zero)', 0.0), True),
+   (('fneu', 'a(is_not_zero)', 0.0), True),
    (('feq', 'a(is_not_zero)', 0.0), False),
 
    # In this chart, + means value > 0 and - means value < 0.
@@ -1463,7 +1463,7 @@ for bit_size in [8, 16, 32, 64]:
                                 ('bcsel', ('ilt', a, ('isub', a, b)), intmin, ('isub', a, b))), 'options->lower_add_sat'),
    ]
 
-invert = OrderedDict([('feq', 'fne'), ('fne', 'feq')])
+invert = OrderedDict([('feq', 'fneu'), ('fneu', 'feq')])
 
 for left, right in itertools.combinations_with_replacement(invert.keys(), 2):
    optimizations.append((('inot', ('ior(is_used_once)', (left, a, b), (right, c, d))),
@@ -1556,7 +1556,7 @@ for t in ['int', 'uint', 'float']:
         aN = 'a@' + str(N)
         bN = 'b@' + str(N)
         xeq = 'feq' if t == 'float' else 'ieq'
-        xne = 'fne' if t == 'float' else 'ine'
+        xne = 'fneu' if t == 'float' else 'ine'
         xge = '{0}ge'.format(t[0])
         xlt = '{0}lt'.format(t[0])
 
@@ -1731,7 +1731,7 @@ for op in ['flt', 'fge', 'feq']:
 # which constant folding will eat for lunch.  The resulting ternary will
 # further get cleaned up by the boolean reductions above and we will be
 # left with just the original variable "a".
-for op in ['flt', 'fge', 'feq', 'fne',
+for op in ['flt', 'fge', 'feq', 'fneu',
            'ilt', 'ige', 'ieq', 'ine', 'ult', 'uge']:
    optimizations += [
       ((op, ('bcsel', 'a', '#b', '#c'), '#d'),
@@ -1891,7 +1891,7 @@ late_optimizations = [
    (('~fge',          ('fadd', a, b),  0.0), ('fge',          a, ('fneg', b))),
    (('~fge', ('fneg', ('fadd', a, b)), 0.0), ('fge', ('fneg', a),         b)),
    (('~feq', ('fadd', a, b), 0.0), ('feq', a, ('fneg', b))),
-   (('~fne', ('fadd', a, b), 0.0), ('fne', a, ('fneg', b))),
+   (('~fneu', ('fadd', a, b), 0.0), ('fneu', a, ('fneg', b))),
 
    # nir_lower_to_source_mods will collapse this, but its existence during the
    # optimization loop can prevent other optimizations.
@@ -1913,7 +1913,7 @@ late_optimizations = [
    (('fge', ('fsat(is_used_once)', a), '#b(is_gt_0_and_lt_1)'), ('fge', a, b)),
    (('fge', '#b(is_gt_0_and_lt_1)', ('fsat(is_used_once)', a)), ('fge', b, a)),
    (('feq', ('fsat(is_used_once)', a), '#b(is_gt_0_and_lt_1)'), ('feq', a, b)),
-   (('fne', ('fsat(is_used_once)', a), '#b(is_gt_0_and_lt_1)'), ('fne', a, b)),
+   (('fneu', ('fsat(is_used_once)', a), '#b(is_gt_0_and_lt_1)'), ('fneu', a, b)),
 
    (('fge', ('fsat(is_used_once)', a), 1.0), ('fge', a, 1.0)),
    (('flt', ('fsat(is_used_once)', a), 1.0), ('flt', a, 1.0)),
@@ -1923,12 +1923,12 @@ late_optimizations = [
    (('flt', ('fneg', a), ('fneg', b)), ('flt', b, a)),
    (('fge', ('fneg', a), ('fneg', b)), ('fge', b, a)),
    (('feq', ('fneg', a), ('fneg', b)), ('feq', b, a)),
-   (('fne', ('fneg', a), ('fneg', b)), ('fne', b, a)),
+   (('fneu', ('fneg', a), ('fneg', b)), ('fneu', b, a)),
    (('flt', ('fneg', a), -1.0), ('flt', 1.0, a)),
    (('flt', -1.0, ('fneg', a)), ('flt', a, 1.0)),
    (('fge', ('fneg', a), -1.0), ('fge', 1.0, a)),
    (('fge', -1.0, ('fneg', a)), ('fge', a, 1.0)),
-   (('fne', ('fneg', a), -1.0), ('fne', 1.0, a)),
+   (('fneu', ('fneg', a), -1.0), ('fneu', 1.0, a)),
    (('feq', -1.0, ('fneg', a)), ('feq', a, 1.0)),
 
    (('ior', a, a), a),

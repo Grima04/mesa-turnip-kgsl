@@ -2918,7 +2918,7 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
       emit_comparison(ctx, instr, dst, aco_opcode::v_cmp_eq_f16, aco_opcode::v_cmp_eq_f32, aco_opcode::v_cmp_eq_f64);
       break;
    }
-   case nir_op_fne: {
+   case nir_op_fneu: {
       emit_comparison(ctx, instr, dst, aco_opcode::v_cmp_neq_f16, aco_opcode::v_cmp_neq_f32, aco_opcode::v_cmp_neq_f64);
       break;
    }
