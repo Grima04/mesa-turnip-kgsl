@@ -272,7 +272,7 @@ zink_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_GLSL_FEATURE_LEVEL_COMPATIBILITY:
       return 130;
    case PIPE_CAP_GLSL_FEATURE_LEVEL:
-      return 430;
+      return 440;
 
    case PIPE_CAP_COMPUTE:
       return 1;
