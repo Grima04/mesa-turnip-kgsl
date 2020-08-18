@@ -2895,7 +2895,8 @@ emit_tex(struct ntv_context *ctx, nir_tex_instr *tex)
           tex->op == nir_texop_txf_ms ||
           tex->op == nir_texop_txs ||
           tex->op == nir_texop_lod ||
-          tex->op == nir_texop_tg4);
+          tex->op == nir_texop_tg4 ||
+          tex->op == nir_texop_texture_samples);
    assert(tex->texture_index == tex->sampler_index);
 
    SpvId coord = 0, proj = 0, bias = 0, lod = 0, dref = 0, dx = 0, dy = 0,
@@ -3021,6 +3022,13 @@ emit_tex(struct ntv_context *ctx, nir_tex_instr *tex)
       SpvId result = spirv_builder_emit_image_query_size(&ctx->builder,
                                                          dest_type, image,
                                                          lod);
+      store_dest(ctx, &tex->dest, result, tex->dest_type);
+      return;
+   }
+   if (tex->op == nir_texop_texture_samples) {
+      SpvId image = spirv_builder_emit_image(&ctx->builder, image_type, load);
+      SpvId result = spirv_builder_emit_unop(&ctx->builder, SpvOpImageQuerySamples,
+                                             dest_type, image);
       store_dest(ctx, &tex->dest, result, tex->dest_type);
       return;
    }
