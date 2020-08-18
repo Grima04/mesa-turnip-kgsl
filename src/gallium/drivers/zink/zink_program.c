@@ -170,6 +170,17 @@ create_pipeline_layout(VkDevice dev, VkDescriptorSetLayout dsl)
 
  
 static void
+shader_key_vs_gen(struct zink_context *ctx, struct zink_shader *zs,
+                  struct zink_shader *shaders[ZINK_SHADER_COUNT], struct zink_shader_key *key)
+{
+   struct zink_vs_key *vs_key = &key->key.vs;
+   key->size = sizeof(struct zink_vs_key);
+
+   vs_key->shader_id = zs->shader_id;
+   vs_key->clip_halfz = ctx->rast_state->base.clip_halfz;
+}
+
+static void
 shader_key_fs_gen(struct zink_context *ctx, struct zink_shader *zs,
                   struct zink_shader *shaders[ZINK_SHADER_COUNT], struct zink_shader_key *key)
 {
@@ -199,25 +210,16 @@ shader_key_tcs_gen(struct zink_context *ctx, struct zink_shader *zs,
    tcs_key->vs_outputs_written = shaders[PIPE_SHADER_VERTEX]->nir->info.outputs_written;
 }
 
-static void
-shader_key_dummy_gen(struct zink_context *ctx, struct zink_shader *zs,
-                     struct zink_shader *shaders[ZINK_SHADER_COUNT], struct zink_shader_key *key)
-{
-   struct zink_fs_key *fs_key = &key->key.fs;
-   key->size = sizeof(uint32_t);
- 
-   fs_key->shader_id = zs->shader_id;
-}
-
 typedef void (*zink_shader_key_gen)(struct zink_context *ctx, struct zink_shader *zs,
                                     struct zink_shader *shaders[ZINK_SHADER_COUNT],
                                     struct zink_shader_key *key);
 static zink_shader_key_gen shader_key_vtbl[] =
 {
-   [MESA_SHADER_VERTEX] = shader_key_dummy_gen,
+   [MESA_SHADER_VERTEX] = shader_key_vs_gen,
    [MESA_SHADER_TESS_CTRL] = shader_key_tcs_gen,
-   [MESA_SHADER_TESS_EVAL] = shader_key_dummy_gen,
-   [MESA_SHADER_GEOMETRY] = shader_key_dummy_gen,
+   /* reusing vs key for now since we're only using clip_halfz */
+   [MESA_SHADER_TESS_EVAL] = shader_key_vs_gen,
+   [MESA_SHADER_GEOMETRY] = shader_key_vs_gen,
    [MESA_SHADER_FRAGMENT] = shader_key_fs_gen,
 };
 
