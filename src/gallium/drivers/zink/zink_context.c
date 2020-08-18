@@ -1287,6 +1287,18 @@ zink_wait_on_batch(struct zink_context *ctx, int batch_id)
 }
 
 static void
+zink_texture_barrier(struct pipe_context *pctx, unsigned flags)
+{
+   struct zink_context *ctx = zink_context(pctx);
+   if (zink_curr_batch(ctx)->has_draw)
+      pctx->flush(pctx, NULL, 0);
+   if (ctx->compute_batch.has_draw) {
+      zink_end_batch(ctx, &ctx->compute_batch);
+      zink_start_batch(ctx, &ctx->compute_batch);
+   }
+}
+
+static void
 zink_memory_barrier(struct pipe_context *pctx, unsigned flags)
 {
    struct zink_context *ctx = zink_context(pctx);
@@ -1668,6 +1680,7 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
    ctx->base.launch_grid = zink_launch_grid;
    ctx->base.flush = zink_flush;
    ctx->base.memory_barrier = zink_memory_barrier;
+   ctx->base.texture_barrier = zink_texture_barrier;
 
    ctx->base.resource_copy_region = zink_resource_copy_region;
    ctx->base.blit = zink_blit;
