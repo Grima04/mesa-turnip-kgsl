@@ -1803,13 +1803,8 @@ vtn_storage_class_to_mode(struct vtn_builder *b,
       break;
    case SpvStorageClassUniformConstant:
       if (b->shader->info.stage == MESA_SHADER_KERNEL) {
-         if (b->options->constant_as_global) {
-            mode = vtn_variable_mode_cross_workgroup;
-            nir_mode = nir_var_mem_global;
-         } else {
-            mode = vtn_variable_mode_constant;
-            nir_mode = nir_var_mem_constant;
-         }
+         mode = vtn_variable_mode_constant;
+         nir_mode = nir_var_mem_constant;
       } else {
          mode = vtn_variable_mode_uniform;
          nir_mode = nir_var_uniform;

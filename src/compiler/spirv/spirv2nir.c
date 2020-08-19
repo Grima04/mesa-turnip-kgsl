@@ -137,7 +137,6 @@ int main(int argc, char **argv)
       spirv_opts.caps.int16 = true;
       spirv_opts.caps.int64 = true;
       spirv_opts.caps.kernel = true;
-      spirv_opts.constant_as_global = true;
    }
 
    nir_shader *nir = spirv_to_nir(map, word_count, NULL, 0,
