@@ -273,6 +273,12 @@ static void si_add_split_disasm(const char *disasm,
 		struct radv_shader_inst *inst = &instructions[*num];
 		unsigned len = next - disasm;
 
+		if (!memchr(disasm, ';', len)) {
+			/* Ignore everything that is not an instruction. */
+			disasm = next + 1;
+			continue;
+		}
+
 		assert(len < ARRAY_SIZE(inst->text));
 		memcpy(inst->text, disasm, len);
 		inst->text[len] = 0;
