@@ -42,6 +42,7 @@ struct set;
 
 struct zink_push_constant {
    unsigned draw_mode_is_indexed;
+   unsigned draw_id;
    float default_inner_level[2];
    float default_outer_level[4];
 };
