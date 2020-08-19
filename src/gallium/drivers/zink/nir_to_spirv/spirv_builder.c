@@ -702,6 +702,13 @@ spirv_builder_emit_kill(struct spirv_builder *b)
 }
 
 SpvId
+spirv_builder_emit_vote(struct spirv_builder *b, SpvOp op, SpvId src)
+{
+   return spirv_builder_emit_binop(b, op, spirv_builder_type_bool(b),
+                                   spirv_builder_const_uint(b, 32, SpvScopeWorkgroup), src);
+}
+
+SpvId
 spirv_builder_emit_image_sample(struct spirv_builder *b,
                                 SpvId result_type,
                                 SpvId sampled_image,
