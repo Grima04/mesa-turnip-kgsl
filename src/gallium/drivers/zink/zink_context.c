@@ -1602,15 +1602,25 @@ zink_set_stream_output_targets(struct pipe_context *pctx,
          pipe_so_target_reference(&ctx->so_targets[i], NULL);
       ctx->num_so_targets = 0;
    } else {
-      for (unsigned i = 0; i < num_targets; i++)
+      for (unsigned i = 0; i < num_targets; i++) {
+         struct zink_so_target *t = zink_so_target(targets[i]);
          pipe_so_target_reference(&ctx->so_targets[i], targets[i]);
+         if (!t)
+            continue;
+         struct zink_resource *res = zink_resource(t->counter_buffer);
+         if (offsets[0] == (unsigned)-1)
+            ctx->xfb_barrier |= zink_resource_buffer_needs_barrier(res,
+                                                                   VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_READ_BIT_EXT,
+                                                                   VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT);
+         else
+            ctx->xfb_barrier |= zink_resource_buffer_needs_barrier(res,
+                                                                   VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_WRITE_BIT_EXT,
+                                                                   VK_PIPELINE_STAGE_TRANSFORM_FEEDBACK_BIT_EXT);
+      }
       for (unsigned i = num_targets; i < ctx->num_so_targets; i++)
          pipe_so_target_reference(&ctx->so_targets[i], NULL);
       ctx->num_so_targets = num_targets;
 
-      /* emit memory barrier on next draw for synchronization */
-      if (offsets[0] == (unsigned)-1)
-         ctx->xfb_barrier = true;
       /* TODO: possibly avoid rebinding on resume if resuming from same buffers? */
       ctx->dirty_so_targets = true;
    }

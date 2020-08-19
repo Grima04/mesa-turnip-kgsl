@@ -52,29 +52,19 @@ zink_emit_xfb_counter_barrier(struct zink_context *ctx)
     *
     * - from VK_EXT_transform_feedback spec
     */
-   VkBufferMemoryBarrier barriers[PIPE_MAX_SO_OUTPUTS] = {};
-   unsigned barrier_count = 0;
-
+   struct zink_batch *batch = zink_batch_no_rp(ctx);
    for (unsigned i = 0; i < ctx->num_so_targets; i++) {
       struct zink_so_target *t = zink_so_target(ctx->so_targets[i]);
-      if (t && t->counter_buffer_valid) {
-          barriers[i].sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
-          barriers[i].srcAccessMask = VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_WRITE_BIT_EXT;
-          barriers[i].dstAccessMask = VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_READ_BIT_EXT;
-          barriers[i].buffer = zink_resource(t->counter_buffer)->buffer;
-          barriers[i].size = VK_WHOLE_SIZE;
-          barrier_count++;
-      }
+      if (!t)
+         continue;
+      struct zink_resource *res = zink_resource(t->counter_buffer);
+      if (t->counter_buffer_valid)
+          zink_resource_buffer_barrier(batch->cmdbuf, res, VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_READ_BIT_EXT,
+                                       VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT);
+      else
+          zink_resource_buffer_barrier(batch->cmdbuf, res, VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_WRITE_BIT_EXT,
+                                       VK_PIPELINE_STAGE_TRANSFORM_FEEDBACK_BIT_EXT);
    }
-   struct zink_batch *batch = zink_batch_no_rp(ctx);
-   vkCmdPipelineBarrier(batch->cmdbuf,
-      VK_PIPELINE_STAGE_TRANSFORM_FEEDBACK_BIT_EXT,
-      VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT,
-      0,
-      0, NULL,
-      barrier_count, barriers,
-      0, NULL
-   );
    ctx->xfb_barrier = false;
 }
 
