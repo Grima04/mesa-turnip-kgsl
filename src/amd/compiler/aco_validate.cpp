@@ -378,7 +378,8 @@ bool validate_ir(Program* program)
          }
          case Format::SMEM: {
             if (instr->operands.size() >= 1)
-               check(instr->operands[0].isTemp() && instr->operands[0].regClass().type() == RegType::sgpr, "SMEM operands must be sgpr", instr.get());
+               check((instr->operands[0].isFixed() && !instr->operands[0].isConstant()) ||
+                     (instr->operands[0].isTemp() && instr->operands[0].regClass().type() == RegType::sgpr), "SMEM operands must be sgpr", instr.get());
             if (instr->operands.size() >= 2)
                check(instr->operands[1].isConstant() || (instr->operands[1].isTemp() && instr->operands[1].regClass().type() == RegType::sgpr),
                      "SMEM offset must be constant or sgpr", instr.get());
