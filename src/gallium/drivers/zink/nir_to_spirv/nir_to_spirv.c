@@ -78,7 +78,7 @@ struct ntv_context {
    unsigned char *shader_slot_map;
    unsigned char shader_slots_reserved;
 
-   SpvId front_face_var, instance_id_var, vertex_id_var, base_instance_var,
+   SpvId front_face_var, instance_id_var, vertex_id_var,
          primitive_id_var, invocation_id_var, // geometry
          sample_mask_type, sample_id_var, sample_pos_var, sample_mask_in_var,
          tess_patch_vertices_in, tess_coord_var, // tess
@@ -86,7 +86,8 @@ struct ntv_context {
          workgroup_id_var, num_workgroups_var,
          local_invocation_id_var, global_invocation_id_var,
          local_invocation_index_var, helper_invocation_var,
-         shared_block_var;
+         shared_block_var,
+         base_vertex_var, base_instance_var, draw_id_var;
 };
 
 static SpvId
@@ -2618,6 +2619,14 @@ emit_intrinsic(struct ntv_context *ctx, nir_intrinsic_instr *intr)
       spirv_builder_emit_extension(&ctx->builder, "SPV_KHR_shader_draw_parameters");
       spirv_builder_emit_cap(&ctx->builder, SpvCapabilityDrawParameters);
       emit_load_uint_input(ctx, intr, &ctx->instance_id_var, "gl_InstanceId", SpvBuiltInInstanceIndex);
+      break;
+
+   case nir_intrinsic_load_base_vertex:
+      emit_load_uint_input(ctx, intr, &ctx->base_vertex_var, "gl_BaseVertex", SpvBuiltInBaseVertex);
+      break;
+
+   case nir_intrinsic_load_draw_id:
+      emit_load_uint_input(ctx, intr, &ctx->draw_id_var, "gl_DrawID", SpvBuiltInDrawIndex);
       break;
 
    case nir_intrinsic_load_vertex_id:
