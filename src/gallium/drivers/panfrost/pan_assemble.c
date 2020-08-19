@@ -260,8 +260,7 @@ panfrost_shader_compile(struct panfrost_context *ctx,
 
         /* Separate as primary uniform count is truncated. Sysvals are prefix
          * uniforms */
-        state->uniform_count = s->num_uniforms + program.sysval_count;
-        state->uniform_cutoff = program.uniform_cutoff;
+        state->uniform_count = MIN2(s->num_uniforms + program.sysval_count, program.uniform_cutoff);
         state->work_reg_count = program.work_register_count;
 
         if (dev->quirks & IS_BIFROST)

@@ -185,8 +185,7 @@ struct panfrost_shader_state {
         bool compiled;
 
         /* Non-descript information */
-        int uniform_count;
-        unsigned uniform_cutoff;
+        unsigned uniform_count;
         unsigned work_reg_count;
         unsigned attribute_count;
         bool can_discard;

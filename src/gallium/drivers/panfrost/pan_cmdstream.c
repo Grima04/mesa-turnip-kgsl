@@ -338,11 +338,9 @@ panfrost_shader_meta_init(struct panfrost_context *ctx,
                         SET_BIT(meta->bifrost2.preload_regs, 0x10, ss->reads_frag_coord);
                 }
 
-                meta->bifrost2.uniform_count = MIN2(ss->uniform_count,
-                                                    ss->uniform_cutoff);
+                meta->bifrost2.uniform_count = ss->uniform_count;
         } else {
-                meta->midgard1.uniform_count = MIN2(ss->uniform_count,
-                                                    ss->uniform_cutoff);
+                meta->midgard1.uniform_count = ss->uniform_count;
                 meta->midgard1.work_count = ss->work_reg_count;
 
                 /* TODO: This is not conformant on ES3 */
