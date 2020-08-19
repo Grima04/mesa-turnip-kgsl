@@ -225,12 +225,14 @@ get_gfx_program(struct zink_context *ctx)
    return ctx->curr_program;
 }
 
+#define MAX_DESCRIPTORS (PIPE_SHADER_TYPES * (PIPE_MAX_CONSTANT_BUFFERS + PIPE_MAX_SAMPLERS + PIPE_MAX_SHADER_BUFFERS + PIPE_MAX_SHADER_IMAGES))
+
 static void
 update_descriptors(struct zink_context *ctx, struct zink_screen *screen, bool is_compute)
 {
-   VkWriteDescriptorSet wds[PIPE_SHADER_TYPES * (PIPE_MAX_CONSTANT_BUFFERS + PIPE_MAX_SAMPLERS + PIPE_MAX_SHADER_BUFFERS + PIPE_MAX_SHADER_IMAGES)];
-   struct zink_resource *read_desc_resources[PIPE_SHADER_TYPES * (PIPE_MAX_CONSTANT_BUFFERS + PIPE_MAX_SAMPLERS + PIPE_MAX_SHADER_BUFFERS + PIPE_MAX_SHADER_IMAGES)] = {};
-   struct zink_resource *write_desc_resources[PIPE_SHADER_TYPES * (PIPE_MAX_CONSTANT_BUFFERS + PIPE_MAX_SAMPLERS + PIPE_MAX_SHADER_BUFFERS + PIPE_MAX_SHADER_IMAGES)] = {};
+   VkWriteDescriptorSet wds[MAX_DESCRIPTORS];
+   struct zink_resource *read_desc_resources[MAX_DESCRIPTORS] = {};
+   struct zink_resource *write_desc_resources[MAX_DESCRIPTORS] = {};
    struct zink_surface *surface_refs[PIPE_SHADER_TYPES * PIPE_MAX_SHADER_IMAGES] = {};
    VkDescriptorBufferInfo buffer_infos[PIPE_SHADER_TYPES * (PIPE_MAX_CONSTANT_BUFFERS + PIPE_MAX_SHADER_BUFFERS + PIPE_MAX_SHADER_IMAGES)];
    VkDescriptorImageInfo image_infos[PIPE_SHADER_TYPES * (PIPE_MAX_SAMPLERS + PIPE_MAX_SHADER_IMAGES)];
@@ -248,7 +250,7 @@ update_descriptors(struct zink_context *ctx, struct zink_screen *screen, bool is
       struct zink_resource *res;
       unsigned layout;
       VkPipelineStageFlagBits stage;
-   } transitions[PIPE_SHADER_TYPES * (PIPE_MAX_CONSTANT_BUFFERS + PIPE_MAX_SAMPLERS + PIPE_MAX_SHADER_BUFFERS + PIPE_MAX_SHADER_IMAGES)];
+   } transitions[MAX_DESCRIPTORS] = {};
    int num_transitions = 0;
 
    for (int i = 0; i < num_stages; i++) {
