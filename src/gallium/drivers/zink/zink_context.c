@@ -1159,10 +1159,22 @@ pipeline_access_stage(VkAccessFlags flags)
    return VK_PIPELINE_STAGE_TRANSFER_BIT;
 }
 
+bool
+zink_resource_buffer_needs_barrier(struct zink_resource *res, VkAccessFlags flags, VkPipelineStageFlags pipeline)
+{
+   if (!pipeline)
+      pipeline = pipeline_access_stage(flags);
+   return (res->access_stage & pipeline) != pipeline || (res->access & flags) != flags ||
+          (zink_resource_access_is_write(flags) && util_bitcount(flags) > 1);
+}
+
 void
 zink_resource_buffer_barrier(VkCommandBuffer cmdbuf, struct zink_resource *res, VkAccessFlags flags, VkPipelineStageFlags pipeline)
 {
-   /* TODO: maybe make this more flexible using flags? */
+   if (!pipeline)
+      pipeline = pipeline_access_stage(flags);
+   if (!zink_resource_buffer_needs_barrier(res, flags, pipeline))
+      return;
    VkBufferMemoryBarrier bmb = {
       VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
       NULL,
@@ -1178,14 +1190,14 @@ zink_resource_buffer_barrier(VkCommandBuffer cmdbuf, struct zink_resource *res, 
    vkCmdPipelineBarrier(
       cmdbuf,
       res->access_stage ? res->access_stage : pipeline_access_stage(res->access),
-      pipeline ? pipeline : pipeline_access_stage(flags),
+      pipeline,
       0,
       0, NULL,
       1, &bmb,
       0, NULL
    );
    res->access = flags;
-   res->access_stage = pipeline ? pipeline : pipeline_access_stage(flags);
+   res->access_stage = pipeline;
 }
 
 VkShaderStageFlagBits
