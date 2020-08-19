@@ -26,11 +26,13 @@
 
 #include "core/device.hpp"
 #include "core/error.hpp"
+#include "core/module.hpp"
 #include "pipe/p_state.h"
 #include "util/algorithm.hpp"
 #include "util/functional.hpp"
 
 #include <compiler/glsl_types.h>
+#include <compiler/nir/nir_builder.h>
 #include <compiler/nir/nir_serialize.h>
 #include <compiler/spirv/nir_spirv.h>
 #include <util/u_math.h>
@@ -65,6 +67,68 @@ static void debug_function(void *private_data,
    assert(private_data);
    auto r_log = reinterpret_cast<std::string *>(private_data);
    *r_log += message;
+}
+
+struct clover_lower_nir_state {
+   std::vector<module::argument> &args;
+   uint32_t global_dims;
+   nir_variable *offset_vars[3];
+};
+
+static bool
+clover_lower_nir_filter(const nir_instr *instr, const void *)
+{
+   return instr->type == nir_instr_type_intrinsic;
+}
+
+static nir_ssa_def *
+clover_lower_nir_instr(nir_builder *b, nir_instr *instr, void *_state)
+{
+   clover_lower_nir_state *state = reinterpret_cast<clover_lower_nir_state*>(_state);
+   nir_intrinsic_instr *intrinsic = nir_instr_as_intrinsic(instr);
+
+   switch (intrinsic->intrinsic) {
+   case nir_intrinsic_load_base_global_invocation_id: {
+      nir_ssa_def *loads[3];
+
+      /* create variables if we didn't do so alrady */
+      if (!state->offset_vars[0]) {
+         /* TODO: fix for 64 bit */
+         /* Even though we only place one scalar argument, clover will bind up to
+          * three 32 bit values
+         */
+         state->args.emplace_back(module::argument::scalar, 4, 4, 4,
+                                  module::argument::zero_ext,
+                                  module::argument::grid_offset);
+
+         const glsl_type *type = glsl_uint_type();
+         for (uint32_t i = 0; i < 3; i++) {
+            state->offset_vars[i] =
+               nir_variable_create(b->shader, nir_var_shader_in, type,
+                                   "global_invocation_id_offsets");
+            state->offset_vars[i]->data.location = b->shader->num_inputs++;
+         }
+      }
+
+      for (int i = 0; i < 3; i++) {
+         nir_variable *var = state->offset_vars[i];
+         loads[i] = var ? nir_load_var(b, var) : nir_imm_int(b, 0);
+      }
+
+      return nir_u2u(b, nir_vec(b, loads, state->global_dims),
+                     nir_dest_bit_size(intrinsic->dest));
+   }
+   default:
+      return NULL;
+   }
+}
+
+static bool
+clover_lower_nir(nir_shader *nir, std::vector<module::argument> &args, uint32_t dims)
+{
+   clover_lower_nir_state state = { args, dims };
+   return nir_shader_lower_instructions(nir,
+      clover_lower_nir_filter, clover_lower_nir_instr, &state);
 }
 
 module clover::nir::spirv_to_nir(const module &mod, const device &dev,
@@ -120,14 +184,6 @@ module clover::nir::spirv_to_nir(const module &mod, const device &dev,
       nir->info.cs.local_size_variable = true;
       nir_validate_shader(nir, "clover");
 
-      // Calculate input offsets.
-      unsigned offset = 0;
-      nir_foreach_shader_in_variable_safe(var, nir) {
-         offset = align(offset, glsl_get_cl_alignment(var->type));
-         var->data.driver_location = offset;
-         offset += glsl_get_cl_size(var->type);
-      }
-
       // Inline all functions first.
       // according to the comment on nir_inline_functions
       NIR_PASS_V(nir, nir_lower_variable_initializers, nir_var_function_temp);
@@ -155,6 +211,22 @@ module clover::nir::spirv_to_nir(const module &mod, const device &dev,
       NIR_PASS_V(nir, nir_lower_vars_to_ssa);
       NIR_PASS_V(nir, nir_opt_dce);
 
+      NIR_PASS_V(nir, nir_lower_system_values);
+      nir_lower_compute_system_values_options sysval_options = { 0 };
+      sysval_options.has_base_global_invocation_id = true;
+      NIR_PASS_V(nir, nir_lower_compute_system_values, &sysval_options);
+
+      auto args = sym.args;
+      NIR_PASS_V(nir, clover_lower_nir, args, dev.max_block_size().size());
+
+      // Calculate input offsets.
+      unsigned offset = 0;
+      nir_foreach_shader_in_variable(var, nir) {
+         offset = align(offset, glsl_get_cl_alignment(var->type));
+         var->data.driver_location = offset;
+         offset += glsl_get_cl_size(var->type);
+      }
+
       NIR_PASS_V(nir, nir_lower_vars_to_explicit_types, nir_var_mem_shared,
                  glsl_get_cl_type_size_align);
 
@@ -167,9 +239,6 @@ module clover::nir::spirv_to_nir(const module &mod, const device &dev,
 
       NIR_PASS_V(nir, nir_lower_explicit_io, nir_var_mem_global,
                  spirv_options.global_addr_format);
-
-      NIR_PASS_V(nir, nir_lower_system_values);
-      NIR_PASS_V(nir, nir_lower_compute_system_values, NULL);
 
       if (compiler_options->lower_int64_options)
          NIR_PASS_V(nir, nir_lower_int64);
@@ -186,7 +255,7 @@ module clover::nir::spirv_to_nir(const module &mod, const device &dev,
                        reinterpret_cast<const char *>(&header) + sizeof(header));
       text.data.insert(text.data.end(), blob.data, blob.data + blob.size);
 
-      m.syms.emplace_back(sym.name, section_id, 0, sym.args);
+      m.syms.emplace_back(sym.name, section_id, 0, args);
       m.secs.push_back(text);
       section_id++;
    }
