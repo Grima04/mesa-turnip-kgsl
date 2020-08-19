@@ -1838,6 +1838,11 @@ cmd_buffer_render_pass_emit_per_tile_rcl(struct v3dv_cmd_buffer *cmd_buffer,
       fmt.primitive_type = LIST_TRIANGLES;
    }
 
+   /* PTB assumes that value to be 0, but hw will not set it. */
+   cl_emit(cl, SET_INSTANCEID, set) {
+      set.instance_id = 0;
+   }
+
    cl_emit(cl, BRANCH_TO_IMPLICIT_TILE_LIST, branch);
 
    cmd_buffer_render_pass_emit_stores(cmd_buffer, cl, layer);
