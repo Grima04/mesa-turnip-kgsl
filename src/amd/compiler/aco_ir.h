@@ -51,6 +51,7 @@ enum {
    DEBUG_VALIDATE_IR = 0x1,
    DEBUG_VALIDATE_RA = 0x2,
    DEBUG_PERFWARN = 0x4,
+   DEBUG_FORCE_WAITCNT = 0x8,
 };
 
 /**
