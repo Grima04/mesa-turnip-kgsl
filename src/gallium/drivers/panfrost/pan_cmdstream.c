@@ -307,7 +307,7 @@ panfrost_vt_set_draw_info(struct panfrost_context *ctx,
 }
 
 static void
-panfrost_shader_meta_init(struct panfrost_context *ctx,
+panfrost_compute_shader_meta_init(struct panfrost_context *ctx,
                           enum pipe_shader_type st,
                           struct mali_shader_meta *meta)
 {
@@ -322,23 +322,10 @@ panfrost_shader_meta_init(struct panfrost_context *ctx,
         meta->sampler_count = ctx->sampler_count[st];
 
         if (dev->quirks & IS_BIFROST) {
-                if (st == PIPE_SHADER_VERTEX)
-                        meta->bifrost1.unk1 = 0x800000;
-                else {
-                        /* First clause ATEST |= 0x4000000.
-                         * Less than 32 regs |= 0x200 */
-                        meta->bifrost1.unk1 = 0x950020;
-                }
-
-                meta->bifrost1.uniform_buffer_count = panfrost_ubo_count(ctx, st);
-                if (st == PIPE_SHADER_VERTEX)
-                        meta->bifrost2.preload_regs = 0xC0;
-                else {
-                        meta->bifrost2.preload_regs = 0x1;
-                        SET_BIT(meta->bifrost2.preload_regs, 0x10, ss->reads_frag_coord);
-                }
-
+                meta->bifrost1.unk1 = 0x800000;
+                meta->bifrost2.preload_regs = 0xC0;
                 meta->bifrost2.uniform_count = ss->uniform_count;
+                meta->bifrost1.uniform_buffer_count = panfrost_ubo_count(ctx, st);
         } else {
                 meta->midgard1.uniform_count = ss->uniform_count;
                 meta->midgard1.work_count = ss->work_reg_count;
@@ -566,6 +553,37 @@ panfrost_frag_shader_meta_init(struct panfrost_context *ctx,
         struct pipe_rasterizer_state *rast = &ctx->rasterizer->base;
         const struct panfrost_zsa_state *zsa = ctx->depth_stencil;
 
+        memset(fragmeta, 0, sizeof(*fragmeta));
+
+        fragmeta->shader = fs->shader;
+        fragmeta->attribute_count = fs->attribute_count;
+        fragmeta->varying_count = fs->varying_count;
+        fragmeta->texture_count = ctx->sampler_view_count[PIPE_SHADER_FRAGMENT];
+        fragmeta->sampler_count = ctx->sampler_count[PIPE_SHADER_FRAGMENT];
+
+        if (dev->quirks & IS_BIFROST) {
+                /* First clause ATEST |= 0x4000000.
+                 * Lefs than 32 regs |= 0x200 */
+                fragmeta->bifrost1.unk1 = 0x950020;
+
+                fragmeta->bifrost1.uniform_buffer_count = panfrost_ubo_count(ctx, PIPE_SHADER_FRAGMENT);
+                fragmeta->bifrost2.preload_regs = 0x1;
+                SET_BIT(fragmeta->bifrost2.preload_regs, 0x10, fs->reads_frag_coord);
+
+                fragmeta->bifrost2.uniform_count = fs->uniform_count;
+        } else {
+                fragmeta->midgard1.uniform_count = fs->uniform_count;
+                fragmeta->midgard1.work_count = fs->work_reg_count;
+
+                /* TODO: This is not conformant on ES3 */
+                fragmeta->midgard1.flags_hi = MALI_SUPPRESS_INF_NAN;
+
+                fragmeta->midgard1.flags_lo = 0x20;
+                fragmeta->midgard1.uniform_buffer_count = panfrost_ubo_count(ctx, PIPE_SHADER_FRAGMENT);
+
+                SET_BIT(fragmeta->midgard1.flags_lo, MALI_WRITES_GLOBAL, fs->writes_global);
+        }
+
         bool msaa = rast->multisample;
         fragmeta->coverage_mask = msaa ? ctx->sample_mask : ~0;
 
@@ -755,8 +773,6 @@ panfrost_emit_shader_meta(struct panfrost_batch *batch,
 
         struct mali_shader_meta meta;
 
-        panfrost_shader_meta_init(ctx, st, &meta);
-
         /* Add the shader BO to the batch. */
         panfrost_batch_add_bo(batch, ss->bo,
                               PAN_BO_ACCESS_PRIVATE |
@@ -807,6 +823,8 @@ panfrost_emit_shader_meta(struct panfrost_batch *batch,
 
                 shader_ptr = xfer.gpu;
         } else {
+                panfrost_compute_shader_meta_init(ctx, st, &meta);
+
                 shader_ptr = panfrost_pool_upload(&batch->pool, &meta,
                                                        sizeof(meta));
         }
