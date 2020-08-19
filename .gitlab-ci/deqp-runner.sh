@@ -301,8 +301,6 @@ if [ $DEQP_EXITCODE -ne 0 ]; then
         echo "Unexpected results found:"
         cat $UNEXPECTED_RESULTSFILE
     fi
-
-    count=`cat $UNEXPECTED_RESULTSFILE | wc -l`
 else
     grep ",Flake" $RESULTSFILE > $FLAKESFILE
 
