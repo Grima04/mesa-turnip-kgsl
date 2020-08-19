@@ -69,7 +69,9 @@ apt-get install -y --no-remove \
 
 ############### Uninstall the build software
 
+ccache --show-stats
+
 apt-get purge -y \
       $STABLE_EPHEMERAL
 
-. .gitlab-ci/container/container_post_build.sh
+apt-get autoremove -y --purge
