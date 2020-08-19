@@ -264,8 +264,7 @@ panfrost-t860-traces:arm64:
   tags:
     - mesa-ci-aarch64-lava-baylibre
 
-# Commented out while waiting for more DUTs to come online
-.radeonsi-stoney-gles2:amd64:
+radeonsi-stoney-gles2:amd64:
   extends:
     - .lava-test:amd64
     - .radeonsi-rules
@@ -282,7 +281,7 @@ panfrost-t860-traces:arm64:
 # Commented out while waiting for more DUTs to come online
 .radeonsi-stoney-gles3:amd64:
   extends:
-    - .radeonsi-stoney-gles2:amd64
+    - radeonsi-stoney-gles2:amd64
   variables:
     DEQP_VERSION: gles3
   tags:
