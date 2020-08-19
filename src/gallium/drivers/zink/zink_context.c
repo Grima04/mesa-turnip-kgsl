@@ -501,20 +501,6 @@ zink_set_vertex_buffers(struct pipe_context *pctx,
 {
    struct zink_context *ctx = zink_context(pctx);
 
-   if (buffers) {
-      for (int i = 0; i < num_buffers; ++i) {
-         const struct pipe_vertex_buffer *vb = buffers + i;
-         struct zink_resource *res = zink_resource(vb->buffer.resource);
-         if (res && res->needs_xfb_barrier) {
-            /* if we're binding a previously-used xfb buffer, we need cmd buffer synchronization to ensure
-             * that we use the right buffer data
-             */
-            pctx->flush(pctx, NULL, 0);
-            res->needs_xfb_barrier = false;
-         }
-      }
-   }
-
    util_set_vertex_buffers_mask(ctx->buffers, &ctx->buffers_enabled_mask,
                                 buffers, start_slot, num_buffers,
                                 unbind_num_trailing_slots, take_ownership);

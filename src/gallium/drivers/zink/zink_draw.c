@@ -82,23 +82,9 @@ zink_emit_xfb_vertex_input_barrier(struct zink_context *ctx, struct zink_resourc
     *
     * - 20.3.1. Drawing Transform Feedback
     */
-   VkBufferMemoryBarrier barriers[1] = {};
-   barriers[0].sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
-   barriers[0].srcAccessMask = VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_WRITE_BIT_EXT;
-   barriers[0].dstAccessMask = VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT;
-   barriers[0].buffer = res->buffer;
-   barriers[0].size = VK_WHOLE_SIZE;
    struct zink_batch *batch = zink_batch_no_rp(ctx);
-   zink_batch_reference_resource_rw(batch, res, false);
-   vkCmdPipelineBarrier(batch->cmdbuf,
-      VK_PIPELINE_STAGE_TRANSFORM_FEEDBACK_BIT_EXT,
-      VK_PIPELINE_STAGE_VERTEX_INPUT_BIT,
-      0,
-      0, NULL,
-      ARRAY_SIZE(barriers), barriers,
-      0, NULL
-   );
-   res->needs_xfb_barrier = false;
+   zink_resource_buffer_barrier(batch->cmdbuf, res, VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT,
+                                VK_PIPELINE_STAGE_VERTEX_INPUT_BIT);
 }
 
 static void
@@ -121,6 +107,13 @@ zink_emit_stream_output_targets(struct pipe_context *pctx)
          continue;
       }
       buffers[i] = zink_resource(t->base.buffer)->buffer;
+      if (zink_resource_buffer_needs_barrier(zink_resource(t->base.buffer),
+                                             VK_ACCESS_TRANSFORM_FEEDBACK_WRITE_BIT_EXT,
+                                             VK_PIPELINE_STAGE_TRANSFORM_FEEDBACK_BIT_EXT)) {
+         batch = zink_batch_no_rp(ctx);
+         zink_resource_buffer_barrier(batch->cmdbuf, zink_resource(t->base.buffer),
+                                      VK_ACCESS_TRANSFORM_FEEDBACK_WRITE_BIT_EXT, VK_PIPELINE_STAGE_TRANSFORM_FEEDBACK_BIT_EXT);
+      }
       zink_batch_reference_resource_rw(batch, zink_resource(t->base.buffer), true);
       buffer_offsets[i] = t->base.buffer_offset;
       buffer_sizes[i] = t->base.buffer_size;
@@ -130,6 +123,25 @@ zink_emit_stream_output_targets(struct pipe_context *pctx)
                                                  buffers, buffer_offsets,
                                                  buffer_sizes);
    ctx->dirty_so_targets = false;
+}
+
+static void
+barrier_vertex_buffers(struct zink_context *ctx)
+{
+   const struct zink_vertex_elements_state *elems = ctx->element_state;
+   for (unsigned i = 0; i < elems->hw_state.num_bindings; i++) {
+      struct pipe_vertex_buffer *vb = ctx->buffers + ctx->element_state->binding_map[i];
+      assert(vb);
+      if (vb->buffer.resource) {
+         struct zink_resource *res = zink_resource(vb->buffer.resource);
+         if (zink_resource_buffer_needs_barrier(res, VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT,
+                                                VK_PIPELINE_STAGE_VERTEX_INPUT_BIT)) {
+            struct zink_batch *batch = zink_batch_no_rp(ctx);
+            zink_resource_buffer_barrier(batch->cmdbuf, res, VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT,
+                                         VK_PIPELINE_STAGE_VERTEX_INPUT_BIT);
+         }
+      }
+   }
 }
 
 static void
@@ -658,8 +670,12 @@ zink_draw_vbo(struct pipe_context *pctx,
    if (ctx->dirty_so_targets && ctx->num_so_targets)
       zink_emit_stream_output_targets(pctx);
 
-   if (so_target && zink_resource(so_target->base.buffer)->needs_xfb_barrier)
+   if (so_target && zink_resource_buffer_needs_barrier(zink_resource(so_target->base.buffer),
+                                                       VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT,
+                                                       VK_PIPELINE_STAGE_VERTEX_INPUT_BIT))
       zink_emit_xfb_vertex_input_barrier(ctx, zink_resource(so_target->base.buffer));
+
+   barrier_vertex_buffers(ctx);
 
    update_descriptors(ctx, screen, false);
 
@@ -797,6 +813,7 @@ zink_draw_vbo(struct pipe_context *pctx,
             need_index_buffer_unref ? 0 : draws[0].start, dinfo->index_bias, dinfo->start_instance);
    } else {
       if (so_target && screen->info.tf_props.transformFeedbackDraw) {
+         zink_batch_reference_resource_rw(batch, zink_resource(so_target->base.buffer), false);
          zink_batch_reference_resource_rw(batch, zink_resource(so_target->counter_buffer), true);
          screen->vk_CmdDrawIndirectByteCountEXT(batch->cmdbuf, dinfo->instance_count, dinfo->start_instance,
                                        zink_resource(so_target->counter_buffer)->buffer, so_target->counter_buffer_offset, 0,
@@ -826,7 +843,6 @@ zink_draw_vbo(struct pipe_context *pctx,
             counter_buffers[i] = zink_resource(t->counter_buffer)->buffer;
             counter_buffer_offsets[i] = t->counter_buffer_offset;
             t->counter_buffer_valid = true;
-            zink_resource(ctx->so_targets[i]->buffer)->needs_xfb_barrier = true;
          }
       }
       screen->vk_CmdEndTransformFeedbackEXT(batch->cmdbuf, 0, ctx->num_so_targets, counter_buffers, counter_buffer_offsets);
