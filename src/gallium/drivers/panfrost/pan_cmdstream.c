@@ -713,22 +713,6 @@ panfrost_emit_frag_shader(struct panfrost_context *ctx,
                 }
         }
 
-        /* Even on MFBD, the shader descriptor gets blend shaders. It's *also*
-         * copied to the blend_meta appended (by convention), but this is the
-         * field actually read by the hardware. (Or maybe both are read...?).
-         * Specify the last RTi with a blend shader. */
-
-        fragmeta->blend.shader = 0;
-
-        for (signed rt = ((signed) rt_count - 1); rt >= 0; --rt) {
-                if (!blend[rt].is_shader)
-                        continue;
-
-                fragmeta->blend.shader = blend[rt].shader.gpu |
-                                         blend[rt].shader.first_tag;
-                break;
-        }
-
         if (dev->quirks & MIDGARD_SFBD) {
                 /* When only a single render target platform is used, the blend
                  * information is inside the shader meta itself. We additionally
@@ -738,13 +722,28 @@ panfrost_emit_frag_shader(struct panfrost_context *ctx,
                 SET_BIT(fragmeta->unknown2_3, MALI_HAS_BLEND_SHADER,
                         blend[0].is_shader);
 
-                if (!blend[0].is_shader) {
+                if (blend[0].is_shader) {
+                        fragmeta->blend.shader = blend[0].shader.gpu |
+                                blend[0].shader.first_tag;
+                } else {
                         fragmeta->blend.equation = blend[0].equation.equation;
                         fragmeta->blend.constant = blend[0].equation.constant;
                 }
 
                 SET_BIT(fragmeta->unknown2_3, MALI_CAN_DISCARD,
                         blend[0].load_dest);
+        } else if (!(dev->quirks & IS_BIFROST)) {
+                /* Bug where MRT-capable hw apparently reads the last blend
+                 * shader from here instead of the usual location? */
+
+                for (signed rt = ((signed) rt_count - 1); rt >= 0; --rt) {
+                        if (!blend[rt].is_shader)
+                                continue;
+
+                        fragmeta->blend.shader = blend[rt].shader.gpu |
+                                                 blend[rt].shader.first_tag;
+                        break;
+                }
         }
 
         if (dev->quirks & IS_BIFROST) {
