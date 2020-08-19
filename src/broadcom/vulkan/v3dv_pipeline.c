@@ -539,7 +539,8 @@ descriptor_map_add(struct v3dv_descriptor_map *map,
                    int set,
                    int binding,
                    int array_index,
-                   int array_size)
+                   int array_size,
+                   bool is_shadow)
 {
    assert(array_index < array_size);
 
@@ -560,6 +561,7 @@ descriptor_map_add(struct v3dv_descriptor_map *map,
    map->binding[map->num_desc] = binding;
    map->array_index[map->num_desc] = array_index;
    map->array_size[map->num_desc] = array_size;
+   map->is_shadow[map->num_desc] = is_shadow;
    map->num_desc++;
 
    return index;
@@ -605,7 +607,8 @@ lower_vulkan_resource_index(nir_builder *b,
 
       index = descriptor_map_add(descriptor_map, set, binding,
                                  const_val->u32,
-                                 binding_layout->array_size);
+                                 binding_layout->array_size,
+                                 false /* is_shadow: Doesn't really matter in this case */);
 
       if (nir_intrinsic_desc_type(instr) == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER) {
          /* skip index 0 which is used for push constants */
@@ -742,7 +745,9 @@ lower_tex_src_to_offset(nir_builder *b, nir_tex_instr *instr, unsigned src_idx,
                          deref->var->data.descriptor_set,
                          deref->var->data.binding,
                          array_index,
-                         binding_layout->array_size);
+                         binding_layout->array_size,
+                         instr->is_shadow);
+
    if (is_sampler)
       instr->sampler_index = desc_index;
    else
@@ -838,7 +843,8 @@ lower_image_deref(nir_builder *b,
                          deref->var->data.descriptor_set,
                          deref->var->data.binding,
                          array_index,
-                         binding_layout->array_size);
+                         binding_layout->array_size,
+                         false /* is_shadow: Doesn't really matter in this case */);
 
    /* We still need to get a combined_index, as we are integrating images with
     * the rest of the texture/sampler support

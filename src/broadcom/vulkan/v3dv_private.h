@@ -1443,6 +1443,11 @@ struct v3dv_descriptor_map {
    int binding[64];
    int array_index[64];
    int array_size[64];
+
+   /* The following makes sense for textures, but this is the easier place to
+    * put it
+    */
+   bool is_shadow[64];
 };
 
 struct v3dv_sampler {
