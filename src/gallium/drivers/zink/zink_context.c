@@ -810,14 +810,14 @@ framebuffer_state_buffer_barriers_setup(struct zink_context *ctx,
       struct zink_resource *res = zink_resource(surf->texture);
       if (res->layout != VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
          zink_resource_barrier(batch->cmdbuf, res,
-                               VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+                               VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, 0);
    }
 
    if (state->zsbuf) {
       struct zink_resource *res = zink_resource(state->zsbuf->texture);
       if (res->layout != VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
          zink_resource_barrier(batch->cmdbuf, res,
-                               VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+                               VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, 0);
    }
 }
 
@@ -1046,34 +1046,6 @@ pipeline_dst_stage(VkImageLayout layout)
    }
 }
 
-static VkPipelineStageFlags
-pipeline_src_stage(VkImageLayout layout)
-{
-   switch (layout) {
-   case VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL:
-      return VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-   case VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL:
-      return VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-
-   case VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL:
-      return VK_PIPELINE_STAGE_TRANSFER_BIT;
-   case VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL:
-      return VK_PIPELINE_STAGE_TRANSFER_BIT;
-
-   case VK_IMAGE_LAYOUT_GENERAL:
-      return VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
-
-   case VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL:
-      return VK_PIPELINE_STAGE_VERTEX_SHADER_BIT;
-
-   case VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL:
-      return VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-
-   default:
-      return VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
-   }
-}
-
 #define ALL_READ_ACCESS_FLAGS \
     (VK_ACCESS_INDIRECT_COMMAND_READ_BIT | \
     VK_ACCESS_INDEX_READ_BIT | \
@@ -1105,8 +1077,10 @@ zink_resource_access_is_write(VkAccessFlags flags)
 
 void
 zink_resource_barrier(VkCommandBuffer cmdbuf, struct zink_resource *res,
-                      VkImageLayout new_layout)
+                      VkImageLayout new_layout, VkPipelineStageFlags pipeline)
 {
+   if (!pipeline)
+      pipeline = pipeline_dst_stage(new_layout);
    VkImageSubresourceRange isr = {
       res->aspect,
       0, VK_REMAINING_MIP_LEVELS,
@@ -1127,8 +1101,8 @@ zink_resource_barrier(VkCommandBuffer cmdbuf, struct zink_resource *res,
    };
    vkCmdPipelineBarrier(
       cmdbuf,
-      pipeline_src_stage(res->layout),
-      pipeline_dst_stage(new_layout),
+      res->access_stage ?: VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+      pipeline,
       0,
       0, NULL,
       0, NULL,
@@ -1136,6 +1110,7 @@ zink_resource_barrier(VkCommandBuffer cmdbuf, struct zink_resource *res,
    );
 
    res->layout = new_layout;
+   res->access_stage = pipeline;
 }
 
 
