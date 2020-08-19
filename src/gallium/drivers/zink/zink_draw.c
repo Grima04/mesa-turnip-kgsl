@@ -425,14 +425,18 @@ update_descriptors(struct zink_context *ctx, struct zink_screen *screen, bool is
       }
    }
 
-   struct zink_batch *batch;
+   struct zink_batch *batch = NULL;
    if (num_transitions > 0) {
-      if (is_compute)
-         batch = &ctx->compute_batch;
-      else
-         batch = zink_batch_no_rp(ctx);
-
       for (int i = 0; i < num_transitions; ++i) {
+         if (!zink_resource_needs_barrier(transitions[i].res,
+                                                   transitions[i].layout,
+                                                   transitions[i].stage))
+            continue;
+         if (is_compute)
+            batch = &ctx->compute_batch;
+         else
+            batch = zink_batch_no_rp(ctx);
+
          if (transitions[i].res->base.target == PIPE_BUFFER)
             zink_resource_buffer_barrier(batch->cmdbuf, transitions[i].res,
                                          transitions[i].layout, transitions[i].stage);
