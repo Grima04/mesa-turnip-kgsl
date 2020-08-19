@@ -307,7 +307,7 @@ panfrost_vt_set_draw_info(struct panfrost_context *ctx,
 }
 
 static void
-panfrost_compute_shader_meta_init(struct panfrost_context *ctx,
+panfrost_emit_compute_shader(struct panfrost_context *ctx,
                           enum pipe_shader_type st,
                           struct mali_shader_meta *meta)
 {
@@ -541,7 +541,7 @@ panfrost_emit_blend(struct panfrost_batch *batch, void *rts,
 }
 
 static void
-panfrost_frag_shader_meta_init(struct panfrost_context *ctx,
+panfrost_emit_frag_shader(struct panfrost_context *ctx,
                                struct mali_shader_meta *fragmeta,
                                struct panfrost_blend_final *blend)
 {
@@ -806,7 +806,7 @@ panfrost_emit_shader_meta(struct panfrost_batch *batch,
                 for (unsigned c = 0; c < ctx->pipe_framebuffer.nr_cbufs; ++c)
                         blend[c] = panfrost_get_blend_for_context(ctx, c);
 
-                panfrost_frag_shader_meta_init(ctx, &meta, blend);
+                panfrost_emit_frag_shader(ctx, &meta, blend);
 
                 if (!(dev->quirks & MIDGARD_SFBD))
                         panfrost_emit_blend(batch, rts, blend);
@@ -823,7 +823,7 @@ panfrost_emit_shader_meta(struct panfrost_batch *batch,
 
                 shader_ptr = xfer.gpu;
         } else {
-                panfrost_compute_shader_meta_init(ctx, st, &meta);
+                panfrost_emit_compute_shader(ctx, st, &meta);
 
                 shader_ptr = panfrost_pool_upload(&batch->pool, &meta,
                                                        sizeof(meta));
