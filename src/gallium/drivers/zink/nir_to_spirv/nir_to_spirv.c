@@ -2463,6 +2463,29 @@ emit_image_intrinsic(struct ntv_context *ctx, nir_intrinsic_instr *intr)
 }
 
 static void
+emit_vote(struct ntv_context *ctx, nir_intrinsic_instr *intr)
+{
+   SpvOp op;
+
+   switch (intr->intrinsic) {
+   case nir_intrinsic_vote_all:
+      op = SpvOpGroupNonUniformAll;
+      break;
+   case nir_intrinsic_vote_any:
+      op = SpvOpGroupNonUniformAny;
+      break;
+   case nir_intrinsic_vote_ieq:
+   case nir_intrinsic_vote_feq:
+      op = SpvOpGroupNonUniformAllEqual;
+      break;
+   default:
+      unreachable("unknown vote intrinsic");
+   }
+   SpvId result = spirv_builder_emit_vote(&ctx->builder, op, get_src(ctx, &intr->src[0]));
+   store_dest_raw(ctx, &intr->dest, result);
+}
+
+static void
 emit_intrinsic(struct ntv_context *ctx, nir_intrinsic_instr *intr)
 {
    switch (intr->intrinsic) {
@@ -2804,6 +2827,13 @@ emit_intrinsic(struct ntv_context *ctx, nir_intrinsic_instr *intr)
 
    case nir_intrinsic_store_shared:
       emit_store_shared(ctx, intr);
+      break;
+
+   case nir_intrinsic_vote_all:
+   case nir_intrinsic_vote_any:
+   case nir_intrinsic_vote_ieq:
+   case nir_intrinsic_vote_feq:
+      emit_vote(ctx, intr);
       break;
 
    default:
