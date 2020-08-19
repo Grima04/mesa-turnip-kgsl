@@ -161,7 +161,9 @@ resource_create(struct pipe_screen *pscreen,
       if (templ->bind & PIPE_BIND_VERTEX_BUFFER)
          bci.usage |= VK_BUFFER_USAGE_VERTEX_BUFFER_BIT |
                       VK_BUFFER_USAGE_INDEX_BUFFER_BIT |
-                      VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT;
+                      VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT |
+                      VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT |
+                      VK_BUFFER_USAGE_TRANSFORM_FEEDBACK_BUFFER_BIT_EXT;
 
       if (templ->bind & PIPE_BIND_INDEX_BUFFER)
          bci.usage |= VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
@@ -178,7 +180,10 @@ resource_create(struct pipe_screen *pscreen,
       if (templ->bind == (PIPE_BIND_STREAM_OUTPUT | PIPE_BIND_CUSTOM)) {
          bci.usage |= VK_BUFFER_USAGE_TRANSFORM_FEEDBACK_COUNTER_BUFFER_BIT_EXT;
       } else if (templ->bind & PIPE_BIND_STREAM_OUTPUT) {
-         bci.usage |= VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFORM_FEEDBACK_BUFFER_BIT_EXT;
+         bci.usage |= VK_BUFFER_USAGE_VERTEX_BUFFER_BIT |
+                      VK_BUFFER_USAGE_INDEX_BUFFER_BIT |
+                      VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT |
+                      VK_BUFFER_USAGE_TRANSFORM_FEEDBACK_BUFFER_BIT_EXT;
       }
 
       if (vkCreateBuffer(screen->dev, &bci, NULL, &res->buffer) !=
