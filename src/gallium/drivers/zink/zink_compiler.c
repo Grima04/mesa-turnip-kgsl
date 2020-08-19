@@ -201,6 +201,80 @@ lower_64bit_vertex_attribs(nir_shader *shader)
    return nir_shader_instructions_pass(shader, lower_64bit_vertex_attribs_instr, nir_metadata_dominance, NULL);
 }
 
+static bool
+lower_basevertex_instr(nir_intrinsic_instr *instr, nir_builder *b)
+{
+   nir_variable *vs_pushconst = NULL;
+
+   if (instr->intrinsic != nir_intrinsic_load_base_vertex)
+      return false;
+
+   nir_foreach_shader_in_variable(var, b->shader) {
+      if (var->data.location == INT_MAX) {
+         vs_pushconst = var;
+         break;
+      }
+   }
+   b->cursor = nir_after_instr(&instr->instr);
+
+   if (!vs_pushconst) {
+      /* create compatible layout for the ntv push constant loader */
+      struct glsl_struct_field *fields = rzalloc_array(b->shader, struct glsl_struct_field, 1);
+      fields[0].type = glsl_array_type(glsl_uint_type(), 1, 0);
+      fields[0].name = ralloc_asprintf(b->shader, "draw_mode_is_indexed");
+      fields[0].offset = offsetof(struct zink_push_constant, draw_mode_is_indexed);
+      vs_pushconst = nir_variable_create(b->shader, nir_var_mem_push_const,
+                                                    glsl_struct_type(fields, 1, "struct", false), "vs_pushconst");
+      vs_pushconst->data.location = INT_MAX; //doesn't really matter
+   }
+
+   nir_intrinsic_instr *load = nir_intrinsic_instr_create(b->shader, nir_intrinsic_load_push_constant);
+   load->src[0] = nir_src_for_ssa(nir_imm_int(b, 0));
+   nir_intrinsic_set_range(load, 4);
+   load->num_components = 1;
+   nir_ssa_dest_init(&load->instr, &load->dest, 1, 32, "draw_mode_is_indexed");
+   nir_builder_instr_insert(b, &load->instr);
+
+   nir_ssa_def *composite = nir_build_alu(b, nir_op_bcsel,
+                                          nir_build_alu(b, nir_op_ieq, &load->dest.ssa, nir_imm_int(b, 1), NULL, NULL),
+                                          &instr->dest.ssa,
+                                          nir_imm_int(b, 0),
+                                          NULL);
+
+   nir_ssa_def_rewrite_uses_after(&instr->dest.ssa, nir_src_for_ssa(composite), composite->parent_instr);
+   return true;
+}
+
+static bool
+lower_basevertex(nir_shader *shader)
+{
+   bool progress = false;
+
+   if (shader->info.stage != MESA_SHADER_VERTEX)
+      return false;
+
+   if (!BITSET_TEST(shader->info.system_values_read, SYSTEM_VALUE_BASE_VERTEX))
+      return false;
+
+   nir_foreach_function(function, shader) {
+      if (function->impl) {
+         nir_builder builder;
+         nir_builder_init(&builder, function->impl);
+         nir_foreach_block(block, function->impl) {
+            nir_foreach_instr_safe(instr, block) {
+               if (instr->type == nir_instr_type_intrinsic)
+                  progress |= lower_basevertex_instr(nir_instr_as_intrinsic(instr),
+                                                     &builder);
+            }
+         }
+
+         nir_metadata_preserve(function->impl, nir_metadata_dominance);
+      }
+   }
+
+   return progress;
+}
+
 void
 zink_screen_init_compiler(struct zink_screen *screen)
 {
@@ -431,6 +505,7 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
       have_psiz = check_psiz(nir);
    if (nir->info.stage == MESA_SHADER_GEOMETRY)
       NIR_PASS_V(nir, nir_lower_gs_intrinsics, nir_lower_gs_intrinsics_per_stream);
+   NIR_PASS_V(nir, lower_basevertex);
    NIR_PASS_V(nir, nir_lower_regs_to_ssa);
    NIR_PASS_V(nir, lower_baseinstance);
    optimize_nir(nir);
