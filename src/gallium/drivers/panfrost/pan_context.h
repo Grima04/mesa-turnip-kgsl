@@ -221,7 +221,9 @@ struct panfrost_shader_state {
         /* Should we enable helper invocations */
         bool helper_invocations;
 
-        unsigned first_tag;
+        /* Pointer to GPU-executable memory formatted for the hardware. bo->gpu
+         * on Bifrost, bo->gpu | initial_tag on Midgard */
+        mali_ptr shader;
         struct panfrost_bo *bo;
 
         BITSET_WORD outputs_read;

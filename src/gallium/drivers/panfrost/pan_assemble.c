@@ -146,7 +146,6 @@ panfrost_shader_compile(struct panfrost_context *ctx,
                         uint64_t *outputs_written)
 {
         struct panfrost_device *dev = pan_device(ctx->base.screen);
-        uint8_t *dst;
 
         nir_shader *s;
 
@@ -172,21 +171,22 @@ panfrost_shader_compile(struct panfrost_context *ctx,
 
         /* Prepare the compiled binary for upload */
         int size = program.compiled.size;
-        dst = program.compiled.data;
-
-        /* Upload the shader. The lookahead tag is ORed on as a tagged pointer.
-         * I bet someone just thought that would be a cute pun. At least,
-         * that's how I'd do it. */
 
         if (size) {
                 state->bo = panfrost_bo_create(dev, size, PAN_BO_EXECUTE);
-                memcpy(state->bo->cpu, dst, size);
+                memcpy(state->bo->cpu, program.compiled.data, size);
+                state->shader = state->bo->gpu;
         }
 
+        /* Midgard needs the first tag on the bottom nibble */
+
         if (!(dev->quirks & IS_BIFROST)) {
-                /* If size = 0, no shader. Use dummy tag to avoid
-                 * INSTR_INVALID_ENC */
-                state->first_tag = size ? program.first_tag : 1;
+                /* If size = 0, we tag as "end-of-shader" */
+
+                if (size)
+                        state->shader |= program.first_tag;
+                else
+                        state->shader = 0x1;
         }
 
         util_dynarray_fini(&program.compiled);

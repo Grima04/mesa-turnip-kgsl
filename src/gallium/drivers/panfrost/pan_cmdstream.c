@@ -315,7 +315,7 @@ panfrost_shader_meta_init(struct panfrost_context *ctx,
         struct panfrost_shader_state *ss = panfrost_get_shader_state(ctx, st);
 
         memset(meta, 0, sizeof(*meta));
-        meta->shader = (ss->bo ? ss->bo->gpu : 0) | ss->first_tag;
+        meta->shader = ss->shader;
         meta->attribute_count = ss->attribute_count;
         meta->varying_count = ss->varying_count;
         meta->texture_count = ctx->sampler_view_count[st];
