@@ -140,10 +140,12 @@ module clover::nir::spirv_to_nir(const module &mod, const device &dev,
       spirv_options.shared_addr_format = nir_address_format_32bit_offset;
       spirv_options.global_addr_format = nir_address_format_32bit_global;
       spirv_options.temp_addr_format = nir_address_format_32bit_offset;
+      spirv_options.constant_addr_format = nir_address_format_32bit_global;
    } else {
       spirv_options.shared_addr_format = nir_address_format_32bit_offset_as_64bit;
       spirv_options.global_addr_format = nir_address_format_64bit_global;
       spirv_options.temp_addr_format = nir_address_format_32bit_offset_as_64bit;
+      spirv_options.constant_addr_format = nir_address_format_64bit_global;
    }
    spirv_options.caps.address = true;
    spirv_options.caps.float64 = true;
@@ -152,7 +154,6 @@ module clover::nir::spirv_to_nir(const module &mod, const device &dev,
    spirv_options.caps.int64 = true;
    spirv_options.caps.kernel = true;
    spirv_options.caps.int64_atomics = dev.has_int64_atomics();
-   spirv_options.constant_as_global = true;
    spirv_options.debug.func = &debug_function;
    spirv_options.debug.private_data = &r_log;
 
@@ -234,6 +235,8 @@ module clover::nir::spirv_to_nir(const module &mod, const device &dev,
       NIR_PASS_V(nir, nir_lower_explicit_io, nir_var_uniform,
                  nir_address_format_32bit_offset);
 
+      NIR_PASS_V(nir, nir_lower_explicit_io, nir_var_mem_constant,
+                 spirv_options.constant_addr_format);
       NIR_PASS_V(nir, nir_lower_explicit_io, nir_var_mem_shared,
                  spirv_options.shared_addr_format);
 
