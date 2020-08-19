@@ -1589,16 +1589,25 @@ v3dv_get_shader_variant(struct v3dv_pipeline_stage *p_stage,
 /* This methods updates the return size for a given key. It assumes that it
  * was already properly populated. So for example values for key->num_tex_used
  * should be correct at this point
+ *
+ * Note that even the @return_size to set is 32bit, it could be overriden to
+ * 16bit, like for shadow textures, that we know in advance that they are
+ * always 16bit.
  */
 void
-v3dv_update_v3d_key(struct v3d_key *key,
-                    uint32_t return_size)
+v3d_key_update_return_size(struct v3dv_pipeline *pipeline,
+                           struct v3d_key *key,
+                           uint32_t return_size)
 {
    assert(return_size == 32 || return_size == 16);
+   struct v3dv_descriptor_map *texture_map = &pipeline->texture_map;
 
    for (uint32_t tex_idx = 0; tex_idx < key->num_tex_used; tex_idx++) {
-      key->tex[tex_idx].return_size = return_size;
-      key->tex[tex_idx].return_channels = return_size == 16 ? 2 : 4;
+      key->tex[tex_idx].return_size =
+         texture_map->is_shadow[tex_idx] ? 16 : return_size;
+
+      key->tex[tex_idx].return_channels =
+         key->tex[tex_idx].return_size == 16 ? 2 : 4;
    }
 }
 
@@ -1632,7 +1641,7 @@ pregenerate_shader_variants(struct v3dv_pipeline_stage *p_stage,
       return variant_16;
    }
 
-   v3dv_update_v3d_key(key, 32);
+   v3d_key_update_return_size(p_stage->pipeline, key, 32);
 
    struct v3dv_shader_variant *variant_32 =
       v3dv_get_shader_variant(p_stage, cache, key, key_size,

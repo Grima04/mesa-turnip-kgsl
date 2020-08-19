@@ -2851,7 +2851,8 @@ cmd_buffer_populate_v3d_key(struct v3d_key *key,
             }
          }
       }
-      v3dv_update_v3d_key(key, v3d_key_return_size);
+      v3d_key_update_return_size(cmd_buffer->state.pipeline, key,
+                                 v3d_key_return_size);
    }
 }
 
