@@ -1054,7 +1054,7 @@ arm64_a630_gles2:
     BM_KERNEL: /lava-files/cheza-kernel
     BM_CMDLINE: "ip=dhcp console=ttyMSM0,115200n8 root=/dev/nfs rw nfsrootdebug nfsroot=,tcp,nfsvers=4.2 init=/init"
     DEQP_EXPECTED_FAILS: deqp-freedreno-a630-fails.txt
-    DEQP_SKIPS: deqp-freedreno-a630-skips.txt
+    DEQP_FLAKES: deqp-freedreno-a630-flakes.txt
     GIT_STRATEGY: none
     DEQP_EXPECTED_RENDERER: FD630
     DEQP_NO_SAVE_RESULTS: ""
@@ -1175,7 +1175,8 @@ arm64_a306_gles2:
     FLAKES_CHANNEL: "#freedreno-ci"
     BARE_METAL_TEST_SCRIPT: "/install/deqp-runner.sh"
     DEQP_EXPECTED_FAILS: deqp-freedreno-a307-fails.txt
-    DEQP_SKIPS: deqp-freedreno-a307-skips.txt
+    DEQP_SKIPS: deqp-default-skips.txt
+    DEQP_FLAKES: deqp-freedreno-a307-flakes.txt
     DEQP_VER: gles2
     DEQP_PARALLEL: 4
     DEQP_EXPECTED_RENDERER: FD307
@@ -1221,7 +1222,7 @@ arm64_a530_gles2:
     # current upstream kernel.
     BM_CMDLINE: "ip=dhcp console=ttyMSM0,115200n8 nosmp"
     DEQP_EXPECTED_FAILS: deqp-freedreno-a530-fails.txt
-    DEQP_SKIPS: deqp-freedreno-a530-skips.txt
+    DEQP_FLAKES: deqp-freedreno-a530-flakes.txt
     DEQP_EXPECTED_RENDERER: FD530
     NIR_VALIDATE: 0
   tags:
