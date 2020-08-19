@@ -233,19 +233,41 @@ struct zink_transition {
 
 #define MAX_DESCRIPTORS (PIPE_SHADER_TYPES * (PIPE_MAX_CONSTANT_BUFFERS + PIPE_MAX_SAMPLERS + PIPE_MAX_SHADER_BUFFERS + PIPE_MAX_SHADER_IMAGES))
 
+static bool
+transition_equals(const void *a, const void *b)
+{
+   const struct zink_transition *t1 = a, *t2 = b;
+   if (t1->res != t2->res)
+      return false;
+   if (t1->layout != t2->layout)
+      return false;
+   return true;
+}
+
+static uint32_t
+transition_hash(const void *key)
+{
+   return _mesa_hash_data(key, offsetof(struct zink_transition, stage));
+}
+
 static inline void
-add_transition(struct zink_resource *res, unsigned layout, enum pipe_shader_type stage, struct zink_transition *t, int *num_transitions)
+add_transition(struct zink_resource *res, unsigned layout, enum pipe_shader_type stage, struct zink_transition *t, int *num_transitions, struct set *ht)
 {
    VkPipelineStageFlags pipeline = zink_pipeline_flags_from_stage(zink_shader_stage(stage));
-   if (res->base.target == PIPE_BUFFER && !zink_resource_buffer_needs_barrier(res, layout, pipeline))
-      return;
-   else if (res->base.target != PIPE_BUFFER && !zink_resource_image_needs_barrier(res, layout, pipeline))
-      return;
+   struct zink_transition key = {res, layout, 0};
 
-   t->layout = layout;
-   t->stage = pipeline;
-   t->res = res;
-   (*num_transitions)++;
+   uint32_t hash = transition_hash(&key);
+   struct set_entry *entry = _mesa_set_search_pre_hashed(ht, hash, &key);
+   if (entry)
+      t = (struct zink_transition*)entry->key;
+   else {
+      (*num_transitions)++;
+      t->stage = 0;
+      t->layout = layout;
+      t->res = res;
+      _mesa_set_add_pre_hashed(ht, hash, t);
+   }
+   t->stage |= pipeline;
 }
 
 static void
@@ -269,6 +291,7 @@ update_descriptors(struct zink_context *ctx, struct zink_screen *screen, bool is
 
    struct zink_transition transitions[MAX_DESCRIPTORS];
    int num_transitions = 0;
+   struct set *ht = _mesa_set_create(NULL, transition_hash, transition_equals);
 
    for (int i = 0; i < num_stages; i++) {
       struct zink_shader *shader = stages[i];
@@ -301,7 +324,7 @@ update_descriptors(struct zink_context *ctx, struct zink_screen *screen, bool is
             buffer_infos[num_buffer_info].offset = res ? ctx->ubos[stage][index].buffer_offset : 0;
             buffer_infos[num_buffer_info].range  = res ? ctx->ubos[stage][index].buffer_size : VK_WHOLE_SIZE;
             if (res)
-               add_transition(res, VK_ACCESS_UNIFORM_READ_BIT, stage, &transitions[num_transitions], &num_transitions);
+               add_transition(res, VK_ACCESS_UNIFORM_READ_BIT, stage, &transitions[num_transitions], &num_transitions, ht);
             wds[num_wds].pBufferInfo = buffer_infos + num_buffer_info;
             ++num_buffer_info;
          } else if (shader->bindings[j].type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER) {
@@ -316,7 +339,7 @@ update_descriptors(struct zink_context *ctx, struct zink_screen *screen, bool is
                } else {
                   read_desc_resources[num_wds] = res;
                }
-               add_transition(res, flag, stage, &transitions[num_transitions], &num_transitions);
+               add_transition(res, flag, stage, &transitions[num_transitions], &num_transitions, ht);
                buffer_infos[num_buffer_info].buffer = res->buffer;
                buffer_infos[num_buffer_info].offset = ctx->ssbos[stage][index].buffer_offset;
                buffer_infos[num_buffer_info].range  = ctx->ssbos[stage][index].buffer_size;
@@ -347,9 +370,9 @@ update_descriptors(struct zink_context *ctx, struct zink_screen *screen, bool is
                   if (res->base.target == PIPE_BUFFER)
                      wds[num_wds].pTexelBufferView = &sampler_view->buffer_view;
                   else {
-                     imageview =sampler_view->image_view;
+                     imageview = sampler_view->image_view;
                      layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-                     add_transition(res, layout, stage, &transitions[num_transitions], &num_transitions);
+                     add_transition(res, layout, stage, &transitions[num_transitions], &num_transitions, ht);
                      sampler = ctx->samplers[stage][index + k];
                   }
                   read_desc_resources[num_wds] = res;
@@ -369,7 +392,7 @@ update_descriptors(struct zink_context *ctx, struct zink_screen *screen, bool is
                   } else {
                      imageview = image_view->surface->image_view;
                      layout = VK_IMAGE_LAYOUT_GENERAL;
-                     add_transition(res, layout, stage, &transitions[num_transitions], &num_transitions);
+                     add_transition(res, layout, stage, &transitions[num_transitions], &num_transitions, ht);
                   }
                   if (image_view->base.access & PIPE_IMAGE_ACCESS_WRITE)
                      write_desc_resources[num_wds] = res;
@@ -425,6 +448,7 @@ update_descriptors(struct zink_context *ctx, struct zink_screen *screen, bool is
          ++num_wds;
       }
    }
+   _mesa_set_destroy(ht, NULL);
 
    struct zink_batch *batch = NULL;
    if (num_transitions > 0) {
