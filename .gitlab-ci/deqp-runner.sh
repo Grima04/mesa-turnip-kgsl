@@ -303,10 +303,6 @@ if [ $DEQP_EXITCODE -ne 0 ]; then
     fi
 
     count=`cat $UNEXPECTED_RESULTSFILE | wc -l`
-
-    # Re-run fails to detect flakes.  But use a small threshold, if
-    # something was fundamentally broken, we don't want to re-run
-    # the entire caselist
 else
     grep ",Flake" $RESULTSFILE > $FLAKESFILE
 
