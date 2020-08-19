@@ -328,7 +328,7 @@ typedef struct nir_variable {
        *
        * \sa nir_variable_mode
        */
-      nir_variable_mode mode:11;
+      unsigned mode:11;
 
       /**
        * Is the variable read-only?
@@ -467,12 +467,12 @@ typedef struct nir_variable {
       unsigned per_view:1;
 
       /**
-       * \brief Layout qualifier for gl_FragDepth.
+       * \brief Layout qualifier for gl_FragDepth. See nir_depth_layout.
        *
        * This is not equal to \c ir_depth_layout_none if and only if this
        * variable is \c gl_FragDepth and a layout qualifier is specified.
        */
-      nir_depth_layout depth_layout:3;
+      unsigned depth_layout:3;
 
       /**
        * Vertex stream output identifier.
@@ -483,10 +483,12 @@ typedef struct nir_variable {
       unsigned stream:9;
 
       /**
+       * See gl_access_qualifier.
+       *
        * Access flags for memory variables (SSBO/global), image uniforms, and
        * bindless images in uniforms/inputs/outputs.
        */
-      enum gl_access_qualifier access:8;
+      unsigned access:8;
 
       /**
        * Descriptor set binding for sampler or UBO.

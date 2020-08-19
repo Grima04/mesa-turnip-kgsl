@@ -990,7 +990,7 @@ nir_build_deref_var(nir_builder *build, nir_variable *var)
    nir_deref_instr *deref =
       nir_deref_instr_create(build->shader, nir_deref_type_var);
 
-   deref->mode = var->data.mode;
+   deref->mode = (nir_variable_mode)var->data.mode;
    deref->type = var->type;
    deref->var = var;
 
