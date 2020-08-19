@@ -64,11 +64,11 @@ module clover::nir::spirv_to_nir(const module &mod, const device &dev,
    struct spirv_to_nir_options spirv_options = {};
    spirv_options.environment = NIR_SPIRV_OPENCL;
    if (dev.address_bits() == 32u) {
-      spirv_options.shared_addr_format = nir_address_format_32bit_global;
+      spirv_options.shared_addr_format = nir_address_format_32bit_offset;
       spirv_options.global_addr_format = nir_address_format_32bit_global;
       spirv_options.temp_addr_format = nir_address_format_32bit_global;
    } else {
-      spirv_options.shared_addr_format = nir_address_format_64bit_global;
+      spirv_options.shared_addr_format = nir_address_format_32bit_offset_as_64bit;
       spirv_options.global_addr_format = nir_address_format_64bit_global;
       spirv_options.temp_addr_format = nir_address_format_64bit_global;
    }
@@ -148,10 +148,11 @@ module clover::nir::spirv_to_nir(const module &mod, const device &dev,
                  glsl_get_cl_type_size_align);
 
       /* use offsets for shader_in and shared memory */
-      nir_variable_mode modes = (nir_variable_mode)(
-         nir_var_shader_in |
-         nir_var_mem_shared);
-      NIR_PASS_V(nir, nir_lower_explicit_io, modes, nir_address_format_32bit_offset);
+      NIR_PASS_V(nir, nir_lower_explicit_io, nir_var_shader_in,
+                 nir_address_format_32bit_offset);
+
+      NIR_PASS_V(nir, nir_lower_explicit_io, nir_var_mem_shared,
+                 spirv_options.shared_addr_format);
 
       NIR_PASS_V(nir, nir_lower_explicit_io, nir_var_mem_global,
                  spirv_options.global_addr_format);
