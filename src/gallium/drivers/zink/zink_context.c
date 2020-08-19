@@ -809,14 +809,14 @@ framebuffer_state_buffer_barriers_setup(struct zink_context *ctx,
          surf = ctx->framebuffer->null_surface;
       struct zink_resource *res = zink_resource(surf->texture);
       if (res->layout != VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
-         zink_resource_barrier(batch->cmdbuf, res,
+         zink_resource_barrier(batch, res,
                                VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, 0);
    }
 
    if (state->zsbuf) {
       struct zink_resource *res = zink_resource(state->zsbuf->texture);
       if (res->layout != VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
-         zink_resource_barrier(batch->cmdbuf, res,
+         zink_resource_barrier(batch, res,
                                VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, 0);
    }
 }
@@ -1086,7 +1086,7 @@ zink_resource_image_needs_barrier(struct zink_resource *res, VkImageLayout new_l
 }
 
 void
-zink_resource_barrier(VkCommandBuffer cmdbuf, struct zink_resource *res,
+zink_resource_barrier(struct zink_batch *batch, struct zink_resource *res,
                       VkImageLayout new_layout, VkPipelineStageFlags pipeline)
 {
    if (!pipeline)
@@ -1112,7 +1112,7 @@ zink_resource_barrier(VkCommandBuffer cmdbuf, struct zink_resource *res,
       isr
    };
    vkCmdPipelineBarrier(
-      cmdbuf,
+      batch->cmdbuf,
       res->access_stage ?: VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
       pipeline,
       0,
@@ -1175,7 +1175,7 @@ zink_resource_buffer_needs_barrier(struct zink_resource *res, VkAccessFlags flag
 }
 
 void
-zink_resource_buffer_barrier(VkCommandBuffer cmdbuf, struct zink_resource *res, VkAccessFlags flags, VkPipelineStageFlags pipeline)
+zink_resource_buffer_barrier(struct zink_batch *batch, struct zink_resource *res, VkAccessFlags flags, VkPipelineStageFlags pipeline)
 {
    if (!pipeline)
       pipeline = pipeline_access_stage(flags);
@@ -1194,7 +1194,7 @@ zink_resource_buffer_barrier(VkCommandBuffer cmdbuf, struct zink_resource *res, 
    };
 
    vkCmdPipelineBarrier(
-      cmdbuf,
+      batch->cmdbuf,
       res->access_stage ? res->access_stage : pipeline_access_stage(res->access),
       pipeline,
       0,

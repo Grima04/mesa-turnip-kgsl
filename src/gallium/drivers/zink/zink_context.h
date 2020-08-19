@@ -215,12 +215,12 @@ bool
 zink_resource_buffer_needs_barrier(struct zink_resource *res, VkAccessFlags flags, VkPipelineStageFlags pipeline);
 
 void
-zink_resource_buffer_barrier(VkCommandBuffer cmdbuf, struct zink_resource *res, VkAccessFlags flags, VkPipelineStageFlags pipeline);
+zink_resource_buffer_barrier(struct zink_batch *batch, struct zink_resource *res, VkAccessFlags flags, VkPipelineStageFlags pipeline);
 
 bool
 zink_resource_image_needs_barrier(struct zink_resource *res, VkImageLayout new_layout, VkPipelineStageFlags pipeline);
 void
-zink_resource_barrier(VkCommandBuffer cmdbuf, struct zink_resource *res,
+zink_resource_barrier(struct zink_batch *batch, struct zink_resource *res,
                       VkImageLayout new_layout, VkPipelineStageFlags pipeline);
 
 bool

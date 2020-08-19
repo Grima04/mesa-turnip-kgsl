@@ -799,7 +799,7 @@ zink_get_query_result_resource(struct pipe_context *pctx,
          struct zink_batch *batch = get_batch_for_query(ctx, query, true);
          /* if it's a single query that doesn't need special handling, we can copy it and be done */
          zink_batch_reference_resource_rw(batch, res, true);
-         zink_resource_buffer_barrier(batch->cmdbuf, res, VK_ACCESS_TRANSFER_WRITE_BIT, 0);
+         zink_resource_buffer_barrier(batch, res, VK_ACCESS_TRANSFER_WRITE_BIT, 0);
          vkCmdCopyQueryPoolResults(batch->cmdbuf, query->query_pool, query_id, 1, res->buffer,
                                    offset, 0, size_flags);
          /* this is required for compute batch sync and will be removed later */
