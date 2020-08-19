@@ -65,8 +65,15 @@ cp $BM_KERNEL /tftp/vmlinuz
 echo "$BM_CMDLINE" > /tftp/cmdline
 
 # Start watching serials, and power up the device.
-$BM/serial-buffer.py $BM_SERIAL_EC | tee serial-ec-output.txt | sed -u 's|^|SERIAL-EC> |g' &
-$BM/serial-buffer.py $BM_SERIAL | tee serial-output.txt | sed -u 's|^|SERIAL-CPU> |g'  &
+python3 $BM/serial_buffer.py \
+  --dev $BM_SERIAL_EC \
+  --file serial-ec-output.txt \
+  --prefix "SERIAL-EC> " &
+python3 $BM/serial_buffer.py \
+  --dev $BM_SERIAL \
+  --file serial-output.txt \
+  --prefix "SERIAL-CPU> " &
+
 while [ ! -e serial-output.txt ]; do
   sleep 1
 done

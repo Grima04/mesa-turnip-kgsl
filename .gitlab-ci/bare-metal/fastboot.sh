@@ -92,7 +92,10 @@ fi
 
 # Start watching serial, and power up the device.
 if [ -n "$BM_SERIAL" ]; then
-  $BM/serial-buffer.py $BM_SERIAL | tee artifacts/serial-output.txt &
+  python3 $BM/serial_buffer.py \
+    --dev $BM_SERIAL \
+    --file artifacts/serial-output.txt \
+    --prefix "SERIAL> " &
 else
   PATH=$BM:$PATH $BM_SERIAL_SCRIPT | tee artifacts/serial-output.txt &
 fi
