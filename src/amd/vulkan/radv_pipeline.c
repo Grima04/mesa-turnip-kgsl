@@ -205,7 +205,7 @@ void radv_DestroyPipeline(
 	radv_pipeline_destroy(device, pipeline, pAllocator);
 }
 
-static uint32_t get_hash_flags(struct radv_device *device)
+static uint32_t get_hash_flags(const struct radv_device *device)
 {
 	uint32_t hash_flags = 0;
 
@@ -223,7 +223,7 @@ static uint32_t get_hash_flags(struct radv_device *device)
 }
 
 static void
-radv_pipeline_init_scratch(struct radv_device *device,
+radv_pipeline_init_scratch(const struct radv_device *device,
                            struct radv_pipeline *pipeline)
 {
 	unsigned scratch_bytes_per_wave = 0;
@@ -497,7 +497,7 @@ format_is_int10(VkFormat format)
 }
 
 static void
-radv_pipeline_compute_spi_color_formats(struct radv_pipeline *pipeline,
+radv_pipeline_compute_spi_color_formats(const struct radv_pipeline *pipeline,
 					const VkGraphicsPipelineCreateInfo *pCreateInfo,
 					struct radv_blend_state *blend)
 {
@@ -628,7 +628,7 @@ radv_blend_check_commutativity(struct radv_blend_state *blend,
 }
 
 static struct radv_blend_state
-radv_pipeline_init_blend_state(struct radv_pipeline *pipeline,
+radv_pipeline_init_blend_state(const struct radv_pipeline *pipeline,
 			       const VkGraphicsPipelineCreateInfo *pCreateInfo,
 			       const struct radv_graphics_pipeline_create_info *extra)
 {
@@ -937,7 +937,7 @@ radv_pipeline_has_dynamic_ds_states(const VkGraphicsPipelineCreateInfo *pCreateI
 
 static bool
 radv_pipeline_out_of_order_rast(struct radv_pipeline *pipeline,
-				struct radv_blend_state *blend,
+				const struct radv_blend_state *blend,
 				const VkGraphicsPipelineCreateInfo *pCreateInfo)
 {
 	RADV_FROM_HANDLE(radv_render_pass, pass, pCreateInfo->renderPass);
@@ -1060,7 +1060,7 @@ radv_get_conservative_raster_mode(const VkPipelineRasterizationStateCreateInfo *
 
 static void
 radv_pipeline_init_multisample_state(struct radv_pipeline *pipeline,
-				     struct radv_blend_state *blend,
+				     const struct radv_blend_state *blend,
 				     const VkGraphicsPipelineCreateInfo *pCreateInfo)
 {
 	const VkPipelineMultisampleStateCreateInfo *vkms = radv_pipeline_get_multisample_state(pCreateInfo);
@@ -2384,7 +2384,7 @@ radv_get_attrib_stride(const VkPipelineVertexInputStateCreateInfo *input_state,
 }
 
 static struct radv_pipeline_key
-radv_generate_graphics_pipeline_key(struct radv_pipeline *pipeline,
+radv_generate_graphics_pipeline_key(const struct radv_pipeline *pipeline,
                                     const VkGraphicsPipelineCreateInfo *pCreateInfo,
                                     const struct radv_blend_state *blend)
 {
@@ -3221,7 +3221,7 @@ struct radv_bin_size_entry {
 };
 
 static VkExtent2D
-radv_gfx9_compute_bin_size(struct radv_pipeline *pipeline, const VkGraphicsPipelineCreateInfo *pCreateInfo)
+radv_gfx9_compute_bin_size(const struct radv_pipeline *pipeline, const VkGraphicsPipelineCreateInfo *pCreateInfo)
 {
 	static const struct radv_bin_size_entry color_size_table[][3][9] = {
 		{
@@ -3493,7 +3493,7 @@ radv_gfx9_compute_bin_size(struct radv_pipeline *pipeline, const VkGraphicsPipel
 }
 
 static VkExtent2D
-radv_gfx10_compute_bin_size(struct radv_pipeline *pipeline, const VkGraphicsPipelineCreateInfo *pCreateInfo)
+radv_gfx10_compute_bin_size(const struct radv_pipeline *pipeline, const VkGraphicsPipelineCreateInfo *pCreateInfo)
 {
 	RADV_FROM_HANDLE(radv_render_pass, pass, pCreateInfo->renderPass);
 	struct radv_subpass *subpass = pass->subpasses + pCreateInfo->subpass;
