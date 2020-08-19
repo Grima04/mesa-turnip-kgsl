@@ -24,6 +24,12 @@
     <value name="0" value="4"/>
     <value name="1" value="5"/>
   </enum>
+
+  <enum name="Depth Source">
+    <value name="None" value="0"/>
+    <value name="Fixed function" value="2"/>
+    <value name="Shader" value="3"/>
+  </enum>
  
   <enum name="Job Type">
     <value name="Not started" value="0"/>
@@ -331,6 +337,20 @@
     <field name="Minimum LOD" size="13" start="3:0" type="uint" default="0"/>
     <field name="Maximum LOD" size="13" start="3:16" type="uint" default="0"/>
     <field name="Surfaces" size="64" start="4:0" type="address"/>
+  </struct>
+
+  <struct name="Midgard Properties" size="1">
+    <field name="Uniform buffer count" size="8" start="0" type="uint"/>
+    <field name="Depth source" size="2" start="8" type="Depth Source" default="None"/>
+    <field name="Early-z enable" size="1" start="10" type="bool" default="false"/>
+    <field name="Helper invocation enable" size="1" start="11" type="bool" default="false"/>
+    <field name="Reads depth/stencil" size="1" start="12" type="bool" default="false"/>
+    <field name="Writes globals" size="1" start="13" type="bool" default="false"/>
+    <field name="Reads tilebuffer" size="1" start="14" type="bool" default="false"/>
+    <field name="Work register count" size="5" start="16" type="uint"/>
+    <field name="Uniform count" size="5" start="21" type="uint"/>
+    <field name="Stencil from shader" size="1" start="28" type="bool"/>
+    <field name="Suppress Inf/NaN" size="1" start="29" type="bool"/>
   </struct>
 
   <struct name="Stencil">
