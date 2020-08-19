@@ -2225,6 +2225,7 @@ Converter::visit(nir_intrinsic_instr *insn)
          break;
       case nir_intrinsic_bindless_image_size:
       case nir_intrinsic_image_size:
+         assert(nir_src_as_uint(insn->src[1]) == 0);
          ty = TYPE_U32;
          bindless = op == nir_intrinsic_bindless_image_size;
          break;

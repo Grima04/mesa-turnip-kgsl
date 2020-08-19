@@ -1219,6 +1219,7 @@ emit_intrinsic_image_size_tex(struct ir3_context *ctx, nir_intrinsic_instr *intr
 			TYPE_U16 : TYPE_U32;
 
 	info.flags |= flags;
+	assert(nir_src_as_uint(intr->src[1]) == 0);
 	lod = create_immed(b, 0);
 	sam = emit_sam(ctx, OPC_GETSIZE, info, dst_type, 0b1111, lod, NULL);
 

@@ -557,6 +557,8 @@ bool EmitSSBOInstruction::emit_image_size(const nir_intrinsic_instr *intrin)
    GPRVector dest = vec_from_nir(intrin->dest, nir_dest_num_components(intrin->dest));
    GPRVector src{0,{4,4,4,4}};
 
+   assert(nir_src_as_uint(intrin->src[1]) == 0);
+
    auto const_offset = nir_src_as_const_value(intrin->src[0]);
    auto dyn_offset = PValue();
    int res_id = R600_IMAGE_REAL_RESOURCE_OFFSET;

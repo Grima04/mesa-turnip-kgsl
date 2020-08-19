@@ -4166,6 +4166,8 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
                             BRW_REGISTER_TYPE_UD);
       image = bld.emit_uniformize(image);
 
+      assert(nir_src_as_uint(instr->src[1]) == 0);
+
       fs_reg srcs[TEX_LOGICAL_NUM_SRCS];
       if (instr->intrinsic == nir_intrinsic_image_size)
          srcs[TEX_LOGICAL_SRC_SURFACE] = image;

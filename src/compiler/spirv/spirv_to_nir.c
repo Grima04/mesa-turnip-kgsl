@@ -3090,8 +3090,10 @@ vtn_handle_image(struct vtn_builder *b, SpvOp opcode,
 
    intrin->src[0] = nir_src_for_ssa(&image.image->dest.ssa);
 
-   /* ImageQuerySize doesn't take any extra parameters */
-   if (opcode != SpvOpImageQuerySize) {
+   if (opcode == SpvOpImageQuerySize) {
+      /* ImageQuerySize only has an LOD which is currently always 0 */
+      intrin->src[1] = nir_src_for_ssa(nir_imm_int(&b->nb, 0));
+   } else {
       /* The image coordinate is always 4 components but we may not have that
        * many.  Swizzle to compensate.
        */

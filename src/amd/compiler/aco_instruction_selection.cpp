@@ -6074,6 +6074,7 @@ void visit_image_size(isel_context *ctx, nir_intrinsic_instr *instr)
    }
 
    /* LOD */
+   assert(nir_src_as_uint(instr->src[1]) == 0);
    Temp lod = bld.vop1(aco_opcode::v_mov_b32, bld.def(v1), Operand(0u));
 
    /* Resource */

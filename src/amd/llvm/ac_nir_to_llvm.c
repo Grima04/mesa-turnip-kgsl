@@ -3144,6 +3144,7 @@ static LLVMValueRef visit_image_size(struct ac_nir_context *ctx,
 		args.dmask = 0xf;
 		args.resource = get_image_descriptor(ctx, instr, dynamic_index, AC_DESC_IMAGE, false);
 		args.opcode = ac_image_get_resinfo;
+		assert(nir_src_as_uint(instr->src[1]) == 0);
 		args.lod = ctx->ac.i32_0;
 		args.attributes = AC_FUNC_ATTR_READNONE;
 

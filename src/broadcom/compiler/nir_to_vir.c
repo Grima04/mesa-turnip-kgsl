@@ -1780,6 +1780,8 @@ ntq_emit_image_size(struct v3d_compile *c, nir_intrinsic_instr *instr)
         unsigned image_index = nir_src_as_uint(instr->src[0]);
         bool is_array = nir_intrinsic_image_array(instr);
 
+        assert(nir_src_as_uint(instr->src[1]) == 0);
+
         ntq_store_dest(c, &instr->dest, 0,
                        vir_uniform(c, QUNIFORM_IMAGE_WIDTH, image_index));
         if (instr->num_components > 1) {

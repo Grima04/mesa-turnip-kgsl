@@ -1338,6 +1338,11 @@ nir_visitor::visit(ir_call *ir)
 
          if (op == nir_intrinsic_image_deref_size ||
              op == nir_intrinsic_image_deref_samples) {
+            /* image_deref_size takes an LOD parameter which is always 0
+             * coming from GLSL.
+             */
+            if (op == nir_intrinsic_image_deref_size)
+               instr->src[1] = nir_src_for_ssa(nir_imm_int(&b, 0));
             nir_builder_instr_insert(&b, &instr->instr);
             break;
          }
