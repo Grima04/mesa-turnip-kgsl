@@ -1075,12 +1075,24 @@ zink_resource_access_is_write(VkAccessFlags flags)
    return (flags & ALL_READ_ACCESS_FLAGS) != flags;
 }
 
+bool
+zink_resource_image_needs_barrier(struct zink_resource *res, VkImageLayout new_layout, VkPipelineStageFlags pipeline)
+{
+   if (!pipeline)
+      pipeline = pipeline_dst_stage(new_layout);
+   return res->layout != new_layout || (res->access_stage & pipeline) != pipeline ||
+          (access_src_flags(res->layout) & access_dst_flags(new_layout)) != access_dst_flags(new_layout) ||
+          (zink_resource_access_is_write(access_dst_flags(new_layout)) && util_bitcount(access_dst_flags(new_layout)) > 1);
+}
+
 void
 zink_resource_barrier(VkCommandBuffer cmdbuf, struct zink_resource *res,
                       VkImageLayout new_layout, VkPipelineStageFlags pipeline)
 {
    if (!pipeline)
       pipeline = pipeline_dst_stage(new_layout);
+   if (!zink_resource_image_needs_barrier(res, new_layout, pipeline))
+      return;
    VkImageSubresourceRange isr = {
       res->aspect,
       0, VK_REMAINING_MIP_LEVELS,
