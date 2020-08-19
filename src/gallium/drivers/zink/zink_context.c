@@ -1206,6 +1206,14 @@ zink_resource_buffer_barrier(VkCommandBuffer cmdbuf, struct zink_resource *res, 
    res->access_stage = pipeline;
 }
 
+bool
+zink_resource_needs_barrier(struct zink_resource *res, unsigned flags, VkPipelineStageFlags pipeline)
+{
+   if (res->base.target == PIPE_BUFFER)
+      return zink_resource_buffer_needs_barrier(res, flags, pipeline);
+   return zink_resource_image_needs_barrier(res, flags, pipeline);
+}
+
 VkShaderStageFlagBits
 zink_shader_stage(enum pipe_shader_type type)
 {

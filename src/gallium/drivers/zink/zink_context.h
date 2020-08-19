@@ -223,6 +223,9 @@ void
 zink_resource_barrier(VkCommandBuffer cmdbuf, struct zink_resource *res,
                       VkImageLayout new_layout, VkPipelineStageFlags pipeline);
 
+bool
+zink_resource_needs_barrier(struct zink_resource *res, unsigned flags, VkPipelineStageFlags pipeline);
+
  void
  zink_begin_render_pass(struct zink_context *ctx,
                         struct zink_batch *batch);
