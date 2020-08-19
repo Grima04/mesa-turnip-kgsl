@@ -64,39 +64,12 @@ rm -rf /tftp/*
 cp $BM_KERNEL /tftp/vmlinuz
 echo "$BM_CMDLINE" > /tftp/cmdline
 
-# Start watching serials, and power up the device.
-python3 $BM/serial_buffer.py \
-  --dev $BM_SERIAL_EC \
-  --file serial-ec-output.txt \
-  --prefix "SERIAL-EC> " &
-python3 $BM/serial_buffer.py \
-  --dev $BM_SERIAL \
-  --file serial-output.txt \
-  --prefix "SERIAL-CPU> " &
-
-while [ ! -e serial-output.txt ]; do
-  sleep 1
-done
-# Flush any partial commands in the EC's prompt, then ask for a reboot.
-$BM/write-serial.py $BM_SERIAL_EC ""
-$BM/write-serial.py $BM_SERIAL_EC reboot
-
-# This is emitted right when the bootloader pauses to check for input.  Emit a
-# ^N character to request network boot, because we don't have a
-# direct-to-netboot firmware on cheza.
-$BM/expect-output.sh serial-output.txt -f "load_archive: loading locale_en.bin"
-$BM/write-serial.py $BM_SERIAL `printf '\016'`
-
-# Wait for the device to complete the deqp run
-$BM/expect-output.sh serial-output.txt \
-    -f "bare-metal result" \
-    -e "---. end Kernel panic" \
-    -e "POWER_GOOD not seen in time"
-
-# power down the CPU on the device
-$BM/write-serial.py $BM_SERIAL_EC 'power off'
-
-set -ex
+set +e
+python3 $BM/cros_servo_run.py \
+        --cpu $BM_SERIAL \
+        --ec $BM_SERIAL_EC
+ret=$?
+set -e
 
 # Bring artifacts back from the NFS dir to the build dir where gitlab-runner
 # will look for them.  Note that results/ may already exist, so be careful
@@ -104,9 +77,4 @@ set -ex
 mkdir -p results
 cp -Rp /nfs/results/. results/
 
-set +e
-if grep -q "bare-metal result: pass" serial-output.txt; then
-   exit 0
-else
-   exit 1
-fi
+exit $ret
