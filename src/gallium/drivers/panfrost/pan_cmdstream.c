@@ -327,16 +327,17 @@ panfrost_emit_compute_shader(struct panfrost_context *ctx,
                 meta->bifrost2.uniform_count = ss->uniform_count;
                 meta->bifrost1.uniform_buffer_count = panfrost_ubo_count(ctx, st);
         } else {
-                meta->midgard1.uniform_count = ss->uniform_count;
-                meta->midgard1.work_count = ss->work_reg_count;
+                struct mali_midgard_properties_packed prop;
 
-                /* TODO: This is not conformant on ES3 */
-                meta->midgard1.flags_hi = MALI_SUPPRESS_INF_NAN;
+                pan_pack(&prop, MIDGARD_PROPERTIES, cfg) {
+                        cfg.uniform_buffer_count = panfrost_ubo_count(ctx, st);
+                        cfg.uniform_count = ss->uniform_count;
+                        cfg.work_register_count = ss->work_reg_count;
+                        cfg.writes_globals = ss->writes_global;
+                        cfg.suppress_inf_nan = true; /* XXX */
+                }
 
-                meta->midgard1.flags_lo = 0x20;
-                meta->midgard1.uniform_buffer_count = panfrost_ubo_count(ctx, st);
-
-                SET_BIT(meta->midgard1.flags_lo, MALI_WRITES_GLOBAL, ss->writes_global);
+                memcpy(&meta->midgard1, &prop, sizeof(prop));
         }
 }
 
