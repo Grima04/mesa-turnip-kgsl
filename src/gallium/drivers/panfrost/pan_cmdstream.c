@@ -590,14 +590,6 @@ panfrost_emit_frag_shader(struct panfrost_context *ctx,
         fragmeta->unknown2_3 = MALI_DEPTH_FUNC(MALI_FUNC_ALWAYS) | 0x10;
         fragmeta->unknown2_4 = 0x4e0;
 
-        /* unknown2_4 has 0x10 bit set on T6XX and T720. We don't know why this
-         * is required (independent of 32-bit/64-bit descriptors), or why it's
-         * not used on later GPU revisions. Otherwise, all shader jobs fault on
-         * these earlier chips (perhaps this is a chicken bit of some kind).
-         * More investigation is needed. */
-
-        SET_BIT(fragmeta->unknown2_4, 0x10, dev->quirks & MIDGARD_SFBD);
-
         if (dev->quirks & IS_BIFROST) {
                 /* TODO */
         } else {
@@ -679,6 +671,8 @@ panfrost_emit_frag_shader(struct panfrost_context *ctx,
         SET_BIT(fragmeta->unknown2_4, MALI_NO_DITHER,
                 (dev->quirks & MIDGARD_SFBD) && ctx->blend &&
                 !ctx->blend->base.dither);
+
+        SET_BIT(fragmeta->unknown2_4, 0x10, dev->quirks & MIDGARD_SFBD);
 
         SET_BIT(fragmeta->unknown2_4, MALI_ALPHA_TO_COVERAGE,
                         ctx->blend->base.alpha_to_coverage);
