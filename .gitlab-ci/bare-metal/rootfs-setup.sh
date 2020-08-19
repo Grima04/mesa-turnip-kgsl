@@ -50,7 +50,7 @@ for var in \
     VK_DRIVER \
     ; do
   val=`echo ${!var} | sed 's|"||g'`
-  if [ -n "$val" ]; then
+  if [ -n "${!var+x}" ]; then
     echo "export $var=\"${val}\"" >> $rootfs_dst/set-job-env-vars.sh
   fi
 done
