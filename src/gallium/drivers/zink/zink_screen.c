@@ -180,6 +180,7 @@ zink_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_CLIP_HALFZ:
    case PIPE_CAP_TGSI_TXQS:
    case PIPE_CAP_TEXTURE_BARRIER:
+   case PIPE_CAP_TGSI_VOTE:
       return 1;
 
    case PIPE_CAP_ROBUST_BUFFER_ACCESS_BEHAVIOR:
