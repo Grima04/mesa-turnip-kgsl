@@ -809,14 +809,14 @@ framebuffer_state_buffer_barriers_setup(struct zink_context *ctx,
          surf = ctx->framebuffer->null_surface;
       struct zink_resource *res = zink_resource(surf->texture);
       if (res->layout != VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
-         zink_resource_barrier(batch->cmdbuf, res, res->aspect,
+         zink_resource_barrier(batch->cmdbuf, res,
                                VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
    }
 
    if (state->zsbuf) {
       struct zink_resource *res = zink_resource(state->zsbuf->texture);
       if (res->layout != VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
-         zink_resource_barrier(batch->cmdbuf, res, res->aspect,
+         zink_resource_barrier(batch->cmdbuf, res,
                                VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
    }
 }
@@ -1105,10 +1105,10 @@ zink_resource_access_is_write(VkAccessFlags flags)
 
 void
 zink_resource_barrier(VkCommandBuffer cmdbuf, struct zink_resource *res,
-                      VkImageAspectFlags aspect, VkImageLayout new_layout)
+                      VkImageLayout new_layout)
 {
    VkImageSubresourceRange isr = {
-      aspect,
+      res->aspect,
       0, VK_REMAINING_MIP_LEVELS,
       0, VK_REMAINING_ARRAY_LAYERS
    };

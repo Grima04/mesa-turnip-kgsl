@@ -436,7 +436,6 @@ update_descriptors(struct zink_context *ctx, struct zink_screen *screen, bool is
                                          transitions[i].layout, transitions[i].stage);
          else
             zink_resource_barrier(batch->cmdbuf, transitions[i].res,
-                                  transitions[i].res->aspect,
                                   transitions[i].layout);
       }
    }

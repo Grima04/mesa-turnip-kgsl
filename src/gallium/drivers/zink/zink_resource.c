@@ -449,12 +449,12 @@ zink_transfer_copy_bufimage(struct zink_context *ctx,
 
    if (buf2img) {
       if (res->layout != VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
-         zink_resource_barrier(batch->cmdbuf, res, res->aspect,
+         zink_resource_barrier(batch->cmdbuf, res,
                                VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
       }
    } else {
       if (res->layout != VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL) {
-         zink_resource_barrier(batch->cmdbuf, res, res->aspect,
+         zink_resource_barrier(batch->cmdbuf, res,
                                VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
       }
    }
@@ -757,15 +757,15 @@ zink_resource_setup_transfer_layouts(struct zink_batch *batch, struct zink_resou
        * VK_IMAGE_LAYOUT_GENERAL. And since this isn't a present-related
        * operation, VK_IMAGE_LAYOUT_GENERAL seems most appropriate.
        */
-      zink_resource_barrier(batch->cmdbuf, src, src->aspect,
+      zink_resource_barrier(batch->cmdbuf, src,
                             VK_IMAGE_LAYOUT_GENERAL);
    } else {
       if (src->layout != VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL)
-         zink_resource_barrier(batch->cmdbuf, src, src->aspect,
+         zink_resource_barrier(batch->cmdbuf, src,
                                VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
 
       if (dst->layout != VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
-         zink_resource_barrier(batch->cmdbuf, dst, dst->aspect,
+         zink_resource_barrier(batch->cmdbuf, dst,
                                VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
    }
 }

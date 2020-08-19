@@ -127,7 +127,7 @@ clear_color_no_rp(struct zink_batch *batch, struct zink_resource *res, const uni
    color.float32[3] = pcolor->f[3];
 
    if (res->layout != VK_IMAGE_LAYOUT_GENERAL && res->layout != VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
-      zink_resource_barrier(batch->cmdbuf, res, range.aspectMask, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+      zink_resource_barrier(batch->cmdbuf, res, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
    vkCmdClearColorImage(batch->cmdbuf, res->image, res->layout, &color, 1, &range);
 }
 
@@ -144,7 +144,7 @@ clear_zs_no_rp(struct zink_batch *batch, struct zink_resource *res, VkImageAspec
    VkClearDepthStencilValue zs_value = {depth, stencil};
 
    if (res->layout != VK_IMAGE_LAYOUT_GENERAL && res->layout != VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
-      zink_resource_barrier(batch->cmdbuf, res, res->aspect, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+      zink_resource_barrier(batch->cmdbuf, res, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
    vkCmdClearDepthStencilImage(batch->cmdbuf, res->image, res->layout, &zs_value, 1, &range);
 }
 
