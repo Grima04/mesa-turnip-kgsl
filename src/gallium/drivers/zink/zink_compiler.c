@@ -657,8 +657,12 @@ zink_shader_tcs_create(struct zink_context *ctx, struct zink_shader *vs)
                                                  glsl_struct_type(fields, 2, "struct", false), "pushconst");
    pushconst->data.location = VARYING_SLOT_VAR0;
 
-   nir_ssa_def *load_inner = nir_load_push_constant(&b, 2, 32, nir_imm_int(&b, 0), .base = 0, .range = 8);
-   nir_ssa_def *load_outer = nir_load_push_constant(&b, 4, 32, nir_imm_int(&b, 8), .base = 8, .range = 16);
+   nir_ssa_def *load_inner = nir_load_push_constant(&b, 2, 32,
+                                                    nir_imm_int(&b, offsetof(struct zink_push_constant, default_inner_level)),
+                                                    .base = offsetof(struct zink_push_constant, default_inner_level), .range = 8);
+   nir_ssa_def *load_outer = nir_load_push_constant(&b, 4, 32,
+                                                    nir_imm_int(&b, offsetof(struct zink_push_constant, default_outer_level)),
+                                                    .base = offsetof(struct zink_push_constant, default_outer_level), .range = 16);
 
    for (unsigned i = 0; i < 2; i++) {
       nir_deref_instr *store_idx = nir_build_deref_array_imm(&b, nir_build_deref_var(&b, gl_TessLevelInner), i);

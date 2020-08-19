@@ -40,6 +40,11 @@ struct zink_gfx_pipeline_state;
 struct hash_table;
 struct set;
 
+struct zink_push_constant {
+   float default_inner_level[2];
+   float default_outer_level[4];
+};
+
 /* a shader module is used for directly reusing a shader module between programs,
  * e.g., in the case where we're swapping out only one shader,
  * allowing us to skip going through shader keys
