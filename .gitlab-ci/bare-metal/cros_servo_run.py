@@ -55,8 +55,12 @@ class CrosServoRun:
         for line in self.cpu_ser.lines():
             if re.match("---. end Kernel panic", line):
                 return 1
+
+            # The Cheza boards have issues with failing to bring up power to
+            # the system sometimes, possibly dependent on ambient temperature
+            # in the farm.
             if re.match("POWER_GOOD not seen in time", line):
-                return 1
+                return 2
 
             result = re.match("bare-metal result: (\S*)", line)
             if result:
@@ -76,7 +80,10 @@ def main():
 
     servo = CrosServoRun(args.cpu, args.ec)
 
-    retval = servo.run()
+    while True:
+        retval = servo.run()
+        if retval != 2:
+            break
 
     # power down the CPU on the device
     servo.ec_write("power off\n")
