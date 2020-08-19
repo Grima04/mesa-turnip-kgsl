@@ -1118,9 +1118,9 @@ panfrost_emit_const_buf(struct panfrost_batch *batch,
 
         /* Upload uniforms as a UBO */
 
-        if (ss->uniform_count) {
+        if (size) {
                 pan_pack(ubo_ptr, UNIFORM_BUFFER, cfg) {
-                        cfg.entries = ss->uniform_count;
+                        cfg.entries = DIV_ROUND_UP(size, 16);
                         cfg.pointer = transfer.gpu;
                 }
         } else {
