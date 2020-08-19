@@ -459,9 +459,6 @@ iris_get_compute_param(struct pipe_screen *pscreen,
 } while (0)
 
    switch (param) {
-   case PIPE_COMPUTE_CAP_ADDRESS_BITS:
-      RET((uint32_t []){ 32 });
-
    case PIPE_COMPUTE_CAP_IR_TARGET:
       if (ret)
          strcpy(ret, "gen");
@@ -487,12 +484,11 @@ iris_get_compute_param(struct pipe_screen *pscreen,
       /* MaxComputeSharedMemorySize */
       RET((uint64_t []) { 64 * 1024 });
 
-   case PIPE_COMPUTE_CAP_IMAGES_SUPPORTED:
-      RET((uint32_t []) { 1 });
-
    case PIPE_COMPUTE_CAP_SUBGROUP_SIZE:
       RET((uint32_t []) { BRW_SUBGROUP_SIZE });
 
+   case PIPE_COMPUTE_CAP_ADDRESS_BITS:
+   case PIPE_COMPUTE_CAP_IMAGES_SUPPORTED:
    case PIPE_COMPUTE_CAP_MAX_MEM_ALLOC_SIZE:
    case PIPE_COMPUTE_CAP_MAX_CLOCK_FREQUENCY:
    case PIPE_COMPUTE_CAP_MAX_COMPUTE_UNITS:
