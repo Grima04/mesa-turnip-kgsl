@@ -52,6 +52,7 @@ class CrosServoRun:
                 self.cpu_write("\016")
                 break
 
+        tftp_failures = 0
         for line in self.cpu_ser.lines():
             if re.match("---. end Kernel panic", line):
                 return 1
@@ -61,6 +62,15 @@ class CrosServoRun:
             # in the farm.
             if re.match("POWER_GOOD not seen in time", line):
                 return 2
+
+            # The Cheza firmware seems to occasionally get stuck looping in
+            # this error state during TFTP booting, possibly based on amount of
+            # network traffic around it, but it'll usually recover after a
+            # reboot.
+            if re.match("R8152: Bulk read error 0xffffffbf", line):
+                tftp_failures += 1
+                if tftp_failures >= 100:
+                    return 2
 
             result = re.match("bare-metal result: (\S*)", line)
             if result:
