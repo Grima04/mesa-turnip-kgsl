@@ -291,6 +291,27 @@ if [ $DEQP_EXITCODE -ne 0 ]; then
     cp /tmp/deqp_runner.*.txt $RESULTS/
     egrep -v ",Pass|,Skip|,ExpectedFail" $RESULTSFILE > $UNEXPECTED_RESULTSFILE
 
+    # deqp-runner's flake detection won't perfectly detect all flakes, so
+    # allow the driver to list some known flakes that won't intermittently
+    # fail people's pipelines (while still allowing them to run and be
+    # reported to IRC in the usual flake detection path).  If we had some
+    # fails listed (so this wasn't a total runner failure), then filter out
+    # the known flakes and see if there are any issues left.
+    if [ -n "$DEQP_FLAKES" -a -s $UNEXPECTED_RESULTSFILE ]; then
+        set +x
+        while read line; do
+            line=`echo $line | sed 's|#.*||g'`
+            if [ -n "$line" ]; then
+                sed -i "/$line/d" $UNEXPECTED_RESULTSFILE
+            fi
+        done < $INSTALL/$DEQP_FLAKES
+        set -x
+
+        if [ ! -s $UNEXPECTED_RESULTSFILE ]; then
+            exit 0
+        fi
+    fi
+
     if [ -z "$DEQP_NO_SAVE_RESULTS" ]; then
         echo "Some unexpected results found (see cts-runner-results.txt in artifacts for full results):"
         head -n 50 $UNEXPECTED_RESULTSFILE

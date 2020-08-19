@@ -34,8 +34,7 @@ cp -Rp .gitlab-ci/fossils.yml install/
 cp -Rp .gitlab-ci/fossils install/
 cp -Rp .gitlab-ci/fossilize-runner.sh install/
 cp -Rp .gitlab-ci/deqp-runner.sh install/
-cp -Rp .gitlab-ci/deqp-*-fails.txt install/
-cp -Rp .gitlab-ci/deqp-*-skips.txt install/
+cp -Rp .gitlab-ci/deqp-*.txt install/
 
 # Tar up the install dir so that symlinks and hardlinks aren't each
 # packed separately in the zip file.
