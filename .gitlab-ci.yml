@@ -367,7 +367,7 @@ x86_test-gl:
 x86_test-vk:
   extends: .use-x86_test-base
   variables:
-    MESA_IMAGE_TAG: &x86_test-vk "2020-11-06-deqp-version"
+    MESA_IMAGE_TAG: &x86_test-vk "2020-12-10-shm"
 
 # Debian 10 based ARM build image
 arm_build:
@@ -589,7 +589,7 @@ meson-testing:
     GALLIUM_ST: >
       -D dri3=enabled
     GALLIUM_DRIVERS: "swrast,virgl,radeonsi"
-    VULKAN_DRIVERS: amd
+    VULKAN_DRIVERS: "swrast,amd"
     BUILDTYPE: "debugoptimized"
     EXTRA_OPTION: >
       -D werror=true
@@ -1411,6 +1411,17 @@ vc4-rpi3-gles2:armhf:
     - meson-armhf
   tags:
     - igalia-rpi3
+
+lavapipe-vk:
+  stage: software-renderer
+  extends:
+    - .llvmpipe-rules
+    - .deqp-test-vk
+  variables:
+    DEQP_EXPECTED_FAILS: deqp-lvp-fails.txt
+    DEQP_FLAKES: deqp-lvp-flakes.txt
+    VK_DRIVER: lvp
+    DEQP_FRACTION: 10
 
 # RADV CI
 .test-radv:
