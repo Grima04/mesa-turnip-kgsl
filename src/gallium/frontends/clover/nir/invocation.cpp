@@ -139,11 +139,11 @@ module clover::nir::spirv_to_nir(const module &mod, const device &dev,
    if (dev.address_bits() == 32u) {
       spirv_options.shared_addr_format = nir_address_format_32bit_offset;
       spirv_options.global_addr_format = nir_address_format_32bit_global;
-      spirv_options.temp_addr_format = nir_address_format_32bit_global;
+      spirv_options.temp_addr_format = nir_address_format_32bit_offset;
    } else {
       spirv_options.shared_addr_format = nir_address_format_32bit_offset_as_64bit;
       spirv_options.global_addr_format = nir_address_format_64bit_global;
-      spirv_options.temp_addr_format = nir_address_format_64bit_global;
+      spirv_options.temp_addr_format = nir_address_format_32bit_offset_as_64bit;
    }
    spirv_options.caps.address = true;
    spirv_options.caps.float64 = true;
