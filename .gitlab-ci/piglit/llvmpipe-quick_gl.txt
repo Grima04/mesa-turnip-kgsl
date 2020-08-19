@@ -464,8 +464,7 @@ spec/arb_depth_buffer_float/depthstencil-render-miplevels 585 d=z32f_s=z24_s8: s
 spec/arb_depth_buffer_float/depthstencil-render-miplevels 585 s=z24_s8_d=z32f: skip
 spec/arb_depth_buffer_float/depthstencil-render-miplevels 585 s=z24_s8_d=z32f_s8: skip
 spec/arb_direct_state_access/getcompressedtextureimage: skip
-spec/arb_direct_state_access/gettextureimage-formats: skip
-spec/arb_direct_state_access/gettextureimage-formats init-by-rendering: skip
+spec/arb_direct_state_access/gettextureimage-formats: crash
 spec/arb_fragment_program/fp-indirections: skip
 spec/arb_fragment_shader_interlock/arb_fragment_shader_interlock-image-load-store: skip
 spec/arb_framebuffer_no_attachments/arb_framebuffer_no_attachments-params/dsa: skip
@@ -915,6 +914,7 @@ spec/ext_direct_state_access/named-buffers 15/namedcopybuffersubdataext: skip
 spec/ext_external_objects/memory-object-api-errors: skip
 spec/ext_external_objects/semaphore-api-errors: skip
 spec/ext_external_objects/vk-buf-exchange: skip
+spec/ext_external_objects/vk-depth-display: skip
 spec/ext_external_objects/vk-image-display: skip
 spec/ext_external_objects/vk-image-display-overwrite: skip
 spec/ext_external_objects/vk-image-overwrite: skip
@@ -1661,10 +1661,10 @@ wgl/wgl-sanity: skip
 summary:
        name:  results
        ----  --------
-       pass:    23082
+       pass:    23099
        fail:      197
-      crash:        0
-       skip:     1439
+      crash:        1
+       skip:     1438
     timeout:        0
        warn:        6
  incomplete:        0
@@ -1673,4 +1673,4 @@ summary:
     changes:        0
       fixes:        0
 regressions:        0
-      total:    24742
+      total:    24759

@@ -1008,36 +1008,65 @@ meson-mingw32-x86_64:
     - meson-clover-testing
 
 .piglit-test:
-  extends:
-    - .test-gl
-    - .llvmpipe-rules
   artifacts:
     when: on_failure
     name: "mesa_${CI_JOB_NAME}"
     paths:
       - summary/
   variables:
-    LIBGL_ALWAYS_SOFTWARE: 1
     PIGLIT_NO_WINDOW: 1
   script:
     - install/piglit/run.sh
 
-llvmpipe-piglit-cl:
+.piglit-traces-test:
   extends:
     - .piglit-test
+  cache:
+    key: ${CI_JOB_NAME}
+    paths:
+      - replayer-db/
+  artifacts:
+    when: on_failure
+    name: "mesa_${CI_JOB_NAME}"
+    reports:
+      junit: results/junit.xml
+  variables:
+    PIGLIT_PROFILES: replay
+    PIGLIT_REPLAY_UPLOAD_TO_MINIO: 1
+    PIGLIT_REPLAY_EXTRA_ARGS:  --keep-image --db-path ${CI_PROJECT_DIR}/replayer-db/
+    PIGLIT_REPLAY_REFERENCE_IMAGES_BASE_URL: "/mesa-tracie-results/$CI_PROJECT_PATH"
+    PIGLIT_REPLAY_ARTIFACTS_BASE_URL: "/artifacts/$CI_PROJECT_PATH/$CI_PIPELINE_ID/$CI_JOB_ID"
+    PIGLIT_HTML_SUMMARY: 0
+    PIGLIT_JUNIT_RESULTS: 1
+
+.llvmpipe-test:
+  extends:
+    - .llvmpipe-rules
+  variables:
+    LIBGL_ALWAYS_SOFTWARE: "true"
+    GALLIUM_DRIVER: "llvmpipe"
+
+llvmpipe-piglit-cl:
+  extends:
     - .test-cl
+    - .piglit-test
+    - .llvmpipe-test
     - .llvmpipe-cl-rules
   variables:
     LP_CL: 1
     LP_NUM_THREADS: 1
     PIGLIT_PROFILES: cl
+    PIGLIT_RESULTS: "llvmpipe-cl"
     PIGLIT_OPTIONS: >
       -x bswap -x phatk -x clz-optimizations
   script:
     - install/piglit/run_cl.sh
 
 llvmpipe-piglit-quick_gl:
-  extends: .piglit-test
+  extends:
+    - .test-gl
+    - .piglit-test
+    - .llvmpipe-test
   variables:
     LP_NUM_THREADS: 0
     PIGLIT_OPTIONS: >
@@ -1050,18 +1079,53 @@ llvmpipe-piglit-quick_gl:
       -x max-texture-size
       -x maxsize
     PIGLIT_PROFILES: quick_gl
+    PIGLIT_RESULTS: "llvmpipe-quick_gl"
 
 llvmpipe-piglit-glslparser:
-  extends: .piglit-test
+  extends:
+    - .test-gl
+    - .piglit-test
+    - .llvmpipe-test
   variables:
     LP_NUM_THREADS: 0
     PIGLIT_PROFILES: glslparser
+    PIGLIT_RESULTS: "llvmpipe-glslparser"
 
 llvmpipe-piglit-quick_shader:
-  extends: .piglit-test
+  extends:
+    - .test-gl
+    - .piglit-test
+    - .llvmpipe-test
   variables:
     LP_NUM_THREADS: 1
     PIGLIT_PROFILES: quick_shader
+    PIGLIT_RESULTS: "llvmpipe-quick_shader"
+
+llvmpipe-traces:
+  extends:
+    - .test-gl
+    - .piglit-traces-test
+    - .llvmpipe-test
+  variables:
+    EGL_PLATFORM: "surfaceless"
+    PIGLIT_REPLAY_DESCRIPTION_FILE: "${CI_PROJECT_DIR}/install/traces-llvmpipe.yml"
+    PIGLIT_REPLAY_DEVICE_NAME: "gl-vmware-llvmpipe"
+    PIGLIT_RESULTS: "llvmpipe-replay"
+
+virgl-traces:
+  extends:
+    - .test-gl
+    - .piglit-traces-test
+    - .virgl-rules
+  variables:
+    LIBGL_ALWAYS_SOFTWARE: "true"
+    GALLIUM_DRIVER: "virpipe"
+    EGL_PLATFORM: "surfaceless"
+    PIGLIT_REPLAY_DESCRIPTION_FILE: "${CI_PROJECT_DIR}/install/traces-virgl.yml"
+    PIGLIT_REPLAY_DEVICE_NAME: "gl-virgl"
+    PIGLIT_RESULTS: "virgl-replay"
+    MESA_GLES_VERSION_OVERRIDE: "3.1"
+    MESA_GLSL_VERSION_OVERRIDE: "310"
 
 .deqp-test:
   script:
@@ -1474,29 +1538,12 @@ radv-fossils:
     reports:
       junit: results/junit.xml
 
-.traces-test-gl:
-  extends:
-    - .test-gl
-    - .traces-test
-  script:
-    - ./install/tracie-runner-gl.sh
-
 .traces-test-vk:
   extends:
     - .test-vk
     - .traces-test
   script:
     - ./install/tracie-runner-vk.sh
-
-llvmpipe-traces:
-  extends:
-    - .traces-test-gl
-    - .llvmpipe-rules
-  variables:
-    LIBGL_ALWAYS_SOFTWARE: "true"
-    GALLIUM_DRIVER: "llvmpipe"
-    DEVICE_NAME: "gl-vmware-llvmpipe"
-    DRIVER_NAME: "llvmpipe"
 
 radv-polaris10-traces:
   extends:
@@ -1519,15 +1566,3 @@ radv-raven-traces:
     DRIVER_NAME: "radv"
   tags:
     - raven
-
-virgl-traces:
-  extends:
-    - .traces-test-gl
-    - .virgl-rules
-  variables:
-    LIBGL_ALWAYS_SOFTWARE: "true"
-    GALLIUM_DRIVER: "virpipe"
-    DEVICE_NAME: "gl-virgl"
-    DRIVER_NAME: "virgl"
-    MESA_GLES_VERSION_OVERRIDE: "3.1"
-    MESA_GLSL_VERSION_OVERRIDE: "310"
