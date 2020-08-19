@@ -70,6 +70,8 @@ static void fd_fence_destroy(struct pipe_fence_handle *fence)
 {
 	if (fence->fence_fd != -1)
 		close(fence->fence_fd);
+	if (fence->syncobj)
+		drmSyncobjDestroy(fd_device_fd(fence->screen->dev), fence->syncobj);
 	fd_pipe_del(fence->pipe);
 	FREE(fence);
 }
