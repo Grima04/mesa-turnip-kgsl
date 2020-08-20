@@ -749,18 +749,26 @@ void nir_tgsi_scan_shader(const struct nir_shader *nir,
       }
    }
 
+   uint32_t sampler_mask = 0, image_mask = 0;
+   nir_foreach_uniform_variable(var, nir) {
+      uint32_t sampler_count = glsl_type_get_sampler_count(var->type);
+      uint32_t image_count = glsl_type_get_image_count(var->type);
+      sampler_mask |= ((1ull << sampler_count) - 1) << var->data.binding;
+      image_mask |= ((1ull << image_count) - 1) << var->data.binding;
+   }
    info->num_outputs = num_outputs;
 
    info->const_file_max[0] = nir->num_uniforms - 1;
    info->const_buffers_declared = u_bit_consecutive(1, nir->info.num_ubos);
    if (nir->num_uniforms > 0)
-     info->const_buffers_declared |= 1;
-   info->images_declared = u_bit_consecutive(0, nir->info.num_images);
-   info->samplers_declared = nir->info.textures_used;
+      info->const_buffers_declared |= 1;
+   info->images_declared = image_mask;
+   info->samplers_declared = sampler_mask;
 
    info->file_max[TGSI_FILE_SAMPLER] = util_last_bit(info->samplers_declared) - 1;
-   info->file_max[TGSI_FILE_SAMPLER_VIEW] = info->file_max[TGSI_FILE_SAMPLER];
-   info->file_mask[TGSI_FILE_SAMPLER] = info->file_mask[TGSI_FILE_SAMPLER_VIEW] = info->samplers_declared;
+   info->file_max[TGSI_FILE_SAMPLER_VIEW] = util_last_bit(nir->info.textures_used) - 1;
+   info->file_mask[TGSI_FILE_SAMPLER] = info->samplers_declared;
+   info->file_mask[TGSI_FILE_SAMPLER_VIEW] = nir->info.textures_used;
    info->file_max[TGSI_FILE_IMAGE] = util_last_bit(info->images_declared) - 1;
    info->file_mask[TGSI_FILE_IMAGE] = info->images_declared;
 
