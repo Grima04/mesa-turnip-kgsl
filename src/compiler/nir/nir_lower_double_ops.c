@@ -600,7 +600,7 @@ lower_doubles_instr_to_soft(nir_builder *b, nir_alu_instr *instr,
       params[i + 1] = nir_mov_alu(b, instr->src[i], 1);
    }
 
-   nir_inline_function_impl(b, func->impl, params);
+   nir_inline_function_impl(b, func->impl, params, NULL);
 
    return nir_load_deref(b, ret_deref);
 }

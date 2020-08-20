@@ -4028,7 +4028,8 @@ bool nir_lower_returns(nir_shader *shader);
 
 void nir_inline_function_impl(struct nir_builder *b,
                               const nir_function_impl *impl,
-                              nir_ssa_def **params);
+                              nir_ssa_def **params,
+                              struct hash_table *shader_var_remap);
 bool nir_inline_functions(nir_shader *shader);
 
 bool nir_propagate_invariant(nir_shader *shader);
