@@ -553,6 +553,7 @@ panfrost_emit_frag_shader(struct panfrost_context *ctx,
 
         struct pipe_rasterizer_state *rast = &ctx->rasterizer->base;
         const struct panfrost_zsa_state *zsa = ctx->depth_stencil;
+        unsigned rt_count = ctx->pipe_framebuffer.nr_cbufs;
 
         memset(fragmeta, 0, sizeof(*fragmeta));
 
@@ -587,12 +588,21 @@ panfrost_emit_frag_shader(struct panfrost_context *ctx,
                         (zsa->base.depth.enabled && zsa->base.depth.func != PIPE_FUNC_ALWAYS) ||
                         zsa->base.stencil[0].enabled;
 
+                bool has_blend_shader = false;
+
+                for (unsigned c = 0; c < rt_count; ++c)
+                        has_blend_shader |= blend[c].is_shader;
+
                 pan_pack(&prop, MIDGARD_PROPERTIES, cfg) {
                         cfg.uniform_buffer_count = panfrost_ubo_count(ctx, PIPE_SHADER_FRAGMENT);
                         cfg.uniform_count = fs->uniform_count;
                         cfg.work_register_count = fs->work_reg_count;
                         cfg.writes_globals = fs->writes_global;
                         cfg.suppress_inf_nan = true; /* XXX */
+
+                        /* TODO: Reduce this limit? */
+                        if (has_blend_shader)
+                                cfg.work_register_count = MAX2(cfg.work_register_count, 8);
 
                         cfg.stencil_from_shader = fs->writes_stencil;
                         cfg.helper_invocation_enable = fs->helper_invocations;
@@ -667,9 +677,6 @@ panfrost_emit_frag_shader(struct panfrost_context *ctx,
         SET_BIT(fragmeta->unknown2_4, MALI_ALPHA_TO_COVERAGE,
                         ctx->blend->base.alpha_to_coverage);
 
-        /* Get blending setup */
-        unsigned rt_count = ctx->pipe_framebuffer.nr_cbufs;
-
         /* Disable shader execution if we can */
         if (dev->quirks & MIDGARD_SHADERLESS
                         && !panfrost_fs_required(fs, blend, rt_count)) {
@@ -689,18 +696,6 @@ panfrost_emit_frag_shader(struct panfrost_context *ctx,
                 }
 
                 memcpy(&fragmeta->midgard1, &prop, sizeof(prop));
-        }
-
-         /* If there is a blend shader, work registers are shared. We impose 8
-          * work registers as a limit for blend shaders. Should be lower XXX */
-
-        if (!(dev->quirks & IS_BIFROST)) {
-                for (unsigned c = 0; c < rt_count; ++c) {
-                        if (blend[c].is_shader) {
-                                fragmeta->midgard1.work_count =
-                                        MAX2(fragmeta->midgard1.work_count, 8);
-                        }
-                }
         }
 
         if (dev->quirks & MIDGARD_SFBD) {
