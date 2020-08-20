@@ -1784,10 +1784,10 @@ endif
 _sensors = get_option('lmsensors')
 if _sensors == 'true'
   _sensors = 'enabled'
-  warning('sensors option "true" deprecated, please use "enabled" instead.')
+  warning('lmsensors option "true" deprecated, please use "enabled" instead.')
 elif _sensors == 'false'
   _sensors = 'disabled'
-  warning('sensors option "false" deprecated, please use "disabled" instead.')
+  warning('lmsensors option "false" deprecated, please use "disabled" instead.')
 endif
 if _sensors != 'disabled'
   dep_lmsensors = cc.find_library('sensors', required : _sensors == 'enabled')
