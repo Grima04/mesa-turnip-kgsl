@@ -249,10 +249,6 @@ panfrost_load_midg(
                 .sampler_count = 1,
                 .texture_count = 1,
                 .varying_count = 1,
-                .midgard1 = {
-                        .flags_lo = 0x20,
-                        .work_count = 4,
-                },
                 .coverage_mask = ~0,
                 .unknown2_3 = MALI_DEPTH_FUNC(MALI_FUNC_ALWAYS) | 0x10,
                 .unknown2_4 = 0x4e0,
@@ -264,6 +260,19 @@ panfrost_load_midg(
                         .shader = blend_shader
                 }
         };
+
+        struct mali_midgard_properties_packed midgard_props;
+
+        pan_pack(&midgard_props, MIDGARD_PROPERTIES, cfg) {
+                cfg.work_register_count = 4;
+                cfg.early_z_enable = (loc >= FRAG_RESULT_DATA0);
+                cfg.stencil_from_shader = (loc == FRAG_RESULT_STENCIL);
+                cfg.depth_source = (loc == FRAG_RESULT_DEPTH) ?
+                        MALI_DEPTH_SOURCE_SHADER :
+                        MALI_DEPTH_SOURCE_FIXED_FUNCTION;
+        }
+
+        memcpy(&shader_meta.midgard_props, &midgard_props, sizeof(midgard_props));
 
         if (ms)
                 shader_meta.unknown2_3 |= MALI_HAS_MSAA | MALI_PER_SAMPLE;
@@ -277,15 +286,10 @@ panfrost_load_midg(
                 shader_meta.blend = replace;
         }
 
-        if (loc == FRAG_RESULT_DEPTH) {
-                shader_meta.midgard1.flags_lo |= MALI_WRITES_Z;
+        if (loc == FRAG_RESULT_DEPTH)
                 shader_meta.unknown2_3 |= MALI_DEPTH_WRITEMASK;
-        } else if (loc == FRAG_RESULT_STENCIL) {
-                shader_meta.midgard1.flags_hi |= MALI_WRITES_S;
+        else if (loc == FRAG_RESULT_STENCIL)
                 shader_meta.unknown2_4 |= MALI_STENCIL_TEST;
-        } else {
-                shader_meta.midgard1.flags_lo |= MALI_EARLY_Z;
-        }
 
         /* Create the texture descriptor. We partially compute the base address
          * ourselves to account for layer, such that the texture descriptor

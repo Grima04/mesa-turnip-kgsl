@@ -337,7 +337,7 @@ panfrost_emit_compute_shader(struct panfrost_context *ctx,
                         cfg.suppress_inf_nan = true; /* XXX */
                 }
 
-                memcpy(&meta->midgard1, &prop, sizeof(prop));
+                memcpy(&meta->midgard_props, &prop, sizeof(prop));
         }
 }
 
@@ -616,7 +616,7 @@ panfrost_emit_frag_shader(struct panfrost_context *ctx,
                         cfg.reads_depth_stencil = zs_enabled && fs->can_discard;
                 }
 
-                memcpy(&fragmeta->midgard1, &prop, sizeof(prop));
+                memcpy(&fragmeta->midgard_props, &prop, sizeof(prop));
         }
 
         bool msaa = rast->multisample;
@@ -695,7 +695,7 @@ panfrost_emit_frag_shader(struct panfrost_context *ctx,
                         cfg.early_z_enable = true;
                 }
 
-                memcpy(&fragmeta->midgard1, &prop, sizeof(prop));
+                memcpy(&fragmeta->midgard_props, &prop, sizeof(prop));
         }
 
         if (dev->quirks & MIDGARD_SFBD) {

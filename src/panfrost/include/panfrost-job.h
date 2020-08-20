@@ -193,54 +193,6 @@ struct mali_blend_mode {
 #define MALI_CHANNEL_FLOAT 7
 #define MALI_EXTRACT_BITS(fmt) (fmt & 0x7)
 
-/* Applies to midgard1.flags_lo */
-
-/* Should be set when the fragment shader updates the depth value. */
-#define MALI_WRITES_Z (1 << 4)
-
-/* Should the hardware perform early-Z testing? Set if the shader does not use
- * discard, alpha-to-coverage, shader depth writes, and if the shader has no
- * side effects (writes to global memory or images) unless early-z testing is
- * forced in the shader.
- */
-
-#define MALI_EARLY_Z (1 << 6)
-
-/* Should the hardware calculate derivatives (via helper invocations)? Set in a
- * fragment shader that uses texturing or derivative functions */
-
-#define MALI_HELPER_INVOCATIONS (1 << 7)
-
-/* Flags denoting the fragment shader's use of tilebuffer readback. If the
- * shader might read any part of the tilebuffer, set MALI_READS_TILEBUFFER. If
- * it might read depth/stencil in particular, also set MALI_READS_ZS */
-
-#define MALI_READS_ZS (1 << 8)
-
-/* The shader might write to global memory (via OpenCL, SSBOs, or images).
- * Reading is okay, as are ordinary writes to the tilebuffer/varyings. Setting
- * incurs a performance penalty. On a fragment shader, this bit implies there
- * are side effects, hence it interacts with early-z. */
-#define MALI_WRITES_GLOBAL (1 << 9)
-
-#define MALI_READS_TILEBUFFER (1 << 10)
-
-/* Applies to midgard1.flags_hi */
-
-/* Should be set when the fragment shader updates the stencil value. */
-#define MALI_WRITES_S (1 << 2)
-
-/* Mode to suppress generation of Infinity and NaN values by clamping inf
- * (-inf) to MAX_FLOAT (-MIN_FLOAT) and flushing NaN to 0.0
- *
- * Compare suppress_inf/suppress_nan flags on the Bifrost clause header for the
- * same functionality.
- *
- * This is not conformant on GLES3 or OpenCL, but is optional on GLES2, where
- * it works around app bugs (e.g. in glmark2-es2 -bterrain with FP16).
- */
-#define MALI_SUPPRESS_INF_NAN (1 << 3)
-
 /* Flags for bifrost1.unk1 */
 
 /* Shader uses less than 32 registers, partitioned as [R0, R15] U [R48, R63],
@@ -374,15 +326,7 @@ struct mali_shader_meta {
                         u32 uniform_buffer_count : 4;
                         u32 unk1 : 28; // = 0x800000 for vertex, 0x958020 for tiler
                 } bifrost1;
-                struct {
-                        unsigned uniform_buffer_count : 4;
-                        unsigned flags_lo : 12;
-
-                        /* vec4 units */
-                        unsigned work_count : 5;
-                        unsigned uniform_count : 5;
-                        unsigned flags_hi : 6;
-                } midgard1;
+                struct mali_midgard_properties_packed midgard_props;
         };
 
         /* Same as glPolygoOffset() arguments */

@@ -279,23 +279,6 @@ static const struct pandecode_flag_info mfbd_extra_flag_lo_info[] = {
 };
 #undef FLAG_INFO
 
-#define FLAG_INFO(flag) { MALI_##flag, "MALI_" #flag }
-static const struct pandecode_flag_info shader_midgard1_flag_lo_info [] = {
-        FLAG_INFO(WRITES_Z),
-        FLAG_INFO(EARLY_Z),
-        FLAG_INFO(READS_TILEBUFFER),
-        FLAG_INFO(WRITES_GLOBAL),
-        FLAG_INFO(READS_ZS),
-        {}
-};
-
-static const struct pandecode_flag_info shader_midgard1_flag_hi_info [] = {
-        FLAG_INFO(WRITES_S),
-        FLAG_INFO(SUPPRESS_INF_NAN),
-        {}
-};
-#undef FLAG_INFO
-
 #define FLAG_INFO(flag) { MALI_BIFROST_##flag, "MALI_BIFROST_" #flag }
 static const struct pandecode_flag_info shader_bifrost_info [] = {
         FLAG_INFO(FULL_THREAD),
@@ -1756,6 +1739,8 @@ pandecode_vertex_tiler_postfix_pre(
                 if (s->shader & ~0xF)
                         info = pandecode_shader_disassemble(s->shader & ~0xF, job_no, job_type, is_bifrost, gpu_id);
 
+                struct MALI_MIDGARD_PROPERTIES midg_props;
+
                 pandecode_log("struct mali_shader_meta shader_meta_%"PRIx64"_%d%s = {\n", p->shader, job_no, suffix);
                 pandecode_indent++;
 
@@ -1769,8 +1754,11 @@ pandecode_vertex_tiler_postfix_pre(
                         uniform_count = s->bifrost2.uniform_count;
                         uniform_buffer_count = s->bifrost1.uniform_buffer_count;
                 } else {
-                        uniform_count = s->midgard1.uniform_count;
-                        uniform_buffer_count = s->midgard1.uniform_buffer_count;
+                        uint32_t opaque = s->midgard_props.opaque[0];
+                        MALI_MIDGARD_PROPERTIES_unpack((const uint8_t *) &opaque, &midg_props);
+
+                        uniform_count = midg_props.uniform_count;
+                        uniform_buffer_count = midg_props.uniform_buffer_count;
                 }
 
                 pandecode_shader_address("shader", s->shader);
@@ -1779,39 +1767,13 @@ pandecode_vertex_tiler_postfix_pre(
                 pandecode_shader_prop("sampler_count", s->sampler_count, info.sampler_count, false);
                 pandecode_shader_prop("attribute_count", s->attribute_count, info.attribute_count, false);
                 pandecode_shader_prop("varying_count", s->varying_count, info.varying_count, false);
-                pandecode_shader_prop("uniform_buffer_count",
-                                uniform_buffer_count,
-                                info.uniform_buffer_count, true);
-
-                if (!is_bifrost) {
-                        pandecode_shader_prop("uniform_count",
-                                        uniform_count,
-                                        info.uniform_count, false);
-
-                        pandecode_shader_prop("work_count",
-                                        s->midgard1.work_count, info.work_count, false);
-                }
 
                 if (is_bifrost) {
                         pandecode_log("bifrost1.unk1 = ");
                         pandecode_log_decoded_flags(shader_bifrost_info, s->bifrost1.unk1);
                         pandecode_log_cont(",\n");
                 } else {
-                        bool helpers = s->midgard1.flags_lo & MALI_HELPER_INVOCATIONS;
-
-                        if (helpers != info.helper_invocations) {
-                                pandecode_msg("XXX: expected helpers %u but got %u\n",
-                                                info.helper_invocations, helpers);
-                        }
-
-                        pandecode_log(".midgard1.flags_lo = ");
-                        pandecode_log_decoded_flags(shader_midgard1_flag_lo_info,
-                                                    s->midgard1.flags_lo & ~MALI_HELPER_INVOCATIONS);
-                        pandecode_log_cont(",\n");
-
-                        pandecode_log(".midgard1.flags_hi = ");
-                        pandecode_log_decoded_flags(shader_midgard1_flag_hi_info, s->midgard1.flags_hi);
-                        pandecode_log_cont(",\n");
+                        MALI_MIDGARD_PROPERTIES_print(pandecode_dump_stream, &midg_props, 2);
                 }
 
                 if (s->depth_units || s->depth_factor) {
