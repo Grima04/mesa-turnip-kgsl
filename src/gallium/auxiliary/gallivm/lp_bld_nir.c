@@ -2036,6 +2036,7 @@ void lp_build_opt_nir(struct nir_shader *nir)
       .lower_tg4_offsets = true,
    };
    NIR_PASS_V(nir, nir_lower_tex, &lower_tex_options);
+   NIR_PASS_V(nir, nir_lower_frexp);
 
    do {
       progress = false;
