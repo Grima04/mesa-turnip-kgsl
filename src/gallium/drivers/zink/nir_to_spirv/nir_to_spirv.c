@@ -85,7 +85,7 @@ struct ntv_context {
          push_const_var,
          workgroup_id_var, num_workgroups_var,
          local_invocation_id_var, global_invocation_id_var,
-         local_invocation_index_var,
+         local_invocation_index_var, helper_invocation_var,
          shared_block_var;
 };
 
@@ -2651,6 +2651,10 @@ emit_intrinsic(struct ntv_context *ctx, nir_intrinsic_instr *intr)
 
    case nir_intrinsic_end_primitive_with_counter:
       spirv_builder_end_primitive(&ctx->builder, nir_intrinsic_stream_id(intr));
+      break;
+
+   case nir_intrinsic_load_helper_invocation:
+      emit_load_vec_input(ctx, intr, &ctx->helper_invocation_var, "gl_HelperInvocation", SpvBuiltInHelperInvocation, nir_type_bool);
       break;
 
    case nir_intrinsic_load_patch_vertices_in:
