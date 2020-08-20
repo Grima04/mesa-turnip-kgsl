@@ -1133,7 +1133,8 @@ void anv_GetImageSubresourceLayout(
                                           &offset_B, NULL, NULL);
       layout->offset += offset_B;
       layout->size = layout->rowPitch * anv_minify(image->extent.height,
-                                                   subresource->mipLevel);
+                                                   subresource->mipLevel) *
+                     image->extent.depth;
    } else {
       layout->size = surface->isl.size_B;
    }
