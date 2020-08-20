@@ -44,7 +44,7 @@ iris_is_color_fast_clear_compatible(struct iris_context *ice,
    const struct gen_device_info *devinfo = &batch->screen->devinfo;
 
    if (isl_format_has_int_channel(format)) {
-      perf_debug(&ice->dbg, "Integer fast clear not enabled for %s",
+      perf_debug(&ice->dbg, "Integer fast clear not enabled for %s\n",
                  isl_format_get_name(format));
       return false;
    }
