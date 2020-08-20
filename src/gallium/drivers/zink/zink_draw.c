@@ -145,6 +145,31 @@ barrier_vertex_buffers(struct zink_context *ctx)
 }
 
 static void
+check_buffer_barrier(struct zink_context *ctx, struct pipe_resource *pres, VkAccessFlags flags, VkPipelineStageFlags pipeline)
+{
+   struct zink_resource *res = zink_resource(pres);
+   if (zink_resource_buffer_needs_barrier(res, flags, pipeline)) {
+       struct zink_batch *batch = zink_batch_no_rp(ctx);
+       zink_resource_buffer_barrier(batch, res, flags, pipeline);
+    }
+}
+
+static void
+barrier_draw_buffers(struct zink_context *ctx, const struct pipe_draw_info *dinfo,
+                     const struct pipe_draw_indirect_info *dindirect, struct pipe_resource *index_buffer)
+{
+   if (index_buffer)
+      check_buffer_barrier(ctx, index_buffer, VK_ACCESS_INDEX_READ_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT);
+   if (dindirect && dindirect->buffer) {
+      check_buffer_barrier(ctx, dindirect->buffer,
+                           VK_ACCESS_INDIRECT_COMMAND_READ_BIT, VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT);
+      if (dindirect->indirect_draw_count)
+         check_buffer_barrier(ctx, dindirect->indirect_draw_count,
+                              VK_ACCESS_INDIRECT_COMMAND_READ_BIT, VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT);
+   }
+}
+
+static void
 zink_bind_vertex_buffers(struct zink_batch *batch, struct zink_context *ctx)
 {
    VkBuffer buffers[PIPE_MAX_ATTRIBS];
@@ -706,6 +731,7 @@ zink_draw_vbo(struct pipe_context *pctx,
       zink_emit_xfb_vertex_input_barrier(ctx, zink_resource(so_target->base.buffer));
 
    barrier_vertex_buffers(ctx);
+   barrier_draw_buffers(ctx, dinfo, dindirect, index_buffer);
 
    update_descriptors(ctx, screen, false);
 
