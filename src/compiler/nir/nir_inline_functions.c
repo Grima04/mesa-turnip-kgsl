@@ -44,27 +44,33 @@ void nir_inline_function_impl(struct nir_builder *b,
 
    nir_foreach_block(block, copy) {
       nir_foreach_instr_safe(instr, block) {
-         /* Returns have to be lowered for this to work */
-         assert(instr->type != nir_instr_type_jump ||
-                nir_instr_as_jump(instr)->type != nir_jump_return);
+         switch (instr->type) {
+         case nir_instr_type_intrinsic: {
+            nir_intrinsic_instr *load = nir_instr_as_intrinsic(instr);
+            if (load->intrinsic != nir_intrinsic_load_param)
+               break;
 
-         if (instr->type != nir_instr_type_intrinsic)
-            continue;
+            unsigned param_idx = nir_intrinsic_param_idx(load);
+            assert(param_idx < impl->function->num_params);
+            assert(load->dest.is_ssa);
+            nir_ssa_def_rewrite_uses(&load->dest.ssa,
+                                     nir_src_for_ssa(params[param_idx]));
 
-         nir_intrinsic_instr *load = nir_instr_as_intrinsic(instr);
-         if (load->intrinsic != nir_intrinsic_load_param)
-            continue;
+            /* Remove any left-over load_param intrinsics because they're soon
+             * to be in another function and therefore no longer valid.
+             */
+            nir_instr_remove(&load->instr);
+            break;
+         }
 
-         unsigned param_idx = nir_intrinsic_param_idx(load);
-         assert(param_idx < impl->function->num_params);
-         assert(load->dest.is_ssa);
-         nir_ssa_def_rewrite_uses(&load->dest.ssa,
-                                  nir_src_for_ssa(params[param_idx]));
+         case nir_instr_type_jump:
+            /* Returns have to be lowered for this to work */
+            assert(nir_instr_as_jump(instr)->type != nir_jump_return);
+            break;
 
-         /* Remove any left-over load_param intrinsics because they're soon
-          * to be in another function and therefore no longer valid.
-          */
-         nir_instr_remove(&load->instr);
+         default:
+            break;
+         }
       }
    }
 
