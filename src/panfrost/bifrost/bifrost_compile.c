@@ -90,7 +90,7 @@ bi_load(enum bi_class T, nir_intrinsic_instr *instr)
         if (info->has_dest)
                 load.dest = pan_dest_index(&instr->dest);
 
-        if (info->has_dest && info->index_map[NIR_INTRINSIC_TYPE] > 0)
+        if (info->has_dest && nir_intrinsic_has_type(instr))
                 load.dest_type = nir_intrinsic_type(instr);
 
         nir_src *offset = nir_get_io_offset_src(instr);
