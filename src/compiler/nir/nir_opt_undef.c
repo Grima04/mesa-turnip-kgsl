@@ -167,38 +167,26 @@ opt_undef_store(nir_intrinsic_instr *intrin)
    return true;
 }
 
+static bool
+nir_opt_undef_instr(nir_builder *b, nir_instr *instr, void *data)
+{
+   if (instr->type == nir_instr_type_alu) {
+      nir_alu_instr *alu = nir_instr_as_alu(instr);
+      return opt_undef_csel(alu) || opt_undef_vecN(b, alu);
+   } else if (instr->type == nir_instr_type_intrinsic) {
+      nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
+      return opt_undef_store(intrin);
+   }
+
+   return false;
+}
+
 bool
 nir_opt_undef(nir_shader *shader)
 {
-   nir_builder b;
-   bool progress = false;
-
-   nir_foreach_function(function, shader) {
-      if (function->impl) {
-         nir_builder_init(&b, function->impl);
-         nir_foreach_block(block, function->impl) {
-            nir_foreach_instr_safe(instr, block) {
-               if (instr->type == nir_instr_type_alu) {
-                  nir_alu_instr *alu = nir_instr_as_alu(instr);
-
-                  progress = opt_undef_csel(alu) || progress;
-                  progress = opt_undef_vecN(&b, alu) || progress;
-               } else if (instr->type == nir_instr_type_intrinsic) {
-                  nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
-                  progress = opt_undef_store(intrin) || progress;
-               }
-            }
-         }
-
-         if (progress) {
-            nir_metadata_preserve(function->impl,
-                                  nir_metadata_block_index |
-                                  nir_metadata_dominance);
-         } else {
-            nir_metadata_preserve(function->impl, nir_metadata_all);
-         }
-      }
-   }
-
-   return progress;
+   return nir_shader_instructions_pass(shader,
+                                       nir_opt_undef_instr,
+                                       nir_metadata_block_index |
+                                       nir_metadata_dominance,
+                                       NULL);
 }
