@@ -254,7 +254,7 @@ svga_hwtnl_draw_range_elements(struct svga_hwtnl *hwtnl,
                                     &gen_prim, &gen_size, &gen_nr, &gen_func);
    }
 
-   if (gen_type == U_TRANSLATE_MEMCPY) {
+   if ((gen_type == U_TRANSLATE_MEMCPY) && (info->index_size == gen_size)) {
       /* No need for translation, just pass through to hardware:
        */
       unsigned start_offset = info->start * info->index_size;
