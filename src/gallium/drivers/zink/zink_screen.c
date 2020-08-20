@@ -185,6 +185,7 @@ zink_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_POLYGON_OFFSET_CLAMP:
    case PIPE_CAP_QUERY_SO_OVERFLOW:
    case PIPE_CAP_QUERY_PIPELINE_STATISTICS_SINGLE:
+   case PIPE_CAP_GL_SPIRV:
       return 1;
 
    case PIPE_CAP_ROBUST_BUFFER_ACCESS_BEHAVIOR:
