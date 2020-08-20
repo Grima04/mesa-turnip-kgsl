@@ -308,6 +308,41 @@ get_query_result(struct pipe_context *pctx,
 }
 
 static void
+force_cpu_read(struct zink_context *ctx, struct pipe_query *pquery, bool wait, enum pipe_query_value_type result_type, struct pipe_resource *pres, unsigned offset)
+{
+   unsigned result_size = result_type <= PIPE_QUERY_TYPE_U32 ? sizeof(uint32_t) : sizeof(uint64_t);
+   struct zink_query *query = (struct zink_query*)pquery;
+   union pipe_query_result result;
+   if (zink_curr_batch(ctx)->batch_id == query->batch_id)
+      ctx->base.flush(&ctx->base, NULL, PIPE_FLUSH_HINT_FINISH);
+   bool success = get_query_result(&ctx->base, pquery, wait, &result);
+   if (!success) {
+      debug_printf("zink: getting query result failed\n");
+      return;
+   }
+
+   struct pipe_transfer *transfer = NULL;
+   void *map = pipe_buffer_map_range(&ctx->base, pres, offset, result_size, PIPE_MAP_WRITE, &transfer);
+   if (!transfer) {
+      debug_printf("zink: mapping result buffer failed\n");
+      return;
+   }
+   if (result_type <= PIPE_QUERY_TYPE_U32) {
+      uint32_t *u32 = map;
+      uint32_t limit;
+      if (result_type == PIPE_QUERY_TYPE_I32)
+         limit = INT_MAX;
+      else
+         limit = UINT_MAX;
+      u32[0] = MIN2(limit, result.u64);
+   } else {
+      uint64_t *u64 = map;
+      u64[0] = result.u64;
+   }
+   pipe_buffer_unmap(&ctx->base, transfer);
+}
+
+static void
 reset_pool(struct zink_context *ctx, struct zink_batch *batch, struct zink_query *q)
 {
    /* This command must only be called outside of a render pass instance
@@ -613,37 +648,11 @@ zink_get_query_result_resource(struct pipe_context *pctx,
          return;
       }
    }
-   if (zink_curr_batch(ctx)->batch_id == query->batch_id)
-      pctx->flush(pctx, NULL, PIPE_FLUSH_HINT_FINISH);
+
    /* unfortunately, there's no way to accumulate results from multiple queries on the gpu without either
     * clobbering all but the last result or writing the results sequentially, so we have to manually write the result
     */
-   union pipe_query_result result;
-   bool success = get_query_result(&ctx->base, pquery, wait, &result);
-   if (!success) {
-      debug_printf("zink: getting query result failed");
-      return;
-   }
-
-   struct pipe_transfer *transfer = NULL;
-   void *map = pipe_buffer_map_range(pctx, pres, offset, result_size, PIPE_MAP_WRITE, &transfer);
-   if (!transfer) {
-      debug_printf("zink: mapping result buffer failed");
-      return;
-   }
-   if (result_type <= PIPE_QUERY_TYPE_U32) {
-      uint32_t *u32 = map;
-      uint32_t limit;
-      if (result_type == PIPE_QUERY_TYPE_I32)
-         limit = INT_MAX;
-      else
-         limit = UINT_MAX;
-      u32[0] = MIN2(limit, result.u64);
-   } else {
-      uint64_t *u64 = map;
-      u64[0] = result.u64;
-   }
-   pipe_buffer_unmap(pctx, transfer);
+   force_cpu_read(ctx, pquery, true, result_type, pres, offset);
 }
 
 static uint64_t
