@@ -105,6 +105,11 @@ zink_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_GLSL_TESS_LEVELS_AS_INPUTS:
       return 1;
 
+   case PIPE_CAP_MULTI_DRAW_INDIRECT:
+   case PIPE_CAP_MULTI_DRAW_INDIRECT_PARAMS:
+      return screen->vk_CmdDrawIndirectCount &&
+             screen->vk_CmdDrawIndexedIndirectCount;
+
    case PIPE_CAP_VERTEX_ELEMENT_INSTANCE_DIVISOR:
       return screen->info.have_EXT_vertex_attribute_divisor;
 
@@ -839,7 +844,7 @@ load_instance_extensions(struct zink_screen *screen)
       GET_PROC_ADDR_INSTANCE_LOCAL(screen->instance, CmdDrawIndexedIndirectCountKHR);
       screen->vk_CmdDrawIndirectCount = vk_CmdDrawIndirectCountKHR;
       screen->vk_CmdDrawIndexedIndirectCount = vk_CmdDrawIndexedIndirectCountKHR;
-   } else if (VK_MAKE_VERSION(1,1,0) <= screen->loader_version) {
+   } else if (VK_MAKE_VERSION(1,2,0) <= screen->loader_version) {
       // Get Vk 1.1+ Instance functions
       GET_PROC_ADDR_INSTANCE(CmdDrawIndirectCount);
       GET_PROC_ADDR_INSTANCE(CmdDrawIndexedIndirectCount);
