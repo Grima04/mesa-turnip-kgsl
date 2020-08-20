@@ -528,7 +528,14 @@ zink_draw_vbo(struct pipe_context *pctx,
       if (dindirect && dindirect->buffer) {
          struct zink_resource *indirect = zink_resource(dindirect->buffer);
          zink_batch_reference_resource_rw(batch, indirect, false);
-         vkCmdDrawIndexedIndirect(batch->cmdbuf, indirect->buffer, dindirect->offset, dindirect->draw_count, dindirect->stride);
+         if (dindirect->indirect_draw_count) {
+             struct zink_resource *indirect_draw_count = zink_resource(dindirect->indirect_draw_count);
+             zink_batch_reference_resource_rw(batch, indirect_draw_count, false);
+             screen->vk_CmdDrawIndexedIndirectCount(batch->cmdbuf, indirect->buffer, dindirect->offset,
+                                           indirect_draw_count->buffer, dindirect->indirect_draw_count_offset,
+                                           dindirect->draw_count, dindirect->stride);
+         } else
+            vkCmdDrawIndexedIndirect(batch->cmdbuf, indirect->buffer, dindirect->offset, dindirect->draw_count, dindirect->stride);
       } else
          vkCmdDrawIndexed(batch->cmdbuf,
             draws[0].count, dinfo->instance_count,
@@ -542,7 +549,14 @@ zink_draw_vbo(struct pipe_context *pctx,
       } else if (dindirect && dindirect->buffer) {
          struct zink_resource *indirect = zink_resource(dindirect->buffer);
          zink_batch_reference_resource_rw(batch, indirect, false);
-         vkCmdDrawIndirect(batch->cmdbuf, indirect->buffer, dindirect->offset, dindirect->draw_count, dindirect->stride);
+         if (dindirect->indirect_draw_count) {
+             struct zink_resource *indirect_draw_count = zink_resource(dindirect->indirect_draw_count);
+             zink_batch_reference_resource_rw(batch, indirect_draw_count, false);
+             screen->vk_CmdDrawIndirectCount(batch->cmdbuf, indirect->buffer, dindirect->offset,
+                                           indirect_draw_count->buffer, dindirect->indirect_draw_count_offset,
+                                           dindirect->draw_count, dindirect->stride);
+         } else
+            vkCmdDrawIndirect(batch->cmdbuf, indirect->buffer, dindirect->offset, dindirect->draw_count, dindirect->stride);
       } else
          vkCmdDraw(batch->cmdbuf, draws[0].count, dinfo->instance_count, draws[0].start, dinfo->start_instance);
    }
