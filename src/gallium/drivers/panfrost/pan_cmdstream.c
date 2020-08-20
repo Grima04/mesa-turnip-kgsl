@@ -680,9 +680,15 @@ panfrost_emit_frag_shader(struct panfrost_context *ctx,
                 fragmeta->sampler_count = 0;
 
                 /* This feature is not known to work on Bifrost */
-                fragmeta->midgard1.work_count = 1;
-                fragmeta->midgard1.uniform_count = 0;
-                fragmeta->midgard1.uniform_buffer_count = 0;
+                struct mali_midgard_properties_packed prop;
+
+                pan_pack(&prop, MIDGARD_PROPERTIES, cfg) {
+                        cfg.work_register_count = 1;
+                        cfg.depth_source = MALI_DEPTH_SOURCE_FIXED_FUNCTION;
+                        cfg.early_z_enable = true;
+                }
+
+                memcpy(&fragmeta->midgard1, &prop, sizeof(prop));
         }
 
          /* If there is a blend shader, work registers are shared. We impose 8
