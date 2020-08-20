@@ -43,6 +43,26 @@ struct zink_query {
    union pipe_query_result accumulated_result;
 };
 
+static VkQueryPipelineStatisticFlags
+pipeline_statistic_convert(enum pipe_statistics_query_index idx)
+{
+   unsigned map[] = {
+      [PIPE_STAT_QUERY_IA_VERTICES] = VK_QUERY_PIPELINE_STATISTIC_INPUT_ASSEMBLY_VERTICES_BIT,
+      [PIPE_STAT_QUERY_IA_PRIMITIVES] = VK_QUERY_PIPELINE_STATISTIC_INPUT_ASSEMBLY_PRIMITIVES_BIT,
+      [PIPE_STAT_QUERY_VS_INVOCATIONS] = VK_QUERY_PIPELINE_STATISTIC_VERTEX_SHADER_INVOCATIONS_BIT,
+      [PIPE_STAT_QUERY_GS_INVOCATIONS] = VK_QUERY_PIPELINE_STATISTIC_GEOMETRY_SHADER_INVOCATIONS_BIT,
+      [PIPE_STAT_QUERY_GS_PRIMITIVES] = VK_QUERY_PIPELINE_STATISTIC_GEOMETRY_SHADER_PRIMITIVES_BIT,
+      [PIPE_STAT_QUERY_C_INVOCATIONS] = VK_QUERY_PIPELINE_STATISTIC_CLIPPING_INVOCATIONS_BIT,
+      [PIPE_STAT_QUERY_C_PRIMITIVES] = VK_QUERY_PIPELINE_STATISTIC_CLIPPING_PRIMITIVES_BIT,
+      [PIPE_STAT_QUERY_PS_INVOCATIONS] = VK_QUERY_PIPELINE_STATISTIC_FRAGMENT_SHADER_INVOCATIONS_BIT,
+      [PIPE_STAT_QUERY_HS_INVOCATIONS] = VK_QUERY_PIPELINE_STATISTIC_TESSELLATION_CONTROL_SHADER_PATCHES_BIT,
+      [PIPE_STAT_QUERY_DS_INVOCATIONS] = VK_QUERY_PIPELINE_STATISTIC_TESSELLATION_EVALUATION_SHADER_INVOCATIONS_BIT,
+      [PIPE_STAT_QUERY_CS_INVOCATIONS] = VK_QUERY_PIPELINE_STATISTIC_COMPUTE_SHADER_INVOCATIONS_BIT
+   };
+   assert(idx < ARRAY_SIZE(map));
+   return map[idx];
+}
+
 static void
 timestamp_to_nanoseconds(struct zink_screen *screen, uint64_t *timestamp)
 {
@@ -77,7 +97,9 @@ convert_query_type(unsigned query_type, bool *use_64bit, bool *precise)
    case PIPE_QUERY_TIMESTAMP:
       *use_64bit = true;
       return VK_QUERY_TYPE_TIMESTAMP;
-   case PIPE_QUERY_PIPELINE_STATISTICS:
+   case PIPE_QUERY_PIPELINE_STATISTICS_SINGLE:
+      *use_64bit = true;
+      /* fallthrough */
    case PIPE_QUERY_PRIMITIVES_GENERATED:
       return VK_QUERY_TYPE_PIPELINE_STATISTICS;
    case PIPE_QUERY_SO_OVERFLOW_ANY_PREDICATE:
@@ -154,6 +176,8 @@ zink_create_query(struct pipe_context *pctx,
    if (query_type == PIPE_QUERY_PRIMITIVES_GENERATED)
      pool_create.pipelineStatistics = VK_QUERY_PIPELINE_STATISTIC_GEOMETRY_SHADER_PRIMITIVES_BIT |
                                       VK_QUERY_PIPELINE_STATISTIC_INPUT_ASSEMBLY_PRIMITIVES_BIT;
+   else if (query_type == PIPE_QUERY_PIPELINE_STATISTICS_SINGLE)
+      pool_create.pipelineStatistics = pipeline_statistic_convert(index);
 
    VkResult status = vkCreateQueryPool(screen->dev, &pool_create, NULL, &query->query_pool);
    if (status != VK_SUCCESS) {
@@ -286,6 +310,9 @@ check_query_results(struct zink_query *query, union pipe_query_result *result,
          if (query->have_xfb[query->last_start + i / 2])
             result->b |= results[i] != results[i + 1];
          break;
+      case PIPE_QUERY_PIPELINE_STATISTICS_SINGLE:
+         result->u64 += results[i];
+         break;
 
       default:
          debug_printf("unhandled query type: %s\n",
@@ -336,35 +363,37 @@ get_query_result(struct pipe_context *pctx,
        query->type == PIPE_QUERY_PRIMITIVES_EMITTED)
       result_size = 2;
 
-   /* verify that we have the expected number of results pending */
-   assert(query->curr_query <= ARRAY_SIZE(results) / result_size);
-   VkResult status = vkGetQueryPoolResults(screen->dev, query->query_pool,
-                                           query->last_start, num_results,
-                                           sizeof(results),
-                                           results,
-                                           sizeof(uint64_t),
-                                           flags);
-   if (status != VK_SUCCESS)
-      return false;
-
-   if (query->type == PIPE_QUERY_PRIMITIVES_GENERATED) {
-      status = vkGetQueryPoolResults(screen->dev, query->xfb_query_pool[0],
-                                              query->last_start, num_results,
-                                              sizeof(xfb_results),
-                                              xfb_results,
-                                              2 * sizeof(uint64_t),
-                                              flags | VK_QUERY_RESULT_64_BIT);
+   for (unsigned last_start = query->last_start; last_start + num_results <= query->curr_query; last_start++) {
+      /* verify that we have the expected number of results pending */
+      assert(num_results <= ARRAY_SIZE(results) / result_size);
+      VkResult status = vkGetQueryPoolResults(screen->dev, query->query_pool,
+                                              last_start, num_results,
+                                              sizeof(results),
+                                              results,
+                                              sizeof(uint64_t),
+                                              flags);
       if (status != VK_SUCCESS)
          return false;
 
-   }
+      if (query->type == PIPE_QUERY_PRIMITIVES_GENERATED) {
+         status = vkGetQueryPoolResults(screen->dev, query->xfb_query_pool[0],
+                                                 last_start, num_results,
+                                                 sizeof(xfb_results),
+                                                 xfb_results,
+                                                 2 * sizeof(uint64_t),
+                                                 flags | VK_QUERY_RESULT_64_BIT);
+         if (status != VK_SUCCESS)
+            return false;
 
-   check_query_results(query, result, num_results, result_size, results, xfb_results);
+      }
+
+      check_query_results(query, result, num_results, result_size, results, xfb_results);
+   }
 
    if (query->type == PIPE_QUERY_SO_OVERFLOW_ANY_PREDICATE && !result->b) {
       for (unsigned i = 0; i < ARRAY_SIZE(query->xfb_query_pool) && !result->b; i++) {
          memset(results, 0, sizeof(results));
-         status = vkGetQueryPoolResults(screen->dev, query->xfb_query_pool[i],
+         VkResult status = vkGetQueryPoolResults(screen->dev, query->xfb_query_pool[i],
                                                     query->last_start, num_results,
                                                     sizeof(results),
                                                     results,
