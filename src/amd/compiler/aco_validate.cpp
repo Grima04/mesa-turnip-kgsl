@@ -512,6 +512,7 @@ bool ra_fail(Program *program, Location loc, Location loc2, const char *fmt, ...
       aco_print_instr(loc2.instr, memf);
    }
    fprintf(memf, "\n\n");
+   fclose(memf);
 
    aco_err(program, out);
    free(out);
