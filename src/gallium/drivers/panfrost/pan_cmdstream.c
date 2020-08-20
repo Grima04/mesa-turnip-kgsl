@@ -686,7 +686,7 @@ panfrost_emit_frag_shader(struct panfrost_context *ctx,
                 zsa->base.depth.enabled ? zsa->base.depth.func : PIPE_FUNC_ALWAYS));
 
         SET_BIT(fragmeta->unknown2_4, MALI_NO_DITHER,
-                (dev->quirks & MIDGARD_SFBD) && ctx->blend &&
+                (dev->quirks & MIDGARD_SFBD) &&
                 !ctx->blend->base.dither);
 
         SET_BIT(fragmeta->unknown2_4, 0x10, dev->quirks & MIDGARD_SFBD);
