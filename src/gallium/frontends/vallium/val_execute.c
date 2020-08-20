@@ -837,8 +837,14 @@ static void fill_image_view_stage(struct rendering_state *state,
       state->iv[p_stage][idx].format = util_format_stencil_only(vk_format_to_pipe(iv->format));
    else
       state->iv[p_stage][idx].format = vk_format_to_pipe(iv->format);
-   state->iv[p_stage][idx].u.tex.first_layer = iv->subresourceRange.baseArrayLayer;
-   state->iv[p_stage][idx].u.tex.last_layer = iv->subresourceRange.baseArrayLayer + val_get_layerCount(iv->image, &iv->subresourceRange) - 1;
+
+   if (iv->view_type == VK_IMAGE_VIEW_TYPE_3D) {
+      state->iv[p_stage][idx].u.tex.first_layer = 0;
+      state->iv[p_stage][idx].u.tex.last_layer = u_minify(iv->image->bo->depth0, iv->subresourceRange.baseMipLevel) - 1;
+   } else {
+      state->iv[p_stage][idx].u.tex.first_layer = iv->subresourceRange.baseArrayLayer;
+      state->iv[p_stage][idx].u.tex.last_layer = iv->subresourceRange.baseArrayLayer + val_get_layerCount(iv->image, &iv->subresourceRange) - 1;
+   }
    state->iv[p_stage][idx].u.tex.level = iv->subresourceRange.baseMipLevel;
    if (state->num_shader_images[p_stage] <= idx)
       state->num_shader_images[p_stage] = idx + 1;
