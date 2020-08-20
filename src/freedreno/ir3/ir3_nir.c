@@ -145,6 +145,36 @@ ir3_get_compiler_options(struct ir3_compiler *compiler)
 	return &options;
 }
 
+static bool
+ir3_nir_should_vectorize_mem(unsigned align_mul, unsigned align_offset,
+		unsigned bit_size,
+		unsigned num_components,
+		nir_intrinsic_instr *low,
+		nir_intrinsic_instr *high)
+{
+	assert(bit_size >= 8);
+	if (bit_size != 32)
+		return false;
+	unsigned byte_size = bit_size / 8;
+
+	int size = num_components * byte_size;
+
+	/* Don't care about alignment past vec4. */
+	assert(util_is_power_of_two_nonzero(align_mul));
+	align_mul = MIN2(align_mul, 16);
+	align_offset &= 15;
+
+	/* Our offset alignment should aways be at least 4 bytes */
+	if (align_mul < 4)
+		return false;
+
+	unsigned worst_start_offset = 16 - align_mul + align_offset;
+	if (worst_start_offset + size > 16)
+		return false;
+
+	return true;
+}
+
 #define OPT(nir, pass, ...) ({                             \
    bool this_progress = false;                             \
    NIR_PASS(this_progress, nir, pass, ##__VA_ARGS__);      \
@@ -187,6 +217,9 @@ ir3_optimize_loop(nir_shader *s)
 		progress |= OPT(s, nir_lower_alu);
 		progress |= OPT(s, nir_lower_pack);
 		progress |= OPT(s, nir_opt_constant_folding);
+
+		progress |= OPT(s, nir_opt_load_store_vectorize, nir_var_mem_ubo,
+				ir3_nir_should_vectorize_mem, 0);
 
 		if (lower_flrp != 0) {
 			if (OPT(s, nir_lower_flrp,
