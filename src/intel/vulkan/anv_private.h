@@ -89,7 +89,6 @@ struct gen_perf_counter_pass;
 struct gen_perf_query_result;
 
 #include <vulkan/vulkan.h>
-#include <vulkan/vulkan_intel.h>
 #include <vulkan/vk_icd.h>
 
 #include "anv_android.h"

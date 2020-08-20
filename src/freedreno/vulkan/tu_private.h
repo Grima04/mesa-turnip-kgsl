@@ -87,7 +87,6 @@ typedef uint32_t xcb_window_t;
 #include <vulkan/vk_android_native_buffer.h>
 #include <vulkan/vk_icd.h>
 #include <vulkan/vulkan.h>
-#include <vulkan/vulkan_intel.h>
 
 #include "tu_entrypoints.h"
 

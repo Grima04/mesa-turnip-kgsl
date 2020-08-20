@@ -49,7 +49,6 @@ TEMPLATE_H = Template(COPYRIGHT + """\
 #define VK_DISPATCH_TABLE_H
 
 #include "vulkan/vulkan.h"
-#include "vulkan/vulkan_intel.h"
 #include "vulkan/vk_android_native_buffer.h"
 
 #include "vk_extensions.h"
@@ -841,18 +840,6 @@ def get_entrypoints_from_xml(xml_files):
     for filename in xml_files:
         doc = et.parse(filename)
         entrypoints += get_entrypoints(doc, get_entrypoints_defines(doc))
-
-    # Manually add CreateDmaBufImageINTEL for which we don't have an extension
-    # defined.
-    entrypoints.append(Entrypoint('vkCreateDmaBufImageINTEL', 'VkResult', [
-        EntrypointParam('VkDevice', 'device', 'VkDevice device'),
-        EntrypointParam('VkDmaBufImageCreateInfo', 'pCreateInfo',
-                        'const VkDmaBufImageCreateInfo* pCreateInfo'),
-        EntrypointParam('VkAllocationCallbacks', 'pAllocator',
-                        'const VkAllocationCallbacks* pAllocator'),
-        EntrypointParam('VkDeviceMemory', 'pMem', 'VkDeviceMemory* pMem'),
-        EntrypointParam('VkImage', 'pImage', 'VkImage* pImage')
-    ]))
 
     return entrypoints
 

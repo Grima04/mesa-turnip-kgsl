@@ -91,7 +91,6 @@ libanv_files = files(
   'anv_formats.c',
   'anv_genX.h',
   'anv_image.c',
-  'anv_intel.c',
   'anv_measure.c',
   'anv_measure.h',
   'anv_nir.h',
