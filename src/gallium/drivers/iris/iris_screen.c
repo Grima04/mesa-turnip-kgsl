@@ -96,6 +96,28 @@ iris_get_driver_uuid(struct pipe_screen *pscreen, char *uuid)
    gen_uuid_compute_driver_id((uint8_t *)uuid, devinfo, PIPE_UUID_SIZE);
 }
 
+static bool
+iris_enable_clover()
+{
+   static int enable = -1;
+   if (enable < 0)
+      enable = env_var_as_boolean("IRIS_ENABLE_CLOVER", false);
+   return enable;
+}
+
+static void
+iris_warn_clover()
+{
+   static bool warned = false;
+   if (warned)
+      return;
+
+   warned = true;
+   fprintf(stderr, "WARNING: OpenCL support via iris+clover is incomplete.\n"
+                   "For a complete and conformant OpenCL implementation, use\n"
+                   "https://github.com/intel/compute-runtime instead\n");
+}
+
 static const char *
 iris_get_name(struct pipe_screen *pscreen)
 {
@@ -441,8 +463,12 @@ iris_get_shader_param(struct pipe_screen *pscreen,
       return 0;
    case PIPE_SHADER_CAP_PREFERRED_IR:
       return PIPE_SHADER_IR_NIR;
-   case PIPE_SHADER_CAP_SUPPORTED_IRS:
-      return (1 << PIPE_SHADER_IR_NIR);
+   case PIPE_SHADER_CAP_SUPPORTED_IRS: {
+      int irs = 1 << PIPE_SHADER_IR_NIR;
+      if (iris_enable_clover())
+         irs |= 1 << PIPE_SHADER_IR_NIR_SERIALIZED;
+      return irs;
+   }
    case PIPE_SHADER_CAP_TGSI_DROUND_SUPPORTED:
    case PIPE_SHADER_CAP_TGSI_LDEXP_SUPPORTED:
       return 1;
@@ -479,6 +505,13 @@ iris_get_compute_param(struct pipe_screen *pscreen,
 } while (0)
 
    switch (param) {
+   case PIPE_COMPUTE_CAP_ADDRESS_BITS:
+      /* This gets queried on clover device init and is never queried by the
+       * OpenGL state tracker.
+       */
+      iris_warn_clover();
+      RET((uint32_t []){ 64 });
+
    case PIPE_COMPUTE_CAP_IR_TARGET:
       if (ret)
          strcpy(ret, "gen");
@@ -504,19 +537,33 @@ iris_get_compute_param(struct pipe_screen *pscreen,
       /* MaxComputeSharedMemorySize */
       RET((uint64_t []) { 64 * 1024 });
 
+   case PIPE_COMPUTE_CAP_IMAGES_SUPPORTED:
+      RET((uint32_t []) { 0 });
+
    case PIPE_COMPUTE_CAP_SUBGROUP_SIZE:
       RET((uint32_t []) { BRW_SUBGROUP_SIZE });
 
-   case PIPE_COMPUTE_CAP_ADDRESS_BITS:
-   case PIPE_COMPUTE_CAP_IMAGES_SUPPORTED:
    case PIPE_COMPUTE_CAP_MAX_MEM_ALLOC_SIZE:
-   case PIPE_COMPUTE_CAP_MAX_CLOCK_FREQUENCY:
-   case PIPE_COMPUTE_CAP_MAX_COMPUTE_UNITS:
    case PIPE_COMPUTE_CAP_MAX_GLOBAL_SIZE:
+      RET((uint64_t []) { 1 << 30 }); /* TODO */
+
+   case PIPE_COMPUTE_CAP_MAX_CLOCK_FREQUENCY:
+      RET((uint32_t []) { 400 }); /* TODO */
+
+   case PIPE_COMPUTE_CAP_MAX_COMPUTE_UNITS: {
+      unsigned total_num_subslices = 0;
+      for (unsigned i = 0; i < devinfo->num_slices; i++)
+         total_num_subslices += devinfo->num_subslices[i];
+      RET((uint32_t []) { total_num_subslices });
+   }
+
    case PIPE_COMPUTE_CAP_MAX_PRIVATE_SIZE:
+      /* MaxComputeSharedMemorySize */
+      RET((uint64_t []) { 64 * 1024 });
+
    case PIPE_COMPUTE_CAP_MAX_INPUT_SIZE:
-      // XXX: I think these are for Clover...
-      return 0;
+      /* We could probably allow more; this is the OpenCL minimum */
+      RET((uint64_t []) { 1024 });
 
    default:
       unreachable("unknown compute param");
