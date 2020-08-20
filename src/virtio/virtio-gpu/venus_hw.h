@@ -21,19 +21,18 @@
  * USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef VIRGLRENDERER_HW_H
-#define VIRGLRENDERER_HW_H
+#ifndef VENUS_HW_H
+#define VENUS_HW_H
 
-#include "venus_hw.h"
-#include "virgl_hw.h"
+#include <stdint.h>
 
 #ifdef VIRGL_RENDERER_UNSTABLE_APIS
-enum virgl_renderer_capset {
-   VIRGL_RENDERER_CAPSET_VIRGL                   = 1,
-   VIRGL_RENDERER_CAPSET_VIRGL2                  = 2,
-   /* 3 is reserved for gfxstream */
-   VIRGL_RENDERER_CAPSET_VENUS                   = 4,
+struct virgl_renderer_capset_venus {
+   uint32_t wire_format_version;
+   uint32_t vk_xml_version;
+   uint32_t vk_ext_command_serialization_spec_version;
+   uint32_t vk_mesa_venus_protocol_spec_version;
 };
 #endif
 
-#endif /* VIRGLRENDERER_HW_H */
+#endif /* VENUS_HW_H */
