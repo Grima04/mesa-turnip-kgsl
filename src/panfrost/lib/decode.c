@@ -279,16 +279,6 @@ static const struct pandecode_flag_info mfbd_extra_flag_lo_info[] = {
 };
 #undef FLAG_INFO
 
-#define FLAG_INFO(flag) { MALI_BIFROST_##flag, "MALI_BIFROST_" #flag }
-static const struct pandecode_flag_info shader_bifrost_info [] = {
-        FLAG_INFO(FULL_THREAD),
-        FLAG_INFO(EARLY_Z),
-        FLAG_INFO(FIRST_ATEST),
-        {}
-};
-
-#undef FLAG_INFO
-
 #define FLAG_INFO(flag) { MALI_MFBD_##flag, "MALI_MFBD_" #flag }
 static const struct pandecode_flag_info mfbd_flag_info [] = {
         FLAG_INFO(DEPTH_WRITE),
@@ -1740,6 +1730,7 @@ pandecode_vertex_tiler_postfix_pre(
                         info = pandecode_shader_disassemble(s->shader & ~0xF, job_no, job_type, is_bifrost, gpu_id);
 
                 struct MALI_MIDGARD_PROPERTIES midg_props;
+                struct MALI_BIFROST_PROPERTIES bi_props;
 
                 pandecode_log("struct mali_shader_meta shader_meta_%"PRIx64"_%d%s = {\n", p->shader, job_no, suffix);
                 pandecode_indent++;
@@ -1751,8 +1742,11 @@ pandecode_vertex_tiler_postfix_pre(
                 sampler_count = s->sampler_count;
 
                 if (is_bifrost) {
+                        uint32_t opaque = s->bifrost_props.opaque[0];
+                        MALI_BIFROST_PROPERTIES_unpack((const uint8_t *) &opaque, &bi_props);
+
                         uniform_count = s->bifrost2.uniform_count;
-                        uniform_buffer_count = s->bifrost1.uniform_buffer_count;
+                        uniform_buffer_count = bi_props.uniform_buffer_count;
                 } else {
                         uint32_t opaque = s->midgard_props.opaque[0];
                         MALI_MIDGARD_PROPERTIES_unpack((const uint8_t *) &opaque, &midg_props);
@@ -1768,13 +1762,10 @@ pandecode_vertex_tiler_postfix_pre(
                 pandecode_shader_prop("attribute_count", s->attribute_count, info.attribute_count, false);
                 pandecode_shader_prop("varying_count", s->varying_count, info.varying_count, false);
 
-                if (is_bifrost) {
-                        pandecode_log("bifrost1.unk1 = ");
-                        pandecode_log_decoded_flags(shader_bifrost_info, s->bifrost1.unk1);
-                        pandecode_log_cont(",\n");
-                } else {
+                if (is_bifrost)
+                        MALI_BIFROST_PROPERTIES_print(pandecode_dump_stream, &bi_props, 2);
+                else
                         MALI_MIDGARD_PROPERTIES_print(pandecode_dump_stream, &midg_props, 2);
-                }
 
                 if (s->depth_units || s->depth_factor) {
                         pandecode_prop("depth_factor = %f", s->depth_factor);

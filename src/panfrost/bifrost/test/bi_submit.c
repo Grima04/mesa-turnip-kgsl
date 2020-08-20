@@ -175,10 +175,7 @@ bit_vertex(struct panfrost_device *dev, panfrost_program prog,
                 .shader = shader->gpu,
                 .attribute_count = 1,
                 .varying_count = 1,
-                .bifrost1 = {
-                        .unk1 = 0x800200,
-                        .uniform_buffer_count = 1,
-                },
+                .bifrost_props = { .opaque = { 0x80020001 } },
                 .bifrost2 = {
                         .unk3 = 0x0,
                         .preload_regs = 0xc0,

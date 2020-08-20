@@ -322,10 +322,17 @@ panfrost_emit_compute_shader(struct panfrost_context *ctx,
         meta->sampler_count = ctx->sampler_count[st];
 
         if (dev->quirks & IS_BIFROST) {
-                meta->bifrost1.unk1 = 0x800000;
+                struct mali_bifrost_properties_packed prop;
+
+                pan_pack(&prop, BIFROST_PROPERTIES, cfg) {
+                        cfg.unknown = 0x800000; /* XXX */
+                        cfg.uniform_buffer_count = panfrost_ubo_count(ctx, st);
+                }
+
+                memcpy(&meta->bifrost_props, &prop, sizeof(prop));
+
                 meta->bifrost2.preload_regs = 0xC0;
                 meta->bifrost2.uniform_count = ss->uniform_count;
-                meta->bifrost1.uniform_buffer_count = panfrost_ubo_count(ctx, st);
         } else {
                 struct mali_midgard_properties_packed prop;
 
@@ -564,11 +571,21 @@ panfrost_emit_frag_shader(struct panfrost_context *ctx,
         fragmeta->sampler_count = ctx->sampler_count[PIPE_SHADER_FRAGMENT];
 
         if (dev->quirks & IS_BIFROST) {
-                /* First clause ATEST |= 0x4000000.
-                 * Lefs than 32 regs |= 0x200 */
-                fragmeta->bifrost1.unk1 = 0x950020;
+                struct mali_bifrost_properties_packed prop;
 
-                fragmeta->bifrost1.uniform_buffer_count = panfrost_ubo_count(ctx, PIPE_SHADER_FRAGMENT);
+                bool no_blend = true;
+
+                for (unsigned i = 0; i < rt_count; ++i)
+                        no_blend &= (!blend[i].load_dest | blend[i].no_colour);
+
+                pan_pack(&prop, BIFROST_PROPERTIES, cfg) {
+                        cfg.unknown = 0x950020; /* XXX */
+                        cfg.uniform_buffer_count = panfrost_ubo_count(ctx, PIPE_SHADER_FRAGMENT);
+                        cfg.early_z_enable = !fs->can_discard && !fs->writes_depth && no_blend;
+                }
+
+                memcpy(&fragmeta->bifrost_props, &prop, sizeof(prop));
+
                 fragmeta->bifrost2.preload_regs = 0x1;
                 SET_BIT(fragmeta->bifrost2.preload_regs, 0x10, fs->reads_frag_coord);
 
@@ -729,16 +746,6 @@ panfrost_emit_frag_shader(struct panfrost_context *ctx,
                                                  blend[rt].shader.first_tag;
                         break;
                 }
-        }
-
-        if (dev->quirks & IS_BIFROST) {
-                bool no_blend = true;
-
-                for (unsigned i = 0; i < rt_count; ++i)
-                        no_blend &= (!blend[i].load_dest | blend[i].no_colour);
-
-                SET_BIT(fragmeta->bifrost1.unk1, MALI_BIFROST_EARLY_Z,
-                        !fs->can_discard && !fs->writes_depth && no_blend);
         }
 }
 

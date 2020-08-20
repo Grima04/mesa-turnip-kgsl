@@ -353,6 +353,16 @@
     <field name="Suppress Inf/NaN" size="1" start="29" type="bool"/>
   </struct>
 
+  <struct name="Bifrost Properties" size="1">
+    <field name="Uniform buffer count" size="8" start="0" type="uint"/>
+    <!--- If set, disables registers [R16, R47] for full thread count -->
+    <field name="Full thread" size="1" start="13" type="bool" default="false"/>
+    <field name="Early-z enable" size="1" start="19" type="bool" default="false"/>
+    <field name="First ATEST" size="1" start="30" type="bool" default="false"/>
+    <!-- XXX: This is awful -->
+    <field name="Unknown" size="32" start="0" type="uint"/>
+  </struct>
+
   <struct name="Stencil">
     <field name="Reference Value" size="8" start="0" type="uint"/>
     <field name="Mask" size="8" start="8" type="uint" default="0xFF"/>
