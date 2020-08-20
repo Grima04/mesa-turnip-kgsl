@@ -456,6 +456,9 @@ typedef enum {
         midgard_op_atomic_xchg = 0x60,
         midgard_op_atomic_xchg64 = 0x61,
 
+        midgard_op_atomic_cmpxchg = 0x64,
+        midgard_op_atomic_cmpxchg64 = 0x65,
+
         /* Used for compute shader's __global arguments, __local variables (or
          * for register spilling) */
 

@@ -197,6 +197,7 @@ struct mir_ldst_op_props load_store_opcode_props[256] = {
         [midgard_op_atomic_imax] = {"atomic_imax", M32 | LDST_SIDE_FX},
         [midgard_op_atomic_umax] = {"atomic_umax", M32 | LDST_SIDE_FX},
         [midgard_op_atomic_xchg] = {"atomic_xchg", M32 | LDST_SIDE_FX},
+        [midgard_op_atomic_cmpxchg] = {"atomic_cmpxchg", M32 | LDST_SIDE_FX},
 
         [midgard_op_atomic_add64]  = {"atomic_add64",  M64 | LDST_SIDE_FX},
         [midgard_op_atomic_and64]  = {"atomic_and64",  M64 | LDST_SIDE_FX},
@@ -207,6 +208,7 @@ struct mir_ldst_op_props load_store_opcode_props[256] = {
         [midgard_op_atomic_imax64] = {"atomic_imax64", M64 | LDST_SIDE_FX},
         [midgard_op_atomic_umax64] = {"atomic_umax64", M64 | LDST_SIDE_FX},
         [midgard_op_atomic_xchg64] = {"atomic_xchg64", M64 | LDST_SIDE_FX},
+        [midgard_op_atomic_cmpxchg64] = {"atomic_cmpxchg64", M64 | LDST_SIDE_FX},
 
         [midgard_op_ld_uchar]  = {"ld_uchar", M32 | LDST_ADDRESS},
         [midgard_op_ld_char]   = {"ld_char",   M32 | LDST_ADDRESS},
