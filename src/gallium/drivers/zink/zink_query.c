@@ -38,7 +38,7 @@ struct zink_query {
    bool have_gs[NUM_QUERIES]; /* geometry shaders use GEOMETRY_SHADER_PRIMITIVES_BIT */
    bool have_xfb[NUM_QUERIES]; /* xfb was active during this query */
 
-   unsigned batch_id : 2; //batch that the query was started in
+   unsigned batch_id : 3; //batch that the query was started in
 
    union pipe_query_result accumulated_result;
 };
@@ -101,6 +101,12 @@ needs_stats_list(struct zink_query *query)
 }
 
 static bool
+is_cs_query(struct zink_query *query)
+{
+   return query->type == PIPE_QUERY_PIPELINE_STATISTICS_SINGLE && query->index == PIPE_STAT_QUERY_CS_INVOCATIONS;
+}
+
+static bool
 is_time_query(struct zink_query *query)
 {
    return query->type == PIPE_QUERY_TIMESTAMP || query->type == PIPE_QUERY_TIME_ELAPSED;
@@ -110,6 +116,16 @@ static bool
 is_so_overflow_query(struct zink_query *query)
 {
    return query->type == PIPE_QUERY_SO_OVERFLOW_ANY_PREDICATE || query->type == PIPE_QUERY_SO_OVERFLOW_PREDICATE;
+}
+
+static struct zink_batch *
+get_batch_for_query(struct zink_context *ctx, struct zink_query *query, bool no_rp)
+{
+   if (query && is_cs_query(query))
+      return &ctx->compute_batch;
+   if (no_rp)
+      return zink_batch_no_rp(ctx);
+   return zink_curr_batch(ctx);
 }
 
 static struct pipe_query *
@@ -169,7 +185,7 @@ zink_create_query(struct pipe_context *pctx,
          }
       }
    }
-   struct zink_batch *batch = zink_batch_no_rp(zink_context(pctx));
+   struct zink_batch *batch = get_batch_for_query(zink_context(pctx), query, true);
    vkCmdResetQueryPool(batch->cmdbuf, query->query_pool, 0, query->num_queries);
    if (query->type == PIPE_QUERY_PRIMITIVES_GENERATED)
       vkCmdResetQueryPool(batch->cmdbuf, query->xfb_query_pool[0], 0, query->num_queries);
@@ -374,6 +390,11 @@ force_cpu_read(struct zink_context *ctx, struct pipe_query *pquery, bool wait, e
    union pipe_query_result result;
    if (zink_curr_batch(ctx)->batch_id == query->batch_id)
       ctx->base.flush(&ctx->base, NULL, PIPE_FLUSH_HINT_FINISH);
+   else if (is_cs_query(query)) {
+      zink_end_batch(ctx, &ctx->compute_batch);
+      zink_start_batch(ctx, &ctx->compute_batch);
+   }
+
    bool success = get_query_result(&ctx->base, pquery, wait, &result);
    if (!success) {
       debug_printf("zink: getting query result failed\n");
@@ -414,7 +435,7 @@ reset_pool(struct zink_context *ctx, struct zink_batch *batch, struct zink_query
     *
     * - vkCmdResetQueryPool spec
     */
-   batch = zink_batch_no_rp(ctx);
+   batch = get_batch_for_query(ctx, q, true);
 
    if (q->type != PIPE_QUERY_TIMESTAMP)
       get_query_result(&ctx->base, (struct pipe_query*)q, false, &q->accumulated_result);
@@ -488,7 +509,7 @@ zink_begin_query(struct pipe_context *pctx,
 {
    struct zink_query *query = (struct zink_query *)q;
    struct zink_context *ctx = zink_context(pctx);
-   struct zink_batch *batch = zink_curr_batch(ctx);
+   struct zink_batch *batch = get_batch_for_query(ctx, query, false);
 
    query->last_start = query->curr_query;
 
@@ -536,7 +557,7 @@ zink_end_query(struct pipe_context *pctx,
 {
    struct zink_context *ctx = zink_context(pctx);
    struct zink_query *query = (struct zink_query *)q;
-   struct zink_batch *batch = zink_curr_batch(ctx);
+   struct zink_batch *batch = get_batch_for_query(ctx, query, false);
 
    if (needs_stats_list(query))
       list_delinit(&query->stats_list);
@@ -552,10 +573,21 @@ zink_get_query_result(struct pipe_context *pctx,
                       bool wait,
                       union pipe_query_result *result)
 {
-   if (wait) {
-      zink_fence_wait(pctx);
-   } else
-      pctx->flush(pctx, NULL, 0);
+   struct zink_query *query = (void*)q;
+   struct zink_context *ctx = zink_context(pctx);
+   if (is_cs_query(query)) {
+      if (wait)
+         zink_wait_on_batch(ctx, ZINK_COMPUTE_BATCH_ID);
+      else {
+         zink_end_batch(ctx, &ctx->compute_batch);
+         zink_start_batch(ctx, &ctx->compute_batch);
+      }
+   } else {
+      if (wait) {
+         zink_fence_wait(pctx);
+      } else
+         pctx->flush(pctx, NULL, 0);
+   }
    return get_query_result(pctx, q, wait, result);
 }
 
@@ -736,7 +768,7 @@ zink_get_query_result_resource(struct pipe_context *pctx,
                               query->type != PIPE_QUERY_OCCLUSION_PREDICATE &&
                               query->type != PIPE_QUERY_OCCLUSION_PREDICATE_CONSERVATIVE &&
                               !is_so_overflow_query(query)) {
-         struct zink_batch *batch = zink_batch_no_rp(ctx);
+         struct zink_batch *batch = get_batch_for_query(ctx, query, true);
          /* if it's a single query that doesn't need special handling, we can copy it and be done */
          zink_batch_reference_resource_rw(batch, res, true);
          zink_resource_buffer_barrier(batch->cmdbuf, res, VK_ACCESS_TRANSFER_WRITE_BIT, 0);

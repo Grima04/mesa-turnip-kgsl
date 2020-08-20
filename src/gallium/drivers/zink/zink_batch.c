@@ -87,14 +87,14 @@ zink_start_batch(struct zink_context *ctx, struct zink_batch *batch)
    if (vkBeginCommandBuffer(batch->cmdbuf, &cbbi) != VK_SUCCESS)
       debug_printf("vkBeginCommandBuffer failed\n");
 
-   if (!ctx->queries_disabled && batch->batch_id != ZINK_COMPUTE_BATCH_ID)
+   if (!ctx->queries_disabled)
       zink_resume_queries(ctx, batch);
 }
 
 void
 zink_end_batch(struct zink_context *ctx, struct zink_batch *batch)
 {
-   if (!ctx->queries_disabled && batch->batch_id != ZINK_COMPUTE_BATCH_ID)
+   if (!ctx->queries_disabled)
       zink_suspend_queries(ctx, batch);
 
    if (vkEndCommandBuffer(batch->cmdbuf) != VK_SUCCESS) {
