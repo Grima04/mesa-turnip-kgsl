@@ -444,7 +444,7 @@ radv_dump_shader(struct radv_pipeline *pipeline,
 		shader->ir_string);
 	fprintf(f, "DISASM:\n%s\n", shader->disasm_string);
 
-	radv_shader_dump_stats(pipeline->device, shader, stage, f);
+	radv_dump_shader_stats(pipeline->device, pipeline, stage, f);
 }
 
 static void

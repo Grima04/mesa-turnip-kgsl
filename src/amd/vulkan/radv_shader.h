@@ -510,12 +510,6 @@ const char *
 radv_get_shader_name(struct radv_shader_info *info,
 		     gl_shader_stage stage);
 
-void
-radv_shader_dump_stats(struct radv_device *device,
-		       struct radv_shader_variant *variant,
-		       gl_shader_stage stage,
-		       FILE *file);
-
 bool
 radv_can_dump_shader(struct radv_device *device,
 		     struct radv_shader_module *module,
@@ -524,6 +518,11 @@ radv_can_dump_shader(struct radv_device *device,
 bool
 radv_can_dump_shader_stats(struct radv_device *device,
 			   struct radv_shader_module *module);
+
+VkResult
+radv_dump_shader_stats(struct radv_device *device,
+		       struct radv_pipeline *pipeline,
+		       gl_shader_stage stage, FILE *output);
 
 static inline unsigned
 shader_io_get_unique_index(gl_varying_slot slot)

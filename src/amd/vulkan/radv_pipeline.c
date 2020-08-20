@@ -3104,10 +3104,9 @@ VkResult radv_create_shaders(struct radv_pipeline *pipeline,
 		if (nir[i]) {
 			ralloc_free(nir[i]);
 
-			if (radv_can_dump_shader_stats(device, modules[i]))
-				radv_shader_dump_stats(device,
-						       pipeline->shaders[i],
-						       i, stderr);
+			if (radv_can_dump_shader_stats(device, modules[i])) {
+				radv_dump_shader_stats(device, pipeline, i, stderr);
+			}
 		}
 	}
 

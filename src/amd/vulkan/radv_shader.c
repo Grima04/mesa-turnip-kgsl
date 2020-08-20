@@ -47,8 +47,6 @@
 
 #include "aco_interface.h"
 
-#include "util/string_buffer.h"
-
 static const struct nir_shader_compiler_options nir_options_llvm = {
 	.vertex_id_zero_based = true,
 	.lower_scmp = true,
@@ -1507,66 +1505,6 @@ radv_get_max_waves(struct radv_device *device,
 	return max_simd_waves;
 }
 
-static void
-generate_shader_stats(struct radv_device *device,
-		      struct radv_shader_variant *variant,
-		      gl_shader_stage stage,
-		      struct _mesa_string_buffer *buf)
-{
-	struct ac_shader_config *conf = &variant->config;
-	unsigned max_simd_waves = radv_get_max_waves(device, variant, stage);
-
-	if (stage == MESA_SHADER_FRAGMENT) {
-		_mesa_string_buffer_printf(buf, "*** SHADER CONFIG ***\n"
-					   "SPI_PS_INPUT_ADDR = 0x%04x\n"
-					   "SPI_PS_INPUT_ENA  = 0x%04x\n",
-					   conf->spi_ps_input_addr, conf->spi_ps_input_ena);
-	}
-
-	_mesa_string_buffer_printf(buf, "*** SHADER STATS ***\n"
-				   "SGPRS: %d\n"
-				   "VGPRS: %d\n"
-				   "Spilled SGPRs: %d\n"
-				   "Spilled VGPRs: %d\n"
-				   "PrivMem VGPRS: %d\n"
-				   "Code Size: %d bytes\n"
-				   "LDS: %d blocks\n"
-				   "Scratch: %d bytes per wave\n"
-				   "Max Waves: %d\n",
-				   conf->num_sgprs, conf->num_vgprs,
-				   conf->spilled_sgprs, conf->spilled_vgprs,
-				   variant->info.private_mem_vgprs, variant->exec_size,
-				   conf->lds_size, conf->scratch_bytes_per_wave,
-				   max_simd_waves);
-
-	if (variant->statistics) {
-		_mesa_string_buffer_printf(buf, "*** COMPILER STATS ***\n");
-		for (unsigned i = 0; i < variant->statistics->count; i++) {
-			struct radv_compiler_statistic_info *info = &variant->statistics->infos[i];
-			uint32_t value = variant->statistics->values[i];
-			_mesa_string_buffer_printf(buf, "%s: %lu\n", info->name, value);
-		}
-	}
-
-	_mesa_string_buffer_printf(buf, "********************\n\n\n");
-}
-
-void
-radv_shader_dump_stats(struct radv_device *device,
-		       struct radv_shader_variant *variant,
-		       gl_shader_stage stage,
-		       FILE *file)
-{
-	struct _mesa_string_buffer *buf = _mesa_string_buffer_create(NULL, 256);
-
-	generate_shader_stats(device, variant, stage, buf);
-
-	fprintf(file, "\n%s:\n", radv_get_shader_name(&variant->info, stage));
-	fprintf(file, "%s", buf->buf);
-
-	_mesa_string_buffer_destroy(buf);
-}
-
 VkResult
 radv_GetShaderInfoAMD(VkDevice _device,
 		      VkPipeline _pipeline,
@@ -1579,7 +1517,6 @@ radv_GetShaderInfoAMD(VkDevice _device,
 	RADV_FROM_HANDLE(radv_pipeline, pipeline, _pipeline);
 	gl_shader_stage stage = vk_to_mesa_shader_stage(shaderStage);
 	struct radv_shader_variant *variant = pipeline->shaders[stage];
-	struct _mesa_string_buffer *buf;
 	VkResult result = VK_SUCCESS;
 
 	/* Spec doesn't indicate what to do if the stage is invalid, so just
@@ -1631,16 +1568,19 @@ radv_GetShaderInfoAMD(VkDevice _device,
 		}
 
 		break;
-	case VK_SHADER_INFO_TYPE_DISASSEMBLY_AMD:
-		buf = _mesa_string_buffer_create(NULL, 1024);
+	case VK_SHADER_INFO_TYPE_DISASSEMBLY_AMD: {
+		char *out;
+	        size_t outsize;
+	        FILE *memf = open_memstream(&out, &outsize);
 
-		_mesa_string_buffer_printf(buf, "%s:\n", radv_get_shader_name(&variant->info, stage));
-		_mesa_string_buffer_printf(buf, "%s\n\n", variant->ir_string);
-		_mesa_string_buffer_printf(buf, "%s\n\n", variant->disasm_string);
-		generate_shader_stats(device, variant, stage, buf);
+		fprintf(memf, "%s:\n", radv_get_shader_name(&variant->info, stage));
+		fprintf(memf, "%s\n\n", variant->ir_string);
+		fprintf(memf, "%s\n\n", variant->disasm_string);
+		radv_dump_shader_stats(device, pipeline, stage, memf);
+		fclose(memf);
 
 		/* Need to include the null terminator. */
-		size_t length = buf->length + 1;
+		size_t length = outsize + 1;
 
 		if (!pInfo) {
 			*pInfoSize = length;
@@ -1648,19 +1588,117 @@ radv_GetShaderInfoAMD(VkDevice _device,
 			size_t size = *pInfoSize;
 			*pInfoSize = length;
 
-			memcpy(pInfo, buf->buf, MIN2(size, length));
+			memcpy(pInfo, out, MIN2(size, length));
 
 			if (size < length)
 				result = VK_INCOMPLETE;
 		}
 
-		_mesa_string_buffer_destroy(buf);
+		free(out);
 		break;
+	}
 	default:
 		/* VK_SHADER_INFO_TYPE_BINARY_AMD unimplemented for now. */
 		result = VK_ERROR_FEATURE_NOT_PRESENT;
 		break;
 	}
 
+	return result;
+}
+
+VkResult
+radv_dump_shader_stats(struct radv_device *device,
+		       struct radv_pipeline *pipeline,
+		       gl_shader_stage stage, FILE *output)
+{
+	struct radv_shader_variant *shader = pipeline->shaders[stage];
+	VkPipelineExecutablePropertiesKHR *props = NULL;
+	uint32_t prop_count = 0;
+	VkResult result;
+
+	VkPipelineInfoKHR pipeline_info = {};
+	pipeline_info.sType = VK_STRUCTURE_TYPE_PIPELINE_INFO_KHR;
+	pipeline_info.pipeline = radv_pipeline_to_handle(pipeline);
+
+	result = radv_GetPipelineExecutablePropertiesKHR(radv_device_to_handle(device),
+							 &pipeline_info,
+							 &prop_count, NULL);
+	if (result != VK_SUCCESS)
+		return result;
+
+	props = calloc(prop_count, sizeof(*props));
+	if (!props)
+		return VK_ERROR_OUT_OF_HOST_MEMORY;
+
+	result = radv_GetPipelineExecutablePropertiesKHR(radv_device_to_handle(device),
+							 &pipeline_info,
+							 &prop_count, props);
+	if (result != VK_SUCCESS)
+		goto fail;
+
+	for (unsigned i = 0; i < prop_count; i++) {
+		if (!(props[i].stages & mesa_to_vk_shader_stage(stage)))
+			continue;
+
+		VkPipelineExecutableStatisticKHR *stats = NULL;
+		uint32_t stat_count = 0;
+		VkResult result;
+
+		VkPipelineExecutableInfoKHR exec_info = {};
+		exec_info.pipeline = radv_pipeline_to_handle(pipeline);
+		exec_info.executableIndex = i;
+
+		result = radv_GetPipelineExecutableStatisticsKHR(radv_device_to_handle(device),
+								 &exec_info,
+								 &stat_count, NULL);
+		if (result != VK_SUCCESS)
+			goto fail;
+
+		stats = calloc(stat_count, sizeof(*stats));
+		if (!stats) {
+			result = VK_ERROR_OUT_OF_HOST_MEMORY;
+			goto fail;
+		}
+
+		result = radv_GetPipelineExecutableStatisticsKHR(radv_device_to_handle(device),
+								 &exec_info,
+								 &stat_count, stats);
+		if (result != VK_SUCCESS) {
+			free(stats);
+			goto fail;
+		}
+
+		fprintf(output, "\n%s:\n",
+			radv_get_shader_name(&shader->info, stage));
+		fprintf(output, "*** SHADER STATS ***\n");
+
+		for (unsigned i = 0; i < stat_count; i++) {
+			fprintf(output, "%s: ", stats[i].name);
+			switch (stats[i].format) {
+			case VK_PIPELINE_EXECUTABLE_STATISTIC_FORMAT_BOOL32_KHR:
+				fprintf(output, "%s", stats[i].value.b32 == VK_TRUE ? "true" : "false");
+				break;
+			case VK_PIPELINE_EXECUTABLE_STATISTIC_FORMAT_INT64_KHR:
+				fprintf(output, "%"PRIi64, stats[i].value.i64);
+				break;
+			case VK_PIPELINE_EXECUTABLE_STATISTIC_FORMAT_UINT64_KHR:
+				fprintf(output, "%"PRIu64, stats[i].value.u64);
+				break;
+			case VK_PIPELINE_EXECUTABLE_STATISTIC_FORMAT_FLOAT64_KHR:
+				fprintf(output, "%f", stats[i].value.f64);
+				break;
+			default:
+				unreachable("Invalid pipeline statistic format");
+			}
+			fprintf(output, "\n");
+		}
+
+		fprintf(output, "********************\n\n\n");
+
+		free(stats);
+	}
+
+fail:
+	free(props);
 	return result;
 }
