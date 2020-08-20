@@ -30,6 +30,7 @@
 #include "util/u_memory.h"
 #include "util/u_pack_color.h"
 #include "util/u_transfer.h"
+#include "util/u_blend.h"
 
 #include "tgsi/tgsi_parse.h"
 
@@ -284,15 +285,8 @@ static unsigned blend_read_enable(unsigned eqRGB, unsigned eqA,
         eqRGB == PIPE_BLEND_MAX || eqA == PIPE_BLEND_MAX ||
         dstRGB != PIPE_BLENDFACTOR_ZERO ||
         dstA != PIPE_BLENDFACTOR_ZERO ||
-        srcRGB == PIPE_BLENDFACTOR_DST_COLOR ||
-        srcRGB == PIPE_BLENDFACTOR_DST_ALPHA ||
-        srcRGB == PIPE_BLENDFACTOR_INV_DST_COLOR ||
-        srcRGB == PIPE_BLENDFACTOR_INV_DST_ALPHA ||
-        srcA == PIPE_BLENDFACTOR_DST_COLOR ||
-        srcA == PIPE_BLENDFACTOR_DST_ALPHA ||
-        srcA == PIPE_BLENDFACTOR_INV_DST_COLOR ||
-        srcA == PIPE_BLENDFACTOR_INV_DST_ALPHA ||
-        srcRGB == PIPE_BLENDFACTOR_SRC_ALPHA_SATURATE) {
+        util_blend_factor_uses_dest(srcRGB, false) ||
+        util_blend_factor_uses_dest(srcA, true)) {
         /* Enable reading from the colorbuffer. */
         blend_control |= R300_READ_ENABLE;
 
