@@ -387,7 +387,7 @@ v3d_screen_get_shader_param(struct pipe_screen *pscreen, unsigned shader,
                 return 0;
         case PIPE_SHADER_CAP_MAX_TEXTURE_SAMPLERS:
         case PIPE_SHADER_CAP_MAX_SAMPLER_VIEWS:
-                return V3D_MAX_TEXTURE_SAMPLERS;
+                return V3D_OPENGL_MAX_TEXTURE_SAMPLERS;
 
         case PIPE_SHADER_CAP_MAX_SHADER_BUFFERS:
                 if (screen->has_cache_flush) {
