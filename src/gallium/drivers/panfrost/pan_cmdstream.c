@@ -573,16 +573,40 @@ panfrost_emit_frag_shader(struct panfrost_context *ctx,
 
                 fragmeta->bifrost2.uniform_count = fs->uniform_count;
         } else {
-                fragmeta->midgard1.uniform_count = fs->uniform_count;
-                fragmeta->midgard1.work_count = fs->work_reg_count;
+                struct mali_midgard_properties_packed prop;
 
-                /* TODO: This is not conformant on ES3 */
-                fragmeta->midgard1.flags_hi = MALI_SUPPRESS_INF_NAN;
+                /* Reasons to disable early-Z from a shader perspective */
+                bool late_z = fs->can_discard || fs->writes_global ||
+                        fs->writes_depth || fs->writes_stencil;
 
-                fragmeta->midgard1.flags_lo = 0x20;
-                fragmeta->midgard1.uniform_buffer_count = panfrost_ubo_count(ctx, PIPE_SHADER_FRAGMENT);
+                /* Reasons to disable early-Z from a CSO perspective */
+                bool alpha_to_coverage = ctx->blend->base.alpha_to_coverage;
 
-                SET_BIT(fragmeta->midgard1.flags_lo, MALI_WRITES_GLOBAL, fs->writes_global);
+                /* If either depth or stencil is enabled, discard matters */
+                bool zs_enabled =
+                        (zsa->base.depth.enabled && zsa->base.depth.func != PIPE_FUNC_ALWAYS) ||
+                        zsa->base.stencil[0].enabled;
+
+                pan_pack(&prop, MIDGARD_PROPERTIES, cfg) {
+                        cfg.uniform_buffer_count = panfrost_ubo_count(ctx, PIPE_SHADER_FRAGMENT);
+                        cfg.uniform_count = fs->uniform_count;
+                        cfg.work_register_count = fs->work_reg_count;
+                        cfg.writes_globals = fs->writes_global;
+                        cfg.suppress_inf_nan = true; /* XXX */
+
+                        cfg.stencil_from_shader = fs->writes_stencil;
+                        cfg.helper_invocation_enable = fs->helper_invocations;
+                        cfg.depth_source = fs->writes_depth ?
+                                MALI_DEPTH_SOURCE_SHADER :
+                                MALI_DEPTH_SOURCE_FIXED_FUNCTION;
+
+                        /* Depend on other state */
+                        cfg.early_z_enable = !(late_z || alpha_to_coverage);
+                        cfg.reads_tilebuffer = fs->outputs_read || (!zs_enabled && fs->can_discard);
+                        cfg.reads_depth_stencil = zs_enabled && fs->can_discard;
+                }
+
+                memcpy(&fragmeta->midgard1, &prop, sizeof(prop));
         }
 
         bool msaa = rast->multisample;
@@ -590,41 +614,6 @@ panfrost_emit_frag_shader(struct panfrost_context *ctx,
 
         fragmeta->unknown2_3 = MALI_DEPTH_FUNC(MALI_FUNC_ALWAYS) | 0x10;
         fragmeta->unknown2_4 = 0x4e0;
-
-        if (dev->quirks & IS_BIFROST) {
-                /* TODO */
-        } else {
-                /* Depending on whether it's legal to in the given shader, we try to
-                 * enable early-z testing. TODO: respect e-z force */
-
-                SET_BIT(fragmeta->midgard1.flags_lo, MALI_EARLY_Z,
-                        !fs->can_discard && !fs->writes_global &&
-                        !fs->writes_depth && !fs->writes_stencil &&
-                        !ctx->blend->base.alpha_to_coverage);
-
-                /* Add the writes Z/S flags if needed. */
-                SET_BIT(fragmeta->midgard1.flags_lo, MALI_WRITES_Z, fs->writes_depth);
-                SET_BIT(fragmeta->midgard1.flags_hi, MALI_WRITES_S, fs->writes_stencil);
-
-                /* Any time texturing is used, derivatives are implicitly calculated,
-                 * so we need to enable helper invocations */
-
-                SET_BIT(fragmeta->midgard1.flags_lo, MALI_HELPER_INVOCATIONS,
-                        fs->helper_invocations);
-
-                /* If discard is enabled, which bit we set to convey this
-                 * depends on if depth/stencil is used for the draw or not.
-                 * Just one of depth OR stencil is enough to trigger this. */
-
-                bool zs_enabled =
-                        fs->writes_depth || fs->writes_stencil ||
-                        (zsa->base.depth.enabled && zsa->base.depth.func != PIPE_FUNC_ALWAYS) ||
-                        zsa->base.stencil[0].enabled;
-
-                SET_BIT(fragmeta->midgard1.flags_lo, MALI_READS_TILEBUFFER,
-                        fs->outputs_read || (!zs_enabled && fs->can_discard));
-                SET_BIT(fragmeta->midgard1.flags_lo, MALI_READS_ZS, zs_enabled && fs->can_discard);
-        }
 
         /* TODO: Sample size */
         SET_BIT(fragmeta->unknown2_3, MALI_HAS_MSAA, msaa);
@@ -684,7 +673,7 @@ panfrost_emit_frag_shader(struct panfrost_context *ctx,
         /* Disable shader execution if we can */
         if (dev->quirks & MIDGARD_SHADERLESS
                         && !panfrost_fs_required(fs, blend, rt_count)) {
-                fragmeta->shader = 0;
+                fragmeta->shader = 0x1;
                 fragmeta->attribute_count = 0;
                 fragmeta->varying_count = 0;
                 fragmeta->texture_count = 0;
