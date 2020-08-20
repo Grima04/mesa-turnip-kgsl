@@ -146,12 +146,7 @@ panfrost_bind_blend_state(struct pipe_context *pipe,
                           void *cso)
 {
         struct panfrost_context *ctx = pan_context(pipe);
-        struct pipe_blend_state *blend = (struct pipe_blend_state *) cso;
-        struct panfrost_blend_state *pblend = (struct panfrost_blend_state *) cso;
-        ctx->blend = pblend;
-
-        if (!blend)
-                return;
+        ctx->blend = (struct panfrost_blend_state *) cso;
 }
 
 static void
