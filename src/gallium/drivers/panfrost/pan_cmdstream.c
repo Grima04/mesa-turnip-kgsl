@@ -685,12 +685,6 @@ panfrost_emit_frag_shader(struct panfrost_context *ctx,
         fragmeta->unknown2_3 |= MALI_DEPTH_FUNC(panfrost_translate_compare_func(
                 zsa->base.depth.enabled ? zsa->base.depth.func : PIPE_FUNC_ALWAYS));
 
-        SET_BIT(fragmeta->unknown2_4, MALI_NO_DITHER,
-                (dev->quirks & MIDGARD_SFBD) &&
-                !ctx->blend->base.dither);
-
-        SET_BIT(fragmeta->unknown2_4, 0x10, dev->quirks & MIDGARD_SFBD);
-
         SET_BIT(fragmeta->unknown2_4, MALI_ALPHA_TO_COVERAGE,
                         ctx->blend->base.alpha_to_coverage);
 
@@ -734,6 +728,9 @@ panfrost_emit_frag_shader(struct panfrost_context *ctx,
 
                 SET_BIT(fragmeta->unknown2_3, MALI_CAN_DISCARD,
                         blend[0].load_dest);
+
+                fragmeta->unknown2_4 |= 0x10;
+                SET_BIT(fragmeta->unknown2_4, MALI_NO_DITHER, !ctx->blend->base.dither);
         } else if (!(dev->quirks & IS_BIFROST)) {
                 /* Bug where MRT-capable hw apparently reads the last blend
                  * shader from here instead of the usual location? */
