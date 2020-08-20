@@ -205,7 +205,7 @@ nir_opt_large_constants(nir_shader *shader,
              * will find all of the writers of that variable.
              */
             nir_deref_instr *deref = nir_instr_as_deref(instr);
-            if (deref->type == nir_deref_type_var &&
+            if (deref->deref_type == nir_deref_type_var &&
                 deref->mode == nir_var_function_temp &&
                 nir_deref_instr_has_complex_use(deref))
                var_infos[deref->var->index].is_constant = false;
