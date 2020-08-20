@@ -1161,6 +1161,39 @@ nir_get_nir_type_for_glsl_type(const struct glsl_type *type)
    return nir_get_nir_type_for_glsl_base_type(glsl_get_base_type(type));
 }
 
+static inline enum glsl_base_type
+nir_get_glsl_base_type_for_nir_type(nir_alu_type base_type)
+{
+   switch (base_type) {
+   case nir_type_bool1:
+      return GLSL_TYPE_BOOL;
+   case nir_type_uint32:
+      return GLSL_TYPE_UINT;
+   case nir_type_int32:
+      return GLSL_TYPE_INT;
+   case nir_type_uint16:
+      return GLSL_TYPE_UINT16;
+   case nir_type_int16:
+      return GLSL_TYPE_INT16;
+   case nir_type_uint8:
+      return GLSL_TYPE_UINT8;
+   case nir_type_int8:
+      return GLSL_TYPE_INT8;
+   case nir_type_uint64:
+      return GLSL_TYPE_UINT64;
+   case nir_type_int64:
+      return GLSL_TYPE_INT64;
+   case nir_type_float32:
+      return GLSL_TYPE_FLOAT;
+   case nir_type_float16:
+      return GLSL_TYPE_FLOAT16;
+   case nir_type_float64:
+      return GLSL_TYPE_DOUBLE;
+
+   default: unreachable("Not a sized nir_alu_type");
+   }
+}
+
 nir_op nir_type_conversion_op(nir_alu_type src, nir_alu_type dst,
                               nir_rounding_mode rnd);
 
