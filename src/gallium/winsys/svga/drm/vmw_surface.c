@@ -44,15 +44,15 @@ vmw_svga_winsys_surface_init(struct svga_winsys_screen *sws,
    struct pb_buffer *pb_buf;
    uint32_t pb_flags;
    struct vmw_winsys_screen *vws = vsrf->screen;
-   pb_flags = PIPE_TRANSFER_READ_WRITE | PIPE_TRANSFER_DISCARD_WHOLE_RESOURCE;
+   pb_flags = PIPE_TRANSFER_WRITE | PIPE_TRANSFER_DISCARD_WHOLE_RESOURCE;
 
    struct pb_manager *provider;
    struct pb_desc desc;
 
-   data = vmw_svga_winsys_buffer_map(&vws->base, vsrf->buf,
-                                     PIPE_TRANSFER_DONTBLOCK | pb_flags);
+   mtx_lock(&vsrf->mutex);
+   data = vmw_svga_winsys_buffer_map(&vws->base, vsrf->buf, pb_flags);
    if (data)
-      goto out_unlock;
+      goto out_mapped;
 
    provider = vws->pools.mob_fenced;
    memset(&desc, 0, sizeof(desc));
@@ -64,24 +64,25 @@ vmw_svga_winsys_surface_init(struct svga_winsys_screen *sws,
 
       data = vmw_svga_winsys_buffer_map(&vws->base, vbuf, pb_flags);
       if (data) {
-         if (vsrf->buf) {
+         vsrf->rebind = TRUE;
+         if (vsrf->buf)
             vmw_svga_winsys_buffer_destroy(&vws->base, vsrf->buf);
-            vsrf->buf = vbuf;
-            goto out_unlock;
-         } else
-            vmw_svga_winsys_buffer_destroy(&vws->base, vbuf);
+         vsrf->buf = vbuf;
+         goto out_mapped;
+      } else {
+         vmw_svga_winsys_buffer_destroy(&vws->base, vbuf);
+         goto out_unlock;
       }
    }
-
-   data = vmw_svga_winsys_buffer_map(&vws->base, vsrf->buf, pb_flags);
-   if (data == NULL)
+   else {
+      /* Cannot create a buffer, just unlock */
       goto out_unlock;
+   }
 
-out_unlock:
+out_mapped:
    mtx_unlock(&vsrf->mutex);
 
-   if (data)
-   {
+   if (data) {
       if (flags & SVGA3D_SURFACE_BIND_STREAM_OUTPUT) {
          memset(data, 0, surf_size + sizeof(SVGA3dDXSOState));
       }
@@ -89,8 +90,10 @@ out_unlock:
          memset(data, 0, surf_size);
       }
    }
+
    mtx_lock(&vsrf->mutex);
    vmw_svga_winsys_buffer_unmap(&vsrf->screen->base, vsrf->buf);
+out_unlock:
    mtx_unlock(&vsrf->mutex);
 }
 

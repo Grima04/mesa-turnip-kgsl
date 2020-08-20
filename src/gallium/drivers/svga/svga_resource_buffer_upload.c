@@ -229,12 +229,12 @@ svga_buffer_create_host_surface(struct svga_screen *ss,
       /* Add the new surface to the buffer surface list */
       ret = svga_buffer_add_host_surface(sbuf, sbuf->handle, &sbuf->key,
                                          bind_flags);
-   }
 
-   if (ss->sws->have_gb_objects) {
-      /* Initialize the surface with zero */
-      ss->sws->surface_init(ss->sws, sbuf->handle, svga_surface_size(&sbuf->key),
-                            sbuf->key.flags);
+      if (ss->sws->have_gb_objects) {
+         /* Initialize the surface with zero */
+         ss->sws->surface_init(ss->sws, sbuf->handle, svga_surface_size(&sbuf->key),
+                               sbuf->key.flags);
+      }
    }
 
    return ret;
