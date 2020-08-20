@@ -969,10 +969,13 @@ clover::EnqueueSVMFree(cl_command_queue d_q,
          CLOVER_NOT_SUPPORTED_UNTIL("2.0");
          return CL_INVALID_VALUE;
       }
-      pfn_free_func = [](cl_command_queue, cl_uint num_svm_pointers,
+      pfn_free_func = [](cl_command_queue d_q, cl_uint num_svm_pointers,
                          void *svm_pointers[], void *) {
-         for (void *p : range(svm_pointers, num_svm_pointers))
+         clover::context &ctx = obj(d_q).context();
+         for (void *p : range(svm_pointers, num_svm_pointers)) {
+            ctx.remove_svm_allocation(p);
             free(p);
+         }
       };
    }
 
