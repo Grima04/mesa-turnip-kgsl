@@ -339,7 +339,7 @@ void fill_desc_set_info(isel_context *ctx, nir_function_impl *impl)
          if (instr->type != nir_instr_type_intrinsic)
             continue;
          nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
-         if (!(nir_intrinsic_infos[intrin->intrinsic].index_map[NIR_INTRINSIC_ACCESS]))
+         if (!nir_intrinsic_has_access(intrin))
             continue;
 
          nir_ssa_def *res = NULL;
