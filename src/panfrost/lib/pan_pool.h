@@ -69,7 +69,8 @@ panfrost_pool_alloc_aligned(struct pan_pool *pool, size_t sz, unsigned alignment
 static inline struct panfrost_transfer
 panfrost_pool_alloc(struct pan_pool *pool, size_t sz)
 {
-        return panfrost_pool_alloc_aligned(pool, sz, util_next_power_of_two(sz));
+        assert(sz == util_next_power_of_two(sz));
+        return panfrost_pool_alloc_aligned(pool, sz, sz);
 }
 
 struct panfrost_transfer
@@ -77,5 +78,8 @@ panfrost_pool_alloc(struct pan_pool *pool, size_t sz);
 
 mali_ptr
 panfrost_pool_upload(struct pan_pool *pool, const void *data, size_t sz);
+
+mali_ptr
+panfrost_pool_upload_aligned(struct pan_pool *pool, const void *data, size_t sz, unsigned alignment);
 
 #endif

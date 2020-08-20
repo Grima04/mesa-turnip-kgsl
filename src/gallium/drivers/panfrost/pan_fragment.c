@@ -100,7 +100,7 @@ panfrost_fragment_job(struct panfrost_batch *batch, bool has_draws)
                 .framebuffer = framebuffer,
         };
 
-        struct panfrost_transfer transfer = panfrost_pool_alloc(&batch->pool, sizeof(header) + sizeof(payload));
+        struct panfrost_transfer transfer = panfrost_pool_alloc_aligned(&batch->pool, sizeof(header) + sizeof(payload), 64);
         memcpy(transfer.cpu, &header, sizeof(header));
         memcpy(transfer.cpu + sizeof(header), &payload, sizeof(payload));
         return transfer.gpu;

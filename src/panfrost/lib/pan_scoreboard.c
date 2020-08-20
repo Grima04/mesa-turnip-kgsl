@@ -195,7 +195,7 @@ panfrost_scoreboard_initialize_tiler(struct pan_pool *pool,
                 .value_descriptor = MALI_WRITE_VALUE_ZERO,
         };
 
-        struct panfrost_transfer transfer = panfrost_pool_alloc(pool, sizeof(job) + sizeof(payload));
+        struct panfrost_transfer transfer = panfrost_pool_alloc_aligned(pool, sizeof(job) + sizeof(payload), 64);
         memcpy(transfer.cpu, &job, sizeof(job));
         memcpy(transfer.cpu + sizeof(job), &payload, sizeof(payload));
 

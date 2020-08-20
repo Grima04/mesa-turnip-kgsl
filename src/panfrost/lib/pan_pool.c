@@ -79,6 +79,8 @@ panfrost_create_pool(void *memctx, struct panfrost_device *dev,
 struct panfrost_transfer
 panfrost_pool_alloc_aligned(struct pan_pool *pool, size_t sz, unsigned alignment)
 {
+        assert(alignment == util_next_power_of_two(alignment));
+
         /* Find or create a suitable BO */
         struct panfrost_bo *bo = pool->transient_bo;
         unsigned offset = ALIGN_POT(pool->transient_offset, alignment);
@@ -103,7 +105,13 @@ panfrost_pool_alloc_aligned(struct pan_pool *pool, size_t sz, unsigned alignment
 mali_ptr
 panfrost_pool_upload(struct pan_pool *pool, const void *data, size_t sz)
 {
-        struct panfrost_transfer transfer = panfrost_pool_alloc(pool, sz);
+        return panfrost_pool_upload_aligned(pool, data, sz, sz);
+}
+
+mali_ptr
+panfrost_pool_upload_aligned(struct pan_pool *pool, const void *data, size_t sz, unsigned alignment)
+{
+        struct panfrost_transfer transfer = panfrost_pool_alloc_aligned(pool, sz, alignment);
         memcpy(transfer.cpu, data, sz);
         return transfer.gpu;
 }

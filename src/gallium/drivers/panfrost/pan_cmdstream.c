@@ -72,7 +72,7 @@ panfrost_vt_emit_shared_memory(struct panfrost_context *ctx,
                 shared.scratchpad = stack->gpu;
         }
 
-        postfix->shared_memory = panfrost_pool_upload(&batch->pool, &shared, sizeof(shared));
+        postfix->shared_memory = panfrost_pool_upload_aligned(&batch->pool, &shared, sizeof(shared), 64);
 }
 
 static void
@@ -905,10 +905,10 @@ panfrost_map_constant_buffer_gpu(struct panfrost_batch *batch,
                  * PIPE_CAP_CONSTANT_BUFFER_OFFSET_ALIGNMENT */
                 return rsrc->bo->gpu + cb->buffer_offset;
         } else if (cb->user_buffer) {
-                return panfrost_pool_upload(&batch->pool,
+                return panfrost_pool_upload_aligned(&batch->pool,
                                                  cb->user_buffer +
                                                  cb->buffer_offset,
-                                                 cb->buffer_size);
+                                                 cb->buffer_size, 16);
         } else {
                 unreachable("No constant buffer");
         }
@@ -1199,8 +1199,8 @@ panfrost_emit_shared_memory(struct panfrost_batch *batch,
                 .shared_shift = util_logbase2(single_size) + 1
         };
 
-        vtp->postfix.shared_memory = panfrost_pool_upload(&batch->pool, &shared,
-                                                               sizeof(shared));
+        vtp->postfix.shared_memory = panfrost_pool_upload_aligned(&batch->pool, &shared,
+                                                               sizeof(shared), 64);
 }
 
 static mali_ptr
@@ -1290,10 +1290,11 @@ panfrost_emit_texture_descriptors(struct panfrost_batch *batch,
                         trampolines[i] = panfrost_get_tex_desc(batch, stage, view);
                 }
 
-                postfix->textures = panfrost_pool_upload(&batch->pool,
+                postfix->textures = panfrost_pool_upload_aligned(&batch->pool,
                                                               trampolines,
                                                               sizeof(uint64_t) *
-                                                              ctx->sampler_view_count[stage]);
+                                                              ctx->sampler_view_count[stage],
+                                                              sizeof(uint64_t));
         }
 }
 
@@ -1338,7 +1339,7 @@ panfrost_emit_vertex_data(struct panfrost_batch *batch,
         struct panfrost_transfer S = panfrost_pool_alloc_aligned(&batch->pool,
                         MALI_ATTRIBUTE_BUFFER_LENGTH * vs->attribute_count *
                         (could_npot ? 2 : 1),
-                        MALI_ATTRIBUTE_BUFFER_LENGTH);
+                        MALI_ATTRIBUTE_BUFFER_LENGTH * 2);
 
         struct panfrost_transfer T = panfrost_pool_alloc_aligned(&batch->pool,
                         MALI_ATTRIBUTE_LENGTH * vs->attribute_count,
@@ -1996,7 +1997,7 @@ panfrost_emit_varying_descriptor(struct panfrost_batch *batch,
         unsigned xfb_base = pan_xfb_base(present);
         struct panfrost_transfer T = panfrost_pool_alloc_aligned(&batch->pool,
                         MALI_ATTRIBUTE_BUFFER_LENGTH * (xfb_base + ctx->streamout.num_targets),
-                        MALI_ATTRIBUTE_BUFFER_LENGTH);
+                        MALI_ATTRIBUTE_BUFFER_LENGTH * 2);
         struct mali_attribute_buffer_packed *varyings =
                 (struct mali_attribute_buffer_packed *) T.cpu;
 
@@ -2159,5 +2160,5 @@ panfrost_emit_sample_locations(struct panfrost_batch *batch)
             0, 0,
         };
 
-        return panfrost_pool_upload(&batch->pool, locations, 96 * sizeof(uint16_t));
+        return panfrost_pool_upload_aligned(&batch->pool, locations, 96 * sizeof(uint16_t), 64);
 }
