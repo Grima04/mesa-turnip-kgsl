@@ -1854,6 +1854,12 @@ nir_intrinsic_set_##name(nir_intrinsic_instr *instr, type val)                \
    const nir_intrinsic_info *info = &nir_intrinsic_infos[instr->intrinsic];   \
    assert(info->index_map[NIR_INTRINSIC_##flag] > 0);                         \
    instr->const_index[info->index_map[NIR_INTRINSIC_##flag] - 1] = val;       \
+}                                                                             \
+static inline bool                                                            \
+nir_intrinsic_has_##name(nir_intrinsic_instr *instr)                          \
+{                                                                             \
+   const nir_intrinsic_info *info = &nir_intrinsic_infos[instr->intrinsic];   \
+   return info->index_map[NIR_INTRINSIC_##flag] > 0;                          \
 }
 
 INTRINSIC_IDX_ACCESSORS(write_mask, WRMASK, unsigned)

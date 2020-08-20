@@ -128,8 +128,8 @@ split_wrmask(nir_builder *b, nir_intrinsic_instr *intr)
 
       const int offset_units = value->bit_size / 8;
 
-      if (info->index_map[NIR_INTRINSIC_ALIGN_MUL]) {
-         assert(info->index_map[NIR_INTRINSIC_ALIGN_OFFSET]);
+      if (nir_intrinsic_has_align_mul(intr)) {
+         assert(nir_intrinsic_has_align_offset(intr));
          unsigned align_mul = nir_intrinsic_align_mul(intr);
          unsigned align_off = nir_intrinsic_align_offset(intr);
 
@@ -144,7 +144,7 @@ split_wrmask(nir_builder *b, nir_intrinsic_instr *intr)
        * instructions
        */
       unsigned offset_adj = offset_units * first_component;
-      if (info->index_map[NIR_INTRINSIC_BASE]) {
+      if (nir_intrinsic_has_base(intr)) {
          nir_intrinsic_set_base(new_intr,
                nir_intrinsic_base(intr) + offset_adj);
       } else {
@@ -196,10 +196,9 @@ nir_lower_wrmasks(nir_shader *shader, nir_instr_filter_cb cb, const void *data)
                continue;
 
             nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
-            const nir_intrinsic_info *info = &nir_intrinsic_infos[intr->intrinsic];
 
             /* if no wrmask, then skip it: */
-            if (!info->index_map[NIR_INTRINSIC_WRMASK])
+            if (!nir_intrinsic_has_write_mask(intr))
                continue;
 
             /* if wrmask is already contiguous, then nothing to do: */
