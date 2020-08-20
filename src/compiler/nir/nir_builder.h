@@ -62,6 +62,49 @@ nir_builder_init_simple_shader(nir_builder *build, void *mem_ctx,
    build->cursor = nir_after_cf_list(&build->impl->body);
 }
 
+typedef bool (*nir_instr_pass_cb)(struct nir_builder *, nir_instr *, void *);
+
+/**
+ * Iterates over all the instructions in a NIR shader and calls the given pass
+ * on them.
+ *
+ * The pass should return true if it modified the shader.  In that case, only
+ * the preserved metadata flags will be preserved in the function impl.
+ *
+ * The builder will be initialized to point at the function impl, but its
+ * cursor is unset.
+ */
+static inline bool
+nir_shader_instructions_pass(nir_shader *shader,
+                             nir_instr_pass_cb pass,
+                             nir_metadata preserved,
+                             void *cb_data)
+{
+   bool progress = false;
+
+   nir_foreach_function(function, shader) {
+      if (!function->impl)
+         continue;
+
+      nir_builder b;
+      nir_builder_init(&b, function->impl);
+
+      nir_foreach_block_safe(block, function->impl) {
+         nir_foreach_instr_safe(instr, block) {
+            progress |= pass(&b, instr, cb_data);
+         }
+      }
+
+      if (progress) {
+         nir_metadata_preserve(function->impl, preserved);
+      } else {
+         nir_metadata_preserve(function->impl, nir_metadata_all);
+      }
+   }
+
+   return progress;
+}
+
 static inline void
 nir_builder_instr_insert(nir_builder *build, nir_instr *instr)
 {
