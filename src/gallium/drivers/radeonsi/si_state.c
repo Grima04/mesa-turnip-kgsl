@@ -32,6 +32,7 @@
 #include "util/u_memory.h"
 #include "util/u_resource.h"
 #include "util/u_upload_mgr.h"
+#include "util/u_blend.h"
 
 #include "gfx10_format_table.h"
 
@@ -426,13 +427,6 @@ static void si_blend_remove_dst(unsigned *func, unsigned *src_factor, unsigned *
    }
 }
 
-static bool si_blend_factor_uses_dst(unsigned factor)
-{
-   return factor == PIPE_BLENDFACTOR_DST_COLOR || factor == PIPE_BLENDFACTOR_DST_ALPHA ||
-          factor == PIPE_BLENDFACTOR_SRC_ALPHA_SATURATE ||
-          factor == PIPE_BLENDFACTOR_INV_DST_ALPHA || factor == PIPE_BLENDFACTOR_INV_DST_COLOR;
-}
-
 static void *si_create_blend_state_mode(struct pipe_context *ctx,
                                         const struct pipe_blend_state *state, unsigned mode)
 {
@@ -551,9 +545,9 @@ static void *si_create_blend_state_mode(struct pipe_context *ctx,
       dstA_opt = si_translate_blend_opt_factor(dstA, true);
 
       /* Handle interdependencies. */
-      if (si_blend_factor_uses_dst(srcRGB))
+      if (util_blend_factor_uses_dest(srcRGB, false))
          dstRGB_opt = V_028760_BLEND_OPT_PRESERVE_NONE_IGNORE_NONE;
-      if (si_blend_factor_uses_dst(srcA))
+      if (util_blend_factor_uses_dest(srcA, false))
          dstA_opt = V_028760_BLEND_OPT_PRESERVE_NONE_IGNORE_NONE;
 
       if (srcRGB == PIPE_BLENDFACTOR_SRC_ALPHA_SATURATE &&
