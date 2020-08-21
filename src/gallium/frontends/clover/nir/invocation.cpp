@@ -231,8 +231,10 @@ module clover::nir::spirv_to_nir(const module &mod, const device &dev,
                  nir_var_mem_shared | nir_var_function_temp,
                  glsl_get_cl_type_size_align);
 
-      /* use offsets for uniform and shared memory */
+      /* use offsets for kernel inputs (uniform) */
       NIR_PASS_V(nir, nir_lower_explicit_io, nir_var_uniform,
+                 nir->info.cs.ptr_size == 64 ?
+                 nir_address_format_32bit_offset_as_64bit :
                  nir_address_format_32bit_offset);
 
       NIR_PASS_V(nir, nir_lower_explicit_io, nir_var_mem_constant,
