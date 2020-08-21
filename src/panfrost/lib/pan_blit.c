@@ -244,11 +244,19 @@ panfrost_load_midg(
 
         bool ms = image->nr_samples > 1;
 
+        struct mali_shader_packed shader;
+
+        pan_pack(&shader, SHADER, cfg) {
+                cfg.shader = pool->dev->blit_shaders.loads[loc][T][ms];
+                cfg.varying_count = 1;
+                cfg.texture_count = 1;
+                cfg.sampler_count = 1;
+
+                assert(cfg.shader);
+        }
+
         struct mali_shader_meta shader_meta = {
-                .shader = pool->dev->blit_shaders.loads[loc][T][ms],
-                .sampler_count = 1,
-                .texture_count = 1,
-                .varying_count = 1,
+                .shader = shader,
                 .coverage_mask = ~0,
                 .unknown2_3 = MALI_DEPTH_FUNC(MALI_FUNC_ALWAYS) | 0x10,
                 .unknown2_4 = 0x4e0,
@@ -278,8 +286,6 @@ panfrost_load_midg(
                 shader_meta.unknown2_3 |= MALI_HAS_MSAA | MALI_PER_SAMPLE;
         else
                 shader_meta.unknown2_4 |= MALI_NO_MSAA;
-
-        assert(shader_meta.shader);
 
         if (pool->dev->quirks & MIDGARD_SFBD) {
                 shader_meta.unknown2_4 |= (0x10 | MALI_NO_DITHER);

@@ -395,6 +395,14 @@
     <field name="Uniform count" size="7" start="15" type="uint"/>
   </struct>
 
+  <struct name="Shader" size="4">
+    <field name="Shader" size="64" start="0:0" type="address"/>
+    <field name="Sampler count" size="16" start="2:0" type="uint"/>
+    <field name="Texture count" size="16" start="2:16" type="uint"/>
+    <field name="Attribute count" size="16" start="3:0" type="uint"/>
+    <field name="Varying count" size="16" start="3:16" type="uint"/>
+  </struct>
+
   <struct name="Stencil">
     <field name="Reference Value" size="8" start="0" type="uint"/>
     <field name="Mask" size="8" start="8" type="uint" default="0xFF"/>

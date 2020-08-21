@@ -183,12 +183,11 @@ struct panfrost_rasterizer {
 struct panfrost_shader_state {
         /* Compiled, mapped descriptor, ready for the hardware */
         bool compiled;
+        struct mali_shader_packed shader;
 
         /* Non-descript information */
         unsigned uniform_count;
         unsigned work_reg_count;
-        unsigned attribute_count;
-        unsigned texture_count;
         bool can_discard;
         bool writes_point_size;
         bool writes_depth;
@@ -207,7 +206,7 @@ struct panfrost_shader_state {
         /* For Bifrost - output type for each RT */
         enum bifrost_shader_type blend_types[BIFROST_MAX_RENDER_TARGET_COUNT];
 
-        unsigned int varying_count;
+        unsigned attribute_count, varying_count;
         enum mali_format varyings[PIPE_MAX_ATTRIBS];
         gl_varying_slot varyings_loc[PIPE_MAX_ATTRIBS];
         struct pipe_stream_output_info stream_output;
@@ -222,9 +221,7 @@ struct panfrost_shader_state {
         /* Should we enable helper invocations */
         bool helper_invocations;
 
-        /* Pointer to GPU-executable memory formatted for the hardware. bo->gpu
-         * on Bifrost, bo->gpu | initial_tag on Midgard */
-        mali_ptr shader;
+        /* GPU-executable memory */
         struct panfrost_bo *bo;
 
         BITSET_WORD outputs_read;

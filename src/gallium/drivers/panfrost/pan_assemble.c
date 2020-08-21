@@ -170,12 +170,14 @@ panfrost_shader_compile(struct panfrost_context *ctx,
         }
 
         /* Prepare the compiled binary for upload */
+        mali_ptr shader = 0;
+        unsigned attribute_count = 0, varying_count = 0;
         int size = program.compiled.size;
 
         if (size) {
                 state->bo = panfrost_bo_create(dev, size, PAN_BO_EXECUTE);
                 memcpy(state->bo->cpu, program.compiled.data, size);
-                state->shader = state->bo->gpu;
+                shader = state->bo->gpu;
         }
 
         /* Midgard needs the first tag on the bottom nibble */
@@ -184,9 +186,9 @@ panfrost_shader_compile(struct panfrost_context *ctx,
                 /* If size = 0, we tag as "end-of-shader" */
 
                 if (size)
-                        state->shader |= program.first_tag;
+                        shader |= program.first_tag;
                 else
-                        state->shader = 0x1;
+                        shader = 0x1;
         }
 
         util_dynarray_fini(&program.compiled);
@@ -201,23 +203,21 @@ panfrost_shader_compile(struct panfrost_context *ctx,
         state->reads_frag_coord = s->info.system_values_read & (1 << SYSTEM_VALUE_FRAG_COORD);
 
         state->writes_global = s->info.writes_memory;
-        state->texture_count = s->info.num_textures;
 
         switch (stage) {
         case MESA_SHADER_VERTEX:
-                state->attribute_count = util_bitcount64(s->info.inputs_read);
-                state->varying_count = util_bitcount64(s->info.outputs_written);
+                attribute_count = util_bitcount64(s->info.inputs_read);
+                varying_count = util_bitcount64(s->info.outputs_written);
 
                 if (vertex_id)
-                        state->attribute_count = MAX2(state->attribute_count, PAN_VERTEX_ID + 1);
+                        attribute_count = MAX2(attribute_count, PAN_VERTEX_ID + 1);
 
                 if (instance_id)
-                        state->attribute_count = MAX2(state->attribute_count, PAN_INSTANCE_ID + 1);
+                        attribute_count = MAX2(attribute_count, PAN_INSTANCE_ID + 1);
 
                 break;
         case MESA_SHADER_FRAGMENT:
-                state->attribute_count = 0;
-                state->varying_count = util_bitcount64(s->info.inputs_read);
+                varying_count = util_bitcount64(s->info.inputs_read);
                 if (s->info.outputs_written & BITFIELD64_BIT(FRAG_RESULT_DEPTH))
                         state->writes_depth = true;
                 if (s->info.outputs_written & BITFIELD64_BIT(FRAG_RESULT_STENCIL))
@@ -239,8 +239,6 @@ panfrost_shader_compile(struct panfrost_context *ctx,
                 break;
         case MESA_SHADER_COMPUTE:
                 /* TODO: images */
-                state->attribute_count = 0;
-                state->varying_count = 0;
                 state->shared_size = s->info.cs.shared_size;
                 break;
         default:
@@ -283,6 +281,19 @@ panfrost_shader_compile(struct panfrost_context *ctx,
                                         var->data.precision, var->data.location_frac);
                 }
         }
+
+        /* Prepare the descriptors at compile-time */
+        pan_pack(&state->shader, SHADER, cfg) {
+                cfg.shader = shader;
+                cfg.attribute_count = attribute_count;
+                cfg.varying_count = varying_count;
+                cfg.texture_count = s->info.num_textures;
+                cfg.sampler_count = cfg.texture_count;
+        }
+
+        /* Needed for linkage */
+        state->attribute_count = attribute_count;
+        state->varying_count = varying_count;
 
         /* In both clone and tgsi_to_nir paths, the shader is ralloc'd against
          * a NULL context */

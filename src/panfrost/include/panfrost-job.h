@@ -296,11 +296,7 @@ struct bifrost_blend_rt {
  * descriptors for each active render target */
 
 struct mali_shader_meta {
-        mali_ptr shader;
-        u16 sampler_count;
-        u16 texture_count;
-        u16 attribute_count;
-        u16 varying_count;
+        struct mali_shader_packed shader;
 
         union {
                 struct mali_bifrost_properties_packed bifrost_props;

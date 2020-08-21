@@ -315,11 +315,7 @@ panfrost_emit_compute_shader(struct panfrost_context *ctx,
         struct panfrost_shader_state *ss = panfrost_get_shader_state(ctx, st);
 
         memset(meta, 0, sizeof(*meta));
-        meta->shader = ss->shader;
-        meta->attribute_count = ss->attribute_count;
-        meta->varying_count = ss->varying_count;
-        meta->texture_count = ss->texture_count;
-        meta->sampler_count = ss->texture_count; /* Combined on mesa/st */
+        memcpy(&meta->shader, &ss->shader, sizeof(ss->shader));
 
         if (dev->quirks & IS_BIFROST) {
                 struct mali_bifrost_properties_packed prop;
@@ -554,6 +550,18 @@ panfrost_emit_blend(struct panfrost_batch *batch, void *rts,
         }
 }
 
+static struct mali_shader_packed
+panfrost_pack_shaderless(bool midgard)
+{
+        struct mali_shader_packed pack;
+
+        pan_pack(&pack, SHADER, cfg) {
+                cfg.shader = midgard ? 0x1 : 0x0;
+        }
+
+        return pack;
+}
+
 static void
 panfrost_emit_frag_shader(struct panfrost_context *ctx,
                                struct mali_shader_meta *fragmeta,
@@ -569,12 +577,7 @@ panfrost_emit_frag_shader(struct panfrost_context *ctx,
         unsigned rt_count = ctx->pipe_framebuffer.nr_cbufs;
 
         memset(fragmeta, 0, sizeof(*fragmeta));
-
-        fragmeta->shader = fs->shader;
-        fragmeta->attribute_count = fs->attribute_count;
-        fragmeta->varying_count = fs->varying_count;
-        fragmeta->texture_count = fs->texture_count;
-        fragmeta->sampler_count = fs->texture_count; /* Combined on mesa/st */
+        memcpy(&fragmeta->shader, &fs->shader, sizeof(fs->shader));
 
         if (dev->quirks & IS_BIFROST) {
                 struct mali_bifrost_properties_packed prop;
@@ -698,23 +701,19 @@ panfrost_emit_frag_shader(struct panfrost_context *ctx,
 
         /* Disable shader execution if we can */
         if (!panfrost_fs_required(fs, blend, rt_count)) {
-                fragmeta->attribute_count = 0;
-                fragmeta->varying_count = 0;
-                fragmeta->texture_count = 0;
-                fragmeta->sampler_count = 0;
+                struct mali_shader_packed shader =
+                        panfrost_pack_shaderless(!(dev->quirks & IS_BIFROST));
+
+                memcpy(&fragmeta->shader, &shader, sizeof(shader));
 
                 struct mali_midgard_properties_packed prop;
 
                 if (dev->quirks & IS_BIFROST) {
-                        fragmeta->shader = 0x0;
-
                         pan_pack(&prop, BIFROST_PROPERTIES, cfg) {
                                 cfg.unknown = 0x950020; /* XXX */
                                 cfg.early_z_enable = true;
                         }
                 } else {
-                        fragmeta->shader = 0x1;
-
                         pan_pack(&prop, MIDGARD_PROPERTIES, cfg) {
                                 cfg.work_register_count = 1;
                                 cfg.depth_source = MALI_DEPTH_SOURCE_FIXED_FUNCTION;

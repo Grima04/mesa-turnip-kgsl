@@ -1726,21 +1726,26 @@ pandecode_vertex_tiler_postfix_pre(
                         .uniform_buffer_count = 0
                 };
 
-                if (s->shader & ~0xF)
-                        info = pandecode_shader_disassemble(s->shader & ~0xF, job_no, job_type, is_bifrost, gpu_id);
-
+                struct MALI_SHADER shader;
                 struct MALI_MIDGARD_PROPERTIES midg_props;
                 struct MALI_BIFROST_PROPERTIES bi_props;
                 struct MALI_PRELOAD bi_preload;
+
+                struct mali_shader_packed shader_packed = s->shader;
+                MALI_SHADER_unpack((const uint8_t *) &shader_packed, &shader);
+
+                if (shader.shader & ~0xF)
+                        info = pandecode_shader_disassemble(shader.shader & ~0xF, job_no, job_type, is_bifrost, gpu_id);
+
 
                 pandecode_log("struct mali_shader_meta shader_meta_%"PRIx64"_%d%s = {\n", p->shader, job_no, suffix);
                 pandecode_indent++;
 
                 /* Save for dumps */
-                attribute_count = s->attribute_count;
-                varying_count = s->varying_count;
-                texture_count = s->texture_count;
-                sampler_count = s->sampler_count;
+                attribute_count = shader.attribute_count;
+                varying_count = shader.varying_count;
+                texture_count = shader.texture_count;
+                sampler_count = shader.sampler_count;
 
                 if (is_bifrost) {
                         uint32_t opaque = s->bifrost_props.opaque[0];
@@ -1759,12 +1764,12 @@ pandecode_vertex_tiler_postfix_pre(
                         uniform_buffer_count = midg_props.uniform_buffer_count;
                 }
 
-                pandecode_shader_address("shader", s->shader);
+                pandecode_shader_address("shader", shader.shader);
 
-                pandecode_shader_prop("texture_count", s->texture_count, info.texture_count, false);
-                pandecode_shader_prop("sampler_count", s->sampler_count, info.sampler_count, false);
-                pandecode_shader_prop("attribute_count", s->attribute_count, info.attribute_count, false);
-                pandecode_shader_prop("varying_count", s->varying_count, info.varying_count, false);
+                pandecode_shader_prop("texture_count", texture_count, info.texture_count, false);
+                pandecode_shader_prop("sampler_count", sampler_count, info.sampler_count, false);
+                pandecode_shader_prop("attribute_count", attribute_count, info.attribute_count, false);
+                pandecode_shader_prop("varying_count", varying_count, info.varying_count, false);
 
                 if (is_bifrost)
                         MALI_BIFROST_PROPERTIES_print(pandecode_dump_stream, &bi_props, 2);
