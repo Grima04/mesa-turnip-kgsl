@@ -539,9 +539,10 @@ class Parser(object):
         for field in self.group.fields:
             if not type(field) is Field:
                 continue
-            if field.default == None:
-                continue
-            default_fields.append("   .{} = {}".format(field.name, field.default))
+            if field.default is not None:
+                default_fields.append("   .{} = {}".format(field.name, field.default))
+            elif field.type in self.structs:
+                default_fields.append("   .{} = {{ {}_header }}".format(field.name, self.gen_prefix(safe_name(field.type.upper()))))
 
         print('#define %-40s\\' % (name + '_header'))
         print(",  \\\n".join(default_fields))
