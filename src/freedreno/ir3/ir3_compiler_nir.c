@@ -3106,7 +3106,16 @@ setup_output(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 	unsigned n = nir_intrinsic_base(intr) + offset;
 	unsigned frac = nir_intrinsic_component(intr);
 	unsigned ncomp = nir_intrinsic_src_components(intr, 0);
-	unsigned slot = io.location + offset;
+
+	/* For per-view variables, each user-facing slot corresponds to multiple
+	 * views, each with a corresponding driver_location, and the offset is for
+	 * the driver_location. To properly figure out of the slot, we'd need to
+	 * plumb through the number of views. However, for now we only use
+	 * per-view with gl_Position, so we assume that the variable is not an
+	 * array or matrix (so there are no indirect accesses to the variable
+	 * itself) and the indirect offset corresponds to the view.
+	 */
+	unsigned slot = io.location + (io.per_view ? 0 : offset);
 
 	if (ctx->so->type == MESA_SHADER_FRAGMENT) {
 		switch (slot) {
@@ -3172,6 +3181,8 @@ setup_output(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 	compile_assert(ctx, so->outputs_count < ARRAY_SIZE(so->outputs));
 
 	so->outputs[n].slot = slot;
+	if (io.per_view)
+		so->outputs[n].view = offset;
 
 	for (int i = 0; i < ncomp; i++) {
 		unsigned idx = (n * 4) + i + frac;

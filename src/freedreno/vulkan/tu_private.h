@@ -1027,6 +1027,7 @@ struct tu_shader
 
    struct tu_push_constant_range push_consts;
    uint8_t active_desc_sets;
+   bool multi_pos_output;
 };
 
 bool

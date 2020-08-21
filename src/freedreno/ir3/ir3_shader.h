@@ -562,6 +562,7 @@ struct ir3_shader_variant {
 	struct {
 		uint8_t slot;
 		uint8_t regid;
+		uint8_t view;
 		bool    half : 1;
 	} outputs[32 + 2];  /* +POSITION +PSIZE */
 	bool writes_pos, writes_smask, writes_psize, writes_stencilref;
