@@ -104,17 +104,20 @@ pan_upload_shader_descriptor(struct panfrost_context *ctx,
                         struct panfrost_shader_state *state)
 {
         const struct panfrost_device *dev = pan_device(ctx->base.screen);
-        struct mali_shader_meta meta;
+        struct mali_state_packed *out;
 
-        memset(&meta, 0, sizeof(meta));
-        memcpy(&meta.shader, &state->shader, sizeof(state->shader));
-        memcpy(&meta.midgard_props, &state->properties, sizeof(state->properties));
+        u_upload_alloc(ctx->state_uploader, 0, MALI_STATE_LENGTH, MALI_STATE_LENGTH,
+                        &state->upload.offset, &state->upload.rsrc, (void **) &out);
 
-        if (dev->quirks & IS_BIFROST)
-                memcpy(&meta.bifrost_preload, &state->preload, sizeof(state->preload));
+        pan_pack(out, STATE_OPAQUE, cfg) {
+                cfg.shader = state->shader;
+                memcpy(&cfg.properties, &state->properties, sizeof(state->properties));
 
-        u_upload_data(ctx->state_uploader, 0, sizeof(meta), sizeof(meta),
-                        &meta, &state->upload.offset, &state->upload.rsrc);
+                if (dev->quirks & IS_BIFROST)
+                        cfg.preload = state->preload;
+        }
+
+        u_upload_unmap(ctx->state_uploader);
 }
 
 static unsigned
