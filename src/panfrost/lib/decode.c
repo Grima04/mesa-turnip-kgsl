@@ -2304,7 +2304,7 @@ pandecode_jc(mali_ptr jc_gpu_va, bool bifrost, unsigned gpu_id, bool minimal)
                 h = PANDECODE_PTR(mem, jc_gpu_va, struct mali_job_descriptor_header);
 
                 mali_ptr payload_ptr = jc_gpu_va + sizeof(*h);
-                payload = pandecode_fetch_gpu_mem(mem, payload_ptr, 256);
+                payload = pandecode_fetch_gpu_mem(mem, payload_ptr, 64);
 
                 int job_no = job_descriptor_number++;
 
