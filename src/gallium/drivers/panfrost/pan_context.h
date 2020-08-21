@@ -188,6 +188,7 @@ struct panfrost_shader_state {
         unsigned uniform_count;
         unsigned work_reg_count;
         unsigned attribute_count;
+        unsigned texture_count;
         bool can_discard;
         bool writes_point_size;
         bool writes_depth;

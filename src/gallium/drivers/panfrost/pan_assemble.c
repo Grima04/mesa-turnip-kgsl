@@ -201,6 +201,7 @@ panfrost_shader_compile(struct panfrost_context *ctx,
         state->reads_frag_coord = s->info.system_values_read & (1 << SYSTEM_VALUE_FRAG_COORD);
 
         state->writes_global = s->info.writes_memory;
+        state->texture_count = s->info.num_textures;
 
         switch (stage) {
         case MESA_SHADER_VERTEX:

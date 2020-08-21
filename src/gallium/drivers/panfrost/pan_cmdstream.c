@@ -318,8 +318,8 @@ panfrost_emit_compute_shader(struct panfrost_context *ctx,
         meta->shader = ss->shader;
         meta->attribute_count = ss->attribute_count;
         meta->varying_count = ss->varying_count;
-        meta->texture_count = ctx->sampler_view_count[st];
-        meta->sampler_count = ctx->sampler_count[st];
+        meta->texture_count = ss->texture_count;
+        meta->sampler_count = ss->texture_count; /* Combined on mesa/st */
 
         if (dev->quirks & IS_BIFROST) {
                 struct mali_bifrost_properties_packed prop;
@@ -573,8 +573,8 @@ panfrost_emit_frag_shader(struct panfrost_context *ctx,
         fragmeta->shader = fs->shader;
         fragmeta->attribute_count = fs->attribute_count;
         fragmeta->varying_count = fs->varying_count;
-        fragmeta->texture_count = ctx->sampler_view_count[PIPE_SHADER_FRAGMENT];
-        fragmeta->sampler_count = ctx->sampler_count[PIPE_SHADER_FRAGMENT];
+        fragmeta->texture_count = fs->texture_count;
+        fragmeta->sampler_count = fs->texture_count; /* Combined on mesa/st */
 
         if (dev->quirks & IS_BIFROST) {
                 struct mali_bifrost_properties_packed prop;
