@@ -771,7 +771,7 @@ st_link_nir(struct gl_context *ctx,
                  st->pipe->screen);
 
       NIR_PASS_V(nir, nir_lower_system_values);
-      NIR_PASS_V(nir, nir_lower_compute_system_values);
+      NIR_PASS_V(nir, nir_lower_compute_system_values, NULL);
 
       NIR_PASS_V(nir, nir_lower_clip_cull_distance_arrays);
 

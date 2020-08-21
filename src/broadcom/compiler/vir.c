@@ -586,7 +586,7 @@ v3d_lower_nir(struct v3d_compile *c)
 
         NIR_PASS_V(c->s, nir_lower_tex, &tex_options);
         NIR_PASS_V(c->s, nir_lower_system_values);
-        NIR_PASS_V(c->s, nir_lower_compute_system_values);
+        NIR_PASS_V(c->s, nir_lower_compute_system_values, NULL);
 
         NIR_PASS_V(c->s, nir_lower_vars_to_scratch,
                    nir_var_function_temp,
