@@ -227,6 +227,7 @@ enum tu_debug_flags
    TU_DEBUG_SYSMEM = 1 << 4,
    TU_DEBUG_FORCEBIN = 1 << 5,
    TU_DEBUG_NOUBWC = 1 << 6,
+   TU_DEBUG_NOMULTIPOS = 1 << 7,
 };
 
 struct tu_instance
@@ -1031,7 +1032,8 @@ struct tu_shader
 };
 
 bool
-tu_nir_lower_multiview(nir_shader *nir, uint32_t mask, struct tu_device *dev);
+tu_nir_lower_multiview(nir_shader *nir, uint32_t mask, bool *multi_pos_output,
+                       struct tu_device *dev);
 
 nir_shader *
 tu_spirv_to_nir(struct tu_device *dev,

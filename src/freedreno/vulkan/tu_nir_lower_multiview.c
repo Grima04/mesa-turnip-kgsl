@@ -15,10 +15,20 @@
  * one).
  */
 static bool
-lower_multiview_mask(nir_function_impl *impl, uint32_t mask)
+lower_multiview_mask(nir_shader *nir, uint32_t *mask)
 {
+   nir_function_impl *impl = nir_shader_get_entrypoint(nir);
+
+   if (util_is_power_of_two_or_zero(*mask + 1)) {
+      nir_metadata_preserve(impl, nir_metadata_all);
+      return false;
+   }
+
    nir_builder b;
    nir_builder_init(&b, impl);
+
+   uint32_t old_mask = *mask;
+   *mask = BIT(util_logbase2(old_mask) + 1) - 1;
 
    nir_foreach_block_reverse(block, impl) {
       nir_foreach_instr_reverse(instr, block) {
@@ -43,7 +53,7 @@ lower_multiview_mask(nir_function_impl *impl, uint32_t mask)
 
          /* ((1ull << gl_ViewIndex) & mask) != 0 */
          nir_ssa_def *cmp =
-            nir_i2b(&b, nir_iand(&b, nir_imm_int(&b, mask),
+            nir_i2b(&b, nir_iand(&b, nir_imm_int(&b, old_mask),
                                   nir_ishl(&b, nir_imm_int(&b, 1),
                                            nir_load_view_index(&b))));
 
@@ -61,16 +71,40 @@ lower_multiview_mask(nir_function_impl *impl, uint32_t mask)
 }
 
 bool
-tu_nir_lower_multiview(nir_shader *nir, uint32_t mask, struct tu_device *dev)
+tu_nir_lower_multiview(nir_shader *nir, uint32_t mask, bool *multi_pos_output,
+                       struct tu_device *dev)
 {
-   nir_function_impl *entrypoint = nir_shader_get_entrypoint(nir);
+   *multi_pos_output = false;
 
-   if (!dev->physical_device->supports_multiview_mask &&
-       !util_is_power_of_two_or_zero(mask + 1)) {
-      return lower_multiview_mask(entrypoint, mask);
+   bool progress = false;
+
+   if (!dev->physical_device->supports_multiview_mask)
+      NIR_PASS(progress, nir, lower_multiview_mask, &mask);
+
+   unsigned num_views = util_logbase2(mask) + 1;
+
+   /* Speculatively assign output locations so that we know num_outputs. We
+    * will assign output locations for real after this pass.
+    */
+   unsigned num_outputs;
+   nir_assign_io_var_locations(nir, nir_var_shader_out, &num_outputs, MESA_SHADER_VERTEX);
+
+   /* In addition to the generic checks done by NIR, check that we don't
+    * overflow VPC with the extra copies of gl_Position.
+    */
+   if (likely(!(dev->physical_device->instance->debug_flags & TU_DEBUG_NOMULTIPOS)) &&
+       num_outputs + (num_views - 1) <= 32 && nir_can_lower_multiview(nir)) {
+      *multi_pos_output = true;
+
+      /* It appears that the multiview mask is ignored when multi-position
+       * output is enabled, so we have to write 0 to inactive views ourselves.
+       */
+      NIR_PASS(progress, nir, lower_multiview_mask, &mask);
+
+      NIR_PASS_V(nir, nir_lower_multiview, mask);
+      progress = true;
    }
 
-   nir_metadata_preserve(entrypoint, nir_metadata_all);
-   return false;
+   return progress;
 }
 

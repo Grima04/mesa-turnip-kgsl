@@ -761,7 +761,8 @@ tu_shader_create(struct tu_device *dev,
    }
 
    if (nir->info.stage == MESA_SHADER_VERTEX && multiview_mask) {
-      NIR_PASS_V(nir, tu_nir_lower_multiview, multiview_mask, dev);
+      tu_nir_lower_multiview(nir, multiview_mask,
+                             &shader->multi_pos_output, dev);
    }
 
    NIR_PASS_V(nir, nir_lower_explicit_io,
