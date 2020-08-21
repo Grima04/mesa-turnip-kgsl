@@ -1098,7 +1098,7 @@ nir_assign_io_var_locations(nir_shader *shader, nir_variable_mode mode,
    bool last_partial = false;
    nir_foreach_variable_in_list(var, &io_vars) {
       const struct glsl_type *type = var->type;
-      if (nir_is_per_vertex_io(var, stage) || var->data.per_view) {
+      if (nir_is_per_vertex_io(var, stage)) {
          assert(glsl_type_is_array(type));
          type = glsl_get_array_element(type);
       }
@@ -1112,7 +1112,7 @@ nir_assign_io_var_locations(nir_shader *shader, nir_variable_mode mode,
       else
          base = VARYING_SLOT_VAR0;
 
-      unsigned var_size;
+      unsigned var_size, driver_size;
       if (var->data.compact) {
          /* If we are inside a partial compact,
           * don't allow another compact to be in this slot
@@ -1123,11 +1123,12 @@ nir_assign_io_var_locations(nir_shader *shader, nir_variable_mode mode,
          }
 
          /* compact variables must be arrays of scalars */
+         assert(!var->data.per_view);
          assert(glsl_type_is_array(type));
          assert(glsl_type_is_scalar(glsl_get_array_element(type)));
          unsigned start = 4 * location + var->data.location_frac;
          unsigned end = start + glsl_get_length(type);
-         var_size = end / 4 - location;
+         var_size = driver_size = end / 4 - location;
          last_partial = end % 4 != 0;
       } else {
          /* Compact variables bypass the normal varying compacting pass,
@@ -1139,7 +1140,20 @@ nir_assign_io_var_locations(nir_shader *shader, nir_variable_mode mode,
             location++;
             last_partial = false;
          }
-         var_size = glsl_count_attribute_slots(type, false);
+
+         /* per-view variables have an extra array dimension, which is ignored
+          * when counting user-facing slots (var->data.location), but *not*
+          * with driver slots (var->data.driver_location). That is, each user
+          * slot maps to multiple driver slots.
+          */
+         driver_size = glsl_count_attribute_slots(type, false);
+         if (var->data.per_view) {
+            assert(glsl_type_is_array(type));
+            var_size =
+               glsl_count_attribute_slots(glsl_get_array_element(type), false);
+         } else {
+            var_size = driver_size;
+         }
       }
 
       /* Builtins don't allow component packing so we only need to worry about
@@ -1163,6 +1177,8 @@ nir_assign_io_var_locations(nir_shader *shader, nir_variable_mode mode,
        * we may have already have processed this location.
        */
       if (processed) {
+         /* TODO handle overlapping per-view variables */
+         assert(!var->data.per_view);
          unsigned driver_location = assigned_locations[var->data.location];
          var->data.driver_location = driver_location;
 
@@ -1193,7 +1209,7 @@ nir_assign_io_var_locations(nir_shader *shader, nir_variable_mode mode,
       }
 
       var->data.driver_location = location;
-      location += var_size;
+      location += driver_size;
    }
 
    if (last_partial)
