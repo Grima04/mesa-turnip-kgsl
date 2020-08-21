@@ -26,6 +26,11 @@
 #include "nir.h"
 #include "nir_builder.h"
 
+/* This is a macro so you get good line numbers */
+#define EXPECT_INSTR_SWIZZLES(instr, load, expected_swizzle)    \
+   EXPECT_EQ((instr)->src[0].src.ssa, &(load)->dest.ssa);       \
+   EXPECT_EQ(swizzle(instr, 0), expected_swizzle);
+
 namespace {
 
 class nir_load_store_vectorize_test : public ::testing::Test {
@@ -70,9 +75,12 @@ protected:
                                       nir_intrinsic_instr *low, nir_intrinsic_instr *high);
    static void shared_type_info(const struct glsl_type *type, unsigned *size, unsigned *align);
 
+   std::string swizzle(nir_alu_instr *instr, int src);
+
    void *mem_ctx;
 
    nir_builder *b;
+   std::map<unsigned, nir_alu_instr*> movs;
    std::map<unsigned, nir_alu_src*> loads;
    std::map<unsigned, nir_ssa_def*> res_map;
 };
@@ -97,6 +105,17 @@ nir_load_store_vectorize_test::~nir_load_store_vectorize_test()
    ralloc_free(mem_ctx);
 
    glsl_type_singleton_decref();
+}
+
+std::string
+nir_load_store_vectorize_test::swizzle(nir_alu_instr *instr, int src)
+{
+   std::string swizzle;
+   for (unsigned i = 0; i < nir_ssa_alu_instr_src_components(instr, src); i++) {
+      swizzle += "xyzw"[instr->src[src].swizzle[i]];
+   }
+
+   return swizzle;
 }
 
 unsigned
@@ -209,8 +228,9 @@ nir_load_store_vectorize_test::create_indirect_load(
       nir_intrinsic_set_access(load, (gl_access_qualifier)access);
    }
    nir_builder_instr_insert(b, &load->instr);
-   nir_instr *mov = nir_mov(b, &load->dest.ssa)->parent_instr;
-   loads[id] = &nir_instr_as_alu(mov)->src[0];
+   nir_alu_instr *mov = nir_instr_as_alu(nir_mov(b, &load->dest.ssa)->parent_instr);
+   movs[id] = mov;
+   loads[id] = &mov->src[0];
 
    return load;
 }
@@ -279,8 +299,9 @@ void nir_load_store_vectorize_test::create_shared_load(
    load->num_components = components;
    load->src[0] = nir_src_for_ssa(&deref->dest.ssa);
    nir_builder_instr_insert(b, &load->instr);
-   nir_instr *mov = nir_mov(b, &load->dest.ssa)->parent_instr;
-   loads[id] = &nir_instr_as_alu(mov)->src[0];
+   nir_alu_instr *mov = nir_instr_as_alu(nir_mov(b, &load->dest.ssa)->parent_instr);
+   movs[id] = mov;
+   loads[id] = &mov->src[0];
 }
 
 void nir_load_store_vectorize_test::create_shared_store(
@@ -360,10 +381,8 @@ TEST_F(nir_load_store_vectorize_test, ubo_load_adjacent)
    ASSERT_EQ(load->dest.ssa.bit_size, 32);
    ASSERT_EQ(load->dest.ssa.num_components, 2);
    ASSERT_EQ(nir_src_as_uint(load->src[1]), 0);
-   ASSERT_EQ(loads[0x1]->src.ssa, &load->dest.ssa);
-   ASSERT_EQ(loads[0x2]->src.ssa, &load->dest.ssa);
-   ASSERT_EQ(loads[0x1]->swizzle[0], 0);
-   ASSERT_EQ(loads[0x2]->swizzle[0], 1);
+   EXPECT_INSTR_SWIZZLES(movs[0x1], load, "x");
+   EXPECT_INSTR_SWIZZLES(movs[0x2], load, "y");
 }
 
 TEST_F(nir_load_store_vectorize_test, ubo_load_intersecting)
@@ -382,12 +401,8 @@ TEST_F(nir_load_store_vectorize_test, ubo_load_intersecting)
    ASSERT_EQ(load->dest.ssa.bit_size, 32);
    ASSERT_EQ(load->dest.ssa.num_components, 3);
    ASSERT_EQ(nir_src_as_uint(load->src[1]), 0);
-   ASSERT_EQ(loads[0x1]->src.ssa, &load->dest.ssa);
-   ASSERT_EQ(loads[0x2]->src.ssa, &load->dest.ssa);
-   ASSERT_EQ(loads[0x1]->swizzle[0], 0);
-   ASSERT_EQ(loads[0x1]->swizzle[1], 1);
-   ASSERT_EQ(loads[0x2]->swizzle[0], 1);
-   ASSERT_EQ(loads[0x2]->swizzle[1], 2);
+   EXPECT_INSTR_SWIZZLES(movs[0x1], load, "xy");
+   EXPECT_INSTR_SWIZZLES(movs[0x2], load, "yz");
 }
 
 TEST_F(nir_load_store_vectorize_test, ubo_load_identical)
@@ -408,8 +423,8 @@ TEST_F(nir_load_store_vectorize_test, ubo_load_identical)
    ASSERT_EQ(nir_src_as_uint(load->src[1]), 0);
    ASSERT_EQ(loads[0x1]->src.ssa, &load->dest.ssa);
    ASSERT_EQ(loads[0x2]->src.ssa, &load->dest.ssa);
-   ASSERT_EQ(loads[0x1]->swizzle[0], 0);
-   ASSERT_EQ(loads[0x2]->swizzle[0], 0);
+   EXPECT_INSTR_SWIZZLES(movs[0x1], load, "x");
+   EXPECT_INSTR_SWIZZLES(movs[0x2], load, "x");
 }
 
 TEST_F(nir_load_store_vectorize_test, ubo_load_large)
@@ -442,10 +457,8 @@ TEST_F(nir_load_store_vectorize_test, push_const_load_adjacent)
    ASSERT_EQ(load->dest.ssa.bit_size, 32);
    ASSERT_EQ(load->dest.ssa.num_components, 2);
    ASSERT_EQ(nir_src_as_uint(load->src[0]), 0);
-   ASSERT_EQ(loads[0x1]->src.ssa, &load->dest.ssa);
-   ASSERT_EQ(loads[0x2]->src.ssa, &load->dest.ssa);
-   ASSERT_EQ(loads[0x1]->swizzle[0], 0);
-   ASSERT_EQ(loads[0x2]->swizzle[0], 1);
+   EXPECT_INSTR_SWIZZLES(movs[0x1], load, "x");
+   EXPECT_INSTR_SWIZZLES(movs[0x2], load, "y");
 }
 
 TEST_F(nir_load_store_vectorize_test, push_const_load_adjacent_base)
@@ -464,10 +477,8 @@ TEST_F(nir_load_store_vectorize_test, push_const_load_adjacent_base)
    ASSERT_EQ(load->dest.ssa.bit_size, 32);
    ASSERT_EQ(load->dest.ssa.num_components, 2);
    ASSERT_EQ(nir_src_as_uint(load->src[0]), 0);
-   ASSERT_EQ(loads[0x1]->src.ssa, &load->dest.ssa);
-   ASSERT_EQ(loads[0x2]->src.ssa, &load->dest.ssa);
-   ASSERT_EQ(loads[0x1]->swizzle[0], 0);
-   ASSERT_EQ(loads[0x2]->swizzle[0], 1);
+   EXPECT_INSTR_SWIZZLES(movs[0x1], load, "x");
+   EXPECT_INSTR_SWIZZLES(movs[0x2], load, "y");
 }
 
 TEST_F(nir_load_store_vectorize_test, ssbo_load_adjacent)
@@ -486,10 +497,8 @@ TEST_F(nir_load_store_vectorize_test, ssbo_load_adjacent)
    ASSERT_EQ(load->dest.ssa.bit_size, 32);
    ASSERT_EQ(load->dest.ssa.num_components, 2);
    ASSERT_EQ(nir_src_as_uint(load->src[1]), 0);
-   ASSERT_EQ(loads[0x1]->src.ssa, &load->dest.ssa);
-   ASSERT_EQ(loads[0x2]->src.ssa, &load->dest.ssa);
-   ASSERT_EQ(loads[0x1]->swizzle[0], 0);
-   ASSERT_EQ(loads[0x2]->swizzle[0], 1);
+   EXPECT_INSTR_SWIZZLES(movs[0x1], load, "x");
+   EXPECT_INSTR_SWIZZLES(movs[0x2], load, "y");
 }
 
 TEST_F(nir_load_store_vectorize_test, ssbo_load_adjacent_indirect)
@@ -509,10 +518,8 @@ TEST_F(nir_load_store_vectorize_test, ssbo_load_adjacent_indirect)
    ASSERT_EQ(load->dest.ssa.bit_size, 32);
    ASSERT_EQ(load->dest.ssa.num_components, 2);
    ASSERT_EQ(load->src[1].ssa, index_base);
-   ASSERT_EQ(loads[0x1]->src.ssa, &load->dest.ssa);
-   ASSERT_EQ(loads[0x2]->src.ssa, &load->dest.ssa);
-   ASSERT_EQ(loads[0x1]->swizzle[0], 0);
-   ASSERT_EQ(loads[0x2]->swizzle[0], 1);
+   EXPECT_INSTR_SWIZZLES(movs[0x1], load, "x");
+   EXPECT_INSTR_SWIZZLES(movs[0x2], load, "y");
 }
 
 TEST_F(nir_load_store_vectorize_test, ssbo_load_adjacent_indirect_sub)
@@ -533,10 +540,8 @@ TEST_F(nir_load_store_vectorize_test, ssbo_load_adjacent_indirect_sub)
    ASSERT_EQ(load->dest.ssa.bit_size, 32);
    ASSERT_EQ(load->dest.ssa.num_components, 2);
    ASSERT_EQ(load->src[1].ssa, index_base_prev);
-   ASSERT_EQ(loads[0x1]->src.ssa, &load->dest.ssa);
-   ASSERT_EQ(loads[0x2]->src.ssa, &load->dest.ssa);
-   ASSERT_EQ(loads[0x1]->swizzle[0], 0);
-   ASSERT_EQ(loads[0x2]->swizzle[0], 1);
+   EXPECT_INSTR_SWIZZLES(movs[0x1], load, "x");
+   EXPECT_INSTR_SWIZZLES(movs[0x2], load, "y");
 }
 
 TEST_F(nir_load_store_vectorize_test, ssbo_load_adjacent_indirect_neg_stride)
@@ -558,10 +563,8 @@ TEST_F(nir_load_store_vectorize_test, ssbo_load_adjacent_indirect_neg_stride)
    nir_intrinsic_instr *load = get_intrinsic(nir_intrinsic_load_ssbo, 0);
    ASSERT_EQ(load->dest.ssa.bit_size, 32);
    ASSERT_EQ(load->dest.ssa.num_components, 2);
-   ASSERT_EQ(loads[0x1]->src.ssa, &load->dest.ssa);
-   ASSERT_EQ(loads[0x2]->src.ssa, &load->dest.ssa);
-   ASSERT_EQ(loads[0x1]->swizzle[0], 0);
-   ASSERT_EQ(loads[0x2]->swizzle[0], 1);
+   EXPECT_INSTR_SWIZZLES(movs[0x1], load, "x");
+   EXPECT_INSTR_SWIZZLES(movs[0x2], load, "y");
 
    /* nir_opt_algebraic optimizes the imul */
    ASSERT_TRUE(test_alu(load->src[1].ssa->parent_instr, nir_op_ineg));
@@ -589,10 +592,8 @@ TEST_F(nir_load_store_vectorize_test, ssbo_load_identical_store_adjacent)
    ASSERT_EQ(load->dest.ssa.bit_size, 32);
    ASSERT_EQ(load->dest.ssa.num_components, 1);
    ASSERT_EQ(nir_src_as_uint(load->src[1]), 0);
-   ASSERT_EQ(loads[0x1]->src.ssa, &load->dest.ssa);
-   ASSERT_EQ(loads[0x3]->src.ssa, &load->dest.ssa);
-   ASSERT_EQ(loads[0x1]->swizzle[0], 0);
-   ASSERT_EQ(loads[0x3]->swizzle[0], 0);
+   EXPECT_INSTR_SWIZZLES(movs[0x1], load, "x");
+   EXPECT_INSTR_SWIZZLES(movs[0x3], load, "x");
 }
 
 TEST_F(nir_load_store_vectorize_test, ssbo_load_identical_store_intersecting)
@@ -661,10 +662,8 @@ TEST_F(nir_load_store_vectorize_test, ssbo_load_adjacent_store_identical)
    ASSERT_EQ(load->dest.ssa.bit_size, 32);
    ASSERT_EQ(load->dest.ssa.num_components, 2);
    ASSERT_EQ(nir_src_as_uint(load->src[1]), 0);
-   ASSERT_EQ(loads[0x1]->src.ssa, &load->dest.ssa);
-   ASSERT_EQ(loads[0x3]->src.ssa, &load->dest.ssa);
-   ASSERT_EQ(loads[0x1]->swizzle[0], 0);
-   ASSERT_EQ(loads[0x3]->swizzle[0], 1);
+   EXPECT_INSTR_SWIZZLES(movs[0x1], load, "x");
+   EXPECT_INSTR_SWIZZLES(movs[0x3], load, "y");
 }
 
 TEST_F(nir_load_store_vectorize_test, ssbo_store_adjacent)
@@ -833,10 +832,8 @@ TEST_F(nir_load_store_vectorize_test, ssbo_load_adjacent_8_8_16)
    ASSERT_EQ(load->dest.ssa.bit_size, 8);
    ASSERT_EQ(load->dest.ssa.num_components, 4);
    ASSERT_EQ(nir_src_as_uint(load->src[1]), 0);
-   ASSERT_EQ(loads[0x1]->src.ssa, &load->dest.ssa);
-   ASSERT_EQ(loads[0x2]->src.ssa, &load->dest.ssa);
-   ASSERT_EQ(loads[0x1]->swizzle[0], 0);
-   ASSERT_EQ(loads[0x2]->swizzle[0], 1);
+   EXPECT_INSTR_SWIZZLES(movs[0x1], load, "x");
+   EXPECT_INSTR_SWIZZLES(movs[0x2], load, "y");
 
    nir_ssa_def *val = loads[0x3]->src.ssa;
    ASSERT_EQ(val->bit_size, 16);
@@ -868,18 +865,14 @@ TEST_F(nir_load_store_vectorize_test, ssbo_load_adjacent_32_32_64)
    ASSERT_EQ(load->dest.ssa.bit_size, 32);
    ASSERT_EQ(load->dest.ssa.num_components, 4);
    ASSERT_EQ(nir_src_as_uint(load->src[1]), 0);
-   ASSERT_EQ(loads[0x1]->src.ssa, &load->dest.ssa);
-   ASSERT_EQ(loads[0x1]->swizzle[0], 0);
-   ASSERT_EQ(loads[0x1]->swizzle[1], 1);
+   EXPECT_INSTR_SWIZZLES(movs[0x1], load, "xy");
 
    nir_ssa_def *val = loads[0x2]->src.ssa;
    ASSERT_EQ(val->bit_size, 64);
    ASSERT_EQ(val->num_components, 1);
    ASSERT_TRUE(test_alu(val->parent_instr, nir_op_pack_64_2x32));
    nir_alu_instr *pack = nir_instr_as_alu(val->parent_instr);
-   ASSERT_EQ(pack->src[0].src.ssa, &load->dest.ssa);
-   ASSERT_EQ(pack->src[0].swizzle[0], 2);
-   ASSERT_EQ(pack->src[0].swizzle[1], 3);
+   EXPECT_INSTR_SWIZZLES(pack, load, "zw");
 }
 
 TEST_F(nir_load_store_vectorize_test, ssbo_load_adjacent_32_32_64_64)
@@ -899,24 +892,21 @@ TEST_F(nir_load_store_vectorize_test, ssbo_load_adjacent_32_32_64_64)
    ASSERT_EQ(load->dest.ssa.bit_size, 64);
    ASSERT_EQ(load->dest.ssa.num_components, 3);
    ASSERT_EQ(nir_src_as_uint(load->src[1]), 0);
-   ASSERT_EQ(loads[0x3]->src.ssa, &load->dest.ssa);
-   ASSERT_EQ(loads[0x3]->swizzle[0], 2);
+   EXPECT_INSTR_SWIZZLES(movs[0x3], load, "z");
 
    nir_ssa_def *val = loads[0x2]->src.ssa;
    ASSERT_EQ(val->bit_size, 64);
    ASSERT_EQ(val->num_components, 1);
    ASSERT_TRUE(test_alu(val->parent_instr, nir_op_mov));
    nir_alu_instr *mov = nir_instr_as_alu(val->parent_instr);
-   ASSERT_EQ(mov->src[0].src.ssa, &load->dest.ssa);
-   ASSERT_EQ(mov->src[0].swizzle[0], 1);
+   EXPECT_INSTR_SWIZZLES(mov, load, "y");
 
    val = loads[0x1]->src.ssa;
    ASSERT_EQ(val->bit_size, 32);
    ASSERT_EQ(val->num_components, 2);
    ASSERT_TRUE(test_alu(val->parent_instr, nir_op_unpack_64_2x32));
    nir_alu_instr *unpack = nir_instr_as_alu(val->parent_instr);
-   ASSERT_EQ(unpack->src[0].src.ssa, &load->dest.ssa);
-   ASSERT_EQ(unpack->src[0].swizzle[0], 0);
+   EXPECT_INSTR_SWIZZLES(unpack, load, "x");
 }
 
 TEST_F(nir_load_store_vectorize_test, ssbo_load_intersecting_32_32_64)
@@ -935,18 +925,14 @@ TEST_F(nir_load_store_vectorize_test, ssbo_load_intersecting_32_32_64)
    ASSERT_EQ(load->dest.ssa.bit_size, 32);
    ASSERT_EQ(load->dest.ssa.num_components, 3);
    ASSERT_EQ(nir_src_as_uint(load->src[1]), 4);
-   ASSERT_EQ(loads[0x1]->src.ssa, &load->dest.ssa);
-   ASSERT_EQ(loads[0x1]->swizzle[0], 0);
-   ASSERT_EQ(loads[0x1]->swizzle[1], 1);
+   EXPECT_INSTR_SWIZZLES(movs[0x1], load, "xy");
 
    nir_ssa_def *val = loads[0x2]->src.ssa;
    ASSERT_EQ(val->bit_size, 64);
    ASSERT_EQ(val->num_components, 1);
    ASSERT_TRUE(test_alu(val->parent_instr, nir_op_pack_64_2x32));
    nir_alu_instr *pack = nir_instr_as_alu(val->parent_instr);
-   ASSERT_EQ(pack->src[0].src.ssa, &load->dest.ssa);
-   ASSERT_EQ(pack->src[0].swizzle[0], 1);
-   ASSERT_EQ(pack->src[0].swizzle[1], 2);
+   EXPECT_INSTR_SWIZZLES(pack, load, "yz");
 }
 
 TEST_F(nir_load_store_vectorize_test, ssbo_store_adjacent_8_8_16)
@@ -1117,10 +1103,8 @@ TEST_F(nir_load_store_vectorize_test, shared_load_adjacent)
    ASSERT_EQ(deref->deref_type, nir_deref_type_var);
    ASSERT_EQ(deref->var, var);
 
-   ASSERT_EQ(loads[0x1]->src.ssa, &load->dest.ssa);
-   ASSERT_EQ(loads[0x2]->src.ssa, &load->dest.ssa);
-   ASSERT_EQ(loads[0x1]->swizzle[0], 0);
-   ASSERT_EQ(loads[0x2]->swizzle[0], 1);
+   EXPECT_INSTR_SWIZZLES(movs[0x1], load, "x");
+   EXPECT_INSTR_SWIZZLES(movs[0x2], load, "y");
 }
 
 TEST_F(nir_load_store_vectorize_test, shared_load_distant_64bit)
@@ -1171,10 +1155,8 @@ TEST_F(nir_load_store_vectorize_test, shared_load_adjacent_indirect)
    ASSERT_EQ(deref->deref_type, nir_deref_type_var);
    ASSERT_EQ(deref->var, var);
 
-   ASSERT_EQ(loads[0x1]->src.ssa, &load->dest.ssa);
-   ASSERT_EQ(loads[0x2]->src.ssa, &load->dest.ssa);
-   ASSERT_EQ(loads[0x1]->swizzle[0], 0);
-   ASSERT_EQ(loads[0x2]->swizzle[0], 1);
+   EXPECT_INSTR_SWIZZLES(movs[0x1], load, "x");
+   EXPECT_INSTR_SWIZZLES(movs[0x2], load, "y");
 }
 
 TEST_F(nir_load_store_vectorize_test, shared_load_adjacent_indirect_sub)
@@ -1209,10 +1191,8 @@ TEST_F(nir_load_store_vectorize_test, shared_load_adjacent_indirect_sub)
    ASSERT_EQ(deref->deref_type, nir_deref_type_var);
    ASSERT_EQ(deref->var, var);
 
-   ASSERT_EQ(loads[0x1]->src.ssa, &load->dest.ssa);
-   ASSERT_EQ(loads[0x2]->src.ssa, &load->dest.ssa);
-   ASSERT_EQ(loads[0x1]->swizzle[0], 0);
-   ASSERT_EQ(loads[0x2]->swizzle[0], 1);
+   EXPECT_INSTR_SWIZZLES(movs[0x1], load, "x");
+   EXPECT_INSTR_SWIZZLES(movs[0x2], load, "y");
 }
 
 TEST_F(nir_load_store_vectorize_test, shared_load_struct)
@@ -1248,10 +1228,8 @@ TEST_F(nir_load_store_vectorize_test, shared_load_struct)
    ASSERT_EQ(deref->deref_type, nir_deref_type_var);
    ASSERT_EQ(deref->var, var);
 
-   ASSERT_EQ(loads[0x1]->src.ssa, &load->dest.ssa);
-   ASSERT_EQ(loads[0x2]->src.ssa, &load->dest.ssa);
-   ASSERT_EQ(loads[0x1]->swizzle[0], 0);
-   ASSERT_EQ(loads[0x2]->swizzle[0], 1);
+   EXPECT_INSTR_SWIZZLES(movs[0x1], load, "x");
+   EXPECT_INSTR_SWIZZLES(movs[0x2], load, "y");
 }
 
 TEST_F(nir_load_store_vectorize_test, shared_load_identical_store_adjacent)
@@ -1284,10 +1262,8 @@ TEST_F(nir_load_store_vectorize_test, shared_load_identical_store_adjacent)
    ASSERT_EQ(deref->deref_type, nir_deref_type_var);
    ASSERT_EQ(deref->var, var);
 
-   ASSERT_EQ(loads[0x1]->src.ssa, &load->dest.ssa);
-   ASSERT_EQ(loads[0x3]->src.ssa, &load->dest.ssa);
-   ASSERT_EQ(loads[0x1]->swizzle[0], 0);
-   ASSERT_EQ(loads[0x3]->swizzle[0], 0);
+   EXPECT_INSTR_SWIZZLES(movs[0x1], load, "x");
+   EXPECT_INSTR_SWIZZLES(movs[0x3], load, "x");
 }
 
 TEST_F(nir_load_store_vectorize_test, shared_load_identical_store_identical)
@@ -1340,10 +1316,8 @@ TEST_F(nir_load_store_vectorize_test, shared_load_adjacent_store_identical)
    ASSERT_EQ(deref->deref_type, nir_deref_type_var);
    ASSERT_EQ(deref->var, var);
 
-   ASSERT_EQ(loads[0x1]->src.ssa, &load->dest.ssa);
-   ASSERT_EQ(loads[0x3]->src.ssa, &load->dest.ssa);
-   ASSERT_EQ(loads[0x1]->swizzle[0], 0);
-   ASSERT_EQ(loads[0x3]->swizzle[0], 1);
+   EXPECT_INSTR_SWIZZLES(movs[0x1], load, "x");
+   EXPECT_INSTR_SWIZZLES(movs[0x3], load, "y");
 }
 
 TEST_F(nir_load_store_vectorize_test, shared_load_bool)
@@ -1417,8 +1391,8 @@ TEST_F(nir_load_store_vectorize_test, shared_load_bool_mixed)
 
    ASSERT_TRUE(test_alu(loads[0x1]->src.ssa->parent_instr, nir_op_i2b1));
    ASSERT_TRUE(test_alu_def(loads[0x1]->src.ssa->parent_instr, 0, &load->dest.ssa, 0));
-   ASSERT_EQ(loads[0x2]->src.ssa, &load->dest.ssa);
-   ASSERT_EQ(loads[0x2]->swizzle[0], 1);
+
+   EXPECT_INSTR_SWIZZLES(movs[0x2], load, "y");
 }
 
 TEST_F(nir_load_store_vectorize_test, shared_store_adjacent)
@@ -1533,10 +1507,8 @@ TEST_F(nir_load_store_vectorize_test, push_const_load_adjacent_complex_indirect)
    ASSERT_EQ(load->dest.ssa.bit_size, 32);
    ASSERT_EQ(load->dest.ssa.num_components, 2);
    ASSERT_EQ(load->src[0].ssa, low);
-   ASSERT_EQ(loads[0x1]->src.ssa, &load->dest.ssa);
-   ASSERT_EQ(loads[0x2]->src.ssa, &load->dest.ssa);
-   ASSERT_EQ(loads[0x1]->swizzle[0], 0);
-   ASSERT_EQ(loads[0x2]->swizzle[0], 1);
+   EXPECT_INSTR_SWIZZLES(movs[0x1], load, "x");
+   EXPECT_INSTR_SWIZZLES(movs[0x2], load, "y");
 }
 
 TEST_F(nir_load_store_vectorize_test, ssbo_alias0)
@@ -1590,10 +1562,8 @@ TEST_F(nir_load_store_vectorize_test, DISABLED_ssbo_alias2)
    ASSERT_EQ(load->dest.ssa.bit_size, 32);
    ASSERT_EQ(load->dest.ssa.num_components, 1);
    ASSERT_EQ(load->src[1].ssa, offset);
-   ASSERT_EQ(loads[0x1]->src.ssa, &load->dest.ssa);
-   ASSERT_EQ(loads[0x3]->src.ssa, &load->dest.ssa);
-   ASSERT_EQ(loads[0x1]->swizzle[0], 0);
-   ASSERT_EQ(loads[0x3]->swizzle[0], 0);
+   EXPECT_INSTR_SWIZZLES(movs[0x1], load, "x");
+   EXPECT_INSTR_SWIZZLES(movs[0x3], load, "x");
 }
 
 TEST_F(nir_load_store_vectorize_test, ssbo_alias3)
@@ -1636,10 +1606,8 @@ TEST_F(nir_load_store_vectorize_test, DISABLED_ssbo_alias4)
    ASSERT_EQ(load->dest.ssa.bit_size, 32);
    ASSERT_EQ(load->dest.ssa.num_components, 1);
    ASSERT_EQ(load->src[1].ssa, offset);
-   ASSERT_EQ(loads[0x1]->src.ssa, &load->dest.ssa);
-   ASSERT_EQ(loads[0x3]->src.ssa, &load->dest.ssa);
-   ASSERT_EQ(loads[0x1]->swizzle[0], 0);
-   ASSERT_EQ(loads[0x3]->swizzle[0], 0);
+   EXPECT_INSTR_SWIZZLES(movs[0x1], load, "x");
+   EXPECT_INSTR_SWIZZLES(movs[0x3], load, "x");
 }
 
 TEST_F(nir_load_store_vectorize_test, ssbo_alias5)
@@ -1673,10 +1641,8 @@ TEST_F(nir_load_store_vectorize_test, ssbo_alias6)
    ASSERT_EQ(load->dest.ssa.bit_size, 32);
    ASSERT_EQ(load->dest.ssa.num_components, 1);
    ASSERT_EQ(nir_src_as_uint(load->src[1]), 0);
-   ASSERT_EQ(loads[0x1]->src.ssa, &load->dest.ssa);
-   ASSERT_EQ(loads[0x3]->src.ssa, &load->dest.ssa);
-   ASSERT_EQ(loads[0x1]->swizzle[0], 0);
-   ASSERT_EQ(loads[0x3]->swizzle[0], 0);
+   EXPECT_INSTR_SWIZZLES(movs[0x1], load, "x");
+   EXPECT_INSTR_SWIZZLES(movs[0x3], load, "x");
 }
 
 TEST_F(nir_load_store_vectorize_test, DISABLED_shared_alias0)
@@ -1711,10 +1677,8 @@ TEST_F(nir_load_store_vectorize_test, DISABLED_shared_alias0)
    ASSERT_EQ(load->dest.ssa.bit_size, 32);
    ASSERT_EQ(load->dest.ssa.num_components, 1);
    ASSERT_EQ(load->src[0].ssa, &load_deref->dest.ssa);
-   ASSERT_EQ(loads[0x1]->src.ssa, &load->dest.ssa);
-   ASSERT_EQ(loads[0x3]->src.ssa, &load->dest.ssa);
-   ASSERT_EQ(loads[0x1]->swizzle[0], 0);
-   ASSERT_EQ(loads[0x3]->swizzle[0], 0);
+   EXPECT_INSTR_SWIZZLES(movs[0x1], load, "x");
+   EXPECT_INSTR_SWIZZLES(movs[0x3], load, "x");
 }
 
 TEST_F(nir_load_store_vectorize_test, shared_alias1)
@@ -1738,10 +1702,8 @@ TEST_F(nir_load_store_vectorize_test, shared_alias1)
    ASSERT_EQ(load->dest.ssa.bit_size, 32);
    ASSERT_EQ(load->dest.ssa.num_components, 1);
    ASSERT_EQ(load->src[0].ssa, &load_deref->dest.ssa);
-   ASSERT_EQ(loads[0x1]->src.ssa, &load->dest.ssa);
-   ASSERT_EQ(loads[0x3]->src.ssa, &load->dest.ssa);
-   ASSERT_EQ(loads[0x1]->swizzle[0], 0);
-   ASSERT_EQ(loads[0x3]->swizzle[0], 0);
+   EXPECT_INSTR_SWIZZLES(movs[0x1], load, "x");
+   EXPECT_INSTR_SWIZZLES(movs[0x3], load, "x");
 }
 
 TEST_F(nir_load_store_vectorize_test, ssbo_load_distant_64bit)
