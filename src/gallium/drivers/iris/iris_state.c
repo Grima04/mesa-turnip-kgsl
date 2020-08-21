@@ -6814,8 +6814,9 @@ iris_upload_compute_state(struct iris_context *ice,
     */
    iris_use_pinned_bo(batch, ice->state.binder.bo, false, IRIS_DOMAIN_NONE);
 
-   if ((stage_dirty & IRIS_STAGE_DIRTY_CONSTANTS_CS) &&
-       shs->sysvals_need_upload)
+   if (((stage_dirty & IRIS_STAGE_DIRTY_CONSTANTS_CS) &&
+        shs->sysvals_need_upload) ||
+       shader->kernel_input_size > 0)
       upload_sysvals(ice, MESA_SHADER_COMPUTE, grid);
 
    if (stage_dirty & IRIS_STAGE_DIRTY_BINDINGS_CS)
