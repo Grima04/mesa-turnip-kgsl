@@ -2369,14 +2369,7 @@ pandecode_jc(mali_ptr jc_gpu_va, bool bifrost, unsigned gpu_id, bool minimal)
 
                 h = PANDECODE_PTR(mem, jc_gpu_va, struct mali_job_descriptor_header);
 
-                /* On Midgard, for 32-bit jobs except for fragment jobs, the
-                 * high 32-bits of the 64-bit pointer are reused to store
-                 * something else.
-                 */
-                int offset = h->job_descriptor_size == MALI_JOB_32 &&
-                             h->job_type != MALI_JOB_TYPE_FRAGMENT ? 4 : 0;
-                mali_ptr payload_ptr = jc_gpu_va + sizeof(*h) - offset;
-
+                mali_ptr payload_ptr = jc_gpu_va + sizeof(*h);
                 payload = pandecode_fetch_gpu_mem(mem, payload_ptr, 256);
 
                 int job_no = job_descriptor_number++;
