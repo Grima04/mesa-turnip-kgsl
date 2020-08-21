@@ -144,7 +144,8 @@ nir_variable_create(nir_shader *shader, nir_variable_mode mode,
    var->data.how_declared = nir_var_declared_normally;
 
    if ((mode == nir_var_shader_in &&
-        shader->info.stage != MESA_SHADER_VERTEX) ||
+        shader->info.stage != MESA_SHADER_VERTEX &&
+        shader->info.stage != MESA_SHADER_KERNEL) ||
        (mode == nir_var_shader_out &&
         shader->info.stage != MESA_SHADER_FRAGMENT))
       var->data.interpolation = INTERP_MODE_SMOOTH;
