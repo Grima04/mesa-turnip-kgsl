@@ -51,10 +51,11 @@ panfrost_vt_set_draw_info(struct panfrost_context *ctx,
                           unsigned *vertex_count,
                           unsigned *padded_count);
 
-void
-panfrost_emit_shader_meta(struct panfrost_batch *batch,
-                          enum pipe_shader_type st,
-                          struct mali_vertex_tiler_postfix *postfix);
+mali_ptr
+panfrost_emit_compute_shader_meta(struct panfrost_batch *batch, enum pipe_shader_type stage);
+
+mali_ptr
+panfrost_emit_frag_shader_meta(struct panfrost_batch *batch);
 
 void
 panfrost_emit_viewport(struct panfrost_batch *batch,

@@ -325,8 +325,6 @@ panfrost_draw_vbo(
                                          ctx->instance_count,
                                          &vertex_postfix, &tiler_postfix,
                                          &primitive_size);
-        panfrost_emit_shader_meta(batch, PIPE_SHADER_VERTEX, &vertex_postfix);
-        panfrost_emit_shader_meta(batch, PIPE_SHADER_FRAGMENT, &tiler_postfix);
         panfrost_emit_sampler_descriptors(batch, PIPE_SHADER_VERTEX, &vertex_postfix);
         panfrost_emit_sampler_descriptors(batch, PIPE_SHADER_FRAGMENT, &tiler_postfix);
         panfrost_emit_texture_descriptors(batch, PIPE_SHADER_VERTEX, &vertex_postfix);
@@ -334,6 +332,9 @@ panfrost_draw_vbo(
         panfrost_emit_const_buf(batch, PIPE_SHADER_VERTEX, &vertex_postfix);
         panfrost_emit_const_buf(batch, PIPE_SHADER_FRAGMENT, &tiler_postfix);
         panfrost_emit_viewport(batch, &tiler_postfix);
+
+        vertex_postfix.shader = panfrost_emit_compute_shader_meta(batch, PIPE_SHADER_VERTEX);
+        tiler_postfix.shader = panfrost_emit_frag_shader_meta(batch);
 
         panfrost_vt_update_primitive_size(ctx, &tiler_prefix, &primitive_size);
 

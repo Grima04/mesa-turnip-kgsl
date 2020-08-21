@@ -306,22 +306,6 @@ panfrost_vt_set_draw_info(struct panfrost_context *ctx,
         }
 }
 
-static void
-panfrost_emit_compute_shader(struct panfrost_context *ctx,
-                          enum pipe_shader_type st,
-                          struct mali_shader_meta *meta)
-{
-        const struct panfrost_device *dev = pan_device(ctx->base.screen);
-        struct panfrost_shader_state *ss = panfrost_get_shader_state(ctx, st);
-
-        memset(meta, 0, sizeof(*meta));
-        memcpy(&meta->shader, &ss->shader, sizeof(ss->shader));
-        memcpy(&meta->midgard_props, &ss->properties, sizeof(ss->properties));
-
-        if (dev->quirks & IS_BIFROST)
-                memcpy(&meta->bifrost_preload, &ss->preload, sizeof(ss->preload));
-}
-
 static unsigned
 translate_tex_wrap(enum pipe_tex_wrap w)
 {
@@ -715,78 +699,77 @@ panfrost_emit_frag_shader(struct panfrost_context *ctx,
         }
 }
 
-void
-panfrost_emit_shader_meta(struct panfrost_batch *batch,
-                          enum pipe_shader_type st,
-                          struct mali_vertex_tiler_postfix *postfix)
+mali_ptr
+panfrost_emit_compute_shader_meta(struct panfrost_batch *batch, enum pipe_shader_type stage)
+{
+        struct panfrost_shader_state *ss = panfrost_get_shader_state(batch->ctx, stage);
+
+        panfrost_batch_add_bo(batch, ss->bo,
+                              PAN_BO_ACCESS_PRIVATE |
+                              PAN_BO_ACCESS_READ |
+                              PAN_BO_ACCESS_VERTEX_TILER);
+
+        panfrost_batch_add_bo(batch, pan_resource(ss->upload.rsrc)->bo,
+                              PAN_BO_ACCESS_PRIVATE |
+                              PAN_BO_ACCESS_READ |
+                              PAN_BO_ACCESS_VERTEX_TILER);
+
+        return pan_resource(ss->upload.rsrc)->bo->gpu + ss->upload.offset;
+}
+
+mali_ptr
+panfrost_emit_frag_shader_meta(struct panfrost_batch *batch)
 {
         struct panfrost_context *ctx = batch->ctx;
-        struct panfrost_shader_state *ss = panfrost_get_shader_state(ctx, st);
-
-        if (!ss) {
-                postfix->shader = 0;
-                return;
-        }
-
+        struct panfrost_shader_state *ss = panfrost_get_shader_state(ctx, PIPE_SHADER_FRAGMENT);
         struct mali_shader_meta meta;
 
         /* Add the shader BO to the batch. */
         panfrost_batch_add_bo(batch, ss->bo,
                               PAN_BO_ACCESS_PRIVATE |
                               PAN_BO_ACCESS_READ |
-                              panfrost_bo_access_for_stage(st));
+                              PAN_BO_ACCESS_FRAGMENT);
 
-        mali_ptr shader_ptr;
+        struct panfrost_device *dev = pan_device(ctx->base.screen);
+        unsigned rt_count = MAX2(ctx->pipe_framebuffer.nr_cbufs, 1);
+        size_t desc_size = sizeof(meta);
+        void *rts = NULL;
+        struct panfrost_transfer xfer;
+        unsigned rt_size;
 
-        if (st == PIPE_SHADER_FRAGMENT) {
-                struct panfrost_device *dev = pan_device(ctx->base.screen);
-                unsigned rt_count = MAX2(ctx->pipe_framebuffer.nr_cbufs, 1);
-                size_t desc_size = sizeof(meta);
-                void *rts = NULL;
-                struct panfrost_transfer xfer;
-                unsigned rt_size;
+        if (dev->quirks & MIDGARD_SFBD)
+                rt_size = 0;
+        else if (dev->quirks & IS_BIFROST)
+                rt_size = sizeof(struct bifrost_blend_rt);
+        else
+                rt_size = sizeof(struct midgard_blend_rt);
 
-                if (dev->quirks & MIDGARD_SFBD)
-                        rt_size = 0;
-                else if (dev->quirks & IS_BIFROST)
-                        rt_size = sizeof(struct bifrost_blend_rt);
-                else
-                        rt_size = sizeof(struct midgard_blend_rt);
+        desc_size += rt_size * rt_count;
 
-                desc_size += rt_size * rt_count;
+        if (rt_size)
+                rts = rzalloc_size(ctx, rt_size * rt_count);
 
-                if (rt_size)
-                        rts = rzalloc_size(ctx, rt_size * rt_count);
+        struct panfrost_blend_final blend[PIPE_MAX_COLOR_BUFS];
 
-                struct panfrost_blend_final blend[PIPE_MAX_COLOR_BUFS];
+        for (unsigned c = 0; c < ctx->pipe_framebuffer.nr_cbufs; ++c)
+                blend[c] = panfrost_get_blend_for_context(ctx, c);
 
-                for (unsigned c = 0; c < ctx->pipe_framebuffer.nr_cbufs; ++c)
-                        blend[c] = panfrost_get_blend_for_context(ctx, c);
+        panfrost_emit_frag_shader(ctx, &meta, blend);
 
-                panfrost_emit_frag_shader(ctx, &meta, blend);
+        if (!(dev->quirks & MIDGARD_SFBD))
+                panfrost_emit_blend(batch, rts, blend);
+        else
+                batch->draws |= PIPE_CLEAR_COLOR0;
 
-                if (!(dev->quirks & MIDGARD_SFBD))
-                        panfrost_emit_blend(batch, rts, blend);
-                else
-                        batch->draws |= PIPE_CLEAR_COLOR0;
+        xfer = panfrost_pool_alloc_aligned(&batch->pool, desc_size, sizeof(meta));
 
-                xfer = panfrost_pool_alloc_aligned(&batch->pool, desc_size, sizeof(meta));
+        memcpy(xfer.cpu, &meta, sizeof(meta));
+        memcpy(xfer.cpu + sizeof(meta), rts, rt_size * rt_count);
 
-                memcpy(xfer.cpu, &meta, sizeof(meta));
-                memcpy(xfer.cpu + sizeof(meta), rts, rt_size * rt_count);
+        if (rt_size)
+                ralloc_free(rts);
 
-                if (rt_size)
-                        ralloc_free(rts);
-
-                shader_ptr = xfer.gpu;
-        } else {
-                panfrost_emit_compute_shader(ctx, st, &meta);
-
-                shader_ptr = panfrost_pool_upload(&batch->pool, &meta,
-                                                       sizeof(meta));
-        }
-
-        postfix->shader = shader_ptr;
+        return xfer.gpu;
 }
 
 void
