@@ -2415,6 +2415,14 @@ iris_create_compute_state(struct pipe_context *ctx,
       unreachable("Unsupported IR");
    }
 
+   /* Most of iris doesn't really care about the difference between compute
+    * shaders and kernels.  We also tend to hard-code COMPUTE everywhere so
+    * it's way easier if we just normalize to COMPUTE here.
+    */
+   assert(nir->info.stage == MESA_SHADER_COMPUTE ||
+          nir->info.stage == MESA_SHADER_KERNEL);
+   nir->info.stage = MESA_SHADER_COMPUTE;
+
    struct iris_uncompiled_shader *ish =
       iris_create_uncompiled_shader(ctx, nir, NULL);
    ish->kernel_input_size = state->req_input_mem;

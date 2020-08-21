@@ -132,7 +132,6 @@ static const enum iris_program_cache_id cache_id_for_stage[] = {
    [MESA_SHADER_GEOMETRY]  = IRIS_CACHE_GS,
    [MESA_SHADER_FRAGMENT]  = IRIS_CACHE_FS,
    [MESA_SHADER_COMPUTE]   = IRIS_CACHE_CS,
-   [MESA_SHADER_KERNEL]    = IRIS_CACHE_CS,
 };
 
 /**
