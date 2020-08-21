@@ -1052,14 +1052,15 @@ panfrost_create_depth_stencil_state(struct pipe_context *pipe,
         so->base = *zsa;
 
         pan_pipe_to_stencil(&zsa->stencil[0], &so->stencil_front);
-        pan_pipe_to_stencil(&zsa->stencil[1], &so->stencil_back);
-
         so->stencil_mask_front = zsa->stencil[0].writemask;
 
-        if (zsa->stencil[1].enabled)
+        if (zsa->stencil[1].enabled) {
+                pan_pipe_to_stencil(&zsa->stencil[1], &so->stencil_back);
                 so->stencil_mask_back = zsa->stencil[1].writemask;
-        else
+        } else {
+                so->stencil_back = so->stencil_front;
                 so->stencil_mask_back = so->stencil_mask_front;
+        }
 
         /* Alpha lowered by frontend */
         assert(!zsa->alpha.enabled);
