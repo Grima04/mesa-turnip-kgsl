@@ -79,23 +79,26 @@ void aco_compile_shader(unsigned shader_count,
       aco_print_program(program.get(), stderr);
    }
 
-   /* Phi lowering */
-   aco::lower_phis(program.get());
-   aco::dominator_tree(program.get());
-   validate(program.get());
+   aco::live live_vars;
+   if (!args->is_trap_handler_shader) {
+      /* Phi lowering */
+      aco::lower_phis(program.get());
+      aco::dominator_tree(program.get());
+      validate(program.get());
 
-   /* Optimization */
-   aco::value_numbering(program.get());
-   aco::optimize(program.get());
+      /* Optimization */
+      aco::value_numbering(program.get());
+      aco::optimize(program.get());
 
-   /* cleanup and exec mask handling */
-   aco::setup_reduce_temp(program.get());
-   aco::insert_exec_mask(program.get());
-   validate(program.get());
+      /* cleanup and exec mask handling */
+      aco::setup_reduce_temp(program.get());
+      aco::insert_exec_mask(program.get());
+      validate(program.get());
 
-   /* spilling and scheduling */
-   aco::live live_vars = aco::live_var_analysis(program.get(), args->options);
-   aco::spill(program.get(), live_vars, args->options);
+      /* spilling and scheduling */
+      live_vars = aco::live_var_analysis(program.get(), args->options);
+      aco::spill(program.get(), live_vars, args->options);
+   }
 
    std::string llvm_ir;
    if (args->options->record_ir) {
@@ -114,26 +117,30 @@ void aco_compile_shader(unsigned shader_count,
 
    if (program->collect_statistics)
       aco::collect_presched_stats(program.get());
-   aco::schedule_program(program.get(), live_vars);
-   validate(program.get());
 
-   /* Register Allocation */
-   aco::register_allocation(program.get(), live_vars.live_out);
-   if (args->options->dump_shader) {
-      std::cerr << "After RA:\n";
-      aco_print_program(program.get(), stderr);
+   if (!args->is_trap_handler_shader) {
+      aco::schedule_program(program.get(), live_vars);
+      validate(program.get());
+
+      /* Register Allocation */
+      aco::register_allocation(program.get(), live_vars.live_out);
+      if (args->options->dump_shader) {
+         std::cerr << "After RA:\n";
+         aco_print_program(program.get(), stderr);
+      }
+
+      if (aco::validate_ra(program.get(), args->options)) {
+         std::cerr << "Program after RA validation failure:\n";
+         aco_print_program(program.get(), stderr);
+         abort();
+      }
+
+      validate(program.get());
+
+      aco::ssa_elimination(program.get());
    }
-
-   if (aco::validate_ra(program.get(), args->options)) {
-      std::cerr << "Program after RA validation failure:\n";
-      aco_print_program(program.get(), stderr);
-      abort();
-   }
-
-   validate(program.get());
 
    /* Lower to HW Instructions */
-   aco::ssa_elimination(program.get());
    aco::lower_to_hw_instr(program.get());
 
    /* Insert Waitcnt */
