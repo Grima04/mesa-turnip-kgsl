@@ -637,8 +637,8 @@ static const struct ac_reg_range Gfx103ContextShadowRange[] = {
       R_028714_SPI_SHADER_COL_FORMAT - R_028644_SPI_PS_INPUT_CNTL_0 + 4,
    },
    {
-      R_028750_SX_PS_DOWNCONVERT_CONTROL_GFX103,
-      R_02879C_CB_BLEND7_CONTROL - R_028750_SX_PS_DOWNCONVERT_CONTROL_GFX103 + 4,
+      R_028750_SX_PS_DOWNCONVERT_CONTROL,
+      R_02879C_CB_BLEND7_CONTROL - R_028750_SX_PS_DOWNCONVERT_CONTROL + 4,
    },
    {
       R_0287FC_GE_MAX_OUTPUT_PER_SUBGROUP,
@@ -787,7 +787,7 @@ static const struct ac_reg_range Gfx103NonShadowedRanges[] = {
    /* SQ thread trace registers are always not shadowed. */
    {
       R_008D00_SQ_THREAD_TRACE_BUF0_BASE,
-      R_008D3C_SQ_THREAD_TRACE_STATUS2_GFX103 - R_008D00_SQ_THREAD_TRACE_BUF0_BASE + 4,
+      R_008D3C_SQ_THREAD_TRACE_STATUS2 - R_008D00_SQ_THREAD_TRACE_BUF0_BASE + 4,
    },
    {
       R_030D00_SQ_THREAD_TRACE_USERDATA_0,
@@ -2893,7 +2893,7 @@ static void gfx103_emulate_clear_state(struct radeon_cmdbuf *cs, unsigned num_re
    set_context_reg_seq_array(cs, R_0281E8_COHER_DEST_BASE_HI_0, SET(CoherDestBaseHi0Gfx103));
    set_context_reg_seq_array(cs, R_02840C_VGT_MULTI_PRIM_IB_RESET_INDX, SET(VgtMultiPrimIbResetIndxGfx103));
    set_context_reg_seq_array(cs, R_028644_SPI_PS_INPUT_CNTL_0, SET(SpiPsInputCntl0Gfx103));
-   set_context_reg_seq_array(cs, R_028750_SX_PS_DOWNCONVERT_CONTROL_GFX103, SET(SxPsDownconvertControlGfx103));
+   set_context_reg_seq_array(cs, R_028750_SX_PS_DOWNCONVERT_CONTROL, SET(SxPsDownconvertControlGfx103));
    set_context_reg_seq_array(cs, R_0287FC_GE_MAX_OUTPUT_PER_SUBGROUP, SET(GeMaxOutputPerSubgroupGfx103));
    set_context_reg_seq_array(cs, R_02882C_PA_SU_PRIM_FILTER_CNTL, SET(PaSuPrimFilterCntlGfx103));
    set_context_reg_seq_array(cs, R_028A00_PA_SU_POINT_SIZE, SET(PaSuPointSizeGfx103));

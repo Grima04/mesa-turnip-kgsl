@@ -836,11 +836,11 @@ static void si_pc_emit_start(struct si_context *sctx, struct si_resource *buffer
                    COPY_DATA_IMM, NULL, 1);
 
    radeon_set_uconfig_reg(cs, R_036020_CP_PERFMON_CNTL,
-                          S_036020_PERFMON_STATE(V_036020_DISABLE_AND_RESET));
+                          S_036020_PERFMON_STATE(V_036020_CP_PERFMON_STATE_DISABLE_AND_RESET));
    radeon_emit(cs, PKT3(PKT3_EVENT_WRITE, 0, 0));
    radeon_emit(cs, EVENT_TYPE(V_028A90_PERFCOUNTER_START) | EVENT_INDEX(0));
    radeon_set_uconfig_reg(cs, R_036020_CP_PERFMON_CNTL,
-                          S_036020_PERFMON_STATE(V_036020_START_COUNTING));
+                          S_036020_PERFMON_STATE(V_036020_CP_PERFMON_STATE_START_COUNTING));
 }
 
 /* Note: The buffer was already added in si_pc_emit_start, so we don't have to
@@ -859,7 +859,7 @@ static void si_pc_emit_stop(struct si_context *sctx, struct si_resource *buffer,
    radeon_emit(cs, EVENT_TYPE(V_028A90_PERFCOUNTER_STOP) | EVENT_INDEX(0));
    radeon_set_uconfig_reg(
       cs, R_036020_CP_PERFMON_CNTL,
-      S_036020_PERFMON_STATE(V_036020_STOP_COUNTING) | S_036020_PERFMON_SAMPLE_ENABLE(1));
+      S_036020_PERFMON_STATE(V_036020_CP_PERFMON_STATE_STOP_COUNTING) | S_036020_PERFMON_SAMPLE_ENABLE(1));
 }
 
 static void si_pc_emit_read(struct si_context *sctx, struct si_pc_block *block, unsigned count,

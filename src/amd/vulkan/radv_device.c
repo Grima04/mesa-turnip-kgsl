@@ -3281,8 +3281,8 @@ radv_get_hs_offchip_param(struct radv_device *device, uint32_t *max_offchip_buff
 		if (device->physical_device->rad_info.chip_class >= GFX8)
 			--max_offchip_buffers;
 		hs_offchip_param =
-			S_03093C_OFFCHIP_BUFFERING(max_offchip_buffers) |
-			S_03093C_OFFCHIP_GRANULARITY(offchip_granularity);
+			S_03093C_OFFCHIP_BUFFERING_GFX7(max_offchip_buffers) |
+			S_03093C_OFFCHIP_GRANULARITY_GFX7(offchip_granularity);
 	} else {
 		hs_offchip_param =
 			S_0089B0_OFFCHIP_BUFFERING(max_offchip_buffers);
@@ -7419,7 +7419,7 @@ radv_init_sampler(struct radv_device *device,
 		sampler->state[2] |=
 			S_008F38_DISABLE_LSB_CEIL(device->physical_device->rad_info.chip_class <= GFX8) |
 			S_008F38_FILTER_PREC_FIX(1) |
-			S_008F38_ANISO_OVERRIDE_GFX6(device->physical_device->rad_info.chip_class >= GFX8);
+			S_008F38_ANISO_OVERRIDE_GFX8(device->physical_device->rad_info.chip_class >= GFX8);
 	}
 }
 

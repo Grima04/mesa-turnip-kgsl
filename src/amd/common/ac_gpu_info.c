@@ -1305,7 +1305,7 @@ unsigned ac_get_compute_resource_limits(struct radeon_info *info,
 		/* GFX6 */
 		if (max_waves_per_sh) {
 			unsigned limit_div16 = DIV_ROUND_UP(max_waves_per_sh, 16);
-			compute_resource_limits |= S_00B854_WAVES_PER_SH_SI(limit_div16);
+			compute_resource_limits |= S_00B854_WAVES_PER_SH_GFX6(limit_div16);
 		}
 	}
 	return compute_resource_limits;

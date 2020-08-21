@@ -2576,7 +2576,7 @@ si_conv_gl_prim_to_vertices(unsigned gl_prim)
 	case 0xc: /* GL_TRIANGLES_ADJACENCY_ARB */
 		return 6;
 	case 7: /* GL_QUADS */
-		return V_028A6C_OUTPRIM_TYPE_TRISTRIP;
+		return V_028A6C_TRISTRIP;
 	default:
 		assert(0);
 		return 0;

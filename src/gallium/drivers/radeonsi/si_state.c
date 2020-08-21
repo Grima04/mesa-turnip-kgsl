@@ -757,8 +757,8 @@ static void si_emit_clip_regs(struct si_context *sctx)
    unsigned initial_cdw = sctx->gfx_cs->current.cdw;
    unsigned pa_cl_cntl = S_02881C_VS_OUT_CCDIST0_VEC_ENA((total_mask & 0x0F) != 0) |
                          S_02881C_VS_OUT_CCDIST1_VEC_ENA((total_mask & 0xF0) != 0) |
-                         S_02881C_BYPASS_VTX_RATE_COMBINER_GFX103(sctx->chip_class >= GFX10_3) |
-                         S_02881C_BYPASS_PRIM_RATE_COMBINER_GFX103(sctx->chip_class >= GFX10_3) |
+                         S_02881C_BYPASS_VTX_RATE_COMBINER(sctx->chip_class >= GFX10_3) |
+                         S_02881C_BYPASS_PRIM_RATE_COMBINER(sctx->chip_class >= GFX10_3) |
                          clipdist_mask | (culldist_mask << 8);
 
    if (sctx->chip_class >= GFX10) {
@@ -1387,7 +1387,7 @@ static void si_emit_db_render_state(struct si_context *sctx)
       S_028010_DISABLE_ZMASK_EXPCLEAR_OPTIMIZATION(sctx->db_depth_disable_expclear) |
       S_028010_DISABLE_SMEM_EXPCLEAR_OPTIMIZATION(sctx->db_stencil_disable_expclear) |
       S_028010_DECOMPRESS_Z_ON_FLUSH(sctx->framebuffer.nr_samples >= 4) |
-      S_028010_CENTROID_COMPUTATION_MODE_GFX103(sctx->chip_class >= GFX10_3 ? 2 : 0));
+      S_028010_CENTROID_COMPUTATION_MODE(sctx->chip_class >= GFX10_3 ? 2 : 0));
 
    db_shader_control = sctx->ps_db_shader_control;
 
@@ -2883,8 +2883,8 @@ static void si_emit_framebuffer_state(struct si_context *sctx)
       meta_write_policy = V_02807C_CACHE_LRU_WR; /* cache writes */
       meta_read_policy =  V_02807C_CACHE_LRU_RD; /* cache reads */
    } else {
-      meta_write_policy = V_02807C_CACHE_STREAM_WR; /* write combine */
-      meta_read_policy =  V_02807C_CACHE_NOA_RD;    /* don't cache reads */
+      meta_write_policy = V_02807C_CACHE_STREAM;    /* write combine */
+      meta_read_policy =  V_02807C_CACHE_NOA;       /* don't cache reads */
    }
 
    /* Colorbuffers. */
@@ -3152,12 +3152,12 @@ static void si_emit_framebuffer_state(struct si_context *sctx)
          radeon_emit(cs, zb->db_stencil_base >> 32);    /* DB_STENCIL_WRITE_BASE_HI */
          radeon_emit(cs, zb->db_htile_data_base >> 32); /* DB_HTILE_DATA_BASE_HI */
          radeon_emit(cs, /* DB_RMI_L2_CACHE_CONTROL */
-                     S_02807C_Z_WR_POLICY(V_02807C_CACHE_STREAM_WR) |
-                     S_02807C_S_WR_POLICY(V_02807C_CACHE_STREAM_WR) |
+                     S_02807C_Z_WR_POLICY(V_02807C_CACHE_STREAM) |
+                     S_02807C_S_WR_POLICY(V_02807C_CACHE_STREAM) |
                      S_02807C_HTILE_WR_POLICY(meta_write_policy) |
-                     S_02807C_ZPCPSD_WR_POLICY(V_02807C_CACHE_STREAM_WR) |
-                     S_02807C_Z_RD_POLICY(V_02807C_CACHE_NOA_RD) |
-                     S_02807C_S_RD_POLICY(V_02807C_CACHE_NOA_RD) |
+                     S_02807C_ZPCPSD_WR_POLICY(V_02807C_CACHE_STREAM) |
+                     S_02807C_Z_RD_POLICY(V_02807C_CACHE_NOA) |
+                     S_02807C_S_RD_POLICY(V_02807C_CACHE_NOA) |
                      S_02807C_HTILE_RD_POLICY(meta_read_policy) |
                      S_02807C_Z_BIG_PAGE(zs_big_page) |
                      S_02807C_S_BIG_PAGE(zs_big_page));
@@ -3254,11 +3254,11 @@ static void si_emit_framebuffer_state(struct si_context *sctx)
                              S_028410_CMASK_WR_POLICY(meta_write_policy) |
                              S_028410_FMASK_WR_POLICY(meta_write_policy) |
                              S_028410_DCC_WR_POLICY(meta_write_policy) |
-                             S_028410_COLOR_WR_POLICY(V_028410_CACHE_STREAM_WR) |
+                             S_028410_COLOR_WR_POLICY(V_028410_CACHE_STREAM) |
                              S_028410_CMASK_RD_POLICY(meta_read_policy) |
                              S_028410_FMASK_RD_POLICY(meta_read_policy) |
                              S_028410_DCC_RD_POLICY(meta_read_policy) |
-                             S_028410_COLOR_RD_POLICY(V_028410_CACHE_NOA_RD) |
+                             S_028410_COLOR_RD_POLICY(V_028410_CACHE_NOA) |
                              S_028410_FMASK_BIG_PAGE(color_big_page) |
                              S_028410_COLOR_BIG_PAGE(color_big_page));
    }
@@ -3489,7 +3489,7 @@ static void si_emit_msaa_config(struct si_context *sctx)
       sc_aa_config = S_028BE0_MSAA_NUM_SAMPLES(log_samples) |
                      S_028BE0_MAX_SAMPLE_DIST(max_dist[log_samples]) |
                      S_028BE0_MSAA_EXPOSED_SAMPLES(log_samples) |
-                     S_028BE0_COVERED_CENTROID_IS_CENTER_GFX103(sctx->chip_class >= GFX10_3);
+                     S_028BE0_COVERED_CENTROID_IS_CENTER(sctx->chip_class >= GFX10_3);
 
       if (sctx->framebuffer.nr_samples > 1) {
          db_eqaa |= S_028804_MAX_ANCHOR_SAMPLES(log_z_samples) |
@@ -4043,43 +4043,43 @@ static void si_make_texture_descriptor(struct si_screen *screen, struct si_textu
          data_format = V_008F14_IMG_DATA_FORMAT_FMASK;
          switch (FMASK(res->nr_samples, res->nr_storage_samples)) {
          case FMASK(2, 1):
-            num_format = V_008F14_IMG_FMASK_8_2_1;
+            num_format = V_008F14_IMG_NUM_FORMAT_FMASK_8_2_1;
             break;
          case FMASK(2, 2):
-            num_format = V_008F14_IMG_FMASK_8_2_2;
+            num_format = V_008F14_IMG_NUM_FORMAT_FMASK_8_2_2;
             break;
          case FMASK(4, 1):
-            num_format = V_008F14_IMG_FMASK_8_4_1;
+            num_format = V_008F14_IMG_NUM_FORMAT_FMASK_8_4_1;
             break;
          case FMASK(4, 2):
-            num_format = V_008F14_IMG_FMASK_8_4_2;
+            num_format = V_008F14_IMG_NUM_FORMAT_FMASK_8_4_2;
             break;
          case FMASK(4, 4):
-            num_format = V_008F14_IMG_FMASK_8_4_4;
+            num_format = V_008F14_IMG_NUM_FORMAT_FMASK_8_4_4;
             break;
          case FMASK(8, 1):
-            num_format = V_008F14_IMG_FMASK_8_8_1;
+            num_format = V_008F14_IMG_NUM_FORMAT_FMASK_8_8_1;
             break;
          case FMASK(8, 2):
-            num_format = V_008F14_IMG_FMASK_16_8_2;
+            num_format = V_008F14_IMG_NUM_FORMAT_FMASK_16_8_2;
             break;
          case FMASK(8, 4):
-            num_format = V_008F14_IMG_FMASK_32_8_4;
+            num_format = V_008F14_IMG_NUM_FORMAT_FMASK_32_8_4;
             break;
          case FMASK(8, 8):
-            num_format = V_008F14_IMG_FMASK_32_8_8;
+            num_format = V_008F14_IMG_NUM_FORMAT_FMASK_32_8_8;
             break;
          case FMASK(16, 1):
-            num_format = V_008F14_IMG_FMASK_16_16_1;
+            num_format = V_008F14_IMG_NUM_FORMAT_FMASK_16_16_1;
             break;
          case FMASK(16, 2):
-            num_format = V_008F14_IMG_FMASK_32_16_2;
+            num_format = V_008F14_IMG_NUM_FORMAT_FMASK_32_16_2;
             break;
          case FMASK(16, 4):
-            num_format = V_008F14_IMG_FMASK_64_16_4;
+            num_format = V_008F14_IMG_NUM_FORMAT_FMASK_64_16_4;
             break;
          case FMASK(16, 8):
-            num_format = V_008F14_IMG_FMASK_64_16_8;
+            num_format = V_008F14_IMG_NUM_FORMAT_FMASK_64_16_8;
             break;
          default:
             unreachable("invalid nr_samples");
@@ -4461,7 +4461,7 @@ static void *si_create_sampler_state(struct pipe_context *ctx,
    } else {
       rstate->val[2] |= S_008F38_DISABLE_LSB_CEIL(sctx->chip_class <= GFX8) |
                         S_008F38_FILTER_PREC_FIX(1) |
-                        S_008F38_ANISO_OVERRIDE_GFX6(sctx->chip_class >= GFX8);
+                        S_008F38_ANISO_OVERRIDE_GFX8(sctx->chip_class >= GFX8);
    }
 
    /* Create sampler resource for integer textures. */
@@ -5347,7 +5347,7 @@ void si_init_cs_preamble_state(struct si_context *sctx, bool uses_reg_shadowing)
    }
 
    if (sctx->chip_class >= GFX10_3) {
-      si_pm4_set_reg(pm4, R_028750_SX_PS_DOWNCONVERT_CONTROL_GFX103, 0xff);
+      si_pm4_set_reg(pm4, R_028750_SX_PS_DOWNCONVERT_CONTROL, 0xff);
       si_pm4_set_reg(pm4, 0x28848, 1 << 9); /* This fixes sample shading. */
    }
 

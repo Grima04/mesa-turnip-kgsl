@@ -765,14 +765,25 @@ radv_dump_sq_hw_regs(struct radv_device *device)
 	struct radv_sq_hw_reg *regs = (struct radv_sq_hw_reg *)&device->tma_ptr[6];
 
 	fprintf(stderr, "\nHardware registers:\n");
-	ac_dump_reg(stderr, device->physical_device->rad_info.chip_class,
-		    R_000002_SQ_HW_REG_STATUS, regs->status, ~0);
-	ac_dump_reg(stderr, device->physical_device->rad_info.chip_class,
-		    R_000003_SQ_HW_REG_TRAP_STS, regs->trap_sts, ~0);
-	ac_dump_reg(stderr, device->physical_device->rad_info.chip_class,
-		    R_000004_SQ_HW_REG_HW_ID, regs->hw_id, ~0);
-	ac_dump_reg(stderr, device->physical_device->rad_info.chip_class,
-		    R_000007_SQ_HW_REG_IB_STS, regs->ib_sts, ~0);
+	if (device->physical_device->rad_info.chip_class >= GFX10) {
+		ac_dump_reg(stderr, device->physical_device->rad_info.chip_class,
+			    R_000408_SQ_WAVE_STATUS, regs->status, ~0);
+		ac_dump_reg(stderr, device->physical_device->rad_info.chip_class,
+			    R_00040C_SQ_WAVE_TRAPSTS, regs->trap_sts, ~0);
+		ac_dump_reg(stderr, device->physical_device->rad_info.chip_class,
+			    R_00045C_SQ_WAVE_HW_ID1, regs->hw_id, ~0);
+		ac_dump_reg(stderr, device->physical_device->rad_info.chip_class,
+			    R_00041C_SQ_WAVE_IB_STS, regs->ib_sts, ~0);
+	} else {
+		ac_dump_reg(stderr, device->physical_device->rad_info.chip_class,
+			    R_000048_SQ_WAVE_STATUS, regs->status, ~0);
+		ac_dump_reg(stderr, device->physical_device->rad_info.chip_class,
+			    R_00004C_SQ_WAVE_TRAPSTS, regs->trap_sts, ~0);
+		ac_dump_reg(stderr, device->physical_device->rad_info.chip_class,
+			    R_000050_SQ_WAVE_HW_ID, regs->hw_id, ~0);
+		ac_dump_reg(stderr, device->physical_device->rad_info.chip_class,
+			    R_00005C_SQ_WAVE_IB_STS, regs->ib_sts, ~0);
+	}
 	fprintf(stderr, "\n\n");
 }
 

@@ -1746,8 +1746,8 @@ radv_emit_fb_ds_state(struct radv_cmd_buffer *cmd_buffer,
 			meta_write_policy = V_02807C_CACHE_LRU_WR; /* cache writes */
 			meta_read_policy =  V_02807C_CACHE_LRU_RD; /* cache reads */
 		} else {
-			meta_write_policy = V_02807C_CACHE_STREAM_WR; /* write combine */
-			meta_read_policy =  V_02807C_CACHE_NOA_RD;    /* don't cache reads */
+			meta_write_policy = V_02807C_CACHE_STREAM;    /* write combine */
+			meta_read_policy =  V_02807C_CACHE_NOA;       /* don't cache reads */
 		}
 
 		bool zs_big_page = cmd_buffer->device->physical_device->rad_info.chip_class >= GFX10_3 &&
@@ -1772,12 +1772,12 @@ radv_emit_fb_ds_state(struct radv_cmd_buffer *cmd_buffer,
 		radeon_emit(cmd_buffer->cs, ds->db_stencil_read_base >> 32);
 		radeon_emit(cmd_buffer->cs, ds->db_htile_data_base >> 32);
 		radeon_emit(cmd_buffer->cs,
-			    S_02807C_Z_WR_POLICY(V_02807C_CACHE_STREAM_WR) |
-			    S_02807C_S_WR_POLICY(V_02807C_CACHE_STREAM_WR) |
+			    S_02807C_Z_WR_POLICY(V_02807C_CACHE_STREAM) |
+			    S_02807C_S_WR_POLICY(V_02807C_CACHE_STREAM) |
 			    S_02807C_HTILE_WR_POLICY(meta_write_policy) |
-			    S_02807C_ZPCPSD_WR_POLICY(V_02807C_CACHE_STREAM_WR) |
-			    S_02807C_Z_RD_POLICY(V_02807C_CACHE_NOA_RD) |
-			    S_02807C_S_RD_POLICY(V_02807C_CACHE_NOA_RD) |
+			    S_02807C_ZPCPSD_WR_POLICY(V_02807C_CACHE_STREAM) |
+			    S_02807C_Z_RD_POLICY(V_02807C_CACHE_NOA) |
+			    S_02807C_S_RD_POLICY(V_02807C_CACHE_NOA) |
 			    S_02807C_HTILE_RD_POLICY(meta_read_policy) |
 			    S_02807C_Z_BIG_PAGE(zs_big_page) |
 			    S_02807C_S_BIG_PAGE(zs_big_page));
@@ -2336,19 +2336,19 @@ radv_emit_framebuffer_state(struct radv_cmd_buffer *cmd_buffer)
 			meta_write_policy = V_02807C_CACHE_LRU_WR; /* cache writes */
 			meta_read_policy =  V_02807C_CACHE_LRU_RD; /* cache reads */
 		} else {
-			meta_write_policy = V_02807C_CACHE_STREAM_WR; /* write combine */
-			meta_read_policy =  V_02807C_CACHE_NOA_RD;    /* don't cache reads */
+			meta_write_policy = V_02807C_CACHE_STREAM;    /* write combine */
+			meta_read_policy =  V_02807C_CACHE_NOA;       /* don't cache reads */
 		}
 
 		radeon_set_context_reg(cmd_buffer->cs, R_028410_CB_RMI_GL2_CACHE_CONTROL,
 				       S_028410_CMASK_WR_POLICY(meta_write_policy) |
 				       S_028410_FMASK_WR_POLICY(meta_write_policy) |
 				       S_028410_DCC_WR_POLICY(meta_write_policy)  |
-				       S_028410_COLOR_WR_POLICY(V_028410_CACHE_STREAM_WR) |
+				       S_028410_COLOR_WR_POLICY(V_028410_CACHE_STREAM) |
 				       S_028410_CMASK_RD_POLICY(meta_read_policy) |
 				       S_028410_FMASK_RD_POLICY(meta_read_policy) |
 				       S_028410_DCC_RD_POLICY(meta_read_policy) |
-				       S_028410_COLOR_RD_POLICY(V_028410_CACHE_NOA_RD) |
+				       S_028410_COLOR_RD_POLICY(V_028410_CACHE_NOA) |
 				       S_028410_FMASK_BIG_PAGE(color_big_page) |
 				       S_028410_COLOR_BIG_PAGE(color_big_page));
 	}

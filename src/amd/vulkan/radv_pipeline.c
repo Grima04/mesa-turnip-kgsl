@@ -1176,7 +1176,7 @@ radv_pipeline_init_multisample_state(struct radv_pipeline *pipeline,
 		ms->pa_sc_aa_config |= S_028BE0_MSAA_NUM_SAMPLES(log_samples) |
 			S_028BE0_MAX_SAMPLE_DIST(radv_get_default_max_sample_dist(log_samples)) |
 			S_028BE0_MSAA_EXPOSED_SAMPLES(log_samples) | /* CM_R_028BE0_PA_SC_AA_CONFIG */
-			S_028BE0_COVERED_CENTROID_IS_CENTER_GFX103(pipeline->device->physical_device->rad_info.chip_class >= GFX10_3);
+			S_028BE0_COVERED_CENTROID_IS_CENTER(pipeline->device->physical_device->rad_info.chip_class >= GFX10_3);
 		ms->pa_sc_mode_cntl_1 |= S_028A4C_PS_ITER_SAMPLE(ps_iter_samples > 1);
 		if (ps_iter_samples > 1)
 			pipeline->graphics.spi_baryc_cntl |= S_0286E0_POS_FLOAT_LOCATION(2);
@@ -1217,18 +1217,18 @@ si_conv_gl_prim_to_gs_out(unsigned gl_prim)
 {
 	switch (gl_prim) {
 	case 0: /* GL_POINTS */
-		return V_028A6C_OUTPRIM_TYPE_POINTLIST;
+		return V_028A6C_POINTLIST;
 	case 1: /* GL_LINES */
 	case 3: /* GL_LINE_STRIP */
 	case 0xA: /* GL_LINE_STRIP_ADJACENCY_ARB */
 	case 0x8E7A: /* GL_ISOLINES */
-		return V_028A6C_OUTPRIM_TYPE_LINESTRIP;
+		return V_028A6C_LINESTRIP;
 
 	case 4: /* GL_TRIANGLES */
 	case 0xc: /* GL_TRIANGLES_ADJACENCY_ARB */
 	case 5: /* GL_TRIANGLE_STRIP */
 	case 7: /* GL_QUADS */
-		return V_028A6C_OUTPRIM_TYPE_TRISTRIP;
+		return V_028A6C_TRISTRIP;
 	default:
 		assert(0);
 		return 0;
@@ -1241,18 +1241,18 @@ si_conv_prim_to_gs_out(enum VkPrimitiveTopology topology)
 	switch (topology) {
 	case VK_PRIMITIVE_TOPOLOGY_POINT_LIST:
 	case VK_PRIMITIVE_TOPOLOGY_PATCH_LIST:
-		return V_028A6C_OUTPRIM_TYPE_POINTLIST;
+		return V_028A6C_POINTLIST;
 	case VK_PRIMITIVE_TOPOLOGY_LINE_LIST:
 	case VK_PRIMITIVE_TOPOLOGY_LINE_STRIP:
 	case VK_PRIMITIVE_TOPOLOGY_LINE_LIST_WITH_ADJACENCY:
 	case VK_PRIMITIVE_TOPOLOGY_LINE_STRIP_WITH_ADJACENCY:
-		return V_028A6C_OUTPRIM_TYPE_LINESTRIP;
+		return V_028A6C_LINESTRIP;
 	case VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST:
 	case VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP:
 	case VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN:
 	case VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST_WITH_ADJACENCY:
 	case VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP_WITH_ADJACENCY:
-		return V_028A6C_OUTPRIM_TYPE_TRISTRIP;
+		return V_028A6C_TRISTRIP;
 	default:
 		assert(0);
 		return 0;
@@ -1450,11 +1450,11 @@ radv_pipeline_init_input_assembly_state(struct radv_pipeline *pipeline,
 	pipeline->graphics.can_use_guardband = radv_prim_can_use_guardband(ia_state->topology);
 
 	if (radv_pipeline_has_gs(pipeline)) {
-		if (si_conv_gl_prim_to_gs_out(gs->info.gs.output_prim) == V_028A6C_OUTPRIM_TYPE_TRISTRIP)
+		if (si_conv_gl_prim_to_gs_out(gs->info.gs.output_prim) == V_028A6C_TRISTRIP)
 			pipeline->graphics.can_use_guardband = true;
 	} else if (radv_pipeline_has_tess(pipeline)) {
 		if (!tes->info.tes.point_mode &&
-		    si_conv_gl_prim_to_gs_out(tes->info.tes.primitive_mode) == V_028A6C_OUTPRIM_TYPE_TRISTRIP)
+		    si_conv_gl_prim_to_gs_out(tes->info.tes.primitive_mode) == V_028A6C_TRISTRIP)
 			pipeline->graphics.can_use_guardband = true;
 	}
 
@@ -3690,7 +3690,7 @@ radv_pipeline_generate_depth_stencil_state(struct radeon_cmdbuf *ctx_cs,
 		db_render_override2 |= S_028010_DECOMPRESS_Z_ON_FLUSH(attachment->samples > 2);
 
 		if (pipeline->device->physical_device->rad_info.chip_class >= GFX10_3)
-			db_render_override2 |= S_028010_CENTROID_COMPUTATION_MODE_GFX103(2);
+			db_render_override2 |= S_028010_CENTROID_COMPUTATION_MODE(2);
 	}
 
 	if (attachment && extra) {
@@ -3921,8 +3921,8 @@ radv_pipeline_generate_hw_vs(struct radeon_cmdbuf *ctx_cs,
 	                       S_02881C_VS_OUT_MISC_SIDE_BUS_ENA(misc_vec_ena) |
 	                       S_02881C_VS_OUT_CCDIST0_VEC_ENA((total_mask & 0x0f) != 0) |
 	                       S_02881C_VS_OUT_CCDIST1_VEC_ENA((total_mask & 0xf0) != 0) |
-			       S_02881C_BYPASS_PRIM_RATE_COMBINER_GFX103(pipeline->device->physical_device->rad_info.chip_class >= GFX10_3) |
-			       S_02881C_BYPASS_VTX_RATE_COMBINER_GFX103(pipeline->device->physical_device->rad_info.chip_class >= GFX10_3) |
+			       S_02881C_BYPASS_PRIM_RATE_COMBINER(pipeline->device->physical_device->rad_info.chip_class >= GFX10_3) |
+			       S_02881C_BYPASS_VTX_RATE_COMBINER(pipeline->device->physical_device->rad_info.chip_class >= GFX10_3) |
 	                       cull_dist_mask << 8 |
 	                       clip_dist_mask);
 
@@ -4037,8 +4037,8 @@ radv_pipeline_generate_hw_ngg(struct radeon_cmdbuf *ctx_cs,
 	                       S_02881C_VS_OUT_MISC_SIDE_BUS_ENA(misc_vec_ena) |
 	                       S_02881C_VS_OUT_CCDIST0_VEC_ENA((total_mask & 0x0f) != 0) |
 	                       S_02881C_VS_OUT_CCDIST1_VEC_ENA((total_mask & 0xf0) != 0) |
-			       S_02881C_BYPASS_PRIM_RATE_COMBINER_GFX103(pipeline->device->physical_device->rad_info.chip_class >= GFX10_3) |
-			       S_02881C_BYPASS_VTX_RATE_COMBINER_GFX103(pipeline->device->physical_device->rad_info.chip_class >= GFX10_3) |
+			       S_02881C_BYPASS_PRIM_RATE_COMBINER(pipeline->device->physical_device->rad_info.chip_class >= GFX10_3) |
+			       S_02881C_BYPASS_VTX_RATE_COMBINER(pipeline->device->physical_device->rad_info.chip_class >= GFX10_3) |
 	                       cull_dist_mask << 8 |
 	                       clip_dist_mask);
 
@@ -4079,7 +4079,7 @@ radv_pipeline_generate_hw_ngg(struct radeon_cmdbuf *ctx_cs,
 			       S_028838_INDEX_BUF_EDGE_FLAG_ENA(!radv_pipeline_has_tess(pipeline) &&
 			                                        !radv_pipeline_has_gs(pipeline)) |
 			       /* Reuse for NGG. */
-			       S_028838_VERTEX_REUSE_DEPTH_GFX103(pipeline->device->physical_device->rad_info.chip_class >= GFX10_3 ? 30 : 0));
+			       S_028838_VERTEX_REUSE_DEPTH(pipeline->device->physical_device->rad_info.chip_class >= GFX10_3 ? 30 : 0));
 
 	ge_cntl = S_03096C_PRIM_GRP_SIZE(ngg_state->max_gsprims) |
 		  S_03096C_VERT_GRP_SIZE(256) | /* 256 = disable vertex grouping */
@@ -4257,11 +4257,11 @@ radv_pipeline_generate_tess_state(struct radeon_cmdbuf *ctx_cs,
 	if (pipeline->device->physical_device->rad_info.has_distributed_tess) {
 		if (pipeline->device->physical_device->rad_info.family == CHIP_FIJI ||
 		    pipeline->device->physical_device->rad_info.family >= CHIP_POLARIS10)
-			distribution_mode = V_028B6C_DISTRIBUTION_MODE_TRAPEZOIDS;
+			distribution_mode = V_028B6C_TRAPEZOIDS;
 		else
-			distribution_mode = V_028B6C_DISTRIBUTION_MODE_DONUTS;
+			distribution_mode = V_028B6C_DONUTS;
 	} else
-		distribution_mode = V_028B6C_DISTRIBUTION_MODE_NO_DIST;
+		distribution_mode = V_028B6C_NO_DIST;
 
 	radeon_set_context_reg(ctx_cs, R_028B6C_VGT_TF_PARAM,
 			       S_028B6C_TYPE(type) |
@@ -4729,7 +4729,7 @@ radv_pipeline_generate_vgt_gs_out(struct radeon_cmdbuf *ctx_cs,
 		gs_out = si_conv_gl_prim_to_gs_out(pipeline->shaders[MESA_SHADER_GEOMETRY]->info.gs.output_prim);
 	} else if (radv_pipeline_has_tess(pipeline)) {
 		if (pipeline->shaders[MESA_SHADER_TESS_EVAL]->info.tes.point_mode) {
-			gs_out = V_028A6C_OUTPRIM_TYPE_POINTLIST;
+			gs_out = V_028A6C_POINTLIST;
 		} else {
 			gs_out = si_conv_gl_prim_to_gs_out(pipeline->shaders[MESA_SHADER_TESS_EVAL]->info.tes.primitive_mode);
 		}
@@ -4738,9 +4738,9 @@ radv_pipeline_generate_vgt_gs_out(struct radeon_cmdbuf *ctx_cs,
 	}
 
 	if (extra && extra->use_rectlist) {
-		gs_out = V_028A6C_OUTPRIM_TYPE_TRISTRIP;
+		gs_out = V_028A6C_TRISTRIP;
 		if (radv_pipeline_has_ngg(pipeline))
-			gs_out = V_028A6C_VGT_OUT_RECT_V0;
+			gs_out = V_028A6C_RECTLIST;
 	}
 
 	radeon_set_context_reg(ctx_cs, R_028A6C_VGT_GS_OUT_PRIM_TYPE, gs_out);

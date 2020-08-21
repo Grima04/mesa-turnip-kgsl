@@ -433,7 +433,7 @@ si_emit_graphics(struct radv_device *device,
 		radeon_set_sh_reg(cs, R_00B1C0_SPI_SHADER_REQ_CTRL_VS, 0);
 
 		if (physical_device->rad_info.chip_class >= GFX10_3) {
-			radeon_set_context_reg(cs, R_028750_SX_PS_DOWNCONVERT_CONTROL_GFX103, 0xff);
+			radeon_set_context_reg(cs, R_028750_SX_PS_DOWNCONVERT_CONTROL, 0xff);
 			radeon_set_context_reg(cs, 0x28848, 1 << 9); /* This fixes sample shading. */
 		}
 

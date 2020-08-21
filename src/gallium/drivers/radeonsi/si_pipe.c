@@ -1128,8 +1128,8 @@ static struct pipe_screen *radeonsi_screen_create_impl(struct radeon_winsys *ws,
    } else if (sscreen->info.chip_class >= GFX7) {
       if (sscreen->info.chip_class >= GFX8)
          --max_offchip_buffers;
-      sscreen->vgt_hs_offchip_param = S_03093C_OFFCHIP_BUFFERING(max_offchip_buffers) |
-                                      S_03093C_OFFCHIP_GRANULARITY(offchip_granularity);
+      sscreen->vgt_hs_offchip_param = S_03093C_OFFCHIP_BUFFERING_GFX7(max_offchip_buffers) |
+                                      S_03093C_OFFCHIP_GRANULARITY_GFX7(offchip_granularity);
    } else {
       assert(offchip_granularity == V_03093C_X_8K_DWORDS);
       sscreen->vgt_hs_offchip_param = S_0089B0_OFFCHIP_BUFFERING(max_offchip_buffers);

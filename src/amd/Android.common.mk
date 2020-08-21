@@ -59,10 +59,16 @@ $(intermediates)/common/sid_tables.h: $(SID_TABLES) $(SID_TABLES_INPUTS)
 AMDGFXREGS := $(LOCAL_PATH)/registers/makeregheader.py
 
 AMDGFXREGS_INPUTS := \
-	$(LOCAL_PATH)/registers/amdgfxregs.json \
-	$(LOCAL_PATH)/registers/pkt3.json \
+	$(LOCAL_PATH)/registers/gfx6.json \
+	$(LOCAL_PATH)/registers/gfx7.json \
+	$(LOCAL_PATH)/registers/gfx8.json \
+	$(LOCAL_PATH)/registers/gfx81.json \
+	$(LOCAL_PATH)/registers/gfx9.json \
 	$(LOCAL_PATH)/registers/gfx10.json \
-	$(LOCAL_PATH)/registers/gfx10-rsrc.json
+	$(LOCAL_PATH)/registers/gfx103.json \
+	$(LOCAL_PATH)/registers/pkt3.json \
+	$(LOCAL_PATH)/registers/gfx10-rsrc.json \
+	$(LOCAL_PATH)/registers/registers-manually-defined.json
 
 $(intermediates)/common/amdgfxregs.h: $(AMDGFXREGS) $(AMDGFXREGS_INPUTS)
 	@mkdir -p $(dir $@)
