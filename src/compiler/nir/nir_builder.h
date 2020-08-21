@@ -708,8 +708,7 @@ static inline nir_ssa_def *
 nir_iadd_imm(nir_builder *build, nir_ssa_def *x, uint64_t y)
 {
    assert(x->bit_size <= 64);
-   if (x->bit_size < 64)
-      y &= (1ull << x->bit_size) - 1;
+   y &= BITFIELD64_MASK(x->bit_size);
 
    if (y == 0) {
       return x;
@@ -722,8 +721,7 @@ static inline nir_ssa_def *
 _nir_mul_imm(nir_builder *build, nir_ssa_def *x, uint64_t y, bool amul)
 {
    assert(x->bit_size <= 64);
-   if (x->bit_size < 64)
-      y &= (1ull << x->bit_size) - 1;
+   y &= BITFIELD64_MASK(x->bit_size);
 
    if (y == 0) {
       return nir_imm_intN_t(build, 0, x->bit_size);
@@ -766,6 +764,7 @@ nir_fmul_imm(nir_builder *build, nir_ssa_def *x, double y)
 static inline nir_ssa_def *
 nir_iand_imm(nir_builder *build, nir_ssa_def *x, uint64_t y)
 {
+   assert(x->bit_size <= 64);
    y &= BITFIELD64_MASK(x->bit_size);
 
    if (y == 0) {
