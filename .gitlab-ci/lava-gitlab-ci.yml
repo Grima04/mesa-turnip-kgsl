@@ -278,12 +278,23 @@ radeonsi-stoney-gles2:amd64:
   tags:
     - mesa-ci-aarch64-lava-collabora
 
-# Commented out while waiting for more DUTs to come online
-.radeonsi-stoney-gles3:amd64:
+radeonsi-stoney-gles3:amd64:
   extends:
     - radeonsi-stoney-gles2:amd64
   variables:
     DEQP_VERSION: gles3
+    CI_NODE_INDEX: 1
+    CI_NODE_TOTAL: 4
+  tags:
+    - mesa-ci-aarch64-lava-collabora
+
+radeonsi-stoney-gles31:amd64:
+  extends:
+    - radeonsi-stoney-gles2:amd64
+  variables:
+    DEQP_VERSION: gles31
+    CI_NODE_INDEX: 1
+    CI_NODE_TOTAL: 5
   tags:
     - mesa-ci-aarch64-lava-collabora
 
