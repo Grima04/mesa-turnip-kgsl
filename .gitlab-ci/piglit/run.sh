@@ -8,7 +8,10 @@ RESULTS="$(pwd)/results"
 mkdir -p "$RESULTS"
 
 # Set up the driver environment.
-export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:$INSTALL/lib/"
+# Modifiying here directly LD_LIBRARY_PATH may cause problems when
+# using a command wrapper. Hence, we will just set it when running the
+# command.
+export __LD_LIBRARY_PATH="$LD_LIBRARY_PATH:$INSTALL/lib/"
 
 # Sanity check to ensure that our environment is sufficient to make our tests
 # run against the Mesa built by CI, rather than any installed distro version.
@@ -24,7 +27,7 @@ if [ "$VK_DRIVER" ]; then
     if [ "x$PIGLIT_PROFILES" = "xreplay" ]; then
         # Set environment for VulkanTools' VK_LAYER_LUNARG_screenshot layer.
         export VK_LAYER_PATH="$VK_LAYER_PATH:/VulkanTools/build/etc/vulkan/explicit_layer.d"
-        export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:/VulkanTools/build/lib"
+        export __LD_LIBRARY_PATH="$__LD_LIBRARY_PATH:/VulkanTools/build/lib"
 
         # Set environment for Wine.
         export WINEDEBUG="-all"
@@ -60,7 +63,7 @@ else
     if [ "x$PIGLIT_PROFILES" = "xreplay" ]; then
         # Set environment for renderdoc libraries.
         export PYTHONPATH="$PYTHONPATH:/renderdoc/build/lib"
-        export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:/renderdoc/build/lib"
+        export __LD_LIBRARY_PATH="$__LD_LIBRARY_PATH:/renderdoc/build/lib"
 
         # Set environment for apitrace executable.
         export PATH="/apitrace/build:$PATH"
@@ -78,7 +81,7 @@ else
     if [ "x$EGL_PLATFORM" = "xsurfaceless" ]; then
 
         # Set environment for the waffle library.
-        export LD_LIBRARY_PATH="/waffle/build/lib:$LD_LIBRARY_PATH"
+        export __LD_LIBRARY_PATH="/waffle/build/lib:$__LD_LIBRARY_PATH"
 
         # Set environment for wflinfo executable.
         export PATH="/waffle/build/bin:$PATH"
@@ -93,6 +96,7 @@ else
             # piglit is to use virpipe, and virgl_test_server llvmpipe
             export GALLIUM_DRIVER="$GALLIUM_DRIVER"
 
+            LD_LIBRARY_PATH="$__LD_LIBRARY_PATH" \
             GALLIUM_DRIVER=llvmpipe \
             GALLIVM_PERF="nopt,no_filter_hacks" \
             VTEST_USE_EGL_SURFACELESS=1 \
@@ -116,7 +120,7 @@ PIGLIT_OPTIONS=$(printf "%s" "$PIGLIT_OPTIONS")
 
 PIGLIT_CMD="./piglit run -j${FDO_CI_CONCURRENT:-4} $PIGLIT_OPTIONS $PIGLIT_PROFILES "$(/usr/bin/printf "%q" "$RESULTS")
 
-RUN_CMD="$SANITY_MESA_VERSION_CMD && $PIGLIT_CMD"
+RUN_CMD="export LD_LIBRARY_PATH=$__LD_LIBRARY_PATH; $SANITY_MESA_VERSION_CMD && $PIGLIT_CMD"
 
 if [ "$RUN_CMD_WRAPPER" ]; then
     RUN_CMD="set +e; $RUN_CMD_WRAPPER "$(/usr/bin/printf "%q" "$RUN_CMD")"; set -e"
