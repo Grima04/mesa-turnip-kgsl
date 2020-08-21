@@ -1747,3 +1747,83 @@ TEST_F(nir_load_store_vectorize_test, ssbo_offset_overflow_robust)
 
    ASSERT_EQ(count_intrinsics(nir_intrinsic_load_ssbo), 2);
 }
+
+TEST_F(nir_load_store_vectorize_test, ubo_alignment_16_4)
+{
+   nir_ssa_def *offset = nir_load_local_invocation_index(b);
+   offset = nir_imul_imm(b, offset, 16);
+   offset = nir_iadd_imm(b, offset, 4);
+   nir_intrinsic_instr *load = create_indirect_load(nir_var_mem_ubo, 0, offset,
+                                                    0x1);
+
+   EXPECT_TRUE(run_vectorizer(nir_var_mem_ubo));
+   EXPECT_EQ(nir_intrinsic_align_mul(load), 16);
+   EXPECT_EQ(nir_intrinsic_align_offset(load), 4);
+}
+
+TEST_F(nir_load_store_vectorize_test, ubo_alignment_16_4_swapped)
+{
+   nir_ssa_def *offset = nir_load_local_invocation_index(b);
+   offset = nir_iadd_imm(b, offset, 1);
+   offset = nir_imul_imm(b, offset, 16);
+   offset = nir_iadd_imm(b, offset, 4);
+   nir_intrinsic_instr *load =
+      create_indirect_load(nir_var_mem_ubo, 0, offset, 0x1);
+
+   EXPECT_TRUE(run_vectorizer(nir_var_mem_ubo));
+   EXPECT_EQ(nir_intrinsic_align_mul(load), 16);
+   EXPECT_EQ(nir_intrinsic_align_offset(load), 4);
+}
+
+/* Check offset % mul != 0 */
+TEST_F(nir_load_store_vectorize_test, ubo_alignment_16_20)
+{
+   nir_ssa_def *offset = nir_load_local_invocation_index(b);
+   offset = nir_imul_imm(b, offset, 16);
+   offset = nir_iadd_imm(b, offset, 20);
+   nir_intrinsic_instr *load = create_indirect_load(nir_var_mem_ubo, 0, offset,
+                                                    0x1);
+
+   EXPECT_TRUE(run_vectorizer(nir_var_mem_ubo));
+   EXPECT_EQ(nir_intrinsic_align_mul(load), 16);
+   EXPECT_EQ(nir_intrinsic_align_offset(load), 4);
+}
+
+/* Check that we don't upgrade to non-power-of-two alignments. */
+TEST_F(nir_load_store_vectorize_test, ubo_alignment_24_4)
+{
+   nir_ssa_def *offset = nir_load_local_invocation_index(b);
+   offset = nir_imul_imm(b, offset, 24);
+   offset = nir_iadd_imm(b, offset, 4);
+   nir_intrinsic_instr *load =
+      create_indirect_load(nir_var_mem_ubo, 0, offset, 0x1);
+
+   EXPECT_TRUE(run_vectorizer(nir_var_mem_ubo));
+   EXPECT_EQ(nir_intrinsic_align_mul(load), 8);
+   EXPECT_EQ(nir_intrinsic_align_offset(load), 4);
+}
+
+/* Check that we don't upgrade to non-power-of-two alignments. */
+TEST_F(nir_load_store_vectorize_test, ubo_alignment_64_16_8)
+{
+   nir_ssa_def *x = nir_imul_imm(b, nir_load_local_invocation_index(b), 64);
+   nir_ssa_def *y = nir_imul_imm(b, nir_load_instance_id(b), 16);
+   nir_ssa_def *offset = nir_iadd(b, x, y);
+   offset = nir_iadd_imm(b, offset, 8);
+   nir_intrinsic_instr *load =
+      create_indirect_load(nir_var_mem_ubo, 0, offset, 0x1);
+
+   EXPECT_TRUE(run_vectorizer(nir_var_mem_ubo));
+   EXPECT_EQ(nir_intrinsic_align_mul(load), 16);
+   EXPECT_EQ(nir_intrinsic_align_offset(load), 8);
+}
+
+TEST_F(nir_load_store_vectorize_test, ubo_alignment_const_100)
+{
+   nir_intrinsic_instr *load =
+      create_indirect_load(nir_var_mem_ubo, 0, nir_imm_int(b, 100), 0x1);
+
+   EXPECT_TRUE(run_vectorizer(nir_var_mem_ubo));
+   EXPECT_EQ(nir_intrinsic_align_mul(load), 0x40000000);
+   EXPECT_EQ(nir_intrinsic_align_offset(load), 100);
+}
