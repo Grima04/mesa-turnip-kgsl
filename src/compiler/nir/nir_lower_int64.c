@@ -78,7 +78,7 @@ static nir_ssa_def *
 lower_i2i64(nir_builder *b, nir_ssa_def *x)
 {
    nir_ssa_def *x32 = x->bit_size == 32 ? x : nir_i2i32(b, x);
-   return nir_pack_64_2x32_split(b, x32, nir_ishr(b, x32, nir_imm_int(b, 31)));
+   return nir_pack_64_2x32_split(b, x32, nir_ishr_imm(b, x32, 31));
 }
 
 static nir_ssa_def *
@@ -435,7 +435,7 @@ lower_mul_high64(nir_builder *b, nir_ssa_def *x, nir_ssa_def *y,
    x32[0] = nir_unpack_64_2x32_split_x(b, x);
    x32[1] = nir_unpack_64_2x32_split_y(b, x);
    if (sign_extend) {
-      x32[2] = x32[3] = nir_ishr(b, x32[1], nir_imm_int(b, 31));
+      x32[2] = x32[3] = nir_ishr_imm(b, x32[1], 31);
    } else {
       x32[2] = x32[3] = nir_imm_int(b, 0);
    }
@@ -443,7 +443,7 @@ lower_mul_high64(nir_builder *b, nir_ssa_def *x, nir_ssa_def *y,
    y32[0] = nir_unpack_64_2x32_split_x(b, y);
    y32[1] = nir_unpack_64_2x32_split_y(b, y);
    if (sign_extend) {
-      y32[2] = y32[3] = nir_ishr(b, y32[1], nir_imm_int(b, 31));
+      y32[2] = y32[3] = nir_ishr_imm(b, y32[1], 31);
    } else {
       y32[2] = y32[3] = nir_imm_int(b, 0);
    }
@@ -476,7 +476,7 @@ lower_mul_high64(nir_builder *b, nir_ssa_def *x, nir_ssa_def *y,
          if (carry)
             tmp = nir_iadd(b, tmp, carry);
          res[i + j] = nir_u2u32(b, tmp);
-         carry = nir_ushr(b, tmp, nir_imm_int(b, 32));
+         carry = nir_ushr_imm(b, tmp, 32);
       }
       res[i + 4] = nir_u2u32(b, carry);
    }
@@ -491,7 +491,7 @@ lower_isign64(nir_builder *b, nir_ssa_def *x)
    nir_ssa_def *x_hi = nir_unpack_64_2x32_split_y(b, x);
 
    nir_ssa_def *is_non_zero = nir_i2b(b, nir_ior(b, x_lo, x_hi));
-   nir_ssa_def *res_hi = nir_ishr(b, x_hi, nir_imm_int(b, 31));
+   nir_ssa_def *res_hi = nir_ishr_imm(b, x_hi, 31);
    nir_ssa_def *res_lo = nir_ior(b, res_hi, nir_b2i32(b, is_non_zero));
 
    return nir_pack_64_2x32_split(b, res_lo, res_hi);

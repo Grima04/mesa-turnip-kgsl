@@ -32,18 +32,18 @@ build_udiv(nir_builder *b, nir_ssa_def *n, uint64_t d)
    if (d == 0) {
       return nir_imm_intN_t(b, 0, n->bit_size);
    } else if (util_is_power_of_two_or_zero64(d)) {
-      return nir_ushr(b, n, nir_imm_int(b, util_logbase2_64(d)));
+      return nir_ushr_imm(b, n, util_logbase2_64(d));
    } else {
       struct util_fast_udiv_info m =
          util_compute_fast_udiv_info(d, n->bit_size, n->bit_size);
 
       if (m.pre_shift)
-         n = nir_ushr(b, n, nir_imm_int(b, m.pre_shift));
+         n = nir_ushr_imm(b, n, m.pre_shift);
       if (m.increment)
          n = nir_uadd_sat(b, n, nir_imm_intN_t(b, m.increment, n->bit_size));
       n = nir_umul_high(b, n, nir_imm_intN_t(b, m.multiplier, n->bit_size));
       if (m.post_shift)
-         n = nir_ushr(b, n, nir_imm_int(b, m.post_shift));
+         n = nir_ushr_imm(b, n, m.post_shift);
 
       return n;
    }
@@ -74,8 +74,7 @@ build_idiv(nir_builder *b, nir_ssa_def *n, int64_t d)
    } else if (d == -1) {
       return nir_ineg(b, n);
    } else if (util_is_power_of_two_or_zero64(abs_d)) {
-      nir_ssa_def *uq = nir_ushr(b, nir_iabs(b, n),
-                                    nir_imm_int(b, util_logbase2_64(abs_d)));
+      nir_ssa_def *uq = nir_ushr_imm(b, nir_iabs(b, n), util_logbase2_64(abs_d));
       nir_ssa_def *n_neg = nir_ilt(b, n, nir_imm_intN_t(b, 0, n->bit_size));
       nir_ssa_def *neg = d < 0 ? nir_inot(b, n_neg) : n_neg;
       return nir_bcsel(b, neg, nir_ineg(b, uq), uq);
@@ -90,8 +89,8 @@ build_idiv(nir_builder *b, nir_ssa_def *n, int64_t d)
       if (d < 0 && m.multiplier > 0)
          res = nir_isub(b, res, n);
       if (m.shift)
-         res = nir_ishr(b, res, nir_imm_int(b, m.shift));
-      res = nir_iadd(b, res, nir_ushr(b, res, nir_imm_int(b, n->bit_size - 1)));
+         res = nir_ishr_imm(b, res, m.shift);
+      res = nir_iadd(b, res, nir_ushr_imm(b, res, n->bit_size - 1));
 
       return res;
    }

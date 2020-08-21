@@ -777,6 +777,41 @@ nir_iand_imm(nir_builder *build, nir_ssa_def *x, uint64_t y)
 }
 
 static inline nir_ssa_def *
+nir_ishr_imm(nir_builder *build, nir_ssa_def *x, uint32_t y)
+{
+   if (y == 0) {
+      return x;
+   } else {
+      return nir_ishr(build, x, nir_imm_int(build, y));
+   }
+}
+
+static inline nir_ssa_def *
+nir_ushr_imm(nir_builder *build, nir_ssa_def *x, uint32_t y)
+{
+   if (y == 0) {
+      return x;
+   } else {
+      return nir_ushr(build, x, nir_imm_int(build, y));
+   }
+}
+
+static inline nir_ssa_def *
+nir_udiv_imm(nir_builder *build, nir_ssa_def *x, uint64_t y)
+{
+   assert(x->bit_size <= 64);
+   y &= BITFIELD64_MASK(x->bit_size);
+
+   if (y == 1) {
+      return x;
+   } else if (util_is_power_of_two_nonzero(y)) {
+      return nir_ushr_imm(build, x, ffsll(y) - 1);
+   } else {
+      return nir_udiv(build, x, nir_imm_intN_t(build, y, x->bit_size));
+   }
+}
+
+static inline nir_ssa_def *
 nir_pack_bits(nir_builder *b, nir_ssa_def *src, unsigned dest_bit_size)
 {
    assert(src->num_components * src->bit_size == dest_bit_size);
@@ -838,7 +873,7 @@ nir_unpack_bits(nir_builder *b, nir_ssa_def *src, unsigned dest_bit_size)
    /* If we got here, we have no dedicated unpack opcode. */
    nir_ssa_def *dest_comps[NIR_MAX_VEC_COMPONENTS];
    for (unsigned i = 0; i < dest_num_components; i++) {
-      nir_ssa_def *val = nir_ushr(b, src, nir_imm_int(b, i * dest_bit_size));
+      nir_ssa_def *val = nir_ushr_imm(b, src, i * dest_bit_size);
       dest_comps[i] = nir_u2u(b, val, dest_bit_size);
    }
    return nir_vec(b, dest_comps, dest_num_components);

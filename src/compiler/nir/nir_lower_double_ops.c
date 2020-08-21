@@ -177,8 +177,8 @@ lower_sqrt_rsq(nir_builder *b, nir_ssa_def *src, bool sqrt)
 
    nir_ssa_def *unbiased_exp = nir_isub(b, get_exponent(b, src),
                                         nir_imm_int(b, 1023));
-   nir_ssa_def *even = nir_iand(b, unbiased_exp, nir_imm_int(b, 1));
-   nir_ssa_def *half = nir_ishr(b, unbiased_exp, nir_imm_int(b, 1));
+   nir_ssa_def *even = nir_iand_imm(b, unbiased_exp, 1);
+   nir_ssa_def *half = nir_ishr_imm(b, unbiased_exp, 1);
 
    nir_ssa_def *src_norm = set_exponent(b, src,
                                         nir_iadd(b, nir_imm_int(b, 1023),
