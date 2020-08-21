@@ -2757,21 +2757,24 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
    }
    case nir_op_ubfe:
    case nir_op_ibfe: {
-      Temp base = get_alu_src(ctx, instr->src[0]);
-      Temp offset = get_alu_src(ctx, instr->src[1]);
-      Temp bits = get_alu_src(ctx, instr->src[2]);
-
       if (dst.bytes() != 4)
          unreachable("Unsupported BFE bit size");
 
       if (dst.type() == RegType::sgpr) {
+         Temp base = get_alu_src(ctx, instr->src[0]);
+
          nir_const_value* const_offset = nir_src_as_const_value(instr->src[1].src);
          nir_const_value* const_bits = nir_src_as_const_value(instr->src[2].src);
          if (const_offset && const_bits) {
             uint32_t extract = (const_bits->u32 << 16) | (const_offset->u32 & 0x1f);
             aco_opcode opcode = instr->op == nir_op_ubfe ? aco_opcode::s_bfe_u32 : aco_opcode::s_bfe_i32;
             bld.sop2(opcode, Definition(dst), bld.def(s1, scc), base, Operand(extract));
-         } else if (instr->op == nir_op_ubfe) {
+            break;
+         }
+
+         Temp offset = get_alu_src(ctx, instr->src[1]);
+         Temp bits = get_alu_src(ctx, instr->src[2]);
+         if (instr->op == nir_op_ubfe) {
             Temp mask = bld.sop2(aco_opcode::s_bfm_b32, bld.def(s1), bits, offset);
             Temp masked = bld.sop2(aco_opcode::s_and_b32, bld.def(s1), bld.def(s1, scc), base, mask);
             bld.sop2(aco_opcode::s_lshr_b32, Definition(dst), bld.def(s1, scc), masked, offset);
