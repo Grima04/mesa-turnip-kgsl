@@ -228,29 +228,6 @@ static const struct pandecode_flag_info clear_flag_info[] = {
 };
 #undef FLAG_INFO
 
-#define FLAG_INFO(flag) { MALI_##flag, "MALI_" #flag }
-static const struct pandecode_flag_info u3_flag_info[] = {
-        FLAG_INFO(HAS_MSAA),
-        FLAG_INFO(PER_SAMPLE),
-        FLAG_INFO(CAN_DISCARD),
-        FLAG_INFO(HAS_BLEND_SHADER),
-        FLAG_INFO(DEPTH_WRITEMASK),
-        FLAG_INFO(DEPTH_CLIP_NEAR),
-        FLAG_INFO(DEPTH_CLIP_FAR),
-        {}
-};
-
-static const struct pandecode_flag_info u4_flag_info[] = {
-        FLAG_INFO(NO_MSAA),
-        FLAG_INFO(NO_DITHER),
-        FLAG_INFO(DEPTH_RANGE_A),
-        FLAG_INFO(DEPTH_RANGE_B),
-        FLAG_INFO(STENCIL_TEST),
-        FLAG_INFO(ALPHA_TO_COVERAGE),
-        {}
-};
-#undef FLAG_INFO
-
 #define FLAG_INFO(flag) { MALI_MFBD_FORMAT_##flag, "MALI_MFBD_FORMAT_" #flag }
 static const struct pandecode_flag_info mfbd_fmt_flag_info[] = {
         FLAG_INFO(SRGB),
@@ -1709,7 +1686,7 @@ pandecode_vertex_tiler_postfix_pre(
 
         if (p->shader) {
                 struct pandecode_mapped_memory *smem = pandecode_find_mapped_gpu_mem_containing(p->shader);
-                struct mali_shader_meta *PANDECODE_PTR_VAR(s, smem, p->shader);
+                uint32_t *cl = pandecode_fetch_gpu_mem(smem, p->shader, MALI_STATE_LENGTH);
 
                 /* Disassemble ahead-of-time to get stats. Initialize with
                  * stats for the missing-shader case so we get validation
@@ -1726,58 +1703,48 @@ pandecode_vertex_tiler_postfix_pre(
                         .uniform_buffer_count = 0
                 };
 
-                struct MALI_SHADER shader;
+                struct MALI_STATE state;
                 struct MALI_MIDGARD_PROPERTIES midg_props;
                 struct MALI_BIFROST_PROPERTIES bi_props;
-                struct MALI_PRELOAD bi_preload;
 
-                struct mali_shader_packed shader_packed = s->shader;
-                MALI_SHADER_unpack((const uint8_t *) &shader_packed, &shader);
+                MALI_STATE_unpack((const uint8_t *) cl, &state);
 
-                if (shader.shader & ~0xF)
-                        info = pandecode_shader_disassemble(shader.shader & ~0xF, job_no, job_type, is_bifrost, gpu_id);
+                if (state.shader.shader & ~0xF)
+                        info = pandecode_shader_disassemble(state.shader.shader & ~0xF, job_no, job_type, is_bifrost, gpu_id);
 
-
-                pandecode_log("struct mali_shader_meta shader_meta_%"PRIx64"_%d%s = {\n", p->shader, job_no, suffix);
-                pandecode_indent++;
+                fprintf(pandecode_dump_stream, "State %"PRIx64"\n", p->shader);
+                MALI_STATE_print(pandecode_dump_stream, &state, 1 * 2);
 
                 /* Save for dumps */
-                attribute_count = shader.attribute_count;
-                varying_count = shader.varying_count;
-                texture_count = shader.texture_count;
-                sampler_count = shader.sampler_count;
+                attribute_count = state.shader.attribute_count;
+                varying_count = state.shader.varying_count;
+                texture_count = state.shader.texture_count;
+                sampler_count = state.shader.sampler_count;
 
+                fprintf(pandecode_dump_stream, "  Properties\n");
                 if (is_bifrost) {
-                        uint32_t opaque = s->bifrost_props.opaque[0];
-                        MALI_BIFROST_PROPERTIES_unpack((const uint8_t *) &opaque, &bi_props);
+                        MALI_BIFROST_PROPERTIES_unpack((const uint8_t *) &state.properties, &bi_props);
+                        MALI_BIFROST_PROPERTIES_print(pandecode_dump_stream, &bi_props, 2 * 2);
 
-                        opaque = s->bifrost_preload.opaque[0];
-                        MALI_PRELOAD_unpack((const uint8_t *) &opaque, &bi_preload);
-
-                        uniform_count = bi_preload.uniform_count;
+                        uniform_count = state.preload.uniform_count;
                         uniform_buffer_count = bi_props.uniform_buffer_count;
                 } else {
-                        uint32_t opaque = s->midgard_props.opaque[0];
-                        MALI_MIDGARD_PROPERTIES_unpack((const uint8_t *) &opaque, &midg_props);
+                        MALI_MIDGARD_PROPERTIES_unpack((const uint8_t *) &state.properties, &midg_props);
+                        MALI_MIDGARD_PROPERTIES_print(pandecode_dump_stream, &midg_props, 2 * 2);
 
                         uniform_count = midg_props.uniform_count;
                         uniform_buffer_count = midg_props.uniform_buffer_count;
                 }
-
-                pandecode_shader_address("shader", shader.shader);
 
                 pandecode_shader_prop("texture_count", texture_count, info.texture_count, false);
                 pandecode_shader_prop("sampler_count", sampler_count, info.sampler_count, false);
                 pandecode_shader_prop("attribute_count", attribute_count, info.attribute_count, false);
                 pandecode_shader_prop("varying_count", varying_count, info.varying_count, false);
 
-                if (is_bifrost)
-                        MALI_BIFROST_PROPERTIES_print(pandecode_dump_stream, &bi_props, 2);
-                else
-                        MALI_MIDGARD_PROPERTIES_print(pandecode_dump_stream, &midg_props, 2);
-
                 if (is_bifrost) {
-                        uint32_t opaque = s->bifrost_preload.opaque[0];
+                        uint32_t opaque = state.preload.uniform_count << 15
+                                | state.preload.untyped;
+
                         switch (job_type) {
                         case MALI_JOB_TYPE_VERTEX:
                                 DUMP_CL("Preload", PRELOAD_VERTEX, &opaque, 2);
@@ -1794,80 +1761,20 @@ pandecode_vertex_tiler_postfix_pre(
                         }
                 }
 
-                if (s->depth_units || s->depth_factor) {
-                        pandecode_prop("depth_factor = %f", s->depth_factor);
-                        pandecode_prop("depth_units = %f", s->depth_units);
-                }
-
-                if (s->coverage_mask)
-                        pandecode_prop("coverage_mask = 0x%X", s->coverage_mask);
-
-                if (s->unknown2_2)
-                        pandecode_prop(".unknown2_2 = %X", s->unknown2_2);
-
-                if (s->unknown2_3 || s->unknown2_4) {
-                        pandecode_log(".unknown2_3 = ");
-
-                        int unknown2_3 = s->unknown2_3;
-                        int unknown2_4 = s->unknown2_4;
-
-                        /* We're not quite sure what these flags mean without the depth test, if anything */
-
-                        if (unknown2_3 & (MALI_DEPTH_WRITEMASK | MALI_DEPTH_FUNC_MASK)) {
-                                const char *func = mali_func_as_str(MALI_GET_DEPTH_FUNC(unknown2_3));
-                                unknown2_3 &= ~MALI_DEPTH_FUNC_MASK;
-
-                                pandecode_log_cont("MALI_DEPTH_FUNC(%s) | ", func);
-                        }
-
-                        pandecode_log_decoded_flags(u3_flag_info, unknown2_3);
-                        pandecode_log_cont(",\n");
-
-                        pandecode_log(".unknown2_4 = ");
-                        pandecode_log_decoded_flags(u4_flag_info, unknown2_4);
-                        pandecode_log_cont(",\n");
-                }
-
-                if (s->stencil_mask_front || s->stencil_mask_back) {
-                        pandecode_prop("stencil_mask_front = 0x%02X", s->stencil_mask_front);
-                        pandecode_prop("stencil_mask_back = 0x%02X", s->stencil_mask_back);
-                }
-
-                DUMP_CL("Stencil front", STENCIL, &s->stencil_front, 1);
-                DUMP_CL("Stencil back", STENCIL, &s->stencil_back, 1);
-
-                if (!is_bifrost && s->midgard2.unknown2_7) {
-                        pandecode_log(".midgard2 = {\n");
-                        pandecode_indent++;
-
-                        pandecode_prop("unknown2_7 = 0x%" PRIx32, s->midgard2.unknown2_7);
-                        pandecode_indent--;
-                        pandecode_log("},\n");
-                }
-
-                if (s->padding) {
-                        pandecode_msg("XXX: shader padding tripped\n");
-                        pandecode_prop("padding = 0x%" PRIx32, s->padding);
-                }
-
                 if (!is_bifrost) {
                         /* TODO: Blend shaders routing/disasm */
-                        union midgard_blend blend = s->blend;
-                        mali_ptr shader = pandecode_midgard_blend(&blend, s->unknown2_3 & MALI_HAS_BLEND_SHADER);
+                        union midgard_blend blend;
+                        memcpy(&blend, &state.sfbd_blend, sizeof(blend));
+                        mali_ptr shader = pandecode_midgard_blend(&blend, state.multisample_misc.sfbd_blend_shader);
                         if (shader & ~0xF)
                                 pandecode_blend_shader_disassemble(shader, job_no, job_type, false, gpu_id);
-                } else {
-                        pandecode_msg("mdg_blend = %" PRIx64 "\n", s->blend.shader);
                 }
-
-                pandecode_indent--;
-                pandecode_log("};\n");
 
                 /* MRT blend fields are used whenever MFBD is used, with
                  * per-RT descriptors */
 
                 if (job_type == MALI_JOB_TYPE_TILER && (is_bifrost || p->shared_memory & MALI_MFBD)) {
-                        void* blend_base = (void *) (s + 1);
+                        void* blend_base = ((void *) cl) + MALI_STATE_LENGTH;
 
                         for (unsigned i = 0; i < fbd_info.rt_count; i++) {
                                 mali_ptr shader = 0;
