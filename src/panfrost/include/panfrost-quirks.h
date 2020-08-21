@@ -50,10 +50,7 @@
 /* What it says on the tin */
 #define HAS_SWIZZLES (1 << 4)
 
-/* Support for setting shader to NULL for masking out colour (while allowing
- * Z/S updates to proceed) */
-
-#define MIDGARD_SHADERLESS (1 << 5)
+/* bit 5 unused */
 
 /* Whether this GPU lacks support for any typed stores in blend shader,
  * requiring packing instead */
@@ -101,11 +98,11 @@ panfrost_get_quirks(unsigned gpu_id)
         case 0x750:
                 /* Someone should investigate the broken loads? */
                 return MIDGARD_QUIRKS | MIDGARD_NO_TYPED_BLEND_LOADS
-                        | NO_BLEND_PACKS | MIDGARD_SHADERLESS;
+                        | NO_BLEND_PACKS;
 
         case 0x860:
         case 0x880:
-                return MIDGARD_QUIRKS | MIDGARD_SHADERLESS;
+                return MIDGARD_QUIRKS;
 
         case 0x6000: /* G71 */
                 return BIFROST_QUIRKS | HAS_SWIZZLES;

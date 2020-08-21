@@ -697,21 +697,29 @@ panfrost_emit_frag_shader(struct panfrost_context *ctx,
                         ctx->blend->base.alpha_to_coverage);
 
         /* Disable shader execution if we can */
-        if (dev->quirks & MIDGARD_SHADERLESS
-                        && !panfrost_fs_required(fs, blend, rt_count)) {
-                fragmeta->shader = 0x1;
+        if (!panfrost_fs_required(fs, blend, rt_count)) {
                 fragmeta->attribute_count = 0;
                 fragmeta->varying_count = 0;
                 fragmeta->texture_count = 0;
                 fragmeta->sampler_count = 0;
 
-                /* This feature is not known to work on Bifrost */
                 struct mali_midgard_properties_packed prop;
 
-                pan_pack(&prop, MIDGARD_PROPERTIES, cfg) {
-                        cfg.work_register_count = 1;
-                        cfg.depth_source = MALI_DEPTH_SOURCE_FIXED_FUNCTION;
-                        cfg.early_z_enable = true;
+                if (dev->quirks & IS_BIFROST) {
+                        fragmeta->shader = 0x0;
+
+                        pan_pack(&prop, BIFROST_PROPERTIES, cfg) {
+                                cfg.unknown = 0x950020; /* XXX */
+                                cfg.early_z_enable = true;
+                        }
+                } else {
+                        fragmeta->shader = 0x1;
+
+                        pan_pack(&prop, MIDGARD_PROPERTIES, cfg) {
+                                cfg.work_register_count = 1;
+                                cfg.depth_source = MALI_DEPTH_SOURCE_FIXED_FUNCTION;
+                                cfg.early_z_enable = true;
+                        }
                 }
 
                 memcpy(&fragmeta->midgard_props, &prop, sizeof(prop));
