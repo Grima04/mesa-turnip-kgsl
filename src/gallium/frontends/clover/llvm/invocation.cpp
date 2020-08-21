@@ -300,6 +300,10 @@ namespace {
          compat::add_link_bitcode_file(c.getCodeGenOpts(),
                                        LIBCLC_LIBEXECDIR + dev.ir_target() + ".bc");
 
+      // undefine __IMAGE_SUPPORT__ for device without image support
+      if (!dev.image_support())
+         c.getPreprocessorOpts().addMacroUndef("__IMAGE_SUPPORT__");
+
       // Compile the code
       clang::EmitLLVMOnlyAction act(&ctx);
       if (!c.ExecuteAction(act))
