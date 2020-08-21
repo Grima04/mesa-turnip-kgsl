@@ -2761,6 +2761,9 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
       Temp offset = get_alu_src(ctx, instr->src[1]);
       Temp bits = get_alu_src(ctx, instr->src[2]);
 
+      if (dst.bytes() != 4)
+         unreachable("Unsupported BFE bit size");
+
       if (dst.type() == RegType::sgpr) {
          Operand extract;
          nir_const_value* const_offset = nir_src_as_const_value(instr->src[1].src);
@@ -2778,34 +2781,11 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
             extract = bld.sop2(aco_opcode::s_or_b32, bld.def(s1), bld.def(s1, scc), offset, width);
          }
 
-         aco_opcode opcode;
-         if (dst.regClass() == s1) {
-            if (instr->op == nir_op_ubfe)
-               opcode = aco_opcode::s_bfe_u32;
-            else
-               opcode = aco_opcode::s_bfe_i32;
-         } else if (dst.regClass() == s2) {
-            if (instr->op == nir_op_ubfe)
-               opcode = aco_opcode::s_bfe_u64;
-            else
-               opcode = aco_opcode::s_bfe_i64;
-         } else {
-            unreachable("Unsupported BFE bit size");
-         }
-
+         aco_opcode opcode = instr->op == nir_op_ubfe ? aco_opcode::s_bfe_u32 : aco_opcode::s_bfe_i32;
          bld.sop2(opcode, Definition(dst), bld.def(s1, scc), base, extract);
 
       } else {
-         aco_opcode opcode;
-         if (dst.regClass() == v1) {
-            if (instr->op == nir_op_ubfe)
-               opcode = aco_opcode::v_bfe_u32;
-            else
-               opcode = aco_opcode::v_bfe_i32;
-         } else {
-            unreachable("Unsupported BFE bit size");
-         }
-
+         aco_opcode opcode = instr->op == nir_op_ubfe ? aco_opcode::v_bfe_u32 : aco_opcode::v_bfe_i32;
          emit_vop3a_instruction(ctx, instr, opcode, dst);
       }
       break;
