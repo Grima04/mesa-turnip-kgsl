@@ -294,6 +294,7 @@ panfrost_shader_compile(struct panfrost_context *ctx,
         /* Needed for linkage */
         state->attribute_count = attribute_count;
         state->varying_count = varying_count;
+        state->ubo_count = s->info.num_ubos + 1; /* off-by-one for uniforms */
 
         /* In both clone and tgsi_to_nir paths, the shader is ralloc'd against
          * a NULL context */

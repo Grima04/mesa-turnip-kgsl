@@ -145,18 +145,6 @@ panfrost_writes_point_size(struct panfrost_context *ctx)
         return vs->writes_point_size && ctx->active_prim == PIPE_PRIM_POINTS;
 }
 
-/* Compute number of UBOs active (more specifically, compute the highest UBO
- * number addressable -- if there are gaps, include them in the count anyway).
- * We always include UBO #0 in the count, since we *need* uniforms enabled for
- * sysvals. */
-
-unsigned
-panfrost_ubo_count(struct panfrost_context *ctx, enum pipe_shader_type stage)
-{
-        unsigned mask = ctx->constant_buffer[stage].enabled_mask | 1;
-        return 32 - __builtin_clz(mask);
-}
-
 /* The entire frame is in memory -- send it off to the kernel! */
 
 void

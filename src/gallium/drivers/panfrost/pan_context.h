@@ -206,7 +206,7 @@ struct panfrost_shader_state {
         /* For Bifrost - output type for each RT */
         enum bifrost_shader_type blend_types[BIFROST_MAX_RENDER_TARGET_COUNT];
 
-        unsigned attribute_count, varying_count;
+        unsigned attribute_count, varying_count, ubo_count;
         enum mali_format varyings[PIPE_MAX_ATTRIBS];
         gl_varying_slot varyings_loc[PIPE_MAX_ATTRIBS];
         struct pipe_stream_output_info stream_output;
@@ -336,9 +336,6 @@ panfrost_shader_compile(struct panfrost_context *ctx,
                         gl_shader_stage stage,
                         struct panfrost_shader_state *state,
                         uint64_t *outputs_written);
-
-unsigned
-panfrost_ubo_count(struct panfrost_context *ctx, enum pipe_shader_type stage);
 
 void
 panfrost_create_sampler_view_bo(struct panfrost_sampler_view *so,

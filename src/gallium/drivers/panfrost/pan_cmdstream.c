@@ -323,7 +323,7 @@ panfrost_emit_compute_shader(struct panfrost_context *ctx,
 
                 pan_pack(&prop, BIFROST_PROPERTIES, cfg) {
                         cfg.unknown = 0x800000; /* XXX */
-                        cfg.uniform_buffer_count = panfrost_ubo_count(ctx, st);
+                        cfg.uniform_buffer_count = ss->ubo_count;
                 }
 
                 /* TODO: True compute shaders */
@@ -339,7 +339,7 @@ panfrost_emit_compute_shader(struct panfrost_context *ctx,
                 struct mali_midgard_properties_packed prop;
 
                 pan_pack(&prop, MIDGARD_PROPERTIES, cfg) {
-                        cfg.uniform_buffer_count = panfrost_ubo_count(ctx, st);
+                        cfg.uniform_buffer_count = ss->ubo_count;
                         cfg.uniform_count = ss->uniform_count;
                         cfg.work_register_count = ss->work_reg_count;
                         cfg.writes_globals = ss->writes_global;
@@ -590,7 +590,7 @@ panfrost_emit_frag_shader(struct panfrost_context *ctx,
 
                 pan_pack(&prop, BIFROST_PROPERTIES, cfg) {
                         cfg.unknown = 0x950020; /* XXX */
-                        cfg.uniform_buffer_count = panfrost_ubo_count(ctx, PIPE_SHADER_FRAGMENT);
+                        cfg.uniform_buffer_count = fs->ubo_count;
                         cfg.early_z_enable = !fs->can_discard && !fs->writes_depth && no_blend;
                 }
 
@@ -622,7 +622,7 @@ panfrost_emit_frag_shader(struct panfrost_context *ctx,
                         has_blend_shader |= blend[c].is_shader;
 
                 pan_pack(&prop, MIDGARD_PROPERTIES, cfg) {
-                        cfg.uniform_buffer_count = panfrost_ubo_count(ctx, PIPE_SHADER_FRAGMENT);
+                        cfg.uniform_buffer_count = fs->ubo_count;
                         cfg.uniform_count = fs->uniform_count;
                         cfg.work_register_count = fs->work_reg_count;
                         cfg.writes_globals = fs->writes_global;
@@ -1130,10 +1130,10 @@ panfrost_emit_const_buf(struct panfrost_batch *batch,
         }
 
         /* Next up, attach UBOs. UBO #0 is the uniforms we just
-         * uploaded */
+         * uploaded, so it's always included. The count is the highest UBO
+         * addressable -- gaps are included. */
 
-        unsigned ubo_count = panfrost_ubo_count(ctx, stage);
-        assert(ubo_count >= 1);
+        unsigned ubo_count = 32 - __builtin_clz(buf->enabled_mask | 1);
 
         size_t sz = MALI_UNIFORM_BUFFER_LENGTH * ubo_count;
         struct panfrost_transfer ubos =
