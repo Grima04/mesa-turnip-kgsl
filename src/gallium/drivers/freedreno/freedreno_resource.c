@@ -34,6 +34,8 @@
 #include "util/set.h"
 #include "util/u_drm.h"
 
+#include "decode/util.h"
+
 #include "freedreno_resource.h"
 #include "freedreno_batch_cache.h"
 #include "freedreno_blitter.h"
@@ -390,6 +392,17 @@ fd_resource_uncompress(struct fd_context *ctx, struct fd_resource *rsc)
 
 	/* shadow should not fail in any cases where we need to uncompress: */
 	debug_assert(success);
+}
+
+/**
+ * Debug helper to hexdump a resource.
+ */
+void
+fd_resource_dump(struct fd_resource *rsc, const char *name)
+{
+	fd_bo_cpu_prep(rsc->bo, NULL, DRM_FREEDRENO_PREP_READ);
+	printf("%s: \n", name);
+	dump_hex(fd_bo_map(rsc->bo), fd_bo_size(rsc->bo));
 }
 
 static struct fd_resource *
