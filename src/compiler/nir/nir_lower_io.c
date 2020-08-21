@@ -1376,6 +1376,8 @@ lower_explicit_io_deref(nir_builder *b, nir_deref_instr *deref,
 
    nir_ssa_def *addr = nir_explicit_io_address_from_deref(b, deref, base_addr,
                                                           addr_format);
+   assert(addr->bit_size == deref->dest.ssa.bit_size);
+   assert(addr->num_components == deref->dest.ssa.num_components);
 
    nir_instr_remove(&deref->instr);
    nir_ssa_def_rewrite_uses(&deref->dest.ssa, nir_src_for_ssa(addr));
