@@ -1731,6 +1731,7 @@ pandecode_vertex_tiler_postfix_pre(
 
                 struct MALI_MIDGARD_PROPERTIES midg_props;
                 struct MALI_BIFROST_PROPERTIES bi_props;
+                struct MALI_PRELOAD bi_preload;
 
                 pandecode_log("struct mali_shader_meta shader_meta_%"PRIx64"_%d%s = {\n", p->shader, job_no, suffix);
                 pandecode_indent++;
@@ -1745,7 +1746,10 @@ pandecode_vertex_tiler_postfix_pre(
                         uint32_t opaque = s->bifrost_props.opaque[0];
                         MALI_BIFROST_PROPERTIES_unpack((const uint8_t *) &opaque, &bi_props);
 
-                        uniform_count = s->bifrost2.uniform_count;
+                        opaque = s->bifrost_preload.opaque[0];
+                        MALI_PRELOAD_unpack((const uint8_t *) &opaque, &bi_preload);
+
+                        uniform_count = bi_preload.uniform_count;
                         uniform_buffer_count = bi_props.uniform_buffer_count;
                 } else {
                         uint32_t opaque = s->midgard_props.opaque[0];
@@ -1766,6 +1770,24 @@ pandecode_vertex_tiler_postfix_pre(
                         MALI_BIFROST_PROPERTIES_print(pandecode_dump_stream, &bi_props, 2);
                 else
                         MALI_MIDGARD_PROPERTIES_print(pandecode_dump_stream, &midg_props, 2);
+
+                if (is_bifrost) {
+                        uint32_t opaque = s->bifrost_preload.opaque[0];
+                        switch (job_type) {
+                        case MALI_JOB_TYPE_VERTEX:
+                                DUMP_CL("Preload", PRELOAD_VERTEX, &opaque, 2);
+                                break;
+                        case MALI_JOB_TYPE_TILER:
+                                DUMP_CL("Preload", PRELOAD_FRAGMENT, &opaque, 2);
+                                break;
+                        case MALI_JOB_TYPE_COMPUTE:
+                                DUMP_CL("Preload", PRELOAD_COMPUTE, &opaque, 2);
+                                break;
+                        default:
+                                DUMP_CL("Preload", PRELOAD, &opaque, 2);
+                                break;
+                        }
+                }
 
                 if (s->depth_units || s->depth_factor) {
                         pandecode_prop("depth_factor = %f", s->depth_factor);
@@ -1809,18 +1831,7 @@ pandecode_vertex_tiler_postfix_pre(
                 DUMP_CL("Stencil front", STENCIL, &s->stencil_front, 1);
                 DUMP_CL("Stencil back", STENCIL, &s->stencil_back, 1);
 
-                if (is_bifrost) {
-                        pandecode_log(".bifrost2 = {\n");
-                        pandecode_indent++;
-
-                        pandecode_prop("unk3 = 0x%" PRIx32, s->bifrost2.unk3);
-                        pandecode_prop("preload_regs = 0x%" PRIx32, s->bifrost2.preload_regs);
-                        pandecode_prop("uniform_count = %" PRId32, s->bifrost2.uniform_count);
-                        pandecode_prop("unk4 = 0x%" PRIx32, s->bifrost2.unk4);
-
-                        pandecode_indent--;
-                        pandecode_log("},\n");
-                } else if (s->midgard2.unknown2_7) {
+                if (!is_bifrost && s->midgard2.unknown2_7) {
                         pandecode_log(".midgard2 = {\n");
                         pandecode_indent++;
 

@@ -323,16 +323,22 @@ panfrost_emit_compute_shader(struct panfrost_context *ctx,
 
         if (dev->quirks & IS_BIFROST) {
                 struct mali_bifrost_properties_packed prop;
+                struct mali_preload_vertex_packed preload;
 
                 pan_pack(&prop, BIFROST_PROPERTIES, cfg) {
                         cfg.unknown = 0x800000; /* XXX */
                         cfg.uniform_buffer_count = panfrost_ubo_count(ctx, st);
                 }
 
-                memcpy(&meta->bifrost_props, &prop, sizeof(prop));
+                /* TODO: True compute shaders */
+                pan_pack(&preload, PRELOAD_VERTEX, cfg) {
+                        cfg.uniform_count = ss->uniform_count;
+                        cfg.vertex_id = true;
+                        cfg.instance_id = true;
+                }
 
-                meta->bifrost2.preload_regs = 0xC0;
-                meta->bifrost2.uniform_count = ss->uniform_count;
+                memcpy(&meta->bifrost_props, &prop, sizeof(prop));
+                memcpy(&meta->bifrost_preload, &preload, sizeof(preload));
         } else {
                 struct mali_midgard_properties_packed prop;
 
@@ -572,6 +578,7 @@ panfrost_emit_frag_shader(struct panfrost_context *ctx,
 
         if (dev->quirks & IS_BIFROST) {
                 struct mali_bifrost_properties_packed prop;
+                struct mali_preload_fragment_packed preload;
 
                 bool no_blend = true;
 
@@ -584,12 +591,13 @@ panfrost_emit_frag_shader(struct panfrost_context *ctx,
                         cfg.early_z_enable = !fs->can_discard && !fs->writes_depth && no_blend;
                 }
 
+                pan_pack(&preload, PRELOAD_FRAGMENT, cfg) {
+                        cfg.uniform_count = fs->uniform_count;
+                        cfg.fragment_position = fs->reads_frag_coord;
+                }
+
                 memcpy(&fragmeta->bifrost_props, &prop, sizeof(prop));
-
-                fragmeta->bifrost2.preload_regs = 0x1;
-                SET_BIT(fragmeta->bifrost2.preload_regs, 0x10, fs->reads_frag_coord);
-
-                fragmeta->bifrost2.uniform_count = fs->uniform_count;
+                memcpy(&fragmeta->bifrost_preload, &preload, sizeof(preload));
         } else {
                 struct mali_midgard_properties_packed prop;
 

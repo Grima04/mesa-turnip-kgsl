@@ -326,52 +326,7 @@ struct mali_shader_meta {
         struct mali_stencil_packed stencil_back;
 
         union {
-                struct {
-                        u32 unk3 : 7;
-                        /* On Bifrost, some system values are preloaded in
-                         * registers R55-R62 by the thread dispatcher prior to
-                         * the start of shader execution. This is a bitfield
-                         * with one entry for each register saying which
-                         * registers need to be preloaded. Right now, the known
-                         * values are:
-                         *
-                         * Vertex/compute:
-                         * - R55 : gl_LocalInvocationID.xy
-                         * - R56 : gl_LocalInvocationID.z + unknown in high 16 bits
-                         * - R57 : gl_WorkGroupID.x
-                         * - R58 : gl_WorkGroupID.y
-                         * - R59 : gl_WorkGroupID.z
-                         * - R60 : gl_GlobalInvocationID.x
-                         * - R61 : gl_GlobalInvocationID.y/gl_VertexID (without base)
-                         * - R62 : gl_GlobalInvocationID.z/gl_InstanceID (without base)
-                         *
-                         * Fragment:
-                         * - R55 : unknown, never seen (but the bit for this is
-                         *   always set?)
-                         * - R56 : unknown (bit always unset)
-                         * - R57 : gl_PrimitiveID
-                         * - R58 : gl_FrontFacing in low bit, potentially other stuff
-                         * - R59 : u16 fragment coordinates (used to compute
-                         *   gl_FragCoord.xy, together with sample positions)
-                         * - R60 : gl_SampleMask (used in epilog, so pretty
-                         *   much always used, but the bit is always 0 -- is
-                         *   this just always pushed?)
-                         * - R61 : gl_SampleMaskIn and gl_SampleID, used by
-                         *   varying interpolation.
-                         * - R62 : unknown (bit always unset).
-                         *
-                         * Later GPUs (starting with Mali-G52?) support
-                         * preloading float varyings into r0-r7. This is
-                         * indicated by setting 0x40. There is no distinction
-                         * here between 1 varying and 2.
-                         */
-                        u32 preload_regs : 8;
-                        /* In units of 8 bytes or 64 bits, since the
-                         * uniform/const port loads 64 bits at a time.
-                         */
-                        u32 uniform_count : 7;
-                        u32 unk4 : 10; // = 2
-                } bifrost2;
+                struct mali_preload_packed bifrost_preload;
                 struct {
                         u32 unknown2_7;
                 } midgard2;

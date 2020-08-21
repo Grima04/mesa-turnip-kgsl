@@ -176,12 +176,7 @@ bit_vertex(struct panfrost_device *dev, panfrost_program prog,
                 .attribute_count = 1,
                 .varying_count = 1,
                 .bifrost_props = { .opaque = { 0x80020001 } },
-                .bifrost2 = {
-                        .unk3 = 0x0,
-                        .preload_regs = 0xc0,
-                        .uniform_count = sz_ubo / 16,
-                        .unk4 = 0x0,
-                },
+                .bifrost_preload = { .opaque = { (sz_ubo / 16) << 15 } },
         };
 
         memcpy(shader_desc->cpu, &meta, sizeof(meta));

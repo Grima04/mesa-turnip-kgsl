@@ -363,6 +363,38 @@
     <field name="Unknown" size="32" start="0" type="uint"/>
   </struct>
 
+  <struct name="Preload" size="1">
+    <field name="Untyped" size="15" start="0" type="uint"/>
+    <field name="Uniform count" size="7" start="15" type="uint"/>
+  </struct>
+
+  <struct name="Preload Compute" size="1">
+    <field name="Local Invocation XY" size="1" start="7" type="bool"/>
+    <field name="Local Invocation Z" size="1" start="8" type="bool"/>
+    <field name="Work group X" size="1" start="9" type="bool"/>
+    <field name="Work group Y" size="1" start="10" type="bool"/>
+    <field name="Work group Z" size="1" start="11" type="bool"/>
+    <field name="Global Invocation X" size="1" start="12" type="bool"/>
+    <field name="Global Invocation Y" size="1" start="13" type="bool"/>
+    <field name="Global Invocation Z" size="1" start="14" type="bool"/>
+    <field name="Uniform count" size="7" start="15" type="uint"/>
+  </struct>
+
+  <struct name="Preload Vertex" size="1">
+    <field name="Vertex ID" size="1" start="13" type="bool"/>
+    <field name="Instance ID" size="1" start="14" type="bool"/>
+    <field name="Uniform count" size="7" start="15" type="uint"/>
+  </struct>
+
+  <struct name="Preload Fragment" size="1">
+    <field name="Unknown" size="1" start="7" type="bool" default="true"/>
+    <field name="Primitive ID" size="1" start="9" type="bool"/>
+    <field name="Front facing" size="1" start="10" type="bool"/>
+    <field name="Fragment position" size="1" start="11" type="bool"/>
+    <field name="Sample mask/ID" size="1" start="12" type="bool"/>
+    <field name="Uniform count" size="7" start="15" type="uint"/>
+  </struct>
+
   <struct name="Stencil">
     <field name="Reference Value" size="8" start="0" type="uint"/>
     <field name="Mask" size="8" start="8" type="uint" default="0xFF"/>
