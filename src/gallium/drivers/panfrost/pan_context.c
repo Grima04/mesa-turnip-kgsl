@@ -486,9 +486,14 @@ panfrost_delete_shader_state(
         for (unsigned i = 0; i < cso->variant_count; ++i) {
                 struct panfrost_shader_state *shader_state = &cso->variants[i];
                 panfrost_bo_unreference(shader_state->bo);
+
+                if (shader_state->upload.rsrc)
+                        pipe_resource_reference(&shader_state->upload.rsrc, NULL);
+
                 shader_state->bo = NULL;
         }
         free(cso->variants);
+
 
         free(so);
 }

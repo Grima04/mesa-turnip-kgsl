@@ -188,6 +188,15 @@ struct panfrost_rasterizer {
 struct panfrost_shader_state {
         /* Compiled, mapped descriptor, ready for the hardware */
         bool compiled;
+
+        /* Uploaded shader descriptor (TODO: maybe stuff the packed unuploaded
+         * bits in a union to save some memory?) */
+
+        struct {
+                struct pipe_resource *rsrc;
+                uint32_t offset;
+        } upload;
+
         struct mali_shader_packed shader;
         struct mali_midgard_properties_packed properties;
         struct mali_preload_packed preload;

@@ -35,6 +35,7 @@
 #include "midgard/midgard_compile.h"
 #include "bifrost/bifrost_compile.h"
 #include "util/u_dynarray.h"
+#include "util/u_upload_mgr.h"
 
 #include "tgsi/tgsi_dump.h"
 
@@ -96,6 +97,24 @@ pan_pack_bifrost_props(struct panfrost_shader_state *state,
         default:
                 unreachable("TODO");
         }
+}
+
+static void
+pan_upload_shader_descriptor(struct panfrost_context *ctx,
+                        struct panfrost_shader_state *state)
+{
+        const struct panfrost_device *dev = pan_device(ctx->base.screen);
+        struct mali_shader_meta meta;
+
+        memset(&meta, 0, sizeof(meta));
+        memcpy(&meta.shader, &state->shader, sizeof(state->shader));
+        memcpy(&meta.midgard_props, &state->properties, sizeof(state->properties));
+
+        if (dev->quirks & IS_BIFROST)
+                memcpy(&meta.bifrost_preload, &state->preload, sizeof(state->preload));
+
+        u_upload_data(ctx->state_uploader, 0, sizeof(meta), sizeof(meta),
+                        &meta, &state->upload.offset, &state->upload.rsrc);
 }
 
 static unsigned
@@ -360,6 +379,9 @@ panfrost_shader_compile(struct panfrost_context *ctx,
                 pan_pack_bifrost_props(state, stage);
         else
                 pan_pack_midgard_props(state, stage);
+
+        if (stage != MESA_SHADER_FRAGMENT)
+                pan_upload_shader_descriptor(ctx, state);
 
         /* In both clone and tgsi_to_nir paths, the shader is ralloc'd against
          * a NULL context */
