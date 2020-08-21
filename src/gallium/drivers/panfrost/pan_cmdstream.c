@@ -723,6 +723,14 @@ panfrost_emit_frag_shader(struct panfrost_context *ctx,
                  * need to signal CAN_DISCARD for nontrivial blend modes (so
                  * we're able to read back the destination buffer) */
 
+                if (blend[0].no_colour)
+                        return;
+
+                fragmeta->unknown2_4 |= MALI_SFBD_ENABLE;
+
+                SET_BIT(fragmeta->unknown2_4, MALI_SFBD_SRGB,
+                                util_format_is_srgb(ctx->pipe_framebuffer.cbufs[0]->format));
+
                 SET_BIT(fragmeta->unknown2_3, MALI_HAS_BLEND_SHADER,
                         blend[0].is_shader);
 
@@ -737,7 +745,6 @@ panfrost_emit_frag_shader(struct panfrost_context *ctx,
                 SET_BIT(fragmeta->unknown2_3, MALI_CAN_DISCARD,
                         blend[0].load_dest);
 
-                fragmeta->unknown2_4 |= 0x10;
                 SET_BIT(fragmeta->unknown2_4, MALI_NO_DITHER, !ctx->blend->base.dither);
         } else if (!(dev->quirks & IS_BIFROST)) {
                 /* Bug where MRT-capable hw apparently reads the last blend

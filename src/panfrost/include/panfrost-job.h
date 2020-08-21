@@ -80,6 +80,8 @@ typedef uint64_t mali_ptr;
 
 #define MALI_ALPHA_TO_COVERAGE (1 << 1)
 
+#define MALI_SFBD_ENABLE        (1 << 4)
+#define MALI_SFBD_SRGB          (1 << 8)
 #define MALI_NO_DITHER		(1 << 9)
 #define MALI_DEPTH_RANGE_A	(1 << 12)
 #define MALI_DEPTH_RANGE_B	(1 << 13)
