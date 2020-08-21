@@ -158,16 +158,32 @@ ok_format(enum pipe_format pfmt)
 		if (cond) {														\
 			if (DEBUG_BLIT_FALLBACK) {									\
 				fprintf(stderr, "falling back: %s for blit:\n", #cond);	\
-				util_dump_blit_info(stderr, info);						\
-				fprintf(stderr, "\nsrc: ");								\
-				util_dump_resource(stderr, info->src.resource);			\
-				fprintf(stderr, "\ndst: ");								\
-				util_dump_resource(stderr, info->dst.resource);			\
-				fprintf(stderr, "\n");									\
+				dump_blit_info(info);									\
 			}															\
 			return false;												\
 		}																\
 	} while (0)
+
+static bool
+is_ubwc(struct pipe_resource *prsc, unsigned level)
+{
+	return fd_resource_ubwc_enabled(fd_resource(prsc), level);
+}
+
+static void
+dump_blit_info(const struct pipe_blit_info *info)
+{
+	util_dump_blit_info(stderr, info);
+	fprintf(stderr, "\ndst resource: ");
+	util_dump_resource(stderr, info->dst.resource);
+	if (is_ubwc(info->dst.resource, info->dst.level))
+		fprintf(stderr, " (ubwc)");
+	fprintf(stderr, "\nsrc resource: ");
+	util_dump_resource(stderr, info->src.resource);
+	if (is_ubwc(info->src.resource, info->src.level))
+		fprintf(stderr, " (ubwc)");
+	fprintf(stderr, "\n");
+}
 
 static bool
 can_do_blit(const struct pipe_blit_info *info)
@@ -300,12 +316,7 @@ emit_blit_buffer(struct fd_context *ctx, struct fd_ringbuffer *ring,
 
 	if (DEBUG_BLIT) {
 		fprintf(stderr, "buffer blit: ");
-		util_dump_blit_info(stderr, info);
-		fprintf(stderr, "\ndst resource: ");
-		util_dump_resource(stderr, info->dst.resource);
-		fprintf(stderr, "\nsrc resource: ");
-		util_dump_resource(stderr, info->src.resource);
-		fprintf(stderr, "\n");
+		dump_blit_info(info);
 	}
 
 	src = fd_resource(info->src.resource);
@@ -522,12 +533,7 @@ emit_blit_texture(struct fd_context *ctx,
 
 	if (DEBUG_BLIT) {
 		fprintf(stderr, "texture blit: ");
-		util_dump_blit_info(stderr, info);
-		fprintf(stderr, "\ndst resource: ");
-		util_dump_resource(stderr, info->dst.resource);
-		fprintf(stderr, "\nsrc resource: ");
-		util_dump_resource(stderr, info->src.resource);
-		fprintf(stderr, "\n");
+		dump_blit_info(info);
 	}
 
 	dst = fd_resource(info->dst.resource);
@@ -771,12 +777,7 @@ handle_zs_blit(struct fd_context *ctx, const struct pipe_blit_info *info)
 
 	if (DEBUG_BLIT) {
 		fprintf(stderr, "---- handle_zs_blit: ");
-		util_dump_blit_info(stderr, info);
-		fprintf(stderr, "\ndst resource: ");
-		util_dump_resource(stderr, info->dst.resource);
-		fprintf(stderr, "\nsrc resource: ");
-		util_dump_resource(stderr, info->src.resource);
-		fprintf(stderr, "\n");
+		dump_blit_info(info);
 	}
 
 	switch (info->dst.format) {
@@ -843,12 +844,7 @@ handle_compressed_blit(struct fd_context *ctx, const struct pipe_blit_info *info
 
 	if (DEBUG_BLIT) {
 		fprintf(stderr, "---- handle_compressed_blit: ");
-		util_dump_blit_info(stderr, info);
-		fprintf(stderr, "\ndst resource: ");
-		util_dump_resource(stderr, info->dst.resource);
-		fprintf(stderr, "\nsrc resource: ");
-		util_dump_resource(stderr, info->src.resource);
-		fprintf(stderr, "\n");
+		dump_blit_info(info);
 	}
 
 	if (info->src.format != info->dst.format)
