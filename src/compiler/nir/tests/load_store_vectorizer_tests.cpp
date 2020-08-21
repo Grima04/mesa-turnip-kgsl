@@ -1475,9 +1475,9 @@ TEST_F(nir_load_store_vectorize_test, push_const_load_separate_indirect_indirect
 {
    nir_ssa_def *index_base = nir_load_local_invocation_index(b);
    create_indirect_load(nir_var_mem_push_const, 0,
-      nir_iadd(b, nir_imul(b, nir_iadd(b, index_base, nir_imm_int(b, 2)), nir_imm_int(b, 16)), nir_imm_int(b, 32)), 0x1);
+      nir_iadd_imm(b, nir_imul_imm(b, nir_iadd_imm(b, index_base, 2), 16), 32), 0x1);
    create_indirect_load(nir_var_mem_push_const, 0,
-      nir_iadd(b, nir_imul(b, nir_iadd(b, index_base, nir_imm_int(b, 3)), nir_imm_int(b, 16)), nir_imm_int(b, 32)), 0x2);
+      nir_iadd_imm(b, nir_imul_imm(b, nir_iadd_imm(b, index_base, 3), 16), 32), 0x2);
 
    nir_validate_shader(b->shader, NULL);
    ASSERT_EQ(count_intrinsics(nir_intrinsic_load_push_constant), 2);
@@ -1491,8 +1491,8 @@ TEST_F(nir_load_store_vectorize_test, push_const_load_adjacent_complex_indirect)
 {
    nir_ssa_def *index_base = nir_load_local_invocation_index(b);
    //vec4 pc[]; pc[gl_LocalInvocationIndex].w; pc[gl_LocalInvocationIndex+1].x;
-   nir_ssa_def *low = nir_iadd(b, nir_imul(b, index_base, nir_imm_int(b, 16)), nir_imm_int(b, 12));
-   nir_ssa_def *high = nir_imul(b, nir_iadd(b, index_base, nir_imm_int(b, 1)), nir_imm_int(b, 16));
+   nir_ssa_def *low = nir_iadd_imm(b, nir_imul_imm(b, index_base, 16), 12);
+   nir_ssa_def *high = nir_imul_imm(b, nir_iadd_imm(b, index_base, 1), 16);
    create_indirect_load(nir_var_mem_push_const, 0, low, 0x1);
    create_indirect_load(nir_var_mem_push_const, 0, high, 0x2);
 
@@ -1546,7 +1546,7 @@ TEST_F(nir_load_store_vectorize_test, DISABLED_ssbo_alias2)
 {
    /* TODO: try to combine these loads */
    nir_ssa_def *index_base = nir_load_local_invocation_index(b);
-   nir_ssa_def *offset = nir_iadd(b, nir_imul(b, index_base, nir_imm_int(b, 16)), nir_imm_int(b, 4));
+   nir_ssa_def *offset = nir_iadd_imm(b, nir_imul_imm(b, index_base, 16), 4);
    create_indirect_load(nir_var_mem_ssbo, 0, offset, 0x1);
    create_store(nir_var_mem_ssbo, 0, 0, 0x2);
    create_indirect_load(nir_var_mem_ssbo, 0, offset, 0x3);
@@ -1572,7 +1572,7 @@ TEST_F(nir_load_store_vectorize_test, ssbo_alias3)
     * these loads can't be combined because if index_base == 268435455, then
     * offset == 0 because the addition would wrap around */
    nir_ssa_def *index_base = nir_load_local_invocation_index(b);
-   nir_ssa_def *offset = nir_iadd(b, nir_imul(b, index_base, nir_imm_int(b, 16)), nir_imm_int(b, 16));
+   nir_ssa_def *offset = nir_iadd_imm(b, nir_imul_imm(b, index_base, 16), 16);
    create_indirect_load(nir_var_mem_ssbo, 0, offset, 0x1);
    create_store(nir_var_mem_ssbo, 0, 0, 0x2);
    create_indirect_load(nir_var_mem_ssbo, 0, offset, 0x3);
@@ -1589,7 +1589,7 @@ TEST_F(nir_load_store_vectorize_test, DISABLED_ssbo_alias4)
 {
    /* TODO: try to combine these loads */
    nir_ssa_def *index_base = nir_load_local_invocation_index(b);
-   nir_ssa_def *offset = nir_iadd(b, nir_imul(b, index_base, nir_imm_int(b, 16)), nir_imm_int(b, 16));
+   nir_ssa_def *offset = nir_iadd_imm(b, nir_imul_imm(b, index_base, 16), 16);
    nir_instr_as_alu(offset->parent_instr)->no_unsigned_wrap = true;
    create_indirect_load(nir_var_mem_ssbo, 0, offset, 0x1);
    create_store(nir_var_mem_ssbo, 0, 0, 0x2);
@@ -1708,8 +1708,8 @@ TEST_F(nir_load_store_vectorize_test, shared_alias1)
 
 TEST_F(nir_load_store_vectorize_test, ssbo_load_distant_64bit)
 {
-   create_indirect_load(nir_var_mem_ssbo, 0, nir_imm_intN_t(b, 0x100000000, 64), 0x1);
-   create_indirect_load(nir_var_mem_ssbo, 0, nir_imm_intN_t(b, 0x200000004, 64), 0x2);
+   create_indirect_load(nir_var_mem_ssbo, 0, nir_imm_int64(b, 0x100000000), 0x1);
+   create_indirect_load(nir_var_mem_ssbo, 0, nir_imm_int64(b, 0x200000004), 0x2);
 
    nir_validate_shader(b->shader, NULL);
    ASSERT_EQ(count_intrinsics(nir_intrinsic_load_ssbo), 2);
