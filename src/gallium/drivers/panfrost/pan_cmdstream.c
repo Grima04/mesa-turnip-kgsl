@@ -316,38 +316,10 @@ panfrost_emit_compute_shader(struct panfrost_context *ctx,
 
         memset(meta, 0, sizeof(*meta));
         memcpy(&meta->shader, &ss->shader, sizeof(ss->shader));
+        memcpy(&meta->midgard_props, &ss->properties, sizeof(ss->properties));
 
-        if (dev->quirks & IS_BIFROST) {
-                struct mali_bifrost_properties_packed prop;
-                struct mali_preload_vertex_packed preload;
-
-                pan_pack(&prop, BIFROST_PROPERTIES, cfg) {
-                        cfg.unknown = 0x800000; /* XXX */
-                        cfg.uniform_buffer_count = ss->ubo_count;
-                }
-
-                /* TODO: True compute shaders */
-                pan_pack(&preload, PRELOAD_VERTEX, cfg) {
-                        cfg.uniform_count = ss->uniform_count;
-                        cfg.vertex_id = true;
-                        cfg.instance_id = true;
-                }
-
-                memcpy(&meta->bifrost_props, &prop, sizeof(prop));
-                memcpy(&meta->bifrost_preload, &preload, sizeof(preload));
-        } else {
-                struct mali_midgard_properties_packed prop;
-
-                pan_pack(&prop, MIDGARD_PROPERTIES, cfg) {
-                        cfg.uniform_buffer_count = ss->ubo_count;
-                        cfg.uniform_count = ss->uniform_count;
-                        cfg.work_register_count = ss->work_reg_count;
-                        cfg.writes_globals = ss->writes_global;
-                        cfg.suppress_inf_nan = true; /* XXX */
-                }
-
-                memcpy(&meta->midgard_props, &prop, sizeof(prop));
-        }
+        if (dev->quirks & IS_BIFROST)
+                memcpy(&meta->bifrost_preload, &ss->preload, sizeof(ss->preload));
 }
 
 static unsigned

@@ -38,6 +38,45 @@
 
 #include "tgsi/tgsi_dump.h"
 
+static void
+pan_pack_midgard_props(struct panfrost_shader_state *state,
+                gl_shader_stage stage)
+{
+        pan_pack(&state->properties, MIDGARD_PROPERTIES, cfg) {
+                cfg.uniform_buffer_count = state->ubo_count;
+                cfg.uniform_count = state->uniform_count;
+                cfg.work_register_count = state->work_reg_count;
+                cfg.writes_globals = state->writes_global;
+                cfg.suppress_inf_nan = true; /* XXX */
+        }
+}
+
+static void
+pan_pack_bifrost_props(struct panfrost_shader_state *state,
+                gl_shader_stage stage)
+{
+        switch (stage) {
+        case MESA_SHADER_VERTEX:
+                pan_pack(&state->properties, BIFROST_PROPERTIES, cfg) {
+                        cfg.unknown = 0x800000; /* XXX */
+                        cfg.uniform_buffer_count = state->ubo_count;
+                }
+
+                pan_pack(&state->preload, PRELOAD_VERTEX, cfg) {
+                        cfg.uniform_count = state->uniform_count;
+                        cfg.vertex_id = true;
+                        cfg.instance_id = true;
+                }
+
+                break;
+        case MESA_SHADER_FRAGMENT:
+                /* TODO */
+                break;
+        default:
+                unreachable("TODO");
+        }
+}
+
 static unsigned
 pan_format_from_nir_base(nir_alu_type base)
 {
@@ -282,6 +321,11 @@ panfrost_shader_compile(struct panfrost_context *ctx,
                 }
         }
 
+        /* Needed for linkage */
+        state->attribute_count = attribute_count;
+        state->varying_count = varying_count;
+        state->ubo_count = s->info.num_ubos + 1; /* off-by-one for uniforms */
+
         /* Prepare the descriptors at compile-time */
         pan_pack(&state->shader, SHADER, cfg) {
                 cfg.shader = shader;
@@ -291,10 +335,10 @@ panfrost_shader_compile(struct panfrost_context *ctx,
                 cfg.sampler_count = cfg.texture_count;
         }
 
-        /* Needed for linkage */
-        state->attribute_count = attribute_count;
-        state->varying_count = varying_count;
-        state->ubo_count = s->info.num_ubos + 1; /* off-by-one for uniforms */
+        if (dev->quirks & IS_BIFROST)
+                pan_pack_bifrost_props(state, stage);
+        else
+                pan_pack_midgard_props(state, stage);
 
         /* In both clone and tgsi_to_nir paths, the shader is ralloc'd against
          * a NULL context */

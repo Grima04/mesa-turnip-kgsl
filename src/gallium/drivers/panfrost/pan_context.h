@@ -184,6 +184,8 @@ struct panfrost_shader_state {
         /* Compiled, mapped descriptor, ready for the hardware */
         bool compiled;
         struct mali_shader_packed shader;
+        struct mali_midgard_properties_packed properties;
+        struct mali_preload_packed preload;
 
         /* Non-descript information */
         unsigned uniform_count;
