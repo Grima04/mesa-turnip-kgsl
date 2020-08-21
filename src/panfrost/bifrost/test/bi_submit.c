@@ -171,18 +171,13 @@ bit_vertex(struct panfrost_device *dev, panfrost_program prog,
 
         memcpy(shmem->cpu, &shmemp, sizeof(shmemp));
 
-        struct mali_shader_meta meta = {
-                .shader = { .opaque = { 
-                        (uint32_t) shader->gpu & 0xFFFFFFFF, /* PC lo */
-                        (uint32_t) (shader->gpu >> 32ull), /* PC hi */
-                        (uint32_t) (1 << 16) | 1, /* attr/vary */
-                        (uint32_t) 0, /* tex/sampl */
-                } },
-                .bifrost_props = { .opaque = { 0x80020001 } },
-                .bifrost_preload = { .opaque = { (sz_ubo / 16) << 15 } },
-        };
+        pan_pack(shader_desc->cpu, STATE, cfg) {
+                cfg.shader.shader = shader->gpu;
+                cfg.shader.attribute_count = cfg.shader.varying_count = 1;
+                cfg.properties = 0x80020001;
+                cfg.preload.uniform_count = (sz_ubo / 16);
+        }
 
-        memcpy(shader_desc->cpu, &meta, sizeof(meta));
         memcpy(shader->cpu, prog.compiled.data, prog.compiled.size);
 
         struct bifrost_payload_vertex payload = {
