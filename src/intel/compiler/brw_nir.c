@@ -709,6 +709,7 @@ brw_preprocess_nir(const struct brw_compiler *compiler, nir_shader *nir,
    }
 
    OPT(nir_lower_system_values);
+   OPT(nir_lower_compute_system_values);
 
    const nir_lower_subgroups_options subgroups_options = {
       .ballot_bit_size = 32,

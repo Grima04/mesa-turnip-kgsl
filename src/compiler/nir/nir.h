@@ -4276,6 +4276,8 @@ bool nir_lower_subgroups(nir_shader *shader,
 
 bool nir_lower_system_values(nir_shader *shader);
 
+bool nir_lower_compute_system_values(nir_shader *shader);
+
 enum PACKED nir_lower_tex_packing {
    nir_lower_tex_packing_none = 0,
    /* The sampler returns up to 2 32-bit words of half floats or 16-bit signed

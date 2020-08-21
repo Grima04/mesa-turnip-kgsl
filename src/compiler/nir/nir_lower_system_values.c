@@ -92,6 +92,150 @@ lower_system_value_instr(nir_builder *b, nir_instr *instr, void *_state)
          return NULL;
       }
 
+   case nir_intrinsic_load_helper_invocation:
+      if (b->shader->options->lower_helper_invocation) {
+         nir_ssa_def *tmp;
+         tmp = nir_ishl(b, nir_imm_int(b, 1),
+                           nir_load_sample_id_no_per_sample(b));
+         tmp = nir_iand(b, nir_load_sample_mask_in(b), tmp);
+         return nir_inot(b, nir_i2b(b, tmp));
+      } else {
+         return NULL;
+      }
+
+   case nir_intrinsic_load_local_invocation_id:
+   case nir_intrinsic_load_local_invocation_index:
+   case nir_intrinsic_load_local_group_size:
+      return sanitize_32bit_sysval(b, intrin);
+
+   case nir_intrinsic_load_deref: {
+      nir_deref_instr *deref = nir_src_as_deref(intrin->src[0]);
+      if (deref->mode != nir_var_system_value)
+         return NULL;
+
+      if (deref->deref_type != nir_deref_type_var) {
+         /* The only one system value that is an array and that is
+          * gl_SampleMask which is always an array of one element.
+          */
+         assert(deref->deref_type == nir_deref_type_array);
+         deref = nir_deref_instr_parent(deref);
+         assert(deref->deref_type == nir_deref_type_var);
+         assert(deref->var->data.location == SYSTEM_VALUE_SAMPLE_MASK_IN);
+      }
+      nir_variable *var = deref->var;
+
+      switch (var->data.location) {
+      case SYSTEM_VALUE_INSTANCE_INDEX:
+         return nir_iadd(b, nir_load_instance_id(b),
+                            nir_load_base_instance(b));
+
+      case SYSTEM_VALUE_SUBGROUP_EQ_MASK:
+      case SYSTEM_VALUE_SUBGROUP_GE_MASK:
+      case SYSTEM_VALUE_SUBGROUP_GT_MASK:
+      case SYSTEM_VALUE_SUBGROUP_LE_MASK:
+      case SYSTEM_VALUE_SUBGROUP_LT_MASK: {
+         nir_intrinsic_op op =
+            nir_intrinsic_from_system_value(var->data.location);
+         nir_intrinsic_instr *load = nir_intrinsic_instr_create(b->shader, op);
+         nir_ssa_dest_init_for_type(&load->instr, &load->dest,
+                                    var->type, NULL);
+         load->num_components = load->dest.ssa.num_components;
+         nir_builder_instr_insert(b, &load->instr);
+         return &load->dest.ssa;
+      }
+
+      case SYSTEM_VALUE_DEVICE_INDEX:
+         if (b->shader->options->lower_device_index_to_zero)
+            return nir_imm_int(b, 0);
+         break;
+
+      case SYSTEM_VALUE_GLOBAL_GROUP_SIZE:
+         return build_global_group_size(b, bit_size);
+
+      case SYSTEM_VALUE_BARYCENTRIC_LINEAR_PIXEL:
+         return nir_load_barycentric(b, nir_intrinsic_load_barycentric_pixel,
+                                     INTERP_MODE_NOPERSPECTIVE);
+
+      case SYSTEM_VALUE_BARYCENTRIC_LINEAR_CENTROID:
+         return nir_load_barycentric(b, nir_intrinsic_load_barycentric_centroid,
+                                     INTERP_MODE_NOPERSPECTIVE);
+
+      case SYSTEM_VALUE_BARYCENTRIC_LINEAR_SAMPLE:
+         return nir_load_barycentric(b, nir_intrinsic_load_barycentric_sample,
+                                     INTERP_MODE_NOPERSPECTIVE);
+
+      case SYSTEM_VALUE_BARYCENTRIC_PERSP_PIXEL:
+         return nir_load_barycentric(b, nir_intrinsic_load_barycentric_pixel,
+                                     INTERP_MODE_SMOOTH);
+
+      case SYSTEM_VALUE_BARYCENTRIC_PERSP_CENTROID:
+         return nir_load_barycentric(b, nir_intrinsic_load_barycentric_centroid,
+                                     INTERP_MODE_SMOOTH);
+
+      case SYSTEM_VALUE_BARYCENTRIC_PERSP_SAMPLE:
+         return nir_load_barycentric(b, nir_intrinsic_load_barycentric_sample,
+                                     INTERP_MODE_SMOOTH);
+
+      case SYSTEM_VALUE_BARYCENTRIC_PULL_MODEL:
+         return nir_load_barycentric(b, nir_intrinsic_load_barycentric_model,
+                                     INTERP_MODE_NONE);
+
+      default:
+         break;
+      }
+
+      nir_intrinsic_op sysval_op =
+         nir_intrinsic_from_system_value(var->data.location);
+      return nir_load_system_value(b, sysval_op, 0,
+                                      intrin->dest.ssa.num_components,
+                                      intrin->dest.ssa.bit_size);
+   }
+
+   default:
+      return NULL;
+   }
+}
+
+bool
+nir_lower_system_values(nir_shader *shader)
+{
+   bool progress = nir_shader_lower_instructions(shader,
+                                                 lower_system_value_filter,
+                                                 lower_system_value_instr,
+                                                 NULL);
+
+   /* We're going to delete the variables so we need to clean up all those
+    * derefs we left lying around.
+    */
+   if (progress)
+      nir_remove_dead_derefs(shader);
+
+   nir_foreach_variable_with_modes_safe(var, shader, nir_var_system_value)
+      exec_node_remove(&var->node);
+
+   return progress;
+}
+
+static bool
+lower_compute_system_value_filter(const nir_instr *instr, const void *_options)
+{
+   return instr->type == nir_instr_type_intrinsic;
+}
+
+static nir_ssa_def *
+lower_compute_system_value_instr(nir_builder *b,
+                                 nir_instr *instr, void *_options)
+{
+   nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
+
+   /* All the intrinsics we care about are loads */
+   if (!nir_intrinsic_infos[intrin->intrinsic].has_dest)
+      return NULL;
+
+   assert(intrin->dest.is_ssa);
+   const unsigned bit_size = intrin->dest.ssa.bit_size;
+
+   switch (intrin->intrinsic) {
    case nir_intrinsic_load_local_invocation_id:
       /* If lower_cs_local_id_from_index is true, then we derive the local
        * index from the local id.
@@ -215,121 +359,20 @@ lower_system_value_instr(nir_builder *b, nir_instr *instr, void *_state)
       return index;
    }
 
-   case nir_intrinsic_load_helper_invocation:
-      if (b->shader->options->lower_helper_invocation) {
-         nir_ssa_def *tmp;
-         tmp = nir_ishl(b, nir_imm_int(b, 1),
-                           nir_load_sample_id_no_per_sample(b));
-         tmp = nir_iand(b, nir_load_sample_mask_in(b), tmp);
-         return nir_inot(b, nir_i2b(b, tmp));
-      } else {
-         return NULL;
-      }
-
-   case nir_intrinsic_load_deref: {
-      nir_deref_instr *deref = nir_src_as_deref(intrin->src[0]);
-      if (deref->mode != nir_var_system_value)
-         return NULL;
-
-      if (deref->deref_type != nir_deref_type_var) {
-         /* The only one system value that is an array and that is
-          * gl_SampleMask which is always an array of one element.
-          */
-         assert(deref->deref_type == nir_deref_type_array);
-         deref = nir_deref_instr_parent(deref);
-         assert(deref->deref_type == nir_deref_type_var);
-         assert(deref->var->data.location == SYSTEM_VALUE_SAMPLE_MASK_IN);
-      }
-      nir_variable *var = deref->var;
-
-      switch (var->data.location) {
-      case SYSTEM_VALUE_INSTANCE_INDEX:
-         return nir_iadd(b, nir_load_instance_id(b),
-                            nir_load_base_instance(b));
-
-      case SYSTEM_VALUE_SUBGROUP_EQ_MASK:
-      case SYSTEM_VALUE_SUBGROUP_GE_MASK:
-      case SYSTEM_VALUE_SUBGROUP_GT_MASK:
-      case SYSTEM_VALUE_SUBGROUP_LE_MASK:
-      case SYSTEM_VALUE_SUBGROUP_LT_MASK: {
-         nir_intrinsic_op op =
-            nir_intrinsic_from_system_value(var->data.location);
-         nir_intrinsic_instr *load = nir_intrinsic_instr_create(b->shader, op);
-         nir_ssa_dest_init_for_type(&load->instr, &load->dest,
-                                    var->type, NULL);
-         load->num_components = load->dest.ssa.num_components;
-         nir_builder_instr_insert(b, &load->instr);
-         return &load->dest.ssa;
-      }
-
-      case SYSTEM_VALUE_DEVICE_INDEX:
-         if (b->shader->options->lower_device_index_to_zero)
-            return nir_imm_int(b, 0);
-         break;
-
-      case SYSTEM_VALUE_GLOBAL_GROUP_SIZE:
-         return build_global_group_size(b, bit_size);
-
-      case SYSTEM_VALUE_BARYCENTRIC_LINEAR_PIXEL:
-         return nir_load_barycentric(b, nir_intrinsic_load_barycentric_pixel,
-                                     INTERP_MODE_NOPERSPECTIVE);
-
-      case SYSTEM_VALUE_BARYCENTRIC_LINEAR_CENTROID:
-         return nir_load_barycentric(b, nir_intrinsic_load_barycentric_centroid,
-                                     INTERP_MODE_NOPERSPECTIVE);
-
-      case SYSTEM_VALUE_BARYCENTRIC_LINEAR_SAMPLE:
-         return nir_load_barycentric(b, nir_intrinsic_load_barycentric_sample,
-                                     INTERP_MODE_NOPERSPECTIVE);
-
-      case SYSTEM_VALUE_BARYCENTRIC_PERSP_PIXEL:
-         return nir_load_barycentric(b, nir_intrinsic_load_barycentric_pixel,
-                                     INTERP_MODE_SMOOTH);
-
-      case SYSTEM_VALUE_BARYCENTRIC_PERSP_CENTROID:
-         return nir_load_barycentric(b, nir_intrinsic_load_barycentric_centroid,
-                                     INTERP_MODE_SMOOTH);
-
-      case SYSTEM_VALUE_BARYCENTRIC_PERSP_SAMPLE:
-         return nir_load_barycentric(b, nir_intrinsic_load_barycentric_sample,
-                                     INTERP_MODE_SMOOTH);
-
-      case SYSTEM_VALUE_BARYCENTRIC_PULL_MODEL:
-         return nir_load_barycentric(b, nir_intrinsic_load_barycentric_model,
-                                     INTERP_MODE_NONE);
-
-      default:
-         break;
-      }
-
-      nir_intrinsic_op sysval_op =
-         nir_intrinsic_from_system_value(var->data.location);
-      return nir_load_system_value(b, sysval_op, 0,
-                                      intrin->dest.ssa.num_components,
-                                      intrin->dest.ssa.bit_size);
-   }
-
    default:
       return NULL;
    }
 }
 
 bool
-nir_lower_system_values(nir_shader *shader)
+nir_lower_compute_system_values(nir_shader *shader)
 {
-   bool progress = nir_shader_lower_instructions(shader,
-                                                 lower_system_value_filter,
-                                                 lower_system_value_instr,
-                                                 NULL);
+   if (shader->info.stage != MESA_SHADER_COMPUTE &&
+       shader->info.stage != MESA_SHADER_KERNEL)
+      return false;
 
-   /* We're going to delete the variables so we need to clean up all those
-    * derefs we left lying around.
-    */
-   if (progress)
-      nir_remove_dead_derefs(shader);
-
-   nir_foreach_variable_with_modes_safe(var, shader, nir_var_system_value)
-      exec_node_remove(&var->node);
-
-   return progress;
+   return nir_shader_lower_instructions(shader,
+                                        lower_compute_system_value_filter,
+                                        lower_compute_system_value_instr,
+                                        NULL);
 }

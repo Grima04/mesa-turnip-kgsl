@@ -562,6 +562,7 @@ val_shader_compile_to_ir(struct val_pipeline *pipeline,
    if (stage == MESA_SHADER_FRAGMENT)
       val_lower_input_attachments(nir, false);
    NIR_PASS_V(nir, nir_lower_system_values);
+   NIR_PASS_V(nir, nir_lower_compute_system_values);
 
    NIR_PASS_V(nir, nir_lower_clip_cull_distance_arrays);
    nir_remove_dead_variables(nir, nir_var_uniform, NULL);
