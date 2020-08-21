@@ -45,9 +45,19 @@ pan_pack_midgard_props(struct panfrost_shader_state *state,
         pan_pack(&state->properties, MIDGARD_PROPERTIES, cfg) {
                 cfg.uniform_buffer_count = state->ubo_count;
                 cfg.uniform_count = state->uniform_count;
-                cfg.work_register_count = state->work_reg_count;
                 cfg.writes_globals = state->writes_global;
                 cfg.suppress_inf_nan = true; /* XXX */
+
+                if (stage == MESA_SHADER_FRAGMENT) {
+                        /* Work register count, early-z, reads at draw-time */
+                        cfg.stencil_from_shader = state->writes_stencil;
+                        cfg.helper_invocation_enable = state->helper_invocations;
+                        cfg.depth_source = state->writes_depth ?
+                                MALI_DEPTH_SOURCE_SHADER :
+                                MALI_DEPTH_SOURCE_FIXED_FUNCTION;
+                } else {
+                        cfg.work_register_count = state->work_reg_count;
+                }
         }
 }
 
@@ -70,7 +80,18 @@ pan_pack_bifrost_props(struct panfrost_shader_state *state,
 
                 break;
         case MESA_SHADER_FRAGMENT:
-                /* TODO */
+                pan_pack(&state->properties, BIFROST_PROPERTIES, cfg) {
+                        /* Early-Z set at draw-time */
+
+                        cfg.unknown = 0x950020; /* XXX */
+                        cfg.uniform_buffer_count = state->ubo_count;
+                }
+
+                pan_pack(&state->preload, PRELOAD_FRAGMENT, cfg) {
+                        cfg.uniform_count = state->uniform_count;
+                        cfg.fragment_position = state->reads_frag_coord;
+                }
+
                 break;
         default:
                 unreachable("TODO");

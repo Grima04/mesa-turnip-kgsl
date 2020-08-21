@@ -553,7 +553,6 @@ panfrost_emit_frag_shader(struct panfrost_context *ctx,
 
         if (dev->quirks & IS_BIFROST) {
                 struct mali_bifrost_properties_packed prop;
-                struct mali_preload_fragment_packed preload;
 
                 bool no_blend = true;
 
@@ -561,18 +560,14 @@ panfrost_emit_frag_shader(struct panfrost_context *ctx,
                         no_blend &= (!blend[i].load_dest | blend[i].no_colour);
 
                 pan_pack(&prop, BIFROST_PROPERTIES, cfg) {
-                        cfg.unknown = 0x950020; /* XXX */
-                        cfg.uniform_buffer_count = fs->ubo_count;
                         cfg.early_z_enable = !fs->can_discard && !fs->writes_depth && no_blend;
                 }
 
-                pan_pack(&preload, PRELOAD_FRAGMENT, cfg) {
-                        cfg.uniform_count = fs->uniform_count;
-                        cfg.fragment_position = fs->reads_frag_coord;
-                }
+                /* Combine with prepacked properties */
+                prop.opaque[0] |= fs->properties.opaque[0];
 
                 memcpy(&fragmeta->bifrost_props, &prop, sizeof(prop));
-                memcpy(&fragmeta->bifrost_preload, &preload, sizeof(preload));
+                memcpy(&fragmeta->bifrost_preload, &fs->preload, sizeof(fs->preload));
         } else {
                 struct mali_midgard_properties_packed prop;
 
@@ -594,28 +589,19 @@ panfrost_emit_frag_shader(struct panfrost_context *ctx,
                         has_blend_shader |= blend[c].is_shader;
 
                 pan_pack(&prop, MIDGARD_PROPERTIES, cfg) {
-                        cfg.uniform_buffer_count = fs->ubo_count;
-                        cfg.uniform_count = fs->uniform_count;
-                        cfg.work_register_count = fs->work_reg_count;
-                        cfg.writes_globals = fs->writes_global;
-                        cfg.suppress_inf_nan = true; /* XXX */
-
                         /* TODO: Reduce this limit? */
                         if (has_blend_shader)
-                                cfg.work_register_count = MAX2(cfg.work_register_count, 8);
+                                cfg.work_register_count = MAX2(fs->work_reg_count, 8);
+                        else
+                                cfg.work_register_count = fs->work_reg_count;
 
-                        cfg.stencil_from_shader = fs->writes_stencil;
-                        cfg.helper_invocation_enable = fs->helper_invocations;
-                        cfg.depth_source = fs->writes_depth ?
-                                MALI_DEPTH_SOURCE_SHADER :
-                                MALI_DEPTH_SOURCE_FIXED_FUNCTION;
-
-                        /* Depend on other state */
                         cfg.early_z_enable = !(late_z || alpha_to_coverage);
                         cfg.reads_tilebuffer = fs->outputs_read || (!zs_enabled && fs->can_discard);
                         cfg.reads_depth_stencil = zs_enabled && fs->can_discard;
                 }
 
+                /* Combine with prepacked properties */
+                prop.opaque[0] |= fs->properties.opaque[0];
                 memcpy(&fragmeta->midgard_props, &prop, sizeof(prop));
         }
 
