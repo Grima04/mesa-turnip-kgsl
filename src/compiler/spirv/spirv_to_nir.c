@@ -2889,13 +2889,16 @@ static void
 fill_common_atomic_sources(struct vtn_builder *b, SpvOp opcode,
                            const uint32_t *w, nir_src *src)
 {
+   const struct glsl_type *type = vtn_get_type(b, w[1])->type;
+   unsigned bit_size = glsl_get_bit_size(type);
+
    switch (opcode) {
    case SpvOpAtomicIIncrement:
-      src[0] = nir_src_for_ssa(nir_imm_int(&b->nb, 1));
+      src[0] = nir_src_for_ssa(nir_imm_intN_t(&b->nb, 1, bit_size));
       break;
 
    case SpvOpAtomicIDecrement:
-      src[0] = nir_src_for_ssa(nir_imm_int(&b->nb, -1));
+      src[0] = nir_src_for_ssa(nir_imm_intN_t(&b->nb, -1, bit_size));
       break;
 
    case SpvOpAtomicISub:
