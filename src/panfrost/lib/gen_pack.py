@@ -416,7 +416,7 @@ class Group(object):
             # Recurse for structs, see pack() for validation
             if field.type in self.parser.structs:
                 pack_name = self.parser.gen_prefix(safe_name(field.type)).upper()
-                print("   {}_unpack(cl + {}, &values->{});".format(pack_name, field.start // 32, field.name))
+                print("   {}_unpack(cl + {}, &values->{});".format(pack_name, field.start // 8, field.name))
                 continue
 
             convert = None
