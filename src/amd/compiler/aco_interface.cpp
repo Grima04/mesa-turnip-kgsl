@@ -48,7 +48,7 @@ static void validate(aco::Program *program)
    if (!(aco::debug_flags & aco::DEBUG_VALIDATE_IR))
       return;
 
-   bool is_valid = aco::validate_ir(program);
+   ASSERTED bool is_valid = aco::validate_ir(program);
    assert(is_valid);
 }
 
