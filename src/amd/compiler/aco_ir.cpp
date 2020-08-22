@@ -238,6 +238,10 @@ aco_ptr<Instruction> convert_to_SDWA(chip_class chip, aco_ptr<Instruction>& inst
    }
 
    for (unsigned i = 0; i < instr->operands.size(); i++) {
+      /* SDWA only uses operands 0 and 1. */
+      if (i >= 2)
+         break;
+
       switch (instr->operands[i].bytes()) {
       case 1:
          sdwa->sel[i] = sdwa_ubyte;
