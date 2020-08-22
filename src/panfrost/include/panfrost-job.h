@@ -53,45 +53,6 @@ typedef uint64_t mali_ptr;
 #define MALI_CULL_FACE_FRONT    (1 << 6)
 #define MALI_CULL_FACE_BACK     (1 << 7)
 
-/* Flags apply to unknown2_3? */
-
-#define MALI_HAS_MSAA		(1 << 0)
-
-/* Execute fragment shader per-sample if set (e.g. to implement gl_SampleID
- * reads) */
-#define MALI_PER_SAMPLE         (1 << 2)
-#define MALI_CAN_DISCARD 	(1 << 5)
-
-/* Applies on SFBD systems, specifying that programmable blending is in use */
-#define MALI_HAS_BLEND_SHADER 	(1 << 6)
-
-/* func is mali_func */
-#define MALI_DEPTH_FUNC(func)	   (func << 8)
-#define MALI_GET_DEPTH_FUNC(flags) ((flags >> 8) & 0x7)
-#define MALI_DEPTH_FUNC_MASK	   MALI_DEPTH_FUNC(0x7)
-
-#define MALI_DEPTH_WRITEMASK    (1 << 11)
-
-#define MALI_DEPTH_CLIP_NEAR    (1 << 12)
-#define MALI_DEPTH_CLIP_FAR     (1 << 13)
-
-/* Next flags to unknown2_4 */
-#define MALI_STENCIL_TEST      	(1 << 0)
-
-#define MALI_ALPHA_TO_COVERAGE (1 << 1)
-
-#define MALI_SFBD_ENABLE        (1 << 4)
-#define MALI_SFBD_SRGB          (1 << 8)
-#define MALI_NO_DITHER		(1 << 9)
-#define MALI_DEPTH_RANGE_A	(1 << 12)
-#define MALI_DEPTH_RANGE_B	(1 << 13)
-#define MALI_NO_MSAA		(1 << 14)
-
-#define MALI_MASK_R (1 << 0)
-#define MALI_MASK_G (1 << 1)
-#define MALI_MASK_B (1 << 2)
-#define MALI_MASK_A (1 << 3)
-
 enum mali_nondominant_mode {
         MALI_BLEND_NON_MIRROR = 0,
         MALI_BLEND_NON_ZERO = 1
@@ -291,55 +252,6 @@ struct bifrost_blend_rt {
                 u32 shader;
         };
 } __attribute__((packed));
-
-/* Descriptor for the shader. Following this is at least one, up to four blend
- * descriptors for each active render target */
-
-struct mali_shader_meta {
-        struct mali_shader_packed shader;
-
-        union {
-                struct mali_bifrost_properties_packed bifrost_props;
-                struct mali_midgard_properties_packed midgard_props;
-        };
-
-        /* Same as glPolygoOffset() arguments */
-        float depth_units;
-        float depth_factor;
-
-        u32 unknown2_2;
-
-        /* Generated from SAMPLE_COVERAGE_VALUE and SAMPLE_COVERAGE_INVERT. See
-         * 13.8.3 ("Multisample Fragment Operations") in the OpenGL ES 3.2
-         * specification. Only matters when multisampling is enabled. */
-        u16 coverage_mask;
-
-        u16 unknown2_3;
-
-        u8 stencil_mask_front;
-        u8 stencil_mask_back;
-        u16 unknown2_4;
-
-        struct mali_stencil_packed stencil_front;
-        struct mali_stencil_packed stencil_back;
-
-        union {
-                struct mali_preload_packed bifrost_preload;
-                struct {
-                        u32 unknown2_7;
-                } midgard2;
-        };
-
-        u32 padding;
-
-        /* Blending information for the older non-MRT Midgard HW. Check for
-         * MALI_HAS_BLEND_SHADER to decide how to interpret.
-         */
-
-        union midgard_blend blend;
-} __attribute__((packed));
-
-/* This only concerns hardware jobs */
 
 /* Possible values for job_descriptor_size */
 
