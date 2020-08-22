@@ -6554,26 +6554,6 @@ sort_inout_decls_by_slot(struct inout_decl *decls,
    std::sort(decls, decls + count, sorter);
 }
 
-static enum tgsi_interpolate_mode
-st_translate_interp(enum glsl_interp_mode glsl_qual, GLuint varying)
-{
-   switch (glsl_qual) {
-   case INTERP_MODE_NONE:
-      if (varying == VARYING_SLOT_COL0 || varying == VARYING_SLOT_COL1)
-         return TGSI_INTERPOLATE_COLOR;
-      return TGSI_INTERPOLATE_PERSPECTIVE;
-   case INTERP_MODE_SMOOTH:
-      return TGSI_INTERPOLATE_PERSPECTIVE;
-   case INTERP_MODE_FLAT:
-      return TGSI_INTERPOLATE_CONSTANT;
-   case INTERP_MODE_NOPERSPECTIVE:
-      return TGSI_INTERPOLATE_LINEAR;
-   default:
-      assert(0 && "unexpected interp mode in st_translate_interp()");
-      return TGSI_INTERPOLATE_PERSPECTIVE;
-   }
-}
-
 /**
  * Translate intermediate IR (glsl_to_tgsi_instruction) to TGSI format.
  * \param program  the program to translate
@@ -6682,7 +6662,9 @@ st_translate_program(
             assert(interpMode);
             interp_mode = interpMode[slot] != TGSI_INTERPOLATE_COUNT ?
                (enum tgsi_interpolate_mode) interpMode[slot] :
-               st_translate_interp(decl->interp, inputSlotToAttr[slot]);
+               tgsi_get_interp_mode(decl->interp,
+                                    inputSlotToAttr[slot] == VARYING_SLOT_COL0 ||
+                                    inputSlotToAttr[slot] == VARYING_SLOT_COL1);
 
             interp_location = (enum tgsi_interpolate_loc) decl->interp_loc;
          }
