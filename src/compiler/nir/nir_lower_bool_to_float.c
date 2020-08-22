@@ -58,6 +58,8 @@ lower_alu_instr(nir_builder *b, nir_alu_instr *alu)
    case nir_op_vec4:
    case nir_op_vec8:
    case nir_op_vec16:
+      if (alu->dest.dest.ssa.bit_size != 1)
+         return false;
       /* These we expect to have booleans but the opcode doesn't change */
       break;
 

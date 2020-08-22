@@ -59,6 +59,8 @@ lower_alu_instr(nir_alu_instr *alu)
    case nir_op_iand:
    case nir_op_ior:
    case nir_op_ixor:
+      if (alu->dest.dest.ssa.bit_size != 1)
+         return false;
       /* These we expect to have booleans but the opcode doesn't change */
       break;
 

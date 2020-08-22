@@ -110,7 +110,7 @@ lower_alu_instr(nir_builder *b, nir_alu_instr *alu)
    case nir_op_ior:
    case nir_op_ixor:
       if (nir_dest_bit_size(alu->dest.dest) > 1)
-         break; /* Not a boolean instruction */
+         return false; /* Not a boolean instruction */
       /* Fallthrough */
 
    case nir_op_ball_fequal2:
