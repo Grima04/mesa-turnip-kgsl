@@ -78,6 +78,21 @@ namespace {
       }
    }
 
+   cl_kernel_arg_address_qualifier
+   convert_storage_class_to_cl(SpvStorageClass storage_class) {
+      switch (storage_class) {
+      case SpvStorageClassUniformConstant:
+         return CL_KERNEL_ARG_ADDRESS_CONSTANT;
+      case SpvStorageClassWorkgroup:
+         return CL_KERNEL_ARG_ADDRESS_LOCAL;
+      case SpvStorageClassCrossWorkgroup:
+         return CL_KERNEL_ARG_ADDRESS_GLOBAL;
+      case SpvStorageClassFunction:
+      default:
+         return CL_KERNEL_ARG_ADDRESS_PRIVATE;
+      }
+   }
+
    enum module::argument::type
    convert_image_type(SpvId id, SpvDim dim, SpvAccessQualifier access,
                       std::string &err) {
@@ -130,6 +145,9 @@ namespace {
       std::unordered_set<SpvId> packed_structures;
       std::unordered_map<SpvId, std::vector<SpvFunctionParameterAttribute>>
          func_param_attr_map;
+      std::unordered_map<SpvId, std::string> names;
+      std::unordered_map<SpvId, cl_kernel_arg_type_qualifier> qualifiers;
+      std::unordered_map<std::string, std::vector<std::string> > param_type_names;
 
       while (i < length) {
          const auto inst = &source[i * sizeof(uint32_t)];
@@ -138,6 +156,29 @@ namespace {
          const unsigned int num_operands = desc_word >> SpvWordCountShift;
 
          switch (opcode) {
+         case SpvOpName: {
+            names.emplace(get<SpvId>(inst, 1),
+                          source.data() + (i + 2u) * sizeof(uint32_t));
+            break;
+         }
+
+         case SpvOpString: {
+            // SPIRV-LLVM-Translator stores param type names as OpStrings
+            std::string str(source.data() + (i + 2u) * sizeof(uint32_t));
+            if (str.find("kernel_arg_type.") != 0)
+               break;
+
+            std::string line;
+            std::istringstream istream(str.substr(16));
+
+            std::getline(istream, line, '.');
+
+            std::string k = line;
+            while (std::getline(istream, line, ','))
+               param_type_names[k].push_back(line);
+            break;
+         }
+
          case SpvOpEntryPoint:
             if (get<SpvExecutionModel>(inst, 1) == SpvExecutionModelKernel)
                kernels.emplace(get<SpvId>(inst, 2),
@@ -147,12 +188,21 @@ namespace {
          case SpvOpDecorate: {
             const auto id = get<SpvId>(inst, 1);
             const auto decoration = get<SpvDecoration>(inst, 2);
-            if (decoration == SpvDecorationCPacked)
+            switch (decoration) {
+            case SpvDecorationCPacked:
                packed_structures.emplace(id);
-            else if (decoration == SpvDecorationFuncParamAttr) {
+               break;
+            case SpvDecorationFuncParamAttr: {
                const auto attribute =
                   get<SpvFunctionParameterAttribute>(inst, 3u);
                func_param_attr_map[id].push_back(attribute);
+               break;
+            }
+            case SpvDecorationVolatile:
+               qualifiers[id] |= CL_KERNEL_ARG_TYPE_VOLATILE;
+               break;
+            default:
+               break;
             }
             break;
          }
@@ -166,9 +216,16 @@ namespace {
             const auto func_param_attr_iter =
                func_param_attr_map.find(group_id);
             if (func_param_attr_iter != func_param_attr_map.end()) {
+               for (unsigned int i = 2u; i < num_operands; ++i) {
+                  auto &attrs = func_param_attr_map[get<SpvId>(inst, i)];
+                  attrs.insert(attrs.begin(),
+                               func_param_attr_iter->second.begin(),
+                               func_param_attr_iter->second.end());
+               }
+            }
+            if (qualifiers.count(group_id)) {
                for (unsigned int i = 2u; i < num_operands; ++i)
-                  func_param_attr_map.emplace(get<SpvId>(inst, i),
-                                              func_param_attr_iter->second);
+                  qualifiers[get<SpvId>(inst, i)] |= qualifiers[group_id];
             }
             break;
          }
@@ -181,12 +238,13 @@ namespace {
             constants[get<SpvId>(inst, 2)] = get<unsigned int>(inst, 3u);
             break;
 
-         case SpvOpTypeInt: // FALLTHROUGH
+         case SpvOpTypeInt:
          case SpvOpTypeFloat: {
             const auto size = get<uint32_t>(inst, 2) / 8u;
-            types[get<SpvId>(inst, 1)] = { module::argument::scalar, size,
-                                           size, size,
-                                           module::argument::zero_ext };
+            const auto id = get<SpvId>(inst, 1);
+            types[id] = { module::argument::scalar, size, size, size,
+                          module::argument::zero_ext };
+            types[id].info.address_qualifier = CL_KERNEL_ARG_ADDRESS_PRIVATE;
             break;
          }
 
@@ -260,6 +318,7 @@ namespace {
             const auto align = elem_size * util_next_power_of_two(elem_nbs);
             types[id] = { module::argument::scalar, size, size, align,
                           module::argument::zero_ext };
+            types[id].info.address_qualifier = CL_KERNEL_ARG_ADDRESS_PRIVATE;
             break;
          }
 
@@ -271,13 +330,16 @@ namespace {
             // passed as an argument to a kernel.
             if (storage_class == SpvStorageClassInput)
                break;
+
+            if (opcode == SpvOpTypePointer)
+               pointer_types[id] = get<SpvId>(inst, 3);
+
             types[id] = { convert_storage_class(storage_class, err),
                           sizeof(cl_mem),
                           static_cast<module::size_t>(pointer_byte_size),
                           static_cast<module::size_t>(pointer_byte_size),
                           module::argument::zero_ext };
-            if (opcode == SpvOpTypePointer)
-               pointer_types[id] = get<SpvId>(inst, 3);
+            types[id].info.address_qualifier = convert_storage_class_to_cl(storage_class);
             break;
          }
 
@@ -315,6 +377,7 @@ namespace {
             if (kernel_name.empty())
                break;
 
+            const auto id = get<SpvId>(inst, 2);
             const auto type_id = get<SpvId>(inst, 1);
             auto arg = types.find(type_id)->second;
             const auto &func_param_attr_iter =
@@ -334,11 +397,25 @@ namespace {
                      arg = types.find(ptr_type_id)->second;
                      break;
                   }
+                  case SpvFunctionParameterAttributeNoAlias:
+                     arg.info.type_qualifier |= CL_KERNEL_ARG_TYPE_RESTRICT;
+                     break;
+                  case SpvFunctionParameterAttributeNoWrite:
+                     arg.info.type_qualifier |= CL_KERNEL_ARG_TYPE_CONST;
+                     break;
                   default:
                      break;
                   }
                }
             }
+
+            auto name_it = names.find(id);
+            if (name_it != names.end())
+               arg.info.arg_name = (*name_it).second;
+
+            arg.info.type_qualifier |= qualifiers[id];
+            arg.info.address_qualifier = types[type_id].info.address_qualifier;
+            arg.info.access_qualifier = CL_KERNEL_ARG_ACCESS_NONE;
             args.emplace_back(arg);
             break;
          }
@@ -346,6 +423,10 @@ namespace {
          case SpvOpFunctionEnd:
             if (kernel_name.empty())
                break;
+
+            for (size_t i = 0; i < param_type_names[kernel_name].size(); i++)
+               args[i].info.type_name = param_type_names[kernel_name][i];
+
             m.syms.emplace_back(kernel_name, std::string(),
                                 std::vector<size_t>(), 0, kernel_nb, args);
             ++kernel_nb;
