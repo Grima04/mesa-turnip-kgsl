@@ -346,7 +346,7 @@ namespace {
          case SpvOpFunctionEnd:
             if (kernel_name.empty())
                break;
-            m.syms.emplace_back(kernel_name, 0, kernel_nb, args);
+            m.syms.emplace_back(kernel_name, std::string(), 0, kernel_nb, args);
             ++kernel_nb;
             kernel_name.clear();
             args.clear();

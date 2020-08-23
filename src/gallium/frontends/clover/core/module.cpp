@@ -190,6 +190,7 @@ namespace {
       static void
       proc(S &s, QT &x) {
          _proc(s, x.name);
+         _proc(s, x.attributes);
          _proc(s, x.section);
          _proc(s, x.offset);
          _proc(s, x.args);

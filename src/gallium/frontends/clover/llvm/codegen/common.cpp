@@ -103,6 +103,39 @@ namespace {
                               cl_address_qualifier, cl_access_qualifier);
    }
 
+   std::string
+   kernel_attributes(const Module &mod, const std::string &kernel_name) {
+      std::vector<std::string> attributes;
+
+      const Function &f = *mod.getFunction(kernel_name);
+
+      auto vec_type_hint = get_type_kernel_metadata(f, "vec_type_hint");
+      if (!vec_type_hint.empty())
+         attributes.emplace_back("vec_type_hint(" + vec_type_hint + ")");
+
+      auto work_group_size_hint = get_uint_vector_kernel_metadata(f, "work_group_size_hint");
+      if (!work_group_size_hint.empty()) {
+         std::string s = "work_group_size_hint(";
+         s += detokenize(work_group_size_hint, ",");
+         s += ")";
+         attributes.emplace_back(s);
+      }
+
+      auto reqd_work_group_size = get_uint_vector_kernel_metadata(f, "reqd_work_group_size");
+      if (!reqd_work_group_size.empty()) {
+         std::string s = "reqd_work_group_size(";
+         s += detokenize(reqd_work_group_size, ",");
+         s += ")";
+         attributes.emplace_back(s);
+      }
+
+      auto nosvm = get_str_kernel_metadata(f, "nosvm");
+      if (!nosvm.empty())
+         attributes.emplace_back("nosvm");
+
+      return detokenize(attributes, " ");
+   }
+
    std::vector<module::argument>
    make_kernel_args(const Module &mod, const std::string &kernel_name,
                     const clang::CompilerInstance &c) {
@@ -251,7 +284,8 @@ clover::llvm::build_module_common(const Module &mod,
                                get_kernels(mod))) {
       const ::std::string name(llvm_name);
       if (offsets.count(name))
-         m.syms.emplace_back(name, 0, offsets.at(name),
+         m.syms.emplace_back(name, kernel_attributes(mod, name),
+                             0, offsets.at(name),
                              make_kernel_args(mod, name, c));
    }
 

@@ -213,6 +213,34 @@ namespace clover {
 
       r.erase(i, e);
    }
+
+   ///
+   /// Build a \a sep separated string from a vector of T
+   ///
+   template<typename T>
+   std::string
+   detokenize(const std::vector<T> &ss, const std::string &sep) {
+      std::string r;
+
+      for (const auto &s : ss)
+         r += (r.empty() ? "" : sep) + std::to_string(s);
+
+      return r;
+   }
+
+   ///
+   /// Build a \a sep separated string from a vector of string
+   ///
+   template <>
+   inline std::string
+   detokenize(const std::vector<std::string> &ss, const std::string &sep) {
+      std::string r;
+
+      for (const auto &s : ss)
+         r += (r.empty() || s.empty() ? "" : sep) + s;
+
+      return r;
+   }
 }
 
 #endif

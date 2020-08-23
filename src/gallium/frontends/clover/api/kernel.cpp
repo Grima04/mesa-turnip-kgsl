@@ -134,6 +134,10 @@ clGetKernelInfo(cl_kernel d_kern, cl_kernel_info param,
       buf.as_scalar<cl_program>() = desc(kern.program());
       break;
 
+   case CL_KERNEL_ATTRIBUTES:
+      buf.as_string() = find(name_equals(kern.name()), kern.program().symbols()).attributes;
+      break;
+
    default:
       throw error(CL_INVALID_VALUE);
    }
