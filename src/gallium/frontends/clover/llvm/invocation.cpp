@@ -91,7 +91,7 @@ namespace {
     };
 
     const clc_version_lang_std cl_version_lang_stds[] = {
-       { 100, compat::lang_opencl10},
+       { 100, clang::LangStandard::lang_opencl10},
        { 110, clang::LangStandard::lang_opencl11},
        { 120, clang::LangStandard::lang_opencl12},
        { 200, clang::LangStandard::lang_opencl20},
@@ -124,7 +124,8 @@ namespace {
    create_context(std::string &r_log) {
       init_targets();
       std::unique_ptr<LLVMContext> ctx { new LLVMContext };
-      compat::set_diagnostic_handler(*ctx, diagnostic_handler, &r_log);
+
+      ctx->setDiagnosticHandlerCallBack(diagnostic_handler, &r_log);
       return ctx;
    }
 
@@ -296,9 +297,14 @@ namespace {
       // attribute will prevent Clang from creating illegal uses of
       // barrier() (e.g. Moving barrier() inside a conditional that is
       // no executed by all threads) during its optimizaton passes.
-      if (use_libclc)
-         compat::add_link_bitcode_file(c.getCodeGenOpts(),
-                                       LIBCLC_LIBEXECDIR + dev.ir_target() + ".bc");
+      if (use_libclc) {
+         clang::CodeGenOptions::BitcodeFileToLink F;
+
+         F.Filename = LIBCLC_LIBEXECDIR + dev.ir_target() + ".bc";
+         F.PropagateAttrs = true;
+         F.LinkFlags = ::llvm::Linker::Flags::None;
+         c.getCodeGenOpts().LinkBitcodeFiles.emplace_back(F);
+      }
 
       // undefine __IMAGE_SUPPORT__ for device without image support
       if (!dev.image_support())

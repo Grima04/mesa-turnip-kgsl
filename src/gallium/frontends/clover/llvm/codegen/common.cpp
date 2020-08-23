@@ -82,12 +82,10 @@ namespace {
          // type that is not a power of two bytes in size must be
          // aligned to the next larger power of two.
          // This rule applies to built-in types only, not structs or unions."
-         const unsigned arg_store_size = dl.getTypeStoreSize(arg_type);
          const unsigned arg_api_size = dl.getTypeAllocSize(arg_type);
 
-         const auto target_type = compat::get_abi_type(arg_type, mod);
-         const unsigned target_size = dl.getTypeStoreSize(target_type);
-         const unsigned target_align = dl.getABITypeAlignment(target_type);
+         const unsigned target_size = dl.getTypeStoreSize(arg_type);
+         const unsigned target_align = dl.getABITypeAlignment(arg_type);
 
          const auto type_name = get_argument_metadata(f, arg,
                                                       "kernel_arg_type");
@@ -97,7 +95,7 @@ namespace {
             const auto access_qual = get_argument_metadata(
                f, arg, "kernel_arg_access_qual");
             args.emplace_back(get_image_type(type_name, access_qual),
-                              arg_store_size, target_size,
+                              target_size, target_size,
                               target_align, module::argument::zero_ext);
 
          } else if (type_name == "__llvm_image_size") {
@@ -126,8 +124,10 @@ namespace {
                const unsigned address_space =
                   cast< ::llvm::PointerType>(actual_type)->getAddressSpace();
 
-               if (address_space == compat::target_address_space(
-                                  c.getTarget(), clang::LangAS::opencl_local)) {
+               const auto &map = c.getTarget().getAddressSpaceMap();
+               const auto offset =
+                           static_cast<unsigned>(clang::LangAS::opencl_local);
+               if (address_space == map[offset]) {
                   args.emplace_back(module::argument::local, arg_api_size,
                                     target_size, target_align,
                                     module::argument::zero_ext);

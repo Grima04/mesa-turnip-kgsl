@@ -1450,8 +1450,7 @@ if with_gallium_opencl
   ]
 endif
 
-with_opencl_spirv = _opencl != 'disabled' and get_option('opencl-spirv')
-if with_amd_vk or with_gallium_radeonsi or with_opencl_spirv
+if with_amd_vk or with_gallium_radeonsi or with_gallium_opencl
   _llvm_version = '>= 8.0.0'
 elif with_gallium_swr
   _llvm_version = '>= 6.0.0'
@@ -1545,6 +1544,7 @@ elif with_gallium_opencl
   error('The OpenCL "Clover" state tracker requires LLVM, but LLVM is disabled.')
 endif
 
+with_opencl_spirv = _opencl != 'disabled' and get_option('opencl-spirv')
 if with_opencl_spirv
   chosen_llvm_version_array = dep_llvm.version().split('.')
   chosen_llvm_version_major = chosen_llvm_version_array[0].to_int()
