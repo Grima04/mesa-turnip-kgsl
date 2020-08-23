@@ -288,7 +288,10 @@ module clover::nir::spirv_to_nir(const module &mod, const device &dev,
          throw build_error();
       }
 
-      nir->info.cs.local_size_variable = true;
+      nir->info.cs.local_size_variable = sym.reqd_work_group_size[0] == 0;
+      nir->info.cs.local_size[0] = sym.reqd_work_group_size[0];
+      nir->info.cs.local_size[1] = sym.reqd_work_group_size[1];
+      nir->info.cs.local_size[2] = sym.reqd_work_group_size[2];
       nir_validate_shader(nir, "clover");
 
       // Inline all functions first.
@@ -391,7 +394,7 @@ module clover::nir::spirv_to_nir(const module &mod, const device &dev,
       text.data.insert(text.data.end(), blob.data, blob.data + blob.size);
 
       m.syms.emplace_back(sym.name, std::string(),
-                          std::vector<size_t>(), section_id, 0, args);
+                          sym.reqd_work_group_size, section_id, 0, args);
       m.secs.push_back(text);
       section_id++;
    }
