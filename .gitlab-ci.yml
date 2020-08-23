@@ -5,6 +5,7 @@ variables:
           set -o xtrace
           /usr/bin/wget -q -O- ${CI_PROJECT_URL}/-/raw/${CI_COMMIT_SHA}/.gitlab-ci/download-git-cache.sh | sh -
           set +o xtrace
+  MINIO_HOST: minio-packet.freedesktop.org
 
 include:
   - project: 'freedesktop/ci-templates'
@@ -491,7 +492,7 @@ make git archive:
 
     # login with the JWT token
     - ci-fairy minio login $CI_JOB_JWT
-    - ci-fairy minio cp ../$CI_PROJECT_NAME.tar.gz minio://minio-packet.freedesktop.org/git-cache/$CI_PROJECT_NAMESPACE/$CI_PROJECT_NAME/$CI_PROJECT_NAME.tar.gz
+    - ci-fairy minio cp ../$CI_PROJECT_NAME.tar.gz minio://$MINIO_HOST/git-cache/$CI_PROJECT_NAMESPACE/$CI_PROJECT_NAME/$CI_PROJECT_NAME.tar.gz
 
 
 # Sanity checks of MR settings and commit logs

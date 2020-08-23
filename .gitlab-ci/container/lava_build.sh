@@ -5,7 +5,7 @@ set -o xtrace
 
 check_minio()
 {
-    MINIO_PATH="minio-packet.freedesktop.org/mesa-lava/$1/${DISTRIBUTION_TAG}/${DEBIAN_ARCH}"
+    MINIO_PATH="${MINIO_HOST}/mesa-lava/$1/${DISTRIBUTION_TAG}/${DEBIAN_ARCH}"
     if wget -q --method=HEAD "https://${MINIO_PATH}/done"; then
         exit
     fi

@@ -47,8 +47,9 @@ if [ -n "$UPLOAD_FOR_LAVA" ]; then
     cp $CI_PROJECT_DIR/.gitlab-ci/lava-deqp.yml.jinja2 artifacts/.
     cp $CI_PROJECT_DIR/.gitlab-ci/lava-tracie.yml.jinja2 artifacts/.
 
-    gzip -c artifacts/install.tar > mesa-${DEBIAN_ARCH}.tar.gz
-    MINIO_PATH=minio-packet.freedesktop.org/artifacts/${CI_PROJECT_PATH}/${CI_PIPELINE_ID}
+    MESA_ARTIFACT=mesa-${DEBIAN_ARCH}.tar.gz
+    gzip -c artifacts/install.tar > ${MESA_ARTIFACT}
+    MINIO_PATH=${MINIO_HOST}/artifacts/${CI_PROJECT_PATH}/${CI_PIPELINE_ID}
     ci-fairy minio login $CI_JOB_JWT
-    ci-fairy minio cp mesa-${DEBIAN_ARCH}.tar.gz minio://${MINIO_PATH}/mesa-${DEBIAN_ARCH}.tar.gz
+    ci-fairy minio cp ${MESA_ARTIFACT} minio://${MINIO_PATH}/${MESA_ARTIFACT}
 fi
