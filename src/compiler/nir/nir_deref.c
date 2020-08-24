@@ -924,6 +924,9 @@ opt_replace_struct_wrapper_cast(nir_builder *b, nir_deref_instr *cast)
    if (!parent)
       return false;
 
+   if (cast->cast.align_mul > 0)
+      return false;
+
    if (!glsl_type_is_struct(parent->type))
       return false;
 
@@ -952,6 +955,12 @@ opt_deref_cast(nir_builder *b, nir_deref_instr *cast)
 
    progress = opt_remove_cast_cast(cast);
    if (!is_trivial_deref_cast(cast))
+      return progress;
+
+   /* If this deref still contains useful alignment information, we don't want
+    * to delete it.
+    */
+   if (cast->cast.align_mul > 0)
       return progress;
 
    bool trivial_array_cast = is_trivial_array_deref_cast(cast);
