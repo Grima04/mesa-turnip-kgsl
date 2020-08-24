@@ -349,18 +349,23 @@ panfrost_load_midg(
                         .unknown_draw = 0x3000,
                         .index_count = MALI_POSITIVE(vertex_count)
                 },
-                .postfix = {
-                        .gl_enables = 0x7,
-                        .position_varying = coordinates,
-                        .textures = panfrost_pool_upload(pool, &texture_t.gpu, sizeof(texture_t.gpu)),
-                        .sampler_descriptor = sampler.gpu,
-                        .shader = shader_meta_t.gpu,
-                        .varyings = varying_buffer.gpu,
-                        .varying_meta = varying.gpu,
-                        .viewport = viewport.gpu,
-                        .shared_memory = fbd
-                }
         };
+
+        struct mali_draw_packed draw;
+
+        pan_pack(&draw, DRAW, cfg) {
+                cfg.unknown_1 = 0x7;
+                cfg.position = coordinates;
+                cfg.textures = panfrost_pool_upload(pool, &texture_t.gpu, sizeof(texture_t.gpu));
+                cfg.samplers = sampler.gpu;
+                cfg.state = shader_meta_t.gpu;
+                cfg.varying_buffers = varying_buffer.gpu;
+                cfg.varyings = varying.gpu;
+                cfg.viewport = viewport.gpu;
+                cfg.shared = fbd;
+        }
+
+        memcpy(&payload.postfix, &draw, MALI_DRAW_LENGTH);
 
         panfrost_pack_work_groups_compute(&payload.prefix, 1, vertex_count, 1, 1, 1, 1, true);
         payload.prefix.workgroups_x_shift_3 = 6;
