@@ -172,6 +172,8 @@ hash_deref(uint32_t hash, const nir_deref_instr *instr)
 
    case nir_deref_type_cast:
       hash = HASH(hash, instr->cast.ptr_stride);
+      hash = HASH(hash, instr->cast.align_mul);
+      hash = HASH(hash, instr->cast.align_offset);
       break;
 
    case nir_deref_type_var:
@@ -619,7 +621,9 @@ nir_instrs_equal(const nir_instr *instr1, const nir_instr *instr2)
          break;
 
       case nir_deref_type_cast:
-         if (deref1->cast.ptr_stride != deref2->cast.ptr_stride)
+         if (deref1->cast.ptr_stride != deref2->cast.ptr_stride ||
+             deref1->cast.align_mul != deref2->cast.align_mul ||
+             deref1->cast.align_offset != deref2->cast.align_offset)
             return false;
          break;
 

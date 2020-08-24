@@ -1462,6 +1462,8 @@ typedef struct {
 
       struct {
          unsigned ptr_stride;
+         unsigned align_mul;
+         unsigned align_offset;
       } cast;
    };
 

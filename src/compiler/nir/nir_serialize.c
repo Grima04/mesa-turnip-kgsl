@@ -1037,6 +1037,8 @@ write_deref(write_ctx *ctx, const nir_deref_instr *deref)
    case nir_deref_type_cast:
       write_src(ctx, &deref->parent);
       blob_write_uint32(ctx->blob, deref->cast.ptr_stride);
+      blob_write_uint32(ctx->blob, deref->cast.align_mul);
+      blob_write_uint32(ctx->blob, deref->cast.align_offset);
       if (!header.deref.cast_type_same_as_last) {
          encode_type_to_blob(ctx->blob, deref->type);
          ctx->last_type = deref->type;
@@ -1101,6 +1103,8 @@ read_deref(read_ctx *ctx, union packed_instr header)
    case nir_deref_type_cast:
       read_src(ctx, &deref->parent, &deref->instr);
       deref->cast.ptr_stride = blob_read_uint32(ctx->blob);
+      deref->cast.align_mul = blob_read_uint32(ctx->blob);
+      deref->cast.align_offset = blob_read_uint32(ctx->blob);
       if (header.deref.cast_type_same_as_last) {
          deref->type = ctx->last_type;
       } else {
