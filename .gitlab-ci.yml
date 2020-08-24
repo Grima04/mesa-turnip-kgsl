@@ -560,6 +560,36 @@ meson-gallium:
     - .gitlab-ci/run-shader-db.sh
     - src/freedreno/.gitlab-ci/run-fdtools.sh
 
+# Test a release build with -Werror so new warnings don't sneak in.
+meson-release:
+  extends: .meson-build
+  variables:
+    UNWIND: "enabled"
+    DRI_LOADERS: >
+      -D glx=dri
+      -D gbm=enabled
+      -D egl=enabled
+      -D platforms=x11,wayland
+    GALLIUM_ST: >
+      -D dri3=enabled
+      -D gallium-extra-hud=true
+      -D gallium-vdpau=enabled
+      -D gallium-xvmc=disabled
+      -D gallium-omx=disabled
+      -D gallium-va=enabled
+      -D gallium-xa=enabled
+      -D gallium-nine=false
+      -D gallium-opencl=disabled
+      -D llvm=false
+    GALLIUM_DRIVERS: "nouveau,kmsro,r300,svga,v3d,vc4,virgl,etnaviv,panfrost,lima,zink"
+    BUILDTYPE: "release"
+    EXTRA_OPTION: >
+      -D osmesa=none
+      -D tools=all
+      -D werror=true
+  script:
+    - .gitlab-ci/meson-build.sh
+
 meson-classic:
   extends: .meson-build
   variables:
