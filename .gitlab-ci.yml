@@ -259,7 +259,7 @@ x86_build-base:
     - .fdo.container-build@debian
     - .container
   variables:
-    MESA_IMAGE_TAG: &x86_build-base "2020-12-09-sanitizers"
+    MESA_IMAGE_TAG: &x86_build-base "2020-12-17-use-ephemeral"
 
 .use-x86_build-base:
   extends:
@@ -276,7 +276,7 @@ x86_build:
   extends:
     - .use-x86_build-base
   variables:
-    MESA_IMAGE_TAG: &x86_build "2020-12-16-cmake"
+    MESA_IMAGE_TAG: &x86_build "2020-12-17-use-ephemeral"
 
 .use-x86_build:
   variables:
@@ -290,7 +290,7 @@ i386_build:
   extends:
     - .use-x86_build-base
   variables:
-    MESA_IMAGE_TAG: &i386_build "2020-12-09-sanitizers"
+    MESA_IMAGE_TAG: &i386_build "2020-12-17-use-ephemeral"
 
 .use-i386_build:
   variables:
@@ -304,7 +304,7 @@ ppc64el_build:
   extends:
     - .use-x86_build-base
   variables:
-    MESA_IMAGE_TAG: &ppc64el_build "2020-12-09-sanitizers"
+    MESA_IMAGE_TAG: &ppc64el_build "2020-12-17-use-ephemeral"
 
 .use-ppc64el_build:
   variables:
@@ -318,7 +318,7 @@ s390x_build:
   extends:
     - .use-x86_build-base
   variables:
-    MESA_IMAGE_TAG: &s390x_build "2020-12-09-sanitizers"
+    MESA_IMAGE_TAG: &s390x_build "2020-12-17-use-ephemeral"
 
 .use-s390x_build:
   variables:
@@ -332,7 +332,7 @@ android_build:
   extends:
     - .use-x86_build-base
   variables:
-    MESA_IMAGE_TAG: &android_build "2020-12-09-sanitizers"
+    MESA_IMAGE_TAG: &android_build "2020-12-17-use-ephemeral"
 
 .use-android_build:
   variables:
