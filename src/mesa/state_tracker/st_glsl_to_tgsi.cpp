@@ -50,7 +50,6 @@
 #include "util/u_math.h"
 #include "util/u_memory.h"
 #include "st_program.h"
-#include "st_mesa_to_tgsi.h"
 #include "st_format.h"
 #include "st_glsl_to_tgsi_temprename.h"
 
@@ -430,6 +429,85 @@ swizzle_for_size(int size)
 
    assert((size >= 1) && (size <= 4));
    return size_swizzles[size - 1];
+}
+
+
+/**
+ * Map mesa texture target to TGSI texture target.
+ */
+static enum tgsi_texture_type
+st_translate_texture_target(gl_texture_index textarget, GLboolean shadow)
+{
+   if (shadow) {
+      switch (textarget) {
+      case TEXTURE_1D_INDEX:
+         return TGSI_TEXTURE_SHADOW1D;
+      case TEXTURE_2D_INDEX:
+         return TGSI_TEXTURE_SHADOW2D;
+      case TEXTURE_RECT_INDEX:
+         return TGSI_TEXTURE_SHADOWRECT;
+      case TEXTURE_1D_ARRAY_INDEX:
+         return TGSI_TEXTURE_SHADOW1D_ARRAY;
+      case TEXTURE_2D_ARRAY_INDEX:
+         return TGSI_TEXTURE_SHADOW2D_ARRAY;
+      case TEXTURE_CUBE_INDEX:
+         return TGSI_TEXTURE_SHADOWCUBE;
+      case TEXTURE_CUBE_ARRAY_INDEX:
+         return TGSI_TEXTURE_SHADOWCUBE_ARRAY;
+      default:
+         break;
+      }
+   }
+
+   switch (textarget) {
+   case TEXTURE_2D_MULTISAMPLE_INDEX:
+      return TGSI_TEXTURE_2D_MSAA;
+   case TEXTURE_2D_MULTISAMPLE_ARRAY_INDEX:
+      return TGSI_TEXTURE_2D_ARRAY_MSAA;
+   case TEXTURE_BUFFER_INDEX:
+      return TGSI_TEXTURE_BUFFER;
+   case TEXTURE_1D_INDEX:
+      return TGSI_TEXTURE_1D;
+   case TEXTURE_2D_INDEX:
+      return TGSI_TEXTURE_2D;
+   case TEXTURE_3D_INDEX:
+      return TGSI_TEXTURE_3D;
+   case TEXTURE_CUBE_INDEX:
+      return TGSI_TEXTURE_CUBE;
+   case TEXTURE_CUBE_ARRAY_INDEX:
+      return TGSI_TEXTURE_CUBE_ARRAY;
+   case TEXTURE_RECT_INDEX:
+      return TGSI_TEXTURE_RECT;
+   case TEXTURE_1D_ARRAY_INDEX:
+      return TGSI_TEXTURE_1D_ARRAY;
+   case TEXTURE_2D_ARRAY_INDEX:
+      return TGSI_TEXTURE_2D_ARRAY;
+   case TEXTURE_EXTERNAL_INDEX:
+      return TGSI_TEXTURE_2D;
+   default:
+      debug_assert(!"unexpected texture target index");
+      return TGSI_TEXTURE_1D;
+   }
+}
+
+
+/**
+ * Map GLSL base type to TGSI return type.
+ */
+static enum tgsi_return_type
+st_translate_texture_type(enum glsl_base_type type)
+{
+   switch (type) {
+   case GLSL_TYPE_INT:
+      return TGSI_RETURN_TYPE_SINT;
+   case GLSL_TYPE_UINT:
+      return TGSI_RETURN_TYPE_UINT;
+   case GLSL_TYPE_FLOAT:
+      return TGSI_RETURN_TYPE_FLOAT;
+   default:
+      assert(!"unexpected texture type");
+      return TGSI_RETURN_TYPE_UNKNOWN;
+   }
 }
 
 
