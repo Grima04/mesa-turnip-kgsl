@@ -73,22 +73,6 @@ panfrost_vt_emit_shared_memory(struct panfrost_batch *batch)
         return panfrost_pool_upload_aligned(&batch->pool, &shared, sizeof(shared), 64);
 }
 
-static void
-panfrost_vt_update_rasterizer(struct panfrost_rasterizer *rasterizer,
-                              struct mali_vertex_tiler_prefix *prefix,
-                              struct mali_vertex_tiler_postfix *postfix)
-{
-        postfix->gl_enables |= 0x7;
-        SET_BIT(postfix->gl_enables, MALI_FRONT_CCW_TOP,
-                rasterizer->base.front_ccw);
-        SET_BIT(postfix->gl_enables, MALI_CULL_FACE_FRONT,
-                (rasterizer->base.cull_face & PIPE_FACE_FRONT));
-        SET_BIT(postfix->gl_enables, MALI_CULL_FACE_BACK,
-                (rasterizer->base.cull_face & PIPE_FACE_BACK));
-        SET_BIT(prefix->unknown_draw, MALI_DRAW_FLATSHADE_FIRST,
-                rasterizer->base.flatshade_first);
-}
-
 void
 panfrost_vt_update_primitive_size(struct panfrost_context *ctx,
                                   struct mali_vertex_tiler_prefix *prefix,
@@ -102,22 +86,6 @@ panfrost_vt_update_primitive_size(struct panfrost_context *ctx,
                               rasterizer->base.line_width;
 
                 primitive_size->constant = val;
-        }
-}
-
-static void
-panfrost_vt_update_occlusion_query(struct panfrost_context *ctx,
-                                   struct mali_vertex_tiler_postfix *postfix)
-{
-        SET_BIT(postfix->gl_enables, MALI_OCCLUSION_QUERY, ctx->occlusion_query);
-        if (ctx->occlusion_query) {
-                postfix->occlusion_counter = ctx->occlusion_query->bo->gpu;
-                panfrost_batch_add_bo(ctx->batch, ctx->occlusion_query->bo,
-                                      PAN_BO_ACCESS_SHARED |
-                                      PAN_BO_ACCESS_RW |
-                                      PAN_BO_ACCESS_FRAGMENT);
-        } else {
-                postfix->occlusion_counter = 0;
         }
 }
 
@@ -145,8 +113,25 @@ panfrost_vt_init(struct panfrost_context *ctx,
         }
 
         if (stage == PIPE_SHADER_FRAGMENT) {
-                panfrost_vt_update_occlusion_query(ctx, postfix);
-                panfrost_vt_update_rasterizer(ctx->rasterizer, prefix, postfix);
+                if (ctx->occlusion_query) {
+                        postfix->gl_enables |= MALI_OCCLUSION_QUERY;
+                        postfix->occlusion_counter = ctx->occlusion_query->bo->gpu;
+                        panfrost_batch_add_bo(ctx->batch, ctx->occlusion_query->bo,
+                                              PAN_BO_ACCESS_SHARED |
+                                              PAN_BO_ACCESS_RW |
+                                              PAN_BO_ACCESS_FRAGMENT);
+                }
+
+                postfix->gl_enables |= 0x7;
+                struct pipe_rasterizer_state *rast = &ctx->rasterizer->base;
+                SET_BIT(postfix->gl_enables, MALI_FRONT_CCW_TOP,
+                        rast->front_ccw);
+                SET_BIT(postfix->gl_enables, MALI_CULL_FACE_FRONT,
+                        (rast->cull_face & PIPE_FACE_FRONT));
+                SET_BIT(postfix->gl_enables, MALI_CULL_FACE_BACK,
+                        (rast->cull_face & PIPE_FACE_BACK));
+                SET_BIT(prefix->unknown_draw, MALI_DRAW_FLATSHADE_FIRST,
+                        rast->flatshade_first);
         }
 }
 
