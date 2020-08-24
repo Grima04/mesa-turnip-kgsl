@@ -345,7 +345,7 @@ android_build:
 x86_test-base:
   extends: x86_build-base
   variables:
-    MESA_IMAGE_TAG: &x86_test-base "2020-12-09-sanitizers"
+    MESA_IMAGE_TAG: &x86_test-base "2020-12-17-install-ci-fairy"
 
 .use-x86_test-base:
   extends:
@@ -361,13 +361,13 @@ x86_test-base:
 x86_test-gl:
   extends: .use-x86_test-base
   variables:
-    MESA_IMAGE_TAG: &x86_test-gl "2020-12-16-cmake"
+    MESA_IMAGE_TAG: &x86_test-gl "2020-12-17-install-ci-fairy"
 
 # Debian 10 based x86 test image for VK
 x86_test-vk:
   extends: .use-x86_test-base
   variables:
-    MESA_IMAGE_TAG: &x86_test-vk "2020-12-16-cmake"
+    MESA_IMAGE_TAG: &x86_test-vk "2020-12-17-install-ci-fairy"
 
 # Debian 10 based ARM build image
 arm_build:
