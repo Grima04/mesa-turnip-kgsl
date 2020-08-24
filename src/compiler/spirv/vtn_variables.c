@@ -2515,6 +2515,22 @@ vtn_emit_make_available_barrier(struct vtn_builder *b, SpvMemoryAccessMask acces
                                      vtn_mode_to_memory_semantics(mode));
 }
 
+static void
+ptr_nonuniform_workaround_cb(struct vtn_builder *b, struct vtn_value *val,
+                  int member, const struct vtn_decoration *dec, void *void_ptr)
+{
+   enum gl_access_qualifier *access = void_ptr;
+
+   switch (dec->decoration) {
+   case SpvDecorationNonUniformEXT:
+      *access |= ACCESS_NON_UNIFORM;
+      break;
+
+   default:
+      break;
+   }
+}
+
 void
 vtn_handle_variables(struct vtn_builder *b, SpvOp opcode,
                      const uint32_t *w, unsigned count)
@@ -2598,12 +2614,20 @@ vtn_handle_variables(struct vtn_builder *b, SpvOp opcode,
             chain->link[idx].mode = vtn_access_mode_id;
             chain->link[idx].id = w[i];
          }
+
+         /* Workaround for https://gitlab.freedesktop.org/mesa/mesa/-/issues/3406 */
+         vtn_foreach_decoration(b, link_val, ptr_nonuniform_workaround_cb, &access);
+
          idx++;
       }
 
       struct vtn_type *ptr_type = vtn_get_type(b, w[1]);
       struct vtn_pointer *base =
          vtn_value(b, w[3], vtn_value_type_pointer)->pointer;
+
+      /* Workaround for https://gitlab.freedesktop.org/mesa/mesa/-/issues/3406 */
+      access |= base->access & ACCESS_NON_UNIFORM;
+
       struct vtn_pointer *ptr = vtn_pointer_dereference(b, base, chain);
       ptr->ptr_type = ptr_type;
       ptr->access |= access;
