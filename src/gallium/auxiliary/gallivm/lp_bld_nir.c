@@ -46,6 +46,8 @@ static LLVMValueRef cast_type(struct lp_build_nir_context *bld_base, LLVMValueRe
    switch (alu_type) {
    case nir_type_float:
       switch (bit_size) {
+      case 16:
+         return LLVMBuildBitCast(builder, val, LLVMVectorType(LLVMHalfTypeInContext(bld_base->base.gallivm->context), bld_base->base.type.length), "");
       case 32:
          return LLVMBuildBitCast(builder, val, bld_base->base.vec_type, "");
       case 64:
@@ -489,9 +491,17 @@ static LLVMValueRef do_alu_action(struct lp_build_nir_context *bld_base,
    case nir_op_f2b32:
       result = flt_to_bool32(bld_base, src_bit_size[0], src[0]);
       break;
-   case nir_op_f2f32:
+   case nir_op_f2f16:
       result = LLVMBuildFPTrunc(builder, src[0],
-                                bld_base->base.vec_type, "");
+                                LLVMVectorType(LLVMHalfTypeInContext(gallivm->context), bld_base->base.type.length), "");
+      break;
+   case nir_op_f2f32:
+      if (src_bit_size[0] < 32)
+         result = LLVMBuildFPExt(builder, src[0],
+                                 bld_base->base.vec_type, "");
+      else
+         result = LLVMBuildFPTrunc(builder, src[0],
+                                   bld_base->base.vec_type, "");
       break;
    case nir_op_f2f64:
       result = LLVMBuildFPExt(builder, src[0],
