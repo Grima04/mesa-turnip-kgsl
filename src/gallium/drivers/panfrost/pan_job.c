@@ -115,13 +115,12 @@ panfrost_create_batch(struct panfrost_context *ctx,
 
         /* Preallocate the main pool, since every batch has at least one job
          * structure so it will be used */
-        batch->pool = panfrost_create_pool(batch, dev, 0, true);
+        panfrost_pool_init(&batch->pool, batch, dev, 0, true);
 
         /* Don't preallocate the invisible pool, since not every batch will use
          * the pre-allocation, particularly if the varyings are larger than the
          * preallocation and a reallocation is needed after anyway. */
-        batch->invisible_pool =
-                panfrost_create_pool(batch, dev, PAN_BO_INVISIBLE, false);
+        panfrost_pool_init(&batch->invisible_pool, batch, dev, PAN_BO_INVISIBLE, false);
 
         panfrost_batch_add_fbo_bos(batch);
 

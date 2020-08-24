@@ -50,8 +50,10 @@ struct pan_pool {
         unsigned create_flags;
 };
 
-struct pan_pool
-panfrost_create_pool(void *memctx, struct panfrost_device *dev, unsigned create_flags, bool prealloc);
+void
+panfrost_pool_init(struct pan_pool *pool, void *memctx,
+                   struct panfrost_device *dev, unsigned create_flags,
+                   bool prealloc);
 
 /* Represents a fat pointer for GPU-mapped memory, returned from the transient
  * allocator and not used for much else */

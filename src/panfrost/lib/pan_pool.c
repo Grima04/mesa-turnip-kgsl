@@ -56,24 +56,19 @@ panfrost_pool_alloc_backing(struct pan_pool *pool, size_t bo_sz)
         return bo;
 }
 
-struct pan_pool
-panfrost_create_pool(void *memctx, struct panfrost_device *dev,
-                unsigned create_flags, bool prealloc)
+void
+panfrost_pool_init(struct pan_pool *pool, void *memctx,
+                   struct panfrost_device *dev,
+                   unsigned create_flags, bool prealloc)
 {
-        struct pan_pool pool = {
-                .dev = dev,
-                .create_flags = create_flags,
-                .transient_offset = 0,
-                .transient_bo = NULL
-        };
-
-        pool.bos = _mesa_hash_table_create(memctx, _mesa_hash_pointer,
+        memset(pool, 0, sizeof(*pool));
+        pool->dev = dev;
+        pool->create_flags = create_flags;
+        pool->bos = _mesa_hash_table_create(memctx, _mesa_hash_pointer,
                         _mesa_key_pointer_equal);
 
         if (prealloc)
-                panfrost_pool_alloc_backing(&pool, TRANSIENT_SLAB_SIZE);
-
-        return pool;
+                panfrost_pool_alloc_backing(pool, TRANSIENT_SLAB_SIZE);
 }
 
 struct panfrost_transfer
