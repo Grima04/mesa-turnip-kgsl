@@ -657,21 +657,20 @@ Temp extract_8_16_bit_sgpr_element(isel_context *ctx, Temp dst, nir_alu_src *src
 
 Temp get_alu_src(struct isel_context *ctx, nir_alu_src src, unsigned size=1)
 {
-   if (src.src.ssa->num_components == 1 && src.swizzle[0] == 0 && size == 1)
+   if (src.src.ssa->num_components == 1 && size == 1)
       return get_ssa_temp(ctx, src.src.ssa);
-
-   if (src.src.ssa->num_components == size) {
-      bool identity_swizzle = true;
-      for (unsigned i = 0; identity_swizzle && i < size; i++) {
-         if (src.swizzle[i] != i)
-            identity_swizzle = false;
-      }
-      if (identity_swizzle)
-         return get_ssa_temp(ctx, src.src.ssa);
-   }
 
    Temp vec = get_ssa_temp(ctx, src.src.ssa);
    unsigned elem_size = vec.bytes() / src.src.ssa->num_components;
+   bool identity_swizzle = true;
+
+   for (unsigned i = 0; identity_swizzle && i < size; i++) {
+      if (src.swizzle[i] != i)
+         identity_swizzle = false;
+   }
+   if (identity_swizzle)
+      return emit_extract_vector(ctx, vec, 0, RegClass::get(vec.type(), elem_size * size));
+
    assert(elem_size > 0);
    assert(vec.bytes() % elem_size == 0);
 
@@ -698,6 +697,33 @@ Temp get_alu_src(struct isel_context *ctx, nir_alu_src src, unsigned size=1)
       ctx->block->instructions.emplace_back(std::move(vec_instr));
       ctx->allocated_vec.emplace(dst.id(), elems);
       return dst;
+   }
+}
+
+Temp get_alu_src_vop3p(struct isel_context *ctx, nir_alu_src src)
+{
+   /* returns v2b or v1 for vop3p usage.
+    * The source expects exactly 2 16bit components
+    * which are within the same dword
+    */
+   assert(src.src.ssa->bit_size == 16);
+   assert(src.swizzle[0] >> 1 == src.swizzle[1] >> 1);
+
+   Temp tmp = get_ssa_temp(ctx, src.src.ssa);
+   if (tmp.size() == 1)
+      return tmp;
+
+   /* the size is larger than 1 dword: check the swizzle */
+   unsigned dword = src.swizzle[0] >> 1;
+
+   /* extract a full dword if possible */
+   if (tmp.bytes() >= (dword + 1) * 4) {
+      return emit_extract_vector(ctx, tmp, dword, RegClass(tmp.type(), 1));
+   } else {
+      /* This must be a swizzled access to %a.zz where %a is v6b */
+      assert(((src.swizzle[0] | src.swizzle[1]) & 1) == 0);
+      assert(tmp.regClass() == v6b && dword == 1);
+      return emit_extract_vector(ctx, tmp, dword * 2, v2b);
    }
 }
 
@@ -846,6 +872,26 @@ void emit_vop3a_instruction(isel_context *ctx, nir_alu_instr *instr, aco_opcode 
    } else {
       bld.vop3(op, Definition(dst), src[0], src[1]);
    }
+}
+
+Builder::Result emit_vop3p_instruction(isel_context *ctx, nir_alu_instr *instr,
+                                       aco_opcode op, Temp dst, bool swap_srcs=false)
+{
+   Temp src0 = get_alu_src_vop3p(ctx, instr->src[swap_srcs]);
+   Temp src1 = get_alu_src_vop3p(ctx, instr->src[!swap_srcs]);
+   if (src0.type() == RegType::sgpr && src1.type() == RegType::sgpr)
+      src1 = as_vgpr(ctx, src1);
+   assert(instr->dest.dest.ssa.num_components == 2);
+
+   /* swizzle to opsel: all swizzles are either 0 (x) or 1 (y) */
+   unsigned opsel_lo = (instr->src[!swap_srcs].swizzle[0] & 1) << 1 | (instr->src[swap_srcs].swizzle[0] & 1);
+   unsigned opsel_hi = (instr->src[!swap_srcs].swizzle[1] & 1) << 1 | (instr->src[swap_srcs].swizzle[1] & 1);
+
+   Builder bld(ctx->program, ctx->block);
+   bld.is_precise = instr->exact;
+   Builder::Result res = bld.vop3p(op, Definition(dst), src0, src1, opsel_lo, opsel_hi);
+   emit_split_vector(ctx, dst, 2);
+   return res;
 }
 
 void emit_vop1_instruction(isel_context *ctx, nir_alu_instr *instr, aco_opcode op, Temp dst)

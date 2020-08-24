@@ -134,6 +134,9 @@ class Format(Enum):
                  ('uint8_t', 'row_mask', '0xF'),
                  ('uint8_t', 'bank_mask', '0xF'),
                  ('bool', 'bound_ctrl', 'true')]
+      elif self == Format.VOP3P:
+         return [('uint8_t', 'opsel_lo', None),
+                 ('uint8_t', 'opsel_hi', None)]
       elif self in [Format.FLAT, Format.GLOBAL, Format.SCRATCH]:
          return [('uint16_t', 'offset', 0),
                  ('memory_sync_info', 'sync', 'memory_sync_info()'),
