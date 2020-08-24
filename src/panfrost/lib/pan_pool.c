@@ -71,6 +71,38 @@ panfrost_pool_init(struct pan_pool *pool, void *memctx,
                 panfrost_pool_alloc_backing(pool, TRANSIENT_SLAB_SIZE);
 }
 
+static void delete_bo_entry(struct hash_entry *entry)
+{
+        panfrost_bo_unreference((struct panfrost_bo *)entry->key);
+}
+
+void
+panfrost_pool_cleanup(struct pan_pool *pool)
+{
+        _mesa_hash_table_destroy(pool->bos, delete_bo_entry);
+}
+
+void
+panfrost_pool_get_bo_handles(struct pan_pool *pool, uint32_t *handles)
+{
+        unsigned idx = 0;
+        hash_table_foreach(pool->bos, entry) {
+                struct panfrost_bo *bo = (struct panfrost_bo *)entry->key;
+
+                assert(bo->gem_handle > 0);
+                handles[idx++] = bo->gem_handle;
+
+               /* Update the BO access flags so that panfrost_bo_wait() knows
+                * about all pending accesses.
+                * We only keep the READ/WRITE info since this is all the BO
+                * wait logic cares about.
+                * We also preserve existing flags as this batch might not
+                * be the first one to access the BO.
+                */
+                bo->gpu_access |= PAN_BO_ACCESS_RW;
+        }
+}
+
 struct panfrost_transfer
 panfrost_pool_alloc_aligned(struct pan_pool *pool, size_t sz, unsigned alignment)
 {

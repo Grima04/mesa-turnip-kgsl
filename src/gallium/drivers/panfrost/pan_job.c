@@ -175,11 +175,8 @@ panfrost_free_batch(struct panfrost_batch *batch)
         hash_table_foreach(batch->bos, entry)
                 panfrost_bo_unreference((struct panfrost_bo *)entry->key);
 
-        hash_table_foreach(batch->pool.bos, entry)
-                panfrost_bo_unreference((struct panfrost_bo *)entry->key);
-
-        hash_table_foreach(batch->invisible_pool.bos, entry)
-                panfrost_bo_unreference((struct panfrost_bo *)entry->key);
+        panfrost_pool_cleanup(&batch->pool);
+        panfrost_pool_cleanup(&batch->invisible_pool);
 
         util_dynarray_foreach(&batch->dependencies,
                               struct panfrost_batch_fence *, dep) {
@@ -980,17 +977,19 @@ panfrost_batch_submit_ioctl(struct panfrost_batch *batch,
         submit.jc = first_job_desc;
         submit.requirements = reqs;
 
-        bo_handles = calloc(batch->pool.bos->entries + batch->invisible_pool.bos->entries + batch->bos->entries + 1, sizeof(*bo_handles));
+        bo_handles = calloc(panfrost_pool_num_bos(&batch->pool) +
+                            panfrost_pool_num_bos(&batch->invisible_pool) +
+                            batch->bos->entries + 1,
+                            sizeof(*bo_handles));
         assert(bo_handles);
 
         hash_table_foreach(batch->bos, entry)
                 panfrost_batch_record_bo(entry, bo_handles, submit.bo_handle_count++);
 
-        hash_table_foreach(batch->pool.bos, entry)
-                panfrost_batch_record_bo(entry, bo_handles, submit.bo_handle_count++);
-
-        hash_table_foreach(batch->invisible_pool.bos, entry)
-                panfrost_batch_record_bo(entry, bo_handles, submit.bo_handle_count++);
+        panfrost_pool_get_bo_handles(&batch->pool, bo_handles + submit.bo_handle_count);
+        submit.bo_handle_count += panfrost_pool_num_bos(&batch->pool);
+        panfrost_pool_get_bo_handles(&batch->invisible_pool, bo_handles + submit.bo_handle_count);
+        submit.bo_handle_count += panfrost_pool_num_bos(&batch->invisible_pool);
 
         /* Used by all tiler jobs (XXX: skip for compute-only) */
         if (!(reqs & PANFROST_JD_REQ_FS))

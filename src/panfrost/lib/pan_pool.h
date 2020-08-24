@@ -55,6 +55,18 @@ panfrost_pool_init(struct pan_pool *pool, void *memctx,
                    struct panfrost_device *dev, unsigned create_flags,
                    bool prealloc);
 
+void
+panfrost_pool_cleanup(struct pan_pool *pool);
+
+static inline unsigned
+panfrost_pool_num_bos(struct pan_pool *pool)
+{
+        return pool->bos->entries;
+}
+
+void
+panfrost_pool_get_bo_handles(struct pan_pool *pool, uint32_t *handles);
+
 /* Represents a fat pointer for GPU-mapped memory, returned from the transient
  * allocator and not used for much else */
 
