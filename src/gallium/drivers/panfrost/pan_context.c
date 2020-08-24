@@ -460,7 +460,7 @@ panfrost_create_shader_state(
         if (unlikely((dev->debug & PAN_DBG_PRECOMPILE) && cso->type == PIPE_SHADER_IR_NIR)) {
                 struct panfrost_context *ctx = pan_context(pctx);
 
-                struct panfrost_shader_state state;
+                struct panfrost_shader_state state = { 0 };
                 uint64_t outputs_written;
 
                 panfrost_shader_compile(ctx, PIPE_SHADER_IR_NIR,
