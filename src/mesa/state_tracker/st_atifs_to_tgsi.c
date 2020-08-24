@@ -377,16 +377,7 @@ compile_instruction(struct st_translate *t,
       /* prepare dst */
       dst[0] = get_temp(t, dstreg);
 
-      if (optype) {
-         dst[0] = ureg_writemask(dst[0], TGSI_WRITEMASK_W);
-      } else {
-         GLuint dstMask = inst->DstReg[optype].dstMask;
-         if (dstMask == GL_NONE) {
-            dst[0] = ureg_writemask(dst[0], TGSI_WRITEMASK_XYZ);
-         } else {
-            dst[0] = ureg_writemask(dst[0], dstMask); /* the enum values match */
-         }
-      }
+      dst[0] = ureg_writemask(dst[0], inst->DstReg[optype].dstMask);
 
       /* emit the main instruction */
       emit_arith_inst(t, desc, dst, args, arg);
