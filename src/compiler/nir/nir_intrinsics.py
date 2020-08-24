@@ -706,7 +706,7 @@ intrinsic("load_size_ir3", dest_comp=1, flags=[CAN_ELIMINATE, CAN_REORDER])
 #    float result = iid.x + iid.y * bary.y + iid.z * bary.x
 
 intrinsic("load_fs_input_interp_deltas", src_comp=[1], dest_comp=3,
-          indices=[BASE, COMPONENT], flags=[CAN_ELIMINATE, CAN_REORDER])
+          indices=[BASE, COMPONENT, IO_SEMANTICS], flags=[CAN_ELIMINATE, CAN_REORDER])
 
 # Load operations pull data from some piece of GPU memory.  All load
 # operations operate in terms of offsets into some piece of theoretical
