@@ -57,29 +57,25 @@ panfrost_emit_compute_shader_meta(struct panfrost_batch *batch, enum pipe_shader
 mali_ptr
 panfrost_emit_frag_shader_meta(struct panfrost_batch *batch);
 
-void
-panfrost_emit_viewport(struct panfrost_batch *batch,
-                       struct mali_vertex_tiler_postfix *tiler_postfix);
+mali_ptr
+panfrost_emit_viewport(struct panfrost_batch *batch);
 
 void
 panfrost_emit_const_buf(struct panfrost_batch *batch,
                         enum pipe_shader_type stage,
                         struct mali_vertex_tiler_postfix *postfix);
 
-void
+mali_ptr
 panfrost_emit_shared_memory(struct panfrost_batch *batch,
-                            const struct pipe_grid_info *info,
-                            struct midgard_payload_vertex_tiler *vtp);
+                            const struct pipe_grid_info *info);
 
-void
+mali_ptr
 panfrost_emit_texture_descriptors(struct panfrost_batch *batch,
-                                  enum pipe_shader_type stage,
-                                  struct mali_vertex_tiler_postfix *postfix);
+                                  enum pipe_shader_type stage);
 
-void
+mali_ptr
 panfrost_emit_sampler_descriptors(struct panfrost_batch *batch,
-                                  enum pipe_shader_type stage,
-                                  struct mali_vertex_tiler_postfix *postfix);
+                                  enum pipe_shader_type stage);
 
 void
 panfrost_emit_vertex_data(struct panfrost_batch *batch,

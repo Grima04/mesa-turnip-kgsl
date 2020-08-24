@@ -121,7 +121,7 @@ panfrost_launch_grid(struct pipe_context *pipe,
 
         payload.postfix.shader = panfrost_emit_compute_shader_meta(batch, PIPE_SHADER_COMPUTE);
         panfrost_emit_const_buf(batch, PIPE_SHADER_COMPUTE, &payload.postfix);
-        panfrost_emit_shared_memory(batch, info, &payload);
+        payload.postfix.shared_memory = panfrost_emit_shared_memory(batch, info);
 
         /* Invoke according to the grid info */
 

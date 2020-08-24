@@ -51,12 +51,10 @@ panfrost_bo_access_for_stage(enum pipe_shader_type stage)
                PAN_BO_ACCESS_VERTEX_TILER;
 }
 
-static void
-panfrost_vt_emit_shared_memory(struct panfrost_context *ctx,
-                               struct mali_vertex_tiler_postfix *postfix)
+static mali_ptr
+panfrost_vt_emit_shared_memory(struct panfrost_batch *batch)
 {
-        struct panfrost_device *dev = pan_device(ctx->base.screen);
-        struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
+        struct panfrost_device *dev = pan_device(batch->ctx->base.screen);
 
         struct mali_shared_memory shared = {
                 .shared_workgroup_count = ~0,
@@ -72,15 +70,7 @@ panfrost_vt_emit_shared_memory(struct panfrost_context *ctx,
                 shared.scratchpad = stack->gpu;
         }
 
-        postfix->shared_memory = panfrost_pool_upload_aligned(&batch->pool, &shared, sizeof(shared), 64);
-}
-
-static void
-panfrost_vt_attach_framebuffer(struct panfrost_context *ctx,
-                               struct mali_vertex_tiler_postfix *postfix)
-{
-        struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
-        postfix->shared_memory = panfrost_batch_reserve_framebuffer(batch);
+        return panfrost_pool_upload_aligned(&batch->pool, &shared, sizeof(shared), 64);
 }
 
 static void
@@ -138,6 +128,7 @@ panfrost_vt_init(struct panfrost_context *ctx,
                  struct mali_vertex_tiler_postfix *postfix)
 {
         struct panfrost_device *device = pan_device(ctx->base.screen);
+        struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
 
         if (!ctx->shader[stage])
                 return;
@@ -147,10 +138,10 @@ panfrost_vt_init(struct panfrost_context *ctx,
 
         if (device->quirks & IS_BIFROST) {
                 postfix->gl_enables = 0x2;
-                panfrost_vt_emit_shared_memory(ctx, postfix);
+                postfix->shared_memory = panfrost_vt_emit_shared_memory(batch);
         } else {
                 postfix->gl_enables = 0x6;
-                panfrost_vt_attach_framebuffer(ctx, postfix);
+                postfix->shared_memory = panfrost_batch_reserve_framebuffer(batch);
         }
 
         if (stage == PIPE_SHADER_FRAGMENT) {
@@ -747,9 +738,8 @@ panfrost_emit_frag_shader_meta(struct panfrost_batch *batch)
         return xfer.gpu;
 }
 
-void
-panfrost_emit_viewport(struct panfrost_batch *batch,
-                       struct mali_vertex_tiler_postfix *tiler_postfix)
+mali_ptr
+panfrost_emit_viewport(struct panfrost_batch *batch)
 {
         struct panfrost_context *ctx = batch->ctx;
         const struct pipe_viewport_state *vp = &ctx->pipe_viewport;
@@ -794,8 +784,8 @@ panfrost_emit_viewport(struct panfrost_batch *batch,
                 cfg.maximum_z = rast->depth_clip_far ? maxz : INFINITY;
         }
 
-        tiler_postfix->viewport = T.gpu;
         panfrost_batch_union_scissor(batch, minx, miny, maxx, maxy);
+        return T.gpu;
 }
 
 static mali_ptr
@@ -1083,10 +1073,9 @@ panfrost_emit_const_buf(struct panfrost_batch *batch,
         buf->dirty_mask = 0;
 }
 
-void
+mali_ptr
 panfrost_emit_shared_memory(struct panfrost_batch *batch,
-                            const struct pipe_grid_info *info,
-                            struct midgard_payload_vertex_tiler *vtp)
+                            const struct pipe_grid_info *info)
 {
         struct panfrost_context *ctx = batch->ctx;
         struct panfrost_device *dev = pan_device(ctx->base.screen);
@@ -1111,8 +1100,8 @@ panfrost_emit_shared_memory(struct panfrost_batch *batch,
                 .shared_shift = util_logbase2(single_size) + 1
         };
 
-        vtp->postfix.shared_memory = panfrost_pool_upload_aligned(&batch->pool, &shared,
-                                                               sizeof(shared), 64);
+        return panfrost_pool_upload_aligned(&batch->pool, &shared,
+                        sizeof(shared), 64);
 }
 
 static mali_ptr
@@ -1151,16 +1140,15 @@ panfrost_update_sampler_view(struct panfrost_sampler_view *view,
         }
 }
 
-void
+mali_ptr
 panfrost_emit_texture_descriptors(struct panfrost_batch *batch,
-                                  enum pipe_shader_type stage,
-                                  struct mali_vertex_tiler_postfix *postfix)
+                                  enum pipe_shader_type stage)
 {
         struct panfrost_context *ctx = batch->ctx;
         struct panfrost_device *device = pan_device(ctx->base.screen);
 
         if (!ctx->sampler_view_count[stage])
-                return;
+                return 0;
 
         if (device->quirks & IS_BIFROST) {
                 struct panfrost_transfer T = panfrost_pool_alloc_aligned(&batch->pool,
@@ -1190,7 +1178,7 @@ panfrost_emit_texture_descriptors(struct panfrost_batch *batch,
                                               panfrost_bo_access_for_stage(stage));
                 }
 
-                postfix->textures = T.gpu;
+                return T.gpu;
         } else {
                 uint64_t trampolines[PIPE_MAX_SHADER_SAMPLER_VIEWS];
 
@@ -1202,23 +1190,21 @@ panfrost_emit_texture_descriptors(struct panfrost_batch *batch,
                         trampolines[i] = panfrost_get_tex_desc(batch, stage, view);
                 }
 
-                postfix->textures = panfrost_pool_upload_aligned(&batch->pool,
-                                                              trampolines,
-                                                              sizeof(uint64_t) *
-                                                              ctx->sampler_view_count[stage],
-                                                              sizeof(uint64_t));
+                return panfrost_pool_upload_aligned(&batch->pool, trampolines,
+                                sizeof(uint64_t) *
+                                ctx->sampler_view_count[stage],
+                                sizeof(uint64_t));
         }
 }
 
-void
+mali_ptr
 panfrost_emit_sampler_descriptors(struct panfrost_batch *batch,
-                                  enum pipe_shader_type stage,
-                                  struct mali_vertex_tiler_postfix *postfix)
+                                  enum pipe_shader_type stage)
 {
         struct panfrost_context *ctx = batch->ctx;
 
         if (!ctx->sampler_count[stage])
-                return;
+                return 0;
 
         size_t desc_size = MALI_BIFROST_SAMPLER_LENGTH;
         assert(MALI_BIFROST_SAMPLER_LENGTH == MALI_MIDGARD_SAMPLER_LENGTH);
@@ -1230,7 +1216,7 @@ panfrost_emit_sampler_descriptors(struct panfrost_batch *batch,
         for (unsigned i = 0; i < ctx->sampler_count[stage]; ++i)
                 out[i] = ctx->samplers[stage][i]->hw;
 
-        postfix->sampler_descriptor = T.gpu;
+        return T.gpu;
 }
 
 void
