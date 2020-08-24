@@ -447,10 +447,17 @@ void byte_align_scalar(isel_context *ctx, Temp vec, Operand offset, Temp dst)
          emit_split_vector(ctx, dst, 2);
       else
          emit_extract_vector(ctx, tmp, 0, dst);
-   } else if (vec.size() == 4) {
-      Temp lo = bld.tmp(s2), hi = bld.tmp(s2);
-      bld.pseudo(aco_opcode::p_split_vector, Definition(lo), Definition(hi), vec);
-      hi = bld.pseudo(aco_opcode::p_extract_vector, bld.def(s1), hi, Operand(0u));
+   } else if (vec.size() == 3 || vec.size() == 4) {
+      Temp lo = bld.tmp(s2), hi;
+      if (vec.size() == 3) {
+         /* this can happen if we use VMEM for a uniform load */
+         hi = bld.tmp(s1);
+         bld.pseudo(aco_opcode::p_split_vector, Definition(lo), Definition(hi), vec);
+      } else {
+         hi = bld.tmp(s2);
+         bld.pseudo(aco_opcode::p_split_vector, Definition(lo), Definition(hi), vec);
+         hi = bld.pseudo(aco_opcode::p_extract_vector, bld.def(s1), hi, Operand(0u));
+      }
       if (select != Temp())
          hi = bld.sop2(aco_opcode::s_cselect_b32, bld.def(s1), hi, Operand(0u), bld.scc(select));
       lo = bld.sop2(aco_opcode::s_lshr_b64, bld.def(s2), bld.def(s1, scc), lo, shift);
