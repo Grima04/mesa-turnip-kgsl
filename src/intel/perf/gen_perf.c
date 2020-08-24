@@ -770,6 +770,19 @@ load_oa_metrics(struct gen_perf_config *perf, int fd,
    /* sort counters in each individual group created by this function by name */
    for (int i = existing_queries; i < perf->n_queries; ++i)
       sort_query(&perf->queries[i]);
+
+   /* Select a fallback OA metric. Look for the TestOa metric or use the last
+    * one if no present (on HSW).
+    */
+   for (int i = existing_queries; i < perf->n_queries; i++) {
+      if (perf->queries[i].symbol_name &&
+          strcmp(perf->queries[i].symbol_name, "TestOa") == 0) {
+         perf->fallback_raw_oa_metric = perf->queries[i].oa_metrics_set_id;
+         break;
+      }
+   }
+   if (perf->fallback_raw_oa_metric == 0)
+      perf->fallback_raw_oa_metric = perf->queries[perf->n_queries - 1].oa_metrics_set_id;
 }
 
 struct gen_perf_registers *
