@@ -1344,6 +1344,105 @@ nir_lower_explicit_io_instr(nir_builder *b,
    nir_instr_remove(&intrin->instr);
 }
 
+bool
+nir_get_explicit_deref_align(nir_deref_instr *deref,
+                             bool default_to_type_align,
+                             uint32_t *align_mul,
+                             uint32_t *align_offset)
+{
+   if (deref->deref_type == nir_deref_type_var) {
+      /* If we see a variable, align_mul is effectively infinite because we
+       * know the offset exactly (up to the offset of the base pointer for the
+       * given variable mode).   We have to pick something so we choose 256B
+       * as an arbitrary alignment which seems high enough for any reasonable
+       * wide-load use-case.  Back-ends should clamp alignments down if 256B
+       * is too large for some reason.
+       */
+      *align_mul = 256;
+      *align_offset = deref->var->data.driver_location % 256;
+      return true;
+   }
+
+   /* If we're a cast deref that has an alignment, use that. */
+   if (deref->deref_type == nir_deref_type_cast && deref->cast.align_mul > 0) {
+      *align_mul = deref->cast.align_mul;
+      *align_offset = deref->cast.align_offset;
+      return true;
+   }
+
+   /* Otherwise, we need to compute the alignment based on the parent */
+   nir_deref_instr *parent = nir_deref_instr_parent(deref);
+   if (parent == NULL) {
+      assert(deref->deref_type == nir_deref_type_cast);
+      if (default_to_type_align) {
+         /* If we don't have a parent, assume the type's alignment, if any. */
+         unsigned type_align = glsl_get_explicit_alignment(deref->type);
+         if (type_align == 0)
+            return false;
+
+         *align_mul = type_align;
+         *align_offset = 0;
+         return true;
+      } else {
+         return false;
+      }
+   }
+
+   uint32_t parent_mul, parent_offset;
+   if (!nir_get_explicit_deref_align(parent, default_to_type_align,
+                                     &parent_mul, &parent_offset))
+      return false;
+
+   switch (deref->deref_type) {
+   case nir_deref_type_var:
+      unreachable("Handled above");
+
+   case nir_deref_type_array:
+   case nir_deref_type_array_wildcard:
+   case nir_deref_type_ptr_as_array: {
+      const unsigned stride = nir_deref_instr_array_stride(deref);
+      if (stride == 0)
+         return false;
+
+      if (deref->deref_type != nir_deref_type_array_wildcard &&
+          nir_src_is_const(deref->arr.index)) {
+         unsigned offset = nir_src_as_uint(deref->arr.index) * stride;
+         *align_mul = parent_mul;
+         *align_offset = (parent_offset + offset) % parent_mul;
+      } else {
+         /* If this is a wildcard or an indirect deref, we have to go with the
+          * power-of-two gcd.
+          */
+         *align_mul = MIN3(parent_mul,
+                           1 << (ffs(parent_offset) - 1),
+                           1 << (ffs(stride) - 1));
+         *align_offset = 0;
+      }
+      return true;
+   }
+
+   case nir_deref_type_struct: {
+      const int offset = glsl_get_struct_field_offset(parent->type,
+                                                      deref->strct.index);
+      if (offset < 0)
+         return false;
+
+      *align_mul = parent_mul;
+      *align_offset = (parent_offset + offset) % parent_mul;
+      return true;
+   }
+
+   case nir_deref_type_cast:
+      /* We handled the explicit alignment case above. */
+      assert(deref->cast.align_mul == 0);
+      *align_mul = parent_mul;
+      *align_offset = parent_offset;
+      return true;
+   }
+
+   unreachable("Invalid deref_instr_type");
+}
+
 static void
 lower_explicit_io_deref(nir_builder *b, nir_deref_instr *deref,
                         nir_address_format addr_format)

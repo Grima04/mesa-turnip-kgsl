@@ -4275,6 +4275,12 @@ nir_ssa_def * nir_explicit_io_address_from_deref(struct nir_builder *b,
                                                  nir_deref_instr *deref,
                                                  nir_ssa_def *base_addr,
                                                  nir_address_format addr_format);
+
+bool nir_get_explicit_deref_align(nir_deref_instr *deref,
+                                  bool default_to_type_align,
+                                  uint32_t *align_mul,
+                                  uint32_t *align_offset);
+
 void nir_lower_explicit_io_instr(struct nir_builder *b,
                                  nir_intrinsic_instr *io_instr,
                                  nir_ssa_def *addr,
