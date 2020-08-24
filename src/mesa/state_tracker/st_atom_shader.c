@@ -57,7 +57,7 @@
 
 
 static unsigned
-get_texture_target(struct gl_context *ctx, const unsigned unit)
+get_texture_index(struct gl_context *ctx, const unsigned unit)
 {
    struct gl_texture_object *texObj = _mesa_get_tex_unit(ctx, unit)->_Current;
    gl_texture_index index;
@@ -69,25 +69,7 @@ get_texture_target(struct gl_context *ctx, const unsigned unit)
       index = TEXTURE_2D_INDEX;
    }
 
-   /* Map mesa texture target to TGSI texture target.
-    * Copied from st_mesa_to_tgsi.c, the shadow part is omitted */
-   switch(index) {
-   case TEXTURE_2D_MULTISAMPLE_INDEX: return TGSI_TEXTURE_2D_MSAA;
-   case TEXTURE_2D_MULTISAMPLE_ARRAY_INDEX: return TGSI_TEXTURE_2D_ARRAY_MSAA;
-   case TEXTURE_BUFFER_INDEX: return TGSI_TEXTURE_BUFFER;
-   case TEXTURE_1D_INDEX:   return TGSI_TEXTURE_1D;
-   case TEXTURE_2D_INDEX:   return TGSI_TEXTURE_2D;
-   case TEXTURE_3D_INDEX:   return TGSI_TEXTURE_3D;
-   case TEXTURE_CUBE_INDEX: return TGSI_TEXTURE_CUBE;
-   case TEXTURE_CUBE_ARRAY_INDEX: return TGSI_TEXTURE_CUBE_ARRAY;
-   case TEXTURE_RECT_INDEX: return TGSI_TEXTURE_RECT;
-   case TEXTURE_1D_ARRAY_INDEX:   return TGSI_TEXTURE_1D_ARRAY;
-   case TEXTURE_2D_ARRAY_INDEX:   return TGSI_TEXTURE_2D_ARRAY;
-   case TEXTURE_EXTERNAL_INDEX:   return TGSI_TEXTURE_2D;
-   default:
-      debug_assert(0);
-      return TGSI_TEXTURE_1D;
-   }
+   return index;
 }
 
 
@@ -154,7 +136,7 @@ st_update_fp( struct st_context *st )
          key.fog = st->ctx->Fog._PackedEnabledMode;
 
          for (unsigned u = 0; u < MAX_NUM_FRAGMENT_REGISTERS_ATI; u++) {
-            key.texture_targets[u] = get_texture_target(st->ctx, u);
+            key.texture_index[u] = get_texture_index(st->ctx, u);
          }
       }
 

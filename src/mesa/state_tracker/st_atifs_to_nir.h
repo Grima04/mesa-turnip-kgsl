@@ -25,6 +25,7 @@
 
 #include "main/glheader.h"
 #include "pipe/p_defines.h"
+#include "compiler/nir/nir.h"
 
 #if defined __cplusplus
 extern "C" {
@@ -32,33 +33,18 @@ extern "C" {
 
 struct gl_context;
 struct gl_program;
-struct ureg_program;
-struct tgsi_token;
 struct ati_fragment_shader;
 struct st_fp_variant_key;
 
-enum pipe_error
-st_translate_atifs_program(
-    struct ureg_program *ureg,
-    struct ati_fragment_shader *atifs,
-    struct gl_program *program,
-    GLuint numInputs,
-    const ubyte inputMapping[],
-    const ubyte inputSemanticName[],
-    const ubyte inputSemanticIndex[],
-    const ubyte interpMode[],
-    GLuint numOutputs,
-    const ubyte outputMapping[],
-    const ubyte outputSemanticName[],
-    const ubyte outputSemanticIndex[]);
+nir_shader *
+st_translate_atifs_program(struct ati_fragment_shader *atifs,
+                           const struct st_fp_variant_key *key,
+                           struct gl_program *program,
+                           const nir_shader_compiler_options *options);
 
 
 void
 st_init_atifs_prog(struct gl_context *ctx, struct gl_program *prog);
-
-const struct tgsi_token *
-st_fixup_atifs(const struct tgsi_token *tokens,
-               const struct st_fp_variant_key *key);
 
 #if defined __cplusplus
 } /* extern "C" */
