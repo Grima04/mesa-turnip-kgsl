@@ -719,7 +719,6 @@ panfrost_emit_frag_shader_meta(struct panfrost_batch *batch)
 
         struct panfrost_device *dev = pan_device(ctx->base.screen);
         unsigned rt_count = MAX2(ctx->pipe_framebuffer.nr_cbufs, 1);
-        void *rts = NULL;
         struct panfrost_transfer xfer;
         unsigned rt_size;
 
@@ -731,28 +730,19 @@ panfrost_emit_frag_shader_meta(struct panfrost_batch *batch)
                 rt_size = sizeof(struct midgard_blend_rt);
 
         unsigned desc_size = MALI_STATE_LENGTH + rt_size * rt_count;
-
-        if (rt_size)
-                rts = rzalloc_size(ctx, rt_size * rt_count);
+        xfer = panfrost_pool_alloc_aligned(&batch->pool, desc_size, MALI_STATE_LENGTH);
 
         struct panfrost_blend_final blend[PIPE_MAX_COLOR_BUFS];
 
         for (unsigned c = 0; c < ctx->pipe_framebuffer.nr_cbufs; ++c)
                 blend[c] = panfrost_get_blend_for_context(ctx, c);
 
-        if (!(dev->quirks & MIDGARD_SFBD))
-                panfrost_emit_blend(batch, rts, blend);
-        else
-                batch->draws |= PIPE_CLEAR_COLOR0;
-
-        xfer = panfrost_pool_alloc_aligned(&batch->pool, desc_size, MALI_STATE_LENGTH);
-
         panfrost_emit_frag_shader(ctx, (struct mali_state_packed *) xfer.cpu, blend);
 
-        memcpy(xfer.cpu + MALI_STATE_LENGTH, rts, rt_size * rt_count);
-
-        if (rt_size)
-                ralloc_free(rts);
+        if (!(dev->quirks & MIDGARD_SFBD))
+                panfrost_emit_blend(batch, xfer.cpu + MALI_STATE_LENGTH, blend);
+        else
+                batch->draws |= PIPE_CLEAR_COLOR0;
 
         return xfer.gpu;
 }
