@@ -28,6 +28,8 @@
 #include <stddef.h>
 #include <midgard_pack.h>
 
+#include "util/u_dynarray.h"
+
 /* Represents a pool of memory that can only grow, used to allocate objects
  * with the same lifetime as the pool itself. In OpenGL, a pool is owned by the
  * batch for transient structures. In Vulkan, it may be owned by e.g. the
@@ -37,8 +39,8 @@ struct pan_pool {
         /* Parent device for allocation */
         struct panfrost_device *dev;
 
-        /* panfrost_bo -> access_flags owned by the pool */
-        struct hash_table *bos;
+        /* BOs allocated by this pool */
+        struct util_dynarray bos;
 
         /* Current transient BO */
         struct panfrost_bo *transient_bo;
@@ -61,7 +63,7 @@ panfrost_pool_cleanup(struct pan_pool *pool);
 static inline unsigned
 panfrost_pool_num_bos(struct pan_pool *pool)
 {
-        return pool->bos->entries;
+        return util_dynarray_num_elements(&pool->bos, struct panfrost_bo *);
 }
 
 void
