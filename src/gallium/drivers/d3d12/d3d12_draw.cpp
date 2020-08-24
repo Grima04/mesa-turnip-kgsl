@@ -114,7 +114,8 @@ fill_srv_descriptors(struct d3d12_context *ctx,
             d3d12_transition_subresources_state(ctx, d3d12_resource(view->base.texture),
                                                 view->base.u.tex.first_level, view->mip_levels,
                                                 view->base.u.tex.first_layer, view->array_size,
-                                                0, d3d12_get_format_num_planes(view->base.format),
+                                                d3d12_get_format_start_plane(view->base.format),
+                                                d3d12_get_format_num_planes(view->base.format),
                                                 state);
          }
       } else {
@@ -384,7 +385,8 @@ transition_surface_subresources_state(struct d3d12_context *ctx,
    d3d12_transition_subresources_state(ctx, res,
                                        psurf->u.tex.level, 1,
                                        start_layer, num_layers,
-                                       0, d3d12_get_format_num_planes(psurf->format),
+                                       d3d12_get_format_start_plane(psurf->format),
+                                       d3d12_get_format_num_planes(psurf->format),
                                        state);
 }
 

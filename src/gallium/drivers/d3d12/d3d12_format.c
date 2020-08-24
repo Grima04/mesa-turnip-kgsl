@@ -291,6 +291,16 @@ d3d12_non_opaque_plane_count(DXGI_FORMAT format)
 }
 
 unsigned
+d3d12_get_format_start_plane(enum pipe_format fmt)
+{
+   const struct util_format_description *desc = util_format_description(fmt);
+   if (util_format_has_stencil(desc) && !util_format_has_depth(desc))
+      return 1;
+
+   return 0;
+}
+
+unsigned
 d3d12_get_format_num_planes(enum pipe_format fmt)
 {
    return util_format_is_depth_or_stencil(fmt) ?

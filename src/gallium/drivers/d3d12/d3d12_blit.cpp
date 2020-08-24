@@ -419,11 +419,13 @@ d3d12_direct_copy(struct d3d12_context *ctx,
                    src_subres, dst_subres);
 
 
-   d3d12_transition_subresources_state(ctx, src, src_subres, 1, 0, 1, 0,
+   d3d12_transition_subresources_state(ctx, src, src_subres, 1, 0, 1,
+                                       d3d12_get_format_start_plane(src->base.format),
                                        d3d12_get_format_num_planes(src->base.format),
                                        D3D12_RESOURCE_STATE_COPY_SOURCE);
 
-   d3d12_transition_subresources_state(ctx, dst, dst_subres, 1, 0, 1, 0,
+   d3d12_transition_subresources_state(ctx, dst, dst_subres, 1, 0, 1,
+                                       d3d12_get_format_start_plane(dst->base.format),
                                        d3d12_get_format_num_planes(dst->base.format),
                                        D3D12_RESOURCE_STATE_COPY_DEST);
 

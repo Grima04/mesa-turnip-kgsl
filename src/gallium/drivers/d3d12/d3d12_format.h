@@ -57,6 +57,9 @@ enum pipe_format
 d3d12_emulated_vtx_format(enum pipe_format fmt);
 
 unsigned
+d3d12_get_format_start_plane(enum pipe_format fmt);
+
+unsigned
 d3d12_get_format_num_planes(enum pipe_format fmt);
 
 #ifdef __cplusplus
