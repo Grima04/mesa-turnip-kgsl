@@ -952,6 +952,7 @@ addr_is_in_bounds(nir_builder *b, nir_ssa_def *addr,
 static nir_ssa_def *
 build_explicit_io_load(nir_builder *b, nir_intrinsic_instr *intrin,
                        nir_ssa_def *addr, nir_address_format addr_format,
+                       uint32_t align_mul, uint32_t align_offset,
                        unsigned num_components)
 {
    nir_variable_mode mode = nir_src_as_deref(intrin->src[0])->mode;
@@ -1027,10 +1028,7 @@ build_explicit_io_load(nir_builder *b, nir_intrinsic_instr *intrin,
       bit_size = 32;
    }
 
-   /* TODO: We should try and provide a better alignment.  For OpenCL, we need
-    * to plumb the alignment through from SPIR-V when we have one.
-    */
-   nir_intrinsic_set_align(load, bit_size / 8, 0);
+   nir_intrinsic_set_align(load, align_mul, align_offset);
 
    assert(intrin->dest.is_ssa);
    load->num_components = num_components;
@@ -1079,6 +1077,7 @@ build_explicit_io_load(nir_builder *b, nir_intrinsic_instr *intrin,
 static void
 build_explicit_io_store(nir_builder *b, nir_intrinsic_instr *intrin,
                         nir_ssa_def *addr, nir_address_format addr_format,
+                        uint32_t align_mul, uint32_t align_offset,
                         nir_ssa_def *value, nir_component_mask_t write_mask)
 {
    nir_variable_mode mode = nir_src_as_deref(intrin->src[0])->mode;
@@ -1145,10 +1144,7 @@ build_explicit_io_store(nir_builder *b, nir_intrinsic_instr *intrin,
    if (nir_intrinsic_has_access(store))
       nir_intrinsic_set_access(store, nir_intrinsic_access(intrin));
 
-   /* TODO: We should try and provide a better alignment.  For OpenCL, we need
-    * to plumb the alignment through from SPIR-V when we have one.
-    */
-   nir_intrinsic_set_align(store, value->bit_size / 8, 0);
+   nir_intrinsic_set_align(store, align_mul, align_offset);
 
    assert(value->num_components == 1 ||
           value->num_components == intrin->num_components);
@@ -1301,19 +1297,31 @@ nir_lower_explicit_io_instr(nir_builder *b,
    assert(vec_stride == 0 || glsl_type_is_vector(deref->type));
    assert(vec_stride == 0 || vec_stride >= scalar_size);
 
+   uint32_t align_mul, align_offset;
+   if (!nir_get_explicit_deref_align(deref, true, &align_mul, &align_offset)) {
+      /* If we don't have an alignment from the deref, assume scalar */
+      align_mul = scalar_size;
+      align_offset = 0;
+   }
+
    if (intrin->intrinsic == nir_intrinsic_load_deref) {
       nir_ssa_def *value;
       if (vec_stride > scalar_size) {
          nir_ssa_def *comps[4] = { NULL, };
          for (unsigned i = 0; i < intrin->num_components; i++) {
+            unsigned comp_offset = i * vec_stride;
             nir_ssa_def *comp_addr = build_addr_iadd_imm(b, addr, addr_format,
-                                                         vec_stride * i);
+                                                         comp_offset);
             comps[i] = build_explicit_io_load(b, intrin, comp_addr,
-                                              addr_format, 1);
+                                              addr_format, align_mul,
+                                              (align_offset + comp_offset) %
+                                                 align_mul,
+                                              1);
          }
          value = nir_vec(b, comps, intrin->num_components);
       } else {
          value = build_explicit_io_load(b, intrin, addr, addr_format,
+                                        align_mul, align_offset,
                                         intrin->num_components);
       }
       nir_ssa_def_rewrite_uses(&intrin->dest.ssa, nir_src_for_ssa(value));
@@ -1326,13 +1334,17 @@ nir_lower_explicit_io_instr(nir_builder *b,
             if (!(write_mask & (1 << i)))
                continue;
 
+            unsigned comp_offset = i * vec_stride;
             nir_ssa_def *comp_addr = build_addr_iadd_imm(b, addr, addr_format,
-                                                         vec_stride * i);
+                                                         comp_offset);
             build_explicit_io_store(b, intrin, comp_addr, addr_format,
+                                    align_mul,
+                                    (align_offset + comp_offset) % align_mul,
                                     nir_channel(b, value, i), 1);
          }
       } else {
          build_explicit_io_store(b, intrin, addr, addr_format,
+                                 align_mul, align_offset,
                                  value, write_mask);
       }
    } else {
