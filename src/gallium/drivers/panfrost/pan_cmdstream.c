@@ -435,7 +435,6 @@ panfrost_emit_blend(struct panfrost_batch *batch, void *rts,
         unsigned rt_count = batch->key.nr_cbufs;
 
         struct bifrost_blend_rt *brts = rts;
-        struct midgard_blend_rt *mrts = rts;
 
         /* Disable blending for depth-only on Bifrost */
 
@@ -443,7 +442,7 @@ panfrost_emit_blend(struct panfrost_batch *batch, void *rts,
                 brts[0].unk2 = 0x3;
 
         for (unsigned i = 0; i < rt_count; ++i) {
-                unsigned flags = 0;
+                struct mali_blend_flags_packed flags = {};
 
                 pan_pack(&flags, BLEND_FLAGS, cfg) {
                         if (blend[i].no_colour) {
@@ -462,7 +461,7 @@ panfrost_emit_blend(struct panfrost_batch *batch, void *rts,
                 }
 
                 if (dev->quirks & IS_BIFROST) {
-                        brts[i].flags = flags;
+                        brts[i].flags = flags.opaque[0];
 
                         if (blend[i].is_shader) {
                                 /* The blend shader's address needs to be at
@@ -494,14 +493,18 @@ panfrost_emit_blend(struct panfrost_batch *batch, void *rts,
                                 brts[i].shader_type = fs->blend_types[i];
                         }
                 } else {
-                        memcpy(&mrts[i].flags, &flags, sizeof(flags));
+                        pan_pack(rts, MIDGARD_BLEND_OPAQUE, cfg) {
+                                cfg.flags = flags;
 
-                        if (blend[i].is_shader) {
-                                mrts[i].blend.shader = blend[i].shader.gpu | blend[i].shader.first_tag;
-                        } else {
-                                mrts[i].blend.equation = blend[i].equation.equation;
-                                mrts[i].blend.constant = blend[i].equation.constant;
+                                if (blend[i].is_shader) {
+                                        cfg.shader = blend[i].shader.gpu | blend[i].shader.first_tag;
+                                } else {
+                                        cfg.equation = blend[i].equation.equation.opaque[0];
+                                        cfg.constant = blend[i].equation.constant;
+                                }
                         }
+
+                        rts += MALI_MIDGARD_BLEND_LENGTH;
                 }
         }
 }
