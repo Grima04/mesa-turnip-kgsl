@@ -367,7 +367,7 @@ x86_test-gl:
 x86_test-vk:
   extends: .use-x86_test-base
   variables:
-    MESA_IMAGE_TAG: &x86_test-vk "2020-12-18-piglit-replayer"
+    MESA_IMAGE_TAG: &x86_test-vk "2020-12-19-build-piglit"
 
 # Debian 10 based ARM build image
 arm_build:
