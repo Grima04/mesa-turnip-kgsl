@@ -201,6 +201,12 @@
     <value name="Layered" value="3"/>
   </enum>
 
+  <enum name="Occlusion Mode">
+    <value name="Disabled" value="0"/>
+    <value name="Predicate" value="1"/>
+    <value name="Counter" value="3"/>
+  </enum>
+
   <enum name="Stencil Op">
     <value name="Keep" value="0"/>
     <value name="Replace" value="1"/>
@@ -281,6 +287,32 @@
     <field name="Equation" size="32" start="2:0" type="uint"/> <!-- XXX -->
     <field name="Constant" size="32" start="3:0" type="float"/>
     <field name="Shader" size="64" start="2:0" type="address"/>
+  </struct>
+
+  <struct name="Draw" size="30">
+    <field name="Unknown 1" size="3" start="0:0" type="uint"/>
+    <field name="Occlusion query" size="2" start="0:3" type="Occlusion Mode" default="Disabled"/>
+    <field name="Front face CCW" size="1" start="0:5" type="bool"/>
+    <field name="Cull front face" size="1" start="0:6" type="bool"/>
+    <field name="Cull back face" size="1" start="0:7" type="bool"/>
+    <!-- TODO 0:7-0:15 -->
+    <field name="Instances" size="8" start="0:16" type="padded" default="1"/>
+    <!-- TODO: 0:16-0:24 -->
+    <field name="Offset start" size="32" start="1:0" type="uint"/>
+    <!-- TODO: 2-3 -->
+    <field name="Position" size="64" start="4:0" type="address"/>
+    <field name="Uniform buffers" size="64" start="6:0" type="address"/>
+    <field name="Textures" size="64" start="8:0" type="address"/>
+    <field name="Samplers" size="64" start="10:0" type="address"/>
+    <field name="Push uniforms" size="64" start="12:0" type="address"/>
+    <field name="State" size="64" start="14:0" type="address"/>
+    <field name="Attribute buffers" size="64" start="16:0" type="address"/>
+    <field name="Attributes" size="64" start="18:0" type="address"/>
+    <field name="Varying buffers" size="64" start="20:0" type="address"/>
+    <field name="Varyings" size="64" start="22:0" type="address"/>
+    <field name="Viewport" size="64" start="24:0" type="address"/>
+    <field name="Occlusion" size="64" start="26:0" type="address"/>
+    <field name="Shared" size="64" start="28:0" type="address"/>
   </struct>
 
   <struct name="Midgard Sampler">
