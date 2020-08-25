@@ -1645,7 +1645,7 @@ radv_get_physical_device_properties_1_2(struct radv_physical_device *pdevice,
 	p->conformanceVersion = (VkConformanceVersion) {
 		.major = 1,
 		.minor = 2,
-		.subminor = 0,
+		.subminor = 3,
 		.patch = 0,
 	};
 
