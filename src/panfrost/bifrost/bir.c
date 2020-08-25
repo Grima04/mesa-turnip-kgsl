@@ -106,7 +106,7 @@ bi_get_component_count(bi_instruction *ins, signed src)
                 return (src <= 0) ? ins->vector_channels : 1;
         } else {
                 unsigned dest_bytes = nir_alu_type_get_type_size(ins->dest_type);
-                unsigned src_bytes = nir_alu_type_get_type_size(ins->src_types[src]);
+                unsigned src_bytes = nir_alu_type_get_type_size(ins->src_types[MAX2(src, 0)]);
 
                 /* If there's either f32 on either end, it's only a single
                  * component, etc. */
