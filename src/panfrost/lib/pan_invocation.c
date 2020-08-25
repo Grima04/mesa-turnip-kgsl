@@ -106,9 +106,6 @@ panfrost_pack_work_groups_compute(
         /* Upload the packed bitfields */
         out->invocation_count = packed;
         out->invocation_shifts = packed_shifts;
-
-        /* TODO: Compute workgroups_x_shift_3 */
-        out->workgroups_x_shift_3 = shift_2;
 }
 
 /* Packs vertex/tiler descriptors simultaneously */
@@ -128,9 +125,5 @@ panfrost_pack_work_groups_fused(
         /* Copy results over */
         tiler->invocation_count = vertex->invocation_count;
         tiler->invocation_shifts = vertex->invocation_shifts;
-
-        /* Set special fields for each */
-        vertex->workgroups_x_shift_3 = 5;
-        tiler->workgroups_x_shift_3 = 6;
 }
 

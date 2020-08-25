@@ -201,6 +201,13 @@
     <value name="Layered" value="3"/>
   </enum>
 
+  <enum name="Index Type">
+    <value name="None" value="0"/>
+    <value name="UINT8" value="1"/>
+    <value name="UINT16" value="2"/>
+    <value name="UINT32" value="3"/>
+  </enum>
+
   <enum name="Occlusion Mode">
     <value name="Disabled" value="0"/>
     <value name="Predicate" value="1"/>
@@ -288,6 +295,23 @@
     <field name="Equation" size="32" start="2:0" type="uint"/> <!-- XXX -->
     <field name="Constant" size="32" start="3:0" type="float"/>
     <field name="Shader" size="64" start="2:0" type="address"/>
+  </struct>
+
+  <struct name="Primitive">
+    <field name="Draw mode" size="4" start="0:0" type="Draw Mode" default="None"/>
+    <field name="Index type" size="2" start="0:8" type="Index Type" default="None"/>
+    <field name="Point size array" size="1" start="0:12" type="bool"/>
+    <!--- TODO -->
+    <field name="First provoking vertex" size="1" start="0:15" type="bool" default="true"/>
+    <field name="Unknown 1" size="1" start="0:16" type="bool" default="true"/>
+    <field name="Unknown 2" size="1" start="0:17" type="bool" default="true"/>
+    <!--- TODO -->
+    <field name="Primitive restart" size="1" start="0:20" type="bool"/>
+    <field name="Unknown 3" size="6" start="0:26" type="uint"/>
+    <field name="Base vertex offset" size="32" start="1:0" type="uint"/>
+    <!--- TODO: word 2 -->
+    <field name="Index count" size="32" start="3:0" type="uint" modifier="minus(1)"/>
+    <field name="Indices" size="64" start="4:0" type="address"/>
   </struct>
 
   <struct name="Draw" size="30">

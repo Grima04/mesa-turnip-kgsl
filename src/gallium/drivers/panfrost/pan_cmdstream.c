@@ -76,35 +76,17 @@ panfrost_vt_emit_shared_memory(struct panfrost_batch *batch)
 
 void
 panfrost_vt_update_primitive_size(struct panfrost_context *ctx,
-                                  struct mali_vertex_tiler_prefix *prefix,
+                                  bool points,
                                   union midgard_primitive_size *primitive_size)
 {
         struct panfrost_rasterizer *rasterizer = ctx->rasterizer;
 
         if (!panfrost_writes_point_size(ctx)) {
-                float val = (prefix->draw_mode == MALI_DRAW_MODE_POINTS) ?
+                float val = points ?
                               rasterizer->base.point_size :
                               rasterizer->base.line_width;
 
                 primitive_size->constant = val;
-        }
-}
-
-unsigned
-panfrost_translate_index_size(unsigned size)
-{
-        switch (size) {
-        case 1:
-                return MALI_DRAW_INDEXED_UINT8;
-
-        case 2:
-                return MALI_DRAW_INDEXED_UINT16;
-
-        case 4:
-                return MALI_DRAW_INDEXED_UINT32;
-
-        default:
-                unreachable("Invalid index size");
         }
 }
 

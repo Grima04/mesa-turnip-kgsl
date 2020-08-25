@@ -420,23 +420,6 @@ struct mali_payload_write_value {
  * fused payloads.
  */
 
-/* Applies to unknown_draw */
-
-#define MALI_DRAW_INDEXED_UINT8  (0x10)
-#define MALI_DRAW_INDEXED_UINT16 (0x20)
-#define MALI_DRAW_INDEXED_UINT32 (0x30)
-#define MALI_DRAW_INDEXED_SIZE   (0x30)
-#define MALI_DRAW_INDEXED_SHIFT  (4)
-
-#define MALI_DRAW_VARYING_SIZE   (0x100)
-
-/* Set to use first vertex as the provoking vertex for flatshading. Clear to
- * use the last vertex. This is the default in DX and VK, but not in GL. */
-
-#define MALI_DRAW_FLATSHADE_FIRST (0x800)
-
-#define MALI_DRAW_PRIMITIVE_RESTART_FIXED_INDEX (0x10000)
-
 struct mali_vertex_tiler_prefix {
         /* This is a dynamic bitfield containing the following things in this order:
          *
@@ -474,52 +457,7 @@ struct mali_vertex_tiler_prefix {
          */
         u32 invocation_shifts;
 
-        u32 draw_mode : 4;
-        u32 unknown_draw : 22;
-
-        /* This is the the same as workgroups_x_shift_2 in compute shaders, but
-         * always 5 for vertex jobs and 6 for tiler jobs. I suspect this has
-         * something to do with how many quads get put in the same execution
-         * engine, which is a balance (you don't want to starve the engine, but
-         * you also want to distribute work evenly).
-         */
-        u32 workgroups_x_shift_3 : 6;
-
-
-        /* Negative of min_index. This is used to compute
-         * the unbiased index in tiler/fragment shader runs.
-         * 
-         * The hardware adds offset_bias_correction in each run,
-         * so that absent an index bias, the first vertex processed is
-         * genuinely the first vertex (0). But with an index bias,
-         * the first vertex process is numbered the same as the bias.
-         *
-         * To represent this more conviniently:
-         * unbiased_index = lower_bound_index +
-         *                  index_bias +
-         *                  offset_bias_correction
-         *
-         * This is done since the hardware doesn't accept a index_bias
-         * and this allows it to recover the unbiased index.
-         */
-        int32_t offset_bias_correction;
-        u32 zero1;
-
-        /* Like many other strictly nonzero quantities, index_count is
-         * subtracted by one. For an indexed cube, this is equal to 35 = 6
-         * faces * 2 triangles/per face * 3 vertices/per triangle - 1. That is,
-         * for an indexed draw, index_count is the number of actual vertices
-         * rendered whereas invocation_count is the number of unique vertices
-         * rendered (the number of times the vertex shader must be invoked).
-         * For non-indexed draws, this is just equal to invocation_count. */
-
-        u32 index_count;
-
-        /* No hidden structure; literally just a pointer to an array of uint
-         * indices (width depends on flags). Thanks, guys, for not making my
-         * life insane for once! NULL for non-indexed draws. */
-
-        u64 indices;
+        struct mali_primitive_packed primitive;
 } __attribute__((packed));
 
 /* Point size / line width can either be specified as a 32-bit float (for

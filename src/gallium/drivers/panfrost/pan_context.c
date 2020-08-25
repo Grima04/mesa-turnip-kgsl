@@ -262,6 +262,17 @@ pan_emit_draw_descs(struct panfrost_batch *batch,
         d->samplers = panfrost_emit_sampler_descriptors(batch, st);
 }
 
+static enum mali_index_type
+panfrost_translate_index_size(unsigned size)
+{
+        switch (size) {
+        case 1: return MALI_INDEX_TYPE_UINT8;
+        case 2: return MALI_INDEX_TYPE_UINT16;
+        case 4: return MALI_INDEX_TYPE_UINT32;
+        default: unreachable("Invalid index size");
+        }
+}
+
 static void
 panfrost_draw_vbo(
         struct pipe_context *pipe,
@@ -315,48 +326,43 @@ panfrost_draw_vbo(
 
         struct mali_vertex_tiler_prefix vertex_prefix = { 0 }, tiler_prefix = { 0 };
         struct mali_draw_packed vertex_postfix, tiler_postfix;
+        struct mali_primitive_packed primitive;
         union midgard_primitive_size primitive_size;
-        unsigned vertex_count;
+        unsigned vertex_count = ctx->vertex_count;
 
         mali_ptr shared_mem = (device->quirks & IS_BIFROST) ?
                 panfrost_vt_emit_shared_memory(batch) :
                 panfrost_batch_reserve_framebuffer(batch);
 
         struct pipe_rasterizer_state *rast = &ctx->rasterizer->base;
-        SET_BIT(tiler_prefix.unknown_draw, MALI_DRAW_FLATSHADE_FIRST,
-                rast->flatshade_first);
+        unsigned min_index = 0, max_index = 0;
 
-        tiler_prefix.draw_mode = pan_draw_mode(mode);
+        pan_pack(&primitive, PRIMITIVE, cfg) {
+                cfg.draw_mode = pan_draw_mode(mode);
+                cfg.point_size_array = panfrost_writes_point_size(ctx);
+                cfg.first_provoking_vertex = rast->flatshade_first;
+                cfg.primitive_restart = info->primitive_restart;
+                cfg.unknown_3 = 6;
 
-        unsigned draw_flags = 0x3000;
+                if (info->index_size) {
+                        cfg.index_type = panfrost_translate_index_size(info->index_size);
+                        cfg.indices = panfrost_get_index_buffer_bounded(ctx, info,
+                                        &min_index, &max_index);
 
-        if (panfrost_writes_point_size(ctx))
-                draw_flags |= MALI_DRAW_VARYING_SIZE;
+                        /* Use the corresponding values */
+                        vertex_count = max_index - min_index + 1;
+                        ctx->offset_start = min_index + info->index_bias;
 
-        if (info->primitive_restart)
-                draw_flags |= MALI_DRAW_PRIMITIVE_RESTART_FIXED_INDEX;
-
-        if (info->index_size) {
-                unsigned min_index = 0, max_index = 0;
-
-                tiler_prefix.indices = panfrost_get_index_buffer_bounded(ctx,
-                                                                       info,
-                                                                       &min_index,
-                                                                       &max_index);
-
-                /* Use the corresponding values */
-                vertex_count = max_index - min_index + 1;
-                ctx->offset_start = min_index + info->index_bias;
-                tiler_prefix.offset_bias_correction = -min_index;
-                tiler_prefix.index_count = MALI_POSITIVE(info->count);
-                draw_flags |= panfrost_translate_index_size(info->index_size);
-        } else {
-                vertex_count = ctx->vertex_count;
-                ctx->offset_start = info->start;
-                tiler_prefix.index_count = MALI_POSITIVE(ctx->vertex_count);
+                        cfg.base_vertex_offset = -min_index;
+                        cfg.index_count = info->count;
+                } else {
+                        ctx->offset_start = info->start;
+                        cfg.index_count = ctx->vertex_count;
+                }
         }
 
-        tiler_prefix.unknown_draw = draw_flags;
+        vertex_prefix.primitive.opaque[0] = (5) << 26; /* XXX */ 
+        memcpy(&tiler_prefix.primitive, &primitive, sizeof(primitive));
 
         /* Encode the padded vertex count */
 
@@ -415,7 +421,7 @@ panfrost_draw_vbo(
         }
 
         primitive_size.pointer = psiz;
-        panfrost_vt_update_primitive_size(ctx, &tiler_prefix, &primitive_size);
+        panfrost_vt_update_primitive_size(ctx, info->mode == PIPE_PRIM_POINTS, &primitive_size);
 
         /* Fire off the draw itself */
         panfrost_emit_vertex_tiler_jobs(batch, &vertex_prefix, &vertex_postfix,

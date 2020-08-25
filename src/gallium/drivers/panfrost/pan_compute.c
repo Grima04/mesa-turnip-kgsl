@@ -128,6 +128,13 @@ panfrost_launch_grid(struct pipe_context *pipe,
                                 PIPE_SHADER_COMPUTE, &cfg.push_uniforms);
         }
 
+        unsigned magic =
+                util_logbase2_ceil(info->block[0] + 1) +
+                util_logbase2_ceil(info->block[1] + 1) +
+                util_logbase2_ceil(info->block[2] + 1);
+
+        payload.prefix.primitive.opaque[0] = (magic) << 26; /* XXX */
+
         memcpy(&payload.postfix, &postfix, sizeof(postfix));
 
         /* Invoke according to the grid info */

@@ -68,9 +68,6 @@ panfrost_emit_vertex_data(struct panfrost_batch *batch,
 mali_ptr
 panfrost_vt_emit_shared_memory(struct panfrost_batch *batch);
 
-unsigned
-panfrost_translate_index_size(unsigned size);
-
 mali_ptr
 panfrost_get_index_buffer_bounded(struct panfrost_context *ctx,
                                   const struct pipe_draw_info *info,
@@ -95,7 +92,7 @@ panfrost_emit_vertex_tiler_jobs(struct panfrost_batch *batch,
 
 void
 panfrost_vt_update_primitive_size(struct panfrost_context *ctx,
-                                  struct mali_vertex_tiler_prefix *prefix,
+                                  bool points,
                                   union midgard_primitive_size *primitive_size);
 
 mali_ptr

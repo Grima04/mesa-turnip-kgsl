@@ -1299,49 +1299,30 @@ pandecode_vertex_tiler_prefix(struct mali_vertex_tiler_prefix *p, int job_no, bo
                         size_x, size_y, size_z,
                         groups_x, groups_y, groups_z);
 
-        /* TODO: Decode */
-        if (p->unknown_draw)
-                pandecode_prop("unknown_draw = 0x%" PRIx32, p->unknown_draw);
-
-        pandecode_prop("workgroups_x_shift_3 = 0x%" PRIx32, p->workgroups_x_shift_3);
-
-        if (p->draw_mode != MALI_DRAW_MODE_NONE)
-                pandecode_prop("draw_mode = %s", mali_draw_mode_as_str(p->draw_mode));
-
-        /* Index count only exists for tiler jobs anyway */
-
-        if (p->index_count)
-                pandecode_prop("index_count = MALI_POSITIVE(%" PRId32 ")", p->index_count + 1);
-
-
-        unsigned index_raw_size = (p->unknown_draw & MALI_DRAW_INDEXED_SIZE);
-        index_raw_size >>= MALI_DRAW_INDEXED_SHIFT;
+        fprintf(pandecode_dump_stream, "Primitive\n");
+        struct MALI_PRIMITIVE primitive;
+        struct mali_primitive_packed prim_packed = p->primitive;
+        MALI_PRIMITIVE_unpack((const uint8_t *) &prim_packed, &primitive);
+        MALI_PRIMITIVE_print(pandecode_dump_stream, &primitive, 1 * 2);
 
         /* Validate an index buffer is present if we need one. TODO: verify
          * relationship between invocation_count and index_count */
 
-        if (p->indices) {
-                unsigned count = p->index_count;
-
+        if (primitive.indices) {
                 /* Grab the size */
-                unsigned size = (index_raw_size == 0x3) ? 4 : index_raw_size;
+                unsigned size = (primitive.index_type == MALI_INDEX_TYPE_UINT32) ?
+                        sizeof(uint32_t) : primitive.index_type;
 
                 /* Ensure we got a size, and if so, validate the index buffer
                  * is large enough to hold a full set of indices of the given
                  * size */
 
-                if (!index_raw_size)
+                if (!size)
                         pandecode_msg("XXX: index size missing\n");
                 else
-                        pandecode_validate_buffer(p->indices, count * size);
-        } else if (index_raw_size)
-                pandecode_msg("XXX: unexpected index size %u\n", index_raw_size);
-
-        if (p->offset_bias_correction)
-                pandecode_prop("offset_bias_correction = %d", p->offset_bias_correction);
-
-        /* TODO: Figure out what this is. It's not zero */
-        pandecode_prop("zero1 = 0x%" PRIx32, p->zero1);
+                        pandecode_validate_buffer(primitive.indices, primitive.index_count * size);
+        } else if (primitive.index_type)
+                pandecode_msg("XXX: unexpected index size\n");
 
         pandecode_indent--;
         pandecode_log("},\n");
@@ -2092,8 +2073,11 @@ pandecode_vertex_or_tiler_job_mdg(const struct mali_job_descriptor_header *h,
         pandecode_vertex_tiler_prefix(&v->prefix, job_no, is_graphics);
         pandecode_vertex_tiler_postfix(&v->postfix, job_no, false);
 
-        bool has_primitive_pointer = v->prefix.unknown_draw & MALI_DRAW_VARYING_SIZE;
-        pandecode_primitive_size(v->primitive_size, !has_primitive_pointer);
+        struct MALI_PRIMITIVE primitive;
+        struct mali_primitive_packed prim_packed = v->prefix.primitive;
+        MALI_PRIMITIVE_unpack((const uint8_t *) &prim_packed, &primitive);
+
+        pandecode_primitive_size(v->primitive_size, primitive.point_size_array == 0);
 
         pandecode_indent--;
         pandecode_log("};\n");

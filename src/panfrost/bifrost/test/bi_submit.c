@@ -182,6 +182,9 @@ bit_vertex(struct panfrost_device *dev, panfrost_program prog,
 
         struct bifrost_payload_vertex payload = {
                 .prefix = {
+                        .primitive = {
+                                .opaque = { (5) << 26 }
+                        }
                 },
                 .postfix = {
                         .gl_enables = 0x2,
@@ -200,8 +203,6 @@ bit_vertex(struct panfrost_device *dev, panfrost_program prog,
                         1, 1, 1,
                         1, 1, 1,
                         true);
-
-        payload.prefix.workgroups_x_shift_3 = 5;
 
         struct panfrost_bo *bos[] = {
                 scratchpad, shmem, shader, shader_desc, ubo, var, attr
