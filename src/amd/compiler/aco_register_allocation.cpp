@@ -632,16 +632,18 @@ std::pair<PhysReg, bool> get_reg_simple(ra_ctx& ctx,
    uint32_t stride = info.rc.is_subdword() ? DIV_ROUND_UP(info.stride, 4) : info.stride;
    RegClass rc = info.rc;
 
+   DefInfo new_info = info;
+   for (unsigned new_stride = 16; new_stride > stride; new_stride /= 2) {
+      if (size % new_stride)
+         continue;
+      new_info.stride = new_stride;
+      std::pair<PhysReg, bool> res = get_reg_simple(ctx, reg_file, new_info);
+      if (res.second)
+         return res;
+   }
+
    if (stride == 1) {
       info.rc = RegClass(rc.type(), size);
-      for (unsigned new_stride = 8; new_stride > 1; new_stride /= 2) {
-         if (size % new_stride)
-            continue;
-         info.stride = new_stride;
-         std::pair<PhysReg, bool> res = get_reg_simple(ctx, reg_file, info);
-         if (res.second)
-            return res;
-      }
 
       /* best fit algorithm: find the smallest gap to fit in the variable */
       unsigned best_pos = 0xFFFF;
