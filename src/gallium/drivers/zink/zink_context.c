@@ -1002,12 +1002,6 @@ zink_create_stream_output_target(struct pipe_context *pctx,
    if (!t)
       return NULL;
 
-   t->base.reference.count = 1;
-   t->base.context = pctx;
-   pipe_resource_reference(&t->base.buffer, pres);
-   t->base.buffer_offset = buffer_offset;
-   t->base.buffer_size = buffer_size;
-
    /* using PIPE_BIND_CUSTOM here lets us create a custom pipe buffer resource,
     * which allows us to differentiate and use VK_BUFFER_USAGE_TRANSFORM_FEEDBACK_COUNTER_BUFFER_BIT_EXT
     * as we must for this case
@@ -1017,6 +1011,12 @@ zink_create_stream_output_target(struct pipe_context *pctx,
       FREE(t);
       return NULL;
    }
+
+   t->base.reference.count = 1;
+   t->base.context = pctx;
+   pipe_resource_reference(&t->base.buffer, pres);
+   t->base.buffer_offset = buffer_offset;
+   t->base.buffer_size = buffer_size;
 
    return &t->base;
 }
