@@ -6,10 +6,18 @@
 dEQP-GLES31.functional.layout_binding.ssbo.fragment_binding_array
 
 # We have longstanding intermittent failures with compswap.
-dEQP-GLES31.functional.compute.shared_var.atomic.compswap.high_int
+dEQP-GLES31.functional.compute.shared_var.atomic.compswap.highp_int
+dEQP-GLES31.functional.compute.shared_var.atomic.compswap.highp_uint
 dEQP-GLES31.functional.compute.shared_var.atomic.compswap.lowp_int
-dEQP-GLES31.functional.ssbo.atomic.compswap.lowp_uint
+dEQP-GLES31.functional.compute.shared_var.atomic.compswap.lowp_uint
+dEQP-GLES31.functional.compute.shared_var.atomic.compswap.mediump_int
+dEQP-GLES31.functional.compute.shared_var.atomic.compswap.mediump_uint
 dEQP-GLES31.functional.ssbo.atomic.compswap.highp_int
+dEQP-GLES31.functional.ssbo.atomic.compswap.highp_uint
+dEQP-GLES31.functional.ssbo.atomic.compswap.lowp_int
+dEQP-GLES31.functional.ssbo.atomic.compswap.lowp_uint
+dEQP-GLES31.functional.ssbo.atomic.compswap.mediump_int
+dEQP-GLES31.functional.ssbo.atomic.compswap.mediump_uint
 
 # Non-sysmem flakes
 dEQP-VK.pipeline.spec_constant.compute.composite.matrix.mat3x2
