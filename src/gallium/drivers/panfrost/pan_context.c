@@ -391,14 +391,20 @@ panfrost_draw_vbo(
 
         /* Emit all sort of descriptors. */
         mali_ptr push_vert = 0, push_frag = 0, attribs = 0;
+        mali_ptr varyings = 0, vs_vary = 0, fs_vary = 0, pos = 0, psiz = 0;
 
         vertex_postfix.attribute_meta = panfrost_emit_vertex_data(batch, &attribs);
         vertex_postfix.attributes = attribs;
         panfrost_emit_varying_descriptor(batch,
                                          ctx->padded_count *
                                          ctx->instance_count,
-                                         &vertex_postfix, &tiler_postfix,
-                                         &primitive_size);
+                                         &vs_vary, &fs_vary, &varyings,
+                                         &pos, &psiz);
+        vertex_postfix.varyings = varyings;
+        tiler_postfix.varyings = varyings;
+        vertex_postfix.varying_meta = vs_vary;
+        tiler_postfix.varying_meta = fs_vary;
+        tiler_postfix.position_varying = pos;
         vertex_postfix.sampler_descriptor = panfrost_emit_sampler_descriptors(batch, PIPE_SHADER_VERTEX);
         tiler_postfix.sampler_descriptor = panfrost_emit_sampler_descriptors(batch, PIPE_SHADER_FRAGMENT);
         vertex_postfix.textures = panfrost_emit_texture_descriptors(batch, PIPE_SHADER_VERTEX);
@@ -412,6 +418,7 @@ panfrost_draw_vbo(
         vertex_postfix.shader = panfrost_emit_compute_shader_meta(batch, PIPE_SHADER_VERTEX);
         tiler_postfix.shader = panfrost_emit_frag_shader_meta(batch);
 
+        primitive_size.pointer = psiz;
         panfrost_vt_update_primitive_size(ctx, &tiler_prefix, &primitive_size);
 
         /* Fire off the draw itself */

@@ -79,9 +79,11 @@ panfrost_get_index_buffer_bounded(struct panfrost_context *ctx,
 void
 panfrost_emit_varying_descriptor(struct panfrost_batch *batch,
                                  unsigned vertex_count,
-                                 struct mali_vertex_tiler_postfix *vertex_postfix,
-                                 struct mali_vertex_tiler_postfix *tiler_postfix,
-                                 union midgard_primitive_size *primitive_size);
+                                 mali_ptr *vs_attribs,
+                                 mali_ptr *fs_attribs,
+                                 mali_ptr *buffers,
+                                 mali_ptr *position,
+                                 mali_ptr *psiz);
 
 void
 panfrost_emit_vertex_tiler_jobs(struct panfrost_batch *batch,

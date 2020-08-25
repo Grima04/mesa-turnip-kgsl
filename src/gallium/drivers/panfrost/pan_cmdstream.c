@@ -1694,9 +1694,11 @@ pan_emit_special_input(struct mali_attribute_buffer_packed *out,
 void
 panfrost_emit_varying_descriptor(struct panfrost_batch *batch,
                                  unsigned vertex_count,
-                                 struct mali_vertex_tiler_postfix *vertex_postfix,
-                                 struct mali_vertex_tiler_postfix *tiler_postfix,
-                                 union midgard_primitive_size *primitive_size)
+                                 mali_ptr *vs_attribs,
+                                 mali_ptr *fs_attribs,
+                                 mali_ptr *buffers,
+                                 mali_ptr *position,
+                                 mali_ptr *psiz)
 {
         /* Load the shaders */
         struct panfrost_context *ctx = batch->ctx;
@@ -1782,12 +1784,12 @@ panfrost_emit_varying_descriptor(struct panfrost_batch *batch,
                         gen_stride, vertex_count);
 
         /* fp32 vec4 gl_Position */
-        tiler_postfix->position_varying = panfrost_emit_varyings(batch,
+        *position = panfrost_emit_varyings(batch,
                         &varyings[pan_varying_index(present, PAN_VARY_POSITION)],
                         sizeof(float) * 4, vertex_count);
 
         if (present & (1 << PAN_VARY_PSIZ)) {
-                primitive_size->pointer = panfrost_emit_varyings(batch,
+                *psiz = panfrost_emit_varyings(batch,
                                 &varyings[pan_varying_index(present, PAN_VARY_PSIZ)],
                                 2, vertex_count);
         }
@@ -1796,11 +1798,9 @@ panfrost_emit_varying_descriptor(struct panfrost_batch *batch,
         pan_emit_special_input(varyings, present, PAN_VARY_FACE, MALI_ATTRIBUTE_SPECIAL_FRONT_FACING);
         pan_emit_special_input(varyings, present, PAN_VARY_FRAGCOORD, MALI_ATTRIBUTE_SPECIAL_FRAG_COORD);
 
-        vertex_postfix->varyings = T.gpu;
-        tiler_postfix->varyings = T.gpu;
-
-        vertex_postfix->varying_meta = trans.gpu;
-        tiler_postfix->varying_meta = trans.gpu + vs_size;
+        *buffers = T.gpu;
+        *vs_attribs = trans.gpu;
+        *fs_attribs = trans.gpu + vs_size;
 }
 
 void
