@@ -88,9 +88,9 @@ panfrost_emit_varying_descriptor(struct panfrost_batch *batch,
 void
 panfrost_emit_vertex_tiler_jobs(struct panfrost_batch *batch,
                                 struct mali_vertex_tiler_prefix *vertex_prefix,
-                                struct mali_vertex_tiler_postfix *vertex_postfix,
+                                struct mali_draw_packed *vertex_draw,
                                 struct mali_vertex_tiler_prefix *tiler_prefix,
-                                struct mali_vertex_tiler_postfix *tiler_postfix,
+                                struct mali_draw_packed *tiler_draw,
                                 union midgard_primitive_size *primitive_size);
 
 void

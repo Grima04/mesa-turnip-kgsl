@@ -1806,9 +1806,9 @@ panfrost_emit_varying_descriptor(struct panfrost_batch *batch,
 void
 panfrost_emit_vertex_tiler_jobs(struct panfrost_batch *batch,
                                 struct mali_vertex_tiler_prefix *vertex_prefix,
-                                struct mali_vertex_tiler_postfix *vertex_postfix,
+                                struct mali_draw_packed *vertex_draw,
                                 struct mali_vertex_tiler_prefix *tiler_prefix,
-                                struct mali_vertex_tiler_postfix *tiler_postfix,
+                                struct mali_draw_packed *tiler_draw,
                                 union midgard_primitive_size *primitive_size)
 {
         struct panfrost_context *ctx = batch->ctx;
@@ -1823,24 +1823,24 @@ panfrost_emit_vertex_tiler_jobs(struct panfrost_batch *batch,
 
         if (device->quirks & IS_BIFROST) {
                 bifrost_vertex.prefix = *vertex_prefix;
-                bifrost_vertex.postfix = *vertex_postfix;
+                memcpy(&bifrost_vertex.postfix, vertex_draw, MALI_DRAW_LENGTH);
                 vp = &bifrost_vertex;
                 vp_size = sizeof(bifrost_vertex);
 
                 bifrost_tiler.prefix = *tiler_prefix;
                 bifrost_tiler.tiler.primitive_size = *primitive_size;
                 bifrost_tiler.tiler.tiler_meta = panfrost_batch_get_tiler_meta(batch, ~0);
-                bifrost_tiler.postfix = *tiler_postfix;
+                memcpy(&bifrost_tiler.postfix, tiler_draw, MALI_DRAW_LENGTH);
                 tp = &bifrost_tiler;
                 tp_size = sizeof(bifrost_tiler);
         } else {
                 midgard_vertex.prefix = *vertex_prefix;
-                midgard_vertex.postfix = *vertex_postfix;
+                memcpy(&midgard_vertex.postfix, vertex_draw, MALI_DRAW_LENGTH);
                 vp = &midgard_vertex;
                 vp_size = sizeof(midgard_vertex);
 
                 midgard_tiler.prefix = *tiler_prefix;
-                midgard_tiler.postfix = *tiler_postfix;
+                memcpy(&midgard_tiler.postfix, tiler_draw, MALI_DRAW_LENGTH);
                 midgard_tiler.primitive_size = *primitive_size;
                 tp = &midgard_tiler;
                 tp_size = sizeof(midgard_tiler);

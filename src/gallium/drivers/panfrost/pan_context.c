@@ -249,6 +249,19 @@ panfrost_update_streamout_offsets(struct panfrost_context *ctx)
         }
 }
 
+static inline void
+pan_emit_draw_descs(struct panfrost_batch *batch,
+                struct MALI_DRAW *d, enum pipe_shader_type st)
+{
+        d->offset_start = batch->ctx->offset_start;
+        d->instances = batch->ctx->instance_count > 1 ?
+                batch->ctx->padded_count : 1;
+
+        d->uniform_buffers = panfrost_emit_const_buf(batch, st, &d->push_uniforms);
+        d->textures = panfrost_emit_texture_descriptors(batch, st);
+        d->samplers = panfrost_emit_sampler_descriptors(batch, st);
+}
+
 static void
 panfrost_draw_vbo(
         struct pipe_context *pipe,
@@ -301,38 +314,15 @@ panfrost_draw_vbo(
         ctx->active_prim = info->mode;
 
         struct mali_vertex_tiler_prefix vertex_prefix = { 0 }, tiler_prefix = { 0 };
-        struct mali_vertex_tiler_postfix vertex_postfix = { 0 }, tiler_postfix = { 0 };
+        struct mali_draw_packed vertex_postfix, tiler_postfix;
         union midgard_primitive_size primitive_size;
         unsigned vertex_count;
 
-        if (device->quirks & IS_BIFROST) {
-                vertex_postfix.gl_enables = 0x2;
-                tiler_postfix.gl_enables = 0x3;
-                vertex_postfix.shared_memory = panfrost_vt_emit_shared_memory(batch);
-        } else {
-                vertex_postfix.gl_enables = 0x6;
-                tiler_postfix.gl_enables = 0x7;
-                vertex_postfix.shared_memory = panfrost_batch_reserve_framebuffer(batch);
-        }
-
-        tiler_postfix.shared_memory = vertex_postfix.shared_memory;
-
-        if (ctx->occlusion_query) {
-                tiler_postfix.gl_enables |= MALI_OCCLUSION_QUERY;
-                tiler_postfix.occlusion_counter = ctx->occlusion_query->bo->gpu;
-                panfrost_batch_add_bo(ctx->batch, ctx->occlusion_query->bo,
-                                      PAN_BO_ACCESS_SHARED |
-                                      PAN_BO_ACCESS_RW |
-                                      PAN_BO_ACCESS_FRAGMENT);
-        }
+        mali_ptr shared_mem = (device->quirks & IS_BIFROST) ?
+                panfrost_vt_emit_shared_memory(batch) :
+                panfrost_batch_reserve_framebuffer(batch);
 
         struct pipe_rasterizer_state *rast = &ctx->rasterizer->base;
-        SET_BIT(tiler_postfix.gl_enables, MALI_FRONT_CCW_TOP,
-                rast->front_ccw);
-        SET_BIT(tiler_postfix.gl_enables, MALI_CULL_FACE_FRONT,
-                (rast->cull_face & PIPE_FACE_FRONT));
-        SET_BIT(tiler_postfix.gl_enables, MALI_CULL_FACE_BACK,
-                (rast->cull_face & PIPE_FACE_BACK));
         SET_BIT(tiler_prefix.unknown_draw, MALI_DRAW_FLATSHADE_FIRST,
                 rast->flatshade_first);
 
@@ -356,32 +346,24 @@ panfrost_draw_vbo(
 
                 /* Use the corresponding values */
                 vertex_count = max_index - min_index + 1;
-                tiler_postfix.offset_start = vertex_postfix.offset_start = min_index + info->index_bias;
+                ctx->offset_start = min_index + info->index_bias;
                 tiler_prefix.offset_bias_correction = -min_index;
                 tiler_prefix.index_count = MALI_POSITIVE(info->count);
                 draw_flags |= panfrost_translate_index_size(info->index_size);
         } else {
                 vertex_count = ctx->vertex_count;
-                tiler_postfix.offset_start = vertex_postfix.offset_start = info->start;
+                ctx->offset_start = info->start;
                 tiler_prefix.index_count = MALI_POSITIVE(ctx->vertex_count);
         }
 
         tiler_prefix.unknown_draw = draw_flags;
-        ctx->offset_start = vertex_postfix.offset_start;
 
         /* Encode the padded vertex count */
 
-        if (info->instance_count > 1) {
+        if (info->instance_count > 1)
                 ctx->padded_count = panfrost_padded_vertex_count(vertex_count);
-
-                unsigned shift = __builtin_ctz(ctx->padded_count);
-                unsigned k = ctx->padded_count >> (shift + 1);
-
-                tiler_postfix.instance_shift = vertex_postfix.instance_shift = shift;
-                tiler_postfix.instance_odd = vertex_postfix.instance_odd = k;
-        } else {
+        else
                 ctx->padded_count = vertex_count;
-        }
 
         panfrost_statistics_record(ctx, info);
 
@@ -390,33 +372,47 @@ panfrost_draw_vbo(
                                         1, 1, 1);
 
         /* Emit all sort of descriptors. */
-        mali_ptr push_vert = 0, push_frag = 0, attribs = 0;
         mali_ptr varyings = 0, vs_vary = 0, fs_vary = 0, pos = 0, psiz = 0;
 
-        vertex_postfix.attribute_meta = panfrost_emit_vertex_data(batch, &attribs);
-        vertex_postfix.attributes = attribs;
         panfrost_emit_varying_descriptor(batch,
                                          ctx->padded_count *
                                          ctx->instance_count,
                                          &vs_vary, &fs_vary, &varyings,
                                          &pos, &psiz);
-        vertex_postfix.varyings = varyings;
-        tiler_postfix.varyings = varyings;
-        vertex_postfix.varying_meta = vs_vary;
-        tiler_postfix.varying_meta = fs_vary;
-        tiler_postfix.position_varying = pos;
-        vertex_postfix.sampler_descriptor = panfrost_emit_sampler_descriptors(batch, PIPE_SHADER_VERTEX);
-        tiler_postfix.sampler_descriptor = panfrost_emit_sampler_descriptors(batch, PIPE_SHADER_FRAGMENT);
-        vertex_postfix.textures = panfrost_emit_texture_descriptors(batch, PIPE_SHADER_VERTEX);
-        tiler_postfix.textures = panfrost_emit_texture_descriptors(batch, PIPE_SHADER_FRAGMENT);
-        vertex_postfix.uniform_buffers = panfrost_emit_const_buf(batch, PIPE_SHADER_VERTEX, &push_vert);
-        tiler_postfix.uniform_buffers = panfrost_emit_const_buf(batch, PIPE_SHADER_FRAGMENT, &push_frag);
-        vertex_postfix.uniforms = push_vert;
-        tiler_postfix.uniforms = push_frag;
-        tiler_postfix.viewport = panfrost_emit_viewport(batch);
 
-        vertex_postfix.shader = panfrost_emit_compute_shader_meta(batch, PIPE_SHADER_VERTEX);
-        tiler_postfix.shader = panfrost_emit_frag_shader_meta(batch);
+        pan_pack(&vertex_postfix, DRAW, cfg) {
+                cfg.unknown_1 = (device->quirks & IS_BIFROST) ? 0x2 : 0x6;
+                cfg.state = panfrost_emit_compute_shader_meta(batch, PIPE_SHADER_VERTEX);
+                cfg.attributes = panfrost_emit_vertex_data(batch, &cfg.attribute_buffers);
+                cfg.varyings = vs_vary;
+                cfg.varying_buffers = varyings;
+                cfg.shared = shared_mem;
+                pan_emit_draw_descs(batch, &cfg, PIPE_SHADER_VERTEX);
+        }
+
+        pan_pack(&tiler_postfix, DRAW, cfg) {
+                cfg.unknown_1 = (device->quirks & IS_BIFROST) ? 0x3 : 0x7;
+                cfg.front_face_ccw = rast->front_ccw;
+                cfg.cull_front_face = rast->cull_face & PIPE_FACE_FRONT;
+                cfg.cull_back_face = rast->cull_face & PIPE_FACE_BACK;
+                cfg.position = pos;
+                cfg.state = panfrost_emit_frag_shader_meta(batch);
+                cfg.viewport = panfrost_emit_viewport(batch);
+                cfg.varyings = fs_vary;
+                cfg.varying_buffers = varyings;
+                cfg.shared = shared_mem;
+
+                pan_emit_draw_descs(batch, &cfg, PIPE_SHADER_FRAGMENT);
+
+                if (ctx->occlusion_query) {
+                        cfg.occlusion_query = MALI_OCCLUSION_MODE_PREDICATE;
+                        cfg.occlusion = ctx->occlusion_query->bo->gpu;
+                        panfrost_batch_add_bo(ctx->batch, ctx->occlusion_query->bo,
+                                              PAN_BO_ACCESS_SHARED |
+                                              PAN_BO_ACCESS_RW |
+                                              PAN_BO_ACCESS_FRAGMENT);
+                }
+        }
 
         primitive_size.pointer = psiz;
         panfrost_vt_update_primitive_size(ctx, &tiler_prefix, &primitive_size);
