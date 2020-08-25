@@ -961,6 +961,15 @@ softpipe-gles31:
     DEQP_VER: gles31
   extends: softpipe-gles2
 
+# Note that KHR-GL3* test sets include all tests from the previous
+# version, so we only need to run one test list (unlike dEQP-GLES,
+# where the test sets are separate).
+softpipe-gl:
+  variables:
+    DEQP_VER: gl33
+  extends:
+    - softpipe-gles2
+
 virgl-gles2-on-gl:
   variables:
     DEQP_VER: gles2

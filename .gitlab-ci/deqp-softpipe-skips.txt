@@ -18,3 +18,6 @@ dEQP-GLES31.functional.shaders.builtin_functions.*geometry
 dEQP-GLES31.functional.shaders.linkage.es31.geometry.varying.types.uvec4
 dEQP-GLES31.functional.shaders.opaque_type_indexing.sampler.const_expression.geometry.usampler3d
 dEQP-GLES31.functional.shaders.opaque_type_indexing.sampler.dynamically_uniform.geometry.sampler2darray
+
+# This one is really slow and can time out (~56 seconds locally)
+KHR-GL33.texture_swizzle.smoke
