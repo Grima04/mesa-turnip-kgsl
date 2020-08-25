@@ -1796,9 +1796,9 @@ builtin_builder::create_builtins()
    FI64(abs)
    FI64(sign)
    FD(floor)
-   FD(trunc)
-   FD(round)
-   FD(roundEven)
+   FD130(trunc)
+   FD130(round)
+   FD130(roundEven)
    FD(ceil)
    FD(fract)
 
@@ -1830,7 +1830,7 @@ builtin_builder::create_builtins()
                 _mod(fp64, glsl_type::dvec4_type,  glsl_type::dvec4_type),
                 NULL);
 
-   FD(modf)
+   FD130(modf)
 
    FIUD2_MIXED(min)
    FIUD2_MIXED(max)
