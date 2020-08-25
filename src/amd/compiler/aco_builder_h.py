@@ -317,7 +317,8 @@ public:
 % for fixed in ['m0', 'vcc', 'exec', 'scc']:
    Operand ${fixed}(Temp tmp) {
        % if fixed == 'vcc' or fixed == 'exec':
-          assert(tmp.regClass() == lm);
+          //vcc_hi and exec_hi can still be used in wave32
+          assert(tmp.type() == RegType::sgpr && tmp.bytes() <= 8);
        % endif
        Operand op(tmp);
        op.setFixed(aco::${fixed});
@@ -326,7 +327,8 @@ public:
 
    Definition ${fixed}(Definition def) {
        % if fixed == 'vcc' or fixed == 'exec':
-          assert(def.regClass() == lm);
+          //vcc_hi and exec_hi can still be used in wave32
+          assert(def.regClass().type() == RegType::sgpr && def.bytes() <= 8);
        % endif
        def.setFixed(aco::${fixed});
        return def;
@@ -334,7 +336,8 @@ public:
 
    Definition hint_${fixed}(Definition def) {
        % if fixed == 'vcc' or fixed == 'exec':
-          assert(def.regClass() == lm);
+          //vcc_hi and exec_hi can still be used in wave32
+          assert(def.regClass().type() == RegType::sgpr && def.bytes() <= 8);
        % endif
        def.setHint(aco::${fixed});
        return def;
