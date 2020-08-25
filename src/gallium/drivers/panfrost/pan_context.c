@@ -183,7 +183,7 @@ panfrost_texture_barrier(struct pipe_context *pipe, unsigned flags)
 #define DEFINE_CASE(c) case PIPE_PRIM_##c: return MALI_DRAW_MODE_##c;
 
 static int
-g2m_draw_mode(enum pipe_prim_type mode)
+pan_draw_mode(enum pipe_prim_type mode)
 {
         switch (mode) {
                 DEFINE_CASE(POINTS);
@@ -336,10 +336,52 @@ panfrost_draw_vbo(
         SET_BIT(tiler_prefix.unknown_draw, MALI_DRAW_FLATSHADE_FIRST,
                 rast->flatshade_first);
 
-        panfrost_vt_set_draw_info(ctx, info, g2m_draw_mode(mode),
-                                  &vertex_postfix, &tiler_prefix,
-                                  &tiler_postfix, &vertex_count,
-                                  &ctx->padded_count);
+        tiler_prefix.draw_mode = pan_draw_mode(mode);
+
+        unsigned draw_flags = 0x3000;
+
+        if (panfrost_writes_point_size(ctx))
+                draw_flags |= MALI_DRAW_VARYING_SIZE;
+
+        if (info->primitive_restart)
+                draw_flags |= MALI_DRAW_PRIMITIVE_RESTART_FIXED_INDEX;
+
+        if (info->index_size) {
+                unsigned min_index = 0, max_index = 0;
+
+                tiler_prefix.indices = panfrost_get_index_buffer_bounded(ctx,
+                                                                       info,
+                                                                       &min_index,
+                                                                       &max_index);
+
+                /* Use the corresponding values */
+                vertex_count = max_index - min_index + 1;
+                tiler_postfix.offset_start = vertex_postfix.offset_start = min_index + info->index_bias;
+                tiler_prefix.offset_bias_correction = -min_index;
+                tiler_prefix.index_count = MALI_POSITIVE(info->count);
+                draw_flags |= panfrost_translate_index_size(info->index_size);
+        } else {
+                vertex_count = ctx->vertex_count;
+                tiler_postfix.offset_start = vertex_postfix.offset_start = info->start;
+                tiler_prefix.index_count = MALI_POSITIVE(ctx->vertex_count);
+        }
+
+        tiler_prefix.unknown_draw = draw_flags;
+        ctx->offset_start = vertex_postfix.offset_start;
+
+        /* Encode the padded vertex count */
+
+        if (info->instance_count > 1) {
+                ctx->padded_count = panfrost_padded_vertex_count(vertex_count);
+
+                unsigned shift = __builtin_ctz(ctx->padded_count);
+                unsigned k = ctx->padded_count >> (shift + 1);
+
+                tiler_postfix.instance_shift = vertex_postfix.instance_shift = shift;
+                tiler_postfix.instance_odd = vertex_postfix.instance_odd = k;
+        } else {
+                ctx->padded_count = vertex_count;
+        }
 
         panfrost_statistics_record(ctx, info);
 

@@ -35,16 +35,6 @@
 void panfrost_sampler_desc_init(const struct pipe_sampler_state *cso, struct mali_midgard_sampler_packed *hw);
 void panfrost_sampler_desc_init_bifrost(const struct pipe_sampler_state *cso, struct mali_bifrost_sampler_packed *hw);
 
-void
-panfrost_vt_set_draw_info(struct panfrost_context *ctx,
-                          const struct pipe_draw_info *info,
-                          enum mali_draw_mode draw_mode,
-                          struct mali_vertex_tiler_postfix *vertex_postfix,
-                          struct mali_vertex_tiler_prefix *tiler_prefix,
-                          struct mali_vertex_tiler_postfix *tiler_postfix,
-                          unsigned *vertex_count,
-                          unsigned *padded_count);
-
 mali_ptr
 panfrost_emit_compute_shader_meta(struct panfrost_batch *batch, enum pipe_shader_type stage);
 
@@ -77,6 +67,14 @@ panfrost_emit_vertex_data(struct panfrost_batch *batch,
 
 mali_ptr
 panfrost_vt_emit_shared_memory(struct panfrost_batch *batch);
+
+unsigned
+panfrost_translate_index_size(unsigned size);
+
+mali_ptr
+panfrost_get_index_buffer_bounded(struct panfrost_context *ctx,
+                                  const struct pipe_draw_info *info,
+                                  unsigned *min_index, unsigned *max_index);
 
 void
 panfrost_emit_varying_descriptor(struct panfrost_batch *batch,

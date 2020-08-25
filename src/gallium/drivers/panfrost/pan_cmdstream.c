@@ -89,7 +89,7 @@ panfrost_vt_update_primitive_size(struct panfrost_context *ctx,
         }
 }
 
-static unsigned
+unsigned
 panfrost_translate_index_size(unsigned size)
 {
         switch (size) {
@@ -113,7 +113,7 @@ panfrost_translate_index_size(unsigned size)
  * these operations together because there are natural optimizations which
  * require them to be together. */
 
-static mali_ptr
+mali_ptr
 panfrost_get_index_buffer_bounded(struct panfrost_context *ctx,
                                   const struct pipe_draw_info *info,
                                   unsigned *min_index, unsigned *max_index)
@@ -167,74 +167,6 @@ panfrost_get_index_buffer_bounded(struct panfrost_context *ctx,
         }
 
         return out;
-}
-
-void
-panfrost_vt_set_draw_info(struct panfrost_context *ctx,
-                          const struct pipe_draw_info *info,
-                          enum mali_draw_mode draw_mode,
-                          struct mali_vertex_tiler_postfix *vertex_postfix,
-                          struct mali_vertex_tiler_prefix *tiler_prefix,
-                          struct mali_vertex_tiler_postfix *tiler_postfix,
-                          unsigned *vertex_count,
-                          unsigned *padded_count)
-{
-        tiler_prefix->draw_mode = draw_mode;
-
-        unsigned draw_flags = 0;
-
-        if (panfrost_writes_point_size(ctx))
-                draw_flags |= MALI_DRAW_VARYING_SIZE;
-
-        if (info->primitive_restart)
-                draw_flags |= MALI_DRAW_PRIMITIVE_RESTART_FIXED_INDEX;
-
-        /* These doesn't make much sense */
-
-        draw_flags |= 0x3000;
-
-        if (info->index_size) {
-                unsigned min_index = 0, max_index = 0;
-
-                tiler_prefix->indices = panfrost_get_index_buffer_bounded(ctx,
-                                                                       info,
-                                                                       &min_index,
-                                                                       &max_index);
-
-                /* Use the corresponding values */
-                *vertex_count = max_index - min_index + 1;
-                tiler_postfix->offset_start = vertex_postfix->offset_start = min_index + info->index_bias;
-                tiler_prefix->offset_bias_correction = -min_index;
-                tiler_prefix->index_count = MALI_POSITIVE(info->count);
-                draw_flags |= panfrost_translate_index_size(info->index_size);
-        } else {
-                tiler_prefix->indices = 0;
-                *vertex_count = ctx->vertex_count;
-                tiler_postfix->offset_start = vertex_postfix->offset_start = info->start;
-                tiler_prefix->offset_bias_correction = 0;
-                tiler_prefix->index_count = MALI_POSITIVE(ctx->vertex_count);
-        }
-
-        tiler_prefix->unknown_draw = draw_flags;
-        ctx->offset_start = vertex_postfix->offset_start;
-
-        /* Encode the padded vertex count */
-
-        if (info->instance_count > 1) {
-                *padded_count = panfrost_padded_vertex_count(*vertex_count);
-
-                unsigned shift = __builtin_ctz(ctx->padded_count);
-                unsigned k = ctx->padded_count >> (shift + 1);
-
-                tiler_postfix->instance_shift = vertex_postfix->instance_shift = shift;
-                tiler_postfix->instance_odd = vertex_postfix->instance_odd = k;
-        } else {
-                *padded_count = *vertex_count;
-
-                /* Reset instancing state */
-                tiler_postfix->instance_shift = vertex_postfix->instance_shift = 0;
-                tiler_postfix->instance_odd = vertex_postfix->instance_odd = 0;
-        }
 }
 
 static unsigned
