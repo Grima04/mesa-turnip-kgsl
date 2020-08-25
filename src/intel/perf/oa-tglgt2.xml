@@ -1,11 +1,11 @@
 <?xml version="1.0"?>
-<metrics version="1585732834" merge_md5="">
+<metrics version="1598354174" merge_md5="">
   <set name="Render Metrics Basic Gen12"
-       chipset="TGL"
+       chipset="TGLGT2"
        symbol_name="RenderBasic"
        underscore_name="render_basic"
        mdapi_supported_apis="VK OGL OCL IO"
-       hw_config_guid="daf004fb-fc9f-45e0-b842-1770e6d273c2"
+       hw_config_guid="0fc397c0-4833-492c-9ccd-4929d574d5b8"
        >
     <counter name="GPU Time Elapsed"
              symbol_name="GpuTime"
@@ -181,6 +181,36 @@
              mdapi_supported_apis=""
              mdapi_hw_unit_type="gpu"
              />
+    <counter name="Sampler00 Busy"
+             symbol_name="Sampler00Busy"
+             underscore_name="sampler00_busy"
+             description="The percentage of time in which Slice0 Sampler0 has been processing EU requests."
+             data_type="float"
+             max_equation="100"
+             units="percent"
+             semantic_type="duration"
+             equation="B 0 READ 100 UMUL $GpuCoreClocks FDIV"
+             availability="$DualSubsliceMask 1 AND"
+             mdapi_group="Sampler"
+             mdapi_usage_flags="Tier3 Batch Frame Draw"
+             mdapi_supported_apis=""
+             mdapi_hw_unit_type="subslice"
+             />
+    <counter name="Sampler Slice0 Dualsubslice0 is bottleneck"
+             symbol_name="Sampler00Bottleneck"
+             underscore_name="sampler00_bottleneck"
+             description="The percentage of time when sampler slice0 dualsubslice0 is bottleneck"
+             data_type="float"
+             max_equation="100"
+             units="percent"
+             semantic_type="duration"
+             equation="B 1 READ 100 UMUL $GpuCoreClocks FDIV"
+             availability="$DualSubsliceMask 1 AND"
+             mdapi_group="GPU/Sampler"
+             mdapi_usage_flags="Frame Batch Draw"
+             mdapi_supported_apis=""
+             mdapi_hw_unit_type="subslice"
+             />
     <counter name="Samplers Busy"
              symbol_name="SamplersBusy"
              underscore_name="samplers_busy"
@@ -189,7 +219,7 @@
              max_equation="100"
              units="percent"
              semantic_type="duration"
-             equation="C 7 READ GPU_CLOCK 0 READ FDIV"
+             equation="$Sampler00Busy"
              availability="$DualSubsliceMask 1 AND"
              mdapi_group="Sampler"
              mdapi_usage_flags="Tier2 Overview System Frame Batch Draw"
@@ -206,7 +236,7 @@
              max_equation="100"
              units="percent"
              semantic_type="duration"
-             equation="C 6 READ GPU_CLOCK 0 READ FDIV"
+             equation="$Sampler00Bottleneck"
              availability="$DualSubsliceMask 1 AND"
              mdapi_group="Sampler"
              mdapi_usage_flags="Tier3 Overview Indicate System Frame Batch Draw"
@@ -335,7 +365,7 @@
              underscore_name="slm_bytes_read"
              description="The total number of GPU memory bytes read from shared local memory."
              data_type="uint64"
-             max_equation="$GpuCoreClocks 64 UMUL $EuSubslicesTotalCount UMUL"
+             max_equation="$GpuCoreClocks 128 UMUL $EuSubslicesTotalCount UMUL"
              units="bytes"
              semantic_type="throughput"
              equation="A 30 READ 64 UMUL"
@@ -349,7 +379,7 @@
              underscore_name="slm_bytes_written"
              description="The total number of GPU memory bytes written into shared local memory."
              data_type="uint64"
-             max_equation="$GpuCoreClocks 64 UMUL $EuSubslicesTotalCount UMUL"
+             max_equation="$GpuCoreClocks 128 UMUL $EuSubslicesTotalCount UMUL"
              units="bytes"
              semantic_type="throughput"
              equation="A 31 READ 64 UMUL"
@@ -392,7 +422,7 @@
              max_equation="$GpuCoreClocks 64 UMUL $EuSubslicesTotalCount UMUL"
              units="bytes"
              semantic_type="throughput"
-             equation="A 30 READ A 31 READ UADD A 32 READ UADD 64 UMUL"
+             equation="$ShaderMemoryAccesses 64 UMUL"
              mdapi_group="L3/Data Port"
              mdapi_usage_flags="Tier2 Frame Batch Draw"
              mdapi_supported_apis="VK OGL OCL IO"
@@ -444,28 +474,40 @@
         <register type="NOA" address="0x00009840" value="0x00000000" />
         <register type="NOA" address="0x00009884" value="0x00000000" />
         <register type="NOA" address="0x00009888" value="0x14150001" />
-        <register type="NOA" address="0x00009888" value="0x0A124000" />
-        <register type="NOA" address="0x00009888" value="0x0C124000" />
-        <register type="NOA" address="0x00009888" value="0x1A138000" />
-        <register type="NOA" address="0x00009888" value="0x1C130100" />
-        <register type="NOA" address="0x00009888" value="0x04155100" />
-        <register type="NOA" address="0x00009888" value="0x06150050" />
+        <register type="NOA" address="0x00009888" value="0x16150020" />
+        <register type="NOA" address="0x00009888" value="0x00124000" />
+        <register type="NOA" address="0x00009888" value="0x0E124000" />
+        <register type="NOA" address="0x00009888" value="0x10124000" />
+        <register type="NOA" address="0x00009888" value="0x12124000" />
+        <register type="NOA" address="0x00009888" value="0x10138000" />
+        <register type="NOA" address="0x00009888" value="0x1C130E00" />
+        <register type="NOA" address="0x00009888" value="0x00150050" />
+        <register type="NOA" address="0x00009888" value="0x06157000" />
+        <register type="NOA" address="0x00009888" value="0x08157151" />
         <register type="NOA" address="0x00009888" value="0x10150000" />
-        <register type="NOA" address="0x00009888" value="0x1A150000" />
-        <register type="NOA" address="0x00009888" value="0x34001000" />
-        <register type="NOA" address="0x00009888" value="0x36000002" />
-        <register type="NOA" address="0x00009888" value="0x2205A000" />
+        <register type="NOA" address="0x00009888" value="0x18150000" />
+        <register type="NOA" address="0x00009888" value="0x1C150000" />
+        <register type="NOA" address="0x00009888" value="0x18004000" />
+        <register type="NOA" address="0x00009888" value="0x36000490" />
+        <register type="NOA" address="0x00009888" value="0x1C058000" />
+        <register type="NOA" address="0x00009888" value="0x2405002A" />
         <register type="NOA" address="0x00009884" value="0x00000003" />
         <register type="NOA" address="0x00009888" value="0x05151D47" />
         <register type="NOA" address="0x00009888" value="0x09151536" />
         <register type="NOA" address="0x00009888" value="0x05351C00" />
         <register type="NOA" address="0x00009888" value="0x09351400" />
-        <register type="NOA" address="0x00009888" value="0x5D102C00" />
-        <register type="NOA" address="0x00009888" value="0x5B1005BB" />
-        <register type="NOA" address="0x00009888" value="0x1B141800" />
-        <register type="NOA" address="0x00009888" value="0x5F110500" />
-        <register type="NOA" address="0x00009888" value="0x0B128000" />
-        <register type="NOA" address="0x00009888" value="0x0D128000" />
+        <register type="NOA" address="0x00009888" value="0x41104000" />
+        <register type="NOA" address="0x00009888" value="0x5B1050BB" />
+        <register type="NOA" address="0x00009888" value="0x5D102C01" />
+        <register type="NOA" address="0x00009888" value="0x11148000" />
+        <register type="NOA" address="0x00009888" value="0x1B14E000" />
+        <register type="NOA" address="0x00009888" value="0x4B112000" />
+        <register type="NOA" address="0x00009888" value="0x5F115000" />
+        <register type="NOA" address="0x00009888" value="0x61110001" />
+        <register type="NOA" address="0x00009888" value="0x01128000" />
+        <register type="NOA" address="0x00009888" value="0x0F128000" />
+        <register type="NOA" address="0x00009888" value="0x11128000" />
+        <register type="NOA" address="0x00009888" value="0x13128000" />
         <register type="NOA" address="0x00009888" value="0x1F150137" />
         <register type="NOA" address="0x00009888" value="0x01150000" />
         <register type="NOA" address="0x00009888" value="0x0F168000" />
@@ -478,14 +520,16 @@
         <register type="NOA" address="0x00009888" value="0x0F364000" />
         <register type="NOA" address="0x00009888" value="0x01368000" />
         <register type="NOA" address="0x00009888" value="0x03368000" />
+        <register type="NOA" address="0x00009888" value="0x47103000" />
+        <register type="NOA" address="0x00009888" value="0x4D100000" />
+        <register type="NOA" address="0x00009888" value="0x4F100000" />
+        <register type="NOA" address="0x00009888" value="0x51100000" />
         <register type="NOA" address="0x00009888" value="0x17100000" />
+        <register type="NOA" address="0x00009888" value="0x31100000" />
         <register type="NOA" address="0x00009888" value="0x55103130" />
         <register type="NOA" address="0x00009888" value="0x57100001" />
-        <register type="NOA" address="0x00009888" value="0x47103000" />
         <register type="NOA" address="0x00009888" value="0x49103131" />
         <register type="NOA" address="0x00009888" value="0x4B100131" />
-        <register type="NOA" address="0x00009888" value="0x4D100000" />
-        <register type="NOA" address="0x00009888" value="0x31100000" />
         <register type="NOA" address="0x00009884" value="0x00000003" />
         <register type="NOA" address="0x00009888" value="0x65100002" />
         <register type="NOA" address="0x00009884" value="0x00000000" />
@@ -494,10 +538,18 @@
     <register_config type="OA">
         <register type="OA" address="0x0000D920" value="0x00000000" />
         <register type="OA" address="0x0000D900" value="0x00000000" />
-        <register type="OA" address="0x0000D904" value="0x00800000" />
+        <register type="OA" address="0x0000D904" value="0x30800000" />
         <register type="OA" address="0x0000D910" value="0x00000000" />
         <register type="OA" address="0x0000D914" value="0x00800000" />
-        <register type="OA" address="0x0000DC40" value="0x00000000" />
+        <register type="OA" address="0x0000DC40" value="0x00030000" />
+        <register type="OA" address="0x0000D940" value="0x00000018" />
+        <register type="OA" address="0x0000D944" value="0x0000FFFC" />
+        <register type="OA" address="0x0000DC00" value="0x00000018" />
+        <register type="OA" address="0x0000DC04" value="0x0000FFFC" />
+        <register type="OA" address="0x0000D948" value="0x00000060" />
+        <register type="OA" address="0x0000D94C" value="0x0000FFF3" />
+        <register type="OA" address="0x0000DC08" value="0x00000060" />
+        <register type="OA" address="0x0000DC0C" value="0x0000FFF3" />
     </register_config>
     <register_config type="FLEX">
         <register type="FLEX" address="0x0000E458" value="0x00804704" />
@@ -511,11 +563,11 @@
   </set>
 
   <set name="Compute Metrics Basic"
-       chipset="TGL"
+       chipset="TGLGT2"
        symbol_name="ComputeBasic"
        underscore_name="compute_basic"
        mdapi_supported_apis="VK OGL OCL IO"
-       hw_config_guid="e6bdd317-fe1c-406a-afc7-781e88f57bd7"
+       hw_config_guid="397a46d9-03dd-4696-8196-270362e1c575"
        >
     <counter name="GPU Time Elapsed"
              symbol_name="GpuTime"
@@ -813,7 +865,7 @@
              underscore_name="slm_bytes_read"
              description="The total number of GPU memory bytes read from shared local memory."
              data_type="uint64"
-             max_equation="$GpuCoreClocks 64 UMUL $EuSubslicesTotalCount UMUL"
+             max_equation="$GpuCoreClocks 128 UMUL $EuSubslicesTotalCount UMUL"
              units="bytes"
              semantic_type="throughput"
              equation="A 30 READ 64 UMUL"
@@ -827,7 +879,7 @@
              underscore_name="slm_bytes_written"
              description="The total number of GPU memory bytes written into shared local memory."
              data_type="uint64"
-             max_equation="$GpuCoreClocks 64 UMUL $EuSubslicesTotalCount UMUL"
+             max_equation="$GpuCoreClocks 128 UMUL $EuSubslicesTotalCount UMUL"
              units="bytes"
              semantic_type="throughput"
              equation="A 31 READ 64 UMUL"
@@ -870,7 +922,7 @@
              max_equation="$GpuCoreClocks 64 UMUL $EuSubslicesTotalCount UMUL"
              units="bytes"
              semantic_type="throughput"
-             equation="A 30 READ A 31 READ UADD A 32 READ UADD 64 UMUL"
+             equation="$ShaderMemoryAccesses 64 UMUL"
              mdapi_group="L3/Data Port"
              mdapi_usage_flags="Tier2 Frame Batch Draw"
              mdapi_supported_apis="VK OGL OCL IO"
@@ -969,11 +1021,11 @@
   </set>
 
   <set name="Render Metrics for 3D Pipeline Profile"
-       chipset="TGL"
+       chipset="TGLGT2"
        symbol_name="RenderPipeProfile"
        underscore_name="render_pipe_profile"
        mdapi_supported_apis="VK OGL OCL IO"
-       hw_config_guid="77ae98cf-9a9e-4e35-be85-597b09ffbe53"
+       hw_config_guid="684ed715-a0ca-499b-89e0-25d1cdf0c737"
        >
     <counter name="GPU Time Elapsed"
              symbol_name="GpuTime"
@@ -1271,7 +1323,7 @@
              underscore_name="slm_bytes_read"
              description="The total number of GPU memory bytes read from shared local memory."
              data_type="uint64"
-             max_equation="$GpuCoreClocks 64 UMUL $EuSubslicesTotalCount UMUL"
+             max_equation="$GpuCoreClocks 128 UMUL $EuSubslicesTotalCount UMUL"
              units="bytes"
              semantic_type="throughput"
              equation="A 30 READ 64 UMUL"
@@ -1285,7 +1337,7 @@
              underscore_name="slm_bytes_written"
              description="The total number of GPU memory bytes written into shared local memory."
              data_type="uint64"
-             max_equation="$GpuCoreClocks 64 UMUL $EuSubslicesTotalCount UMUL"
+             max_equation="$GpuCoreClocks 128 UMUL $EuSubslicesTotalCount UMUL"
              units="bytes"
              semantic_type="throughput"
              equation="A 31 READ 64 UMUL"
@@ -1328,7 +1380,7 @@
              max_equation="$GpuCoreClocks 64 UMUL $EuSubslicesTotalCount UMUL"
              units="bytes"
              semantic_type="throughput"
-             equation="A 30 READ A 31 READ UADD A 32 READ UADD 64 UMUL"
+             equation="$ShaderMemoryAccesses 64 UMUL"
              mdapi_group="L3/Data Port"
              mdapi_usage_flags="Tier2 Frame Batch Draw"
              mdapi_supported_apis="VK OGL OCL IO"
@@ -1741,11 +1793,11 @@
   </set>
 
   <set name="Metric set HDCAndSF"
-       chipset="TGL"
+       chipset="TGLGT2"
        symbol_name="HDCAndSF"
        underscore_name="hdc_and_sf"
        mdapi_supported_apis="VK OGL OCL IO"
-       hw_config_guid="dedd95cd-1bd4-4e65-be7f-1fd7aa43fe12"
+       hw_config_guid="3a4c7510-7725-4bf8-9eae-59115a2431c6"
        >
     <counter name="GPU Time Elapsed"
              symbol_name="GpuTime"
@@ -2043,7 +2095,7 @@
              underscore_name="slm_bytes_read"
              description="The total number of GPU memory bytes read from shared local memory."
              data_type="uint64"
-             max_equation="$GpuCoreClocks 64 UMUL $EuSubslicesTotalCount UMUL"
+             max_equation="$GpuCoreClocks 128 UMUL $EuSubslicesTotalCount UMUL"
              units="bytes"
              semantic_type="throughput"
              equation="A 30 READ 64 UMUL"
@@ -2057,7 +2109,7 @@
              underscore_name="slm_bytes_written"
              description="The total number of GPU memory bytes written into shared local memory."
              data_type="uint64"
-             max_equation="$GpuCoreClocks 64 UMUL $EuSubslicesTotalCount UMUL"
+             max_equation="$GpuCoreClocks 128 UMUL $EuSubslicesTotalCount UMUL"
              units="bytes"
              semantic_type="throughput"
              equation="A 31 READ 64 UMUL"
@@ -2100,7 +2152,7 @@
              max_equation="$GpuCoreClocks 64 UMUL $EuSubslicesTotalCount UMUL"
              units="bytes"
              semantic_type="throughput"
-             equation="A 30 READ A 31 READ UADD A 32 READ UADD 64 UMUL"
+             equation="$ShaderMemoryAccesses 64 UMUL"
              mdapi_group="L3/Data Port"
              mdapi_usage_flags="Tier2 Frame Batch Draw"
              mdapi_supported_apis="VK OGL OCL IO"
@@ -2354,11 +2406,11 @@
   </set>
 
   <set name="Metric set RasterizerAndPixelBackend"
-       chipset="TGL"
+       chipset="TGLGT2"
        symbol_name="RasterizerAndPixelBackend"
        underscore_name="rasterizer_and_pixel_backend"
        mdapi_supported_apis="VK OGL OCL IO"
-       hw_config_guid="a889ccb3-5ebd-437f-b5c6-e951fba822f5"
+       hw_config_guid="6f02479c-e9ca-4c2b-b1e6-216a9e1c5ef7"
        >
     <counter name="GPU Time Elapsed"
              symbol_name="GpuTime"
@@ -2656,7 +2708,7 @@
              underscore_name="slm_bytes_read"
              description="The total number of GPU memory bytes read from shared local memory."
              data_type="uint64"
-             max_equation="$GpuCoreClocks 64 UMUL $EuSubslicesTotalCount UMUL"
+             max_equation="$GpuCoreClocks 128 UMUL $EuSubslicesTotalCount UMUL"
              units="bytes"
              semantic_type="throughput"
              equation="A 30 READ 64 UMUL"
@@ -2670,7 +2722,7 @@
              underscore_name="slm_bytes_written"
              description="The total number of GPU memory bytes written into shared local memory."
              data_type="uint64"
-             max_equation="$GpuCoreClocks 64 UMUL $EuSubslicesTotalCount UMUL"
+             max_equation="$GpuCoreClocks 128 UMUL $EuSubslicesTotalCount UMUL"
              units="bytes"
              semantic_type="throughput"
              equation="A 31 READ 64 UMUL"
@@ -2713,7 +2765,7 @@
              max_equation="$GpuCoreClocks 64 UMUL $EuSubslicesTotalCount UMUL"
              units="bytes"
              semantic_type="throughput"
-             equation="A 30 READ A 31 READ UADD A 32 READ UADD 64 UMUL"
+             equation="$ShaderMemoryAccesses 64 UMUL"
              mdapi_group="L3/Data Port"
              mdapi_usage_flags="Tier2 Frame Batch Draw"
              mdapi_supported_apis="VK OGL OCL IO"
@@ -3045,11 +3097,11 @@
   </set>
 
   <set name="Gen12LP L3_1"
-       chipset="TGL"
+       chipset="TGLGT2"
        symbol_name="L3_1"
        underscore_name="l3_1"
        mdapi_supported_apis="VK OGL OCL MEDIA IO"
-       hw_config_guid="feee2629-03a8-4d31-ab4d-7d16572163fb"
+       hw_config_guid="7e809cb4-6e90-44cc-9c57-6eff58ad360a"
        >
     <counter name="GPU Time Elapsed"
              symbol_name="GpuTime"
@@ -3391,11 +3443,11 @@
   </set>
 
   <set name="Gen12LP L3_2"
-       chipset="TGL"
+       chipset="TGLGT2"
        symbol_name="L3_2"
        underscore_name="l3_2"
        mdapi_supported_apis="VK OGL OCL MEDIA IO"
-       hw_config_guid="5266f235-1711-4eef-9493-ebdf0238d512"
+       hw_config_guid="0dde1bb6-340f-4350-b398-2b0228573967"
        >
     <counter name="GPU Time Elapsed"
              symbol_name="GpuTime"
@@ -3738,11 +3790,11 @@
   </set>
 
   <set name="Gen12LP L3_3"
-       chipset="TGL"
+       chipset="TGLGT2"
        symbol_name="L3_3"
        underscore_name="l3_3"
        mdapi_supported_apis="VK OGL OCL MEDIA IO"
-       hw_config_guid="9c2cd379-bf93-4ded-b481-f64efd534c4a"
+       hw_config_guid="8ecaeff2-78f4-4e29-b331-d757e6a74ed0"
        >
     <counter name="GPU Time Elapsed"
              symbol_name="GpuTime"
@@ -3926,7 +3978,7 @@
              max_equation="100"
              units="percent"
              semantic_type="duration"
-             equation="C 7 READ C 6 READ FADD 100 UMUL $GpuCoreClocks FDIV"
+             equation="C 7 READ C 6 READ FADD 4 FDIV 100 UMUL $GpuCoreClocks FDIV"
              availability="$SliceMask 1 AND"
              mdapi_group="GTI/L3"
              mdapi_usage_flags="Frame Batch Draw"
@@ -3941,7 +3993,7 @@
              max_equation="100"
              units="percent"
              semantic_type="duration"
-             equation="C 5 READ C 4 READ FADD 100 UMUL $GpuCoreClocks FDIV"
+             equation="C 5 READ C 4 READ FADD 4 FDIV 100 UMUL $GpuCoreClocks FDIV"
              availability="$SliceMask 1 AND"
              mdapi_group="GTI/L3"
              mdapi_usage_flags="Frame Batch Draw"
@@ -4005,11 +4057,11 @@
   </set>
 
   <set name="Gen12LP L3_4"
-       chipset="TGL"
+       chipset="TGLGT2"
        symbol_name="L3_4"
        underscore_name="l3_4"
        mdapi_supported_apis="VK OGL OCL MEDIA IO"
-       hw_config_guid="6a68185d-0056-4891-a5f6-29aa1e1d81ae"
+       hw_config_guid="30cd8433-f679-401e-b578-19e22975e84f"
        >
     <counter name="GPU Time Elapsed"
              symbol_name="GpuTime"
@@ -4193,7 +4245,7 @@
              max_equation="100"
              units="percent"
              semantic_type="duration"
-             equation="C 5 READ C 4 READ FADD 100 UMUL $GpuCoreClocks FDIV"
+             equation="C 5 READ C 4 READ FADD 4 FDIV 100 UMUL $GpuCoreClocks FDIV"
              availability="$SliceMask 1 AND"
              mdapi_group="GTI/L3"
              mdapi_usage_flags="Frame Batch Draw"
@@ -4208,7 +4260,7 @@
              max_equation="100"
              units="percent"
              semantic_type="duration"
-             equation="C 7 READ C 6 READ FADD 100 UMUL $GpuCoreClocks FDIV"
+             equation="C 7 READ C 6 READ FADD 4 FDIV 100 UMUL $GpuCoreClocks FDIV"
              availability="$SliceMask 1 AND"
              mdapi_group="GTI/L3"
              mdapi_usage_flags="Frame Batch Draw"
@@ -4272,11 +4324,11 @@
   </set>
 
   <set name="Gen12LP L3_5"
-       chipset="TGL"
+       chipset="TGLGT2"
        symbol_name="L3_5"
        underscore_name="l3_5"
        mdapi_supported_apis="VK OGL OCL MEDIA IO"
-       hw_config_guid="3f17a326-ae8b-4869-9f5a-3bccf793e287"
+       hw_config_guid="e0efab61-c904-4354-9fc5-35e8b8bc7d20"
        >
     <counter name="GPU Time Elapsed"
              symbol_name="GpuTime"
@@ -4460,7 +4512,7 @@
              max_equation="100"
              units="percent"
              semantic_type="duration"
-             equation="C 5 READ C 4 READ FADD 100 UMUL $GpuCoreClocks FDIV"
+             equation="C 5 READ C 4 READ FADD 4 FDIV 100 UMUL $GpuCoreClocks FDIV"
              availability="$SliceMask 1 AND"
              mdapi_group="GTI/L3"
              mdapi_usage_flags="Frame Batch Draw"
@@ -4475,7 +4527,7 @@
              max_equation="100"
              units="percent"
              semantic_type="duration"
-             equation="C 7 READ C 6 READ FADD 100 UMUL $GpuCoreClocks FDIV"
+             equation="C 7 READ C 6 READ FADD 4 FDIV 100 UMUL $GpuCoreClocks FDIV"
              availability="$SliceMask 1 AND"
              mdapi_group="GTI/L3"
              mdapi_usage_flags="Frame Batch Draw"
@@ -4539,11 +4591,11 @@
   </set>
 
   <set name="Gen12LP L3_6"
-       chipset="TGL"
+       chipset="TGLGT2"
        symbol_name="L3_6"
        underscore_name="l3_6"
        mdapi_supported_apis="VK OGL OCL MEDIA IO"
-       hw_config_guid="d312c40a-9fb7-489a-9a1a-9cd80aac6d61"
+       hw_config_guid="4066ad45-4a68-4acf-86b2-fa5a6a914db7"
        >
     <counter name="GPU Time Elapsed"
              symbol_name="GpuTime"
@@ -4727,7 +4779,7 @@
              max_equation="100"
              units="percent"
              semantic_type="duration"
-             equation="C 5 READ C 4 READ FADD 100 UMUL $GpuCoreClocks FDIV"
+             equation="C 5 READ C 4 READ FADD 4 FDIV 100 UMUL $GpuCoreClocks FDIV"
              availability="$SliceMask 1 AND"
              mdapi_group="GTI/L3"
              mdapi_usage_flags="Frame Batch Draw"
@@ -4742,7 +4794,7 @@
              max_equation="100"
              units="percent"
              semantic_type="duration"
-             equation="C 7 READ C 6 READ FADD 100 UMUL $GpuCoreClocks FDIV"
+             equation="C 7 READ C 6 READ FADD 4 FDIV 100 UMUL $GpuCoreClocks FDIV"
              availability="$SliceMask 1 AND"
              mdapi_group="GTI/L3"
              mdapi_usage_flags="Frame Batch Draw"
@@ -4806,11 +4858,11 @@
   </set>
 
   <set name="Sampler_1"
-       chipset="TGL"
+       chipset="TGLGT2"
        symbol_name="Sampler_1"
        underscore_name="sampler_1"
        mdapi_supported_apis="VK OGL OCL MEDIA IO"
-       hw_config_guid="f0f255a4-535c-43ed-9d6b-85958cef6c1c"
+       hw_config_guid="17e2be13-39fe-45f0-867c-0f83fcc51654"
        >
     <counter name="GPU Time Elapsed"
              symbol_name="GpuTime"
@@ -5245,11 +5297,11 @@
   </set>
 
   <set name="Sampler_2"
-       chipset="TGL"
+       chipset="TGLGT2"
        symbol_name="Sampler_2"
        underscore_name="sampler_2"
        mdapi_supported_apis="VK OGL OCL MEDIA IO"
-       hw_config_guid="f47c6b97-fc10-4962-bb67-d623e9d6219b"
+       hw_config_guid="0c3c3235-2e91-4ef0-8562-4ea1501e8612"
        >
     <counter name="GPU Time Elapsed"
              symbol_name="GpuTime"
@@ -5686,11 +5738,11 @@
   </set>
 
   <set name="TDL_1"
-       chipset="TGL"
+       chipset="TGLGT2"
        symbol_name="TDL_1"
        underscore_name="tdl_1"
        mdapi_supported_apis="VK OGL OCL MEDIA IO"
-       hw_config_guid="2e49d25e-93e8-4e2b-b91b-51731f5fb315"
+       hw_config_guid="ee6f5fa3-13a8-4842-8b34-f7541a0f76a3"
        >
     <counter name="GPU Time Elapsed"
              symbol_name="GpuTime"
@@ -6285,11 +6337,11 @@
   </set>
 
   <set name="TDL_2"
-       chipset="TGL"
+       chipset="TGLGT2"
        symbol_name="TDL_2"
        underscore_name="tdl_2"
        mdapi_supported_apis="VK OGL OCL MEDIA IO"
-       hw_config_guid="2a42ff25-99b1-4048-a121-f0664ed42c90"
+       hw_config_guid="f1577929-9215-488b-9899-d12b6e799743"
        >
     <counter name="GPU Time Elapsed"
              symbol_name="GpuTime"
@@ -6820,11 +6872,11 @@
   </set>
 
   <set name="TDL_3"
-       chipset="TGL"
+       chipset="TGLGT2"
        symbol_name="TDL_3"
        underscore_name="tdl_3"
        mdapi_supported_apis="VK OGL OCL MEDIA IO"
-       hw_config_guid="b763fa13-834e-4468-bba6-5f0d40db9813"
+       hw_config_guid="d5890d02-b2be-4742-a16e-17190a92a301"
        >
     <counter name="GPU Time Elapsed"
              symbol_name="GpuTime"
@@ -7374,11 +7426,11 @@
   </set>
 
   <set name="GpuBusyness"
-       chipset="TGL"
+       chipset="TGLGT2"
        symbol_name="GpuBusyness"
        underscore_name="gpu_busyness"
        mdapi_supported_apis="VK OGL OCL MEDIA IO"
-       hw_config_guid="cc935a3e-8d96-4b47-bc46-3d84247e9a3a"
+       hw_config_guid="19fe64eb-ac4f-45c6-b2b9-af728b21753b"
        >
     <counter name="GPU Time Elapsed"
              symbol_name="GpuTime"
@@ -7776,11 +7828,11 @@
   </set>
 
   <set name="EuActivity1"
-       chipset="TGL"
+       chipset="TGLGT2"
        symbol_name="EuActivity1"
        underscore_name="eu_activity1"
        mdapi_supported_apis="OGL OGL4 OCL MEDIA IO"
-       hw_config_guid="0732e7e2-e09a-401c-92bc-8af9bf6000bb"
+       hw_config_guid="414ff049-80d3-48c0-b79a-bd8eed097a06"
        >
     <counter name="GPU Time Elapsed"
              symbol_name="GpuTime"
@@ -8103,11 +8155,11 @@
   </set>
 
   <set name="EuActivity2"
-       chipset="TGL"
+       chipset="TGLGT2"
        symbol_name="EuActivity2"
        underscore_name="eu_activity2"
        mdapi_supported_apis="OGL OGL4 OCL MEDIA IO"
-       hw_config_guid="52b1fa12-3068-4b8c-8139-b5031a8d569b"
+       hw_config_guid="fb65c819-7ac2-4c69-aa9d-b72a18440705"
        >
     <counter name="GPU Time Elapsed"
              symbol_name="GpuTime"
@@ -8430,11 +8482,11 @@
   </set>
 
   <set name="EuActivity3"
-       chipset="TGL"
+       chipset="TGLGT2"
        symbol_name="EuActivity3"
        underscore_name="eu_activity3"
        mdapi_supported_apis="OGL OGL4 OCL MEDIA IO"
-       hw_config_guid="6381bfd9-e89a-4d23-a71c-176f70e39088"
+       hw_config_guid="7e1c6469-9de7-491a-a7c5-1bd8f9966826"
        >
     <counter name="GPU Time Elapsed"
              symbol_name="GpuTime"
@@ -8757,11 +8809,11 @@
   </set>
 
   <set name="EuActivity4"
-       chipset="TGL"
+       chipset="TGLGT2"
        symbol_name="EuActivity4"
        underscore_name="eu_activity4"
        mdapi_supported_apis="OGL OGL4 OCL MEDIA IO"
-       hw_config_guid="efb7e460-edff-4329-9123-bbccc93f5546"
+       hw_config_guid="a43f80cd-5cc1-4a2c-a750-40594af2b661"
        >
     <counter name="GPU Time Elapsed"
              symbol_name="GpuTime"
@@ -9084,11 +9136,11 @@
   </set>
 
   <set name="EuActivity5"
-       chipset="TGL"
+       chipset="TGLGT2"
        symbol_name="EuActivity5"
        underscore_name="eu_activity5"
        mdapi_supported_apis="OGL OGL4 OCL MEDIA IO"
-       hw_config_guid="76566878-face-4c3e-b18e-9117e1662ed4"
+       hw_config_guid="7e6e555c-aa5b-4c8d-992a-454a5a335c6e"
        >
     <counter name="GPU Time Elapsed"
              symbol_name="GpuTime"
@@ -9411,11 +9463,11 @@
   </set>
 
   <set name="EuActivity6"
-       chipset="TGL"
+       chipset="TGLGT2"
        symbol_name="EuActivity6"
        underscore_name="eu_activity6"
        mdapi_supported_apis="OGL OGL4 OCL MEDIA IO"
-       hw_config_guid="61ead329-10c0-48ad-8087-99cc9886197f"
+       hw_config_guid="f3723f39-ecf4-4ff2-a4c4-80e87876b86f"
        >
     <counter name="GPU Time Elapsed"
              symbol_name="GpuTime"
@@ -9738,11 +9790,11 @@
   </set>
 
   <set name="EuActivity7"
-       chipset="TGL"
+       chipset="TGLGT2"
        symbol_name="EuActivity7"
        underscore_name="eu_activity7"
        mdapi_supported_apis="OGL OGL4 OCL MEDIA IO"
-       hw_config_guid="b698fbb4-6822-4110-a957-870223a8db94"
+       hw_config_guid="c0d2cd0a-e2be-4b12-916d-2f3aba0ebf9e"
        >
     <counter name="GPU Time Elapsed"
              symbol_name="GpuTime"
@@ -9926,7 +9978,7 @@
              max_equation="2"
              units="number"
              semantic_type="ratio"
-             equation="A 7 READ A 8 READ FADD A 9 READ FADD A 10 READ FADD A 11 READ A 12 READ FADD A 13 READ FADD A 14 READ FADD A 15 READ A 16 READ FADD A 17 READ FADD A 18 READ FADD FADD A 7 READ A 8 READ FADD A 9 READ FADD A 10 READ FADD FSUB FDIV 1 FADD"
+             equation="A 7 READ A 8 READ FADD A 9 READ FADD A 10 READ FADD  A 11 READ A 12 READ FADD A 13 READ FADD A 14 READ FADD  A 15 READ A 16 READ FADD A 17 READ FADD A 18 READ FADD FADD  A 7 READ A 8 READ FADD A 9 READ FADD A 10 READ FADD FSUB FDIV 1 FADD"
              mdapi_group="EU Array"
              mdapi_usage_flags="Tier4 Overview System Frame Batch Draw"
              mdapi_supported_apis=""
@@ -10079,11 +10131,11 @@
   </set>
 
   <set name="EuActivity8"
-       chipset="TGL"
+       chipset="TGLGT2"
        symbol_name="EuActivity8"
        underscore_name="eu_activity8"
        mdapi_supported_apis="OGL OGL4 OCL MEDIA IO"
-       hw_config_guid="6e6a63b1-caa6-4b8d-b214-8a0da078c39e"
+       hw_config_guid="1fbbd218-693c-4035-b4c0-ce4dd139d828"
        >
     <counter name="GPU Time Elapsed"
              symbol_name="GpuTime"
@@ -10374,11 +10426,11 @@
   </set>
 
   <set name="Metric set TestOa"
-       chipset="TGL"
+       chipset="TGLGT2"
        symbol_name="TestOa"
        underscore_name="test_oa"
        mdapi_supported_apis="VK OGL OCL IO"
-       hw_config_guid="30801299-fe7b-40ba-8a6c-64c6196f3748"
+       hw_config_guid="6607f034-d053-40d1-8215-67c07f3041bb"
        >
     <counter name="GPU Time Elapsed"
              symbol_name="GpuTime"

@@ -469,8 +469,12 @@ get_register_queries_function(const struct gen_device_info *devinfo)
          return gen_oa_register_queries_ehl;
       return gen_oa_register_queries_icl;
    }
-   if (devinfo->gen == 12)
-      return gen_oa_register_queries_tgl;
+   if (devinfo->is_tigerlake) {
+      if (devinfo->gt == 1)
+         return gen_oa_register_queries_tglgt1;
+      if (devinfo->gt == 2)
+         return gen_oa_register_queries_tglgt2;
+   }
 
    return NULL;
 }

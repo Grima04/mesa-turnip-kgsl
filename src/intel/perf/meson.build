@@ -6,7 +6,7 @@ gen_hw_metrics = [
   'cflgt2', 'cflgt3',
   'bxt', 'glk',
   'icl', 'ehl',
-  'tgl',
+  'tglgt1', 'tglgt2',
 ]
 
 gen_hw_metrics_xml_files = []

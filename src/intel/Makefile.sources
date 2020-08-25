@@ -362,7 +362,8 @@ GEN_PERF_XML_FILES = \
 	perf/oa-cflgt3.xml \
 	perf/oa-icl.xml \
 	perf/oa-ehl.xml \
-	perf/oa-tgl.xml
+	perf/oa-tglgt1.xml \
+	perf/oa-tglgt2.xml
 
 GEN_PERF_FILES = \
 	perf/gen_perf.c \
