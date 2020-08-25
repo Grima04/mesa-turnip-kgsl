@@ -211,7 +211,8 @@ v3d_setup_slices(struct v3dv_image *image)
     *
     * We additionally align to 4k, which improves UIF XOR performance.
     */
-   image->alignment = image->tiling == VK_IMAGE_TILING_LINEAR ? 4 : 4096;
+   image->alignment =
+      image->tiling == VK_IMAGE_TILING_LINEAR ? image->cpp : 4096;
    uint32_t align_offset =
       align(image->slices[0].offset, image->alignment) - image->slices[0].offset;
    if (align_offset) {
