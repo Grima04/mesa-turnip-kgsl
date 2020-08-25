@@ -1249,6 +1249,17 @@ init_device_meta(struct v3dv_device *device)
    init_meta_blit_resources(device);
 }
 
+void
+v3dv_meta_color_clear_pipeline_destroy(VkDevice _device,
+                                       struct v3dv_meta_color_clear_pipeline *p,
+                                       VkAllocationCallbacks *alloc)
+{
+   v3dv_DestroyPipeline(_device, p->pipeline, alloc);
+   if (p->cached)
+      v3dv_DestroyRenderPass(_device, p->pass, alloc);
+   vk_free(alloc, p);
+}
+
 static void
 destroy_device_meta(struct v3dv_device *device)
 {
@@ -1258,10 +1269,8 @@ destroy_device_meta(struct v3dv_device *device)
 
    hash_table_foreach(device->meta.color_clear.cache, entry) {
       struct v3dv_meta_color_clear_pipeline *item = entry->data;
-      v3dv_DestroyPipeline(_device, item->pipeline, &device->alloc);
-      if (item->free_render_pass)
-         v3dv_DestroyRenderPass(_device, item->pass, &device->alloc);
-      vk_free(&device->alloc, item);
+      v3dv_meta_color_clear_pipeline_destroy(v3dv_device_to_handle(device),
+                                             item, &device->alloc);
    }
    _mesa_hash_table_destroy(device->meta.color_clear.cache, NULL);
 

@@ -233,7 +233,7 @@ struct v3dv_queue {
 struct v3dv_meta_color_clear_pipeline {
    VkPipeline pipeline;
    VkRenderPass pass;
-   bool free_render_pass;
+   bool cached;
    uint64_t key;
 };
 
@@ -1858,6 +1858,11 @@ v3dv_pipeline_cache_upload_variant(struct v3dv_pipeline *pipeline,
 
 void v3dv_shader_module_internal_init(struct v3dv_shader_module *module,
                                       nir_shader *nir);
+
+void
+v3dv_meta_color_clear_pipeline_destroy(VkDevice _device,
+                                       struct v3dv_meta_color_clear_pipeline *p,
+                                       VkAllocationCallbacks *alloc);
 
 #define V3DV_DEFINE_HANDLE_CASTS(__v3dv_type, __VkType)   \
                                                         \

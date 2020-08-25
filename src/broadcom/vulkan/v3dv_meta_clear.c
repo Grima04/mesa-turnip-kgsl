@@ -529,15 +529,33 @@ get_color_clear_pipeline(struct v3dv_device *device,
    if (result != VK_SUCCESS)
       return result;
 
-   const uint64_t key =
-      get_color_clear_pipeline_cache_key(rt_idx, format, samples, components);
-   mtx_lock(&device->meta.mtx);
-   struct hash_entry *entry =
-      _mesa_hash_table_search(device->meta.color_clear.cache, &key);
-   if (entry) {
-      mtx_unlock(&device->meta.mtx);
-      *pipeline = entry->data;
-      return VK_SUCCESS;
+   /* If pass != NULL it means that we are emitting the clear as a draw call
+    * in the current pass bound by the application. In that case, we can't
+    * cache the pipeline, since it will be referencing that pass and the
+    * application could be destroying it at any point. Hopefully, the perf
+    * impact is not too big since we still have the device pipeline cache
+    * around and we won't end up re-compiling the clear shader.
+    *
+    * FIXME: alternatively, we could refcount (or maybe clone) the render pass
+    * provided by the application and include it in the pipeline key setup
+    * to make caching safe in this scenario, however, based on tests with
+    * vkQuake3, the fact that we are not caching here doesn't seem to have
+    * any significant impact in performance, so it might not be worth it.
+    */
+   const bool can_cache_pipeline = (pass == NULL);
+
+   uint64_t key;
+   if (can_cache_pipeline) {
+      key =
+         get_color_clear_pipeline_cache_key(rt_idx, format, samples, components);
+      mtx_lock(&device->meta.mtx);
+      struct hash_entry *entry =
+         _mesa_hash_table_search(device->meta.color_clear.cache, &key);
+      if (entry) {
+         mtx_unlock(&device->meta.mtx);
+         *pipeline = entry->data;
+         return VK_SUCCESS;
+      }
    }
 
    *pipeline = vk_zalloc2(&device->alloc, NULL, sizeof(**pipeline), 8,
@@ -557,7 +575,6 @@ get_color_clear_pipeline(struct v3dv_device *device,
       if (result != VK_SUCCESS)
          goto fail;
 
-      (*pipeline)->free_render_pass = true;
       pass = v3dv_render_pass_from_handle((*pipeline)->pass);
    } else {
       (*pipeline)->pass = v3dv_render_pass_to_handle(pass);
@@ -575,19 +592,24 @@ get_color_clear_pipeline(struct v3dv_device *device,
    if (result != VK_SUCCESS)
       goto fail;
 
-   (*pipeline)->key = key;
-   _mesa_hash_table_insert(device->meta.color_clear.cache,
-                           &(*pipeline)->key, *pipeline);
+   if (can_cache_pipeline) {
+      (*pipeline)->key = key;
+      (*pipeline)->cached = true;
+      _mesa_hash_table_insert(device->meta.color_clear.cache,
+                              &(*pipeline)->key, *pipeline);
 
-   mtx_unlock(&device->meta.mtx);
+      mtx_unlock(&device->meta.mtx);
+   }
+
    return VK_SUCCESS;
 
 fail:
-   mtx_unlock(&device->meta.mtx);
+   if (can_cache_pipeline)
+      mtx_unlock(&device->meta.mtx);
 
    VkDevice _device = v3dv_device_to_handle(device);
    if (*pipeline) {
-      if ((*pipeline)->free_render_pass)
+      if ((*pipeline)->cached)
          v3dv_DestroyRenderPass(_device, (*pipeline)->pass, &device->alloc);
       if ((*pipeline)->pipeline)
          v3dv_DestroyPipeline(_device, (*pipeline)->pipeline, &device->alloc);
@@ -739,6 +761,12 @@ emit_color_clear_rect(struct v3dv_cmd_buffer *cmd_buffer,
       return;
    }
    assert(pipeline && pipeline->pipeline && pipeline->pass);
+
+   /* Since we are not emitting the draw call in the current subpass we should
+    * be caching the clear pipeline and we don't have to take care of destorying
+    * it below.
+    */
+   assert(pipeline->cached);
 
    /* Store command buffer state for the current subpass before we interrupt
     * it to emit the color clear pass and then finish the job for the
@@ -1001,6 +1029,15 @@ emit_subpass_color_clear_rects(struct v3dv_cmd_buffer *cmd_buffer,
       v3dv_CmdSetScissor(cmd_buffer_handle, 0, 1, &rects[i].rect);
       v3dv_CmdDraw(cmd_buffer_handle, 4, 1, 0, 0);
    }
+
+   /* Subpass pipelines can't be cached because they include a reference to the
+    * render pass currently bound by the application, which means that we need
+    * to destroy them manually here.
+    */
+   assert(!pipeline->cached);
+   v3dv_cmd_buffer_add_private_obj(
+      cmd_buffer, (uintptr_t)pipeline,
+      (v3dv_cmd_buffer_private_obj_destroy_cb) v3dv_meta_color_clear_pipeline_destroy);
 
    v3dv_cmd_buffer_meta_state_pop(cmd_buffer, dynamic_states, false);
 }
