@@ -24,6 +24,7 @@
  *    Rob Clark <robclark@freedesktop.org>
  */
 
+#include "util/debug.h"
 #include "pipe/p_state.h"
 #include "util/hash_table.h"
 #include "util/u_dump.h"
@@ -325,6 +326,11 @@ gmem_stateobj_init(struct fd_screen *screen, struct gmem_key *key)
 				div_round_up(gmem->nbins_x, tpp_x)) > npipes)
 			tpp_x += 1;
 	}
+
+#ifdef DEBUG
+	tpp_x = env_var_as_unsigned("TPP_X", tpp_x);
+	tpp_y = env_var_as_unsigned("TPP_Y", tpp_x);
+#endif
 
 	gmem->maxpw = tpp_x;
 	gmem->maxph = tpp_y;
