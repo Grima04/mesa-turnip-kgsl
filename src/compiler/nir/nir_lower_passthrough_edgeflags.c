@@ -37,10 +37,12 @@ lower_impl(nir_function_impl *impl)
 
    /* The edge flag is the last input in st/mesa. */
    assert(shader->num_inputs == util_bitcount64(shader->info.inputs_read));
-   assert(shader->num_outputs == util_bitcount64(shader->info.outputs_written));
 
    /* Lowered IO only uses intrinsics. It doesn't use variables. */
    if (shader->info.io_lowered) {
+      assert(shader->num_outputs ==
+             util_bitcount64(shader->info.outputs_written));
+
       /* Load an edge flag. */
       nir_intrinsic_instr *load =
          nir_intrinsic_instr_create(shader, nir_intrinsic_load_input);
