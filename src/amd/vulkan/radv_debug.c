@@ -696,7 +696,8 @@ radv_trap_handler_init(struct radv_device *device)
 					   RADEON_DOMAIN_VRAM,
 					   RADEON_FLAG_CPU_ACCESS |
 					   RADEON_FLAG_NO_INTERPROCESS_SHARING |
-					   RADEON_FLAG_ZERO_VRAM,
+					   RADEON_FLAG_ZERO_VRAM |
+					   RADEON_FLAG_32BIT,
 					   RADV_BO_PRIORITY_SCRATCH);
 	if (!device->tma_bo)
 		return false;
