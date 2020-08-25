@@ -114,7 +114,13 @@ gather_intrinsic(struct access_state *state, nir_intrinsic_instr *instr)
          break;
       var = nir_get_binding_variable(state->shader, nir_chase_binding(instr->src[0]));
 
-      _mesa_set_add(state->vars_written, var);
+      if (var) {
+         _mesa_set_add(state->vars_written, var);
+      } else {
+         nir_foreach_variable_with_modes(possible_var, state->shader, nir_var_mem_ssbo)
+            _mesa_set_add(state->vars_written, possible_var);
+      }
+
       state->buffers_written = true;
       break;
 
@@ -163,7 +169,7 @@ update_access(struct access_state *state, nir_intrinsic_instr *instr, bool is_im
    if (instr->intrinsic != nir_intrinsic_bindless_image_load) {
       const nir_variable *var = nir_get_binding_variable(
          state->shader, nir_chase_binding(instr->src[0]));
-      is_memory_readonly |= var->data.access & ACCESS_NON_WRITEABLE;
+      is_memory_readonly |= var && (var->data.access & ACCESS_NON_WRITEABLE);
    }
 
    is_memory_readonly |= is_buffer ? !state->buffers_written : !state->images_written;
