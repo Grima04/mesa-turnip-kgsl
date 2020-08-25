@@ -879,7 +879,7 @@ fd_screen_create(struct fd_device *dev, struct renderonly *ro)
 		DBG("could not get GMEM size");
 		goto fail;
 	}
-	screen->gmemsize_bytes = val;
+	screen->gmemsize_bytes = env_var_as_unsigned("FD_MESA_GMEM", val);
 
 	if (fd_device_version(dev) >= FD_VERSION_GMEM_BASE) {
 		fd_pipe_get_param(screen->pipe, FD_GMEM_BASE, &screen->gmem_base);

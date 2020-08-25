@@ -32,6 +32,7 @@
 #include "perfcntrs/freedreno_perfcntr.h"
 
 #include "pipe/p_screen.h"
+#include "util/debug.h"
 #include "util/u_memory.h"
 #include "util/slab.h"
 #include "util/simple_mtx.h"
