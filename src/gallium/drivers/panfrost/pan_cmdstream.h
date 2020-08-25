@@ -81,6 +81,9 @@ mali_ptr
 panfrost_emit_vertex_data(struct panfrost_batch *batch,
                           mali_ptr *buffers);
 
+mali_ptr
+panfrost_vt_emit_shared_memory(struct panfrost_batch *batch);
+
 void
 panfrost_emit_varying_descriptor(struct panfrost_batch *batch,
                                  unsigned vertex_count,

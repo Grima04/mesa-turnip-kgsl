@@ -51,7 +51,7 @@ panfrost_bo_access_for_stage(enum pipe_shader_type stage)
                PAN_BO_ACCESS_VERTEX_TILER;
 }
 
-static mali_ptr
+mali_ptr
 panfrost_vt_emit_shared_memory(struct panfrost_batch *batch)
 {
         struct panfrost_device *dev = pan_device(batch->ctx->base.screen);

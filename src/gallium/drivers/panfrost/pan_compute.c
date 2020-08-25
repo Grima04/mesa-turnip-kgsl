@@ -28,6 +28,7 @@
 
 #include "pan_context.h"
 #include "pan_cmdstream.h"
+#include "panfrost-quirks.h"
 #include "pan_bo.h"
 #include "util/u_memory.h"
 #include "nir_serialize.h"
@@ -95,6 +96,7 @@ panfrost_launch_grid(struct pipe_context *pipe,
                 const struct pipe_grid_info *info)
 {
         struct panfrost_context *ctx = pan_context(pipe);
+        struct panfrost_device *dev = pan_device(pipe->screen);
 
         /* TODO: Do we want a special compute-only batch? */
         struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
@@ -102,7 +104,7 @@ panfrost_launch_grid(struct pipe_context *pipe,
         ctx->compute_grid = info;
 
         /* TODO: Stub */
-        struct midgard_payload_vertex_tiler payload;
+        struct midgard_payload_vertex_tiler payload = { 0 };
 
         /* We implement OpenCL inputs as uniforms (or a UBO -- same thing), so
          * reuse the graphics path for this by lowering to Gallium */
@@ -117,9 +119,8 @@ panfrost_launch_grid(struct pipe_context *pipe,
         if (info->input)
                 pipe->set_constant_buffer(pipe, PIPE_SHADER_COMPUTE, 0, &ubuf);
 
-        panfrost_vt_init(ctx, PIPE_SHADER_COMPUTE, &payload.prefix, &payload.postfix);
-
         mali_ptr push = 0;
+        payload.postfix.gl_enables = (dev->quirks & IS_BIFROST) ? 0x2 : 0x6;
         payload.postfix.shader = panfrost_emit_compute_shader_meta(batch, PIPE_SHADER_COMPUTE);
         payload.postfix.uniform_buffers = panfrost_emit_const_buf(batch, PIPE_SHADER_COMPUTE, &push);
         payload.postfix.uniforms = push;
