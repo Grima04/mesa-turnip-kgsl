@@ -29,6 +29,7 @@
 
 #include "isl.h"
 #include "dev/gen_device_info.h"
+#include "dev/gen_debug.h"
 
 uint32_t
 isl_tiling_to_i915_tiling(enum isl_tiling tiling)
@@ -120,4 +121,30 @@ isl_drm_modifier_get_info(uint64_t modifier)
    }
 
    return NULL;
+}
+
+uint32_t
+isl_drm_modifier_get_score(const struct gen_device_info *devinfo,
+                           uint64_t modifier)
+{
+   /* FINISHME: Add gen12 modifiers */
+   switch (modifier) {
+   default:
+      return 0;
+   case DRM_FORMAT_MOD_LINEAR:
+      return 1;
+   case I915_FORMAT_MOD_X_TILED:
+      return 2;
+   case I915_FORMAT_MOD_Y_TILED:
+      return 3;
+   case I915_FORMAT_MOD_Y_TILED_CCS:
+      /* Gen12's CCS layout differs from Gen9-11. */
+      if (devinfo->gen >= 12)
+         return 0;
+
+      if (INTEL_DEBUG & DEBUG_NO_RBC)
+         return 0;
+
+      return 4;
+   }
 }

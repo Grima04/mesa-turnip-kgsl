@@ -1892,6 +1892,18 @@ isl_drm_modifier_get_default_aux_state(uint64_t modifier)
                                            ISL_AUX_STATE_COMPRESSED_NO_CLEAR;
 }
 
+/**
+ * Return the modifier's score, which indicates the driver's preference for the
+ * modifier relative to others. A higher score is better. Zero means
+ * unsupported.
+ *
+ * Intended to assist selection of a modifier from an externally provided list,
+ * such as VkImageDrmFormatModifierListCreateInfoEXT.
+ */
+uint32_t
+isl_drm_modifier_get_score(const struct gen_device_info *devinfo,
+                           uint64_t modifier);
+
 struct isl_extent2d ATTRIBUTE_CONST
 isl_get_interleaved_msaa_px_size_sa(uint32_t samples);
 
