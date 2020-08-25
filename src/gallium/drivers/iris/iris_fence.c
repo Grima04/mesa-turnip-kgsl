@@ -110,6 +110,55 @@ iris_batch_add_syncobj(struct iris_batch *batch,
    iris_syncobj_reference(batch->screen, store, syncobj);
 }
 
+/**
+ * Walk through a batch's dependencies (any I915_EXEC_FENCE_WAIT syncobjs)
+ * and unreference any which have already passed.
+ *
+ * Sometimes the compute batch is seldom used, and accumulates references
+ * to stale render batches that are no longer of interest, so we can free
+ * those up.
+ */
+static void
+clear_stale_syncobjs(struct iris_batch *batch)
+{
+   struct iris_screen *screen = batch->screen;
+
+   int n = util_dynarray_num_elements(&batch->syncobjs, struct iris_syncobj *);
+
+   assert(n == util_dynarray_num_elements(&batch->exec_fences,
+                                          struct drm_i915_gem_exec_fence));
+
+   /* Skip the first syncobj, as it's the signalling one. */
+   for (int i = n - 1; i > 1; i--) {
+      struct iris_syncobj **syncobj =
+         util_dynarray_element(&batch->syncobjs, struct iris_syncobj *, i);
+      struct drm_i915_gem_exec_fence *fence =
+         util_dynarray_element(&batch->exec_fences,
+                               struct drm_i915_gem_exec_fence, i);
+      assert(fence->flags & I915_EXEC_FENCE_WAIT);
+
+      if (iris_wait_syncobj(&screen->base, *syncobj, 0))
+         continue;
+
+      /* This sync object has already passed, there's no need to continue
+       * marking it as a dependency; we can stop holding on to the reference.
+       */
+      iris_syncobj_reference(screen, syncobj, NULL);
+
+      /* Remove it from the lists; move the last element here. */
+      struct iris_syncobj **nth_syncobj =
+         util_dynarray_pop_ptr(&batch->syncobjs, struct iris_syncobj *);
+      struct drm_i915_gem_exec_fence *nth_fence =
+         util_dynarray_pop_ptr(&batch->exec_fences,
+                               struct drm_i915_gem_exec_fence);
+
+      if (syncobj != nth_syncobj) {
+         *syncobj = *nth_syncobj;
+         memcpy(nth_fence, fence, sizeof(*fence));
+      }
+   }
+}
+
 /* ------------------------------------------------------------------- */
 
 struct pipe_fence_handle {
@@ -270,6 +319,9 @@ iris_fence_await(struct pipe_context *ctx,
           * need to wait.  Flush the batch now, so it can happen sooner.
           */
          iris_batch_flush(batch);
+
+         /* Before adding a new reference, clean out any stale ones. */
+         clear_stale_syncobjs(batch);
 
          iris_batch_add_syncobj(batch, fine->syncobj, I915_EXEC_FENCE_WAIT);
       }
