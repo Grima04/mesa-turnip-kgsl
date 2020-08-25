@@ -47,6 +47,7 @@
 /* constant state object helper */
 #include "cso_cache/cso_context.h"
 
+#include "util/macros.h"
 /* u_sampler_view_default_template */
 #include "util/u_sampler.h"
 /* debug_dump_surface_bmp */
@@ -89,7 +90,7 @@ struct program
 static void init_prog(struct program *p)
 {
 	struct pipe_surface surf_tmpl;
-	int ret;
+	ASSERTED int ret;
 
 	/* find a hardware device */
 	ret = pipe_loader_probe(&p->dev, 1);

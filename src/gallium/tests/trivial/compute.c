@@ -71,7 +71,7 @@ struct context {
 
 static void init_ctx(struct context *ctx)
 {
-        int ret;
+        ASSERTED int ret;
 
         ret = pipe_loader_probe(&ctx->dev, 1);
         assert(ret);
@@ -153,7 +153,7 @@ static void init_prog(struct context *ctx, unsigned local_sz,
                 .req_input_mem = input_sz
         };
         char *psrc = preprocess_prog(ctx, src, defs);
-        int ret;
+        ASSERTED int ret;
 
         ret = tgsi_text_translate(psrc, prog, ARRAY_SIZE(prog));
         assert(ret);
