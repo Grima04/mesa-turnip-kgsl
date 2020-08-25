@@ -23,9 +23,10 @@
 
 #include "nir.h"
 
-/* This pass optimizes GL access qualifiers. So far it does two things:
+/* This pass optimizes GL access qualifiers. So far it does three things:
  *
  * - Infer readonly when it's missing.
+ * - Infer writeonly when it's missing.
  * - Infer ACCESS_CAN_REORDER when the following are true:
  *   - Either there are no writes, or ACCESS_NON_WRITEABLE is set. In either
  *     case there are no writes to the underlying memory.
@@ -38,17 +39,49 @@
 
 struct access_state {
    nir_shader *shader;
+   bool infer_non_readable;
 
    struct set *vars_written;
+   struct set *vars_read;
    bool images_written;
    bool buffers_written;
+   bool images_read;
+   bool buffers_read;
 };
+
+static void
+gather_buffer_access(struct access_state *state, nir_ssa_def *def, bool read, bool write)
+{
+   state->buffers_read |= read;
+   state->buffers_written |= write;
+
+   if (!def)
+      return;
+
+   const nir_variable *var = nir_get_binding_variable(
+      state->shader, nir_chase_binding(nir_src_for_ssa(def)));
+   if (var) {
+      if (read)
+         _mesa_set_add(state->vars_read, var);
+      if (write)
+         _mesa_set_add(state->vars_written, var);
+   } else {
+      nir_foreach_variable_with_modes(possible_var, state->shader, nir_var_mem_ssbo) {
+         if (read)
+            _mesa_set_add(state->vars_read, possible_var);
+         if (write)
+            _mesa_set_add(state->vars_written, possible_var);
+      }
+   }
+}
 
 static void
 gather_intrinsic(struct access_state *state, nir_intrinsic_instr *instr)
 {
    const nir_variable *var;
+   bool read, write;
    switch (instr->intrinsic) {
+   case nir_intrinsic_image_deref_load:
    case nir_intrinsic_image_deref_store:
    case nir_intrinsic_image_deref_atomic_add:
    case nir_intrinsic_image_deref_atomic_imin:
@@ -62,21 +95,29 @@ gather_intrinsic(struct access_state *state, nir_intrinsic_instr *instr)
    case nir_intrinsic_image_deref_atomic_comp_swap:
    case nir_intrinsic_image_deref_atomic_fadd:
       var = nir_intrinsic_get_var(instr, 0);
+      read = instr->intrinsic != nir_intrinsic_image_deref_store;
+      write = instr->intrinsic != nir_intrinsic_image_deref_load;
 
       /* In OpenGL, buffer images use normal buffer objects, whereas other
        * image types use textures which cannot alias with buffer objects.
        * Therefore we have to group buffer samplers together with SSBO's.
        */
       if (glsl_get_sampler_dim(glsl_without_array(var->type)) ==
-          GLSL_SAMPLER_DIM_BUF)
-         state->buffers_written = true;
-      else
-         state->images_written = true;
+          GLSL_SAMPLER_DIM_BUF) {
+         state->buffers_read |= read;
+         state->buffers_written |= write;
+      } else {
+         state->images_read |= read;
+         state->images_written |= write;
+      }
 
-      if (var->data.mode == nir_var_uniform)
+      if (var->data.mode == nir_var_uniform && read)
+         _mesa_set_add(state->vars_read, var);
+      if (var->data.mode == nir_var_uniform && write)
          _mesa_set_add(state->vars_written, var);
       break;
 
+   case nir_intrinsic_bindless_image_load:
    case nir_intrinsic_bindless_image_store:
    case nir_intrinsic_bindless_image_atomic_add:
    case nir_intrinsic_bindless_image_atomic_imin:
@@ -89,12 +130,19 @@ gather_intrinsic(struct access_state *state, nir_intrinsic_instr *instr)
    case nir_intrinsic_bindless_image_atomic_exchange:
    case nir_intrinsic_bindless_image_atomic_comp_swap:
    case nir_intrinsic_bindless_image_atomic_fadd:
-      if (nir_intrinsic_image_dim(instr) == GLSL_SAMPLER_DIM_BUF)
-         state->buffers_written = true;
-      else
-         state->images_written = true;
+      read = instr->intrinsic != nir_intrinsic_bindless_image_store;
+      write = instr->intrinsic != nir_intrinsic_bindless_image_load;
+
+      if (nir_intrinsic_image_dim(instr) == GLSL_SAMPLER_DIM_BUF) {
+         state->buffers_read |= read;
+         state->buffers_written |= write;
+      } else {
+         state->images_read |= read;
+         state->images_written |= write;
+      }
       break;
 
+   case nir_intrinsic_load_deref:
    case nir_intrinsic_store_deref:
    case nir_intrinsic_deref_atomic_add:
    case nir_intrinsic_deref_atomic_imin:
@@ -114,17 +162,10 @@ gather_intrinsic(struct access_state *state, nir_intrinsic_instr *instr)
       if (!nir_deref_mode_may_be(deref, nir_var_mem_ssbo | nir_var_mem_global))
          break;
 
-      if (nir_deref_mode_is(deref, nir_var_mem_ssbo)) {
-         var = nir_get_binding_variable(state->shader, nir_chase_binding(instr->src[0]));
-         if (var) {
-            _mesa_set_add(state->vars_written, var);
-         } else {
-            nir_foreach_variable_with_modes(possible_var, state->shader, nir_var_mem_ssbo)
-               _mesa_set_add(state->vars_written, possible_var);
-         }
-      }
-
-      state->buffers_written = true;
+      bool ssbo = nir_deref_mode_is(deref, nir_var_mem_ssbo);
+      gather_buffer_access(state, ssbo ? instr->src[0].ssa : NULL,
+                           instr->intrinsic != nir_intrinsic_store_deref,
+                           instr->intrinsic != nir_intrinsic_load_deref);
       break;
    }
 
@@ -145,22 +186,27 @@ process_variable(struct access_state *state, nir_variable *var)
    if (var->data.access & ACCESS_CAN_REORDER)
       return false;
 
-   if (!(var->data.access & ACCESS_NON_WRITEABLE)) {
-      if ((var->data.access & ACCESS_RESTRICT) &&
-          !_mesa_set_search(state->vars_written, var)) {
-         var->data.access |= ACCESS_NON_WRITEABLE;
-         return true;
-      }
+   unsigned access = var->data.access;
+   bool is_buffer = var->data.mode == nir_var_mem_ssbo ||
+                    glsl_get_sampler_dim(type) == GLSL_SAMPLER_DIM_BUF;
 
-      bool is_buffer = var->data.mode == nir_var_mem_ssbo ||
-                       glsl_get_sampler_dim(type) == GLSL_SAMPLER_DIM_BUF;
-      if (is_buffer ? !state->buffers_written : !state->images_written) {
-         var->data.access |= ACCESS_NON_WRITEABLE;
-         return true;
-      }
+   if (!(access & ACCESS_NON_WRITEABLE)) {
+      if (is_buffer ? !state->buffers_written : !state->images_written)
+         access |= ACCESS_NON_WRITEABLE;
+      else if ((access & ACCESS_RESTRICT) && !_mesa_set_search(state->vars_written, var))
+         access |= ACCESS_NON_WRITEABLE;
    }
 
-   return false;
+   if (!(access & ACCESS_NON_READABLE)) {
+      if (is_buffer ? !state->buffers_read : !state->images_read)
+         access |= ACCESS_NON_READABLE;
+      else if ((access & ACCESS_RESTRICT) && !_mesa_set_search(state->vars_read, var))
+         access |= ACCESS_NON_READABLE;
+   }
+
+   bool changed = var->data.access != access;
+   var->data.access = access;
+   return changed;
 }
 
 static bool
@@ -169,17 +215,23 @@ update_access(struct access_state *state, nir_intrinsic_instr *instr, bool is_im
    enum gl_access_qualifier access = nir_intrinsic_access(instr);
 
    bool is_memory_readonly = access & ACCESS_NON_WRITEABLE;
+   bool is_memory_writeonly = access & ACCESS_NON_READABLE;
 
-   if (instr->intrinsic != nir_intrinsic_bindless_image_load) {
+   if (instr->intrinsic != nir_intrinsic_bindless_image_load &&
+       instr->intrinsic != nir_intrinsic_bindless_image_store) {
       const nir_variable *var = nir_get_binding_variable(
          state->shader, nir_chase_binding(instr->src[0]));
       is_memory_readonly |= var && (var->data.access & ACCESS_NON_WRITEABLE);
+      is_memory_writeonly |= var && (var->data.access & ACCESS_NON_READABLE);
    }
 
    is_memory_readonly |= is_buffer ? !state->buffers_written : !state->images_written;
+   is_memory_writeonly |= is_buffer ? !state->buffers_read : !state->images_read;
 
    if (is_memory_readonly)
       access |= ACCESS_NON_WRITEABLE;
+   if (is_memory_writeonly)
+      access |= ACCESS_NON_READABLE;
    if (!(access & ACCESS_VOLATILE) && is_memory_readonly)
       access |= ACCESS_CAN_REORDER;
 
@@ -193,17 +245,20 @@ process_intrinsic(struct access_state *state, nir_intrinsic_instr *instr)
 {
    switch (instr->intrinsic) {
    case nir_intrinsic_bindless_image_load:
+   case nir_intrinsic_bindless_image_store:
       return update_access(state, instr, true,
                            nir_intrinsic_image_dim(instr) == GLSL_SAMPLER_DIM_BUF);
 
-   case nir_intrinsic_load_deref: {
+   case nir_intrinsic_load_deref:
+   case nir_intrinsic_store_deref: {
       if (!nir_deref_mode_is(nir_src_as_deref(instr->src[0]), nir_var_mem_ssbo))
          return false;
 
       return update_access(state, instr, false, true);
    }
 
-   case nir_intrinsic_image_deref_load: {
+   case nir_intrinsic_image_deref_load:
+   case nir_intrinsic_image_deref_store: {
       nir_variable *var = nir_intrinsic_get_var(instr, 0);
 
       bool is_buffer =
@@ -244,11 +299,13 @@ opt_access_impl(struct access_state *state,
 }
 
 bool
-nir_opt_access(nir_shader *shader, bool is_vulkan)
+nir_opt_access(nir_shader *shader, const nir_opt_access_options *options)
 {
    struct access_state state = {
       .shader = shader,
+      .infer_non_readable = options->infer_non_readable,
       .vars_written = _mesa_pointer_set_create(NULL),
+      .vars_read = _mesa_pointer_set_create(NULL),
    };
 
    bool var_progress = false;
@@ -266,9 +323,11 @@ nir_opt_access(nir_shader *shader, bool is_vulkan)
    }
 
    /* In Vulkan, buffers and images can alias. */
-   if (is_vulkan) {
+   if (options->is_vulkan) {
       state.buffers_written |= state.images_written;
       state.images_written |= state.buffers_written;
+      state.buffers_read |= state.images_read;
+      state.images_read |= state.buffers_read;
    }
 
    nir_foreach_variable_with_modes(var, shader, nir_var_uniform |
@@ -293,6 +352,7 @@ nir_opt_access(nir_shader *shader, bool is_vulkan)
 
    progress |= var_progress;
 
+   _mesa_set_destroy(state.vars_read, NULL);
    _mesa_set_destroy(state.vars_written, NULL);
    return progress;
 }

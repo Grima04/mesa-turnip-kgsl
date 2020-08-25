@@ -4875,7 +4875,12 @@ bool nir_opt_comparison_pre_impl(nir_function_impl *impl);
 
 bool nir_opt_comparison_pre(nir_shader *shader);
 
-bool nir_opt_access(nir_shader *shader, bool is_vulkan);
+typedef struct nir_opt_access_options {
+   bool is_vulkan;
+   bool infer_non_readable;
+} nir_opt_access_options;
+
+bool nir_opt_access(nir_shader *shader, const nir_opt_access_options *options);
 bool nir_opt_algebraic(nir_shader *shader);
 bool nir_opt_algebraic_before_ffma(nir_shader *shader);
 bool nir_opt_algebraic_late(nir_shader *shader);
