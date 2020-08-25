@@ -858,8 +858,8 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
         /* Should we swap arguments? */
         bool flip_src12 = false;
 
-        unsigned src_bitsize = nir_src_bit_size(instr->src[0].src);
-        unsigned dst_bitsize = nir_dest_bit_size(*dest);
+        ASSERTED unsigned src_bitsize = nir_src_bit_size(instr->src[0].src);
+        ASSERTED unsigned dst_bitsize = nir_dest_bit_size(*dest);
 
         enum midgard_roundmode roundmode = MIDGARD_RTE;
 
@@ -1836,7 +1836,7 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
                         else if (combined)
                                 rt = MIDGARD_ZS_RT;
                         else
-                                assert(0);
+                                unreachable("bad rt");
 
                         unsigned reg_z = ~0, reg_s = ~0;
                         if (combined) {

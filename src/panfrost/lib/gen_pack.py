@@ -68,9 +68,8 @@ __gen_uint(uint64_t v, uint32_t start, uint32_t end)
 static inline uint32_t
 __gen_sint(int32_t v, uint32_t start, uint32_t end)
 {
-   const int width = end - start + 1;
-
 #ifndef NDEBUG
+   const int width = end - start + 1;
    if (width < 64) {
       const int64_t max = (1ll << (width - 1)) - 1;
       const int64_t min = -(1ll << (width - 1));

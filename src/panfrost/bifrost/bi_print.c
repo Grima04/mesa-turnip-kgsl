@@ -285,7 +285,7 @@ bi_print_instruction(bi_instruction *ins, FILE *fp)
                 fprintf(fp, "%s", bi_round_mode_name(ins->roundmode));
 
         fprintf(fp, " ");
-        bool succ = bi_print_dest_index(fp, ins, ins->dest);
+        ASSERTED bool succ = bi_print_dest_index(fp, ins, ins->dest);
         assert(succ);
 
         if (ins->dest_offset)

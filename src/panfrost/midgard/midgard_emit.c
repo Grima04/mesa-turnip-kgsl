@@ -240,7 +240,7 @@ mir_pack_swizzle(unsigned mask, unsigned *swizzle,
                 for (unsigned c = (dest_up ? 4 : 0); c < (dest_up ? 8 : 4); ++c) {
                         unsigned v = swizzle[c];
 
-                        bool t_upper = v > 3;
+                        ASSERTED bool t_upper = v > 3;
 
                         /* Ensure we're doing something sane */
 
@@ -419,7 +419,7 @@ mir_pack_ldst_mask(midgard_instruction *ins)
                 for (unsigned i = 0; i < 4; ++i) {
                         /* Make sure we're duplicated */
                         bool u = (ins->mask & (1 << (2*i + 0))) != 0;
-                        bool v = (ins->mask & (1 << (2*i + 1))) != 0;
+                        ASSERTED bool v = (ins->mask & (1 << (2*i + 1))) != 0;
                         assert(u == v);
 
                         packed |= (u << i);

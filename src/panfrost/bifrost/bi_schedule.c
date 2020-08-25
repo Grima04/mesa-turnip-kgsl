@@ -188,7 +188,7 @@ bi_schedule(bi_context *ctx)
                         /* Check for scheduling restrictions */
 
                         bool can_fma = props & BI_SCHED_FMA;
-                        bool can_add = props & BI_SCHED_ADD;
+                        ASSERTED bool can_add = props & BI_SCHED_ADD;
 
                         can_fma &= !bi_ambiguous_abs(ins);
                         can_fma &= !bi_icmp(ins);

@@ -116,7 +116,7 @@ set_class(unsigned *classes, unsigned node, unsigned class)
 /* Special register classes impose special constraints on who can read their
  * values, so check that */
 
-static bool
+static bool ASSERTED
 check_read_class(unsigned *classes, unsigned tag, unsigned node)
 {
         /* Non-nodes are implicitly ok */
@@ -137,7 +137,7 @@ check_read_class(unsigned *classes, unsigned tag, unsigned node)
         }
 }
 
-static bool
+static bool ASSERTED
 check_write_class(unsigned *classes, unsigned tag, unsigned node)
 {
         /* Non-nodes are implicitly ok */
