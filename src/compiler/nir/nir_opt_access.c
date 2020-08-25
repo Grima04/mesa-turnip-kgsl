@@ -37,6 +37,8 @@
  */
 
 struct access_state {
+   nir_shader *shader;
+
    struct set *vars_written;
    bool images_written;
    bool buffers_written;
@@ -45,7 +47,7 @@ struct access_state {
 static void
 gather_intrinsic(struct access_state *state, nir_intrinsic_instr *instr)
 {
-   nir_variable *var;
+   const nir_variable *var;
    switch (instr->intrinsic) {
    case nir_intrinsic_image_deref_store:
    case nir_intrinsic_image_deref_atomic_add:
@@ -108,9 +110,9 @@ gather_intrinsic(struct access_state *state, nir_intrinsic_instr *instr)
    case nir_intrinsic_deref_atomic_fmin:
    case nir_intrinsic_deref_atomic_fmax:
    case nir_intrinsic_deref_atomic_fcomp_swap:
-      var = nir_intrinsic_get_var(instr, 0);
-      if (var->data.mode != nir_var_mem_ssbo)
+      if (!nir_deref_mode_is(nir_src_as_deref(instr->src[0]), nir_var_mem_ssbo))
          break;
+      var = nir_get_binding_variable(state->shader, nir_chase_binding(instr->src[0]));
 
       _mesa_set_add(state->vars_written, var);
       state->buffers_written = true;
@@ -159,7 +161,8 @@ update_access(struct access_state *state, nir_intrinsic_instr *instr, bool is_im
    bool is_memory_readonly = access & ACCESS_NON_WRITEABLE;
 
    if (instr->intrinsic != nir_intrinsic_bindless_image_load) {
-      const nir_variable *var = nir_intrinsic_get_var(instr, 0);
+      const nir_variable *var = nir_get_binding_variable(
+         state->shader, nir_chase_binding(instr->src[0]));
       is_memory_readonly |= var->data.access & ACCESS_NON_WRITEABLE;
    }
 
@@ -184,8 +187,7 @@ process_intrinsic(struct access_state *state, nir_intrinsic_instr *instr)
                            nir_intrinsic_image_dim(instr) == GLSL_SAMPLER_DIM_BUF);
 
    case nir_intrinsic_load_deref: {
-      nir_variable *var = nir_intrinsic_get_var(instr, 0);
-      if (var->data.mode != nir_var_mem_ssbo)
+      if (!nir_deref_mode_is(nir_src_as_deref(instr->src[0]), nir_var_mem_ssbo))
          return false;
 
       return update_access(state, instr, false, true);
@@ -232,9 +234,10 @@ opt_access_impl(struct access_state *state,
 }
 
 bool
-nir_opt_access(nir_shader *shader)
+nir_opt_access(nir_shader *shader, bool is_vulkan)
 {
    struct access_state state = {
+      .shader = shader,
       .vars_written = _mesa_pointer_set_create(NULL),
    };
 
@@ -250,6 +253,12 @@ nir_opt_access(nir_shader *shader)
             }
          }
       }
+   }
+
+   /* In Vulkan, buffers and images can alias. */
+   if (is_vulkan) {
+      state.buffers_written |= state.images_written;
+      state.images_written |= state.buffers_written;
    }
 
    nir_foreach_variable_with_modes(var, shader, nir_var_uniform |

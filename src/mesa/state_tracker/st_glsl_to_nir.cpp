@@ -802,7 +802,7 @@ st_link_nir(struct gl_context *ctx,
       struct gl_linked_shader *shader = linked_shader[i];
       nir_shader *nir = shader->Program->nir;
 
-      NIR_PASS_V(nir, nir_opt_access);
+      NIR_PASS_V(nir, nir_opt_access, false);
 
       /* This needs to run after the initial pass of nir_lower_vars_to_ssa, so
        * that the buffer indices are constants in nir where they where
