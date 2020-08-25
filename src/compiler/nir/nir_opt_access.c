@@ -109,20 +109,24 @@ gather_intrinsic(struct access_state *state, nir_intrinsic_instr *instr)
    case nir_intrinsic_deref_atomic_fadd:
    case nir_intrinsic_deref_atomic_fmin:
    case nir_intrinsic_deref_atomic_fmax:
-   case nir_intrinsic_deref_atomic_fcomp_swap:
-      if (!nir_deref_mode_is(nir_src_as_deref(instr->src[0]), nir_var_mem_ssbo))
+   case nir_intrinsic_deref_atomic_fcomp_swap: {
+      nir_deref_instr *deref = nir_src_as_deref(instr->src[0]);
+      if (!nir_deref_mode_may_be(deref, nir_var_mem_ssbo | nir_var_mem_global))
          break;
-      var = nir_get_binding_variable(state->shader, nir_chase_binding(instr->src[0]));
 
-      if (var) {
-         _mesa_set_add(state->vars_written, var);
-      } else {
-         nir_foreach_variable_with_modes(possible_var, state->shader, nir_var_mem_ssbo)
-            _mesa_set_add(state->vars_written, possible_var);
+      if (nir_deref_mode_is(deref, nir_var_mem_ssbo)) {
+         var = nir_get_binding_variable(state->shader, nir_chase_binding(instr->src[0]));
+         if (var) {
+            _mesa_set_add(state->vars_written, var);
+         } else {
+            nir_foreach_variable_with_modes(possible_var, state->shader, nir_var_mem_ssbo)
+               _mesa_set_add(state->vars_written, possible_var);
+         }
       }
 
       state->buffers_written = true;
       break;
+   }
 
    default:
       break;
