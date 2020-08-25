@@ -254,7 +254,8 @@ use_hw_binning(struct fd_batch *batch)
 {
 	const struct fd_gmem_stateobj *gmem = batch->gmem_state;
 
-	// TODO figure out hw limits for binning
+	if ((gmem->maxpw * gmem->maxph) > 32)
+		return false;
 
 	return fd_binning_enabled && ((gmem->nbins_x * gmem->nbins_y) >= 2) &&
 			(batch->num_draws > 0);
