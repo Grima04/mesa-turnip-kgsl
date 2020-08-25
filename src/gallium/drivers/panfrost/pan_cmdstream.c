@@ -89,52 +89,6 @@ panfrost_vt_update_primitive_size(struct panfrost_context *ctx,
         }
 }
 
-void
-panfrost_vt_init(struct panfrost_context *ctx,
-                 enum pipe_shader_type stage,
-                 struct mali_vertex_tiler_prefix *prefix,
-                 struct mali_vertex_tiler_postfix *postfix)
-{
-        struct panfrost_device *device = pan_device(ctx->base.screen);
-        struct panfrost_batch *batch = panfrost_get_batch_for_fbo(ctx);
-
-        if (!ctx->shader[stage])
-                return;
-
-        memset(prefix, 0, sizeof(*prefix));
-        memset(postfix, 0, sizeof(*postfix));
-
-        if (device->quirks & IS_BIFROST) {
-                postfix->gl_enables = 0x2;
-                postfix->shared_memory = panfrost_vt_emit_shared_memory(batch);
-        } else {
-                postfix->gl_enables = 0x6;
-                postfix->shared_memory = panfrost_batch_reserve_framebuffer(batch);
-        }
-
-        if (stage == PIPE_SHADER_FRAGMENT) {
-                if (ctx->occlusion_query) {
-                        postfix->gl_enables |= MALI_OCCLUSION_QUERY;
-                        postfix->occlusion_counter = ctx->occlusion_query->bo->gpu;
-                        panfrost_batch_add_bo(ctx->batch, ctx->occlusion_query->bo,
-                                              PAN_BO_ACCESS_SHARED |
-                                              PAN_BO_ACCESS_RW |
-                                              PAN_BO_ACCESS_FRAGMENT);
-                }
-
-                postfix->gl_enables |= 0x7;
-                struct pipe_rasterizer_state *rast = &ctx->rasterizer->base;
-                SET_BIT(postfix->gl_enables, MALI_FRONT_CCW_TOP,
-                        rast->front_ccw);
-                SET_BIT(postfix->gl_enables, MALI_CULL_FACE_FRONT,
-                        (rast->cull_face & PIPE_FACE_FRONT));
-                SET_BIT(postfix->gl_enables, MALI_CULL_FACE_BACK,
-                        (rast->cull_face & PIPE_FACE_BACK));
-                SET_BIT(prefix->unknown_draw, MALI_DRAW_FLATSHADE_FIRST,
-                        rast->flatshade_first);
-        }
-}
-
 static unsigned
 panfrost_translate_index_size(unsigned size)
 {

@@ -255,6 +255,7 @@ panfrost_draw_vbo(
         const struct pipe_draw_info *info)
 {
         struct panfrost_context *ctx = pan_context(pipe);
+        struct panfrost_device *device = pan_device(ctx->base.screen);
 
         /* First of all, check the scissor to see if anything is drawn at all.
          * If it's not, we drop the draw (mostly a conformance issue;
@@ -299,13 +300,41 @@ panfrost_draw_vbo(
         ctx->instance_count = info->instance_count;
         ctx->active_prim = info->mode;
 
-        struct mali_vertex_tiler_prefix vertex_prefix, tiler_prefix;
-        struct mali_vertex_tiler_postfix vertex_postfix, tiler_postfix;
+        struct mali_vertex_tiler_prefix vertex_prefix = { 0 }, tiler_prefix = { 0 };
+        struct mali_vertex_tiler_postfix vertex_postfix = { 0 }, tiler_postfix = { 0 };
         union midgard_primitive_size primitive_size;
         unsigned vertex_count;
 
-        panfrost_vt_init(ctx, PIPE_SHADER_VERTEX, &vertex_prefix, &vertex_postfix);
-        panfrost_vt_init(ctx, PIPE_SHADER_FRAGMENT, &tiler_prefix, &tiler_postfix);
+        if (device->quirks & IS_BIFROST) {
+                vertex_postfix.gl_enables = 0x2;
+                tiler_postfix.gl_enables = 0x3;
+                vertex_postfix.shared_memory = panfrost_vt_emit_shared_memory(batch);
+        } else {
+                vertex_postfix.gl_enables = 0x6;
+                tiler_postfix.gl_enables = 0x7;
+                vertex_postfix.shared_memory = panfrost_batch_reserve_framebuffer(batch);
+        }
+
+        tiler_postfix.shared_memory = vertex_postfix.shared_memory;
+
+        if (ctx->occlusion_query) {
+                tiler_postfix.gl_enables |= MALI_OCCLUSION_QUERY;
+                tiler_postfix.occlusion_counter = ctx->occlusion_query->bo->gpu;
+                panfrost_batch_add_bo(ctx->batch, ctx->occlusion_query->bo,
+                                      PAN_BO_ACCESS_SHARED |
+                                      PAN_BO_ACCESS_RW |
+                                      PAN_BO_ACCESS_FRAGMENT);
+        }
+
+        struct pipe_rasterizer_state *rast = &ctx->rasterizer->base;
+        SET_BIT(tiler_postfix.gl_enables, MALI_FRONT_CCW_TOP,
+                rast->front_ccw);
+        SET_BIT(tiler_postfix.gl_enables, MALI_CULL_FACE_FRONT,
+                (rast->cull_face & PIPE_FACE_FRONT));
+        SET_BIT(tiler_postfix.gl_enables, MALI_CULL_FACE_BACK,
+                (rast->cull_face & PIPE_FACE_BACK));
+        SET_BIT(tiler_prefix.unknown_draw, MALI_DRAW_FLATSHADE_FIRST,
+                rast->flatshade_first);
 
         panfrost_vt_set_draw_info(ctx, info, g2m_draw_mode(mode),
                                   &vertex_postfix, &tiler_prefix,

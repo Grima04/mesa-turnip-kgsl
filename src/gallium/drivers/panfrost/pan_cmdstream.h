@@ -36,12 +36,6 @@ void panfrost_sampler_desc_init(const struct pipe_sampler_state *cso, struct mal
 void panfrost_sampler_desc_init_bifrost(const struct pipe_sampler_state *cso, struct mali_bifrost_sampler_packed *hw);
 
 void
-panfrost_vt_init(struct panfrost_context *ctx,
-                 enum pipe_shader_type stage,
-                 struct mali_vertex_tiler_prefix *prefix,
-                 struct mali_vertex_tiler_postfix *postfix);
-
-void
 panfrost_vt_set_draw_info(struct panfrost_context *ctx,
                           const struct pipe_draw_info *info,
                           enum mali_draw_mode draw_mode,
