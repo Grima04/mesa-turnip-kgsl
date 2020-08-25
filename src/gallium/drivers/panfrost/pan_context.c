@@ -319,6 +319,8 @@ panfrost_draw_vbo(
                                         1, 1, 1);
 
         /* Emit all sort of descriptors. */
+        mali_ptr push_vert = 0, push_frag = 0;
+
         panfrost_emit_vertex_data(batch, &vertex_postfix);
         panfrost_emit_varying_descriptor(batch,
                                          ctx->padded_count *
@@ -329,8 +331,10 @@ panfrost_draw_vbo(
         tiler_postfix.sampler_descriptor = panfrost_emit_sampler_descriptors(batch, PIPE_SHADER_FRAGMENT);
         vertex_postfix.textures = panfrost_emit_texture_descriptors(batch, PIPE_SHADER_VERTEX);
         tiler_postfix.textures = panfrost_emit_texture_descriptors(batch, PIPE_SHADER_FRAGMENT);
-        panfrost_emit_const_buf(batch, PIPE_SHADER_VERTEX, &vertex_postfix);
-        panfrost_emit_const_buf(batch, PIPE_SHADER_FRAGMENT, &tiler_postfix);
+        vertex_postfix.uniform_buffers = panfrost_emit_const_buf(batch, PIPE_SHADER_VERTEX, &push_vert);
+        tiler_postfix.uniform_buffers = panfrost_emit_const_buf(batch, PIPE_SHADER_FRAGMENT, &push_frag);
+        vertex_postfix.uniforms = push_vert;
+        tiler_postfix.uniforms = push_frag;
         tiler_postfix.viewport = panfrost_emit_viewport(batch);
 
         vertex_postfix.shader = panfrost_emit_compute_shader_meta(batch, PIPE_SHADER_VERTEX);

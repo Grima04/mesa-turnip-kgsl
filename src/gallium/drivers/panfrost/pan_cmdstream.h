@@ -60,10 +60,10 @@ panfrost_emit_frag_shader_meta(struct panfrost_batch *batch);
 mali_ptr
 panfrost_emit_viewport(struct panfrost_batch *batch);
 
-void
+mali_ptr
 panfrost_emit_const_buf(struct panfrost_batch *batch,
                         enum pipe_shader_type stage,
-                        struct mali_vertex_tiler_postfix *postfix);
+                        mali_ptr *push_constants);
 
 mali_ptr
 panfrost_emit_shared_memory(struct panfrost_batch *batch,

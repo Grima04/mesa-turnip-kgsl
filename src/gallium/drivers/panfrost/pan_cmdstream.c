@@ -975,16 +975,16 @@ panfrost_map_constant_buffer_cpu(struct panfrost_constant_buffer *buf,
                 unreachable("No constant buffer");
 }
 
-void
+mali_ptr
 panfrost_emit_const_buf(struct panfrost_batch *batch,
                         enum pipe_shader_type stage,
-                        struct mali_vertex_tiler_postfix *postfix)
+                        mali_ptr *push_constants)
 {
         struct panfrost_context *ctx = batch->ctx;
         struct panfrost_shader_variants *all = ctx->shader[stage];
 
         if (!all)
-                return;
+                return 0;
 
         struct panfrost_constant_buffer *buf = &ctx->constant_buffer[stage];
 
@@ -1052,10 +1052,10 @@ panfrost_emit_const_buf(struct panfrost_batch *batch,
                 }
         }
 
-        postfix->uniforms = transfer.gpu;
-        postfix->uniform_buffers = ubos.gpu;
+        *push_constants = transfer.gpu;
 
         buf->dirty_mask = 0;
+        return ubos.gpu;
 }
 
 mali_ptr
