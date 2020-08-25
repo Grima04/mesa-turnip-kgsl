@@ -105,6 +105,7 @@ panfrost_launch_grid(struct pipe_context *pipe,
 
         /* TODO: Stub */
         struct midgard_payload_vertex_tiler payload = { 0 };
+        struct mali_draw_packed postfix;
 
         /* We implement OpenCL inputs as uniforms (or a UBO -- same thing), so
          * reuse the graphics path for this by lowering to Gallium */
@@ -119,12 +120,15 @@ panfrost_launch_grid(struct pipe_context *pipe,
         if (info->input)
                 pipe->set_constant_buffer(pipe, PIPE_SHADER_COMPUTE, 0, &ubuf);
 
-        mali_ptr push = 0;
-        payload.postfix.gl_enables = (dev->quirks & IS_BIFROST) ? 0x2 : 0x6;
-        payload.postfix.shader = panfrost_emit_compute_shader_meta(batch, PIPE_SHADER_COMPUTE);
-        payload.postfix.uniform_buffers = panfrost_emit_const_buf(batch, PIPE_SHADER_COMPUTE, &push);
-        payload.postfix.uniforms = push;
-        payload.postfix.shared_memory = panfrost_emit_shared_memory(batch, info);
+        pan_pack(&postfix, DRAW, cfg) {
+                cfg.unknown_1 = (dev->quirks & IS_BIFROST) ? 0x2 : 0x6;
+                cfg.state = panfrost_emit_compute_shader_meta(batch, PIPE_SHADER_COMPUTE);
+                cfg.shared = panfrost_emit_shared_memory(batch, info);
+                cfg.uniform_buffers = panfrost_emit_const_buf(batch,
+                                PIPE_SHADER_COMPUTE, &cfg.push_uniforms);
+        }
+
+        memcpy(&payload.postfix, &postfix, sizeof(postfix));
 
         /* Invoke according to the grid info */
 
