@@ -431,13 +431,13 @@ static void gpir_print_shader_db(struct nir_shader *nir, gpir_compiler *comp,
 {
    const struct shader_info *info = &nir->info;
    char *shaderdb;
-   int ret = asprintf(&shaderdb,
-                      "%s shader: %d inst, %d loops, %d:%d spills:fills\n",
-                      gl_shader_stage_name(info->stage),
-                      comp->num_instr,
-                      comp->num_loops,
-                      comp->num_spills,
-                      comp->num_fills);
+   ASSERTED int ret = asprintf(&shaderdb,
+                               "%s shader: %d inst, %d loops, %d:%d spills:fills\n",
+                               gl_shader_stage_name(info->stage),
+                               comp->num_instr,
+                               comp->num_loops,
+                               comp->num_spills,
+                               comp->num_fills);
    assert(ret >= 0);
 
    if (lima_debug & LIMA_DEBUG_SHADERDB)
