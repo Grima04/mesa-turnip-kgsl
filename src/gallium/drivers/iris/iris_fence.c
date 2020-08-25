@@ -256,19 +256,21 @@ iris_fence_await(struct pipe_context *ctx,
                          "is unlikely to work without kernel 5.8+\n");
    }
 
-   /* Flush any current work in our context as it doesn't need to wait
-    * for this fence.  Any future work in our context must wait.
-    */
-   for (unsigned b = 0; b < IRIS_BATCH_COUNT; b++) {
-      struct iris_batch *batch = &ice->batches[b];
+   for (unsigned i = 0; i < ARRAY_SIZE(fence->fine); i++) {
+      struct iris_fine_fence *fine = fence->fine[i];
 
-      for (unsigned i = 0; i < ARRAY_SIZE(fence->fine); i++) {
-         struct iris_fine_fence *fine = fence->fine[i];
+      if (iris_fine_fence_signaled(fine))
+         continue;
 
-         if (iris_fine_fence_signaled(fine))
-            continue;
+      for (unsigned b = 0; b < IRIS_BATCH_COUNT; b++) {
+         struct iris_batch *batch = &ice->batches[b];
 
+         /* We're going to make any future work in this batch wait for our
+          * fence to have gone by.  But any currently queued work doesn't
+          * need to wait.  Flush the batch now, so it can happen sooner.
+          */
          iris_batch_flush(batch);
+
          iris_batch_add_syncobj(batch, fine->syncobj, I915_EXEC_FENCE_WAIT);
       }
    }
