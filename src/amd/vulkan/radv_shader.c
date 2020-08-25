@@ -813,6 +813,7 @@ static void radv_postprocess_config(const struct radv_device *device,
 {
 	const struct radv_physical_device *pdevice = device->physical_device;
 	bool scratch_enabled = config_in->scratch_bytes_per_wave > 0;
+	bool trap_enabled = !!device->trap_handler_shader;
 	unsigned vgpr_comp_cnt = 0;
 	unsigned num_input_vgprs = info->num_input_vgprs;
 
@@ -828,6 +829,7 @@ static void radv_postprocess_config(const struct radv_device *device,
 	assert((pdevice->rad_info.chip_class >= GFX10 && num_shared_vgprs % 8 == 0)
 	       || (pdevice->rad_info.chip_class < GFX10 && num_shared_vgprs == 0));
 	unsigned num_shared_vgpr_blocks = num_shared_vgprs / 8;
+	unsigned excp_en = 0;
 
 	*config_out = *config_in;
 	config_out->num_vgprs = num_vgprs;
@@ -835,15 +837,14 @@ static void radv_postprocess_config(const struct radv_device *device,
 	config_out->num_shared_vgprs = num_shared_vgprs;
 
 	config_out->rsrc2 = S_00B12C_USER_SGPR(info->num_user_sgprs) |
-			    S_00B12C_SCRATCH_EN(scratch_enabled);
+			    S_00B12C_SCRATCH_EN(scratch_enabled) |
+			    S_00B12C_TRAP_PRESENT(trap_enabled);
 
-	if (device->trap_handler_shader) {
-		/* Enable the trap handler if requested and configure the
-		 * shader exceptions like memory violation, etc.
+	if (trap_enabled) {
+		/* Configure the shader exceptions like memory violation, etc.
 		 * TODO: Enable (and validate) more exceptions.
 		 */
-		config_out->rsrc2 |= S_00B12C_TRAP_PRESENT(1) |
-				     S_00B12C_EXCP_EN(1 << 8); /* mem_viol */
+		excp_en = 1 << 8; /* mem_viol */
 	}
 
 	if (!pdevice->use_ngg_streamout) {
@@ -870,18 +871,21 @@ static void radv_postprocess_config(const struct radv_device *device,
 	case MESA_SHADER_TESS_EVAL:
 		if (info->is_ngg) {
 			config_out->rsrc1 |= S_00B228_MEM_ORDERED(pdevice->rad_info.chip_class >= GFX10);
-			config_out->rsrc2 |= S_00B22C_OC_LDS_EN(1);
+			config_out->rsrc2 |= S_00B22C_OC_LDS_EN(1) |
+					     S_00B22C_EXCP_EN(excp_en);
 		} else if (info->tes.as_es) {
 			assert(pdevice->rad_info.chip_class <= GFX8);
 			vgpr_comp_cnt = info->uses_prim_id ? 3 : 2;
 
-			config_out->rsrc2 |= S_00B12C_OC_LDS_EN(1);
+			config_out->rsrc2 |= S_00B12C_OC_LDS_EN(1) |
+					     S_00B12C_EXCP_EN(excp_en);
 		} else {
 			bool enable_prim_id = info->tes.export_prim_id || info->uses_prim_id;
 			vgpr_comp_cnt = enable_prim_id ? 3 : 2;
 
 			config_out->rsrc1 |= S_00B128_MEM_ORDERED(pdevice->rad_info.chip_class >= GFX10);
-			config_out->rsrc2 |= S_00B12C_OC_LDS_EN(1);
+			config_out->rsrc2 |= S_00B12C_OC_LDS_EN(1) |
+					     S_00B12C_EXCP_EN(excp_en);
 		}
 		config_out->rsrc2 |= S_00B22C_SHARED_VGPR_CNT(num_shared_vgpr_blocks);
 		break;
@@ -893,13 +897,16 @@ static void radv_postprocess_config(const struct radv_device *device,
 			 */
 			if (pdevice->rad_info.chip_class >= GFX10) {
 				vgpr_comp_cnt = info->vs.needs_instance_id ? 3 : 1;
-				config_out->rsrc2 |= S_00B42C_LDS_SIZE_GFX10(info->tcs.num_lds_blocks);
+				config_out->rsrc2 |= S_00B42C_LDS_SIZE_GFX10(info->tcs.num_lds_blocks) |
+						     S_00B42C_EXCP_EN_GFX10(excp_en);
 			} else {
 				vgpr_comp_cnt = info->vs.needs_instance_id ? 2 : 1;
-				config_out->rsrc2 |= S_00B42C_LDS_SIZE_GFX9(info->tcs.num_lds_blocks);
+				config_out->rsrc2 |= S_00B42C_LDS_SIZE_GFX9(info->tcs.num_lds_blocks) |
+						     S_00B42C_EXCP_EN_GFX9(excp_en);
 			}
 		} else {
-			config_out->rsrc2 |= S_00B12C_OC_LDS_EN(1);
+			config_out->rsrc2 |= S_00B12C_OC_LDS_EN(1) |
+					     S_00B12C_EXCP_EN(excp_en);
 		}
 		config_out->rsrc1 |= S_00B428_MEM_ORDERED(pdevice->rad_info.chip_class >= GFX10) |
 				     S_00B848_WGP_MODE(pdevice->rad_info.chip_class >= GFX10);
@@ -936,16 +943,20 @@ static void radv_postprocess_config(const struct radv_device *device,
 
 			config_out->rsrc1 |= S_00B128_MEM_ORDERED(pdevice->rad_info.chip_class >= GFX10);
 		}
-		config_out->rsrc2 |= S_00B12C_SHARED_VGPR_CNT(num_shared_vgpr_blocks);
+		config_out->rsrc2 |= S_00B12C_SHARED_VGPR_CNT(num_shared_vgpr_blocks) |
+				     S_00B12C_EXCP_EN(excp_en);
 		break;
 	case MESA_SHADER_FRAGMENT:
 		config_out->rsrc1 |= S_00B028_MEM_ORDERED(pdevice->rad_info.chip_class >= GFX10);
-		config_out->rsrc2 |= S_00B02C_SHARED_VGPR_CNT(num_shared_vgpr_blocks);
+		config_out->rsrc2 |= S_00B02C_SHARED_VGPR_CNT(num_shared_vgpr_blocks) |
+				     S_00B02C_TRAP_PRESENT(1) |
+				     S_00B02C_EXCP_EN(excp_en);
 		break;
 	case MESA_SHADER_GEOMETRY:
 		config_out->rsrc1 |= S_00B228_MEM_ORDERED(pdevice->rad_info.chip_class >= GFX10) |
 				     S_00B848_WGP_MODE(pdevice->rad_info.chip_class >= GFX10);
-		config_out->rsrc2 |= S_00B22C_SHARED_VGPR_CNT(num_shared_vgpr_blocks);
+		config_out->rsrc2 |= S_00B22C_SHARED_VGPR_CNT(num_shared_vgpr_blocks) |
+				     S_00B22C_EXCP_EN(excp_en);
 		break;
 	case MESA_SHADER_COMPUTE:
 		config_out->rsrc1 |= S_00B848_MEM_ORDERED(pdevice->rad_info.chip_class >= GFX10) |
@@ -957,7 +968,8 @@ static void radv_postprocess_config(const struct radv_device *device,
 			S_00B84C_TIDIG_COMP_CNT(info->cs.uses_thread_id[2] ? 2 :
 						info->cs.uses_thread_id[1] ? 1 : 0) |
 			S_00B84C_TG_SIZE_EN(info->cs.uses_local_invocation_idx) |
-			S_00B84C_LDS_SIZE(config_in->lds_size);
+			S_00B84C_LDS_SIZE(config_in->lds_size) |
+			S_00B84C_EXCP_EN(excp_en);
 		config_out->rsrc3 |= S_00B8A0_SHARED_VGPR_CNT(num_shared_vgpr_blocks);
 
 		break;
