@@ -774,7 +774,7 @@ load_device_extensions(struct zink_screen *screen)
       screen->vk_GetPhysicalDeviceCalibrateableTimeDomainsEXT(screen->pdev, &num_domains, domains);
 
       /* VK_TIME_DOMAIN_DEVICE_EXT is used for the ctx->get_timestamp hook and is the only one we really need */
-      bool have_device_time = false;
+      ASSERTED bool have_device_time = false;
       for (unsigned i = 0; i < num_domains; i++) {
          if (domains[i] == VK_TIME_DOMAIN_DEVICE_EXT) {
             have_device_time = true;
