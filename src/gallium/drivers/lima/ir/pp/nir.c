@@ -305,7 +305,7 @@ static bool ppir_emit_intrinsic(ppir_block *block, nir_instr *ni)
          op = ppir_op_load_frontface;
          break;
       default:
-         assert(0);
+         unreachable("bad intrinsic");
          break;
       }
 
