@@ -662,6 +662,12 @@ radv_shader_compile_to_nir(struct radv_device *device,
 	 */
 	nir_lower_var_copies(nir);
 
+	const nir_opt_access_options opt_access_options = {
+		.is_vulkan = true,
+		.infer_non_readable = true,
+	};
+	NIR_PASS_V(nir, nir_opt_access, &opt_access_options);
+
 	NIR_PASS_V(nir, nir_lower_explicit_io, nir_var_mem_push_const,
 		   nir_address_format_32bit_offset);
 
