@@ -102,36 +102,10 @@ st_shader_gather_info(nir_shader *nir, struct gl_program *prog)
 void
 st_nir_assign_vs_in_locations(struct nir_shader *nir)
 {
-   if (nir->info.stage != MESA_SHADER_VERTEX)
+   if (nir->info.stage != MESA_SHADER_VERTEX || nir->info.io_lowered)
       return;
 
    nir->num_inputs = util_bitcount64(nir->info.inputs_read);
-
-   if (nir->info.io_lowered) {
-      /* Adjust the locations in load_input intrinsics. */
-      nir_foreach_function(f, nir) {
-         if (f->impl) {
-            nir_foreach_block(block, f->impl) {
-               nir_foreach_instr_safe(instr, block) {
-                  if (instr->type == nir_instr_type_intrinsic) {
-                     nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
-
-                     if (intrin->intrinsic == nir_intrinsic_load_input) {
-                        unsigned base = nir_intrinsic_base(intrin);
-                        unsigned loc = nir_intrinsic_io_semantics(intrin).location;
-
-                        assert(nir->info.inputs_read & BITFIELD64_BIT(loc));
-                        base = util_bitcount64(nir->info.inputs_read &
-                                               BITFIELD64_MASK(loc));
-                        nir_intrinsic_set_base(intrin, base);
-                     }
-                  }
-               }
-            }
-         }
-      }
-      return;
-   }
 
    bool removed_inputs = false;
 
