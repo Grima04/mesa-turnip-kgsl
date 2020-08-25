@@ -257,6 +257,7 @@
     <field name="Stride" size="32" start="64" type="uint"/>
     <field name="Size" size="32" start="96" type="uint"/>
 
+    <field name="Divisor" size="8" start="56" type="padded" default="1"/>
     <field name="Divisor R" size="5" start="56" type="uint"/>
     <field name="Divisor P" size="3" start="61" type="uint"/>
     <field name="Divisor E" size="1" start="61" type="uint"/>

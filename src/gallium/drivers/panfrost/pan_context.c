@@ -319,9 +319,10 @@ panfrost_draw_vbo(
                                         1, 1, 1);
 
         /* Emit all sort of descriptors. */
-        mali_ptr push_vert = 0, push_frag = 0;
+        mali_ptr push_vert = 0, push_frag = 0, attribs = 0;
 
-        panfrost_emit_vertex_data(batch, &vertex_postfix);
+        vertex_postfix.attribute_meta = panfrost_emit_vertex_data(batch, &attribs);
+        vertex_postfix.attributes = attribs;
         panfrost_emit_varying_descriptor(batch,
                                          ctx->padded_count *
                                          ctx->instance_count,

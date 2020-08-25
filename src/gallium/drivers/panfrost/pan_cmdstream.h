@@ -77,9 +77,9 @@ mali_ptr
 panfrost_emit_sampler_descriptors(struct panfrost_batch *batch,
                                   enum pipe_shader_type stage);
 
-void
+mali_ptr
 panfrost_emit_vertex_data(struct panfrost_batch *batch,
-                          struct mali_vertex_tiler_postfix *vertex_postfix);
+                          mali_ptr *buffers);
 
 void
 panfrost_emit_varying_descriptor(struct panfrost_batch *batch,

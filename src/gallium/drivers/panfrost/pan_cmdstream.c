@@ -262,6 +262,7 @@ panfrost_vt_set_draw_info(struct panfrost_context *ctx,
         }
 
         tiler_prefix->unknown_draw = draw_flags;
+        ctx->offset_start = vertex_postfix->offset_start;
 
         /* Encode the padded vertex count */
 
@@ -1204,24 +1205,19 @@ panfrost_emit_sampler_descriptors(struct panfrost_batch *batch,
         return T.gpu;
 }
 
-void
+mali_ptr
 panfrost_emit_vertex_data(struct panfrost_batch *batch,
-                          struct mali_vertex_tiler_postfix *vertex_postfix)
+                          mali_ptr *buffers)
 {
         struct panfrost_context *ctx = batch->ctx;
         struct panfrost_vertex_state *so = ctx->vertex;
         struct panfrost_shader_state *vs = panfrost_get_shader_state(ctx, PIPE_SHADER_VERTEX);
 
-        unsigned instance_shift = vertex_postfix->instance_shift;
-        unsigned instance_odd = vertex_postfix->instance_odd;
-
         /* Worst case: everything is NPOT, which is only possible if instancing
          * is enabled. Otherwise single record is gauranteed */
-        bool could_npot = instance_shift || instance_odd;
-
         struct panfrost_transfer S = panfrost_pool_alloc_aligned(&batch->pool,
                         MALI_ATTRIBUTE_BUFFER_LENGTH * vs->attribute_count *
-                        (could_npot ? 2 : 1),
+                        (ctx->instance_count > 1 ? 2 : 1),
                         MALI_ATTRIBUTE_BUFFER_LENGTH * 2);
 
         struct panfrost_transfer T = panfrost_pool_alloc_aligned(&batch->pool,
@@ -1286,14 +1282,14 @@ panfrost_emit_vertex_data(struct panfrost_batch *batch,
 
                 if (!divisor || ctx->instance_count <= 1) {
                         pan_pack(bufs + k, ATTRIBUTE_BUFFER, cfg) {
-                                if (ctx->instance_count > 1)
+                                if (ctx->instance_count > 1) {
                                         cfg.type = MALI_ATTRIBUTE_TYPE_1D_MODULUS;
+                                        cfg.divisor = ctx->padded_count;
+                                }
 
                                 cfg.pointer = addr;
                                 cfg.stride = stride;
                                 cfg.size = size;
-                                cfg.divisor_r = instance_shift;
-                                cfg.divisor_p = instance_odd;
                         }
                 } else if (util_is_power_of_two_or_zero(hw_divisor)) {
                         pan_pack(bufs + k, ATTRIBUTE_BUFFER, cfg) {
@@ -1358,8 +1354,6 @@ panfrost_emit_vertex_data(struct panfrost_batch *batch,
          * addressing modes and now base is 64 aligned.
          */
 
-        unsigned start = vertex_postfix->offset_start;
-
         for (unsigned i = 0; i < so->num_elements; ++i) {
                 unsigned vbi = so->pipe[i].vertex_buffer_index;
                 struct pipe_vertex_buffer *buf = &ctx->vertex_buffers[vbi];
@@ -1376,8 +1370,8 @@ panfrost_emit_vertex_data(struct panfrost_batch *batch,
                 /* Also, somewhat obscurely per-instance data needs to be
                  * offset in response to a delayed start in an indexed draw */
 
-                if (so->pipe[i].instance_divisor && ctx->instance_count > 1 && start)
-                        src_offset -= buf->stride * start;
+                if (so->pipe[i].instance_divisor && ctx->instance_count > 1)
+                        src_offset -= buf->stride * ctx->offset_start;
 
                 pan_pack(out + i, ATTRIBUTE, cfg) {
                         cfg.buffer_index = attrib_to_buffer[i];
@@ -1386,8 +1380,8 @@ panfrost_emit_vertex_data(struct panfrost_batch *batch,
                 }
         }
 
-        vertex_postfix->attributes = S.gpu;
-        vertex_postfix->attribute_meta = T.gpu;
+        *buffers = S.gpu;
+        return T.gpu;
 }
 
 static mali_ptr
