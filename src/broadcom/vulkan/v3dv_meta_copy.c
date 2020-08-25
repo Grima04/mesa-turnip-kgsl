@@ -4033,8 +4033,15 @@ blit_shader(struct v3dv_cmd_buffer *cmd_buffer,
       if (!job)
          goto fail;
 
-      if (src->type == VK_IMAGE_TYPE_3D)
-         tex_coords[4] = (min_src_layer + i * src_z_step) / (float)src_level_d;
+      /* For 3D blits we need to compute the source slice to blit from (the Z
+       * coordinate of the source sample operation). We want to choose this
+       * based on the ratio of the depth of the source and the destination
+       * images, picking the coordinate in the middle of each step.
+       */
+      if (src->type == VK_IMAGE_TYPE_3D) {
+         tex_coords[4] =
+            (min_src_layer + (i + 0.5f) * src_z_step) / (float)src_level_d;
+      }
 
       v3dv_CmdPushConstants(_cmd_buffer,
                             device->meta.blit.playout,
