@@ -692,7 +692,7 @@ radv_trap_handler_init(struct radv_device *device)
 		return false;
 	}
 
-	device->tma_bo = ws->buffer_create(ws, TMA_BO_SIZE, 8,
+	device->tma_bo = ws->buffer_create(ws, TMA_BO_SIZE, 256,
 					   RADEON_DOMAIN_VRAM,
 					   RADEON_FLAG_CPU_ACCESS |
 					   RADEON_FLAG_NO_INTERPROCESS_SHARING |
