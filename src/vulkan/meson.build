@@ -32,7 +32,6 @@ if with_platform_x11
   vulkan_wsi_deps += [
     dep_xcb,
     dep_x11_xcb,
-    dep_xcb_dri2,
     dep_xcb_dri3,
     dep_xcb_present,
     dep_xcb_sync,
