@@ -25,6 +25,7 @@
 #ifndef AC_LLVM_BUILD_H
 #define AC_LLVM_BUILD_H
 
+#include "ac_llvm_util.h"
 #include "ac_shader_abi.h"
 #include "ac_shader_args.h"
 #include "ac_shader_util.h"
@@ -54,7 +55,6 @@ enum
 
 struct ac_llvm_flow;
 struct ac_llvm_compiler;
-enum ac_float_mode;
 
 struct ac_llvm_flow_state {
    struct ac_llvm_flow *stack;
