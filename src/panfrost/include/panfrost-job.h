@@ -547,14 +547,6 @@ struct bifrost_payload_tiler {
         struct mali_vertex_tiler_postfix postfix;
 } __attribute__((packed));
 
-struct bifrost_payload_fused {
-        struct mali_vertex_tiler_prefix prefix;
-        struct bifrost_tiler_only tiler;
-        struct mali_vertex_tiler_postfix tiler_postfix;
-        u64 padding; /* zero */
-        struct mali_vertex_tiler_postfix vertex_postfix;
-} __attribute__((packed));
-
 /* Purposeful off-by-one in width, height fields. For example, a (64, 64)
  * texture is stored as (63, 63) in these fields. This adjusts for that.
  * There's an identical pattern in the framebuffer descriptor. Even vertex
