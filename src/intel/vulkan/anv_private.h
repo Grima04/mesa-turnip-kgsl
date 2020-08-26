@@ -3009,6 +3009,20 @@ struct anv_cmd_buffer {
    uint64_t                                     intel_perf_marker;
 
    struct anv_measure_batch *measure;
+
+   /**
+    * KHR_performance_query requires self modifying command buffers and this
+    * array has the location of modifying commands to the query begin and end
+    * instructions storing performance counters. The array length is
+    * anv_physical_device::n_perf_query_commands.
+    */
+   struct gen_mi_address_token                  *self_mod_locations;
+
+   /**
+    * Index tracking which of the self_mod_locations items have already been
+    * used.
+    */
+   uint32_t                                      perf_reloc_idx;
 };
 
 VkResult anv_cmd_buffer_init_batch_bo_chain(struct anv_cmd_buffer *cmd_buffer);
@@ -4365,9 +4379,6 @@ struct anv_render_pass {
 
 #define ANV_PIPELINE_STATISTICS_MASK 0x000007ff
 
-#define OA_SNAPSHOT_SIZE (256)
-#define ANV_KHR_PERF_QUERY_SIZE (ALIGN(sizeof(uint64_t), 64) + 2 * OA_SNAPSHOT_SIZE)
-
 struct anv_query_pool {
    struct vk_object_base                        base;
 
@@ -4379,17 +4390,20 @@ struct anv_query_pool {
    uint32_t                                     slots;
    struct anv_bo *                              bo;
 
-   /* Perf queries : */
+   /* KHR perf queries : */
+   uint32_t                                     pass_size;
+   uint32_t                                     data_offset;
+   uint32_t                                     snapshot_size;
    uint32_t                                     n_counters;
    struct gen_perf_counter_pass                *counter_pass;
    uint32_t                                     n_passes;
    struct gen_perf_query_info                 **pass_query;
 };
 
-static inline uint32_t khr_perf_query_preamble_offset(struct anv_query_pool *pool,
+static inline uint32_t khr_perf_query_preamble_offset(const struct anv_query_pool *pool,
                                                       uint32_t pass)
 {
-   return pass * ANV_KHR_PERF_QUERY_SIZE + 8;
+   return pool->pass_size * pass + 8;
 }
 
 int anv_get_instance_entrypoint_index(const char *name);

@@ -44,8 +44,7 @@
 #include "common/gen_mi_builder.h"
 #include "perf/gen_perf.h"
 #include "perf/gen_perf_mdapi.h"
-
-#define OA_REPORT_N_UINT64 (256 / sizeof(uint64_t))
+#include "perf/gen_perf_regs.h"
 
 #include "vk_util.h"
 
@@ -66,10 +65,13 @@ VkResult genX(CreateQueryPool)(
 {
    ANV_FROM_HANDLE(anv_device, device, _device);
    const struct anv_physical_device *pdevice = device->physical;
+#if GEN_GEN >= 8
    const VkQueryPoolPerformanceCreateInfoKHR *perf_query_info = NULL;
-   struct anv_query_pool *pool;
    struct gen_perf_counter_pass *counter_pass;
    struct gen_perf_query_info **pass_query;
+   uint32_t n_passes = 0, data_offset = 0;
+#endif
+   struct anv_query_pool *pool;
    ANV_MULTIALLOC(ma);
    VkResult result;
 
@@ -86,7 +88,6 @@ VkResult genX(CreateQueryPool)(
     * together with some other counters.
     */
    uint32_t uint64s_per_slot = 0;
-   UNUSED uint32_t n_passes = 0;
 
    anv_multialloc_add(&ma, &pool, 1);
 
@@ -119,7 +120,11 @@ VkResult genX(CreateQueryPool)(
    case VK_QUERY_TYPE_PERFORMANCE_QUERY_INTEL:
       uint64s_per_slot = 72; /* 576 bytes, see layout below */
       break;
-   case VK_QUERY_TYPE_PERFORMANCE_QUERY_KHR:
+#if GEN_GEN >= 8
+   case VK_QUERY_TYPE_PERFORMANCE_QUERY_KHR: {
+      const struct gen_perf_query_field_layout *layout =
+         &pdevice->perf->query_layout;
+
       perf_query_info = vk_find_struct_const(pCreateInfo->pNext,
                                              QUERY_POOL_PERFORMANCE_CREATE_INFO_KHR);
       n_passes = gen_perf_get_n_passes(pdevice->perf,
@@ -128,9 +133,18 @@ VkResult genX(CreateQueryPool)(
                                        NULL);
       anv_multialloc_add(&ma, &counter_pass, perf_query_info->counterIndexCount);
       anv_multialloc_add(&ma, &pass_query, n_passes);
-      STATIC_ASSERT(ANV_KHR_PERF_QUERY_SIZE % sizeof(uint64_t) == 0);
-      uint64s_per_slot = (ANV_KHR_PERF_QUERY_SIZE / sizeof(uint64_t)) * n_passes;
+      uint64s_per_slot = 4 /* availability + small batch */;
+      /* Align to the requirement of the layout */
+      uint64s_per_slot = align_u32(uint64s_per_slot,
+                                   DIV_ROUND_UP(layout->alignment, sizeof(uint64_t)));
+      data_offset = uint64s_per_slot * sizeof(uint64_t);
+      /* Add the query data for begin & end commands */
+      uint64s_per_slot += 2 * DIV_ROUND_UP(layout->size, sizeof(uint64_t));
+      /* Multiply by the number of passes */
+      uint64s_per_slot *= n_passes;
       break;
+   }
+#endif
    default:
       assert(!"Invalid query type");
    }
@@ -146,7 +160,11 @@ VkResult genX(CreateQueryPool)(
    pool->stride = uint64s_per_slot * sizeof(uint64_t);
    pool->slots = pCreateInfo->queryCount;
 
+#if GEN_GEN >= 8
    if (pool->type == VK_QUERY_TYPE_PERFORMANCE_QUERY_KHR) {
+      pool->pass_size = pool->stride / n_passes;
+      pool->data_offset = data_offset;
+      pool->snapshot_size = (pool->pass_size - data_offset) / 2;
       pool->n_counters = perf_query_info->counterIndexCount;
       pool->counter_pass = counter_pass;
       gen_perf_get_counters_passes(pdevice->perf,
@@ -160,6 +178,7 @@ VkResult genX(CreateQueryPool)(
                             perf_query_info->counterIndexCount,
                             pool->pass_query);
    }
+#endif
 
    uint32_t bo_flags = 0;
    if (pdevice->supports_48bit_addresses)
@@ -180,22 +199,23 @@ VkResult genX(CreateQueryPool)(
    if (result != VK_SUCCESS)
       goto fail;
 
+#if GEN_GEN >= 8
    if (pool->type == VK_QUERY_TYPE_PERFORMANCE_QUERY_KHR) {
       for (uint32_t p = 0; p < pool->n_passes; p++) {
          struct gen_mi_builder b;
          struct anv_batch batch = {
-            .start = pool->bo->map + ANV_KHR_PERF_QUERY_SIZE * p + 8,
-            .end = pool->bo->map + ANV_KHR_PERF_QUERY_SIZE * p + 64,
+            .start = pool->bo->map + khr_perf_query_preamble_offset(pool, p),
+            .end = pool->bo->map + khr_perf_query_preamble_offset(pool, p) + pool->data_offset,
          };
          batch.next = batch.start;
 
          gen_mi_builder_init(&b, &batch);
          gen_mi_store(&b, gen_mi_reg64(ANV_PERF_QUERY_OFFSET_REG),
-                      gen_mi_imm(p * ANV_KHR_PERF_QUERY_SIZE));
+                      gen_mi_imm(p * pool->pass_size));
          anv_batch_emit(&batch, GENX(MI_BATCH_BUFFER_END), bbe);
-         assert(batch.next <= (pool->bo->map + ANV_KHR_PERF_QUERY_SIZE * p + 64));
       }
    }
+#endif
 
    *pQueryPool = anv_query_pool_to_handle(pool);
 
@@ -223,57 +243,65 @@ void genX(DestroyQueryPool)(
    vk_free2(&device->vk.alloc, pAllocator, pool);
 }
 
+#if GEN_GEN >= 8
 /**
- * VK_KHR_performance_query layout (576 bytes * number of passes) :
+ * VK_KHR_performance_query layout  :
  *
- * -----------------------------------------
- * |       availability (8b)    | |        |
- * |----------------------------| |        |
- * |     Small batch loading    | |        |
- * |  ANV_PERF_QUERY_OFFSET_REG | |        |
- * |          (56b)             | | Pass 0 |
- * |----------------------------| |        |
- * |     begin MI_RPC (256b)    | |        |
- * |----------------------------| |        |
- * |       end MI_RPC (256b)    | |        |
- * |----------------------------|--        | Query 0
- * |       availability (8b)    | |        |
- * |----------------------------| |        |
- * |     Small batch loading    | |        |
- * |  ANV_PERF_QUERY_OFFSET_REG | |        |
- * |          (56b)             | | Pass 1 |
- * |----------------------------| |        |
- * |     begin MI_RPC (256b)    | |        |
- * |----------------------------| |        |
- * |       end MI_RPC (256b)    | |        |
- * |----------------------------|-----------
- * |       availability (8b)    | |        |
- * |----------------------------| |        |
- * |        Unused (56b)        | |        |
- * |----------------------------| | Pass 0 |
- * |     begin MI_RPC (256b)    | |        |
- * |----------------------------| |        | Query 1
- * |       end MI_RPC (256b)    | |        |
- * |----------------------------|--        |
- * |             ...            | |        |
- * -----------------------------------------
+ * --------------------------------------------
+ * |       availability (8b)       | |        |
+ * |-------------------------------| |        |
+ * |      Small batch loading      | |        |
+ * |   ANV_PERF_QUERY_OFFSET_REG   | |        |
+ * |            (24b)              | | Pass 0 |
+ * |-------------------------------| |        |
+ * |       some padding (see       | |        |
+ * | query_field_layout:alignment) | |        |
+ * |-------------------------------| |        |
+ * |           query data          | |        |
+ * | (2 * query_field_layout:size) | |        |
+ * |-------------------------------|--        | Query 0
+ * |       availability (8b)       | |        |
+ * |-------------------------------| |        |
+ * |      Small batch loading      | |        |
+ * |   ANV_PERF_QUERY_OFFSET_REG   | |        |
+ * |            (24b)              | | Pass 1 |
+ * |-------------------------------| |        |
+ * |       some padding (see       | |        |
+ * | query_field_layout:alignment) | |        |
+ * |-------------------------------| |        |
+ * |           query data          | |        |
+ * | (2 * query_field_layout:size) | |        |
+ * |-------------------------------|-----------
+ * |       availability (8b)       | |        |
+ * |-------------------------------| |        |
+ * |      Small batch loading      | |        |
+ * |   ANV_PERF_QUERY_OFFSET_REG   | |        |
+ * |            (24b)              | | Pass 0 |
+ * |-------------------------------| |        |
+ * |       some padding (see       | |        |
+ * | query_field_layout:alignment) | |        |
+ * |-------------------------------| |        |
+ * |           query data          | |        |
+ * | (2 * query_field_layout:size) | |        |
+ * |-------------------------------|--        | Query 1
+ * |               ...             | |        |
+ * --------------------------------------------
  */
-UNUSED static uint64_t
+
+static uint64_t
 khr_perf_query_availability_offset(struct anv_query_pool *pool, uint32_t query, uint32_t pass)
 {
-   return query * (pool->n_passes * ANV_KHR_PERF_QUERY_SIZE) +
-      pass * ANV_KHR_PERF_QUERY_SIZE;
+   return query * (pool->stride) + pass * pool->pass_size;
 }
 
-UNUSED static uint64_t
-khr_perf_query_oa_offset(struct anv_query_pool *pool, uint32_t query, uint32_t pass, bool end)
+static uint64_t
+khr_perf_query_data_offset(struct anv_query_pool *pool, uint32_t query, uint32_t pass, bool end)
 {
-   return query * (pool->n_passes * ANV_KHR_PERF_QUERY_SIZE) +
-      pass * ANV_KHR_PERF_QUERY_SIZE +
-      64 + (end ? OA_SNAPSHOT_SIZE : 0);
+   return query * (pool->stride) + pass * pool->pass_size +
+      pool->data_offset + (end ? pool->snapshot_size : 0);
 }
 
-UNUSED static struct anv_address
+static struct anv_address
 khr_perf_query_availability_address(struct anv_query_pool *pool, uint32_t query, uint32_t pass)
 {
    return anv_address_add(
@@ -281,14 +309,39 @@ khr_perf_query_availability_address(struct anv_query_pool *pool, uint32_t query,
       khr_perf_query_availability_offset(pool, query, pass));
 }
 
-UNUSED static struct anv_address
-khr_perf_query_oa_address(struct anv_query_pool *pool, uint32_t query, uint32_t pass, bool end)
+static struct anv_address
+khr_perf_query_data_address(struct anv_query_pool *pool, uint32_t query, uint32_t pass, bool end)
 {
    return anv_address_add(
       (struct anv_address) { .bo = pool->bo, },
-      khr_perf_query_oa_offset(pool, query, pass, end));
+      khr_perf_query_data_offset(pool, query, pass, end));
 }
 
+static bool
+khr_perf_query_ensure_relocs(struct anv_cmd_buffer *cmd_buffer)
+{
+   if (anv_batch_has_error(&cmd_buffer->batch))
+      return false;
+
+   if (cmd_buffer->self_mod_locations)
+      return true;
+
+   struct anv_device *device = cmd_buffer->device;
+   const struct anv_physical_device *pdevice = device->physical;
+
+   cmd_buffer->self_mod_locations =
+      vk_alloc(&cmd_buffer->pool->alloc,
+               pdevice->n_perf_query_commands * sizeof(*cmd_buffer->self_mod_locations), 8,
+               VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+
+   if (!cmd_buffer->self_mod_locations) {
+      anv_batch_set_error(&cmd_buffer->batch, VK_ERROR_OUT_OF_HOST_MEMORY);
+      return false;
+   }
+
+   return true;
+}
+#endif
 
 /**
  * VK_INTEL_performance_query layout (576 bytes) :
@@ -362,6 +415,7 @@ query_slot(struct anv_query_pool *pool, uint32_t query)
 static bool
 query_is_available(struct anv_query_pool *pool, uint32_t query)
 {
+#if GEN_GEN >= 8
    if (pool->type == VK_QUERY_TYPE_PERFORMANCE_QUERY_KHR) {
       for (uint32_t p = 0; p < pool->n_passes; p++) {
          volatile uint64_t *slot =
@@ -370,16 +424,17 @@ query_is_available(struct anv_query_pool *pool, uint32_t query)
             return false;
       }
       return true;
-   } else {
-      return *(volatile uint64_t *)query_slot(pool, query);
    }
+#endif
+
+   return *(volatile uint64_t *)query_slot(pool, query);
 }
 
 static VkResult
 wait_for_available(struct anv_device *device,
                    struct anv_query_pool *pool, uint32_t query)
 {
-   uint64_t abs_timeout = anv_get_absolute_timeout(5 * NSEC_PER_SEC);
+   uint64_t abs_timeout = anv_get_absolute_timeout(2 * NSEC_PER_SEC);
 
    while (anv_gettime_ns() < abs_timeout) {
       if (query_is_available(pool, query))
@@ -426,8 +481,9 @@ VkResult genX(GetQueryPoolResults)(
 
       if (!available && (flags & VK_QUERY_RESULT_WAIT_BIT)) {
          status = wait_for_available(device, pool, firstQuery + i);
-         if (status != VK_SUCCESS)
+         if (status != VK_SUCCESS) {
             return status;
+         }
 
          available = true;
       }
@@ -514,12 +570,13 @@ VkResult genX(GetQueryPoolResults)(
          assert((flags & (VK_QUERY_RESULT_WITH_AVAILABILITY_BIT |
                           VK_QUERY_RESULT_PARTIAL_BIT)) == 0);
          for (uint32_t p = 0; p < pool->n_passes; p++) {
-            const uint32_t *begin = pool->bo->map + khr_perf_query_oa_offset(pool, firstQuery + i, p, false);
-            const uint32_t *end = pool->bo->map + khr_perf_query_oa_offset(pool, firstQuery + i, p, true);
+            const struct gen_perf_query_info *query = pool->pass_query[p];
             struct gen_perf_query_result result;
             gen_perf_query_result_clear(&result);
-            gen_perf_query_result_accumulate(&result, pool->pass_query[p],
-                                             &device->info, begin, end);
+            gen_perf_query_result_accumulate_fields(&result, query, &device->info,
+                                                    pool->bo->map + khr_perf_query_data_offset(pool, firstQuery + i, p, false),
+                                                    pool->bo->map + khr_perf_query_data_offset(pool, firstQuery + i, p, true),
+                                                    false /* no_oa_accumulate */);
             anv_perf_write_pass_results(pdevice->perf, pool, p, &result, pData);
          }
          break;
@@ -661,9 +718,8 @@ emit_zero_queries(struct anv_cmd_buffer *cmd_buffer,
       for (uint32_t i = 0; i < num_queries; i++) {
          for (uint32_t p = 0; p < pool->n_passes; p++) {
             gen_mi_memset(b,
-                          khr_perf_query_oa_address(pool,
-                                                    first_index + i, p, false),
-                          0, 2 * OA_SNAPSHOT_SIZE);
+                          khr_perf_query_data_address(pool, first_index + i, p, false),
+                          0, 2 * pool->snapshot_size);
             emit_query_mi_availability(b,
                                        khr_perf_query_availability_address(pool, first_index + i, p),
                                        true);
@@ -757,11 +813,13 @@ void genX(ResetQueryPool)(
 
    for (uint32_t i = 0; i < queryCount; i++) {
       if (pool->type == VK_QUERY_TYPE_PERFORMANCE_QUERY_KHR) {
+#if GEN_GEN >= 8
          for (uint32_t p = 0; p < pool->n_passes; p++) {
             uint64_t *pass_slot = pool->bo->map +
                khr_perf_query_availability_offset(pool, firstQuery + i, p);
             *pass_slot = 0;
          }
+#endif
       } else {
          uint64_t *slot = query_slot(pool, firstQuery + i);
          *slot = 0;
@@ -862,35 +920,112 @@ void genX(CmdBeginQueryIndexedEXT)(
 
 #if GEN_GEN >= 8
    case VK_QUERY_TYPE_PERFORMANCE_QUERY_KHR: {
+      if (!khr_perf_query_ensure_relocs(cmd_buffer))
+         return;
+
+      const struct anv_physical_device *pdevice = cmd_buffer->device->physical;
+      const struct gen_perf_query_field_layout *layout = &pdevice->perf->query_layout;
+
+      uint32_t reloc_idx = 0;
+      for (uint32_t end = 0; end < 2; end++) {
+         for (uint32_t r = 0; r < layout->n_fields; r++) {
+            const struct gen_perf_query_field *field =
+               &layout->fields[end ? r : (layout->n_fields - 1 - r)];
+            struct gen_mi_value reg_addr =
+               gen_mi_iadd(
+                  &b,
+                  gen_mi_imm(gen_canonical_address(pool->bo->offset +
+                                                   khr_perf_query_data_offset(pool, query, 0, end) +
+                                                   field->location)),
+                  gen_mi_reg64(ANV_PERF_QUERY_OFFSET_REG));
+            cmd_buffer->self_mod_locations[reloc_idx++] = gen_mi_store_address(&b, reg_addr);
+
+            if (field->type != GEN_PERF_QUERY_FIELD_TYPE_MI_RPC &&
+                field->size == 8) {
+               reg_addr =
+                  gen_mi_iadd(
+                     &b,
+                     gen_mi_imm(gen_canonical_address(pool->bo->offset +
+                                                      khr_perf_query_data_offset(pool, query, 0, end) +
+                                                      field->location + 4)),
+                     gen_mi_reg64(ANV_PERF_QUERY_OFFSET_REG));
+               cmd_buffer->self_mod_locations[reloc_idx++] = gen_mi_store_address(&b, reg_addr);
+            }
+         }
+      }
+
+      struct gen_mi_value availability_write_offset =
+         gen_mi_iadd(
+            &b,
+            gen_mi_imm(
+               gen_canonical_address(
+                  pool->bo->offset +
+                  khr_perf_query_availability_offset(pool, query, 0 /* pass */))),
+            gen_mi_reg64(ANV_PERF_QUERY_OFFSET_REG));
+      cmd_buffer->self_mod_locations[reloc_idx++] =
+         gen_mi_store_address(&b, availability_write_offset);
+
+      assert(reloc_idx == pdevice->n_perf_query_commands);
+
+      gen_mi_self_mod_barrier(&b);
+
       anv_batch_emit(&cmd_buffer->batch, GENX(PIPE_CONTROL), pc) {
          pc.CommandStreamerStallEnable = true;
          pc.StallAtPixelScoreboard = true;
       }
       cmd_buffer->perf_query_pool = pool;
 
-      /* We know the bottom bits of the address are 0s which match what we
-       * want in the MI_RPC packet.
-       */
-      struct gen_mi_value mi_rpc_write_offset =
-         gen_mi_iadd(
-            &b,
-            gen_mi_imm(
-               gen_canonical_address(
-                  pool->bo->offset +
-                  khr_perf_query_oa_offset(pool, query, 0 /* pass */, false))),
-            gen_mi_reg64(ANV_PERF_QUERY_OFFSET_REG));
-      struct gen_mi_address_token mi_rpc_addr_dest =
-         gen_mi_store_address(&b, mi_rpc_write_offset);
-      gen_mi_self_mod_barrier(&b);
+      cmd_buffer->perf_reloc_idx = 0;
+      for (uint32_t r = 0; r < layout->n_fields; r++) {
+         const struct gen_perf_query_field *field =
+            &layout->fields[layout->n_fields - 1 - r];
+         void *dws;
 
-      void *mi_rpc_dws =
-         anv_batch_emitn(&cmd_buffer->batch,
-                         GENX(MI_REPORT_PERF_COUNT_length),
-                         GENX(MI_REPORT_PERF_COUNT),
-                         .MemoryAddress = query_addr /* Will be overwritten */ );
-      _gen_mi_resolve_address_token(&b, mi_rpc_addr_dest,
-                                    mi_rpc_dws +
-                                    GENX(MI_REPORT_PERF_COUNT_MemoryAddress_start) / 8);
+         switch (field->type) {
+         case GEN_PERF_QUERY_FIELD_TYPE_MI_RPC:
+            dws = anv_batch_emitn(&cmd_buffer->batch,
+                                  GENX(MI_REPORT_PERF_COUNT_length),
+                                  GENX(MI_REPORT_PERF_COUNT),
+                                  .MemoryAddress = query_addr /* Will be overwritten */);
+            _gen_mi_resolve_address_token(&b,
+                                          cmd_buffer->self_mod_locations[cmd_buffer->perf_reloc_idx++],
+                                          dws +
+                                          GENX(MI_REPORT_PERF_COUNT_MemoryAddress_start) / 8);
+            break;
+
+         case GEN_PERF_QUERY_FIELD_TYPE_SRM_PERFCNT:
+         case GEN_PERF_QUERY_FIELD_TYPE_SRM_RPSTAT:
+         case GEN_PERF_QUERY_FIELD_TYPE_SRM_OA_B:
+         case GEN_PERF_QUERY_FIELD_TYPE_SRM_OA_C:
+            dws =
+               anv_batch_emitn(&cmd_buffer->batch,
+                               GENX(MI_STORE_REGISTER_MEM_length),
+                               GENX(MI_STORE_REGISTER_MEM),
+                               .RegisterAddress = field->mmio_offset,
+                               .MemoryAddress = query_addr /* Will be overwritten */ );
+            _gen_mi_resolve_address_token(&b,
+                                          cmd_buffer->self_mod_locations[cmd_buffer->perf_reloc_idx++],
+                                          dws +
+                                          GENX(MI_STORE_REGISTER_MEM_MemoryAddress_start) / 8);
+            if (field->size == 8) {
+               dws =
+                  anv_batch_emitn(&cmd_buffer->batch,
+                                  GENX(MI_STORE_REGISTER_MEM_length),
+                                  GENX(MI_STORE_REGISTER_MEM),
+                                  .RegisterAddress = field->mmio_offset + 4,
+                                  .MemoryAddress = query_addr /* Will be overwritten */ );
+               _gen_mi_resolve_address_token(&b,
+                                             cmd_buffer->self_mod_locations[cmd_buffer->perf_reloc_idx++],
+                                             dws +
+                                             GENX(MI_STORE_REGISTER_MEM_MemoryAddress_start) / 8);
+            }
+            break;
+
+         default:
+            unreachable("Invalid query field");
+            break;
+         }
+      }
       break;
    }
 #endif
@@ -993,50 +1128,75 @@ void genX(CmdEndQueryIndexedEXT)(
          pc.CommandStreamerStallEnable = true;
          pc.StallAtPixelScoreboard = true;
       }
+      cmd_buffer->perf_query_pool = pool;
 
-      /* We know the bottom bits of the address are 0s which match what we
-       * want in the MI_RPC/MI_SDI packets.
-       */
-      struct gen_mi_value mi_rpc_write_offset =
-         gen_mi_iadd(
-            &b,
-            gen_mi_imm(
-               gen_canonical_address(
-                  pool->bo->offset +
-                  khr_perf_query_oa_offset(pool, query, 0 /* pass*/, true))),
-            gen_mi_reg64(ANV_PERF_QUERY_OFFSET_REG));
-      struct gen_mi_value availability_write_offset =
-         gen_mi_iadd(
-            &b,
-            gen_mi_imm(
-               gen_canonical_address(
-                  pool->bo->offset +
-                  khr_perf_query_availability_offset(pool, query, 0 /* pass */))),
-            gen_mi_reg64(ANV_PERF_QUERY_OFFSET_REG));
+      if (!khr_perf_query_ensure_relocs(cmd_buffer))
+         return;
 
-      struct gen_mi_address_token mi_rpc_addr_dest =
-         gen_mi_store_address(&b, mi_rpc_write_offset);
-      struct gen_mi_address_token availability_addr_dest =
-         gen_mi_store_address(&b, availability_write_offset);
-      gen_mi_self_mod_barrier(&b);
+      const struct anv_physical_device *pdevice = cmd_buffer->device->physical;
+      const struct gen_perf_query_field_layout *layout = &pdevice->perf->query_layout;
 
-      void *mi_rpc_dws =
-         anv_batch_emitn(&cmd_buffer->batch,
-                         GENX(MI_REPORT_PERF_COUNT_length),
-                         GENX(MI_REPORT_PERF_COUNT),
-                         .MemoryAddress = query_addr /* Will be overwritten */ );
-      _gen_mi_resolve_address_token(&b, mi_rpc_addr_dest,
-                                    mi_rpc_dws +
-                                    GENX(MI_REPORT_PERF_COUNT_MemoryAddress_start) / 8);
+      void *dws;
+      for (uint32_t r = 0; r < layout->n_fields; r++) {
+         const struct gen_perf_query_field *field = &layout->fields[r];
 
-      void *availability_dws =
+         switch (field->type) {
+         case GEN_PERF_QUERY_FIELD_TYPE_MI_RPC:
+            dws = anv_batch_emitn(&cmd_buffer->batch,
+                                  GENX(MI_REPORT_PERF_COUNT_length),
+                                  GENX(MI_REPORT_PERF_COUNT),
+                                  .MemoryAddress = query_addr /* Will be overwritten */);
+            _gen_mi_resolve_address_token(&b,
+                                          cmd_buffer->self_mod_locations[cmd_buffer->perf_reloc_idx++],
+                                          dws +
+                                          GENX(MI_REPORT_PERF_COUNT_MemoryAddress_start) / 8);
+            break;
+
+         case GEN_PERF_QUERY_FIELD_TYPE_SRM_PERFCNT:
+         case GEN_PERF_QUERY_FIELD_TYPE_SRM_RPSTAT:
+         case GEN_PERF_QUERY_FIELD_TYPE_SRM_OA_B:
+         case GEN_PERF_QUERY_FIELD_TYPE_SRM_OA_C:
+            dws =
+               anv_batch_emitn(&cmd_buffer->batch,
+                               GENX(MI_STORE_REGISTER_MEM_length),
+                               GENX(MI_STORE_REGISTER_MEM),
+                               .RegisterAddress = field->mmio_offset,
+                               .MemoryAddress = query_addr /* Will be overwritten */ );
+            _gen_mi_resolve_address_token(&b,
+                                          cmd_buffer->self_mod_locations[cmd_buffer->perf_reloc_idx++],
+                                          dws +
+                                          GENX(MI_STORE_REGISTER_MEM_MemoryAddress_start) / 8);
+            if (field->size == 8) {
+               dws =
+                  anv_batch_emitn(&cmd_buffer->batch,
+                                  GENX(MI_STORE_REGISTER_MEM_length),
+                                  GENX(MI_STORE_REGISTER_MEM),
+                                  .RegisterAddress = field->mmio_offset + 4,
+                                  .MemoryAddress = query_addr /* Will be overwritten */ );
+               _gen_mi_resolve_address_token(&b,
+                                             cmd_buffer->self_mod_locations[cmd_buffer->perf_reloc_idx++],
+                                             dws +
+                                             GENX(MI_STORE_REGISTER_MEM_MemoryAddress_start) / 8);
+            }
+            break;
+
+         default:
+            unreachable("Invalid query field");
+            break;
+         }
+      }
+
+      dws =
          anv_batch_emitn(&cmd_buffer->batch,
                          GENX(MI_STORE_DATA_IMM_length),
                          GENX(MI_STORE_DATA_IMM),
                          .ImmediateData = true);
-      _gen_mi_resolve_address_token(&b, availability_addr_dest,
-                                    availability_dws +
+      _gen_mi_resolve_address_token(&b,
+                                    cmd_buffer->self_mod_locations[cmd_buffer->perf_reloc_idx++],
+                                    dws +
                                     GENX(MI_STORE_DATA_IMM_Address_start) / 8);
+
+      assert(cmd_buffer->perf_reloc_idx == pdevice->n_perf_query_commands);
       break;
    }
 #endif
