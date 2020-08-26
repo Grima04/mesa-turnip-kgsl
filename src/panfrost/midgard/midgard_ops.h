@@ -30,6 +30,7 @@ extern struct mir_op_props alu_opcode_props[256];
 extern struct mir_ldst_op_props load_store_opcode_props[256];
 extern struct mir_tag_props midgard_tag_props[16];
 
+#define OP_IS_ATOMIC(op) (load_store_opcode_props[op].props & LDST_ATOMIC)
 #define OP_IS_STORE(op) (load_store_opcode_props[op].props & LDST_STORE)
 #define OP_HAS_ADDRESS(op) (load_store_opcode_props[op].props & LDST_ADDRESS)
 
