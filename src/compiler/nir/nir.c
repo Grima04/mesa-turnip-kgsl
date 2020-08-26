@@ -801,6 +801,8 @@ add_ssa_def_cb(nir_ssa_def *def, void *state)
          nir_cf_node_get_function(&instr->block->cf_node);
 
       def->index = impl->ssa_alloc++;
+
+      impl->valid_metadata &= ~nir_metadata_live_ssa_defs;
    }
 
    return true;
@@ -1503,6 +1505,8 @@ nir_ssa_def_init(nir_instr *instr, nir_ssa_def *def,
          nir_cf_node_get_function(&instr->block->cf_node);
 
       def->index = impl->ssa_alloc++;
+
+      impl->valid_metadata &= ~nir_metadata_live_ssa_defs;
    } else {
       def->index = UINT_MAX;
    }
