@@ -475,6 +475,8 @@ get_register_queries_function(const struct gen_device_info *devinfo)
       if (devinfo->gt == 2)
          return gen_oa_register_queries_tglgt2;
    }
+   if (devinfo->is_rocketlake)
+      return gen_oa_register_queries_rkl;
 
    return NULL;
 }
