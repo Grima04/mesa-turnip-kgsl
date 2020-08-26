@@ -252,7 +252,7 @@ enum quniform_contents {
         QUNIFORM_SSBO_OFFSET,
 
         /* Returns the size of the SSBO or UBO given by the data value. */
-        QUNIFORM_GET_BUFFER_SIZE,
+        QUNIFORM_GET_SSBO_SIZE,
         QUNIFORM_GET_UBO_SIZE,
 
         /* Sizes (in pixels) of a shader image given by the data value. */
