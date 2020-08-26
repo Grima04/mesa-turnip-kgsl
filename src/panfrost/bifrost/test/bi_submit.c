@@ -186,20 +186,23 @@ bit_vertex(struct panfrost_device *dev, panfrost_program prog,
                                 .opaque = { (5) << 26 }
                         }
                 },
-                .postfix = {
-                        .gl_enables = 0x2,
-                        .shared_memory = shmem->gpu,
-                        .shader = shader_desc->gpu,
-                        .uniforms = ubo->gpu + 1024,
-                        .uniform_buffers = ubo->gpu,
-                        .attribute_meta = attr->gpu,
-                        .attributes = attr->gpu + 256,
-                        .varying_meta = var->gpu,
-                        .varyings = var->gpu + 256,
-                },
         };
 
+        struct mali_draw_packed draw;
         struct mali_invocation_packed invocation;
+
+        pan_pack(&draw, DRAW, cfg) {
+                cfg.unknown_1 = 0x2;
+                cfg.shared = shmem->gpu;
+                cfg.state = shader_desc->gpu;
+                cfg.push_uniforms = ubo->gpu + 1024;
+                cfg.uniform_buffers = ubo->gpu;
+                cfg.attributes = attr->gpu;
+                cfg.attribute_buffers = attr->gpu + 256;
+                cfg.varyings = var->gpu;
+                cfg.varying_buffers = var->gpu + 256;
+        }
+ 
 
         panfrost_pack_work_groups_compute(&invocation,
                         1, 1, 1,
@@ -207,6 +210,7 @@ bit_vertex(struct panfrost_device *dev, panfrost_program prog,
                         true);
 
         payload.prefix.invocation = invocation;
+        payload.postfix = draw;
 
         struct panfrost_bo *bos[] = {
                 scratchpad, shmem, shader, shader_desc, ubo, var, attr

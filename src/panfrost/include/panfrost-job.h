@@ -38,21 +38,6 @@ typedef uint32_t u32;
 typedef uint64_t u64;
 typedef uint64_t mali_ptr;
 
-/* Applies to tiler_gl_enables */
-
-#define MALI_OCCLUSION_QUERY    (1 << 3)
-#define MALI_OCCLUSION_PRECISE  (1 << 4)
-
-/* Set for a glFrontFace(GL_CCW) in a Y=0=TOP coordinate system (like Gallium).
- * In OpenGL, this would corresponds to glFrontFace(GL_CW). Mesa and the blob
- * disagree about how to do viewport flipping, so the blob actually sets this
- * for GL_CW but then has a negative viewport stride */
-
-#define MALI_FRONT_CCW_TOP      (1 << 5)
-
-#define MALI_CULL_FACE_FRONT    (1 << 6)
-#define MALI_CULL_FACE_BACK     (1 << 7)
-
 enum mali_nondominant_mode {
         MALI_BLEND_NON_MIRROR = 0,
         MALI_BLEND_NON_ZERO = 1
@@ -464,72 +449,15 @@ struct bifrost_tiler_meta {
         u64 zeros[20];
 } __attribute__((packed));
 
-struct mali_vertex_tiler_postfix {
-        u16 gl_enables; // 0x6 on Midgard, 0x2 on Bifrost
-
-        /* Both zero for non-instanced draws. For instanced draws, a
-         * decomposition of padded_num_vertices. See the comments about the
-         * corresponding fields in mali_attr for context. */
-
-        unsigned instance_shift : 5;
-        unsigned instance_odd : 3;
-
-        u8 zero4;
-
-        /* Offset for first vertex in buffer */
-        u32 offset_start;
-
-	u64 zero5;
-
-        /* Zero for vertex jobs. Pointer to the position (gl_Position) varying
-         * output from the vertex shader for tiler jobs.
-         */
-
-        u64 position_varying;
-
-        /* An array of mali_uniform_buffer_meta's. The size is given by the
-         * shader_meta.
-         */
-        u64 uniform_buffers;
-
-        /* On Bifrost, this is a pointer to an array of bifrost_texture_descriptor.
-         * On Midgard, this is a pointer to an array of pointers to the texture
-         * descriptors, number of pointers bounded by number of textures. The
-         * indirection is needed to accomodate varying numbers and sizes of
-         * texture descriptors */
-        u64 textures;
-
-        /* For OpenGL, from what I've seen, this is intimately connected to
-         * texture_meta. cwabbott says this is not the case under Vulkan, hence
-         * why this field is seperate (Midgard is Vulkan capable). Pointer to
-         * array of sampler descriptors (which are uniform in size) */
-        u64 sampler_descriptor;
-
-        u64 uniforms;
-        u64 shader;
-        u64 attributes; /* struct attribute_buffer[] */
-        u64 attribute_meta; /* attribute_meta[] */
-        u64 varyings; /* struct attr */
-        u64 varying_meta; /* pointer */
-        u64 viewport;
-        u64 occlusion_counter; /* A single bit as far as I can tell */
-
-        /* On Bifrost, this points directly to a mali_shared_memory structure.
-         * On Midgard, this points to a framebuffer (either SFBD or MFBD as
-         * tagged), which embeds a mali_shared_memory structure */
-        mali_ptr shared_memory;
-} __attribute__((packed));
-
 struct midgard_payload_vertex_tiler {
         struct mali_vertex_tiler_prefix prefix;
-        struct mali_vertex_tiler_postfix postfix;
-
+        struct mali_draw_packed postfix;
         union midgard_primitive_size primitive_size;
 } __attribute__((packed));
 
 struct bifrost_payload_vertex {
         struct mali_vertex_tiler_prefix prefix;
-        struct mali_vertex_tiler_postfix postfix;
+        struct mali_draw_packed postfix;
 } __attribute__((packed));
 
 struct bifrost_payload_tiler {
@@ -537,7 +465,7 @@ struct bifrost_payload_tiler {
         union midgard_primitive_size primitive_size;
         mali_ptr tiler_meta;
         u64 zero1, zero2, zero3, zero4, zero5, zero6;
-        struct mali_vertex_tiler_postfix postfix;
+        struct mali_draw_packed postfix;
 } __attribute__((packed));
 
 /* Purposeful off-by-one in width, height fields. For example, a (64, 64)
