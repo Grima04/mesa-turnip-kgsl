@@ -436,10 +436,18 @@ panfrost_emit_blend(struct panfrost_batch *batch, void *rts,
 
         struct bifrost_blend_rt *brts = rts;
 
-        /* Disable blending for depth-only on Bifrost */
+        /* Disable blending for depth-only */
 
-        if (rt_count == 0 && dev->quirks & IS_BIFROST)
-                brts[0].unk2 = 0x3;
+        if (rt_count == 0) {
+                if (dev->quirks & IS_BIFROST) {
+                        memset(brts, 0, sizeof(*brts));
+                        brts[0].unk2 = 0x3;
+                } else {
+                        pan_pack(rts, MIDGARD_BLEND_OPAQUE, cfg) {
+                                cfg.equation = 0xf0122122; /* Replace */
+                        }
+                }
+        }
 
         for (unsigned i = 0; i < rt_count; ++i) {
                 struct mali_blend_flags_packed flags = {};
@@ -461,6 +469,7 @@ panfrost_emit_blend(struct panfrost_batch *batch, void *rts,
                 }
 
                 if (dev->quirks & IS_BIFROST) {
+                        memset(brts + i, 0, sizeof(brts[i]));
                         brts[i].flags = flags.opaque[0];
 
                         if (blend[i].is_shader) {
