@@ -232,9 +232,6 @@ struct panfrost_shader_state {
         unsigned sysval_count;
         unsigned sysval[MAX_SYSVAL_COUNT];
 
-        uint16_t point_sprite_mask;
-        unsigned point_sprite_upper_left : 1;
-
         /* Should we enable helper invocations */
         bool helper_invocations;
 

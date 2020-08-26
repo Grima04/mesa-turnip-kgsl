@@ -458,18 +458,7 @@ panfrost_bind_rasterizer_state(
         void *hwcso)
 {
         struct panfrost_context *ctx = pan_context(pctx);
-
         ctx->rasterizer = hwcso;
-
-        if (!hwcso)
-                return;
-
-        /* Point sprites are emulated */
-
-        struct panfrost_shader_state *variant = panfrost_get_shader_state(ctx, PIPE_SHADER_FRAGMENT);
-
-        if (ctx->rasterizer->base.sprite_coord_enable || (variant && variant->point_sprite_mask))
-                ctx->base.bind_fs_state(&ctx->base, ctx->shader[PIPE_SHADER_FRAGMENT]);
 }
 
 static void *
@@ -619,9 +608,6 @@ panfrost_variant_matches(
         enum pipe_shader_type type)
 {
         struct panfrost_device *dev = pan_device(ctx->base.screen);
-        struct pipe_rasterizer_state *rasterizer = &ctx->rasterizer->base;
-
-        bool is_fragment = (type == PIPE_SHADER_FRAGMENT);
 
         if (variant->outputs_read) {
                 struct pipe_framebuffer_state *fb = &ctx->pipe_framebuffer;
@@ -642,23 +628,6 @@ panfrost_variant_matches(
                         if (variant->rt_formats[i] != fmt)
                                 return false;
                 }
-        }
-
-        /* Point sprites TODO on bifrost, always pass */
-        if (is_fragment && rasterizer && (rasterizer->sprite_coord_enable |
-                                          variant->point_sprite_mask)
-                        && !(dev->quirks & IS_BIFROST)) {
-                /* Ensure the same varyings are turned to point sprites */
-                if (rasterizer->sprite_coord_enable != variant->point_sprite_mask)
-                        return false;
-
-                /* Ensure the orientation is correct */
-                bool upper_left =
-                        rasterizer->sprite_coord_mode ==
-                        PIPE_SPRITE_COORD_UPPER_LEFT;
-
-                if (variant->point_sprite_upper_left != upper_left)
-                        return false;
         }
 
         /* Otherwise, we're good to go */
@@ -769,14 +738,6 @@ panfrost_bind_shader_state(
                                         fmt = PIPE_FORMAT_NONE;
 
                                 v->rt_formats[i] = fmt;
-                        }
-
-                        /* Point sprites are TODO on Bifrost */
-                        if (ctx->rasterizer && !(dev->quirks & IS_BIFROST)) {
-                                v->point_sprite_mask = ctx->rasterizer->base.sprite_coord_enable;
-                                v->point_sprite_upper_left =
-                                        ctx->rasterizer->base.sprite_coord_mode ==
-                                        PIPE_SPRITE_COORD_UPPER_LEFT;
                         }
                 }
         }
