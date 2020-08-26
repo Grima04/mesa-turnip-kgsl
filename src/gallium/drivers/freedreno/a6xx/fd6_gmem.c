@@ -1360,7 +1360,6 @@ setup_tess_buffers(struct fd_batch *batch, struct fd_ringbuffer *ring)
 static void
 fd6_emit_sysmem_prep(struct fd_batch *batch)
 {
-	struct pipe_framebuffer_state *pfb = &batch->framebuffer;
 	struct fd_ringbuffer *ring = batch->gmem;
 
 	fd6_emit_restore(batch, ring);
@@ -1371,6 +1370,12 @@ fd6_emit_sysmem_prep(struct fd_batch *batch)
 		fd6_emit_ib(ring, batch->prologue);
 		fd_log(batch, "END PROLOGUE");
 	}
+
+	/* remaining setup below here does not apply to blit/compute: */
+	if (batch->nondraw)
+		return;
+
+	struct pipe_framebuffer_state *pfb = &batch->framebuffer;
 
 	if (pfb->width > 0 && pfb->height > 0)
 		set_scissor(ring, 0, 0, pfb->width - 1, pfb->height - 1);

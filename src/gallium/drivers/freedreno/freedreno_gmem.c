@@ -603,6 +603,7 @@ render_tiles(struct fd_batch *batch, struct fd_gmem_stateobj *gmem)
 		} else {
 			ctx->screen->emit_ib(batch->gmem, batch->draw);
 		}
+
 		fd_log(batch, "TILE[%d]: END DRAW IB", i);
 		fd_reset_wfi(batch);
 
@@ -711,6 +712,7 @@ fd_gmem_render_tiles(struct fd_batch *batch)
 
 	if (batch->nondraw) {
 		DBG("%p: rendering non-draw", batch);
+		render_sysmem(batch);
 		ctx->stats.batch_nondraw++;
 	} else if (sysmem) {
 		fd_log(batch, "%p: rendering sysmem %ux%u (%s/%s), num_draws=%u",

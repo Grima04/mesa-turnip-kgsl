@@ -64,7 +64,8 @@ batch_init(struct fd_batch *batch)
 
 	batch->submit = fd_submit_new(ctx->pipe);
 	if (batch->nondraw) {
-		batch->draw = alloc_ring(batch, 0x100000, FD_RINGBUFFER_PRIMARY);
+		batch->gmem = alloc_ring(batch, 0x1000, FD_RINGBUFFER_PRIMARY);
+		batch->draw = alloc_ring(batch, 0x100000, 0);
 	} else {
 		batch->gmem = alloc_ring(batch, 0x100000, FD_RINGBUFFER_PRIMARY);
 		batch->draw = alloc_ring(batch, 0x100000, 0);
@@ -155,13 +156,11 @@ batch_fini(struct fd_batch *batch)
 	fd_fence_ref(&batch->fence, NULL);
 
 	fd_ringbuffer_del(batch->draw);
-	if (!batch->nondraw) {
-		if (batch->binning)
-			fd_ringbuffer_del(batch->binning);
-		fd_ringbuffer_del(batch->gmem);
-	} else {
-		debug_assert(!batch->binning);
-		debug_assert(!batch->gmem);
+	fd_ringbuffer_del(batch->gmem);
+
+	if (batch->binning) {
+		fd_ringbuffer_del(batch->binning);
+		batch->binning = NULL;
 	}
 
 	if (batch->prologue) {

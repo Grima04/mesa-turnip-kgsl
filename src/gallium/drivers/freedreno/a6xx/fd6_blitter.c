@@ -698,9 +698,6 @@ handle_rgba_blit(struct fd_context *ctx, const struct pipe_blit_info *info)
 
 	batch = fd_bc_alloc_batch(&ctx->screen->batch_cache, ctx, true);
 
-	fd6_emit_restore(batch, batch->draw);
-	fd6_emit_lrz_flush(batch->draw);
-
 	fd_screen_lock(ctx->screen);
 
 	fd_batch_resource_read(batch, fd_resource(info->src.resource));
