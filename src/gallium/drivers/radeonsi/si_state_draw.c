@@ -1415,9 +1415,6 @@ static bool si_upload_vertex_buffer_descriptors(struct si_context *sctx)
    unsigned i, count = sctx->num_vertex_elements;
    uint32_t *ptr;
 
-   if (!sctx->vertex_buffers_dirty || !count)
-      return true;
-
    struct si_vertex_elements *velems = sctx->vertex_elements;
    unsigned alloc_size = velems->vb_desc_list_alloc_size;
 
@@ -2042,8 +2039,10 @@ static void si_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *i
    if (sctx->bo_list_add_all_gfx_resources)
       si_gfx_resources_add_all_to_bo_list(sctx);
 
-   if (unlikely(!si_upload_vertex_buffer_descriptors(sctx) ||
-                !si_upload_graphics_shader_descriptors(sctx)))
+   if (unlikely(!si_upload_graphics_shader_descriptors(sctx) ||
+                (sctx->vertex_buffers_dirty &&
+                 sctx->num_vertex_elements &&
+                 !si_upload_vertex_buffer_descriptors(sctx))))
       goto return_cleanup;
 
    /* Vega10/Raven scissor bug workaround. When any context register is
