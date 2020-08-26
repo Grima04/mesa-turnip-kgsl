@@ -1339,8 +1339,7 @@ shader_type_for_job(unsigned type)
         case MALI_JOB_TYPE_VERTEX:  return "VERTEX";
         case MALI_JOB_TYPE_TILER:   return "FRAGMENT";
         case MALI_JOB_TYPE_COMPUTE: return "COMPUTE";
-        default:
-                               return "UNKNOWN";
+        default: return "UNKNOWN";
         }
 }
 
