@@ -1210,13 +1210,12 @@ pandecode_midgard_blend_mrt(void *descs, int job_no, int rt_no)
  */
 
 static int
-pandecode_attribute_meta(int job_no, int count, const struct mali_vertex_tiler_postfix *v, bool varying, char *suffix)
+pandecode_attribute_meta(int count, mali_ptr attribute, bool varying, char *suffix)
 {
         const char *prefix = varying ? "Varying" : "Attribute";
-        mali_ptr p = varying ? v->varying_meta : v->attribute_meta;
 
-        for (int i = 0; i < count; ++i, p += MALI_ATTRIBUTE_LENGTH)
-                DUMP_ADDR(prefix, ATTRIBUTE, p, 1);
+        for (int i = 0; i < count; ++i, attribute += MALI_ATTRIBUTE_LENGTH)
+                DUMP_ADDR(prefix, ATTRIBUTE, attribute, 1);
 
         return count;
 }
@@ -1754,7 +1753,7 @@ pandecode_vertex_tiler_postfix_pre(
         unsigned max_attr_index = 0;
 
         if (p->attribute_meta)
-                max_attr_index = pandecode_attribute_meta(job_no, attribute_count, p, false, suffix);
+                max_attr_index = pandecode_attribute_meta(attribute_count, p->attribute_meta, false, suffix);
 
         if (p->attributes) {
                 attr_mem = pandecode_find_mapped_gpu_mem_containing(p->attributes);
@@ -1766,7 +1765,7 @@ pandecode_vertex_tiler_postfix_pre(
          * since the GPU will write to it itself */
 
         if (p->varying_meta) {
-                varying_count = pandecode_attribute_meta(job_no, varying_count, p, true, suffix);
+                varying_count = pandecode_attribute_meta(varying_count, p->varying_meta, true, suffix);
         }
 
         if (p->varyings) {
