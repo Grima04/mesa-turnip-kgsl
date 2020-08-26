@@ -1155,8 +1155,7 @@ panfrost_bind_depth_stencil_state(struct pipe_context *pipe,
                                   void *cso)
 {
         struct panfrost_context *ctx = pan_context(pipe);
-        struct panfrost_zsa_state *zsa = cso;
-        ctx->depth_stencil = zsa;
+        ctx->depth_stencil = cso;
 }
 
 static void
