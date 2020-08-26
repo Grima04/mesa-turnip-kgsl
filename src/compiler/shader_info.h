@@ -98,6 +98,9 @@ typedef struct shader_info {
    /* Descriptive name provided by the client; may be NULL */
    const char *label;
 
+   /* Shader is internal, and should be ignored by things like NIR_PRINT */
+   bool internal;
+
    /** The shader stage, such as MESA_SHADER_VERTEX. */
    gl_shader_stage stage:8;
 

@@ -3937,11 +3937,14 @@ should_serialize_deserialize_nir(void)
 }
 
 static inline bool
-should_print_nir(void)
+should_print_nir(nir_shader *shader)
 {
    static int should_print = -1;
    if (should_print < 0)
-      should_print = env_var_as_boolean("NIR_PRINT", false);
+      should_print = env_var_as_unsigned("NIR_PRINT", 0);
+
+   if (should_print == 1)
+      return !shader->info.internal;
 
    return should_print;
 }
@@ -3953,7 +3956,7 @@ static inline void nir_metadata_check_validation_flag(nir_shader *shader) { (voi
 static inline bool should_skip_nir(UNUSED const char *pass_name) { return false; }
 static inline bool should_clone_nir(void) { return false; }
 static inline bool should_serialize_deserialize_nir(void) { return false; }
-static inline bool should_print_nir(void) { return false; }
+static inline bool should_print_nir(nir_shader *shader) { return false; }
 #endif /* NDEBUG */
 
 #define _PASS(pass, nir, do_pass) do {                               \
@@ -3974,21 +3977,21 @@ static inline bool should_print_nir(void) { return false; }
 
 #define NIR_PASS(progress, nir, pass, ...) _PASS(pass, nir,          \
    nir_metadata_set_validation_flag(nir);                            \
-   if (should_print_nir())                                           \
+   if (should_print_nir(nir))                                           \
       printf("%s\n", #pass);                                         \
    if (pass(nir, ##__VA_ARGS__)) {                                   \
       progress = true;                                               \
-      if (should_print_nir())                                        \
+      if (should_print_nir(nir))                                        \
          nir_print_shader(nir, stdout);                              \
       nir_metadata_check_validation_flag(nir);                       \
    }                                                                 \
 )
 
 #define NIR_PASS_V(nir, pass, ...) _PASS(pass, nir,                  \
-   if (should_print_nir())                                           \
+   if (should_print_nir(nir))                                           \
       printf("%s\n", #pass);                                         \
    pass(nir, ##__VA_ARGS__);                                         \
-   if (should_print_nir())                                           \
+   if (should_print_nir(nir))                                           \
       nir_print_shader(nir, stdout);                                 \
 )
 
