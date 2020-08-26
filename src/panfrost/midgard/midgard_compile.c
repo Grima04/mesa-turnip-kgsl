@@ -1291,8 +1291,8 @@ mir_set_intr_mask(nir_instr *instr, midgard_instruction *ins, bool is_read)
 
         /* Once we have the NIR mask, we need to normalize to work in 32-bit space */
         unsigned bytemask = pan_to_bytemask(dsize, nir_mask);
-        mir_set_bytemask(ins, bytemask);
         ins->dest_type = nir_type_uint | dsize;
+        mir_set_bytemask(ins, bytemask);
 }
 
 /* Uniforms and UBOs use a shared code path, as uniforms are just (slightly
