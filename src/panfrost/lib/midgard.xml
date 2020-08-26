@@ -297,6 +297,24 @@
     <field name="Shader" size="64" start="2:0" type="address"/>
   </struct>
 
+  <struct name="Invocation">
+    <!-- Dynamic bitfield containing WorkGroupSize.xyz, NumWorkGroups.xyz
+      The number of bits allocated for each number is based on the *_shift
+      fields. For example, workgroups_y_shift gives the bit that
+      gl_NumWorkGroups.y starts at, and workgroups_z_shift gives the bit
+      that gl_NumWorkGroups.z starts at (and therefore one after the bit
+      that gl_NumWorkGroups.y ends at). The actual value for each
+      is one more than the stored value, since if any of the values
+      are zero, then there would be no invocations (and hence no job). -->
+    <field name="Invocations" size="32" start="0:0" type="uint"/>
+    <field name="Size Y shift" size="5" start="1:0" type="uint"/>
+    <field name="Size Z shift" size="5" start="1:5" type="uint"/>
+    <field name="Workgroups X shift" size="6" start="1:10" type="uint"/>
+    <field name="Workgroups Y shift" size="6" start="1:16" type="uint"/>
+    <field name="Workgroups Z shift" size="6" start="1:22" type="uint"/>
+    <field name="Unknown shift" size="4" start="1:28" type="uint"/>
+  </struct>
+
   <struct name="Primitive">
     <field name="Draw mode" size="4" start="0:0" type="Draw Mode" default="None"/>
     <field name="Index type" size="2" start="0:8" type="Index Type" default="None"/>
