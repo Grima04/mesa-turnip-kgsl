@@ -1589,39 +1589,32 @@ pandecode_samplers(mali_ptr samplers, unsigned sampler_count, int job_no, bool i
 
 static void
 pandecode_vertex_tiler_postfix_pre(
-                const struct mali_vertex_tiler_postfix *p,
+                const struct MALI_DRAW *p,
                 int job_no, enum mali_job_type job_type,
                 char *suffix, bool is_bifrost, unsigned gpu_id)
 {
         struct pandecode_mapped_memory *attr_mem;
-
-        /* On Bifrost, since the tiler heap (for tiler jobs) and the scratchpad
-         * are the only things actually needed from the FBD, vertex/tiler jobs
-         * no longer reference the FBD -- instead, this field points to some
-         * info about the scratchpad.
-         */
 
         struct pandecode_fbd fbd_info = {
                 /* Default for Bifrost */
                 .rt_count = 1
         };
 
-        if (is_bifrost) {
-                pandecode_log_cont("\t/* %X %/\n", p->shared_memory & 1);
-                pandecode_compute_fbd(p->shared_memory & ~1, job_no);
-        } else if (p->shared_memory & MALI_MFBD)
-                fbd_info = pandecode_mfbd_bfr((u64) ((uintptr_t) p->shared_memory) & FBD_MASK, job_no, false, job_type == MALI_JOB_TYPE_COMPUTE, false);
+        if (is_bifrost)
+                pandecode_compute_fbd(p->shared & ~1, job_no);
+        else if (p->shared & MALI_MFBD)
+                fbd_info = pandecode_mfbd_bfr((u64) ((uintptr_t) p->shared) & FBD_MASK, job_no, false, job_type == MALI_JOB_TYPE_COMPUTE, false);
         else if (job_type == MALI_JOB_TYPE_COMPUTE)
-                pandecode_compute_fbd((u64) (uintptr_t) p->shared_memory, job_no);
+                pandecode_compute_fbd((u64) (uintptr_t) p->shared, job_no);
         else
-                fbd_info = pandecode_sfbd((u64) (uintptr_t) p->shared_memory, job_no, false, gpu_id);
+                fbd_info = pandecode_sfbd((u64) (uintptr_t) p->shared, job_no, false, gpu_id);
 
         int varying_count = 0, attribute_count = 0, uniform_count = 0, uniform_buffer_count = 0;
         int texture_count = 0, sampler_count = 0;
 
-        if (p->shader) {
-                struct pandecode_mapped_memory *smem = pandecode_find_mapped_gpu_mem_containing(p->shader);
-                uint32_t *cl = pandecode_fetch_gpu_mem(smem, p->shader, MALI_STATE_LENGTH);
+        if (p->state) {
+                struct pandecode_mapped_memory *smem = pandecode_find_mapped_gpu_mem_containing(p->state);
+                uint32_t *cl = pandecode_fetch_gpu_mem(smem, p->state, MALI_STATE_LENGTH);
 
                 /* Disassemble ahead-of-time to get stats. Initialize with
                  * stats for the missing-shader case so we get validation
@@ -1647,7 +1640,7 @@ pandecode_vertex_tiler_postfix_pre(
                 if (state.shader.shader & ~0xF)
                         info = pandecode_shader_disassemble(state.shader.shader & ~0xF, job_no, job_type, is_bifrost, gpu_id);
 
-                fprintf(pandecode_dump_stream, "State %"PRIx64"\n", p->shader);
+                fprintf(pandecode_dump_stream, "State");
                 MALI_STATE_print(pandecode_dump_stream, &state, 1 * 2);
 
                 /* Save for dumps */
@@ -1708,7 +1701,7 @@ pandecode_vertex_tiler_postfix_pre(
                 /* MRT blend fields are used whenever MFBD is used, with
                  * per-RT descriptors */
 
-                if (job_type == MALI_JOB_TYPE_TILER && (is_bifrost || p->shared_memory & MALI_MFBD)) {
+                if (job_type == MALI_JOB_TYPE_TILER && (is_bifrost || p->shared & MALI_MFBD)) {
                         void* blend_base = ((void *) cl) + MALI_STATE_LENGTH;
 
                         for (unsigned i = 0; i < fbd_info.rt_count; i++) {
@@ -1732,29 +1725,21 @@ pandecode_vertex_tiler_postfix_pre(
 
         unsigned max_attr_index = 0;
 
-        if (p->attribute_meta)
-                max_attr_index = pandecode_attribute_meta(attribute_count, p->attribute_meta, false, suffix);
+        if (p->attributes)
+                max_attr_index = pandecode_attribute_meta(attribute_count, p->attributes, false, suffix);
 
-        if (p->attributes) {
-                attr_mem = pandecode_find_mapped_gpu_mem_containing(p->attributes);
-                pandecode_attributes(attr_mem, p->attributes, job_no, suffix, max_attr_index, false, job_type);
-        }
-
-        /* Varyings are encoded like attributes but not actually sent; we just
-         * pass a zero buffer with the right stride/size set, (or whatever)
-         * since the GPU will write to it itself */
-
-        if (p->varying_meta) {
-                varying_count = pandecode_attribute_meta(varying_count, p->varying_meta, true, suffix);
+        if (p->attribute_buffers) {
+                attr_mem = pandecode_find_mapped_gpu_mem_containing(p->attribute_buffers);
+                pandecode_attributes(attr_mem, p->attribute_buffers, job_no, suffix, max_attr_index, false, job_type);
         }
 
         if (p->varyings) {
-                attr_mem = pandecode_find_mapped_gpu_mem_containing(p->varyings);
+                varying_count = pandecode_attribute_meta(varying_count, p->varyings, true, suffix);
+        }
 
-                /* Number of descriptors depends on whether there are
-                 * non-internal varyings */
-
-                pandecode_attributes(attr_mem, p->varyings, job_no, suffix, varying_count, true, job_type);
+        if (p->varying_buffers) {
+                attr_mem = pandecode_find_mapped_gpu_mem_containing(p->varying_buffers);
+                pandecode_attributes(attr_mem, p->varying_buffers, job_no, suffix, varying_count, true, job_type);
         }
 
         if (p->uniform_buffers) {
@@ -1768,9 +1753,9 @@ pandecode_vertex_tiler_postfix_pre(
         /* We don't want to actually dump uniforms, but we do need to validate
          * that the counts we were given are sane */
 
-        if (p->uniforms) {
+        if (p->push_uniforms) {
                 if (uniform_count)
-                        pandecode_uniforms(p->uniforms, uniform_count);
+                        pandecode_uniforms(p->push_uniforms, uniform_count);
                 else
                         pandecode_msg("warn: Uniforms specified but not referenced\n");
         } else if (uniform_count)
@@ -1779,8 +1764,8 @@ pandecode_vertex_tiler_postfix_pre(
         if (p->textures)
                 pandecode_textures(p->textures, texture_count, job_no, is_bifrost);
 
-        if (p->sampler_descriptor)
-                pandecode_samplers(p->sampler_descriptor, sampler_count, job_no, is_bifrost);
+        if (p->samplers)
+                pandecode_samplers(p->samplers, sampler_count, job_no, is_bifrost);
 }
 
 static void
@@ -1905,18 +1890,14 @@ pandecode_vertex_job_bfr(const struct mali_job_descriptor_header *h,
 {
         struct bifrost_payload_vertex *PANDECODE_PTR_VAR(v, mem, payload);
 
-        pandecode_vertex_tiler_postfix_pre(&v->postfix, job_no, h->job_type, "", true, gpu_id);
-
-        pandecode_log("struct bifrost_payload_vertex payload_%"PRIx64"_%d = {\n", payload, job_no);
-        pandecode_indent++;
+        struct MALI_DRAW draw;
+        struct mali_draw_packed draw_packed;
+        memcpy(&draw_packed, &v->postfix, sizeof(draw_packed));
+        MALI_DRAW_unpack((const uint8_t *) &draw_packed, &draw); \
+        pandecode_vertex_tiler_postfix_pre(&draw, job_no, h->job_type, "", true, gpu_id);
 
         pandecode_vertex_tiler_prefix(&v->prefix, job_no, false);
-        struct mali_draw_packed draw;
-        memcpy(&draw, &v->postfix, sizeof(draw));
-        DUMP_CL("Draw", DRAW, &draw, 2);
-
-        pandecode_indent--;
-        pandecode_log("};\n");
+        DUMP_CL("Draw", DRAW, &draw_packed, 2);
 
         return sizeof(*v);
 }
@@ -1928,11 +1909,12 @@ pandecode_tiler_job_bfr(const struct mali_job_descriptor_header *h,
 {
         struct bifrost_payload_tiler *PANDECODE_PTR_VAR(t, mem, payload);
 
-        pandecode_vertex_tiler_postfix_pre(&t->postfix, job_no, h->job_type, "", true, gpu_id);
+        struct MALI_DRAW draw;
+        struct mali_draw_packed draw_packed;
+        memcpy(&draw_packed, &t->postfix, sizeof(draw_packed));
+        MALI_DRAW_unpack((const uint8_t *) &draw_packed, &draw); \
+        pandecode_vertex_tiler_postfix_pre(&draw, job_no, h->job_type, "", true, gpu_id);
         pandecode_tiler_meta(t->tiler_meta, job_no);
-
-        pandecode_log("struct bifrost_payload_tiler payload_%"PRIx64"_%d = {\n", payload, job_no);
-        pandecode_indent++;
 
         pandecode_vertex_tiler_prefix(&t->prefix, job_no, false);
 
@@ -1950,12 +1932,7 @@ pandecode_tiler_job_bfr(const struct mali_job_descriptor_header *h,
                 pandecode_prop("zero6 = 0x%" PRIx64, t->zero6);
         }
 
-        struct mali_draw_packed draw;
-        memcpy(&draw, &t->postfix, sizeof(draw));
-        DUMP_CL("Draw", DRAW, &draw, 2);
-
-        pandecode_indent--;
-        pandecode_log("};\n");
+        DUMP_CL("Draw", DRAW, &draw_packed, 2);
 
         return sizeof(*t);
 }
@@ -1968,25 +1945,20 @@ pandecode_vertex_or_tiler_job_mdg(const struct mali_job_descriptor_header *h,
         struct midgard_payload_vertex_tiler *PANDECODE_PTR_VAR(v, mem, payload);
         bool is_graphics = (h->job_type == MALI_JOB_TYPE_VERTEX) || (h->job_type == MALI_JOB_TYPE_TILER);
 
-        pandecode_vertex_tiler_postfix_pre(&v->postfix, job_no, h->job_type, "", false, gpu_id);
-
-        pandecode_log("struct midgard_payload_vertex_tiler payload_%d = {\n", job_no);
-        pandecode_indent++;
+        struct MALI_DRAW draw;
+        struct mali_draw_packed draw_packed;
+        memcpy(&draw_packed, &v->postfix, sizeof(draw_packed));
+        MALI_DRAW_unpack((const uint8_t *) &draw_packed, &draw); \
+        pandecode_vertex_tiler_postfix_pre(&draw, job_no, h->job_type, "", false, gpu_id);
 
         pandecode_vertex_tiler_prefix(&v->prefix, job_no, is_graphics);
-
-        struct mali_draw_packed draw;
-        memcpy(&draw, &v->postfix, sizeof(draw));
-        DUMP_CL("Draw", DRAW, &draw, 2);
+        DUMP_CL("Draw", DRAW, &draw_packed, 2);
 
         struct MALI_PRIMITIVE primitive;
         struct mali_primitive_packed prim_packed = v->prefix.primitive;
         MALI_PRIMITIVE_unpack((const uint8_t *) &prim_packed, &primitive);
 
         pandecode_primitive_size(v->primitive_size, primitive.point_size_array == 0);
-
-        pandecode_indent--;
-        pandecode_log("};\n");
 
         return sizeof(*v);
 }
