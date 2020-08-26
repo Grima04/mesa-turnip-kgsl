@@ -183,6 +183,11 @@ dri_is_thread_safe(void *loaderPrivate)
       return false;
 #endif
 
+#ifdef HAVE_XCB_PLATFORM
+   if (display->Platform == _EGL_PLATFORM_XCB)
+      return true;
+#endif
+
 #ifdef HAVE_WAYLAND_PLATFORM
    if (display->Platform == _EGL_PLATFORM_WAYLAND)
       return true;
@@ -1178,6 +1183,7 @@ dri2_initialize(_EGLDisplay *disp)
       ret = dri2_initialize_device(disp);
       break;
    case _EGL_PLATFORM_X11:
+   case _EGL_PLATFORM_XCB:
       ret = dri2_initialize_x11(disp);
       break;
    case _EGL_PLATFORM_DRM:
