@@ -208,17 +208,6 @@ pandecode_log_decoded_flags(const struct pandecode_flag_info *flag_info,
         }
 }
 
-#define FLAG_INFO(flag) { MALI_##flag, "MALI_" #flag }
-static const struct pandecode_flag_info gl_enable_flag_info[] = {
-        FLAG_INFO(OCCLUSION_QUERY),
-        FLAG_INFO(OCCLUSION_PRECISE),
-        FLAG_INFO(FRONT_CCW_TOP),
-        FLAG_INFO(CULL_FACE_FRONT),
-        FLAG_INFO(CULL_FACE_BACK),
-        {}
-};
-#undef FLAG_INFO
-
 #define FLAG_INFO(flag) { MALI_CLEAR_##flag, "MALI_CLEAR_" #flag }
 static const struct pandecode_flag_info clear_flag_info[] = {
         FLAG_INFO(FAST),
@@ -1795,48 +1784,6 @@ pandecode_vertex_tiler_postfix_pre(
 }
 
 static void
-pandecode_gl_enables(uint32_t gl_enables, int job_type)
-{
-        pandecode_log(".gl_enables = ");
-
-        pandecode_log_decoded_flags(gl_enable_flag_info, gl_enables);
-
-        pandecode_log_cont(",\n");
-}
-
-static void
-pandecode_vertex_tiler_postfix(const struct mali_vertex_tiler_postfix *p, int job_no, bool is_bifrost)
-{
-        if (p->shader & 0xF)
-                pandecode_msg("warn: shader tagged %X\n", (unsigned) (p->shader & 0xF));
-
-        pandecode_log(".postfix = {\n");
-        pandecode_indent++;
-
-        pandecode_gl_enables(p->gl_enables, MALI_JOB_TYPE_TILER);
-        pandecode_prop("instance_shift = 0x%x", p->instance_shift);
-        pandecode_prop("instance_odd = 0x%x", p->instance_odd);
-
-        if (p->zero4) {
-                pandecode_msg("XXX: vertex only zero tripped");
-                pandecode_prop("zero4 = 0x%" PRIx32, p->zero4);
-        }
-
-        pandecode_prop("offset_start = 0x%x", p->offset_start);
-
-        if (p->zero5) {
-                pandecode_msg("XXX: vertex only zero tripped");
-                pandecode_prop("zero5 = 0x%" PRIx64, p->zero5);
-        }
-
-        MEMORY_PROP(p, position_varying);
-        MEMORY_PROP(p, occlusion_counter);
-
-        pandecode_indent--;
-        pandecode_log("},\n");
-}
-
-static void
 pandecode_tiler_heap_meta(mali_ptr gpu_va, int job_no)
 {
         struct pandecode_mapped_memory *mem = pandecode_find_mapped_gpu_mem_containing(gpu_va);
@@ -1964,7 +1911,9 @@ pandecode_vertex_job_bfr(const struct mali_job_descriptor_header *h,
         pandecode_indent++;
 
         pandecode_vertex_tiler_prefix(&v->prefix, job_no, false);
-        pandecode_vertex_tiler_postfix(&v->postfix, job_no, true);
+        struct mali_draw_packed draw;
+        memcpy(&draw, &v->postfix, sizeof(draw));
+        DUMP_CL("Draw", DRAW, &draw, 2);
 
         pandecode_indent--;
         pandecode_log("};\n");
@@ -2001,7 +1950,9 @@ pandecode_tiler_job_bfr(const struct mali_job_descriptor_header *h,
                 pandecode_prop("zero6 = 0x%" PRIx64, t->zero6);
         }
 
-        pandecode_vertex_tiler_postfix(&t->postfix, job_no, true);
+        struct mali_draw_packed draw;
+        memcpy(&draw, &t->postfix, sizeof(draw));
+        DUMP_CL("Draw", DRAW, &draw, 2);
 
         pandecode_indent--;
         pandecode_log("};\n");
@@ -2023,7 +1974,10 @@ pandecode_vertex_or_tiler_job_mdg(const struct mali_job_descriptor_header *h,
         pandecode_indent++;
 
         pandecode_vertex_tiler_prefix(&v->prefix, job_no, is_graphics);
-        pandecode_vertex_tiler_postfix(&v->postfix, job_no, false);
+
+        struct mali_draw_packed draw;
+        memcpy(&draw, &v->postfix, sizeof(draw));
+        DUMP_CL("Draw", DRAW, &draw, 2);
 
         struct MALI_PRIMITIVE primitive;
         struct mali_primitive_packed prim_packed = v->prefix.primitive;
