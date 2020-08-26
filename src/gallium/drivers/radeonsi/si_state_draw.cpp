@@ -1111,6 +1111,7 @@ static void si_emit_draw_packets(struct si_context *sctx, const struct pipe_draw
    }
 }
 
+extern "C"
 void si_emit_surface_sync(struct si_context *sctx, struct radeon_cmdbuf *cs, unsigned cp_coher_cntl)
 {
    bool compute_ib = !sctx->has_graphics || cs == &sctx->prim_discard_compute_cs;
@@ -1141,6 +1142,7 @@ void si_emit_surface_sync(struct si_context *sctx, struct radeon_cmdbuf *cs, uns
       sctx->context_roll = true;
 }
 
+extern "C"
 void si_prim_discard_signal_next_compute_ib_start(struct si_context *sctx)
 {
    if (!si_compute_prim_discard_enabled(sctx))
@@ -1166,6 +1168,7 @@ void si_prim_discard_signal_next_compute_ib_start(struct si_context *sctx)
    *sctx->last_pkt3_write_data = PKT3(PKT3_NOP, 3, 0);
 }
 
+extern "C"
 void gfx10_emit_cache_flush(struct si_context *ctx)
 {
    struct radeon_cmdbuf *cs = &ctx->gfx_cs;
@@ -1345,6 +1348,7 @@ void gfx10_emit_cache_flush(struct si_context *ctx)
    ctx->flags = 0;
 }
 
+extern "C"
 void si_emit_cache_flush(struct si_context *sctx)
 {
    struct radeon_cmdbuf *cs = &sctx->gfx_cs;
@@ -2456,6 +2460,7 @@ static void si_draw_rectangle(struct blitter_context *blitter, void *vertex_elem
    si_draw_vbo(pipe, &info, NULL, &draw, 1);
 }
 
+extern "C"
 void si_trace_emit(struct si_context *sctx)
 {
    struct radeon_cmdbuf *cs = &sctx->gfx_cs;
@@ -2470,6 +2475,7 @@ void si_trace_emit(struct si_context *sctx)
       u_log_flush(sctx->log);
 }
 
+extern "C"
 void si_init_draw_functions(struct si_context *sctx)
 {
    sctx->b.draw_vbo = si_draw_vbo;
