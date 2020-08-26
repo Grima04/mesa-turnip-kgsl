@@ -28,6 +28,55 @@
 #include "vk_format_info.h"
 #include "util/u_pack_color.h"
 
+static uint32_t
+meta_blit_key_hash(const void *key)
+{
+   return _mesa_hash_data(key, V3DV_META_BLIT_CACHE_KEY_SIZE);
+}
+
+static bool
+meta_blit_key_compare(const void *key1, const void *key2)
+{
+   return memcmp(key1, key2, V3DV_META_BLIT_CACHE_KEY_SIZE) == 0;
+}
+
+void
+v3dv_meta_blit_init(struct v3dv_device *device)
+{
+   for (uint32_t i = 0; i < 3; i++) {
+      device->meta.blit.cache[i] =
+         _mesa_hash_table_create(NULL,
+                                 meta_blit_key_hash,
+                                 meta_blit_key_compare);
+   }
+}
+
+void
+v3dv_meta_blit_finish(struct v3dv_device *device)
+{
+   VkDevice _device = v3dv_device_to_handle(device);
+
+   for (uint32_t i = 0; i < 3; i++) {
+      hash_table_foreach(device->meta.blit.cache[i], entry) {
+         struct v3dv_meta_blit_pipeline *item = entry->data;
+         v3dv_DestroyPipeline(_device, item->pipeline, &device->alloc);
+         v3dv_DestroyRenderPass(_device, item->pass, &device->alloc);
+         vk_free(&device->alloc, item);
+      }
+      _mesa_hash_table_destroy(device->meta.blit.cache[i], NULL);
+   }
+
+   if (device->meta.blit.playout) {
+      v3dv_DestroyPipelineLayout(_device, device->meta.blit.playout,
+                                 &device->alloc);
+   }
+
+   if (device->meta.blit.dslayout) {
+      v3dv_DestroyDescriptorSetLayout(_device, device->meta.blit.dslayout,
+                                      &device->alloc);
+   }
+}
+
 static inline bool
 can_use_tlb(struct v3dv_image *image,
             const VkOffset3D *offset,

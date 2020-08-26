@@ -1197,119 +1197,20 @@ init_device_dispatch(struct v3dv_device *device)
    }
 }
 
-static uint32_t
-u64_hash(const void *key)
-{
-   return _mesa_hash_data(key, sizeof(uint64_t));
-}
-
-static bool
-u64_compare(const void *key1, const void *key2)
-{
-   return memcmp(key1, key2, sizeof(uint64_t)) == 0;
-}
-
-static void
-init_meta_clear_resources(struct v3dv_device *device)
-{
-   device->meta.color_clear.cache =
-      _mesa_hash_table_create(NULL, u64_hash, u64_compare);
-   device->meta.depth_clear.cache =
-      _mesa_hash_table_create(NULL, u64_hash, u64_compare);
-}
-
-static uint32_t
-meta_blit_key_hash(const void *key)
-{
-   return _mesa_hash_data(key, V3DV_META_BLIT_CACHE_KEY_SIZE);
-}
-
-static bool
-meta_blit_key_compare(const void *key1, const void *key2)
-{
-   return memcmp(key1, key2, V3DV_META_BLIT_CACHE_KEY_SIZE) == 0;
-}
-
-static void
-init_meta_blit_resources(struct v3dv_device *device)
-{
-   for (uint32_t i = 0; i < 3; i++) {
-      device->meta.blit.cache[i] =
-         _mesa_hash_table_create(NULL,
-                                 meta_blit_key_hash,
-                                 meta_blit_key_compare);
-   }
-}
-
 static void
 init_device_meta(struct v3dv_device *device)
 {
    mtx_init(&device->meta.mtx, mtx_plain);
-   init_meta_clear_resources(device);
-   init_meta_blit_resources(device);
-}
-
-void
-v3dv_meta_color_clear_pipeline_destroy(VkDevice _device,
-                                       struct v3dv_meta_color_clear_pipeline *p,
-                                       VkAllocationCallbacks *alloc)
-{
-   v3dv_DestroyPipeline(_device, p->pipeline, alloc);
-   if (p->cached)
-      v3dv_DestroyRenderPass(_device, p->pass, alloc);
-   vk_free(alloc, p);
+   v3dv_meta_clear_init(device);
+   v3dv_meta_blit_init(device);
 }
 
 static void
 destroy_device_meta(struct v3dv_device *device)
 {
-   VkDevice _device = v3dv_device_to_handle(device);
-
    mtx_destroy(&device->meta.mtx);
-
-   hash_table_foreach(device->meta.color_clear.cache, entry) {
-      struct v3dv_meta_color_clear_pipeline *item = entry->data;
-      v3dv_meta_color_clear_pipeline_destroy(v3dv_device_to_handle(device),
-                                             item, &device->alloc);
-   }
-   _mesa_hash_table_destroy(device->meta.color_clear.cache, NULL);
-
-   if (device->meta.color_clear.playout) {
-      v3dv_DestroyPipelineLayout(_device, device->meta.color_clear.playout,
-                                 &device->alloc);
-   }
-
-   hash_table_foreach(device->meta.depth_clear.cache, entry) {
-      struct v3dv_meta_depth_clear_pipeline *item = entry->data;
-      v3dv_DestroyPipeline(_device, item->pipeline, &device->alloc);
-      vk_free(&device->alloc, item);
-   }
-   _mesa_hash_table_destroy(device->meta.depth_clear.cache, NULL);
-
-   if (device->meta.depth_clear.playout) {
-      v3dv_DestroyPipelineLayout(_device, device->meta.depth_clear.playout,
-                                 &device->alloc);
-   }
-
-   for (uint32_t i = 0; i < 3; i++) {
-      hash_table_foreach(device->meta.blit.cache[i], entry) {
-         struct v3dv_meta_blit_pipeline *item = entry->data;
-         v3dv_DestroyPipeline(_device, item->pipeline, &device->alloc);
-         v3dv_DestroyRenderPass(_device, item->pass, &device->alloc);
-         vk_free(&device->alloc, item);
-      }
-      _mesa_hash_table_destroy(device->meta.blit.cache[i], NULL);
-   }
-
-   if (device->meta.blit.playout) {
-      v3dv_DestroyPipelineLayout(_device, device->meta.blit.playout,
-                                 &device->alloc);
-   }
-
-   if (device->meta.blit.dslayout) {
-      v3dv_DestroyDescriptorSetLayout(_device, device->meta.blit.dslayout,
-                                      &device->alloc);
-   }
+   v3dv_meta_clear_finish(device);
+   v3dv_meta_blit_finish(device);
 }
 
 VkResult

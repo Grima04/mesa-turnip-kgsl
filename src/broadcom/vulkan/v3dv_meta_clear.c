@@ -28,6 +28,64 @@
 #include "vk_format_info.h"
 #include "util/u_pack_color.h"
 
+static void
+destroy_color_clear_pipeline(VkDevice _device,
+                             struct v3dv_meta_color_clear_pipeline *p,
+                             VkAllocationCallbacks *alloc)
+{
+   v3dv_DestroyPipeline(_device, p->pipeline, alloc);
+   if (p->cached)
+      v3dv_DestroyRenderPass(_device, p->pass, alloc);
+   vk_free(alloc, p);
+}
+
+static void
+destroy_depth_clear_pipeline(VkDevice _device,
+                             struct v3dv_meta_depth_clear_pipeline *p,
+                             VkAllocationCallbacks *alloc)
+{
+   v3dv_DestroyPipeline(_device, p->pipeline, alloc);
+   vk_free(alloc, p);
+}
+
+void
+v3dv_meta_clear_init(struct v3dv_device *device)
+{
+   device->meta.color_clear.cache =
+      _mesa_hash_table_create(NULL, u64_hash, u64_compare);
+
+   device->meta.depth_clear.cache =
+      _mesa_hash_table_create(NULL, u64_hash, u64_compare);
+}
+
+void
+v3dv_meta_clear_finish(struct v3dv_device *device)
+{
+   VkDevice _device = v3dv_device_to_handle(device);
+
+   hash_table_foreach(device->meta.color_clear.cache, entry) {
+      struct v3dv_meta_color_clear_pipeline *item = entry->data;
+      destroy_color_clear_pipeline(_device, item, &device->alloc);
+   }
+   _mesa_hash_table_destroy(device->meta.color_clear.cache, NULL);
+
+   if (device->meta.color_clear.playout) {
+      v3dv_DestroyPipelineLayout(_device, device->meta.color_clear.playout,
+                                 &device->alloc);
+   }
+
+   hash_table_foreach(device->meta.depth_clear.cache, entry) {
+      struct v3dv_meta_depth_clear_pipeline *item = entry->data;
+      destroy_depth_clear_pipeline(_device, item, &device->alloc);
+   }
+   _mesa_hash_table_destroy(device->meta.depth_clear.cache, NULL);
+
+   if (device->meta.depth_clear.playout) {
+      v3dv_DestroyPipelineLayout(_device, device->meta.depth_clear.playout,
+                                 &device->alloc);
+   }
+}
+
 static nir_ssa_def *
 gen_rect_vertices(nir_builder *b)
 {
@@ -1037,7 +1095,7 @@ emit_subpass_color_clear_rects(struct v3dv_cmd_buffer *cmd_buffer,
    assert(!pipeline->cached);
    v3dv_cmd_buffer_add_private_obj(
       cmd_buffer, (uintptr_t)pipeline,
-      (v3dv_cmd_buffer_private_obj_destroy_cb) v3dv_meta_color_clear_pipeline_destroy);
+      (v3dv_cmd_buffer_private_obj_destroy_cb) destroy_color_clear_pipeline);
 
    v3dv_cmd_buffer_meta_state_pop(cmd_buffer, dynamic_states, false);
 }

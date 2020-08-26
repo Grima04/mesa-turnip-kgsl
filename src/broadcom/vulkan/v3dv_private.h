@@ -159,6 +159,12 @@ struct v3dv_physical_device {
 VkResult v3dv_wsi_init(struct v3dv_physical_device *physical_device);
 void v3dv_wsi_finish(struct v3dv_physical_device *physical_device);
 
+void v3dv_meta_clear_init(struct v3dv_device *device);
+void v3dv_meta_clear_finish(struct v3dv_device *device);
+
+void v3dv_meta_blit_init(struct v3dv_device *device);
+void v3dv_meta_blit_finish(struct v3dv_device *device);
+
 struct v3dv_app_info {
    const char *app_name;
    uint32_t app_version;
@@ -1859,11 +1865,6 @@ v3dv_pipeline_cache_upload_variant(struct v3dv_pipeline *pipeline,
 void v3dv_shader_module_internal_init(struct v3dv_shader_module *module,
                                       nir_shader *nir);
 
-void
-v3dv_meta_color_clear_pipeline_destroy(VkDevice _device,
-                                       struct v3dv_meta_color_clear_pipeline *p,
-                                       VkAllocationCallbacks *alloc);
-
 #define V3DV_DEFINE_HANDLE_CASTS(__v3dv_type, __VkType)   \
                                                         \
    static inline struct __v3dv_type *                    \
@@ -1966,5 +1967,17 @@ v3dv_flag_oom(struct v3dv_cmd_buffer *cmd_buffer, struct v3dv_job *job)
    if (__job && __job->cmd_buffer && __job->cmd_buffer->state.oom)  \
       return;                                                       \
 } while(0)                                                          \
+
+static inline uint32_t
+u64_hash(const void *key)
+{
+   return _mesa_hash_data(key, sizeof(uint64_t));
+}
+
+static inline bool
+u64_compare(const void *key1, const void *key2)
+{
+   return memcmp(key1, key2, sizeof(uint64_t)) == 0;
+}
 
 #endif /* V3DV_PRIVATE_H */
