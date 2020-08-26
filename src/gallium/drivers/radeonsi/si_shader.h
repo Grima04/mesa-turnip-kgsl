@@ -141,6 +141,10 @@
 
 #include <stdio.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 // Use LDS symbols when supported by LLVM. Can be disabled for testing the old
 // path on newer LLVM for now. Should be removed in the long term.
 #define USE_LDS_SYMBOLS (true)
@@ -909,5 +913,9 @@ static inline bool si_shader_uses_bindless_images(struct si_shader_selector *sel
 {
    return selector ? selector->info.uses_bindless_images : false;
 }
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

@@ -32,6 +32,10 @@
 #include "util/u_suballoc.h"
 #include "util/u_threaded_context.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #if UTIL_ARCH_BIG_ENDIAN
 #define SI_BIG_ENDIAN 1
 #else
@@ -1915,5 +1919,9 @@ struct pipe_resource *si_buffer_from_winsys_buffer(struct pipe_screen *screen,
                                                    const struct pipe_resource *templ,
                                                    struct pb_buffer *imported_buf,
                                                    bool dedicated);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
