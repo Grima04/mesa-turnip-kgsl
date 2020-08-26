@@ -52,6 +52,9 @@ enum {
    DEBUG_VALIDATE_RA = 0x2,
    DEBUG_PERFWARN = 0x4,
    DEBUG_FORCE_WAITCNT = 0x8,
+   DEBUG_NO_VN = 0x10,
+   DEBUG_NO_OPT = 0x20,
+   DEBUG_NO_SCHED = 0x40,
 };
 
 /**

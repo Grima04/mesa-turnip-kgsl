@@ -89,8 +89,10 @@ void aco_compile_shader(unsigned shader_count,
       validate(program.get());
 
       /* Optimization */
-      aco::value_numbering(program.get());
-      aco::optimize(program.get());
+      if (!(aco::debug_flags & aco::DEBUG_NO_VN))
+         aco::value_numbering(program.get());
+      if (!(aco::debug_flags & aco::DEBUG_NO_OPT))
+         aco::optimize(program.get());
 
       /* cleanup and exec mask handling */
       aco::setup_reduce_temp(program.get());
@@ -121,7 +123,8 @@ void aco_compile_shader(unsigned shader_count,
       aco::collect_presched_stats(program.get());
 
    if (!args->is_trap_handler_shader) {
-      aco::schedule_program(program.get(), live_vars);
+      if (!(aco::debug_flags & aco::DEBUG_NO_SCHED))
+         aco::schedule_program(program.get(), live_vars);
       validate(program.get());
 
       /* Register Allocation */

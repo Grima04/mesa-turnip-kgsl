@@ -614,6 +614,12 @@ RADV driver environment variables
       abort on some suboptimal code generation
    ``force-waitcnt``
       force emitting waitcnt states if there is something to wait for
+   ``novn``
+      disable value numbering
+   ``noopt``
+      disable various optimizations
+   ``noscheduling``
+      disable instructions scheduling
 
 radeonsi driver environment variables
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
