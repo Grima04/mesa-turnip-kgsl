@@ -1222,9 +1222,6 @@ bits(u32 word, u32 lo, u32 hi)
 static void
 pandecode_vertex_tiler_prefix(struct mali_vertex_tiler_prefix *p, int job_no, bool graphics)
 {
-        pandecode_log(".prefix = {\n");
-        pandecode_indent++;
-
         /* Decode invocation_count. See the comment before the definition of
          * invocation_count for an explanation.
          */
@@ -1286,9 +1283,6 @@ pandecode_vertex_tiler_prefix(struct mali_vertex_tiler_prefix *p, int job_no, bo
                         pandecode_validate_buffer(primitive.indices, primitive.index_count * size);
         } else if (primitive.index_type)
                 pandecode_msg("XXX: unexpected index size\n");
-
-        pandecode_indent--;
-        pandecode_log("},\n");
 }
 
 static void
