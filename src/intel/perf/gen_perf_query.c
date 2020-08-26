@@ -39,10 +39,25 @@
 #include "util/u_math.h"
 
 #define FILE_DEBUG_FLAG DEBUG_PERFMON
-#define MI_RPC_BO_SIZE              4096
-#define MI_FREQ_START_OFFSET_BYTES  (3072)
-#define MI_RPC_BO_END_OFFSET_BYTES  (MI_RPC_BO_SIZE / 2)
-#define MI_FREQ_END_OFFSET_BYTES    (3076)
+
+#define MI_RPC_BO_SIZE                (4096)
+#define MI_FREQ_OFFSET_BYTES          (256)
+#define MI_PERF_COUNTERS_OFFSET_BYTES (260)
+
+#define ALIGN(x, y) (((x) + (y)-1) & ~((y)-1))
+
+/* Align to 64bytes, requirement for OA report write address. */
+#define TOTAL_QUERY_DATA_SIZE            \
+   ALIGN(256 /* OA report */ +           \
+         4  /* freq register */ +        \
+         8 + 8 /* perf counter 1 & 2 */, \
+         64)
+
+
+static uint32_t field_offset(bool end, uint32_t offset)
+{
+   return (end ? TOTAL_QUERY_DATA_SIZE : 0) + offset;
+}
 
 #define MAP_READ  (1 << 0)
 #define MAP_WRITE (1 << 1)
@@ -635,17 +650,37 @@ snapshot_statistics_registers(struct gen_perf_context *ctx,
 }
 
 static void
-snapshot_freq_register(struct gen_perf_context *ctx,
-                       struct gen_perf_query_object *query,
-                       uint32_t bo_offset)
+snapshot_query_layout(struct gen_perf_context *perf_ctx,
+                      struct gen_perf_query_object *query,
+                      bool end_snapshot)
 {
-   struct gen_perf_config *perf = ctx->perf;
-   const struct gen_device_info *devinfo = ctx->devinfo;
+   struct gen_perf_config *perf_cfg = perf_ctx->perf;
+   const struct gen_perf_query_field_layout *layout = &perf_cfg->query_layout;
+   uint32_t offset = end_snapshot ? align(layout->size, layout->alignment) : 0;
 
-   if (devinfo->gen == 8 && !devinfo->is_cherryview)
-      perf->vtbl.store_register_mem(ctx->ctx, query->oa.bo, GEN7_RPSTAT1, 4, bo_offset);
-   else if (devinfo->gen >= 9)
-      perf->vtbl.store_register_mem(ctx->ctx, query->oa.bo, GEN9_RPSTAT0, 4, bo_offset);
+   for (uint32_t f = 0; f < layout->n_fields; f++) {
+      const struct gen_perf_query_field *field =
+         &layout->fields[end_snapshot ? f : (layout->n_fields - 1 - f)];
+
+      switch (field->type) {
+      case GEN_PERF_QUERY_FIELD_TYPE_MI_RPC:
+         perf_cfg->vtbl.emit_mi_report_perf_count(perf_ctx->ctx, query->oa.bo,
+                                                  offset + field->location,
+                                                  query->oa.begin_report_id +
+                                                  (end_snapshot ? 1 : 0));
+         break;
+      case GEN_PERF_QUERY_FIELD_TYPE_SRM_PERFCNT:
+      case GEN_PERF_QUERY_FIELD_TYPE_SRM_RPSTAT:
+      case GEN_PERF_QUERY_FIELD_TYPE_SRM_OA_B:
+      case GEN_PERF_QUERY_FIELD_TYPE_SRM_OA_C:
+         perf_cfg->vtbl.store_register_mem(perf_ctx->ctx, query->oa.bo,
+                                           field->mmio_offset, field->size,
+                                           offset + field->location);
+         break;
+      default:
+         unreachable("Invalid field type");
+      }
+   }
 }
 
 bool
@@ -806,10 +841,7 @@ gen_perf_begin_query(struct gen_perf_context *perf_ctx,
       query->oa.begin_report_id = perf_ctx->next_query_start_report_id;
       perf_ctx->next_query_start_report_id += 2;
 
-      /* Take a starting OA counter snapshot. */
-      perf_cfg->vtbl.emit_mi_report_perf_count(perf_ctx->ctx, query->oa.bo, 0,
-                                               query->oa.begin_report_id);
-      snapshot_freq_register(perf_ctx, query, MI_FREQ_START_OFFSET_BYTES);
+      snapshot_query_layout(perf_ctx, query, false /* end_snapshot */);
 
       ++perf_ctx->n_active_oa_queries;
 
@@ -885,13 +917,8 @@ gen_perf_end_query(struct gen_perf_context *perf_ctx,
        * from perf. In this case we mustn't try and emit a closing
        * MI_RPC command in case the OA unit has already been disabled
        */
-      if (!query->oa.results_accumulated) {
-         /* Take an ending OA counter snapshot. */
-         snapshot_freq_register(perf_ctx, query, MI_FREQ_END_OFFSET_BYTES);
-         perf_cfg->vtbl.emit_mi_report_perf_count(perf_ctx->ctx, query->oa.bo,
-                                             MI_RPC_BO_END_OFFSET_BYTES,
-                                             query->oa.begin_report_id + 1);
-      }
+      if (!query->oa.results_accumulated)
+         snapshot_query_layout(perf_ctx, query, true /* end_snapshot */);
 
       --perf_ctx->n_active_oa_queries;
 
@@ -1010,8 +1037,8 @@ read_oa_samples_for_query(struct gen_perf_context *perf_ctx,
    if (query->oa.map == NULL)
       query->oa.map = perf_cfg->vtbl.bo_map(perf_ctx->ctx, query->oa.bo, MAP_READ);
 
-   start = last = query->oa.map;
-   end = query->oa.map + MI_RPC_BO_END_OFFSET_BYTES;
+   start = last = query->oa.map + field_offset(false, 0);
+   end = query->oa.map + field_offset(true, 0);
 
    if (start[0] != query->oa.begin_report_id) {
       DBG("Spurious start report id=%"PRIu32"\n", start[0]);
@@ -1202,8 +1229,8 @@ accumulate_oa_reports(struct gen_perf_context *perf_ctx,
 
    assert(query->oa.map != NULL);
 
-   start = last = query->oa.map;
-   end = query->oa.map + MI_RPC_BO_END_OFFSET_BYTES;
+   start = last = query->oa.map + field_offset(false, 0);
+   end = query->oa.map + field_offset(true, 0);
 
    if (start[0] != query->oa.begin_report_id) {
       DBG("Spurious start report id=%"PRIu32"\n", start[0]);
@@ -1506,11 +1533,13 @@ gen_perf_get_query_data(struct gen_perf_context *perf_ctx,
             ;
 
          uint32_t *begin_report = query->oa.map;
-         uint32_t *end_report = query->oa.map + MI_RPC_BO_END_OFFSET_BYTES;
-         gen_perf_query_result_read_frequencies(&query->oa.result,
-                                                perf_ctx->devinfo,
-                                                begin_report,
-                                                end_report);
+         uint32_t *end_report = query->oa.map + perf_cfg->query_layout.size;
+         gen_perf_query_result_accumulate_fields(&query->oa.result,
+                                                 query->queryinfo,
+                                                 perf_ctx->devinfo,
+                                                 begin_report,
+                                                 end_report,
+                                                 true /* no_oa_accumulate */);
          accumulate_oa_reports(perf_ctx, query);
          assert(query->oa.results_accumulated);
 
