@@ -466,7 +466,7 @@ get_register_queries_function(const struct gen_device_info *devinfo)
    }
    if (devinfo->gen == 11) {
       if (devinfo->is_elkhartlake)
-         return gen_oa_register_queries_lkf;
+         return gen_oa_register_queries_ehl;
       return gen_oa_register_queries_icl;
    }
    if (devinfo->gen == 12)

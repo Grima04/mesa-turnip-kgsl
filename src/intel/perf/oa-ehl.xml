@@ -4,7 +4,7 @@
        mdapi_supported_apis="OGL OCL IO BB"
        underscore_name="render_basic"
        hw_config_guid="807f52f4-e457-4da4-b2b6-9a7b6dc2b1ed"
-       chipset="LKF"
+       chipset="EHL"
        symbol_name="RenderBasic"
        >
     <counter name="GPU Core Clocks"
@@ -651,7 +651,7 @@
        mdapi_supported_apis="OGL OCL IO BB"
        underscore_name="compute_basic"
        hw_config_guid="5706829a-b9f3-4d0f-aa88-420f452540bf"
-       chipset="LKF"
+       chipset="EHL"
        symbol_name="ComputeBasic"
        >
     <counter name="GPU Core Clocks"
@@ -1327,7 +1327,7 @@
        mdapi_supported_apis="OGL OGL4 OCL MEDIA IO BB"
        underscore_name="compute_extended"
        hw_config_guid="2ab52087-3700-4db4-8dda-f73b77edfd93"
-       chipset="LKF"
+       chipset="EHL"
        symbol_name="ComputeExtended"
        >
     <counter name="UntypedWritesPerCacheLine"
@@ -1762,7 +1762,7 @@
        mdapi_supported_apis="OGL OCL IO BB"
        underscore_name="compute_l3_cache"
        hw_config_guid="498aa71d-ae5c-4523-a246-33fb2769a386"
-       chipset="LKF"
+       chipset="EHL"
        symbol_name="ComputeL3Cache"
        >
     <counter name="GPU Core Clocks"
@@ -2630,7 +2630,7 @@
        mdapi_supported_apis="OGL OCL IO BB"
        underscore_name="render_pipe_profile"
        hw_config_guid="045dbb74-1e1a-499c-9a50-bac498e34699"
-       chipset="LKF"
+       chipset="EHL"
        symbol_name="RenderPipeProfile"
        >
     <counter name="GPU Core Clocks"
@@ -3342,7 +3342,7 @@
        mdapi_supported_apis="OGL OCL IO BB"
        underscore_name="hdc_and_sf"
        hw_config_guid="63af815c-30f9-4dd5-81fa-351ad6b69b4b"
-       chipset="LKF"
+       chipset="EHL"
        symbol_name="HDCAndSF"
        >
     <counter name="GPU Core Clocks"
@@ -4002,7 +4002,7 @@
        mdapi_supported_apis="OGL OCL IO BB"
        underscore_name="rasterizer_and_pixel_backend"
        hw_config_guid="20df0e83-535f-457f-a08b-76aee88c1e0e"
-       chipset="LKF"
+       chipset="EHL"
        symbol_name="RasterizerAndPixelBackend"
        >
     <counter name="GPU Core Clocks"
@@ -4712,7 +4712,7 @@
        mdapi_supported_apis="OGL OCL IO BB"
        underscore_name="l3_1"
        hw_config_guid="c7d3dc5c-975d-4d3a-a4c8-86fb0085743b"
-       chipset="LKF"
+       chipset="EHL"
        symbol_name="L3_1"
        >
     <counter name="GPU Core Clocks"
@@ -5410,7 +5410,7 @@
        mdapi_supported_apis="OGL OGL4 OCL MEDIA IO BB"
        underscore_name="l3_2"
        hw_config_guid="04003388-30ef-45d6-ae89-86f71ee596f4"
-       chipset="LKF"
+       chipset="EHL"
        symbol_name="L3_2"
        >
     <counter name="GPU Core Clocks"
@@ -5863,7 +5863,7 @@
        mdapi_supported_apis="OGL OGL4 OCL MEDIA IO BB"
        underscore_name="l3_3"
        hw_config_guid="12f706a4-3761-4448-83dc-63495da010ff"
-       chipset="LKF"
+       chipset="EHL"
        symbol_name="L3_3"
        >
     <counter name="GPU Core Clocks"
@@ -6316,7 +6316,7 @@
        mdapi_supported_apis="OGL OGL4 OCL MEDIA IO BB"
        underscore_name="l3_4"
        hw_config_guid="b03ae6f7-fdc0-4879-9e65-5b221ac9625f"
-       chipset="LKF"
+       chipset="EHL"
        symbol_name="L3_4"
        >
     <counter name="GPU Core Clocks"
@@ -6798,7 +6798,7 @@
        mdapi_supported_apis="OGL OGL4 OCL MEDIA IO BB"
        underscore_name="l3_5"
        hw_config_guid="cdec4315-3c8d-416f-b3ae-33f7590e1439"
-       chipset="LKF"
+       chipset="EHL"
        symbol_name="L3_5"
        >
     <counter name="GPU Core Clocks"
@@ -7280,7 +7280,7 @@
        mdapi_supported_apis="OGL OCL IO BB"
        underscore_name="sampler_1"
        hw_config_guid="377c06c4-5f41-465a-bf2e-60d95200ba94"
-       chipset="LKF"
+       chipset="EHL"
        symbol_name="Sampler_1"
        >
     <counter name="GPU Core Clocks"
@@ -8071,7 +8071,7 @@
        mdapi_supported_apis="OGL OCL IO BB"
        underscore_name="sampler_2"
        hw_config_guid="58326100-b3e7-4554-b612-592e16dc6fd1"
-       chipset="LKF"
+       chipset="EHL"
        symbol_name="Sampler_2"
        >
     <counter name="GPU Core Clocks"
@@ -8822,7 +8822,7 @@
        mdapi_supported_apis="OGL OCL IO BB"
        underscore_name="tdl_1"
        hw_config_guid="4c71735a-dfbf-4ebe-9df3-6c3db344a466"
-       chipset="LKF"
+       chipset="EHL"
        symbol_name="TDL_1"
        >
     <counter name="GPU Core Clocks"
@@ -9726,7 +9726,7 @@
        mdapi_supported_apis="OGL OCL IO BB"
        underscore_name="tdl_2"
        hw_config_guid="80e75f86-f8bc-4903-bf0f-38fd26cca636"
-       chipset="LKF"
+       chipset="EHL"
        symbol_name="TDL_2"
        >
     <counter name="GPU Core Clocks"
@@ -10470,7 +10470,7 @@
        mdapi_supported_apis="OGL OCL IO BB"
        underscore_name="tdl_3"
        hw_config_guid="9c517add-e263-4cbe-b7f8-9986f737e68a"
-       chipset="LKF"
+       chipset="EHL"
        symbol_name="TDL_3"
        >
     <counter name="GPU Core Clocks"
@@ -11376,7 +11376,7 @@
        mdapi_supported_apis="OGL OCL MEDIA IO BB"
        underscore_name="gpu_busyness"
        hw_config_guid="c3103887-8c7c-482a-b923-3d68dd340598"
-       chipset="LKF"
+       chipset="EHL"
        symbol_name="GpuBusyness"
        >
     <counter name="GPU Core Clocks"
@@ -11598,7 +11598,7 @@
        mdapi_supported_apis="OGL OCL IO BB"
        underscore_name="test_oa"
        hw_config_guid="82b6b321-f93e-445a-a285-f30391ef1dc5"
-       chipset="LKF"
+       chipset="EHL"
        symbol_name="TestOa"
        >
     <counter name="TestCounter7"

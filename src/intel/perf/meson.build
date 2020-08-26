@@ -5,7 +5,7 @@ gen_hw_metrics = [
   'kblgt2', 'kblgt3',
   'cflgt2', 'cflgt3',
   'bxt', 'glk',
-  'icl', 'lkf',
+  'icl', 'ehl',
   'tgl',
 ]
 
