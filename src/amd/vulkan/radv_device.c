@@ -2821,6 +2821,10 @@ VkResult radv_CreateDevice(
 		/* TODO: Add support for more hardware. */
 		assert(device->physical_device->rad_info.chip_class == GFX8);
 
+		fprintf(stderr, "**********************************************************************\n");
+		fprintf(stderr, "* WARNING: RADV_TRAP_HANDLER is experimental and only for debugging! *\n");
+		fprintf(stderr, "**********************************************************************\n");
+
 		/* To get the disassembly of the faulty shaders, we have to
 		 * keep some shader info around.
 		 */
