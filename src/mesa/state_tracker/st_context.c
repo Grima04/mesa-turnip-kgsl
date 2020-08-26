@@ -89,7 +89,7 @@
 #include "util/u_memory.h"
 #include "cso_cache/cso_context.h"
 #include "compiler/glsl/glsl_parser_extras.h"
-
+#include "nir/nir_to_tgsi.h"
 
 DEBUG_GET_ONCE_BOOL_OPTION(mesa_mvp_dp4, "MESA_MVP_DP4", FALSE)
 
@@ -1145,5 +1145,20 @@ st_destroy_context(struct st_context *st)
    } else {
       /* Restore the current context and draw/read buffers (may be NULL) */
       _mesa_make_current(save_ctx, save_drawbuffer, save_readbuffer);
+   }
+}
+
+const struct nir_shader_compiler_options *
+st_get_nir_compiler_options(struct st_context *st, gl_shader_stage stage)
+{
+   const struct nir_shader_compiler_options *options =
+      st->ctx->Const.ShaderCompilerOptions[stage].NirOptions;
+
+   if (options) {
+      return options;
+   } else {
+      return nir_to_tgsi_get_compiler_options(st->pipe->screen,
+                                              PIPE_SHADER_IR_NIR,
+                                              pipe_shader_type_from_mesa(stage));
    }
 }
