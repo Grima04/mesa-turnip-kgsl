@@ -93,7 +93,7 @@ EXTENSIONS = [
     Extension('VK_KHR_sampler_ycbcr_conversion',          1, False),
     Extension('VK_KHR_shader_atomic_int64',               1, False),
     Extension('VK_KHR_shader_draw_parameters',            1, False),
-    Extension('VK_KHR_shader_float16_int8',               1, True),
+    Extension('VK_KHR_shader_float16_int8',               1, False),
     Extension('VK_KHR_storage_buffer_storage_class',      1, True),
     Extension('VK_KHR_surface',                          25, 'VAL_HAS_SURFACE'),
     Extension('VK_KHR_surface_protected_capabilities',    1, 'VAL_HAS_SURFACE'),
