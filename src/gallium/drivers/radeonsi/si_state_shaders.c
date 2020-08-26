@@ -3011,6 +3011,7 @@ static void si_bind_vs_shader(struct pipe_context *ctx, void *state)
       si_shader_change_notify(sctx);
 
    si_update_common_shader_state(sctx, sel, PIPE_SHADER_VERTEX);
+   si_select_draw_vbo(sctx);
    si_update_vs_viewport_state(sctx);
    si_update_streamout_state(sctx);
    si_update_clip_regs(sctx, old_hw_vs, old_hw_vs_variant, si_get_vs(sctx)->cso,
@@ -3059,6 +3060,7 @@ bool si_update_ngg(struct si_context *sctx)
 
       sctx->ngg = new_ngg;
       sctx->last_gs_out_prim = -1; /* reset this so that it gets updated */
+      si_select_draw_vbo(sctx);
       return true;
    }
    return false;
@@ -3081,6 +3083,7 @@ static void si_bind_gs_shader(struct pipe_context *ctx, void *state)
    sctx->ia_multi_vgt_param_key.u.uses_gs = sel != NULL;
 
    si_update_common_shader_state(sctx, sel, PIPE_SHADER_GEOMETRY);
+   si_select_draw_vbo(sctx);
    sctx->last_gs_out_prim = -1; /* reset this so that it gets updated */
 
    ngg_changed = si_update_ngg(sctx);
@@ -3132,6 +3135,7 @@ static void si_bind_tes_shader(struct pipe_context *ctx, void *state)
    si_update_tess_uses_prim_id(sctx);
 
    si_update_common_shader_state(sctx, sel, PIPE_SHADER_TESS_EVAL);
+   si_select_draw_vbo(sctx);
    sctx->last_gs_out_prim = -1; /* reset this so that it gets updated */
 
    bool ngg_changed = si_update_ngg(sctx);

@@ -131,6 +131,26 @@ extern "C" {
 #define SI_RESOURCE_FLAG_UNCACHED          (PIPE_RESOURCE_FLAG_DRV_PRIV << 12)
 #define SI_RESOURCE_FLAG_DRIVER_INTERNAL   (PIPE_RESOURCE_FLAG_DRV_PRIV << 13)
 
+enum si_has_gs {
+   GS_OFF,
+   GS_ON,
+};
+
+enum si_has_tess {
+   TESS_OFF,
+   TESS_ON,
+};
+
+enum si_has_ngg {
+   NGG_OFF,
+   NGG_ON,
+};
+
+enum si_has_prim_discard_cs {
+   PRIM_DISCARD_CS_OFF,
+   PRIM_DISCARD_CS_ON,
+};
+
 enum si_clear_code
 {
    DCC_CLEAR_COLOR_0000 = 0x00000000,
@@ -884,6 +904,12 @@ struct si_small_prim_cull_info {
    float scale[2], translate[2];
 };
 
+typedef void (*pipe_draw_vbo_func)(struct pipe_context *pipe,
+                                   const struct pipe_draw_info *info,
+                                   const struct pipe_draw_indirect_info *indirect,
+                                   const struct pipe_draw_start_count *draws,
+                                   unsigned num_draws);
+
 struct si_context {
    struct pipe_context b; /* base class */
 
@@ -1268,6 +1294,8 @@ struct si_context {
     * a context flush.
     */
    struct hash_table *dirty_implicit_resources;
+
+   pipe_draw_vbo_func draw_vbo[NUM_GFX_VERSIONS - GFX6][2][2][2][2];
 };
 
 /* si_blit.c */
@@ -1910,6 +1938,16 @@ static inline unsigned si_get_shader_wave_size(struct si_shader *shader)
                            shader->key.as_es,
                            shader->key.opt.ngg_culling & SI_NGG_CULL_GS_FAST_LAUNCH_ALL,
                            shader->key.opt.vs_as_prim_discard_cs);
+}
+
+static inline void si_select_draw_vbo(struct si_context *sctx)
+{
+   sctx->b.draw_vbo = sctx->draw_vbo[sctx->chip_class - GFX6]
+                                    [!!sctx->tes_shader.cso]
+                                    [!!sctx->gs_shader.cso]
+                                    [sctx->ngg]
+                                    [si_compute_prim_discard_enabled(sctx)];
+   assert(sctx->b.draw_vbo);
 }
 
 #define PRINT_ERR(fmt, args...)                                                                    \
