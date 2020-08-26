@@ -582,6 +582,7 @@ radv_check_gpu_hangs(struct radv_queue *queue, struct radeon_cmdbuf *cs)
 
 	fprintf(stderr, "GPU hang report:\n\n");
 	radv_dump_device_name(device, stderr);
+	ac_print_gpu_info(&device->physical_device->rad_info);
 
 	radv_dump_enabled_options(device, stderr);
 	radv_dump_dmesg(stderr);
