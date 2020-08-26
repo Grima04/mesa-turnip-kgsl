@@ -62,6 +62,7 @@ struct gen_device_info
    bool is_geminilake;
    bool is_coffeelake;
    bool is_elkhartlake;
+   bool is_tigerlake;
    bool is_dg1;
 
    bool has_hiz_and_separate_stencil;
