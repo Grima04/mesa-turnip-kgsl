@@ -48,9 +48,10 @@ panfrost_build_blit_shader(panfrost_program *program, unsigned gpu_id, gl_frag_r
 {
         bool is_colour = loc >= FRAG_RESULT_DATA0;
 
-        nir_shader *shader = nir_shader_create(NULL, MESA_SHADER_FRAGMENT, &midgard_nir_options, NULL);
-        nir_function *fn = nir_function_create(shader, "main");
-        nir_function_impl *impl = nir_function_impl_create(fn);
+        nir_builder _b;
+        nir_builder_init_simple_shader(&_b, NULL, MESA_SHADER_FRAGMENT, &midgard_nir_options);
+        nir_builder *b = &_b;
+        nir_shader *shader = b->shader;
 
         nir_variable *c_src = nir_variable_create(shader, nir_var_shader_in, glsl_vector_type(GLSL_TYPE_FLOAT, 2), "coord");
         nir_variable *c_out = nir_variable_create(shader, nir_var_shader_out, glsl_vector_type(
@@ -58,11 +59,6 @@ panfrost_build_blit_shader(panfrost_program *program, unsigned gpu_id, gl_frag_r
 
         c_src->data.location = VARYING_SLOT_TEX0;
         c_out->data.location = loc;
-
-        nir_builder _b;
-        nir_builder *b = &_b;
-        nir_builder_init(b, impl);
-        b->cursor = nir_before_block(nir_start_block(impl));
 
         nir_ssa_def *coord = nir_load_var(b, c_src);
 
