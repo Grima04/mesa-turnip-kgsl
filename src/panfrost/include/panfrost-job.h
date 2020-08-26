@@ -464,15 +464,6 @@ struct bifrost_tiler_meta {
         u64 zeros[20];
 } __attribute__((packed));
 
-struct bifrost_tiler_only {
-        /* 0x20 */
-        union midgard_primitive_size primitive_size;
-
-        mali_ptr tiler_meta;
-
-        u64 zero1, zero2, zero3, zero4, zero5, zero6;
-} __attribute__((packed));
-
 struct mali_vertex_tiler_postfix {
         u16 gl_enables; // 0x6 on Midgard, 0x2 on Bifrost
 
@@ -543,7 +534,9 @@ struct bifrost_payload_vertex {
 
 struct bifrost_payload_tiler {
         struct mali_vertex_tiler_prefix prefix;
-        struct bifrost_tiler_only tiler;
+        union midgard_primitive_size primitive_size;
+        mali_ptr tiler_meta;
+        u64 zero1, zero2, zero3, zero4, zero5, zero6;
         struct mali_vertex_tiler_postfix postfix;
 } __attribute__((packed));
 

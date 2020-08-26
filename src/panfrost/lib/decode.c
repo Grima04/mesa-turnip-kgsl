@@ -1969,30 +1969,6 @@ pandecode_primitive_size(union midgard_primitive_size u, bool constant)
         pandecode_log("},\n");
 }
 
-static void
-pandecode_tiler_only_bfr(const struct bifrost_tiler_only *t, int job_no)
-{
-        pandecode_log_cont("{\n");
-        pandecode_indent++;
-
-        /* TODO: gl_PointSize on Bifrost */
-        pandecode_primitive_size(t->primitive_size, true);
-
-        if (t->zero1 || t->zero2 || t->zero3 || t->zero4 || t->zero5
-            || t->zero6) {
-                pandecode_msg("XXX: tiler only zero tripped\n");
-                pandecode_prop("zero1 = 0x%" PRIx64, t->zero1);
-                pandecode_prop("zero2 = 0x%" PRIx64, t->zero2);
-                pandecode_prop("zero3 = 0x%" PRIx64, t->zero3);
-                pandecode_prop("zero4 = 0x%" PRIx64, t->zero4);
-                pandecode_prop("zero5 = 0x%" PRIx64, t->zero5);
-                pandecode_prop("zero6 = 0x%" PRIx64, t->zero6);
-        }
-
-        pandecode_indent--;
-        pandecode_log("},\n");
-}
-
 static int
 pandecode_vertex_job_bfr(const struct mali_job_descriptor_header *h,
                                 const struct pandecode_mapped_memory *mem,
@@ -2022,15 +1998,26 @@ pandecode_tiler_job_bfr(const struct mali_job_descriptor_header *h,
         struct bifrost_payload_tiler *PANDECODE_PTR_VAR(t, mem, payload);
 
         pandecode_vertex_tiler_postfix_pre(&t->postfix, job_no, h->job_type, "", true, gpu_id);
-        pandecode_tiler_meta(t->tiler.tiler_meta, job_no);
+        pandecode_tiler_meta(t->tiler_meta, job_no);
 
         pandecode_log("struct bifrost_payload_tiler payload_%"PRIx64"_%d = {\n", payload, job_no);
         pandecode_indent++;
 
         pandecode_vertex_tiler_prefix(&t->prefix, job_no, false);
 
-        pandecode_log(".tiler = ");
-        pandecode_tiler_only_bfr(&t->tiler, job_no);
+        /* TODO: gl_PointSize on Bifrost */
+        pandecode_primitive_size(t->primitive_size, true);
+
+        if (t->zero1 || t->zero2 || t->zero3 || t->zero4 || t->zero5
+            || t->zero6) {
+                pandecode_msg("XXX: tiler only zero tripped\n");
+                pandecode_prop("zero1 = 0x%" PRIx64, t->zero1);
+                pandecode_prop("zero2 = 0x%" PRIx64, t->zero2);
+                pandecode_prop("zero3 = 0x%" PRIx64, t->zero3);
+                pandecode_prop("zero4 = 0x%" PRIx64, t->zero4);
+                pandecode_prop("zero5 = 0x%" PRIx64, t->zero5);
+                pandecode_prop("zero6 = 0x%" PRIx64, t->zero6);
+        }
 
         pandecode_vertex_tiler_postfix(&t->postfix, job_no, true);
 
