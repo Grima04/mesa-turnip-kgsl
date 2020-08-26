@@ -677,10 +677,10 @@ fd6_emit_tile_init(struct fd_batch *batch)
 
 	fd6_emit_lrz_flush(ring);
 
-	if (batch->lrz_clear) {
-		fd_log(batch, "START LRZ CLEAR");
-		fd6_emit_ib(ring, batch->lrz_clear);
-		fd_log(batch, "END LRZ CLEAR");
+	if (batch->prologue) {
+		fd_log(batch, "START PROLOGUE");
+		fd6_emit_ib(ring, batch->prologue);
+		fd_log(batch, "END PROLOGUE");
 	}
 
 	fd6_cache_inv(batch, ring);
@@ -1364,6 +1364,13 @@ fd6_emit_sysmem_prep(struct fd_batch *batch)
 	struct fd_ringbuffer *ring = batch->gmem;
 
 	fd6_emit_restore(batch, ring);
+	fd6_emit_lrz_flush(ring);
+
+	if (batch->prologue) {
+		fd_log(batch, "START PROLOGUE");
+		fd6_emit_ib(ring, batch->prologue);
+		fd_log(batch, "END PROLOGUE");
+	}
 
 	if (pfb->width > 0 && pfb->height > 0)
 		set_scissor(ring, 0, 0, pfb->width - 1, pfb->height - 1);
@@ -1375,11 +1382,6 @@ fd6_emit_sysmem_prep(struct fd_batch *batch)
 	set_bin_size(ring, 0, 0, 0xc00000); /* 0xc00000 = BYPASS? */
 
 	emit_sysmem_clears(batch, ring);
-
-	fd6_emit_lrz_flush(ring);
-
-	if (batch->lrz_clear)
-		fd6_emit_ib(ring, batch->lrz_clear);
 
 	emit_marker6(ring, 7);
 	OUT_PKT7(ring, CP_SET_MARKER, 1);

@@ -164,9 +164,9 @@ batch_fini(struct fd_batch *batch)
 		debug_assert(!batch->gmem);
 	}
 
-	if (batch->lrz_clear) {
-		fd_ringbuffer_del(batch->lrz_clear);
-		batch->lrz_clear = NULL;
+	if (batch->prologue) {
+		fd_ringbuffer_del(batch->prologue);
+		batch->prologue = NULL;
 	}
 
 	if (batch->epilogue) {
@@ -334,6 +334,15 @@ batch_flush(struct fd_batch *batch)
 	fd_screen_lock(batch->ctx->screen);
 	fd_bc_invalidate_batch(batch, false);
 	fd_screen_unlock(batch->ctx->screen);
+}
+
+/* Get per-batch prologue */
+struct fd_ringbuffer *
+fd_batch_get_prologue(struct fd_batch *batch)
+{
+	if (!batch->prologue)
+		batch->prologue = alloc_ring(batch, 0x1000, 0);
+	return batch->prologue;
 }
 
 /* NOTE: could drop the last ref to batch

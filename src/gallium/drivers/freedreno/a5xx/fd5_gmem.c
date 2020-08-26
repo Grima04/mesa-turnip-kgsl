@@ -369,8 +369,8 @@ fd5_emit_tile_init(struct fd_batch *batch)
 
 	fd5_emit_restore(batch, ring);
 
-	if (batch->lrz_clear)
-		fd5_emit_ib(ring, batch->lrz_clear);
+	if (batch->prologue)
+		fd5_emit_ib(ring, batch->prologue);
 
 	fd5_emit_lrz_flush(ring);
 
@@ -699,6 +699,9 @@ fd5_emit_sysmem_prep(struct fd_batch *batch)
 	fd5_emit_restore(batch, ring);
 
 	fd5_emit_lrz_flush(ring);
+
+	if (batch->prologue)
+		fd5_emit_ib(ring, batch->prologue);
 
 	OUT_PKT7(ring, CP_SKIP_IB2_ENABLE_GLOBAL, 1);
 	OUT_RING(ring, 0x0);
