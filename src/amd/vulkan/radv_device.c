@@ -2792,6 +2792,12 @@ VkResult radv_CreateDevice(
 		fprintf(stderr, "*****************************************************************************\n");
 
 		fprintf(stderr, "Trace file will be dumped to %s\n", filename);
+
+		/* Wait for idle after every draw/dispatch to identify the
+		 * first bad call.
+		 */
+		device->instance->debug_flags |= RADV_DEBUG_SYNC_SHADERS;
+
 		radv_dump_enabled_options(device, stderr);
 	}
 
