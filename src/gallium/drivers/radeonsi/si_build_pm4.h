@@ -264,12 +264,11 @@ static inline void radeon_opt_set_context_regn(struct si_context *sctx, unsigned
                                                unsigned *value, unsigned *saved_val, unsigned num)
 {
    struct radeon_cmdbuf *cs = &sctx->gfx_cs;
-   int i, j;
 
-   for (i = 0; i < num; i++) {
+   for (unsigned i = 0; i < num; i++) {
       if (saved_val[i] != value[i]) {
          radeon_set_context_reg_seq(cs, offset, num);
-         for (j = 0; j < num; j++)
+         for (unsigned j = 0; j < num; j++)
             radeon_emit(cs, value[j]);
 
          memcpy(saved_val, value, sizeof(uint32_t) * num);

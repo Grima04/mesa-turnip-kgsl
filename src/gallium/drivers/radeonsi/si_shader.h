@@ -443,7 +443,7 @@ struct si_shader_selector {
    unsigned ngg_cull_nonindexed_fast_launch_vert_threshold; /* UINT32_MAX = disabled */
    ubyte clipdist_mask;
    ubyte culldist_mask;
-   ubyte rast_prim;
+   enum pipe_prim_type rast_prim;
 
    /* ES parameters. */
    uint16_t esgs_itemsize; /* vertex stride */

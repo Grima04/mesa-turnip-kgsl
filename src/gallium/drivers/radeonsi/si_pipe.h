@@ -50,10 +50,10 @@ extern "C" {
  * one which will mean "unknown" for the purpose of state tracking and
  * the number shouldn't be a commonly-used one. */
 #define SI_BASE_VERTEX_UNKNOWN    INT_MIN
-#define SI_START_INSTANCE_UNKNOWN INT_MIN
-#define SI_DRAW_ID_UNKNOWN        INT_MIN
-#define SI_RESTART_INDEX_UNKNOWN  INT_MIN
-#define SI_INSTANCE_COUNT_UNKNOWN INT_MIN
+#define SI_START_INSTANCE_UNKNOWN ((unsigned)INT_MIN)
+#define SI_DRAW_ID_UNKNOWN        ((unsigned)INT_MIN)
+#define SI_RESTART_INDEX_UNKNOWN  ((unsigned)INT_MIN)
+#define SI_INSTANCE_COUNT_UNKNOWN ((unsigned)INT_MIN)
 #define SI_NUM_SMOOTH_AA_SAMPLES  8
 #define SI_MAX_POINT_SIZE         2048
 #define SI_GS_PER_ES              128
@@ -1106,17 +1106,17 @@ struct si_context {
    bool ngg : 1;
    bool same_patch_vertices : 1;
    uint8_t ngg_culling;
-   int last_index_size;
+   unsigned last_index_size;
    int last_base_vertex;
-   int last_start_instance;
-   int last_instance_count;
-   int last_drawid;
-   int last_sh_base_reg;
+   unsigned last_start_instance;
+   unsigned last_instance_count;
+   unsigned last_drawid;
+   unsigned last_sh_base_reg;
    int last_primitive_restart_en;
-   int last_restart_index;
-   int last_prim;
-   int last_multi_vgt_param;
-   int last_gs_out_prim;
+   unsigned last_restart_index;
+   unsigned last_prim;
+   unsigned last_multi_vgt_param;
+   unsigned last_gs_out_prim;
    int last_binning_enabled;
    unsigned current_vs_state;
    unsigned last_vs_state;
@@ -1140,11 +1140,11 @@ struct si_context {
    /* Local shader (VS), or HS if LS-HS are merged. */
    struct si_shader *last_ls;
    struct si_shader_selector *last_tcs;
-   int last_num_tcs_input_cp;
-   int last_tes_sh_base;
+   unsigned last_num_tcs_input_cp;
+   unsigned last_tes_sh_base;
    bool last_tess_uses_primid;
    unsigned last_num_patches;
-   int last_ls_hs_config;
+   unsigned last_ls_hs_config;
 
    /* Debug state. */
    bool is_debug;

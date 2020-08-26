@@ -1697,7 +1697,8 @@ static void si_get_draw_start_count(struct si_context *sctx, const struct pipe_d
       unsigned *data;
 
       if (indirect->indirect_draw_count) {
-         data = pipe_buffer_map_range(&sctx->b, indirect->indirect_draw_count,
+         data = (unsigned*)
+                pipe_buffer_map_range(&sctx->b, indirect->indirect_draw_count,
                                       indirect->indirect_draw_count_offset, sizeof(unsigned),
                                       PIPE_MAP_READ, &transfer);
 
@@ -1714,7 +1715,8 @@ static void si_get_draw_start_count(struct si_context *sctx, const struct pipe_d
       }
 
       map_size = (indirect_count - 1) * indirect->stride + 3 * sizeof(unsigned);
-      data = pipe_buffer_map_range(&sctx->b, indirect->buffer, indirect->offset, map_size,
+      data = (unsigned*)
+             pipe_buffer_map_range(&sctx->b, indirect->buffer, indirect->offset, map_size,
                                    PIPE_MAP_READ, &transfer);
 
       begin = UINT_MAX;
@@ -1797,15 +1799,18 @@ static bool si_all_vs_resources_read_only(struct si_context *sctx, struct pipe_r
 {
    struct radeon_winsys *ws = sctx->ws;
    struct radeon_cmdbuf *cs = &sctx->gfx_cs;
+   struct si_descriptors *buffers =
+      &sctx->descriptors[si_const_and_shader_buffer_descriptors_idx(PIPE_SHADER_VERTEX)];
+   struct si_shader_selector *vs = sctx->vs_shader.cso;
+   struct si_vertex_elements *velems = sctx->vertex_elements;
+   unsigned num_velems = velems->count;
+   unsigned num_images = vs->info.base.num_images;
 
    /* Index buffer. */
    if (indexbuf && ws->cs_is_buffer_referenced(cs, si_resource(indexbuf)->buf, RADEON_USAGE_WRITE))
       goto has_write_reference;
 
    /* Vertex buffers. */
-   struct si_vertex_elements *velems = sctx->vertex_elements;
-   unsigned num_velems = velems->count;
-
    for (unsigned i = 0; i < num_velems; i++) {
       if (!((1 << i) & velems->first_vb_use_mask))
          continue;
@@ -1820,8 +1825,6 @@ static bool si_all_vs_resources_read_only(struct si_context *sctx, struct pipe_r
    }
 
    /* Constant and shader buffers. */
-   struct si_descriptors *buffers =
-      &sctx->descriptors[si_const_and_shader_buffer_descriptors_idx(PIPE_SHADER_VERTEX)];
    for (unsigned i = 0; i < buffers->num_active_slots; i++) {
       unsigned index = buffers->first_active_slot + i;
       struct pipe_resource *res = sctx->const_and_shader_buffers[PIPE_SHADER_VERTEX].buffers[index];
@@ -1833,7 +1836,6 @@ static bool si_all_vs_resources_read_only(struct si_context *sctx, struct pipe_r
    }
 
    /* Samplers. */
-   struct si_shader_selector *vs = sctx->vs_shader.cso;
    if (vs->info.base.textures_used) {
       unsigned num_samplers = util_last_bit(vs->info.base.textures_used);
 
@@ -1848,7 +1850,6 @@ static bool si_all_vs_resources_read_only(struct si_context *sctx, struct pipe_r
    }
 
    /* Images. */
-   unsigned num_images = vs->info.base.num_images;
    if (num_images) {
       for (unsigned i = 0; i < num_images; i++) {
          struct pipe_resource *res = sctx->images[PIPE_SHADER_VERTEX].views[i].resource;
