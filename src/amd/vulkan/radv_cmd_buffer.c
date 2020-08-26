@@ -626,13 +626,16 @@ radv_cmd_buffer_after_draw(struct radv_cmd_buffer *cmd_buffer,
 
 static void
 radv_save_pipeline(struct radv_cmd_buffer *cmd_buffer,
-		   struct radv_pipeline *pipeline, enum ring_type ring)
+		   struct radv_pipeline *pipeline)
 {
 	struct radv_device *device = cmd_buffer->device;
+	enum ring_type ring;
 	uint32_t data[2];
 	uint64_t va;
 
 	va = radv_buffer_get_va(device->trace_bo);
+
+	ring = radv_queue_family_to_ring(cmd_buffer->queue_family_index);
 
 	switch (ring) {
 	case RING_GFX:
@@ -1313,7 +1316,7 @@ radv_emit_graphics_pipeline(struct radv_cmd_buffer *cmd_buffer)
 				   pipeline->gs_copy_shader->bo);
 
 	if (unlikely(cmd_buffer->device->trace_bo))
-		radv_save_pipeline(cmd_buffer, pipeline, RING_GFX);
+		radv_save_pipeline(cmd_buffer, pipeline);
 
 	cmd_buffer->state.emitted_pipeline = pipeline;
 
@@ -4174,7 +4177,7 @@ radv_emit_compute_pipeline(struct radv_cmd_buffer *cmd_buffer)
 			   pipeline->shaders[MESA_SHADER_COMPUTE]->bo);
 
 	if (unlikely(cmd_buffer->device->trace_bo))
-		radv_save_pipeline(cmd_buffer, pipeline, RING_COMPUTE);
+		radv_save_pipeline(cmd_buffer, pipeline);
 }
 
 static void radv_mark_descriptor_sets_dirty(struct radv_cmd_buffer *cmd_buffer,

@@ -48,8 +48,8 @@
  *
  * [0]: primary trace ID
  * [1]: secondary trace ID
- * [2-3]: 64-bit GFX pipeline pointer
- * [4-5]: 64-bit COMPUTE pipeline pointer
+ * [2-3]: 64-bit GFX ring pipeline pointer
+ * [4-5]: 64-bit COMPUTE ring pipeline pointer
  * [6-7]: 64-bit descriptor set #0 pointer
  * ...
  * [68-69]: 64-bit descriptor set #31 pointer
@@ -459,61 +459,29 @@ radv_dump_shaders(struct radv_pipeline *pipeline,
 	}
 }
 
-static void
-radv_dump_pipeline_state(struct radv_pipeline *pipeline,
-			 VkShaderStageFlagBits active_stages, FILE *f)
-{
-	radv_dump_shaders(pipeline, active_stages, f);
-	radv_dump_annotated_shaders(pipeline, active_stages, f);
-}
-
-static void
-radv_dump_graphics_state(struct radv_device *device,
-			 struct radv_pipeline *graphics_pipeline,
-			 struct radv_pipeline *compute_pipeline, FILE *f)
-{
-	VkShaderStageFlagBits active_stages;
-
-	if (graphics_pipeline) {
-		active_stages = graphics_pipeline->active_stages;
-		radv_dump_pipeline_state(graphics_pipeline, active_stages, f);
-	}
-
-	if (compute_pipeline) {
-		active_stages = VK_SHADER_STAGE_COMPUTE_BIT;
-		radv_dump_pipeline_state(compute_pipeline, active_stages, f);
-	}
-
-	radv_dump_descriptors(device, f);
-}
-
-static void
-radv_dump_compute_state(struct radv_device *device,
-			struct radv_pipeline *compute_pipeline, FILE *f)
-{
-	VkShaderStageFlagBits active_stages = VK_SHADER_STAGE_COMPUTE_BIT;
-
-	if (!compute_pipeline)
-		return;
-
-	radv_dump_pipeline_state(compute_pipeline, active_stages, f);
-	radv_dump_descriptors(device, f);
-}
-
 static struct radv_pipeline *
-radv_get_saved_graphics_pipeline(struct radv_device *device)
+radv_get_saved_pipeline(struct radv_device *device, enum ring_type ring)
 {
 	uint64_t *ptr = (uint64_t *)device->trace_id_ptr;
+	int offset = ring == RING_GFX ? 1 : 2;
 
-	return *(struct radv_pipeline **)(ptr + 1);
+	return *(struct radv_pipeline **)(ptr + offset);
 }
 
-static struct radv_pipeline *
-radv_get_saved_compute_pipeline(struct radv_device *device)
+static void
+radv_dump_queue_state(struct radv_queue *queue, FILE *f)
 {
-	uint64_t *ptr = (uint64_t *)device->trace_id_ptr;
+	enum ring_type ring = radv_queue_family_to_ring(queue->queue_family_index);
+	struct radv_pipeline *pipeline;
 
-	return *(struct radv_pipeline **)(ptr + 2);
+	fprintf(f, "RING_%s:\n", ring == RING_GFX ? "GFX" : "COMPUTE");
+
+	pipeline = radv_get_saved_pipeline(queue->device, ring);
+	if (pipeline) {
+		radv_dump_shaders(pipeline, pipeline->active_stages, f);
+		radv_dump_annotated_shaders(pipeline, pipeline->active_stages, f);
+		radv_dump_descriptors(queue->device, f);
+	}
 }
 
 static void
@@ -596,7 +564,6 @@ radv_gpu_hang_occured(struct radv_queue *queue, enum ring_type ring)
 void
 radv_check_gpu_hangs(struct radv_queue *queue, struct radeon_cmdbuf *cs)
 {
-	struct radv_pipeline *graphics_pipeline, *compute_pipeline;
 	struct radv_device *device = queue->device;
 	enum ring_type ring;
 	uint64_t addr;
@@ -610,9 +577,6 @@ radv_check_gpu_hangs(struct radv_queue *queue, struct radeon_cmdbuf *cs)
 		                                        &device->dmesg_timestamp, &addr);
 	if (!hang_occurred && !vm_fault_occurred)
 		return;
-
-	graphics_pipeline = radv_get_saved_graphics_pipeline(device);
-	compute_pipeline = radv_get_saved_compute_pipeline(device);
 
 	radv_dump_trace(queue->device, cs);
 
@@ -628,23 +592,7 @@ radv_check_gpu_hangs(struct radv_queue *queue, struct radeon_cmdbuf *cs)
 	}
 
 	radv_dump_debug_registers(device, stderr);
-
-	switch (ring) {
-	case RING_GFX:
-		fprintf(stderr, "RING_GFX:\n");
-		radv_dump_graphics_state(queue->device,
-					 graphics_pipeline, compute_pipeline,
-					 stderr);
-		break;
-	case RING_COMPUTE:
-		fprintf(stderr, "RING_COMPUTE:\n");
-		radv_dump_compute_state(queue->device,
-					compute_pipeline, stderr);
-		break;
-	default:
-		assert(0);
-		break;
-	}
+	radv_dump_queue_state(queue, stderr);
 
 	abort();
 }
