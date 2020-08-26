@@ -172,7 +172,7 @@ write_ubo_ssbo_uniforms(struct v3dv_cmd_buffer *cmd_buffer,
       &cmd_buffer->state.descriptor_state[v3dv_pipeline_get_binding_point(pipeline)];
 
    struct v3dv_descriptor_map *map =
-      content == QUNIFORM_UBO_ADDR ?
+      content == QUNIFORM_UBO_ADDR || content == QUNIFORM_GET_UBO_SIZE ?
       &pipeline->ubo_map : &pipeline->ssbo_map;
 
    uint32_t offset =
@@ -215,7 +215,8 @@ write_ubo_ssbo_uniforms(struct v3dv_cmd_buffer *cmd_buffer,
       assert(descriptor->buffer->mem);
       assert(descriptor->buffer->mem->bo);
 
-      if (content == QUNIFORM_GET_BUFFER_SIZE) {
+      if (content == QUNIFORM_GET_BUFFER_SIZE ||
+          content == QUNIFORM_GET_UBO_SIZE) {
          cl_aligned_u32(uniforms, descriptor->range);
       } else {
          cl_aligned_reloc(&job->indirect, uniforms,
@@ -376,6 +377,7 @@ v3dv_write_uniforms_wg_offsets(struct v3dv_cmd_buffer *cmd_buffer,
       case QUNIFORM_SSBO_OFFSET:
       case QUNIFORM_UBO_ADDR:
       case QUNIFORM_GET_BUFFER_SIZE:
+      case QUNIFORM_GET_UBO_SIZE:
          write_ubo_ssbo_uniforms(cmd_buffer, pipeline, &uniforms,
                                  uinfo->contents[i], data);
         break;
