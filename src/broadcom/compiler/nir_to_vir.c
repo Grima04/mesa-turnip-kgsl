@@ -2201,6 +2201,12 @@ ntq_emit_intrinsic(struct v3d_compile *c, nir_intrinsic_instr *instr)
                                            nir_src_as_uint(instr->src[0])));
                 break;
 
+        case nir_intrinsic_get_ubo_size:
+                ntq_store_dest(c, &instr->dest, 0,
+                               vir_uniform(c, QUNIFORM_GET_UBO_SIZE,
+                                           nir_src_comp_as_uint(instr->src[0], 0)));
+                break;
+
         case nir_intrinsic_load_user_clip_plane:
                 for (int i = 0; i < nir_intrinsic_dest_components(instr); i++) {
                         ntq_store_dest(c, &instr->dest, i,

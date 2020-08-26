@@ -122,6 +122,10 @@ vir_dump_uniform(enum quniform_contents contents,
                 fprintf(stderr, "ssbo_size[%d]", data);
                 break;
 
+        case QUNIFORM_GET_UBO_SIZE:
+                fprintf(stderr, "ubo_size[%d]", data);
+                break;
+
         case QUNIFORM_NUM_WORK_GROUPS:
                 fprintf(stderr, "num_wg.%c", data < 3 ? "xyz"[data] : '?');
                 break;
