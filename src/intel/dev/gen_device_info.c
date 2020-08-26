@@ -958,10 +958,12 @@ static const struct gen_device_info gen_device_info_tgl_gt2 = {
 
 static const struct gen_device_info gen_device_info_rkl_gt05 = {
    GEN12_GT05_FEATURES,
+   .is_rocketlake = true,
 };
 
 static const struct gen_device_info gen_device_info_rkl_gt1 = {
    GEN12_GT_FEATURES(1),
+   .is_rocketlake = true,
 };
 
 static const struct gen_device_info gen_device_info_adl_gt05 = {
