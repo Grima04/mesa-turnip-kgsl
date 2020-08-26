@@ -35,40 +35,43 @@
 #include "freedreno_resource.h"
 #include "freedreno_query_hw.h"
 
-static void
-batch_init(struct fd_batch *batch)
+static struct fd_ringbuffer *
+alloc_ring(struct fd_batch *batch, unsigned sz, enum fd_ringbuffer_flags flags)
 {
 	struct fd_context *ctx = batch->ctx;
-	enum fd_ringbuffer_flags flags = 0;
-	unsigned size = 0;
 
 	/* if kernel is too old to support unlimited # of cmd buffers, we
 	 * have no option but to allocate large worst-case sizes so that
 	 * we don't need to grow the ringbuffer.  Performance is likely to
 	 * suffer, but there is no good alternative.
 	 *
-	 * XXX I think we can just require new enough kernel for this?
+	 * Otherwise if supported, allocate a growable ring with initial
+	 * size of zero.
 	 */
-	if ((fd_device_version(ctx->screen->dev) < FD_VERSION_UNLIMITED_CMDS) ||
-			(fd_mesa_debug & FD_DBG_NOGROW)){
-		size = 0x100000;
-	} else {
-		flags = FD_RINGBUFFER_GROWABLE;
+	if ((fd_device_version(ctx->screen->dev) >= FD_VERSION_UNLIMITED_CMDS) &&
+			!(fd_mesa_debug & FD_DBG_NOGROW)){
+		flags |= FD_RINGBUFFER_GROWABLE;
+		sz = 0;
 	}
+
+	return fd_submit_new_ringbuffer(batch->submit, sz, flags);
+}
+
+static void
+batch_init(struct fd_batch *batch)
+{
+	struct fd_context *ctx = batch->ctx;
 
 	batch->submit = fd_submit_new(ctx->pipe);
 	if (batch->nondraw) {
-		batch->draw = fd_submit_new_ringbuffer(batch->submit, size,
-				FD_RINGBUFFER_PRIMARY | flags);
+		batch->draw = alloc_ring(batch, 0x100000, FD_RINGBUFFER_PRIMARY);
 	} else {
-		batch->gmem = fd_submit_new_ringbuffer(batch->submit, size,
-				FD_RINGBUFFER_PRIMARY | flags);
-		batch->draw = fd_submit_new_ringbuffer(batch->submit, size,
-				flags);
+		batch->gmem = alloc_ring(batch, 0x100000, FD_RINGBUFFER_PRIMARY);
+		batch->draw = alloc_ring(batch, 0x100000, 0);
 
+		/* a6xx+ re-uses draw rb for both draw and binning pass: */
 		if (ctx->screen->gpu_id < 600) {
-			batch->binning = fd_submit_new_ringbuffer(batch->submit,
-					size, flags);
+			batch->binning = alloc_ring(batch, 0x100000, 0);
 		}
 	}
 
