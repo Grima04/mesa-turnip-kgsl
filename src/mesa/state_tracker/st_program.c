@@ -1290,6 +1290,13 @@ st_create_fp_variant(struct st_context *st,
           finalize = true;
       }
 
+      if (key->lower_texcoord_replace) {
+         bool point_coord_is_sysval = st->ctx->Const.GLSLPointCoordIsSysVal;
+         NIR_PASS_V(state.ir.nir, nir_lower_texcoord_replace,
+                    key->lower_texcoord_replace, point_coord_is_sysval);
+         finalize = true;
+      }
+
       assert(!(key->bitmap && key->drawpixels));
 
       /* glBitmap */

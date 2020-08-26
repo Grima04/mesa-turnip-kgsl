@@ -234,6 +234,9 @@ st_invalidate_state(struct gl_context *ctx)
        st_user_clip_planes_enabled(ctx))
       st->dirty |= ST_NEW_CLIP_STATE;
 
+   if (new_state & _NEW_POINT && st->lower_texcoord_replace)
+      st->dirty |= ST_NEW_FS_STATE;
+
    if (new_state & _NEW_PIXEL)
       st->dirty |= ST_NEW_PIXEL_TRANSFER;
 
@@ -713,6 +716,8 @@ st_create_context_priv(struct gl_context *ctx, struct pipe_context *pipe,
       screen->get_param(screen, PIPE_CAP_PREFER_REAL_BUFFER_IN_CONSTBUF0);
    st->has_conditional_render =
       screen->get_param(screen, PIPE_CAP_CONDITIONAL_RENDER);
+   st->lower_texcoord_replace =
+      !screen->get_param(screen, PIPE_CAP_POINT_SPRITE);
    st->allow_st_finalize_nir_twice = screen->finalize_nir != NULL;
 
    st->has_hw_atomics =
@@ -803,7 +808,8 @@ st_create_context_priv(struct gl_context *ctx, struct pipe_context *pipe,
          !st->clamp_frag_color_in_shader &&
          !st->clamp_frag_depth_in_shader &&
          !st->force_persample_in_shader &&
-         !st->lower_two_sided_color;
+         !st->lower_two_sided_color &&
+         !st->lower_texcoord_replace;
 
    st->shader_has_one_variant[MESA_SHADER_TESS_CTRL] = st->has_shareable_shaders;
    st->shader_has_one_variant[MESA_SHADER_TESS_EVAL] =

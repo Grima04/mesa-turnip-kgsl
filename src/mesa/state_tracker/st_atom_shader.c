@@ -115,6 +115,11 @@ st_update_fp( struct st_context *st )
       key.lower_two_sided_color = st->lower_two_sided_color &&
          _mesa_vertex_program_two_side_enabled(st->ctx);
 
+      /* _NEW_POINT | _NEW_PROGRAM */
+      if (st->lower_texcoord_replace && st->ctx->Point.PointSprite &&
+          st->ctx->Point.CoordReplace)
+         key.lower_texcoord_replace = st->ctx->Point.CoordReplace;
+
       /* gl_driver_flags::NewFragClamp */
       key.clamp_color = st->clamp_frag_color_in_shader &&
                         st->ctx->Color._ClampFragmentColor;
