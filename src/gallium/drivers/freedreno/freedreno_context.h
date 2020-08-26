@@ -365,6 +365,7 @@ struct fd_context {
 
 	/* blitter: */
 	bool (*blit)(struct fd_context *ctx, const struct pipe_blit_info *info);
+	void (*clear_ubwc)(struct fd_batch *batch, struct fd_resource *rsc);
 
 	/* handling for barriers: */
 	void (*framebuffer_barrier)(struct fd_context *ctx);

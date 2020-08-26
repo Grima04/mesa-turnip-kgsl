@@ -194,8 +194,7 @@ realloc_bo(struct fd_resource *rsc, uint32_t size)
 	 * around the issue, but any memset value seems to.
 	 */
 	if (rsc->layout.ubwc) {
-		void *buf = fd_bo_map(rsc->bo);
-		memset(buf, 0, rsc->layout.slices[0].offset);
+		rsc->needs_ubwc_clear = true;
 	}
 
 	rsc->seqno = p_atomic_inc_return(&screen->rsc_seqno);

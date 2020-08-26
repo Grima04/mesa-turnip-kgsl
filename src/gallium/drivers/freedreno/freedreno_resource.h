@@ -87,6 +87,12 @@ struct fd_resource {
 	 */
 	enum fd_dirty_3d_state dirty;
 
+	/* Uninitialized resources with UBWC format need their UBWC flag data
+	 * cleared before writes, as the UBWC state is read and used during
+	 * writes, so undefined UBWC flag data results in undefined results.
+	 */
+	bool needs_ubwc_clear : 1;
+
 	/*
 	 * LRZ
 	 *
@@ -280,6 +286,15 @@ static inline bool
 fd_batch_references_resource(struct fd_batch *batch, struct fd_resource *rsc)
 {
 	return rsc->batch_mask & (1 << batch->idx);
+}
+
+static inline void
+fd_batch_write_prep(struct fd_batch *batch, struct fd_resource *rsc)
+{
+	if (unlikely(rsc->needs_ubwc_clear)) {
+		batch->ctx->clear_ubwc(batch, rsc);
+		rsc->needs_ubwc_clear = false;
+	}
 }
 
 static inline void
