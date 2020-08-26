@@ -40,6 +40,9 @@
 
 static void kmsro_ro_destroy(struct renderonly *ro)
 {
+   if (ro->gpu_fd >= 0)
+      close(ro->gpu_fd);
+
    FREE(ro);
 }
 
