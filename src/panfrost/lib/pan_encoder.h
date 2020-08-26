@@ -34,7 +34,7 @@
 
 void
 panfrost_pack_work_groups_compute(
-        struct mali_vertex_tiler_prefix *out,
+        struct mali_invocation_packed *out,
         unsigned num_x,
         unsigned num_y,
         unsigned num_z,
@@ -42,17 +42,6 @@ panfrost_pack_work_groups_compute(
         unsigned size_y,
         unsigned size_z,
         bool quirk_graphics);
-
-void
-panfrost_pack_work_groups_fused(
-        struct mali_vertex_tiler_prefix *vertex,
-        struct mali_vertex_tiler_prefix *tiler,
-        unsigned num_x,
-        unsigned num_y,
-        unsigned num_z,
-        unsigned size_x,
-        unsigned size_y,
-        unsigned size_z);
 
 /* Tiler structure size computation */
 

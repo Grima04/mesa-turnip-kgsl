@@ -421,42 +421,7 @@ struct mali_payload_write_value {
  */
 
 struct mali_vertex_tiler_prefix {
-        /* This is a dynamic bitfield containing the following things in this order:
-         *
-         * - gl_WorkGroupSize.x
-         * - gl_WorkGroupSize.y
-         * - gl_WorkGroupSize.z
-         * - gl_NumWorkGroups.x
-         * - gl_NumWorkGroups.y
-         * - gl_NumWorkGroups.z
-         *
-         * The number of bits allocated for each number is based on the *_shift
-         * fields below. For example, workgroups_y_shift gives the bit that
-         * gl_NumWorkGroups.y starts at, and workgroups_z_shift gives the bit
-         * that gl_NumWorkGroups.z starts at (and therefore one after the bit
-         * that gl_NumWorkGroups.y ends at). The actual value for each gl_*
-         * value is one more than the stored value, since if any of the values
-         * are zero, then there would be no invocations (and hence no job). If
-         * there were 0 bits allocated to a given field, then it must be zero,
-         * and hence the real value is one.
-         *
-         * Vertex jobs reuse the same job dispatch mechanism as compute jobs,
-         * effectively doing glDispatchCompute(1, vertex_count, instance_count)
-         * where vertex count is the number of vertices.
-         */
-        u32 invocation_count;
-
-        /* Bitfield for shifts:
-         *
-         * size_y_shift : 5
-         * size_z_shift : 5
-         * workgroups_x_shift : 6
-         * workgroups_y_shift : 6
-         * workgroups_z_shift : 6
-         * workgroups_x_shift_2 : 4
-         */
-        u32 invocation_shifts;
-
+        struct mali_invocation_packed invocation;
         struct mali_primitive_packed primitive;
 } __attribute__((packed));
 

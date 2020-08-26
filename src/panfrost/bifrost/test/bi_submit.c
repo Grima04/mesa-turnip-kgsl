@@ -199,10 +199,14 @@ bit_vertex(struct panfrost_device *dev, panfrost_program prog,
                 },
         };
 
-        panfrost_pack_work_groups_compute(&payload.prefix,
+        struct mali_invocation_packed invocation;
+
+        panfrost_pack_work_groups_compute(&invocation,
                         1, 1, 1,
                         1, 1, 1,
                         true);
+
+        payload.prefix.invocation = invocation;
 
         struct panfrost_bo *bos[] = {
                 scratchpad, shmem, shader, shader_desc, ubo, var, attr

@@ -105,6 +105,7 @@ panfrost_launch_grid(struct pipe_context *pipe,
 
         /* TODO: Stub */
         struct midgard_payload_vertex_tiler payload = { 0 };
+        struct mali_invocation_packed invocation;
         struct mali_draw_packed postfix;
 
         /* We implement OpenCL inputs as uniforms (or a UBO -- same thing), so
@@ -139,12 +140,13 @@ panfrost_launch_grid(struct pipe_context *pipe,
 
         /* Invoke according to the grid info */
 
-        panfrost_pack_work_groups_compute(&payload.prefix,
+        panfrost_pack_work_groups_compute(&invocation,
                                           info->grid[0], info->grid[1],
                                           info->grid[2],
                                           info->block[0], info->block[1],
                                           info->block[2],
                                           false);
+        payload.prefix.invocation = invocation;
 
         panfrost_new_job(&batch->pool, &batch->scoreboard,
                         MALI_JOB_TYPE_COMPUTE, true, 0, &payload,

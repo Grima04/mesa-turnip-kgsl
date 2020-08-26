@@ -327,6 +327,7 @@ panfrost_draw_vbo(
         struct mali_vertex_tiler_prefix vertex_prefix = { 0 }, tiler_prefix = { 0 };
         struct mali_draw_packed vertex_postfix, tiler_postfix;
         struct mali_primitive_packed primitive;
+        struct mali_invocation_packed invocation;
         union midgard_primitive_size primitive_size;
         unsigned vertex_count = ctx->vertex_count;
 
@@ -373,9 +374,12 @@ panfrost_draw_vbo(
 
         panfrost_statistics_record(ctx, info);
 
-        panfrost_pack_work_groups_fused(&vertex_prefix, &tiler_prefix,
+        panfrost_pack_work_groups_compute(&invocation,
                                         1, vertex_count, info->instance_count,
-                                        1, 1, 1);
+                                        1, 1, 1, true);
+
+        vertex_prefix.invocation = invocation;
+        tiler_prefix.invocation = invocation;
 
         /* Emit all sort of descriptors. */
         mali_ptr varyings = 0, vs_vary = 0, fs_vary = 0, pos = 0, psiz = 0;

@@ -346,6 +346,7 @@ panfrost_load_midg(
         struct midgard_payload_vertex_tiler payload = {};
         struct mali_primitive_packed primitive;
         struct mali_draw_packed draw;
+        struct mali_invocation_packed invocation;
 
         pan_pack(&draw, DRAW, cfg) {
                 cfg.unknown_1 = 0x7;
@@ -365,10 +366,11 @@ panfrost_load_midg(
                 cfg.unknown_3 = 6;
         }
 
-        memcpy(&payload.prefix.primitive, &primitive, MALI_DRAW_LENGTH);
-        memcpy(&payload.postfix, &draw, MALI_DRAW_LENGTH);
+        panfrost_pack_work_groups_compute(&invocation, 1, vertex_count, 1, 1, 1, 1, true);
 
-        panfrost_pack_work_groups_compute(&payload.prefix, 1, vertex_count, 1, 1, 1, 1, true);
+        payload.prefix.primitive = primitive;
+        memcpy(&payload.postfix, &draw, MALI_DRAW_LENGTH);
+        payload.prefix.invocation = invocation;
 
         panfrost_new_job(pool, scoreboard, MALI_JOB_TYPE_TILER, false, 0, &payload, sizeof(payload), true);
 }

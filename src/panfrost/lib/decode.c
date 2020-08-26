@@ -1248,21 +1248,17 @@ pandecode_vertex_tiler_prefix(struct mali_vertex_tiler_prefix *p, int job_no, bo
         /* Decode invocation_count. See the comment before the definition of
          * invocation_count for an explanation.
          */
+        struct MALI_INVOCATION invocation;
+        struct mali_invocation_packed invocation_packed = p->invocation;
+        MALI_INVOCATION_unpack((const uint8_t *) &invocation_packed, &invocation);
 
-        unsigned size_y_shift = bits(p->invocation_shifts, 0, 5);
-        unsigned size_z_shift = bits(p->invocation_shifts, 5, 10);
-        unsigned workgroups_x_shift = bits(p->invocation_shifts, 10, 16);
-        unsigned workgroups_y_shift = bits(p->invocation_shifts, 16, 22);
-        unsigned workgroups_z_shift = bits(p->invocation_shifts, 22, 28);
-        unsigned workgroups_x_shift_2 = bits(p->invocation_shifts, 28, 32);
+        unsigned size_x = bits(invocation.invocations, 0, invocation.size_y_shift) + 1;
+        unsigned size_y = bits(invocation.invocations, invocation.size_y_shift, invocation.size_z_shift) + 1;
+        unsigned size_z = bits(invocation.invocations, invocation.size_z_shift, invocation.workgroups_x_shift) + 1;
 
-        unsigned size_x = bits(p->invocation_count, 0, size_y_shift) + 1;
-        unsigned size_y = bits(p->invocation_count, size_y_shift, size_z_shift) + 1;
-        unsigned size_z = bits(p->invocation_count, size_z_shift, workgroups_x_shift) + 1;
-
-        unsigned groups_x = bits(p->invocation_count, workgroups_x_shift, workgroups_y_shift) + 1;
-        unsigned groups_y = bits(p->invocation_count, workgroups_y_shift, workgroups_z_shift) + 1;
-        unsigned groups_z = bits(p->invocation_count, workgroups_z_shift, 32) + 1;
+        unsigned groups_x = bits(invocation.invocations, invocation.workgroups_x_shift, invocation.workgroups_y_shift) + 1;
+        unsigned groups_y = bits(invocation.invocations, invocation.workgroups_y_shift, invocation.workgroups_z_shift) + 1;
+        unsigned groups_z = bits(invocation.invocations, invocation.workgroups_z_shift, 32) + 1;
 
         /* Even though we have this decoded, we want to ensure that the
          * representation is "unique" so we don't lose anything by printing only
@@ -1272,30 +1268,17 @@ pandecode_vertex_tiler_prefix(struct mali_vertex_tiler_prefix *p, int job_no, bo
          * decode and pack it ourselves! If it is bit exact with what we
          * decoded, we're good to go. */
 
-        struct mali_vertex_tiler_prefix ref;
+        struct mali_invocation_packed ref;
         panfrost_pack_work_groups_compute(&ref, groups_x, groups_y, groups_z, size_x, size_y, size_z, graphics);
 
-        bool canonical =
-                (p->invocation_count == ref.invocation_count) &&
-                (p->invocation_shifts == ref.invocation_shifts);
-
-        if (!canonical) {
+        if (memcmp(&ref, &invocation_packed, sizeof(ref))) {
                 pandecode_msg("XXX: non-canonical workgroups packing\n");
-                pandecode_msg("expected: %X, %X",
-                                ref.invocation_count,
-                                ref.invocation_shifts);
-
-                pandecode_prop("invocation_count = 0x%" PRIx32, p->invocation_count);
-                pandecode_prop("size_y_shift = %d", size_y_shift);
-                pandecode_prop("size_z_shift = %d", size_z_shift);
-                pandecode_prop("workgroups_x_shift = %d", workgroups_x_shift);
-                pandecode_prop("workgroups_y_shift = %d", workgroups_y_shift);
-                pandecode_prop("workgroups_z_shift = %d", workgroups_z_shift);
-                pandecode_prop("workgroups_x_shift_2 = %d", workgroups_x_shift_2);
+                MALI_INVOCATION_print(pandecode_dump_stream, &invocation, 1 * 2);
         }
 
         /* Regardless, print the decode */
-        pandecode_msg("size (%d, %d, %d), count (%d, %d, %d)\n",
+        fprintf(pandecode_dump_stream,
+                        "Invocation (%d, %d, %d) x (%d, %d, %d)\n",
                         size_x, size_y, size_z,
                         groups_x, groups_y, groups_z);
 

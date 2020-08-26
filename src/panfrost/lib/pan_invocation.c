@@ -41,7 +41,7 @@
 
 void
 panfrost_pack_work_groups_compute(
-        struct mali_vertex_tiler_prefix *out,
+        struct mali_invocation_packed *out,
         unsigned num_x,
         unsigned num_y,
         unsigned num_z,
@@ -77,53 +77,24 @@ panfrost_pack_work_groups_compute(
                 shifts[i + 1] = shifts[i] + bit_count;
         }
 
-        /* Quirk: for non-instanced graphics, the blob sets workgroups_z_shift
-         * = 32. This doesn't appear to matter to the hardware, but it's good
-         * to be bit-identical. */
+        pan_pack(out, INVOCATION, cfg) {
+                cfg.invocations = packed;
+                cfg.size_y_shift = shifts[1];
+                cfg.size_z_shift = shifts[2];
+                cfg.workgroups_x_shift = shifts[3];
+                cfg.workgroups_y_shift = shifts[4];
+                cfg.workgroups_z_shift = shifts[5];
 
-        if (quirk_graphics && (num_z <= 1))
-                shifts[5] = 32;
+                /* Quirk: for non-instanced graphics, the blob sets
+                 * workgroups_z_shift = 32. This doesn't appear to matter to
+                 * the hardware, but it's good to be bit-identical. */
 
-        /* Quirk: for graphics, workgroups_x_shift_2 must be at least 2,
-         * whereas for OpenCL it is simply equal to workgroups_x_shift. For GL
-         * compute, it is always 2 if no barriers are in use, but is equal to
-         * workgroups_x_shift is barriers are in use. */
+                if (quirk_graphics && (num_z <= 1))
+                        cfg.workgroups_z_shift = 32;
 
-        unsigned shift_2 = shifts[3];
+                /* Quirk: for graphics, >= 2.  For compute, 2 without barriers
+                 * but equal to workgroups_x_shift with barriers */
 
-        if (quirk_graphics)
-                shift_2 = MAX2(shift_2, 2);
-
-        /* Pack them in */
-        uint32_t packed_shifts =
-                (shifts[1] << 0) |
-                (shifts[2] << 5) |
-                (shifts[3] << 10) |
-                (shifts[4] << 16) |
-                (shifts[5] << 22) |
-                (shift_2 << 28);
-
-        /* Upload the packed bitfields */
-        out->invocation_count = packed;
-        out->invocation_shifts = packed_shifts;
+                cfg.unknown_shift = quirk_graphics ? 2 : cfg.workgroups_x_shift;
+        }
 }
-
-/* Packs vertex/tiler descriptors simultaneously */
-void
-panfrost_pack_work_groups_fused(
-        struct mali_vertex_tiler_prefix *vertex,
-        struct mali_vertex_tiler_prefix *tiler,
-        unsigned num_x,
-        unsigned num_y,
-        unsigned num_z,
-        unsigned size_x,
-        unsigned size_y,
-        unsigned size_z)
-{
-        panfrost_pack_work_groups_compute(vertex, num_x, num_y, num_z, size_x, size_y, size_z, true);
-
-        /* Copy results over */
-        tiler->invocation_count = vertex->invocation_count;
-        tiler->invocation_shifts = vertex->invocation_shifts;
-}
-
