@@ -70,7 +70,8 @@ DEBUG_GET_ONCE_FLAGS_OPTION(debug_dxil, "DXIL_DEBUG", dxil_debug_options, 0)
 
 static const nir_shader_compiler_options
 nir_options = {
-   .lower_negate = true,
+   .lower_ineg = true,
+   .lower_fneg = true,
    .lower_ffma16 = true,
    .lower_ffma32 = true,
    .lower_isign = true,

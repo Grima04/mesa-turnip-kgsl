@@ -3133,8 +3133,10 @@ typedef struct nir_shader_compiler_options {
    bool lower_usub_borrow;
    /** Lowers imul_high/umul_high to 16-bit multiplies and carry operations. */
    bool lower_mul_high;
-   /** lowers fneg and ineg to fsub and isub. */
-   bool lower_negate;
+   /** lowers fneg to fmul(x, -1.0). Driver must call nir_opt_algebraic_late() */
+   bool lower_fneg;
+   /** lowers ineg to isub. Driver must call nir_opt_algebraic_late(). */
+   bool lower_ineg;
    /** lowers fsub and isub to fadd+fneg and iadd+ineg. */
    bool lower_sub;
 

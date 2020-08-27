@@ -2107,9 +2107,9 @@ late_optimizations = [
 
    # Subtractions get lowered during optimization, so we need to recombine them
    (('fadd', 'a', ('fneg', 'b')), ('fsub', 'a', 'b'), '!options->lower_sub'),
-   (('iadd', 'a', ('ineg', 'b')), ('isub', 'a', 'b'), '!options->lower_sub'),
-   (('fneg', a), ('fsub', 0.0, a), 'options->lower_negate'),
-   (('ineg', a), ('isub', 0, a), 'options->lower_negate'),
+   (('fneg', a), ('fmul', a, -1.0), 'options->lower_fneg'),
+   (('iadd', a, ('ineg', 'b')), ('isub', 'a', 'b'), '!options->lower_sub || options->lower_ineg'),
+   (('ineg', a), ('isub', 0, a), 'options->lower_ineg'),
    (('iabs', a), ('imax', a, ('ineg', a)), 'options->lower_iabs'),
    (('~fadd@16', ('fmul', a, b), c), ('ffma', a, b, c), 'options->fuse_ffma16'),
    (('~fadd@32', ('fmul', a, b), c), ('ffma', a, b, c), 'options->fuse_ffma32'),
