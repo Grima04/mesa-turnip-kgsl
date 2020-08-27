@@ -29,7 +29,9 @@ BAREMETAL_EPHEMERAL=" \
         libstdc++6:$arch \
         libtinfo-dev:$arch \
         libvulkan-dev:$arch \
+        libwaffle-dev:$arch \
         libxcb-keysyms1-dev:$arch \
+        libxkbcommon-dev:$arch \
         python3-dev \
         qt5-default \
         qt5-qmake \

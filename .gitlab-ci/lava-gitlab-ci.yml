@@ -1,5 +1,5 @@
 variables:
-  DISTRIBUTION_TAG: "2020-12-18-lava"
+  DISTRIBUTION_TAG: "2020-12-19-build-piglit"
 
 .kernel+rootfs:
   stage: container-2
@@ -10,6 +10,8 @@ variables:
     KERNEL_URL: "https://gitlab.freedesktop.org/tomeu/linux/-/archive/v5.10-rc2-for-mesa-ci/linux-v5.10-rc2-for-mesa-ci.tar.gz"
     UPLOAD_FOR_LAVA: 1
     INSTALL_KERNEL_MODULES: 1
+    INCLUDE_PIGLIT: 1
+    PIGLIT_BUILD_TARGETS: "piglit_replayer"
   script:
     - .gitlab-ci/container/lava_build.sh
 

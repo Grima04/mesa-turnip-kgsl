@@ -73,9 +73,14 @@ apt-get install -y automake \
                    libpython3-dev \
                    libssl-dev \
                    libvulkan-dev \
+                   libwaffle-dev \
                    libxcb-keysyms1-dev \
+                   libxkbcommon-dev \
+                   patch \
                    python3-dev \
                    python3-distutils \
+                   python3-mako \
+                   python3-numpy \
                    python3-serial \
                    qt5-default \
                    qt5-qmake \
@@ -84,7 +89,8 @@ apt-get install -y automake \
 
 
 if [[ "$DEBIAN_ARCH" = "armhf" ]]; then
-    apt-get install -y libegl1-mesa-dev:armhf \
+    apt-get install -y libboost-dev:armhf \
+                       libegl1-mesa-dev:armhf \
                        libelf-dev:armhf \
                        libgbm-dev:armhf \
                        libgles2-mesa-dev:armhf \
@@ -92,8 +98,9 @@ if [[ "$DEBIAN_ARCH" = "armhf" ]]; then
                        libpng-dev:armhf \
                        libpython3-dev:armhf \
                        libvulkan-dev:armhf \
+                       libwaffle-dev:armhf \
                        libxcb-keysyms1-dev:armhf \
-                       libboost-dev:armhf \
+                       libxkbcommon-dev:armhf \
                        qtbase5-dev:armhf
 fi
 
@@ -113,6 +120,13 @@ mv /usr/local/bin/deqp-runner /lava-files/rootfs-${DEBIAN_ARCH}/usr/bin/.
 DEQP_TARGET=surfaceless . .gitlab-ci/build-deqp.sh
 
 mv /deqp /lava-files/rootfs-${DEBIAN_ARCH}/.
+
+
+############### Build piglit
+if [ -n "$INCLUDE_PIGLIT" ]; then
+    . .gitlab-ci/build-piglit.sh
+    mv /piglit /lava-files/rootfs-${DEBIAN_ARCH}/.
+fi
 
 
 ############### Build apitrace
@@ -137,9 +151,6 @@ rm -rf /renderdoc
 ############### Build libdrm
 EXTRA_MESON_ARGS+=" -D prefix=/libdrm"
 . .gitlab-ci/build-libdrm.sh
-mkdir -p /lava-files/rootfs-${DEBIAN_ARCH}/usr/lib/$GCC_ARCH
-find /libdrm/ -name lib\*\.so\* | xargs cp -t /lava-files/rootfs-${DEBIAN_ARCH}/usr/lib/$GCC_ARCH/.
-rm -rf /libdrm
 
 
 ############### Cross-build kernel
@@ -215,9 +226,21 @@ set -e
 
 cp .gitlab-ci/create-rootfs.sh /lava-files/rootfs-${DEBIAN_ARCH}/.
 cp .gitlab-ci/container/llvm-snapshot.gpg.key /lava-files/rootfs-${DEBIAN_ARCH}/.
-chroot /lava-files/rootfs-${DEBIAN_ARCH} sh /create-rootfs.sh
+chroot /lava-files/rootfs-${DEBIAN_ARCH} \
+    sh -c "INCLUDE_PIGLIT=$INCLUDE_PIGLIT sh /create-rootfs.sh"
 rm /lava-files/rootfs-${DEBIAN_ARCH}/create-rootfs.sh
 rm /lava-files/rootfs-${DEBIAN_ARCH}/llvm-snapshot.gpg.key
+
+
+############### Install the built libdrm
+# Dependencies pulled during the creation of the rootfs may overwrite
+# the built libdrm. Hence, we add it after the rootfs has been already
+# created.
+mkdir -p /lava-files/rootfs-${DEBIAN_ARCH}/usr/lib/$GCC_ARCH
+find /libdrm/ -name lib\*\.so\* | xargs cp -t /lava-files/rootfs-${DEBIAN_ARCH}/usr/lib/$GCC_ARCH/.
+rm -rf /libdrm
+
+
 du -ah /lava-files/rootfs-${DEBIAN_ARCH} | sort -h | tail -100
 pushd /lava-files/rootfs-${DEBIAN_ARCH}
   tar cvzf /lava-files/lava-rootfs.tgz .

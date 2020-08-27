@@ -10,7 +10,7 @@ git clone https://gitlab.freedesktop.org/mesa/piglit.git --single-branch --no-ch
 pushd /piglit
 git checkout c702d2bbf28b01a18ce613f386a4ffef03f6c0c9
 patch -p1 <$OLDPWD/.gitlab-ci/piglit/disable-vs_in.diff
-cmake -S . -B . -G Ninja -DCMAKE_BUILD_TYPE=Release $PIGLIT_OPTS
+cmake -S . -B . -G Ninja -DCMAKE_BUILD_TYPE=Release $PIGLIT_OPTS $EXTRA_CMAKE_ARGS
 ninja $PIGLIT_BUILD_TARGETS
 find -name .git -o -name '*ninja*' -o -iname '*cmake*' -o -name '*.[chao]' | xargs rm -rf
 rm -rf target_api
