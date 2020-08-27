@@ -53,7 +53,7 @@ apt-get install -y --no-remove \
 
 ############### Build dEQP GL
 
-. .gitlab-ci/build-deqp-gl.sh
+DEQP_TARGET=surfaceless . .gitlab-ci/build-deqp.sh
 
 ############### Build apitrace
 

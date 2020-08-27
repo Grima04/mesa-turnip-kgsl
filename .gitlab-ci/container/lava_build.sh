@@ -94,11 +94,7 @@ mv /usr/local/bin/deqp-runner /lava-files/rootfs-${DEBIAN_ARCH}/usr/bin/.
 
 ############### Build dEQP
 STRIP_CMD="${GCC_ARCH}-strip"
-if [ -n "$INCLUDE_VK_CTS" ]; then
-   DEQP_TARGET=surfaceless . .gitlab-ci/build-deqp-vk.sh
-else
-   . .gitlab-ci/build-deqp-gl.sh
-fi
+DEQP_TARGET=surfaceless . .gitlab-ci/build-deqp.sh
 
 mv /deqp /lava-files/rootfs-${DEBIAN_ARCH}/.
 

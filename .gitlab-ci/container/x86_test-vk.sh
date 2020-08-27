@@ -117,7 +117,7 @@ wine \
 
 ############### Build dEQP VK
 
-. .gitlab-ci/build-deqp-vk.sh
+. .gitlab-ci/build-deqp.sh
 
 ############### Build gfxreconstruct
 
