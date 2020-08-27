@@ -619,6 +619,8 @@ gather_intrinsic_info(nir_intrinsic_instr *instr, nir_shader *shader,
    case nir_intrinsic_bindless_image_atomic_umax:
    case nir_intrinsic_bindless_image_atomic_umin:
    case nir_intrinsic_bindless_image_atomic_xor:
+   case nir_intrinsic_bindless_image_atomic_fmin:
+   case nir_intrinsic_bindless_image_atomic_fmax:
    case nir_intrinsic_bindless_image_store:
    case nir_intrinsic_bindless_image_store_raw_intel:
    case nir_intrinsic_global_atomic_add:
@@ -648,6 +650,8 @@ gather_intrinsic_info(nir_intrinsic_instr *instr, nir_shader *shader,
    case nir_intrinsic_image_atomic_umax:
    case nir_intrinsic_image_atomic_umin:
    case nir_intrinsic_image_atomic_xor:
+   case nir_intrinsic_image_atomic_fmin:
+   case nir_intrinsic_image_atomic_fmax:
    case nir_intrinsic_image_deref_atomic_add:
    case nir_intrinsic_image_deref_atomic_and:
    case nir_intrinsic_image_deref_atomic_comp_swap:
@@ -661,6 +665,8 @@ gather_intrinsic_info(nir_intrinsic_instr *instr, nir_shader *shader,
    case nir_intrinsic_image_deref_atomic_umax:
    case nir_intrinsic_image_deref_atomic_umin:
    case nir_intrinsic_image_deref_atomic_xor:
+   case nir_intrinsic_image_deref_atomic_fmin:
+   case nir_intrinsic_image_deref_atomic_fmax:
    case nir_intrinsic_image_deref_store:
    case nir_intrinsic_image_deref_store_raw_intel:
    case nir_intrinsic_image_store:

@@ -50,6 +50,8 @@ get_intrinsic_info(nir_intrinsic_instr *intrin, nir_variable_mode *modes,
    case nir_intrinsic_image_deref_atomic_imin:
    case nir_intrinsic_image_deref_atomic_umax:
    case nir_intrinsic_image_deref_atomic_imax:
+   case nir_intrinsic_image_deref_atomic_fmin:
+   case nir_intrinsic_image_deref_atomic_fmax:
    case nir_intrinsic_image_deref_atomic_and:
    case nir_intrinsic_image_deref_atomic_or:
    case nir_intrinsic_image_deref_atomic_xor:
