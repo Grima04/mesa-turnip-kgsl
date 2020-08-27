@@ -30,9 +30,11 @@
 
 static void
 destroy_color_clear_pipeline(VkDevice _device,
-                             struct v3dv_meta_color_clear_pipeline *p,
+                             uint64_t pipeline,
                              VkAllocationCallbacks *alloc)
 {
+   struct v3dv_meta_color_clear_pipeline *p =
+      (struct v3dv_meta_color_clear_pipeline *) (uintptr_t) pipeline;
    v3dv_DestroyPipeline(_device, p->pipeline, alloc);
    if (p->cached)
       v3dv_DestroyRenderPass(_device, p->pass, alloc);
@@ -65,7 +67,7 @@ v3dv_meta_clear_finish(struct v3dv_device *device)
 
    hash_table_foreach(device->meta.color_clear.cache, entry) {
       struct v3dv_meta_color_clear_pipeline *item = entry->data;
-      destroy_color_clear_pipeline(_device, item, &device->alloc);
+      destroy_color_clear_pipeline(_device, (uintptr_t)item, &device->alloc);
    }
    _mesa_hash_table_destroy(device->meta.color_clear.cache, NULL);
 
