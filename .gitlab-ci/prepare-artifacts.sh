@@ -44,8 +44,7 @@ tar -cf artifacts/install.tar install
 if [ -n "$UPLOAD_FOR_LAVA" ]; then
     # Pass needed files to the test stage
     cp $CI_PROJECT_DIR/.gitlab-ci/generate_lava.py artifacts/.
-    cp $CI_PROJECT_DIR/.gitlab-ci/lava-deqp.yml.jinja2 artifacts/.
-    cp $CI_PROJECT_DIR/.gitlab-ci/lava-tracie.yml.jinja2 artifacts/.
+    cp $CI_PROJECT_DIR/.gitlab-ci/lava-*.yml.jinja2 artifacts/.
 
     MESA_ARTIFACT=mesa-${DEBIAN_ARCH}.tar.gz
     gzip -c artifacts/install.tar > ${MESA_ARTIFACT}

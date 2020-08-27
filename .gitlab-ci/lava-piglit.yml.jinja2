@@ -1,4 +1,4 @@
-job_name: mesa-tracie-{{ gpu_version }} {{ pipeline_info }}
+job_name: mesa-piglit-{{ gpu_version }} {{ pipeline_info }}
 device_type: {{ device_type }}
 context:
   extra_nfsroot_args: " init=/init rootwait"
@@ -61,8 +61,8 @@ actions:
     - repository:
         metadata:
           format: Lava-Test Test Definition 1.0
-          name: tracie
-          description: "Mesa tracie test plan"
+          name: piglit
+          description: "Mesa piglit test plan"
           os:
           - oe
           scope:
@@ -82,22 +82,27 @@ actions:
 {% if env_vars %}
           - export {{ env_vars }}
 {% endif %}
-          # tracie-runner.sh assumes some stuff is in pwd
+          # piglit/run.sh assumes some stuff is in pwd
           - cd /
 
           - wget -S --progress=dot:giga -O- {{ mesa_url }} | tar -xz
 
           - export PYTHONPATH=$(python3 -c "import sys;print(\":\".join(sys.path))")
           - export LIBGL_DRIVERS_PATH=`pwd`/install/lib/dri
-          - export DEVICE_NAME="gl-{{ gpu_version }}"
+          - export PIGLIT_REPLAY_EXTRA_ARGS="--keep-image"
+          - export PIGLIT_REPLAY_REFERENCE_IMAGES_BASE_URL="/mesa-tracie-results/${CI_PROJECT_PATH}"
+          - export PIGLIT_REPLAY_ARTIFACTS_BASE_URL="/artifacts/${CI_PROJECT_PATH}/${CI_PIPELINE_ID}/${CI_JOB_ID}"
+          - export PIGLIT_REPLAY_DESCRIPTION_FILE="/install/traces-${DRIVER_NAME}.yml"
+          - export PIGLIT_REPLAY_DEVICE_NAME=gl-{{ gpu_version }}
+          - export PIGLIT_RESULTS={{ gpu_version }}-${PIGLIT_PROFILES}
 
-          - "if sh /install/tracie-runner-gl.sh; then
-                  echo 'tracie: pass';
+          - "if sh /install/piglit/run.sh; then
+                  echo 'piglit: pass';
              else
-                  echo 'tracie: fail';
+                  echo 'piglit: fail';
              fi"
         parse:
           pattern: '(?P<test_case_id>\S*):\s+(?P<result>(pass|fail))'
       from: inline
-      name: tracie
-      path: inline/mesa-tracie.yaml
+      name: piglit
+      path: inline/mesa-piglit.yaml
