@@ -1210,6 +1210,29 @@ nir_build_deref_cast(nir_builder *build, nir_ssa_def *parent,
    return deref;
 }
 
+static inline nir_deref_instr *
+nir_alignment_deref_cast(nir_builder *build, nir_deref_instr *parent,
+                         uint32_t align_mul, uint32_t align_offset)
+{
+   nir_deref_instr *deref =
+      nir_deref_instr_create(build->shader, nir_deref_type_cast);
+
+   deref->mode = parent->mode;
+   deref->type = parent->type;
+   deref->parent = nir_src_for_ssa(&parent->dest.ssa);
+   deref->cast.ptr_stride = nir_deref_instr_array_stride(deref);
+   deref->cast.align_mul = align_mul;
+   deref->cast.align_offset = align_offset;
+
+   nir_ssa_dest_init(&deref->instr, &deref->dest,
+                     parent->dest.ssa.num_components,
+                     parent->dest.ssa.bit_size, NULL);
+
+   nir_builder_instr_insert(build, &deref->instr);
+
+   return deref;
+}
+
 /** Returns a deref that follows another but starting from the given parent
  *
  * The new deref will be the same type and take the same array or struct index
