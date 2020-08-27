@@ -299,6 +299,7 @@ NIR_FILES = \
 	nir/nir_lower_subgroups.c \
 	nir/nir_lower_system_values.c \
 	nir/nir_lower_tex.c \
+	nir/nir_lower_texcoord_replace.c \
 	nir/nir_lower_to_source_mods.c \
 	nir/nir_lower_two_sided_color.c \
 	nir/nir_lower_ubo_vec4.c \

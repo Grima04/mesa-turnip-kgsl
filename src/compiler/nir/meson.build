@@ -187,6 +187,7 @@ files_libnir = files(
   'nir_lower_subgroups.c',
   'nir_lower_system_values.c',
   'nir_lower_tex.c',
+  'nir_lower_texcoord_replace.c',
   'nir_lower_to_source_mods.c',
   'nir_lower_two_sided_color.c',
   'nir_lower_undef_to_zero.c',
