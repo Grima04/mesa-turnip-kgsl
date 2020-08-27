@@ -1127,6 +1127,32 @@ virgl-traces:
     MESA_GLES_VERSION_OVERRIDE: "3.1"
     MESA_GLSL_VERSION_OVERRIDE: "310"
 
+radv-polaris10-traces:
+  extends:
+    - .piglit-traces-test
+    - .test-vk
+    - .test-radv
+    - .test-manual
+  variables:
+    PIGLIT_REPLAY_DESCRIPTION_FILE: "${CI_PROJECT_DIR}/install/traces-radv.yml"
+    PIGLIT_REPLAY_DEVICE_NAME: "vk-amd-polaris10"
+    PIGLIT_RESULTS: "radv-polaris10-replay"
+  tags:
+    - polaris10
+
+radv-raven-traces:
+  extends:
+    - .piglit-traces-test
+    - .test-vk
+    - .test-radv
+    - .test-manual
+  variables:
+    PIGLIT_REPLAY_DESCRIPTION_FILE: "${CI_PROJECT_DIR}/install/traces-radv.yml"
+    PIGLIT_REPLAY_DEVICE_NAME: "vk-amd-raven"
+    PIGLIT_RESULTS: "radv-raven-replay"
+  tags:
+    - raven
+
 .deqp-test:
   script:
     - ./install/deqp-runner.sh
@@ -1525,44 +1551,3 @@ radv-fossils:
     # Sienna Cichlid (GFX10)
     - export RADV_FORCE_FAMILY="gfx1030"
     - ./install/fossilize-runner.sh
-
-# Traces CI
-.traces-test:
-  cache:
-    key: ${CI_JOB_NAME}
-    paths:
-      - traces-db/
-  variables:
-    TRACIE_UPLOAD_TO_MINIO: 1
-  artifacts:
-    reports:
-      junit: results/junit.xml
-
-.traces-test-vk:
-  extends:
-    - .test-vk
-    - .traces-test
-  script:
-    - ./install/tracie-runner-vk.sh
-
-radv-polaris10-traces:
-  extends:
-    - .traces-test-vk
-    - .test-radv
-    - .test-manual
-  variables:
-    DEVICE_NAME: "vk-amd-polaris10"
-    DRIVER_NAME: "radv"
-  tags:
-    - polaris10
-
-radv-raven-traces:
-  extends:
-    - .traces-test-vk
-    - .test-radv
-    - .test-manual
-  variables:
-    DEVICE_NAME: "vk-amd-raven"
-    DRIVER_NAME: "radv"
-  tags:
-    - raven
