@@ -752,6 +752,8 @@ fs_visitor::prepare_alu_destination_and_sources(const fs_builder &bld,
    case nir_op_vec2:
    case nir_op_vec3:
    case nir_op_vec4:
+   case nir_op_vec8:
+   case nir_op_vec16:
       return result;
    default:
       break;
@@ -1002,14 +1004,16 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr,
    unsigned execution_mode =
       bld.shader->nir->info.float_controls_execution_mode;
 
-   fs_reg op[4];
+   fs_reg op[NIR_MAX_VEC_COMPONENTS];
    fs_reg result = prepare_alu_destination_and_sources(bld, instr, op, need_dest);
 
    switch (instr->op) {
    case nir_op_mov:
    case nir_op_vec2:
    case nir_op_vec3:
-   case nir_op_vec4: {
+   case nir_op_vec4:
+   case nir_op_vec8:
+   case nir_op_vec16: {
       fs_reg temp = result;
       bool need_extra_copy = false;
       for (unsigned i = 0; i < nir_op_infos[instr->op].num_inputs; i++) {
