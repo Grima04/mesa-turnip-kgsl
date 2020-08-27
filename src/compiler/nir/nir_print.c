@@ -929,25 +929,27 @@ print_intrinsic_instr(nir_intrinsic_instr *instr, print_state *state)
          fprintf(fp, " location=%u slots=%u",
                  nir_intrinsic_io_semantics(instr).location,
                  nir_intrinsic_io_semantics(instr).num_slots);
-         if (state->shader->info.stage == MESA_SHADER_FRAGMENT &&
-             instr->intrinsic == nir_intrinsic_store_output &&
-             nir_intrinsic_io_semantics(instr).dual_source_blend_index) {
-            fprintf(fp, " dualsrc=1");
-         }
-         if (state->shader->info.stage == MESA_SHADER_FRAGMENT &&
-             instr->intrinsic == nir_intrinsic_load_output &&
-             nir_intrinsic_io_semantics(instr).fb_fetch_output) {
-            fprintf(fp, " fbfetch=1");
-         }
-         if (state->shader->info.stage == MESA_SHADER_GEOMETRY &&
-             instr->intrinsic == nir_intrinsic_store_output) {
-            unsigned gs_streams = nir_intrinsic_io_semantics(instr).gs_streams;
-            fprintf(fp, " gs_streams(");
-            for (unsigned i = 0; i < 4; i++) {
-               fprintf(fp, "%s%c=%u", i ? " " : "", "xyzw"[i],
-                       (gs_streams >> (i * 2)) & 0x3);
+         if (state->shader) {
+            if (state->shader->info.stage == MESA_SHADER_FRAGMENT &&
+                instr->intrinsic == nir_intrinsic_store_output &&
+                nir_intrinsic_io_semantics(instr).dual_source_blend_index) {
+               fprintf(fp, " dualsrc=1");
             }
-            fprintf(fp, ")");
+            if (state->shader->info.stage == MESA_SHADER_FRAGMENT &&
+                instr->intrinsic == nir_intrinsic_load_output &&
+                nir_intrinsic_io_semantics(instr).fb_fetch_output) {
+               fprintf(fp, " fbfetch=1");
+            }
+            if (state->shader->info.stage == MESA_SHADER_GEOMETRY &&
+                instr->intrinsic == nir_intrinsic_store_output) {
+               unsigned gs_streams = nir_intrinsic_io_semantics(instr).gs_streams;
+               fprintf(fp, " gs_streams(");
+               for (unsigned i = 0; i < 4; i++) {
+                  fprintf(fp, "%s%c=%u", i ? " " : "", "xyzw"[i],
+                          (gs_streams >> (i * 2)) & 0x3);
+               }
+               fprintf(fp, ")");
+            }
          }
          break;
 
