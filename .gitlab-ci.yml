@@ -1112,14 +1112,19 @@ llvmpipe-traces:
     PIGLIT_REPLAY_DEVICE_NAME: "gl-vmware-llvmpipe"
     PIGLIT_RESULTS: "llvmpipe-replay"
 
-virgl-traces:
+.virgl-test:
   extends:
     - .test-gl
-    - .piglit-traces-test
     - .virgl-rules
   variables:
     LIBGL_ALWAYS_SOFTWARE: "true"
     GALLIUM_DRIVER: "virpipe"
+
+virgl-traces:
+  extends:
+    - .piglit-traces-test
+    - .virgl-test
+  variables:
     EGL_PLATFORM: "surfaceless"
     PIGLIT_REPLAY_DESCRIPTION_FILE: "${CI_PROJECT_DIR}/install/traces-virgl.yml"
     PIGLIT_REPLAY_DEVICE_NAME: "gl-virgl"
@@ -1157,20 +1162,13 @@ radv-raven-traces:
   script:
     - ./install/deqp-runner.sh
 
-.deqp-test-gl:
-  extends:
-    - .test-gl
-    - .deqp-test
-
 .deqp-test-vk:
   extends:
-    - .test-vk
     - .deqp-test
   variables:
     DEQP_VER: vk
 
 .fossilize-test:
-  extends: .test-vk
   script:
     - ./install/fossilize-runner.sh
   artifacts:
@@ -1186,11 +1184,11 @@ llvmpipe-gles2:
     # busy at the deqp-runner level.
     LP_NUM_THREADS: 0
     GPU_VERSION: llvmpipe
-    LIBGL_ALWAYS_SOFTWARE: "true"
     DEQP_EXPECTED_RENDERER: llvmpipe
   extends:
-    - .deqp-test-gl
-    - .llvmpipe-rules
+    - .test-gl
+    - .deqp-test
+    - .llvmpipe-test
 
 softpipe-gles2:
   extends:
@@ -1230,12 +1228,10 @@ virgl-gles2-on-gl:
     # busy at the deqp-runner level.
     LP_NUM_THREADS: 0
     DEQP_OPTIONS: "--deqp-log-images=disable"
-    LIBGL_ALWAYS_SOFTWARE: "true"
-    GALLIUM_DRIVER: "virpipe"
     DEQP_EXPECTED_RENDERER: virgl
   extends:
-    - .deqp-test-gl
-    - .virgl-rules
+    - .deqp-test
+    - .virgl-test
 
 virgl-gles3-on-gl:
   variables:
@@ -1501,6 +1497,7 @@ vc4-rpi3-gles2:armhf:
 lavapipe-vk:
   stage: software-renderer
   extends:
+    - .test-vk
     - .llvmpipe-rules
     - .deqp-test-vk
   variables:
@@ -1510,7 +1507,9 @@ lavapipe-vk:
 
 # RADV CI
 .test-radv:
-  extends: .radv-rules
+  extends:
+    - .test-vk
+    - .radv-rules
   stage: amd
   variables:
     VK_DRIVER: radeon
