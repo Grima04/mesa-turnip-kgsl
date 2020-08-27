@@ -86,7 +86,7 @@ lower_mem_load_bit_size(nir_builder *b, nir_intrinsic_instr *intrin,
    const unsigned bytes_read = num_components * (bit_size / 8);
    const unsigned align = nir_intrinsic_align(intrin);
 
-   if (bit_size == 32 && align >= 32 &&
+   if (bit_size == 32 && align >= 32 && intrin->num_components <= 4 &&
        (!needs_scalar || intrin->num_components == 1))
       return false;
 
@@ -169,7 +169,7 @@ lower_mem_store_bit_size(nir_builder *b, nir_intrinsic_instr *intrin,
    assert(writemask < (1 << num_components));
 
    if ((value->bit_size <= 32 && num_components == 1) ||
-       (value->bit_size == 32 && align >= 32 &&
+       (value->bit_size == 32 && num_components <= 4 && align >= 32 &&
         writemask == (1 << num_components) - 1 &&
         !needs_scalar))
       return false;
