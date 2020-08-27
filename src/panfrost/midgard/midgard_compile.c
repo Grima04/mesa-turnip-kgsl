@@ -461,6 +461,23 @@ midgard_nir_reorder_writeout(nir_shader *nir)
         return progress;
 }
 
+static bool
+mdg_is_64(const nir_instr *instr, const void *_unused)
+{
+        const nir_alu_instr *alu = nir_instr_as_alu(instr);
+
+        if (nir_dest_bit_size(alu->dest.dest) == 64)
+                return true;
+
+        switch (alu->op) {
+        case nir_op_umul_high:
+        case nir_op_imul_high:
+                return true;
+        default:
+                return false;
+        }
+}
+
 /* Flushes undefined values to zero */
 
 static void
@@ -542,6 +559,8 @@ optimise_nir(nir_shader *nir, unsigned quirks, bool is_blend)
 
                 NIR_PASS(progress, nir, nir_opt_vectorize);
         } while (progress);
+
+        NIR_PASS_V(nir, nir_lower_alu_to_scalar, mdg_is_64, NULL);
 
         /* Run after opts so it can hit more */
         if (!is_blend)
