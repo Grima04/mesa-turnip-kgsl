@@ -5167,7 +5167,7 @@ static void visit_deref(struct ac_nir_context *ctx,
 		break;
 	case nir_deref_type_ptr_as_array:
 		if (instr->mode == nir_var_mem_global) {
-			unsigned stride = nir_deref_instr_ptr_as_array_stride(instr);
+			unsigned stride = nir_deref_instr_array_stride(instr);
 
 			LLVMValueRef index = get_src(ctx, instr->arr.index);
 			if (LLVMTypeOf(index) != ctx->ac.i64)

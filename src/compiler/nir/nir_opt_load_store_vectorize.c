@@ -331,17 +331,6 @@ type_scalar_size_bytes(const struct glsl_type *type)
    return glsl_type_is_boolean(type) ? 4u : glsl_get_bit_size(type) / 8u;
 }
 
-static int
-get_array_stride(const struct glsl_type *type)
-{
-   unsigned explicit_stride = glsl_get_explicit_stride(type);
-   if ((glsl_type_is_matrix(type) &&
-        glsl_matrix_type_is_row_major(type)) ||
-       (glsl_type_is_vector(type) && explicit_stride == 0))
-      return type_scalar_size_bytes(type);
-   return explicit_stride;
-}
-
 static uint64_t
 mask_sign_extend(uint64_t val, unsigned bit_size)
 {
@@ -413,11 +402,7 @@ create_entry_key_from_deref(void *mem_ctx,
       case nir_deref_type_ptr_as_array: {
          assert(parent);
          nir_ssa_def *index = deref->arr.index.ssa;
-         uint32_t stride;
-         if (deref->deref_type == nir_deref_type_ptr_as_array)
-            stride = nir_deref_instr_ptr_as_array_stride(deref);
-         else
-            stride = get_array_stride(parent->type);
+         uint32_t stride = nir_deref_instr_array_stride(deref);
 
          nir_ssa_def *base = index;
          uint64_t offset = 0, base_mul = 1;
@@ -741,8 +726,8 @@ static nir_deref_instr *subtract_deref(nir_builder *b, nir_deref_instr *deref, i
    /* avoid adding another deref to the path */
    if (deref->deref_type == nir_deref_type_ptr_as_array &&
        nir_src_is_const(deref->arr.index) &&
-       offset % nir_deref_instr_ptr_as_array_stride(deref) == 0) {
-      unsigned stride = nir_deref_instr_ptr_as_array_stride(deref);
+       offset % nir_deref_instr_array_stride(deref) == 0) {
+      unsigned stride = nir_deref_instr_array_stride(deref);
       nir_ssa_def *index = nir_imm_intN_t(b, nir_src_as_int(deref->arr.index) - offset / stride,
                                           deref->dest.ssa.bit_size);
       return nir_build_deref_ptr_as_array(b, nir_deref_instr_parent(deref), index);

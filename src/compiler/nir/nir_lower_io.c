@@ -1250,14 +1250,7 @@ nir_explicit_io_address_from_deref(nir_builder *b, nir_deref_instr *deref,
       return build_addr_for_var(b, deref->var, addr_format);
 
    case nir_deref_type_array: {
-      nir_deref_instr *parent = nir_deref_instr_parent(deref);
-
-      unsigned stride = glsl_get_explicit_stride(parent->type);
-      if ((glsl_type_is_matrix(parent->type) &&
-           glsl_matrix_type_is_row_major(parent->type)) ||
-          (glsl_type_is_vector(parent->type) && stride == 0))
-         stride = type_scalar_size_bytes(parent->type);
-
+      unsigned stride = nir_deref_instr_array_stride(deref);
       assert(stride > 0);
 
       nir_ssa_def *index = nir_ssa_for_src(b, deref->arr.index, 1);
@@ -1269,7 +1262,7 @@ nir_explicit_io_address_from_deref(nir_builder *b, nir_deref_instr *deref,
    case nir_deref_type_ptr_as_array: {
       nir_ssa_def *index = nir_ssa_for_src(b, deref->arr.index, 1);
       index = nir_i2i(b, index, addr_get_offset_bit_size(base_addr, addr_format));
-      unsigned stride = nir_deref_instr_ptr_as_array_stride(deref);
+      unsigned stride = nir_deref_instr_array_stride(deref);
       return build_addr_iadd(b, base_addr, addr_format,
                                 nir_amul_imm(b, index, stride));
    }

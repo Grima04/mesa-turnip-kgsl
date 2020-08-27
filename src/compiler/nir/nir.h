@@ -1501,7 +1501,7 @@ bool nir_deref_instr_has_complex_use(nir_deref_instr *instr);
 
 bool nir_deref_instr_remove_if_unused(nir_deref_instr *instr);
 
-unsigned nir_deref_instr_ptr_as_array_stride(nir_deref_instr *instr);
+unsigned nir_deref_instr_array_stride(nir_deref_instr *instr);
 
 typedef struct {
    nir_instr instr;
