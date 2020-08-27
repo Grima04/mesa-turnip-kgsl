@@ -1440,8 +1440,6 @@ vtn_handle_type(struct vtn_builder *b, SpvOp opcode,
 
       val->type->base_type = vtn_base_type_array;
       val->type->array_element = array_element;
-      if (b->shader->info.stage == MESA_SHADER_KERNEL)
-         val->type->stride = glsl_get_cl_size(array_element->type);
 
       vtn_foreach_decoration(b, val, array_stride_decoration_cb, NULL);
       val->type->type = glsl_array_type(array_element->type, val->type->length,
@@ -1469,16 +1467,6 @@ vtn_handle_type(struct vtn_builder *b, SpvOp opcode,
       }
 
       vtn_foreach_decoration(b, val, struct_packed_decoration_cb, NULL);
-
-      if (b->shader->info.stage == MESA_SHADER_KERNEL) {
-         unsigned offset = 0;
-         for (unsigned i = 0; i < num_fields; i++) {
-            if (!val->type->packed)
-               offset = align(offset, glsl_get_cl_alignment(fields[i].type));
-            fields[i].offset = offset;
-            offset += glsl_get_cl_size(fields[i].type);
-         }
-      }
 
       struct member_decoration_ctx ctx = {
          .num_fields = num_fields,
@@ -1574,20 +1562,6 @@ vtn_handle_type(struct vtn_builder *b, SpvOp opcode,
          default:
             /* Nothing to do. */
             break;
-         }
-
-         if (b->physical_ptrs) {
-            switch (storage_class) {
-            case SpvStorageClassFunction:
-            case SpvStorageClassWorkgroup:
-            case SpvStorageClassCrossWorkgroup:
-            case SpvStorageClassUniformConstant:
-               val->type->stride = align(glsl_get_cl_size(val->type->deref->type),
-                                         glsl_get_cl_alignment(val->type->deref->type));
-               break;
-            default:
-               break;
-            }
          }
       }
       break;
