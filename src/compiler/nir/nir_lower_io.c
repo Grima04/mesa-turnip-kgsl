@@ -1698,6 +1698,10 @@ lower_vars_to_explicit(nir_shader *shader,
    bool progress = false;
    unsigned offset;
    switch (mode) {
+   case nir_var_uniform:
+      assert(shader->info.stage == MESA_SHADER_KERNEL);
+      offset = 0;
+      break;
    case nir_var_function_temp:
    case nir_var_shader_temp:
       offset = shader->scratch_size;
@@ -1728,6 +1732,10 @@ lower_vars_to_explicit(nir_shader *shader,
    }
 
    switch (mode) {
+   case nir_var_uniform:
+      assert(shader->info.stage == MESA_SHADER_KERNEL);
+      shader->num_uniforms = offset;
+      break;
    case nir_var_shader_temp:
    case nir_var_function_temp:
       shader->scratch_size = offset;
@@ -1758,11 +1766,13 @@ nir_lower_vars_to_explicit_types(nir_shader *shader,
     */
    ASSERTED nir_variable_mode supported =
       nir_var_mem_shared | nir_var_mem_global |
-      nir_var_shader_temp | nir_var_function_temp;
+      nir_var_shader_temp | nir_var_function_temp | nir_var_uniform;
    assert(!(modes & ~supported) && "unsupported");
 
    bool progress = false;
 
+   if (modes & nir_var_uniform)
+      progress |= lower_vars_to_explicit(shader, &shader->variables, nir_var_uniform, type_info);
    if (modes & nir_var_mem_shared)
       progress |= lower_vars_to_explicit(shader, &shader->variables, nir_var_mem_shared, type_info);
    if (modes & nir_var_shader_temp)
