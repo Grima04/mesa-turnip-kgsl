@@ -1306,6 +1306,11 @@ v3dv_CreateDevice(VkPhysicalDevice physicalDevice,
    device->devinfo = physical_device->devinfo;
    device->enabled_extensions = enabled_extensions;
 
+   if (pCreateInfo->pEnabledFeatures) {
+      memcpy(&device->features, pCreateInfo->pEnabledFeatures,
+             sizeof(device->features));
+   }
+
    int ret = drmSyncobjCreate(device->render_fd,
                               DRM_SYNCOBJ_CREATE_SIGNALED,
                               &device->last_job_sync);

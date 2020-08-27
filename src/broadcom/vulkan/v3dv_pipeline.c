@@ -1008,7 +1008,8 @@ shader_debug_output(const char *message, void *data)
 static void
 pipeline_populate_v3d_key(struct v3d_key *key,
                           const struct v3dv_pipeline_stage *p_stage,
-                          uint32_t ucp_enables)
+                          uint32_t ucp_enables,
+                          bool robust_buffer_access)
 {
    /* The following values are default values used at pipeline create. We use
     * there 16 bit as default return size.
@@ -1053,6 +1054,8 @@ pipeline_populate_v3d_key(struct v3d_key *key,
     * the ucp enable mask for that stage.
     */
    key->ucp_enables = ucp_enables;
+
+   key->robust_buffer_access = robust_buffer_access;
 
    key->environment = V3D_ENVIRONMENT_VULKAN;
 }
@@ -1100,7 +1103,8 @@ pipeline_populate_v3d_fs_key(struct v3d_fs_key *key,
 {
    memset(key, 0, sizeof(*key));
 
-   pipeline_populate_v3d_key(&key->base, p_stage, ucp_enables);
+   const bool rba = p_stage->pipeline->device->features.robustBufferAccess;
+   pipeline_populate_v3d_key(&key->base, p_stage, ucp_enables, rba);
 
    const VkPipelineInputAssemblyStateCreateInfo *ia_info =
       pCreateInfo->pInputAssemblyState;
@@ -1222,7 +1226,8 @@ pipeline_populate_v3d_vs_key(struct v3d_vs_key *key,
 {
    memset(key, 0, sizeof(*key));
 
-   pipeline_populate_v3d_key(&key->base, p_stage, 0);
+   const bool rba = p_stage->pipeline->device->features.robustBufferAccess;
+   pipeline_populate_v3d_key(&key->base, p_stage, 0, rba);
 
    /* Vulkan doesn't appear to specify (anv does the same) */
    key->clamp_color = false;
@@ -3098,7 +3103,8 @@ pipeline_compile_compute(struct v3dv_pipeline *pipeline,
 
    struct v3d_key *key = &p_stage->key.base;
    memset(key, 0, sizeof(*key));
-   pipeline_populate_v3d_key(key, p_stage, 0);
+   pipeline_populate_v3d_key(key, p_stage, 0,
+                             pipeline->device->features.robustBufferAccess);
 
    VkResult result;
    p_stage->current_variant =

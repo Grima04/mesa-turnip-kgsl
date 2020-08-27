@@ -330,6 +330,8 @@ struct v3dv_device {
    uint32_t bo_count;
 
    struct v3dv_pipeline_cache default_pipeline_cache;
+
+   VkPhysicalDeviceFeatures features;
 };
 
 struct v3dv_device_memory {
