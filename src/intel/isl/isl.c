@@ -1972,20 +1972,6 @@ isl_surf_supports_ccs(const struct isl_device *dev,
       if (isl_surf_usage_is_stencil(surf->usage) && surf->samples > 1)
          return false;
 
-      /* [TGL+] CCS can only be added to a non-D16-formatted depth buffer if
-       * it has HiZ. If not for GEN:BUG:1406512483 "deprecate compression
-       * enable states", D16 would be supported. Supporting D16 requires being
-       * able to specify that the control surface is present and
-       * simultaneously disabling compression. The above bug makes it so that
-       * it's not possible to specify this configuration.
-       *
-       * Note: ISL Doesn't currently support depth CCS without HiZ at all.
-       */
-      if (isl_surf_usage_is_depth(surf->usage) &&
-          surf->format == ISL_FORMAT_R16_UNORM) {
-         return false;
-      }
-
       /* On Gen12, 8BPP surfaces cannot be compressed if any level is not
        * 32Bx4row-aligned. For now, just reject the cases where alignment
        * matters.
