@@ -1579,13 +1579,13 @@ emit_vertex_builtin(compiler_context *ctx, nir_intrinsic_instr *instr)
 }
 
 static void
-emit_msaa_builtin(compiler_context *ctx, nir_intrinsic_instr *instr)
+emit_special(compiler_context *ctx, nir_intrinsic_instr *instr, unsigned idx)
 {
         unsigned reg = nir_dest_index(&instr->dest);
 
         midgard_instruction ld = m_ld_color_buffer_32u(reg, 0);
         ld.op = midgard_op_ld_color_buffer_32u_old;
-        ld.load_store.address = 97;
+        ld.load_store.address = idx;
         ld.load_store.arg_2 = 0x1E;
 
         for (int i = 0; i < 4; ++i)
@@ -1979,8 +1979,12 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
                 emit_vertex_builtin(ctx, instr);
                 break;
 
+        case nir_intrinsic_load_sample_mask_in:
+                emit_special(ctx, instr, 96);
+                break;
+
         case nir_intrinsic_load_sample_id:
-                emit_msaa_builtin(ctx, instr);
+                emit_special(ctx, instr, 97);
                 break;
 
         case nir_intrinsic_memory_barrier_buffer:
