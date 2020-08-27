@@ -90,7 +90,7 @@ EXTENSIONS = [
     Extension('VK_KHR_multiview',                         1, True),
     Extension('VK_KHR_performance_query',                 1,
               'device->use_softpin && device->perf && ' +
-              'device->perf->i915_perf_version >= 3 && ' +
+              '(device->perf->i915_perf_version >= 3 || INTEL_DEBUG & DEBUG_NO_OACONFIG) && ' +
               'device->use_call_secondary'),
     Extension('VK_KHR_pipeline_executable_properties',    1, True),
     Extension('VK_KHR_push_descriptor',                   2, True),

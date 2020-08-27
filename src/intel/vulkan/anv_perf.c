@@ -56,8 +56,10 @@ anv_get_perf(const struct gen_device_info *devinfo, int fd)
    /* We need DRM_I915_PERF_PROP_HOLD_PREEMPTION support, only available in
     * perf revision 2.
     */
-   if (perf->i915_perf_version < 3)
-      goto err;
+   if (!(INTEL_DEBUG & DEBUG_NO_OACONFIG)) {
+      if (perf->i915_perf_version < 3)
+         goto err;
+   }
 
    return perf;
 
