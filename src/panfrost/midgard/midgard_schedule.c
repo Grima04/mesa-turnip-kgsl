@@ -212,6 +212,9 @@ mir_is_scalar(midgard_instruction *ains)
         if (ains->src[1] != ~0)
                 could_scalar &= (sz1 == 16) || (sz1 == 32);
 
+        if (midgard_is_integer_out_op(ains->op) && ains->outmod != midgard_outmod_int_wrap)
+                return false;
+
         return could_scalar;
 }
 

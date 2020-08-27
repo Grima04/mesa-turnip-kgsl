@@ -881,6 +881,8 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
                 ALU_CASE(iadd, iadd);
                 ALU_CASE(isub, isub);
                 ALU_CASE(imul, imul);
+                ALU_CASE(imul_high, imul);
+                ALU_CASE(umul_high, imul);
 
                 /* Zero shoved as second-arg */
                 ALU_CASE(iabs, iabsdiff);
@@ -1059,7 +1061,9 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
         unsigned outmod = 0;
         bool is_int = midgard_is_integer_op(op);
 
-        if (midgard_is_integer_out_op(op)) {
+        if (instr->op == nir_op_umul_high || instr->op == nir_op_imul_high) {
+                outmod = midgard_outmod_int_high;
+        } else if (midgard_is_integer_out_op(op)) {
                 outmod = midgard_outmod_int_wrap;
         } else if (instr->op == nir_op_fsat) {
                 outmod = midgard_outmod_sat;
@@ -2390,6 +2394,13 @@ max_bitsize_for_alu(midgard_instruction *ins)
 
         default:
                 break;
+        }
+
+        /* High implies computing at a higher bitsize, e.g umul_high of 32-bit
+         * requires computing at 64-bit */
+        if (midgard_is_integer_out_op(ins->op) && ins->outmod == midgard_outmod_int_high) {
+                max_bitsize *= 2;
+                assert(max_bitsize <= 64);
         }
 
         return max_bitsize;
