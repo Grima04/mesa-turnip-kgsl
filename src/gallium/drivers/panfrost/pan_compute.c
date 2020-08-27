@@ -127,6 +127,10 @@ panfrost_launch_grid(struct pipe_context *pipe,
                 cfg.shared = panfrost_emit_shared_memory(batch, info);
                 cfg.uniform_buffers = panfrost_emit_const_buf(batch,
                                 PIPE_SHADER_COMPUTE, &cfg.push_uniforms);
+                cfg.textures = panfrost_emit_texture_descriptors(batch,
+                                PIPE_SHADER_COMPUTE);
+                cfg.samplers = panfrost_emit_sampler_descriptors(batch,
+                                PIPE_SHADER_COMPUTE);
         }
 
         unsigned magic =
