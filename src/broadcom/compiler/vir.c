@@ -1126,6 +1126,17 @@ v3d_attempt_compile(struct v3d_compile *c)
         NIR_PASS_V(c->s, v3d_nir_lower_image_load_store);
         NIR_PASS_V(c->s, nir_lower_idiv, nir_lower_idiv_fast);
 
+        if (c->key->robust_buffer_access) {
+           /* v3d_nir_lower_robust_buffer_access assumes constant buffer
+            * indices on ubo/ssbo intrinsics so run a copy propagation pass
+            * before we run the lowering to warrant this. We also want to run
+            * the lowering before v3d_optimize to clean-up redundant
+            * get_buffer_size calls produced in the pass.
+            */
+           NIR_PASS_V(c->s, nir_copy_prop);
+           NIR_PASS_V(c->s, v3d_nir_lower_robust_buffer_access, c);
+        }
+
         v3d_optimize_nir(c->s);
 
         /* Do late algebraic optimization to turn add(a, neg(b)) back into

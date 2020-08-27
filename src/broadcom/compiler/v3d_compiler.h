@@ -353,6 +353,7 @@ struct v3d_key {
         uint8_t num_tex_used;
         uint8_t ucp_enables;
         bool is_last_geometry_stage;
+        bool robust_buffer_access;
 
         enum v3d_execution_environment environment;
 };
@@ -911,6 +912,7 @@ void v3d_nir_lower_blend(nir_shader *s, struct v3d_compile *c);
 void v3d_nir_lower_io(nir_shader *s, struct v3d_compile *c);
 void v3d_nir_lower_line_smooth(nir_shader *shader);
 void v3d_nir_lower_logic_ops(nir_shader *s, struct v3d_compile *c);
+void v3d_nir_lower_robust_buffer_access(nir_shader *shader, struct v3d_compile *c);
 void v3d_nir_lower_scratch(nir_shader *s);
 void v3d_nir_lower_txf_ms(nir_shader *s, struct v3d_compile *c);
 void v3d_nir_lower_image_load_store(nir_shader *s);
