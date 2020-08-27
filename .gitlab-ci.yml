@@ -1163,6 +1163,11 @@ arm64_a630_gmem:
     FD_MESA_DEBUG: nobypass
     NIR_VALIDATE: 1
 
+arm64_a630_gl:
+  extends: arm64_a630_gles2
+  variables:
+    DEQP_VER: gl30
+
 arm64_a630_vk:
   extends: arm64_a630_gles2
   variables:
