@@ -1747,6 +1747,9 @@ radv_emit_fb_ds_state(struct radv_cmd_buffer *cmd_buffer,
 			meta_read_policy =  V_02807C_CACHE_NOA_RD;    /* don't cache reads */
 		}
 
+		bool zs_big_page = cmd_buffer->device->physical_device->rad_info.chip_class >= GFX10_3 &&
+				   (image->alignment % (64 * 1024) == 0);
+
 		radeon_set_context_reg(cmd_buffer->cs, R_028014_DB_HTILE_DATA_BASE, ds->db_htile_data_base);
 		radeon_set_context_reg(cmd_buffer->cs, R_02801C_DB_DEPTH_SIZE_XY, ds->db_depth_size);
 
@@ -1772,7 +1775,9 @@ radv_emit_fb_ds_state(struct radv_cmd_buffer *cmd_buffer,
 			    S_02807C_ZPCPSD_WR_POLICY(V_02807C_CACHE_STREAM_WR) |
 			    S_02807C_Z_RD_POLICY(V_02807C_CACHE_NOA_RD) |
 			    S_02807C_S_RD_POLICY(V_02807C_CACHE_NOA_RD) |
-			    S_02807C_HTILE_RD_POLICY(meta_read_policy));
+			    S_02807C_HTILE_RD_POLICY(meta_read_policy) |
+			    S_02807C_Z_BIG_PAGE(zs_big_page) |
+			    S_02807C_S_BIG_PAGE(zs_big_page));
 	} else if (cmd_buffer->device->physical_device->rad_info.chip_class == GFX9) {
 		radeon_set_context_reg_seq(cmd_buffer->cs, R_028014_DB_HTILE_DATA_BASE, 3);
 		radeon_emit(cmd_buffer->cs, ds->db_htile_data_base);
@@ -2247,6 +2252,7 @@ radv_emit_framebuffer_state(struct radv_cmd_buffer *cmd_buffer)
 	int i;
 	struct radv_framebuffer *framebuffer = cmd_buffer->state.framebuffer;
 	const struct radv_subpass *subpass = cmd_buffer->state.subpass;
+	bool color_big_page = true;
 
 	/* this may happen for inherited secondary recording */
 	if (!framebuffer)
@@ -2271,6 +2277,12 @@ radv_emit_framebuffer_state(struct radv_cmd_buffer *cmd_buffer)
 		radv_emit_fb_color_state(cmd_buffer, i, &cmd_buffer->state.attachments[idx].cb, iview, layout, in_render_loop);
 
 		radv_load_color_clear_metadata(cmd_buffer, iview, i);
+
+		/* BIG_PAGE is an optimization that can only be enabled if all
+		 * color targets are compatible.
+		 */
+		color_big_page &= cmd_buffer->device->physical_device->rad_info.chip_class >= GFX10_3 &&
+				  (iview->image->alignment % (64 * 1024) == 0);
 	}
 
 	if (subpass->depth_stencil_attachment) {
@@ -2333,7 +2345,9 @@ radv_emit_framebuffer_state(struct radv_cmd_buffer *cmd_buffer)
 				       S_028410_CMASK_RD_POLICY(meta_read_policy) |
 				       S_028410_FMASK_RD_POLICY(meta_read_policy) |
 				       S_028410_DCC_RD_POLICY(meta_read_policy) |
-				       S_028410_COLOR_RD_POLICY(V_028410_CACHE_NOA_RD));
+				       S_028410_COLOR_RD_POLICY(V_028410_CACHE_NOA_RD) |
+				       S_028410_FMASK_BIG_PAGE(color_big_page) |
+				       S_028410_COLOR_BIG_PAGE(color_big_page));
 	}
 
 	if (cmd_buffer->device->dfsm_allowed) {
