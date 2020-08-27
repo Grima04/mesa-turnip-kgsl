@@ -201,7 +201,7 @@ lima_program_optimize_fs_nir(struct nir_shader *s,
 
    do {
       progress = false;
-      NIR_PASS(progress, s, nir_opt_vectorize);
+      NIR_PASS(progress, s, nir_opt_vectorize, NULL, NULL);
    } while (progress);
 
    do {

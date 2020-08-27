@@ -768,7 +768,7 @@ optimize_once(nir_shader *shader)
    NIR_PASS(progress, shader, nir_opt_algebraic);
    NIR_PASS(progress, shader, nir_opt_constant_folding);
    NIR_PASS(progress, shader, nir_opt_copy_prop_vars);
-   NIR_PASS(progress, shader, nir_opt_vectorize);
+   NIR_PASS(progress, shader, nir_opt_vectorize, NULL, NULL);
 
    NIR_PASS(progress, shader, nir_opt_remove_phis);
 

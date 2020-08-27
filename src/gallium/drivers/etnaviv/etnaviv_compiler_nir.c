@@ -1122,7 +1122,7 @@ etna_compile_shader_nir(struct etna_shader_variant *v)
    if (DBG_ENABLED(ETNA_DBG_DUMP_SHADERS))
       nir_print_shader(s, stdout);
 
-   while( OPT(s, nir_opt_vectorize) );
+   while( OPT(s, nir_opt_vectorize, NULL, NULL) );
    NIR_PASS_V(s, nir_lower_alu_to_scalar, etna_alu_to_scalar_filter_cb, specs);
 
    NIR_PASS_V(s, nir_remove_dead_variables, nir_var_function_temp, NULL);

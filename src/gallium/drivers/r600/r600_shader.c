@@ -201,7 +201,7 @@ int r600_pipe_shader_create(struct pipe_context *ctx,
 				NIR_PASS_V(sel->nir, nir_lower_regs_to_ssa);
 				NIR_PASS_V(sel->nir, nir_lower_alu_to_scalar, NULL, NULL);
 				NIR_PASS_V(sel->nir, nir_lower_int64);
-				NIR_PASS_V(sel->nir, nir_opt_vectorize);
+				NIR_PASS_V(sel->nir, nir_opt_vectorize, NULL, NULL);
 			}
 			NIR_PASS_V(sel->nir, nir_lower_flrp, ~0, false, false);
 		}
