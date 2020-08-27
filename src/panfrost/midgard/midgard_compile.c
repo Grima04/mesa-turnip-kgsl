@@ -1357,6 +1357,15 @@ emit_global(
         mir_set_offset(ctx, &ins, offset, is_shared);
         mir_set_intr_mask(instr, &ins, is_read);
 
+        /* Set a valid swizzle for masked out components */
+        assert(ins.mask);
+        unsigned first_component = __builtin_ffs(ins.mask) - 1;
+
+        for (unsigned i = 0; i < ARRAY_SIZE(ins.swizzle[0]); ++i) {
+                if (!(ins.mask & (1 << i)))
+                        ins.swizzle[0][i] = first_component;
+        }
+
         emit_mir_instruction(ctx, ins);
 }
 
