@@ -220,18 +220,11 @@ module clover::nir::spirv_to_nir(const module &mod, const device &dev,
       auto args = sym.args;
       NIR_PASS_V(nir, clover_lower_nir, args, dev.max_block_size().size());
 
-      // Calculate input offsets.
-      unsigned offset = 0;
-      nir_foreach_uniform_variable(var, nir) {
-         offset = align(offset, glsl_get_cl_alignment(var->type));
-         var->data.driver_location = offset;
-         offset += glsl_get_cl_size(var->type);
-      }
-
       NIR_PASS_V(nir, nir_lower_mem_constant_vars,
                  glsl_get_cl_type_size_align);
       NIR_PASS_V(nir, nir_lower_vars_to_explicit_types,
-                 nir_var_mem_shared | nir_var_function_temp,
+                 nir_var_uniform | nir_var_mem_shared |
+                 nir_var_mem_global | nir_var_function_temp,
                  glsl_get_cl_type_size_align);
 
       /* use offsets for kernel inputs (uniform) */
