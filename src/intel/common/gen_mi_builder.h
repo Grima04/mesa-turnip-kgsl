@@ -369,21 +369,56 @@ _gen_mi_copy_no_unref(struct gen_mi_builder *b,
 
    case GEN_MI_VALUE_TYPE_MEM64:
    case GEN_MI_VALUE_TYPE_REG64:
-      /* If the destination is 64 bits, we have to copy in two halves */
-      _gen_mi_copy_no_unref(b, gen_mi_value_half(dst, false),
-                               gen_mi_value_half(src, false));
       switch (src.type) {
       case GEN_MI_VALUE_TYPE_IMM:
-      case GEN_MI_VALUE_TYPE_MEM64:
+         if (dst.type == GEN_MI_VALUE_TYPE_REG64) {
+            uint32_t *dw = (uint32_t *)__gen_get_batch_dwords(b->user_data,
+                                                              GENX(MI_LOAD_REGISTER_IMM_length) + 2);
+            gen_mi_builder_pack(b, GENX(MI_LOAD_REGISTER_IMM), dw, lri) {
+               lri.DWordLength = GENX(MI_LOAD_REGISTER_IMM_length) + 2 -
+                                 GENX(MI_LOAD_REGISTER_IMM_length_bias);
+            }
+            dw[1] = dst.reg;
+            dw[2] = src.imm;
+            dw[3] = dst.reg + 4;
+            dw[4] = src.imm >> 32;
+         } else {
+#if GEN_GEN >= 8
+            assert(dst.type == GEN_MI_VALUE_TYPE_MEM64);
+            uint32_t *dw = (uint32_t *)__gen_get_batch_dwords(b->user_data,
+                                                              GENX(MI_STORE_DATA_IMM_length) + 1);
+            gen_mi_builder_pack(b, GENX(MI_STORE_DATA_IMM), dw, sdm) {
+               sdm.DWordLength = GENX(MI_STORE_DATA_IMM_length) + 1 -
+                                 GENX(MI_STORE_DATA_IMM_length_bias);
+               sdm.StoreQword = true;
+               sdm.Address = dst.addr;
+            }
+            dw[3] = src.imm;
+            dw[4] = src.imm >> 32;
+#else
+         _gen_mi_copy_no_unref(b, gen_mi_value_half(dst, false),
+                                  gen_mi_value_half(src, false));
+         _gen_mi_copy_no_unref(b, gen_mi_value_half(dst, true),
+                                  gen_mi_value_half(src, true));
+#endif
+         }
+         break;
+      case GEN_MI_VALUE_TYPE_REG32:
+      case GEN_MI_VALUE_TYPE_MEM32:
+         _gen_mi_copy_no_unref(b, gen_mi_value_half(dst, false),
+                                  gen_mi_value_half(src, false));
+         _gen_mi_copy_no_unref(b, gen_mi_value_half(dst, true),
+                                  gen_mi_imm(0));
+         break;
       case GEN_MI_VALUE_TYPE_REG64:
-         /* TODO: Use MI_STORE_DATA_IMM::StoreQWord when we have it */
+      case GEN_MI_VALUE_TYPE_MEM64:
+         _gen_mi_copy_no_unref(b, gen_mi_value_half(dst, false),
+                                  gen_mi_value_half(src, false));
          _gen_mi_copy_no_unref(b, gen_mi_value_half(dst, true),
                                   gen_mi_value_half(src, true));
          break;
       default:
-         _gen_mi_copy_no_unref(b, gen_mi_value_half(dst, true),
-                                  gen_mi_imm(0));
-         break;
+         unreachable("Invalid gen_mi_value type");
       }
       break;
 
