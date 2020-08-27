@@ -2636,10 +2636,13 @@ vtn_handle_variables(struct vtn_builder *b, SpvOp opcode,
    }
 
    case SpvOpCopyMemory: {
-      struct vtn_value *dest = vtn_value(b, w[1], vtn_value_type_pointer);
-      struct vtn_value *src = vtn_value(b, w[2], vtn_value_type_pointer);
+      struct vtn_value *dest_val = vtn_value(b, w[1], vtn_value_type_pointer);
+      struct vtn_value *src_val = vtn_value(b, w[2], vtn_value_type_pointer);
+      struct vtn_pointer *dest = dest_val->pointer;
+      struct vtn_pointer *src = src_val->pointer;
 
-      vtn_assert_types_equal(b, opcode, dest->type->deref, src->type->deref);
+      vtn_assert_types_equal(b, opcode, dest_val->type->deref,
+                                        src_val->type->deref);
 
       unsigned idx = 3, dest_alignment, src_alignment;
       SpvMemoryAccessMask dest_access, src_access;
@@ -2652,13 +2655,13 @@ vtn_handle_variables(struct vtn_builder *b, SpvOp opcode,
          src_access = dest_access;
       }
 
-      vtn_emit_make_visible_barrier(b, src_access, src_scope, src->pointer->mode);
+      vtn_emit_make_visible_barrier(b, src_access, src_scope, src->mode);
 
-      vtn_variable_copy(b, dest->pointer, src->pointer,
+      vtn_variable_copy(b, dest, src,
                         spv_access_to_gl_access(dest_access),
                         spv_access_to_gl_access(src_access));
 
-      vtn_emit_make_available_barrier(b, dest_access, dest_scope, dest->pointer->mode);
+      vtn_emit_make_available_barrier(b, dest_access, dest_scope, dest->mode);
       break;
    }
 
