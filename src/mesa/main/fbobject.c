@@ -744,6 +744,23 @@ _mesa_is_legal_color_format(const struct gl_context *ctx, GLenum baseFormat)
    }
 }
 
+static GLboolean
+is_float_format(GLenum internalFormat)
+{
+   switch (internalFormat) {
+   case GL_R16F:
+   case GL_RG16F:
+   case GL_RGB16F:
+   case GL_RGBA16F:
+   case GL_R32F:
+   case GL_RG32F:
+   case GL_RGB32F:
+   case GL_RGBA32F:
+      return true;
+   default:
+      return false;
+   }
+}
 
 /**
  * Is the given base format a legal format for a color renderbuffer?
@@ -772,6 +789,15 @@ is_format_color_renderable(const struct gl_context *ctx, mesa_format format,
    case GL_RGBA16_SNORM:
       return _mesa_has_EXT_texture_norm16(ctx) &&
              _mesa_has_EXT_render_snorm(ctx);
+   case GL_R:
+   case GL_RG:
+      return _mesa_has_EXT_texture_rg(ctx);
+   case GL_R16F:
+   case GL_RG16F:
+      return _mesa_is_gles3(ctx);
+   case GL_RGBA16F:
+   case GL_RGBA32F:
+      return _mesa_has_EXT_color_buffer_float(ctx);
    case GL_RGB32F:
    case GL_RGB32I:
    case GL_RGB32UI:
@@ -801,6 +827,42 @@ is_format_color_renderable(const struct gl_context *ctx, mesa_format format,
    return GL_TRUE;
 }
 
+/**
+ * Check that implements various limitations of floating point
+ * rendering extensions on OpenGL ES.
+ *
+ * Check passes if texture format is not floating point or
+ * is floating point and is color renderable.
+ *
+ * Check fails if texture format is floating point and cannot
+ * be rendered to with current context and set of supported
+ * extensions.
+ */
+static GLboolean
+gles_check_float_renderable(const struct gl_context *ctx,
+                            struct gl_renderbuffer_attachment *att)
+{
+   /* Only check floating point texture cases. */
+   if (!att->Texture || !is_float_format(att->Renderbuffer->InternalFormat))
+      return true;
+
+   /* GL_RGBA with unsized GL_FLOAT type, no extension can make this
+    * color renderable.
+    */
+   if (att->Texture->_IsFloat && att->Renderbuffer->_BaseFormat == GL_RGBA)
+      return false;
+
+   /* Unsized GL_HALF_FLOAT supported only with EXT_color_buffer_half_float. */
+   if (att->Texture->_IsHalfFloat)
+      return false;
+
+   const struct gl_texture_object *texObj = att->Texture;
+   const struct gl_texture_image *texImage =
+      texObj->Image[att->CubeMapFace][att->TextureLevel];
+
+   return is_format_color_renderable(ctx, texImage->TexFormat,
+                                     att->Renderbuffer->InternalFormat);
+}
 
 /**
  * Is the given base format a legal format for a depth/stencil renderbuffer?
@@ -907,7 +969,7 @@ test_attachment_completeness(const struct gl_context *ctx, GLenum format,
           * these textures to be used as a render target, this is done via
           * GL_EXT_color_buffer(_half)_float with set of new sized types.
           */
-         if (_mesa_is_gles(ctx) && (texObj->_IsFloat || texObj->_IsHalfFloat)) {
+         if (_mesa_is_gles(ctx) && !gles_check_float_renderable(ctx, att)) {
             att_incomplete("bad internal format");
             att->Complete = GL_FALSE;
             return;
