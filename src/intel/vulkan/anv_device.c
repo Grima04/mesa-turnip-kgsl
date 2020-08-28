@@ -1587,7 +1587,7 @@ void anv_GetPhysicalDeviceProperties(
        */
       .minTexelBufferOffsetAlignment            = 16,
       .minUniformBufferOffsetAlignment          = ANV_UBO_ALIGNMENT,
-      .minStorageBufferOffsetAlignment          = 4,
+      .minStorageBufferOffsetAlignment          = ANV_SSBO_ALIGNMENT,
       .minTexelOffset                           = -8,
       .maxTexelOffset                           = 7,
       .minTexelGatherOffset                     = -32,

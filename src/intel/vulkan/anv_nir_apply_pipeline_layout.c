@@ -552,6 +552,31 @@ lower_load_vulkan_descriptor(nir_intrinsic_instr *intrin,
 
    const VkDescriptorType desc_type = nir_intrinsic_desc_type(intrin);
 
+   assert(intrin->dest.is_ssa);
+   nir_foreach_use(src, &intrin->dest.ssa) {
+      if (src->parent_instr->type != nir_instr_type_deref)
+         continue;
+
+      nir_deref_instr *cast = nir_instr_as_deref(src->parent_instr);
+      assert(cast->deref_type == nir_deref_type_cast);
+      switch (desc_type) {
+      case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
+      case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
+         cast->cast.align_mul = ANV_UBO_ALIGNMENT;
+         cast->cast.align_offset = 0;
+         break;
+
+      case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
+      case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
+         cast->cast.align_mul = ANV_SSBO_ALIGNMENT;
+         cast->cast.align_offset = 0;
+         break;
+
+      default:
+         break;
+      }
+   }
+
    assert(intrin->src[0].is_ssa);
    nir_ssa_def *index = intrin->src[0].ssa;
 

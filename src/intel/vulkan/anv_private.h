@@ -181,6 +181,7 @@ struct gen_perf_query_result;
  * GEM object.
  */
 #define ANV_UBO_ALIGNMENT 64
+#define ANV_SSBO_ALIGNMENT 4
 #define ANV_SSBO_BOUNDS_CHECK_ALIGNMENT 4
 #define MAX_VIEWS_FOR_PRIMITIVE_REPLICATION 16
 
