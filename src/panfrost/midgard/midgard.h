@@ -632,23 +632,13 @@ midgard_tex_register_select;
 /* Texture pipeline results are in r28-r29 */
 #define REG_TEX_BASE 28
 
-/* Texture opcodes... maybe? */
-#define TEXTURE_OP_NORMAL 0x11          /* texture */
-#define TEXTURE_OP_LOD 0x12             /* textureLod */
-#define TEXTURE_OP_TEXEL_FETCH 0x14     /* texelFetch */
-
-/* Implements barrier() */
-#define TEXTURE_OP_BARRIER 0x0B
-
-/* Computes horizontal and vertical derivatives respectively. Use with a float
- * sampler and a "2D" texture.  Leave texture/sampler IDs as zero; they ought
- * to be ignored. Only works for fp32 on 64-bit at a time, so derivatives of a
- * vec4 require 2 texture ops.  For some reason, the blob computes both X and Y
- * derivatives at the same time and just throws out whichever is unused; it's
- * not known if this is a quirk of the hardware or just of the blob. */
-
-#define TEXTURE_OP_DFDX 0x0D
-#define TEXTURE_OP_DFDY 0x1D
+enum mali_texture_op {
+        TEXTURE_OP_NORMAL = 1,  /* texture */
+        TEXTURE_OP_LOD = 2,     /* textureLod */
+        TEXTURE_OP_TEXEL_FETCH = 4,
+        TEXTURE_OP_BARRIER = 11,
+        TEXTURE_OP_DERIVATIVE = 13
+};
 
 enum mali_sampler_type {
         MALI_SAMPLER_UNK        = 0x0,
@@ -657,15 +647,29 @@ enum mali_sampler_type {
         MALI_SAMPLER_SIGNED     = 0x3, /* isampler */
 };
 
+/* Texture modes */
+enum mali_texture_mode {
+        TEXTURE_NORMAL = 1,
+        TEXTURE_SHADOW = 5,
+        TEXTURE_GATHER_X = 8,
+        TEXTURE_GATHER_Y = 9,
+        TEXTURE_GATHER_Z = 10,
+        TEXTURE_GATHER_W = 11,
+};
+
+enum mali_derivative_mode {
+        TEXTURE_DFDX = 0,
+        TEXTURE_DFDY = 1,
+};
+
 typedef struct
 __attribute__((__packed__))
 {
         unsigned type      : 4;
         unsigned next_type : 4;
 
-        unsigned op  : 6;
-        unsigned shadow    : 1;
-        unsigned is_gather  : 1;
+        enum mali_texture_op op  : 4;
+        unsigned mode : 4;
 
         /* A little obscure, but last is set for the last texture operation in
          * a shader. cont appears to just be last's opposite (?). Yeah, I know,

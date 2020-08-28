@@ -2065,6 +2065,15 @@ pan_attach_constant_bias(
         return true;
 }
 
+static enum mali_texture_mode
+mdg_texture_mode(nir_tex_instr *instr)
+{
+        if (instr->is_shadow)
+                return TEXTURE_SHADOW;
+        else
+                return TEXTURE_NORMAL;
+}
+
 static void
 emit_texop_native(compiler_context *ctx, nir_tex_instr *instr,
                   unsigned midgard_texop)
@@ -2099,7 +2108,7 @@ emit_texop_native(compiler_context *ctx, nir_tex_instr *instr,
                         .format = midgard_tex_format(instr->sampler_dim),
                         .texture_handle = texture_index,
                         .sampler_handle = sampler_index,
-                        .shadow = instr->is_shadow,
+                        .mode = mdg_texture_mode(instr)
                 }
         };
 

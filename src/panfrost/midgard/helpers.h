@@ -65,11 +65,6 @@
                 op == midgard_alu_op_fcsel \
         )
 
-#define OP_IS_DERIVATIVE(op) ( \
-                op == TEXTURE_OP_DFDX || \
-                op == TEXTURE_OP_DFDY \
-        )
-
 #define OP_IS_UNSIGNED_CMP(op) ( \
                 op == midgard_alu_op_ult || \
                 op == midgard_alu_op_ule \
