@@ -126,7 +126,8 @@ success:
       when: never
     - changes: *all_paths
       when: never
-    - when: on_success
+    - if: '$CI_MERGE_REQUEST_SOURCE_BRANCH_NAME == $CI_COMMIT_REF_NAME'
+      when: on_success
   variables:
     GIT_STRATEGY: none
   script:
