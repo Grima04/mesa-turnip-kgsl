@@ -1385,6 +1385,7 @@ texture_mode(enum mali_texture_mode mode)
         switch (mode) {
         case TEXTURE_NORMAL: return "";
         case TEXTURE_SHADOW: return ".shadow";
+        case TEXTURE_GATHER_SHADOW: return ".gather.shadow";
         case TEXTURE_GATHER_X: return ".gatherX";
         case TEXTURE_GATHER_Y: return ".gatherY";
         case TEXTURE_GATHER_Z: return ".gatherZ";

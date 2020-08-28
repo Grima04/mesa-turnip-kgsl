@@ -651,6 +651,7 @@ enum mali_sampler_type {
 enum mali_texture_mode {
         TEXTURE_NORMAL = 1,
         TEXTURE_SHADOW = 5,
+        TEXTURE_GATHER_SHADOW = 6,
         TEXTURE_GATHER_X = 8,
         TEXTURE_GATHER_Y = 9,
         TEXTURE_GATHER_Z = 10,
