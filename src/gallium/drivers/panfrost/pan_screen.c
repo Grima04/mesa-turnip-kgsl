@@ -233,6 +233,9 @@ panfrost_get_param(struct pipe_screen *screen, enum pipe_cap param)
 
                 return 1;
 
+        case PIPE_CAP_MAX_TEXTURE_GATHER_COMPONENTS:
+                return is_deqp ? 4 : 0;
+
         case PIPE_CAP_MIN_TEXTURE_GATHER_OFFSET:
                 return -8;
 
