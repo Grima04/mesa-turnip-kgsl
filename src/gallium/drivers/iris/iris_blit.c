@@ -363,6 +363,27 @@ iris_blit(struct pipe_context *ctx, const struct pipe_blit_info *info)
          blorp_flags |= BLORP_BATCH_PREDICATE_ENABLE;
    }
 
+   float src_x0 = info->src.box.x;
+   float src_x1 = info->src.box.x + info->src.box.width;
+   float src_y0 = info->src.box.y;
+   float src_y1 = info->src.box.y + info->src.box.height;
+   float dst_x0 = info->dst.box.x;
+   float dst_x1 = info->dst.box.x + info->dst.box.width;
+   float dst_y0 = info->dst.box.y;
+   float dst_y1 = info->dst.box.y + info->dst.box.height;
+   bool mirror_x = apply_mirror(&src_x0, &src_x1);
+   bool mirror_y = apply_mirror(&src_y0, &src_y1);
+   enum blorp_filter filter;
+
+   if (info->scissor_enable) {
+      bool noop = apply_blit_scissor(&info->scissor,
+                                     &src_x0, &src_y0, &src_x1, &src_y1,
+                                     &dst_x0, &dst_y0, &dst_x1, &dst_y1,
+                                     mirror_x, mirror_y);
+      if (noop)
+         return;
+   }
+
    if (iris_resource_unfinished_aux_import(src_res))
       iris_resource_finish_aux_import(ctx->screen, src_res);
    if (iris_resource_unfinished_aux_import(dst_res))
@@ -404,27 +425,6 @@ iris_blit(struct pipe_context *ctx, const struct pipe_blit_info *info)
                                 info->dst.box.z, info->dst.box.depth,
                                 dst_aux_usage, dst_clear_supported);
    iris_emit_buffer_barrier_for(batch, dst_res->bo, IRIS_DOMAIN_RENDER_WRITE);
-
-   float src_x0 = info->src.box.x;
-   float src_x1 = info->src.box.x + info->src.box.width;
-   float src_y0 = info->src.box.y;
-   float src_y1 = info->src.box.y + info->src.box.height;
-   float dst_x0 = info->dst.box.x;
-   float dst_x1 = info->dst.box.x + info->dst.box.width;
-   float dst_y0 = info->dst.box.y;
-   float dst_y1 = info->dst.box.y + info->dst.box.height;
-   bool mirror_x = apply_mirror(&src_x0, &src_x1);
-   bool mirror_y = apply_mirror(&src_y0, &src_y1);
-   enum blorp_filter filter;
-
-   if (info->scissor_enable) {
-      bool noop = apply_blit_scissor(&info->scissor,
-                                     &src_x0, &src_y0, &src_x1, &src_y1,
-                                     &dst_x0, &dst_y0, &dst_x1, &dst_y1,
-                                     mirror_x, mirror_y);
-      if (noop)
-         return;
-   }
 
    if (abs(info->dst.box.width) == abs(info->src.box.width) &&
        abs(info->dst.box.height) == abs(info->src.box.height)) {
