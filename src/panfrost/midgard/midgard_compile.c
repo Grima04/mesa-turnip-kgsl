@@ -497,6 +497,7 @@ optimise_nir(nir_shader *nir, unsigned quirks, bool is_blend)
                 .lower_txp = ~0,
                 .lower_tex_without_implicit_lod =
                         (quirks & MIDGARD_EXPLICIT_LOD),
+                .lower_tg4_broadcom_swizzle = true,
 
                 /* TODO: we have native gradient.. */
                 .lower_txd = true,
@@ -2068,7 +2069,11 @@ pan_attach_constant_bias(
 static enum mali_texture_mode
 mdg_texture_mode(nir_tex_instr *instr)
 {
-        if (instr->is_shadow)
+        if (instr->op == nir_texop_tg4 && instr->is_shadow)
+                return TEXTURE_GATHER_SHADOW;
+        else if (instr->op == nir_texop_tg4)
+                return TEXTURE_GATHER_X + instr->component;
+        else if (instr->is_shadow)
                 return TEXTURE_SHADOW;
         else
                 return TEXTURE_NORMAL;
@@ -2112,7 +2117,7 @@ emit_texop_native(compiler_context *ctx, nir_tex_instr *instr,
                 }
         };
 
-        if (instr->is_shadow && !instr->is_new_style_shadow)
+        if (instr->is_shadow && !instr->is_new_style_shadow && instr->op != nir_texop_tg4)
            for (int i = 0; i < 4; ++i)
               ins.swizzle[0][i] = COMPONENT_X;
 
@@ -2282,6 +2287,7 @@ emit_tex(compiler_context *ctx, nir_tex_instr *instr)
                 emit_texop_native(ctx, instr, TEXTURE_OP_NORMAL);
                 break;
         case nir_texop_txl:
+        case nir_texop_tg4:
                 emit_texop_native(ctx, instr, TEXTURE_OP_LOD);
                 break;
         case nir_texop_txf:
