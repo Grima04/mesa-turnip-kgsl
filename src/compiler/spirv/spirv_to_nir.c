@@ -36,6 +36,9 @@
 #include "util/u_math.h"
 
 #include <stdio.h>
+#if UTIL_ARCH_BIG_ENDIAN
+#include <byteswap.h>
+#endif
 
 void
 vtn_log(struct vtn_builder *b, enum nir_spirv_debug_level level,
@@ -370,17 +373,39 @@ vtn_get_sampled_image(struct vtn_builder *b, uint32_t value_id)
    return si;
 }
 
-static char *
+static const char *
 vtn_string_literal(struct vtn_builder *b, const uint32_t *words,
                    unsigned word_count, unsigned *words_used)
 {
-   char *dup = ralloc_strndup(b, (char *)words, word_count * sizeof(*words));
-   if (words_used) {
-      /* Ammount of space taken by the string (including the null) */
-      unsigned len = strlen(dup) + 1;
-      *words_used = DIV_ROUND_UP(len, sizeof(*words));
+   /* From the SPIR-V spec:
+    *
+    *    "A string is interpreted as a nul-terminated stream of characters.
+    *    The character set is Unicode in the UTF-8 encoding scheme. The UTF-8
+    *    octets (8-bit bytes) are packed four per word, following the
+    *    little-endian convention (i.e., the first octet is in the
+    *    lowest-order 8 bits of the word). The final word contains the
+    *    string’s nul-termination character (0), and all contents past the
+    *    end of the string in the final word are padded with 0."
+    *
+    * On big-endian, we need to byte-swap.
+    */
+#if UTIL_ARCH_BIG_ENDIAN
+   {
+      uint32_t *copy = ralloc_array(b, uint32_t, word_count);
+      for (unsigned i = 0; i < word_count; i++)
+         copy[i] = bswap_32(words[i]);
+      words = copy;
    }
-   return dup;
+#endif
+
+   const char *str = (char *)words;
+   const char *end = memchr(str, 0, word_count * 4);
+   vtn_fail_if(end == NULL, "String is not null-terminated");
+
+   if (words_used)
+      *words_used = DIV_ROUND_UP(end - str + 1, sizeof(*words));
+
+   return str;
 }
 
 const uint32_t *
@@ -445,10 +470,10 @@ static void
 vtn_handle_extension(struct vtn_builder *b, SpvOp opcode,
                      const uint32_t *w, unsigned count)
 {
-   const char *ext = (const char *)&w[2];
    switch (opcode) {
    case SpvOpExtInstImport: {
       struct vtn_value *val = vtn_push_value(b, w[1], vtn_value_type_extension);
+      const char *ext = vtn_string_literal(b, &w[2], count - 2, NULL);
       if (strcmp(ext, "GLSL.std.450") == 0) {
          val->ext_handler = vtn_handle_glsl450_instruction;
       } else if ((strcmp(ext, "SPV_AMD_gcn_shader") == 0)

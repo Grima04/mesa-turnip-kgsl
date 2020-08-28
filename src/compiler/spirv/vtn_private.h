@@ -589,7 +589,7 @@ struct vtn_value {
    struct vtn_decoration *decoration;
    struct vtn_type *type;
    union {
-      char *str;
+      const char *str;
       nir_constant *constant;
       struct vtn_pointer *pointer;
       struct vtn_image_pointer *image;
@@ -639,7 +639,7 @@ struct vtn_builder {
     * automatically by vtn_foreach_instruction.
     */
    size_t spirv_offset;
-   char *file;
+   const char *file;
    int line, col;
 
    /*
