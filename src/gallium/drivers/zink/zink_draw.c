@@ -310,7 +310,8 @@ zink_draw_vbo(struct pipe_context *pctx,
    }
 
    VkWriteDescriptorSet wds[PIPE_SHADER_TYPES * (PIPE_MAX_CONSTANT_BUFFERS + PIPE_MAX_SAMPLERS + PIPE_MAX_SHADER_BUFFERS)];
-   struct zink_resource *write_desc_resources[PIPE_SHADER_TYPES * (PIPE_MAX_CONSTANT_BUFFERS + PIPE_MAX_SAMPLERS + PIPE_MAX_SHADER_BUFFERS)];
+   struct zink_resource *read_desc_resources[PIPE_SHADER_TYPES * (PIPE_MAX_CONSTANT_BUFFERS + PIPE_MAX_SAMPLERS + PIPE_MAX_SHADER_BUFFERS)] = {};
+   struct zink_resource *write_desc_resources[PIPE_SHADER_TYPES * (PIPE_MAX_CONSTANT_BUFFERS + PIPE_MAX_SAMPLERS + PIPE_MAX_SHADER_BUFFERS)] = {};
    VkDescriptorBufferInfo buffer_infos[PIPE_SHADER_TYPES * (PIPE_MAX_CONSTANT_BUFFERS + PIPE_MAX_SHADER_BUFFERS)];
    VkDescriptorImageInfo image_infos[PIPE_SHADER_TYPES * PIPE_MAX_SAMPLERS];
    VkBufferView buffer_view[] = {VK_NULL_HANDLE};
@@ -341,7 +342,7 @@ zink_draw_vbo(struct pipe_context *pctx,
             struct zink_resource *res = zink_resource(ctx->ubos[i][index].buffer);
             assert(!res || ctx->ubos[i][index].buffer_size > 0);
             assert(!res || ctx->ubos[i][index].buffer);
-            write_desc_resources[num_wds] = res;
+            read_desc_resources[num_wds] = res;
             buffer_infos[num_buffer_info].buffer = res ? res->buffer :
                                                    (screen->info.rb2_feats.nullDescriptor ?
                                                     VK_NULL_HANDLE :
@@ -367,7 +368,7 @@ zink_draw_vbo(struct pipe_context *pctx,
                struct zink_sampler_view *sampler_view = zink_sampler_view(psampler_view);
 
                struct zink_resource *res = psampler_view ? zink_resource(psampler_view->texture) : NULL;
-               write_desc_resources[num_wds] = res;
+               read_desc_resources[num_wds] = res;
                if (!res) {
                   /* if we're hitting this assert often, we can probably just throw a junk buffer in since
                    * the results of this codepath are undefined in ARB_texture_buffer_object spec
@@ -499,8 +500,10 @@ zink_draw_vbo(struct pipe_context *pctx,
    if (num_wds > 0) {
       for (int i = 0; i < num_wds; ++i) {
          wds[i].dstSet = desc_set;
-         if (write_desc_resources[i])
-            zink_batch_reference_resource_rw(batch, write_desc_resources[i], false);
+         if (read_desc_resources[i])
+            zink_batch_reference_resource_rw(batch, read_desc_resources[i], false);
+         else if (write_desc_resources[i])
+            zink_batch_reference_resource_rw(batch, write_desc_resources[i], true);
       }
       vkUpdateDescriptorSets(screen->dev, num_wds, wds, 0, NULL);
    }
