@@ -1324,6 +1324,7 @@ radv_shader_variant_compile(struct radv_device *device,
 			   const struct radv_shader_variant_key *key,
 			   struct radv_shader_info *info,
 			   bool keep_shader_info, bool keep_statistic_info,
+			   bool disable_optimizations,
 			   struct radv_shader_binary **binary_out)
 {
 	gl_shader_stage stage =  shaders[shader_count - 1]->info.stage;
@@ -1335,6 +1336,7 @@ radv_shader_variant_compile(struct radv_device *device,
 
 	options.explicit_scratch_args = !radv_use_llvm_for_stage(device, stage);
 	options.robust_buffer_access = device->robust_buffer_access;
+	options.disable_optimizations = disable_optimizations;
 
 	return shader_variant_compile(device, module, shaders, shader_count, stage, info,
 				      &options, false, false,
@@ -1347,13 +1349,14 @@ radv_create_gs_copy_shader(struct radv_device *device,
 			   struct radv_shader_info *info,
 			   struct radv_shader_binary **binary_out,
 			   bool keep_shader_info, bool keep_statistic_info,
-			   bool multiview)
+			   bool multiview, bool disable_optimizations)
 {
 	struct radv_nir_compiler_options options = {0};
 	gl_shader_stage stage = MESA_SHADER_VERTEX;
 
 	options.explicit_scratch_args = !radv_use_llvm_for_stage(device, stage);
 	options.key.has_multiview_view_index = multiview;
+	options.disable_optimizations = disable_optimizations;
 
 	return shader_variant_compile(device, NULL, &shader, 1, stage,
 				      info, &options, true, false,

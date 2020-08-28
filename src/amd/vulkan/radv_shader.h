@@ -148,6 +148,7 @@ struct radv_nir_compiler_options {
 	bool has_ls_vgpr_init_bug;
 	bool use_ngg_streamout;
 	bool enable_mrt_output_nan_fixup;
+	bool disable_optimizations; /* only used by ACO */
 	enum radeon_family family;
 	enum chip_class chip_class;
 	uint32_t tess_offchip_block_dw_size;
@@ -479,6 +480,7 @@ radv_shader_variant_compile(struct radv_device *device,
 			    const struct radv_shader_variant_key *key,
 			    struct radv_shader_info *info,
 			    bool keep_shader_info, bool keep_statistic_info,
+			    bool disable_optimizations,
 			    struct radv_shader_binary **binary_out);
 
 struct radv_shader_variant *
@@ -486,7 +488,8 @@ radv_create_gs_copy_shader(struct radv_device *device, struct nir_shader *nir,
 			   struct radv_shader_info *info,
 			   struct radv_shader_binary **binary_out,
 			   bool multiview,  bool keep_shader_info,
-			   bool keep_statistic_info);
+			   bool keep_statistic_info,
+			   bool disable_optimizations);
 
 struct radv_shader_variant *
 radv_create_trap_handler_shader(struct radv_device *device);

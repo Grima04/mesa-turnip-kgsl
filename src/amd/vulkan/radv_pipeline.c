@@ -2840,6 +2840,7 @@ VkResult radv_create_shaders(struct radv_pipeline *pipeline,
 	bool keep_statistic_info = (flags & VK_PIPELINE_CREATE_CAPTURE_STATISTICS_BIT_KHR) ||
 	                           (device->instance->debug_flags & RADV_DEBUG_DUMP_SHADER_STATS) ||
 	                           device->keep_shader_info;
+	bool disable_optimizations = flags & VK_PIPELINE_CREATE_DISABLE_OPTIMIZATION_BIT;
 
 	radv_start_feedback(pipeline_feedback);
 
@@ -3003,7 +3004,8 @@ VkResult radv_create_shaders(struct radv_pipeline *pipeline,
 			pipeline->gs_copy_shader = radv_create_gs_copy_shader(
 					device, nir[MESA_SHADER_GEOMETRY], &info,
 					&gs_copy_binary, keep_executable_info, keep_statistic_info,
-					keys[MESA_SHADER_GEOMETRY].has_multiview_view_index);
+					keys[MESA_SHADER_GEOMETRY].has_multiview_view_index,
+					disable_optimizations);
 		}
 
 		if (!keep_executable_info && !keep_statistic_info && pipeline->gs_copy_shader) {
@@ -3030,7 +3032,8 @@ VkResult radv_create_shaders(struct radv_pipeline *pipeline,
 			                                  pipeline->layout, keys + MESA_SHADER_FRAGMENT,
 							  infos + MESA_SHADER_FRAGMENT,
 			                                  keep_executable_info, keep_statistic_info,
-			                                  &binaries[MESA_SHADER_FRAGMENT]);
+							  disable_optimizations,
+							  &binaries[MESA_SHADER_FRAGMENT]);
 
 			radv_stop_feedback(stage_feedbacks[MESA_SHADER_FRAGMENT], false);
 		}
@@ -3047,7 +3050,9 @@ VkResult radv_create_shaders(struct radv_pipeline *pipeline,
 			pipeline->shaders[MESA_SHADER_TESS_CTRL] = radv_shader_variant_compile(device, modules[MESA_SHADER_TESS_CTRL], combined_nir, 2,
 			                                                                      pipeline->layout,
 			                                                                      &key, &infos[MESA_SHADER_TESS_CTRL], keep_executable_info,
-			                                                                      keep_statistic_info, &binaries[MESA_SHADER_TESS_CTRL]);
+			                                                                      keep_statistic_info,
+											      disable_optimizations,
+											      &binaries[MESA_SHADER_TESS_CTRL]);
 
 			radv_stop_feedback(stage_feedbacks[MESA_SHADER_TESS_CTRL], false);
 		}
@@ -3066,7 +3071,9 @@ VkResult radv_create_shaders(struct radv_pipeline *pipeline,
 			pipeline->shaders[MESA_SHADER_GEOMETRY] = radv_shader_variant_compile(device, modules[MESA_SHADER_GEOMETRY], combined_nir, 2,
 			                                                                     pipeline->layout,
 			                                                                     &keys[pre_stage], &infos[MESA_SHADER_GEOMETRY], keep_executable_info,
-			                                                                     keep_statistic_info, &binaries[MESA_SHADER_GEOMETRY]);
+			                                                                     keep_statistic_info,
+											     disable_optimizations,
+											     &binaries[MESA_SHADER_GEOMETRY]);
 
 			radv_stop_feedback(stage_feedbacks[MESA_SHADER_GEOMETRY], false);
 		}
@@ -3088,7 +3095,9 @@ VkResult radv_create_shaders(struct radv_pipeline *pipeline,
 			pipeline->shaders[i] = radv_shader_variant_compile(device, modules[i], &nir[i], 1,
 									  pipeline->layout,
 									  keys + i, infos + i, keep_executable_info,
-									  keep_statistic_info, &binaries[i]);
+									  keep_statistic_info,
+									  disable_optimizations,
+									  &binaries[i]);
 
 			radv_stop_feedback(stage_feedbacks[i], false);
 		}
