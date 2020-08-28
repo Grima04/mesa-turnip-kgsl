@@ -1586,6 +1586,11 @@ nir_print_instr(const nir_instr *instr, FILE *fp)
    print_state state = {
       .fp = fp,
    };
+   if (instr->block) {
+      nir_function_impl *impl = nir_cf_node_get_function(&instr->block->cf_node);
+      state.shader = impl->function->shader;
+   }
+
    print_instr(instr, &state, 0);
 
 }
