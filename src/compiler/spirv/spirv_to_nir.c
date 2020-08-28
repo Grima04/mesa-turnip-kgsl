@@ -5475,7 +5475,7 @@ vtn_emit_kernel_entry_point_wrapper(struct vtn_builder *b,
 
       /* input variable */
       nir_variable *in_var = rzalloc(b->nb.shader, nir_variable);
-      in_var->data.mode = nir_var_shader_in;
+      in_var->data.mode = nir_var_uniform;
       in_var->data.read_only = true;
       in_var->data.location = i;
 

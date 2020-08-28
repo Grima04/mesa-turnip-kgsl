@@ -104,9 +104,9 @@ clover_lower_nir_instr(nir_builder *b, nir_instr *instr, void *_state)
          const glsl_type *type = glsl_uint_type();
          for (uint32_t i = 0; i < 3; i++) {
             state->offset_vars[i] =
-               nir_variable_create(b->shader, nir_var_shader_in, type,
+               nir_variable_create(b->shader, nir_var_uniform, type,
                                    "global_invocation_id_offsets");
-            state->offset_vars[i]->data.location = b->shader->num_inputs++;
+            state->offset_vars[i]->data.location = b->shader->num_uniforms++;
          }
       }
 
@@ -221,7 +221,7 @@ module clover::nir::spirv_to_nir(const module &mod, const device &dev,
 
       // Calculate input offsets.
       unsigned offset = 0;
-      nir_foreach_shader_in_variable(var, nir) {
+      nir_foreach_uniform_variable(var, nir) {
          offset = align(offset, glsl_get_cl_alignment(var->type));
          var->data.driver_location = offset;
          offset += glsl_get_cl_size(var->type);
@@ -230,8 +230,8 @@ module clover::nir::spirv_to_nir(const module &mod, const device &dev,
       NIR_PASS_V(nir, nir_lower_vars_to_explicit_types, nir_var_mem_shared,
                  glsl_get_cl_type_size_align);
 
-      /* use offsets for shader_in and shared memory */
-      NIR_PASS_V(nir, nir_lower_explicit_io, nir_var_shader_in,
+      /* use offsets for uniform and shared memory */
+      NIR_PASS_V(nir, nir_lower_explicit_io, nir_var_uniform,
                  nir_address_format_32bit_offset);
 
       NIR_PASS_V(nir, nir_lower_explicit_io, nir_var_mem_shared,
