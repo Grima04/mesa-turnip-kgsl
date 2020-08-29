@@ -36,8 +36,6 @@
 
 #include "util/u_math.h"
 
-#define MAX_INLINE_PUSH_CONSTS 8
-
 namespace aco {
 
 struct shader_io_state {
@@ -1006,18 +1004,6 @@ type_size(const struct glsl_type *type, bool bindless)
 {
    // TODO: don't we need type->std430_base_alignment() here?
    return glsl_count_attribute_slots(type, false);
-}
-
-void
-shared_var_info(const struct glsl_type *type, unsigned *size, unsigned *align)
-{
-   assert(glsl_type_is_vector_or_scalar(type));
-
-   uint32_t comp_size = glsl_type_is_boolean(type)
-      ? 4 : glsl_get_bit_size(type) / 8;
-   unsigned length = glsl_get_vector_elements(type);
-   *size = comp_size * length,
-   *align = comp_size;
 }
 
 static bool
