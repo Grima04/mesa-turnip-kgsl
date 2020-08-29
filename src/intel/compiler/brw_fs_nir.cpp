@@ -4554,7 +4554,8 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
       break;
    }
 
-   case nir_intrinsic_load_global: {
+   case nir_intrinsic_load_global:
+   case nir_intrinsic_load_global_constant: {
       assert(devinfo->gen >= 8);
 
       assert(nir_dest_bit_size(instr->dest) <= 32);
