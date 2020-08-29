@@ -253,6 +253,7 @@ write_variable(write_ctx *ctx, const nir_variable *var)
     * which is typically after shaders are linked.
     */
    if (ctx->strip &&
+       data.mode != nir_var_system_value &&
        data.mode != nir_var_shader_in &&
        data.mode != nir_var_shader_out)
       data.location = 0;
