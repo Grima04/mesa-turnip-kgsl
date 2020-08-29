@@ -333,6 +333,13 @@ public:
    unsigned explicit_stride;
 
    /**
+    * Explicit alignment. This is used to communicate explicit alignment
+    * constraints. Should be 0 if the type has no explicit alignment
+    * constraint.
+    */
+   unsigned explicit_alignment;
+
+   /**
     * Subtype of composite data types.
     */
    union {
@@ -420,7 +427,8 @@ public:
    static const glsl_type *get_instance(unsigned base_type, unsigned rows,
                                         unsigned columns,
                                         unsigned explicit_stride = 0,
-                                        bool row_major = false);
+                                        bool row_major = false,
+                                        unsigned explicit_alignment = 0);
 
    /**
     * Get the instance of a sampler type
@@ -446,7 +454,8 @@ public:
    static const glsl_type *get_struct_instance(const glsl_struct_field *fields,
 					       unsigned num_fields,
 					       const char *name,
-					       bool packed = false);
+					       bool packed = false,
+					       unsigned explicit_alignment = 0);
 
    /**
     * Get the instance of an interface block type
@@ -1107,10 +1116,21 @@ public:
       if (!is_matrix())
          return error_type;
 
-      if (explicit_stride && interface_row_major)
-         return get_instance(base_type, vector_elements, 1, explicit_stride);
-      else
-         return get_instance(base_type, vector_elements, 1);
+      if (interface_row_major) {
+         /* If we're row-major, the vector element stride is the same as the
+          * matrix stride and we have no alignment (i.e. component-aligned).
+          */
+         return get_instance(base_type, vector_elements, 1,
+                             explicit_stride, false, 0);
+      } else {
+         /* Otherwise, the vector is tightly packed (stride=0).  For
+          * alignment, we treat a matrix as an array of columns make the same
+          * assumption that the alignment of the column is the same as the
+          * alignment of the whole matrix.
+          */
+         return get_instance(base_type, vector_elements, 1,
+                             0, false, explicit_alignment);
+      }
    }
 
    /**
@@ -1236,7 +1256,8 @@ private:
    glsl_type(GLenum gl_type,
              glsl_base_type base_type, unsigned vector_elements,
              unsigned matrix_columns, const char *name,
-             unsigned explicit_stride = 0, bool row_major = false);
+             unsigned explicit_stride = 0, bool row_major = false,
+             unsigned explicit_alignment = 0);
 
    /** Constructor for sampler or image types */
    glsl_type(GLenum gl_type, glsl_base_type base_type,
@@ -1245,7 +1266,8 @@ private:
 
    /** Constructor for record types */
    glsl_type(const glsl_struct_field *fields, unsigned num_fields,
-	     const char *name, bool packed = false);
+	     const char *name, bool packed = false,
+	     unsigned explicit_alignment = 0);
 
    /** Constructor for interface types */
    glsl_type(const glsl_struct_field *fields, unsigned num_fields,

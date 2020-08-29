@@ -860,6 +860,12 @@ glsl_get_explicit_size(const struct glsl_type *type, bool align_to_stride)
    return type->explicit_size(align_to_stride);
 }
 
+unsigned
+glsl_get_explicit_alignment(const struct glsl_type *type)
+{
+   return type->explicit_alignment;
+}
+
 bool
 glsl_type_is_packed(const struct glsl_type *type)
 {

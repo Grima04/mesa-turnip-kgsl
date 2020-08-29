@@ -122,6 +122,7 @@ void glsl_get_cl_type_size_align(const struct glsl_type *type,
                                  unsigned *size, unsigned *align);
 
 unsigned glsl_get_explicit_size(const struct glsl_type *type, bool align_to_stride);
+unsigned glsl_get_explicit_alignment(const struct glsl_type *type);
 
 static inline unsigned
 glsl_get_bit_size(const struct glsl_type *type)
