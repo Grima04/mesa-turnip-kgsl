@@ -3708,6 +3708,22 @@ compute_blit_box(const VkOffset3D *offsets,
 }
 
 static void
+compute_blit_3d_layers(const VkOffset3D *offsets,
+                       uint32_t *min_layer, uint32_t *max_layer,
+                       bool *mirror_z)
+{
+   if (offsets[1].z >= offsets[0].z) {
+      *mirror_z = false;
+      *min_layer = offsets[0].z;
+      *max_layer = offsets[1].z;
+   } else {
+      *mirror_z = true;
+      *min_layer = offsets[1].z;
+      *max_layer = offsets[0].z;
+   }
+}
+
+static void
 ensure_meta_blit_descriptor_pool(struct v3dv_cmd_buffer *cmd_buffer)
 {
    if (cmd_buffer->meta.blit.dspool)
@@ -3858,22 +3874,26 @@ blit_shader(struct v3dv_cmd_buffer *cmd_buffer,
 
    uint32_t min_dst_layer;
    uint32_t max_dst_layer;
+   bool dst_mirror_z;
    if (dst->type != VK_IMAGE_TYPE_3D) {
       min_dst_layer = region.dstSubresource.baseArrayLayer;
       max_dst_layer = min_dst_layer + region.dstSubresource.layerCount;
    } else {
-      min_dst_layer = region.dstOffsets[0].z;
-      max_dst_layer = region.dstOffsets[1].z;
+      compute_blit_3d_layers(region.dstOffsets,
+                             &min_dst_layer, &max_dst_layer,
+                             &dst_mirror_z);
    }
 
    uint32_t min_src_layer;
    uint32_t max_src_layer;
+   bool src_mirror_z;
    if (src->type != VK_IMAGE_TYPE_3D) {
       min_src_layer = region.srcSubresource.baseArrayLayer;
       max_src_layer = min_src_layer + region.srcSubresource.layerCount;
    } else {
-      min_src_layer = region.srcOffsets[0].z;
-      max_src_layer = region.srcOffsets[1].z;
+      compute_blit_3d_layers(region.srcOffsets,
+                             &min_src_layer, &max_src_layer,
+                             &src_mirror_z);
    }
 
    uint32_t layer_count = max_dst_layer - min_dst_layer;
@@ -3899,6 +3919,7 @@ blit_shader(struct v3dv_cmd_buffer *cmd_buffer,
    /* Handle mirroring */
    const bool mirror_x = dst_mirror_x != src_mirror_x;
    const bool mirror_y = dst_mirror_y != src_mirror_y;
+   const bool mirror_z = dst_mirror_z != src_mirror_z;
    float tex_coords[5] = {
       !mirror_x ? coords[0] : coords[2],
       !mirror_y ? coords[1] : coords[3],
@@ -4089,7 +4110,9 @@ blit_shader(struct v3dv_cmd_buffer *cmd_buffer,
        */
       if (src->type == VK_IMAGE_TYPE_3D) {
          tex_coords[4] =
-            (min_src_layer + (i + 0.5f) * src_z_step) / (float)src_level_d;
+            !mirror_z ?
+            (min_src_layer + (i + 0.5f) * src_z_step) / (float)src_level_d :
+            (max_dst_layer - (i + 0.5f) * src_z_step) / (float)src_level_d ;
       }
 
       v3dv_CmdPushConstants(_cmd_buffer,
