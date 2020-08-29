@@ -3169,6 +3169,45 @@ cmd_buffer_flush_push_constants(struct anv_cmd_buffer *cmd_buffer,
    uint32_t nobuffer_stages = 0;
 #endif
 
+   /* Compute robust pushed register access mask for each stage. */
+   if (cmd_buffer->device->robust_buffer_access) {
+      anv_foreach_stage(stage, dirty_stages) {
+         if (!anv_pipeline_has_stage(pipeline, stage))
+            continue;
+
+         const struct anv_pipeline_bind_map *bind_map =
+            &pipeline->shaders[stage]->bind_map;
+         struct anv_push_constants *push = &gfx_state->base.push_constants;
+
+         push->push_reg_mask[stage] = 0;
+         /* Start of the current range in the shader, relative to the start of
+          * push constants in the shader.
+          */
+         unsigned range_start_reg = 0;
+         for (unsigned i = 0; i < 4; i++) {
+            const struct anv_push_range *range = &bind_map->push_ranges[i];
+            if (range->length == 0)
+               continue;
+
+            unsigned bound_size =
+               get_push_range_bound_size(cmd_buffer, stage, range);
+            if (bound_size >= range->start * 32) {
+               unsigned bound_regs =
+                  MIN2(DIV_ROUND_UP(bound_size, 32) - range->start,
+                       range->length);
+               assert(range_start_reg + bound_regs <= 64);
+               push->push_reg_mask[stage] |= BITFIELD64_RANGE(range_start_reg,
+                                                              bound_regs);
+            }
+
+            cmd_buffer->state.push_constants_dirty |=
+               mesa_to_vk_shader_stage(stage);
+
+            range_start_reg += range->length;
+         }
+      }
+   }
+
    /* Resets the push constant state so that we allocate a new one if
     * needed.
     */
@@ -3183,36 +3222,6 @@ cmd_buffer_flush_push_constants(struct anv_cmd_buffer *cmd_buffer,
       if (anv_pipeline_has_stage(pipeline, stage)) {
          const struct anv_pipeline_bind_map *bind_map =
             &pipeline->shaders[stage]->bind_map;
-         struct anv_push_constants *push = &gfx_state->base.push_constants;
-
-         if (cmd_buffer->device->robust_buffer_access) {
-            push->push_reg_mask = 0;
-            /* Start of the current range in the shader, relative to the start
-             * of push constants in the shader.
-             */
-            unsigned range_start_reg = 0;
-            for (unsigned i = 0; i < 4; i++) {
-               const struct anv_push_range *range = &bind_map->push_ranges[i];
-               if (range->length == 0)
-                  continue;
-
-               unsigned bound_size =
-                  get_push_range_bound_size(cmd_buffer, stage, range);
-               if (bound_size >= range->start * 32) {
-                  unsigned bound_regs =
-                     MIN2(DIV_ROUND_UP(bound_size, 32) - range->start,
-                          range->length);
-                  assert(range_start_reg + bound_regs <= 64);
-                  push->push_reg_mask |= BITFIELD64_RANGE(range_start_reg,
-                                                          bound_regs);
-               }
-
-               cmd_buffer->state.push_constants_dirty |=
-                  mesa_to_vk_shader_stage(stage);
-
-               range_start_reg += range->length;
-            }
-         }
 
          /* We have to gather buffer addresses as a second step because the
           * loop above puts data into the push constant area and the call to
