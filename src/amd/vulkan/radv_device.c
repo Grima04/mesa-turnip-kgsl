@@ -466,7 +466,8 @@ radv_physical_device_destroy(struct radv_physical_device *device)
 	radv_finish_wsi(device);
 	device->ws->destroy(device->ws);
 	disk_cache_destroy(device->disk_cache);
-	close(device->local_fd);
+	if (device->local_fd != -1)
+		close(device->local_fd);
 	if (device->master_fd != -1)
 		close(device->master_fd);
 	vk_free(&device->instance->alloc, device);
