@@ -355,6 +355,7 @@ Converter::getFile(nir_intrinsic_op op)
    switch (op) {
    case nir_intrinsic_load_global:
    case nir_intrinsic_store_global:
+   case nir_intrinsic_load_global_constant:
       return FILE_MEMORY_GLOBAL;
    case nir_intrinsic_load_scratch:
    case nir_intrinsic_store_scratch:
@@ -2328,7 +2329,8 @@ Converter::visit(nir_intrinsic_instr *insn)
       mkOp1(OP_RDSV, dType, newDefs[1], mkSysVal(SV_CLOCK, 0))->fixed = 1;
       break;
    }
-   case nir_intrinsic_load_global: {
+   case nir_intrinsic_load_global:
+   case nir_intrinsic_load_global_constant: {
       const DataType dType = getDType(insn);
       LValues &newDefs = convert(&insn->dest);
       Value *indirectOffset;
