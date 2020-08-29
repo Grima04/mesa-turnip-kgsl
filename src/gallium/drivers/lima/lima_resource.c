@@ -549,6 +549,7 @@ lima_transfer_map(struct pipe_context *pctx,
                   const struct pipe_box *box,
                   struct pipe_transfer **pptrans)
 {
+   struct lima_screen *screen = lima_screen(pres->screen);
    struct lima_context *ctx = lima_context(pctx);
    struct lima_resource *res = lima_resource(pres);
    struct lima_bo *bo = res->bo;
@@ -561,16 +562,33 @@ lima_transfer_map(struct pipe_context *pctx,
    if (res->tiled && (usage & PIPE_TRANSFER_MAP_DIRECTLY))
       return NULL;
 
-   /* use once buffers are made sure to not read/write overlapped
-    * range, so no need to sync */
-   if (pres->usage != PIPE_USAGE_STREAM) {
-      if (usage & PIPE_TRANSFER_READ_WRITE) {
-         lima_flush_job_accessing_bo(ctx, bo, usage & PIPE_TRANSFER_WRITE);
+   /* bo might be in use in a previous stream draw. Allocate a new
+    * one for the resource to avoid overwriting data in use. */
+   if (usage & PIPE_TRANSFER_DISCARD_WHOLE_RESOURCE) {
+      struct lima_bo *new_bo;
+      assert(res->bo && res->bo->size);
 
-         unsigned op = usage & PIPE_TRANSFER_WRITE ?
-            LIMA_GEM_WAIT_WRITE : LIMA_GEM_WAIT_READ;
-         lima_bo_wait(bo, op, PIPE_TIMEOUT_INFINITE);
-      }
+      new_bo = lima_bo_create(screen, res->bo->size, res->bo->flags);
+      if (!new_bo)
+         return NULL;
+
+      lima_bo_unreference(res->bo);
+      res->bo = new_bo;
+
+      if (pres->bind & PIPE_BIND_VERTEX_BUFFER)
+         ctx->dirty |= LIMA_CONTEXT_DIRTY_VERTEX_BUFF;
+
+      bo = res->bo;
+   }
+   else if (!(usage & PIPE_TRANSFER_UNSYNCHRONIZED) &&
+            (usage & PIPE_TRANSFER_READ_WRITE)) {
+      /* use once buffers are made sure to not read/write overlapped
+       * range, so no need to sync */
+      lima_flush_job_accessing_bo(ctx, bo, usage & PIPE_TRANSFER_WRITE);
+
+      unsigned op = usage & PIPE_TRANSFER_WRITE ?
+         LIMA_GEM_WAIT_WRITE : LIMA_GEM_WAIT_READ;
+      lima_bo_wait(bo, op, PIPE_TIMEOUT_INFINITE);
    }
 
    if (!lima_bo_map(bo))
