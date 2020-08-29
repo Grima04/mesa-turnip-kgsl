@@ -1632,6 +1632,7 @@ nir_get_io_offset_src(nir_intrinsic_instr *instr)
    case nir_intrinsic_load_shared:
    case nir_intrinsic_load_uniform:
    case nir_intrinsic_load_global:
+   case nir_intrinsic_load_global_constant:
    case nir_intrinsic_load_scratch:
    case nir_intrinsic_load_fs_input_interp_deltas:
    case nir_intrinsic_shared_atomic_add:

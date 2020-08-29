@@ -123,6 +123,7 @@ opt_shrink_vectors_intrinsic(nir_builder *b, nir_intrinsic_instr *instr)
    case nir_intrinsic_load_push_constant:
    case nir_intrinsic_load_constant:
    case nir_intrinsic_load_global:
+   case nir_intrinsic_load_global_constant:
    case nir_intrinsic_load_kernel_input:
    case nir_intrinsic_load_scratch:
    case nir_intrinsic_store_output:
