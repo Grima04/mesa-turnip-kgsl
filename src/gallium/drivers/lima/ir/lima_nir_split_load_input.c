@@ -63,6 +63,10 @@ lima_nir_split_load_input_block(nir_block *block, nir_builder *b)
       if (i != nir_dest_num_components(alu->dest.dest))
          continue;
 
+      /* mali4xx can't access unaligned vec3, don't split load input */
+      if (nir_dest_num_components(alu->dest.dest) == 3 && swizzle > 0)
+         continue;
+
       b->cursor = nir_before_instr(&intrin->instr);
       nir_intrinsic_instr *new_intrin = nir_intrinsic_instr_create(
                                              b->shader,
