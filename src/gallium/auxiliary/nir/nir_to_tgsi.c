@@ -2622,7 +2622,7 @@ nir_to_tgsi(struct nir_shader *s,
               nir_lower_float_source_mods |
               nir_lower_int_source_mods); /* no doubles */
    NIR_PASS_V(s, nir_convert_from_ssa, true);
-   NIR_PASS_V(s, nir_lower_vec_to_movs);
+   NIR_PASS_V(s, nir_lower_vec_to_movs, NULL, NULL);
 
    /* locals_to_regs will leave dead derefs that are good to clean up. */
    NIR_PASS_V(s, nir_lower_locals_to_regs);

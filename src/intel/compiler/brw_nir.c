@@ -1183,7 +1183,7 @@ brw_postprocess_nir(nir_shader *nir, const struct brw_compiler *compiler,
 
    if (!is_scalar) {
       OPT(nir_move_vec_src_uses_to_dest);
-      OPT(nir_lower_vec_to_movs);
+      OPT(nir_lower_vec_to_movs, NULL, NULL);
    }
 
    OPT(nir_opt_dce);

@@ -4088,6 +4088,14 @@ static inline bool should_print_nir(nir_shader *shader) { return false; }
  */
 typedef bool (*nir_instr_filter_cb)(const nir_instr *, const void *);
 
+/** An instruction filtering callback with writemask
+ *
+ * Returns true if the instruction should be processed with the associated
+ * writemask and false otherwise.
+ */
+typedef bool (*nir_instr_writemask_filter_cb)(const nir_instr *,
+                                              unsigned writemask, const void *);
+
 /** A simple instruction lowering callback
  *
  * Many instruction lowering passes can be written as a simple function which
@@ -4457,7 +4465,8 @@ bool nir_lower_variable_initializers(nir_shader *shader,
                                      nir_variable_mode modes);
 
 bool nir_move_vec_src_uses_to_dest(nir_shader *shader);
-bool nir_lower_vec_to_movs(nir_shader *shader);
+bool nir_lower_vec_to_movs(nir_shader *shader, nir_instr_writemask_filter_cb cb,
+                           const void *_data);
 void nir_lower_alpha_test(nir_shader *shader, enum compare_func func,
                           bool alpha_to_one,
                           const gl_state_index16 *alpha_ref_state_tokens);
