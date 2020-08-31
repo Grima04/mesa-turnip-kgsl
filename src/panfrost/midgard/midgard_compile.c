@@ -667,6 +667,15 @@ nir_is_non_scalar_swizzle(nir_alu_src *src, unsigned nr_components)
         return false;
 }
 
+#define ATOMIC_CASE_IMPL(ctx, instr, nir, op, is_shared) \
+        case nir_intrinsic_##nir: \
+                emit_atomic(ctx, instr, is_shared, midgard_op_##op); \
+                break;
+
+#define ATOMIC_CASE(ctx, instr, nir, op) \
+        ATOMIC_CASE_IMPL(ctx, instr, shared_atomic_##nir, atomic_##op, true); \
+        ATOMIC_CASE_IMPL(ctx, instr, global_atomic_##nir, atomic_##op, false);
+
 #define ALU_CASE(nir, _op) \
 	case nir_op_##nir: \
 		op = midgard_alu_op_##_op; \
@@ -1366,6 +1375,60 @@ emit_global(
                 if (!(ins.mask & (1 << i)))
                         ins.swizzle[0][i] = first_component;
         }
+
+        emit_mir_instruction(ctx, ins);
+}
+
+/* If is_shared is off, the only other possible value are globals, since
+ * SSBO's are being lowered to globals through a NIR pass. */
+static void
+emit_atomic(
+        compiler_context *ctx,
+        nir_intrinsic_instr *instr,
+        bool is_shared,
+        midgard_load_store_op op)
+{
+        unsigned bitsize = nir_src_bit_size(instr->src[1]);
+        nir_alu_type type =
+                (op == midgard_op_atomic_imin || op == midgard_op_atomic_imax) ?
+                nir_type_int : nir_type_uint;
+
+        unsigned dest = nir_dest_index(&instr->dest);
+        unsigned val = nir_src_index(ctx, &instr->src[1]);
+        emit_explicit_constant(ctx, val, val);
+
+        midgard_instruction ins = {
+                .type = TAG_LOAD_STORE_4,
+                .mask = 0xF,
+                .dest = dest,
+                .src = { ~0, ~0, ~0, val },
+                .src_types = { 0, 0, 0, type | bitsize },
+                .op = op
+        };
+
+        nir_src *src_offset = nir_get_io_offset_src(instr);
+
+        /* cmpxchg takes an extra value in arg_2, so we don't use it for the offset */
+        if (op == midgard_op_atomic_cmpxchg) {
+                unsigned addr = nir_src_index(ctx, src_offset);
+
+                ins.src[1] = addr;
+                ins.src_types[1] = nir_type_uint | nir_src_bit_size(*src_offset);
+
+                unsigned xchg_val = nir_src_index(ctx, &instr->src[2]);
+                emit_explicit_constant(ctx, xchg_val, xchg_val);
+
+                ins.src[2] = val;
+                ins.src_types[2] = type | bitsize;
+                ins.src[3] = xchg_val;
+
+                if (is_shared)
+                        ins.load_store.arg_1 |= 0x6E;
+        } else {
+                mir_set_offset(ctx, &ins, src_offset, is_shared);
+        }
+
+        mir_set_intr_mask(&instr->instr, &ins, true);
 
         emit_mir_instruction(ctx, ins);
 }
