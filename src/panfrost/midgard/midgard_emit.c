@@ -643,7 +643,8 @@ emit_branch(midgard_instruction *ins,
         int quadword_offset = 0;
 
         if (is_discard) {
-                /* Ignored */
+                /* Fixed encoding, not actually an offset */
+                quadword_offset = 0x2;
         } else if (is_tilebuf_wait) {
                 quadword_offset = -1;
         } else if (target_number > block->base.name) {
