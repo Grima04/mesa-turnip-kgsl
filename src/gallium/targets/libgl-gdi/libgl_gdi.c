@@ -55,8 +55,12 @@
 #include "swr/swr_public.h"
 #endif
 
+#ifdef GALLIUM_LLVMPIPE
 static boolean use_llvmpipe = FALSE;
+#endif
+#ifdef GALLIUM_SWR
 static boolean use_swr = FALSE;
+#endif
 
 static struct pipe_screen *
 gdi_screen_create(void)
