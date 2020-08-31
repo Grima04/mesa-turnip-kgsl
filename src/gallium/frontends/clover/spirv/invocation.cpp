@@ -257,7 +257,8 @@ namespace {
             const auto elem_size = types_iter->second.size;
             const auto elem_nbs = get<uint32_t>(inst, 3);
             const auto size = elem_size * elem_nbs;
-            types[id] = { module::argument::scalar, size, size, size,
+            const auto align = elem_size * util_next_power_of_two(elem_nbs);
+            types[id] = { module::argument::scalar, size, size, align,
                           module::argument::zero_ext };
             break;
          }
