@@ -2770,6 +2770,29 @@ lp_build_sample_nop(struct gallivm_state *gallivm,
    }  
 }
 
+static struct lp_type
+lp_build_texel_type(struct lp_type texel_type,
+                    const struct util_format_description *format_desc)
+{
+   /* always using the first channel hopefully should be safe,
+    * if not things WILL break in other places anyway.
+    */
+   if (format_desc->colorspace == UTIL_FORMAT_COLORSPACE_RGB &&
+       format_desc->channel[0].pure_integer) {
+      if (format_desc->channel[0].type == UTIL_FORMAT_TYPE_SIGNED) {
+         texel_type = lp_type_int_vec(texel_type.width, texel_type.width * texel_type.length);
+      } else if (format_desc->channel[0].type == UTIL_FORMAT_TYPE_UNSIGNED) {
+         texel_type = lp_type_uint_vec(texel_type.width, texel_type.width * texel_type.length);
+      }
+   }
+   else if (util_format_has_stencil(format_desc) &&
+       !util_format_has_depth(format_desc)) {
+      /* for stencil only formats, sample stencil (uint) */
+      texel_type = lp_type_uint_vec(texel_type.width, texel_type.width * texel_type.length);
+   }
+   return texel_type;
+}
+
 
 /**
  * Build the actual texture sampling code.
@@ -2893,25 +2916,8 @@ lp_build_sample_soa_code(struct gallivm_state *gallivm,
    bld.float_size_in_type = lp_type_float(32);
    bld.float_size_in_type.length = dims > 1 ? 4 : 1;
    bld.int_size_in_type = lp_int_type(bld.float_size_in_type);
-   bld.texel_type = type;
 
-   /* always using the first channel hopefully should be safe,
-    * if not things WILL break in other places anyway.
-    */
-   if (bld.format_desc->colorspace == UTIL_FORMAT_COLORSPACE_RGB &&
-       bld.format_desc->channel[0].pure_integer) {
-      if (bld.format_desc->channel[0].type == UTIL_FORMAT_TYPE_SIGNED) {
-         bld.texel_type = lp_type_int_vec(type.width, type.width * type.length);
-      }
-      else if (bld.format_desc->channel[0].type == UTIL_FORMAT_TYPE_UNSIGNED) {
-         bld.texel_type = lp_type_uint_vec(type.width, type.width * type.length);
-      }
-   }
-   else if (util_format_has_stencil(bld.format_desc) &&
-       !util_format_has_depth(bld.format_desc)) {
-      /* for stencil only formats, sample stencil (uint) */
-      bld.texel_type = lp_type_uint_vec(type.width, type.width * type.length);
-   }
+   bld.texel_type = lp_build_texel_type(type, bld.format_desc);
 
    if (!static_texture_state->level_zero_only ||
        !static_sampler_state->max_lod_pos || op_is_lodq) {
@@ -4126,22 +4132,6 @@ lp_build_img_op_no_format(struct gallivm_state *gallivm,
    }
 }
 
-static struct lp_type
-lp_build_img_texel_type(struct gallivm_state *gallivm,
-                        struct lp_type texel_type,
-                        const struct util_format_description *format_desc)
-{
-   if (format_desc->colorspace == UTIL_FORMAT_COLORSPACE_RGB &&
-       format_desc->channel[0].pure_integer) {
-      if (format_desc->channel[0].type == UTIL_FORMAT_TYPE_SIGNED) {
-         texel_type = lp_type_int_vec(texel_type.width, texel_type.width * texel_type.length);
-      } else if (format_desc->channel[0].type == UTIL_FORMAT_TYPE_UNSIGNED) {
-         texel_type = lp_type_uint_vec(texel_type.width, texel_type.width * texel_type.length);
-      }
-   }
-   return texel_type;
-}
-
 void
 lp_build_img_op_soa(const struct lp_static_texture_state *static_texture_state,
                     struct lp_sampler_dynamic_state *dynamic_state,
@@ -4228,7 +4218,7 @@ lp_build_img_op_soa(const struct lp_static_texture_state *static_texture_state,
                                          ms_index));
    }
    if (params->img_op == LP_IMG_LOAD) {
-      struct lp_type texel_type = lp_build_img_texel_type(gallivm, params->type, format_desc);
+      struct lp_type texel_type = lp_build_texel_type(params->type, format_desc);
 
       offset = lp_build_andnot(&int_coord_bld, offset, out_of_bounds);
       struct lp_build_context texel_bld;
