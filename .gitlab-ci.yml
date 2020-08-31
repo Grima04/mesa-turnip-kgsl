@@ -70,9 +70,10 @@ test-docs:
   stage: container+docs
   rules:
     - *ignore_scheduled_pipelines
-    - if: '$CI_PROJECT_NAMESPACE == "mesa"'
-      when: never
     - if: '$GITLAB_USER_LOGIN == "marge-bot" && $CI_MERGE_REQUEST_SOURCE_BRANCH_NAME == $CI_COMMIT_REF_NAME'
+      changes: *docs-or-ci
+      when: on_success
+    - if: '$GITLAB_USER_LOGIN != "marge-bot" && $CI_MERGE_REQUEST_SOURCE_BRANCH_NAME != $CI_COMMIT_REF_NAME && $CI_PROJECT_PATH == "mesa/mesa"'
       changes: *docs-or-ci
       when: on_success
     - changes: *docs-or-ci
