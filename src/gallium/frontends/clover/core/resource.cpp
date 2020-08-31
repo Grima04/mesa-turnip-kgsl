@@ -235,3 +235,13 @@ mapping::operator=(mapping m) {
    std::swap(p, m.p);
    return *this;
 }
+
+resource::vector
+mapping::pitch() const
+{
+   return {
+      util_format_get_blocksize(pres->format),
+      pxfer->stride,
+      pxfer->layer_stride,
+   };
+}

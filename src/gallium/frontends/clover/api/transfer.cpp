@@ -204,31 +204,57 @@ namespace {
    /// convertible to \a void *.
    ///
    template<typename T>
-   struct _map {
-      static mapping
-      get(command_queue &q, T obj, cl_map_flags flags,
-          size_t offset, size_t size) {
-         return { q, obj->resource(q), flags, true,
-                  {{ offset }}, {{ size, 1, 1 }} };
+   struct _map;
+
+   template<>
+   struct _map<image*> {
+      _map(command_queue &q, image *img, cl_map_flags flags,
+           vector_t offset, vector_t pitch, vector_t region) :
+         map(q, img->resource(q), flags, true, offset, region),
+         pitch(map.pitch())
+      { }
+
+      template<typename T>
+      operator T *() const {
+         return static_cast<T *>(map);
       }
+
+      mapping map;
+      vector_t pitch;
    };
 
    template<>
-   struct _map<void *> {
-      static void *
-      get(command_queue &q, void *obj, cl_map_flags flags,
-          size_t offset, size_t size) {
-         return (char *)obj + offset;
+   struct _map<buffer*> {
+      _map(command_queue &q, buffer *mem, cl_map_flags flags,
+           vector_t offset, vector_t pitch, vector_t region) :
+         map(q, mem->resource(q), flags, true,
+             {{ dot(pitch, offset) }}, {{ size(pitch, region) }}),
+         pitch(pitch)
+      { }
+
+      template<typename T>
+      operator T *() const {
+         return static_cast<T *>(map);
       }
+
+      mapping map;
+      vector_t pitch;
    };
 
-   template<>
-   struct _map<const void *> {
-      static const void *
-      get(command_queue &q, const void *obj, cl_map_flags flags,
-          size_t offset, size_t size) {
-         return (const char *)obj + offset;
+   template<typename P>
+   struct _map<P *> {
+      _map(command_queue &q, P *ptr, cl_map_flags flags,
+           vector_t offset, vector_t pitch, vector_t region) :
+         ptr((P *)((char *)ptr + dot(pitch, offset))), pitch(pitch)
+      { }
+
+      template<typename T>
+      operator T *() const {
+         return static_cast<T *>(ptr);
       }
+
+      P *ptr;
+      vector_t pitch;
    };
 
    ///
@@ -242,20 +268,19 @@ namespace {
                 S src_obj, const vector_t &src_orig, const vector_t &src_pitch,
                 const vector_t &region) {
       return [=, &q](event &) {
-         auto dst = _map<T>::get(q, dst_obj, CL_MAP_WRITE,
-                                 dot(dst_pitch, dst_orig),
-                                 size(dst_pitch, region));
-         auto src = _map<S>::get(q, src_obj, CL_MAP_READ,
-                                 dot(src_pitch, src_orig),
-                                 size(src_pitch, region));
+         _map<T> dst = { q, dst_obj, CL_MAP_WRITE,
+                         dst_orig, dst_pitch, region };
+         _map<S> src = { q, src_obj, CL_MAP_READ,
+                         src_orig, src_pitch, region };
+         assert(src.pitch[0] == dst.pitch[0]);
          vector_t v = {};
 
          for (v[2] = 0; v[2] < region[2]; ++v[2]) {
             for (v[1] = 0; v[1] < region[1]; ++v[1]) {
                std::memcpy(
-                  static_cast<char *>(dst) + dot(dst_pitch, v),
-                  static_cast<const char *>(src) + dot(src_pitch, v),
-                  src_pitch[0] * region[0]);
+                  static_cast<char *>(dst) + dot(dst.pitch, v),
+                  static_cast<const char *>(src) + dot(src.pitch, v),
+                  src.pitch[0] * region[0]);
             }
          }
       };

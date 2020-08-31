@@ -125,6 +125,8 @@ namespace clover {
          return (T *)p;
       }
 
+      resource::vector pitch() const;
+
    private:
       pipe_context *pctx;
       pipe_transfer *pxfer;
