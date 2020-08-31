@@ -656,7 +656,8 @@ util_make_fs_blit_msaa_depthstencil(struct pipe_context *pipe,
          "FRAG\n"
          "DCL IN[0], GENERIC[0], LINEAR\n"
          "DCL SAMP[0..1]\n"
-         "DCL SVIEW[0..1], %s, FLOAT\n"
+         "DCL SVIEW[0], %s, FLOAT\n"
+         "DCL SVIEW[1], %s, UINT\n"
          "DCL OUT[0], POSITION\n"
          "DCL OUT[1], STENCIL\n"
          "DCL TEMP[0]\n"
@@ -674,7 +675,7 @@ util_make_fs_blit_msaa_depthstencil(struct pipe_context *pipe,
    assert(tgsi_tex == TGSI_TEXTURE_2D_MSAA ||
           tgsi_tex == TGSI_TEXTURE_2D_ARRAY_MSAA);
 
-   sprintf(text, shader_templ, type, type, type);
+   sprintf(text, shader_templ, type, type, type, type);
 
    if (!tgsi_text_translate(text, tokens, ARRAY_SIZE(tokens))) {
       assert(0);
