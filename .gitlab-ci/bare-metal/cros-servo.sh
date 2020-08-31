@@ -50,7 +50,6 @@ set -ex
 # Clear out any previous run's artifacts.
 rm -rf results/
 mkdir -p results
-find artifacts/ -name serial\*.txt  | xargs rm -f
 
 # Create the rootfs in the NFS directory.  rm to make sure it's in a pristine
 # state, since it's volume-mounted on the host.
@@ -72,9 +71,7 @@ ret=$?
 set -e
 
 # Bring artifacts back from the NFS dir to the build dir where gitlab-runner
-# will look for them.  Note that results/ may already exist, so be careful
-# with cp.
-mkdir -p results
+# will look for them.
 cp -Rp /nfs/results/. results/
 
 exit $ret

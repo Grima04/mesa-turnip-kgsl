@@ -35,8 +35,8 @@ class CrosServoRun:
         self.sentinel = object()
         self.threads_done = 0
 
-        self.ec_ser = SerialBuffer(ec, "artifacts/serial-ec.txt", "R SERIAL-EC> ")
-        self.cpu_ser = SerialBuffer(cpu, "artifacts/serial.txt", "R SERIAL-CPU> ")
+        self.ec_ser = SerialBuffer(ec, "results/serial-ec.txt", "R SERIAL-EC> ")
+        self.cpu_ser = SerialBuffer(cpu, "results/serial.txt", "R SERIAL-CPU> ")
 
         self.iter_feed_ec = threading.Thread(target=self.iter_feed_queue, daemon=True, args=(self.ec_ser.lines(),))
         self.iter_feed_ec.start()
