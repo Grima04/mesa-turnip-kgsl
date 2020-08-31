@@ -999,7 +999,7 @@ radv_amdgpu_winsys_cs_submit_fallback(struct radeon_winsys_ctx *_ctx,
 
 	ibs = malloc(number_of_ibs * sizeof(*ibs));
 	if (!ibs) {
-		free(request.handles);
+		free(handles);
 		return VK_ERROR_OUT_OF_HOST_MEMORY;
 	}
 
