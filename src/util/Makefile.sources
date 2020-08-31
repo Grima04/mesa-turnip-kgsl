@@ -20,6 +20,7 @@ MESA_UTIL_FILES := \
 	disk_cache.h \
 	double.c \
 	double.h \
+	enum_operators.h \
 	fast_idiv_by_const.c \
 	fast_idiv_by_const.h \
 	format/u_format.c \
