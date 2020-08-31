@@ -2,9 +2,14 @@
 
 set -ex
 
-DEQP_OPTIONS="$DEQP_OPTIONS --deqp-surface-width=256 --deqp-surface-height=256"
+DEQP_WIDTH=${DEQP_WIDTH:-256}
+DEQP_HEIGHT=${DEQP_HEIGHT:-256}
+DEQP_CONFIG=${DEQP_CONFIG:-rgba8888d24s8ms0}
+DEQP_VARIANT=${DEQP_VARIANT:-master}
+
+DEQP_OPTIONS="$DEQP_OPTIONS --deqp-surface-width=$DEQP_WIDTH --deqp-surface-height=$DEQP_HEIGHT"
 DEQP_OPTIONS="$DEQP_OPTIONS --deqp-surface-type=pbuffer"
-DEQP_OPTIONS="$DEQP_OPTIONS --deqp-gl-config-name=rgba8888d24s8ms0"
+DEQP_OPTIONS="$DEQP_OPTIONS --deqp-gl-config-name=$DEQP_CONFIG"
 DEQP_OPTIONS="$DEQP_OPTIONS --deqp-visibility=hidden"
 
 # deqp's shader cache (for vulkan) is not multiprocess safe for a common
@@ -45,14 +50,14 @@ mkdir -p $RESULTS
 
 # Generate test case list file.
 if [ "$DEQP_VER" = "vk" ]; then
-   cp /deqp/mustpass/vk-master.txt /tmp/case-list.txt
+   cp /deqp/mustpass/vk-$DEQP_VARIANT.txt /tmp/case-list.txt
    DEQP=/deqp/external/vulkancts/modules/vulkan/deqp-vk
 elif [ "$DEQP_VER" = "gles2" -o "$DEQP_VER" = "gles3" -o "$DEQP_VER" = "gles31" ]; then
-   cp /deqp/mustpass/$DEQP_VER-master.txt /tmp/case-list.txt
+   cp /deqp/mustpass/$DEQP_VER-$DEQP_VARIANT.txt /tmp/case-list.txt
    DEQP=/deqp/modules/$DEQP_VER/deqp-$DEQP_VER
    SUITE=dEQP
 else
-   cp /deqp/mustpass/$DEQP_VER-master.txt /tmp/case-list.txt
+   cp /deqp/mustpass/$DEQP_VER-$DEQP_VARIANT.txt /tmp/case-list.txt
    DEQP=/deqp/external/openglcts/modules/glcts
    SUITE=KHR
 fi
