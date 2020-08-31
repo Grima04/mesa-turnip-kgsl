@@ -96,6 +96,7 @@ class CrosServoRun:
             # the system sometimes, possibly dependent on ambient temperature
             # in the farm.
             if re.search("POWER_GOOD not seen in time", line):
+                print("Detected intermittent poweron failure, restarting run...")
                 return 2
 
             # The Cheza firmware seems to occasionally get stuck looping in
@@ -105,6 +106,7 @@ class CrosServoRun:
             if re.search("R8152: Bulk read error 0xffffffbf", line):
                 tftp_failures += 1
                 if tftp_failures >= 100:
+                    print("Detected intermittent tftp failure, restarting run...")
                     return 2
 
             result = re.search("bare-metal result: (\S*)", line)
