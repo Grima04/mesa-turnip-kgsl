@@ -1552,6 +1552,7 @@ static void visit_intrinsic(struct lp_build_nir_context *bld_base,
       visit_load_kernel_input(bld_base, instr, result);
      break;
    case nir_intrinsic_load_global:
+   case nir_intrinsic_load_global_constant:
       visit_load_global(bld_base, instr, result);
       break;
    case nir_intrinsic_store_global:
