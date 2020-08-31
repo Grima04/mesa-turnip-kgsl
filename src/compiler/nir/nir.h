@@ -3322,8 +3322,9 @@ typedef struct nir_shader {
    struct exec_list functions; /** < list of nir_function */
 
    /**
-    * the highest index a load_input_*, load_uniform_*, etc. intrinsic can
-    * access plus one
+    * The size of the variable space for load_input_*, load_uniform_*, etc.
+    * intrinsics.  This is in back-end specific units which is likely one of
+    * bytes, dwords, or vec4s depending on context and back-end.
     */
    unsigned num_inputs, num_uniforms, num_outputs;
 
