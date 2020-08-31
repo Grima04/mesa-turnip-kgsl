@@ -224,7 +224,7 @@ glsl_to_nir(struct gl_context *ctx,
     * inline functions.  That way they get properly initialized at the top
     * of the function and not at the top of its caller.
     */
-   nir_lower_variable_initializers(shader, (nir_variable_mode)~0);
+   nir_lower_variable_initializers(shader, nir_var_all);
    nir_lower_returns(shader);
    nir_inline_functions(shader);
    nir_opt_deref(shader);
