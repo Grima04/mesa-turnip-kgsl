@@ -22,14 +22,49 @@
 # IN THE SOFTWARE.
 
 import argparse
+import queue
 import re
 from serial_buffer import SerialBuffer
 import sys
+import threading
 
 class CrosServoRun:
     def __init__(self, cpu, ec):
+        # Merged FIFO for the two serial buffers, fed by threads.
+        self.serial_queue = queue.Queue()
+        self.sentinel = object()
+        self.threads_done = 0
+
         self.ec_ser = SerialBuffer(ec, "artifacts/serial-ec.txt", "R SERIAL-EC> ")
         self.cpu_ser = SerialBuffer(cpu, "artifacts/serial.txt", "R SERIAL-CPU> ")
+
+        self.iter_feed_ec = threading.Thread(target=self.iter_feed_queue, daemon=True, args=(self.ec_ser.lines(),))
+        self.iter_feed_ec.start()
+
+        self.iter_feed_cpu = threading.Thread(target=self.iter_feed_queue, daemon=True, args=(self.cpu_ser.lines(),))
+        self.iter_feed_cpu.start()
+
+    # Feed lines from our serial queues into the merged queue, marking when our
+    # input is done.
+    def iter_feed_queue(self, it):
+        for i in it:
+            self.serial_queue.put(i)
+        self.serial_queue.put(sentinel)
+
+    # Return the next line from the queue, counting how many threads have
+    # terminated and joining when done
+    def get_serial_queue_line(self):
+        line = self.serial_queue.get()
+        if line == self.sentinel:
+            self.threads_done = self.threads_done + 1
+            if self.threads_done == 2:
+                self.iter_feed_cpu.join()
+                self.iter_feed_ec.join()
+        return line
+
+    # Returns an iterator for getting the next line.
+    def serial_queue_lines(self):
+        return iter(self.get_serial_queue_line, self.sentinel)
 
     def ec_write(self, s):
         print("W SERIAL-EC> %s" % s)
@@ -47,13 +82,13 @@ class CrosServoRun:
         # This is emitted right when the bootloader pauses to check for input.
         # Emit a ^N character to request network boot, because we don't have a
         # direct-to-netboot firmware on cheza.
-        for line in self.cpu_ser.lines():
+        for line in self.serial_queue_lines():
             if re.search("load_archive: loading locale_en.bin", line):
                 self.cpu_write("\016")
                 break
 
         tftp_failures = 0
-        for line in self.cpu_ser.lines():
+        for line in self.serial_queue_lines():
             if re.search("---. end Kernel panic", line):
                 return 1
 
