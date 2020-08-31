@@ -8450,9 +8450,8 @@ brw_nir_move_interpolation_to_top(nir_shader *nir)
             }
          }
       }
-      nir_metadata_preserve(f->impl, (nir_metadata)
-                            ((unsigned) nir_metadata_block_index |
-                             (unsigned) nir_metadata_dominance));
+      nir_metadata_preserve(f->impl, nir_metadata_block_index |
+                                     nir_metadata_dominance);
    }
 
    return progress;
@@ -8496,9 +8495,8 @@ brw_nir_demote_sample_qualifiers(nir_shader *nir)
          }
       }
 
-      nir_metadata_preserve(f->impl, (nir_metadata)
-                            ((unsigned) nir_metadata_block_index |
-                             (unsigned) nir_metadata_dominance));
+      nir_metadata_preserve(f->impl, nir_metadata_block_index |
+                                     nir_metadata_dominance);
    }
 
    return progress;

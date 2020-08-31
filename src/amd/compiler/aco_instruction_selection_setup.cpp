@@ -205,8 +205,7 @@ sanitize_if(nir_function_impl *impl, nir_if *nif)
     * correct because of the specific type of transformation we did. Block
     * indices are not valid except for block_0's, which is all we care about for
     * nir_block_is_unreachable(). */
-   impl->valid_metadata =
-      (nir_metadata)(impl->valid_metadata | nir_metadata_dominance | nir_metadata_block_index);
+   impl->valid_metadata = impl->valid_metadata | nir_metadata_dominance | nir_metadata_block_index;
 
    return true;
 }
@@ -568,7 +567,7 @@ void init_context(isel_context *ctx, nir_shader *shader)
    /* sanitize control flow */
    nir_metadata_require(impl, nir_metadata_dominance);
    sanitize_cf_list(impl, &impl->body);
-   nir_metadata_preserve(impl, (nir_metadata)~nir_metadata_block_index);
+   nir_metadata_preserve(impl, ~nir_metadata_block_index);
 
    /* we'll need this for isel */
    nir_metadata_require(impl, nir_metadata_block_index);
@@ -1323,22 +1322,22 @@ setup_nir(isel_context *ctx, nir_shader *nir)
    nir_variable_mode robust_modes = (nir_variable_mode)0;
 
    if (ctx->options->robust_buffer_access) {
-      robust_modes = (nir_variable_mode)(nir_var_mem_ubo |
-                                         nir_var_mem_ssbo |
-                                         nir_var_mem_global |
-                                         nir_var_mem_push_const);
+      robust_modes = nir_var_mem_ubo |
+                     nir_var_mem_ssbo |
+                     nir_var_mem_global |
+                     nir_var_mem_push_const;
    }
 
    if (nir_opt_load_store_vectorize(nir,
-                                    (nir_variable_mode)(nir_var_mem_ssbo | nir_var_mem_ubo |
-                                                        nir_var_mem_push_const | nir_var_mem_shared |
-                                                        nir_var_mem_global),
+                                    nir_var_mem_ssbo | nir_var_mem_ubo |
+                                    nir_var_mem_push_const | nir_var_mem_shared |
+                                    nir_var_mem_global,
                                     mem_vectorize_callback, robust_modes)) {
       lower_to_scalar = true;
       lower_pack = true;
    }
    if (nir->info.stage != MESA_SHADER_COMPUTE)
-      nir_lower_io(nir, (nir_variable_mode)(nir_var_shader_in | nir_var_shader_out), type_size, (nir_lower_io_options)0);
+      nir_lower_io(nir, nir_var_shader_in | nir_var_shader_out, type_size, (nir_lower_io_options)0);
 
    lower_to_scalar |= nir_opt_shrink_vectors(nir);
 

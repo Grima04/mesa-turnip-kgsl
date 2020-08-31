@@ -636,8 +636,7 @@ r600_nir_lower_atomics(nir_shader *shader)
       }
 
       if (impl_progress) {
-         nir_metadata_preserve(function->impl, (nir_metadata)(nir_metadata_block_index |
-                                                              nir_metadata_dominance));
+         nir_metadata_preserve(function->impl, nir_metadata_block_index | nir_metadata_dominance);
          progress = true;
       }
    }

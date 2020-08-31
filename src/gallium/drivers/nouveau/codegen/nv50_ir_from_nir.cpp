@@ -3122,8 +3122,7 @@ Converter::run()
    NIR_PASS_V(nir, nir_lower_explicit_io, nir_var_function_temp, nir_address_format_32bit_offset);
    NIR_PASS_V(nir, nir_remove_dead_variables, nir_var_function_temp, NULL);
 
-   NIR_PASS_V(nir, nir_lower_io,
-              (nir_variable_mode)(nir_var_shader_in | nir_var_shader_out),
+   NIR_PASS_V(nir, nir_lower_io, nir_var_shader_in | nir_var_shader_out,
               type_size, (nir_lower_io_options)0);
 
    NIR_PASS_V(nir, nir_lower_subgroups, &subgroup_options);

@@ -264,9 +264,8 @@ st_nir_opts(nir_shader *nir)
        * might be able to make progress after it.
        */
       NIR_PASS(progress, nir, nir_remove_dead_variables,
-               (nir_variable_mode)(nir_var_function_temp |
-                                   nir_var_shader_temp |
-                                   nir_var_mem_shared),
+               nir_var_function_temp | nir_var_shader_temp |
+               nir_var_mem_shared,
                NULL);
 
       NIR_PASS(progress, nir, nir_opt_copy_prop_vars);
@@ -383,8 +382,7 @@ st_nir_preprocess(struct st_context *st, struct gl_program *prog,
     * calls below do a little extra work but should otherwise have no impact.
     */
    if (!_mesa_is_gles(st->ctx) || !nir->info.separate_shader) {
-      nir_variable_mode mask =
-         (nir_variable_mode) (nir_var_shader_in | nir_var_shader_out);
+      nir_variable_mode mask = nir_var_shader_in | nir_var_shader_out;
       nir_remove_dead_variables(nir, mask, NULL);
    }
 
@@ -508,8 +506,8 @@ st_glsl_to_nir_post_opts(struct st_context *st, struct gl_program *prog,
          st_nir_opts(nir);
    }
 
-   nir_variable_mode mask = (nir_variable_mode)
-      (nir_var_shader_in | nir_var_shader_out | nir_var_function_temp );
+   nir_variable_mode mask =
+      nir_var_shader_in | nir_var_shader_out | nir_var_function_temp;
    nir_remove_dead_variables(nir, mask, NULL);
 
    if (!st->has_hw_atomics && !screen->get_param(screen, PIPE_CAP_NIR_ATOMICS_AS_DEREF))

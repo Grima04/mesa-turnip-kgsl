@@ -201,8 +201,7 @@ module clover::nir::spirv_to_nir(const module &mod, const device &dev,
 
       nir_validate_shader(nir, "clover after function inlining");
 
-      NIR_PASS_V(nir, nir_lower_variable_initializers,
-                 static_cast<nir_variable_mode>(~nir_var_function_temp));
+      NIR_PASS_V(nir, nir_lower_variable_initializers, ~nir_var_function_temp);
 
       // copy propagate to prepare for lower_explicit_io
       NIR_PASS_V(nir, nir_split_var_copies);

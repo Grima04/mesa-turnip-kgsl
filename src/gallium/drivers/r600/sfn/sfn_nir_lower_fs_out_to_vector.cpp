@@ -141,9 +141,7 @@ bool NirLowerIOToVector::run(nir_function_impl *impl)
 
    bool progress = vectorize_block(&b, nir_start_block(impl));
    if (progress) {
-      nir_metadata_preserve(impl, (nir_metadata )
-                            (nir_metadata_block_index |
-                             nir_metadata_dominance));
+      nir_metadata_preserve(impl, nir_metadata_block_index | nir_metadata_dominance);
    }
    return progress;
 }

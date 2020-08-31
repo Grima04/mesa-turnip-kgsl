@@ -36,6 +36,7 @@
 #include "util/set.h"
 #include "util/bitscan.h"
 #include "util/bitset.h"
+#include "util/enum_operators.h"
 #include "util/macros.h"
 #include "util/format/u_format.h"
 #include "compiler/nir_types.h"
@@ -123,6 +124,7 @@ typedef enum {
    nir_num_variable_modes  = 11,
    nir_var_all             = (1 << nir_num_variable_modes) - 1,
 } nir_variable_mode;
+MESA_DEFINE_CPP_ENUM_BITFIELD_OPERATORS(nir_variable_mode)
 
 /**
  * Rounding modes.
@@ -2818,6 +2820,7 @@ typedef enum {
     */
    nir_metadata_all = ~nir_metadata_not_properly_reset,
 } nir_metadata;
+MESA_DEFINE_CPP_ENUM_BITFIELD_OPERATORS(nir_metadata)
 
 typedef struct {
    nir_cf_node cf_node;
