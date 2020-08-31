@@ -584,6 +584,12 @@ struct vtn_image_pointer {
 
 struct vtn_value {
    enum vtn_value_type value_type;
+
+   /* Workaround for https://gitlab.freedesktop.org/mesa/mesa/-/issues/3406
+    * Only set for OpImage / OpSampledImage. Note that this is in addition
+    * the existence of a NonUniform decoration on this value.*/
+   uint32_t propagated_non_uniform : 1;
+
    const char *name;
    struct vtn_decoration *decoration;
    struct vtn_type *type;
