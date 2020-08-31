@@ -1578,7 +1578,7 @@ lower_vars_to_explicit(nir_shader *shader,
       break;
    case nir_var_mem_shared:
       shader->info.cs.shared_size = offset;
-      shader->num_shared = offset;
+      shader->shared_size = offset;
       break;
    default:
       unreachable("Unsupported mode");

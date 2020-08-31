@@ -3325,7 +3325,10 @@ typedef struct nir_shader {
     * the highest index a load_input_*, load_uniform_*, etc. intrinsic can
     * access plus one
     */
-   unsigned num_inputs, num_uniforms, num_outputs, num_shared;
+   unsigned num_inputs, num_uniforms, num_outputs;
+
+   /** Size in bytes of required shared memory */
+   unsigned shared_size;
 
    /** Size in bytes of required scratch space */
    unsigned scratch_size;

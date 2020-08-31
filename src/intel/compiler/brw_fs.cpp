@@ -8948,7 +8948,7 @@ brw_compile_cs(const struct brw_compiler *compiler, void *log_data,
                char **error_str)
 {
    prog_data->base.total_shared = src_shader->info.cs.shared_size;
-   prog_data->slm_size = src_shader->num_shared;
+   prog_data->slm_size = src_shader->shared_size;
 
    /* Generate code for all the possible SIMD variants. */
    bool generate_all;
