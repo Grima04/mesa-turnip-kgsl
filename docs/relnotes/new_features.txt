@@ -12,3 +12,4 @@ Classic swrast dri driver removed in favor of gallium swrast (llvmpipe or softpi
 Panfrost g31/g52/g72 exposes ES 3.0
 Panfrost t760+ exposes GL 3.1 (including on Bifrost)
 Sparse memory support on RADV
+Rapid packed math (16bit-vectorization) on RADV

@@ -84,6 +84,7 @@ static const struct nir_shader_compiler_options nir_options = {
 	.use_scoped_barrier = true,
 	.max_unroll_iterations = 32,
 	.use_interpolated_input_intrinsics = true,
+	.vectorize_vec2_16bit = true,
 	/* nir_lower_int64() isn't actually called for the LLVM backend, but
 	 * this helps the loop unrolling heuristics. */
 	.lower_int64_options = nir_lower_imul64 |

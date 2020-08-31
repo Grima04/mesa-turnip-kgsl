@@ -3157,6 +3157,39 @@ lower_bit_size_callback(const nir_instr *instr, void *_)
 	return 0;
 }
 
+static bool
+opt_vectorize_callback(const nir_instr *instr, void *_)
+{
+   assert(instr->type == nir_instr_type_alu);
+   nir_alu_instr *alu = nir_instr_as_alu(instr);
+   unsigned bit_size = alu->dest.dest.ssa.bit_size;
+   if (bit_size != 16)
+      return false;
+
+   switch (alu->op) {
+   case nir_op_fadd:
+   case nir_op_fsub:
+   case nir_op_fmul:
+   case nir_op_fneg:
+   case nir_op_fsat:
+   case nir_op_fmin:
+   case nir_op_fmax:
+   case nir_op_iadd:
+   case nir_op_isub:
+   case nir_op_imul:
+   case nir_op_imin:
+   case nir_op_imax:
+   case nir_op_umin:
+   case nir_op_umax:
+   case nir_op_ishl:
+   case nir_op_ishr:
+   case nir_op_ushr:
+      return true;
+   default:
+      return false;
+   }
+}
+
 VkResult radv_create_shaders(struct radv_pipeline *pipeline,
                              struct radv_device *device,
                              struct radv_pipeline_cache *cache,
@@ -3373,6 +3406,8 @@ VkResult radv_create_shaders(struct radv_pipeline *pipeline,
 
 				if (device->physical_device->rad_info.chip_class >= GFX8)
 					nir_opt_remove_phis(nir[i]); /* cleanup LCSSA phis */
+				if (device->physical_device->rad_info.chip_class >= GFX9)
+					NIR_PASS_V(nir[i], nir_opt_vectorize, opt_vectorize_callback, NULL);
 			}
 
 			/* cleanup passes */
