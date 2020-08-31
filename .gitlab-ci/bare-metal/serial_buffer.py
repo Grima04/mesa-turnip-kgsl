@@ -26,19 +26,30 @@ from datetime import datetime,timezone
 import queue
 import serial
 import threading
+import time
 
 class SerialBuffer:
     def __init__(self, dev, filename, prefix):
-        self.f = open(filename, "wb+")
+        self.filename = filename
         self.dev = dev
-        self.serial = serial.Serial(dev, 115200, timeout=10)
+
+        if dev:
+            self.f = open(filename, "wb+")
+            self.serial = serial.Serial(dev, 115200, timeout=10)
+        else:
+            self.f = open(filename, "rb")
+
         self.byte_queue = queue.Queue()
         self.line_queue = queue.Queue()
         self.prefix = prefix
         self.sentinel = object()
 
-        self.read_thread = threading.Thread(target=self.serial_read_thread_loop, daemon=True)
+        if self.dev:
+            self.read_thread = threading.Thread(target=self.serial_read_thread_loop, daemon=True)
+        else:
+            self.read_thread = threading.Thread(target=self.serial_file_read_thread_loop, daemon=True)
         self.read_thread.start()
+
         self.lines_thread = threading.Thread(target=self.serial_lines_thread_loop, daemon=True)
         self.lines_thread.start()
 
@@ -56,6 +67,19 @@ class SerialBuffer:
                 self.byte_queue.put(self.sentinel)
                 break
 
+    # Thread that just reads the bytes from the file of serial output that some
+    # other process is appending to.
+    def serial_file_read_thread_loop(self):
+        greet = "Serial thread reading from %s\n" % self.filename
+        self.byte_queue.put(greet.encode())
+
+        while True:
+            line = self.f.readline()
+            if line:
+                self.byte_queue.put(line)
+            else:
+                time.sleep(0.1)
+
     # Thread that processes the stream of bytes to 1) log to stdout, 2) log to
     # file, 3) add to the queue of lines to be read by program logic
 
@@ -69,9 +93,11 @@ class SerialBuffer:
                 self.line_queue.put(self.sentinel)
                 break;
 
-            # Write our data to the output file
-            self.f.write(bytes)
-            self.f.flush()
+            # Write our data to the output file if we're the ones reading from
+            # the serial device
+            if self.dev:
+                self.f.write(bytes)
+                self.f.flush()
 
             for b in bytes:
                 line.append(b)
@@ -96,8 +122,8 @@ class SerialBuffer:
 def main():
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('--dev', type=str, help='Serial device', required=True)
-    parser.add_argument('--file', type=str, help='Filename to output our serial data to')
+    parser.add_argument('--dev', type=str, help='Serial device')
+    parser.add_argument('--file', type=str, help='Filename for serial output', required=True)
     parser.add_argument('--prefix', type=str, help='Prefix for logging serial to stdout', nargs='?')
 
     args = parser.parse_args()

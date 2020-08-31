@@ -57,7 +57,6 @@ set -ex
 # Clear out any previous run's artifacts.
 rm -rf results/
 mkdir -p results
-find artifacts/ -name serial\*.txt  | xargs rm -f
 
 # Create the rootfs in a temp dir
 rsync -a --delete $BM_ROOTFS/ rootfs/
@@ -90,41 +89,19 @@ if [ -n "$WEBDAV_CMDLINE" ]; then
   nginx
 fi
 
-# Start watching serial, and power up the device.
-if [ -n "$BM_SERIAL" ]; then
-  python3 $BM/serial_buffer.py \
-    --dev $BM_SERIAL \
-    --file artifacts/serial-output.txt \
-    --prefix "SERIAL> " &
-else
-  PATH=$BM:$PATH $BM_SERIAL_SCRIPT | tee artifacts/serial-output.txt &
+export PATH=$BM:$PATH
+
+# Start background command for talking to serial if we have one.
+if [ -n "$BM_SERIAL_SCRIPT" ]; then
+  $BM_SERIAL_SCRIPT | tee results/serial-output.txt &
+
+  while [ ! -e results/serial-output.txt ]; do
+    sleep 1
+  done
 fi
 
-while [ ! -e artifacts/serial-output.txt ]; do
-  sleep 1
-done
-PATH=$BM:$PATH $BM_POWERUP
-
-# Once fastboot is ready, boot our image.
-$BM/expect-output.sh artifacts/serial-output.txt \
-  -f "fastboot: processing commands" \
-  -f "Listening for fastboot command on" \
-  -e "data abort"
-
-fastboot boot -s $BM_FASTBOOT_SERIAL artifacts/fastboot.img
-
-# Wait for the device to complete the deqp run
-$BM/expect-output.sh artifacts/serial-output.txt \
-    -f "bare-metal result" \
-    -e "---. end Kernel panic"
-
-# power down the device
-PATH=$BM:$PATH $BM_POWERDOWN
-
-set +e
-if grep -q "bare-metal result: pass" artifacts/serial-output.txt; then
-   exit 0
-else
-   exit 1
-fi
-
+$BM/fastboot_run.py \
+  --dev="$BM_SERIAL" \
+  --fbserial="$BM_FASTBOOT_SERIAL" \
+  --powerup="$BM_POWERUP" \
+  --powerdown="$BM_POWERDOWN"
