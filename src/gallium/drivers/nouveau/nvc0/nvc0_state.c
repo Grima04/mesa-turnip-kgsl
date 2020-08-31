@@ -1357,14 +1357,9 @@ nvc0_set_global_handle(uint32_t *phandle, struct pipe_resource *res)
 {
    struct nv04_resource *buf = nv04_resource(res);
    if (buf) {
-      uint64_t limit = (buf->address + buf->base.width0) - 1;
-      if (limit < (1ULL << 32)) {
-         *phandle = (uint32_t)buf->address;
-      } else {
-         NOUVEAU_ERR("Cannot map into TGSI_RESOURCE_GLOBAL: "
-                     "resource not contained within 32-bit address space !\n");
-         *phandle = 0;
-      }
+      uint64_t address = buf->address + *phandle;
+      /* even though it's a pointer to uint32_t that's fine */
+      memcpy(phandle, &address, 8);
    } else {
       *phandle = 0;
    }
