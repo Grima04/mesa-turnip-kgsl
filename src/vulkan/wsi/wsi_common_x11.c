@@ -752,6 +752,7 @@ struct x11_swapchain {
    uint64_t                                     send_sbc;
    uint64_t                                     last_present_msc;
    uint32_t                                     stamp;
+   int                                          sent_image_count;
 
    bool                                         has_present_queue;
    bool                                         has_acquire_queue;
@@ -848,6 +849,8 @@ x11_handle_dri3_present_event(struct x11_swapchain *chain,
       for (unsigned i = 0; i < chain->base.image_count; i++) {
          if (chain->images[i].pixmap == idle->pixmap) {
             chain->images[i].busy = false;
+            chain->sent_image_count--;
+            assert(chain->sent_image_count >= 0);
             if (chain->has_acquire_queue)
                wsi_queue_push(&chain->acquire_queue, i);
             break;
@@ -1028,7 +1031,11 @@ x11_present_to_x11_dri3(struct x11_swapchain *chain, uint32_t image_index,
 
    xshmfence_reset(image->shm_fence);
 
+   ++chain->sent_image_count;
+   assert(chain->sent_image_count <= chain->base.image_count);
+
    ++chain->send_sbc;
+
    xcb_void_cookie_t cookie =
       xcb_present_pixmap(chain->conn,
                          chain->window,
@@ -1524,6 +1531,7 @@ x11_surface_create_swapchain(VkIcdSurfaceBase *icd_surface,
    chain->depth = bit_depth;
    chain->extent = pCreateInfo->imageExtent;
    chain->send_sbc = 0;
+   chain->sent_image_count = 0;
    chain->last_present_msc = 0;
    chain->has_acquire_queue = false;
    chain->has_present_queue = false;
