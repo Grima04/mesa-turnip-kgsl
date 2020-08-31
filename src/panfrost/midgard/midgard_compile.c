@@ -2061,6 +2061,17 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
                 schedule_barrier(ctx);
                 break;
 
+        ATOMIC_CASE(ctx, instr, add, add);
+        ATOMIC_CASE(ctx, instr, and, and);
+        ATOMIC_CASE(ctx, instr, comp_swap, cmpxchg);
+        ATOMIC_CASE(ctx, instr, exchange, xchg);
+        ATOMIC_CASE(ctx, instr, imax, imax);
+        ATOMIC_CASE(ctx, instr, imin, imin);
+        ATOMIC_CASE(ctx, instr, or, or);
+        ATOMIC_CASE(ctx, instr, umax, umax);
+        ATOMIC_CASE(ctx, instr, umin, umin);
+        ATOMIC_CASE(ctx, instr, xor, xor);
+
         default:
                 fprintf(stderr, "Unhandled intrinsic %s\n", nir_intrinsic_infos[instr->intrinsic].name);
                 assert(0);
