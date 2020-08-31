@@ -1426,31 +1426,29 @@ tu6_emit_program(struct tu_cs *cs,
       tu6_emit_xs_config(cs, stage, xs, builder->shader_iova[stage]);
    }
 
-   if (!binning_pass) {
-      uint32_t multiview_views = util_logbase2(builder->multiview_mask) + 1;
-      uint32_t multiview_cntl = builder->multiview_mask ?
-         A6XX_PC_MULTIVIEW_CNTL_ENABLE |
-         A6XX_PC_MULTIVIEW_CNTL_VIEWS(multiview_views) |
-         A6XX_PC_MULTIVIEW_CNTL_DISABLEMULTIPOS /* TODO multi-pos output */
-         : 0;
+   uint32_t multiview_views = util_logbase2(builder->multiview_mask) + 1;
+   uint32_t multiview_cntl = builder->multiview_mask ?
+      A6XX_PC_MULTIVIEW_CNTL_ENABLE |
+      A6XX_PC_MULTIVIEW_CNTL_VIEWS(multiview_views) |
+      A6XX_PC_MULTIVIEW_CNTL_DISABLEMULTIPOS /* TODO multi-pos output */
+      : 0;
 
-      /* Copy what the blob does here. This will emit an extra 0x3f
-       * CP_EVENT_WRITE when multiview is disabled. I'm not exactly sure what
-       * this is working around yet.
-       */
-      tu_cs_emit_pkt7(cs, CP_REG_WRITE, 3);
-      tu_cs_emit(cs, CP_REG_WRITE_0_TRACKER(UNK_EVENT_WRITE));
-      tu_cs_emit(cs, REG_A6XX_PC_MULTIVIEW_CNTL);
-      tu_cs_emit(cs, multiview_cntl);
+   /* Copy what the blob does here. This will emit an extra 0x3f
+    * CP_EVENT_WRITE when multiview is disabled. I'm not exactly sure what
+    * this is working around yet.
+    */
+   tu_cs_emit_pkt7(cs, CP_REG_WRITE, 3);
+   tu_cs_emit(cs, CP_REG_WRITE_0_TRACKER(UNK_EVENT_WRITE));
+   tu_cs_emit(cs, REG_A6XX_PC_MULTIVIEW_CNTL);
+   tu_cs_emit(cs, multiview_cntl);
 
-      tu_cs_emit_pkt4(cs, REG_A6XX_VFD_MULTIVIEW_CNTL, 1);
-      tu_cs_emit(cs, multiview_cntl);
+   tu_cs_emit_pkt4(cs, REG_A6XX_VFD_MULTIVIEW_CNTL, 1);
+   tu_cs_emit(cs, multiview_cntl);
 
-      if (multiview_cntl &&
-          builder->device->physical_device->supports_multiview_mask) {
-         tu_cs_emit_pkt4(cs, REG_A6XX_PC_MULTIVIEW_MASK, 1);
-         tu_cs_emit(cs, builder->multiview_mask);
-      }
+   if (multiview_cntl &&
+       builder->device->physical_device->supports_multiview_mask) {
+      tu_cs_emit_pkt4(cs, REG_A6XX_PC_MULTIVIEW_MASK, 1);
+      tu_cs_emit(cs, builder->multiview_mask);
    }
 
    tu_cs_emit_pkt4(cs, REG_A6XX_SP_HS_UNKNOWN_A831, 1);
