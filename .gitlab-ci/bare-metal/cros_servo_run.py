@@ -48,31 +48,31 @@ class CrosServoRun:
         # Emit a ^N character to request network boot, because we don't have a
         # direct-to-netboot firmware on cheza.
         for line in self.cpu_ser.lines():
-            if re.match("load_archive: loading locale_en.bin", line):
+            if re.search("load_archive: loading locale_en.bin", line):
                 self.cpu_write("\016")
                 break
 
         tftp_failures = 0
         for line in self.cpu_ser.lines():
-            if re.match("---. end Kernel panic", line):
+            if re.search("---. end Kernel panic", line):
                 return 1
 
             # The Cheza boards have issues with failing to bring up power to
             # the system sometimes, possibly dependent on ambient temperature
             # in the farm.
-            if re.match("POWER_GOOD not seen in time", line):
+            if re.search("POWER_GOOD not seen in time", line):
                 return 2
 
             # The Cheza firmware seems to occasionally get stuck looping in
             # this error state during TFTP booting, possibly based on amount of
             # network traffic around it, but it'll usually recover after a
             # reboot.
-            if re.match("R8152: Bulk read error 0xffffffbf", line):
+            if re.search("R8152: Bulk read error 0xffffffbf", line):
                 tftp_failures += 1
                 if tftp_failures >= 100:
                     return 2
 
-            result = re.match("bare-metal result: (\S*)", line)
+            result = re.search("bare-metal result: (\S*)", line)
             if result:
                 if result.group(1) == "pass":
                     return 0
