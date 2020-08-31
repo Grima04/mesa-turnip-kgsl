@@ -502,29 +502,7 @@ vtn_ssa_offset_pointer_dereference(struct vtn_builder *b,
    }
 
    if (!offset) {
-      if (base->mode == vtn_variable_mode_workgroup) {
-         /* SLM doesn't need nor have a block index */
-         vtn_assert(!block_index);
-
-         /* We need the variable for the base offset */
-         vtn_assert(base->var);
-
-         /* We need ptr_type for size and alignment */
-         vtn_assert(base->ptr_type);
-
-         /* Assign location on first use so that we don't end up bloating SLM
-          * address space for variables which are never statically used.
-          */
-         if (base->var->shared_location < 0) {
-            vtn_assert(base->ptr_type->length > 0 && base->ptr_type->align > 0);
-            b->shader->num_shared = vtn_align_u32(b->shader->num_shared,
-                                                  base->ptr_type->align);
-            base->var->shared_location = b->shader->num_shared;
-            b->shader->num_shared += base->ptr_type->length;
-         }
-
-         offset = nir_imm_int(&b->nb, base->var->shared_location);
-      } else if (base->mode == vtn_variable_mode_push_constant) {
+      if (base->mode == vtn_variable_mode_push_constant) {
          /* Push constants neither need nor have a block index */
          vtn_assert(!block_index);
 

@@ -552,8 +552,6 @@ struct vtn_variable {
     */
    int base_location;
 
-   int shared_location;
-
    /**
     * In some early released versions of GLSLang, it implemented all function
     * calls by making copies of all parameters into temporary variables and
