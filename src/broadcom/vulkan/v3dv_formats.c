@@ -557,12 +557,13 @@ static VkResult
 get_image_format_properties(
    struct v3dv_physical_device *physical_device,
    const VkPhysicalDeviceImageFormatInfo2 *info,
+   VkImageTiling tiling,
    VkImageFormatProperties *pImageFormatProperties,
    VkSamplerYcbcrConversionImageFormatProperties *pYcbcrImageFormatProperties)
 {
    const struct v3dv_format *v3dv_format = v3dv_get_format(info->format);
    VkFormatFeatureFlags format_feature_flags =
-      image_format_features(info->format, v3dv_format, info->tiling);
+      image_format_features(info->format, v3dv_format, tiling);
    if (!format_feature_flags)
       goto unsupported;
 
@@ -666,7 +667,7 @@ get_image_format_properties(
     *     vkGetPhysicalDeviceFormatProperties is set.
     */
    pImageFormatProperties->sampleCounts = VK_SAMPLE_COUNT_1_BIT;
-   if (info->tiling != VK_IMAGE_TILING_LINEAR &&
+   if (tiling != VK_IMAGE_TILING_LINEAR &&
        info->type == VK_IMAGE_TYPE_2D &&
        !(info->flags & VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT) &&
        (format_feature_flags & VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT ||
@@ -674,7 +675,7 @@ get_image_format_properties(
       pImageFormatProperties->sampleCounts |= VK_SAMPLE_COUNT_4_BIT;
    }
 
-   if (info->tiling == VK_IMAGE_TILING_LINEAR)
+   if (tiling == VK_IMAGE_TILING_LINEAR)
       pImageFormatProperties->maxMipLevels = 1;
 
    pImageFormatProperties->maxResourceSize = 0xffffffff; /* 32-bit allocation */
@@ -726,7 +727,7 @@ v3dv_GetPhysicalDeviceImageFormatProperties(
       .flags = createFlags,
    };
 
-   return get_image_format_properties(physical_device, &info,
+   return get_image_format_properties(physical_device, &info, tiling,
                                       pImageFormatProperties, NULL);
 }
 
@@ -737,7 +738,9 @@ v3dv_GetPhysicalDeviceImageFormatProperties2(VkPhysicalDevice physicalDevice,
 {
    V3DV_FROM_HANDLE(v3dv_physical_device, physical_device, physicalDevice);
    const VkPhysicalDeviceExternalImageFormatInfo *external_info = NULL;
+   const VkPhysicalDeviceImageDrmFormatModifierInfoEXT *drm_format_mod_info = NULL;
    VkExternalImageFormatProperties *external_props = NULL;
+   VkImageTiling tiling = base_info->tiling;
 
    /* Extract input structs */
    vk_foreach_struct_const(s, base_info->pNext) {
@@ -745,11 +748,27 @@ v3dv_GetPhysicalDeviceImageFormatProperties2(VkPhysicalDevice physicalDevice,
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_IMAGE_FORMAT_INFO:
          external_info = (const void *) s;
          break;
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_DRM_FORMAT_MODIFIER_INFO_EXT:
+         drm_format_mod_info = (const void *) s;
+         switch (drm_format_mod_info->drmFormatModifier) {
+         case DRM_FORMAT_MOD_LINEAR:
+            tiling = VK_IMAGE_TILING_LINEAR;
+            break;
+         case DRM_FORMAT_MOD_BROADCOM_UIF:
+            tiling = VK_IMAGE_TILING_OPTIMAL;
+            break;
+         default:
+            assert("Unknown DRM format modifier");
+         }
+         break;
       default:
          v3dv_debug_ignored_stype(s->sType);
          break;
       }
    }
+
+   assert(tiling == VK_IMAGE_TILING_OPTIMAL ||
+          tiling == VK_IMAGE_TILING_LINEAR);
 
    /* Extract output structs */
    vk_foreach_struct(s, base_props->pNext) {
@@ -764,7 +783,7 @@ v3dv_GetPhysicalDeviceImageFormatProperties2(VkPhysicalDevice physicalDevice,
    }
 
    VkResult result =
-      get_image_format_properties(physical_device, base_info,
+      get_image_format_properties(physical_device, base_info, tiling,
                                   &base_props->imageFormatProperties, NULL);
    if (result != VK_SUCCESS)
       goto done;
