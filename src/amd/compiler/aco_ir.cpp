@@ -327,4 +327,83 @@ bool can_use_opsel(chip_class chip, aco_opcode op, int idx, bool high)
    }
 }
 
+uint32_t get_reduction_identity(ReduceOp op, unsigned idx)
+{
+   switch (op) {
+   case iadd8:
+   case iadd16:
+   case iadd32:
+   case iadd64:
+   case fadd16:
+   case fadd32:
+   case fadd64:
+   case ior8:
+   case ior16:
+   case ior32:
+   case ior64:
+   case ixor8:
+   case ixor16:
+   case ixor32:
+   case ixor64:
+   case umax8:
+   case umax16:
+   case umax32:
+   case umax64:
+      return 0;
+   case imul8:
+   case imul16:
+   case imul32:
+   case imul64:
+      return idx ? 0 : 1;
+   case fmul16:
+      return 0x3c00u; /* 1.0 */
+   case fmul32:
+      return 0x3f800000u; /* 1.0 */
+   case fmul64:
+      return idx ? 0x3ff00000u : 0u; /* 1.0 */
+   case imin8:
+      return INT8_MAX;
+   case imin16:
+      return INT16_MAX;
+   case imin32:
+      return INT32_MAX;
+   case imin64:
+      return idx ? 0x7fffffffu : 0xffffffffu;
+   case imax8:
+      return INT8_MIN;
+   case imax16:
+      return INT16_MIN;
+   case imax32:
+      return INT32_MIN;
+   case imax64:
+      return idx ? 0x80000000u : 0;
+   case umin8:
+   case umin16:
+   case iand8:
+   case iand16:
+      return 0xffffffffu;
+   case umin32:
+   case umin64:
+   case iand32:
+   case iand64:
+      return 0xffffffffu;
+   case fmin16:
+      return 0x7c00u; /* infinity */
+   case fmin32:
+      return 0x7f800000u; /* infinity */
+   case fmin64:
+      return idx ? 0x7ff00000u : 0u; /* infinity */
+   case fmax16:
+      return 0xfc00u; /* negative infinity */
+   case fmax32:
+      return 0xff800000u; /* negative infinity */
+   case fmax64:
+      return idx ? 0xfff00000u : 0u; /* negative infinity */
+   default:
+      unreachable("Invalid reduction operation");
+      break;
+   }
+   return 0;
+}
+
 }

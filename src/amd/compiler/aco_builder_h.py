@@ -349,6 +349,10 @@ public:
        return def;
    }
 
+   Definition hint_${fixed}(RegClass rc) {
+       return hint_${fixed}(def(rc));
+   }
+
 % endfor
    /* hand-written helpers */
    Temp as_uniform(Op op)
