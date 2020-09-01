@@ -1964,7 +1964,7 @@ static bool is_dual_slot(nir_intrinsic_instr *intrin)
              nir_src_num_components(intrin->src[0]) >= 3;
    }
 
-   return nir_dest_bit_size(intrin->dest) &&
+   return nir_dest_bit_size(intrin->dest) == 64 &&
           nir_dest_num_components(intrin->dest) >= 3;
 }
 
