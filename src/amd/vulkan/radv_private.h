@@ -846,6 +846,7 @@ struct radv_device {
 	void *thread_trace_ptr;
 	uint32_t thread_trace_buffer_size;
 	int thread_trace_start_frame;
+	char *thread_trace_trigger_file;
 
 	/* Trap handler. */
 	struct radv_shader_variant *trap_handler_shader;

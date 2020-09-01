@@ -591,7 +591,20 @@ radv_handle_thread_trace(VkQueue _queue)
 		if (radv_get_thread_trace(queue, &thread_trace))
 			radv_dump_thread_trace(queue->device, &thread_trace);
 	} else {
-		if (num_frames == queue->device->thread_trace_start_frame) {
+		bool frame_trigger = num_frames == queue->device->thread_trace_start_frame;
+		bool file_trigger = false;
+		if (queue->device->thread_trace_trigger_file &&
+		    access(queue->device->thread_trace_trigger_file, W_OK) == 0) {
+			if (unlink(queue->device->thread_trace_trigger_file) == 0) {
+				file_trigger = true;
+			} else {
+				/* Do not enable tracing if we cannot remove the file,
+				 * because by then we'll trace every frame ... */
+				fprintf(stderr, "RADV: could not remove thread trace trigger file, ignoring\n");
+			}
+		}
+
+		if (frame_trigger || file_trigger) {
 			radv_begin_thread_trace(queue);
 			assert(!thread_trace_enabled);
 			thread_trace_enabled = true;
