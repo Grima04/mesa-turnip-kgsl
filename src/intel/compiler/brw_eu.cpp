@@ -650,7 +650,7 @@ static const struct opcode_desc opcode_descs[] = {
    { BRW_OPCODE_FORK,     46,  "fork",    0,    0,    GEN6 },
    { BRW_OPCODE_GOTO,     46,  "goto",    0,    0,    GEN_GE(GEN8) },
    { BRW_OPCODE_POP,      47,  "pop",     2,    0,    GEN_LE(GEN5) },
-   { BRW_OPCODE_WAIT,     48,  "wait",    1,    0,    GEN_LT(GEN12) },
+   { BRW_OPCODE_WAIT,     48,  "wait",    0,    1,    GEN_LT(GEN12) },
    { BRW_OPCODE_SEND,     49,  "send",    1,    1,    GEN_LT(GEN12) },
    { BRW_OPCODE_SENDC,    50,  "sendc",   1,    1,    GEN_LT(GEN12) },
    { BRW_OPCODE_SEND,     49,  "send",    2,    1,    GEN_GE(GEN12) },
