@@ -178,8 +178,6 @@ panfrost_get_param(struct pipe_screen *screen, enum pipe_cap param)
                 return 16;
 
         /* For faking GLES 3.1 for dEQP-GLES31 */
-        case PIPE_CAP_MAX_COMBINED_HW_ATOMIC_COUNTERS:
-        case PIPE_CAP_MAX_COMBINED_HW_ATOMIC_COUNTER_BUFFERS:
         case PIPE_CAP_IMAGE_LOAD_FORMATTED:
         case PIPE_CAP_CUBE_MAP_ARRAY:
         case PIPE_CAP_COMPUTE:
