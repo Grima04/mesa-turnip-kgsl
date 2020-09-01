@@ -4900,6 +4900,8 @@ bool nir_opt_trivial_continues(nir_shader *shader);
 
 bool nir_opt_undef(nir_shader *shader);
 
+bool nir_opt_uniform_atomics(nir_shader *shader);
+
 typedef bool (*nir_opt_vectorize_cb)(const nir_instr *a, const nir_instr *b,
                                      void *data);
 bool nir_opt_vectorize(nir_shader *shader, nir_opt_vectorize_cb filter,
