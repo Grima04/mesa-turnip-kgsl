@@ -387,7 +387,7 @@ LLVMValueRef si_llvm_get_block_size(struct ac_shader_abi *abi)
 void si_llvm_declare_compute_memory(struct si_shader_context *ctx)
 {
    struct si_shader_selector *sel = ctx->shader->selector;
-   unsigned lds_size = sel->info.properties[TGSI_PROPERTY_CS_LOCAL_SIZE];
+   unsigned lds_size = sel->info.base.cs.shared_size;
 
    LLVMTypeRef i8p = LLVMPointerType(ctx->ac.i8, AC_ADDR_SPACE_LDS);
    LLVMValueRef var;
@@ -447,6 +447,9 @@ bool si_nir_build_llvm(struct si_shader_context *ctx, struct nir_shader *nir)
          ctx->abi.user_data = ac_build_expand_to_vec4(&ctx->ac, ctx->abi.user_data,
                                                       nir->info.cs.user_data_components_amd);
       }
+
+      if (ctx->shader->selector->info.base.cs.shared_size)
+         si_llvm_declare_compute_memory(ctx);
    }
 
    ctx->abi.inputs = &ctx->inputs[0];
@@ -454,11 +457,6 @@ bool si_nir_build_llvm(struct si_shader_context *ctx, struct nir_shader *nir)
    ctx->abi.robust_buffer_access = true;
    ctx->abi.convert_undef_to_zero = true;
    ctx->abi.clamp_div_by_zero = ctx->screen->options.clamp_div_by_zero;
-
-   if (ctx->shader->selector->info.properties[TGSI_PROPERTY_CS_LOCAL_SIZE]) {
-      assert(gl_shader_stage_is_compute(nir->info.stage));
-      si_llvm_declare_compute_memory(ctx);
-   }
 
    const struct si_shader_info *info = &ctx->shader->selector->info;
    for (unsigned i = 0; i < info->num_outputs; i++) {

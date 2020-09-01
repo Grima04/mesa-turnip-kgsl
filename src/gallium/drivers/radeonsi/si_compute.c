@@ -127,11 +127,7 @@ static void si_create_compute_state_async(void *job, int thread_index)
    assert(program->ir_type == PIPE_SHADER_IR_NIR);
    si_nir_scan_shader(sel->nir, &sel->info);
 
-   /* Store the declared LDS size into si_shader_info for the shader
-    * cache to include it.
-    */
-   sel->info.properties[TGSI_PROPERTY_CS_LOCAL_SIZE] = program->local_size;
-
+   sel->info.base.cs.shared_size = program->local_size;
    si_get_active_slot_masks(&sel->info, &sel->active_const_and_shader_buffers,
                             &sel->active_samplers_and_images);
 
