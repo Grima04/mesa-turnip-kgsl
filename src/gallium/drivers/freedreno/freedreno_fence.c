@@ -155,7 +155,6 @@ void fd_fence_server_sync(struct pipe_context *pctx,
 		struct pipe_fence_handle *fence)
 {
 	struct fd_context *ctx = fd_context(pctx);
-	struct fd_batch *batch = fd_context_batch(ctx);
 
 	fence_flush(fence);
 
@@ -163,7 +162,7 @@ void fd_fence_server_sync(struct pipe_context *pctx,
 	if (fence->fence_fd == -1)
 		return;
 
-	if (sync_accumulate("freedreno", &batch->in_fence_fd, fence->fence_fd)) {
+	if (sync_accumulate("freedreno", &ctx->in_fence_fd, fence->fence_fd)) {
 		/* error */
 	}
 }
