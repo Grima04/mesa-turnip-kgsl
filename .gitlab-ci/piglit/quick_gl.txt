@@ -1617,19 +1617,14 @@ spec/oes_texture_view/rendering-formats/clear gl_rgba8 as gl_rg16f: fail
 spec/oes_texture_view/rendering-formats/clear gl_rgba8 as gl_rg16i: fail
 spec/oes_texture_view/rendering-formats/clear gl_rgba8 as gl_rgba8_snorm: fail
 spec/oes_texture_view/rendering-formats/clear gl_rgba8 as gl_rgba8i: fail
-spec/oes_texture_view/rendering-formats/render to gl_rgb16 as gl_rgb16f: skip
 spec/oes_texture_view/rendering-formats/render to gl_rgb16 as gl_rgb16i: skip
 spec/oes_texture_view/rendering-formats/render to gl_rgb16 as gl_rgb16ui: skip
-spec/oes_texture_view/rendering-formats/render to gl_rgb16_snorm as gl_rgb16f: skip
 spec/oes_texture_view/rendering-formats/render to gl_rgb16_snorm as gl_rgb16i: skip
 spec/oes_texture_view/rendering-formats/render to gl_rgb16_snorm as gl_rgb16ui: skip
-spec/oes_texture_view/rendering-formats/render to gl_rgb16f as gl_rgb16f: skip
 spec/oes_texture_view/rendering-formats/render to gl_rgb16f as gl_rgb16i: skip
 spec/oes_texture_view/rendering-formats/render to gl_rgb16f as gl_rgb16ui: skip
-spec/oes_texture_view/rendering-formats/render to gl_rgb16i as gl_rgb16f: skip
 spec/oes_texture_view/rendering-formats/render to gl_rgb16i as gl_rgb16i: skip
 spec/oes_texture_view/rendering-formats/render to gl_rgb16i as gl_rgb16ui: skip
-spec/oes_texture_view/rendering-formats/render to gl_rgb16ui as gl_rgb16f: skip
 spec/oes_texture_view/rendering-formats/render to gl_rgb16ui as gl_rgb16i: skip
 spec/oes_texture_view/rendering-formats/render to gl_rgb16ui as gl_rgb16ui: skip
 spec/oes_texture_view/rendering-formats/render to gl_rgb32f as gl_rgb32f: skip
@@ -1661,10 +1656,10 @@ wgl/wgl-sanity: skip
 summary:
        name:  results
        ----  --------
-       pass:    23064
+       pass:    23074
        fail:      198
       crash:        0
-       skip:     1438
+       skip:     1433
     timeout:        0
        warn:        6
  incomplete:        0
@@ -1673,4 +1668,4 @@ summary:
     changes:        0
       fixes:        0
 regressions:        0
-      total:    24724
+      total:    24729

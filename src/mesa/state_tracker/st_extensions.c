@@ -869,6 +869,12 @@ void st_init_extensions(struct pipe_screen *screen,
           PIPE_FORMAT_R16_SNORM,
           PIPE_FORMAT_R16G16_SNORM,
           PIPE_FORMAT_R16G16B16A16_SNORM } },
+
+      { { o(EXT_color_buffer_half_float) },
+        { PIPE_FORMAT_R16_FLOAT,
+          PIPE_FORMAT_R16G16_FLOAT,
+          PIPE_FORMAT_R16G16B16X16_FLOAT,
+          PIPE_FORMAT_R16G16B16A16_FLOAT } },
    };
 
    /* Required: render target, sampler, and blending */
