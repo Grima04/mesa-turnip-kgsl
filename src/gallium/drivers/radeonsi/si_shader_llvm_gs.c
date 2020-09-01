@@ -88,15 +88,6 @@ static LLVMValueRef si_llvm_load_input_gs(struct ac_shader_abi *abi, unsigned in
    }
 
    /* GFX6: input load from the ESGS ring in memory. */
-   if (swizzle == ~0) {
-      LLVMValueRef values[4];
-      unsigned chan;
-      for (chan = 0; chan < 4; chan++) {
-         values[chan] = si_llvm_load_input_gs(abi, input_index, vtx_offset_param, type, chan);
-      }
-      return ac_build_gather_values(&ctx->ac, values, 4);
-   }
-
    /* Get the vertex offset parameter on GFX6. */
    LLVMValueRef gs_vtx_offset = ac_get_arg(&ctx->ac, ctx->gs_vtx_offset[vtx_offset_param]);
 
