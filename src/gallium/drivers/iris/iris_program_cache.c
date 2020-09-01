@@ -38,6 +38,7 @@
 #include "util/u_upload_mgr.h"
 #include "compiler/nir/nir.h"
 #include "compiler/nir/nir_builder.h"
+#include "intel/common/gen_disasm.h"
 #include "intel/compiler/brw_compiler.h"
 #include "intel/compiler/brw_eu.h"
 #include "intel/compiler/brw_nir.h"
@@ -365,7 +366,6 @@ iris_print_program_cache(struct iris_context *ice)
       const struct keybox *keybox = entry->key;
       struct iris_compiled_shader *shader = entry->data;
       fprintf(stderr, "%s:\n", cache_name(keybox->cache_id));
-      brw_disassemble_with_labels(devinfo, shader->map, 0,
-                                  shader->prog_data->program_size, stderr);
+      gen_disassemble(devinfo, shader->map, 0, stderr);
    }
 }
