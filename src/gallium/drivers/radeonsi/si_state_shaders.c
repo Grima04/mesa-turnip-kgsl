@@ -1595,7 +1595,7 @@ static void si_shader_ps(struct si_screen *sscreen, struct si_shader *shader)
     */
    spi_baryc_cntl |= S_0286E0_POS_FLOAT_LOCATION(2);
 
-   if (info->properties[TGSI_PROPERTY_FS_COORD_PIXEL_CENTER] == TGSI_FS_COORD_PIXEL_CENTER_INTEGER)
+   if (info->base.fs.pixel_center_integer)
       spi_baryc_cntl |= S_0286E0_POS_FLOAT_ULC(1);
 
    spi_shader_col_format = si_get_spi_shader_col_format(shader);
