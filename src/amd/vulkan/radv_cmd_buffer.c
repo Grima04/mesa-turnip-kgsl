@@ -5056,6 +5056,8 @@ radv_emit_draw_packets(struct radv_cmd_buffer *cmd_buffer,
 	struct radeon_winsys *ws = cmd_buffer->device->ws;
 	struct radeon_cmdbuf *cs = cmd_buffer->cs;
 
+	radv_describe_draw(cmd_buffer);
+
 	if (info->indirect) {
 		uint64_t va = radv_buffer_get_va(info->indirect->bo);
 		uint64_t count_va = 0;
@@ -5285,8 +5287,6 @@ radv_draw(struct radv_cmd_buffer *cmd_buffer,
 		if (unlikely(!info->count && !info->strmout_buffer))
 			return;
 	}
-
-	radv_describe_draw(cmd_buffer);
 
 	/* Use optimal packet order based on whether we need to sync the
 	 * pipeline.
@@ -5523,6 +5523,8 @@ radv_emit_dispatch_packets(struct radv_cmd_buffer *cmd_buffer,
 	struct radeon_cmdbuf *cs = cmd_buffer->cs;
 	struct radv_userdata_info *loc;
 
+	radv_describe_dispatch(cmd_buffer, 8, 8, 8);
+
 	loc = radv_lookup_user_sgpr(pipeline, MESA_SHADER_COMPUTE,
 				    AC_UD_CS_GRID_SIZE);
 
@@ -5662,8 +5664,6 @@ radv_dispatch(struct radv_cmd_buffer *cmd_buffer,
 		cmd_buffer->device->physical_device->rad_info.chip_class >= GFX7;
 	bool pipeline_is_dirty = pipeline &&
 				 pipeline != cmd_buffer->state.emitted_compute_pipeline;
-
-	radv_describe_dispatch(cmd_buffer, 8, 8, 8);
 
 	if (cmd_buffer->state.flush_bits & (RADV_CMD_FLAG_FLUSH_AND_INV_CB |
 					    RADV_CMD_FLAG_FLUSH_AND_INV_DB |

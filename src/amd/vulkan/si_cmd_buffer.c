@@ -1424,8 +1424,10 @@ si_emit_cache_flush(struct radv_cmd_buffer *cmd_buffer)
 						  RADV_CMD_FLAG_START_PIPELINE_STATS |
 						  RADV_CMD_FLAG_STOP_PIPELINE_STATS);
 
-	if (!cmd_buffer->state.flush_bits)
+	if (!cmd_buffer->state.flush_bits) {
+		radv_describe_barrier_end_delayed(cmd_buffer);
 		return;
+	}
 
 	radeon_check_space(cmd_buffer->device->ws, cmd_buffer->cs, 128);
 
@@ -1452,6 +1454,8 @@ si_emit_cache_flush(struct radv_cmd_buffer *cmd_buffer)
 	 * should be finished at this point.
 	 */
 	cmd_buffer->pending_reset_query = false;
+
+	radv_describe_barrier_end_delayed(cmd_buffer);
 }
 
 /* sets the CP predication state using a boolean stored at va */

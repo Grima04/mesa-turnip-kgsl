@@ -1369,6 +1369,7 @@ struct radv_cmd_state {
 	uint32_t current_event_type;
 	uint32_t num_events;
 	uint32_t num_layout_transitions;
+	bool pending_sqtt_barrier_end;
 };
 
 struct radv_cmd_pool {
@@ -2551,6 +2552,7 @@ void radv_describe_end_render_pass_clear(struct radv_cmd_buffer *cmd_buffer);
 void radv_describe_barrier_start(struct radv_cmd_buffer *cmd_buffer,
 				 enum rgp_barrier_reason reason);
 void radv_describe_barrier_end(struct radv_cmd_buffer *cmd_buffer);
+void radv_describe_barrier_end_delayed(struct radv_cmd_buffer *cmd_buffer);
 void radv_describe_layout_transition(struct radv_cmd_buffer *cmd_buffer,
 				     const struct radv_barrier_data *barrier);
 
