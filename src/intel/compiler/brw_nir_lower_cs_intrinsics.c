@@ -55,6 +55,7 @@ lower_cs_intrinsics_convert_block(struct lower_intrinsics_state *state,
       switch (intrinsic->intrinsic) {
       case nir_intrinsic_load_local_group_size:
       case nir_intrinsic_load_work_group_id:
+      case nir_intrinsic_load_num_work_groups:
          /* Convert this to 32-bit if it's not */
          if (intrinsic->dest.ssa.bit_size == 64) {
             intrinsic->dest.ssa.bit_size = 32;
