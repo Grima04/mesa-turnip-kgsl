@@ -314,7 +314,7 @@ static void si_set_tesseval_regs(struct si_screen *sscreen, const struct si_shad
    const struct si_shader_info *info = &tes->info;
    unsigned tes_prim_mode = info->base.tess.primitive_mode;
    unsigned tes_spacing = info->base.tess.spacing;
-   bool tes_vertex_order_cw = info->properties[TGSI_PROPERTY_TES_VERTEX_ORDER_CW];
+   bool tes_vertex_order_cw = !info->base.tess.ccw;
    bool tes_point_mode = info->base.tess.point_mode;
    unsigned type, partitioning, topology, distribution_mode;
 

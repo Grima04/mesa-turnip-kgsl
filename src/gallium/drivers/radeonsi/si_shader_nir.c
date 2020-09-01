@@ -457,8 +457,6 @@ void si_nir_scan_shader(const struct nir_shader *nir, struct si_shader_info *inf
    info->stage = nir->info.stage;
 
    if (nir->info.stage == MESA_SHADER_TESS_EVAL) {
-      info->properties[TGSI_PROPERTY_TES_VERTEX_ORDER_CW] = !nir->info.tess.ccw;
-
       if (info->base.tess.primitive_mode == GL_ISOLINES)
          info->base.tess.primitive_mode = GL_LINES;
    }
