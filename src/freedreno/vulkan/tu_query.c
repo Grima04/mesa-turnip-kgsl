@@ -599,6 +599,25 @@ tu_CmdResetQueryPool(VkCommandBuffer commandBuffer,
    tu_bo_list_add(&cmdbuf->bo_list, &pool->bo, MSM_SUBMIT_BO_WRITE);
 }
 
+void
+tu_ResetQueryPool(VkDevice device,
+                  VkQueryPool queryPool,
+                  uint32_t firstQuery,
+                  uint32_t queryCount)
+{
+   TU_FROM_HANDLE(tu_query_pool, pool, queryPool);
+
+   for (uint32_t i = 0; i < queryCount; i++) {
+      struct query_slot *slot = slot_address(pool, i + firstQuery);
+      slot->available = 0;
+
+      for (uint32_t k = 0; k < get_result_count(pool); k++) {
+         uint64_t *res = query_result_addr(pool, i + firstQuery, k);
+         *res = 0;
+      }
+   }
+}
+
 static void
 emit_begin_occlusion_query(struct tu_cmd_buffer *cmdbuf,
                            struct tu_query_pool *pool,

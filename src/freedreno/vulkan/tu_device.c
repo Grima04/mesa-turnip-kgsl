@@ -482,7 +482,7 @@ tu_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
          features->uniformBufferStandardLayout         = false;
          features->shaderSubgroupExtendedTypes         = false;
          features->separateDepthStencilLayouts         = false;
-         features->hostQueryReset                      = false;
+         features->hostQueryReset                      = true;
          features->timelineSemaphore                   = false;
          features->bufferDeviceAddress                 = false;
          features->bufferDeviceAddressCaptureReplay    = false;
@@ -610,6 +610,12 @@ tu_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
          VkPhysicalDeviceCustomBorderColorFeaturesEXT *features = (void *) ext;
          features->customBorderColors = true;
          features->customBorderColorWithoutFormat = true;
+         break;
+      }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_QUERY_RESET_FEATURES_EXT: {
+         VkPhysicalDeviceHostQueryResetFeaturesEXT *features =
+            (VkPhysicalDeviceHostQueryResetFeaturesEXT *)ext;
+         features->hostQueryReset = true;
          break;
       }
       default:
