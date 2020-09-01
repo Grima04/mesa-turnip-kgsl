@@ -2569,6 +2569,7 @@ vtn_handle_texture(struct vtn_builder *b, SpvOp opcode,
 
    case SpvOpFragmentMaskFetchAMD:
       texop = nir_texop_fragment_mask_fetch;
+      dest_type = nir_type_uint;
       break;
 
    default:
