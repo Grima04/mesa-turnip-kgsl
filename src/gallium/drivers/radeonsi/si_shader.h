@@ -319,6 +319,8 @@ struct si_compiler_ctx_state {
 };
 
 struct si_shader_info {
+   shader_info base;
+
    gl_shader_stage stage;
 
    ubyte num_inputs;

@@ -2333,16 +2333,16 @@ static int si_shader_select(struct pipe_context *ctx, struct si_shader_ctx_state
 static void si_parse_next_shader_property(const struct si_shader_info *info, bool streamout,
                                           struct si_shader_key *key)
 {
-   unsigned next_shader = info->properties[TGSI_PROPERTY_NEXT_SHADER];
+   gl_shader_stage next_shader = info->base.next_stage;
 
    switch (info->stage) {
    case MESA_SHADER_VERTEX:
       switch (next_shader) {
-      case PIPE_SHADER_GEOMETRY:
+      case MESA_SHADER_GEOMETRY:
          key->as_es = 1;
          break;
-      case PIPE_SHADER_TESS_CTRL:
-      case PIPE_SHADER_TESS_EVAL:
+      case MESA_SHADER_TESS_CTRL:
+      case MESA_SHADER_TESS_EVAL:
          key->as_ls = 1;
          break;
       default:
@@ -2357,7 +2357,7 @@ static void si_parse_next_shader_property(const struct si_shader_info *info, boo
       break;
 
    case MESA_SHADER_TESS_EVAL:
-      if (next_shader == PIPE_SHADER_GEOMETRY || !info->writes_position)
+      if (next_shader == MESA_SHADER_GEOMETRY || !info->writes_position)
          key->as_es = 1;
       break;
 
