@@ -618,7 +618,7 @@ void gfx9_get_gs_info(struct si_shader_selector *es, struct si_shader_selector *
                       struct gfx9_gs_info *out)
 {
    unsigned gs_num_invocations = MAX2(gs->gs_num_invocations, 1);
-   unsigned input_prim = gs->info.properties[TGSI_PROPERTY_GS_INPUT_PRIM];
+   unsigned input_prim = gs->info.base.gs.input_primitive;
    bool uses_adjacency =
       input_prim >= PIPE_PRIM_LINES_ADJACENCY && input_prim <= PIPE_PRIM_TRIANGLE_STRIP_ADJACENCY;
 
@@ -815,7 +815,7 @@ static void si_shader_gs(struct si_screen *sscreen, struct si_shader *shader)
    va = shader->bo->gpu_address;
 
    if (sscreen->info.chip_class >= GFX9) {
-      unsigned input_prim = sel->info.properties[TGSI_PROPERTY_GS_INPUT_PRIM];
+      unsigned input_prim = sel->info.base.gs.input_primitive;
       gl_shader_stage es_stage = shader->key.part.gs.es->info.stage;
       unsigned es_vgpr_comp_cnt, gs_vgpr_comp_cnt;
 
@@ -1022,7 +1022,7 @@ static void gfx10_emit_shader_ngg_tess_gs(struct si_context *sctx)
 unsigned si_get_input_prim(const struct si_shader_selector *gs)
 {
    if (gs->info.stage == MESA_SHADER_GEOMETRY)
-      return gs->info.properties[TGSI_PROPERTY_GS_INPUT_PRIM];
+      return gs->info.base.gs.input_primitive;
 
    if (gs->info.stage == MESA_SHADER_TESS_EVAL) {
       if (gs->info.base.tess.point_mode)
@@ -2630,15 +2630,15 @@ static void *si_create_shader_selector(struct pipe_context *ctx,
 
    switch (sel->info.stage) {
    case MESA_SHADER_GEOMETRY:
-      sel->gs_output_prim = sel->info.properties[TGSI_PROPERTY_GS_OUTPUT_PRIM];
+      sel->gs_output_prim = sel->info.base.gs.output_primitive;
 
       /* Only possibilities: POINTS, LINE_STRIP, TRIANGLES */
       sel->rast_prim = sel->gs_output_prim;
       if (util_rast_prim_is_triangles(sel->rast_prim))
          sel->rast_prim = PIPE_PRIM_TRIANGLES;
 
-      sel->gs_max_out_vertices = sel->info.properties[TGSI_PROPERTY_GS_MAX_OUTPUT_VERTICES];
-      sel->gs_num_invocations = sel->info.properties[TGSI_PROPERTY_GS_INVOCATIONS];
+      sel->gs_max_out_vertices = sel->info.base.gs.vertices_out;
+      sel->gs_num_invocations = sel->info.base.gs.invocations;
       sel->gsvs_vertex_size = sel->info.num_outputs * 16;
       sel->max_gsvs_emit_size = sel->gsvs_vertex_size * sel->gs_max_out_vertices;
 
@@ -2647,7 +2647,7 @@ static void *si_create_shader_selector(struct pipe_context *ctx,
          sel->max_gs_stream = MAX2(sel->max_gs_stream, sel->so.output[i].stream);
 
       sel->gs_input_verts_per_prim =
-         u_vertices_per_prim(sel->info.properties[TGSI_PROPERTY_GS_INPUT_PRIM]);
+         u_vertices_per_prim(sel->info.base.gs.input_primitive);
 
       /* EN_MAX_VERT_OUT_PER_GS_INSTANCE does not work with tesselation so
        * we can't split workgroups. Disable ngg if any of the following conditions is true:

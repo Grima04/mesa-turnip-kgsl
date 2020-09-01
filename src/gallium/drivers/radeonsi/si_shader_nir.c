@@ -461,13 +461,6 @@ void si_nir_scan_shader(const struct nir_shader *nir, struct si_shader_info *inf
          info->base.tess.primitive_mode = GL_LINES;
    }
 
-   if (nir->info.stage == MESA_SHADER_GEOMETRY) {
-      info->properties[TGSI_PROPERTY_GS_INPUT_PRIM] = nir->info.gs.input_primitive;
-      info->properties[TGSI_PROPERTY_GS_OUTPUT_PRIM] = nir->info.gs.output_primitive;
-      info->properties[TGSI_PROPERTY_GS_MAX_OUTPUT_VERTICES] = nir->info.gs.vertices_out;
-      info->properties[TGSI_PROPERTY_GS_INVOCATIONS] = nir->info.gs.invocations;
-   }
-
    if (nir->info.stage == MESA_SHADER_FRAGMENT) {
       info->properties[TGSI_PROPERTY_FS_EARLY_DEPTH_STENCIL] =
          nir->info.fs.early_fragment_tests | nir->info.fs.post_depth_coverage;
