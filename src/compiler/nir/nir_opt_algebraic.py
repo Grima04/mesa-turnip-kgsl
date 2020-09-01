@@ -778,6 +778,7 @@ optimizations.extend([
    (('ior', ('b2i', 'a@1'), ('b2i', 'b@1')), ('b2i', ('ior', a, b))),
    (('fmul', ('b2f', 'a@1'), ('b2f', 'b@1')), ('b2f', ('iand', a, b))),
    (('fsat', ('fadd', ('b2f', 'a@1'), ('b2f', 'b@1'))), ('b2f', ('ior', a, b))),
+   (('iand', 'a@bool16', 1.0), ('b2f', a)),
    (('iand', 'a@bool32', 1.0), ('b2f', a)),
    # True/False are ~0 and 0 in NIR.  b2i of True is 1, and -1 is ~0 (True).
    (('ineg', ('b2i32', 'a@32')), a),
@@ -864,6 +865,7 @@ optimizations.extend([
    (('fsin', a), lowered_sincos(0.5), 'options->lower_sincos'),
    (('fcos', a), lowered_sincos(0.75), 'options->lower_sincos'),
    # Boolean simplifications
+   (('i2b16(is_used_by_if)', a), ('ine16', a, 0)),
    (('i2b32(is_used_by_if)', a), ('ine32', a, 0)),
    (('i2b1(is_used_by_if)', a), ('ine', a, 0)),
    (('ieq', a, True), a),
@@ -905,6 +907,7 @@ optimizations.extend([
    (('ushr', 'a@32', ('iand', 31, b)), ('ushr', a, b)),
 
    # Conversions
+   (('i2b16', ('b2i', 'a@16')), a),
    (('i2b32', ('b2i', 'a@32')), a),
    (('f2i', ('ftrunc', a)), ('f2i', a)),
    (('f2u', ('ftrunc', a)), ('f2u', a)),
