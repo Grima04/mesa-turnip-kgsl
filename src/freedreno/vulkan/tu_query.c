@@ -42,6 +42,7 @@
 
 #define NSEC_PER_SEC 1000000000ull
 #define WAIT_TIMEOUT 5
+#define STAT_COUNT ((REG_A6XX_RBBM_PRIMCTR_10_LO - REG_A6XX_RBBM_PRIMCTR_0_LO) / 2 + 1)
 
 struct PACKED query_slot {
    uint64_t available;
@@ -71,6 +72,14 @@ struct PACKED primitive_slot_value {
    uint64_t values[2];
 };
 
+struct PACKED pipeline_stat_query_slot {
+   struct query_slot common;
+   uint64_t results[STAT_COUNT];
+
+   uint64_t begin[STAT_COUNT];
+   uint64_t end[STAT_COUNT];
+};
+
 struct PACKED primitive_query_slot {
    struct query_slot common;
    /* The result of transform feedback queries is two integer values:
@@ -94,6 +103,10 @@ struct PACKED primitive_query_slot {
 
 #define occlusion_query_iova(pool, query, field)                     \
    query_iova(struct occlusion_query_slot, pool, query, field)
+
+#define pipeline_stat_query_iova(pool, query, field)                 \
+   pool->bo.iova + pool->stride * query +                            \
+   offsetof(struct pipeline_stat_query_slot, field)
 
 #define primitive_query_iova(pool, query, field, i)                  \
    query_iova(struct primitive_query_slot, pool, query, field) +     \
@@ -142,7 +155,8 @@ tu_CreateQueryPool(VkDevice _device,
       slot_size = sizeof(struct primitive_query_slot);
       break;
    case VK_QUERY_TYPE_PIPELINE_STATISTICS:
-      unreachable("Unimplemented query type");
+      slot_size = sizeof(struct pipeline_stat_query_slot);
+      break;
    default:
       assert(!"Invalid query type");
    }
@@ -205,8 +219,43 @@ get_result_count(struct tu_query_pool *pool)
    /* Transform feedback queries write two integer values */
    case VK_QUERY_TYPE_TRANSFORM_FEEDBACK_STREAM_EXT:
       return 2;
+   case VK_QUERY_TYPE_PIPELINE_STATISTICS:
+      return util_bitcount(pool->pipeline_statistics);
    default:
       assert(!"Invalid query type");
+      return 0;
+   }
+}
+
+static uint32_t
+statistics_index(uint32_t *statistics)
+{
+   uint32_t stat;
+   stat = u_bit_scan(statistics);
+
+   switch (1 << stat) {
+   case VK_QUERY_PIPELINE_STATISTIC_INPUT_ASSEMBLY_VERTICES_BIT:
+   case VK_QUERY_PIPELINE_STATISTIC_VERTEX_SHADER_INVOCATIONS_BIT:
+      return 0;
+   case VK_QUERY_PIPELINE_STATISTIC_INPUT_ASSEMBLY_PRIMITIVES_BIT:
+      return 1;
+   case VK_QUERY_PIPELINE_STATISTIC_TESSELLATION_CONTROL_SHADER_PATCHES_BIT:
+      return 2;
+   case VK_QUERY_PIPELINE_STATISTIC_TESSELLATION_EVALUATION_SHADER_INVOCATIONS_BIT:
+      return 4;
+   case VK_QUERY_PIPELINE_STATISTIC_GEOMETRY_SHADER_INVOCATIONS_BIT:
+      return 5;
+   case VK_QUERY_PIPELINE_STATISTIC_GEOMETRY_SHADER_PRIMITIVES_BIT:
+      return 6;
+   case VK_QUERY_PIPELINE_STATISTIC_CLIPPING_INVOCATIONS_BIT:
+      return 7;
+   case VK_QUERY_PIPELINE_STATISTIC_CLIPPING_PRIMITIVES_BIT:
+      return 8;
+   case VK_QUERY_PIPELINE_STATISTIC_FRAGMENT_SHADER_INVOCATIONS_BIT:
+      return 9;
+   case VK_QUERY_PIPELINE_STATISTIC_COMPUTE_SHADER_INVOCATIONS_BIT:
+      return 10;
+   default:
       return 0;
    }
 }
@@ -262,6 +311,7 @@ get_query_pool_results(struct tu_device *device,
       struct query_slot *slot = slot_address(pool, query);
       bool available = query_is_available(slot);
       uint32_t result_count = get_result_count(pool);
+      uint32_t statistics = pool->pipeline_statistics;
 
       if ((flags & VK_QUERY_RESULT_WAIT_BIT) && !available) {
          VkResult wait_result = wait_for_available(device, pool, query);
@@ -287,7 +337,15 @@ get_query_pool_results(struct tu_device *device,
 
       for (uint32_t k = 0; k < result_count; k++) {
          if (available) {
-            uint64_t *result = query_result_addr(pool, query, k);
+            uint64_t *result;
+
+            if (pool->type == VK_QUERY_TYPE_PIPELINE_STATISTICS) {
+               uint32_t stat_idx = statistics_index(&statistics);
+               result = query_result_addr(pool, query, stat_idx);
+            } else {
+               result = query_result_addr(pool, query, k);
+            }
+
             write_query_value_cpu(result_base, k, *result, flags);
          } else if (flags & VK_QUERY_RESULT_PARTIAL_BIT)
              /* From the Vulkan 1.1.130 spec:
@@ -337,10 +395,9 @@ tu_GetQueryPoolResults(VkDevice _device,
    case VK_QUERY_TYPE_OCCLUSION:
    case VK_QUERY_TYPE_TIMESTAMP:
    case VK_QUERY_TYPE_TRANSFORM_FEEDBACK_STREAM_EXT:
+   case VK_QUERY_TYPE_PIPELINE_STATISTICS:
       return get_query_pool_results(device, pool, firstQuery, queryCount,
                                     dataSize, pData, stride, flags);
-   case VK_QUERY_TYPE_PIPELINE_STATISTICS:
-      unreachable("Unimplemented query type");
    default:
       assert(!"Invalid query type");
    }
@@ -394,6 +451,7 @@ emit_copy_query_pool_results(struct tu_cmd_buffer *cmdbuf,
       uint64_t available_iova = query_available_iova(pool, query);
       uint64_t buffer_iova = tu_buffer_iova(buffer) + dstOffset + i * stride;
       uint32_t result_count = get_result_count(pool);
+      uint32_t statistics = pool->pipeline_statistics;
 
       /* Wait for the available bit to be set if executed with the
        * VK_QUERY_RESULT_WAIT_BIT flag. */
@@ -408,7 +466,14 @@ emit_copy_query_pool_results(struct tu_cmd_buffer *cmdbuf,
       }
 
       for (uint32_t k = 0; k < result_count; k++) {
-         uint64_t result_iova = query_result_iova(pool, query, k);
+         uint64_t result_iova;
+
+         if (pool->type == VK_QUERY_TYPE_PIPELINE_STATISTICS) {
+            uint32_t stat_idx = statistics_index(&statistics);
+            result_iova = query_result_iova(pool, query, stat_idx);
+         } else {
+            result_iova = query_result_iova(pool, query, k);
+         }
 
          if (flags & VK_QUERY_RESULT_PARTIAL_BIT) {
             /* Unconditionally copying the bo->result into the buffer here is
@@ -469,10 +534,9 @@ tu_CmdCopyQueryPoolResults(VkCommandBuffer commandBuffer,
    case VK_QUERY_TYPE_OCCLUSION:
    case VK_QUERY_TYPE_TIMESTAMP:
    case VK_QUERY_TYPE_TRANSFORM_FEEDBACK_STREAM_EXT:
+   case VK_QUERY_TYPE_PIPELINE_STATISTICS:
       return emit_copy_query_pool_results(cmdbuf, cs, pool, firstQuery,
                queryCount, buffer, dstOffset, stride, flags);
-   case VK_QUERY_TYPE_PIPELINE_STATISTICS:
-      unreachable("Unimplemented query type");
    default:
       assert(!"Invalid query type");
    }
@@ -488,17 +552,28 @@ emit_reset_query_pool(struct tu_cmd_buffer *cmdbuf,
 
    for (uint32_t i = 0; i < queryCount; i++) {
       uint32_t query = firstQuery + i;
+      uint32_t statistics = pool->pipeline_statistics;
 
       tu_cs_emit_pkt7(cs, CP_MEM_WRITE, 4);
       tu_cs_emit_qw(cs, query_available_iova(pool, query));
       tu_cs_emit_qw(cs, 0x0);
 
       for (uint32_t k = 0; k < get_result_count(pool); k++) {
+         uint64_t result_iova;
+
+         if (pool->type == VK_QUERY_TYPE_PIPELINE_STATISTICS) {
+            uint32_t stat_idx = statistics_index(&statistics);
+            result_iova = query_result_iova(pool, query, stat_idx);
+         } else {
+            result_iova = query_result_iova(pool, query, k);
+         }
+
          tu_cs_emit_pkt7(cs, CP_MEM_WRITE, 4);
-         tu_cs_emit_qw(cs, query_result_iova(pool, query, k));
+         tu_cs_emit_qw(cs, result_iova);
          tu_cs_emit_qw(cs, 0x0);
       }
    }
+
 }
 
 void
@@ -514,10 +589,9 @@ tu_CmdResetQueryPool(VkCommandBuffer commandBuffer,
    case VK_QUERY_TYPE_TIMESTAMP:
    case VK_QUERY_TYPE_OCCLUSION:
    case VK_QUERY_TYPE_TRANSFORM_FEEDBACK_STREAM_EXT:
+   case VK_QUERY_TYPE_PIPELINE_STATISTICS:
       emit_reset_query_pool(cmdbuf, pool, firstQuery, queryCount);
       break;
-   case VK_QUERY_TYPE_PIPELINE_STATISTICS:
-      unreachable("Unimplemented query type");
    default:
       assert(!"Invalid query type");
    }
@@ -558,6 +632,27 @@ emit_begin_occlusion_query(struct tu_cmd_buffer *cmdbuf,
 }
 
 static void
+emit_begin_stat_query(struct tu_cmd_buffer *cmdbuf,
+                      struct tu_query_pool *pool,
+                      uint32_t query)
+{
+   struct tu_cs *cs = cmdbuf->state.pass ? &cmdbuf->draw_cs : &cmdbuf->cs;
+   uint64_t begin_iova = pipeline_stat_query_iova(pool, query, begin);
+
+   tu6_emit_event_write(cmdbuf, cs, START_PRIMITIVE_CTRS);
+   tu6_emit_event_write(cmdbuf, cs, RST_PIX_CNT);
+   tu6_emit_event_write(cmdbuf, cs, TILE_FLUSH);
+
+   tu_cs_emit_wfi(cs);
+
+   tu_cs_emit_pkt7(cs, CP_REG_TO_MEM, 3);
+   tu_cs_emit(cs, CP_REG_TO_MEM_0_REG(REG_A6XX_RBBM_PRIMCTR_0_LO) |
+                  CP_REG_TO_MEM_0_CNT(STAT_COUNT * 2) |
+                  CP_REG_TO_MEM_0_64B);
+   tu_cs_emit_qw(cs, begin_iova);
+}
+
+static void
 emit_begin_xfb_query(struct tu_cmd_buffer *cmdbuf,
                      struct tu_query_pool *pool,
                      uint32_t query,
@@ -592,6 +687,8 @@ tu_CmdBeginQuery(VkCommandBuffer commandBuffer,
       emit_begin_xfb_query(cmdbuf, pool, query, 0);
       break;
    case VK_QUERY_TYPE_PIPELINE_STATISTICS:
+      emit_begin_stat_query(cmdbuf, pool, query);
+      break;
    case VK_QUERY_TYPE_TIMESTAMP:
       unreachable("Unimplemented query type");
    default:
@@ -691,6 +788,57 @@ emit_end_occlusion_query(struct tu_cmd_buffer *cmdbuf,
        */
       cs = &cmdbuf->draw_epilogue_cs;
 
+   tu_cs_emit_pkt7(cs, CP_MEM_WRITE, 4);
+   tu_cs_emit_qw(cs, available_iova);
+   tu_cs_emit_qw(cs, 0x1);
+}
+
+static void
+emit_end_stat_query(struct tu_cmd_buffer *cmdbuf,
+                    struct tu_query_pool *pool,
+                    uint32_t query)
+{
+   struct tu_cs *cs = cmdbuf->state.pass ? &cmdbuf->draw_cs : &cmdbuf->cs;
+   uint64_t end_iova = pipeline_stat_query_iova(pool, query, end);
+   uint64_t available_iova = query_available_iova(pool, query);
+   uint64_t result_iova;
+   uint64_t stat_start_iova;
+   uint64_t stat_stop_iova;
+
+   tu6_emit_event_write(cmdbuf, cs, STOP_PRIMITIVE_CTRS);
+   tu6_emit_event_write(cmdbuf, cs, RST_VTX_CNT);
+   tu6_emit_event_write(cmdbuf, cs, STAT_EVENT);
+
+   tu_cs_emit_wfi(cs);
+
+   tu_cs_emit_pkt7(cs, CP_REG_TO_MEM, 3);
+   tu_cs_emit(cs, CP_REG_TO_MEM_0_REG(REG_A6XX_RBBM_PRIMCTR_0_LO) |
+                  CP_REG_TO_MEM_0_CNT(STAT_COUNT * 2) |
+                  CP_REG_TO_MEM_0_64B);
+   tu_cs_emit_qw(cs, end_iova);
+
+   for (int i = 0; i < STAT_COUNT; i++) {
+      result_iova = query_result_iova(pool, query, i);
+      stat_start_iova = pipeline_stat_query_iova(pool, query, begin[i]);
+      stat_stop_iova = pipeline_stat_query_iova(pool, query, end[i]);
+
+      tu_cs_emit_pkt7(cs, CP_MEM_TO_MEM, 9);
+      tu_cs_emit(cs, CP_MEM_TO_MEM_0_WAIT_FOR_MEM_WRITES |
+                     CP_MEM_TO_MEM_0_DOUBLE |
+                     CP_MEM_TO_MEM_0_NEG_C);
+
+      tu_cs_emit_qw(cs, result_iova);
+      tu_cs_emit_qw(cs, result_iova);
+      tu_cs_emit_qw(cs, stat_stop_iova);
+      tu_cs_emit_qw(cs, stat_start_iova);
+   }
+
+   tu_cs_emit_pkt7(cs, CP_WAIT_MEM_WRITES, 0);
+
+   if (cmdbuf->state.pass)
+      cs = &cmdbuf->draw_epilogue_cs;
+
+   /* Set the availability to 1 */
    tu_cs_emit_pkt7(cs, CP_MEM_WRITE, 4);
    tu_cs_emit_qw(cs, available_iova);
    tu_cs_emit_qw(cs, 0x1);
@@ -800,6 +948,8 @@ tu_CmdEndQuery(VkCommandBuffer commandBuffer,
       emit_end_xfb_query(cmdbuf, pool, query, 0);
       break;
    case VK_QUERY_TYPE_PIPELINE_STATISTICS:
+      emit_end_stat_query(cmdbuf, pool, query);
+      break;
    case VK_QUERY_TYPE_TIMESTAMP:
       unreachable("Unimplemented query type");
    default:
