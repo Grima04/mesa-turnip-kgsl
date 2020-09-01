@@ -357,7 +357,24 @@ v3dv_GetImageSubresourceLayout(VkDevice device,
    layout->rowPitch = slice->stride;
    layout->depthPitch = image->cube_map_stride;
    layout->arrayPitch = image->cube_map_stride;
-   layout->size = slice->size;
+
+   if (image->type != VK_IMAGE_TYPE_3D) {
+      layout->size = slice->size;
+   } else {
+      /* For 3D images, the size of the slice represents the size of a 2D slice
+       * in the 3D image, so we have to multiply by the depth extent of the
+       * miplevel. For levels other than the first, we just compute the size
+       * as the distance between consecutive levels (notice that mip levels are
+       * arranged in memory from last to first).
+       */
+      if (subresource->mipLevel == 0) {
+         layout->size = slice->size * image->extent.depth;
+      } else {
+            const struct v3d_resource_slice *prev_slice =
+               &image->slices[subresource->mipLevel - 1];
+            layout->size = prev_slice->offset - slice->offset;
+      }
+   }
 }
 
 VkResult
