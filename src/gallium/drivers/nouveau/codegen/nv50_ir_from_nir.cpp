@@ -3114,6 +3114,7 @@ Converter::run()
    struct nir_lower_subgroups_options subgroup_options = {
       .subgroup_size = 32,
       .ballot_bit_size = 32,
+      .lower_elect = true,
    };
 
    /* prepare for IO lowering */

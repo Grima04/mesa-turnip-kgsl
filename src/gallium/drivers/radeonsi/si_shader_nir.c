@@ -663,6 +663,7 @@ static void si_lower_nir(struct si_screen *sscreen, struct nir_shader *nir)
       .lower_subgroup_masks = true,
       .lower_vote_trivial = false,
       .lower_vote_eq_to_ballot = true,
+      .lower_elect = true,
    };
    NIR_PASS_V(nir, nir_lower_subgroups, &subgroups_options);
 

@@ -601,6 +601,7 @@ radv_shader_compile_to_nir(struct radv_device *device,
 			.lower_quad_broadcast_dynamic = 1,
 			.lower_quad_broadcast_dynamic_to_const = gfx7minus,
 			.lower_shuffle_to_swizzle_amd = 1,
+			.lower_elect = radv_use_llvm_for_stage(device, stage),
 		});
 
 	nir_lower_load_const_to_scalar(nir);
