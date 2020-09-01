@@ -367,6 +367,9 @@ st_finalize_nir_before_variants(struct nir_shader *nir)
       NIR_PASS_V(nir, nir_lower_io_arrays_to_elements_no_indirects, true);
    }
 
+   /* st_nir_assign_vs_in_locations requires correct shader info. */
+   nir_shader_gather_info(nir, nir_shader_get_entrypoint(nir));
+
    st_nir_assign_vs_in_locations(nir);
 }
 
@@ -528,20 +531,6 @@ st_translate_vertex_program(struct st_context *st,
          stp->state.type = PIPE_SHADER_IR_NIR;
          stp->Base.nir = st_translate_prog_to_nir(st, &stp->Base,
                                                   MESA_SHADER_VERTEX);
-
-         /* We must update stp->Base.info after translation and before
-          * st_prepare_vertex_program is called, because inputs_read
-          * may become outdated after NIR optimization passes.
-          *
-          * For ffvp/ARB_vp inputs_read is populated based
-          * on declared attributes without taking their usage into
-          * consideration. When creating shader variants we expect
-          * that their inputs_read would match the base ones for
-          * input mapping to work properly.
-          */
-         nir_shader_gather_info(stp->Base.nir,
-                                nir_shader_get_entrypoint(stp->Base.nir));
-         st_nir_assign_vs_in_locations(stp->Base.nir);
          stp->Base.info = stp->Base.nir->info;
 
          /* For st_draw_feedback, we need to generate TGSI too if draw doesn't
