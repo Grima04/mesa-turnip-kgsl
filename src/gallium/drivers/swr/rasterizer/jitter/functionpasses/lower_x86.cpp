@@ -287,7 +287,7 @@ namespace SwrJit
                 SWR_ASSERT(false, "Unhandled vector width type %d\n", width);
             }
 
-            return ConstantVector::getNullValue(VectorType::get(pTy, numElem));
+            return ConstantVector::getNullValue(getVectorType(pTy, numElem));
         }
 
         Value* GetMask(TargetWidth width)
@@ -315,7 +315,7 @@ namespace SwrJit
 #else
             uint32_t numElem = vi1Mask->getType()->getVectorNumElements();
 #endif
-            return B->S_EXT(vi1Mask, VectorType::get(B->mInt32Ty, numElem));
+            return B->S_EXT(vi1Mask, getVectorType(B->mInt32Ty, numElem));
         }
 
         Instruction* ProcessIntrinsicAdvanced(CallInst* pCallInst)
@@ -546,7 +546,7 @@ namespace SwrJit
 
             v32Gather        = UndefValue::get(vSrc->getType());
 #if LLVM_VERSION_MAJOR > 10
-            auto vi32Scale   = ConstantVector::getSplat(ElementCount(numElem, false), cast<ConstantInt>(i32Scale));
+            auto vi32Scale   = ConstantVector::getSplat(ElementCount::get(numElem, false), cast<ConstantInt>(i32Scale));
 #else
             auto vi32Scale   = ConstantVector::getSplat(numElem, cast<ConstantInt>(i32Scale));
 #endif
@@ -609,7 +609,7 @@ namespace SwrJit
 #else
                     uint32_t numElem = v64Mask->getType()->getVectorNumElements();
 #endif
-                    v64Mask = B->S_EXT(v64Mask, VectorType::get(B->mInt64Ty, numElem));
+                    v64Mask = B->S_EXT(v64Mask, getVectorType(B->mInt64Ty, numElem));
                     v64Mask = B->BITCAST(v64Mask, vSrc->getType());
 
                     Value* src0 = B->VSHUFFLE(vSrc, vSrc, B->C({0, 1, 2, 3}));
@@ -632,12 +632,12 @@ namespace SwrJit
                     uint32_t numElemSrc1  = src1->getType()->getVectorNumElements();
                     uint32_t numElemMask1 = mask1->getType()->getVectorNumElements();
 #endif
-                    src0 = B->BITCAST(src0, VectorType::get(B->mInt64Ty, numElemSrc0));
-                    mask0 = B->BITCAST(mask0, VectorType::get(B->mInt64Ty, numElemMask0));
+                    src0 = B->BITCAST(src0, getVectorType(B->mInt64Ty, numElemSrc0));
+                    mask0 = B->BITCAST(mask0, getVectorType(B->mInt64Ty, numElemMask0));
                     Value* gather0 =
                         B->CALL(pX86IntrinFunc, {src0, pBase, indices0, mask0, i8Scale});
-                    src1 = B->BITCAST(src1, VectorType::get(B->mInt64Ty, numElemSrc1));
-                    mask1 = B->BITCAST(mask1, VectorType::get(B->mInt64Ty, numElemMask1));
+                    src1 = B->BITCAST(src1, getVectorType(B->mInt64Ty, numElemSrc1));
+                    mask1 = B->BITCAST(mask1, getVectorType(B->mInt64Ty, numElemMask1));
                     Value* gather1 =
                         B->CALL(pX86IntrinFunc, {src1, pBase, indices1, mask1, i8Scale});
                     v32Gather = B->VSHUFFLE(gather0, gather1, B->C({0, 1, 2, 3, 4, 5, 6, 7}));
