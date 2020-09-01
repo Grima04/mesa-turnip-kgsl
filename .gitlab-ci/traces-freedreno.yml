@@ -233,11 +233,10 @@ traces:
 #    expectations:
 #      - device: freedreno-a630
 #        checksum: 0
-# Fails due to clipdistance lowering not setting i/o semantics.
-#  - path: neverball/neverball.trace
-#    expectations:
-#      - device: freedreno-a630
-#        checksum: 0
+  - path: neverball/neverball.trace
+    expectations:
+      - device: freedreno-a630
+        checksum: e67cdf15590f1729201eb82393f5513e
   - path: pathfinder/canvas_moire.trace
     expectations:
       - device: freedreno-a630
