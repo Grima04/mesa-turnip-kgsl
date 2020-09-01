@@ -352,7 +352,8 @@ v3dv_GetImageSubresourceLayout(VkDevice device,
 
    const struct v3d_resource_slice *slice =
       &image->slices[subresource->mipLevel];
-   layout->offset = slice->offset;
+   layout->offset =
+      v3dv_layer_offset(image, subresource->mipLevel, subresource->arrayLayer);
    layout->rowPitch = slice->stride;
    layout->depthPitch = image->cube_map_stride;
    layout->arrayPitch = image->cube_map_stride;
