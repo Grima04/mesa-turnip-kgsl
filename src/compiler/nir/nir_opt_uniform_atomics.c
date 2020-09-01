@@ -82,6 +82,79 @@ parse_atomic_op(nir_intrinsic_op op, unsigned *offset_src, unsigned *data_src)
    }
 }
 
+/* Returns a bitmask of invocation indices that are compared against a subgroup
+ * uniform value.
+ */
+static unsigned
+match_invocation_comparison(nir_ssa_scalar scalar)
+{
+   if (!nir_ssa_scalar_is_alu(scalar))
+      return 0;
+
+   if (nir_ssa_scalar_alu_op(scalar) == nir_op_iand) {
+      return match_invocation_comparison(nir_ssa_scalar_chase_alu_src(scalar, 0)) |
+             match_invocation_comparison(nir_ssa_scalar_chase_alu_src(scalar, 1));
+   } else if (nir_ssa_scalar_alu_op(scalar) == nir_op_ieq) {
+      unsigned dims = 0;
+      for (unsigned i = 0; i < 2; i++) {
+         nir_ssa_scalar src = nir_ssa_scalar_chase_alu_src(scalar, i);
+         if (src.def->parent_instr->type != nir_instr_type_intrinsic)
+            continue;
+         if (nir_ssa_scalar_chase_alu_src(scalar, !i).def->divergent)
+            continue;
+
+         nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(src.def->parent_instr);
+         if (intrin->intrinsic == nir_intrinsic_load_subgroup_invocation)
+            dims = 0x8;
+         else if (intrin->intrinsic == nir_intrinsic_load_local_invocation_index)
+            dims = 0x7;
+         else if (intrin->intrinsic == nir_intrinsic_load_local_invocation_id)
+            dims = 1 << src.comp;
+         else if (intrin->intrinsic == nir_intrinsic_load_global_invocation_index)
+            dims = 0x7;
+         else if (intrin->intrinsic == nir_intrinsic_load_global_invocation_id)
+            dims = 1 << src.comp;
+      }
+
+      return dims;
+   } else if (scalar.def->parent_instr->type == nir_instr_type_intrinsic) {
+      nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(scalar.def->parent_instr);
+      if (intrin->intrinsic == nir_intrinsic_elect)
+         return 0x8;
+      return 0;
+   } else {
+      return 0;
+   }
+}
+
+/* Returns true if the intrinsic is already conditional so that at most one
+ * invocation in the subgroup does the atomic.
+ */
+static bool
+is_atomic_already_optimized(nir_shader *shader, nir_intrinsic_instr *instr)
+{
+   unsigned dims = 0;
+   for (nir_cf_node *cf = &instr->instr.block->cf_node; cf; cf = cf->parent) {
+      if (cf->type == nir_cf_node_if) {
+         nir_block *first_then = nir_if_first_then_block(nir_cf_node_as_if(cf));
+         nir_block *last_then = nir_if_last_then_block(nir_cf_node_as_if(cf));
+         bool within_then = instr->instr.block->index >= first_then->index;
+         within_then = within_then && instr->instr.block->index <= last_then->index;
+         if (!within_then)
+            continue;
+
+         nir_ssa_scalar cond = {nir_cf_node_as_if(cf)->condition.ssa, 0};
+         dims |= match_invocation_comparison(cond);
+      }
+   }
+
+   unsigned dims_needed = 0;
+   for (unsigned i = 0; i < 3; i++)
+      dims_needed |= (shader->info.cs.local_size[i] > 1) << i;
+
+   return (dims & dims_needed) == dims_needed || dims & 0x8;
+}
+
 static nir_ssa_def *
 emit_scalar_intrinsic(nir_builder *b, nir_intrinsic_op op, unsigned bit_size)
 {
@@ -226,6 +299,9 @@ opt_uniform_atomics(nir_function_impl *impl)
             continue;
 
          if (nir_src_is_divergent(intrin->src[offset_src]))
+            continue;
+
+         if (is_atomic_already_optimized(b.shader, intrin))
             continue;
 
          b.cursor = nir_before_instr(instr);
