@@ -336,6 +336,8 @@ void apply_nuw_to_offsets(isel_context *ctx, nir_function_impl *impl)
 
    struct hash_table *range_ht = _mesa_pointer_hash_table_create(NULL);
 
+   nir_metadata_require(impl, nir_metadata_dominance);
+
    nir_foreach_block(block, impl) {
       nir_foreach_instr(instr, block) {
          if (instr->type != nir_instr_type_intrinsic)
@@ -767,6 +769,7 @@ void init_context(isel_context *ctx, nir_shader *shader)
 
    ctx->shader = shader;
    nir_divergence_analysis(shader);
+   nir_opt_uniform_atomics(shader);
 
    fill_desc_set_info(ctx, impl);
 
