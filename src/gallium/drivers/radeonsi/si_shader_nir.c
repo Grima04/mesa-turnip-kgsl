@@ -465,25 +465,6 @@ void si_nir_scan_shader(const struct nir_shader *nir, struct si_shader_info *inf
       /* post_depth_coverage implies early_fragment_tests */
       info->base.fs.early_fragment_tests |= info->base.fs.post_depth_coverage;
 
-      if (nir->info.fs.depth_layout != FRAG_DEPTH_LAYOUT_NONE) {
-         switch (nir->info.fs.depth_layout) {
-         case FRAG_DEPTH_LAYOUT_ANY:
-            info->properties[TGSI_PROPERTY_FS_DEPTH_LAYOUT] = TGSI_FS_DEPTH_LAYOUT_ANY;
-            break;
-         case FRAG_DEPTH_LAYOUT_GREATER:
-            info->properties[TGSI_PROPERTY_FS_DEPTH_LAYOUT] = TGSI_FS_DEPTH_LAYOUT_GREATER;
-            break;
-         case FRAG_DEPTH_LAYOUT_LESS:
-            info->properties[TGSI_PROPERTY_FS_DEPTH_LAYOUT] = TGSI_FS_DEPTH_LAYOUT_LESS;
-            break;
-         case FRAG_DEPTH_LAYOUT_UNCHANGED:
-            info->properties[TGSI_PROPERTY_FS_DEPTH_LAYOUT] = TGSI_FS_DEPTH_LAYOUT_UNCHANGED;
-            break;
-         default:
-            unreachable("Unknow depth layout");
-         }
-      }
-
       info->color_interpolate[0] = nir->info.fs.color0_interp;
       info->color_interpolate[1] = nir->info.fs.color1_interp;
       for (unsigned i = 0; i < 2; i++) {

@@ -2764,16 +2764,17 @@ static void *si_create_shader_selector(struct pipe_context *ctx,
                             S_02880C_MASK_EXPORT_ENABLE(sel->info.writes_samplemask) |
                             S_02880C_KILL_ENABLE(sel->info.uses_kill);
 
-   switch (sel->info.properties[TGSI_PROPERTY_FS_DEPTH_LAYOUT]) {
-   case TGSI_FS_DEPTH_LAYOUT_GREATER:
-      sel->db_shader_control |= S_02880C_CONSERVATIVE_Z_EXPORT(V_02880C_EXPORT_GREATER_THAN_Z);
-      break;
-   case TGSI_FS_DEPTH_LAYOUT_LESS:
-      sel->db_shader_control |= S_02880C_CONSERVATIVE_Z_EXPORT(V_02880C_EXPORT_LESS_THAN_Z);
-      break;
-   }
-
    if (sel->info.stage == MESA_SHADER_FRAGMENT) {
+      switch (sel->info.base.fs.depth_layout) {
+      case FRAG_DEPTH_LAYOUT_GREATER:
+         sel->db_shader_control |= S_02880C_CONSERVATIVE_Z_EXPORT(V_02880C_EXPORT_GREATER_THAN_Z);
+         break;
+      case FRAG_DEPTH_LAYOUT_LESS:
+         sel->db_shader_control |= S_02880C_CONSERVATIVE_Z_EXPORT(V_02880C_EXPORT_LESS_THAN_Z);
+         break;
+      default:;
+      }
+
       /* Z_ORDER, EXEC_ON_HIER_FAIL and EXEC_ON_NOOP should be set as following:
        *
        *   | early Z/S | writes_mem | allow_ReZ? |      Z_ORDER       | EXEC_ON_HIER_FAIL | EXEC_ON_NOOP
