@@ -109,9 +109,9 @@ static LLVMValueRef ngg_get_vertices_per_prim(struct si_shader_context *ctx, uns
    } else {
       assert(ctx->stage == MESA_SHADER_TESS_EVAL);
 
-      if (info->properties[TGSI_PROPERTY_TES_POINT_MODE])
+      if (info->base.tess.point_mode)
          *num_vertices = 1;
-      else if (info->properties[TGSI_PROPERTY_TES_PRIM_MODE] == PIPE_PRIM_LINES)
+      else if (info->base.tess.primitive_mode == GL_LINES)
          *num_vertices = 2;
       else
          *num_vertices = 3;

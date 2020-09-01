@@ -457,18 +457,15 @@ void si_nir_scan_shader(const struct nir_shader *nir, struct si_shader_info *inf
    info->stage = nir->info.stage;
 
    if (nir->info.stage == MESA_SHADER_TESS_EVAL) {
-      if (nir->info.tess.primitive_mode == GL_ISOLINES)
-         info->properties[TGSI_PROPERTY_TES_PRIM_MODE] = PIPE_PRIM_LINES;
-      else
-         info->properties[TGSI_PROPERTY_TES_PRIM_MODE] = nir->info.tess.primitive_mode;
-
       STATIC_ASSERT((TESS_SPACING_EQUAL + 1) % 3 == PIPE_TESS_SPACING_EQUAL);
       STATIC_ASSERT((TESS_SPACING_FRACTIONAL_ODD + 1) % 3 == PIPE_TESS_SPACING_FRACTIONAL_ODD);
       STATIC_ASSERT((TESS_SPACING_FRACTIONAL_EVEN + 1) % 3 == PIPE_TESS_SPACING_FRACTIONAL_EVEN);
 
       info->properties[TGSI_PROPERTY_TES_SPACING] = (nir->info.tess.spacing + 1) % 3;
       info->properties[TGSI_PROPERTY_TES_VERTEX_ORDER_CW] = !nir->info.tess.ccw;
-      info->properties[TGSI_PROPERTY_TES_POINT_MODE] = nir->info.tess.point_mode;
+
+      if (info->base.tess.primitive_mode == GL_ISOLINES)
+         info->base.tess.primitive_mode = GL_LINES;
    }
 
    if (nir->info.stage == MESA_SHADER_GEOMETRY) {

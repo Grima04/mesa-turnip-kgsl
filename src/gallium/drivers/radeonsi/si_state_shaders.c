@@ -312,20 +312,20 @@ static void si_set_tesseval_regs(struct si_screen *sscreen, const struct si_shad
                                  struct si_pm4_state *pm4)
 {
    const struct si_shader_info *info = &tes->info;
-   unsigned tes_prim_mode = info->properties[TGSI_PROPERTY_TES_PRIM_MODE];
+   unsigned tes_prim_mode = info->base.tess.primitive_mode;
    unsigned tes_spacing = info->properties[TGSI_PROPERTY_TES_SPACING];
    bool tes_vertex_order_cw = info->properties[TGSI_PROPERTY_TES_VERTEX_ORDER_CW];
-   bool tes_point_mode = info->properties[TGSI_PROPERTY_TES_POINT_MODE];
+   bool tes_point_mode = info->base.tess.point_mode;
    unsigned type, partitioning, topology, distribution_mode;
 
    switch (tes_prim_mode) {
-   case PIPE_PRIM_LINES:
+   case GL_LINES:
       type = V_028B6C_TESS_ISOLINE;
       break;
-   case PIPE_PRIM_TRIANGLES:
+   case GL_TRIANGLES:
       type = V_028B6C_TESS_TRIANGLE;
       break;
-   case PIPE_PRIM_QUADS:
+   case GL_QUADS:
       type = V_028B6C_TESS_QUAD;
       break;
    default:
@@ -350,7 +350,7 @@ static void si_set_tesseval_regs(struct si_screen *sscreen, const struct si_shad
 
    if (tes_point_mode)
       topology = V_028B6C_OUTPUT_POINT;
-   else if (tes_prim_mode == PIPE_PRIM_LINES)
+   else if (tes_prim_mode == GL_LINES)
       topology = V_028B6C_OUTPUT_LINE;
    else if (tes_vertex_order_cw)
       /* for some reason, this must be the other way around */
@@ -1025,9 +1025,9 @@ unsigned si_get_input_prim(const struct si_shader_selector *gs)
       return gs->info.properties[TGSI_PROPERTY_GS_INPUT_PRIM];
 
    if (gs->info.stage == MESA_SHADER_TESS_EVAL) {
-      if (gs->info.properties[TGSI_PROPERTY_TES_POINT_MODE])
+      if (gs->info.base.tess.point_mode)
          return PIPE_PRIM_POINTS;
-      if (gs->info.properties[TGSI_PROPERTY_TES_PRIM_MODE] == PIPE_PRIM_LINES)
+      if (gs->info.base.tess.primitive_mode == GL_LINES)
          return PIPE_PRIM_LINES;
       return PIPE_PRIM_TRIANGLES;
    }
@@ -1832,7 +1832,7 @@ static inline void si_shader_selector_key(struct pipe_context *ctx, struct si_sh
       }
 
       key->part.tcs.epilog.prim_mode =
-         sctx->tes_shader.cso->info.properties[TGSI_PROPERTY_TES_PRIM_MODE];
+         sctx->tes_shader.cso->info.base.tess.primitive_mode;
       key->part.tcs.epilog.invoc0_tess_factors_are_def =
          sel->info.tessfactors_are_def_in_all_invocs;
       key->part.tcs.epilog.tes_reads_tess_factors = sctx->tes_shader.cso->info.reads_tess_factors;
@@ -2700,12 +2700,16 @@ static void *si_create_shader_selector(struct pipe_context *ctx,
       assert(((sel->esgs_itemsize / 4) & C_028AAC_ITEMSIZE) == 0);
 
       /* Only for TES: */
-      if (sel->info.properties[TGSI_PROPERTY_TES_POINT_MODE])
-         sel->rast_prim = PIPE_PRIM_POINTS;
-      else if (sel->info.properties[TGSI_PROPERTY_TES_PRIM_MODE] == PIPE_PRIM_LINES)
-         sel->rast_prim = PIPE_PRIM_LINE_STRIP;
-      else
+      if (sel->info.stage == MESA_SHADER_TESS_EVAL) {
+         if (sel->info.base.tess.point_mode)
+            sel->rast_prim = PIPE_PRIM_POINTS;
+         else if (sel->info.base.tess.primitive_mode == GL_LINES)
+            sel->rast_prim = PIPE_PRIM_LINE_STRIP;
+         else
+            sel->rast_prim = PIPE_PRIM_TRIANGLES;
+      } else {
          sel->rast_prim = PIPE_PRIM_TRIANGLES;
+      }
       break;
 
    case MESA_SHADER_FRAGMENT:

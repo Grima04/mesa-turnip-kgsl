@@ -615,7 +615,7 @@ static LLVMValueRef si_load_tess_coord(struct ac_shader_abi *abi)
                             ctx->ac.f32_0, ctx->ac.f32_0};
 
    /* For triangles, the vector should be (u, v, 1-u-v). */
-   if (ctx->shader->selector->info.properties[TGSI_PROPERTY_TES_PRIM_MODE] == PIPE_PRIM_TRIANGLES) {
+   if (ctx->shader->selector->info.base.tess.primitive_mode == GL_TRIANGLES) {
       coord[2] = LLVMBuildFSub(ctx->ac.builder, ctx->ac.f32_1,
                                LLVMBuildFAdd(ctx->ac.builder, coord[0], coord[1], ""), "");
    }
@@ -756,17 +756,17 @@ static void si_write_tess_factors(struct si_shader_context *ctx, LLVMValueRef re
 
    /* Determine the layout of one tess factor element in the buffer. */
    switch (shader->key.part.tcs.epilog.prim_mode) {
-   case PIPE_PRIM_LINES:
+   case GL_LINES:
       stride = 2; /* 2 dwords, 1 vec2 store */
       outer_comps = 2;
       inner_comps = 0;
       break;
-   case PIPE_PRIM_TRIANGLES:
+   case GL_TRIANGLES:
       stride = 4; /* 4 dwords, 1 vec4 store */
       outer_comps = 3;
       inner_comps = 1;
       break;
-   case PIPE_PRIM_QUADS:
+   case GL_QUADS:
       stride = 6; /* 6 dwords, 2 stores (vec4 + vec2) */
       outer_comps = 4;
       inner_comps = 2;
@@ -808,7 +808,7 @@ static void si_write_tess_factors(struct si_shader_context *ctx, LLVMValueRef re
       }
    }
 
-   if (shader->key.part.tcs.epilog.prim_mode == PIPE_PRIM_LINES) {
+   if (shader->key.part.tcs.epilog.prim_mode == GL_LINES) {
       /* For isolines, the hardware expects tess factors in the
        * reverse order from what NIR specifies.
        */
