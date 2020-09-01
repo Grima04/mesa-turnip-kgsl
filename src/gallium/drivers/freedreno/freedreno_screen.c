@@ -232,7 +232,6 @@ fd_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
 	case PIPE_CAP_PCI_BUS:
 	case PIPE_CAP_PCI_DEVICE:
 	case PIPE_CAP_PCI_FUNCTION:
-	case PIPE_CAP_DEPTH_CLIP_DISABLE_SEPARATE:
 		return 0;
 
 	case PIPE_CAP_FRAGMENT_SHADER_TEXTURE_LOD:
@@ -262,7 +261,10 @@ fd_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
 		return is_a6xx(screen);
 
 	case PIPE_CAP_DEPTH_CLIP_DISABLE:
-		return is_a3xx(screen) || is_a4xx(screen);
+		return is_a3xx(screen) || is_a4xx(screen) || is_a6xx(screen);
+
+	case PIPE_CAP_DEPTH_CLIP_DISABLE_SEPARATE:
+		return is_a6xx(screen);
 
 	case PIPE_CAP_POLYGON_OFFSET_CLAMP:
 		return is_a4xx(screen) || is_a5xx(screen) || is_a6xx(screen);

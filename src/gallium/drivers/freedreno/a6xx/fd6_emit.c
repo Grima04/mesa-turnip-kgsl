@@ -34,6 +34,7 @@
 
 #include "freedreno_log.h"
 #include "freedreno_resource.h"
+#include "freedreno_state.h"
 #include "freedreno_query_hw.h"
 #include "common/freedreno_guardband.h"
 
@@ -823,13 +824,13 @@ fd6_emit_state(struct fd_ringbuffer *ring, struct fd6_emit *emit)
 		fd6_emit_take_group(emit, state, FD6_GROUP_VBO, ENABLE_ALL);
 	}
 
-	if (dirty & FD_DIRTY_ZSA) {
-		struct fd6_zsa_stateobj *zsa = fd6_zsa_stateobj(ctx->zsa);
+	if (dirty & (FD_DIRTY_ZSA | FD_DIRTY_RASTERIZER)) {
+		struct fd_ringbuffer *state =
+			fd6_zsa_state(ctx,
+					util_format_is_pure_integer(pipe_surface_format(pfb->cbufs[0])),
+					fd_depth_clamp_enabled(ctx));
 
-		if (util_format_is_pure_integer(pipe_surface_format(pfb->cbufs[0])))
-			fd6_emit_add_group(emit, zsa->stateobj_no_alpha, FD6_GROUP_ZSA, ENABLE_ALL);
-		else
-			fd6_emit_add_group(emit, zsa->stateobj, FD6_GROUP_ZSA, ENABLE_ALL);
+		fd6_emit_add_group(emit, state, FD6_GROUP_ZSA, ENABLE_ALL);
 	}
 
 	if (dirty & (FD_DIRTY_ZSA | FD_DIRTY_BLEND | FD_DIRTY_PROG)) {
@@ -917,6 +918,24 @@ fd6_emit_state(struct fd_ringbuffer *ring, struct fd6_emit *emit)
 					.vert = guardband_y
 				)
 			);
+	}
+
+	/* The clamp ranges are only used when the rasterizer wants depth
+	 * clamping.
+	 */
+	if ((dirty & (FD_DIRTY_VIEWPORT | FD_DIRTY_RASTERIZER)) &&
+			fd_depth_clamp_enabled(ctx)) {
+		float zmin, zmax;
+		util_viewport_zmin_zmax(&ctx->viewport, ctx->rasterizer->clip_halfz,
+				&zmin, &zmax);
+
+		OUT_REG(ring,
+				A6XX_GRAS_CL_Z_CLAMP_MIN(0, zmin),
+				A6XX_GRAS_CL_Z_CLAMP_MAX(0, zmax));
+
+		OUT_REG(ring,
+				A6XX_RB_Z_CLAMP_MIN(zmin),
+				A6XX_RB_Z_CLAMP_MAX(zmax));
 	}
 
 	if (dirty & FD_DIRTY_PROG) {

@@ -36,6 +36,9 @@
 
 #include "fd6_context.h"
 
+#define FD6_ZSA_NO_ALPHA    (1 << 0)
+#define FD6_ZSA_DEPTH_CLAMP (1 << 1)
+
 struct fd6_zsa_stateobj {
 	struct pipe_depth_stencil_alpha_state base;
 
@@ -49,14 +52,24 @@ struct fd6_zsa_stateobj {
 	bool invalidate_lrz;
 	bool alpha_test;
 
-	struct fd_ringbuffer *stateobj;
-	struct fd_ringbuffer *stateobj_no_alpha;
+	struct fd_ringbuffer *stateobj[4];
 };
 
 static inline struct fd6_zsa_stateobj *
 fd6_zsa_stateobj(struct pipe_depth_stencil_alpha_state *zsa)
 {
 	return (struct fd6_zsa_stateobj *)zsa;
+}
+
+static inline struct fd_ringbuffer *
+fd6_zsa_state(struct fd_context *ctx, bool no_alpha, bool depth_clamp)
+{
+	int variant = 0;
+	if (no_alpha)
+		variant |= FD6_ZSA_NO_ALPHA;
+	if (depth_clamp)
+		variant |= FD6_ZSA_DEPTH_CLAMP;
+	return fd6_zsa_stateobj(ctx->zsa)->stateobj[variant];
 }
 
 void * fd6_zsa_state_create(struct pipe_context *pctx,

@@ -200,37 +200,26 @@ fd6_zsa_state_create(struct pipe_context *pctx,
 			A6XX_RB_ALPHA_CONTROL_ALPHA_TEST_FUNC(cso->alpha.func);
 	}
 
-	so->stateobj = fd_ringbuffer_new_object(ctx->pipe, 9 * 4);
-	struct fd_ringbuffer *ring = so->stateobj;
+	for (int i = 0; i < 4; i++) {
+		struct fd_ringbuffer *ring = fd_ringbuffer_new_object(ctx->pipe, 9 * 4);
 
-	OUT_PKT4(ring, REG_A6XX_RB_ALPHA_CONTROL, 1);
-	OUT_RING(ring, so->rb_alpha_control);
+		OUT_PKT4(ring, REG_A6XX_RB_ALPHA_CONTROL, 1);
+		OUT_RING(ring, (i & FD6_ZSA_NO_ALPHA) ? so->rb_alpha_control :
+			so->rb_alpha_control & ~A6XX_RB_ALPHA_CONTROL_ALPHA_TEST);
 
-	OUT_PKT4(ring, REG_A6XX_RB_STENCIL_CONTROL, 1);
-	OUT_RING(ring, so->rb_stencil_control);
+		OUT_PKT4(ring, REG_A6XX_RB_STENCIL_CONTROL, 1);
+		OUT_RING(ring, so->rb_stencil_control);
 
-	OUT_PKT4(ring, REG_A6XX_RB_DEPTH_CNTL, 1);
-	OUT_RING(ring, so->rb_depth_cntl);
+		OUT_PKT4(ring, REG_A6XX_RB_DEPTH_CNTL, 1);
+		OUT_RING(ring, so->rb_depth_cntl |
+				COND(i & FD6_ZSA_DEPTH_CLAMP, A6XX_RB_DEPTH_CNTL_Z_CLAMP_ENABLE));
 
-	OUT_PKT4(ring, REG_A6XX_RB_STENCILMASK, 2);
-	OUT_RING(ring, so->rb_stencilmask);
-	OUT_RING(ring, so->rb_stencilwrmask);
+		OUT_PKT4(ring, REG_A6XX_RB_STENCILMASK, 2);
+		OUT_RING(ring, so->rb_stencilmask);
+		OUT_RING(ring, so->rb_stencilwrmask);
 
-	so->stateobj_no_alpha = fd_ringbuffer_new_object(ctx->pipe, 9 * 4);
-	ring = so->stateobj_no_alpha;
-
-	OUT_PKT4(ring, REG_A6XX_RB_ALPHA_CONTROL, 1);
-	OUT_RING(ring, so->rb_alpha_control & ~A6XX_RB_ALPHA_CONTROL_ALPHA_TEST);
-
-	OUT_PKT4(ring, REG_A6XX_RB_STENCIL_CONTROL, 1);
-	OUT_RING(ring, so->rb_stencil_control);
-
-	OUT_PKT4(ring, REG_A6XX_RB_DEPTH_CNTL, 1);
-	OUT_RING(ring, so->rb_depth_cntl);
-
-	OUT_PKT4(ring, REG_A6XX_RB_STENCILMASK, 2);
-	OUT_RING(ring, so->rb_stencilmask);
-	OUT_RING(ring, so->rb_stencilwrmask);
+		so->stateobj[i] = ring;
+	}
 
 	return so;
 }
@@ -240,7 +229,7 @@ fd6_depth_stencil_alpha_state_delete(struct pipe_context *pctx, void *hwcso)
 {
 	struct fd6_zsa_stateobj *so = hwcso;
 
-	fd_ringbuffer_del(so->stateobj);
-	fd_ringbuffer_del(so->stateobj_no_alpha);
+	for (int i = 0; i < ARRAY_SIZE(so->stateobj); i++)
+		fd_ringbuffer_del(so->stateobj[i]);
 	FREE(hwcso);
 }
