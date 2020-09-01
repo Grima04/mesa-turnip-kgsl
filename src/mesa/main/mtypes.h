@@ -4247,6 +4247,7 @@ struct gl_extensions
    GLboolean ARB_conservative_depth;
    GLboolean ARB_copy_image;
    GLboolean ARB_cull_distance;
+   GLboolean EXT_color_buffer_half_float;
    GLboolean ARB_depth_buffer_float;
    GLboolean ARB_depth_clamp;
    GLboolean ARB_depth_texture;

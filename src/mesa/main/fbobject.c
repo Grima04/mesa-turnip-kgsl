@@ -794,14 +794,18 @@ is_format_color_renderable(const struct gl_context *ctx, mesa_format format,
       return _mesa_has_EXT_texture_rg(ctx);
    case GL_R16F:
    case GL_RG16F:
-      return _mesa_is_gles3(ctx);
+      return _mesa_is_gles3(ctx) ||
+             (_mesa_has_EXT_color_buffer_half_float(ctx) &&
+              _mesa_has_EXT_texture_rg(ctx));
    case GL_RGBA16F:
    case GL_RGBA32F:
       return _mesa_has_EXT_color_buffer_float(ctx);
+   case GL_RGB16F:
+      return _mesa_has_EXT_color_buffer_half_float(ctx) &&
+              _mesa_has_OES_texture_half_float(ctx);
    case GL_RGB32F:
    case GL_RGB32I:
    case GL_RGB32UI:
-   case GL_RGB16F:
    case GL_RGB16I:
    case GL_RGB16UI:
    case GL_RGB8_SNORM:
@@ -853,7 +857,7 @@ gles_check_float_renderable(const struct gl_context *ctx,
       return false;
 
    /* Unsized GL_HALF_FLOAT supported only with EXT_color_buffer_half_float. */
-   if (att->Texture->_IsHalfFloat)
+   if (att->Texture->_IsHalfFloat && !_mesa_has_EXT_color_buffer_half_float(ctx))
       return false;
 
    const struct gl_texture_object *texObj = att->Texture;
@@ -1146,6 +1150,16 @@ _mesa_test_framebuffer_completeness(struct gl_context *ctx,
          att = &fb->Attachment[BUFFER_COLOR0 + i];
          test_attachment_completeness(ctx, GL_COLOR, att);
          if (!att->Complete) {
+            /* With EXT_color_buffer_half_float, check if attachment was incomplete
+             * due to invalid format. This is special case for the extension where
+             * CTS tests expect unsupported framebuffer status instead of incomplete.
+             */
+            if ((_mesa_is_gles(ctx) && _mesa_has_EXT_color_buffer_half_float(ctx)) &&
+                !gles_check_float_renderable(ctx, att)) {
+               fb->_Status = GL_FRAMEBUFFER_UNSUPPORTED;
+               return;
+            }
+
             fb->_Status = GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT_EXT;
             fbo_incomplete(ctx, "color attachment incomplete", i);
             return;
@@ -2280,6 +2294,9 @@ _mesa_base_fbo_format(const struct gl_context *ctx, GLenum internalFormat)
               _mesa_is_gles3(ctx) /* EXT_color_buffer_float */ )
          ? GL_RG : 0;
    case GL_RGB16F:
+      return (_mesa_is_desktop_gl(ctx) && ctx->Extensions.ARB_texture_float) ||
+             (_mesa_is_gles(ctx) && _mesa_has_EXT_color_buffer_half_float(ctx))
+         ? GL_RGB : 0;
    case GL_RGB32F:
       return (_mesa_is_desktop_gl(ctx) && ctx->Extensions.ARB_texture_float)
          ? GL_RGB : 0;
