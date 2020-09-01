@@ -8232,6 +8232,12 @@ void visit_intrinsic(isel_context *ctx, nir_intrinsic_instr *instr)
                get_ssa_temp(ctx, &instr->dest.ssa));
       break;
    }
+   case nir_intrinsic_elect: {
+      Temp first = bld.sop1(Builder::s_ff1_i32, bld.def(s1), Operand(exec, bld.lm));
+      emit_wqm(ctx, bld.sop2(Builder::s_lshl, bld.def(bld.lm), bld.def(s1, scc), Operand(1u), first),
+               get_ssa_temp(ctx, &instr->dest.ssa));
+      break;
+   }
    case nir_intrinsic_shader_clock: {
       Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
       if (nir_intrinsic_memory_scope(instr) == NIR_SCOPE_SUBGROUP && ctx->options->chip_class >= GFX10_3) {
