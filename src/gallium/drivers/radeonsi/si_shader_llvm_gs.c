@@ -79,11 +79,6 @@ static LLVMValueRef si_llvm_load_input_gs(struct ac_shader_abi *abi, unsigned in
 
       LLVMValueRef ptr = ac_build_gep0(&ctx->ac, ctx->esgs_ring, vtx_offset);
       LLVMValueRef value = LLVMBuildLoad(ctx->ac.builder, ptr, "");
-      if (ac_get_type_size(type) == 8) {
-         ptr = LLVMBuildGEP(ctx->ac.builder, ptr, &ctx->ac.i32_1, 1, "");
-         LLVMValueRef values[2] = {value, LLVMBuildLoad(ctx->ac.builder, ptr, "")};
-         value = ac_build_gather_values(&ctx->ac, values, 2);
-      }
       return LLVMBuildBitCast(ctx->ac.builder, value, type, "");
    }
 
@@ -97,14 +92,6 @@ static LLVMValueRef si_llvm_load_input_gs(struct ac_shader_abi *abi, unsigned in
 
    value = ac_build_buffer_load(&ctx->ac, ctx->esgs_ring, 1, ctx->ac.i32_0, vtx_offset, soffset, 0,
                                 ac_glc, true, false);
-   if (ac_get_type_size(type) == 8) {
-      LLVMValueRef value2;
-      soffset = LLVMConstInt(ctx->ac.i32, (param * 4 + swizzle + 1) * 256, 0);
-
-      value2 = ac_build_buffer_load(&ctx->ac, ctx->esgs_ring, 1, ctx->ac.i32_0, vtx_offset, soffset,
-                                    0, ac_glc, true, false);
-      return si_build_gather_64bit(ctx, type, value, value2);
-   }
    return LLVMBuildBitCast(ctx->ac.builder, value, type, "");
 }
 
@@ -116,14 +103,9 @@ static LLVMValueRef si_nir_load_input_gs(struct ac_shader_abi *abi, unsigned loc
    struct si_shader_context *ctx = si_shader_context_from_abi(abi);
 
    LLVMValueRef value[4];
-   for (unsigned i = 0; i < num_components; i++) {
-      unsigned offset = i;
-      if (ac_get_type_size(type) == 8)
-         offset *= 2;
-
-      offset += component;
-      value[i + component] = si_llvm_load_input_gs(&ctx->abi, driver_location / 4 + const_index,
-                                                   vertex_index, type, offset);
+   for (unsigned i = component; i < component + num_components; i++) {
+      value[i] = si_llvm_load_input_gs(&ctx->abi, driver_location / 4 + const_index,
+                                       vertex_index, type, i);
    }
 
    return ac_build_varying_gather_values(&ctx->ac, value, num_components, component);

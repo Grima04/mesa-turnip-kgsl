@@ -242,8 +242,6 @@ LLVMValueRef si_insert_input_ret_float(struct si_shader_context *ctx, LLVMValueR
 LLVMValueRef si_insert_input_ptr(struct si_shader_context *ctx, LLVMValueRef ret,
                                  struct ac_arg param, unsigned return_index);
 LLVMValueRef si_prolog_get_rw_buffers(struct si_shader_context *ctx);
-LLVMValueRef si_build_gather_64bit(struct si_shader_context *ctx, LLVMTypeRef type,
-                                   LLVMValueRef val1, LLVMValueRef val2);
 void si_llvm_emit_barrier(struct si_shader_context *ctx);
 void si_llvm_declare_esgs_ring(struct si_shader_context *ctx);
 void si_init_exec_from_input(struct si_shader_context *ctx, struct ac_arg param,

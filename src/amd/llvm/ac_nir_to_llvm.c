@@ -2424,10 +2424,8 @@ static void visit_store_output(struct ac_nir_context *ctx, nir_intrinsic_instr *
    case 32:
       break;
    case 64:
-      writemask = widen_mask(writemask, 2);
-      src = LLVMBuildBitCast(ctx->ac.builder, src,
-                             LLVMVectorType(ctx->ac.f32, ac_get_llvm_num_components(src) * 2), "");
-      break;
+      unreachable("64-bit IO should have been lowered to 32 bits");
+      return;
    default:
       unreachable("unhandled store_output bit size");
       return;
@@ -3404,11 +3402,23 @@ static LLVMValueRef visit_load(struct ac_nir_context *ctx, nir_intrinsic_instr *
    LLVMTypeRef component_type;
    unsigned base = nir_intrinsic_base(instr);
    unsigned component = nir_intrinsic_component(instr);
-   unsigned count = instr->dest.ssa.num_components * (instr->dest.ssa.bit_size == 64 ? 2 : 1);
+   unsigned count = instr->dest.ssa.num_components;
    nir_src *vertex_index_src = nir_get_io_vertex_index_src(instr);
    LLVMValueRef vertex_index = vertex_index_src ? get_src(ctx, *vertex_index_src) : NULL;
    nir_src offset = *nir_get_io_offset_src(instr);
    LLVMValueRef indir_index = NULL;
+
+   switch (instr->dest.ssa.bit_size) {
+   case 16:
+   case 32:
+      break;
+   case 64:
+      unreachable("64-bit IO should have been lowered");
+      return NULL;
+   default:
+      unreachable("unhandled load type");
+      return NULL;
+   }
 
    if (LLVMGetTypeKind(dest_type) == LLVMVectorTypeKind)
       component_type = LLVMGetElementType(dest_type);
@@ -3420,10 +3430,13 @@ static LLVMValueRef visit_load(struct ac_nir_context *ctx, nir_intrinsic_instr *
    else
       indir_index = get_src(ctx, offset);
 
-   if (ctx->stage == MESA_SHADER_TESS_CTRL || (ctx->stage == MESA_SHADER_TESS_EVAL && !is_output)) {
-      LLVMValueRef result = ctx->abi->load_tess_varyings(
-         ctx->abi, component_type, vertex_index, indir_index, 0, 0, base * 4, component,
-         instr->num_components, false, false, !is_output);
+   if (ctx->stage == MESA_SHADER_TESS_CTRL ||
+       (ctx->stage == MESA_SHADER_TESS_EVAL && !is_output)) {
+      LLVMValueRef result = ctx->abi->load_tess_varyings(ctx->abi, component_type,
+                                                         vertex_index, indir_index,
+                                                         0, 0, base * 4,
+                                                         component, count,
+                                                         false, false, !is_output);
       if (instr->dest.ssa.bit_size == 16) {
          result = ac_to_integer(&ctx->ac, result);
          result = LLVMBuildTrunc(ctx->ac.builder, result, dest_type, "");
@@ -3435,11 +3448,10 @@ static LLVMValueRef visit_load(struct ac_nir_context *ctx, nir_intrinsic_instr *
    assert(!indir_index);
 
    if (ctx->stage == MESA_SHADER_GEOMETRY) {
-      LLVMTypeRef type = LLVMIntTypeInContext(ctx->ac.context, instr->dest.ssa.bit_size);
       assert(nir_src_is_const(*vertex_index_src));
 
-      return ctx->abi->load_inputs(ctx->abi, 0, base * 4, component, instr->num_components,
-                                   nir_src_as_uint(*vertex_index_src), 0, type);
+      return ctx->abi->load_inputs(ctx->abi, 0, base * 4, component, count,
+                                   nir_src_as_uint(*vertex_index_src), 0, component_type);
    }
 
    if (ctx->stage == MESA_SHADER_FRAGMENT && is_output &&
@@ -3485,8 +3497,6 @@ static LLVMValueRef visit_load(struct ac_nir_context *ctx, nir_intrinsic_instr *
    LLVMValueRef attr_number = LLVMConstInt(ctx->ac.i32, base, false);
 
    for (unsigned chan = 0; chan < count; chan++) {
-      if (component + chan > 4)
-         attr_number = LLVMConstInt(ctx->ac.i32, base + 1, false);
       LLVMValueRef llvm_chan = LLVMConstInt(ctx->ac.i32, (component + chan) % 4, false);
       values[chan] =
          ac_build_fs_interp_mov(&ctx->ac, LLVMConstInt(ctx->ac.i32, vertex_id, false), llvm_chan,

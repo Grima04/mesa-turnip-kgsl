@@ -64,29 +64,18 @@ static void scan_io_usage(struct si_shader_info *info, nir_intrinsic_instr *intr
    }
 
    unsigned mask, bit_size;
-   bool dual_slot, is_output_load;
+   bool is_output_load;
 
    if (nir_intrinsic_infos[intr->intrinsic].index_map[NIR_INTRINSIC_WRMASK] > 0) {
       mask = nir_intrinsic_write_mask(intr); /* store */
       bit_size = nir_src_bit_size(intr->src[0]);
-      dual_slot = bit_size == 64 && nir_src_num_components(intr->src[0]) >= 3;
       is_output_load = false;
    } else {
       mask = nir_ssa_def_components_read(&intr->dest.ssa); /* load */
       bit_size = intr->dest.ssa.bit_size;
-      dual_slot = bit_size == 64 && intr->dest.ssa.num_components >= 3;
       is_output_load = !is_input;
    }
-
-   /* Convert the 64-bit component mask to a 32-bit component mask. */
-   if (bit_size == 64) {
-      unsigned new_mask = 0;
-      for (unsigned i = 0; i < 4; i++) {
-         if (mask & (1 << i))
-            new_mask |= 0x3 << (2 * i);
-      }
-      mask = new_mask;
-   }
+   assert(bit_size != 64 && !(mask & ~0xf) && "64-bit IO should have been lowered");
 
    /* Convert the 16-bit component mask to a 32-bit component mask. */
    if (bit_size == 16) {
@@ -120,20 +109,19 @@ static void scan_io_usage(struct si_shader_info *info, nir_intrinsic_instr *intr
    }
 
    unsigned driver_location = nir_intrinsic_base(intr);
-   unsigned num_slots = indirect ? nir_intrinsic_io_semantics(intr).num_slots : (1 + dual_slot);
+   unsigned num_slots = indirect ? nir_intrinsic_io_semantics(intr).num_slots : 1;
 
    if (is_input) {
       assert(driver_location + num_slots <= ARRAY_SIZE(info->input_usage_mask));
 
       for (unsigned i = 0; i < num_slots; i++) {
          unsigned loc = driver_location + i;
-         unsigned slot_mask = (dual_slot && i % 2 ? mask >> 4 : mask) & 0xf;
 
          info->input_semantic[loc] = semantic + i;
          info->input_interpolate[loc] = interp;
 
-         if (slot_mask) {
-            info->input_usage_mask[loc] |= slot_mask;
+         if (mask) {
+            info->input_usage_mask[loc] |= mask;
             info->num_inputs = MAX2(info->num_inputs, loc + 1);
 
             if (semantic == VARYING_SLOT_PRIMITIVE_ID)
@@ -147,24 +135,23 @@ static void scan_io_usage(struct si_shader_info *info, nir_intrinsic_instr *intr
 
       for (unsigned i = 0; i < num_slots; i++) {
          unsigned loc = driver_location + i;
-         unsigned slot_mask = (dual_slot && i % 2 ? mask >> 4 : mask) & 0xf;
 
          info->output_semantic[loc] = semantic + i;
          info->output_semantic_to_slot[semantic + i] = loc;
 
          if (is_output_load) {
             /* Output loads have only a few things that we need to track. */
-            info->output_readmask[loc] |= slot_mask;
+            info->output_readmask[loc] |= mask;
 
             if (info->stage == MESA_SHADER_FRAGMENT &&
                 nir_intrinsic_io_semantics(intr).fb_fetch_output)
                info->uses_fbfetch = true;
-         } else if (slot_mask) {
+         } else if (mask) {
             /* Output stores. */
             if (info->stage == MESA_SHADER_GEOMETRY) {
                unsigned gs_streams = (uint32_t)nir_intrinsic_io_semantics(intr).gs_streams <<
                                      (nir_intrinsic_component(intr) * 2);
-               unsigned new_mask = slot_mask & ~info->output_usagemask[loc];
+               unsigned new_mask = mask & ~info->output_usagemask[loc];
 
                for (unsigned i = 0; i < 4; i++) {
                   unsigned stream = (gs_streams >> (i * 2)) & 0x3;
@@ -176,7 +163,7 @@ static void scan_io_usage(struct si_shader_info *info, nir_intrinsic_instr *intr
                }
             }
 
-            info->output_usagemask[loc] |= slot_mask;
+            info->output_usagemask[loc] |= mask;
             info->num_outputs = MAX2(info->num_outputs, loc + 1);
 
             if (info->stage == MESA_SHADER_FRAGMENT) {
@@ -632,7 +619,7 @@ static void si_lower_io(struct nir_shader *nir)
       si_nir_lower_color(nir);
 
    NIR_PASS_V(nir, nir_lower_io, nir_var_shader_out | nir_var_shader_in,
-              type_size_vec4, 0);
+              type_size_vec4, nir_lower_io_lower_64bit_to_32);
    nir->info.io_lowered = true;
 
    /* This pass needs actual constants */

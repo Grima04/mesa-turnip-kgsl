@@ -269,7 +269,7 @@ static LLVMValueRef buffer_load(struct si_shader_context *ctx, LLVMTypeRef type,
                                 LLVMValueRef buffer, LLVMValueRef offset, LLVMValueRef base,
                                 bool can_speculate)
 {
-   LLVMValueRef value, value2;
+   LLVMValueRef value;
    LLVMTypeRef vec_type = LLVMVectorType(type, 4);
 
    if (swizzle == ~0) {
@@ -279,22 +279,12 @@ static LLVMValueRef buffer_load(struct si_shader_context *ctx, LLVMTypeRef type,
       return LLVMBuildBitCast(ctx->ac.builder, value, vec_type, "");
    }
 
-   if (ac_get_type_size(type) != 8) {
-      value = ac_build_buffer_load(&ctx->ac, buffer, 4, NULL, base, offset, 0, ac_glc,
-                                   can_speculate, false);
-
-      value = LLVMBuildBitCast(ctx->ac.builder, value, vec_type, "");
-      return LLVMBuildExtractElement(ctx->ac.builder, value, LLVMConstInt(ctx->ac.i32, swizzle, 0),
-                                     "");
-   }
-
-   value = ac_build_buffer_load(&ctx->ac, buffer, 1, NULL, base, offset, swizzle * 4, ac_glc,
+   value = ac_build_buffer_load(&ctx->ac, buffer, 4, NULL, base, offset, 0, ac_glc,
                                 can_speculate, false);
 
-   value2 = ac_build_buffer_load(&ctx->ac, buffer, 1, NULL, base, offset, swizzle * 4 + 4, ac_glc,
-                                 can_speculate, false);
-
-   return si_build_gather_64bit(ctx, type, value, value2);
+   value = LLVMBuildBitCast(ctx->ac.builder, value, vec_type, "");
+   return LLVMBuildExtractElement(ctx->ac.builder, value, LLVMConstInt(ctx->ac.i32, swizzle, 0),
+                                  "");
 }
 
 /**
@@ -318,19 +308,8 @@ static LLVMValueRef lshs_lds_load(struct si_shader_context *ctx, LLVMTypeRef typ
       return ac_build_gather_values(&ctx->ac, values, 4);
    }
 
-   /* Split 64-bit loads. */
-   if (ac_get_type_size(type) == 8) {
-      LLVMValueRef lo, hi;
-
-      lo = lshs_lds_load(ctx, ctx->ac.i32, swizzle, dw_addr);
-      hi = lshs_lds_load(ctx, ctx->ac.i32, swizzle + 1, dw_addr);
-      return si_build_gather_64bit(ctx, type, lo, hi);
-   }
-
    dw_addr = LLVMBuildAdd(ctx->ac.builder, dw_addr, LLVMConstInt(ctx->ac.i32, swizzle, 0), "");
-
    value = ac_lds_load(&ctx->ac, dw_addr);
-
    return LLVMBuildBitCast(ctx->ac.builder, value, type, "");
 }
 
@@ -443,14 +422,8 @@ static LLVMValueRef si_nir_load_tcs_varyings(struct ac_shader_abi *abi, LLVMType
                                                  semantic);
 
    LLVMValueRef value[4];
-   for (unsigned i = 0; i < num_components; i++) {
-      unsigned offset = i;
-      if (ac_get_type_size(type) == 8)
-         offset *= 2;
-
-      offset += component;
-      value[i + component] = lshs_lds_load(ctx, type, offset, dw_addr);
-   }
+   for (unsigned i = component; i < component + num_components; i++)
+      value[i] = lshs_lds_load(ctx, type, i, dw_addr);
 
    return ac_build_varying_gather_values(&ctx->ac, value, num_components, component);
 }
@@ -487,23 +460,8 @@ static LLVMValueRef si_nir_load_input_tes(struct ac_shader_abi *abi, LLVMTypeRef
     * to refactor buffer_load().
     */
    LLVMValueRef value[4];
-   for (unsigned i = 0; i < num_components; i++) {
-      unsigned offset = i;
-      if (ac_get_type_size(type) == 8) {
-         offset *= 2;
-         if (offset == 4) {
-            ubyte semantic = info->input_semantic[driver_location + 1];
-            addr = get_tcs_tes_buffer_address_from_generic_indices(ctx, vertex_index, param_index,
-                                                                   semantic);
-         }
-
-         offset = offset % 4;
-      }
-
-      offset += component;
-      value[i + component] =
-         buffer_load(ctx, type, offset, ctx->tess_offchip_ring, base, addr, true);
-   }
+   for (unsigned i = component; i < component + num_components; i++)
+      value[i] = buffer_load(ctx, type, i, ctx->tess_offchip_ring, base, addr, true);
 
    return ac_build_varying_gather_values(&ctx->ac, value, num_components, component);
 }
@@ -563,20 +521,13 @@ static void si_nir_store_output_tcs(struct ac_shader_abi *abi, const struct nir_
    addr =
       get_tcs_tes_buffer_address_from_generic_indices(ctx, vertex_index, param_index, semantic);
 
-   for (unsigned chan = component; chan < 8; chan++) {
+   for (unsigned chan = component; chan < 4; chan++) {
       if (!(writemask & (1 << chan)))
          continue;
       LLVMValueRef value = ac_llvm_extract_elem(&ctx->ac, src, chan - component);
 
-      unsigned buffer_store_offset = chan % 4;
-      if (chan == 4) {
-         ubyte semantic = info->output_semantic[driver_location + 1];
-         addr = get_tcs_tes_buffer_address_from_generic_indices(ctx, vertex_index, param_index,
-                                                                semantic);
-      }
-
       /* Skip LDS stores if there is no LDS read of this output. */
-      if (info->output_readmask[driver_location + chan / 4] & (1 << (chan % 4)) ||
+      if (info->output_readmask[driver_location] & (1 << chan) ||
           /* The epilog reads LDS if invocation 0 doesn't define tess factors. */
           (is_tess_factor &&
            !ctx->shader->selector->info.tessfactors_are_def_in_all_invocs))
@@ -587,7 +538,7 @@ static void si_nir_store_output_tcs(struct ac_shader_abi *abi, const struct nir_
 
       if (writemask != 0xF && !is_tess_factor) {
          ac_build_buffer_store_dword(&ctx->ac, buffer, value, 1, addr, base,
-                                     4 * buffer_store_offset, ac_glc);
+                                     4 * chan, ac_glc);
       }
 
       /* Write tess factors into VGPRs for the epilog. */
