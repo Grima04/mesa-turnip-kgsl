@@ -370,15 +370,11 @@ LLVMValueRef si_llvm_get_block_size(struct ac_shader_abi *abi)
    LLVMValueRef values[3];
    LLVMValueRef result;
    unsigned i;
-   unsigned *properties = ctx->shader->selector->info.properties;
+   uint16_t *local_size = ctx->shader->selector->info.base.cs.local_size;
 
-   if (properties[TGSI_PROPERTY_CS_FIXED_BLOCK_WIDTH] != 0) {
-      unsigned sizes[3] = {properties[TGSI_PROPERTY_CS_FIXED_BLOCK_WIDTH],
-                           properties[TGSI_PROPERTY_CS_FIXED_BLOCK_HEIGHT],
-                           properties[TGSI_PROPERTY_CS_FIXED_BLOCK_DEPTH]};
-
+   if (local_size[0] != 0) {
       for (i = 0; i < 3; ++i)
-         values[i] = LLVMConstInt(ctx->ac.i32, sizes[i], 0);
+         values[i] = LLVMConstInt(ctx->ac.i32, local_size[i], 0);
 
       result = ac_build_gather_values(&ctx->ac, values, 3);
    } else {

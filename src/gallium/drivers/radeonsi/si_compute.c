@@ -137,9 +137,9 @@ static void si_create_compute_state_async(void *job, int thread_index)
 
    program->shader.is_monolithic = true;
    program->reads_variable_block_size =
-      sel->info.uses_block_size && sel->info.properties[TGSI_PROPERTY_CS_FIXED_BLOCK_WIDTH] == 0;
+      sel->info.uses_block_size && sel->info.base.cs.local_size[0] == 0;
    program->num_cs_user_data_dwords =
-      sel->info.properties[TGSI_PROPERTY_CS_USER_DATA_COMPONENTS_AMD];
+      sel->info.base.cs.user_data_components_amd;
 
    unsigned user_sgprs = SI_NUM_RESOURCE_SGPRS + (sel->info.uses_grid_size ? 3 : 0) +
                          (program->reads_variable_block_size ? 3 : 0) +

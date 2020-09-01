@@ -289,7 +289,7 @@ static void scan_instruction(const struct nir_shader *nir, struct si_shader_info
          break;
       case nir_intrinsic_load_local_group_size:
          /* The block size is translated to IMM with a fixed block size. */
-         if (info->properties[TGSI_PROPERTY_CS_FIXED_BLOCK_WIDTH] == 0)
+         if (info->base.cs.local_size[0] == 0)
             info->uses_block_size = true;
          break;
       case nir_intrinsic_load_local_invocation_id:
@@ -502,14 +502,6 @@ void si_nir_scan_shader(const struct nir_shader *nir, struct si_shader_info *inf
       info->color_interpolate_loc[1] = nir->info.fs.color1_sample ? TGSI_INTERPOLATE_LOC_SAMPLE :
                                        nir->info.fs.color1_centroid ? TGSI_INTERPOLATE_LOC_CENTROID :
                                                                       TGSI_INTERPOLATE_LOC_CENTER;
-   }
-
-   if (gl_shader_stage_is_compute(nir->info.stage)) {
-      info->properties[TGSI_PROPERTY_CS_FIXED_BLOCK_WIDTH] = nir->info.cs.local_size[0];
-      info->properties[TGSI_PROPERTY_CS_FIXED_BLOCK_HEIGHT] = nir->info.cs.local_size[1];
-      info->properties[TGSI_PROPERTY_CS_FIXED_BLOCK_DEPTH] = nir->info.cs.local_size[2];
-      info->properties[TGSI_PROPERTY_CS_USER_DATA_COMPONENTS_AMD] =
-         nir->info.cs.user_data_components_amd;
    }
 
    info->constbuf0_num_slots = nir->num_uniforms;

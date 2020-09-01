@@ -211,10 +211,10 @@ unsigned si_get_max_workgroup_size(const struct si_shader *shader)
       return 0;
    }
 
-   const unsigned *properties = shader->selector->info.properties;
-   unsigned max_work_group_size = properties[TGSI_PROPERTY_CS_FIXED_BLOCK_WIDTH] *
-                                  properties[TGSI_PROPERTY_CS_FIXED_BLOCK_HEIGHT] *
-                                  properties[TGSI_PROPERTY_CS_FIXED_BLOCK_DEPTH];
+   uint16_t *local_size = shader->selector->info.base.cs.local_size;
+   unsigned max_work_group_size = (uint32_t)local_size[0] *
+                                  (uint32_t)local_size[1] *
+                                  (uint32_t)local_size[2];
 
    if (!max_work_group_size) {
       /* This is a variable group size compute shader,
@@ -696,11 +696,11 @@ void si_create_function(struct si_shader_context *ctx, bool ngg_cull_shader)
       if (shader->selector->info.uses_grid_size)
          ac_add_arg(&ctx->args, AC_ARG_SGPR, 3, AC_ARG_INT, &ctx->args.num_work_groups);
       if (shader->selector->info.uses_block_size &&
-          shader->selector->info.properties[TGSI_PROPERTY_CS_FIXED_BLOCK_WIDTH] == 0)
+          shader->selector->info.base.cs.local_size[0] == 0)
          ac_add_arg(&ctx->args, AC_ARG_SGPR, 3, AC_ARG_INT, &ctx->block_size);
 
       unsigned cs_user_data_dwords =
-         shader->selector->info.properties[TGSI_PROPERTY_CS_USER_DATA_COMPONENTS_AMD];
+         shader->selector->info.base.cs.user_data_components_amd;
       if (cs_user_data_dwords) {
          ac_add_arg(&ctx->args, AC_ARG_SGPR, cs_user_data_dwords, AC_ARG_INT, &ctx->cs_user_data);
       }
