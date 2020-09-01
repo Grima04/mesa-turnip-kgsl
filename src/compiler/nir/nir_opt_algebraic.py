@@ -520,22 +520,29 @@ optimizations.extend([
    (('fmin', ('fmin', a, b), b), ('fmin', a, b)),
    (('umin', ('umin', a, b), b), ('umin', a, b)),
    (('imin', ('imin', a, b), b), ('imin', a, b)),
-   (('iand@32', a, ('inot', ('ishr', a, 31))), ('imax', a, 0)),
+])
 
-   # Simplify logic to detect sign of an integer.
-   (('ieq', ('iand', 'a@32', 0x80000000), 0x00000000), ('ige', a, 0)),
-   (('ine', ('iand', 'a@32', 0x80000000), 0x80000000), ('ige', a, 0)),
-   (('ine', ('iand', 'a@32', 0x80000000), 0x00000000), ('ilt', a, 0)),
-   (('ieq', ('iand', 'a@32', 0x80000000), 0x80000000), ('ilt', a, 0)),
-   (('ine', ('ushr', 'a@32', 31), 0), ('ilt', a, 0)),
-   (('ieq', ('ushr', 'a@32', 31), 0), ('ige', a, 0)),
-   (('ieq', ('ushr', 'a@32', 31), 1), ('ilt', a, 0)),
-   (('ine', ('ushr', 'a@32', 31), 1), ('ige', a, 0)),
-   (('ine', ('ishr', 'a@32', 31), 0), ('ilt', a, 0)),
-   (('ieq', ('ishr', 'a@32', 31), 0), ('ige', a, 0)),
-   (('ieq', ('ishr', 'a@32', 31), -1), ('ilt', a, 0)),
-   (('ine', ('ishr', 'a@32', 31), -1), ('ige', a, 0)),
+# Integer sizes
+for s in [8, 16, 32, 64]:
+    optimizations.extend([
+       (('iand@{}'.format(s), a, ('inot', ('ishr', a, s - 1))), ('imax', a, 0)),
 
+       # Simplify logic to detect sign of an integer.
+       (('ieq', ('iand', 'a@{}'.format(s), 1 << (s - 1)), 0),            ('ige', a, 0)),
+       (('ine', ('iand', 'a@{}'.format(s), 1 << (s - 1)), 1 << (s - 1)), ('ige', a, 0)),
+       (('ine', ('iand', 'a@{}'.format(s), 1 << (s - 1)), 0),            ('ilt', a, 0)),
+       (('ieq', ('iand', 'a@{}'.format(s), 1 << (s - 1)), 1 << (s - 1)), ('ilt', a, 0)),
+       (('ine', ('ushr', 'a@{}'.format(s), s - 1), 0), ('ilt', a, 0)),
+       (('ieq', ('ushr', 'a@{}'.format(s), s - 1), 0), ('ige', a, 0)),
+       (('ieq', ('ushr', 'a@{}'.format(s), s - 1), 1), ('ilt', a, 0)),
+       (('ine', ('ushr', 'a@{}'.format(s), s - 1), 1), ('ige', a, 0)),
+       (('ine', ('ishr', 'a@{}'.format(s), s - 1), 0), ('ilt', a, 0)),
+       (('ieq', ('ishr', 'a@{}'.format(s), s - 1), 0), ('ige', a, 0)),
+       (('ieq', ('ishr', 'a@{}'.format(s), s - 1), -1), ('ilt', a, 0)),
+       (('ine', ('ishr', 'a@{}'.format(s), s - 1), -1), ('ige', a, 0)),
+    ])
+
+optimizations.extend([
    (('fmin', a, ('fneg', a)), ('fneg', ('fabs', a))),
    (('imin', a, ('ineg', a)), ('ineg', ('iabs', a))),
    (('fmin', a, ('fneg', ('fabs', a))), ('fneg', ('fabs', a))),
@@ -620,42 +627,92 @@ optimizations.extend([
    (('iand', ('ult(is_used_once)', a, c), ('ult', b, c)), ('ult', ('umax', a, b), c)),
    (('iand', ('uge(is_used_once)', a, b), ('uge', a, c)), ('uge', a, ('umax', b, c))),
    (('iand', ('uge(is_used_once)', a, c), ('uge', b, c)), ('uge', ('umin', a, b), c)),
+])
 
-   # These derive from the previous patterns with the application of b < 0 <=>
-   # 0 < -b.  The transformation should be applied if either comparison is
-   # used once as this ensures that the number of comparisons will not
-   # increase.  The sources to the ior and iand are not symmetric, so the
-   # rules have to be duplicated to get this behavior.
-   (('~ior', ('flt(is_used_once)', 0.0, 'a@32'), ('flt', 'b@32', 0.0)), ('flt', 0.0, ('fmax', a, ('fneg', b)))),
-   (('~ior', ('flt', 0.0, 'a@32'), ('flt(is_used_once)', 'b@32', 0.0)), ('flt', 0.0, ('fmax', a, ('fneg', b)))),
-   (('~ior', ('fge(is_used_once)', 0.0, 'a@32'), ('fge', 'b@32', 0.0)), ('fge', 0.0, ('fmin', a, ('fneg', b)))),
-   (('~ior', ('fge', 0.0, 'a@32'), ('fge(is_used_once)', 'b@32', 0.0)), ('fge', 0.0, ('fmin', a, ('fneg', b)))),
-   (('~iand', ('flt(is_used_once)', 0.0, 'a@32'), ('flt', 'b@32', 0.0)), ('flt', 0.0, ('fmin', a, ('fneg', b)))),
-   (('~iand', ('flt', 0.0, 'a@32'), ('flt(is_used_once)', 'b@32', 0.0)), ('flt', 0.0, ('fmin', a, ('fneg', b)))),
-   (('~iand', ('fge(is_used_once)', 0.0, 'a@32'), ('fge', 'b@32', 0.0)), ('fge', 0.0, ('fmax', a, ('fneg', b)))),
-   (('~iand', ('fge', 0.0, 'a@32'), ('fge(is_used_once)', 'b@32', 0.0)), ('fge', 0.0, ('fmax', a, ('fneg', b)))),
+# Float sizes
+for s in [16, 32, 64]:
+    fp_one = {16: 0x3c00, 32: 0x3f800000, 64: 0x3ff0000000000000}[s]
 
+    optimizations.extend([
+       # These derive from the previous patterns with the application of b < 0 <=>
+       # 0 < -b.  The transformation should be applied if either comparison is
+       # used once as this ensures that the number of comparisons will not
+       # increase.  The sources to the ior and iand are not symmetric, so the
+       # rules have to be duplicated to get this behavior.
+       (('~ior', ('flt(is_used_once)', 0.0, 'a@{}'.format(s)), ('flt', 'b@{}'.format(s), 0.0)), ('flt', 0.0, ('fmax', a, ('fneg', b)))),
+       (('~ior', ('flt', 0.0, 'a@{}'.format(s)), ('flt(is_used_once)', 'b@{}'.format(s), 0.0)), ('flt', 0.0, ('fmax', a, ('fneg', b)))),
+       (('~ior', ('fge(is_used_once)', 0.0, 'a@{}'.format(s)), ('fge', 'b@{}'.format(s), 0.0)), ('fge', 0.0, ('fmin', a, ('fneg', b)))),
+       (('~ior', ('fge', 0.0, 'a@{}'.format(s)), ('fge(is_used_once)', 'b@{}'.format(s), 0.0)), ('fge', 0.0, ('fmin', a, ('fneg', b)))),
+       (('~iand', ('flt(is_used_once)', 0.0, 'a@{}'.format(s)), ('flt', 'b@{}'.format(s), 0.0)), ('flt', 0.0, ('fmin', a, ('fneg', b)))),
+       (('~iand', ('flt', 0.0, 'a@{}'.format(s)), ('flt(is_used_once)', 'b@{}'.format(s), 0.0)), ('flt', 0.0, ('fmin', a, ('fneg', b)))),
+       (('~iand', ('fge(is_used_once)', 0.0, 'a@{}'.format(s)), ('fge', 'b@{}'.format(s), 0.0)), ('fge', 0.0, ('fmax', a, ('fneg', b)))),
+       (('~iand', ('fge', 0.0, 'a@{}'.format(s)), ('fge(is_used_once)', 'b@{}'.format(s), 0.0)), ('fge', 0.0, ('fmax', a, ('fneg', b)))),
+
+       # The (i2f32, ...) part is an open-coded fsign.  When that is combined with
+       # the bcsel, it's basically copysign(1.0, a).  There is no copysign in NIR,
+       # so emit an open-coded version of that.
+       (('bcsel@{}'.format(s), ('feq', a, 0.0), 1.0, ('i2f{}'.format(s), ('iadd', ('b2i{}'.format(s), ('flt', 0.0, 'a@{}'.format(s))), ('ineg', ('b2i{}'.format(s), ('flt', 'a@{}'.format(s), 0.0)))))),
+        ('ior', fp_one, ('iand', a, 1 << (s - 1)))),
+
+       (('bcsel', a, ('b2f(is_used_once)', 'b@{}'.format(s)), ('b2f', 'c@{}'.format(s))), ('b2f', ('bcsel', a, b, c))),
+
+       # The C spec says, "If the value of the integral part cannot be represented
+       # by the integer type, the behavior is undefined."  "Undefined" can mean
+       # "the conversion doesn't happen at all."
+       (('~i2f{}'.format(s), ('f2i', 'a@{}'.format(s))), ('ftrunc', a)),
+
+       # Ironically, mark these as imprecise because removing the conversions may
+       # preserve more precision than doing the conversions (e.g.,
+       # uint(float(0x81818181u)) == 0x81818200).
+       (('~f2i{}'.format(s), ('i2f', 'a@{}'.format(s))), a),
+       (('~f2i{}'.format(s), ('u2f', 'a@{}'.format(s))), a),
+       (('~f2u{}'.format(s), ('i2f', 'a@{}'.format(s))), a),
+       (('~f2u{}'.format(s), ('u2f', 'a@{}'.format(s))), a),
+
+       (('fadd', ('b2f{}'.format(s), ('flt', 0.0, 'a@{}'.format(s))), ('fneg', ('b2f{}'.format(s), ('flt', 'a@{}'.format(s), 0.0)))), ('fsign', a), '!options->lower_fsign'),
+       (('iadd', ('b2i{}'.format(s), ('flt', 0, 'a@{}'.format(s))), ('ineg', ('b2i{}'.format(s), ('flt', 'a@{}'.format(s), 0)))), ('f2i{}'.format(s), ('fsign', a)), '!options->lower_fsign'),
+    ])
+
+    # Conversions from a lower bit size to a higher bit size and back can always be removed
+    for h in [16, 32, 64]:
+        if s < h:
+            optimizations.extend([
+               (('f2f{}'.format(s), ('f2f{}'.format(h), 'a@{}'.format(s))), a),
+               (('i2i{}'.format(s), ('i2i{}'.format(h), 'a@{}'.format(s))), a),
+               (('u2u{}'.format(s), ('u2u{}'.format(h), 'a@{}'.format(s))), a),
+               (('f2f{}'.format(s), ('b2f{}'.format(h), 'a@1')), ('b2f{}'.format(s), a)),
+               (('i2i{}'.format(s), ('b2i{}'.format(h), 'a@1')), ('b2i{}'.format(s), a)),
+               (('u2u{}'.format(s), ('b2i{}'.format(h), 'a@1')), ('b2i{}'.format(s), a)),
+            ])
+
+# Integer sizes
+for s in [8, 16, 32, 64]:
+    optimizations.extend([
+       (('iand', ('ieq', 'a@{}'.format(s), 0), ('ieq', 'b@{}'.format(s), 0)), ('ieq', ('umax', a, b), 0)),
+       (('ior',  ('ieq', 'a@{}'.format(s), 0), ('ieq', 'b@{}'.format(s), 0)), ('ieq', ('umin', a, b), 0)),
+       (('iand', ('ine', 'a@{}'.format(s), 0), ('ine', 'b@{}'.format(s), 0)), ('ine', ('umin', a, b), 0)),
+       (('ior',  ('ine', 'a@{}'.format(s), 0), ('ine', 'b@{}'.format(s), 0)), ('ine', ('umax', a, b), 0)),
+
+       # True/False are ~0 and 0 in NIR.  b2i of True is 1, and -1 is ~0 (True).
+       (('ineg', ('b2i{}'.format(s), 'a@{}'.format(s))), a),
+
+       # SM5 32-bit shifts are defined to use the 5 least significant bits (or 4 bits for 16 bits)
+       (('ishl', 'a@{}'.format(s), ('iand', s - 1, b)), ('ishl', a, b)),
+       (('ishr', 'a@{}'.format(s), ('iand', s - 1, b)), ('ishr', a, b)),
+       (('ushr', 'a@{}'.format(s), ('iand', s - 1, b)), ('ushr', a, b)),
+    ])
+
+optimizations.extend([
    # Common pattern like 'if (i == 0 || i == 1 || ...)'
    (('ior', ('ieq', a, 0), ('ieq', a, 1)), ('uge', 1, a)),
    (('ior', ('uge', 1, a), ('ieq', a, 2)), ('uge', 2, a)),
    (('ior', ('uge', 2, a), ('ieq', a, 3)), ('uge', 3, a)),
-
-   # The (i2f32, ...) part is an open-coded fsign.  When that is combined with
-   # the bcsel, it's basically copysign(1.0, a).  There is no copysign in NIR,
-   # so emit an open-coded version of that.
-   (('bcsel@32', ('feq', a, 0.0), 1.0, ('i2f32', ('iadd', ('b2i32', ('flt', 0.0, 'a@32')), ('ineg', ('b2i32', ('flt', 'a@32', 0.0)))))),
-    ('ior', 0x3f800000, ('iand', a, 0x80000000))),
 
    (('ior', a, ('ieq', a, False)), True),
    (('ior', a, ('inot', a)), -1),
 
    (('ine', ('ineg', ('b2i', 'a@1')), ('ineg', ('b2i', 'b@1'))), ('ine', a, b)),
    (('b2i', ('ine', 'a@1', 'b@1')), ('b2i', ('ixor', a, b))),
-
-   (('iand', ('ieq', 'a@32', 0), ('ieq', 'b@32', 0)), ('ieq', ('umax', a, b), 0)),
-   (('ior',  ('ieq', 'a@32', 0), ('ieq', 'b@32', 0)), ('ieq', ('umin', a, b), 0)),
-   (('iand', ('ine', 'a@32', 0), ('ine', 'b@32', 0)), ('ine', ('umin', a, b), 0)),
-   (('ior',  ('ine', 'a@32', 0), ('ine', 'b@32', 0)), ('ine', ('umax', a, b), 0)),
 
    # This pattern occurs coutresy of __flt64_nonnan in the soft-fp64 code.
    # The first part of the iand comes from the !__feq64_nonnan.
@@ -780,8 +837,6 @@ optimizations.extend([
    (('fsat', ('fadd', ('b2f', 'a@1'), ('b2f', 'b@1'))), ('b2f', ('ior', a, b))),
    (('iand', 'a@bool16', 1.0), ('b2f', a)),
    (('iand', 'a@bool32', 1.0), ('b2f', a)),
-   # True/False are ~0 and 0 in NIR.  b2i of True is 1, and -1 is ~0 (True).
-   (('ineg', ('b2i32', 'a@32')), a),
    (('flt', ('fneg', ('b2f', 'a@1')), 0), a), # Generated by TGSI KILL_IF.
    # Comparison with the same args.  Note that these are not done for
    # the float versions because NaN always returns false on float
@@ -880,7 +935,6 @@ optimizations.extend([
    (('bcsel', a, -0.0, -1.0), ('fneg', ('b2f', ('inot', a)))),
    (('bcsel', True, b, c), b),
    (('bcsel', False, b, c), c),
-   (('bcsel', a, ('b2f(is_used_once)', 'b@32'), ('b2f', 'c@32')), ('b2f', ('bcsel', a, b, c))),
 
    (('bcsel', a, b, b), b),
    (('~fcsel', a, b, b), b),
@@ -901,11 +955,6 @@ optimizations.extend([
    (('iand', ('ineg', ('b2i', a)), 1.0), ('b2f', a)),
    (('iand', ('ineg', ('b2i', a)), 1),   ('b2i', a)),
 
-   # SM5 32-bit shifts are defined to use the 5 least significant bits
-   (('ishl', 'a@32', ('iand', 31, b)), ('ishl', a, b)),
-   (('ishr', 'a@32', ('iand', 31, b)), ('ishr', a, b)),
-   (('ushr', 'a@32', ('iand', 31, b)), ('ushr', a, b)),
-
    # Conversions
    (('i2b16', ('b2i', 'a@16')), a),
    (('i2b32', ('b2i', 'a@32')), a),
@@ -915,31 +964,12 @@ optimizations.extend([
    (('i2b', ('iabs', a)), ('i2b', a)),
    (('inot', ('f2b1', a)), ('feq', a, 0.0)),
 
-   # The C spec says, "If the value of the integral part cannot be represented
-   # by the integer type, the behavior is undefined."  "Undefined" can mean
-   # "the conversion doesn't happen at all."
-   (('~i2f32', ('f2i32', 'a@32')), ('ftrunc', a)),
-
-   # Ironically, mark these as imprecise because removing the conversions may
-   # preserve more precision than doing the conversions (e.g.,
-   # uint(float(0x81818181u)) == 0x81818200).
-   (('~f2i32', ('i2f', 'a@32')), a),
-   (('~f2i32', ('u2f', 'a@32')), a),
-   (('~f2u32', ('i2f', 'a@32')), a),
-   (('~f2u32', ('u2f', 'a@32')), a),
-
    # Conversions from 16 bits to 32 bits and back can always be removed
-   (('f2f16', ('f2f32', 'a@16')), a),
    (('f2fmp', ('f2f32', 'a@16')), a),
-   (('i2i16', ('i2i32', 'a@16')), a),
    (('i2imp', ('i2i32', 'a@16')), a),
-   (('u2u16', ('u2u32', 'a@16')), a),
    (('u2ump', ('u2u32', 'a@16')), a),
-   (('f2f16', ('b2f32', 'a@1')), ('b2f16', a)),
    (('f2fmp', ('b2f32', 'a@1')), ('b2f16', a)),
-   (('i2i16', ('b2i32', 'a@1')), ('b2i16', a)),
    (('i2imp', ('b2i32', 'a@1')), ('b2i16', a)),
-   (('u2u16', ('b2i32', 'a@1')), ('b2i16', a)),
    (('u2ump', ('b2i32', 'a@1')), ('b2i16', a)),
    # Conversions to 16 bits would be lossy so they should only be removed if
    # the instruction was generated by the precision lowering pass.
@@ -1436,8 +1466,6 @@ optimizations.extend([
    (('imin', ('imax', a, -1), 1), ('isign', a), '!options->lower_isign'),
    (('imax', ('imin', a, 1), -1), ('isign', a), '!options->lower_isign'),
    (('fsign', a), ('fsub', ('b2f', ('flt', 0.0, a)), ('b2f', ('flt', a, 0.0))), 'options->lower_fsign'),
-   (('fadd', ('b2f32', ('flt', 0.0, 'a@32')), ('fneg', ('b2f32', ('flt', 'a@32', 0.0)))), ('fsign', a), '!options->lower_fsign'),
-   (('iadd', ('b2i32', ('flt', 0, 'a@32')), ('ineg', ('b2i32', ('flt', 'a@32', 0)))), ('f2i32', ('fsign', a)), '!options->lower_fsign'),
 
    # Address/offset calculations:
    # Drivers supporting imul24 should use the nir_lower_amul() pass, this
@@ -1957,9 +1985,6 @@ late_optimizations = [
    (('ior', a, a), a),
    (('iand', a, a), a),
 
-   (('iand', ('ine(is_used_once)', 'a@32', 0), ('ine', 'b@32', 0)), ('ine', ('umin', a, b), 0)),
-   (('ior',  ('ieq(is_used_once)', 'a@32', 0), ('ieq', 'b@32', 0)), ('ieq', ('umin', a, b), 0)),
-
    (('~fadd', ('fneg(is_used_once)', ('fsat(is_used_once)', 'a(is_not_fmul)')), 1.0), ('fsat', ('fadd', 1.0, ('fneg', a)))),
 
    (('fdot2', a, b), ('fdot_replicated2', a, b), 'options->fdot_replicates'),
@@ -1968,10 +1993,6 @@ late_optimizations = [
    (('fdph', a, b), ('fdph_replicated', a, b), 'options->fdot_replicates'),
 
    (('~flrp', ('fadd(is_used_once)', a, b), ('fadd(is_used_once)', a, c), d), ('fadd', ('flrp', b, c, d), a)),
-
-   (('~fadd@16', 1.0, ('fmul(is_used_once)', c , ('fadd', b, -1.0 ))), ('fadd', ('fadd', 1.0, ('fneg', c)), ('fmul', b, c)), 'options->lower_flrp16'),
-   (('~fadd@32', 1.0, ('fmul(is_used_once)', c , ('fadd', b, -1.0 ))), ('fadd', ('fadd', 1.0, ('fneg', c)), ('fmul', b, c)), 'options->lower_flrp32'),
-   (('~fadd@64', 1.0, ('fmul(is_used_once)', c , ('fadd', b, -1.0 ))), ('fadd', ('fadd', 1.0, ('fneg', c)), ('fmul', b, c)), 'options->lower_flrp64'),
 
    # A similar operation could apply to any ffma(#a, b, #(-a/2)), but this
    # particular operation is common for expanding values stored in a texture
@@ -2012,8 +2033,6 @@ late_optimizations = [
    # we do these late so that we don't get in the way of creating ffmas
    (('fmin', ('fadd(is_used_once)', '#c', a), ('fadd(is_used_once)', '#c', b)), ('fadd', c, ('fmin', a, b))),
    (('fmax', ('fadd(is_used_once)', '#c', a), ('fadd(is_used_once)', '#c', b)), ('fadd', c, ('fmax', a, b))),
-
-   (('bcsel', a, 0, ('b2f32', ('inot', 'b@bool'))), ('b2f32', ('inot', ('ior', a, b)))),
 
    # Putting this in 'optimizations' interferes with the bcsel(a, op(b, c),
    # op(b, d)) => op(b, bcsel(a, c, d)) transformations.  I do not know why.
@@ -2080,6 +2099,20 @@ late_optimizations = [
    (('ishr', a, -32), a),
    (('ushr', a, 0), a),
 ]
+
+# Integer sizes
+for s in [8, 16, 32, 64]:
+    late_optimizations.extend([
+        (('iand', ('ine(is_used_once)', 'a@{}'.format(s), 0), ('ine', 'b@{}'.format(s), 0)), ('ine', ('umin', a, b), 0)),
+        (('ior',  ('ieq(is_used_once)', 'a@{}'.format(s), 0), ('ieq', 'b@{}'.format(s), 0)), ('ieq', ('umin', a, b), 0)),
+    ])
+
+# Float sizes
+for s in [16, 32, 64]:
+    late_optimizations.extend([
+       (('~fadd@{}'.format(s), 1.0, ('fmul(is_used_once)', c , ('fadd', b, -1.0 ))), ('fadd', ('fadd', 1.0, ('fneg', c)), ('fmul', b, c)), 'options->lower_flrp{}'.format(s)),
+       (('bcsel', a, 0, ('b2f{}'.format(s), ('inot', 'b@bool'))), ('b2f{}'.format(s), ('inot', ('ior', a, b)))),
+    ])
 
 for op in ['fadd']:
     late_optimizations += [
