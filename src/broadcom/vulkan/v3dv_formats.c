@@ -529,16 +529,13 @@ v3dv_GetPhysicalDeviceFormatProperties2(VkPhysicalDevice physicalDevice,
          struct VkDrmFormatModifierPropertiesListEXT *list = (void *)ext;
          VK_OUTARRAY_MAKE(out, list->pDrmFormatModifierProperties,
                           &list->drmFormatModifierCount);
-         /* Only expose LINEAR for winsys formats.
-          * FIXME: is this correct?
-          */
-         if (format == VK_FORMAT_B8G8R8A8_SRGB ||
-             format == VK_FORMAT_B8G8R8A8_UNORM) {
+         if (pFormatProperties->formatProperties.linearTilingFeatures) {
             vk_outarray_append(&out, mod_props) {
                mod_props->drmFormatModifier = DRM_FORMAT_MOD_LINEAR;
                mod_props->drmFormatModifierPlaneCount = 1;
             }
-         } else {
+         }
+         if (pFormatProperties->formatProperties.optimalTilingFeatures) {
             vk_outarray_append(&out, mod_props) {
                mod_props->drmFormatModifier = DRM_FORMAT_MOD_BROADCOM_UIF;
                mod_props->drmFormatModifierPlaneCount = 1;
