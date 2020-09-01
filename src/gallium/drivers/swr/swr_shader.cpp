@@ -551,6 +551,7 @@ swr_tcs_llvm_fetch_input(const struct lp_build_tcs_iface *tcs_iface,
                          LLVMValueRef vertex_index,
                          boolean is_aindex_indirect,
                          LLVMValueRef attrib_index,
+                         boolean is_sindex_indirect,
                          LLVMValueRef swizzle_index)
 {
     swr_tcs_llvm_iface *iface = (swr_tcs_llvm_iface*)tcs_iface;
@@ -571,6 +572,7 @@ swr_tcs_llvm_fetch_output(const struct lp_build_tcs_iface *tcs_iface,
                           LLVMValueRef vertex_index,
                           boolean is_aindex_indirect,
                           LLVMValueRef attrib_index,
+                          boolean is_sindex_indirect,
                           LLVMValueRef swizzle_index,
                           uint32_t name)
 {
@@ -649,6 +651,7 @@ swr_tes_llvm_fetch_vtx_input(const struct lp_build_tes_iface *tes_iface,
                              LLVMValueRef vertex_index,
                              boolean is_aindex_indirect,
                              LLVMValueRef attrib_index,
+                             boolean is_sindex_indirect,
                              LLVMValueRef swizzle_index)
 {
     swr_tes_llvm_iface *iface = (swr_tes_llvm_iface*)tes_iface;
