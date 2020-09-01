@@ -266,10 +266,11 @@ intrinsic("read_first_invocation", src_comp=[0], dest_comp=0, flags=[CAN_ELIMINA
 #
 # These correspond to the SPIR-V opcodes
 #
-#    OpGroupUniformElect
+#    OpGroupNonUniformElect
 #    OpSubgroupFirstInvocationKHR
 intrinsic("elect", dest_comp=1, flags=[CAN_ELIMINATE])
 intrinsic("first_invocation", dest_comp=1, flags=[CAN_ELIMINATE])
+intrinsic("last_invocation", dest_comp=1, flags=[CAN_ELIMINATE])
 
 # Memory barrier with semantics analogous to the compute shader
 # groupMemoryBarrier(), memoryBarrierAtomicCounter(), memoryBarrierBuffer(),
