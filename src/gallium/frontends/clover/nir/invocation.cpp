@@ -97,6 +97,7 @@ clover_lower_nir_instr(nir_builder *b, nir_instr *instr, void *_state)
          /* Even though we only place one scalar argument, clover will bind up to
           * three 32 bit values
          */
+         unsigned location = state->args.size();
          state->args.emplace_back(module::argument::scalar, 4, 4, 4,
                                   module::argument::zero_ext,
                                   module::argument::grid_offset);
@@ -106,7 +107,7 @@ clover_lower_nir_instr(nir_builder *b, nir_instr *instr, void *_state)
             state->offset_vars[i] =
                nir_variable_create(b->shader, nir_var_uniform, type,
                                    "global_invocation_id_offsets");
-            state->offset_vars[i]->data.location = b->shader->num_uniforms++;
+            state->offset_vars[i]->data.location = location + i;
          }
       }
 
