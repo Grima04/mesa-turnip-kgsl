@@ -730,7 +730,7 @@ static void
 pan_blit_from_staging(struct pipe_context *pctx, struct panfrost_gtransfer *trans)
 {
         struct pipe_resource *dst = trans->base.resource;
-        struct pipe_blit_info blit = {};
+        struct pipe_blit_info blit = {0};
 
         blit.dst.resource = dst;
         blit.dst.format   = dst->format;
@@ -750,7 +750,7 @@ static void
 pan_blit_to_staging(struct pipe_context *pctx, struct panfrost_gtransfer *trans)
 {
         struct pipe_resource *src = trans->base.resource;
-        struct pipe_blit_info blit = {};
+        struct pipe_blit_info blit = {0};
 
         blit.src.resource = src;
         blit.src.format   = src->format;

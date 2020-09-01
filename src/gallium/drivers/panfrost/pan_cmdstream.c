@@ -296,7 +296,7 @@ panfrost_emit_blend(struct panfrost_batch *batch, void *rts,
         }
 
         for (unsigned i = 0; i < rt_count; ++i) {
-                struct mali_blend_flags_packed flags = {};
+                struct mali_blend_flags_packed flags = {0};
 
                 pan_pack(&flags, BLEND_FLAGS, cfg) {
                         if (blend[i].no_colour) {

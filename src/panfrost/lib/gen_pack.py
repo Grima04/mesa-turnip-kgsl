@@ -584,7 +584,10 @@ class Parser(object):
                 default_fields.append("   .{} = {{ {}_header }}".format(field.name, self.gen_prefix(safe_name(field.type.upper()))))
 
         print('#define %-40s\\' % (name + '_header'))
-        print(",  \\\n".join(default_fields))
+        if default_fields:
+            print(",  \\\n".join(default_fields))
+        else:
+            print('   0')
         print('')
 
     def emit_template_struct(self, name, group, opaque_structs):
