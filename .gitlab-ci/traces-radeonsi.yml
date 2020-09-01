@@ -17,7 +17,7 @@ traces:
   - path: 0ad/0ad.trace
     expectations:
       - device: gl-radeonsi-stoney
-        checksum: bfd97a7190f2b9de24ddfd446fcc4850
+        checksum: c6261e56f37cc5d73b83d493561df646
   - path: pathfinder/demo.trace
     expectations:
       - device: gl-radeonsi-stoney
@@ -37,7 +37,7 @@ traces:
   - path: gputest/pixmark-piano.trace
     expectations:
       - device: gl-radeonsi-stoney
-        checksum: 061226c3fd179c611b8d60acaa44474f
+        checksum: a0e1d6358f76666603b08eab383af080
   - path: gputest/triangle.trace
     expectations:
       - device: gl-radeonsi-stoney
@@ -189,7 +189,7 @@ traces:
   - path: gputest/pixmark-piano.trace
     expectations:
       - device: gl-radeonsi-stoney
-        checksum: 061226c3fd179c611b8d60acaa44474f
+        checksum: a0e1d6358f76666603b08eab383af080
   - path: gputest/pixmark-volplosion.trace
     expectations:
       - device: gl-radeonsi-stoney
@@ -197,7 +197,7 @@ traces:
   - path: gputest/plot3d.trace
     expectations:
       - device: gl-radeonsi-stoney
-        checksum: 799ce7b2d8050d6ba2e3ae595cf8729e
+        checksum: fd367551aa74e2903e0590a893da01a6
   - path: gputest/tessmark.trace
     expectations:
       - device: gl-radeonsi-stoney
