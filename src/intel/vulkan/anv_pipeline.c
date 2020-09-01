@@ -1186,9 +1186,8 @@ anv_pipeline_add_executable(struct anv_pipeline *pipeline,
       /* Creating this is far cheaper than it looks.  It's perfectly fine to
        * do it for every binary.
        */
-      struct gen_disasm *d = gen_disasm_create(&pipeline->device->info);
-      gen_disasm_disassemble(d, stage->code, code_offset, stream);
-      gen_disasm_destroy(d);
+      gen_disassemble(&pipeline->device->info,
+                      stage->code, code_offset, stream);
 
       fclose(stream);
 

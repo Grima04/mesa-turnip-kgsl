@@ -28,10 +28,6 @@
 
 #include "gen_disasm.h"
 
-struct gen_disasm {
-    struct gen_device_info devinfo;
-};
-
 static bool
 is_send(uint32_t opcode)
 {
@@ -42,10 +38,9 @@ is_send(uint32_t opcode)
 }
 
 static int
-gen_disasm_find_end(struct gen_disasm *disasm,
+gen_disasm_find_end(const struct gen_device_info *devinfo,
                     const void *assembly, int start)
 {
-   struct gen_device_info *devinfo = &disasm->devinfo;
    int offset = start;
 
    /* This loop exits when send-with-EOT or when opcode is 0 */
@@ -69,11 +64,10 @@ gen_disasm_find_end(struct gen_disasm *disasm,
 }
 
 void
-gen_disasm_disassemble(struct gen_disasm *disasm, const void *assembly,
-                       int start, FILE *out)
+gen_disassemble(const struct gen_device_info *devinfo,
+                const void *assembly, int start, FILE *out)
 {
-   struct gen_device_info *devinfo = &disasm->devinfo;
-   int end = gen_disasm_find_end(disasm, assembly, start);
+   int end = gen_disasm_find_end(devinfo, assembly, start);
 
    /* Make a dummy disasm structure that brw_validate_instructions
     * can work from.
@@ -110,24 +104,4 @@ gen_disasm_disassemble(struct gen_disasm *disasm, const void *assembly,
 
    ralloc_free(mem_ctx);
    ralloc_free(disasm_info);
-}
-
-struct gen_disasm *
-gen_disasm_create(const struct gen_device_info *devinfo)
-{
-   struct gen_disasm *gd;
-
-   gd = malloc(sizeof *gd);
-   if (gd == NULL)
-      return NULL;
-
-   gd->devinfo = *devinfo;
-
-   return gd;
-}
-
-void
-gen_disasm_destroy(struct gen_disasm *disasm)
-{
-   free(disasm);
 }
