@@ -2486,15 +2486,19 @@ radv_get_int_debug_option(const char *name, int default_value)
 	return result;
 }
 
+static bool radv_thread_trace_enabled()
+{
+	return radv_get_int_debug_option("RADV_THREAD_TRACE", -1) >= 0;
+}
+
 static void
 radv_device_init_dispatch(struct radv_device *device)
 {
 	const struct radv_instance *instance = device->physical_device->instance;
 	const struct radv_device_dispatch_table *dispatch_table_layer = NULL;
 	bool unchecked = instance->debug_flags & RADV_DEBUG_ALL_ENTRYPOINTS;
-	int radv_thread_trace = radv_get_int_debug_option("RADV_THREAD_TRACE", -1);
 
-	if (radv_thread_trace >= 0) {
+	if (radv_thread_trace_enabled()) {
 		/* Use device entrypoints from the SQTT layer if enabled. */
 		dispatch_table_layer = &sqtt_device_dispatch_table;
 	}
@@ -2801,8 +2805,7 @@ VkResult radv_CreateDevice(
 		radv_dump_enabled_options(device, stderr);
 	}
 
-	int radv_thread_trace = radv_get_int_debug_option("RADV_THREAD_TRACE", -1);
-	if (radv_thread_trace >= 0) {
+	if (radv_thread_trace_enabled()) {
 		fprintf(stderr, "*************************************************\n");
 		fprintf(stderr, "* WARNING: Thread trace support is experimental *\n");
 		fprintf(stderr, "*************************************************\n");
@@ -2817,7 +2820,7 @@ VkResult radv_CreateDevice(
 		/* Default buffer size set to 1MB per SE. */
 		device->thread_trace_buffer_size =
 			radv_get_int_debug_option("RADV_THREAD_TRACE_BUFFER_SIZE", 1024 * 1024);
-		device->thread_trace_start_frame = radv_thread_trace;
+		device->thread_trace_start_frame = radv_get_int_debug_option("RADV_THREAD_TRACE", -1);
 
 		if (!radv_thread_trace_init(device))
 			goto fail;
