@@ -557,7 +557,7 @@ void si_update_vs_viewport_state(struct si_context *ctx)
       return;
 
    /* When the VS disables clipping and viewport transformation. */
-   vs_window_space = info->properties[TGSI_PROPERTY_VS_WINDOW_SPACE_POSITION];
+   vs_window_space = info->stage == MESA_SHADER_VERTEX && info->base.vs.window_space_position;
 
    if (ctx->vs_disables_clipping_viewport != vs_window_space) {
       ctx->vs_disables_clipping_viewport = vs_window_space;

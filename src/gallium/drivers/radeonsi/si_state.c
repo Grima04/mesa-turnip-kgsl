@@ -732,7 +732,8 @@ static void si_emit_clip_regs(struct si_context *sctx)
    struct si_shader_selector *vs_sel = vs->selector;
    struct si_shader_info *info = &vs_sel->info;
    struct si_state_rasterizer *rs = sctx->queued.named.rasterizer;
-   unsigned window_space = info->properties[TGSI_PROPERTY_VS_WINDOW_SPACE_POSITION];
+   bool window_space = info->stage == MESA_SHADER_VERTEX ?
+                          info->base.vs.window_space_position : 0;
    unsigned clipdist_mask = vs_sel->clipdist_mask;
    unsigned ucp_mask = clipdist_mask ? 0 : rs->clip_plane_enable & SIX_BITS;
    unsigned culldist_mask = vs_sel->culldist_mask;

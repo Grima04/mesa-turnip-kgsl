@@ -41,7 +41,7 @@ static LLVMValueRef unpack_sint16(struct si_shader_context *ctx, LLVMValueRef i3
 static void load_input_vs(struct si_shader_context *ctx, unsigned input_index, LLVMValueRef out[4])
 {
    const struct si_shader_info *info = &ctx->shader->selector->info;
-   unsigned vs_blit_property = info->properties[TGSI_PROPERTY_VS_BLIT_SGPRS_AMD];
+   unsigned vs_blit_property = info->base.vs.blit_sgprs_amd;
 
    if (vs_blit_property) {
       LLVMValueRef vertex_id = ctx->abi.vertex_id;

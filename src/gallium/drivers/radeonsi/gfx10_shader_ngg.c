@@ -90,7 +90,7 @@ static LLVMValueRef ngg_get_vertices_per_prim(struct si_shader_context *ctx, uns
    const struct si_shader_info *info = &ctx->shader->selector->info;
 
    if (ctx->stage == MESA_SHADER_VERTEX) {
-      if (info->properties[TGSI_PROPERTY_VS_BLIT_SGPRS_AMD]) {
+      if (info->base.vs.blit_sgprs_amd) {
          /* Blits always use axis-aligned rectangles with 3 vertices. */
          *num_vertices = 3;
          return LLVMConstInt(ctx->ac.i32, 3, 0);
@@ -1322,7 +1322,7 @@ void gfx10_emit_ngg_epilogue(struct ac_shader_abi *abi, unsigned max_outputs, LL
    }
 
    /* Update query buffer */
-   if (ctx->screen->use_ngg_streamout && !info->properties[TGSI_PROPERTY_VS_BLIT_SGPRS_AMD]) {
+   if (ctx->screen->use_ngg_streamout && !info->base.vs.blit_sgprs_amd) {
       assert(!unterminated_es_if_block);
 
       tmp = si_unpack_param(ctx, ctx->vs_state_bits, 6, 1);

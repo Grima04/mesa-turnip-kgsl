@@ -1827,7 +1827,7 @@ static void si_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *i
        (!sctx->vs_shader.cso->info.uses_bindless_samplers || pd_msg("uses bindless samplers")) &&
        (!sctx->vs_shader.cso->info.writes_memory || pd_msg("writes memory")) &&
        (!sctx->vs_shader.cso->info.writes_viewport_index || pd_msg("writes viewport index")) &&
-       !sctx->vs_shader.cso->info.properties[TGSI_PROPERTY_VS_WINDOW_SPACE_POSITION] &&
+       !sctx->vs_shader.cso->info.base.vs.window_space_position &&
        !sctx->vs_shader.cso->so.num_outputs &&
 #else
        (sctx->vs_shader.cso->prim_discard_cs_allowed ||

@@ -387,7 +387,6 @@ void si_create_function(struct si_shader_context *ctx, bool ngg_cull_shader)
    unsigned num_returns = 0;
    unsigned num_prolog_vgprs = 0;
    unsigned stage = ctx->stage;
-   unsigned vs_blit_property = shader->selector->info.properties[TGSI_PROPERTY_VS_BLIT_SGPRS_AMD];
 
    memset(&ctx->args, 0, sizeof(ctx->args));
 
@@ -403,8 +402,8 @@ void si_create_function(struct si_shader_context *ctx, bool ngg_cull_shader)
    case MESA_SHADER_VERTEX:
       declare_global_desc_pointers(ctx);
 
-      if (vs_blit_property) {
-         declare_vs_blit_inputs(ctx, vs_blit_property);
+      if (shader->selector->info.base.vs.blit_sgprs_amd) {
+         declare_vs_blit_inputs(ctx, shader->selector->info.base.vs.blit_sgprs_amd);
 
          /* VGPRs */
          declare_vs_input_vgprs(ctx, &num_prolog_vgprs, ngg_cull_shader);
@@ -523,14 +522,14 @@ void si_create_function(struct si_shader_context *ctx, bool ngg_cull_shader)
                  NULL); /* unused (SPI_SHADER_PGM_LO/HI_GS >> 24) */
 
       declare_global_desc_pointers(ctx);
-      if (ctx->stage != MESA_SHADER_VERTEX || !vs_blit_property) {
+      if (ctx->stage != MESA_SHADER_VERTEX || !shader->selector->info.base.vs.blit_sgprs_amd) {
          declare_per_stage_desc_pointers(
             ctx, (ctx->stage == MESA_SHADER_VERTEX || ctx->stage == MESA_SHADER_TESS_EVAL));
       }
 
       if (ctx->stage == MESA_SHADER_VERTEX) {
-         if (vs_blit_property)
-            declare_vs_blit_inputs(ctx, vs_blit_property);
+         if (shader->selector->info.base.vs.blit_sgprs_amd)
+            declare_vs_blit_inputs(ctx, shader->selector->info.base.vs.blit_sgprs_amd);
          else
             declare_vs_specific_input_sgprs(ctx);
       } else {

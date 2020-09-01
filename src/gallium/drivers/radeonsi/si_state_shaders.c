@@ -1064,7 +1064,8 @@ static void gfx10_shader_ngg(struct si_screen *sscreen, struct si_shader *shader
    unsigned num_user_sgprs;
    unsigned nparams, es_vgpr_comp_cnt, gs_vgpr_comp_cnt;
    uint64_t va;
-   unsigned window_space = gs_info->properties[TGSI_PROPERTY_VS_WINDOW_SPACE_POSITION];
+   bool window_space = gs_info->stage == MESA_SHADER_VERTEX ?
+                          gs_info->base.vs.window_space_position : 0;
    bool es_enable_prim_id = shader->key.mono.u.vs_export_prim_id || es_info->uses_primid;
    unsigned gs_num_invocations = MAX2(gs_sel->gs_num_invocations, 1);
    unsigned input_prim = si_get_input_prim(gs_sel);
@@ -1086,9 +1087,9 @@ static void gfx10_shader_ngg(struct si_screen *sscreen, struct si_shader *shader
    if (es_stage == MESA_SHADER_VERTEX) {
       es_vgpr_comp_cnt = si_get_vs_vgpr_comp_cnt(sscreen, shader, false);
 
-      if (es_info->properties[TGSI_PROPERTY_VS_BLIT_SGPRS_AMD]) {
+      if (es_info->base.vs.blit_sgprs_amd) {
          num_user_sgprs =
-            SI_SGPR_VS_BLIT_DATA + es_info->properties[TGSI_PROPERTY_VS_BLIT_SGPRS_AMD];
+            SI_SGPR_VS_BLIT_DATA + es_info->base.vs.blit_sgprs_amd;
       } else {
          num_user_sgprs = si_get_num_vs_user_sgprs(shader, GFX9_VSGS_NUM_USER_SGPR);
       }
@@ -1346,7 +1347,8 @@ static void si_shader_vs(struct si_screen *sscreen, struct si_shader *shader,
    unsigned num_user_sgprs, vgpr_comp_cnt;
    uint64_t va;
    unsigned nparams, oc_lds_en;
-   unsigned window_space = info->properties[TGSI_PROPERTY_VS_WINDOW_SPACE_POSITION];
+   bool window_space = info->stage == MESA_SHADER_VERTEX ?
+                          info->base.vs.window_space_position : 0;
    bool enable_prim_id = shader->key.mono.u.vs_export_prim_id || info->uses_primid;
 
    pm4 = si_get_shader_pm4_state(shader);
@@ -1390,8 +1392,8 @@ static void si_shader_vs(struct si_screen *sscreen, struct si_shader *shader,
    } else if (shader->selector->info.stage == MESA_SHADER_VERTEX) {
       vgpr_comp_cnt = si_get_vs_vgpr_comp_cnt(sscreen, shader, enable_prim_id);
 
-      if (info->properties[TGSI_PROPERTY_VS_BLIT_SGPRS_AMD]) {
-         num_user_sgprs = SI_SGPR_VS_BLIT_DATA + info->properties[TGSI_PROPERTY_VS_BLIT_SGPRS_AMD];
+      if (info->base.vs.blit_sgprs_amd) {
+         num_user_sgprs = SI_SGPR_VS_BLIT_DATA + info->base.vs.blit_sgprs_amd;
       } else {
          num_user_sgprs = si_get_num_vs_user_sgprs(shader, SI_VS_NUM_USER_SGPR);
       }
@@ -1701,7 +1703,7 @@ static unsigned si_get_alpha_test_func(struct si_context *sctx)
 void si_shader_selector_key_vs(struct si_context *sctx, struct si_shader_selector *vs,
                                struct si_shader_key *key, struct si_vs_prolog_bits *prolog_key)
 {
-   if (!sctx->vertex_elements || vs->info.properties[TGSI_PROPERTY_VS_BLIT_SGPRS_AMD])
+   if (!sctx->vertex_elements || vs->info.base.vs.blit_sgprs_amd)
       return;
 
    struct si_vertex_elements *elts = sctx->vertex_elements;
@@ -2611,20 +2613,20 @@ static void *si_create_shader_selector(struct pipe_context *ctx,
    }
 
    sel->num_vs_inputs =
-      sel->info.stage == MESA_SHADER_VERTEX && !sel->info.properties[TGSI_PROPERTY_VS_BLIT_SGPRS_AMD]
+      sel->info.stage == MESA_SHADER_VERTEX && !sel->info.base.vs.blit_sgprs_amd
          ? sel->info.num_inputs
          : 0;
    sel->num_vbos_in_user_sgprs = MIN2(sel->num_vs_inputs, sscreen->num_vbos_in_user_sgprs);
 
    /* The prolog is a no-op if there are no inputs. */
    sel->vs_needs_prolog = sel->info.stage == MESA_SHADER_VERTEX && sel->info.num_inputs &&
-                          !sel->info.properties[TGSI_PROPERTY_VS_BLIT_SGPRS_AMD];
+                          !sel->info.base.vs.blit_sgprs_amd;
 
    sel->prim_discard_cs_allowed =
       sel->info.stage == MESA_SHADER_VERTEX && !sel->info.uses_bindless_images &&
       !sel->info.uses_bindless_samplers && !sel->info.writes_memory &&
       !sel->info.writes_viewport_index &&
-      !sel->info.properties[TGSI_PROPERTY_VS_WINDOW_SPACE_POSITION] && !sel->so.num_outputs;
+      !sel->info.base.vs.window_space_position && !sel->so.num_outputs;
 
    switch (sel->info.stage) {
    case MESA_SHADER_GEOMETRY:
@@ -2741,8 +2743,9 @@ static void *si_create_shader_selector(struct pipe_context *ctx,
       sel->info.writes_position &&
       !sel->info.writes_viewport_index && /* cull only against viewport 0 */
       !sel->info.writes_memory && !sel->so.num_outputs &&
-      !sel->info.properties[TGSI_PROPERTY_VS_BLIT_SGPRS_AMD] &&
-      !sel->info.properties[TGSI_PROPERTY_VS_WINDOW_SPACE_POSITION];
+      (sel->info.stage != MESA_SHADER_VERTEX ||
+       (!sel->info.base.vs.blit_sgprs_amd &&
+        !sel->info.base.vs.window_space_position));
 
    /* PA_CL_VS_OUT_CNTL */
    if (sctx->chip_class <= GFX9)
@@ -2848,8 +2851,8 @@ static void si_update_clip_regs(struct si_context *sctx, struct si_shader_select
 {
    if (next_hw_vs &&
        (!old_hw_vs ||
-        old_hw_vs->info.properties[TGSI_PROPERTY_VS_WINDOW_SPACE_POSITION] !=
-           next_hw_vs->info.properties[TGSI_PROPERTY_VS_WINDOW_SPACE_POSITION] ||
+        (old_hw_vs->info.stage == MESA_SHADER_VERTEX && old_hw_vs->info.base.vs.window_space_position) !=
+        (next_hw_vs->info.stage == MESA_SHADER_VERTEX && next_hw_vs->info.base.vs.window_space_position) ||
         old_hw_vs->pa_cl_vs_out_cntl != next_hw_vs->pa_cl_vs_out_cntl ||
         old_hw_vs->clipdist_mask != next_hw_vs->clipdist_mask ||
         old_hw_vs->culldist_mask != next_hw_vs->culldist_mask || !old_hw_vs_variant ||
@@ -2885,7 +2888,7 @@ static void si_bind_vs_shader(struct pipe_context *ctx, void *state)
 
    sctx->vs_shader.cso = sel;
    sctx->vs_shader.current = sel ? sel->first_variant : NULL;
-   sctx->num_vs_blit_sgprs = sel ? sel->info.properties[TGSI_PROPERTY_VS_BLIT_SGPRS_AMD] : 0;
+   sctx->num_vs_blit_sgprs = sel ? sel->info.base.vs.blit_sgprs_amd : 0;
 
    if (si_update_ngg(sctx))
       si_shader_change_notify(sctx);
