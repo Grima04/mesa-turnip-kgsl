@@ -389,6 +389,26 @@ gen_perf_new(void *ctx)
    return perf;
 }
 
+/** Whether we have the ability to hold off preemption on a batch so we don't
+ * have to look at the OA buffer to subtract unrelated workloads off the
+ * values captured through MI_* commands.
+ */
+static inline bool
+gen_perf_has_hold_preemption(const struct gen_perf_config *perf)
+{
+   return perf->i915_perf_version >= 3;
+}
+
+/** Whether we have the ability to lock EU array power configuration for the
+ * duration of the performance recording. This is useful on Gen11 where the HW
+ * architecture requires half the EU for particular workloads.
+ */
+static inline bool
+gen_perf_has_global_sseu(const struct gen_perf_config *perf)
+{
+   return perf->i915_perf_version >= 4;
+}
+
 uint32_t gen_perf_get_n_passes(struct gen_perf_config *perf,
                                const uint32_t *counter_indices,
                                uint32_t counter_indices_count,
