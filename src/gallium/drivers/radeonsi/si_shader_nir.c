@@ -457,11 +457,6 @@ void si_nir_scan_shader(const struct nir_shader *nir, struct si_shader_info *inf
    info->stage = nir->info.stage;
 
    if (nir->info.stage == MESA_SHADER_TESS_EVAL) {
-      STATIC_ASSERT((TESS_SPACING_EQUAL + 1) % 3 == PIPE_TESS_SPACING_EQUAL);
-      STATIC_ASSERT((TESS_SPACING_FRACTIONAL_ODD + 1) % 3 == PIPE_TESS_SPACING_FRACTIONAL_ODD);
-      STATIC_ASSERT((TESS_SPACING_FRACTIONAL_EVEN + 1) % 3 == PIPE_TESS_SPACING_FRACTIONAL_EVEN);
-
-      info->properties[TGSI_PROPERTY_TES_SPACING] = (nir->info.tess.spacing + 1) % 3;
       info->properties[TGSI_PROPERTY_TES_VERTEX_ORDER_CW] = !nir->info.tess.ccw;
 
       if (info->base.tess.primitive_mode == GL_ISOLINES)

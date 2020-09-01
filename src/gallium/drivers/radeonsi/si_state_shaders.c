@@ -313,7 +313,7 @@ static void si_set_tesseval_regs(struct si_screen *sscreen, const struct si_shad
 {
    const struct si_shader_info *info = &tes->info;
    unsigned tes_prim_mode = info->base.tess.primitive_mode;
-   unsigned tes_spacing = info->properties[TGSI_PROPERTY_TES_SPACING];
+   unsigned tes_spacing = info->base.tess.spacing;
    bool tes_vertex_order_cw = info->properties[TGSI_PROPERTY_TES_VERTEX_ORDER_CW];
    bool tes_point_mode = info->base.tess.point_mode;
    unsigned type, partitioning, topology, distribution_mode;
@@ -334,13 +334,13 @@ static void si_set_tesseval_regs(struct si_screen *sscreen, const struct si_shad
    }
 
    switch (tes_spacing) {
-   case PIPE_TESS_SPACING_FRACTIONAL_ODD:
+   case TESS_SPACING_FRACTIONAL_ODD:
       partitioning = V_028B6C_PART_FRAC_ODD;
       break;
-   case PIPE_TESS_SPACING_FRACTIONAL_EVEN:
+   case TESS_SPACING_FRACTIONAL_EVEN:
       partitioning = V_028B6C_PART_FRAC_EVEN;
       break;
-   case PIPE_TESS_SPACING_EQUAL:
+   case TESS_SPACING_EQUAL:
       partitioning = V_028B6C_PART_INTEGER;
       break;
    default:
@@ -400,7 +400,7 @@ static void polaris_set_vgt_vertex_reuse(struct si_screen *sscreen, struct si_sh
       unsigned vtx_reuse_depth = 30;
 
       if (sel->info.stage == MESA_SHADER_TESS_EVAL &&
-          sel->info.properties[TGSI_PROPERTY_TES_SPACING] == PIPE_TESS_SPACING_FRACTIONAL_ODD)
+          sel->info.base.tess.spacing == TESS_SPACING_FRACTIONAL_ODD)
          vtx_reuse_depth = 14;
 
       assert(pm4->shader);
