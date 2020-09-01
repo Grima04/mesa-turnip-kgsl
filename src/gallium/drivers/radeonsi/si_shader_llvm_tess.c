@@ -90,7 +90,7 @@ static LLVMValueRef get_tcs_out_patch_stride(struct si_shader_context *ctx)
       return si_unpack_param(ctx, ctx->tcs_out_lds_layout, 0, 13);
 
    const struct si_shader_info *info = &ctx->shader->selector->info;
-   unsigned tcs_out_vertices = info->properties[TGSI_PROPERTY_TCS_VERTICES_OUT];
+   unsigned tcs_out_vertices = info->base.tess.tcs_vertices_out;
    unsigned vertex_dw_stride = get_tcs_out_vertex_dw_stride_constant(ctx);
    unsigned num_patch_outputs = util_last_bit64(ctx->shader->selector->patch_outputs_written);
    unsigned patch_dw_stride = tcs_out_vertices * vertex_dw_stride + num_patch_outputs * 4;
@@ -138,7 +138,7 @@ static LLVMValueRef get_tcs_out_current_patch_data_offset(struct si_shader_conte
 static LLVMValueRef get_num_tcs_out_vertices(struct si_shader_context *ctx)
 {
    unsigned tcs_out_vertices =
-      ctx->shader->selector ? ctx->shader->selector->info.properties[TGSI_PROPERTY_TCS_VERTICES_OUT]
+      ctx->shader->selector ? ctx->shader->selector->info.base.tess.tcs_vertices_out
                             : 0;
 
    /* If !tcs_out_vertices, it's either the fixed-func TCS or the TCS epilog. */

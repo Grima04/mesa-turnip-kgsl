@@ -118,7 +118,7 @@ static void si_emit_derived_tess_state(struct si_context *sctx, const struct pip
 
    if (sctx->tcs_shader.cso) {
       num_tcs_outputs = util_last_bit64(tcs->outputs_written);
-      num_tcs_output_cp = tcs->info.properties[TGSI_PROPERTY_TCS_VERTICES_OUT];
+      num_tcs_output_cp = tcs->info.base.tess.tcs_vertices_out;
       num_tcs_patch_outputs = util_last_bit64(tcs->patch_outputs_written);
    } else {
       /* No TCS. Route varyings from LS to TES. */
@@ -1689,7 +1689,7 @@ static void si_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *i
        */
       struct si_shader_selector *tcs = sctx->tcs_shader.cso;
       bool ls_vgpr_fix =
-         tcs && info->vertices_per_patch > tcs->info.properties[TGSI_PROPERTY_TCS_VERTICES_OUT];
+         tcs && info->vertices_per_patch > tcs->info.base.tess.tcs_vertices_out;
 
       if (ls_vgpr_fix != sctx->ls_vgpr_fix) {
          sctx->ls_vgpr_fix = ls_vgpr_fix;

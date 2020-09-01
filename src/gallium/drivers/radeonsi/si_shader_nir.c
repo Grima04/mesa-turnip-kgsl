@@ -456,10 +456,6 @@ void si_nir_scan_shader(const struct nir_shader *nir, struct si_shader_info *inf
    info->base = nir->info;
    info->stage = nir->info.stage;
 
-   if (nir->info.stage == MESA_SHADER_TESS_CTRL) {
-      info->properties[TGSI_PROPERTY_TCS_VERTICES_OUT] = nir->info.tess.tcs_vertices_out;
-   }
-
    if (nir->info.stage == MESA_SHADER_TESS_EVAL) {
       if (nir->info.tess.primitive_mode == GL_ISOLINES)
          info->properties[TGSI_PROPERTY_TES_PRIM_MODE] = PIPE_PRIM_LINES;
