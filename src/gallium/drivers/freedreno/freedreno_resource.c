@@ -166,6 +166,15 @@ rebind_resource(struct fd_resource *rsc)
 	fd_screen_unlock(screen);
 }
 
+static inline void
+fd_resource_set_bo(struct fd_resource *rsc, struct fd_bo *bo)
+{
+	struct fd_screen *screen = fd_screen(rsc->base.screen);
+
+	rsc->bo = bo;
+	rsc->seqno = p_atomic_inc_return(&screen->rsc_seqno);
+}
+
 static void
 realloc_bo(struct fd_resource *rsc, uint32_t size)
 {
@@ -183,8 +192,9 @@ realloc_bo(struct fd_resource *rsc, uint32_t size)
 	if (rsc->bo)
 		fd_bo_del(rsc->bo);
 
-	rsc->bo = fd_bo_new(screen->dev, size, flags, "%ux%ux%u@%u:%x",
+	struct fd_bo *bo = fd_bo_new(screen->dev, size, flags, "%ux%ux%u@%u:%x",
 			prsc->width0, prsc->height0, prsc->depth0, rsc->layout.cpp, prsc->bind);
+	fd_resource_set_bo(rsc, bo);
 
 	/* Zero out the UBWC area on allocation.  This fixes intermittent failures
 	 * with UBWC, which I suspect are due to the HW having a hard time
@@ -197,7 +207,6 @@ realloc_bo(struct fd_resource *rsc, uint32_t size)
 		rsc->needs_ubwc_clear = true;
 	}
 
-	rsc->seqno = p_atomic_inc_return(&screen->rsc_seqno);
 	util_range_set_empty(&rsc->valid_buffer_range);
 	fd_bc_invalidate_resource(rsc, true);
 }
@@ -1077,9 +1086,11 @@ fd_resource_from_handle(struct pipe_screen *pscreen,
 
 	simple_mtx_init(&rsc->lock, mtx_plain);
 
-	rsc->bo = fd_screen_bo_from_handle(pscreen, handle);
-	if (!rsc->bo)
+	struct fd_bo *bo = fd_screen_bo_from_handle(pscreen, handle);
+	if (!bo)
 		goto fail;
+
+	fd_resource_set_bo(rsc, bo);
 
 	rsc->internal_format = tmpl->format;
 	rsc->layout.pitch0 = handle->stride;
@@ -1270,7 +1281,7 @@ fd_resource_from_memobj(struct pipe_screen *pscreen,
 	}
 
 	/* Share the bo with the memory object. */
-	rsc->bo = fd_bo_ref(memobj->bo);
+	fd_resource_set_bo(rsc, fd_bo_ref(memobj->bo));
 
 	return prsc;
 }

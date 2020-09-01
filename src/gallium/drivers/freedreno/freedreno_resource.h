@@ -46,7 +46,7 @@ enum fd_lrz_direction {
 
 struct fd_resource {
 	struct pipe_resource base;
-	struct fd_bo *bo;
+	struct fd_bo *bo;  /* use fd_resource_set_bo() to write */
 	enum pipe_format internal_format;
 	struct fdl_layout layout;
 
