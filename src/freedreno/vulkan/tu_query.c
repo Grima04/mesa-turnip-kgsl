@@ -43,55 +43,74 @@
 #define NSEC_PER_SEC 1000000000ull
 #define WAIT_TIMEOUT 5
 
-/* Depending on the query type, there might be 2 integer values.
- * eg. VK_QUERY_TYPE_TRANSFORM_FEEDBACK_STREAM_EXT
- *   values[0] : primitives written, values[1]: primitives generated
- */
-struct PACKED slot_value {
-   uint64_t values[2];
+struct PACKED query_slot {
+   uint64_t available;
 };
 
-struct PACKED query_slot {
-   struct slot_value available; /* 0 when unavailable, 1 when available */
-   struct slot_value result;
+struct PACKED occlusion_slot_value {
+   /* Seems sample counters are placed to be 16-byte aligned
+    * even though this query needs an 8-byte slot. */
+   uint64_t value;
+   uint64_t _padding;
 };
 
 struct PACKED occlusion_query_slot {
    struct query_slot common;
-   struct slot_value begin;
-   struct slot_value end;
+   uint64_t result;
+
+   struct occlusion_slot_value begin;
+   struct occlusion_slot_value end;
 };
 
-/* The result of transform feedback queries is two integer values:
- *   common.result.values[0] is the count of primitives written,
- *   common.result.values[1] is the count of primitives generated.
- * Also a result for each stream is stored at 4 slots respectively.
- */
+struct PACKED timestamp_query_slot {
+   struct query_slot common;
+   uint64_t result;
+};
+
+struct PACKED primitive_slot_value {
+   uint64_t values[2];
+};
+
 struct PACKED primitive_query_slot {
    struct query_slot common;
-   struct slot_value begin[4];
-   struct slot_value end[4];
+   /* The result of transform feedback queries is two integer values:
+    *   results[0] is the count of primitives written,
+    *   results[1] is the count of primitives generated.
+    * Also a result for each stream is stored at 4 slots respectively.
+    */
+   uint64_t results[2];
+
+   /* Primitive counters also need to be 16-byte aligned. */
+   uint64_t _padding;
+
+   struct primitive_slot_value begin[4];
+   struct primitive_slot_value end[4];
 };
 
 /* Returns the IOVA of a given uint64_t field in a given slot of a query
  * pool. */
-#define query_iova(type, pool, query, field, value_index)            \
-   pool->bo.iova + pool->stride * (query) + offsetof(type, field) +  \
-         offsetof(struct slot_value, values[value_index])
+#define query_iova(type, pool, query, field)                         \
+   pool->bo.iova + pool->stride * (query) + offsetof(type, field)
 
 #define occlusion_query_iova(pool, query, field)                     \
-   query_iova(struct occlusion_query_slot, pool, query, field, 0)
+   query_iova(struct occlusion_query_slot, pool, query, field)
 
 #define primitive_query_iova(pool, query, field, i)                  \
-   query_iova(struct primitive_query_slot, pool, query, field, i)
+   query_iova(struct primitive_query_slot, pool, query, field) +     \
+   offsetof(struct primitive_slot_value, values[i])
 
 #define query_available_iova(pool, query)                            \
-   query_iova(struct query_slot, pool, query, available, 0)
+   query_iova(struct query_slot, pool, query, available)
 
 #define query_result_iova(pool, query, i)                            \
-   query_iova(struct query_slot, pool, query, result, i)
+   pool->bo.iova + pool->stride * (query) +                          \
+   sizeof(struct query_slot) + sizeof(uint64_t) * i
 
-#define query_is_available(slot) slot->available.values[0]
+#define query_result_addr(pool, query, i)                            \
+   pool->bo.map + pool->stride * query +                             \
+   sizeof(struct query_slot) + sizeof(uint64_t) * i
+
+#define query_is_available(slot) slot->available
 
 /*
  * Returns a pointer to a given slot in a query pool.
@@ -117,7 +136,7 @@ tu_CreateQueryPool(VkDevice _device,
       slot_size = sizeof(struct occlusion_query_slot);
       break;
    case VK_QUERY_TYPE_TIMESTAMP:
-      slot_size = sizeof(struct query_slot);
+      slot_size = sizeof(struct timestamp_query_slot);
       break;
    case VK_QUERY_TYPE_TRANSFORM_FEEDBACK_STREAM_EXT:
       slot_size = sizeof(struct primitive_query_slot);
@@ -267,9 +286,10 @@ get_query_pool_results(struct tu_device *device,
       }
 
       for (uint32_t k = 0; k < result_count; k++) {
-         if (available)
-            write_query_value_cpu(result_base, k, slot->result.values[k], flags);
-         else if (flags & VK_QUERY_RESULT_PARTIAL_BIT)
+         if (available) {
+            uint64_t *result = query_result_addr(pool, query, k);
+            write_query_value_cpu(result_base, k, *result, flags);
+         } else if (flags & VK_QUERY_RESULT_PARTIAL_BIT)
              /* From the Vulkan 1.1.130 spec:
               *
               *   If VK_QUERY_RESULT_PARTIAL_BIT is set, VK_QUERY_RESULT_WAIT_BIT
@@ -473,12 +493,11 @@ emit_reset_query_pool(struct tu_cmd_buffer *cmdbuf,
       tu_cs_emit_qw(cs, query_available_iova(pool, query));
       tu_cs_emit_qw(cs, 0x0);
 
-      tu_cs_emit_pkt7(cs, CP_MEM_WRITE, 4);
-      tu_cs_emit_qw(cs, query_result_iova(pool, query, 0));
-      tu_cs_emit_qw(cs, 0x0);
-      tu_cs_emit_pkt7(cs, CP_MEM_WRITE, 4);
-      tu_cs_emit_qw(cs, query_result_iova(pool, query, 1));
-      tu_cs_emit_qw(cs, 0x0);
+      for (uint32_t k = 0; k < get_result_count(pool); k++) {
+         tu_cs_emit_pkt7(cs, CP_MEM_WRITE, 4);
+         tu_cs_emit_qw(cs, query_result_iova(pool, query, k));
+         tu_cs_emit_qw(cs, 0x0);
+      }
    }
 }
 
