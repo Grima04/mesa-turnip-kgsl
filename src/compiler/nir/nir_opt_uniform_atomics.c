@@ -43,7 +43,7 @@ static nir_op
 parse_atomic_op(nir_intrinsic_op op, unsigned *offset_src, unsigned *data_src)
 {
    switch (op) {
-   #define OP(intrin, alu) \
+   #define OP_NOIMG(intrin, alu) \
    case nir_intrinsic_ssbo_atomic_##intrin: \
       *offset_src = 1; \
       *data_src = 2; \
@@ -56,6 +56,14 @@ parse_atomic_op(nir_intrinsic_op op, unsigned *offset_src, unsigned *data_src)
       return nir_op_##alu; \
       return nir_op_##alu; \
       return nir_op_##alu;
+   #define OP(intrin, alu) \
+   OP_NOIMG(intrin, alu) \
+   case nir_intrinsic_image_deref_atomic_##intrin: \
+   case nir_intrinsic_image_atomic_##intrin: \
+   case nir_intrinsic_bindless_image_atomic_##intrin: \
+      *offset_src = 1; \
+      *data_src = 3; \
+      return nir_op_##alu;
    OP(add, iadd)
    OP(imin, imin)
    OP(umin, umin)
@@ -65,8 +73,9 @@ parse_atomic_op(nir_intrinsic_op op, unsigned *offset_src, unsigned *data_src)
    OP(or, ior)
    OP(xor, ixor)
    OP(fadd, fadd)
-   OP(fmin, fmin)
-   OP(fmax, fmax)
+   OP_NOIMG(fmin, fmin)
+   OP_NOIMG(fmax, fmax)
+   #undef OP_NOIMG
    #undef OP
    default:
       return nir_num_opcodes;
