@@ -462,8 +462,9 @@ void si_nir_scan_shader(const struct nir_shader *nir, struct si_shader_info *inf
    }
 
    if (nir->info.stage == MESA_SHADER_FRAGMENT) {
-      info->properties[TGSI_PROPERTY_FS_EARLY_DEPTH_STENCIL] =
-         nir->info.fs.early_fragment_tests | nir->info.fs.post_depth_coverage;
+      /* post_depth_coverage implies early_fragment_tests */
+      info->base.fs.early_fragment_tests |= info->base.fs.post_depth_coverage;
+
       info->properties[TGSI_PROPERTY_FS_POST_DEPTH_COVERAGE] = nir->info.fs.post_depth_coverage;
 
       if (nir->info.fs.pixel_center_integer) {

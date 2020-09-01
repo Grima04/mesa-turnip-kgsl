@@ -2773,39 +2773,41 @@ static void *si_create_shader_selector(struct pipe_context *ctx,
       break;
    }
 
-   /* Z_ORDER, EXEC_ON_HIER_FAIL and EXEC_ON_NOOP should be set as following:
-    *
-    *   | early Z/S | writes_mem | allow_ReZ? |      Z_ORDER       | EXEC_ON_HIER_FAIL | EXEC_ON_NOOP
-    * --|-----------|------------|------------|--------------------|-------------------|-------------
-    * 1a|   false   |   false    |   true     | EarlyZ_Then_ReZ    |         0         |     0
-    * 1b|   false   |   false    |   false    | EarlyZ_Then_LateZ  |         0         |     0
-    * 2 |   false   |   true     |   n/a      |       LateZ        |         1         |     0
-    * 3 |   true    |   false    |   n/a      | EarlyZ_Then_LateZ  |         0         |     0
-    * 4 |   true    |   true     |   n/a      | EarlyZ_Then_LateZ  |         0         |     1
-    *
-    * In cases 3 and 4, HW will force Z_ORDER to EarlyZ regardless of what's set in the register.
-    * In case 2, NOOP_CULL is a don't care field. In case 2, 3 and 4, ReZ doesn't make sense.
-    *
-    * Don't use ReZ without profiling !!!
-    *
-    * ReZ decreases performance by 15% in DiRT: Showdown on Ultra settings, which has pretty complex
-    * shaders.
-    */
-   if (sel->info.properties[TGSI_PROPERTY_FS_EARLY_DEPTH_STENCIL]) {
-      /* Cases 3, 4. */
-      sel->db_shader_control |= S_02880C_DEPTH_BEFORE_SHADER(1) |
-                                S_02880C_Z_ORDER(V_02880C_EARLY_Z_THEN_LATE_Z) |
-                                S_02880C_EXEC_ON_NOOP(sel->info.writes_memory);
-   } else if (sel->info.writes_memory) {
-      /* Case 2. */
-      sel->db_shader_control |= S_02880C_Z_ORDER(V_02880C_LATE_Z) | S_02880C_EXEC_ON_HIER_FAIL(1);
-   } else {
-      /* Case 1. */
-      sel->db_shader_control |= S_02880C_Z_ORDER(V_02880C_EARLY_Z_THEN_LATE_Z);
-   }
+   if (sel->info.stage == MESA_SHADER_FRAGMENT) {
+      /* Z_ORDER, EXEC_ON_HIER_FAIL and EXEC_ON_NOOP should be set as following:
+       *
+       *   | early Z/S | writes_mem | allow_ReZ? |      Z_ORDER       | EXEC_ON_HIER_FAIL | EXEC_ON_NOOP
+       * --|-----------|------------|------------|--------------------|-------------------|-------------
+       * 1a|   false   |   false    |   true     | EarlyZ_Then_ReZ    |         0         |     0
+       * 1b|   false   |   false    |   false    | EarlyZ_Then_LateZ  |         0         |     0
+       * 2 |   false   |   true     |   n/a      |       LateZ        |         1         |     0
+       * 3 |   true    |   false    |   n/a      | EarlyZ_Then_LateZ  |         0         |     0
+       * 4 |   true    |   true     |   n/a      | EarlyZ_Then_LateZ  |         0         |     1
+       *
+       * In cases 3 and 4, HW will force Z_ORDER to EarlyZ regardless of what's set in the register.
+       * In case 2, NOOP_CULL is a don't care field. In case 2, 3 and 4, ReZ doesn't make sense.
+       *
+       * Don't use ReZ without profiling !!!
+       *
+       * ReZ decreases performance by 15% in DiRT: Showdown on Ultra settings, which has pretty complex
+       * shaders.
+       */
+      if (sel->info.base.fs.early_fragment_tests) {
+         /* Cases 3, 4. */
+         sel->db_shader_control |= S_02880C_DEPTH_BEFORE_SHADER(1) |
+                                   S_02880C_Z_ORDER(V_02880C_EARLY_Z_THEN_LATE_Z) |
+                                   S_02880C_EXEC_ON_NOOP(sel->info.writes_memory);
+      } else if (sel->info.writes_memory) {
+         /* Case 2. */
+         sel->db_shader_control |= S_02880C_Z_ORDER(V_02880C_LATE_Z) | S_02880C_EXEC_ON_HIER_FAIL(1);
+      } else {
+         /* Case 1. */
+         sel->db_shader_control |= S_02880C_Z_ORDER(V_02880C_EARLY_Z_THEN_LATE_Z);
+      }
 
-   if (sel->info.properties[TGSI_PROPERTY_FS_POST_DEPTH_COVERAGE])
-      sel->db_shader_control |= S_02880C_PRE_SHADER_DEPTH_COVERAGE_ENABLE(1);
+      if (sel->info.properties[TGSI_PROPERTY_FS_POST_DEPTH_COVERAGE])
+         sel->db_shader_control |= S_02880C_PRE_SHADER_DEPTH_COVERAGE_ENABLE(1);
+   }
 
    (void)simple_mtx_init(&sel->mutex, mtx_plain);
 
@@ -3055,8 +3057,8 @@ static void si_bind_ps_shader(struct pipe_context *ctx, void *state)
 
       if (sctx->screen->has_out_of_order_rast &&
           (!old_sel || old_sel->info.writes_memory != sel->info.writes_memory ||
-           old_sel->info.properties[TGSI_PROPERTY_FS_EARLY_DEPTH_STENCIL] !=
-              sel->info.properties[TGSI_PROPERTY_FS_EARLY_DEPTH_STENCIL]))
+           old_sel->info.base.fs.early_fragment_tests !=
+              sel->info.base.fs.early_fragment_tests))
          si_mark_atom_dirty(sctx, &sctx->atoms.s.msaa_config);
    }
    si_set_active_descriptors_for_shader(sctx, sel);
