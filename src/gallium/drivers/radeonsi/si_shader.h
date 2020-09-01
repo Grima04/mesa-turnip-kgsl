@@ -343,6 +343,7 @@ struct si_shader_info {
 
    ubyte colors_read; /**< which color components are read by the FS */
    ubyte colors_written;
+   bool color0_writes_all_cbufs; /**< gl_FragColor */
    bool reads_samplemask;   /**< does fragment shader read sample mask? */
    bool reads_tess_factors; /**< If TES reads TESSINNER or TESSOUTER */
    bool writes_z;           /**< does fragment shader write Z value? */
@@ -391,8 +392,6 @@ struct si_shader_info {
    unsigned image_buffers;           /**< bitmask of images that are buffers */
    unsigned msaa_images_declared;    /**< bitmask of declared MSAA images */
    unsigned shader_buffers_declared; /**< bitmask of declared shader buffers */
-
-   unsigned properties[TGSI_PROPERTY_COUNT]; /* index with TGSI_PROPERTY_ */
 
    /** Whether all codepaths write tess factors in all invocations. */
    bool tessfactors_are_def_in_all_invocs;

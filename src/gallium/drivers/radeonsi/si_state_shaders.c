@@ -1889,7 +1889,7 @@ static inline void si_shader_selector_key(struct pipe_context *ctx, struct si_sh
       struct si_state_rasterizer *rs = sctx->queued.named.rasterizer;
       struct si_state_blend *blend = sctx->queued.named.blend;
 
-      if (sel->info.properties[TGSI_PROPERTY_FS_COLOR0_WRITES_ALL_CBUFS] &&
+      if (sel->info.color0_writes_all_cbufs &&
           sel->info.colors_written == 0x1)
          key->part.ps.epilog.last_cbuf = MAX2(sctx->framebuffer.state.nr_cbufs, 1) - 1;
 

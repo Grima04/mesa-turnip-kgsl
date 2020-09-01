@@ -114,7 +114,7 @@ static void scan_io_usage(struct si_shader_info *info, nir_intrinsic_instr *intr
       /* Never use FRAG_RESULT_COLOR directly. */
       if (semantic == FRAG_RESULT_COLOR) {
          semantic = FRAG_RESULT_DATA0;
-         info->properties[TGSI_PROPERTY_FS_COLOR0_WRITES_ALL_CBUFS] = true;
+         info->color0_writes_all_cbufs = true;
       }
       semantic += nir_intrinsic_io_semantics(intr).dual_source_blend_index;
    }

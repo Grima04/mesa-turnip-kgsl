@@ -1781,7 +1781,7 @@ static inline unsigned si_get_total_colormask(struct si_context *sctx)
    unsigned colormask =
       sctx->framebuffer.colorbuf_enabled_4bit & sctx->queued.named.blend->cb_target_mask;
 
-   if (!ps->info.properties[TGSI_PROPERTY_FS_COLOR0_WRITES_ALL_CBUFS])
+   if (!ps->info.color0_writes_all_cbufs)
       colormask &= ps->colors_written_4bit;
    else if (!ps->colors_written_4bit)
       colormask = 0; /* color0 writes all cbufs, but it's not written */
