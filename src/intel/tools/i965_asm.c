@@ -117,8 +117,6 @@ i965_disasm_init(uint16_t pci_id)
       return NULL;
    }
 
-   brw_init_compaction_tables(devinfo);
-
    return devinfo;
 }
 

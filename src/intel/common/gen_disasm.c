@@ -123,8 +123,6 @@ gen_disasm_create(const struct gen_device_info *devinfo)
 
    gd->devinfo = *devinfo;
 
-   brw_init_compaction_tables(&gd->devinfo);
-
    return gd;
 }
 

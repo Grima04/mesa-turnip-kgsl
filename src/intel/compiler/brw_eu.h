@@ -1279,7 +1279,6 @@ enum brw_conditional_mod brw_negate_cmod(enum brw_conditional_mod cmod);
 enum brw_conditional_mod brw_swap_cmod(enum brw_conditional_mod cmod);
 
 /* brw_eu_compact.c */
-void brw_init_compaction_tables(const struct gen_device_info *devinfo);
 void brw_compact_instructions(struct brw_codegen *p, int start_offset,
                               struct disasm_info *disasm);
 void brw_uncompact_instruction(const struct gen_device_info *devinfo,

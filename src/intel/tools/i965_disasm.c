@@ -123,9 +123,6 @@ i965_disasm_init(uint16_t pci_id)
       exit(EXIT_FAILURE);
    }
 
-   /* initialize compaction table in order to handle compacted instructions */
-   brw_init_compaction_tables(devinfo);
-
    return devinfo;
 }
 
