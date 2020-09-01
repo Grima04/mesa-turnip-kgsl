@@ -1301,6 +1301,25 @@ struct radv_subpass_sample_locs_state {
 	struct radv_sample_locations_state sample_location;
 };
 
+enum rgp_flush_bits {
+	RGP_FLUSH_WAIT_ON_EOP_TS   = 0x1,
+	RGP_FLUSH_VS_PARTIAL_FLUSH = 0x2,
+	RGP_FLUSH_PS_PARTIAL_FLUSH = 0x4,
+	RGP_FLUSH_CS_PARTIAL_FLUSH = 0x8,
+	RGP_FLUSH_PFP_SYNC_ME      = 0x10,
+	RGP_FLUSH_SYNC_CP_DMA      = 0x20,
+	RGP_FLUSH_INVAL_VMEM_L0    = 0x40,
+	RGP_FLUSH_INVAL_ICACHE     = 0x80,
+	RGP_FLUSH_INVAL_SMEM_L0    = 0x100,
+	RGP_FLUSH_FLUSH_L2         = 0x200,
+	RGP_FLUSH_INVAL_L2         = 0x400,
+	RGP_FLUSH_FLUSH_CB         = 0x800,
+	RGP_FLUSH_INVAL_CB         = 0x1000,
+	RGP_FLUSH_FLUSH_DB         = 0x2000,
+	RGP_FLUSH_INVAL_DB         = 0x4000,
+	RGP_FLUSH_INVAL_L1         = 0x8000,
+};
+
 struct radv_cmd_state {
 	/* Vertex descriptors */
 	uint64_t                                      vb_va;
@@ -1370,6 +1389,7 @@ struct radv_cmd_state {
 	uint32_t num_events;
 	uint32_t num_layout_transitions;
 	bool pending_sqtt_barrier_end;
+	enum rgp_flush_bits sqtt_flush_bits;
 };
 
 struct radv_cmd_pool {
@@ -1487,6 +1507,7 @@ void si_cs_emit_cache_flush(struct radeon_cmdbuf *cs,
 			    uint32_t *fence_ptr, uint64_t va,
 			    bool is_mec,
 			    enum radv_cmd_flush_bits flush_bits,
+			    enum rgp_flush_bits *sqtt_flush_bits,
 			    uint64_t gfx9_eop_bug_va);
 void si_emit_cache_flush(struct radv_cmd_buffer *cmd_buffer);
 void si_emit_set_predication_state(struct radv_cmd_buffer *cmd_buffer,

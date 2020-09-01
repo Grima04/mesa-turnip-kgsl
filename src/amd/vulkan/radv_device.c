@@ -3767,6 +3767,7 @@ radv_get_preamble_cs(struct radv_queue *queue,
 	}
 
 	for(int i = 0; i < 3; ++i) {
+		enum rgp_flush_bits sqtt_flush_bits = 0;
 		struct radeon_cmdbuf *cs = NULL;
 		cs = queue->device->ws->cs_create(queue->device->ws,
 						  queue->queue_family_index ? RING_COMPUTE : RING_GFX);
@@ -3832,7 +3833,7 @@ radv_get_preamble_cs(struct radv_queue *queue,
 			                       RADV_CMD_FLAG_INV_SCACHE |
 			                       RADV_CMD_FLAG_INV_VCACHE |
 			                       RADV_CMD_FLAG_INV_L2 |
-					       RADV_CMD_FLAG_START_PIPELINE_STATS, 0);
+					       RADV_CMD_FLAG_START_PIPELINE_STATS, &sqtt_flush_bits, 0);
 		} else if (i == 1) {
 			si_cs_emit_cache_flush(cs,
 			                       queue->device->physical_device->rad_info.chip_class,
@@ -3843,7 +3844,7 @@ radv_get_preamble_cs(struct radv_queue *queue,
 			                       RADV_CMD_FLAG_INV_SCACHE |
 			                       RADV_CMD_FLAG_INV_VCACHE |
 			                       RADV_CMD_FLAG_INV_L2 |
-					       RADV_CMD_FLAG_START_PIPELINE_STATS, 0);
+					       RADV_CMD_FLAG_START_PIPELINE_STATS, &sqtt_flush_bits, 0);
 		}
 
 		if (queue->device->ws->cs_finalize(cs) != VK_SUCCESS)

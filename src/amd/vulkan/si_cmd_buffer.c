@@ -1040,6 +1040,7 @@ gfx10_cs_emit_cache_flush(struct radeon_cmdbuf *cs,
 			  uint64_t flush_va,
 			  bool is_mec,
 			  enum radv_cmd_flush_bits flush_bits,
+			  enum rgp_flush_bits *sqtt_flush_bits,
 			  uint64_t gfx9_eop_bug_va)
 {
 	uint32_t gcr_cntl = 0;
@@ -1048,26 +1049,38 @@ gfx10_cs_emit_cache_flush(struct radeon_cmdbuf *cs,
 	/* We don't need these. */
 	assert(!(flush_bits & (RADV_CMD_FLAG_VGT_STREAMOUT_SYNC)));
 
-	if (flush_bits & RADV_CMD_FLAG_INV_ICACHE)
+	if (flush_bits & RADV_CMD_FLAG_INV_ICACHE) {
 		gcr_cntl |= S_586_GLI_INV(V_586_GLI_ALL);
+
+		*sqtt_flush_bits |= RGP_FLUSH_INVAL_ICACHE;
+	}
 	if (flush_bits & RADV_CMD_FLAG_INV_SCACHE) {
 		/* TODO: When writing to the SMEM L1 cache, we need to set SEQ
 		 * to FORWARD when both L1 and L2 are written out (WB or INV).
 		 */
 		gcr_cntl |= S_586_GL1_INV(1) | S_586_GLK_INV(1);
+
+		*sqtt_flush_bits |= RGP_FLUSH_INVAL_SMEM_L0;
 	}
-	if (flush_bits & RADV_CMD_FLAG_INV_VCACHE)
+	if (flush_bits & RADV_CMD_FLAG_INV_VCACHE) {
 		gcr_cntl |= S_586_GL1_INV(1) | S_586_GLV_INV(1);
+
+		*sqtt_flush_bits |= RGP_FLUSH_INVAL_VMEM_L0 | RGP_FLUSH_INVAL_L1;
+	}
 	if (flush_bits & RADV_CMD_FLAG_INV_L2) {
 		/* Writeback and invalidate everything in L2. */
 		gcr_cntl |= S_586_GL2_INV(1) | S_586_GL2_WB(1) |
 		            S_586_GLM_INV(1) | S_586_GLM_WB(1);
+
+		*sqtt_flush_bits |= RGP_FLUSH_INVAL_L2;
 	} else if (flush_bits & RADV_CMD_FLAG_WB_L2) {
 		/* Writeback but do not invalidate.
 		 * GLM doesn't support WB alone. If WB is set, INV must be set too.
 		 */
 		gcr_cntl |= S_586_GL2_WB(1) |
 		            S_586_GLM_WB(1) | S_586_GLM_INV(1);
+
+		*sqtt_flush_bits |= RGP_FLUSH_FLUSH_L2;
 	}
 
 	/* TODO: Implement this new flag for GFX9+.
@@ -1082,6 +1095,8 @@ gfx10_cs_emit_cache_flush(struct radeon_cmdbuf *cs,
 			radeon_emit(cs, PKT3(PKT3_EVENT_WRITE, 0, 0));
 			radeon_emit(cs, EVENT_TYPE(V_028A90_FLUSH_AND_INV_CB_META) |
 					EVENT_INDEX(0));
+
+			*sqtt_flush_bits |= RGP_FLUSH_FLUSH_CB | RGP_FLUSH_INVAL_CB;
 		}
 
 		/* TODO: trigger on RADV_CMD_FLAG_FLUSH_AND_INV_DB_META ? */
@@ -1090,6 +1105,8 @@ gfx10_cs_emit_cache_flush(struct radeon_cmdbuf *cs,
 			radeon_emit(cs, PKT3(PKT3_EVENT_WRITE, 0, 0));
 			radeon_emit(cs, EVENT_TYPE(V_028A90_FLUSH_AND_INV_DB_META) |
 					EVENT_INDEX(0));
+
+			*sqtt_flush_bits |= RGP_FLUSH_FLUSH_DB | RGP_FLUSH_INVAL_DB;
 		}
 
 		/* First flush CB/DB, then L1/L2. */
@@ -1110,15 +1127,21 @@ gfx10_cs_emit_cache_flush(struct radeon_cmdbuf *cs,
 		if (flush_bits & RADV_CMD_FLAG_PS_PARTIAL_FLUSH) {
 			radeon_emit(cs, PKT3(PKT3_EVENT_WRITE, 0, 0));
 			radeon_emit(cs, EVENT_TYPE(V_028A90_PS_PARTIAL_FLUSH) | EVENT_INDEX(4));
+
+			*sqtt_flush_bits |= RGP_FLUSH_PS_PARTIAL_FLUSH;
 		} else if (flush_bits & RADV_CMD_FLAG_VS_PARTIAL_FLUSH) {
 			radeon_emit(cs, PKT3(PKT3_EVENT_WRITE, 0, 0));
 			radeon_emit(cs, EVENT_TYPE(V_028A90_VS_PARTIAL_FLUSH) | EVENT_INDEX(4));
+
+			*sqtt_flush_bits |= RGP_FLUSH_VS_PARTIAL_FLUSH;
 		}
 	}
 
 	if (flush_bits & RADV_CMD_FLAG_CS_PARTIAL_FLUSH) {
 		radeon_emit(cs, PKT3(PKT3_EVENT_WRITE, 0, 0));
 		radeon_emit(cs, EVENT_TYPE(V_028A90_CS_PARTIAL_FLUSH | EVENT_INDEX(4)));
+
+		*sqtt_flush_bits |= RGP_FLUSH_CS_PARTIAL_FLUSH;
 	}
 
 	if (cb_db_event) {
@@ -1197,6 +1220,8 @@ gfx10_cs_emit_cache_flush(struct radeon_cmdbuf *cs,
 		/* We need to ensure that PFP waits as well. */
 		radeon_emit(cs, PKT3(PKT3_PFP_SYNC_ME, 0, 0));
 		radeon_emit(cs, 0);
+
+		*sqtt_flush_bits |= RGP_FLUSH_PFP_SYNC_ME;
 	}
 
 	if (flush_bits & RADV_CMD_FLAG_START_PIPELINE_STATS) {
@@ -1217,6 +1242,7 @@ si_cs_emit_cache_flush(struct radeon_cmdbuf *cs,
 		       uint64_t flush_va,
                        bool is_mec,
                        enum radv_cmd_flush_bits flush_bits,
+		       enum rgp_flush_bits *sqtt_flush_bits,
 		       uint64_t gfx9_eop_bug_va)
 {
 	unsigned cp_coher_cntl = 0;
@@ -1226,14 +1252,19 @@ si_cs_emit_cache_flush(struct radeon_cmdbuf *cs,
 	if (chip_class >= GFX10) {
 		/* GFX10 cache flush handling is quite different. */
 		gfx10_cs_emit_cache_flush(cs, chip_class, flush_cnt, flush_va,
-					  is_mec, flush_bits, gfx9_eop_bug_va);
+					  is_mec, flush_bits, sqtt_flush_bits,
+					  gfx9_eop_bug_va);
 		return;
 	}
 
-	if (flush_bits & RADV_CMD_FLAG_INV_ICACHE)
+	if (flush_bits & RADV_CMD_FLAG_INV_ICACHE) {
 		cp_coher_cntl |= S_0085F0_SH_ICACHE_ACTION_ENA(1);
-	if (flush_bits & RADV_CMD_FLAG_INV_SCACHE)
+		*sqtt_flush_bits |= RGP_FLUSH_INVAL_ICACHE;
+	}
+	if (flush_bits & RADV_CMD_FLAG_INV_SCACHE) {
 		cp_coher_cntl |= S_0085F0_SH_KCACHE_ACTION_ENA(1);
+		*sqtt_flush_bits |= RGP_FLUSH_INVAL_SMEM_L0;
+	}
 
 	if (chip_class <= GFX8) {
 		if (flush_bits & RADV_CMD_FLAG_FLUSH_AND_INV_CB) {
@@ -1259,34 +1290,48 @@ si_cs_emit_cache_flush(struct radeon_cmdbuf *cs,
 							   0, 0,
 							   gfx9_eop_bug_va);
 			}
+
+			*sqtt_flush_bits |= RGP_FLUSH_FLUSH_CB | RGP_FLUSH_INVAL_CB;
 		}
 		if (flush_bits & RADV_CMD_FLAG_FLUSH_AND_INV_DB) {
 			cp_coher_cntl |= S_0085F0_DB_ACTION_ENA(1) |
 				S_0085F0_DB_DEST_BASE_ENA(1);
+
+			*sqtt_flush_bits |= RGP_FLUSH_FLUSH_DB | RGP_FLUSH_INVAL_DB;
 		}
 	}
 
 	if (flush_bits & RADV_CMD_FLAG_FLUSH_AND_INV_CB_META) {
 		radeon_emit(cs, PKT3(PKT3_EVENT_WRITE, 0, 0));
 		radeon_emit(cs, EVENT_TYPE(V_028A90_FLUSH_AND_INV_CB_META) | EVENT_INDEX(0));
+
+		*sqtt_flush_bits |= RGP_FLUSH_FLUSH_CB | RGP_FLUSH_INVAL_CB;
 	}
 
 	if (flush_bits & RADV_CMD_FLAG_FLUSH_AND_INV_DB_META) {
 		radeon_emit(cs, PKT3(PKT3_EVENT_WRITE, 0, 0));
 		radeon_emit(cs, EVENT_TYPE(V_028A90_FLUSH_AND_INV_DB_META) | EVENT_INDEX(0));
+
+		*sqtt_flush_bits |= RGP_FLUSH_FLUSH_DB | RGP_FLUSH_INVAL_DB;
 	}
 
 	if (flush_bits & RADV_CMD_FLAG_PS_PARTIAL_FLUSH) {
 		radeon_emit(cs, PKT3(PKT3_EVENT_WRITE, 0, 0));
 		radeon_emit(cs, EVENT_TYPE(V_028A90_PS_PARTIAL_FLUSH) | EVENT_INDEX(4));
+
+		*sqtt_flush_bits |= RGP_FLUSH_PS_PARTIAL_FLUSH;
 	} else if (flush_bits & RADV_CMD_FLAG_VS_PARTIAL_FLUSH) {
 		radeon_emit(cs, PKT3(PKT3_EVENT_WRITE, 0, 0));
 		radeon_emit(cs, EVENT_TYPE(V_028A90_VS_PARTIAL_FLUSH) | EVENT_INDEX(4));
+
+		*sqtt_flush_bits |= RGP_FLUSH_VS_PARTIAL_FLUSH;
 	}
 
 	if (flush_bits & RADV_CMD_FLAG_CS_PARTIAL_FLUSH) {
 		radeon_emit(cs, PKT3(PKT3_EVENT_WRITE, 0, 0));
 		radeon_emit(cs, EVENT_TYPE(V_028A90_CS_PARTIAL_FLUSH) | EVENT_INDEX(4));
+
+		*sqtt_flush_bits |= RGP_FLUSH_CS_PARTIAL_FLUSH;
 	}
 
 	if (chip_class == GFX9 && flush_cb_db) {
@@ -1310,6 +1355,9 @@ si_cs_emit_cache_flush(struct radeon_cmdbuf *cs,
 		tc_flags = EVENT_TC_ACTION_ENA |
 		           EVENT_TC_MD_ACTION_ENA;
 
+		*sqtt_flush_bits |= RGP_FLUSH_FLUSH_CB | RGP_FLUSH_INVAL_CB |
+		                    RGP_FLUSH_FLUSH_DB | RGP_FLUSH_INVAL_DB;
+
 		/* Ideally flush TC together with CB/DB. */
 		if (flush_bits & RADV_CMD_FLAG_INV_L2) {
 			/* Writeback and invalidate everything in L2 & L1. */
@@ -1321,6 +1369,8 @@ si_cs_emit_cache_flush(struct radeon_cmdbuf *cs,
 		        flush_bits &= ~(RADV_CMD_FLAG_INV_L2 |
 					 RADV_CMD_FLAG_WB_L2 |
 					 RADV_CMD_FLAG_INV_VCACHE);
+
+			*sqtt_flush_bits |= RGP_FLUSH_INVAL_L2;
 		}
 		assert(flush_cnt);
 		(*flush_cnt)++;
@@ -1357,6 +1407,8 @@ si_cs_emit_cache_flush(struct radeon_cmdbuf *cs,
 	    !is_mec) {
 		radeon_emit(cs, PKT3(PKT3_PFP_SYNC_ME, 0, 0));
 		radeon_emit(cs, 0);
+
+		*sqtt_flush_bits |= RGP_FLUSH_PFP_SYNC_ME;
 	}
 
 	if ((flush_bits & RADV_CMD_FLAG_INV_L2) ||
@@ -1367,6 +1419,8 @@ si_cs_emit_cache_flush(struct radeon_cmdbuf *cs,
 				    S_0085F0_TCL1_ACTION_ENA(1) |
 				    S_0301F0_TC_WB_ACTION_ENA(chip_class >= GFX8));
 		cp_coher_cntl = 0;
+
+		*sqtt_flush_bits |= RGP_FLUSH_INVAL_L2 | RGP_FLUSH_INVAL_VMEM_L0;
 	} else {
 		if(flush_bits & RADV_CMD_FLAG_WB_L2) {
 			/* WB = write-back
@@ -1381,6 +1435,8 @@ si_cs_emit_cache_flush(struct radeon_cmdbuf *cs,
 					    S_0301F0_TC_WB_ACTION_ENA(1) |
 					    S_0301F0_TC_NC_ACTION_ENA(1));
 			cp_coher_cntl = 0;
+
+			*sqtt_flush_bits |= RGP_FLUSH_FLUSH_L2 | RGP_FLUSH_INVAL_VMEM_L0;
 		}
 		if (flush_bits & RADV_CMD_FLAG_INV_VCACHE) {
 			si_emit_acquire_mem(cs, is_mec,
@@ -1388,6 +1444,8 @@ si_cs_emit_cache_flush(struct radeon_cmdbuf *cs,
 					    cp_coher_cntl |
 					    S_0085F0_TCL1_ACTION_ENA(1));
 			cp_coher_cntl = 0;
+
+			*sqtt_flush_bits |= RGP_FLUSH_INVAL_VMEM_L0;
 		}
 	}
 
@@ -1437,6 +1495,7 @@ si_emit_cache_flush(struct radv_cmd_buffer *cmd_buffer)
 			       cmd_buffer->gfx9_fence_va,
 	                       radv_cmd_buffer_uses_mec(cmd_buffer),
 	                       cmd_buffer->state.flush_bits,
+			       &cmd_buffer->state.sqtt_flush_bits,
 			       cmd_buffer->gfx9_eop_bug_va);
 
 

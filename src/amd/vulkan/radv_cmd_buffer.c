@@ -606,6 +606,7 @@ radv_cmd_buffer_after_draw(struct radv_cmd_buffer *cmd_buffer,
 	}
 
 	if (cmd_buffer->device->instance->debug_flags & RADV_DEBUG_SYNC_SHADERS) {
+		enum rgp_flush_bits sqtt_flush_bits = 0;
 		assert(flags & (RADV_CMD_FLAG_PS_PARTIAL_FLUSH |
 				RADV_CMD_FLAG_CS_PARTIAL_FLUSH));
 
@@ -617,7 +618,7 @@ radv_cmd_buffer_after_draw(struct radv_cmd_buffer *cmd_buffer,
 				       &cmd_buffer->gfx9_fence_idx,
 				       cmd_buffer->gfx9_fence_va,
 				       radv_cmd_buffer_uses_mec(cmd_buffer),
-				       flags, cmd_buffer->gfx9_eop_bug_va);
+				       flags, &sqtt_flush_bits, cmd_buffer->gfx9_eop_bug_va);
 	}
 
 	if (unlikely(cmd_buffer->device->trace_bo))

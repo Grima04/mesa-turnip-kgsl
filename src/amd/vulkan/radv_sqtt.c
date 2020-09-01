@@ -390,6 +390,7 @@ static void
 radv_emit_wait_for_idle(struct radv_device *device,
 			struct radeon_cmdbuf *cs, int family)
 {
+	enum rgp_flush_bits sqtt_flush_bits = 0;
 	si_cs_emit_cache_flush(cs, device->physical_device->rad_info.chip_class,
 			       NULL, 0,
 			       family == RING_COMPUTE &&
@@ -400,7 +401,7 @@ radv_emit_wait_for_idle(struct radv_device *device,
 			       RADV_CMD_FLAG_INV_ICACHE |
 			       RADV_CMD_FLAG_INV_SCACHE |
 			       RADV_CMD_FLAG_INV_VCACHE |
-			       RADV_CMD_FLAG_INV_L2, 0);
+			       RADV_CMD_FLAG_INV_L2, &sqtt_flush_bits, 0);
 }
 
 static void
