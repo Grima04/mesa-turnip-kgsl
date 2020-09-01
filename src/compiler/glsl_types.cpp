@@ -2427,6 +2427,15 @@ glsl_type::get_explicit_interface_type(bool supports_std430) const
    }
 }
 
+static unsigned
+explicit_type_scalar_byte_size(const glsl_type *type)
+{
+   if (type->base_type == GLSL_TYPE_BOOL)
+      return 4;
+   else
+      return glsl_base_type_get_bit_size(type->base_type) / 8;
+}
+
 /* This differs from get_explicit_std430_type() in that it:
  * - can size arrays slightly smaller ("stride * (len - 1) + elem_size" instead
  *   of "stride * len")
@@ -2951,11 +2960,9 @@ glsl_type::cl_alignment() const
 unsigned
 glsl_type::cl_size() const
 {
-   if (this->is_scalar()) {
-      return glsl_base_type_get_bit_size(this->base_type) / 8;
-   } else if (this->is_vector()) {
-      unsigned vec_elemns = this->vector_elements == 3 ? 4 : this->vector_elements;
-      return vec_elemns * glsl_base_type_get_bit_size(this->base_type) / 8;
+   if (this->is_scalar() || this->is_vector()) {
+      return util_next_power_of_two(this->vector_elements) *
+             explicit_type_scalar_byte_size(this);
    } else if (this->is_array()) {
       unsigned size = this->without_array()->cl_size();
       return size * this->length;
