@@ -54,7 +54,7 @@ stages:
     - if: &is-forked-branch-or-pre-merge '$CI_PROJECT_NAMESPACE != "mesa" || $CI_MERGE_REQUEST_SOURCE_BRANCH_NAME == $CI_COMMIT_REF_NAME'
       when: manual
     # Pipeline runs for the master branch of the main project
-    - if: &is-main-master '$CI_PROJECT_NAMESPACE == "mesa" && $CI_COMMIT_REF_NAME == "master"'
+    - if: &is-main-master '$CI_PROJECT_NAMESPACE == "mesa" && $CI_COMMIT_REF_NAME == "master" && $CI_MERGE_REQUEST_SOURCE_BRANCH_NAME != "master"'
       when: always
     # Post-merge pipeline
     - if: &is-post-merge '$CI_PROJECT_NAMESPACE == "mesa" && $CI_MERGE_REQUEST_SOURCE_BRANCH_NAME != $CI_COMMIT_REF_NAME'
