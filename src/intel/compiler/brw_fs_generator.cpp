@@ -2572,6 +2572,12 @@ fs_generator::generate_code(const cfg_t *cfg, int dispatch_width,
       }
    }
    ralloc_free(disasm_info);
+#ifndef NDEBUG
+   if (!validated && !debug_flag) {
+      fprintf(stderr,
+            "Validation failed. Rerun with INTEL_DEBUG=shaders to get more information.\n");
+   }
+#endif
    assert(validated);
 
    compiler->shader_debug_log(log_data,
