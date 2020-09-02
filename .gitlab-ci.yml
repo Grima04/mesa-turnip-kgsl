@@ -100,6 +100,9 @@ test-docs:
   stage: container+docs
   rules:
     - *ignore_scheduled_pipelines
+    - if: *is-main-master
+      changes: *docs-or-ci
+      when: never
     - if: *is-pre-merge-for-marge
       changes: *docs-or-ci
       when: on_success
