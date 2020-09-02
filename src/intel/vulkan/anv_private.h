@@ -4375,7 +4375,6 @@ struct anv_query_pool {
    struct anv_bo *                              bo;
 
    /* Perf queries : */
-   struct anv_bo                                reset_bo;
    uint32_t                                     n_counters;
    struct gen_perf_counter_pass                *counter_pass;
    uint32_t                                     n_passes;
