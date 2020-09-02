@@ -36,6 +36,19 @@ kernel::kernel(clover::program &prog, const std::string &name,
       if (marg.semantic == module::argument::general)
          _args.emplace_back(argument::create(marg));
    }
+   for (auto &dev : prog.devices()) {
+      auto &m = prog.build(dev).binary;
+      auto msym = find(name_equals(name), m.syms);
+      const auto f = id_type_equals(msym.section, module::section::data_constant);
+      if (!any_of(f, m.secs))
+         continue;
+
+      auto mconst = find(f, m.secs);
+      auto rb = std::make_unique<root_buffer>(prog.context(),
+                                              CL_MEM_COPY_HOST_PTR | CL_MEM_READ_ONLY,
+                                              mconst.size, mconst.data.data());
+      _constant_buffers.emplace(&dev, std::move(rb));
+   }
 }
 
 template<typename V>
@@ -163,7 +176,7 @@ kernel::exec_context::bind(intrusive_ptr<command_queue> _q,
    auto &m = kern.program().build(q->device()).binary;
    auto msym = find(name_equals(kern.name()), m.syms);
    auto margs = msym.args;
-   auto msec = find(id_equals(msym.section), m.secs);
+   auto msec = find(id_type_equals(msym.section, module::section::text_executable), m.secs);
    auto explicit_arg = kern._args.begin();
 
    for (auto &marg : margs) {
@@ -215,6 +228,13 @@ kernel::exec_context::bind(intrusive_ptr<command_queue> _q,
             arg->set(sizeof(x), &x);
             arg->bind(*this, marg);
          }
+         break;
+      }
+      case module::argument::constant_buffer: {
+         auto arg = argument::create(marg);
+         cl_mem buf = kern._constant_buffers.at(&q->device()).get();
+         arg->set(q->device().address_bits() / 8, &buf);
+         arg->bind(*this, marg);
          break;
       }
       }

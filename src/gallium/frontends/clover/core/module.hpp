@@ -76,7 +76,8 @@ namespace clover {
             grid_dimension,
             grid_offset,
             image_size,
-            image_format
+            image_format,
+            constant_buffer
          };
 
          argument(enum type type, size_t size,
