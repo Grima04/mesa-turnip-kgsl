@@ -330,10 +330,13 @@ spirv_to_gl_access_qualifier(struct vtn_builder *b,
 }
 
 static nir_deref_instr *
-vtn_get_image(struct vtn_builder *b, uint32_t value_id)
+vtn_get_image(struct vtn_builder *b, uint32_t value_id,
+              enum gl_access_qualifier *access)
 {
    struct vtn_type *type = vtn_get_value_type(b, value_id);
    vtn_assert(type->base_type == vtn_base_type_image);
+   if (access)
+      *access |= spirv_to_gl_access_qualifier(b, type->access_qualifier);
    return nir_build_deref_cast(&b->nb, vtn_get_nir_ssa(b, value_id),
                                nir_var_uniform, type->glsl_image, 0);
 }
@@ -2493,7 +2496,7 @@ vtn_handle_texture(struct vtn_builder *b, SpvOp opcode,
 
    if (opcode == SpvOpSampledImage) {
       struct vtn_sampled_image si = {
-         .image = vtn_get_image(b, w[3]),
+         .image = vtn_get_image(b, w[3], NULL),
          .sampler = vtn_get_sampler(b, w[4]),
       };
 
@@ -2523,7 +2526,7 @@ vtn_handle_texture(struct vtn_builder *b, SpvOp opcode,
       image = si.image;
       sampler = si.sampler;
    } else {
-      image = vtn_get_image(b, w[3]);
+      image = vtn_get_image(b, w[3], NULL);
    }
 
    const enum glsl_sampler_dim sampler_dim = glsl_get_sampler_dim(image->type);
@@ -3035,7 +3038,7 @@ vtn_handle_image(struct vtn_builder *b, SpvOp opcode,
 
    case SpvOpImageQuerySizeLod:
       res_val = vtn_untyped_value(b, w[3]);
-      image.image = vtn_get_image(b, w[3]);
+      image.image = vtn_get_image(b, w[3], &access);
       image.coord = NULL;
       image.sample = NULL;
       image.lod = vtn_ssa_value(b, w[4])->def;
@@ -3043,7 +3046,7 @@ vtn_handle_image(struct vtn_builder *b, SpvOp opcode,
 
    case SpvOpImageQuerySize:
       res_val = vtn_untyped_value(b, w[3]);
-      image.image = vtn_get_image(b, w[3]);
+      image.image = vtn_get_image(b, w[3], &access);
       image.coord = NULL;
       image.sample = NULL;
       image.lod = NULL;
@@ -3052,7 +3055,7 @@ vtn_handle_image(struct vtn_builder *b, SpvOp opcode,
    case SpvOpImageQueryFormat:
    case SpvOpImageQueryOrder:
       res_val = vtn_untyped_value(b, w[3]);
-      image.image = vtn_get_image(b, w[3]);
+      image.image = vtn_get_image(b, w[3], &access);
       image.coord = NULL;
       image.sample = NULL;
       image.lod = NULL;
@@ -3060,7 +3063,7 @@ vtn_handle_image(struct vtn_builder *b, SpvOp opcode,
 
    case SpvOpImageRead: {
       res_val = vtn_untyped_value(b, w[3]);
-      image.image = vtn_get_image(b, w[3]);
+      image.image = vtn_get_image(b, w[3], &access);
       image.coord = get_image_coord(b, w[4]);
 
       const SpvImageOperandsMask operands =
@@ -3099,7 +3102,7 @@ vtn_handle_image(struct vtn_builder *b, SpvOp opcode,
 
    case SpvOpImageWrite: {
       res_val = vtn_untyped_value(b, w[1]);
-      image.image = vtn_get_image(b, w[1]);
+      image.image = vtn_get_image(b, w[1], &access);
       image.coord = get_image_coord(b, w[2]);
 
       /* texel = w[3] */
