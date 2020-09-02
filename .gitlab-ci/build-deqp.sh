@@ -11,6 +11,11 @@ git clone \
     /VK-GL-CTS
 pushd /VK-GL-CTS
 
+# cherry-pick fix for surfaceless config choosing:
+git fetch origin master
+git cherry-pick -x 8f3bfc6c7def0c0cb452d5dadf31aa7fef242365
+
+
 # --insecure is due to SSL cert failures hitting sourceforge for zlib and
 # libpng (sigh).  The archives get their checksums checked anyway, and git
 # always goes through ssh or https.
