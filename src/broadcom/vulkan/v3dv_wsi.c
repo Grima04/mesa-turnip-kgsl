@@ -90,6 +90,20 @@ VkResult v3dv_GetPhysicalDeviceSurfaceSupportKHR(
                                          pSupported);
 }
 
+static void
+contraint_surface_capabilities(VkSurfaceCapabilitiesKHR *caps)
+{
+   /* Our display pipeline requires that images are linear, so we cannot
+    * ensure that our swapchain images can be sampled. If we are running under
+    * a compositor in windowed mode, the DRM modifier negotiation should
+    * probably end up selecting an UIF layout for the swapchain images but it
+    * may still choose linear and send images directly for scanout if the
+    * surface is in fullscreen mode for example. If we are not running under
+    * a compositor, then we would always need them to be linear anyway.
+    */
+   caps->supportedUsageFlags &= ~VK_IMAGE_USAGE_SAMPLED_BIT;
+}
+
 VkResult v3dv_GetPhysicalDeviceSurfaceCapabilitiesKHR(
     VkPhysicalDevice                            physicalDevice,
     VkSurfaceKHR                                surface,
@@ -97,9 +111,12 @@ VkResult v3dv_GetPhysicalDeviceSurfaceCapabilitiesKHR(
 {
    V3DV_FROM_HANDLE(v3dv_physical_device, device, physicalDevice);
 
-   return wsi_common_get_surface_capabilities(&device->wsi_device,
-                                              surface,
-                                              pSurfaceCapabilities);
+   VkResult result;
+   result = wsi_common_get_surface_capabilities(&device->wsi_device,
+                                                surface,
+                                                pSurfaceCapabilities);
+   contraint_surface_capabilities(pSurfaceCapabilities);
+   return result;
 }
 
 VkResult v3dv_GetPhysicalDeviceSurfaceCapabilities2KHR(
@@ -109,9 +126,12 @@ VkResult v3dv_GetPhysicalDeviceSurfaceCapabilities2KHR(
 {
    V3DV_FROM_HANDLE(v3dv_physical_device, device, physicalDevice);
 
-   return wsi_common_get_surface_capabilities2(&device->wsi_device,
-                                               pSurfaceInfo,
-                                               pSurfaceCapabilities);
+   VkResult result;
+   result = wsi_common_get_surface_capabilities2(&device->wsi_device,
+                                                 pSurfaceInfo,
+                                                 pSurfaceCapabilities);
+   contraint_surface_capabilities(&pSurfaceCapabilities->surfaceCapabilities);
+   return result;
 }
 
 VkResult v3dv_GetPhysicalDeviceSurfaceFormatsKHR(
