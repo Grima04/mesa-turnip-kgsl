@@ -646,23 +646,23 @@ zink_shader_tcs_create(struct zink_context *ctx, struct zink_shader *vs)
    gl_TessLevelOuter->data.patch = 1;
 
    /* hacks so we can size these right for now */
-   struct glsl_struct_field *fields = ralloc_size(nir, 2 * sizeof(struct glsl_struct_field));
-   fields[0].type = glsl_array_type(glsl_uint_type(), 2, 0);
-   fields[0].name = ralloc_asprintf(nir, "gl_TessLevelInner");
+   struct glsl_struct_field *fields = rzalloc_array(nir, struct glsl_struct_field, 3);
+   /* just use a single blob for padding here because it's easier */
+   fields[0].type = glsl_array_type(glsl_uint_type(), offsetof(struct zink_push_constant, default_inner_level) / 4, 0);
+   fields[0].name = ralloc_asprintf(nir, "padding");
    fields[0].offset = 0;
-   fields[1].type = glsl_array_type(glsl_uint_type(), 4, 0);
-   fields[1].name = ralloc_asprintf(nir, "gl_TessLevelOuter");
-   fields[1].offset = 8;
+   fields[1].type = glsl_array_type(glsl_uint_type(), 2, 0);
+   fields[1].name = ralloc_asprintf(nir, "gl_TessLevelInner");
+   fields[1].offset = offsetof(struct zink_push_constant, default_inner_level);
+   fields[2].type = glsl_array_type(glsl_uint_type(), 4, 0);
+   fields[2].name = ralloc_asprintf(nir, "gl_TessLevelOuter");
+   fields[2].offset = offsetof(struct zink_push_constant, default_outer_level);
    nir_variable *pushconst = nir_variable_create(nir, nir_var_mem_push_const,
-                                                 glsl_struct_type(fields, 2, "struct", false), "pushconst");
+                                                 glsl_struct_type(fields, 3, "struct", false), "pushconst");
    pushconst->data.location = VARYING_SLOT_VAR0;
 
-   nir_ssa_def *load_inner = nir_load_push_constant(&b, 2, 32,
-                                                    nir_imm_int(&b, offsetof(struct zink_push_constant, default_inner_level)),
-                                                    .base = offsetof(struct zink_push_constant, default_inner_level), .range = 8);
-   nir_ssa_def *load_outer = nir_load_push_constant(&b, 4, 32,
-                                                    nir_imm_int(&b, offsetof(struct zink_push_constant, default_outer_level)),
-                                                    .base = offsetof(struct zink_push_constant, default_outer_level), .range = 16);
+   nir_ssa_def *load_inner = nir_load_push_constant(&b, 2, 32, nir_imm_int(&b, 1), .base = 1, .range = 8);
+   nir_ssa_def *load_outer = nir_load_push_constant(&b, 4, 32, nir_imm_int(&b, 2), .base = 2, .range = 16);
 
    for (unsigned i = 0; i < 2; i++) {
       nir_deref_instr *store_idx = nir_build_deref_array_imm(&b, nir_build_deref_var(&b, gl_TessLevelInner), i);

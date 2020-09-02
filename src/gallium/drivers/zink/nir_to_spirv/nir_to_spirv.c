@@ -2161,7 +2161,6 @@ emit_store_shared(struct ntv_context *ctx, nir_intrinsic_instr *intr)
    }
 }
 
-/* FIXME: this is currently VERY specific to injected TCS usage */
 static void
 emit_load_push_const(struct ntv_context *ctx, nir_intrinsic_instr *intr)
 {
@@ -2179,8 +2178,6 @@ emit_load_push_const(struct ntv_context *ctx, nir_intrinsic_instr *intr)
 
    /* destination type for the load */
    SpvId type = get_dest_uvec_type(ctx, &intr->dest);
-   /* an id of an array member in bytes */
-   SpvId uint_size = emit_uint_const(ctx, 32, sizeof(uint32_t));
    SpvId one = emit_uint_const(ctx, 32, 1);
 
    /* we grab a single array member at a time, so it's a pointer to a uint */
@@ -2188,12 +2185,9 @@ emit_load_push_const(struct ntv_context *ctx, nir_intrinsic_instr *intr)
                                                    SpvStorageClassPushConstant,
                                                    load_type);
 
-   SpvId member = emit_uint_const(ctx, 32, 0);
-   /* this is the offset (in bytes) that we're accessing:
-    * it may be a const value or it may be dynamic in the shader
-    */
-   SpvId offset = get_src(ctx, &intr->src[0]);
-   offset = emit_binop(ctx, SpvOpUDiv, uint_type, offset, uint_size);
+   SpvId member = get_src(ctx, &intr->src[0]);
+   /* reuse the offset from ZINK_PUSH_CONST_OFFSET */
+   SpvId offset = emit_uint_const(ctx, 32, 0);
    /* OpAccessChain takes an array of indices that drill into a hierarchy based on the type:
     * index 0 is accessing 'base'
     * index 1 is accessing 'base[index 1]'
