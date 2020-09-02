@@ -83,22 +83,6 @@ bi_round_mode_name(enum bifrost_roundmode mod)
 }
 
 const char *
-bi_csel_cond_name(enum bifrost_csel_cond cond)
-{
-        switch (cond) {
-        case BIFROST_FEQ_F: return "feq.f";
-        case BIFROST_FGT_F: return "fgt.f";
-        case BIFROST_FGE_F: return "fge.f";
-        case BIFROST_IEQ_F: return "ieq.f";
-        case BIFROST_IGT_I: return "igt.i";
-        case BIFROST_IGE_I: return "uge.i";
-        case BIFROST_UGT_I: return "ugt.i";
-        case BIFROST_UGE_I: return "uge.i";
-        default: return "invalid";
-        }
-}
-
-const char *
 bi_interp_mode_name(enum bifrost_interp_mode mode)
 {
         switch (mode) {
@@ -107,17 +91,5 @@ bi_interp_mode_name(enum bifrost_interp_mode mode)
         case BIFROST_INTERP_DEFAULT: return "";
         case BIFROST_INTERP_EXPLICIT: return ".explicit";
         default: return ".unknown";
-        }
-}
-
-const char *
-bi_ldst_type_name(enum bifrost_ldst_type type)
-{
-        switch (type) {
-        case BIFROST_LDST_F16: return "f16";
-        case BIFROST_LDST_F32: return "f32";
-        case BIFROST_LDST_I32: return "i32";
-        case BIFROST_LDST_U32: return "u32";
-        default: return "invalid";
         }
 }
