@@ -94,6 +94,8 @@ static const struct debug_control debug_control[] = {
    { "pc",          DEBUG_PIPE_CONTROL },
    { "nofc",        DEBUG_NO_FAST_CLEAR },
    { "no32",        DEBUG_NO32 },
+   { "shaders",     DEBUG_WM | DEBUG_VS | DEBUG_TCS |
+                    DEBUG_TES | DEBUG_GS | DEBUG_CS },
    { NULL,    0 }
 };
 
