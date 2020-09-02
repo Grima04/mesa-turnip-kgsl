@@ -227,6 +227,8 @@ module clover::nir::spirv_to_nir(const module &mod, const device &dev,
          offset += glsl_get_cl_size(var->type);
       }
 
+      NIR_PASS_V(nir, nir_lower_mem_constant_vars,
+                 glsl_get_cl_type_size_align);
       NIR_PASS_V(nir, nir_lower_vars_to_explicit_types,
                  nir_var_mem_shared | nir_var_function_temp,
                  glsl_get_cl_type_size_align);
