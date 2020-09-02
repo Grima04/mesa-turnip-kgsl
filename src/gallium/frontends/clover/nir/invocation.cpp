@@ -69,6 +69,20 @@ static void debug_function(void *private_data,
    *r_log += message;
 }
 
+static void
+clover_arg_size_align(const glsl_type *type, unsigned *size, unsigned *align)
+{
+   if (type == glsl_type::sampler_type) {
+      *size = 0;
+      *align = 1;
+   } else if (type->is_image()) {
+      *size = *align = sizeof(cl_mem);
+   } else {
+      *size = type->cl_size();
+      *align = type->cl_alignment();
+   }
+}
+
 struct clover_lower_nir_state {
    std::vector<module::argument> &args;
    uint32_t global_dims;
@@ -298,8 +312,10 @@ module clover::nir::spirv_to_nir(const module &mod, const device &dev,
                  dev.address_bits());
 
       NIR_PASS_V(nir, nir_lower_vars_to_explicit_types,
-                 nir_var_uniform | nir_var_mem_shared |
-                 nir_var_mem_global | nir_var_function_temp,
+                 nir_var_uniform, clover_arg_size_align);
+      NIR_PASS_V(nir, nir_lower_vars_to_explicit_types,
+                 nir_var_mem_shared | nir_var_mem_global |
+                 nir_var_function_temp,
                  glsl_get_cl_type_size_align);
 
       NIR_PASS_V(nir, nir_lower_memcpy);
