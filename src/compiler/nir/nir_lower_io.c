@@ -437,6 +437,7 @@ emit_store(struct lower_io_state *state, nir_ssa_def *data,
    semantics.medium_precision =
       var->data.precision == GLSL_PRECISION_MEDIUM ||
       var->data.precision == GLSL_PRECISION_LOW;
+   semantics.per_view = var->data.per_view;
    nir_intrinsic_set_io_semantics(store, semantics);
 
    nir_builder_instr_insert(b, &store->instr);

@@ -1785,7 +1785,8 @@ typedef struct {
    unsigned fb_fetch_output:1; /* for GL_KHR_blend_equation_advanced */
    unsigned gs_streams:8; /* xxyyzzww: 2-bit stream index for each component */
    unsigned medium_precision:1; /* GLSL mediump qualifier */
-   unsigned _pad:8;
+   unsigned per_view:1;
+   unsigned _pad:7;
 } nir_io_semantics;
 
 #define NIR_INTRINSIC_MAX_INPUTS 5

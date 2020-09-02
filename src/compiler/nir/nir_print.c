@@ -972,6 +972,10 @@ print_intrinsic_instr(nir_intrinsic_instr *instr, print_state *state)
                 nir_intrinsic_io_semantics(instr).fb_fetch_output) {
                fprintf(fp, " fbfetch=1");
             }
+            if (instr->intrinsic == nir_intrinsic_store_output &&
+                nir_intrinsic_io_semantics(instr).per_view) {
+               fprintf(fp, " perview=1");
+            }
             if (state->shader->info.stage == MESA_SHADER_GEOMETRY &&
                 instr->intrinsic == nir_intrinsic_store_output) {
                unsigned gs_streams = nir_intrinsic_io_semantics(instr).gs_streams;
