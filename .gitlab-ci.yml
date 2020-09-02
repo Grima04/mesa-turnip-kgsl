@@ -358,7 +358,7 @@ arm64_test:
   extends:
     - .use-arm_test-base
   variables:
-    FDO_DISTRIBUTION_TAG: &arm64_test "2020-08-31-deqp-version"
+    FDO_DISTRIBUTION_TAG: &arm64_test "2020-09-04-pagetables"
 
 .use-arm64_test:
   variables:

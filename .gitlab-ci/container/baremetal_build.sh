@@ -49,7 +49,7 @@ mkdir /var/cache/apt/archives/$arch
 . .gitlab-ci/container/container_pre_build.sh
 
 ############### Create rootfs
-KERNEL_URL=https://gitlab.freedesktop.org/drm/msm/-/archive/drm-msm-fixes-2020-06-25/msm-drm-msm-fixes-2020-06-25.tar.gz
+KERNEL_URL=https://github.com/anholt/linux/archive/cheza-pagetables-2020-09-04.tar.gz
 
 DEBIAN_ARCH=$arch INCLUDE_VK_CTS=1 . .gitlab-ci/container/lava_build.sh
 
