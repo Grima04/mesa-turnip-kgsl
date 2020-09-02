@@ -37,8 +37,8 @@
  */
 
 struct divergence_state {
-   const nir_divergence_options options;
    const gl_shader_stage stage;
+   nir_shader *shader;
 
    /** current control flow state */
    /* True if some loop-active invocations might take a different control-flow path.
@@ -78,7 +78,7 @@ visit_alu(nir_alu_instr *instr)
 }
 
 static bool
-visit_intrinsic(nir_intrinsic_instr *instr, struct divergence_state *state)
+visit_intrinsic(nir_shader *shader, nir_intrinsic_instr *instr)
 {
    if (!nir_intrinsic_infos[instr->intrinsic].has_dest)
       return false;
@@ -86,8 +86,8 @@ visit_intrinsic(nir_intrinsic_instr *instr, struct divergence_state *state)
    if (instr->dest.ssa.divergent)
       return false;
 
-   nir_divergence_options options = state->options;
-   gl_shader_stage stage = state->stage;
+   nir_divergence_options options = shader->options->divergence_analysis_options;
+   gl_shader_stage stage = shader->info.stage;
    bool is_divergent = false;
    switch (instr->intrinsic) {
    /* Intrinsics which are always uniform */
@@ -524,24 +524,27 @@ nir_variable_mode_is_uniform(nir_variable_mode mode) {
 }
 
 static bool
-nir_variable_is_uniform(nir_variable *var, struct divergence_state *state)
+nir_variable_is_uniform(nir_shader *shader, nir_variable *var)
 {
    if (nir_variable_mode_is_uniform(var->data.mode))
       return true;
 
-   if (state->stage == MESA_SHADER_FRAGMENT &&
-       (state->options & nir_divergence_single_prim_per_subgroup) &&
+   nir_divergence_options options = shader->options->divergence_analysis_options;
+   gl_shader_stage stage = shader->info.stage;
+
+   if (stage == MESA_SHADER_FRAGMENT &&
+       (options & nir_divergence_single_prim_per_subgroup) &&
        var->data.mode == nir_var_shader_in &&
        var->data.interpolation == INTERP_MODE_FLAT)
       return true;
 
-   if (state->stage == MESA_SHADER_TESS_CTRL &&
-       (state->options & nir_divergence_single_patch_per_tcs_subgroup) &&
+   if (stage == MESA_SHADER_TESS_CTRL &&
+       (options & nir_divergence_single_patch_per_tcs_subgroup) &&
        var->data.mode == nir_var_shader_out && var->data.patch)
       return true;
 
-   if (state->stage == MESA_SHADER_TESS_EVAL &&
-       (state->options & nir_divergence_single_patch_per_tes_subgroup) &&
+   if (stage == MESA_SHADER_TESS_EVAL &&
+       (options & nir_divergence_single_patch_per_tes_subgroup) &&
        var->data.mode == nir_var_shader_in && var->data.patch)
       return true;
 
@@ -549,7 +552,7 @@ nir_variable_is_uniform(nir_variable *var, struct divergence_state *state)
 }
 
 static bool
-visit_deref(nir_deref_instr *deref, struct divergence_state *state)
+visit_deref(nir_shader *shader, nir_deref_instr *deref)
 {
    if (deref->dest.ssa.divergent)
       return false;
@@ -557,7 +560,7 @@ visit_deref(nir_deref_instr *deref, struct divergence_state *state)
    bool is_divergent = false;
    switch (deref->deref_type) {
    case nir_deref_type_var:
-      is_divergent = !nir_variable_is_uniform(deref->var, state);
+      is_divergent = !nir_variable_is_uniform(shader, deref->var);
       break;
    case nir_deref_type_array:
    case nir_deref_type_ptr_as_array:
@@ -629,7 +632,7 @@ visit_block(nir_block *block, struct divergence_state *state)
          has_changed |= visit_alu(nir_instr_as_alu(instr));
          break;
       case nir_instr_type_intrinsic:
-         has_changed |= visit_intrinsic(nir_instr_as_intrinsic(instr), state);
+         has_changed |= visit_intrinsic(state->shader, nir_instr_as_intrinsic(instr));
          break;
       case nir_instr_type_tex:
          has_changed |= visit_tex(nir_instr_as_tex(instr));
@@ -641,7 +644,7 @@ visit_block(nir_block *block, struct divergence_state *state)
          has_changed |= visit_ssa_undef(nir_instr_as_ssa_undef(instr));
          break;
       case nir_instr_type_deref:
-         has_changed |= visit_deref(nir_instr_as_deref(instr), state);
+         has_changed |= visit_deref(state->shader, nir_instr_as_deref(instr));
          break;
       case nir_instr_type_jump:
          has_changed |= visit_jump(nir_instr_as_jump(instr), state);
@@ -886,11 +889,11 @@ visit_cf_list(struct exec_list *list, struct divergence_state *state)
 }
 
 void
-nir_divergence_analysis(nir_shader *shader, nir_divergence_options options)
+nir_divergence_analysis(nir_shader *shader)
 {
    struct divergence_state state = {
-      .options = options,
       .stage = shader->info.stage,
+      .shader = shader,
       .divergent_loop_cf = false,
       .divergent_loop_continue = false,
       .divergent_loop_break = false,

@@ -3377,6 +3377,7 @@ typedef struct nir_shader_compiler_options {
 
    nir_lower_int64_options lower_int64_options;
    nir_lower_doubles_options lower_doubles_options;
+   nir_divergence_options divergence_analysis_options;
 } nir_shader_compiler_options;
 
 typedef struct nir_shader {
@@ -4799,7 +4800,7 @@ bool nir_repair_ssa(nir_shader *shader);
 
 void nir_convert_loop_to_lcssa(nir_loop *loop);
 bool nir_convert_to_lcssa(nir_shader *shader, bool skip_invariants, bool skip_bool_invariants);
-void nir_divergence_analysis(nir_shader *shader, nir_divergence_options options);
+void nir_divergence_analysis(nir_shader *shader);
 
 /* If phi_webs_only is true, only convert SSA values involved in phi nodes to
  * registers.  If false, convert all values (even those not involved in a phi

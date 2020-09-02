@@ -90,6 +90,7 @@ static const struct nir_shader_compiler_options nir_options = {
 				 nir_lower_dsqrt |
 				 nir_lower_drsq |
 				 nir_lower_ddiv,
+   .divergence_analysis_options = nir_divergence_view_index_uniform,
 };
 
 bool

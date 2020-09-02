@@ -766,7 +766,7 @@ void init_context(isel_context *ctx, nir_shader *shader)
    unsigned lane_mask_size = ctx->program->lane_mask.size();
 
    ctx->shader = shader;
-   nir_divergence_analysis(shader, nir_divergence_view_index_uniform);
+   nir_divergence_analysis(shader);
 
    fill_desc_set_info(ctx, impl);
 
