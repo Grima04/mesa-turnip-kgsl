@@ -72,12 +72,29 @@ lower_clip_plane_store(nir_intrinsic_instr *instr, unsigned clip_plane_enable, n
    nir_deref_instr *deref = nir_src_as_deref(instr->src[0]);
 
    out = nir_deref_instr_get_variable(deref);
-   if ((out->data.location != VARYING_SLOT_CLIP_DIST0) ||
+   if ((out->data.location != VARYING_SLOT_CLIP_DIST0 &&
+        out->data.location != VARYING_SLOT_CLIP_DIST1) ||
         out->data.mode != nir_var_shader_out)
       return false;
 
    b->cursor = nir_after_instr(&instr->instr);
-   if (nir_src_is_const(deref->arr.index)) {
+   if (deref->deref_type == nir_deref_type_var) {
+      int wrmask = nir_intrinsic_write_mask(instr);
+
+      nir_ssa_def *components[4];
+      int start = out->data.location == VARYING_SLOT_CLIP_DIST1 ? 4 : 0;
+      /* rewrite components as zeroes for planes that aren't enabled */
+      for (int i = 0; i < 4; i++) {
+         if (wrmask & (1 << i)) {
+            if (!(clip_plane_enable & (1 << (start + i))))
+               components[i] = nir_imm_int(b, 0);
+            else
+               components[i] = nir_channel(b, nir_ssa_for_src(b, instr->src[1], nir_src_num_components(instr->src[1])), i);
+         } else
+            components[i] = nir_ssa_undef(b, 1, 32);
+      }
+      nir_store_deref(b, deref, nir_vec(b, components, instr->num_components), wrmask);
+   } else  if (nir_src_is_const(deref->arr.index)) {
       /* storing using a constant index */
       plane = nir_src_as_uint(deref->arr.index);
       /* no need to make changes if the clip plane is enabled */
