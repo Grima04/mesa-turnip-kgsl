@@ -36,6 +36,10 @@ typedef struct nir_builder {
    /* Whether new ALU instructions will be marked "exact" */
    bool exact;
 
+   /* Whether to run divergence analysis on inserted instructions (loop merge
+    * and header phis are not updated). */
+   bool update_divergence;
+
    nir_shader *shader;
    nir_function_impl *impl;
 } nir_builder;
@@ -54,6 +58,7 @@ nir_builder_init_simple_shader(nir_builder *build, void *mem_ctx,
                                gl_shader_stage stage,
                                const nir_shader_compiler_options *options)
 {
+   memset(build, 0, sizeof(*build));
    build->shader = nir_shader_create(mem_ctx, stage, options, NULL);
    nir_function *func = nir_function_create(build->shader, "main");
    func->is_entrypoint = true;
@@ -109,6 +114,9 @@ static inline void
 nir_builder_instr_insert(nir_builder *build, nir_instr *instr)
 {
    nir_instr_insert(build->cursor, instr);
+
+   if (build->update_divergence)
+      nir_update_instr_divergence(build->shader, instr);
 
    /* Move the cursor forward. */
    build->cursor = nir_after_instr(instr);
@@ -237,6 +245,8 @@ nir_ssa_undef(nir_builder *build, unsigned num_components, unsigned bit_size)
       return NULL;
 
    nir_instr_insert(nir_before_cf_list(&build->impl->body), &undef->instr);
+   if (build->update_divergence)
+      nir_update_instr_divergence(build->shader, &undef->instr);
 
    return &undef->def;
 }

@@ -4801,6 +4801,7 @@ bool nir_repair_ssa(nir_shader *shader);
 void nir_convert_loop_to_lcssa(nir_loop *loop);
 bool nir_convert_to_lcssa(nir_shader *shader, bool skip_invariants, bool skip_bool_invariants);
 void nir_divergence_analysis(nir_shader *shader);
+bool nir_update_instr_divergence(nir_shader *shader, nir_instr *instr);
 
 /* If phi_webs_only is true, only convert SSA values involved in phi nodes to
  * registers.  If false, convert all values (even those not involved in a phi

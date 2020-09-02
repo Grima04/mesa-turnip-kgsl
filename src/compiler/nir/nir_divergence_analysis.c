@@ -615,6 +615,31 @@ set_ssa_def_not_divergent(nir_ssa_def *def, UNUSED void *_state)
 }
 
 static bool
+update_instr_divergence(nir_shader *shader, nir_instr *instr)
+{
+   switch (instr->type) {
+   case nir_instr_type_alu:
+      return visit_alu(nir_instr_as_alu(instr));
+   case nir_instr_type_intrinsic:
+      return visit_intrinsic(shader, nir_instr_as_intrinsic(instr));
+   case nir_instr_type_tex:
+      return visit_tex(nir_instr_as_tex(instr));
+   case nir_instr_type_load_const:
+      return visit_load_const(nir_instr_as_load_const(instr));
+   case nir_instr_type_ssa_undef:
+      return visit_ssa_undef(nir_instr_as_ssa_undef(instr));
+   case nir_instr_type_deref:
+      return visit_deref(shader, nir_instr_as_deref(instr));
+   case nir_instr_type_jump:
+   case nir_instr_type_phi:
+   case nir_instr_type_call:
+   case nir_instr_type_parallel_copy:
+   default:
+      unreachable("NIR divergence analysis: Unsupported instruction type.");
+   }
+}
+
+static bool
 visit_block(nir_block *block, struct divergence_state *state)
 {
    bool has_changed = false;
@@ -627,33 +652,10 @@ visit_block(nir_block *block, struct divergence_state *state)
       if (state->first_visit)
          nir_foreach_ssa_def(instr, set_ssa_def_not_divergent, NULL);
 
-      switch (instr->type) {
-      case nir_instr_type_alu:
-         has_changed |= visit_alu(nir_instr_as_alu(instr));
-         break;
-      case nir_instr_type_intrinsic:
-         has_changed |= visit_intrinsic(state->shader, nir_instr_as_intrinsic(instr));
-         break;
-      case nir_instr_type_tex:
-         has_changed |= visit_tex(nir_instr_as_tex(instr));
-         break;
-      case nir_instr_type_load_const:
-         has_changed |= visit_load_const(nir_instr_as_load_const(instr));
-         break;
-      case nir_instr_type_ssa_undef:
-         has_changed |= visit_ssa_undef(nir_instr_as_ssa_undef(instr));
-         break;
-      case nir_instr_type_deref:
-         has_changed |= visit_deref(state->shader, nir_instr_as_deref(instr));
-         break;
-      case nir_instr_type_jump:
+      if (instr->type == nir_instr_type_jump)
          has_changed |= visit_jump(nir_instr_as_jump(instr), state);
-         break;
-      case nir_instr_type_phi:
-      case nir_instr_type_call:
-      case nir_instr_type_parallel_copy:
-         unreachable("NIR divergence analysis: Unsupported instruction type.");
-      }
+      else
+         has_changed |= update_instr_divergence(state->shader, instr);
    }
 
    return has_changed;
@@ -901,5 +903,25 @@ nir_divergence_analysis(nir_shader *shader)
    };
 
    visit_cf_list(&nir_shader_get_entrypoint(shader)->body, &state);
+}
+
+bool nir_update_instr_divergence(nir_shader *shader, nir_instr *instr)
+{
+   nir_foreach_ssa_def(instr, set_ssa_def_not_divergent, NULL);
+
+   if (instr->type == nir_instr_type_phi) {
+      nir_cf_node *prev = nir_cf_node_prev(&instr->block->cf_node);
+      /* can only update gamma/if phis */
+      if (!prev || prev->type != nir_cf_node_if)
+         return false;
+
+      nir_if *nif = nir_cf_node_as_if(prev);
+
+      visit_if_merge_phi(nir_instr_as_phi(instr), nir_src_is_divergent(nif->condition));
+      return true;
+   }
+
+   update_instr_divergence(shader, instr);
+   return true;
 }
 
