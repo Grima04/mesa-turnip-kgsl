@@ -101,14 +101,11 @@ nir_lower_clip_disable(nir_shader *shader, unsigned clip_plane_enable)
 {
    bool progress = false;
 
-   nir_foreach_shader_out_variable(var, shader) {
-      if (var->data.location == VARYING_SLOT_CLIP_DIST0) {
-         unsigned size = glsl_get_length(var->type);
-         /* if currently-enabled planes match used planes then no-op */
-         if (clip_plane_enable == (1u << size) - 1)
-            return false;
-      }
-   }
+   /* if all user planes are enabled in API that are written in the array, always ignore;
+    * this explicitly covers the 2x vec4 case
+    */
+   if (clip_plane_enable == u_bit_consecutive(0, shader->info.clip_distance_array_size))
+      return false;
 
    nir_foreach_function(function, shader) {
       if (function->impl) {
