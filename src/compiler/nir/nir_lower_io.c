@@ -1724,32 +1724,35 @@ bool
 nir_lower_mem_constant_vars(nir_shader *shader,
                             glsl_type_size_align_func type_info)
 {
+   bool progress = false;
+
    unsigned old_constant_data_size = shader->constant_data_size;
-   if (!lower_vars_to_explicit(shader, &shader->variables,
-                               nir_var_mem_constant, type_info)) {
-      nir_shader_preserve_all_metadata(shader);
-      return false;
-   }
+   if (lower_vars_to_explicit(shader, &shader->variables,
+                              nir_var_mem_constant, type_info)) {
+      assert(shader->constant_data_size > old_constant_data_size);
+      shader->constant_data = rerzalloc_size(shader, shader->constant_data,
+                                             old_constant_data_size,
+                                             shader->constant_data_size);
 
-   shader->constant_data = rerzalloc_size(shader, shader->constant_data,
-                                          old_constant_data_size,
-                                          shader->constant_data_size);
-
-   nir_foreach_variable_with_modes(var, shader, nir_var_mem_constant) {
-      write_constant((char *)shader->constant_data + var->data.driver_location,
-                     var->constant_initializer, var->type);
+      nir_foreach_variable_with_modes(var, shader, nir_var_mem_constant) {
+         write_constant((char *)shader->constant_data +
+                           var->data.driver_location,
+                        var->constant_initializer, var->type);
+      }
+      progress = true;
    }
 
    nir_foreach_function(function, shader) {
       if (!function->impl)
          continue;
 
-      nir_lower_vars_to_explicit_types_impl(function->impl,
-                                            nir_var_mem_constant,
-                                            type_info);
+      if (nir_lower_vars_to_explicit_types_impl(function->impl,
+                                                nir_var_mem_constant,
+                                                type_info))
+         progress = true;
    }
 
-   return true;
+   return progress;
 }
 
 /**
