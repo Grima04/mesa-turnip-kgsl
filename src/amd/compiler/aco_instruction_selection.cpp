@@ -32,8 +32,13 @@
 #include "aco_ir.h"
 #include "aco_builder.h"
 #include "aco_interface.h"
-#include "aco_instruction_selection_setup.cpp"
+#include "aco_instruction_selection.h"
 #include "util/fast_idiv_by_const.h"
+
+#include "ac_exp_param.h"
+#include "sid.h"
+#include "vulkan/radv_descriptor_set.h"
+#include "vulkan/radv_shader.h"
 
 namespace aco {
 namespace {

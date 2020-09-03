@@ -22,115 +22,16 @@
  *
  */
 
-#include <array>
-#include <unordered_map>
-#include "aco_ir.h"
-#include "nir.h"
-#include "nir_control_flow.h"
-#include "vulkan/radv_shader.h"
+#include "aco_instruction_selection.h"
 #include "vulkan/radv_descriptor_set.h"
-#include "vulkan/radv_shader_args.h"
+#include "vulkan/radv_shader.h"
+#include "nir_control_flow.h"
 #include "sid.h"
 #include "ac_exp_param.h"
-#include "ac_shader_util.h"
-
-#include "util/u_math.h"
 
 namespace aco {
 
-struct shader_io_state {
-   uint8_t mask[VARYING_SLOT_MAX];
-   Temp temps[VARYING_SLOT_MAX * 4u];
-
-   shader_io_state() {
-      memset(mask, 0, sizeof(mask));
-      std::fill_n(temps, VARYING_SLOT_MAX * 4u, Temp(0, RegClass::v1));
-   }
-};
-
-enum resource_flags {
-   has_glc_vmem_load = 0x1,
-   has_nonglc_vmem_load = 0x2,
-   has_glc_vmem_store = 0x4,
-   has_nonglc_vmem_store = 0x8,
-
-   has_vmem_store = has_glc_vmem_store | has_nonglc_vmem_store,
-   has_vmem_loadstore = has_vmem_store | has_glc_vmem_load | has_nonglc_vmem_load,
-   has_nonglc_vmem_loadstore = has_nonglc_vmem_load | has_nonglc_vmem_store,
-
-   buffer_is_restrict = 0x10,
-};
-
-struct isel_context {
-   const struct radv_nir_compiler_options *options;
-   struct radv_shader_args *args;
-   Program *program;
-   nir_shader *shader;
-   uint32_t constant_data_offset;
-   Block *block;
-   std::unique_ptr<Temp[]> allocated;
-   std::unordered_map<unsigned, std::array<Temp,NIR_MAX_VEC_COMPONENTS>> allocated_vec;
-   Stage stage; /* Stage */
-   bool has_gfx10_wave64_bpermute = false;
-   struct {
-      bool has_branch;
-      uint16_t loop_nest_depth = 0;
-      struct {
-         unsigned header_idx;
-         Block* exit;
-         bool has_divergent_continue = false;
-         bool has_divergent_branch = false;
-      } parent_loop;
-      struct {
-         bool is_divergent = false;
-      } parent_if;
-      bool exec_potentially_empty_discard = false; /* set to false when loop_nest_depth==0 && parent_if.is_divergent==false */
-      uint16_t exec_potentially_empty_break_depth = UINT16_MAX;
-      /* Set to false when loop_nest_depth==exec_potentially_empty_break_depth
-       * and parent_if.is_divergent==false. Called _break but it's also used for
-       * loop continues. */
-      bool exec_potentially_empty_break = false;
-      std::unique_ptr<unsigned[]> nir_to_aco; /* NIR block index to ACO block index */
-   } cf_info;
-
-   uint32_t resource_flag_offsets[MAX_SETS];
-   std::vector<uint8_t> buffer_resource_flags;
-
-   Temp arg_temps[AC_MAX_ARGS];
-
-   /* FS inputs */
-   Temp persp_centroid, linear_centroid;
-
-   /* GS inputs */
-   Temp gs_wave_id;
-
-   /* VS output information */
-   bool export_clip_dists;
-   unsigned num_clip_distances;
-   unsigned num_cull_distances;
-
-   /* tessellation information */
-   unsigned tcs_tess_lvl_out_loc;
-   unsigned tcs_tess_lvl_in_loc;
-   uint64_t tcs_temp_only_inputs;
-   uint32_t tcs_num_inputs;
-   uint32_t tcs_num_outputs;
-   uint32_t tcs_num_patch_outputs;
-   uint32_t tcs_num_patches;
-   bool tcs_in_out_eq = false;
-
-   /* I/O information */
-   shader_io_state inputs;
-   shader_io_state outputs;
-   uint8_t output_drv_loc_to_var_slot[MESA_SHADER_COMPUTE][VARYING_SLOT_MAX];
-   uint8_t output_tcs_patch_drv_loc_to_var_slot[VARYING_SLOT_MAX];
-};
-
-Temp get_arg(isel_context *ctx, struct ac_arg arg)
-{
-   assert(arg.used);
-   return ctx->arg_temps[arg.arg_index];
-}
+namespace {
 
 unsigned get_interp_input(nir_intrinsic_op intrin, enum glsl_interp_mode interp)
 {
@@ -234,82 +135,6 @@ sanitize_cf_list(nir_function_impl *impl, struct exec_list *cf_list)
    }
 
    return progress;
-}
-
-void get_buffer_resource_flags(isel_context *ctx, nir_ssa_def *def, unsigned access,
-                               uint8_t **flags, uint32_t *count)
-{
-   int desc_set = -1;
-   unsigned binding = 0;
-
-   if (!def) {
-      /* global resources are considered aliasing with all other buffers and
-       * buffer images */
-      // TODO: only merge flags of resources which can really alias.
-   } else if (def->parent_instr->type == nir_instr_type_intrinsic) {
-      nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(def->parent_instr);
-      if (intrin->intrinsic == nir_intrinsic_vulkan_resource_index) {
-         desc_set = nir_intrinsic_desc_set(intrin);
-         binding = nir_intrinsic_binding(intrin);
-      }
-   } else if (def->parent_instr->type == nir_instr_type_deref) {
-      nir_deref_instr *deref = nir_instr_as_deref(def->parent_instr);
-      assert(deref->type->is_image());
-      if (deref->type->sampler_dimensionality != GLSL_SAMPLER_DIM_BUF) {
-         *flags = NULL;
-         *count = 0;
-         return;
-      }
-
-      nir_variable *var = nir_deref_instr_get_variable(deref);
-      desc_set = var->data.descriptor_set;
-      binding = var->data.binding;
-   }
-
-   if (desc_set < 0) {
-      *flags = ctx->buffer_resource_flags.data();
-      *count = ctx->buffer_resource_flags.size();
-      return;
-   }
-
-   unsigned set_offset = ctx->resource_flag_offsets[desc_set];
-
-   if (!(ctx->buffer_resource_flags[set_offset + binding] & buffer_is_restrict)) {
-      /* Non-restrict buffers alias only with other non-restrict buffers.
-       * We reserve flags[0] for these. */
-      *flags = ctx->buffer_resource_flags.data();
-      *count = 1;
-      return;
-   }
-
-   *flags = ctx->buffer_resource_flags.data() + set_offset + binding;
-   *count = 1;
-}
-
-uint8_t get_all_buffer_resource_flags(isel_context *ctx, nir_ssa_def *def, unsigned access)
-{
-   uint8_t *flags;
-   uint32_t count;
-   get_buffer_resource_flags(ctx, def, access, &flags, &count);
-
-   uint8_t res = 0;
-   for (unsigned i = 0; i < count; i++)
-      res |= flags[i];
-   return res;
-}
-
-bool can_subdword_ssbo_store_use_smem(nir_intrinsic_instr *intrin)
-{
-   unsigned wrmask = nir_intrinsic_write_mask(intrin);
-   if (util_last_bit(wrmask) != util_bitcount(wrmask) ||
-       util_bitcount(wrmask) * intrin->src[0].ssa->bit_size % 32 ||
-       util_bitcount(wrmask) != intrin->src[0].ssa->num_components)
-      return false;
-
-   if (nir_intrinsic_align_mul(intrin) % 4 || nir_intrinsic_align_offset(intrin) % 4)
-      return false;
-
-   return true;
 }
 
 void fill_desc_set_info(isel_context *ctx, nir_function_impl *impl)
@@ -550,455 +375,6 @@ RegClass get_reg_class(isel_context *ctx, RegType type, unsigned components, uns
       return RegClass::get(type, components * bitsize / 8u);
 }
 
-void init_context(isel_context *ctx, nir_shader *shader)
-{
-   nir_function_impl *impl = nir_shader_get_entrypoint(shader);
-   unsigned lane_mask_size = ctx->program->lane_mask.size();
-
-   ctx->shader = shader;
-   nir_divergence_analysis(shader, nir_divergence_view_index_uniform);
-
-   fill_desc_set_info(ctx, impl);
-
-   apply_nuw_to_offsets(ctx, impl);
-
-   /* sanitize control flow */
-   nir_metadata_require(impl, nir_metadata_dominance);
-   sanitize_cf_list(impl, &impl->body);
-   nir_metadata_preserve(impl, ~nir_metadata_block_index);
-
-   /* we'll need this for isel */
-   nir_metadata_require(impl, nir_metadata_block_index);
-
-   if (!(ctx->stage & sw_gs_copy) && ctx->options->dump_preoptir) {
-      fprintf(stderr, "NIR shader before instruction selection:\n");
-      nir_print_shader(shader, stderr);
-   }
-
-   std::unique_ptr<Temp[]> allocated{new Temp[impl->ssa_alloc]()};
-
-   unsigned spi_ps_inputs = 0;
-
-   std::unique_ptr<unsigned[]> nir_to_aco{new unsigned[impl->num_blocks]()};
-
-   /* TODO: make this recursive to improve compile times and merge with fill_desc_set_info() */
-   bool done = false;
-   while (!done) {
-      done = true;
-      nir_foreach_block(block, impl) {
-         nir_foreach_instr(instr, block) {
-            switch(instr->type) {
-            case nir_instr_type_alu: {
-               nir_alu_instr *alu_instr = nir_instr_as_alu(instr);
-               RegType type = RegType::sgpr;
-               switch(alu_instr->op) {
-                  case nir_op_fmul:
-                  case nir_op_fadd:
-                  case nir_op_fsub:
-                  case nir_op_fmax:
-                  case nir_op_fmin:
-                  case nir_op_fneg:
-                  case nir_op_fabs:
-                  case nir_op_fsat:
-                  case nir_op_fsign:
-                  case nir_op_frcp:
-                  case nir_op_frsq:
-                  case nir_op_fsqrt:
-                  case nir_op_fexp2:
-                  case nir_op_flog2:
-                  case nir_op_ffract:
-                  case nir_op_ffloor:
-                  case nir_op_fceil:
-                  case nir_op_ftrunc:
-                  case nir_op_fround_even:
-                  case nir_op_fsin:
-                  case nir_op_fcos:
-                  case nir_op_f2f16:
-                  case nir_op_f2f16_rtz:
-                  case nir_op_f2f16_rtne:
-                  case nir_op_f2f32:
-                  case nir_op_f2f64:
-                  case nir_op_u2f16:
-                  case nir_op_u2f32:
-                  case nir_op_u2f64:
-                  case nir_op_i2f16:
-                  case nir_op_i2f32:
-                  case nir_op_i2f64:
-                  case nir_op_pack_half_2x16:
-                  case nir_op_unpack_half_2x16_split_x:
-                  case nir_op_unpack_half_2x16_split_y:
-                  case nir_op_fddx:
-                  case nir_op_fddy:
-                  case nir_op_fddx_fine:
-                  case nir_op_fddy_fine:
-                  case nir_op_fddx_coarse:
-                  case nir_op_fddy_coarse:
-                  case nir_op_fquantize2f16:
-                  case nir_op_ldexp:
-                  case nir_op_frexp_sig:
-                  case nir_op_frexp_exp:
-                  case nir_op_cube_face_index:
-                  case nir_op_cube_face_coord:
-                     type = RegType::vgpr;
-                     break;
-                  case nir_op_f2i16:
-                  case nir_op_f2u16:
-                  case nir_op_f2i32:
-                  case nir_op_f2u32:
-                  case nir_op_f2i64:
-                  case nir_op_f2u64:
-                  case nir_op_b2i8:
-                  case nir_op_b2i16:
-                  case nir_op_b2i32:
-                  case nir_op_b2i64:
-                  case nir_op_b2b32:
-                  case nir_op_b2f16:
-                  case nir_op_b2f32:
-                  case nir_op_mov:
-                     type = nir_dest_is_divergent(alu_instr->dest.dest) ? RegType::vgpr : RegType::sgpr;
-                     break;
-                  case nir_op_bcsel:
-                     type = nir_dest_is_divergent(alu_instr->dest.dest) ? RegType::vgpr : RegType::sgpr;
-                     /* fallthrough */
-                  default:
-                     for (unsigned i = 0; i < nir_op_infos[alu_instr->op].num_inputs; i++) {
-                        if (allocated[alu_instr->src[i].src.ssa->index].type() == RegType::vgpr)
-                           type = RegType::vgpr;
-                     }
-                     break;
-               }
-
-               RegClass rc = get_reg_class(ctx, type, alu_instr->dest.dest.ssa.num_components, alu_instr->dest.dest.ssa.bit_size);
-               allocated[alu_instr->dest.dest.ssa.index] = Temp(0, rc);
-               break;
-            }
-            case nir_instr_type_load_const: {
-               unsigned num_components = nir_instr_as_load_const(instr)->def.num_components;
-               unsigned bit_size = nir_instr_as_load_const(instr)->def.bit_size;
-               RegClass rc = get_reg_class(ctx, RegType::sgpr, num_components, bit_size);
-               allocated[nir_instr_as_load_const(instr)->def.index] = Temp(0, rc);
-               break;
-            }
-            case nir_instr_type_intrinsic: {
-               nir_intrinsic_instr *intrinsic = nir_instr_as_intrinsic(instr);
-               if (!nir_intrinsic_infos[intrinsic->intrinsic].has_dest)
-                  break;
-               RegType type = RegType::sgpr;
-               switch(intrinsic->intrinsic) {
-                  case nir_intrinsic_load_push_constant:
-                  case nir_intrinsic_load_work_group_id:
-                  case nir_intrinsic_load_num_work_groups:
-                  case nir_intrinsic_load_subgroup_id:
-                  case nir_intrinsic_load_num_subgroups:
-                  case nir_intrinsic_load_first_vertex:
-                  case nir_intrinsic_load_base_instance:
-                  case nir_intrinsic_get_buffer_size:
-                  case nir_intrinsic_vote_all:
-                  case nir_intrinsic_vote_any:
-                  case nir_intrinsic_read_first_invocation:
-                  case nir_intrinsic_read_invocation:
-                  case nir_intrinsic_first_invocation:
-                  case nir_intrinsic_ballot:
-                     type = RegType::sgpr;
-                     break;
-                  case nir_intrinsic_load_sample_id:
-                  case nir_intrinsic_load_sample_mask_in:
-                  case nir_intrinsic_load_input:
-                  case nir_intrinsic_load_output:
-                  case nir_intrinsic_load_input_vertex:
-                  case nir_intrinsic_load_per_vertex_input:
-                  case nir_intrinsic_load_per_vertex_output:
-                  case nir_intrinsic_load_vertex_id:
-                  case nir_intrinsic_load_vertex_id_zero_base:
-                  case nir_intrinsic_load_barycentric_sample:
-                  case nir_intrinsic_load_barycentric_pixel:
-                  case nir_intrinsic_load_barycentric_model:
-                  case nir_intrinsic_load_barycentric_centroid:
-                  case nir_intrinsic_load_barycentric_at_sample:
-                  case nir_intrinsic_load_barycentric_at_offset:
-                  case nir_intrinsic_load_interpolated_input:
-                  case nir_intrinsic_load_frag_coord:
-                  case nir_intrinsic_load_sample_pos:
-                  case nir_intrinsic_load_layer_id:
-                  case nir_intrinsic_load_local_invocation_id:
-                  case nir_intrinsic_load_local_invocation_index:
-                  case nir_intrinsic_load_subgroup_invocation:
-                  case nir_intrinsic_load_tess_coord:
-                  case nir_intrinsic_write_invocation_amd:
-                  case nir_intrinsic_mbcnt_amd:
-                  case nir_intrinsic_load_instance_id:
-                  case nir_intrinsic_ssbo_atomic_add:
-                  case nir_intrinsic_ssbo_atomic_imin:
-                  case nir_intrinsic_ssbo_atomic_umin:
-                  case nir_intrinsic_ssbo_atomic_imax:
-                  case nir_intrinsic_ssbo_atomic_umax:
-                  case nir_intrinsic_ssbo_atomic_and:
-                  case nir_intrinsic_ssbo_atomic_or:
-                  case nir_intrinsic_ssbo_atomic_xor:
-                  case nir_intrinsic_ssbo_atomic_exchange:
-                  case nir_intrinsic_ssbo_atomic_comp_swap:
-                  case nir_intrinsic_global_atomic_add:
-                  case nir_intrinsic_global_atomic_imin:
-                  case nir_intrinsic_global_atomic_umin:
-                  case nir_intrinsic_global_atomic_imax:
-                  case nir_intrinsic_global_atomic_umax:
-                  case nir_intrinsic_global_atomic_and:
-                  case nir_intrinsic_global_atomic_or:
-                  case nir_intrinsic_global_atomic_xor:
-                  case nir_intrinsic_global_atomic_exchange:
-                  case nir_intrinsic_global_atomic_comp_swap:
-                  case nir_intrinsic_image_deref_atomic_add:
-                  case nir_intrinsic_image_deref_atomic_umin:
-                  case nir_intrinsic_image_deref_atomic_imin:
-                  case nir_intrinsic_image_deref_atomic_umax:
-                  case nir_intrinsic_image_deref_atomic_imax:
-                  case nir_intrinsic_image_deref_atomic_and:
-                  case nir_intrinsic_image_deref_atomic_or:
-                  case nir_intrinsic_image_deref_atomic_xor:
-                  case nir_intrinsic_image_deref_atomic_exchange:
-                  case nir_intrinsic_image_deref_atomic_comp_swap:
-                  case nir_intrinsic_image_deref_size:
-                  case nir_intrinsic_shared_atomic_add:
-                  case nir_intrinsic_shared_atomic_imin:
-                  case nir_intrinsic_shared_atomic_umin:
-                  case nir_intrinsic_shared_atomic_imax:
-                  case nir_intrinsic_shared_atomic_umax:
-                  case nir_intrinsic_shared_atomic_and:
-                  case nir_intrinsic_shared_atomic_or:
-                  case nir_intrinsic_shared_atomic_xor:
-                  case nir_intrinsic_shared_atomic_exchange:
-                  case nir_intrinsic_shared_atomic_comp_swap:
-                  case nir_intrinsic_shared_atomic_fadd:
-                  case nir_intrinsic_load_scratch:
-                  case nir_intrinsic_load_invocation_id:
-                  case nir_intrinsic_load_primitive_id:
-                     type = RegType::vgpr;
-                     break;
-                  case nir_intrinsic_shuffle:
-                  case nir_intrinsic_quad_broadcast:
-                  case nir_intrinsic_quad_swap_horizontal:
-                  case nir_intrinsic_quad_swap_vertical:
-                  case nir_intrinsic_quad_swap_diagonal:
-                  case nir_intrinsic_quad_swizzle_amd:
-                  case nir_intrinsic_masked_swizzle_amd:
-                  case nir_intrinsic_inclusive_scan:
-                  case nir_intrinsic_exclusive_scan:
-                  case nir_intrinsic_reduce:
-                  case nir_intrinsic_load_ubo:
-                  case nir_intrinsic_load_ssbo:
-                  case nir_intrinsic_load_global:
-                  case nir_intrinsic_vulkan_resource_index:
-                  case nir_intrinsic_load_shared:
-                     type = nir_dest_is_divergent(intrinsic->dest) ? RegType::vgpr : RegType::sgpr;
-                     break;
-                  case nir_intrinsic_load_view_index:
-                     type = ctx->stage == fragment_fs ? RegType::vgpr : RegType::sgpr;
-                     break;
-                  default:
-                     for (unsigned i = 0; i < nir_intrinsic_infos[intrinsic->intrinsic].num_srcs; i++) {
-                        if (allocated[intrinsic->src[i].ssa->index].type() == RegType::vgpr)
-                           type = RegType::vgpr;
-                     }
-                     break;
-               }
-               RegClass rc = get_reg_class(ctx, type, intrinsic->dest.ssa.num_components, intrinsic->dest.ssa.bit_size);
-               allocated[intrinsic->dest.ssa.index] = Temp(0, rc);
-
-               switch(intrinsic->intrinsic) {
-                  case nir_intrinsic_load_barycentric_sample:
-                  case nir_intrinsic_load_barycentric_pixel:
-                  case nir_intrinsic_load_barycentric_centroid:
-                  case nir_intrinsic_load_barycentric_at_sample:
-                  case nir_intrinsic_load_barycentric_at_offset: {
-                     glsl_interp_mode mode = (glsl_interp_mode)nir_intrinsic_interp_mode(intrinsic);
-                     spi_ps_inputs |= get_interp_input(intrinsic->intrinsic, mode);
-                     break;
-                  }
-                  case nir_intrinsic_load_barycentric_model:
-                     spi_ps_inputs |= S_0286CC_PERSP_PULL_MODEL_ENA(1);
-                     break;
-                  case nir_intrinsic_load_front_face:
-                     spi_ps_inputs |= S_0286CC_FRONT_FACE_ENA(1);
-                     break;
-                  case nir_intrinsic_load_frag_coord:
-                  case nir_intrinsic_load_sample_pos: {
-                     uint8_t mask = nir_ssa_def_components_read(&intrinsic->dest.ssa);
-                     for (unsigned i = 0; i < 4; i++) {
-                        if (mask & (1 << i))
-                           spi_ps_inputs |= S_0286CC_POS_X_FLOAT_ENA(1) << i;
-
-                     }
-                     break;
-                  }
-                  case nir_intrinsic_load_sample_id:
-                     spi_ps_inputs |= S_0286CC_ANCILLARY_ENA(1);
-                     break;
-                  case nir_intrinsic_load_sample_mask_in:
-                     spi_ps_inputs |= S_0286CC_ANCILLARY_ENA(1);
-                     spi_ps_inputs |= S_0286CC_SAMPLE_COVERAGE_ENA(1);
-                     break;
-                  default:
-                     break;
-               }
-               break;
-            }
-            case nir_instr_type_tex: {
-               nir_tex_instr* tex = nir_instr_as_tex(instr);
-               unsigned size = tex->dest.ssa.num_components;
-
-               if (tex->dest.ssa.bit_size == 64)
-                  size *= 2;
-               if (tex->op == nir_texop_texture_samples) {
-                  assert(!tex->dest.ssa.divergent);
-               }
-               if (nir_dest_is_divergent(tex->dest))
-                  allocated[tex->dest.ssa.index] = Temp(0, RegClass(RegType::vgpr, size));
-               else
-                  allocated[tex->dest.ssa.index] = Temp(0, RegClass(RegType::sgpr, size));
-               break;
-            }
-            case nir_instr_type_parallel_copy: {
-               nir_foreach_parallel_copy_entry(entry, nir_instr_as_parallel_copy(instr)) {
-                  allocated[entry->dest.ssa.index] = allocated[entry->src.ssa->index];
-               }
-               break;
-            }
-            case nir_instr_type_ssa_undef: {
-               unsigned num_components = nir_instr_as_ssa_undef(instr)->def.num_components;
-               unsigned bit_size = nir_instr_as_ssa_undef(instr)->def.bit_size;
-               RegClass rc = get_reg_class(ctx, RegType::sgpr, num_components, bit_size);
-               allocated[nir_instr_as_ssa_undef(instr)->def.index] = Temp(0, rc);
-               break;
-            }
-            case nir_instr_type_phi: {
-               nir_phi_instr* phi = nir_instr_as_phi(instr);
-               RegType type;
-               unsigned size = phi->dest.ssa.num_components;
-
-               if (phi->dest.ssa.bit_size == 1) {
-                  assert(size == 1 && "multiple components not yet supported on boolean phis.");
-                  type = RegType::sgpr;
-                  size *= lane_mask_size;
-                  allocated[phi->dest.ssa.index] = Temp(0, RegClass(type, size));
-                  break;
-               }
-
-               if (nir_dest_is_divergent(phi->dest)) {
-                  type = RegType::vgpr;
-               } else {
-                  type = RegType::sgpr;
-                  nir_foreach_phi_src (src, phi) {
-                     if (allocated[src->src.ssa->index].type() == RegType::vgpr)
-                        type = RegType::vgpr;
-                     if (allocated[src->src.ssa->index].type() == RegType::none)
-                        done = false;
-                  }
-               }
-
-               RegClass rc = get_reg_class(ctx, type, phi->dest.ssa.num_components, phi->dest.ssa.bit_size);
-               if (rc != allocated[phi->dest.ssa.index].regClass()) {
-                  done = false;
-               } else {
-                  nir_foreach_phi_src(src, phi)
-                     assert(allocated[src->src.ssa->index].size() == rc.size());
-               }
-               allocated[phi->dest.ssa.index] = Temp(0, rc);
-               break;
-            }
-            default:
-               break;
-            }
-         }
-      }
-   }
-
-   if (G_0286CC_POS_W_FLOAT_ENA(spi_ps_inputs)) {
-      /* If POS_W_FLOAT (11) is enabled, at least one of PERSP_* must be enabled too */
-      spi_ps_inputs |= S_0286CC_PERSP_CENTER_ENA(1);
-   }
-
-   if (!(spi_ps_inputs & 0x7F)) {
-      /* At least one of PERSP_* (0xF) or LINEAR_* (0x70) must be enabled */
-      spi_ps_inputs |= S_0286CC_PERSP_CENTER_ENA(1);
-   }
-
-   ctx->program->config->spi_ps_input_ena = spi_ps_inputs;
-   ctx->program->config->spi_ps_input_addr = spi_ps_inputs;
-
-   for (unsigned i = 0; i < impl->ssa_alloc; i++)
-      allocated[i] = Temp(ctx->program->allocateId(), allocated[i].regClass());
-
-   ctx->allocated.reset(allocated.release());
-   ctx->cf_info.nir_to_aco.reset(nir_to_aco.release());
-
-   /* align and copy constant data */
-   while (ctx->program->constant_data.size() % 4u)
-      ctx->program->constant_data.push_back(0);
-   ctx->constant_data_offset = ctx->program->constant_data.size();
-   ctx->program->constant_data.insert(ctx->program->constant_data.end(),
-                                      (uint8_t*)shader->constant_data,
-                                      (uint8_t*)shader->constant_data + shader->constant_data_size);
-}
-
-Pseudo_instruction *add_startpgm(struct isel_context *ctx)
-{
-   unsigned arg_count = ctx->args->ac.arg_count;
-   if (ctx->stage == fragment_fs) {
-      /* LLVM optimizes away unused FS inputs and computes spi_ps_input_addr
-       * itself and then communicates the results back via the ELF binary.
-       * Mirror what LLVM does by re-mapping the VGPR arguments here.
-       *
-       * TODO: If we made the FS input scanning code into a separate pass that
-       * could run before argument setup, then this wouldn't be necessary
-       * anymore.
-       */
-      struct ac_shader_args *args = &ctx->args->ac;
-      arg_count = 0;
-      for (unsigned i = 0, vgpr_arg = 0, vgpr_reg = 0; i < args->arg_count; i++) {
-         if (args->args[i].file != AC_ARG_VGPR) {
-            arg_count++;
-            continue;
-         }
-
-         if (!(ctx->program->config->spi_ps_input_addr & (1 << vgpr_arg))) {
-            args->args[i].skip = true;
-         } else {
-            args->args[i].offset = vgpr_reg;
-            vgpr_reg += args->args[i].size;
-            arg_count++;
-         }
-         vgpr_arg++;
-      }
-   }
-
-   aco_ptr<Pseudo_instruction> startpgm{create_instruction<Pseudo_instruction>(aco_opcode::p_startpgm, Format::PSEUDO, 0, arg_count + 1)};
-   for (unsigned i = 0, arg = 0; i < ctx->args->ac.arg_count; i++) {
-      if (ctx->args->ac.args[i].skip)
-         continue;
-
-      enum ac_arg_regfile file = ctx->args->ac.args[i].file;
-      unsigned size = ctx->args->ac.args[i].size;
-      unsigned reg = ctx->args->ac.args[i].offset;
-      RegClass type = RegClass(file == AC_ARG_SGPR ? RegType::sgpr : RegType::vgpr, size);
-      Temp dst = Temp{ctx->program->allocateId(), type};
-      ctx->arg_temps[i] = dst;
-      startpgm->definitions[arg] = Definition(dst);
-      startpgm->definitions[arg].setFixed(PhysReg{file == AC_ARG_SGPR ? reg : reg + 256});
-      arg++;
-   }
-   startpgm->definitions[arg_count] = Definition{ctx->program->allocateId(), exec, ctx->program->lane_mask};
-   Pseudo_instruction *instr = startpgm.get();
-   ctx->block->instructions.push_back(std::move(startpgm));
-
-   /* Stash these in the program so that they can be accessed later when
-    * handling spilling.
-    */
-   ctx->program->private_segment_buffer = get_arg(ctx, ctx->args->ring_offsets);
-   ctx->program->scratch_offset = get_arg(ctx, ctx->args->scratch_offset);
-
-   return instr;
-}
-
 int
 type_size(const struct glsl_type *type, bool bindless)
 {
@@ -1006,7 +382,7 @@ type_size(const struct glsl_type *type, bool bindless)
    return glsl_count_attribute_slots(type, false);
 }
 
-static bool
+bool
 mem_vectorize_callback(unsigned align, unsigned bit_size,
                        unsigned num_components, unsigned high_offset,
                        nir_intrinsic_instr *low, nir_intrinsic_instr *high)
@@ -1396,6 +772,398 @@ setup_xnack(Program *program)
    default:
       break;
    }
+}
+
+} /* end namespace */
+
+void init_context(isel_context *ctx, nir_shader *shader)
+{
+   nir_function_impl *impl = nir_shader_get_entrypoint(shader);
+   unsigned lane_mask_size = ctx->program->lane_mask.size();
+
+   ctx->shader = shader;
+   nir_divergence_analysis(shader, nir_divergence_view_index_uniform);
+
+   fill_desc_set_info(ctx, impl);
+
+   apply_nuw_to_offsets(ctx, impl);
+
+   /* sanitize control flow */
+   nir_metadata_require(impl, nir_metadata_dominance);
+   sanitize_cf_list(impl, &impl->body);
+   nir_metadata_preserve(impl, ~nir_metadata_block_index);
+
+   /* we'll need this for isel */
+   nir_metadata_require(impl, nir_metadata_block_index);
+
+   if (!(ctx->stage & sw_gs_copy) && ctx->options->dump_preoptir) {
+      fprintf(stderr, "NIR shader before instruction selection:\n");
+      nir_print_shader(shader, stderr);
+   }
+
+   std::unique_ptr<Temp[]> allocated{new Temp[impl->ssa_alloc]()};
+
+   unsigned spi_ps_inputs = 0;
+
+   std::unique_ptr<unsigned[]> nir_to_aco{new unsigned[impl->num_blocks]()};
+
+   /* TODO: make this recursive to improve compile times and merge with fill_desc_set_info() */
+   bool done = false;
+   while (!done) {
+      done = true;
+      nir_foreach_block(block, impl) {
+         nir_foreach_instr(instr, block) {
+            switch(instr->type) {
+            case nir_instr_type_alu: {
+               nir_alu_instr *alu_instr = nir_instr_as_alu(instr);
+               RegType type = RegType::sgpr;
+               switch(alu_instr->op) {
+                  case nir_op_fmul:
+                  case nir_op_fadd:
+                  case nir_op_fsub:
+                  case nir_op_fmax:
+                  case nir_op_fmin:
+                  case nir_op_fneg:
+                  case nir_op_fabs:
+                  case nir_op_fsat:
+                  case nir_op_fsign:
+                  case nir_op_frcp:
+                  case nir_op_frsq:
+                  case nir_op_fsqrt:
+                  case nir_op_fexp2:
+                  case nir_op_flog2:
+                  case nir_op_ffract:
+                  case nir_op_ffloor:
+                  case nir_op_fceil:
+                  case nir_op_ftrunc:
+                  case nir_op_fround_even:
+                  case nir_op_fsin:
+                  case nir_op_fcos:
+                  case nir_op_f2f16:
+                  case nir_op_f2f16_rtz:
+                  case nir_op_f2f16_rtne:
+                  case nir_op_f2f32:
+                  case nir_op_f2f64:
+                  case nir_op_u2f16:
+                  case nir_op_u2f32:
+                  case nir_op_u2f64:
+                  case nir_op_i2f16:
+                  case nir_op_i2f32:
+                  case nir_op_i2f64:
+                  case nir_op_pack_half_2x16:
+                  case nir_op_unpack_half_2x16_split_x:
+                  case nir_op_unpack_half_2x16_split_y:
+                  case nir_op_fddx:
+                  case nir_op_fddy:
+                  case nir_op_fddx_fine:
+                  case nir_op_fddy_fine:
+                  case nir_op_fddx_coarse:
+                  case nir_op_fddy_coarse:
+                  case nir_op_fquantize2f16:
+                  case nir_op_ldexp:
+                  case nir_op_frexp_sig:
+                  case nir_op_frexp_exp:
+                  case nir_op_cube_face_index:
+                  case nir_op_cube_face_coord:
+                     type = RegType::vgpr;
+                     break;
+                  case nir_op_f2i16:
+                  case nir_op_f2u16:
+                  case nir_op_f2i32:
+                  case nir_op_f2u32:
+                  case nir_op_f2i64:
+                  case nir_op_f2u64:
+                  case nir_op_b2i8:
+                  case nir_op_b2i16:
+                  case nir_op_b2i32:
+                  case nir_op_b2i64:
+                  case nir_op_b2b32:
+                  case nir_op_b2f16:
+                  case nir_op_b2f32:
+                  case nir_op_mov:
+                     type = nir_dest_is_divergent(alu_instr->dest.dest) ? RegType::vgpr : RegType::sgpr;
+                     break;
+                  case nir_op_bcsel:
+                     type = nir_dest_is_divergent(alu_instr->dest.dest) ? RegType::vgpr : RegType::sgpr;
+                     /* fallthrough */
+                  default:
+                     for (unsigned i = 0; i < nir_op_infos[alu_instr->op].num_inputs; i++) {
+                        if (allocated[alu_instr->src[i].src.ssa->index].type() == RegType::vgpr)
+                           type = RegType::vgpr;
+                     }
+                     break;
+               }
+
+               RegClass rc = get_reg_class(ctx, type, alu_instr->dest.dest.ssa.num_components, alu_instr->dest.dest.ssa.bit_size);
+               allocated[alu_instr->dest.dest.ssa.index] = Temp(0, rc);
+               break;
+            }
+            case nir_instr_type_load_const: {
+               unsigned num_components = nir_instr_as_load_const(instr)->def.num_components;
+               unsigned bit_size = nir_instr_as_load_const(instr)->def.bit_size;
+               RegClass rc = get_reg_class(ctx, RegType::sgpr, num_components, bit_size);
+               allocated[nir_instr_as_load_const(instr)->def.index] = Temp(0, rc);
+               break;
+            }
+            case nir_instr_type_intrinsic: {
+               nir_intrinsic_instr *intrinsic = nir_instr_as_intrinsic(instr);
+               if (!nir_intrinsic_infos[intrinsic->intrinsic].has_dest)
+                  break;
+               RegType type = RegType::sgpr;
+               switch(intrinsic->intrinsic) {
+                  case nir_intrinsic_load_push_constant:
+                  case nir_intrinsic_load_work_group_id:
+                  case nir_intrinsic_load_num_work_groups:
+                  case nir_intrinsic_load_subgroup_id:
+                  case nir_intrinsic_load_num_subgroups:
+                  case nir_intrinsic_load_first_vertex:
+                  case nir_intrinsic_load_base_instance:
+                  case nir_intrinsic_get_buffer_size:
+                  case nir_intrinsic_vote_all:
+                  case nir_intrinsic_vote_any:
+                  case nir_intrinsic_read_first_invocation:
+                  case nir_intrinsic_read_invocation:
+                  case nir_intrinsic_first_invocation:
+                  case nir_intrinsic_ballot:
+                     type = RegType::sgpr;
+                     break;
+                  case nir_intrinsic_load_sample_id:
+                  case nir_intrinsic_load_sample_mask_in:
+                  case nir_intrinsic_load_input:
+                  case nir_intrinsic_load_output:
+                  case nir_intrinsic_load_input_vertex:
+                  case nir_intrinsic_load_per_vertex_input:
+                  case nir_intrinsic_load_per_vertex_output:
+                  case nir_intrinsic_load_vertex_id:
+                  case nir_intrinsic_load_vertex_id_zero_base:
+                  case nir_intrinsic_load_barycentric_sample:
+                  case nir_intrinsic_load_barycentric_pixel:
+                  case nir_intrinsic_load_barycentric_model:
+                  case nir_intrinsic_load_barycentric_centroid:
+                  case nir_intrinsic_load_barycentric_at_sample:
+                  case nir_intrinsic_load_barycentric_at_offset:
+                  case nir_intrinsic_load_interpolated_input:
+                  case nir_intrinsic_load_frag_coord:
+                  case nir_intrinsic_load_sample_pos:
+                  case nir_intrinsic_load_layer_id:
+                  case nir_intrinsic_load_local_invocation_id:
+                  case nir_intrinsic_load_local_invocation_index:
+                  case nir_intrinsic_load_subgroup_invocation:
+                  case nir_intrinsic_load_tess_coord:
+                  case nir_intrinsic_write_invocation_amd:
+                  case nir_intrinsic_mbcnt_amd:
+                  case nir_intrinsic_load_instance_id:
+                  case nir_intrinsic_ssbo_atomic_add:
+                  case nir_intrinsic_ssbo_atomic_imin:
+                  case nir_intrinsic_ssbo_atomic_umin:
+                  case nir_intrinsic_ssbo_atomic_imax:
+                  case nir_intrinsic_ssbo_atomic_umax:
+                  case nir_intrinsic_ssbo_atomic_and:
+                  case nir_intrinsic_ssbo_atomic_or:
+                  case nir_intrinsic_ssbo_atomic_xor:
+                  case nir_intrinsic_ssbo_atomic_exchange:
+                  case nir_intrinsic_ssbo_atomic_comp_swap:
+                  case nir_intrinsic_global_atomic_add:
+                  case nir_intrinsic_global_atomic_imin:
+                  case nir_intrinsic_global_atomic_umin:
+                  case nir_intrinsic_global_atomic_imax:
+                  case nir_intrinsic_global_atomic_umax:
+                  case nir_intrinsic_global_atomic_and:
+                  case nir_intrinsic_global_atomic_or:
+                  case nir_intrinsic_global_atomic_xor:
+                  case nir_intrinsic_global_atomic_exchange:
+                  case nir_intrinsic_global_atomic_comp_swap:
+                  case nir_intrinsic_image_deref_atomic_add:
+                  case nir_intrinsic_image_deref_atomic_umin:
+                  case nir_intrinsic_image_deref_atomic_imin:
+                  case nir_intrinsic_image_deref_atomic_umax:
+                  case nir_intrinsic_image_deref_atomic_imax:
+                  case nir_intrinsic_image_deref_atomic_and:
+                  case nir_intrinsic_image_deref_atomic_or:
+                  case nir_intrinsic_image_deref_atomic_xor:
+                  case nir_intrinsic_image_deref_atomic_exchange:
+                  case nir_intrinsic_image_deref_atomic_comp_swap:
+                  case nir_intrinsic_image_deref_size:
+                  case nir_intrinsic_shared_atomic_add:
+                  case nir_intrinsic_shared_atomic_imin:
+                  case nir_intrinsic_shared_atomic_umin:
+                  case nir_intrinsic_shared_atomic_imax:
+                  case nir_intrinsic_shared_atomic_umax:
+                  case nir_intrinsic_shared_atomic_and:
+                  case nir_intrinsic_shared_atomic_or:
+                  case nir_intrinsic_shared_atomic_xor:
+                  case nir_intrinsic_shared_atomic_exchange:
+                  case nir_intrinsic_shared_atomic_comp_swap:
+                  case nir_intrinsic_shared_atomic_fadd:
+                  case nir_intrinsic_load_scratch:
+                  case nir_intrinsic_load_invocation_id:
+                  case nir_intrinsic_load_primitive_id:
+                     type = RegType::vgpr;
+                     break;
+                  case nir_intrinsic_shuffle:
+                  case nir_intrinsic_quad_broadcast:
+                  case nir_intrinsic_quad_swap_horizontal:
+                  case nir_intrinsic_quad_swap_vertical:
+                  case nir_intrinsic_quad_swap_diagonal:
+                  case nir_intrinsic_quad_swizzle_amd:
+                  case nir_intrinsic_masked_swizzle_amd:
+                  case nir_intrinsic_inclusive_scan:
+                  case nir_intrinsic_exclusive_scan:
+                  case nir_intrinsic_reduce:
+                  case nir_intrinsic_load_ubo:
+                  case nir_intrinsic_load_ssbo:
+                  case nir_intrinsic_load_global:
+                  case nir_intrinsic_vulkan_resource_index:
+                  case nir_intrinsic_load_shared:
+                     type = nir_dest_is_divergent(intrinsic->dest) ? RegType::vgpr : RegType::sgpr;
+                     break;
+                  case nir_intrinsic_load_view_index:
+                     type = ctx->stage == fragment_fs ? RegType::vgpr : RegType::sgpr;
+                     break;
+                  default:
+                     for (unsigned i = 0; i < nir_intrinsic_infos[intrinsic->intrinsic].num_srcs; i++) {
+                        if (allocated[intrinsic->src[i].ssa->index].type() == RegType::vgpr)
+                           type = RegType::vgpr;
+                     }
+                     break;
+               }
+               RegClass rc = get_reg_class(ctx, type, intrinsic->dest.ssa.num_components, intrinsic->dest.ssa.bit_size);
+               allocated[intrinsic->dest.ssa.index] = Temp(0, rc);
+
+               switch(intrinsic->intrinsic) {
+                  case nir_intrinsic_load_barycentric_sample:
+                  case nir_intrinsic_load_barycentric_pixel:
+                  case nir_intrinsic_load_barycentric_centroid:
+                  case nir_intrinsic_load_barycentric_at_sample:
+                  case nir_intrinsic_load_barycentric_at_offset: {
+                     glsl_interp_mode mode = (glsl_interp_mode)nir_intrinsic_interp_mode(intrinsic);
+                     spi_ps_inputs |= get_interp_input(intrinsic->intrinsic, mode);
+                     break;
+                  }
+                  case nir_intrinsic_load_barycentric_model:
+                     spi_ps_inputs |= S_0286CC_PERSP_PULL_MODEL_ENA(1);
+                     break;
+                  case nir_intrinsic_load_front_face:
+                     spi_ps_inputs |= S_0286CC_FRONT_FACE_ENA(1);
+                     break;
+                  case nir_intrinsic_load_frag_coord:
+                  case nir_intrinsic_load_sample_pos: {
+                     uint8_t mask = nir_ssa_def_components_read(&intrinsic->dest.ssa);
+                     for (unsigned i = 0; i < 4; i++) {
+                        if (mask & (1 << i))
+                           spi_ps_inputs |= S_0286CC_POS_X_FLOAT_ENA(1) << i;
+
+                     }
+                     break;
+                  }
+                  case nir_intrinsic_load_sample_id:
+                     spi_ps_inputs |= S_0286CC_ANCILLARY_ENA(1);
+                     break;
+                  case nir_intrinsic_load_sample_mask_in:
+                     spi_ps_inputs |= S_0286CC_ANCILLARY_ENA(1);
+                     spi_ps_inputs |= S_0286CC_SAMPLE_COVERAGE_ENA(1);
+                     break;
+                  default:
+                     break;
+               }
+               break;
+            }
+            case nir_instr_type_tex: {
+               nir_tex_instr* tex = nir_instr_as_tex(instr);
+               unsigned size = tex->dest.ssa.num_components;
+
+               if (tex->dest.ssa.bit_size == 64)
+                  size *= 2;
+               if (tex->op == nir_texop_texture_samples) {
+                  assert(!tex->dest.ssa.divergent);
+               }
+               if (nir_dest_is_divergent(tex->dest))
+                  allocated[tex->dest.ssa.index] = Temp(0, RegClass(RegType::vgpr, size));
+               else
+                  allocated[tex->dest.ssa.index] = Temp(0, RegClass(RegType::sgpr, size));
+               break;
+            }
+            case nir_instr_type_parallel_copy: {
+               nir_foreach_parallel_copy_entry(entry, nir_instr_as_parallel_copy(instr)) {
+                  allocated[entry->dest.ssa.index] = allocated[entry->src.ssa->index];
+               }
+               break;
+            }
+            case nir_instr_type_ssa_undef: {
+               unsigned num_components = nir_instr_as_ssa_undef(instr)->def.num_components;
+               unsigned bit_size = nir_instr_as_ssa_undef(instr)->def.bit_size;
+               RegClass rc = get_reg_class(ctx, RegType::sgpr, num_components, bit_size);
+               allocated[nir_instr_as_ssa_undef(instr)->def.index] = Temp(0, rc);
+               break;
+            }
+            case nir_instr_type_phi: {
+               nir_phi_instr* phi = nir_instr_as_phi(instr);
+               RegType type;
+               unsigned size = phi->dest.ssa.num_components;
+
+               if (phi->dest.ssa.bit_size == 1) {
+                  assert(size == 1 && "multiple components not yet supported on boolean phis.");
+                  type = RegType::sgpr;
+                  size *= lane_mask_size;
+                  allocated[phi->dest.ssa.index] = Temp(0, RegClass(type, size));
+                  break;
+               }
+
+               if (nir_dest_is_divergent(phi->dest)) {
+                  type = RegType::vgpr;
+               } else {
+                  type = RegType::sgpr;
+                  nir_foreach_phi_src (src, phi) {
+                     if (allocated[src->src.ssa->index].type() == RegType::vgpr)
+                        type = RegType::vgpr;
+                     if (allocated[src->src.ssa->index].type() == RegType::none)
+                        done = false;
+                  }
+               }
+
+               RegClass rc = get_reg_class(ctx, type, phi->dest.ssa.num_components, phi->dest.ssa.bit_size);
+               if (rc != allocated[phi->dest.ssa.index].regClass()) {
+                  done = false;
+               } else {
+                  nir_foreach_phi_src(src, phi)
+                     assert(allocated[src->src.ssa->index].size() == rc.size());
+               }
+               allocated[phi->dest.ssa.index] = Temp(0, rc);
+               break;
+            }
+            default:
+               break;
+            }
+         }
+      }
+   }
+
+   if (G_0286CC_POS_W_FLOAT_ENA(spi_ps_inputs)) {
+      /* If POS_W_FLOAT (11) is enabled, at least one of PERSP_* must be enabled too */
+      spi_ps_inputs |= S_0286CC_PERSP_CENTER_ENA(1);
+   }
+
+   if (!(spi_ps_inputs & 0x7F)) {
+      /* At least one of PERSP_* (0xF) or LINEAR_* (0x70) must be enabled */
+      spi_ps_inputs |= S_0286CC_PERSP_CENTER_ENA(1);
+   }
+
+   ctx->program->config->spi_ps_input_ena = spi_ps_inputs;
+   ctx->program->config->spi_ps_input_addr = spi_ps_inputs;
+
+   for (unsigned i = 0; i < impl->ssa_alloc; i++)
+      allocated[i] = Temp(ctx->program->allocateId(), allocated[i].regClass());
+
+   ctx->allocated.reset(allocated.release());
+   ctx->cf_info.nir_to_aco.reset(nir_to_aco.release());
+
+   /* align and copy constant data */
+   while (ctx->program->constant_data.size() % 4u)
+      ctx->program->constant_data.push_back(0);
+   ctx->constant_data_offset = ctx->program->constant_data.size();
+   ctx->program->constant_data.insert(ctx->program->constant_data.end(),
+                                      (uint8_t*)shader->constant_data,
+                                      (uint8_t*)shader->constant_data + shader->constant_data_size);
 }
 
 isel_context
