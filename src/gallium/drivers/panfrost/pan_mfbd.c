@@ -243,7 +243,7 @@ panfrost_mfbd_set_cbuf(
                 if (is_bifrost) {
                         rt->format.unk3 |= 0x8;
                 } else {
-                        rt->format.block = MALI_BLOCK_FORMAT_TILED;
+                        rt->format.block = MALI_BLOCK_FORMAT_TILED_U_INTERLEAVED;
                 }
 
                 rt->framebuffer = base;
@@ -336,7 +336,7 @@ panfrost_mfbd_set_zsbuf(
                                 fbx->flags_hi |= 0x440;
                                 fbx->flags_lo |= 0x1;
                         } else {
-                                fbx->zs_block = MALI_BLOCK_FORMAT_TILED;
+                                fbx->zs_block = MALI_BLOCK_FORMAT_TILED_U_INTERLEAVED;
                         }
 
                         fbx->ds_linear.depth_stride = stride;

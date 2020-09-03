@@ -144,7 +144,7 @@ panfrost_sfbd_set_cbuf(
         if (rsrc->modifier == DRM_FORMAT_MOD_LINEAR)
                 fb->format.block = MALI_BLOCK_FORMAT_LINEAR;
         else if (rsrc->modifier == DRM_FORMAT_MOD_ARM_16X16_BLOCK_U_INTERLEAVED) {
-                fb->format.block = MALI_BLOCK_FORMAT_TILED;
+                fb->format.block = MALI_BLOCK_FORMAT_TILED_U_INTERLEAVED;
                 fb->stride *= 16;
         } else {
                 fprintf(stderr, "Invalid render modifier\n");
