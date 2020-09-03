@@ -610,6 +610,8 @@ zink_set_shader_buffers(struct pipe_context *pctx,
          pipe_resource_reference(&ssbo->buffer, &res->base);
          ssbo->buffer_offset = buffers[i].buffer_offset;
          ssbo->buffer_size = MIN2(buffers[i].buffer_size, res->size - ssbo->buffer_offset);
+         util_range_add(&res->base, &res->valid_buffer_range, ssbo->buffer_offset,
+                        ssbo->buffer_offset + ssbo->buffer_size);
       } else {
          pipe_resource_reference(&ssbo->buffer, NULL);
          ssbo->buffer_offset = 0;
@@ -651,6 +653,8 @@ zink_set_shader_images(struct pipe_context *pctx,
          if (images[i].resource->target == PIPE_BUFFER) {
             image_view->buffer_view = create_buffer_view(zink_screen(pctx->screen), res, images[i].format, images[i].u.buf.offset, images[i].u.buf.size);
             assert(image_view->buffer_view);
+            util_range_add(&res->base, &res->valid_buffer_range, images[i].u.buf.offset,
+                           images[i].u.buf.offset + images[i].u.buf.size);
          } else {
             struct pipe_surface tmpl = {};
             tmpl.format = images[i].format;
@@ -1512,10 +1516,11 @@ zink_resource_copy_region(struct pipe_context *pctx,
       struct zink_batch *batch = zink_batch_no_rp(ctx);
       zink_batch_reference_resource_rw(batch, src, false);
       zink_batch_reference_resource_rw(batch, dst, true);
-
+      util_range_add(&dst->base, &dst->valid_buffer_range, dstx, dstx + src_box->width);
       vkCmdCopyBuffer(batch->cmdbuf, src->buffer, dst->buffer, 1, &region);
    } else
       debug_printf("zink: TODO resource copy\n");
+      //util_range_add(dst, &dst->valid_buffer_range, dstx, dstx + src_box->width);
 }
 
 static struct pipe_stream_output_target *
@@ -1545,6 +1550,9 @@ zink_create_stream_output_target(struct pipe_context *pctx,
    t->base.buffer_offset = buffer_offset;
    t->base.buffer_size = buffer_size;
 
+   struct zink_resource *res = zink_resource(pres);
+   util_range_add(pres, &res->valid_buffer_range, buffer_offset,
+                  buffer_offset + buffer_size);
    return &t->base;
 }
 

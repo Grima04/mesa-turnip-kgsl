@@ -781,9 +781,11 @@ zink_get_query_result_resource(struct pipe_context *pctx,
          uint64_t *u64_map = map;
          u64_map[0] = u64[1];
       }
+      util_range_add(&res->base, &res->valid_buffer_range, offset, result_size);
       pipe_buffer_unmap(pctx, transfer);
       return;
    }
+   util_range_add(&res->base, &res->valid_buffer_range, offset, result_size);
 
    unsigned fences = p_atomic_read(&query->fences);
    if (!is_time_query(query) && (!fences || wait)) {

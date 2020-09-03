@@ -52,9 +52,10 @@ zink_resource_destroy(struct pipe_screen *pscreen,
 {
    struct zink_screen *screen = zink_screen(pscreen);
    struct zink_resource *res = zink_resource(pres);
-   if (pres->target == PIPE_BUFFER)
+   if (pres->target == PIPE_BUFFER) {
       vkDestroyBuffer(screen->dev, res->buffer, NULL);
-   else
+      util_range_destroy(&res->valid_buffer_range);
+   } else
       vkDestroyImage(screen->dev, res->image, NULL);
 
    vkFreeMemory(screen->dev, res->mem, NULL);
@@ -344,9 +345,10 @@ resource_create(struct pipe_screen *pscreen,
    res->offset = 0;
    res->size = reqs.size;
 
-   if (templ->target == PIPE_BUFFER)
+   if (templ->target == PIPE_BUFFER) {
       vkBindBufferMemory(screen->dev, res->buffer, res->mem, res->offset);
-   else
+      util_range_init(&res->valid_buffer_range);
+   } else
       vkBindImageMemory(screen->dev, res->image, res->mem, res->offset);
 
    if (screen->winsys && (templ->bind & PIPE_BIND_DISPLAY_TARGET)) {
@@ -550,7 +552,7 @@ zink_transfer_map(struct pipe_context *pctx,
 
    void *ptr;
    if (pres->target == PIPE_BUFFER) {
-      if (!(usage & PIPE_MAP_UNSYNCHRONIZED)) {
+      if (!(usage & PIPE_MAP_UNSYNCHRONIZED) && util_ranges_intersect(&res->valid_buffer_range, box->x, box->x + box->width)) {
          if ((usage & PIPE_MAP_READ && batch_uses >= ZINK_RESOURCE_ACCESS_WRITE) ||
              (usage & PIPE_MAP_WRITE && batch_uses)) {
             /* need to wait for rendering to finish
@@ -591,6 +593,8 @@ zink_transfer_map(struct pipe_context *pctx,
       trans->base.stride = 0;
       trans->base.layer_stride = 0;
       ptr = ((uint8_t *)ptr) + box->x;
+      if (usage & PIPE_MAP_WRITE)
+         util_range_add(&res->base, &res->valid_buffer_range, box->x, box->x + box->width);
    } else {
       if (res->optimal_tiling || !res->host_visible) {
          enum pipe_format format = pres->format;
@@ -676,6 +680,16 @@ zink_transfer_map(struct pipe_context *pctx,
 }
 
 static void
+zink_transfer_flush_region(struct pipe_context *ctx,
+                           struct pipe_transfer *ptrans,
+                           const struct pipe_box *box)
+{
+   struct zink_resource *res = zink_resource(ptrans->resource);
+   if (res->base.target == PIPE_BUFFER)
+      util_range_add(&res->base, &res->valid_buffer_range, box->x, box->x + box->width);
+}
+
+static void
 zink_transfer_unmap(struct pipe_context *pctx,
                     struct pipe_transfer *ptrans)
 {
@@ -703,7 +717,9 @@ zink_transfer_unmap(struct pipe_context *pctx,
       vkUnmapMemory(screen->dev, res->mem);
    if ((trans->base.usage & PIPE_MAP_PERSISTENT) && !(trans->base.usage & PIPE_MAP_COHERENT))
       res->persistent_maps--;
-
+   if (!(trans->base.usage & (PIPE_MAP_FLUSH_EXPLICIT | PIPE_MAP_COHERENT))) {
+      zink_transfer_flush_region(pctx, ptrans, &ptrans->box);
+   }
    pipe_resource_reference(&trans->base.resource, NULL);
    slab_free(&ctx->transfer_pool, ptrans);
 }
@@ -794,7 +810,7 @@ static const struct u_transfer_vtbl transfer_vtbl = {
    .resource_destroy      = zink_resource_destroy,
    .transfer_map          = zink_transfer_map,
    .transfer_unmap        = zink_transfer_unmap,
-   .transfer_flush_region = u_default_transfer_flush_region,
+   .transfer_flush_region = zink_transfer_flush_region,
    .get_internal_format   = zink_resource_get_internal_format,
    .set_stencil           = zink_resource_set_separate_stencil,
    .get_stencil           = zink_resource_get_separate_stencil,

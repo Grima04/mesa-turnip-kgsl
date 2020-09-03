@@ -29,6 +29,7 @@ struct sw_displaytarget;
 struct zink_batch;
 
 #include "util/u_transfer.h"
+#include "util/u_range.h"
 
 #include <vulkan/vulkan.h>
 
@@ -45,6 +46,7 @@ struct zink_resource {
       struct {
          VkAccessFlags access;
          VkBuffer buffer;
+         struct util_range valid_buffer_range;
       };
       struct {
          VkFormat format;
