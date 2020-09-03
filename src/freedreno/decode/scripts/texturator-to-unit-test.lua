@@ -65,12 +65,12 @@ function draw(primtype, nindx)
 
   blit.width   = r.GRAS_2D_DST_BR.X + 1
   blit.height  = r.GRAS_2D_DST_BR.Y + 1
-  blit.pitch   = r.RB_2D_DST_SIZE.PITCH
+  blit.pitch   = r.RB_2D_DST_PITCH
   blit.addr    = r.RB_2D_DST_LO | (r.RB_2D_DST_HI << 32)
   blit.base    = bos.base(blit.addr)
   blit.ubwc_addr = r.RB_2D_DST_FLAGS_LO | (r.RB_2D_DST_FLAGS_HI << 32)
   blit.ubwc_base = bos.base(blit.uwbc_addr)
-  blit.ubwc_pitch = r.RB_2D_DST_FLAGS_PITCH.PITCH
+  blit.ubwc_pitch = r.RB_2D_DST_FLAGS_PITCH
   blit.endaddr = 0  -- filled in later
   printf("Found blit: 0x%x (0x%x) %dx%d UBWC 0x%x (0x%x)\n", blit.addr, blit.base, blit.width, blit.height, blit.ubwc_addr, blit.ubwc_base)
 
