@@ -612,7 +612,7 @@ void emit_instruction(asm_context& ctx, std::vector<uint32_t>& out, Instruction*
          encoding |= opcode << 16;
          encoding |= (vop3->clamp ? 1 : 0) << 15;
          encoding |= vop3->opsel_lo << 11;
-         encoding |= (vop3->opsel_hi & 0x4) ? 1 : 0 << 14;
+         encoding |= ((vop3->opsel_hi & 0x4) ? 1 : 0) << 14;
          for (unsigned i = 0; i < 3; i++)
             encoding |= vop3->neg_hi[i] << (8+i);
          encoding |= (0xFF & instr->definitions[0].physReg());
@@ -620,7 +620,7 @@ void emit_instruction(asm_context& ctx, std::vector<uint32_t>& out, Instruction*
          encoding = 0;
          for (unsigned i = 0; i < instr->operands.size(); i++)
             encoding |= instr->operands[i].physReg() << (i * 9);
-         encoding |= vop3->opsel_hi & 0x3 << 27;
+         encoding |= (vop3->opsel_hi & 0x3) << 27;
          for (unsigned i = 0; i < 3; i++)
             encoding |= vop3->neg_lo[i] << (29+i);
          out.push_back(encoding);
