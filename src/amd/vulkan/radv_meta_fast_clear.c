@@ -82,19 +82,14 @@ build_dcc_decompress_compute_shader(struct radv_device *dev)
 	nir_ssa_dest_init(&tex->instr, &tex->dest, 4, 32, "tex");
 	nir_builder_instr_insert(&b, &tex->instr);
 
-	nir_scoped_barrier(&b, NIR_SCOPE_WORKGROUP, NIR_SCOPE_WORKGROUP,
-			   NIR_MEMORY_ACQ_REL, nir_var_mem_ssbo);
+	nir_scoped_barrier(&b, .execution_scope=NIR_SCOPE_WORKGROUP,
+			       .memory_scope=NIR_SCOPE_WORKGROUP,
+			       .memory_semantics=NIR_MEMORY_ACQ_REL,
+			       .memory_modes=nir_var_mem_ssbo);
 
-	nir_ssa_def *outval = &tex->dest.ssa;
-	nir_intrinsic_instr *store = nir_intrinsic_instr_create(b.shader, nir_intrinsic_image_deref_store);
-	store->num_components = 4;
-	store->src[0] = nir_src_for_ssa(&nir_build_deref_var(&b, output_img)->dest.ssa);
-	store->src[1] = nir_src_for_ssa(global_id);
-	store->src[2] = nir_src_for_ssa(nir_ssa_undef(&b, 1, 32));
-	store->src[3] = nir_src_for_ssa(outval);
-	store->src[4] = nir_src_for_ssa(nir_imm_int(&b, 0));
-
-	nir_builder_instr_insert(&b, &store->instr);
+	nir_image_deref_store(&b, &nir_build_deref_var(&b, output_img)->dest.ssa,
+	                          global_id, nir_ssa_undef(&b, 1, 32), &tex->dest.ssa,
+	                          nir_imm_int(&b, 0));
 	return b.shader;
 }
 

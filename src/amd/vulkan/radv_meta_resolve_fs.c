@@ -68,17 +68,11 @@ build_resolve_fragment_shader(struct radv_device *dev, bool is_integer, int samp
 	color_out->data.location = FRAG_RESULT_DATA0;
 
 	nir_ssa_def *pos_in = nir_channels(&b, nir_load_frag_coord(&b), 0x3);
-	nir_intrinsic_instr *src_offset = nir_intrinsic_instr_create(b.shader, nir_intrinsic_load_push_constant);
-	nir_intrinsic_set_base(src_offset, 0);
-	nir_intrinsic_set_range(src_offset, 8);
-	src_offset->src[0] = nir_src_for_ssa(nir_imm_int(&b, 0));
-	src_offset->num_components = 2;
-	nir_ssa_dest_init(&src_offset->instr, &src_offset->dest, 2, 32, "src_offset");
-	nir_builder_instr_insert(&b, &src_offset->instr);
+	nir_ssa_def *src_offset = nir_load_push_constant(&b, 2, 32, nir_imm_int(&b, 0), 0, 8);
 
 	nir_ssa_def *pos_int = nir_f2i32(&b, pos_in);
 
-	nir_ssa_def *img_coord = nir_channels(&b, nir_iadd(&b, pos_int, &src_offset->dest.ssa), 0x3);
+	nir_ssa_def *img_coord = nir_channels(&b, nir_iadd(&b, pos_int, src_offset), 0x3);
 	nir_variable *color = nir_local_variable_create(b.impl, glsl_vec4_type(), "color");
 
 	radv_meta_build_resolve_shader_core(&b, is_integer, samples, input_img,
@@ -376,17 +370,11 @@ build_depth_stencil_resolve_fragment_shader(struct radv_device *dev, int samples
 
 	nir_ssa_def *pos_in = nir_channels(&b, nir_load_frag_coord(&b), 0x3);
 
-	nir_intrinsic_instr *src_offset = nir_intrinsic_instr_create(b.shader, nir_intrinsic_load_push_constant);
-	nir_intrinsic_set_base(src_offset, 0);
-	nir_intrinsic_set_range(src_offset, 8);
-	src_offset->src[0] = nir_src_for_ssa(nir_imm_int(&b, 0));
-	src_offset->num_components = 2;
-	nir_ssa_dest_init(&src_offset->instr, &src_offset->dest, 2, 32, "src_offset");
-	nir_builder_instr_insert(&b, &src_offset->instr);
+	nir_ssa_def *src_offset = nir_load_push_constant(&b, 2, 32, nir_imm_int(&b, 0), 0, 8);
 
 	nir_ssa_def *pos_int = nir_f2i32(&b, pos_in);
 
-	nir_ssa_def *img_coord = nir_channels(&b, nir_iadd(&b, pos_int, &src_offset->dest.ssa), 0x3);
+	nir_ssa_def *img_coord = nir_channels(&b, nir_iadd(&b, pos_int, src_offset), 0x3);
 
 	nir_ssa_def *input_img_deref = &nir_build_deref_var(&b, input_img)->dest.ssa;
 
