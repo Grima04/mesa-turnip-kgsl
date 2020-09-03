@@ -189,8 +189,6 @@ void si_llvm_create_func(struct si_shader_context *ctx, const char *name, LLVMTy
                                            ctx->screen->info.address32_hi);
    }
 
-   LLVMAddTargetDependentFunctionAttr(ctx->main_fn, "no-signed-zeros-fp-math", "true");
-
    ac_llvm_set_workgroup_size(ctx->main_fn, max_workgroup_size);
 }
 
