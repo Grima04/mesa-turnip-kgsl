@@ -181,6 +181,7 @@
   <enum name="Block Format">
     <!--- 16x16 block u-interleaved -->
     <value name="Tiled U-Interleaved" value="0"/>
+    <value name="Tiled Linear" value="1"/>
     <value name="Linear" value="2"/>
     <value name="AFBC" value="3"/>
   </enum>
