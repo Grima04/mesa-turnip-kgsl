@@ -10450,8 +10450,6 @@ Pseudo_instruction *add_startpgm(struct isel_context *ctx)
    return instr;
 }
 
-} /* end namespace */
-
 void fix_ls_vgpr_init_bug(isel_context *ctx, Pseudo_instruction *startpgm)
 {
    assert(ctx->shader->info.stage == MESA_SHADER_VERTEX);
@@ -10832,6 +10830,8 @@ void ngg_emit_nogs_output(isel_context *ctx)
       bld.reset(ctx->block);
    }
 }
+
+} /* end namespace */
 
 void select_program(Program *program,
                     unsigned shader_count,
