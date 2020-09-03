@@ -1130,6 +1130,74 @@ gen_perf_query_result_read_perfcnts(struct gen_perf_query_result *result,
    }
 }
 
+static uint32_t
+query_accumulator_offset(const struct gen_perf_query_info *query,
+                         enum gen_perf_query_field_type type,
+                         uint8_t index)
+{
+   switch (type) {
+   case GEN_PERF_QUERY_FIELD_TYPE_SRM_PERFCNT:
+      return query->perfcnt_offset + index;
+   default:
+      unreachable("Invalid register type");
+      return 0;
+   }
+}
+
+void
+gen_perf_query_result_accumulate_fields(struct gen_perf_query_result *result,
+                                        const struct gen_perf_query_info *query,
+                                        const struct gen_device_info *devinfo,
+                                        const void *start,
+                                        const void *end,
+                                        bool no_oa_accumulate)
+{
+   struct gen_perf_query_field_layout *layout = &query->perf->query_layout;
+
+   for (uint32_t r = 0; r < layout->n_fields; r++) {
+      struct gen_perf_query_field *field = &layout->fields[r];
+
+      if (field->type == GEN_PERF_QUERY_FIELD_TYPE_MI_RPC) {
+         gen_perf_query_result_read_frequencies(result, devinfo,
+                                                start + field->location,
+                                                end + field->location);
+         /* no_oa_accumulate=true is used when doing GL perf queries, we
+          * manually parse the OA reports from the OA buffer and substract
+          * unrelated deltas, so don't accumulate the begin/end reports here.
+          */
+         if (!no_oa_accumulate) {
+            gen_perf_query_result_accumulate(result, query,
+                                             start + field->location,
+                                             end + field->location);
+         }
+      } else {
+         uint64_t v0, v1;
+
+         if (field->size == 4) {
+            v0 = *(const uint32_t *)(start + field->location);
+            v1 = *(const uint32_t *)(end + field->location);
+         } else {
+            assert(field->size == 8);
+            v0 = *(const uint64_t *)(start + field->location);
+            v1 = *(const uint64_t *)(end + field->location);
+         }
+
+         if (field->mask) {
+            v0 = field->mask & v0;
+            v1 = field->mask & v1;
+         }
+
+         /* RPSTAT is a bit of a special case because its begin/end values
+          * represent frequencies. We store it in a separate location.
+          */
+         if (field->type == GEN_PERF_QUERY_FIELD_TYPE_SRM_RPSTAT)
+            gen_perf_query_result_read_gt_frequency(result, devinfo, v0, v1);
+         else
+            result->accumulator[query_accumulator_offset(query, field->type, field->index)] = v1 - v0;
+      }
+   }
+}
+
 void
 gen_perf_query_result_clear(struct gen_perf_query_result *result)
 {
@@ -1146,12 +1214,86 @@ gen_perf_compare_query_names(const void *v1, const void *v2)
    return strcmp(q1->name, q2->name);
 }
 
+static inline struct gen_perf_query_field *
+add_query_register(struct gen_perf_query_field_layout *layout,
+                   enum gen_perf_query_field_type type,
+                   uint16_t offset,
+                   uint16_t size,
+                   uint8_t index)
+{
+   /* Align MI_RPC to 64bytes (HW requirement) & 64bit registers to 8bytes
+    * (shows up nicely in the debugger).
+    */
+   if (type == GEN_PERF_QUERY_FIELD_TYPE_MI_RPC)
+      layout->size = align(layout->size, 64);
+   else if (size % 8 == 0)
+      layout->size = align(layout->size, 8);
+
+   layout->fields[layout->n_fields++] = (struct gen_perf_query_field) {
+      .mmio_offset = offset,
+      .location = layout->size,
+      .type = type,
+      .index = index,
+      .size = size,
+   };
+   layout->size += size;
+
+   return &layout->fields[layout->n_fields - 1];
+}
+
+static void
+gen_perf_init_query_fields(struct gen_perf_config *perf_cfg,
+                           const struct gen_device_info *devinfo)
+{
+   struct gen_perf_query_field_layout *layout = &perf_cfg->query_layout;
+
+   layout->n_fields = 0;
+
+   /* MI_RPC requires a 64byte alignment. */
+   layout->alignment = 64;
+
+   add_query_register(layout, GEN_PERF_QUERY_FIELD_TYPE_MI_RPC,
+                      0, 256, 0);
+
+   if (devinfo->gen <= 11) {
+      struct gen_perf_query_field *field =
+         add_query_register(layout,
+                            GEN_PERF_QUERY_FIELD_TYPE_SRM_PERFCNT,
+                            PERF_CNT_1_DW0, 8, 0);
+      field->mask = PERF_CNT_VALUE_MASK;
+
+      field = add_query_register(layout,
+                                 GEN_PERF_QUERY_FIELD_TYPE_SRM_PERFCNT,
+                                 PERF_CNT_2_DW0, 8, 1);
+      field->mask = PERF_CNT_VALUE_MASK;
+   }
+
+   if (devinfo->gen == 8 && !devinfo->is_cherryview) {
+      add_query_register(layout,
+                         GEN_PERF_QUERY_FIELD_TYPE_SRM_RPSTAT,
+                         GEN7_RPSTAT1, 4, 0);
+   }
+
+   if (devinfo->gen >= 9) {
+      add_query_register(layout,
+                         GEN_PERF_QUERY_FIELD_TYPE_SRM_RPSTAT,
+                         GEN9_RPSTAT0, 4, 0);
+   }
+
+   /* Align the whole package to 64bytes so that 2 snapshots can be put
+    * together without extract alignment for the user.
+    */
+   layout->size = align(layout->size, 64);
+}
+
 void
 gen_perf_init_metrics(struct gen_perf_config *perf_cfg,
                       const struct gen_device_info *devinfo,
                       int drm_fd,
                       bool include_pipeline_statistics)
 {
+   gen_perf_init_query_fields(perf_cfg, devinfo);
+
    if (include_pipeline_statistics) {
       load_pipeline_statistic_metrics(perf_cfg, devinfo);
       gen_perf_register_mdapi_statistic_query(perf_cfg, devinfo);

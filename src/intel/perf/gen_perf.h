@@ -109,9 +109,9 @@ struct gen_pipeline_stat {
  * For Gen8+
  *   1 timestamp, 1 clock, 36 A counters, 8 B counters and 8 C counters
  *
- * Plus 2 PERF_CNT registers.
+ * Plus 2 PERF_CNT registers and 1 RPSTAT register.
  */
-#define MAX_OA_REPORT_COUNTERS (62 + 2)
+#define MAX_OA_REPORT_COUNTERS (62 + 2 + 1)
 
 /*
  * When currently allocate only one page for pipeline statistics queries. Here
@@ -234,8 +234,52 @@ struct gen_perf_query_info {
    int b_offset;
    int c_offset;
    int perfcnt_offset;
+   int rpstat_offset;
 
    struct gen_perf_registers config;
+};
+
+/* When not using the MI_RPC command, this structure describes the list of
+ * register offsets as well as their storage location so that they can be
+ * stored through a series of MI_SRM commands and accumulated with
+ * gen_perf_query_result_accumulate_snapshots().
+ */
+struct gen_perf_query_field_layout {
+   /* Alignment for the layout */
+   uint32_t alignment;
+
+   /* Size of the whole layout */
+   uint32_t size;
+
+   uint32_t n_fields;
+
+   struct gen_perf_query_field {
+      /* MMIO location of this register */
+      uint16_t mmio_offset;
+
+      /* Location of this register in the storage */
+      uint16_t location;
+
+      /* Type of register, for accumulation (see gen_perf_query_info:*_offset
+       * fields)
+       */
+      enum gen_perf_query_field_type {
+         GEN_PERF_QUERY_FIELD_TYPE_MI_RPC,
+         GEN_PERF_QUERY_FIELD_TYPE_SRM_PERFCNT,
+         GEN_PERF_QUERY_FIELD_TYPE_SRM_RPSTAT
+      } type;
+
+      /* Index of register in the given type (for instance A31 or B2,
+       * etc...)
+       */
+      uint8_t index;
+
+      /* 4, 8 or 256 */
+      uint16_t size;
+
+      /* If not 0, mask to apply to the register value. */
+      uint64_t mask;
+   } *fields;
 };
 
 struct gen_perf_query_counter_info {
@@ -268,6 +312,8 @@ struct gen_perf_config {
 
    struct gen_perf_query_counter_info *counter_infos;
    int n_counters;
+
+   struct gen_perf_query_field_layout query_layout;
 
    /* Variables referenced in the XML meta data for OA performance
     * counters, e.g in the normalization equations.
@@ -387,6 +433,17 @@ void gen_perf_query_result_accumulate(struct gen_perf_query_result *result,
                                       const struct gen_perf_query_info *query,
                                       const uint32_t *start,
                                       const uint32_t *end);
+
+/** Accumulate the delta between 2 snapshots of OA perf registers (layout
+ * should match description specified through gen_perf_query_register_layout).
+ */
+void gen_perf_query_result_accumulate_fields(struct gen_perf_query_result *result,
+                                             const struct gen_perf_query_info *query,
+                                             const struct gen_device_info *devinfo,
+                                             const void *start,
+                                             const void *end,
+                                             bool no_oa_accumulate);
+
 void gen_perf_query_result_clear(struct gen_perf_query_result *result);
 
 static inline size_t

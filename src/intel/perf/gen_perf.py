@@ -743,6 +743,7 @@ def main():
                     query->b_offset = query->a_offset + 45;
                     query->c_offset = query->b_offset + 8;
                     query->perfcnt_offset = query->c_offset + 8;
+                    query->rpstat_offset = query->perfcnt_offset + 2;
                 """))
             else:
                 c(textwrap.dedent("""\
@@ -754,6 +755,7 @@ def main():
                     query->b_offset = query->a_offset + 36;
                     query->c_offset = query->b_offset + 8;
                     query->perfcnt_offset = query->c_offset + 8;
+                    query->rpstat_offset = query->perfcnt_offset + 2;
                 """))
 
 
