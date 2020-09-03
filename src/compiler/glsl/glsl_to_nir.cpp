@@ -2192,10 +2192,10 @@ nir_visitor::visit(ir_expression *ir)
    case ir_binop_logic_xor:
       result = nir_ixor(&b, srcs[0], srcs[1]);
       break;
-   case ir_binop_lshift: result = nir_ishl(&b, srcs[0], srcs[1]); break;
+   case ir_binop_lshift: result = nir_ishl(&b, srcs[0], nir_u2u32(&b, srcs[1])); break;
    case ir_binop_rshift:
-      result = (type_is_signed(out_type)) ? nir_ishr(&b, srcs[0], srcs[1])
-                                          : nir_ushr(&b, srcs[0], srcs[1]);
+      result = (type_is_signed(out_type)) ? nir_ishr(&b, srcs[0], nir_u2u32(&b, srcs[1]))
+                                          : nir_ushr(&b, srcs[0], nir_u2u32(&b, srcs[1]));
       break;
    case ir_binop_imul_high:
       result = (out_type == GLSL_TYPE_INT) ? nir_imul_high(&b, srcs[0], srcs[1])
