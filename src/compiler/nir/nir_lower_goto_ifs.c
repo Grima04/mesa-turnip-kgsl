@@ -85,8 +85,8 @@ struct strct_lvl {
 static int
 nir_block_ptr_cmp(const void *_a, const void *_b)
 {
-   nir_block *const *a = _a;
-   nir_block *const *b = _b;
+   const nir_block *const *a = _a;
+   const nir_block *const *b = _b;
    return (int)(*a)->index - (int)(*b)->index;
 }
 
