@@ -28,6 +28,7 @@
 #include "nir.h"
 #include "nir_builder.h"
 #include "nir_constant_expressions.h"
+#include "nir_deref.h"
 #include <math.h>
 
 /*
@@ -110,6 +111,74 @@ try_fold_alu(nir_builder *b, nir_alu_instr *instr)
    return true;
 }
 
+static nir_const_value *
+const_value_for_deref(nir_deref_instr *deref)
+{
+   if (deref->mode != nir_var_mem_constant)
+      return NULL;
+
+   nir_deref_path path;
+   nir_deref_path_init(&path, deref, NULL);
+   if (path.path[0]->deref_type != nir_deref_type_var)
+      goto fail;
+
+   nir_variable *var = path.path[0]->var;
+   assert(var->data.mode == nir_var_mem_constant);
+   if (var->constant_initializer == NULL)
+      goto fail;
+
+   nir_constant *c = var->constant_initializer;
+   nir_const_value *v = NULL; /* Vector value for array-deref-of-vec */
+
+   for (unsigned i = 1; path.path[i] != NULL; i++) {
+      nir_deref_instr *p = path.path[i];
+      switch (p->deref_type) {
+      case nir_deref_type_var:
+         unreachable("Deref paths can only start with a var deref");
+
+      case nir_deref_type_array: {
+         assert(v == NULL);
+         if (!nir_src_is_const(p->arr.index))
+            goto fail;
+
+         uint64_t idx = nir_src_as_uint(p->arr.index);
+         if (c->num_elements > 0) {
+            assert(glsl_type_is_array(path.path[i-1]->type));
+            if (idx >= c->num_elements)
+               goto fail;
+            c = c->elements[idx];
+         } else {
+            assert(glsl_type_is_vector(path.path[i-1]->type));
+            assert(glsl_type_is_scalar(p->type));
+            if (idx >= NIR_MAX_VEC_COMPONENTS)
+               goto fail;
+            v = &c->values[idx];
+         }
+         break;
+      }
+
+      case nir_deref_type_struct:
+         assert(glsl_type_is_struct(path.path[i-1]->type));
+         assert(v == NULL && c->num_elements > 0);
+         if (p->strct.index >= c->num_elements)
+            goto fail;
+         c = c->elements[p->strct.index];
+         break;
+
+      default:
+         goto fail;
+      }
+   }
+
+   /* We have to have ended at a vector */
+   assert(c->num_elements == 0);
+   return v ? v : c->values;
+
+fail:
+   nir_deref_path_finish(&path);
+   return NULL;
+}
+
 static bool
 try_fold_intrinsic(nir_builder *b, nir_intrinsic_instr *instr,
                    struct constant_fold_state *state)
@@ -130,6 +199,17 @@ try_fold_intrinsic(nir_builder *b, nir_intrinsic_instr *instr,
       }
       nir_instr_remove(&instr->instr);
       progress = true;
+   } else if (instr->intrinsic == nir_intrinsic_load_deref) {
+      nir_deref_instr *deref = nir_src_as_deref(instr->src[0]);
+      nir_const_value *v = const_value_for_deref(deref);
+      if (v) {
+         b->cursor = nir_before_instr(&instr->instr);
+         nir_ssa_def *val = nir_build_imm(b, instr->dest.ssa.num_components,
+                                             instr->dest.ssa.bit_size, v);
+         nir_ssa_def_rewrite_uses(&instr->dest.ssa, nir_src_for_ssa(val));
+         nir_instr_remove(&instr->instr);
+         progress = true;
+      }
    } else if (instr->intrinsic == nir_intrinsic_load_constant) {
       state->has_load_constant = true;
 
