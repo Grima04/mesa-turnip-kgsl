@@ -1992,14 +1992,8 @@ lower_explicit_io_array_length(nir_builder *b, nir_intrinsic_instr *intrin,
    nir_ssa_def *index = addr_to_index(b, addr, addr_format);
    nir_ssa_def *offset = addr_to_offset(b, addr, addr_format);
 
-   nir_intrinsic_instr *bsize =
-      nir_intrinsic_instr_create(b->shader, nir_intrinsic_get_ssbo_size);
-   bsize->src[0] = nir_src_for_ssa(index);
-   nir_ssa_dest_init(&bsize->instr, &bsize->dest, 1, 32, NULL);
-   nir_builder_instr_insert(b, &bsize->instr);
-
    nir_ssa_def *arr_size =
-      nir_idiv(b, nir_isub(b, &bsize->dest.ssa, offset),
+      nir_idiv(b, nir_isub(b, nir_get_ssbo_size(b, index), offset),
                   nir_imm_int(b, stride));
 
    nir_ssa_def_rewrite_uses(&intrin->dest.ssa, nir_src_for_ssa(arr_size));
