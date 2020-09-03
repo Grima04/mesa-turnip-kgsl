@@ -681,6 +681,7 @@ def main():
 
             c("struct gen_perf_query_info *query = rzalloc(perf, struct gen_perf_query_info);\n")
             c("\n")
+            c("query->perf = perf;\n")
             c("query->kind = GEN_PERF_QUERY_TYPE_OA;\n")
             c("query->name = \"" + set.name + "\";\n")
             c("query->symbol_name = \"" + set.symbol_name + "\";\n")

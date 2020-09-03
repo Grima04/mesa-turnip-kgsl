@@ -201,6 +201,8 @@ struct gen_perf_registers {
 };
 
 struct gen_perf_query_info {
+   struct gen_perf_config *perf;
+
    enum gen_perf_query_type {
       GEN_PERF_QUERY_TYPE_OA,
       GEN_PERF_QUERY_TYPE_RAW,
