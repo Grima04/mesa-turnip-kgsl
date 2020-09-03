@@ -37,6 +37,7 @@ extern "C" {
 #endif
 
 struct ac_compiler_passes;
+struct ac_llvm_context;
 
 enum ac_func_attr {
 	AC_FUNC_ATTR_ALWAYSINLINE = (1 << 0),
@@ -109,6 +110,8 @@ LLVMModuleRef ac_create_module(LLVMTargetMachineRef tm, LLVMContextRef ctx);
 
 LLVMBuilderRef ac_create_builder(LLVMContextRef ctx,
 				 enum ac_float_mode float_mode);
+void ac_enable_signed_zeros(struct ac_llvm_context *ctx);
+void ac_disable_signed_zeros(struct ac_llvm_context *ctx);
 
 void
 ac_llvm_add_target_dep_function_attr(LLVMValueRef F,

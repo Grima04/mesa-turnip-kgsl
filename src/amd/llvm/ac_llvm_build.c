@@ -2776,31 +2776,53 @@ LLVMValueRef ac_build_isign(struct ac_llvm_context *ctx, LLVMValueRef src0)
 	return ac_build_imin(ctx, val, ac_const_uint_vec(ctx, type, 1));
 }
 
-LLVMValueRef ac_build_fsign(struct ac_llvm_context *ctx, LLVMValueRef src0,
-			    unsigned bitsize)
+static LLVMValueRef ac_eliminate_negative_zero(struct ac_llvm_context *ctx, LLVMValueRef val)
 {
-	LLVMValueRef cmp, val, zero, one;
-	LLVMTypeRef type;
+	ac_enable_signed_zeros(ctx);
+	/* (val + 0) converts negative zero to positive zero. */
+	val = LLVMBuildFAdd(ctx->builder, val, LLVMConstNull(LLVMTypeOf(val)), "");
+	ac_disable_signed_zeros(ctx);
+	return val;
+}
 
-	if (bitsize == 16) {
-		type = ctx->f16;
-		zero = ctx->f16_0;
-		one = ctx->f16_1;
-	} else if (bitsize == 32) {
-		type = ctx->f32;
-		zero = ctx->f32_0;
-		one = ctx->f32_1;
-	} else {
-		type = ctx->f64;
-		zero = ctx->f64_0;
-		one = ctx->f64_1;
+LLVMValueRef ac_build_fsign(struct ac_llvm_context *ctx, LLVMValueRef src)
+{
+	LLVMTypeRef type = LLVMTypeOf(src);
+	LLVMValueRef pos, neg, dw[2], val;
+	unsigned bitsize = ac_get_elem_bits(ctx, type);
+
+	/* The standard version leads to this:
+	 *   v_cmp_ngt_f32_e64 s[0:1], s4, 0                       ; D40B0000 00010004
+	 *   v_cndmask_b32_e64 v4, 1.0, s4, s[0:1]                 ; D5010004 000008F2
+	 *   v_cmp_le_f32_e32 vcc, 0, v4                           ; 7C060880
+	 *   v_cndmask_b32_e32 v4, -1.0, v4, vcc                   ; 020808F3
+	 *
+	 * The isign version:
+	 *   v_add_f32_e64 v4, s4, 0                               ; D5030004 00010004
+	 *   v_med3_i32 v4, v4, -1, 1                              ; D5580004 02058304
+	 *   v_cvt_f32_i32_e32 v4, v4                              ; 7E080B04
+	 *
+	 * (src0 + 0) converts negative zero to positive zero.
+	 * After that, int(fsign(x)) == isign(floatBitsToInt(x)).
+	 *
+	 * For FP64, use the standard version, which doesn't suffer from the huge DP rate
+	 * reduction. (FP64 comparisons are as fast as int64 comparisons)
+	 */
+	if (bitsize == 16 || bitsize == 32) {
+		val = ac_to_integer(ctx, ac_eliminate_negative_zero(ctx, src));
+		val = ac_build_isign(ctx, val);
+		return LLVMBuildSIToFP(ctx->builder, val, type, "");
 	}
 
-	cmp = LLVMBuildFCmp(ctx->builder, LLVMRealOGT, src0, zero, "");
-	val = LLVMBuildSelect(ctx->builder, cmp, one, src0, "");
-	cmp = LLVMBuildFCmp(ctx->builder, LLVMRealOGE, val, zero, "");
-	val = LLVMBuildSelect(ctx->builder, cmp, val, LLVMConstReal(type, -1.0), "");
-	return val;
+	assert(bitsize == 64);
+	pos = LLVMBuildFCmp(ctx->builder, LLVMRealOGT, src, ctx->f64_0, "");
+	neg = LLVMBuildFCmp(ctx->builder, LLVMRealOLT, src, ctx->f64_0, "");
+	dw[0] = ctx->i32_0;
+	dw[1] = LLVMBuildSelect(ctx->builder, pos, LLVMConstInt(ctx->i32, 0x3FF00000, 0),
+				LLVMBuildSelect(ctx->builder, neg,
+						LLVMConstInt(ctx->i32, 0xBFF00000, 0),
+						ctx->i32_0, ""), "");
+	return LLVMBuildBitCast(ctx->builder, ac_build_gather_values(ctx, dw, 2), ctx->f64, "");
 }
 
 LLVMValueRef ac_build_bit_count(struct ac_llvm_context *ctx, LLVMValueRef src0)

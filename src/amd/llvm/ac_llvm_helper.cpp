@@ -121,6 +121,31 @@ LLVMBuilderRef ac_create_builder(LLVMContextRef ctx,
 	return builder;
 }
 
+void ac_enable_signed_zeros(struct ac_llvm_context *ctx)
+{
+	if (ctx->float_mode == AC_FLOAT_MODE_DEFAULT_OPENGL) {
+		auto *b = llvm::unwrap(ctx->builder);
+		llvm::FastMathFlags flags = b->getFastMathFlags();
+
+		/* This disables the optimization of (x + 0), which is used
+		 * to convert negative zero to positive zero.
+		 */
+		flags.setNoSignedZeros(false);
+		b->setFastMathFlags(flags);
+	}
+}
+
+void ac_disable_signed_zeros(struct ac_llvm_context *ctx)
+{
+	if (ctx->float_mode == AC_FLOAT_MODE_DEFAULT_OPENGL) {
+		auto *b = llvm::unwrap(ctx->builder);
+		llvm::FastMathFlags flags = b->getFastMathFlags();
+
+		flags.setNoSignedZeros();
+		b->setFastMathFlags(flags);
+	}
+}
+
 LLVMTargetLibraryInfoRef
 ac_create_target_library_info(const char *triple)
 {

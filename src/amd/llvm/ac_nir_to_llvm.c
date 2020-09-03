@@ -826,8 +826,7 @@ static void visit_alu(struct ac_nir_context *ctx, const nir_alu_instr *instr)
 		break;
 	case nir_op_fsign:
 		src[0] = ac_to_float(&ctx->ac, src[0]);
-		result = ac_build_fsign(&ctx->ac, src[0],
-					instr->dest.dest.ssa.bit_size);
+		result = ac_build_fsign(&ctx->ac, src[0]);
 		break;
 	case nir_op_ffloor:
 		result = emit_intrin_1f_param(&ctx->ac, "llvm.floor",
