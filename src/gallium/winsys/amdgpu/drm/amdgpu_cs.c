@@ -191,25 +191,20 @@ bool amdgpu_fence_wait(struct pipe_fence_handle *fence, uint64_t timeout,
    if (afence->signalled)
       return true;
 
+   if (absolute)
+      abs_timeout = timeout;
+   else
+      abs_timeout = os_time_get_absolute_timeout(timeout);
+
    /* Handle syncobjs. */
    if (amdgpu_fence_is_syncobj(afence)) {
-      /* Absolute timeouts are only be used by BO fences, which aren't
-       * backed by syncobjs.
-       */
-      assert(!absolute);
-
       if (amdgpu_cs_syncobj_wait(afence->ws->dev, &afence->syncobj, 1,
-                                 timeout, 0, NULL))
+                                 abs_timeout, 0, NULL))
          return false;
 
       afence->signalled = true;
       return true;
    }
-
-   if (absolute)
-      abs_timeout = timeout;
-   else
-      abs_timeout = os_time_get_absolute_timeout(timeout);
 
    /* The fence might not have a number assigned if its IB is being
     * submitted in the other thread right now. Wait until the submission
