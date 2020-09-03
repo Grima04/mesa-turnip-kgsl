@@ -33,7 +33,7 @@ mkdir -p $RESULTS
 
 # Perform a self-test to ensure tracie is working properly.
 if [ -z "$TRACIE_NO_UNIT_TESTS" ]; then
-    TRACIE_UPLOAD_TO_MINIO=0 python3 -m pytest -v --pyargs $INSTALL/tracie/tests/test.py
+    python3 -m pytest -v --pyargs $INSTALL/tracie/tests/test.py
 fi
 
 if [ "$GALLIUM_DRIVER" = "virpipe" ]; then

@@ -58,7 +58,10 @@ def prepare_for_run(tmp_path):
     shutil.move("./tests/test-data", "./traces-db")
     # Disable trace storing
     environ["TRACIE_STORE_IMAGES"] = "0"
-
+    environ["TRACIE_UPLOAD_TO_MINIO"] = "0"
+    environ["CI_PROJECT_PATH"] = "test-project"
+    environ["CI_PIPELINE_ID"] = "667"
+    environ["CI_JOB_ID"] = "42"
 
 def cleanup(tmp_path):
     '''
