@@ -207,17 +207,24 @@ panfrost_emit_sfbd(struct panfrost_batch *batch, unsigned vertex_count)
         struct mali_single_framebuffer framebuffer = {
                 .width = MALI_POSITIVE(width),
                 .height = MALI_POSITIVE(height),
-                .shared_memory = {
-                        .stack_shift = shift,
-                        .shared_workgroup_count = ~0,
-                        .scratchpad = panfrost_batch_get_scratchpad(batch, shift, dev->thread_tls_alloc, dev->core_count)->gpu,
-                },
                 .format = {
                         .unk3 = 0x3,
                 },
                 .clear_flags = 0x1000,
                 .tiler = panfrost_emit_midg_tiler(batch, vertex_count),
         };
+
+        struct mali_local_storage_packed lsp;
+        pan_pack(&lsp, LOCAL_STORAGE, ls) {
+                ls.tls_size = shift;
+                ls.wls_instances = MALI_LOCAL_STORAGE_NO_WORKGROUP_MEM;
+                ls.tls_base_pointer =
+                        panfrost_batch_get_scratchpad(batch,
+                                                      shift,
+                                                      dev->thread_tls_alloc,
+                                                      dev->core_count)->gpu;
+        }
+        framebuffer.shared_memory = lsp;
 
         return framebuffer;
 }

@@ -498,18 +498,24 @@ panfrost_emit_mfbd(struct panfrost_batch *batch, unsigned vertex_count)
                 mfbd.msaa.sample_locations = panfrost_emit_sample_locations(batch);
                 mfbd.tiler_meta = panfrost_batch_get_tiler_meta(batch, vertex_count);
         } else {
-                if (batch->stack_size) {
-                        unsigned shift = panfrost_get_stack_shift(batch->stack_size);
-                        struct panfrost_bo *bo = panfrost_batch_get_scratchpad(batch,
-                                                                               batch->stack_size,
-                                                                               dev->thread_tls_alloc,
-                                                                               dev->core_count);
-                        mfbd.shared_memory.stack_shift = shift;
-                        mfbd.shared_memory.scratchpad = bo->gpu;
+                struct mali_local_storage_packed lsp;
+
+                pan_pack(&lsp, LOCAL_STORAGE, ls) {
+                        if (batch->stack_size) {
+                                unsigned shift =
+                                        panfrost_get_stack_shift(batch->stack_size);
+                                struct panfrost_bo *bo =
+                                        panfrost_batch_get_scratchpad(batch,
+                                                                      batch->stack_size,
+                                                                      dev->thread_tls_alloc,
+                                                                      dev->core_count);
+                                ls.tls_size = shift;
+                                ls.tls_base_pointer = bo->gpu;
+                        }
+
+                        ls.wls_instances = MALI_LOCAL_STORAGE_NO_WORKGROUP_MEM;
                 }
-
-                mfbd.shared_memory.shared_workgroup_count = ~0;
-
+                mfbd.shared_memory = lsp;
                 mfbd.tiler = panfrost_emit_midg_tiler(batch, vertex_count);
         }
 

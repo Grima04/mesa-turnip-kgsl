@@ -561,4 +561,15 @@
     <field name="Scissor Maximum Y" size="16" start="7:16" type="uint"/>
   </struct>
 
+  <struct name="Local Storage" size="8">
+    <field name="TLS Size" size="5" start="0:0" type="uint"/>
+    <field name="TLS Initial Stack Pointer Offset" size="27" start="0:5" type="uint"/>
+    <field name="WLS Instances" size="5" start="1:0" type="uint" modifier="log2" prefix="MALI_LOCAL_STORAGE">
+      <value name="No Workgroup Mem" value="0x80000000"/>
+    </field>
+    <field name="WLS Size Base" size="2" start="1:5" type="uint"/>
+    <field name="WLS Size Scale" size="5" start="1:8" type="uint"/>
+    <field name="TLS Base Pointer" size="64" start="2:0" type="address"/>
+    <field name="WLS Base Pointer" size="64" start="4:0" type="address"/>
+  </struct>
 </panxml>

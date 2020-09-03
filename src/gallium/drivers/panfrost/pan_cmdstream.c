@@ -57,21 +57,25 @@ panfrost_vt_emit_shared_memory(struct panfrost_batch *batch)
 {
         struct panfrost_device *dev = pan_device(batch->ctx->base.screen);
 
-        struct mali_shared_memory shared = {
-                .shared_workgroup_count = ~0,
-        };
+        struct panfrost_transfer t =
+                panfrost_pool_alloc_aligned(&batch->pool,
+                                            MALI_LOCAL_STORAGE_LENGTH,
+                                            64);
 
-        if (batch->stack_size) {
-                struct panfrost_bo *stack =
-                        panfrost_batch_get_scratchpad(batch, batch->stack_size,
-                                        dev->thread_tls_alloc,
-                                        dev->core_count);
+        pan_pack(t.cpu, LOCAL_STORAGE, ls) {
+                ls.wls_instances = MALI_LOCAL_STORAGE_NO_WORKGROUP_MEM;
+                if (batch->stack_size) {
+                        struct panfrost_bo *stack =
+                                panfrost_batch_get_scratchpad(batch, batch->stack_size,
+                                                              dev->thread_tls_alloc,
+                                                              dev->core_count);
 
-                shared.stack_shift = panfrost_get_stack_shift(batch->stack_size);
-                shared.scratchpad = stack->gpu;
+                        ls.tls_size = panfrost_get_stack_shift(batch->stack_size);
+                        ls.tls_base_pointer = stack->gpu;
+                }
         }
 
-        return panfrost_pool_upload_aligned(&batch->pool, &shared, sizeof(shared), 64);
+        return t.gpu;
 }
 
 void
@@ -950,15 +954,18 @@ panfrost_emit_shared_memory(struct panfrost_batch *batch,
         struct panfrost_bo *bo = panfrost_batch_get_shared_memory(batch,
                                                                   shared_size,
                                                                   1);
+        struct panfrost_transfer t =
+                panfrost_pool_alloc_aligned(&batch->pool,
+                                            MALI_LOCAL_STORAGE_LENGTH,
+                                            64);
 
-        struct mali_shared_memory shared = {
-                .shared_memory = bo->gpu,
-                .shared_workgroup_count = log2_instances,
-                .shared_shift = util_logbase2(single_size) + 1
+        pan_pack(t.cpu, LOCAL_STORAGE, ls) {
+                ls.wls_base_pointer = bo->gpu;
+                ls.wls_instances = log2_instances;
+                ls.wls_size_scale = util_logbase2(single_size) + 1;
         };
 
-        return panfrost_pool_upload_aligned(&batch->pool, &shared,
-                        sizeof(shared), 64);
+        return t.gpu;
 }
 
 static mali_ptr

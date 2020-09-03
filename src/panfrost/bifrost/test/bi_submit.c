@@ -169,11 +169,10 @@ bit_vertex(struct panfrost_device *dev, panfrost_program prog,
                 memcpy(attr->cpu + 1024, iattr, sz_attr);
 
         struct panfrost_bo *shmem = bit_bo_create(dev, 4096);
-        struct mali_shared_memory shmemp = {
-                .shared_workgroup_count = 0x1f,
-        };
 
-        memcpy(shmem->cpu, &shmemp, sizeof(shmemp));
+        pan_pack(shmem->cpu, LOCAL_STORAGE, cfg) {
+                cfg.wls_instances = MALI_LOCAL_STORAGE_NO_WORKGROUP_MEM;
+        }
 
         pan_pack(shader_desc->cpu, STATE, cfg) {
                 cfg.shader.shader = shader->gpu;

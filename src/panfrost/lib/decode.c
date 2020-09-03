@@ -446,41 +446,6 @@ pandecode_sfbd_format(struct mali_sfbd_format format)
         pandecode_log("},\n");
 }
 
-static void
-pandecode_shared_memory(const struct mali_shared_memory *desc, bool is_compute)
-{
-        pandecode_prop("stack_shift = 0x%x", desc->stack_shift);
-
-        if (desc->unk0)
-                pandecode_prop("unk0 = 0x%x", desc->unk0);
-
-        if (desc->shared_workgroup_count != 0x1F) {
-                pandecode_prop("shared_workgroup_count = %d", desc->shared_workgroup_count);
-                if (!is_compute)
-                        pandecode_msg("XXX: wrong workgroup count for noncompute\n");
-        }
-
-        if (desc->shared_unk1 || desc->shared_shift) {
-                pandecode_prop("shared_unk1 = %X", desc->shared_unk1);
-                pandecode_prop("shared_shift = %X", desc->shared_shift);
-
-                if (!is_compute)
-                        pandecode_msg("XXX: shared memory configured in noncompute shader");
-        }
-
-        if (desc->shared_zero) {
-                pandecode_msg("XXX: shared memory zero tripped\n");
-                pandecode_prop("shared_zero = 0x%" PRIx32, desc->shared_zero);
-        }
-
-        if (desc->shared_memory && !is_compute)
-                pandecode_msg("XXX: shared memory used in noncompute shader\n");
-
-        MEMORY_PROP(desc, scratchpad);
-        MEMORY_PROP(desc, shared_memory);
-        MEMORY_PROP(desc, unknown1);
-}
-
 static struct pandecode_fbd
 pandecode_sfbd(uint64_t gpu_va, int job_no, bool is_fragment, unsigned gpu_id)
 {
@@ -494,13 +459,7 @@ pandecode_sfbd(uint64_t gpu_va, int job_no, bool is_fragment, unsigned gpu_id)
 
         pandecode_log("struct mali_single_framebuffer framebuffer_%"PRIx64"_%d = {\n", gpu_va, job_no);
         pandecode_indent++;
-
-        pandecode_log(".shared_memory = {\n");
-        pandecode_indent++;
-        pandecode_shared_memory(&s->shared_memory, false);
-        pandecode_indent--;
-        pandecode_log("},\n");
-
+        DUMP_CL(LOCAL_STORAGE, &s->shared_memory, "Local Storage:\n");
         pandecode_sfbd_format(s->format);
 
         info.width = s->width + 1;
@@ -599,13 +558,8 @@ static void
 pandecode_compute_fbd(uint64_t gpu_va, int job_no)
 {
         struct pandecode_mapped_memory *mem = pandecode_find_mapped_gpu_mem_containing(gpu_va);
-        const struct mali_shared_memory *PANDECODE_PTR_VAR(s, mem, (mali_ptr) gpu_va);
-
-        pandecode_log("struct mali_shared_memory shared_%"PRIx64"_%d = {\n", gpu_va, job_no);
-        pandecode_indent++;
-        pandecode_shared_memory(s, true);
-        pandecode_indent--;
-        pandecode_log("},\n");
+        const struct mali_local_storage_packed *PANDECODE_PTR_VAR(s, mem, (mali_ptr) gpu_va);
+        DUMP_CL(LOCAL_STORAGE, s, "Local Storage:\n");
 }
 
 /* Extracts the number of components associated with a Mali format */
@@ -872,11 +826,8 @@ pandecode_mfbd_bfr(uint64_t gpu_va, int job_no, bool is_fragment, bool is_comput
                 pandecode_indent--;
                 pandecode_log("},\n");
         } else {
-                pandecode_log(".shared_memory = {\n");
-                pandecode_indent++;
-                pandecode_shared_memory(&fb->shared_memory, is_compute);
-                pandecode_indent--;
-                pandecode_log("},\n");
+                struct mali_local_storage_packed ls = fb->shared_memory;
+                DUMP_CL(LOCAL_STORAGE, &ls, "Local Storage:\n");
         }
 
         info.width = fb->width1 + 1;
