@@ -1683,8 +1683,14 @@ finalize:
       /* Success. */
       uint64_t *user_fence = NULL;
 
+      /* Need to reserve 4 QWORD for user fence:
+       *   QWORD[0]: completed fence
+       *   QWORD[1]: preempted fence
+       *   QWORD[2]: reset fence
+       *   QWORD[3]: preempted then reset
+       **/
       if (has_user_fence)
-         user_fence = acs->ctx->user_fence_cpu_address_base + acs->ring_type;
+         user_fence = acs->ctx->user_fence_cpu_address_base + acs->ring_type * 4;
       amdgpu_fence_submitted(cs->fence, seq_no, user_fence);
    }
 
