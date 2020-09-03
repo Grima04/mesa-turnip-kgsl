@@ -2,6 +2,7 @@ import logging
 import pytest
 import re
 import shutil
+import xml.etree.ElementTree as ET
 
 from os import environ, chdir
 from os.path import dirname, exists, realpath
@@ -10,6 +11,7 @@ import tracie
 
 
 RESULTS_YAML = "results/results.yml"
+JUNIT_XML = "results/junit.xml"
 TRACE_LOG_TEST1 = "results/trace1/test/gl-test-device/magenta.testtrace.log"
 TRACE_LOG_TEST2 = "results/trace2/test/vk-test-device/olive.testtrace.log"
 TRACE_PNG_TEST1 = "results/trace1/test/gl-test-device/magenta.testtrace-0.png"
@@ -215,3 +217,37 @@ def test_tracie_stores_images_on_request():
     assert run_tracie()
     assert exists(TRACE_PNG_TEST1)
     assert exists(TRACE_PNG_TEST2)
+
+def test_tracie_writes_junit_xml():
+    assert run_tracie()
+    junit_xml = ET.parse(JUNIT_XML)
+    assert junit_xml.getroot().tag == 'testsuites'
+    testsuites = junit_xml.findall("./testsuite")
+    testcases_gl = junit_xml.findall("./testsuite[@name='traces.yml:gl-test-device']/testcase")
+    testcases_vk = junit_xml.findall("./testsuite[@name='traces.yml:vk-test-device']/testcase")
+
+    assert len(testsuites) == 2
+    assert len(testcases_gl) == 1
+    assert len(testcases_vk) == 1
+    assert testcases_gl[0].get("name") == "trace1/magenta.testtrace"
+    assert testcases_gl[0].get("classname") == "traces.yml:gl-test-device"
+    assert testcases_vk[0].get("name") == "trace2/olive.testtrace"
+    assert testcases_vk[0].get("classname") == "traces.yml:vk-test-device"
+
+def test_tracie_writes_dashboard_url_in_junit_xml_failure_tag():
+    filename = "./tests/traces.yml"
+    content = read_from(filename)
+    content = content.replace("5efda83854befe0155ff8517a58d5b51",
+                              "8e0a801367e1714463475a824dab363b")
+    write_to(content, filename)
+
+    assert not run_tracie()
+
+    junit_xml = ET.parse(JUNIT_XML)
+    failures_gl = junit_xml.findall("./testsuite[@name='traces.yml:gl-test-device']/testcase/failure")
+    failures_vk = junit_xml.findall("./testsuite[@name='traces.yml:vk-test-device']/testcase/failure")
+
+    assert len(failures_gl) == 0
+    assert len(failures_vk) == 1
+    dashboard_url = "https://tracie.freedesktop.org/dashboard/imagediff/test-project/42/trace2/olive.testtrace"
+    assert dashboard_url in failures_vk[0].text

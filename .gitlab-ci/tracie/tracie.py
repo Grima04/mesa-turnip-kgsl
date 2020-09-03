@@ -138,6 +138,12 @@ def ensure_reference_image(file_name, checksum):
         return
     upload_to_minio(file_name, resource, 'image/png')
 
+def image_diff_url(trace_path):
+    return "%s/imagediff/%s/%s/%s" % (DASHBOARD_URL,
+                                      os.environ.get('CI_PROJECT_PATH'),
+                                      os.environ.get('CI_JOB_ID'),
+                                      trace_path)
+
 def gitlab_check_trace(project_url, device_name, trace, expectation):
     gitlab_ensure_trace(project_url, trace)
 
@@ -158,11 +164,7 @@ def gitlab_check_trace(project_url, device_name, trace, expectation):
                 (trace['path'], expectation['checksum'], checksum))
         print("[check_image] For more information see "
                 "https://gitlab.freedesktop.org/mesa/mesa/blob/master/.gitlab-ci/tracie/README.md")
-        image_diff_url = "%s/imagediff/%s/%s/%s" % (DASHBOARD_URL,
-                                                    os.environ['CI_PROJECT_PATH'],
-                                                    os.environ['CI_JOB_ID'],
-                                                    trace['path'])
-        print("[check_image] %s" % image_diff_url)
+        print("[check_image] %s" % image_diff_url(trace['path']))
         ok = False
 
     trace_dir = os.path.split(trace['path'])[0]
@@ -184,6 +186,39 @@ def gitlab_check_trace(project_url, device_name, trace, expectation):
     result[trace['path']]['actual'] = checksum
 
     return ok, result
+
+def write_junit_xml(junit_xml_path, traces_filename, device_name, results):
+    tests = len(results)
+    failures = sum(1 for r in results.values() if r["actual"] != r["expected"])
+
+    try:
+        testsuites = ET.parse(junit_xml_path).getroot()
+    except:
+        test_name = os.environ.get('CI_PROJECT_PATH') + "/" + \
+                    os.environ.get('CI_PIPELINE_ID') + "/" + \
+                    os.environ.get('CI_JOB_ID')
+        testsuites = ET.Element('testsuites', name=test_name)
+
+    testsuites.set('tests', str(int(testsuites.get('tests', 0)) + tests))
+    testsuites.set('failures', str(int(testsuites.get('failures', 0)) + failures))
+
+    testsuite_name = os.path.basename(traces_filename) + ":" + device_name
+
+    testsuite = ET.SubElement(testsuites, 'testsuite',
+                              name=testsuite_name,
+                              tests=str(tests), failures=str(failures))
+
+    for (path, result) in results.items():
+        testcase = ET.SubElement(testsuite, 'testcase', name=path,
+                                 classname=testsuite_name)
+        if result["actual"] != result["expected"]:
+            failure = ET.SubElement(testcase, 'failure')
+            failure.text = \
+                ("Images differ (expected: %s, actual: %s).\n" + \
+                 "To view the image differences visit:\n%s") % \
+                (result["expected"], result["actual"], image_diff_url(path))
+
+    ET.ElementTree(testsuites).write(junit_xml_path)
 
 def run(filename, device_name):
 
@@ -210,8 +245,13 @@ def run(filename, device_name):
     os.makedirs(RESULTS_PATH, exist_ok=True)
     with open(os.path.join(RESULTS_PATH, 'results.yml'), 'w') as f:
         yaml.safe_dump(results, f, default_flow_style=False)
+
+    junit_xml_path = os.path.join(RESULTS_PATH, "junit.xml")
+    write_junit_xml(junit_xml_path, filename, device_name, results)
+
     if os.environ.get('TRACIE_UPLOAD_TO_MINIO', '0') == '1':
         upload_artifact(os.path.join(RESULTS_PATH, 'results.yml'), 'traces/results.yml', 'text/yaml')
+        upload_artifact(junit_xml_path, 'traces/junit.xml', 'text/xml')
 
     return all_ok
 
