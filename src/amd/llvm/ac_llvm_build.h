@@ -597,10 +597,7 @@ void ac_build_waitcnt(struct ac_llvm_context *ctx, unsigned wait_flags);
 
 LLVMValueRef ac_build_fract(struct ac_llvm_context *ctx, LLVMValueRef src0,
 			   unsigned bitsize);
-
-LLVMValueRef ac_build_isign(struct ac_llvm_context *ctx, LLVMValueRef src0,
-			    unsigned bitsize);
-
+LLVMValueRef ac_build_isign(struct ac_llvm_context *ctx, LLVMValueRef src0);
 LLVMValueRef ac_build_fsign(struct ac_llvm_context *ctx, LLVMValueRef src0,
 			    unsigned bitsize);
 

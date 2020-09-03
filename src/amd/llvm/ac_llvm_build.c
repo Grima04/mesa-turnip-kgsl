@@ -2751,19 +2751,29 @@ LLVMValueRef ac_build_fract(struct ac_llvm_context *ctx, LLVMValueRef src0,
 				  AC_FUNC_ATTR_READNONE);
 }
 
-LLVMValueRef ac_build_isign(struct ac_llvm_context *ctx, LLVMValueRef src0,
-			    unsigned bitsize)
+static LLVMValueRef ac_const_uint_vec(struct ac_llvm_context *ctx, LLVMTypeRef type, uint64_t value)
 {
-	LLVMTypeRef type = LLVMIntTypeInContext(ctx->context, bitsize);
-	LLVMValueRef zero = LLVMConstInt(type, 0, false);
-	LLVMValueRef one = LLVMConstInt(type, 1, false);
 
-	LLVMValueRef cmp, val;
-	cmp = LLVMBuildICmp(ctx->builder, LLVMIntSGT, src0, zero, "");
-	val = LLVMBuildSelect(ctx->builder, cmp, one, src0, "");
-	cmp = LLVMBuildICmp(ctx->builder, LLVMIntSGE, val, zero, "");
-	val = LLVMBuildSelect(ctx->builder, cmp, val, LLVMConstInt(type, -1, true), "");
-	return val;
+	if (LLVMGetTypeKind(type) == LLVMVectorTypeKind) {
+		LLVMValueRef scalar = LLVMConstInt(LLVMGetElementType(type), value, 0);
+		unsigned vec_size = LLVMGetVectorSize(type);
+		LLVMValueRef *scalars = alloca(vec_size * sizeof(LLVMValueRef*));
+
+		for (unsigned i = 0; i < vec_size; i++)
+			scalars[i] = scalar;
+		return LLVMConstVector(scalars, vec_size);
+	}
+	return LLVMConstInt(type, value, 0);
+}
+
+LLVMValueRef ac_build_isign(struct ac_llvm_context *ctx, LLVMValueRef src0)
+{
+	LLVMTypeRef type = LLVMTypeOf(src0);
+	LLVMValueRef val;
+
+	/* v_med3 is selected only when max is first. (LLVM bug?) */
+	val = ac_build_imax(ctx, src0, ac_const_uint_vec(ctx, type, -1));
+	return ac_build_imin(ctx, val, ac_const_uint_vec(ctx, type, 1));
 }
 
 LLVMValueRef ac_build_fsign(struct ac_llvm_context *ctx, LLVMValueRef src0,

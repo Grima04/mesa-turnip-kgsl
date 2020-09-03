@@ -822,8 +822,7 @@ static void visit_alu(struct ac_nir_context *ctx, const nir_alu_instr *instr)
 		result = ac_build_umin(&ctx->ac, src[0], src[1]);
 		break;
 	case nir_op_isign:
-		result = ac_build_isign(&ctx->ac, src[0],
-					instr->dest.dest.ssa.bit_size);
+		result = ac_build_isign(&ctx->ac, src[0]);
 		break;
 	case nir_op_fsign:
 		src[0] = ac_to_float(&ctx->ac, src[0]);
