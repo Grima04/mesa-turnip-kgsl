@@ -158,7 +158,7 @@ tu_CreateQueryPool(VkDevice _device,
       slot_size = sizeof(struct pipeline_stat_query_slot);
       break;
    default:
-      assert(!"Invalid query type");
+      unreachable("Invalid query type");
    }
 
    struct tu_query_pool *pool =
