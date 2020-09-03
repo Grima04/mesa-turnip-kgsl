@@ -313,6 +313,22 @@ vtn_push_nir_ssa(struct vtn_builder *b, uint32_t value_id, nir_ssa_def *def)
    return vtn_push_ssa_value(b, value_id, ssa);
 }
 
+static enum gl_access_qualifier
+spirv_to_gl_access_qualifier(struct vtn_builder *b,
+                             SpvAccessQualifier access_qualifier)
+{
+   switch (access_qualifier) {
+   case SpvAccessQualifierReadOnly:
+      return ACCESS_NON_WRITEABLE;
+   case SpvAccessQualifierWriteOnly:
+      return ACCESS_NON_READABLE;
+   case SpvAccessQualifierReadWrite:
+      return 0;
+   default:
+      vtn_fail("Invalid image access qualifier");
+   }
+}
+
 static nir_deref_instr *
 vtn_get_image(struct vtn_builder *b, uint32_t value_id)
 {
@@ -5578,11 +5594,8 @@ vtn_emit_kernel_entry_point_wrapper(struct vtn_builder *b,
       in_var->data.read_only = true;
       in_var->data.location = i;
       if (param_type->base_type == vtn_base_type_image) {
-         in_var->data.access = 0;
-         if (param_type->access_qualifier & SpvAccessQualifierReadOnly)
-            in_var->data.access |= ACCESS_NON_WRITEABLE;
-         if (param_type->access_qualifier & SpvAccessQualifierWriteOnly)
-            in_var->data.access |= ACCESS_NON_READABLE;
+         in_var->data.access =
+            spirv_to_gl_access_qualifier(b, param_type->access_qualifier);
       }
 
       if (is_by_val)
