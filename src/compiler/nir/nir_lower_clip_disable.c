@@ -30,7 +30,7 @@
 
 /**
  * This pass uses the enabled clip planes from the rasterizer state to rewrite
- * vertex shader store operations and store an undef to the corresponding gl_ClipDistance[n]
+ * vertex shader store operations and store a 0 to the corresponding gl_ClipDistance[n]
  * value if the plane is disabled
  */
 
@@ -45,7 +45,7 @@ recursive_if_chain(nir_builder *b, nir_deref_instr *deref, nir_ssa_def *value, u
       if (clip_plane_enable & (1 << start))
          nir_store_deref(b, deref, value, 1 << start);
       else
-         nir_store_deref(b, deref, nir_ssa_undef(b, 1, 32), 1 << start);
+         nir_store_deref(b, deref, nir_imm_int(b, 0), 1 << start);
       return;
    }
 
@@ -58,7 +58,7 @@ recursive_if_chain(nir_builder *b, nir_deref_instr *deref, nir_ssa_def *value, u
 }
 
 /* vulkan (and some drivers) provides no concept of enabling clip planes through api,
- * so we rewrite disabled clip planes to an undefined value in order to disable them
+ * so we rewrite disabled clip planes to a zero value in order to disable them
  */
 static bool
 lower_clip_plane_store(nir_intrinsic_instr *instr, unsigned clip_plane_enable, nir_builder *b)
@@ -84,7 +84,7 @@ lower_clip_plane_store(nir_intrinsic_instr *instr, unsigned clip_plane_enable, n
       if (clip_plane_enable & (1 << plane))
          return false;
 
-      nir_store_deref(b, deref, nir_ssa_undef(b, 1, 32), 1 << plane);
+      nir_store_deref(b, deref, nir_imm_int(b, 0), 1 << plane);
    } else {
       /* storing using a variable index */
       nir_ssa_def *index = nir_ssa_for_src(b, deref->arr.index, 1);
