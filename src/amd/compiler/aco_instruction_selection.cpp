@@ -10391,6 +10391,65 @@ static void emit_streamout(isel_context *ctx, unsigned stream)
    end_divergent_if(ctx, &ic);
 }
 
+Pseudo_instruction *add_startpgm(struct isel_context *ctx)
+{
+   unsigned arg_count = ctx->args->ac.arg_count;
+   if (ctx->stage == fragment_fs) {
+      /* LLVM optimizes away unused FS inputs and computes spi_ps_input_addr
+       * itself and then communicates the results back via the ELF binary.
+       * Mirror what LLVM does by re-mapping the VGPR arguments here.
+       *
+       * TODO: If we made the FS input scanning code into a separate pass that
+       * could run before argument setup, then this wouldn't be necessary
+       * anymore.
+       */
+      struct ac_shader_args *args = &ctx->args->ac;
+      arg_count = 0;
+      for (unsigned i = 0, vgpr_arg = 0, vgpr_reg = 0; i < args->arg_count; i++) {
+         if (args->args[i].file != AC_ARG_VGPR) {
+            arg_count++;
+            continue;
+         }
+
+         if (!(ctx->program->config->spi_ps_input_addr & (1 << vgpr_arg))) {
+            args->args[i].skip = true;
+         } else {
+            args->args[i].offset = vgpr_reg;
+            vgpr_reg += args->args[i].size;
+            arg_count++;
+         }
+         vgpr_arg++;
+      }
+   }
+
+   aco_ptr<Pseudo_instruction> startpgm{create_instruction<Pseudo_instruction>(aco_opcode::p_startpgm, Format::PSEUDO, 0, arg_count + 1)};
+   for (unsigned i = 0, arg = 0; i < ctx->args->ac.arg_count; i++) {
+      if (ctx->args->ac.args[i].skip)
+         continue;
+
+      enum ac_arg_regfile file = ctx->args->ac.args[i].file;
+      unsigned size = ctx->args->ac.args[i].size;
+      unsigned reg = ctx->args->ac.args[i].offset;
+      RegClass type = RegClass(file == AC_ARG_SGPR ? RegType::sgpr : RegType::vgpr, size);
+      Temp dst = Temp{ctx->program->allocateId(), type};
+      ctx->arg_temps[i] = dst;
+      startpgm->definitions[arg] = Definition(dst);
+      startpgm->definitions[arg].setFixed(PhysReg{file == AC_ARG_SGPR ? reg : reg + 256});
+      arg++;
+   }
+   startpgm->definitions[arg_count] = Definition{ctx->program->allocateId(), exec, ctx->program->lane_mask};
+   Pseudo_instruction *instr = startpgm.get();
+   ctx->block->instructions.push_back(std::move(startpgm));
+
+   /* Stash these in the program so that they can be accessed later when
+    * handling spilling.
+    */
+   ctx->program->private_segment_buffer = get_arg(ctx, ctx->args->ring_offsets);
+   ctx->program->scratch_offset = get_arg(ctx, ctx->args->scratch_offset);
+
+   return instr;
+}
+
 } /* end namespace */
 
 void fix_ls_vgpr_init_bug(isel_context *ctx, Pseudo_instruction *startpgm)
