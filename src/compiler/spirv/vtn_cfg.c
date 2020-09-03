@@ -1165,6 +1165,13 @@ vtn_emit_cf_list_structured(struct vtn_builder *b, struct list_head *cf_list,
          vtn_foreach_cf_node(case_node, &vtn_switch->cases) {
             struct vtn_case *cse = vtn_cf_node_as_case(case_node);
 
+            /* If this case jumps directly to the break block, we don't have
+             * to handle the case as the body is empty and doesn't fall
+             * through.
+             */
+            if (cse->block == vtn_switch->break_block)
+               continue;
+
             /* Figure out the condition */
             nir_ssa_def *cond =
                vtn_switch_case_condition(b, vtn_switch, sel, cse);
