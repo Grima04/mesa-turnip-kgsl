@@ -11,12 +11,12 @@ traces:
   - path: gputest/furmark.trace
     expectations:
       - device: freedreno-a630
-        checksum: de674022e53fc9e0a9eb217f8bf0fe03
+        checksum: af6e1faf11407a7e7c416f2c532de029
 # Note: Requires GL3.3
   - path: gputest/gimark.trace
     expectations:
       - device: freedreno-a630
-        checksum: 2cae8e2104356e2b3017cbd953cf7b4a
+        checksum: 47419914b87422b267e20b6981a7eb43
   - path: gputest/pixmark-julia-fp32.trace
     expectations:
       - device: freedreno-a630
@@ -37,16 +37,16 @@ traces:
     expectations:
       # Looks fine, but totally different shape from the rendering on i965.
       - device: freedreno-a630
-        checksum: 86d678c70b8adf27095ace1a6bbfe2d2
+        checksum: 9ee5a036510be0f506705eacc1516bf3
   - path: gputest/plot3d.trace
     expectations:
       - device: freedreno-a630
-        checksum: 67a9eb692e694b11107860bbcd47d493
+        checksum: 42aba3ab943dae2fe952cae1ff91c354
 # Note: Requires GL4 for tess.
   - path: gputest/tessmark.trace
     expectations:
       - device: freedreno-a630
-        checksum: 985e231b58b7dc4b6da34ff32f8ebb82
+        checksum: 8688b3904b6b2bc591d8b669ecae4d53
   - path: gputest/triangle.trace
     expectations:
       - device: freedreno-a630
@@ -149,7 +149,7 @@ traces:
   - path: glmark2/effect2d-kernel=1,1,1,1,1;1,1,1,1,1;1,1,1,1,1;.rdc
     expectations:
       - device: freedreno-a630
-        checksum: 2346a6597f4d1f20b493e8d6a8f7e592
+        checksum: 2964d37446db126a5fe462b1ba4542cd
   - path: glmark2/function-fragment-complexity=low:fragment-steps=5.rdc
     expectations:
       # Incorrect rendering, a bunch of the area is uniform gray when it should
@@ -215,7 +215,7 @@ traces:
   - path: glmark2/shading-shading=gouraud.rdc
     expectations:
       - device: freedreno-a630
-        checksum: fcc26fca31375b216382e69bc5f113fb
+        checksum: bd9058f041bd2d59c039cccdb7d50bf7
   - path: glmark2/shading-shading=phong.rdc
     # Some speckling on the main specular highlight that may just be
     # mediump artifacts
@@ -226,11 +226,6 @@ traces:
     expectations:
       - device: freedreno-a630
         checksum: d8b5931669733240797f1acf5d98db25
-    # Very yellow terrain compared to i965, may just be mediump artifacts.
-  - path: glmark2/terrain.rdc
-    expectations:
-      - device: freedreno-a630
-        checksum: 114f7dfe97768d9c565a29f656c8f9cf
   - path: glmark2/texture-texture-filter=linear.rdc
     expectations:
       - device: freedreno-a630

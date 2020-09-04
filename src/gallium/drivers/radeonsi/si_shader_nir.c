@@ -698,6 +698,17 @@ static void si_lower_nir(struct si_screen *sscreen, struct nir_shader *nir)
    if (changed)
       si_nir_opts(nir, false);
 
+   /* Run late optimizations to fuse ffma. */
+   bool more_late_algebraic = true;
+   while (more_late_algebraic) {
+      more_late_algebraic = false;
+      NIR_PASS(more_late_algebraic, nir, nir_opt_algebraic_late);
+      NIR_PASS_V(nir, nir_opt_constant_folding);
+      NIR_PASS_V(nir, nir_copy_prop);
+      NIR_PASS_V(nir, nir_opt_dce);
+      NIR_PASS_V(nir, nir_opt_cse);
+   }
+
    NIR_PASS_V(nir, nir_lower_bool_to_int32);
    NIR_PASS_V(nir, nir_remove_dead_variables, nir_var_function_temp, NULL);
 
