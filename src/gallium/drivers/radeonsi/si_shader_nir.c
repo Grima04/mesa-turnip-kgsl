@@ -514,7 +514,7 @@ static bool si_alu_to_scalar_filter(const nir_instr *instr, const void *data)
 {
    struct si_screen *sscreen = (struct si_screen *)data;
 
-   if (sscreen->info.has_packed_math_16bit &&
+   if (sscreen->options.fp16 &&
        instr->type == nir_instr_type_alu) {
       nir_alu_instr *alu = nir_instr_as_alu(instr);
 
@@ -594,7 +594,7 @@ void si_nir_opts(struct si_screen *sscreen, struct nir_shader *nir, bool first)
          NIR_PASS(progress, nir, nir_opt_loop_unroll, 0);
       }
 
-      if (sscreen->info.has_packed_math_16bit)
+      if (sscreen->options.fp16)
          NIR_PASS(progress, nir, nir_opt_vectorize, NULL, NULL);
    } while (progress);
 

@@ -1005,7 +1005,8 @@ static struct pipe_screen *radeonsi_screen_create_impl(struct radeon_winsys *ws,
                   sscreen->options.disable_sam);
 
    /* Older LLVM have buggy v_pk_* instructions. */
-   sscreen->info.has_packed_math_16bit &= LLVM_VERSION_MAJOR >= 11;
+   if (!sscreen->info.has_packed_math_16bit || LLVM_VERSION_MAJOR < 11)
+      sscreen->options.fp16 = false;
 
    if (sscreen->info.chip_class == GFX10_3 && LLVM_VERSION_MAJOR < 11) {
       fprintf(stderr, "radeonsi: GFX 10.3 requires LLVM 11 or higher\n");

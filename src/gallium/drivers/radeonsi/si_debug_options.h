@@ -15,5 +15,6 @@ OPT_BOOL(shader_culling, false, "Cull primitives in shaders when benefical (with
 OPT_BOOL(vrs2x2, false, "Enable 2x2 coarse shading for non-GUI elements")
 OPT_BOOL(enable_sam, false, "Enable Smart Access Memory with Above 4G Decoding for unvalidated platforms.")
 OPT_BOOL(disable_sam, false, "Disable Smart Access Memory.")
+OPT_BOOL(fp16, false, "Enable FP16 for mediump.")
 
 #undef OPT_BOOL

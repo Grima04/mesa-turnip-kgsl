@@ -27,6 +27,7 @@
 #include "radeon/radeon_vce.h"
 #include "radeon/radeon_video.h"
 #include "si_pipe.h"
+#include "util/u_cpu_detect.h"
 #include "util/u_screen.h"
 #include "util/u_video.h"
 #include "vl/vl_decoder.h"
@@ -431,12 +432,17 @@ static int si_get_shader_param(struct pipe_screen *pscreen, enum pipe_shader_typ
    case PIPE_SHADER_CAP_INDIRECT_OUTPUT_ADDR: /* lowered in finalize_nir */
       return 1;
 
-   /* Unsupported boolean features. */
    case PIPE_SHADER_CAP_FP16:
    case PIPE_SHADER_CAP_FP16_DERIVATIVES:
-   case PIPE_SHADER_CAP_FP16_CONST_BUFFERS:
-   case PIPE_SHADER_CAP_INT16:
    case PIPE_SHADER_CAP_GLSL_16BIT_CONSTS:
+      return sscreen->options.fp16;
+
+   case PIPE_SHADER_CAP_FP16_CONST_BUFFERS:
+      /* We need f16c for fast FP16 conversions in glUniform. */
+      return sscreen->options.fp16 && util_get_cpu_caps()->has_f16c;
+
+   /* Unsupported boolean features. */
+   case PIPE_SHADER_CAP_INT16:
    case PIPE_SHADER_CAP_SUBROUTINES:
    case PIPE_SHADER_CAP_MAX_HW_ATOMIC_COUNTERS:
    case PIPE_SHADER_CAP_MAX_HW_ATOMIC_COUNTER_BUFFERS:
@@ -925,6 +931,8 @@ static void si_init_renderer_string(struct si_screen *sscreen)
 
 void si_init_screen_get_functions(struct si_screen *sscreen)
 {
+   util_cpu_detect();
+
    sscreen->b.get_name = si_get_name;
    sscreen->b.get_vendor = si_get_vendor;
    sscreen->b.get_device_vendor = si_get_device_vendor;
@@ -997,8 +1005,8 @@ void si_init_screen_get_functions(struct si_screen *sscreen)
       .max_unroll_iterations = 32,
       .use_interpolated_input_intrinsics = true,
       .lower_uniforms_to_ubo = true,
-      .support_16bit_alu = sscreen->info.has_packed_math_16bit,
-      .vectorize_vec2_16bit = sscreen->info.has_packed_math_16bit,
+      .support_16bit_alu = sscreen->options.fp16,
+      .vectorize_vec2_16bit = sscreen->options.fp16,
    };
    sscreen->nir_options = nir_options;
 }
