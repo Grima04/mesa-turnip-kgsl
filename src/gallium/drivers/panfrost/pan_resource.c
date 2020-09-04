@@ -398,13 +398,15 @@ panfrost_setup_slices(struct panfrost_resource *pres, size_t *bo_size)
                 /* Arrays and cubemaps have the entire miptree duplicated */
 
                 pres->cubemap_stride = ALIGN_POT(offset, 64);
-                *bo_size = ALIGN_POT(pres->cubemap_stride * res->array_size, 4096);
+                if (bo_size)
+                        *bo_size = ALIGN_POT(pres->cubemap_stride * res->array_size, 4096);
         } else {
                 /* 3D strides across the 2D layers */
                 assert(res->array_size == 1);
 
                 pres->cubemap_stride = size_2d;
-                *bo_size = ALIGN_POT(offset, 4096);
+                if (bo_size)
+                        *bo_size = ALIGN_POT(offset, 4096);
         }
 }
 
@@ -524,14 +526,12 @@ panfrost_best_modifier(struct panfrost_device *dev,
 }
 
 static void
-panfrost_resource_create_bo(struct panfrost_device *dev, struct panfrost_resource *pres,
-                uint64_t modifier)
+panfrost_resource_setup(struct panfrost_device *dev, struct panfrost_resource *pres,
+                        size_t *bo_size, uint64_t modifier)
 {
-        struct pipe_resource *res = &pres->base;
-
         pres->modifier = (modifier != DRM_FORMAT_MOD_INVALID) ? modifier :
                 panfrost_best_modifier(dev, pres);
-        pres->checksummed = (res->bind & PIPE_BIND_RENDER_TARGET);
+        pres->checksummed = (pres->base.bind & PIPE_BIND_RENDER_TARGET);
 
         /* We can only switch tiled->linear if the resource isn't already
          * linear, and if we control the modifier, and if the resource can be
@@ -540,13 +540,7 @@ panfrost_resource_create_bo(struct panfrost_device *dev, struct panfrost_resourc
                         && (modifier == DRM_FORMAT_MOD_INVALID)
                         && panfrost_can_linear(dev, pres));
 
-        size_t bo_size;
-
-        panfrost_setup_slices(pres, &bo_size);
-
-        /* We create a BO immediately but don't bother mapping, since we don't
-         * care to map e.g. FBOs which the CPU probably won't touch */
-        pres->bo = panfrost_bo_create(dev, bo_size, PAN_BO_DELAY_MMAP);
+        panfrost_setup_slices(pres, bo_size);
 }
 
 void
@@ -631,7 +625,13 @@ panfrost_resource_create_with_modifier(struct pipe_screen *screen,
 
         util_range_init(&so->valid_buffer_range);
 
-        panfrost_resource_create_bo(dev, so, modifier);
+        size_t bo_size;
+        panfrost_resource_setup(dev, so, &bo_size, modifier);
+
+        /* We create a BO immediately but don't bother mapping, since we don't
+         * care to map e.g. FBOs which the CPU probably won't touch */
+        so->bo = panfrost_bo_create(dev, bo_size, PAN_BO_DELAY_MMAP);
+
         panfrost_resource_set_damage_region(NULL, &so->base, 0, NULL);
 
         if (template->bind & PIPE_BIND_INDEX_BUFFER)
