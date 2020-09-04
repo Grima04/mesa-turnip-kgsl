@@ -949,6 +949,33 @@ panfrost_transfer_map(struct pipe_context *pctx,
         }
 }
 
+static bool
+panfrost_should_linear_convert(struct panfrost_resource *prsrc,
+                               struct pipe_transfer *transfer)
+{
+        if (prsrc->modifier_constant)
+                return false;
+
+        /* Overwriting the entire resource indicates streaming, for which
+         * linear layout is most efficient due to the lack of expensive
+         * conversion.
+         *
+         * For now we just switch to linear after a number of complete
+         * overwrites to keep things simple, but we could do better.
+         */
+
+        bool entire_overwrite = prsrc->base.last_level == 0
+                && transfer->box.width == prsrc->base.width0
+                && transfer->box.height == prsrc->base.height0
+                && transfer->box.x == 0
+                && transfer->box.y == 0;
+
+        if (entire_overwrite)
+                ++prsrc->modifier_updates;
+
+        return prsrc->modifier_updates >= LAYOUT_CONVERT_THRESHOLD;
+}
+
 static void
 panfrost_transfer_unmap(struct pipe_context *pctx,
                         struct pipe_transfer *transfer)
@@ -982,26 +1009,7 @@ panfrost_transfer_unmap(struct pipe_context *pctx,
                         if (prsrc->modifier == DRM_FORMAT_MOD_ARM_16X16_BLOCK_U_INTERLEAVED) {
                                 assert(transfer->box.depth == 1);
 
-                                /* Do we overwrite the entire resource? If so,
-                                 * we don't need an intermediate blit so it's a
-                                 * good time to switch the modifier. */
-
-                                bool discards_content = prsrc->base.last_level == 0
-                                    && transfer->box.width == prsrc->base.width0
-                                    && transfer->box.height == prsrc->base.height0
-                                    && transfer->box.x == 0
-                                    && transfer->box.y == 0
-                                    && !prsrc->modifier_constant;
-
-                                /* It also serves as a good heuristic for
-                                 * streaming textures (e.g. in video players),
-                                 * but we could do better */
-
-                                if (discards_content)
-                                        ++prsrc->modifier_updates;
-
-                                if (prsrc->modifier_updates >= LAYOUT_CONVERT_THRESHOLD)
-                                {
+                                if (panfrost_should_linear_convert(prsrc, transfer)) {
                                         prsrc->modifier = DRM_FORMAT_MOD_LINEAR;
 
                                         util_copy_rect(
