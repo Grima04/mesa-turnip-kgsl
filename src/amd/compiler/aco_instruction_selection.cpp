@@ -4440,7 +4440,7 @@ bool check_vertex_fetch_size(isel_context *ctx, const ac_data_format_info *vtx_i
    unsigned vertex_byte_size = vtx_info->chan_byte_size * channels;
    if (vtx_info->chan_byte_size != 4 && channels == 3)
       return false;
-   return (ctx->options->chip_class != GFX6 && ctx->options->chip_class != GFX10) ||
+   return (ctx->options->chip_class >= GFX7 && ctx->options->chip_class <= GFX9) ||
           (offset % vertex_byte_size == 0 && stride % vertex_byte_size == 0);
 }
 
