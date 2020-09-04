@@ -1344,6 +1344,9 @@ radv-fossils:
       - traces-db/
   variables:
     TRACIE_UPLOAD_TO_MINIO: 1
+  artifacts:
+    reports:
+      junit: results/junit.xml
 
 .traces-test-gl:
   extends:
