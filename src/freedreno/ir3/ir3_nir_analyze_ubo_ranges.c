@@ -124,7 +124,8 @@ get_range(nir_intrinsic_instr *instr, struct ir3_ubo_analysis_state *state)
 
 static void
 gather_ubo_ranges(nir_shader *nir, nir_intrinsic_instr *instr,
-				  struct ir3_ubo_analysis_state *state, uint32_t alignment)
+		struct ir3_ubo_analysis_state *state, uint32_t alignment,
+		uint32_t *upload_remaining)
 {
 	if (ir3_shader_debug & IR3_DBG_NOUBOOPT)
 		return;
@@ -137,10 +138,20 @@ gather_ubo_ranges(nir_shader *nir, nir_intrinsic_instr *instr,
 	if (!get_ubo_load_range(nir, instr, alignment, &r))
 		return;
 
-	if (r.start < old_r->start)
-		old_r->start = r.start;
-	if (old_r->end < r.end)
-		old_r->end = r.end;
+	r.start = MIN2(r.start, old_r->start);
+	r.end = MAX2(r.end, old_r->end);
+
+	/* If adding this range would definitely put us over the limit, don't try.
+	 * Prevents sparse access or large indirects from occupying all the
+	 * planned UBO space
+	 */
+	uint32_t added = (old_r->start - r.start) + (r.end - old_r->end);
+	if (added >= *upload_remaining)
+		return;
+
+	*upload_remaining -= added;
+	old_r->start = r.start;
+	old_r->end = r.end;
 }
 
 /* For indirect offset, it is common to see a pattern of multiple
@@ -329,18 +340,31 @@ ir3_nir_analyze_ubo_ranges(nir_shader *nir, struct ir3_shader_variant *v)
 	struct ir3_ubo_analysis_state *state = &const_state->ubo_state;
 	struct ir3_compiler *compiler = v->shader->compiler;
 
+	/* Limit our uploads to the amount of constant buffer space available in
+	 * the hardware, minus what the shader compiler may need for various
+	 * driver params.  We do this UBO-to-push-constant before the real
+	 * allocation of the driver params' const space, because UBO pointers can
+	 * be driver params but this pass usually eliminatings them.
+	 */
+	struct ir3_const_state worst_case_const_state = { };
+	ir3_setup_const_state(nir, v, &worst_case_const_state);
+	const uint32_t max_upload = (ir3_max_const(v) -
+			worst_case_const_state.offsets.immediate) * 16;
+
 	memset(state, 0, sizeof(*state));
 	for (int i = 0; i < IR3_MAX_UBO_PUSH_RANGES; i++) {
 		state->range[i].start = UINT32_MAX;
 	}
 
+	uint32_t upload_remaining = max_upload;
 	nir_foreach_function (function, nir) {
 		if (function->impl) {
 			nir_foreach_block (block, function->impl) {
 				nir_foreach_instr (instr, block) {
 					if (instr_is_load_ubo(instr))
 						gather_ubo_ranges(nir, nir_instr_as_intrinsic(instr),
-								state, compiler->const_upload_unit);
+								state, compiler->const_upload_unit,
+								&upload_remaining);
 				}
 			}
 		}
@@ -355,17 +379,6 @@ ir3_nir_analyze_ubo_ranges(nir_shader *nir, struct ir3_shader_variant *v)
 	 * first.
 	 */
 
-	/* Limit our uploads to the amount of constant buffer space available in
-	 * the hardware, minus what the shader compiler may need for various
-	 * driver params.  We do this UBO-to-push-constant before the real
-	 * allocation of the driver params' const space, because UBO pointers can
-	 * be driver params but this pass usually eliminatings them.
-	 */
-	struct ir3_const_state worst_case_const_state = { };
-	ir3_setup_const_state(nir, v, &worst_case_const_state);
-	const uint32_t max_upload = (ir3_max_const(v) -
-			worst_case_const_state.offsets.immediate) * 16;
-
 	uint32_t offset = v->shader->num_reserved_user_consts * 16;
 	state->num_enabled = ARRAY_SIZE(state->range);
 	for (uint32_t i = 0; i < ARRAY_SIZE(state->range); i++) {
@@ -378,10 +391,7 @@ ir3_nir_analyze_ubo_ranges(nir_shader *nir, struct ir3_shader_variant *v)
 
 		debug_assert(offset <= max_upload);
 		state->range[i].offset = offset;
-		if (offset + range_size > max_upload) {
-			range_size = max_upload - offset;
-			state->range[i].end = state->range[i].start + range_size;
-		}
+		assert(offset <= max_upload);
 		offset += range_size;
 
 	}
