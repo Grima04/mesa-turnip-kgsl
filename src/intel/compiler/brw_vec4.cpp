@@ -2853,13 +2853,13 @@ brw_compile_vs(const struct brw_compiler *compiler, void *log_data,
                void *mem_ctx,
                const struct brw_vs_prog_key *key,
                struct brw_vs_prog_data *prog_data,
-               nir_shader *shader,
+               nir_shader *nir,
                int shader_time_index,
                struct brw_compile_stats *stats,
                char **error_str)
 {
    const bool is_scalar = compiler->scalar_stage[MESA_SHADER_VERTEX];
-   brw_nir_apply_key(shader, compiler, &key->base, 8, is_scalar);
+   brw_nir_apply_key(nir, compiler, &key->base, 8, is_scalar);
 
    const unsigned *assembly = NULL;
 
@@ -2875,28 +2875,28 @@ brw_compile_vs(const struct brw_compiler *compiler, void *log_data,
        */
       assert(!is_scalar);
       assert(key->copy_edgeflag);
-      shader->info.inputs_read |= VERT_BIT_EDGEFLAG;
+      nir->info.inputs_read |= VERT_BIT_EDGEFLAG;
    }
 
-   prog_data->inputs_read = shader->info.inputs_read;
-   prog_data->double_inputs_read = shader->info.vs.double_inputs;
+   prog_data->inputs_read = nir->info.inputs_read;
+   prog_data->double_inputs_read = nir->info.vs.double_inputs;
 
-   brw_nir_lower_vs_inputs(shader, key->gl_attrib_wa_flags);
-   brw_nir_lower_vue_outputs(shader);
-   brw_postprocess_nir(shader, compiler, is_scalar);
+   brw_nir_lower_vs_inputs(nir, key->gl_attrib_wa_flags);
+   brw_nir_lower_vue_outputs(nir);
+   brw_postprocess_nir(nir, compiler, is_scalar);
 
    prog_data->base.clip_distance_mask =
-      ((1 << shader->info.clip_distance_array_size) - 1);
+      ((1 << nir->info.clip_distance_array_size) - 1);
    prog_data->base.cull_distance_mask =
-      ((1 << shader->info.cull_distance_array_size) - 1) <<
-      shader->info.clip_distance_array_size;
+      ((1 << nir->info.cull_distance_array_size) - 1) <<
+      nir->info.clip_distance_array_size;
 
    unsigned nr_attribute_slots = util_bitcount64(prog_data->inputs_read);
 
    /* gl_VertexID and gl_InstanceID are system values, but arrive via an
     * incoming vertex attribute.  So, add an extra slot.
     */
-   if (shader->info.system_values_read &
+   if (nir->info.system_values_read &
        (BITFIELD64_BIT(SYSTEM_VALUE_FIRST_VERTEX) |
         BITFIELD64_BIT(SYSTEM_VALUE_BASE_INSTANCE) |
         BITFIELD64_BIT(SYSTEM_VALUE_VERTEX_ID_ZERO_BASE) |
@@ -2905,33 +2905,33 @@ brw_compile_vs(const struct brw_compiler *compiler, void *log_data,
    }
 
    /* gl_DrawID and IsIndexedDraw share its very own vec4 */
-   if (shader->info.system_values_read &
+   if (nir->info.system_values_read &
        (BITFIELD64_BIT(SYSTEM_VALUE_DRAW_ID) |
         BITFIELD64_BIT(SYSTEM_VALUE_IS_INDEXED_DRAW))) {
       nr_attribute_slots++;
    }
 
-   if (shader->info.system_values_read &
+   if (nir->info.system_values_read &
        BITFIELD64_BIT(SYSTEM_VALUE_IS_INDEXED_DRAW))
       prog_data->uses_is_indexed_draw = true;
 
-   if (shader->info.system_values_read &
+   if (nir->info.system_values_read &
        BITFIELD64_BIT(SYSTEM_VALUE_FIRST_VERTEX))
       prog_data->uses_firstvertex = true;
 
-   if (shader->info.system_values_read &
+   if (nir->info.system_values_read &
        BITFIELD64_BIT(SYSTEM_VALUE_BASE_INSTANCE))
       prog_data->uses_baseinstance = true;
 
-   if (shader->info.system_values_read &
+   if (nir->info.system_values_read &
        BITFIELD64_BIT(SYSTEM_VALUE_VERTEX_ID_ZERO_BASE))
       prog_data->uses_vertexid = true;
 
-   if (shader->info.system_values_read &
+   if (nir->info.system_values_read &
        BITFIELD64_BIT(SYSTEM_VALUE_INSTANCE_ID))
       prog_data->uses_instanceid = true;
 
-   if (shader->info.system_values_read &
+   if (nir->info.system_values_read &
        BITFIELD64_BIT(SYSTEM_VALUE_DRAW_ID))
           prog_data->uses_drawid = true;
 
@@ -2977,7 +2977,7 @@ brw_compile_vs(const struct brw_compiler *compiler, void *log_data,
 
       fs_visitor v(compiler, log_data, mem_ctx, &key->base,
                    &prog_data->base.base,
-                   shader, 8, shader_time_index);
+                   nir, 8, shader_time_index);
       if (!v.run_vs()) {
          if (error_str)
             *error_str = ralloc_strdup(mem_ctx, v.fail_msg);
@@ -2993,15 +2993,15 @@ brw_compile_vs(const struct brw_compiler *compiler, void *log_data,
       if (INTEL_DEBUG & DEBUG_VS) {
          const char *debug_name =
             ralloc_asprintf(mem_ctx, "%s vertex shader %s",
-                            shader->info.label ? shader->info.label :
+                            nir->info.label ? nir->info.label :
                                "unnamed",
-                            shader->info.name);
+                            nir->info.name);
 
          g.enable_debug(debug_name);
       }
       g.generate_code(v.cfg, 8, v.shader_stats,
                       v.performance_analysis.require(), stats);
-      g.add_const_data(shader->constant_data, shader->constant_data_size);
+      g.add_const_data(nir->constant_data, nir->constant_data_size);
       assembly = g.get_assembly();
    }
 
@@ -3009,7 +3009,7 @@ brw_compile_vs(const struct brw_compiler *compiler, void *log_data,
       prog_data->base.dispatch_mode = DISPATCH_MODE_4X2_DUAL_OBJECT;
 
       vec4_vs_visitor v(compiler, log_data, key, prog_data,
-                        shader, mem_ctx, shader_time_index);
+                        nir, mem_ctx, shader_time_index);
       if (!v.run()) {
          if (error_str)
             *error_str = ralloc_strdup(mem_ctx, v.fail_msg);
@@ -3018,7 +3018,7 @@ brw_compile_vs(const struct brw_compiler *compiler, void *log_data,
       }
 
       assembly = brw_vec4_generate_assembly(compiler, log_data, mem_ctx,
-                                            shader, &prog_data->base,
+                                            nir, &prog_data->base,
                                             v.cfg,
                                             v.performance_analysis.require(),
                                             stats);
