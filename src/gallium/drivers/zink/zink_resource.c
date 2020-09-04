@@ -47,6 +47,26 @@
 #endif
 
 static void
+resource_sync_writes_from_batch_id(struct zink_context *ctx, uint32_t batch_uses, unsigned cur_batch)
+{
+   if (batch_uses & ZINK_RESOURCE_ACCESS_WRITE << ZINK_COMPUTE_BATCH_ID)
+      zink_wait_on_batch(ctx, ZINK_COMPUTE_BATCH_ID);
+   batch_uses &= ~(ZINK_RESOURCE_ACCESS_WRITE << ZINK_COMPUTE_BATCH_ID);
+   if (!batch_uses)
+      return;
+   for (unsigned i = 0; i < ZINK_NUM_BATCHES + 1; i++) {
+      /* loop backwards and sync with highest batch id that has writes */
+      if (batch_uses & (ZINK_RESOURCE_ACCESS_WRITE << cur_batch)) {
+          zink_wait_on_batch(ctx, cur_batch);
+          break;
+      }
+      cur_batch--;
+      if (cur_batch > ZINK_COMPUTE_BATCH_ID - 1) // underflowed past max batch id
+         cur_batch = ZINK_COMPUTE_BATCH_ID - 1;
+   }
+}
+
+static void
 zink_resource_destroy(struct pipe_screen *pscreen,
                       struct pipe_resource *pres)
 {
@@ -549,15 +569,18 @@ zink_transfer_map(struct pipe_context *pctx,
    void *ptr;
    if (pres->target == PIPE_BUFFER) {
       if (!(usage & PIPE_MAP_UNSYNCHRONIZED) && util_ranges_intersect(&res->valid_buffer_range, box->x, box->x + box->width)) {
-         if ((usage & PIPE_MAP_READ && batch_uses >= ZINK_RESOURCE_ACCESS_WRITE) ||
-             (usage & PIPE_MAP_WRITE && batch_uses)) {
-            /* need to wait for rendering to finish
+         /* special case compute reads since they aren't handled by zink_fence_wait() */
+         if (usage & PIPE_MAP_WRITE && (batch_uses & (ZINK_RESOURCE_ACCESS_READ << ZINK_COMPUTE_BATCH_ID)))
+            zink_wait_on_batch(ctx, ZINK_COMPUTE_BATCH_ID);
+         batch_uses &= ~(ZINK_RESOURCE_ACCESS_READ << ZINK_COMPUTE_BATCH_ID);
+         if (usage & PIPE_MAP_READ && batch_uses >= ZINK_RESOURCE_ACCESS_WRITE)
+            resource_sync_writes_from_batch_id(ctx, batch_uses, zink_curr_batch(ctx)->batch_id);
+         else if (usage & PIPE_MAP_WRITE && batch_uses) {
+            /* need to wait for all rendering to finish
              * TODO: optimize/fix this to be much less obtrusive
              * mesa/mesa#2966
              */
-            if (batch_uses & ((ZINK_RESOURCE_ACCESS_READ << ZINK_COMPUTE_BATCH_ID) |
-                              ZINK_RESOURCE_ACCESS_WRITE << ZINK_COMPUTE_BATCH_ID))
-               zink_wait_on_batch(ctx, ZINK_COMPUTE_BATCH_ID);
+
             zink_fence_wait(pctx);
          }
       }
@@ -643,10 +666,15 @@ zink_transfer_map(struct pipe_context *pctx,
 
       } else {
          assert(!res->optimal_tiling);
+         /* special case compute reads since they aren't handled by zink_fence_wait() */
+         if (batch_uses & (ZINK_RESOURCE_ACCESS_READ << ZINK_COMPUTE_BATCH_ID))
+            zink_wait_on_batch(ctx, ZINK_COMPUTE_BATCH_ID);
+         batch_uses &= ~(ZINK_RESOURCE_ACCESS_READ << ZINK_COMPUTE_BATCH_ID);
          if (batch_uses >= ZINK_RESOURCE_ACCESS_WRITE) {
-            if (batch_uses & (ZINK_RESOURCE_ACCESS_WRITE << ZINK_COMPUTE_BATCH_ID))
-               zink_wait_on_batch(ctx, ZINK_COMPUTE_BATCH_ID);
-            zink_fence_wait(pctx);
+            if (usage & PIPE_MAP_READ)
+               resource_sync_writes_from_batch_id(ctx, batch_uses, zink_curr_batch(ctx)->batch_id);
+            else
+               zink_fence_wait(pctx);
          }
          VkResult result = vkMapMemory(screen->dev, res->mem, res->offset, res->size, 0, &ptr);
          if (result != VK_SUCCESS)
