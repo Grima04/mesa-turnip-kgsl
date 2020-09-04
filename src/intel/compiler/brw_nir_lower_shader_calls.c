@@ -507,14 +507,22 @@ spill_ssa_defs_and_lower_shader_calls(nir_shader *shader, uint32_t num_calls,
          offset = ALIGN(offset, BRW_BTD_STACK_ALIGN);
          max_scratch_size = MAX2(max_scratch_size, offset);
 
-         /* First thing on the called shader's stack is the resume address */
+         /* First thing on the called shader's stack is the resume address
+          * followed by a pointer to the payload.
+          */
          nir_intrinsic_instr *call = nir_instr_as_intrinsic(instr);
          nir_ssa_def *resume_record_addr =
             nir_iadd_imm(b, nir_load_btd_resume_sbt_addr_intel(b),
                          (first_resume_sbt_idx + call_idx) *
                          BRW_BTD_RESUME_SBT_STRIDE);
+         /* By the time we get here, any remaining shader/function memory
+          * pointers have been lowered to SSA values.
+          */
+         assert(nir_get_shader_call_payload_src(call)->is_ssa);
+         nir_ssa_def *payload_addr =
+            nir_get_shader_call_payload_src(call)->ssa;
          brw_nir_rt_store_scratch(b, offset, BRW_BTD_STACK_ALIGN,
-                                  resume_record_addr,
+                                  nir_vec2(b, resume_record_addr, payload_addr),
                                   0xf /* write_mask */);
 
          nir_btd_stack_push_intel(b, offset);
