@@ -1132,7 +1132,7 @@ gen_vertex_arrays(struct gl_context *ctx, GLsizei n, GLuint *arrays,
          return;
       }
       obj->EverBound = create;
-      _mesa_HashInsertLocked(ctx->Array.Objects, obj->Name, obj);
+      _mesa_HashInsertLocked(ctx->Array.Objects, obj->Name, obj, true);
       arrays[i] = first + i;
    }
 }

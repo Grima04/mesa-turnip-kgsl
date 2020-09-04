@@ -1083,7 +1083,7 @@ create_transform_feedbacks(struct gl_context *ctx, GLsizei n, GLuint *ids,
          }
          ids[i] = first + i;
          _mesa_HashInsertLocked(ctx->TransformFeedback.Objects, first + i,
-                                obj);
+                                obj, true);
          if (dsa) {
             /* this is normally done at bind time in the non-dsa case */
             obj->EverBound = GL_TRUE;

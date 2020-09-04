@@ -174,7 +174,7 @@ _mesa_lookup_framebuffer_dsa(struct gl_context *ctx, GLuint id,
    /* Name exists but buffer is not initialized */
    if (fb == &DummyFramebuffer) {
       fb = ctx->Driver.NewFramebuffer(ctx, id);
-      _mesa_HashInsert(ctx->Shared->FrameBuffers, id, fb);
+      _mesa_HashInsert(ctx->Shared->FrameBuffers, id, fb, true);
    }
    /* Name doesn't exist */
    else if (!fb) {
@@ -183,7 +183,7 @@ _mesa_lookup_framebuffer_dsa(struct gl_context *ctx, GLuint id,
          _mesa_error(ctx, GL_OUT_OF_MEMORY, "%s", func);
          return NULL;
       }
-      _mesa_HashInsert(ctx->Shared->FrameBuffers, id, fb);
+      _mesa_HashInsert(ctx->Shared->FrameBuffers, id, fb, false);
    }
    return fb;
 }
@@ -1517,6 +1517,7 @@ _mesa_IsRenderbuffer(GLuint renderbuffer)
 
 static struct gl_renderbuffer *
 allocate_renderbuffer_locked(struct gl_context *ctx, GLuint renderbuffer,
+                             bool isGenName,
                              const char *func)
 {
    struct gl_renderbuffer *newRb;
@@ -1528,7 +1529,8 @@ allocate_renderbuffer_locked(struct gl_context *ctx, GLuint renderbuffer,
       return NULL;
    }
    assert(newRb->AllocStorage);
-   _mesa_HashInsertLocked(ctx->Shared->RenderBuffers, renderbuffer, newRb);
+   _mesa_HashInsertLocked(ctx->Shared->RenderBuffers, renderbuffer,
+                          newRb, isGenName);
 
    return newRb;
 }
@@ -1550,10 +1552,12 @@ bind_renderbuffer(GLenum target, GLuint renderbuffer)
     */
 
    if (renderbuffer) {
+      bool isGenName = false;
       newRb = _mesa_lookup_renderbuffer(ctx, renderbuffer);
       if (newRb == &DummyRenderbuffer) {
          /* ID was reserved, but no real renderbuffer object made yet */
          newRb = NULL;
+         isGenName = true;
       }
       else if (!newRb && ctx->API == API_OPENGL_CORE) {
          /* All RB IDs must be Gen'd */
@@ -1565,7 +1569,7 @@ bind_renderbuffer(GLenum target, GLuint renderbuffer)
       if (!newRb) {
          _mesa_HashLockMutex(ctx->Shared->RenderBuffers);
          newRb = allocate_renderbuffer_locked(ctx, renderbuffer,
-                                              "glBindRenderbufferEXT");
+                                              isGenName, "glBindRenderbufferEXT");
          _mesa_HashUnlockMutex(ctx->Shared->RenderBuffers);
       }
    }
@@ -2037,11 +2041,11 @@ create_render_buffers(struct gl_context *ctx, GLsizei n, GLuint *renderbuffers,
       renderbuffers[i] = name;
 
       if (dsa) {
-         allocate_renderbuffer_locked(ctx, name, func);
+         allocate_renderbuffer_locked(ctx, name, true, func);
       } else {
          /* insert a dummy renderbuffer into the hash table */
          _mesa_HashInsertLocked(ctx->Shared->RenderBuffers, name,
-                                &DummyRenderbuffer);
+                                &DummyRenderbuffer, true);
       }
    }
 
@@ -2790,7 +2794,8 @@ _mesa_NamedRenderbufferStorageEXT(GLuint renderbuffer, GLenum internalformat,
    struct gl_renderbuffer *rb = _mesa_lookup_renderbuffer(ctx, renderbuffer);
    if (!rb || rb == &DummyRenderbuffer) {
       _mesa_HashLockMutex(ctx->Shared->RenderBuffers);
-      rb = allocate_renderbuffer_locked(ctx, renderbuffer, "glNamedRenderbufferStorageEXT");
+      rb = allocate_renderbuffer_locked(ctx, renderbuffer, rb != NULL,
+                                        "glNamedRenderbufferStorageEXT");
       _mesa_HashUnlockMutex(ctx->Shared->RenderBuffers);
    }
    renderbuffer_storage(ctx, rb, internalformat, width, height, NO_SAMPLES,
@@ -2818,7 +2823,7 @@ _mesa_NamedRenderbufferStorageMultisampleEXT(GLuint renderbuffer, GLsizei sample
    struct gl_renderbuffer *rb = _mesa_lookup_renderbuffer(ctx, renderbuffer);
    if (!rb || rb == &DummyRenderbuffer) {
       _mesa_HashLockMutex(ctx->Shared->RenderBuffers);
-      rb = allocate_renderbuffer_locked(ctx, renderbuffer,
+      rb = allocate_renderbuffer_locked(ctx, renderbuffer, rb != NULL,
                                         "glNamedRenderbufferStorageMultisampleEXT");
       _mesa_HashUnlockMutex(ctx->Shared->RenderBuffers);
    }
@@ -2936,7 +2941,8 @@ _mesa_GetNamedRenderbufferParameterivEXT(GLuint renderbuffer, GLenum pname,
    struct gl_renderbuffer *rb = _mesa_lookup_renderbuffer(ctx, renderbuffer);
    if (!rb || rb == &DummyRenderbuffer) {
       _mesa_HashLockMutex(ctx->Shared->RenderBuffers);
-      rb = allocate_renderbuffer_locked(ctx, renderbuffer, "glGetNamedRenderbufferParameterivEXT");
+      rb = allocate_renderbuffer_locked(ctx, renderbuffer, rb != NULL,
+                                        "glGetNamedRenderbufferParameterivEXT");
       _mesa_HashUnlockMutex(ctx->Shared->RenderBuffers);
    }
 
@@ -3034,11 +3040,13 @@ bind_framebuffer(GLenum target, GLuint framebuffer)
    }
 
    if (framebuffer) {
+      bool isGenName = false;
       /* Binding a user-created framebuffer object */
       newDrawFb = _mesa_lookup_framebuffer(ctx, framebuffer);
       if (newDrawFb == &DummyFramebuffer) {
          /* ID was reserved, but no real framebuffer object made yet */
          newDrawFb = NULL;
+         isGenName = true;
       }
       else if (!newDrawFb && ctx->API == API_OPENGL_CORE) {
          /* All FBO IDs must be Gen'd */
@@ -3054,7 +3062,7 @@ bind_framebuffer(GLenum target, GLuint framebuffer)
             _mesa_error(ctx, GL_OUT_OF_MEMORY, "glBindFramebufferEXT");
             return;
          }
-         _mesa_HashInsert(ctx->Shared->FrameBuffers, framebuffer, newDrawFb);
+         _mesa_HashInsert(ctx->Shared->FrameBuffers, framebuffer, newDrawFb, isGenName);
       }
       newReadFb = newDrawFb;
    }
@@ -3236,7 +3244,7 @@ create_framebuffers(GLsizei n, GLuint *framebuffers, bool dsa)
       else
          fb = &DummyFramebuffer;
 
-      _mesa_HashInsertLocked(ctx->Shared->FrameBuffers, name, fb);
+      _mesa_HashInsertLocked(ctx->Shared->FrameBuffers, name, fb, true);
    }
 
    _mesa_HashUnlockMutex(ctx->Shared->FrameBuffers);
@@ -4839,7 +4847,7 @@ lookup_named_framebuffer_ext_dsa(struct gl_context *ctx, GLuint framebuffer, con
       /* Then, make sure it's initialized */
       if (fb == &DummyFramebuffer) {
          fb = ctx->Driver.NewFramebuffer(ctx, framebuffer);
-         _mesa_HashInsert(ctx->Shared->FrameBuffers, framebuffer, fb);
+         _mesa_HashInsert(ctx->Shared->FrameBuffers, framebuffer, fb, true);
       }
    }
    else

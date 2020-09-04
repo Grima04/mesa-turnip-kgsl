@@ -1237,7 +1237,7 @@ create_textures(struct gl_context *ctx, GLenum target,
       }
 
       /* insert into hash table */
-      _mesa_HashInsertLocked(ctx->Shared->TexObjects, texObj->Name, texObj);
+      _mesa_HashInsertLocked(ctx->Shared->TexObjects, texObj->Name, texObj, true);
 
       textures[i] = name;
    }
@@ -1802,7 +1802,7 @@ _mesa_lookup_or_create_texture(struct gl_context *ctx, GLenum target,
          }
 
          /* and insert it into hash table */
-         _mesa_HashInsert(ctx->Shared->TexObjects, texName, newTexObj);
+         _mesa_HashInsert(ctx->Shared->TexObjects, texName, newTexObj, false);
       }
    }
 

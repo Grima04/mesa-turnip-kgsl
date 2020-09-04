@@ -966,13 +966,12 @@ _mesa_handle_bind_buffer_gen(struct gl_context *ctx,
       /* If this is a new buffer object id, or one which was generated but
        * never used before, allocate a buffer object now.
        */
-      buf = ctx->Driver.NewBufferObject(ctx, buffer);
-      if (!buf) {
+      *buf_handle = ctx->Driver.NewBufferObject(ctx, buffer);
+      if (!*buf_handle) {
 	 _mesa_error(ctx, GL_OUT_OF_MEMORY, "%s", caller);
 	 return false;
       }
-      _mesa_HashInsert(ctx->Shared->BufferObjects, buffer, buf);
-      *buf_handle = buf;
+      _mesa_HashInsert(ctx->Shared->BufferObjects, buffer, *buf_handle, buf != NULL);
    }
 
    return true;
@@ -1653,7 +1652,7 @@ create_buffers(struct gl_context *ctx, GLsizei n, GLuint *buffers, bool dsa)
       else
          buf = &DummyBufferObject;
 
-      _mesa_HashInsertLocked(ctx->Shared->BufferObjects, buffers[i], buf);
+      _mesa_HashInsertLocked(ctx->Shared->BufferObjects, buffers[i], buf, true);
    }
 
    _mesa_HashUnlockMutex(ctx->Shared->BufferObjects);

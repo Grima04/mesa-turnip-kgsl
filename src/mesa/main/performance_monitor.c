@@ -368,7 +368,7 @@ _mesa_GenPerfMonitorsAMD(GLsizei n, GLuint *monitors)
             return;
          }
          monitors[i] = first + i;
-         _mesa_HashInsert(ctx->PerfMonitor.Monitors, first + i, m);
+         _mesa_HashInsert(ctx->PerfMonitor.Monitors, first + i, m, true);
       }
    } else {
       _mesa_error(ctx, GL_OUT_OF_MEMORY, "glGenPerfMonitorsAMD");

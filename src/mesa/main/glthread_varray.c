@@ -159,7 +159,7 @@ _mesa_glthread_GenVertexArrays(struct gl_context *ctx,
 
       vao->Name = id;
       _mesa_glthread_reset_vao(vao);
-      _mesa_HashInsertLocked(glthread->VAOs, id, vao);
+      _mesa_HashInsertLocked(glthread->VAOs, id, vao, true);
    }
 }
 

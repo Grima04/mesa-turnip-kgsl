@@ -153,7 +153,7 @@ static void
 save_pipeline_object(struct gl_context *ctx, struct gl_pipeline_object *obj)
 {
    if (obj->Name > 0) {
-      _mesa_HashInsertLocked(ctx->Pipeline.Objects, obj->Name, obj);
+      _mesa_HashInsertLocked(ctx->Pipeline.Objects, obj->Name, obj, true);
    }
 }
 
