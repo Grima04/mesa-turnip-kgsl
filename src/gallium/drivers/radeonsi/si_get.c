@@ -937,7 +937,16 @@ void si_init_screen_get_functions(struct si_screen *sscreen)
       .lower_bitfield_insert_to_bitfield_select = true,
       .lower_bitfield_extract = true,
       .lower_sub = true,
-      .fuse_ffma = true,
+      /* gfx6-8: use MAD (FMA is 4x slower)
+       * gfx9-10: either is OK (MAD and FMA have the same performance)
+       * gfx10.3: use FMA (MAD doesn't exist, separate MUL+ADD are 2x slower)
+       *
+       * FMA has no advantage on gfx9-10 and MAD allows more algebraic optimizations.
+       * Keep FMA enabled on gfx10 to test it, which helps us validate correctness
+       * for gfx10.3 on gfx10.
+       */
+      .lower_ffma = sscreen->info.chip_class <= GFX9,
+      .fuse_ffma = sscreen->info.chip_class >= GFX10,
       .lower_fmod = true,
       .lower_pack_snorm_4x8 = true,
       .lower_pack_unorm_4x8 = true,
