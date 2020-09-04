@@ -984,6 +984,7 @@ panfrost_transfer_unmap(struct pipe_context *pctx,
 
         struct panfrost_gtransfer *trans = pan_transfer(transfer);
         struct panfrost_resource *prsrc = (struct panfrost_resource *) transfer->resource;
+        struct panfrost_device *dev = pan_device(pctx->screen);
 
         /* AFBC will use a staging resource. `initialized` will be set when the
          * fragment job is created; this is deferred to prevent useless surface
@@ -991,12 +992,24 @@ panfrost_transfer_unmap(struct pipe_context *pctx,
          * malformed AFBC data if uninitialized */
 
         if (trans->staging.rsrc) {
-		if (transfer->usage & PIPE_TRANSFER_WRITE) {
-			pan_blit_from_staging(pctx, trans);
-                        panfrost_flush_batches_accessing_bo(pan_context(pctx), pan_resource(trans->staging.rsrc)->bo, true);
+                if (transfer->usage & PIPE_TRANSFER_WRITE) {
+                        if (panfrost_should_linear_convert(prsrc, transfer)) {
+
+                                panfrost_bo_unreference(prsrc->bo);
+                                if (prsrc->slices[0].checksum_bo)
+                                        panfrost_bo_unreference(prsrc->slices[0].checksum_bo);
+
+                                panfrost_resource_setup(dev, prsrc, NULL, DRM_FORMAT_MOD_LINEAR);
+
+                                prsrc->bo = pan_resource(trans->staging.rsrc)->bo;
+                                panfrost_bo_reference(prsrc->bo);
+                        } else {
+                                pan_blit_from_staging(pctx, trans);
+                                panfrost_flush_batches_accessing_bo(pan_context(pctx), pan_resource(trans->staging.rsrc)->bo, true);
+                        }
                 }
 
-		pipe_resource_reference(&trans->staging.rsrc, NULL);
+                pipe_resource_reference(&trans->staging.rsrc, NULL);
         }
 
         /* Tiling will occur in software from a staging cpu buffer */
