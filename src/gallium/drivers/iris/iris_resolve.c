@@ -551,25 +551,12 @@ iris_hiz_exec(struct iris_context *ice,
     *    the depth buffer clear operation."
     *
     * Same applies for Gen8 and Gen9.
-    *
-    * In addition, from the Ivybridge PRM, volume 2, 1.10.4.1
-    * PIPE_CONTROL, Depth Cache Flush Enable:
-    *
-    *   "This bit must not be set when Depth Stall Enable bit is set in
-    *    this packet."
-    *
-    * This is confirmed to hold for real, Haswell gets immediate gpu hangs.
-    *
-    * Therefore issue two pipe control flushes, one for cache flush and
-    * another for depth stall.
     */
    iris_emit_pipe_control_flush(batch,
-                                "hiz op: pre-flushes (1/2)",
+                                "hiz op: pre-flush",
                                 PIPE_CONTROL_DEPTH_CACHE_FLUSH |
+                                PIPE_CONTROL_DEPTH_STALL |
                                 PIPE_CONTROL_CS_STALL);
-
-   iris_emit_pipe_control_flush(batch, "hiz op: pre-flushes (2/2)",
-                                PIPE_CONTROL_DEPTH_STALL);
 
    assert(isl_aux_usage_has_hiz(res->aux.usage) && res->aux.bo);
 
