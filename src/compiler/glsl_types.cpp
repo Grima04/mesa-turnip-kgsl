@@ -2858,7 +2858,7 @@ encode_type_to_blob(struct blob *blob, const glsl_type *type)
       /* If we don't have enough bits for length, store it separately. */
       if (encoded.strct.length == 0xfffff)
          blob_write_uint32(blob, type->length);
-      if (encoded.strct.length == 0xf)
+      if (encoded.strct.explicit_alignment == 0xf)
          blob_write_uint32(blob, type->explicit_alignment);
 
       for (unsigned i = 0; i < type->length; i++)
