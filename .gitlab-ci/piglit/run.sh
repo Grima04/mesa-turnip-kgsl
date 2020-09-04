@@ -5,6 +5,7 @@ set -o xtrace
 
 VERSION=`cat install/VERSION`
 
+rm -rf results
 cd /piglit
 
 PIGLIT_OPTIONS=$(echo $PIGLIT_OPTIONS | head -n 1)
