@@ -5646,7 +5646,8 @@ spirv_to_nir(const uint32_t *words, size_t word_count,
                                    vtn_handle_preamble_instruction);
 
    if (b->entry_point == NULL) {
-      vtn_fail("Entry point not found");
+      vtn_fail("Entry point not found for %s shader \"%s\"",
+               _mesa_shader_stage_to_string(stage), entry_point_name);
       ralloc_free(b);
       return NULL;
    }
