@@ -51,6 +51,7 @@ enum zink_blit_flags {
    ZINK_BLIT_NORMAL = 1 << 0,
    ZINK_BLIT_SAVE_FS = 1 << 1,
    ZINK_BLIT_SAVE_FB = 1 << 2,
+   ZINK_BLIT_SAVE_TEXTURES = 1 << 3,
 };
 
 struct zink_sampler_view {
