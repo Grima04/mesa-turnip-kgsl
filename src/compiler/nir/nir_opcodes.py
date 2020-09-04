@@ -272,10 +272,9 @@ for src_t in [tint, tuint, tfloat, tbool]:
 # to remove it if the result is immediately converted back to 32 bits again.
 # This is generated as part of the precision lowering pass. mp stands for medium
 # precision.
-unop_numeric_convert("f2fmp", tfloat16, tfloat, opcodes["f2f16"].const_expr)
-unop_numeric_convert("i2imp", tint16, tint, opcodes["i2i16"].const_expr)
-# u2ump isn't defined, because the behavior is equal to i2imp if src has more
-# than 16 bits.
+unop_numeric_convert("f2fmp", tfloat16, tfloat32, opcodes["f2f16"].const_expr)
+unop_numeric_convert("i2imp", tint16, tint32, opcodes["i2i16"].const_expr)
+# u2ump isn't defined, because the behavior is equal to i2imp
 
 # Unary floating-point rounding operations.
 
