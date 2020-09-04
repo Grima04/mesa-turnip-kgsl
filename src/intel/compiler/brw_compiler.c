@@ -30,7 +30,6 @@
 #include "util/debug.h"
 
 #define COMMON_OPTIONS                                                        \
-   .lower_sub = true,                                                         \
    .lower_fdiv = true,                                                        \
    .lower_scmp = true,                                                        \
    .lower_flrp16 = true,                                                      \

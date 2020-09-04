@@ -2190,6 +2190,8 @@ static const nir_shader_compiler_options nir_options = {
         .lower_umax = true,
         .lower_umin = true,
         .lower_isign = true,
+        .has_fsub = true,
+        .has_isub = true,
         .max_unroll_iterations = 32,
 };
 

@@ -926,7 +926,6 @@ void si_init_screen_get_functions(struct si_screen *sscreen)
       .lower_fdiv = true,
       .lower_bitfield_insert_to_bitfield_select = true,
       .lower_bitfield_extract = true,
-      .lower_sub = true,
       /*        |---------------------------------- Performance & Availability --------------------------------|
        *        |MAD/MAC/MADAK/MADMK|MAD_LEGACY|MAC_LEGACY|    FMA     |FMAC/FMAAK/FMAMK|FMA_LEGACY|PK_FMA_F16,|Best choice
        * Arch   |    F32,F16,F64    | F32,F16  | F32,F16  |F32,F16,F64 |    F32,F16     | F32,F16  |PK_FMAC_F16|F16,F32,F64

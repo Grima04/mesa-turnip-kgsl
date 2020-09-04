@@ -547,7 +547,6 @@ static const struct nir_shader_compiler_options gallivm_nir_options = {
    .lower_fsat = true,
    .lower_bitfield_insert_to_shifts = true,
    .lower_bitfield_extract_to_shifts = true,
-   .lower_sub = true,
    .lower_fdot = true,
    .lower_fdph = true,
    .lower_ffma16 = true,

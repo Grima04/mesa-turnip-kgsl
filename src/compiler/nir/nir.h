@@ -3137,8 +3137,6 @@ typedef struct nir_shader_compiler_options {
    bool lower_fneg;
    /** lowers ineg to isub. Driver must call nir_opt_algebraic_late(). */
    bool lower_ineg;
-   /** lowers fsub and isub to fadd+fneg and iadd+ineg. */
-   bool lower_sub;
 
    /* lower {slt,sge,seq,sne} to {flt,fge,feq,fneu} + b2f: */
    bool lower_scmp;
@@ -3358,6 +3356,14 @@ typedef struct nir_shader_compiler_options {
    /** Backend supports umad24, if not set  umad24 will automatically be lowered
     * to imul with masked inputs and iadd */
    bool has_umad24;
+
+   /** Backend supports fsub, if not set fsub will automatically be lowered to
+    * fadd(x, fneg(y)). If true, driver should call nir_opt_algebraic_late(). */
+   bool has_fsub;
+
+   /** Backend supports isub, if not set isub will automatically be lowered to
+    * iadd(x, ineg(y)). If true, driver should call nir_opt_algebraic_late(). */
+   bool has_isub;
 
    /* Whether to generate only scoped_barrier intrinsics instead of the set of
     * memory and control barrier intrinsics based on GLSL.

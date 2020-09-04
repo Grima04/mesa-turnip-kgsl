@@ -932,7 +932,6 @@ static const nir_shader_compiler_options nir_options = {
    .lower_fpow = false,
    .lower_uadd_carry = true,
    .lower_usub_borrow = true,
-   .lower_sub = true,
    .lower_ffract = true,
    .lower_pack_half_2x16 = true,
    .lower_pack_unorm_2x16 = true,

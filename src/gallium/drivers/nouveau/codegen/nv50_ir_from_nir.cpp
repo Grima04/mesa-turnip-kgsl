@@ -3234,7 +3234,6 @@ nvir_nir_shader_compiler_options(int chipset)
    op.lower_mul_high = false;
    op.lower_fneg = false;
    op.lower_ineg = false;
-   op.lower_sub = true;
    op.lower_scmp = true; // TODO: not implemented yet
    op.lower_vector_cmp = false;
    op.lower_bitops = false;

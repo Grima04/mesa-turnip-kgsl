@@ -2703,7 +2703,6 @@ static const nir_shader_compiler_options nir_to_tgsi_compiler_options = {
    .lower_flrp64 = true,
    .lower_fmod = true,
    .lower_rotate = true,
-   .lower_sub = true,
    .lower_uniforms_to_ubo = true,
    .lower_vector_cmp = true,
    .use_interpolated_input_intrinsics = true,

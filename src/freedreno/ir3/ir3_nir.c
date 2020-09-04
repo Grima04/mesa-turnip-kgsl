@@ -72,6 +72,8 @@ static const nir_shader_compiler_options options = {
 		.lower_rotate = true,
 		.lower_to_scalar = true,
 		.has_imul24 = true,
+		.has_fsub = true,
+		.has_isub = true,
 		.lower_wpos_pntc = true,
 		.lower_cs_local_index_from_id = true,
 
@@ -125,6 +127,8 @@ static const nir_shader_compiler_options options_a6xx = {
 		.vectorize_io = true,
 		.lower_to_scalar = true,
 		.has_imul24 = true,
+		.has_fsub = true,
+		.has_isub = true,
 		.max_unroll_iterations = 32,
 		.lower_wpos_pntc = true,
 		.lower_cs_local_index_from_id = true,

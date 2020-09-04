@@ -1033,7 +1033,6 @@ etna_screen_create(struct etna_device *dev, struct etna_gpu *gpu,
 
    screen->options = (nir_shader_compiler_options) {
       .lower_fpow = true,
-      .lower_sub = true,
       .lower_ftrunc = true,
       .fuse_ffma16 = true,
       .fuse_ffma32 = true,
