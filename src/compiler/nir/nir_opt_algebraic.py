@@ -2068,8 +2068,12 @@ late_optimizations = [
    # any conversions that could have been removed will have been removed in
    # nir_opt_algebraic so any remaining ones are required.
    (('f2fmp', a), ('f2f16', a)),
+   (('f2imp', a), ('f2i16', a)),
+   (('f2ump', a), ('f2u16', a)),
    (('i2imp', a), ('i2i16', a)),
+   (('i2fmp', a), ('i2f16', a)),
    (('i2imp', a), ('u2u16', a)),
+   (('u2fmp', a), ('u2f16', a)),
 
    # Section 8.8 (Integer Functions) of the GLSL 4.60 spec says:
    #
