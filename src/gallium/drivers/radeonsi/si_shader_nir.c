@@ -677,7 +677,6 @@ static void si_lower_nir(struct si_screen *sscreen, struct nir_shader *nir)
    /* Lower load constants to scalar and then clean up the mess */
    NIR_PASS_V(nir, nir_lower_load_const_to_scalar);
    NIR_PASS_V(nir, nir_lower_var_copies);
-   NIR_PASS_V(nir, nir_lower_pack);
    NIR_PASS_V(nir, nir_opt_access);
    si_nir_opts(nir, true);
 
