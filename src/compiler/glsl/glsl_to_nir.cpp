@@ -1990,7 +1990,7 @@ nir_visitor::visit(ir_expression *ir)
    }
 
    case ir_unop_u2ump: {
-      result = nir_build_alu(&b, nir_op_u2ump, srcs[0], NULL, NULL, NULL);
+      result = nir_build_alu(&b, nir_op_i2imp, srcs[0], NULL, NULL, NULL);
       break;
    }
 

@@ -274,7 +274,8 @@ for src_t in [tint, tuint, tfloat, tbool]:
 # precision.
 unop_numeric_convert("f2fmp", tfloat16, tfloat, opcodes["f2f16"].const_expr)
 unop_numeric_convert("i2imp", tint16, tint, opcodes["i2i16"].const_expr)
-unop_numeric_convert("u2ump", tuint16, tuint, opcodes["u2u16"].const_expr)
+# u2ump isn't defined, because the behavior is equal to i2imp if src has more
+# than 16 bits.
 
 # Unary floating-point rounding operations.
 

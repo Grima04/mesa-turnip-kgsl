@@ -971,7 +971,6 @@ static void visit_alu(struct ac_nir_context *ctx, const nir_alu_instr *instr)
       break;
    case nir_op_u2u8:
    case nir_op_u2u16:
-   case nir_op_u2ump:
    case nir_op_u2u32:
    case nir_op_u2u64:
       if (ac_get_elem_bits(&ctx->ac, LLVMTypeOf(src[0])) < ac_get_elem_bits(&ctx->ac, def_type))
