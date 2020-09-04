@@ -1820,6 +1820,16 @@ def bitfield_reverse(u):
 
 optimizations += [(bitfield_reverse('x@32'), ('bitfield_reverse', 'x'), '!options->lower_bitfield_reverse')]
 
+# "all_equal(eq(a, b), vec(~0))" is the same as "all_equal(a, b)"
+# "any_nequal(neq(a, b), vec(0))" is the same as "any_nequal(a, b)"
+for ncomp in [2, 3, 4, 8, 16]:
+   optimizations += [
+      (('ball_iequal' + str(ncomp), ('ieq', a, b), ~0), ('ball_iequal' + str(ncomp), a, b)),
+      (('ball_iequal' + str(ncomp), ('feq', a, b), ~0), ('ball_fequal' + str(ncomp), a, b)),
+      (('bany_inequal' + str(ncomp), ('ine', a, b), 0), ('bany_inequal' + str(ncomp), a, b)),
+      (('bany_inequal' + str(ncomp), ('fneu', a, b), 0), ('bany_fnequal' + str(ncomp), a, b)),
+   ]
+
 # For any float comparison operation, "cmp", if you have "a == a && a cmp b"
 # then the "a == a" is redundant because it's equivalent to "a is not NaN"
 # and, if a is a NaN then the second comparison will fail anyway.
