@@ -949,13 +949,113 @@ addr_is_in_bounds(nir_builder *b, nir_ssa_def *addr,
                      nir_iadd_imm(b, nir_channel(b, addr, 3), size));
 }
 
+static void
+nir_get_explicit_deref_range(nir_deref_instr *deref,
+                             nir_address_format addr_format,
+                             uint32_t *out_base,
+                             uint32_t *out_range)
+{
+   uint32_t base = 0;
+   uint32_t range = glsl_get_explicit_size(deref->type, false);
+
+   while (true) {
+      nir_deref_instr *parent = nir_deref_instr_parent(deref);
+
+      switch (deref->deref_type) {
+      case nir_deref_type_array:
+      case nir_deref_type_array_wildcard:
+      case nir_deref_type_ptr_as_array: {
+         const unsigned stride = nir_deref_instr_array_stride(deref);
+         if (stride == 0)
+            goto fail;
+
+         if (!parent)
+            goto fail;
+
+         if (deref->deref_type != nir_deref_type_array_wildcard &&
+             nir_src_is_const(deref->arr.index))
+            base += stride * nir_src_as_uint(deref->arr.index);
+         else
+            range += stride * (glsl_get_length(parent->type) - 1);
+         break;
+      }
+
+      case nir_deref_type_struct: {
+         if (!parent)
+            goto fail;
+
+         base += glsl_get_struct_field_offset(parent->type, deref->strct.index);
+         break;
+      }
+
+      case nir_deref_type_cast: {
+         nir_instr *parent_instr = deref->parent.ssa->parent_instr;
+
+         switch (parent_instr->type) {
+         case nir_instr_type_load_const: {
+            nir_load_const_instr *load = nir_instr_as_load_const(parent_instr);
+
+            switch (addr_format) {
+            case nir_address_format_32bit_offset:
+               base += load->value[1].u32;
+               break;
+            case nir_address_format_32bit_index_offset:
+               base += load->value[1].u32;
+               break;
+            case nir_address_format_vec2_index_32bit_offset:
+               base += load->value[2].u32;
+               break;
+            default:
+               goto fail;
+            }
+
+            *out_base = base;
+            *out_range = range;
+            return;
+         }
+
+         case nir_instr_type_intrinsic: {
+            nir_intrinsic_instr *intr = nir_instr_as_intrinsic(parent_instr);
+            switch (intr->intrinsic) {
+            case nir_intrinsic_load_vulkan_descriptor:
+               /* Assume that a load_vulkan_descriptor won't contribute to an
+                * offset within the resource.
+                */
+               break;
+            default:
+               goto fail;
+            }
+
+            *out_base = base;
+            *out_range = range;
+            return;
+         }
+
+         default:
+            goto fail;
+         }
+      }
+
+      default:
+         goto fail;
+      }
+
+      deref = parent;
+   }
+
+fail:
+   *out_base = 0;
+   *out_range = ~0;
+}
+
 static nir_ssa_def *
 build_explicit_io_load(nir_builder *b, nir_intrinsic_instr *intrin,
                        nir_ssa_def *addr, nir_address_format addr_format,
                        uint32_t align_mul, uint32_t align_offset,
                        unsigned num_components)
 {
-   nir_variable_mode mode = nir_src_as_deref(intrin->src[0])->mode;
+   nir_deref_instr *deref = nir_src_as_deref(intrin->src[0]);
+   nir_variable_mode mode = deref->mode;
 
    nir_intrinsic_op op;
    switch (mode) {
@@ -1030,9 +1130,11 @@ build_explicit_io_load(nir_builder *b, nir_intrinsic_instr *intrin,
 
    nir_intrinsic_set_align(load, align_mul, align_offset);
 
-   if (op == nir_intrinsic_load_ubo) {
-      nir_intrinsic_set_range_base(load, 0);
-      nir_intrinsic_set_range(load, ~0);
+   if (nir_intrinsic_has_range_base(load)) {
+      unsigned base, range;
+      nir_get_explicit_deref_range(deref, addr_format, &base, &range);
+      nir_intrinsic_set_range_base(load, base);
+      nir_intrinsic_set_range(load, range);
    }
 
    assert(intrin->dest.is_ssa);
