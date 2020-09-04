@@ -537,7 +537,7 @@ panfrost_resource_create_bo(struct panfrost_device *dev, struct panfrost_resourc
          * linear, and if we control the modifier, and if the resource can be
          * linear. */
         pres->modifier_constant = !((pres->modifier != DRM_FORMAT_MOD_LINEAR)
-                        && (modifier == DRM_FORMAT_INVALID)
+                        && (modifier == DRM_FORMAT_MOD_INVALID)
                         && panfrost_can_linear(dev, pres));
 
         size_t bo_size;
