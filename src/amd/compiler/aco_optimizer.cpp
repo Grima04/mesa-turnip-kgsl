@@ -593,6 +593,9 @@ bool can_use_VOP3(opt_ctx& ctx, const aco_ptr<Instruction>& instr)
    if (instr->isVOP3())
       return true;
 
+   if (instr->format == Format::VOP3P)
+      return false;
+
    if (instr->operands.size() && instr->operands[0].isLiteral() && ctx.program->chip_class < GFX10)
       return false;
 
@@ -930,7 +933,8 @@ void label_instruction(opt_ctx &ctx, Block& block, aco_ptr<Instruction>& instr)
              (!instr->isSDWA() || ctx.program->chip_class >= GFX9)) {
             Operand op = get_constant_op(ctx, info, bits);
             perfwarn(ctx.program, instr->opcode == aco_opcode::v_cndmask_b32 && i == 2, "v_cndmask_b32 with a constant selector", instr.get());
-            if (i == 0 || instr->isSDWA() || instr->opcode == aco_opcode::v_readlane_b32 ||
+            if (i == 0 || instr->isSDWA() || instr->format == Format::VOP3P ||
+                instr->opcode == aco_opcode::v_readlane_b32 ||
                 instr->opcode == aco_opcode::v_writelane_b32) {
                instr->operands[i] = op;
                continue;
@@ -3254,7 +3258,9 @@ void select_instruction(opt_ctx &ctx, aco_ptr<Instruction>& instr)
    if (instr->opcode == aco_opcode::v_mad_u32_u16)
       select_mul_u32_u24(ctx, instr);
 
-   if (instr->isSDWA() || instr->isDPP() || (instr->isVOP3() && ctx.program->chip_class < GFX10))
+   if (instr->isSDWA() || instr->isDPP() ||
+       (instr->isVOP3() && ctx.program->chip_class < GFX10) ||
+       (instr->format == Format::VOP3P && ctx.program->chip_class < GFX10))
       return; /* some encodings can't ever take literals */
 
    /* we do not apply the literals yet as we don't know if it is profitable */
@@ -3264,7 +3270,9 @@ void select_instruction(opt_ctx &ctx, aco_ptr<Instruction>& instr)
    unsigned literal_uses = UINT32_MAX;
    Operand literal(s1);
    unsigned num_operands = 1;
-   if (instr->isSALU() || (ctx.program->chip_class >= GFX10 && can_use_VOP3(ctx, instr)))
+   if (instr->isSALU() ||
+       (ctx.program->chip_class >= GFX10 &&
+        (can_use_VOP3(ctx, instr) || instr->format == Format::VOP3P)))
       num_operands = instr->operands.size();
    /* catch VOP2 with a 3rd SGPR operand (e.g. v_cndmask_b32, v_addc_co_u32) */
    else if (instr->isVALU() && instr->operands.size() >= 3)
@@ -3374,7 +3382,7 @@ void apply_literals(opt_ctx &ctx, aco_ptr<Instruction>& instr)
          unsigned bits = get_operand_size(instr, i);
          if (op.isTemp() && ctx.info[op.tempId()].is_literal(bits) && ctx.uses[op.tempId()] == 0) {
             Operand literal(ctx.info[op.tempId()].val);
-            if (instr->isVALU() && i > 0)
+            if (instr->isVALU() && i > 0 && instr->format != Format::VOP3P)
                to_VOP3(ctx, instr);
             instr->operands[i] = literal;
          }
