@@ -1320,6 +1320,19 @@ panfrost_set_active_query_state(struct pipe_context *pipe,
 }
 
 static void
+panfrost_render_condition(struct pipe_context *pipe,
+                          struct pipe_query *query,
+                          bool condition,
+                          enum pipe_render_cond_flag mode)
+{
+        struct panfrost_context *ctx = pan_context(pipe);
+
+        ctx->cond_query = (struct panfrost_query *)query;
+        ctx->cond_cond = condition;
+        ctx->cond_mode = mode;
+}
+
+static void
 panfrost_destroy(struct pipe_context *pipe)
 {
         struct panfrost_context *panfrost = pan_context(pipe);
@@ -1601,6 +1614,7 @@ panfrost_create_context(struct pipe_screen *screen, void *priv, unsigned flags)
         gallium->set_scissor_states = panfrost_set_scissor_states;
         gallium->set_polygon_stipple = panfrost_set_polygon_stipple;
         gallium->set_active_query_state = panfrost_set_active_query_state;
+        gallium->render_condition = panfrost_render_condition;
 
         gallium->create_query = panfrost_create_query;
         gallium->destroy_query = panfrost_destroy_query;
