@@ -131,11 +131,11 @@ __gen_unpack_padded(const uint8_t *restrict cl, uint32_t start, uint32_t end)
    return (2*odd + 1) << shift;
 }
 
-#define pan_pack(dst, T, name)                          \
-   for (struct MALI_ ## T name = { MALI_ ## T ## _header }, \
-        *_loop_terminate = (void *) (dst); \
-        __builtin_expect(_loop_terminate != NULL, 1); \
-        ({ MALI_ ## T ## _pack((uint32_t *) (dst), &name); \
+#define pan_pack(dst, T, name)                              \\
+   for (struct MALI_ ## T name = { MALI_ ## T ## _header }, \\
+        *_loop_terminate = (void *) (dst);                  \\
+        __builtin_expect(_loop_terminate != NULL, 1);       \\
+        ({ MALI_ ## T ## _pack((uint32_t *) (dst), &name);  \\
            _loop_terminate = NULL; }))
 
 """
