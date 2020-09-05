@@ -290,6 +290,16 @@ class Group(object):
         self.length = 0
         self.fields = []
 
+    def get_length(self):
+        # Determine number of bytes in this group.
+        calculated = max(field.end // 8 for field in self.fields) + 1
+        if self.length > 0:
+            assert(self.length >= calculated)
+        else:
+            self.length = calculated
+        return self.length
+
+
     def emit_template_struct(self, dim, opaque_structs):
         if self.count == 0:
             print("   /* variable length fields follow */")
@@ -320,13 +330,7 @@ class Group(object):
                 words[b].fields.append(field)
 
     def emit_pack_function(self, opaque_structs):
-        # Determine number of bytes in this group.
-        calculated = max(field.end // 8 for field in self.fields) + 1
-
-        if self.length > 0:
-            assert(self.length >= calculated)
-        else:
-            self.length = calculated
+        self.get_length()
 
         words = {}
         self.collect_words(words)
