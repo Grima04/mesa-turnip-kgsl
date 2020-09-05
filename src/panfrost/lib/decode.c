@@ -57,10 +57,14 @@ static void pandecode_swizzle(unsigned swizzle, enum mali_format format);
         } \
 }
 
-#define DUMP_CL(T, cl, ...) {\
+#define DUMP_UNPACKED(T, var, ...) { \
         pandecode_log(__VA_ARGS__); \
+        pan_print(pandecode_dump_stream, T, var, (pandecode_indent + 1) * 2); \
+}
+
+#define DUMP_CL(T, cl, ...) {\
         pan_unpack(cl, T, temp); \
-        pan_print(pandecode_dump_stream, T, temp, (pandecode_indent + 1) * 2); \
+        DUMP_UNPACKED(T, temp, __VA_ARGS__); \
 }
 
 #define MAP_ADDR(T, addr, cl) \
@@ -1040,11 +1044,9 @@ pandecode_attributes(const struct pandecode_mapped_memory *mem,
         MAP_ADDR(ATTRIBUTE_BUFFER, addr, cl);
 
         for (int i = 0; i < count; ++i) {
-                fprintf(pandecode_dump_stream, "%s\n", prefix);
-
                 struct MALI_ATTRIBUTE_BUFFER temp;
                 MALI_ATTRIBUTE_BUFFER_unpack(cl + i * MALI_ATTRIBUTE_BUFFER_LENGTH, &temp);
-                MALI_ATTRIBUTE_BUFFER_print(pandecode_dump_stream, &temp, 2);
+                DUMP_UNPACKED(ATTRIBUTE_BUFFER, temp, "%s:\n", prefix);
 
                 if (temp.type == MALI_ATTRIBUTE_TYPE_1D_NPOT_DIVISOR) {
                         struct MALI_ATTRIBUTE_BUFFER_CONTINUATION_NPOT temp2;
@@ -1247,20 +1249,18 @@ pandecode_vertex_tiler_prefix(struct mali_vertex_tiler_prefix *p, int job_no, bo
 
         if (memcmp(&ref, &invocation_packed, sizeof(ref))) {
                 pandecode_msg("XXX: non-canonical workgroups packing\n");
-                MALI_INVOCATION_print(pandecode_dump_stream, &invocation, 1 * 2);
+                DUMP_UNPACKED(INVOCATION, invocation, "Invocation:\n")
         }
 
         /* Regardless, print the decode */
-        fprintf(pandecode_dump_stream,
-                        "Invocation (%d, %d, %d) x (%d, %d, %d)\n",
-                        size_x, size_y, size_z,
-                        groups_x, groups_y, groups_z);
+        pandecode_log("Invocation (%d, %d, %d) x (%d, %d, %d)\n",
+                      size_x, size_y, size_z,
+                      groups_x, groups_y, groups_z);
 
-        fprintf(pandecode_dump_stream, "Primitive\n");
         struct MALI_PRIMITIVE primitive;
         struct mali_primitive_packed prim_packed = p->primitive;
         MALI_PRIMITIVE_unpack((const uint8_t *) &prim_packed, &primitive);
-        MALI_PRIMITIVE_print(pandecode_dump_stream, &primitive, 1 * 2);
+        DUMP_UNPACKED(PRIMITIVE, primitive, "Primitive:\n");
 
         /* Validate an index buffer is present if we need one. TODO: verify
          * relationship between invocation_count and index_count */
@@ -1449,11 +1449,13 @@ pandecode_texture(mali_ptr u,
 
         struct MALI_MIDGARD_TEXTURE temp;
         MALI_MIDGARD_TEXTURE_unpack(cl, &temp);
-        MALI_MIDGARD_TEXTURE_print(pandecode_dump_stream, &temp, 2);
+        DUMP_UNPACKED(MIDGARD_TEXTURE, temp, "Texture:\n")
 
+        pandecode_indent++;
         pandecode_texture_payload(u + MALI_MIDGARD_TEXTURE_LENGTH,
                         temp.dimension, temp.texel_ordering, temp.manual_stride,
                         temp.levels, temp.depth, temp.array_size, mapped_mem);
+        pandecode_indent--;
 }
 
 static void
@@ -1464,11 +1466,13 @@ pandecode_bifrost_texture(
 {
         struct MALI_BIFROST_TEXTURE temp;
         MALI_BIFROST_TEXTURE_unpack(cl, &temp);
-        MALI_BIFROST_TEXTURE_print(pandecode_dump_stream, &temp, 2);
+        DUMP_UNPACKED(BIFROST_TEXTURE, temp, "Texture:\n")
 
         struct pandecode_mapped_memory *tmem = pandecode_find_mapped_gpu_mem_containing(temp.surfaces);
+        pandecode_indent++;
         pandecode_texture_payload(temp.surfaces, temp.dimension, temp.texel_ordering,
                                   true, temp.levels, 1, 1, tmem);
+        pandecode_indent--;
 }
 
 /* For shader properties like texture_count, we have a claimed property in the shader_meta, and the actual Truth from static analysis (this may just be an upper limit). We validate accordingly */
@@ -1631,8 +1635,8 @@ pandecode_vertex_tiler_postfix_pre(
                 if (state.shader.shader & ~0xF)
                         info = pandecode_shader_disassemble(state.shader.shader & ~0xF, job_no, job_type, is_bifrost, gpu_id);
 
-                fprintf(pandecode_dump_stream, "State");
-                MALI_STATE_print(pandecode_dump_stream, &state, 1 * 2);
+                DUMP_UNPACKED(STATE, state, "State:\n");
+                pandecode_indent++;
 
                 /* Save for dumps */
                 attribute_count = state.shader.attribute_count;
@@ -1643,13 +1647,13 @@ pandecode_vertex_tiler_postfix_pre(
                 fprintf(pandecode_dump_stream, "  Properties\n");
                 if (is_bifrost) {
                         MALI_BIFROST_PROPERTIES_unpack((const uint8_t *) &state.properties, &bi_props);
-                        MALI_BIFROST_PROPERTIES_print(pandecode_dump_stream, &bi_props, 2 * 2);
+                        DUMP_UNPACKED(BIFROST_PROPERTIES, bi_props, "Properties:\n");
 
                         uniform_count = state.preload.uniform_count;
                         uniform_buffer_count = bi_props.uniform_buffer_count;
                 } else {
                         MALI_MIDGARD_PROPERTIES_unpack((const uint8_t *) &state.properties, &midg_props);
-                        MALI_MIDGARD_PROPERTIES_print(pandecode_dump_stream, &midg_props, 2 * 2);
+                        DUMP_UNPACKED(MIDGARD_PROPERTIES, midg_props, "Properties:\n")
 
                         uniform_count = midg_props.uniform_count;
                         uniform_buffer_count = midg_props.uniform_buffer_count;
@@ -1688,6 +1692,8 @@ pandecode_vertex_tiler_postfix_pre(
                         if (shader & ~0xF)
                                 pandecode_blend_shader_disassemble(shader, job_no, job_type, false, gpu_id);
                 }
+                pandecode_indent--;
+                pandecode_msg("\n");
 
                 /* MRT blend fields are used whenever MFBD is used, with
                  * per-RT descriptors */
