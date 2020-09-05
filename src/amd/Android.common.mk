@@ -42,23 +42,7 @@ LOCAL_MODULE_CLASS := STATIC_LIBRARIES
 intermediates := $(call local-generated-sources-dir)
 LOCAL_GENERATED_SOURCES := $(addprefix $(intermediates)/, $(AMD_GENERATED_FILES))
 
-SID_TABLES := $(LOCAL_PATH)/common/sid_tables.py
-
-SID_TABLES_INPUTS := \
-	$(LOCAL_PATH)/common/sid.h \
-	$(LOCAL_PATH)/registers/amdgfxregs.json \
-	$(LOCAL_PATH)/registers/pkt3.json \
-	$(LOCAL_PATH)/registers/gfx10.json \
-	$(LOCAL_PATH)/registers/gfx10-rsrc.json
-
-$(intermediates)/common/sid_tables.h: $(SID_TABLES) $(SID_TABLES_INPUTS)
-	@mkdir -p $(dir $@)
-	@echo "Gen Header: $(PRIVATE_MODULE) <= $(notdir $(@))"
-	$(hide) $(MESA_PYTHON2) $(SID_TABLES) $(SID_TABLES_INPUTS) > $@ || ($(RM) $@; false)
-
-AMDGFXREGS := $(LOCAL_PATH)/registers/makeregheader.py
-
-AMDGFXREGS_INPUTS := \
+AMD_JSON_FILES := \
 	$(LOCAL_PATH)/registers/gfx6.json \
 	$(LOCAL_PATH)/registers/gfx7.json \
 	$(LOCAL_PATH)/registers/gfx8.json \
@@ -69,6 +53,22 @@ AMDGFXREGS_INPUTS := \
 	$(LOCAL_PATH)/registers/pkt3.json \
 	$(LOCAL_PATH)/registers/gfx10-rsrc.json \
 	$(LOCAL_PATH)/registers/registers-manually-defined.json
+
+SID_TABLES := $(LOCAL_PATH)/common/sid_tables.py
+
+SID_TABLES_INPUTS := \
+	$(LOCAL_PATH)/common/sid.h \
+	$(AMD_JSON_FILES)
+
+$(intermediates)/common/sid_tables.h: $(SID_TABLES) $(SID_TABLES_INPUTS)
+	@mkdir -p $(dir $@)
+	@echo "Gen Header: $(PRIVATE_MODULE) <= $(notdir $(@))"
+	$(hide) $(MESA_PYTHON2) $(SID_TABLES) $(SID_TABLES_INPUTS) > $@ || ($(RM) $@; false)
+
+AMDGFXREGS := $(LOCAL_PATH)/registers/makeregheader.py
+
+AMDGFXREGS_INPUTS := \
+	$(AMD_JSON_FILES)
 
 $(intermediates)/common/amdgfxregs.h: $(AMDGFXREGS) $(AMDGFXREGS_INPUTS)
 	@mkdir -p $(dir $@)
