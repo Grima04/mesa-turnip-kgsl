@@ -145,6 +145,23 @@ __gen_unpack_padded(const uint8_t *restrict cl, uint32_t start, uint32_t end)
 #define pan_print(fp, T, var, indent)                   \\
         MALI_ ## T ## _print(fp, &(var), indent)
 
+#define pan_section_ptr(base, A, S) \\
+        ((void *)((uint8_t *)(base) + MALI_ ## A ## _SECTION_ ## S ## _OFFSET))
+
+#define pan_section_pack(dst, A, S, name)                                                         \\
+   for (MALI_ ## A ## _SECTION_ ## S ## _TYPE name = { MALI_ ## A ## _SECTION_ ## S ## _header }, \\
+        *_loop_terminate = (void *) (dst);                                                        \\
+        __builtin_expect(_loop_terminate != NULL, 1);                                             \\
+        ({ MALI_ ## A ## _SECTION_ ## S ## _pack(pan_section_ptr(dst, A, S), &name);              \\
+           _loop_terminate = NULL; }))
+
+#define pan_section_unpack(src, A, S, name)                               \\
+        MALI_ ## A ## _SECTION_ ## S ## _TYPE name;                       \\
+        MALI_ ## A ## _SECTION_ ## S ## _unpack(pan_section_ptr(src, A, S), &name)
+
+#define pan_section_print(fp, A, S, var, indent)                          \\
+        MALI_ ## A ## _SECTION_ ## S ## _print(fp, &(var), indent)
+
 """
 
 def to_alphanum(name):
@@ -208,6 +225,43 @@ def parse_modifier(modifier):
 
     print("Invalid modifier")
     assert(False)
+
+class Aggregate(object):
+    def __init__(self, parser, name, attrs):
+        self.parser = parser
+        self.sections = []
+        self.name = name
+        self.explicit_size = int(attrs["size"]) if "size" in attrs else 0
+        self.size = 0
+
+    class Section:
+        def __init__(self, name):
+            self.name = name
+
+    def get_size(self):
+        if self.size > 0:
+            return self.size
+
+        size = 0
+        for section in self.sections:
+            size = max(size, section.offset + section.type.get_length())
+
+        if self.explicit_size > 0:
+            assert(self.explicit_size >= size)
+            self.size = self.explicit_size
+        else:
+            self.size = size
+        return self.size
+
+    def add_section(self, type_name, attrs):
+        assert("name" in attrs)
+        section = self.Section(safe_name(attrs["name"]).lower())
+        section.human_name = attrs["name"]
+        section.offset = int(attrs["offset"])
+        assert(section.offset % 4 == 0)
+        section.type = self.parser.structs[attrs["type"]]
+        section.type_name = type_name
+        self.sections.append(section)
 
 class Field(object):
     def __init__(self, parser, attrs):
@@ -278,7 +332,6 @@ class Field(object):
 
     def overlaps(self, field):
         return self != field and max(self.start, field.start) <= min(self.end, field.end)
-
 
 class Group(object):
     def __init__(self, parser, parent, start, count):
@@ -537,6 +590,8 @@ class Parser(object):
         self.structs = {}
         # Set of enum names we've seen.
         self.enums = set()
+        self.aggregate = None
+        self.aggregates = {}
 
     def gen_prefix(self, name):
         return '{}_{}'.format(global_prefix.upper(), name)
@@ -568,6 +623,13 @@ class Parser(object):
                 self.prefix= None
         elif name == "value":
             self.values.append(Value(attrs))
+        elif name == "aggregate":
+            aggregate_name = self.gen_prefix(safe_name(attrs["name"].upper()))
+            self.aggregate = Aggregate(self, aggregate_name, attrs)
+            self.aggregates[attrs['name']] = self.aggregate
+        elif name == "section":
+            type_name = self.gen_prefix(safe_name(attrs["type"].upper()))
+            self.aggregate.add_section(type_name, attrs)
 
     def end_element(self, name):
         if name == "struct":
@@ -579,6 +641,9 @@ class Parser(object):
         elif name  == "enum":
             self.emit_enum()
             self.enum = None
+        elif name == "aggregate":
+            self.emit_aggregate()
+            self.aggregate = None
         elif name == "panxml":
             # Include at the end so it can depend on us but not the converse
             print('#include "panfrost-job.h"')
@@ -609,6 +674,21 @@ class Parser(object):
         if opaque_structs:
             # Just so it isn't left undefined
             print('#define %-40s 0' % (name + '_OPAQUE_header'))
+
+    def emit_aggregate(self):
+        aggregate = self.aggregate
+        print("struct %s_packed {" % aggregate.name.lower())
+        print("   uint32_t opaque[{}];".format(aggregate.get_size() // 4))
+        print("};\n")
+        print('#define {}_LENGTH {}'.format(aggregate.name.upper(), aggregate.size))
+        for section in aggregate.sections:
+            print('#define {}_SECTION_{}_TYPE struct {}'.format(aggregate.name.upper(), section.name.upper(), section.type_name))
+            print('#define {}_SECTION_{}_header {}_header'.format(aggregate.name.upper(), section.name.upper(), section.type_name))
+            print('#define {}_SECTION_{}_pack {}_pack'.format(aggregate.name.upper(), section.name.upper(), section.type_name))
+            print('#define {}_SECTION_{}_unpack {}_unpack'.format(aggregate.name.upper(), section.name.upper(), section.type_name))
+            print('#define {}_SECTION_{}_print {}_print'.format(aggregate.name.upper(), section.name.upper(), section.type_name))
+            print('#define {}_SECTION_{}_OFFSET {}'.format(aggregate.name.upper(), section.name.upper(), section.offset))
+        print("")
 
     def emit_pack_function(self, name, group, with_opaque):
         print("static inline void\n%s_pack(uint32_t * restrict cl,\n%sconst struct %s * restrict values)\n{" %
