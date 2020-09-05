@@ -174,11 +174,15 @@ glsl_type_size(const struct glsl_type *type, bool bindless)
 }
 
 /* Lower fdot2 to a vector multiplication followed by channel addition  */
-static void
-midgard_nir_lower_fdot2_body(nir_builder *b, nir_alu_instr *alu)
+static bool
+midgard_nir_lower_fdot2_instr(nir_builder *b, nir_instr *instr, void *data)
 {
+        if (instr->type != nir_instr_type_alu)
+                return false;
+
+        nir_alu_instr *alu = nir_instr_as_alu(instr);
         if (alu->op != nir_op_fdot2)
-                return;
+                return false;
 
         b->cursor = nir_before_instr(&alu->instr);
 
@@ -193,36 +197,17 @@ midgard_nir_lower_fdot2_body(nir_builder *b, nir_alu_instr *alu)
 
         /* Replace the fdot2 with this sum */
         nir_ssa_def_rewrite_uses(&alu->dest.dest.ssa, nir_src_for_ssa(sum));
+
+        return true;
 }
 
 static bool
 midgard_nir_lower_fdot2(nir_shader *shader)
 {
-        bool progress = false;
-
-        nir_foreach_function(function, shader) {
-                if (!function->impl) continue;
-
-                nir_builder _b;
-                nir_builder *b = &_b;
-                nir_builder_init(b, function->impl);
-
-                nir_foreach_block(block, function->impl) {
-                        nir_foreach_instr_safe(instr, block) {
-                                if (instr->type != nir_instr_type_alu) continue;
-
-                                nir_alu_instr *alu = nir_instr_as_alu(instr);
-                                midgard_nir_lower_fdot2_body(b, alu);
-
-                                progress |= true;
-                        }
-                }
-
-                nir_metadata_preserve(function->impl, nir_metadata_block_index | nir_metadata_dominance);
-
-        }
-
-        return progress;
+        return nir_shader_instructions_pass(shader,
+                                            midgard_nir_lower_fdot2_instr,
+                                            nir_metadata_block_index | nir_metadata_dominance,
+                                            NULL);
 }
 
 static const nir_variable *
