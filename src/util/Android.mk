@@ -34,13 +34,20 @@ LOCAL_SRC_FILES := \
 	$(MESA_UTIL_FILES) \
 	$(XMLCONFIG_FILES)
 
+LOCAL_MODULE := libmesa_util
+
+LOCAL_MODULE_CLASS := STATIC_LIBRARIES
+
+intermediates := $(call local-generated-sources-dir)
+
 LOCAL_C_INCLUDES := \
 	external/zlib \
 	$(MESA_TOP)/src/mesa \
 	$(MESA_TOP)/src/mapi \
 	$(MESA_TOP)/src/gallium/include \
 	$(MESA_TOP)/src/gallium/auxiliary \
-	$(MESA_TOP)/src/util/format
+	$(MESA_TOP)/src/util/format \
+	$(intermediates)/format
 
 # If Android version >=8 MESA should static link libexpat else should dynamic link
 ifeq ($(shell test $(PLATFORM_SDK_VERSION) -ge 27; echo $$?), 0)
@@ -53,13 +60,7 @@ endif
 
 LOCAL_SHARED_LIBRARIES += liblog
 
-LOCAL_MODULE := libmesa_util
-
 # Generated sources
-
-LOCAL_MODULE_CLASS := STATIC_LIBRARIES
-
-intermediates := $(call local-generated-sources-dir)
 
 LOCAL_EXPORT_C_INCLUDE_DIRS := $(intermediates)
 
