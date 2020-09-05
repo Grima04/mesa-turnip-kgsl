@@ -59,9 +59,8 @@ static void pandecode_swizzle(unsigned swizzle, enum mali_format format);
 
 #define DUMP_CL(title, T, cl, indent) {\
         fprintf(pandecode_dump_stream, "%s\n", title); \
-        struct MALI_ ## T temp; \
-        MALI_ ## T ## _unpack((const uint8_t *) cl, &temp); \
-        MALI_ ## T ## _print(pandecode_dump_stream, &temp, indent * 2); \
+        pan_unpack(cl, T, temp); \
+        pan_print(pandecode_dump_stream, T, temp, indent * 2); \
 }
 
 #define MAP_ADDR(T, addr, cl) \

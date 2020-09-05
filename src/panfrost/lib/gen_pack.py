@@ -138,6 +138,13 @@ __gen_unpack_padded(const uint8_t *restrict cl, uint32_t start, uint32_t end)
         ({ MALI_ ## T ## _pack((uint32_t *) (dst), &name);  \\
            _loop_terminate = NULL; }))
 
+#define pan_unpack(src, T, name)                        \\
+        struct MALI_ ## T name;                         \\
+        MALI_ ## T ## _unpack((uint8_t *)(src), &name)
+
+#define pan_print(fp, T, var, indent)                   \\
+        MALI_ ## T ## _print(fp, &(var), indent)
+
 """
 
 def to_alphanum(name):
