@@ -112,9 +112,9 @@ panfrost_get_param(struct pipe_screen *screen, enum pipe_cap param)
         case PIPE_CAP_VERTEX_COLOR_UNCLAMPED:
         case PIPE_CAP_POINT_SPRITE:
         case PIPE_CAP_DEPTH_CLIP_DISABLE:
+        case PIPE_CAP_DEPTH_CLIP_DISABLE_SEPARATE:
         case PIPE_CAP_MIXED_COLORBUFFER_FORMATS:
         case PIPE_CAP_MIXED_FRAMEBUFFER_SIZES:
-        case PIPE_CAP_DEPTH_CLIP_DISABLE_SEPARATE:
                 return 1;
 
         case PIPE_CAP_MAX_RENDER_TARGETS:
@@ -229,8 +229,6 @@ panfrost_get_param(struct pipe_screen *screen, enum pipe_cap param)
 
         case PIPE_CAP_ENDIANNESS:
                 return PIPE_ENDIAN_NATIVE;
-
-                return 1;
 
         case PIPE_CAP_MAX_TEXTURE_GATHER_COMPONENTS:
                 return is_deqp ? 4 : 0;
