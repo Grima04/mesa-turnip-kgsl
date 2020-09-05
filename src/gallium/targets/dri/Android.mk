@@ -56,6 +56,7 @@ endif
 
 LOCAL_STATIC_LIBRARIES += \
 	libetnaviv_drm \
+	libfreedreno_common \
 	libfreedreno_drm \
 	libfreedreno_ir2 \
 	libfreedreno_ir3 \
