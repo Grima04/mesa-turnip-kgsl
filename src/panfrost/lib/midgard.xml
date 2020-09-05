@@ -573,4 +573,30 @@
     <field name="TLS Base Pointer" size="64" start="2:0" type="address"/>
     <field name="WLS Base Pointer" size="64" start="4:0" type="address"/>
   </struct>
+
+  <struct name="Midgard Tiler">
+    <field name="Polygon List Size" size="32" start="0:0" type="uint" prefix="MALI_MIDGARD_TILER">
+      <value name="Minimum Header Size" value="512"/>
+    </field>
+    <field name="Hierarchy Mask" size="16" start="1:0" type="uint" prefix="MALI_MIDGARD_TILER">
+      <value name="Disabled" value="4096"/>
+      <value name="User" value="4095"/>
+      <value name="Hierarchy Mask" value="511"/>
+    </field>
+    <field name="Polygon List" size="64" start="2:0" type="address"/>
+    <field name="Polygon List Body" size="64" start="4:0" type="address"/>
+    <field name="Heap Start" size="64" start="6:0" type="address"/>
+    <field name="Heap End" size="64" start="8:0" type="address"/>
+  </struct>
+
+  <struct name="Midgard Tiler Weights">
+    <field name="Weight0" size="32" start="0:0" type="uint"/>
+    <field name="Weight1" size="32" start="1:0" type="uint"/>
+    <field name="Weight2" size="32" start="2:0" type="uint"/>
+    <field name="Weight3" size="32" start="3:0" type="uint"/>
+    <field name="Weight4" size="32" start="4:0" type="uint"/>
+    <field name="Weight5" size="32" start="5:0" type="uint"/>
+    <field name="Weight6" size="32" start="6:0" type="uint"/>
+    <field name="Weight7" size="32" start="7:0" type="uint"/>
+  </struct>
 </panxml>

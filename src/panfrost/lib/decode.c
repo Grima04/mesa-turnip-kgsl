@@ -277,30 +277,21 @@ static const struct pandecode_flag_info sfbd_unk2_info [] = {
 
 static void
 pandecode_midgard_tiler_descriptor(
-                const struct midgard_tiler_descriptor *t,
+                const struct mali_midgard_tiler_packed *tp,
+                const struct mali_midgard_tiler_weights_packed *wp,
                 unsigned width,
                 unsigned height,
                 bool is_fragment,
                 bool has_hierarchy)
 {
-        pandecode_log(".tiler = {\n");
-        pandecode_indent++;
+        pan_unpack(tp, MIDGARD_TILER, t);
+        DUMP_UNPACKED(MIDGARD_TILER, t, "Tiler:\n");
 
-        if (t->hierarchy_mask == MALI_TILER_DISABLED)
-                pandecode_prop("hierarchy_mask = MALI_TILER_DISABLED");
-        else
-                pandecode_prop("hierarchy_mask = 0x%" PRIx16, t->hierarchy_mask);
-
-        /* We know this name from the kernel, but we never see it nonzero */
-
-        if (t->flags)
-                pandecode_msg("XXX: unexpected tiler flags 0x%" PRIx16, t->flags);
-
-        MEMORY_PROP(t, polygon_list);
+        MEMORY_PROP_DIR(t, polygon_list);
 
         /* The body is offset from the base of the polygon list */
         //assert(t->polygon_list_body > t->polygon_list);
-        unsigned body_offset = t->polygon_list_body - t->polygon_list;
+        unsigned body_offset = t.polygon_list_body - t.polygon_list;
 
         /* It needs to fit inside the reported size */
         //assert(t->polygon_list_size >= body_offset);
@@ -308,13 +299,13 @@ pandecode_midgard_tiler_descriptor(
         /* Now that we've sanity checked, we'll try to calculate the sizes
          * ourselves for comparison */
 
-        unsigned ref_header = panfrost_tiler_header_size(width, height, t->hierarchy_mask, has_hierarchy);
-        unsigned ref_size = panfrost_tiler_full_size(width, height, t->hierarchy_mask, has_hierarchy);
+        unsigned ref_header = panfrost_tiler_header_size(width, height, t.hierarchy_mask, has_hierarchy);
+        unsigned ref_size = panfrost_tiler_full_size(width, height, t.hierarchy_mask, has_hierarchy);
 
-        if (!((ref_header == body_offset) && (ref_size == t->polygon_list_size))) {
+        if (!((ref_header == body_offset) && (ref_size == t.polygon_list_size))) {
                 pandecode_msg("XXX: bad polygon list size (expected %d / 0x%x)\n",
                                 ref_header, ref_size);
-                pandecode_prop("polygon_list_size = 0x%x", t->polygon_list_size);
+                pandecode_prop("polygon_list_size = 0x%x", t.polygon_list_size);
                 pandecode_msg("body offset %d\n", body_offset);
         }
 
@@ -322,14 +313,14 @@ pandecode_midgard_tiler_descriptor(
          * identical to what we have in the BO. The exception is if tiling is
          * disabled. */
 
-        MEMORY_PROP(t, heap_start);
-        assert(t->heap_end >= t->heap_start);
+        MEMORY_PROP_DIR(t, heap_start);
+        assert(t.heap_end >= t.heap_start);
 
-        unsigned heap_size = t->heap_end - t->heap_start;
+        unsigned heap_size = t.heap_end - t.heap_start;
 
         /* Tiling is enabled with a special flag */
-        unsigned hierarchy_mask = t->hierarchy_mask & MALI_HIERARCHY_MASK;
-        unsigned tiler_flags = t->hierarchy_mask ^ hierarchy_mask;
+        unsigned hierarchy_mask = t.hierarchy_mask & MALI_MIDGARD_TILER_HIERARCHY_MASK;
+        unsigned tiler_flags = t.hierarchy_mask ^ hierarchy_mask;
 
         bool tiling_enabled = hierarchy_mask;
 
@@ -340,8 +331,8 @@ pandecode_midgard_tiler_descriptor(
         } else {
                 /* When tiling is disabled, we should have that flag and no others */
 
-                if (tiler_flags != MALI_TILER_DISABLED) {
-                        pandecode_msg("XXX: unexpected tiler flag %X, expected MALI_TILER_DISABLED\n",
+                if (tiler_flags != MALI_MIDGARD_TILER_DISABLED) {
+                        pandecode_msg("XXX: unexpected tiler flag %X, expected MALI_MIDGARD_TILER_DISABLED\n",
                                         tiler_flags);
                 }
 
@@ -362,24 +353,20 @@ pandecode_midgard_tiler_descriptor(
         /* We've never seen weights used in practice, but we know from the
          * kernel these fields is there */
 
+        pan_unpack(wp, MIDGARD_TILER_WEIGHTS, w);
         bool nonzero_weights = false;
 
-        for (unsigned w = 0; w < ARRAY_SIZE(t->weights); ++w) {
-                nonzero_weights |= t->weights[w] != 0x0;
-        }
+        nonzero_weights |= w.weight0 != 0x0;
+        nonzero_weights |= w.weight1 != 0x0;
+        nonzero_weights |= w.weight2 != 0x0;
+        nonzero_weights |= w.weight3 != 0x0;
+        nonzero_weights |= w.weight4 != 0x0;
+        nonzero_weights |= w.weight5 != 0x0;
+        nonzero_weights |= w.weight6 != 0x0;
+        nonzero_weights |= w.weight7 != 0x0;
 
-        if (nonzero_weights) {
-                pandecode_log(".weights = { ");
-
-                for (unsigned w = 0; w < ARRAY_SIZE(t->weights); ++w) {
-                        pandecode_log_cont("%d, ", t->weights[w]);
-                }
-
-                pandecode_log("},");
-        }
-
-        pandecode_indent--;
-        pandecode_log("}\n");
+        if (nonzero_weights)
+                DUMP_UNPACKED(MIDGARD_TILER_WEIGHTS, w, "Tiler Weights:\n");
 }
 
 /* TODO: The Bifrost tiler is not understood at all yet */
@@ -525,10 +512,11 @@ pandecode_sfbd(uint64_t gpu_va, int job_no, bool is_fragment, unsigned gpu_id)
                 pandecode_prop("clear_stencil = 0x%x", s->clear_stencil);
         }
 
-        const struct midgard_tiler_descriptor t = s->tiler;
+        const struct mali_midgard_tiler_packed t = s->tiler;
+        const struct mali_midgard_tiler_weights_packed w = s->tiler_weights;
 
         bool has_hierarchy = !(gpu_id == 0x0720 || gpu_id == 0x0820 || gpu_id == 0x0830);
-        pandecode_midgard_tiler_descriptor(&t, s->width + 1, s->height + 1, is_fragment, has_hierarchy);
+        pandecode_midgard_tiler_descriptor(&t, &w, s->width + 1, s->height + 1, is_fragment, has_hierarchy);
 
         pandecode_indent--;
         pandecode_log("};\n");
@@ -858,8 +846,9 @@ pandecode_mfbd_bfr(uint64_t gpu_va, int job_no, bool is_fragment, bool is_comput
                 if (is_bifrost)
                         pandecode_bifrost_tiler_descriptor(fb);
                 else {
-                        const struct midgard_tiler_descriptor t = fb->tiler;
-                        pandecode_midgard_tiler_descriptor(&t, fb->width1 + 1, fb->height1 + 1, is_fragment, true);
+                        const struct mali_midgard_tiler_packed t = fb->tiler;
+                        const struct mali_midgard_tiler_weights_packed w = fb->tiler_weights;
+                        pandecode_midgard_tiler_descriptor(&t, &w, fb->width1 + 1, fb->height1 + 1, is_fragment, true);
                 }
         else
                 pandecode_msg("XXX: skipping compute MFBD, fixme\n");

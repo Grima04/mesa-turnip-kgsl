@@ -1102,7 +1102,7 @@ panfrost_batch_submit(struct panfrost_batch *batch, uint32_t out_sync)
         }
 
         mali_ptr polygon_list = panfrost_batch_get_polygon_list(batch,
-                MALI_TILER_MINIMUM_HEADER_SIZE);
+                MALI_MIDGARD_TILER_MINIMUM_HEADER_SIZE);
 
         panfrost_scoreboard_initialize_tiler(&batch->pool, &batch->scoreboard, polygon_list);
 

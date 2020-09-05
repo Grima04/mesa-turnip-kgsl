@@ -516,7 +516,10 @@ panfrost_emit_mfbd(struct panfrost_batch *batch, unsigned vertex_count)
                         ls.wls_instances = MALI_LOCAL_STORAGE_NO_WORKGROUP_MEM;
                 }
                 mfbd.shared_memory = lsp;
-                mfbd.tiler = panfrost_emit_midg_tiler(batch, vertex_count);
+
+                struct mali_midgard_tiler_packed t;
+                panfrost_emit_midg_tiler(batch, &t, vertex_count);
+                mfbd.tiler = t;
         }
 
         return mfbd;

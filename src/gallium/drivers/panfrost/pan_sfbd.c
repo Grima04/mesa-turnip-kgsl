@@ -211,8 +211,11 @@ panfrost_emit_sfbd(struct panfrost_batch *batch, unsigned vertex_count)
                         .unk3 = 0x3,
                 },
                 .clear_flags = 0x1000,
-                .tiler = panfrost_emit_midg_tiler(batch, vertex_count),
         };
+
+        struct mali_midgard_tiler_packed t;
+        panfrost_emit_midg_tiler(batch, &t, vertex_count);
+        framebuffer.tiler = t;
 
         struct mali_local_storage_packed lsp;
         pan_pack(&lsp, LOCAL_STORAGE, ls) {

@@ -561,56 +561,6 @@ struct mali_payload_fragment {
 #define MALI_CLEAR_SLOW         (1 << 28)
 #define MALI_CLEAR_SLOW_STENCIL (1 << 31)
 
-/* Configures hierarchical tiling on Midgard for both SFBD/MFBD (embedded
- * within the larget framebuffer descriptor). Analogous to
- * bifrost_tiler_heap_meta and bifrost_tiler_meta*/
-
-/* See pan_tiler.c for derivation */
-#define MALI_HIERARCHY_MASK ((1 << 9) - 1)
-
-/* Flag disabling the tiler for clear-only jobs, with
-   hierarchical tiling */
-#define MALI_TILER_DISABLED (1 << 12)
-
-/* Flag selecting userspace-generated polygon list, for clear-only jobs without
- * hierarhical tiling. */
-#define MALI_TILER_USER 0xFFF
-
-/* Absent any geometry, the minimum size of the polygon list header */
-#define MALI_TILER_MINIMUM_HEADER_SIZE 0x200
-
-struct midgard_tiler_descriptor {
-        /* Size of the entire polygon list; see pan_tiler.c for the
-         * computation. It's based on hierarchical tiling */
-
-        u32 polygon_list_size;
-
-        /* Name known from the replay workaround in the kernel. What exactly is
-         * flagged here is less known. We do that (tiler_hierarchy_mask & 0x1ff)
-         * specifies a mask of hierarchy weights, which explains some of the
-         * performance mysteries around setting it. We also see the bottom bit
-         * of tiler_flags set in the kernel, but no comment why.
-         *
-         * hierarchy_mask can have the TILER_DISABLED flag */
-
-        u16 hierarchy_mask;
-        u16 flags;
-
-        /* See mali_tiler.c for an explanation */
-        mali_ptr polygon_list;
-        mali_ptr polygon_list_body;
-
-        /* Names based on we see symmetry with replay jobs which name these
-         * explicitly */
-
-        mali_ptr heap_start; /* tiler heap_free_address */
-        mali_ptr heap_end;
-
-        /* Hierarchy weights. We know these are weights based on the kernel,
-         * but I've never seen them be anything other than zero */
-        u32 weights[8];
-};
-
 struct mali_sfbd_format {
         /* 0x1 */
         unsigned unk1 : 6;
@@ -698,7 +648,8 @@ struct mali_single_framebuffer {
 
         u32 zero6[7];
 
-        struct midgard_tiler_descriptor tiler;
+        struct mali_midgard_tiler_packed tiler;
+        struct mali_midgard_tiler_weights_packed tiler_weights;
 
         /* More below this, maybe */
 } __attribute__((packed));
@@ -864,7 +815,10 @@ struct mali_framebuffer {
         float clear_depth;
 
         union {
-                struct midgard_tiler_descriptor tiler;
+                struct {
+                        struct mali_midgard_tiler_packed tiler;
+                        struct mali_midgard_tiler_weights_packed tiler_weights;
+                };
                 struct {
                         mali_ptr tiler_meta;
                         u32 zeros[16];
