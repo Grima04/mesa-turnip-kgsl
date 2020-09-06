@@ -1600,7 +1600,7 @@ static bool si_should_optimize_less(struct ac_llvm_compiler *compiler,
 
    /* For a crazy dEQP test containing 2597 memory opcodes, mostly
     * buffer stores. */
-   return sel->info.stage == MESA_SHADER_COMPUTE && sel->info.num_memory_instructions > 1000;
+   return sel->info.stage == MESA_SHADER_COMPUTE && sel->info.num_memory_stores > 1000;
 }
 
 static struct nir_shader *get_nir_shader(struct si_shader_selector *sel, bool *free_nir)

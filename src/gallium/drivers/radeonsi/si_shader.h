@@ -337,7 +337,7 @@ struct si_shader_info {
    int constbuf0_num_slots;
    ubyte num_stream_output_components[4];
 
-   uint num_memory_instructions; /**< sampler, buffer, and image instructions */
+   uint num_memory_stores;
 
    ubyte colors_read; /**< which color components are read by the FS */
    ubyte colors_written;

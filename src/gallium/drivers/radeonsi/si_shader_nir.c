@@ -324,11 +324,11 @@ static void scan_instruction(const struct nir_shader *nir, struct si_shader_info
       case nir_intrinsic_bindless_image_store:
          info->uses_bindless_images = true;
          info->writes_memory = true;
-         info->num_memory_instructions++; /* we only care about stores */
+         info->num_memory_stores++;
          break;
       case nir_intrinsic_image_deref_store:
          info->writes_memory = true;
-         info->num_memory_instructions++; /* we only care about stores */
+         info->num_memory_stores++;
          break;
       case nir_intrinsic_bindless_image_atomic_add:
       case nir_intrinsic_bindless_image_atomic_imin:
@@ -342,7 +342,7 @@ static void scan_instruction(const struct nir_shader *nir, struct si_shader_info
       case nir_intrinsic_bindless_image_atomic_comp_swap:
          info->uses_bindless_images = true;
          info->writes_memory = true;
-         info->num_memory_instructions++; /* we only care about stores */
+         info->num_memory_stores++;
          break;
       case nir_intrinsic_image_deref_atomic_add:
       case nir_intrinsic_image_deref_atomic_imin:
@@ -357,7 +357,7 @@ static void scan_instruction(const struct nir_shader *nir, struct si_shader_info
       case nir_intrinsic_image_deref_atomic_inc_wrap:
       case nir_intrinsic_image_deref_atomic_dec_wrap:
          info->writes_memory = true;
-         info->num_memory_instructions++; /* we only care about stores */
+         info->num_memory_stores++;
          break;
       case nir_intrinsic_store_ssbo:
       case nir_intrinsic_ssbo_atomic_add:
@@ -371,7 +371,7 @@ static void scan_instruction(const struct nir_shader *nir, struct si_shader_info
       case nir_intrinsic_ssbo_atomic_exchange:
       case nir_intrinsic_ssbo_atomic_comp_swap:
          info->writes_memory = true;
-         info->num_memory_instructions++; /* we only care about stores */
+         info->num_memory_stores++;
          break;
       case nir_intrinsic_load_color0:
       case nir_intrinsic_load_color1: {
