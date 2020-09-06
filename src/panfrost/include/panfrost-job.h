@@ -545,41 +545,6 @@ struct mali_payload_fragment {
         mali_ptr framebuffer;
 } __attribute__((packed));
 
-/* Single Framebuffer Descriptor */
-
-/* Flags apply to format. With just MSAA_A and MSAA_B, the framebuffer is
- * configured for 4x. With MSAA_8, it is configured for 8x. */
-
-#define MALI_SFBD_FORMAT_MSAA_8 (1 << 3)
-#define MALI_SFBD_FORMAT_MSAA_A (1 << 4)
-#define MALI_SFBD_FORMAT_MSAA_B (1 << 4)
-#define MALI_SFBD_FORMAT_SRGB 	(1 << 5)
-
-/* Fast/slow based on whether all three buffers are cleared at once */
-
-#define MALI_CLEAR_FAST         (1 << 18)
-#define MALI_CLEAR_SLOW         (1 << 28)
-#define MALI_CLEAR_SLOW_STENCIL (1 << 31)
-
-struct mali_sfbd_format {
-        /* 0x1 */
-        unsigned unk1 : 6;
-
-        /* mali_channel_swizzle */
-        unsigned swizzle : 12;
-
-        /* MALI_POSITIVE */
-        unsigned nr_channels : 2;
-
-        /* 0x4 */
-        unsigned unk2 : 6;
-
-        enum mali_block_format block : 2;
-
-        /* 0xb */
-        unsigned unk3 : 4;
-};
-
 /* Configures multisampling on Bifrost fragment jobs */
 
 struct bifrost_multisampling {
@@ -588,72 +553,6 @@ struct bifrost_multisampling {
         mali_ptr sample_locations;
         u64 zero4;
 } __attribute__((packed));
-
-struct mali_single_framebuffer {
-        struct mali_local_storage_packed shared_memory;
-        struct mali_sfbd_format format;
-
-        u32 clear_flags;
-        u32 zero2;
-
-        /* Purposeful off-by-one in these fields should be accounted for by the
-         * MALI_DIMENSION macro */
-
-        u16 width;
-        u16 height;
-
-        u32 zero3[4];
-        mali_ptr checksum;
-        u32 checksum_stride;
-        u32 zero5;
-
-        /* By default, the framebuffer is upside down from OpenGL's
-         * perspective. Set framebuffer to the end and negate the stride to
-         * flip in the Y direction */
-
-        mali_ptr framebuffer;
-        int32_t stride;
-
-        u32 zero4;
-
-        /* Depth and stencil buffers are interleaved, it appears, as they are
-         * set to the same address in captures. Both fields set to zero if the
-         * buffer is not being cleared. Depending on GL_ENABLE magic, you might
-         * get a zero enable despite the buffer being present; that still is
-         * disabled. */
-
-        mali_ptr depth_buffer; // not SAME_VA
-        u32 depth_stride_zero : 4;
-        u32 depth_stride : 28;
-        u32 zero7;
-
-        mali_ptr stencil_buffer; // not SAME_VA
-        u32 stencil_stride_zero : 4;
-        u32 stencil_stride : 28;
-        u32 zero8;
-
-        u32 clear_color_1; // RGBA8888 from glClear, actually used by hardware
-        u32 clear_color_2; // always equal, but unclear function?
-        u32 clear_color_3; // always equal, but unclear function?
-        u32 clear_color_4; // always equal, but unclear function?
-
-        /* Set to zero if not cleared */
-
-        float clear_depth_1; // float32, ditto
-        float clear_depth_2; // float32, ditto
-        float clear_depth_3; // float32, ditto
-        float clear_depth_4; // float32, ditto
-
-        u32 clear_stencil; // Exactly as it appears in OpenGL
-
-        u32 zero6[7];
-
-        struct mali_midgard_tiler_packed tiler;
-        struct mali_midgard_tiler_weights_packed tiler_weights;
-
-        /* More below this, maybe */
-} __attribute__((packed));
-
 
 #define MALI_MFBD_FORMAT_SRGB 	  (1 << 0)
 

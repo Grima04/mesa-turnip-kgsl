@@ -67,6 +67,12 @@ static void pandecode_swizzle(unsigned swizzle, enum mali_format format);
         DUMP_UNPACKED(T, temp, __VA_ARGS__); \
 }
 
+#define DUMP_SECTION(A, S, cl, ...) { \
+        pan_section_unpack(cl, A, S, temp); \
+        pandecode_log(__VA_ARGS__); \
+        pan_section_print(pandecode_dump_stream, A, S, temp, (pandecode_indent + 1) * 2); \
+}
+
 #define MAP_ADDR(T, addr, cl) \
         const uint8_t *cl = 0; \
         { \
@@ -211,15 +217,6 @@ pandecode_log_decoded_flags(const struct pandecode_flag_info *flag_info,
         }
 }
 
-#define FLAG_INFO(flag) { MALI_CLEAR_##flag, "MALI_CLEAR_" #flag }
-static const struct pandecode_flag_info clear_flag_info[] = {
-        FLAG_INFO(FAST),
-        FLAG_INFO(SLOW),
-        FLAG_INFO(SLOW_STENCIL),
-        {}
-};
-#undef FLAG_INFO
-
 #define FLAG_INFO(flag) { MALI_MFBD_FORMAT_##flag, "MALI_MFBD_FORMAT_" #flag }
 static const struct pandecode_flag_info mfbd_fmt_flag_info[] = {
         FLAG_INFO(SRGB),
@@ -252,22 +249,6 @@ static const struct pandecode_flag_info mfbd_extra_flag_lo_info[] = {
 static const struct pandecode_flag_info mfbd_flag_info [] = {
         FLAG_INFO(DEPTH_WRITE),
         FLAG_INFO(EXTRA),
-        {}
-};
-#undef FLAG_INFO
-
-#define FLAG_INFO(flag) { MALI_SFBD_FORMAT_##flag, "MALI_SFBD_FORMAT_" #flag }
-static const struct pandecode_flag_info sfbd_unk1_info [] = {
-        FLAG_INFO(MSAA_8),
-        FLAG_INFO(MSAA_A),
-        {}
-};
-#undef FLAG_INFO
-
-#define FLAG_INFO(flag) { MALI_SFBD_FORMAT_##flag, "MALI_SFBD_FORMAT_" #flag }
-static const struct pandecode_flag_info sfbd_unk2_info [] = {
-        FLAG_INFO(MSAA_B),
-        FLAG_INFO(SRGB),
         {}
 };
 #undef FLAG_INFO
@@ -403,141 +384,38 @@ struct pandecode_fbd {
         bool has_extra;
 };
 
-static void
-pandecode_sfbd_format(struct mali_sfbd_format format)
-{
-        pandecode_log(".format = {\n");
-        pandecode_indent++;
-
-        pandecode_log(".unk1 = ");
-        pandecode_log_decoded_flags(sfbd_unk1_info, format.unk1);
-        pandecode_log_cont(",\n");
-
-        /* TODO: Map formats so we can check swizzles and print nicely */
-        pandecode_log("swizzle");
-        pandecode_swizzle(format.swizzle, MALI_RGBA8_UNORM);
-        pandecode_log_cont(",\n");
-
-        pandecode_prop("nr_channels = MALI_POSITIVE(%d)",
-                       (format.nr_channels + 1));
-
-        pandecode_log(".unk2 = ");
-        pandecode_log_decoded_flags(sfbd_unk2_info, format.unk2);
-        pandecode_log_cont(",\n");
-
-        pandecode_prop("block = %s", mali_block_format_as_str(format.block));
-
-        pandecode_prop("unk3 = 0x%" PRIx32, format.unk3);
-
-        pandecode_indent--;
-        pandecode_log("},\n");
-}
-
 static struct pandecode_fbd
 pandecode_sfbd(uint64_t gpu_va, int job_no, bool is_fragment, unsigned gpu_id)
 {
         struct pandecode_mapped_memory *mem = pandecode_find_mapped_gpu_mem_containing(gpu_va);
-        const struct mali_single_framebuffer *PANDECODE_PTR_VAR(s, mem, (mali_ptr) gpu_va);
+        const void *PANDECODE_PTR_VAR(s, mem, (mali_ptr) gpu_va);
 
         struct pandecode_fbd info = {
                 .has_extra = false,
                 .rt_count = 1
         };
 
-        pandecode_log("struct mali_single_framebuffer framebuffer_%"PRIx64"_%d = {\n", gpu_va, job_no);
+        pandecode_log("Single-Target Framebuffer:\n");
         pandecode_indent++;
-        DUMP_CL(LOCAL_STORAGE, &s->shared_memory, "Local Storage:\n");
-        pandecode_sfbd_format(s->format);
 
-        info.width = s->width + 1;
-        info.height = s->height + 1;
+        DUMP_SECTION(SINGLE_TARGET_FRAMEBUFFER, LOCAL_STORAGE, s, "Local Storage:\n");
+        pan_section_unpack(s, SINGLE_TARGET_FRAMEBUFFER, PARAMETERS, p);
+        DUMP_UNPACKED(SINGLE_TARGET_FRAMEBUFFER_PARAMETERS, p, "Parameters:\n");
 
-        pandecode_prop("width = MALI_POSITIVE(%" PRId16 ")", info.width);
-        pandecode_prop("height = MALI_POSITIVE(%" PRId16 ")", info.height);
-
-        MEMORY_PROP(s, checksum);
-
-        if (s->checksum_stride)
-                pandecode_prop("checksum_stride = %d", s->checksum_stride);
-
-        MEMORY_PROP(s, framebuffer);
-        pandecode_prop("stride = %d", s->stride);
-
-        /* Earlier in the actual commandstream -- right before width -- but we
-         * delay to flow nicer */
-
-        pandecode_log(".clear_flags = ");
-        pandecode_log_decoded_flags(clear_flag_info, s->clear_flags);
-        pandecode_log_cont(",\n");
-
-        if (s->depth_buffer) {
-                MEMORY_PROP(s, depth_buffer);
-                pandecode_prop("depth_stride = %d", s->depth_stride);
-        }
-
-        if (s->stencil_buffer) {
-                MEMORY_PROP(s, stencil_buffer);
-                pandecode_prop("stencil_stride = %d", s->stencil_stride);
-        }
-
-        if (s->depth_stride_zero ||
-            s->stencil_stride_zero ||
-            s->zero7 || s->zero8) {
-                pandecode_msg("XXX: Depth/stencil zeros tripped\n");
-                pandecode_prop("depth_stride_zero = 0x%x",
-                               s->depth_stride_zero);
-                pandecode_prop("stencil_stride_zero = 0x%x",
-                               s->stencil_stride_zero);
-                pandecode_prop("zero7 = 0x%" PRIx32,
-                               s->zero7);
-                pandecode_prop("zero8 = 0x%" PRIx32,
-                               s->zero8);
-        }
-
-        if (s->clear_color_1 | s->clear_color_2 | s->clear_color_3 | s->clear_color_4) {
-                pandecode_prop("clear_color_1 = 0x%" PRIx32, s->clear_color_1);
-                pandecode_prop("clear_color_2 = 0x%" PRIx32, s->clear_color_2);
-                pandecode_prop("clear_color_3 = 0x%" PRIx32, s->clear_color_3);
-                pandecode_prop("clear_color_4 = 0x%" PRIx32, s->clear_color_4);
-        }
-
-        if (s->clear_depth_1 != 0 || s->clear_depth_2 != 0 || s->clear_depth_3 != 0 || s->clear_depth_4 != 0) {
-                pandecode_prop("clear_depth_1 = %f", s->clear_depth_1);
-                pandecode_prop("clear_depth_2 = %f", s->clear_depth_2);
-                pandecode_prop("clear_depth_3 = %f", s->clear_depth_3);
-                pandecode_prop("clear_depth_4 = %f", s->clear_depth_4);
-        }
-
-        if (s->clear_stencil) {
-                pandecode_prop("clear_stencil = 0x%x", s->clear_stencil);
-        }
-
-        const struct mali_midgard_tiler_packed t = s->tiler;
-        const struct mali_midgard_tiler_weights_packed w = s->tiler_weights;
+        const void *t = pan_section_ptr(s, SINGLE_TARGET_FRAMEBUFFER, TILER);
+        const void *w = pan_section_ptr(s, SINGLE_TARGET_FRAMEBUFFER, TILER_WEIGHTS);
 
         bool has_hierarchy = !(gpu_id == 0x0720 || gpu_id == 0x0820 || gpu_id == 0x0830);
-        pandecode_midgard_tiler_descriptor(&t, &w, s->width + 1, s->height + 1, is_fragment, has_hierarchy);
+        pandecode_midgard_tiler_descriptor(t, w, p.bound_max_x + 1, p.bound_max_y + 1, is_fragment, has_hierarchy);
 
         pandecode_indent--;
-        pandecode_log("};\n");
 
-        pandecode_prop("zero2 = 0x%" PRIx32, s->zero2);
-        pandecode_prop("zero4 = 0x%" PRIx32, s->zero4);
-        pandecode_prop("zero5 = 0x%" PRIx32, s->zero5);
-
-        pandecode_log_cont(".zero3 = {");
-
-        for (int i = 0; i < sizeof(s->zero3) / sizeof(s->zero3[0]); ++i)
-                pandecode_log_cont("%X, ", s->zero3[i]);
-
-        pandecode_log_cont("},\n");
-
-        pandecode_log_cont(".zero6 = {");
-
-        for (int i = 0; i < sizeof(s->zero6) / sizeof(s->zero6[0]); ++i)
-                pandecode_log_cont("%X, ", s->zero6[i]);
-
-        pandecode_log_cont("},\n");
+        /* Dummy unpack of the padding section to make sure all words are 0.
+         * No need to call print here since the section is supposed to be empty.
+         */
+        pan_section_unpack(s, SINGLE_TARGET_FRAMEBUFFER, PADDING_1, padding1);
+        pan_section_unpack(s, SINGLE_TARGET_FRAMEBUFFER, PADDING_2, padding2);
+        pandecode_log("\n");
 
         return info;
 }

@@ -741,7 +741,7 @@ panfrost_batch_reserve_framebuffer(struct panfrost_batch *batch)
 
         if (!batch->framebuffer.gpu) {
                 unsigned size = (dev->quirks & MIDGARD_SFBD) ?
-                        sizeof(struct mali_single_framebuffer) :
+                        MALI_SINGLE_TARGET_FRAMEBUFFER_LENGTH :
                         sizeof(struct mali_framebuffer);
 
                 batch->framebuffer = panfrost_pool_alloc_aligned(&batch->pool, size, 64);
