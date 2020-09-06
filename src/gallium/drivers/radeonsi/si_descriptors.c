@@ -2210,7 +2210,7 @@ void si_emit_compute_shader_pointers(struct si_context *sctx)
          unsigned num_sgprs = 8;
 
          /* Image buffers are in desc[4..7]. */
-         if (shader->info.image_buffers & (1 << i)) {
+         if (shader->info.base.image_buffers & (1 << i)) {
             desc_offset += 4;
             num_sgprs = 4;
          }
@@ -2803,7 +2803,7 @@ bool si_gfx_resources_check_encrypted(struct si_context *sctx)
          si_buffer_resources_check_encrypted(sctx, &sctx->const_and_shader_buffers[i]);
       use_encrypted_bo |=
          si_sampler_views_check_encrypted(sctx, &sctx->samplers[i],
-                                          current_shader[i]->cso->info.samplers_declared);
+                                          current_shader[i]->cso->info.base.textures_used);
       use_encrypted_bo |= si_image_views_check_encrypted(sctx, &sctx->images[i],
                                           current_shader[i]->cso->info.images_declared);
    }
@@ -2857,7 +2857,7 @@ bool si_compute_resources_check_encrypted(struct si_context *sctx)
     * or all writable buffers are encrypted.
     */
    return si_buffer_resources_check_encrypted(sctx, &sctx->const_and_shader_buffers[sh]) ||
-          si_sampler_views_check_encrypted(sctx, &sctx->samplers[sh], info->samplers_declared) ||
+          si_sampler_views_check_encrypted(sctx, &sctx->samplers[sh], info->base.textures_used) ||
           si_image_views_check_encrypted(sctx, &sctx->images[sh], info->images_declared) ||
           si_buffer_resources_check_encrypted(sctx, &sctx->rw_buffers);
 }

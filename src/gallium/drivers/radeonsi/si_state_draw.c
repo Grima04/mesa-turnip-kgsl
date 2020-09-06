@@ -1549,8 +1549,8 @@ static bool si_all_vs_resources_read_only(struct si_context *sctx, struct pipe_r
 
    /* Samplers. */
    struct si_shader_selector *vs = sctx->vs_shader.cso;
-   if (vs->info.samplers_declared) {
-      unsigned num_samplers = util_last_bit(vs->info.samplers_declared);
+   if (vs->info.base.textures_used) {
+      unsigned num_samplers = util_last_bit(vs->info.base.textures_used);
 
       for (unsigned i = 0; i < num_samplers; i++) {
          struct pipe_sampler_view *view = sctx->samplers[PIPE_SHADER_VERTEX].views[i];

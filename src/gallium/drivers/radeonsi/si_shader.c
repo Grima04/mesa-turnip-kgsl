@@ -715,7 +715,7 @@ void si_create_function(struct si_shader_context *ctx, bool ngg_cull_shader)
       }
       /* Images in user SGPRs. */
       for (unsigned i = 0; i < shader->selector->cs_num_images_in_user_sgprs; i++) {
-         unsigned num_sgprs = shader->selector->info.image_buffers & (1 << i) ? 4 : 8;
+         unsigned num_sgprs = shader->selector->info.base.image_buffers & (1 << i) ? 4 : 8;
 
          while (ctx->args.num_sgprs_used % num_sgprs != 0)
             ac_add_arg(&ctx->args, AC_ARG_SGPR, 1, AC_ARG_INT, NULL);
@@ -1345,7 +1345,7 @@ static bool si_build_main_function(struct si_shader_context *ctx, struct si_shad
    ctx->num_const_buffers = util_last_bit(info->const_buffers_declared);
    ctx->num_shader_buffers = util_last_bit(info->shader_buffers_declared);
 
-   ctx->num_samplers = util_last_bit(info->samplers_declared);
+   ctx->num_samplers = util_last_bit(info->base.textures_used);
    ctx->num_images = util_last_bit(info->images_declared);
 
    si_llvm_init_resource_callbacks(ctx);

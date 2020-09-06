@@ -791,7 +791,7 @@ static void si_dump_descriptors(struct si_context *sctx, gl_shader_stage stage,
    if (info) {
       enabled_constbuf = info->const_buffers_declared;
       enabled_shaderbuf = info->shader_buffers_declared;
-      enabled_samplers = info->samplers_declared;
+      enabled_samplers = info->base.textures_used;
       enabled_images = info->images_declared;
    } else {
       enabled_constbuf =

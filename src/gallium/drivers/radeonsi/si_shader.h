@@ -336,7 +336,6 @@ struct si_shader_info {
 
    int constbuf0_num_slots;
    unsigned const_buffers_declared; /**< bitmask of declared const buffers */
-   unsigned samplers_declared;      /**< bitmask of declared samplers */
    ubyte num_stream_output_components[4];
 
    uint num_memory_instructions; /**< sampler, buffer, and image instructions */
@@ -389,8 +388,6 @@ struct si_shader_info {
    unsigned num_written_clipdistance;
 
    unsigned images_declared;         /**< bitmask of declared images */
-   unsigned image_buffers;           /**< bitmask of images that are buffers */
-   unsigned msaa_images_declared;    /**< bitmask of declared MSAA images */
    unsigned shader_buffers_declared; /**< bitmask of declared shader buffers */
 
    /** Whether all codepaths write tess factors in all invocations. */

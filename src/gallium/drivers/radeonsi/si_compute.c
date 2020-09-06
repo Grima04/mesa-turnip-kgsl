@@ -152,10 +152,10 @@ static void si_create_compute_state_async(void *job, int thread_index)
    }
 
    /* Images in user SGPRs. */
-   unsigned non_msaa_images = sel->info.images_declared & ~sel->info.msaa_images_declared;
+   unsigned non_msaa_images = sel->info.images_declared & ~sel->info.base.msaa_images;
 
    for (unsigned i = 0; i < 3 && non_msaa_images & (1 << i); i++) {
-      unsigned num_sgprs = sel->info.image_buffers & (1 << i) ? 4 : 8;
+      unsigned num_sgprs = sel->info.base.image_buffers & (1 << i) ? 4 : 8;
 
       if (align(user_sgprs, num_sgprs) + num_sgprs > 16)
          break;

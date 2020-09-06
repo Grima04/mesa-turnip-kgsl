@@ -2547,8 +2547,8 @@ void si_get_active_slot_masks(const struct si_shader_info *info, uint64_t *const
    num_constbufs = util_last_bit(info->const_buffers_declared);
    /* two 8-byte images share one 16-byte slot */
    num_images = align(util_last_bit(info->images_declared), 2);
-   num_msaa_images = align(util_last_bit(info->msaa_images_declared), 2);
-   num_samplers = util_last_bit(info->samplers_declared);
+   num_msaa_images = align(util_last_bit(info->base.msaa_images), 2);
+   num_samplers = util_last_bit(info->base.textures_used);
 
    /* The layout is: sb[last] ... sb[0], cb[0] ... cb[last] */
    start = si_get_shaderbuf_slot(num_shaderbufs - 1);
