@@ -479,7 +479,6 @@ void si_nir_scan_shader(const struct nir_shader *nir, struct si_shader_info *inf
    }
 
    info->constbuf0_num_slots = nir->num_uniforms;
-   info->shader_buffers_declared = u_bit_consecutive(0, nir->info.num_ssbos);
    info->const_buffers_declared = u_bit_consecutive(0, nir->info.num_ubos);
    info->images_declared = u_bit_consecutive(0, nir->info.num_images);
 

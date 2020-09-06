@@ -143,7 +143,7 @@ static void si_create_compute_state_async(void *job, int thread_index)
 
    /* Fast path for compute shaders - some descriptors passed via user SGPRs. */
    /* Shader buffers in user SGPRs. */
-   for (unsigned i = 0; i < 3 && user_sgprs <= 12 && sel->info.shader_buffers_declared & (1 << i); i++) {
+   for (unsigned i = 0; i < MIN2(3, sel->info.base.num_ssbos) && user_sgprs <= 12; i++) {
       user_sgprs = align(user_sgprs, 4);
       if (i == 0)
          sel->cs_shaderbufs_sgpr_index = user_sgprs;
