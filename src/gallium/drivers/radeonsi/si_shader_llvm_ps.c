@@ -241,16 +241,6 @@ struct si_ps_exports {
    struct ac_export_args args[10];
 };
 
-static void si_export_mrt_z(struct si_shader_context *ctx, LLVMValueRef depth, LLVMValueRef stencil,
-                            LLVMValueRef samplemask, struct si_ps_exports *exp)
-{
-   struct ac_export_args args;
-
-   ac_export_mrt_z(&ctx->ac, depth, stencil, samplemask, &args);
-
-   memcpy(&exp->args[exp->num++], &args, sizeof(args));
-}
-
 /* Initialize arguments for the shader export intrinsic */
 static void si_llvm_init_ps_export_args(struct si_shader_context *ctx, LLVMValueRef *values,
                                         unsigned cbuf, unsigned compacted_mrt_index,
@@ -435,12 +425,6 @@ static bool si_export_mrt_color(struct si_shader_context *ctx, LLVMValueRef *col
       memcpy(&exp->args[exp->num++], &args, sizeof(args));
    }
    return true;
-}
-
-static void si_emit_ps_exports(struct si_shader_context *ctx, struct si_ps_exports *exp)
-{
-   for (unsigned i = 0; i < exp->num; i++)
-      ac_build_export(&ctx->ac, &exp->args[i]);
 }
 
 /**
@@ -903,12 +887,14 @@ void si_llvm_build_ps_epilog(struct si_shader_context *ctx, union si_shader_part
       samplemask = LLVMGetParam(ctx->main_fn, vgpr++);
 
    if (depth || stencil || samplemask)
-      si_export_mrt_z(ctx, depth, stencil, samplemask, &exp);
+      ac_export_mrt_z(&ctx->ac, depth, stencil, samplemask, &exp.args[exp.num++]);
    else if (last_color_export == -1)
       ac_build_export_null(&ctx->ac);
 
-   if (exp.num)
-      si_emit_ps_exports(ctx, &exp);
+   if (exp.num) {
+      for (unsigned i = 0; i < exp.num; i++)
+         ac_build_export(&ctx->ac, &exp.args[i]);
+   }
 
    /* Compile. */
    LLVMBuildRetVoid(ctx->ac.builder);
