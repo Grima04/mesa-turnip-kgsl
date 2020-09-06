@@ -3353,7 +3353,7 @@ static bool si_out_of_order_rasterization(struct si_context *sctx)
 
       /* The set of PS invocations is always order invariant,
        * except when early Z/S tests are requested. */
-      if (sctx->ps_shader.cso && sctx->ps_shader.cso->info.writes_memory &&
+      if (sctx->ps_shader.cso && sctx->ps_shader.cso->info.base.writes_memory &&
           sctx->ps_shader.cso->info.base.fs.early_fragment_tests &&
           !dsa_order_invariant.pass_set)
          return false;

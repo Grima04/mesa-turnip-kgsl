@@ -297,7 +297,7 @@ static void si_llvm_emit_vertex(struct ac_shader_abi *abi, unsigned stream, LLVM
       LLVMBuildICmp(ctx->ac.builder, LLVMIntULT, gs_next_vertex,
                     LLVMConstInt(ctx->ac.i32, shader->selector->gs_max_out_vertices, 0), "");
 
-   bool use_kill = !info->writes_memory;
+   bool use_kill = !info->base.writes_memory;
    if (use_kill) {
       ac_build_kill_if_false(&ctx->ac, can_emit);
    } else {

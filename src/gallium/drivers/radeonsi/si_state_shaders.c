@@ -1763,7 +1763,7 @@ static void si_shader_selector_key_hw_vs(struct si_context *sctx, struct si_shad
       unsigned ps_colormask = si_get_total_colormask(sctx);
 
       ps_disabled = sctx->queued.named.rasterizer->rasterizer_discard ||
-                    (!ps_colormask && !ps_modifies_zs && !ps->info.writes_memory);
+                    (!ps_colormask && !ps_modifies_zs && !ps->info.base.writes_memory);
    }
 
    /* Find out which VS outputs aren't used by the PS. */
@@ -2623,7 +2623,7 @@ static void *si_create_shader_selector(struct pipe_context *ctx,
 
    sel->prim_discard_cs_allowed =
       sel->info.stage == MESA_SHADER_VERTEX && !sel->info.uses_bindless_images &&
-      !sel->info.uses_bindless_samplers && !sel->info.writes_memory &&
+      !sel->info.uses_bindless_samplers && !sel->info.base.writes_memory &&
       !sel->info.writes_viewport_index &&
       !sel->info.base.vs.window_space_position && !sel->so.num_outputs;
 
@@ -2745,7 +2745,7 @@ static void *si_create_shader_selector(struct pipe_context *ctx,
          sscreen->always_use_ngg_culling_tess))) &&
       sel->info.writes_position &&
       !sel->info.writes_viewport_index && /* cull only against viewport 0 */
-      !sel->info.writes_memory && !sel->so.num_outputs &&
+      !sel->info.base.writes_memory && !sel->so.num_outputs &&
       (sel->info.stage != MESA_SHADER_VERTEX ||
        (!sel->info.base.vs.blit_sgprs_amd &&
         !sel->info.base.vs.window_space_position));
@@ -2798,8 +2798,8 @@ static void *si_create_shader_selector(struct pipe_context *ctx,
          /* Cases 3, 4. */
          sel->db_shader_control |= S_02880C_DEPTH_BEFORE_SHADER(1) |
                                    S_02880C_Z_ORDER(V_02880C_EARLY_Z_THEN_LATE_Z) |
-                                   S_02880C_EXEC_ON_NOOP(sel->info.writes_memory);
-      } else if (sel->info.writes_memory) {
+                                   S_02880C_EXEC_ON_NOOP(sel->info.base.writes_memory);
+      } else if (sel->info.base.writes_memory) {
          /* Case 2. */
          sel->db_shader_control |= S_02880C_Z_ORDER(V_02880C_LATE_Z) | S_02880C_EXEC_ON_HIER_FAIL(1);
       } else {
@@ -3058,7 +3058,7 @@ static void si_bind_ps_shader(struct pipe_context *ctx, void *state)
          si_mark_atom_dirty(sctx, &sctx->atoms.s.cb_render_state);
 
       if (sctx->screen->has_out_of_order_rast &&
-          (!old_sel || old_sel->info.writes_memory != sel->info.writes_memory ||
+          (!old_sel || old_sel->info.base.writes_memory != sel->info.base.writes_memory ||
            old_sel->info.base.fs.early_fragment_tests !=
               sel->info.base.fs.early_fragment_tests))
          si_mark_atom_dirty(sctx, &sctx->atoms.s.msaa_config);
