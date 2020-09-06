@@ -467,9 +467,6 @@ void si_nir_scan_shader(const struct nir_shader *nir, struct si_shader_info *inf
 
    info->constbuf0_num_slots = nir->num_uniforms;
 
-   if (info->stage == MESA_SHADER_FRAGMENT)
-      info->uses_kill = nir->info.fs.uses_discard;
-
    if (nir->info.stage == MESA_SHADER_TESS_CTRL) {
       info->tessfactors_are_def_in_all_invocs = ac_are_tessfactors_def_in_all_invocs(nir);
    }

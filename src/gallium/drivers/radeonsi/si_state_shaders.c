@@ -72,7 +72,7 @@ void si_get_ir_cache_key(struct si_shader_selector *sel, bool ngg, bool es,
       shader_variant_flags |= 1 << 1;
    if (si_get_wave_size(sel->screen, sel->info.stage, ngg, es, false, false) == 32)
       shader_variant_flags |= 1 << 2;
-   if (sel->info.stage == MESA_SHADER_FRAGMENT && sel->info.uses_derivatives && sel->info.uses_kill &&
+   if (sel->info.stage == MESA_SHADER_FRAGMENT && sel->info.uses_derivatives && sel->info.base.fs.uses_discard &&
        sel->screen->debug_flags & DBG(FS_CORRECT_DERIVS_AFTER_KILL))
       shader_variant_flags |= 1 << 3;
 
@@ -1616,7 +1616,7 @@ static void si_shader_ps(struct si_screen *sscreen, struct si_shader *shader)
     * the color and Z formats to SPI_SHADER_ZERO. The hw will skip export
     * instructions if any are present.
     */
-   if ((sscreen->info.chip_class <= GFX9 || info->uses_kill ||
+   if ((sscreen->info.chip_class <= GFX9 || info->base.fs.uses_discard ||
         shader->key.part.ps.epilog.alpha_func != PIPE_FUNC_ALWAYS) &&
        !spi_shader_col_format && !info->writes_z && !info->writes_stencil &&
        !info->writes_samplemask)
@@ -1756,7 +1756,7 @@ static void si_shader_selector_key_hw_vs(struct si_context *sctx, struct si_shad
    /* Find out if PS is disabled. */
    bool ps_disabled = true;
    if (ps) {
-      bool ps_modifies_zs = ps->info.uses_kill || ps->info.writes_z || ps->info.writes_stencil ||
+      bool ps_modifies_zs = ps->info.base.fs.uses_discard || ps->info.writes_z || ps->info.writes_stencil ||
                             ps->info.writes_samplemask ||
                             sctx->queued.named.blend->alpha_to_coverage ||
                             si_get_alpha_test_func(sctx) != PIPE_FUNC_ALWAYS;
@@ -2763,7 +2763,7 @@ static void *si_create_shader_selector(struct pipe_context *ctx,
    sel->db_shader_control = S_02880C_Z_EXPORT_ENABLE(sel->info.writes_z) |
                             S_02880C_STENCIL_TEST_VAL_EXPORT_ENABLE(sel->info.writes_stencil) |
                             S_02880C_MASK_EXPORT_ENABLE(sel->info.writes_samplemask) |
-                            S_02880C_KILL_ENABLE(sel->info.uses_kill);
+                            S_02880C_KILL_ENABLE(sel->info.base.fs.uses_discard);
 
    if (sel->info.stage == MESA_SHADER_FRAGMENT) {
       switch (sel->info.base.fs.depth_layout) {
