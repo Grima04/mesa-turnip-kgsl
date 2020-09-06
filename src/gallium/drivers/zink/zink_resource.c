@@ -568,21 +568,25 @@ zink_transfer_map(struct pipe_context *pctx,
 
    void *ptr;
    if (pres->target == PIPE_BUFFER) {
-      if (!(usage & PIPE_MAP_UNSYNCHRONIZED) && util_ranges_intersect(&res->valid_buffer_range, box->x, box->x + box->width)) {
-         /* special case compute reads since they aren't handled by zink_fence_wait() */
-         if (usage & PIPE_MAP_WRITE && (batch_uses & (ZINK_RESOURCE_ACCESS_READ << ZINK_COMPUTE_BATCH_ID)))
-            zink_wait_on_batch(ctx, ZINK_COMPUTE_BATCH_ID);
-         batch_uses &= ~(ZINK_RESOURCE_ACCESS_READ << ZINK_COMPUTE_BATCH_ID);
-         if (usage & PIPE_MAP_READ && batch_uses >= ZINK_RESOURCE_ACCESS_WRITE)
-            resource_sync_writes_from_batch_id(ctx, batch_uses, zink_curr_batch(ctx)->batch_id);
-         else if (usage & PIPE_MAP_WRITE && batch_uses) {
-            /* need to wait for all rendering to finish
-             * TODO: optimize/fix this to be much less obtrusive
-             * mesa/mesa#2966
-             */
+      if (!(usage & PIPE_MAP_UNSYNCHRONIZED)) {
+         if (util_ranges_intersect(&res->valid_buffer_range, box->x, box->x + box->width)) {
+            /* special case compute reads since they aren't handled by zink_fence_wait() */
+            if (usage & PIPE_MAP_WRITE && (batch_uses & (ZINK_RESOURCE_ACCESS_READ << ZINK_COMPUTE_BATCH_ID)))
+               zink_wait_on_batch(ctx, ZINK_COMPUTE_BATCH_ID);
+            batch_uses &= ~(ZINK_RESOURCE_ACCESS_READ << ZINK_COMPUTE_BATCH_ID);
+            if (usage & PIPE_MAP_READ && batch_uses >= ZINK_RESOURCE_ACCESS_WRITE)
+               resource_sync_writes_from_batch_id(ctx, batch_uses, zink_curr_batch(ctx)->batch_id);
+            else if (usage & PIPE_MAP_WRITE && batch_uses) {
+               /* need to wait for all rendering to finish
+                * TODO: optimize/fix this to be much less obtrusive
+                * mesa/mesa#2966
+                */
 
-            zink_fence_wait(pctx);
+               zink_fence_wait(pctx);
+            }
          }
+         if (usage & PIPE_MAP_DISCARD_WHOLE_RESOURCE)
+            util_range_set_empty(&res->valid_buffer_range);
       }
 
 
