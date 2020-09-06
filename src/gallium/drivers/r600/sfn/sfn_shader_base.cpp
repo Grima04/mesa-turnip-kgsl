@@ -634,8 +634,8 @@ bool ShaderFromNirProcessor::emit_intrinsic_instruction(nir_intrinsic_instr* ins
    case nir_intrinsic_discard:
    case nir_intrinsic_discard_if:
       return emit_discard_if(instr);
-   case nir_intrinsic_load_ubo_r600:
-      return emit_load_ubo(instr);
+   case nir_intrinsic_load_ubo_vec4:
+      return emit_load_ubo_vec4(instr);
    case nir_intrinsic_load_tcs_in_param_base_r600:
       return emit_load_tcs_param_base(instr, 0);
    case nir_intrinsic_load_tcs_out_param_base_r600:
@@ -777,7 +777,7 @@ GPRVector ShaderFromNirProcessor::vec_from_nir_with_fetch_constant(const nir_src
 
    /* Now check whether all inputs come from the same GPR, and fill
     * empty slots in the vector with unused swizzles, bail out if
-    * the sources are not from the same GPR
+    * the sources are nqot from the same GPR
     */
 
    if (use_same) {
@@ -829,26 +829,19 @@ GPRVector ShaderFromNirProcessor::vec_from_nir_with_fetch_constant(const nir_src
       return GPRVector(v);;
 }
 
-bool ShaderFromNirProcessor::emit_load_ubo(nir_intrinsic_instr* instr)
+bool ShaderFromNirProcessor::emit_load_ubo_vec4(nir_intrinsic_instr* instr)
 {
-   nir_src& src0 = instr->src[0];
-   nir_src& src1 = instr->src[1];
+   auto bufid = nir_src_as_const_value(instr->src[0]);
+   auto buf_offset = nir_src_as_const_value(instr->src[1]);
 
-   int sel_bufid_reg = src0.is_ssa ? src0.ssa->index : src0.reg.reg->index;
-   const nir_load_const_instr* literal0 = get_literal_constant(sel_bufid_reg);
-
-   int ofs_reg = src1.is_ssa ? src1.ssa->index : src1.reg.reg->index;
-   const nir_load_const_instr* literal1 = get_literal_constant(ofs_reg);
-   if (literal0) {
-      if (literal1) {
-         uint bufid = literal0->value[0].u32;
-         uint buf_ofs = literal1->value[0].u32 >> 4;
-         int buf_cmp = ((literal1->value[0].u32 >> 2) & 3);
+   if (bufid) {
+      if (buf_offset) {
+         int buf_cmp = nir_intrinsic_component(instr);
          AluInstruction *ir = nullptr;
-         for (int i = 0; i < instr->num_components; ++i) {
+         for (unsigned i = 0; i < nir_dest_num_components(instr->dest); ++i) {
             int cmp = buf_cmp + i;
             assert(cmp < 4);
-            auto u = PValue(new UniformValue(512 +  buf_ofs, cmp, bufid + 1));
+            auto u = PValue(new UniformValue(512 +  buf_offset->u32, cmp, bufid->u32));
             if (instr->dest.is_ssa)
                load_preloaded_value(instr->dest, i, u);
             else {
@@ -861,21 +854,24 @@ bool ShaderFromNirProcessor::emit_load_ubo(nir_intrinsic_instr* instr)
          return true;
 
       } else {
-         /* literal0 is lost ...*/
-         return load_uniform_indirect(instr, from_nir(instr->src[1], 0, 0), 0, literal0->value[0].u32 + 1);
+         return load_uniform_indirect(instr, from_nir(instr->src[1], 0, 0), 0, bufid->u32);
       }
    } else {
-      /* TODO: This can also be solved by using the CF indes on the ALU block, and
-       * this would probably make sense when there are more then one loads with
-       * the same buffer ID. */
+      /* TODO: if buf_offset is constant then this can also be solved by using the CF indes
+       * on the ALU block, and this would probably make sense when there are more then one
+       * loads with the same buffer ID. */
       PValue bufid = from_nir(instr->src[0], 0, 0);
       PValue addr = from_nir_with_fetch_constant(instr->src[1], 0);
       GPRVector trgt;
-      for (int i = 0; i < 4; ++i)
+      std::array<int, 4> swz = {7,7,7,7};
+      for (unsigned i = 0; i < nir_dest_num_components(instr->dest); ++i) {
          trgt.set_reg_i(i, from_nir(instr->dest, i));
+         swz[i] = i + nir_intrinsic_component(instr);
+      }
 
       auto ir = new FetchInstruction(vc_fetch, no_index_offset, trgt, addr, 0,
-                                     1, bufid, bim_zero);
+                                     0, bufid, bim_zero);
+      ir->set_dest_swizzle(swz);
 
       emit_instruction(ir);
       for (int i = 0; i < instr->num_components ; ++i) {
@@ -886,6 +882,7 @@ bool ShaderFromNirProcessor::emit_load_ubo(nir_intrinsic_instr* instr)
    }
 
 }
+
 
 bool ShaderFromNirProcessor::emit_discard_if(nir_intrinsic_instr* instr)
 {
@@ -919,8 +916,11 @@ bool ShaderFromNirProcessor::load_uniform_indirect(nir_intrinsic_instr* instr, P
    }
 
    GPRVector trgt;
-   for (int i = 0; i < 4; ++i)
+   std::array<int, 4> swz = {7,7,7,7};
+   for (int i = 0; i < 4; ++i) {
       trgt.set_reg_i(i, from_nir(instr->dest, i));
+      swz[i] = i + nir_intrinsic_component(instr);
+   }
 
    if (addr->type() != Value::gpr) {
       emit_instruction(op1_mov, trgt.reg_i(0), {addr}, {alu_write, alu_last_instr});
@@ -930,6 +930,7 @@ bool ShaderFromNirProcessor::load_uniform_indirect(nir_intrinsic_instr* instr, P
    /* FIXME: buffer index and index mode are not set correctly */
    auto ir = new FetchInstruction(vc_fetch, no_index_offset, trgt, addr, offest,
                                   bufferid, PValue(), bim_none);
+   ir->set_dest_swizzle(swz);
    emit_instruction(ir);
    m_sh_info.indirect_files |= 1 << TGSI_FILE_CONSTANT;
    return true;

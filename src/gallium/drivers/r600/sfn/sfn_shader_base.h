@@ -150,7 +150,7 @@ private:
    virtual bool emit_intrinsic_instruction_override(nir_intrinsic_instr* instr);
    bool emit_tex_instruction(nir_instr* instr);
    bool emit_discard_if(nir_intrinsic_instr* instr);
-   bool emit_load_ubo(nir_intrinsic_instr* instr);
+   bool emit_load_ubo_vec4(nir_intrinsic_instr* instr);
    bool emit_ssbo_atomic_add(nir_intrinsic_instr* instr);
    bool load_uniform_indirect(nir_intrinsic_instr* instr, PValue addr, int offest, int bufid);
 
