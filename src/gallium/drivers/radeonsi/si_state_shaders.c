@@ -1750,8 +1750,8 @@ static void si_shader_selector_key_hw_vs(struct si_context *sctx, struct si_shad
    struct si_shader_selector *ps = sctx->ps_shader.cso;
 
    key->opt.clip_disable = sctx->queued.named.rasterizer->clip_plane_enable == 0 &&
-                           (vs->info.clipdist_writemask || vs->info.writes_clipvertex) &&
-                           !vs->info.culldist_writemask;
+                           (vs->info.base.clip_distance_array_size || vs->info.writes_clipvertex) &&
+                           !vs->info.base.cull_distance_array_size;
 
    /* Find out if PS is disabled. */
    bool ps_disabled = true;
@@ -2755,8 +2755,10 @@ static void *si_create_shader_selector(struct pipe_context *ctx,
    if (sctx->chip_class <= GFX9)
       sel->pa_cl_vs_out_cntl = si_get_vs_out_cntl(sel, false);
 
-   sel->clipdist_mask = sel->info.writes_clipvertex ? SIX_BITS : sel->info.clipdist_writemask;
-   sel->culldist_mask = sel->info.culldist_writemask << sel->info.num_written_clipdistance;
+   sel->clipdist_mask = sel->info.writes_clipvertex ? SIX_BITS :
+                           u_bit_consecutive(0, sel->info.base.clip_distance_array_size);
+   sel->culldist_mask = u_bit_consecutive(0, sel->info.base.cull_distance_array_size) <<
+                        sel->info.base.clip_distance_array_size;
 
    /* DB_SHADER_CONTROL */
    sel->db_shader_control = S_02880C_Z_EXPORT_ENABLE(sel->info.writes_z) |

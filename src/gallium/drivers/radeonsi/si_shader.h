@@ -381,10 +381,6 @@ struct si_shader_info {
    bool uses_bindless_samplers;
    bool uses_bindless_images;
    bool uses_fbfetch;
-   unsigned clipdist_writemask;
-   unsigned culldist_writemask;
-   unsigned num_written_culldistance;
-   unsigned num_written_clipdistance;
 
    /** Whether all codepaths write tess factors in all invocations. */
    bool tessfactors_are_def_in_all_invocs;

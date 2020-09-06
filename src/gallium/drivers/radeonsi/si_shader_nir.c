@@ -479,10 +479,6 @@ void si_nir_scan_shader(const struct nir_shader *nir, struct si_shader_info *inf
    }
 
    info->constbuf0_num_slots = nir->num_uniforms;
-   info->num_written_clipdistance = nir->info.clip_distance_array_size;
-   info->num_written_culldistance = nir->info.cull_distance_array_size;
-   info->clipdist_writemask = u_bit_consecutive(0, info->num_written_clipdistance);
-   info->culldist_writemask = u_bit_consecutive(0, info->num_written_culldistance);
 
    if (info->stage == MESA_SHADER_FRAGMENT)
       info->uses_kill = nir->info.fs.uses_discard;

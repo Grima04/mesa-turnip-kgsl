@@ -740,7 +740,7 @@ static void si_emit_clip_regs(struct si_context *sctx)
    unsigned total_mask;
 
    if (vs->key.opt.clip_disable) {
-      assert(!info->culldist_writemask);
+      assert(!info->base.cull_distance_array_size);
       clipdist_mask = 0;
       culldist_mask = 0;
    }
