@@ -495,8 +495,7 @@ update_descriptors(struct zink_context *ctx, struct zink_screen *screen, bool is
       ctx->base.flush(&ctx->base, NULL, PIPE_FLUSH_HINT_FINISH);
    else {
       /* flush compute batch */
-      zink_end_batch(ctx, &ctx->compute_batch);
-      zink_start_batch(ctx, &ctx->compute_batch);
+      zink_flush_compute(ctx);
    }
 }
 

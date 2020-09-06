@@ -908,6 +908,13 @@ zink_batch_no_rp(struct zink_context *ctx)
    return batch;
 }
 
+void
+zink_flush_compute(struct zink_context *ctx)
+{
+   zink_end_batch(ctx, &ctx->compute_batch);
+   zink_start_batch(ctx, &ctx->compute_batch);
+}
+
 static void
 zink_set_framebuffer_state(struct pipe_context *pctx,
                            const struct pipe_framebuffer_state *state)
@@ -1293,10 +1300,7 @@ zink_texture_barrier(struct pipe_context *pctx, unsigned flags)
    struct zink_context *ctx = zink_context(pctx);
    if (zink_curr_batch(ctx)->has_draw)
       pctx->flush(pctx, NULL, 0);
-   if (ctx->compute_batch.has_draw) {
-      zink_end_batch(ctx, &ctx->compute_batch);
-      zink_start_batch(ctx, &ctx->compute_batch);
-   }
+   zink_flush_compute(ctx);
 }
 
 static void

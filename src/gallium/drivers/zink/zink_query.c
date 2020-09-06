@@ -419,10 +419,8 @@ force_cpu_read(struct zink_context *ctx, struct pipe_query *pquery, bool wait, e
    union pipe_query_result result;
    if (zink_curr_batch(ctx)->batch_id == query->batch_id)
       ctx->base.flush(&ctx->base, NULL, PIPE_FLUSH_HINT_FINISH);
-   else if (is_cs_query(query)) {
-      zink_end_batch(ctx, &ctx->compute_batch);
-      zink_start_batch(ctx, &ctx->compute_batch);
-   }
+   else if (is_cs_query(query))
+      zink_flush_compute(ctx);
 
    bool success = get_query_result(&ctx->base, pquery, wait, &result);
    if (!success) {
@@ -608,8 +606,7 @@ zink_get_query_result(struct pipe_context *pctx,
       if (wait)
          zink_wait_on_batch(ctx, ZINK_COMPUTE_BATCH_ID);
       else {
-         zink_end_batch(ctx, &ctx->compute_batch);
-         zink_start_batch(ctx, &ctx->compute_batch);
+         zink_flush_compute(ctx);
       }
    } else {
       if (wait) {
