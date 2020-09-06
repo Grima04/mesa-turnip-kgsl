@@ -435,7 +435,6 @@ struct si_shader_selector {
    /* GS parameters. */
    uint16_t gsvs_vertex_size;
    ubyte gs_input_verts_per_prim;
-   ubyte max_gs_stream; /* count - 1 */
    unsigned max_gsvs_emit_size;
    uint16_t enabled_streamout_buffer_mask;
    bool tess_turns_off_ngg;

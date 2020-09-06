@@ -775,7 +775,7 @@ static void si_shader_gs(struct si_screen *sscreen, struct si_shader *shader)
    unsigned gs_num_invocations = sel->info.base.gs.invocations;
    struct si_pm4_state *pm4;
    uint64_t va;
-   unsigned max_stream = sel->max_gs_stream;
+   unsigned max_stream = util_last_bit(sel->info.base.gs.active_stream_mask);
    unsigned offset;
 
    pm4 = si_get_shader_pm4_state(shader);
@@ -787,15 +787,15 @@ static void si_shader_gs(struct si_screen *sscreen, struct si_shader *shader)
    offset = num_components[0] * sel->info.base.gs.vertices_out;
    shader->ctx_reg.gs.vgt_gsvs_ring_offset_1 = offset;
 
-   if (max_stream >= 1)
+   if (max_stream >= 2)
       offset += num_components[1] * sel->info.base.gs.vertices_out;
    shader->ctx_reg.gs.vgt_gsvs_ring_offset_2 = offset;
 
-   if (max_stream >= 2)
+   if (max_stream >= 3)
       offset += num_components[2] * sel->info.base.gs.vertices_out;
    shader->ctx_reg.gs.vgt_gsvs_ring_offset_3 = offset;
 
-   if (max_stream >= 3)
+   if (max_stream >= 4)
       offset += num_components[3] * sel->info.base.gs.vertices_out;
    shader->ctx_reg.gs.vgt_gsvs_ring_itemsize = offset;
 
@@ -805,9 +805,9 @@ static void si_shader_gs(struct si_screen *sscreen, struct si_shader *shader)
    shader->ctx_reg.gs.vgt_gs_max_vert_out = sel->info.base.gs.vertices_out;
 
    shader->ctx_reg.gs.vgt_gs_vert_itemsize = num_components[0];
-   shader->ctx_reg.gs.vgt_gs_vert_itemsize_1 = (max_stream >= 1) ? num_components[1] : 0;
-   shader->ctx_reg.gs.vgt_gs_vert_itemsize_2 = (max_stream >= 2) ? num_components[2] : 0;
-   shader->ctx_reg.gs.vgt_gs_vert_itemsize_3 = (max_stream >= 3) ? num_components[3] : 0;
+   shader->ctx_reg.gs.vgt_gs_vert_itemsize_1 = (max_stream >= 2) ? num_components[1] : 0;
+   shader->ctx_reg.gs.vgt_gs_vert_itemsize_2 = (max_stream >= 3) ? num_components[2] : 0;
+   shader->ctx_reg.gs.vgt_gs_vert_itemsize_3 = (max_stream >= 4) ? num_components[3] : 0;
 
    shader->ctx_reg.gs.vgt_gs_instance_cnt =
       S_028B90_CNT(MIN2(gs_num_invocations, 127)) | S_028B90_ENABLE(gs_num_invocations > 0);
@@ -2636,11 +2636,6 @@ static void *si_create_shader_selector(struct pipe_context *ctx,
 
       sel->gsvs_vertex_size = sel->info.num_outputs * 16;
       sel->max_gsvs_emit_size = sel->gsvs_vertex_size * sel->info.base.gs.vertices_out;
-
-      sel->max_gs_stream = 0;
-      for (i = 0; i < sel->so.num_outputs; i++)
-         sel->max_gs_stream = MAX2(sel->max_gs_stream, sel->so.output[i].stream);
-
       sel->gs_input_verts_per_prim =
          u_vertices_per_prim(sel->info.base.gs.input_primitive);
 
