@@ -2751,7 +2751,7 @@ LLVMValueRef ac_build_fract(struct ac_llvm_context *ctx, LLVMValueRef src0,
 				  AC_FUNC_ATTR_READNONE);
 }
 
-static LLVMValueRef ac_const_uint_vec(struct ac_llvm_context *ctx, LLVMTypeRef type, uint64_t value)
+LLVMValueRef ac_const_uint_vec(struct ac_llvm_context *ctx, LLVMTypeRef type, uint64_t value)
 {
 
 	if (LLVMGetTypeKind(type) == LLVMVectorTypeKind) {

@@ -330,14 +330,17 @@ static LLVMValueRef emit_b2f(struct ac_llvm_context *ctx,
 			     LLVMValueRef src0,
 			     unsigned bitsize)
 {
+	assert(ac_get_elem_bits(ctx, LLVMTypeOf(src0)) == 32);
 	LLVMValueRef result = LLVMBuildAnd(ctx->builder, src0,
-					   LLVMBuildBitCast(ctx->builder, LLVMConstReal(ctx->f32, 1.0), ctx->i32, ""),
+					   ac_const_uint_vec(ctx, LLVMTypeOf(src0), 0x3f800000),
 					   "");
-	result = LLVMBuildBitCast(ctx->builder, result, ctx->f32, "");
+	result = ac_to_float(ctx, result);
 
 	switch (bitsize) {
-	case 16:
-		return LLVMBuildFPTrunc(ctx->builder, result, ctx->f16, "");
+	case 16: {
+		bool vec2 = LLVMGetTypeKind(LLVMTypeOf(result)) == LLVMVectorTypeKind;
+		return LLVMBuildFPTrunc(ctx->builder, result, vec2 ? ctx->v2f16 : ctx->f16, "");
+	}
 	case 32:
 		return result;
 	case 64:
