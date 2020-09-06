@@ -355,8 +355,7 @@ struct si_shader_info {
    bool uses_linear_center;
    bool uses_linear_centroid;
    bool uses_linear_sample;
-   bool uses_persp_opcode_interp_sample;
-   bool uses_linear_opcode_interp_sample;
+   bool uses_interp_at_sample;
    bool uses_instanceid;
    bool uses_drawid;
    bool uses_primid;

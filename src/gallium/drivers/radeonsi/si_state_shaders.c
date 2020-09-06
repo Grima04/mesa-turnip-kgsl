@@ -1980,8 +1980,7 @@ static inline void si_shader_selector_key(struct pipe_context *ctx, struct si_sh
                                                              sel->info.uses_linear_sample >
                                                           1;
 
-         if (sel->info.uses_persp_opcode_interp_sample ||
-             sel->info.uses_linear_opcode_interp_sample)
+         if (sel->info.uses_interp_at_sample)
             key->mono.u.ps.interpolate_at_sample_force_center = 1;
       }
 

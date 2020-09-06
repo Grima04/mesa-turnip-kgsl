@@ -397,9 +397,6 @@ static void scan_instruction(const struct nir_shader *nir, struct si_shader_info
                info->uses_linear_centroid = true;
             else
                info->uses_linear_center = true;
-
-            if (intr->intrinsic == nir_intrinsic_load_barycentric_at_sample)
-               info->uses_linear_opcode_interp_sample = true;
          } else {
             if (intr->intrinsic == nir_intrinsic_load_barycentric_sample)
                info->uses_persp_sample = true;
@@ -407,10 +404,9 @@ static void scan_instruction(const struct nir_shader *nir, struct si_shader_info
                info->uses_persp_centroid = true;
             else
                info->uses_persp_center = true;
-
-            if (intr->intrinsic == nir_intrinsic_load_barycentric_at_sample)
-               info->uses_persp_opcode_interp_sample = true;
          }
+         if (intr->intrinsic == nir_intrinsic_load_barycentric_at_sample)
+            info->uses_interp_at_sample = true;
          break;
       }
       case nir_intrinsic_load_input:
