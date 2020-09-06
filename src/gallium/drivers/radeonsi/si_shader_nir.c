@@ -230,22 +230,7 @@ static void scan_io_usage(struct si_shader_info *info, nir_intrinsic_instr *intr
 static void scan_instruction(const struct nir_shader *nir, struct si_shader_info *info,
                              nir_instr *instr)
 {
-   if (instr->type == nir_instr_type_alu) {
-      nir_alu_instr *alu = nir_instr_as_alu(instr);
-
-      switch (alu->op) {
-      case nir_op_fddx:
-      case nir_op_fddy:
-      case nir_op_fddx_fine:
-      case nir_op_fddy_fine:
-      case nir_op_fddx_coarse:
-      case nir_op_fddy_coarse:
-         info->uses_derivatives = true;
-         break;
-      default:
-         break;
-      }
-   } else if (instr->type == nir_instr_type_tex) {
+   if (instr->type == nir_instr_type_tex) {
       nir_tex_instr *tex = nir_instr_as_tex(instr);
       const nir_deref_instr *deref = tex_get_texture_deref(tex);
       nir_variable *var = deref ? nir_deref_instr_get_variable(deref) : NULL;
@@ -253,16 +238,6 @@ static void scan_instruction(const struct nir_shader *nir, struct si_shader_info
       if (var) {
          if (deref->mode != nir_var_uniform || var->data.bindless)
             info->uses_bindless_samplers = true;
-      }
-
-      switch (tex->op) {
-      case nir_texop_tex:
-      case nir_texop_txb:
-      case nir_texop_lod:
-         info->uses_derivatives = true;
-         break;
-      default:
-         break;
       }
    } else if (instr->type == nir_instr_type_intrinsic) {
       nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
