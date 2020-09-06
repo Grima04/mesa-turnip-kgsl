@@ -230,7 +230,7 @@ traces:
   - path: glmark2/terrain.rdc
     expectations:
       - device: freedreno-a630
-        checksum: 2368b3132a8768bc3a98b3fda0a4830e
+        checksum: 114f7dfe97768d9c565a29f656c8f9cf
   - path: glmark2/texture-texture-filter=linear.rdc
     expectations:
       - device: freedreno-a630

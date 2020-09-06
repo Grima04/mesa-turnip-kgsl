@@ -2126,17 +2126,6 @@ late_optimizations = [
    (('~fadd', ('ffma(is_used_once)', a, b, ('fmul', 'c(is_not_const_and_not_fsign)', 'd(is_not_const_and_not_fsign)') ), 'e(is_not_const)'),
     ('ffma', a, b, ('ffma', c, d, e)), '(info->stage != MESA_SHADER_VERTEX && info->stage != MESA_SHADER_GEOMETRY) && !options->intel_vec4'),
 
-   # Convert *2*mp instructions to concrete *2*16 instructions. At this point
-   # any conversions that could have been removed will have been removed in
-   # nir_opt_algebraic so any remaining ones are required.
-   (('f2fmp', a), ('f2f16', a)),
-   (('f2imp', a), ('f2i16', a)),
-   (('f2ump', a), ('f2u16', a)),
-   (('i2imp', a), ('i2i16', a)),
-   (('i2fmp', a), ('i2f16', a)),
-   (('i2imp', a), ('u2u16', a)),
-   (('u2fmp', a), ('u2f16', a)),
-
    # Section 8.8 (Integer Functions) of the GLSL 4.60 spec says:
    #
    #    If bits is zero, the result will be zero.
@@ -2198,6 +2187,45 @@ for op in ['ffma']:
         (('bcsel', a, (op + '(is_used_once)', b, c, d), (op, b, e, d)), (op, b, ('bcsel', a, c, e), d)),
         (('bcsel', a, (op, b, c, d), (op + '(is_used_once)', b, e, d)), (op, b, ('bcsel', a, c, e), d)),
     ]
+
+# mediump: If an opcode is surrounded by conversions, remove the conversions.
+# The rationale is that type conversions + the low precision opcode are more
+# expensive that the same arithmetic opcode at higher precision.
+#
+# This must be done in late optimizations, because we need normal optimizations to
+# first eliminate temporary up-conversions such as in op1(f2fmp(f2f32(op2()))).
+#
+# Unary opcodes
+for op in ['fabs', 'fceil', 'fcos', 'fddx', 'fddx_coarse', 'fddx_fine', 'fddy',
+           'fddy_coarse', 'fddy_fine', 'fexp2', 'ffloor', 'ffract', 'flog2', 'fneg',
+           'frcp', 'fround_even', 'frsq', 'fsat', 'fsign', 'fsin', 'fsqrt']:
+    late_optimizations += [(('~f2f32', (op, ('f2fmp', a))), (op, a))]
+
+# Binary opcodes
+for op in ['fadd', 'fdiv', 'fmax', 'fmin', 'fmod', 'fmul', 'fpow', 'frem']:
+    late_optimizations += [(('~f2f32', (op, ('f2fmp', a), ('f2fmp', b))), (op, a, b))]
+
+# Ternary opcodes
+for op in ['ffma', 'flrp']:
+    late_optimizations += [(('~f2f32', (op, ('f2fmp', a), ('f2fmp', b), ('f2fmp', c))), (op, a, b, c))]
+
+# Comparison opcodes
+for op in ['feq', 'fge', 'flt', 'fneu']:
+    late_optimizations += [(('~' + op, ('f2fmp', a), ('f2fmp', b)), (op, a, b))]
+
+# Do this last, so that the f2fmp patterns above have effect.
+late_optimizations += [
+  # Convert *2*mp instructions to concrete *2*16 instructions. At this point
+  # any conversions that could have been removed will have been removed in
+  # nir_opt_algebraic so any remaining ones are required.
+  (('f2fmp', a), ('f2f16', a)),
+  (('f2imp', a), ('f2i16', a)),
+  (('f2ump', a), ('f2u16', a)),
+  (('i2imp', a), ('i2i16', a)),
+  (('i2fmp', a), ('i2f16', a)),
+  (('i2imp', a), ('u2u16', a)),
+  (('u2fmp', a), ('u2f16', a)),
+]
 
 distribute_src_mods = [
    # Try to remove some spurious negations rather than pushing them down.
