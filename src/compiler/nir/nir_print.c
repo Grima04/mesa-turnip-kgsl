@@ -982,6 +982,10 @@ print_intrinsic_instr(nir_intrinsic_instr *instr, print_state *state)
                }
                fprintf(fp, ")");
             }
+            if (state->shader->info.stage == MESA_SHADER_FRAGMENT &&
+                nir_intrinsic_io_semantics(instr).medium_precision) {
+               fprintf(fp, " mediump");
+            }
          }
          break;
 

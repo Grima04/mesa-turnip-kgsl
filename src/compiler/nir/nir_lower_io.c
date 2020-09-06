@@ -309,6 +309,9 @@ emit_load(struct lower_io_state *state,
       semantics.location = var->data.location;
       semantics.num_slots = get_number_of_slots(state, var);
       semantics.fb_fetch_output = var->data.fb_fetch_output;
+      semantics.medium_precision =
+         var->data.precision == GLSL_PRECISION_MEDIUM ||
+         var->data.precision == GLSL_PRECISION_LOW;
       nir_intrinsic_set_io_semantics(load, semantics);
    }
 
@@ -431,6 +434,9 @@ emit_store(struct lower_io_state *state, nir_ssa_def *data,
    semantics.num_slots = get_number_of_slots(state, var);
    semantics.dual_source_blend_index = var->data.index;
    semantics.gs_streams = gs_streams;
+   semantics.medium_precision =
+      var->data.precision == GLSL_PRECISION_MEDIUM ||
+      var->data.precision == GLSL_PRECISION_LOW;
    nir_intrinsic_set_io_semantics(store, semantics);
 
    nir_builder_instr_insert(b, &store->instr);
@@ -562,6 +568,9 @@ lower_interpolate_at(nir_intrinsic_instr *intrin, struct lower_io_state *state,
    nir_io_semantics semantics = {0};
    semantics.location = var->data.location;
    semantics.num_slots = get_number_of_slots(state, var);
+   semantics.medium_precision =
+      var->data.precision == GLSL_PRECISION_MEDIUM ||
+      var->data.precision == GLSL_PRECISION_LOW;
    nir_intrinsic_set_io_semantics(load, semantics);
 
    load->src[0] = nir_src_for_ssa(&bary_setup->dest.ssa);
