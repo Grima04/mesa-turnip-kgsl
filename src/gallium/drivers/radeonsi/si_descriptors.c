@@ -2805,7 +2805,7 @@ bool si_gfx_resources_check_encrypted(struct si_context *sctx)
          si_sampler_views_check_encrypted(sctx, &sctx->samplers[i],
                                           current_shader[i]->cso->info.base.textures_used);
       use_encrypted_bo |= si_image_views_check_encrypted(sctx, &sctx->images[i],
-                                          current_shader[i]->cso->info.images_declared);
+                                          u_bit_consecutive(0, current_shader[i]->cso->info.base.num_images));
    }
    use_encrypted_bo |= si_buffer_resources_check_encrypted(sctx, &sctx->rw_buffers);
 
@@ -2858,7 +2858,7 @@ bool si_compute_resources_check_encrypted(struct si_context *sctx)
     */
    return si_buffer_resources_check_encrypted(sctx, &sctx->const_and_shader_buffers[sh]) ||
           si_sampler_views_check_encrypted(sctx, &sctx->samplers[sh], info->base.textures_used) ||
-          si_image_views_check_encrypted(sctx, &sctx->images[sh], info->images_declared) ||
+          si_image_views_check_encrypted(sctx, &sctx->images[sh], u_bit_consecutive(0, info->base.num_images)) ||
           si_buffer_resources_check_encrypted(sctx, &sctx->rw_buffers);
 }
 

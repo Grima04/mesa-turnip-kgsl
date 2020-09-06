@@ -1346,7 +1346,7 @@ static bool si_build_main_function(struct si_shader_context *ctx, struct si_shad
    ctx->num_shader_buffers = info->base.num_ssbos;
 
    ctx->num_samplers = util_last_bit(info->base.textures_used);
-   ctx->num_images = util_last_bit(info->images_declared);
+   ctx->num_images = info->base.num_images;
 
    si_llvm_init_resource_callbacks(ctx);
 

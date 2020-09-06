@@ -1563,9 +1563,8 @@ static bool si_all_vs_resources_read_only(struct si_context *sctx, struct pipe_r
    }
 
    /* Images. */
-   if (vs->info.images_declared) {
-      unsigned num_images = util_last_bit(vs->info.images_declared);
-
+   unsigned num_images = vs->info.base.num_images;
+   if (num_images) {
       for (unsigned i = 0; i < num_images; i++) {
          struct pipe_resource *res = sctx->images[PIPE_SHADER_VERTEX].views[i].resource;
          if (!res)

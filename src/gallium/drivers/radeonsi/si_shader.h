@@ -387,8 +387,6 @@ struct si_shader_info {
    unsigned num_written_culldistance;
    unsigned num_written_clipdistance;
 
-   unsigned images_declared;         /**< bitmask of declared images */
-
    /** Whether all codepaths write tess factors in all invocations. */
    bool tessfactors_are_def_in_all_invocs;
 };
