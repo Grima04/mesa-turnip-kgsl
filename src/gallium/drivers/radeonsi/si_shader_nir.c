@@ -262,8 +262,8 @@ static void scan_instruction(const struct nir_shader *nir, struct si_shader_info
          break;
       case nir_intrinsic_load_local_group_size:
          /* The block size is translated to IMM with a fixed block size. */
-         if (info->base.cs.local_size[0] == 0)
-            info->uses_block_size = true;
+         if (info->base.cs.local_size_variable)
+            info->uses_variable_block_size = true;
          break;
       case nir_intrinsic_load_local_invocation_id:
       case nir_intrinsic_load_work_group_id: {

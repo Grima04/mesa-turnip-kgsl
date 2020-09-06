@@ -370,9 +370,10 @@ LLVMValueRef si_llvm_get_block_size(struct ac_shader_abi *abi)
    LLVMValueRef values[3];
    LLVMValueRef result;
    unsigned i;
-   uint16_t *local_size = ctx->shader->selector->info.base.cs.local_size;
 
-   if (local_size[0] != 0) {
+   if (!ctx->shader->selector->info.base.cs.local_size_variable) {
+      uint16_t *local_size = ctx->shader->selector->info.base.cs.local_size;
+
       for (i = 0; i < 3; ++i)
          values[i] = LLVMConstInt(ctx->ac.i32, local_size[i], 0);
 

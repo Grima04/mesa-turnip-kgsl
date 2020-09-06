@@ -211,17 +211,15 @@ unsigned si_get_max_workgroup_size(const struct si_shader *shader)
       return 0;
    }
 
+   /* Compile a variable block size using the maximum variable size. */
+   if (shader->selector->info.base.cs.local_size_variable)
+      return SI_MAX_VARIABLE_THREADS_PER_BLOCK;
+
    uint16_t *local_size = shader->selector->info.base.cs.local_size;
    unsigned max_work_group_size = (uint32_t)local_size[0] *
                                   (uint32_t)local_size[1] *
                                   (uint32_t)local_size[2];
-
-   if (!max_work_group_size) {
-      /* This is a variable group size compute shader,
-       * compile it for the maximum possible group size.
-       */
-      max_work_group_size = SI_MAX_VARIABLE_THREADS_PER_BLOCK;
-   }
+   assert(max_work_group_size);
    return max_work_group_size;
 }
 
@@ -695,8 +693,7 @@ void si_create_function(struct si_shader_context *ctx, bool ngg_cull_shader)
       declare_per_stage_desc_pointers(ctx, true);
       if (shader->selector->info.uses_grid_size)
          ac_add_arg(&ctx->args, AC_ARG_SGPR, 3, AC_ARG_INT, &ctx->args.num_work_groups);
-      if (shader->selector->info.uses_block_size &&
-          shader->selector->info.base.cs.local_size[0] == 0)
+      if (shader->selector->info.uses_variable_block_size)
          ac_add_arg(&ctx->args, AC_ARG_SGPR, 3, AC_ARG_INT, &ctx->block_size);
 
       unsigned cs_user_data_dwords =

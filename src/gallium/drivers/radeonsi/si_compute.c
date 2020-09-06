@@ -132,8 +132,7 @@ static void si_create_compute_state_async(void *job, int thread_index)
                             &sel->active_samplers_and_images);
 
    program->shader.is_monolithic = true;
-   program->reads_variable_block_size =
-      sel->info.uses_block_size && sel->info.base.cs.local_size[0] == 0;
+   program->reads_variable_block_size = sel->info.uses_variable_block_size;
    program->num_cs_user_data_dwords =
       sel->info.base.cs.user_data_components_amd;
 
