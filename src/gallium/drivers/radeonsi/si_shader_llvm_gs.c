@@ -295,7 +295,7 @@ static void si_llvm_emit_vertex(struct ac_shader_abi *abi, unsigned stream, LLVM
     */
    can_emit =
       LLVMBuildICmp(ctx->ac.builder, LLVMIntULT, gs_next_vertex,
-                    LLVMConstInt(ctx->ac.i32, shader->selector->gs_max_out_vertices, 0), "");
+                    LLVMConstInt(ctx->ac.i32, shader->selector->info.base.gs.vertices_out, 0), "");
 
    bool use_kill = !info->base.writes_memory;
    if (use_kill) {
@@ -313,7 +313,7 @@ static void si_llvm_emit_vertex(struct ac_shader_abi *abi, unsigned stream, LLVM
 
          LLVMValueRef out_val = LLVMBuildLoad(ctx->ac.builder, addrs[4 * i + chan], "");
          LLVMValueRef voffset =
-            LLVMConstInt(ctx->ac.i32, offset * shader->selector->gs_max_out_vertices, 0);
+            LLVMConstInt(ctx->ac.i32, offset * shader->selector->info.base.gs.vertices_out, 0);
          offset++;
 
          voffset = LLVMBuildAdd(ctx->ac.builder, voffset, gs_next_vertex, "");
@@ -402,7 +402,7 @@ void si_preload_gs_rings(struct si_shader_context *ctx)
       if (!num_components)
          continue;
 
-      stride = 4 * num_components * sel->gs_max_out_vertices;
+      stride = 4 * num_components * sel->info.base.gs.vertices_out;
 
       /* Limit on the stride field for <= GFX7. */
       assert(stride < (1 << 14));
@@ -535,7 +535,7 @@ struct si_shader *si_generate_gs_copy_shader(struct si_screen *sscreen,
             }
 
             LLVMValueRef soffset =
-               LLVMConstInt(ctx.ac.i32, offset * gs_selector->gs_max_out_vertices * 16 * 4, 0);
+               LLVMConstInt(ctx.ac.i32, offset * gs_selector->info.base.gs.vertices_out * 16 * 4, 0);
             offset++;
 
             outputs[i].values[chan] =

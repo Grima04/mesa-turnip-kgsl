@@ -433,11 +433,8 @@ struct si_shader_selector {
    uint16_t lshs_vertex_stride;
 
    /* GS parameters. */
-   uint16_t gs_max_out_vertices;
    uint16_t gsvs_vertex_size;
    ubyte gs_input_verts_per_prim;
-   ubyte gs_output_prim;
-   ubyte gs_num_invocations;
    ubyte max_gs_stream; /* count - 1 */
    unsigned max_gsvs_emit_size;
    uint16_t enabled_streamout_buffer_mask;

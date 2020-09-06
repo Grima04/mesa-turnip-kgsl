@@ -1439,7 +1439,7 @@ static LLVMValueRef ngg_gs_get_vertex_storage(struct si_shader_context *ctx)
  * is in emit order; that is:
  * - during the epilogue, N is the threadidx (relative to the entire threadgroup)
  * - during vertex emit, i.e. while the API GS shader invocation is running,
- *   N = threadidx * gs_max_out_vertices + emitidx
+ *   N = threadidx * gs.vertices_out + emitidx
  *
  * Goals of the LDS memory layout:
  * 1. Eliminate bank conflicts on write for geometry shaders that have all emits
@@ -1458,7 +1458,7 @@ static LLVMValueRef ngg_gs_get_vertex_storage(struct si_shader_context *ctx)
  *
  * Swizzling is required to satisfy points 1 and 2 simultaneously.
  *
- * Vertices are stored in export order (gsthread * gs_max_out_vertices + emitidx).
+ * Vertices are stored in export order (gsthread * gs.vertices_out + emitidx).
  * Indices are swizzled in groups of 32, which ensures point 1 without
  * disturbing point 2.
  *
@@ -1470,8 +1470,8 @@ static LLVMValueRef ngg_gs_vertex_ptr(struct si_shader_context *ctx, LLVMValueRe
    LLVMBuilderRef builder = ctx->ac.builder;
    LLVMValueRef storage = ngg_gs_get_vertex_storage(ctx);
 
-   /* gs_max_out_vertices = 2^(write_stride_2exp) * some odd number */
-   unsigned write_stride_2exp = ffs(sel->gs_max_out_vertices) - 1;
+   /* gs.vertices_out = 2^(write_stride_2exp) * some odd number */
+   unsigned write_stride_2exp = ffs(sel->info.base.gs.vertices_out) - 1;
    if (write_stride_2exp) {
       LLVMValueRef row = LLVMBuildLShr(builder, vertexidx, LLVMConstInt(ctx->ac.i32, 5, false), "");
       LLVMValueRef swizzle = LLVMBuildAnd(
@@ -1489,7 +1489,7 @@ static LLVMValueRef ngg_gs_emit_vertex_ptr(struct si_shader_context *ctx, LLVMVa
    LLVMBuilderRef builder = ctx->ac.builder;
    LLVMValueRef tmp;
 
-   tmp = LLVMConstInt(ctx->ac.i32, sel->gs_max_out_vertices, false);
+   tmp = LLVMConstInt(ctx->ac.i32, sel->info.base.gs.vertices_out, false);
    tmp = LLVMBuildMul(builder, tmp, gsthread, "");
    const LLVMValueRef vertexidx = LLVMBuildAdd(builder, tmp, emitidx, "");
    return ngg_gs_vertex_ptr(ctx, vertexidx);
@@ -1531,7 +1531,7 @@ void gfx10_ngg_gs_emit_vertex(struct si_shader_context *ctx, unsigned stream, LL
     */
    const LLVMValueRef can_emit =
       LLVMBuildICmp(builder, LLVMIntULT, vertexidx,
-                    LLVMConstInt(ctx->ac.i32, sel->gs_max_out_vertices, false), "");
+                    LLVMConstInt(ctx->ac.i32, sel->info.base.gs.vertices_out, false), "");
 
    tmp = LLVMBuildAdd(builder, vertexidx, ctx->ac.i32_1, "");
    tmp = LLVMBuildSelect(builder, can_emit, tmp, vertexidx, "");
@@ -1557,7 +1557,7 @@ void gfx10_ngg_gs_emit_vertex(struct si_shader_context *ctx, unsigned stream, LL
    /* Determine and store whether this vertex completed a primitive. */
    const LLVMValueRef curverts = LLVMBuildLoad(builder, ctx->gs_curprim_verts[stream], "");
 
-   tmp = LLVMConstInt(ctx->ac.i32, u_vertices_per_prim(sel->gs_output_prim) - 1, false);
+   tmp = LLVMConstInt(ctx->ac.i32, u_vertices_per_prim(sel->info.base.gs.output_primitive) - 1, false);
    const LLVMValueRef iscompleteprim = LLVMBuildICmp(builder, LLVMIntUGE, curverts, tmp, "");
 
    /* Since the geometry shader emits triangle strips, we need to
@@ -1565,7 +1565,7 @@ void gfx10_ngg_gs_emit_vertex(struct si_shader_context *ctx, unsigned stream, LL
     * the correct vertex order.
     */
    LLVMValueRef is_odd = ctx->ac.i1false;
-   if (stream == 0 && u_vertices_per_prim(sel->gs_output_prim) == 3) {
+   if (stream == 0 && u_vertices_per_prim(sel->info.base.gs.output_primitive) == 3) {
       tmp = LLVMBuildAnd(builder, curverts, ctx->ac.i32_1, "");
       is_odd = LLVMBuildICmp(builder, LLVMIntEQ, tmp, ctx->ac.i32_1, "");
    }
@@ -1615,7 +1615,7 @@ void gfx10_ngg_gs_emit_epilogue(struct si_shader_context *ctx)
 {
    const struct si_shader_selector *sel = ctx->shader->selector;
    const struct si_shader_info *info = &sel->info;
-   const unsigned verts_per_prim = u_vertices_per_prim(sel->gs_output_prim);
+   const unsigned verts_per_prim = u_vertices_per_prim(sel->info.base.gs.output_primitive);
    LLVMBuilderRef builder = ctx->ac.builder;
    LLVMValueRef i8_0 = LLVMConstInt(ctx->ac.i8, 0, false);
    LLVMValueRef tmp, tmp2;
@@ -1637,7 +1637,7 @@ void gfx10_ngg_gs_emit_epilogue(struct si_shader_context *ctx)
 
       const LLVMValueRef vertexidx = LLVMBuildLoad(builder, ctx->gs_next_vertex[stream], "");
       tmp = LLVMBuildICmp(builder, LLVMIntUGE, vertexidx,
-                          LLVMConstInt(ctx->ac.i32, sel->gs_max_out_vertices, false), "");
+                          LLVMConstInt(ctx->ac.i32, sel->info.base.gs.vertices_out, false), "");
       ac_build_ifcc(&ctx->ac, tmp, 5101);
       ac_build_break(&ctx->ac);
       ac_build_endif(&ctx->ac, 5101);
@@ -1905,7 +1905,7 @@ bool gfx10_ngg_calculate_subgroup_info(struct si_shader *shader)
    const struct si_shader_selector *es_sel =
       shader->previous_stage_sel ? shader->previous_stage_sel : gs_sel;
    const gl_shader_stage gs_stage = gs_sel->info.stage;
-   const unsigned gs_num_invocations = MAX2(gs_sel->gs_num_invocations, 1);
+   const unsigned gs_num_invocations = MAX2(gs_sel->info.base.gs.invocations, 1);
    const unsigned input_prim = si_get_input_prim(gs_sel);
    const bool use_adjacency =
       input_prim >= PIPE_PRIM_LINES_ADJACENCY && input_prim <= PIPE_PRIM_TRIANGLE_STRIP_ADJACENCY;
@@ -1946,7 +1946,7 @@ bool gfx10_ngg_calculate_subgroup_info(struct si_shader *shader)
 
    if (gs_stage == MESA_SHADER_GEOMETRY) {
       bool force_multi_cycling = false;
-      unsigned max_out_verts_per_gsprim = gs_sel->gs_max_out_vertices * gs_num_invocations;
+      unsigned max_out_verts_per_gsprim = gs_sel->info.base.gs.vertices_out * gs_num_invocations;
 
 retry_select_mode:
       if (max_out_verts_per_gsprim <= 256 && !force_multi_cycling) {
@@ -1959,7 +1959,7 @@ retry_select_mode:
           * tessellation. */
          max_vert_out_per_gs_instance = true;
          max_gsprims_base = 1;
-         max_out_verts_per_gsprim = gs_sel->gs_max_out_vertices;
+         max_out_verts_per_gsprim = gs_sel->info.base.gs.vertices_out;
       }
 
       esvert_lds_size = es_sel->esgs_itemsize / 4;
@@ -2050,9 +2050,9 @@ retry_select_mode:
 
    unsigned max_out_vertices =
       max_vert_out_per_gs_instance
-         ? gs_sel->gs_max_out_vertices
+         ? gs_sel->info.base.gs.vertices_out
          : gs_stage == MESA_SHADER_GEOMETRY
-              ? max_gsprims * gs_num_invocations * gs_sel->gs_max_out_vertices
+              ? max_gsprims * gs_num_invocations * gs_sel->info.base.gs.vertices_out
               : max_esverts;
    assert(max_out_vertices <= 256);
 
@@ -2060,7 +2060,7 @@ retry_select_mode:
    if (gs_stage == MESA_SHADER_GEOMETRY) {
       /* Number of output primitives per GS input primitive after
        * GS instancing. */
-      prim_amp_factor = gs_sel->gs_max_out_vertices;
+      prim_amp_factor = gs_sel->info.base.gs.vertices_out;
    }
 
    /* The GE only checks against the maximum number of ES verts after

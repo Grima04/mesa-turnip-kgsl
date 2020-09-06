@@ -617,7 +617,7 @@ static void si_shader_es(struct si_screen *sscreen, struct si_shader *shader)
 void gfx9_get_gs_info(struct si_shader_selector *es, struct si_shader_selector *gs,
                       struct gfx9_gs_info *out)
 {
-   unsigned gs_num_invocations = MAX2(gs->gs_num_invocations, 1);
+   unsigned gs_num_invocations = MAX2(gs->info.base.gs.invocations, 1);
    unsigned input_prim = gs->info.base.gs.input_primitive;
    bool uses_adjacency =
       input_prim >= PIPE_PRIM_LINES_ADJACENCY && input_prim <= PIPE_PRIM_TRIANGLE_STRIP_ADJACENCY;
@@ -644,9 +644,9 @@ void gfx9_get_gs_info(struct si_shader_selector *es, struct si_shader_selector *
    /* MAX_PRIMS_PER_SUBGROUP = gs_prims * max_vert_out * gs_invocations.
     * Make sure we don't go over the maximum value.
     */
-   if (gs->gs_max_out_vertices > 0) {
+   if (gs->info.base.gs.vertices_out > 0) {
       max_gs_prims =
-         MIN2(max_gs_prims, max_out_prims / (gs->gs_max_out_vertices * gs_num_invocations));
+         MIN2(max_gs_prims, max_out_prims / (gs->info.base.gs.vertices_out * gs_num_invocations));
    }
    assert(max_gs_prims > 0);
 
@@ -701,7 +701,7 @@ void gfx9_get_gs_info(struct si_shader_selector *es, struct si_shader_selector *
    out->es_verts_per_subgroup = es_verts;
    out->gs_prims_per_subgroup = gs_prims;
    out->gs_inst_prims_in_subgroup = gs_prims * gs_num_invocations;
-   out->max_prims_per_subgroup = out->gs_inst_prims_in_subgroup * gs->gs_max_out_vertices;
+   out->max_prims_per_subgroup = out->gs_inst_prims_in_subgroup * gs->info.base.gs.vertices_out;
    out->esgs_ring_size = esgs_lds_size;
 
    assert(out->max_prims_per_subgroup <= max_out_prims);
@@ -772,7 +772,7 @@ static void si_shader_gs(struct si_screen *sscreen, struct si_shader *shader)
 {
    struct si_shader_selector *sel = shader->selector;
    const ubyte *num_components = sel->info.num_stream_output_components;
-   unsigned gs_num_invocations = sel->gs_num_invocations;
+   unsigned gs_num_invocations = sel->info.base.gs.invocations;
    struct si_pm4_state *pm4;
    uint64_t va;
    unsigned max_stream = sel->max_gs_stream;
@@ -784,25 +784,25 @@ static void si_shader_gs(struct si_screen *sscreen, struct si_shader *shader)
 
    pm4->atom.emit = si_emit_shader_gs;
 
-   offset = num_components[0] * sel->gs_max_out_vertices;
+   offset = num_components[0] * sel->info.base.gs.vertices_out;
    shader->ctx_reg.gs.vgt_gsvs_ring_offset_1 = offset;
 
    if (max_stream >= 1)
-      offset += num_components[1] * sel->gs_max_out_vertices;
+      offset += num_components[1] * sel->info.base.gs.vertices_out;
    shader->ctx_reg.gs.vgt_gsvs_ring_offset_2 = offset;
 
    if (max_stream >= 2)
-      offset += num_components[2] * sel->gs_max_out_vertices;
+      offset += num_components[2] * sel->info.base.gs.vertices_out;
    shader->ctx_reg.gs.vgt_gsvs_ring_offset_3 = offset;
 
    if (max_stream >= 3)
-      offset += num_components[3] * sel->gs_max_out_vertices;
+      offset += num_components[3] * sel->info.base.gs.vertices_out;
    shader->ctx_reg.gs.vgt_gsvs_ring_itemsize = offset;
 
    /* The GSVS_RING_ITEMSIZE register takes 15 bits */
    assert(offset < (1 << 15));
 
-   shader->ctx_reg.gs.vgt_gs_max_vert_out = sel->gs_max_out_vertices;
+   shader->ctx_reg.gs.vgt_gs_max_vert_out = sel->info.base.gs.vertices_out;
 
    shader->ctx_reg.gs.vgt_gs_vert_itemsize = num_components[0];
    shader->ctx_reg.gs.vgt_gs_vert_itemsize_1 = (max_stream >= 1) ? num_components[1] : 0;
@@ -1067,7 +1067,7 @@ static void gfx10_shader_ngg(struct si_screen *sscreen, struct si_shader *shader
    bool window_space = gs_info->stage == MESA_SHADER_VERTEX ?
                           gs_info->base.vs.window_space_position : 0;
    bool es_enable_prim_id = shader->key.mono.u.vs_export_prim_id || es_info->uses_primid;
-   unsigned gs_num_invocations = MAX2(gs_sel->gs_num_invocations, 1);
+   unsigned gs_num_invocations = MAX2(gs_sel->info.base.gs.invocations, 1);
    unsigned input_prim = si_get_input_prim(gs_sel);
    bool break_wave_at_eoi = false;
    struct si_pm4_state *pm4 = si_get_shader_pm4_state(shader);
@@ -1187,7 +1187,7 @@ static void gfx10_shader_ngg(struct si_screen *sscreen, struct si_shader *shader
 
    if (gs_stage == MESA_SHADER_GEOMETRY) {
       shader->ctx_reg.ngg.vgt_esgs_ring_itemsize = es_sel->esgs_itemsize / 4;
-      shader->ctx_reg.ngg.vgt_gs_max_vert_out = gs_sel->gs_max_out_vertices;
+      shader->ctx_reg.ngg.vgt_gs_max_vert_out = gs_sel->info.base.gs.vertices_out;
    } else {
       shader->ctx_reg.ngg.vgt_esgs_ring_itemsize = 1;
    }
@@ -1375,7 +1375,7 @@ static void si_shader_vs(struct si_screen *sscreen, struct si_shader *shader,
       shader->ctx_reg.vs.vgt_primitiveid_en = enable_prim_id;
    } else {
       shader->ctx_reg.vs.vgt_gs_mode =
-         ac_vgt_gs_mode(gs->gs_max_out_vertices, sscreen->info.chip_class);
+         ac_vgt_gs_mode(gs->info.base.gs.vertices_out, sscreen->info.chip_class);
       shader->ctx_reg.vs.vgt_primitiveid_en = 0;
    }
 
@@ -2629,17 +2629,13 @@ static void *si_create_shader_selector(struct pipe_context *ctx,
 
    switch (sel->info.stage) {
    case MESA_SHADER_GEOMETRY:
-      sel->gs_output_prim = sel->info.base.gs.output_primitive;
-
       /* Only possibilities: POINTS, LINE_STRIP, TRIANGLES */
-      sel->rast_prim = sel->gs_output_prim;
+      sel->rast_prim = sel->info.base.gs.output_primitive;
       if (util_rast_prim_is_triangles(sel->rast_prim))
          sel->rast_prim = PIPE_PRIM_TRIANGLES;
 
-      sel->gs_max_out_vertices = sel->info.base.gs.vertices_out;
-      sel->gs_num_invocations = sel->info.base.gs.invocations;
       sel->gsvs_vertex_size = sel->info.num_outputs * 16;
-      sel->max_gsvs_emit_size = sel->gsvs_vertex_size * sel->gs_max_out_vertices;
+      sel->max_gsvs_emit_size = sel->gsvs_vertex_size * sel->info.base.gs.vertices_out;
 
       sel->max_gs_stream = 0;
       for (i = 0; i < sel->so.num_outputs; i++)
@@ -2650,12 +2646,12 @@ static void *si_create_shader_selector(struct pipe_context *ctx,
 
       /* EN_MAX_VERT_OUT_PER_GS_INSTANCE does not work with tesselation so
        * we can't split workgroups. Disable ngg if any of the following conditions is true:
-       * - num_invocations * gs_max_out_vertices > 256
+       * - num_invocations * gs.vertices_out > 256
        * - LDS usage is too high
        */
       sel->tess_turns_off_ngg = sscreen->info.chip_class >= GFX10 &&
-                                (sel->gs_num_invocations * sel->gs_max_out_vertices > 256 ||
-                                 sel->gs_num_invocations * sel->gs_max_out_vertices *
+                                (sel->info.base.gs.invocations * sel->info.base.gs.vertices_out > 256 ||
+                                 sel->info.base.gs.invocations * sel->info.base.gs.vertices_out *
                                  (sel->info.num_outputs * 4 + 1) > 6500 /* max dw per GS primitive */);
       break;
 
