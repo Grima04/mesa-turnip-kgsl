@@ -345,7 +345,7 @@ class Group(object):
 
     def get_length(self):
         # Determine number of bytes in this group.
-        calculated = max(field.end // 8 for field in self.fields) + 1
+        calculated = max(field.end // 8 for field in self.fields) + 1 if len(self.fields) > 0 else 0
         if self.length > 0:
             assert(self.length >= calculated)
         else:
@@ -662,8 +662,10 @@ class Parser(object):
         print('#define %-40s\\' % (name + '_header'))
         if default_fields:
             print(",  \\\n".join(default_fields))
-        else:
+        elif len(self.group.fields) > 0:
             print('   0')
+        else:
+            print('   ')
         print('')
 
     def emit_template_struct(self, name, group, opaque_structs):
