@@ -303,15 +303,6 @@ static void scan_instruction(const struct nir_shader *nir, struct si_shader_info
          }
          break;
       }
-      case nir_intrinsic_load_vertex_id:
-         info->uses_vertexid = 1;
-         break;
-      case nir_intrinsic_load_vertex_id_zero_base:
-         info->uses_vertexid_nobase = 1;
-         break;
-      case nir_intrinsic_load_base_vertex:
-         info->uses_basevertex = 1;
-         break;
       case nir_intrinsic_load_draw_id:
          info->uses_drawid = 1;
          break;
