@@ -1786,6 +1786,9 @@ static void si_shader_selector_key_hw_vs(struct si_context *sctx, struct si_shad
 
    key->opt.kill_outputs = ~linked & outputs_written;
    key->opt.ngg_culling = sctx->ngg_culling;
+
+   if (sctx->ps_shader.cso && sctx->ps_shader.cso->info.uses_primid)
+      key->mono.u.vs_export_prim_id = 1;
 }
 
 /* Compute the key for the hw shader variant */
@@ -1809,9 +1812,6 @@ static inline void si_shader_selector_key(struct pipe_context *ctx, struct si_sh
       } else {
          key->as_ngg = stages_key.u.ngg;
          si_shader_selector_key_hw_vs(sctx, sel, key);
-
-         if (sctx->ps_shader.cso && sctx->ps_shader.cso->info.uses_primid)
-            key->mono.u.vs_export_prim_id = 1;
       }
       break;
    case MESA_SHADER_TESS_CTRL:
@@ -1850,9 +1850,6 @@ static inline void si_shader_selector_key(struct pipe_context *ctx, struct si_sh
          key->as_es = 1;
       else {
          si_shader_selector_key_hw_vs(sctx, sel, key);
-
-         if (sctx->ps_shader.cso && sctx->ps_shader.cso->info.uses_primid)
-            key->mono.u.vs_export_prim_id = 1;
       }
       break;
    case MESA_SHADER_GEOMETRY:
