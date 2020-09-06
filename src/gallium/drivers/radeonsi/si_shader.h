@@ -637,6 +637,7 @@ struct si_shader_key {
    struct {
       /* For HW VS (it can be VS, TES, GS) */
       uint64_t kill_outputs; /* "get_unique_index" bits */
+      unsigned kill_pointsize : 1;
       unsigned clip_disable : 1;
 
       /* For NGG VS and TES. */

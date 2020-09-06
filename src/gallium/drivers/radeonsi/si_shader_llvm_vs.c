@@ -593,12 +593,13 @@ void si_llvm_build_vs_exports(struct si_shader_context *ctx,
       pos_args[0].out[3] = ctx->ac.f32_1; /* W */
    }
 
+   bool writes_psize = shader->selector->info.writes_psize && !shader->key.opt.kill_pointsize;
    bool pos_writes_edgeflag = shader->selector->info.writes_edgeflag && !shader->key.as_ngg;
 
    /* Write the misc vector (point size, edgeflag, layer, viewport). */
-   if (shader->selector->info.writes_psize || pos_writes_edgeflag ||
+   if (writes_psize || pos_writes_edgeflag ||
        shader->selector->info.writes_viewport_index || shader->selector->info.writes_layer) {
-      pos_args[1].enabled_channels = shader->selector->info.writes_psize |
+      pos_args[1].enabled_channels = writes_psize |
                                      (pos_writes_edgeflag << 1) |
                                      (shader->selector->info.writes_layer << 2);
 
@@ -611,7 +612,7 @@ void si_llvm_build_vs_exports(struct si_shader_context *ctx,
       pos_args[1].out[2] = ctx->ac.f32_0; /* Z */
       pos_args[1].out[3] = ctx->ac.f32_0; /* W */
 
-      if (shader->selector->info.writes_psize)
+      if (writes_psize)
          pos_args[1].out[0] = psize_value;
 
       if (pos_writes_edgeflag) {

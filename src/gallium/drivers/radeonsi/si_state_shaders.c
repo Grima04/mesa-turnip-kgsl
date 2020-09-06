@@ -1039,11 +1039,17 @@ unsigned si_get_input_prim(const struct si_shader_selector *gs)
    return PIPE_PRIM_TRIANGLES; /* worst case for all callers */
 }
 
-static unsigned si_get_vs_out_cntl(const struct si_shader_selector *sel, bool ngg)
+static unsigned si_get_vs_out_cntl(const struct si_shader_selector *sel,
+                                   const struct si_shader *shader, bool ngg)
 {
-   bool misc_vec_ena = sel->info.writes_psize || (sel->info.writes_edgeflag && !ngg) ||
+   bool writes_psize = sel->info.writes_psize;
+
+   if (shader)
+      writes_psize &= !shader->key.opt.kill_pointsize;
+
+   bool misc_vec_ena = writes_psize || (sel->info.writes_edgeflag && !ngg) ||
                        sel->info.writes_layer || sel->info.writes_viewport_index;
-   return S_02881C_USE_VTX_POINT_SIZE(sel->info.writes_psize) |
+   return S_02881C_USE_VTX_POINT_SIZE(writes_psize) |
           S_02881C_USE_VTX_EDGE_FLAG(sel->info.writes_edgeflag && !ngg) |
           S_02881C_USE_VTX_RENDER_TARGET_INDX(sel->info.writes_layer) |
           S_02881C_USE_VTX_VIEWPORT_INDX(sel->info.writes_viewport_index) |
@@ -1219,7 +1225,7 @@ static void gfx10_shader_ngg(struct si_screen *sscreen, struct si_shader *shader
       S_028838_INDEX_BUF_EDGE_FLAG_ENA(gs_stage == MESA_SHADER_VERTEX) |
       /* Reuse for NGG. */
       S_028838_VERTEX_REUSE_DEPTH(sscreen->info.chip_class >= GFX10_3 ? 30 : 0);
-   shader->pa_cl_vs_out_cntl = si_get_vs_out_cntl(gs_sel, true);
+   shader->pa_cl_vs_out_cntl = si_get_vs_out_cntl(shader->selector, shader, true);
 
    /* Oversubscribe PC. This improves performance when there are too many varyings. */
    float oversub_pc_factor = 0.25;
@@ -1425,7 +1431,7 @@ static void si_shader_vs(struct si_screen *sscreen, struct si_shader *shader,
                                                                   : V_02870C_SPI_SHADER_NONE);
    shader->ctx_reg.vs.ge_pc_alloc = S_030980_OVERSUB_EN(sscreen->info.use_late_alloc) |
                                     S_030980_NUM_PC_LINES(sscreen->info.pc_lines / 4 - 1);
-   shader->pa_cl_vs_out_cntl = si_get_vs_out_cntl(shader->selector, false);
+   shader->pa_cl_vs_out_cntl = si_get_vs_out_cntl(shader->selector, shader, false);
 
    oc_lds_en = shader->selector->info.stage == MESA_SHADER_TESS_EVAL ? 1 : 0;
 
@@ -1789,6 +1795,13 @@ static void si_shader_selector_key_hw_vs(struct si_context *sctx, struct si_shad
 
    if (sctx->ps_shader.cso && sctx->ps_shader.cso->info.uses_primid)
       key->mono.u.vs_export_prim_id = 1;
+
+   /* We need PKT3_CONTEXT_REG_RMW, which we currently only use on GFX10+. */
+   if (sctx->chip_class >= GFX10 &&
+       vs->info.writes_psize &&
+       sctx->current_rast_prim != PIPE_PRIM_POINTS &&
+       !sctx->queued.named.rasterizer->polygon_mode_is_points)
+      key->opt.kill_pointsize = 1;
 }
 
 /* Compute the key for the hw shader variant */
@@ -2743,7 +2756,7 @@ static void *si_create_shader_selector(struct pipe_context *ctx,
 
    /* PA_CL_VS_OUT_CNTL */
    if (sctx->chip_class <= GFX9)
-      sel->pa_cl_vs_out_cntl = si_get_vs_out_cntl(sel, false);
+      sel->pa_cl_vs_out_cntl = si_get_vs_out_cntl(sel, NULL, false);
 
    sel->clipdist_mask = sel->info.writes_clipvertex ? SIX_BITS :
                            u_bit_consecutive(0, sel->info.base.clip_distance_array_size);

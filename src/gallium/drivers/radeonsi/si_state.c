@@ -871,6 +871,9 @@ static void *si_create_rs_state(struct pipe_context *ctx, const struct pipe_rast
    rs->polygon_mode_is_lines =
       (state->fill_front == PIPE_POLYGON_MODE_LINE && !(state->cull_face & PIPE_FACE_FRONT)) ||
       (state->fill_back == PIPE_POLYGON_MODE_LINE && !(state->cull_face & PIPE_FACE_BACK));
+   rs->polygon_mode_is_points =
+      (state->fill_front == PIPE_POLYGON_MODE_POINT && !(state->cull_face & PIPE_FACE_FRONT)) ||
+      (state->fill_back == PIPE_POLYGON_MODE_POINT && !(state->cull_face & PIPE_FACE_BACK));
    rs->pa_sc_line_stipple = state->line_stipple_enable
                                ? S_028A0C_LINE_PATTERN(state->line_stipple_pattern) |
                                     S_028A0C_REPEAT_COUNT(state->line_stipple_factor)
@@ -1020,7 +1023,8 @@ static void si_bind_rs_state(struct pipe_context *ctx, void *state)
        old_rs->poly_stipple_enable != rs->poly_stipple_enable ||
        old_rs->poly_smooth != rs->poly_smooth || old_rs->line_smooth != rs->line_smooth ||
        old_rs->clamp_fragment_color != rs->clamp_fragment_color ||
-       old_rs->force_persample_interp != rs->force_persample_interp)
+       old_rs->force_persample_interp != rs->force_persample_interp ||
+       old_rs->polygon_mode_is_points != rs->polygon_mode_is_points)
       sctx->do_update_shaders = true;
 }
 
