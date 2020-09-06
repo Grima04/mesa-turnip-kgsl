@@ -2142,7 +2142,7 @@ void si_get_ps_prolog_key(struct si_shader *shader, union si_shader_part_key *ke
    key->ps_prolog.ancillary_vgpr_index = shader->info.ancillary_vgpr_index;
 
    if (info->colors_read) {
-      unsigned *color = shader->selector->color_attr_index;
+      ubyte *color = shader->selector->color_attr_index;
 
       if (shader->key.part.ps.prolog.color_two_side) {
          /* BCOLORs are stored after the last input. */

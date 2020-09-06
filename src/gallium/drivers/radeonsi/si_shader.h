@@ -422,30 +422,30 @@ struct si_shader_selector {
    ubyte cs_images_sgpr_index;
    ubyte cs_images_num_sgprs;
    ubyte cs_num_images_in_user_sgprs;
-   unsigned num_vs_inputs;
-   unsigned num_vbos_in_user_sgprs;
+   ubyte num_vs_inputs;
+   ubyte num_vbos_in_user_sgprs;
    unsigned pa_cl_vs_out_cntl;
    ubyte clipdist_mask;
    ubyte culldist_mask;
-   unsigned rast_prim;
+   ubyte rast_prim;
 
    /* ES parameters. */
-   unsigned esgs_itemsize; /* vertex stride */
-   unsigned lshs_vertex_stride;
+   uint16_t esgs_itemsize; /* vertex stride */
+   uint16_t lshs_vertex_stride;
 
    /* GS parameters. */
-   unsigned gs_input_verts_per_prim;
-   unsigned gs_output_prim;
-   unsigned gs_max_out_vertices;
-   unsigned gs_num_invocations;
-   unsigned max_gs_stream; /* count - 1 */
-   unsigned gsvs_vertex_size;
+   uint16_t gs_max_out_vertices;
+   uint16_t gsvs_vertex_size;
+   ubyte gs_input_verts_per_prim;
+   ubyte gs_output_prim;
+   ubyte gs_num_invocations;
+   ubyte max_gs_stream; /* count - 1 */
    unsigned max_gsvs_emit_size;
-   unsigned enabled_streamout_buffer_mask;
+   uint16_t enabled_streamout_buffer_mask;
    bool tess_turns_off_ngg;
 
    /* PS parameters. */
-   unsigned color_attr_index[2];
+   ubyte color_attr_index[2];
    unsigned db_shader_control;
    /* Set 0xf or 0x0 (4 bits) per each written output.
     * ANDed with spi_shader_col_format.
