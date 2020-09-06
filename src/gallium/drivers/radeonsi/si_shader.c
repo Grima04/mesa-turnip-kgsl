@@ -229,7 +229,7 @@ static void declare_const_and_shader_buffers(struct si_shader_context *ctx, bool
 {
    enum ac_arg_type const_shader_buf_type;
 
-   if (ctx->shader->selector->info.const_buffers_declared == 1 &&
+   if (ctx->shader->selector->info.base.num_ubos == 1 &&
        ctx->shader->selector->info.base.num_ssbos == 0)
       const_shader_buf_type = AC_ARG_CONST_FLOAT_PTR;
    else
@@ -1342,7 +1342,7 @@ static bool si_build_main_function(struct si_shader_context *ctx, struct si_shad
    ctx->shader = shader;
    ctx->stage = sel->info.stage;
 
-   ctx->num_const_buffers = util_last_bit(info->const_buffers_declared);
+   ctx->num_const_buffers = info->base.num_ubos;
    ctx->num_shader_buffers = info->base.num_ssbos;
 
    ctx->num_samplers = util_last_bit(info->base.textures_used);

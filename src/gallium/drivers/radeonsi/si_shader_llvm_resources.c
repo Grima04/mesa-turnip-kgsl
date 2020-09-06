@@ -93,7 +93,7 @@ static LLVMValueRef load_ubo(struct ac_shader_abi *abi, LLVMValueRef index)
 
    LLVMValueRef ptr = ac_get_arg(&ctx->ac, ctx->const_and_shader_buffers);
 
-   if (sel->info.const_buffers_declared == 1 && sel->info.base.num_ssbos == 0) {
+   if (sel->info.base.num_ubos == 1 && sel->info.base.num_ssbos == 0) {
       return load_const_buffer_desc_fast_path(ctx);
    }
 

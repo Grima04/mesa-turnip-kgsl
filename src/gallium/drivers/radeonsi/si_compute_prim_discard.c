@@ -308,7 +308,7 @@ void si_build_prim_discard_compute_shader(struct si_shader_context *ctx)
    LLVMSetLinkage(vs, LLVMPrivateLinkage);
 
    enum ac_arg_type const_desc_type;
-   if (ctx->shader->selector->info.const_buffers_declared == 1 &&
+   if (ctx->shader->selector->info.base.num_ubos == 1 &&
        ctx->shader->selector->info.base.num_ssbos == 0)
       const_desc_type = AC_ARG_CONST_FLOAT_PTR;
    else

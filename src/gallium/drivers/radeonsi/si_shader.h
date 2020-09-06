@@ -335,7 +335,6 @@ struct si_shader_info {
    ubyte color_interpolate_loc[2];
 
    int constbuf0_num_slots;
-   unsigned const_buffers_declared; /**< bitmask of declared const buffers */
    ubyte num_stream_output_components[4];
 
    uint num_memory_instructions; /**< sampler, buffer, and image instructions */
