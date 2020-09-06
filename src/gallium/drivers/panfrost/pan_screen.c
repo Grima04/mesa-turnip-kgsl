@@ -193,7 +193,6 @@ panfrost_get_param(struct pipe_screen *screen, enum pipe_cap param)
 
         case PIPE_CAP_TEXTURE_BUFFER_OBJECTS:
         case PIPE_CAP_QUERY_TIMESTAMP:
-        case PIPE_CAP_CONDITIONAL_RENDER:
                 return is_gl3;
 
         /* TODO: Where does this req come from in practice? */
@@ -256,6 +255,10 @@ panfrost_get_param(struct pipe_screen *screen, enum pipe_cap param)
 
         case PIPE_CAP_SHADER_STENCIL_EXPORT:
                 return !is_bifrost || is_deqp;
+
+        case PIPE_CAP_CONDITIONAL_RENDER:
+        case PIPE_CAP_CONDITIONAL_RENDER_INVERTED:
+                return true;
 
         case PIPE_CAP_SHADER_BUFFER_OFFSET_ALIGNMENT:
                 return 4;
