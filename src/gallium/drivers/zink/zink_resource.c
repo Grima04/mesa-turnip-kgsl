@@ -646,7 +646,8 @@ zink_transfer_map(struct pipe_context *pctx,
          if (usage & PIPE_MAP_READ) {
             /* TODO: can probably just do a full cs copy if it's already in a cs batch */
             if (batch_uses & (ZINK_RESOURCE_ACCESS_WRITE << ZINK_COMPUTE_BATCH_ID))
-               zink_wait_on_batch(ctx, ZINK_COMPUTE_BATCH_ID);
+               /* don't actually have to stall here, only ensure batch is submitted */
+               zink_flush_compute(ctx);
             struct zink_context *ctx = zink_context(pctx);
             bool ret = zink_transfer_copy_bufimage(ctx, res,
                                                    staging_res, trans,
@@ -716,7 +717,8 @@ zink_transfer_flush_region(struct pipe_context *pctx,
       if (trans->staging_res) {
          uint32_t batch_uses = zink_get_resource_usage(res);
          if (batch_uses & (ZINK_RESOURCE_ACCESS_WRITE << ZINK_COMPUTE_BATCH_ID)) {
-            zink_wait_on_batch(ctx, ZINK_COMPUTE_BATCH_ID);
+            /* don't actually have to stall here, only ensure batch is submitted */
+            zink_flush_compute(ctx);
             batch_uses &= ~(ZINK_RESOURCE_ACCESS_WRITE << ZINK_COMPUTE_BATCH_ID);
             batch_uses &= ~(ZINK_RESOURCE_ACCESS_READ << ZINK_COMPUTE_BATCH_ID);
          }
