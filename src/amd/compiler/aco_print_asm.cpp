@@ -153,6 +153,13 @@ void print_asm(Program *program, std::vector<uint32_t>& binary,
                                        (exec_size - pos) * sizeof(uint32_t), pos * 4,
                                        outline, sizeof(outline));
 
+      if (program->chip_class >= GFX10 && l == 8 &&
+          ((binary[pos] & 0xffff0000) == 0xd7610000) &&
+          ((binary[pos + 1] & 0x1ff) == 0xff)) {
+         /* v_writelane with literal uses 3 dwords but llvm consumes only 2 */
+         l += 4;
+      }
+
       size_t new_pos;
       if (!l &&
           ((program->chip_class >= GFX9 && (binary[pos] & 0xffff8000) == 0xd1348000) || /* v_add_u32_e64 + clamp */
