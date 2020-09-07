@@ -47,6 +47,7 @@ pack_header = """
 #include <assert.h>
 #include <math.h>
 #include <inttypes.h>
+#include "util/macros.h"
 #include "util/u_math.h"
 
 #define __gen_unpack_float(x, y, z) uif(__gen_unpack_uint(x, y, z))
@@ -213,7 +214,7 @@ def num_from_str(num_str):
         assert(not num_str.startswith('0') and 'octals numbers not allowed')
         return int(num_str)
 
-MODIFIERS = ["shr", "minus"]
+MODIFIERS = ["shr", "minus", "align"]
 
 def parse_modifier(modifier):
     if modifier is None:
@@ -221,7 +222,13 @@ def parse_modifier(modifier):
 
     for mod in MODIFIERS:
         if modifier[0:len(mod)] == mod and modifier[len(mod)] == '(' and modifier[-1] == ')':
-            return [mod, int(modifier[(len(mod) + 1):-1])]
+            ret = [mod, int(modifier[(len(mod) + 1):-1])]
+            if ret[0] == 'align':
+                align = ret[1]
+                # Make sure the alignment is a power of 2
+                assert(align > 0 and not(align & (align - 1)));
+
+            return ret
 
     print("Invalid modifier")
     assert(False)
@@ -444,6 +451,8 @@ class Group(object):
                         value = "{} >> {}".format(value, field.modifier[1])
                     elif field.modifier[0] == "minus":
                         value = "{} - {}".format(value, field.modifier[1])
+                    elif field.modifier[0] == "align":
+                        value = "ALIGN_POT({}, {})".format(value, field.modifier[1])
 
                 if field.type == "uint" or field.type == "address":
                     s = "__gen_uint(%s, %d, %d)" % \
@@ -549,6 +558,9 @@ class Group(object):
             decoded = '{}({}){}'.format(convert, ', '.join(args), suffix)
 
             print('   values->{} = {};'.format(field.name, decoded))
+            if field.modifier and field.modifier[0] == "align":
+                mask = hex(field.modifier[1] - 1)
+                print('   assert(!(values->{} & {}));'.format(field.name, mask))
 
     def emit_print_function(self):
         for field in self.fields:
