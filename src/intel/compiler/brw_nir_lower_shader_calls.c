@@ -99,16 +99,6 @@ brw_nir_lower_shader_returns(nir_shader *shader)
                                nir_metadata_dominance);
 }
 
-static void
-nir_btd_stack_push_intel(nir_builder *b, uint32_t stack_size)
-{
-   nir_intrinsic_instr *push =
-      nir_intrinsic_instr_create(b->shader,
-                                 nir_intrinsic_btd_stack_push_intel);
-   nir_intrinsic_set_range(push, stack_size);
-   nir_builder_instr_insert(b, &push->instr);
-}
-
 static bool
 move_system_values_to_top(nir_shader *shader)
 {

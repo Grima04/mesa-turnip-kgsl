@@ -27,20 +27,6 @@
 #include "brw_rt.h"
 #include "nir_builder.h"
 
-static nir_ssa_def *
-nir_load_global_const_block_intel(nir_builder *b, nir_ssa_def *addr,
-                                  unsigned num_components)
-{
-   nir_intrinsic_instr *load =
-      nir_intrinsic_instr_create(b->shader,
-                                 nir_intrinsic_load_global_const_block_intel);
-   load->src[0] = nir_src_for_ssa(addr);
-   load->num_components = num_components;
-   nir_ssa_dest_init(&load->instr, &load->dest, num_components, 32, NULL);
-   nir_builder_instr_insert(b, &load->instr);
-   return &load->dest.ssa;
-}
-
 /* We have our own load/store scratch helpers because they emit a global
  * memory read or write based on the scratch_base_ptr system value rather
  * than a load/store_scratch intrinsic.
@@ -63,15 +49,6 @@ brw_nir_rt_store_scratch(nir_builder *b, uint32_t offset, unsigned align,
       nir_iadd_imm(b, nir_load_scratch_base_ptr(b, 1, 1, 64), offset);
    nir_store_global(b, addr, MIN2(align, BRW_BTD_STACK_ALIGN),
                     value, write_mask);
-}
-
-static inline void
-nir_accept_ray_intersection(nir_builder *b)
-{
-   nir_intrinsic_instr *accept =
-      nir_intrinsic_instr_create(b->shader,
-                                 nir_intrinsic_accept_ray_intersection);
-   nir_builder_instr_insert(b, &accept->instr);
 }
 
 static inline void
@@ -253,7 +230,7 @@ brw_nir_rt_load_globals(nir_builder *b,
    nir_ssa_def *addr = nir_load_btd_global_arg_addr_intel(b);
 
    nir_ssa_def *data;
-   data = nir_load_global_const_block_intel(b, addr, 16);
+   data = nir_load_global_const_block_intel(b, 16, addr);
    defs->base_mem_addr = nir_pack_64_2x32(b, nir_channels(b, data, 0x3));
 
    defs->call_stack_handler_addr =
@@ -276,7 +253,7 @@ brw_nir_rt_load_globals(nir_builder *b,
    defs->sw_stack_size = nir_channel(b, data, 12);
    defs->launch_size = nir_channels(b, data, 0x7u << 13);
 
-   data = nir_load_global_const_block_intel(b, nir_iadd_imm(b, addr, 64), 8);
+   data = nir_load_global_const_block_intel(b, 8, nir_iadd_imm(b, addr, 64));
    defs->call_sbt_addr =
       nir_pack_64_2x32_split(b, nir_channel(b, data, 0),
                                 nir_extract_i16(b, nir_channel(b, data, 1),

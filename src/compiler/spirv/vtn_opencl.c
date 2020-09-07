@@ -682,8 +682,8 @@ _handle_v_load_store(struct vtn_builder *b, enum OpenCLstd_Entrypoints opcode,
             if (rounding == nir_rounding_mode_undef) {
                ssa->def = nir_f2f16(&b->nb, ssa->def);
             } else {
-               ssa->def = nir_convert_alu_types(&b->nb, ssa->def,
-                                                nir_type_float,
+               ssa->def = nir_convert_alu_types(&b->nb, 16, ssa->def,
+                                                nir_type_float | ssa->def->bit_size,
                                                 nir_type_float16,
                                                 rounding, false);
             }

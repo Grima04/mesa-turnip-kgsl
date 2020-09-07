@@ -323,7 +323,7 @@ barrier("memory_barrier")
 # Storage that the barrier applies is represented using NIR variable modes.
 # For an OpMemoryBarrier, set EXECUTION_SCOPE to NIR_SCOPE_NONE.
 intrinsic("scoped_barrier",
-          indices=[EXECUTION_SCOPE, MEMORY_SEMANTICS, MEMORY_MODES, MEMORY_SCOPE])
+          indices=[EXECUTION_SCOPE, MEMORY_SCOPE, MEMORY_SEMANTICS, MEMORY_MODES])
 
 # Shader clock intrinsic with semantics analogous to the clock2x32ARB()
 # GLSL intrinsic.

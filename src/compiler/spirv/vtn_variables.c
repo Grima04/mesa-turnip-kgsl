@@ -2546,7 +2546,7 @@ vtn_handle_variables(struct vtn_builder *b, SpvOp opcode,
                                nir_address_format_bit_size(addr_format),
                                nir_address_format_null_value(addr_format));
 
-      nir_ssa_def *valid = nir_build_deref_mode_is(&b->nb, src_deref, nir_mode);
+      nir_ssa_def *valid = nir_build_deref_mode_is(&b->nb, 1, &src_deref->dest.ssa, nir_mode);
       vtn_push_nir_ssa(b, w[2], nir_bcsel(&b->nb, valid,
                                                   &src_deref->dest.ssa,
                                                   null_value));
@@ -2570,13 +2570,13 @@ vtn_handle_variables(struct vtn_builder *b, SpvOp opcode,
       nir_deref_instr *src_deref = vtn_nir_deref(b, w[3]);
 
       nir_ssa_def *global_bit =
-         nir_bcsel(&b->nb, nir_build_deref_mode_is(&b->nb, src_deref,
+         nir_bcsel(&b->nb, nir_build_deref_mode_is(&b->nb, 1, &src_deref->dest.ssa,
                                                    nir_var_mem_global),
                    nir_imm_int(&b->nb, SpvMemorySemanticsCrossWorkgroupMemoryMask),
                    nir_imm_int(&b->nb, 0));
 
       nir_ssa_def *shared_bit =
-         nir_bcsel(&b->nb, nir_build_deref_mode_is(&b->nb, src_deref,
+         nir_bcsel(&b->nb, nir_build_deref_mode_is(&b->nb, 1, &src_deref->dest.ssa,
                                                    nir_var_mem_shared),
                    nir_imm_int(&b->nb, SpvMemorySemanticsWorkgroupMemoryMask),
                    nir_imm_int(&b->nb, 0));

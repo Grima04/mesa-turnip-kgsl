@@ -164,7 +164,7 @@ lower_rt_intrinsics_impl(nir_function_impl *impl,
                   nir_ssa_def *addr =
                      nir_iadd_imm(b, nir_load_btd_global_arg_addr_intel(b),
                                      aligned_offset + i * 64);
-                  data[i] = nir_load_global_const_block_intel(b, addr, 16);
+                  data[i] = nir_load_global_const_block_intel(b, 16, addr);
                }
 
                sysval = nir_extract_bits(b, data, 2, suboffset * 8,
