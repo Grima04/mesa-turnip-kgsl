@@ -1791,10 +1791,13 @@ static void si_shader_selector_key_hw_vs(struct si_context *sctx, struct si_shad
    uint64_t linked = outputs_written & inputs_read;
 
    key->opt.kill_outputs = ~linked & outputs_written;
-   key->opt.ngg_culling = sctx->ngg_culling;
 
-   if (sctx->ps_shader.cso && sctx->ps_shader.cso->info.uses_primid)
-      key->mono.u.vs_export_prim_id = 1;
+   if (vs->info.stage != MESA_SHADER_GEOMETRY) {
+      key->opt.ngg_culling = sctx->ngg_culling;
+
+      if (sctx->ps_shader.cso && sctx->ps_shader.cso->info.uses_primid)
+         key->mono.u.vs_export_prim_id = 1;
+   }
 
    /* We need PKT3_CONTEXT_REG_RMW, which we currently only use on GFX10+. */
    if (sctx->chip_class >= GFX10 &&
@@ -1876,6 +1879,10 @@ static inline void si_shader_selector_key(struct pipe_context *ctx, struct si_sh
          }
 
          key->as_ngg = stages_key.u.ngg;
+
+         /* Only NGG can eliminate GS outputs, because the code is shared with VS. */
+         if (stages_key.u.ngg)
+            si_shader_selector_key_hw_vs(sctx, sel, key);
 
          /* Merged ES-GS can have unbalanced wave usage.
           *
