@@ -1485,6 +1485,19 @@ bool operand_can_use_reg(chip_class chip, aco_ptr<Instruction>& instr, unsigned 
    if (instr->operands[idx].isFixed())
       return instr->operands[idx].physReg() == reg;
 
+   bool is_writelane = instr->opcode == aco_opcode::v_writelane_b32 ||
+                       instr->opcode == aco_opcode::v_writelane_b32_e64;
+   if (chip <= GFX9 && is_writelane && idx <= 1) {
+      /* v_writelane_b32 can take two sgprs but only if one is m0. */
+      bool is_other_sgpr = instr->operands[!idx].isTemp() &&
+                           (!instr->operands[!idx].isFixed() ||
+                            instr->operands[!idx].physReg() != m0);
+      if (is_other_sgpr && instr->operands[!idx].tempId() != instr->operands[idx].tempId()) {
+         instr->operands[idx].setFixed(m0);
+         return reg == m0;
+      }
+   }
+
    if (reg.byte()) {
       unsigned stride = get_subdword_operand_stride(chip, instr, idx, rc);
       if (reg.byte() % stride)
