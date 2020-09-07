@@ -79,7 +79,10 @@ clear_in_rp(struct pipe_context *pctx,
          attachments[num_attachments].colorAttachment = i;
          attachments[num_attachments].clearValue.color = color;
          ++num_attachments;
-         resources[res_count++] = (struct zink_resource*)fb->cbufs[i]->texture;
+         struct zink_resource *res = (struct zink_resource*)fb->cbufs[i]->texture;
+         if (zink_resource_image_needs_barrier(res, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, 0, 0))
+            zink_resource_barrier(zink_batch_no_rp(ctx), res, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, 0, 0);
+         resources[res_count++] = res;
       }
    }
 
@@ -94,7 +97,10 @@ clear_in_rp(struct pipe_context *pctx,
       attachments[num_attachments].clearValue.depthStencil.depth = depth;
       attachments[num_attachments].clearValue.depthStencil.stencil = stencil;
       ++num_attachments;
-      resources[res_count++] = (struct zink_resource*)fb->zsbuf->texture;
+      struct zink_resource *res = (struct zink_resource*)fb->zsbuf->texture;
+      if (zink_resource_image_needs_barrier(res, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, 0, 0))
+         zink_resource_barrier(zink_batch_no_rp(ctx), res, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, 0, 0);
+      resources[res_count++] = res;
    }
 
    VkClearRect cr = {};
@@ -131,7 +137,8 @@ clear_color_no_rp(struct zink_batch *batch, struct zink_resource *res, const uni
    color.float32[2] = pcolor->f[2];
    color.float32[3] = pcolor->f[3];
 
-   if (res->layout != VK_IMAGE_LAYOUT_GENERAL && res->layout != VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
+   if (zink_resource_image_needs_barrier(res, VK_IMAGE_LAYOUT_GENERAL, 0, 0) &&
+       zink_resource_image_needs_barrier(res, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 0, 0))
       zink_resource_barrier(batch, res, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 0, 0);
    zink_batch_reference_resource_rw(batch, res, true);
    vkCmdClearColorImage(batch->cmdbuf, res->image, res->layout, &color, 1, &range);
@@ -149,7 +156,8 @@ clear_zs_no_rp(struct zink_batch *batch, struct zink_resource *res, VkImageAspec
 
    VkClearDepthStencilValue zs_value = {depth, stencil};
 
-   if (res->layout != VK_IMAGE_LAYOUT_GENERAL && res->layout != VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
+   if (zink_resource_image_needs_barrier(res, VK_IMAGE_LAYOUT_GENERAL, 0, 0) &&
+       zink_resource_image_needs_barrier(res, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 0, 0))
       zink_resource_barrier(batch, res, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 0, 0);
    zink_batch_reference_resource_rw(batch, res, true);
    vkCmdClearDepthStencilImage(batch->cmdbuf, res->image, res->layout, &zs_value, 1, &range);
