@@ -2476,7 +2476,9 @@ static void si_init_shader_selector_async(void *job, int thread_index)
        *
        * This is only done if non-monolithic shaders are enabled.
        */
-      if ((sel->info.stage == MESA_SHADER_VERTEX || sel->info.stage == MESA_SHADER_TESS_EVAL) &&
+      if ((sel->info.stage == MESA_SHADER_VERTEX ||
+           sel->info.stage == MESA_SHADER_TESS_EVAL ||
+           sel->info.stage == MESA_SHADER_GEOMETRY) &&
           !shader->key.as_ls && !shader->key.as_es) {
          unsigned i;
 
@@ -2640,6 +2642,32 @@ static void *si_create_shader_selector(struct pipe_context *ctx,
       !sel->info.writes_viewport_index &&
       !sel->info.base.vs.window_space_position && !sel->so.num_outputs;
 
+   if (sel->info.stage == MESA_SHADER_VERTEX ||
+       sel->info.stage == MESA_SHADER_TESS_CTRL ||
+       sel->info.stage == MESA_SHADER_TESS_EVAL ||
+       sel->info.stage == MESA_SHADER_GEOMETRY) {
+      if (sel->info.stage == MESA_SHADER_TESS_CTRL) {
+         /* Always reserve space for these. */
+         sel->patch_outputs_written |=
+            (1ull << si_shader_io_get_unique_index_patch(VARYING_SLOT_TESS_LEVEL_INNER)) |
+            (1ull << si_shader_io_get_unique_index_patch(VARYING_SLOT_TESS_LEVEL_OUTER));
+      }
+      for (i = 0; i < sel->info.num_outputs; i++) {
+         unsigned semantic = sel->info.output_semantic[i];
+
+         if (semantic == VARYING_SLOT_TESS_LEVEL_INNER ||
+             semantic == VARYING_SLOT_TESS_LEVEL_OUTER ||
+             (semantic >= VARYING_SLOT_PATCH0 && semantic < VARYING_SLOT_TESS_MAX)) {
+            sel->patch_outputs_written |= 1ull << si_shader_io_get_unique_index_patch(semantic);
+         } else if (semantic < VARYING_SLOT_MAX &&
+                    semantic != VARYING_SLOT_EDGE) {
+            sel->outputs_written |= 1ull << si_shader_io_get_unique_index(semantic, false);
+            sel->outputs_written_before_ps |= 1ull
+                                              << si_shader_io_get_unique_index(semantic, true);
+         }
+      }
+   }
+
    switch (sel->info.stage) {
    case MESA_SHADER_GEOMETRY:
       /* Only possibilities: POINTS, LINE_STRIP, TRIANGLES */
@@ -2663,28 +2691,9 @@ static void *si_create_shader_selector(struct pipe_context *ctx,
                                  (sel->info.num_outputs * 4 + 1) > 6500 /* max dw per GS primitive */);
       break;
 
-   case MESA_SHADER_TESS_CTRL:
-      /* Always reserve space for these. */
-      sel->patch_outputs_written |=
-         (1ull << si_shader_io_get_unique_index_patch(VARYING_SLOT_TESS_LEVEL_INNER)) |
-         (1ull << si_shader_io_get_unique_index_patch(VARYING_SLOT_TESS_LEVEL_OUTER));
-      /* fall through */
    case MESA_SHADER_VERTEX:
+   case MESA_SHADER_TESS_CTRL:
    case MESA_SHADER_TESS_EVAL:
-      for (i = 0; i < sel->info.num_outputs; i++) {
-         unsigned semantic = sel->info.output_semantic[i];
-
-         if (semantic == VARYING_SLOT_TESS_LEVEL_INNER ||
-             semantic == VARYING_SLOT_TESS_LEVEL_OUTER ||
-             (semantic >= VARYING_SLOT_PATCH0 && semantic < VARYING_SLOT_TESS_MAX)) {
-            sel->patch_outputs_written |= 1ull << si_shader_io_get_unique_index_patch(semantic);
-         } else if (semantic < VARYING_SLOT_MAX &&
-                    semantic != VARYING_SLOT_EDGE) {
-            sel->outputs_written |= 1ull << si_shader_io_get_unique_index(semantic, false);
-            sel->outputs_written_before_ps |= 1ull
-                                              << si_shader_io_get_unique_index(semantic, true);
-         }
-      }
       sel->esgs_itemsize = util_last_bit64(sel->outputs_written) * 16;
       sel->lshs_vertex_stride = sel->esgs_itemsize;
 
