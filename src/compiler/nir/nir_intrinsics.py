@@ -276,7 +276,7 @@ intrinsic("deref_buffer_array_length", src_comp=[-1], dest_comp=1,
 
 # Ask the driver for the size of a given SSBO. It takes the buffer index
 # as source.
-intrinsic("get_ssbo_size", src_comp=[-1], dest_comp=1,
+intrinsic("get_ssbo_size", src_comp=[-1], dest_comp=1, bit_sizes=[32],
           flags=[CAN_ELIMINATE, CAN_REORDER])
 intrinsic("get_ubo_size", src_comp=[-1], dest_comp=1,
           flags=[CAN_ELIMINATE, CAN_REORDER])
@@ -329,7 +329,7 @@ intrinsic("scoped_barrier",
 # GLSL intrinsic.
 # The latter can be used as code motion barrier, which is currently not
 # feasible with NIR.
-intrinsic("shader_clock", dest_comp=2, flags=[CAN_ELIMINATE],
+intrinsic("shader_clock", dest_comp=2, bit_sizes=[32], flags=[CAN_ELIMINATE],
           indices=[MEMORY_SCOPE])
 
 # Shader ballot intrinsics with semantics analogous to the
@@ -350,8 +350,8 @@ intrinsic("read_first_invocation", src_comp=[0], dest_comp=0, bit_sizes=src0, fl
 #    OpGroupNonUniformElect
 #    OpSubgroupFirstInvocationKHR
 intrinsic("elect", dest_comp=1, flags=[CAN_ELIMINATE])
-intrinsic("first_invocation", dest_comp=1, flags=[CAN_ELIMINATE])
-intrinsic("last_invocation", dest_comp=1, flags=[CAN_ELIMINATE])
+intrinsic("first_invocation", dest_comp=1, bit_sizes=[32], flags=[CAN_ELIMINATE])
+intrinsic("last_invocation", dest_comp=1, bit_sizes=[32], flags=[CAN_ELIMINATE])
 
 # Memory barrier with semantics analogous to the compute shader
 # groupMemoryBarrier(), memoryBarrierAtomicCounter(), memoryBarrierBuffer(),
@@ -416,7 +416,7 @@ intrinsic("masked_swizzle_amd", src_comp=[0], dest_comp=0, bit_sizes=src0,
           indices=[SWIZZLE_MASK], flags=[CAN_ELIMINATE])
 intrinsic("write_invocation_amd", src_comp=[0, 0, 1], dest_comp=0, bit_sizes=src0,
           flags=[CAN_ELIMINATE])
-intrinsic("mbcnt_amd", src_comp=[1], dest_comp=1, flags=[CAN_ELIMINATE])
+intrinsic("mbcnt_amd", src_comp=[1], dest_comp=1, bit_sizes=[32], flags=[CAN_ELIMINATE])
 
 # Basic Geometry Shader intrinsics.
 #
@@ -1123,7 +1123,7 @@ image("store_raw_intel", src_comp=[1, 0])
 # Intrinsic to load a block of at least 32B of constant data from a 64-bit
 # global memory address.  The memory address must be uniform and 32B-aligned.
 # src[] = { address }.
-intrinsic("load_global_const_block_intel", src_comp=[1], dest_comp=0,
+intrinsic("load_global_const_block_intel", src_comp=[1], dest_comp=0, bit_sizes=[32],
           indices=[BASE], flags=[CAN_ELIMINATE, CAN_REORDER])
 
 # Number of data items being operated on for a SIMD program.
