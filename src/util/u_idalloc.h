@@ -38,6 +38,7 @@ struct util_idalloc
 {
    uint32_t *data;
    unsigned num_elements;
+   unsigned lowest_free_idx;
 };
 
 void
