@@ -1216,10 +1216,10 @@ zink_resource_buffer_barrier(struct zink_batch *batch, struct zink_resource *res
 }
 
 bool
-zink_resource_needs_barrier(struct zink_resource *res, unsigned layout, VkAccessFlags flags, VkPipelineStageFlags pipeline)
+zink_resource_needs_barrier(struct zink_resource *res, VkImageLayout layout, VkAccessFlags flags, VkPipelineStageFlags pipeline)
 {
    if (res->base.target == PIPE_BUFFER)
-      return zink_resource_buffer_needs_barrier(res, layout, pipeline);
+      return zink_resource_buffer_needs_barrier(res, flags, pipeline);
    return zink_resource_image_needs_barrier(res, layout, flags, pipeline);
 }
 

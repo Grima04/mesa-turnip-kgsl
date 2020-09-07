@@ -224,7 +224,7 @@ zink_resource_barrier(struct zink_batch *batch, struct zink_resource *res,
                       VkImageLayout new_layout, VkAccessFlags flags, VkPipelineStageFlags pipeline);
 
 bool
-zink_resource_needs_barrier(struct zink_resource *res, unsigned layout, VkAccessFlags flags, VkPipelineStageFlags pipeline);
+zink_resource_needs_barrier(struct zink_resource *res, VkImageLayout layout, VkAccessFlags flags, VkPipelineStageFlags pipeline);
 
  void
  zink_begin_render_pass(struct zink_context *ctx,
