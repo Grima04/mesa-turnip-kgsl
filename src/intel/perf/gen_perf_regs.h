@@ -46,6 +46,32 @@
 #define PERF_CNT_2_DW0                     0x91c0
 #define PERF_CNT_VALUE_MASK                ((1ull << 44) - 1)
 
+/* Global OA perf counters */
+#define GEN7_N_OA_PERF_A32                 44
+#define GEN7_OA_PERF_A32(idx)              (0x2800 + (idx) * 4)
+
+#define GEN8_OA_PERF_TICKS                 0x2910
+#define GEN8_N_OA_PERF_A64                 32
+#define GEN8_N_OA_PERF_A32                 4
+#define GEN8_N_OA_PERF_B32                 8
+#define GEN8_N_OA_PERF_C32                 8
+#define GEN8_OA_PERF_A64_LDW(idx)          (0x2800 + (idx) * 8)
+#define GEN8_OA_PERF_A64_UDW(idx)          (0x2800 + (idx) * 8 + 4)
+#define GEN8_OA_PERF_A32(idx)              (0x2900 + (idx) * 4)
+#define GEN8_OA_PERF_B32(idx)              (0x2920 + (idx) * 4)
+#define GEN8_OA_PERF_C32(idx)              (0x2940 + (idx) * 4)
+
+#define GEN12_OAG_PERF_TICKS               0xda90
+#define GEN12_N_OAG_PERF_A64               32
+#define GEN12_N_OAG_PERF_A32               4
+#define GEN12_N_OAG_PERF_B32               8
+#define GEN12_N_OAG_PERF_C32               8
+#define GEN12_OAG_PERF_A64_LDW(idx)        (0xd980 + (idx) * 8)
+#define GEN12_OAG_PERF_A64_UDW(idx)        (0xd980 + (idx) * 8 + 4)
+#define GEN12_OAG_PERF_A32(idx)            (0xda80 + (idx) * 4)
+#define GEN12_OAG_PERF_B32(idx)            (0xda94 + (idx) * 4)
+#define GEN12_OAG_PERF_C32(idx)            (0xdab4 + (idx) * 4)
+
 /* Pipeline statistic counters */
 #define IA_VERTICES_COUNT          0x2310
 #define IA_PRIMITIVES_COUNT        0x2318

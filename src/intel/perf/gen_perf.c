@@ -1027,9 +1027,16 @@ gen_perf_query_result_read_frequencies(struct gen_perf_query_result *result,
                                  &result->unslice_frequency[1]);
 }
 
+static inline bool
+can_use_mi_rpc_bc_counters(const struct gen_device_info *devinfo)
+{
+   return devinfo->gen <= 11;
+}
+
 void
 gen_perf_query_result_accumulate(struct gen_perf_query_result *result,
                                  const struct gen_perf_query_info *query,
+                                 const struct gen_device_info *devinfo,
                                  const uint32_t *start,
                                  const uint32_t *end)
 {
@@ -1061,16 +1068,18 @@ gen_perf_query_result_accumulate(struct gen_perf_query_result *result,
                            result->accumulator + query->a_offset + 32 + i);
       }
 
-      /* 8x 32bit B counters */
-      for (i = 0; i < 8; i++) {
-         accumulate_uint32(start + 48 + i, end + 48 + i,
-                           result->accumulator + query->b_offset + i);
-      }
+      if (can_use_mi_rpc_bc_counters(devinfo)) {
+         /* 8x 32bit B counters */
+         for (i = 0; i < 8; i++) {
+            accumulate_uint32(start + 48 + i, end + 48 + i,
+                              result->accumulator + query->b_offset + i);
+         }
 
-      /* 8x 32bit C counters... */
-      for (i = 0; i < 8; i++) {
-         accumulate_uint32(start + 56 + i, end + 56 + i,
-                           result->accumulator + query->c_offset + i);
+         /* 8x 32bit C counters... */
+         for (i = 0; i < 8; i++) {
+            accumulate_uint32(start + 56 + i, end + 56 + i,
+                              result->accumulator + query->c_offset + i);
+         }
       }
       break;
 
@@ -1138,6 +1147,10 @@ query_accumulator_offset(const struct gen_perf_query_info *query,
    switch (type) {
    case GEN_PERF_QUERY_FIELD_TYPE_SRM_PERFCNT:
       return query->perfcnt_offset + index;
+   case GEN_PERF_QUERY_FIELD_TYPE_SRM_OA_B:
+      return query->b_offset + index;
+   case GEN_PERF_QUERY_FIELD_TYPE_SRM_OA_C:
+      return query->c_offset + index;
    default:
       unreachable("Invalid register type");
       return 0;
@@ -1166,7 +1179,7 @@ gen_perf_query_result_accumulate_fields(struct gen_perf_query_result *result,
           * unrelated deltas, so don't accumulate the begin/end reports here.
           */
          if (!no_oa_accumulate) {
-            gen_perf_query_result_accumulate(result, query,
+            gen_perf_query_result_accumulate(result, query, devinfo,
                                              start + field->location,
                                              end + field->location);
          }
@@ -1203,6 +1216,35 @@ gen_perf_query_result_clear(struct gen_perf_query_result *result)
 {
    memset(result, 0, sizeof(*result));
    result->hw_id = OA_REPORT_INVALID_CTX_ID; /* invalid */
+}
+
+void
+gen_perf_query_result_print_fields(const struct gen_perf_query_info *query,
+                                   const struct gen_device_info *devinfo,
+                                   const void *data)
+{
+   const struct gen_perf_query_field_layout *layout = &query->perf->query_layout;
+
+   for (uint32_t r = 0; r < layout->n_fields; r++) {
+      const struct gen_perf_query_field *field = &layout->fields[r];
+      const uint32_t *value32 = data + field->location;
+
+      switch (field->type) {
+      case GEN_PERF_QUERY_FIELD_TYPE_MI_RPC:
+         fprintf(stderr, "MI_RPC:\n");
+         fprintf(stderr, "  TS: 0x%08x\n", *(value32 + 1));
+         fprintf(stderr, "  CLK: 0x%08x\n", *(value32 + 3));
+         break;
+      case GEN_PERF_QUERY_FIELD_TYPE_SRM_OA_B:
+         fprintf(stderr, "B%u: 0x%08x\n", field->index, *value32);
+         break;
+      case GEN_PERF_QUERY_FIELD_TYPE_SRM_OA_C:
+         fprintf(stderr, "C%u: 0x%08x\n", field->index, *value32);
+         break;
+      default:
+         break;
+      }
+   }
 }
 
 static int
@@ -1252,6 +1294,8 @@ gen_perf_init_query_fields(struct gen_perf_config *perf_cfg,
    /* MI_RPC requires a 64byte alignment. */
    layout->alignment = 64;
 
+   layout->fields = rzalloc_array(perf_cfg, struct gen_perf_query_field, 5 + 16);
+
    add_query_register(layout, GEN_PERF_QUERY_FIELD_TYPE_MI_RPC,
                       0, 256, 0);
 
@@ -1278,6 +1322,28 @@ gen_perf_init_query_fields(struct gen_perf_config *perf_cfg,
       add_query_register(layout,
                          GEN_PERF_QUERY_FIELD_TYPE_SRM_RPSTAT,
                          GEN9_RPSTAT0, 4, 0);
+   }
+
+   if (!can_use_mi_rpc_bc_counters(devinfo)) {
+      if (devinfo->gen >= 8 && devinfo->gen <= 11) {
+         for (uint32_t i = 0; i < GEN8_N_OA_PERF_B32; i++) {
+            add_query_register(layout, GEN_PERF_QUERY_FIELD_TYPE_SRM_OA_B,
+                               GEN8_OA_PERF_B32(i), 4, i);
+         }
+         for (uint32_t i = 0; i < GEN8_N_OA_PERF_C32; i++) {
+            add_query_register(layout, GEN_PERF_QUERY_FIELD_TYPE_SRM_OA_C,
+                               GEN8_OA_PERF_C32(i), 4, i);
+         }
+      } else if (devinfo->gen == 12) {
+         for (uint32_t i = 0; i < GEN12_N_OAG_PERF_B32; i++) {
+            add_query_register(layout, GEN_PERF_QUERY_FIELD_TYPE_SRM_OA_B,
+                               GEN12_OAG_PERF_B32(i), 4, i);
+         }
+         for (uint32_t i = 0; i < GEN12_N_OAG_PERF_C32; i++) {
+            add_query_register(layout, GEN_PERF_QUERY_FIELD_TYPE_SRM_OA_C,
+                               GEN12_OAG_PERF_C32(i), 4, i);
+         }
+      }
    }
 
    /* Align the whole package to 64bytes so that 2 snapshots can be put

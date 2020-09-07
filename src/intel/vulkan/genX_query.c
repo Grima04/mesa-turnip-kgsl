@@ -518,7 +518,8 @@ VkResult genX(GetQueryPoolResults)(
             const uint32_t *end = pool->bo->map + khr_perf_query_oa_offset(pool, firstQuery + i, p, true);
             struct gen_perf_query_result result;
             gen_perf_query_result_clear(&result);
-            gen_perf_query_result_accumulate(&result, pool->pass_query[p], begin, end);
+            gen_perf_query_result_accumulate(&result, pool->pass_query[p],
+                                             &device->info, begin, end);
             anv_perf_write_pass_results(pdevice->perf, pool, p, &result, pData);
          }
          break;
@@ -536,7 +537,8 @@ VkResult genX(GetQueryPoolResults)(
          const uint32_t *rpstat_end = query_data + intel_perf_mi_rpc_offset(true);
          struct gen_perf_query_result result;
          gen_perf_query_result_clear(&result);
-         gen_perf_query_result_accumulate(&result, query, oa_begin, oa_end);
+         gen_perf_query_result_accumulate(&result, query, &device->info,
+                                          oa_begin, oa_end);
          gen_perf_query_result_read_frequencies(&result, &device->info,
                                                 oa_begin, oa_end);
          gen_perf_query_result_read_gt_frequency(&result, &device->info,

@@ -266,7 +266,9 @@ struct gen_perf_query_field_layout {
       enum gen_perf_query_field_type {
          GEN_PERF_QUERY_FIELD_TYPE_MI_RPC,
          GEN_PERF_QUERY_FIELD_TYPE_SRM_PERFCNT,
-         GEN_PERF_QUERY_FIELD_TYPE_SRM_RPSTAT
+         GEN_PERF_QUERY_FIELD_TYPE_SRM_RPSTAT,
+         GEN_PERF_QUERY_FIELD_TYPE_SRM_OA_B,
+         GEN_PERF_QUERY_FIELD_TYPE_SRM_OA_C,
       } type;
 
       /* Index of register in the given type (for instance A31 or B2,
@@ -431,6 +433,7 @@ void gen_perf_query_result_read_perfcnts(struct gen_perf_query_result *result,
  */
 void gen_perf_query_result_accumulate(struct gen_perf_query_result *result,
                                       const struct gen_perf_query_info *query,
+                                      const struct gen_device_info *devinfo,
                                       const uint32_t *start,
                                       const uint32_t *end);
 
@@ -445,6 +448,12 @@ void gen_perf_query_result_accumulate_fields(struct gen_perf_query_result *resul
                                              bool no_oa_accumulate);
 
 void gen_perf_query_result_clear(struct gen_perf_query_result *result);
+
+/** Debug helper printing out query data.
+ */
+void gen_perf_query_result_print_fields(const struct gen_perf_query_info *query,
+                                        const struct gen_device_info *devinfo,
+                                        const void *data);
 
 static inline size_t
 gen_perf_query_counter_get_size(const struct gen_perf_query_counter *counter)
