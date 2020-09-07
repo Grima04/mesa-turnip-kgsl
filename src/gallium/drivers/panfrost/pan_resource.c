@@ -840,8 +840,7 @@ panfrost_transfer_map(struct pipe_context *pctx,
 
                 /* When a resource to be modified is already being used by a
                  * pending batch, it is often faster to copy the whole BO than
-                 * to flush and split the frame in two. This also mostly
-                 * mitigates broken depth reload.
+                 * to flush and split the frame in two.
                  */
 
                 panfrost_flush_batches_accessing_bo(ctx, bo, false);
