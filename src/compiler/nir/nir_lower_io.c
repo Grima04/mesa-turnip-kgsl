@@ -1425,10 +1425,8 @@ nir_get_explicit_deref_align(nir_deref_instr *deref,
          /* If this is a wildcard or an indirect deref, we have to go with the
           * power-of-two gcd.
           */
-         *align_mul = MIN3(parent_mul,
-                           1 << (ffs(parent_offset) - 1),
-                           1 << (ffs(stride) - 1));
-         *align_offset = 0;
+         *align_mul = MIN2(parent_mul, 1 << (ffs(stride) - 1));
+         *align_offset = parent_offset % *align_mul;
       }
       return true;
    }
