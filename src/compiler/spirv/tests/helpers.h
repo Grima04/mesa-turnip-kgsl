@@ -30,6 +30,7 @@
 class spirv_test : public ::testing::Test {
 protected:
    spirv_test()
+   : shader(NULL)
    {
       glsl_type_singleton_init_or_ref();
    }
