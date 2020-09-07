@@ -480,6 +480,7 @@ update_descriptors(struct zink_context *ctx, struct zink_screen *screen, bool is
       for (int i = 0; i < num_transitions; ++i) {
          if (!zink_resource_needs_barrier(transitions[i].res,
                                                    transitions[i].layout,
+                                                   0,
                                                    transitions[i].stage))
             continue;
          if (is_compute)
@@ -492,7 +493,7 @@ update_descriptors(struct zink_context *ctx, struct zink_screen *screen, bool is
                                          transitions[i].layout, transitions[i].stage);
          else
             zink_resource_barrier(batch, transitions[i].res,
-                                  transitions[i].layout, transitions[i].stage);
+                                  transitions[i].layout, 0, transitions[i].stage);
       }
    }
 

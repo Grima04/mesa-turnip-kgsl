@@ -810,14 +810,14 @@ framebuffer_state_buffer_barriers_setup(struct zink_context *ctx,
       struct zink_resource *res = zink_resource(surf->texture);
       if (res->layout != VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
          zink_resource_barrier(batch, res,
-                               VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, 0);
+                               VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, 0, 0);
    }
 
    if (state->zsbuf) {
       struct zink_resource *res = zink_resource(state->zsbuf->texture);
       if (res->layout != VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
          zink_resource_barrier(batch, res,
-                               VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, 0);
+                               VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, 0, 0);
    }
 }
 
@@ -1076,23 +1076,28 @@ zink_resource_access_is_write(VkAccessFlags flags)
 }
 
 bool
-zink_resource_image_needs_barrier(struct zink_resource *res, VkImageLayout new_layout, VkPipelineStageFlags pipeline)
+zink_resource_image_needs_barrier(struct zink_resource *res, VkImageLayout new_layout, VkAccessFlags flags, VkPipelineStageFlags pipeline)
 {
    if (!pipeline)
       pipeline = pipeline_dst_stage(new_layout);
+   if (!flags)
+      flags = access_dst_flags(new_layout);
    return res->layout != new_layout || (res->access_stage & pipeline) != pipeline ||
-          (access_src_flags(res->layout) & access_dst_flags(new_layout)) != access_dst_flags(new_layout) ||
-          (zink_resource_access_is_write(access_dst_flags(new_layout)) && util_bitcount(access_dst_flags(new_layout)) > 1);
+          (res->access & flags) != flags ||
+          zink_resource_access_is_write(res->access) ||
+          zink_resource_access_is_write(flags);
 }
 
 void
 zink_resource_barrier(struct zink_batch *batch, struct zink_resource *res,
-                      VkImageLayout new_layout, VkPipelineStageFlags pipeline)
+                      VkImageLayout new_layout, VkAccessFlags flags, VkPipelineStageFlags pipeline)
 {
    assert(!batch->in_rp);
    if (!pipeline)
       pipeline = pipeline_dst_stage(new_layout);
-   if (!zink_resource_image_needs_barrier(res, new_layout, pipeline))
+   if (!flags)
+      flags = access_dst_flags(new_layout);
+   if (!zink_resource_image_needs_barrier(res, new_layout, flags, pipeline))
       return;
    VkImageSubresourceRange isr = {
       res->aspect,
@@ -1103,8 +1108,8 @@ zink_resource_barrier(struct zink_batch *batch, struct zink_resource *res,
    VkImageMemoryBarrier imb = {
       VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
       NULL,
-      access_src_flags(res->layout),
-      access_dst_flags(new_layout),
+      res->access ?: access_src_flags(res->layout),
+      flags,
       res->layout,
       new_layout,
       VK_QUEUE_FAMILY_IGNORED,
@@ -1124,6 +1129,7 @@ zink_resource_barrier(struct zink_batch *batch, struct zink_resource *res,
 
    res->layout = new_layout;
    res->access_stage = pipeline;
+   res->access = flags;
 }
 
 
@@ -1172,7 +1178,8 @@ zink_resource_buffer_needs_barrier(struct zink_resource *res, VkAccessFlags flag
    if (!pipeline)
       pipeline = pipeline_access_stage(flags);
    return (res->access_stage & pipeline) != pipeline || (res->access & flags) != flags ||
-          (zink_resource_access_is_write(flags) && util_bitcount(flags) > 1);
+          zink_resource_access_is_write(res->access) ||
+          zink_resource_access_is_write(flags);
 }
 
 void
@@ -1209,11 +1216,11 @@ zink_resource_buffer_barrier(struct zink_batch *batch, struct zink_resource *res
 }
 
 bool
-zink_resource_needs_barrier(struct zink_resource *res, unsigned flags, VkPipelineStageFlags pipeline)
+zink_resource_needs_barrier(struct zink_resource *res, unsigned layout, VkAccessFlags flags, VkPipelineStageFlags pipeline)
 {
    if (res->base.target == PIPE_BUFFER)
-      return zink_resource_buffer_needs_barrier(res, flags, pipeline);
-   return zink_resource_image_needs_barrier(res, flags, pipeline);
+      return zink_resource_buffer_needs_barrier(res, layout, pipeline);
+   return zink_resource_image_needs_barrier(res, layout, flags, pipeline);
 }
 
 VkShaderStageFlagBits
