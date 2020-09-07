@@ -1334,6 +1334,7 @@ bool EmitAluInstruction::emit_bitfield_insert(const nir_alu_instr& instr)
    auto t0 = get_temp_vec4();
    auto t1 = get_temp_vec4();
    auto t2 = get_temp_vec4();
+   auto t3 = get_temp_vec4();
 
    PValue l32(new LiteralValue(32));
    unsigned write_mask = instr.dest.write_mask;
@@ -1369,7 +1370,7 @@ bool EmitAluInstruction::emit_bitfield_insert(const nir_alu_instr& instr)
    for (int i = 0; i < 4; i++) {
       if (!(write_mask & (1<<i)))
 			continue;
-      ir = new AluInstruction(op3_bfi_int, from_nir(instr.dest, i),
+      ir = new AluInstruction(op3_bfi_int, t3[i],
                   {t1[i], t2[i], m_src[0][i]}, {alu_write});
       emit_instruction(ir);
    }
@@ -1379,8 +1380,7 @@ bool EmitAluInstruction::emit_bitfield_insert(const nir_alu_instr& instr)
       if (!(write_mask & (1<<i)))
 			continue;
       ir = new AluInstruction(op3_cnde_int, from_nir(instr.dest, i),
-                             {t0[i], from_nir(instr.dest, i),
-                                     m_src[1][i]}, {alu_write});
+                             {t0[i], t3[i], m_src[1][i]}, {alu_write});
       emit_instruction(ir);
    }
    make_last(ir);
@@ -1390,12 +1390,13 @@ bool EmitAluInstruction::emit_bitfield_insert(const nir_alu_instr& instr)
 
 bool EmitAluInstruction::emit_unpack_32_2x16_split_y(const nir_alu_instr& instr)
 {
-   emit_instruction(op2_lshr_int, from_nir(instr.dest, 0),
+   auto tmp = get_temp_register();
+   emit_instruction(op2_lshr_int, tmp,
    {m_src[0][0], PValue(new LiteralValue(16))},
    {alu_write, alu_last_instr});
 
    emit_instruction(op1_flt16_to_flt32, from_nir(instr.dest, 0),
-   {from_nir(instr.dest, 0)},{alu_write, alu_last_instr});
+                                  {tmp}, {alu_write, alu_last_instr});
 
    return true;
 }
