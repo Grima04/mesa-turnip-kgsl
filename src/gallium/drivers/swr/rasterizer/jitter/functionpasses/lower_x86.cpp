@@ -555,10 +555,12 @@ namespace SwrJit
             B->STORE(vSrc, pTmp);
 
             v32Gather        = UndefValue::get(vSrc->getType());
-#if LLVM_VERSION_MAJOR > 10
-            auto vi32Scale   = ConstantVector::getSplat(ElementCount::get(numElem, false), cast<ConstantInt>(i32Scale));
-#else
+#if LLVM_VERSION_MAJOR <= 10
             auto vi32Scale   = ConstantVector::getSplat(numElem, cast<ConstantInt>(i32Scale));
+#elif LLVM_VERSION_MAJOR == 11
+            auto vi32Scale   = ConstantVector::getSplat(ElementCount(numElem, false), cast<ConstantInt>(i32Scale));
+#else
+            auto vi32Scale   = ConstantVector::getSplat(ElementCount::get(numElem, false), cast<ConstantInt>(i32Scale));
 #endif
             auto vi32Offsets = B->MUL(vi32Indices, vi32Scale);
 
