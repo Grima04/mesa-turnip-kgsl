@@ -1215,7 +1215,7 @@ dri2_resource_get_param(__DRIimage *image, enum pipe_resource_param param,
       return false;
 
    return pscreen->resource_get_param(pscreen, NULL, image->texture,
-                                      image->plane, 0, param, handle_usage,
+                                      image->plane, 0, 0, param, handle_usage,
                                       value);
 }
 
