@@ -645,6 +645,8 @@ static bool si_resource_get_param(struct pipe_screen *screen, struct pipe_contex
 
       *value = whandle.handle;
       return true;
+   case PIPE_RESOURCE_PARAM_LAYER_STRIDE:
+      break;
    }
    return false;
 }
