@@ -55,6 +55,9 @@ util_idalloc_alloc(struct util_idalloc *buf);
 void
 util_idalloc_free(struct util_idalloc *buf, unsigned id);
 
+void
+util_idalloc_reserve(struct util_idalloc *buf, unsigned id);
+
 #ifdef __cplusplus
 }
 #endif

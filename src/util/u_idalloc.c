@@ -94,3 +94,11 @@ util_idalloc_free(struct util_idalloc *buf, unsigned id)
    assert(id < buf->num_elements);
    buf->data[id / 32] &= ~(1 << (id % 32));
 }
+
+void
+util_idalloc_reserve(struct util_idalloc *buf, unsigned id)
+{
+   assert(id < buf->num_elements);
+   assert((buf->data[id / 32] & (1u << (id % 32))) == 0);
+   buf->data[id / 32] |= 1u << (id % 32);
+}
