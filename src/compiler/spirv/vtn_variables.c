@@ -2446,13 +2446,7 @@ vtn_handle_variables(struct vtn_builder *b, SpvOp opcode,
          vtn_assert(ptr->block_index);
       }
 
-      nir_intrinsic_instr *instr =
-         nir_intrinsic_instr_create(b->nb.shader,
-                                    nir_intrinsic_get_ssbo_size);
-      instr->src[0] = nir_src_for_ssa(ptr->block_index);
-      nir_ssa_dest_init(&instr->instr, &instr->dest, 1, 32, NULL);
-      nir_builder_instr_insert(&b->nb, &instr->instr);
-      nir_ssa_def *buf_size = &instr->dest.ssa;
+      nir_ssa_def *buf_size = nir_get_ssbo_size(&b->nb, ptr->block_index);
 
       /* array_length = max(buffer_size - offset, 0) / stride */
       nir_ssa_def *array_length =

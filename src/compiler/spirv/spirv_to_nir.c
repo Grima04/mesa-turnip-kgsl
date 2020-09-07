@@ -2401,7 +2401,8 @@ vtn_emit_scoped_control_barrier(struct vtn_builder *b, SpvScope exec_scope,
    else
       nir_mem_scope = vtn_scope_to_nir_scope(b, mem_scope);
 
-   nir_scoped_barrier(&b->nb, nir_exec_scope, nir_mem_scope, nir_semantics, modes);
+   nir_scoped_barrier(&b->nb, .execution_scope=nir_exec_scope, .memory_scope=nir_mem_scope,
+                              .memory_semantics=nir_semantics, .memory_modes=modes);
 }
 
 static void
@@ -2416,8 +2417,9 @@ vtn_emit_scoped_memory_barrier(struct vtn_builder *b, SpvScope scope,
    if (nir_semantics == 0 || modes == 0)
       return;
 
-   nir_scope nir_mem_scope = vtn_scope_to_nir_scope(b, scope);
-   nir_scoped_barrier(&b->nb, NIR_SCOPE_NONE, nir_mem_scope, nir_semantics, modes);
+   nir_scoped_barrier(&b->nb, .memory_scope=vtn_scope_to_nir_scope(b, scope),
+                              .memory_semantics=nir_semantics,
+                              .memory_modes=modes);
 }
 
 struct vtn_ssa_value *
@@ -3828,13 +3830,6 @@ vtn_handle_composite(struct vtn_builder *b, SpvOp opcode,
    vtn_push_ssa_value(b, w[2], ssa);
 }
 
-static void
-vtn_emit_barrier(struct vtn_builder *b, nir_intrinsic_op op)
-{
-   nir_intrinsic_instr *intrin = nir_intrinsic_instr_create(b->shader, op);
-   nir_builder_instr_insert(&b->nb, &intrin->instr);
-}
-
 void
 vtn_emit_memory_barrier(struct vtn_builder *b, SpvScope scope,
                         SpvMemorySemanticsMask semantics)
@@ -3862,7 +3857,7 @@ vtn_emit_memory_barrier(struct vtn_builder *b, SpvScope scope,
       return; /* Nothing to do here */
 
    if (scope == SpvScopeWorkgroup) {
-      vtn_emit_barrier(b, nir_intrinsic_group_memory_barrier);
+      nir_group_memory_barrier(&b->nb);
       return;
    }
 
@@ -3873,15 +3868,15 @@ vtn_emit_memory_barrier(struct vtn_builder *b, SpvScope scope,
     * semantic to the corresponding NIR one.
     */
    if (util_bitcount(semantics & all_memory_semantics) > 1) {
-      vtn_emit_barrier(b, nir_intrinsic_memory_barrier);
+      nir_memory_barrier(&b->nb);
       if (semantics & SpvMemorySemanticsOutputMemoryMask) {
          /* GLSL memoryBarrier() (and the corresponding NIR one) doesn't include
           * TCS outputs, so we have to emit it's own intrinsic for that. We
           * then need to emit another memory_barrier to prevent moving
           * non-output operations to before the tcs_patch barrier.
           */
-         vtn_emit_barrier(b, nir_intrinsic_memory_barrier_tcs_patch);
-         vtn_emit_barrier(b, nir_intrinsic_memory_barrier);
+         nir_memory_barrier_tcs_patch(&b->nb);
+         nir_memory_barrier(&b->nb);
       }
       return;
    }
@@ -3889,20 +3884,20 @@ vtn_emit_memory_barrier(struct vtn_builder *b, SpvScope scope,
    /* Issue a more specific barrier */
    switch (semantics & all_memory_semantics) {
    case SpvMemorySemanticsUniformMemoryMask:
-      vtn_emit_barrier(b, nir_intrinsic_memory_barrier_buffer);
+      nir_memory_barrier_buffer(&b->nb);
       break;
    case SpvMemorySemanticsWorkgroupMemoryMask:
-      vtn_emit_barrier(b, nir_intrinsic_memory_barrier_shared);
+      nir_memory_barrier_shared(&b->nb);
       break;
    case SpvMemorySemanticsAtomicCounterMemoryMask:
-      vtn_emit_barrier(b, nir_intrinsic_memory_barrier_atomic_counter);
+      nir_memory_barrier_atomic_counter(&b->nb);
       break;
    case SpvMemorySemanticsImageMemoryMask:
-      vtn_emit_barrier(b, nir_intrinsic_memory_barrier_image);
+      nir_memory_barrier_image(&b->nb);
       break;
    case SpvMemorySemanticsOutputMemoryMask:
       if (b->nb.shader->info.stage == MESA_SHADER_TESS_CTRL)
-         vtn_emit_barrier(b, nir_intrinsic_memory_barrier_tcs_patch);
+         nir_memory_barrier_tcs_patch(&b->nb);
       break;
    default:
       break;
@@ -3918,36 +3913,22 @@ vtn_handle_barrier(struct vtn_builder *b, SpvOp opcode,
    case SpvOpEmitStreamVertex:
    case SpvOpEndPrimitive:
    case SpvOpEndStreamPrimitive: {
-      nir_intrinsic_op intrinsic_op;
+      unsigned stream = 0;
+      if (opcode == SpvOpEmitStreamVertex || opcode == SpvOpEndStreamPrimitive)
+         stream = vtn_constant_uint(b, w[1]);
+
       switch (opcode) {
-      case SpvOpEmitVertex:
       case SpvOpEmitStreamVertex:
-         intrinsic_op = nir_intrinsic_emit_vertex;
+      case SpvOpEmitVertex:
+         nir_emit_vertex(&b->nb, stream);
          break;
       case SpvOpEndPrimitive:
       case SpvOpEndStreamPrimitive:
-         intrinsic_op = nir_intrinsic_end_primitive;
+         nir_end_primitive(&b->nb, stream);
          break;
       default:
          unreachable("Invalid opcode");
       }
-
-      nir_intrinsic_instr *intrin =
-         nir_intrinsic_instr_create(b->shader, intrinsic_op);
-
-      switch (opcode) {
-      case SpvOpEmitStreamVertex:
-      case SpvOpEndStreamPrimitive: {
-         unsigned stream = vtn_constant_uint(b, w[1]);
-         nir_intrinsic_set_stream_id(intrin, stream);
-         break;
-      }
-
-      default:
-         break;
-      }
-
-      nir_builder_instr_insert(&b->nb, &intrin->instr);
       break;
    }
 
@@ -4003,7 +3984,7 @@ vtn_handle_barrier(struct vtn_builder *b, SpvOp opcode,
          vtn_emit_memory_barrier(b, memory_scope, memory_semantics);
 
          if (execution_scope == SpvScopeWorkgroup)
-            vtn_emit_barrier(b, nir_intrinsic_control_barrier);
+            nir_control_barrier(&b->nb);
       }
       break;
    }
@@ -5511,27 +5492,20 @@ vtn_handle_body_instruction(struct vtn_builder *b, SpvOp opcode,
       break;
 
    case SpvOpBeginInvocationInterlockEXT:
-      vtn_emit_barrier(b, nir_intrinsic_begin_invocation_interlock);
+      nir_begin_invocation_interlock(&b->nb);
       break;
 
    case SpvOpEndInvocationInterlockEXT:
-      vtn_emit_barrier(b, nir_intrinsic_end_invocation_interlock);
+      nir_end_invocation_interlock(&b->nb);
       break;
 
    case SpvOpDemoteToHelperInvocationEXT: {
-      nir_intrinsic_instr *intrin =
-         nir_intrinsic_instr_create(b->shader, nir_intrinsic_demote);
-      nir_builder_instr_insert(&b->nb, &intrin->instr);
+      nir_demote(&b->nb);
       break;
    }
 
    case SpvOpIsHelperInvocationEXT: {
-      nir_intrinsic_instr *intrin =
-         nir_intrinsic_instr_create(b->shader, nir_intrinsic_is_helper_invocation);
-      nir_ssa_dest_init(&intrin->instr, &intrin->dest, 1, 1, NULL);
-      nir_builder_instr_insert(&b->nb, &intrin->instr);
-
-      vtn_push_nir_ssa(b, w[2], &intrin->dest.ssa);
+      vtn_push_nir_ssa(b, w[2], nir_is_helper_invocation(&b->nb, 1));
       break;
    }
 
@@ -5553,23 +5527,17 @@ vtn_handle_body_instruction(struct vtn_builder *b, SpvOp opcode,
       /* Operation supports two result types: uvec2 and uint64_t.  The NIR
        * intrinsic gives uvec2, so pack the result for the other case.
        */
-      nir_intrinsic_instr *intrin =
-         nir_intrinsic_instr_create(b->nb.shader, nir_intrinsic_shader_clock);
-      nir_ssa_dest_init(&intrin->instr, &intrin->dest, 2, 32, NULL);
-      nir_intrinsic_set_memory_scope(intrin, nir_scope);
-      nir_builder_instr_insert(&b->nb, &intrin->instr);
+      nir_ssa_def *result = nir_shader_clock(&b->nb, nir_scope);
 
       struct vtn_type *type = vtn_get_type(b, w[1]);
       const struct glsl_type *dest_type = type->type;
-      nir_ssa_def *result;
 
       if (glsl_type_is_vector(dest_type)) {
          assert(dest_type == glsl_vector_type(GLSL_TYPE_UINT, 2));
-         result = &intrin->dest.ssa;
       } else {
          assert(glsl_type_is_scalar(dest_type));
          assert(glsl_get_base_type(dest_type) == GLSL_TYPE_UINT64);
-         result = nir_pack_64_2x32(&b->nb, &intrin->dest.ssa);
+         result = nir_pack_64_2x32(&b->nb, result);
       }
 
       vtn_push_nir_ssa(b, w[2], result);
