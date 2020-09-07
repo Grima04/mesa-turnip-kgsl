@@ -776,7 +776,9 @@ validate_intrinsic_instr(nir_intrinsic_instr *instr, validate_state *state)
 
    if (nir_intrinsic_infos[instr->intrinsic].has_dest) {
       unsigned components_written = nir_intrinsic_dest_components(instr);
-      unsigned bit_sizes = nir_intrinsic_infos[instr->intrinsic].dest_bit_sizes;
+      unsigned bit_sizes = info->dest_bit_sizes;
+      if (!bit_sizes && info->bit_size_src >= 0)
+         bit_sizes = nir_src_bit_size(instr->src[info->bit_size_src]);
 
       validate_num_components(state, components_written);
       if (dest_bit_size && bit_sizes)

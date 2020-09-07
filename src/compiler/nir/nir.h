@@ -1820,6 +1820,15 @@ typedef struct {
    /** bitfield of legal bit sizes */
    uint8_t dest_bit_sizes;
 
+   /** source which the destination bit size must match
+    *
+    * Some intrinsics, such as subgroup intrinsics, are data manipulation
+    * intrinsics and they have similar bit-size rules to ALU ops. This enables
+    * validation to validate a bit more and enables auto-generated builder code
+    * to properly determine destination bit sizes automatically.
+    */
+   int8_t bit_size_src;
+
    /** the number of constant indices used by the intrinsic */
    uint8_t num_indices;
 

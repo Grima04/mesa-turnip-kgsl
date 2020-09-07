@@ -27,6 +27,12 @@
 # The Intrinsic class corresponds one-to-one with nir_intrinsic_info
 # structure.
 
+src0 = ('src', 0)
+src1 = ('src', 1)
+src2 = ('src', 2)
+src3 = ('src', 3)
+src4 = ('src', 4)
+
 class Index(object):
     def __init__(self, c_data_type, name):
         self.c_data_type = c_data_type
@@ -50,7 +56,7 @@ class Intrinsic(object):
        - indices: list of constant indicies
        - flags: list of semantic flags
        - sysval: is this a system-value intrinsic
-       - bit_sizes: allowed dest bit_sizes
+       - bit_sizes: allowed dest bit_sizes or the source it must match
        """
        assert isinstance(name, str)
        assert isinstance(src_components, list)
@@ -64,8 +70,12 @@ class Intrinsic(object):
        if flags:
            assert isinstance(flags[0], str)
        assert isinstance(sysval, bool)
-       if bit_sizes:
-           assert isinstance(bit_sizes[0], int)
+       if isinstance(bit_sizes, list):
+           assert not bit_sizes or isinstance(bit_sizes[0], int)
+       else:
+           assert isinstance(bit_sizes, tuple)
+           assert bit_sizes[0] == 'src'
+           assert isinstance(bit_sizes[1], int)
 
        self.name = name
        self.num_srcs = len(src_components)
@@ -76,7 +86,8 @@ class Intrinsic(object):
        self.indices = indices
        self.flags = flags
        self.sysval = sysval
-       self.bit_sizes = bit_sizes
+       self.bit_sizes = bit_sizes if isinstance(bit_sizes, list) else []
+       self.bit_size_src = bit_sizes[1] if isinstance(bit_sizes, tuple) else -1
 
 #
 # Possible flags:
@@ -329,8 +340,8 @@ intrinsic("shader_clock", dest_comp=2, flags=[CAN_ELIMINATE],
 #
 # GLSL functions from ARB_shader_ballot.
 intrinsic("ballot", src_comp=[1], dest_comp=0, flags=[CAN_ELIMINATE])
-intrinsic("read_invocation", src_comp=[0, 1], dest_comp=0, flags=[CAN_ELIMINATE])
-intrinsic("read_first_invocation", src_comp=[0], dest_comp=0, flags=[CAN_ELIMINATE])
+intrinsic("read_invocation", src_comp=[0, 1], dest_comp=0, bit_sizes=src0, flags=[CAN_ELIMINATE])
+intrinsic("read_first_invocation", src_comp=[0], dest_comp=0, bit_sizes=src0, flags=[CAN_ELIMINATE])
 
 # Additional SPIR-V ballot intrinsics
 #
@@ -380,10 +391,10 @@ intrinsic("ballot_find_lsb", src_comp=[4], dest_comp=1, flags=[CAN_ELIMINATE])
 intrinsic("ballot_find_msb", src_comp=[4], dest_comp=1, flags=[CAN_ELIMINATE])
 
 # Shuffle operations from SPIR-V.
-intrinsic("shuffle", src_comp=[0, 1], dest_comp=0, flags=[CAN_ELIMINATE])
-intrinsic("shuffle_xor", src_comp=[0, 1], dest_comp=0, flags=[CAN_ELIMINATE])
-intrinsic("shuffle_up", src_comp=[0, 1], dest_comp=0, flags=[CAN_ELIMINATE])
-intrinsic("shuffle_down", src_comp=[0, 1], dest_comp=0, flags=[CAN_ELIMINATE])
+intrinsic("shuffle", src_comp=[0, 1], dest_comp=0, bit_sizes=src0, flags=[CAN_ELIMINATE])
+intrinsic("shuffle_xor", src_comp=[0, 1], dest_comp=0, bit_sizes=src0, flags=[CAN_ELIMINATE])
+intrinsic("shuffle_up", src_comp=[0, 1], dest_comp=0, bit_sizes=src0, flags=[CAN_ELIMINATE])
+intrinsic("shuffle_down", src_comp=[0, 1], dest_comp=0, bit_sizes=src0, flags=[CAN_ELIMINATE])
 
 # Quad operations from SPIR-V.
 intrinsic("quad_broadcast", src_comp=[0, 1], dest_comp=0, flags=[CAN_ELIMINATE])
@@ -391,19 +402,20 @@ intrinsic("quad_swap_horizontal", src_comp=[0], dest_comp=0, flags=[CAN_ELIMINAT
 intrinsic("quad_swap_vertical", src_comp=[0], dest_comp=0, flags=[CAN_ELIMINATE])
 intrinsic("quad_swap_diagonal", src_comp=[0], dest_comp=0, flags=[CAN_ELIMINATE])
 
-intrinsic("reduce", src_comp=[0], dest_comp=0, indices=[REDUCTION_OP, CLUSTER_SIZE],
-          flags=[CAN_ELIMINATE])
-intrinsic("inclusive_scan", src_comp=[0], dest_comp=0, indices=[REDUCTION_OP],
-          flags=[CAN_ELIMINATE])
-intrinsic("exclusive_scan", src_comp=[0], dest_comp=0, indices=[REDUCTION_OP],
-          flags=[CAN_ELIMINATE])
+intrinsic("reduce", src_comp=[0], dest_comp=0, bit_sizes=src0,
+          indices=[REDUCTION_OP, CLUSTER_SIZE], flags=[CAN_ELIMINATE])
+intrinsic("inclusive_scan", src_comp=[0], dest_comp=0, bit_sizes=src0,
+          indices=[REDUCTION_OP], flags=[CAN_ELIMINATE])
+intrinsic("exclusive_scan", src_comp=[0], dest_comp=0, bit_sizes=src0,
+          indices=[REDUCTION_OP], flags=[CAN_ELIMINATE])
 
 # AMD shader ballot operations
-intrinsic("quad_swizzle_amd", src_comp=[0], dest_comp=0, indices=[SWIZZLE_MASK],
+intrinsic("quad_swizzle_amd", src_comp=[0], dest_comp=0, bit_sizes=src0,
+          indices=[SWIZZLE_MASK], flags=[CAN_ELIMINATE])
+intrinsic("masked_swizzle_amd", src_comp=[0], dest_comp=0, bit_sizes=src0,
+          indices=[SWIZZLE_MASK], flags=[CAN_ELIMINATE])
+intrinsic("write_invocation_amd", src_comp=[0, 0, 1], dest_comp=0, bit_sizes=src0,
           flags=[CAN_ELIMINATE])
-intrinsic("masked_swizzle_amd", src_comp=[0], dest_comp=0, indices=[SWIZZLE_MASK],
-          flags=[CAN_ELIMINATE])
-intrinsic("write_invocation_amd", src_comp=[0, 0, 1], dest_comp=0, flags=[CAN_ELIMINATE])
 intrinsic("mbcnt_amd", src_comp=[1], dest_comp=1, flags=[CAN_ELIMINATE])
 
 # Basic Geometry Shader intrinsics.
