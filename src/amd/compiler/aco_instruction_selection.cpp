@@ -7046,6 +7046,54 @@ void emit_uniform_subgroup(isel_context *ctx, nir_intrinsic_instr *instr, Temp s
    }
 }
 
+Pseudo_reduction_instruction *create_reduction_instr(isel_context *ctx, aco_opcode aco_op, ReduceOp op, Definition dst, Temp src)
+{
+   assert(src.bytes() <= 8);
+   Builder bld(ctx->program, ctx->block);
+
+   unsigned num_defs = 0;
+   Definition defs[5];
+   defs[num_defs++] = dst;
+   defs[num_defs++] = bld.def(bld.lm); /* used internally to save/restore exec */
+
+   /* scalar identity temporary */
+   bool need_sitmp = (ctx->program->chip_class <= GFX7 || ctx->program->chip_class >= GFX10) && aco_op != aco_opcode::p_reduce;
+   if (aco_op == aco_opcode::p_exclusive_scan) {
+      need_sitmp |=
+         (op == imin8 || op == imin16 || op == imin32 || op == imin64 ||
+          op == imax8 || op == imax16 || op == imax32 || op == imax64 ||
+          op == fmin16 || op == fmin32 || op == fmin64 ||
+          op == fmax16 || op == fmax32 || op == fmax64 ||
+          op == fmul16 || op == fmul64);
+   }
+   if (need_sitmp)
+      defs[num_defs++] = bld.def(RegType::sgpr, dst.size());
+
+   /* scc clobber */
+   defs[num_defs++] = bld.def(s1, scc);
+
+   /* vcc clobber */
+   bool clobber_vcc = false;
+   if ((op == iadd32 || op == imul64) && ctx->program->chip_class < GFX9)
+      clobber_vcc = true;
+   if (op == iadd64 || op == umin64 || op == umax64 || op == imin64 || op == imax64)
+      clobber_vcc = true;
+
+   if (clobber_vcc)
+      defs[num_defs++] = bld.def(bld.lm, vcc);
+
+   Pseudo_reduction_instruction *reduce = create_instruction<Pseudo_reduction_instruction>(aco_op, Format::PSEUDO_REDUCTION, 3, num_defs);
+   reduce->operands[0] = Operand(src);
+   /* setup_reduce_temp will update these undef operands if needed */
+   reduce->operands[1] = Operand(RegClass(RegType::vgpr, dst.size()).as_linear());
+   reduce->operands[2] = Operand(v1.as_linear());
+   std::copy(defs, defs + num_defs, reduce->definitions.begin());
+
+   reduce->reduce_op = op;
+
+   return reduce;
+}
+
 void emit_interp_center(isel_context *ctx, Temp dst, Temp pos1, Temp pos2)
 {
    Builder bld(ctx->program, ctx->block);
@@ -7661,21 +7709,10 @@ void visit_intrinsic(isel_context *ctx, nir_intrinsic_instr *instr)
                unreachable("unknown reduce intrinsic");
          }
 
-         aco_ptr<Pseudo_reduction_instruction> reduce{create_instruction<Pseudo_reduction_instruction>(aco_op, Format::PSEUDO_REDUCTION, 3, 5)};
-         reduce->operands[0] = Operand(src);
-         // filled in by aco_reduce_assign.cpp, used internally as part of the
-         // reduce sequence
-         assert(dst.size() == 1 || dst.size() == 2);
-         reduce->operands[1] = Operand(RegClass(RegType::vgpr, dst.size()).as_linear());
-         reduce->operands[2] = Operand(v1.as_linear());
-
          Temp tmp_dst = bld.tmp(dst.regClass());
-         reduce->definitions[0] = Definition(tmp_dst);
-         reduce->definitions[1] = bld.def(ctx->program->lane_mask); // used internally
-         reduce->definitions[2] = Definition();
-         reduce->definitions[3] = Definition(scc, s1);
-         reduce->definitions[4] = Definition();
-         reduce->reduce_op = reduce_op;
+         aco_ptr<Pseudo_reduction_instruction> reduce{
+            create_reduction_instr(ctx, aco_op, reduce_op, Definition(tmp_dst), src)};
+
          reduce->cluster_size = cluster_size;
          ctx->block->instructions.emplace_back(std::move(reduce));
 

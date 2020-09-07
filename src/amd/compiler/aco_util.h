@@ -216,6 +216,12 @@ public:
       --length;
    }
 
+   /*! \brief                 Adds an element to the end of the span
+   */
+   constexpr void push_back(const_reference val) noexcept {
+      *std::next(begin(), length++) = val;
+   }
+
    /*! \brief                 Clears the span
    */
    constexpr void clear() noexcept {

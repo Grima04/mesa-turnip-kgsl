@@ -152,34 +152,6 @@ void setup_reduce_temp(Program* program)
          instr->operands[1] = Operand(reduceTmp);
          if (need_vtmp)
             instr->operands[2] = Operand(vtmp);
-
-         /* scalar temporary */
-         Builder bld(program);
-         instr->definitions[1] = bld.def(s2);
-
-         /* scalar identity temporary */
-         bool need_sitmp = (program->chip_class <= GFX7 || program->chip_class >= GFX10) && instr->opcode != aco_opcode::p_reduce;
-         if (instr->opcode == aco_opcode::p_exclusive_scan) {
-            need_sitmp |=
-               (op == imin8 || op == imin16 || op == imin32 || op == imin64 ||
-                op == imax8 || op == imax16 || op == imax32 || op == imax64 ||
-                op == fmin16 || op == fmin32 || op == fmin64 ||
-                op == fmax16 || op == fmax32 || op == fmax64 ||
-                op == fmul16 || op == fmul64);
-         }
-         if (need_sitmp) {
-            instr->definitions[2] = bld.def(RegClass(RegType::sgpr, instr->operands[0].size()));
-         }
-
-         /* vcc clobber */
-         bool clobber_vcc = false;
-         if ((op == iadd32 || op == imul64) && program->chip_class < GFX9)
-            clobber_vcc = true;
-         if (op == iadd64 || op == umin64 || op == umax64 || op == imin64 || op == imax64)
-            clobber_vcc = true;
-
-         if (clobber_vcc)
-            instr->definitions[4] = Definition(vcc, bld.lm);
       }
    }
 }
