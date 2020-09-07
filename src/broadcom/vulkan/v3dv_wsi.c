@@ -243,10 +243,23 @@ VkResult v3dv_AcquireNextImage2KHR(
     uint32_t*                                    pImageIndex)
 {
    V3DV_FROM_HANDLE(v3dv_device, device, _device);
+   V3DV_FROM_HANDLE(v3dv_fence, fence, pAcquireInfo->fence);
+   V3DV_FROM_HANDLE(v3dv_semaphore, semaphore, pAcquireInfo->semaphore);
+
    struct v3dv_physical_device *pdevice = &device->instance->physicalDevice;
 
-   return wsi_common_acquire_next_image2(&pdevice->wsi_device, _device,
-                                         pAcquireInfo, pImageIndex);
+   VkResult result;
+   result = wsi_common_acquire_next_image2(&pdevice->wsi_device, _device,
+                                           pAcquireInfo, pImageIndex);
+
+   if (result == VK_SUCCESS || result == VK_SUBOPTIMAL_KHR) {
+      if (fence)
+         drmSyncobjSignal(device->render_fd, &fence->sync, 1);
+      if (semaphore)
+         drmSyncobjSignal(device->render_fd, &semaphore->sync, 1);
+   }
+
+   return result;
 }
 
 VkResult v3dv_QueuePresentKHR(
