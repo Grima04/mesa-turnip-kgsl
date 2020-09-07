@@ -896,6 +896,44 @@ llvmpipe_get_resource_info(struct pipe_screen *screen,
    *offset = 0;
 }
 
+static bool
+llvmpipe_resource_get_param(struct pipe_screen *screen,
+                            struct pipe_context *context,
+                            struct pipe_resource *resource,
+                            unsigned plane,
+                            unsigned layer,
+                            unsigned level,
+                            enum pipe_resource_param param,
+                            unsigned handle_usage,
+                            uint64_t *value)
+{
+   struct llvmpipe_resource *lpr = llvmpipe_resource(resource);
+
+   switch (param) {
+   case PIPE_RESOURCE_PARAM_NPLANES:
+      *value = 1;
+      return true;
+   case PIPE_RESOURCE_PARAM_STRIDE:
+      *value = lpr->row_stride[level];
+      return true;
+   case PIPE_RESOURCE_PARAM_OFFSET:
+      *value = lpr->mip_offsets[level] + (lpr->img_stride[level] * layer);
+      return true;
+   case PIPE_RESOURCE_PARAM_LAYER_STRIDE:
+      *value = lpr->img_stride[level];
+      return true;
+   case PIPE_RESOURCE_PARAM_MODIFIER:
+   case PIPE_RESOURCE_PARAM_HANDLE_TYPE_SHARED:
+   case PIPE_RESOURCE_PARAM_HANDLE_TYPE_KMS:
+   case PIPE_RESOURCE_PARAM_HANDLE_TYPE_FD:
+   default:
+      break;
+   }
+   assert(0);
+   *value = 0;
+   return false;
+}
+
 void
 llvmpipe_init_screen_resource_funcs(struct pipe_screen *screen)
 {
@@ -921,6 +959,7 @@ llvmpipe_init_screen_resource_funcs(struct pipe_screen *screen)
    screen->resource_create_unbacked = llvmpipe_resource_create_unbacked;
 
    screen->resource_get_info = llvmpipe_get_resource_info;
+   screen->resource_get_param = llvmpipe_resource_get_param;
    screen->allocate_memory = llvmpipe_allocate_memory;
    screen->free_memory = llvmpipe_free_memory;
    screen->map_memory = llvmpipe_map_memory;
