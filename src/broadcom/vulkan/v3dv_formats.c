@@ -650,6 +650,12 @@ get_image_format_properties(
       unreachable("bad VkImageType");
    }
 
+   /* Our hw doesn't support 1D compressed textures. */
+   if (info->type == VK_IMAGE_TYPE_1D &&
+       vk_format_is_compressed(info->format)) {
+       goto unsupported;
+   }
+
    /* From the Vulkan 1.0 spec, section 34.1.1. Supported Sample Counts:
     *
     * sampleCounts will be set to VK_SAMPLE_COUNT_1_BIT if at least one of the
