@@ -972,12 +972,11 @@ static int get_format(int format)
    return -1;
 }
 
-static _EGLImage *
+static __DRIimage *
 droid_create_image_from_name(_EGLDisplay *disp,
                              struct ANativeWindowBuffer *buf)
 {
    struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
-   __DRIimage *dri_image;
    int name;
    int format;
 
@@ -998,7 +997,7 @@ droid_create_image_from_name(_EGLDisplay *disp,
 					   format,
 					   name,
 					   buf->stride,
-					   dri2_img);
+					   NULL);
 }
 #endif /* HAVE_DRM_GRALLOC */
 
