@@ -620,8 +620,43 @@ v3dv_CreateImageView(VkDevice _device,
    iview->offset =
       v3dv_layer_offset(image, iview->base_level, iview->first_layer);
 
-   iview->vk_format = pCreateInfo->format;
-   iview->format = v3dv_get_format(pCreateInfo->format);
+   /* If we have D24S8 format but the view only selects the stencil aspect
+    * we want to re-interpret the format as RGBA8_UINT, then map our stencil
+    * data reads to the R component and ignore the GBA channels that contain
+    * the depth aspect data.
+    */
+   VkFormat format;
+   uint8_t image_view_swizzle[4];
+   if (pCreateInfo->format == VK_FORMAT_D24_UNORM_S8_UINT &&
+       range->aspectMask == VK_IMAGE_ASPECT_STENCIL_BIT) {
+      format = VK_FORMAT_R8G8B8A8_UINT;
+      image_view_swizzle[0] = PIPE_SWIZZLE_X;
+      image_view_swizzle[1] = PIPE_SWIZZLE_0;
+      image_view_swizzle[2] = PIPE_SWIZZLE_0;
+      image_view_swizzle[3] = PIPE_SWIZZLE_1;
+   } else {
+      format = pCreateInfo->format;
+
+      /* FIXME: we are doing this vk to pipe swizzle mapping just to call
+       * util_format_compose_swizzles. Would be good to check if it would be
+       * better to reimplement the latter using vk component
+       */
+      image_view_swizzle[0] =
+         vk_component_mapping_to_pipe_swizzle(VK_COMPONENT_SWIZZLE_R,
+                                              pCreateInfo->components.r);
+      image_view_swizzle[1] =
+         vk_component_mapping_to_pipe_swizzle(VK_COMPONENT_SWIZZLE_G,
+                                              pCreateInfo->components.g);
+      image_view_swizzle[2] =
+         vk_component_mapping_to_pipe_swizzle(VK_COMPONENT_SWIZZLE_B,
+                                              pCreateInfo->components.b);
+      image_view_swizzle[3] =
+         vk_component_mapping_to_pipe_swizzle(VK_COMPONENT_SWIZZLE_A,
+                                              pCreateInfo->components.a);
+   }
+
+   iview->vk_format = format;
+   iview->format = v3dv_get_format(format);
    assert(iview->format && iview->format->supported);
    iview->swap_rb = iview->format->swizzle[0] == PIPE_SWIZZLE_Z;
 
@@ -650,24 +685,9 @@ v3dv_CreateImageView(VkDevice _device,
                                                    &iview->internal_bpp);
    }
 
-   /* FIXME: we are doing this vk to pipe swizzle mapping just to call
-    * util_format_compose_swizzles. Would be good to check if it would be
-    * better to reimplement the latter using vk component
-    */
-   uint8_t image_view_swizzle[4] = {
-      vk_component_mapping_to_pipe_swizzle(VK_COMPONENT_SWIZZLE_R,
-                                           pCreateInfo->components.r),
-      vk_component_mapping_to_pipe_swizzle(VK_COMPONENT_SWIZZLE_G,
-                                           pCreateInfo->components.g),
-      vk_component_mapping_to_pipe_swizzle(VK_COMPONENT_SWIZZLE_B,
-                                           pCreateInfo->components.b),
-      vk_component_mapping_to_pipe_swizzle(VK_COMPONENT_SWIZZLE_A,
-                                           pCreateInfo->components.a),
-   };
-   const uint8_t *format_swizzle =
-      v3dv_get_format_swizzle(iview->vk_format);
-
-   util_format_compose_swizzles(format_swizzle, image_view_swizzle, iview->swizzle);
+   const uint8_t *format_swizzle = v3dv_get_format_swizzle(format);
+   util_format_compose_swizzles(format_swizzle, image_view_swizzle,
+                                iview->swizzle);
 
    pack_texture_shader_state(device, iview);
 
