@@ -44,6 +44,9 @@ stages:
 # --------------------------------
 .rules-anchors:
   rules:
+    # Forked project branch / pre-merge pipeline
+    - if: &is-forked-branch-or-pre-merge '$CI_PROJECT_PATH != "mesa/mesa" || $CI_MERGE_REQUEST_SOURCE_BRANCH_NAME == $CI_COMMIT_REF_NAME'
+      when: manual
     # Pipeline runs for the master branch of the main project
     - if: &is-main-master '$CI_PROJECT_NAMESPACE == "mesa" && $CI_COMMIT_REF_NAME == "master"'
       when: always
@@ -91,7 +94,7 @@ test-docs:
     - if: *is-post-merge-not-for-marge
       changes: *docs-or-ci
       when: on_success
-    - if: '$CI_PROJECT_PATH != "mesa/mesa" || $CI_MERGE_REQUEST_SOURCE_BRANCH_NAME == $CI_COMMIT_REF_NAME'
+    - if: *is-forked-branch-or-pre-merge
       changes: *docs-or-ci
       when: manual
     # Other cases default to never
