@@ -183,76 +183,6 @@ pandecode_validate_buffer(mali_ptr addr, size_t sz)
         }
 }
 
-struct pandecode_flag_info {
-        u64 flag;
-        const char *name;
-};
-
-static void
-pandecode_log_decoded_flags(const struct pandecode_flag_info *flag_info,
-                            u64 flags)
-{
-        bool decodable_flags_found = false;
-
-        for (int i = 0; flag_info[i].name; i++) {
-                if ((flags & flag_info[i].flag) != flag_info[i].flag)
-                        continue;
-
-                if (!decodable_flags_found) {
-                        decodable_flags_found = true;
-                } else {
-                        pandecode_log_cont(" | ");
-                }
-
-                pandecode_log_cont("%s", flag_info[i].name);
-
-                flags &= ~flag_info[i].flag;
-        }
-
-        if (decodable_flags_found) {
-                if (flags)
-                        pandecode_log_cont(" | 0x%" PRIx64, flags);
-        } else {
-                pandecode_log_cont("0x%" PRIx64, flags);
-        }
-}
-
-#define FLAG_INFO(flag) { MALI_MFBD_FORMAT_##flag, "MALI_MFBD_FORMAT_" #flag }
-static const struct pandecode_flag_info mfbd_fmt_flag_info[] = {
-        FLAG_INFO(SRGB),
-        {}
-};
-#undef FLAG_INFO
-
-#define FLAG_INFO(flag) { MALI_AFBC_##flag, "MALI_AFBC_" #flag }
-static const struct pandecode_flag_info afbc_fmt_flag_info[] = {
-        FLAG_INFO(YTR),
-        {}
-};
-#undef FLAG_INFO
-
-#define FLAG_INFO(flag) { MALI_EXTRA_##flag, "MALI_EXTRA_" #flag }
-static const struct pandecode_flag_info mfbd_extra_flag_hi_info[] = {
-        FLAG_INFO(PRESENT),
-        {}
-};
-#undef FLAG_INFO
-
-#define FLAG_INFO(flag) { MALI_EXTRA_##flag, "MALI_EXTRA_" #flag }
-static const struct pandecode_flag_info mfbd_extra_flag_lo_info[] = {
-        FLAG_INFO(ZS),
-        {}
-};
-#undef FLAG_INFO
-
-#define FLAG_INFO(flag) { MALI_MFBD_##flag, "MALI_MFBD_" #flag }
-static const struct pandecode_flag_info mfbd_flag_info [] = {
-        FLAG_INFO(DEPTH_WRITE),
-        FLAG_INFO(EXTRA),
-        {}
-};
-#undef FLAG_INFO
-
 /* Midgard's tiler descriptor is embedded within the
  * larger FBD */
 
@@ -348,30 +278,6 @@ pandecode_midgard_tiler_descriptor(
 
         if (nonzero_weights)
                 DUMP_UNPACKED(MIDGARD_TILER_WEIGHTS, w, "Tiler Weights:\n");
-}
-
-/* TODO: The Bifrost tiler is not understood at all yet */
-
-static void
-pandecode_bifrost_tiler_descriptor(const struct mali_framebuffer *fb)
-{
-        pandecode_log(".tiler = {\n");
-        pandecode_indent++;
-
-        MEMORY_PROP(fb, tiler_meta);
-
-        for (int i = 0; i < 16; i++) {
-                if (fb->zeros[i] != 0) {
-                        pandecode_msg("XXX: tiler descriptor zero %d tripped, value %x\n",
-                                      i, fb->zeros[i]);
-                }
-        }
-
-        pandecode_log("},\n");
-
-        pandecode_indent--;
-        pandecode_log("}\n");
-
 }
 
 /* Information about the framebuffer passed back for
@@ -524,111 +430,49 @@ pandecode_swizzle(unsigned swizzle, enum mali_format format)
 }
 
 static void
-pandecode_rt_format(struct mali_rt_format format)
+pandecode_render_target(uint64_t gpu_va, unsigned job_no, bool is_bifrost, unsigned gpu_id,
+                        const struct MALI_MULTI_TARGET_FRAMEBUFFER_PARAMETERS *fb)
 {
-        pandecode_log(".format = {\n");
+        pandecode_log("Color Render Targets:\n");
         pandecode_indent++;
 
-        pandecode_prop("unk1 = 0x%" PRIx32, format.unk1);
-        pandecode_prop("unk2 = 0x%" PRIx32, format.unk2);
-        pandecode_prop("unk3 = 0x%" PRIx32, format.unk3);
-        pandecode_prop("unk4 = 0x%" PRIx32, format.unk4);
-
-        pandecode_prop("block = %s", mali_block_format_as_str(format.block));
-
-        /* TODO: Map formats so we can check swizzles and print nicely */
-        pandecode_log("swizzle");
-        pandecode_swizzle(format.swizzle, MALI_RGBA8_UNORM);
-        pandecode_log_cont(",\n");
-
-        pandecode_prop("nr_channels = MALI_POSITIVE(%d)",
-                       (format.nr_channels + 1));
-
-        pandecode_log(".flags = ");
-        pandecode_log_decoded_flags(mfbd_fmt_flag_info, format.flags);
-        pandecode_log_cont(",\n");
-
-        pandecode_prop("msaa = %s", mali_msaa_as_str(format.msaa));
-
-        /* In theory, the no_preload bit can be cleared to enable MFBD preload,
-         * which is a faster hardware-based alternative to the wallpaper method
-         * to preserve framebuffer contents across frames. In practice, MFBD
-         * preload is buggy on Midgard, and so this is a chicken bit. If this
-         * bit isn't set, most likely something broke unrelated to preload */
-
-        if (!format.no_preload) {
-                pandecode_msg("XXX: buggy MFBD preload enabled - chicken bit should be clear\n");
-                pandecode_prop("no_preload = 0x%" PRIx32, format.no_preload);
+        for (int i = 0; i < (fb->render_target_count); i++) {
+                mali_ptr rt_va = gpu_va + i * MALI_RENDER_TARGET_LENGTH;
+                struct pandecode_mapped_memory *mem =
+                        pandecode_find_mapped_gpu_mem_containing(rt_va);
+                const struct mali_render_target_packed *PANDECODE_PTR_VAR(rtp, mem, (mali_ptr) rt_va);
+                DUMP_CL(RENDER_TARGET, rtp, "Color Render Target %d:\n", i);
         }
 
-        if (format.zero)
-                pandecode_prop("zero = 0x%" PRIx32, format.zero);
-
         pandecode_indent--;
-        pandecode_log("},\n");
+        pandecode_log("\n");
 }
 
 static void
-pandecode_render_target(uint64_t gpu_va, unsigned job_no, const struct mali_framebuffer *fb)
+pandecode_mfbd_bifrost_deps(const void *fb, int job_no)
 {
-        pandecode_log("struct mali_render_target rts_list_%"PRIx64"_%d[] = {\n", gpu_va, job_no);
+        pan_section_unpack(fb, MULTI_TARGET_FRAMEBUFFER, BIFROST_PARAMETERS, params);
+
+        /* The blob stores all possible sample locations in a single buffer
+         * allocated on startup, and just switches the pointer when switching
+         * MSAA state. For now, we just put the data into the cmdstream, but we
+         * should do something like what the blob does with a real driver.
+         *
+         * There seem to be 32 slots for sample locations, followed by another
+         * 16. The second 16 is just the center location followed by 15 zeros
+         * in all the cases I've identified (maybe shader vs. depth/color
+         * samples?).
+         */
+
+        struct pandecode_mapped_memory *smem =
+                pandecode_find_mapped_gpu_mem_containing(params.sample_locations);
+
+        const u16 *PANDECODE_PTR_VAR(samples, smem, params.sample_locations);
+
+        pandecode_log("uint16_t sample_locations_%d[] = {\n", job_no);
         pandecode_indent++;
-
-        for (int i = 0; i < (fb->rt_count_1 + 1); i++) {
-                mali_ptr rt_va = gpu_va + i * sizeof(struct mali_render_target);
-                struct pandecode_mapped_memory *mem =
-                        pandecode_find_mapped_gpu_mem_containing(rt_va);
-                const struct mali_render_target *PANDECODE_PTR_VAR(rt, mem, (mali_ptr) rt_va);
-
-                pandecode_log("{\n");
-                pandecode_indent++;
-
-                pandecode_rt_format(rt->format);
-
-                if (rt->format.block == MALI_BLOCK_FORMAT_AFBC) {
-                        pandecode_log(".afbc = {\n");
-                        pandecode_indent++;
-
-                        char *a = pointer_as_memory_reference(rt->afbc.metadata);
-                        pandecode_prop("metadata = %s", a);
-                        free(a);
-
-                        pandecode_prop("stride = %d", rt->afbc.stride);
-
-                        pandecode_log(".flags = ");
-                        pandecode_log_decoded_flags(afbc_fmt_flag_info, rt->afbc.flags);
-                        pandecode_log_cont(",\n");
-
-                        pandecode_indent--;
-                        pandecode_log("},\n");
-                } else if (rt->afbc.metadata || rt->afbc.stride || rt->afbc.flags) {
-                        pandecode_msg("XXX: AFBC disabled but AFBC field set (0x%lX, 0x%x, 0x%x)\n",
-                                        rt->afbc.metadata,
-                                        rt->afbc.stride,
-                                        rt->afbc.flags);
-                }
-
-                MEMORY_PROP(rt, framebuffer);
-                pandecode_prop("framebuffer_stride = %d", rt->framebuffer_stride);
-
-                if (rt->layer_stride)
-                        pandecode_prop("layer_stride = %d", rt->layer_stride);
-
-                if (rt->clear_color_1 | rt->clear_color_2 | rt->clear_color_3 | rt->clear_color_4) {
-                        pandecode_prop("clear_color_1 = 0x%" PRIx32, rt->clear_color_1);
-                        pandecode_prop("clear_color_2 = 0x%" PRIx32, rt->clear_color_2);
-                        pandecode_prop("clear_color_3 = 0x%" PRIx32, rt->clear_color_3);
-                        pandecode_prop("clear_color_4 = 0x%" PRIx32, rt->clear_color_4);
-                }
-
-                if (rt->zero1 || rt->zero2) {
-                        pandecode_msg("XXX: render target zeros tripped\n");
-                        pandecode_prop("zero1 = 0x%" PRIx64, rt->zero1);
-                        pandecode_prop("zero2 = 0x%" PRIx32, rt->zero2);
-                }
-
-                pandecode_indent--;
-                pandecode_log("},\n");
+        for (int i = 0; i < 32 + 16; i++) {
+                pandecode_log("%d, %d,\n", samples[2 * i], samples[2 * i + 1]);
         }
 
         pandecode_indent--;
@@ -636,212 +480,66 @@ pandecode_render_target(uint64_t gpu_va, unsigned job_no, const struct mali_fram
 }
 
 static struct pandecode_fbd
-pandecode_mfbd_bfr(uint64_t gpu_va, int job_no, bool is_fragment, bool is_compute, bool is_bifrost)
+pandecode_mfbd_bfr(uint64_t gpu_va, int job_no, bool is_fragment, bool is_compute, bool is_bifrost, unsigned gpu_id)
 {
         struct pandecode_mapped_memory *mem = pandecode_find_mapped_gpu_mem_containing(gpu_va);
-        const struct mali_framebuffer *PANDECODE_PTR_VAR(fb, mem, (mali_ptr) gpu_va);
+        const void *PANDECODE_PTR_VAR(fb, mem, (mali_ptr) gpu_va);
+        pan_section_unpack(fb, MULTI_TARGET_FRAMEBUFFER, PARAMETERS, params);
 
         struct pandecode_fbd info;
 
-        if (is_bifrost && fb->msaa.sample_locations) {
-                /* The blob stores all possible sample locations in a single buffer
-                 * allocated on startup, and just switches the pointer when switching
-                 * MSAA state. For now, we just put the data into the cmdstream, but we
-                 * should do something like what the blob does with a real driver.
-                 *
-                 * There seem to be 32 slots for sample locations, followed by another
-                 * 16. The second 16 is just the center location followed by 15 zeros
-                 * in all the cases I've identified (maybe shader vs. depth/color
-                 * samples?).
-                 */
-
-                struct pandecode_mapped_memory *smem = pandecode_find_mapped_gpu_mem_containing(fb->msaa.sample_locations);
-
-                const u16 *PANDECODE_PTR_VAR(samples, smem, fb->msaa.sample_locations);
-
-                pandecode_log("uint16_t sample_locations_%d[] = {\n", job_no);
-                pandecode_indent++;
-
-                for (int i = 0; i < 32 + 16; i++) {
-                        pandecode_log("%d, %d,\n", samples[2 * i], samples[2 * i + 1]);
-                }
-
-                pandecode_indent--;
-                pandecode_log("};\n");
-        }
+        if (is_bifrost)
+                pandecode_mfbd_bifrost_deps(fb, job_no);
  
-        pandecode_log("struct mali_framebuffer framebuffer_%"PRIx64"_%d = {\n", gpu_va, job_no);
+        pandecode_log("Multi-Target Framebuffer:\n");
         pandecode_indent++;
 
         if (is_bifrost) {
-                pandecode_log(".msaa = {\n");
-                pandecode_indent++;
-
-                if (fb->msaa.sample_locations)
-                        pandecode_prop("sample_locations = sample_locations_%d", job_no);
-                else
-                        pandecode_msg("XXX: sample_locations missing\n");
-
-                if (fb->msaa.zero1 || fb->msaa.zero2 || fb->msaa.zero4) {
-                        pandecode_msg("XXX: multisampling zero tripped\n");
-                        pandecode_prop("zero1 = %" PRIx64, fb->msaa.zero1);
-                        pandecode_prop("zero2 = %" PRIx64, fb->msaa.zero2);
-                        pandecode_prop("zero4 = %" PRIx64, fb->msaa.zero4);
-                }
-
-                pandecode_indent--;
-                pandecode_log("},\n");
+                DUMP_SECTION(MULTI_TARGET_FRAMEBUFFER, BIFROST_PARAMETERS, fb, "Bifrost Params:\n");
         } else {
-                struct mali_local_storage_packed ls = fb->shared_memory;
-                DUMP_CL(LOCAL_STORAGE, &ls, "Local Storage:\n");
+                DUMP_SECTION(MULTI_TARGET_FRAMEBUFFER, LOCAL_STORAGE, fb, "Local Storage:\n");
         }
 
-        info.width = fb->width1 + 1;
-        info.height = fb->height1 + 1;
-        info.rt_count = fb->rt_count_1 + 1;
+        info.width = params.width;
+        info.height = params.height;
+        info.rt_count = params.render_target_count;
+        DUMP_UNPACKED(MULTI_TARGET_FRAMEBUFFER_PARAMETERS, params, "Parameters:\n");
 
-        pandecode_prop("width1 = MALI_POSITIVE(%d)", fb->width1 + 1);
-        pandecode_prop("height1 = MALI_POSITIVE(%d)", fb->height1 + 1);
-        pandecode_prop("width2 = MALI_POSITIVE(%d)", fb->width2 + 1);
-        pandecode_prop("height2 = MALI_POSITIVE(%d)", fb->height2 + 1);
-
-        pandecode_prop("unk1 = 0x%x", fb->unk1);
-        pandecode_prop("unk2 = 0x%x", fb->unk2);
-        pandecode_prop("rt_count_1 = MALI_POSITIVE(%d)", fb->rt_count_1 + 1);
-        pandecode_prop("rt_count_2 = %d", fb->rt_count_2);
-
-        pandecode_log(".mfbd_flags = ");
-        pandecode_log_decoded_flags(mfbd_flag_info, fb->mfbd_flags);
-        pandecode_log_cont(",\n");
-
-        if (fb->clear_stencil)
-                pandecode_prop("clear_stencil = 0x%x", fb->clear_stencil);
-
-        if (fb->clear_depth)
-                pandecode_prop("clear_depth = %f", fb->clear_depth);
-
-        if (!is_compute)
-                if (is_bifrost)
-                        pandecode_bifrost_tiler_descriptor(fb);
-                else {
-                        const struct mali_midgard_tiler_packed t = fb->tiler;
-                        const struct mali_midgard_tiler_weights_packed w = fb->tiler_weights;
-                        pandecode_midgard_tiler_descriptor(&t, &w, fb->width1 + 1, fb->height1 + 1, is_fragment, true);
+        if (!is_compute) {
+                if (is_bifrost) {
+                        DUMP_SECTION(MULTI_TARGET_FRAMEBUFFER, BIFROST_TILER_POINTER, fb, "Tiler Pointer");
+                } else {
+                        const void *t = pan_section_ptr(fb, MULTI_TARGET_FRAMEBUFFER, TILER);
+                        const void *w = pan_section_ptr(fb, MULTI_TARGET_FRAMEBUFFER, TILER_WEIGHTS);
+                        pandecode_midgard_tiler_descriptor(t, w, params.width, params.height, is_fragment, true);
                 }
-        else
+	} else {
                 pandecode_msg("XXX: skipping compute MFBD, fixme\n");
+        }
 
-        if (fb->zero3 || fb->zero4) {
-                pandecode_msg("XXX: framebuffer zeros tripped\n");
-                pandecode_prop("zero3 = 0x%" PRIx32, fb->zero3);
-                pandecode_prop("zero4 = 0x%" PRIx32, fb->zero4);
+        if (is_bifrost) {
+                pan_section_unpack(fb, MULTI_TARGET_FRAMEBUFFER, BIFROST_PADDING, padding);
         }
 
         pandecode_indent--;
-        pandecode_log("};\n");
+        pandecode_log("\n");
 
-        gpu_va += sizeof(struct mali_framebuffer);
+        gpu_va += MALI_MULTI_TARGET_FRAMEBUFFER_LENGTH;
 
-        info.has_extra = (fb->mfbd_flags & MALI_MFBD_EXTRA) && is_fragment;
+        info.has_extra = params.has_zs_crc_extension;
 
         if (info.has_extra) {
-                mem = pandecode_find_mapped_gpu_mem_containing(gpu_va);
-                const struct mali_framebuffer_extra *PANDECODE_PTR_VAR(fbx, mem, (mali_ptr) gpu_va);
+                struct pandecode_mapped_memory *mem =
+                        pandecode_find_mapped_gpu_mem_containing(gpu_va);
+                const struct mali_zs_crc_extension_packed *PANDECODE_PTR_VAR(zs_crc, mem, (mali_ptr)gpu_va);
+                DUMP_CL(ZS_CRC_EXTENSION, zs_crc, "ZS CRC Extension:\n");
+                pandecode_log("\n");
 
-                pandecode_log("struct mali_framebuffer_extra fb_extra_%"PRIx64"_%d = {\n", gpu_va, job_no);
-                pandecode_indent++;
-
-                MEMORY_PROP(fbx, checksum);
-
-                if (fbx->checksum_stride)
-                        pandecode_prop("checksum_stride = %d", fbx->checksum_stride);
-
-                pandecode_log(".flags_hi = ");
-                pandecode_log_decoded_flags(mfbd_extra_flag_hi_info, fbx->flags_hi);
-                pandecode_log_cont(",\n");
-
-                pandecode_log(".flags_lo = ");
-                pandecode_log_decoded_flags(mfbd_extra_flag_lo_info, fbx->flags_lo);
-                pandecode_log_cont(",\n");
-
-                pandecode_prop("zs_block = %s", mali_block_format_as_str(fbx->zs_block));
-                pandecode_prop("zs_samples = MALI_POSITIVE(%u)", fbx->zs_samples + 1);
-
-                if (fbx->zs_block == MALI_BLOCK_FORMAT_AFBC) {
-                        pandecode_log(".ds_afbc = {\n");
-                        pandecode_indent++;
-
-                        MEMORY_PROP_DIR(fbx->ds_afbc, depth_stencil_afbc_metadata);
-                        pandecode_prop("depth_stencil_afbc_stride = %d",
-                                       fbx->ds_afbc.depth_stencil_afbc_stride);
-                        MEMORY_PROP_DIR(fbx->ds_afbc, depth_stencil);
-
-                        pandecode_log(".flags = ");
-                        pandecode_log_decoded_flags(afbc_fmt_flag_info, fbx->ds_afbc.flags);
-                        pandecode_log_cont(",\n");
-
-                        if (fbx->ds_afbc.padding) {
-                                pandecode_msg("XXX: Depth/stencil AFBC zeros tripped\n");
-                                pandecode_prop("padding = 0x%" PRIx64, fbx->ds_afbc.padding);
-                        }
-
-                        pandecode_indent--;
-                        pandecode_log("},\n");
-                } else {
-                        pandecode_log(".ds_linear = {\n");
-                        pandecode_indent++;
-
-                        if (fbx->ds_linear.depth) {
-                                MEMORY_PROP_DIR(fbx->ds_linear, depth);
-                                pandecode_prop("depth_stride = %d",
-                                               fbx->ds_linear.depth_stride);
-                                pandecode_prop("depth_layer_stride = %d",
-                                               fbx->ds_linear.depth_layer_stride);
-                        } else if (fbx->ds_linear.depth_stride || fbx->ds_linear.depth_layer_stride) {
-                                pandecode_msg("XXX: depth stride zero tripped %d %d\n", fbx->ds_linear.depth_stride, fbx->ds_linear.depth_layer_stride);
-                        }
-
-                        if (fbx->ds_linear.stencil) {
-                                MEMORY_PROP_DIR(fbx->ds_linear, stencil);
-                                pandecode_prop("stencil_stride = %d",
-                                               fbx->ds_linear.stencil_stride);
-                                pandecode_prop("stencil_layer_stride = %d",
-                                               fbx->ds_linear.stencil_layer_stride);
-                        } else if (fbx->ds_linear.stencil_stride || fbx->ds_linear.stencil_layer_stride) {
-                                pandecode_msg("XXX: stencil stride zero tripped %d %d\n", fbx->ds_linear.stencil_stride, fbx->ds_linear.stencil_layer_stride);
-                        }
-
-                        if (fbx->ds_linear.depth_stride_zero ||
-                            fbx->ds_linear.stencil_stride_zero) {
-                                pandecode_msg("XXX: Depth/stencil zeros tripped\n");
-                                pandecode_prop("depth_stride_zero = 0x%x",
-                                               fbx->ds_linear.depth_stride_zero);
-                                pandecode_prop("stencil_stride_zero = 0x%x",
-                                               fbx->ds_linear.stencil_stride_zero);
-                        }
-
-                        pandecode_indent--;
-                        pandecode_log("},\n");
-                }
-
-                if (fbx->clear_color_1 | fbx->clear_color_2) {
-                        pandecode_prop("clear_color_1 = 0x%" PRIx32, fbx->clear_color_1);
-                        pandecode_prop("clear_color_2 = 0x%" PRIx32, fbx->clear_color_2);
-                }
-
-                if (fbx->zero3) {
-                        pandecode_msg("XXX: fb_extra zeros tripped\n");
-                        pandecode_prop("zero3 = 0x%" PRIx64, fbx->zero3);
-                }
-
-                pandecode_indent--;
-                pandecode_log("};\n");
-
-                gpu_va += sizeof(struct mali_framebuffer_extra);
+                gpu_va += MALI_ZS_CRC_EXTENSION_LENGTH;
         }
 
         if (is_fragment)
-                pandecode_render_target(gpu_va, job_no, fb);
+                pandecode_render_target(gpu_va, job_no, is_bifrost, gpu_id, &params);
 
         return info;
 }
@@ -1412,8 +1110,9 @@ pandecode_vertex_tiler_postfix_pre(
 
         if (is_bifrost)
                 pandecode_compute_fbd(p->shared & ~1, job_no);
-        else if (p->shared & MALI_MFBD)
-                fbd_info = pandecode_mfbd_bfr((u64) ((uintptr_t) p->shared) & FBD_MASK, job_no, false, job_type == MALI_JOB_TYPE_COMPUTE, false);
+        else if (p->shared & MALI_FBD_TAG_IS_MFBD)
+                fbd_info = pandecode_mfbd_bfr((u64) ((uintptr_t) p->shared) & ~MALI_FBD_TAG_MASK,
+                                              job_no, false, job_type == MALI_JOB_TYPE_COMPUTE, is_bifrost, gpu_id);
         else if (job_type == MALI_JOB_TYPE_COMPUTE)
                 pandecode_compute_fbd((u64) (uintptr_t) p->shared, job_no);
         else
@@ -1509,7 +1208,8 @@ pandecode_vertex_tiler_postfix_pre(
                 /* MRT blend fields are used whenever MFBD is used, with
                  * per-RT descriptors */
 
-                if (job_type == MALI_JOB_TYPE_TILER && (is_bifrost || p->shared & MALI_MFBD)) {
+                if (job_type == MALI_JOB_TYPE_TILER &&
+                    (is_bifrost || p->shared & MALI_FBD_TAG_IS_MFBD)) {
                         void* blend_base = ((void *) cl) + MALI_STATE_LENGTH;
 
                         for (unsigned i = 0; i < fbd_info.rt_count; i++) {
@@ -1706,7 +1406,7 @@ pandecode_fragment_job(const struct pandecode_mapped_memory *mem,
 {
         const struct mali_payload_fragment *PANDECODE_PTR_VAR(s, mem, payload);
 
-        bool is_mfbd = s->framebuffer & MALI_MFBD;
+        bool is_mfbd = s->framebuffer & MALI_FBD_TAG_IS_MFBD;
 
         if (!is_mfbd && is_bifrost)
                 pandecode_msg("XXX: Bifrost fragment must use MFBD\n");
@@ -1714,20 +1414,22 @@ pandecode_fragment_job(const struct pandecode_mapped_memory *mem,
         struct pandecode_fbd info;
 
         if (is_mfbd)
-                info = pandecode_mfbd_bfr(s->framebuffer & FBD_MASK, job_no, true, false, is_bifrost);
+                info = pandecode_mfbd_bfr(s->framebuffer & ~MALI_FBD_TAG_MASK, job_no,
+                                          true, false, is_bifrost, gpu_id);
         else
-                info = pandecode_sfbd(s->framebuffer & FBD_MASK, job_no, true, gpu_id);
+                info = pandecode_sfbd(s->framebuffer & ~MALI_FBD_TAG_MASK, job_no,
+                                      true, gpu_id);
 
         /* Compute the tag for the tagged pointer. This contains the type of
          * FBD (MFBD/SFBD), and in the case of an MFBD, information about which
          * additional structures follow the MFBD header (an extra payload or
          * not, as well as a count of render targets) */
 
-        unsigned expected_tag = is_mfbd ? MALI_MFBD : 0;
+        unsigned expected_tag = is_mfbd ? MALI_FBD_TAG_IS_MFBD : 0;
 
         if (is_mfbd) {
                 if (info.has_extra)
-                        expected_tag |= MALI_MFBD_TAG_EXTRA;
+                        expected_tag |= MALI_FBD_TAG_HAS_ZS_RT;
 
                 expected_tag |= (MALI_POSITIVE(info.rt_count) << 2);
         }
@@ -1780,7 +1482,7 @@ pandecode_fragment_job(const struct pandecode_mapped_memory *mem,
 
         /* The FBD is a tagged pointer */
 
-        unsigned tag = (s->framebuffer & ~FBD_MASK);
+        unsigned tag = (s->framebuffer & MALI_FBD_TAG_MASK);
 
         if (tag != expected_tag)
                 pandecode_msg("XXX: expected FBD tag %X but got %X\n", expected_tag, tag);

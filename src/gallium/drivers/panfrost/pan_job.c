@@ -744,13 +744,13 @@ panfrost_batch_reserve_framebuffer(struct panfrost_batch *batch)
         if (!batch->framebuffer.gpu) {
                 unsigned size = (dev->quirks & MIDGARD_SFBD) ?
                         MALI_SINGLE_TARGET_FRAMEBUFFER_LENGTH :
-                        sizeof(struct mali_framebuffer);
+                        MALI_MULTI_TARGET_FRAMEBUFFER_LENGTH;
 
                 batch->framebuffer = panfrost_pool_alloc_aligned(&batch->pool, size, 64);
 
                 /* Tag the pointer */
                 if (!(dev->quirks & MIDGARD_SFBD))
-                        batch->framebuffer.gpu |= MALI_MFBD;
+                        batch->framebuffer.gpu |= MALI_FBD_TAG_IS_MFBD;
         }
 
         return batch->framebuffer.gpu;

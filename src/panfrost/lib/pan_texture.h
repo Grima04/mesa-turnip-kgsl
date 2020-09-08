@@ -147,6 +147,9 @@ extern struct panfrost_format panfrost_pipe_format_table[PIPE_FORMAT_COUNT];
 bool
 panfrost_is_z24s8_variant(enum pipe_format fmt);
 
+enum mali_z_internal_format
+panfrost_get_z_internal_format(enum pipe_format fmt);
+
 unsigned
 panfrost_translate_swizzle_4(const unsigned char swizzle[4]);
 

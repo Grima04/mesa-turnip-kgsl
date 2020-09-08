@@ -186,6 +186,14 @@
     <value name="AFBC" value="3"/>
   </enum>
 
+  <enum name="Block Format v7">
+    <value name="No Write" value="0"/>
+    <value name="Tiled U-Interleaved" value="1"/>
+    <value name="Linear" value="2"/>
+    <value name="AFBC" value="12"/>
+    <value name="AFBC Tiled" value="13"/>
+  </enum>
+
   <enum name="Mipmap Mode">
     <value name="Nearest" value="0"/>
     <value name="None" value="1"/>
@@ -637,6 +645,37 @@
     <value name="A1B5G5R5" value="29"/>
   </enum>
 
+  <enum name="MFBD Color Format">
+    <value name="RAW8" value="0"/>
+    <value name="RAW16" value="1"/>
+    <value name="RAW24" value="2"/>
+    <value name="RAW32" value="3"/>
+    <value name="RAW48" value="4"/>
+    <value name="RAW64" value="5"/>
+    <value name="RAW96" value="6"/>
+    <value name="RAW128" value="7"/>
+    <value name="RAW192" value="8"/>
+    <value name="RAW256" value="9"/>
+    <value name="RAW384" value="10"/>
+    <value name="RAW512" value="11"/>
+    <value name="RAW768" value="12"/>
+    <value name="RAW1024" value="13"/>
+    <value name="RAW1536" value="14"/>
+    <value name="RAW2048" value="15"/>
+    <value name="R8" value="16"/>
+    <value name="R8G8" value="17"/>
+    <value name="R8G8B8" value="18"/>
+    <value name="R8G8B8A8" value="19"/>
+    <value name="R4G4B4A4" value="20"/>
+    <value name="R5G6B5" value="21"/>
+    <value name="R8G8B8_FROM_R8G8B8A2" value="22"/>
+    <value name="R10G10B10A2" value="24"/>
+    <value name="A2B10G10R10" value="25"/>
+    <value name="R5G5B5A1" value="28"/>
+    <value name="A1B5G5R5" value="29"/>
+    <value name="NATIVE" value="31"/>
+  </enum>
+
   <enum name="Downsampling Accumulation Mode">
     <value name="Unsigned normalized integer" value="0"/>
     <value name="Signed normalized integer" value="1"/>
@@ -659,6 +698,10 @@
     <value name="D32_X8X24" value="13"/>
     <value name="D32" value="14"/>
     <value name="D32_S8X24" value="15"/>
+  </enum>
+
+  <enum name="ZS Preload Format">
+    <value name="D32_S8X24" value="4"/>
   </enum>
 
   <enum name="S Format">
@@ -760,6 +803,206 @@
     <value name="D3D 16x Grid" value="4"/>
   </enum>
 
+  <enum name="Z Internal Format">
+    <value name="D16" value="0"/>
+    <value name="D24" value="1"/>
+    <value name="D32" value="2"/>
+  </enum>
+
+  <enum name="FBD Tag">
+    <value name="IS_MFBD" value="1"/>
+    <value name="HAS_ZS_RT" value="2"/>
+    <value name="MASK" value="63"/>
+  </enum>
+
+  <struct name="Multi-Target Framebuffer Parameters">
+    <field name="Width" size="16" start="0:0" type="uint" modifier="minus(1)"/>
+    <field name="Height" size="16" start="0:16" type="uint" modifier="minus(1)"/>
+    <field name="Bound Min X" size="16" start="1:0" type="uint"/>
+    <field name="Bound Min Y" size="16" start="1:16" type="uint"/>
+    <field name="Bound Max X" size="16" start="2:0" type="uint"/>
+    <field name="Bound Max Y" size="16" start="2:16" type="uint"/>
+    <field name="Sample Count" size="3" start="3:0" type="uint" default="1" modifier="log2"/>
+    <field name="Sample Pattern" size="3" start="3:3" type="Sample Pattern"/>
+    <field name="Tie-Break Rule" size="3" start="3:6" type="Tie-Break Rule"/>
+    <field name="Effective Tile Size" size="4" start="3:9" type="uint" modifier="log2"/>
+    <field name="X Downsampling Scale" size="3" start="3:13" type="uint"/>
+    <field name="Y Downsampling Scale" size="3" start="3:16" type="uint"/>
+    <field name="Render Target Count" size="4" start="3:19" type="uint" modifier="minus(1)"/>
+    <field name="Color Buffer Allocation" size="8" start="3:24" type="uint" modifier="shr(10)"/>
+    <field name="S Clear" size="8" start="4:0" type="uint"/>
+    <field name="S Write Enable" size="1" start="4:8" type="bool"/>
+    <field name="S Preload Enable" size="1" start="4:9" type="bool"/>
+    <field name="S Unload Enable" size="1" start="4:10" type="bool"/>
+    <field name="Z Internal Format" size="2" start="4:16" type="Z Internal Format"/>
+    <field name="Z Write Enable" size="1" start="4:18" type="bool"/>
+    <field name="Z Preload Enable" size="1" start="4:19" type="bool"/>
+    <field name="Z Unload Enable" size="1" start="4:20" type="bool"/>
+    <field name="Has ZS CRC Extension" size="1" start="4:21" type="bool"/>
+    <field name="CRC Read Enable" size="1" start="4:30" type="bool"/>
+    <field name="CRC Write Enable" size="1" start="4:31" type="bool"/>
+    <field name="Z Clear" size="32" start="5:0" type="float"/>
+  </struct>
+
+  <struct name="ZS CRC Extension">
+    <field name="CRC Base" size="64" start="0:0" type="address"/>
+    <field name="CRC Row Stride" size="32" start="2:0" type="uint"/>
+    <field name="ZS Write Format" size="4" start="3:0" type="ZS Format"/>
+    <field name="ZS Block Format" size="2" start="3:4" type="Block Format"/>
+    <field name="ZS Block Format v7" size="2" start="3:4" type="Block Format v7"/>
+    <field name="ZS MSAA" size="2" start="3:6" default="Single" type="MSAA"/>
+    <field name="ZS Big Endian" size="1" start="3:8" type="bool"/>
+    <field name="ZS Clean Pixel Write Enable" size="1" start="3:10" type="bool"/>
+    <field name="CRC Render Target" size="4" start="3:11" type="uint"/>
+    <field name="S Write Format" size="4" start="3:16" type="S Format"/>
+    <field name="S Block Format" size="2" start="3:20" type="Block Format"/>
+    <field name="S MSAA" size="2" start="3:22" default="Single" type="MSAA"/>
+    <field name="ZS Preload Format" size="4" start="3:28" type="ZS Preload Format"/>
+    <field name="ZS Writeback Base" size="64" start="4:0" type="address"/>
+    <field name="ZS Writeback Row Stride" size="32" start="6:0" type="uint"/>
+    <field name="ZS Writeback Surface Stride" size="32" start="7:0" type="uint"/>
+    <field name="S Writeback Base" size="64" start="8:0" type="address"/>
+    <field name="S Writeback Row Stride" size="32" start="10:0" type="uint"/>
+    <field name="S Writeback Surface Stride" size="32" start="11:0" type="uint"/>
+    <field name="ZS AFBC Header" size="64" start="4:0" type="address"/>
+    <field name="ZS AFBC Row Stride" size="13" start="6:0" type="uint"/>
+    <field name="ZS AFBC Chunk Size" size="12" start="7:0" type="uint"/>
+    <field name="ZS AFBC Sparse" size="1" start="7:16" type="bool"/>
+    <field name="ZS AFBC Body" size="64" start="8:0" type="address"/>
+    <field name="ZS AFBC Body Size" size="32" start="10:0" type="uint"/>
+    <field name="ZS Preload Base" size="64" start="12:0" type="address"/>
+    <field name="ZS Preload Row Stride" size="32" start="14:0" type="uint"/>
+    <field name="ZS Preload Surface Stride" size="32" start="15:0" type="uint"/>
+    <field name="CRC Clear Color" size="64" start="12:0" type="uint"/>
+  </struct>
+
+  <enum name="RT Endianness">
+    <value name="Little Endian" value="0"/>
+    <value name="Big Endian 2B" value="1"/>
+    <value name="Big Endian 4B" value="2"/>
+    <value name="Big Endian 8B" value="3"/>
+  </enum>
+
+  <enum name="YUV Conv K6">
+    <value name="0" value="0"/>
+    <value name="16" value="1"/>
+  </enum>
+
+  <enum name="YUV Conv K7 Clamp">
+    <value name="MINUS_128_TO_127" value="0"/>
+    <value name="MINUS_112_TO_111" value="1"/>
+    <value name="0_TO_255" value="2"/>
+    <value name="16_TO_239" value="3"/>
+  </enum>
+
+  <enum name="YUV Conv K8">
+    <value name="220" value="0"/>
+    <value name="256" value="1"/>
+  </enum>
+
+  <enum name="YUV Swizzle">
+    <value name="YUVA" value="0"/>
+    <value name="YVUA" value="1"/>
+    <value name="UYVA" value="2"/>
+    <value name="UVYA" value="3"/>
+    <value name="VUYA" value="4"/>
+    <value name="VYUA" value="5"/>
+    <value name="Y00A" value="6"/>
+    <value name="YXXA" value="7"/>
+  </enum>
+
+  <enum name="YUV Conversion Mode">
+    <value name="No Conversion" value="0"/>
+    <value name="BT 601" value="3"/>
+    <value name="BT 709" value="4"/>
+    <value name="BT 2020" value="6"/>
+  </enum>
+
+  <enum name="YUV Cr Siting">
+    <value name="Co-Sited" value="0"/>
+    <value name="Center Y" value="1"/>
+    <value name="Center X" value="2"/>
+    <value name="Center" value="3"/>
+    <value name="One Quarter" value="4"/>
+    <value name="Three Quarters" value="5"/>
+  </enum>
+
+  <struct name="Render Target">
+    <field name="Internal Buffer Offset" size="12" start="0:4" type="uint" modifier="shr(4)"/>
+    <field name="YUV Enable" size="1" start="0:24" type="bool"/>
+    <field name="Dithered Clear" size="1" start="0:25" type="bool"/>
+    <field name="Internal Format" size="6" start="0:26" type="Color Buffer Internal Format"/>
+    <field name="Write Enable" size="1" start="1:0" type="bool"/>
+    <field name="Writeback Format" size="5" start="1:3" type="MFBD Color Format"/>
+    <field name="Writeback Endianness" size="2" start="1:8" type="RT Endianness"/>
+    <field name="Writeback Block Format" size="2" start="1:10" type="Block Format"/>
+    <field name="Writeback Block Format v7" size="4" start="1:8" type="Block Format v7"/>
+    <field name="Writeback MSAA" size="2" start="1:12" type="MSAA"/>
+    <field name="sRGB" size="1" start="1:14" type="bool"/>
+    <field name="Dithering Enable" size="1" start="1:15" type="bool"/>
+    <field name="Swizzle" size="12" start="1:16" type="uint"/>
+    <field name="Writeback Sampling Mode" size="2" start="1:29" type="Downsampling Accumulation Mode"/>
+    <field name="Clean Pixel Write Enable" size="1" start="1:31" type="bool"/>
+    <field name="Preload Enable" size="1" start="2:0" type="bool"/>
+    <field name="Unload Enable" size="1" start="2:1" type="bool"/>
+    <field name="Preload Format" size="5" start="2:3" type="MFBD Color Format"/>
+    <field name="Preload Endianness" size="2" start="2:8" type="RT Endianness"/>
+    <field name="Preload Block Format" size="4" start="2:10" type="Block Format"/>
+    <field name="Preload MSAA" size="2" start="2:14" type="MSAA"/>
+    <field name="YUV Conv K5" size="8" start="2:16" type="uint"/>
+    <field name="YUV Swizzle" size="3" start="2:16" type="YUV Swizzle"/>
+    <field name="YUV Full Range" size="1" start="2:20" type="bool"/>
+    <field name="YUV Conversion Mode" size="4" start="2:21" type="YUV Conversion Mode"/>
+    <field name="YUV Cr Siting" size="3" start="2:25" type="YUV Cr Siting"/>
+    <field name="YUV Unsigned Cr Range" size="1" start="2:28" type="bool"/>
+    <field name="YUV Conv K6" size="1" start="2:24" type="YUV Conv K6"/>
+    <field name="YUV Conv K7 Clamp" size="2" start="2:25" type="YUV Conv K7 Clamp"/>
+    <field name="YUV Conv K8" size="1" start="2:27" type="YUV Conv K8"/>
+    <field name="YUV Conv Disable" size="1" start="2:31" type="bool"/>
+    <field name="YUV Conv K1" size="8" start="3:0" type="uint"/>
+    <field name="YUV Conv K2" size="8" start="3:8" type="uint"/>
+    <field name="YUV Conv K3" size="8" start="3:16" type="uint"/>
+    <field name="YUV Conv K4" size="8" start="3:24" type="uint"/>
+    <field name="YUV Plane 0 Base" size="64" start="4:0" type="address"/>
+    <field name="YUV Plane 1 Base" size="64" start="6:0" type="address"/>
+    <field name="YUV Plane 2 Base" size="64" start="8:0" type="address"/>
+    <field name="YUV Plane 0 Stride" size="32" start="10:0" type="uint"/>
+    <field name="YUV Plane 1 2 Stride" size="32" start="11:0" type="uint"/>
+    <field name="AFBC Header" size="64" start="4:0" type="address"/>
+    <field name="AFBC Row Stride" size="13" start="6:0" type="uint"/>
+    <field name="AFBC Chunk Size" size="12" start="7:0" type="uint"/>
+    <field name="AFBC Sparse" size="1" start="7:16" type="bool"/>
+    <field name="AFBC YUV Transform Enable" size="1" start="7:17" type="bool"/>
+    <field name="AFBC Split Block Enable" size="1" start="7:18" type="bool"/>
+    <field name="AFBC Wide Block Enable" size="1" start="7:19" type="bool"/>
+    <field name="AFBC Body" size="64" start="8:0" type="address"/>
+    <field name="AFBC Body Size" size="32" start="10:0" type="uint"/>
+    <field name="Writeback Base" size="64" start="8:0" type="address"/>
+    <field name="Writeback Row Stride" size="32" start="10:0" type="uint"/>
+    <field name="Writeback Surface Stride" size="32" start="11:0" type="uint"/>
+    <field name="Preload Base" size="64" start="12:0" type="address"/>
+    <field name="Preload Row Stride" size="32" start="14:0" type="uint"/>
+    <field name="Preload Surface Stride" size="32" start="15:0" type="uint"/>
+    <field name="Clear Color 0" size="32" start="12:0" type="uint"/>
+    <field name="Clear Color 1" size="32" start="13:0" type="uint"/>
+    <field name="Clear Color 2" size="32" start="14:0" type="uint"/>
+    <field name="Clear Color 3" size="32" start="15:0" type="uint"/>
+  </struct>
+
+  <enum name="Pre Post Frame Shader Mode">
+    <value name="Never" value="0"/>
+    <value name="Always" value="1"/>
+    <value name="Intersect" value="2"/>
+  </enum>
+
+  <struct name="Bifrost Framebuffer Parameters">
+    <field name="Pre Frame 0" size="3" start="0:0" type="Pre Post Frame Shader Mode"/>
+    <field name="Pre Frame 1" size="3" start="0:3" type="Pre Post Frame Shader Mode"/>
+    <field name="Post Frame" size="3" start="0:6" type="Pre Post Frame Shader Mode"/>
+    <field name="Sample Locations" size="64" start="4:0" type="address"/>
+    <field name="Frame Shader DCDs" size="64" start="6:0" type="address"/>
+  </struct>
+
   <struct name="Bifrost Tiler Heap">
     <field name="Size" size="32" start="1:0" type="uint" modifier="align(4096)"/>
     <field name="Base" size="64" start="2:0" type="address"/>
@@ -781,4 +1024,21 @@
     <field name="Heap" size="64" start="6:0" type="address"/>
     <field name="Weights" size="32" start="8:0" type="Bifrost Tiler Weights" elements="8"/>
   </struct>
+
+  <struct name="Bifrost Tiler Pointer">
+    <field name="Address" size="64" start="0:0" type="address"/>
+  </struct>
+
+  <struct name="Bifrost Framebuffer Padding" size="16">
+  </struct>
+
+  <aggregate name="Multi-Target Framebuffer">
+    <section name="Local Storage" offset="0" type="Local Storage"/>
+    <section name="Bifrost Parameters" offset="0" type="Bifrost Framebuffer Parameters"/>
+    <section name="Parameters" offset="32" type="Multi-Target Framebuffer Parameters"/>
+    <section name="Tiler" offset="56" type="Midgard Tiler"/>
+    <section name="Tiler Weights" offset="96" type="Midgard Tiler Weights"/>
+    <section name="Bifrost Tiler Pointer" offset="56" type="Bifrost Tiler Pointer"/>
+    <section name="Bifrost Padding" offset="64" type="Bifrost Framebuffer Padding"/>
+  </aggregate>
 </panxml>

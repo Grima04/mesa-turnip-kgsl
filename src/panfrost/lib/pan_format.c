@@ -408,3 +408,21 @@ panfrost_format_to_bifrost_blend(const struct util_format_description *desc)
                 return format;
         }
 }
+
+enum mali_z_internal_format
+panfrost_get_z_internal_format(enum pipe_format fmt)
+{
+         switch (fmt) {
+         case PIPE_FORMAT_Z16_UNORM:
+         case PIPE_FORMAT_Z16_UNORM_S8_UINT:
+                return MALI_Z_INTERNAL_FORMAT_D16;
+         case PIPE_FORMAT_Z24_UNORM_S8_UINT:
+         case PIPE_FORMAT_Z24X8_UNORM:
+                return MALI_Z_INTERNAL_FORMAT_D24;
+         case PIPE_FORMAT_Z32_FLOAT:
+         case PIPE_FORMAT_Z32_FLOAT_S8X24_UINT:
+                return MALI_Z_INTERNAL_FORMAT_D32;
+         default:
+                unreachable("Unsupported depth/stencil format.");
+         }
+}
