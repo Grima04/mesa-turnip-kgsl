@@ -1125,7 +1125,7 @@ propagate_condition_eval(nir_builder *b, nir_if *nif, nir_src *use_src,
    if (!evaluate_if_condition(nif, b->cursor, &bool_value))
       return false;
 
-   nir_ssa_def *def[4] = {0};
+   nir_ssa_def *def[NIR_MAX_VEC_COMPONENTS] = {0};
    for (unsigned i = 0; i < nir_op_infos[alu->op].num_inputs; i++) {
       if (alu->src[i].src.ssa == use_src->ssa) {
          def[i] = nir_imm_bool(b, bool_value);
