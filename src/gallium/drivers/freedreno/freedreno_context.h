@@ -185,7 +185,7 @@ struct fd_context {
 	struct fd_pipe *pipe;
 
 	struct blitter_context *blitter;
-	void *clear_rs_state;
+	void *clear_rs_state[2];
 	struct primconvert_context *primconvert;
 
 	/* slab for pipe_transfer allocations: */

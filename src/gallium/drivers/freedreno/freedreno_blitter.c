@@ -194,7 +194,8 @@ fd_blitter_clear(struct pipe_context *pctx, unsigned buffers,
 	};
 	pctx->set_constant_buffer(pctx, PIPE_SHADER_FRAGMENT, 0, &cb);
 
-	if (!ctx->clear_rs_state) {
+	unsigned rs_idx = pfb->samples > 1 ? 1 : 0;
+	if (!ctx->clear_rs_state[rs_idx]) {
 		const struct pipe_rasterizer_state tmpl = {
 			.cull_face = PIPE_FACE_NONE,
 			.half_pixel_center = 1,
@@ -202,10 +203,11 @@ fd_blitter_clear(struct pipe_context *pctx, unsigned buffers,
 			.flatshade = 1,
 			.depth_clip_near = 1,
 			.depth_clip_far = 1,
+			.multisample = pfb->samples > 1,
 		};
-		ctx->clear_rs_state = pctx->create_rasterizer_state(pctx, &tmpl);
+		ctx->clear_rs_state[rs_idx] = pctx->create_rasterizer_state(pctx, &tmpl);
 	}
-	pctx->bind_rasterizer_state(pctx, ctx->clear_rs_state);
+	pctx->bind_rasterizer_state(pctx, ctx->clear_rs_state[rs_idx]);
 
 	struct pipe_viewport_state vp = {
 		.scale     = { 0.5f * pfb->width, -0.5f * pfb->height, depth },

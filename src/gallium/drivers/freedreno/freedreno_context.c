@@ -235,8 +235,9 @@ fd_context_destroy(struct pipe_context *pctx)
 	if (pctx->stream_uploader)
 		u_upload_destroy(pctx->stream_uploader);
 
-	if (ctx->clear_rs_state)
-		pctx->delete_rasterizer_state(pctx, ctx->clear_rs_state);
+	for (i = 0; i < ARRAY_SIZE(ctx->clear_rs_state); i++)
+		if (ctx->clear_rs_state[i])
+			pctx->delete_rasterizer_state(pctx, ctx->clear_rs_state[i]);
 
 	if (ctx->primconvert)
 		util_primconvert_destroy(ctx->primconvert);
