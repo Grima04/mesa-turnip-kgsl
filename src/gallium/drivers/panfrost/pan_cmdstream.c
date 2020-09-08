@@ -78,22 +78,6 @@ panfrost_vt_emit_shared_memory(struct panfrost_batch *batch)
         return t.gpu;
 }
 
-void
-panfrost_vt_update_primitive_size(struct panfrost_context *ctx,
-                                  bool points,
-                                  union midgard_primitive_size *primitive_size)
-{
-        struct panfrost_rasterizer *rasterizer = ctx->rasterizer;
-
-        if (!panfrost_writes_point_size(ctx)) {
-                float val = points ?
-                              rasterizer->base.point_size :
-                              rasterizer->base.line_width;
-
-                primitive_size->constant = val;
-        }
-}
-
 /* Gets a GPU address for the associated index buffer. Only gauranteed to be
  * good for the duration of the draw (transient), could last longer. Also get
  * the bounds on the index buffer for the range accessed by the draw. We do
@@ -1787,46 +1771,21 @@ panfrost_emit_varying_descriptor(struct panfrost_batch *batch,
 
 void
 panfrost_emit_vertex_tiler_jobs(struct panfrost_batch *batch,
-                                struct mali_vertex_tiler_prefix *vertex_prefix,
-                                struct mali_draw_packed *vertex_draw,
-                                struct mali_vertex_tiler_prefix *tiler_prefix,
-                                struct mali_draw_packed *tiler_draw,
-                                union midgard_primitive_size *primitive_size)
+                                void *vertex_job,
+                                void *tiler_job)
 {
         struct panfrost_context *ctx = batch->ctx;
         struct panfrost_device *device = pan_device(ctx->base.screen);
         bool wallpapering = ctx->wallpaper_batch && batch->scoreboard.tiler_dep;
-        struct bifrost_payload_vertex bifrost_vertex = {0,};
-        struct bifrost_payload_tiler bifrost_tiler = {0,};
-        struct midgard_payload_vertex_tiler midgard_vertex = {0,};
-        struct midgard_payload_vertex_tiler midgard_tiler = {0,};
-        void *vp, *tp;
-        size_t vp_size, tp_size;
-
-        if (device->quirks & IS_BIFROST) {
-                bifrost_vertex.prefix = *vertex_prefix;
-                memcpy(&bifrost_vertex.postfix, vertex_draw, MALI_DRAW_LENGTH);
-                vp = &bifrost_vertex;
-                vp_size = sizeof(bifrost_vertex);
-
-                bifrost_tiler.prefix = *tiler_prefix;
-                bifrost_tiler.primitive_size = *primitive_size;
-                bifrost_tiler.tiler_meta = panfrost_batch_get_bifrost_tiler(batch, ~0);
-                memcpy(&bifrost_tiler.postfix, tiler_draw, MALI_DRAW_LENGTH);
-                tp = &bifrost_tiler;
-                tp_size = sizeof(bifrost_tiler);
-        } else {
-                midgard_vertex.prefix = *vertex_prefix;
-                memcpy(&midgard_vertex.postfix, vertex_draw, MALI_DRAW_LENGTH);
-                vp = &midgard_vertex;
-                vp_size = sizeof(midgard_vertex);
-
-                midgard_tiler.prefix = *tiler_prefix;
-                memcpy(&midgard_tiler.postfix, tiler_draw, MALI_DRAW_LENGTH);
-                midgard_tiler.primitive_size = *primitive_size;
-                tp = &midgard_tiler;
-                tp_size = sizeof(midgard_tiler);
-        }
+        void *vp = vertex_job + MALI_JOB_HEADER_LENGTH;
+        size_t vp_size = MALI_COMPUTE_JOB_LENGTH -
+                         MALI_JOB_HEADER_LENGTH;
+        void *tp = tiler_job + MALI_JOB_HEADER_LENGTH;
+        bool is_bifrost = device->quirks & IS_BIFROST;
+        size_t tp_size = (is_bifrost ?
+                          MALI_BIFROST_TILER_JOB_LENGTH :
+                          MALI_MIDGARD_TILER_JOB_LENGTH) -
+                         MALI_JOB_HEADER_LENGTH;
 
         if (wallpapering) {
                 /* Inject in reverse order, with "predicted" job indices.

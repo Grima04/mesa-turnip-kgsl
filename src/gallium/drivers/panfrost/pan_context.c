@@ -278,6 +278,132 @@ panfrost_translate_index_size(unsigned size)
 }
 
 static void
+panfrost_draw_emit_vertex(struct panfrost_batch *batch,
+                          const struct pipe_draw_info *info,
+                          void *invocation_template,
+                          mali_ptr shared_mem, mali_ptr vs_vary,
+                          mali_ptr varyings, void *job)
+{
+        struct panfrost_context *ctx = batch->ctx;
+        struct panfrost_device *device = pan_device(ctx->base.screen);
+
+        void *section =
+                pan_section_ptr(job, COMPUTE_JOB, INVOCATION);
+        memcpy(section, invocation_template, MALI_INVOCATION_LENGTH);
+
+        pan_section_pack(job, COMPUTE_JOB, PARAMETERS, cfg) {
+                cfg.job_task_split = 5;
+        }
+
+        pan_section_pack(job, COMPUTE_JOB, DRAW, cfg) {
+                cfg.unknown_1 = (device->quirks & IS_BIFROST) ? 0x2 : 0x6;
+                cfg.state = panfrost_emit_compute_shader_meta(batch, PIPE_SHADER_VERTEX);
+                cfg.attributes = panfrost_emit_vertex_data(batch, &cfg.attribute_buffers);
+                cfg.varyings = vs_vary;
+                cfg.varying_buffers = varyings;
+                cfg.shared = shared_mem;
+                pan_emit_draw_descs(batch, &cfg, PIPE_SHADER_VERTEX);
+        }
+}
+
+static void
+panfrost_emit_primitive_size(struct panfrost_context *ctx,
+                             bool points, mali_ptr size_array,
+                             void *prim_size)
+{
+        struct panfrost_rasterizer *rast = ctx->rasterizer;
+
+        pan_pack(prim_size, PRIMITIVE_SIZE, cfg) {
+                if (panfrost_writes_point_size(ctx)) {
+                        cfg.size_array = size_array;
+                } else {
+                        cfg.constant = points ?
+                                       rast->base.point_size :
+                                       rast->base.line_width;
+                }
+        }
+}
+
+static void
+panfrost_draw_emit_tiler(struct panfrost_batch *batch,
+                         const struct pipe_draw_info *info,
+                         void *invocation_template,
+                         mali_ptr shared_mem, mali_ptr indices,
+                         mali_ptr fs_vary, mali_ptr varyings,
+                         mali_ptr pos, mali_ptr psiz, void *job)
+{
+        struct panfrost_context *ctx = batch->ctx;
+        struct pipe_rasterizer_state *rast = &ctx->rasterizer->base;
+        struct panfrost_device *device = pan_device(ctx->base.screen);
+        bool is_bifrost = device->quirks & IS_BIFROST;
+
+        void *section = is_bifrost ?
+                        pan_section_ptr(job, BIFROST_TILER_JOB, INVOCATION) :
+                        pan_section_ptr(job, MIDGARD_TILER_JOB, INVOCATION);
+        memcpy(section, invocation_template, MALI_INVOCATION_LENGTH);
+
+        section = is_bifrost ?
+                  pan_section_ptr(job, BIFROST_TILER_JOB, PRIMITIVE) :
+                  pan_section_ptr(job, MIDGARD_TILER_JOB, PRIMITIVE);
+        pan_pack(section, PRIMITIVE, cfg) {
+                cfg.draw_mode = pan_draw_mode(info->mode);
+                cfg.point_size_array = panfrost_writes_point_size(ctx);
+                cfg.first_provoking_vertex = rast->flatshade_first;
+                cfg.primitive_restart = info->primitive_restart;
+                cfg.unknown_3 = 6;
+
+                if (info->index_size) {
+                        cfg.index_type = panfrost_translate_index_size(info->index_size);
+                        cfg.indices = indices;
+                        cfg.base_vertex_offset = info->index_bias - ctx->offset_start;
+                        cfg.index_count = info->count;
+                } else {
+                        cfg.index_count = info->count_from_stream_output ?
+                                          pan_so_target(info->count_from_stream_output)->offset :
+                                          ctx->vertex_count;
+                }
+        }
+
+        bool points = info->mode == PIPE_PRIM_POINTS;
+        void *prim_size = is_bifrost ?
+                          pan_section_ptr(job, BIFROST_TILER_JOB, PRIMITIVE_SIZE) :
+                          pan_section_ptr(job, MIDGARD_TILER_JOB, PRIMITIVE_SIZE);
+
+        if (is_bifrost)
+                panfrost_emit_primitive_size(ctx, points, psiz, prim_size);
+
+        section = is_bifrost ?
+                  pan_section_ptr(job, BIFROST_TILER_JOB, DRAW) :
+                  pan_section_ptr(job, MIDGARD_TILER_JOB, DRAW);
+        pan_pack(section, DRAW, cfg) {
+                cfg.unknown_1 = (device->quirks & IS_BIFROST) ? 0x3 : 0x7;
+                cfg.front_face_ccw = rast->front_ccw;
+                cfg.cull_front_face = rast->cull_face & PIPE_FACE_FRONT;
+                cfg.cull_back_face = rast->cull_face & PIPE_FACE_BACK;
+                cfg.position = pos;
+                cfg.state = panfrost_emit_frag_shader_meta(batch);
+                cfg.viewport = panfrost_emit_viewport(batch);
+                cfg.varyings = fs_vary;
+                cfg.varying_buffers = varyings;
+                cfg.shared = shared_mem;
+
+                pan_emit_draw_descs(batch, &cfg, PIPE_SHADER_FRAGMENT);
+
+                if (ctx->occlusion_query) {
+                        cfg.occlusion_query = MALI_OCCLUSION_MODE_PREDICATE;
+                        cfg.occlusion = ctx->occlusion_query->bo->gpu;
+                        panfrost_batch_add_bo(ctx->batch, ctx->occlusion_query->bo,
+                                              PAN_BO_ACCESS_SHARED |
+                                              PAN_BO_ACCESS_RW |
+                                              PAN_BO_ACCESS_FRAGMENT);
+                }
+        }
+
+        if (!is_bifrost)
+                panfrost_emit_primitive_size(ctx, points, psiz, prim_size);
+}
+
+static void
 panfrost_draw_vbo(
         struct pipe_context *pipe,
         const struct pipe_draw_info *info)
@@ -328,48 +454,32 @@ panfrost_draw_vbo(
         ctx->instance_count = info->instance_count;
         ctx->active_prim = info->mode;
 
-        struct mali_vertex_tiler_prefix vertex_prefix = { 0 }, tiler_prefix = { 0 };
-        struct mali_draw_packed vertex_postfix, tiler_postfix;
-        struct mali_primitive_packed primitive;
-        struct mali_invocation_packed invocation;
-        union midgard_primitive_size primitive_size;
+        /* bifrost tiler is bigger than midgard's one, so let's use it as a
+         * generic container for both.
+         */
+        struct mali_bifrost_tiler_job_packed tiler = {};
+        struct mali_compute_job_packed vertex = {};
         unsigned vertex_count = ctx->vertex_count;
+        bool is_bifrost = device->quirks & IS_BIFROST;
 
-        mali_ptr shared_mem = (device->quirks & IS_BIFROST) ?
+        mali_ptr shared_mem = is_bifrost ?
                 panfrost_vt_emit_shared_memory(batch) :
                 panfrost_batch_reserve_framebuffer(batch);
 
-        struct pipe_rasterizer_state *rast = &ctx->rasterizer->base;
         unsigned min_index = 0, max_index = 0;
+        mali_ptr indices = 0;
 
-        pan_pack(&primitive, PRIMITIVE, cfg) {
-                cfg.draw_mode = pan_draw_mode(mode);
-                cfg.point_size_array = panfrost_writes_point_size(ctx);
-                cfg.first_provoking_vertex = rast->flatshade_first;
-                cfg.primitive_restart = info->primitive_restart;
-                cfg.unknown_3 = 6;
+        if (info->index_size) {
+                indices = panfrost_get_index_buffer_bounded(ctx, info,
+                                                            &min_index,
+                                                            &max_index);
 
-                if (info->index_size) {
-                        cfg.index_type = panfrost_translate_index_size(info->index_size);
-                        cfg.indices = panfrost_get_index_buffer_bounded(ctx, info,
-                                        &min_index, &max_index);
-
-                        /* Use the corresponding values */
-                        vertex_count = max_index - min_index + 1;
-                        ctx->offset_start = min_index + info->index_bias;
-
-                        cfg.base_vertex_offset = -min_index;
-                        cfg.index_count = info->count;
-                } else {
-                        ctx->offset_start = info->start;
-                        cfg.index_count = info->count_from_stream_output ?
-                                pan_so_target(info->count_from_stream_output)->offset :
-                                ctx->vertex_count;
-                }
+                /* Use the corresponding values */
+                vertex_count = max_index - min_index + 1;
+                ctx->offset_start = min_index + info->index_bias;
+        } else {
+                ctx->offset_start = info->start;
         }
-
-        vertex_prefix.primitive.opaque[0] = (5) << 26; /* XXX */ 
-        memcpy(&tiler_prefix.primitive, &primitive, sizeof(primitive));
 
         /* Encode the padded vertex count */
 
@@ -380,12 +490,10 @@ panfrost_draw_vbo(
 
         panfrost_statistics_record(ctx, info);
 
+        struct mali_invocation_packed invocation;
         panfrost_pack_work_groups_compute(&invocation,
-                                        1, vertex_count, info->instance_count,
-                                        1, 1, 1, true);
-
-        vertex_prefix.invocation = invocation;
-        tiler_prefix.invocation = invocation;
+                                          1, vertex_count, info->instance_count,
+                                          1, 1, 1, true);
 
         /* Emit all sort of descriptors. */
         mali_ptr varyings = 0, vs_vary = 0, fs_vary = 0, pos = 0, psiz = 0;
@@ -396,47 +504,12 @@ panfrost_draw_vbo(
                                          &vs_vary, &fs_vary, &varyings,
                                          &pos, &psiz);
 
-        pan_pack(&vertex_postfix, DRAW, cfg) {
-                cfg.unknown_1 = (device->quirks & IS_BIFROST) ? 0x2 : 0x6;
-                cfg.state = panfrost_emit_compute_shader_meta(batch, PIPE_SHADER_VERTEX);
-                cfg.attributes = panfrost_emit_vertex_data(batch, &cfg.attribute_buffers);
-                cfg.varyings = vs_vary;
-                cfg.varying_buffers = varyings;
-                cfg.shared = shared_mem;
-                pan_emit_draw_descs(batch, &cfg, PIPE_SHADER_VERTEX);
-        }
-
-        pan_pack(&tiler_postfix, DRAW, cfg) {
-                cfg.unknown_1 = (device->quirks & IS_BIFROST) ? 0x3 : 0x7;
-                cfg.front_face_ccw = rast->front_ccw;
-                cfg.cull_front_face = rast->cull_face & PIPE_FACE_FRONT;
-                cfg.cull_back_face = rast->cull_face & PIPE_FACE_BACK;
-                cfg.position = pos;
-                cfg.state = panfrost_emit_frag_shader_meta(batch);
-                cfg.viewport = panfrost_emit_viewport(batch);
-                cfg.varyings = fs_vary;
-                cfg.varying_buffers = varyings;
-                cfg.shared = shared_mem;
-
-                pan_emit_draw_descs(batch, &cfg, PIPE_SHADER_FRAGMENT);
-
-                if (ctx->occlusion_query) {
-                        cfg.occlusion_query = MALI_OCCLUSION_MODE_PREDICATE;
-                        cfg.occlusion = ctx->occlusion_query->bo->gpu;
-                        panfrost_batch_add_bo(ctx->batch, ctx->occlusion_query->bo,
-                                              PAN_BO_ACCESS_SHARED |
-                                              PAN_BO_ACCESS_RW |
-                                              PAN_BO_ACCESS_FRAGMENT);
-                }
-        }
-
-        primitive_size.pointer = psiz;
-        panfrost_vt_update_primitive_size(ctx, info->mode == PIPE_PRIM_POINTS, &primitive_size);
-
         /* Fire off the draw itself */
-        panfrost_emit_vertex_tiler_jobs(batch, &vertex_prefix, &vertex_postfix,
-                                               &tiler_prefix, &tiler_postfix,
-                                               &primitive_size);
+        panfrost_draw_emit_vertex(batch, info, &invocation, shared_mem,
+                                  vs_vary, varyings, &vertex);
+        panfrost_draw_emit_tiler(batch, info, &invocation, shared_mem, indices,
+                                 fs_vary, varyings, pos, psiz, &tiler);
+        panfrost_emit_vertex_tiler_jobs(batch, &vertex, &tiler);
 
         /* Adjust the batch stack size based on the new shader stack sizes. */
         panfrost_batch_adjust_stack_size(batch);

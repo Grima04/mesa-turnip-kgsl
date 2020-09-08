@@ -1096,4 +1096,42 @@
     <section name="Header" offset="0" type="Job Header"/>
     <section name="Payload" offset="32" type="Write Value Job Payload"/>
   </aggregate>
+
+  <struct name="Compute Job Parameters" size="6">
+    <field name="Job Task Split" size="4" start="0:26" type="uint"/>
+  </struct>
+
+  <!-- Compute job also covers vertex and geometry operations -->
+  <aggregate name="Compute Job">
+    <section name="Header" offset="0" type="Job Header"/>
+    <section name="Invocation" offset="32" type="Invocation"/>
+    <section name="Parameters" offset="40" type="Compute Job Parameters"/>
+    <section name="Draw" offset="64" type="Draw"/>
+  </aggregate>
+
+  <struct name="Primitive Size">
+    <field name="Constant" size="32" start="0:0" type="float"/>
+    <field name="Size Array" size="64" start="0:0" type="uint"/>
+  </struct>
+
+  <aggregate name="Midgard Tiler Job" size="192">
+    <section name="Header" offset="0" type="Job Header"/>
+    <section name="Invocation" offset="32" type="Invocation"/>
+    <section name="Primitive" offset="40" type="Primitive"/>
+    <section name="Draw" offset="64" type="Draw"/>
+    <section name="Primitive Size" offset="184" type="Primitive Size"/>
+  </aggregate>
+
+  <struct name="Bifrost Tiler Job Padding" size="12">
+  </struct>
+
+  <aggregate name="Bifrost Tiler Job" size="256">
+    <section name="Header" offset="0" type="Job Header"/>
+    <section name="Invocation" offset="32" type="Invocation"/>
+    <section name="Primitive" offset="40" type="Primitive"/>
+    <section name="Primitive Size" offset="64" type="Primitive Size"/>
+    <section name="Tiler" offset="72" type="Bifrost Tiler Pointer"/>
+    <section name="Padding" offset="80" type="Bifrost Tiler Job Padding"/>
+    <section name="Draw" offset="128" type="Draw"/>
+  </aggregate>
 </panxml>

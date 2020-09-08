@@ -340,12 +340,9 @@ panfrost_load_midg(
                 }
         }
 
-        struct midgard_payload_vertex_tiler payload = {};
-        struct mali_primitive_packed primitive;
-        struct mali_draw_packed draw;
-        struct mali_invocation_packed invocation;
+        struct mali_midgard_tiler_job_packed payload = {};
 
-        pan_pack(&draw, DRAW, cfg) {
+        pan_section_pack(&payload, MIDGARD_TILER_JOB, DRAW, cfg) {
                 cfg.unknown_1 = 0x7;
                 cfg.position = coordinates;
                 cfg.textures = panfrost_pool_upload(pool, &texture_t.gpu, sizeof(texture_t.gpu));
@@ -357,17 +354,16 @@ panfrost_load_midg(
                 cfg.shared = fbd;
         }
 
-        pan_pack(&primitive, PRIMITIVE, cfg) {
+        pan_section_pack(&payload, MIDGARD_TILER_JOB, PRIMITIVE, cfg) {
                 cfg.draw_mode = MALI_DRAW_MODE_TRIANGLES;
                 cfg.index_count = vertex_count;
                 cfg.unknown_3 = 6;
         }
 
-        panfrost_pack_work_groups_compute(&invocation, 1, vertex_count, 1, 1, 1, 1, true);
+        panfrost_pack_work_groups_compute(pan_section_ptr(&payload, MIDGARD_TILER_JOB, INVOCATION),
+                                          1, vertex_count, 1, 1, 1, 1, true);
 
-        payload.prefix.primitive = primitive;
-        memcpy(&payload.postfix, &draw, MALI_DRAW_LENGTH);
-        payload.prefix.invocation = invocation;
-
-        panfrost_new_job(pool, scoreboard, MALI_JOB_TYPE_TILER, false, 0, &payload, sizeof(payload), true);
+        panfrost_new_job(pool, scoreboard, MALI_JOB_TYPE_TILER, false, 0,
+                         pan_section_ptr(&payload, MIDGARD_TILER_JOB, INVOCATION),
+                         MALI_MIDGARD_TILER_JOB_LENGTH - MALI_JOB_HEADER_LENGTH, true);
 }

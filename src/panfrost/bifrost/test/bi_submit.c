@@ -188,18 +188,13 @@ bit_vertex(struct panfrost_device *dev, panfrost_program prog,
 
         memcpy(shader->cpu, prog.compiled.data, prog.compiled.size);
 
-        struct bifrost_payload_vertex payload = {
-                .prefix = {
-                        .primitive = {
-                                .opaque = { (5) << 26 }
-                        }
-                },
-        };
+        struct mali_compute_job_packed job;
 
-        struct mali_draw_packed draw;
-        struct mali_invocation_packed invocation;
+        pan_section_pack(&job, COMPUTE_JOB, PARAMETERS, cfg) {
+                cfg.job_task_split = 5;
+        }
 
-        pan_pack(&draw, DRAW, cfg) {
+        pan_section_pack(&job, COMPUTE_JOB, DRAW, cfg) {
                 cfg.unknown_1 = 0x2;
                 cfg.shared = shmem->gpu;
                 cfg.state = shader_desc->gpu;
@@ -211,21 +206,20 @@ bit_vertex(struct panfrost_device *dev, panfrost_program prog,
                 cfg.varying_buffers = var->gpu + 256;
         }
  
-
-        panfrost_pack_work_groups_compute(&invocation,
-                        1, 1, 1,
-                        1, 1, 1,
-                        true);
-
-        payload.prefix.invocation = invocation;
-        payload.postfix = draw;
+        void *invocation = pan_section_ptr(&job, COMPUTE_JOB, INVOCATION);
+        panfrost_pack_work_groups_compute(invocation,
+                                          1, 1, 1,
+                                          1, 1, 1,
+                                          true);
 
         struct panfrost_bo *bos[] = {
                 shmem, shader, shader_desc, ubo, var, attr
         };
 
-        bool succ = bit_submit(dev, MALI_JOB_TYPE_VERTEX, &payload,
-                        sizeof(payload), bos, ARRAY_SIZE(bos), debug);
+        bool succ = bit_submit(dev, MALI_JOB_TYPE_VERTEX,
+                               ((void *)&job) + MALI_JOB_HEADER_LENGTH,
+                               MALI_COMPUTE_JOB_LENGTH - MALI_JOB_HEADER_LENGTH,
+                               bos, ARRAY_SIZE(bos), debug);
 
         /* Check the output varyings */
 

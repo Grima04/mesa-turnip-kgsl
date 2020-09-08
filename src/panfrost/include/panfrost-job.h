@@ -361,47 +361,6 @@ struct bifrost_blend_rt {
  * 4. Otherwise, set magic_divisor = m and extra_flags = 0.
  */
 
-/* On Bifrost, these fields are the same between the vertex and tiler payloads.
- * They also seem to be the same between Bifrost and Midgard. They're shared in
- * fused payloads.
- */
-
-struct mali_vertex_tiler_prefix {
-        struct mali_invocation_packed invocation;
-        struct mali_primitive_packed primitive;
-} __attribute__((packed));
-
-/* Point size / line width can either be specified as a 32-bit float (for
- * constant size) or as a [machine word size]-bit GPU pointer (for varying size). If a pointer
- * is selected, by setting the appropriate MALI_DRAW_VARYING_SIZE bit in the tiler
- * payload, the contents of varying_pointer will be intepreted as an array of
- * fp16 sizes, one for each vertex. gl_PointSize is therefore implemented by
- * creating a special MALI_R16F varying writing to varying_pointer. */
-
-union midgard_primitive_size {
-        float constant;
-        u64 pointer;
-};
-
-struct midgard_payload_vertex_tiler {
-        struct mali_vertex_tiler_prefix prefix;
-        struct mali_draw_packed postfix;
-        union midgard_primitive_size primitive_size;
-} __attribute__((packed));
-
-struct bifrost_payload_vertex {
-        struct mali_vertex_tiler_prefix prefix;
-        struct mali_draw_packed postfix;
-} __attribute__((packed));
-
-struct bifrost_payload_tiler {
-        struct mali_vertex_tiler_prefix prefix;
-        union midgard_primitive_size primitive_size;
-        mali_ptr tiler_meta;
-        u64 zero1, zero2, zero3, zero4, zero5, zero6;
-        struct mali_draw_packed postfix;
-} __attribute__((packed));
-
 /* Purposeful off-by-one in width, height fields. For example, a (64, 64)
  * texture is stored as (63, 63) in these fields. This adjusts for that.
  * There's an identical pattern in the framebuffer descriptor. Even vertex

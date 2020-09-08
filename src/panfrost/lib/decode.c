@@ -736,13 +736,12 @@ bits(u32 word, u32 lo, u32 hi)
 }
 
 static void
-pandecode_vertex_tiler_prefix(struct mali_vertex_tiler_prefix *p, int job_no, bool graphics)
+pandecode_invocation(const void *i, bool graphics)
 {
         /* Decode invocation_count. See the comment before the definition of
          * invocation_count for an explanation.
          */
-        struct mali_invocation_packed invocation_packed = p->invocation;
-        pan_unpack(&invocation_packed, INVOCATION, invocation);
+        pan_unpack(i, INVOCATION, invocation);
 
         unsigned size_x = bits(invocation.invocations, 0, invocation.size_y_shift) + 1;
         unsigned size_y = bits(invocation.invocations, invocation.size_y_shift, invocation.size_z_shift) + 1;
@@ -763,7 +762,7 @@ pandecode_vertex_tiler_prefix(struct mali_vertex_tiler_prefix *p, int job_no, bo
         struct mali_invocation_packed ref;
         panfrost_pack_work_groups_compute(&ref, groups_x, groups_y, groups_z, size_x, size_y, size_z, graphics);
 
-        if (memcmp(&ref, &invocation_packed, sizeof(ref))) {
+        if (memcmp(&ref, i, sizeof(ref))) {
                 pandecode_msg("XXX: non-canonical workgroups packing\n");
                 DUMP_UNPACKED(INVOCATION, invocation, "Invocation:\n")
         }
@@ -772,9 +771,12 @@ pandecode_vertex_tiler_prefix(struct mali_vertex_tiler_prefix *p, int job_no, bo
         pandecode_log("Invocation (%d, %d, %d) x (%d, %d, %d)\n",
                       size_x, size_y, size_z,
                       groups_x, groups_y, groups_z);
+}
 
-        struct mali_primitive_packed prim_packed = p->primitive;
-        pan_unpack(&prim_packed, PRIMITIVE, primitive);
+static void
+pandecode_primitive(const void *p)
+{
+        pan_unpack(p, PRIMITIVE, primitive);
         DUMP_UNPACKED(PRIMITIVE, primitive, "Primitive:\n");
 
         /* Validate an index buffer is present if we need one. TODO: verify
@@ -1305,98 +1307,80 @@ pandecode_bifrost_tiler(mali_ptr gpu_va, int job_no)
 }
 
 static void
-pandecode_primitive_size(union midgard_primitive_size u, bool constant)
+pandecode_primitive_size(const void *s, bool constant)
 {
-        if (u.pointer == 0x0)
+        pan_unpack(s, PRIMITIVE_SIZE, ps);
+        if (ps.size_array == 0x0)
                 return;
 
-        pandecode_log(".primitive_size = {\n");
-        pandecode_indent++;
-
-        if (constant) {
-                pandecode_prop("constant = %f", u.constant);
-        } else {
-                MEMORY_PROP((&u), pointer);
-        }
-
-        pandecode_indent--;
-        pandecode_log("},\n");
+        DUMP_UNPACKED(PRIMITIVE_SIZE, ps, "Primitive Size:\n")
 }
 
-static int
-pandecode_vertex_job_bfr(const struct MALI_JOB_HEADER *h,
-                         const struct pandecode_mapped_memory *mem,
-                         mali_ptr payload, int job_no, unsigned gpu_id)
+static void
+pandecode_vertex_compute_geometry_job(const struct MALI_JOB_HEADER *h,
+                                      const struct pandecode_mapped_memory *mem,
+                                      mali_ptr job, int job_no, bool is_bifrost,
+                                      unsigned gpu_id)
 {
-        struct bifrost_payload_vertex *PANDECODE_PTR_VAR(v, mem, payload);
+        struct mali_compute_job_packed *PANDECODE_PTR_VAR(p, mem, job);
+        pan_section_unpack(p, COMPUTE_JOB, DRAW, draw);
+        pandecode_vertex_tiler_postfix_pre(&draw, job_no, h->type, "", is_bifrost, gpu_id);
 
-        struct mali_draw_packed draw_packed;
-        memcpy(&draw_packed, &v->postfix, sizeof(draw_packed));
-        pan_unpack(&draw_packed, DRAW, draw);
-        pandecode_vertex_tiler_postfix_pre(&draw, job_no, h->type, "", true, gpu_id);
-
-        pandecode_vertex_tiler_prefix(&v->prefix, job_no, false);
-        DUMP_CL(DRAW, &draw_packed, "Draw:\n");
-
-        return sizeof(*v);
+        pandecode_log("Vertex Job Payload:\n");
+        pandecode_indent++;
+        pandecode_invocation(pan_section_ptr(p, COMPUTE_JOB, INVOCATION),
+                             h->type != MALI_JOB_TYPE_COMPUTE);
+        DUMP_SECTION(COMPUTE_JOB, PARAMETERS, p, "Vertex Job Parameters:\n");
+        DUMP_UNPACKED(DRAW, draw, "Draw:\n");
+        pandecode_indent--;
+        pandecode_log("\n");
 }
 
-static int
+static void
 pandecode_tiler_job_bfr(const struct MALI_JOB_HEADER *h,
                         const struct pandecode_mapped_memory *mem,
-                        mali_ptr payload, int job_no, unsigned gpu_id)
+                        mali_ptr job, int job_no, unsigned gpu_id)
 {
-        struct bifrost_payload_tiler *PANDECODE_PTR_VAR(t, mem, payload);
-
-        struct mali_draw_packed draw_packed;
-        memcpy(&draw_packed, &t->postfix, sizeof(draw_packed));
-        pan_unpack(&draw_packed, DRAW, draw);
+        struct mali_bifrost_tiler_job_packed *PANDECODE_PTR_VAR(p, mem, job);
+        pan_section_unpack(p, BIFROST_TILER_JOB, DRAW, draw);
+        pan_section_unpack(p, BIFROST_TILER_JOB, TILER, tiler_ptr);
         pandecode_vertex_tiler_postfix_pre(&draw, job_no, h->type, "", true, gpu_id);
-        pandecode_bifrost_tiler(t->tiler_meta, job_no);
 
-        pandecode_vertex_tiler_prefix(&t->prefix, job_no, false);
+        pandecode_log("Tiler Job Payload:\n");
+        pandecode_indent++;
+        pandecode_bifrost_tiler(tiler_ptr.address, job_no);
+
+        pandecode_invocation(pan_section_ptr(p, BIFROST_TILER_JOB, INVOCATION), true);
+        pandecode_primitive(pan_section_ptr(p, BIFROST_TILER_JOB, PRIMITIVE));
 
         /* TODO: gl_PointSize on Bifrost */
-        pandecode_primitive_size(t->primitive_size, true);
-
-        if (t->zero1 || t->zero2 || t->zero3 || t->zero4 || t->zero5
-            || t->zero6) {
-                pandecode_msg("XXX: tiler only zero tripped\n");
-                pandecode_prop("zero1 = 0x%" PRIx64, t->zero1);
-                pandecode_prop("zero2 = 0x%" PRIx64, t->zero2);
-                pandecode_prop("zero3 = 0x%" PRIx64, t->zero3);
-                pandecode_prop("zero4 = 0x%" PRIx64, t->zero4);
-                pandecode_prop("zero5 = 0x%" PRIx64, t->zero5);
-                pandecode_prop("zero6 = 0x%" PRIx64, t->zero6);
-        }
-
-        DUMP_CL(DRAW, &draw_packed, "Draw:\n");
-
-        return sizeof(*t);
+        pandecode_primitive_size(pan_section_ptr(p, BIFROST_TILER_JOB, PRIMITIVE_SIZE), true);
+        pan_section_unpack(p, BIFROST_TILER_JOB, PADDING, padding);
+        DUMP_UNPACKED(DRAW, draw, "Draw:\n");
+        pandecode_indent--;
+        pandecode_log("\n");
 }
 
-static int
-pandecode_vertex_or_tiler_job_mdg(const struct MALI_JOB_HEADER *h,
-                                  const struct pandecode_mapped_memory *mem,
-                                  mali_ptr payload, int job_no, unsigned gpu_id)
+static void
+pandecode_tiler_job_mdg(const struct MALI_JOB_HEADER *h,
+                        const struct pandecode_mapped_memory *mem,
+                        mali_ptr job, int job_no, unsigned gpu_id)
 {
-        struct midgard_payload_vertex_tiler *PANDECODE_PTR_VAR(v, mem, payload);
-        bool is_graphics = (h->type == MALI_JOB_TYPE_VERTEX) || (h->type == MALI_JOB_TYPE_TILER);
-
-        struct mali_draw_packed draw_packed;
-        memcpy(&draw_packed, &v->postfix, sizeof(draw_packed));
-        pan_unpack(&draw_packed, DRAW, draw);
+        struct mali_midgard_tiler_job_packed *PANDECODE_PTR_VAR(p, mem, job);
+        pan_section_unpack(p, MIDGARD_TILER_JOB, DRAW, draw);
         pandecode_vertex_tiler_postfix_pre(&draw, job_no, h->type, "", false, gpu_id);
 
-        pandecode_vertex_tiler_prefix(&v->prefix, job_no, is_graphics);
-        DUMP_CL(DRAW, &draw_packed, "Draw:\n");
+        pandecode_log("Tiler Job Payload:\n", job + MALI_JOB_HEADER_LENGTH);
+        pandecode_indent++;
+        pandecode_invocation(pan_section_ptr(p, MIDGARD_TILER_JOB, INVOCATION), true);
+        pandecode_primitive(pan_section_ptr(p, MIDGARD_TILER_JOB, PRIMITIVE));
+        DUMP_UNPACKED(DRAW, draw, "Draw:\n");
 
-        struct mali_primitive_packed prim_packed = v->prefix.primitive;
-        pan_unpack(&prim_packed, PRIMITIVE, primitive);
-
-        pandecode_primitive_size(v->primitive_size, primitive.point_size_array == 0);
-
-        return sizeof(*v);
+        pan_section_unpack(p, MIDGARD_TILER_JOB, PRIMITIVE, primitive);
+        pandecode_primitive_size(pan_section_ptr(p, MIDGARD_TILER_JOB, PRIMITIVE_SIZE),
+                                 primitive.point_size_array == 0);
+        pandecode_indent--;
+        pandecode_log("\n");
 }
 
 static void
@@ -1505,11 +1489,10 @@ pandecode_jc(mali_ptr jc_gpu_va, bool bifrost, unsigned gpu_id, bool minimal)
         do {
                 struct pandecode_mapped_memory *mem =
                         pandecode_find_mapped_gpu_mem_containing(jc_gpu_va);
+
                 pan_unpack(PANDECODE_PTR(mem, jc_gpu_va, struct mali_job_header_packed),
                            JOB_HEADER, h);
                 next_job = h.next;
-                mali_ptr payload_ptr = jc_gpu_va + MALI_JOB_HEADER_LENGTH;
-                pandecode_fetch_gpu_mem(mem, payload_ptr, 64);
 
                 int job_no = job_descriptor_number++;
 
@@ -1526,16 +1509,16 @@ pandecode_jc(mali_ptr jc_gpu_va, bool bifrost, unsigned gpu_id, bool minimal)
                         break;
 
                 case MALI_JOB_TYPE_TILER:
+                        if (bifrost)
+                                pandecode_tiler_job_bfr(&h, mem, jc_gpu_va, job_no, gpu_id);
+                        else
+                                pandecode_tiler_job_mdg(&h, mem, jc_gpu_va, job_no, gpu_id);
+                        break;
+
                 case MALI_JOB_TYPE_VERTEX:
                 case MALI_JOB_TYPE_COMPUTE:
-                        if (bifrost) {
-                                if (h.type == MALI_JOB_TYPE_TILER)
-                                        pandecode_tiler_job_bfr(&h, mem, payload_ptr, job_no, gpu_id);
-                                else
-                                        pandecode_vertex_job_bfr(&h, mem, payload_ptr, job_no, gpu_id);
-                        } else
-                                pandecode_vertex_or_tiler_job_mdg(&h, mem, payload_ptr, job_no, gpu_id);
-
+                        pandecode_vertex_compute_geometry_job(&h, mem, jc_gpu_va, job_no,
+                                                              bifrost, gpu_id);
                         break;
 
                 case MALI_JOB_TYPE_FRAGMENT:
