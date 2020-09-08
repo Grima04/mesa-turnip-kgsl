@@ -146,20 +146,15 @@ static LLVMValueRef emit_int_cmp(struct ac_llvm_context *ctx, LLVMIntPredicate p
       src0 = LLVMBuildIntToPtr(ctx->builder, src0, src1_type, "");
    }
 
-   LLVMValueRef result = LLVMBuildICmp(ctx->builder, pred, src0, src1, "");
-   return LLVMBuildSelect(ctx->builder, result, LLVMConstInt(ctx->i32, 0xFFFFFFFF, false),
-                          ctx->i32_0, "");
+   return LLVMBuildICmp(ctx->builder, pred, src0, src1, "");
 }
 
 static LLVMValueRef emit_float_cmp(struct ac_llvm_context *ctx, LLVMRealPredicate pred,
                                    LLVMValueRef src0, LLVMValueRef src1)
 {
-   LLVMValueRef result;
    src0 = ac_to_float(ctx, src0);
    src1 = ac_to_float(ctx, src1);
-   result = LLVMBuildFCmp(ctx->builder, pred, src0, src1, "");
-   return LLVMBuildSelect(ctx->builder, result, LLVMConstInt(ctx->i32, 0xFFFFFFFF, false),
-                          ctx->i32_0, "");
+   return LLVMBuildFCmp(ctx->builder, pred, src0, src1, "");
 }
 
 static LLVMValueRef emit_intrin_1f_param(struct ac_llvm_context *ctx, const char *intrin,
@@ -250,9 +245,7 @@ static LLVMValueRef emit_bcsel(struct ac_llvm_context *ctx, LLVMValueRef src0, L
       src1 = LLVMBuildIntToPtr(ctx->builder, src1, src2_type, "");
    }
 
-   LLVMValueRef v =
-      LLVMBuildICmp(ctx->builder, LLVMIntNE, src0, LLVMConstNull(LLVMTypeOf(src0)), "");
-   return LLVMBuildSelect(ctx->builder, v, ac_to_integer_or_pointer(ctx, src1),
+   return LLVMBuildSelect(ctx->builder, src0, ac_to_integer_or_pointer(ctx, src1),
                           ac_to_integer_or_pointer(ctx, src2), "");
 }
 
@@ -279,20 +272,25 @@ static LLVMValueRef emit_uint_carry(struct ac_llvm_context *ctx, const char *int
 
 static LLVMValueRef emit_b2f(struct ac_llvm_context *ctx, LLVMValueRef src0, unsigned bitsize)
 {
-   assert(ac_get_elem_bits(ctx, LLVMTypeOf(src0)) == 32);
-   LLVMValueRef result =
-      LLVMBuildAnd(ctx->builder, src0, ac_const_uint_vec(ctx, LLVMTypeOf(src0), 0x3f800000), "");
-   result = ac_to_float(ctx, result);
+   assert(ac_get_elem_bits(ctx, LLVMTypeOf(src0)) == 1);
 
    switch (bitsize) {
-   case 16: {
-      bool vec2 = LLVMGetTypeKind(LLVMTypeOf(result)) == LLVMVectorTypeKind;
-      return LLVMBuildFPTrunc(ctx->builder, result, vec2 ? ctx->v2f16 : ctx->f16, "");
-   }
+   case 16:
+      if (LLVMGetTypeKind(LLVMTypeOf(src0)) == LLVMVectorTypeKind) {
+         assert(LLVMGetVectorSize(LLVMTypeOf(src0)) == 2);
+         LLVMValueRef f[] = {
+            LLVMBuildSelect(ctx->builder, ac_llvm_extract_elem(ctx, src0, 0),
+                            ctx->f16_1, ctx->f16_0, ""),
+            LLVMBuildSelect(ctx->builder, ac_llvm_extract_elem(ctx, src0, 1),
+                            ctx->f16_1, ctx->f16_0, ""),
+         };
+         return ac_build_gather_values(ctx, f, 2);
+      }
+      return LLVMBuildSelect(ctx->builder, src0, ctx->f16_1, ctx->f16_0, "");
    case 32:
-      return result;
+      return LLVMBuildSelect(ctx->builder, src0, ctx->f32_1, ctx->f32_0, "");
    case 64:
-      return LLVMBuildFPExt(ctx->builder, result, ctx->f64, "");
+      return LLVMBuildSelect(ctx->builder, src0, ctx->f64_1, ctx->f64_0, "");
    default:
       unreachable("Unsupported bit size.");
    }
@@ -302,23 +300,20 @@ static LLVMValueRef emit_f2b(struct ac_llvm_context *ctx, LLVMValueRef src0)
 {
    src0 = ac_to_float(ctx, src0);
    LLVMValueRef zero = LLVMConstNull(LLVMTypeOf(src0));
-   return LLVMBuildSExt(ctx->builder, LLVMBuildFCmp(ctx->builder, LLVMRealUNE, src0, zero, ""),
-                        ctx->i32, "");
+   return LLVMBuildFCmp(ctx->builder, LLVMRealUNE, src0, zero, "");
 }
 
 static LLVMValueRef emit_b2i(struct ac_llvm_context *ctx, LLVMValueRef src0, unsigned bitsize)
 {
-   LLVMValueRef result = LLVMBuildAnd(ctx->builder, src0, ctx->i32_1, "");
-
    switch (bitsize) {
    case 8:
-      return LLVMBuildTrunc(ctx->builder, result, ctx->i8, "");
+      return LLVMBuildSelect(ctx->builder, src0, ctx->i8_1, ctx->i8_0, "");
    case 16:
-      return LLVMBuildTrunc(ctx->builder, result, ctx->i16, "");
+      return LLVMBuildSelect(ctx->builder, src0, ctx->i16_1, ctx->i16_0, "");
    case 32:
-      return result;
+      return LLVMBuildSelect(ctx->builder, src0, ctx->i32_1, ctx->i32_0, "");
    case 64:
-      return LLVMBuildZExt(ctx->builder, result, ctx->i64, "");
+      return LLVMBuildSelect(ctx->builder, src0, ctx->i64_1, ctx->i64_0, "");
    default:
       unreachable("Unsupported bit size.");
    }
@@ -327,8 +322,7 @@ static LLVMValueRef emit_b2i(struct ac_llvm_context *ctx, LLVMValueRef src0, uns
 static LLVMValueRef emit_i2b(struct ac_llvm_context *ctx, LLVMValueRef src0)
 {
    LLVMValueRef zero = LLVMConstNull(LLVMTypeOf(src0));
-   return LLVMBuildSExt(ctx->builder, LLVMBuildICmp(ctx->builder, LLVMIntNE, src0, zero, ""),
-                        ctx->i32, "");
+   return LLVMBuildICmp(ctx->builder, LLVMIntNE, src0, zero, "");
 }
 
 static LLVMValueRef emit_f2f16(struct ac_llvm_context *ctx, LLVMValueRef src0)
@@ -703,34 +697,34 @@ static void visit_alu(struct ac_nir_context *ctx, const nir_alu_instr *instr)
          src[1] = LLVMBuildTrunc(ctx->ac.builder, src[1], LLVMTypeOf(src[0]), "");
       result = LLVMBuildLShr(ctx->ac.builder, src[0], src[1], "");
       break;
-   case nir_op_ilt32:
+   case nir_op_ilt:
       result = emit_int_cmp(&ctx->ac, LLVMIntSLT, src[0], src[1]);
       break;
-   case nir_op_ine32:
+   case nir_op_ine:
       result = emit_int_cmp(&ctx->ac, LLVMIntNE, src[0], src[1]);
       break;
-   case nir_op_ieq32:
+   case nir_op_ieq:
       result = emit_int_cmp(&ctx->ac, LLVMIntEQ, src[0], src[1]);
       break;
-   case nir_op_ige32:
+   case nir_op_ige:
       result = emit_int_cmp(&ctx->ac, LLVMIntSGE, src[0], src[1]);
       break;
-   case nir_op_ult32:
+   case nir_op_ult:
       result = emit_int_cmp(&ctx->ac, LLVMIntULT, src[0], src[1]);
       break;
-   case nir_op_uge32:
+   case nir_op_uge:
       result = emit_int_cmp(&ctx->ac, LLVMIntUGE, src[0], src[1]);
       break;
-   case nir_op_feq32:
+   case nir_op_feq:
       result = emit_float_cmp(&ctx->ac, LLVMRealOEQ, src[0], src[1]);
       break;
-   case nir_op_fneu32:
+   case nir_op_fneu:
       result = emit_float_cmp(&ctx->ac, LLVMRealUNE, src[0], src[1]);
       break;
-   case nir_op_flt32:
+   case nir_op_flt:
       result = emit_float_cmp(&ctx->ac, LLVMRealOLT, src[0], src[1]);
       break;
-   case nir_op_fge32:
+   case nir_op_fge:
       result = emit_float_cmp(&ctx->ac, LLVMRealOGE, src[0], src[1]);
       break;
    case nir_op_fabs:
@@ -987,7 +981,7 @@ static void visit_alu(struct ac_nir_context *ctx, const nir_alu_instr *instr)
       else
          result = LLVMBuildTrunc(ctx->ac.builder, src[0], def_type, "");
       break;
-   case nir_op_b32csel:
+   case nir_op_bcsel:
       result = emit_bcsel(&ctx->ac, src[0], src[1], src[2]);
       break;
    case nir_op_find_lsb:
@@ -1010,7 +1004,7 @@ static void visit_alu(struct ac_nir_context *ctx, const nir_alu_instr *instr)
    case nir_op_b2f64:
       result = emit_b2f(&ctx->ac, src[0], instr->dest.dest.ssa.bit_size);
       break;
-   case nir_op_f2b32:
+   case nir_op_f2b1:
       result = emit_f2b(&ctx->ac, src[0]);
       break;
    case nir_op_b2i8:
@@ -1019,8 +1013,15 @@ static void visit_alu(struct ac_nir_context *ctx, const nir_alu_instr *instr)
    case nir_op_b2i64:
       result = emit_b2i(&ctx->ac, src[0], instr->dest.dest.ssa.bit_size);
       break;
-   case nir_op_i2b32:
+   case nir_op_i2b1:
+   case nir_op_b2b1: /* after loads */
       result = emit_i2b(&ctx->ac, src[0]);
+      break;
+   case nir_op_b2b16: /* before stores */
+      result = LLVMBuildZExt(ctx->ac.builder, src[0], ctx->ac.i16, "");
+      break;
+   case nir_op_b2b32: /* before stores */
+      result = LLVMBuildZExt(ctx->ac.builder, src[0], ctx->ac.i32, "");
       break;
    case nir_op_fquantize2f16:
       result = emit_f2f16(&ctx->ac, src[0]);
@@ -1179,6 +1180,9 @@ static void visit_load_const(struct ac_nir_context *ctx, const nir_load_const_in
 
    for (unsigned i = 0; i < instr->def.num_components; ++i) {
       switch (instr->def.bit_size) {
+      case 1:
+         values[i] = LLVMConstInt(element_type, instr->value[i].b, false);
+         break;
       case 8:
          values[i] = LLVMConstInt(element_type, instr->value[i].u8, false);
          break;
@@ -2758,8 +2762,7 @@ static void emit_discard(struct ac_nir_context *ctx, const nir_intrinsic_instr *
    LLVMValueRef cond;
 
    if (instr->intrinsic == nir_intrinsic_discard_if) {
-      cond =
-         LLVMBuildICmp(ctx->ac.builder, LLVMIntEQ, get_src(ctx, instr->src[0]), ctx->ac.i32_0, "");
+      cond = LLVMBuildNot(ctx->ac.builder, get_src(ctx, instr->src[0]), "");
    } else {
       assert(instr->intrinsic == nir_intrinsic_discard);
       cond = ctx->ac.i1false;
@@ -2773,8 +2776,7 @@ static void emit_demote(struct ac_nir_context *ctx, const nir_intrinsic_instr *i
    LLVMValueRef cond;
 
    if (instr->intrinsic == nir_intrinsic_demote_if) {
-      cond =
-         LLVMBuildICmp(ctx->ac.builder, LLVMIntEQ, get_src(ctx, instr->src[0]), ctx->ac.i32_0, "");
+      cond = LLVMBuildNot(ctx->ac.builder, get_src(ctx, instr->src[0]), "");
    } else {
       assert(instr->intrinsic == nir_intrinsic_demote);
       cond = ctx->ac.i1false;
@@ -3337,7 +3339,7 @@ static void visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
       result = ctx->abi->inputs[ac_llvm_reg_index_soa(VARYING_SLOT_LAYER, 0)];
       break;
    case nir_intrinsic_load_front_face:
-      result = ac_get_arg(&ctx->ac, ctx->args->front_face);
+      result = emit_i2b(&ctx->ac, ac_get_arg(&ctx->ac, ctx->args->front_face));
       break;
    case nir_intrinsic_load_helper_invocation:
       result = ac_build_load_helper_invocation(&ctx->ac);
@@ -3637,13 +3639,11 @@ static void visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
       result = ctx->abi->load_patch_vertices_in(ctx->abi);
       break;
    case nir_intrinsic_vote_all: {
-      LLVMValueRef tmp = ac_build_vote_all(&ctx->ac, get_src(ctx, instr->src[0]));
-      result = LLVMBuildSExt(ctx->ac.builder, tmp, ctx->ac.i32, "");
+      result = ac_build_vote_all(&ctx->ac, get_src(ctx, instr->src[0]));
       break;
    }
    case nir_intrinsic_vote_any: {
-      LLVMValueRef tmp = ac_build_vote_any(&ctx->ac, get_src(ctx, instr->src[0]));
-      result = LLVMBuildSExt(ctx->ac.builder, tmp, ctx->ac.i32, "");
+      result = ac_build_vote_any(&ctx->ac, get_src(ctx, instr->src[0]));
       break;
    }
    case nir_intrinsic_shuffle:
@@ -4251,7 +4251,9 @@ static void visit_tex(struct ac_nir_context *ctx, nir_tex_instr *instr)
       result = build_tex_intrinsic(ctx, instr, &txf_args);
 
       result = LLVMBuildExtractElement(ctx->ac.builder, result, ctx->ac.i32_0, "");
-      result = emit_int_cmp(&ctx->ac, LLVMIntEQ, result, ctx->ac.i32_0);
+      result = LLVMBuildSExt(ctx->ac.builder,
+                             emit_int_cmp(&ctx->ac, LLVMIntEQ, result, ctx->ac.i32_0),
+                             ctx->ac.i32, "");
       goto write_result;
    }
 
@@ -4643,7 +4645,7 @@ static void visit_if(struct ac_nir_context *ctx, nir_if *if_stmt)
 
    nir_block *then_block = (nir_block *)exec_list_get_head(&if_stmt->then_list);
 
-   ac_build_uif(&ctx->ac, value, then_block->index);
+   ac_build_ifcc(&ctx->ac, value, then_block->index);
 
    visit_cf_list(ctx, &if_stmt->then_list);
 

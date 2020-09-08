@@ -1611,8 +1611,6 @@ static struct nir_shader *get_nir_shader(struct si_shader_selector *sel, bool *f
       return NULL;
    }
 
-   NIR_PASS_V(nir, nir_lower_bool_to_int32);
-
    return nir;
 }
 

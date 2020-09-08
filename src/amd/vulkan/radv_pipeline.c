@@ -3019,9 +3019,7 @@ VkResult radv_create_shaders(struct radv_pipeline *pipeline,
 			/* do this again since information such as outputs_read can be out-of-date */
 			nir_shader_gather_info(nir[i], nir_shader_get_entrypoint(nir[i]));
 
-			if (radv_use_llvm_for_stage(device, i)) {
-				NIR_PASS_V(nir[i], nir_lower_bool_to_int32);
-			} else {
+			if (!radv_use_llvm_for_stage(device, i)) {
 				NIR_PASS_V(nir[i], nir_lower_non_uniform_access,
 				           nir_lower_non_uniform_ubo_access |
 				           nir_lower_non_uniform_ssbo_access |
