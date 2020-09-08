@@ -807,6 +807,8 @@ st_link_nir(struct gl_context *ctx,
       struct gl_linked_shader *shader = linked_shader[i];
       struct shader_info *info = &shader->Program->nir->info;
 
+      st_glsl_to_nir_post_opts(st, shader->Program, shader_program);
+
       if (prev_info &&
           ctx->Const.ShaderCompilerOptions[shader->Stage].NirOptions->unify_interfaces) {
          prev_info->outputs_written |= info->inputs_read &
@@ -824,7 +826,6 @@ st_link_nir(struct gl_context *ctx,
       struct gl_linked_shader *shader = linked_shader[i];
       struct gl_program *prog = shader->Program;
       struct st_program *stp = st_program(prog);
-      st_glsl_to_nir_post_opts(st, prog, shader_program);
 
       /* Initialize st_vertex_program members. */
       if (shader->Stage == MESA_SHADER_VERTEX)
