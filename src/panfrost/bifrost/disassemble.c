@@ -225,25 +225,25 @@ static void dump_regs(FILE *fp, struct bifrost_regs srcs)
         struct bifrost_reg_ctrl ctrl = DecodeRegCtrl(fp, srcs);
         fprintf(fp, "# ");
         if (ctrl.read_reg0)
-                fprintf(fp, "port 0: R%d ", get_reg0(srcs));
+                fprintf(fp, "port 0: r%d ", get_reg0(srcs));
         if (ctrl.read_reg1)
-                fprintf(fp, "port 1: R%d ", get_reg1(srcs));
+                fprintf(fp, "port 1: r%d ", get_reg1(srcs));
 
         if (ctrl.fma_write_unit == REG_WRITE_TWO)
-                fprintf(fp, "port 2: R%d (write FMA) ", srcs.reg2);
+                fprintf(fp, "port 2: r%d (write FMA) ", srcs.reg2);
         else if (ctrl.add_write_unit == REG_WRITE_TWO)
-                fprintf(fp, "port 2: R%d (write ADD) ", srcs.reg2);
+                fprintf(fp, "port 2: r%d (write ADD) ", srcs.reg2);
 
         if (ctrl.fma_write_unit == REG_WRITE_THREE)
-                fprintf(fp, "port 3: R%d (write FMA) ", srcs.reg3);
+                fprintf(fp, "port 3: r%d (write FMA) ", srcs.reg3);
         else if (ctrl.add_write_unit == REG_WRITE_THREE)
-                fprintf(fp, "port 3: R%d (write ADD) ", srcs.reg3);
+                fprintf(fp, "port 3: r%d (write ADD) ", srcs.reg3);
         else if (ctrl.read_reg3)
-                fprintf(fp, "port 3: R%d (read) ", srcs.reg3);
+                fprintf(fp, "port 3: r%d (read) ", srcs.reg3);
 
         if (srcs.uniform_const) {
                 if (srcs.uniform_const & 0x80) {
-                        fprintf(fp, "uniform: U%d", (srcs.uniform_const & 0x7f) * 2);
+                        fprintf(fp, "uniform: u%d", (srcs.uniform_const & 0x7f) * 2);
                 }
         }
 
@@ -312,8 +312,8 @@ static uint64_t get_const(uint64_t *consts, struct bifrost_regs srcs)
 static void dump_uniform_const_src(FILE *fp, struct bifrost_regs srcs, uint64_t *consts, bool high32)
 {
         if (srcs.uniform_const & 0x80) {
-                unsigned uniform = (srcs.uniform_const & 0x7f) * 2;
-                fprintf(fp, "U%d", uniform + (high32 ? 1 : 0));
+                unsigned uniform = (srcs.uniform_const & 0x7f);
+                fprintf(fp, "u%d.w%d", uniform, high32);
         } else if (srcs.uniform_const >= 0x20) {
                 uint64_t imm = get_const(consts, srcs);
                 if (high32)
@@ -358,19 +358,19 @@ dump_src(FILE *fp, unsigned src, struct bifrost_regs srcs, uint64_t *consts, boo
 {
         switch (src) {
         case 0:
-                fprintf(fp, "R%d", get_reg0(srcs));
+                fprintf(fp, "r%d", get_reg0(srcs));
                 break;
         case 1:
-                fprintf(fp, "R%d", get_reg1(srcs));
+                fprintf(fp, "r%d", get_reg1(srcs));
                 break;
         case 2:
-                fprintf(fp, "R%d", srcs.reg3);
+                fprintf(fp, "r%d", srcs.reg3);
                 break;
         case 3:
                 if (isFMA)
-                        fprintf(fp, "0");
+                        fprintf(fp, "#0");
                 else
-                        fprintf(fp, "T"); // i.e. the output of FMA this cycle
+                        fprintf(fp, "t"); // i.e. the output of FMA this cycle
                 break;
         case 4:
                 dump_uniform_const_src(fp, srcs, consts, false);
@@ -379,10 +379,10 @@ dump_src(FILE *fp, unsigned src, struct bifrost_regs srcs, uint64_t *consts, boo
                 dump_uniform_const_src(fp, srcs, consts, true);
                 break;
         case 6:
-                fprintf(fp, "T0");
+                fprintf(fp, "t0");
                 break;
         case 7:
-                fprintf(fp, "T1");
+                fprintf(fp, "t1");
                 break;
         }
 }
