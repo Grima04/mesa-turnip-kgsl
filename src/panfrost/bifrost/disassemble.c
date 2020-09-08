@@ -323,13 +323,25 @@ static void dump_uniform_const_src(FILE *fp, struct bifrost_regs srcs, uint64_t 
         } else {
                 switch (srcs.uniform_const) {
                 case 0:
-                        fprintf(fp, "0");
+                        fprintf(fp, "#0");
+                        break;
+                case 1:
+                        fprintf(fp, "lane_id");
+                        break;
+                case 2:
+                        fprintf(fp, "warp_id");
+                        break;
+                case 3:
+                        fprintf(fp, "core_id");
+                        break;
+                case 4:
+                        fprintf(fp, "framebuffer_size");
                         break;
                 case 5:
-                        fprintf(fp, "atest-data");
+                        fprintf(fp, "atest_datum");
                         break;
                 case 6:
-                        fprintf(fp, "sample-ptr");
+                        fprintf(fp, "sample");
                         break;
                 case 8:
                 case 9:
@@ -339,10 +351,10 @@ static void dump_uniform_const_src(FILE *fp, struct bifrost_regs srcs, uint64_t 
                 case 13:
                 case 14:
                 case 15:
-                        fprintf(fp, "blend-descriptor%u", (unsigned) srcs.uniform_const - 8);
+                        fprintf(fp, "blend_descriptor_%u", (unsigned) srcs.uniform_const - 8);
                         break;
                 default:
-                        fprintf(fp, "unkConst%u", (unsigned) srcs.uniform_const);
+                        fprintf(fp, "XXX - reserved%u", (unsigned) srcs.uniform_const);
                         break;
                 }
 
