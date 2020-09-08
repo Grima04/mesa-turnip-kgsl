@@ -104,7 +104,10 @@ panfrost_launch_grid(struct pipe_context *pipe,
         ctx->compute_grid = info;
 
         /* TODO: Stub */
-        struct mali_compute_job_packed job = { 0 };
+        struct panfrost_transfer t =
+                panfrost_pool_alloc_aligned(&batch->pool,
+                                            MALI_COMPUTE_JOB_LENGTH,
+                                            64);
 
         /* We implement OpenCL inputs as uniforms (or a UBO -- same thing), so
          * reuse the graphics path for this by lowering to Gallium */
@@ -122,7 +125,7 @@ panfrost_launch_grid(struct pipe_context *pipe,
         /* Invoke according to the grid info */
 
         void *invocation =
-                pan_section_ptr(&job, COMPUTE_JOB, INVOCATION);
+                pan_section_ptr(t.cpu, COMPUTE_JOB, INVOCATION);
         panfrost_pack_work_groups_compute(invocation,
                                           info->grid[0], info->grid[1],
                                           info->grid[2],
@@ -130,14 +133,14 @@ panfrost_launch_grid(struct pipe_context *pipe,
                                           info->block[2],
                                           false);
 
-        pan_section_pack(&job, COMPUTE_JOB, PARAMETERS, cfg) {
+        pan_section_pack(t.cpu, COMPUTE_JOB, PARAMETERS, cfg) {
                 cfg.job_task_split =
                         util_logbase2_ceil(info->block[0] + 1) +
                         util_logbase2_ceil(info->block[1] + 1) +
                         util_logbase2_ceil(info->block[2] + 1);
         }
 
-        pan_section_pack(&job, COMPUTE_JOB, DRAW, cfg) {
+        pan_section_pack(t.cpu, COMPUTE_JOB, DRAW, cfg) {
                 cfg.unknown_1 = (dev->quirks & IS_BIFROST) ? 0x2 : 0x6;
                 cfg.state = panfrost_emit_compute_shader_meta(batch, PIPE_SHADER_COMPUTE);
                 cfg.shared = panfrost_emit_shared_memory(batch, info);
@@ -149,12 +152,8 @@ panfrost_launch_grid(struct pipe_context *pipe,
                                 PIPE_SHADER_COMPUTE);
         }
 
-        panfrost_new_job(&batch->pool, &batch->scoreboard,
-                         MALI_JOB_TYPE_COMPUTE, true, 0,
-                         ((void *)&job) + MALI_JOB_HEADER_LENGTH,
-                         MALI_COMPUTE_JOB_LENGTH -
-                         MALI_JOB_HEADER_LENGTH,
-                         false);
+        panfrost_add_job(&batch->pool, &batch->scoreboard,
+                         MALI_JOB_TYPE_COMPUTE, true, 0, &t, true);
         panfrost_flush_all_batches(ctx, 0);
 }
 

@@ -1771,42 +1771,32 @@ panfrost_emit_varying_descriptor(struct panfrost_batch *batch,
 
 void
 panfrost_emit_vertex_tiler_jobs(struct panfrost_batch *batch,
-                                void *vertex_job,
-                                void *tiler_job)
+                                const struct panfrost_transfer *vertex_job,
+                                const struct panfrost_transfer *tiler_job)
 {
         struct panfrost_context *ctx = batch->ctx;
-        struct panfrost_device *device = pan_device(ctx->base.screen);
         bool wallpapering = ctx->wallpaper_batch && batch->scoreboard.tiler_dep;
-        void *vp = vertex_job + MALI_JOB_HEADER_LENGTH;
-        size_t vp_size = MALI_COMPUTE_JOB_LENGTH -
-                         MALI_JOB_HEADER_LENGTH;
-        void *tp = tiler_job + MALI_JOB_HEADER_LENGTH;
-        bool is_bifrost = device->quirks & IS_BIFROST;
-        size_t tp_size = (is_bifrost ?
-                          MALI_BIFROST_TILER_JOB_LENGTH :
-                          MALI_MIDGARD_TILER_JOB_LENGTH) -
-                         MALI_JOB_HEADER_LENGTH;
 
         if (wallpapering) {
                 /* Inject in reverse order, with "predicted" job indices.
                  * THIS IS A HACK XXX */
-                panfrost_new_job(&batch->pool, &batch->scoreboard, MALI_JOB_TYPE_TILER, false,
-                                 batch->scoreboard.job_index + 2, tp, tp_size, true);
-                panfrost_new_job(&batch->pool, &batch->scoreboard, MALI_JOB_TYPE_VERTEX, false, 0,
-                                 vp, vp_size, true);
+
+                panfrost_add_job(&batch->pool, &batch->scoreboard, MALI_JOB_TYPE_TILER, false,
+                                 batch->scoreboard.job_index + 2, tiler_job, true);
+                panfrost_add_job(&batch->pool, &batch->scoreboard, MALI_JOB_TYPE_VERTEX, false, 0,
+                                 vertex_job, true);
                 return;
         }
 
         /* If rasterizer discard is enable, only submit the vertex */
 
-        unsigned vertex = panfrost_new_job(&batch->pool, &batch->scoreboard, MALI_JOB_TYPE_VERTEX, false, 0,
-                                           vp, vp_size, false);
+        unsigned vertex = panfrost_add_job(&batch->pool, &batch->scoreboard, MALI_JOB_TYPE_VERTEX, false, 0,
+                                           vertex_job, false);
 
         if (ctx->rasterizer->base.rasterizer_discard)
                 return;
 
-        panfrost_new_job(&batch->pool, &batch->scoreboard, MALI_JOB_TYPE_TILER, false, vertex, tp, tp_size,
-                         false);
+        panfrost_add_job(&batch->pool, &batch->scoreboard, MALI_JOB_TYPE_TILER, false, vertex, tiler_job, false);
 }
 
 /* TODO: stop hardcoding this */

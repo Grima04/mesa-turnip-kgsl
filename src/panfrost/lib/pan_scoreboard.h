@@ -49,13 +49,13 @@ struct pan_scoreboard {
 };
 
 unsigned
-panfrost_new_job(
+panfrost_add_job(
                 struct pan_pool *pool,
                 struct pan_scoreboard *scoreboard,
                 enum mali_job_type type,
                 bool barrier,
                 unsigned local_dep,
-                void *payload, size_t payload_size,
+                const struct panfrost_transfer *job,
                 bool inject);
 
 void panfrost_scoreboard_initialize_tiler(

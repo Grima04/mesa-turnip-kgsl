@@ -454,13 +454,19 @@ panfrost_draw_vbo(
         ctx->instance_count = info->instance_count;
         ctx->active_prim = info->mode;
 
-        /* bifrost tiler is bigger than midgard's one, so let's use it as a
-         * generic container for both.
-         */
-        struct mali_bifrost_tiler_job_packed tiler = {};
-        struct mali_compute_job_packed vertex = {};
-        unsigned vertex_count = ctx->vertex_count;
         bool is_bifrost = device->quirks & IS_BIFROST;
+        struct panfrost_transfer tiler =
+                panfrost_pool_alloc_aligned(&batch->pool,
+                                            is_bifrost ?
+                                            MALI_BIFROST_TILER_JOB_LENGTH :
+                                            MALI_MIDGARD_TILER_JOB_LENGTH,
+                                            64);
+        struct panfrost_transfer vertex =
+                panfrost_pool_alloc_aligned(&batch->pool,
+                                            MALI_COMPUTE_JOB_LENGTH,
+                                            64);
+
+        unsigned vertex_count = ctx->vertex_count;
 
         mali_ptr shared_mem = is_bifrost ?
                 panfrost_vt_emit_shared_memory(batch) :
@@ -506,9 +512,9 @@ panfrost_draw_vbo(
 
         /* Fire off the draw itself */
         panfrost_draw_emit_vertex(batch, info, &invocation, shared_mem,
-                                  vs_vary, varyings, &vertex);
+                                  vs_vary, varyings, vertex.cpu);
         panfrost_draw_emit_tiler(batch, info, &invocation, shared_mem, indices,
-                                 fs_vary, varyings, pos, psiz, &tiler);
+                                 fs_vary, varyings, pos, psiz, tiler.cpu);
         panfrost_emit_vertex_tiler_jobs(batch, &vertex, &tiler);
 
         /* Adjust the batch stack size based on the new shader stack sizes. */

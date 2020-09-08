@@ -106,13 +106,13 @@
  * not wallpapering and set this, dragons will eat you. */
 
 unsigned
-panfrost_new_job(
+panfrost_add_job(
                 struct pan_pool *pool,
                 struct pan_scoreboard *scoreboard,
                 enum mali_job_type type,
                 bool barrier,
                 unsigned local_dep,
-                void *payload, size_t payload_size,
+                const struct panfrost_transfer *job,
                 bool inject)
 {
         unsigned global_dep = 0;
@@ -133,24 +133,19 @@ panfrost_new_job(
         /* Assign the index */
         unsigned index = ++scoreboard->job_index;
 
-        struct panfrost_transfer transfer =
-                panfrost_pool_alloc_aligned(pool, MALI_JOB_HEADER_LENGTH + payload_size, 64);
-
-        pan_pack(transfer.cpu, JOB_HEADER, job) {
-                job.type = type;
-                job.barrier = barrier;
-                job.index = index;
-                job.dependency_1 = local_dep;
-                job.dependency_2 = global_dep;
+        pan_pack(job->cpu, JOB_HEADER, header) {
+                header.type = type;
+                header.barrier = barrier;
+                header.index = index;
+                header.dependency_1 = local_dep;
+                header.dependency_2 = global_dep;
 
                 if (inject)
-                        job.next = scoreboard->first_job;
+                        header.next = scoreboard->first_job;
         }
 
-        memcpy(transfer.cpu + MALI_JOB_HEADER_LENGTH, payload, payload_size);
-
         if (inject) {
-                scoreboard->first_job = transfer.gpu;
+                scoreboard->first_job = job->gpu;
                 return index;
         }
 
@@ -164,13 +159,13 @@ panfrost_new_job(
                  * TODO: Find a way to defer last job header emission until we
                  * have a new job to queue or the batch is ready for execution.
                  */
-                scoreboard->prev_job->opaque[6] = transfer.gpu;
-                scoreboard->prev_job->opaque[7] = transfer.gpu >> 32;
+                scoreboard->prev_job->opaque[6] = job->gpu;
+                scoreboard->prev_job->opaque[7] = job->gpu >> 32;
 	} else {
-                scoreboard->first_job = transfer.gpu;
+                scoreboard->first_job = job->gpu;
         }
 
-        scoreboard->prev_job = (struct mali_job_header_packed *)transfer.cpu;
+        scoreboard->prev_job = (struct mali_job_header_packed *)job->cpu;
         return index;
 }
 
