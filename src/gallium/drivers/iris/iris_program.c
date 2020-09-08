@@ -557,6 +557,8 @@ iris_setup_uniforms(const struct brw_compiler *compiler,
          load->src[0] = nir_src_for_ssa(temp_ubo_name);
          load->src[1] = nir_src_for_ssa(offset);
          nir_intrinsic_set_align(load, 4, 0);
+         nir_intrinsic_set_range_base(load, 0);
+         nir_intrinsic_set_range(load, ~0);
          nir_ssa_dest_init(&load->instr, &load->dest,
                            intrin->dest.ssa.num_components,
                            intrin->dest.ssa.bit_size, NULL);
