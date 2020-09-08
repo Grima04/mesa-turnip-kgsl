@@ -48,10 +48,10 @@ stages:
     - if: &is-for-marge '$GITLAB_USER_LOGIN == "marge-bot"'
       when: never
     # Forked project branch
-    - if: &is-forked-branch '$CI_PROJECT_PATH != "mesa/mesa" && $CI_MERGE_REQUEST_SOURCE_BRANCH_NAME != $CI_COMMIT_REF_NAME'
+    - if: &is-forked-branch '$CI_PROJECT_NAMESPACE != "mesa" && $CI_MERGE_REQUEST_SOURCE_BRANCH_NAME != $CI_COMMIT_REF_NAME'
       when: manual
     # Forked project branch / pre-merge pipeline
-    - if: &is-forked-branch-or-pre-merge '$CI_PROJECT_PATH != "mesa/mesa" || $CI_MERGE_REQUEST_SOURCE_BRANCH_NAME == $CI_COMMIT_REF_NAME'
+    - if: &is-forked-branch-or-pre-merge '$CI_PROJECT_NAMESPACE != "mesa" || $CI_MERGE_REQUEST_SOURCE_BRANCH_NAME == $CI_COMMIT_REF_NAME'
       when: manual
     # Pipeline runs for the master branch of the main project
     - if: &is-main-master '$CI_PROJECT_NAMESPACE == "mesa" && $CI_COMMIT_REF_NAME == "master"'
@@ -60,7 +60,7 @@ stages:
     - if: &is-post-merge '$CI_PROJECT_NAMESPACE == "mesa" && $CI_MERGE_REQUEST_SOURCE_BRANCH_NAME != $CI_COMMIT_REF_NAME'
       when: on_success
     # Post-merge pipeline, not for Marge Bot
-    - if: &is-post-merge-not-for-marge '$GITLAB_USER_LOGIN != "marge-bot" && $CI_MERGE_REQUEST_SOURCE_BRANCH_NAME != $CI_COMMIT_REF_NAME && $CI_PROJECT_PATH == "mesa/mesa"'
+    - if: &is-post-merge-not-for-marge '$CI_PROJECT_NAMESPACE == "mesa" && $GITLAB_USER_LOGIN != "marge-bot" && $CI_MERGE_REQUEST_SOURCE_BRANCH_NAME != $CI_COMMIT_REF_NAME'
       when: on_success
     # Pre-merge pipeline
     - if: &is-pre-merge '$CI_MERGE_REQUEST_SOURCE_BRANCH_NAME == $CI_COMMIT_REF_NAME'
