@@ -2734,7 +2734,7 @@ void util_blitter_custom_shader(struct blitter_context *blitter,
 {
    struct blitter_context_priv *ctx = (struct blitter_context_priv*)blitter;
    struct pipe_context *pipe = ctx->base.pipe;
-   struct pipe_framebuffer_state fb_state;
+   struct pipe_framebuffer_state fb_state = { 0 };
 
    ctx->custom_vs = custom_vs;
 
@@ -2760,7 +2760,6 @@ void util_blitter_custom_shader(struct blitter_context *blitter,
    fb_state.height = dstsurf->height;
    fb_state.nr_cbufs = 1;
    fb_state.cbufs[0] = dstsurf;
-   fb_state.zsbuf = 0;
    pipe->set_framebuffer_state(pipe, &fb_state);
    pipe->set_sample_mask(pipe, ~0);
 
