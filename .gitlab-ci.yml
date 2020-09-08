@@ -44,6 +44,9 @@ stages:
 # --------------------------------
 .rules-anchors:
   rules:
+    # For Marge Bot
+    - if: &is-for-marge '$GITLAB_USER_LOGIN == "marge-bot"'
+      when: never
     # Forked project branch
     - if: &is-forked-branch '$CI_PROJECT_PATH != "mesa/mesa" && $CI_MERGE_REQUEST_SOURCE_BRANCH_NAME != $CI_COMMIT_REF_NAME'
       when: manual
@@ -149,7 +152,7 @@ success:
     - *ignore_scheduled_pipelines
     - if: *is-post-merge
       when: never
-    - if: '$GITLAB_USER_LOGIN == "marge-bot"'
+    - if: *is-for-marge
       changes: *docs-or-ci
       when: never
     - changes: *all_paths
