@@ -238,18 +238,6 @@ struct bifrost_blend_rt {
         };
 } __attribute__((packed));
 
-/* Details about write_value from panfrost igt tests which use it as a generic
- * dword write primitive */
-
-#define MALI_WRITE_VALUE_ZERO 3
-
-struct mali_payload_write_value {
-        u64 address;
-        u32 value_descriptor;
-        u32 reserved;
-        u64 immediate;
-} __attribute__((packed));
-
 /*
  * Mali Attributes
  *

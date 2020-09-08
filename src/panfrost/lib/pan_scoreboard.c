@@ -189,23 +189,21 @@ panfrost_scoreboard_initialize_tiler(struct pan_pool *pool,
         /* Okay, we do. Let's generate it. We'll need the job's polygon list
          * regardless of size. */
 
-        struct mali_payload_write_value payload = {
-                .address = polygon_list,
-                .value_descriptor = MALI_WRITE_VALUE_ZERO,
-        };
-
         struct panfrost_transfer transfer =
                 panfrost_pool_alloc_aligned(pool,
-                                            MALI_JOB_HEADER_LENGTH + sizeof(payload),
+                                            MALI_WRITE_VALUE_JOB_LENGTH,
                                             64);
 
-        pan_pack(transfer.cpu, JOB_HEADER, job) {
-                job.type = MALI_JOB_TYPE_WRITE_VALUE;
-                job.index = scoreboard->write_value_index;
-                job.next = scoreboard->first_job;
+        pan_section_pack(transfer.cpu, WRITE_VALUE_JOB, HEADER, header) {
+                header.type = MALI_JOB_TYPE_WRITE_VALUE;
+                header.index = scoreboard->write_value_index;
+                header.next = scoreboard->first_job;
         }
 
-        memcpy(transfer.cpu + MALI_JOB_HEADER_LENGTH, &payload, sizeof(payload));
+        pan_section_pack(transfer.cpu, WRITE_VALUE_JOB, PAYLOAD, payload) {
+                payload.address = polygon_list;
+                payload.type = MALI_WRITE_VALUE_TYPE_ZERO;
+        }
 
         scoreboard->first_job = transfer.gpu;
 }

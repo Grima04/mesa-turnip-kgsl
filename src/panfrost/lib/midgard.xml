@@ -1059,4 +1059,25 @@
     <field name="Dependency 2" size="16" start="5:16" type="uint"/>
     <field name="Next" size="64" start="6:0" type="address"/>
   </struct>
+
+  <enum name="Write Value Type">
+    <value name="Cycle Counter" value="1"/>
+    <value name="System Timestamp" value="2"/>
+    <value name="Zero" value="3"/>
+    <value name="Immediate 8" value="4"/>
+    <value name="Immediate 16" value="5"/>
+    <value name="Immediate 32" value="6"/>
+    <value name="Immediate 64" value="7"/>
+  </enum>
+
+  <struct name="Write Value Job Payload">
+    <field name="Address" size="64" start="0:0" type="address"/>
+    <field name="Type" size="32" start="2:0" type="Write Value Type"/>
+    <field name="Immediate Value" size="64" start="4:0" type="uint"/>
+  </struct>
+
+  <aggregate name="Write Value Job">
+    <section name="Header" offset="0" type="Job Header"/>
+    <section name="Payload" offset="32" type="Write Value Job Payload"/>
+  </aggregate>
 </panxml>

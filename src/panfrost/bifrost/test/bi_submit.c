@@ -108,9 +108,11 @@ bit_sanity_check(struct panfrost_device *dev)
         struct panfrost_bo *scratch = bit_bo_create(dev, 65536);
         ((uint32_t *) scratch->cpu)[0] = 0xAA;
 
-        struct mali_payload_write_value payload = {
-                .address = scratch->gpu,
-                .value_descriptor = MALI_WRITE_VALUE_ZERO
+        struct mali_write_value_job_payload_packed payload;
+
+        pan_pack(&payload, WRITE_VALUE_JOB_PAYLOAD, cfg) {
+                cfg.address = scratch->gpu;
+                cfg.type = MALI_WRITE_VALUE_TYPE_ZERO;
         };
 
         struct panfrost_bo *bos[] = { scratch };

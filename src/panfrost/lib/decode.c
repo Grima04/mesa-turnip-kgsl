@@ -1490,6 +1490,16 @@ pandecode_fragment_job(const struct pandecode_mapped_memory *mem,
         return sizeof(*s);
 }
 
+static void
+pandecode_write_value_job(const struct pandecode_mapped_memory *mem,
+                          mali_ptr job, int job_no)
+{
+        struct mali_write_value_job_packed *PANDECODE_PTR_VAR(p, mem, job);
+        pan_section_unpack(p, WRITE_VALUE_JOB, PAYLOAD, u);
+        DUMP_SECTION(WRITE_VALUE_JOB, PAYLOAD, p, "Write Value Payload:\n");
+        pandecode_log("\n");
+}
+
 /* Entrypoint to start tracing. jc_gpu_va is the GPU address for the first job
  * in the chain; later jobs are found by walking the chain. Bifrost is, well,
  * if it's bifrost or not. GPU ID is the more finegrained ID (at some point, we
@@ -1510,13 +1520,11 @@ pandecode_jc(mali_ptr jc_gpu_va, bool bifrost, unsigned gpu_id, bool minimal)
         do {
                 struct pandecode_mapped_memory *mem =
                         pandecode_find_mapped_gpu_mem_containing(jc_gpu_va);
-                void *payload;
-
                 pan_unpack(PANDECODE_PTR(mem, jc_gpu_va, struct mali_job_header_packed),
                            JOB_HEADER, h);
                 next_job = h.next;
                 mali_ptr payload_ptr = jc_gpu_va + MALI_JOB_HEADER_LENGTH;
-                payload = pandecode_fetch_gpu_mem(mem, payload_ptr, 64);
+                pandecode_fetch_gpu_mem(mem, payload_ptr, 64);
 
                 int job_no = job_descriptor_number++;
 
@@ -1528,28 +1536,9 @@ pandecode_jc(mali_ptr jc_gpu_va, bool bifrost, unsigned gpu_id, bool minimal)
                 pandecode_log("\n");
 
                 switch (h.type) {
-                case MALI_JOB_TYPE_WRITE_VALUE: {
-                        struct mali_payload_write_value *s = payload;
-                        pandecode_log("struct mali_payload_write_value payload_%"PRIx64"_%d = {\n", payload_ptr, job_no);
-                        pandecode_indent++;
-                        MEMORY_PROP(s, address);
-
-                        if (s->value_descriptor != MALI_WRITE_VALUE_ZERO) {
-                                pandecode_msg("XXX: unknown value descriptor\n");
-                                pandecode_prop("value_descriptor = 0x%" PRIX32, s->value_descriptor);
-                        }
-
-                        if (s->reserved) {
-                                pandecode_msg("XXX: set value tripped\n");
-                                pandecode_prop("reserved = 0x%" PRIX32, s->reserved);
-                        }
-
-                        pandecode_prop("immediate = 0x%" PRIX64, s->immediate);
-                        pandecode_indent--;
-                        pandecode_log("};\n");
-
+                case MALI_JOB_TYPE_WRITE_VALUE:
+                        pandecode_write_value_job(mem, jc_gpu_va, job_no);
                         break;
-                }
 
                 case MALI_JOB_TYPE_TILER:
                 case MALI_JOB_TYPE_VERTEX:
