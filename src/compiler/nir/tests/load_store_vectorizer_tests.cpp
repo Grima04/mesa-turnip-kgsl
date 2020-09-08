@@ -1875,6 +1875,6 @@ TEST_F(nir_load_store_vectorize_test, ubo_alignment_const_100)
       create_indirect_load(nir_var_mem_ubo, 0, nir_imm_int(b, 100), 0x1);
 
    EXPECT_TRUE(run_vectorizer(nir_var_mem_ubo));
-   EXPECT_EQ(nir_intrinsic_align_mul(load), 0x40000000);
+   EXPECT_EQ(nir_intrinsic_align_mul(load), NIR_ALIGN_MUL_MAX);
    EXPECT_EQ(nir_intrinsic_align_offset(load), 100);
 }

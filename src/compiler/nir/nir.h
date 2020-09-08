@@ -1718,10 +1718,14 @@ typedef enum {
     * Alignment for offsets and addresses
     *
     * These two parameters, specify an alignment in terms of a multiplier and
-    * an offset.  The offset or address parameter X of the intrinsic is
-    * guaranteed to satisfy the following:
+    * an offset.  The multiplier is always a power of two.  The offset or
+    * address parameter X of the intrinsic is guaranteed to satisfy the
+    * following:
     *
     *                (X - align_offset) % align_mul == 0
+    *
+    * For constant offset values, align_mul will be NIR_ALIGN_MUL_MAX and the
+    * align_offset will be modulo that.
     */
    NIR_INTRINSIC_ALIGN_MUL,
    NIR_INTRINSIC_ALIGN_OFFSET,
@@ -1777,6 +1781,13 @@ typedef enum {
    NIR_INTRINSIC_NUM_INDEX_FLAGS,
 
 } nir_intrinsic_index_flag;
+
+/**
+ * Maximum valid value for a nir align_mul value (in intrinsics or derefs).
+ *
+ * Offsets can be signed, so this is the largest power of two in int32_t.
+ */
+#define NIR_ALIGN_MUL_MAX 0x40000000
 
 typedef struct {
    unsigned location:7; /* gl_vert_attrib, gl_varying_slot, or gl_frag_result */
