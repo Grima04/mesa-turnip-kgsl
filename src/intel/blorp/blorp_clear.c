@@ -827,7 +827,7 @@ blorp_can_hiz_clear_depth(const struct gen_device_info *devinfo,
                                    surf->dim == ISL_SURF_DIM_3D ? layer: 0,
                                    &slice_x0, &slice_y0);
       const bool max_x1_y1 =
-         x1 == minify(surf->logical_level0_px.width, level) && 
+         x1 == minify(surf->logical_level0_px.width, level) &&
          y1 == minify(surf->logical_level0_px.height, level);
       const uint32_t haligned_x1 = ALIGN(x1, surf->image_alignment_el.w);
       const uint32_t valigned_y1 = ALIGN(y1, surf->image_alignment_el.h);
