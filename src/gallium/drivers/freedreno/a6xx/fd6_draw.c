@@ -480,6 +480,10 @@ fd6_clear(struct fd_context *ctx, unsigned buffers,
 	const bool has_depth = pfb->zsbuf;
 	unsigned color_buffers = buffers >> 2;
 
+	/* we need to do multisample clear on 3d pipe, so fallback to u_blitter: */
+	if (pfb->samples > 1)
+		return false;
+
 	/* If we're clearing after draws, fallback to 3D pipe clears.  We could
 	 * use blitter clears in the draw batch but then we'd have to patch up the
 	 * gmem offsets. This doesn't seem like a useful thing to optimize for
