@@ -736,7 +736,9 @@ print_deref_instr(nir_deref_instr *instr, print_state *state)
    }
 
    if (instr->deref_type == nir_deref_type_cast) {
-      fprintf(fp, " /* ptr_stride=%u */", instr->cast.ptr_stride);
+      fprintf(fp, " /* ptr_stride=%u, align_mul=%u, align_offset=%u */",
+              instr->cast.ptr_stride,
+              instr->cast.align_mul, instr->cast.align_offset);
    }
 }
 
