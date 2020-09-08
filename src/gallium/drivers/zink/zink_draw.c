@@ -501,7 +501,7 @@ update_descriptors(struct zink_context *ctx, struct zink_screen *screen, bool is
             zink_resource_buffer_barrier(batch, transitions[i].res,
                                          transitions[i].access, transitions[i].stage);
          else
-            zink_resource_barrier(batch, transitions[i].res,
+            zink_resource_image_barrier(batch, transitions[i].res,
                                   transitions[i].layout, transitions[i].access, transitions[i].stage);
       }
    }

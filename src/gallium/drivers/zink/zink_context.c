@@ -809,14 +809,14 @@ framebuffer_state_buffer_barriers_setup(struct zink_context *ctx,
          surf = ctx->framebuffer->null_surface;
       struct zink_resource *res = zink_resource(surf->texture);
       if (res->layout != VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
-         zink_resource_barrier(batch, res,
+         zink_resource_image_barrier(batch, res,
                                VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, 0, 0);
    }
 
    if (state->zsbuf) {
       struct zink_resource *res = zink_resource(state->zsbuf->texture);
       if (res->layout != VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
-         zink_resource_barrier(batch, res,
+         zink_resource_image_barrier(batch, res,
                                VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, 0, 0);
    }
 }
@@ -1089,7 +1089,7 @@ zink_resource_image_needs_barrier(struct zink_resource *res, VkImageLayout new_l
 }
 
 void
-zink_resource_barrier(struct zink_batch *batch, struct zink_resource *res,
+zink_resource_image_barrier(struct zink_batch *batch, struct zink_resource *res,
                       VkImageLayout new_layout, VkAccessFlags flags, VkPipelineStageFlags pipeline)
 {
    assert(!batch->in_rp);
