@@ -1915,7 +1915,8 @@ VkResult anv_ImportFenceFdKHR(
     *
     * If the import fails, we leave the file descriptor open.
     */
-   close(fd);
+   if (fd != -1)
+      close(fd);
 
    if (pImportFenceFdInfo->flags & VK_FENCE_IMPORT_TEMPORARY_BIT) {
       anv_fence_impl_cleanup(device, &fence->temporary);
