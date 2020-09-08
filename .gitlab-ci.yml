@@ -47,6 +47,9 @@ stages:
     # Pipeline runs for the master branch of the main project
     - if: &is-main-master '$CI_PROJECT_NAMESPACE == "mesa" && $CI_COMMIT_REF_NAME == "master"'
       when: always
+    # Post-merge pipeline, not for Marge Bot
+    - if: &is-post-merge-not-for-marge '$GITLAB_USER_LOGIN != "marge-bot" && $CI_MERGE_REQUEST_SOURCE_BRANCH_NAME != $CI_COMMIT_REF_NAME && $CI_PROJECT_PATH == "mesa/mesa"'
+      when: on_success
     # Pre-merge pipeline for Marge Bot
     - if: &is-pre-merge-for-marge '$GITLAB_USER_LOGIN == "marge-bot" && $CI_MERGE_REQUEST_SOURCE_BRANCH_NAME == $CI_COMMIT_REF_NAME'
       when: on_success
@@ -85,7 +88,7 @@ test-docs:
     - if: *is-pre-merge-for-marge
       changes: *docs-or-ci
       when: on_success
-    - if: '$GITLAB_USER_LOGIN != "marge-bot" && $CI_MERGE_REQUEST_SOURCE_BRANCH_NAME != $CI_COMMIT_REF_NAME && $CI_PROJECT_PATH == "mesa/mesa"'
+    - if: *is-post-merge-not-for-marge
       changes: *docs-or-ci
       when: on_success
     - if: '$CI_PROJECT_PATH != "mesa/mesa" || $CI_MERGE_REQUEST_SOURCE_BRANCH_NAME == $CI_COMMIT_REF_NAME'
@@ -195,7 +198,7 @@ success:
       when: on_success
     # Run pipeline by default in the main project if it was not triggered by
     # Marge Bot, and any files affecting the pipeline were changed
-    - if: '$GITLAB_USER_LOGIN != "marge-bot" && $CI_MERGE_REQUEST_SOURCE_BRANCH_NAME != $CI_COMMIT_REF_NAME && $CI_PROJECT_PATH == "mesa/mesa"'
+    - if: *is-post-merge-not-for-marge
       changes:
         *all_paths
       when: on_success
