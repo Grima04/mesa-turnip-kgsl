@@ -59,6 +59,9 @@ stages:
     # Post-merge pipeline, not for Marge Bot
     - if: &is-post-merge-not-for-marge '$GITLAB_USER_LOGIN != "marge-bot" && $CI_MERGE_REQUEST_SOURCE_BRANCH_NAME != $CI_COMMIT_REF_NAME && $CI_PROJECT_PATH == "mesa/mesa"'
       when: on_success
+    # Pre-merge pipeline
+    - if: &is-pre-merge '$CI_MERGE_REQUEST_SOURCE_BRANCH_NAME == $CI_COMMIT_REF_NAME'
+      when: on_success
     # Pre-merge pipeline for Marge Bot
     - if: &is-pre-merge-for-marge '$GITLAB_USER_LOGIN == "marge-bot" && $CI_MERGE_REQUEST_SOURCE_BRANCH_NAME == $CI_COMMIT_REF_NAME'
       when: on_success
@@ -151,7 +154,7 @@ success:
       when: never
     - changes: *all_paths
       when: never
-    - if: '$CI_MERGE_REQUEST_SOURCE_BRANCH_NAME == $CI_COMMIT_REF_NAME'
+    - if: *is-pre-merge
       when: on_success
   variables:
     GIT_STRATEGY: none
