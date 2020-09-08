@@ -47,6 +47,9 @@ stages:
     # Pipeline runs for the master branch of the main project
     - if: &is-main-master '$CI_PROJECT_NAMESPACE == "mesa" && $CI_COMMIT_REF_NAME == "master"'
       when: always
+    # Pre-merge pipeline for Marge Bot
+    - if: &is-pre-merge-for-marge '$GITLAB_USER_LOGIN == "marge-bot" && $CI_MERGE_REQUEST_SOURCE_BRANCH_NAME == $CI_COMMIT_REF_NAME'
+      when: on_success
 
 
 .docs-base:
@@ -79,7 +82,7 @@ test-docs:
   stage: container+docs
   rules:
     - *ignore_scheduled_pipelines
-    - if: '$GITLAB_USER_LOGIN == "marge-bot" && $CI_MERGE_REQUEST_SOURCE_BRANCH_NAME == $CI_COMMIT_REF_NAME'
+    - if: *is-pre-merge-for-marge
       changes: *docs-or-ci
       when: on_success
     - if: '$GITLAB_USER_LOGIN != "marge-bot" && $CI_MERGE_REQUEST_SOURCE_BRANCH_NAME != $CI_COMMIT_REF_NAME && $CI_PROJECT_PATH == "mesa/mesa"'
@@ -186,7 +189,7 @@ success:
       when: on_success
     # Run pipeline by default if it was triggered by Marge Bot, is for a
     # merge request, and any files affecting the pipeline were changed
-    - if: '$GITLAB_USER_LOGIN == "marge-bot" && $CI_MERGE_REQUEST_SOURCE_BRANCH_NAME == $CI_COMMIT_REF_NAME'
+    - if: *is-pre-merge-for-marge
       changes:
         *all_paths
       when: on_success
