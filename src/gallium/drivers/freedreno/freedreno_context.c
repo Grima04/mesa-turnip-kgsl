@@ -413,7 +413,7 @@ fd_context_init(struct fd_context *ctx, struct pipe_screen *pscreen,
 
 	ctx->primtypes = primtypes;
 	ctx->primtype_mask = 0;
-	for (i = 0; i < PIPE_PRIM_MAX; i++)
+	for (i = 0; i <= PIPE_PRIM_MAX; i++)
 		if (primtypes[i])
 			ctx->primtype_mask |= (1 << i);
 
