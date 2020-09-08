@@ -325,7 +325,7 @@ panfrost_load_midg(
 
                         unsigned flags = 0;
                         pan_pack(&flags, BLEND_FLAGS, cfg) {
-                                cfg.dither_disable = true;
+                                cfg.round_to_fb_precision = true;
                                 cfg.srgb = srgb;
                                 cfg.midgard_blend_shader = blend_shader;
                         }

@@ -296,7 +296,7 @@
     <field name="Midgard blend shader" size="1" start="1" type="bool" default="false"/>
     <field name="Enable" size="1" start="9" type="bool" default="true"/>
     <field name="sRGB" size="1" start="10" type="bool" default="false"/>
-    <field name="Dither disable" size="1" start="11" type="bool" default="false"/>
+    <field name="Round to FB precision" size="1" start="11" type="bool" default="false"/>
   </struct>
 
   <struct name="Midgard Blend" size="4" with_opaque="true">

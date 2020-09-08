@@ -312,7 +312,7 @@ panfrost_emit_blend(struct panfrost_batch *batch, void *rts,
 
                         cfg.srgb = util_format_is_srgb(batch->key.cbufs[i]->format);
                         cfg.load_destination = blend[i].load_dest;
-                        cfg.dither_disable = !batch->ctx->blend->base.dither;
+                        cfg.round_to_fb_precision = !batch->ctx->blend->base.dither;
 
                         if (!(dev->quirks & IS_BIFROST))
                                 cfg.midgard_blend_shader = blend[i].is_shader;
