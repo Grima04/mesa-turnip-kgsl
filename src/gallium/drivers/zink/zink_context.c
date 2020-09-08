@@ -891,12 +891,8 @@ struct zink_batch *
 zink_batch_no_rp(struct zink_context *ctx)
 {
    struct zink_batch *batch = zink_curr_batch(ctx);
-   if (batch->in_rp) {
-      /* flush batch and get a new one */
-      flush_batch(ctx);
-      batch = zink_curr_batch(ctx);
-      assert(!batch->in_rp);
-   }
+   zink_end_render_pass(ctx, batch);
+   assert(!batch->in_rp);
    return batch;
 }
 
