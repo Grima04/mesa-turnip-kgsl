@@ -37,7 +37,7 @@ stages:
 # ----------------------------------------------------------
 .scheduled_pipelines-rules:
   rules: &ignore_scheduled_pipelines
-    if: '$CI_PIPELINE_SOURCE == "schedule"'
+    if: &is-scheduled-pipeline '$CI_PIPELINE_SOURCE == "schedule"'
     when: never
 
 .docs-base:
@@ -411,7 +411,7 @@ git_archive:
   extends: .fdo.container-build@alpine
   stage: container+docs
   rules:
-    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+    - if: *is-scheduled-pipeline
       when: always
   variables:
     FDO_REPO_SUFFIX: &git-archive-suffix "alpine/git_archive"
@@ -428,7 +428,7 @@ make git archive:
   stage: git-archive
   extends: .fdo.suffixed-image@alpine
   rules:
-    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+    - if: *is-scheduled-pipeline
       when: on_success
   # ensure we are running on packet
   tags:
