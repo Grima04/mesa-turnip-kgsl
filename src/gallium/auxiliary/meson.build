@@ -232,8 +232,6 @@ files_libgallium = files(
   'util/u_bitmask.c',
   'util/u_bitmask.h',
   'util/u_blend.h',
-  'util/u_blit.c',
-  'util/u_blit.h',
   'util/u_blitter.c',
   'util/u_blitter.h',
   'util/u_box.h',
