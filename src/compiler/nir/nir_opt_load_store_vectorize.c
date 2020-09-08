@@ -667,8 +667,9 @@ new_bitsize_acceptable(struct vectorize_ctx *ctx, unsigned new_bit_size,
    if (new_bit_size / common_bit_size > NIR_MAX_VEC_COMPONENTS)
       return false;
 
-   uint32_t align = low->align_offset ? 1 << (ffs(low->align_offset) - 1) : low->align_mul;
-   if (!ctx->callback(align, new_bit_size, new_num_components,
+   if (!ctx->callback(low->align_mul,
+                      low->align_offset,
+                      new_bit_size, new_num_components,
                       high_offset, low->intrin, high->intrin))
       return false;
 

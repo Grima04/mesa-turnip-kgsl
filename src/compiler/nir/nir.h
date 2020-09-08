@@ -4851,7 +4851,9 @@ bool nir_opt_vectorize(nir_shader *shader, nir_opt_vectorize_cb filter,
 
 bool nir_opt_conditional_discard(nir_shader *shader);
 
-typedef bool (*nir_should_vectorize_mem_func)(unsigned align, unsigned bit_size,
+typedef bool (*nir_should_vectorize_mem_func)(unsigned align_mul,
+                                              unsigned align_offset,
+                                              unsigned bit_size,
                                               unsigned num_components, unsigned high_offset,
                                               nir_intrinsic_instr *low, nir_intrinsic_instr *high);
 

@@ -855,7 +855,8 @@ brw_nir_link_shaders(const struct brw_compiler *compiler,
 }
 
 static bool
-brw_nir_should_vectorize_mem(unsigned align, unsigned bit_size,
+brw_nir_should_vectorize_mem(unsigned align_mul, unsigned align_offset,
+                             unsigned bit_size,
                              unsigned num_components, unsigned high_offset,
                              nir_intrinsic_instr *low,
                              nir_intrinsic_instr *high)
@@ -872,6 +873,13 @@ brw_nir_should_vectorize_mem(unsigned align, unsigned bit_size,
     */
    if (num_components > 4)
       return false;
+
+
+   uint32_t align;
+   if (align_offset)
+      align = 1 << (ffs(align_offset) - 1);
+   else
+      align = align_mul;
 
    if (align < bit_size / 8)
       return false;

@@ -383,7 +383,8 @@ type_size(const struct glsl_type *type, bool bindless)
 }
 
 bool
-mem_vectorize_callback(unsigned align, unsigned bit_size,
+mem_vectorize_callback(unsigned align_mul, unsigned align_offset,
+                       unsigned bit_size,
                        unsigned num_components, unsigned high_offset,
                        nir_intrinsic_instr *low, nir_intrinsic_instr *high)
 {
@@ -393,6 +394,12 @@ mem_vectorize_callback(unsigned align, unsigned bit_size,
    /* >128 bit loads are split except with SMEM */
    if (bit_size * num_components > 128)
       return false;
+
+   uint32_t align;
+   if (align_offset)
+      align = 1 << (ffs(align_offset) - 1);
+   else
+      align = align_mul;
 
    switch (low->intrinsic) {
    case nir_intrinsic_load_global:
