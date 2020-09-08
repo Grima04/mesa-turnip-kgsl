@@ -1088,6 +1088,35 @@ gen_perf_query_result_accumulate(struct gen_perf_query_result *result,
 
 }
 
+#define GET_FIELD(word, field) (((word)  & field ## _MASK) >> field ## _SHIFT)
+
+void
+gen_perf_query_result_read_gt_frequency(struct gen_perf_query_result *result,
+                                        const struct gen_device_info *devinfo,
+                                        const uint32_t start,
+                                        const uint32_t end)
+{
+   switch (devinfo->gen) {
+   case 7:
+   case 8:
+      result->gt_frequency[0] = GET_FIELD(start, GEN7_RPSTAT1_CURR_GT_FREQ) * 50ULL;
+      result->gt_frequency[1] = GET_FIELD(end, GEN7_RPSTAT1_CURR_GT_FREQ) * 50ULL;
+      break;
+   case 9:
+   case 11:
+   case 12:
+      result->gt_frequency[0] = GET_FIELD(start, GEN9_RPSTAT0_CURR_GT_FREQ) * 50ULL / 3ULL;
+      result->gt_frequency[1] = GET_FIELD(end, GEN9_RPSTAT0_CURR_GT_FREQ) * 50ULL / 3ULL;
+      break;
+   default:
+      unreachable("unexpected gen");
+   }
+
+   /* Put the numbers into Hz. */
+   result->gt_frequency[0] *= 1000000ULL;
+   result->gt_frequency[1] *= 1000000ULL;
+}
+
 void
 gen_perf_query_result_clear(struct gen_perf_query_result *result)
 {

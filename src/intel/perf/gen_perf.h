@@ -151,6 +151,11 @@ struct gen_perf_query_result {
    uint64_t unslice_frequency[2];
 
    /**
+    * Frequency of the whole GT at the begin and end of the query.
+    */
+   uint64_t gt_frequency[2];
+
+   /**
     * Timestamp of the query.
     */
    uint64_t begin_timestamp;
@@ -357,6 +362,14 @@ void gen_perf_query_result_read_frequencies(struct gen_perf_query_result *result
                                             const struct gen_device_info *devinfo,
                                             const uint32_t *start,
                                             const uint32_t *end);
+
+/** Store the GT frequency as reported by the RPSTAT register.
+ */
+void gen_perf_query_result_read_gt_frequency(struct gen_perf_query_result *result,
+                                             const struct gen_device_info *devinfo,
+                                             const uint32_t start,
+                                             const uint32_t end);
+
 /** Accumulate the delta between 2 OA reports into result for a given query.
  */
 void gen_perf_query_result_accumulate(struct gen_perf_query_result *result,

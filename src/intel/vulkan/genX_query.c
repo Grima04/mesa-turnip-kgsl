@@ -528,29 +528,22 @@ VkResult genX(GetQueryPoolResults)(
       case VK_QUERY_TYPE_PERFORMANCE_QUERY_INTEL: {
          if (!write_results)
             break;
+         const struct gen_perf_query_info *query = &device->physical->perf->queries[0];
          const void *query_data = query_slot(pool, firstQuery + i);
          const uint32_t *oa_begin = query_data + intel_perf_mi_rpc_offset(false);
          const uint32_t *oa_end = query_data + intel_perf_mi_rpc_offset(true);
          const uint32_t *rpstat_begin = query_data + intel_perf_rpstart_offset(false);
          const uint32_t *rpstat_end = query_data + intel_perf_mi_rpc_offset(true);
          struct gen_perf_query_result result;
-         uint32_t core_freq[2];
-#if GEN_GEN < 9
-         core_freq[0] = ((*rpstat_begin >> 7) & 0x7f) * 1000000ULL;
-         core_freq[1] = ((*rpstat_end >> 7) & 0x7f) * 1000000ULL;
-#else
-         core_freq[0] = ((*rpstat_begin >> 23) & 0x1ff) * 1000000ULL;
-         core_freq[1] = ((*rpstat_end >> 23) & 0x1ff) * 1000000ULL;
-#endif
          gen_perf_query_result_clear(&result);
-         gen_perf_query_result_accumulate(&result, &device->physical->perf->queries[0],
-                                          oa_begin, oa_end);
+         gen_perf_query_result_accumulate(&result, query, oa_begin, oa_end);
          gen_perf_query_result_read_frequencies(&result, &device->info,
                                                 oa_begin, oa_end);
+         gen_perf_query_result_read_gt_frequency(&result, &device->info,
+                                                 *rpstat_begin, *rpstat_end);
          gen_perf_query_result_write_mdapi(pData, stride,
                                            &device->info,
-                                           &result,
-                                           core_freq[0], core_freq[1]);
+                                           query, &result);
 #if GEN_GEN >= 8 && GEN_GEN <= 11
          gen_perf_query_mdapi_write_perfcntr(pData, stride, &device->info,
                                              query_data + intel_perf_counter(false),

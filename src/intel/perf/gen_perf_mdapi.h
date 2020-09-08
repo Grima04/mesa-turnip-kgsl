@@ -129,8 +129,8 @@ struct mdapi_pipeline_metrics {
 
 int gen_perf_query_result_write_mdapi(void *data, uint32_t data_size,
                                       const struct gen_device_info *devinfo,
-                                      const struct gen_perf_query_result *result,
-                                      uint64_t freq_start, uint64_t freq_end);
+                                      const struct gen_perf_query_info *query,
+                                      const struct gen_perf_query_result *result);
 
 static inline void gen_perf_query_mdapi_write_perfcntr(void *data, uint32_t data_size,
                                                        const struct gen_device_info *devinfo,

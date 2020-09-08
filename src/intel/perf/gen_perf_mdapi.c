@@ -34,8 +34,8 @@
 int
 gen_perf_query_result_write_mdapi(void *data, uint32_t data_size,
                                   const struct gen_device_info *devinfo,
-                                  const struct gen_perf_query_result *result,
-                                  uint64_t freq_start, uint64_t freq_end)
+                                  const struct gen_perf_query_info *query,
+                                  const struct gen_perf_query_result *result)
 {
    switch (devinfo->gen) {
    case 7: {
@@ -57,8 +57,8 @@ gen_perf_query_result_write_mdapi(void *data, uint32_t data_size,
       mdapi_data->ReportsCount = result->reports_accumulated;
       mdapi_data->TotalTime =
          gen_device_info_timebase_scale(devinfo, result->accumulator[0]);
-      mdapi_data->CoreFrequency = freq_end;
-      mdapi_data->CoreFrequencyChanged = freq_end != freq_start;
+      mdapi_data->CoreFrequency = result->gt_frequency[1];
+      mdapi_data->CoreFrequencyChanged = result->gt_frequency[1] != result->gt_frequency[0];
       mdapi_data->SplitOccured = result->query_disjoint;
       return sizeof(*mdapi_data);
    }
@@ -82,8 +82,8 @@ gen_perf_query_result_write_mdapi(void *data, uint32_t data_size,
       mdapi_data->BeginTimestamp =
          gen_device_info_timebase_scale(devinfo, result->begin_timestamp);
       mdapi_data->GPUTicks = result->accumulator[1];
-      mdapi_data->CoreFrequency = freq_end;
-      mdapi_data->CoreFrequencyChanged = freq_end != freq_start;
+      mdapi_data->CoreFrequency = result->gt_frequency[1];
+      mdapi_data->CoreFrequencyChanged = result->gt_frequency[1] != result->gt_frequency[0];
       mdapi_data->SliceFrequency =
          (result->slice_frequency[0] + result->slice_frequency[1]) / 2ULL;
       mdapi_data->UnsliceFrequency =
@@ -113,8 +113,8 @@ gen_perf_query_result_write_mdapi(void *data, uint32_t data_size,
       mdapi_data->BeginTimestamp =
          gen_device_info_timebase_scale(devinfo, result->begin_timestamp);
       mdapi_data->GPUTicks = result->accumulator[1];
-      mdapi_data->CoreFrequency = freq_end;
-      mdapi_data->CoreFrequencyChanged = freq_end != freq_start;
+      mdapi_data->CoreFrequency = result->gt_frequency[1];
+      mdapi_data->CoreFrequencyChanged = result->gt_frequency[1] != result->gt_frequency[0];
       mdapi_data->SliceFrequency =
          (result->slice_frequency[0] + result->slice_frequency[1]) / 2ULL;
       mdapi_data->UnsliceFrequency =
