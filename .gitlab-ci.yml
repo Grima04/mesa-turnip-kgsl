@@ -40,6 +40,15 @@ stages:
     if: &is-scheduled-pipeline '$CI_PIPELINE_SOURCE == "schedule"'
     when: never
 
+# YAML anchors for rule conditions
+# --------------------------------
+.rules-anchors:
+  rules:
+    # Pipeline runs for the master branch of the main project
+    - if: &is-main-master '$CI_PROJECT_NAMESPACE == "mesa" && $CI_COMMIT_REF_NAME == "master"'
+      when: always
+
+
 .docs-base:
   extends: .ci-run-policy
   image: alpine
@@ -56,7 +65,7 @@ pages:
     - public
   rules:
     - *ignore_scheduled_pipelines
-    - if: '$CI_PROJECT_NAMESPACE == "mesa" && $CI_COMMIT_REF_NAME == "master"'
+    - if: *is-main-master
       changes: &docs-or-ci
       - docs/**/*
       - .gitlab-ci.yml
