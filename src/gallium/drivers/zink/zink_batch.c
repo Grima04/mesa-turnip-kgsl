@@ -73,6 +73,9 @@ reset_batch(struct zink_context *ctx, struct zink_batch *batch)
 
    if (vkResetDescriptorPool(screen->dev, batch->descpool, 0) != VK_SUCCESS)
       fprintf(stderr, "vkResetDescriptorPool failed\n");
+
+   if (vkResetCommandPool(screen->dev, batch->cmdpool, 0) != VK_SUCCESS)
+      fprintf(stderr, "vkResetCommandPool failed\n");
    batch->has_draw = false;
 }
 

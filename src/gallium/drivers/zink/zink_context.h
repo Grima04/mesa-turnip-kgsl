@@ -102,14 +102,12 @@ struct zink_context {
 
    struct pipe_device_reset_callback reset;
 
-   VkCommandPool cmdpool;
    struct zink_batch batches[ZINK_NUM_GFX_BATCHES];
    bool is_device_lost;
    unsigned curr_batch;
 
    VkQueue queue;
 
-   VkCommandPool compute_cmdpool;
    struct zink_batch compute_batch;
 
    struct pipe_constant_buffer ubos[PIPE_SHADER_TYPES][PIPE_MAX_CONSTANT_BUFFERS];

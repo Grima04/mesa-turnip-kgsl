@@ -44,6 +44,7 @@ struct zink_surface;
 
 struct zink_batch {
    unsigned batch_id : 3;
+   VkCommandPool cmdpool;
    VkCommandBuffer cmdbuf;
    VkDescriptorPool descpool;
    int descs_left;

@@ -70,21 +70,24 @@ zink_context_destroy(struct pipe_context *pctx)
       zink_batch_release(screen, &ctx->batches[i]);
       util_dynarray_fini(&ctx->batches[i].zombie_samplers);
       vkDestroyDescriptorPool(screen->dev, ctx->batches[i].descpool, NULL);
-      vkFreeCommandBuffers(screen->dev, ctx->cmdpool, 1, &ctx->batches[i].cmdbuf);
 
       _mesa_set_destroy(ctx->batches[i].resources, NULL);
       _mesa_set_destroy(ctx->batches[i].sampler_views, NULL);
       _mesa_set_destroy(ctx->batches[i].programs, NULL);
+      vkFreeCommandBuffers(screen->dev, ctx->batches[i].cmdpool, 1, &ctx->batches[i].cmdbuf);
+      vkDestroyCommandPool(screen->dev, ctx->batches[i].cmdpool, NULL);
    }
-   zink_batch_release(screen, &ctx->compute_batch);
-   util_dynarray_fini(&ctx->compute_batch.zombie_samplers);
-   vkDestroyDescriptorPool(screen->dev, ctx->compute_batch.descpool, NULL);
-   vkFreeCommandBuffers(screen->dev, ctx->cmdpool, 1, &ctx->compute_batch.cmdbuf);
+   if (ctx->compute_batch.cmdpool) {
+      zink_batch_release(screen, &ctx->compute_batch);
+      util_dynarray_fini(&ctx->compute_batch.zombie_samplers);
+      vkDestroyDescriptorPool(screen->dev, ctx->compute_batch.descpool, NULL);
+      vkFreeCommandBuffers(screen->dev, ctx->compute_batch.cmdpool, 1, &ctx->compute_batch.cmdbuf);
 
-   _mesa_set_destroy(ctx->compute_batch.resources, NULL);
-   _mesa_set_destroy(ctx->compute_batch.sampler_views, NULL);
-   _mesa_set_destroy(ctx->compute_batch.programs, NULL);
-   vkDestroyCommandPool(screen->dev, ctx->cmdpool, NULL);
+      _mesa_set_destroy(ctx->compute_batch.resources, NULL);
+      _mesa_set_destroy(ctx->compute_batch.sampler_views, NULL);
+      _mesa_set_destroy(ctx->compute_batch.programs, NULL);
+      vkDestroyCommandPool(screen->dev, ctx->compute_batch.cmdpool, NULL);
+   }
 
    util_primconvert_destroy(ctx->primconvert);
    u_upload_destroy(pctx->stream_uploader);
@@ -1597,9 +1600,16 @@ static bool
 init_batch(struct zink_context *ctx, struct zink_batch *batch, unsigned idx)
 {
    struct zink_screen *screen = zink_screen(ctx->base.screen);
+   VkCommandPoolCreateInfo cpci = {};
+   cpci.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+   cpci.queueFamilyIndex = screen->gfx_queue;
+   cpci.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+   if (vkCreateCommandPool(screen->dev, &cpci, NULL, &batch->cmdpool) != VK_SUCCESS)
+      return false;
+
    VkCommandBufferAllocateInfo cbai = {};
    cbai.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-   cbai.commandPool = idx == ZINK_COMPUTE_BATCH_ID ? ctx->compute_cmdpool : ctx->cmdpool;
+   cbai.commandPool = batch->cmdpool;
    cbai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
    cbai.commandBufferCount = 1;
 
@@ -1728,22 +1738,11 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
    if (!ctx->blitter)
       goto fail;
 
-   VkCommandPoolCreateInfo cpci = {};
-   cpci.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-   cpci.queueFamilyIndex = screen->gfx_queue;
-   cpci.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-   if (vkCreateCommandPool(screen->dev, &cpci, NULL, &ctx->cmdpool) != VK_SUCCESS)
-      goto fail;
-   if (vkCreateCommandPool(screen->dev, &cpci, NULL, &ctx->compute_cmdpool) != VK_SUCCESS)
-      goto fail;
-
    for (int i = 0; i < ARRAY_SIZE(ctx->batches); ++i) {
       if (!init_batch(ctx, &ctx->batches[i], i))
          goto fail;
    }
 
-   if (vkCreateCommandPool(screen->dev, &cpci, NULL, &ctx->compute_cmdpool) != VK_SUCCESS)
-      goto fail;
    if (!init_batch(ctx, &ctx->compute_batch, ZINK_COMPUTE_BATCH_ID))
       goto fail;
    zink_start_batch(ctx, &ctx->compute_batch);
@@ -1779,9 +1778,12 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
 
 fail:
    if (ctx) {
-      vkDestroyCommandPool(screen->dev, ctx->cmdpool, NULL);
-      if (ctx->compute_cmdpool)
-         vkDestroyCommandPool(screen->dev, ctx->compute_cmdpool, NULL);
+      for (int i = 0; i < ARRAY_SIZE(ctx->batches); ++i) {
+         vkDestroyDescriptorPool(screen->dev, ctx->batches[i].descpool, NULL);
+         vkFreeCommandBuffers(screen->dev, ctx->batches[i].cmdpool, 1, &ctx->batches[i].cmdbuf);
+         vkDestroyCommandPool(screen->dev, ctx->batches[i].cmdpool, NULL);
+      }
+      vkDestroyCommandPool(screen->dev, ctx->compute_batch.cmdpool, NULL);
       FREE(ctx);
    }
    return NULL;
