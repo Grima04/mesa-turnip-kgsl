@@ -205,7 +205,7 @@ bool
 panfrost_batch_is_scanout(struct panfrost_batch *batch);
 
 mali_ptr
-panfrost_batch_get_tiler_meta(struct panfrost_batch *batch, unsigned vertex_count);
+panfrost_batch_get_bifrost_tiler(struct panfrost_batch *batch, unsigned vertex_count);
 
 mali_ptr
 panfrost_batch_reserve_framebuffer(struct panfrost_batch *batch);

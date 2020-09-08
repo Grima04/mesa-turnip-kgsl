@@ -422,33 +422,6 @@ union midgard_primitive_size {
         u64 pointer;
 };
 
-struct bifrost_tiler_heap_meta {
-        u32 zero;
-        u32 heap_size;
-        /* note: these are just guesses! */
-        mali_ptr tiler_heap_start;
-        mali_ptr tiler_heap_free;
-        mali_ptr tiler_heap_end;
-
-        /* hierarchy weights? but they're still 0 after the job has run... */
-        u32 zeros[10];
-        u32 unk1;
-        u32 unk7e007e;
-} __attribute__((packed));
-
-struct bifrost_tiler_meta {
-        u32 tiler_heap_next_start;  /* To be written by the GPU */
-        u32 used_hierarchy_mask;  /* To be written by the GPU */
-        u16 hierarchy_mask; /* Five values observed: 0xa, 0x14, 0x28, 0x50, 0xa0 */
-        u16 flags;
-        u16 width;
-        u16 height;
-        u64 zero0;
-        mali_ptr tiler_heap_meta;
-        /* TODO what is this used for? */
-        u64 zeros[20];
-} __attribute__((packed));
-
 struct midgard_payload_vertex_tiler {
         struct mali_vertex_tiler_prefix prefix;
         struct mali_draw_packed postfix;

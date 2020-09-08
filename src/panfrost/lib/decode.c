@@ -1577,99 +1577,31 @@ pandecode_vertex_tiler_postfix_pre(
 }
 
 static void
-pandecode_tiler_heap_meta(mali_ptr gpu_va, int job_no)
+pandecode_bifrost_tiler_heap(mali_ptr gpu_va, int job_no)
 {
         struct pandecode_mapped_memory *mem = pandecode_find_mapped_gpu_mem_containing(gpu_va);
-        const struct bifrost_tiler_heap_meta *PANDECODE_PTR_VAR(h, mem, gpu_va);
-
-        pandecode_log("struct bifrost_tiler_heap_meta tiler_heap_meta_%"PRIx64"_%d = {\n", gpu_va, job_no);
-        pandecode_indent++;
-
-        if (h->zero) {
-                pandecode_msg("XXX: tiler heap zero tripped\n");
-                pandecode_prop("zero = 0x%x", h->zero);
-        }
-
-        pandecode_prop("heap_size = 0x%x", h->heap_size);
-        MEMORY_PROP(h, tiler_heap_start);
-        MEMORY_PROP(h, tiler_heap_free);
-
-        /* this might point to the beginning of another buffer, when it's
-         * really the end of the tiler heap buffer, so we have to be careful
-         * here. but for zero length, we need the same pointer.
-         */
-
-        if (h->tiler_heap_end == h->tiler_heap_start) {
-                MEMORY_PROP(h, tiler_heap_start);
-        } else {
-                char *a = pointer_as_memory_reference(h->tiler_heap_end - 1);
-                pandecode_prop("tiler_heap_end = %s + 1", a);
-                free(a);
-        }
-
-        for (int i = 0; i < 10; i++) {
-                if (h->zeros[i] != 0) {
-                        pandecode_msg("XXX: tiler heap zero %d tripped, value %x\n",
-                                      i, h->zeros[i]);
-                }
-        }
-
-        if (h->unk1 != 0x1) {
-                pandecode_msg("XXX: tiler heap unk1 tripped\n");
-                pandecode_prop("unk1 = 0x%x", h->unk1);
-        }
-
-        if (h->unk7e007e != 0x7e007e) {
-                pandecode_msg("XXX: tiler heap unk7e007e tripped\n");
-                pandecode_prop("unk7e007e = 0x%x", h->unk7e007e);
-        }
-
-        pandecode_indent--;
-        pandecode_log("};\n");
+        pan_unpack(PANDECODE_PTR(mem, gpu_va, void), BIFROST_TILER_HEAP, h);
+        DUMP_UNPACKED(BIFROST_TILER_HEAP, h, "Bifrost Tiler Heap:\n");
 }
 
 static void
-pandecode_tiler_meta(mali_ptr gpu_va, int job_no)
+pandecode_bifrost_tiler(mali_ptr gpu_va, int job_no)
 {
         struct pandecode_mapped_memory *mem = pandecode_find_mapped_gpu_mem_containing(gpu_va);
-        const struct bifrost_tiler_meta *PANDECODE_PTR_VAR(t, mem, gpu_va);
+        pan_unpack(PANDECODE_PTR(mem, gpu_va, void), BIFROST_TILER, t);
 
-        pandecode_tiler_heap_meta(t->tiler_heap_meta, job_no);
+        pandecode_bifrost_tiler_heap(t.heap, job_no);
 
-        pandecode_log("struct bifrost_tiler_meta tiler_meta_%"PRIx64"_%d = {\n", gpu_va, job_no);
+        DUMP_UNPACKED(BIFROST_TILER, t, "Bifrost Tiler:\n");
         pandecode_indent++;
-
-        pandecode_prop("tiler_heap_next_start = 0x%" PRIx32, t->tiler_heap_next_start);
-        pandecode_prop("used_hierarchy_mask = 0x%" PRIx32, t->used_hierarchy_mask);
-
-        if (t->hierarchy_mask != 0xa &&
-            t->hierarchy_mask != 0x14 &&
-            t->hierarchy_mask != 0x28 &&
-            t->hierarchy_mask != 0x50 &&
-            t->hierarchy_mask != 0xa0)
+        if (t.hierarchy_mask != 0xa &&
+            t.hierarchy_mask != 0x14 &&
+            t.hierarchy_mask != 0x28 &&
+            t.hierarchy_mask != 0x50 &&
+            t.hierarchy_mask != 0xa0)
                 pandecode_prop("XXX: Unexpected hierarchy_mask (not 0xa, 0x14, 0x28, 0x50 or 0xa0)!");
 
-        pandecode_prop("hierarchy_mask = 0x%" PRIx16, t->hierarchy_mask);
-
-        pandecode_prop("flags = 0x%" PRIx16, t->flags);
-
-        pandecode_prop("width = MALI_POSITIVE(%d)", t->width + 1);
-        pandecode_prop("height = MALI_POSITIVE(%d)", t->height + 1);
-
-        if (t->zero0) {
-                pandecode_msg("XXX: tiler meta zero tripped\n");
-                pandecode_prop("zero0 = 0x%" PRIx64, t->zero0);
-        }
-
-        for (int i = 0; i < 12; i++) {
-                if (t->zeros[i] != 0) {
-                        pandecode_msg("XXX: tiler heap zero %d tripped, value %" PRIx64 "\n",
-                                      i, t->zeros[i]);
-                }
-        }
-
         pandecode_indent--;
-        pandecode_log("};\n");
 }
 
 static void
@@ -1720,7 +1652,7 @@ pandecode_tiler_job_bfr(const struct mali_job_descriptor_header *h,
         memcpy(&draw_packed, &t->postfix, sizeof(draw_packed));
         pan_unpack(&draw_packed, DRAW, draw);
         pandecode_vertex_tiler_postfix_pre(&draw, job_no, h->job_type, "", true, gpu_id);
-        pandecode_tiler_meta(t->tiler_meta, job_no);
+        pandecode_bifrost_tiler(t->tiler_meta, job_no);
 
         pandecode_vertex_tiler_prefix(&t->prefix, job_no, false);
 

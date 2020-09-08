@@ -496,7 +496,7 @@ panfrost_emit_mfbd(struct panfrost_batch *batch, unsigned vertex_count)
 
         if (dev->quirks & IS_BIFROST) {
                 mfbd.msaa.sample_locations = panfrost_emit_sample_locations(batch);
-                mfbd.tiler_meta = panfrost_batch_get_tiler_meta(batch, vertex_count);
+                mfbd.tiler_meta = panfrost_batch_get_bifrost_tiler(batch, vertex_count);
         } else {
                 struct mali_local_storage_packed lsp;
 

@@ -751,4 +751,34 @@
     <section name="Tiler Weights" offset="256" type="Midgard Tiler Weights"/>
     <section name="Padding 2" offset="288" type="Single-Target Framebuffer Padding 2"/>
   </aggregate>
+
+  <enum name="Sample Pattern">
+    <value name="Single-sampled" value="0"/>
+    <value name="Ordered 4x Grid" value="1"/>
+    <value name="Rotated 4x Grid" value="2"/>
+    <value name="D3D 8x Grid" value="3"/>
+    <value name="D3D 16x Grid" value="4"/>
+  </enum>
+
+  <struct name="Bifrost Tiler Heap">
+    <field name="Size" size="32" start="1:0" type="uint" modifier="align(4096)"/>
+    <field name="Base" size="64" start="2:0" type="address"/>
+    <field name="Bottom" size="64" start="4:0" type="address"/>
+    <field name="Top" size="64" start="6:0" type="address"/>
+  </struct>
+
+  <struct name="Bifrost Tiler Weights" size="1">
+    <field name="Value" size="16" start="0:16" type="uint"/>
+  </struct>
+
+  <struct name="Bifrost Tiler">
+    <field name="Polygon List" size="64" start="0:0" type="address"/>
+    <field name="Hierarchy Mask" size="13" start="2:0" type="uint"/>
+    <field name="Sample Pattern" size="3" start="2:13" type="Sample Pattern"/>
+    <field name="Update Cost Table" size="1" start="2:16" type="bool"/>
+    <field name="FB Width" size="16" start="3:0" type="uint" modifier="minus(1)"/>
+    <field name="FB Height" size="16" start="3:16" type="uint" modifier="minus(1)"/>
+    <field name="Heap" size="64" start="6:0" type="address"/>
+    <field name="Weights" size="32" start="8:0" type="Bifrost Tiler Weights" elements="8"/>
+  </struct>
 </panxml>
