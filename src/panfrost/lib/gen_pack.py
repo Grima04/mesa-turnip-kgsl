@@ -163,6 +163,12 @@ __gen_unpack_padded(const uint8_t *restrict cl, uint32_t start, uint32_t end)
 #define pan_section_print(fp, A, S, var, indent)                          \\
         MALI_ ## A ## _SECTION_ ## S ## _print(fp, &(var), indent)
 
+/* From presentations, 16x16 tiles externally. Use shift for fast computation
+ * of tile numbers. */
+
+#define MALI_TILE_SHIFT 4
+#define MALI_TILE_LENGTH (1 << MALI_TILE_SHIFT)
+
 """
 
 def to_alphanum(name):

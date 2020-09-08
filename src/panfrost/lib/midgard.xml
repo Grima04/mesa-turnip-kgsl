@@ -1060,6 +1060,22 @@
     <field name="Next" size="64" start="6:0" type="address"/>
   </struct>
 
+  <struct name="Fragment Job Payload" size="8">
+    <field name="Bound Min X" size="12" start="0:0" type="uint"/>
+    <field name="Bound Min Y" size="12" start="0:16" type="uint"/>
+    <field name="Bound Max X" size="12" start="1:0" type="uint"/>
+    <field name="Bound Max Y" size="12" start="1:16" type="uint"/>
+    <field name="Has Tile Enable Map" size="1" start="1:31" type="bool"/>
+    <field name="Framebuffer" size="64" start="2:0" type="address"/>
+    <field name="Tile Enable Map" size="64" start="4:0" type="address"/>
+    <field name="Tile Enable Map Row Stride" size="8" start="6:0" type="uint"/>
+  </struct>
+
+  <aggregate name="Fragment Job">
+    <section name="Header" offset="0" type="Job Header"/>
+    <section name="Payload" offset="32" type="Fragment Job Payload"/>
+  </aggregate>
+
   <enum name="Write Value Type">
     <value name="Cycle Counter" value="1"/>
     <value name="System Timestamp" value="2"/>

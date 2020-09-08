@@ -1399,14 +1399,15 @@ pandecode_vertex_or_tiler_job_mdg(const struct MALI_JOB_HEADER *h,
         return sizeof(*v);
 }
 
-static int
+static void
 pandecode_fragment_job(const struct pandecode_mapped_memory *mem,
-                              mali_ptr payload, int job_no,
-                              bool is_bifrost, unsigned gpu_id)
+                       mali_ptr job, int job_no,
+                       bool is_bifrost, unsigned gpu_id)
 {
-        const struct mali_payload_fragment *PANDECODE_PTR_VAR(s, mem, payload);
+        struct mali_fragment_job_packed *PANDECODE_PTR_VAR(p, mem, job);
+        pan_section_unpack(p, FRAGMENT_JOB, PAYLOAD, s);
 
-        bool is_mfbd = s->framebuffer & MALI_FBD_TAG_IS_MFBD;
+        bool is_mfbd = s.framebuffer & MALI_FBD_TAG_IS_MFBD;
 
         if (!is_mfbd && is_bifrost)
                 pandecode_msg("XXX: Bifrost fragment must use MFBD\n");
@@ -1414,10 +1415,10 @@ pandecode_fragment_job(const struct pandecode_mapped_memory *mem,
         struct pandecode_fbd info;
 
         if (is_mfbd)
-                info = pandecode_mfbd_bfr(s->framebuffer & ~MALI_FBD_TAG_MASK, job_no,
+                info = pandecode_mfbd_bfr(s.framebuffer & ~MALI_FBD_TAG_MASK, job_no,
                                           true, false, is_bifrost, gpu_id);
         else
-                info = pandecode_sfbd(s->framebuffer & ~MALI_FBD_TAG_MASK, job_no,
+                info = pandecode_sfbd(s.framebuffer & ~MALI_FBD_TAG_MASK, job_no,
                                       true, gpu_id);
 
         /* Compute the tag for the tagged pointer. This contains the type of
@@ -1434,35 +1435,19 @@ pandecode_fragment_job(const struct pandecode_mapped_memory *mem,
                 expected_tag |= (MALI_POSITIVE(info.rt_count) << 2);
         }
 
-        if ((s->min_tile_coord | s->max_tile_coord) & ~(MALI_X_COORD_MASK | MALI_Y_COORD_MASK)) {
-                pandecode_msg("XXX: unexpected tile coordinate bits\n");
-                pandecode_prop("min_tile_coord = 0x%X\n", s->min_tile_coord);
-                pandecode_prop("max_tile_coord = 0x%X\n", s->max_tile_coord);
-        }
-
         /* Extract tile coordinates */
 
-        unsigned min_x = MALI_TILE_COORD_X(s->min_tile_coord) << MALI_TILE_SHIFT;
-        unsigned min_y = MALI_TILE_COORD_Y(s->min_tile_coord) << MALI_TILE_SHIFT;
-
-        unsigned max_x = (MALI_TILE_COORD_X(s->max_tile_coord) + 1) << MALI_TILE_SHIFT;
-        unsigned max_y = (MALI_TILE_COORD_Y(s->max_tile_coord) + 1) << MALI_TILE_SHIFT;
-
-        /* For the max, we also want the floored (rather than ceiled) version for checking */
-
-        unsigned max_x_f = (MALI_TILE_COORD_X(s->max_tile_coord)) << MALI_TILE_SHIFT;
-        unsigned max_y_f = (MALI_TILE_COORD_Y(s->max_tile_coord)) << MALI_TILE_SHIFT;
+        unsigned min_x = s.bound_min_x << MALI_TILE_SHIFT;
+        unsigned min_y = s.bound_min_y << MALI_TILE_SHIFT;
+        unsigned max_x = s.bound_max_x << MALI_TILE_SHIFT;
+        unsigned max_y = s.bound_max_y << MALI_TILE_SHIFT;
 
         /* Validate the coordinates are well-ordered */
 
-        if (min_x == max_x)
-                pandecode_msg("XXX: empty X coordinates (%u = %u)\n", min_x, max_x);
-        else if (min_x > max_x)
+        if (min_x > max_x)
                 pandecode_msg("XXX: misordered X coordinates (%u > %u)\n", min_x, max_x);
 
-        if (min_y == max_y)
-                pandecode_msg("XXX: empty X coordinates (%u = %u)\n", min_x, max_x);
-        else if (min_y > max_y)
+        if (min_y > max_y)
                 pandecode_msg("XXX: misordered X coordinates (%u > %u)\n", min_x, max_x);
 
         /* Validate the coordinates fit inside the framebuffer. We use floor,
@@ -1470,24 +1455,24 @@ pandecode_fragment_job(const struct pandecode_mapped_memory *mem,
          * coordinates for something like an 800x600 framebuffer will actually
          * resolve to 800x608, which would otherwise trigger a Y-overflow */
 
-        if ((min_x > info.width) || (max_x_f > info.width))
+        if (max_x + 1 > info.width)
                 pandecode_msg("XXX: tile coordinates overflow in X direction\n");
 
-        if ((min_y > info.height) || (max_y_f > info.height))
+        if (max_y + 1 > info.height)
                 pandecode_msg("XXX: tile coordinates overflow in Y direction\n");
 
         /* After validation, we print */
-
-        pandecode_log("fragment (%u, %u) ... (%u, %u)\n\n", min_x, min_y, max_x, max_y);
+        DUMP_UNPACKED(FRAGMENT_JOB_PAYLOAD, s, "Fragment Job Payload:\n",
+                      job + MALI_JOB_HEADER_LENGTH, job_no);
 
         /* The FBD is a tagged pointer */
 
-        unsigned tag = (s->framebuffer & MALI_FBD_TAG_MASK);
+        unsigned tag = (s.framebuffer & MALI_FBD_TAG_MASK);
 
         if (tag != expected_tag)
                 pandecode_msg("XXX: expected FBD tag %X but got %X\n", expected_tag, tag);
 
-        return sizeof(*s);
+        pandecode_log("\n");
 }
 
 static void
@@ -1554,7 +1539,7 @@ pandecode_jc(mali_ptr jc_gpu_va, bool bifrost, unsigned gpu_id, bool minimal)
                         break;
 
                 case MALI_JOB_TYPE_FRAGMENT:
-                        pandecode_fragment_job(mem, payload_ptr, job_no, bifrost, gpu_id);
+                        pandecode_fragment_job(mem, jc_gpu_va, job_no, bifrost, gpu_id);
                         break;
 
                 default:

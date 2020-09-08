@@ -88,22 +88,24 @@ panfrost_fragment_job(struct panfrost_batch *batch, bool has_draws)
         assert(batch->maxx > batch->minx);
         assert(batch->maxy > batch->miny);
 
-        struct mali_payload_fragment payload = {
-                .min_tile_coord = MALI_COORDINATE_TO_TILE_MIN(batch->minx, batch->miny),
-                .max_tile_coord = MALI_COORDINATE_TO_TILE_MAX(batch->maxx, batch->maxy),
-                .framebuffer = framebuffer,
-        };
-
         struct panfrost_transfer transfer =
                 panfrost_pool_alloc_aligned(&batch->pool,
-                                            MALI_JOB_HEADER_LENGTH + sizeof(payload),
-                                            64);
+                                            MALI_FRAGMENT_JOB_LENGTH, 64);
 
-        pan_pack(transfer.cpu, JOB_HEADER, header) {
+        pan_section_pack(transfer.cpu, FRAGMENT_JOB, HEADER, header) {
                 header.type = MALI_JOB_TYPE_FRAGMENT;
                 header.index = 1;
         }
 
-        memcpy(transfer.cpu + MALI_JOB_HEADER_LENGTH, &payload, sizeof(payload));
+        pan_section_pack(transfer.cpu, FRAGMENT_JOB, PAYLOAD, payload) {
+                payload.bound_min_x = batch->minx >> MALI_TILE_SHIFT;
+                payload.bound_min_y = batch->miny >> MALI_TILE_SHIFT;
+
+                /* Batch max values are inclusive, we need to subtract 1. */
+                payload.bound_max_x = (batch->maxx - 1) >> MALI_TILE_SHIFT;
+                payload.bound_max_y = (batch->maxy - 1) >> MALI_TILE_SHIFT;
+                payload.framebuffer = framebuffer;
+        }
+
         return transfer.gpu;
 }
