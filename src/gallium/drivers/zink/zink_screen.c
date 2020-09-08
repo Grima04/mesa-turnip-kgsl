@@ -321,6 +321,12 @@ zink_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_TWO_SIDED_COLOR:
       return 0;
 
+   case PIPE_CAP_MAX_SHADER_PATCH_VARYINGS:
+      return screen->info.props.limits.maxTessellationControlPerVertexOutputComponents / 4;
+   case PIPE_CAP_MAX_VARYINGS:
+      /* need to reserve up to 60 of our varying components and 16 slots for streamout */
+      return MIN2(screen->info.props.limits.maxVertexOutputComponents / 4 / 2, 16);
+
    case PIPE_CAP_DMABUF:
       return screen->info.have_KHR_external_memory_fd;
 
