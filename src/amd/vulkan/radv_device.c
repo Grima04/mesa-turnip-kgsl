@@ -128,15 +128,25 @@ radv_get_device_uuid(struct radeon_info *info, void *uuid)
 }
 
 static uint64_t
+radv_get_adjusted_vram_size(struct radv_physical_device *device)
+{
+	int ov = driQueryOptioni(&device->instance->dri_options,
+	                         "override_vram_size");
+	if (ov >= 0)
+		return MIN2(device->rad_info.vram_size, (uint64_t)ov << 20);
+	return device->rad_info.vram_size;
+}
+
+static uint64_t
 radv_get_visible_vram_size(struct radv_physical_device *device)
 {
-	return MIN2(device->rad_info.vram_size, device->rad_info.vram_vis_size);
+	return MIN2(radv_get_adjusted_vram_size(device) , device->rad_info.vram_vis_size);
 }
 
 static uint64_t
 radv_get_vram_size(struct radv_physical_device *device)
 {
-	return device->rad_info.vram_size - radv_get_visible_vram_size(device);
+	return radv_get_adjusted_vram_size(device) - device->rad_info.vram_vis_size;
 }
 
 static void
@@ -609,6 +619,7 @@ DRI_CONF_BEGIN
 	DRI_CONF_SECTION_END
 
 	DRI_CONF_SECTION_DEBUG
+		DRI_CONF_OVERRIDE_VRAM_SIZE()
 		DRI_CONF_VK_WSI_FORCE_BGRA8_UNORM_FIRST("false")
 	DRI_CONF_SECTION_END
 DRI_CONF_END;
@@ -2195,7 +2206,7 @@ radv_get_memory_budget_properties(VkPhysicalDevice physicalDevice,
 							     RADEON_ALLOCATED_VRAM);
 
 			heap_budget = vram_size -
-				device->ws->query_value(device->ws, RADEON_VRAM_USAGE) +
+				MIN2(vram_size, device->ws->query_value(device->ws, RADEON_VRAM_USAGE)) +
 				heap_usage;
 
 			memoryBudget->heapBudget[heap_index] = heap_budget;
@@ -2205,7 +2216,7 @@ radv_get_memory_budget_properties(VkPhysicalDevice physicalDevice,
 							     RADEON_ALLOCATED_VRAM_VIS);
 
 			heap_budget = visible_vram_size -
-				device->ws->query_value(device->ws, RADEON_VRAM_VIS_USAGE) +
+				MIN2(visible_vram_size, device->ws->query_value(device->ws, RADEON_VRAM_VIS_USAGE)) +
 				heap_usage;
 
 			memoryBudget->heapBudget[heap_index] = heap_budget;
