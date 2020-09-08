@@ -857,7 +857,7 @@ brw_nir_link_shaders(const struct brw_compiler *compiler,
 static bool
 brw_nir_should_vectorize_mem(unsigned align_mul, unsigned align_offset,
                              unsigned bit_size,
-                             unsigned num_components, unsigned high_offset,
+                             unsigned num_components,
                              nir_intrinsic_instr *low,
                              nir_intrinsic_instr *high)
 {

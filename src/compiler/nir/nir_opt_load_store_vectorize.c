@@ -670,7 +670,7 @@ new_bitsize_acceptable(struct vectorize_ctx *ctx, unsigned new_bit_size,
    if (!ctx->callback(low->align_mul,
                       low->align_offset,
                       new_bit_size, new_num_components,
-                      high_offset, low->intrin, high->intrin))
+                      low->intrin, high->intrin))
       return false;
 
    if (low->is_store) {

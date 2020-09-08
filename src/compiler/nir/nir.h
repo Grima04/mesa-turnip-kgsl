@@ -4854,7 +4854,7 @@ bool nir_opt_conditional_discard(nir_shader *shader);
 typedef bool (*nir_should_vectorize_mem_func)(unsigned align_mul,
                                               unsigned align_offset,
                                               unsigned bit_size,
-                                              unsigned num_components, unsigned high_offset,
+                                              unsigned num_components,
                                               nir_intrinsic_instr *low, nir_intrinsic_instr *high);
 
 bool nir_opt_load_store_vectorize(nir_shader *shader, nir_variable_mode modes,

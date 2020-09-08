@@ -385,7 +385,7 @@ type_size(const struct glsl_type *type, bool bindless)
 bool
 mem_vectorize_callback(unsigned align_mul, unsigned align_offset,
                        unsigned bit_size,
-                       unsigned num_components, unsigned high_offset,
+                       unsigned num_components,
                        nir_intrinsic_instr *low, nir_intrinsic_instr *high)
 {
    if (num_components > 4)
