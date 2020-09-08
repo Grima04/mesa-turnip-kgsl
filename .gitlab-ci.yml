@@ -53,6 +53,9 @@ stages:
     # Pipeline runs for the master branch of the main project
     - if: &is-main-master '$CI_PROJECT_NAMESPACE == "mesa" && $CI_COMMIT_REF_NAME == "master"'
       when: always
+    # Post-merge pipeline
+    - if: &is-post-merge '$CI_PROJECT_NAMESPACE == "mesa" && $CI_MERGE_REQUEST_SOURCE_BRANCH_NAME != $CI_COMMIT_REF_NAME'
+      when: on_success
     # Post-merge pipeline, not for Marge Bot
     - if: &is-post-merge-not-for-marge '$GITLAB_USER_LOGIN != "marge-bot" && $CI_MERGE_REQUEST_SOURCE_BRANCH_NAME != $CI_COMMIT_REF_NAME && $CI_PROJECT_PATH == "mesa/mesa"'
       when: on_success
@@ -141,7 +144,7 @@ success:
   image: debian:stable-slim
   rules:
     - *ignore_scheduled_pipelines
-    - if: '$CI_PROJECT_NAMESPACE == "mesa" && $CI_MERGE_REQUEST_SOURCE_BRANCH_NAME != $CI_COMMIT_REF_NAME'
+    - if: *is-post-merge
       when: never
     - if: '$GITLAB_USER_LOGIN == "marge-bot"'
       changes: *docs-or-ci
@@ -191,7 +194,7 @@ success:
     - *ignore_scheduled_pipelines
     # Run pipeline by default in the main project if any CI pipeline
     # configuration files were changed, to ensure docker images are up to date
-    - if: '$CI_PROJECT_PATH == "mesa/mesa" && $CI_MERGE_REQUEST_SOURCE_BRANCH_NAME != $CI_COMMIT_REF_NAME'
+    - if: *is-post-merge
       changes:
       - .gitlab-ci.yml
       - .gitlab-ci/**/*
