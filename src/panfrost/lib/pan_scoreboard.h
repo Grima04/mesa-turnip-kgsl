@@ -38,7 +38,7 @@ struct pan_scoreboard {
         unsigned job_index;
 
         /* A CPU-side pointer to the previous job for next_job linking */
-        struct mali_job_descriptor_header *prev_job;
+        struct mali_job_header_packed *prev_job;
 
         /* The dependency for tiler jobs (i.e. the index of the last emitted
          * tiler job, or zero if none have been emitted) */

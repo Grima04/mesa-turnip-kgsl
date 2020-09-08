@@ -238,25 +238,6 @@ struct bifrost_blend_rt {
         };
 } __attribute__((packed));
 
-/* Possible values for job_descriptor_size */
-
-#define MALI_JOB_32 0
-#define MALI_JOB_64 1
-
-struct mali_job_descriptor_header {
-        u32 exception_status;
-        u32 first_incomplete_task;
-        u64 fault_pointer;
-        u8 job_descriptor_size : 1;
-        enum mali_job_type job_type : 7;
-        u8 job_barrier : 1;
-        u8 unknown_flags : 7;
-        u16 job_index;
-        u16 job_dependency_index_1;
-        u16 job_dependency_index_2;
-        u64 next_job;
-} __attribute__((packed));
-
 /* Details about write_value from panfrost igt tests which use it as a generic
  * dword write primitive */
 

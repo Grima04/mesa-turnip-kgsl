@@ -63,15 +63,12 @@ bit_submit(struct panfrost_device *dev,
                 void *payload, size_t payload_size,
                 struct panfrost_bo **bos, size_t bo_count, enum bit_debug debug)
 {
-        struct mali_job_descriptor_header header = {
-                .job_descriptor_size = MALI_JOB_64,
-                .job_type = T,
-                .job_index = 1
-        };
-
         struct panfrost_bo *job = bit_bo_create(dev, 4096);
-        memcpy(job->cpu, &header, sizeof(header));
-        memcpy(job->cpu + sizeof(header), payload, payload_size);
+        pan_pack(job->cpu, JOB_HEADER, cfg) {
+                cfg.type = T;
+                cfg.index = 1;
+        }
+        memcpy(job->cpu + MALI_JOB_HEADER_LENGTH, payload, payload_size);
 
         uint32_t *bo_handles = calloc(sizeof(uint32_t), bo_count);
 

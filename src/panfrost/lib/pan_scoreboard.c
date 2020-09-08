@@ -133,22 +133,21 @@ panfrost_new_job(
         /* Assign the index */
         unsigned index = ++scoreboard->job_index;
 
-        struct mali_job_descriptor_header job = {
-                .job_descriptor_size = 1,
-                .job_type = type,
-                .job_barrier = barrier,
-                .job_index = index,
-                .job_dependency_index_1 = local_dep,
-                .job_dependency_index_2 = global_dep,
-        };
-
-        if (inject)
-                job.next_job = scoreboard->first_job;
-
         struct panfrost_transfer transfer =
-                panfrost_pool_alloc_aligned(pool, sizeof(job) + payload_size, 64);
-        memcpy(transfer.cpu, &job, sizeof(job));
-        memcpy(transfer.cpu + sizeof(job), payload, payload_size);
+                panfrost_pool_alloc_aligned(pool, MALI_JOB_HEADER_LENGTH + payload_size, 64);
+
+        pan_pack(transfer.cpu, JOB_HEADER, job) {
+                job.type = type;
+                job.barrier = barrier;
+                job.index = index;
+                job.dependency_1 = local_dep;
+                job.dependency_2 = global_dep;
+
+                if (inject)
+                        job.next = scoreboard->first_job;
+        }
+
+        memcpy(transfer.cpu + MALI_JOB_HEADER_LENGTH, payload, payload_size);
 
         if (inject) {
                 scoreboard->first_job = transfer.gpu;
@@ -159,12 +158,19 @@ panfrost_new_job(
         if (type == MALI_JOB_TYPE_TILER)
                 scoreboard->tiler_dep = index;
 
-        if (scoreboard->prev_job)
-                scoreboard->prev_job->next_job = transfer.gpu;
-        else
+        if (scoreboard->prev_job) {
+                /* Manual update of the next pointer. This is bad, don't copy
+                 * this pattern.
+                 * TODO: Find a way to defer last job header emission until we
+                 * have a new job to queue or the batch is ready for execution.
+                 */
+                scoreboard->prev_job->opaque[6] = transfer.gpu;
+                scoreboard->prev_job->opaque[7] = transfer.gpu >> 32;
+	} else {
                 scoreboard->first_job = transfer.gpu;
+        }
 
-        scoreboard->prev_job = (struct mali_job_descriptor_header *) transfer.cpu;
+        scoreboard->prev_job = (struct mali_job_header_packed *)transfer.cpu;
         return index;
 }
 
@@ -183,21 +189,23 @@ panfrost_scoreboard_initialize_tiler(struct pan_pool *pool,
         /* Okay, we do. Let's generate it. We'll need the job's polygon list
          * regardless of size. */
 
-        struct mali_job_descriptor_header job = {
-                .job_type = MALI_JOB_TYPE_WRITE_VALUE,
-                .job_index = scoreboard->write_value_index,
-                .job_descriptor_size = 1,
-                .next_job = scoreboard->first_job
-        };
-
         struct mali_payload_write_value payload = {
                 .address = polygon_list,
                 .value_descriptor = MALI_WRITE_VALUE_ZERO,
         };
 
-        struct panfrost_transfer transfer = panfrost_pool_alloc_aligned(pool, sizeof(job) + sizeof(payload), 64);
-        memcpy(transfer.cpu, &job, sizeof(job));
-        memcpy(transfer.cpu + sizeof(job), &payload, sizeof(payload));
+        struct panfrost_transfer transfer =
+                panfrost_pool_alloc_aligned(pool,
+                                            MALI_JOB_HEADER_LENGTH + sizeof(payload),
+                                            64);
+
+        pan_pack(transfer.cpu, JOB_HEADER, job) {
+                job.type = MALI_JOB_TYPE_WRITE_VALUE;
+                job.index = scoreboard->write_value_index;
+                job.next = scoreboard->first_job;
+        }
+
+        memcpy(transfer.cpu + MALI_JOB_HEADER_LENGTH, &payload, sizeof(payload));
 
         scoreboard->first_job = transfer.gpu;
 }

@@ -68,12 +68,6 @@ panfrost_fragment_job(struct panfrost_batch *batch, bool has_draws)
         if (fb->zsbuf)
                 panfrost_initialize_surface(batch, fb->zsbuf);
 
-        struct mali_job_descriptor_header header = {
-                .job_type = MALI_JOB_TYPE_FRAGMENT,
-                .job_index = 1,
-                .job_descriptor_size = 1
-        };
-
         /* The passed tile coords can be out of range in some cases, so we need
          * to clamp them to the framebuffer size to avoid a TILE_RANGE_FAULT.
          * Theoretically we also need to clamp the coordinates positive, but we
@@ -100,8 +94,16 @@ panfrost_fragment_job(struct panfrost_batch *batch, bool has_draws)
                 .framebuffer = framebuffer,
         };
 
-        struct panfrost_transfer transfer = panfrost_pool_alloc_aligned(&batch->pool, sizeof(header) + sizeof(payload), 64);
-        memcpy(transfer.cpu, &header, sizeof(header));
-        memcpy(transfer.cpu + sizeof(header), &payload, sizeof(payload));
+        struct panfrost_transfer transfer =
+                panfrost_pool_alloc_aligned(&batch->pool,
+                                            MALI_JOB_HEADER_LENGTH + sizeof(payload),
+                                            64);
+
+        pan_pack(transfer.cpu, JOB_HEADER, header) {
+                header.type = MALI_JOB_TYPE_FRAGMENT;
+                header.index = 1;
+        }
+
+        memcpy(transfer.cpu + MALI_JOB_HEADER_LENGTH, &payload, sizeof(payload));
         return transfer.gpu;
 }

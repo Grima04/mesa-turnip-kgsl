@@ -1324,16 +1324,16 @@ pandecode_primitive_size(union midgard_primitive_size u, bool constant)
 }
 
 static int
-pandecode_vertex_job_bfr(const struct mali_job_descriptor_header *h,
-                                const struct pandecode_mapped_memory *mem,
-                                mali_ptr payload, int job_no, unsigned gpu_id)
+pandecode_vertex_job_bfr(const struct MALI_JOB_HEADER *h,
+                         const struct pandecode_mapped_memory *mem,
+                         mali_ptr payload, int job_no, unsigned gpu_id)
 {
         struct bifrost_payload_vertex *PANDECODE_PTR_VAR(v, mem, payload);
 
         struct mali_draw_packed draw_packed;
         memcpy(&draw_packed, &v->postfix, sizeof(draw_packed));
         pan_unpack(&draw_packed, DRAW, draw);
-        pandecode_vertex_tiler_postfix_pre(&draw, job_no, h->job_type, "", true, gpu_id);
+        pandecode_vertex_tiler_postfix_pre(&draw, job_no, h->type, "", true, gpu_id);
 
         pandecode_vertex_tiler_prefix(&v->prefix, job_no, false);
         DUMP_CL(DRAW, &draw_packed, "Draw:\n");
@@ -1342,16 +1342,16 @@ pandecode_vertex_job_bfr(const struct mali_job_descriptor_header *h,
 }
 
 static int
-pandecode_tiler_job_bfr(const struct mali_job_descriptor_header *h,
-                               const struct pandecode_mapped_memory *mem,
-                               mali_ptr payload, int job_no, unsigned gpu_id)
+pandecode_tiler_job_bfr(const struct MALI_JOB_HEADER *h,
+                        const struct pandecode_mapped_memory *mem,
+                        mali_ptr payload, int job_no, unsigned gpu_id)
 {
         struct bifrost_payload_tiler *PANDECODE_PTR_VAR(t, mem, payload);
 
         struct mali_draw_packed draw_packed;
         memcpy(&draw_packed, &t->postfix, sizeof(draw_packed));
         pan_unpack(&draw_packed, DRAW, draw);
-        pandecode_vertex_tiler_postfix_pre(&draw, job_no, h->job_type, "", true, gpu_id);
+        pandecode_vertex_tiler_postfix_pre(&draw, job_no, h->type, "", true, gpu_id);
         pandecode_bifrost_tiler(t->tiler_meta, job_no);
 
         pandecode_vertex_tiler_prefix(&t->prefix, job_no, false);
@@ -1376,17 +1376,17 @@ pandecode_tiler_job_bfr(const struct mali_job_descriptor_header *h,
 }
 
 static int
-pandecode_vertex_or_tiler_job_mdg(const struct mali_job_descriptor_header *h,
-                const struct pandecode_mapped_memory *mem,
-                mali_ptr payload, int job_no, unsigned gpu_id)
+pandecode_vertex_or_tiler_job_mdg(const struct MALI_JOB_HEADER *h,
+                                  const struct pandecode_mapped_memory *mem,
+                                  mali_ptr payload, int job_no, unsigned gpu_id)
 {
         struct midgard_payload_vertex_tiler *PANDECODE_PTR_VAR(v, mem, payload);
-        bool is_graphics = (h->job_type == MALI_JOB_TYPE_VERTEX) || (h->job_type == MALI_JOB_TYPE_TILER);
+        bool is_graphics = (h->type == MALI_JOB_TYPE_VERTEX) || (h->type == MALI_JOB_TYPE_TILER);
 
         struct mali_draw_packed draw_packed;
         memcpy(&draw_packed, &v->postfix, sizeof(draw_packed));
         pan_unpack(&draw_packed, DRAW, draw);
-        pandecode_vertex_tiler_postfix_pre(&draw, job_no, h->job_type, "", false, gpu_id);
+        pandecode_vertex_tiler_postfix_pre(&draw, job_no, h->type, "", false, gpu_id);
 
         pandecode_vertex_tiler_prefix(&v->prefix, job_no, is_graphics);
         DUMP_CL(DRAW, &draw_packed, "Draw:\n");
@@ -1504,65 +1504,30 @@ pandecode_jc(mali_ptr jc_gpu_va, bool bifrost, unsigned gpu_id, bool minimal)
 {
         pandecode_dump_file_open();
 
-        struct mali_job_descriptor_header *h;
         unsigned job_descriptor_number = 0;
+        mali_ptr next_job = 0;
 
         do {
                 struct pandecode_mapped_memory *mem =
                         pandecode_find_mapped_gpu_mem_containing(jc_gpu_va);
-
                 void *payload;
 
-                h = PANDECODE_PTR(mem, jc_gpu_va, struct mali_job_descriptor_header);
-
-                mali_ptr payload_ptr = jc_gpu_va + sizeof(*h);
+                pan_unpack(PANDECODE_PTR(mem, jc_gpu_va, struct mali_job_header_packed),
+                           JOB_HEADER, h);
+                next_job = h.next;
+                mali_ptr payload_ptr = jc_gpu_va + MALI_JOB_HEADER_LENGTH;
                 payload = pandecode_fetch_gpu_mem(mem, payload_ptr, 64);
 
                 int job_no = job_descriptor_number++;
 
                 /* If the job is good to go, skip it in minimal mode */
-                if (minimal && (h->exception_status == 0x0 || h->exception_status == 0x1))
+                if (minimal && (h.exception_status == 0x0 || h.exception_status == 0x1))
                         continue;
 
-                pandecode_log("struct mali_job_descriptor_header job_%"PRIx64"_%d = {\n", jc_gpu_va, job_no);
-                pandecode_indent++;
+                DUMP_UNPACKED(JOB_HEADER, h, "Job Header:\n");
+                pandecode_log("\n");
 
-                pandecode_prop("job_type = %s", mali_job_type_as_str(h->job_type));
-
-                if (h->job_descriptor_size)
-                        pandecode_prop("job_descriptor_size = %d", h->job_descriptor_size);
-
-                if (h->exception_status && h->exception_status != 0x1)
-                        pandecode_prop("exception_status = %x (source ID: 0x%x access: %s exception: 0x%x)",
-                                       h->exception_status,
-                                       (h->exception_status >> 16) & 0xFFFF,
-                                       mali_exception_access_as_str((h->exception_status >> 8) & 0x3),
-                                       h->exception_status  & 0xFF);
-
-                if (h->first_incomplete_task)
-                        pandecode_prop("first_incomplete_task = %d", h->first_incomplete_task);
-
-                if (h->fault_pointer)
-                        pandecode_prop("fault_pointer = 0x%" PRIx64, h->fault_pointer);
-
-                if (h->job_barrier)
-                        pandecode_prop("job_barrier = %d", h->job_barrier);
-
-                pandecode_prop("job_index = %d", h->job_index);
-
-                if (h->unknown_flags)
-                        pandecode_prop("unknown_flags = %d", h->unknown_flags);
-
-                if (h->job_dependency_index_1)
-                        pandecode_prop("job_dependency_index_1 = %d", h->job_dependency_index_1);
-
-                if (h->job_dependency_index_2)
-                        pandecode_prop("job_dependency_index_2 = %d", h->job_dependency_index_2);
-
-                pandecode_indent--;
-                pandecode_log("};\n");
-
-                switch (h->job_type) {
+                switch (h.type) {
                 case MALI_JOB_TYPE_WRITE_VALUE: {
                         struct mali_payload_write_value *s = payload;
                         pandecode_log("struct mali_payload_write_value payload_%"PRIx64"_%d = {\n", payload_ptr, job_no);
@@ -1590,12 +1555,12 @@ pandecode_jc(mali_ptr jc_gpu_va, bool bifrost, unsigned gpu_id, bool minimal)
                 case MALI_JOB_TYPE_VERTEX:
                 case MALI_JOB_TYPE_COMPUTE:
                         if (bifrost) {
-                                if (h->job_type == MALI_JOB_TYPE_TILER)
-                                        pandecode_tiler_job_bfr(h, mem, payload_ptr, job_no, gpu_id);
+                                if (h.type == MALI_JOB_TYPE_TILER)
+                                        pandecode_tiler_job_bfr(&h, mem, payload_ptr, job_no, gpu_id);
                                 else
-                                        pandecode_vertex_job_bfr(h, mem, payload_ptr, job_no, gpu_id);
+                                        pandecode_vertex_job_bfr(&h, mem, payload_ptr, job_no, gpu_id);
                         } else
-                                pandecode_vertex_or_tiler_job_mdg(h, mem, payload_ptr, job_no, gpu_id);
+                                pandecode_vertex_or_tiler_job_mdg(&h, mem, payload_ptr, job_no, gpu_id);
 
                         break;
 
@@ -1606,7 +1571,7 @@ pandecode_jc(mali_ptr jc_gpu_va, bool bifrost, unsigned gpu_id, bool minimal)
                 default:
                         break;
                 }
-        } while ((jc_gpu_va = h->next_job));
+        } while ((jc_gpu_va = next_job));
 
         pandecode_map_read_write();
 }

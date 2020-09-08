@@ -1041,4 +1041,22 @@
     <section name="Bifrost Tiler Pointer" offset="56" type="Bifrost Tiler Pointer"/>
     <section name="Bifrost Padding" offset="64" type="Bifrost Framebuffer Padding"/>
   </aggregate>
+
+  <struct name="Job Header">
+    <field name="Exception Status" size="32" start="0:0" type="uint"/>
+    <field name="First Incomplete Task" size="32" start="1:0" type="uint"/>
+    <field name="Fault Pointer" size="64" start="2:0" type="address"/>
+    <field name="Is 64b" size="1" start="4:0" type="bool" default="true"/>
+    <field name="Type" size="7" start="4:1" type="Job Type"/>
+    <field name="Barrier" size="1" start="4:8" type="bool"/>
+    <field name="Invalidate Cache" size="1" start="4:9" type="bool"/>
+    <field name="Suppress Prefetch" size="1" start="4:11" type="bool"/>
+    <field name="Enable Texture Mapper" size="1" start="4:12" type="bool"/>
+    <field name="Relax Dependency 1" size="1" start="4:14" type="bool"/>
+    <field name="Relax Dependency 2" size="1" start="4:15" type="bool"/>
+    <field name="Index" size="16" start="4:16" type="uint"/>
+    <field name="Dependency 1" size="16" start="5:0" type="uint"/>
+    <field name="Dependency 2" size="16" start="5:16" type="uint"/>
+    <field name="Next" size="64" start="6:0" type="address"/>
+  </struct>
 </panxml>
