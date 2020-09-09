@@ -69,7 +69,24 @@ lower_instr(nir_intrinsic_instr *instr, nir_builder *b, int multiplier)
       load->src[0] = nir_src_for_ssa(ubo_idx);
       load->src[1] = nir_src_for_ssa(ubo_offset);
       assert(instr->dest.ssa.bit_size >= 8);
-      nir_intrinsic_set_align(load, instr->dest.ssa.bit_size / 8, 0);
+
+      /* If it's const, set the alignment to our known constant offset.  If
+       * not, set it to a pessimistic value based on the multiplier (or the
+       * scalar size, for qword loads).
+       *
+       * We could potentially set up stricter alignments for indirects by
+       * knowing what features are enabled in the APIs (see comment in
+       * nir_lower_ubo_vec4.c)
+       */
+      if (nir_src_is_const(instr->src[0])) {
+         nir_intrinsic_set_align(load, NIR_ALIGN_MUL_MAX,
+                                 (nir_src_as_uint(instr->src[0]) +
+                                  nir_intrinsic_base(instr) * multiplier) %
+                                 NIR_ALIGN_MUL_MAX);
+      } else {
+         nir_intrinsic_set_align(load, MAX2(multiplier,
+                                            instr->dest.ssa.bit_size / 8), 0);
+      }
       nir_ssa_dest_init(&load->instr, &load->dest,
                         load->num_components, instr->dest.ssa.bit_size,
                         instr->dest.ssa.name);
