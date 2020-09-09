@@ -171,6 +171,7 @@ resource_create(struct pipe_screen *pscreen,
       res->format = zink_get_format(screen, templ->format);
 
       VkImageCreateInfo ici = {};
+      VkExternalMemoryImageCreateInfo emici = {};
       ici.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
       ici.flags = VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT;
 
@@ -219,6 +220,12 @@ resource_create(struct pipe_screen *pscreen,
       if (templ->bind & (PIPE_BIND_DISPLAY_TARGET |
                          PIPE_BIND_SHARED)) {
          ici.tiling = VK_IMAGE_TILING_LINEAR;
+      }
+
+      if (templ->bind & PIPE_BIND_SHARED) {
+         emici.sType = VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMAGE_CREATE_INFO;
+         emici.handleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT;
+         ici.pNext = &emici;
       }
 
       if (templ->usage == PIPE_USAGE_STAGING)
