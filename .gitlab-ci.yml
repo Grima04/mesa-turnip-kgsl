@@ -309,6 +309,20 @@ s390x_build:
   needs:
     - s390x_build
 
+# Android NDK cross-build image
+android_build:
+  extends:
+    - .use-x86_build-base
+  variables:
+    FDO_DISTRIBUTION_TAG: &android_build "2020-10-05-shrink"
+
+.use-android_build:
+  variables:
+    TAG: *android_build
+  image: "$CI_REGISTRY_IMAGE/debian/android_build:$TAG"
+  needs:
+    - android_build
+
 # Debian 10 based x86 test image base
 x86_test-base:
   extends: x86_build-base
@@ -662,7 +676,9 @@ meson-classic:
       -D werror=true
 
 meson-android:
-  extends: .meson-build
+  extends:
+    - .meson-cross
+    - .use-android_build
   variables:
     UNWIND: "disabled"
     DRI_LOADERS: >
@@ -670,11 +686,9 @@ meson-android:
       -D gbm=disabled
       -D egl=enabled
       -D platforms=android
-    GALLIUM_DRIVERS: freedreno
-    VULKAN_DRIVERS: freedreno,intel,amd
     EXTRA_OPTION: >
       -D android-stub=true
-      -D werror=true
+      -D llvm=disabled
     GALLIUM_ST: >
       -D dri3=disabled
       -D gallium-vdpau=disabled
@@ -684,6 +698,15 @@ meson-android:
       -D gallium-xa=disabled
       -D gallium-nine=false
       -D gallium-opencl=disabled
+    LLVM_VERSION: ""
+  script:
+    # arm64 build: Can't build v3d/vc4 because they require expat for v3d_decode.
+    - PKG_CONFIG_PATH=/usr/local/lib/aarch64-linux-android/pkgconfig/:/android-ndk-r21d/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android/pkgconfig/ CROSS=aarch64-linux-android GALLIUM_DRIVERS=etnaviv,freedreno,lima,panfrost VULKAN_DRIVERS=freedreno .gitlab-ci/meson-build.sh
+    # x86_64 build:
+    # Can't do Intel because gen_decoder.c currently requires libexpat, which
+    # is not a dependency that AOSP wants to accept.  Can't do Radeon because
+    # it requires LLVM, which we don't have an Android build of.
+    # - PKG_CONFIG_PATH=/usr/local/lib/x86_64-linux-android/pkgconfig/ CROSS=x86_64-linux-android GALLIUM_DRIVERS=iris VULKAN_DRIVERS=intel .gitlab-ci/meson-build.sh
 
 .meson-cross:
   extends:
