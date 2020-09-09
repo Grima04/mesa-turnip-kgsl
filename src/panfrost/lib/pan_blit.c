@@ -270,6 +270,7 @@ panfrost_load_midg(
                 cfg.stencil_front.stencil_fail = MALI_STENCIL_OP_REPLACE;
                 cfg.stencil_front.depth_fail = MALI_STENCIL_OP_REPLACE;
                 cfg.stencil_front.depth_pass = MALI_STENCIL_OP_REPLACE;
+                cfg.stencil_front.mask = 0xFF;
 
                 cfg.stencil_back = cfg.stencil_front;
 

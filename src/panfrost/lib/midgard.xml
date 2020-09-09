@@ -521,7 +521,7 @@
 
   <struct name="Stencil">
     <field name="Reference Value" size="8" start="0" type="uint"/>
-    <field name="Mask" size="8" start="8" type="uint" default="0xFF"/>
+    <field name="Mask" size="8" start="8" type="uint"/>
     <field name="Compare Function" size="3" start="16" type="Func"/>
     <field name="Stencil Fail" size="3" start="19" type="Stencil Op"/>
     <field name="Depth Fail" size="3" start="22" type="Stencil Op"/>
