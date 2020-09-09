@@ -255,6 +255,9 @@ lima_pipe_format_to_attrib_type(enum pipe_format format)
 static void
 lima_pack_vs_cmd(struct lima_context *ctx, const struct pipe_draw_info *info)
 {
+   struct lima_context_constant_buffer *ccb =
+      ctx->const_buffer + PIPE_SHADER_VERTEX;
+   struct lima_vs_shader_state *vs = ctx->vs;
    struct lima_job *job = lima_job_get(ctx);
 
    VS_CMD_BEGIN(&job->vs_cmd_array, 24);
@@ -263,11 +266,12 @@ lima_pack_vs_cmd(struct lima_context *ctx, const struct pipe_draw_info *info)
       VS_CMD_ARRAYS_SEMAPHORE_BEGIN_1();
       VS_CMD_ARRAYS_SEMAPHORE_BEGIN_2();
    }
+   int uniform_size = MIN2(vs->uniform_size, ccb->size);
 
-   int uniform_size = ctx->vs->uniform_pending_offset + ctx->vs->constant_size + 32;
+   int size = uniform_size + vs->constant_size + 32;
    VS_CMD_UNIFORMS_ADDRESS(
       lima_ctx_buff_va(ctx, lima_ctx_buff_gp_uniform),
-      align(uniform_size, 16));
+      align(size, 16));
 
    VS_CMD_SHADER_ADDRESS(ctx->vs->bo->va, ctx->vs->shader_size);
    VS_CMD_SHADER_INFO(ctx->vs->prefetch, ctx->vs->shader_size);
@@ -824,23 +828,24 @@ lima_update_gp_uniform(struct lima_context *ctx)
    struct lima_context_constant_buffer *ccb =
       ctx->const_buffer + PIPE_SHADER_VERTEX;
    struct lima_vs_shader_state *vs = ctx->vs;
+   int uniform_size = MIN2(vs->uniform_size, ccb->size);
 
-   int size = vs->uniform_pending_offset + vs->constant_size + 32;
+   int size = uniform_size + vs->constant_size + 32;
    void *vs_const_buff =
       lima_ctx_buff_alloc(ctx, lima_ctx_buff_gp_uniform, size);
 
    if (ccb->buffer)
-      memcpy(vs_const_buff, ccb->buffer, ccb->size);
+      memcpy(vs_const_buff, ccb->buffer, uniform_size);
 
-   memcpy(vs_const_buff + vs->uniform_pending_offset,
+   memcpy(vs_const_buff + uniform_size,
           ctx->viewport.transform.scale,
           sizeof(ctx->viewport.transform.scale));
-   memcpy(vs_const_buff + vs->uniform_pending_offset + 16,
+   memcpy(vs_const_buff + uniform_size + 16,
           ctx->viewport.transform.translate,
           sizeof(ctx->viewport.transform.translate));
 
    if (vs->constant)
-      memcpy(vs_const_buff + vs->uniform_pending_offset + 32,
+      memcpy(vs_const_buff + uniform_size + 32,
              vs->constant, vs->constant_size);
 
    struct lima_job *job = lima_job_get(ctx);

@@ -456,7 +456,7 @@ bool gpir_compile_nir(struct lima_vs_shader_state *prog, struct nir_shader *nir,
       return false;
 
    comp->constant_base = nir->num_uniforms;
-   prog->uniform_pending_offset = nir->num_uniforms * 16;
+   prog->uniform_size = nir->num_uniforms * 16;
    prog->gl_pos_idx = 0;
    prog->point_size_idx = -1;
 
