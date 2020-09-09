@@ -676,12 +676,6 @@ tu_buffer_iova(struct tu_buffer *buffer)
    return buffer->bo->iova + buffer->bo_offset;
 }
 
-struct tu_vertex_binding
-{
-   struct tu_buffer *buffer;
-   VkDeviceSize offset;
-};
-
 const char *
 tu_get_debug_option_name(int id);
 
@@ -861,11 +855,10 @@ struct tu_cmd_state
    struct tu_pipeline *compute_pipeline;
 
    /* Vertex buffers */
-   struct
-   {
-      struct tu_buffer *buffers[MAX_VBS];
-      VkDeviceSize offsets[MAX_VBS];
-   } vb;
+   struct {
+      uint64_t base;
+      uint32_t size;
+   } vb[MAX_VBS];
 
    /* for dynamic states that can't be emitted directly */
    uint32_t dynamic_stencil_mask;
@@ -983,8 +976,6 @@ struct tu_cmd_buffer
    enum tu_cmd_buffer_status status;
 
    struct tu_cmd_state state;
-   struct tu_vertex_binding vertex_bindings[MAX_VBS];
-   uint32_t vertex_bindings_set;
    uint32_t queue_family_index;
 
    uint32_t push_constants[MAX_PUSH_CONSTANTS_SIZE / 4];
@@ -1115,6 +1106,9 @@ struct tu_pipeline
    /* draw states for the pipeline */
    struct tu_draw_state load_state, rast_state, ds_state, blend_state;
 
+   /* for vertex buffers state */
+   uint32_t num_vbs;
+
    struct
    {
       struct tu_draw_state state;
@@ -1127,7 +1121,6 @@ struct tu_pipeline
    {
       struct tu_draw_state state;
       struct tu_draw_state binning_state;
-      uint32_t bindings_used;
    } vi;
 
    struct

@@ -1638,10 +1638,6 @@ tu_BeginCommandBuffer(VkCommandBuffer commandBuffer,
    return VK_SUCCESS;
 }
 
-/* Sets vertex buffers to HW binding points.  We emit VBs in SDS (so that bin
- * rendering can skip over unused state), so we need to collect all the
- * bindings together into a single state emit at draw time.
- */
 void
 tu_CmdBindVertexBuffers(VkCommandBuffer commandBuffer,
                         uint32_t firstBinding,
@@ -1650,16 +1646,23 @@ tu_CmdBindVertexBuffers(VkCommandBuffer commandBuffer,
                         const VkDeviceSize *pOffsets)
 {
    TU_FROM_HANDLE(tu_cmd_buffer, cmd, commandBuffer);
-
-   assert(firstBinding + bindingCount <= MAX_VBS);
+   struct tu_cs cs;
+   /* TODO: track a "max_vb" value for the cmdbuf to save a bit of memory  */
+   cmd->state.vertex_buffers.iova = tu_cs_draw_state(&cmd->sub_cs, &cs, 4 * MAX_VBS).iova;
 
    for (uint32_t i = 0; i < bindingCount; i++) {
       struct tu_buffer *buf = tu_buffer_from_handle(pBuffers[i]);
 
-      cmd->state.vb.buffers[firstBinding + i] = buf;
-      cmd->state.vb.offsets[firstBinding + i] = pOffsets[i];
-
+      cmd->state.vb[firstBinding + i].base = tu_buffer_iova(buf) + pOffsets[i];
+      cmd->state.vb[firstBinding + i].size = buf->size - pOffsets[i];
       tu_bo_list_add(&cmd->bo_list, buf->bo, MSM_SUBMIT_BO_READ);
+   }
+
+   for (uint32_t i = 0; i < MAX_VBS; i++) {
+      tu_cs_emit_regs(&cs,
+                      A6XX_VFD_FETCH_BASE_LO(i, cmd->state.vb[i].base),
+                      A6XX_VFD_FETCH_BASE_HI(i, cmd->state.vb[i].base >> 32),
+                      A6XX_VFD_FETCH_SIZE(i, cmd->state.vb[i].size));
    }
 
    cmd->state.dirty |= TU_CMD_DIRTY_VERTEX_BUFFERS;
@@ -2114,13 +2117,6 @@ tu_CmdBindPipeline(VkCommandBuffer commandBuffer,
    for_each_bit(i, mask)
       tu_cs_emit_draw_state(cs, TU_DRAW_STATE_DYNAMIC + i, pipeline->dynamic_state[i]);
 
-   /* If the new pipeline requires more VBs than we had previously set up, we
-    * need to re-emit them in SDS.  If it requires the same set or fewer, we
-    * can just re-use the old SDS.
-    */
-   if (pipeline->vi.bindings_used & ~cmd->vertex_bindings_set)
-      cmd->state.dirty |= TU_CMD_DIRTY_VERTEX_BUFFERS;
-
    /* dynamic linewidth state depends pipeline state's gras_su_cntl
     * so the dynamic state ib must be updated when pipeline changes
     */
@@ -2131,6 +2127,17 @@ tu_CmdBindPipeline(VkCommandBuffer commandBuffer,
       cmd->state.dynamic_gras_su_cntl |= pipeline->gras_su_cntl;
 
       tu_cs_emit_regs(&cs, A6XX_GRAS_SU_CNTL(.dword = cmd->state.dynamic_gras_su_cntl));
+   }
+
+   /* the vertex_buffers draw state always contains all the currently
+    * bound vertex buffers. update its size to only emit the vbs which
+    * are actually used by the pipeline
+    * note there is a HW optimization which makes it so the draw state
+    * is not re-executed completely when only the size changes
+    */
+   if (cmd->state.vertex_buffers.size != pipeline->num_vbs * 4) {
+      cmd->state.vertex_buffers.size = pipeline->num_vbs * 4;
+      cmd->state.dirty |= TU_CMD_DIRTY_VERTEX_BUFFERS;
    }
 }
 
@@ -2905,30 +2912,6 @@ tu6_emit_consts(struct tu_cmd_buffer *cmd,
    return tu_cs_end_draw_state(&cmd->sub_cs, &cs);
 }
 
-static struct tu_draw_state
-tu6_emit_vertex_buffers(struct tu_cmd_buffer *cmd,
-                        const struct tu_pipeline *pipeline)
-{
-   struct tu_cs cs;
-   tu_cs_begin_sub_stream(&cmd->sub_cs, 4 * MAX_VBS, &cs);
-
-   int binding;
-   for_each_bit(binding, pipeline->vi.bindings_used) {
-      const struct tu_buffer *buf = cmd->state.vb.buffers[binding];
-      const VkDeviceSize offset = buf->bo_offset +
-         cmd->state.vb.offsets[binding];
-
-      tu_cs_emit_regs(&cs,
-                      A6XX_VFD_FETCH_BASE(binding, .bo = buf->bo, .bo_offset = offset),
-                      A6XX_VFD_FETCH_SIZE(binding, buf->size - offset));
-
-   }
-
-   cmd->vertex_bindings_set = pipeline->vi.bindings_used;
-
-   return tu_cs_end_draw_state(&cmd->sub_cs, &cs);
-}
-
 static uint64_t
 get_tess_param_bo_size(const struct tu_pipeline *pipeline,
                        uint32_t draw_count)
@@ -3067,9 +3050,6 @@ tu6_draw_common(struct tu_cmd_buffer *cmd,
       cmd->state.shader_const[MESA_SHADER_FRAGMENT] =
          tu6_emit_consts(cmd, pipeline, descriptors_state, MESA_SHADER_FRAGMENT);
    }
-
-   if (cmd->state.dirty & TU_CMD_DIRTY_VERTEX_BUFFERS)
-      cmd->state.vertex_buffers = tu6_emit_vertex_buffers(cmd, pipeline);
 
    bool has_tess =
          pipeline->active_stages & VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;

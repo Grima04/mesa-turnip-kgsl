@@ -1475,8 +1475,7 @@ tu6_emit_program(struct tu_cs *cs,
 static void
 tu6_emit_vertex_input(struct tu_cs *cs,
                       const struct ir3_shader_variant *vs,
-                      const VkPipelineVertexInputStateCreateInfo *info,
-                      uint32_t *bindings_used)
+                      const VkPipelineVertexInputStateCreateInfo *info)
 {
    uint32_t vfd_decode_idx = 0;
    uint32_t binding_instanced = 0; /* bitmask of instanced bindings */
@@ -1492,7 +1491,6 @@ tu6_emit_vertex_input(struct tu_cs *cs,
       if (binding->inputRate == VK_VERTEX_INPUT_RATE_INSTANCE)
          binding_instanced |= 1 << binding->binding;
 
-      *bindings_used |= 1 << binding->binding;
       step_rate[binding->binding] = 1;
    }
 
@@ -1512,8 +1510,6 @@ tu6_emit_vertex_input(struct tu_cs *cs,
       const VkVertexInputAttributeDescription *attr =
          &info->pVertexAttributeDescriptions[i];
       uint32_t input_idx;
-
-      assert(*bindings_used & BIT(attr->binding));
 
       for (input_idx = 0; input_idx < vs->inputs_count; input_idx++) {
          if ((vs->inputs[input_idx].slot - VERT_ATTRIB_GENERIC0) == attr->location)
@@ -2173,18 +2169,18 @@ tu_pipeline_builder_parse_vertex_input(struct tu_pipeline_builder *builder,
    const struct ir3_shader_variant *vs = builder->variants[MESA_SHADER_VERTEX];
    const struct ir3_shader_variant *bs = builder->binning_variant;
 
+   pipeline->num_vbs = vi_info->vertexBindingDescriptionCount;
+
    struct tu_cs vi_cs;
    tu_cs_begin_sub_stream(&pipeline->cs,
                           MAX_VERTEX_ATTRIBS * 7 + 2, &vi_cs);
-   tu6_emit_vertex_input(&vi_cs, vs, vi_info,
-                         &pipeline->vi.bindings_used);
+   tu6_emit_vertex_input(&vi_cs, vs, vi_info);
    pipeline->vi.state = tu_cs_end_draw_state(&pipeline->cs, &vi_cs);
 
    if (bs) {
       tu_cs_begin_sub_stream(&pipeline->cs,
                              MAX_VERTEX_ATTRIBS * 7 + 2, &vi_cs);
-      tu6_emit_vertex_input(
-         &vi_cs, bs, vi_info, &pipeline->vi.bindings_used);
+      tu6_emit_vertex_input(&vi_cs, bs, vi_info);
       pipeline->vi.binning_state =
          tu_cs_end_draw_state(&pipeline->cs, &vi_cs);
    }
