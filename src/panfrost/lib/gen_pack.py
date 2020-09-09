@@ -102,10 +102,10 @@ __gen_unpack_uint(const uint8_t *restrict cl, uint32_t start, uint32_t end)
 {
    uint64_t val = 0;
    const int width = end - start + 1;
-   const uint32_t mask = (width == 32 ? ~0 : (1 << width) - 1 );
+   const uint64_t mask = (width == 64 ? ~0 : (1ull << width) - 1 );
 
    for (int byte = start / 8; byte <= end / 8; byte++) {
-      val |= cl[byte] << ((byte - start / 8) * 8);
+      val |= ((uint64_t) cl[byte]) << ((byte - start / 8) * 8);
    }
 
    return (val >> (start % 8)) & mask;
