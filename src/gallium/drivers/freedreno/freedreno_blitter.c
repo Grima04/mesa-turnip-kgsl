@@ -225,6 +225,13 @@ fd_blitter_clear(struct pipe_context *pctx, unsigned buffers,
 	pctx->bind_vs_state(pctx, ctx->solid_prog.vs);
 	pctx->bind_fs_state(pctx, ctx->solid_prog.fs);
 
+	/* Clear geom/tess shaders, lest the draw emit code think we are
+	 * trying to use use them:
+	 */
+	pctx->bind_gs_state(pctx, NULL);
+	pctx->bind_tcs_state(pctx, NULL);
+	pctx->bind_tes_state(pctx, NULL);
+
 	struct pipe_draw_info info = {
 		.mode = PIPE_PRIM_MAX,    /* maps to DI_PT_RECTLIST */
 		.count = 2,
