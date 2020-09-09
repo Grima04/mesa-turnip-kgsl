@@ -2353,7 +2353,7 @@ pack_cfg_bits(struct v3dv_pipeline *pipeline,
          pipeline->subpass->ds_attachment.attachment != VK_ATTACHMENT_UNUSED;
 
       if (ds_info && ds_info->depthTestEnable && has_ds_attachment) {
-         config.z_updates_enable = true;
+         config.z_updates_enable = ds_info->depthWriteEnable;
          config.depth_test_function = ds_info->depthCompareOp;
       } else {
          config.depth_test_function = VK_COMPARE_OP_ALWAYS;
