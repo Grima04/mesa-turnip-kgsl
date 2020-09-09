@@ -2212,7 +2212,6 @@ Converter::visit(nir_intrinsic_instr *insn)
       case nir_intrinsic_bindless_image_store:
       case nir_intrinsic_image_store:
          ty = TYPE_U32;
-         mask = 0xf;
          bindless = op == nir_intrinsic_bindless_image_store;
          info_out->io.globalAccess |= 0x2;
          lod_src = 5;
