@@ -1289,10 +1289,6 @@ struct tu_image
    struct fdl_layout layout[3];
    uint32_t total_size;
 
-   unsigned queue_family_mask;
-   bool exclusive;
-   bool shareable;
-
    /* For VK_ANDROID_native_buffer, the WSI image owns the memory, */
    VkDeviceMemory owned_memory;
 

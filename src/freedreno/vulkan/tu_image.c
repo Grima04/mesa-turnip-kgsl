@@ -116,21 +116,6 @@ tu_image_create(VkDevice _device,
    image->layer_count = pCreateInfo->arrayLayers;
    image->samples = pCreateInfo->samples;
 
-   image->exclusive = pCreateInfo->sharingMode == VK_SHARING_MODE_EXCLUSIVE;
-   if (pCreateInfo->sharingMode == VK_SHARING_MODE_CONCURRENT) {
-      for (uint32_t i = 0; i < pCreateInfo->queueFamilyIndexCount; ++i)
-         if (pCreateInfo->pQueueFamilyIndices[i] ==
-             VK_QUEUE_FAMILY_EXTERNAL)
-            image->queue_family_mask |= (1u << TU_MAX_QUEUE_FAMILIES) - 1u;
-         else
-            image->queue_family_mask |=
-               1u << pCreateInfo->pQueueFamilyIndices[i];
-   }
-
-   image->shareable =
-      vk_find_struct_const(pCreateInfo->pNext,
-                           EXTERNAL_MEMORY_IMAGE_CREATE_INFO) != NULL;
-
    enum a6xx_tile_mode tile_mode = TILE6_3;
    bool ubwc_enabled =
       !(device->physical_device->instance->debug_flags & TU_DEBUG_NOUBWC);
