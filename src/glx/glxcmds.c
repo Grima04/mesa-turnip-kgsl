@@ -2464,6 +2464,20 @@ static const struct name_address_pair GLX_functions[] = {
    GLX_FUNCTION(glXQueryDrawable),
    GLX_FUNCTION(glXSelectEvent),
 
+   /*** GLX_SGIX_fbconfig ***/
+   GLX_FUNCTION2(glXGetFBConfigAttribSGIX, glXGetFBConfigAttrib),
+   GLX_FUNCTION2(glXChooseFBConfigSGIX, glXChooseFBConfig),
+   GLX_FUNCTION(glXCreateGLXPixmapWithConfigSGIX),
+   GLX_FUNCTION(glXCreateContextWithConfigSGIX),
+   GLX_FUNCTION2(glXGetVisualFromFBConfigSGIX, glXGetVisualFromFBConfig),
+   GLX_FUNCTION(glXGetFBConfigFromVisualSGIX),
+
+   /*** GLX_ARB_get_proc_address ***/
+   GLX_FUNCTION(glXGetProcAddressARB),
+
+   /*** GLX 1.4 ***/
+   GLX_FUNCTION2(glXGetProcAddress, glXGetProcAddressARB),
+
 #ifndef GLX_USE_APPLEGL
    /*** GLX_SGI_swap_control ***/
    GLX_FUNCTION(glXSwapIntervalSGI),
@@ -2482,17 +2496,7 @@ static const struct name_address_pair GLX_functions[] = {
    GLX_FUNCTION2(glXGetCurrentDisplayEXT, glXGetCurrentDisplay),
    GLX_FUNCTION(glXImportContextEXT),
    GLX_FUNCTION2(glXQueryContextInfoEXT, glXQueryContext),
-#endif
 
-   /*** GLX_SGIX_fbconfig ***/
-   GLX_FUNCTION2(glXGetFBConfigAttribSGIX, glXGetFBConfigAttrib),
-   GLX_FUNCTION2(glXChooseFBConfigSGIX, glXChooseFBConfig),
-   GLX_FUNCTION(glXCreateGLXPixmapWithConfigSGIX),
-   GLX_FUNCTION(glXCreateContextWithConfigSGIX),
-   GLX_FUNCTION2(glXGetVisualFromFBConfigSGIX, glXGetVisualFromFBConfig),
-   GLX_FUNCTION(glXGetFBConfigFromVisualSGIX),
-
-#ifndef GLX_USE_APPLEGL
    /*** GLX_SGIX_pbuffer ***/
    GLX_FUNCTION(glXCreateGLXPbufferSGIX),
    GLX_FUNCTION(glXDestroyGLXPbufferSGIX),
@@ -2512,15 +2516,7 @@ static const struct name_address_pair GLX_functions[] = {
    /*** GLX_MESA_swap_control ***/
    GLX_FUNCTION(glXSwapIntervalMESA),
    GLX_FUNCTION(glXGetSwapIntervalMESA),
-#endif
 
-   /*** GLX_ARB_get_proc_address ***/
-   GLX_FUNCTION(glXGetProcAddressARB),
-
-   /*** GLX 1.4 ***/
-   GLX_FUNCTION2(glXGetProcAddress, glXGetProcAddressARB),
-
-#ifndef GLX_USE_APPLEGL
    /*** GLX_OML_sync_control ***/
    GLX_FUNCTION(glXWaitForSbcOML),
    GLX_FUNCTION(glXWaitForMscOML),
