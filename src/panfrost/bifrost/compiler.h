@@ -237,7 +237,8 @@ enum bi_tex_op {
 };
 
 struct bi_bitwise {
-        bool src_invert[2];
+        bool dest_invert;
+        bool src1_invert;
         bool rshift; /* false for lshift */
 };
 

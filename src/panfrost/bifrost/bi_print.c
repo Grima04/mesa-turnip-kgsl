@@ -123,10 +123,13 @@ bi_print_src(FILE *fp, bi_instruction *ins, unsigned s)
         if (abs)
                 fprintf(fp, "abs(");
 
-        if (ins->type == BI_BITWISE && ins->bitwise.src_invert[s])
-                fprintf(fp, "~");
-
         bi_print_index(fp, ins, src, s);
+
+        if (ins->type == BI_BITWISE && s == 1 && ins->bitwise.src1_invert) {
+                /* For XOR, just use the destination invert */
+                assert(ins->op.bitwise != BI_BITWISE_XOR);
+                fprintf(fp, ".not");
+        }
 
         if (abs)
                 fprintf(fp, ")");
@@ -302,6 +305,9 @@ bi_print_instruction(bi_instruction *ins, FILE *fp)
 
         if (bi_class_props[ins->type] & BI_ROUNDMODE)
                 fprintf(fp, "%s", bi_round_mode_name(ins->roundmode));
+
+        if (ins->type == BI_BITWISE && ins->bitwise.dest_invert)
+                fprintf(fp, ".not");
 
         fprintf(fp, " ");
         ASSERTED bool succ = bi_print_dest_index(fp, ins, ins->dest);

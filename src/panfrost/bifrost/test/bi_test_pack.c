@@ -548,8 +548,13 @@ bit_bitwise_helper(struct panfrost_device *dev, uint32_t *input, unsigned size, 
                 ins.op.bitwise = op;
 
                 for (unsigned mods = 0; mods < 4; ++mods) {
-                        ins.bitwise.src_invert[0] = mods & 1;
-                        ins.bitwise.src_invert[1] = mods & 2;
+                        ins.bitwise.dest_invert = mods & 1;
+                        ins.bitwise.src1_invert = mods & 2;
+
+                        /* Skip out-of-spec combinations */
+                        if (ins.bitwise.src1_invert && op == BI_BITWISE_XOR)
+                                continue;
+
                         bit_test_single(dev, &ins, input, true, debug);
                 }
         }

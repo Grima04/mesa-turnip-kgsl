@@ -1078,8 +1078,22 @@ bi_pack_fma_bitwise(bi_instruction *ins, bi_registers *regs)
         unsigned size = nir_alu_type_get_type_size(ins->dest_type);
         assert(size <= 32);
 
-        bool invert_0 = ins->bitwise.src_invert[0];
-        bool invert_1 = ins->bitwise.src_invert[1];
+        bool invert_1 = ins->bitwise.src1_invert;
+        bool invert_0 = false;
+
+        if (ins->bitwise.dest_invert) {
+                if (ins->op.bitwise == BI_BITWISE_OR) {
+                        ins->op.bitwise = BI_BITWISE_AND;
+                        invert_0 = true;
+                        invert_1 = !invert_1;
+                } else if (ins->op.bitwise == BI_BITWISE_AND) {
+                        ins->op.bitwise = BI_BITWISE_OR;
+                        invert_0 = true;
+                        invert_1 = !invert_1;
+                } else {
+                        invert_1 = !invert_1;
+                }
+        }
 
         if (ins->op.bitwise == BI_BITWISE_OR) {
                 /* Becomes NAND, so via De Morgan's:

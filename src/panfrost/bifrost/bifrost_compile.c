@@ -825,9 +825,9 @@ emit_alu(bi_context *ctx, nir_alu_instr *instr)
                 alu.op.special = BI_SPECIAL_IABS;
                 break;
         case nir_op_inot:
-                /* no dedicated bitwise not, but we can invert sources. convert to ~a | 0 */
+                /* no dedicated bitwise not, but we can invert sources. convert to ~(a | 0) */
                 alu.op.bitwise = BI_BITWISE_OR;
-                alu.bitwise.src_invert[0] = true;
+                alu.bitwise.dest_invert = true;
                 alu.src[1] = BIR_INDEX_ZERO;
                 /* zero shift */
                 alu.src[2] = BIR_INDEX_ZERO;
