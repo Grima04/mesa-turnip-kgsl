@@ -1414,7 +1414,7 @@ nir_lower_explicit_io_instr(nir_builder *b,
    if (intrin->intrinsic == nir_intrinsic_load_deref) {
       nir_ssa_def *value;
       if (vec_stride > scalar_size) {
-         nir_ssa_def *comps[4] = { NULL, };
+         nir_ssa_def *comps[NIR_MAX_VEC_COMPONENTS] = { NULL, };
          for (unsigned i = 0; i < intrin->num_components; i++) {
             unsigned comp_offset = i * vec_stride;
             nir_ssa_def *comp_addr = build_addr_iadd_imm(b, addr, addr_format,
