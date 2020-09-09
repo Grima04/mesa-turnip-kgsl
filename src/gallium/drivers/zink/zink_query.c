@@ -414,45 +414,41 @@ get_query_result(struct pipe_context *pctx,
 static void
 force_cpu_read(struct zink_context *ctx, struct pipe_query *pquery, bool wait, enum pipe_query_value_type result_type, struct pipe_resource *pres, unsigned offset)
 {
+   struct pipe_context *pctx = &ctx->base;
    unsigned result_size = result_type <= PIPE_QUERY_TYPE_U32 ? sizeof(uint32_t) : sizeof(uint64_t);
    struct zink_query *query = (struct zink_query*)pquery;
    union pipe_query_result result;
    if (zink_curr_batch(ctx)->batch_id == query->batch_id)
-      ctx->base.flush(&ctx->base, NULL, PIPE_FLUSH_HINT_FINISH);
+      pctx->flush(pctx, NULL, PIPE_FLUSH_HINT_FINISH);
    else if (is_cs_query(query))
       zink_flush_compute(ctx);
 
-   bool success = get_query_result(&ctx->base, pquery, wait, &result);
+   bool success = get_query_result(pctx, pquery, wait, &result);
    if (!success) {
       debug_printf("zink: getting query result failed\n");
       return;
    }
 
-   struct pipe_transfer *transfer = NULL;
-   void *map = pipe_buffer_map_range(&ctx->base, pres, offset, result_size, PIPE_MAP_WRITE, &transfer);
-   if (!transfer) {
-      debug_printf("zink: mapping result buffer failed\n");
-      return;
-   }
    if (result_type <= PIPE_QUERY_TYPE_U32) {
-      uint32_t *u32 = map;
+      uint32_t u32;
       uint32_t limit;
       if (result_type == PIPE_QUERY_TYPE_I32)
          limit = INT_MAX;
       else
          limit = UINT_MAX;
       if (is_so_overflow_query(query))
-         u32[0] = result.b;
+         u32 = result.b;
       else
-         u32[0] = MIN2(limit, result.u64);
+         u32 = MIN2(limit, result.u64);
+      pipe_buffer_write(pctx, pres, offset, result_size, &u32);
    } else {
-      uint64_t *u64 = map;
+      uint64_t u64;
       if (is_so_overflow_query(query))
-         u64[0] = result.b;
+         u64 = result.b;
       else
-         u64[0] = result.u64;
+         u64 = result.u64;
+      pipe_buffer_write(pctx, pres, offset, result_size, &u64);
    }
-   pipe_buffer_unmap(&ctx->base, transfer);
 }
 
 static void
@@ -786,22 +782,13 @@ zink_get_query_result_resource(struct pipe_context *pctx,
          debug_printf("zink: getting query result failed\n");
          return;
       }
-      struct pipe_transfer *transfer = NULL;
-      void *map = pipe_buffer_map_range(pctx, pres, offset, result_size, PIPE_MAP_WRITE, &transfer);
-      if (!transfer) {
-         debug_printf("zink: mapping result buffer failed\n");
-         return;
-      }
       if (result_type <= PIPE_QUERY_TYPE_U32) {
-         uint32_t *u32_map = map;
          uint32_t *u32_u64 = (void*)u64;
-         u32_map[0] = u32_u64[1];
+         pipe_buffer_write(pctx, pres, offset, result_size, &u32_u64[1]);
       } else {
-         uint64_t *u64_map = map;
-         u64_map[0] = u64[1];
+         pipe_buffer_write(pctx, pres, offset, result_size, &u64[1]);
       }
       util_range_add(&res->base, &res->valid_buffer_range, offset, result_size);
-      pipe_buffer_unmap(pctx, transfer);
       return;
    }
 
