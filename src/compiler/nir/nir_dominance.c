@@ -43,8 +43,8 @@ init_block(nir_block *block, nir_function_impl *impl)
    block->num_dom_children = 0;
 
    /* See nir_block_dominates */
-   block->dom_pre_index = INT16_MAX;
-   block->dom_post_index = -1;
+   block->dom_pre_index = UINT32_MAX;
+   block->dom_post_index = 0;
 
    set_foreach(block->dom_frontier, entry) {
       _mesa_set_remove(block->dom_frontier, entry);
@@ -151,8 +151,11 @@ calc_dom_children(nir_function_impl* impl)
 }
 
 static void
-calc_dfs_indicies(nir_block *block, unsigned *index)
+calc_dfs_indicies(nir_block *block, uint32_t *index)
 {
+   /* UINT32_MAX has special meaning. See nir_block_dominates. */
+   assert(*index < UINT32_MAX - 2);
+
    block->dom_pre_index = (*index)++;
 
    for (unsigned i = 0; i < block->num_dom_children; i++)
@@ -192,7 +195,7 @@ nir_calc_dominance_impl(nir_function_impl *impl)
 
    calc_dom_children(impl);
 
-   unsigned dfs_index = 0;
+   uint32_t dfs_index = 1;
    calc_dfs_indicies(start_block, &dfs_index);
 }
 
@@ -254,8 +257,8 @@ nir_block_dominates(nir_block *parent, nir_block *child)
    assert(nir_cf_node_get_function(&parent->cf_node)->valid_metadata &
           nir_metadata_dominance);
 
-   /* If a block is unreachable, then nir_block::dom_pre_index == INT16_MAX
-    * and nir_block::dom_post_index == -1.  This allows us to trivially handle
+   /* If a block is unreachable, then nir_block::dom_pre_index == UINT32_MAX
+    * and nir_block::dom_post_index == 0.  This allows us to trivially handle
     * unreachable blocks here with zero extra work.
     */
    return child->dom_pre_index >= parent->dom_pre_index &&
