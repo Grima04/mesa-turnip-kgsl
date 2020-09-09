@@ -1058,10 +1058,8 @@ struct tu_shader_module
 {
    struct vk_object_base base;
 
-   unsigned char sha1[20];
-
    uint32_t code_size;
-   const uint32_t *code[0];
+   uint32_t code[];
 };
 
 struct tu_push_constant_range
