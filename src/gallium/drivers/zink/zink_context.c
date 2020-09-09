@@ -1539,6 +1539,8 @@ zink_resource_copy_region(struct pipe_context *pctx,
       zink_batch_reference_resource_rw(batch, src, false);
       zink_batch_reference_resource_rw(batch, dst, true);
       util_range_add(&dst->base, &dst->valid_buffer_range, dstx, dstx + src_box->width);
+      zink_resource_buffer_barrier(batch, src, VK_ACCESS_TRANSFER_READ_BIT, 0);
+      zink_resource_buffer_barrier(batch, dst, VK_ACCESS_TRANSFER_WRITE_BIT, 0);
       vkCmdCopyBuffer(batch->cmdbuf, src->buffer, dst->buffer, 1, &region);
    } else
       debug_printf("zink: TODO resource copy\n");
