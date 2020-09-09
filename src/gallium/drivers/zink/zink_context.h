@@ -273,4 +273,8 @@ zink_draw_vbo(struct pipe_context *pctx,
 
 void
 zink_launch_grid(struct pipe_context *pctx, const struct pipe_grid_info *info);
+
+void
+zink_copy_buffer(struct zink_context *ctx, struct zink_batch *batch, struct zink_resource *dst, struct zink_resource *src,
+                 unsigned dst_offset, unsigned src_offset, unsigned size);
 #endif

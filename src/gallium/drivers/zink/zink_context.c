@@ -1465,6 +1465,26 @@ zink_flush_resource(struct pipe_context *pipe,
 {
 }
 
+void
+zink_copy_buffer(struct zink_context *ctx, struct zink_batch *batch, struct zink_resource *dst, struct zink_resource *src,
+                 unsigned dst_offset, unsigned src_offset, unsigned size)
+{
+   VkBufferCopy region;
+   region.srcOffset = src_offset;
+   region.dstOffset = dst_offset;
+   region.size = size;
+
+   if (!batch)
+      batch = zink_batch_no_rp(ctx);
+   assert(!batch->in_rp);
+   zink_batch_reference_resource_rw(batch, src, false);
+   zink_batch_reference_resource_rw(batch, dst, true);
+   util_range_add(&dst->base, &dst->valid_buffer_range, dst_offset, dst_offset + size);
+   zink_resource_buffer_barrier(batch, src, VK_ACCESS_TRANSFER_READ_BIT, 0);
+   zink_resource_buffer_barrier(batch, dst, VK_ACCESS_TRANSFER_WRITE_BIT, 0);
+   vkCmdCopyBuffer(batch->cmdbuf, src->buffer, dst->buffer, 1, &region);
+}
+
 static void
 zink_resource_copy_region(struct pipe_context *pctx,
                           struct pipe_resource *pdst,
@@ -1530,18 +1550,7 @@ zink_resource_copy_region(struct pipe_context *pctx,
                      1, &region);
    } else if (dst->base.target == PIPE_BUFFER &&
               src->base.target == PIPE_BUFFER) {
-      VkBufferCopy region;
-      region.srcOffset = src_box->x;
-      region.dstOffset = dstx;
-      region.size = src_box->width;
-
-      struct zink_batch *batch = zink_batch_no_rp(ctx);
-      zink_batch_reference_resource_rw(batch, src, false);
-      zink_batch_reference_resource_rw(batch, dst, true);
-      util_range_add(&dst->base, &dst->valid_buffer_range, dstx, dstx + src_box->width);
-      zink_resource_buffer_barrier(batch, src, VK_ACCESS_TRANSFER_READ_BIT, 0);
-      zink_resource_buffer_barrier(batch, dst, VK_ACCESS_TRANSFER_WRITE_BIT, 0);
-      vkCmdCopyBuffer(batch->cmdbuf, src->buffer, dst->buffer, 1, &region);
+      zink_copy_buffer(ctx, NULL, dst, src, dstx, src_box->x, src_box->width);
    } else
       debug_printf("zink: TODO resource copy\n");
       //util_range_add(dst, &dst->valid_buffer_range, dstx, dstx + src_box->width);
