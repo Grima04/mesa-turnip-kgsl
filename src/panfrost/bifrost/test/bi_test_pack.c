@@ -542,6 +542,7 @@ bit_bitwise_helper(struct panfrost_device *dev, uint32_t *input, unsigned size, 
 
         /* TODO: shifts */
         ins.src[2] = BIR_INDEX_ZERO;
+        ins.src_types[2] = nir_type_uint8;
 
         for (unsigned op = BI_BITWISE_AND; op <= BI_BITWISE_XOR; ++op) {
                 ins.op.bitwise = op;
