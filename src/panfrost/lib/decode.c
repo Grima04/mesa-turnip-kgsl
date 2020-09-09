@@ -57,10 +57,10 @@ static void pandecode_swizzle(unsigned swizzle, enum mali_format format);
         } \
 }
 
-#define DUMP_CL(title, T, cl, indent) {\
-        fprintf(pandecode_dump_stream, "%s\n", title); \
+#define DUMP_CL(T, cl, ...) {\
+        pandecode_log(__VA_ARGS__); \
         pan_unpack(cl, T, temp); \
-        pan_print(pandecode_dump_stream, T, temp, indent * 2); \
+        pan_print(pandecode_dump_stream, T, temp, (pandecode_indent + 1) * 2); \
 }
 
 #define MAP_ADDR(T, addr, cl) \
@@ -70,9 +70,9 @@ static void pandecode_swizzle(unsigned swizzle, enum mali_format format);
                 cl = pandecode_fetch_gpu_mem(mapped_mem, addr, MALI_ ## T ## _LENGTH); \
         }
 
-#define DUMP_ADDR(title, T, addr, indent) {\
+#define DUMP_ADDR(T, addr, ...) {\
         MAP_ADDR(T, addr, cl) \
-        DUMP_CL(title, T, cl, indent); \
+        DUMP_CL(T, cl, __VA_ARGS__); \
 }
 
 FILE *pandecode_dump_stream;
@@ -1092,7 +1092,7 @@ pandecode_bifrost_blend(void *descs, int job_no, int rt_no)
                        b->constant, decode_bifrost_constant(b->constant));
 
         /* TODO figure out blend shader enable bit */
-        DUMP_CL("Equation", BLEND_EQUATION, &b->equation, 2);
+        DUMP_CL(BLEND_EQUATION, &b->equation, "Equation:\n");
 
         pandecode_prop("unk2 = 0x%" PRIx16, b->unk2);
         pandecode_prop("index = 0x%" PRIx16, b->index);
@@ -1158,7 +1158,7 @@ pandecode_midgard_blend(union midgard_blend *blend, bool is_shader)
         if (is_shader) {
                 pandecode_shader_address("shader", blend->shader);
         } else {
-                DUMP_CL("Equation", BLEND_EQUATION, &blend->equation, 2);
+                DUMP_CL(BLEND_EQUATION, &blend->equation, "Equation:\n");
                 pandecode_prop("constant = %f", blend->constant);
         }
 
@@ -1181,7 +1181,7 @@ pandecode_midgard_blend_mrt(void *descs, int job_no, int rt_no)
         pandecode_log("struct midgard_blend_rt blend_rt_%d_%d = {\n", job_no, rt_no);
         pandecode_indent++;
 
-        DUMP_CL("Flags", BLEND_FLAGS, &b->flags, 2);
+        DUMP_CL(BLEND_FLAGS, &b->flags, "Flags:\n");
 
         union midgard_blend blend = b->blend;
         mali_ptr shader = pandecode_midgard_blend(&blend, is_shader);
@@ -1200,10 +1200,8 @@ pandecode_midgard_blend_mrt(void *descs, int job_no, int rt_no)
 static int
 pandecode_attribute_meta(int count, mali_ptr attribute, bool varying, char *suffix)
 {
-        const char *prefix = varying ? "Varying" : "Attribute";
-
         for (int i = 0; i < count; ++i, attribute += MALI_ATTRIBUTE_LENGTH)
-                DUMP_ADDR(prefix, ATTRIBUTE, attribute, 1);
+                DUMP_ADDR(ATTRIBUTE, attribute, "%s:\n", varying ? "Varying" : "Attribute");
 
         return count;
 }
@@ -1573,9 +1571,9 @@ pandecode_samplers(mali_ptr samplers, unsigned sampler_count, int job_no, bool i
 {
         for (int i = 0; i < sampler_count; ++i) {
                 if (is_bifrost) {
-                        DUMP_ADDR("Sampler", BIFROST_SAMPLER, samplers + (MALI_BIFROST_SAMPLER_LENGTH * i), 1);
+                        DUMP_ADDR(BIFROST_SAMPLER, samplers + (MALI_BIFROST_SAMPLER_LENGTH * i), "Sampler:\n");
                 } else {
-                        DUMP_ADDR("Sampler", MIDGARD_SAMPLER, samplers + (MALI_MIDGARD_SAMPLER_LENGTH * i), 1);
+                        DUMP_ADDR(MIDGARD_SAMPLER, samplers + (MALI_MIDGARD_SAMPLER_LENGTH * i), "Sampler:\n");
                 }
         }
 }
@@ -1668,16 +1666,16 @@ pandecode_vertex_tiler_postfix_pre(
 
                         switch (job_type) {
                         case MALI_JOB_TYPE_VERTEX:
-                                DUMP_CL("Preload", PRELOAD_VERTEX, &opaque, 2);
+                                DUMP_CL(PRELOAD_VERTEX, &opaque, "Preload:\n");
                                 break;
                         case MALI_JOB_TYPE_TILER:
-                                DUMP_CL("Preload", PRELOAD_FRAGMENT, &opaque, 2);
+                                DUMP_CL(PRELOAD_FRAGMENT, &opaque, "Preload:\n");
                                 break;
                         case MALI_JOB_TYPE_COMPUTE:
-                                DUMP_CL("Preload", PRELOAD_COMPUTE, &opaque, 2);
+                                DUMP_CL(PRELOAD_COMPUTE, &opaque, "Preload:\n");
                                 break;
                         default:
-                                DUMP_CL("Preload", PRELOAD, &opaque, 2);
+                                DUMP_CL(PRELOAD, &opaque, "Preload:\n");
                                 break;
                         }
                 }
@@ -1714,7 +1712,7 @@ pandecode_vertex_tiler_postfix_pre(
                 pandecode_msg("XXX: missing shader descriptor\n");
 
         if (p->viewport)
-                DUMP_ADDR("Viewport", VIEWPORT, p->viewport, 1);
+                DUMP_ADDR(VIEWPORT, p->viewport, "Viewport:\n");
 
         unsigned max_attr_index = 0;
 
@@ -1890,7 +1888,7 @@ pandecode_vertex_job_bfr(const struct mali_job_descriptor_header *h,
         pandecode_vertex_tiler_postfix_pre(&draw, job_no, h->job_type, "", true, gpu_id);
 
         pandecode_vertex_tiler_prefix(&v->prefix, job_no, false);
-        DUMP_CL("Draw", DRAW, &draw_packed, 2);
+        DUMP_CL(DRAW, &draw_packed, "Draw:\n");
 
         return sizeof(*v);
 }
@@ -1925,7 +1923,7 @@ pandecode_tiler_job_bfr(const struct mali_job_descriptor_header *h,
                 pandecode_prop("zero6 = 0x%" PRIx64, t->zero6);
         }
 
-        DUMP_CL("Draw", DRAW, &draw_packed, 2);
+        DUMP_CL(DRAW, &draw_packed, "Draw:\n");
 
         return sizeof(*t);
 }
@@ -1945,7 +1943,7 @@ pandecode_vertex_or_tiler_job_mdg(const struct mali_job_descriptor_header *h,
         pandecode_vertex_tiler_postfix_pre(&draw, job_no, h->job_type, "", false, gpu_id);
 
         pandecode_vertex_tiler_prefix(&v->prefix, job_no, is_graphics);
-        DUMP_CL("Draw", DRAW, &draw_packed, 2);
+        DUMP_CL(DRAW, &draw_packed, "Draw:\n");
 
         struct MALI_PRIMITIVE primitive;
         struct mali_primitive_packed prim_packed = v->prefix.primitive;
