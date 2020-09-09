@@ -1819,7 +1819,6 @@ endif
 # drop shared code unused by that specific driver (particularly
 # relevant for Vulkan drivers).
 if cc.has_link_argument('-Wl,--gc-sections')
-  add_project_arguments('-Wl,--gc-sections', language : ['c', 'cpp'])
   foreach a: ['-ffunction-sections', '-fdata-sections']
     if cc.has_argument(a)
       add_project_arguments(a, language : ['c', 'cpp'])
