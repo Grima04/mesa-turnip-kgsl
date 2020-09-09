@@ -51,7 +51,7 @@
 #endif /* GLX_USE_WINDOWSGL */
 #endif
 #endif
-
+#include <limits.h>
 #include <X11/Xlib-xcb.h>
 #include <xcb/xcb.h>
 #include <xcb/glx.h>
@@ -1795,6 +1795,9 @@ glXSwapIntervalMESA(unsigned int interval)
 {
 #ifdef GLX_DIRECT_RENDERING
    struct glx_context *gc = __glXGetCurrentContext();
+
+   if (interval > INT_MAX)
+      return GLX_BAD_VALUE;
 
    if (gc != &dummyContext && gc->isDirect) {
       struct glx_screen *psc;
