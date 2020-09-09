@@ -585,7 +585,8 @@ zink_transfer_map(struct pipe_context *pctx,
                 * mesa/mesa#2966
                 */
 
-               zink_fence_wait(pctx);
+               trans->staging_res = pipe_buffer_create(pctx->screen, 0, PIPE_USAGE_STAGING, pres->width0);
+               res = zink_resource(trans->staging_res);
             }
          }
          if (usage & PIPE_MAP_DISCARD_WHOLE_RESOURCE)
@@ -728,7 +729,8 @@ zink_transfer_flush_region(struct pipe_context *pctx,
 
    if (trans->base.usage & PIPE_MAP_WRITE) {
       if (trans->staging_res) {
-         uint32_t batch_uses = zink_get_resource_usage(res);
+         struct zink_resource *staging_res = zink_resource(trans->staging_res);
+         uint32_t batch_uses = zink_get_resource_usage(res) | zink_get_resource_usage(staging_res);
          if (batch_uses & (ZINK_RESOURCE_ACCESS_WRITE << ZINK_COMPUTE_BATCH_ID)) {
             /* don't actually have to stall here, only ensure batch is submitted */
             zink_flush_compute(ctx);
@@ -736,13 +738,13 @@ zink_transfer_flush_region(struct pipe_context *pctx,
             batch_uses &= ~(ZINK_RESOURCE_ACCESS_READ << ZINK_COMPUTE_BATCH_ID);
          }
 
-         struct zink_resource *staging_res = zink_resource(trans->staging_res);
-         zink_transfer_copy_bufimage(ctx, res, staging_res, trans, true);
+         if (ptrans->resource->target == PIPE_BUFFER)
+            zink_copy_buffer(ctx, NULL, res, staging_res, box->x, box->x, box->width);
+         else
+            zink_transfer_copy_bufimage(ctx, res, staging_res, trans, true);
          if (batch_uses)
             pctx->flush(pctx, NULL, 0);
       }
-      if (res->base.target == PIPE_BUFFER)
-         util_range_add(&res->base, &res->valid_buffer_range, box->x, box->x + box->width);
    }
 }
 
