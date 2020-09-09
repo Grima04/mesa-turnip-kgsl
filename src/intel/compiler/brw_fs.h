@@ -343,8 +343,6 @@ public:
 
    const struct brw_vue_map *input_vue_map;
 
-   int *param_size;
-
    BRW_ANALYSIS(live_analysis, brw::fs_live_variables,
                 backend_shader *) live_analysis;
    BRW_ANALYSIS(regpressure_analysis, brw::register_pressure,
