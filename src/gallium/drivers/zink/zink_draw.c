@@ -22,7 +22,6 @@ allocate_descriptor_set(struct zink_screen *screen,
                         VkDescriptorSetLayout dsl,
                         unsigned num_descriptors)
 {
-   assert(batch->descs_left >= num_descriptors);
    VkDescriptorSetAllocateInfo dsai;
    memset((void *)&dsai, 0, sizeof(dsai));
    dsai.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
@@ -33,11 +32,11 @@ allocate_descriptor_set(struct zink_screen *screen,
 
    VkDescriptorSet desc_set;
    if (vkAllocateDescriptorSets(screen->dev, &dsai, &desc_set) != VK_SUCCESS) {
-      debug_printf("ZINK: failed to allocate descriptor set :/");
+      debug_printf("ZINK: failed to allocate descriptor set :/\n");
       return VK_NULL_HANDLE;
    }
 
-   batch->descs_left -= num_descriptors;
+   batch->descs_used += num_descriptors;
    return desc_set;
 }
 
@@ -490,22 +489,45 @@ update_descriptors(struct zink_context *ctx, struct zink_screen *screen, bool is
       dsl = ctx->curr_program->dsl;
    }
 
-   if (batch->descs_left < num_descriptors) {
+   if (is_compute)
+      zink_batch_reference_program(batch, &ctx->curr_compute->reference);
+   else
+      zink_batch_reference_program(batch, &ctx->curr_program->reference);
+
+   if (batch->descs_used + num_descriptors >= batch->max_descs) {
       if (is_compute)
          zink_wait_on_batch(ctx, ZINK_COMPUTE_BATCH_ID);
       else {
          ctx->base.flush(&ctx->base, NULL, 0);
          batch = zink_batch_rp(ctx);
       }
-      assert(batch->descs_left >= num_descriptors);
    }
-   if (is_compute)
-      zink_batch_reference_program(batch, &ctx->curr_compute->reference);
-   else
-      zink_batch_reference_program(batch, &ctx->curr_program->reference);
-
    VkDescriptorSet desc_set = allocate_descriptor_set(screen, batch,
                                                       dsl, num_descriptors);
+   /* probably oom, so we need to stall until we free up some descriptors */
+   if (!desc_set) {
+      /* update our max descriptor count so we can try and avoid this happening again */
+      unsigned short max_descs = 0;
+      for (int i = 0; i < ZINK_COMPUTE_BATCH_ID; i++)
+         max_descs += ctx->batches[i].descs_used;
+      if (ctx->compute_batch.descs_used) {
+         max_descs += ctx->compute_batch.descs_used;
+         /* try to split evenly between number of batches */
+         max_descs /= ZINK_COMPUTE_BATCH_ID;
+      }
+      for (int i = 0; i < ZINK_COMPUTE_BATCH_ID; i++)
+         ctx->batches[i].max_descs = MIN2(max_descs, ctx->batches[i].max_descs);
+      ctx->compute_batch.max_descs = MIN2(max_descs, ctx->compute_batch.max_descs);
+
+      zink_wait_on_batch(ctx, batch->batch_id);
+      if (!is_compute) {
+         batch = zink_curr_batch(ctx);
+         for (int i = 0; i < ZINK_COMPUTE_BATCH_ID; i++) {
+            zink_reset_batch(ctx, &ctx->batches[i]);
+         }
+      }
+      desc_set = allocate_descriptor_set(screen, batch, dsl, num_descriptors);
+   }
    assert(desc_set != VK_NULL_HANDLE);
 
    for (int i = 0; i < num_stages; i++) {

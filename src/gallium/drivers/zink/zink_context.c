@@ -68,7 +68,7 @@ zink_context_destroy(struct pipe_context *pctx)
       pipe_resource_reference(&ctx->null_buffers[i], NULL);
 
    for (int i = 0; i < ARRAY_SIZE(ctx->batches); ++i) {
-      zink_batch_release(screen, &ctx->batches[i]);
+      zink_reset_batch(ctx, &ctx->batches[i]);
       util_dynarray_fini(&ctx->batches[i].zombie_samplers);
       vkDestroyDescriptorPool(screen->dev, ctx->batches[i].descpool, NULL);
 
@@ -79,7 +79,7 @@ zink_context_destroy(struct pipe_context *pctx)
       vkDestroyCommandPool(screen->dev, ctx->batches[i].cmdpool, NULL);
    }
    if (ctx->compute_batch.cmdpool) {
-      zink_batch_release(screen, &ctx->compute_batch);
+      zink_reset_batch(ctx, &ctx->compute_batch);
       util_dynarray_fini(&ctx->compute_batch.zombie_samplers);
       vkDestroyDescriptorPool(screen->dev, ctx->compute_batch.descpool, NULL);
       vkFreeCommandBuffers(screen->dev, ctx->compute_batch.cmdpool, 1, &ctx->compute_batch.cmdbuf);
@@ -1753,7 +1753,7 @@ init_batch(struct zink_context *ctx, struct zink_batch *batch, unsigned idx)
    dpci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
    dpci.pPoolSizes = sizes;
    dpci.poolSizeCount = ARRAY_SIZE(sizes);
-   dpci.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
+   dpci.flags = 0;
    dpci.maxSets = ZINK_BATCH_DESC_SIZE;
 
    if (vkAllocateCommandBuffers(screen->dev, &cbai, &batch->cmdbuf) != VK_SUCCESS)
@@ -1776,6 +1776,7 @@ init_batch(struct zink_context *ctx, struct zink_batch *batch, unsigned idx)
       return false;
 
    batch->batch_id = idx;
+   batch->max_descs = 1500;
    return true;
 }
 

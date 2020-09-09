@@ -15,9 +15,16 @@
 #include "util/set.h"
 
 void
-zink_batch_release(struct zink_screen *screen, struct zink_batch *batch)
+zink_reset_batch(struct zink_context *ctx, struct zink_batch *batch)
 {
-   zink_fence_reference(screen, &batch->fence, NULL);
+   struct zink_screen *screen = zink_screen(ctx->base.screen);
+   batch->descs_used = 0;
+
+   // cmdbuf hasn't been submitted before without a fence
+   if (batch->fence) {
+      zink_fence_finish(screen, batch->fence, PIPE_TIMEOUT_INFINITE);
+      zink_fence_reference(screen, &batch->fence, NULL);
+   }
 
    zink_framebuffer_reference(screen, &batch->fb, NULL);
    set_foreach(batch->programs, entry) {
@@ -56,20 +63,6 @@ zink_batch_release(struct zink_screen *screen, struct zink_batch *batch)
    }
    util_dynarray_clear(&batch->zombie_samplers);
    util_dynarray_clear(&batch->persistent_resources);
-}
-
-static void
-reset_batch(struct zink_context *ctx, struct zink_batch *batch)
-{
-   struct zink_screen *screen = zink_screen(ctx->base.screen);
-   batch->descs_left = ZINK_BATCH_DESC_SIZE;
-
-   // cmdbuf hasn't been submitted before
-   if (!batch->fence)
-      return;
-
-   zink_fence_finish(screen, batch->fence, PIPE_TIMEOUT_INFINITE);
-   zink_batch_release(screen, batch);
 
    if (vkResetDescriptorPool(screen->dev, batch->descpool, 0) != VK_SUCCESS)
       fprintf(stderr, "vkResetDescriptorPool failed\n");
@@ -82,7 +75,7 @@ reset_batch(struct zink_context *ctx, struct zink_batch *batch)
 void
 zink_start_batch(struct zink_context *ctx, struct zink_batch *batch)
 {
-   reset_batch(ctx, batch);
+   zink_reset_batch(ctx, batch);
 
    VkCommandBufferBeginInfo cbbi = {};
    cbbi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -182,7 +175,7 @@ zink_batch_reference_resource_rw(struct zink_batch *batch, struct zink_resource 
    if (res->persistent_maps)
       util_dynarray_append(&batch->persistent_resources, struct zink_resource*, res);
    /* the batch_uses value for this batch is guaranteed to not be in use now because
-    * reset_batch() waits on the fence and removes access before resetting
+    * zink_reset_batch() waits on the fence and removes access before resetting
     */
    res->batch_uses[batch->batch_id] |= mask;
 
