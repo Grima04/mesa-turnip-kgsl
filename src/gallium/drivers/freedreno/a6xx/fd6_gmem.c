@@ -1110,6 +1110,9 @@ emit_restore_blits(struct fd_batch *batch, struct fd_ringbuffer *ring)
 static void
 prepare_tile_setup_ib(struct fd_batch *batch)
 {
+	if (!(batch->restore || batch->fast_cleared))
+		return;
+
 	batch->tile_setup = fd_submit_new_ringbuffer(batch->submit, 0x1000,
 			FD_RINGBUFFER_STREAMING);
 
@@ -1131,6 +1134,9 @@ fd6_emit_tile_mem2gmem(struct fd_batch *batch, const struct fd_tile *tile)
 static void
 fd6_emit_tile_renderprep(struct fd_batch *batch, const struct fd_tile *tile)
 {
+	if (!batch->tile_setup)
+		return;
+
 	fd_log(batch, "TILE: START CLEAR/RESTORE");
 	if (batch->fast_cleared || !use_hw_binning(batch)) {
 		fd6_emit_ib(batch->gmem, batch->tile_setup);
