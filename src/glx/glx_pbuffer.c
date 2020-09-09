@@ -352,6 +352,10 @@ __glXGetDrawableAttribute(Display * dpy, GLXDrawable drawable,
       } else if (attribute == GLX_MAX_SWAP_INTERVAL_EXT) {
          *value = INT_MAX;
          return 0;
+      } else if (attribute == GLX_LATE_SWAPS_TEAR_EXT) {
+         *value = __glXExtensionBitIsEnabled(pdraw->psc,
+                                             EXT_swap_control_tear_bit);
+         return 0;
       }
    }
 #endif

@@ -52,6 +52,7 @@ enum
    EXT_framebuffer_sRGB_bit,
    EXT_import_context_bit,
    EXT_swap_control_bit,
+   EXT_swap_control_tear_bit,
    EXT_texture_from_pixmap_bit,
    EXT_visual_info_bit,
    EXT_visual_rating_bit,

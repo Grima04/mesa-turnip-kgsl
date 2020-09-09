@@ -148,6 +148,7 @@ static const struct extension_info known_glx_extensions[] = {
    { GLX(EXT_framebuffer_sRGB),        VER(0,0), Y, Y, N, N },
    { GLX(EXT_import_context),          VER(0,0), Y, Y, N, N },
    { GLX(EXT_swap_control),            VER(0,0), Y, N, N, Y },
+   { GLX(EXT_swap_control_tear),       VER(0,0), Y, N, N, Y },
    { GLX(EXT_texture_from_pixmap),     VER(0,0), Y, N, N, N },
    { GLX(EXT_visual_info),             VER(0,0), Y, Y, N, N },
    { GLX(EXT_visual_rating),           VER(0,0), Y, Y, N, N },

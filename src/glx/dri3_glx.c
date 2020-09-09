@@ -742,6 +742,7 @@ dri3_bind_extensions(struct dri3_screen *psc, struct glx_display * priv,
    extensions = psc->core->getExtensions(psc->driScreen);
 
    __glXEnableDirectExtension(&psc->base, "GLX_EXT_swap_control");
+   __glXEnableDirectExtension(&psc->base, "GLX_EXT_swap_control_tear");
    __glXEnableDirectExtension(&psc->base, "GLX_SGI_swap_control");
    __glXEnableDirectExtension(&psc->base, "GLX_MESA_swap_control");
    __glXEnableDirectExtension(&psc->base, "GLX_SGI_make_current_read");

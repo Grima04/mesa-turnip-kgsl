@@ -1863,7 +1863,8 @@ glXSwapIntervalEXT(Display *dpy, GLXDrawable drawable, int interval)
       return;
    }
 
-   if (interval < 0) {
+   if (interval < 0 &&
+       !__glXExtensionBitIsEnabled(pdraw->psc, EXT_swap_control_tear_bit)) {
       __glXSendError(dpy, BadValue, interval, 0, True);
       return;
    }
