@@ -40,6 +40,8 @@ files_libintel_common = files(
   'gen_sample_positions.h',
   'gen_uuid.c',
   'gen_uuid.h',
+  'intel_measure.c',
+  'intel_measure.h',
 )
 
 libintel_common = static_library(
