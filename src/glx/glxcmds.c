@@ -1846,6 +1846,34 @@ glXGetSwapIntervalMESA(void)
 
 
 /*
+** GLX_EXT_swap_control
+*/
+_X_HIDDEN void
+glXSwapIntervalEXT(Display *dpy, GLXDrawable drawable, int interval)
+{
+#ifdef GLX_DIRECT_RENDERING
+   __GLXDRIdrawable *pdraw = GetGLXDRIDrawable(dpy, drawable);
+
+   /*
+    * Strictly, this should throw an error if drawable is not a Window or
+    * GLXWindow. We don't actually track that, so, oh well.
+    */
+   if (!pdraw) {
+       __glXSendError(dpy, BadWindow, drawable, 0, True);
+      return;
+   }
+
+   if (interval < 0) {
+      __glXSendError(dpy, BadValue, interval, 0, True);
+      return;
+   }
+
+   pdraw->psc->driScreen->setSwapInterval(pdraw, interval);
+#endif
+}
+
+
+/*
 ** GLX_SGI_video_sync
 */
 _X_HIDDEN int
@@ -2530,6 +2558,9 @@ static const struct name_address_pair GLX_functions[] = {
    /*** GLX_EXT_texture_from_pixmap ***/
    GLX_FUNCTION(glXBindTexImageEXT),
    GLX_FUNCTION(glXReleaseTexImageEXT),
+
+   /*** GLX_EXT_swap_control ***/
+   GLX_FUNCTION(glXSwapIntervalEXT),
 #endif
 
 #if defined(GLX_DIRECT_RENDERING) && defined(GLX_USE_DRM)

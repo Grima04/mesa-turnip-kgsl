@@ -35,6 +35,7 @@
 #include <X11/extensions/Xext.h>
 #include <assert.h>
 #include <string.h>
+#include <limits.h>
 #include "glxextensions.h"
 
 #ifdef GLX_USE_APPLEGL
@@ -342,6 +343,16 @@ __glXGetDrawableAttribute(Display * dpy, GLXDrawable drawable,
          *value = psc->driScreen->getBufferAge(pdraw);
 
       return 0;
+   }
+
+   if (pdraw) {
+      if (attribute == GLX_SWAP_INTERVAL_EXT) {
+         *value = pdraw->psc->driScreen->getSwapInterval(pdraw);
+         return 0;
+      } else if (attribute == GLX_MAX_SWAP_INTERVAL_EXT) {
+         *value = INT_MAX;
+         return 0;
+      }
    }
 #endif
 
