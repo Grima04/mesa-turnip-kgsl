@@ -270,6 +270,7 @@ static const VkPresentModeKHR present_modes[] = {
    VK_PRESENT_MODE_IMMEDIATE_KHR,
    VK_PRESENT_MODE_MAILBOX_KHR,
    VK_PRESENT_MODE_FIFO_KHR,
+   VK_PRESENT_MODE_FIFO_RELAXED_KHR,
 };
 
 static xcb_screen_t *
@@ -1008,7 +1009,8 @@ x11_present_to_x11_dri3(struct x11_swapchain *chain, uint32_t image_index,
    int64_t divisor = 0;
    int64_t remainder = 0;
 
-   if (chain->base.present_mode == VK_PRESENT_MODE_IMMEDIATE_KHR)
+   if (chain->base.present_mode == VK_PRESENT_MODE_IMMEDIATE_KHR ||
+       chain->base.present_mode == VK_PRESENT_MODE_FIFO_RELAXED_KHR)
       options |= XCB_PRESENT_OPTION_ASYNC;
 
 #ifdef HAVE_DRI3_MODIFIERS

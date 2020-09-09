@@ -129,6 +129,8 @@ wsi_device_init(struct wsi_device *wsi,
    if (present_mode) {
       if (!strcmp(present_mode, "fifo")) {
          wsi->override_present_mode = VK_PRESENT_MODE_FIFO_KHR;
+      } else if (!strcmp(present_mode, "relaxed")) {
+          wsi->override_present_mode = VK_PRESENT_MODE_FIFO_RELAXED_KHR;
       } else if (!strcmp(present_mode, "mailbox")) {
          wsi->override_present_mode = VK_PRESENT_MODE_MAILBOX_KHR;
       } else if (!strcmp(present_mode, "immediate")) {
