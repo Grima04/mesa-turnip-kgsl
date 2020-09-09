@@ -767,32 +767,38 @@ zink_get_query_result_resource(struct pipe_context *pctx,
    VkQueryResultFlagBits size_flags = result_type <= PIPE_QUERY_TYPE_U32 ? 0 : VK_QUERY_RESULT_64_BIT;
    unsigned num_queries = query->curr_query - query->last_start;
    unsigned query_id = query->last_start;
+   unsigned fences = p_atomic_read(&query->fences);
 
    if (index == -1) {
-      uint64_t u64[2] = {0};
-      /* TODO: this is awful. when we hook up valid regions for resources, we can at least check
-       * whether the preceding area has valid data and clobber it with a direct copy here for a
-       * big perf win
+      /* VK_QUERY_RESULT_WITH_AVAILABILITY_BIT will ALWAYS write some kind of result data
+       * in addition to the availability result, which is a problem if we're just trying to get availability data
        *
-       * VK_QUERY_RESULT_WITH_AVAILABILITY_BIT always writes result data at the specified offset,
-       * so we have to do a manual read
+       * if we know that there's no valid buffer data in the preceding buffer range, then we can just
+       * stomp on it with a glorious queued buffer copy instead of forcing a stall to manually write to the
+       * buffer
        */
-      if (vkGetQueryPoolResults(screen->dev, query->query_pool, query_id, 1, 2 * result_size, u64,
-                                0, size_flags | VK_QUERY_RESULT_WITH_AVAILABILITY_BIT | VK_QUERY_RESULT_PARTIAL_BIT) != VK_SUCCESS) {
-         debug_printf("zink: getting query result failed\n");
-         return;
-      }
-      if (result_type <= PIPE_QUERY_TYPE_U32) {
-         uint32_t *u32_u64 = (void*)u64;
-         pipe_buffer_write(pctx, pres, offset, result_size, &u32_u64[1]);
+
+      if (fences) {
+         struct pipe_resource *staging = pipe_buffer_create(pctx->screen, 0, PIPE_USAGE_STAGING, result_size * 2);
+         copy_results_to_buffer(ctx, query, zink_resource(staging), 0, 1, size_flags | VK_QUERY_RESULT_WITH_AVAILABILITY_BIT | VK_QUERY_RESULT_PARTIAL_BIT);
+         zink_copy_buffer(ctx, get_batch_for_query(ctx, query, true), res, zink_resource(staging), offset, result_size, result_size);
+         pipe_resource_reference(&staging, NULL);
+         if (is_cs_query(query))
+            zink_flush_compute(ctx);
+         else
+            pctx->flush(pctx, NULL, PIPE_FLUSH_HINT_FINISH);
       } else {
-         pipe_buffer_write(pctx, pres, offset, result_size, &u64[1]);
+         uint64_t u64[2] = {0};
+         if (vkGetQueryPoolResults(screen->dev, query->query_pool, query_id, 1, 2 * result_size, u64,
+                                   0, size_flags | VK_QUERY_RESULT_WITH_AVAILABILITY_BIT | VK_QUERY_RESULT_PARTIAL_BIT) != VK_SUCCESS) {
+            debug_printf("zink: getting query result failed\n");
+            return;
+         }
+         pipe_buffer_write(pctx, pres, offset, result_size, (unsigned char*)u64 + result_size);
       }
-      util_range_add(&res->base, &res->valid_buffer_range, offset, result_size);
       return;
    }
 
-   unsigned fences = p_atomic_read(&query->fences);
    if (!is_time_query(query) && (!fences || wait)) {
       /* result happens to be ready or we're waiting */
       if (num_queries == 1 && query->type != PIPE_QUERY_PRIMITIVES_GENERATED &&
