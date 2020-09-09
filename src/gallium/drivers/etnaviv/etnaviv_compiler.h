@@ -70,6 +70,20 @@ struct etna_shader_io_file {
 struct etna_shader_variant {
    uint32_t id; /* for debug */
 
+   /* index into outputs (for linking) - only for TGSI compiler */
+   int output_count_per_semantic[TGSI_SEMANTIC_COUNT];
+   struct etna_shader_inout * *output_per_semantic_list; /* list of pointers to outputs */
+   struct etna_shader_inout **output_per_semantic[TGSI_SEMANTIC_COUNT];
+
+   /* shader variants form a linked list */
+   struct etna_shader_variant *next;
+
+   /* replicated here to avoid passing extra ptrs everywhere */
+   struct etna_shader *shader;
+   struct etna_shader_key key;
+
+   struct etna_bo *bo; /* cached code memory bo handle (for icache) */
+
    gl_shader_stage stage;
    uint32_t code_size; /* code size in uint32 words */
    uint32_t *code;
@@ -88,11 +102,6 @@ struct etna_shader_variant {
    /* outputs (for linking) */
    struct etna_shader_io_file outfile;
 
-   /* index into outputs (for linking) - only for TGSI compiler */
-   int output_count_per_semantic[TGSI_SEMANTIC_COUNT];
-   struct etna_shader_inout * *output_per_semantic_list; /* list of pointers to outputs */
-   struct etna_shader_inout **output_per_semantic[TGSI_SEMANTIC_COUNT];
-
    /* special inputs/outputs (vs only) */
    int vs_id_in_reg; /* vertexid+instanceid input */
    int vs_pos_out_reg; /* VS position output */
@@ -108,15 +117,6 @@ struct etna_shader_variant {
 
    /* shader is larger than GPU instruction limit, thus needs icache */
    bool needs_icache;
-
-   /* shader variants form a linked list */
-   struct etna_shader_variant *next;
-
-   /* replicated here to avoid passing extra ptrs everywhere */
-   struct etna_shader *shader;
-   struct etna_shader_key key;
-
-   struct etna_bo *bo; /* cached code memory bo handle (for icache) */
 };
 
 struct etna_varying {
