@@ -131,21 +131,21 @@ bit_vertex(struct panfrost_device *dev, panfrost_program prog,
                 uint32_t *iattr, size_t sz_attr,
                 uint32_t *expected, size_t sz_expected, enum bit_debug debug)
 {
-
-        struct panfrost_bo *scratchpad = bit_bo_create(dev, 4096);
         struct panfrost_bo *shader = bit_bo_create(dev, prog.compiled.size);
         struct panfrost_bo *shader_desc = bit_bo_create(dev, 4096);
         struct panfrost_bo *ubo = bit_bo_create(dev, 4096);
         struct panfrost_bo *var = bit_bo_create(dev, 4096);
         struct panfrost_bo *attr = bit_bo_create(dev, 4096);
 
-        pan_pack(var->cpu, ATTRIBUTE, cfg) {
+        pan_pack(attr->cpu, ATTRIBUTE, cfg) {
                 cfg.format = (MALI_RGBA32UI << 12);
                 cfg.unknown = true;
         }
 
-        pan_pack(attr->cpu, ATTRIBUTE, cfg)
+        pan_pack(var->cpu, ATTRIBUTE, cfg) {
                 cfg.format = (MALI_RGBA32UI << 12);
+                cfg.unknown = false;
+        }
 
         pan_pack(var->cpu + 256, ATTRIBUTE_BUFFER, cfg) {
                 cfg.pointer = (var->gpu + 1024);
@@ -157,6 +157,11 @@ bit_vertex(struct panfrost_device *dev, panfrost_program prog,
                 cfg.size = 1024;
         }
 
+        pan_pack(ubo->cpu, UNIFORM_BUFFER, cfg) {
+                cfg.entries = sz_ubo / 16;
+                cfg.pointer = ubo->gpu + 1024;
+        }
+
         if (sz_ubo)
                 memcpy(ubo->cpu + 1024, iubo, sz_ubo);
 
@@ -165,7 +170,6 @@ bit_vertex(struct panfrost_device *dev, panfrost_program prog,
 
         struct panfrost_bo *shmem = bit_bo_create(dev, 4096);
         struct mali_shared_memory shmemp = {
-                .scratchpad = scratchpad->gpu,
                 .shared_workgroup_count = 0x1f,
         };
 
@@ -174,7 +178,13 @@ bit_vertex(struct panfrost_device *dev, panfrost_program prog,
         pan_pack(shader_desc->cpu, STATE, cfg) {
                 cfg.shader.shader = shader->gpu;
                 cfg.shader.attribute_count = cfg.shader.varying_count = 1;
-                cfg.properties = 0x80020001;
+                cfg.properties = 0x800001;
+
+                pan_pack(&cfg.preload.untyped, PRELOAD_VERTEX, n) {
+                        n.vertex_id = true;
+                        n.instance_id = true;
+                }
+ 
                 cfg.preload.uniform_count = (sz_ubo / 16);
         }
 
@@ -213,7 +223,7 @@ bit_vertex(struct panfrost_device *dev, panfrost_program prog,
         payload.postfix = draw;
 
         struct panfrost_bo *bos[] = {
-                scratchpad, shmem, shader, shader_desc, ubo, var, attr
+                shmem, shader, shader_desc, ubo, var, attr
         };
 
         bool succ = bit_submit(dev, MALI_JOB_TYPE_VERTEX, &payload,
