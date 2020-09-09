@@ -191,9 +191,9 @@ fs_generator::fs_generator(const struct brw_compiler *compiler, void *log_data,
 
    : compiler(compiler), log_data(log_data),
      devinfo(compiler->devinfo),
-     prog_data(prog_data),
+     prog_data(prog_data), dispatch_width(0),
      runtime_check_aads_emit(runtime_check_aads_emit), debug_flag(false),
-     stage(stage), mem_ctx(mem_ctx)
+     shader_name(NULL), stage(stage), mem_ctx(mem_ctx)
 {
    p = rzalloc(mem_ctx, struct brw_codegen);
    brw_init_codegen(devinfo, p, mem_ctx);

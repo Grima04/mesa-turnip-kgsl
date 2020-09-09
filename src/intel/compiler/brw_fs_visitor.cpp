@@ -950,9 +950,11 @@ fs_visitor::init()
    this->prog_data = this->stage_prog_data;
 
    this->failed = false;
+   this->fail_msg = NULL;
 
    this->nir_locals = NULL;
    this->nir_ssa_values = NULL;
+   this->nir_system_values = NULL;
 
    memset(&this->payload, 0, sizeof(this->payload));
    this->source_depth_to_render_target = false;

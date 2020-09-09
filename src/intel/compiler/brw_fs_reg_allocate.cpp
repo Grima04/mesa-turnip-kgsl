@@ -429,6 +429,13 @@ public:
       /* Get payload IP information */
       payload_last_use_ip = ralloc_array(mem_ctx, int, payload_node_count);
 
+      node_count = 0;
+      first_payload_node = 0;
+      first_mrf_hack_node = 0;
+      grf127_send_hack_node = 0;
+      first_vgrf_node = 0;
+      first_spill_node = 0;
+
       spill_vgrf_ip = NULL;
       spill_vgrf_ip_alloc = 0;
       spill_node_count = 0;

@@ -544,6 +544,8 @@ public:
       this->instructions.make_empty();
       this->post_reg_alloc = (mode == SCHEDULE_POST);
       this->mode = mode;
+      this->reg_pressure = 0;
+      this->block_idx = 0;
       if (!post_reg_alloc) {
          this->reg_pressure_in = rzalloc_array(mem_ctx, int, block_count);
 
