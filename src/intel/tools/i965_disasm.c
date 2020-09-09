@@ -103,6 +103,7 @@ i965_disasm_read_binary(FILE *fp, size_t *end)
 
    size = fread(assembly, *end, 1, fp);
    if (!size) {
+      free(assembly);
       return NULL;
    }
    return assembly;
