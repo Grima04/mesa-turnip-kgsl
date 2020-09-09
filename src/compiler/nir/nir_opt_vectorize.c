@@ -49,30 +49,19 @@ hash_alu_src(uint32_t hash, const nir_alu_src *src)
 }
 
 static uint32_t
-hash_alu(uint32_t hash, const nir_alu_instr *instr)
-{
-   hash = HASH(hash, instr->op);
-
-   hash = HASH(hash, instr->dest.dest.ssa.bit_size);
-
-   for (unsigned i = 0; i < nir_op_infos[instr->op].num_inputs; i++)
-      hash = hash_alu_src(hash, &instr->src[i]);
-
-   return hash;
-}
-
-static uint32_t
 hash_instr(const void *data)
 {
    const nir_instr *instr = (nir_instr *) data;
-   uint32_t hash = 0;
+   assert(instr->type == nir_instr_type_alu);
+   nir_alu_instr *alu = nir_instr_as_alu(instr);
 
-   switch (instr->type) {
-   case nir_instr_type_alu:
-      return hash_alu(hash, nir_instr_as_alu(instr));
-   default:
-      unreachable("bad instruction type");
-   }
+   uint32_t hash = HASH(0, alu->op);
+   hash = HASH(hash, alu->dest.dest.ssa.bit_size);
+
+   for (unsigned i = 0; i < nir_op_infos[alu->op].num_inputs; i++)
+      hash = hash_alu_src(hash, &alu->src[i]);
+
+   return hash;
 }
 
 static bool
@@ -101,32 +90,28 @@ instrs_equal(const void *data1, const void *data2)
 {
    const nir_instr *instr1 = (nir_instr *) data1;
    const nir_instr *instr2 = (nir_instr *) data2;
-   switch (instr1->type) {
-   case nir_instr_type_alu: {
-      nir_alu_instr *alu1 = nir_instr_as_alu(instr1);
-      nir_alu_instr *alu2 = nir_instr_as_alu(instr2);
+   assert(instr1->type == nir_instr_type_alu);
+   assert(instr2->type == nir_instr_type_alu);
 
-      if (alu1->op != alu2->op)
+   nir_alu_instr *alu1 = nir_instr_as_alu(instr1);
+   nir_alu_instr *alu2 = nir_instr_as_alu(instr2);
+
+   if (alu1->op != alu2->op)
+      return false;
+
+   if (alu1->dest.dest.ssa.bit_size != alu2->dest.dest.ssa.bit_size)
+      return false;
+
+   for (unsigned i = 0; i < nir_op_infos[alu1->op].num_inputs; i++) {
+      if (!alu_srcs_equal(&alu1->src[i], &alu2->src[i]))
          return false;
-
-      if (alu1->dest.dest.ssa.bit_size != alu2->dest.dest.ssa.bit_size)
-         return false;
-
-      for (unsigned i = 0; i < nir_op_infos[alu1->op].num_inputs; i++) {
-         if (!alu_srcs_equal(&alu1->src[i], &alu2->src[i]))
-            return false;
-      }
-
-      return true;
    }
 
-   default:
-      unreachable("bad instruction type");
-   }
+   return true;
 }
 
 static bool
-instr_can_rewrite(nir_instr *instr)
+instr_can_rewrite(nir_instr *instr, bool vectorize_16bit)
 {
    switch (instr->type) {
    case nir_instr_type_alu: {
@@ -137,6 +122,15 @@ instr_can_rewrite(nir_instr *instr)
        * would result in fighting with copy prop.
        */
       if (alu->op == nir_op_mov)
+         return false;
+
+      /* no need to hash instructions which are already vectorized */
+      if (alu->dest.dest.ssa.num_components >= 4)
+         return false;
+
+      if (vectorize_16bit &&
+          (alu->dest.dest.ssa.num_components >= 2 ||
+           alu->dest.dest.ssa.bit_size != 16))
          return false;
 
       if (nir_op_infos[alu->op].output_size != 0)
@@ -181,9 +175,10 @@ instr_try_combine(struct nir_shader *nir, nir_instr *instr1, nir_instr *instr2,
    if (total_components > 4)
       return NULL;
 
-   if (nir->options->vectorize_vec2_16bit &&
-       (total_components > 2 || alu1->dest.dest.ssa.bit_size != 16))
-      return NULL;
+   if (nir->options->vectorize_vec2_16bit) {
+      assert(total_components == 2);
+      assert(alu1->dest.dest.ssa.bit_size == 16);
+   }
 
    if (filter && !filter(&alu1->instr, &alu2->instr, data))
       return NULL;
@@ -335,7 +330,7 @@ vec_instr_set_add_or_rewrite(struct nir_shader *nir, struct set *instr_set,
                              nir_instr *instr,
                              nir_opt_vectorize_cb filter, void *data)
 {
-   if (!instr_can_rewrite(instr))
+   if (!instr_can_rewrite(instr, nir->options->vectorize_vec2_16bit))
       return false;
 
    struct set_entry *entry = _mesa_set_search(instr_set, instr);
@@ -345,7 +340,8 @@ vec_instr_set_add_or_rewrite(struct nir_shader *nir, struct set *instr_set,
       nir_instr *new_instr = instr_try_combine(nir, old_instr, instr,
                                                filter, data);
       if (new_instr) {
-         _mesa_set_add(instr_set, new_instr);
+         if (instr_can_rewrite(new_instr, nir->options->vectorize_vec2_16bit))
+            _mesa_set_add(instr_set, new_instr);
          return true;
       }
    }
@@ -372,12 +368,8 @@ vectorize_block(struct nir_shader *nir, nir_block *block,
    }
 
    nir_foreach_instr_reverse(instr, block) {
-      if (instr->type != nir_instr_type_alu)
-         continue;
-
-      struct set_entry *entry = _mesa_set_search(instr_set, instr);
-      if (entry)
-         _mesa_set_remove(instr_set, entry);
+      if (instr_can_rewrite(instr, nir->options->vectorize_vec2_16bit))
+         _mesa_set_remove_key(instr_set, instr);
    }
 
    return progress;
