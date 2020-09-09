@@ -456,6 +456,26 @@ force_cpu_read(struct zink_context *ctx, struct pipe_query *pquery, bool wait, e
 }
 
 static void
+copy_results_to_buffer(struct zink_context *ctx, struct zink_query *query, struct zink_resource *res, unsigned offset, int num_results, VkQueryResultFlags flags)
+{
+   unsigned query_id = query->last_start;
+   struct zink_batch *batch = get_batch_for_query(ctx, query, true);
+   unsigned base_result_size = (flags & VK_QUERY_RESULT_64_BIT) ? sizeof(uint64_t) : sizeof(uint32_t);
+   unsigned result_size = base_result_size * num_results;
+   if (flags & VK_QUERY_RESULT_WITH_AVAILABILITY_BIT)
+      result_size += base_result_size;
+   /* if it's a single query that doesn't need special handling, we can copy it and be done */
+   zink_batch_reference_resource_rw(batch, res, true);
+   zink_resource_buffer_barrier(batch, res, VK_ACCESS_TRANSFER_WRITE_BIT, 0);
+   util_range_add(&res->base, &res->valid_buffer_range, offset, offset + result_size);
+   vkCmdCopyQueryPoolResults(batch->cmdbuf, query->query_pool, query_id, num_results, res->buffer,
+                             offset, 0, flags);
+   /* this is required for compute batch sync and will be removed later */
+   if (batch->batch_id != ZINK_COMPUTE_BATCH_ID)
+      ctx->base.flush(&ctx->base, NULL, PIPE_FLUSH_HINT_FINISH);
+}
+
+static void
 reset_pool(struct zink_context *ctx, struct zink_batch *batch, struct zink_query *q)
 {
    /* This command must only be called outside of a render pass instance
@@ -712,9 +732,8 @@ zink_render_condition(struct pipe_context *pctx,
    int num_results = query->curr_query - query->last_start;
    if (query->type != PIPE_QUERY_PRIMITIVES_GENERATED &&
        !is_so_overflow_query(query)) {
-      vkCmdCopyQueryPoolResults(batch->cmdbuf, query->query_pool, query->last_start, num_results,
-                                res->buffer, 0, 0, flags);
-      zink_batch_reference_resource_rw(batch, res, true);
+      copy_results_to_buffer(ctx, query, res, 0, num_results, flags);
+      batch = zink_curr_batch(ctx);
    } else {
       /* these need special handling */
       force_cpu_read(ctx, pquery, true, PIPE_QUERY_TYPE_U32, pres, 0);
@@ -785,7 +804,6 @@ zink_get_query_result_resource(struct pipe_context *pctx,
       pipe_buffer_unmap(pctx, transfer);
       return;
    }
-   util_range_add(&res->base, &res->valid_buffer_range, offset, result_size);
 
    unsigned fences = p_atomic_read(&query->fences);
    if (!is_time_query(query) && (!fences || wait)) {
@@ -796,15 +814,7 @@ zink_get_query_result_resource(struct pipe_context *pctx,
                               query->type != PIPE_QUERY_OCCLUSION_PREDICATE &&
                               query->type != PIPE_QUERY_OCCLUSION_PREDICATE_CONSERVATIVE &&
                               !is_so_overflow_query(query)) {
-         struct zink_batch *batch = get_batch_for_query(ctx, query, true);
-         /* if it's a single query that doesn't need special handling, we can copy it and be done */
-         zink_batch_reference_resource_rw(batch, res, true);
-         zink_resource_buffer_barrier(batch, res, VK_ACCESS_TRANSFER_WRITE_BIT, 0);
-         vkCmdCopyQueryPoolResults(batch->cmdbuf, query->query_pool, query_id, 1, res->buffer,
-                                   offset, 0, size_flags);
-         /* this is required for compute batch sync and will be removed later */
-         if (batch->batch_id != ZINK_COMPUTE_BATCH_ID)
-            pctx->flush(pctx, NULL, PIPE_FLUSH_HINT_FINISH);
+         copy_results_to_buffer(ctx, query, res, offset, 1, size_flags);
          return;
       }
    }
