@@ -427,6 +427,23 @@ pipe_buffer_write_nooverlap(struct pipe_context *pipe,
                         offset, size, data);
 }
 
+/**
+ * Utility for simplifying pipe_context::resource_copy_region calls
+ */
+static inline void
+pipe_buffer_copy(struct pipe_context *pipe,
+                 struct pipe_resource *dst,
+                 struct pipe_resource *src,
+                 unsigned dst_offset,
+                 unsigned src_offset,
+                 unsigned size)
+{
+   struct pipe_box box;
+   /* only these fields are used */
+   box.x = (int)src_offset;
+   box.width = (int)size;
+   pipe->resource_copy_region(pipe, dst, 0, dst_offset, 0, 0, src, 0, &box);
+}
 
 /**
  * Create a new resource and immediately put data into it
