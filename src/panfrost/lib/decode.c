@@ -102,7 +102,7 @@ static void
 pandecode_make_indent(void)
 {
         for (unsigned i = 0; i < pandecode_indent; ++i)
-                fprintf(pandecode_dump_stream, "    ");
+                fprintf(pandecode_dump_stream, "  ");
 }
 
 static void
