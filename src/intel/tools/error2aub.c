@@ -240,7 +240,7 @@ int
 main(int argc, char *argv[])
 {
    int i, c;
-   bool help = false, verbose;
+   bool help = false, verbose = false;
    char *out_filename = NULL, *in_filename = NULL;
    const struct option aubinator_opts[] = {
       { "help",       no_argument,       NULL,     'h' },
