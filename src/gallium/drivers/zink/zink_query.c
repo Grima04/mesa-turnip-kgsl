@@ -460,6 +460,13 @@ copy_results_to_buffer(struct zink_context *ctx, struct zink_query *query, struc
    unsigned result_size = base_result_size * num_results;
    if (flags & VK_QUERY_RESULT_WITH_AVAILABILITY_BIT)
       result_size += base_result_size;
+   if (is_cs_query(query)) {
+      uint32_t batch_uses = zink_get_resource_usage(res);
+      batch_uses &= ~(ZINK_RESOURCE_ACCESS_READ << ZINK_COMPUTE_BATCH_ID);
+      batch_uses &= ~(ZINK_RESOURCE_ACCESS_WRITE << ZINK_COMPUTE_BATCH_ID);
+      if (batch_uses >= ZINK_RESOURCE_ACCESS_WRITE)
+         ctx->base.flush(&ctx->base, NULL, PIPE_FLUSH_HINT_FINISH);
+   }
    /* if it's a single query that doesn't need special handling, we can copy it and be done */
    zink_batch_reference_resource_rw(batch, res, true);
    zink_resource_buffer_barrier(batch, res, VK_ACCESS_TRANSFER_WRITE_BIT, 0);
@@ -467,8 +474,11 @@ copy_results_to_buffer(struct zink_context *ctx, struct zink_query *query, struc
    vkCmdCopyQueryPoolResults(batch->cmdbuf, query->query_pool, query_id, num_results, res->buffer,
                              offset, 0, flags);
    /* this is required for compute batch sync and will be removed later */
-   if (batch->batch_id != ZINK_COMPUTE_BATCH_ID)
+   if (is_cs_query(query))
+      zink_flush_compute(ctx);
+   else
       ctx->base.flush(&ctx->base, NULL, PIPE_FLUSH_HINT_FINISH);
+
 }
 
 static void
@@ -783,10 +793,6 @@ zink_get_query_result_resource(struct pipe_context *pctx,
          copy_results_to_buffer(ctx, query, zink_resource(staging), 0, 1, size_flags | VK_QUERY_RESULT_WITH_AVAILABILITY_BIT | VK_QUERY_RESULT_PARTIAL_BIT);
          zink_copy_buffer(ctx, get_batch_for_query(ctx, query, true), res, zink_resource(staging), offset, result_size, result_size);
          pipe_resource_reference(&staging, NULL);
-         if (is_cs_query(query))
-            zink_flush_compute(ctx);
-         else
-            pctx->flush(pctx, NULL, PIPE_FLUSH_HINT_FINISH);
       } else {
          uint64_t u64[2] = {0};
          if (vkGetQueryPoolResults(screen->dev, query->query_pool, query_id, 1, 2 * result_size, u64,
