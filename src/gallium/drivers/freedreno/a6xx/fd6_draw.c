@@ -208,7 +208,7 @@ fd6_draw_vbo(struct fd_context *ctx, const struct pipe_draw_info *info,
 
 	/* bail if compile failed: */
 	if (!fd6_ctx->prog)
-		return NULL;
+		return false;
 
 	fixup_draw_state(ctx, &emit);
 
