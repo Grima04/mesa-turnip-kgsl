@@ -225,7 +225,7 @@ x86_build:
   extends:
     - .use-x86_build-base
   variables:
-    FDO_DISTRIBUTION_TAG: &x86_build "2020-08-13-gold"
+    FDO_DISTRIBUTION_TAG: &x86_build "2020-09-10-libdrm"
 
 .use-x86_build:
   variables:
@@ -239,7 +239,7 @@ i386_build:
   extends:
     - .use-x86_build-base
   variables:
-    FDO_DISTRIBUTION_TAG: &i386_build "2020-08-13-gold"
+    FDO_DISTRIBUTION_TAG: &i386_build "2020-09-10-libdrm"
 
 .use-i386_build:
   variables:
@@ -253,7 +253,7 @@ ppc64el_build:
   extends:
     - .use-x86_build-base
   variables:
-    FDO_DISTRIBUTION_TAG: &ppc64el_build "2020-08-13-gold"
+    FDO_DISTRIBUTION_TAG: &ppc64el_build "2020-09-10-libdrm"
 
 .use-ppc64el_build:
   variables:
@@ -267,7 +267,7 @@ s390x_build:
   extends:
     - .use-x86_build-base
   variables:
-    FDO_DISTRIBUTION_TAG: &s390x_build "2020-08-13-gold"
+    FDO_DISTRIBUTION_TAG: &s390x_build "2020-09-10-libdrm"
 
 .use-s390x_build:
   variables:
@@ -297,7 +297,7 @@ x86_test-base:
 x86_test-gl:
   extends: .use-x86_test-base
   variables:
-    FDO_DISTRIBUTION_TAG: &x86_test-gl "2020-09-03-deqp-version"
+    FDO_DISTRIBUTION_TAG: &x86_test-gl "2020-09-10-libdrm"
 
 # Debian 10 based x86 test image for VK
 x86_test-vk:
@@ -325,7 +325,7 @@ arm_build:
     - .fdo.container-build@debian@arm64v8
     - .container
   variables:
-    FDO_DISTRIBUTION_TAG: &arm_build "2020-08-31-deqp-version"
+    FDO_DISTRIBUTION_TAG: &arm_build "2020-09-10-libdrm"
 
 .use-arm_build:
   variables:
@@ -340,7 +340,7 @@ arm_test-base:
     - .fdo.container-build@debian
     - .container
   variables:
-    FDO_DISTRIBUTION_TAG: &arm_test-base "2020-08-13-gold"
+    FDO_DISTRIBUTION_TAG: &arm_test-base "2020-09-10-libdrm"
 
 .use-arm_test-base:
   extends:
