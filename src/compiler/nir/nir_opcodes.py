@@ -625,7 +625,10 @@ if (nir_is_rounding_mode_rtz(execution_mode, bit_size)) {
 }
 """)
 # low 32-bits of signed/unsigned integer multiply
-binop("imul", tint, _2src_commutative + associative, "src0 * src1")
+binop("imul", tint, _2src_commutative + associative, """
+   /* Use 64-bit multiplies to prevent overflow of signed arithmetic */
+   dst = (uint64_t)src0 * (uint64_t)src1;
+""")
 
 # Generate 64 bit result from 2 32 bits quantity
 binop_convert("imul_2x32_64", tint64, tint32, _2src_commutative,
@@ -656,7 +659,9 @@ if (bit_size == 64) {
    ubm_mul_u32arr(prod_u32, src0_u32, src1_u32);
    dst = (uint64_t)prod_u32[2] | ((uint64_t)prod_u32[3] << 32);
 } else {
-   dst = ((int64_t)src0 * (int64_t)src1) >> bit_size;
+   /* First, sign-extend to 64-bit, then convert to unsigned to prevent
+    * potential overflow of signed multiply */
+   dst = ((uint64_t)(int64_t)src0 * (uint64_t)(int64_t)src1) >> bit_size;
 }
 """)
 
