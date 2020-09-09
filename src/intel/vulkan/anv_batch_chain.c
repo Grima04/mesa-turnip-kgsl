@@ -1821,7 +1821,7 @@ anv_queue_execbuf_locked(struct anv_queue *queue,
          if (ret < 0) {
             result = anv_device_set_lost(device,
                                          "i915-perf config failed: %s",
-                                         strerror(ret));
+                                         strerror(errno));
          }
       }
 
