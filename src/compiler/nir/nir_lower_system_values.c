@@ -351,7 +351,8 @@ lower_compute_system_value_instr(nir_builder *b,
       if (options && options->has_base_global_invocation_id)
          return nir_iadd(b, nir_load_global_invocation_id_zero_base(b, bit_size),
                             nir_load_base_global_invocation_id(b, bit_size));
-      else if (!b->shader->options->has_cs_global_id)
+      else if ((options && options->has_base_work_group_id) ||
+               !b->shader->options->has_cs_global_id)
          return nir_load_global_invocation_id_zero_base(b, bit_size);
       else
          return NULL;
