@@ -1457,8 +1457,6 @@ tu_create_cmd_buffer(struct tu_device *device,
 
    *pCommandBuffer = tu_cmd_buffer_to_handle(cmd_buffer);
 
-   list_inithead(&cmd_buffer->upload.list);
-
    return VK_SUCCESS;
 }
 

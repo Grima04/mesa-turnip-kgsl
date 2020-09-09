@@ -926,14 +926,6 @@ struct tu_cmd_pool
    uint32_t queue_family_index;
 };
 
-struct tu_cmd_buffer_upload
-{
-   uint8_t *map;
-   unsigned offset;
-   uint64_t size;
-   struct list_head list;
-};
-
 enum tu_cmd_buffer_status
 {
    TU_CMD_BUFFER_STATUS_INVALID,
@@ -1000,8 +992,6 @@ struct tu_cmd_buffer
    struct tu_descriptor_set meta_push_descriptors;
 
    struct tu_descriptor_state descriptors[MAX_BIND_POINTS];
-
-   struct tu_cmd_buffer_upload upload;
 
    VkResult record_result;
 
