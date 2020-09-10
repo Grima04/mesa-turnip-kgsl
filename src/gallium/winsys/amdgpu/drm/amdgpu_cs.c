@@ -198,6 +198,9 @@ bool amdgpu_fence_wait(struct pipe_fence_handle *fence, uint64_t timeout,
 
    /* Handle syncobjs. */
    if (amdgpu_fence_is_syncobj(afence)) {
+      if (abs_timeout == OS_TIMEOUT_INFINITE)
+         abs_timeout = INT64_MAX;
+
       if (amdgpu_cs_syncobj_wait(afence->ws->dev, &afence->syncobj, 1,
                                  abs_timeout, 0, NULL))
          return false;
