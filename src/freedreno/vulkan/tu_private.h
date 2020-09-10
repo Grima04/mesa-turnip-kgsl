@@ -305,8 +305,6 @@ tu_fence_update_fd(struct tu_fence *fence, int fd);
 void
 tu_fence_copy(struct tu_fence *fence, const struct tu_fence *src);
 void
-tu_fence_signal(struct tu_fence *fence);
-void
 tu_fence_wait_idle(struct tu_fence *fence);
 
 struct tu_queue

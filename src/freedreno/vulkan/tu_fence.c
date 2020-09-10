@@ -138,16 +138,6 @@ tu_fence_copy(struct tu_fence *fence, const struct tu_fence *src)
 }
 
 /**
- * Signal a fence.  \a fence must be in the reset state.
- */
-void
-tu_fence_signal(struct tu_fence *fence)
-{
-   assert(tu_fence_get_state(fence) == TU_FENCE_STATE_RESET);
-   tu_fence_set_state(fence, TU_FENCE_STATE_SIGNALED, -1);
-}
-
-/**
  * Wait until a fence is idle (i.e., not pending).
  */
 void
