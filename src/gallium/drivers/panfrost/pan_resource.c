@@ -79,6 +79,7 @@ panfrost_resource_from_handle(struct pipe_screen *pscreen,
         rsc->internal_format = templat->format;
         rsc->modifier = (whandle->modifier == DRM_FORMAT_MOD_INVALID) ?
                 DRM_FORMAT_MOD_LINEAR : whandle->modifier;
+        rsc->modifier_constant = true;
         rsc->slices[0].stride = whandle->stride;
         rsc->slices[0].offset = whandle->offset;
         rsc->slices[0].initialized = true;
@@ -118,6 +119,7 @@ panfrost_resource_get_handle(struct pipe_screen *pscreen,
         struct renderonly_scanout *scanout = rsrc->scanout;
 
         handle->modifier = rsrc->modifier;
+        rsrc->modifier_constant = true;
 
         if (handle->type == WINSYS_HANDLE_TYPE_SHARED) {
                 return false;
