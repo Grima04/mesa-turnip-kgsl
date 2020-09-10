@@ -562,8 +562,6 @@ bi_pack_fma(bi_clause *clause, bi_bundle bundle, bi_registers *regs)
                         return pan_pack_fma_iaddc_i32(clause, bundle.fma, regs);
                 else
                         return pan_pack_fma_isubb_i32(clause, bundle.fma, regs);
-        case BI_MINMAX:
-                unreachable("FMIN/FMAX not supported on FMA since G72");
         case BI_MOV:
                 return pan_pack_fma_mov_i32(clause, bundle.fma, regs);
         case BI_SELECT:
