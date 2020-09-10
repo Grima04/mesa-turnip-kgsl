@@ -757,17 +757,20 @@ zink_resource_setup_transfer_layouts(struct zink_batch *batch, struct zink_resou
        * VK_IMAGE_LAYOUT_GENERAL. And since this isn't a present-related
        * operation, VK_IMAGE_LAYOUT_GENERAL seems most appropriate.
        */
-      if (src->layout != VK_IMAGE_LAYOUT_GENERAL)
-         zink_resource_image_barrier(batch, src,
-                               VK_IMAGE_LAYOUT_GENERAL, 0, VK_PIPELINE_STAGE_TRANSFER_BIT);
+      zink_resource_image_barrier(batch, src,
+                                  VK_IMAGE_LAYOUT_GENERAL,
+                                  VK_ACCESS_TRANSFER_READ_BIT | VK_ACCESS_TRANSFER_WRITE_BIT,
+                                  VK_PIPELINE_STAGE_TRANSFER_BIT);
    } else {
-      if (src->layout != VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL)
-         zink_resource_image_barrier(batch, src,
-                               VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, 0, VK_PIPELINE_STAGE_TRANSFER_BIT);
+      zink_resource_image_barrier(batch, src,
+                                  VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                                  VK_ACCESS_TRANSFER_READ_BIT,
+                                  VK_PIPELINE_STAGE_TRANSFER_BIT);
 
-      if (dst->layout != VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
-         zink_resource_image_barrier(batch, dst,
-                               VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 0, VK_PIPELINE_STAGE_TRANSFER_BIT);
+      zink_resource_image_barrier(batch, dst,
+                                  VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                  VK_ACCESS_TRANSFER_WRITE_BIT,
+                                  VK_PIPELINE_STAGE_TRANSFER_BIT);
    }
 }
 
