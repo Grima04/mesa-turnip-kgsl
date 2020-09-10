@@ -3066,6 +3066,15 @@ to upconvert to 32b float internally?
 	<!-- always 0x1 ? -->
 	<reg32 offset="0xa0f8" name="SP_UNKNOWN_A0F8"/>
 
+	<!--
+	Note: this seems to always be paired with another bit in another
+	block. So far we've found the FS and CS bits.
+	-->
+	<enum name="a6xx_threadsize">
+		<value value="0" name="THREAD64"/>
+		<value value="1" name="THREAD128"/>
+	</enum>
+
 	<bitset name="a6xx_sp_xs_ctrl_reg0" inline="yes">
 		<!--
 		When b31 set we just see FULLREGFOOTPRINT set.  The pattern of
@@ -3085,7 +3094,7 @@ to upconvert to 32b float internally?
 		<bitfield name="FULLREGFOOTPRINT" low="7" high="12" type="uint"/>
 		<!-- seems to be nesting level for flow control:.. -->
 		<bitfield name="BRANCHSTACK" low="14" high="19" type="uint"/>
-		<bitfield name="THREADSIZE" pos="20" type="a3xx_threadsize"/>
+		<bitfield name="THREADSIZE" pos="20" type="a6xx_threadsize"/>
 		<bitfield name="VARYING" pos="22" type="boolean"/>
 		<!-- set when dFdxFine/dFdyFine is used -->
 		<bitfield name="DIFF_FINE" pos="23" type="boolean"/>
@@ -3622,7 +3631,11 @@ to upconvert to 32b float internally?
 	<reg64 offset="0xb821" name="HLSQ_LOAD_STATE_GEOM_EXT_SRC_ADDR"/>
 	<reg32 offset="0xb823" name="HLSQ_LOAD_STATE_GEOM_DATA"/>
 
-	<reg32 offset="0xb980" name="HLSQ_UNKNOWN_B980"/>
+	<reg32 offset="0xb980" name="HLSQ_FS_CNTL_0">
+		<!-- must match SP_CS_CNTL -->
+		<bitfield name="THREADSIZE" pos="0" type="a6xx_threadsize"/>
+		<bitfield name="VARYINGS" pos="1" type="boolean"/>
+	</reg32>
 
 	<reg32 offset="0xb982" name="HLSQ_CONTROL_1_REG">
 		<!-- always 0x7 ? -->
@@ -3684,11 +3697,15 @@ to upconvert to 32b float internally?
 	</reg32>
 	<reg32 offset="0xb997" name="HLSQ_CS_CNTL_0">
 		<bitfield name="WGIDCONSTID" low="0" high="7" type="a3xx_regid"/>
-		<bitfield name="UNK0" low="8" high="15" type="a3xx_regid"/>
-		<bitfield name="UNK1" low="16" high="23" type="a3xx_regid"/>
+		<bitfield name="WGSIZECONSTID" low="8" high="15" type="a3xx_regid"/>
+		<bitfield name="WGOFFSETCONSTID" low="16" high="23" type="a3xx_regid"/>
 		<bitfield name="LOCALIDREGID" low="24" high="31" type="a3xx_regid"/>
 	</reg32>
-	<reg32 offset="0xb998" name="HLSQ_CS_UNKNOWN_B998"/> <!-- always 0x2fc -->
+	<reg32 offset="0xb998" name="HLSQ_CS_CNTL_1">
+		<bitfield name="LINEARLOCALIDREGID" low="0" high="7" type="a3xx_regid"/>
+		<!-- Must match SP_CS_CNTL -->
+		<bitfield name="THREADSIZE" pos="9" type="a6xx_threadsize"/>
+	</reg32>
 	<reg32 offset="0xb999" name="HLSQ_CS_KERNEL_GROUP_X"/>
 	<reg32 offset="0xb99a" name="HLSQ_CS_KERNEL_GROUP_Y"/>
 	<reg32 offset="0xb99b" name="HLSQ_CS_KERNEL_GROUP_Z"/>

@@ -391,14 +391,14 @@ tu6_emit_xs_config(struct tu_cs *cs,
    }
 
    bool is_fs = xs->type == MESA_SHADER_FRAGMENT;
-   enum a3xx_threadsize threadsize = FOUR_QUADS;
+   enum a6xx_threadsize threadsize = THREAD128;
 
-   /* TODO:
-    * the "threadsize" field may have nothing to do with threadsize,
-    * use a value that matches the blob until it is figured out
+   /* TODO: We probably should be setting the VS threadsize to 64 if paired
+    * with a GS, and HS + DS threadsize to 64 like freedreno. However this
+    * should probably come from ir3.
     */
    if (xs->type == MESA_SHADER_GEOMETRY)
-      threadsize = TWO_QUADS;
+      threadsize = THREAD64;
 
    tu_cs_emit_pkt4(cs, cfg->reg_sp_xs_ctrl, 1);
    tu_cs_emit(cs,
@@ -543,10 +543,11 @@ tu6_emit_cs_config(struct tu_cs *cs, const struct tu_shader *shader,
    tu_cs_emit_pkt4(cs, REG_A6XX_HLSQ_CS_CNTL_0, 2);
    tu_cs_emit(cs,
               A6XX_HLSQ_CS_CNTL_0_WGIDCONSTID(work_group_id) |
-              A6XX_HLSQ_CS_CNTL_0_UNK0(regid(63, 0)) |
-              A6XX_HLSQ_CS_CNTL_0_UNK1(regid(63, 0)) |
+              A6XX_HLSQ_CS_CNTL_0_WGSIZECONSTID(regid(63, 0)) |
+              A6XX_HLSQ_CS_CNTL_0_WGOFFSETCONSTID(regid(63, 0)) |
               A6XX_HLSQ_CS_CNTL_0_LOCALIDREGID(local_invocation_id));
-   tu_cs_emit(cs, 0x2fc);             /* HLSQ_CS_UNKNOWN_B998 */
+   tu_cs_emit(cs, A6XX_HLSQ_CS_CNTL_1_LINEARLOCALIDREGID(regid(63, 0)) |
+                  A6XX_HLSQ_CS_CNTL_1_THREADSIZE(THREAD128));
 }
 
 static void
@@ -1266,8 +1267,9 @@ tu6_emit_fs_inputs(struct tu_cs *cs, const struct ir3_shader_variant *fs)
                   A6XX_HLSQ_CONTROL_4_REG_IJ_LINEAR_SAMPLE(ij_regid[IJ_LINEAR_SAMPLE]));
    tu_cs_emit(cs, 0xfc);
 
-   tu_cs_emit_pkt4(cs, REG_A6XX_HLSQ_UNKNOWN_B980, 1);
-   tu_cs_emit(cs, enable_varyings ? 3 : 1);
+   tu_cs_emit_pkt4(cs, REG_A6XX_HLSQ_FS_CNTL_0, 1);
+   tu_cs_emit(cs, A6XX_HLSQ_FS_CNTL_0_THREADSIZE(THREAD128) |
+                  COND(enable_varyings, A6XX_HLSQ_FS_CNTL_0_VARYINGS));
 
    bool need_size = fs->frag_face || fs->fragcoord_compmask != 0;
    bool need_size_persamp = false;
