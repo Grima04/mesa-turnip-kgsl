@@ -42,22 +42,7 @@ bool nir_lower_dynamic_bo_access(nir_shader *shader);
  * was previously loaded by the load_ubo conditional chain
  */
 static nir_ssa_def *
-recursive_generate_bo_ssa_def(nir_builder *b, nir_intrinsic_instr *instr, nir_ssa_def *index, unsigned start, unsigned end, nir_ssa_def **dests)
-{
-   if (start == end - 1)
-      return dests[start];
-
-   unsigned mid = start + (end - start) / 2;
-   return nir_build_alu(b, nir_op_bcsel, nir_build_alu(b, nir_op_ilt, index, nir_imm_int(b, mid), NULL, NULL),
-      recursive_generate_bo_ssa_def(b, instr, index, start, mid, dests),
-      recursive_generate_bo_ssa_def(b, instr, index, mid, end, dests),
-      NULL
-   );
-}
-
-/* generate a chain of conditionals which reduce to a single, constant value to pass to load_ubo */
-static void
-recursive_un_dynamic_bo_access(nir_builder *b, nir_intrinsic_instr *instr, nir_ssa_def *index, unsigned start, unsigned end, nir_ssa_def **dests)
+recursive_generate_bo_ssa_def(nir_builder *b, nir_intrinsic_instr *instr, nir_ssa_def *index, unsigned start, unsigned end)
 {
    if (start == end - 1) {
       /* block index src is 1 for this op */
@@ -79,16 +64,15 @@ recursive_un_dynamic_bo_access(nir_builder *b, nir_intrinsic_instr *instr, nir_s
                            nir_dest_num_components(instr->dest),
                            nir_dest_bit_size(instr->dest), NULL);
       nir_builder_instr_insert(b, &new_instr->instr);
-      dests[start] = &new_instr->dest.ssa;
-      return;
+      return &new_instr->dest.ssa;
    }
 
    unsigned mid = start + (end - start) / 2;
-   nir_push_if(b, nir_ilt(b, index, nir_imm_int(b, mid)));
-   recursive_un_dynamic_bo_access(b, instr, index, start, mid, dests);
-   nir_push_else(b, NULL);
-   recursive_un_dynamic_bo_access(b, instr, index, mid, end, dests);
-   nir_pop_if(b, NULL);
+   return nir_build_alu(b, nir_op_bcsel, nir_build_alu(b, nir_op_ilt, index, nir_imm_int(b, mid), NULL, NULL),
+      recursive_generate_bo_ssa_def(b, instr, index, start, mid),
+      recursive_generate_bo_ssa_def(b, instr, index, mid, end),
+      NULL
+   );
 }
 
 static bool
@@ -105,7 +89,6 @@ lower_dynamic_bo_access_instr(nir_intrinsic_instr *instr, nir_builder *b)
    if (nir_src_is_const(instr->src[block_idx]))
       return false;
    b->cursor = nir_after_instr(&instr->instr);
-   nir_ssa_def *dests[16];
    bool ssbo_mode = instr->intrinsic != nir_intrinsic_load_ubo && instr->intrinsic != nir_intrinsic_load_ubo_vec4;
    unsigned first_idx = UINT_MAX, last_idx;
    if (ssbo_mode) {
@@ -122,13 +105,10 @@ lower_dynamic_bo_access_instr(nir_intrinsic_instr *instr, nir_builder *b)
       last_idx = first_idx + b->shader->info.num_ubos;
    }
 
-   /* first create the conditional chains to generate all the dests */
-   recursive_un_dynamic_bo_access(b, instr, instr->src[block_idx].ssa,
-                                  first_idx, last_idx, dests);
    /* now create the composite dest with a bcsel chain based on the original value */
    nir_ssa_def *new_dest = recursive_generate_bo_ssa_def(b, instr,
                                                        instr->src[block_idx].ssa,
-                                                       first_idx, last_idx, dests);
+                                                       first_idx, last_idx);
 
    if (instr->intrinsic != nir_intrinsic_store_ssbo)
       /* now use the composite dest in all cases where the original dest (from the dynamic index)
