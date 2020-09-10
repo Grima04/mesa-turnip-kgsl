@@ -22,7 +22,6 @@ struct zink_query {
 
    VkQueryType vkqtype;
    unsigned index;
-   bool use_64bit;
    bool precise;
    bool xfb_running;
    bool xfb_overflow;
@@ -81,31 +80,25 @@ timestamp_to_nanoseconds(struct zink_screen *screen, uint64_t *timestamp)
 }
 
 static VkQueryType
-convert_query_type(unsigned query_type, bool *use_64bit, bool *precise)
+convert_query_type(unsigned query_type, bool *precise)
 {
-   *use_64bit = false;
    *precise = false;
    switch (query_type) {
    case PIPE_QUERY_OCCLUSION_COUNTER:
       *precise = true;
-      *use_64bit = true;
       /* fallthrough */
    case PIPE_QUERY_OCCLUSION_PREDICATE:
    case PIPE_QUERY_OCCLUSION_PREDICATE_CONSERVATIVE:
       return VK_QUERY_TYPE_OCCLUSION;
    case PIPE_QUERY_TIME_ELAPSED:
    case PIPE_QUERY_TIMESTAMP:
-      *use_64bit = true;
       return VK_QUERY_TYPE_TIMESTAMP;
    case PIPE_QUERY_PIPELINE_STATISTICS_SINGLE:
-      *use_64bit = true;
-      /* fallthrough */
    case PIPE_QUERY_PRIMITIVES_GENERATED:
       return VK_QUERY_TYPE_PIPELINE_STATISTICS;
    case PIPE_QUERY_SO_OVERFLOW_ANY_PREDICATE:
    case PIPE_QUERY_SO_OVERFLOW_PREDICATE:
    case PIPE_QUERY_PRIMITIVES_EMITTED:
-      *use_64bit = true;
       return VK_QUERY_TYPE_TRANSFORM_FEEDBACK_STREAM_EXT;
    default:
       debug_printf("unknown query: %s\n",
@@ -163,7 +156,7 @@ zink_create_query(struct pipe_context *pctx,
 
    query->index = index;
    query->type = query_type;
-   query->vkqtype = convert_query_type(query_type, &query->use_64bit, &query->precise);
+   query->vkqtype = convert_query_type(query_type, &query->precise);
    if (query->vkqtype == -1)
       return NULL;
 
@@ -290,7 +283,7 @@ check_query_results(struct zink_query *query, union pipe_query_result *result,
             result->u64 += xfb_results[i + 1];
          else
             /* if a given draw had a geometry shader, we need to use the second result */
-            result->u64 += ((uint32_t*)results)[i + query->have_gs[query->last_start + i / 2]];
+            result->u64 += results[i + query->have_gs[query->last_start + i / 2]];
          break;
       case PIPE_QUERY_PRIMITIVES_EMITTED:
          /* A query pool created with this type will capture 2 integers -
@@ -335,8 +328,7 @@ get_query_result(struct pipe_context *pctx,
    if (wait)
       flags |= VK_QUERY_RESULT_WAIT_BIT;
 
-   if (query->use_64bit)
-      flags |= VK_QUERY_RESULT_64_BIT;
+   flags |= VK_QUERY_RESULT_64_BIT;
 
    if (result != &query->accumulated_result) {
       if (query->type == PIPE_QUERY_TIMESTAMP ||
@@ -370,7 +362,7 @@ get_query_result(struct pipe_context *pctx,
                                               last_start, num_results,
                                               sizeof(results),
                                               results,
-                                              sizeof(uint64_t),
+                                              sizeof(uint64_t) * result_size,
                                               flags);
       if (status != VK_SUCCESS)
          return false;
@@ -397,7 +389,7 @@ get_query_result(struct pipe_context *pctx,
                                                     query->last_start, num_results,
                                                     sizeof(results),
                                                     results,
-                                                    sizeof(uint64_t),
+                                                    sizeof(uint64_t) * 2,
                                                     flags);
          if (status != VK_SUCCESS)
             return false;
@@ -733,8 +725,7 @@ zink_render_condition(struct pipe_context *pctx,
    if (mode == PIPE_RENDER_COND_WAIT || mode == PIPE_RENDER_COND_BY_REGION_WAIT)
       flags |= VK_QUERY_RESULT_WAIT_BIT;
 
-   if (query->use_64bit)
-      flags |= VK_QUERY_RESULT_64_BIT;
+   flags |= VK_QUERY_RESULT_64_BIT;
    int num_results = query->curr_query - query->last_start;
    if (query->type != PIPE_QUERY_PRIMITIVES_GENERATED &&
        !is_so_overflow_query(query)) {
