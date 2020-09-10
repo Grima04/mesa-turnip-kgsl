@@ -571,6 +571,7 @@ pandecode_attributes(const struct pandecode_mapped_memory *mem,
                 pan_print(pandecode_dump_stream, ATTRIBUTE_BUFFER_CONTINUATION_NPOT,
                           temp2, (pandecode_indent + 1) * 2);
         }
+        pandecode_log("\n");
 }
 
 static mali_ptr
@@ -707,6 +708,7 @@ pandecode_midgard_blend_mrt(void *descs, int job_no, int rt_no)
 
         pandecode_indent--;
         pandecode_log("};\n");
+        pandecode_log("\n");
 
         return shader;
 }
@@ -722,6 +724,7 @@ pandecode_attribute_meta(int count, mali_ptr attribute, bool varying, char *suff
         for (int i = 0; i < count; ++i, attribute += MALI_ATTRIBUTE_LENGTH)
                 DUMP_ADDR(ATTRIBUTE, attribute, "%s:\n", varying ? "Varying" : "Attribute");
 
+        pandecode_log("\n");
         return count;
 }
 
@@ -827,6 +830,7 @@ pandecode_uniforms(mali_ptr uniforms, unsigned uniform_count)
         char *ptr = pointer_as_memory_reference(uniforms);
         pandecode_log("vec4 uniforms[%u] = %s;\n", uniform_count, ptr);
         free(ptr);
+        pandecode_log("\n");
 }
 
 static const char *
@@ -1053,7 +1057,8 @@ pandecode_textures(mali_ptr textures, unsigned texture_count, int job_no, bool i
         if (!mmem)
                 return;
 
-        pandecode_log("Textures (%"PRIx64"):\n", textures);
+        pandecode_log("Textures %"PRIx64"_%d:\n", textures, job_no);
+        pandecode_indent++;
 
         if (is_bifrost) {
                 const void *cl = pandecode_fetch_gpu_mem(mmem,
@@ -1083,18 +1088,26 @@ pandecode_textures(mali_ptr textures, unsigned texture_count, int job_no, bool i
                                 pandecode_texture(*u, tmem, job_no, tex);
                 }
         }
+        pandecode_indent--;
+        pandecode_log("\n");
 }
 
 static void
 pandecode_samplers(mali_ptr samplers, unsigned sampler_count, int job_no, bool is_bifrost)
 {
+        pandecode_log("Samplers %"PRIx64"_%d:\n", samplers, job_no);
+        pandecode_indent++;
+
         for (int i = 0; i < sampler_count; ++i) {
                 if (is_bifrost) {
-                        DUMP_ADDR(BIFROST_SAMPLER, samplers + (MALI_BIFROST_SAMPLER_LENGTH * i), "Sampler:\n");
+                        DUMP_ADDR(BIFROST_SAMPLER, samplers + (MALI_BIFROST_SAMPLER_LENGTH * i), "Sampler %d:\n", i);
                 } else {
-                        DUMP_ADDR(MIDGARD_SAMPLER, samplers + (MALI_MIDGARD_SAMPLER_LENGTH * i), "Sampler:\n");
+                        DUMP_ADDR(MIDGARD_SAMPLER, samplers + (MALI_MIDGARD_SAMPLER_LENGTH * i), "Sampler %d:\n", i);
                 }
         }
+
+        pandecode_indent--;
+        pandecode_log("\n");
 }
 
 static void
@@ -1205,7 +1218,7 @@ pandecode_vertex_tiler_postfix_pre(
                                 pandecode_blend_shader_disassemble(shader, job_no, job_type, false, gpu_id);
                 }
                 pandecode_indent--;
-                pandecode_msg("\n");
+                pandecode_log("\n");
 
                 /* MRT blend fields are used whenever MFBD is used, with
                  * per-RT descriptors */
@@ -1230,8 +1243,10 @@ pandecode_vertex_tiler_postfix_pre(
         } else
                 pandecode_msg("XXX: missing shader descriptor\n");
 
-        if (p->viewport)
+        if (p->viewport) {
                 DUMP_ADDR(VIEWPORT, p->viewport, "Viewport:\n");
+                pandecode_log("\n");
+        }
 
         unsigned max_attr_index = 0;
 
