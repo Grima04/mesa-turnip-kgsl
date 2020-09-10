@@ -8,6 +8,9 @@ You can download the released versions of Mesa via
 `HTTPS <https://mesa.freedesktop.org/archive/>`__ or
 `FTP <ftp://ftp.freedesktop.org/pub/mesa/>`__.
 
+Our release tarballs are GPG-signed, and the public keys are available
+here: `release-maintainers-keys.asc <release-maintainers-keys.asc>`__.
+
 Starting with the first release of 2017, Mesa's version scheme is
 year-based. Filenames are in the form ``mesa-Y.N.P.tar.gz``, where ``Y``
 is the year (two digits), ``N`` is an incremental number (starting at 0)
