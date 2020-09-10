@@ -1357,7 +1357,7 @@ ir3_valid_flags(struct ir3_instruction *instr, unsigned n,
 	struct ir3_compiler *compiler = instr->block->shader->compiler;
 	unsigned valid_flags;
 
-	if ((flags & IR3_REG_HIGH) &&
+	if ((flags & IR3_REG_SHARED) &&
 			(opc_cat(instr->opc) > 1) &&
 			(compiler->gpu_id >= 600))
 		return false;

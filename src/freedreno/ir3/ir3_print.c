@@ -173,8 +173,8 @@ static void print_reg_name(struct ir3_register *reg)
 	if (reg->flags & IR3_REG_R)
 		printf("(r)");
 
-	if (reg->flags & IR3_REG_HIGH)
-		printf("H");
+	if (reg->flags & IR3_REG_SHARED)
+		printf("s");
 	if (reg->flags & IR3_REG_HALF)
 		printf("h");
 

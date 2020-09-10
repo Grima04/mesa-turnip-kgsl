@@ -1919,7 +1919,7 @@ emit_intrinsic(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 		if (!ctx->work_group_id) {
 			ctx->work_group_id =
 				create_sysval_input(ctx, SYSTEM_VALUE_WORK_GROUP_ID, 0x7);
-			ctx->work_group_id->regs[0]->flags |= IR3_REG_HIGH;
+			ctx->work_group_id->regs[0]->flags |= IR3_REG_SHARED;
 		}
 		ir3_split_dest(b, dst, ctx->work_group_id, 0, 3);
 		break;

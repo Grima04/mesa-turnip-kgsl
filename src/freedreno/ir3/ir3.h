@@ -83,12 +83,11 @@ struct ir3_register {
 		IR3_REG_CONST  = 0x001,
 		IR3_REG_IMMED  = 0x002,
 		IR3_REG_HALF   = 0x004,
-		/* high registers are used for some things in compute shaders,
-		 * for example.  Seems to be for things that are global to all
-		 * threads in a wave, so possibly these are global/shared by
-		 * all the threads in the wave?
+		/* Shared registers have the same value for all threads when read.
+		 * They can only be written when one thread is active (that is, inside
+		 * a "getone" block).
 		 */
-		IR3_REG_HIGH   = 0x008,
+		IR3_REG_SHARED = 0x008,
 		IR3_REG_RELATIV= 0x010,
 		IR3_REG_R      = 0x020,
 		/* Most instructions, it seems, can do float abs/neg but not
@@ -672,8 +671,8 @@ static inline bool is_nop(struct ir3_instruction *instr)
 static inline bool is_same_type_reg(struct ir3_register *reg1,
 		struct ir3_register *reg2)
 {
-	unsigned type_reg1 = (reg1->flags & (IR3_REG_HIGH | IR3_REG_HALF));
-	unsigned type_reg2 = (reg2->flags & (IR3_REG_HIGH | IR3_REG_HALF));
+	unsigned type_reg1 = (reg1->flags & (IR3_REG_SHARED | IR3_REG_HALF));
+	unsigned type_reg2 = (reg2->flags & (IR3_REG_SHARED | IR3_REG_HALF));
 
 	if (type_reg1 ^ type_reg2)
 		return false;
@@ -783,9 +782,9 @@ is_half(struct ir3_instruction *instr)
 }
 
 static inline bool
-is_high(struct ir3_instruction *instr)
+is_shared(struct ir3_instruction *instr)
 {
-	return !!(instr->regs[0]->flags & IR3_REG_HIGH);
+	return !!(instr->regs[0]->flags & IR3_REG_SHARED);
 }
 
 static inline bool
@@ -1449,7 +1448,7 @@ ir3_MOV(struct ir3_block *block, struct ir3_instruction *src, type_t type)
 		struct ir3_register *src_reg = __ssa_src(instr, src, IR3_REG_ARRAY);
 		src_reg->array = src->regs[0]->array;
 	} else {
-		__ssa_src(instr, src, src->regs[0]->flags & IR3_REG_HIGH);
+		__ssa_src(instr, src, src->regs[0]->flags & IR3_REG_SHARED);
 	}
 	debug_assert(!(src->regs[0]->flags & IR3_REG_RELATIV));
 	instr->cat1.src_type = type;

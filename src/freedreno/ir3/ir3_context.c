@@ -239,14 +239,14 @@ ir3_put_dst(struct ir3_context *ctx, nir_dest *dst)
 {
 	unsigned bit_size = nir_dest_bit_size(*dst);
 
-	/* add extra mov if dst value is HIGH reg.. in some cases not all
-	 * instructions can read from HIGH regs, in cases where they can
+	/* add extra mov if dst value is shared reg.. in some cases not all
+	 * instructions can read from shared regs, in cases where they can
 	 * ir3_cp will clean up the extra mov:
 	 */
 	for (unsigned i = 0; i < ctx->last_dst_n; i++) {
 		if (!ctx->last_dst[i])
 			continue;
-		if (ctx->last_dst[i]->regs[0]->flags & IR3_REG_HIGH) {
+		if (ctx->last_dst[i]->regs[0]->flags & IR3_REG_SHARED) {
 			ctx->last_dst[i] = ir3_MOV(ctx->block, ctx->last_dst[i], TYPE_U32);
 		}
 	}
@@ -293,7 +293,7 @@ ir3_put_dst(struct ir3_context *ctx, nir_dest *dst)
 static unsigned
 dest_flags(struct ir3_instruction *instr)
 {
-	return instr->regs[0]->flags & (IR3_REG_HALF | IR3_REG_HIGH);
+	return instr->regs[0]->flags & (IR3_REG_HALF | IR3_REG_SHARED);
 }
 
 struct ir3_instruction *
