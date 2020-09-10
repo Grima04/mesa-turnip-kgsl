@@ -705,6 +705,9 @@ struct v3d_compile {
         bool emitted_tlb_load;
         bool lock_scoreboard_on_first_thrsw;
 
+        /* Total number of spilled registers in the program */
+        uint32_t spill_count;
+
         enum v3d_compilation_result compilation_result;
 
         bool tmu_dirty_rcl;

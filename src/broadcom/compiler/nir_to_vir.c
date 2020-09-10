@@ -3141,6 +3141,7 @@ v3d_nir_to_vir(struct v3d_compile *c)
                         return;
                 }
 
+                c->spill_count = 0;
                 c->threads /= 2;
 
                 if (c->threads == 1)
