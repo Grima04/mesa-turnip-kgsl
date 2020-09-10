@@ -92,14 +92,12 @@ findOption(const driOptionCache *cache, const char *name)
     return hash;
 }
 
-/** \brief Like strdup but using malloc and with error checking. */
+/** \brief Like strdup with error checking. */
 #define XSTRDUP(dest,source) do { \
-    uint32_t len = strlen (source); \
-    if (!(dest = malloc(len+1))) { \
+    if (!(dest = strdup(source))) {                      \
         fprintf (stderr, "%s: %d: out of memory.\n", __FILE__, __LINE__); \
         abort(); \
     } \
-    memcpy (dest, source, len+1); \
 } while (0)
 
 static int compare (const void *a, const void *b) {
