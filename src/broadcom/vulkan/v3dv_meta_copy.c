@@ -2784,6 +2784,11 @@ emit_tfu_job(struct v3dv_cmd_buffer *cmd_buffer,
    v3dv_cmd_buffer_add_tfu_job(cmd_buffer, &tfu);
 }
 
+static void
+compute_blit_3d_layers(const VkOffset3D *offsets,
+                       uint32_t *min_layer, uint32_t *max_layer,
+                       bool *mirror_z);
+
 /**
  * Returns true if the implementation supports the requested operation (even if
  * it failed to process it, for example, due to an out-of-memory error).
@@ -2848,30 +2853,55 @@ blit_tfu(struct v3dv_cmd_buffer *cmd_buffer,
       return false;
    }
 
+   if (dst->type == VK_IMAGE_TYPE_3D &&
+       region->srcOffsets[1].z != region->dstOffsets[1].z) {
+      return false;
+   }
+
    /* Emit a TFU job for each layer to blit */
    assert(region->dstSubresource.layerCount ==
           region->srcSubresource.layerCount);
-   const uint32_t layer_count = region->dstSubresource.layerCount;
+
+   uint32_t min_dst_layer;
+   uint32_t max_dst_layer;
+   bool dst_mirror_z = false;
+   if (dst->type == VK_IMAGE_TYPE_3D) {
+      compute_blit_3d_layers(region->dstOffsets,
+                             &min_dst_layer, &max_dst_layer,
+                             &dst_mirror_z);
+
+      /* TFU can only do exact copies, so we can't handle mirroring. This checks
+       * mirroring in Z for 3D images, XY mirroring is already handled by earlier
+       * checks
+       */
+      if (dst_mirror_z)
+         return false;
+   }
+
+   uint32_t min_src_layer;
+   uint32_t max_src_layer;
+   bool src_mirror_z = false;
+   if (src->type == VK_IMAGE_TYPE_3D) {
+      compute_blit_3d_layers(region->srcOffsets,
+                             &min_src_layer, &max_src_layer,
+                             &src_mirror_z);
+
+      if (src_mirror_z)
+         return false;
+
+      if (max_dst_layer - min_dst_layer != max_src_layer - min_src_layer)
+         return false;
+   }
+
+   const uint32_t layer_count = dst->type != VK_IMAGE_TYPE_3D ?
+      region->dstSubresource.layerCount :
+      max_dst_layer - min_dst_layer;
    const uint32_t src_mip_level = region->srcSubresource.mipLevel;
+
    for (uint32_t i = 0; i < layer_count; i++) {
-      uint32_t src_layer, dst_layer;
-      if (src->type == VK_IMAGE_TYPE_3D) {
-         assert(layer_count == 1);
-         src_layer = u_minify(src->extent.depth, src_mip_level);
-      } else {
-         src_layer = region->srcSubresource.baseArrayLayer + i;
-      }
-
-      if (dst->type == VK_IMAGE_TYPE_3D) {
-         assert(layer_count == 1);
-         dst_layer = u_minify(dst->extent.depth, dst_mip_level);
-      } else {
-         dst_layer = region->dstSubresource.baseArrayLayer + i;
-      }
-
       emit_tfu_job(cmd_buffer,
-                   dst, dst_mip_level, dst_layer,
-                   src, src_mip_level, src_layer,
+                   dst, dst_mip_level, region->dstSubresource.baseArrayLayer + i,
+                   src, src_mip_level, region->srcSubresource.baseArrayLayer + i,
                    dst_width, dst_height);
    }
 
