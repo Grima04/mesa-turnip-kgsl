@@ -10755,16 +10755,15 @@ void ngg_emit_sendmsg_gs_alloc_req(isel_context *ctx, Temp vtx_cnt = Temp(), Tem
    bld.sopp(aco_opcode::s_setprio, -1u, 0x0u);
 }
 
-Temp ngg_get_prim_exp_arg(isel_context *ctx, unsigned num_vertices, const Temp vtxindex[])
+Temp ngg_pack_prim_exp_arg(isel_context *ctx, unsigned num_vertices, const Temp vtxindex[], const Temp is_null)
 {
    Builder bld(ctx->program, ctx->block);
 
-   if (ctx->args->options->key.vs_common_out.as_ngg_passthrough) {
-      return get_arg(ctx, ctx->args->gs_vtx_offset[0]);
-   }
-
-   Temp gs_invocation_id = get_arg(ctx, ctx->args->ac.gs_invocation_id);
    Temp tmp;
+   Temp gs_invocation_id;
+
+   if (ctx->stage == ngg_vertex_gs)
+      gs_invocation_id = get_arg(ctx, ctx->args->ac.gs_invocation_id);
 
    for (unsigned i = 0; i < num_vertices; ++i) {
       assert(vtxindex[i].id());
@@ -10781,15 +10780,21 @@ Temp ngg_get_prim_exp_arg(isel_context *ctx, unsigned num_vertices, const Temp v
       }
    }
 
-   /* TODO: Set isnull field in case of merged NGG VS+GS. */
+   if (is_null.id())
+      tmp = bld.vop3(aco_opcode::v_lshl_add_u32, bld.def(v1), is_null, Operand(31u), tmp);
 
    return tmp;
 }
 
-void ngg_emit_prim_export(isel_context *ctx, unsigned num_vertices_per_primitive, const Temp vtxindex[])
+void ngg_emit_prim_export(isel_context *ctx, unsigned num_vertices_per_primitive, const Temp vtxindex[], const Temp is_null = Temp())
 {
    Builder bld(ctx->program, ctx->block);
-   Temp prim_exp_arg = ngg_get_prim_exp_arg(ctx, num_vertices_per_primitive, vtxindex);
+   Temp prim_exp_arg;
+
+   if (!(ctx->stage & sw_gs) && ctx->args->options->key.vs_common_out.as_ngg_passthrough)
+      prim_exp_arg = get_arg(ctx, ctx->args->gs_vtx_offset[0]);
+   else
+      prim_exp_arg = ngg_pack_prim_exp_arg(ctx, num_vertices_per_primitive, vtxindex, is_null);
 
    bld.exp(aco_opcode::exp, prim_exp_arg, Operand(v1), Operand(v1), Operand(v1),
         1 /* enabled mask */, V_008DFC_SQ_EXP_PRIM /* dest */,
@@ -10813,6 +10818,8 @@ void ngg_emit_nogs_gsthreads(isel_context *ctx)
    constexpr unsigned max_vertices_per_primitive = 3;
    unsigned num_vertices_per_primitive = max_vertices_per_primitive;
 
+   assert(!(ctx->stage & sw_gs));
+
    if (ctx->stage == ngg_vertex_gs) {
       /* TODO: optimize for points & lines */
    } else if (ctx->stage == ngg_tess_eval_gs) {
@@ -10821,18 +10828,20 @@ void ngg_emit_nogs_gsthreads(isel_context *ctx)
       else if (ctx->shader->info.tess.primitive_mode == GL_ISOLINES)
          num_vertices_per_primitive = 2;
    } else {
-      unreachable("Unsupported NGG shader stage");
+      unreachable("Unsupported NGG non-GS shader stage");
    }
 
    Temp vtxindex[max_vertices_per_primitive];
-   vtxindex[0] = bld.vop2(aco_opcode::v_and_b32, bld.def(v1), Operand(0xffffu),
-                          get_arg(ctx, ctx->args->gs_vtx_offset[0]));
-   vtxindex[1] = num_vertices_per_primitive < 2 ? Temp(0, v1) :
-                 bld.vop3(aco_opcode::v_bfe_u32, bld.def(v1),
-                          get_arg(ctx, ctx->args->gs_vtx_offset[0]), Operand(16u), Operand(16u));
-   vtxindex[2] = num_vertices_per_primitive < 3 ? Temp(0, v1) :
-                 bld.vop2(aco_opcode::v_and_b32, bld.def(v1), Operand(0xffffu),
-                          get_arg(ctx, ctx->args->gs_vtx_offset[2]));
+   if (!ctx->args->options->key.vs_common_out.as_ngg_passthrough) {
+      vtxindex[0] = bld.vop2(aco_opcode::v_and_b32, bld.def(v1), Operand(0xffffu),
+                           get_arg(ctx, ctx->args->gs_vtx_offset[0]));
+      vtxindex[1] = num_vertices_per_primitive < 2 ? Temp(0, v1) :
+                  bld.vop3(aco_opcode::v_bfe_u32, bld.def(v1),
+                           get_arg(ctx, ctx->args->gs_vtx_offset[0]), Operand(16u), Operand(16u));
+      vtxindex[2] = num_vertices_per_primitive < 3 ? Temp(0, v1) :
+                  bld.vop2(aco_opcode::v_and_b32, bld.def(v1), Operand(0xffffu),
+                           get_arg(ctx, ctx->args->gs_vtx_offset[2]));
+   }
 
    /* Export primitive data to the index buffer. */
    ngg_emit_prim_export(ctx, num_vertices_per_primitive, vtxindex);
