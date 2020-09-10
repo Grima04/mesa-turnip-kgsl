@@ -495,12 +495,17 @@ setup_vs_variables(isel_context *ctx, nir_shader *nir)
 
 void setup_gs_variables(isel_context *ctx, nir_shader *nir)
 {
-   if (ctx->stage == vertex_geometry_gs || ctx->stage == tess_eval_geometry_gs)
+   if (ctx->stage == vertex_geometry_gs || ctx->stage == tess_eval_geometry_gs) {
       ctx->program->config->lds_size = ctx->program->info->gs_ring_info.lds_size; /* Already in units of the alloc granularity */
+   } else if (ctx->stage == ngg_vertex_geometry_gs || ctx->stage == ngg_tess_eval_geometry_gs) {
+      radv_vs_output_info *outinfo = &ctx->program->info->vs.outinfo;
+      setup_vs_output_info(ctx, nir, false,
+                           ctx->options->key.vs_common_out.export_clip_dists, outinfo);
+   }
 
-   if (ctx->stage == vertex_geometry_gs)
+   if (ctx->stage & sw_vs)
       ctx->program->info->gs.es_type = MESA_SHADER_VERTEX;
-   else if (ctx->stage == tess_eval_geometry_gs)
+   else if (ctx->stage & sw_tes)
       ctx->program->info->gs.es_type = MESA_SHADER_TESS_EVAL;
 }
 
@@ -1176,7 +1181,9 @@ setup_isel_context(Program* program,
    else if (stage == sw_gs_copy)
       stage |= hw_vs;
    else if (stage == (sw_vs | sw_gs) && gfx9_plus && !ngg)
-      stage |= hw_gs;
+      stage |= hw_gs; /* GFX6-9: VS+GS merged into a GS (and GFX10/legacy) */
+   else if (stage == (sw_vs | sw_gs) && ngg)
+      stage |= hw_ngg_gs; /* GFX10+: VS+GS merged into an NGG GS */
    else if (stage == sw_vs && args->shader_info->vs.as_ls)
       stage |= hw_ls; /* GFX6-8: VS is a Local Shader, when tessellation is used */
    else if (stage == sw_tcs)
@@ -1191,6 +1198,8 @@ setup_isel_context(Program* program,
       stage |= hw_es; /* GFX6-8: TES is an Export Shader */
    else if (stage == (sw_tes | sw_gs) && gfx9_plus && !ngg)
       stage |= hw_gs; /* GFX9: TES+GS merged into a GS (and GFX10/legacy) */
+   else if (stage == (sw_tes | sw_gs) && ngg)
+      stage |= hw_ngg_gs; /* GFX10+: TES+GS merged into an NGG GS */
    else
       unreachable("Shader stage not implemented");
 
