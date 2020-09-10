@@ -524,7 +524,18 @@ v3d_nir_emit_ff_vpm_outputs(struct v3d_compile *c, nir_builder *b,
                                 scale = nir_load_viewport_y_scale(b);
                         pos = nir_fmul(b, pos, scale);
                         pos = nir_fmul(b, pos, rcp_wc);
-                        pos = nir_f2i32(b, nir_fround_even(b, pos));
+                        /* Pre-V3D 4.3 hardware has a quirk where it expects XY
+                         * coordinates in .8 fixed-point format, but then it
+                         * will internally round it to .6 fixed-point,
+                         * introducing a double rounding. The double rounding
+                         * can cause very slight differences in triangle
+                         * raterization coverage that can actually be noticed by
+                         * some CTS tests.
+                         *
+                         * The correct fix for this as recommended by Broadcom
+                         * is to convert to .8 fixed-point with ffloor().
+                         */
+                        pos = nir_f2i32(b, nir_ffloor(b, pos));
                         v3d_nir_store_output(b, state->vp_vpm_offset + i,
                                              offset_reg, pos);
                 }
