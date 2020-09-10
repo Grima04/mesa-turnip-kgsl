@@ -82,7 +82,7 @@
 
 /** \brief Begin an option definition with restrictions on valid values */
 #define DRI_CONF_OPT_BEGIN_V(name,type,def,valid) \
-"<option name=\""#name"\" type=\""#type"\" default=\""#def"\" valid=\""valid"\">\n"
+"<option name=\""#name"\" type=\""#type"\" default=\""#def"\" valid=\"" valid "\">\n"
 
 /** \brief End an option description */
 #define DRI_CONF_OPT_END \
@@ -90,11 +90,11 @@
 
 /** \brief A verbal description (empty version) */
 #define DRI_CONF_DESC(text) \
-"<description lang=\"en\" text=\""text"\"/>\n"
+"<description lang=\"en\" text=\"" text "\"/>\n"
 
 /** \brief Begining of a verbal description */
 #define DRI_CONF_DESC_BEGIN(text) \
-"<description lang=\"en\" text=\""text"\">\n"
+"<description lang=\"en\" text=\"" text "\">\n"
 
 /** \brief End a description */
 #define DRI_CONF_DESC_END \
@@ -102,7 +102,7 @@
 
 /** \brief A verbal description of an enum value */
 #define DRI_CONF_ENUM(value,text) \
-"<enum value=\""#value"\" text=\""text"\"/>\n"
+"<enum value=\""#value"\" text=\"" text "\"/>\n"
 
 
 /**

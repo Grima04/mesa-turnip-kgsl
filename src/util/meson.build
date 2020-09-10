@@ -219,6 +219,17 @@ idep_xmlconfig = declare_dependency(
 )
 
 if with_tests
+  if host_machine.system() != 'windows'
+    test('xmlconfig',
+      executable('xmlconfig_test',
+        files('tests/xmlconfig.cpp'),
+        include_directories : [inc_include, inc_src],
+        dependencies : [idep_mesautil, idep_xmlconfig, idep_gtest],
+      ),
+      suite : ['util'],
+        )
+  endif
+
   test(
     'u_atomic',
     executable(
