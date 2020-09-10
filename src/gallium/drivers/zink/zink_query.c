@@ -391,11 +391,8 @@ end_query(struct zink_context *ctx, struct zink_batch *batch, struct zink_query 
    if (q->type == PIPE_QUERY_PRIMITIVES_GENERATED)
       list_delinit(&q->stats_list);
    if (++q->curr_query == q->num_queries) {
-      /* can't do zink_batch_no_rp here because we might already be inside a zink_batch_no_rp */
-      if (batch->rp)
-         q->needs_reset = true;
-      else
-        reset_pool(ctx, batch, q);
+      /* always reset on start; this ensures we can actually submit the batch that the current query is on */
+      q->needs_reset = true;
    }
 }
 
