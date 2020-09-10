@@ -95,6 +95,10 @@ struct isel_context {
    /* GS inputs */
    bool ngg_nogs_early_prim_export = false;
    Temp gs_wave_id;
+   unsigned ngg_gs_emit_addr = 0;
+   unsigned ngg_gs_emit_vtx_bytes = 0;
+   unsigned ngg_gs_scratch_addr = 0;
+   unsigned ngg_gs_primflags_offset = 0;
 
    /* VS output information */
    bool export_clip_dists;

@@ -501,6 +501,21 @@ void setup_gs_variables(isel_context *ctx, nir_shader *nir)
       radv_vs_output_info *outinfo = &ctx->program->info->vs.outinfo;
       setup_vs_output_info(ctx, nir, false,
                            ctx->options->key.vs_common_out.export_clip_dists, outinfo);
+
+      unsigned ngg_gs_scratch_bytes = ctx->args->shader_info->so.num_outputs ? (44u * 4u) : (8u * 4u);
+      unsigned ngg_emit_bytes = ctx->args->shader_info->ngg_info.ngg_emit_size * 4u;
+      unsigned esgs_ring_bytes = ctx->args->shader_info->ngg_info.esgs_ring_size;
+
+      ctx->ngg_gs_primflags_offset = ctx->args->shader_info->gs.gsvs_vertex_size;
+      ctx->ngg_gs_emit_vtx_bytes = ctx->ngg_gs_primflags_offset + 4u;
+      ctx->ngg_gs_emit_addr = esgs_ring_bytes;
+      ctx->ngg_gs_scratch_addr = ctx->ngg_gs_emit_addr + ngg_emit_bytes;
+
+      unsigned total_lds_bytes = esgs_ring_bytes + ngg_emit_bytes + ngg_gs_scratch_bytes;
+      ctx->program->config->lds_size = (total_lds_bytes + ctx->program->lds_alloc_granule - 1) / ctx->program->lds_alloc_granule;
+
+      /* Make sure we have enough room for emitted GS vertices */
+      assert((ngg_emit_bytes % (ctx->ngg_gs_emit_vtx_bytes * nir->info.gs.vertices_out)) == 0);
    }
 
    if (ctx->stage & sw_vs)

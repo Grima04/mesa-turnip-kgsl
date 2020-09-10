@@ -3894,6 +3894,28 @@ Temp thread_id_in_threadgroup(isel_context *ctx)
    return bld.vadd32(bld.def(v1), Operand(num_pre_threads), Operand(tid_in_wave));
 }
 
+Temp ngg_gs_vertex_lds_addr(isel_context *ctx, Temp vertex_idx)
+{
+   Builder bld(ctx->program, ctx->block);
+   Temp vertex_idx_bytes = bld.v_mul24_imm(bld.def(v1), vertex_idx, ctx->ngg_gs_emit_vtx_bytes);
+   return bld.vadd32(bld.def(v1), vertex_idx_bytes, Operand(ctx->ngg_gs_emit_addr));
+}
+
+Temp ngg_gs_emit_vertex_lds_addr(isel_context *ctx, Temp emit_vertex_idx)
+{
+   /* Should be used by GS threads only (not by the NGG GS epilogue).
+    * Returns the LDS address of the given vertex index as emitted by the current GS thread.
+    */
+
+   Builder bld(ctx->program, ctx->block);
+
+   Temp thread_id_in_tg = thread_id_in_threadgroup(ctx);
+   Temp thread_vertices_addr = bld.v_mul24_imm(bld.def(v1), thread_id_in_tg, ctx->shader->info.gs.vertices_out);
+   Temp vertex_idx = bld.vadd32(bld.def(v1), thread_vertices_addr, emit_vertex_idx);
+
+   return ngg_gs_vertex_lds_addr(ctx, vertex_idx);
+}
+
 std::pair<Temp, unsigned> offset_add_from_nir(isel_context *ctx, const std::pair<Temp, unsigned> &base_offset, nir_src *off_src, unsigned stride = 1u)
 {
    Builder bld(ctx->program, ctx->block);
