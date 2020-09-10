@@ -3894,6 +3894,13 @@ Temp thread_id_in_threadgroup(isel_context *ctx)
    return bld.vadd32(bld.def(v1), Operand(num_pre_threads), Operand(tid_in_wave));
 }
 
+Temp wave_count_in_threadgroup(isel_context *ctx)
+{
+   Builder bld(ctx->program, ctx->block);
+   return bld.sop2(aco_opcode::s_bfe_u32, bld.def(s1), bld.def(s1, scc),
+                   get_arg(ctx, ctx->args->merged_wave_info), Operand(28u | (4u << 16)));
+}
+
 Temp ngg_gs_vertex_lds_addr(isel_context *ctx, Temp vertex_idx)
 {
    Builder bld(ctx->program, ctx->block);
@@ -10925,6 +10932,89 @@ void ngg_nogs_late_export_finale(isel_context *ctx)
    ngg_nogs_export_vertices(ctx);
    begin_divergent_if_else(ctx, &ic);
    end_divergent_if(ctx, &ic);
+}
+
+std::pair<Temp, Temp> ngg_gs_workgroup_reduce_and_scan(isel_context *ctx, Temp src_mask)
+{
+   /* Workgroup scan for NGG GS.
+    * This performs a reduction along with an exclusive scan addition accross the workgroup.
+    * Assumes that all lanes are enabled (exec = -1) where this is emitted.
+    *
+    * Input:  (1) per-lane bool
+    *             -- 1 if the lane has a live/valid vertex, 0 otherwise
+    * Output: (1) result of a reduction over the entire workgroup,
+    *             -- the total number of vertices emitted by the workgroup
+    *         (2) result of an exclusive scan over the entire workgroup
+    *             -- used for vertex compaction, in order to determine
+    *                which lane should export the current lane's vertex
+    */
+
+   Builder bld(ctx->program, ctx->block);
+   assert(src_mask.regClass() == bld.lm);
+
+   /* Subgroup reduction and exclusive scan on the per-lane boolean. */
+   Temp sg_reduction = bld.sop1(Builder::s_bcnt1_i32, bld.def(s1), bld.def(s1, scc), src_mask);
+   Temp sg_excl = emit_mbcnt(ctx, bld.tmp(v1), src_mask);
+
+   if (ctx->program->workgroup_size <= ctx->program->wave_size)
+      return std::make_pair(sg_reduction, sg_excl);
+
+   if_context ic;
+
+   /* Determine if the current lane is the first. */
+   Temp is_first_lane = bld.copy(bld.def(bld.lm), Operand(1u, ctx->program->wave_size == 64));
+   begin_divergent_if_then(ctx, &ic, is_first_lane);
+   bld.reset(ctx->block);
+
+   /* The first lane of each wave stores the result of its subgroup reduction to LDS (NGG scratch). */
+   Temp wave_id_in_tg = wave_id_in_threadgroup(ctx);
+   Temp wave_id_in_tg_lds_addr = bld.vop2_e64(aco_opcode::v_lshlrev_b32, bld.def(v1), Operand(2u), wave_id_in_tg);
+   store_lds(ctx, 4u, as_vgpr(ctx, sg_reduction), 0x1u, wave_id_in_tg_lds_addr, ctx->ngg_gs_scratch_addr, 4u);
+
+   begin_divergent_if_else(ctx, &ic);
+   end_divergent_if(ctx, &ic);
+   bld.reset(ctx->block);
+
+   /* Wait for all waves to write to LDS. */
+   create_workgroup_barrier(bld);
+
+   /* Activate one lane per wave. */
+   Temp wave_count = wave_count_in_threadgroup(ctx);
+   Temp wave_count_mask = lanecount_to_mask(ctx, wave_count, false);
+   begin_divergent_if_then(ctx, &ic, wave_count_mask);
+   bld.reset(ctx->block);
+
+   /* Each lane loads the reduction result from the corresponding wave. */
+   Temp thread_id_in_wave = emit_mbcnt(ctx, bld.tmp(v1));
+   Temp loaded_wave_id_lds_addr = bld.v_mul24_imm(bld.def(v1), thread_id_in_wave, 4u);
+   Temp red_per_w = load_lds(ctx, 4u, bld.tmp(v1), loaded_wave_id_lds_addr, ctx->ngg_gs_scratch_addr, 4u);
+
+   /* Inclusive scan on the per-wave reduction results, only care about the first 8 lanes. */
+   Temp sgincl = bld.vop2_dpp(aco_opcode::v_add_u32, bld.def(v1), red_per_w, red_per_w, dpp_row_sr(1), 0b0001, 0b0111, true);
+   sgincl = bld.vop2_dpp(aco_opcode::v_add_u32, bld.def(v1), sgincl, sgincl, dpp_row_sr(2), 0x1, 0xf, true);
+   sgincl = bld.vop2_dpp(aco_opcode::v_add_u32, bld.def(v1), sgincl, sgincl, dpp_row_sr(4), 0x1, 0xf, true);
+
+   begin_divergent_if_else(ctx, &ic);
+   end_divergent_if(ctx, &ic);
+
+   /* Create phi which gets us the above reduction results, or undef. */
+   bld.reset(&ctx->block->instructions, ctx->block->instructions.begin());
+   sgincl = bld.pseudo(aco_opcode::p_phi, bld.def(sgincl.regClass()), sgincl, Operand(v1));
+   bld.reset(ctx->block);
+
+   /* Make it an exclusive scan by shifting the results right by one lane. */
+   Temp per_wave_excl = bld.vop1_dpp(aco_opcode::v_mov_b32, bld.def(v1), sgincl, dpp_row_sr(1), 0x1, 0xf, true);
+
+   /* WG reduction result: the last lane of the above exclusive scan. */
+   Temp wg_reduction = bld.readlane(bld.def(s1), per_wave_excl, wave_count);
+
+   /* Base of the exclusive WG scan: the above exclusive result corresponding to the current wave. */
+   Temp wg_excl_base = bld.readlane(bld.def(s1), per_wave_excl, wave_id_in_tg);
+
+   /* WG exclusive scan result: base + subgroup exclusive result. */
+   Temp wg_excl = bld.vadd32(bld.def(v1), Operand(wg_excl_base), Operand(sg_excl));
+
+   return std::make_pair(wg_reduction, wg_excl);
 }
 
 } /* end namespace */
