@@ -1045,6 +1045,7 @@ tu_CreateDevice(VkPhysicalDevice physicalDevice,
 
    device->instance = physical_device->instance;
    device->physical_device = physical_device;
+   device->fd = physical_device->local_fd;
    device->_lost = false;
 
    mtx_init(&device->bo_mutex, mtx_plain);

@@ -379,6 +379,7 @@ struct tu_device
    int queue_count[TU_MAX_QUEUE_FAMILIES];
 
    struct tu_physical_device *physical_device;
+   int fd;
    int _lost;
 
    struct ir3_compiler *compiler;

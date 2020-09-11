@@ -98,7 +98,7 @@ tu_drm_submitqueue_new(const struct tu_device *dev,
       .prio = priority,
    };
 
-   int ret = drmCommandWriteRead(dev->physical_device->local_fd,
+   int ret = drmCommandWriteRead(dev->fd,
                                  DRM_MSM_SUBMITQUEUE_NEW, &req, sizeof(req));
    if (ret)
       return ret;
@@ -110,7 +110,7 @@ tu_drm_submitqueue_new(const struct tu_device *dev,
 void
 tu_drm_submitqueue_close(const struct tu_device *dev, uint32_t queue_id)
 {
-   drmCommandWrite(dev->physical_device->local_fd, DRM_MSM_SUBMITQUEUE_CLOSE,
+   drmCommandWrite(dev->fd, DRM_MSM_SUBMITQUEUE_CLOSE,
                    &queue_id, sizeof(uint32_t));
 }
 
@@ -121,7 +121,7 @@ tu_gem_close(const struct tu_device *dev, uint32_t gem_handle)
       .handle = gem_handle,
    };
 
-   drmIoctl(dev->physical_device->local_fd, DRM_IOCTL_GEM_CLOSE, &req);
+   drmIoctl(dev->fd, DRM_IOCTL_GEM_CLOSE, &req);
 }
 
 /** Helper for DRM_MSM_GEM_INFO, returns 0 on error. */
@@ -133,7 +133,7 @@ tu_gem_info(const struct tu_device *dev, uint32_t gem_handle, uint32_t info)
       .info = info,
    };
 
-   int ret = drmCommandWriteRead(dev->physical_device->local_fd,
+   int ret = drmCommandWriteRead(dev->fd,
                                  DRM_MSM_GEM_INFO, &req, sizeof(req));
    if (ret < 0)
       return 0;
@@ -216,7 +216,7 @@ tu_bo_init_new(struct tu_device *dev, struct tu_bo *bo, uint64_t size, bool dump
       .flags = MSM_BO_WC
    };
 
-   int ret = drmCommandWriteRead(dev->physical_device->local_fd,
+   int ret = drmCommandWriteRead(dev->fd,
                                  DRM_MSM_GEM_NEW, &req, sizeof(req));
    if (ret)
       return vk_error(dev->instance, VK_ERROR_OUT_OF_DEVICE_MEMORY);
@@ -237,7 +237,7 @@ tu_bo_init_dmabuf(struct tu_device *dev,
       return vk_error(dev->instance, VK_ERROR_INVALID_EXTERNAL_HANDLE);
 
    uint32_t gem_handle;
-   int ret = drmPrimeFDToHandle(dev->physical_device->local_fd, prime_fd,
+   int ret = drmPrimeFDToHandle(dev->fd, prime_fd,
                                 &gem_handle);
    if (ret)
       return vk_error(dev->instance, VK_ERROR_INVALID_EXTERNAL_HANDLE);
@@ -249,7 +249,7 @@ int
 tu_bo_export_dmabuf(struct tu_device *dev, struct tu_bo *bo)
 {
    int prime_fd;
-   int ret = drmPrimeHandleToFD(dev->physical_device->local_fd, bo->gem_handle,
+   int ret = drmPrimeHandleToFD(dev->fd, bo->gem_handle,
                                 DRM_CLOEXEC, &prime_fd);
 
    return ret == 0 ? prime_fd : -1;
@@ -267,7 +267,7 @@ tu_bo_map(struct tu_device *dev, struct tu_bo *bo)
 
    /* TODO: Should we use the wrapper os_mmap() like Freedreno does? */
    void *map = mmap(0, bo->size, PROT_READ | PROT_WRITE, MAP_SHARED,
-                    dev->physical_device->local_fd, offset);
+                    dev->fd, offset);
    if (map == MAP_FAILED)
       return vk_error(dev->instance, VK_ERROR_MEMORY_MAP_FAILED);
 
@@ -446,7 +446,7 @@ tu_semaphore_part_destroy(struct tu_device *device,
    case TU_SEMAPHORE_NONE:
       break;
    case TU_SEMAPHORE_SYNCOBJ:
-      drmSyncobjDestroy(device->physical_device->local_fd, part->syncobj);
+      drmSyncobjDestroy(device->fd, part->syncobj);
       break;
    }
    part->kind = TU_SEMAPHORE_NONE;
@@ -495,7 +495,7 @@ tu_CreateSemaphore(VkDevice _device,
    sem->temporary.kind = TU_SEMAPHORE_NONE;
 
    if (handleTypes) {
-      if (drmSyncobjCreate(device->physical_device->local_fd, 0, &sem->permanent.syncobj) < 0) {
+      if (drmSyncobjCreate(device->fd, 0, &sem->permanent.syncobj) < 0) {
           vk_free2(&device->vk.alloc, pAllocator, sem);
           return VK_ERROR_OUT_OF_HOST_MEMORY;
       }
@@ -541,24 +541,24 @@ tu_ImportSemaphoreFdKHR(VkDevice _device,
    switch(pImportSemaphoreFdInfo->handleType) {
       case VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_FD_BIT: {
          uint32_t old_syncobj = syncobj;
-         ret = drmSyncobjFDToHandle(device->physical_device->local_fd, pImportSemaphoreFdInfo->fd, &syncobj);
+         ret = drmSyncobjFDToHandle(device->fd, pImportSemaphoreFdInfo->fd, &syncobj);
          if (ret == 0) {
             close(pImportSemaphoreFdInfo->fd);
             if (old_syncobj)
-               drmSyncobjDestroy(device->physical_device->local_fd, old_syncobj);
+               drmSyncobjDestroy(device->fd, old_syncobj);
          }
          break;
       }
       case VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_SYNC_FD_BIT: {
          if (!syncobj) {
-            ret = drmSyncobjCreate(device->physical_device->local_fd, 0, &syncobj);
+            ret = drmSyncobjCreate(device->fd, 0, &syncobj);
             if (ret)
                break;
          }
          if (pImportSemaphoreFdInfo->fd == -1) {
-            ret = drmSyncobjSignal(device->physical_device->local_fd, &syncobj, 1);
+            ret = drmSyncobjSignal(device->fd, &syncobj, 1);
          } else {
-            ret = drmSyncobjImportSyncFile(device->physical_device->local_fd, syncobj, pImportSemaphoreFdInfo->fd);
+            ret = drmSyncobjImportSyncFile(device->fd, syncobj, pImportSemaphoreFdInfo->fd);
          }
          if (!ret)
             close(pImportSemaphoreFdInfo->fd);
@@ -597,15 +597,15 @@ tu_GetSemaphoreFdKHR(VkDevice _device,
 
    switch(pGetFdInfo->handleType) {
    case VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_FD_BIT:
-      ret = drmSyncobjHandleToFD(device->physical_device->local_fd, syncobj_handle, pFd);
+      ret = drmSyncobjHandleToFD(device->fd, syncobj_handle, pFd);
       break;
    case VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_SYNC_FD_BIT:
-      ret = drmSyncobjExportSyncFile(device->physical_device->local_fd, syncobj_handle, pFd);
+      ret = drmSyncobjExportSyncFile(device->fd, syncobj_handle, pFd);
       if (!ret) {
          if (sem->temporary.kind != TU_SEMAPHORE_NONE) {
             tu_semaphore_part_destroy(device, &sem->temporary);
          } else {
-            drmSyncobjReset(device->physical_device->local_fd, &syncobj_handle, 1);
+            drmSyncobjReset(device->fd, &syncobj_handle, 1);
          }
       }
       break;
@@ -743,7 +743,7 @@ tu_QueueSubmit(VkQueue _queue,
          .syncobj_stride = sizeof(struct drm_msm_gem_submit_syncobj),
       };
 
-      int ret = drmCommandWriteRead(queue->device->physical_device->local_fd,
+      int ret = drmCommandWriteRead(queue->device->fd,
                                     DRM_MSM_GEM_SUBMIT,
                                     &req, sizeof(req));
       mtx_unlock(&queue->device->bo_mutex);
