@@ -2742,27 +2742,15 @@ get_block(struct ir3_context *ctx, const nir_block *nblock)
 	block->nblock = nblock;
 	_mesa_hash_table_insert(ctx->block_ht, nblock, block);
 
-	set_foreach(nblock->predecessors, sentry) {
-		_mesa_set_add(block->predecessors, get_block(ctx, sentry->key));
-	}
-
 	return block;
 }
 
 static void
 emit_block(struct ir3_context *ctx, nir_block *nblock)
 {
-	struct ir3_block *block = get_block(ctx, nblock);
+	ctx->block = get_block(ctx, nblock);
 
-	for (int i = 0; i < ARRAY_SIZE(block->successors); i++) {
-		if (nblock->successors[i]) {
-			block->successors[i] =
-				get_block(ctx, nblock->successors[i]);
-		}
-	}
-
-	ctx->block = block;
-	list_addtail(&block->node, &ctx->ir->block_list);
+	list_addtail(&ctx->block->node, &ctx->ir->block_list);
 
 	/* re-emit addr register in each block if needed: */
 	for (int i = 0; i < ARRAY_SIZE(ctx->addr0_ht); i++) {
@@ -2779,6 +2767,13 @@ emit_block(struct ir3_context *ctx, nir_block *nblock)
 		ctx->cur_instr = NULL;
 		if (ctx->error)
 			return;
+	}
+
+	for (int i = 0; i < ARRAY_SIZE(ctx->block->successors); i++) {
+		if (nblock->successors[i]) {
+			ctx->block->successors[i] =
+				get_block(ctx, nblock->successors[i]);
+		}
 	}
 
 	_mesa_hash_table_clear(ctx->sel_cond_conversions, NULL);
@@ -2899,10 +2894,6 @@ emit_stream_out(struct ir3_context *ctx)
 	orig_end_block->successors[1] = new_end_block;
 
 	stream_out_block->successors[0] = new_end_block;
-	_mesa_set_add(stream_out_block->predecessors, orig_end_block);
-
-	_mesa_set_add(new_end_block->predecessors, orig_end_block);
-	_mesa_set_add(new_end_block->predecessors, stream_out_block);
 
 	/* setup 'if (vtxcnt < maxvtxcnt)' condition: */
 	cond = ir3_CMPS_S(ctx->block, vtxcnt, 0, maxvtxcnt, 0);
@@ -2963,6 +2954,17 @@ emit_stream_out(struct ir3_context *ctx)
 }
 
 static void
+setup_predecessors(struct ir3 *ir)
+{
+	foreach_block(block, &ir->block_list) {
+		for (int i = 0; i < ARRAY_SIZE(block->successors); i++) {
+			if (block->successors[i])
+				_mesa_set_add(block->successors[i]->predecessors, block);
+		}
+	}
+}
+
+static void
 emit_function(struct ir3_context *ctx, nir_function_impl *impl)
 {
 	nir_metadata_require(impl, nir_metadata_block_index);
@@ -3017,6 +3019,8 @@ emit_function(struct ir3_context *ctx, nir_function_impl *impl)
 	} else {
 		ir3_END(ctx->block);
 	}
+
+	setup_predecessors(ctx->ir);
 }
 
 static void
