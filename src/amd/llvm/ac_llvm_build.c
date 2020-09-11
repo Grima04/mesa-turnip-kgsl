@@ -2438,7 +2438,7 @@ LLVMValueRef ac_const_uint_vec(struct ac_llvm_context *ctx, LLVMTypeRef type, ui
    if (LLVMGetTypeKind(type) == LLVMVectorTypeKind) {
       LLVMValueRef scalar = LLVMConstInt(LLVMGetElementType(type), value, 0);
       unsigned vec_size = LLVMGetVectorSize(type);
-      LLVMValueRef *scalars = alloca(vec_size * sizeof(LLVMValueRef *));
+      LLVMValueRef *scalars = alloca(vec_size * sizeof(LLVMValueRef));
 
       for (unsigned i = 0; i < vec_size; i++)
          scalars[i] = scalar;
