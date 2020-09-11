@@ -4401,20 +4401,7 @@ void visit_load_interpolated_input(isel_context *ctx, nir_intrinsic_instr *instr
    unsigned component = nir_intrinsic_component(instr);
    Temp prim_mask = get_arg(ctx, ctx->args->ac.prim_mask);
 
-   if (nir_src_is_const(instr->src[1])) {
-      assert(!nir_src_as_uint(instr->src[1]));
-   } else {
-      /* the lower 15bit of the prim_mask contain the offset into LDS
-       * while the upper bits contain the number of prims */
-      Temp offset_src = get_ssa_temp(ctx, instr->src[1].ssa);
-      assert(offset_src.regClass() == s1 && "TODO: divergent offsets...");
-      Builder bld(ctx->program, ctx->block);
-      Temp stride = bld.sop2(aco_opcode::s_lshr_b32, bld.def(s1), bld.def(s1, scc), prim_mask, Operand(16u));
-      stride = bld.sop1(aco_opcode::s_bcnt1_i32_b32, bld.def(s1), bld.def(s1, scc), stride);
-      stride = bld.sop2(aco_opcode::s_mul_i32, bld.def(s1), stride, Operand(48u));
-      offset_src = bld.sop2(aco_opcode::s_mul_i32, bld.def(s1), stride, offset_src);
-      prim_mask = bld.sop2(aco_opcode::s_add_i32, bld.def(s1, m0), bld.def(s1, scc), offset_src, prim_mask);
-   }
+   assert(nir_src_is_const(instr->src[1]) && !nir_src_as_uint(instr->src[1]));
 
    if (instr->dest.ssa.num_components == 1) {
       emit_interp_instr(ctx, idx, component, coords, dst, prim_mask);
@@ -4736,21 +4723,6 @@ void visit_load_input(isel_context *ctx, nir_intrinsic_instr *instr)
          isel_err(off_src->ssa->parent_instr, "Unimplemented non-zero nir_intrinsic_load_input offset");
 
       Temp prim_mask = get_arg(ctx, ctx->args->ac.prim_mask);
-      nir_const_value* offset = nir_src_as_const_value(*off_src);
-      if (offset) {
-         assert(offset->u32 == 0);
-      } else {
-         /* the lower 15bit of the prim_mask contain the offset into LDS
-          * while the upper bits contain the number of prims */
-         Temp offset_src = get_ssa_temp(ctx, off_src->ssa);
-         assert(offset_src.regClass() == s1 && "TODO: divergent offsets...");
-         Builder bld(ctx->program, ctx->block);
-         Temp stride = bld.sop2(aco_opcode::s_lshr_b32, bld.def(s1), bld.def(s1, scc), prim_mask, Operand(16u));
-         stride = bld.sop1(aco_opcode::s_bcnt1_i32_b32, bld.def(s1), bld.def(s1, scc), stride);
-         stride = bld.sop2(aco_opcode::s_mul_i32, bld.def(s1), stride, Operand(48u));
-         offset_src = bld.sop2(aco_opcode::s_mul_i32, bld.def(s1), stride, offset_src);
-         prim_mask = bld.sop2(aco_opcode::s_add_i32, bld.def(s1, m0), bld.def(s1, scc), offset_src, prim_mask);
-      }
 
       unsigned idx = nir_intrinsic_base(instr);
       unsigned component = nir_intrinsic_component(instr);
