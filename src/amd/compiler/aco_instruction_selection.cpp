@@ -4096,14 +4096,13 @@ std::pair<Temp, unsigned> get_tcs_per_patch_output_vmem_offset(isel_context *ctx
    return offs;
 }
 
-bool tcs_driver_location_matches_api_mask(isel_context *ctx, nir_intrinsic_instr *instr, bool per_vertex, uint64_t mask, bool *indirect)
+bool tcs_compare_intrin_with_mask(isel_context *ctx, nir_intrinsic_instr *instr, bool per_vertex, uint64_t mask, bool *indirect)
 {
    assert(per_vertex || ctx->shader->info.stage == MESA_SHADER_TESS_CTRL);
 
    if (mask == 0)
       return false;
 
-   unsigned drv_loc = nir_intrinsic_base(instr);
    nir_src *off_src = nir_get_io_offset_src(instr);
 
    if (!nir_src_is_const(*off_src)) {
@@ -4112,9 +4111,10 @@ bool tcs_driver_location_matches_api_mask(isel_context *ctx, nir_intrinsic_instr
    }
 
    *indirect = false;
-   uint64_t slot = per_vertex
-                   ? ctx->output_drv_loc_to_var_slot[ctx->shader->info.stage][drv_loc / 4]
-                   : (ctx->output_tcs_patch_drv_loc_to_var_slot[drv_loc / 4] - VARYING_SLOT_PATCH0);
+   uint64_t slot = nir_intrinsic_io_semantics(instr).location;
+   if (!per_vertex)
+      slot -= VARYING_SLOT_PATCH0;
+
    return (((uint64_t) 1) << slot) & mask;
 }
 
@@ -4179,7 +4179,7 @@ void visit_store_ls_or_es_output(isel_context *ctx, nir_intrinsic_instr *instr)
    if (ctx->tcs_in_out_eq && store_output_to_temps(ctx, instr)) {
       /* When the TCS only reads this output directly and for the same vertices as its invocation id, it is unnecessary to store the VS output to LDS. */
       bool indirect_write;
-      bool temp_only_input = tcs_driver_location_matches_api_mask(ctx, instr, true, ctx->tcs_temp_only_inputs, &indirect_write);
+      bool temp_only_input = tcs_compare_intrin_with_mask(ctx, instr, true, ctx->tcs_temp_only_inputs, &indirect_write);
       if (temp_only_input && !indirect_write)
          return;
    }
@@ -4230,7 +4230,7 @@ bool tcs_output_is_read_by_tes(isel_context *ctx, nir_intrinsic_instr *instr, bo
                    : ctx->program->info->tcs.tes_patch_inputs_read;
 
    bool indirect_write = false;
-   bool output_read_by_tes = tcs_driver_location_matches_api_mask(ctx, instr, per_vertex, mask, &indirect_write);
+   bool output_read_by_tes = tcs_compare_intrin_with_mask(ctx, instr, per_vertex, mask, &indirect_write);
    return indirect_write || output_read_by_tes;
 }
 
@@ -4241,7 +4241,7 @@ bool tcs_output_is_read_by_tcs(isel_context *ctx, nir_intrinsic_instr *instr, bo
                    : ctx->shader->info.patch_outputs_read;
 
    bool indirect_write = false;
-   bool output_read = tcs_driver_location_matches_api_mask(ctx, instr, per_vertex, mask, &indirect_write);
+   bool output_read = tcs_compare_intrin_with_mask(ctx, instr, per_vertex, mask, &indirect_write);
    return indirect_write || output_read;
 }
 

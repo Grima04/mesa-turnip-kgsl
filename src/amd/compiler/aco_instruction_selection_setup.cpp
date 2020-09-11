@@ -478,9 +478,6 @@ setup_vs_variables(isel_context *ctx, nir_shader *nir)
    {
       if (ctx->stage == vertex_vs || ctx->stage == ngg_vertex_gs)
          variable->data.driver_location = variable->data.location * 4;
-
-      assert(variable->data.location >= 0 && variable->data.location <= UINT8_MAX);
-      ctx->output_drv_loc_to_var_slot[MESA_SHADER_VERTEX][variable->data.driver_location / 4] = variable->data.location;
    }
 
    if (ctx->stage == vertex_vs || ctx->stage == ngg_vertex_gs) {
@@ -566,19 +563,6 @@ setup_tcs_info(isel_context *ctx, nir_shader *nir, nir_shader *vs)
 }
 
 void
-setup_tcs_variables(isel_context *ctx, nir_shader *nir)
-{
-   nir_foreach_shader_out_variable(variable, nir) {
-      assert(variable->data.location >= 0 && variable->data.location <= UINT8_MAX);
-
-      if (variable->data.patch)
-         ctx->output_tcs_patch_drv_loc_to_var_slot[variable->data.driver_location / 4] = variable->data.location;
-      else
-         ctx->output_drv_loc_to_var_slot[MESA_SHADER_TESS_CTRL][variable->data.driver_location / 4] = variable->data.location;
-   }
-}
-
-void
 setup_tes_variables(isel_context *ctx, nir_shader *nir)
 {
    ctx->tcs_num_patches = ctx->args->options->key.tes.num_patches;
@@ -622,7 +606,6 @@ setup_variables(isel_context *ctx, nir_shader *nir)
       break;
    }
    case MESA_SHADER_TESS_CTRL: {
-      setup_tcs_variables(ctx, nir);
       break;
    }
    case MESA_SHADER_TESS_EVAL: {

@@ -113,8 +113,6 @@ struct isel_context {
    /* I/O information */
    shader_io_state inputs;
    shader_io_state outputs;
-   uint8_t output_drv_loc_to_var_slot[MESA_SHADER_COMPUTE][VARYING_SLOT_MAX];
-   uint8_t output_tcs_patch_drv_loc_to_var_slot[VARYING_SLOT_MAX];
 };
 
 inline Temp get_arg(isel_context *ctx, struct ac_arg arg)
