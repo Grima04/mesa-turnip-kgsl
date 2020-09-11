@@ -573,7 +573,13 @@ void nir_tgsi_scan_shader(const struct nir_shader *nir,
    }
 
    info->num_inputs = nir->num_inputs;
-   info->file_max[TGSI_FILE_INPUT] = nir->num_inputs - 1;
+   if (nir->info.io_lowered) {
+      info->num_inputs = util_bitcount64(nir->info.inputs_read);
+      if (nir->info.inputs_read_indirectly)
+         info->indirect_files |= 1 << TGSI_FILE_INPUT;
+   }
+
+   info->file_max[TGSI_FILE_INPUT] = info->num_inputs - 1;
 
    i = 0;
    uint64_t processed_outputs = 0;
@@ -747,6 +753,27 @@ void nir_tgsi_scan_shader(const struct nir_shader *nir,
          assert(attrib_count == 1);
          info->properties[TGSI_PROPERTY_FS_COLOR0_WRITES_ALL_CBUFS] = true;
       }
+   }
+
+   if (nir->info.io_lowered) {
+      uint64_t outputs_written = nir->info.outputs_written;
+
+      while (outputs_written) {
+         unsigned location = u_bit_scan64(&outputs_written);
+         unsigned i = util_bitcount64(nir->info.outputs_written &
+                                      BITFIELD64_MASK(location));
+         unsigned semantic_name, semantic_index;
+
+         tgsi_get_gl_varying_semantic(location, need_texcoord,
+                                      &semantic_name, &semantic_index);
+
+         info->output_semantic_name[i] = semantic_name;
+         info->output_semantic_index[i] = semantic_index;
+         info->output_usagemask[i] = 0xf;
+      }
+      num_outputs = util_bitcount64(nir->info.outputs_written);
+      if (nir->info.outputs_accessed_indirectly)
+         info->indirect_files |= 1 << TGSI_FILE_OUTPUT;
    }
 
    uint32_t sampler_mask = 0, image_mask = 0;
