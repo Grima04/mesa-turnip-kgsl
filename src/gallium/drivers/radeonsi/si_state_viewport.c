@@ -375,7 +375,9 @@ static void si_set_viewport_states(struct pipe_context *pctx, unsigned start_slo
       unsigned h = scissor->maxy - scissor->miny;
       unsigned max_extent = MAX2(w, h);
 
-      int max_corner = MAX2(scissor->maxx, scissor->maxy);
+      int max_corner = MAX2(
+         MAX2(abs(scissor->maxx), abs(scissor->maxy)),
+         MAX2(abs(scissor->minx), abs(scissor->miny)));
 
       unsigned center_x = (scissor->maxx + scissor->minx) / 2;
       unsigned center_y = (scissor->maxy + scissor->miny) / 2;
@@ -415,9 +417,9 @@ static void si_set_viewport_states(struct pipe_context *pctx, unsigned start_slo
        * 4k x 4k of the render target.
        */
 
-      if (max_extent <= 1024 && max_corner < 4096) /* 4K scanline area for guardband */
+      if (max_extent <= 1024 && max_corner < (1 << 12)) /* 4K scanline area for guardband */
          scissor->quant_mode = SI_QUANT_MODE_12_12_FIXED_POINT_1_4096TH;
-      else if (max_extent <= 4096) /* 16K scanline area for guardband */
+      else if (max_extent <= 4096 && max_corner < (1 << 14)) /* 16K scanline area for guardband */
          scissor->quant_mode = SI_QUANT_MODE_14_10_FIXED_POINT_1_1024TH;
       else /* 64K scanline area for guardband */
          scissor->quant_mode = SI_QUANT_MODE_16_8_FIXED_POINT_1_256TH;
