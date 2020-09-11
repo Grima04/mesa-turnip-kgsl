@@ -194,6 +194,17 @@ instr_try_combine(struct nir_shader *nir, nir_instr *instr1, nir_instr *instr2,
                      total_components, alu1->dest.dest.ssa.bit_size, NULL);
    new_alu->dest.write_mask = (1 << total_components) - 1;
 
+   /* If either channel is exact, we have to preserve it even if it's
+    * not optimal for other channels.
+    */
+   new_alu->exact = alu1->exact || alu2->exact;
+
+   /* If all channels don't wrap, we can say that the whole vector doesn't
+    * wrap.
+    */
+   new_alu->no_signed_wrap = alu1->no_signed_wrap && alu2->no_signed_wrap;
+   new_alu->no_unsigned_wrap = alu1->no_unsigned_wrap && alu2->no_unsigned_wrap;
+
    for (unsigned i = 0; i < nir_op_infos[alu1->op].num_inputs; i++) {
       /* handle constant merging case */
       if (alu1->src[i].src.ssa != alu2->src[i].src.ssa) {
