@@ -50,6 +50,12 @@ struct v3dv_bo {
     * it's safe to reuse it in the BO cache).
     */
    bool private;
+
+   /**
+    * If this BO was allocated for a swapchain on the display device, the
+    * handle of the dumb BO on that device.
+    */
+   int32_t dumb_handle;
 };
 
 struct v3dv_bo *v3dv_bo_alloc(struct v3dv_device *device, uint32_t size, const char *name, bool private);

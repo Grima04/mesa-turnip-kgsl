@@ -338,6 +338,7 @@ struct v3dv_device_memory {
    struct v3dv_bo *bo;
    const VkMemoryType *type;
    bool has_bo_ownership;
+   bool is_for_wsi;
 };
 
 #define V3D_OUTPUT_IMAGE_FORMAT_NO 255

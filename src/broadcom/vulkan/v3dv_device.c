@@ -1416,8 +1416,30 @@ device_alloc(struct v3dv_device *device,
 }
 
 static void
+device_free_wsi_dumb(int32_t display_fd, int32_t dumb_handle)
+{
+   assert(display_fd != -1);
+   if (dumb_handle < 0)
+      return;
+
+   struct drm_mode_destroy_dumb destroy_dumb = {
+      .handle = dumb_handle,
+   };
+   v3dv_ioctl(display_fd, DRM_IOCTL_MODE_DESTROY_DUMB, &destroy_dumb);
+}
+
+static void
 device_free(struct v3dv_device *device, struct v3dv_device_memory *mem)
 {
+   /* If this memory allocation was for WSI, then we need to use the
+    * display device to free the allocated dumb BO.
+    */
+   if (mem->is_for_wsi) {
+      assert(mem->has_bo_ownership);
+      device_free_wsi_dumb(device->instance->physicalDevice.display_fd,
+                           mem->bo->dumb_handle);
+   }
+
    if (mem->has_bo_ownership)
       v3dv_bo_free(device, mem->bo);
    else if (mem->bo)
@@ -1506,6 +1528,7 @@ device_import_bo(struct v3dv_device *device,
    (*bo)->map = NULL;
    (*bo)->map_size = 0;
    (*bo)->private = false;
+   (*bo)->dumb_handle = -1;
 
    return VK_SUCCESS;
 
@@ -1531,6 +1554,8 @@ device_alloc_for_wsi(struct v3dv_device *device,
 #if using_v3d_simulator
       return device_alloc(device, mem, size);
 #else
+   mem->is_for_wsi = true;
+
    assert(device->display_fd != -1);
    int display_fd = device->instance->physicalDevice.display_fd;
    struct drm_mode_create_dumb create_dumb = {
@@ -1555,15 +1580,12 @@ device_alloc_for_wsi(struct v3dv_device *device,
    if (result != VK_SUCCESS)
       goto fail_import;
 
+   mem->bo->dumb_handle = create_dumb.handle;
    return VK_SUCCESS;
 
 fail_import:
-fail_export: {
-      struct drm_mode_destroy_dumb destroy_dumb = {
-         .handle = create_dumb.handle,
-      };
-      v3dv_ioctl(display_fd, DRM_IOCTL_MODE_DESTROY_DUMB, &destroy_dumb);
-   }
+fail_export:
+   device_free_wsi_dumb(display_fd, create_dumb.handle);
 
 fail_create:
    return VK_ERROR_OUT_OF_DEVICE_MEMORY;
@@ -1593,6 +1615,7 @@ v3dv_AllocateMemory(VkDevice _device,
    assert(pAllocateInfo->memoryTypeIndex < pdevice->memory.memoryTypeCount);
    mem->type = &pdevice->memory.memoryTypes[pAllocateInfo->memoryTypeIndex];
    mem->has_bo_ownership = true;
+   mem->is_for_wsi = false;
 
    const struct wsi_memory_allocate_info *wsi_info = NULL;
    const VkImportMemoryFdInfoKHR *fd_info = NULL;

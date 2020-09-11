@@ -238,6 +238,7 @@ v3dv_bo_alloc(struct v3dv_device *device,
    bo->map_size = 0;
    bo->name = name;
    bo->private = private;
+   bo->dumb_handle = -1;
    list_inithead(&bo->list_link);
 
    device->bo_count++;
