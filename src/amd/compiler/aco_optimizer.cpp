@@ -2728,7 +2728,27 @@ bool combine_add_lshl(opt_ctx& ctx, aco_ptr<Instruction>& instr)
 
 void combine_vop3p(opt_ctx &ctx, Block& block, aco_ptr<Instruction>& instr)
 {
-   // TODO: clamp, fneg?
+   VOP3P_instruction* vop3p = static_cast<VOP3P_instruction*>(instr.get());
+
+   /* apply clamp */
+   if (instr->opcode == aco_opcode::v_pk_mul_f16 &&
+       instr->operands[1].constantEquals(0x3C00) &&
+       vop3p->clamp &&
+       vop3p->opsel_lo == 0x0 &&
+       vop3p->opsel_hi == 0x1 &&
+       instr->operands[0].isTemp() &&
+       ctx.uses[instr->operands[0].tempId()] == 1) {
+
+      ssa_info& info = ctx.info[instr->operands[0].tempId()];
+      if (info.is_vop3p() && instr_info.can_use_output_modifiers[(int)info.instr->opcode]) {
+         Instruction* candidate = ctx.info[instr->operands[0].tempId()].instr;
+         static_cast<VOP3P_instruction*>(candidate)->clamp = true;
+         std::swap(instr->definitions[0], candidate->definitions[0]);
+         ctx.info[candidate->definitions[0].tempId()].instr = candidate;
+         ctx.uses[instr->definitions[0].tempId()]--;
+         return;
+      }
+   }
 
    if (instr->opcode == aco_opcode::v_pk_add_f16) {
       if (instr->definitions[0].isPrecise())
@@ -2781,7 +2801,6 @@ void combine_vop3p(opt_ctx &ctx, Block& block, aco_ptr<Instruction>& instr)
       assert(mul_instr->format == Format::VOP3P);
       aco_ptr<VOP3P_instruction> fma{create_instruction<VOP3P_instruction>(aco_opcode::v_pk_fma_f16, Format::VOP3P, 3, 1)};
       VOP3P_instruction* mul = static_cast<VOP3P_instruction*>(mul_instr);
-      VOP3P_instruction* vop3p = static_cast<VOP3P_instruction*>(instr.get());
       for (unsigned i = 0; i < 2; i++) {
          fma->operands[i] = op[i];
          fma->neg_lo[i] = mul->neg_lo[i];
