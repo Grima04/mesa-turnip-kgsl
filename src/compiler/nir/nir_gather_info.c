@@ -418,33 +418,90 @@ gather_intrinsic_info(nir_intrinsic_instr *instr, nir_shader *shader,
       }
       break;
 
-   case nir_intrinsic_load_draw_id:
-   case nir_intrinsic_load_frag_coord:
-   case nir_intrinsic_load_point_coord:
-   case nir_intrinsic_load_line_coord:
-   case nir_intrinsic_load_front_face:
+   case nir_intrinsic_load_subgroup_size:
+   case nir_intrinsic_load_subgroup_invocation:
+   case nir_intrinsic_load_subgroup_eq_mask:
+   case nir_intrinsic_load_subgroup_ge_mask:
+   case nir_intrinsic_load_subgroup_gt_mask:
+   case nir_intrinsic_load_subgroup_le_mask:
+   case nir_intrinsic_load_subgroup_lt_mask:
+   case nir_intrinsic_load_num_subgroups:
+   case nir_intrinsic_load_subgroup_id:
    case nir_intrinsic_load_vertex_id:
+   case nir_intrinsic_load_instance_id:
    case nir_intrinsic_load_vertex_id_zero_base:
    case nir_intrinsic_load_base_vertex:
    case nir_intrinsic_load_first_vertex:
    case nir_intrinsic_load_is_indexed_draw:
    case nir_intrinsic_load_base_instance:
-   case nir_intrinsic_load_instance_id:
+   case nir_intrinsic_load_draw_id:
+   case nir_intrinsic_load_invocation_id:
+   case nir_intrinsic_load_frag_coord:
+   case nir_intrinsic_load_point_coord:
+   case nir_intrinsic_load_line_coord:
+   case nir_intrinsic_load_front_face:
    case nir_intrinsic_load_sample_id:
    case nir_intrinsic_load_sample_pos:
    case nir_intrinsic_load_sample_mask_in:
-   case nir_intrinsic_load_primitive_id:
-   case nir_intrinsic_load_invocation_id:
-   case nir_intrinsic_load_local_invocation_id:
-   case nir_intrinsic_load_local_invocation_index:
-   case nir_intrinsic_load_work_group_id:
-   case nir_intrinsic_load_num_work_groups:
+   case nir_intrinsic_load_helper_invocation:
+   case nir_intrinsic_load_color0:
+   case nir_intrinsic_load_color1:
    case nir_intrinsic_load_tess_coord:
+   case nir_intrinsic_load_patch_vertices_in:
+   case nir_intrinsic_load_primitive_id:
    case nir_intrinsic_load_tess_level_outer:
    case nir_intrinsic_load_tess_level_inner:
-   case nir_intrinsic_load_patch_vertices_in:
+   case nir_intrinsic_load_tess_level_outer_default:
+   case nir_intrinsic_load_tess_level_inner_default:
+   case nir_intrinsic_load_local_invocation_id:
+   case nir_intrinsic_load_local_invocation_index:
+   case nir_intrinsic_load_global_invocation_id:
+   case nir_intrinsic_load_base_global_invocation_id:
+   case nir_intrinsic_load_global_invocation_index:
+   case nir_intrinsic_load_work_group_id:
+   case nir_intrinsic_load_num_work_groups:
+   case nir_intrinsic_load_local_group_size:
+   case nir_intrinsic_load_work_dim:
+   case nir_intrinsic_load_user_data_amd:
+   case nir_intrinsic_load_view_index:
+   case nir_intrinsic_load_barycentric_model:
+   case nir_intrinsic_load_gs_header_ir3:
+   case nir_intrinsic_load_tcs_header_ir3:
       shader->info.system_values_read |=
          (1ull << nir_system_value_from_intrinsic(instr->intrinsic));
+      break;
+
+   case nir_intrinsic_load_barycentric_pixel:
+      if (nir_intrinsic_interp_mode(instr) == INTERP_MODE_SMOOTH ||
+          nir_intrinsic_interp_mode(instr) == INTERP_MODE_NONE) {
+         shader->info.system_values_read |=
+            BITFIELD64_BIT(SYSTEM_VALUE_BARYCENTRIC_PERSP_PIXEL);
+      } else if (nir_intrinsic_interp_mode(instr) == INTERP_MODE_NOPERSPECTIVE) {
+         shader->info.system_values_read |=
+            BITFIELD64_BIT(SYSTEM_VALUE_BARYCENTRIC_LINEAR_PIXEL);
+      }
+      break;
+
+   case nir_intrinsic_load_barycentric_centroid:
+      if (nir_intrinsic_interp_mode(instr) == INTERP_MODE_SMOOTH ||
+          nir_intrinsic_interp_mode(instr) == INTERP_MODE_NONE) {
+         shader->info.system_values_read |=
+            BITFIELD64_BIT(SYSTEM_VALUE_BARYCENTRIC_PERSP_CENTROID);
+      } else if (nir_intrinsic_interp_mode(instr) == INTERP_MODE_NOPERSPECTIVE) {
+         shader->info.system_values_read |=
+            BITFIELD64_BIT(SYSTEM_VALUE_BARYCENTRIC_LINEAR_CENTROID);
+      }
+      break;
+
+   case nir_intrinsic_load_barycentric_sample:
+      if (nir_intrinsic_interp_mode(instr) == INTERP_MODE_SMOOTH ||
+          nir_intrinsic_interp_mode(instr) == INTERP_MODE_NONE) {
+         shader->info.system_values_read |=
+            BITFIELD64_BIT(SYSTEM_VALUE_BARYCENTRIC_PERSP_SAMPLE);
+      } else if (nir_intrinsic_interp_mode(instr) == INTERP_MODE_NOPERSPECTIVE) {
+         shader->info.system_values_read |=
+            BITFIELD64_BIT(SYSTEM_VALUE_BARYCENTRIC_LINEAR_SAMPLE);
+      }
       break;
 
    case nir_intrinsic_quad_broadcast:
