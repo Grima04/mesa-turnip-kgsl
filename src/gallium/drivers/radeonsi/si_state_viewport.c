@@ -273,13 +273,15 @@ static void si_emit_guardband(struct si_context *ctx)
     * This is done by applying the inverse viewport transformation
     * on the viewport limits to get those limits in clip space.
     *
-    * The viewport range is [-max_viewport_size/2, max_viewport_size/2].
+    * The viewport range is [-max_viewport_size/2 - 1, max_viewport_size/2].
+    * (-1 to the min coord because max_viewport_size is odd and ViewportBounds
+    * Min/Max are -32768, 32767).
     */
    assert(vp_as_scissor.quant_mode < ARRAY_SIZE(max_viewport_size));
    max_range = max_viewport_size[vp_as_scissor.quant_mode] / 2;
-   left = (-max_range - vp.translate[0]) / vp.scale[0];
+   left = (-max_range - 1 - vp.translate[0]) / vp.scale[0];
    right = (max_range - vp.translate[0]) / vp.scale[0];
-   top = (-max_range - vp.translate[1]) / vp.scale[1];
+   top = (-max_range - 1 - vp.translate[1]) / vp.scale[1];
    bottom = (max_range - vp.translate[1]) / vp.scale[1];
 
    assert(left <= -1 && top <= -1 && right >= 1 && bottom >= 1);
