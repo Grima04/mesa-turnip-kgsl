@@ -2750,6 +2750,44 @@ void combine_vop3p(opt_ctx &ctx, Block& block, aco_ptr<Instruction>& instr)
       }
    }
 
+   /* check for fneg modifiers */
+   if (instr_info.can_use_input_modifiers[(int)instr->opcode]) {
+      /* at this point, we only have 2-operand instructions */
+      assert(instr->operands.size() == 2);
+      for (unsigned i = 0; i < 2; i++) {
+         Operand& op = instr->operands[i];
+         if (!op.isTemp())
+            continue;
+
+         ssa_info& info = ctx.info[op.tempId()];
+         if (info.is_vop3p() && info.instr->opcode == aco_opcode::v_pk_mul_f16 &&
+             info.instr->operands[1].constantEquals(0xBC00)) {
+            Operand ops[2] = {instr->operands[!i], info.instr->operands[0]};
+            if (!check_vop3_operands(ctx, 2, ops))
+               continue;
+
+            VOP3P_instruction* fneg = static_cast<VOP3P_instruction*>(info.instr);
+            if (fneg->clamp)
+               continue;
+            instr->operands[i] = fneg->operands[0];
+
+            /* opsel_lo/hi is either 0 or 1:
+             * if 0 - pick selection from fneg->lo
+             * if 1 - pick selection from fneg->hi
+             */
+            bool opsel_lo = vop3p->opsel_lo & (1 << i);
+            bool opsel_hi = vop3p->opsel_hi & (1 << i);
+            vop3p->neg_lo[i] ^= true ^ (opsel_lo ? fneg->neg_hi[0] : fneg->neg_lo[0]);
+            vop3p->neg_hi[i] ^= true ^ (opsel_hi ? fneg->neg_hi[0] : fneg->neg_lo[0]);
+            vop3p->opsel_lo ^= ((opsel_lo ? ~fneg->opsel_hi : fneg->opsel_lo) & 1) << i;
+            vop3p->opsel_hi ^= ((opsel_hi ? ~fneg->opsel_hi : fneg->opsel_lo) & 1) << i;
+
+            if (--ctx.uses[fneg->definitions[0].tempId()])
+               ctx.uses[fneg->operands[0].tempId()]++;
+         }
+      }
+   }
+
    if (instr->opcode == aco_opcode::v_pk_add_f16) {
       if (instr->definitions[0].isPrecise())
          return;
