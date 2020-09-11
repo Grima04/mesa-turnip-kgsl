@@ -107,6 +107,12 @@ static void
 v3d_nir_lower_uniform(struct v3d_compile *c, nir_builder *b,
                       nir_intrinsic_instr *intr)
 {
+        /* On SPIR-V/Vulkan we are already getting our offsets in
+         * bytes.
+         */
+        if (c->key->environment == V3D_ENVIRONMENT_VULKAN)
+                return;
+
         b->cursor = nir_before_instr(&intr->instr);
 
         nir_intrinsic_set_base(intr, nir_intrinsic_base(intr) * 16);

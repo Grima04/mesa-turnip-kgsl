@@ -454,6 +454,8 @@ pipeline_populate_v3d_key(struct v3d_key *key,
     * revisited based on all the clip related extensions available.
     */
    key->ucp_enables = 0;
+
+   key->environment = V3D_ENVIRONMENT_VULKAN;
 }
 
 /* FIXME: anv maps to hw primitive type. Perhaps eventually we would do the

@@ -333,6 +333,11 @@ static inline uint8_t v3d_slot_get_component(struct v3d_varying_slot slot)
         return slot.slot_and_component & 3;
 }
 
+enum v3d_execution_environment {
+   V3D_ENVIRONMENT_OPENGL = 0,
+   V3D_ENVIRONMENT_VULKAN,
+};
+
 struct v3d_key {
         void *shader_state;
         struct {
@@ -346,6 +351,8 @@ struct v3d_key {
         uint8_t num_tex_used;
         uint8_t ucp_enables;
         bool is_last_geometry_stage;
+
+        enum v3d_execution_environment environment;
 };
 
 struct v3d_fs_key {
