@@ -2582,6 +2582,24 @@ tu_pipeline_builder_parse_multisample_and_color_blend(
 
    assert(cs.cur == cs.end); /* validate draw state size */
 
+   if (blend_enable_mask) {
+      for (int i = 0; i < blend_info->attachmentCount; i++) {
+         VkPipelineColorBlendAttachmentState blendAttachment = blend_info->pAttachments[i];
+         /* Disable LRZ writes when blend is enabled, since the
+          * resulting pixel value from the blend-draw
+          * depends on an earlier draw, which LRZ in the draw pass
+          * could early-reject if the previous blend-enabled draw wrote LRZ.
+          *
+          * From the PoV of LRZ, having masked color channels is
+          * the same as having blend enabled, in that the draw will
+          * care about the fragments from an earlier draw.
+          */
+         if (blendAttachment.blendEnable || blendAttachment.colorWriteMask != 0xf) {
+            pipeline->lrz.blend_disable_write = true;
+         }
+      }
+   }
+
    if (tu_pipeline_static_state(pipeline, &cs, VK_DYNAMIC_STATE_BLEND_CONSTANTS, 5)) {
       tu_cs_emit_pkt4(&cs, REG_A6XX_RB_BLEND_RED_F32, 4);
       tu_cs_emit_array(&cs, (const uint32_t *) blend_info->blendConstants, 4);

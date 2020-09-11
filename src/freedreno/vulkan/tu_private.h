@@ -845,6 +845,7 @@ struct tu_lrz_pipeline
    bool enable : 1;
    bool greater : 1;
    bool z_test_enable : 1;
+   bool blend_disable_write : 1;
 };
 
 struct tu_cmd_state
