@@ -4124,8 +4124,7 @@ bool store_output_to_temps(isel_context *ctx, nir_intrinsic_instr *instr)
    unsigned component = nir_intrinsic_component(instr);
    unsigned idx = nir_intrinsic_base(instr) + component;
 
-   nir_instr *off_instr = instr->src[1].ssa->parent_instr;
-   if (off_instr->type != nir_instr_type_load_const)
+   if (!nir_src_is_const(instr->src[1]))
       return false;
 
    Temp src = get_ssa_temp(ctx, instr->src[0].ssa);
@@ -4402,9 +4401,8 @@ void visit_load_interpolated_input(isel_context *ctx, nir_intrinsic_instr *instr
    unsigned component = nir_intrinsic_component(instr);
    Temp prim_mask = get_arg(ctx, ctx->args->ac.prim_mask);
 
-   nir_const_value* offset = nir_src_as_const_value(instr->src[1]);
-   if (offset) {
-      assert(offset->u32 == 0);
+   if (nir_src_is_const(instr->src[1])) {
+      assert(!nir_src_as_uint(instr->src[1]));
    } else {
       /* the lower 15bit of the prim_mask contain the offset into LDS
        * while the upper bits contain the number of prims */
@@ -4525,11 +4523,9 @@ void visit_load_input(isel_context *ctx, nir_intrinsic_instr *instr)
    Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
    if (ctx->shader->info.stage == MESA_SHADER_VERTEX) {
 
-      nir_instr *off_instr = instr->src[0].ssa->parent_instr;
-      if (off_instr->type != nir_instr_type_load_const) {
-         isel_err(off_instr, "Unimplemented nir_intrinsic_load_input offset");
-      }
-      uint32_t offset = nir_instr_as_load_const(off_instr)->value[0].u32;
+      if (!nir_src_is_const(instr->src[0]))
+         isel_err(instr->src[0].ssa->parent_instr, "Unimplemented non-const nir_intrinsic_load_input offset");
+      uint32_t offset = nir_src_as_uint(instr->src[0]);
 
       Temp vertex_buffers = convert_pointer_to_64_bit(ctx, get_arg(ctx, ctx->args->vertex_buffers));
 
@@ -4736,11 +4732,8 @@ void visit_load_input(isel_context *ctx, nir_intrinsic_instr *instr)
       }
    } else if (ctx->shader->info.stage == MESA_SHADER_FRAGMENT) {
       nir_src *off_src = nir_get_io_offset_src(instr);
-      nir_instr *off_instr = off_src->ssa->parent_instr;
-      if (off_instr->type != nir_instr_type_load_const ||
-          nir_instr_as_load_const(off_instr)->value[0].u32 != 0) {
-         isel_err(off_instr, "Unimplemented nir_intrinsic_load_input offset");
-      }
+      if (!nir_src_is_const(*off_src) || nir_src_as_uint(*off_src))
+         isel_err(off_src->ssa->parent_instr, "Unimplemented non-zero nir_intrinsic_load_input offset");
 
       Temp prim_mask = get_arg(ctx, ctx->args->ac.prim_mask);
       nir_const_value* offset = nir_src_as_const_value(*off_src);
