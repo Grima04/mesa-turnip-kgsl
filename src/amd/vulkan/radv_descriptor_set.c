@@ -107,7 +107,10 @@ VkResult radv_CreateDescriptorSetLayout(
 			offsetof(struct radv_descriptor_set_layout, binding[num_bindings]);
 	size_t size = samplers_offset + immutable_sampler_count * 4 * sizeof(uint32_t);
 	if (ycbcr_sampler_count > 0) {
-		size += ycbcr_sampler_count * sizeof(struct radv_sampler_ycbcr_conversion) + num_bindings * sizeof(uint32_t);
+		/* Store block of offsets first, followed by the conversion descriptors (padded to the struct alignment) */
+		size += num_bindings * sizeof(uint32_t);
+		size = ALIGN(size, alignof(struct radv_sampler_ycbcr_conversion));
+		size += ycbcr_sampler_count * sizeof(struct radv_sampler_ycbcr_conversion);
 	}
 
 	set_layout = vk_zalloc2(&device->vk.alloc, pAllocator, size, 8,
@@ -129,7 +132,10 @@ VkResult radv_CreateDescriptorSetLayout(
 	if (ycbcr_sampler_count > 0) {
 		ycbcr_sampler_offsets = samplers + 4 * immutable_sampler_count;
 		set_layout->ycbcr_sampler_offsets_offset = (char*)ycbcr_sampler_offsets - (char*)set_layout;
-		ycbcr_samplers = (struct radv_sampler_ycbcr_conversion *)(ycbcr_sampler_offsets + num_bindings);
+
+		uintptr_t first_ycbcr_sampler_offset = (uintptr_t)ycbcr_sampler_offsets + sizeof(uint32_t) * num_bindings;
+		first_ycbcr_sampler_offset = ALIGN(first_ycbcr_sampler_offset, alignof(struct radv_sampler_ycbcr_conversion));
+		ycbcr_samplers = (struct radv_sampler_ycbcr_conversion *)first_ycbcr_sampler_offset;
 	} else
 		set_layout->ycbcr_sampler_offsets_offset = 0;
 
