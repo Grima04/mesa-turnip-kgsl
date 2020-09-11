@@ -1392,6 +1392,32 @@ vn_physical_device_get_supported_extensions(
       .KHR_shader_draw_parameters = true,
       .KHR_storage_buffer_storage_class = true,
       .KHR_variable_pointers = true,
+
+      /* promoted to VK_VERSION_1_2 */
+      .KHR_8bit_storage = true,
+      .KHR_buffer_device_address = true,
+      .KHR_create_renderpass2 = true,
+      .KHR_depth_stencil_resolve = true,
+      .KHR_draw_indirect_count = true,
+      .KHR_driver_properties = true,
+      .KHR_image_format_list = true,
+      .KHR_imageless_framebuffer = true,
+      .KHR_sampler_mirror_clamp_to_edge = true,
+      .KHR_separate_depth_stencil_layouts = true,
+      .KHR_shader_atomic_int64 = true,
+      .KHR_shader_float16_int8 = true,
+      .KHR_shader_float_controls = true,
+      .KHR_shader_subgroup_extended_types = true,
+      .KHR_spirv_1_4 = true,
+      .KHR_timeline_semaphore = true,
+      .KHR_uniform_buffer_standard_layout = true,
+      .KHR_vulkan_memory_model = true,
+      .EXT_descriptor_indexing = true,
+      .EXT_host_query_reset = true,
+      .EXT_sampler_filter_minmax = true,
+      .EXT_scalar_block_layout = true,
+      .EXT_separate_stencil_usage = true,
+      .EXT_shader_viewport_index_layer = true,
    };
 }
 
