@@ -297,16 +297,13 @@ tu_QueueSubmit(VkQueue _queue,
             goto fail;
          }
 
-         tu_fence_update_fd(&queue->submit_fence, fd);
+         if (queue->fence >= 0)
+            close(queue->fence);
+         queue->fence = fd;
       }
    }
 fail:
    vk_free(&queue->device->vk.alloc, cmds);
-
-   if (_fence != VK_NULL_HANDLE) {
-      TU_FROM_HANDLE(tu_fence, fence, _fence);
-      tu_fence_copy(fence, &queue->submit_fence);
-   }
 
    return result;
 }
@@ -344,4 +341,64 @@ tu_DestroySemaphore(VkDevice _device,
                     const VkAllocationCallbacks *pAllocator)
 {
    tu_finishme("DestroySemaphore");
+}
+
+VkResult
+tu_ImportFenceFdKHR(VkDevice _device,
+                    const VkImportFenceFdInfoKHR *pImportFenceFdInfo)
+{
+   tu_stub();
+
+   return VK_SUCCESS;
+}
+
+VkResult
+tu_GetFenceFdKHR(VkDevice _device,
+                 const VkFenceGetFdInfoKHR *pGetFdInfo,
+                 int *pFd)
+{
+   tu_stub();
+
+   return VK_SUCCESS;
+}
+
+VkResult
+tu_CreateFence(VkDevice _device,
+               const VkFenceCreateInfo *pCreateInfo,
+               const VkAllocationCallbacks *pAllocator,
+               VkFence *pFence)
+{
+   tu_finishme("CreateFence");
+   return VK_SUCCESS;
+}
+
+void
+tu_DestroyFence(VkDevice _device, VkFence _fence, const VkAllocationCallbacks *pAllocator)
+{
+   tu_finishme("DestroyFence");
+}
+
+VkResult
+tu_WaitForFences(VkDevice _device,
+                 uint32_t fenceCount,
+                 const VkFence *pFences,
+                 VkBool32 waitAll,
+                 uint64_t timeout)
+{
+   tu_finishme("WaitForFences");
+   return VK_SUCCESS;
+}
+
+VkResult
+tu_ResetFences(VkDevice _device, uint32_t fenceCount, const VkFence *pFences)
+{
+   tu_finishme("ResetFences");
+   return VK_SUCCESS;
+}
+
+VkResult
+tu_GetFenceStatus(VkDevice _device, VkFence _fence)
+{
+   tu_finishme("GetFenceStatus");
+   return VK_SUCCESS;
 }

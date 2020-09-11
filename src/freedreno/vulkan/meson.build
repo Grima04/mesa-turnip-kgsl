@@ -47,7 +47,6 @@ libtu_files = files(
   'tu_device.c',
   'tu_descriptor_set.c',
   'tu_descriptor_set.h',
-  'tu_fence.c',
   'tu_formats.c',
   'tu_image.c',
   'tu_nir_lower_multiview.c',

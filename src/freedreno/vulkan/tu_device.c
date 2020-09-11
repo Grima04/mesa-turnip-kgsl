@@ -975,7 +975,7 @@ tu_queue_init(struct tu_device *device,
    if (ret)
       return VK_ERROR_INITIALIZATION_FAILED;
 
-   tu_fence_init(&queue->submit_fence, false);
+   queue->fence = -1;
 
    return VK_SUCCESS;
 }
@@ -983,7 +983,8 @@ tu_queue_init(struct tu_device *device,
 static void
 tu_queue_finish(struct tu_queue *queue)
 {
-   tu_fence_finish(&queue->submit_fence);
+   if (queue->fence >= 0)
+      close(queue->fence);
    tu_drm_submitqueue_close(queue->device, queue->msm_queue_id);
 }
 
@@ -1331,8 +1332,20 @@ tu_QueueWaitIdle(VkQueue _queue)
    if (tu_device_is_lost(queue->device))
       return VK_ERROR_DEVICE_LOST;
 
-   tu_fence_wait_idle(&queue->submit_fence);
+   if (queue->fence < 0)
+      return VK_SUCCESS;
 
+   struct pollfd fds = { .fd = queue->fence, .events = POLLIN };
+   int ret;
+   do {
+      ret = poll(&fds, 1, -1);
+   } while (ret == -1 && (errno == EINTR || errno == EAGAIN));
+
+   /* TODO: otherwise set device lost ? */
+   assert(ret == 1 && !(fds.revents & (POLLERR | POLLNVAL)));
+
+   close(queue->fence);
+   queue->fence = -1;
    return VK_SUCCESS;
 }
 
@@ -2089,25 +2102,6 @@ tu_GetMemoryFdPropertiesKHR(VkDevice _device,
 {
    assert(handleType == VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT);
    pMemoryFdProperties->memoryTypeBits = 1;
-   return VK_SUCCESS;
-}
-
-VkResult
-tu_ImportFenceFdKHR(VkDevice _device,
-                    const VkImportFenceFdInfoKHR *pImportFenceFdInfo)
-{
-   tu_stub();
-
-   return VK_SUCCESS;
-}
-
-VkResult
-tu_GetFenceFdKHR(VkDevice _device,
-                 const VkFenceGetFdInfoKHR *pGetFdInfo,
-                 int *pFd)
-{
-   tu_stub();
-
    return VK_SUCCESS;
 }
 

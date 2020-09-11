@@ -291,21 +291,8 @@ struct tu_pipeline_key
 struct tu_fence
 {
    struct vk_object_base base;
-   struct wsi_fence *fence_wsi;
-   bool signaled;
-   int fd;
+   uint32_t syncobj;
 };
-
-void
-tu_fence_init(struct tu_fence *fence, bool signaled);
-void
-tu_fence_finish(struct tu_fence *fence);
-void
-tu_fence_update_fd(struct tu_fence *fence, int fd);
-void
-tu_fence_copy(struct tu_fence *fence, const struct tu_fence *src);
-void
-tu_fence_wait_idle(struct tu_fence *fence);
 
 struct tu_queue
 {
@@ -317,7 +304,7 @@ struct tu_queue
    VkDeviceQueueCreateFlags flags;
 
    uint32_t msm_queue_id;
-   struct tu_fence submit_fence;
+   int fence;
 };
 
 struct tu_bo

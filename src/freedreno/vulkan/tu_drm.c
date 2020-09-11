@@ -644,13 +644,17 @@ tu_QueueSubmit(VkQueue _queue,
                VkFence _fence)
 {
    TU_FROM_HANDLE(tu_queue, queue, _queue);
+   TU_FROM_HANDLE(tu_fence, fence, _fence);
 
    for (uint32_t i = 0; i < submitCount; ++i) {
       const VkSubmitInfo *submit = pSubmits + i;
       const bool last_submit = (i == submitCount - 1);
+      uint32_t out_syncobjs_size = submit->signalSemaphoreCount;
+      if (last_submit && fence)
+         out_syncobjs_size += 1;
       /* note: assuming there won't be any very large semaphore counts */
       struct drm_msm_gem_submit_syncobj in_syncobjs[submit->waitSemaphoreCount];
-      struct drm_msm_gem_submit_syncobj out_syncobjs[submit->signalSemaphoreCount];
+      struct drm_msm_gem_submit_syncobj out_syncobjs[out_syncobjs_size];
       uint32_t nr_in_syncobjs = 0, nr_out_syncobjs = 0;
 
       for (uint32_t i = 0; i < submit->waitSemaphoreCount; i++) {
@@ -677,6 +681,13 @@ tu_QueueSubmit(VkQueue _queue,
             continue;
          out_syncobjs[nr_out_syncobjs++] = (struct drm_msm_gem_submit_syncobj) {
             .handle = part->syncobj,
+            .flags = 0,
+         };
+      }
+
+      if (last_submit && fence) {
+         out_syncobjs[nr_out_syncobjs++] = (struct drm_msm_gem_submit_syncobj) {
+            .handle = fence->syncobj,
             .flags = 0,
          };
       }
@@ -713,7 +724,6 @@ tu_QueueSubmit(VkQueue _queue,
       if (nr_out_syncobjs) {
          flags |= MSM_SUBMIT_SYNCOBJ_OUT;
       }
-
       if (last_submit) {
          flags |= MSM_SUBMIT_FENCE_FD_OUT;
       }
@@ -744,17 +754,184 @@ tu_QueueSubmit(VkQueue _queue,
       tu_semaphores_remove_temp(queue->device, pSubmits[i].pWaitSemaphores,
                                 pSubmits[i].waitSemaphoreCount);
       if (last_submit) {
-         /* no need to merge fences as queue execution is serialized */
-         tu_fence_update_fd(&queue->submit_fence, req.fence_fd);
-      } else if (last_submit) {
-         close(req.fence_fd);
+         if (queue->fence >= 0)
+            close(queue->fence);
+         queue->fence = req.fence_fd;
       }
    }
 
-   if (_fence != VK_NULL_HANDLE) {
-      TU_FROM_HANDLE(tu_fence, fence, _fence);
-      tu_fence_copy(fence, &queue->submit_fence);
+   if (!submitCount && fence) {
+      /* signal fence imemediately since we don't have a submit to do it */
+      ioctl(queue->device->fd, DRM_IOCTL_SYNCOBJ_SIGNAL, &(struct drm_syncobj_array) {
+         .handles = (uintptr_t) &fence->syncobj,
+         .count_handles = 1,
+      });
    }
 
    return VK_SUCCESS;
+}
+
+VkResult
+tu_CreateFence(VkDevice _device,
+               const VkFenceCreateInfo *pCreateInfo,
+               const VkAllocationCallbacks *pAllocator,
+               VkFence *pFence)
+{
+   TU_FROM_HANDLE(tu_device, device, _device);
+   int ret;
+
+   struct tu_fence *fence =
+         vk_object_alloc(&device->vk, pAllocator, sizeof(*fence),
+                         VK_OBJECT_TYPE_FENCE);
+   if (!fence)
+      return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
+
+   struct drm_syncobj_create create = {
+      .flags = COND(pCreateInfo->flags & VK_FENCE_CREATE_SIGNALED_BIT,
+                    DRM_SYNCOBJ_CREATE_SIGNALED)
+   };
+   ret = ioctl(device->fd, DRM_IOCTL_SYNCOBJ_CREATE, &create);
+   if (ret) {
+      vk_free2(&device->vk.alloc, pAllocator, fence);
+      return VK_ERROR_OUT_OF_HOST_MEMORY;
+   }
+
+   fence->syncobj = create.handle;
+
+   *pFence = tu_fence_to_handle(fence);
+
+   return VK_SUCCESS;
+}
+
+void
+tu_DestroyFence(VkDevice _device, VkFence _fence, const VkAllocationCallbacks *pAllocator)
+{
+   TU_FROM_HANDLE(tu_device, device, _device);
+   TU_FROM_HANDLE(tu_fence, fence, _fence);
+
+   if (!fence)
+      return;
+
+   ioctl(device->fd, DRM_IOCTL_SYNCOBJ_DESTROY,
+         &(struct drm_syncobj_destroy) { .handle = fence->syncobj });
+
+   vk_object_free(&device->vk, pAllocator, fence);
+}
+
+VkResult
+tu_ImportFenceFdKHR(VkDevice _device,
+                    const VkImportFenceFdInfoKHR *pImportFenceFdInfo)
+{
+   tu_stub();
+
+   return VK_SUCCESS;
+}
+
+VkResult
+tu_GetFenceFdKHR(VkDevice _device,
+                 const VkFenceGetFdInfoKHR *pGetFdInfo,
+                 int *pFd)
+{
+   tu_stub();
+
+   return VK_SUCCESS;
+}
+
+static VkResult
+drm_syncobj_wait(struct tu_device *device,
+                 const uint32_t *handles, uint32_t count_handles,
+                 int64_t timeout_nsec, bool wait_all)
+{
+   int ret = ioctl(device->fd, DRM_IOCTL_SYNCOBJ_WAIT, &(struct drm_syncobj_wait) {
+      .handles = (uint64_t) (uintptr_t) handles,
+      .count_handles = count_handles,
+      .timeout_nsec = timeout_nsec,
+      .flags = DRM_SYNCOBJ_WAIT_FLAGS_WAIT_FOR_SUBMIT |
+               COND(wait_all, DRM_SYNCOBJ_WAIT_FLAGS_WAIT_ALL)
+   });
+   if (ret) {
+      if (errno == ETIME)
+         return VK_TIMEOUT;
+
+      assert(0);
+      return VK_ERROR_DEVICE_LOST; /* TODO */
+   }
+   return VK_SUCCESS;
+}
+
+static uint64_t
+gettime_ns(void)
+{
+   struct timespec current;
+   clock_gettime(CLOCK_MONOTONIC, &current);
+   return (uint64_t)current.tv_sec * 1000000000 + current.tv_nsec;
+}
+
+/* and the kernel converts it right back to relative timeout - very smart UAPI */
+static uint64_t
+absolute_timeout(uint64_t timeout)
+{
+   if (timeout == 0)
+      return 0;
+   uint64_t current_time = gettime_ns();
+   uint64_t max_timeout = (uint64_t) INT64_MAX - current_time;
+
+   timeout = MIN2(max_timeout, timeout);
+
+   return (current_time + timeout);
+}
+
+VkResult
+tu_WaitForFences(VkDevice _device,
+                 uint32_t fenceCount,
+                 const VkFence *pFences,
+                 VkBool32 waitAll,
+                 uint64_t timeout)
+{
+   TU_FROM_HANDLE(tu_device, device, _device);
+
+   if (tu_device_is_lost(device))
+      return VK_ERROR_DEVICE_LOST;
+
+   uint32_t handles[fenceCount];
+   for (unsigned i = 0; i < fenceCount; ++i) {
+      TU_FROM_HANDLE(tu_fence, fence, pFences[i]);
+      handles[i] = fence->syncobj;
+   }
+
+   return drm_syncobj_wait(device, handles, fenceCount, absolute_timeout(timeout), waitAll);
+}
+
+VkResult
+tu_ResetFences(VkDevice _device, uint32_t fenceCount, const VkFence *pFences)
+{
+   TU_FROM_HANDLE(tu_device, device, _device);
+   int ret;
+
+   uint32_t handles[fenceCount];
+   for (unsigned i = 0; i < fenceCount; ++i) {
+      TU_FROM_HANDLE(tu_fence, fence, pFences[i]);
+      handles[i] = fence->syncobj;
+   }
+
+   ret = ioctl(device->fd, DRM_IOCTL_SYNCOBJ_RESET, &(struct drm_syncobj_array) {
+      .handles = (uint64_t) (uintptr_t) handles,
+      .count_handles = fenceCount,
+   });
+   assert(!ret);
+
+   return VK_SUCCESS;
+}
+
+VkResult
+tu_GetFenceStatus(VkDevice _device, VkFence _fence)
+{
+   TU_FROM_HANDLE(tu_device, device, _device);
+   TU_FROM_HANDLE(tu_fence, fence, _fence);
+   VkResult result;
+
+   result = drm_syncobj_wait(device, &fence->syncobj, 1, 0, false);
+   if (result == VK_TIMEOUT)
+      result = VK_NOT_READY;
+   return result;
 }
