@@ -198,6 +198,8 @@ Converter::Converter(Program *prog, nir_shader *nir, nv50_ir_prog_info *info,
      nir(nir),
      curLoopDepth(0),
      curIfDepth(0),
+     exit(NULL),
+     immInsertPos(NULL),
      clipVertexOutput(-1)
 {
    zero = mkImm((uint32_t)0);
