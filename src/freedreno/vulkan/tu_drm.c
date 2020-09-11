@@ -461,53 +461,6 @@ tu_semaphore_remove_temp(struct tu_device *device,
    }
 }
 
-static VkResult
-tu_get_semaphore_syncobjs(const VkSemaphore *sems,
-                          uint32_t sem_count,
-                          bool wait,
-                          struct drm_msm_gem_submit_syncobj **out,
-                          uint32_t *out_count)
-{
-   uint32_t syncobj_count = 0;
-   struct drm_msm_gem_submit_syncobj *syncobjs;
-
-   for (uint32_t i = 0; i  < sem_count; ++i) {
-      TU_FROM_HANDLE(tu_semaphore, sem, sems[i]);
-
-      struct tu_semaphore_part *part =
-         sem->temporary.kind != TU_SEMAPHORE_NONE ?
-            &sem->temporary : &sem->permanent;
-
-      if (part->kind == TU_SEMAPHORE_SYNCOBJ)
-         ++syncobj_count;
-   }
-
-   *out = NULL;
-   *out_count = syncobj_count;
-   if (!syncobj_count)
-      return VK_SUCCESS;
-
-   *out = syncobjs = calloc(syncobj_count, sizeof (*syncobjs));
-   if (!syncobjs)
-      return VK_ERROR_OUT_OF_HOST_MEMORY;
-
-   for (uint32_t i = 0, j = 0; i  < sem_count; ++i) {
-      TU_FROM_HANDLE(tu_semaphore, sem, sems[i]);
-
-      struct tu_semaphore_part *part =
-         sem->temporary.kind != TU_SEMAPHORE_NONE ?
-            &sem->temporary : &sem->permanent;
-
-      if (part->kind == TU_SEMAPHORE_SYNCOBJ) {
-         syncobjs[j].handle = part->syncobj;
-         syncobjs[j].flags = wait ? MSM_SUBMIT_SYNCOBJ_RESET : 0;
-         ++j;
-      }
-   }
-
-   return VK_SUCCESS;
-}
-
 static void
 tu_semaphores_remove_temp(struct tu_device *device,
                           const VkSemaphore *sems,
@@ -702,29 +655,41 @@ tu_QueueSubmit(VkQueue _queue,
                VkFence _fence)
 {
    TU_FROM_HANDLE(tu_queue, queue, _queue);
-   VkResult result;
 
    for (uint32_t i = 0; i < submitCount; ++i) {
       const VkSubmitInfo *submit = pSubmits + i;
       const bool last_submit = (i == submitCount - 1);
-      struct drm_msm_gem_submit_syncobj *in_syncobjs = NULL, *out_syncobjs = NULL;
-      uint32_t nr_in_syncobjs, nr_out_syncobjs;
+      /* note: assuming there won't be any very large semaphore counts */
+      struct drm_msm_gem_submit_syncobj in_syncobjs[submit->waitSemaphoreCount];
+      struct drm_msm_gem_submit_syncobj out_syncobjs[submit->signalSemaphoreCount];
+      uint32_t nr_in_syncobjs = 0, nr_out_syncobjs = 0;
 
-      result = tu_get_semaphore_syncobjs(pSubmits[i].pWaitSemaphores,
-                                         pSubmits[i].waitSemaphoreCount,
-                                         false, &in_syncobjs, &nr_in_syncobjs);
-      if (result != VK_SUCCESS) {
-         return tu_device_set_lost(queue->device,
-                                   "failed to allocate space for semaphore submission\n");
+      for (uint32_t i = 0; i < submit->waitSemaphoreCount; i++) {
+         TU_FROM_HANDLE(tu_semaphore, sem, submit->pWaitSemaphores[i]);
+
+         struct tu_semaphore_part *part =
+            sem->temporary.kind != TU_SEMAPHORE_NONE ?
+               &sem->temporary : &sem->permanent;
+         if (part->kind != TU_SEMAPHORE_SYNCOBJ)
+            continue;
+         in_syncobjs[nr_in_syncobjs++] = (struct drm_msm_gem_submit_syncobj) {
+            .handle = part->syncobj,
+            .flags = 0,
+         };
       }
 
-      result = tu_get_semaphore_syncobjs(pSubmits[i].pSignalSemaphores,
-                                         pSubmits[i].signalSemaphoreCount,
-                                         false, &out_syncobjs, &nr_out_syncobjs);
-      if (result != VK_SUCCESS) {
-         free(in_syncobjs);
-         return tu_device_set_lost(queue->device,
-                                   "failed to allocate space for semaphore submission\n");
+      for (uint32_t i = 0; i < submit->signalSemaphoreCount; i++) {
+         TU_FROM_HANDLE(tu_semaphore, sem, submit->pSignalSemaphores[i]);
+
+         struct tu_semaphore_part *part =
+            sem->temporary.kind != TU_SEMAPHORE_NONE ?
+               &sem->temporary : &sem->permanent;
+         if (part->kind != TU_SEMAPHORE_SYNCOBJ)
+            continue;
+         out_syncobjs[nr_out_syncobjs++] = (struct drm_msm_gem_submit_syncobj) {
+            .handle = part->syncobj,
+            .flags = 0,
+         };
       }
 
       uint32_t entry_count = 0;
@@ -782,15 +747,11 @@ tu_QueueSubmit(VkQueue _queue,
                                     DRM_MSM_GEM_SUBMIT,
                                     &req, sizeof(req));
       if (ret) {
-         free(in_syncobjs);
-         free(out_syncobjs);
          return tu_device_set_lost(queue->device, "submit failed: %s\n",
                                    strerror(errno));
       }
 
       mtx_unlock(&queue->device->bo_mutex);
-      free(in_syncobjs);
-      free(out_syncobjs);
 
       tu_semaphores_remove_temp(queue->device, pSubmits[i].pWaitSemaphores,
                                 pSubmits[i].waitSemaphoreCount);
