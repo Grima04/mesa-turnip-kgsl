@@ -310,9 +310,9 @@ tu_drm_device_init(struct tu_physical_device *device,
                        "failed to open device %s", path);
    }
 
-   /* Version 1.3 added MSM_INFO_IOVA. */
+   /* Version 1.6 added SYNCOBJ support. */
    const int min_version_major = 1;
-   const int min_version_minor = 3;
+   const int min_version_minor = 6;
 
    version = drmGetVersion(fd);
    if (!version) {
@@ -618,25 +618,14 @@ tu_GetSemaphoreFdKHR(VkDevice _device,
    return VK_SUCCESS;
 }
 
-static bool tu_has_syncobj(struct tu_physical_device *pdev)
-{
-   uint64_t value;
-   if (drmGetCap(pdev->local_fd, DRM_CAP_SYNCOBJ, &value))
-      return false;
-   return value && pdev->msm_major_version == 1 && pdev->msm_minor_version >= 6;
-}
-
 void
 tu_GetPhysicalDeviceExternalSemaphoreProperties(
    VkPhysicalDevice physicalDevice,
    const VkPhysicalDeviceExternalSemaphoreInfo *pExternalSemaphoreInfo,
    VkExternalSemaphoreProperties *pExternalSemaphoreProperties)
 {
-   TU_FROM_HANDLE(tu_physical_device, pdev, physicalDevice);
-
-   if (tu_has_syncobj(pdev) &&
-       (pExternalSemaphoreInfo->handleType == VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_FD_BIT ||
-        pExternalSemaphoreInfo->handleType == VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_SYNC_FD_BIT)) {
+   if (pExternalSemaphoreInfo->handleType == VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_FD_BIT ||
+       pExternalSemaphoreInfo->handleType == VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_SYNC_FD_BIT) {
       pExternalSemaphoreProperties->exportFromImportedHandleTypes = VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_FD_BIT | VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_SYNC_FD_BIT;
       pExternalSemaphoreProperties->compatibleHandleTypes = VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_FD_BIT | VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_SYNC_FD_BIT;
       pExternalSemaphoreProperties->externalSemaphoreFeatures = VK_EXTERNAL_SEMAPHORE_FEATURE_EXPORTABLE_BIT |
