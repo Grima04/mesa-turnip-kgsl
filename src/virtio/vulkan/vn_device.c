@@ -30,7 +30,14 @@
  * optional.  We should be able to advertise them or lie about them locally.
  */
 static const struct vk_instance_extension_table
-   vn_instance_supported_extensions;
+   vn_instance_supported_extensions = {
+      /* promoted to VK_VERSION_1_1 */
+      .KHR_device_group_creation = true,
+      .KHR_external_fence_capabilities = true,
+      .KHR_external_memory_capabilities = true,
+      .KHR_external_semaphore_capabilities = true,
+      .KHR_get_physical_device_properties2 = true,
+   };
 
 static const driOptionDescription vn_dri_options[] = {
    /* clang-format off */
@@ -1364,7 +1371,28 @@ vn_physical_device_get_supported_extensions(
    struct vk_device_extension_table *recognized)
 {
    memset(supported, 0, sizeof(*supported));
-   memset(recognized, 0, sizeof(*recognized));
+
+   *recognized = (struct vk_device_extension_table){
+      /* promoted to VK_VERSION_1_1 */
+      .KHR_16bit_storage = true,
+      .KHR_bind_memory2 = true,
+      .KHR_dedicated_allocation = true,
+      .KHR_descriptor_update_template = true,
+      .KHR_device_group = true,
+      .KHR_external_fence = true,
+      .KHR_external_memory = true,
+      .KHR_external_semaphore = true,
+      .KHR_get_memory_requirements2 = true,
+      .KHR_maintenance1 = true,
+      .KHR_maintenance2 = true,
+      .KHR_maintenance3 = true,
+      .KHR_multiview = true,
+      .KHR_relaxed_block_layout = true,
+      .KHR_sampler_ycbcr_conversion = true,
+      .KHR_shader_draw_parameters = true,
+      .KHR_storage_buffer_storage_class = true,
+      .KHR_variable_pointers = true,
+   };
 }
 
 static VkResult
