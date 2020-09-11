@@ -168,7 +168,7 @@ tu_CreateQueryPool(VkDevice _device,
       return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
    VkResult result = tu_bo_init_new(device, &pool->bo,
-         pCreateInfo->queryCount * slot_size);
+         pCreateInfo->queryCount * slot_size, false);
    if (result != VK_SUCCESS) {
       vk_object_free(&device->vk, pAllocator, pool);
       return result;
@@ -510,8 +510,6 @@ emit_copy_query_pool_results(struct tu_cmd_buffer *cmdbuf,
                               result_count /* offset */, flags);
       }
    }
-
-   tu_bo_list_add(&cmdbuf->bo_list, buffer->bo, MSM_SUBMIT_BO_WRITE);
 }
 
 void
@@ -595,8 +593,6 @@ tu_CmdResetQueryPool(VkCommandBuffer commandBuffer,
    default:
       assert(!"Invalid query type");
    }
-
-   tu_bo_list_add(&cmdbuf->bo_list, &pool->bo, MSM_SUBMIT_BO_WRITE);
 }
 
 void
@@ -713,8 +709,6 @@ tu_CmdBeginQuery(VkCommandBuffer commandBuffer,
    default:
       assert(!"Invalid query type");
    }
-
-   tu_bo_list_add(&cmdbuf->bo_list, &pool->bo, MSM_SUBMIT_BO_WRITE);
 }
 
 void
@@ -735,8 +729,6 @@ tu_CmdBeginQueryIndexedEXT(VkCommandBuffer commandBuffer,
    default:
       assert(!"Invalid query type");
    }
-
-   tu_bo_list_add(&cmdbuf->bo_list, &pool->bo, MSM_SUBMIT_BO_WRITE);
 }
 
 static void
@@ -976,8 +968,6 @@ tu_CmdEndQuery(VkCommandBuffer commandBuffer,
    }
 
    handle_multiview_queries(cmdbuf, pool, query);
-
-   tu_bo_list_add(&cmdbuf->bo_list, &pool->bo, MSM_SUBMIT_BO_WRITE);
 }
 
 void
@@ -998,8 +988,6 @@ tu_CmdEndQueryIndexedEXT(VkCommandBuffer commandBuffer,
    default:
       assert(!"Invalid query type");
    }
-
-   tu_bo_list_add(&cmdbuf->bo_list, &pool->bo, MSM_SUBMIT_BO_WRITE);
 }
 
 void
@@ -1010,8 +998,6 @@ tu_CmdWriteTimestamp(VkCommandBuffer commandBuffer,
 {
    TU_FROM_HANDLE(tu_cmd_buffer, cmd, commandBuffer);
    TU_FROM_HANDLE(tu_query_pool, pool, queryPool);
-
-   tu_bo_list_add(&cmd->bo_list, &pool->bo, MSM_SUBMIT_BO_WRITE);
 
    /* Inside a render pass, just write the timestamp multiple times so that
     * the user gets the last one if we use GMEM. There isn't really much

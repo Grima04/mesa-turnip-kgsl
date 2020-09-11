@@ -36,80 +36,6 @@
 #include "tu_cs.h"
 
 void
-tu_bo_list_init(struct tu_bo_list *list)
-{
-   list->count = list->capacity = 0;
-   list->bo_infos = NULL;
-}
-
-void
-tu_bo_list_destroy(struct tu_bo_list *list)
-{
-   free(list->bo_infos);
-}
-
-void
-tu_bo_list_reset(struct tu_bo_list *list)
-{
-   list->count = 0;
-}
-
-/**
- * \a flags consists of MSM_SUBMIT_BO_FLAGS.
- */
-static uint32_t
-tu_bo_list_add_info(struct tu_bo_list *list,
-                    const struct drm_msm_gem_submit_bo *bo_info)
-{
-   assert(bo_info->handle != 0);
-
-   for (uint32_t i = 0; i < list->count; ++i) {
-      if (list->bo_infos[i].handle == bo_info->handle) {
-         assert(list->bo_infos[i].presumed == bo_info->presumed);
-         list->bo_infos[i].flags |= bo_info->flags;
-         return i;
-      }
-   }
-
-   /* grow list->bo_infos if needed */
-   if (list->count == list->capacity) {
-      uint32_t new_capacity = MAX2(2 * list->count, 16);
-      struct drm_msm_gem_submit_bo *new_bo_infos = realloc(
-         list->bo_infos, new_capacity * sizeof(struct drm_msm_gem_submit_bo));
-      if (!new_bo_infos)
-         return TU_BO_LIST_FAILED;
-      list->bo_infos = new_bo_infos;
-      list->capacity = new_capacity;
-   }
-
-   list->bo_infos[list->count] = *bo_info;
-   return list->count++;
-}
-
-uint32_t
-tu_bo_list_add(struct tu_bo_list *list,
-               const struct tu_bo *bo,
-               uint32_t flags)
-{
-   return tu_bo_list_add_info(list, &(struct drm_msm_gem_submit_bo) {
-                                       .flags = flags,
-                                       .handle = bo->gem_handle,
-                                       .presumed = bo->iova,
-                                    });
-}
-
-VkResult
-tu_bo_list_merge(struct tu_bo_list *list, const struct tu_bo_list *other)
-{
-   for (uint32_t i = 0; i < other->count; i++) {
-      if (tu_bo_list_add_info(list, other->bo_infos + i) == TU_BO_LIST_FAILED)
-         return VK_ERROR_OUT_OF_HOST_MEMORY;
-   }
-
-   return VK_SUCCESS;
-}
-
-void
 tu6_emit_event_write(struct tu_cmd_buffer *cmd,
                      struct tu_cs *cs,
                      enum vgt_event_type event)
@@ -932,8 +858,6 @@ tu6_init_hw(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
                    A6XX_VSC_DRAW_STRM_ADDRESS(.bo = vsc_bo,
                                               .bo_offset = cmd->vsc_prim_strm_pitch * MAX_VSC_PIPES));
 
-   tu_bo_list_add(&cmd->bo_list, vsc_bo, MSM_SUBMIT_BO_READ | MSM_SUBMIT_BO_WRITE);
-
    tu_cs_sanity_check(cs);
 }
 
@@ -1436,7 +1360,6 @@ tu_create_cmd_buffer(struct tu_device *device,
       cmd_buffer->queue_family_index = TU_QUEUE_GENERAL;
    }
 
-   tu_bo_list_init(&cmd_buffer->bo_list);
    tu_cs_init(&cmd_buffer->cs, device, TU_CS_MODE_GROW, 4096);
    tu_cs_init(&cmd_buffer->draw_cs, device, TU_CS_MODE_GROW, 4096);
    tu_cs_init(&cmd_buffer->draw_epilogue_cs, device, TU_CS_MODE_GROW, 4096);
@@ -1457,7 +1380,6 @@ tu_cmd_buffer_destroy(struct tu_cmd_buffer *cmd_buffer)
    tu_cs_finish(&cmd_buffer->draw_epilogue_cs);
    tu_cs_finish(&cmd_buffer->sub_cs);
 
-   tu_bo_list_destroy(&cmd_buffer->bo_list);
    vk_object_free(&cmd_buffer->device->vk, &cmd_buffer->pool->alloc, cmd_buffer);
 }
 
@@ -1466,7 +1388,6 @@ tu_reset_cmd_buffer(struct tu_cmd_buffer *cmd_buffer)
 {
    cmd_buffer->record_result = VK_SUCCESS;
 
-   tu_bo_list_reset(&cmd_buffer->bo_list);
    tu_cs_reset(&cmd_buffer->cs);
    tu_cs_reset(&cmd_buffer->draw_cs);
    tu_cs_reset(&cmd_buffer->draw_epilogue_cs);
@@ -1655,7 +1576,6 @@ tu_CmdBindVertexBuffers(VkCommandBuffer commandBuffer,
 
       cmd->state.vb[firstBinding + i].base = tu_buffer_iova(buf) + pOffsets[i];
       cmd->state.vb[firstBinding + i].size = buf->size - pOffsets[i];
-      tu_bo_list_add(&cmd->bo_list, buf->bo, MSM_SUBMIT_BO_READ);
    }
 
    for (uint32_t i = 0; i < MAX_VBS; i++) {
@@ -1710,8 +1630,6 @@ tu_CmdBindIndexBuffer(VkCommandBuffer commandBuffer,
    cmd->state.index_va = buf->bo->iova + buf->bo_offset + offset;
    cmd->state.max_index_count = (buf->size - offset) >> index_shift;
    cmd->state.index_size = index_size;
-
-   tu_bo_list_add(&cmd->bo_list, buf->bo, MSM_SUBMIT_BO_READ);
 }
 
 void
@@ -1766,18 +1684,6 @@ tu_CmdBindDescriptorSets(VkCommandBuffer commandBuffer,
             dst[4] = va;
             dst[5] = va >> 32;
          }
-      }
-
-      for (unsigned j = 0; j < set->layout->buffer_count; ++j) {
-         if (set->buffers[j]) {
-            tu_bo_list_add(&cmd->bo_list, set->buffers[j],
-                           MSM_SUBMIT_BO_READ | MSM_SUBMIT_BO_WRITE);
-         }
-      }
-
-      if (set->size > 0) {
-         tu_bo_list_add(&cmd->bo_list, &set->pool->bo,
-                        MSM_SUBMIT_BO_READ | MSM_SUBMIT_BO_DUMP);
       }
    }
    assert(dyn_idx == dynamicOffsetCount);
@@ -1872,8 +1778,6 @@ void tu_CmdBindTransformFeedbackBuffersEXT(VkCommandBuffer commandBuffer,
       tu_cs_emit(cs, size + offset);
 
       cmd->state.streamout_offset[idx] = offset;
-
-      tu_bo_list_add(&cmd->bo_list, buf->bo, MSM_SUBMIT_BO_WRITE);
    }
 
    tu_cond_exec_end(cs);
@@ -1905,8 +1809,6 @@ tu_CmdBeginTransformFeedbackEXT(VkCommandBuffer commandBuffer,
          continue;
 
       TU_FROM_HANDLE(tu_buffer, buf, pCounterBuffers[i]);
-
-      tu_bo_list_add(&cmd->bo_list, buf->bo, MSM_SUBMIT_BO_READ);
 
       tu_cs_emit_pkt7(cs, CP_MEM_TO_REG, 3);
       tu_cs_emit(cs, CP_MEM_TO_REG_0_REG(REG_A6XX_VPC_SO_BUFFER_OFFSET(idx)) |
@@ -1955,8 +1857,6 @@ void tu_CmdEndTransformFeedbackEXT(VkCommandBuffer commandBuffer,
          continue;
 
       TU_FROM_HANDLE(tu_buffer, buf, pCounterBuffers[i]);
-
-      tu_bo_list_add(&cmd->bo_list, buf->bo, MSM_SUBMIT_BO_WRITE);
 
       /* VPC_SO_FLUSH_BASE has dwords counter, but counter should be in bytes */
       tu_cs_emit_pkt7(cs, CP_MEM_TO_REG, 3);
@@ -2037,24 +1937,6 @@ tu_EndCommandBuffer(VkCommandBuffer commandBuffer)
       tu_emit_cache_flush(cmd_buffer, &cmd_buffer->cs);
    }
 
-   tu_bo_list_add(&cmd_buffer->bo_list, &cmd_buffer->device->global_bo,
-                  MSM_SUBMIT_BO_READ | MSM_SUBMIT_BO_WRITE);
-
-   for (uint32_t i = 0; i < cmd_buffer->draw_cs.bo_count; i++) {
-      tu_bo_list_add(&cmd_buffer->bo_list, cmd_buffer->draw_cs.bos[i],
-                     MSM_SUBMIT_BO_READ | MSM_SUBMIT_BO_DUMP);
-   }
-
-   for (uint32_t i = 0; i < cmd_buffer->draw_epilogue_cs.bo_count; i++) {
-      tu_bo_list_add(&cmd_buffer->bo_list, cmd_buffer->draw_epilogue_cs.bos[i],
-                     MSM_SUBMIT_BO_READ | MSM_SUBMIT_BO_DUMP);
-   }
-
-   for (uint32_t i = 0; i < cmd_buffer->sub_cs.bo_count; i++) {
-      tu_bo_list_add(&cmd_buffer->bo_list, cmd_buffer->sub_cs.bos[i],
-                     MSM_SUBMIT_BO_READ | MSM_SUBMIT_BO_DUMP);
-   }
-
    tu_cs_end(&cmd_buffer->cs);
    tu_cs_end(&cmd_buffer->draw_cs);
    tu_cs_end(&cmd_buffer->draw_epilogue_cs);
@@ -2085,11 +1967,6 @@ tu_CmdBindPipeline(VkCommandBuffer commandBuffer,
 {
    TU_FROM_HANDLE(tu_cmd_buffer, cmd, commandBuffer);
    TU_FROM_HANDLE(tu_pipeline, pipeline, _pipeline);
-
-   for (uint32_t i = 0; i < pipeline->cs.bo_count; i++) {
-      tu_bo_list_add(&cmd->bo_list, pipeline->cs.bos[i],
-                     MSM_SUBMIT_BO_READ | MSM_SUBMIT_BO_DUMP);
-   }
 
    if (pipelineBindPoint == VK_PIPELINE_BIND_POINT_COMPUTE) {
       cmd->state.compute_pipeline = pipeline;
@@ -2551,12 +2428,6 @@ tu_CmdExecuteCommands(VkCommandBuffer commandBuffer,
    for (uint32_t i = 0; i < commandBufferCount; i++) {
       TU_FROM_HANDLE(tu_cmd_buffer, secondary, pCmdBuffers[i]);
 
-      result = tu_bo_list_merge(&cmd->bo_list, &secondary->bo_list);
-      if (result != VK_SUCCESS) {
-         cmd->record_result = result;
-         break;
-      }
-
       if (secondary->usage_flags &
           VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT) {
          assert(tu_cs_is_empty(&secondary->cs));
@@ -2581,11 +2452,6 @@ tu_CmdExecuteCommands(VkCommandBuffer commandBuffer,
       } else {
          assert(tu_cs_is_empty(&secondary->draw_cs));
          assert(tu_cs_is_empty(&secondary->draw_epilogue_cs));
-
-         for (uint32_t j = 0; j < secondary->cs.bo_count; j++) {
-            tu_bo_list_add(&cmd->bo_list, secondary->cs.bos[j],
-                           MSM_SUBMIT_BO_READ | MSM_SUBMIT_BO_DUMP);
-         }
 
          tu_cs_add_entries(&cmd->cs, &secondary->cs);
       }
@@ -2753,12 +2619,6 @@ tu_CmdBeginRenderPass(VkCommandBuffer commandBuffer,
    tu6_emit_render_cntl(cmd, cmd->state.subpass, &cmd->draw_cs, false);
 
    tu_set_input_attachments(cmd, cmd->state.subpass);
-
-   for (uint32_t i = 0; i < fb->attachment_count; ++i) {
-      const struct tu_image_view *iview = fb->attachments[i].attachment;
-      tu_bo_list_add(&cmd->bo_list, iview->image->bo,
-                     MSM_SUBMIT_BO_READ | MSM_SUBMIT_BO_WRITE);
-   }
 
    cmd->state.dirty |= TU_CMD_DIRTY_DRAW_STATE;
 }
@@ -2982,8 +2842,6 @@ tu6_emit_tess_consts(struct tu_cmd_buffer *cmd,
       if (result != VK_SUCCESS)
          return result;
 
-      tu_bo_list_add(&cmd->bo_list, tess_bo,
-            MSM_SUBMIT_BO_READ | MSM_SUBMIT_BO_WRITE);
       uint64_t tess_factor_iova = tess_bo->iova;
       uint64_t tess_param_iova = tess_factor_iova + tess_factor_size;
 
@@ -3339,8 +3197,6 @@ tu_CmdDrawIndirect(VkCommandBuffer commandBuffer,
    tu_cs_emit(cs, drawCount);
    tu_cs_emit_qw(cs, buf->bo->iova + buf->bo_offset + offset);
    tu_cs_emit(cs, stride);
-
-   tu_bo_list_add(&cmd->bo_list, buf->bo, MSM_SUBMIT_BO_READ | MSM_SUBMIT_BO_DUMP);
 }
 
 void
@@ -3370,8 +3226,6 @@ tu_CmdDrawIndexedIndirect(VkCommandBuffer commandBuffer,
    tu_cs_emit(cs, cmd->state.max_index_count);
    tu_cs_emit_qw(cs, buf->bo->iova + buf->bo_offset + offset);
    tu_cs_emit(cs, stride);
-
-   tu_bo_list_add(&cmd->bo_list, buf->bo, MSM_SUBMIT_BO_READ | MSM_SUBMIT_BO_DUMP);
 }
 
 void
@@ -3407,9 +3261,6 @@ tu_CmdDrawIndirectCount(VkCommandBuffer commandBuffer,
    tu_cs_emit_qw(cs, buf->bo->iova + buf->bo_offset + offset);
    tu_cs_emit_qw(cs, count_buf->bo->iova + count_buf->bo_offset + countBufferOffset);
    tu_cs_emit(cs, stride);
-
-   tu_bo_list_add(&cmd->bo_list, buf->bo, MSM_SUBMIT_BO_READ | MSM_SUBMIT_BO_DUMP);
-   tu_bo_list_add(&cmd->bo_list, count_buf->bo, MSM_SUBMIT_BO_READ | MSM_SUBMIT_BO_DUMP);
 }
 
 void
@@ -3442,9 +3293,6 @@ tu_CmdDrawIndexedIndirectCount(VkCommandBuffer commandBuffer,
    tu_cs_emit_qw(cs, buf->bo->iova + buf->bo_offset + offset);
    tu_cs_emit_qw(cs, count_buf->bo->iova + count_buf->bo_offset + countBufferOffset);
    tu_cs_emit(cs, stride);
-
-   tu_bo_list_add(&cmd->bo_list, buf->bo, MSM_SUBMIT_BO_READ | MSM_SUBMIT_BO_DUMP);
-   tu_bo_list_add(&cmd->bo_list, count_buf->bo, MSM_SUBMIT_BO_READ | MSM_SUBMIT_BO_DUMP);
 }
 
 void tu_CmdDrawIndirectByteCountEXT(VkCommandBuffer commandBuffer,
@@ -3476,8 +3324,6 @@ void tu_CmdDrawIndirectByteCountEXT(VkCommandBuffer commandBuffer,
    tu_cs_emit_qw(cs, buf->bo->iova + buf->bo_offset + counterBufferOffset);
    tu_cs_emit(cs, counterOffset);
    tu_cs_emit(cs, vertexStride);
-
-   tu_bo_list_add(&cmd->bo_list, buf->bo, MSM_SUBMIT_BO_READ);
 }
 
 struct tu_dispatch_info
@@ -3595,9 +3441,6 @@ tu_dispatch(struct tu_cmd_buffer *cmd,
 
    if (info->indirect) {
       uint64_t iova = tu_buffer_iova(info->indirect) + info->indirect_offset;
-
-      tu_bo_list_add(&cmd->bo_list, info->indirect->bo,
-                     MSM_SUBMIT_BO_READ | MSM_SUBMIT_BO_WRITE);
 
       tu_cs_emit_pkt7(cs, CP_EXEC_CS_INDIRECT, 4);
       tu_cs_emit(cs, 0x00000000);
@@ -3770,8 +3613,6 @@ tu_barrier(struct tu_cmd_buffer *cmd,
    for (uint32_t i = 0; i < info->eventCount; i++) {
       TU_FROM_HANDLE(tu_event, event, info->pEvents[i]);
 
-      tu_bo_list_add(&cmd->bo_list, &event->bo, MSM_SUBMIT_BO_READ);
-
       tu_cs_emit_pkt7(cs, CP_WAIT_REG_MEM, 6);
       tu_cs_emit(cs, CP_WAIT_REG_MEM_0_FUNCTION(WRITE_EQ) |
                      CP_WAIT_REG_MEM_0_POLL_MEMORY);
@@ -3816,8 +3657,6 @@ write_event(struct tu_cmd_buffer *cmd, struct tu_event *event,
    assert(!cmd->state.pass);
 
    tu_emit_cache_flush(cmd, cs);
-
-   tu_bo_list_add(&cmd->bo_list, &event->bo, MSM_SUBMIT_BO_WRITE);
 
    /* Flags that only require a top-of-pipe event. DrawIndirect parameters are
     * read by the CP, so the draw indirect stage counts as top-of-pipe too.
@@ -3935,8 +3774,6 @@ tu_CmdBeginConditionalRenderingEXT(VkCommandBuffer commandBuffer,
    tu_cs_emit(cs, CP_DRAW_PRED_SET_0_SRC(PRED_SRC_MEM) |
                   CP_DRAW_PRED_SET_0_TEST(inv ? EQ_0_PASS : NE_0_PASS));
    tu_cs_emit_qw(cs, global_iova(cmd, predicate));
-
-   tu_bo_list_add(&cmd->bo_list, buf->bo, MSM_SUBMIT_BO_READ);
 }
 
 void

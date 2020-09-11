@@ -1046,6 +1046,8 @@ tu_CreateDevice(VkPhysicalDevice physicalDevice,
    device->physical_device = physical_device;
    device->_lost = false;
 
+   mtx_init(&device->bo_mutex, mtx_plain);
+
    for (uint32_t i = 0; i < pCreateInfo->enabledExtensionCount; i++) {
       const char *ext_name = pCreateInfo->ppEnabledExtensionNames[i];
       int index = tu_get_device_extension_index(ext_name);
@@ -1096,7 +1098,7 @@ tu_CreateDevice(VkPhysicalDevice physicalDevice,
    if (custom_border_colors)
       global_size += TU_BORDER_COLOR_COUNT * sizeof(struct bcolor_entry);
 
-   result = tu_bo_init_new(device, &device->global_bo, global_size);
+   result = tu_bo_init_new(device, &device->global_bo, global_size, false);
    if (result != VK_SUCCESS)
       goto fail_global_bo;
 
@@ -1189,6 +1191,8 @@ tu_DestroyDevice(VkDevice _device, const VkAllocationCallbacks *pAllocator)
    VkPipelineCache pc = tu_pipeline_cache_to_handle(device->mem_cache);
    tu_DestroyPipelineCache(tu_device_to_handle(device), pc, NULL);
 
+   vk_free(&device->vk.alloc, device->bo_list);
+   vk_free(&device->vk.alloc, device->bo_idx);
    vk_free(&device->vk.alloc, device);
 }
 
@@ -1246,7 +1250,7 @@ tu_get_scratch_bo(struct tu_device *dev, uint64_t size, struct tu_bo **bo)
    }
 
    unsigned bo_size = 1ull << size_log2;
-   VkResult result = tu_bo_init_new(dev, &dev->scratch_bos[index].bo, bo_size);
+   VkResult result = tu_bo_init_new(dev, &dev->scratch_bos[index].bo, bo_size, false);
    if (result != VK_SUCCESS) {
       mtx_unlock(&dev->scratch_bos[index].construct_mtx);
       return result;
@@ -1469,7 +1473,7 @@ tu_alloc_memory(struct tu_device *device,
       }
    } else {
       result =
-         tu_bo_init_new(device, &mem->bo, pAllocateInfo->allocationSize);
+         tu_bo_init_new(device, &mem->bo, pAllocateInfo->allocationSize, false);
    }
 
    if (result != VK_SUCCESS) {
@@ -1738,7 +1742,7 @@ tu_CreateEvent(VkDevice _device,
    if (!event)
       return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
-   VkResult result = tu_bo_init_new(device, &event->bo, 0x1000);
+   VkResult result = tu_bo_init_new(device, &event->bo, 0x1000, false);
    if (result != VK_SUCCESS)
       goto fail_alloc;
 

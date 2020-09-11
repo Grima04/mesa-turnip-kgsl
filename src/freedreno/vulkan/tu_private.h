@@ -407,6 +407,13 @@ struct tu_device
    uint32_t vsc_prim_strm_pitch;
    BITSET_DECLARE(custom_border_color, TU_BORDER_COLOR_COUNT);
    mtx_t mutex;
+
+   /* bo list for submits: */
+   struct drm_msm_gem_submit_bo *bo_list;
+   /* map bo handles to bo list index: */
+   uint32_t *bo_idx;
+   uint32_t bo_count, bo_list_size, bo_idx_size;
+   mtx_t bo_mutex;
 };
 
 VkResult _tu_device_set_lost(struct tu_device *device,
@@ -422,7 +429,7 @@ tu_device_is_lost(struct tu_device *device)
 }
 
 VkResult
-tu_bo_init_new(struct tu_device *dev, struct tu_bo *bo, uint64_t size);
+tu_bo_init_new(struct tu_device *dev, struct tu_bo *bo, uint64_t size, bool dump);
 VkResult
 tu_bo_init_dmabuf(struct tu_device *dev,
                   struct tu_bo *bo,
@@ -588,8 +595,6 @@ struct tu_descriptor_set
    uint32_t *mapped_ptr;
 
    uint32_t *dynamic_descriptors;
-
-   struct tu_bo *buffers[0];
 };
 
 struct tu_push_descriptor_set
@@ -928,40 +933,6 @@ enum tu_cmd_buffer_status
    TU_CMD_BUFFER_STATUS_PENDING,
 };
 
-#ifndef MSM_SUBMIT_BO_READ
-#define MSM_SUBMIT_BO_READ             0x0001
-#define MSM_SUBMIT_BO_WRITE            0x0002
-#define MSM_SUBMIT_BO_DUMP             0x0004
-
-struct drm_msm_gem_submit_bo {
-   uint32_t flags;          /* in, mask of MSM_SUBMIT_BO_x */
-   uint32_t handle;         /* in, GEM handle */
-   uint64_t presumed;       /* in/out, presumed buffer address */
-};
-#endif
-
-struct tu_bo_list
-{
-   uint32_t count;
-   uint32_t capacity;
-   struct drm_msm_gem_submit_bo *bo_infos;
-};
-
-#define TU_BO_LIST_FAILED (~0)
-
-void
-tu_bo_list_init(struct tu_bo_list *list);
-void
-tu_bo_list_destroy(struct tu_bo_list *list);
-void
-tu_bo_list_reset(struct tu_bo_list *list);
-uint32_t
-tu_bo_list_add(struct tu_bo_list *list,
-               const struct tu_bo *bo,
-               uint32_t flags);
-VkResult
-tu_bo_list_merge(struct tu_bo_list *list, const struct tu_bo_list *other);
-
 struct tu_cmd_buffer
 {
    struct vk_object_base base;
@@ -986,7 +957,6 @@ struct tu_cmd_buffer
 
    VkResult record_result;
 
-   struct tu_bo_list bo_list;
    struct tu_cs cs;
    struct tu_cs draw_cs;
    struct tu_cs draw_epilogue_cs;

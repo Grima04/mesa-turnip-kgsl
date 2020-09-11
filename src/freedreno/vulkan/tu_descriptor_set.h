@@ -43,11 +43,6 @@ struct tu_descriptor_set_binding_layout
 
    uint32_t offset;
 
-   /* For descriptors that point to a buffer, index into the array of BO's to
-    * be added to the cmdbuffer's used BO list.
-    */
-   uint32_t buffer_offset;
-
    /* Index into the pDynamicOffsets array for dynamic descriptors, as well as
     * the array of dynamic descriptors (offsetted by
     * tu_pipeline_layout::set::dynamic_offset_start).
@@ -89,8 +84,6 @@ struct tu_descriptor_set_layout
     * descriptor-binding-time patching easier.
     */
    uint32_t dynamic_ubo;
-
-   uint32_t buffer_count;
 
    bool has_immutable_samplers;
    bool has_variable_descriptors;
