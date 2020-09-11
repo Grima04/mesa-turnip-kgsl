@@ -322,8 +322,14 @@ anv_physical_device_try_create(struct anv_instance *instance,
    brw_process_intel_debug_variable();
 
    fd = open(path, O_RDWR | O_CLOEXEC);
-   if (fd < 0)
-      return vk_error(VK_ERROR_INCOMPATIBLE_DRIVER);
+   if (fd < 0) {
+      if (errno == ENOMEM) {
+         return vk_errorfi(instance, NULL, VK_ERROR_OUT_OF_HOST_MEMORY,
+                        "Unable to open device %s: out of memory", path);
+      }
+      return vk_errorfi(instance, NULL, VK_ERROR_INCOMPATIBLE_DRIVER,
+                        "Unable to open device %s: %m", path);
+   }
 
    struct gen_device_info devinfo;
    if (!gen_get_device_info_from_fd(fd, &devinfo)) {
