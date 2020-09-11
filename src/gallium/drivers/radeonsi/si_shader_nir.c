@@ -242,28 +242,6 @@ static void scan_instruction(const struct nir_shader *nir, struct si_shader_info
       nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
 
       switch (intr->intrinsic) {
-      case nir_intrinsic_load_front_face:
-         info->uses_frontface = 1;
-         break;
-      case nir_intrinsic_load_instance_id:
-         info->uses_instanceid = 1;
-         break;
-      case nir_intrinsic_load_invocation_id:
-         info->uses_invocationid = true;
-         break;
-      case nir_intrinsic_load_num_work_groups:
-         info->uses_grid_size = true;
-         break;
-      case nir_intrinsic_load_local_invocation_index:
-      case nir_intrinsic_load_subgroup_id:
-      case nir_intrinsic_load_num_subgroups:
-         info->uses_subgroup_info = true;
-         break;
-      case nir_intrinsic_load_local_group_size:
-         /* The block size is translated to IMM with a fixed block size. */
-         if (info->base.cs.local_size_variable)
-            info->uses_variable_block_size = true;
-         break;
       case nir_intrinsic_load_local_invocation_id:
       case nir_intrinsic_load_work_group_id: {
          unsigned mask = nir_ssa_def_components_read(&intr->dest.ssa);
@@ -277,19 +255,6 @@ static void scan_instruction(const struct nir_shader *nir, struct si_shader_info
          }
          break;
       }
-      case nir_intrinsic_load_draw_id:
-         info->uses_drawid = 1;
-         break;
-      case nir_intrinsic_load_primitive_id:
-         info->uses_primid = 1;
-         break;
-      case nir_intrinsic_load_sample_mask_in:
-         info->reads_samplemask = true;
-         break;
-      case nir_intrinsic_load_tess_level_inner:
-      case nir_intrinsic_load_tess_level_outer:
-         info->reads_tess_factors = true;
-         break;
       case nir_intrinsic_bindless_image_load:
       case nir_intrinsic_bindless_image_size:
       case nir_intrinsic_bindless_image_samples:
@@ -349,35 +314,19 @@ static void scan_instruction(const struct nir_shader *nir, struct si_shader_info
          info->colors_read |= mask << (index * 4);
          break;
       }
-      case nir_intrinsic_load_barycentric_pixel:
-      case nir_intrinsic_load_barycentric_centroid:
-      case nir_intrinsic_load_barycentric_sample:
       case nir_intrinsic_load_barycentric_at_offset:   /* uses center */
-      case nir_intrinsic_load_barycentric_at_sample: { /* uses center */
-         unsigned mode = nir_intrinsic_interp_mode(intr);
-
-         if (mode == INTERP_MODE_FLAT)
+      case nir_intrinsic_load_barycentric_at_sample:   /* uses center */
+         if (nir_intrinsic_interp_mode(intr) == INTERP_MODE_FLAT)
             break;
 
-         if (mode == INTERP_MODE_NOPERSPECTIVE) {
-            if (intr->intrinsic == nir_intrinsic_load_barycentric_sample)
-               info->uses_linear_sample = true;
-            else if (intr->intrinsic == nir_intrinsic_load_barycentric_centroid)
-               info->uses_linear_centroid = true;
-            else
-               info->uses_linear_center = true;
+         if (nir_intrinsic_interp_mode(intr) == INTERP_MODE_NOPERSPECTIVE) {
+            info->uses_linear_center = true;
          } else {
-            if (intr->intrinsic == nir_intrinsic_load_barycentric_sample)
-               info->uses_persp_sample = true;
-            else if (intr->intrinsic == nir_intrinsic_load_barycentric_centroid)
-               info->uses_persp_centroid = true;
-            else
-               info->uses_persp_center = true;
+            info->uses_persp_center = true;
          }
          if (intr->intrinsic == nir_intrinsic_load_barycentric_at_sample)
             info->uses_interp_at_sample = true;
          break;
-      }
       case nir_intrinsic_load_input:
       case nir_intrinsic_load_per_vertex_input:
       case nir_intrinsic_load_input_vertex:
@@ -439,6 +388,27 @@ void si_nir_scan_shader(const struct nir_shader *nir, struct si_shader_info *inf
    if (nir->info.stage == MESA_SHADER_TESS_CTRL) {
       info->tessfactors_are_def_in_all_invocs = ac_are_tessfactors_def_in_all_invocs(nir);
    }
+
+   info->uses_frontface = nir->info.system_values_read & BITFIELD64_BIT(SYSTEM_VALUE_FRONT_FACE);
+   info->uses_instanceid = nir->info.system_values_read & BITFIELD64_BIT(SYSTEM_VALUE_INSTANCE_ID);
+   info->uses_invocationid = nir->info.system_values_read & BITFIELD64_BIT(SYSTEM_VALUE_INVOCATION_ID);
+   info->uses_grid_size = nir->info.system_values_read & BITFIELD64_BIT(SYSTEM_VALUE_NUM_WORK_GROUPS);
+   info->uses_subgroup_info = nir->info.system_values_read & BITFIELD64_BIT(SYSTEM_VALUE_LOCAL_INVOCATION_INDEX) ||
+                              nir->info.system_values_read & BITFIELD64_BIT(SYSTEM_VALUE_SUBGROUP_ID) ||
+                              nir->info.system_values_read & BITFIELD64_BIT(SYSTEM_VALUE_NUM_SUBGROUPS);
+   info->uses_variable_block_size = info->base.cs.local_size_variable &&
+                                    nir->info.system_values_read & BITFIELD64_BIT(SYSTEM_VALUE_LOCAL_GROUP_SIZE);
+   info->uses_drawid = nir->info.system_values_read & BITFIELD64_BIT(SYSTEM_VALUE_DRAW_ID);
+   info->uses_primid = nir->info.system_values_read & BITFIELD64_BIT(SYSTEM_VALUE_PRIMITIVE_ID);
+   info->reads_samplemask = nir->info.system_values_read & BITFIELD64_BIT(SYSTEM_VALUE_SAMPLE_MASK_IN);
+   info->reads_tess_factors = nir->info.system_values_read & BITFIELD64_BIT(SYSTEM_VALUE_TESS_LEVEL_INNER) ||
+                              nir->info.system_values_read & BITFIELD64_BIT(SYSTEM_VALUE_TESS_LEVEL_OUTER);
+   info->uses_linear_sample = nir->info.system_values_read & BITFIELD64_BIT(SYSTEM_VALUE_BARYCENTRIC_LINEAR_SAMPLE);
+   info->uses_linear_centroid = nir->info.system_values_read & BITFIELD64_BIT(SYSTEM_VALUE_BARYCENTRIC_LINEAR_CENTROID);
+   info->uses_linear_center = nir->info.system_values_read & BITFIELD64_BIT(SYSTEM_VALUE_BARYCENTRIC_LINEAR_PIXEL);
+   info->uses_persp_sample = nir->info.system_values_read & BITFIELD64_BIT(SYSTEM_VALUE_BARYCENTRIC_PERSP_SAMPLE);
+   info->uses_persp_centroid = nir->info.system_values_read & BITFIELD64_BIT(SYSTEM_VALUE_BARYCENTRIC_PERSP_CENTROID);
+   info->uses_persp_center = nir->info.system_values_read & BITFIELD64_BIT(SYSTEM_VALUE_BARYCENTRIC_PERSP_PIXEL);
 
    memset(info->output_semantic_to_slot, -1, sizeof(info->output_semantic_to_slot));
 
