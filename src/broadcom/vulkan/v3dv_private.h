@@ -121,6 +121,8 @@ pack_emit_reloc(void *cl, const void *reloc) {}
 
 #define MAX_SETS 16
 
+#define MAX_PUSH_CONSTANTS_SIZE 128
+
 struct v3dv_instance;
 
 #ifdef USE_V3D_SIMULATOR
@@ -463,6 +465,7 @@ enum v3dv_cmd_dirty_bits {
    V3DV_CMD_DIRTY_PIPELINE                  = 1 << 5,
    V3DV_CMD_DIRTY_VERTEX_BUFFER             = 1 << 6,
    V3DV_CMD_DIRTY_DESCRIPTOR_SETS           = 1 << 7,
+   V3DV_CMD_DIRTY_PUSH_CONSTANTS            = 1 << 8,
 };
 
 
@@ -584,6 +587,11 @@ struct v3dv_cmd_buffer_state {
    uint8_t index_size;
 };
 
+struct v3dv_descriptor {
+   struct v3dv_bo *bo;
+   uint32_t offset;
+};
+
 struct v3dv_cmd_buffer {
    VK_LOADER_DATA _loader_data;
 
@@ -598,6 +606,9 @@ struct v3dv_cmd_buffer {
    enum v3dv_cmd_buffer_status status;
 
    struct v3dv_cmd_buffer_state state;
+
+   uint32_t push_constants_data[MAX_PUSH_CONSTANTS_SIZE / 4];
+   struct v3dv_descriptor push_constants_descriptor;
 
    /* List of jobs to submit to the kernel */
    struct list_head submit_jobs;
@@ -727,11 +738,6 @@ struct v3dv_descriptor_pool {
    struct v3dv_descriptor_pool_entry entries[0];
 };
 
-struct v3dv_descriptor {
-   struct v3dv_bo *bo;
-   uint32_t offset;
-};
-
 struct v3dv_descriptor_set {
    struct v3dv_descriptor_pool *pool;
 
@@ -843,6 +849,9 @@ struct v3dv_pipeline {
 
    /* If the pipeline should emit any of the stencil configuration packets */
    bool emit_stencil_cfg[2];
+
+   /* If the pipeline is using push constants */
+   bool use_push_constants;
 
    /* Packets prepacked during pipeline creation
     */

@@ -127,6 +127,9 @@ cmd_buffer_create(struct v3dv_device *device,
    cmd_buffer->level = level;
    cmd_buffer->usage_flags = 0;
 
+   cmd_buffer->push_constants_descriptor.offset = 0;
+   cmd_buffer->push_constants_descriptor.bo = NULL;
+
    list_inithead(&cmd_buffer->submit_jobs);
 
    cmd_buffer->status = V3DV_CMD_BUFFER_STATUS_NEW;
@@ -188,6 +191,9 @@ cmd_buffer_destroy(struct v3dv_cmd_buffer *cmd_buffer)
       assert(cmd_buffer->state.attachment_count > 0);
       vk_free(&cmd_buffer->pool->alloc, cmd_buffer->state.attachments);
    }
+
+   if (cmd_buffer->push_constants_descriptor.bo)
+      v3dv_bo_free(cmd_buffer->device, cmd_buffer->push_constants_descriptor.bo);
 
    vk_free(&cmd_buffer->pool->alloc, cmd_buffer);
 }
@@ -2011,7 +2017,8 @@ cmd_buffer_emit_pre_draw(struct v3dv_cmd_buffer *cmd_buffer)
 
    if (*dirty & (V3DV_CMD_DIRTY_PIPELINE |
                  V3DV_CMD_DIRTY_VERTEX_BUFFER |
-                 V3DV_CMD_DIRTY_DESCRIPTOR_SETS)) {
+                 V3DV_CMD_DIRTY_DESCRIPTOR_SETS |
+                 V3DV_CMD_DIRTY_PUSH_CONSTANTS)) {
       emit_graphics_pipeline(cmd_buffer);
    }
 
@@ -2249,4 +2256,19 @@ v3dv_CmdBindDescriptorSets(VkCommandBuffer commandBuffer,
    }
 
    cmd_buffer->state.dirty |= V3DV_CMD_DIRTY_DESCRIPTOR_SETS;
+}
+
+void
+v3dv_CmdPushConstants(VkCommandBuffer commandBuffer,
+                      VkPipelineLayout layout,
+                      VkShaderStageFlags stageFlags,
+                      uint32_t offset,
+                      uint32_t size,
+                      const void *pValues)
+{
+   V3DV_FROM_HANDLE(v3dv_cmd_buffer, cmd_buffer, commandBuffer);
+
+   memcpy((void*) cmd_buffer->push_constants_data + offset, pValues, size);
+
+   cmd_buffer->state.dirty |= V3DV_CMD_DIRTY_PUSH_CONSTANTS;
 }

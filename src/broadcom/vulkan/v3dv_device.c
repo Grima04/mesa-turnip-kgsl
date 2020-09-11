@@ -644,7 +644,7 @@ v3dv_GetPhysicalDeviceProperties(VkPhysicalDevice physicalDevice,
       .maxTexelBufferElements                   = (1ul << 28),
       .maxUniformBufferRange                    = (1ul << 27) - 1,
       .maxStorageBufferRange                    = (1ul << 27) - 1,
-      .maxPushConstantsSize                     = (1ul << 27) - 1,
+      .maxPushConstantsSize                     = MAX_PUSH_CONSTANTS_SIZE,
       .maxMemoryAllocationCount                 = mem_size / page_size,
       .maxSamplerAllocationCount                = 64 * 1024,
       .bufferImageGranularity                   = 256, /* A cache line */

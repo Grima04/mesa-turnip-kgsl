@@ -294,16 +294,30 @@ descriptor_map_add(struct v3dv_descriptor_map *map,
    return index;
 }
 
+
+static void
+lower_load_push_constant(nir_builder *b, nir_intrinsic_instr *instr,
+                         struct v3dv_pipeline *pipeline)
+{
+   assert(instr->intrinsic == nir_intrinsic_load_push_constant);
+
+   /* FIXME: next assert it not something that should happen in general, just
+    * to catch any test example under that case and deal with it
+    */
+   assert(nir_intrinsic_base(instr) == 0);
+
+   instr->intrinsic = nir_intrinsic_load_uniform;
+}
+
 /* Gathers info from the intrinsic (set and binding) and then lowers it so it
  * could be used by the v3d_compiler */
-static bool
+static void
 lower_vulkan_resource_index(nir_builder *b,
                             nir_intrinsic_instr *instr,
                             struct v3dv_pipeline *pipeline,
                             const struct v3dv_pipeline_layout *layout)
 {
-   if (instr->intrinsic != nir_intrinsic_vulkan_resource_index)
-      return false;
+   assert(instr->intrinsic == nir_intrinsic_vulkan_resource_index);
 
    nir_const_value *const_val = nir_src_as_const_value(instr->src[0]);
 
@@ -324,13 +338,14 @@ lower_vulkan_resource_index(nir_builder *b,
       if (!const_val)
          unreachable("non-constant vulkan_resource_index array index");
 
-      /* Note: although for ubos we should skip index 0 which is used for push
-       * constants, that is already took into account when loading the ubo at
-       * nir_to_vir, so we don't need to do it here again.
-       */
       index = descriptor_map_add(descriptor_map, set, binding,
                                  const_val->u32,
                                  binding_layout->array_size);
+
+      if (nir_intrinsic_desc_type(instr) == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER) {
+         /* skip index 0 which is used for push constants */
+         index++;
+      }
       break;
    }
 
@@ -342,8 +357,27 @@ lower_vulkan_resource_index(nir_builder *b,
    nir_ssa_def_rewrite_uses(&instr->dest.ssa,
                             nir_src_for_ssa(nir_imm_int(b, index)));
    nir_instr_remove(&instr->instr);
+}
 
-   return true;
+static bool
+lower_intrinsic(nir_builder *b, nir_intrinsic_instr *instr,
+                struct v3dv_pipeline *pipeline,
+                const struct v3dv_pipeline_layout *layout)
+{
+   switch (instr->intrinsic) {
+
+   case nir_intrinsic_load_push_constant:
+      lower_load_push_constant(b, instr, pipeline);
+      pipeline->use_push_constants = true;
+      return true;
+
+   case nir_intrinsic_vulkan_resource_index:
+      lower_vulkan_resource_index(b, instr, pipeline, layout);
+      return true;
+
+   default:
+      return false;
+   }
 }
 
 static bool
@@ -361,8 +395,7 @@ lower_impl(nir_function_impl *impl,
          switch (instr->type) {
          case nir_instr_type_intrinsic:
             progress |=
-               lower_vulkan_resource_index(&b, nir_instr_as_intrinsic(instr),
-                                           pipeline, layout);
+               lower_intrinsic(&b, nir_instr_as_intrinsic(instr), pipeline, layout);
             break;
          default:
             break;

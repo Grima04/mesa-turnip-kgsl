@@ -53,6 +53,58 @@ get_descriptor(struct v3dv_descriptor_state *descriptor_state,
    return &set->descriptors[binding_layout->descriptor_index + array_index];
 }
 
+/*
+ * This method checks if the ubo used for push constants is needed to be
+ * updated or not.
+ *
+ * push contants ubo is only used for push constants accessed by a non-const
+ * index.
+ *
+ * FIXME: right now for this cases we are uploading the full
+ * push_constants_data. An improvement would be to upload only the data that
+ * we need to rely on a UBO.
+ */
+static void
+check_push_constants_ubo(struct v3dv_cmd_buffer *cmd_buffer)
+{
+   if (!(cmd_buffer->state.dirty & V3DV_CMD_DIRTY_PUSH_CONSTANTS))
+      return;
+
+   if (cmd_buffer->push_constants_descriptor.bo == NULL) {
+      cmd_buffer->push_constants_descriptor.bo =
+         v3dv_bo_alloc(cmd_buffer->device, MAX_PUSH_CONSTANTS_SIZE, "push constants");
+
+      if (!cmd_buffer->push_constants_descriptor.bo) {
+         fprintf(stderr, "Failed to allocate memory for push constants\n");
+         abort();
+      }
+
+      bool ok = v3dv_bo_map(cmd_buffer->device,
+                            cmd_buffer->push_constants_descriptor.bo,
+                            MAX_PUSH_CONSTANTS_SIZE);
+      if (!ok) {
+         fprintf(stderr, "failed to map push constants buffer\n");
+         abort();
+      }
+   } else {
+      if (cmd_buffer->push_constants_descriptor.offset + MAX_PUSH_CONSTANTS_SIZE <=
+          cmd_buffer->push_constants_descriptor.bo->size) {
+         cmd_buffer->push_constants_descriptor.offset += MAX_PUSH_CONSTANTS_SIZE;
+      } else {
+         /* FIXME: we got out of space for push descriptors. Should we create
+          * a new bo? This could be easier with a uploader
+          */
+      }
+   }
+
+   memcpy(cmd_buffer->push_constants_descriptor.bo->map +
+          cmd_buffer->push_constants_descriptor.offset,
+          cmd_buffer->push_constants_data,
+          MAX_PUSH_CONSTANTS_SIZE);
+
+   cmd_buffer->state.dirty &= ~V3DV_CMD_DIRTY_PUSH_CONSTANTS;
+}
+
 struct v3dv_cl_reloc
 v3dv_write_uniforms(struct v3dv_cmd_buffer *cmd_buffer,
                     struct v3dv_pipeline_stage *p_stage)
@@ -88,6 +140,11 @@ v3dv_write_uniforms(struct v3dv_cmd_buffer *cmd_buffer,
          cl_aligned_u32(&uniforms, data);
          break;
 
+      case QUNIFORM_UNIFORM:
+         assert(pipeline->use_push_constants);
+         cl_aligned_u32(&uniforms, cmd_buffer->push_constants_data[data]);
+         break;
+
       case QUNIFORM_VIEWPORT_X_SCALE:
          cl_aligned_f(&uniforms, dynamic->viewport.scale[0][0] * 256.0f);
          break;
@@ -115,18 +172,28 @@ v3dv_write_uniforms(struct v3dv_cmd_buffer *cmd_buffer,
             v3d_unit_data_get_offset(data) :
             0; /* FIXME */
 
-         /* UBO index is shift up by 1, to follow gallium (0 is gallium's
-          * constant buffer 0), that is what nir_to_vir expects. But for the
-          * ubo_map below, we start from 0.
+         /* For ubos, index is shifted, as 0 is reserved for push constants.
           */
-         uint32_t index =
-            uinfo->contents[i] == QUNIFORM_UBO_ADDR ?
-            v3d_unit_data_get_unit(data) - 1 :
-            data;
+         struct v3dv_descriptor *descriptor = NULL;
+         if (uinfo->contents[i] == QUNIFORM_UBO_ADDR &&
+             v3d_unit_data_get_unit(data) == 0) {
+            /* This calls is to ensure that the push_constant_ubo is
+             * updated. It already take into account it is should do the
+             * update or not
+             */
+            check_push_constants_ubo(cmd_buffer);
 
-         struct v3dv_descriptor *descriptor =
-            get_descriptor(descriptor_state, map, index);
-         assert(descriptor);
+            descriptor = &cmd_buffer->push_constants_descriptor;
+         } else {
+            uint32_t index =
+               uinfo->contents[i] == QUNIFORM_UBO_ADDR ?
+               v3d_unit_data_get_unit(data) - 1 :
+               data;
+
+            descriptor =
+               get_descriptor(descriptor_state, map, index);
+            assert(descriptor);
+         }
 
          cl_aligned_reloc(&job->indirect, &uniforms,
                           descriptor->bo,
