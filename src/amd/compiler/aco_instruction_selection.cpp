@@ -4735,21 +4735,21 @@ void visit_load_input(isel_context *ctx, nir_intrinsic_instr *instr)
             ctx->allocated_vec.emplace(dst.id(), elems);
       }
    } else if (ctx->shader->info.stage == MESA_SHADER_FRAGMENT) {
-      unsigned offset_idx = instr->intrinsic == nir_intrinsic_load_input ? 0 : 1;
-      nir_instr *off_instr = instr->src[offset_idx].ssa->parent_instr;
+      nir_src *off_src = nir_get_io_offset_src(instr);
+      nir_instr *off_instr = off_src->ssa->parent_instr;
       if (off_instr->type != nir_instr_type_load_const ||
           nir_instr_as_load_const(off_instr)->value[0].u32 != 0) {
          isel_err(off_instr, "Unimplemented nir_intrinsic_load_input offset");
       }
 
       Temp prim_mask = get_arg(ctx, ctx->args->ac.prim_mask);
-      nir_const_value* offset = nir_src_as_const_value(instr->src[offset_idx]);
+      nir_const_value* offset = nir_src_as_const_value(*off_src);
       if (offset) {
          assert(offset->u32 == 0);
       } else {
          /* the lower 15bit of the prim_mask contain the offset into LDS
           * while the upper bits contain the number of prims */
-         Temp offset_src = get_ssa_temp(ctx, instr->src[offset_idx].ssa);
+         Temp offset_src = get_ssa_temp(ctx, off_src->ssa);
          assert(offset_src.regClass() == s1 && "TODO: divergent offsets...");
          Builder bld(ctx->program, ctx->block);
          Temp stride = bld.sop2(aco_opcode::s_lshr_b32, bld.def(s1), bld.def(s1, scc), prim_mask, Operand(16u));
