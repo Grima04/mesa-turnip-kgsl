@@ -179,3 +179,34 @@ your repository and delete the tag to force a rebuild.  When your code
 is eventually merged to master, a full image rebuild will occur again
 (forks inherit images from the main repo, but MRs don't propagate
 images from the fork into the main repo's registry).
+
+Building locally using CI docker images
+---------------------------------------
+
+It can be frustrating to debug build failures on an environment you
+don't personally have.  If you're experiencing this with the CI
+builds, you can use Docker to use their build environment locally.  Go
+to your job log, and at the top you'll see a line like::
+
+    Pulling docker image registry.freedesktop.org/anholt/mesa/debian/android_build:2020-09-11
+
+We'll use a volume mount to make our current Mesa tree be what the
+Docker container uses, so they'll share everything (their build will
+go in _build, according to ``meson-build.sh``).  We're going to be
+using the image non-interactively so we use ``run --rm $IMAGE
+command`` instead of ``run -it $IMAGE bash`` (which you may also find
+useful for debug).  Extract your build setup variables from
+.gitlab-ci.yml and run the CI meson build script:
+
+.. code-block:: console
+
+    IMAGE=registry.freedesktop.org/anholt/mesa/debian/android_build:2020-09-11
+    sudo docker pull $IMAGE
+    sudo docker run --rm -v `pwd`:/mesa -w /mesa $IMAGE env PKG_CONFIG_PATH=/usr/local/lib/aarch64-linux-android/pkgconfig/:/android-ndk-r21d/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android/pkgconfig/ GALLIUM_DRIVERS=freedreno UNWIND=disabled EXTRA_OPTION="-D android-stub=true -D llvm=disabled" DRI_LOADERS="-D glx=disabled -D gbm=disabled -D egl=enabled -D platforms=android" CROSS=aarch64-linux-android ./.gitlab-ci/meson-build.sh
+
+All you have left over from the build is its output, and a _build
+directory.  You can hack on mesa and iterate testing the build with:
+
+.. code-block:: console
+
+    sudo docker run --rm -v `pwd`:/mesa $IMAGE ninja -C /mesa/_build
