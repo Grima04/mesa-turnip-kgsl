@@ -4223,17 +4223,6 @@ void visit_store_ls_or_es_output(isel_context *ctx, nir_intrinsic_instr *instr)
    }
 }
 
-bool tcs_output_is_tess_factor(isel_context *ctx, nir_intrinsic_instr *instr, bool per_vertex)
-{
-   if (per_vertex)
-      return false;
-
-   unsigned off = nir_intrinsic_base(instr) * 4u;
-   return off == ctx->tcs_tess_lvl_out_loc ||
-          off == ctx->tcs_tess_lvl_in_loc;
-
-}
-
 bool tcs_output_is_read_by_tes(isel_context *ctx, nir_intrinsic_instr *instr, bool per_vertex)
 {
    uint64_t mask = per_vertex
@@ -4266,8 +4255,10 @@ void visit_store_tcs_output(isel_context *ctx, nir_intrinsic_instr *instr, bool 
    Temp store_val = get_ssa_temp(ctx, instr->src[0].ssa);
    unsigned elem_size_bytes = instr->src[0].ssa->bit_size / 8;
    unsigned write_mask = nir_intrinsic_write_mask(instr);
+   nir_io_semantics semantics = nir_intrinsic_io_semantics(instr);
 
-   bool is_tess_factor = tcs_output_is_tess_factor(ctx, instr, per_vertex);
+   bool is_tess_factor = semantics.location == VARYING_SLOT_TESS_LEVEL_INNER ||
+                         semantics.location == VARYING_SLOT_TESS_LEVEL_OUTER;
    bool write_to_vmem = !is_tess_factor && tcs_output_is_read_by_tes(ctx, instr, per_vertex);
    bool write_to_lds = is_tess_factor || tcs_output_is_read_by_tcs(ctx, instr, per_vertex);
 
@@ -4282,6 +4273,12 @@ void visit_store_tcs_output(isel_context *ctx, nir_intrinsic_instr *instr, bool 
    }
 
    if (write_to_lds) {
+      /* Remember driver location of tess factors, so we can read them later, in write_tcs_tess_factors */
+      if (semantics.location == VARYING_SLOT_TESS_LEVEL_INNER)
+         ctx->tcs_tess_lvl_in_loc = nir_intrinsic_base(instr) * 4;
+      else if (semantics.location == VARYING_SLOT_TESS_LEVEL_OUTER)
+         ctx->tcs_tess_lvl_out_loc = nir_intrinsic_base(instr) * 4;
+
       std::pair<Temp, unsigned> lds_offs = get_tcs_output_lds_offset(ctx, instr, per_vertex);
       unsigned lds_align = calculate_lds_alignment(ctx, lds_offs.second);
       store_lds(ctx, elem_size_bytes, store_val, write_mask, lds_offs.first, lds_offs.second, lds_align);

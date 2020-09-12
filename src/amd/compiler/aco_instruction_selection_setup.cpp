@@ -571,11 +571,6 @@ setup_tcs_variables(isel_context *ctx, nir_shader *nir)
    nir_foreach_shader_out_variable(variable, nir) {
       assert(variable->data.location >= 0 && variable->data.location <= UINT8_MAX);
 
-      if (variable->data.location == VARYING_SLOT_TESS_LEVEL_OUTER)
-         ctx->tcs_tess_lvl_out_loc = variable->data.driver_location * 4u;
-      else if (variable->data.location == VARYING_SLOT_TESS_LEVEL_INNER)
-         ctx->tcs_tess_lvl_in_loc = variable->data.driver_location * 4u;
-
       if (variable->data.patch)
          ctx->output_tcs_patch_drv_loc_to_var_slot[variable->data.driver_location / 4] = variable->data.location;
       else
