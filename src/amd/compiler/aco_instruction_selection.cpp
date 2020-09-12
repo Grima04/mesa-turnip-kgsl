@@ -6985,6 +6985,7 @@ Temp emit_boolean_reduce(isel_context *ctx, nir_op op, unsigned cluster_size, Te
 Temp emit_boolean_exclusive_scan(isel_context *ctx, nir_op op, Temp src)
 {
    Builder bld(ctx->program, ctx->block);
+   assert(src.regClass() == bld.lm);
 
    //subgroupExclusiveAnd(val) -> mbcnt(exec & ~val) == 0
    //subgroupExclusiveOr(val) -> mbcnt(val & exec) != 0
@@ -6993,7 +6994,7 @@ Temp emit_boolean_exclusive_scan(isel_context *ctx, nir_op op, Temp src)
    if (op == nir_op_iand)
       tmp = bld.sop2(Builder::s_andn2, bld.def(bld.lm), bld.def(s1, scc), Operand(exec, bld.lm), src);
    else
-      tmp = bld.sop2(Builder::s_and, bld.def(s2), bld.def(s1, scc), src, Operand(exec, bld.lm));
+      tmp = bld.sop2(Builder::s_and, bld.def(bld.lm), bld.def(s1, scc), src, Operand(exec, bld.lm));
 
    Builder::Result lohi = bld.pseudo(aco_opcode::p_split_vector, bld.def(s1), bld.def(s1), tmp);
    Temp lo = lohi.def(0).getTemp();
