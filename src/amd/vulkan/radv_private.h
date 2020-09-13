@@ -2491,7 +2491,8 @@ bool radv_begin_thread_trace(struct radv_queue *queue);
 bool radv_end_thread_trace(struct radv_queue *queue);
 bool radv_get_thread_trace(struct radv_queue *queue,
 			   struct radv_thread_trace *thread_trace);
-void radv_emit_thread_trace_userdata(struct radeon_cmdbuf *cs,
+void radv_emit_thread_trace_userdata(const struct radv_device *device,
+				     struct radeon_cmdbuf *cs,
 				     const void *data, uint32_t num_dwords);
 
 /* radv_rgp.c */

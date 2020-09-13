@@ -361,7 +361,7 @@ radv_write_begin_general_api_marker(struct radv_cmd_buffer *cmd_buffer,
 	marker.identifier = RGP_SQTT_MARKER_IDENTIFIER_GENERAL_API;
 	marker.api_type = api_type;
 
-	radv_emit_thread_trace_userdata(cs, &marker, sizeof(marker) / 4);
+	radv_emit_thread_trace_userdata(cmd_buffer->device, cs, &marker, sizeof(marker) / 4);
 }
 
 static void
@@ -375,7 +375,7 @@ radv_write_end_general_api_marker(struct radv_cmd_buffer *cmd_buffer,
 	marker.api_type = api_type;
 	marker.is_end = 1;
 
-	radv_emit_thread_trace_userdata(cs, &marker, sizeof(marker) / 4);
+	radv_emit_thread_trace_userdata(cmd_buffer->device, cs, &marker, sizeof(marker) / 4);
 }
 
 static void
@@ -406,7 +406,7 @@ radv_write_event_marker(struct radv_cmd_buffer *cmd_buffer,
 	marker.instance_offset_reg_idx = instance_offset_user_data;
 	marker.draw_index_reg_idx = draw_index_user_data;
 
-	radv_emit_thread_trace_userdata(cs, &marker, sizeof(marker) / 4);
+	radv_emit_thread_trace_userdata(cmd_buffer->device, cs, &marker, sizeof(marker) / 4);
 }
 
 static void
@@ -427,7 +427,7 @@ radv_write_event_with_dims_marker(struct radv_cmd_buffer *cmd_buffer,
 	marker.thread_y = y;
 	marker.thread_z = z;
 
-	radv_emit_thread_trace_userdata(cs, &marker, sizeof(marker) / 4);
+	radv_emit_thread_trace_userdata(cmd_buffer->device, cs, &marker, sizeof(marker) / 4);
 }
 
 void
@@ -452,7 +452,7 @@ radv_describe_begin_cmd_buffer(struct radv_cmd_buffer *cmd_buffer)
 	if (cmd_buffer->queue_family_index == RADV_QUEUE_GENERAL)
 		marker.queue_flags |= VK_QUEUE_GRAPHICS_BIT;
 
-	radv_emit_thread_trace_userdata(cs, &marker, sizeof(marker) / 4);
+	radv_emit_thread_trace_userdata(cmd_buffer->device, cs, &marker, sizeof(marker) / 4);
 }
 
 void
@@ -470,7 +470,7 @@ radv_describe_end_cmd_buffer(struct radv_cmd_buffer *cmd_buffer)
 	marker.device_id_low = device_id;
 	marker.device_id_high = device_id >> 32;
 
-	radv_emit_thread_trace_userdata(cs, &marker, sizeof(marker) / 4);
+	radv_emit_thread_trace_userdata(cmd_buffer->device, cs, &marker, sizeof(marker) / 4);
 }
 
 void
@@ -522,7 +522,7 @@ radv_describe_barrier_start(struct radv_cmd_buffer *cmd_buffer,
 	marker.cb_id = 0;
 	marker.dword02 = reason;
 
-	radv_emit_thread_trace_userdata(cs, &marker, sizeof(marker) / 4);
+	radv_emit_thread_trace_userdata(cmd_buffer->device, cs, &marker, sizeof(marker) / 4);
 }
 
 void
@@ -541,7 +541,7 @@ radv_describe_barrier_end(struct radv_cmd_buffer *cmd_buffer)
 
 	/* TODO: fill pipeline stalls, cache flushes, etc */
 
-	radv_emit_thread_trace_userdata(cs, &marker, sizeof(marker) / 4);
+	radv_emit_thread_trace_userdata(cmd_buffer->device, cs, &marker, sizeof(marker) / 4);
 
 	cmd_buffer->state.num_layout_transitions = 0;
 }
@@ -566,7 +566,7 @@ radv_describe_layout_transition(struct radv_cmd_buffer *cmd_buffer,
 	marker.fmask_color_expand = barrier->layout_transitions.fmask_color_expand;
 	marker.init_mask_ram = barrier->layout_transitions.init_mask_ram;
 
-	radv_emit_thread_trace_userdata(cs, &marker, sizeof(marker) / 4);
+	radv_emit_thread_trace_userdata(cmd_buffer->device, cs, &marker, sizeof(marker) / 4);
 
 	cmd_buffer->state.num_layout_transitions++;
 }
