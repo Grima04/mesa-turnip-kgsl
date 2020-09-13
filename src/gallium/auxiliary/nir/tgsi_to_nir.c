@@ -112,7 +112,6 @@ struct ttn_compile {
    bool cap_face_is_sysval;
    bool cap_position_is_sysval;
    bool cap_point_is_sysval;
-   bool cap_packed_uniforms;
    bool cap_samplers_as_deref;
 };
 
@@ -2371,7 +2370,6 @@ static void
 ttn_read_pipe_caps(struct ttn_compile *c,
                    struct pipe_screen *screen)
 {
-   c->cap_packed_uniforms = screen->get_param(screen, PIPE_CAP_PACKED_UNIFORMS);
    c->cap_samplers_as_deref = screen->get_param(screen, PIPE_CAP_NIR_SAMPLERS_AS_DEREF);
    c->cap_face_is_sysval = screen->get_param(screen, PIPE_CAP_TGSI_FS_FACE_IS_INTEGER_SYSVAL);
    c->cap_position_is_sysval = screen->get_param(screen, PIPE_CAP_TGSI_FS_POSITION_IS_SYSVAL);
@@ -2579,7 +2577,7 @@ ttn_finalize_nir(struct ttn_compile *c, struct pipe_screen *screen)
    NIR_PASS_V(nir, nir_lower_system_values);
    NIR_PASS_V(nir, nir_lower_compute_system_values, NULL);
 
-   if (c->cap_packed_uniforms)
+   if (nir->options->lower_uniforms_to_ubo)
       NIR_PASS_V(nir, nir_lower_uniforms_to_ubo, 16);
 
    if (!c->cap_samplers_as_deref)
