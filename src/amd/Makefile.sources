@@ -78,6 +78,7 @@ ACO_FILES = \
 	compiler/aco_dead_code_analysis.cpp \
 	compiler/aco_dominance.cpp \
 	compiler/aco_instruction_selection.cpp \
+	compiler/aco_instruction_selection.h \
 	compiler/aco_instruction_selection_setup.cpp \
 	compiler/aco_interface.cpp \
 	compiler/aco_interface.h \
