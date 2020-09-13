@@ -1248,9 +1248,13 @@ bool EmitAluInstruction::emit_tex_fdd(const nir_alu_instr& instr, TexInstruction
    std::array<int, 4> writemask = {0,1,2,3};
 
    int ncomp = nir_src_num_components(instr.src[0].src);
-   auto src = vec_from_nir_with_fetch_constant(instr.src[0].src, (1 << ncomp) - 1, {0,1,2,3});
 
+   GPRVector::Swizzle src_swz;
+   for (auto i = 0; i < 4; ++i) {
+      src_swz[i] = instr.src[0].swizzle[i];
+   }
 
+   auto src = vec_from_nir_with_fetch_constant(instr.src[0].src, (1 << ncomp) - 1, src_swz);
 
    if (instr.src[0].abs || instr.src[0].negate) {
       GPRVector tmp = get_temp_vec4();
