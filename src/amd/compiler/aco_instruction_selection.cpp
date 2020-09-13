@@ -149,14 +149,14 @@ Temp get_ssa_temp(struct isel_context *ctx, nir_ssa_def *def)
    return ctx->allocated[def->index];
 }
 
-Temp emit_mbcnt(isel_context *ctx, Temp dst, Temp mask = Temp())
+Temp emit_mbcnt(isel_context *ctx, Temp dst, Temp mask = Temp(), Operand base = Operand(0u))
 {
    Builder bld(ctx->program, ctx->block);
    assert(mask.id() == 0 || mask.regClass() == bld.lm);
 
    if (ctx->program->wave_size == 32) {
       Operand mask_lo = mask.id() ? Operand(mask) : Operand(-1u);
-      return bld.vop3(aco_opcode::v_mbcnt_lo_u32_b32, Definition(dst), mask_lo, Operand(0u));
+      return bld.vop3(aco_opcode::v_mbcnt_lo_u32_b32, Definition(dst), mask_lo, base);
    }
 
    Operand mask_lo(-1u);
@@ -168,7 +168,7 @@ Temp emit_mbcnt(isel_context *ctx, Temp dst, Temp mask = Temp())
       mask_hi = Operand(mask_split.def(1).getTemp());
    }
 
-   Temp mbcnt_lo = bld.vop3(aco_opcode::v_mbcnt_lo_u32_b32, bld.def(v1), mask_lo, Operand(0u));
+   Temp mbcnt_lo = bld.vop3(aco_opcode::v_mbcnt_lo_u32_b32, bld.def(v1), mask_lo, base);
 
    if (ctx->program->chip_class <= GFX7)
       return bld.vop2(aco_opcode::v_mbcnt_hi_u32_b32, Definition(dst), mask_hi, mbcnt_lo);
