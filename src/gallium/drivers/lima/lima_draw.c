@@ -193,7 +193,8 @@ lima_clear(struct pipe_context *pctx, unsigned buffers, const struct pipe_scisso
 
 enum lima_attrib_type {
    LIMA_ATTRIB_FLOAT = 0x000,
-   /* todo: find out what lives here. */
+   LIMA_ATTRIB_I32   = 0x001,
+   LIMA_ATTRIB_U32   = 0x002,
    LIMA_ATTRIB_I16   = 0x004,
    LIMA_ATTRIB_U16   = 0x005,
    LIMA_ATTRIB_I8    = 0x006,
@@ -202,8 +203,8 @@ enum lima_attrib_type {
    LIMA_ATTRIB_U8N   = 0x009,
    LIMA_ATTRIB_I16N  = 0x00A,
    LIMA_ATTRIB_U16N  = 0x00B,
-   /* todo: where is the 32 int */
-   /* todo: find out what lives here. */
+   LIMA_ATTRIB_I32N  = 0x00D,
+   LIMA_ATTRIB_U32N  = 0x00E,
    LIMA_ATTRIB_FIXED = 0x101
 };
 
@@ -232,6 +233,12 @@ lima_pipe_format_to_attrib_type(enum pipe_format format)
          else
             return LIMA_ATTRIB_I16;
       }
+      else if (c->size == 32) {
+         if (c->normalized)
+            return LIMA_ATTRIB_I32N;
+         else
+            return LIMA_ATTRIB_I32;
+      }
       break;
    case UTIL_FORMAT_TYPE_UNSIGNED:
       if (c->size == 8) {
@@ -245,6 +252,12 @@ lima_pipe_format_to_attrib_type(enum pipe_format format)
             return LIMA_ATTRIB_U16N;
          else
             return LIMA_ATTRIB_U16;
+      }
+      else if (c->size == 32) {
+         if (c->normalized)
+            return LIMA_ATTRIB_U32N;
+         else
+            return LIMA_ATTRIB_U32;
       }
       break;
    }
