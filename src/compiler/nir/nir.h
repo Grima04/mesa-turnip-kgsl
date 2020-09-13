@@ -3319,6 +3319,10 @@ typedef struct nir_shader_compiler_options {
 
    unsigned max_unroll_iterations;
 
+   /* For the non-zero value of the enum corresponds multiplier when
+    * calling lower_uniforms_to_ubo */
+   bool lower_uniforms_to_ubo;
+
    nir_lower_int64_options lower_int64_options;
    nir_lower_doubles_options lower_doubles_options;
 } nir_shader_compiler_options;
