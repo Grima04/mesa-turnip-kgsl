@@ -98,6 +98,7 @@ EXTENSIONS = [
     Extension('VK_EXT_shader_viewport_index_layer',       1, True),
     Extension('VK_EXT_extended_dynamic_state',            1, True),
     Extension('VK_KHR_push_descriptor',                   1, True),
+    Extension('VK_KHR_incremental_present',               1, 'TU_HAS_SURFACE'),
 ]
 
 MAX_API_VERSION = VkVersion(MAX_API_VERSION)
