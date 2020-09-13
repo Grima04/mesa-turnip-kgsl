@@ -9,7 +9,7 @@ MESA_UTIL_FILES := \
 	blob.h \
 	build_id.c \
 	build_id.h \
-        compiler.h \
+	compiler.h \
 	crc32.c \
 	crc32.h \
 	dag.c \
@@ -18,6 +18,8 @@ MESA_UTIL_FILES := \
 	debug.h \
 	disk_cache.c \
 	disk_cache.h \
+	disk_cache_os.c \
+	disk_cache_os.h \
 	double.c \
 	double.h \
 	enum_operators.h \
