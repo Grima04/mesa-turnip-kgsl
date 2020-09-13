@@ -1199,6 +1199,7 @@ const struct nir_shader_compiler_options r600_nir_fs_options = {
 	.vectorize_io = true,
 	.has_umad24 = true,
 	.has_umul24 = true,
+        .lower_uniforms_to_ubo = true
 };
 
 const struct nir_shader_compiler_options r600_nir_options = {
@@ -1219,6 +1220,7 @@ const struct nir_shader_compiler_options r600_nir_options = {
 	.vectorize_io = true,
 	.has_umad24 = true,
 	.has_umul24 = true,
+        .lower_uniforms_to_ubo = true
 };
 
 

@@ -631,8 +631,6 @@ bool ShaderFromNirProcessor::emit_intrinsic_instruction(nir_intrinsic_instr* ins
       return emit_load_scratch(instr);
    case nir_intrinsic_store_deref:
       return emit_store_deref(instr);
-   case nir_intrinsic_load_uniform:
-      return reserve_uniform(instr);
    case nir_intrinsic_discard:
    case nir_intrinsic_discard_if:
       return emit_discard_if(instr);
@@ -911,50 +909,6 @@ bool ShaderFromNirProcessor::emit_load_input_deref(const nir_variable *var,
                                                    nir_intrinsic_instr* instr)
 {
    return do_emit_load_deref(var, instr);
-}
-
-bool ShaderFromNirProcessor::reserve_uniform(nir_intrinsic_instr* instr)
-{
-   r600::sfn_log << SfnLog::instr << __func__ << ": emit '"
-                 << *reinterpret_cast<nir_instr*>(instr)
-                 << "'\n";
-
-
-   /* If the target register is a SSA register and the loading is not
-    * indirect then we can do lazy loading, i.e. the uniform value can
-    * be used directly. Otherwise we have to load the data for real
-    * rigt away.
-    */
-
-   /* Try to find the literal that defines the array index */
-   const nir_load_const_instr* literal = nullptr;
-   if (instr->src[0].is_ssa)
-      literal = get_literal_constant(instr->src[0].ssa->index);
-
-   int base = nir_intrinsic_base(instr);
-   if (literal) {
-      AluInstruction *ir = nullptr;
-
-      for (int i = 0; i < instr->num_components ; ++i) {
-         PValue u = PValue(new UniformValue(512 + literal->value[0].u32 + base, i));
-         sfn_log << SfnLog::io << "uniform "
-                 << instr->dest.ssa.index << " const["<< i << "]: "<< instr->const_index[i] << "\n";
-
-         if (instr->dest.is_ssa)
-            load_preloaded_value(instr->dest, i, u);
-         else {
-            ir = new AluInstruction(op1_mov, from_nir(instr->dest, i),
-                                                   u, {alu_write});
-             emit_instruction(ir);
-         }
-      }
-      if (ir)
-         ir->set_flag(alu_last_instr);
-   } else {
-      PValue addr = from_nir(instr->src[0], 0, 0);
-      return load_uniform_indirect(instr, addr, 16 * base, 0);
-   }
-   return true;
 }
 
 bool ShaderFromNirProcessor::load_uniform_indirect(nir_intrinsic_instr* instr, PValue addr, int offest, int bufferid)
