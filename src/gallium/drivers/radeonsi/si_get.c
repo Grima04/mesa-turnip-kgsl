@@ -961,6 +961,7 @@ void si_init_screen_get_functions(struct si_screen *sscreen)
       .optimize_sample_mask_in = true,
       .max_unroll_iterations = 32,
       .use_interpolated_input_intrinsics = true,
+      .lower_uniforms_to_ubo = true,
    };
    sscreen->nir_options = nir_options;
 }
