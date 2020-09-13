@@ -103,6 +103,34 @@ static inline void AlignedFree(void* p)
 #define _mm_popcount_sizeT _mm_popcnt_u32
 #endif
 
+#if !defined(_WIN64)
+inline unsigned char _BitScanForward64(unsigned long* Index, uint64_t Mask)
+{
+#ifdef __GNUC__
+    *Index = __builtin_ctzll(Mask);
+#else
+    *Index = 0;
+    for (int i = 0; i < 64; ++ i)
+      if ((1ULL << i) & Mask)
+        *Index = i;
+#endif
+    return (Mask != 0);
+}
+
+inline unsigned char _BitScanReverse64(unsigned long* Index, uint64_t Mask)
+{
+#ifdef __GNUC__
+    *Index = 63 - __builtin_clzll(Mask);
+#else
+    *Index = 0;
+    for (int i = 63; i >= 0; -- i)
+      if ((1ULL << i) & Mask)
+        *Index = i;
+#endif
+    return (Mask != 0);
+}
+#endif
+
 #elif defined(__APPLE__) || defined(FORCE_LINUX) || defined(__linux__) || defined(__gnu_linux__)
 
 #define SWR_API
