@@ -2731,6 +2731,39 @@ vtn_handle_variables(struct vtn_builder *b, SpvOp opcode,
       break;
    }
 
+   case SpvOpCopyMemorySized: {
+      struct vtn_value *dest_val = vtn_value(b, w[1], vtn_value_type_pointer);
+      struct vtn_value *src_val = vtn_value(b, w[2], vtn_value_type_pointer);
+      nir_ssa_def *size = vtn_get_nir_ssa(b, w[3]);
+      struct vtn_pointer *dest = dest_val->pointer;
+      struct vtn_pointer *src = src_val->pointer;
+
+      unsigned idx = 4, dest_alignment, src_alignment;
+      SpvMemoryAccessMask dest_access, src_access;
+      SpvScope dest_scope, src_scope;
+      vtn_get_mem_operands(b, w, count, &idx, &dest_access, &dest_alignment,
+                           &dest_scope, &src_scope);
+      if (!vtn_get_mem_operands(b, w, count, &idx, &src_access, &src_alignment,
+                                NULL, &src_scope)) {
+         src_alignment = dest_alignment;
+         src_access = dest_access;
+      }
+      src = vtn_align_pointer(b, src, src_alignment);
+      dest = vtn_align_pointer(b, dest, dest_alignment);
+
+      vtn_emit_make_visible_barrier(b, src_access, src_scope, src->mode);
+
+      nir_memcpy_deref_with_access(&b->nb,
+                                   vtn_pointer_to_deref(b, dest),
+                                   vtn_pointer_to_deref(b, dest),
+                                   size,
+                                   spv_access_to_gl_access(dest_access),
+                                   spv_access_to_gl_access(src_access));
+
+      vtn_emit_make_available_barrier(b, dest_access, dest_scope, dest->mode);
+      break;
+   }
+
    case SpvOpLoad: {
       struct vtn_type *res_type = vtn_get_type(b, w[1]);
       struct vtn_value *src_val = vtn_value(b, w[3], vtn_value_type_pointer);
@@ -2877,7 +2910,6 @@ vtn_handle_variables(struct vtn_builder *b, SpvOp opcode,
       break;
    }
 
-   case SpvOpCopyMemorySized:
    default:
       vtn_fail_with_opcode("Unhandled opcode", opcode);
    }
