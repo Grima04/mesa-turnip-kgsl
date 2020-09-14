@@ -4568,7 +4568,7 @@ void visit_load_input(isel_context *ctx, nir_intrinsic_instr *instr)
       /* skip unused channels at the start */
       if (vtx_info->chan_byte_size && !post_shuffle) {
          channel_start = ffs(mask) - 1;
-         for (unsigned i = 0; i < channel_start; i++)
+         for (unsigned i = 0; i < MIN2(channel_start, num_channels); i++)
             channels[i] = Temp(0, s1);
       } else if (vtx_info->chan_byte_size && post_shuffle && !(mask & 0x8)) {
          num_channels = 3 - (ffs(mask) - 1);
