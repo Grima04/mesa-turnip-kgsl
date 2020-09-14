@@ -1219,14 +1219,14 @@ backend_shader::dump_instructions(const char *name) const
    if (cfg) {
       int ip = 0;
       foreach_block_and_inst(block, backend_instruction, inst, cfg) {
-         if (!unlikely(INTEL_DEBUG & DEBUG_OPTIMIZER))
+         if (!(INTEL_DEBUG & DEBUG_OPTIMIZER))
             fprintf(file, "%4d: ", ip++);
          dump_instruction(inst, file);
       }
    } else {
       int ip = 0;
       foreach_in_list(backend_instruction, inst, &instructions) {
-         if (!unlikely(INTEL_DEBUG & DEBUG_OPTIMIZER))
+         if (!(INTEL_DEBUG & DEBUG_OPTIMIZER))
             fprintf(file, "%4d: ", ip++);
          dump_instruction(inst, file);
       }
@@ -1340,7 +1340,7 @@ brw_compile_tes(const struct brw_compiler *compiler,
                              : BRW_TESS_OUTPUT_TOPOLOGY_TRI_CCW;
    }
 
-   if (unlikely(INTEL_DEBUG & DEBUG_TES)) {
+   if (INTEL_DEBUG & DEBUG_TES) {
       fprintf(stderr, "TES Input ");
       brw_print_vue_map(stderr, input_vue_map);
       fprintf(stderr, "TES Output ");
@@ -1362,7 +1362,7 @@ brw_compile_tes(const struct brw_compiler *compiler,
 
       fs_generator g(compiler, log_data, mem_ctx,
                      &prog_data->base.base, false, MESA_SHADER_TESS_EVAL);
-      if (unlikely(INTEL_DEBUG & DEBUG_TES)) {
+      if (INTEL_DEBUG & DEBUG_TES) {
          g.enable_debug(ralloc_asprintf(mem_ctx,
                                         "%s tessellation evaluation shader %s",
                                         nir->info.label ? nir->info.label
@@ -1385,7 +1385,7 @@ brw_compile_tes(const struct brw_compiler *compiler,
 	 return NULL;
       }
 
-      if (unlikely(INTEL_DEBUG & DEBUG_TES))
+      if (INTEL_DEBUG & DEBUG_TES)
 	 v.dump_instructions();
 
       assembly = brw_vec4_generate_assembly(compiler, log_data, mem_ctx, nir,

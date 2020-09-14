@@ -7408,7 +7408,7 @@ fs_visitor::optimize()
       pass_num++;                                                       \
       bool this_progress = pass(args);                                  \
                                                                         \
-      if (unlikely(INTEL_DEBUG & DEBUG_OPTIMIZER) && this_progress) {   \
+      if ((INTEL_DEBUG & DEBUG_OPTIMIZER) && this_progress) {           \
          char filename[64];                                             \
          snprintf(filename, 64, "%s%d-%s-%02d-%02d-" #pass,              \
                   stage_abbrev, dispatch_width, nir->info.name, iteration, pass_num); \
@@ -7422,7 +7422,7 @@ fs_visitor::optimize()
       this_progress;                                                    \
    })
 
-   if (unlikely(INTEL_DEBUG & DEBUG_OPTIMIZER)) {
+   if (INTEL_DEBUG & DEBUG_OPTIMIZER) {
       char filename[64];
       snprintf(filename, 64, "%s%d-%s-00-00-start",
                stage_abbrev, dispatch_width, nir->info.name);
@@ -8632,7 +8632,7 @@ brw_compile_fs(const struct brw_compiler *compiler, void *log_data,
 
       delete v8;
       return NULL;
-   } else if (likely(!(INTEL_DEBUG & DEBUG_NO8))) {
+   } else if (!(INTEL_DEBUG & DEBUG_NO8)) {
       simd8_cfg = v8->cfg;
       prog_data->base.dispatch_grf_start_reg = v8->payload.num_regs;
       prog_data->reg_blocks_8 = brw_register_blocks(v8->grf_used);
@@ -8654,7 +8654,7 @@ brw_compile_fs(const struct brw_compiler *compiler, void *log_data,
 
    if (!has_spilled &&
        v8->max_dispatch_width >= 16 &&
-       likely(!(INTEL_DEBUG & DEBUG_NO16) || use_rep_send)) {
+       (!(INTEL_DEBUG & DEBUG_NO16) || use_rep_send)) {
       /* Try a SIMD16 compile */
       v16 = new fs_visitor(compiler, log_data, mem_ctx, &key->base,
                            &prog_data->base, nir, 16, shader_time_index16);
@@ -8760,7 +8760,7 @@ brw_compile_fs(const struct brw_compiler *compiler, void *log_data,
    fs_generator g(compiler, log_data, mem_ctx, &prog_data->base,
                   v8->runtime_check_aads_emit, MESA_SHADER_FRAGMENT);
 
-   if (unlikely(INTEL_DEBUG & DEBUG_WM)) {
+   if (INTEL_DEBUG & DEBUG_WM) {
       g.enable_debug(ralloc_asprintf(mem_ctx, "%s fragment shader %s",
                                      nir->info.label ?
                                         nir->info.label : "unnamed",
@@ -9008,7 +9008,7 @@ brw_compile_cs(const struct brw_compiler *compiler, void *log_data,
    fs_visitor *v8 = NULL, *v16 = NULL, *v32 = NULL;
    fs_visitor *v = NULL;
 
-   if (likely(!(INTEL_DEBUG & DEBUG_NO8)) &&
+   if (!(INTEL_DEBUG & DEBUG_NO8) &&
        min_dispatch_width <= 8 && max_dispatch_width >= 8) {
       nir_shader *nir8 = compile_cs_to_nir(compiler, mem_ctx, key,
                                            nir, 8);
@@ -9032,7 +9032,7 @@ brw_compile_cs(const struct brw_compiler *compiler, void *log_data,
       cs_fill_push_const_info(compiler->devinfo, prog_data);
    }
 
-   if (likely(!(INTEL_DEBUG & DEBUG_NO16)) &&
+   if (!(INTEL_DEBUG & DEBUG_NO16) &&
        (generate_all || !prog_data->prog_spilled) &&
        min_dispatch_width <= 16 && max_dispatch_width >= 16) {
       /* Try a SIMD16 compile */
@@ -9079,7 +9079,7 @@ brw_compile_cs(const struct brw_compiler *compiler, void *log_data,
                          (INTEL_DEBUG & DEBUG_DO32) ||
                          generate_all;
 
-   if (likely(!(INTEL_DEBUG & DEBUG_NO32)) &&
+   if (!(INTEL_DEBUG & DEBUG_NO32) &&
        (generate_all || !prog_data->prog_spilled) &&
        needs_32 &&
        min_dispatch_width <= 32 && max_dispatch_width >= 32) {
@@ -9119,7 +9119,7 @@ brw_compile_cs(const struct brw_compiler *compiler, void *log_data,
       }
    }
 
-   if (unlikely(!v && (INTEL_DEBUG & (DEBUG_NO8 | DEBUG_NO16 | DEBUG_NO32)))) {
+   if (unlikely(!v) && (INTEL_DEBUG & (DEBUG_NO8 | DEBUG_NO16 | DEBUG_NO32))) {
       if (error_str) {
          *error_str =
             ralloc_strdup(mem_ctx,
@@ -9198,7 +9198,7 @@ brw_cs_simd_size_for_group_size(const struct gen_device_info *devinfo,
    static const unsigned simd16 = 1 << 1;
    static const unsigned simd32 = 1 << 2;
 
-   if (unlikely(INTEL_DEBUG & DEBUG_DO32) && (mask & simd32))
+   if ((INTEL_DEBUG & DEBUG_DO32) && (mask & simd32))
       return 32;
 
    /* Limit max_threads to 64 for the GPGPU_WALKER command */

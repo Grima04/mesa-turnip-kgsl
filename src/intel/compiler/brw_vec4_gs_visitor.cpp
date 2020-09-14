@@ -813,7 +813,7 @@ brw_compile_gs(const struct brw_compiler *compiler, void *log_data,
    /* Now that prog_data setup is done, we are ready to actually compile the
     * program.
     */
-   if (unlikely(INTEL_DEBUG & DEBUG_GS)) {
+   if (INTEL_DEBUG & DEBUG_GS) {
       fprintf(stderr, "GS Input ");
       brw_print_vue_map(stderr, &c.input_vue_map);
       fprintf(stderr, "GS Output ");
@@ -829,7 +829,7 @@ brw_compile_gs(const struct brw_compiler *compiler, void *log_data,
 
          fs_generator g(compiler, log_data, mem_ctx,
                         &prog_data->base.base, false, MESA_SHADER_GEOMETRY);
-         if (unlikely(INTEL_DEBUG & DEBUG_GS)) {
+         if (INTEL_DEBUG & DEBUG_GS) {
             const char *label =
                nir->info.label ? nir->info.label : "unnamed";
             char *name = ralloc_asprintf(mem_ctx, "%s geometry shader %s",
@@ -854,7 +854,7 @@ brw_compile_gs(const struct brw_compiler *compiler, void *log_data,
        * dual object mode.
        */
       if (prog_data->invocations <= 1 &&
-          likely(!(INTEL_DEBUG & DEBUG_NO_DUAL_OBJECT_GS))) {
+          !(INTEL_DEBUG & DEBUG_NO_DUAL_OBJECT_GS)) {
          prog_data->base.dispatch_mode = DISPATCH_MODE_4X2_DUAL_OBJECT;
 
          brw::vec4_gs_visitor v(compiler, log_data, &c, prog_data, nir,

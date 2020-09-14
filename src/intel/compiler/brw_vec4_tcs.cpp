@@ -143,7 +143,7 @@ vec4_tcs_visitor::emit_thread_end()
       emit(BRW_OPCODE_ENDIF);
    }
 
-   if (unlikely(INTEL_DEBUG & DEBUG_SHADER_TIME))
+   if (INTEL_DEBUG & DEBUG_SHADER_TIME)
       emit_shader_time_end();
 
    inst = emit(TCS_OPCODE_THREAD_END);
@@ -453,7 +453,7 @@ brw_compile_tcs(const struct brw_compiler *compiler,
     */
    vue_prog_data->urb_read_length = 0;
 
-   if (unlikely(INTEL_DEBUG & DEBUG_TCS)) {
+   if (INTEL_DEBUG & DEBUG_TCS) {
       fprintf(stderr, "TCS Input ");
       brw_print_vue_map(stderr, &input_vue_map);
       fprintf(stderr, "TCS Output ");
@@ -474,7 +474,7 @@ brw_compile_tcs(const struct brw_compiler *compiler,
 
       fs_generator g(compiler, log_data, mem_ctx,
                      &prog_data->base.base, false, MESA_SHADER_TESS_CTRL);
-      if (unlikely(INTEL_DEBUG & DEBUG_TCS)) {
+      if (INTEL_DEBUG & DEBUG_TCS) {
          g.enable_debug(ralloc_asprintf(mem_ctx,
                                         "%s tessellation control shader %s",
                                         nir->info.label ? nir->info.label
@@ -497,7 +497,7 @@ brw_compile_tcs(const struct brw_compiler *compiler,
          return NULL;
       }
 
-      if (unlikely(INTEL_DEBUG & DEBUG_TCS))
+      if (INTEL_DEBUG & DEBUG_TCS)
          v.dump_instructions();
 
 

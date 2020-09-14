@@ -118,7 +118,7 @@ extern uint64_t intel_debug;
 #endif /* HAVE_ANDROID_PLATFORM */
 
 #define DBG(...) do {						\
-	if (unlikely(INTEL_DEBUG & FILE_DEBUG_FLAG))		\
+	if (INTEL_DEBUG & FILE_DEBUG_FLAG)		\
 		dbg_printf(__VA_ARGS__);			\
 } while(0)
 
