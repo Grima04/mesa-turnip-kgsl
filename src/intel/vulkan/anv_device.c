@@ -97,7 +97,7 @@ compiler_perf_log(void *data, const char *fmt, ...)
    va_list args;
    va_start(args, fmt);
 
-   if (unlikely(INTEL_DEBUG & DEBUG_PERF))
+   if (INTEL_DEBUG & DEBUG_PERF)
       mesa_logd_v(fmt, args);
 
    va_end(args);

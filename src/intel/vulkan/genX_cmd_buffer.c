@@ -1827,7 +1827,7 @@ genX(cmd_buffer_config_l3)(struct anv_cmd_buffer *cmd_buffer,
    if (cfg == cmd_buffer->state.current_l3_config)
       return;
 
-   if (unlikely(INTEL_DEBUG & DEBUG_L3)) {
+   if (INTEL_DEBUG & DEBUG_L3) {
       mesa_logd("L3 config transition: ");
       gen_dump_l3_config(cfg, stderr);
    }

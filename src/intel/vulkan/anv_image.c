@@ -398,7 +398,7 @@ add_aux_surface_if_supported(struct anv_device *device,
          return VK_SUCCESS;
       }
 
-      if (unlikely(INTEL_DEBUG & DEBUG_NO_HIZ))
+      if (INTEL_DEBUG & DEBUG_NO_HIZ)
          return VK_SUCCESS;
 
       ok = isl_surf_get_hiz_surf(&device->isl_dev,
@@ -481,7 +481,7 @@ add_aux_surface_if_supported(struct anv_device *device,
          return VK_SUCCESS;
       }
 
-      if (unlikely(INTEL_DEBUG & DEBUG_NO_RBC))
+      if (INTEL_DEBUG & DEBUG_NO_RBC)
          return VK_SUCCESS;
 
       ok = isl_surf_get_ccs_surf(&device->isl_dev,

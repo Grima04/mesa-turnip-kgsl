@@ -536,7 +536,7 @@ void anv_loge_v(const char *format, va_list va);
 #define anv_perf_warn(instance, obj, format, ...) \
    do { \
       static bool reported = false; \
-      if (!reported && unlikely(INTEL_DEBUG & DEBUG_PERF)) { \
+      if (!reported && (INTEL_DEBUG & DEBUG_PERF)) { \
          __anv_perf_warn(instance, obj, REPORT_OBJECT_TYPE(obj), __FILE__, __LINE__,\
                          format, ##__VA_ARGS__); \
          reported = true; \

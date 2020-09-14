@@ -247,7 +247,7 @@ anv_shader_compile_to_nir(struct anv_device *device,
 
    free(spec_entries);
 
-   if (unlikely(INTEL_DEBUG & intel_debug_flag_for_shader_stage(stage))) {
+   if (INTEL_DEBUG & intel_debug_flag_for_shader_stage(stage)) {
       fprintf(stderr, "NIR (from SPIR-V) for %s shader:\n",
               gl_shader_stage_name(stage));
       nir_print_shader(nir, stderr);
