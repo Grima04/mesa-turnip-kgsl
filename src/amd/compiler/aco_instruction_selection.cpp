@@ -4762,6 +4762,7 @@ std::pair<Temp, unsigned> get_gs_per_vertex_input_offset(isel_context *ctx, nir_
 {
    assert(ctx->shader->info.stage == MESA_SHADER_GEOMETRY);
 
+   bool merged_esgs = ctx->stage != geometry_gs;
    Builder bld(ctx->program, ctx->block);
    nir_src *vertex_src = nir_get_io_vertex_index_src(instr);
    Temp vertex_offset;
@@ -4773,7 +4774,7 @@ std::pair<Temp, unsigned> get_gs_per_vertex_input_offset(isel_context *ctx, nir_
       for (unsigned i = 0; i < ctx->shader->info.gs.vertices_in; i++) {
          Temp elem;
 
-         if (ctx->stage == vertex_geometry_gs || ctx->stage == tess_eval_geometry_gs) {
+         if (merged_esgs) {
             elem = get_arg(ctx, ctx->args->gs_vtx_offset[i / 2u * 2u]);
             if (i % 2u)
                elem = bld.vop2(aco_opcode::v_lshrrev_b32, bld.def(v1), Operand(16u), elem);
@@ -4790,11 +4791,11 @@ std::pair<Temp, unsigned> get_gs_per_vertex_input_offset(isel_context *ctx, nir_
          }
       }
 
-      if (ctx->stage == vertex_geometry_gs || ctx->stage == tess_eval_geometry_gs)
+      if (merged_esgs)
          vertex_offset = bld.vop2(aco_opcode::v_and_b32, bld.def(v1), Operand(0xffffu), vertex_offset);
    } else {
       unsigned vertex = nir_src_as_uint(*vertex_src);
-      if (ctx->stage == vertex_geometry_gs || ctx->stage == tess_eval_geometry_gs)
+      if (merged_esgs)
          vertex_offset = bld.vop3(aco_opcode::v_bfe_u32, bld.def(v1),
                                   get_arg(ctx, ctx->args->gs_vtx_offset[vertex / 2u * 2u]),
                                   Operand((vertex % 2u) * 16u), Operand(16u));
@@ -4819,12 +4820,10 @@ void visit_load_gs_per_vertex_input(isel_context *ctx, nir_intrinsic_instr *inst
       std::pair<Temp, unsigned> offs = get_gs_per_vertex_input_offset(ctx, instr, ctx->program->wave_size);
       Temp ring = bld.smem(aco_opcode::s_load_dwordx4, bld.def(s4), ctx->program->private_segment_buffer, Operand(RING_ESGS_GS * 16u));
       load_vmem_mubuf(ctx, dst, ring, offs.first, Temp(), offs.second, elem_size_bytes, instr->dest.ssa.num_components, 4u * ctx->program->wave_size, false, true);
-   } else if (ctx->stage == vertex_geometry_gs || ctx->stage == tess_eval_geometry_gs) {
+   } else {
       std::pair<Temp, unsigned> offs = get_gs_per_vertex_input_offset(ctx, instr);
       unsigned lds_align = calculate_lds_alignment(ctx, offs.second);
       load_lds(ctx, elem_size_bytes, dst, offs.first, offs.second, lds_align);
-   } else {
-      unreachable("Unsupported GS stage.");
    }
 }
 
