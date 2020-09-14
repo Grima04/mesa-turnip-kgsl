@@ -548,22 +548,6 @@ update_descriptors(struct zink_context *ctx, struct zink_screen *screen, bool is
    }
    assert(desc_set != VK_NULL_HANDLE);
 
-   for (int i = 0; i < num_stages; i++) {
-      struct zink_shader *shader = stages[i];
-      if (!shader)
-         continue;
-      enum pipe_shader_type stage = pipe_shader_type_from_mesa(shader->nir->info.stage);
-
-      for (int j = 0; j < shader->num_bindings; j++) {
-         int index = shader->bindings[j].index;
-         if (shader->bindings[j].type != VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER) {
-            struct zink_sampler_view *sampler_view = zink_sampler_view(ctx->sampler_views[stage][index]);
-            if (sampler_view)
-               zink_batch_reference_sampler_view(batch, sampler_view);
-         }
-      }
-   }
-
    unsigned check_flush_id = is_compute ? 0 : ZINK_COMPUTE_BATCH_ID;
    bool need_flush = false;
    if (num_wds > 0) {
@@ -587,6 +571,22 @@ update_descriptors(struct zink_context *ctx, struct zink_screen *screen, bool is
    else
       vkCmdBindDescriptorSets(batch->cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS,
                               ctx->curr_program->layout, 0, 1, &desc_set, 0, NULL);
+
+   for (int i = 0; i < num_stages; i++) {
+      struct zink_shader *shader = stages[i];
+      if (!shader)
+         continue;
+      enum pipe_shader_type stage = pipe_shader_type_from_mesa(shader->nir->info.stage);
+
+      for (int j = 0; j < shader->num_bindings; j++) {
+         int index = shader->bindings[j].index;
+         if (shader->bindings[j].type != VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER) {
+            struct zink_sampler_view *sampler_view = zink_sampler_view(ctx->sampler_views[stage][index]);
+            if (sampler_view)
+               zink_batch_reference_sampler_view(batch, sampler_view);
+         }
+      }
+   }
    if (!need_flush)
       return;
 
