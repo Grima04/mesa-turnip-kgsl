@@ -1171,6 +1171,7 @@ struct anv_instance {
 
     struct driOptionCache                       dri_options;
     struct driOptionCache                       available_dri_options;
+    bool                                        disable_d16unorm_compression;
 };
 
 VkResult anv_init_wsi(struct anv_physical_device *physical_device);
