@@ -517,6 +517,24 @@ nir_build_alu_src_arr(nir_builder *build, nir_op op, nir_ssa_def **srcs)
    return nir_builder_alu_instr_finish_and_insert(build, instr);
 }
 
+/* Generic builder for system values. */
+static inline nir_ssa_def *
+nir_load_system_value(nir_builder *build, nir_intrinsic_op op, int index,
+                      unsigned num_components, unsigned bit_size)
+{
+   nir_intrinsic_instr *load = nir_intrinsic_instr_create(build->shader, op);
+   if (nir_intrinsic_infos[op].dest_components > 0)
+      assert(num_components == nir_intrinsic_infos[op].dest_components);
+   else
+      load->num_components = num_components;
+   load->const_index[0] = index;
+
+   nir_ssa_dest_init(&load->instr, &load->dest,
+                     num_components, bit_size, NULL);
+   nir_builder_instr_insert(build, &load->instr);
+   return &load->dest.ssa;
+}
+
 #include "nir_builder_opcodes.h"
 
 static inline nir_ssa_def *

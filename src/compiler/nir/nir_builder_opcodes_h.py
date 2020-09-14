@@ -50,24 +50,6 @@ nir_${name}(nir_builder *build, ${src_decl_list(opcode.num_inputs)})
 }
 % endfor
 
-/* Generic builder for system values. */
-static inline nir_ssa_def *
-nir_load_system_value(nir_builder *build, nir_intrinsic_op op, int index,
-                      unsigned num_components, unsigned bit_size)
-{
-   nir_intrinsic_instr *load = nir_intrinsic_instr_create(build->shader, op);
-   if (nir_intrinsic_infos[op].dest_components > 0)
-      assert(num_components == nir_intrinsic_infos[op].dest_components);
-   else
-      load->num_components = num_components;
-   load->const_index[0] = index;
-
-   nir_ssa_dest_init(&load->instr, &load->dest,
-                     num_components, bit_size, NULL);
-   nir_builder_instr_insert(build, &load->instr);
-   return &load->dest.ssa;
-}
-
 <%
 def sysval_decl_list(opcode):
    res = ''
