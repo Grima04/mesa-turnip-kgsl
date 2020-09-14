@@ -412,7 +412,8 @@ static void dump_uniform_const_src(FILE *fp, struct bifrost_regs srcs, uint64_t 
         }
 }
 
-static void dump_src(FILE *fp, unsigned src, struct bifrost_regs srcs, uint64_t *consts, bool isFMA)
+void
+dump_src(FILE *fp, unsigned src, struct bifrost_regs srcs, uint64_t *consts, bool isFMA)
 {
         switch (src) {
         case 0:
