@@ -159,41 +159,63 @@ static int emit_cat1(struct ir3_instruction *instr, void *ptr,
 		struct ir3_info *info)
 {
 	struct ir3_register *dst = instr->regs[0];
-	struct ir3_register *src = instr->regs[1];
 	instr_cat1_t *cat1 = ptr;
 
-	iassert(instr->regs_count == 2);
-	iassert_type(dst, type_size(instr->cat1.dst_type) == 32);
-	if (!(src->flags & IR3_REG_IMMED))
-		iassert_type(src, type_size(instr->cat1.src_type) == 32);
+	switch (instr->opc) {
+	case OPC_MOV: {
+		struct ir3_register *src = instr->regs[1];
+		iassert(instr->regs_count == 2);
+		iassert_type(dst, type_size(instr->cat1.dst_type) == 32);
+		if (!(src->flags & IR3_REG_IMMED))
+			iassert_type(src, type_size(instr->cat1.src_type) == 32);
 
-	if (src->flags & IR3_REG_IMMED) {
-		cat1->iim_val = src->iim_val;
-		cat1->src_im  = 1;
-	} else if (src->flags & IR3_REG_RELATIV) {
-		cat1->off       = reg(src, info, instr->repeat,
-				IR3_REG_R | IR3_REG_CONST | IR3_REG_HALF | IR3_REG_RELATIV |
-				IR3_REG_SHARED);
-		cat1->src_rel   = 1;
-		cat1->src_rel_c = !!(src->flags & IR3_REG_CONST);
-	} else {
-		cat1->src  = reg(src, info, instr->repeat,
-				IR3_REG_R | IR3_REG_CONST | IR3_REG_HALF | IR3_REG_SHARED);
-		cat1->src_c     = !!(src->flags & IR3_REG_CONST);
+		if (src->flags & IR3_REG_IMMED) {
+			cat1->iim_val = src->iim_val;
+			cat1->src_im  = 1;
+		} else if (src->flags & IR3_REG_RELATIV) {
+			cat1->off       = reg(src, info, instr->repeat,
+					IR3_REG_R | IR3_REG_CONST | IR3_REG_HALF | IR3_REG_RELATIV |
+					IR3_REG_SHARED);
+			cat1->src_rel   = 1;
+			cat1->src_rel_c = !!(src->flags & IR3_REG_CONST);
+		} else {
+			cat1->src  = reg(src, info, instr->repeat,
+					IR3_REG_R | IR3_REG_CONST | IR3_REG_HALF | IR3_REG_SHARED);
+			cat1->src_c     = !!(src->flags & IR3_REG_CONST);
+		}
+		cat1->src_r    = !!(src->flags & IR3_REG_R);
+		cat1->dst_type = instr->cat1.dst_type;
+		cat1->src_type = instr->cat1.src_type;
+		cat1->even     = !!(dst->flags & IR3_REG_EVEN);
+		cat1->pos_inf  = !!(dst->flags & IR3_REG_POS_INF);
+		cat1->repeat   = instr->repeat;
+		break;
+	}
+	case OPC_MOVMSK: {
+		iassert(instr->regs_count == 1);
+		iassert(!(dst->flags & IR3_REG_HALF));
+		iassert(!(dst->flags & IR3_REG_EVEN));
+		iassert(!(dst->flags & IR3_REG_POS_INF));
+		iassert(instr->repeat == 0);
+		iassert(util_is_power_of_two_or_zero(dst->wrmask + 1));
+
+		unsigned components = util_last_bit(dst->wrmask);
+		cat1->repeat = components - 1;
+		cat1->src_type = cat1->dst_type = TYPE_U32;
+
+		break;
+	}
+	default:
+		iassert(0);
 	}
 
 	cat1->dst      = reg(dst, info, instr->repeat,
 			IR3_REG_RELATIV | IR3_REG_EVEN |
 			IR3_REG_R | IR3_REG_POS_INF | IR3_REG_HALF | IR3_REG_SHARED);
-	cat1->repeat   = instr->repeat;
-	cat1->src_r    = !!(src->flags & IR3_REG_R);
 	cat1->ss       = !!(instr->flags & IR3_INSTR_SS);
 	cat1->ul       = !!(instr->flags & IR3_INSTR_UL);
-	cat1->dst_type = instr->cat1.dst_type;
 	cat1->dst_rel  = !!(dst->flags & IR3_REG_RELATIV);
-	cat1->src_type = instr->cat1.src_type;
-	cat1->even     = !!(dst->flags & IR3_REG_EVEN);
-	cat1->pos_inf  = !!(dst->flags & IR3_REG_POS_INF);
+	cat1->opc      = instr->opc;
 	cat1->jmp_tgt  = !!(instr->flags & IR3_INSTR_JP);
 	cat1->sync     = !!(instr->flags & IR3_INSTR_SY);
 	cat1->opc_cat  = 1;

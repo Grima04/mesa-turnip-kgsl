@@ -1475,6 +1475,17 @@ ir3_COV(struct ir3_block *block, struct ir3_instruction *src,
 }
 
 static inline struct ir3_instruction *
+ir3_MOVMSK(struct ir3_block *block, unsigned components)
+{
+	struct ir3_instruction *instr = ir3_instr_create(block, OPC_MOVMSK);
+
+	struct ir3_register *dst = __ssa_dst(instr);
+	dst->flags |= IR3_REG_SHARED;
+	dst->wrmask = (1 << components) - 1;
+	return instr;
+}
+
+static inline struct ir3_instruction *
 ir3_NOP(struct ir3_block *block)
 {
 	return ir3_instr_create(block, OPC_NOP);

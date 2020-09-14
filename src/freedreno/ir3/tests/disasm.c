@@ -62,6 +62,8 @@ static const struct test {
 	INSTR_6XX(20156004_00000c11, "(ul)mov.s32s32 r1.x, c<a0.x + 17>"),
 	INSTR_6XX(201100f4_00000000, "mova a0.x, hr0.x"),
 	INSTR_6XX(20244905_00000410, "(rpt1)mov.f32f32 r1.y, (r)c260.x"),
+	/* dEQP-VK.subgroups.ballot.compute.compute */
+	INSTR_6XX(260cc3c0_00000000, "movmsk.w128 r48.x"), /* movmsk.w128 sr48.x */
 
 	/* cat2 */
 	INSTR_6XX(40104002_0c210001, "add.f hr0.z, r0.y, c<a0.x + 33>"),

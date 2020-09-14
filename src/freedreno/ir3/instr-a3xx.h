@@ -83,6 +83,7 @@ typedef enum {
 
 	/* category 1: */
 	OPC_MOV             = _OPC(1, 0),
+	OPC_MOVMSK          = _OPC(1, 3),
 
 	/* category 2: */
 	OPC_ADD_F           = _OPC(2, 0),
@@ -446,7 +447,7 @@ typedef struct PACKED {
 	uint32_t src_im     : 1;
 	uint32_t even       : 1;
 	uint32_t pos_inf    : 1;
-	uint32_t must_be_0  : 2;
+	uint32_t opc        : 2;
 	uint32_t jmp_tgt    : 1;
 	uint32_t sync       : 1;
 	uint32_t opc_cat    : 3;
@@ -472,7 +473,7 @@ typedef struct PACKED {
 		struct PACKED {
 			uint32_t src1         : 12;
 			uint32_t src1_c       : 1;   /* const */
-			uint32_t dummy        : 3;
+			int32_t dummy        : 3;
 		} c1;
 	};
 
@@ -1031,7 +1032,7 @@ static inline uint32_t instr_opc(instr_t *instr, unsigned gpu_id)
 {
 	switch (instr->opc_cat) {
 	case 0:  return instr->cat0.opc | instr->cat0.opc_hi << 4;
-	case 1:  return 0;
+	case 1:  return instr->cat1.opc;
 	case 2:  return instr->cat2.opc;
 	case 3:  return instr->cat3.opc;
 	case 4:  return instr->cat4.opc;

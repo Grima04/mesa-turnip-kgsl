@@ -440,66 +440,69 @@ static void print_instr_cat1(struct disasm_ctx *ctx, instr_t *instr)
 {
 	instr_cat1_t *cat1 = &instr->cat1;
 
-	if (cat1->ul)
-		fprintf(ctx->out, "(ul)");
-
-	if (cat1->src_type == cat1->dst_type) {
-		if ((cat1->src_type == TYPE_S16) && (((reg_t)cat1->dst).num == REG_A0)) {
-			/* special case (nmemonic?): */
-			fprintf(ctx->out, "mova");
+	switch (_OPC(1, cat1->opc)) {
+	case OPC_MOV:
+		if (cat1->src_type == cat1->dst_type) {
+			if ((cat1->src_type == TYPE_S16) && (((reg_t)cat1->dst).num == REG_A0)) {
+				/* special case (nmemonic?): */
+				fprintf(ctx->out, "mova");
+			} else {
+				fprintf(ctx->out, "mov.%s%s", type[cat1->src_type], type[cat1->dst_type]);
+			}
 		} else {
-			fprintf(ctx->out, "mov.%s%s", type[cat1->src_type], type[cat1->dst_type]);
+			fprintf(ctx->out, "cov.%s%s", type[cat1->src_type], type[cat1->dst_type]);
 		}
-	} else {
-		fprintf(ctx->out, "cov.%s%s", type[cat1->src_type], type[cat1->dst_type]);
+
+		fprintf(ctx->out, " ");
+
+		if (cat1->even)
+			fprintf(ctx->out, "(even)");
+
+		if (cat1->pos_inf)
+			fprintf(ctx->out, "(pos_infinity)");
+
+		print_reg_dst(ctx, (reg_t)(cat1->dst), type_size(cat1->dst_type) == 32,
+				cat1->dst_rel);
+
+		fprintf(ctx->out, ", ");
+
+		/* ugg, have to special case this.. vs print_reg().. */
+		if (cat1->src_im) {
+			if (type_float(cat1->src_type))
+				fprintf(ctx->out, "(%f)", cat1->fim_val);
+			else if (type_uint(cat1->src_type))
+				fprintf(ctx->out, "0x%08x", cat1->uim_val);
+			else
+				fprintf(ctx->out, "%d", cat1->iim_val);
+		} else if (cat1->src_rel && !cat1->src_c) {
+			/* I would just use %+d but trying to make it diff'able with
+			 * libllvm-a3xx...
+			 */
+			char type = cat1->src_rel_c ? 'c' : 'r';
+			const char *full = (type_size(cat1->src_type) == 32) ? "" : "h";
+			if (cat1->off < 0)
+				fprintf(ctx->out, "%s%c<a0.x - %d>", full, type, -cat1->off);
+			else if (cat1->off > 0)
+				fprintf(ctx->out, "%s%c<a0.x + %d>", full, type, cat1->off);
+			else
+				fprintf(ctx->out, "%s%c<a0.x>", full, type);
+		} else {
+			struct reginfo src = {
+				.reg = (reg_t)cat1->src,
+				.full = type_size(cat1->src_type) == 32,
+				.r = cat1->src_r,
+				.c = cat1->src_c,
+				.im = cat1->src_im,
+			};
+			print_src(ctx, &src);
+		}
+		break;
+	case OPC_MOVMSK:
+		fprintf(ctx->out, ".w%u", (cat1->repeat + 1) * 32);
+		fprintf(ctx->out, " ");
+		print_reg_dst(ctx, (reg_t)(cat1->dst), true, cat1->dst_rel);
+		break;
 	}
-
-	fprintf(ctx->out, " ");
-
-	if (cat1->even)
-		fprintf(ctx->out, "(even)");
-
-	if (cat1->pos_inf)
-		fprintf(ctx->out, "(pos_infinity)");
-
-	print_reg_dst(ctx, (reg_t)(cat1->dst), type_size(cat1->dst_type) == 32,
-			cat1->dst_rel);
-
-	fprintf(ctx->out, ", ");
-
-	/* ugg, have to special case this.. vs print_reg().. */
-	if (cat1->src_im) {
-		if (type_float(cat1->src_type))
-			fprintf(ctx->out, "(%f)", cat1->fim_val);
-		else if (type_uint(cat1->src_type))
-			fprintf(ctx->out, "0x%08x", cat1->uim_val);
-		else
-			fprintf(ctx->out, "%d", cat1->iim_val);
-	} else if (cat1->src_rel && !cat1->src_c) {
-		/* I would just use %+d but trying to make it diff'able with
-		 * libllvm-a3xx...
-		 */
-		char type = cat1->src_rel_c ? 'c' : 'r';
-		const char *full = (type_size(cat1->src_type) == 32) ? "" : "h";
-		if (cat1->off < 0)
-			fprintf(ctx->out, "%s%c<a0.x - %d>", full, type, -cat1->off);
-		else if (cat1->off > 0)
-			fprintf(ctx->out, "%s%c<a0.x + %d>", full, type, cat1->off);
-		else
-			fprintf(ctx->out, "%s%c<a0.x>", full, type);
-	} else {
-		struct reginfo src = {
-			.reg = (reg_t)cat1->src,
-			.full = type_size(cat1->src_type) == 32,
-			.r = cat1->src_r,
-			.c = cat1->src_c,
-			.im = cat1->src_im,
-		};
-		print_src(ctx, &src);
-	}
-
-	if ((debug & PRINT_VERBOSE) && (cat1->must_be_0))
-		fprintf(ctx->out, "\t{1: %x}", cat1->must_be_0);
 }
 
 static void print_instr_cat2(struct disasm_ctx *ctx, instr_t *instr)
@@ -1341,7 +1344,8 @@ static const struct opc_info {
 	OPC(0, OPC_SHPE,         shpe),
 
 	/* category 1: */
-	OPC(1, OPC_MOV, ),
+	OPC(1, OPC_MOV,          ),
+	OPC(1, OPC_MOVMSK,       movmsk),
 
 	/* category 2: */
 	OPC(2, OPC_ADD_F,        add.f),
@@ -1569,7 +1573,9 @@ static bool print_instr(struct disasm_ctx *ctx, uint32_t *dwords, int n)
 		fprintf(ctx->out, "(eq)");
 	if (instr_sat(instr))
 		fprintf(ctx->out, "(sat)");
-	if (ctx->repeat)
+	if (instr->opc_cat == 1 && instr->cat1.ul)
+		fprintf(ctx->out, "(ul)");
+	if (ctx->repeat && opc != OPC_MOVMSK)
 		fprintf(ctx->out, "(rpt%d)", ctx->repeat);
 	else if ((instr->opc_cat == 2) && (instr->cat2.src1_r || instr->cat2.src2_r))
 		nop = (instr->cat2.src2_r * 2) + instr->cat2.src1_r;
