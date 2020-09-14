@@ -75,6 +75,7 @@ EXTENSIONS = [
     Extension('VK_EXT_sampler_filter_minmax',             1, True),
     Extension('VK_EXT_transform_feedback',                1, True),
     Extension('VK_ANDROID_native_buffer',                 1, True),
+    Extension('VK_KHR_external_fence',                    1, True),
     Extension('VK_KHR_external_fence_fd',                 1, True),
     Extension('VK_KHR_external_semaphore',                1, True),
     Extension('VK_KHR_external_semaphore_capabilities',   1, True),

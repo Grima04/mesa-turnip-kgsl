@@ -436,153 +436,166 @@ tu_enumerate_devices(struct tu_instance *instance)
    return result;
 }
 
-static void
-semaphore_set_temporary(struct tu_device *device, struct tu_semaphore *sem, uint32_t syncobj)
-{
-   if (sem->temporary) {
-      ioctl(device->fd, DRM_IOCTL_SYNCOBJ_DESTROY,
-            &(struct drm_syncobj_destroy) { .handle = sem->temporary });
-   }
-   sem->temporary = syncobj;
-}
-
-VkResult
-tu_CreateSemaphore(VkDevice _device,
-                   const VkSemaphoreCreateInfo *pCreateInfo,
-                   const VkAllocationCallbacks *pAllocator,
-                   VkSemaphore *pSemaphore)
+static VkResult
+sync_create(VkDevice _device,
+            bool signaled,
+            bool fence,
+            const VkAllocationCallbacks *pAllocator,
+            void **p_sync)
 {
    TU_FROM_HANDLE(tu_device, device, _device);
 
-   struct tu_semaphore *sem =
-         vk_object_alloc(&device->vk, pAllocator, sizeof(*sem),
-                         VK_OBJECT_TYPE_SEMAPHORE);
-   if (!sem)
+   struct tu_syncobj *sync =
+         vk_object_alloc(&device->vk, pAllocator, sizeof(*sync),
+                         fence ? VK_OBJECT_TYPE_FENCE : VK_OBJECT_TYPE_SEMAPHORE);
+   if (!sync)
       return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
    struct drm_syncobj_create create = {};
+   if (signaled)
+      create.flags |= DRM_SYNCOBJ_CREATE_SIGNALED;
+
    int ret = ioctl(device->fd, DRM_IOCTL_SYNCOBJ_CREATE, &create);
    if (ret) {
-      vk_free2(&device->vk.alloc, pAllocator, sem);
+      vk_free2(&device->vk.alloc, pAllocator, sync);
       return VK_ERROR_OUT_OF_HOST_MEMORY;
    }
 
-   sem->permanent = create.handle;
-   sem->temporary = 0;
+   sync->permanent = create.handle;
+   sync->temporary = 0;
+   *p_sync = sync;
 
-   *pSemaphore = tu_semaphore_to_handle(sem);
    return VK_SUCCESS;
 }
 
-void
-tu_DestroySemaphore(VkDevice _device,
-                    VkSemaphore _semaphore,
-                    const VkAllocationCallbacks *pAllocator)
+static void
+sync_set_temporary(struct tu_device *device, struct tu_syncobj *sync, uint32_t syncobj)
 {
-   TU_FROM_HANDLE(tu_device, device, _device);
-   TU_FROM_HANDLE(tu_semaphore, sem, _semaphore);
-   if (!_semaphore)
-      return;
-
-   semaphore_set_temporary(device, sem, 0);
-   ioctl(device->fd, DRM_IOCTL_SYNCOBJ_DESTROY,
-         &(struct drm_syncobj_destroy) { .handle = sem->permanent });
-
-   vk_object_free(&device->vk, pAllocator, sem);
+   if (sync->temporary) {
+      ioctl(device->fd, DRM_IOCTL_SYNCOBJ_DESTROY,
+            &(struct drm_syncobj_destroy) { .handle = sync->temporary });
+   }
+   sync->temporary = syncobj;
 }
 
-VkResult
-tu_ImportSemaphoreFdKHR(VkDevice _device,
-                        const VkImportSemaphoreFdInfoKHR *info)
+static void
+sync_destroy(VkDevice _device, struct tu_syncobj *sync, const VkAllocationCallbacks *pAllocator)
 {
    TU_FROM_HANDLE(tu_device, device, _device);
-   TU_FROM_HANDLE(tu_semaphore, sem, info->semaphore);
+
+   if (!sync)
+      return;
+
+   sync_set_temporary(device, sync, 0);
+   ioctl(device->fd, DRM_IOCTL_SYNCOBJ_DESTROY,
+         &(struct drm_syncobj_destroy) { .handle = sync->permanent });
+
+   vk_object_free(&device->vk, pAllocator, sync);
+}
+
+static VkResult
+sync_import(VkDevice _device, struct tu_syncobj *sync, bool temporary, bool sync_fd, int fd)
+{
+   TU_FROM_HANDLE(tu_device, device, _device);
    int ret;
 
-   switch(info->handleType) {
-      case VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_FD_BIT: {
-         uint32_t *dst;
-         if (info->flags & VK_SEMAPHORE_IMPORT_TEMPORARY_BIT)
-            dst = &sem->temporary;
-         else
-            dst = &sem->permanent;
+   if (!sync_fd) {
+      uint32_t *dst = temporary ? &sync->temporary : &sync->permanent;
 
-         struct drm_syncobj_handle handle = { .fd = info->fd };
-         ret = ioctl(device->fd, DRM_IOCTL_SYNCOBJ_FD_TO_HANDLE, &handle);
-         if (ret)
-            return VK_ERROR_INVALID_EXTERNAL_HANDLE;
+      struct drm_syncobj_handle handle = { .fd = fd };
+      ret = ioctl(device->fd, DRM_IOCTL_SYNCOBJ_FD_TO_HANDLE, &handle);
+      if (ret)
+         return VK_ERROR_INVALID_EXTERNAL_HANDLE;
 
-         if (*dst) {
+      if (*dst) {
+         ioctl(device->fd, DRM_IOCTL_SYNCOBJ_DESTROY,
+               &(struct drm_syncobj_destroy) { .handle = *dst });
+      }
+      *dst = handle.handle;
+      close(fd);
+   } else {
+      assert(temporary);
+
+      struct drm_syncobj_create create = {};
+
+      if (fd == -1)
+         create.flags |= DRM_SYNCOBJ_CREATE_SIGNALED;
+
+      ret = ioctl(device->fd, DRM_IOCTL_SYNCOBJ_CREATE, &create);
+      if (ret)
+         return VK_ERROR_INVALID_EXTERNAL_HANDLE;
+
+      if (fd != -1) {
+         ret = ioctl(device->fd, DRM_IOCTL_SYNCOBJ_FD_TO_HANDLE, &(struct drm_syncobj_handle) {
+            .fd = fd,
+            .handle = create.handle,
+            .flags = DRM_SYNCOBJ_FD_TO_HANDLE_FLAGS_IMPORT_SYNC_FILE,
+         });
+         if (ret) {
             ioctl(device->fd, DRM_IOCTL_SYNCOBJ_DESTROY,
-                  &(struct drm_syncobj_destroy) { .handle = *dst });
-         }
-         *dst = handle.handle;
-         close(info->fd);
-         break;
-      }
-      case VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_SYNC_FD_BIT: {
-         assert(info->flags & VK_SEMAPHORE_IMPORT_TEMPORARY_BIT);
-
-         struct drm_syncobj_create create = {};
-
-         if (info->fd == -1)
-            create.flags |= DRM_SYNCOBJ_CREATE_SIGNALED;
-
-         ret = ioctl(device->fd, DRM_IOCTL_SYNCOBJ_CREATE, &create);
-         if (ret)
+                  &(struct drm_syncobj_destroy) { .handle = create.handle });
             return VK_ERROR_INVALID_EXTERNAL_HANDLE;
-
-         if (info->fd != -1) {
-            ret = ioctl(device->fd, DRM_IOCTL_SYNCOBJ_FD_TO_HANDLE, &(struct drm_syncobj_handle) {
-               .fd = info->fd,
-               .handle = create.handle,
-               .flags = DRM_SYNCOBJ_FD_TO_HANDLE_FLAGS_IMPORT_SYNC_FILE,
-            });
-            if (ret) {
-               ioctl(device->fd, DRM_IOCTL_SYNCOBJ_DESTROY,
-                     &(struct drm_syncobj_destroy) { .handle = create.handle });
-               return VK_ERROR_INVALID_EXTERNAL_HANDLE;
-            }
-            close(info->fd);
          }
-
-         semaphore_set_temporary(device, sem, create.handle);
-         break;
+         close(fd);
       }
-      default:
-         unreachable("Unhandled semaphore handle type");
+
+      sync_set_temporary(device, sync, create.handle);
    }
 
    return VK_SUCCESS;
 }
 
-VkResult
-tu_GetSemaphoreFdKHR(VkDevice _device,
-                     const VkSemaphoreGetFdInfoKHR *info,
-                     int *pFd)
+static VkResult
+sync_export(VkDevice _device, struct tu_syncobj *sync, bool sync_fd, int *p_fd)
 {
    TU_FROM_HANDLE(tu_device, device, _device);
-   TU_FROM_HANDLE(tu_semaphore, sem, info->semaphore);
-   int ret;
-
-   assert(info->handleType == VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_SYNC_FD_BIT ||
-          info->handleType == VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_FD_BIT);
 
    struct drm_syncobj_handle handle = {
-      .handle = sem->temporary ?: sem->permanent,
-      .flags = COND(info->handleType == VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_SYNC_FD_BIT,
-                    DRM_SYNCOBJ_HANDLE_TO_FD_FLAGS_EXPORT_SYNC_FILE),
+      .handle = sync->temporary ?: sync->permanent,
+      .flags = COND(sync_fd, DRM_SYNCOBJ_HANDLE_TO_FD_FLAGS_EXPORT_SYNC_FILE),
       .fd = -1,
    };
-   ret = ioctl(device->fd, DRM_IOCTL_SYNCOBJ_HANDLE_TO_FD, &handle);
+   int ret = ioctl(device->fd, DRM_IOCTL_SYNCOBJ_HANDLE_TO_FD, &handle);
    if (ret)
       return vk_error(device->instance, VK_ERROR_INVALID_EXTERNAL_HANDLE);
 
    /* restore permanent payload on export */
-   semaphore_set_temporary(device, sem, 0);
+   sync_set_temporary(device, sync, 0);
 
-   *pFd = handle.fd;
+   *p_fd = handle.fd;
    return VK_SUCCESS;
+}
+
+VkResult
+tu_CreateSemaphore(VkDevice device,
+                   const VkSemaphoreCreateInfo *pCreateInfo,
+                   const VkAllocationCallbacks *pAllocator,
+                   VkSemaphore *pSemaphore)
+{
+   return sync_create(device, false, false, pAllocator, (void**) pSemaphore);
+}
+
+void
+tu_DestroySemaphore(VkDevice device, VkSemaphore sem, const VkAllocationCallbacks *pAllocator)
+{
+   TU_FROM_HANDLE(tu_syncobj, sync, sem);
+   sync_destroy(device, sync, pAllocator);
+}
+
+VkResult
+tu_ImportSemaphoreFdKHR(VkDevice device, const VkImportSemaphoreFdInfoKHR *info)
+{
+   TU_FROM_HANDLE(tu_syncobj, sync, info->semaphore);
+   return sync_import(device, sync, info->flags & VK_SEMAPHORE_IMPORT_TEMPORARY_BIT,
+         info->handleType == VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_SYNC_FD_BIT, info->fd);
+}
+
+VkResult
+tu_GetSemaphoreFdKHR(VkDevice device, const VkSemaphoreGetFdInfoKHR *info, int *pFd)
+{
+   TU_FROM_HANDLE(tu_syncobj, sync, info->semaphore);
+   return sync_export(device, sync,
+         info->handleType == VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_SYNC_FD_BIT, pFd);
 }
 
 void
@@ -611,7 +624,7 @@ tu_QueueSubmit(VkQueue _queue,
                VkFence _fence)
 {
    TU_FROM_HANDLE(tu_queue, queue, _queue);
-   TU_FROM_HANDLE(tu_fence, fence, _fence);
+   TU_FROM_HANDLE(tu_syncobj, fence, _fence);
 
    for (uint32_t i = 0; i < submitCount; ++i) {
       const VkSubmitInfo *submit = pSubmits + i;
@@ -625,7 +638,7 @@ tu_QueueSubmit(VkQueue _queue,
       uint32_t nr_in_syncobjs = 0, nr_out_syncobjs = 0;
 
       for (uint32_t i = 0; i < submit->waitSemaphoreCount; i++) {
-         TU_FROM_HANDLE(tu_semaphore, sem, submit->pWaitSemaphores[i]);
+         TU_FROM_HANDLE(tu_syncobj, sem, submit->pWaitSemaphores[i]);
          in_syncobjs[nr_in_syncobjs++] = (struct drm_msm_gem_submit_syncobj) {
             .handle = sem->temporary ?: sem->permanent,
             .flags = MSM_SUBMIT_SYNCOBJ_RESET,
@@ -633,7 +646,7 @@ tu_QueueSubmit(VkQueue _queue,
       }
 
       for (uint32_t i = 0; i < submit->signalSemaphoreCount; i++) {
-         TU_FROM_HANDLE(tu_semaphore, sem, submit->pSignalSemaphores[i]);
+         TU_FROM_HANDLE(tu_syncobj, sem, submit->pSignalSemaphores[i]);
          out_syncobjs[nr_out_syncobjs++] = (struct drm_msm_gem_submit_syncobj) {
             .handle = sem->temporary ?: sem->permanent,
             .flags = 0,
@@ -642,7 +655,7 @@ tu_QueueSubmit(VkQueue _queue,
 
       if (last_submit && fence) {
          out_syncobjs[nr_out_syncobjs++] = (struct drm_msm_gem_submit_syncobj) {
-            .handle = fence->syncobj,
+            .handle = fence->temporary ?: fence->permanent,
             .flags = 0,
          };
       }
@@ -708,8 +721,8 @@ tu_QueueSubmit(VkQueue _queue,
 
       /* restore permanent payload on wait */
       for (uint32_t i = 0; i < submit->waitSemaphoreCount; i++) {
-         TU_FROM_HANDLE(tu_semaphore, sem, submit->pWaitSemaphores[i]);
-         semaphore_set_temporary(queue->device, sem, 0);
+         TU_FROM_HANDLE(tu_syncobj, sem, submit->pWaitSemaphores[i]);
+         sync_set_temporary(queue->device, sem, 0);
       }
 
       if (last_submit) {
@@ -722,7 +735,7 @@ tu_QueueSubmit(VkQueue _queue,
    if (!submitCount && fence) {
       /* signal fence imemediately since we don't have a submit to do it */
       ioctl(queue->device->fd, DRM_IOCTL_SYNCOBJ_SIGNAL, &(struct drm_syncobj_array) {
-         .handles = (uintptr_t) &fence->syncobj,
+         .handles = (uintptr_t) (uint32_t[]) { fence->temporary ?: fence->permanent },
          .count_handles = 1,
       });
    }
@@ -731,69 +744,36 @@ tu_QueueSubmit(VkQueue _queue,
 }
 
 VkResult
-tu_CreateFence(VkDevice _device,
-               const VkFenceCreateInfo *pCreateInfo,
+tu_CreateFence(VkDevice device,
+               const VkFenceCreateInfo *info,
                const VkAllocationCallbacks *pAllocator,
                VkFence *pFence)
 {
-   TU_FROM_HANDLE(tu_device, device, _device);
-   int ret;
-
-   struct tu_fence *fence =
-         vk_object_alloc(&device->vk, pAllocator, sizeof(*fence),
-                         VK_OBJECT_TYPE_FENCE);
-   if (!fence)
-      return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
-
-   struct drm_syncobj_create create = {
-      .flags = COND(pCreateInfo->flags & VK_FENCE_CREATE_SIGNALED_BIT,
-                    DRM_SYNCOBJ_CREATE_SIGNALED)
-   };
-   ret = ioctl(device->fd, DRM_IOCTL_SYNCOBJ_CREATE, &create);
-   if (ret) {
-      vk_free2(&device->vk.alloc, pAllocator, fence);
-      return VK_ERROR_OUT_OF_HOST_MEMORY;
-   }
-
-   fence->syncobj = create.handle;
-
-   *pFence = tu_fence_to_handle(fence);
-
-   return VK_SUCCESS;
+   return sync_create(device, info->flags & VK_FENCE_CREATE_SIGNALED_BIT, true,
+                      pAllocator, (void**) pFence);
 }
 
 void
-tu_DestroyFence(VkDevice _device, VkFence _fence, const VkAllocationCallbacks *pAllocator)
+tu_DestroyFence(VkDevice device, VkFence fence, const VkAllocationCallbacks *pAllocator)
 {
-   TU_FROM_HANDLE(tu_device, device, _device);
-   TU_FROM_HANDLE(tu_fence, fence, _fence);
-
-   if (!fence)
-      return;
-
-   ioctl(device->fd, DRM_IOCTL_SYNCOBJ_DESTROY,
-         &(struct drm_syncobj_destroy) { .handle = fence->syncobj });
-
-   vk_object_free(&device->vk, pAllocator, fence);
+   TU_FROM_HANDLE(tu_syncobj, sync, fence);
+   sync_destroy(device, sync, pAllocator);
 }
 
 VkResult
-tu_ImportFenceFdKHR(VkDevice _device,
-                    const VkImportFenceFdInfoKHR *pImportFenceFdInfo)
+tu_ImportFenceFdKHR(VkDevice device, const VkImportFenceFdInfoKHR *info)
 {
-   tu_stub();
-
-   return VK_SUCCESS;
+   TU_FROM_HANDLE(tu_syncobj, sync, info->fence);
+   return sync_import(device, sync, info->flags & VK_FENCE_IMPORT_TEMPORARY_BIT,
+         info->handleType == VK_EXTERNAL_FENCE_HANDLE_TYPE_SYNC_FD_BIT, info->fd);
 }
 
 VkResult
-tu_GetFenceFdKHR(VkDevice _device,
-                 const VkFenceGetFdInfoKHR *pGetFdInfo,
-                 int *pFd)
+tu_GetFenceFdKHR(VkDevice device, const VkFenceGetFdInfoKHR *info, int *pFd)
 {
-   tu_stub();
-
-   return VK_SUCCESS;
+   TU_FROM_HANDLE(tu_syncobj, sync, info->fence);
+   return sync_export(device, sync,
+         info->handleType == VK_EXTERNAL_FENCE_HANDLE_TYPE_SYNC_FD_BIT, pFd);
 }
 
 static VkResult
@@ -854,8 +834,8 @@ tu_WaitForFences(VkDevice _device,
 
    uint32_t handles[fenceCount];
    for (unsigned i = 0; i < fenceCount; ++i) {
-      TU_FROM_HANDLE(tu_fence, fence, pFences[i]);
-      handles[i] = fence->syncobj;
+      TU_FROM_HANDLE(tu_syncobj, fence, pFences[i]);
+      handles[i] = fence->temporary ?: fence->permanent;
    }
 
    return drm_syncobj_wait(device, handles, fenceCount, absolute_timeout(timeout), waitAll);
@@ -869,8 +849,9 @@ tu_ResetFences(VkDevice _device, uint32_t fenceCount, const VkFence *pFences)
 
    uint32_t handles[fenceCount];
    for (unsigned i = 0; i < fenceCount; ++i) {
-      TU_FROM_HANDLE(tu_fence, fence, pFences[i]);
-      handles[i] = fence->syncobj;
+      TU_FROM_HANDLE(tu_syncobj, fence, pFences[i]);
+      sync_set_temporary(device, fence, 0);
+      handles[i] = fence->permanent;
    }
 
    ret = ioctl(device->fd, DRM_IOCTL_SYNCOBJ_RESET, &(struct drm_syncobj_array) {
@@ -886,10 +867,10 @@ VkResult
 tu_GetFenceStatus(VkDevice _device, VkFence _fence)
 {
    TU_FROM_HANDLE(tu_device, device, _device);
-   TU_FROM_HANDLE(tu_fence, fence, _fence);
+   TU_FROM_HANDLE(tu_syncobj, fence, _fence);
    VkResult result;
 
-   result = drm_syncobj_wait(device, &fence->syncobj, 1, 0, false);
+   result = drm_syncobj_wait(device, (uint32_t[]){fence->temporary ?: fence->permanent}, 1, 0, false);
    if (result == VK_TIMEOUT)
       result = VK_NOT_READY;
    return result;

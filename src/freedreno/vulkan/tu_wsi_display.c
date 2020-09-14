@@ -285,9 +285,9 @@ tu_RegisterDeviceEventEXT(VkDevice                    _device,
    if (ret != VK_SUCCESS)
       return ret;
 
-   TU_FROM_HANDLE(tu_fence, fence, *_fence);
+   TU_FROM_HANDLE(tu_syncobj, fence, *_fence);
 
-   int sync_fd = import_syncobj(device->fd, fence->syncobj);
+   int sync_fd = import_syncobj(device->fd, fence->permanent);
    if (sync_fd >= 0) {
       ret = wsi_register_device_event(_device,
                                       &device->physical_device->wsi_device,
@@ -321,9 +321,9 @@ tu_RegisterDisplayEventEXT(VkDevice                           _device,
    if (ret != VK_SUCCESS)
       return ret;
 
-   TU_FROM_HANDLE(tu_fence, fence, *_fence);
+   TU_FROM_HANDLE(tu_syncobj, fence, *_fence);
 
-   int sync_fd = import_syncobj(device->fd, fence->syncobj);
+   int sync_fd = import_syncobj(device->fd, fence->permanent);
    if (sync_fd >= 0) {
       ret = wsi_register_display_event(_device,
                                        &device->physical_device->wsi_device,
