@@ -23,9 +23,20 @@
  * SOFTWARE.
  */
 
+#ifndef __BI_DISASM_H
+#define __BI_DISASM_H
+
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
+#include "bifrost.h"
 
 void disassemble_bifrost(FILE *fp, uint8_t *code, size_t size, bool verbose);
+
+void
+bi_disasm_fma(FILE *fp, unsigned bits, struct bifrost_regs *srcs, struct bifrost_regs *next_regs, unsigned staging_register, unsigned branch_offset, uint64_t *consts);
+
+void bi_disasm_add(FILE *fp, unsigned bits, struct bifrost_regs *srcs, struct bifrost_regs *next_regs, unsigned staging_register, unsigned branch_offset, uint64_t *consts);
+
+#endif
