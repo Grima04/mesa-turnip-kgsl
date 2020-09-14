@@ -9741,13 +9741,9 @@ static void create_null_export(isel_context *ctx)
 
 static bool export_vs_varying(isel_context *ctx, int slot, bool is_pos, int *next_pos)
 {
-   assert(ctx->stage == vertex_vs ||
-          ctx->stage == tess_eval_vs ||
-          ctx->stage == gs_copy_vs ||
-          ctx->stage == ngg_vertex_gs ||
-          ctx->stage == ngg_tess_eval_gs);
+   assert(ctx->stage & (hw_vs | hw_ngg_gs));
 
-   int offset = (ctx->stage & sw_tes)
+   int offset = ((ctx->stage & sw_tes) && !(ctx->stage & sw_gs))
                 ? ctx->program->info->tes.outinfo.vs_output_param_offset[slot]
                 : ctx->program->info->vs.outinfo.vs_output_param_offset[slot];
    uint64_t mask = ctx->outputs.mask[slot];
@@ -9844,13 +9840,9 @@ static void create_export_phis(isel_context *ctx)
 
 static void create_vs_exports(isel_context *ctx)
 {
-   assert(ctx->stage == vertex_vs ||
-          ctx->stage == tess_eval_vs ||
-          ctx->stage == gs_copy_vs ||
-          ctx->stage == ngg_vertex_gs ||
-          ctx->stage == ngg_tess_eval_gs);
+   assert(ctx->stage & (hw_vs | hw_ngg_gs));
 
-   radv_vs_output_info *outinfo = (ctx->stage & sw_tes)
+   radv_vs_output_info *outinfo = ((ctx->stage & sw_tes) && !(ctx->stage & sw_gs))
                                   ? &ctx->program->info->tes.outinfo
                                   : &ctx->program->info->vs.outinfo;
 
