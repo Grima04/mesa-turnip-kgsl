@@ -620,7 +620,7 @@ brw_upload_pipeline_state(struct brw_context *brw,
    if (pipeline == BRW_RENDER_PIPELINE && brw->current_hash_scale != 1)
       brw_emit_hashing_mode(brw, UINT_MAX, UINT_MAX, 1);
 
-   if (unlikely(INTEL_DEBUG & DEBUG_REEMIT)) {
+   if (INTEL_DEBUG & DEBUG_REEMIT) {
       /* Always re-emit all state. */
       brw->NewGLState = ~0;
       ctx->NewDriverState = ~0ull;
@@ -690,7 +690,7 @@ brw_upload_pipeline_state(struct brw_context *brw,
       brw_get_pipeline_atoms(brw, pipeline);
    const int num_atoms = brw->num_atoms[pipeline];
 
-   if (unlikely(INTEL_DEBUG)) {
+   if (INTEL_DEBUG) {
       /* Debug version which enforces various sanity checks on the
        * state flags which are generated and checked to help ensure
        * state atoms are ordered correctly in the list.
@@ -724,7 +724,7 @@ brw_upload_pipeline_state(struct brw_context *brw,
       }
    }
 
-   if (unlikely(INTEL_DEBUG & DEBUG_STATE)) {
+   if (INTEL_DEBUG & DEBUG_STATE) {
       STATIC_ASSERT(ARRAY_SIZE(brw_bits) == BRW_NUM_STATE_BITS + 1);
 
       brw_update_dirty_count(mesa_bits, state.mesa);

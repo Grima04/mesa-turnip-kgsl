@@ -1459,7 +1459,7 @@ intel_update_dri2_buffers(struct brw_context *brw, __DRIdrawable *drawable)
     * thus ignore the invalidate. */
    drawable->lastStamp = drawable->dri2.stamp;
 
-   if (unlikely(INTEL_DEBUG & DEBUG_DRI))
+   if (INTEL_DEBUG & DEBUG_DRI)
       fprintf(stderr, "enter %s, drawable %p\n", __func__, drawable);
 
    intel_query_dri2_buffers(brw, drawable, &buffers, &count);
@@ -1512,7 +1512,7 @@ intel_update_renderbuffers(__DRIcontext *context, __DRIdrawable *drawable)
     * thus ignore the invalidate. */
    drawable->lastStamp = drawable->dri2.stamp;
 
-   if (unlikely(INTEL_DEBUG & DEBUG_DRI))
+   if (INTEL_DEBUG & DEBUG_DRI)
       fprintf(stderr, "enter %s, drawable %p\n", __func__, drawable);
 
    if (dri_screen->image.loader)
@@ -1691,7 +1691,7 @@ intel_process_dri2_buffer(struct brw_context *brw,
    if (old_name == buffer->name)
       return;
 
-   if (unlikely(INTEL_DEBUG & DEBUG_DRI)) {
+   if (INTEL_DEBUG & DEBUG_DRI) {
       fprintf(stderr,
               "attaching buffer %d, at %d, cpp %d, pitch %d\n",
               buffer->name, buffer->attachment,

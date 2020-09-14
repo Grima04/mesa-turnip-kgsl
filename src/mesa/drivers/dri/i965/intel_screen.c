@@ -367,7 +367,7 @@ modifier_is_supported(const struct gen_device_info *devinfo,
 
    if (modinfo->aux_usage == ISL_AUX_USAGE_CCS_E) {
       /* If INTEL_DEBUG=norbc is set, don't support any CCS_E modifiers */
-      if (unlikely(INTEL_DEBUG & DEBUG_NO_RBC))
+      if (INTEL_DEBUG & DEBUG_NO_RBC)
          return false;
 
       /* CCS_E is not supported for planar images */
@@ -2499,7 +2499,7 @@ shader_perf_log_mesa(void *data, const char *fmt, ...)
    va_list args;
    va_start(args, fmt);
 
-   if (unlikely(INTEL_DEBUG & DEBUG_PERF)) {
+   if (INTEL_DEBUG & DEBUG_PERF) {
       va_list args_copy;
       va_copy(args_copy, args);
       vfprintf(stderr, fmt, args_copy);
