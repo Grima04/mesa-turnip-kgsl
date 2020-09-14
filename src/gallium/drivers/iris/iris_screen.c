@@ -618,7 +618,7 @@ iris_shader_perf_log(void *data, const char *fmt, ...)
    va_list args;
    va_start(args, fmt);
 
-   if (unlikely(INTEL_DEBUG & DEBUG_PERF)) {
+   if (INTEL_DEBUG & DEBUG_PERF) {
       va_list args_copy;
       va_copy(args_copy, args);
       vfprintf(stderr, fmt, args_copy);

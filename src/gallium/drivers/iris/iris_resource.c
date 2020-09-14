@@ -113,7 +113,7 @@ modifier_is_supported(const struct gen_device_info *devinfo,
       break;
    case I915_FORMAT_MOD_Y_TILED_GEN12_RC_CCS:
    case I915_FORMAT_MOD_Y_TILED_CCS: {
-      if (unlikely(INTEL_DEBUG & DEBUG_NO_RBC))
+      if (INTEL_DEBUG & DEBUG_NO_RBC)
          return false;
 
       enum isl_format rt_format =

@@ -302,7 +302,7 @@ iris_create_context(struct pipe_screen *pscreen, void *priv, unsigned flags)
    if (flags & PIPE_CONTEXT_LOW_PRIORITY)
       priority = GEN_CONTEXT_LOW_PRIORITY;
 
-   if (unlikely(INTEL_DEBUG & DEBUG_BATCH))
+   if (INTEL_DEBUG & DEBUG_BATCH)
       ice->state.sizes = _mesa_hash_table_u64_create(ice);
 
    for (int i = 0; i < IRIS_BATCH_COUNT; i++) {
