@@ -749,7 +749,7 @@ void fix_exports(asm_context& ctx, std::vector<uint32_t>& out, Program* program)
 
    if (!exported) {
       /* Abort in order to avoid a GPU hang. */
-      aco_err(program, "Missing export in %s shader:", (program->stage & hw_vs) ? "vertex" : "fragment");
+      aco_err(program, "Missing export in %s shader:", (program->stage & (hw_vs | hw_ngg_gs)) ? "vertex or NGG" : "fragment");
       aco_print_program(program, stderr);
       abort();
    }
