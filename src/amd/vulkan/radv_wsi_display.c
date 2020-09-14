@@ -287,7 +287,8 @@ radv_RegisterDeviceEventEXT(VkDevice                    _device,
 					&device->physical_device->wsi_device,
 					device_event_info,
 					allocator,
-					&fence->permanent.fence_wsi);
+					&fence->permanent.fence_wsi,
+					-1);
 	if (ret == VK_SUCCESS)
 		*_fence = radv_fence_to_handle(fence);
 	else
@@ -319,7 +320,8 @@ radv_RegisterDisplayEventEXT(VkDevice                           _device,
 					 display,
 					 display_event_info,
 					 allocator,
-					 &(fence->permanent.fence_wsi));
+					 &fence->permanent.fence_wsi,
+					 -1);
 
 	if (ret == VK_SUCCESS)
 		*_fence = radv_fence_to_handle(fence);

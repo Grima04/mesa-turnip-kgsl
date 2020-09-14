@@ -281,7 +281,8 @@ tu_RegisterDeviceEventEXT(VkDevice                    _device,
                                    &device->physical_device->wsi_device,
                                    device_event_info,
                                    allocator,
-                                   &fence->fence_wsi);
+                                   &fence->fence_wsi,
+                                   -1);
    if (ret == VK_SUCCESS)
       *_fence = tu_fence_to_handle(fence);
    else
@@ -313,7 +314,8 @@ tu_RegisterDisplayEventEXT(VkDevice                           _device,
                                     display,
                                     display_event_info,
                                     allocator,
-                                    &fence->fence_wsi);
+                                    &fence->fence_wsi,
+                                    -1);
 
    if (ret == VK_SUCCESS)
       *_fence = tu_fence_to_handle(fence);
