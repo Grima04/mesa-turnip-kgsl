@@ -2,6 +2,10 @@ traces-db:
   download-url: "https://minio-packet.freedesktop.org/mesa-tracie-public/"
 
 traces:
+  - path: 0ad/0ad.trace
+    expectations:
+      - device: freedreno-a630
+        checksum: 09eb7a4cfe73cb77043f2ac09db96d91
   - path: glmark2/buffer-columns=200:interleave=false:update-dispersion=0.9:update-fraction=0.5:update-method=map.rdc
     expectations:
       - device: freedreno-a630
@@ -148,12 +152,10 @@ traces:
     expectations:
       - device: freedreno-a630
         checksum: 0b0114e48cf37efc43d8b27b926eaadf
-# This trace takes an egregious amount of time in replay (5 minutes)
-#  on freedreno for some reason.
-#  - path: glxgears/glxgears.trace
-#    expectations:
-#      - device: freedreno-a630
-#        checksum: 5599d6e8e43384c59196b9c9b0161268
+  - path: glxgears/glxgears.trace
+    expectations:
+      - device: freedreno-a630
+        checksum: 5599d6e8e43384c59196b9c9b0161268
   - path: gputest/furmark.trace
     expectations:
       - device: freedreno-a630
@@ -226,6 +228,16 @@ traces:
     expectations:
       - device: freedreno-a630
         checksum: 6027f10cbffa8c68ffe7d8208f84d32d
+# Fails trying to use a GLX symbol
+#  - path: itoral-gl-terrain-demo/demo.trace
+#    expectations:
+#      - device: freedreno-a630
+#        checksum: 0
+# Fails due to clipdistance lowering not setting i/o semantics.
+#  - path: neverball/neverball.trace
+#    expectations:
+#      - device: freedreno-a630
+#        checksum: 0
   - path: pathfinder/canvas_moire.trace
     expectations:
       - device: freedreno-a630
@@ -238,6 +250,10 @@ traces:
     expectations:
       - device: freedreno-a630
         checksum: f6661ed4de9e0a444c6338ebd0cd3768
+  - path: xonotic/xonotic-keybench-high.trace
+    expectations:
+      - device: freedreno-a630
+        checksum: 62fa3bb64f5c38142d155da85afb1312
 # Throws errors on freedreno
 #  - path: supertuxkart/supertuxkart-antediluvian-abyss.rdc
 #    expectations:
