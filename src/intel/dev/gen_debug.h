@@ -28,6 +28,7 @@
 
 #include <stdint.h>
 #include "compiler/shader_enums.h"
+#include "util/macros.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -39,7 +40,9 @@ extern "C" {
  * list of debugging flags, as well as some macros for handling them.
  */
 
-extern uint64_t INTEL_DEBUG;
+extern uint64_t intel_debug;
+
+#define INTEL_DEBUG __builtin_expect(intel_debug, 0)
 
 #define DEBUG_TEXTURE             (1ull <<  0)
 #define DEBUG_STATE               (1ull <<  1)

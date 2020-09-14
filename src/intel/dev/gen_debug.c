@@ -39,7 +39,7 @@
 #include "util/debug.h"
 #include "c11/threads.h"
 
-uint64_t INTEL_DEBUG = 0;
+uint64_t intel_debug = 0;
 
 static const struct debug_control debug_control[] = {
    { "tex",         DEBUG_TEXTURE},
@@ -117,7 +117,7 @@ intel_debug_flag_for_shader_stage(gl_shader_stage stage)
 static void
 brw_process_intel_debug_variable_once(void)
 {
-   INTEL_DEBUG = parse_debug_string(getenv("INTEL_DEBUG"), debug_control);
+   intel_debug = parse_debug_string(getenv("INTEL_DEBUG"), debug_control);
 }
 
 void

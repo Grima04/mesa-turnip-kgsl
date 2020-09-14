@@ -2574,7 +2574,7 @@ __DRIconfig **intelInitScreen2(__DRIscreen *dri_screen)
    if ((INTEL_DEBUG & DEBUG_SHADER_TIME) && devinfo->gen < 7) {
       fprintf(stderr,
               "shader_time debugging requires gen7 (Ivybridge) or better.\n");
-      INTEL_DEBUG &= ~DEBUG_SHADER_TIME;
+      intel_debug &= ~DEBUG_SHADER_TIME;
    }
 
    if (intel_get_integer(screen, I915_PARAM_MMAP_GTT_VERSION) >= 1) {
