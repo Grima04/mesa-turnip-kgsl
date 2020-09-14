@@ -1156,7 +1156,7 @@ static void encode(struct radeon_encoder *enc)
    enc->feedback(enc);
    enc->intra_refresh(enc);
 
-   enc->op_speed(enc);
+   enc->op_preset(enc);
    enc->op_enc(enc);
    *enc->p_task_size = (enc->total_task_size);
 }
@@ -1193,7 +1193,7 @@ void radeon_enc_1_2_init(struct radeon_encoder *enc)
    enc->op_enc = radeon_enc_op_enc;
    enc->op_init_rc = radeon_enc_op_init_rc;
    enc->op_init_rc_vbv = radeon_enc_op_init_rc_vbv;
-   enc->op_speed = radeon_enc_op_speed;
+   enc->op_preset = radeon_enc_op_speed;
 
    if (u_reduce_video_profile(enc->base.profile) == PIPE_VIDEO_FORMAT_MPEG4_AVC) {
       enc->session_init = radeon_enc_session_init;

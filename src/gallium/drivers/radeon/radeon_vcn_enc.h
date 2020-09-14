@@ -82,6 +82,8 @@
 #define RENCODE_HEVC_HEADER_INSTRUCTION_FIRST_SLICE                                 0x00010001
 #define RENCODE_HEVC_HEADER_INSTRUCTION_SLICE_SEGMENT                               0x00010002
 #define RENCODE_HEVC_HEADER_INSTRUCTION_SLICE_QP_DELTA                              0x00010003
+#define RENCODE_HEVC_HEADER_INSTRUCTION_SAO_ENABLE                                  0x00010004
+#define RENCODE_HEVC_HEADER_INSTRUCTION_LOOP_FILTER_ACROSS_SLICES_ENABLE            0x00010005
 
 #define RENCODE_H264_HEADER_INSTRUCTION_FIRST_MB                                    0x00020000
 #define RENCODE_H264_HEADER_INSTRUCTION_SLICE_QP_DELTA                              0x00020001
@@ -501,7 +503,7 @@ struct radeon_encoder {
    void (*op_enc)(struct radeon_encoder *enc);
    void (*op_init_rc)(struct radeon_encoder *enc);
    void (*op_init_rc_vbv)(struct radeon_encoder *enc);
-   void (*op_speed)(struct radeon_encoder *enc);
+   void (*op_preset)(struct radeon_encoder *enc);
    void (*encode_headers)(struct radeon_encoder *enc);
    void (*input_format)(struct radeon_encoder *enc);
    void (*output_format)(struct radeon_encoder *enc);
