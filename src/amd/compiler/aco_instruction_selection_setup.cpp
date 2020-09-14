@@ -1152,7 +1152,7 @@ void init_context(isel_context *ctx, nir_shader *shader)
    ctx->program->config->spi_ps_input_addr = spi_ps_inputs;
 
    for (unsigned i = 0; i < impl->ssa_alloc; i++)
-      allocated[i] = Temp(ctx->program->allocateId(), allocated[i].regClass());
+      allocated[i] = ctx->program->allocateTmp(allocated[i].regClass());
 
    ctx->allocated.reset(allocated.release());
    ctx->cf_info.nir_to_aco.reset(nir_to_aco.release());

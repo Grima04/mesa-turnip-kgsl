@@ -1561,6 +1561,7 @@ class Program final {
 public:
    float_mode next_fp_mode;
    std::vector<Block> blocks;
+   std::vector<RegClass> temp_rc = {s1};
    RegisterDemand max_reg_demand = RegisterDemand();
    uint16_t num_waves = 0;
    uint16_t max_waves = 0; /* maximum number of waves, regardless of register usage */
@@ -1607,10 +1608,16 @@ public:
       void *private_data;
    } debug;
 
-   uint32_t allocateId()
+   uint32_t allocateId(RegClass rc)
    {
       assert(allocationID <= 16777215);
+      temp_rc.push_back(rc);
       return allocationID++;
+   }
+
+   Temp allocateTmp(RegClass rc)
+   {
+      return Temp(allocateId(rc), rc);
    }
 
    uint32_t peekAllocationId()

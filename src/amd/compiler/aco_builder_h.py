@@ -253,23 +253,23 @@ public:
    }
 
    Temp tmp(RegClass rc) {
-      return (Temp){program->allocateId(), rc};
+      return program->allocateTmp(rc);
    }
 
    Temp tmp(RegType type, unsigned size) {
-      return (Temp){program->allocateId(), RegClass(type, size)};
+      return tmp(RegClass(type, size));
    }
 
    Definition def(RegClass rc) {
-      return Definition((Temp){program->allocateId(), rc});
+      return Definition(program->allocateTmp(rc));
    }
 
    Definition def(RegType type, unsigned size) {
-      return Definition((Temp){program->allocateId(), RegClass(type, size)});
+      return def(RegClass(type, size));
    }
 
    Definition def(RegClass rc, PhysReg reg) {
-      return Definition(program->allocateId(), reg, rc);
+      return Definition(program->allocateId(rc), reg, rc);
    }
 
    inline aco_opcode w64or32(WaveSpecificOpcode opcode) const {

@@ -390,7 +390,7 @@ void emit_split_vector(isel_context* ctx, Temp vec_src, unsigned num_components)
    split->operands[0] = Operand(vec_src);
    std::array<Temp,NIR_MAX_VEC_COMPONENTS> elems;
    for (unsigned i = 0; i < num_components; i++) {
-      elems[i] = {ctx->program->allocateId(), rc};
+      elems[i] = ctx->program->allocateTmp(rc);
       split->definitions[i] = Definition(elems[i]);
    }
    ctx->block->instructions.emplace_back(std::move(split));
@@ -697,7 +697,7 @@ Temp get_alu_src(struct isel_context *ctx, nir_alu_src src, unsigned size=1)
       assert(src.src.ssa->bit_size == 8 || src.src.ssa->bit_size == 16);
       assert(size == 1);
       return extract_8_16_bit_sgpr_element(
-         ctx, Temp(ctx->program->allocateId(), s1), &src, sgpr_extract_undef);
+         ctx, ctx->program->allocateTmp(s1), &src, sgpr_extract_undef);
    }
 
    RegClass elem_rc = elem_size < 4 ? RegClass(vec.type(), elem_size).as_subdword() : RegClass(vec.type(), elem_size / 4);
@@ -711,7 +711,7 @@ Temp get_alu_src(struct isel_context *ctx, nir_alu_src src, unsigned size=1)
          elems[i] = emit_extract_vector(ctx, vec, src.swizzle[i], elem_rc);
          vec_instr->operands[i] = Operand{elems[i]};
       }
-      Temp dst{ctx->program->allocateId(), RegClass(vec.type(), elem_size * size / 4)};
+      Temp dst = ctx->program->allocateTmp(RegClass(vec.type(), elem_size * size / 4));
       vec_instr->definitions[0] = Definition(dst);
       ctx->block->instructions.emplace_back(std::move(vec_instr));
       ctx->allocated_vec.emplace(dst.id(), elems);
@@ -739,7 +739,7 @@ void emit_sop2_instruction(isel_context *ctx, nir_alu_instr *instr, aco_opcode o
    if (instr->no_unsigned_wrap)
       sop2->definitions[0].setNUW(true);
    if (writes_scc)
-      sop2->definitions[1] = Definition(ctx->program->allocateId(), scc, s1);
+      sop2->definitions[1] = Definition(ctx->program->allocateId(s1), scc, s1);
    ctx->block->instructions.emplace_back(std::move(sop2));
 }
 
@@ -4427,7 +4427,7 @@ void visit_load_interpolated_input(isel_context *ctx, nir_intrinsic_instr *instr
       aco_ptr<Pseudo_instruction> vec(create_instruction<Pseudo_instruction>(aco_opcode::p_create_vector, Format::PSEUDO, instr->dest.ssa.num_components, 1));
       for (unsigned i = 0; i < instr->dest.ssa.num_components; i++)
       {
-         Temp tmp = {ctx->program->allocateId(), v1};
+         Temp tmp = ctx->program->allocateTmp(v1);
          emit_interp_instr(ctx, idx, component+i, coords, tmp, prim_mask);
          vec->operands[i] = Operand(tmp);
       }
@@ -5656,7 +5656,7 @@ static Temp get_image_coords(isel_context *ctx, const nir_intrinsic_instr *instr
    aco_ptr<Pseudo_instruction> vec{create_instruction<Pseudo_instruction>(aco_opcode::p_create_vector, Format::PSEUDO, coords.size(), 1)};
    for (unsigned i = 0; i < coords.size(); i++)
       vec->operands[i] = Operand(coords[i]);
-   Temp res = {ctx->program->allocateId(), RegClass(RegType::vgpr, coords.size())};
+   Temp res = ctx->program->allocateTmp(RegClass(RegType::vgpr, coords.size()));
    vec->definitions[0] = Definition(res);
    ctx->block->instructions.emplace_back(std::move(vec));
    return res;
@@ -5722,7 +5722,7 @@ void visit_image_load(isel_context *ctx, nir_intrinsic_instr *instr)
       if (num_channels == instr->dest.ssa.num_components && dst.type() == RegType::vgpr)
          tmp = dst;
       else
-         tmp = {ctx->program->allocateId(), RegClass(RegType::vgpr, num_channels)};
+         tmp = ctx->program->allocateTmp(RegClass(RegType::vgpr, num_channels));
       load->definitions[0] = Definition(tmp);
       load->idxen = true;
       load->glc = access & (ACCESS_VOLATILE | ACCESS_COHERENT);
@@ -5743,7 +5743,7 @@ void visit_image_load(isel_context *ctx, nir_intrinsic_instr *instr)
    if (num_components == instr->dest.ssa.num_components && dst.type() == RegType::vgpr)
       tmp = dst;
    else
-      tmp = {ctx->program->allocateId(), RegClass(RegType::vgpr, num_components)};
+      tmp = ctx->program->allocateTmp(RegClass(RegType::vgpr, num_components));
 
    bool level_zero = nir_src_is_const(instr->src[3]) && nir_src_as_uint(instr->src[3]) == 0;
    aco_opcode opcode = level_zero ? aco_opcode::image_load : aco_opcode::image_load_mip;
@@ -6020,7 +6020,7 @@ void visit_image_size(isel_context *ctx, nir_intrinsic_instr *instr)
        glsl_sampler_type_is_array(type)) {
 
       assert(instr->dest.ssa.num_components == 3);
-      Temp tmp = {ctx->program->allocateId(), v3};
+      Temp tmp = ctx->program->allocateTmp(v3);
       def = Definition(tmp);
       emit_split_vector(ctx, tmp, 3);
 
@@ -9042,7 +9042,7 @@ void visit_phi(isel_context *ctx, nir_phi_instr *instr)
                Operand src = operands[i];
                phi->operands[i] = src.isTemp() ? Operand(ctx->allocated_vec[src.tempId()][k]) : Operand(rc);
             }
-            Temp phi_dst = {ctx->program->allocateId(), rc};
+            Temp phi_dst = ctx->program->allocateTmp(rc);
             phi->definitions[0] = Definition(phi_dst);
             ctx->block->instructions.emplace(ctx->block->instructions.begin(), std::move(phi));
             new_vec[k] = phi_dst;
@@ -9230,7 +9230,7 @@ static Operand create_continue_phis(isel_context *ctx, unsigned first, unsigned 
             aco_opcode::p_linear_phi, Format::PSEUDO, block.linear_preds.size(), 1));
          for (unsigned i = 0; i < block.linear_preds.size(); i++)
             phi->operands[i] = vals[block.linear_preds[i] - first];
-         val = Operand(Temp(ctx->program->allocateId(), rc));
+         val = Operand(ctx->program->allocateTmp(rc));
          phi->definitions[0] = Definition(val.getTemp());
          block.instructions.emplace(block.instructions.begin(), std::move(phi));
       }
@@ -9384,7 +9384,7 @@ static void begin_divergent_if_then(isel_context *ctx, if_context *ic, Temp cond
    assert(cond.regClass() == ctx->program->lane_mask);
    aco_ptr<Pseudo_branch_instruction> branch;
    branch.reset(create_instruction<Pseudo_branch_instruction>(aco_opcode::p_cbranch_z, Format::PSEUDO_BRANCH, 1, 1));
-   branch->definitions[0] = {ctx->program->allocateId(), s2};
+   branch->definitions[0] = Definition(ctx->program->allocateTmp(s2));
    branch->definitions[0].setHint(vcc);
    branch->operands[0] = Operand(cond);
    ctx->block->instructions.push_back(std::move(branch));
@@ -9425,7 +9425,7 @@ static void begin_divergent_if_else(isel_context *ctx, if_context *ic)
     /* branch from logical then block to invert block */
    aco_ptr<Pseudo_branch_instruction> branch;
    branch.reset(create_instruction<Pseudo_branch_instruction>(aco_opcode::p_branch, Format::PSEUDO_BRANCH, 0, 1));
-   branch->definitions[0] = {ctx->program->allocateId(), s2};
+   branch->definitions[0] = Definition(ctx->program->allocateTmp(s2));
    branch->definitions[0].setHint(vcc);
    BB_then_logical->instructions.emplace_back(std::move(branch));
    add_linear_edge(BB_then_logical->index, &ic->BB_invert);
@@ -9443,7 +9443,7 @@ static void begin_divergent_if_else(isel_context *ctx, if_context *ic)
    add_linear_edge(ic->BB_if_idx, BB_then_linear);
    /* branch from linear then block to invert block */
    branch.reset(create_instruction<Pseudo_branch_instruction>(aco_opcode::p_branch, Format::PSEUDO_BRANCH, 0, 1));
-   branch->definitions[0] = {ctx->program->allocateId(), s2};
+   branch->definitions[0] = Definition(ctx->program->allocateTmp(s2));
    branch->definitions[0].setHint(vcc);
    BB_then_linear->instructions.emplace_back(std::move(branch));
    add_linear_edge(BB_then_linear->index, &ic->BB_invert);
@@ -9454,7 +9454,7 @@ static void begin_divergent_if_else(isel_context *ctx, if_context *ic)
 
    /* branch to linear else block (skip else) */
    branch.reset(create_instruction<Pseudo_branch_instruction>(aco_opcode::p_cbranch_nz, Format::PSEUDO_BRANCH, 1, 1));
-   branch->definitions[0] = {ctx->program->allocateId(), s2};
+   branch->definitions[0] = Definition(ctx->program->allocateTmp(s2));
    branch->definitions[0].setHint(vcc);
    branch->operands[0] = Operand(ic->cond);
    ctx->block->instructions.push_back(std::move(branch));
@@ -9485,7 +9485,7 @@ static void end_divergent_if(isel_context *ctx, if_context *ic)
    /* branch from logical else block to endif block */
    aco_ptr<Pseudo_branch_instruction> branch;
    branch.reset(create_instruction<Pseudo_branch_instruction>(aco_opcode::p_branch, Format::PSEUDO_BRANCH, 0, 1));
-   branch->definitions[0] = {ctx->program->allocateId(), s2};
+   branch->definitions[0] = Definition(ctx->program->allocateTmp(s2));
    branch->definitions[0].setHint(vcc);
    BB_else_logical->instructions.emplace_back(std::move(branch));
    add_linear_edge(BB_else_logical->index, &ic->BB_endif);
@@ -9505,7 +9505,7 @@ static void end_divergent_if(isel_context *ctx, if_context *ic)
 
    /* branch from linear else block to endif block */
    branch.reset(create_instruction<Pseudo_branch_instruction>(aco_opcode::p_branch, Format::PSEUDO_BRANCH, 0, 1));
-   branch->definitions[0] = {ctx->program->allocateId(), s2};
+   branch->definitions[0] = Definition(ctx->program->allocateTmp(s2));
    branch->definitions[0].setHint(vcc);
    BB_else_linear->instructions.emplace_back(std::move(branch));
    add_linear_edge(BB_else_linear->index, &ic->BB_endif);
@@ -9544,7 +9544,7 @@ static void begin_uniform_if_then(isel_context *ctx, if_context *ic, Temp cond)
    aco_ptr<Pseudo_branch_instruction> branch;
    aco_opcode branch_opcode = aco_opcode::p_cbranch_z;
    branch.reset(create_instruction<Pseudo_branch_instruction>(branch_opcode, Format::PSEUDO_BRANCH, 1, 1));
-   branch->definitions[0] = {ctx->program->allocateId(), s2};
+   branch->definitions[0] = Definition(ctx->program->allocateTmp(s2));
    branch->definitions[0].setHint(vcc);
    branch->operands[0] = Operand(cond);
    branch->operands[0].setFixed(scc);
@@ -9578,7 +9578,7 @@ static void begin_uniform_if_else(isel_context *ctx, if_context *ic)
       /* branch from then block to endif block */
       aco_ptr<Pseudo_branch_instruction> branch;
       branch.reset(create_instruction<Pseudo_branch_instruction>(aco_opcode::p_branch, Format::PSEUDO_BRANCH, 0, 1));
-      branch->definitions[0] = {ctx->program->allocateId(), s2};
+      branch->definitions[0] = Definition(ctx->program->allocateTmp(s2));
       branch->definitions[0].setHint(vcc);
       BB_then->instructions.emplace_back(std::move(branch));
       add_linear_edge(BB_then->index, &ic->BB_endif);
@@ -9607,7 +9607,7 @@ static void end_uniform_if(isel_context *ctx, if_context *ic)
       /* branch from then block to endif block */
       aco_ptr<Pseudo_branch_instruction> branch;
       branch.reset(create_instruction<Pseudo_branch_instruction>(aco_opcode::p_branch, Format::PSEUDO_BRANCH, 0, 1));
-      branch->definitions[0] = {ctx->program->allocateId(), s2};
+      branch->definitions[0] = Definition(ctx->program->allocateTmp(s2));
       branch->definitions[0].setHint(vcc);
       BB_else->instructions.emplace_back(std::move(branch));
       add_linear_edge(BB_else->index, &ic->BB_endif);
@@ -10325,7 +10325,7 @@ static void emit_stream_output(isel_context *ctx,
 
       unsigned offset = output->offset + start * 4;
 
-      Temp write_data = {ctx->program->allocateId(), RegClass(RegType::vgpr, count)};
+      Temp write_data = ctx->program->allocateTmp(RegClass(RegType::vgpr, count));
       aco_ptr<Pseudo_instruction> vec{create_instruction<Pseudo_instruction>(aco_opcode::p_create_vector, Format::PSEUDO, count, 1)};
       for (int i = 0; i < count; ++i)
          vec->operands[i] = (ctx->outputs.mask[loc] & 1 << (start + i)) ? Operand(out[start + i]) : Operand(0u);
@@ -10474,13 +10474,13 @@ Pseudo_instruction *add_startpgm(struct isel_context *ctx)
       unsigned size = ctx->args->ac.args[i].size;
       unsigned reg = ctx->args->ac.args[i].offset;
       RegClass type = RegClass(file == AC_ARG_SGPR ? RegType::sgpr : RegType::vgpr, size);
-      Temp dst = Temp{ctx->program->allocateId(), type};
+      Temp dst = ctx->program->allocateTmp(type);
       ctx->arg_temps[i] = dst;
       startpgm->definitions[arg] = Definition(dst);
       startpgm->definitions[arg].setFixed(PhysReg{file == AC_ARG_SGPR ? reg : reg + 256});
       arg++;
    }
-   startpgm->definitions[arg_count] = Definition{ctx->program->allocateId(), exec, ctx->program->lane_mask};
+   startpgm->definitions[arg_count] = Definition{ctx->program->allocateId(ctx->program->lane_mask), exec, ctx->program->lane_mask};
    Pseudo_instruction *instr = startpgm.get();
    ctx->block->instructions.push_back(std::move(startpgm));
 

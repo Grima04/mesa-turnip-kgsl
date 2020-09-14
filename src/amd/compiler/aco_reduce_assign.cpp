@@ -95,7 +95,7 @@ void setup_reduce_temp(Program* program)
          reduceTmp_in_loop |= block.loop_nest_depth > 0;
 
          if ((int)last_top_level_block_idx != inserted_at) {
-            reduceTmp = {program->allocateId(), reduceTmp.regClass()};
+            reduceTmp = program->allocateTmp(reduceTmp.regClass());
             aco_ptr<Pseudo_instruction> create{create_instruction<Pseudo_instruction>(aco_opcode::p_start_linear_vgpr, Format::PSEUDO, 0, 1)};
             create->definitions[0] = Definition(reduceTmp);
             /* find the right place to insert this definition */
@@ -135,7 +135,7 @@ void setup_reduce_temp(Program* program)
 
          vtmp_in_loop |= need_vtmp && block.loop_nest_depth > 0;
          if (need_vtmp && (int)last_top_level_block_idx != vtmp_inserted_at) {
-            vtmp = {program->allocateId(), vtmp.regClass()};
+            vtmp = program->allocateTmp(vtmp.regClass());
             aco_ptr<Pseudo_instruction> create{create_instruction<Pseudo_instruction>(aco_opcode::p_start_linear_vgpr, Format::PSEUDO, 0, 1)};
             create->definitions[0] = Definition(vtmp);
             if (last_top_level_block_idx == block.index) {

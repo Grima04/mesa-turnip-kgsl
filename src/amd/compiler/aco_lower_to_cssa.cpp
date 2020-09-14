@@ -146,7 +146,7 @@ bool collect_phi_info(cssa_ctx& ctx)
             progress = true;
 
             /* create new temporary and rename operands */
-            Temp new_tmp = Temp{ctx.program->allocateId(), phi->definitions[0].regClass()};
+            Temp new_tmp = ctx.program->allocateTmp(phi->definitions[0].regClass());
             if (is_logical)
                ctx.logical_phi_info[preds[i]].emplace_back(Definition(new_tmp), op);
             else

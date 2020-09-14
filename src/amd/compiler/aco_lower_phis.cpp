@@ -76,7 +76,7 @@ Operand get_ssa(Program *program, unsigned block_idx, ssa_state *state, bool bef
               !(program->blocks[state->phi_block_idx].kind & block_kind_loop_exit)) {
       return Operand(program->lane_mask);
    } else {
-      Temp res = Temp(program->allocateId(), program->lane_mask);
+      Temp res = Temp(program->allocateTmp(program->lane_mask));
       state->latest[block_idx] = Operand(res);
 
       Operand ops[pred];
@@ -207,7 +207,7 @@ void lower_divergent_bool_phi(Program *program, ssa_state *state, Block *block, 
       if (phi->operands[i].isUndefined())
          continue;
 
-      state->writes[block->logical_preds[i]] = program->allocateId();
+      state->writes[block->logical_preds[i]] = program->allocateId(program->lane_mask);
    }
 
    bool uniform_merge = block->kind & block_kind_loop_header;

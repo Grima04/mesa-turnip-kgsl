@@ -549,7 +549,7 @@ void update_renames(ra_ctx& ctx, RegisterFile& reg_file,
          }
       }
       // FIXME: if a definition got moved, change the target location and remove the parallelcopy
-      copy.second.setTemp(Temp(ctx.program->allocateId(), copy.second.regClass()));
+      copy.second.setTemp(ctx.program->allocateTmp(copy.second.regClass()));
       ctx.assignments.emplace_back(copy.second.physReg(), copy.second.regClass());
       assert(ctx.assignments.size() == ctx.program->peekAllocationId());
       reg_file.fill(copy.second);
@@ -1576,7 +1576,7 @@ Temp handle_live_in(ra_ctx& ctx, Temp val, Block* block)
       Temp tmp = read_variable(ctx, val, preds[0]);
 
       /* if the block is not sealed yet, we create an incomplete phi (which might later get removed again) */
-      new_val = Temp{ctx.program->allocateId(), val.regClass()};
+      new_val = ctx.program->allocateTmp(val.regClass());
       ctx.assignments.emplace_back();
       aco_opcode opcode = val.is_linear() ? aco_opcode::p_linear_phi : aco_opcode::p_phi;
       aco_ptr<Instruction> phi{create_instruction<Pseudo_instruction>(opcode, Format::PSEUDO, preds.size(), 1)};
@@ -1611,7 +1611,7 @@ Temp handle_live_in(ra_ctx& ctx, Temp val, Block* block)
          /* the variable has been renamed differently in the predecessors: we need to insert a phi */
          aco_opcode opcode = val.is_linear() ? aco_opcode::p_linear_phi : aco_opcode::p_phi;
          aco_ptr<Instruction> phi{create_instruction<Pseudo_instruction>(opcode, Format::PSEUDO, preds.size(), 1)};
-         new_val = Temp{ctx.program->allocateId(), val.regClass()};
+         new_val = ctx.program->allocateTmp(val.regClass());
          phi->definitions[0] = Definition(new_val);
          for (unsigned i = 0; i < preds.size(); i++) {
             phi->operands[i] = Operand(ops[i]);
@@ -2335,7 +2335,7 @@ void register_allocation(Program *program, std::vector<TempSet>& live_out_per_bl
                   if (op.isTemp() && op.isFirstKill())
                      register_file.block(op.physReg(), op.regClass());
                }
-               Temp tmp = {program->allocateId(), can_sgpr ? s1 : v1};
+               Temp tmp = program->allocateTmp(can_sgpr ? s1 : v1);
                ctx.assignments.emplace_back();
                PhysReg reg = get_reg(ctx, register_file, tmp, parallelcopy, instr);
 
