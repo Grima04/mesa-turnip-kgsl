@@ -46,9 +46,17 @@ bifrost_nir_algebraic_c = custom_target(
   depend_files : nir_algebraic_py,
 )
 
+bifrost_gen_disasm_c = custom_target(
+  'bifrost_gen_disasm.c',
+  input : ['gen_disasm.py', 'ISA.xml'],
+  output : 'bifrost_gen_disasm.c',
+  command : [prog_python, '@INPUT@'],
+  capture : true,
+)
+
 libpanfrost_bifrost_disasm = static_library(
   'panfrost_bifrost_disasm',
-  ['disassemble.c', 'bi_print_common.c'],
+  ['disassemble.c', 'bi_print_common.c', bifrost_gen_disasm_c],
   include_directories : [inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_gallium_aux, inc_panfrost_hw],
   dependencies: [idep_nir],
   link_with: [libpanfrost_util],
