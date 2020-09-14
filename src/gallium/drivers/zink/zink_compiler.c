@@ -219,8 +219,11 @@ lower_64bit_vertex_attribs(nir_shader *shader)
 }
 
 static bool
-lower_basevertex_instr(nir_intrinsic_instr *instr, nir_builder *b)
+lower_basevertex_instr(nir_builder *b, nir_instr *in, void *data)
 {
+   if (in->type != nir_instr_type_intrinsic)
+      return false;
+   nir_intrinsic_instr *instr = nir_instr_as_intrinsic(in);
    if (instr->intrinsic != nir_intrinsic_load_base_vertex)
       return false;
 
@@ -253,29 +256,18 @@ lower_basevertex(nir_shader *shader)
    if (!BITSET_TEST(shader->info.system_values_read, SYSTEM_VALUE_BASE_VERTEX))
       return false;
 
-   nir_foreach_function(function, shader) {
-      if (function->impl) {
-         nir_builder builder;
-         nir_builder_init(&builder, function->impl);
-         nir_foreach_block(block, function->impl) {
-            nir_foreach_instr_safe(instr, block) {
-               if (instr->type == nir_instr_type_intrinsic)
-                  progress |= lower_basevertex_instr(nir_instr_as_intrinsic(instr),
-                                                     &builder);
-            }
-         }
-
-         nir_metadata_preserve(function->impl, nir_metadata_dominance);
-      }
-   }
+   return nir_shader_instructions_pass(shader, lower_basevertex_instr, nir_metadata_dominance, NULL);
 
    return progress;
 }
 
 
 static bool
-lower_drawid_instr(nir_intrinsic_instr *instr, nir_builder *b)
+lower_drawid_instr(nir_builder *b, nir_instr *in, void *data)
 {
+   if (in->type != nir_instr_type_intrinsic)
+      return false;
+   nir_intrinsic_instr *instr = nir_instr_as_intrinsic(in);
    if (instr->intrinsic != nir_intrinsic_load_draw_id)
       return false;
 
@@ -295,31 +287,13 @@ lower_drawid_instr(nir_intrinsic_instr *instr, nir_builder *b)
 static bool
 lower_drawid(nir_shader *shader)
 {
-   bool progress = false;
-
    if (shader->info.stage != MESA_SHADER_VERTEX)
       return false;
 
    if (!BITSET_TEST(shader->info.system_values_read, SYSTEM_VALUE_DRAW_ID))
       return false;
 
-   nir_foreach_function(function, shader) {
-      if (function->impl) {
-         nir_builder builder;
-         nir_builder_init(&builder, function->impl);
-         nir_foreach_block(block, function->impl) {
-            nir_foreach_instr_safe(instr, block) {
-               if (instr->type == nir_instr_type_intrinsic)
-                  progress |= lower_drawid_instr(nir_instr_as_intrinsic(instr),
-                                                     &builder);
-            }
-         }
-
-         nir_metadata_preserve(function->impl, nir_metadata_dominance);
-      }
-   }
-
-   return progress;
+   return nir_shader_instructions_pass(shader, lower_drawid_instr, nir_metadata_dominance, NULL);
 }
 
 void
