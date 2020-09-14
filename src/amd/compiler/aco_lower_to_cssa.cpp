@@ -88,7 +88,7 @@ bool collect_phi_info(cssa_ctx& ctx)
                          ctx.program->blocks[pred].logical_idom :
                          ctx.program->blocks[pred].linear_idom;
                } while (def_points[i] != pred &&
-                        ctx.live_vars.live_out[pred].find(op.getTemp()) != ctx.live_vars.live_out[pred].end());
+                        ctx.live_vars.live_out[pred].count(op.tempId()));
             }
          }
 
@@ -118,7 +118,7 @@ bool collect_phi_info(cssa_ctx& ctx)
             } else if (def_points[i] == block.index) {
                interferes = true;
             /* operand might interfere with phi-def */
-            } else if (ctx.live_vars.live_out[idom].count(phi->definitions[0].getTemp())) {
+            } else if (ctx.live_vars.live_out[idom].count(phi->definitions[0].tempId())) {
                interferes = true;
             /* else check for interferences with other operands */
             } else {

@@ -1701,7 +1701,7 @@ void try_remove_trivial_phi(ra_ctx& ctx, Temp temp)
 } /* end namespace */
 
 
-void register_allocation(Program *program, std::vector<TempSet>& live_out_per_block)
+void register_allocation(Program *program, std::vector<IDSet>& live_out_per_block)
 {
    ra_ctx ctx(program);
    std::vector<std::vector<Temp>> phi_ressources;
@@ -1711,14 +1711,14 @@ void register_allocation(Program *program, std::vector<TempSet>& live_out_per_bl
       Block& block = *it;
 
       /* first, compute the death points of all live vars within the block */
-      TempSet& live = live_out_per_block[block.index];
+      IDSet& live = live_out_per_block[block.index];
 
       std::vector<aco_ptr<Instruction>>::reverse_iterator rit;
       for (rit = block.instructions.rbegin(); rit != block.instructions.rend(); ++rit) {
          aco_ptr<Instruction>& instr = *rit;
          if (is_phi(instr)) {
             if (instr->definitions[0].isKill() || instr->definitions[0].isFixed()) {
-               live.erase(instr->definitions[0].getTemp());
+               live.erase(instr->definitions[0].tempId());
                continue;
             }
             /* collect information about affinity-related temporaries */
@@ -1748,7 +1748,7 @@ void register_allocation(Program *program, std::vector<TempSet>& live_out_per_bl
             /* add operands to live variables */
             for (const Operand& op : instr->operands) {
                if (op.isTemp())
-                  live.emplace(op.getTemp());
+                  live.insert(op.tempId());
             }
          }
 
@@ -1757,7 +1757,7 @@ void register_allocation(Program *program, std::vector<TempSet>& live_out_per_bl
             const Definition& def = instr->definitions[i];
             if (!def.isTemp())
                continue;
-            live.erase(def.getTemp());
+            live.erase(def.tempId());
             /* mark last-seen phi operand */
             std::unordered_map<unsigned, unsigned>::iterator it = temp_to_phi_ressources.find(def.tempId());
             if (it != temp_to_phi_ressources.end() && def.regClass() == phi_ressources[it->second][0].regClass()) {
@@ -1793,14 +1793,14 @@ void register_allocation(Program *program, std::vector<TempSet>& live_out_per_bl
    std::vector<std::bitset<128>> sgpr_live_in(program->blocks.size());
 
    for (Block& block : program->blocks) {
-      TempSet& live = live_out_per_block[block.index];
+      IDSet& live = live_out_per_block[block.index];
       /* initialize register file */
       assert(block.index != 0 || live.empty());
       RegisterFile register_file;
       ctx.war_hint.reset();
 
-      for (Temp t : live) {
-         Temp renamed = handle_live_in(ctx, t, &block);
+      for (unsigned t : live) {
+         Temp renamed = handle_live_in(ctx, Temp(t, program->temp_rc[t]), &block);
          assignment& var = ctx.assignments[renamed.id()];
          /* due to live-range splits, the live-in might be a phi, now */
          if (var.assigned)
@@ -1953,7 +1953,7 @@ void register_allocation(Program *program, std::vector<TempSet>& live_out_per_bl
             register_file.fill(definition);
             ctx.assignments[definition.tempId()] = {definition.physReg(), definition.regClass()};
          }
-         live.emplace(definition.getTemp());
+         live.insert(definition.tempId());
 
          /* update phi affinities */
          for (const Operand& op : phi->operands) {
@@ -2154,7 +2154,7 @@ void register_allocation(Program *program, std::vector<TempSet>& live_out_per_bl
 
             /* set live if it has a kill point */
             if (!definition.isKill())
-               live.emplace(definition.getTemp());
+               live.insert(definition.tempId());
 
             ctx.assignments[definition.tempId()] = {definition.physReg(), definition.regClass()};
             register_file.fill(definition);
@@ -2215,7 +2215,7 @@ void register_allocation(Program *program, std::vector<TempSet>& live_out_per_bl
 
             /* set live if it has a kill point */
             if (!definition->isKill())
-               live.emplace(definition->getTemp());
+               live.insert(definition->tempId());
 
             ctx.assignments[definition->tempId()] = {definition->physReg(), definition->regClass()};
             register_file.fill(*definition);

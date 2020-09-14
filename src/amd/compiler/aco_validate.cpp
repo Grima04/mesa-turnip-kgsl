@@ -739,7 +739,8 @@ bool validate_ra(Program *program, const struct radv_nir_compiler_options *optio
       regs.fill(0);
 
       std::set<Temp> live;
-      live.insert(live_vars.live_out[block.index].begin(), live_vars.live_out[block.index].end());
+      for (unsigned id : live_vars.live_out[block.index])
+         live.insert(Temp(id, program->temp_rc[id]));
       /* remove killed p_phi sgpr operands */
       for (Temp tmp : phi_sgpr_ops[block.index])
          live.erase(tmp);
