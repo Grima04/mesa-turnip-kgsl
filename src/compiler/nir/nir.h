@@ -1832,6 +1832,9 @@ typedef struct {
    /** the number of constant indices used by the intrinsic */
    uint8_t num_indices;
 
+   /** list of indices */
+   uint8_t indices[NIR_INTRINSIC_MAX_CONST_INDEX];
+
    /** indicates the usage of intr->const_index[n] */
    uint8_t index_map[NIR_INTRINSIC_NUM_INDEX_FLAGS];
 

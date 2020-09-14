@@ -824,9 +824,8 @@ print_intrinsic_instr(nir_intrinsic_instr *instr, print_state *state)
 
    fprintf(fp, ")");
 
-   for (unsigned idx = 1; idx < NIR_INTRINSIC_NUM_INDEX_FLAGS; idx++) {
-      if (!info->index_map[idx])
-         continue;
+   for (unsigned i = 0; i < info->num_indices; i++) {
+      unsigned idx = info->indices[i];
       fprintf(fp, " /*");
       switch (idx) {
       case NIR_INTRINSIC_WRITE_MASK: {
