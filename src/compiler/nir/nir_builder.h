@@ -1373,6 +1373,31 @@ nir_copy_deref(nir_builder *build, nir_deref_instr *dest, nir_deref_instr *src)
                               (enum gl_access_qualifier) 0);
 }
 
+static inline void
+nir_memcpy_deref_with_access(nir_builder *build, nir_deref_instr *dest,
+                             nir_deref_instr *src, nir_ssa_def *size,
+                             enum gl_access_qualifier dest_access,
+                             enum gl_access_qualifier src_access)
+{
+   nir_intrinsic_instr *copy =
+      nir_intrinsic_instr_create(build->shader, nir_intrinsic_memcpy_deref);
+   copy->src[0] = nir_src_for_ssa(&dest->dest.ssa);
+   copy->src[1] = nir_src_for_ssa(&src->dest.ssa);
+   copy->src[2] = nir_src_for_ssa(size);
+   nir_intrinsic_set_dst_access(copy, dest_access);
+   nir_intrinsic_set_src_access(copy, src_access);
+   nir_builder_instr_insert(build, &copy->instr);
+}
+
+static inline void
+nir_memcpy_deref(nir_builder *build, nir_deref_instr *dest,
+                 nir_deref_instr *src, nir_ssa_def *size)
+{
+   nir_memcpy_deref_with_access(build, dest, src, size,
+                                (enum gl_access_qualifier)0,
+                                (enum gl_access_qualifier)0);
+}
+
 static inline nir_ssa_def *
 nir_load_var(nir_builder *build, nir_variable *var)
 {
