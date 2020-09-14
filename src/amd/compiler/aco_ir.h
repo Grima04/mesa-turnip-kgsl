@@ -1443,8 +1443,12 @@ constexpr bool Instruction::usesModifiers() const noexcept
       for (unsigned i = 0; i < operands.size(); i++) {
          if (vop3p->neg_lo[i] || vop3p->neg_hi[i])
             return true;
+
+         /* opsel_hi must be 1 to not be considered a modifier - even for constants */
+         if (!(vop3p->opsel_hi & (1 << i)))
+            return true;
       }
-      return vop3p->opsel_lo || vop3p->opsel_hi || vop3p->clamp;
+      return vop3p->opsel_lo || vop3p->clamp;
    } else if (isVOP3()) {
       const VOP3A_instruction *vop3 = static_cast<const VOP3A_instruction*>(this);
       for (unsigned i = 0; i < operands.size(); i++) {
