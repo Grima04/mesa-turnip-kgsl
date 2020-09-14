@@ -1366,23 +1366,12 @@ vtn_handle_type(struct vtn_builder *b, SpvOp opcode,
    case SpvOpTypeInt: {
       int bit_size = w[2];
       const bool signedness = w[3];
+      vtn_fail_if(bit_size != 8 && bit_size != 16 &&
+                  bit_size != 32 && bit_size != 64,
+                  "Invalid int bit size: %u", bit_size);
       val->type->base_type = vtn_base_type_scalar;
-      switch (bit_size) {
-      case 64:
-         val->type->type = (signedness ? glsl_int64_t_type() : glsl_uint64_t_type());
-         break;
-      case 32:
-         val->type->type = (signedness ? glsl_int_type() : glsl_uint_type());
-         break;
-      case 16:
-         val->type->type = (signedness ? glsl_int16_t_type() : glsl_uint16_t_type());
-         break;
-      case 8:
-         val->type->type = (signedness ? glsl_int8_t_type() : glsl_uint8_t_type());
-         break;
-      default:
-         vtn_fail("Invalid int bit size: %u", bit_size);
-      }
+      val->type->type = signedness ? glsl_intN_t_type(bit_size) :
+                                     glsl_uintN_t_type(bit_size);
       val->type->length = 1;
       break;
    }
@@ -1390,19 +1379,9 @@ vtn_handle_type(struct vtn_builder *b, SpvOp opcode,
    case SpvOpTypeFloat: {
       int bit_size = w[2];
       val->type->base_type = vtn_base_type_scalar;
-      switch (bit_size) {
-      case 16:
-         val->type->type = glsl_float16_t_type();
-         break;
-      case 32:
-         val->type->type = glsl_float_type();
-         break;
-      case 64:
-         val->type->type = glsl_double_type();
-         break;
-      default:
-         vtn_fail("Invalid float bit size: %u", bit_size);
-      }
+      vtn_fail_if(bit_size != 16 && bit_size != 32 && bit_size != 64,
+                  "Invalid float bit size: %u", bit_size);
+      val->type->type = glsl_floatN_t_type(bit_size);
       val->type->length = 1;
       break;
    }
