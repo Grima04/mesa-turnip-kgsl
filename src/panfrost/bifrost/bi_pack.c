@@ -23,6 +23,7 @@
 
 #include "compiler.h"
 #include "bi_print.h"
+#include "bi_pack_helpers.h"
 
 #define RETURN_PACKED(str) { \
         uint64_t temp = 0; \
@@ -399,57 +400,6 @@ bi_pack_registers(bi_registers regs)
 
         memcpy(&packed, &s, sizeof(s));
         return packed;
-}
-
-static void
-bi_set_data_register(bi_clause *clause, unsigned idx)
-{
-        assert(idx & BIR_INDEX_REGISTER);
-        unsigned reg = idx & ~BIR_INDEX_REGISTER;
-        assert(reg <= 63);
-        clause->data_register = reg;
-}
-
-static void
-bi_read_data_register(bi_clause *clause, bi_instruction *ins)
-{
-        bi_set_data_register(clause, ins->src[0]);
-}
-
-static void
-bi_write_data_register(bi_clause *clause, bi_instruction *ins)
-{
-        bi_set_data_register(clause, ins->dest);
-}
-
-static enum bifrost_packed_src
-bi_get_src_reg_port(bi_registers *regs, unsigned src)
-{
-        unsigned reg = src & ~BIR_INDEX_REGISTER;
-
-        if (regs->port[0] == reg && regs->enabled[0])
-                return BIFROST_SRC_PORT0;
-        else if (regs->port[1] == reg && regs->enabled[1])
-                return BIFROST_SRC_PORT1;
-        else if (regs->port[3] == reg && regs->read_port3)
-                return BIFROST_SRC_PORT3;
-        else
-                unreachable("Tried to access register with no port");
-}
-
-static enum bifrost_packed_src
-bi_get_src(bi_instruction *ins, bi_registers *regs, unsigned s)
-{
-        unsigned src = ins->src[s];
-
-        if (src & BIR_INDEX_REGISTER)
-                return bi_get_src_reg_port(regs, src);
-        else if (src & BIR_INDEX_PASS)
-                return src & ~BIR_INDEX_PASS;
-        else {
-                bi_print_instruction(ins, stderr);
-                unreachable("Unknown src in above instruction");
-        }
 }
 
 /* Constructs a packed 2-bit swizzle for a 16-bit vec2 source. Source must be
