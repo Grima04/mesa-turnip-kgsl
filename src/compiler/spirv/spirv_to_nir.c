@@ -1682,6 +1682,11 @@ vtn_handle_type(struct vtn_builder *b, SpvOp opcode,
       break;
 
    case SpvOpTypeOpaque:
+      val->type->base_type = vtn_base_type_struct;
+      const char *name = vtn_string_literal(b, &w[2], count - 2, NULL);
+      val->type->type = glsl_struct_type(NULL, 0, name, false);
+      break;
+
    case SpvOpTypeEvent:
    case SpvOpTypeDeviceEvent:
    case SpvOpTypeReserveId:
