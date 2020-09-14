@@ -39,4 +39,7 @@ bi_disasm_fma(FILE *fp, unsigned bits, struct bifrost_regs *srcs, struct bifrost
 
 void bi_disasm_add(FILE *fp, unsigned bits, struct bifrost_regs *srcs, struct bifrost_regs *next_regs, unsigned staging_register, unsigned branch_offset, uint64_t *consts);
 
+void bi_disasm_dest_fma(FILE *fp, struct bifrost_regs *next_regs);
+void bi_disasm_dest_add(FILE *fp, struct bifrost_regs *next_regs);
+
 #endif

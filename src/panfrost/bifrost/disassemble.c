@@ -308,6 +308,27 @@ static void dump_regs(FILE *fp, struct bifrost_regs srcs)
 
         fprintf(fp, "\n");
 }
+
+void
+bi_disasm_dest_fma(FILE *fp, struct bifrost_regs *next_regs)
+{
+    struct bifrost_reg_ctrl next_ctrl = DecodeRegCtrl(fp, *next_regs);
+    if (next_ctrl.fma_write_unit != REG_WRITE_NONE)
+        fprintf(fp, "r%u:t0", GetRegToWrite(next_ctrl.fma_write_unit, *next_regs));
+    else
+        fprintf(fp, "t0");
+}
+
+void
+bi_disasm_dest_add(FILE *fp, struct bifrost_regs *next_regs)
+{
+    struct bifrost_reg_ctrl next_ctrl = DecodeRegCtrl(fp, *next_regs);
+    if (next_ctrl.add_write_unit != REG_WRITE_NONE)
+        fprintf(fp, "r%u:t1", GetRegToWrite(next_ctrl.add_write_unit, *next_regs));
+    else
+        fprintf(fp, "t1");
+}
+
 static void dump_const_imm(FILE *fp, uint32_t imm)
 {
         union {
