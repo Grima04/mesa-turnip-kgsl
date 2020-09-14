@@ -10629,20 +10629,19 @@ void cleanup_cfg(Program *program)
    }
 }
 
-Temp merged_wave_info_to_mask(isel_context *ctx, unsigned i)
+Temp lanecount_to_mask(isel_context *ctx, Temp count, bool allow64 = true)
 {
+   assert(count.regClass() == s1);
+
    Builder bld(ctx->program, ctx->block);
-
-   /* The s_bfm only cares about s0.u[5:0] so we don't need either s_bfe nor s_and here */
-   Temp count = i == 0
-                ? get_arg(ctx, ctx->args->merged_wave_info)
-                : bld.sop2(aco_opcode::s_lshr_b32, bld.def(s1), bld.def(s1, scc),
-                           get_arg(ctx, ctx->args->merged_wave_info), Operand(i * 8u));
-
    Temp mask = bld.sop2(aco_opcode::s_bfm_b64, bld.def(s2), count, Operand(0u));
    Temp cond;
 
    if (ctx->program->wave_size == 64) {
+      /* If we know that all 64 threads can't be active at a time, we just use the mask as-is */
+      if (!allow64)
+         return mask;
+
       /* Special case for 64 active invocations, because 64 doesn't work with s_bfm */
       Temp active_64 = bld.sopc(aco_opcode::s_bitcmp1_b32, bld.def(s1, scc), count, Operand(6u /* log2(64) */));
       cond = bld.sop2(Builder::s_cselect, bld.def(bld.lm), Operand(-1u), mask, bld.scc(active_64));
@@ -10652,6 +10651,19 @@ Temp merged_wave_info_to_mask(isel_context *ctx, unsigned i)
    }
 
    return cond;
+}
+
+Temp merged_wave_info_to_mask(isel_context *ctx, unsigned i)
+{
+   Builder bld(ctx->program, ctx->block);
+
+   /* lanecount_to_mask() only cares about s0.u[6:0] so we don't need either s_bfe nor s_and here */
+   Temp count = i == 0
+                ? get_arg(ctx, ctx->args->merged_wave_info)
+                : bld.sop2(aco_opcode::s_lshr_b32, bld.def(s1), bld.def(s1, scc),
+                           get_arg(ctx, ctx->args->merged_wave_info), Operand(i * 8u));
+
+   return lanecount_to_mask(ctx, count);
 }
 
 bool ngg_early_prim_export(isel_context *ctx)
