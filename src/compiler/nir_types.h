@@ -165,6 +165,7 @@ const struct glsl_type *glsl_void_type(void);
 const struct glsl_type *glsl_float_type(void);
 const struct glsl_type *glsl_float16_t_type(void);
 const struct glsl_type *glsl_double_type(void);
+const struct glsl_type *glsl_floatN_t_type(unsigned bit_size);
 const struct glsl_type *glsl_vec_type(unsigned n);
 const struct glsl_type *glsl_dvec_type(unsigned n);
 const struct glsl_type *glsl_vec4_type(void);
@@ -177,6 +178,8 @@ const struct glsl_type *glsl_int16_t_type(void);
 const struct glsl_type *glsl_uint16_t_type(void);
 const struct glsl_type *glsl_int8_t_type(void);
 const struct glsl_type *glsl_uint8_t_type(void);
+const struct glsl_type *glsl_intN_t_type(unsigned bit_size);
+const struct glsl_type *glsl_uintN_t_type(unsigned bit_size);
 const struct glsl_type *glsl_bool_type(void);
 
 const struct glsl_type *glsl_scalar_type(enum glsl_base_type base_type);

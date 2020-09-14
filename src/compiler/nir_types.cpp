@@ -421,6 +421,18 @@ glsl_float16_t_type(void)
 }
 
 const glsl_type *
+glsl_floatN_t_type(unsigned bit_size)
+{
+   switch (bit_size) {
+   case 16: return glsl_type::float16_t_type;
+   case 32: return glsl_type::float_type;
+   case 64: return glsl_type::double_type;
+   default:
+      unreachable("Unsupported bit size");
+   }
+}
+
+const glsl_type *
 glsl_vec_type(unsigned n)
 {
    return glsl_type::vec(n);
@@ -490,6 +502,32 @@ const glsl_type *
 glsl_uint8_t_type(void)
 {
    return glsl_type::uint8_t_type;
+}
+
+const glsl_type *
+glsl_intN_t_type(unsigned bit_size)
+{
+   switch (bit_size) {
+   case 8:  return glsl_type::int8_t_type;
+   case 16: return glsl_type::int16_t_type;
+   case 32: return glsl_type::int_type;
+   case 64: return glsl_type::int64_t_type;
+   default:
+      unreachable("Unsupported bit size");
+   }
+}
+
+const glsl_type *
+glsl_uintN_t_type(unsigned bit_size)
+{
+   switch (bit_size) {
+   case 8:  return glsl_type::uint8_t_type;
+   case 16: return glsl_type::uint16_t_type;
+   case 32: return glsl_type::uint_type;
+   case 64: return glsl_type::uint64_t_type;
+   default:
+      unreachable("Unsupported bit size");
+   }
 }
 
 const glsl_type *
