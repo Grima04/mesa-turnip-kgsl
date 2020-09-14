@@ -339,6 +339,8 @@ unsigned get_subdword_operand_stride(chip_class chip, const aco_ptr<Instruction>
       return rc.bytes() % 2 == 0 ? 2 : 1;
    } else if (rc.bytes() == 2 && can_use_opsel(chip, instr->opcode, idx, 1)) {
       return 2;
+   } else if (instr->format == Format::VOP3P) {
+      return 2;
    }
 
    switch (instr->opcode) {
@@ -404,8 +406,14 @@ void add_subdword_operand(ra_ctx& ctx, aco_ptr<Instruction>& instr, unsigned idx
          update_phi_map(ctx, tmp.get(), instr.get());
       return;
    } else if (rc.bytes() == 2 && can_use_opsel(chip, instr->opcode, idx, byte / 2)) {
-      VOP3A_instruction *vop3 = static_cast<VOP3A_instruction *>(instr.get());
+      VOP3A_instruction* vop3 = static_cast<VOP3A_instruction *>(instr.get());
       vop3->opsel |= (byte / 2) << idx;
+      return;
+   } else if (instr->format == Format::VOP3P && byte == 2) {
+      VOP3P_instruction* vop3p = static_cast<VOP3P_instruction*>(instr.get());
+      assert(!(vop3p->opsel_lo & (1 << idx)));
+      vop3p->opsel_lo |= 1 << idx;
+      vop3p->opsel_hi |= 1 << idx;
       return;
    }
 
@@ -487,6 +495,8 @@ std::pair<unsigned, unsigned> get_subdword_definition_info(Program *program, con
          return std::make_pair(2u, 2u);
       else
          return std::make_pair(2u, 4u);
+   case aco_opcode::v_fma_mixlo_f16:
+      return std::make_pair(2u, 2u);
    default:
       break;
    }
@@ -515,7 +525,9 @@ void add_subdword_definition(Program *program, aco_ptr<Instruction>& instr, unsi
    }
 
    if (reg.byte() == 2) {
-      if (instr->opcode == aco_opcode::buffer_load_ubyte_d16)
+      if (instr->opcode == aco_opcode::v_fma_mixlo_f16)
+         instr->opcode = aco_opcode::v_fma_mixhi_f16;
+      else if (instr->opcode == aco_opcode::buffer_load_ubyte_d16)
          instr->opcode = aco_opcode::buffer_load_ubyte_d16_hi;
       else if (instr->opcode == aco_opcode::buffer_load_short_d16)
          instr->opcode = aco_opcode::buffer_load_short_d16_hi;
