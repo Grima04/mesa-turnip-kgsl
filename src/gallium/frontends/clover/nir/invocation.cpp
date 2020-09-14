@@ -314,6 +314,8 @@ module clover::nir::spirv_to_nir(const module &mod, const device &dev,
                  nir_var_mem_global | nir_var_function_temp,
                  glsl_get_cl_type_size_align);
 
+      NIR_PASS_V(nir, nir_lower_memcpy);
+
       /* use offsets for kernel inputs (uniform) */
       NIR_PASS_V(nir, nir_lower_explicit_io, nir_var_uniform,
                  nir->info.cs.ptr_size == 64 ?
