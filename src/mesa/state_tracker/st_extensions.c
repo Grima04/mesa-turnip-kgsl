@@ -87,6 +87,8 @@ void st_init_limits(struct pipe_screen *screen,
 
    c->MaxTextureSize = screen->get_param(screen, PIPE_CAP_MAX_TEXTURE_2D_SIZE);
    c->MaxTextureSize = MIN2(c->MaxTextureSize, 1 << (MAX_TEXTURE_LEVELS - 1));
+   c->MaxTextureMbytes = MAX2(c->MaxTextureMbytes,
+                              screen->get_param(screen, PIPE_CAP_MAX_TEXTURE_MB));
 
    c->Max3DTextureLevels
       = _min(screen->get_param(screen, PIPE_CAP_MAX_TEXTURE_3D_LEVELS),

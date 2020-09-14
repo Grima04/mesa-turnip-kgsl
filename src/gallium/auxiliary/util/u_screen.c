@@ -436,9 +436,8 @@ u_pipe_screen_get_param_defaults(struct pipe_screen *pscreen,
 
    case PIPE_CAP_SYSTEM_SVM:
    case PIPE_CAP_ALPHA_TO_COVERAGE_DITHER_CONTROL:
-      return 0;
-
    case PIPE_CAP_NO_CLIP_ON_COPY_TEX:
+   case PIPE_CAP_MAX_TEXTURE_MB:
       return 0;
 
    default:
