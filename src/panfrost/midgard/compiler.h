@@ -665,7 +665,7 @@ bool
 nir_undef_to_zero(nir_shader *shader);
 bool nir_fuse_io_16(nir_shader *shader);
 
-void midgard_nir_lod_errata(nir_shader *shader);
+bool midgard_nir_lod_errata(nir_shader *shader);
 
 unsigned midgard_get_first_tag_from_block(compiler_context *ctx, unsigned block_idx);
 

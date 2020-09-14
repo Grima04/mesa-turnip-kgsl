@@ -24,7 +24,7 @@
 #include "compiler/nir/nir.h"
 #include "compiler/nir/nir_builder.h"
 
-void midgard_nir_lod_errata(nir_shader *shader);
+bool midgard_nir_lod_errata(nir_shader *shader);
 
 /* Workarounds errata pertaining to early Midgard chips where the settings for
  * min_lod/max_lod/lod_bias are ignored in the sampler descriptor when
@@ -73,7 +73,7 @@ mir_lod_errata_body(nir_builder *b, nir_tex_instr *tex)
         }
 }
 
-void
+bool
 midgard_nir_lod_errata(nir_shader *shader)
 {
         nir_foreach_function(function, shader) {
@@ -95,4 +95,5 @@ midgard_nir_lod_errata(nir_shader *shader)
                 nir_metadata_preserve(function->impl, nir_metadata_block_index | nir_metadata_dominance);
 
         }
+        return true;
 }
