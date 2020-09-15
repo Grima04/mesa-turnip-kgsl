@@ -122,6 +122,9 @@ resource_create(struct pipe_screen *pscreen,
                   VK_BUFFER_USAGE_TRANSFER_DST_BIT |
                   VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
 
+      if (templ->usage != PIPE_USAGE_STAGING)
+         bci.usage |= VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT;
+
       /* apparently gallium thinks these are the jack-of-all-trades bind types */
       if (templ->bind & (PIPE_BIND_SAMPLER_VIEW | PIPE_BIND_QUERY_BUFFER)) {
          bci.usage |= VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT |
