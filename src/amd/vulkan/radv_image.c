@@ -843,9 +843,7 @@ gfx10_make_texture_descriptor(struct radv_device *device,
 		   S_00A014_MAX_MIP(image->info.samples > 1 ?
 				    util_logbase2(image->info.samples) :
 				    image->info.levels - 1) |
-		   S_00A014_PERF_MOD(4) |
-		   S_00A014_BIG_PAGE(device->physical_device->rad_info.chip_class >= GFX10_3 &&
-				     image->alignment % (64 * 1024) == 0);
+		   S_00A014_PERF_MOD(4);
 	state[6] = 0;
 	state[7] = 0;
 
