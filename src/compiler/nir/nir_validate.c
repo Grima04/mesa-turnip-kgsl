@@ -81,6 +81,9 @@ typedef struct {
    /* the current function implementation being validated */
    nir_function_impl *impl;
 
+   /* Set of all blocks in the list */
+   struct set *blocks;
+
    /* Set of seen SSA sources */
    struct set *ssa_srcs;
 
@@ -932,7 +935,62 @@ validate_phi_srcs(nir_block *block, nir_block *succ, validate_state *state)
    }
 }
 
+static void
+collect_blocks(struct exec_list *cf_list, validate_state *state)
+{
+   exec_list_validate(cf_list);
+   foreach_list_typed(nir_cf_node, node, node, cf_list) {
+      switch (node->type) {
+      case nir_cf_node_block:
+         _mesa_set_add(state->blocks, nir_cf_node_as_block(node));
+         break;
+
+      case nir_cf_node_if:
+         collect_blocks(&nir_cf_node_as_if(node)->then_list, state);
+         collect_blocks(&nir_cf_node_as_if(node)->else_list, state);
+         break;
+
+      case nir_cf_node_loop:
+         collect_blocks(&nir_cf_node_as_loop(node)->body, state);
+         break;
+
+      default:
+         unreachable("Invalid CF node type");
+      }
+   }
+}
+
 static void validate_cf_node(nir_cf_node *node, validate_state *state);
+
+static void
+validate_block_predecessors(nir_block *block, validate_state *state)
+{
+   for (unsigned i = 0; i < 2; i++) {
+      if (block->successors[i] == NULL)
+         continue;
+
+      /* The block has to exist in the nir_function_impl */
+      validate_assert(state, _mesa_set_search(state->blocks,
+                                              block->successors[i]));
+
+      /* And we have to be in our successor's predecessors set */
+      validate_assert(state,
+         _mesa_set_search(block->successors[i]->predecessors, block));
+
+      validate_phi_srcs(block, block->successors[i], state);
+   }
+
+   /* The start block cannot have any predecessors */
+   if (block == nir_start_block(state->impl))
+      validate_assert(state, block->predecessors->entries == 0);
+
+   set_foreach(block->predecessors, entry) {
+      const nir_block *pred = entry->key;
+      validate_assert(state, _mesa_set_search(state->blocks, pred));
+      validate_assert(state, pred->successors[0] == block ||
+                             pred->successors[1] == block);
+   }
+}
 
 static void
 validate_block(nir_block *block, validate_state *state)
@@ -953,22 +1011,7 @@ validate_block(nir_block *block, validate_state *state)
 
    validate_assert(state, block->successors[0] != NULL);
    validate_assert(state, block->successors[0] != block->successors[1]);
-
-   for (unsigned i = 0; i < 2; i++) {
-      if (block->successors[i] != NULL) {
-         struct set_entry *entry =
-            _mesa_set_search(block->successors[i]->predecessors, block);
-         validate_assert(state, entry);
-
-         validate_phi_srcs(block, block->successors[i], state);
-      }
-   }
-
-   set_foreach(block->predecessors, entry) {
-      const nir_block *pred = entry->key;
-      validate_assert(state, pred->successors[0] == block ||
-             pred->successors[1] == block);
-   }
+   validate_block_predecessors(block, state);
 
    if (!state->impl->structured) {
       validate_assert(state, nir_block_ends_in_jump(block));
@@ -1021,6 +1064,20 @@ validate_block(nir_block *block, validate_state *state)
    }
 }
 
+
+static void
+validate_end_block(nir_block *block, validate_state *state)
+{
+   validate_assert(state, block->cf_node.parent == &state->impl->cf_node);
+
+   exec_list_validate(&block->instr_list);
+   validate_assert(state, exec_list_is_empty(&block->instr_list));
+
+   validate_assert(state, block->successors[0] == NULL);
+   validate_assert(state, block->successors[1] == NULL);
+   validate_block_predecessors(block, state);
+}
+
 static void
 validate_if(nir_if *if_stmt, validate_state *state)
 {
@@ -1044,12 +1101,10 @@ validate_if(nir_if *if_stmt, validate_state *state)
    nir_cf_node *old_parent = state->parent_node;
    state->parent_node = &if_stmt->cf_node;
 
-   exec_list_validate(&if_stmt->then_list);
    foreach_list_typed(nir_cf_node, cf_node, node, &if_stmt->then_list) {
       validate_cf_node(cf_node, state);
    }
 
-   exec_list_validate(&if_stmt->else_list);
    foreach_list_typed(nir_cf_node, cf_node, node, &if_stmt->else_list) {
       validate_cf_node(cf_node, state);
    }
@@ -1078,7 +1133,6 @@ validate_loop(nir_loop *loop, validate_state *state)
    nir_loop *old_loop = state->loop;
    state->loop = loop;
 
-   exec_list_validate(&loop->body);
    foreach_list_typed(nir_cf_node, cf_node, node, &loop->body) {
       validate_cf_node(cf_node, state);
    }
@@ -1301,10 +1355,15 @@ validate_function_impl(nir_function_impl *impl, validate_state *state)
                                     BITSET_WORD, BITSET_WORDS(impl->ssa_alloc));
    memset(state->ssa_defs_found, 0, BITSET_WORDS(impl->ssa_alloc) *
                                     sizeof(BITSET_WORD));
-   exec_list_validate(&impl->body);
+
+   _mesa_set_clear(state->blocks, NULL);
+   collect_blocks(&impl->body, state);
+   _mesa_set_add(state->blocks, impl->end_block);
+   validate_assert(state, !exec_list_is_empty(&impl->body));
    foreach_list_typed(nir_cf_node, node, node, &impl->body) {
       validate_cf_node(node, state);
    }
+   validate_end_block(impl->end_block, state);
 
    foreach_list_typed(nir_register, reg, node, &impl->registers) {
       postvalidate_reg_decl(reg, state);
@@ -1339,6 +1398,7 @@ init_validate_state(validate_state *state)
    state->ssa_srcs = _mesa_pointer_set_create(state->mem_ctx);
    state->ssa_defs_found = NULL;
    state->regs_found = NULL;
+   state->blocks = _mesa_pointer_set_create(state->mem_ctx);
    state->var_defs = _mesa_pointer_hash_table_create(state->mem_ctx);
    state->errors = _mesa_pointer_hash_table_create(state->mem_ctx);
 
