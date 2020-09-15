@@ -1586,6 +1586,18 @@ builtin_builder::create_builtins()
                 _##NAME(fp64, glsl_type::dvec4_type),      \
                 NULL);
 
+#define FD130GS4(NAME)                          \
+   add_function(#NAME,                          \
+                _##NAME(v130_or_gpu_shader4, glsl_type::float_type), \
+                _##NAME(v130_or_gpu_shader4, glsl_type::vec2_type),  \
+                _##NAME(v130_or_gpu_shader4, glsl_type::vec3_type),  \
+                _##NAME(v130_or_gpu_shader4, glsl_type::vec4_type),  \
+                _##NAME(fp64, glsl_type::double_type),  \
+                _##NAME(fp64, glsl_type::dvec2_type),    \
+                _##NAME(fp64, glsl_type::dvec3_type),     \
+                _##NAME(fp64, glsl_type::dvec4_type),      \
+                NULL);
+
 #define FDGS5(NAME)                                 \
    add_function(#NAME,                          \
                 _##NAME(gpu_shader5_es, glsl_type::float_type), \
@@ -1797,7 +1809,7 @@ builtin_builder::create_builtins()
    FI64(sign)
    FD(floor)
    FD130(trunc)
-   FD130(round)
+   FD130GS4(round)
    FD130(roundEven)
    FD(ceil)
    FD(fract)
