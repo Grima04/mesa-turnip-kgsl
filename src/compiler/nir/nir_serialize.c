@@ -717,21 +717,24 @@ write_dest(write_ctx *ctx, const nir_dest *dst, union packed_instr header,
 
       if (ctx->last_instr_type == nir_instr_type_alu) {
          assert(ctx->last_alu_header_offset);
-         union packed_instr *last_header =
-            (union packed_instr *)(ctx->blob->data +
-                                   ctx->last_alu_header_offset);
+         union packed_instr last_header;
+         memcpy(&last_header, ctx->blob->data + ctx->last_alu_header_offset,
+                sizeof(last_header));
 
          /* Clear the field that counts ALUs with equal headers. */
          union packed_instr clean_header;
-         clean_header.u32 = last_header->u32;
+         clean_header.u32 = last_header.u32;
          clean_header.alu.num_followup_alu_sharing_header = 0;
 
          /* There can be at most 4 consecutive ALU instructions
           * sharing the same header.
           */
-         if (last_header->alu.num_followup_alu_sharing_header < 3 &&
+         if (last_header.alu.num_followup_alu_sharing_header < 3 &&
              header.u32 == clean_header.u32) {
-            last_header->alu.num_followup_alu_sharing_header++;
+            last_header.alu.num_followup_alu_sharing_header++;
+            memcpy(ctx->blob->data + ctx->last_alu_header_offset,
+                   &last_header, sizeof(last_header));
+
             equal_header = true;
          }
       }
