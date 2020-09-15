@@ -430,16 +430,16 @@ radv_shader_compile_to_nir(struct radv_device *device,
 				spec_entries[i].id = spec_info->pMapEntries[i].constantID;
 				switch (entry.size) {
 				case 8:
-					spec_entries[i].value.u64 = *(const uint64_t *)data;
+					memcpy(&spec_entries[i].value.u64, data, sizeof(uint64_t));
 					break;
 				case 4:
-					spec_entries[i].value.u32 = *(const uint32_t *)data;
+					memcpy(&spec_entries[i].value.u32, data, sizeof(uint32_t));
 					break;
 				case 2:
-					spec_entries[i].value.u16 = *(const uint16_t *)data;
+					memcpy(&spec_entries[i].value.u16, data, sizeof(uint16_t));
 					break;
 				case 1:
-					spec_entries[i].value.u8 = *(const uint8_t *)data;
+					memcpy(&spec_entries[i].value.u8, data, sizeof(uint8_t));
 					break;
 				default:
 					assert(!"Invalid spec constant size");
