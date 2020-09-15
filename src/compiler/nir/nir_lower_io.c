@@ -982,10 +982,13 @@ nir_get_explicit_deref_range(nir_deref_instr *deref,
             goto fail;
 
          if (deref->deref_type != nir_deref_type_array_wildcard &&
-             nir_src_is_const(deref->arr.index))
+             nir_src_is_const(deref->arr.index)) {
             base += stride * nir_src_as_uint(deref->arr.index);
-         else
+         } else {
+            if (glsl_get_length(parent->type) == 0)
+               goto fail;
             range += stride * (glsl_get_length(parent->type) - 1);
+         }
          break;
       }
 
