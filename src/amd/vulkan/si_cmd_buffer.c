@@ -408,6 +408,37 @@ si_emit_graphics(struct radv_device *device,
 		radeon_set_context_reg(cs, R_028C50_PA_SC_NGG_MODE_CNTL,
 				       S_028C50_MAX_DEALLOCS_IN_WAVE(512));
 		radeon_set_context_reg(cs, R_028C58_VGT_VERTEX_REUSE_BLOCK_CNTL, 14);
+
+		/* Enable CMASK/FMASK/HTILE/DCC caching in L2 for small chips. */
+		unsigned meta_write_policy, meta_read_policy;
+
+		/* TODO: investigate whether LRU improves performance on other chips too */
+		if (physical_device->rad_info.num_render_backends <= 4) {
+			meta_write_policy = V_02807C_CACHE_LRU_WR; /* cache writes */
+			meta_read_policy =  V_02807C_CACHE_LRU_RD; /* cache reads */
+		} else {
+			meta_write_policy = V_02807C_CACHE_STREAM; /* write combine */
+			meta_read_policy =  V_02807C_CACHE_NOA;    /* don't cache reads */
+		}
+
+		radeon_set_context_reg(cs, R_02807C_DB_RMI_L2_CACHE_CONTROL,
+				       S_02807C_Z_WR_POLICY(V_02807C_CACHE_STREAM) |
+				       S_02807C_S_WR_POLICY(V_02807C_CACHE_STREAM) |
+				       S_02807C_HTILE_WR_POLICY(meta_write_policy) |
+				       S_02807C_ZPCPSD_WR_POLICY(V_02807C_CACHE_STREAM) |
+				       S_02807C_Z_RD_POLICY(V_02807C_CACHE_NOA) |
+				       S_02807C_S_RD_POLICY(V_02807C_CACHE_NOA) |
+				       S_02807C_HTILE_RD_POLICY(meta_read_policy));
+
+		radeon_set_context_reg(cs, R_028410_CB_RMI_GL2_CACHE_CONTROL,
+				       S_028410_CMASK_WR_POLICY(meta_write_policy) |
+				       S_028410_FMASK_WR_POLICY(meta_write_policy) |
+				       S_028410_DCC_WR_POLICY(meta_write_policy) |
+				       S_028410_COLOR_WR_POLICY(V_028410_CACHE_STREAM) |
+				       S_028410_CMASK_RD_POLICY(meta_read_policy) |
+				       S_028410_FMASK_RD_POLICY(meta_read_policy) |
+				       S_028410_DCC_RD_POLICY(meta_read_policy) |
+				       S_028410_COLOR_RD_POLICY(V_028410_CACHE_NOA));
 		radeon_set_context_reg(cs, R_028428_CB_COVERAGE_OUT_CONTROL, 0);
 
 		radeon_set_sh_reg(cs, R_00B0C8_SPI_SHADER_USER_ACCUM_PS_0, 0);
