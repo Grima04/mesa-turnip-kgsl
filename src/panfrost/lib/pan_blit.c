@@ -217,13 +217,6 @@ panfrost_load_midg(
                         cfg.color_mask = 0x0;
         }
 
-        union midgard_blend replace = {
-                .equation = eq
-        };
-
-        if (blend_shader)
-                replace.shader = blend_shader;
-
         /* Determine the sampler type needed. Stencil is always sampled as
          * UINT. Pure (U)INT is always (U)INT. Everything else is FLOAT. */
 
@@ -235,19 +228,8 @@ panfrost_load_midg(
 
         bool ms = image->nr_samples > 1;
 
-        struct mali_midgard_properties_packed properties;
-
         struct panfrost_transfer shader_meta_t = panfrost_pool_alloc_aligned(
                 pool, MALI_RENDERER_STATE_LENGTH + 8 * sizeof(struct midgard_blend_rt), 128);
-
-        pan_pack(&properties, MIDGARD_PROPERTIES, cfg) {
-                cfg.work_register_count = 4;
-                cfg.early_z_enable = (loc >= FRAG_RESULT_DATA0);
-                cfg.stencil_from_shader = (loc == FRAG_RESULT_STENCIL);
-                cfg.depth_source = (loc == FRAG_RESULT_DEPTH) ?
-                        MALI_DEPTH_SOURCE_SHADER :
-                        MALI_DEPTH_SOURCE_FIXED_FUNCTION;
-        }
 
         pan_pack(shader_meta_t.cpu, RENDERER_STATE, cfg) {
                 cfg.shader.shader = pool->dev->blit_shaders.loads[loc][T][ms];
@@ -255,7 +237,12 @@ panfrost_load_midg(
                 cfg.shader.texture_count = 1;
                 cfg.shader.sampler_count = 1;
 
-                cfg.properties = properties.opaque[0];
+                cfg.properties.work_register_count = 4;
+                cfg.properties.midgard_early_z_enable = (loc >= FRAG_RESULT_DATA0);
+                cfg.properties.stencil_from_shader = (loc == FRAG_RESULT_STENCIL);
+                cfg.properties.depth_source = (loc == FRAG_RESULT_DEPTH) ?
+                                              MALI_DEPTH_SOURCE_SHADER :
+                                              MALI_DEPTH_SOURCE_FIXED_FUNCTION;
 
                 cfg.multisample_misc.sample_mask = 0xFFFF;
                 cfg.multisample_misc.multisample_enable = ms;
@@ -280,10 +267,15 @@ panfrost_load_midg(
                         cfg.stencil_mask_misc.sfbd_write_enable = true;
                         cfg.stencil_mask_misc.sfbd_dither_disable = true;
                         cfg.stencil_mask_misc.sfbd_srgb = srgb;
-                        cfg.multisample_misc.sfbd_blend_shader = blend_shader;
-                        memcpy(&cfg.sfbd_blend, &replace, sizeof(replace));
+                        cfg.multisample_misc.sfbd_blend_shader = !!blend_shader;
+                        if (cfg.multisample_misc.sfbd_blend_shader) {
+                                cfg.sfbd_blend_shader = blend_shader;
+                        } else {
+                                cfg.sfbd_blend_equation = eq.opaque[0];
+                                cfg.sfbd_blend_constant = 0;
+                        }
                 } else if (!(pool->dev->quirks & IS_BIFROST)) {
-                        memcpy(&cfg.sfbd_blend, &blend_shader, sizeof(blend_shader));
+                        cfg.sfbd_blend_shader = blend_shader;
                 }
 
                 assert(cfg.shader.shader);
@@ -321,6 +313,10 @@ panfrost_load_midg(
                 void *dest = shader_meta_t.cpu + MALI_RENDERER_STATE_LENGTH + sizeof(struct midgard_blend_rt) * i;
 
                 if (loc == (FRAG_RESULT_DATA0 + i)) {
+                        union midgard_blend replace = {
+                                .equation = eq
+                        };
+
                         struct midgard_blend_rt blend_rt = {
                                 .blend = replace,
                         };

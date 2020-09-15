@@ -1181,15 +1181,14 @@ pan_pipe_to_stencil_op(enum pipe_stencil_op in)
 }
 
 static inline void
-pan_pipe_to_stencil(const struct pipe_stencil_state *in, void *out)
+pan_pipe_to_stencil(const struct pipe_stencil_state *in, struct MALI_STENCIL *out)
 {
-        pan_pack(out, STENCIL, cfg) {
-                cfg.mask = in->valuemask;
-                cfg.compare_function = panfrost_translate_compare_func(in->func);
-                cfg.stencil_fail = pan_pipe_to_stencil_op(in->fail_op);
-                cfg.depth_fail = pan_pipe_to_stencil_op(in->zfail_op);
-                cfg.depth_pass = pan_pipe_to_stencil_op(in->zpass_op);
-        }
+        pan_prepare(out, STENCIL);
+        out->mask = in->valuemask;
+        out->compare_function = panfrost_translate_compare_func(in->func);
+        out->stencil_fail = pan_pipe_to_stencil_op(in->fail_op);
+        out->depth_fail = pan_pipe_to_stencil_op(in->zfail_op);
+        out->depth_pass = pan_pipe_to_stencil_op(in->zpass_op);
 }
 
 static void *
@@ -1205,7 +1204,7 @@ panfrost_create_depth_stencil_state(struct pipe_context *pipe,
         if (zsa->stencil[1].enabled) {
                 pan_pipe_to_stencil(&zsa->stencil[1], &so->stencil_back);
                 so->stencil_mask_back = zsa->stencil[1].writemask;
-        } else {
+	} else {
                 so->stencil_back = so->stencil_front;
                 so->stencil_mask_back = so->stencil_mask_front;
         }

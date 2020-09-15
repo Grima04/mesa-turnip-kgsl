@@ -1168,51 +1168,30 @@ pandecode_vertex_tiler_postfix_pre(
                 varying_count = state.shader.varying_count;
                 texture_count = state.shader.texture_count;
                 sampler_count = state.shader.sampler_count;
+                uniform_buffer_count = state.properties.uniform_buffer_count;
 
-                fprintf(pandecode_dump_stream, "  Properties\n");
-                if (is_bifrost) {
-                        pan_unpack(&state.properties, BIFROST_PROPERTIES, bi_props);
-                        DUMP_UNPACKED(BIFROST_PROPERTIES, bi_props, "Properties:\n");
-
+                if (is_bifrost)
                         uniform_count = state.preload.uniform_count;
-                        uniform_buffer_count = bi_props.uniform_buffer_count;
-                } else {
-                        pan_unpack(&state.properties, MIDGARD_PROPERTIES, midg_props);
-                        DUMP_UNPACKED(MIDGARD_PROPERTIES, midg_props, "Properties:\n")
-
-                        uniform_count = midg_props.uniform_count;
-                        uniform_buffer_count = midg_props.uniform_buffer_count;
-                }
+                else
+                        uniform_count = state.properties.uniform_count;
 
                 pandecode_shader_prop("texture_count", texture_count, info.texture_count, false);
                 pandecode_shader_prop("sampler_count", sampler_count, info.sampler_count, false);
                 pandecode_shader_prop("attribute_count", attribute_count, info.attribute_count, false);
                 pandecode_shader_prop("varying_count", varying_count, info.varying_count, false);
 
-                if (is_bifrost) {
-                        uint32_t opaque = state.preload.uniform_count << 15
-                                | state.preload.untyped;
-
-                        switch (job_type) {
-                        case MALI_JOB_TYPE_VERTEX:
-                                DUMP_CL(PRELOAD_VERTEX, &opaque, "Preload:\n");
-                                break;
-                        case MALI_JOB_TYPE_TILER:
-                                DUMP_CL(PRELOAD_FRAGMENT, &opaque, "Preload:\n");
-                                break;
-                        case MALI_JOB_TYPE_COMPUTE:
-                                DUMP_CL(PRELOAD_COMPUTE, &opaque, "Preload:\n");
-                                break;
-                        default:
-                                DUMP_CL(PRELOAD, &opaque, "Preload:\n");
-                                break;
-                        }
-                }
+                if (is_bifrost)
+                        DUMP_UNPACKED(PRELOAD, state.preload, "Preload:\n");
 
                 if (!is_bifrost) {
                         /* TODO: Blend shaders routing/disasm */
                         union midgard_blend blend;
-                        memcpy(&blend, &state.sfbd_blend, sizeof(blend));
+                        if (state.multisample_misc.sfbd_blend_shader) {
+                                blend.shader = state.sfbd_blend_shader;
+                        } else {
+                                blend.equation.opaque[0] = state.sfbd_blend_equation;
+                                blend.constant = state.sfbd_blend_constant;
+                        }
                         mali_ptr shader = pandecode_midgard_blend(&blend, state.multisample_misc.sfbd_blend_shader);
                         if (shader & ~0xF)
                                 pandecode_blend_shader_disassemble(shader, job_no, job_type, false, gpu_id);

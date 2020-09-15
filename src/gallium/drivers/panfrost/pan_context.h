@@ -202,9 +202,9 @@ struct panfrost_shader_state {
                 uint32_t offset;
         } upload;
 
-        struct mali_shader_packed shader;
-        struct mali_midgard_properties_packed properties;
-        struct mali_preload_packed preload;
+        struct MALI_SHADER shader;
+        struct MALI_RENDERER_PROPERTIES properties;
+        struct MALI_PRELOAD preload;
 
         /* Non-descript information */
         unsigned uniform_count;
@@ -278,8 +278,8 @@ struct panfrost_zsa_state {
         struct pipe_depth_stencil_alpha_state base;
 
         /* Precomputed stencil state */
-        struct mali_stencil_packed stencil_front;
-        struct mali_stencil_packed stencil_back;
+        struct MALI_STENCIL stencil_front;
+        struct MALI_STENCIL stencil_back;
         u8 stencil_mask_front;
         u8 stencil_mask_back;
 };

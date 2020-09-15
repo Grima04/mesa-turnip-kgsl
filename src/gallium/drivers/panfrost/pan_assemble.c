@@ -40,59 +40,53 @@
 #include "tgsi/tgsi_dump.h"
 
 static void
-pan_pack_midgard_props(struct panfrost_shader_state *state,
-                gl_shader_stage stage)
+pan_prepare_midgard_props(struct panfrost_shader_state *state,
+                          gl_shader_stage stage)
 {
-        pan_pack(&state->properties, MIDGARD_PROPERTIES, cfg) {
-                cfg.uniform_buffer_count = state->ubo_count;
-                cfg.uniform_count = state->uniform_count;
-                cfg.writes_globals = state->writes_global;
-                cfg.suppress_inf_nan = true; /* XXX */
+        pan_prepare(&state->properties, RENDERER_PROPERTIES);
+        state->properties.uniform_buffer_count = state->ubo_count;
+        state->properties.uniform_count = state->uniform_count;
+        state->properties.writes_globals = state->writes_global;
+        state->properties.suppress_inf_nan = true; /* XXX */
 
-                if (stage == MESA_SHADER_FRAGMENT) {
-                        /* Work register count, early-z, reads at draw-time */
-                        cfg.stencil_from_shader = state->writes_stencil;
-                        cfg.helper_invocation_enable = state->helper_invocations;
-                        cfg.depth_source = state->writes_depth ?
-                                MALI_DEPTH_SOURCE_SHADER :
-                                MALI_DEPTH_SOURCE_FIXED_FUNCTION;
-                } else {
-                        cfg.work_register_count = state->work_reg_count;
-                }
+        if (stage == MESA_SHADER_FRAGMENT) {
+                /* Work register count, early-z, reads at draw-time */
+                state->properties.stencil_from_shader = state->writes_stencil;
+                state->properties.helper_invocation_enable = state->helper_invocations;
+                state->properties.depth_source = state->writes_depth ?
+                                                 MALI_DEPTH_SOURCE_SHADER :
+                                                 MALI_DEPTH_SOURCE_FIXED_FUNCTION;
+        } else {
+                state->properties.work_register_count = state->work_reg_count;
         }
 }
 
 static void
-pan_pack_bifrost_props(struct panfrost_shader_state *state,
-                gl_shader_stage stage)
+pan_prepare_bifrost_props(struct panfrost_shader_state *state,
+                          gl_shader_stage stage)
 {
+
         switch (stage) {
         case MESA_SHADER_VERTEX:
-                pan_pack(&state->properties, BIFROST_PROPERTIES, cfg) {
-                        cfg.unknown = 0x800000; /* XXX */
-                        cfg.uniform_buffer_count = state->ubo_count;
-                }
+                pan_prepare(&state->properties, RENDERER_PROPERTIES);
+                state->properties.unknown = 0x800000; /* XXX */
+                state->properties.uniform_buffer_count = state->ubo_count;
 
-                pan_pack(&state->preload, PRELOAD_VERTEX, cfg) {
-                        cfg.uniform_count = state->uniform_count;
-                        cfg.vertex_id = true;
-                        cfg.instance_id = true;
-                }
-
+                pan_prepare(&state->preload, PRELOAD);
+                state->preload.uniform_count = state->uniform_count;
+                state->preload.vertex_id = true;
+                state->preload.instance_id = true;
                 break;
         case MESA_SHADER_FRAGMENT:
-                pan_pack(&state->properties, BIFROST_PROPERTIES, cfg) {
-                        /* Early-Z set at draw-time */
+                pan_prepare(&state->properties, RENDERER_PROPERTIES);
+                /* Early-Z set at draw-time */
+                state->properties.unknown = 0x950020; /* XXX */
+                state->properties.uniform_buffer_count = state->ubo_count;
 
-                        cfg.unknown = 0x950020; /* XXX */
-                        cfg.uniform_buffer_count = state->ubo_count;
-                }
-
-                pan_pack(&state->preload, PRELOAD_FRAGMENT, cfg) {
-                        cfg.uniform_count = state->uniform_count;
-                        cfg.fragment_position = state->reads_frag_coord;
-                }
-
+                pan_prepare(&state->preload, PRELOAD);
+                state->preload.uniform_count = state->uniform_count;
+                state->preload.fragment_position = state->reads_frag_coord;
+                state->preload.unknown = true;
                 break;
         default:
                 unreachable("TODO");
@@ -109,9 +103,9 @@ pan_upload_shader_descriptor(struct panfrost_context *ctx,
         u_upload_alloc(ctx->state_uploader, 0, MALI_RENDERER_STATE_LENGTH, MALI_RENDERER_STATE_LENGTH,
                         &state->upload.offset, &state->upload.rsrc, (void **) &out);
 
-        pan_pack(out, RENDERER_STATE_OPAQUE, cfg) {
+        pan_pack(out, RENDERER_STATE, cfg) {
                 cfg.shader = state->shader;
-                memcpy(&cfg.properties, &state->properties, sizeof(state->properties));
+                cfg.properties = state->properties;
 
                 if (dev->quirks & IS_BIFROST)
                         cfg.preload = state->preload;
@@ -370,18 +364,16 @@ panfrost_shader_compile(struct panfrost_context *ctx,
         state->ubo_count = s->info.num_ubos + 1; /* off-by-one for uniforms */
 
         /* Prepare the descriptors at compile-time */
-        pan_pack(&state->shader, SHADER, cfg) {
-                cfg.shader = shader;
-                cfg.attribute_count = attribute_count;
-                cfg.varying_count = varying_count;
-                cfg.texture_count = s->info.num_textures;
-                cfg.sampler_count = cfg.texture_count;
-        }
+        state->shader.shader = shader;
+        state->shader.attribute_count = attribute_count;
+        state->shader.varying_count = varying_count;
+        state->shader.texture_count = s->info.num_textures;
+        state->shader.sampler_count = s->info.num_textures;
 
         if (dev->quirks & IS_BIFROST)
-                pan_pack_bifrost_props(state, stage);
+                pan_prepare_bifrost_props(state, stage);
         else
-                pan_pack_midgard_props(state, stage);
+                pan_prepare_midgard_props(state, stage);
 
         if (stage != MESA_SHADER_FRAGMENT)
                 pan_upload_shader_descriptor(ctx, state);

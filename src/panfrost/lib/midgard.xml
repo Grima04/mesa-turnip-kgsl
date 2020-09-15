@@ -449,36 +449,26 @@
     <field name="Surfaces" size="64" start="4:0" type="address"/>
   </struct>
 
-  <struct name="Midgard Properties" size="1">
+  <struct name="Renderer Properties" size="1">
     <field name="Uniform buffer count" size="8" start="0" type="uint"/>
     <field name="Depth source" size="2" start="8" type="Depth Source" default="None"/>
-    <field name="Early-z enable" size="1" start="10" type="bool" default="false"/>
+    <field name="Midgard Early-z enable" size="1" start="10" type="bool" default="false"/>
     <field name="Helper invocation enable" size="1" start="11" type="bool" default="false"/>
     <field name="Reads depth/stencil" size="1" start="12" type="bool" default="false"/>
     <field name="Writes globals" size="1" start="13" type="bool" default="false"/>
+    <field name="Full thread" size="1" start="13" type="bool" default="false"/>
     <field name="Reads tilebuffer" size="1" start="14" type="bool" default="false"/>
     <field name="Work register count" size="5" start="16" type="uint"/>
+    <field name="Bifrost Early-z enable" size="1" start="19" type="bool" default="false"/>
     <field name="Uniform count" size="5" start="21" type="uint"/>
     <field name="Stencil from shader" size="1" start="28" type="bool"/>
     <field name="Suppress Inf/NaN" size="1" start="29" type="bool"/>
-  </struct>
-
-  <struct name="Bifrost Properties" size="1">
-    <field name="Uniform buffer count" size="8" start="0" type="uint"/>
-    <!--- If set, disables registers [R16, R47] for full thread count -->
-    <field name="Full thread" size="1" start="13" type="bool" default="false"/>
-    <field name="Early-z enable" size="1" start="19" type="bool" default="false"/>
     <field name="First ATEST" size="1" start="30" type="bool" default="false"/>
     <!-- XXX: This is awful -->
     <field name="Unknown" size="32" start="0" type="uint"/>
   </struct>
 
   <struct name="Preload" size="1">
-    <field name="Untyped" size="15" start="0" type="uint"/>
-    <field name="Uniform count" size="7" start="15" type="uint"/>
-  </struct>
-
-  <struct name="Preload Compute" size="1">
     <field name="Local Invocation XY" size="1" start="7" type="bool"/>
     <field name="Local Invocation Z" size="1" start="8" type="bool"/>
     <field name="Work group X" size="1" start="9" type="bool"/>
@@ -487,17 +477,9 @@
     <field name="Global Invocation X" size="1" start="12" type="bool"/>
     <field name="Global Invocation Y" size="1" start="13" type="bool"/>
     <field name="Global Invocation Z" size="1" start="14" type="bool"/>
-    <field name="Uniform count" size="7" start="15" type="uint"/>
-  </struct>
-
-  <struct name="Preload Vertex" size="1">
     <field name="Vertex ID" size="1" start="13" type="bool"/>
     <field name="Instance ID" size="1" start="14" type="bool"/>
-    <field name="Uniform count" size="7" start="15" type="uint"/>
-  </struct>
-
-  <struct name="Preload Fragment" size="1">
-    <field name="Unknown" size="1" start="7" type="bool" default="true"/>
+    <field name="Unknown" size="1" start="7" type="bool"/>
     <field name="Primitive ID" size="1" start="9" type="bool"/>
     <field name="Front facing" size="1" start="10" type="bool"/>
     <field name="Fragment position" size="1" start="11" type="bool"/>
@@ -558,9 +540,9 @@
     <field name="Depth Pass" size="3" start="25" type="Stencil Op"/>
   </struct>
 
-  <struct name="Renderer State" with_opaque="true">
+  <struct name="Renderer State">
     <field name="Shader" size="128" start="0:0" type="Shader"/>
-    <field name="Properties" size="32" start="4:0" type="uint"/>
+    <field name="Properties" size="32" start="4:0" type="Renderer Properties"/>
     <field name="Depth units" size="32" start="5:0" type="float"/>
     <field name="Depth factor" size="32" start="6:0" type="float"/>
     <field name="Depth bias clamp" size="32" start="7:0" type="float"/>
@@ -570,7 +552,9 @@
     <field name="Stencil back" size="32" start="11:0" type="Stencil"/>
     <field name="Preload" size="32" start="12:0" type="Preload"/>
     <field name="Thread Balancing" size="16" start="13:0" type="uint"/>
-    <field name="SFBD Blend" size="64" start="14:0" type="uint"/>
+    <field name="SFBD Blend Shader" size="64" start="14:0" type="address"/>
+    <field name="SFBD Blend Equation" size="32" start="14:0" type="uint"/>
+    <field name="SFBD Blend Constant" size="32" start="15:0" type="float"/>
   </struct>
 
   <struct name="Uniform Buffer">

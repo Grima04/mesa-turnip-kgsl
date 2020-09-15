@@ -176,13 +176,10 @@ bit_vertex(struct panfrost_device *dev, panfrost_program prog,
         pan_pack(shader_desc->cpu, RENDERER_STATE, cfg) {
                 cfg.shader.shader = shader->gpu;
                 cfg.shader.attribute_count = cfg.shader.varying_count = 1;
-                cfg.properties = 0x800001;
-
-                pan_pack(&cfg.preload.untyped, PRELOAD_VERTEX, n) {
-                        n.vertex_id = true;
-                        n.instance_id = true;
-                }
- 
+                cfg.properties.uniform_buffer_count = 1;
+                cfg.properties.uniform_count = 4;
+                cfg.preload.vertex_id = true;
+                cfg.preload.instance_id = true;
                 cfg.preload.uniform_count = (sz_ubo / 16);
         }
 
