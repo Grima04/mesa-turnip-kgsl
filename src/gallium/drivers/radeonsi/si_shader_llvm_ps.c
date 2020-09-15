@@ -253,7 +253,7 @@ static void si_llvm_init_ps_export_args(struct si_shader_context *ctx, LLVMValue
    unsigned chan;
    bool is_int8, is_int10;
 
-   assert(cbuf >= 0 && cbuf < 8);
+   assert(cbuf < 8);
 
    spi_shader_col_format = (col_formats >> (cbuf * 4)) & 0xf;
    is_int8 = (key->part.ps.epilog.color_is_int8 >> cbuf) & 0x1;
