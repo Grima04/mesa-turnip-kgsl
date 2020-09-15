@@ -875,3 +875,22 @@ tu_GetFenceStatus(VkDevice _device, VkFence _fence)
       result = VK_NOT_READY;
    return result;
 }
+
+int
+tu_signal_fences(struct tu_device *device, struct tu_syncobj *fence1, struct tu_syncobj *fence2)
+{
+   uint32_t handles[2], count = 0;
+   if (fence1)
+      handles[count++] = fence1->temporary ?: fence1->permanent;
+
+   if (fence2)
+      handles[count++] = fence2->temporary ?: fence2->permanent;
+
+   if (!count)
+      return 0;
+
+   return ioctl(device->fd, DRM_IOCTL_SYNCOBJ_SIGNAL, &(struct drm_syncobj_array) {
+      .handles = (uintptr_t) handles,
+      .count_handles = count
+   });
+}

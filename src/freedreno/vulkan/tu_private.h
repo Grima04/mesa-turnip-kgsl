@@ -1512,6 +1512,9 @@ tu_drm_submitqueue_new(const struct tu_device *dev,
 void
 tu_drm_submitqueue_close(const struct tu_device *dev, uint32_t queue_id);
 
+int
+tu_signal_fences(struct tu_device *device, struct tu_syncobj *fence1, struct tu_syncobj *fence2);
+
 #define TU_DEFINE_HANDLE_CASTS(__tu_type, __VkType)                          \
                                                                              \
    static inline struct __tu_type *__tu_type##_from_handle(__VkType _handle) \

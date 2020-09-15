@@ -402,3 +402,10 @@ tu_GetFenceStatus(VkDevice _device, VkFence _fence)
    tu_finishme("GetFenceStatus");
    return VK_SUCCESS;
 }
+
+int
+tu_signal_fences(struct tu_device *device, struct tu_syncobj *fence1, struct tu_syncobj *fence2)
+{
+   tu_finishme("tu_signal_fences");
+   return 0;
+}
