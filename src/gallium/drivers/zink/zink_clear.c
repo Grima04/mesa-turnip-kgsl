@@ -80,8 +80,7 @@ clear_in_rp(struct pipe_context *pctx,
          attachments[num_attachments].clearValue.color = color;
          ++num_attachments;
          struct zink_resource *res = (struct zink_resource*)fb->cbufs[i]->texture;
-         if (zink_resource_image_needs_barrier(res, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, 0, 0))
-            zink_resource_image_barrier(zink_batch_no_rp(ctx), res, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, 0, 0);
+         zink_resource_image_barrier(ctx, NULL, res, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, 0, 0);
          resources[res_count++] = res;
       }
    }
@@ -98,8 +97,7 @@ clear_in_rp(struct pipe_context *pctx,
       attachments[num_attachments].clearValue.depthStencil.stencil = stencil;
       ++num_attachments;
       struct zink_resource *res = (struct zink_resource*)fb->zsbuf->texture;
-      if (zink_resource_image_needs_barrier(res, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, 0, 0))
-         zink_resource_image_barrier(zink_batch_no_rp(ctx), res, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, 0, 0);
+      zink_resource_image_barrier(ctx, NULL, res, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, 0, 0);
       resources[res_count++] = res;
    }
 
@@ -122,8 +120,9 @@ clear_in_rp(struct pipe_context *pctx,
 }
 
 static void
-clear_color_no_rp(struct zink_batch *batch, struct zink_resource *res, const union pipe_color_union *pcolor, unsigned level, unsigned layer, unsigned layerCount)
+clear_color_no_rp(struct zink_context *ctx, struct zink_resource *res, const union pipe_color_union *pcolor, unsigned level, unsigned layer, unsigned layerCount)
 {
+   struct zink_batch *batch = zink_batch_no_rp(ctx);
    VkImageSubresourceRange range = {};
    range.baseMipLevel = level;
    range.levelCount = 1;
@@ -139,14 +138,15 @@ clear_color_no_rp(struct zink_batch *batch, struct zink_resource *res, const uni
 
    if (zink_resource_image_needs_barrier(res, VK_IMAGE_LAYOUT_GENERAL, 0, 0) &&
        zink_resource_image_needs_barrier(res, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 0, 0))
-      zink_resource_image_barrier(batch, res, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 0, 0);
+      zink_resource_image_barrier(ctx, NULL, res, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 0, 0);
    zink_batch_reference_resource_rw(batch, res, true);
    vkCmdClearColorImage(batch->cmdbuf, res->image, res->layout, &color, 1, &range);
 }
 
 static void
-clear_zs_no_rp(struct zink_batch *batch, struct zink_resource *res, VkImageAspectFlags aspects, double depth, unsigned stencil, unsigned level, unsigned layer, unsigned layerCount)
+clear_zs_no_rp(struct zink_context *ctx, struct zink_resource *res, VkImageAspectFlags aspects, double depth, unsigned stencil, unsigned level, unsigned layer, unsigned layerCount)
 {
+   struct zink_batch *batch = zink_batch_no_rp(ctx);
    VkImageSubresourceRange range = {};
    range.baseMipLevel = level;
    range.levelCount = 1;
@@ -158,7 +158,7 @@ clear_zs_no_rp(struct zink_batch *batch, struct zink_resource *res, VkImageAspec
 
    if (zink_resource_image_needs_barrier(res, VK_IMAGE_LAYOUT_GENERAL, 0, 0) &&
        zink_resource_image_needs_barrier(res, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 0, 0))
-      zink_resource_image_barrier(batch, res, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 0, 0);
+      zink_resource_image_barrier(ctx, NULL, res, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 0, 0);
    zink_batch_reference_resource_rw(batch, res, true);
    vkCmdClearDepthStencilImage(batch->cmdbuf, res->image, res->layout, &zs_value, 1, &range);
 }
@@ -228,7 +228,7 @@ zink_clear(struct pipe_context *pctx,
                color.f[1] = util_format_srgb_to_linear_float(pcolor->f[1]);
                color.f[2] = util_format_srgb_to_linear_float(pcolor->f[2]);
             }
-            clear_color_no_rp(batch, zink_resource(fb->cbufs[i]->texture), &color,
+            clear_color_no_rp(ctx, zink_resource(fb->cbufs[i]->texture), &color,
                               psurf->u.tex.level, psurf->u.tex.first_layer,
                               psurf->u.tex.last_layer - psurf->u.tex.first_layer + 1);
          }
@@ -245,7 +245,7 @@ zink_clear(struct pipe_context *pctx,
          aspects |= VK_IMAGE_ASPECT_DEPTH_BIT;
       if (buffers & PIPE_CLEAR_STENCIL)
          aspects |= VK_IMAGE_ASPECT_STENCIL_BIT;
-      clear_zs_no_rp(batch, zink_resource(fb->zsbuf->texture), aspects,
+      clear_zs_no_rp(ctx, zink_resource(fb->zsbuf->texture), aspects,
                      depth, stencil, fb->zsbuf->u.tex.level, fb->zsbuf->u.tex.first_layer,
                      fb->zsbuf->u.tex.last_layer - fb->zsbuf->u.tex.first_layer + 1);
    }
@@ -285,7 +285,7 @@ zink_clear_texture(struct pipe_context *pctx,
 
       if (pscreen->is_format_supported(pscreen, pres->format, pres->target, 0, 0,
                                       PIPE_BIND_RENDER_TARGET) && !needs_rp && !batch->in_rp) {
-         clear_color_no_rp(batch, res, &color, level, box->z, box->depth);
+         clear_color_no_rp(ctx, res, &color, level, box->z, box->depth);
       } else {
          surf = create_clear_surface(pctx, pres, level, box);
          zink_blit_begin(ctx, ZINK_BLIT_SAVE_FB | ZINK_BLIT_SAVE_FS);
@@ -304,7 +304,7 @@ zink_clear_texture(struct pipe_context *pctx,
          util_format_unpack_s_8uint(pres->format, &stencil, data, 1);
 
       if (!needs_rp && !batch->in_rp)
-         clear_zs_no_rp(batch, res, res->aspect, depth, stencil, level, box->z, box->depth);
+         clear_zs_no_rp(ctx, res, res->aspect, depth, stencil, level, box->z, box->depth);
       else {
          unsigned flags = 0;
          if (res->aspect & VK_IMAGE_ASPECT_DEPTH_BIT)

@@ -41,7 +41,7 @@ blit_resolve(struct zink_context *ctx, const struct pipe_blit_info *info)
    zink_batch_reference_resource_rw(batch, src, false);
    zink_batch_reference_resource_rw(batch, dst, true);
 
-   zink_resource_setup_transfer_layouts(batch, src, dst);
+   zink_resource_setup_transfer_layouts(ctx, src, dst);
 
    VkImageResolve region = {};
 
@@ -120,7 +120,7 @@ blit_native(struct zink_context *ctx, const struct pipe_blit_info *info)
    zink_batch_reference_resource_rw(batch, src, false);
    zink_batch_reference_resource_rw(batch, dst, true);
 
-   zink_resource_setup_transfer_layouts(batch, src, dst);
+   zink_resource_setup_transfer_layouts(ctx, src, dst);
    if (info->dst.resource->target == PIPE_BUFFER)
       util_range_add(info->dst.resource, &dst->valid_buffer_range,
                      info->dst.box.x, info->dst.box.x + info->dst.box.width);

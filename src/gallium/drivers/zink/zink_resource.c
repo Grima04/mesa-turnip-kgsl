@@ -450,15 +450,9 @@ zink_transfer_copy_bufimage(struct zink_context *ctx,
    struct zink_batch *batch = zink_batch_no_rp(ctx);
 
    if (buf2img) {
-      if (res->layout != VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
-         zink_resource_image_barrier(batch, res,
-                               VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 0, 0);
-      }
+      zink_resource_image_barrier(ctx, batch, res, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 0, 0);
    } else {
-      if (res->layout != VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL) {
-         zink_resource_image_barrier(batch, res,
-                               VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, 0, 0);
-      }
+      zink_resource_image_barrier(ctx, batch, res, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, 0, 0);
    }
 
    VkBufferImageCopy copyRegion = {};
@@ -740,7 +734,7 @@ zink_resource_get_separate_stencil(struct pipe_resource *pres)
 }
 
 void
-zink_resource_setup_transfer_layouts(struct zink_batch *batch, struct zink_resource *src, struct zink_resource *dst)
+zink_resource_setup_transfer_layouts(struct zink_context *ctx, struct zink_resource *src, struct zink_resource *dst)
 {
    if (src == dst) {
       /* The Vulkan 1.1 specification says the following about valid usage
@@ -759,17 +753,17 @@ zink_resource_setup_transfer_layouts(struct zink_batch *batch, struct zink_resou
        * VK_IMAGE_LAYOUT_GENERAL. And since this isn't a present-related
        * operation, VK_IMAGE_LAYOUT_GENERAL seems most appropriate.
        */
-      zink_resource_image_barrier(batch, src,
+      zink_resource_image_barrier(ctx, NULL, src,
                                   VK_IMAGE_LAYOUT_GENERAL,
                                   VK_ACCESS_TRANSFER_READ_BIT | VK_ACCESS_TRANSFER_WRITE_BIT,
                                   VK_PIPELINE_STAGE_TRANSFER_BIT);
    } else {
-      zink_resource_image_barrier(batch, src,
+      zink_resource_image_barrier(ctx, NULL, src,
                                   VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
                                   VK_ACCESS_TRANSFER_READ_BIT,
                                   VK_PIPELINE_STAGE_TRANSFER_BIT);
 
-      zink_resource_image_barrier(batch, dst,
+      zink_resource_image_barrier(ctx, NULL, dst,
                                   VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                                   VK_ACCESS_TRANSFER_WRITE_BIT,
                                   VK_PIPELINE_STAGE_TRANSFER_BIT);

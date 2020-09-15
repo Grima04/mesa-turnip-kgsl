@@ -462,7 +462,7 @@ copy_results_to_buffer(struct zink_context *ctx, struct zink_query *query, struc
    }
    /* if it's a single query that doesn't need special handling, we can copy it and be done */
    zink_batch_reference_resource_rw(batch, res, true);
-   zink_resource_buffer_barrier(batch, res, VK_ACCESS_TRANSFER_WRITE_BIT, 0);
+   zink_resource_buffer_barrier(ctx, batch, res, VK_ACCESS_TRANSFER_WRITE_BIT, 0);
    util_range_add(&res->base, &res->valid_buffer_range, offset, offset + result_size);
    vkCmdCopyQueryPoolResults(batch->cmdbuf, query->query_pool, query_id, num_results, res->buffer,
                              offset, 0, flags);
