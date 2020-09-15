@@ -226,42 +226,43 @@ panfrost_mfbd_rt_set_buf(struct pipe_surface *surf,
 
         if (rsrc->modifier == DRM_FORMAT_MOD_LINEAR) {
                 if (version >= 7)
-                        rt->writeback_block_format_v7 = MALI_BLOCK_FORMAT_V7_LINEAR;
+                        rt->bifrost_v7.writeback_block_format = MALI_BLOCK_FORMAT_V7_LINEAR;
                 else
-                        rt->writeback_block_format = MALI_BLOCK_FORMAT_LINEAR;
+                        rt->midgard.writeback_block_format = MALI_BLOCK_FORMAT_LINEAR;
 
-                rt->writeback_base = base;
-                rt->writeback_row_stride = stride;
-                rt->writeback_surface_stride = layer_stride;
+                rt->rgb.base = base;
+                rt->rgb.row_stride = stride;
+                rt->rgb.surface_stride = layer_stride;
         } else if (rsrc->modifier == DRM_FORMAT_MOD_ARM_16X16_BLOCK_U_INTERLEAVED) {
                 if (version >= 7)
-                        rt->writeback_block_format_v7 = MALI_BLOCK_FORMAT_V7_TILED_U_INTERLEAVED;
+                        rt->bifrost_v7.writeback_block_format = MALI_BLOCK_FORMAT_V7_TILED_U_INTERLEAVED;
                 else
-                        rt->writeback_block_format = MALI_BLOCK_FORMAT_TILED_U_INTERLEAVED;
+                        rt->midgard.writeback_block_format = MALI_BLOCK_FORMAT_TILED_U_INTERLEAVED;
 
-                rt->writeback_base = base;
-                rt->writeback_row_stride = stride * 16;
-                rt->writeback_surface_stride = layer_stride;
+                rt->rgb.base = base;
+                rt->rgb.row_stride = stride * 16;
+                rt->rgb.surface_stride = layer_stride;
         } else if (drm_is_afbc(rsrc->modifier)) {
                 if (version >= 7)
-                        rt->writeback_block_format = MALI_BLOCK_FORMAT_V7_AFBC;
+                        rt->bifrost_v7.writeback_block_format = MALI_BLOCK_FORMAT_V7_AFBC;
                 else
-                        rt->writeback_block_format = MALI_BLOCK_FORMAT_AFBC;
+                        rt->midgard.writeback_block_format = MALI_BLOCK_FORMAT_AFBC;
 
                 unsigned header_size = rsrc->slices[level].header_size;
 
-                rt->afbc_header = base;
-                rt->afbc_chunk_size = 9;
-                rt->afbc_sparse = true;
-                rt->afbc_body = base + header_size;
-                rt->writeback_surface_stride = layer_stride;
+                rt->afbc.header = base;
+                rt->afbc.chunk_size = 9;
+                rt->afbc.body = base + header_size;
+
+                if (!(dev->quirks & IS_BIFROST))
+                        rt->midgard_afbc.sparse = true;
 
                 if (rsrc->modifier & AFBC_FORMAT_MOD_YTR)
-                        rt->afbc_yuv_transform_enable = true;
+                        rt->afbc.yuv_transform_enable = true;
 
                 /* TODO: The blob sets this to something nonzero, but it's not
                  * clear what/how to calculate/if it matters */
-                rt->afbc_body_size = 0;
+                rt->afbc.body_size = 0;
         } else {
                 unreachable("Invalid mod");
         }
@@ -286,16 +287,16 @@ panfrost_mfbd_emit_rt(struct panfrost_batch *batch,
                         rt.internal_format = MALI_COLOR_BUFFER_INTERNAL_FORMAT_R8G8B8A8;
                         rt.internal_buffer_offset = rt_offset;
                         if (version >= 7) {
-                                rt.writeback_block_format_v7 = MALI_BLOCK_FORMAT_V7_TILED_U_INTERLEAVED;
+                                rt.bifrost_v7.writeback_block_format = MALI_BLOCK_FORMAT_V7_TILED_U_INTERLEAVED;
                                 rt.dithering_enable = true;
                         }
                 }
 
                 if (batch->clear & (PIPE_CLEAR_COLOR0 << rt_idx)) {
-                        rt.clear_color_0 = batch->clear_color[rt_idx][0];
-                        rt.clear_color_1 = batch->clear_color[rt_idx][1];
-                        rt.clear_color_2 = batch->clear_color[rt_idx][2];
-                        rt.clear_color_3 = batch->clear_color[rt_idx][3];
+                        rt.clear.color_0 = batch->clear_color[rt_idx][0];
+                        rt.clear.color_1 = batch->clear_color[rt_idx][1];
+                        rt.clear.color_2 = batch->clear_color[rt_idx][2];
+                        rt.clear.color_3 = batch->clear_color[rt_idx][3];
                 }
         }
 }

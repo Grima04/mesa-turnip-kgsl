@@ -965,66 +965,105 @@
     <value name="Three Quarters" value="5"/>
   </enum>
 
-  <struct name="Render Target">
-    <field name="Internal Buffer Offset" size="12" start="0:4" type="uint" modifier="shr(4)"/>
-    <field name="YUV Enable" size="1" start="0:24" type="bool"/>
-    <field name="Dithered Clear" size="1" start="0:25" type="bool"/>
-    <field name="Internal Format" size="6" start="0:26" type="Color Buffer Internal Format"/>
-    <field name="Write Enable" size="1" start="1:0" type="bool"/>
-    <field name="Writeback Format" size="5" start="1:3" type="MFBD Color Format"/>
+  <struct name="Render Target Midgard Overlay" size="16">
     <field name="Writeback Endianness" size="2" start="1:8" type="RT Endianness"/>
     <field name="Writeback Block Format" size="2" start="1:10" type="Block Format"/>
-    <field name="Writeback Block Format v7" size="4" start="1:8" type="Block Format v7"/>
-    <field name="Writeback MSAA" size="2" start="1:12" type="MSAA"/>
-    <field name="sRGB" size="1" start="1:14" type="bool"/>
-    <field name="Dithering Enable" size="1" start="1:15" type="bool"/>
-    <field name="Swizzle" size="12" start="1:16" type="uint"/>
     <field name="Writeback Sampling Mode" size="2" start="1:29" type="Downsampling Accumulation Mode"/>
-    <field name="Clean Pixel Write Enable" size="1" start="1:31" type="bool"/>
     <field name="Preload Enable" size="1" start="2:0" type="bool"/>
     <field name="Unload Enable" size="1" start="2:1" type="bool"/>
     <field name="Preload Format" size="5" start="2:3" type="MFBD Color Format"/>
     <field name="Preload Endianness" size="2" start="2:8" type="RT Endianness"/>
     <field name="Preload Block Format" size="4" start="2:10" type="Block Format"/>
     <field name="Preload MSAA" size="2" start="2:14" type="MSAA"/>
-    <field name="YUV Conv K5" size="8" start="2:16" type="uint"/>
-    <field name="YUV Swizzle" size="3" start="2:16" type="YUV Swizzle"/>
-    <field name="YUV Full Range" size="1" start="2:20" type="bool"/>
-    <field name="YUV Conversion Mode" size="4" start="2:21" type="YUV Conversion Mode"/>
-    <field name="YUV Cr Siting" size="3" start="2:25" type="YUV Cr Siting"/>
-    <field name="YUV Unsigned Cr Range" size="1" start="2:28" type="bool"/>
-    <field name="YUV Conv K6" size="1" start="2:24" type="YUV Conv K6"/>
-    <field name="YUV Conv K7 Clamp" size="2" start="2:25" type="YUV Conv K7 Clamp"/>
-    <field name="YUV Conv K8" size="1" start="2:27" type="YUV Conv K8"/>
-    <field name="YUV Conv Disable" size="1" start="2:31" type="bool"/>
-    <field name="YUV Conv K1" size="8" start="3:0" type="uint"/>
-    <field name="YUV Conv K2" size="8" start="3:8" type="uint"/>
-    <field name="YUV Conv K3" size="8" start="3:16" type="uint"/>
-    <field name="YUV Conv K4" size="8" start="3:24" type="uint"/>
-    <field name="YUV Plane 0 Base" size="64" start="4:0" type="address"/>
-    <field name="YUV Plane 1 Base" size="64" start="6:0" type="address"/>
-    <field name="YUV Plane 2 Base" size="64" start="8:0" type="address"/>
-    <field name="YUV Plane 0 Stride" size="32" start="10:0" type="uint"/>
-    <field name="YUV Plane 1 2 Stride" size="32" start="11:0" type="uint"/>
-    <field name="AFBC Header" size="64" start="4:0" type="address"/>
-    <field name="AFBC Row Stride" size="13" start="6:0" type="uint"/>
-    <field name="AFBC Chunk Size" size="12" start="7:0" type="uint"/>
-    <field name="AFBC Sparse" size="1" start="7:16" type="bool"/>
-    <field name="AFBC YUV Transform Enable" size="1" start="7:17" type="bool"/>
+  </struct>
+
+  <struct name="Render Target Midgard YUV Overlay" size="16">
+    <field name="Conv K5" size="8" start="2:16" type="uint"/>
+    <field name="Conv K6" size="1" start="2:24" type="YUV Conv K6"/>
+    <field name="Conv K7 Clamp" size="2" start="2:25" type="YUV Conv K7 Clamp"/>
+    <field name="Conv K8" size="1" start="2:27" type="YUV Conv K8"/>
+    <field name="Conv Disable" size="1" start="2:31" type="bool"/>
+    <field name="Conv K1" size="8" start="3:0" type="uint"/>
+    <field name="Conv K2" size="8" start="3:8" type="uint"/>
+    <field name="Conv K3" size="8" start="3:16" type="uint"/>
+    <field name="Conv K4" size="8" start="3:24" type="uint"/>
+  </struct>
+
+  <struct name="Render Target Bifrost YUV Overlay" size="16">
+    <field name="Swizzle" size="3" start="2:16" type="YUV Swizzle"/>
+    <field name="Full Range" size="1" start="2:20" type="bool"/>
+    <field name="Conversion Mode" size="4" start="2:21" type="YUV Conversion Mode"/>
+    <field name="Cr Siting" size="3" start="2:25" type="YUV Cr Siting"/>
+    <field name="Unsigned Cr Range" size="1" start="2:28" type="bool"/>
+  </struct>
+
+  <struct name="Render Target Bifrost v7 Overlay" size="16">
+    <field name="Writeback Block Format" size="4" start="1:8" type="Block Format v7"/>
+    <field name="Dithered Clear" size="1" start="0:25" type="bool"/>
+  </struct>
+
+  <struct name="Render Target Bifrost v6 Overlay" size="16">
+    <field name="Writeback Endianness" size="2" start="1:8" type="RT Endianness"/>
+    <field name="Writeback Block Format" size="2" start="1:10" type="Block Format"/>
+    <field name="Dithered Clear" size="1" start="0:25" type="bool"/>
+  </struct>
+
+  <struct name="Render Target YUV Overlay" size="16">
+    <field name="Plane 0 Base" size="64" start="4:0" type="address"/>
+    <field name="Plane 1 Base" size="64" start="6:0" type="address"/>
+    <field name="Plane 2 Base" size="64" start="8:0" type="address"/>
+    <field name="Plane 0 Stride" size="32" start="10:0" type="uint"/>
+    <field name="Plane 1 2 Stride" size="32" start="11:0" type="uint"/>
+  </struct>
+
+  <struct name="Render Target AFBC Overlay" size="16">
+    <field name="Header" size="64" start="4:0" type="address"/>
+    <field name="Row Stride" size="13" start="6:0" type="uint"/>
+    <field name="Chunk Size" size="12" start="7:0" type="uint"/>
+    <field name="YUV Transform Enable" size="1" start="7:17" type="bool"/>
+    <field name="Body" size="64" start="8:0" type="address"/>
+    <field name="Body Size" size="32" start="10:0" type="uint"/>
+  </struct>
+
+  <struct name="Render Target Midgard AFBC Overlay" size="16">
+    <field name="Sparse" size="1" start="7:16" type="bool"/>
+  </struct>
+
+  <struct name="Render Target Bifrost AFBC Overlay" size="16">
     <field name="AFBC Split Block Enable" size="1" start="7:18" type="bool"/>
     <field name="AFBC Wide Block Enable" size="1" start="7:19" type="bool"/>
-    <field name="AFBC Body" size="64" start="8:0" type="address"/>
-    <field name="AFBC Body Size" size="32" start="10:0" type="uint"/>
-    <field name="Writeback Base" size="64" start="8:0" type="address"/>
-    <field name="Writeback Row Stride" size="32" start="10:0" type="uint"/>
-    <field name="Writeback Surface Stride" size="32" start="11:0" type="uint"/>
-    <field name="Preload Base" size="64" start="12:0" type="address"/>
-    <field name="Preload Row Stride" size="32" start="14:0" type="uint"/>
-    <field name="Preload Surface Stride" size="32" start="15:0" type="uint"/>
-    <field name="Clear Color 0" size="32" start="12:0" type="uint"/>
-    <field name="Clear Color 1" size="32" start="13:0" type="uint"/>
-    <field name="Clear Color 2" size="32" start="14:0" type="uint"/>
-    <field name="Clear Color 3" size="32" start="15:0" type="uint"/>
+  </struct>
+
+  <struct name="RT Clear">
+    <field name="Color 0" size="32" start="0:0" type="uint"/>
+    <field name="Color 1" size="32" start="1:0" type="uint"/>
+    <field name="Color 2" size="32" start="2:0" type="uint"/>
+    <field name="Color 3" size="32" start="3:0" type="uint"/>
+  </struct>
+
+  <struct name="Render Target">
+    <field name="Midgard" size="512" start="0:0" type="Render Target Midgard Overlay"/>
+    <field name="Bifrost v6" size="512" start="0:0" type="Render Target Bifrost v6 Overlay"/>
+    <field name="Bifrost v7" size="512" start="0:0" type="Render Target Bifrost v7 Overlay"/>
+    <field name="YUV" size="512" start="0:0" type="Render Target YUV Overlay"/>
+    <field name="Midgard YUV" size="512" start="0:0" type="Render Target Midgard YUV Overlay"/>
+    <field name="Bifrost YUV" size="512" start="0:0" type="Render Target Bifrost YUV Overlay"/>
+    <field name="AFBC" size="512" start="0:0" type="Render Target AFBC Overlay"/>
+    <field name="Midgard AFBC" size="512" start="0:0" type="Render Target Midgard AFBC Overlay"/>
+    <field name="Bifrost AFBC" size="512" start="0:0" type="Render Target Bifrost AFBC Overlay"/>
+    <field name="Internal Buffer Offset" size="12" start="0:4" type="uint" modifier="shr(4)"/>
+    <field name="YUV Enable" size="1" start="0:24" type="bool"/>
+    <field name="Internal Format" size="6" start="0:26" type="Color Buffer Internal Format"/>
+    <field name="Write Enable" size="1" start="1:0" type="bool"/>
+    <field name="Writeback Format" size="5" start="1:3" type="MFBD Color Format"/>
+    <field name="Writeback MSAA" size="2" start="1:12" type="MSAA"/>
+    <field name="sRGB" size="1" start="1:14" type="bool"/>
+    <field name="Dithering Enable" size="1" start="1:15" type="bool"/>
+    <field name="Swizzle" size="12" start="1:16" type="uint"/>
+    <field name="Clean Pixel Write Enable" size="1" start="1:31" type="bool"/>
+    <field name="RGB" size="128" start="8:0" type="RT Buffer"/>
+    <field name="Midgard Preload" size="128" start="12:0" type="RT Buffer"/>
+    <field name="Clear" size="128" start="12:0" type="RT Clear"/>
   </struct>
 
   <enum name="Pre Post Frame Shader Mode">
