@@ -602,7 +602,7 @@ class Group(object):
 class Value(object):
     def __init__(self, attrs):
         self.name = attrs["name"]
-        self.value = int(attrs["value"])
+        self.value = int(attrs["value"], 0)
 
 class Parser(object):
     def __init__(self):
