@@ -1044,15 +1044,16 @@ pandecode_attributes(const struct pandecode_mapped_memory *mem,
         MAP_ADDR(ATTRIBUTE_BUFFER, addr, cl);
 
         for (int i = 0; i < count; ++i) {
-                struct MALI_ATTRIBUTE_BUFFER temp;
-                MALI_ATTRIBUTE_BUFFER_unpack(cl + i * MALI_ATTRIBUTE_BUFFER_LENGTH, &temp);
+                pan_unpack(cl + i * MALI_ATTRIBUTE_BUFFER_LENGTH, ATTRIBUTE_BUFFER, temp);
                 DUMP_UNPACKED(ATTRIBUTE_BUFFER, temp, "%s:\n", prefix);
 
-                if (temp.type == MALI_ATTRIBUTE_TYPE_1D_NPOT_DIVISOR) {
-                        struct MALI_ATTRIBUTE_BUFFER_CONTINUATION_NPOT temp2;
-                        MALI_ATTRIBUTE_BUFFER_CONTINUATION_NPOT_unpack(cl + (i + 1) * MALI_ATTRIBUTE_BUFFER_LENGTH, &temp2);
-                        MALI_ATTRIBUTE_BUFFER_CONTINUATION_NPOT_print(pandecode_dump_stream, &temp2, 2);
-                }
+                if (temp.type != MALI_ATTRIBUTE_TYPE_1D_NPOT_DIVISOR)
+                        continue;
+
+                pan_unpack(cl + (i + 1) * MALI_ATTRIBUTE_BUFFER_LENGTH,
+                           ATTRIBUTE_BUFFER_CONTINUATION_NPOT, temp2);
+                pan_print(pandecode_dump_stream, ATTRIBUTE_BUFFER_CONTINUATION_NPOT,
+                          temp2, (pandecode_indent + 1) * 2);
         }
 }
 
@@ -1224,9 +1225,8 @@ pandecode_vertex_tiler_prefix(struct mali_vertex_tiler_prefix *p, int job_no, bo
         /* Decode invocation_count. See the comment before the definition of
          * invocation_count for an explanation.
          */
-        struct MALI_INVOCATION invocation;
         struct mali_invocation_packed invocation_packed = p->invocation;
-        MALI_INVOCATION_unpack((const uint8_t *) &invocation_packed, &invocation);
+        pan_unpack(&invocation_packed, INVOCATION, invocation);
 
         unsigned size_x = bits(invocation.invocations, 0, invocation.size_y_shift) + 1;
         unsigned size_y = bits(invocation.invocations, invocation.size_y_shift, invocation.size_z_shift) + 1;
@@ -1257,9 +1257,8 @@ pandecode_vertex_tiler_prefix(struct mali_vertex_tiler_prefix *p, int job_no, bo
                       size_x, size_y, size_z,
                       groups_x, groups_y, groups_z);
 
-        struct MALI_PRIMITIVE primitive;
         struct mali_primitive_packed prim_packed = p->primitive;
-        MALI_PRIMITIVE_unpack((const uint8_t *) &prim_packed, &primitive);
+        pan_unpack(&prim_packed, PRIMITIVE, primitive);
         DUMP_UNPACKED(PRIMITIVE, primitive, "Primitive:\n");
 
         /* Validate an index buffer is present if we need one. TODO: verify
@@ -1447,8 +1446,7 @@ pandecode_texture(mali_ptr u,
         struct pandecode_mapped_memory *mapped_mem = pandecode_find_mapped_gpu_mem_containing(u);
         const uint8_t *cl = pandecode_fetch_gpu_mem(mapped_mem, u, MALI_MIDGARD_TEXTURE_LENGTH);
 
-        struct MALI_MIDGARD_TEXTURE temp;
-        MALI_MIDGARD_TEXTURE_unpack(cl, &temp);
+        pan_unpack(cl, MIDGARD_TEXTURE, temp);
         DUMP_UNPACKED(MIDGARD_TEXTURE, temp, "Texture:\n")
 
         pandecode_indent++;
@@ -1464,8 +1462,7 @@ pandecode_bifrost_texture(
                 unsigned job_no,
                 unsigned tex)
 {
-        struct MALI_BIFROST_TEXTURE temp;
-        MALI_BIFROST_TEXTURE_unpack(cl, &temp);
+        pan_unpack(cl, BIFROST_TEXTURE, temp);
         DUMP_UNPACKED(BIFROST_TEXTURE, temp, "Texture:\n")
 
         struct pandecode_mapped_memory *tmem = pandecode_find_mapped_gpu_mem_containing(temp.surfaces);
@@ -1626,11 +1623,7 @@ pandecode_vertex_tiler_postfix_pre(
                         .uniform_buffer_count = 0
                 };
 
-                struct MALI_STATE state;
-                struct MALI_MIDGARD_PROPERTIES midg_props;
-                struct MALI_BIFROST_PROPERTIES bi_props;
-
-                MALI_STATE_unpack((const uint8_t *) cl, &state);
+                pan_unpack(cl, STATE, state);
 
                 if (state.shader.shader & ~0xF)
                         info = pandecode_shader_disassemble(state.shader.shader & ~0xF, job_no, job_type, is_bifrost, gpu_id);
@@ -1646,13 +1639,13 @@ pandecode_vertex_tiler_postfix_pre(
 
                 fprintf(pandecode_dump_stream, "  Properties\n");
                 if (is_bifrost) {
-                        MALI_BIFROST_PROPERTIES_unpack((const uint8_t *) &state.properties, &bi_props);
+                        pan_unpack(&state.properties, BIFROST_PROPERTIES, bi_props);
                         DUMP_UNPACKED(BIFROST_PROPERTIES, bi_props, "Properties:\n");
 
                         uniform_count = state.preload.uniform_count;
                         uniform_buffer_count = bi_props.uniform_buffer_count;
                 } else {
-                        MALI_MIDGARD_PROPERTIES_unpack((const uint8_t *) &state.properties, &midg_props);
+                        pan_unpack(&state.properties, MIDGARD_PROPERTIES, midg_props);
                         DUMP_UNPACKED(MIDGARD_PROPERTIES, midg_props, "Properties:\n")
 
                         uniform_count = midg_props.uniform_count;
@@ -1887,10 +1880,9 @@ pandecode_vertex_job_bfr(const struct mali_job_descriptor_header *h,
 {
         struct bifrost_payload_vertex *PANDECODE_PTR_VAR(v, mem, payload);
 
-        struct MALI_DRAW draw;
         struct mali_draw_packed draw_packed;
         memcpy(&draw_packed, &v->postfix, sizeof(draw_packed));
-        MALI_DRAW_unpack((const uint8_t *) &draw_packed, &draw); \
+        pan_unpack(&draw_packed, DRAW, draw);
         pandecode_vertex_tiler_postfix_pre(&draw, job_no, h->job_type, "", true, gpu_id);
 
         pandecode_vertex_tiler_prefix(&v->prefix, job_no, false);
@@ -1906,10 +1898,9 @@ pandecode_tiler_job_bfr(const struct mali_job_descriptor_header *h,
 {
         struct bifrost_payload_tiler *PANDECODE_PTR_VAR(t, mem, payload);
 
-        struct MALI_DRAW draw;
         struct mali_draw_packed draw_packed;
         memcpy(&draw_packed, &t->postfix, sizeof(draw_packed));
-        MALI_DRAW_unpack((const uint8_t *) &draw_packed, &draw); \
+        pan_unpack(&draw_packed, DRAW, draw);
         pandecode_vertex_tiler_postfix_pre(&draw, job_no, h->job_type, "", true, gpu_id);
         pandecode_tiler_meta(t->tiler_meta, job_no);
 
@@ -1942,18 +1933,16 @@ pandecode_vertex_or_tiler_job_mdg(const struct mali_job_descriptor_header *h,
         struct midgard_payload_vertex_tiler *PANDECODE_PTR_VAR(v, mem, payload);
         bool is_graphics = (h->job_type == MALI_JOB_TYPE_VERTEX) || (h->job_type == MALI_JOB_TYPE_TILER);
 
-        struct MALI_DRAW draw;
         struct mali_draw_packed draw_packed;
         memcpy(&draw_packed, &v->postfix, sizeof(draw_packed));
-        MALI_DRAW_unpack((const uint8_t *) &draw_packed, &draw); \
+        pan_unpack(&draw_packed, DRAW, draw);
         pandecode_vertex_tiler_postfix_pre(&draw, job_no, h->job_type, "", false, gpu_id);
 
         pandecode_vertex_tiler_prefix(&v->prefix, job_no, is_graphics);
         DUMP_CL(DRAW, &draw_packed, "Draw:\n");
 
-        struct MALI_PRIMITIVE primitive;
         struct mali_primitive_packed prim_packed = v->prefix.primitive;
-        MALI_PRIMITIVE_unpack((const uint8_t *) &prim_packed, &primitive);
+        pan_unpack(&prim_packed, PRIMITIVE, primitive);
 
         pandecode_primitive_size(v->primitive_size, primitive.point_size_array == 0);
 
