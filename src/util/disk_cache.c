@@ -372,15 +372,9 @@ disk_cache_get(struct disk_cache *cache, const cache_key key, size_t *size)
 
    char *filename = disk_cache_get_cache_filename(cache, key);
    if (filename == NULL)
-      goto fail;
+      return NULL;
 
    return disk_cache_load_item(cache, filename, size);
-
-fail:
-   if (filename)
-      free(filename);
-
-   return NULL;
 }
 
 void

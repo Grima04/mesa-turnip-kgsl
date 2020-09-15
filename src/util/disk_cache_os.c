@@ -616,6 +616,8 @@ disk_cache_load_item(struct disk_cache *cache, char *filename, size_t *size)
  fail:
    if (data)
       free(data);
+   if (filename)
+      free(filename);
    if (uncompressed_data)
       free(uncompressed_data);
    if (file_header)
@@ -626,8 +628,7 @@ disk_cache_load_item(struct disk_cache *cache, char *filename, size_t *size)
    return NULL;
 }
 
-/* Return a filename within the cache's directory corresponding to 'key'. The
- * returned filename is ralloced with 'cache' as the parent context.
+/* Return a filename within the cache's directory corresponding to 'key'.
  *
  * Returns NULL if out of memory.
  */
