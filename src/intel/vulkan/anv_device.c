@@ -603,7 +603,7 @@ anv_physical_device_try_create(struct anv_instance *instance,
    if (result != VK_SUCCESS)
       goto fail_engine_info;
 
-   device->perf = anv_get_perf(&device->info, fd);
+   anv_physical_device_init_perf(device, fd);
 
    anv_measure_device_init(device);
 

@@ -991,6 +991,11 @@ struct anv_physical_device {
     struct brw_compiler *                       compiler;
     struct isl_device                           isl_dev;
     struct gen_perf_config *                    perf;
+    /*
+     * Number of commands required to implement a performance query begin +
+     * end.
+     */
+    uint32_t                                    n_perf_query_commands;
     int                                         cmd_parser_version;
     bool                                        has_softpin;
     bool                                        has_exec_async;
@@ -4432,7 +4437,7 @@ struct anv_performance_configuration_intel {
    uint64_t                   config_id;
 };
 
-struct gen_perf_config *anv_get_perf(const struct gen_device_info *devinfo, int fd);
+void anv_physical_device_init_perf(struct anv_physical_device *device, int fd);
 void anv_device_perf_init(struct anv_device *device);
 void anv_perf_write_pass_results(struct gen_perf_config *perf,
                                  struct anv_query_pool *pool, uint32_t pass,
