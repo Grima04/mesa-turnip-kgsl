@@ -4333,18 +4333,24 @@ radv_create_deferred_submission(struct radv_queue *queue,
 
 	deferred->cmd_buffers = (void*)(deferred + 1);
 	deferred->cmd_buffer_count = submission->cmd_buffer_count;
-	memcpy(deferred->cmd_buffers, submission->cmd_buffers,
-	       submission->cmd_buffer_count * sizeof(*deferred->cmd_buffers));
+	if (submission->cmd_buffer_count) {
+		memcpy(deferred->cmd_buffers, submission->cmd_buffers,
+		       submission->cmd_buffer_count * sizeof(*deferred->cmd_buffers));
+	}
 
 	deferred->buffer_binds = (void*)(deferred->cmd_buffers + submission->cmd_buffer_count);
 	deferred->buffer_bind_count = submission->buffer_bind_count;
-	memcpy(deferred->buffer_binds, submission->buffer_binds,
-	       submission->buffer_bind_count * sizeof(*deferred->buffer_binds));
+	if (submission->buffer_bind_count) {
+		memcpy(deferred->buffer_binds, submission->buffer_binds,
+		       submission->buffer_bind_count * sizeof(*deferred->buffer_binds));
+	}
 
 	deferred->image_opaque_binds = (void*)(deferred->buffer_binds + submission->buffer_bind_count);
 	deferred->image_opaque_bind_count = submission->image_opaque_bind_count;
-	memcpy(deferred->image_opaque_binds, submission->image_opaque_binds,
-	       submission->image_opaque_bind_count * sizeof(*deferred->image_opaque_binds));
+	if (submission->image_opaque_bind_count) {
+		memcpy(deferred->image_opaque_binds, submission->image_opaque_binds,
+		       submission->image_opaque_bind_count * sizeof(*deferred->image_opaque_binds));
+	}
 
 	deferred->flush_caches = submission->flush_caches;
 	deferred->wait_dst_stage_mask = submission->wait_dst_stage_mask;
@@ -4382,9 +4388,13 @@ radv_create_deferred_submission(struct radv_queue *queue,
 	}
 
 	deferred->wait_values = (void*)(deferred->temporary_semaphore_parts + temporary_count);
-	memcpy(deferred->wait_values, submission->wait_values, submission->wait_value_count * sizeof(uint64_t));
+	if (submission->wait_value_count) {
+		memcpy(deferred->wait_values, submission->wait_values, submission->wait_value_count * sizeof(uint64_t));
+	}
 	deferred->signal_values = deferred->wait_values + submission->wait_value_count;
-	memcpy(deferred->signal_values, submission->signal_values, submission->signal_value_count * sizeof(uint64_t));
+	if (submission->signal_value_count) {
+		memcpy(deferred->signal_values, submission->signal_values, submission->signal_value_count * sizeof(uint64_t));
+	}
 
 	deferred->wait_nodes = (void*)(deferred->signal_values + submission->signal_value_count);
 	/* This is worst-case. radv_queue_enqueue_submission will fill in further, but this
