@@ -6037,8 +6037,16 @@ static void radv_init_color_image_metadata(struct radv_cmd_buffer *cmd_buffer,
 	if (radv_image_has_cmask(image)) {
 		uint32_t value = 0xffffffffu; /* Fully expanded mode. */
 
-		/*  TODO: clarify this. */
-		if (radv_image_has_fmask(image)) {
+		/*  TODO: clarify why 0xccccccccu is used. */
+
+		/* If CMASK isn't updated with the new layout, we should use the
+		 * fully expanded mode so that the image is read correctly if
+		 * CMASK is used (such as when transitioning to a compressed
+		 * layout).
+		 */
+		if (radv_image_has_fmask(image) &&
+		    radv_layout_can_fast_clear(image, dst_layout,
+					       dst_render_loop, dst_queue_mask)) {
 			value = 0xccccccccu;
 		}
 
