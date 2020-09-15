@@ -91,7 +91,7 @@ struct StreamOutJit : public BuilderGfxMem
     Value* PackMask(uint32_t bitmask)
     {
         std::vector<Constant*> indices(4, C(0));
-        DWORD                  index;
+        unsigned long          index;
         uint32_t               elem = 0;
         while (_BitScanForward(&index, bitmask))
         {

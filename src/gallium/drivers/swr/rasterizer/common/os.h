@@ -224,32 +224,29 @@ static INLINE void _mm256_storeu2_m128i(__m128i* hi, __m128i* lo, __m256i a)
 #endif
 #endif
 
-inline unsigned char _BitScanForward(unsigned long* Index, unsigned long Mask)
+inline unsigned char _BitScanForward64(unsigned long* Index, uint64_t Mask)
+{
+    *Index = __builtin_ctzll(Mask);
+    return (Mask != 0);
+}
+
+inline unsigned char _BitScanForward(unsigned long* Index, uint32_t Mask)
 {
     *Index = __builtin_ctz(Mask);
     return (Mask != 0);
 }
 
-inline unsigned char _BitScanForward(unsigned int* Index, unsigned int Mask)
+inline unsigned char _BitScanReverse64(unsigned long* Index, uint64_t Mask)
 {
-    *Index = __builtin_ctz(Mask);
+    *Index = 63 - __builtin_clzll(Mask);
     return (Mask != 0);
 }
 
-inline unsigned char _BitScanReverse(unsigned long* Index, unsigned long Mask)
-{
-    *Index = 63 - __builtin_clz(Mask);
-    return (Mask != 0);
-}
-
-inline unsigned char _BitScanReverse(unsigned int* Index, unsigned int Mask)
+inline unsigned char _BitScanReverse(unsigned long* Index, uint32_t Mask)
 {
     *Index = 31 - __builtin_clz(Mask);
     return (Mask != 0);
 }
-
-#define _BitScanForward64 _BitScanForward
-#define _BitScanReverse64 _BitScanReverse
 
 inline void* AlignedMalloc(size_t size, size_t alignment)
 {
