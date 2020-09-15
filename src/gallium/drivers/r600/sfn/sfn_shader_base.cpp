@@ -801,11 +801,8 @@ GPRVector ShaderFromNirProcessor::vec_from_nir_with_fetch_constant(const nir_src
             else {
                assert(next_free_swizzle < 4);
                v[i] = PValue(new GPRValue(sel, next_free_swizzle));
-            }
-
-            if (swizzle[i] < 4) {
                used_swizzles[next_free_swizzle] = true;
-               while (next_free_swizzle < 4 && used_swizzles[swizzle[next_free_swizzle]])
+               while (next_free_swizzle < 4 && used_swizzles[next_free_swizzle])
                   next_free_swizzle++;
             }
          }
@@ -825,8 +822,6 @@ GPRVector ShaderFromNirProcessor::vec_from_nir_with_fetch_constant(const nir_src
             ir = new AluInstruction(op1_mov, result[i], from_nir(src, swizzle[i]),
                                     EmitInstruction::write);
             emit_instruction(ir);
-         } else {
-
          }
       }
       if (ir)
