@@ -299,7 +299,7 @@
     <field name="Round to FB precision" size="1" start="11" type="bool" default="false"/>
   </struct>
 
-  <struct name="Midgard Blend" size="4" with_opaque="true">
+  <struct name="Midgard Blend" size="4">
     <field name="Flags" size="32" start="0:0" type="Blend Flags"/>
     <field name="Equation" size="32" start="2:0" type="uint"/> <!-- XXX -->
     <field name="Constant" size="32" start="3:0" type="float"/>
