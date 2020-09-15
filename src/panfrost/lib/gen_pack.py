@@ -321,7 +321,7 @@ class Field(object):
 
         self.modifier  = parse_modifier(attrs.get("modifier"))
 
-    def emit_template_struct(self, dim, opaque_structs):
+    def emit_template_struct(self, dim):
         if self.type == 'address':
             type = 'uint64_t'
         elif self.type == 'bool':
@@ -336,9 +336,6 @@ class Field(object):
             type = 'uint32_t'
         elif self.type in self.parser.structs:
             type = 'struct ' + self.parser.gen_prefix(safe_name(self.type.upper()))
-
-            if opaque_structs:
-                type = type.lower() + '_packed'
         elif self.type in self.parser.enums:
             type = 'enum ' + enum_name(self.type)
         else:
@@ -374,7 +371,7 @@ class Group(object):
         return self.length
 
 
-    def emit_template_struct(self, dim, opaque_structs):
+    def emit_template_struct(self, dim):
         if self.count == 0:
             print("   /* variable length fields follow */")
         else:
@@ -388,7 +385,7 @@ class Group(object):
                 if field.exact is not None:
                     continue
 
-                field.emit_template_struct(dim, opaque_structs)
+                field.emit_template_struct(dim)
 
     class Word:
         def __init__(self):
@@ -406,7 +403,7 @@ class Group(object):
 
                 words[b].fields.append(field)
 
-    def emit_pack_function(self, opaque_structs):
+    def emit_pack_function(self):
         self.get_length()
 
         words = {}
@@ -450,11 +447,7 @@ class Group(object):
                 assert((first.start % 32) == 0)
                 assert(first.end == first.start + (self.parser.structs[first.type].length * 8) - 1)
                 emitted_structs.add(first.start)
-
-                if opaque_structs:
-                    print("   memcpy(cl + {}, &values->{}, {});".format(first.start // 32, first.name, (first.end - first.start + 1) // 8))
-                else:
-                    print("   {}_pack(cl + {}, &values->{});".format(pack_name, first.start // 32, first.name))
+                print("   {}_pack(cl + {}, &values->{});".format(pack_name, first.start // 32, first.name))
 
             for field in word.fields:
                 name = field.name
@@ -637,8 +630,6 @@ class Parser(object):
             print(pack_header)
         elif name == "struct":
             name = attrs["name"]
-            self.with_opaque = attrs.get("with_opaque", False)
-
             object_name = self.gen_prefix(safe_name(name.upper()))
             self.struct = object_name
 
@@ -702,14 +693,10 @@ class Parser(object):
             print('   0')
         print('')
 
-    def emit_template_struct(self, name, group, opaque_structs):
-        print("struct %s {" % (name + ('_OPAQUE' if opaque_structs else '')))
-        group.emit_template_struct("", opaque_structs)
+    def emit_template_struct(self, name, group):
+        print("struct %s {" % name)
+        group.emit_template_struct("")
         print("};\n")
-
-        if opaque_structs:
-            # Just so it isn't left undefined
-            print('#define %-40s 0' % (name + '_OPAQUE_header'))
 
     def emit_aggregate(self):
         aggregate = self.aggregate
@@ -726,21 +713,13 @@ class Parser(object):
             print('#define {}_SECTION_{}_OFFSET {}'.format(aggregate.name.upper(), section.name.upper(), section.offset))
         print("")
 
-    def emit_pack_function(self, name, group, with_opaque):
+    def emit_pack_function(self, name, group):
         print("static inline void\n%s_pack(uint32_t * restrict cl,\n%sconst struct %s * restrict values)\n{" %
               (name, ' ' * (len(name) + 6), name))
 
-        group.emit_pack_function(False)
+        group.emit_pack_function()
 
         print("}\n\n")
-
-        if with_opaque:
-            print("static inline void\n%s_OPAQUE_pack(uint32_t * restrict cl,\n%sconst struct %s_OPAQUE * restrict values)\n{" %
-                  (name, ' ' * (len(name) + 6), name))
-
-            group.emit_pack_function(True)
-
-            print("}\n")
 
         # Should be a whole number of words
         assert((self.group.length % 4) == 0)
@@ -768,11 +747,9 @@ class Parser(object):
     def emit_struct(self):
         name = self.struct
 
-        self.emit_template_struct(self.struct, self.group, False)
-        if self.with_opaque:
-            self.emit_template_struct(self.struct, self.group, True)
+        self.emit_template_struct(self.struct, self.group)
         self.emit_header(name)
-        self.emit_pack_function(self.struct, self.group, self.with_opaque)
+        self.emit_pack_function(self.struct, self.group)
         self.emit_unpack_function(self.struct, self.group)
         self.emit_print_function(self.struct, self.group)
 
