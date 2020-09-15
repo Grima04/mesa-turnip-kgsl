@@ -214,21 +214,26 @@ def num_from_str(num_str):
         assert(not num_str.startswith('0') and 'octals numbers not allowed')
         return int(num_str)
 
-MODIFIERS = ["shr", "minus", "align"]
+MODIFIERS = ["shr", "minus", "align", "log2"]
 
 def parse_modifier(modifier):
     if modifier is None:
         return None
 
     for mod in MODIFIERS:
-        if modifier[0:len(mod)] == mod and modifier[len(mod)] == '(' and modifier[-1] == ')':
-            ret = [mod, int(modifier[(len(mod) + 1):-1])]
-            if ret[0] == 'align':
-                align = ret[1]
-                # Make sure the alignment is a power of 2
-                assert(align > 0 and not(align & (align - 1)));
+        if modifier[0:len(mod)] == mod:
+            if mod == "log2":
+                assert(len(mod) == len(modifier))
+                return [mod]
 
-            return ret
+            if modifier[len(mod)] == '(' and modifier[-1] == ')':
+                ret = [mod, int(modifier[(len(mod) + 1):-1])]
+                if ret[0] == 'align':
+                    align = ret[1]
+                    # Make sure the alignment is a power of 2
+                    assert(align > 0 and not(align & (align - 1)));
+
+                return ret
 
     print("Invalid modifier")
     assert(False)
@@ -410,6 +415,8 @@ class Group(object):
                 print("   assert((values->{} & {}) == 0);".format(field.name, mask))
             elif field.modifier[0] == "minus":
                 print("   assert(values->{} >= {});".format(field.name, field.modifier[1]))
+            elif field.modifier[0] == "log2":
+                print("   assert(util_is_power_of_two_nonzero(values->{}));".format(field.name))
 
         for index in range(self.length // 4):
             # Handle MBZ words
@@ -453,6 +460,8 @@ class Group(object):
                         value = "{} - {}".format(value, field.modifier[1])
                     elif field.modifier[0] == "align":
                         value = "ALIGN_POT({}, {})".format(value, field.modifier[1])
+                    elif field.modifier[0] == "log2":
+                        value = "util_logbase2({})".format(value)
 
                 if field.type == "uint" or field.type == "address":
                     s = "__gen_uint(%s, %d, %d)" % \
@@ -549,13 +558,16 @@ class Group(object):
                 s = "/* unhandled field %s, type %s */\n" % (field.name, field.type)
 
             suffix = ""
+            prefix = ""
             if field.modifier:
                 if field.modifier[0] == "minus":
                     suffix = " + {}".format(field.modifier[1])
                 elif field.modifier[0] == "shr":
                     suffix = " << {}".format(field.modifier[1])
+                if field.modifier[0] == "log2":
+                    prefix = "1 << "
 
-            decoded = '{}({}){}'.format(convert, ', '.join(args), suffix)
+            decoded = '{}{}({}){}'.format(prefix, convert, ', '.join(args), suffix)
 
             print('   values->{} = {};'.format(field.name, decoded))
             if field.modifier and field.modifier[0] == "align":
