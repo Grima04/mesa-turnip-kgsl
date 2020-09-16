@@ -812,7 +812,6 @@ void emit_vop3a_instruction(isel_context *ctx, nir_alu_instr *instr, aco_opcode 
    Builder bld(ctx->program, ctx->block);
    bld.is_precise = instr->exact;
    if (flush_denorms && ctx->program->chip_class < GFX9) {
-      assert(dst.size() == 1);
       Temp tmp;
       if (num_sources == 3)
          tmp = bld.vop3(op, bld.def(dst.regClass()), src[0], src[1], src[2]);
