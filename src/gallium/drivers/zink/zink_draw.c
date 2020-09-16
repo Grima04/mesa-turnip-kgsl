@@ -683,10 +683,6 @@ zink_draw_vbo(struct pipe_context *pctx,
       }
    }
 
-   VkPipeline pipeline = zink_get_gfx_pipeline(screen, gfx_program,
-                                               &ctx->gfx_pipeline_state,
-                                               dinfo->mode);
-
    enum pipe_prim_type reduced_prim = u_reduced_prim(dinfo->mode);
 
    bool depth_bias = false;
@@ -806,6 +802,10 @@ zink_draw_vbo(struct pipe_context *pctx,
    if (ctx->gfx_pipeline_state.blend_state->need_blend_constants)
       vkCmdSetBlendConstants(batch->cmdbuf, ctx->blend_constants);
 
+
+   VkPipeline pipeline = zink_get_gfx_pipeline(screen, gfx_program,
+                                               &ctx->gfx_pipeline_state,
+                                               dinfo->mode);
    vkCmdBindPipeline(batch->cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
 
    zink_bind_vertex_buffers(batch, ctx);
