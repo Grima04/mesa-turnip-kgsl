@@ -4,6 +4,3 @@
 #include "radeon/drm/radeon_drm_public.h"
 #include "radeon/radeon_winsys.h"
 #include "r600/r600_public.h"
-
-PUBLIC
-DRM_DRIVER_DESCRIPTOR("r600", NULL, pipe_r600_create_screen)

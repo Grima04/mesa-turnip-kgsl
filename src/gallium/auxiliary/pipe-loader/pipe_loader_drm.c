@@ -66,88 +66,25 @@ struct pipe_loader_drm_device {
 static const struct pipe_loader_ops pipe_loader_drm_ops;
 
 #ifdef GALLIUM_STATIC_TARGETS
-static const struct drm_driver_descriptor driver_descriptors[] = {
-    {
-        .driver_name = "i915",
-        .create_screen = pipe_i915_create_screen,
-    },
-    {
-        .driver_name = "iris",
-        .create_screen = pipe_iris_create_screen,
-        .driconf_xml = &iris_driconf_xml,
-    },
-    {
-        .driver_name = "nouveau",
-        .create_screen = pipe_nouveau_create_screen,
-    },
-    {
-        .driver_name = "r300",
-        .create_screen = pipe_r300_create_screen,
-    },
-    {
-        .driver_name = "r600",
-        .create_screen = pipe_r600_create_screen,
-    },
-    {
-        .driver_name = "radeonsi",
-        .create_screen = pipe_radeonsi_create_screen,
-        .driconf_xml = &radeonsi_driconf_xml,
-    },
-    {
-        .driver_name = "vmwgfx",
-        .create_screen = pipe_vmwgfx_create_screen,
-    },
-    {
-        .driver_name = "kgsl",
-        .create_screen = pipe_freedreno_create_screen,
-    },
-    {
-        .driver_name = "msm",
-        .create_screen = pipe_freedreno_create_screen,
-    },
-    {
-        .driver_name = "virtio_gpu",
-        .create_screen = pipe_virgl_create_screen,
-        .driconf_xml = &virgl_driconf_xml,
-    },
-    {
-        .driver_name = "v3d",
-        .create_screen = pipe_v3d_create_screen,
-        .driconf_xml = &v3d_driconf_xml,
-    },
-    {
-        .driver_name = "vc4",
-        .create_screen = pipe_vc4_create_screen,
-        .driconf_xml = &v3d_driconf_xml,
-    },
-    {
-        .driver_name = "panfrost",
-        .create_screen = pipe_panfrost_create_screen,
-    },
-    {
-        .driver_name = "etnaviv",
-        .create_screen = pipe_etna_create_screen,
-    },
-    {
-        .driver_name = "tegra",
-        .create_screen = pipe_tegra_create_screen,
-    },
-    {
-        .driver_name = "lima",
-        .create_screen = pipe_lima_create_screen,
-    },
-    {
-        .driver_name = "zink",
-        .create_screen = pipe_zink_create_screen,
-    },
+static const struct drm_driver_descriptor *driver_descriptors[] = {
+   &i915_driver_descriptor,
+   &iris_driver_descriptor,
+   &nouveau_driver_descriptor,
+   &r300_driver_descriptor,
+   &r600_driver_descriptor,
+   &radeonsi_driver_descriptor,
+   &vmwgfx_driver_descriptor,
+   &kgsl_driver_descriptor,
+   &msm_driver_descriptor,
+   &virtio_gpu_driver_descriptor,
+   &v3d_driver_descriptor,
+   &vc4_driver_descriptor,
+   &panfrost_driver_descriptor,
+   &etnaviv_driver_descriptor,
+   &tegra_driver_descriptor,
+   &lima_driver_descriptor,
+   &zink_driver_descriptor,
 };
-
-static const struct drm_driver_descriptor default_driver_descriptor = {
-        .driver_name = "kmsro",
-        .create_screen = pipe_kmsro_create_screen,
-        .driconf_xml = &v3d_driconf_xml,
-};
-
 #endif
 
 static const struct drm_driver_descriptor *
@@ -155,10 +92,10 @@ get_driver_descriptor(const char *driver_name, struct util_dl_library **plib)
 {
 #ifdef GALLIUM_STATIC_TARGETS
    for (int i = 0; i < ARRAY_SIZE(driver_descriptors); i++) {
-      if (strcmp(driver_descriptors[i].driver_name, driver_name) == 0)
-         return &driver_descriptors[i];
+      if (strcmp(driver_descriptors[i]->driver_name, driver_name) == 0)
+         return driver_descriptors[i];
    }
-   return &default_driver_descriptor;
+   return &kmsro_driver_descriptor;
 #else
    *plib = pipe_loader_find_module(driver_name, PIPE_SEARCH_DIR);
    if (!*plib)

@@ -36,14 +36,4 @@ struct drm_driver_descriptor
 
 extern const struct drm_driver_descriptor driver_descriptor;
 
-/**
- * Instantiate a drm_driver_descriptor struct.
- */
-#define DRM_DRIVER_DESCRIPTOR(driver_name_str, driconf, func)  \
-const struct drm_driver_descriptor driver_descriptor = {       \
-   .driver_name = driver_name_str,                             \
-   .driconf_xml = driconf,                                     \
-   .create_screen = func,                                      \
-};
-
 #endif

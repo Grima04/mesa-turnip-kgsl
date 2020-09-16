@@ -4,6 +4,3 @@
 #include "radeon/drm/radeon_drm_public.h"
 #include "radeon/radeon_winsys.h"
 #include "r300/r300_public.h"
-
-PUBLIC
-DRM_DRIVER_DESCRIPTOR("r300", NULL, pipe_r300_create_screen)
