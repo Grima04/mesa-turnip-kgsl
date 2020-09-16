@@ -200,6 +200,8 @@ anv_reloc_list_add(struct anv_reloc_list *list,
    if (result != VK_SUCCESS)
       return result;
 
+   assert(target_bo->gem_handle > 0 && target_bo->refcount > 0);
+
    /* XXX: Can we use I915_EXEC_HANDLE_LUT? */
    index = list->num_relocs++;
    list->reloc_bos[index] = target_bo;
