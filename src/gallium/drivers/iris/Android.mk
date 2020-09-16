@@ -151,17 +151,6 @@ intermediates := $(call local-generated-sources-dir)
 
 LOCAL_GENERATED_SOURCES := $(addprefix $(intermediates)/iris/,$(GENERATED_SOURCES))
 
-GEN_DRIINFO_INPUTS := \
-        $(MESA_TOP)/src/gallium/auxiliary/pipe-loader/driinfo_gallium.h \
-        $(LOCAL_PATH)/driinfo_iris.h
-
-MERGE_DRIINFO := $(MESA_TOP)/src/util/merge_driinfo.py
-
-$(intermediates)/iris/iris_driinfo.h: $(MERGE_DRIINFO) $(GEN_DRIINFO_INPUTS)
-	@mkdir -p $(dir $@)
-	@echo "Gen Header: $(PRIVATE_MODULE) <= $(notdir $(@))"
-	$(hide) $(MESA_PYTHON2) $(MERGE_DRIINFO) $(GEN_DRIINFO_INPUTS) > $@ || ($(RM) $@; false)
-
 LOCAL_EXPORT_C_INCLUDE_DIRS := $(intermediates)
 
 LOCAL_SRC_FILES := \

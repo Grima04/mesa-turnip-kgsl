@@ -19,8 +19,9 @@ struct drm_driver_descriptor
    const char *driver_name;
 
    /**
-    * Pointer to the XML string describing driver-specific driconf options.
-    * Use DRI_CONF_* macros to create the string.
+    * Pointer to the XML string fragment describing driver-specific driconf
+    * options.  Use DRI_CONF_* macros to create the string, do not wrap in
+    * DRI_CONF_BEGIN/END.
     */
    const char **driconf_xml;
 

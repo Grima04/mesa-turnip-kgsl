@@ -41,13 +41,6 @@ GEN_DRIINFO_INPUTS := \
 	$(MESA_TOP)/src/gallium/auxiliary/pipe-loader/driinfo_gallium.h \
 	$(LOCAL_PATH)/virgl_driinfo.h.in
 
-MERGE_DRIINFO := $(MESA_TOP)/src/util/merge_driinfo.py
-
-$(intermediates)/virgl/virgl_driinfo.h: $(MERGE_DRIINFO) $(GEN_DRIINFO_INPUTS)
-	@mkdir -p $(dir $@)
-	@echo "Gen Header: $(PRIVATE_MODULE) <= $(notdir $(@))"
-	$(hide) $(MESA_PYTHON2) $(MERGE_DRIINFO) $(GEN_DRIINFO_INPUTS) > $@ || ($(RM) $@; false)
-
 LOCAL_EXPORT_C_INCLUDE_DIRS := $(intermediates)
 
 include $(GALLIUM_COMMON_MK)

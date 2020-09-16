@@ -52,9 +52,7 @@ static int (*backends[])(struct pipe_loader_device **, int) = {
 };
 
 const char gallium_driinfo_xml[] =
-   DRI_CONF_BEGIN
 #include "driinfo_gallium.h"
-   DRI_CONF_END
 ;
 
 int
@@ -93,26 +91,39 @@ pipe_loader_load_options(struct pipe_loader_device *dev)
    if (dev->option_info.info)
       return;
 
-   const char *xml_options = dev->ops->get_driconf_xml(dev);
-   if (!xml_options)
-      xml_options = gallium_driinfo_xml;
+   const char *driver_xml = dev->ops->get_driconf_xml(dev);
 
-   driParseOptionInfo(&dev->option_info, xml_options);
-   driParseConfigFiles(&dev->option_cache, &dev->option_info, 0,
-                       dev->driver_name, NULL, NULL, 0, NULL, 0);
+   char *xml_options;
+   int ret = asprintf(&xml_options, "%s%s%s%s",
+                      DRI_CONF_BEGIN,
+                      gallium_driinfo_xml,
+                      driver_xml ? driver_xml : "",
+                      DRI_CONF_END);
+   if (ret >= 0) {
+      driParseOptionInfo(&dev->option_info, xml_options);
+      driParseConfigFiles(&dev->option_cache, &dev->option_info, 0,
+                          dev->driver_name, NULL, NULL, 0, NULL, 0);
+      free(xml_options);
+   }
 }
 
 char *
 pipe_loader_get_driinfo_xml(const char *driver_name)
 {
 #ifdef HAVE_LIBDRM
-   char *xml = pipe_loader_drm_get_driinfo_xml(driver_name);
+   char *driver_xml = pipe_loader_drm_get_driinfo_xml(driver_name);
 #else
-   char *xml = NULL;
+   char *driver_xml = NULL;
 #endif
 
-   if (!xml)
-      xml = strdup(gallium_driinfo_xml);
+   char *xml;
+   int ret = asprintf(&xml, "%s%s%s%s",
+                      DRI_CONF_BEGIN,
+                      gallium_driinfo_xml,
+                      driver_xml ? driver_xml : "",
+                      DRI_CONF_END);
+   if (ret < 0)
+      xml = NULL;
 
    return xml;
 }

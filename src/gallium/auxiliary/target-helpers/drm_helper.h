@@ -93,7 +93,7 @@ pipe_iris_create_screen(int fd, const struct pipe_screen_config *config)
 }
 
 const char *iris_driconf_xml =
-      #include "iris/iris_driinfo.h"
+      #include "iris/driinfo_iris.h"
       ;
 DRM_DRIVER_DESCRIPTOR(iris, &iris_driconf_xml)
 
@@ -120,7 +120,7 @@ DRM_DRIVER_DESCRIPTOR_STUB(nouveau)
 
 #if defined(GALLIUM_VC4) || defined(GALLIUM_V3D)
    const char *v3d_driconf_xml =
-      #include "v3d/v3d_driinfo.h"
+      #include "v3d/driinfo_v3d.h"
       ;
 #endif
 
@@ -195,7 +195,7 @@ pipe_radeonsi_create_screen(int fd, const struct pipe_screen_config *config)
 }
 
 const char *radeonsi_driconf_xml =
-      #include "radeonsi/si_driinfo.h"
+      #include "radeonsi/driinfo_radeonsi.h"
       ;
 DRM_DRIVER_DESCRIPTOR(radeonsi, &radeonsi_driconf_xml)
 
@@ -257,7 +257,7 @@ pipe_virtio_gpu_create_screen(int fd, const struct pipe_screen_config *config)
 }
 
 const char *virgl_driconf_xml =
-      #include "virgl/virgl_driinfo.h"
+      #include "virgl/virgl_driinfo.h.in"
       ;
 DRM_DRIVER_DESCRIPTOR(virtio_gpu, &virgl_driconf_xml)
 
