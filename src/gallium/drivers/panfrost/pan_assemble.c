@@ -189,24 +189,24 @@ pan_format_from_glsl(const struct glsl_type *type, unsigned precision, unsigned 
                 MALI_NR_CHANNELS(chan);
 }
 
-static enum bifrost_shader_type
+static enum mali_bifrost_register_file_format
 bifrost_blend_type_from_nir(nir_alu_type nir_type)
 {
         switch(nir_type) {
         case 0: /* Render target not in use */
                 return 0;
         case nir_type_float16:
-                return BIFROST_BLEND_F16;
+                return MALI_BIFROST_REGISTER_FILE_FORMAT_F16;
         case nir_type_float32:
-                return BIFROST_BLEND_F32;
+                return MALI_BIFROST_REGISTER_FILE_FORMAT_F32;
         case nir_type_int32:
-                return BIFROST_BLEND_I32;
+                return MALI_BIFROST_REGISTER_FILE_FORMAT_I32;
         case nir_type_uint32:
-                return BIFROST_BLEND_U32;
+                return MALI_BIFROST_REGISTER_FILE_FORMAT_U32;
         case nir_type_int16:
-                return BIFROST_BLEND_I16;
+                return MALI_BIFROST_REGISTER_FILE_FORMAT_I16;
         case nir_type_uint16:
-                return BIFROST_BLEND_U16;
+                return MALI_BIFROST_REGISTER_FILE_FORMAT_U16;
         default:
                 unreachable("Unsupported blend shader type for NIR alu type");
                 return 0;
@@ -339,7 +339,7 @@ panfrost_shader_compile(struct panfrost_context *ctx,
         state->work_reg_count = program.work_register_count;
 
         if (dev->quirks & IS_BIFROST)
-                for (unsigned i = 0; i < BIFROST_MAX_RENDER_TARGET_COUNT; i++)
+                for (unsigned i = 0; i < ARRAY_SIZE(state->blend_types); i++)
                         state->blend_types[i] = bifrost_blend_type_from_nir(program.blend_types[i]);
 
         /* Record the varying mapping for the command stream's bookkeeping */

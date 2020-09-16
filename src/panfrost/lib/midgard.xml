@@ -178,6 +178,74 @@
     <value name="RGB10 A2 2" value="238"/>
   </enum>
 
+  <enum name="RGB Component Order">
+    <value name="RGBA" value="0"/>
+    <value name="BRGA" value="2"/>
+    <value name="BGRA" value="4"/>
+    <value name="ARGB" value="8"/>
+    <value name="RGB1" value="16"/>
+    <value name="GRB1" value="18"/>
+    <value name="BGR1" value="20"/>
+    <value name="1RGB" value="24"/>
+    <value name="1GRB" value="26"/>
+    <value name="1BGR" value="28"/>
+    <value name="Intensity" value="226"/>
+    <value name="Luma" value="227"/>
+    <value name="Luma Alpha" value="228"/>
+    <value name="Alpha" value="229"/>
+    <value name="Zero" value="231"/>
+    <value name="Snap4 v9" value="232"/>
+    <value name="Snap4 v10" value="233"/>
+    <value name="Snap4 v11" value="234"/>
+    <value name="Snap4 v12" value="235"/>
+    <value name="Snap4 v13" value="236"/>
+    <value name="Snap4 v14" value="237"/>
+    <value name="Snap4 v15" value="238"/>
+    <value name="Snap4 v16" value="239"/>
+    <!-- Internal only, do not use -->
+    <value name="R000" value="240"/>
+    <value name="RBGA" value="242"/>
+  </enum>
+
+  <enum name="YUV Swizzle">
+    <value name="YUVA" value="0"/>
+    <value name="YVUA" value="1"/>
+    <value name="UYVA" value="2"/>
+    <value name="UVYA" value="3"/>
+    <value name="VUYA" value="4"/>
+    <value name="VYUA" value="5"/>
+    <value name="Y00A" value="6"/>
+    <value name="YXXA" value="7"/>
+  </enum>
+
+  <enum name="YUV Conversion Mode">
+    <value name="No Conversion" value="0"/>
+    <value name="BT 601" value="3"/>
+    <value name="BT 709" value="4"/>
+    <value name="BT 2020" value="6"/>
+  </enum>
+
+  <enum name="YUV Cr Siting">
+    <value name="Co-Sited" value="0"/>
+    <value name="Center Y" value="1"/>
+    <value name="Center X" value="2"/>
+    <value name="Center" value="3"/>
+    <value name="One Quarter" value="4"/>
+    <value name="Three Quarters" value="5"/>
+    <value name="Replicated" value="7"/>
+  </enum>
+
+  <struct name="Pixel Format" no-direct-packing="true">
+    <field name="RGB Component Order" size="8" start="0" type="RGB Component Order"/>
+    <field name="YUV Component Order" size="3" start="0" type="YUV Swizzle"/>
+    <field name="YUV Component Swap" size="1" start="3" type="bool"/>
+    <field name="YUV Cr Siting" size="3" start="0" type="YUV Cr Siting"/>
+    <field name="Swizzle" size="12" start="0" type="uint"/>
+    <field name="Format" size="8" start="12" type="Format"/>
+    <field name="sRGB" size="1" start="20" type="bool"/>
+    <field name="Big Endian" size="1" start="21" type="bool"/>
+  </struct>
+
   <enum name="Block Format">
     <!--- 16x16 block u-interleaved -->
     <value name="Tiled U-Interleaved" value="0"/>
@@ -324,19 +392,67 @@
     <field name="Color Mask" size="4" start="0:28" type="uint"/>
   </struct>
 
-  <struct name="Blend Flags" size="1">
-    <field name="Load destination" size="1" start="0" type="bool" default="false"/>
-    <field name="Midgard blend shader" size="1" start="1" type="bool" default="false"/>
-    <field name="Enable" size="1" start="9" type="bool" default="true"/>
-    <field name="sRGB" size="1" start="10" type="bool" default="false"/>
-    <field name="Round to FB precision" size="1" start="11" type="bool" default="false"/>
-  </struct>
-
-  <struct name="Midgard Blend" size="4">
-    <field name="Flags" size="32" start="0:0" type="Blend Flags"/>
+  <struct name="Midgard Blend Overlay" size="4" no-direct-packing="true">
+    <field name="Blend Shader" size="1" start="0:1" type="bool" default="false"/>
+    <field name="Blend Shader Contains Discard" size="1" start="0:2" type="bool" default="false"/>
+    <field name="Shader PC" size="64" start="2:0" type="address"/>
     <field name="Equation" size="32" start="2:0" type="Blend Equation"/>
     <field name="Constant" size="32" start="3:0" type="float"/>
-    <field name="Shader" size="64" start="2:0" type="address"/>
+  </struct>
+
+  <enum name="Bifrost Register File Format">
+    <value name="F16" value="0"/>
+    <value name="F32" value="1"/>
+    <value name="I32" value="2"/>
+    <value name="U32" value="3"/>
+    <value name="I16" value="4"/>
+    <value name="U16" value="5"/>
+  </enum>
+
+  <enum name="Bifrost Blend Mode">
+    <value name="Shader" value="0"/>
+    <value name="Opaque" value="1"/>
+    <value name="Fixed-Function" value="2"/>
+    <value name="Off" value="3"/>
+  </enum>
+
+  <struct name="Bifrost Blend Shader" size="2">
+    <field name="Return Value" size="29" start="0:3" type="uint" modifier="shr(3)"/>
+    <field name="PC" size="28" start="1:4" type="uint" modifier="shr(4)"/>
+  </struct>
+
+  <struct name="Bifrost Internal Conversion" size="1">
+    <field name="Memory Format" size="22" start="0" type="Pixel Format"/>
+    <field name="Raw" size="1" start="22" type="bool"/>
+    <field name="Register Format" size="3" start="24" type="Bifrost Register File Format"/>
+  </struct>
+
+  <struct name="Bifrost Blend Fixed-Function" size="2">
+    <field name="Num Comps" size="2" start="0:3" type="uint" modifier="minus(1)" default="1"/>
+    <field name="Alpha Zero NOP" size="1" start="0:5" type="bool"/>
+    <field name="Alpha One Store" size="1" start="0:6" type="bool"/>
+    <field name="RT" size="4" start="0:16" type="uint">
+       <value name="MALI_BIFROST_BLEND_MAX_RT" value="8"/>
+    </field>
+    <field name="Conversion" size="32" start="1:0" type="Bifrost Internal Conversion"/>
+  </struct>
+
+  <struct name="Bifrost Blend Overlay" no-direct-packing="true">
+    <field name="Constant" size="16" start="0:16" type="uint"/>
+    <field name="Equation" size="32" start="1:0" type="Blend Equation"/>
+    <field name="Mode" size="2" start="2:0" type="Bifrost Blend Mode"/>
+    <field name="Shader" size="64" start="2:0" type="Bifrost Blend Shader"/>
+    <field name="Fixed-Function" size="64" start="2:0" type="Bifrost Blend Fixed-Function"/>
+  </struct>
+
+  <struct name="Blend" size="4">
+    <field name="Load Destination" size="1" start="0:0" type="bool" default="false"/>
+    <field name="Alpha To One" size="1" start="0:8" type="bool"/>
+    <field name="Enable" size="1" start="0:9" type="bool" default="true"/>
+    <field name="sRGB" size="1" start="0:10" type="bool" default="false"/>
+    <field name="Round to FB precision" size="1" start="0:11" type="bool" default="false"/>
+    <field name="Midgard" size="1" start="0:0" type="Midgard Blend Overlay"/>
+    <field name="Bifrost" size="1" start="0:0" type="Bifrost Blend Overlay"/>
   </struct>
 
   <struct name="Invocation">
@@ -936,33 +1052,6 @@
   <enum name="YUV Conv K8">
     <value name="220" value="0"/>
     <value name="256" value="1"/>
-  </enum>
-
-  <enum name="YUV Swizzle">
-    <value name="YUVA" value="0"/>
-    <value name="YVUA" value="1"/>
-    <value name="UYVA" value="2"/>
-    <value name="UVYA" value="3"/>
-    <value name="VUYA" value="4"/>
-    <value name="VYUA" value="5"/>
-    <value name="Y00A" value="6"/>
-    <value name="YXXA" value="7"/>
-  </enum>
-
-  <enum name="YUV Conversion Mode">
-    <value name="No Conversion" value="0"/>
-    <value name="BT 601" value="3"/>
-    <value name="BT 709" value="4"/>
-    <value name="BT 2020" value="6"/>
-  </enum>
-
-  <enum name="YUV Cr Siting">
-    <value name="Co-Sited" value="0"/>
-    <value name="Center Y" value="1"/>
-    <value name="Center X" value="2"/>
-    <value name="Center" value="3"/>
-    <value name="One Quarter" value="4"/>
-    <value name="Three Quarters" value="5"/>
   </enum>
 
   <struct name="Render Target Midgard Overlay" size="16">

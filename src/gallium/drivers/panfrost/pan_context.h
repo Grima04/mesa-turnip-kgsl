@@ -34,6 +34,7 @@
 #include "pan_blend.h"
 #include "pan_encoder.h"
 #include "pan_texture.h"
+#include "midgard_pack.h"
 
 #include "pipe/p_compiler.h"
 #include "pipe/p_config.h"
@@ -225,7 +226,7 @@ struct panfrost_shader_state {
         bool fs_sidefx;
 
         /* For Bifrost - output type for each RT */
-        enum bifrost_shader_type blend_types[BIFROST_MAX_RENDER_TARGET_COUNT];
+        enum mali_bifrost_register_file_format blend_types[MALI_BIFROST_BLEND_MAX_RT];
 
         unsigned attribute_count, varying_count, ubo_count;
         enum mali_format varyings[PIPE_MAX_ATTRIBS];

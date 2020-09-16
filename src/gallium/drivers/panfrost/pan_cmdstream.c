@@ -265,13 +265,14 @@ panfrost_emit_bifrost_blend(struct panfrost_batch *batch,
                             struct panfrost_blend_final *blend,
                             void *rts)
 {
-        struct bifrost_blend_rt *brts = rts;
         unsigned rt_count = batch->key.nr_cbufs;
 
         if (rt_count == 0) {
                 /* Disable blending for depth-only */
-                memset(rts, 0, sizeof(*brts));
-                brts[0].unk2 = 0x3;
+                pan_pack(rts, BLEND, cfg) {
+                        cfg.enable = false;
+                        cfg.bifrost.mode = MALI_BIFROST_BLEND_MODE_OFF;
+                }
                 return;
         }
 
@@ -279,9 +280,7 @@ panfrost_emit_bifrost_blend(struct panfrost_batch *batch,
         struct panfrost_shader_state *fs = panfrost_get_shader_state(batch->ctx, PIPE_SHADER_FRAGMENT);
 
         for (unsigned i = 0; i < rt_count; ++i) {
-                struct mali_blend_flags_packed flags = {0};
-
-                pan_pack(&flags, BLEND_FLAGS, cfg) {
+                pan_pack(rts + i * MALI_BLEND_LENGTH, BLEND, cfg) {
                         if (blend[i].no_colour) {
                                 cfg.enable = false;
                         } else {
@@ -289,45 +288,47 @@ panfrost_emit_bifrost_blend(struct panfrost_batch *batch,
                                 cfg.load_destination = blend[i].load_dest;
                                 cfg.round_to_fb_precision = !batch->ctx->blend->base.dither;
                         }
-                }
 
-                memset(rts + i, 0, sizeof(rts[i]));
-                brts[i].flags = flags.opaque[0];
+                        if (blend[i].is_shader) {
+                                /* The blend shader's address needs to be at
+                                 * the same top 32 bit as the fragment shader.
+                                 * TODO: Ensure that's always the case.
+                                 */
+                                assert((blend[i].shader.gpu & (0xffffffffull << 32)) ==
+                                       (fs->bo->gpu & (0xffffffffull << 32)));
+                                cfg.bifrost.shader.pc = (u32)blend[i].shader.gpu;
+                                cfg.bifrost.mode = MALI_BIFROST_BLEND_MODE_SHADER;
+                        } else {
+                                enum pipe_format format = batch->key.cbufs[i]->format;
+                                const struct util_format_description *format_desc;
+                                unsigned chan_size = 0;
 
-                if (blend[i].is_shader) {
-                        /* The blend shader's address needs to be at
-                         * the same top 32 bit as the fragment shader.
-                         * TODO: Ensure that's always the case.
-                         */
-                        assert((blend[i].shader.gpu & (0xffffffffull << 32)) ==
-                                (fs->bo->gpu & (0xffffffffull << 32)));
-                        brts[i].shader = blend[i].shader.gpu;
-                        brts[i].unk2 = 0x0;
-                } else {
-                        enum pipe_format format = batch->key.cbufs[i]->format;
-                        const struct util_format_description *format_desc;
-                        format_desc = util_format_description(format);
-                        struct mali_blend_equation_packed peq;
+                                format_desc = util_format_description(format);
 
-                        pan_pack(&peq, BLEND_EQUATION, cfg) {
-                                cfg = blend[i].equation.equation;
+                                for (unsigned i = 0; i < format_desc->nr_channels; i++)
+                                        chan_size = MAX2(format_desc->channel[0].size, chan_size);
+
+                                cfg.bifrost.equation = blend[i].equation.equation;
+
+                                /* Fixed point constant */
+                                u16 constant = blend[i].equation.constant / ((1 << chan_size) - 1);
+                                constant <<= 16 - chan_size;
+                                cfg.bifrost.constant = constant;
+
+                                if (blend[i].opaque)
+                                        cfg.bifrost.mode = MALI_BIFROST_BLEND_MODE_OPAQUE;
+                                else
+                                        cfg.bifrost.mode = MALI_BIFROST_BLEND_MODE_FIXED_FUNCTION;
+
+                                cfg.bifrost.fixed_function.num_comps = format_desc->nr_channels;
+                                cfg.bifrost.fixed_function.conversion.memory_format.format =
+                                        panfrost_format_to_bifrost_blend(format_desc);
+                                if (dev->quirks & HAS_SWIZZLES) {
+                                        cfg.bifrost.fixed_function.conversion.memory_format.swizzle =
+                                                panfrost_get_default_swizzle(4);
+                                }
+                                cfg.bifrost.fixed_function.conversion.register_format = fs->blend_types[i];
                         }
-                        brts[i].equation = peq;
-
-                        /* TODO: this is a bit more complicated */
-                        brts[i].constant = blend[i].equation.constant;
-
-                        brts[i].format = panfrost_format_to_bifrost_blend(format_desc);
-                        if (dev->quirks & HAS_SWIZZLES)
-                                brts[i].swizzle = panfrost_get_default_swizzle(4);
-
-                        /* 0x19 disables blending and forces REPLACE
-                         * mode (equivalent to rgb_mode = alpha_mode =
-                         * x122, colour mask = 0xF). 0x1a allows
-                         * blending. */
-                        brts[i].unk2 = blend[i].opaque ? 0x19 : 0x1a;
-
-                        brts[i].shader_type = fs->blend_types[i];
                 }
         }
 }
@@ -341,34 +342,34 @@ panfrost_emit_midgard_blend(struct panfrost_batch *batch,
 
         if (rt_count == 0) {
                 /* Disable blending for depth-only */
-                pan_pack(rts, MIDGARD_BLEND, cfg) {
-                        cfg.equation.color_mask = 0xf;
-                        cfg.equation.rgb.a = MALI_BLEND_OPERAND_A_SRC;
-                        cfg.equation.rgb.b = MALI_BLEND_OPERAND_B_SRC;
-                        cfg.equation.rgb.c = MALI_BLEND_OPERAND_C_ZERO;
-                        cfg.equation.alpha.a = MALI_BLEND_OPERAND_A_SRC;
-                        cfg.equation.alpha.b = MALI_BLEND_OPERAND_B_SRC;
-                        cfg.equation.alpha.c = MALI_BLEND_OPERAND_C_ZERO;
+                pan_pack(rts, BLEND, cfg) {
+                        cfg.midgard.equation.color_mask = 0xf;
+                        cfg.midgard.equation.rgb.a = MALI_BLEND_OPERAND_A_SRC;
+                        cfg.midgard.equation.rgb.b = MALI_BLEND_OPERAND_B_SRC;
+                        cfg.midgard.equation.rgb.c = MALI_BLEND_OPERAND_C_ZERO;
+                        cfg.midgard.equation.alpha.a = MALI_BLEND_OPERAND_A_SRC;
+                        cfg.midgard.equation.alpha.b = MALI_BLEND_OPERAND_B_SRC;
+                        cfg.midgard.equation.alpha.c = MALI_BLEND_OPERAND_C_ZERO;
                 }
                 return;
         }
 
         for (unsigned i = 0; i < rt_count; ++i) {
-                pan_pack(rts + i * MALI_MIDGARD_BLEND_LENGTH, MIDGARD_BLEND, cfg) {
+                pan_pack(rts + i * MALI_BLEND_LENGTH, BLEND, cfg) {
                         if (blend[i].no_colour) {
-                                cfg.flags.enable = false;
+                                cfg.enable = false;
                                 continue;
                         }
 
-                        cfg.flags.srgb = util_format_is_srgb(batch->key.cbufs[i]->format);
-                        cfg.flags.load_destination = blend[i].load_dest;
-                        cfg.flags.round_to_fb_precision = !batch->ctx->blend->base.dither;
-                        cfg.flags.midgard_blend_shader = blend[i].is_shader;
+                        cfg.srgb = util_format_is_srgb(batch->key.cbufs[i]->format);
+                        cfg.load_destination = blend[i].load_dest;
+                        cfg.round_to_fb_precision = !batch->ctx->blend->base.dither;
+                        cfg.midgard.blend_shader = blend[i].is_shader;
                         if (blend[i].is_shader) {
-                                cfg.shader = blend[i].shader.gpu | blend[i].shader.first_tag;
+                                cfg.midgard.shader_pc = blend[i].shader.gpu | blend[i].shader.first_tag;
                         } else {
-                                cfg.equation = blend[i].equation.equation;
-                                cfg.constant = blend[i].equation.constant;
+                                cfg.midgard.equation = blend[i].equation.equation;
+                                cfg.midgard.constant = blend[i].equation.constant;
                         }
                 }
         }
@@ -586,10 +587,8 @@ panfrost_emit_frag_shader_meta(struct panfrost_batch *batch)
 
         if (dev->quirks & MIDGARD_SFBD)
                 rt_size = 0;
-        else if (dev->quirks & IS_BIFROST)
-                rt_size = sizeof(struct bifrost_blend_rt);
         else
-                rt_size = sizeof(struct midgard_blend_rt);
+                rt_size = MALI_BLEND_LENGTH;
 
         unsigned desc_size = MALI_RENDERER_STATE_LENGTH + rt_size * rt_count;
         xfer = panfrost_pool_alloc_aligned(&batch->pool, desc_size, MALI_RENDERER_STATE_LENGTH);
