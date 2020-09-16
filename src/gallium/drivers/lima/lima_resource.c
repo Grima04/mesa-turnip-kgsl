@@ -660,7 +660,6 @@ static void
 lima_transfer_unmap_inner(struct lima_context *ctx,
                           struct pipe_transfer *ptrans)
 {
-
    struct lima_resource *res = lima_resource(ptrans->resource);
    struct lima_transfer *trans = lima_transfer(ptrans);
    struct lima_bo *bo = res->bo;
