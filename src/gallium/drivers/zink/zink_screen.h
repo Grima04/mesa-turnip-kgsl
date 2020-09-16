@@ -69,6 +69,9 @@ struct zink_screen {
 
    PFN_vkGetPhysicalDeviceCalibrateableTimeDomainsEXT vk_GetPhysicalDeviceCalibrateableTimeDomainsEXT;
    PFN_vkGetCalibratedTimestampsEXT vk_GetCalibratedTimestampsEXT;
+
+   PFN_vkCmdSetViewportWithCountEXT vk_CmdSetViewportWithCountEXT;
+   PFN_vkCmdSetScissorWithCountEXT vk_CmdSetScissorWithCountEXT;
 };
 
 static inline struct zink_screen *

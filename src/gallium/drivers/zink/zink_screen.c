@@ -784,6 +784,10 @@ load_device_extensions(struct zink_screen *screen)
       assert(have_device_time);
       free(domains);
    }
+   if (screen->info.have_EXT_extended_dynamic_state) {
+      GET_PROC_ADDR(CmdSetViewportWithCountEXT);
+      GET_PROC_ADDR(CmdSetScissorWithCountEXT);
+   }
 
 #undef GET_PROC_ADDR
 
