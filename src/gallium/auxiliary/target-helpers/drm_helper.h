@@ -7,6 +7,21 @@
 #include "frontend/drm_driver.h"
 #include "util/driconf.h"
 
+/* The static pipe loader refers to all of the pipe_*_create_screen functions
+ * for all drivers, regardless of whether they are configured in this Mesa
+ * build, or whether they're included in the specific gallium target.  The
+ * target will include this header with the #defines for the specific drivers
+ * it's including, and the disabled drivers will have their create function
+ * stubbed out.
+ */
+#define STUB_CREATE_SCREEN(driver)                                      \
+   struct pipe_screen *                                                 \
+   pipe_##driver##_create_screen(int fd, const struct pipe_screen_config *config) \
+   {                                                                    \
+      fprintf(stderr, #driver ": driver missing\n");                    \
+      return NULL;                                                      \
+   }
+
 #ifdef GALLIUM_I915
 #include "i915/drm/i915_drm_public.h"
 #include "i915/i915_public.h"
@@ -26,14 +41,7 @@ pipe_i915_create_screen(int fd, const struct pipe_screen_config *config)
 }
 
 #else
-
-struct pipe_screen *
-pipe_i915_create_screen(int fd, const struct pipe_screen_config *config)
-{
-   fprintf(stderr, "i915g: driver missing\n");
-   return NULL;
-}
-
+STUB_CREATE_SCREEN(i915)
 #endif
 
 #ifdef GALLIUM_IRIS
@@ -53,16 +61,8 @@ const char *iris_driconf_xml =
       ;
 
 #else
-
-struct pipe_screen *
-pipe_iris_create_screen(int fd, const struct pipe_screen_config *config)
-{
-   fprintf(stderr, "iris: driver missing\n");
-   return NULL;
-}
-
+STUB_CREATE_SCREEN(iris)
 const char *iris_driconf_xml = NULL;
-
 #endif
 
 #ifdef GALLIUM_NOUVEAU
@@ -78,14 +78,7 @@ pipe_nouveau_create_screen(int fd, const struct pipe_screen_config *config)
 }
 
 #else
-
-struct pipe_screen *
-pipe_nouveau_create_screen(int fd, const struct pipe_screen_config *config)
-{
-   fprintf(stderr, "nouveau: driver missing\n");
-   return NULL;
-}
-
+STUB_CREATE_SCREEN(nouveau)
 #endif
 
 #ifdef GALLIUM_KMSRO
@@ -101,13 +94,7 @@ pipe_kmsro_create_screen(int fd, const struct pipe_screen_config *config)
 }
 
 #else
-
-struct pipe_screen *
-pipe_kmsro_create_screen(int fd, const struct pipe_screen_config *config)
-{
-   return NULL;
-}
-
+STUB_CREATE_SCREEN(kmsro)
 #endif
 
 #ifdef GALLIUM_R300
@@ -125,14 +112,7 @@ pipe_r300_create_screen(int fd, const struct pipe_screen_config *config)
 }
 
 #else
-
-struct pipe_screen *
-pipe_r300_create_screen(int fd, const struct pipe_screen_config *config)
-{
-   fprintf(stderr, "r300: driver missing\n");
-   return NULL;
-}
-
+STUB_CREATE_SCREEN(r300)
 #endif
 
 #ifdef GALLIUM_R600
@@ -150,14 +130,7 @@ pipe_r600_create_screen(int fd, const struct pipe_screen_config *config)
 }
 
 #else
-
-struct pipe_screen *
-pipe_r600_create_screen(int fd, const struct pipe_screen_config *config)
-{
-   fprintf(stderr, "r600: driver missing\n");
-   return NULL;
-}
-
+STUB_CREATE_SCREEN(r600)
 #endif
 
 #ifdef GALLIUM_RADEONSI
@@ -176,16 +149,8 @@ const char *radeonsi_driconf_xml =
       ;
 
 #else
-
-struct pipe_screen *
-pipe_radeonsi_create_screen(int fd, const struct pipe_screen_config *config)
-{
-   fprintf(stderr, "radeonsi: driver missing\n");
-   return NULL;
-}
-
+STUB_CREATE_SCREEN(radeonsi)
 const char *radeonsi_driconf_xml = NULL;
-
 #endif
 
 #ifdef GALLIUM_VMWGFX
@@ -207,14 +172,7 @@ pipe_vmwgfx_create_screen(int fd, const struct pipe_screen_config *config)
 }
 
 #else
-
-struct pipe_screen *
-pipe_vmwgfx_create_screen(int fd, const struct pipe_screen_config *config)
-{
-   fprintf(stderr, "svga: driver missing\n");
-   return NULL;
-}
-
+STUB_CREATE_SCREEN(vmwgfx)
 #endif
 
 #ifdef GALLIUM_FREEDRENO
@@ -230,14 +188,7 @@ pipe_freedreno_create_screen(int fd, const struct pipe_screen_config *config)
 }
 
 #else
-
-struct pipe_screen *
-pipe_freedreno_create_screen(int fd, const struct pipe_screen_config *config)
-{
-   fprintf(stderr, "freedreno: driver missing\n");
-   return NULL;
-}
-
+STUB_CREATE_SCREEN(freedreno)
 #endif
 
 #ifdef GALLIUM_VIRGL
@@ -258,16 +209,8 @@ const char *virgl_driconf_xml =
       ;
 
 #else
-
-struct pipe_screen *
-pipe_virgl_create_screen(int fd, const struct pipe_screen_config *config)
-{
-   fprintf(stderr, "virgl: driver missing\n");
-   return NULL;
-}
-
+STUB_CREATE_SCREEN(virgl)
 const char *virgl_driconf_xml = NULL;
-
 #endif
 
 #ifdef GALLIUM_VC4
@@ -282,14 +225,7 @@ pipe_vc4_create_screen(int fd, const struct pipe_screen_config *config)
    return screen ? debug_screen_wrap(screen) : NULL;
 }
 #else
-
-struct pipe_screen *
-pipe_vc4_create_screen(int fd, const struct pipe_screen_config *config)
-{
-   fprintf(stderr, "vc4: driver missing\n");
-   return NULL;
-}
-
+STUB_CREATE_SCREEN(vc4)
 #endif
 
 #ifdef GALLIUM_V3D
@@ -309,16 +245,8 @@ const char *v3d_driconf_xml =
       ;
 
 #else
-
-struct pipe_screen *
-pipe_v3d_create_screen(int fd, const struct pipe_screen_config *config)
-{
-   fprintf(stderr, "v3d: driver missing\n");
-   return NULL;
-}
-
+STUB_CREATE_SCREEN(v3d)
 const char *v3d_driconf_xml = NULL;
-
 #endif
 
 #ifdef GALLIUM_PANFROST
@@ -334,14 +262,7 @@ pipe_panfrost_create_screen(int fd, const struct pipe_screen_config *config)
 }
 
 #else
-
-struct pipe_screen *
-pipe_panfrost_create_screen(int fd, const struct pipe_screen_config *config)
-{
-   fprintf(stderr, "panfrost: driver missing\n");
-   return NULL;
-}
-
+STUB_CREATE_SCREEN(panfrost)
 #endif
 
 #ifdef GALLIUM_ETNAVIV
@@ -357,14 +278,7 @@ pipe_etna_create_screen(int fd, const struct pipe_screen_config *config)
 }
 
 #else
-
-struct pipe_screen *
-pipe_etna_create_screen(int fd, const struct pipe_screen_config *config)
-{
-   fprintf(stderr, "etnaviv: driver missing\n");
-   return NULL;
-}
-
+STUB_CREATE_SCREEN(etna)
 #endif
 
 #ifdef GALLIUM_TEGRA
@@ -381,14 +295,7 @@ pipe_tegra_create_screen(int fd, const struct pipe_screen_config *config)
 }
 
 #else
-
-struct pipe_screen *
-pipe_tegra_create_screen(int fd, const struct pipe_screen_config *config)
-{
-   fprintf(stderr, "tegra: driver missing\n");
-   return NULL;
-}
-
+STUB_CREATE_SCREEN(tegra)
 #endif
 
 #ifdef GALLIUM_LIMA
@@ -404,14 +311,7 @@ pipe_lima_create_screen(int fd, const struct pipe_screen_config *config)
 }
 
 #else
-
-struct pipe_screen *
-pipe_lima_create_screen(int fd, const struct pipe_screen_config *config)
-{
-   fprintf(stderr, "lima: driver missing\n");
-   return NULL;
-}
-
+STUB_CREATE_SCREEN(lima)
 #endif
 
 #ifdef GALLIUM_ZINK
@@ -426,14 +326,7 @@ pipe_zink_create_screen(int fd, const struct pipe_screen_config *config)
 }
 
 #else
-
-struct pipe_screen *
-pipe_zink_create_screen(int fd, const struct pipe_screen_config *config)
-{
-   fprintf(stderr, "zink: driver missing\n");
-   return NULL;
-}
-
+STUB_CREATE_SCREEN(zink)
 #endif
 
 #endif /* DRM_HELPER_H */
