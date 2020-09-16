@@ -2083,7 +2083,8 @@ void register_allocation(Program *program, std::vector<IDSet>& live_out_per_bloc
               (instr->opcode == aco_opcode::v_fma_f32 && program->chip_class >= GFX10) ||
               instr->opcode == aco_opcode::v_mad_f16 ||
               instr->opcode == aco_opcode::v_mad_legacy_f16 ||
-              (instr->opcode == aco_opcode::v_fma_f16 && program->chip_class >= GFX10)) &&
+              (instr->opcode == aco_opcode::v_fma_f16 && program->chip_class >= GFX10) ||
+              (instr->opcode == aco_opcode::v_pk_fma_f16 && program->chip_class >= GFX10)) &&
              instr->operands[2].isTemp() &&
              instr->operands[2].isKillBeforeDef() &&
              instr->operands[2].getTemp().type() == RegType::vgpr &&
@@ -2113,6 +2114,9 @@ void register_allocation(Program *program, std::vector<IDSet>& live_out_per_bloc
                case aco_opcode::v_fma_f16:
                   instr->opcode = aco_opcode::v_fmac_f16;
                   break;
+               case aco_opcode::v_pk_fma_f16:
+                  instr->opcode = aco_opcode::v_pk_fmac_f16;
+                  break;
                default:
                   break;
                }
@@ -2125,6 +2129,7 @@ void register_allocation(Program *program, std::vector<IDSet>& live_out_per_bloc
              instr->opcode == aco_opcode::v_fmac_f32 ||
              instr->opcode == aco_opcode::v_mac_f16 ||
              instr->opcode == aco_opcode::v_fmac_f16 ||
+             instr->opcode == aco_opcode::v_pk_fmac_f16 ||
              instr->opcode == aco_opcode::v_writelane_b32 ||
              instr->opcode == aco_opcode::v_writelane_b32_e64) {
             instr->definitions[0].setFixed(instr->operands[2].physReg());
