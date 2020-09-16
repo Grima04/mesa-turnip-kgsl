@@ -502,6 +502,8 @@ gather_intrinsic_info(nir_intrinsic_instr *instr, nir_shader *shader,
          shader->info.system_values_read |=
             BITFIELD64_BIT(SYSTEM_VALUE_BARYCENTRIC_LINEAR_SAMPLE);
       }
+      if (shader->info.stage == MESA_SHADER_FRAGMENT)
+         shader->info.fs.uses_sample_qualifier = true;
       break;
 
    case nir_intrinsic_quad_broadcast:
