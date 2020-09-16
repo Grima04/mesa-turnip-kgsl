@@ -1521,9 +1521,7 @@ tu_set_descriptor_set(struct tu_cmd_buffer *cmd_buffer,
                       unsigned idx);
 
 void
-tu_update_descriptor_sets(struct tu_device *device,
-                          struct tu_cmd_buffer *cmd_buffer,
-                          VkDescriptorSet overrideSet,
+tu_update_descriptor_sets(VkDescriptorSet overrideSet,
                           uint32_t descriptorWriteCount,
                           const VkWriteDescriptorSet *pDescriptorWrites,
                           uint32_t descriptorCopyCount,
@@ -1531,8 +1529,6 @@ tu_update_descriptor_sets(struct tu_device *device,
 
 void
 tu_update_descriptor_set_with_template(
-   struct tu_device *device,
-   struct tu_cmd_buffer *cmd_buffer,
    struct tu_descriptor_set *set,
    VkDescriptorUpdateTemplate descriptorUpdateTemplate,
    const void *pData);

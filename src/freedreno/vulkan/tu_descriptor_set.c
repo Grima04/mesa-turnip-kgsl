@@ -722,10 +722,8 @@ tu_FreeDescriptorSets(VkDevice _device,
    return VK_SUCCESS;
 }
 
-static void write_texel_buffer_descriptor(struct tu_device *device,
-                                          struct tu_cmd_buffer *cmd_buffer,
-                                          unsigned *dst,
-                                          const VkBufferView buffer_view)
+static void
+write_texel_buffer_descriptor(uint32_t *dst, const VkBufferView buffer_view)
 {
    TU_FROM_HANDLE(tu_buffer_view, view, buffer_view);
 
@@ -742,10 +740,8 @@ static uint32_t get_range(struct tu_buffer *buf, VkDeviceSize offset,
    }
 }
 
-static void write_buffer_descriptor(struct tu_device *device,
-                                    struct tu_cmd_buffer *cmd_buffer,
-                                    unsigned *dst,
-                                    const VkDescriptorBufferInfo *buffer_info)
+static void
+write_buffer_descriptor(uint32_t *dst, const VkDescriptorBufferInfo *buffer_info)
 {
    TU_FROM_HANDLE(tu_buffer, buffer, buffer_info->buffer);
 
@@ -764,10 +760,8 @@ static void write_buffer_descriptor(struct tu_device *device,
       dst[i] = 0;
 }
 
-static void write_ubo_descriptor(struct tu_device *device,
-                                 struct tu_cmd_buffer *cmd_buffer,
-                                 unsigned *dst,
-                                 const VkDescriptorBufferInfo *buffer_info)
+static void
+write_ubo_descriptor(uint32_t *dst, const VkDescriptorBufferInfo *buffer_info)
 {
    TU_FROM_HANDLE(tu_buffer, buffer, buffer_info->buffer);
 
@@ -780,11 +774,9 @@ static void write_ubo_descriptor(struct tu_device *device,
 }
 
 static void
-write_image_descriptor(struct tu_device *device,
-             struct tu_cmd_buffer *cmd_buffer,
-             unsigned *dst,
-             VkDescriptorType descriptor_type,
-             const VkDescriptorImageInfo *image_info)
+write_image_descriptor(uint32_t *dst,
+                       VkDescriptorType descriptor_type,
+                       const VkDescriptorImageInfo *image_info)
 {
    TU_FROM_HANDLE(tu_image_view, iview, image_info->imageView);
 
@@ -796,18 +788,14 @@ write_image_descriptor(struct tu_device *device,
 }
 
 static void
-write_combined_image_sampler_descriptor(struct tu_device *device,
-               struct tu_cmd_buffer *cmd_buffer,
-               unsigned sampler_offset,
-               unsigned *dst,
-               VkDescriptorType descriptor_type,
-               const VkDescriptorImageInfo *image_info,
-               bool has_sampler)
+write_combined_image_sampler_descriptor(uint32_t *dst,
+                                        VkDescriptorType descriptor_type,
+                                        const VkDescriptorImageInfo *image_info,
+                                        bool has_sampler)
 {
    TU_FROM_HANDLE(tu_sampler, sampler, image_info->sampler);
 
-   write_image_descriptor(device, cmd_buffer, dst,
-                          descriptor_type, image_info);
+   write_image_descriptor(dst, descriptor_type, image_info);
    /* copy over sampler state */
    if (has_sampler) {
       memcpy(dst + A6XX_TEX_CONST_DWORDS, sampler->descriptor, sizeof(sampler->descriptor));
@@ -815,9 +803,7 @@ write_combined_image_sampler_descriptor(struct tu_device *device,
 }
 
 static void
-write_sampler_descriptor(struct tu_device *device,
-                         unsigned *dst,
-                         const VkDescriptorImageInfo *image_info)
+write_sampler_descriptor(uint32_t *dst, const VkDescriptorImageInfo *image_info)
 {
    TU_FROM_HANDLE(tu_sampler, sampler, image_info->sampler);
 
@@ -825,9 +811,7 @@ write_sampler_descriptor(struct tu_device *device,
 }
 
 void
-tu_update_descriptor_sets(struct tu_device *device,
-                          struct tu_cmd_buffer *cmd_buffer,
-                          VkDescriptorSet dstSetOverride,
+tu_update_descriptor_sets(VkDescriptorSet dstSetOverride,
                           uint32_t descriptorWriteCount,
                           const VkWriteDescriptorSet *pDescriptorWrites,
                           uint32_t descriptorCopyCount,
@@ -851,46 +835,40 @@ tu_update_descriptor_sets(struct tu_device *device,
             assert(!(set->layout->flags & VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR));
             unsigned idx = writeset->dstArrayElement + j;
             idx += binding_layout->dynamic_offset_offset;
-            write_ubo_descriptor(device, cmd_buffer,
-                                 set->dynamic_descriptors + A6XX_TEX_CONST_DWORDS * idx,
+            write_ubo_descriptor(set->dynamic_descriptors + A6XX_TEX_CONST_DWORDS * idx,
                                  writeset->pBufferInfo + j);
             break;
          }
          case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
-            write_ubo_descriptor(device, cmd_buffer, ptr, writeset->pBufferInfo + j);
+            write_ubo_descriptor(ptr, writeset->pBufferInfo + j);
             break;
          case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC: {
             assert(!(set->layout->flags & VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR));
             unsigned idx = writeset->dstArrayElement + j;
             idx += binding_layout->dynamic_offset_offset;
-            write_buffer_descriptor(device, cmd_buffer,
-                                    set->dynamic_descriptors + A6XX_TEX_CONST_DWORDS * idx,
+            write_buffer_descriptor(set->dynamic_descriptors + A6XX_TEX_CONST_DWORDS * idx,
                                     writeset->pBufferInfo + j);
             break;
          }
          case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
-            write_buffer_descriptor(device, cmd_buffer, ptr, writeset->pBufferInfo + j);
+            write_buffer_descriptor(ptr, writeset->pBufferInfo + j);
             break;
          case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
          case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
-            write_texel_buffer_descriptor(device, cmd_buffer, ptr, writeset->pTexelBufferView[j]);
+            write_texel_buffer_descriptor(ptr, writeset->pTexelBufferView[j]);
             break;
          case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
          case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
-            write_image_descriptor(device, cmd_buffer, ptr,
-                                   writeset->descriptorType,
-                                   writeset->pImageInfo + j);
+            write_image_descriptor(ptr, writeset->descriptorType, writeset->pImageInfo + j);
             break;
          case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
-            write_combined_image_sampler_descriptor(device, cmd_buffer,
-                                                    A6XX_TEX_CONST_DWORDS * 4,
-                                                    ptr,
+            write_combined_image_sampler_descriptor(ptr,
                                                     writeset->descriptorType,
                                                     writeset->pImageInfo + j,
                                                     !binding_layout->immutable_samplers_offset);
             break;
          case VK_DESCRIPTOR_TYPE_SAMPLER:
-            write_sampler_descriptor(device, ptr, writeset->pImageInfo + j);
+            write_sampler_descriptor(ptr, writeset->pImageInfo + j);
             break;
          case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
             /* nothing in descriptor set - framebuffer state is used instead */
@@ -954,9 +932,7 @@ tu_UpdateDescriptorSets(VkDevice _device,
                         uint32_t descriptorCopyCount,
                         const VkCopyDescriptorSet *pDescriptorCopies)
 {
-   TU_FROM_HANDLE(tu_device, device, _device);
-
-   tu_update_descriptor_sets(device, NULL, VK_NULL_HANDLE,
+   tu_update_descriptor_sets(VK_NULL_HANDLE,
                              descriptorWriteCount, pDescriptorWrites,
                              descriptorCopyCount, pDescriptorCopies);
 }
@@ -1052,8 +1028,6 @@ tu_DestroyDescriptorUpdateTemplate(
 
 void
 tu_update_descriptor_set_with_template(
-   struct tu_device *device,
-   struct tu_cmd_buffer *cmd_buffer,
    struct tu_descriptor_set *set,
    VkDescriptorUpdateTemplate descriptorUpdateTemplate,
    const void *pData)
@@ -1071,43 +1045,37 @@ tu_update_descriptor_set_with_template(
          switch(templ->entry[i].descriptor_type) {
          case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC: {
             assert(!(set->layout->flags & VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR));
-            write_ubo_descriptor(device, cmd_buffer,
-                                 set->dynamic_descriptors + dst_offset, src);
+            write_ubo_descriptor(set->dynamic_descriptors + dst_offset, src);
             break;
          }
          case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
-            write_ubo_descriptor(device, cmd_buffer, ptr, src);
+            write_ubo_descriptor(ptr, src);
             break;
          case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC: {
             assert(!(set->layout->flags & VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR));
-            write_buffer_descriptor(device, cmd_buffer,
-                                    set->dynamic_descriptors + dst_offset, src);
+            write_buffer_descriptor(set->dynamic_descriptors + dst_offset, src);
             break;
          }
          case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
-            write_buffer_descriptor(device, cmd_buffer, ptr, src);
+            write_buffer_descriptor(ptr, src);
             break;
          case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
          case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
-            write_texel_buffer_descriptor(device, cmd_buffer, ptr, *(VkBufferView *) src);
+            write_texel_buffer_descriptor(ptr, *(VkBufferView *) src);
             break;
          case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
          case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE: {
-            write_image_descriptor(device, cmd_buffer, ptr,
-                                   templ->entry[i].descriptor_type,
-                                   src);
+            write_image_descriptor(ptr, templ->entry[i].descriptor_type,  src);
             break;
          }
          case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
-            write_combined_image_sampler_descriptor(device, cmd_buffer,
-                                                    A6XX_TEX_CONST_DWORDS * 4,
-                                                    ptr,
+            write_combined_image_sampler_descriptor(ptr,
                                                     templ->entry[i].descriptor_type,
                                                     src,
                                                     templ->entry[i].has_sampler);
             break;
          case VK_DESCRIPTOR_TYPE_SAMPLER:
-            write_sampler_descriptor(device, ptr, src);
+            write_sampler_descriptor(ptr, src);
             break;
          case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
             /* nothing in descriptor set - framebuffer state is used instead */
@@ -1130,11 +1098,9 @@ tu_UpdateDescriptorSetWithTemplate(
    VkDescriptorUpdateTemplate descriptorUpdateTemplate,
    const void *pData)
 {
-   TU_FROM_HANDLE(tu_device, device, _device);
    TU_FROM_HANDLE(tu_descriptor_set, set, descriptorSet);
 
-   tu_update_descriptor_set_with_template(device, NULL, set,
-                                          descriptorUpdateTemplate, pData);
+   tu_update_descriptor_set_with_template(set, descriptorUpdateTemplate, pData);
 }
 
 VkResult
