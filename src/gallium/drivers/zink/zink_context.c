@@ -1806,14 +1806,7 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
    return &ctx->base;
 
 fail:
-   if (ctx) {
-      for (int i = 0; i < ARRAY_SIZE(ctx->batches); ++i) {
-         vkDestroyDescriptorPool(screen->dev, ctx->batches[i].descpool, NULL);
-         vkFreeCommandBuffers(screen->dev, ctx->batches[i].cmdpool, 1, &ctx->batches[i].cmdbuf);
-         vkDestroyCommandPool(screen->dev, ctx->batches[i].cmdpool, NULL);
-      }
-      vkDestroyCommandPool(screen->dev, ctx->compute_batch.cmdpool, NULL);
-      FREE(ctx);
-   }
+   if (ctx)
+      zink_context_destroy(&ctx->base);
    return NULL;
 }
