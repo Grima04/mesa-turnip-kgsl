@@ -816,13 +816,26 @@ framebuffer_state_buffer_barriers_setup(struct zink_context *ctx,
    }
 }
 
+static void
+setup_framebuffer(struct zink_context *ctx)
+{
+   struct zink_screen *screen = zink_screen(ctx->base.screen);
+   struct zink_framebuffer *fb = create_framebuffer(ctx);
+
+   zink_framebuffer_reference(screen, &ctx->framebuffer, fb);
+   if (fb->rp != ctx->gfx_pipeline_state.render_pass)
+      ctx->gfx_pipeline_state.dirty = true;
+   ctx->gfx_pipeline_state.render_pass = fb->rp;
+}
+
 void
 zink_begin_render_pass(struct zink_context *ctx, struct zink_batch *batch)
 {
    struct zink_screen *screen = zink_screen(ctx->base.screen);
    assert(batch == zink_curr_batch(ctx));
-   assert(ctx->gfx_pipeline_state.render_pass);
 
+   setup_framebuffer(ctx);
+   assert(ctx->gfx_pipeline_state.render_pass);
    struct pipe_framebuffer_state *fb_state = &ctx->fb_state;
 
    VkRenderPassBeginInfo rpbi = {};
@@ -837,7 +850,6 @@ zink_begin_render_pass(struct zink_context *ctx, struct zink_batch *batch)
    rpbi.framebuffer = ctx->framebuffer->fb;
 
    assert(ctx->gfx_pipeline_state.render_pass && ctx->framebuffer);
-   assert(!batch->fb || batch->fb == ctx->framebuffer);
 
    framebuffer_state_buffer_barriers_setup(ctx, fb_state, batch);
 
@@ -903,19 +915,8 @@ zink_set_framebuffer_state(struct pipe_context *pctx,
                            const struct pipe_framebuffer_state *state)
 {
    struct zink_context *ctx = zink_context(pctx);
-   struct zink_screen *screen = zink_screen(pctx->screen);
 
    util_copy_framebuffer_state(&ctx->fb_state, state);
-
-   struct zink_framebuffer *fb = ctx->framebuffer;
-   /* explicitly unref previous fb to ensure it gets destroyed */
-   if (fb)
-      zink_framebuffer_reference(screen, &fb, NULL);
-   fb = create_framebuffer(ctx);
-   zink_framebuffer_reference(screen, &ctx->framebuffer, fb);
-   if (ctx->gfx_pipeline_state.render_pass != fb->rp)
-      ctx->gfx_pipeline_state.dirty = true;
-   ctx->gfx_pipeline_state.render_pass = fb->rp;
 
    uint8_t rast_samples = util_framebuffer_get_num_samples(state);
    /* in vulkan, gl_SampleMask needs to be explicitly ignored for sampleCount == 1 */
@@ -928,11 +929,8 @@ zink_set_framebuffer_state(struct pipe_context *pctx,
       ctx->gfx_pipeline_state.dirty = true;
    ctx->gfx_pipeline_state.num_attachments = state->nr_cbufs;
 
-   /* need to start a new renderpass */
-   if (zink_curr_batch(ctx)->in_rp)
-      flush_batch(ctx);
-
-   framebuffer_state_buffer_barriers_setup(ctx, &ctx->fb_state, zink_curr_batch(ctx));
+   /* need to ensure we start a new rp on next draw */
+   zink_batch_no_rp(ctx);
 }
 
 static void
