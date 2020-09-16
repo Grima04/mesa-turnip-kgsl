@@ -32,6 +32,7 @@ void bifrost_compile_shader_nir(nir_shader *nir, panfrost_program *program, unsi
 
 static const nir_shader_compiler_options bifrost_nir_options = {
         .lower_scmp = true,
+        .lower_flrp16 = true,
         .lower_flrp32 = true,
         .lower_flrp64 = true,
         .lower_ffract = true,
