@@ -957,6 +957,12 @@ nir_lower_goto_ifs_impl(nir_function_impl *impl)
 
    nir_metadata_require(impl, nir_metadata_dominance);
 
+   /* We're going to re-arrange blocks like crazy.  This is much easier to do
+    * if we don't have any phi nodes to fix up.
+    */
+   nir_foreach_block_unstructured(block, impl)
+      nir_lower_phis_to_regs_block(block);
+
    nir_cf_list cf_list;
    nir_cf_extract(&cf_list, nir_before_cf_list(&impl->body),
                             nir_after_cf_list(&impl->body));
@@ -996,6 +1002,9 @@ nir_lower_goto_ifs_impl(nir_function_impl *impl)
    nir_cf_delete(&cf_list);
 
    nir_metadata_preserve(impl, nir_metadata_none);
+
+   nir_repair_ssa_impl(impl);
+   nir_lower_regs_to_ssa_impl(impl);
 
    return true;
 }
