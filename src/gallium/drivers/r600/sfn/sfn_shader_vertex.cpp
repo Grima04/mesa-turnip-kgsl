@@ -198,7 +198,7 @@ bool VertexShaderFromNir::do_emit_load_deref(const nir_variable *in_var, nir_int
          if (i == 0)
             set_input(in_var->data.driver_location, src);
 
-         load_preloaded_value(instr->dest, i, src, i == instr->num_components - 1);
+         load_preloaded_value(instr->dest, i, src, i == (unsigned)(instr->num_components - 1));
       }
       return true;
    }
