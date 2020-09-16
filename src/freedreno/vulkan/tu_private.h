@@ -112,8 +112,6 @@ typedef uint32_t xcb_window_t;
 #define A6XX_TEX_CONST_DWORDS 16
 #define A6XX_TEX_SAMP_DWORDS 4
 
-#define tu_printflike(a, b) __attribute__((__format__(__printf__, a, b)))
-
 #define for_each_bit(b, dword)                                               \
    for (uint32_t __dword = (dword);                                          \
         (b) = __builtin_ffs(__dword) - 1, __dword; __dword &= ~(1 << (b)))
@@ -143,7 +141,7 @@ __vk_errorf(struct tu_instance *instance,
 
 void
 __tu_finishme(const char *file, int line, const char *format, ...)
-   tu_printflike(3, 4);
+   PRINTFLIKE(3, 4);
 
 /**
  * Print a FINISHME message, including its source location.

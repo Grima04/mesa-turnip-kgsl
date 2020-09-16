@@ -33,7 +33,7 @@
 #include "util/u_math.h"
 #include "vk_enum_to_str.h"
 
-void tu_printflike(3, 4)
+void PRINTFLIKE(3, 4)
    __tu_finishme(const char *file, int line, const char *format, ...)
 {
    va_list ap;
