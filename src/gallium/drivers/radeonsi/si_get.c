@@ -35,7 +35,7 @@
 
 static const char *si_get_vendor(struct pipe_screen *pscreen)
 {
-   return "X.Org";
+   return "AMD";
 }
 
 static const char *si_get_device_vendor(struct pipe_screen *pscreen)
