@@ -223,6 +223,21 @@ get_gfx_program(struct zink_context *ctx)
    return ctx->curr_program;
 }
 
+static struct zink_descriptor_set *
+get_descriptor_set(struct zink_context *ctx, bool is_compute)
+{
+   struct zink_program *pg = is_compute ? (struct zink_program *)ctx->curr_compute : (struct zink_program *)ctx->curr_program;
+   struct zink_batch *batch = is_compute ? &ctx->compute_batch : zink_curr_batch(ctx);
+   unsigned num_descriptors = pg->num_descriptors;
+
+   /* if we're about to exceed our limit, flush until we're back under */
+   while (batch->descs_used + num_descriptors >= ZINK_BATCH_DESC_SIZE) {
+      batch = zink_flush_batch(ctx, batch);
+   }
+   zink_batch_reference_program(batch, pg);
+   return zink_program_allocate_desc_set(ctx, batch, pg);
+}
+
 struct zink_transition {
    struct zink_resource *res;
    VkImageLayout layout;
@@ -483,55 +498,10 @@ update_descriptors(struct zink_context *ctx, struct zink_screen *screen, bool is
       }
    }
 
-   unsigned num_descriptors;
-   if (is_compute) {
-      num_descriptors = ctx->curr_compute->base.num_descriptors;
-      batch = &ctx->compute_batch;
-   } else {
-      batch = zink_curr_batch(ctx);
-      num_descriptors = ctx->curr_program->base.num_descriptors;
-   }
-
-   if (batch->descs_used + num_descriptors >= batch->max_descs) {
-      batch->descs_used += num_descriptors;
-      if (is_compute)
-         zink_wait_on_batch(ctx, ZINK_COMPUTE_BATCH_ID);
-      else {
-         ctx->base.flush(&ctx->base, NULL, 0);
-         batch = zink_curr_batch(ctx);
-      }
-   }
-
    struct zink_program *pg = is_compute ? &ctx->curr_compute->base : &ctx->curr_program->base;
-   zink_batch_reference_program(batch, pg);
-   assert(pg->num_descriptors == num_descriptors);
-   struct zink_descriptor_set *zds = zink_program_allocate_desc_set(screen, batch, pg);
-   /* probably oom, so we need to stall until we free up some descriptors */
-   if (!zds) {
-      /* update our max descriptor count so we can try and avoid this happening again */
-      unsigned short max_descs = 0;
-      for (int i = 0; i < ZINK_COMPUTE_BATCH_ID; i++)
-         max_descs += ctx->batches[i].descs_used;
-      if (ctx->compute_batch.descs_used) {
-         max_descs += ctx->compute_batch.descs_used;
-         /* try to split evenly between number of batches */
-         max_descs /= ZINK_COMPUTE_BATCH_ID;
-      }
-      for (int i = 0; i < ZINK_COMPUTE_BATCH_ID; i++)
-         ctx->batches[i].max_descs = MIN2(max_descs, ctx->batches[i].max_descs);
-      ctx->compute_batch.max_descs = MIN2(max_descs, ctx->compute_batch.max_descs);
-
-      zink_wait_on_batch(ctx, batch->batch_id);
-      if (!is_compute) {
-         batch = zink_curr_batch(ctx);
-         for (int i = 0; i < ZINK_COMPUTE_BATCH_ID; i++) {
-            zink_reset_batch(ctx, &ctx->batches[i]);
-         }
-      }
-      zink_batch_reference_program(batch, pg);
-      zds = zink_program_allocate_desc_set(screen, batch, pg);
-   }
+   struct zink_descriptor_set *zds = get_descriptor_set(ctx, is_compute);
    assert(zds != VK_NULL_HANDLE);
+   batch = is_compute ? &ctx->compute_batch : zink_curr_batch(ctx);
 
    unsigned check_flush_id = is_compute ? 0 : ZINK_COMPUTE_BATCH_ID;
    bool need_flush = false;
@@ -553,9 +523,11 @@ update_descriptors(struct zink_context *ctx, struct zink_screen *screen, bool is
    if (is_compute)
       vkCmdBindDescriptorSets(batch->cmdbuf, VK_PIPELINE_BIND_POINT_COMPUTE,
                               ctx->curr_compute->layout, 0, 1, &zds->desc_set, 0, NULL);
-   else
+   else {
+      batch = zink_batch_rp(ctx);
       vkCmdBindDescriptorSets(batch->cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS,
                               ctx->curr_program->layout, 0, 1, &zds->desc_set, 0, NULL);
+   }
 
    for (int i = 0; i < num_stages; i++) {
       struct zink_shader *shader = stages[i];

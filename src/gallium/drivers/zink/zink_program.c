@@ -675,16 +675,23 @@ fail:
 }
 
 struct zink_descriptor_set *
-zink_program_allocate_desc_set(struct zink_screen *screen,
+zink_program_allocate_desc_set(struct zink_context *ctx,
                                struct zink_batch *batch,
                                struct zink_program *pg)
 {
    struct zink_descriptor_set *zds;
+   struct zink_screen *screen = zink_screen(ctx->base.screen);
 
    if (util_dynarray_num_elements(&pg->alloc_desc_sets, struct zink_descriptor_set *)) {
       /* grab one off the allocated array */
       zds = util_dynarray_pop(&pg->alloc_desc_sets, struct zink_descriptor_set *);
       goto out;
+   }
+
+   unsigned descs_used = pg->descs_used;
+   if (descs_used + pg->num_descriptors > ZINK_DEFAULT_MAX_DESCS) {
+      batch = zink_flush_batch(ctx, batch);
+      return zink_program_allocate_desc_set(ctx, batch, pg);
    }
 
    VkDescriptorSetAllocateInfo dsai;
@@ -704,6 +711,7 @@ zink_program_allocate_desc_set(struct zink_screen *screen,
    assert(zds);
    pipe_reference_init(&zds->reference, 1);
    zds->desc_set = desc_set;
+   pg->descs_used++;
 out:
    if (zink_batch_add_desc_set(batch, pg, zds))
       batch->descs_used += pg->num_descriptors;
