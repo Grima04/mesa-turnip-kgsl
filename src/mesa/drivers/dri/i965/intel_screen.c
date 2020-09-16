@@ -57,12 +57,10 @@ DRI_CONF_BEGIN
       /* Options correspond to DRI_CONF_BO_REUSE_DISABLED,
        * DRI_CONF_BO_REUSE_ALL
        */
-      DRI_CONF_OPT_BEGIN_V(bo_reuse, enum, 1, "0:1")
-	 DRI_CONF_DESC_BEGIN("Buffer object reuse")
-	    DRI_CONF_ENUM(0, "Disable buffer object reuse")
-	    DRI_CONF_ENUM(1, "Enable reuse of all sizes of buffer objects")
-	 DRI_CONF_DESC_END
-      DRI_CONF_OPT_END
+      DRI_CONF_OPT_E(bo_reuse, 1, 0, 1,
+                     "Buffer object reuse",
+                     DRI_CONF_ENUM(0, "Disable buffer object reuse")
+                     DRI_CONF_ENUM(1, "Enable reuse of all sizes of buffer objects"))
       DRI_CONF_MESA_NO_ERROR("false")
       DRI_CONF_MESA_GLTHREAD("false")
    DRI_CONF_SECTION_END
@@ -93,9 +91,7 @@ DRI_CONF_BEGIN
       DRI_CONF_FORCE_GLSL_ABS_SQRT("false")
       DRI_CONF_FORCE_GL_VENDOR()
 
-      DRI_CONF_OPT_BEGIN_B(shader_precompile, "true")
-	 DRI_CONF_DESC("Perform code generation at shader link time.")
-      DRI_CONF_OPT_END
+      DRI_CONF_OPT_B(shader_precompile, "true", "Perform code generation at shader link time.")
    DRI_CONF_SECTION_END
 
    DRI_CONF_SECTION_MISCELLANEOUS

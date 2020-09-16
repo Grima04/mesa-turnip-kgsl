@@ -7,7 +7,5 @@ DRI_CONF_SECTION_DEBUG
 DRI_CONF_SECTION_END
 
 DRI_CONF_SECTION_PERFORMANCE
-   DRI_CONF_OPT_BEGIN_V(bo_reuse, enum, 1, "0:1")
-      DRI_CONF_DESC("Buffer object reuse")
-   DRI_CONF_OPT_END
+   DRI_CONF_OPT_E(bo_reuse, 1, 0, 1, "Buffer object reuse", "")
 DRI_CONF_SECTION_END

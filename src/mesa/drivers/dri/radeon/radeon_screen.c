@@ -65,34 +65,26 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "util/driconf.h"
 
 #define DRI_CONF_COMMAND_BUFFER_SIZE(def,min,max) \
-DRI_CONF_OPT_BEGIN_V(command_buffer_size,int,def, # min ":" # max ) \
-        DRI_CONF_DESC("Size of command buffer (in KB)") \
-DRI_CONF_OPT_END
+   DRI_CONF_OPT_I(command_buffer_size, def, min, max, \
+                  "Size of command buffer (in KB)")
 
 #define DRI_CONF_MAX_TEXTURE_UNITS(def,min,max) \
-DRI_CONF_OPT_BEGIN_V(texture_units,int,def, # min ":" # max ) \
-        DRI_CONF_DESC("Number of texture units used") \
-DRI_CONF_OPT_END
+   DRI_CONF_OPT_I(texture_units,def, min, max, \
+                  "Number of texture units used")
 
 #define DRI_CONF_HYPERZ(def) \
-DRI_CONF_OPT_BEGIN_B(hyperz, def) \
-        DRI_CONF_DESC("Use HyperZ to boost performance") \
-DRI_CONF_OPT_END
+   DRI_CONF_OPT_B(hyperz, def, "Use HyperZ to boost performance")
 
 #define DRI_CONF_TCL_MODE(def) \
-DRI_CONF_OPT_BEGIN_V(tcl_mode,enum,def,"0:3") \
-        DRI_CONF_DESC_BEGIN("TCL mode (Transformation, Clipping, Lighting)") \
-                DRI_CONF_ENUM(0,"Use software TCL pipeline") \
-                DRI_CONF_ENUM(1,"Use hardware TCL as first TCL pipeline stage") \
-                DRI_CONF_ENUM(2,"Bypass the TCL pipeline") \
-                DRI_CONF_ENUM(3,"Bypass the TCL pipeline with state-based machine code generated on-the-fly") \
-        DRI_CONF_DESC_END \
-DRI_CONF_OPT_END
+   DRI_CONF_OPT_E(tcl_mode, def, 0, 3, \
+                  "TCL mode (Transformation, Clipping, Lighting)", \
+                  DRI_CONF_ENUM(0,"Use software TCL pipeline") \
+                  DRI_CONF_ENUM(1,"Use hardware TCL as first TCL pipeline stage") \
+                  DRI_CONF_ENUM(2,"Bypass the TCL pipeline") \
+                  DRI_CONF_ENUM(3,"Bypass the TCL pipeline with state-based machine code generated on-the-fly"))
 
 #define DRI_CONF_NO_NEG_LOD_BIAS(def) \
-DRI_CONF_OPT_BEGIN_B(no_neg_lod_bias, def) \
-        DRI_CONF_DESC("Forbid negative texture LOD bias") \
-DRI_CONF_OPT_END
+   DRI_CONF_OPT_B(no_neg_lod_bias, def, "Forbid negative texture LOD bias")
 
 #define DRI_CONF_DEF_MAX_ANISOTROPY(def,range) \
 DRI_CONF_OPT_BEGIN_V(def_max_anisotropy,float,def,range) \

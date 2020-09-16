@@ -46,11 +46,7 @@ xmlconfig_test::~xmlconfig_test()
 
 /* wraps a DRI_CONF_OPT_* in the required xml bits */
 #define DRI_CONF_TEST_OPT(x) \
-   DRI_CONF_BEGIN \
-   DRI_CONF_SECTION_MISCELLANEOUS \
-   x \
-   DRI_CONF_SECTION_END \
-   DRI_CONF_END
+   DRI_CONF(DRI_CONF_SECTION("section", x))
 
 void
 xmlconfig_test::driconf(const char *driconf)
@@ -74,9 +70,7 @@ TEST_F(xmlconfig_test, bools)
 TEST_F(xmlconfig_test, ints)
 {
    driconf(DRI_CONF_TEST_OPT(
-              DRI_CONF_OPT_BEGIN_V(opt, int, 2, "0:999")
-              DRI_CONF_DESC("option")
-              DRI_CONF_OPT_END));
+              DRI_CONF_OPT_I(opt, 2, 0, 999, "option")));
 
    EXPECT_EQ(driQueryOptioni(&options, "opt"), 2);
 }
