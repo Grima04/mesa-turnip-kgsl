@@ -129,15 +129,22 @@ struct tu_instance;
 VkResult
 __vk_errorf(struct tu_instance *instance,
             VkResult error,
+            bool force_print,
             const char *file,
             int line,
             const char *format,
-            ...) PRINTFLIKE(5, 6);
+            ...) PRINTFLIKE(6, 7);
 
 #define vk_error(instance, error)                                            \
-   __vk_errorf(instance, error, __FILE__, __LINE__, NULL);
+   __vk_errorf(instance, error, false, __FILE__, __LINE__, NULL);
 #define vk_errorf(instance, error, format, ...)                              \
-   __vk_errorf(instance, error, __FILE__, __LINE__, format, ##__VA_ARGS__);
+   __vk_errorf(instance, error, false, __FILE__, __LINE__, format, ##__VA_ARGS__);
+
+/* Prints startup errors if TU_DEBUG=startup is set.
+ */
+#define vk_startup_errorf(instance, error, format, ...) \
+   __vk_errorf(instance, error, instance->debug_flags & TU_DEBUG_STARTUP, \
+               __FILE__, __LINE__, format, ##__VA_ARGS__)
 
 void
 __tu_finishme(const char *file, int line, const char *format, ...)

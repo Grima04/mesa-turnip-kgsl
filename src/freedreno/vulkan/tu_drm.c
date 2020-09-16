@@ -311,8 +311,8 @@ tu_drm_device_init(struct tu_physical_device *device,
 
    fd = open(path, O_RDWR | O_CLOEXEC);
    if (fd < 0) {
-      return vk_errorf(instance, VK_ERROR_INCOMPATIBLE_DRIVER,
-                       "failed to open device %s", path);
+      return vk_startup_errorf(instance, VK_ERROR_INCOMPATIBLE_DRIVER,
+                               "failed to open device %s", path);
    }
 
    /* Version 1.6 added SYNCOBJ support. */
@@ -322,25 +322,27 @@ tu_drm_device_init(struct tu_physical_device *device,
    version = drmGetVersion(fd);
    if (!version) {
       close(fd);
-      return vk_errorf(instance, VK_ERROR_INCOMPATIBLE_DRIVER,
-                       "failed to query kernel driver version for device %s",
-                       path);
+      return vk_startup_errorf(instance, VK_ERROR_INCOMPATIBLE_DRIVER,
+                               "failed to query kernel driver version for device %s",
+                               path);
    }
 
    if (strcmp(version->name, "msm")) {
       drmFreeVersion(version);
       close(fd);
-      return vk_errorf(instance, VK_ERROR_INCOMPATIBLE_DRIVER,
-                       "device %s does not use the msm kernel driver", path);
+      return vk_startup_errorf(instance, VK_ERROR_INCOMPATIBLE_DRIVER,
+                               "device %s does not use the msm kernel driver",
+                               path);
    }
 
    if (version->version_major != min_version_major ||
        version->version_minor < min_version_minor) {
-      result = vk_errorf(instance, VK_ERROR_INCOMPATIBLE_DRIVER,
-                         "kernel driver for device %s has version %d.%d, "
-                         "but Vulkan requires version >= %d.%d",
-                         path, version->version_major, version->version_minor,
-                         min_version_major, min_version_minor);
+      result = vk_startup_errorf(instance, VK_ERROR_INCOMPATIBLE_DRIVER,
+                                 "kernel driver for device %s has version %d.%d, "
+                                 "but Vulkan requires version >= %d.%d",
+                                 path,
+                                 version->version_major, version->version_minor,
+                                 min_version_major, min_version_minor);
       drmFreeVersion(version);
       close(fd);
       return result;
@@ -421,7 +423,8 @@ tu_enumerate_devices(struct tu_instance *instance)
    }
 
    if (max_devices < 1)
-      return vk_error(instance, VK_ERROR_INCOMPATIBLE_DRIVER);
+      return vk_startup_errorf(instance, VK_ERROR_INCOMPATIBLE_DRIVER,
+                               "No DRM devices found");
 
    for (unsigned i = 0; i < (unsigned) max_devices; i++) {
       if (devices[i]->available_nodes & 1 << DRM_NODE_RENDER &&

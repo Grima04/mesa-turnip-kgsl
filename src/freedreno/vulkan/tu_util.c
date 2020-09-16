@@ -49,6 +49,7 @@ void PRINTFLIKE(3, 4)
 VkResult
 __vk_errorf(struct tu_instance *instance,
             VkResult error,
+            bool always_print,
             const char *file,
             int line,
             const char *format,
@@ -60,7 +61,8 @@ __vk_errorf(struct tu_instance *instance,
    const char *error_str = vk_Result_to_str(error);
 
 #ifndef DEBUG
-   return error;
+   if (!always_print)
+      return error;
 #endif
 
    if (format) {
