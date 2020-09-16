@@ -124,11 +124,6 @@ tu_physical_device_init(struct tu_physical_device *device,
 
    tu_physical_device_get_supported_extensions(device, &device->supported_extensions);
 
-   if (result != VK_SUCCESS) {
-      vk_error(instance, result);
-      goto fail;
-   }
-
    result = tu_wsi_init(device);
    if (result != VK_SUCCESS) {
       vk_startup_errorf(instance, result, "WSI init failure");
