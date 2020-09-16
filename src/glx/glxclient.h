@@ -108,11 +108,6 @@ struct __GLXDRIscreenRec {
 
    void (*destroyScreen)(struct glx_screen *psc);
 
-   struct glx_context *(*createContext)(struct glx_screen *psc,
-					struct glx_config *config,
-					struct glx_context *shareList,
-					int renderType);
-
    __GLXDRIdrawable *(*createDrawable)(struct glx_screen *psc,
 				       XID drawable,
 				       GLXDrawable glxDrawable,
