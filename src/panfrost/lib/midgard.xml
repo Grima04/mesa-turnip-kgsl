@@ -285,10 +285,43 @@
     <field name="Divisor" size="32" start="3:0" type="uint"/>
   </struct>
 
+  <enum name="Blend Operand A">
+    <value name="Zero" value="1"/>
+    <value name="Src" value="2"/>
+    <value name="Dest" value="3"/>
+  </enum>
+
+  <enum name="Blend Operand B">
+    <value name="Src Minus Dest" value="0"/>
+    <value name="Src Plus Dest" value="1"/>
+    <value name="Src" value="2"/>
+    <value name="Dest" value="3"/>
+  </enum>
+
+  <enum name="Blend Operand C">
+    <value name="Zero" value="1"/>
+    <value name="Src" value="2"/>
+    <value name="Dest" value="3"/>
+    <value name="Src x 2" value="4"/>
+    <value name="Src Alpha" value="5"/>
+    <value name="Dest Alpha" value="6"/>
+    <value name="Constant" value="7"/>
+  </enum>
+
+  <struct name="Blend Function" no-direct-packing="true">
+    <!-- Blend equation: A + (B * C) -->
+    <field name="A" size="2" start="0" type="Blend Operand A"/>
+    <field name="Negate A" size="1" start="3" type="bool"/>
+    <field name="B" size="2" start="4" type="Blend Operand B"/>
+    <field name="Negate B" size="1" start="7" type="bool"/>
+    <field name="C" size="3" start="8" type="Blend Operand C"/>
+    <field name="Invert C" size="1" start="11" type="bool"/>
+  </struct>
+
   <struct name="Blend Equation" size="1">
-    <field name="RGB Mode" size="12" start="0" type="uint"/>
-    <field name="Alpha Mode" size="12" start="12" type="uint"/>
-    <field name="Color mask" size="4" start="28" type="uint" default="15"/>
+    <field name="RGB" size="12" start="0:0" type="Blend Function"/>
+    <field name="Alpha" size="12" start="0:12" type="Blend Function"/>
+    <field name="Color Mask" size="4" start="0:28" type="uint"/>
   </struct>
 
   <struct name="Blend Flags" size="1">
@@ -301,7 +334,7 @@
 
   <struct name="Midgard Blend" size="4">
     <field name="Flags" size="32" start="0:0" type="Blend Flags"/>
-    <field name="Equation" size="32" start="2:0" type="uint"/> <!-- XXX -->
+    <field name="Equation" size="32" start="2:0" type="Blend Equation"/>
     <field name="Constant" size="32" start="3:0" type="float"/>
     <field name="Shader" size="64" start="2:0" type="address"/>
   </struct>
@@ -553,7 +586,7 @@
     <field name="Preload" size="32" start="12:0" type="Preload"/>
     <field name="Thread Balancing" size="16" start="13:0" type="uint"/>
     <field name="SFBD Blend Shader" size="64" start="14:0" type="address"/>
-    <field name="SFBD Blend Equation" size="32" start="14:0" type="uint"/>
+    <field name="SFBD Blend Equation" size="32" start="14:0" type="Blend Equation"/>
     <field name="SFBD Blend Constant" size="32" start="15:0" type="float"/>
   </struct>
 

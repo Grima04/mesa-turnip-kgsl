@@ -307,8 +307,12 @@ panfrost_emit_bifrost_blend(struct panfrost_batch *batch,
                         enum pipe_format format = batch->key.cbufs[i]->format;
                         const struct util_format_description *format_desc;
                         format_desc = util_format_description(format);
+                        struct mali_blend_equation_packed peq;
 
-                        brts[i].equation = blend[i].equation.equation;
+                        pan_pack(&peq, BLEND_EQUATION, cfg) {
+                                cfg = blend[i].equation.equation;
+                        }
+                        brts[i].equation = peq;
 
                         /* TODO: this is a bit more complicated */
                         brts[i].constant = blend[i].equation.constant;
@@ -338,7 +342,13 @@ panfrost_emit_midgard_blend(struct panfrost_batch *batch,
         if (rt_count == 0) {
                 /* Disable blending for depth-only */
                 pan_pack(rts, MIDGARD_BLEND, cfg) {
-                        cfg.equation = 0xf0122122; /* Replace */
+                        cfg.equation.color_mask = 0xf;
+                        cfg.equation.rgb.a = MALI_BLEND_OPERAND_A_SRC;
+                        cfg.equation.rgb.b = MALI_BLEND_OPERAND_B_SRC;
+                        cfg.equation.rgb.c = MALI_BLEND_OPERAND_C_ZERO;
+                        cfg.equation.alpha.a = MALI_BLEND_OPERAND_A_SRC;
+                        cfg.equation.alpha.b = MALI_BLEND_OPERAND_B_SRC;
+                        cfg.equation.alpha.c = MALI_BLEND_OPERAND_C_ZERO;
                 }
                 return;
         }
@@ -357,7 +367,7 @@ panfrost_emit_midgard_blend(struct panfrost_batch *batch,
                         if (blend[i].is_shader) {
                                 cfg.shader = blend[i].shader.gpu | blend[i].shader.first_tag;
                         } else {
-                                cfg.equation = blend[i].equation.equation.opaque[0];
+                                cfg.equation = blend[i].equation.equation;
                                 cfg.constant = blend[i].equation.constant;
                         }
                 }
@@ -460,7 +470,7 @@ panfrost_prepare_midgard_fs_state(struct panfrost_context *ctx,
                         state->sfbd_blend_shader = blend[0].shader.gpu |
                                                    blend[0].shader.first_tag;
                 } else {
-                        state->sfbd_blend_equation = blend[0].equation.equation.opaque[0];
+                        state->sfbd_blend_equation = blend[0].equation.equation;
                         state->sfbd_blend_constant = blend[0].equation.constant;
                 }
         } else {

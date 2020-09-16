@@ -207,16 +207,6 @@ panfrost_load_midg(
                 cfg.format = (MALI_CHANNEL_R << 0) | (MALI_CHANNEL_G << 3) | (MALI_RGBA32F << 12);
         }
 
-        struct mali_blend_equation_packed eq;
-
-        pan_pack(&eq, BLEND_EQUATION, cfg) {
-                cfg.rgb_mode = 0x122;
-                cfg.alpha_mode = 0x122;
-
-                if (loc < FRAG_RESULT_DATA0)
-                        cfg.color_mask = 0x0;
-        }
-
         /* Determine the sampler type needed. Stencil is always sampled as
          * UINT. Pure (U)INT is always (U)INT. Everything else is FLOAT. */
 
@@ -271,7 +261,15 @@ panfrost_load_midg(
                         if (cfg.multisample_misc.sfbd_blend_shader) {
                                 cfg.sfbd_blend_shader = blend_shader;
                         } else {
-                                cfg.sfbd_blend_equation = eq.opaque[0];
+                                cfg.sfbd_blend_equation.rgb.a = MALI_BLEND_OPERAND_A_SRC;
+                                cfg.sfbd_blend_equation.rgb.b = MALI_BLEND_OPERAND_B_SRC;
+                                cfg.sfbd_blend_equation.rgb.c = MALI_BLEND_OPERAND_C_ZERO;
+                                cfg.sfbd_blend_equation.alpha.a = MALI_BLEND_OPERAND_A_SRC;
+                                cfg.sfbd_blend_equation.alpha.b = MALI_BLEND_OPERAND_B_SRC;
+                                cfg.sfbd_blend_equation.alpha.c = MALI_BLEND_OPERAND_C_ZERO;
+
+                                if (loc >= FRAG_RESULT_DATA0)
+                                        cfg.sfbd_blend_equation.color_mask = 0xf;
                                 cfg.sfbd_blend_constant = 0;
                         }
                 } else if (!(pool->dev->quirks & IS_BIFROST)) {
@@ -313,6 +311,20 @@ panfrost_load_midg(
                 void *dest = shader_meta_t.cpu + MALI_RENDERER_STATE_LENGTH + sizeof(struct midgard_blend_rt) * i;
 
                 if (loc == (FRAG_RESULT_DATA0 + i)) {
+                        struct mali_blend_equation_packed eq;
+
+                        pan_pack(&eq, BLEND_EQUATION, cfg) {
+                                cfg.rgb.a = MALI_BLEND_OPERAND_A_SRC;
+                                cfg.rgb.b = MALI_BLEND_OPERAND_B_SRC;
+                                cfg.rgb.c = MALI_BLEND_OPERAND_C_ZERO;
+                                cfg.alpha.a = MALI_BLEND_OPERAND_A_SRC;
+                                cfg.alpha.b = MALI_BLEND_OPERAND_B_SRC;
+                                cfg.alpha.c = MALI_BLEND_OPERAND_C_ZERO;
+
+                                if (loc >= FRAG_RESULT_DATA0)
+                                        cfg.color_mask = 0xf;
+                        }
+
                         union midgard_blend replace = {
                                 .equation = eq
                         };

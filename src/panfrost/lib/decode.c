@@ -1185,15 +1185,19 @@ pandecode_vertex_tiler_postfix_pre(
 
                 if (!is_bifrost) {
                         /* TODO: Blend shaders routing/disasm */
-                        union midgard_blend blend;
+                        pandecode_log("SFBD Blend:\n");
+                        pandecode_indent++;
                         if (state.multisample_misc.sfbd_blend_shader) {
-                                blend.shader = state.sfbd_blend_shader;
+                                pandecode_shader_address("Shader", state.sfbd_blend_shader);
                         } else {
-                                blend.equation.opaque[0] = state.sfbd_blend_equation;
-                                blend.constant = state.sfbd_blend_constant;
+                                DUMP_UNPACKED(BLEND_EQUATION, state.sfbd_blend_equation, "Equation:\n");
+                                pandecode_prop("Constant = %f", state.sfbd_blend_constant);
                         }
-                        mali_ptr shader = pandecode_midgard_blend(&blend, state.multisample_misc.sfbd_blend_shader);
-                        if (shader & ~0xF)
+                        pandecode_indent--;
+                        pandecode_log("\n");
+
+                        mali_ptr shader = state.sfbd_blend_shader & ~0xF;
+                        if (state.multisample_misc.sfbd_blend_shader && shader)
                                 pandecode_blend_shader_disassemble(shader, job_no, job_type, false, gpu_id);
                 }
                 pandecode_indent--;

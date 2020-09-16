@@ -38,51 +38,6 @@ typedef uint32_t u32;
 typedef uint64_t u64;
 typedef uint64_t mali_ptr;
 
-enum mali_nondominant_mode {
-        MALI_BLEND_NON_MIRROR = 0,
-        MALI_BLEND_NON_ZERO = 1
-};
-
-enum mali_dominant_blend {
-        MALI_BLEND_DOM_SOURCE = 0,
-        MALI_BLEND_DOM_DESTINATION  = 1
-};
-
-enum mali_dominant_factor {
-        MALI_DOMINANT_UNK0 = 0,
-        MALI_DOMINANT_ZERO = 1,
-        MALI_DOMINANT_SRC_COLOR = 2,
-        MALI_DOMINANT_DST_COLOR = 3,
-        MALI_DOMINANT_UNK4 = 4,
-        MALI_DOMINANT_SRC_ALPHA = 5,
-        MALI_DOMINANT_DST_ALPHA = 6,
-        MALI_DOMINANT_CONSTANT = 7,
-};
-
-enum mali_blend_modifier {
-        MALI_BLEND_MOD_UNK0 = 0,
-        MALI_BLEND_MOD_NORMAL = 1,
-        MALI_BLEND_MOD_SOURCE_ONE = 2,
-        MALI_BLEND_MOD_DEST_ONE = 3,
-};
-
-struct mali_blend_mode {
-        enum mali_blend_modifier clip_modifier : 2;
-        unsigned unused_0 : 1;
-        unsigned negate_source : 1;
-
-        enum mali_dominant_blend dominant : 1;
-
-        enum mali_nondominant_mode nondominant_mode : 1;
-
-        unsigned unused_1 : 1;
-
-        unsigned negate_dest : 1;
-
-        enum mali_dominant_factor dominant_factor : 3;
-        unsigned complement_dominant : 1;
-} __attribute__((packed));
-
 /* Compressed per-pixel formats. Each of these formats expands to one to four
  * floating-point or integer numbers, as defined by the OpenGL specification.
  * There are various places in OpenGL where the user can specify a compressed

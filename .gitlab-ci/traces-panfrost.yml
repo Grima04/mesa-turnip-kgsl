@@ -45,9 +45,9 @@ traces:
   - path: gputest/triangle.trace
     expectations:
       - device: gl-panfrost-t860
-        checksum: 6def0c34ade7d4ec930b45d0eef6e46a
+        checksum: 75c5a2e261d576d115a659f6cd52a90d
       - device: gl-panfrost-t760
-        checksum: 6def0c34ade7d4ec930b45d0eef6e46a
+        checksum: 75c5a2e261d576d115a659f6cd52a90d
   - path: humus/Portals.trace
     expectations:
       - device: gl-panfrost-t860
@@ -190,11 +190,11 @@ traces:
   - path: gputest/pixmark-julia-fp32.trace
     expectations:
       - device: gl-panfrost-t860
-        checksum: 03c268b0afaf341b4d8226cc6892273a
+        checksum: d85b6967b7c768f28395c5c5dfbcfe3e
   - path: gputest/plot3d.trace
     expectations:
       - device: gl-panfrost-t860
-        checksum: 522afab0fd4bbabbc2f78735646069d8
+        checksum: 991efbfd046f70e1fd965d3983bb2965
   - path: humus/AmbientAperture.trace
     expectations:
       - device: gl-panfrost-t860
