@@ -72,6 +72,7 @@ tu_physical_device_init(struct tu_physical_device *device,
    device->limited_z24s8 = (device->gpu_id == 630);
 
    switch (device->gpu_id) {
+   case 615:
    case 618:
       device->ccu_offset_gmem = 0x7c000; /* 0x7e000 in some cases? */
       device->ccu_offset_bypass = 0x10000;
