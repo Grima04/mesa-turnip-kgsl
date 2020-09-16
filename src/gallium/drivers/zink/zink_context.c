@@ -532,16 +532,8 @@ zink_set_scissor_states(struct pipe_context *pctx,
 {
    struct zink_context *ctx = zink_context(pctx);
 
-   for (unsigned i = 0; i < num_scissors; i++) {
-      VkRect2D scissor;
-
-      scissor.offset.x = states[i].minx;
-      scissor.offset.y = states[i].miny;
-      scissor.extent.width = states[i].maxx - states[i].minx;
-      scissor.extent.height = states[i].maxy - states[i].miny;
+   for (unsigned i = 0; i < num_scissors; i++)
       ctx->vp_state.scissor_states[start_slot + i] = states[i];
-      ctx->vp_state.scissors[start_slot + i] = scissor;
-   }
 }
 
 static void

@@ -93,7 +93,6 @@ zink_so_target(struct pipe_stream_output_target *so_target)
 struct zink_viewport_state {
    struct pipe_viewport_state viewport_states[PIPE_MAX_VIEWPORTS];
    struct pipe_scissor_state scissor_states[PIPE_MAX_VIEWPORTS];
-   VkRect2D scissors[PIPE_MAX_VIEWPORTS];
    uint8_t num_viewports;
 };
 
