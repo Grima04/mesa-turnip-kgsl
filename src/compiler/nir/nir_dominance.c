@@ -46,9 +46,7 @@ init_block(nir_block *block, nir_function_impl *impl)
    block->dom_pre_index = UINT32_MAX;
    block->dom_post_index = 0;
 
-   set_foreach(block->dom_frontier, entry) {
-      _mesa_set_remove(block->dom_frontier, entry);
-   }
+   _mesa_set_clear(block->dom_frontier, NULL);
 
    return true;
 }
