@@ -619,6 +619,7 @@ zink_transfer_map(struct pipe_context *pctx,
       if (usage & PIPE_MAP_WRITE)
          util_range_add(&res->base, &res->valid_buffer_range, box->x, box->x + box->width);
    } else {
+      zink_fb_clears_apply(ctx, pres);
       if (res->optimal_tiling || !res->host_visible) {
          enum pipe_format format = pres->format;
          if (usage & PIPE_MAP_DEPTH_ONLY)

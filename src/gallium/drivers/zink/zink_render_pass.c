@@ -40,7 +40,7 @@ create_render_pass(VkDevice dev, struct zink_render_pass_state *state)
       attachments[i].flags = 0;
       attachments[i].format = rt->format;
       attachments[i].samples = rt->samples;
-      attachments[i].loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+      attachments[i].loadOp = rt->clear_color ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD;
       attachments[i].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
       attachments[i].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
       attachments[i].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
@@ -56,9 +56,9 @@ create_render_pass(VkDevice dev, struct zink_render_pass_state *state)
       attachments[num_attachments].flags = 0;
       attachments[num_attachments].format = rt->format;
       attachments[num_attachments].samples = rt->samples;
-      attachments[num_attachments].loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+      attachments[num_attachments].loadOp = rt->clear_color ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD;
       attachments[num_attachments].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-      attachments[num_attachments].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+      attachments[num_attachments].stencilLoadOp = rt->clear_stencil ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD;
       attachments[num_attachments].stencilStoreOp = VK_ATTACHMENT_STORE_OP_STORE;
       attachments[num_attachments].initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
       attachments[num_attachments].finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;

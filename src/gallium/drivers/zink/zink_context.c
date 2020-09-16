@@ -40,6 +40,7 @@
 #include "indices/u_primconvert.h"
 #include "util/u_blitter.h"
 #include "util/u_debug.h"
+#include "util/format_srgb.h"
 #include "util/format/u_format.h"
 #include "util/u_framebuffer.h"
 #include "util/u_helpers.h"
@@ -731,6 +732,7 @@ get_render_pass(struct zink_context *ctx)
    struct zink_screen *screen = zink_screen(ctx->base.screen);
    const struct pipe_framebuffer_state *fb = &ctx->fb_state;
    struct zink_render_pass_state state = { 0 };
+   uint32_t clears = 0;
 
    for (int i = 0; i < fb->nr_cbufs; i++) {
       struct pipe_surface *surf = fb->cbufs[i];
@@ -738,6 +740,8 @@ get_render_pass(struct zink_context *ctx)
          state.rts[i].format = zink_get_format(screen, surf->format);
          state.rts[i].samples = surf->texture->nr_samples > 0 ? surf->texture->nr_samples :
                                                        VK_SAMPLE_COUNT_1_BIT;
+         state.rts[i].clear_color = ctx->fb_clears[i].enabled && !zink_fb_clear_needs_explicit(&ctx->fb_clears[i]);
+         clears |= !!state.rts[i].clear_color ? BITFIELD_BIT(i) : 0;
       } else {
          state.rts[i].format = VK_FORMAT_R8_UINT;
          state.rts[i].samples = MAX2(fb->samples, 1);
@@ -748,11 +752,22 @@ get_render_pass(struct zink_context *ctx)
 
    if (fb->zsbuf) {
       struct zink_resource *zsbuf = zink_resource(fb->zsbuf->texture);
+      struct zink_framebuffer_clear *fb_clear = &ctx->fb_clears[PIPE_MAX_COLOR_BUFS];
       state.rts[fb->nr_cbufs].format = zsbuf->format;
       state.rts[fb->nr_cbufs].samples = zsbuf->base.nr_samples > 0 ? zsbuf->base.nr_samples : VK_SAMPLE_COUNT_1_BIT;
+      state.rts[fb->nr_cbufs].clear_color = fb_clear->enabled &&
+                                            !zink_fb_clear_needs_explicit(fb_clear) &&
+                                            (zink_fb_clear_element(fb_clear, 0)->zs.bits & PIPE_CLEAR_DEPTH);
+      state.rts[fb->nr_cbufs].clear_stencil = fb_clear->enabled &&
+                                              !zink_fb_clear_needs_explicit(fb_clear) &&
+                                              (zink_fb_clear_element(fb_clear, 0)->zs.bits & PIPE_CLEAR_STENCIL);
+      clears |= state.rts[fb->nr_cbufs].clear_color || state.rts[fb->nr_cbufs].clear_stencil ? BITFIELD_BIT(fb->nr_cbufs) : 0;;
       state.num_rts++;
    }
    state.have_zsbuf = fb->zsbuf != NULL;
+#ifndef NDEBUG
+   state.clears = clears;
+#endif
 
    uint32_t hash = hash_render_pass_state(&state);
    struct hash_entry *entry = _mesa_hash_table_search_pre_hashed(ctx->render_pass_cache, hash,
@@ -845,8 +860,51 @@ zink_begin_render_pass(struct zink_context *ctx, struct zink_batch *batch)
    rpbi.renderArea.offset.y = 0;
    rpbi.renderArea.extent.width = fb_state->width;
    rpbi.renderArea.extent.height = fb_state->height;
-   rpbi.clearValueCount = 0;
-   rpbi.pClearValues = NULL;
+
+   VkClearValue clears[PIPE_MAX_COLOR_BUFS + 1] = {};
+   unsigned clear_buffers = 0;
+   uint32_t clear_validate = 0;
+   for (int i = 0; i < fb_state->nr_cbufs; i++) {
+      /* these are no-ops */
+      if (!fb_state->cbufs[i] || !ctx->fb_clears[i].enabled)
+         continue;
+      /* these need actual clear calls inside the rp */
+      if (zink_fb_clear_needs_explicit(&ctx->fb_clears[i])) {
+         clear_buffers |= (PIPE_CLEAR_COLOR0 << i);
+         continue;
+      }
+      /* we now know there's only one clear */
+      struct zink_framebuffer_clear_data *clear = zink_fb_clear_element(&ctx->fb_clears[i], 0);
+      if (clear->color.srgb) {
+         clears[i].color.float32[0] = util_format_srgb_to_linear_float(clear->color.color.f[0]);
+         clears[i].color.float32[1] = util_format_srgb_to_linear_float(clear->color.color.f[1]);
+         clears[i].color.float32[2] = util_format_srgb_to_linear_float(clear->color.color.f[2]);
+      } else {
+         clears[i].color.float32[0] = clear->color.color.f[0];
+         clears[i].color.float32[1] = clear->color.color.f[1];
+         clears[i].color.float32[2] = clear->color.color.f[2];
+      }
+      clears[i].color.float32[3] = clear->color.color.f[3];
+      rpbi.clearValueCount = i + 1;
+      clear_validate |= BITFIELD_BIT(i);
+      assert(ctx->framebuffer->rp->state.clears);
+   }
+   if (fb_state->zsbuf && ctx->fb_clears[PIPE_MAX_COLOR_BUFS].enabled) {
+      struct zink_framebuffer_clear *fb_clear = &ctx->fb_clears[PIPE_MAX_COLOR_BUFS];
+      if (zink_fb_clear_needs_explicit(fb_clear)) {
+         for (int j = 0; j < zink_fb_clear_count(fb_clear); j++)
+           clear_buffers |= zink_fb_clear_element(fb_clear, j)->zs.bits;
+      } else {
+         struct zink_framebuffer_clear_data *clear = zink_fb_clear_element(fb_clear, 0);
+         clears[fb_state->nr_cbufs].depthStencil.depth = clear->zs.depth;
+         clears[fb_state->nr_cbufs].depthStencil.stencil = clear->zs.stencil;
+         rpbi.clearValueCount = fb_state->nr_cbufs + 1;
+         clear_validate |= BITFIELD_BIT(fb_state->nr_cbufs);
+         assert(ctx->framebuffer->rp->state.clears);
+      }
+   }
+   assert(clear_validate == ctx->framebuffer->rp->state.clears);
+   rpbi.pClearValues = &clears[0];
    rpbi.framebuffer = ctx->framebuffer->fb;
 
    assert(ctx->gfx_pipeline_state.render_pass && ctx->framebuffer);
@@ -859,6 +917,8 @@ zink_begin_render_pass(struct zink_context *ctx, struct zink_batch *batch)
 
    vkCmdBeginRenderPass(batch->cmdbuf, &rpbi, VK_SUBPASS_CONTENTS_INLINE);
    batch->in_rp = true;
+
+   zink_clear_framebuffer(ctx, clear_buffers);
 }
 
 static void
@@ -915,6 +975,22 @@ zink_set_framebuffer_state(struct pipe_context *pctx,
                            const struct pipe_framebuffer_state *state)
 {
    struct zink_context *ctx = zink_context(pctx);
+
+   for (int i = 0; i < ctx->fb_state.nr_cbufs; i++) {
+      struct pipe_surface *surf = ctx->fb_state.cbufs[i];
+      if (surf &&
+          (!state->cbufs[i] || i >= state->nr_cbufs ||
+           surf->texture != state->cbufs[i]->texture ||
+           surf->format != state->cbufs[i]->format ||
+           memcmp(&surf->u, &state->cbufs[i]->u, sizeof(union pipe_surface_desc))))
+         zink_fb_clears_apply(ctx, surf->texture);
+   }
+   if (ctx->fb_state.zsbuf) {
+      struct pipe_surface *surf = ctx->fb_state.zsbuf;
+      if (!state->zsbuf || surf->texture != state->zsbuf->texture ||
+          memcmp(&surf->u, &state->zsbuf->u, sizeof(union pipe_surface_desc)))
+      zink_fb_clears_apply(ctx, ctx->fb_state.zsbuf->texture);
+   }
 
    util_copy_framebuffer_state(&ctx->fb_state, state);
 
@@ -1515,6 +1591,9 @@ zink_resource_copy_region(struct pipe_context *pctx,
       } else
          unreachable("planar formats not yet handled");
 
+      zink_fb_clears_apply(ctx, pdst);
+      zink_fb_clears_apply(ctx, psrc);
+
       region.srcSubresource.aspectMask = src->aspect;
       region.srcSubresource.mipLevel = src_level;
       region.srcSubresource.layerCount = 1;
@@ -1767,6 +1846,8 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
 
    ctx->base.stream_uploader = u_upload_create_default(&ctx->base);
    ctx->base.const_uploader = ctx->base.stream_uploader;
+   for (int i = 0; i < ARRAY_SIZE(ctx->fb_clears); i++)
+      util_dynarray_init(&ctx->fb_clears[i].clears, ctx);
 
    int prim_hwsupport = 1 << PIPE_PRIM_POINTS |
                         1 << PIPE_PRIM_LINES |
