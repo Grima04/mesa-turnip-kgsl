@@ -212,10 +212,11 @@ tu6_emit_zs(struct tu_cmd_buffer *cmd,
    tu_cs_emit_pkt4(cs, REG_A6XX_RB_DEPTH_FLAG_BUFFER_BASE_LO, 3);
    tu_cs_image_flag_ref(cs, iview, 0);
 
-   tu_cs_emit_regs(cs,
-                   A6XX_GRAS_LRZ_BUFFER_BASE(0),
-                   A6XX_GRAS_LRZ_BUFFER_PITCH(0),
-                   A6XX_GRAS_LRZ_FAST_CLEAR_BUFFER_BASE(0));
+   tu_cs_emit_regs(cs, A6XX_GRAS_LRZ_BUFFER_BASE(.bo = iview->image->bo,
+                                                 .bo_offset = iview->image->bo_offset + iview->image->lrz_offset),
+                   A6XX_GRAS_LRZ_BUFFER_PITCH(.pitch = iview->image->lrz_pitch),
+                   A6XX_GRAS_LRZ_FAST_CLEAR_BUFFER_BASE_LO(0),
+                   A6XX_GRAS_LRZ_FAST_CLEAR_BUFFER_BASE_HI(0));
 
    if (attachment->format == VK_FORMAT_D32_SFLOAT_S8_UINT ||
        attachment->format == VK_FORMAT_S8_UINT) {
