@@ -109,6 +109,15 @@ html_theme_options = {
   'display_version': False,
 }
 
+html_context = {
+  'display_gitlab': True,
+  'gitlab_host': 'gitlab.freedesktop.org',
+  'gitlab_user': 'mesa',
+  'gitlab_repo': 'mesa',
+  'gitlab_version': 'master',
+  'conf_py_path': '/docs/',
+}
+
 html_copy_source = False
 
 # Add any paths that contain custom static files (such as style sheets) here,
