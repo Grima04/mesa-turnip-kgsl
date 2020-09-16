@@ -899,12 +899,6 @@ load("sampler_lod_parameters_pan", [1], [CAN_ELIMINATE, CAN_REORDER])
 
 # R600 specific instrincs
 #
-# R600 can only fetch 16 byte aligned data from an UBO, and the actual offset
-# is given in vec4 units, so we have to fetch the a vec4 and get the component
-# later
-# src[] = { buffer_index, offset }.
-load("ubo_r600", [1, 1], [ACCESS, ALIGN_MUL, ALIGN_OFFSET], flags=[CAN_ELIMINATE, CAN_REORDER])
-
 # location where the tesselation data is stored in LDS
 system_value("tcs_in_param_base_r600", 4)
 system_value("tcs_out_param_base_r600", 4)
