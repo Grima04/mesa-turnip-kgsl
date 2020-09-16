@@ -25,6 +25,17 @@
 #include "nir_deref.h"
 #include "main/menums.h"
 
+static bool
+src_is_invocation_id(const nir_src *src)
+{
+   assert(src->is_ssa);
+   if (src->parent_instr->type != nir_instr_type_intrinsic)
+      return false;
+
+   return nir_instr_as_intrinsic(src->parent_instr)->intrinsic ==
+             nir_intrinsic_load_invocation_id;
+}
+
 static void
 get_deref_info(nir_shader *shader, nir_variable *var, nir_deref_instr *deref,
                bool *cross_invocation, bool *indirect)
@@ -367,6 +378,11 @@ gather_intrinsic_info(nir_intrinsic_instr *instr, nir_shader *shader,
          if (!nir_src_is_const(*nir_get_io_offset_src(instr)))
             shader->info.inputs_read_indirectly |= slot_mask;
       }
+
+      if (shader->info.stage == MESA_SHADER_TESS_CTRL &&
+          instr->intrinsic == nir_intrinsic_load_per_vertex_input &&
+          !src_is_invocation_id(nir_get_io_vertex_index_src(instr)))
+         shader->info.tess.tcs_cross_invocation_inputs_read |= slot_mask;
       break;
 
    case nir_intrinsic_load_output:
@@ -381,6 +397,11 @@ gather_intrinsic_info(nir_intrinsic_instr *instr, nir_shader *shader,
          if (!nir_src_is_const(*nir_get_io_offset_src(instr)))
             shader->info.outputs_accessed_indirectly |= slot_mask;
       }
+
+      if (shader->info.stage == MESA_SHADER_TESS_CTRL &&
+          instr->intrinsic == nir_intrinsic_load_per_vertex_output &&
+          !src_is_invocation_id(nir_get_io_vertex_index_src(instr)))
+         shader->info.tess.tcs_cross_invocation_outputs_read |= slot_mask;
       break;
 
    case nir_intrinsic_store_output:
