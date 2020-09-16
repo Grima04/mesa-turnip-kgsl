@@ -495,7 +495,7 @@ DRI_CONF_OPT_BEGIN_B(gles_apply_bgra_dest_swizzle, def) \
 DRI_CONF_OPT_END
 
 #define DRI_CONF_GLES_SAMPLES_PASSED_VALUE(def, minimum, maximum) \
-DRI_CONF_OPT_BEGIN_V(gles_samples_passed_value, def, minimum, maximum) \
+   DRI_CONF_OPT_BEGIN_V(gles_samples_passed_value, int, def, #minimum ":" #maximum) \
         DRI_CONF_DESC("GL_SAMPLES_PASSED value when emulated by GL_ANY_SAMPLES_PASSED") \
 DRI_CONF_OPT_END
 
