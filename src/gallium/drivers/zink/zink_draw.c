@@ -743,31 +743,36 @@ zink_draw_vbo(struct pipe_context *pctx,
 
    struct zink_batch *batch = zink_batch_rp(ctx);
    VkViewport viewports[PIPE_MAX_VIEWPORTS] = {};
-   for (unsigned i = 0; i < ctx->gfx_pipeline_state.num_viewports; i++) {
+   for (unsigned i = 0; i < ctx->vp_state.num_viewports; i++) {
       VkViewport viewport = {
-         ctx->viewport_states[i].translate[0] - ctx->viewport_states[i].scale[0],
-         ctx->viewport_states[i].translate[1] - ctx->viewport_states[i].scale[1],
-         ctx->viewport_states[i].scale[0] * 2,
-         ctx->viewport_states[i].scale[1] * 2,
+         ctx->vp_state.viewport_states[i].translate[0] - ctx->vp_state.viewport_states[i].scale[0],
+         ctx->vp_state.viewport_states[i].translate[1] - ctx->vp_state.viewport_states[i].scale[1],
+         ctx->vp_state.viewport_states[i].scale[0] * 2,
+         ctx->vp_state.viewport_states[i].scale[1] * 2,
          ctx->rast_state->base.clip_halfz ?
-            ctx->viewport_states[i].translate[2] :
-            ctx->viewport_states[i].translate[2] - ctx->viewport_states[i].scale[2],
-         ctx->viewport_states[i].translate[2] + ctx->viewport_states[i].scale[2]
+            ctx->vp_state.viewport_states[i].translate[2] :
+            ctx->vp_state.viewport_states[i].translate[2] - ctx->vp_state.viewport_states[i].scale[2],
+         ctx->vp_state.viewport_states[i].translate[2] + ctx->vp_state.viewport_states[i].scale[2]
       };
       viewports[i] = viewport;
    }
-   vkCmdSetViewport(batch->cmdbuf, 0, ctx->gfx_pipeline_state.num_viewports, viewports);
+   if (screen->info.have_EXT_extended_dynamic_state)
+      screen->vk_CmdSetViewportWithCountEXT(batch->cmdbuf, ctx->vp_state.num_viewports, viewports);
+   else
+      vkCmdSetViewport(batch->cmdbuf, 0, ctx->vp_state.num_viewports, viewports);
+   VkRect2D scissors[PIPE_MAX_VIEWPORTS] = {};
    if (ctx->rast_state->base.scissor)
-      vkCmdSetScissor(batch->cmdbuf, 0, ctx->gfx_pipeline_state.num_viewports, ctx->scissors);
+      memcpy(scissors, ctx->vp_state.scissors, sizeof(scissors));
    else if (ctx->fb_state.width && ctx->fb_state.height) {
-      VkRect2D fb_scissor[ctx->gfx_pipeline_state.num_viewports];
-      for (unsigned i = 0; i < ctx->gfx_pipeline_state.num_viewports; i++) {
-         fb_scissor[i].offset.x = fb_scissor[i].offset.y = 0;
-         fb_scissor[i].extent.width = ctx->fb_state.width;
-         fb_scissor[i].extent.height = ctx->fb_state.height;
+      for (unsigned i = 0; i < ctx->vp_state.num_viewports; i++) {
+         scissors[i].extent.width = ctx->fb_state.width;
+         scissors[i].extent.height = ctx->fb_state.height;
       }
-      vkCmdSetScissor(batch->cmdbuf, 0, ctx->gfx_pipeline_state.num_viewports, fb_scissor);
    }
+   if (screen->info.have_EXT_extended_dynamic_state)
+      screen->vk_CmdSetScissorWithCountEXT(batch->cmdbuf, ctx->vp_state.num_viewports, scissors);
+   else
+      vkCmdSetScissor(batch->cmdbuf, 0, ctx->vp_state.num_viewports, scissors);
 
    if (line_width_needed(reduced_prim, rast_state->hw_state.polygon_mode)) {
       if (screen->info.feats.features.wideLines || ctx->line_width == 1.0f)

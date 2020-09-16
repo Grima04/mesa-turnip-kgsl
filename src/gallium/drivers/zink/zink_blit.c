@@ -220,7 +220,7 @@ void
 zink_blit_begin(struct zink_context *ctx, enum zink_blit_flags flags)
 {
    util_blitter_save_vertex_elements(ctx->blitter, ctx->element_state);
-   util_blitter_save_viewport(ctx->blitter, ctx->viewport_states);
+   util_blitter_save_viewport(ctx->blitter, ctx->vp_state.viewport_states);
 
    util_blitter_save_vertex_buffer_slot(ctx->blitter, ctx->buffers);
    util_blitter_save_vertex_shader(ctx->blitter, ctx->gfx_stages[PIPE_SHADER_VERTEX]);
@@ -236,7 +236,7 @@ zink_blit_begin(struct zink_context *ctx, enum zink_blit_flags flags)
       util_blitter_save_depth_stencil_alpha(ctx->blitter, ctx->dsa_state);
       util_blitter_save_stencil_ref(ctx->blitter, &ctx->stencil_ref);
       util_blitter_save_sample_mask(ctx->blitter, ctx->gfx_pipeline_state.sample_mask);
-      util_blitter_save_scissor(ctx->blitter, ctx->scissor_states);
+      util_blitter_save_scissor(ctx->blitter, ctx->vp_state.scissor_states);
       /* also util_blitter_save_window_rectangles when we have that? */
 
       util_blitter_save_fragment_shader(ctx->blitter, ctx->gfx_stages[PIPE_SHADER_FRAGMENT]);

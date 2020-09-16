@@ -90,6 +90,13 @@ zink_so_target(struct pipe_stream_output_target *so_target)
    return (struct zink_so_target *)so_target;
 }
 
+struct zink_viewport_state {
+   struct pipe_viewport_state viewport_states[PIPE_MAX_VIEWPORTS];
+   struct pipe_scissor_state scissor_states[PIPE_MAX_VIEWPORTS];
+   VkRect2D scissors[PIPE_MAX_VIEWPORTS];
+   uint8_t num_viewports;
+};
+
 #define ZINK_SHADER_COUNT (PIPE_SHADER_TYPES - 1)
 #define ZINK_NUM_GFX_BATCHES 4
 #define ZINK_COMPUTE_BATCH_ID ZINK_NUM_GFX_BATCHES
@@ -140,9 +147,6 @@ struct zink_context {
 
    struct zink_framebuffer *framebuffer;
 
-   struct pipe_viewport_state viewport_states[PIPE_MAX_VIEWPORTS];
-   struct pipe_scissor_state scissor_states[PIPE_MAX_VIEWPORTS];
-   VkRect2D scissors[PIPE_MAX_VIEWPORTS];
    struct pipe_vertex_buffer buffers[PIPE_MAX_ATTRIBS];
    uint32_t buffers_enabled_mask;
 
@@ -151,6 +155,8 @@ struct zink_context {
    unsigned num_samplers[PIPE_SHADER_TYPES];
    struct pipe_sampler_view *sampler_views[PIPE_SHADER_TYPES][PIPE_MAX_SAMPLERS];
    unsigned num_sampler_views[PIPE_SHADER_TYPES];
+
+   struct zink_viewport_state vp_state;
 
    float line_width;
    float blend_constants[4];
