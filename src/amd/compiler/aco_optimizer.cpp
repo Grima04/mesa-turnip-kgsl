@@ -877,6 +877,11 @@ void label_instruction(opt_ctx &ctx, Block& block, aco_ptr<Instruction>& instr)
             instr->operands[i].setTemp(info.temp);
             info = ctx.info[info.temp.id()];
          }
+         /* applying SGPRs to VOP1 doesn't increase code size and DCE is helped by doing it earlier */
+         if (info.is_temp() && info.temp.type() == RegType::sgpr && can_apply_sgprs(instr) && instr->operands.size() == 1) {
+            instr->operands[i].setTemp(info.temp);
+            info = ctx.info[info.temp.id()];
+         }
 
          /* for instructions other than v_cndmask_b32, the size of the instruction should match the operand size */
          unsigned can_use_mod = instr->opcode != aco_opcode::v_cndmask_b32 || instr->operands[i].getTemp().bytes() == 4;
