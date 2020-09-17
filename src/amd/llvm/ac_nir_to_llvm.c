@@ -862,7 +862,7 @@ static void visit_alu(struct ac_nir_context *ctx, const nir_alu_instr *instr)
       break;
    case nir_op_ffma:
       /* FMA is slow on gfx6-8, so it shouldn't be used. */
-      assert(ctx->ac.chip_class >= GFX9);
+      assert(instr->dest.dest.ssa.bit_size != 32 || ctx->ac.chip_class >= GFX9);
       result = emit_intrin_3f_param(&ctx->ac, "llvm.fma", ac_to_float_type(&ctx->ac, def_type),
                                     src[0], src[1], src[2]);
       break;

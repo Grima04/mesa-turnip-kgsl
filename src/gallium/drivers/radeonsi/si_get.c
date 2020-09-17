@@ -937,20 +937,28 @@ void si_init_screen_get_functions(struct si_screen *sscreen)
       .lower_bitfield_insert_to_bitfield_select = true,
       .lower_bitfield_extract = true,
       .lower_sub = true,
-      /* gfx6-8: use MAD (FMA is 4x slower)
-       * gfx9-10: either is OK (MAD and FMA have the same performance)
-       * gfx10.3: use FMA (MAD doesn't exist, separate MUL+ADD are 2x slower)
+      /*        |---------------------------------- Performance & Availability --------------------------------|
+       *        |MAD/MAC/MADAK/MADMK|MAD_LEGACY|MAC_LEGACY|    FMA     |FMAC/FMAAK/FMAMK|FMA_LEGACY|PK_FMA_F16,|Best choice
+       * Arch   |    F32,F16,F64    | F32,F16  | F32,F16  |F32,F16,F64 |    F32,F16     | F32,F16  |PK_FMAC_F16|F16,F32,F64
+       * ------------------------------------------------------------------------------------------------------------------
+       * gfx6,7 |     1 , - , -     |  1 , -   |  1 , -   |1/4, - ,1/16|     - , -      |  - , -   |   - , -   | - ,MAD,FMA
+       * gfx8   |     1 , 1 , -     |  1 , -   |  - , -   |1/4, 1 ,1/16|     - , -      |  - , -   |   - , -   |MAD,MAD,FMA
+       * gfx9   |     1 , 1 , -     |  1 , -   |  1 , -   | 1 , 1 ,1/16|     - , -      |  - , 1   |   2 , -   |FMA,MAD,FMA
+       * gfx10  |     1 , 1 , -     |  1 , -   |  1 , -   | 1 , 1 ,1/16|     1 , 1      |  - , -   |   2 , 2   |FMA,MAD,FMA
+       * gfx10.3|     - , - , -     |  - , -   |  - , -   | 1 , 1 ,1/16|     1 , 1      |  1 , -   |   2 , 2   |  all FMA
        *
-       * FMA has no advantage on gfx9-10 and MAD allows more algebraic optimizations.
-       * Keep FMA enabled on gfx10 to test it, which helps us validate correctness
-       * for gfx10.3 on gfx10.
+       * Tahiti, Hawaii, Carrizo, Vega20: FMA_F32 is full rate, FMA_F64 is 1/4
+       *
+       * gfx8 prefers MAD for F16 because of MAC/MADAK/MADMK.
+       * gfx9 and newer prefer FMA for F16 because of the packed instruction.
+       * gfx10 and older prefer MAD for F32 because of the legacy instruction.
        */
-      .lower_ffma16 = sscreen->info.chip_class <= GFX9,
-      .lower_ffma32 = sscreen->info.chip_class <= GFX9,
-      .lower_ffma64 = sscreen->info.chip_class <= GFX9,
-      .fuse_ffma16 = sscreen->info.chip_class >= GFX10,
-      .fuse_ffma32 = sscreen->info.chip_class >= GFX10,
-      .fuse_ffma64 = sscreen->info.chip_class >= GFX10,
+      .lower_ffma16 = sscreen->info.chip_class < GFX9,
+      .lower_ffma32 = sscreen->info.chip_class < GFX10_3,
+      .lower_ffma64 = false,
+      .fuse_ffma16 = sscreen->info.chip_class >= GFX9,
+      .fuse_ffma32 = sscreen->info.chip_class >= GFX10_3,
+      .fuse_ffma64 = true,
       .lower_fmod = true,
       .lower_pack_snorm_4x8 = true,
       .lower_pack_unorm_4x8 = true,
