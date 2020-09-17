@@ -38,7 +38,7 @@ blit_resolve(struct zink_context *ctx, const struct pipe_blit_info *info)
       util_range_add(info->dst.resource, &dst->valid_buffer_range,
                      info->dst.box.x, info->dst.box.x + info->dst.box.width);
 
-   zink_fb_clears_apply(ctx, info->dst.resource);
+   zink_fb_clears_apply_or_discard(ctx, info->dst.resource, zink_rect_from_box(&info->dst.box), false);
    zink_fb_clears_apply(ctx, info->src.resource);
    struct zink_batch *batch = zink_batch_no_rp(ctx);
 
@@ -120,7 +120,7 @@ blit_native(struct zink_context *ctx, const struct pipe_blit_info *info)
        dst->format != zink_get_format(screen, info->dst.format))
       return false;
 
-   zink_fb_clears_apply(ctx, info->dst.resource);
+   zink_fb_clears_apply_or_discard(ctx, info->dst.resource, zink_rect_from_box(&info->dst.box), false);
    zink_fb_clears_apply(ctx, info->src.resource);
    struct zink_batch *batch = zink_batch_no_rp(ctx);
    zink_batch_reference_resource_rw(batch, src, false);
@@ -212,6 +212,8 @@ zink_blit(struct pipe_context *pctx,
               util_format_short_name(info->dst.resource->format));
       return;
    }
+
+   zink_fb_clears_apply_or_discard(ctx, info->dst.resource, zink_rect_from_box(&info->dst.box), true);
 
    if (info->dst.resource->target == PIPE_BUFFER)
       util_range_add(info->dst.resource, &dst->valid_buffer_range,

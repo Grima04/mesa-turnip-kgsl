@@ -1591,7 +1591,7 @@ zink_resource_copy_region(struct pipe_context *pctx,
       } else
          unreachable("planar formats not yet handled");
 
-      zink_fb_clears_apply(ctx, pdst);
+      zink_fb_clears_apply_or_discard(ctx, pdst, (struct u_rect){dstx, dstx + src_box->width, dsty, dsty + src_box->height}, false);
       zink_fb_clears_apply(ctx, psrc);
 
       region.srcSubresource.aspectMask = src->aspect;
