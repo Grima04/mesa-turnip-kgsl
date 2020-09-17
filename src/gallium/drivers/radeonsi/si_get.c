@@ -946,7 +946,9 @@ void si_init_screen_get_functions(struct si_screen *sscreen)
        * for gfx10.3 on gfx10.
        */
       .lower_ffma = sscreen->info.chip_class <= GFX9,
-      .fuse_ffma = sscreen->info.chip_class >= GFX10,
+      .fuse_ffma16 = sscreen->info.chip_class >= GFX10,
+      .fuse_ffma32 = sscreen->info.chip_class >= GFX10,
+      .fuse_ffma64 = sscreen->info.chip_class >= GFX10,
       .lower_fmod = true,
       .lower_pack_snorm_4x8 = true,
       .lower_pack_unorm_4x8 = true,
