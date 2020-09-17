@@ -134,6 +134,10 @@ create_desc_set_layout(VkDevice dev,
       }
    }
 
+   *num_descriptors = num_bindings;
+   if (!num_bindings)
+      return VK_NULL_HANDLE;
+
    VkDescriptorSetLayoutCreateInfo dcslci = {};
    dcslci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
    dcslci.pNext = NULL;
@@ -147,20 +151,17 @@ create_desc_set_layout(VkDevice dev,
       return VK_NULL_HANDLE;
    }
 
-   *num_descriptors = num_bindings;
    return dsl;
 }
 
 static VkPipelineLayout
 create_gfx_pipeline_layout(VkDevice dev, VkDescriptorSetLayout dsl)
 {
-   assert(dsl != VK_NULL_HANDLE);
-
    VkPipelineLayoutCreateInfo plci = {};
    plci.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
 
    plci.pSetLayouts = &dsl;
-   plci.setLayoutCount = 1;
+   plci.setLayoutCount = !!dsl;
 
 
    VkPushConstantRange pcr[2] = {};
@@ -185,13 +186,11 @@ create_gfx_pipeline_layout(VkDevice dev, VkDescriptorSetLayout dsl)
 static VkPipelineLayout
 create_compute_pipeline_layout(VkDevice dev, VkDescriptorSetLayout dsl)
 {
-   assert(dsl != VK_NULL_HANDLE);
-
    VkPipelineLayoutCreateInfo plci = {};
    plci.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
 
    plci.pSetLayouts = &dsl;
-   plci.setLayoutCount = 1;
+   plci.setLayoutCount = !!dsl;
 
    VkPipelineLayout layout;
    if (vkCreatePipelineLayout(dev, &plci, NULL, &layout) != VK_SUCCESS) {
@@ -476,7 +475,7 @@ zink_create_gfx_program(struct zink_context *ctx,
 
    prog->dsl = create_desc_set_layout(screen->dev, stages,
                                       &prog->num_descriptors);
-   if (!prog->dsl)
+   if (prog->num_descriptors && !prog->dsl)
       goto fail;
 
    prog->layout = create_gfx_pipeline_layout(screen->dev, prog->dsl);
@@ -576,7 +575,7 @@ zink_create_compute_program(struct zink_context *ctx, struct zink_shader *shader
    stages[0] = shader;
    comp->dsl = create_desc_set_layout(screen->dev, stages,
                                       &comp->num_descriptors);
-   if (!comp->dsl)
+   if (comp->num_descriptors && !comp->dsl)
       goto fail;
 
    comp->layout = create_compute_pipeline_layout(screen->dev, comp->dsl);
