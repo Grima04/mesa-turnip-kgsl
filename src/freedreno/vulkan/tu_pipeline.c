@@ -2372,10 +2372,8 @@ tu_pipeline_builder_parse_depth_stencil(struct tu_pipeline_builder *builder,
          ? ds_info : &dummy_ds_info;
 
    struct tu_cs cs;
-   pipeline->ds_state = tu_cs_draw_state(&pipeline->cs, &cs, 6);
+   pipeline->ds_state = tu_cs_draw_state(&pipeline->cs, &cs, 4);
 
-   /* move to hw ctx init? */
-   tu_cs_emit_regs(&cs, A6XX_RB_ALPHA_CONTROL());
    tu6_emit_depth_control(&cs, ds_info_depth,
                           builder->create_info->pRasterizationState);
    tu6_emit_stencil_control(&cs, ds_info);

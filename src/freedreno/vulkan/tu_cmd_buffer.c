@@ -798,6 +798,8 @@ tu6_init_hw(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
 
    tu_cs_emit_write_reg(cs, REG_A6XX_PC_MODE_CNTL, 0x0000001f);
 
+   tu_cs_emit_regs(cs, A6XX_RB_ALPHA_CONTROL());
+
    /* we don't use this yet.. probably best to disable.. */
    tu_cs_emit_pkt7(cs, CP_SET_DRAW_STATE, 3);
    tu_cs_emit(cs, CP_SET_DRAW_STATE__0_COUNT(0) |
