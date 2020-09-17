@@ -98,7 +98,7 @@ zink_context_destroy(struct pipe_context *pctx)
    _mesa_hash_table_destroy(ctx->program_cache, NULL);
    _mesa_hash_table_destroy(ctx->compute_program_cache, NULL);
    _mesa_hash_table_destroy(ctx->render_pass_cache, NULL);
-   FREE(ctx);
+   ralloc_free(ctx);
 }
 
 static enum pipe_reset_status
@@ -1703,7 +1703,7 @@ struct pipe_context *
 zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
 {
    struct zink_screen *screen = zink_screen(pscreen);
-   struct zink_context *ctx = CALLOC_STRUCT(zink_context);
+   struct zink_context *ctx = rzalloc(NULL, struct zink_context);
    if (!ctx)
       goto fail;
 
