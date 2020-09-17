@@ -1800,11 +1800,14 @@ bool radv_layout_dcc_compressed(const struct radv_device *device,
 			        unsigned queue_mask)
 {
 	/* Don't compress compute transfer dst, as image stores are not supported. */
-	if (layout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL &&
+	if ((layout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL ||
+	     layout == VK_IMAGE_LAYOUT_GENERAL) &&
 	    (queue_mask & (1u << RADV_QUEUE_COMPUTE)))
 		return false;
 
-	return radv_image_has_dcc(image) && layout != VK_IMAGE_LAYOUT_GENERAL;
+	return radv_image_has_dcc(image) &&
+	       (device->physical_device->rad_info.chip_class >= GFX10 ||
+	        layout != VK_IMAGE_LAYOUT_GENERAL);
 }
 
 
