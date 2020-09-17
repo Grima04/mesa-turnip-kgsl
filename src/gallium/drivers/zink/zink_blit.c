@@ -278,3 +278,15 @@ zink_blit_region_fills(struct u_rect region, unsigned width, unsigned height)
 
    return false;
 }
+
+bool
+zink_blit_region_covers(struct u_rect region, struct u_rect covers)
+{
+   struct u_rect intersect;
+   if (!u_rect_test_intersection(&region, &covers))
+      return false;
+
+    u_rect_union(&intersect, &region, &covers);
+    return intersect.x0 == covers.x0 && intersect.y0 == covers.y0 &&
+           intersect.x1 == covers.x1 && intersect.y1 == covers.y1;
+}

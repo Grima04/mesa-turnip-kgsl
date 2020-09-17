@@ -284,6 +284,9 @@ zink_blit(struct pipe_context *pctx,
 bool
 zink_blit_region_fills(struct u_rect region, unsigned width, unsigned height);
 
+bool
+zink_blit_region_covers(struct u_rect region, struct u_rect covers);
+
 static inline struct u_rect
 zink_rect_from_box(const struct pipe_box *box)
 {
