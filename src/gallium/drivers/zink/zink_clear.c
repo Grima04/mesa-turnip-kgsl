@@ -412,60 +412,71 @@ zink_fb_clear_needs_explicit(struct zink_framebuffer_clear *fb_clear)
    return clear->has_scissor || clear->conditional;
 }
 
+static void
+fb_clears_apply_internal(struct zink_context *ctx, struct pipe_resource *pres, int i)
+{
+   struct zink_framebuffer_clear *fb_clear = &ctx->fb_clears[i];
+
+   if (!fb_clear->enabled)
+      return;
+   if (zink_resource(pres)->aspect == VK_IMAGE_ASPECT_COLOR_BIT) {
+      assert(!zink_curr_batch(ctx)->in_rp);
+      if (zink_fb_clear_needs_explicit(fb_clear) || !check_3d_layers(ctx->fb_state.cbufs[i]))
+         /* this will automatically trigger all the clears */
+         zink_batch_rp(ctx);
+      else {
+         struct pipe_surface *psurf = ctx->fb_state.cbufs[i];
+         struct zink_framebuffer_clear_data *clear = zink_fb_clear_element(fb_clear, 0);
+         union pipe_color_union color = clear->color.color;
+         if (clear->color.srgb) {
+            /* if SRGB mode is disabled for the fb with a backing srgb image then we have to
+             * convert this to srgb color
+             */
+            color.f[0] = util_format_srgb_to_linear_float(clear->color.color.f[0]);
+            color.f[1] = util_format_srgb_to_linear_float(clear->color.color.f[1]);
+            color.f[2] = util_format_srgb_to_linear_float(clear->color.color.f[2]);
+         }
+
+         clear_color_no_rp(ctx, zink_resource(pres), &color,
+                                psurf->u.tex.level, psurf->u.tex.first_layer,
+                                psurf->u.tex.last_layer - psurf->u.tex.first_layer + 1);
+      }
+      zink_fb_clear_reset(&ctx->fb_clears[i]);
+      return;
+   } else {
+      assert(!zink_curr_batch(ctx)->in_rp);
+      if (zink_fb_clear_needs_explicit(fb_clear) || !check_3d_layers(ctx->fb_state.zsbuf))
+         /* this will automatically trigger all the clears */
+         zink_batch_rp(ctx);
+      else {
+         struct pipe_surface *psurf = ctx->fb_state.zsbuf;
+         struct zink_framebuffer_clear_data *clear = zink_fb_clear_element(fb_clear, 0);
+         VkImageAspectFlags aspects = 0;
+         if (clear->zs.bits & PIPE_CLEAR_DEPTH)
+            aspects |= VK_IMAGE_ASPECT_DEPTH_BIT;
+         if (clear->zs.bits & PIPE_CLEAR_STENCIL)
+            aspects |= VK_IMAGE_ASPECT_STENCIL_BIT;
+         clear_zs_no_rp(ctx, zink_resource(pres), aspects, clear->zs.depth, clear->zs.stencil,
+                             psurf->u.tex.level, psurf->u.tex.first_layer,
+                             psurf->u.tex.last_layer - psurf->u.tex.first_layer + 1);
+      }
+   }
+   zink_fb_clear_reset(fb_clear);
+}
+
 void
 zink_fb_clears_apply(struct zink_context *ctx, struct pipe_resource *pres)
 {
    if (zink_resource(pres)->aspect == VK_IMAGE_ASPECT_COLOR_BIT) {
       for (int i = 0; i < ctx->fb_state.nr_cbufs; i++) {
          if (ctx->fb_state.cbufs[i] && ctx->fb_state.cbufs[i]->texture == pres) {
-            struct zink_framebuffer_clear *fb_clear = &ctx->fb_clears[i];
-            if (fb_clear->enabled) {
-               assert(!zink_curr_batch(ctx)->in_rp);
-               if (zink_fb_clear_needs_explicit(fb_clear) || !check_3d_layers(ctx->fb_state.cbufs[i]))
-                  /* this will automatically trigger all the clears */
-                  zink_batch_rp(ctx);
-               else {
-                  struct pipe_surface *psurf = ctx->fb_state.cbufs[i];
-                  struct zink_framebuffer_clear_data *clear = zink_fb_clear_element(fb_clear, 0);
-                  union pipe_color_union color = clear->color.color;
-                  if (clear->color.srgb) {
-                     /* if SRGB mode is disabled for the fb with a backing srgb image then we have to
-                      * convert this to srgb color
-                      */
-                     color.f[0] = util_format_srgb_to_linear_float(clear->color.color.f[0]);
-                     color.f[1] = util_format_srgb_to_linear_float(clear->color.color.f[1]);
-                     color.f[2] = util_format_srgb_to_linear_float(clear->color.color.f[2]);
-                  }
-
-                  clear_color_no_rp(ctx, zink_resource(pres), &color,
-                                         psurf->u.tex.level, psurf->u.tex.first_layer,
-                                         psurf->u.tex.last_layer - psurf->u.tex.first_layer + 1);
-               }
-               zink_fb_clear_reset(&ctx->fb_clears[i]);
-            }
+            fb_clears_apply_internal(ctx, pres, i);
             return;
          }
       }
    } else {
-      struct zink_framebuffer_clear *fb_clear = &ctx->fb_clears[PIPE_MAX_COLOR_BUFS];
-      if (fb_clear->enabled && ctx->fb_state.zsbuf && ctx->fb_state.zsbuf->texture == pres) {
-          assert(!zink_curr_batch(ctx)->in_rp);
-          if (zink_fb_clear_needs_explicit(fb_clear) || !check_3d_layers(ctx->fb_state.zsbuf))
-             /* this will automatically trigger all the clears */
-             zink_batch_rp(ctx);
-          else {
-            struct pipe_surface *psurf = ctx->fb_state.zsbuf;
-            struct zink_framebuffer_clear_data *clear = zink_fb_clear_element(fb_clear, 0);
-            VkImageAspectFlags aspects = 0;
-            if (clear->zs.bits & PIPE_CLEAR_DEPTH)
-               aspects |= VK_IMAGE_ASPECT_DEPTH_BIT;
-            if (clear->zs.bits & PIPE_CLEAR_STENCIL)
-               aspects |= VK_IMAGE_ASPECT_STENCIL_BIT;
-            clear_zs_no_rp(ctx, zink_resource(pres), aspects, clear->zs.depth, clear->zs.stencil,
-                                psurf->u.tex.level, psurf->u.tex.first_layer,
-                                psurf->u.tex.last_layer - psurf->u.tex.first_layer + 1);
-            zink_fb_clear_reset(fb_clear);
-         }
+      if (ctx->fb_state.zsbuf && ctx->fb_state.zsbuf->texture == pres) {
+         fb_clears_apply_internal(ctx, pres, PIPE_MAX_COLOR_BUFS);
       }
    }
 }
@@ -506,7 +517,7 @@ zink_clear_apply_conditionals(struct zink_context *ctx)
             else
                surf = ctx->fb_state.zsbuf;
             if (surf)
-               zink_fb_clears_apply(ctx, surf->texture);
+               fb_clears_apply_internal(ctx, surf->texture, i);
             else
                zink_fb_clear_reset(&ctx->fb_clears[i]);
             break;
