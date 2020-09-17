@@ -221,6 +221,7 @@ tu_QueueSubmit(VkQueue _queue,
                VkFence _fence)
 {
    TU_FROM_HANDLE(tu_queue, queue, _queue);
+   VkResult result = VK_SUCCESS;
 
    uint32_t max_entry_count = 0;
    for (uint32_t i = 0; i < submitCount; ++i) {
@@ -271,18 +272,35 @@ tu_QueueSubmit(VkQueue _queue,
       int ret = safe_ioctl(queue->device->physical_device->local_fd,
                            IOCTL_KGSL_GPU_COMMAND, &req);
       if (ret) {
-         fprintf(stderr, "submit failed: %s\n", strerror(errno));
-         abort();
+         result = tu_device_set_lost(queue->device,
+                                     "submit failed: %s\n", strerror(errno));
+         goto fail;
       }
 
-#if 0
+      /* no need to merge fences as queue execution is serialized */
       if (i == submitCount - 1) {
-         /* no need to merge fences as queue execution is serialized */
-         tu_fence_update_fd(&queue->submit_fence, req.fence_fd);
-      }
-#endif
-   }
+         int fd;
+         struct kgsl_timestamp_event event = {
+            .type = KGSL_TIMESTAMP_EVENT_FENCE,
+            .context_id = queue->msm_queue_id,
+            .timestamp = req.timestamp,
+            .priv = &fd,
+            .len = sizeof(fd),
+         };
 
+         int ret = safe_ioctl(queue->device->physical_device->local_fd,
+                              IOCTL_KGSL_TIMESTAMP_EVENT, &event);
+         if (ret != 0) {
+            result = tu_device_set_lost(queue->device,
+                                        "Failed to create sync file for timestamp: %s\n",
+                                        strerror(errno));
+            goto fail;
+         }
+
+         tu_fence_update_fd(&queue->submit_fence, fd);
+      }
+   }
+fail:
    vk_free(&queue->device->vk.alloc, cmds);
 
    if (_fence != VK_NULL_HANDLE) {
@@ -290,7 +308,7 @@ tu_QueueSubmit(VkQueue _queue,
       tu_fence_copy(fence, &queue->submit_fence);
    }
 
-   return VK_SUCCESS;
+   return result;
 }
 
 VkResult
