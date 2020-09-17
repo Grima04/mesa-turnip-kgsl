@@ -127,18 +127,14 @@ static void si_create_compute_state_async(void *job, int thread_index)
    assert(program->ir_type == PIPE_SHADER_IR_NIR);
    si_nir_scan_shader(sel->nir, &sel->info);
 
-   sel->info.base.cs.shared_size = program->local_size;
    si_get_active_slot_masks(&sel->info, &sel->active_const_and_shader_buffers,
                             &sel->active_samplers_and_images);
 
    program->shader.is_monolithic = true;
-   program->reads_variable_block_size = sel->info.uses_variable_block_size;
-   program->num_cs_user_data_dwords =
-      sel->info.base.cs.user_data_components_amd;
 
    unsigned user_sgprs = SI_NUM_RESOURCE_SGPRS + (sel->info.uses_grid_size ? 3 : 0) +
-                         (program->reads_variable_block_size ? 3 : 0) +
-                         program->num_cs_user_data_dwords;
+                         (sel->info.uses_variable_block_size ? 3 : 0) +
+                         sel->info.base.cs.user_data_components_amd;
 
    /* Fast path for compute shaders - some descriptors passed via user SGPRs. */
    /* Shader buffers in user SGPRs. */
@@ -237,9 +233,9 @@ static void *si_create_compute_state(struct pipe_context *ctx, const struct pipe
       si_const_and_shader_buffer_descriptors_idx(PIPE_SHADER_COMPUTE);
    sel->sampler_and_images_descriptors_index =
       si_sampler_and_image_descriptors_idx(PIPE_SHADER_COMPUTE);
+   sel->info.base.cs.shared_size = cso->req_local_mem;
    program->shader.selector = &program->sel;
    program->ir_type = cso->ir_type;
-   program->local_size = cso->req_local_mem;
    program->private_size = cso->req_private_mem;
    program->input_size = cso->req_input_mem;
 
@@ -473,9 +469,9 @@ static bool si_switch_compute_shader(struct si_context *sctx, struct si_compute 
        * tracker, then we will set LDS_SIZE to 512 bytes rather than 256.
        */
       if (sctx->chip_class <= GFX6) {
-         lds_blocks += align(program->local_size, 256) >> 8;
+         lds_blocks += align(program->sel.info.base.cs.shared_size, 256) >> 8;
       } else {
-         lds_blocks += align(program->local_size, 512) >> 9;
+         lds_blocks += align(program->sel.info.base.cs.shared_size, 512) >> 9;
       }
 
       /* TODO: use si_multiwave_lds_size_workaround */
@@ -611,7 +607,7 @@ static void si_setup_user_sgprs_co_v2(struct si_context *sctx, const amd_kernel_
       dispatch.grid_size_z = util_cpu_to_le32(info->grid[2] * info->block[2]);
 
       dispatch.private_segment_size = util_cpu_to_le32(program->private_size);
-      dispatch.group_segment_size = util_cpu_to_le32(program->local_size);
+      dispatch.group_segment_size = util_cpu_to_le32(program->sel.info.base.cs.shared_size);
 
       dispatch.kernarg_address = util_cpu_to_le64(kernel_args_va);
 
@@ -695,7 +691,7 @@ static void si_setup_nir_user_data(struct si_context *sctx, const struct pipe_gr
    unsigned block_size_reg = grid_size_reg +
                              /* 12 bytes = 3 dwords. */
                              12 * sel->info.uses_grid_size;
-   unsigned cs_user_data_reg = block_size_reg + 12 * program->reads_variable_block_size;
+   unsigned cs_user_data_reg = block_size_reg + 12 * program->sel.info.uses_variable_block_size;
 
    if (sel->info.uses_grid_size) {
       if (info->indirect) {
@@ -712,16 +708,16 @@ static void si_setup_nir_user_data(struct si_context *sctx, const struct pipe_gr
       }
    }
 
-   if (program->reads_variable_block_size) {
+   if (sel->info.uses_variable_block_size) {
       radeon_set_sh_reg_seq(cs, block_size_reg, 3);
       radeon_emit(cs, info->block[0]);
       radeon_emit(cs, info->block[1]);
       radeon_emit(cs, info->block[2]);
    }
 
-   if (program->num_cs_user_data_dwords) {
-      radeon_set_sh_reg_seq(cs, cs_user_data_reg, program->num_cs_user_data_dwords);
-      radeon_emit_array(cs, sctx->cs_user_data, program->num_cs_user_data_dwords);
+   if (sel->info.base.cs.user_data_components_amd) {
+      radeon_set_sh_reg_seq(cs, cs_user_data_reg, sel->info.base.cs.user_data_components_amd);
+      radeon_emit_array(cs, sctx->cs_user_data, sel->info.base.cs.user_data_components_amd);
    }
 }
 
