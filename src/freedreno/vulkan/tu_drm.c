@@ -746,12 +746,11 @@ tu_QueueSubmit(VkQueue _queue,
       int ret = drmCommandWriteRead(queue->device->physical_device->local_fd,
                                     DRM_MSM_GEM_SUBMIT,
                                     &req, sizeof(req));
+      mtx_unlock(&queue->device->bo_mutex);
       if (ret) {
          return tu_device_set_lost(queue->device, "submit failed: %s\n",
                                    strerror(errno));
       }
-
-      mtx_unlock(&queue->device->bo_mutex);
 
       tu_semaphores_remove_temp(queue->device, pSubmits[i].pWaitSemaphores,
                                 pSubmits[i].waitSemaphoreCount);
