@@ -1368,7 +1368,7 @@ vtn_function_emit(struct vtn_builder *b, struct vtn_function *func,
     * but instructions in the continue may use SSA defs in the loop body.
     * Therefore, we need to repair SSA to insert the needed phi nodes.
     */
-   if (b->has_loop_continue || b->has_kill)
+   if (b->func->impl->structured && (b->has_loop_continue || b->has_kill))
       nir_repair_ssa_impl(func->impl);
 
    func->emitted = true;
