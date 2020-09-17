@@ -1592,7 +1592,7 @@ zink_resource_copy_region(struct pipe_context *pctx,
          unreachable("planar formats not yet handled");
 
       zink_fb_clears_apply_or_discard(ctx, pdst, (struct u_rect){dstx, dstx + src_box->width, dsty, dsty + src_box->height}, false);
-      zink_fb_clears_apply(ctx, psrc);
+      zink_fb_clears_apply_region(ctx, psrc, zink_rect_from_box(src_box));
 
       region.srcSubresource.aspectMask = src->aspect;
       region.srcSubresource.mipLevel = src_level;

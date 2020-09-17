@@ -39,7 +39,7 @@ blit_resolve(struct zink_context *ctx, const struct pipe_blit_info *info)
                      info->dst.box.x, info->dst.box.x + info->dst.box.width);
 
    zink_fb_clears_apply_or_discard(ctx, info->dst.resource, zink_rect_from_box(&info->dst.box), false);
-   zink_fb_clears_apply(ctx, info->src.resource);
+   zink_fb_clears_apply_region(ctx, info->src.resource, zink_rect_from_box(&info->src.box));
    struct zink_batch *batch = zink_batch_no_rp(ctx);
 
    zink_batch_reference_resource_rw(batch, src, false);
@@ -121,7 +121,7 @@ blit_native(struct zink_context *ctx, const struct pipe_blit_info *info)
       return false;
 
    zink_fb_clears_apply_or_discard(ctx, info->dst.resource, zink_rect_from_box(&info->dst.box), false);
-   zink_fb_clears_apply(ctx, info->src.resource);
+   zink_fb_clears_apply_region(ctx, info->src.resource, zink_rect_from_box(&info->src.box));
    struct zink_batch *batch = zink_batch_no_rp(ctx);
    zink_batch_reference_resource_rw(batch, src, false);
    zink_batch_reference_resource_rw(batch, dst, true);
