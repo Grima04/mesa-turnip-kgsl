@@ -121,9 +121,6 @@ static void scan_io_usage(struct si_shader_info *info, nir_intrinsic_instr *intr
          if (mask) {
             info->input_usage_mask[loc] |= mask;
             info->num_inputs = MAX2(info->num_inputs, loc + 1);
-
-            if (semantic == VARYING_SLOT_PRIMITIVE_ID)
-               info->uses_primid = true;
          }
       }
    } else {
@@ -169,54 +166,16 @@ static void scan_io_usage(struct si_shader_info *info, nir_intrinsic_instr *intr
             info->output_usagemask[loc] |= mask;
             info->num_outputs = MAX2(info->num_outputs, loc + 1);
 
-            if (info->stage == MESA_SHADER_FRAGMENT) {
-               switch (semantic) {
-               case FRAG_RESULT_DEPTH:
-                  info->writes_z = true;
-                  break;
-               case FRAG_RESULT_STENCIL:
-                  info->writes_stencil = true;
-                  break;
-               case FRAG_RESULT_SAMPLE_MASK:
-                  info->writes_samplemask = true;
-                  break;
-               default:
-                  if (semantic >= FRAG_RESULT_DATA0 && semantic <= FRAG_RESULT_DATA7) {
-                     unsigned index = semantic - FRAG_RESULT_DATA0;
+            if (info->stage == MESA_SHADER_FRAGMENT &&
+                semantic >= FRAG_RESULT_DATA0 && semantic <= FRAG_RESULT_DATA7) {
+               unsigned index = semantic - FRAG_RESULT_DATA0;
 
-                     if (nir_intrinsic_type(intr) == nir_type_float16)
-                        info->output_color_types |= SI_TYPE_FLOAT16 << (index * 2);
-                     else if (nir_intrinsic_type(intr) == nir_type_int16)
-                        info->output_color_types |= SI_TYPE_INT16 << (index * 2);
-                     else if (nir_intrinsic_type(intr) == nir_type_uint16)
-                        info->output_color_types |= SI_TYPE_UINT16 << (index * 2);
-                  }
-                  break;
-               }
-            } else {
-               switch (semantic) {
-               case VARYING_SLOT_PRIMITIVE_ID:
-                  info->writes_primid = true;
-                  break;
-               case VARYING_SLOT_VIEWPORT:
-                  info->writes_viewport_index = true;
-                  break;
-               case VARYING_SLOT_LAYER:
-                  info->writes_layer = true;
-                  break;
-               case VARYING_SLOT_PSIZ:
-                  info->writes_psize = true;
-                  break;
-               case VARYING_SLOT_CLIP_VERTEX:
-                  info->writes_clipvertex = true;
-                  break;
-               case VARYING_SLOT_EDGE:
-                  info->writes_edgeflag = true;
-                  break;
-               case VARYING_SLOT_POS:
-                  info->writes_position = true;
-                  break;
-               }
+               if (nir_intrinsic_type(intr) == nir_type_float16)
+                  info->output_color_types |= SI_TYPE_FLOAT16 << (index * 2);
+               else if (nir_intrinsic_type(intr) == nir_type_int16)
+                  info->output_color_types |= SI_TYPE_INT16 << (index * 2);
+               else if (nir_intrinsic_type(intr) == nir_type_uint16)
+                  info->output_color_types |= SI_TYPE_UINT16 << (index * 2);
             }
          }
       }
@@ -396,7 +355,8 @@ void si_nir_scan_shader(const struct nir_shader *nir, struct si_shader_info *inf
    info->uses_variable_block_size = info->base.cs.local_size_variable &&
                                     nir->info.system_values_read & BITFIELD64_BIT(SYSTEM_VALUE_LOCAL_GROUP_SIZE);
    info->uses_drawid = nir->info.system_values_read & BITFIELD64_BIT(SYSTEM_VALUE_DRAW_ID);
-   info->uses_primid = nir->info.system_values_read & BITFIELD64_BIT(SYSTEM_VALUE_PRIMITIVE_ID);
+   info->uses_primid = nir->info.system_values_read & BITFIELD64_BIT(SYSTEM_VALUE_PRIMITIVE_ID) ||
+                       nir->info.inputs_read & VARYING_BIT_PRIMITIVE_ID;
    info->reads_samplemask = nir->info.system_values_read & BITFIELD64_BIT(SYSTEM_VALUE_SAMPLE_MASK_IN);
    info->reads_tess_factors = nir->info.system_values_read & BITFIELD64_BIT(SYSTEM_VALUE_TESS_LEVEL_INNER) ||
                               nir->info.system_values_read & BITFIELD64_BIT(SYSTEM_VALUE_TESS_LEVEL_OUTER);
@@ -408,6 +368,10 @@ void si_nir_scan_shader(const struct nir_shader *nir, struct si_shader_info *inf
    info->uses_persp_center = nir->info.system_values_read & BITFIELD64_BIT(SYSTEM_VALUE_BARYCENTRIC_PERSP_PIXEL);
 
    if (nir->info.stage == MESA_SHADER_FRAGMENT) {
+      info->writes_z = nir->info.outputs_written & BITFIELD64_BIT(FRAG_RESULT_DEPTH);
+      info->writes_stencil = nir->info.outputs_written & BITFIELD64_BIT(FRAG_RESULT_STENCIL);
+      info->writes_samplemask = nir->info.outputs_written & BITFIELD64_BIT(FRAG_RESULT_SAMPLE_MASK);
+
       info->colors_written = nir->info.outputs_written >> FRAG_RESULT_DATA0;
       if (nir->info.outputs_written & BITFIELD64_BIT(FRAG_RESULT_COLOR)) {
          info->color0_writes_all_cbufs = true;
@@ -415,6 +379,14 @@ void si_nir_scan_shader(const struct nir_shader *nir, struct si_shader_info *inf
       }
       if (nir->info.fs.color_is_dual_source)
          info->colors_written |= 0x2;
+   } else {
+      info->writes_primid = nir->info.outputs_written & VARYING_BIT_PRIMITIVE_ID;
+      info->writes_viewport_index = nir->info.outputs_written & VARYING_BIT_VIEWPORT;
+      info->writes_layer = nir->info.outputs_written & VARYING_BIT_LAYER;
+      info->writes_psize = nir->info.outputs_written & VARYING_BIT_PSIZ;
+      info->writes_clipvertex = nir->info.outputs_written & VARYING_BIT_CLIP_VERTEX;
+      info->writes_edgeflag = nir->info.outputs_written & VARYING_BIT_EDGE;
+      info->writes_position = nir->info.outputs_written & VARYING_BIT_POS;
    }
 
    memset(info->output_semantic_to_slot, -1, sizeof(info->output_semantic_to_slot));
