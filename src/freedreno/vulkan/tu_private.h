@@ -460,7 +460,14 @@ enum tu_dynamic_state
 {
    /* re-use VK_DYNAMIC_STATE_ enums for non-extended dynamic states */
    TU_DYNAMIC_STATE_SAMPLE_LOCATIONS = VK_DYNAMIC_STATE_STENCIL_REFERENCE + 1,
+   TU_DYNAMIC_STATE_RB_DEPTH_CNTL,
+   TU_DYNAMIC_STATE_RB_STENCIL_CNTL,
+   TU_DYNAMIC_STATE_VB_STRIDE,
    TU_DYNAMIC_STATE_COUNT,
+   /* no associated draw state: */
+   TU_DYNAMIC_STATE_PRIMITIVE_TOPOLOGY = TU_DYNAMIC_STATE_COUNT,
+   /* re-use the line width enum as it uses GRAS_SU_CNTL: */
+   TU_DYNAMIC_STATE_GRAS_SU_CNTL = VK_DYNAMIC_STATE_LINE_WIDTH,
 };
 
 enum tu_draw_state_group_id
@@ -472,7 +479,6 @@ enum tu_draw_state_group_id
    TU_DRAW_STATE_VI,
    TU_DRAW_STATE_VI_BINNING,
    TU_DRAW_STATE_RAST,
-   TU_DRAW_STATE_DS,
    TU_DRAW_STATE_BLEND,
    TU_DRAW_STATE_VS_CONST,
    TU_DRAW_STATE_HS_CONST,
@@ -681,12 +687,18 @@ struct tu_descriptor_state
 
 enum tu_cmd_dirty_bits
 {
-   TU_CMD_DIRTY_VERTEX_BUFFERS = 1 << 2,
-   TU_CMD_DIRTY_DESC_SETS_LOAD = 1 << 3,
-   TU_CMD_DIRTY_COMPUTE_DESC_SETS_LOAD = 1 << 4,
-   TU_CMD_DIRTY_SHADER_CONSTS = 1 << 5,
+   TU_CMD_DIRTY_VERTEX_BUFFERS = BIT(0),
+   TU_CMD_DIRTY_VB_STRIDE = BIT(1),
+   TU_CMD_DIRTY_GRAS_SU_CNTL = BIT(2),
+   TU_CMD_DIRTY_RB_DEPTH_CNTL = BIT(3),
+   TU_CMD_DIRTY_RB_STENCIL_CNTL = BIT(4),
+   TU_CMD_DIRTY_DESC_SETS_LOAD = BIT(5),
+   TU_CMD_DIRTY_COMPUTE_DESC_SETS_LOAD = BIT(6),
+   TU_CMD_DIRTY_SHADER_CONSTS = BIT(7),
    /* all draw states were disabled and need to be re-enabled: */
-   TU_CMD_DIRTY_DRAW_STATE = 1 << 7,
+   TU_CMD_DIRTY_DRAW_STATE = BIT(8)
+
+
 };
 
 /* There are only three cache domains we have to care about: the CCU, or
@@ -852,6 +864,7 @@ struct tu_cmd_state
    struct {
       uint64_t base;
       uint32_t size;
+      uint32_t stride;
    } vb[MAX_VBS];
    VkViewport viewport[MAX_VIEWPORTS];
    VkRect2D scissor[MAX_SCISSORS];
@@ -861,7 +874,9 @@ struct tu_cmd_state
    uint32_t dynamic_stencil_mask;
    uint32_t dynamic_stencil_wrmask;
    uint32_t dynamic_stencil_ref;
-   uint32_t dynamic_gras_su_cntl;
+
+   uint32_t gras_su_cntl, rb_depth_cntl, rb_stencil_cntl;
+   enum pc_di_primtype primtype;
 
    /* saved states to re-emit in TU_CMD_DIRTY_DRAW_STATE case */
    struct tu_draw_state dynamic_state[TU_DYNAMIC_STATE_COUNT];
@@ -1062,11 +1077,15 @@ struct tu_pipeline
    uint32_t dynamic_state_mask;
    struct tu_draw_state dynamic_state[TU_DYNAMIC_STATE_COUNT];
 
-   /* gras_su_cntl without line width, used for dynamic line width state */
-   uint32_t gras_su_cntl;
+   /* for dynamic states which use the same register: */
+   uint32_t gras_su_cntl, gras_su_cntl_mask;
+   uint32_t rb_depth_cntl, rb_depth_cntl_mask;
+   uint32_t rb_stencil_cntl, rb_stencil_cntl_mask;
+
+   bool rb_depth_cntl_disable;
 
    /* draw states for the pipeline */
-   struct tu_draw_state load_state, rast_state, ds_state, blend_state;
+   struct tu_draw_state load_state, rast_state, blend_state;
 
    /* for vertex buffers state */
    uint32_t num_vbs;

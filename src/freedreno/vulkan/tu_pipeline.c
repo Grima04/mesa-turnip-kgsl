@@ -1482,7 +1482,8 @@ tu6_emit_program(struct tu_cs *cs,
 }
 
 static void
-tu6_emit_vertex_input(struct tu_cs *cs,
+tu6_emit_vertex_input(struct tu_pipeline *pipeline,
+                      struct tu_cs *cs,
                       const struct ir3_shader_variant *vs,
                       const VkPipelineVertexInputStateCreateInfo *info)
 {
@@ -1494,8 +1495,10 @@ tu6_emit_vertex_input(struct tu_cs *cs,
       const VkVertexInputBindingDescription *binding =
          &info->pVertexBindingDescriptions[i];
 
-      tu_cs_emit_regs(cs,
-                      A6XX_VFD_FETCH_STRIDE(binding->binding, binding->stride));
+      if (!(pipeline->dynamic_state_mask & BIT(TU_DYNAMIC_STATE_VB_STRIDE))) {
+         tu_cs_emit_regs(cs,
+                        A6XX_VFD_FETCH_STRIDE(binding->binding, binding->stride));
+      }
 
       if (binding->inputRate == VK_VERTEX_INPUT_RATE_INSTANCE)
          binding_instanced |= 1 << binding->binding;
@@ -1717,7 +1720,8 @@ tu6_gras_su_cntl(const VkPipelineRasterizationStateCreateInfo *rast_info,
    if (rast_info->frontFace == VK_FRONT_FACE_CLOCKWISE)
       gras_su_cntl |= A6XX_GRAS_SU_CNTL_FRONT_CW;
 
-   /* don't set A6XX_GRAS_SU_CNTL_LINEHALFWIDTH */
+   gras_su_cntl |=
+      A6XX_GRAS_SU_CNTL_LINEHALFWIDTH(rast_info->lineWidth / 2.0f);
 
    if (rast_info->depthBiasEnable)
       gras_su_cntl |= A6XX_GRAS_SU_CNTL_POLY_OFFSET;
@@ -1744,58 +1748,6 @@ tu6_emit_depth_bias(struct tu_cs *cs,
    tu_cs_emit(cs, A6XX_GRAS_SU_POLY_OFFSET_SCALE(slope_factor).value);
    tu_cs_emit(cs, A6XX_GRAS_SU_POLY_OFFSET_OFFSET(constant_factor).value);
    tu_cs_emit(cs, A6XX_GRAS_SU_POLY_OFFSET_OFFSET_CLAMP(clamp).value);
-}
-
-static void
-tu6_emit_depth_control(struct tu_cs *cs,
-                       const VkPipelineDepthStencilStateCreateInfo *ds_info,
-                       const VkPipelineRasterizationStateCreateInfo *rast_info)
-{
-   uint32_t rb_depth_cntl = 0;
-   if (ds_info->depthTestEnable) {
-      rb_depth_cntl |=
-         A6XX_RB_DEPTH_CNTL_Z_ENABLE |
-         A6XX_RB_DEPTH_CNTL_ZFUNC(tu6_compare_func(ds_info->depthCompareOp)) |
-         A6XX_RB_DEPTH_CNTL_Z_TEST_ENABLE; /* TODO: don't set for ALWAYS/NEVER */
-
-      if (rast_info->depthClampEnable)
-         rb_depth_cntl |= A6XX_RB_DEPTH_CNTL_Z_CLAMP_ENABLE;
-
-      if (ds_info->depthWriteEnable)
-         rb_depth_cntl |= A6XX_RB_DEPTH_CNTL_Z_WRITE_ENABLE;
-   }
-
-   if (ds_info->depthBoundsTestEnable)
-         rb_depth_cntl |= A6XX_RB_DEPTH_CNTL_Z_BOUNDS_ENABLE | A6XX_RB_DEPTH_CNTL_Z_TEST_ENABLE;
-
-   tu_cs_emit_pkt4(cs, REG_A6XX_RB_DEPTH_CNTL, 1);
-   tu_cs_emit(cs, rb_depth_cntl);
-}
-
-static void
-tu6_emit_stencil_control(struct tu_cs *cs,
-                         const VkPipelineDepthStencilStateCreateInfo *ds_info)
-{
-   uint32_t rb_stencil_control = 0;
-   if (ds_info->stencilTestEnable) {
-      const VkStencilOpState *front = &ds_info->front;
-      const VkStencilOpState *back = &ds_info->back;
-      rb_stencil_control |=
-         A6XX_RB_STENCIL_CONTROL_STENCIL_ENABLE |
-         A6XX_RB_STENCIL_CONTROL_STENCIL_ENABLE_BF |
-         A6XX_RB_STENCIL_CONTROL_STENCIL_READ |
-         A6XX_RB_STENCIL_CONTROL_FUNC(tu6_compare_func(front->compareOp)) |
-         A6XX_RB_STENCIL_CONTROL_FAIL(tu6_stencil_op(front->failOp)) |
-         A6XX_RB_STENCIL_CONTROL_ZPASS(tu6_stencil_op(front->passOp)) |
-         A6XX_RB_STENCIL_CONTROL_ZFAIL(tu6_stencil_op(front->depthFailOp)) |
-         A6XX_RB_STENCIL_CONTROL_FUNC_BF(tu6_compare_func(back->compareOp)) |
-         A6XX_RB_STENCIL_CONTROL_FAIL_BF(tu6_stencil_op(back->failOp)) |
-         A6XX_RB_STENCIL_CONTROL_ZPASS_BF(tu6_stencil_op(back->passOp)) |
-         A6XX_RB_STENCIL_CONTROL_ZFAIL_BF(tu6_stencil_op(back->depthFailOp));
-   }
-
-   tu_cs_emit_pkt4(cs, REG_A6XX_RB_STENCIL_CONTROL, 1);
-   tu_cs_emit(cs, rb_stencil_control);
 }
 
 static uint32_t
@@ -2131,14 +2083,71 @@ tu_pipeline_builder_parse_dynamic(struct tu_pipeline_builder *builder,
    if (!dynamic_info)
       return;
 
+   pipeline->gras_su_cntl_mask = ~0u;
+   pipeline->rb_depth_cntl_mask = ~0u;
+   pipeline->rb_stencil_cntl_mask = ~0u;
+
    for (uint32_t i = 0; i < dynamic_info->dynamicStateCount; i++) {
       VkDynamicState state = dynamic_info->pDynamicStates[i];
       switch (state) {
       case VK_DYNAMIC_STATE_VIEWPORT ... VK_DYNAMIC_STATE_STENCIL_REFERENCE:
+         if (state == VK_DYNAMIC_STATE_LINE_WIDTH)
+            pipeline->gras_su_cntl_mask &= ~A6XX_GRAS_SU_CNTL_LINEHALFWIDTH__MASK;
          pipeline->dynamic_state_mask |= BIT(state);
          break;
       case VK_DYNAMIC_STATE_SAMPLE_LOCATIONS_EXT:
          pipeline->dynamic_state_mask |= BIT(TU_DYNAMIC_STATE_SAMPLE_LOCATIONS);
+         break;
+      case VK_DYNAMIC_STATE_CULL_MODE_EXT:
+         pipeline->gras_su_cntl_mask &=
+            ~(A6XX_GRAS_SU_CNTL_CULL_BACK | A6XX_GRAS_SU_CNTL_CULL_FRONT);
+         pipeline->dynamic_state_mask |= BIT(TU_DYNAMIC_STATE_GRAS_SU_CNTL);
+         break;
+      case VK_DYNAMIC_STATE_FRONT_FACE_EXT:
+         pipeline->gras_su_cntl_mask &= ~A6XX_GRAS_SU_CNTL_FRONT_CW;
+         pipeline->dynamic_state_mask |= BIT(TU_DYNAMIC_STATE_GRAS_SU_CNTL);
+         break;
+      case VK_DYNAMIC_STATE_PRIMITIVE_TOPOLOGY_EXT:
+         pipeline->dynamic_state_mask |= BIT(TU_DYNAMIC_STATE_PRIMITIVE_TOPOLOGY);
+         break;
+      case VK_DYNAMIC_STATE_VERTEX_INPUT_BINDING_STRIDE_EXT:
+         pipeline->dynamic_state_mask |= BIT(TU_DYNAMIC_STATE_VB_STRIDE);
+         break;
+      case VK_DYNAMIC_STATE_VIEWPORT_WITH_COUNT_EXT:
+         pipeline->dynamic_state_mask |= BIT(VK_DYNAMIC_STATE_VIEWPORT);
+         break;
+      case VK_DYNAMIC_STATE_SCISSOR_WITH_COUNT_EXT:
+         pipeline->dynamic_state_mask |= BIT(VK_DYNAMIC_STATE_SCISSOR);
+         break;
+      case VK_DYNAMIC_STATE_DEPTH_TEST_ENABLE_EXT:
+         pipeline->rb_depth_cntl_mask &=
+            ~(A6XX_RB_DEPTH_CNTL_Z_ENABLE | A6XX_RB_DEPTH_CNTL_Z_TEST_ENABLE);
+         pipeline->dynamic_state_mask |= BIT(TU_DYNAMIC_STATE_RB_DEPTH_CNTL);
+         break;
+      case VK_DYNAMIC_STATE_DEPTH_WRITE_ENABLE_EXT:
+         pipeline->rb_depth_cntl_mask &= ~A6XX_RB_DEPTH_CNTL_Z_WRITE_ENABLE;
+         pipeline->dynamic_state_mask |= BIT(TU_DYNAMIC_STATE_RB_DEPTH_CNTL);
+         break;
+      case VK_DYNAMIC_STATE_DEPTH_COMPARE_OP_EXT:
+         pipeline->rb_depth_cntl_mask &= ~A6XX_RB_DEPTH_CNTL_ZFUNC__MASK;
+         pipeline->dynamic_state_mask |= BIT(TU_DYNAMIC_STATE_RB_DEPTH_CNTL);
+         break;
+      case VK_DYNAMIC_STATE_DEPTH_BOUNDS_TEST_ENABLE_EXT:
+         pipeline->rb_depth_cntl_mask &=
+            ~(A6XX_RB_DEPTH_CNTL_Z_BOUNDS_ENABLE | A6XX_RB_DEPTH_CNTL_Z_TEST_ENABLE);
+         pipeline->dynamic_state_mask |= BIT(TU_DYNAMIC_STATE_RB_DEPTH_CNTL);
+         break;
+      case VK_DYNAMIC_STATE_STENCIL_TEST_ENABLE_EXT:
+         pipeline->rb_stencil_cntl_mask &= ~(A6XX_RB_STENCIL_CONTROL_STENCIL_ENABLE |
+                                             A6XX_RB_STENCIL_CONTROL_STENCIL_ENABLE_BF |
+                                             A6XX_RB_STENCIL_CONTROL_STENCIL_READ);
+         pipeline->dynamic_state_mask |= BIT(TU_DYNAMIC_STATE_RB_STENCIL_CNTL);
+         break;
+      case VK_DYNAMIC_STATE_STENCIL_OP_EXT:
+         pipeline->rb_stencil_cntl_mask &= A6XX_RB_STENCIL_CONTROL_STENCIL_ENABLE |
+                                           A6XX_RB_STENCIL_CONTROL_STENCIL_ENABLE_BF |
+                                           A6XX_RB_STENCIL_CONTROL_STENCIL_READ;
+         pipeline->dynamic_state_mask |= BIT(TU_DYNAMIC_STATE_RB_STENCIL_CNTL);
          break;
       default:
          assert(!"unsupported dynamic state");
@@ -2203,13 +2212,13 @@ tu_pipeline_builder_parse_vertex_input(struct tu_pipeline_builder *builder,
    struct tu_cs vi_cs;
    tu_cs_begin_sub_stream(&pipeline->cs,
                           MAX_VERTEX_ATTRIBS * 7 + 2, &vi_cs);
-   tu6_emit_vertex_input(&vi_cs, vs, vi_info);
+   tu6_emit_vertex_input(pipeline, &vi_cs, vs, vi_info);
    pipeline->vi.state = tu_cs_end_draw_state(&pipeline->cs, &vi_cs);
 
    if (bs) {
       tu_cs_begin_sub_stream(&pipeline->cs,
                              MAX_VERTEX_ATTRIBS * 7 + 2, &vi_cs);
-      tu6_emit_vertex_input(&vi_cs, bs, vi_info);
+      tu6_emit_vertex_input(pipeline, &vi_cs, bs, vi_info);
       pipeline->vi.binning_state =
          tu_cs_end_draw_state(&pipeline->cs, &vi_cs);
    }
@@ -2248,6 +2257,8 @@ tu_pipeline_builder_parse_tessellation(struct tu_pipeline_builder *builder,
 
    if (!tess_info)
       return;
+
+   assert(!(pipeline->dynamic_state_mask & BIT(TU_DYNAMIC_STATE_PRIMITIVE_TOPOLOGY)));
 
    assert(pipeline->ia.primtype == DI_PT_PATCHES0);
    assert(tess_info->patchControlPoints <= 32);
@@ -2332,11 +2343,8 @@ tu_pipeline_builder_parse_rasterization(struct tu_pipeline_builder *builder,
    pipeline->gras_su_cntl =
       tu6_gras_su_cntl(rast_info, builder->samples, builder->multiview_mask != 0);
 
-   if (tu_pipeline_static_state(pipeline, &cs, VK_DYNAMIC_STATE_LINE_WIDTH, 2)) {
-      pipeline->gras_su_cntl |=
-         A6XX_GRAS_SU_CNTL_LINEHALFWIDTH(rast_info->lineWidth / 2.0f);
+   if (tu_pipeline_static_state(pipeline, &cs, TU_DYNAMIC_STATE_GRAS_SU_CNTL, 2))
       tu_cs_emit_regs(&cs, A6XX_GRAS_SU_CNTL(.dword = pipeline->gras_su_cntl));
-   }
 
    if (tu_pipeline_static_state(pipeline, &cs, VK_DYNAMIC_STATE_DEPTH_BIAS, 4)) {
       tu6_emit_depth_bias(&cs, rast_info->depthBiasConstantFactor,
@@ -2357,26 +2365,79 @@ tu_pipeline_builder_parse_depth_stencil(struct tu_pipeline_builder *builder,
     *    the pipeline has rasterization disabled or if the subpass of the
     *    render pass the pipeline is created against does not use a
     *    depth/stencil attachment.
-    *
-    * Disable both depth and stencil tests if there is no ds attachment,
-    * Disable depth test if ds attachment is S8_UINT, since S8_UINT defines
-    * only the separate stencil attachment
     */
-   static const VkPipelineDepthStencilStateCreateInfo dummy_ds_info;
    const VkPipelineDepthStencilStateCreateInfo *ds_info =
-      builder->depth_attachment_format != VK_FORMAT_UNDEFINED
-         ? builder->create_info->pDepthStencilState
-         : &dummy_ds_info;
-   const VkPipelineDepthStencilStateCreateInfo *ds_info_depth =
-      builder->depth_attachment_format != VK_FORMAT_S8_UINT
-         ? ds_info : &dummy_ds_info;
-
+      builder->create_info->pDepthStencilState;
+   const VkPipelineRasterizationStateCreateInfo *rast_info =
+      builder->create_info->pRasterizationState;
+   uint32_t rb_depth_cntl = 0, rb_stencil_cntl = 0;
    struct tu_cs cs;
-   pipeline->ds_state = tu_cs_draw_state(&pipeline->cs, &cs, 4);
 
-   tu6_emit_depth_control(&cs, ds_info_depth,
-                          builder->create_info->pRasterizationState);
-   tu6_emit_stencil_control(&cs, ds_info);
+   if (builder->depth_attachment_format != VK_FORMAT_UNDEFINED &&
+       builder->depth_attachment_format != VK_FORMAT_S8_UINT) {
+      if (ds_info->depthTestEnable) {
+         rb_depth_cntl |=
+            A6XX_RB_DEPTH_CNTL_Z_ENABLE |
+            A6XX_RB_DEPTH_CNTL_ZFUNC(tu6_compare_func(ds_info->depthCompareOp)) |
+            A6XX_RB_DEPTH_CNTL_Z_TEST_ENABLE; /* TODO: don't set for ALWAYS/NEVER */
+
+         if (rast_info->depthClampEnable)
+            rb_depth_cntl |= A6XX_RB_DEPTH_CNTL_Z_CLAMP_ENABLE;
+
+         if (ds_info->depthWriteEnable)
+            rb_depth_cntl |= A6XX_RB_DEPTH_CNTL_Z_WRITE_ENABLE;
+      }
+
+      if (ds_info->depthBoundsTestEnable)
+            rb_depth_cntl |= A6XX_RB_DEPTH_CNTL_Z_BOUNDS_ENABLE | A6XX_RB_DEPTH_CNTL_Z_TEST_ENABLE;
+   } else {
+      /* if RB_DEPTH_CNTL is set dynamically, we need to make sure it is set
+       * to 0 when this pipeline is used, as enabling depth test when there
+       * is no depth attachment is a problem (at least for the S8_UINT case)
+       */
+      if (pipeline->dynamic_state_mask & BIT(TU_DYNAMIC_STATE_RB_DEPTH_CNTL))
+         pipeline->rb_depth_cntl_disable = true;
+   }
+
+   if (builder->depth_attachment_format != VK_FORMAT_UNDEFINED) {
+      const VkStencilOpState *front = &ds_info->front;
+      const VkStencilOpState *back = &ds_info->back;
+
+      rb_stencil_cntl |=
+         A6XX_RB_STENCIL_CONTROL_FUNC(tu6_compare_func(front->compareOp)) |
+         A6XX_RB_STENCIL_CONTROL_FAIL(tu6_stencil_op(front->failOp)) |
+         A6XX_RB_STENCIL_CONTROL_ZPASS(tu6_stencil_op(front->passOp)) |
+         A6XX_RB_STENCIL_CONTROL_ZFAIL(tu6_stencil_op(front->depthFailOp)) |
+         A6XX_RB_STENCIL_CONTROL_FUNC_BF(tu6_compare_func(back->compareOp)) |
+         A6XX_RB_STENCIL_CONTROL_FAIL_BF(tu6_stencil_op(back->failOp)) |
+         A6XX_RB_STENCIL_CONTROL_ZPASS_BF(tu6_stencil_op(back->passOp)) |
+         A6XX_RB_STENCIL_CONTROL_ZFAIL_BF(tu6_stencil_op(back->depthFailOp));
+
+      if (ds_info->stencilTestEnable) {
+         rb_stencil_cntl |=
+            A6XX_RB_STENCIL_CONTROL_STENCIL_ENABLE |
+            A6XX_RB_STENCIL_CONTROL_STENCIL_ENABLE_BF |
+            A6XX_RB_STENCIL_CONTROL_STENCIL_READ;
+      }
+   }
+
+   if (tu_pipeline_static_state(pipeline, &cs, TU_DYNAMIC_STATE_RB_DEPTH_CNTL, 2)) {
+      tu_cs_emit_pkt4(&cs, REG_A6XX_RB_DEPTH_CNTL, 1);
+      tu_cs_emit(&cs, rb_depth_cntl);
+   } else {
+      pipeline->rb_depth_cntl = rb_depth_cntl;
+   }
+
+   if (tu_pipeline_static_state(pipeline, &cs, TU_DYNAMIC_STATE_RB_STENCIL_CNTL, 2)) {
+      tu_cs_emit_pkt4(&cs, REG_A6XX_RB_STENCIL_CONTROL, 1);
+      tu_cs_emit(&cs, rb_stencil_cntl);
+   } else {
+      pipeline->rb_stencil_cntl = rb_stencil_cntl;
+   }
+
+   /* the remaining draw states arent used if there is no d/s, leave them empty */
+   if (builder->depth_attachment_format == VK_FORMAT_UNDEFINED)
+      return;
 
    if (tu_pipeline_static_state(pipeline, &cs, VK_DYNAMIC_STATE_DEPTH_BOUNDS, 3)) {
       tu_cs_emit_regs(&cs,
