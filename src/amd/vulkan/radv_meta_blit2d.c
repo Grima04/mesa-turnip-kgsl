@@ -310,7 +310,7 @@ radv_meta_blit2d_normal_dst(struct radv_cmd_buffer *cmd_buffer,
 									},
 									.clearValueCount = 0,
 									.pClearValues = NULL,
-								  });
+								  }, NULL);
 
 				radv_cmd_buffer_set_subpass(cmd_buffer,
 							    &cmd_buffer->state.pass->subpasses[0]);
@@ -338,7 +338,7 @@ radv_meta_blit2d_normal_dst(struct radv_cmd_buffer *cmd_buffer,
 									},
 									.clearValueCount = 0,
 									.pClearValues = NULL,
-								  });
+								  }, NULL);
 
 				radv_cmd_buffer_set_subpass(cmd_buffer,
 							    &cmd_buffer->state.pass->subpasses[0]);
@@ -367,7 +367,7 @@ radv_meta_blit2d_normal_dst(struct radv_cmd_buffer *cmd_buffer,
 									},
 									.clearValueCount = 0,
 									.pClearValues = NULL,
-								   });
+								   }, NULL);
 
 				radv_cmd_buffer_set_subpass(cmd_buffer,
 							    &cmd_buffer->state.pass->subpasses[0]);

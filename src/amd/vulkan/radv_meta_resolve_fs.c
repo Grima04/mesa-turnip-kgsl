@@ -1098,7 +1098,7 @@ void radv_meta_resolve_fragment_image(struct radv_cmd_buffer *cmd_buffer,
 								},
 							.clearValueCount = 0,
 							.pClearValues = NULL,
-					});
+					}, NULL);
 
 		radv_cmd_buffer_set_subpass(cmd_buffer,
 					    &cmd_buffer->state.pass->subpasses[0]);
