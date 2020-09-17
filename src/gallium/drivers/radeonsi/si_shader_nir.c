@@ -771,7 +771,7 @@ void si_finalize_nir(struct pipe_screen *screen, void *nirptr, bool optimize)
    struct si_screen *sscreen = (struct si_screen *)screen;
    struct nir_shader *nir = (struct nir_shader *)nirptr;
 
-   nir_shader_gather_info(nir, nir_shader_get_entrypoint(nir));
    si_lower_io(nir);
    si_lower_nir(sscreen, nir);
+   nir_shader_gather_info(nir, nir_shader_get_entrypoint(nir));
 }
