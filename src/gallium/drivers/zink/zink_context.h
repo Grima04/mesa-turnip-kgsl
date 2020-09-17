@@ -341,6 +341,9 @@ void
 zink_fb_clears_discard(struct zink_context *ctx, struct pipe_resource *pres);
 
 void
+zink_fb_clears_apply_or_discard(struct zink_context *ctx, struct pipe_resource *pres, struct u_rect region, bool discard_only);
+
+void
 zink_draw_vbo(struct pipe_context *pctx,
               const struct pipe_draw_info *dinfo,
               const struct pipe_draw_indirect_info *indirect,
