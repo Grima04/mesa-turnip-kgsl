@@ -110,6 +110,7 @@ struct zink_framebuffer_clear_data {
    };
    struct pipe_scissor_state scissor;
    bool has_scissor;
+   bool conditional;
 };
 
 struct zink_framebuffer_clear {
@@ -316,6 +317,9 @@ zink_fb_clear_reset(struct zink_framebuffer_clear *fb_clear)
    util_dynarray_fini(&fb_clear->clears);
    fb_clear->enabled = false;
 }
+
+void
+zink_clear_apply_conditionals(struct zink_context *ctx);
 
 void
 zink_fb_clears_apply(struct zink_context *ctx, struct pipe_resource *pres);

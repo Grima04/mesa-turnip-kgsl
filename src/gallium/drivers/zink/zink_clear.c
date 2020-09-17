@@ -216,7 +216,7 @@ zink_clear(struct pipe_context *pctx,
    }
 
 
-   if (batch->in_rp || ctx->render_condition_active) {
+   if (batch->in_rp) {
       clear_in_rp(pctx, buffers, scissor_state, pcolor, depth, stencil);
       return;
    }
@@ -229,6 +229,7 @@ zink_clear(struct pipe_context *pctx,
             struct zink_framebuffer_clear_data *clear = get_clear_data(ctx, fb_clear, needs_rp ? scissor_state : NULL);
 
             fb_clear->enabled = true;
+            clear->conditional = ctx->render_condition_active;
             clear->has_scissor = needs_rp;
             if (scissor_state && needs_rp)
                clear->scissor = *scissor_state;
@@ -243,6 +244,7 @@ zink_clear(struct pipe_context *pctx,
       struct zink_framebuffer_clear *fb_clear = &ctx->fb_clears[PIPE_MAX_COLOR_BUFS];
       struct zink_framebuffer_clear_data *clear = get_clear_data(ctx, fb_clear, needs_rp ? scissor_state : NULL);
       fb_clear->enabled = true;
+      clear->conditional = ctx->render_condition_active;
       clear->has_scissor = needs_rp;
       if (scissor_state && needs_rp)
          clear->scissor = *scissor_state;
@@ -422,7 +424,7 @@ zink_fb_clear_needs_explicit(struct zink_framebuffer_clear *fb_clear)
    if (zink_fb_clear_count(fb_clear) != 1)
       return true;
    struct zink_framebuffer_clear_data *clear = zink_fb_clear_element(fb_clear, 0);
-   return clear->has_scissor;
+   return clear->has_scissor || clear->conditional;
 }
 
 void
@@ -503,3 +505,27 @@ zink_fb_clears_discard(struct zink_context *ctx, struct pipe_resource *pres)
    }
 }
 
+void
+zink_clear_apply_conditionals(struct zink_context *ctx)
+{
+   for (int i = 0; i < ARRAY_SIZE(ctx->fb_clears); i++) {
+      struct zink_framebuffer_clear *fb_clear = &ctx->fb_clears[i];
+      if (!fb_clear->enabled)
+         continue;
+      for (int j = 0; j < zink_fb_clear_count(fb_clear); j++) {
+         struct zink_framebuffer_clear_data *clear = zink_fb_clear_element(fb_clear, j);
+         if (clear->conditional) {
+            struct pipe_surface *surf;
+            if (i < PIPE_MAX_COLOR_BUFS)
+               surf = ctx->fb_state.cbufs[i];
+            else
+               surf = ctx->fb_state.zsbuf;
+            if (surf)
+               zink_fb_clears_apply(ctx, surf->texture);
+            else
+               zink_fb_clear_reset(&ctx->fb_clears[i]);
+            break;
+         }
+      }
+   }
+}

@@ -704,6 +704,7 @@ zink_render_condition(struct pipe_context *pctx,
    VkQueryResultFlagBits flags = 0;
 
    if (query == NULL) {
+      zink_clear_apply_conditionals(ctx);
       screen->vk_CmdEndConditionalRenderingEXT(batch->cmdbuf);
       ctx->render_condition_active = false;
       return;
