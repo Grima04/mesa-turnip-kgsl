@@ -357,7 +357,7 @@ zink_clear_texture(struct pipe_context *pctx,
    struct zink_context *ctx = zink_context(pctx);
    struct zink_resource *res = zink_resource(pres);
    struct pipe_screen *pscreen = pctx->screen;
-   struct u_rect region = {box->x, box->x + box->width, box->y, box->y + box->height};
+   struct u_rect region = zink_rect_from_box(box);
    bool needs_rp = !zink_blit_region_fills(region, pres->width0, pres->height0) || ctx->render_condition_active;
    struct zink_batch *batch = zink_curr_batch(ctx);
    struct pipe_surface *surf = NULL;

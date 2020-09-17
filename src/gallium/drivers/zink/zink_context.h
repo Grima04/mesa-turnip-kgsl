@@ -29,6 +29,7 @@
 
 #include "pipe/p_context.h"
 #include "pipe/p_state.h"
+#include "util/u_rect.h"
 
 #include "util/slab.h"
 #include "util/list.h"
@@ -38,7 +39,6 @@
 struct blitter_context;
 struct primconvert_context;
 struct list_head;
-struct u_rect;
 
 struct zink_blend_state;
 struct zink_depth_stencil_alpha_state;
@@ -283,6 +283,12 @@ zink_blit(struct pipe_context *pctx,
 
 bool
 zink_blit_region_fills(struct u_rect region, unsigned width, unsigned height);
+
+static inline struct u_rect
+zink_rect_from_box(const struct pipe_box *box)
+{
+   return (struct u_rect){box->x, box->x + box->width, box->y, box->y + box->height};
+}
 
 void
 zink_clear(struct pipe_context *pctx,
