@@ -310,7 +310,9 @@ radv_meta_blit2d_normal_dst(struct radv_cmd_buffer *cmd_buffer,
 									},
 									.clearValueCount = 0,
 									.pClearValues = NULL,
-								  }, NULL);
+								  }, &(struct radv_extra_render_pass_begin_info) {
+									.disable_dcc = dst->disable_compression
+								  });
 
 				radv_cmd_buffer_set_subpass(cmd_buffer,
 							    &cmd_buffer->state.pass->subpasses[0]);
