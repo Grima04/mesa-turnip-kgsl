@@ -558,6 +558,7 @@ CreatePbuffer(Display * dpy, struct glx_config *config,
    unsigned int i;
    Pixmap pixmap;
    GLboolean glx_1_3 = GL_FALSE;
+   int depth = config->rgbBits;
 
    if (priv == NULL)
       return None;
@@ -622,8 +623,11 @@ CreatePbuffer(Display * dpy, struct glx_config *config,
    UnlockDisplay(dpy);
    SyncHandle();
 
+   if (depth == 30)
+      depth = 32;
+
    pixmap = XCreatePixmap(dpy, RootWindow(dpy, config->screen),
-			  width, height, config->rgbBits);
+			  width, height, depth);
 
    if (!CreateDRIDrawable(dpy, config, pixmap, id, attrib_list, i)) {
       CARD32 o = glx_1_3 ? X_GLXDestroyPbuffer : X_GLXvop_DestroyGLXPbufferSGIX;
