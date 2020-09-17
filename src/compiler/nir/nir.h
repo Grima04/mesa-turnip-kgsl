@@ -3055,7 +3055,9 @@ typedef enum {
 
 typedef struct nir_shader_compiler_options {
    bool lower_fdiv;
-   bool lower_ffma;
+   bool lower_ffma16;
+   bool lower_ffma32;
+   bool lower_ffma64;
    bool fuse_ffma16;
    bool fuse_ffma32;
    bool fuse_ffma64;

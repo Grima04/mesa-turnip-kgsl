@@ -945,7 +945,9 @@ void si_init_screen_get_functions(struct si_screen *sscreen)
        * Keep FMA enabled on gfx10 to test it, which helps us validate correctness
        * for gfx10.3 on gfx10.
        */
-      .lower_ffma = sscreen->info.chip_class <= GFX9,
+      .lower_ffma16 = sscreen->info.chip_class <= GFX9,
+      .lower_ffma32 = sscreen->info.chip_class <= GFX9,
+      .lower_ffma64 = sscreen->info.chip_class <= GFX9,
       .fuse_ffma16 = sscreen->info.chip_class >= GFX10,
       .fuse_ffma32 = sscreen->info.chip_class >= GFX10,
       .fuse_ffma64 = sscreen->info.chip_class >= GFX10,
