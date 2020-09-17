@@ -4,6 +4,7 @@
 #include "zink_screen.h"
 
 #include "util/u_blitter.h"
+#include "util/u_rect.h"
 #include "util/u_surface.h"
 #include "util/format/u_format.h"
 
@@ -259,4 +260,21 @@ zink_blit_begin(struct zink_context *ctx, enum zink_blit_flags flags)
                                                ctx->num_sampler_views[PIPE_SHADER_FRAGMENT],
                                                ctx->sampler_views[PIPE_SHADER_FRAGMENT]);
    }
+}
+
+bool
+zink_blit_region_fills(struct u_rect region, unsigned width, unsigned height)
+{
+   struct u_rect intersect = {0, width, 0, height};
+
+   if (!u_rect_test_intersection(&region, &intersect))
+      /* is this even a thing? */
+      return false;
+
+    u_rect_find_intersection(&region, &intersect);
+    if (intersect.x0 != 0 || intersect.y0 != 0 ||
+        intersect.x1 != width || intersect.y1 != height)
+       return false;
+
+   return false;
 }

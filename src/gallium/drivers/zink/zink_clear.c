@@ -162,22 +162,7 @@ clear_zs_no_rp(struct zink_context *ctx, struct zink_resource *res, VkImageAspec
    vkCmdClearDepthStencilImage(batch->cmdbuf, res->image, res->layout, &zs_value, 1, &range);
 }
 
-static bool
-clear_needs_rp(unsigned width, unsigned height, struct u_rect *region)
-{
-   struct u_rect intersect = {0, width, 0, height};
 
-   if (!u_rect_test_intersection(region, &intersect))
-      /* is this even a thing? */
-      return true;
-
-    u_rect_find_intersection(region, &intersect);
-    if (intersect.x0 != 0 || intersect.y0 != 0 ||
-        intersect.x1 != width || intersect.y1 != height)
-       return true;
-
-   return false;
-}
 
 static struct zink_framebuffer_clear_data *
 get_clear_data(struct zink_context *ctx, struct zink_framebuffer_clear *fb_clear, const struct pipe_scissor_state *scissor_state)
@@ -212,7 +197,7 @@ zink_clear(struct pipe_context *pctx,
 
    if (scissor_state) {
       struct u_rect scissor = {scissor_state->minx, scissor_state->maxx, scissor_state->miny, scissor_state->maxy};
-      needs_rp = clear_needs_rp(fb->width, fb->height, &scissor);
+      needs_rp = !zink_blit_region_fills(scissor, fb->width, fb->height);
    }
 
 
@@ -373,7 +358,7 @@ zink_clear_texture(struct pipe_context *pctx,
    struct zink_resource *res = zink_resource(pres);
    struct pipe_screen *pscreen = pctx->screen;
    struct u_rect region = {box->x, box->x + box->width, box->y, box->y + box->height};
-   bool needs_rp = clear_needs_rp(pres->width0, pres->height0, &region) || ctx->render_condition_active;
+   bool needs_rp = !zink_blit_region_fills(region, pres->width0, pres->height0) || ctx->render_condition_active;
    struct zink_batch *batch = zink_curr_batch(ctx);
    struct pipe_surface *surf = NULL;
 

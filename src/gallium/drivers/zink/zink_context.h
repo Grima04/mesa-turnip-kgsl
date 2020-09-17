@@ -38,6 +38,7 @@
 struct blitter_context;
 struct primconvert_context;
 struct list_head;
+struct u_rect;
 
 struct zink_blend_state;
 struct zink_depth_stencil_alpha_state;
@@ -279,6 +280,9 @@ zink_blit_begin(struct zink_context *ctx, enum zink_blit_flags flags);
 void
 zink_blit(struct pipe_context *pctx,
           const struct pipe_blit_info *info);
+
+bool
+zink_blit_region_fills(struct u_rect region, unsigned width, unsigned height);
 
 void
 zink_clear(struct pipe_context *pctx,
