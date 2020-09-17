@@ -370,11 +370,11 @@ convert_flrp_instruction(nir_builder *bld,
    unsigned bit_size = nir_dest_bit_size(alu->dest.dest);
 
    if (bit_size == 16)
-      have_ffma = !bld->shader->options->lower_ffma16;
+      have_ffma = bld->shader->options->has_ffma16;
    else if (bit_size == 32)
-      have_ffma = !bld->shader->options->lower_ffma32;
+      have_ffma = bld->shader->options->has_ffma32;
    else if (bit_size == 64)
-      have_ffma = !bld->shader->options->lower_ffma64;
+      have_ffma = bld->shader->options->has_ffma64;
    else
       unreachable("invalid bit_size");
 

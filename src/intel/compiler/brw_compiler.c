@@ -183,9 +183,9 @@ brw_compiler_create(void *mem_ctx, const struct gen_device_info *devinfo)
       /* Prior to Gen6, there are no three source operations, and Gen11 loses
        * LRP.
        */
-      nir_options->lower_ffma16 = devinfo->gen < 6;
-      nir_options->lower_ffma32 = devinfo->gen < 6;
-      nir_options->lower_ffma64 = devinfo->gen < 6;
+      nir_options->has_ffma16 = devinfo->gen >= 6;
+      nir_options->has_ffma32 = devinfo->gen >= 6;
+      nir_options->has_ffma64 = devinfo->gen >= 6;
       nir_options->lower_flrp32 = devinfo->gen < 6 || devinfo->gen >= 11;
       nir_options->lower_fpow = devinfo->gen >= 12;
 

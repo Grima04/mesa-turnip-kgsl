@@ -953,12 +953,9 @@ void si_init_screen_get_functions(struct si_screen *sscreen)
        * gfx9 and newer prefer FMA for F16 because of the packed instruction.
        * gfx10 and older prefer MAD for F32 because of the legacy instruction.
        */
-      .lower_ffma16 = sscreen->info.chip_class < GFX9,
-      .lower_ffma32 = sscreen->info.chip_class < GFX10_3,
-      .lower_ffma64 = false,
-      .fuse_ffma16 = sscreen->info.chip_class >= GFX9,
-      .fuse_ffma32 = sscreen->info.chip_class >= GFX10_3,
-      .fuse_ffma64 = true,
+      .has_ffma16 = sscreen->info.chip_class >= GFX9,
+      .has_ffma32 = sscreen->info.chip_class >= GFX10_3,
+      .has_ffma64 = true,
       .lower_fmod = true,
       .lower_pack_snorm_4x8 = true,
       .lower_pack_unorm_4x8 = true,
