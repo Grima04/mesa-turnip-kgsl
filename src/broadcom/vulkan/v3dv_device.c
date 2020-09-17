@@ -315,7 +315,12 @@ compute_heap_size()
 static int
 create_display_fd_xcb()
 {
+   int fd = -1;
+
    xcb_connection_t *conn = xcb_connect(NULL, NULL);
+   if (xcb_connection_has_error(conn))
+      goto finish;
+
    const xcb_setup_t *setup = xcb_get_setup(conn);
    xcb_screen_iterator_t iter = xcb_setup_roots_iterator(setup);
    xcb_screen_t *screen = iter.data;
@@ -325,16 +330,18 @@ create_display_fd_xcb()
    cookie = xcb_dri3_open(conn, screen->root, None);
    reply = xcb_dri3_open_reply(conn, cookie, NULL);
    if (!reply)
-      return -1;
+      goto finish;
 
-   if (reply->nfd != 1) {
-      free(reply);
-      return -1;
-   }
+   if (reply->nfd != 1)
+      goto finish;
 
-   int fd = xcb_dri3_open_reply_fds(conn, reply)[0];
-   free(reply);
+   fd = xcb_dri3_open_reply_fds(conn, reply)[0];
    fcntl(fd, F_SETFD, fcntl(fd, F_GETFD) | FD_CLOEXEC);
+
+finish:
+   xcb_disconnect(conn);
+   if (reply)
+      free(reply);
 
    return fd;
 }
