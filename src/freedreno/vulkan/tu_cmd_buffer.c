@@ -2975,7 +2975,6 @@ tu6_draw_common(struct tu_cmd_buffer *cmd,
                                 pipeline->dynamic_state[i]));
       }
    } else {
-
       /* emit draw states that were just updated
        * note we eventually don't want to have to emit anything here
        */
@@ -2986,24 +2985,24 @@ tu6_draw_common(struct tu_cmd_buffer *cmd,
          ((cmd->state.dirty & TU_CMD_DIRTY_VERTEX_BUFFERS) ? 1 : 0) +
          1; /* vs_params */
 
-         tu_cs_emit_pkt7(cs, CP_SET_DRAW_STATE, 3 * draw_state_count);
+      tu_cs_emit_pkt7(cs, CP_SET_DRAW_STATE, 3 * draw_state_count);
 
-         /* We may need to re-emit tess consts if the current draw call is
-          * sufficiently larger than the last draw call. */
-         if (has_tess)
-            tu_cs_emit_draw_state(cs, TU_DRAW_STATE_TESS, tess_consts);
-         if (cmd->state.dirty & TU_CMD_DIRTY_SHADER_CONSTS) {
-            tu_cs_emit_draw_state(cs, TU_DRAW_STATE_VS_CONST, cmd->state.shader_const[MESA_SHADER_VERTEX]);
-            tu_cs_emit_draw_state(cs, TU_DRAW_STATE_HS_CONST, cmd->state.shader_const[MESA_SHADER_TESS_CTRL]);
-            tu_cs_emit_draw_state(cs, TU_DRAW_STATE_DS_CONST, cmd->state.shader_const[MESA_SHADER_TESS_EVAL]);
-            tu_cs_emit_draw_state(cs, TU_DRAW_STATE_GS_CONST, cmd->state.shader_const[MESA_SHADER_GEOMETRY]);
-            tu_cs_emit_draw_state(cs, TU_DRAW_STATE_FS_CONST, cmd->state.shader_const[MESA_SHADER_FRAGMENT]);
-         }
-         if (cmd->state.dirty & TU_CMD_DIRTY_DESC_SETS_LOAD)
-            tu_cs_emit_draw_state(cs, TU_DRAW_STATE_DESC_SETS_LOAD, pipeline->load_state);
-         if (cmd->state.dirty & TU_CMD_DIRTY_VERTEX_BUFFERS)
-            tu_cs_emit_draw_state(cs, TU_DRAW_STATE_VB, cmd->state.vertex_buffers);
-         tu_cs_emit_draw_state(cs, TU_DRAW_STATE_VS_PARAMS, cmd->state.vs_params);
+      /* We may need to re-emit tess consts if the current draw call is
+         * sufficiently larger than the last draw call. */
+      if (has_tess)
+         tu_cs_emit_draw_state(cs, TU_DRAW_STATE_TESS, tess_consts);
+      if (cmd->state.dirty & TU_CMD_DIRTY_SHADER_CONSTS) {
+         tu_cs_emit_draw_state(cs, TU_DRAW_STATE_VS_CONST, cmd->state.shader_const[MESA_SHADER_VERTEX]);
+         tu_cs_emit_draw_state(cs, TU_DRAW_STATE_HS_CONST, cmd->state.shader_const[MESA_SHADER_TESS_CTRL]);
+         tu_cs_emit_draw_state(cs, TU_DRAW_STATE_DS_CONST, cmd->state.shader_const[MESA_SHADER_TESS_EVAL]);
+         tu_cs_emit_draw_state(cs, TU_DRAW_STATE_GS_CONST, cmd->state.shader_const[MESA_SHADER_GEOMETRY]);
+         tu_cs_emit_draw_state(cs, TU_DRAW_STATE_FS_CONST, cmd->state.shader_const[MESA_SHADER_FRAGMENT]);
+      }
+      if (cmd->state.dirty & TU_CMD_DIRTY_DESC_SETS_LOAD)
+         tu_cs_emit_draw_state(cs, TU_DRAW_STATE_DESC_SETS_LOAD, pipeline->load_state);
+      if (cmd->state.dirty & TU_CMD_DIRTY_VERTEX_BUFFERS)
+         tu_cs_emit_draw_state(cs, TU_DRAW_STATE_VB, cmd->state.vertex_buffers);
+      tu_cs_emit_draw_state(cs, TU_DRAW_STATE_VS_PARAMS, cmd->state.vs_params);
    }
 
    tu_cs_sanity_check(cs);
