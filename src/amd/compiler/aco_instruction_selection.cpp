@@ -2618,14 +2618,9 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
          if (0 && (!ctx->block->fp_mode.care_about_round32 || ctx->block->fp_mode.round32 == fp_round_tz)) {
             bld.vop3(aco_opcode::v_cvt_pkrtz_f16_f32, Definition(dst), src0, src1);
          } else {
-            src0 = bld.vop1(aco_opcode::v_cvt_f16_f32, bld.def(v1), src0);
-            src1 = bld.vop1(aco_opcode::v_cvt_f16_f32, bld.def(v1), src1);
-            if (ctx->program->chip_class >= GFX10) {
-               /* the high bits of v_cvt_f16_f32 isn't zero'd on GFX10 */
-               bld.vop3(aco_opcode::v_pack_b32_f16, Definition(dst), src0, src1);
-            } else {
-               bld.vop3(aco_opcode::v_cvt_pk_u16_u32, Definition(dst), src0, src1);
-            }
+            src0 = bld.vop1(aco_opcode::v_cvt_f16_f32, bld.def(v2b), src0);
+            src1 = bld.vop1(aco_opcode::v_cvt_f16_f32, bld.def(v2b), src1);
+            bld.pseudo(aco_opcode::p_create_vector, Definition(dst), src0, src1);
          }
       } else {
          isel_err(&instr->instr, "Unimplemented NIR instr bit size");
