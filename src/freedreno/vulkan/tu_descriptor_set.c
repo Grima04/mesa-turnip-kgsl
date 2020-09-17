@@ -342,7 +342,6 @@ tu_CreatePipelineLayout(VkDevice _device,
 {
    TU_FROM_HANDLE(tu_device, device, _device);
    struct tu_pipeline_layout *layout;
-   struct mesa_sha1 ctx;
 
    assert(pCreateInfo->sType ==
           VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO);
@@ -357,24 +356,12 @@ tu_CreatePipelineLayout(VkDevice _device,
 
    unsigned dynamic_offset_count = 0;
 
-   _mesa_sha1_init(&ctx);
    for (uint32_t set = 0; set < pCreateInfo->setLayoutCount; set++) {
       TU_FROM_HANDLE(tu_descriptor_set_layout, set_layout,
                      pCreateInfo->pSetLayouts[set]);
       layout->set[set].layout = set_layout;
       layout->set[set].dynamic_offset_start = dynamic_offset_count;
       dynamic_offset_count += set_layout->dynamic_offset_count;
-
-      for (uint32_t b = 0; b < set_layout->binding_count; b++) {
-         if (set_layout->binding[b].immutable_samplers_offset)
-            _mesa_sha1_update(
-               &ctx,
-               tu_immutable_samplers(set_layout, set_layout->binding + b),
-               set_layout->binding[b].array_size * 4 * sizeof(uint32_t));
-      }
-      _mesa_sha1_update(
-         &ctx, set_layout->binding,
-         sizeof(set_layout->binding[0]) * set_layout->binding_count);
    }
 
    layout->dynamic_offset_count = dynamic_offset_count;
@@ -387,9 +374,6 @@ tu_CreatePipelineLayout(VkDevice _device,
    }
 
    layout->push_constant_size = align(layout->push_constant_size, 16);
-   _mesa_sha1_update(&ctx, &layout->push_constant_size,
-                     sizeof(layout->push_constant_size));
-   _mesa_sha1_final(&ctx, layout->sha1);
    *pPipelineLayout = tu_pipeline_layout_to_handle(layout);
 
    return VK_SUCCESS;
