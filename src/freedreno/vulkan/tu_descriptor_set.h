@@ -108,7 +108,7 @@ struct tu_pipeline_layout
    uint32_t dynamic_offset_count;
 };
 
-static inline const uint32_t *
+static inline const struct tu_sampler *
 tu_immutable_samplers(const struct tu_descriptor_set_layout *set,
                       const struct tu_descriptor_set_binding_layout *binding)
 {

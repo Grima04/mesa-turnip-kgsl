@@ -794,6 +794,13 @@ write_sampler_descriptor(uint32_t *dst, const VkDescriptorImageInfo *image_info)
    memcpy(dst, sampler->descriptor, sizeof(sampler->descriptor));
 }
 
+/* note: this is used with immutable samplers in push descriptors */
+static void
+write_sampler_push(uint32_t *dst, const struct tu_sampler *sampler)
+{
+   memcpy(dst, sampler->descriptor, sizeof(sampler->descriptor));
+}
+
 void
 tu_update_descriptor_sets(VkDescriptorSet dstSetOverride,
                           uint32_t descriptorWriteCount,
@@ -804,11 +811,15 @@ tu_update_descriptor_sets(VkDescriptorSet dstSetOverride,
    uint32_t i, j;
    for (i = 0; i < descriptorWriteCount; i++) {
       const VkWriteDescriptorSet *writeset = &pDescriptorWrites[i];
-      TU_FROM_HANDLE(tu_descriptor_set, set,
-                       dstSetOverride ? dstSetOverride : writeset->dstSet);
+      TU_FROM_HANDLE(tu_descriptor_set, set, dstSetOverride ?: writeset->dstSet);
       const struct tu_descriptor_set_binding_layout *binding_layout =
          set->layout->binding + writeset->dstBinding;
       uint32_t *ptr = set->mapped_ptr;
+      /* for immutable samplers with push descriptors: */
+      const bool copy_immutable_samplers =
+         dstSetOverride && binding_layout->immutable_samplers_offset;
+      const struct tu_sampler *samplers =
+         tu_immutable_samplers(set->layout, binding_layout);
 
       ptr += binding_layout->offset / 4;
 
@@ -850,9 +861,15 @@ tu_update_descriptor_sets(VkDescriptorSet dstSetOverride,
                                                     writeset->descriptorType,
                                                     writeset->pImageInfo + j,
                                                     !binding_layout->immutable_samplers_offset);
+
+            if (copy_immutable_samplers)
+               write_sampler_push(ptr + A6XX_TEX_CONST_DWORDS, &samplers[writeset->dstArrayElement + j]);
             break;
          case VK_DESCRIPTOR_TYPE_SAMPLER:
-            write_sampler_descriptor(ptr, writeset->pImageInfo + j);
+            if (!binding_layout->immutable_samplers_offset)
+               write_sampler_descriptor(ptr, writeset->pImageInfo + j);
+            else if (copy_immutable_samplers)
+               write_sampler_push(ptr, &samplers[writeset->dstArrayElement + j]);
             break;
          case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
             /* nothing in descriptor set - framebuffer state is used instead */
@@ -952,6 +969,8 @@ tu_CreateDescriptorUpdateTemplate(
        */
       assert(pCreateInfo->set < MAX_SETS);
       set_layout = pipeline_layout->set[pCreateInfo->set].layout;
+
+      templ->bind_point = pCreateInfo->pipelineBindPoint;
    }
 
    for (uint32_t i = 0; i < entry_count; i++) {
@@ -960,6 +979,7 @@ tu_CreateDescriptorUpdateTemplate(
       const struct tu_descriptor_set_binding_layout *binding_layout =
          set_layout->binding + entry->dstBinding;
       uint32_t dst_offset, dst_stride;
+      const struct tu_sampler *immutable_samplers = NULL;
 
       /* dst_offset is an offset into dynamic_descriptors when the descriptor 
        * is dynamic, and an offset into mapped_ptr otherwise.
@@ -971,6 +991,14 @@ tu_CreateDescriptorUpdateTemplate(
             entry->dstArrayElement) * A6XX_TEX_CONST_DWORDS;
          dst_stride = A6XX_TEX_CONST_DWORDS;
          break;
+      case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
+      case VK_DESCRIPTOR_TYPE_SAMPLER:
+         if (pCreateInfo->templateType == VK_DESCRIPTOR_UPDATE_TEMPLATE_TYPE_PUSH_DESCRIPTORS_KHR &&
+             binding_layout->immutable_samplers_offset) {
+            immutable_samplers =
+               tu_immutable_samplers(set_layout, binding_layout) + entry->dstArrayElement;
+         }
+         /* fallthrough */
       default:
          dst_offset = binding_layout->offset / 4;
          dst_offset += (binding_layout->size * entry->dstArrayElement) / 4;
@@ -985,6 +1013,7 @@ tu_CreateDescriptorUpdateTemplate(
          .dst_offset = dst_offset,
          .dst_stride = dst_stride,
          .has_sampler = !binding_layout->immutable_samplers_offset,
+         .immutable_samplers = immutable_samplers,
       };
    }
 
@@ -1022,6 +1051,7 @@ tu_update_descriptor_set_with_template(
    for (uint32_t i = 0; i < templ->entry_count; i++) {
       uint32_t *ptr = set->mapped_ptr;
       const void *src = ((const char *) pData) + templ->entry[i].src_offset;
+      const struct tu_sampler *samplers = templ->entry[i].immutable_samplers;
 
       ptr += templ->entry[i].dst_offset;
       unsigned dst_offset = templ->entry[i].dst_offset;
@@ -1057,9 +1087,14 @@ tu_update_descriptor_set_with_template(
                                                     templ->entry[i].descriptor_type,
                                                     src,
                                                     templ->entry[i].has_sampler);
+            if (samplers)
+               write_sampler_push(ptr + A6XX_TEX_CONST_DWORDS, &samplers[j]);
             break;
          case VK_DESCRIPTOR_TYPE_SAMPLER:
-            write_sampler_descriptor(ptr, src);
+            if (templ->entry[i].has_sampler)
+               write_sampler_descriptor(ptr, src);
+            else if (samplers)
+               write_sampler_push(ptr, &samplers[j]);
             break;
          case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
             /* nothing in descriptor set - framebuffer state is used instead */

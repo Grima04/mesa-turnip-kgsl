@@ -1771,6 +1771,76 @@ tu_CmdBindDescriptorSets(VkCommandBuffer commandBuffer,
    }
 }
 
+void tu_CmdPushDescriptorSetKHR(VkCommandBuffer commandBuffer,
+                                VkPipelineBindPoint pipelineBindPoint,
+                                VkPipelineLayout _layout,
+                                uint32_t _set,
+                                uint32_t descriptorWriteCount,
+                                const VkWriteDescriptorSet *pDescriptorWrites)
+{
+   TU_FROM_HANDLE(tu_cmd_buffer, cmd, commandBuffer);
+   TU_FROM_HANDLE(tu_pipeline_layout, pipe_layout, _layout);
+   struct tu_descriptor_set_layout *layout = pipe_layout->set[_set].layout;
+   struct tu_descriptor_set *set =
+      &tu_get_descriptors_state(cmd, pipelineBindPoint)->push_set;
+
+   struct tu_cs_memory set_mem;
+   VkResult result = tu_cs_alloc(&cmd->sub_cs,
+                                 DIV_ROUND_UP(layout->size, A6XX_TEX_CONST_DWORDS * 4),
+                                 A6XX_TEX_CONST_DWORDS, &set_mem);
+   assert(result == VK_SUCCESS);
+
+   /* preserve previous content if the layout is the same: */
+   if (set->layout == layout)
+      memcpy(set_mem.map, set->mapped_ptr, MIN2(set->size, layout->size));
+
+   set->layout = layout;
+   set->mapped_ptr = set_mem.map;
+   set->va = set_mem.iova;
+
+   tu_update_descriptor_sets(tu_descriptor_set_to_handle(set),
+                             descriptorWriteCount, pDescriptorWrites, 0, NULL);
+
+   tu_CmdBindDescriptorSets(commandBuffer, pipelineBindPoint, _layout, _set,
+                            1, (VkDescriptorSet[]) { tu_descriptor_set_to_handle(set) },
+                            0, NULL);
+}
+
+void tu_CmdPushDescriptorSetWithTemplateKHR(
+   VkCommandBuffer commandBuffer,
+   VkDescriptorUpdateTemplate descriptorUpdateTemplate,
+   VkPipelineLayout _layout,
+   uint32_t _set,
+   const void* pData)
+{
+   TU_FROM_HANDLE(tu_cmd_buffer, cmd, commandBuffer);
+   TU_FROM_HANDLE(tu_pipeline_layout, pipe_layout, _layout);
+   TU_FROM_HANDLE(tu_descriptor_update_template, templ, descriptorUpdateTemplate);
+   struct tu_descriptor_set_layout *layout = pipe_layout->set[_set].layout;
+   struct tu_descriptor_set *set =
+      &tu_get_descriptors_state(cmd, templ->bind_point)->push_set;
+
+   struct tu_cs_memory set_mem;
+   VkResult result = tu_cs_alloc(&cmd->sub_cs,
+                                 DIV_ROUND_UP(layout->size, A6XX_TEX_CONST_DWORDS * 4),
+                                 A6XX_TEX_CONST_DWORDS, &set_mem);
+   assert(result == VK_SUCCESS);
+
+   /* preserve previous content if the layout is the same: */
+   if (set->layout == layout)
+      memcpy(set_mem.map, set->mapped_ptr, MIN2(set->size, layout->size));
+
+   set->layout = layout;
+   set->mapped_ptr = set_mem.map;
+   set->va = set_mem.iova;
+
+   tu_update_descriptor_set_with_template(set, descriptorUpdateTemplate, pData);
+
+   tu_CmdBindDescriptorSets(commandBuffer, templ->bind_point, _layout, _set,
+                            1, (VkDescriptorSet[]) { tu_descriptor_set_to_handle(set) },
+                            0, NULL);
+}
+
 void tu_CmdBindTransformFeedbackBuffersEXT(VkCommandBuffer commandBuffer,
                                            uint32_t firstBinding,
                                            uint32_t bindingCount,

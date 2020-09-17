@@ -588,12 +588,6 @@ struct tu_descriptor_set
    uint32_t *dynamic_descriptors;
 };
 
-struct tu_push_descriptor_set
-{
-   struct tu_descriptor_set set;
-   uint32_t capacity;
-};
-
 struct tu_descriptor_pool_entry
 {
    uint32_t offset;
@@ -642,7 +636,7 @@ struct tu_descriptor_update_template_entry
    size_t src_stride;
 
    /* For push descriptors */
-   const uint32_t *immutable_samplers;
+   const struct tu_sampler *immutable_samplers;
 };
 
 struct tu_descriptor_update_template
@@ -650,6 +644,7 @@ struct tu_descriptor_update_template
    struct vk_object_base base;
 
    uint32_t entry_count;
+   VkPipelineBindPoint bind_point;
    struct tu_descriptor_update_template_entry entry[0];
 };
 
@@ -681,6 +676,7 @@ tu_get_perftest_option_name(int id);
 struct tu_descriptor_state
 {
    struct tu_descriptor_set *sets[MAX_SETS];
+   struct tu_descriptor_set push_set;
    uint32_t dynamic_descriptors[MAX_DYNAMIC_BUFFERS * A6XX_TEX_CONST_DWORDS];
 };
 
@@ -1513,12 +1509,6 @@ struct tu_semaphore
    struct tu_semaphore_part permanent;
    struct tu_semaphore_part temporary;
 };
-
-void
-tu_set_descriptor_set(struct tu_cmd_buffer *cmd_buffer,
-                      VkPipelineBindPoint bind_point,
-                      struct tu_descriptor_set *set,
-                      unsigned idx);
 
 void
 tu_update_descriptor_sets(VkDescriptorSet overrideSet,
