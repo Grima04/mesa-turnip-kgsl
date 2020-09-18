@@ -7651,9 +7651,11 @@ void visit_intrinsic(isel_context *ctx, nir_intrinsic_instr *instr)
    case nir_intrinsic_vulkan_resource_index:
       visit_load_resource(ctx, instr);
       break;
+   case nir_intrinsic_terminate:
    case nir_intrinsic_discard:
       visit_discard(ctx, instr);
       break;
+   case nir_intrinsic_terminate_if:
    case nir_intrinsic_discard_if:
       visit_discard_if(ctx, instr);
       break;
