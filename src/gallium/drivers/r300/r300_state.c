@@ -620,10 +620,10 @@ static void r300_set_blend_color(struct pipe_context* pipe,
         switch (cb ? cb->format : 0) {
         case PIPE_FORMAT_R16G16B16A16_FLOAT:
         case PIPE_FORMAT_R16G16B16X16_FLOAT:
-            OUT_CB(util_float_to_half(c.color[2]) |
-                   (util_float_to_half(c.color[3]) << 16));
-            OUT_CB(util_float_to_half(c.color[0]) |
-                   (util_float_to_half(c.color[1]) << 16));
+            OUT_CB(_mesa_float_to_half(c.color[2]) |
+                   (_mesa_float_to_half(c.color[3]) << 16));
+            OUT_CB(_mesa_float_to_half(c.color[0]) |
+                   (_mesa_float_to_half(c.color[1]) << 16));
             break;
 
         default:
@@ -753,7 +753,7 @@ static void* r300_create_dsa_state(struct pipe_context* pipe,
             R300_FG_ALPHA_FUNC_ENABLE;
 
         dsa->alpha_function |= float_to_ubyte(state->alpha.ref_value);
-        alpha_value_fp16 = util_float_to_half(state->alpha.ref_value);
+        alpha_value_fp16 = _mesa_float_to_half(state->alpha.ref_value);
     }
 
     BEGIN_CB(&dsa->cb_begin, 8);

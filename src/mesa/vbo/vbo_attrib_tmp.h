@@ -61,28 +61,28 @@ USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 /* half */
-#define ATTR1HV( A, V ) ATTRF( A, 1, util_half_to_float((uint16_t)(V)[0]), \
+#define ATTR1HV( A, V ) ATTRF( A, 1, _mesa_half_to_float((uint16_t)(V)[0]), \
                                0, 0, 1 )
-#define ATTR2HV( A, V ) ATTRF( A, 2, util_half_to_float((uint16_t)(V)[0]), \
-                               util_half_to_float((uint16_t)(V)[1]), 0, 1 )
-#define ATTR3HV( A, V ) ATTRF( A, 3, util_half_to_float((uint16_t)(V)[0]), \
-                               util_half_to_float((uint16_t)(V)[1]), \
-                               util_half_to_float((uint16_t)(V)[2]), 1 )
-#define ATTR4HV( A, V ) ATTRF( A, 4, util_half_to_float((uint16_t)(V)[0]), \
-                               util_half_to_float((uint16_t)(V)[1]), \
-                               util_half_to_float((uint16_t)(V)[2]), \
-                               util_half_to_float((uint16_t)(V)[3]) )
+#define ATTR2HV( A, V ) ATTRF( A, 2, _mesa_half_to_float((uint16_t)(V)[0]), \
+                               _mesa_half_to_float((uint16_t)(V)[1]), 0, 1 )
+#define ATTR3HV( A, V ) ATTRF( A, 3, _mesa_half_to_float((uint16_t)(V)[0]), \
+                               _mesa_half_to_float((uint16_t)(V)[1]), \
+                               _mesa_half_to_float((uint16_t)(V)[2]), 1 )
+#define ATTR4HV( A, V ) ATTRF( A, 4, _mesa_half_to_float((uint16_t)(V)[0]), \
+                               _mesa_half_to_float((uint16_t)(V)[1]), \
+                               _mesa_half_to_float((uint16_t)(V)[2]), \
+                               _mesa_half_to_float((uint16_t)(V)[3]) )
 
-#define ATTR1H( A, X )          ATTRF( A, 1, util_half_to_float(X), 0, 0, 1 )
-#define ATTR2H( A, X, Y )       ATTRF( A, 2, util_half_to_float(X), \
-                                       util_half_to_float(Y), 0, 1 )
-#define ATTR3H( A, X, Y, Z )    ATTRF( A, 3, util_half_to_float(X), \
-                                       util_half_to_float(Y), \
-                                       util_half_to_float(Z), 1 )
-#define ATTR4H( A, X, Y, Z, W ) ATTRF( A, 4, util_half_to_float(X), \
-                                       util_half_to_float(Y), \
-                                       util_half_to_float(Z), \
-                                       util_half_to_float(W) )
+#define ATTR1H( A, X )          ATTRF( A, 1, _mesa_half_to_float(X), 0, 0, 1 )
+#define ATTR2H( A, X, Y )       ATTRF( A, 2, _mesa_half_to_float(X), \
+                                       _mesa_half_to_float(Y), 0, 1 )
+#define ATTR3H( A, X, Y, Z )    ATTRF( A, 3, _mesa_half_to_float(X), \
+                                       _mesa_half_to_float(Y), \
+                                       _mesa_half_to_float(Z), 1 )
+#define ATTR4H( A, X, Y, Z, W ) ATTRF( A, 4, _mesa_half_to_float(X), \
+                                       _mesa_half_to_float(Y), \
+                                       _mesa_half_to_float(Z), \
+                                       _mesa_half_to_float(W) )
 
 
 /* int */

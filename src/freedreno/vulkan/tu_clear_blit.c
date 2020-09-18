@@ -122,7 +122,7 @@ r2d_clear_value(struct tu_cs *cs, VkFormat format, const VkClearValue *val)
             else
                clear_value[i] = tu_pack_float32_for_unorm(linear, 8);
          } else if (ifmt == R2D_FLOAT16) {
-            clear_value[i] = util_float_to_half(val->color.float32[i]);
+            clear_value[i] = _mesa_float_to_half(val->color.float32[i]);
          } else {
             assert(ifmt == R2D_FLOAT32 || ifmt == R2D_INT32 ||
                    ifmt == R2D_INT16 || ifmt == R2D_INT8);

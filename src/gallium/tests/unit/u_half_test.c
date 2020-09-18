@@ -18,8 +18,8 @@ test(void)
       union fi f;
       uint16_t rh;
 
-      f.f = util_half_to_float(h);
-      rh = util_float_to_half(f.f);
+      f.f = _mesa_half_to_float(h);
+      rh = _mesa_float_to_half(f.f);
 
       if (h != rh && !(util_is_half_nan(h) && util_is_half_nan(rh))) {
          printf("Roundtrip failed: %x -> %x = %f -> %x\n", h, f.ui, f.f, rh);
