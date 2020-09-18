@@ -973,7 +973,7 @@ amdgpu_cs_create(struct radeon_winsys_ctx *rwctx,
 
    struct amdgpu_cs_fence_info fence_info;
    fence_info.handle = cs->ctx->user_fence_bo;
-   fence_info.offset = cs->ring_type;
+   fence_info.offset = cs->ring_type * 4;
    amdgpu_cs_chunk_fence_info_to_data(&fence_info, (void*)&cs->fence_chunk);
 
    cs->main.ib_type = IB_MAIN;
