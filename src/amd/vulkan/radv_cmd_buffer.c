@@ -3946,22 +3946,27 @@ void radv_CmdBindDescriptorSets(
 			assert(dyn_idx < dynamicOffsetCount);
 
 			struct radv_descriptor_range *range = set->dynamic_descriptors + j;
-			uint64_t va = range->va + pDynamicOffsets[dyn_idx];
-			dst[0] = va;
-			dst[1] = S_008F04_BASE_ADDRESS_HI(va >> 32);
-			dst[2] = no_dynamic_bounds ? 0xffffffffu : range->size;
-			dst[3] = S_008F0C_DST_SEL_X(V_008F0C_SQ_SEL_X) |
-			         S_008F0C_DST_SEL_Y(V_008F0C_SQ_SEL_Y) |
-			         S_008F0C_DST_SEL_Z(V_008F0C_SQ_SEL_Z) |
-			         S_008F0C_DST_SEL_W(V_008F0C_SQ_SEL_W);
 
-			if (cmd_buffer->device->physical_device->rad_info.chip_class >= GFX10) {
-				dst[3] |= S_008F0C_FORMAT(V_008F0C_IMG_FORMAT_32_FLOAT) |
-					  S_008F0C_OOB_SELECT(V_008F0C_OOB_SELECT_RAW) |
-					  S_008F0C_RESOURCE_LEVEL(1);
+			if (!range->va) {
+				memset(dst, 0, 4 * 4);
 			} else {
-				dst[3] |= S_008F0C_NUM_FORMAT(V_008F0C_BUF_NUM_FORMAT_FLOAT) |
-					  S_008F0C_DATA_FORMAT(V_008F0C_BUF_DATA_FORMAT_32);
+				uint64_t va = range->va + pDynamicOffsets[dyn_idx];
+				dst[0] = va;
+				dst[1] = S_008F04_BASE_ADDRESS_HI(va >> 32);
+				dst[2] = no_dynamic_bounds ? 0xffffffffu : range->size;
+				dst[3] = S_008F0C_DST_SEL_X(V_008F0C_SQ_SEL_X) |
+					 S_008F0C_DST_SEL_Y(V_008F0C_SQ_SEL_Y) |
+					 S_008F0C_DST_SEL_Z(V_008F0C_SQ_SEL_Z) |
+					 S_008F0C_DST_SEL_W(V_008F0C_SQ_SEL_W);
+
+				if (cmd_buffer->device->physical_device->rad_info.chip_class >= GFX10) {
+					dst[3] |= S_008F0C_FORMAT(V_008F0C_IMG_FORMAT_32_FLOAT) |
+						  S_008F0C_OOB_SELECT(V_008F0C_OOB_SELECT_RAW) |
+						  S_008F0C_RESOURCE_LEVEL(1);
+				} else {
+					dst[3] |= S_008F0C_NUM_FORMAT(V_008F0C_BUF_NUM_FORMAT_FLOAT) |
+						  S_008F0C_DATA_FORMAT(V_008F0C_BUF_DATA_FORMAT_32);
+				}
 			}
 
 			cmd_buffer->push_constant_stages |=
