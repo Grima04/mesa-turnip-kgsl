@@ -1111,6 +1111,19 @@ else
   sse41_args = []
 endif
 
+if cc.has_argument('-mf16c') and cpp.has_argument('-mf16c')
+  pre_args += '-DUSE_F16C'
+  c_args += '-mf16c'
+  cpp_args += '-mf16c'
+
+  # GCC on x86 (not x86_64) with -msse* assumes a 16 byte aligned stack, but
+  # that's not guaranteed (not sure if this also applies to -mf16c)
+  if host_machine.cpu_family() == 'x86'
+    c_args += '-mstackrealign'
+    cpp_args += '-mstackrealign'
+  endif
+endif
+
 # Check for GCC style atomics
 dep_atomic = null_dep
 
