@@ -2608,18 +2608,17 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
       }
       break;
    }
-   case nir_op_pack_half_2x16: {
-      Temp src = get_alu_src(ctx, instr->src[0], 2);
-
+   case nir_op_pack_half_2x16_split: {
       if (dst.regClass() == v1) {
-         Temp src0 = bld.tmp(v1);
-         Temp src1 = bld.tmp(v1);
-         bld.pseudo(aco_opcode::p_split_vector, Definition(src0), Definition(src1), src);
-         if (!ctx->block->fp_mode.care_about_round16_64 || ctx->block->fp_mode.round16_64 == fp_round_tz) {
-            bld.vop3(aco_opcode::v_cvt_pkrtz_f16_f32, Definition(dst), src0, src1);
+         nir_const_value* val = nir_src_as_const_value(instr->src[1].src);
+         if (val && val->u32 == 0 && ctx->program->chip_class <= GFX9) {
+            /* upper bits zero on GFX6-GFX9 */
+            bld.vop1(aco_opcode::v_cvt_f16_f32, Definition(dst), get_alu_src(ctx, instr->src[0]));
+         } else if (!ctx->block->fp_mode.care_about_round16_64 || ctx->block->fp_mode.round16_64 == fp_round_tz) {
+            emit_vop3a_instruction(ctx, instr, aco_opcode::v_cvt_pkrtz_f16_f32, dst);
          } else {
-            src0 = bld.vop1(aco_opcode::v_cvt_f16_f32, bld.def(v2b), src0);
-            src1 = bld.vop1(aco_opcode::v_cvt_f16_f32, bld.def(v2b), src1);
+            Temp src0 = bld.vop1(aco_opcode::v_cvt_f16_f32, bld.def(v2b), get_alu_src(ctx, instr->src[0]));
+            Temp src1 = bld.vop1(aco_opcode::v_cvt_f16_f32, bld.def(v2b), get_alu_src(ctx, instr->src[1]));
             bld.pseudo(aco_opcode::p_create_vector, Definition(dst), src0, src1);
          }
       } else {
