@@ -28,7 +28,7 @@
 #include "tu_private.h"
 
 #include <fcntl.h>
-#include <libsync.h>
+#include <poll.h>
 #include <stdbool.h>
 #include <string.h>
 #include <sys/sysinfo.h>

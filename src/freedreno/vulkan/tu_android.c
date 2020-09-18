@@ -37,6 +37,7 @@
 
 #include "drm-uapi/drm_fourcc.h"
 
+#include "util/libsync.h"
 #include "util/os_file.h"
 
 static int
