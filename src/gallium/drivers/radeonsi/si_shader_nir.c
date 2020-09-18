@@ -137,10 +137,6 @@ static void scan_io_usage(struct si_shader_info *info, nir_intrinsic_instr *intr
          if (is_output_load) {
             /* Output loads have only a few things that we need to track. */
             info->output_readmask[loc] |= mask;
-
-            if (info->stage == MESA_SHADER_FRAGMENT &&
-                nir_intrinsic_io_semantics(intr).fb_fetch_output)
-               info->uses_fbfetch = true;
          } else if (mask) {
             /* Output stores. */
             if (info->stage == MESA_SHADER_GEOMETRY) {
