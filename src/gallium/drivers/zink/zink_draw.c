@@ -717,13 +717,15 @@ zink_draw_vbo(struct pipe_context *pctx,
    if (ctx->num_so_targets) {
       for (unsigned i = 0; i < ctx->num_so_targets; i++) {
          struct zink_so_target *t = zink_so_target(ctx->so_targets[i]);
-         if (t && t->counter_buffer_valid) {
+         counter_buffers[i] = VK_NULL_HANDLE;
+         if (t) {
             struct zink_resource *res = zink_resource(t->counter_buffer);
             zink_batch_reference_resource_rw(batch, res, true);
-            counter_buffers[i] = res->buffer;
-            counter_buffer_offsets[i] = t->counter_buffer_offset;
-         } else
-            counter_buffers[i] = VK_NULL_HANDLE;
+            if (t->counter_buffer_valid) {
+               counter_buffers[i] = res->buffer;
+               counter_buffer_offsets[i] = t->counter_buffer_offset;
+            }
+         }
       }
       screen->vk_CmdBeginTransformFeedbackEXT(batch->cmdbuf, 0, ctx->num_so_targets, counter_buffers, counter_buffer_offsets);
    }
