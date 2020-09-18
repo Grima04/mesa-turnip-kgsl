@@ -1424,6 +1424,12 @@ void radv_GetPhysicalDeviceFeatures2(
 			features->formatA4B4G4R4 = true;
 			break;
 		}
+		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_TERMINATE_INVOCATION_FEATURES_KHR: {
+			VkPhysicalDeviceShaderTerminateInvocationFeaturesKHR *features =
+				(VkPhysicalDeviceShaderTerminateInvocationFeaturesKHR *)ext;
+			features->shaderTerminateInvocation = true;
+			break;
+		}
 		default:
 			break;
 		}
