@@ -1186,6 +1186,7 @@ optimizations.extend([
 
    (('unpack_half_2x16_split_x', ('extract_u16', a, 0)), ('unpack_half_2x16_split_x', a)),
    (('unpack_half_2x16_split_x', ('extract_u16', a, 1)), ('unpack_half_2x16_split_y', a)),
+   (('unpack_half_2x16_split_x', ('ushr', a, 16)), ('unpack_half_2x16_split_y', a)),
    (('unpack_32_2x16_split_x', ('extract_u16', a, 0)), ('unpack_32_2x16_split_x', a)),
    (('unpack_32_2x16_split_x', ('extract_u16', a, 1)), ('unpack_32_2x16_split_y', a)),
 
