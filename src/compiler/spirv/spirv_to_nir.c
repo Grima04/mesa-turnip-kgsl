@@ -4393,6 +4393,10 @@ vtn_handle_preamble_instruction(struct vtn_builder *b, SpvOp opcode,
          spv_check_supported(float64_atomic_add, cap);
          break;
 
+      case SpvCapabilitySubgroupShuffleINTEL:
+         spv_check_supported(intel_subgroup_shuffle, cap);
+         break;
+
       default:
          vtn_fail("Unhandled capability: %s (%u)",
                   spirv_capability_to_string(cap), cap);
@@ -5327,6 +5331,10 @@ vtn_handle_body_instruction(struct vtn_builder *b, SpvOp opcode,
    case SpvOpGroupFMaxNonUniformAMD:
    case SpvOpGroupUMaxNonUniformAMD:
    case SpvOpGroupSMaxNonUniformAMD:
+   case SpvOpSubgroupShuffleINTEL:
+   case SpvOpSubgroupShuffleDownINTEL:
+   case SpvOpSubgroupShuffleUpINTEL:
+   case SpvOpSubgroupShuffleXorINTEL:
       vtn_handle_subgroup(b, opcode, w, count);
       break;
 

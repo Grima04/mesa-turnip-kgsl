@@ -93,6 +93,8 @@ struct spirv_supported_capabilities {
    bool amd_image_read_write_lod;
    bool amd_shader_explicit_vertex_parameter;
    bool amd_image_gather_bias_lod;
+
+   bool intel_subgroup_shuffle;
 };
 
 typedef struct shader_info {
