@@ -698,7 +698,7 @@ bi_pack_add(bi_clause *clause, bi_bundle bundle, bi_registers *regs, gl_shader_s
                         return pan_pack_add_icmp_i32(clause, bundle.add, regs);
                 else if ((src0_u16 || src0_s16) && typeless_cond)
                         return pan_pack_add_icmp_v2i16(clause, bundle.add, regs);
-                else if ((src0_u8 || src0_u8) && typeless_cond)
+                else if ((src0_u8 || src0_s8) && typeless_cond)
                         return pan_pack_add_icmp_v4i8(clause, bundle.add, regs);
                 else if (src0_u32)
                         return pan_pack_add_icmp_u32(clause, bundle.add, regs);
