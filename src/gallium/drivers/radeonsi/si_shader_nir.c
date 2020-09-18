@@ -352,8 +352,7 @@ void si_nir_scan_shader(const struct nir_shader *nir, struct si_shader_info *inf
    info->uses_subgroup_info = nir->info.system_values_read & BITFIELD64_BIT(SYSTEM_VALUE_LOCAL_INVOCATION_INDEX) ||
                               nir->info.system_values_read & BITFIELD64_BIT(SYSTEM_VALUE_SUBGROUP_ID) ||
                               nir->info.system_values_read & BITFIELD64_BIT(SYSTEM_VALUE_NUM_SUBGROUPS);
-   info->uses_variable_block_size = info->base.cs.local_size_variable &&
-                                    nir->info.system_values_read & BITFIELD64_BIT(SYSTEM_VALUE_LOCAL_GROUP_SIZE);
+   info->uses_variable_block_size = nir->info.system_values_read & BITFIELD64_BIT(SYSTEM_VALUE_LOCAL_GROUP_SIZE);
    info->uses_drawid = nir->info.system_values_read & BITFIELD64_BIT(SYSTEM_VALUE_DRAW_ID);
    info->uses_primid = nir->info.system_values_read & BITFIELD64_BIT(SYSTEM_VALUE_PRIMITIVE_ID) ||
                        nir->info.inputs_read & VARYING_BIT_PRIMITIVE_ID;
