@@ -691,6 +691,7 @@ zink_program_allocate_desc_set(struct zink_context *ctx,
    unsigned descs_used = pg->descs_used;
    if (descs_used + pg->num_descriptors > ZINK_DEFAULT_MAX_DESCS) {
       batch = zink_flush_batch(ctx, batch);
+      zink_batch_reference_program(batch, pg);
       return zink_program_allocate_desc_set(ctx, batch, pg);
    }
 

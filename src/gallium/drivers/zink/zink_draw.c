@@ -228,12 +228,6 @@ get_descriptor_set(struct zink_context *ctx, bool is_compute)
 {
    struct zink_program *pg = is_compute ? (struct zink_program *)ctx->curr_compute : (struct zink_program *)ctx->curr_program;
    struct zink_batch *batch = is_compute ? &ctx->compute_batch : zink_curr_batch(ctx);
-   unsigned num_descriptors = pg->num_descriptors;
-
-   /* if we're about to exceed our limit, flush until we're back under */
-   while (batch->descs_used + num_descriptors >= ZINK_BATCH_DESC_SIZE) {
-      batch = zink_flush_batch(ctx, batch);
-   }
    zink_batch_reference_program(batch, pg);
    return zink_program_allocate_desc_set(ctx, batch, pg);
 }
