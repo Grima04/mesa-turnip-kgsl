@@ -1622,7 +1622,7 @@ radv_emit_fb_color_state(struct radv_cmd_buffer *cmd_buffer,
 		cb_color_info &= C_028C70_DCC_ENABLE;
 	}
 
-	if (!radv_layout_can_fast_clear(image, layout, in_render_loop,
+	if (!radv_layout_can_fast_clear(cmd_buffer->device, image, layout, in_render_loop,
 	                                radv_image_queue_family_mask(image,
 	                                                             cmd_buffer->queue_family_index,
 	                                                             cmd_buffer->queue_family_index))) {
@@ -6159,7 +6159,7 @@ static void radv_init_color_image_metadata(struct radv_cmd_buffer *cmd_buffer,
 		 * layout).
 		 */
 		if (radv_image_has_fmask(image) &&
-		    radv_layout_can_fast_clear(image, dst_layout,
+		    radv_layout_can_fast_clear(cmd_buffer->device, image, dst_layout,
 					       dst_render_loop, dst_queue_mask)) {
 			value = 0xccccccccu;
 		}
@@ -6221,15 +6221,19 @@ static void radv_handle_color_image_transition(struct radv_cmd_buffer *cmd_buffe
 		} else if (radv_layout_dcc_compressed(cmd_buffer->device, image, src_layout, src_render_loop, src_queue_mask) &&
 		           !radv_layout_dcc_compressed(cmd_buffer->device, image, dst_layout, dst_render_loop, dst_queue_mask)) {
 			radv_decompress_dcc(cmd_buffer, image, range);
-		} else if (radv_layout_can_fast_clear(image, src_layout, src_render_loop, src_queue_mask) &&
-			   !radv_layout_can_fast_clear(image, dst_layout, dst_render_loop, dst_queue_mask)) {
+		} else if (radv_layout_can_fast_clear(cmd_buffer->device, image, src_layout,
+		                                      src_render_loop, src_queue_mask) &&
+		           !radv_layout_can_fast_clear(cmd_buffer->device, image, dst_layout,
+		                                       dst_render_loop, dst_queue_mask)) {
 			radv_fast_clear_flush_image_inplace(cmd_buffer, image, range);
 		}
 	} else if (radv_image_has_cmask(image) || radv_image_has_fmask(image)) {
 		bool fce_eliminate = false, fmask_expand = false;
 
-		if (radv_layout_can_fast_clear(image, src_layout, src_render_loop, src_queue_mask) &&
-		    !radv_layout_can_fast_clear(image, dst_layout, dst_render_loop, dst_queue_mask)) {
+		if (radv_layout_can_fast_clear(cmd_buffer->device, image, src_layout,
+		                               src_render_loop, src_queue_mask) &&
+		    !radv_layout_can_fast_clear(cmd_buffer->device, image, dst_layout,
+		                                dst_render_loop, dst_queue_mask)) {
 			fce_eliminate = true;
 		}
 

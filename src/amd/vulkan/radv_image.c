@@ -1779,11 +1779,16 @@ bool radv_layout_is_htile_compressed(const struct radv_image *image,
 	         queue_mask == (1u << RADV_QUEUE_GENERAL)));
 }
 
-bool radv_layout_can_fast_clear(const struct radv_image *image,
+bool radv_layout_can_fast_clear(const struct radv_device *device,
+				const struct radv_image *image,
 			        VkImageLayout layout,
 				bool in_render_loop,
 			        unsigned queue_mask)
 {
+	if (radv_image_has_dcc(image) &&
+	    !radv_layout_dcc_compressed(device, image, layout, in_render_loop, queue_mask))
+		return false;
+
 	return layout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL &&
 	       queue_mask == (1u << RADV_QUEUE_GENERAL);
 }

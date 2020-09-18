@@ -1927,7 +1927,8 @@ bool radv_layout_is_htile_compressed(const struct radv_image *image,
                                      bool in_render_loop,
                                      unsigned queue_mask);
 
-bool radv_layout_can_fast_clear(const struct radv_image *image,
+bool radv_layout_can_fast_clear(const struct radv_device *device,
+				const struct radv_image *image,
 			        VkImageLayout layout,
 			        bool in_render_loop,
 			        unsigned queue_mask);

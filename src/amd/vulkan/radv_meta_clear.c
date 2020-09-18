@@ -1630,7 +1630,7 @@ radv_can_fast_clear_color(struct radv_cmd_buffer *cmd_buffer,
 	if (!radv_image_view_can_fast_clear(cmd_buffer->device, iview))
 		return false;
 
-	if (!radv_layout_can_fast_clear(iview->image, image_layout, in_render_loop,
+	if (!radv_layout_can_fast_clear(cmd_buffer->device, iview->image, image_layout, in_render_loop,
 	                                radv_image_queue_family_mask(iview->image,
 	                                                             cmd_buffer->queue_family_index,
 	                                                             cmd_buffer->queue_family_index)))
