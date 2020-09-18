@@ -2615,7 +2615,7 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
          Temp src0 = bld.tmp(v1);
          Temp src1 = bld.tmp(v1);
          bld.pseudo(aco_opcode::p_split_vector, Definition(src0), Definition(src1), src);
-         if (0 && (!ctx->block->fp_mode.care_about_round32 || ctx->block->fp_mode.round32 == fp_round_tz)) {
+         if (!ctx->block->fp_mode.care_about_round16_64 || ctx->block->fp_mode.round16_64 == fp_round_tz) {
             bld.vop3(aco_opcode::v_cvt_pkrtz_f16_f32, Definition(dst), src0, src1);
          } else {
             src0 = bld.vop1(aco_opcode::v_cvt_f16_f32, bld.def(v2b), src0);
