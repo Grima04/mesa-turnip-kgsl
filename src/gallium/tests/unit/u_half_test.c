@@ -4,9 +4,10 @@
 
 #include "util/u_math.h"
 #include "util/u_half.h"
+#include "util/u_cpu_detect.h"
 
-int
-main(int argc, char **argv)
+static void
+test(void)
 {
    unsigned i;
    unsigned roundtrip_fails = 0;
@@ -28,9 +29,21 @@ main(int argc, char **argv)
 
    if(roundtrip_fails) {
       printf("Failure! %u/65536 half floats failed a conversion to float and back.\n", roundtrip_fails);
-      return 1;
-   } else {
-      printf("Success!\n");
-      return 0;
+      exit(1);
    }
+}
+
+int
+main(int argc, char **argv)
+{
+   assert(!util_cpu_caps.has_f16c);
+   test();
+
+   /* Test f16c. */
+   util_cpu_detect();
+   if (util_cpu_caps.has_f16c)
+      test();
+
+   printf("Success!\n");
+   return 0;
 }

@@ -54,7 +54,7 @@ typedef union { float f; int32_t i; uint32_t u; } fi_type;
  *     result in the same value as if the expression were executed on the GPU.
  */
 uint16_t
-_mesa_float_to_half(float val)
+_mesa_float_to_half_slow(float val)
 {
    const fi_type fi = {val};
    const int flt_m = fi.i & 0x7fffff;
@@ -129,9 +129,9 @@ _mesa_float_to_half(float val)
 }
 
 uint16_t
-_mesa_float_to_float16_rtz(float val)
+_mesa_float_to_float16_rtz_slow(float val)
 {
-    return _mesa_float_to_half_rtz(val);
+    return _mesa_float_to_half_rtz_slow(val);
 }
 
 /**
@@ -140,7 +140,7 @@ _mesa_float_to_float16_rtz(float val)
  * http://www.opengl.org/discussion_boards/ubb/Forum3/HTML/008786.html
  */
 float
-_mesa_half_to_float(uint16_t val)
+_mesa_half_to_float_slow(uint16_t val)
 {
    return util_half_to_float(val);
 }
