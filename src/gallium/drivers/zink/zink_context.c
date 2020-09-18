@@ -973,6 +973,17 @@ zink_flush_compute(struct zink_context *ctx)
    zink_start_batch(ctx, &ctx->compute_batch);
 }
 
+struct zink_batch *
+zink_flush_batch(struct zink_context *ctx, struct zink_batch *batch)
+{
+   if (batch && batch->batch_id >= ZINK_COMPUTE_BATCH_ID) {
+      zink_flush_compute(ctx);
+      return &ctx->compute_batch;
+   }
+   flush_batch(ctx);
+   return zink_curr_batch(ctx);
+}
+
 static void
 zink_set_framebuffer_state(struct pipe_context *pctx,
                            const struct pipe_framebuffer_state *state)
