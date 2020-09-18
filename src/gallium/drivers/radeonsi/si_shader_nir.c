@@ -101,10 +101,8 @@ static void scan_io_usage(struct si_shader_info *info, nir_intrinsic_instr *intr
 
    if (info->stage == MESA_SHADER_FRAGMENT && !is_input) {
       /* Never use FRAG_RESULT_COLOR directly. */
-      if (semantic == FRAG_RESULT_COLOR) {
+      if (semantic == FRAG_RESULT_COLOR)
          semantic = FRAG_RESULT_DATA0;
-         info->color0_writes_all_cbufs = true;
-      }
       semantic += nir_intrinsic_io_semantics(intr).dual_source_blend_index;
    }
 
@@ -185,7 +183,6 @@ static void scan_io_usage(struct si_shader_info *info, nir_intrinsic_instr *intr
                default:
                   if (semantic >= FRAG_RESULT_DATA0 && semantic <= FRAG_RESULT_DATA7) {
                      unsigned index = semantic - FRAG_RESULT_DATA0;
-                     info->colors_written |= 1 << (index + i);
 
                      if (nir_intrinsic_type(intr) == nir_type_float16)
                         info->output_color_types |= SI_TYPE_FLOAT16 << (index * 2);
@@ -409,6 +406,16 @@ void si_nir_scan_shader(const struct nir_shader *nir, struct si_shader_info *inf
    info->uses_persp_sample = nir->info.system_values_read & BITFIELD64_BIT(SYSTEM_VALUE_BARYCENTRIC_PERSP_SAMPLE);
    info->uses_persp_centroid = nir->info.system_values_read & BITFIELD64_BIT(SYSTEM_VALUE_BARYCENTRIC_PERSP_CENTROID);
    info->uses_persp_center = nir->info.system_values_read & BITFIELD64_BIT(SYSTEM_VALUE_BARYCENTRIC_PERSP_PIXEL);
+
+   if (nir->info.stage == MESA_SHADER_FRAGMENT) {
+      info->colors_written = nir->info.outputs_written >> FRAG_RESULT_DATA0;
+      if (nir->info.outputs_written & BITFIELD64_BIT(FRAG_RESULT_COLOR)) {
+         info->color0_writes_all_cbufs = true;
+         info->colors_written |= 0x1;
+      }
+      if (nir->info.fs.color_is_dual_source)
+         info->colors_written |= 0x2;
+   }
 
    memset(info->output_semantic_to_slot, -1, sizeof(info->output_semantic_to_slot));
 
