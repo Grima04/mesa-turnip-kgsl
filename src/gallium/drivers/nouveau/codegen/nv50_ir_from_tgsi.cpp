@@ -1056,7 +1056,7 @@ private:
 
 Source::Source(struct nv50_ir_prog_info *info, struct nv50_ir_prog_info_out *info_out,
                nv50_ir::Program *prog)
-:  info(info), info_out(info_out), prog(prog)
+:  insns(NULL), info(info), info_out(info_out), clipVertexOutput(-1), prog(prog)
 {
    tokens = (const struct tgsi_token *)info->bin.source;
 
@@ -1087,8 +1087,6 @@ bool Source::scanSource()
                                                   sizeof(insns[0]));
    if (!insns)
       return false;
-
-   clipVertexOutput = -1;
 
    textureViews.resize(scan.file_max[TGSI_FILE_SAMPLER_VIEW] + 1);
    //resources.resize(scan.file_max[TGSI_FILE_RESOURCE] + 1);
