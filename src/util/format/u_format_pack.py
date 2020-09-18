@@ -360,7 +360,7 @@ def conversion_expr(src_channel,
 
     # Promote half to float
     if src_type == FLOAT and src_size == 16:
-        value = 'util_half_to_float(%s)' % value
+        value = '_mesa_half_to_float(%s)' % value
         src_size = 32
 
     # Special case for float <-> ubytes for more accurate results

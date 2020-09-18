@@ -52,7 +52,7 @@ v3d_set_blend_color(struct pipe_context *pctx,
         v3d->blend_color.f = *blend_color;
         for (int i = 0; i < 4; i++) {
                 v3d->blend_color.hf[i] =
-                        util_float_to_half(blend_color->color[i]);
+                        _mesa_float_to_half(blend_color->color[i]);
         }
         v3d->dirty |= VC5_DIRTY_BLEND_COLOR;
 }
@@ -691,13 +691,13 @@ v3d_upload_sampler_state_variant(void *map,
                                 sampler.border_color_word_3 = border.ui[3];
                         } else {
                                 sampler.border_color_word_0 =
-                                        util_float_to_half(border.f[0]);
+                                        _mesa_float_to_half(border.f[0]);
                                 sampler.border_color_word_1 =
-                                        util_float_to_half(border.f[1]);
+                                        _mesa_float_to_half(border.f[1]);
                                 sampler.border_color_word_2 =
-                                        util_float_to_half(border.f[2]);
+                                        _mesa_float_to_half(border.f[2]);
                                 sampler.border_color_word_3 =
-                                        util_float_to_half(border.f[3]);
+                                        _mesa_float_to_half(border.f[3]);
                         }
                 }
         }

@@ -110,7 +110,7 @@ emit_##NAME(const void *attrib, void *ptr)		\
 
 #define TO_64_FLOAT(x)   ((double) x)
 #define TO_32_FLOAT(x)   (x)
-#define TO_16_FLOAT(x)   util_float_to_half(x)
+#define TO_16_FLOAT(x)   _mesa_float_to_half(x)
 
 #define TO_8_USCALED(x)  ((unsigned char) x)
 #define TO_16_USCALED(x) ((unsigned short) x)

@@ -898,7 +898,7 @@ lima_update_pp_uniform(struct lima_context *ctx)
       lima_ctx_buff_alloc(ctx, lima_ctx_buff_pp_uniform_array, 4);
 
    for (int i = 0; i < const_buff_size; i++)
-       fp16_const_buff[i] = util_float_to_half(const_buff[i]);
+       fp16_const_buff[i] = _mesa_float_to_half(const_buff[i]);
 
    *array = lima_ctx_buff_va(ctx, lima_ctx_buff_pp_uniform);
 

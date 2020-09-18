@@ -379,7 +379,7 @@ print_src(struct etna_inst_src *src, bool sep)
             printf("%d", src->imm_val);
             break;
          case 3: /* 16-bit */
-            printf("%f/%.5X", util_half_to_float(src->imm_val), src->imm_val);
+            printf("%f/%.5X", _mesa_half_to_float(src->imm_val), src->imm_val);
             break;
          }
       } else {

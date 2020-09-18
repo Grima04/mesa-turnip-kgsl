@@ -164,7 +164,7 @@ int main(int argc, char** argv)
       double_buffer[i] = rand_double();
 
    for (i = 0; i < buffer_size / sizeof(double); ++i)
-      half_buffer[i] = util_float_to_half((float) rand_double());
+      half_buffer[i] = _mesa_float_to_half((float) rand_double());
 
    for (i = 0; i < count; ++i)
       elts[i] = i;

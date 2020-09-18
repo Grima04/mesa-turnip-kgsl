@@ -182,11 +182,11 @@ nv30_validate_blend_colour(struct nv30_context *nv30)
       case PIPE_FORMAT_R16G16B16A16_FLOAT:
       case PIPE_FORMAT_R32G32B32A32_FLOAT:
          BEGIN_NV04(push, NV30_3D(BLEND_COLOR), 1);
-         PUSH_DATA (push, (util_float_to_half(rgba[0]) <<  0) |
-                          (util_float_to_half(rgba[1]) << 16));
+         PUSH_DATA (push, (_mesa_float_to_half(rgba[0]) <<  0) |
+                          (_mesa_float_to_half(rgba[1]) << 16));
          BEGIN_NV04(push, SUBC_3D(0x037c), 1);
-         PUSH_DATA (push, (util_float_to_half(rgba[2]) <<  0) |
-                          (util_float_to_half(rgba[3]) << 16));
+         PUSH_DATA (push, (_mesa_float_to_half(rgba[2]) <<  0) |
+                          (_mesa_float_to_half(rgba[3]) << 16));
          break;
       default:
          break;

@@ -3325,8 +3325,8 @@ exec_pk2h(struct tgsi_exec_machine *mach,
    fetch_source(mach, &arg[0], &inst->Src[0], TGSI_CHAN_X, TGSI_EXEC_DATA_FLOAT);
    fetch_source(mach, &arg[1], &inst->Src[0], TGSI_CHAN_Y, TGSI_EXEC_DATA_FLOAT);
    for (chan = 0; chan < TGSI_QUAD_SIZE; chan++) {
-      dst.u[chan] = util_float_to_half(arg[0].f[chan]) |
-         (util_float_to_half(arg[1].f[chan]) << 16);
+      dst.u[chan] = _mesa_float_to_half(arg[0].f[chan]) |
+         (_mesa_float_to_half(arg[1].f[chan]) << 16);
    }
    for (chan = 0; chan < TGSI_NUM_CHANNELS; chan++) {
       if (inst->Dst[0].Register.WriteMask & (1 << chan)) {
@@ -3344,8 +3344,8 @@ exec_up2h(struct tgsi_exec_machine *mach,
 
    fetch_source(mach, &arg, &inst->Src[0], TGSI_CHAN_X, TGSI_EXEC_DATA_UINT);
    for (chan = 0; chan < TGSI_QUAD_SIZE; chan++) {
-      dst[0].f[chan] = util_half_to_float(arg.u[chan] & 0xffff);
-      dst[1].f[chan] = util_half_to_float(arg.u[chan] >> 16);
+      dst[0].f[chan] = _mesa_half_to_float(arg.u[chan] & 0xffff);
+      dst[1].f[chan] = _mesa_half_to_float(arg.u[chan] >> 16);
    }
    for (chan = 0; chan < TGSI_NUM_CHANNELS; chan++) {
       if (inst->Dst[0].Register.WriteMask & (1 << chan)) {

@@ -45,12 +45,6 @@ extern "C" {
  */
 
 static inline uint16_t
-util_float_to_half(float f)
-{
-   return _mesa_float_to_half(f);
-}
-
-static inline uint16_t
 util_float_to_half_rtz(float f)
 {
    uint32_t sign_mask  = 0x80000000;
@@ -105,12 +99,6 @@ util_float_to_half_rtz(float f)
    f16 |= sign >> 16;
 
    return f16;
-}
-
-static inline float
-util_half_to_float(uint16_t f16)
-{
-   return _mesa_half_to_float(f16);
 }
 
 #ifdef __cplusplus
