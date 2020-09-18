@@ -142,7 +142,29 @@ _mesa_float_to_float16_rtz_slow(float val)
 float
 _mesa_half_to_float_slow(uint16_t val)
 {
-   return util_half_to_float(val);
+   union fi infnan;
+   union fi magic;
+   union fi f32;
+
+   infnan.ui = 0x8f << 23;
+   infnan.f = 65536.0f;
+   magic.ui  = 0xef << 23;
+
+   /* Exponent / Mantissa */
+   f32.ui = (val & 0x7fff) << 13;
+
+   /* Adjust */
+   f32.f *= magic.f;
+   /* XXX: The magic mul relies on denorms being available */
+
+   /* Inf / NaN */
+   if (f32.f >= infnan.f)
+      f32.ui |= 0xff << 23;
+
+   /* Sign */
+   f32.ui |= (uint32_t)(val & 0x8000) << 16;
+
+   return f32.f;
 }
 
 /**
