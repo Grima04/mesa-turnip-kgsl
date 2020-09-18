@@ -177,6 +177,13 @@ panfrost_mfbd_rt_init_format(struct pipe_surface *surf,
                 rt->writeback_format = MALI_MFBD_COLOR_FORMAT_RAW64;
                 break;
 
+        case PIPE_FORMAT_R16G16B16_FLOAT:
+        case PIPE_FORMAT_R16G16B16_SINT:
+        case PIPE_FORMAT_R16G16B16_UINT:
+                rt->internal_format = MALI_COLOR_BUFFER_INTERNAL_FORMAT_RAW64;
+                rt->writeback_format = MALI_MFBD_COLOR_FORMAT_RAW48;
+                break;
+
         /* Generic 128-bit */
         case PIPE_FORMAT_R32G32B32A32_FLOAT:
         case PIPE_FORMAT_R32G32B32A32_SINT:
