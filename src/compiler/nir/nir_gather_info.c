@@ -151,8 +151,15 @@ set_io_mask(nir_shader *shader, nir_variable *var, int offset, int len,
          }
 
 
-         if (var->data.fb_fetch_output)
+         if (var->data.fb_fetch_output) {
             shader->info.outputs_read |= bitfield;
+            if (shader->info.stage == MESA_SHADER_FRAGMENT)
+               shader->info.fs.uses_fbfetch_output = true;
+         }
+
+         if (shader->info.stage == MESA_SHADER_FRAGMENT &&
+             !is_output_read && var->data.index == 1)
+            shader->info.fs.color_is_dual_source = true;
       }
    }
 }
@@ -402,6 +409,10 @@ gather_intrinsic_info(nir_intrinsic_instr *instr, nir_shader *shader,
           instr->intrinsic == nir_intrinsic_load_per_vertex_output &&
           !src_is_invocation_id(nir_get_io_vertex_index_src(instr)))
          shader->info.tess.tcs_cross_invocation_outputs_read |= slot_mask;
+
+      if (shader->info.stage == MESA_SHADER_FRAGMENT &&
+          nir_intrinsic_io_semantics(instr).fb_fetch_output)
+         shader->info.fs.uses_fbfetch_output = true;
       break;
 
    case nir_intrinsic_store_output:
@@ -416,6 +427,10 @@ gather_intrinsic_info(nir_intrinsic_instr *instr, nir_shader *shader,
          if (!nir_src_is_const(*nir_get_io_offset_src(instr)))
             shader->info.outputs_accessed_indirectly |= slot_mask;
       }
+
+      if (shader->info.stage == MESA_SHADER_FRAGMENT &&
+          nir_intrinsic_io_semantics(instr).dual_source_blend_index)
+         shader->info.fs.color_is_dual_source = true;
       break;
 
    case nir_intrinsic_load_subgroup_size:
@@ -777,6 +792,8 @@ nir_shader_gather_info(nir_shader *shader, nir_function_impl *entrypoint)
       shader->info.fs.uses_sample_qualifier = false;
       shader->info.fs.uses_discard = false;
       shader->info.fs.uses_demote = false;
+      shader->info.fs.color_is_dual_source = false;
+      shader->info.fs.uses_fbfetch_output = false;
       shader->info.fs.needs_helper_invocations = false;
    }
    if (shader->info.stage == MESA_SHADER_TESS_CTRL) {
