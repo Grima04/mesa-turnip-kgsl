@@ -682,6 +682,7 @@ VOP2 = {
    (  -1,   -1,   -1,   -1, 0x2b, "v_fmac_f32", True),
    (  -1,   -1,   -1,   -1, 0x2c, "v_fmamk_f32", True),
    (  -1,   -1,   -1,   -1, 0x2d, "v_fmaak_f32", True),
+   (0x2f, 0x2f,   -1,   -1, 0x2f, "v_cvt_pkrtz_f16_f32", True),
    (  -1,   -1, 0x1f, 0x1f, 0x32, "v_add_f16", True),
    (  -1,   -1, 0x20, 0x20, 0x33, "v_sub_f16", True),
    (  -1,   -1, 0x21, 0x21, 0x34, "v_subrev_f16", True),
@@ -1051,7 +1052,7 @@ VOP3 = {
    (0x11e, 0x11e, 0x293, 0x293, 0x363, "v_bfm_b32", False, False),
    (0x12d, 0x12d, 0x294, 0x294, 0x368, "v_cvt_pknorm_i16_f32", True, False),
    (0x12e, 0x12e, 0x295, 0x295, 0x369, "v_cvt_pknorm_u16_f32", True, False),
-   (0x12f, 0x12f, 0x296, 0x296, 0x12f, "v_cvt_pkrtz_f16_f32", True, False), # GFX6_7_10 is VOP2 with opcode 0x02f
+   (0x12f, 0x12f, 0x296, 0x296, 0x12f, "v_cvt_pkrtz_f16_f32_e64", True, False), # GFX6_7_10 is VOP2 with opcode 0x02f
    (0x130, 0x130, 0x297, 0x297, 0x36a, "v_cvt_pk_u16_u32", False, False),
    (0x131, 0x131, 0x298, 0x298, 0x36b, "v_cvt_pk_i16_i32", False, False),
    (   -1,    -1,    -1, 0x299, 0x312, "v_cvt_pknorm_i16_f16", True, False),

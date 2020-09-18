@@ -2141,7 +2141,10 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
       Temp src = get_alu_src(ctx, instr->src[0]);
       if (instr->src[0].src.ssa->bit_size == 64)
          src = bld.vop1(aco_opcode::v_cvt_f32_f64, bld.def(v1), src);
-      bld.vop3(aco_opcode::v_cvt_pkrtz_f16_f32, Definition(dst), src, Operand(0u));
+      if (ctx->block->fp_mode.round16_64 == fp_round_tz)
+         bld.vop1(aco_opcode::v_cvt_f16_f32, Definition(dst), src);
+      else
+         bld.vop3(aco_opcode::v_cvt_pkrtz_f16_f32_e64, Definition(dst), src, Operand(0u));
       break;
    }
    case nir_op_f2f32: {
@@ -2615,7 +2618,10 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
             /* upper bits zero on GFX6-GFX9 */
             bld.vop1(aco_opcode::v_cvt_f16_f32, Definition(dst), get_alu_src(ctx, instr->src[0]));
          } else if (!ctx->block->fp_mode.care_about_round16_64 || ctx->block->fp_mode.round16_64 == fp_round_tz) {
-            emit_vop3a_instruction(ctx, instr, aco_opcode::v_cvt_pkrtz_f16_f32, dst);
+            if (ctx->program->chip_class == GFX8 || ctx->program->chip_class == GFX9)
+               emit_vop3a_instruction(ctx, instr, aco_opcode::v_cvt_pkrtz_f16_f32_e64, dst);
+            else
+               emit_vop2_instruction(ctx, instr, aco_opcode::v_cvt_pkrtz_f16_f32, dst, false);
          } else {
             Temp src0 = bld.vop1(aco_opcode::v_cvt_f16_f32, bld.def(v2b), get_alu_src(ctx, instr->src[0]));
             Temp src1 = bld.vop1(aco_opcode::v_cvt_f16_f32, bld.def(v2b), get_alu_src(ctx, instr->src[1]));
@@ -10343,7 +10349,7 @@ static bool export_fs_mrt_color(isel_context *ctx, int slot)
 
    case V_028714_SPI_SHADER_FP16_ABGR:
       enabled_channels = 0x5;
-      compr_op = aco_opcode::v_cvt_pkrtz_f16_f32;
+      compr_op = aco_opcode::v_cvt_pkrtz_f16_f32_e64;
       if (is_16bit) {
          if (ctx->options->chip_class >= GFX9) {
             /* Pack the FP16 values together instead of converting them to
