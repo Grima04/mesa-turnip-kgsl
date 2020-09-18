@@ -204,6 +204,13 @@ test_disk_cache_create(void)
 
    disk_cache_destroy(cache);
 
+#ifdef ANDROID
+   /* Android doesn't try writing to disk (just calls the cache callbacks), so
+    * the directory tests below don't apply.
+    */
+   exit(error ? 1 : 0);
+#endif
+
    /* Test with XDG_CACHE_HOME set */
    setenv("XDG_CACHE_HOME", CACHE_TEST_TMP "/xdg-cache-home", 1);
    cache = disk_cache_create("test", "make_check", 0);
