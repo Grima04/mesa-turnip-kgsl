@@ -1078,32 +1078,51 @@ void label_instruction(opt_ctx &ctx, Block& block, aco_ptr<Instruction>& instr)
          break;
       }
 
-      unsigned num_ops = instr->operands.size();
+      /* expand vector operands */
+      bool accept_subdword = instr->definitions[0].regClass().type() == RegType::vgpr &&
+                             std::all_of(instr->operands.begin(), instr->operands.end(),
+                             [&] (const Operand& op) { return !op.isLiteral() &&
+                             (ctx.program->chip_class >= GFX9 || (op.hasRegClass() && op.regClass().type() == RegType::vgpr));});
+
+      std::vector<Operand> ops;
       for (const Operand& op : instr->operands) {
-         if (op.isTemp() && ctx.info[op.tempId()].is_vec())
-            num_ops += ctx.info[op.tempId()].instr->operands.size() - 1;
-      }
-      if (num_ops != instr->operands.size()) {
-         aco_ptr<Instruction> old_vec = std::move(instr);
-         instr.reset(create_instruction<Pseudo_instruction>(aco_opcode::p_create_vector, Format::PSEUDO, num_ops, 1));
-         instr->definitions[0] = old_vec->definitions[0];
-         unsigned k = 0;
-         for (Operand& old_op : old_vec->operands) {
-            if (old_op.isTemp() && ctx.info[old_op.tempId()].is_vec()) {
-               for (unsigned j = 0; j < ctx.info[old_op.tempId()].instr->operands.size(); j++) {
-                  Operand op = ctx.info[old_op.tempId()].instr->operands[j];
-                  if (op.isTemp() && ctx.info[op.tempId()].is_temp() &&
-                      ctx.info[op.tempId()].temp.type() == instr->definitions[0].regClass().type())
-                     op.setTemp(ctx.info[op.tempId()].temp);
-                  instr->operands[k++] = op;
-               }
-            } else {
-               instr->operands[k++] = old_op;
-            }
+         if (!op.isTemp() || !ctx.info[op.tempId()].is_vec()) {
+            ops.emplace_back(op);
+            continue;
          }
-         assert(k == num_ops);
+         Instruction* vec = ctx.info[op.tempId()].instr;
+         bool is_subdword = std::any_of(vec->operands.begin(), vec->operands.end(),
+                               [&] (const Operand& op) { return op.bytes() % 4; } );
+
+         if (accept_subdword || !is_subdword) {
+            for (const Operand& vec_op : vec->operands) {
+               ops.emplace_back(vec_op);
+               if (op.isLiteral() || (ctx.program->chip_class <= GFX8 &&
+                                      (!op.hasRegClass() || op.regClass().type() == RegType::sgpr)))
+                  accept_subdword = false;
+            }
+         } else {
+            ops.emplace_back(op);
+         }
       }
 
+      /* combine expanded operands to new vector */
+      if (ops.size() != instr->operands.size()) {
+         assert(ops.size() > instr->operands.size());
+         Definition def = instr->definitions[0];
+         instr.reset(create_instruction<Pseudo_instruction>(aco_opcode::p_create_vector, Format::PSEUDO, ops.size(), 1));
+         for (unsigned i = 0; i < ops.size(); i++) {
+            if (ops[i].isTemp() && ctx.info[ops[i].tempId()].is_temp() &&
+                ctx.info[ops[i].tempId()].temp.type() == def.regClass().type())
+               ops[i].setTemp(ctx.info[ops[i].tempId()].temp);
+            instr->operands[i] = ops[i];
+         }
+         instr->definitions[0] = def;
+      } else {
+         for (unsigned i = 0; i < ops.size(); i++) {
+            assert(instr->operands[i] == ops[i]);
+         }
+      }
       ctx.info[instr->definitions[0].tempId()].set_vec(instr.get());
       break;
    }
