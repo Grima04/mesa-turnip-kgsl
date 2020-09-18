@@ -369,6 +369,17 @@ bool validate_ir(Program* program)
                check((instr->operands[1].constantValue() + 1) * instr->definitions[0].bytes() <= instr->operands[0].bytes(), "Index out of range", instr.get());
                check(instr->definitions[0].getTemp().type() == RegType::vgpr || instr->operands[0].regClass().type() == RegType::sgpr,
                      "Cannot extract SGPR value from VGPR vector", instr.get());
+            } else if (instr->opcode == aco_opcode::p_split_vector) {
+               check(instr->operands[0].isTemp(), "Operand must be a temporary", instr.get());
+               unsigned size = 0;
+               for (const Definition& def : instr->definitions) {
+                  size += def.bytes();
+               }
+               check(size == instr->operands[0].bytes(), "Operand size does not match definition sizes", instr.get());
+               if (instr->operands[0].getTemp().type() == RegType::vgpr) {
+                  for (const Definition& def : instr->definitions)
+                     check(def.regClass().type() == RegType::vgpr, "Wrong Definition type for VGPR split_vector", instr.get());
+               }
             } else if (instr->opcode == aco_opcode::p_parallelcopy) {
                check(instr->definitions.size() == instr->operands.size(), "Number of Operands does not match number of Definitions", instr.get());
                for (unsigned i = 0; i < instr->operands.size(); i++) {
