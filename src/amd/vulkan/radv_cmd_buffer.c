@@ -2753,8 +2753,10 @@ radv_flush_vertex_descriptors(struct radv_cmd_buffer *cmd_buffer,
 			unsigned num_records;
 			unsigned stride;
 
-			if (!buffer)
+			if (!buffer) {
+				memset(desc, 0, 4 * 4);
 				continue;
+			}
 
 			va = radv_buffer_get_va(buffer->bo);
 
