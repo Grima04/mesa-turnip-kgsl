@@ -232,6 +232,8 @@ struct v3dv_queue {
 
    /* A mutex to prevent concurrent access to the list of wait threads */
    mtx_t mutex;
+
+   struct v3dv_job *noop_job;
 };
 
 #define V3DV_META_BLIT_CACHE_KEY_SIZE (4 * sizeof(uint32_t))

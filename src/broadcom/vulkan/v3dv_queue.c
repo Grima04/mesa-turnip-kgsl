@@ -796,17 +796,17 @@ emit_noop_render(struct v3dv_job *job)
 }
 
 static VkResult
-queue_create_noop_job(struct v3dv_queue *queue, struct v3dv_job **job)
+queue_create_noop_job(struct v3dv_queue *queue)
 {
    struct v3dv_device *device = queue->device;
-   *job = vk_zalloc(&device->alloc, sizeof(struct v3dv_job), 8,
-                     VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
-   if (!*job)
+   queue->noop_job = vk_zalloc(&device->alloc, sizeof(struct v3dv_job), 8,
+                               VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+   if (!queue->noop_job)
       return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
-   v3dv_job_init(*job, V3DV_JOB_TYPE_GPU_CL, device, NULL, -1);
+   v3dv_job_init(queue->noop_job, V3DV_JOB_TYPE_GPU_CL, device, NULL, -1);
 
-   emit_noop_bin(*job);
-   emit_noop_render(*job);
+   emit_noop_bin(queue->noop_job);
+   emit_noop_render(queue->noop_job);
 
    return VK_SUCCESS;
 }
@@ -817,16 +817,14 @@ queue_submit_noop_job(struct v3dv_queue *queue, const VkSubmitInfo *pSubmit)
    /* VkQueue host access is externally synchronized so we don't need to lock
     * here for the static variable.
     */
-   static struct v3dv_job *noop_job = NULL;
-
-   if (!noop_job) {
-      VkResult result = queue_create_noop_job(queue, &noop_job);
+   if (!queue->noop_job) {
+      VkResult result = queue_create_noop_job(queue);
       if (result != VK_SUCCESS)
          return result;
    }
 
-   return queue_submit_job(queue, noop_job, pSubmit->waitSemaphoreCount > 0,
-                           NULL);
+   return queue_submit_job(queue, queue->noop_job,
+                           pSubmit->waitSemaphoreCount > 0, NULL);
 }
 
 static VkResult
