@@ -472,12 +472,12 @@ setup_vs_variables(isel_context *ctx, nir_shader *nir)
 {
    nir_foreach_shader_in_variable(variable, nir)
    {
-      variable->data.driver_location = variable->data.location * 4;
+      variable->data.driver_location = variable->data.location;
    }
    nir_foreach_shader_out_variable(variable, nir)
    {
       if (ctx->stage == vertex_vs || ctx->stage == ngg_vertex_gs)
-         variable->data.driver_location = variable->data.location * 4;
+         variable->data.driver_location = variable->data.location;
    }
 
    if (ctx->stage == vertex_vs || ctx->stage == ngg_vertex_gs) {
@@ -502,7 +502,7 @@ void setup_gs_variables(isel_context *ctx, nir_shader *nir)
       ctx->program->config->lds_size = ctx->program->info->gs_ring_info.lds_size; /* Already in units of the alloc granularity */
 
    nir_foreach_shader_out_variable(variable, nir) {
-      variable->data.driver_location = variable->data.location * 4;
+      variable->data.driver_location = variable->data.location;
    }
 
    if (ctx->stage == vertex_geometry_gs)
@@ -570,7 +570,7 @@ setup_tes_variables(isel_context *ctx, nir_shader *nir)
 
    nir_foreach_shader_out_variable(variable, nir) {
       if (ctx->stage == tess_eval_vs || ctx->stage == ngg_tess_eval_gs)
-         variable->data.driver_location = variable->data.location * 4;
+         variable->data.driver_location = variable->data.location;
    }
 
    if (ctx->stage == tess_eval_vs || ctx->stage == ngg_tess_eval_gs) {
@@ -588,7 +588,7 @@ setup_variables(isel_context *ctx, nir_shader *nir)
       nir_foreach_shader_out_variable(variable, nir)
       {
          int idx = variable->data.location + variable->data.index;
-         variable->data.driver_location = idx * 4;
+         variable->data.driver_location = idx;
       }
       break;
    }

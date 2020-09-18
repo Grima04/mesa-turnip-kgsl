@@ -1281,18 +1281,18 @@ nir_assign_linked_io_var_locations(nir_shader *producer, nir_shader *consumer)
       uint64_t loc = get_linked_variable_location(variable->data.location, variable->data.patch);
 
       if (variable->data.patch)
-         variable->data.driver_location = util_bitcount64(patch_io_mask & u_bit_consecutive64(0, loc)) * 4;
+         variable->data.driver_location = util_bitcount64(patch_io_mask & u_bit_consecutive64(0, loc));
       else
-         variable->data.driver_location = util_bitcount64(io_mask & u_bit_consecutive64(0, loc)) * 4;
+         variable->data.driver_location = util_bitcount64(io_mask & u_bit_consecutive64(0, loc));
    }
 
    nir_foreach_shader_in_variable(variable, consumer) {
       uint64_t loc = get_linked_variable_location(variable->data.location, variable->data.patch);
 
       if (variable->data.patch)
-         variable->data.driver_location = util_bitcount64(patch_io_mask & u_bit_consecutive64(0, loc)) * 4;
+         variable->data.driver_location = util_bitcount64(patch_io_mask & u_bit_consecutive64(0, loc));
       else
-         variable->data.driver_location = util_bitcount64(io_mask & u_bit_consecutive64(0, loc)) * 4;
+         variable->data.driver_location = util_bitcount64(io_mask & u_bit_consecutive64(0, loc));
    }
 
    nir_linked_io_var_info result = {

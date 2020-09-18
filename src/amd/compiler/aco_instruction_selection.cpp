@@ -3971,8 +3971,8 @@ std::pair<Temp, unsigned> get_intrinsic_io_basic_offset(isel_context *ctx, nir_i
 {
    Builder bld(ctx->program, ctx->block);
 
-   /* base is the driver_location, which is already multiplied by 4, so is in dwords */
-   unsigned const_offset = nir_intrinsic_base(instr) * base_stride;
+   /* base is the driver_location, which is in slots */
+   unsigned const_offset = nir_intrinsic_base(instr) * 4u * base_stride;
    /* component is in bytes */
    const_offset += nir_intrinsic_component(instr) * component_stride;
 
@@ -4122,7 +4122,7 @@ bool store_output_to_temps(isel_context *ctx, nir_intrinsic_instr *instr)
 {
    unsigned write_mask = nir_intrinsic_write_mask(instr);
    unsigned component = nir_intrinsic_component(instr);
-   unsigned idx = nir_intrinsic_base(instr) + component;
+   unsigned idx = nir_intrinsic_base(instr) * 4u + component;
 
    if (!nir_src_is_const(instr->src[1]))
       return false;
@@ -4164,7 +4164,7 @@ bool load_input_from_temps(isel_context *ctx, nir_intrinsic_instr *instr, Temp d
    if (!can_use_temps)
       return false;
 
-   unsigned idx = nir_intrinsic_base(instr) + nir_intrinsic_component(instr) + 4 * nir_src_as_uint(*off_src);
+   unsigned idx = nir_intrinsic_base(instr) * 4u + nir_intrinsic_component(instr) + 4 * nir_src_as_uint(*off_src);
    Temp *src = &ctx->inputs.temps[idx];
    create_vec_from_array(ctx, src, dst.size(), dst.regClass().type(), 4u, 0, dst);
 
@@ -4274,9 +4274,9 @@ void visit_store_tcs_output(isel_context *ctx, nir_intrinsic_instr *instr, bool 
    if (write_to_lds) {
       /* Remember driver location of tess factors, so we can read them later, in write_tcs_tess_factors */
       if (semantics.location == VARYING_SLOT_TESS_LEVEL_INNER)
-         ctx->tcs_tess_lvl_in_loc = nir_intrinsic_base(instr) * 4;
+         ctx->tcs_tess_lvl_in_loc = nir_intrinsic_base(instr) * 16u;
       else if (semantics.location == VARYING_SLOT_TESS_LEVEL_OUTER)
-         ctx->tcs_tess_lvl_out_loc = nir_intrinsic_base(instr) * 4;
+         ctx->tcs_tess_lvl_out_loc = nir_intrinsic_base(instr) * 16u;
 
       std::pair<Temp, unsigned> lds_offs = get_tcs_output_lds_offset(ctx, instr, per_vertex);
       unsigned lds_align = calculate_lds_alignment(ctx, lds_offs.second);
@@ -4516,7 +4516,7 @@ void visit_load_input(isel_context *ctx, nir_intrinsic_instr *instr)
 
       Temp vertex_buffers = convert_pointer_to_64_bit(ctx, get_arg(ctx, ctx->args->vertex_buffers));
 
-      unsigned location = nir_intrinsic_base(instr) / 4 - VERT_ATTRIB_GENERIC0 + offset;
+      unsigned location = nir_intrinsic_base(instr) - VERT_ATTRIB_GENERIC0 + offset;
       unsigned component = nir_intrinsic_component(instr);
       unsigned bitsize = instr->dest.ssa.bit_size;
       unsigned attrib_binding = ctx->options->key.vs.vertex_attribute_bindings[location];
