@@ -190,6 +190,31 @@ radv_are_formats_dcc_compatible(const struct radv_physical_device *pdev,
 }
 
 static bool
+radv_formats_is_atomic_allowed(const void *pNext, VkFormat format,
+                               VkImageCreateFlags flags)
+{
+	if (radv_is_atomic_format_supported(format))
+		return true;
+
+	if (flags & VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT) {
+		const struct VkImageFormatListCreateInfo *format_list =
+			(const struct  VkImageFormatListCreateInfo *)
+				vk_find_struct_const(pNext,
+						     IMAGE_FORMAT_LIST_CREATE_INFO);
+
+		/* We have to ignore the existence of the list if viewFormatCount = 0 */
+		if (format_list && format_list->viewFormatCount) {
+			for (unsigned i = 0; i < format_list->viewFormatCount; ++i) {
+				if (radv_is_atomic_format_supported(format_list->pViewFormats[i]))
+					return true;
+			}
+		}
+	}
+
+	return false;
+}
+
+static bool
 radv_use_dcc_for_image(struct radv_device *device,
 		       const struct radv_image *image,
 		       const VkImageCreateInfo *pCreateInfo,
@@ -205,8 +230,16 @@ radv_use_dcc_for_image(struct radv_device *device,
 	if (image->shareable && image->tiling != VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT)
 		return false;
 
-	/* TODO: Enable DCC for storage images. */
-	if ((pCreateInfo->usage & VK_IMAGE_USAGE_STORAGE_BIT))
+	/*
+	 * TODO: Enable DCC for storage images on GFX9 and earlier.
+	 *
+	 * Also disable DCC with atomics because even when DCC stores are
+	 * supported atomics will always decompress. So if we are
+	 * decompressing a lot anyway we might as well not have DCC.
+	 */
+	if ((pCreateInfo->usage & VK_IMAGE_USAGE_STORAGE_BIT) &&
+	    (!radv_image_use_dcc_image_stores(device, image) ||
+	     radv_formats_is_atomic_allowed(pCreateInfo->pNext, format, pCreateInfo->flags)))
 		return false;
 
 	if (pCreateInfo->tiling == VK_IMAGE_TILING_LINEAR)
@@ -239,6 +272,41 @@ radv_use_dcc_for_image(struct radv_device *device,
 	return radv_are_formats_dcc_compatible(device->physical_device,
 	                                       pCreateInfo->pNext, format,
 	                                       pCreateInfo->flags);
+}
+
+/*
+ * Whether to enable image stores with DCC compression for this image. If
+ * this function returns false the image subresource should be decompressed
+ * before using it with image stores.
+ *
+ * Note that this can have mixed performance implications, see
+ * https://gitlab.freedesktop.org/mesa/mesa/-/merge_requests/6796#note_643299
+ *
+ * This function assumes the image uses DCC compression.
+ */
+bool radv_image_use_dcc_image_stores(const struct radv_device *device,
+				     const struct radv_image *image)
+{
+	/*
+	 * TODO: Enable on more HW. DIMGREY and VANGOGH need a workaround and
+	 * we need more perf analysis.
+	 * https://gitlab.freedesktop.org/mesa/mesa/-/merge_requests/6796#note_643853
+	 *
+	 * DCC with MSAA > 2 samples results in CTS failures (some of dEQP-VK.pipeline.multisample.storage_image.*).
+	 */
+	return device->physical_device->rad_info.chip_class == GFX10 && image->info.samples <= 2;
+}
+
+/*
+ * Whether to use a predicate to determine whether DCC is in a compressed
+ * state. This can be used to avoid decompressing an image multiple times.
+ *
+ * This function assumes the image uses DCC compression.
+ */
+bool radv_image_use_dcc_predication(const struct radv_device *device,
+				    const struct radv_image *image)
+{
+	return !radv_image_use_dcc_image_stores(device, image);
 }
 
 static inline bool
@@ -712,6 +780,9 @@ si_set_mutable_tex_desc_fields(struct radv_device *device,
 
 			if (plane->surface.dcc_offset)
 				meta = plane->surface.u.gfx9.dcc;
+
+			if (radv_dcc_enabled(image, first_level))
+				state[6] |= S_00A018_WRITE_COMPRESS_ENABLE(1);
 
 			state[6] |= S_00A018_META_PIPE_ALIGNED(meta.pipe_aligned) |
 				    S_00A018_META_DATA_ADDRESS_LO(meta_va >> 8);
@@ -1287,7 +1358,7 @@ radv_image_alloc_values(const struct radv_device *device, struct radv_image *ima
 		image->size += 8 * image->info.levels;
 	}
 
-	if (radv_image_has_dcc(image)) {
+	if (radv_image_use_dcc_predication(device, image)) {
 		image->dcc_pred_offset = image->size;
 		image->size += 8 * image->info.levels;
 	}
@@ -1755,13 +1826,16 @@ radv_image_view_make_descriptor(struct radv_image_view *iview,
 		else
 			base_level_info = &plane->surface.u.legacy.level[iview->base_mip];
 	}
+
+	if (is_storage_image && !radv_image_use_dcc_image_stores(device, image))
+		disable_compression = true;
 	si_set_mutable_tex_desc_fields(device, image,
 				       base_level_info,
 				       plane_id,
 				       iview->base_mip,
 				       iview->base_mip,
 				       blk_w, is_stencil, is_storage_image,
-				       is_storage_image || disable_compression,
+				       disable_compression,
 				       descriptor->plane_descriptors[descriptor_plane_id]);
 }
 
@@ -2043,10 +2117,11 @@ bool radv_layout_dcc_compressed(const struct radv_device *device,
 	    radv_image_has_dcc(image))
 		return false;
 
-	/* Don't compress compute transfer dst, as image stores are not supported. */
+	/* Don't compress compute transfer dst when image stores are not supported. */
 	if ((layout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL ||
 	     layout == VK_IMAGE_LAYOUT_GENERAL) &&
-	    (queue_mask & (1u << RADV_QUEUE_COMPUTE)))
+	    (queue_mask & (1u << RADV_QUEUE_COMPUTE)) &&
+	    !radv_image_use_dcc_image_stores(device, image))
 		return false;
 
 	return radv_image_has_dcc(image) &&

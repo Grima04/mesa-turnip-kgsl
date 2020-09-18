@@ -1538,6 +1538,10 @@ void radv_update_color_clear_metadata(struct radv_cmd_buffer *cmd_buffer,
 				      int cb_idx,
 				      uint32_t color_values[2]);
 
+bool radv_image_use_dcc_image_stores(const struct radv_device *device,
+				     const struct radv_image *image);
+bool radv_image_use_dcc_predication(const struct radv_device *device,
+				    const struct radv_image *image);
 void radv_update_fce_metadata(struct radv_cmd_buffer *cmd_buffer,
 			      struct radv_image *image,
 			      const VkImageSubresourceRange *range, bool value);
@@ -1835,6 +1839,7 @@ bool radv_is_colorbuffer_format_supported(const struct radv_physical_device *pde
                                           VkFormat format, bool *blendable);
 bool radv_dcc_formats_compatible(VkFormat format1,
                                  VkFormat format2);
+bool radv_is_atomic_format_supported(VkFormat format);
 bool radv_device_supports_etc(struct radv_physical_device *physical_device);
 
 struct radv_image_plane {
