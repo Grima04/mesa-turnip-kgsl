@@ -1263,7 +1263,7 @@ static enum radeon_surf_mode si_choose_tiling(struct si_screen *sscreen,
       if (templ->target == PIPE_TEXTURE_1D || templ->target == PIPE_TEXTURE_1D_ARRAY ||
           /* Only very thin and long 2D textures should benefit from
            * linear_aligned. */
-          (templ->width0 > 8 && templ->height0 <= 2))
+          templ->height0 <= 2)
          return RADEON_SURF_MODE_LINEAR_ALIGNED;
 
       /* Textures likely to be mapped often. */
