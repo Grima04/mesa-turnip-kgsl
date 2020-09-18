@@ -44,6 +44,12 @@
 /* for fd_get_driver/device_uuid() */
 #include "freedreno/common/freedreno_uuid.h"
 
+#define TU_HAS_SURFACE \
+   (VK_USE_PLATFORM_WAYLAND_KHR || \
+    VK_USE_PLATFORM_XCB_KHR || \
+    VK_USE_PLATFORM_XLIB_KHR || \
+    VK_USE_PLATFORM_DISPLAY_KHR)
+
 static int
 tu_device_get_cache_uuid(uint16_t family, void *uuid)
 {
@@ -124,11 +130,13 @@ tu_physical_device_init(struct tu_physical_device *device,
 
    tu_physical_device_get_supported_extensions(device, &device->supported_extensions);
 
+#if TU_HAS_SURFACE
    result = tu_wsi_init(device);
    if (result != VK_SUCCESS) {
       vk_startup_errorf(instance, result, "WSI init failure");
       goto fail;
    }
+#endif
 
    return VK_SUCCESS;
 
@@ -142,7 +150,9 @@ fail:
 static void
 tu_physical_device_finish(struct tu_physical_device *device)
 {
+#if TU_HAS_SURFACE
    tu_wsi_finish(device);
+#endif
 
    disk_cache_destroy(device->disk_cache);
    close(device->local_fd);
