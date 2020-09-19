@@ -777,7 +777,7 @@ GPRVector ShaderFromNirProcessor::vec_from_nir_with_fetch_constant(const nir_src
 
    /* Now check whether all inputs come from the same GPR, and fill
     * empty slots in the vector with unused swizzles, bail out if
-    * the sources are nqot from the same GPR
+    * the sources are not from the same GPR
     */
 
    if (use_same) {
