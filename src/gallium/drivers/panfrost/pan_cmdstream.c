@@ -579,10 +579,12 @@ panfrost_emit_frag_shader_meta(struct panfrost_batch *batch)
         xfer = panfrost_pool_alloc_aligned(&batch->pool, desc_size, MALI_STATE_LENGTH);
 
         struct panfrost_blend_final blend[PIPE_MAX_COLOR_BUFS];
+        unsigned shader_offset = 0;
+        struct panfrost_bo *shader_bo = NULL;
 
         for (unsigned c = 0; c < ctx->pipe_framebuffer.nr_cbufs; ++c)
-                blend[c] = panfrost_get_blend_for_context(ctx, c);
-
+                blend[c] = panfrost_get_blend_for_context(ctx, c, &shader_bo,
+                                                          &shader_offset);
         panfrost_emit_frag_shader(ctx, (struct mali_state_packed *) xfer.cpu, blend);
 
         if (!(dev->quirks & MIDGARD_SFBD))
