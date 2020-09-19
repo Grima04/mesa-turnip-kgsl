@@ -42,7 +42,7 @@
 #include "compiler/nir/nir_builder.h"
 
 #include "tgsi/tgsi_strings.h"
-#include "util/u_half.h"
+#include "util/half_float.h"
 
 static bool
 etna_alu_to_scalar_filter_cb(const nir_instr *instr, const void *data)

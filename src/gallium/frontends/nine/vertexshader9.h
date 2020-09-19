@@ -23,7 +23,7 @@
 #ifndef _NINE_VERTEXSHADER9_H_
 #define _NINE_VERTEXSHADER9_H_
 
-#include "util/u_half.h"
+#include "util/half_float.h"
 
 #include "iunknown.h"
 #include "device9.h"

@@ -28,7 +28,7 @@ USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "util/format_r11g11b10f.h"
 #include "main/varray.h"
 #include "vbo_util.h"
-#include "util/u_half.h"
+#include "util/half_float.h"
 
 
 /* ATTR */

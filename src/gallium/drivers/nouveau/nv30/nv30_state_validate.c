@@ -25,7 +25,7 @@
 
 #include "util/format/u_format.h"
 #include "util/u_math.h"
-#include "util/u_half.h"
+#include "util/half_float.h"
 
 #include "nv_object.xml.h"
 #include "nv30/nv30-40_3d.xml.h"

@@ -3,7 +3,7 @@
 #include <float.h>
 
 #include "util/u_math.h"
-#include "util/u_half.h"
+#include "util/half_float.h"
 #include "util/u_cpu_detect.h"
 
 static void

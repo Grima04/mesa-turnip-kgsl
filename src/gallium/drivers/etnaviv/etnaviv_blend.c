@@ -32,7 +32,7 @@
 #include "hw/common.xml.h"
 #include "pipe/p_defines.h"
 #include "util/u_memory.h"
-#include "util/u_half.h"
+#include "util/half_float.h"
 
 void *
 etna_blend_state_create(struct pipe_context *pctx,

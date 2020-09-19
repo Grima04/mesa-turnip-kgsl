@@ -24,7 +24,7 @@
 #include "draw/draw_context.h"
 
 #include "util/u_framebuffer.h"
-#include "util/u_half.h"
+#include "util/half_float.h"
 #include "util/u_helpers.h"
 #include "util/u_math.h"
 #include "util/u_memory.h"
