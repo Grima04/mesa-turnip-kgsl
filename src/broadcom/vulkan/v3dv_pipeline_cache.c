@@ -29,6 +29,9 @@
 static const bool dump_stats = false;
 static const bool dump_stats_verbose = false;
 
+/* Shared for nir/variants */
+#define V3DV_MAX_PIPELINE_CACHE_ENTRIES 4096
+
 static uint32_t
 sha1_hash_func(const void *sha1)
 {
@@ -71,6 +74,9 @@ v3dv_pipeline_cache_upload_nir(struct v3dv_pipeline *pipeline,
    if (!cache || !cache->nir_cache)
       return;
 
+   if (cache->nir_stats.count > V3DV_MAX_PIPELINE_CACHE_ENTRIES)
+      return;
+
    pthread_mutex_lock(&cache->mutex);
    struct hash_entry *entry =
       _mesa_hash_table_search(cache->nir_cache, sha1_key);
@@ -107,12 +113,11 @@ v3dv_pipeline_cache_upload_nir(struct v3dv_pipeline *pipeline,
 
    blob_finish(&blob);
 
+   cache->nir_stats.count++;
    if (unlikely(dump_stats)) {
       char sha1buf[41];
       _mesa_sha1_format(sha1buf, snir->sha1_key);
       fprintf(stderr, "pipeline cache %p, new nir entry %s\n", cache, sha1buf);
-
-      cache->nir_stats.count++;
       cache_dump_stats(cache);
    }
 
@@ -158,18 +163,14 @@ v3dv_pipeline_cache_search_for_nir(struct v3dv_pipeline *pipeline,
       if (blob.overrun) {
          ralloc_free(nir);
       } else {
-         if (unlikely(dump_stats)) {
-            cache->nir_stats.hit++;
-            cache_dump_stats(cache);
-         }
+         cache->nir_stats.hit++;
+         cache_dump_stats(cache);
          return nir;
       }
    }
 
-   if (unlikely(dump_stats)) {
-      cache->nir_stats.miss++;
-      cache_dump_stats(cache);
-   }
+   cache->nir_stats.miss++;
+   cache_dump_stats(cache);
 
    return NULL;
 }
@@ -227,9 +228,9 @@ v3dv_pipeline_cache_search_for_variant(struct v3dv_pipeline *pipeline,
       struct v3dv_shader_variant *variant =
          (struct v3dv_shader_variant *) entry->data;
 
+      cache->variant_stats.hit++;
       if (unlikely(dump_stats)) {
          fprintf(stderr, "\tcache hit: %p\n", variant);
-         cache->variant_stats.hit++;
          cache_dump_stats(cache);
       }
 
@@ -240,9 +241,9 @@ v3dv_pipeline_cache_search_for_variant(struct v3dv_pipeline *pipeline,
       return variant;
    }
 
+   cache->variant_stats.miss++;
    if (unlikely(dump_stats)) {
       fprintf(stderr, "\tcache miss\n");
-      cache->variant_stats.miss++;
       cache_dump_stats(cache);
    }
 
@@ -258,6 +259,9 @@ v3dv_pipeline_cache_upload_variant(struct v3dv_pipeline *pipeline,
    if (!cache || !cache->variant_cache)
       return;
 
+   if (cache->variant_stats.count > V3DV_MAX_PIPELINE_CACHE_ENTRIES)
+      return;
+
    pthread_mutex_lock(&cache->mutex);
    struct hash_entry *entry =
       _mesa_hash_table_search(cache->variant_cache, variant->variant_sha1);
@@ -269,13 +273,13 @@ v3dv_pipeline_cache_upload_variant(struct v3dv_pipeline *pipeline,
 
    v3dv_shader_variant_ref(variant);
    _mesa_hash_table_insert(cache->variant_cache, variant->variant_sha1, variant);
+   cache->variant_stats.count++;
    if (unlikely(dump_stats)) {
       char sha1buf[41];
       _mesa_sha1_format(sha1buf, variant->variant_sha1);
 
       fprintf(stderr, "pipeline cache %p, new variant entry with key %s\n\t%p\n",
               cache, sha1buf, variant);
-      cache->variant_stats.count++;
       cache_dump_stats(cache);
    }
 
@@ -403,8 +407,7 @@ pipeline_cache_load(struct v3dv_pipeline_cache *cache,
          break;
 
       _mesa_hash_table_insert(cache->nir_cache, snir->sha1_key, snir);
-      if (unlikely(dump_stats))
-         cache->nir_stats.count++;
+      cache->nir_stats.count++;
    }
 
    uint32_t count = blob_read_uint32(&blob);
@@ -417,8 +420,7 @@ pipeline_cache_load(struct v3dv_pipeline_cache *cache,
       if (!variant)
          break;
       _mesa_hash_table_insert(cache->variant_cache, variant->variant_sha1, variant);
-      if (unlikely(dump_stats))
-         cache->variant_stats.count++;
+      cache->variant_stats.count++;
    }
 
    if (unlikely(dump_stats)) {
@@ -537,6 +539,7 @@ v3dv_MergePipelineCaches(VkDevice device,
          memcpy(snir_dst->data, src_snir->data, src_snir->size);
 
          _mesa_hash_table_insert(dst->nir_cache, snir_dst->sha1_key, snir_dst);
+         dst->nir_stats.count++;
          if (unlikely(dump_stats)) {
             char sha1buf[41];
             _mesa_sha1_format(sha1buf, snir_dst->sha1_key);
@@ -544,7 +547,6 @@ v3dv_MergePipelineCaches(VkDevice device,
             fprintf(stderr, "pipeline cache %p, added nir entry %s "
                     "from pipeline cache %p\n",
                     dst, sha1buf, src);
-            dst->nir_stats.count++;
             cache_dump_stats(dst);
          }
       }
@@ -559,6 +561,7 @@ v3dv_MergePipelineCaches(VkDevice device,
          v3dv_shader_variant_ref(variant);
          _mesa_hash_table_insert(dst->variant_cache, variant->variant_sha1, variant);
 
+         dst->variant_stats.count++;
          if (unlikely(dump_stats)) {
             char sha1buf[41];
             _mesa_sha1_format(sha1buf, variant->variant_sha1);
@@ -566,7 +569,6 @@ v3dv_MergePipelineCaches(VkDevice device,
             fprintf(stderr, "pipeline cache %p, added variant entry %s "
                     "from pipeline cache %p\n",
                     dst, sha1buf, src);
-            dst->variant_stats.count++;
             cache_dump_stats(dst);
          }
       }
