@@ -1830,10 +1830,8 @@ static void si_upload_bindless_descriptors(struct si_context *sctx)
       (*img_handle)->desc_dirty = false;
    }
 
-   /* Invalidate L1 because it doesn't know that L2 changed. */
+   /* Invalidate scalar L0 because the cache doesn't know that L2 changed. */
    sctx->flags |= SI_CONTEXT_INV_SCACHE;
-   sctx->emit_cache_flush(sctx);
-
    sctx->bindless_descriptors_dirty = false;
 }
 
