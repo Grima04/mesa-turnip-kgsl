@@ -444,12 +444,14 @@ static bool si_setup_compute_scratch_buffer(struct si_context *sctx, struct si_s
 
 static bool si_switch_compute_shader(struct si_context *sctx, struct si_compute *program,
                                      struct si_shader *shader, const amd_kernel_code_t *code_object,
-                                     unsigned offset)
+                                     unsigned offset, bool *prefetch)
 {
    struct radeon_cmdbuf *cs = sctx->gfx_cs;
    struct ac_shader_config inline_config = {0};
    struct ac_shader_config *config;
    uint64_t shader_va;
+
+   *prefetch = false;
 
    if (sctx->cs_shader_state.emitted_program == program && sctx->cs_shader_state.offset == offset)
       return true;
@@ -495,17 +497,6 @@ static bool si_switch_compute_shader(struct si_context *sctx, struct si_compute 
                                 RADEON_PRIO_SCRATCH_BUFFER);
    }
 
-   /* Prefetch the compute shader to TC L2.
-    *
-    * We should also prefetch graphics shaders if a compute dispatch was
-    * the last command, and the compute shader if a draw call was the last
-    * command. However, that would add more complexity and we're likely
-    * to get a shader state change in that case anyway.
-    */
-   if (sctx->chip_class >= GFX7) {
-      cik_prefetch_TC_L2_async(sctx, &program->shader.bo->b.b, 0, program->shader.bo->b.b.width0);
-   }
-
    shader_va = shader->bo->gpu_address + offset;
    if (program->ir_type == PIPE_SHADER_IR_NATIVE) {
       /* Shader code is placed after the amd_kernel_code_t
@@ -540,6 +531,7 @@ static bool si_switch_compute_shader(struct si_context *sctx, struct si_compute 
    sctx->cs_shader_state.offset = offset;
    sctx->cs_shader_state.uses_scratch = config->scratch_bytes_per_wave != 0;
 
+   *prefetch = true;
    return true;
 }
 
@@ -872,19 +864,13 @@ static void si_launch_grid(struct pipe_context *ctx, const struct pipe_grid_info
       sctx->cs_shader_state.initialized = true;
    }
 
-   if (sctx->flags)
-      sctx->emit_cache_flush(sctx);
-
-   if (!si_switch_compute_shader(sctx, program, &program->shader, code_object, info->pc))
+   /* First emit registers. */
+   bool prefetch;
+   if (!si_switch_compute_shader(sctx, program, &program->shader, code_object, info->pc, &prefetch))
       return;
 
    si_upload_compute_shader_descriptors(sctx);
    si_emit_compute_shader_pointers(sctx);
-
-   if (sctx->has_graphics && si_is_atom_dirty(sctx, &sctx->atoms.s.render_cond)) {
-      sctx->atoms.s.render_cond.emit(sctx);
-      si_set_atom_dirty(sctx, &sctx->atoms.s.render_cond, false);
-   }
 
    if (program->ir_type == PIPE_SHADER_IR_NATIVE &&
        unlikely(!si_upload_compute_input(sctx, code_object, info)))
@@ -899,6 +885,19 @@ static void si_launch_grid(struct pipe_context *ctx, const struct pipe_grid_info
       radeon_add_to_buffer_list(sctx, sctx->gfx_cs, buffer, RADEON_USAGE_READWRITE,
                                 RADEON_PRIO_COMPUTE_GLOBAL);
    }
+
+   /* Registers that are not read from memory should be set before this: */
+   if (sctx->flags)
+      sctx->emit_cache_flush(sctx);
+
+   if (sctx->has_graphics && si_is_atom_dirty(sctx, &sctx->atoms.s.render_cond)) {
+      sctx->atoms.s.render_cond.emit(sctx);
+      si_set_atom_dirty(sctx, &sctx->atoms.s.render_cond, false);
+   }
+
+   /* Prefetch the compute shader to L2. */
+   if (sctx->chip_class >= GFX7 && prefetch)
+      cik_prefetch_TC_L2_async(sctx, &program->shader.bo->b.b, 0, program->shader.bo->b.b.width0);
 
    if (program->ir_type != PIPE_SHADER_IR_NATIVE)
       si_setup_nir_user_data(sctx, info);
