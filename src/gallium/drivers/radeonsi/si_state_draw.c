@@ -34,6 +34,7 @@
 /* special primitive types */
 #define SI_PRIM_RECTANGLE_LIST PIPE_PRIM_MAX
 
+ALWAYS_INLINE
 static unsigned si_conv_pipe_prim(unsigned mode)
 {
    static const unsigned prim_conv[] = {
@@ -475,6 +476,7 @@ static bool si_is_line_stipple_enabled(struct si_context *sctx)
           (rs->polygon_mode_is_lines || util_prim_is_lines(sctx->current_rast_prim));
 }
 
+ALWAYS_INLINE
 static unsigned si_get_ia_multi_vgt_param(struct si_context *sctx,
                                           const struct pipe_draw_info *info,
                                           enum pipe_prim_type prim, unsigned num_patches,
@@ -524,6 +526,7 @@ static unsigned si_get_ia_multi_vgt_param(struct si_context *sctx,
    return ia_multi_vgt_param;
 }
 
+ALWAYS_INLINE
 static unsigned si_conv_prim_to_gs_out(unsigned mode)
 {
    static const int prim_conv[] = {
@@ -550,6 +553,7 @@ static unsigned si_conv_prim_to_gs_out(unsigned mode)
 }
 
 /* rast_prim is the primitive type after GS. */
+ALWAYS_INLINE
 static void si_emit_rasterizer_prim_state(struct si_context *sctx)
 {
    struct radeon_cmdbuf *cs = sctx->gfx_cs;
@@ -586,6 +590,7 @@ static void si_emit_rasterizer_prim_state(struct si_context *sctx)
    }
 }
 
+ALWAYS_INLINE
 static void si_emit_vs_state(struct si_context *sctx, const struct pipe_draw_info *info)
 {
    sctx->current_vs_state &= C_VS_STATE_INDEXED;
@@ -626,13 +631,15 @@ static void si_emit_vs_state(struct si_context *sctx, const struct pipe_draw_inf
    }
 }
 
-static inline bool si_prim_restart_index_changed(struct si_context *sctx, bool primitive_restart,
-                                                 unsigned restart_index)
+ALWAYS_INLINE
+static bool si_prim_restart_index_changed(struct si_context *sctx, bool primitive_restart,
+                                          unsigned restart_index)
 {
    return primitive_restart && (restart_index != sctx->last_restart_index ||
                                 sctx->last_restart_index == SI_RESTART_INDEX_UNKNOWN);
 }
 
+ALWAYS_INLINE
 static void si_emit_ia_multi_vgt_param(struct si_context *sctx, const struct pipe_draw_info *info,
                                        enum pipe_prim_type prim, unsigned num_patches,
                                        unsigned instance_count, bool primitive_restart)
@@ -660,6 +667,7 @@ static void si_emit_ia_multi_vgt_param(struct si_context *sctx, const struct pip
 /* GFX10 removed IA_MULTI_VGT_PARAM in exchange for GE_CNTL.
  * We overload last_multi_vgt_param.
  */
+ALWAYS_INLINE
 static void gfx10_emit_ge_cntl(struct si_context *sctx, unsigned num_patches)
 {
    union si_vgt_param_key key = sctx->ia_multi_vgt_param_key;
@@ -699,6 +707,7 @@ static void gfx10_emit_ge_cntl(struct si_context *sctx, unsigned num_patches)
    }
 }
 
+ALWAYS_INLINE
 static void si_emit_draw_registers(struct si_context *sctx, const struct pipe_draw_info *info,
                                    enum pipe_prim_type prim, unsigned num_patches,
                                    unsigned instance_count, bool primitive_restart)
@@ -1410,6 +1419,7 @@ void si_emit_cache_flush(struct si_context *sctx)
    sctx->flags = 0;
 }
 
+ALWAYS_INLINE
 static bool si_upload_vertex_buffer_descriptors(struct si_context *sctx)
 {
    unsigned i, count = sctx->num_vertex_elements;
