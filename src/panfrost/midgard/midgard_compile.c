@@ -900,6 +900,9 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
                 /* Zero shoved as second-arg */
                 ALU_CASE(iabs, iabsdiff);
 
+                ALU_CASE(uabs_isub, iabsdiff);
+                ALU_CASE(uabs_usub, uabsdiff);
+
                 ALU_CASE(mov, imov);
 
                 ALU_CASE_CMP(feq32, feq);
