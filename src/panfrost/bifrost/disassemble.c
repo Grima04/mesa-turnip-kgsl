@@ -280,6 +280,41 @@ static void dump_const_imm(FILE *fp, uint32_t imm)
         fprintf(fp, "0x%08x /* %f */", imm, fi.f);
 }
 
+static void
+dump_pc_imm(FILE *fp, uint64_t imm, enum bi_constmod mod, bool high32)
+{
+        /* 60-bit sign-extend */
+        uint64_t zx64 = (imm << 4);
+        int64_t sx64 = zx64;
+        sx64 >>= 4;
+
+        /* 28-bit sign extend x 2 */
+        uint32_t imm32[2] = { (uint32_t) imm, (uint32_t) (imm >> 32) };
+        uint32_t zx32[2] = { imm32[0] << 4, imm32[1] << 4 };
+        int32_t sx32[2] = { zx32[0], zx32[1] };
+        sx32[0] >>= 4;
+        sx32[1] >>= 4;
+
+        switch (mod) {
+        case BI_CONSTMOD_PC_LO:
+                fprintf(fp, "(pc + %" PRId64 ")%s",
+                        sx64,
+                        high32 ? " >> 32" : "");
+                break;
+        case BI_CONSTMOD_PC_HI:
+                if (high32)
+                        fprintf(fp, "(pc + %d)", sx32[1]);
+                else
+                        dump_const_imm(fp, imm);
+                break;
+        case BI_CONSTMOD_PC_LO_HI:
+                fprintf(fp, "(pc + %d)", sx32[high32]);
+                break;
+        default:
+                unreachable("Invalid PC modifier");
+        }
+}
+
 /* Convert an index to an embedded constant in FAU-RAM to the index of the
  * embedded constant. No, it's not in order. Yes, really. */
 
@@ -300,10 +335,12 @@ static void dump_uniform_const_src(FILE *fp, struct bifrost_regs srcs, struct bi
                 unsigned uniform = (srcs.uniform_const & 0x7f);
                 fprintf(fp, "u%d.w%d", uniform, high32);
         } else if (srcs.uniform_const >= 0x20) {
-                uint64_t imm = consts->raw[const_fau_to_idx(srcs.uniform_const >> 4)];
+                unsigned idx = const_fau_to_idx(srcs.uniform_const >> 4);
+                uint64_t imm = consts->raw[idx];
                 imm |= (srcs.uniform_const & 0xf);
-
-                if (high32)
+                if (consts->mods[idx] != BI_CONSTMOD_NONE)
+                        dump_pc_imm(fp, imm, consts->mods[idx], high32);
+                else if (high32)
                         dump_const_imm(fp, imm >> 32);
                 else
                         dump_const_imm(fp, imm);
