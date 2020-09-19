@@ -681,6 +681,14 @@ radv_shader_compile_to_nir(struct radv_device *device,
 		}
 		NIR_PASS_V(nir, nir_lower_explicit_io,
 			   nir_var_mem_shared, nir_address_format_32bit_offset);
+
+		if (nir->info.cs.zero_initialize_shared_memory &&
+		    nir->info.cs.shared_size > 0) {
+			const unsigned chunk_size = 16; /* max single store size */
+			const unsigned shared_size = ALIGN(nir->info.cs.shared_size, chunk_size);
+			NIR_PASS_V(nir, nir_zero_initialize_shared_memory,
+			           shared_size, chunk_size);
+		}
 	}
 
 	nir_lower_explicit_io(nir, nir_var_mem_global,

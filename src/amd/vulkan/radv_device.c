@@ -1444,6 +1444,12 @@ void radv_GetPhysicalDeviceFeatures2(
 			features->workgroupMemoryExplicitLayout16BitAccess = true;
 			break;
 		}
+		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ZERO_INITIALIZE_WORKGROUP_MEMORY_FEATURES_KHR: {
+			VkPhysicalDeviceZeroInitializeWorkgroupMemoryFeaturesKHR *features =
+				(VkPhysicalDeviceZeroInitializeWorkgroupMemoryFeaturesKHR*)ext;
+			features->shaderZeroInitializeWorkgroupMemory = true;
+			break;
+		}
 		default:
 			break;
 		}

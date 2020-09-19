@@ -15,4 +15,4 @@ Sparse memory support on RADV
 Rapid packed math (16bit-vectorization) on RADV
 VK_KHR_workgroup_memory_explicit_layout on Intel, RADV
 DRM format modifiers for AMD.
-VK_KHR_zero_initialize_workgroup_memory on Intel
+VK_KHR_zero_initialize_workgroup_memory on Intel, RADV
