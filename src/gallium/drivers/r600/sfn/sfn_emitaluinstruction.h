@@ -51,7 +51,7 @@ private:
 
    bool do_emit(nir_instr* instr) override;
 
-   void split_constants(const nir_alu_instr& instr);
+   void split_constants(const nir_alu_instr& instr, unsigned nsrc_comp);
 
    bool emit_mov(const nir_alu_instr& instr);
    bool emit_alu_op1(const nir_alu_instr& instr, EAluOp opcode, const AluOpFlags &flags = 0);
@@ -108,7 +108,6 @@ private:
 
    using vreg = std::array<PValue, 4>;
 
-   unsigned m_num_src_comp;
    std::array<PValue, 4> m_src[4];
 };
 

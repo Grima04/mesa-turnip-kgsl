@@ -189,10 +189,10 @@ void EmitAluInstruction::preload_src(const nir_alu_instr& instr)
    const nir_op_info *op_info = &nir_op_infos[instr.op];
    assert(op_info->num_inputs <= 4);
 
-   m_num_src_comp = num_src_comp(instr);
+   unsigned nsrc_comp = num_src_comp(instr);
    sfn_log << SfnLog::reg << "Preload:\n";
    for (unsigned i = 0; i < op_info->num_inputs; ++i) {
-      for (unsigned c = 0; c < m_num_src_comp; ++c) {
+      for (unsigned c = 0; c < nsrc_comp; ++c) {
          m_src[i][c] = from_nir(instr.src[i], c);
          sfn_log << SfnLog::reg << " " << *m_src[i][c];
       }
@@ -203,7 +203,7 @@ void EmitAluInstruction::preload_src(const nir_alu_instr& instr)
       sfn_log << SfnLog::reg << " extra:" << *m_src[1][3] << "\n";
    }
 
-   split_constants(instr);
+   split_constants(instr, nsrc_comp);
 }
 
 unsigned EmitAluInstruction::num_src_comp(const nir_alu_instr& instr)
@@ -244,7 +244,7 @@ unsigned EmitAluInstruction::num_src_comp(const nir_alu_instr& instr)
 
 
 
-void EmitAluInstruction::split_constants(const nir_alu_instr& instr)
+void EmitAluInstruction::split_constants(const nir_alu_instr& instr, unsigned nsrc_comp)
 {
     const nir_op_info *op_info = &nir_op_infos[instr.op];
     if (op_info->num_inputs < 2)
@@ -278,7 +278,7 @@ void EmitAluInstruction::split_constants(const nir_alu_instr& instr)
        if (c[i]->sel() != sel || c[i]->kcache_bank() != kcache) {
           AluInstruction *ir = nullptr;
           auto v = get_temp_vec4();
-          for (unsigned k = 0; k < m_num_src_comp; ++k) {
+          for (unsigned k = 0; k < nsrc_comp; ++k) {
              ir = new AluInstruction(op1_mov, v[k], m_src[idx[i]][k], {write});
              emit_instruction(ir);
              m_src[idx[i]][k] = v[k];
