@@ -1939,7 +1939,8 @@ static void si_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *i
     * this must be called after si_need_cs_space, because we must let
     * need_cs_space flush before we add buffers to the buffer list.
     */
-   if (!si_upload_vertex_buffer_descriptors(sctx))
+   if (!si_upload_vertex_buffer_descriptors(sctx) ||
+       !si_upload_graphics_shader_descriptors(sctx))
       goto return_cleanup;
 
    /* Vega10/Raven scissor bug workaround. When any context register is
@@ -1967,9 +1968,6 @@ static void si_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *i
        */
       if (unlikely(sctx->flags & SI_CONTEXT_FLUSH_FOR_RENDER_COND))
          masked_atoms |= si_get_atom_bit(sctx, &sctx->atoms.s.render_cond);
-
-      if (!si_upload_graphics_shader_descriptors(sctx))
-         goto return_cleanup;
 
       /* Emit all states except possibly render condition. */
       si_emit_all_states(sctx, info, prim, instance_count, primitive_restart, masked_atoms);
@@ -2004,9 +2002,6 @@ static void si_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *i
       /* Only prefetch the API VS and VBO descriptors. */
       if (sctx->chip_class >= GFX7 && sctx->prefetch_L2_mask)
          cik_emit_prefetch_L2(sctx, true);
-
-      if (!si_upload_graphics_shader_descriptors(sctx))
-         goto return_cleanup;
 
       si_emit_all_states(sctx, info, prim, instance_count, primitive_restart, masked_atoms);
 
