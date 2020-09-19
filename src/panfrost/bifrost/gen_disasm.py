@@ -64,7 +64,7 @@ def decode_op(instructions, is_fma):
 
     # Generate checks in order
     template = """void
-bi_disasm_${unit}(FILE *fp, unsigned bits, struct bifrost_regs *srcs, struct bifrost_regs *next_regs, unsigned staging_register, unsigned branch_offset, uint64_t *consts)
+bi_disasm_${unit}(FILE *fp, unsigned bits, struct bifrost_regs *srcs, struct bifrost_regs *next_regs, unsigned staging_register, unsigned branch_offset, struct bi_constants *consts)
 {
 % for (i, (name, (emask, ebits), derived)) in enumerate(options):
 % if len(derived) > 0:
@@ -89,7 +89,7 @@ bi_disasm_${unit}(FILE *fp, unsigned bits, struct bifrost_regs *srcs, struct bif
 # state. Sync prototypes to avoid moves when calling.
 
 disasm_op_template = Template("""static void
-bi_disasm_${c_name}(FILE *fp, unsigned bits, struct bifrost_regs *srcs, struct bifrost_regs *next_regs, unsigned staging_register, unsigned branch_offset,  uint64_t *consts)
+bi_disasm_${c_name}(FILE *fp, unsigned bits, struct bifrost_regs *srcs, struct bifrost_regs *next_regs, unsigned staging_register, unsigned branch_offset, struct bi_constants *consts)
 {
     ${body.strip()}
 }

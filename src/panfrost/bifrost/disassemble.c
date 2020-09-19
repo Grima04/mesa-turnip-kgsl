@@ -280,42 +280,29 @@ static void dump_const_imm(FILE *fp, uint32_t imm)
         fprintf(fp, "0x%08x /* %f */", imm, fi.f);
 }
 
-static uint64_t get_const(uint64_t *consts, struct bifrost_regs srcs)
+/* Convert an index to an embedded constant in FAU-RAM to the index of the
+ * embedded constant. No, it's not in order. Yes, really. */
+
+static unsigned
+const_fau_to_idx(unsigned fau_value)
 {
-        unsigned low_bits = srcs.uniform_const & 0xf;
-        uint64_t imm;
-        switch (srcs.uniform_const >> 4) {
-        case 4:
-                imm = consts[0];
-                break;
-        case 5:
-                imm = consts[1];
-                break;
-        case 6:
-                imm = consts[2];
-                break;
-        case 7:
-                imm = consts[3];
-                break;
-        case 2:
-                imm = consts[4];
-                break;
-        case 3:
-                imm = consts[5];
-                break;
-        default:
-                unreachable("bad imm");
-        }
-        return imm | low_bits;
+        unsigned map[8] = {
+                ~0, ~0, 4, 5, 0, 1, 2, 3
+        };
+
+        assert(map[fau_value] < 6);
+        return map[fau_value];
 }
 
-static void dump_uniform_const_src(FILE *fp, struct bifrost_regs srcs, uint64_t *consts, bool high32)
+static void dump_uniform_const_src(FILE *fp, struct bifrost_regs srcs, struct bi_constants *consts, bool high32)
 {
         if (srcs.uniform_const & 0x80) {
                 unsigned uniform = (srcs.uniform_const & 0x7f);
                 fprintf(fp, "u%d.w%d", uniform, high32);
         } else if (srcs.uniform_const >= 0x20) {
-                uint64_t imm = get_const(consts, srcs);
+                uint64_t imm = consts->raw[const_fau_to_idx(srcs.uniform_const >> 4)];
+                imm |= (srcs.uniform_const & 0xf);
+
                 if (high32)
                         dump_const_imm(fp, imm >> 32);
                 else
@@ -366,7 +353,7 @@ static void dump_uniform_const_src(FILE *fp, struct bifrost_regs srcs, uint64_t 
 }
 
 void
-dump_src(FILE *fp, unsigned src, struct bifrost_regs srcs, uint64_t *consts, bool isFMA)
+dump_src(FILE *fp, unsigned src, struct bifrost_regs srcs, struct bi_constants *consts, bool isFMA)
 {
         switch (src) {
         case 0:
@@ -403,7 +390,7 @@ static bool dump_clause(FILE *fp, uint32_t *words, unsigned *size, unsigned offs
 {
         // State for a decoded clause
         struct bifrost_alu_inst instrs[8] = {};
-        uint64_t consts[6] = {};
+        struct bi_constants consts = {};
         unsigned num_instrs = 0;
         unsigned num_consts = 0;
         uint64_t header_bits = 0;
@@ -444,7 +431,7 @@ static bool dump_clause(FILE *fp, uint32_t *words, unsigned *size, unsigned offs
                         instrs[idx + 1] = main_instr;
                         instrs[idx].add_bits = bits(words[3], 0, 17) | ((tag & 0x7) << 17);
                         instrs[idx].fma_bits |= bits(words[2], 19, 32) << 10;
-                        consts[0] = bits(words[3], 17, 32) << 4;
+                        consts.raw[0] = bits(words[3], 17, 32) << 4;
                 } else {
                         bool done = false;
                         switch ((tag >> 3) & 0x7) {
@@ -461,7 +448,7 @@ static bool dump_clause(FILE *fp, uint32_t *words, unsigned *size, unsigned offs
                                         /* Format 3 */
                                         instrs[2].add_bits = bits(words[3], 0, 17) | bits(words[3], 29, 32) << 17;
                                         instrs[2].fma_bits |= bits(words[2], 19, 32) << 10;
-                                        consts[0] = const0;
+                                        consts.raw[0] = const0;
                                         num_instrs = 3;
                                         num_consts = 1;
                                         done = stop;
@@ -482,7 +469,7 @@ static bool dump_clause(FILE *fp, uint32_t *words, unsigned *size, unsigned offs
                                         /* Format 8 */
                                         instrs[5].add_bits = bits(words[3], 0, 17) | bits(words[3], 29, 32) << 17;
                                         instrs[5].fma_bits |= bits(words[2], 19, 32) << 10;
-                                        consts[0] = const0;
+                                        consts.raw[0] = const0;
                                         num_instrs = 6;
                                         num_consts = 1;
                                         done = stop;
@@ -506,7 +493,7 @@ static bool dump_clause(FILE *fp, uint32_t *words, unsigned *size, unsigned offs
                                 unsigned idx = ((tag >> 3) & 0x7) == 2 ? 4 : 7;
                                 main_instr.add_bits |= (tag & 0x7) << 17;
                                 instrs[idx] = main_instr;
-                                consts[0] |= (bits(words[2], 19, 32) | ((uint64_t) words[3] << 13)) << 19;
+                                consts.raw[0] |= (bits(words[2], 19, 32) | ((uint64_t) words[3] << 13)) << 19;
                                 num_consts = 1;
                                 num_instrs = idx + 1;
                                 done = stop;
@@ -579,8 +566,8 @@ static bool dump_clause(FILE *fp, uint32_t *words, unsigned *size, unsigned offs
                                 if (num_consts < const_idx + 2)
                                         num_consts = const_idx + 2;
 
-                                consts[const_idx] = const0;
-                                consts[const_idx + 1] = const1;
+                                consts.raw[const_idx] = const0;
+                                consts.raw[const_idx + 1] = const1;
                                 done = stop;
                                 break;
                         }
@@ -623,15 +610,15 @@ static bool dump_clause(FILE *fp, uint32_t *words, unsigned *size, unsigned offs
                         dump_regs(fp, regs);
                 }
 
-                bi_disasm_fma(fp, instrs[i].fma_bits, &regs, &next_regs, header.datareg, offset, consts);
-                bi_disasm_add(fp, instrs[i].add_bits, &regs, &next_regs, header.datareg, offset, consts);
+                bi_disasm_fma(fp, instrs[i].fma_bits, &regs, &next_regs, header.datareg, offset, &consts);
+                bi_disasm_add(fp, instrs[i].add_bits, &regs, &next_regs, header.datareg, offset, &consts);
         }
         fprintf(fp, "}\n");
 
         if (verbose) {
                 for (unsigned i = 0; i < num_consts; i++) {
-                        fprintf(fp, "# const%d: %08" PRIx64 "\n", 2 * i, consts[i] & 0xffffffff);
-                        fprintf(fp, "# const%d: %08" PRIx64 "\n", 2 * i + 1, consts[i] >> 32);
+                        fprintf(fp, "# const%d: %08" PRIx64 "\n", 2 * i, consts.raw[i] & 0xffffffff);
+                        fprintf(fp, "# const%d: %08" PRIx64 "\n", 2 * i + 1, consts.raw[i] >> 32);
                 }
         }
         return stopbit;
