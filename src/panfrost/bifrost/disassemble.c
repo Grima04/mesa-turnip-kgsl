@@ -453,6 +453,7 @@ static bool dump_clause(FILE *fp, uint32_t *words, unsigned *size, unsigned offs
                         fprintf(fp, "# tag: 0x%02x\n", tag);
                 }
                 if (tag & 0x80) {
+                        /* Format 5 or 10 */
                         unsigned idx = stop ? 5 : 2;
                         main_instr.add_bits |= ((tag >> 3) & 0x7) << 17;
                         instrs[idx + 1] = main_instr;
@@ -465,12 +466,14 @@ static bool dump_clause(FILE *fp, uint32_t *words, unsigned *size, unsigned offs
                         case 0x0:
                                 switch (tag & 0x7) {
                                 case 0x3:
+                                        /* Format 1 */
                                         main_instr.add_bits |= bits(words[3], 29, 32) << 17;
                                         instrs[1] = main_instr;
                                         num_instrs = 2;
                                         done = stop;
                                         break;
                                 case 0x4:
+                                        /* Format 3 */
                                         instrs[2].add_bits = bits(words[3], 0, 17) | bits(words[3], 29, 32) << 17;
                                         instrs[2].fma_bits |= bits(words[2], 19, 32) << 10;
                                         consts[0] = const0;
@@ -480,6 +483,7 @@ static bool dump_clause(FILE *fp, uint32_t *words, unsigned *size, unsigned offs
                                         break;
                                 case 0x1:
                                 case 0x5:
+                                        /* Format 4 */
                                         instrs[2].add_bits = bits(words[3], 0, 17) | bits(words[3], 29, 32) << 17;
                                         instrs[2].fma_bits |= bits(words[2], 19, 32) << 10;
                                         main_instr.add_bits |= bits(words[3], 26, 29) << 17;
@@ -490,6 +494,7 @@ static bool dump_clause(FILE *fp, uint32_t *words, unsigned *size, unsigned offs
                                         }
                                         break;
                                 case 0x6:
+                                        /* Format 8 */
                                         instrs[5].add_bits = bits(words[3], 0, 17) | bits(words[3], 29, 32) << 17;
                                         instrs[5].fma_bits |= bits(words[2], 19, 32) << 10;
                                         consts[0] = const0;
@@ -498,6 +503,7 @@ static bool dump_clause(FILE *fp, uint32_t *words, unsigned *size, unsigned offs
                                         done = stop;
                                         break;
                                 case 0x7:
+                                        /* Format 9 */
                                         instrs[5].add_bits = bits(words[3], 0, 17) | bits(words[3], 29, 32) << 17;
                                         instrs[5].fma_bits |= bits(words[2], 19, 32) << 10;
                                         main_instr.add_bits |= bits(words[3], 26, 29) << 17;
@@ -506,11 +512,12 @@ static bool dump_clause(FILE *fp, uint32_t *words, unsigned *size, unsigned offs
                                         done = stop;
                                         break;
                                 default:
-                                        fprintf(fp, "unknown tag bits 0x%02x\n", tag);
+                                        unreachable("[INSTR_INVALID_ENC] Invalid tag bits");
                                 }
                                 break;
                         case 0x2:
                         case 0x3: {
+                                /* Format 6 or 11 */
                                 unsigned idx = ((tag >> 3) & 0x7) == 2 ? 4 : 7;
                                 main_instr.add_bits |= (tag & 0x7) << 17;
                                 instrs[idx] = main_instr;
@@ -521,6 +528,7 @@ static bool dump_clause(FILE *fp, uint32_t *words, unsigned *size, unsigned offs
                                 break;
                         }
                         case 0x4: {
+                                /* Format 2 */
                                 unsigned idx = stop ? 4 : 1;
                                 main_instr.add_bits |= (tag & 0x7) << 17;
                                 instrs[idx] = main_instr;
@@ -529,17 +537,19 @@ static bool dump_clause(FILE *fp, uint32_t *words, unsigned *size, unsigned offs
                                 break;
                         }
                         case 0x1:
-                                // only constants can come after this
+                                /* Format 0 - followed by constants */
                                 num_instrs = 1;
                                 done = stop;
                                 /* fallthrough */
                         case 0x5:
+                                /* Format 0 - followed by instructions */
                                 header_bits = bits(words[2], 19, 32) | ((uint64_t) words[3] << (32 - 19));
                                 main_instr.add_bits |= (tag & 0x7) << 17;
                                 instrs[0] = main_instr;
                                 break;
                         case 0x6:
                         case 0x7: {
+                                /* Format 12 */
                                 unsigned pos = tag & 0xf;
                                 // note that `pos' encodes both the total number of
                                 // instructions and the position in the constant stream,
