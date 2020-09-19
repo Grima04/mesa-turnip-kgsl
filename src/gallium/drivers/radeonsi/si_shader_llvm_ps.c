@@ -503,9 +503,6 @@ static void si_llvm_return_fs_outputs(struct ac_shader_abi *abi, unsigned max_ou
    LLVMValueRef depth = NULL, stencil = NULL, samplemask = NULL;
    LLVMValueRef ret;
 
-   if (ctx->postponed_kill)
-      ac_build_kill_if_false(&ctx->ac, LLVMBuildLoad(builder, ctx->postponed_kill, ""));
-
    /* Read the output values. */
    for (i = 0; i < info->num_outputs; i++) {
       unsigned semantic = info->output_semantic[i];

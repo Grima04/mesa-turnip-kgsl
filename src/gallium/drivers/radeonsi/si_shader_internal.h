@@ -186,7 +186,6 @@ struct si_shader_context {
    LLVMValueRef gs_generated_prims[4];
    LLVMValueRef gs_ngg_emit;
    LLVMValueRef gs_ngg_scratch;
-   LLVMValueRef postponed_kill;
    LLVMValueRef return_value;
 };
 
