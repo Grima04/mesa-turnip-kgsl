@@ -386,6 +386,49 @@ dump_src(FILE *fp, unsigned src, struct bifrost_regs srcs, struct bi_constants *
         }
 }
 
+/* Tables for decoding M0, or if M0 == 7, M1 respectively.
+ *
+ * XXX: It's not clear if the third entry of M1_table corresponding to (7, 2)
+ * should have PC_LO_HI in the EC1 slot, or it's a weird hybrid mode? I would
+ * say this needs testing but no code should ever actually use this mode.
+ */
+
+static const enum bi_constmod M1_table[7][2] = {
+        { BI_CONSTMOD_NONE, BI_CONSTMOD_NONE },
+        { BI_CONSTMOD_PC_LO, BI_CONSTMOD_NONE },
+        { BI_CONSTMOD_PC_LO, BI_CONSTMOD_PC_LO },
+        { ~0, ~0 },
+        { BI_CONSTMOD_PC_HI, BI_CONSTMOD_NONE },
+        { BI_CONSTMOD_PC_HI, BI_CONSTMOD_PC_HI },
+        { BI_CONSTMOD_PC_LO, BI_CONSTMOD_NONE },
+};
+
+static const enum bi_constmod M2_table[4][2] = {
+        { BI_CONSTMOD_PC_LO_HI, BI_CONSTMOD_NONE },
+        { BI_CONSTMOD_PC_LO_HI, BI_CONSTMOD_PC_HI },
+        { BI_CONSTMOD_PC_LO_HI, BI_CONSTMOD_PC_LO_HI },
+        { BI_CONSTMOD_PC_LO_HI, BI_CONSTMOD_PC_HI },
+};
+
+static void
+decode_M(enum bi_constmod *mod, unsigned M1, unsigned M2, bool single)
+{
+        if (M1 >= 8) {
+                mod[0] = BI_CONSTMOD_NONE;
+
+                if (!single)
+                        mod[1] = BI_CONSTMOD_NONE;
+
+                return;
+        } else if (M1 == 7) {
+                assert(M2 < 4);
+                memcpy(mod, M2_table[M2], sizeof(*mod) * (single ? 1 : 2));
+        } else {
+                assert(M1 != 3);
+                memcpy(mod, M1_table[M1], sizeof(*mod) * (single ? 1 : 2));
+        }
+}
+
 static bool dump_clause(FILE *fp, uint32_t *words, unsigned *size, unsigned offset, bool verbose)
 {
         // State for a decoded clause
@@ -449,6 +492,7 @@ static bool dump_clause(FILE *fp, uint32_t *words, unsigned *size, unsigned offs
                                         instrs[2].add_bits = bits(words[3], 0, 17) | bits(words[3], 29, 32) << 17;
                                         instrs[2].fma_bits |= bits(words[2], 19, 32) << 10;
                                         consts.raw[0] = const0;
+                                        decode_M(&consts.mods[0], bits(words[2], 4, 8), bits(words[2], 8, 12), true);
                                         num_instrs = 3;
                                         num_consts = 1;
                                         done = stop;
@@ -470,6 +514,7 @@ static bool dump_clause(FILE *fp, uint32_t *words, unsigned *size, unsigned offs
                                         instrs[5].add_bits = bits(words[3], 0, 17) | bits(words[3], 29, 32) << 17;
                                         instrs[5].fma_bits |= bits(words[2], 19, 32) << 10;
                                         consts.raw[0] = const0;
+                                        decode_M(&consts.mods[0], bits(words[2], 4, 8), bits(words[2], 8, 12), true);
                                         num_instrs = 6;
                                         num_consts = 1;
                                         done = stop;
@@ -568,6 +613,20 @@ static bool dump_clause(FILE *fp, uint32_t *words, unsigned *size, unsigned offs
 
                                 consts.raw[const_idx] = const0;
                                 consts.raw[const_idx + 1] = const1;
+
+                                /* Calculate M values from A, B and 4-bit
+                                 * unsigned arithmetic */
+
+                                signed A1 = bits(words[2], 0, 4);
+                                signed B1 = bits(words[3], 28, 32);
+                                signed A2 = bits(words[1], 0, 4);
+                                signed B2 = bits(words[2], 28, 32);
+
+                                unsigned M1 = (A1 - B1) % 16;
+                                unsigned M2 = (A2 - B2) % 16;
+
+                                decode_M(&consts.mods[const_idx], M1, M2, false);
+
                                 done = stop;
                                 break;
                         }
