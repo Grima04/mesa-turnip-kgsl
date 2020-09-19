@@ -217,7 +217,6 @@ unsigned EmitAluInstruction::num_src_comp(const nir_alu_instr& instr)
       return 2;
 
    case nir_op_fdot3:
-   case nir_op_fdph:
    case nir_op_bany_inequal3:
    case nir_op_ball_iequal3:
    case nir_op_bany_fnequal3:
@@ -225,6 +224,7 @@ unsigned EmitAluInstruction::num_src_comp(const nir_alu_instr& instr)
       return 3;
 
    case nir_op_fdot4:
+   case nir_op_fdph:
    case nir_op_bany_inequal4:
    case nir_op_ball_iequal4:
    case nir_op_bany_fnequal4:
