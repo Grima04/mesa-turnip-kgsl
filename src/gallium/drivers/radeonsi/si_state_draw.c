@@ -1948,9 +1948,11 @@ static void si_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *i
     * registers must be written too.
     */
    unsigned masked_atoms = 0;
+   bool gfx9_scissor_bug = false;
 
    if (sctx->screen->info.has_gfx9_scissor_bug) {
       masked_atoms |= si_get_atom_bit(sctx, &sctx->atoms.s.scissors);
+      gfx9_scissor_bug = true;
 
       if (info->count_from_stream_output ||
           sctx->dirty_atoms & si_atoms_that_always_roll_context() ||
@@ -1974,14 +1976,17 @@ static void si_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *i
       sctx->emit_cache_flush(sctx);
       /* <-- CUs are idle here. */
 
-      if (si_is_atom_dirty(sctx, &sctx->atoms.s.render_cond))
+      if (si_is_atom_dirty(sctx, &sctx->atoms.s.render_cond)) {
          sctx->atoms.s.render_cond.emit(sctx);
+         sctx->dirty_atoms &= ~si_get_atom_bit(sctx, &sctx->atoms.s.render_cond);
+      }
 
-      if (sctx->screen->info.has_gfx9_scissor_bug &&
-          (sctx->context_roll || si_is_atom_dirty(sctx, &sctx->atoms.s.scissors)))
+      if (gfx9_scissor_bug &&
+          (sctx->context_roll || si_is_atom_dirty(sctx, &sctx->atoms.s.scissors))) {
          sctx->atoms.s.scissors.emit(sctx);
-
-      sctx->dirty_atoms = 0;
+         sctx->dirty_atoms &= ~si_get_atom_bit(sctx, &sctx->atoms.s.scissors);
+      }
+      assert(sctx->dirty_atoms == 0);
 
       si_emit_draw_packets(sctx, info, indexbuf, index_size, index_offset, instance_count,
                            dispatch_prim_discard_cs, original_index_size);
@@ -2005,11 +2010,12 @@ static void si_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *i
 
       si_emit_all_states(sctx, info, prim, instance_count, primitive_restart, masked_atoms);
 
-      if (sctx->screen->info.has_gfx9_scissor_bug &&
-          (sctx->context_roll || si_is_atom_dirty(sctx, &sctx->atoms.s.scissors)))
+      if (gfx9_scissor_bug &&
+          (sctx->context_roll || si_is_atom_dirty(sctx, &sctx->atoms.s.scissors))) {
          sctx->atoms.s.scissors.emit(sctx);
-
-      sctx->dirty_atoms = 0;
+         sctx->dirty_atoms &= ~si_get_atom_bit(sctx, &sctx->atoms.s.scissors);
+      }
+      assert(sctx->dirty_atoms == 0);
 
       si_emit_draw_packets(sctx, info, indexbuf, index_size, index_offset, instance_count,
                            dispatch_prim_discard_cs, original_index_size);
