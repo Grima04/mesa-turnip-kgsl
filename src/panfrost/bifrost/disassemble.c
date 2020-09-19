@@ -446,6 +446,7 @@ static bool dump_clause(FILE *fp, uint32_t *words, unsigned *size, unsigned offs
                 uint64_t const0 = bits(words[0], 8, 32) << 4 | (uint64_t) words[1] << 28 | bits(words[2], 0, 4) << 60;
                 uint64_t const1 = bits(words[2], 4, 32) << 4 | (uint64_t) words[3] << 32;
 
+                /* Z-bit */
                 bool stop = tag & 0x40;
 
                 if (verbose) {
