@@ -14,7 +14,7 @@
 #include "util/format_r11g11b10f.h"
 #include "util/format_rgb9e5.h"
 #include "util/format_srgb.h"
-#include "util/u_half.h"
+#include "util/half_float.h"
 
 static uint32_t
 tu_pack_float32_for_unorm(float val, int bits)

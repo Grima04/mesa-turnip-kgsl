@@ -29,7 +29,7 @@
 #include "etnaviv_context.h"
 #include "etnaviv_screen.h"
 #include "etnaviv_translate.h"
-#include "util/u_half.h"
+#include "util/half_float.h"
 #include "util/u_memory.h"
 
 #include "hw/common.xml.h"

@@ -34,7 +34,7 @@
 
 #include "hw/isa.xml.h"
 #include "util/u_math.h"
-#include "util/u_half.h"
+#include "util/half_float.h"
 
 struct instr {
    /* dword0: */

@@ -22,7 +22,7 @@
  */
 
 #include "util/format/u_format.h"
-#include "util/u_half.h"
+#include "util/half_float.h"
 #include "v3d_context.h"
 #include "broadcom/common/v3d_macros.h"
 #include "broadcom/cle/v3dx_pack.h"

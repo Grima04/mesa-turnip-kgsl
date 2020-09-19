@@ -23,7 +23,7 @@
  */
 
 #include "util/ralloc.h"
-#include "util/u_half.h"
+#include "util/half_float.h"
 #include "util/bitscan.h"
 
 #include "ppir.h"

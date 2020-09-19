@@ -28,10 +28,10 @@
 #include <math.h>
 #include <assert.h>
 #include "half_float.h"
-#include "util/u_half.h"
 #include "rounding.h"
 #include "softfloat.h"
 #include "macros.h"
+#include "u_math.h"
 
 typedef union { float f; int32_t i; uint32_t u; } fi_type;
 

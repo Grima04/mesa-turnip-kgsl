@@ -58,7 +58,7 @@
 #include "tgsi/tgsi_parse.h"
 #include "tgsi/tgsi_util.h"
 #include "tgsi_exec.h"
-#include "util/u_half.h"
+#include "util/half_float.h"
 #include "util/u_memory.h"
 #include "util/u_math.h"
 #include "util/rounding.h"

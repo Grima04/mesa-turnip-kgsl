@@ -24,7 +24,7 @@
  *
  */
 
-#include "util/u_half.h"
+#include "util/half_float.h"
 
 #include "ppir.h"
 #include "codegen.h"
