@@ -1829,7 +1829,7 @@ static void si_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *i
          indexbuf = NULL;
          u_upload_alloc(ctx->stream_uploader, start_offset, size,
                         si_optimal_tcc_alignment(sctx, size), &offset, &indexbuf, &ptr);
-         if (!indexbuf)
+         if (unlikely(!indexbuf))
             return;
 
          util_shorten_ubyte_elts_to_userptr(&sctx->b, info, 0, 0, index_offset + start, count, ptr);
@@ -1847,7 +1847,7 @@ static void si_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *i
          u_upload_data(ctx->stream_uploader, start_offset, info->count * index_size,
                        sctx->screen->info.tcc_cache_line_size,
                        (char *)info->index.user + start_offset, &index_offset, &indexbuf);
-         if (!indexbuf)
+         if (unlikely(!indexbuf))
             return;
 
          /* info->start will be added by the drawing code */
@@ -2021,7 +2021,7 @@ static void si_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *i
       sctx->do_update_shaders = true;
    }
 
-   if (sctx->do_update_shaders && !si_update_shaders(sctx))
+   if (unlikely(sctx->do_update_shaders && !si_update_shaders(sctx)))
       goto return_cleanup;
 
    si_need_gfx_cs_space(sctx);
@@ -2042,8 +2042,8 @@ static void si_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *i
    if (sctx->bo_list_add_all_gfx_resources)
       si_gfx_resources_add_all_to_bo_list(sctx);
 
-   if (!si_upload_vertex_buffer_descriptors(sctx) ||
-       !si_upload_graphics_shader_descriptors(sctx))
+   if (unlikely(!si_upload_vertex_buffer_descriptors(sctx) ||
+                !si_upload_graphics_shader_descriptors(sctx)))
       goto return_cleanup;
 
    /* Vega10/Raven scissor bug workaround. When any context register is
