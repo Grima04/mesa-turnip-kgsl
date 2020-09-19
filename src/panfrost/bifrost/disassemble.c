@@ -399,21 +399,6 @@ dump_src(FILE *fp, unsigned src, struct bifrost_regs srcs, uint64_t *consts, boo
         }
 }
 
-static void dump_instr(FILE *fp, const struct bifrost_alu_inst *instr,
-                struct bifrost_regs next_regs, uint64_t *consts,
-                unsigned data_reg, unsigned offset, bool verbose)
-{
-        struct bifrost_regs regs;
-        memcpy((char *) &regs, (char *) &instr->reg_bits, sizeof(regs));
-
-        if (verbose) {
-                fprintf(fp, "# regs: %016" PRIx64 "\n", instr->reg_bits);
-                dump_regs(fp, regs);
-        }
-        bi_disasm_fma(fp, instr->fma_bits, &regs, &next_regs, data_reg, offset, consts);
-        bi_disasm_add(fp, instr->add_bits, &regs, &next_regs, data_reg, offset, consts);
-}
-
 static bool dump_clause(FILE *fp, uint32_t *words, unsigned *size, unsigned offset, bool verbose)
 {
         // State for a decoded clause
@@ -622,7 +607,7 @@ static bool dump_clause(FILE *fp, uint32_t *words, unsigned *size, unsigned offs
 
         fprintf(fp, "{\n");
         for (i = 0; i < num_instrs; i++) {
-                struct bifrost_regs next_regs;
+                struct bifrost_regs regs, next_regs;
                 if (i + 1 == num_instrs) {
                         memcpy((char *) &next_regs, (char *) &instrs[0].reg_bits,
                                sizeof(next_regs));
@@ -631,7 +616,15 @@ static bool dump_clause(FILE *fp, uint32_t *words, unsigned *size, unsigned offs
                                sizeof(next_regs));
                 }
 
-                dump_instr(fp, &instrs[i], next_regs, consts, header.datareg, offset, verbose);
+                memcpy((char *) &regs, (char *) &instrs[i].reg_bits, sizeof(regs));
+
+                if (verbose) {
+                        fprintf(fp, "# regs: %016" PRIx64 "\n", instrs->reg_bits);
+                        dump_regs(fp, regs);
+                }
+
+                bi_disasm_fma(fp, instrs[i].fma_bits, &regs, &next_regs, header.datareg, offset, consts);
+                bi_disasm_add(fp, instrs[i].add_bits, &regs, &next_regs, header.datareg, offset, consts);
         }
         fprintf(fp, "}\n");
 
