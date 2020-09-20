@@ -278,4 +278,41 @@ enum bifrost_reg_control {
         BIFROST_FIRST_WRITE_ADD_P2_FMA_P3  = 15
 };
 
+/* 32-bit modes for slots 2/3, as encoded in the register block. Other values
+ * are reserved. First part specifies behaviour of slot 2 (Idle, Read, Write
+ * Full, Write Low, Write High), second part behaviour of slot 3, and the last
+ * part specifies the source for the write (FMA, ADD, or MIX for FMA/ADD).
+ *
+ * IDLE is a special mode disabling both ports, except for the first
+ * instruction in the clause which uses IDLE_1 for the same purpose.
+ */
+enum bifrost_reg_mode {
+        BIFROST_R_WL_FMA  = 1,
+        BIFROST_R_WH_FMA  = 2,
+        BIFROST_R_W_FMA   = 3,
+        BIFROST_R_WL_ADD  = 4,
+        BIFROST_R_WH_ADD  = 5,
+        BIFROST_R_W_ADD   = 6,
+        BIFROST_WL_WL_ADD = 7,
+        BIFROST_WL_WH_ADD = 8,
+        BIFROST_WL_W_ADD  = 9,
+        BIFROST_WH_WL_ADD = 10,
+        BIFROST_WH_WH_ADD = 11,
+        BIFROST_WH_W_ADD  = 12,
+        BIFROST_W_WL_ADD  = 13,
+        BIFROST_W_WH_ADD  = 14,
+        BIFROST_W_W_ADD   = 15,
+        BIFROST_IDLE_1    = 16,
+        BIFROST_I_W_FMA   = 17,
+        BIFROST_I_WL_FMA  = 18,
+        BIFROST_I_WH_FMA  = 19,
+        BIFROST_R_I       = 20,
+        BIFROST_I_W_ADD   = 21,
+        BIFROST_I_WL_ADD  = 22,
+        BIFROST_I_WH_ADD  = 23,
+        BIFROST_WL_WH_MIX = 24,
+        BIFROST_WH_WL_MIX = 26,
+        BIFROST_IDLE      = 27,
+};
+
 #endif
