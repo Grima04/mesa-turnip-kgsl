@@ -191,8 +191,8 @@ enum bifrost_reg_write_unit {
 
 struct bifrost_regs {
         unsigned uniform_const : 8;
-        unsigned reg2 : 6;
         unsigned reg3 : 6;
+        unsigned reg2 : 6;
         unsigned reg0 : 5;
         unsigned reg1 : 6;
         unsigned ctrl : 4;
@@ -285,6 +285,9 @@ enum bifrost_reg_control {
  *
  * IDLE is a special mode disabling both ports, except for the first
  * instruction in the clause which uses IDLE_1 for the same purpose.
+ *
+ * All fields 0 used as sentinel for reserved encoding, so IDLE(_1) have FMA
+ * set (and ignored) as a placeholder to differentiate from reserved.
  */
 enum bifrost_reg_mode {
         BIFROST_R_WL_FMA  = 1,
@@ -313,6 +316,49 @@ enum bifrost_reg_mode {
         BIFROST_WL_WH_MIX = 24,
         BIFROST_WH_WL_MIX = 26,
         BIFROST_IDLE      = 27,
+};
+
+enum bifrost_reg_op {
+        BIFROST_OP_IDLE = 0,
+        BIFROST_OP_READ = 1,
+        BIFROST_OP_WRITE = 2,
+        BIFROST_OP_WRITE_LO = 3,
+        BIFROST_OP_WRITE_HI = 4,
+};
+
+struct bifrost_reg_ctrl_23 {
+        enum bifrost_reg_op slot2;
+        enum bifrost_reg_op slot3;
+        bool slot3_fma;
+};
+
+static const struct bifrost_reg_ctrl_23 bifrost_reg_ctrl_lut[32] = {
+        [BIFROST_R_WL_FMA]  = { BIFROST_OP_READ,     BIFROST_OP_WRITE_LO, true },
+        [BIFROST_R_WH_FMA]  = { BIFROST_OP_READ,     BIFROST_OP_WRITE_HI, true },
+        [BIFROST_R_W_FMA]   = { BIFROST_OP_READ,     BIFROST_OP_WRITE,    true },
+        [BIFROST_R_WL_ADD]  = { BIFROST_OP_READ,     BIFROST_OP_WRITE_LO, false },
+        [BIFROST_R_WH_ADD]  = { BIFROST_OP_READ,     BIFROST_OP_WRITE_HI, false },
+        [BIFROST_R_W_ADD]   = { BIFROST_OP_READ,     BIFROST_OP_WRITE,    false },
+        [BIFROST_WL_WL_ADD] = { BIFROST_OP_WRITE_LO, BIFROST_OP_WRITE_LO, false },
+        [BIFROST_WL_WH_ADD] = { BIFROST_OP_WRITE_LO, BIFROST_OP_WRITE_HI, false },
+        [BIFROST_WL_W_ADD]  = { BIFROST_OP_WRITE_LO, BIFROST_OP_WRITE,    false },
+        [BIFROST_WH_WL_ADD] = { BIFROST_OP_WRITE_HI, BIFROST_OP_WRITE_LO, false },
+        [BIFROST_WH_WH_ADD] = { BIFROST_OP_WRITE_HI, BIFROST_OP_WRITE_HI, false },
+        [BIFROST_WH_W_ADD]  = { BIFROST_OP_WRITE_HI, BIFROST_OP_WRITE,    false },
+        [BIFROST_W_WL_ADD]  = { BIFROST_OP_WRITE,    BIFROST_OP_WRITE_LO, false },
+        [BIFROST_W_WH_ADD]  = { BIFROST_OP_WRITE,    BIFROST_OP_WRITE_HI, false },
+        [BIFROST_W_W_ADD]   = { BIFROST_OP_WRITE,    BIFROST_OP_WRITE,    false },
+        [BIFROST_IDLE_1]    = { BIFROST_OP_IDLE,     BIFROST_OP_IDLE,     true },
+        [BIFROST_I_W_FMA]   = { BIFROST_OP_IDLE,     BIFROST_OP_WRITE,    true },
+        [BIFROST_I_WL_FMA]  = { BIFROST_OP_IDLE,     BIFROST_OP_WRITE_LO, true },
+        [BIFROST_I_WH_FMA]  = { BIFROST_OP_IDLE,     BIFROST_OP_WRITE_HI, true },
+        [BIFROST_R_I]       = { BIFROST_OP_READ,     BIFROST_OP_IDLE,     false },
+        [BIFROST_I_W_ADD]   = { BIFROST_OP_IDLE,     BIFROST_OP_WRITE,    false },
+        [BIFROST_I_WL_ADD]  = { BIFROST_OP_IDLE,     BIFROST_OP_WRITE_LO, false },
+        [BIFROST_I_WH_ADD]  = { BIFROST_OP_IDLE,     BIFROST_OP_WRITE_HI, false },
+        [BIFROST_WL_WH_MIX] = { BIFROST_OP_WRITE_LO, BIFROST_OP_WRITE_HI, false },
+        [BIFROST_WH_WL_MIX] = { BIFROST_OP_WRITE_HI, BIFROST_OP_WRITE_LO, false },
+        [BIFROST_IDLE]      = { BIFROST_OP_IDLE,     BIFROST_OP_IDLE,     true },
 };
 
 #endif

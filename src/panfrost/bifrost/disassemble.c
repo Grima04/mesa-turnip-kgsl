@@ -69,9 +69,7 @@ static unsigned get_reg1(struct bifrost_regs regs)
 struct bifrost_reg_ctrl {
         bool read_reg0;
         bool read_reg1;
-        bool read_reg3;
-        enum bifrost_reg_write_unit fma_write_unit;
-        enum bifrost_reg_write_unit add_write_unit;
+        struct bifrost_reg_ctrl_23 slot23;
         bool clause_start;
 };
 
@@ -156,68 +154,18 @@ static struct bifrost_reg_ctrl DecodeRegCtrl(FILE *fp, struct bifrost_regs regs,
                 ctrl = regs.ctrl;
                 decoded.read_reg0 = decoded.read_reg1 = true;
         }
-        switch (ctrl) {
-        case 1:
-                decoded.fma_write_unit = REG_WRITE_TWO;
-                break;
-        case 2:
-        case 3:
-                decoded.fma_write_unit = REG_WRITE_TWO;
-                decoded.read_reg3 = true;
-                break;
-        case 4:
-                decoded.read_reg3 = true;
-                break;
-        case 5:
-                decoded.add_write_unit = REG_WRITE_TWO;
-                break;
-        case 6:
-                decoded.add_write_unit = REG_WRITE_TWO;
-                decoded.read_reg3 = true;
-                break;
-        case 8:
-                decoded.clause_start = true;
-                break;
-        case 9:
-                decoded.fma_write_unit = REG_WRITE_TWO;
-                decoded.clause_start = true;
-                break;
-        case 11:
-                break;
-        case 12:
-                decoded.read_reg3 = true;
-                decoded.clause_start = true;
-                break;
-        case 13:
-                decoded.add_write_unit = REG_WRITE_TWO;
-                decoded.clause_start = true;
-                break;
 
-        case 7:
-        case 15:
-                decoded.fma_write_unit = REG_WRITE_THREE;
-                decoded.add_write_unit = REG_WRITE_TWO;
-                break;
-        default:
-                fprintf(fp, "# unknown reg ctrl %d\n", ctrl);
-        }
+        /* Modify control based on state */
+        if (first)
+                ctrl = (ctrl & 0x7) | ((ctrl & 0x8) << 1);
+        else if (regs.reg2 == regs.reg3)
+                ctrl += 16;
+
+        decoded.slot23 = bifrost_reg_ctrl_lut[ctrl];
+        ASSERTED struct bifrost_reg_ctrl_23 reserved = { 0 };
+        assert(memcmp(&decoded.slot23, &reserved, sizeof(reserved)));
 
         return decoded;
-}
-
-// Pass in the add_write_unit or fma_write_unit, and this returns which register
-// the ADD/FMA units are writing to
-static unsigned GetRegToWrite(enum bifrost_reg_write_unit unit, struct bifrost_regs regs)
-{
-        switch (unit) {
-        case REG_WRITE_TWO:
-                return regs.reg2;
-        case REG_WRITE_THREE:
-                return regs.reg3;
-        default: /* REG_WRITE_NONE */
-                assert(0);
-                return 0;
-        }
 }
 
 static void dump_regs(FILE *fp, struct bifrost_regs srcs, bool first)
@@ -225,21 +173,27 @@ static void dump_regs(FILE *fp, struct bifrost_regs srcs, bool first)
         struct bifrost_reg_ctrl ctrl = DecodeRegCtrl(fp, srcs, first);
         fprintf(fp, "# ");
         if (ctrl.read_reg0)
-                fprintf(fp, "port 0: r%d ", get_reg0(srcs));
+                fprintf(fp, "slot 0: r%d ", get_reg0(srcs));
         if (ctrl.read_reg1)
-                fprintf(fp, "port 1: r%d ", get_reg1(srcs));
+                fprintf(fp, "slot 1: r%d ", get_reg1(srcs));
 
-        if (ctrl.fma_write_unit == REG_WRITE_TWO)
-                fprintf(fp, "port 2: r%d (write FMA) ", srcs.reg2);
-        else if (ctrl.add_write_unit == REG_WRITE_TWO)
-                fprintf(fp, "port 2: r%d (write ADD) ", srcs.reg2);
+        const char *slot3_fma = ctrl.slot23.slot3_fma ? "FMA" : "ADD";
 
-        if (ctrl.fma_write_unit == REG_WRITE_THREE)
-                fprintf(fp, "port 3: r%d (write FMA) ", srcs.reg3);
-        else if (ctrl.add_write_unit == REG_WRITE_THREE)
-                fprintf(fp, "port 3: r%d (write ADD) ", srcs.reg3);
-        else if (ctrl.read_reg3)
-                fprintf(fp, "port 3: r%d (read) ", srcs.reg3);
+        if (ctrl.slot23.slot2 == BIFROST_OP_WRITE)
+                fprintf(fp, "slot 2: r%d (write FMA) ", srcs.reg2);
+        else if (ctrl.slot23.slot2 == BIFROST_OP_WRITE_LO)
+                fprintf(fp, "slot 2: r%d (write lo FMA) ", srcs.reg2);
+        else if (ctrl.slot23.slot2 == BIFROST_OP_WRITE_HI)
+                fprintf(fp, "slot 2: r%d (write hi FMA) ", srcs.reg2);
+        else if (ctrl.slot23.slot2 == BIFROST_OP_READ)
+                fprintf(fp, "slot 2: r%d (read) ", srcs.reg2);
+
+        if (ctrl.slot23.slot3 == BIFROST_OP_WRITE)
+                fprintf(fp, "slot 3: r%d (write %s) ", srcs.reg3, slot3_fma);
+        else if (ctrl.slot23.slot3 == BIFROST_OP_WRITE_LO)
+                fprintf(fp, "slot 3: r%d (write lo %s) ", srcs.reg3, slot3_fma);
+        else if (ctrl.slot23.slot3 == BIFROST_OP_WRITE_HI)
+                fprintf(fp, "slot 3: r%d (write hi %s) ", srcs.reg3, slot3_fma);
 
         if (srcs.uniform_const) {
                 if (srcs.uniform_const & 0x80) {
@@ -250,24 +204,39 @@ static void dump_regs(FILE *fp, struct bifrost_regs srcs, bool first)
         fprintf(fp, "\n");
 }
 
+static void
+bi_disasm_dest_mask(FILE *fp, enum bifrost_reg_op op)
+{
+        if (op == BIFROST_OP_WRITE_LO)
+                fprintf(fp, ".h0");
+        else if (op == BIFROST_OP_WRITE_HI)
+                fprintf(fp, ".h1");
+}
+
 void
 bi_disasm_dest_fma(FILE *fp, struct bifrost_regs *next_regs, bool first)
 {
-    struct bifrost_reg_ctrl next_ctrl = DecodeRegCtrl(fp, *next_regs, first);
-    if (next_ctrl.fma_write_unit != REG_WRITE_NONE)
-        fprintf(fp, "r%u:t0", GetRegToWrite(next_ctrl.fma_write_unit, *next_regs));
-    else
+    struct bifrost_reg_ctrl ctrl = DecodeRegCtrl(fp, *next_regs, first);
+    if (ctrl.slot23.slot2 >= BIFROST_OP_WRITE) {
+        fprintf(fp, "r%u:t0", next_regs->reg2);
+        bi_disasm_dest_mask(fp, ctrl.slot23.slot2);
+    } else if (ctrl.slot23.slot3 >= BIFROST_OP_WRITE && ctrl.slot23.slot3_fma) {
+        fprintf(fp, "r%u:t0", next_regs->reg3);
+        bi_disasm_dest_mask(fp, ctrl.slot23.slot3);
+    } else
         fprintf(fp, "t0");
 }
 
 void
 bi_disasm_dest_add(FILE *fp, struct bifrost_regs *next_regs, bool first)
 {
-    struct bifrost_reg_ctrl next_ctrl = DecodeRegCtrl(fp, *next_regs, first);
-    if (next_ctrl.add_write_unit != REG_WRITE_NONE)
-        fprintf(fp, "r%u:t1", GetRegToWrite(next_ctrl.add_write_unit, *next_regs));
-    else
-        fprintf(fp, "t1");
+    struct bifrost_reg_ctrl ctrl = DecodeRegCtrl(fp, *next_regs, first);
+
+    if (ctrl.slot23.slot3 >= BIFROST_OP_WRITE && !ctrl.slot23.slot3_fma) {
+        fprintf(fp, "r%u:t0", next_regs->reg3);
+        bi_disasm_dest_mask(fp, ctrl.slot23.slot3);
+    } else
+        fprintf(fp, "t0");
 }
 
 static void dump_const_imm(FILE *fp, uint32_t imm)
@@ -400,7 +369,7 @@ dump_src(FILE *fp, unsigned src, struct bifrost_regs srcs, struct bi_constants *
                 fprintf(fp, "r%d", get_reg1(srcs));
                 break;
         case 2:
-                fprintf(fp, "r%d", srcs.reg3);
+                fprintf(fp, "r%d", srcs.reg2);
                 break;
         case 3:
                 if (isFMA)

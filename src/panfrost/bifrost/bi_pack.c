@@ -394,8 +394,8 @@ bi_pack_registers(bi_registers regs)
         if (!has_port2)
                 regs.port[2] = regs.port[3];
 
-        s.reg3 = regs.port[3];
-        s.reg2 = regs.port[2];
+        s.reg2 = regs.port[3];
+        s.reg3 = regs.port[2];
         s.uniform_const = regs.uniform_constant;
 
         memcpy(&packed, &s, sizeof(s));
