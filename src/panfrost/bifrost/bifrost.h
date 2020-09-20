@@ -283,7 +283,7 @@ enum bifrost_reg_control {
  * Full, Write Low, Write High), second part behaviour of slot 3, and the last
  * part specifies the source for the write (FMA, ADD, or MIX for FMA/ADD).
  *
- * IDLE is a special mode disabling both ports, except for the first
+ * IDLE is a special mode disabling both slots, except for the first
  * instruction in the clause which uses IDLE_1 for the same purpose.
  *
  * All fields 0 used as sentinel for reserved encoding, so IDLE(_1) have FMA

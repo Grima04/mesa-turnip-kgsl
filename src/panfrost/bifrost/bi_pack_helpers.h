@@ -50,15 +50,15 @@ bi_write_data_register(bi_clause *clause, bi_instruction *ins)
 }
 
 static inline enum bifrost_packed_src
-bi_get_src_reg_port(bi_registers *regs, unsigned src)
+bi_get_src_reg_slot(bi_registers *regs, unsigned src)
 {
         unsigned reg = src & ~BIR_INDEX_REGISTER;
 
-        if (regs->port[0] == reg && regs->enabled[0])
+        if (regs->slot[0] == reg && regs->enabled[0])
                 return BIFROST_SRC_PORT0;
-        else if (regs->port[1] == reg && regs->enabled[1])
+        else if (regs->slot[1] == reg && regs->enabled[1])
                 return BIFROST_SRC_PORT1;
-        else if (regs->port[3] == reg && regs->read_port3)
+        else if (regs->slot[3] == reg && regs->read_slot3)
                 return BIFROST_SRC_PORT3;
         else
                 unreachable("Tried to access register with no port");
@@ -70,7 +70,7 @@ bi_get_src(bi_instruction *ins, bi_registers *regs, unsigned s)
         unsigned src = ins->src[s];
 
         if (src & BIR_INDEX_REGISTER)
-                return bi_get_src_reg_port(regs, src);
+                return bi_get_src_reg_slot(regs, src);
         else if (src & BIR_INDEX_PASS)
                 return src & ~BIR_INDEX_PASS;
         else {

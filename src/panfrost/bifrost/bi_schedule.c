@@ -85,7 +85,7 @@ bi_clause_type_for_ins(bi_instruction *ins)
 
 /* There is an encoding restriction against FMA fp16 add/min/max
  * having both sources with abs(..) with a duplicated source. This is
- * due to the packing being order-sensitive, so the ports must end up distinct
+ * due to the packing being order-sensitive, so the slots must end up distinct
  * to handle both having abs(..). The swizzle doesn't matter here. Note
  * BIR_INDEX_REGISTER generally should not be used pre-schedule (TODO: enforce
  * this).
@@ -119,7 +119,7 @@ bi_imath_small(bi_instruction *ins)
 
 /* Lowers FMOV to ADD #0, since FMOV doesn't exist on the h/w and this is the
  * latest time it's sane to lower (it's useful to distinguish before, but we'll
- * need this handle during scheduling to ensure the ports get modeled
+ * need this handle during scheduling to ensure the slots get modeled
  * correctly with respect to the new zero source) */
 
 static void

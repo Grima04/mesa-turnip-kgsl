@@ -139,7 +139,7 @@ struct bi_load_vary {
  *
  * We define our own enum of conditions since the conditions in the hardware
  * packed in crazy ways that would make manipulation unweildly (meaning changes
- * based on port swapping, etc), so we defer dealing with that until emit time.
+ * based on slot swapping, etc), so we defer dealing with that until emit time.
  * Likewise, we expose NIR types instead of the crazy branch types, although
  * the restrictions do eventually apply of course. */
 
@@ -342,21 +342,21 @@ typedef struct {
         };
 } bi_instruction;
 
-/* Represents the assignment of ports for a given bi_bundle */
+/* Represents the assignment of slots for a given bi_bundle */
 
 typedef struct {
-        /* Register to assign to each port */
-        unsigned port[4];
+        /* Register to assign to each slot */
+        unsigned slot[4];
 
-        /* Read ports can be disabled */
+        /* Read slots can be disabled */
         bool enabled[2];
 
-        /* Should we write FMA? what about ADD? If only a single port is
-         * enabled it is in port 2, else ADD/FMA is 2/3 respectively */
+        /* Should we write FMA? what about ADD? If only a single slot is
+         * enabled it is in slot 2, else ADD/FMA is 2/3 respectively */
         bool write_fma, write_add;
 
-        /* Should we read with port 3? */
-        bool read_port3;
+        /* Should we read with slot 3? */
+        bool read_slot3;
 
         /* Packed uniform/constant */
         uint8_t uniform_constant;
@@ -367,7 +367,7 @@ typedef struct {
 
 /* A bi_bundle contains two paired instruction pointers. If a slot is unfilled,
  * leave it NULL; the emitter will fill in a nop. Instructions reference
- * registers via ports which are assigned per bundle.
+ * registers via slots which are assigned per bundle.
  */
 
 typedef struct {

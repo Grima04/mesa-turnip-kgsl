@@ -174,8 +174,8 @@ bi_assign_uniform_constant_single(
                         /* XXX: HACK UNTIL WE HAVE HI MATCHING DUE TO OVERFLOW XXX */
                         ins->src[s] = BIR_INDEX_PASS | BIFROST_SRC_CONST_HI;
                 } else if (ins->src[s] & BIR_INDEX_ZERO && !fast_zero) {
-                        /* FMAs have a fast zero port, ADD needs to use the
-                         * uniform/const port's special 0 mode handled here */
+                        /* FMAs have a fast zero slot, ADD needs to use the
+                         * uniform/const slot's special 0 mode handled here */
                         unsigned f = 0;
 
                         if (assigned && regs->uniform_constant != f)
@@ -206,10 +206,10 @@ bi_assign_uniform_constant(
         bi_assign_uniform_constant_single(regs, clause, bundle.add, assigned, false);
 }
 
-/* Assigns a port for reading, before anything is written */
+/* Assigns a slot for reading, before anything is written */
 
 static void
-bi_assign_port_read(bi_registers *regs, unsigned src)
+bi_assign_slot_read(bi_registers *regs, unsigned src)
 {
         /* We only assign for registers */
         if (!(src & BIR_INDEX_REGISTER))
@@ -217,39 +217,39 @@ bi_assign_port_read(bi_registers *regs, unsigned src)
 
         unsigned reg = src & ~BIR_INDEX_REGISTER;
 
-        /* Check if we already assigned the port */
+        /* Check if we already assigned the slot */
         for (unsigned i = 0; i <= 1; ++i) {
-                if (regs->port[i] == reg && regs->enabled[i])
+                if (regs->slot[i] == reg && regs->enabled[i])
                         return;
         }
 
-        if (regs->port[3] == reg && regs->read_port3)
+        if (regs->slot[3] == reg && regs->read_slot3)
                 return;
 
         /* Assign it now */
 
         for (unsigned i = 0; i <= 1; ++i) {
                 if (!regs->enabled[i]) {
-                        regs->port[i] = reg;
+                        regs->slot[i] = reg;
                         regs->enabled[i] = true;
                         return;
                 }
         }
 
-        if (!regs->read_port3) {
-                regs->port[3] = reg;
-                regs->read_port3 = true;
+        if (!regs->read_slot3) {
+                regs->slot[3] = reg;
+                regs->read_slot3 = true;
                 return;
         }
 
-        bi_print_ports(regs, stderr);
-        unreachable("Failed to find a free port for src");
+        bi_print_slots(regs, stderr);
+        unreachable("Failed to find a free slot for src");
 }
 
 static bi_registers
-bi_assign_ports(bi_bundle *now, bi_bundle *prev)
+bi_assign_slots(bi_bundle *now, bi_bundle *prev)
 {
-        /* We assign ports for the main register mechanism. Special ops
+        /* We assign slots for the main register mechanism. Special ops
          * use the data registers, which has its own mechanism entirely
          * and thus gets skipped over here. */
 
@@ -263,19 +263,19 @@ bi_assign_ports(bi_bundle *now, bi_bundle *prev)
 
         if (now->fma)
                 bi_foreach_src(now->fma, src)
-                        bi_assign_port_read(&now->regs, now->fma->src[src]);
+                        bi_assign_slot_read(&now->regs, now->fma->src[src]);
 
         if (now->add) {
                 bi_foreach_src(now->add, src) {
                         if (!(src == 0 && read_dreg))
-                                bi_assign_port_read(&now->regs, now->add->src[src]);
+                                bi_assign_slot_read(&now->regs, now->add->src[src]);
                 }
         }
 
         /* Next, assign writes */
 
         if (prev->add && prev->add->dest & BIR_INDEX_REGISTER && !write_dreg) {
-                now->regs.port[2] = prev->add->dest & ~BIR_INDEX_REGISTER;
+                now->regs.slot[2] = prev->add->dest & ~BIR_INDEX_REGISTER;
                 now->regs.write_add = true;
         }
 
@@ -284,10 +284,10 @@ bi_assign_ports(bi_bundle *now, bi_bundle *prev)
 
                 if (now->regs.write_add) {
                         /* Scheduler constraint: cannot read 3 and write 2 */
-                        assert(!now->regs.read_port3);
-                        now->regs.port[3] = r;
+                        assert(!now->regs.read_slot3);
+                        now->regs.slot[3] = r;
                 } else {
-                        now->regs.port[2] = r;
+                        now->regs.slot[2] = r;
                 }
 
                 now->regs.write_fma = true;
@@ -303,20 +303,20 @@ bi_pack_register_ctrl_lo(bi_registers r)
 {
         if (r.write_fma) {
                 if (r.write_add) {
-                        assert(!r.read_port3);
+                        assert(!r.read_slot3);
                         return BIFROST_WRITE_ADD_P2_FMA_P3;
                 } else {
-                        if (r.read_port3)
+                        if (r.read_slot3)
                                 return BIFROST_WRITE_FMA_P2_READ_P3;
                         else
                                 return BIFROST_WRITE_FMA_P2;
                 }
         } else if (r.write_add) {
-                if (r.read_port3)
+                if (r.read_slot3)
                         return BIFROST_WRITE_ADD_P2_READ_P3;
                 else
                         return BIFROST_WRITE_ADD_P2;
-        } else if (r.read_port3)
+        } else if (r.read_slot3)
                 return BIFROST_READ_P3;
         else
                 return BIFROST_REG_NONE;
@@ -350,52 +350,52 @@ bi_pack_registers(bi_registers regs)
 
         if (regs.enabled[1]) {
                 /* Gotta save that bit!~ Required by the 63-x trick */
-                assert(regs.port[1] > regs.port[0]);
+                assert(regs.slot[1] > regs.slot[0]);
                 assert(regs.enabled[0]);
 
                 /* Do the 63-x trick, see docs/disasm */
-                if (regs.port[0] > 31) {
-                        regs.port[0] = 63 - regs.port[0];
-                        regs.port[1] = 63 - regs.port[1];
+                if (regs.slot[0] > 31) {
+                        regs.slot[0] = 63 - regs.slot[0];
+                        regs.slot[1] = 63 - regs.slot[1];
                 }
 
-                assert(regs.port[0] <= 31);
-                assert(regs.port[1] <= 63);
+                assert(regs.slot[0] <= 31);
+                assert(regs.slot[1] <= 63);
 
                 s.ctrl = ctrl;
-                s.reg1 = regs.port[1];
-                s.reg0 = regs.port[0];
+                s.reg1 = regs.slot[1];
+                s.reg0 = regs.slot[0];
         } else {
-                /* Port 1 disabled, so set to zero and use port 1 for ctrl */
+                /* slot 1 disabled, so set to zero and use slot 1 for ctrl */
                 s.ctrl = 0;
                 s.reg1 = ctrl << 2;
 
                 if (regs.enabled[0]) {
-                        /* Bit 0 upper bit of port 0 */
-                        s.reg1 |= (regs.port[0] >> 5);
+                        /* Bit 0 upper bit of slot 0 */
+                        s.reg1 |= (regs.slot[0] >> 5);
 
-                        /* Rest of port 0 in usual spot */
-                        s.reg0 = (regs.port[0] & 0b11111);
+                        /* Rest of slot 0 in usual spot */
+                        s.reg0 = (regs.slot[0] & 0b11111);
                 } else {
-                        /* Bit 1 set if port 0 also disabled */
+                        /* Bit 1 set if slot 0 also disabled */
                         s.reg1 |= (1 << 1);
                 }
         }
 
-        /* When port 3 isn't used, we have to set it to port 2, and vice versa,
+        /* When slot 3 isn't used, we have to set it to slot 2, and vice versa,
          * or INSTR_INVALID_ENC is raised. The reason is unknown. */
 
-        bool has_port2 = regs.write_fma || regs.write_add;
-        bool has_port3 = regs.read_port3 || (regs.write_fma && regs.write_add);
+        bool has_slot2 = regs.write_fma || regs.write_add;
+        bool has_slot3 = regs.read_slot3 || (regs.write_fma && regs.write_add);
 
-        if (!has_port3)
-                regs.port[3] = regs.port[2];
+        if (!has_slot3)
+                regs.slot[3] = regs.slot[2];
 
-        if (!has_port2)
-                regs.port[2] = regs.port[3];
+        if (!has_slot2)
+                regs.slot[2] = regs.slot[3];
 
-        s.reg2 = regs.port[3];
-        s.reg3 = regs.port[2];
+        s.reg2 = regs.slot[3];
+        s.reg3 = regs.slot[2];
         s.uniform_const = regs.uniform_constant;
 
         memcpy(&packed, &s, sizeof(s));
@@ -605,14 +605,14 @@ bi_pack_add_branch_cond(bi_instruction *ins, bi_registers *regs)
         }
 
         /* EQ swap to NE */
-        bool port_swapped = false;
+        bool slot_swapped = false;
 
-        /* We assigned the constant port to fetch the branch offset so we can
+        /* We assigned the constant slot to fetch the branch offset so we can
          * just passthrough here. We put in the HI slot to match the blob since
          * that's where the magic flags end up */
         struct bifrost_branch pack = {
                 .src0 = bi_get_src(ins, regs, 0),
-                .src1 = (zero_ctrl << 1) | !port_swapped,
+                .src1 = (zero_ctrl << 1) | !slot_swapped,
                 .src2 = BIFROST_SRC_CONST_HI,
                 .cond = BR_COND_EQ,
                 .size = BR_SIZE_ZERO,
@@ -876,16 +876,16 @@ struct bi_packed_bundle {
         uint64_t hi;
 };
 
-/* We must ensure port 1 > port 0 for the 63-x trick to function, so we fix
+/* We must ensure slot 1 > slot 0 for the 63-x trick to function, so we fix
  * this up at pack time. (Scheduling doesn't care.) */
 
 static void
-bi_flip_ports(bi_registers *regs)
+bi_flip_slots(bi_registers *regs)
 {
-        if (regs->enabled[0] && regs->enabled[1] && regs->port[1] < regs->port[0]) {
-                unsigned temp = regs->port[0];
-                regs->port[0] = regs->port[1];
-                regs->port[1] = temp;
+        if (regs->enabled[0] && regs->enabled[1] && regs->slot[1] < regs->slot[0]) {
+                unsigned temp = regs->slot[0];
+                regs->slot[0] = regs->slot[1];
+                regs->slot[1] = temp;
         }
 
 }
@@ -893,11 +893,11 @@ bi_flip_ports(bi_registers *regs)
 static struct bi_packed_bundle
 bi_pack_bundle(bi_clause *clause, bi_bundle bundle, bi_bundle prev, bool first_bundle, gl_shader_stage stage)
 {
-        bi_assign_ports(&bundle, &prev);
+        bi_assign_slots(&bundle, &prev);
         bi_assign_uniform_constant(clause, &bundle.regs, bundle);
         bundle.regs.first_instruction = first_bundle;
 
-        bi_flip_ports(&bundle.regs);
+        bi_flip_slots(&bundle.regs);
 
         uint64_t reg = bi_pack_registers(bundle.regs);
         uint64_t fma = bi_pack_fma(clause, bundle, &bundle.regs);

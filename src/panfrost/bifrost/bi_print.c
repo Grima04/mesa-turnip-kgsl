@@ -344,23 +344,23 @@ bi_print_instruction(bi_instruction *ins, FILE *fp)
 }
 
 void
-bi_print_ports(bi_registers *regs, FILE *fp)
+bi_print_slots(bi_registers *regs, FILE *fp)
 {
         for (unsigned i = 0; i < 2; ++i) {
                 if (regs->enabled[i])
-                        fprintf(fp, "port %u: %u\n", i, regs->port[i]);
+                        fprintf(fp, "slot %u: %u\n", i, regs->slot[i]);
         }
 
         if (regs->write_fma || regs->write_add) {
-                fprintf(fp, "port 2 (%s): %u\n",
+                fprintf(fp, "slot 2 (%s): %u\n",
                                 regs->write_add ? "ADD" : "FMA",
-                                regs->port[2]);
+                                regs->slot[2]);
         }
 
-        if ((regs->write_fma && regs->write_add) || regs->read_port3) {
-                fprintf(fp, "port 3 (%s): %u\n",
-                                regs->read_port3 ? "read" : "FMA",
-                                regs->port[3]);
+        if ((regs->write_fma && regs->write_add) || regs->read_slot3) {
+                fprintf(fp, "slot 3 (%s): %u\n",
+                                regs->read_slot3 ? "read" : "FMA",
+                                regs->slot[3]);
         }
 }
 
