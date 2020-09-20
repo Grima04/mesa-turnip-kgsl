@@ -905,8 +905,12 @@ panfrost_emit_const_buf(struct panfrost_batch *batch,
                         continue;
                 }
 
+                /* Issue (57) for the ARB_uniform_buffer_object spec says that
+                 * the buffer can be larger than the uniform data inside it,
+                 * so clamp ubo size to what hardware supports. */
+
                 pan_pack(ubo_ptr + ubo, UNIFORM_BUFFER, cfg) {
-                        cfg.entries = DIV_ROUND_UP(usz, 16);
+                        cfg.entries = MIN2(DIV_ROUND_UP(usz, 16), 1 << 12);
                         cfg.pointer = panfrost_map_constant_buffer_gpu(batch,
                                         stage, buf, ubo);
                 }
