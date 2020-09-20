@@ -220,12 +220,33 @@ v3dv_CreateInstance(const VkInstanceCreateInfo *pCreateInfo,
       return vk_error(NULL, result);
    }
 
-   instance->pipeline_cache_enabled =
-      env_var_as_boolean("V3DV_ENABLE_PIPELINE_CACHE", true);
+
+   /* We start with the default values for the pipeline_cache envvars */
+   instance->pipeline_cache_enabled = true;
+   instance->default_pipeline_cache_enabled = true;
+   const char *pipeline_cache_str = getenv("V3DV_ENABLE_PIPELINE_CACHE");
+   if (pipeline_cache_str != NULL) {
+      if (strncmp(pipeline_cache_str, "full", 4) == 0) {
+         /* nothing to do, just to filter correct values */
+      } else if (strncmp(pipeline_cache_str, "no-default-cache", 16) == 0) {
+         instance->default_pipeline_cache_enabled = false;
+      } else if (strncmp(pipeline_cache_str, "off", 3) == 0) {
+         instance->pipeline_cache_enabled = false;
+         instance->default_pipeline_cache_enabled = false;
+      } else {
+         fprintf(stderr, "Wrong value for envvar V3DV_ENABLE_PIPELINE_CACHE. "
+                 "Allowed values are: full, no-default-cache, off\n");
+      }
+   }
 
    if (instance->pipeline_cache_enabled == false) {
       fprintf(stderr, "WARNING: v3dv pipeline cache is disabled. Performance "
               "can be affected negatively\n");
+   } else {
+      if (instance->default_pipeline_cache_enabled == false) {
+        fprintf(stderr, "WARNING: default v3dv pipeline cache is disabled. "
+                "Performance can be affected negatively\n");
+      }
    }
 
    glsl_type_singleton_init_or_ref();
@@ -1333,7 +1354,7 @@ v3dv_CreateDevice(VkPhysicalDevice physicalDevice,
    init_device_meta(device);
    v3dv_bo_cache_init(device);
    v3dv_pipeline_cache_init(&device->default_pipeline_cache, device,
-                            device->instance->pipeline_cache_enabled);
+                            device->instance->default_pipeline_cache_enabled);
 
    *pDevice = v3dv_device_to_handle(device);
 

@@ -190,6 +190,7 @@ struct v3dv_instance {
    struct vk_debug_report_instance debug_report_callbacks;
 
    bool pipeline_cache_enabled;
+   bool default_pipeline_cache_enabled;
 };
 
 /* Tracks wait threads spawned from a single vkQueueSubmit call */

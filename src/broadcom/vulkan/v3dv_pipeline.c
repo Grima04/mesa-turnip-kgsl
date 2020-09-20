@@ -1513,7 +1513,7 @@ v3dv_get_shader_variant(struct v3dv_pipeline_stage *p_stage,
 
    struct v3dv_pipeline *pipeline = p_stage->pipeline;
    struct v3dv_device *device = pipeline->device;
-   if (cache == NULL && device->instance->pipeline_cache_enabled)
+   if (cache == NULL && device->instance->default_pipeline_cache_enabled)
        cache = &device->default_pipeline_cache;
 
    struct v3dv_shader_variant *variant =
@@ -1639,7 +1639,7 @@ pregenerate_shader_variants(struct v3dv_pipeline_stage *p_stage,
    if (*out_vk_result != VK_SUCCESS)
       return variant_16;
 
-   if (!p_stage->pipeline->device->instance->pipeline_cache_enabled) {
+   if (!p_stage->pipeline->device->instance->default_pipeline_cache_enabled) {
       /* If pipeline cache is disabled it doesn't make sense to pre-generate,
        * as we are relying on the default pipeline cache to save the different
        * pre-compiled variants
@@ -2988,7 +2988,7 @@ graphics_pipeline_create(VkDevice _device,
    VkResult result;
 
    /* Use the default pipeline cache if none is specified */
-   if (cache == NULL && device->instance->pipeline_cache_enabled)
+   if (cache == NULL && device->instance->default_pipeline_cache_enabled)
        cache = &device->default_pipeline_cache;
 
    pipeline = vk_zalloc2(&device->alloc, pAllocator, sizeof(*pipeline), 8,
@@ -3143,7 +3143,7 @@ compute_pipeline_create(VkDevice _device,
    VkResult result;
 
    /* Use the default pipeline cache if none is specified */
-   if (cache == NULL && device->instance->pipeline_cache_enabled)
+   if (cache == NULL && device->instance->default_pipeline_cache_enabled)
        cache = &device->default_pipeline_cache;
 
    pipeline = vk_zalloc2(&device->alloc, pAllocator, sizeof(*pipeline), 8,
