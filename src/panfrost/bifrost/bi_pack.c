@@ -223,7 +223,7 @@ bi_assign_slot_read(bi_registers *regs, unsigned src)
                         return;
         }
 
-        if (regs->slot[3] == reg && regs->read_slot3)
+        if (regs->slot[2] == reg && regs->slot23.slot2 == BIFROST_OP_READ)
                 return;
 
         /* Assign it now */
@@ -236,9 +236,9 @@ bi_assign_slot_read(bi_registers *regs, unsigned src)
                 }
         }
 
-        if (!regs->read_slot3) {
-                regs->slot[3] = reg;
-                regs->read_slot3 = true;
+        if (!regs->slot23.slot3) {
+                regs->slot[2] = reg;
+                regs->slot23.slot2 = BIFROST_OP_READ;
                 return;
         }
 
@@ -275,78 +275,77 @@ bi_assign_slots(bi_bundle *now, bi_bundle *prev)
         /* Next, assign writes */
 
         if (prev->add && prev->add->dest & BIR_INDEX_REGISTER && !write_dreg) {
-                now->regs.slot[2] = prev->add->dest & ~BIR_INDEX_REGISTER;
-                now->regs.write_add = true;
+                now->regs.slot[3] = prev->add->dest & ~BIR_INDEX_REGISTER;
+                now->regs.slot23.slot3 = BIFROST_OP_WRITE;
         }
 
         if (prev->fma && prev->fma->dest & BIR_INDEX_REGISTER) {
                 unsigned r = prev->fma->dest & ~BIR_INDEX_REGISTER;
 
-                if (now->regs.write_add) {
+                if (now->regs.slot23.slot3) {
                         /* Scheduler constraint: cannot read 3 and write 2 */
-                        assert(!now->regs.read_slot3);
-                        now->regs.slot[3] = r;
-                } else {
+                        assert(!now->regs.slot23.slot2);
                         now->regs.slot[2] = r;
+                        now->regs.slot23.slot2 = BIFROST_OP_WRITE;
+                } else {
+                        now->regs.slot[3] = r;
+                        now->regs.slot23.slot3 = BIFROST_OP_WRITE;
+                        now->regs.slot23.slot3_fma = true;
                 }
-
-                now->regs.write_fma = true;
         }
 
         return now->regs;
 }
 
-/* Determines the register control field, ignoring the first? flag */
-
-static enum bifrost_reg_control
-bi_pack_register_ctrl_lo(bi_registers r)
+static enum bifrost_reg_mode
+bi_pack_register_mode(bi_registers r)
 {
-        if (r.write_fma) {
-                if (r.write_add) {
-                        assert(!r.read_slot3);
-                        return BIFROST_WRITE_ADD_P2_FMA_P3;
-                } else {
-                        if (r.read_slot3)
-                                return BIFROST_WRITE_FMA_P2_READ_P3;
-                        else
-                                return BIFROST_WRITE_FMA_P2;
-                }
-        } else if (r.write_add) {
-                if (r.read_slot3)
-                        return BIFROST_WRITE_ADD_P2_READ_P3;
-                else
-                        return BIFROST_WRITE_ADD_P2;
-        } else if (r.read_slot3)
-                return BIFROST_READ_P3;
-        else
-                return BIFROST_REG_NONE;
-}
+        /* Handle idle special case for first instructions */
+        if (r.first_instruction && !(r.slot23.slot2 | r.slot23.slot3))
+                return BIFROST_IDLE_1;
 
-/* Ditto but account for the first? flag this time */
-
-static enum bifrost_reg_control
-bi_pack_register_ctrl(bi_registers r)
-{
-        enum bifrost_reg_control ctrl = bi_pack_register_ctrl_lo(r);
-
-        if (r.first_instruction) {
-                if (ctrl == BIFROST_REG_NONE)
-                        ctrl = BIFROST_FIRST_NONE;
-                else if (ctrl == BIFROST_WRITE_FMA_P2_READ_P3)
-                        ctrl = BIFROST_FIRST_WRITE_FMA_P2_READ_P3;
-                else
-                        ctrl |= BIFROST_FIRST_NONE;
+        /* Otherwise, use the LUT */
+        for (unsigned i = 0; i < ARRAY_SIZE(bifrost_reg_ctrl_lut); ++i) {
+                if (memcmp(bifrost_reg_ctrl_lut + i, &r.slot23, sizeof(r.slot23)) == 0)
+                        return i;
         }
 
-        return ctrl;
+        bi_print_slots(&r, stderr);
+        unreachable("Invalid slot assignment");
 }
 
 static uint64_t
 bi_pack_registers(bi_registers regs)
 {
-        enum bifrost_reg_control ctrl = bi_pack_register_ctrl(regs);
+        enum bifrost_reg_mode mode = bi_pack_register_mode(regs);
         struct bifrost_regs s = { 0 };
         uint64_t packed = 0;
+
+        /* Need to pack 5-bit mode as a 4-bit field. The decoder moves bit 3 to bit 4 for
+         * first instruction and adds 16 when reg 2 == reg 3 */
+
+        unsigned ctrl;
+        bool r2_equals_r3 = false;
+
+        if (regs.first_instruction) {
+                /* Bit 3 implicitly must be clear for first instructions.
+                 * The affected patterns all write both ADD/FMA, but that
+                 * is forbidden for the first instruction, so this does
+                 * not add additional encoding constraints */
+                assert(!(mode & 0x8));
+
+                /* Move bit 4 to bit 3, since bit 3 is clear */
+                ctrl = (mode & 0x7) | ((mode & 0x10) >> 1);
+
+                /* If we can let r2 equal r3, we have to or the hardware raises
+                 * INSTR_INVALID_ENC (it's unclear why). */
+                if (!(regs.slot23.slot2 && regs.slot23.slot3))
+                        r2_equals_r3 = true;
+        } else {
+                /* We force r2=r3 or not for the upper bit */
+                ctrl = (mode & 0xF);
+                r2_equals_r3 = (mode & 0x10);
+        }
 
         if (regs.enabled[1]) {
                 /* Gotta save that bit!~ Required by the 63-x trick */
@@ -382,20 +381,21 @@ bi_pack_registers(bi_registers regs)
                 }
         }
 
-        /* When slot 3 isn't used, we have to set it to slot 2, and vice versa,
-         * or INSTR_INVALID_ENC is raised. The reason is unknown. */
+        /* Force r2 =/!= r3 as needed */
+        if (r2_equals_r3) {
+                assert(regs.slot[3] == regs.slot[2] || !(regs.slot23.slot2 && regs.slot23.slot3));
 
-        bool has_slot2 = regs.write_fma || regs.write_add;
-        bool has_slot3 = regs.read_slot3 || (regs.write_fma && regs.write_add);
+                if (regs.slot23.slot2)
+                        regs.slot[3] = regs.slot[2];
+                else
+                        regs.slot[2] = regs.slot[3];
+        } else if (!regs.first_instruction) {
+                /* Enforced by the encoding anyway */
+                assert(regs.slot[2] != regs.slot[3]);
+        }
 
-        if (!has_slot3)
-                regs.slot[3] = regs.slot[2];
-
-        if (!has_slot2)
-                regs.slot[2] = regs.slot[3];
-
-        s.reg2 = regs.slot[3];
-        s.reg3 = regs.slot[2];
+        s.reg2 = regs.slot[2];
+        s.reg3 = regs.slot[3];
         s.uniform_const = regs.uniform_constant;
 
         memcpy(&packed, &s, sizeof(s));

@@ -93,7 +93,7 @@ struct bifrost_header {
 enum bifrost_packed_src {
         BIFROST_SRC_PORT0    = 0,
         BIFROST_SRC_PORT1    = 1,
-        BIFROST_SRC_PORT3    = 2,
+        BIFROST_SRC_PORT2    = 2,
         BIFROST_SRC_STAGE    = 3,
         BIFROST_SRC_CONST_LO = 4,
         BIFROST_SRC_CONST_HI = 5,

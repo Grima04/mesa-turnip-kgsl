@@ -343,6 +343,19 @@ bi_print_instruction(bi_instruction *ins, FILE *fp)
         fprintf(fp, "\n");
 }
 
+static const char *
+bi_reg_op_name(enum bifrost_reg_op op)
+{
+        switch (op) {
+        case BIFROST_OP_IDLE: return "idle";
+        case BIFROST_OP_READ: return "read";
+        case BIFROST_OP_WRITE: return "write";
+        case BIFROST_OP_WRITE_LO: return "write lo";
+        case BIFROST_OP_WRITE_HI: return "write hi";
+        default: return "invalid";
+        }
+}
+
 void
 bi_print_slots(bi_registers *regs, FILE *fp)
 {
@@ -351,15 +364,18 @@ bi_print_slots(bi_registers *regs, FILE *fp)
                         fprintf(fp, "slot %u: %u\n", i, regs->slot[i]);
         }
 
-        if (regs->write_fma || regs->write_add) {
-                fprintf(fp, "slot 2 (%s): %u\n",
-                                regs->write_add ? "ADD" : "FMA",
+        if (regs->slot23.slot2) {
+                fprintf(fp, "slot 2 (%s%s): %u\n",
+                                bi_reg_op_name(regs->slot23.slot2),
+                                regs->slot23.slot2 >= BIFROST_OP_WRITE ?
+                                        " FMA": "",
                                 regs->slot[2]);
         }
 
-        if ((regs->write_fma && regs->write_add) || regs->read_slot3) {
-                fprintf(fp, "slot 3 (%s): %u\n",
-                                regs->read_slot3 ? "read" : "FMA",
+        if (regs->slot23.slot3) {
+                fprintf(fp, "slot 3 (%s %s): %u\n",
+                                bi_reg_op_name(regs->slot23.slot3),
+                                regs->slot23.slot3_fma ? "FMA" : "ADD",
                                 regs->slot[3]);
         }
 }

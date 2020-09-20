@@ -351,12 +351,8 @@ typedef struct {
         /* Read slots can be disabled */
         bool enabled[2];
 
-        /* Should we write FMA? what about ADD? If only a single slot is
-         * enabled it is in slot 2, else ADD/FMA is 2/3 respectively */
-        bool write_fma, write_add;
-
-        /* Should we read with slot 3? */
-        bool read_slot3;
+        /* Configuration for slots 2/3 */
+        struct bifrost_reg_ctrl_23 slot23;
 
         /* Packed uniform/constant */
         uint8_t uniform_constant;

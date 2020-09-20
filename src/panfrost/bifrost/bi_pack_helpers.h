@@ -58,8 +58,8 @@ bi_get_src_reg_slot(bi_registers *regs, unsigned src)
                 return BIFROST_SRC_PORT0;
         else if (regs->slot[1] == reg && regs->enabled[1])
                 return BIFROST_SRC_PORT1;
-        else if (regs->slot[3] == reg && regs->read_slot3)
-                return BIFROST_SRC_PORT3;
+        else if (regs->slot[2] == reg && regs->slot23.slot2 == BIFROST_OP_READ)
+                return BIFROST_SRC_PORT2;
         else
                 unreachable("Tried to access register with no port");
 }
