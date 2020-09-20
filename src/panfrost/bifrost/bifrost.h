@@ -183,12 +183,6 @@ enum branch_bit_size {
         BR_SIZE_ZERO = 7,
 };
 
-enum bifrost_reg_write_unit {
-        REG_WRITE_NONE = 0, // don't write
-        REG_WRITE_TWO, // write using reg2
-        REG_WRITE_THREE, // write using reg3
-};
-
 struct bifrost_regs {
         unsigned uniform_const : 8;
         unsigned reg3 : 6;
@@ -258,25 +252,6 @@ struct bifrost_fmt_constant {
         uint64_t imm_1 : 60;
         uint64_t imm_2 : 60;
 } __attribute__((packed));
-
-enum bifrost_reg_control {
-        BIFROST_WRITE_FMA_P2         = 1,
-        BIFROST_WRITE_FMA_P2_READ_P3 = 2,
-        BIFROST_FIRST_WRITE_FMA_P2_READ_P3 = 3,
-        BIFROST_READ_P3              = 4,
-        BIFROST_WRITE_ADD_P2         = 5,
-        BIFROST_WRITE_ADD_P2_READ_P3 = 6,
-        BIFROST_WRITE_ADD_P2_FMA_P3  = 7,
-
-        BIFROST_FIRST_NONE           = 8,
-        BIFROST_FIRST_WRITE_FMA_P2   = 9,
-        /* INSTR_INVALID_ENC */
-        BIFROST_REG_NONE             = 11,
-        BIFROST_FIRST_READ_P3        = 12,
-        BIFROST_FIRST_WRITE_ADD_P2   = 13,
-        BIFROST_FIRST_WRITE_ADD_P2_READ_P3 = 14,
-        BIFROST_FIRST_WRITE_ADD_P2_FMA_P3  = 15
-};
 
 /* 32-bit modes for slots 2/3, as encoded in the register block. Other values
  * are reserved. First part specifies behaviour of slot 2 (Idle, Read, Write
