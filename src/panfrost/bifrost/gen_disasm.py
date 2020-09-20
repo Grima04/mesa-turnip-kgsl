@@ -64,7 +64,7 @@ def decode_op(instructions, is_fma):
 
     # Generate checks in order
     template = """void
-bi_disasm_${unit}(FILE *fp, unsigned bits, struct bifrost_regs *srcs, struct bifrost_regs *next_regs, unsigned staging_register, unsigned branch_offset, struct bi_constants *consts)
+bi_disasm_${unit}(FILE *fp, unsigned bits, struct bifrost_regs *srcs, struct bifrost_regs *next_regs, unsigned staging_register, unsigned branch_offset, struct bi_constants *consts, bool first)
 {
 % for (i, (name, (emask, ebits), derived)) in enumerate(options):
 % if len(derived) > 0:
@@ -76,7 +76,7 @@ bi_disasm_${unit}(FILE *fp, unsigned bits, struct bifrost_regs *srcs, struct bif
 % else:
     ${"else " if i > 0 else ""}if (unlikely(((bits & ${hex(emask)}) == ${hex(ebits)})))
 % endif
-        bi_disasm_${name}(fp, bits, srcs, next_regs, staging_register, branch_offset, consts);
+        bi_disasm_${name}(fp, bits, srcs, next_regs, staging_register, branch_offset, consts, first);
 % endfor
     else
         fprintf(fp, "INSTR_INVALID_ENC ${unit} %X\\n", bits);
@@ -89,7 +89,7 @@ bi_disasm_${unit}(FILE *fp, unsigned bits, struct bifrost_regs *srcs, struct bif
 # state. Sync prototypes to avoid moves when calling.
 
 disasm_op_template = Template("""static void
-bi_disasm_${c_name}(FILE *fp, unsigned bits, struct bifrost_regs *srcs, struct bifrost_regs *next_regs, unsigned staging_register, unsigned branch_offset, struct bi_constants *consts)
+bi_disasm_${c_name}(FILE *fp, unsigned bits, struct bifrost_regs *srcs, struct bifrost_regs *next_regs, unsigned staging_register, unsigned branch_offset, struct bi_constants *consts, bool first)
 {
     ${body.strip()}
 }
@@ -316,7 +316,7 @@ def disasm_op(name, op):
         body += disasm_mod(mod, skip_mods)
 
     body += '    fputs(" ", fp);\n'
-    body += '    bi_disasm_dest_{}(fp, next_regs);\n'.format('fma' if is_fma else 'add')
+    body += '    bi_disasm_dest_{}(fp, next_regs, first);\n'.format('fma' if is_fma else 'add')
 
     # Next up, each source. Source modifiers are inserterd here
 

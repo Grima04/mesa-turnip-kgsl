@@ -144,7 +144,7 @@ static void dump_header(FILE *fp, struct bifrost_header header, bool verbose)
         }
 }
 
-static struct bifrost_reg_ctrl DecodeRegCtrl(FILE *fp, struct bifrost_regs regs)
+static struct bifrost_reg_ctrl DecodeRegCtrl(FILE *fp, struct bifrost_regs regs, bool first)
 {
         struct bifrost_reg_ctrl decoded = {};
         unsigned ctrl;
@@ -220,9 +220,9 @@ static unsigned GetRegToWrite(enum bifrost_reg_write_unit unit, struct bifrost_r
         }
 }
 
-static void dump_regs(FILE *fp, struct bifrost_regs srcs)
+static void dump_regs(FILE *fp, struct bifrost_regs srcs, bool first)
 {
-        struct bifrost_reg_ctrl ctrl = DecodeRegCtrl(fp, srcs);
+        struct bifrost_reg_ctrl ctrl = DecodeRegCtrl(fp, srcs, first);
         fprintf(fp, "# ");
         if (ctrl.read_reg0)
                 fprintf(fp, "port 0: r%d ", get_reg0(srcs));
@@ -251,9 +251,9 @@ static void dump_regs(FILE *fp, struct bifrost_regs srcs)
 }
 
 void
-bi_disasm_dest_fma(FILE *fp, struct bifrost_regs *next_regs)
+bi_disasm_dest_fma(FILE *fp, struct bifrost_regs *next_regs, bool first)
 {
-    struct bifrost_reg_ctrl next_ctrl = DecodeRegCtrl(fp, *next_regs);
+    struct bifrost_reg_ctrl next_ctrl = DecodeRegCtrl(fp, *next_regs, first);
     if (next_ctrl.fma_write_unit != REG_WRITE_NONE)
         fprintf(fp, "r%u:t0", GetRegToWrite(next_ctrl.fma_write_unit, *next_regs));
     else
@@ -261,9 +261,9 @@ bi_disasm_dest_fma(FILE *fp, struct bifrost_regs *next_regs)
 }
 
 void
-bi_disasm_dest_add(FILE *fp, struct bifrost_regs *next_regs)
+bi_disasm_dest_add(FILE *fp, struct bifrost_regs *next_regs, bool first)
 {
-    struct bifrost_reg_ctrl next_ctrl = DecodeRegCtrl(fp, *next_regs);
+    struct bifrost_reg_ctrl next_ctrl = DecodeRegCtrl(fp, *next_regs, first);
     if (next_ctrl.add_write_unit != REG_WRITE_NONE)
         fprintf(fp, "r%u:t1", GetRegToWrite(next_ctrl.add_write_unit, *next_regs));
     else
@@ -703,11 +703,11 @@ static bool dump_clause(FILE *fp, uint32_t *words, unsigned *size, unsigned offs
 
                 if (verbose) {
                         fprintf(fp, "# regs: %016" PRIx64 "\n", instrs->reg_bits);
-                        dump_regs(fp, regs);
+                        dump_regs(fp, regs, i == 0);
                 }
 
-                bi_disasm_fma(fp, instrs[i].fma_bits, &regs, &next_regs, header.datareg, offset, &consts);
-                bi_disasm_add(fp, instrs[i].add_bits, &regs, &next_regs, header.datareg, offset, &consts);
+                bi_disasm_fma(fp, instrs[i].fma_bits, &regs, &next_regs, header.datareg, offset, &consts, i == 0);
+                bi_disasm_add(fp, instrs[i].add_bits, &regs, &next_regs, header.datareg, offset, &consts, i == 0);
         }
         fprintf(fp, "}\n");
 
