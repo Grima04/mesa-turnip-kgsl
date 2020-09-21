@@ -650,7 +650,6 @@ radv_shader_compile_to_nir(struct radv_device *device,
 	 * considered too large for unrolling.
 	 */
 	ac_lower_indirect_derefs(nir, device->physical_device->rad_info.chip_class);
-	radv_optimize_nir(nir, flags & VK_PIPELINE_CREATE_DISABLE_OPTIMIZATION_BIT, false);
 
 	return nir;
 }

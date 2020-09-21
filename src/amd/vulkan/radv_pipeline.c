@@ -2184,7 +2184,8 @@ static const struct radv_vs_output_info *get_vs_output_info(const struct radv_pi
 }
 
 static void
-radv_link_shaders(struct radv_pipeline *pipeline, nir_shader **shaders)
+radv_link_shaders(struct radv_pipeline *pipeline, nir_shader **shaders,
+		  bool optimize_conservatively)
 {
 	nir_shader* ordered_shaders[MESA_SHADER_STAGES];
 	int shader_count = 0;
@@ -2204,8 +2205,11 @@ radv_link_shaders(struct radv_pipeline *pipeline, nir_shader **shaders)
 	if(shaders[MESA_SHADER_VERTEX]) {
 		ordered_shaders[shader_count++] = shaders[MESA_SHADER_VERTEX];
 	}
+	if(shaders[MESA_SHADER_COMPUTE]) {
+		ordered_shaders[shader_count++] = shaders[MESA_SHADER_COMPUTE];
+	}
 
-	if (shader_count > 1) {
+	if (!optimize_conservatively && shader_count > 1) {
 		unsigned first = ordered_shaders[shader_count - 1]->info.stage;
 		unsigned last = ordered_shaders[0]->info.stage;
 
@@ -2223,11 +2227,13 @@ radv_link_shaders(struct radv_pipeline *pipeline, nir_shader **shaders)
 				mask = mask | nir_var_shader_out;
 
 			nir_lower_io_to_scalar_early(ordered_shaders[i], mask);
-			radv_optimize_nir(ordered_shaders[i], false, false);
 		}
 	}
 
-	for (int i = 1; i < shader_count; ++i)  {
+	for (int i = 0; i < shader_count; ++i)
+		radv_optimize_nir(ordered_shaders[i], optimize_conservatively, false);
+
+	for (int i = 1; !optimize_conservatively && (i < shader_count); ++i)  {
 		nir_lower_io_arrays_to_elements(ordered_shaders[i],
 						ordered_shaders[i - 1]);
 
@@ -2956,8 +2962,7 @@ VkResult radv_create_shaders(struct radv_pipeline *pipeline,
 		merge_tess_info(&nir[MESA_SHADER_TESS_EVAL]->info, &nir[MESA_SHADER_TESS_CTRL]->info);
 	}
 
-	if (!(flags & VK_PIPELINE_CREATE_DISABLE_OPTIMIZATION_BIT))
-		radv_link_shaders(pipeline, nir);
+	radv_link_shaders(pipeline, nir, flags & VK_PIPELINE_CREATE_DISABLE_OPTIMIZATION_BIT);
 
 	radv_set_driver_locations(pipeline, nir, infos);
 
