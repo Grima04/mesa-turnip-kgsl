@@ -1741,6 +1741,7 @@ void st_init_extensions(struct pipe_screen *screen,
       spirv_caps->atomic_storage             = extensions->ARB_shader_atomic_counters;
       spirv_caps->demote_to_helper_invocation = extensions->EXT_demote_to_helper_invocation;
       spirv_caps->draw_parameters            = extensions->ARB_shader_draw_parameters;
+      spirv_caps->derivative_group           = extensions->NV_compute_shader_derivatives;
       spirv_caps->float64                    = extensions->ARB_gpu_shader_fp64;
       spirv_caps->geometry_streams           = extensions->ARB_gpu_shader5;
       spirv_caps->image_ms_array             = extensions->ARB_shader_image_load_store &&
