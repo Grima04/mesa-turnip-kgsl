@@ -423,6 +423,14 @@ static void si_set_context_param(struct pipe_context *ctx, enum pipe_context_par
    }
 }
 
+static void si_set_frontend_noop(struct pipe_context *ctx, bool enable)
+{
+   struct si_context *sctx = (struct si_context *)ctx;
+
+   ctx->flush(ctx, NULL, PIPE_FLUSH_ASYNC);
+   sctx->is_noop = enable;
+}
+
 static struct pipe_context *si_create_context(struct pipe_screen *screen, unsigned flags)
 {
    struct si_screen *sscreen = (struct si_screen *)screen;
@@ -556,6 +564,7 @@ static struct pipe_context *si_create_context(struct pipe_screen *screen, unsign
    sctx->b.set_context_param = si_set_context_param;
    sctx->b.get_device_reset_status = si_get_reset_status;
    sctx->b.set_device_reset_callback = si_set_device_reset_callback;
+   sctx->b.set_frontend_noop = si_set_frontend_noop;
 
    si_init_all_descriptors(sctx);
    si_init_buffer_functions(sctx);

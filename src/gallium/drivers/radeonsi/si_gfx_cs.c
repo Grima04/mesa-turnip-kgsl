@@ -227,6 +227,9 @@ void si_flush_gfx_cs(struct si_context *ctx, unsigned flags, struct pipe_fence_h
       }
    }
 
+   if (ctx->is_noop)
+      flags |= RADEON_FLUSH_NOOP;
+
    /* Flush the CS. */
    ws->cs_flush(cs, flags, &ctx->last_gfx_fence);
    if (fence)

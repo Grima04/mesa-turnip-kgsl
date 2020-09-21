@@ -1796,7 +1796,8 @@ static int amdgpu_cs_flush(struct radeon_cmdbuf *rcs,
    /* If the CS is not empty or overflowed.... */
    if (likely(radeon_emitted(&cs->main.base, 0) &&
        cs->main.base.current.cdw <= cs->main.base.current.max_dw &&
-       !debug_get_option_noop())) {
+       !debug_get_option_noop() &&
+       !(flags & RADEON_FLUSH_NOOP))) {
       struct amdgpu_cs_context *cur = cs->csc;
 
       /* Set IB sizes. */

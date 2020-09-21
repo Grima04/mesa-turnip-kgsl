@@ -162,6 +162,7 @@ static int si_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_MAP_UNSYNCHRONIZED_THREAD_SAFE:
    case PIPE_CAP_NO_CLIP_ON_COPY_TEX:
    case PIPE_CAP_SHADER_ATOMIC_INT64:
+   case PIPE_CAP_FRONTEND_NOOP:
       return 1;
 
    case PIPE_CAP_GLSL_ZERO_INIT:

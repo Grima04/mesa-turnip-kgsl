@@ -300,6 +300,9 @@ void si_flush_dma_cs(struct si_context *ctx, unsigned flags, struct pipe_fence_h
    if (check_vm)
       si_save_cs(ctx->ws, cs, &saved, true);
 
+   if (ctx->is_noop)
+      flags |= RADEON_FLUSH_NOOP;
+
    ctx->ws->cs_flush(cs, flags, &ctx->last_sdma_fence);
    if (fence)
       ctx->ws->fence_reference(fence, ctx->last_sdma_fence);

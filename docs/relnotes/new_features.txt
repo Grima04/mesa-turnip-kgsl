@@ -1,4 +1,5 @@
 GL 4.5 on llvmpipe
+GL_INTEL_blackhole_render on radeonsi
 GL_NV_copy_depth_to_color for NIR
 GL_NV_half_float
 GL_NV_shader_atomic_int64 on radeonsi

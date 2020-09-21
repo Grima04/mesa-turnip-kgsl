@@ -954,6 +954,7 @@ struct si_context {
    unsigned wait_mem_number;
    uint16_t prefetch_L2_mask;
 
+   bool is_noop;
    bool has_graphics;
    bool gfx_flush_in_progress : 1;
    bool gfx_last_ib_is_busy : 1;
