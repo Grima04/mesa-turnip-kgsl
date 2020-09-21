@@ -2226,20 +2226,47 @@ radv_link_shaders(struct radv_pipeline *pipeline, nir_shader **shaders,
 			if (ordered_shaders[i]->info.stage != last)
 				mask = mask | nir_var_shader_out;
 
-			nir_lower_io_to_scalar_early(ordered_shaders[i], mask);
+			if (nir_lower_io_to_scalar_early(ordered_shaders[i], mask)) {
+				/* Optimize the new vector code and then remove dead vars */
+				nir_copy_prop(ordered_shaders[i]);
+				nir_opt_shrink_vectors(ordered_shaders[i]);
+
+		                if (ordered_shaders[i]->info.stage != last) {
+					/* Optimize swizzled movs of load_const for
+					 * nir_link_opt_varyings's constant propagation
+					 */
+				        nir_opt_constant_folding(ordered_shaders[i]);
+				        /* For nir_link_opt_varyings's duplicate input opt */
+				        nir_opt_cse(ordered_shaders[i]);
+				}
+
+				/* Run copy-propagation to help remove dead
+				 * output variables (some shaders have useless
+				 * copies to/from an output), so compaction
+				 * later will be more effective.
+				 *
+				 * This will have been done earlier but it might
+				 * not have worked because the outputs were vector.
+				 */
+				if (ordered_shaders[i]->info.stage == MESA_SHADER_TESS_CTRL)
+					nir_opt_copy_prop_vars(ordered_shaders[i]);
+
+				nir_opt_dce(ordered_shaders[i]);
+				nir_remove_dead_variables(ordered_shaders[i],
+							  nir_var_function_temp | nir_var_shader_in | nir_var_shader_out, NULL);
+			}
 		}
 	}
-
-	for (int i = 0; i < shader_count; ++i)
-		radv_optimize_nir(ordered_shaders[i], optimize_conservatively, false);
 
 	for (int i = 1; !optimize_conservatively && (i < shader_count); ++i)  {
 		nir_lower_io_arrays_to_elements(ordered_shaders[i],
 						ordered_shaders[i - 1]);
 
-		if (nir_link_opt_varyings(ordered_shaders[i],
-					  ordered_shaders[i - 1]))
-			radv_optimize_nir(ordered_shaders[i - 1], false, false);
+		if (nir_link_opt_varyings(ordered_shaders[i], ordered_shaders[i - 1])) {
+			nir_opt_constant_folding(ordered_shaders[i - 1]);
+			nir_opt_algebraic(ordered_shaders[i - 1]);
+			nir_opt_dce(ordered_shaders[i - 1]);
+		}
 
 		nir_remove_dead_variables(ordered_shaders[i],
 					  nir_var_shader_out, NULL);
@@ -2256,16 +2283,20 @@ radv_link_shaders(struct radv_pipeline *pipeline, nir_shader **shaders,
 			if (nir_lower_global_vars_to_local(ordered_shaders[i])) {
 				ac_lower_indirect_derefs(ordered_shaders[i],
 				                         pipeline->device->physical_device->rad_info.chip_class);
+				/* remove dead writes, which can remove input loads */
+				nir_lower_vars_to_ssa(ordered_shaders[i]);
+				nir_opt_dce(ordered_shaders[i]);
 			}
-			radv_optimize_nir(ordered_shaders[i], false, false);
 
 			if (nir_lower_global_vars_to_local(ordered_shaders[i - 1])) {
 				ac_lower_indirect_derefs(ordered_shaders[i - 1],
 				                         pipeline->device->physical_device->rad_info.chip_class);
 			}
-			radv_optimize_nir(ordered_shaders[i - 1], false, false);
 		}
 	}
+
+	for (int i = 0; i < shader_count; ++i)
+		radv_optimize_nir(ordered_shaders[i], optimize_conservatively, false);
 }
 
 static void
