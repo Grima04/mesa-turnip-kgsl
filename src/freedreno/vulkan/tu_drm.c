@@ -347,7 +347,7 @@ tu_drm_device_init(struct tu_physical_device *device,
    drmFreeVersion(version);
 
    if (instance->debug_flags & TU_DEBUG_STARTUP)
-      tu_logi("Found compatible device '%s'.", path);
+      mesa_logi("Found compatible device '%s'.", path);
 
    vk_object_base_init(NULL, &device->base, VK_OBJECT_TYPE_PHYSICAL_DEVICE);
    device->instance = instance;
@@ -365,7 +365,7 @@ tu_drm_device_init(struct tu_physical_device *device,
 
    if (tu_drm_get_gpu_id(device, &device->gpu_id)) {
       if (instance->debug_flags & TU_DEBUG_STARTUP)
-         tu_logi("Could not query the GPU ID");
+         mesa_logi("Could not query the GPU ID");
       result = vk_errorf(instance, VK_ERROR_INITIALIZATION_FAILED,
                          "could not get GPU ID");
       goto fail;
@@ -373,7 +373,7 @@ tu_drm_device_init(struct tu_physical_device *device,
 
    if (tu_drm_get_gmem_size(device, &device->gmem_size)) {
       if (instance->debug_flags & TU_DEBUG_STARTUP)
-         tu_logi("Could not query the GMEM size");
+         mesa_logi("Could not query the GMEM size");
       result = vk_errorf(instance, VK_ERROR_INITIALIZATION_FAILED,
                          "could not get GMEM size");
       goto fail;
@@ -381,7 +381,7 @@ tu_drm_device_init(struct tu_physical_device *device,
 
    if (tu_drm_get_gmem_base(device, &device->gmem_base)) {
       if (instance->debug_flags & TU_DEBUG_STARTUP)
-         tu_logi("Could not query the GMEM size");
+         mesa_logi("Could not query the GMEM size");
       result = vk_errorf(instance, VK_ERROR_INITIALIZATION_FAILED,
                          "could not get GMEM size");
       goto fail;
@@ -410,9 +410,9 @@ tu_enumerate_devices(struct tu_instance *instance)
 
    if (instance->debug_flags & TU_DEBUG_STARTUP) {
       if (max_devices < 0)
-         tu_logi("drmGetDevices2 returned error: %s\n", strerror(max_devices));
+         mesa_logi("drmGetDevices2 returned error: %s\n", strerror(max_devices));
       else
-         tu_logi("Found %d drm nodes", max_devices);
+         mesa_logi("Found %d drm nodes", max_devices);
    }
 
    if (max_devices < 1)

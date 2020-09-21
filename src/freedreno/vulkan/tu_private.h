@@ -43,9 +43,12 @@
 #define VG(x) ((void)0)
 #endif
 
+#define MESA_LOG_TAG "TU"
+
 #include "c11/threads.h"
 #include "main/macros.h"
 #include "util/list.h"
+#include "util/log.h"
 #include "util/macros.h"
 #include "util/u_atomic.h"
 #include "vk_alloc.h"
@@ -141,10 +144,6 @@ __vk_errorf(struct tu_instance *instance,
 void
 __tu_finishme(const char *file, int line, const char *format, ...)
    tu_printflike(3, 4);
-void
-tu_loge(const char *format, ...) tu_printflike(1, 2);
-void
-tu_logi(const char *format, ...) tu_printflike(1, 2);
 
 /**
  * Print a FINISHME message, including its source location.

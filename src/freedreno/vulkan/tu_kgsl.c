@@ -188,7 +188,7 @@ tu_enumerate_devices(struct tu_instance *instance)
    /* kgsl version check? */
 
    if (instance->debug_flags & TU_DEBUG_STARTUP)
-      tu_logi("Found compatible device '%s'.", path);
+      mesa_logi("Found compatible device '%s'.", path);
 
    vk_object_base_init(NULL, &device->base, VK_OBJECT_TYPE_PHYSICAL_DEVICE);
    device->instance = instance;

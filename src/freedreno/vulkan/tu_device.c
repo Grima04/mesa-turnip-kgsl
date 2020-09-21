@@ -255,7 +255,7 @@ tu_CreateInstance(const VkInstanceCreateInfo *pCreateInfo,
       parse_debug_string(getenv("TU_DEBUG"), tu_debug_options);
 
    if (instance->debug_flags & TU_DEBUG_STARTUP)
-      tu_logi("Created an instance");
+      mesa_logi("Created an instance");
 
    for (uint32_t i = 0; i < pCreateInfo->enabledExtensionCount; i++) {
       const char *ext_name = pCreateInfo->ppEnabledExtensionNames[i];
