@@ -311,6 +311,7 @@ union tc_payload {
    struct pipe_transfer *transfer;
    struct pipe_fence_handle *fence;
    uint64_t handle;
+   bool boolean;
 };
 
 #ifdef _MSC_VER

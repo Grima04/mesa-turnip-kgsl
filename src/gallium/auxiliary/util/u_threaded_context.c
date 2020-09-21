@@ -1993,6 +1993,20 @@ tc_set_context_param(struct pipe_context *_pipe,
    }
 }
 
+static void
+tc_call_set_frontend_noop(struct pipe_context *pipe, union tc_payload *payload)
+{
+   pipe->set_frontend_noop(pipe, payload->boolean);
+}
+
+static void
+tc_set_frontend_noop(struct pipe_context *_pipe, bool enable)
+{
+   struct threaded_context *tc = threaded_context(_pipe);
+
+   tc_add_small_call(tc, TC_CALL_set_frontend_noop)->boolean = enable;
+}
+
 
 /********************************************************************
  * draw, launch, clear, blit, copy, flush
@@ -2793,6 +2807,7 @@ threaded_context_create(struct pipe_context *pipe,
    CTX_INIT(create_image_handle);
    CTX_INIT(delete_image_handle);
    CTX_INIT(make_image_handle_resident);
+   CTX_INIT(set_frontend_noop);
 #undef CTX_INIT
 
    if (out)

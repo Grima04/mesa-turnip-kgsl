@@ -50,6 +50,7 @@ CALL(make_texture_handle_resident)
 CALL(delete_image_handle)
 CALL(make_image_handle_resident)
 CALL(set_context_param)
+CALL(set_frontend_noop)
 
 CALL(bind_blend_state)
 CALL(bind_rasterizer_state)
