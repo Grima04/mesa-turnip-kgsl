@@ -6642,8 +6642,12 @@ radv_emit_streamout_begin(struct radv_cmd_buffer *cmd_buffer,
 			/* The array of counter buffers is optional. */
 			RADV_FROM_HANDLE(radv_buffer, buffer, pCounterBuffers[counter_buffer_idx]);
 			uint64_t va = radv_buffer_get_va(buffer->bo);
+			uint64_t counter_buffer_offset = 0;
 
-			va += buffer->offset + pCounterBufferOffsets[counter_buffer_idx];
+			if (pCounterBufferOffsets)
+				counter_buffer_offset = pCounterBufferOffsets[counter_buffer_idx];
+
+			va += buffer->offset + counter_buffer_offset;
 
 			/* Append */
 			radeon_emit(cs, PKT3(PKT3_STRMOUT_BUFFER_UPDATE, 4, 0));
@@ -6706,9 +6710,13 @@ gfx10_emit_streamout_begin(struct radv_cmd_buffer *cmd_buffer,
 
 		if (append) {
 			RADV_FROM_HANDLE(radv_buffer, buffer, pCounterBuffers[counter_buffer_idx]);
+			uint64_t counter_buffer_offset = 0;
+
+			if (pCounterBufferOffsets)
+				counter_buffer_offset = pCounterBufferOffsets[counter_buffer_idx];
 
 			va += radv_buffer_get_va(buffer->bo);
-			va += buffer->offset + pCounterBufferOffsets[counter_buffer_idx];
+			va += buffer->offset + counter_buffer_offset;
 
 			radv_cs_add_buffer(cmd_buffer->device->ws, cs, buffer->bo);
 		}
@@ -6771,8 +6779,12 @@ radv_emit_streamout_end(struct radv_cmd_buffer *cmd_buffer,
 			/* The array of counters buffer is optional. */
 			RADV_FROM_HANDLE(radv_buffer, buffer, pCounterBuffers[counter_buffer_idx]);
 			uint64_t va = radv_buffer_get_va(buffer->bo);
+			uint64_t counter_buffer_offset = 0;
 
-			va += buffer->offset + pCounterBufferOffsets[counter_buffer_idx];
+			if (pCounterBufferOffsets)
+				counter_buffer_offset = pCounterBufferOffsets[counter_buffer_idx];
+
+			va += buffer->offset + counter_buffer_offset;
 
 			radeon_emit(cs, PKT3(PKT3_STRMOUT_BUFFER_UPDATE, 4, 0));
 			radeon_emit(cs, STRMOUT_SELECT_BUFFER(i) |
@@ -6823,8 +6835,12 @@ gfx10_emit_streamout_end(struct radv_cmd_buffer *cmd_buffer,
 			/* The array of counters buffer is optional. */
 			RADV_FROM_HANDLE(radv_buffer, buffer, pCounterBuffers[counter_buffer_idx]);
 			uint64_t va = radv_buffer_get_va(buffer->bo);
+			uint64_t counter_buffer_offset = 0;
 
-			va += buffer->offset + pCounterBufferOffsets[counter_buffer_idx];
+			if (pCounterBufferOffsets)
+				counter_buffer_offset = pCounterBufferOffsets[counter_buffer_idx];
+
+			va += buffer->offset + counter_buffer_offset;
 
 			si_cs_emit_write_event_eop(cs,
 						   cmd_buffer->device->physical_device->rad_info.chip_class,
