@@ -1606,6 +1606,7 @@ x11_surface_create_swapchain(VkIcdSurfaceBase *icd_surface,
    }
 
    if ((chain->base.present_mode == VK_PRESENT_MODE_FIFO_KHR ||
+       chain->base.present_mode == VK_PRESENT_MODE_FIFO_RELAXED_KHR ||
        chain->base.present_mode == VK_PRESENT_MODE_MAILBOX_KHR) && !chain->base.wsi->sw) {
       chain->has_present_queue = true;
 
@@ -1619,7 +1620,8 @@ x11_surface_create_swapchain(VkIcdSurfaceBase *icd_surface,
          goto fail_init_images;
       }
 
-      if (chain->base.present_mode == VK_PRESENT_MODE_FIFO_KHR) {
+      if (chain->base.present_mode == VK_PRESENT_MODE_FIFO_KHR ||
+          chain->base.present_mode == VK_PRESENT_MODE_FIFO_RELAXED_KHR) {
          chain->has_acquire_queue = true;
 
          ret = wsi_queue_init(&chain->acquire_queue, chain->base.image_count + 1);
