@@ -221,7 +221,7 @@ class Opcode(object):
          self.operand_size = 0
       elif name in ['v_mad_u64_u32', 'v_mad_i64_i32']:
          self.operand_size = 0
-      elif '_pk_' in name or name in ['v_lerp_u8', 'v_sad_u8', 'v_sad_u16',
+      elif '_pk' in name or name in ['v_lerp_u8', 'v_sad_u8', 'v_sad_u16',
                                       'v_cvt_f32_ubyte0', 'v_cvt_f32_ubyte1',
                                       'v_cvt_f32_ubyte2', 'v_cvt_f32_ubyte3']:
          self.operand_size = 32
