@@ -374,7 +374,7 @@ nir_lower_io_to_scalar_early_instr(nir_builder *b, nir_instr *instr, void *data)
  * This function is intended to be called earlier than nir_lower_io_to_scalar()
  * i.e. before nir_lower_io() is called.
  */
-void
+bool
 nir_lower_io_to_scalar_early(nir_shader *shader, nir_variable_mode mask)
 {
    struct io_to_scalar_early_state state = {
@@ -383,11 +383,11 @@ nir_lower_io_to_scalar_early(nir_shader *shader, nir_variable_mode mask)
       .mask = mask
    };
 
-   nir_shader_instructions_pass(shader,
-                                nir_lower_io_to_scalar_early_instr,
-                                nir_metadata_block_index |
-                                nir_metadata_dominance,
-                                &state);
+   bool progress = nir_shader_instructions_pass(shader,
+                                                nir_lower_io_to_scalar_early_instr,
+                                                nir_metadata_block_index |
+                                                nir_metadata_dominance,
+                                                &state);
 
    /* Remove old input from the shaders inputs list */
    hash_table_foreach(state.split_inputs, entry) {
@@ -409,4 +409,6 @@ nir_lower_io_to_scalar_early(nir_shader *shader, nir_variable_mode mask)
    _mesa_hash_table_destroy(state.split_outputs, NULL);
 
    nir_remove_dead_derefs(shader);
+
+   return progress;
 }
