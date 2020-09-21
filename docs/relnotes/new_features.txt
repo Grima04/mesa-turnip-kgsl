@@ -1,1 +1,2 @@
+GL_EXT_demote_to_helper_invocation on radeonsi
 EGL_MESA_platform_xcb
