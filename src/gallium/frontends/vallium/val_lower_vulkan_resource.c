@@ -31,8 +31,15 @@ lower_vulkan_resource_index(const nir_instr *instr, const void *data_cb)
 {
    if (instr->type == nir_instr_type_intrinsic) {
       nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
-      if (intrin->intrinsic == nir_intrinsic_vulkan_resource_index)
+      switch (intrin->intrinsic) {
+      case nir_intrinsic_vulkan_resource_index:
+      case nir_intrinsic_vulkan_resource_reindex:
+      case nir_intrinsic_load_vulkan_descriptor:
+      case nir_intrinsic_get_ssbo_size:
          return true;
+      default:
+         return false;
+      }
    }
    if (instr->type == nir_instr_type_tex) {
       return true;
@@ -62,11 +69,35 @@ static nir_ssa_def *lower_vri_intrin_vri(struct nir_builder *b,
      value += binding->stage[b->shader->info.stage].const_buffer_index + 1;
    else
      value += binding->stage[b->shader->info.stage].shader_buffer_index;
+
+   /* The SSA size for indices is the same as for pointers.  We use
+    * nir_addr_format_32bit_index_offset so we need a vec2.  We don't need all
+    * that data so just stuff a 0 in the second component.
+    */
    if (nir_src_is_const(intrin->src[0])) {
       value += nir_src_comp_as_int(intrin->src[0], 0);
-      return nir_imm_int(b, value);
+      return nir_imm_ivec2(b, value, 0);
    } else
-      return nir_iadd_imm(b, intrin->src[0].ssa, value);
+      return nir_vec2(b, nir_iadd_imm(b, intrin->src[0].ssa, value),
+                         nir_imm_int(b, 0));
+}
+
+static nir_ssa_def *lower_vri_intrin_vrri(struct nir_builder *b,
+                                          nir_instr *instr, void *data_cb)
+{
+   nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
+   nir_ssa_def *old_index = nir_ssa_for_src(b, intrin->src[0], 1);
+   nir_ssa_def *delta = nir_ssa_for_src(b, intrin->src[1], 1);
+   return nir_vec2(b, nir_iadd(b, old_index, delta),
+                      nir_imm_int(b, 0));
+}
+
+static nir_ssa_def *lower_vri_intrin_lvd(struct nir_builder *b,
+                                         nir_instr *instr, void *data_cb)
+{
+   nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
+   nir_ssa_def *index = nir_ssa_for_src(b, intrin->src[0], 1);
+   return nir_vec2(b, index, nir_imm_int(b, 0));
 }
 
 static int lower_vri_instr_tex_deref(nir_tex_instr *tex,
@@ -131,8 +162,30 @@ static nir_ssa_def *lower_vri_instr(struct nir_builder *b,
 {
    if (instr->type == nir_instr_type_intrinsic) {
       nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
-      if (intrin->intrinsic == nir_intrinsic_vulkan_resource_index)
+      switch (intrin->intrinsic) {
+      case nir_intrinsic_vulkan_resource_index:
          return lower_vri_intrin_vri(b, instr, data_cb);
+
+      case nir_intrinsic_vulkan_resource_reindex:
+         return lower_vri_intrin_vrri(b, instr, data_cb);
+
+      case nir_intrinsic_load_vulkan_descriptor:
+         return lower_vri_intrin_lvd(b, instr, data_cb);
+
+      case nir_intrinsic_get_ssbo_size: {
+         /* The result of the load_vulkan_descriptor is a vec2(index, offset)
+          * but we only want the index in get_ssbo_size.
+          */
+         b->cursor = nir_before_instr(&intrin->instr);
+         nir_ssa_def *index = nir_ssa_for_src(b, intrin->src[0], 1);
+         nir_instr_rewrite_src(&intrin->instr, &intrin->src[0],
+                               nir_src_for_ssa(index));
+         return NULL;
+      }
+
+      default:
+         return NULL;
+      }
    }
    if (instr->type == nir_instr_type_tex)
       lower_vri_instr_tex(b, nir_instr_as_tex(instr), data_cb);
