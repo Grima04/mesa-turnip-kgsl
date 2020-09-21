@@ -166,6 +166,7 @@ static int si_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_DEMOTE_TO_HELPER_INVOCATION:
    case PIPE_CAP_MULTI_DRAW:
    case PIPE_CAP_PREFER_REAL_BUFFER_IN_CONSTBUF0:
+   case PIPE_CAP_COMPUTE_SHADER_DERIVATIVES:
       return 1;
 
    case PIPE_CAP_GLSL_ZERO_INIT:

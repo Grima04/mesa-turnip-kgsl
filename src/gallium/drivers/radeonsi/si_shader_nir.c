@@ -676,6 +676,24 @@ static void si_lower_nir(struct si_screen *sscreen, struct nir_shader *nir)
    NIR_PASS_V(nir, nir_lower_system_values);
    NIR_PASS_V(nir, nir_lower_compute_system_values, NULL);
 
+   if (nir->info.stage == MESA_SHADER_COMPUTE) {
+      if (nir->info.cs.derivative_group == DERIVATIVE_GROUP_QUADS) {
+         /* If we are shuffling local_invocation_id for quad derivatives, we
+          * need to derive local_invocation_index from local_invocation_id
+          * first, so that the value corresponds to the shuffled
+          * local_invocation_id.
+          */
+         nir_lower_compute_system_values_options options = {0};
+         options.lower_local_invocation_index = true;
+         NIR_PASS_V(nir, nir_lower_compute_system_values, &options);
+      }
+
+      nir_opt_cse(nir); /* CSE load_local_invocation_id */
+      nir_lower_compute_system_values_options options = {0};
+      options.shuffle_local_ids_for_quad_derivatives = true;
+      NIR_PASS_V(nir, nir_lower_compute_system_values, &options);
+   }
+
    if (nir->info.stage == MESA_SHADER_FRAGMENT &&
        sscreen->info.has_packed_math_16bit &&
        sscreen->b.get_shader_param(&sscreen->b, PIPE_SHADER_FRAGMENT, PIPE_SHADER_CAP_FP16))

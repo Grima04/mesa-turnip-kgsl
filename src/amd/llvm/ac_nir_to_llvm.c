@@ -1430,7 +1430,9 @@ static LLVMValueRef build_tex_intrinsic(struct ac_nir_context *ctx, const nir_te
       args->level_zero = false;
       break;
    case nir_texop_tex:
-      if (ctx->stage != MESA_SHADER_FRAGMENT) {
+      if (ctx->stage != MESA_SHADER_FRAGMENT &&
+          (ctx->stage != MESA_SHADER_COMPUTE ||
+           ctx->info->cs.derivative_group == DERIVATIVE_GROUP_NONE)) {
          assert(!args->lod);
          args->level_zero = true;
       }
