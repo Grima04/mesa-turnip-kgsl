@@ -461,10 +461,10 @@ update_descriptors(struct zink_context *ctx, struct zink_screen *screen, bool is
    if (num_wds > 0) {
       for (int i = 0; i < num_wds; ++i) {
          wds[i].dstSet = desc_set;
-         if (read_desc_resources[i])
-            need_flush |= zink_batch_reference_resource_rw(batch, read_desc_resources[i], false) == check_flush_id;
-         else if (write_desc_resources[i])
-            need_flush |= zink_batch_reference_resource_rw(batch, write_desc_resources[i], true) == check_flush_id;
+         struct zink_resource *res = read_desc_resources[i] ? read_desc_resources[i] : write_desc_resources[i];
+         if (res) {
+            need_flush |= zink_batch_reference_resource_rw(batch, res, res == write_desc_resources[i]) == check_flush_id;
+         }
       }
       vkUpdateDescriptorSets(screen->dev, num_wds, wds, 0, NULL);
       for (int i = 0; i < num_surface_refs; i++) {
