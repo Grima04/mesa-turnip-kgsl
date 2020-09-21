@@ -118,6 +118,7 @@ struct ac_llvm_context {
     * False = demoted lanes
     */
    LLVMValueRef postponed_kill;
+   bool conditional_demote_seen;
 
    /* Since ac_nir_translate makes a local copy of ac_llvm_context, there
     * are two ac_llvm_contexts. Declare a pointer here, so that the control

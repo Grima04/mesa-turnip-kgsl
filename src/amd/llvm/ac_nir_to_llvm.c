@@ -2813,13 +2813,37 @@ static void emit_demote(struct ac_nir_context *ctx, const nir_intrinsic_instr *i
       cond = ctx->ac.i1false;
    }
 
-   /* Kill immediately while maintaining WQM. */
-   ac_build_kill_if_false(&ctx->ac, ac_build_wqm_vote(&ctx->ac, cond));
-
    LLVMValueRef mask = LLVMBuildLoad(ctx->ac.builder, ctx->ac.postponed_kill, "");
    mask = LLVMBuildAnd(ctx->ac.builder, mask, cond, "");
    LLVMBuildStore(ctx->ac.builder, mask, ctx->ac.postponed_kill);
-   return;
+
+   if (!ctx->info->fs.needs_all_helper_invocations) {
+      /* This is an optional optimization that only kills whole inactive quads.
+       * It's not used when subgroup operations can possibly use all helper
+       * invocations.
+       */
+      if (ctx->ac.flow->depth == 0) {
+         ac_build_kill_if_false(&ctx->ac, ac_build_wqm_vote(&ctx->ac, cond));
+      } else {
+         /* amdgcn.wqm.vote doesn't work inside conditional blocks. Here's why.
+          *
+          * The problem is that kill(wqm.vote(0)) kills all active threads within
+          * the block, which breaks the whole quad mode outside the block if
+          * the conditional block has partially active quads (2x2 pixel blocks).
+          * E.g. threads 0-3 are active outside the block, but only thread 0 is
+          * active inside the block. Thread 0 shouldn't be killed by demote,
+          * because threads 1-3 are still active outside the block.
+          *
+          * The fix for amdgcn.wqm.vote would be to return S_WQM((live & ~exec) | cond)
+          * instead of S_WQM(cond).
+          *
+          * The less efficient workaround we do here is to save the kill condition
+          * to a temporary (postponed_kill) and do kill(wqm.vote(cond)) after we
+          * exit the conditional block.
+          */
+         ctx->ac.conditional_demote_seen = true;
+      }
+   }
 }
 
 static LLVMValueRef visit_load_local_invocation_index(struct ac_nir_context *ctx)
