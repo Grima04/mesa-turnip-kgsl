@@ -74,7 +74,7 @@ EXTENSIONS = [
     Extension('VK_EXT_sample_locations',                  1, 'device->gpu_id == 650'),
     Extension('VK_EXT_sampler_filter_minmax',             1, True),
     Extension('VK_EXT_transform_feedback',                1, True),
-    Extension('VK_ANDROID_native_buffer',                 1, True),
+    Extension('VK_ANDROID_native_buffer',                 1, 'ANDROID'),
     Extension('VK_KHR_external_fence',                    1, True),
     Extension('VK_KHR_external_fence_fd',                 1, True),
     Extension('VK_KHR_external_semaphore',                1, True),
