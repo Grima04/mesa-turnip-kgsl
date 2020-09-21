@@ -98,7 +98,7 @@ compiler_perf_log(void *data, const char *fmt, ...)
    va_start(args, fmt);
 
    if (unlikely(INTEL_DEBUG & DEBUG_PERF))
-      intel_logd_v(fmt, args);
+      mesa_logd_v(fmt, args);
 
    va_end(args);
 }
@@ -161,7 +161,7 @@ anv_physical_device_init_heaps(struct anv_physical_device *device, int fd)
        * address support can still fail.  Just clamp the address space size to
        * 2 GiB if we don't have 48-bit support.
        */
-      intel_logw("%s:%d: The kernel reported a GTT size larger than 2 GiB but "
+      mesa_logw("%s:%d: The kernel reported a GTT size larger than 2 GiB but "
                         "not support for 48-bit addresses",
                         __FILE__, __LINE__);
       heap_size = 2ull << 30;
@@ -340,15 +340,15 @@ anv_physical_device_try_create(struct anv_instance *instance,
    const char *device_name = gen_get_device_name(devinfo.chipset_id);
 
    if (devinfo.is_haswell) {
-      intel_logw("Haswell Vulkan support is incomplete");
+      mesa_logw("Haswell Vulkan support is incomplete");
    } else if (devinfo.gen == 7 && !devinfo.is_baytrail) {
-      intel_logw("Ivy Bridge Vulkan support is incomplete");
+      mesa_logw("Ivy Bridge Vulkan support is incomplete");
    } else if (devinfo.gen == 7 && devinfo.is_baytrail) {
-      intel_logw("Bay Trail Vulkan support is incomplete");
+      mesa_logw("Bay Trail Vulkan support is incomplete");
    } else if (devinfo.gen >= 8 && devinfo.gen <= 11) {
       /* Gen8-11 fully supported */
    } else if (devinfo.gen == 12) {
-      intel_logw("Vulkan is not yet fully supported on gen12");
+      mesa_logw("Vulkan is not yet fully supported on gen12");
    } else {
       result = vk_errorfi(instance, NULL, VK_ERROR_INCOMPATIBLE_DRIVER,
                           "Vulkan not yet supported on %s", device_name);
@@ -497,7 +497,7 @@ anv_physical_device_try_create(struct anv_instance *instance,
        * many platforms, but otherwise, things will just work.
        */
       if (device->subslice_total < 1 || device->eu_total < 1) {
-         intel_logw("Kernel 4.1 required to properly query GPU properties");
+         mesa_logw("Kernel 4.1 required to properly query GPU properties");
       }
    } else if (device->info.gen == 7) {
       device->subslice_total = 1 << (device->info.gt - 1);

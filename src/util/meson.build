@@ -59,6 +59,7 @@ files_mesa_util = files(
   'u_idalloc.c',
   'u_idalloc.h',
   'list.h',
+  'log.c',
   'macros.h',
   'mesa-sha1.c',
   'mesa-sha1.h',

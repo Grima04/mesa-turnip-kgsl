@@ -48,8 +48,8 @@ anv_get_perf(const struct gen_device_info *devinfo, int fd)
 
    if (!perf->n_queries) {
       if (perf->platform_supported)
-         intel_logw("Performance support disabled, "
-                    "consider sysctl dev.i915.perf_stream_paranoid=0\n");
+         mesa_logw("Performance support disabled, "
+                   "consider sysctl dev.i915.perf_stream_paranoid=0\n");
       goto err;
    }
 

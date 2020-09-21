@@ -92,7 +92,8 @@ struct gen_perf_query_result;
 #include "isl/isl.h"
 
 #include "dev/gen_debug.h"
-#include "common/intel_log.h"
+#define MESA_LOG_TAG "MESA-INTEL"
+#include "util/log.h"
 #include "wsi_common.h"
 
 #define NSEC_PER_SEC 1000000000ull
@@ -507,7 +508,7 @@ VkResult __vk_errorf(struct anv_instance *instance, const void *object,
  *    defined by extensions supported by that component.
  */
 #define anv_debug_ignored_stype(sType) \
-   intel_logd("%s: ignored VkStructureType %u\n", __func__, (sType))
+   mesa_logd("%s: ignored VkStructureType %u\n", __func__, (sType))
 
 void __anv_perf_warn(struct anv_device *device, const void *object,
                      VkDebugReportObjectTypeEXT type, const char *file,
@@ -523,7 +524,7 @@ void anv_loge_v(const char *format, va_list va);
    do { \
       static bool reported = false; \
       if (!reported) { \
-         intel_logw("%s:%d: FINISHME: " format, __FILE__, __LINE__, \
+         mesa_logw("%s:%d: FINISHME: " format, __FILE__, __LINE__, \
                     ##__VA_ARGS__); \
          reported = true; \
       } \
@@ -546,7 +547,7 @@ void anv_loge_v(const char *format, va_list va);
 #ifdef DEBUG
 #define anv_assert(x) ({ \
    if (unlikely(!(x))) \
-      intel_loge("%s:%d ASSERT: %s", __FILE__, __LINE__, #x); \
+      mesa_loge("%s:%d ASSERT: %s", __FILE__, __LINE__, #x); \
 })
 #else
 #define anv_assert(x)
