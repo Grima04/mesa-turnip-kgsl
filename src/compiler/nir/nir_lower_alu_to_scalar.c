@@ -209,6 +209,34 @@ lower_alu_instr_scalar(nir_builder *b, nir_instr *instr, void *_data)
                          nir_fadd(b, sum[2], sum[3]));
    }
 
+   case nir_op_pack_64_2x32: {
+      if (!b->shader->options->lower_pack_64_2x32)
+         return NULL;
+
+      nir_ssa_def *src_vec2 = nir_ssa_for_alu_src(b, alu, 0);
+      return nir_pack_64_2x32_split(b, nir_channel(b, src_vec2, 0),
+                                    nir_channel(b, src_vec2, 1));
+   }
+   case nir_op_pack_64_4x16: {
+      if (!b->shader->options->lower_pack_64_4x16)
+         return NULL;
+
+      nir_ssa_def *src_vec4 = nir_ssa_for_alu_src(b, alu, 0);
+      nir_ssa_def *xy = nir_pack_32_2x16_split(b, nir_channel(b, src_vec4, 0),
+                                                  nir_channel(b, src_vec4, 1));
+      nir_ssa_def *zw = nir_pack_32_2x16_split(b, nir_channel(b, src_vec4, 2),
+                                                  nir_channel(b, src_vec4, 3));
+
+      return nir_pack_64_2x32_split(b, xy, zw);
+   }
+   case nir_op_pack_32_2x16: {
+      if (!b->shader->options->lower_pack_32_2x16)
+         return NULL;
+
+      nir_ssa_def *src_vec2 = nir_ssa_for_alu_src(b, alu, 0);
+      return nir_pack_32_2x16_split(b, nir_channel(b, src_vec2, 0),
+                                    nir_channel(b, src_vec2, 1));
+   }
    case nir_op_unpack_64_2x32:
    case nir_op_unpack_64_4x16:
    case nir_op_unpack_32_2x16:

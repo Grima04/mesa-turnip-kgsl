@@ -3215,6 +3215,9 @@ typedef struct nir_shader_compiler_options {
    bool lower_pack_snorm_2x16;
    bool lower_pack_unorm_4x8;
    bool lower_pack_snorm_4x8;
+   bool lower_pack_64_2x32;
+   bool lower_pack_64_4x16;
+   bool lower_pack_32_2x16;
    bool lower_pack_64_2x32_split;
    bool lower_pack_32_2x16_split;
    bool lower_unpack_half_2x16;
