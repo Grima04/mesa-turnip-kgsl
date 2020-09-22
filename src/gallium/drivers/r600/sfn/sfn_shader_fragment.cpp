@@ -321,13 +321,18 @@ bool FragmentShaderFromNir::do_process_outputs(nir_variable *output)
 
    int loc = output->data.location;
    if (loc == FRAG_RESULT_COLOR &&
-       (m_nir.info.outputs_written & (1ull << loc))) {
+       (m_nir.info.outputs_written & (1ull << loc)) &&
+       !m_dual_source_blend) {
            sh_info().fs_write_all = true;
    }
 
    if (output->data.location == FRAG_RESULT_COLOR ||
        (output->data.location >= FRAG_RESULT_DATA0 &&
         output->data.location <= FRAG_RESULT_DATA7))  {
+      ++m_max_counted_color_exports;
+
+      if (m_max_counted_color_exports > 1)
+         sh_info().fs_write_all = false;
       return true;
    }
    if (output->data.location == FRAG_RESULT_DEPTH ||
@@ -766,7 +771,6 @@ bool FragmentShaderFromNir::emit_export_pixel(const nir_variable *out_var, nir_i
          sh_info().ps_color_export_mask |= mask;
 
          emit_export_instruction(m_last_pixel_export);
-         ++m_max_counted_color_exports;
       };
    } else if (out_var->data.location == FRAG_RESULT_DEPTH ||
               out_var->data.location == FRAG_RESULT_STENCIL ||
