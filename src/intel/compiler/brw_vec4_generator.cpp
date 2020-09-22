@@ -500,7 +500,6 @@ generate_gs_set_vertex_count(struct brw_codegen *p,
 
 static void
 generate_gs_svb_write(struct brw_codegen *p,
-                      struct brw_vue_prog_data *prog_data,
                       vec4_instruction *inst,
                       struct brw_reg dst,
                       struct brw_reg src0,
@@ -1281,7 +1280,6 @@ generate_scratch_write(struct brw_codegen *p,
 
 static void
 generate_pull_constant_load(struct brw_codegen *p,
-                            struct brw_vue_prog_data *prog_data,
                             vec4_instruction *inst,
                             struct brw_reg dst,
                             struct brw_reg index,
@@ -1343,7 +1341,6 @@ generate_pull_constant_load(struct brw_codegen *p,
 
 static void
 generate_get_buffer_size(struct brw_codegen *p,
-                         struct brw_vue_prog_data *prog_data,
                          vec4_instruction *inst,
                          struct brw_reg dst,
                          struct brw_reg src,
@@ -1369,7 +1366,6 @@ generate_get_buffer_size(struct brw_codegen *p,
 
 static void
 generate_pull_constant_load_gen7(struct brw_codegen *p,
-                                 struct brw_vue_prog_data *prog_data,
                                  vec4_instruction *inst,
                                  struct brw_reg dst,
                                  struct brw_reg surf_index,
@@ -1800,7 +1796,7 @@ generate_code(struct brw_codegen *p,
          break;
 
       case SHADER_OPCODE_GET_BUFFER_SIZE:
-         generate_get_buffer_size(p, prog_data, inst, dst, src[0], src[1]);
+         generate_get_buffer_size(p, inst, dst, src[0], src[1]);
          send_count++;
          break;
 
@@ -1820,12 +1816,12 @@ generate_code(struct brw_codegen *p,
          break;
 
       case VS_OPCODE_PULL_CONSTANT_LOAD:
-         generate_pull_constant_load(p, prog_data, inst, dst, src[0], src[1]);
+         generate_pull_constant_load(p, inst, dst, src[0], src[1]);
          send_count++;
          break;
 
       case VS_OPCODE_PULL_CONSTANT_LOAD_GEN7:
-         generate_pull_constant_load_gen7(p, prog_data, inst, dst, src[0], src[1]);
+         generate_pull_constant_load_gen7(p, inst, dst, src[0], src[1]);
          send_count++;
          break;
 
@@ -1844,7 +1840,7 @@ generate_code(struct brw_codegen *p,
          break;
 
       case GS_OPCODE_SVB_WRITE:
-         generate_gs_svb_write(p, prog_data, inst, dst, src[0], src[1]);
+         generate_gs_svb_write(p, inst, dst, src[0], src[1]);
          send_count++;
          break;
 
