@@ -448,6 +448,31 @@ void radv_CmdFillBuffer(
 			 fillSize, data);
 }
 
+static void
+copy_buffer(struct radv_cmd_buffer *cmd_buffer,
+	    struct radv_buffer *src_buffer,
+	    struct radv_buffer *dst_buffer,
+	    const VkBufferCopy2KHR *region)
+{
+	bool old_predicating;
+
+	/* VK_EXT_conditional_rendering says that copy commands should not be
+	 * affected by conditional rendering.
+	 */
+	old_predicating = cmd_buffer->state.predicating;
+	cmd_buffer->state.predicating = false;
+
+	radv_copy_buffer(cmd_buffer,
+			 src_buffer->bo,
+			 dst_buffer->bo,
+			 src_buffer->offset + region->srcOffset,
+			 dst_buffer->offset + region->dstOffset,
+			 region->size);
+
+	/* Restore conditional rendering. */
+	cmd_buffer->state.predicating = old_predicating;
+}
+
 void radv_CmdCopyBuffer(
 	VkCommandBuffer                             commandBuffer,
 	VkBuffer                                    srcBuffer,
@@ -457,26 +482,32 @@ void radv_CmdCopyBuffer(
 {
 	RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
 	RADV_FROM_HANDLE(radv_buffer, src_buffer, srcBuffer);
-	RADV_FROM_HANDLE(radv_buffer, dest_buffer, destBuffer);
-	bool old_predicating;
-
-	/* VK_EXT_conditional_rendering says that copy commands should not be
-	 * affected by conditional rendering.
-	 */
-	old_predicating = cmd_buffer->state.predicating;
-	cmd_buffer->state.predicating = false;
+	RADV_FROM_HANDLE(radv_buffer, dst_buffer, destBuffer);
 
 	for (unsigned r = 0; r < regionCount; r++) {
-		uint64_t src_offset = src_buffer->offset + pRegions[r].srcOffset;
-		uint64_t dest_offset = dest_buffer->offset + pRegions[r].dstOffset;
-		uint64_t copy_size = pRegions[r].size;
+		VkBufferCopy2KHR copy = {
+			.sType = VK_STRUCTURE_TYPE_BUFFER_COPY_2_KHR,
+			.srcOffset = pRegions[r].srcOffset,
+			.dstOffset = pRegions[r].dstOffset,
+			.size = pRegions[r].size,
+		};
 
-		radv_copy_buffer(cmd_buffer, src_buffer->bo, dest_buffer->bo,
-				 src_offset, dest_offset, copy_size);
+		copy_buffer(cmd_buffer, src_buffer, dst_buffer, &copy);
 	}
+}
 
-	/* Restore conditional rendering. */
-	cmd_buffer->state.predicating = old_predicating;
+void radv_CmdCopyBuffer2KHR(
+	VkCommandBuffer                             commandBuffer,
+	const VkCopyBufferInfo2KHR*                 pCopyBufferInfo)
+{
+	RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
+	RADV_FROM_HANDLE(radv_buffer, src_buffer, pCopyBufferInfo->srcBuffer);
+	RADV_FROM_HANDLE(radv_buffer, dst_buffer, pCopyBufferInfo->dstBuffer);
+
+	for (unsigned r = 0; r < pCopyBufferInfo->regionCount; r++) {
+		copy_buffer(cmd_buffer, src_buffer, dst_buffer,
+			    &pCopyBufferInfo->pRegions[r]);
+	}
 }
 
 void radv_CmdUpdateBuffer(
