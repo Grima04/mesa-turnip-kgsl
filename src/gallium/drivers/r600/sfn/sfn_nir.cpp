@@ -787,8 +787,7 @@ int r600_shader_from_nir(struct r600_context *rctx,
     * when there are registers, then we can no longer copy propagate, so
     * skip the optimization then. (There is probably a better way, but yeah)
     */
-   if (true)
-      while(optimize_once(sel->nir));
+   while(optimize_once(sel->nir));
 
    NIR_PASS_V(sel->nir, nir_remove_dead_variables, nir_var_shader_in, NULL);
    NIR_PASS_V(sel->nir, nir_remove_dead_variables,  nir_var_shader_out, NULL);
