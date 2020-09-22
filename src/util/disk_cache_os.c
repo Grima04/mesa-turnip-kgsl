@@ -843,12 +843,16 @@ disk_cache_write_item_to_disk(struct disk_cache_put_job *dc_job,
 char *
 disk_cache_generate_cache_dir(void *mem_ctx)
 {
+   char *cache_dir_name = CACHE_DIR_NAME;
+   if (env_var_as_boolean("MESA_DISK_CACHE_SINGLE_FILE", false))
+      cache_dir_name = CACHE_DIR_NAME_SF;
+
    char *path = getenv("MESA_GLSL_CACHE_DIR");
    if (path) {
       if (mkdir_if_needed(path) == -1)
          return NULL;
 
-      path = concatenate_and_mkdir(mem_ctx, path, CACHE_DIR_NAME);
+      path = concatenate_and_mkdir(mem_ctx, path, cache_dir_name);
       if (!path)
          return NULL;
    }
@@ -860,7 +864,7 @@ disk_cache_generate_cache_dir(void *mem_ctx)
          if (mkdir_if_needed(xdg_cache_home) == -1)
             return NULL;
 
-         path = concatenate_and_mkdir(mem_ctx, xdg_cache_home, CACHE_DIR_NAME);
+         path = concatenate_and_mkdir(mem_ctx, xdg_cache_home, cache_dir_name);
          if (!path)
             return NULL;
       }
@@ -896,7 +900,7 @@ disk_cache_generate_cache_dir(void *mem_ctx)
       if (!path)
          return NULL;
 
-      path = concatenate_and_mkdir(mem_ctx, path, CACHE_DIR_NAME);
+      path = concatenate_and_mkdir(mem_ctx, path, cache_dir_name);
       if (!path)
          return NULL;
    }
