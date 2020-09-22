@@ -40,6 +40,14 @@
 extern "C" {
 #endif
 
+#ifdef ANDROID
+/* On Android, rely on the system's libsync instead of rolling our own
+ * sync_wait() and sync_merge().  This gives us compatibility with pre-4.7
+ * Android kernels.
+ */
+#include <android/sync.h>
+#else
+
 #ifndef SYNC_IOC_MERGE
 /* duplicated from linux/sync_file.h to avoid build-time dependency
  * on new (v4.7) kernel headers.  Once distro's are mostly using
@@ -100,6 +108,8 @@ static inline int sync_merge(const char *name, int fd1, int fd2)
 
 	return data.fence;
 }
+
+#endif /* !ANDROID */
 
 /* accumulate fd2 into fd1.  If *fd1 is not a valid fd then dup fd2,
  * otherwise sync_merge() and close the old *fd1.  This can be used
