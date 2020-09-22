@@ -68,7 +68,6 @@ static const struct debug_named_value debug_options[] = {
    {"w64ge", DBG(W64_GE), "Use Wave64 for vertex, tessellation, and geometry shaders."},
    {"w64ps", DBG(W64_PS), "Use Wave64 for pixel shaders."},
    {"w64cs", DBG(W64_CS), "Use Wave64 for computes shaders."},
-   {"noinfinterp", DBG(KILL_PS_INF_INTERP), "Kill PS with infinite interp coeff"},
 
    /* Shader compiler options (with no effect on the shader cache): */
    {"checkir", DBG(CHECK_IR), "Enable additional sanity checks on shader IR"},
@@ -1022,11 +1021,6 @@ static struct pipe_screen *radeonsi_screen_create_impl(struct radeon_winsys *ws,
    sscreen->options.name = driQueryOptionb(config->options, "radeonsi_" #name);
 #include "si_debug_options.h"
    }
-
-   if (sscreen->options.no_infinite_interp)
-      sscreen->debug_flags |= DBG(KILL_PS_INF_INTERP);
-   if (sscreen->options.clamp_div_by_zero)
-      sscreen->debug_flags |= DBG(CLAMP_DIV_BY_ZERO);
 
    si_disk_cache_create(sscreen);
 

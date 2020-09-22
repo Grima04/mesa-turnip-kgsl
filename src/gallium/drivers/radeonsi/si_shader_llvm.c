@@ -426,7 +426,7 @@ bool si_nir_build_llvm(struct si_shader_context *ctx, struct nir_shader *nir)
          ctx->shader->key.mono.u.ps.interpolate_at_sample_force_center;
 
       ctx->abi.kill_ps_if_inf_interp =
-         (ctx->screen->debug_flags & DBG(KILL_PS_INF_INTERP)) &&
+         ctx->screen->options.no_infinite_interp &&
          (ctx->shader->selector->info.uses_persp_center ||
           ctx->shader->selector->info.uses_persp_centroid ||
           ctx->shader->selector->info.uses_persp_sample);
