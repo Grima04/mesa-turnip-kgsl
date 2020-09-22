@@ -159,7 +159,8 @@ instr_can_rewrite(nir_instr *instr, bool vectorize_16bit)
  */
 
 static nir_instr *
-instr_try_combine(struct nir_shader *nir, nir_instr *instr1, nir_instr *instr2)
+instr_try_combine(struct nir_shader *nir, struct set *instr_set,
+                  nir_instr *instr1, nir_instr *instr2)
 {
    assert(instr1->type == nir_instr_type_alu);
    assert(instr2->type == nir_instr_type_alu);
@@ -246,16 +247,24 @@ instr_try_combine(struct nir_shader *nir, nir_instr *instr1, nir_instr *instr2)
                                        alu2_components);
 
    nir_foreach_use_safe(src, &alu1->dest.dest.ssa) {
-      if (src->parent_instr->type == nir_instr_type_alu) {
+      nir_instr *user_instr = src->parent_instr;
+      if (user_instr->type == nir_instr_type_alu) {
+         /* Check if user is found in the hashset */
+         struct set_entry *entry = _mesa_set_search(instr_set, user_instr);
+
          /* For ALU instructions, rewrite the source directly to avoid a
           * round-trip through copy propagation.
           */
-
-         nir_instr_rewrite_src(src->parent_instr, src,
+         nir_instr_rewrite_src(user_instr, src,
                                nir_src_for_ssa(&new_alu->dest.dest.ssa));
+
+         /* Rehash user if it was found in the hashset */
+         if (entry && entry->key == user_instr) {
+            _mesa_set_remove(instr_set, entry);
+            _mesa_set_add(instr_set, src->parent_instr);
+         }
       } else {
-         nir_instr_rewrite_src(src->parent_instr, src,
-                               nir_src_for_ssa(new_alu1));
+         nir_instr_rewrite_src(user_instr, src, nir_src_for_ssa(new_alu1));
       }
    }
 
@@ -336,8 +345,8 @@ vec_instr_set_add_or_rewrite(struct nir_shader *nir, struct set *instr_set,
    if (entry) {
       nir_instr *old_instr = (nir_instr *) entry->key;
       _mesa_set_remove(instr_set, entry);
-      nir_instr *new_instr = instr_try_combine(nir, old_instr, instr);
-
+      nir_instr *new_instr = instr_try_combine(nir, instr_set,
+                                               old_instr, instr);
       if (new_instr) {
          if (instr_can_rewrite(new_instr, nir->options->vectorize_vec2_16bit) &&
              (!filter || filter(instr, data)))
