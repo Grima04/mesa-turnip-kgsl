@@ -48,7 +48,8 @@ FragmentShaderFromNir::FragmentShaderFromNir(const nir_shader& nir,
    m_front_face_loaded(false),
    m_depth_exports(0),
    m_enable_centroid_interpolators(false),
-   m_apply_sample_mask(key.ps.apply_sample_id_mask)
+   m_apply_sample_mask(key.ps.apply_sample_id_mask),
+   m_dual_source_blend(key.ps.dual_source_blend)
 {
    for (auto&  i: m_interpolator) {
       i.enabled = false;
