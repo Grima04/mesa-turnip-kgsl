@@ -300,9 +300,11 @@ bool FragmentShaderFromNir::do_emit_store_deref(const nir_variable *out_var, nir
 
 bool FragmentShaderFromNir::do_process_outputs(nir_variable *output)
 {
-   sfn_log << SfnLog::instr << "Parse output variable "
+   sfn_log << SfnLog::io << "Parse output variable "
            << output->name << "  @" << output->data.location
-           << "@dl:" << output->data.driver_location << "\n";
+           << "@dl:" << output->data.driver_location
+           << " dual source idx: " << output->data.index
+           << "\n";
 
    ++sh_info().noutput;
    r600_shader_io& io = sh_info().output[output->data.driver_location];
