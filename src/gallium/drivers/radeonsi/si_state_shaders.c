@@ -1590,6 +1590,14 @@ static void si_shader_ps(struct si_screen *sscreen, struct si_shader *shader)
    if (!pm4)
       return;
 
+   /* If multiple state sets are allowed to be in a bin, break the batch on a new PS. */
+   if (sscreen->dpbb_allowed &&
+       (sscreen->pbb_context_states_per_bin > 1 ||
+        sscreen->pbb_persistent_states_per_bin > 1)) {
+      si_pm4_cmd_add(pm4, PKT3(PKT3_EVENT_WRITE, 0, 0));
+      si_pm4_cmd_add(pm4, EVENT_TYPE(V_028A90_BREAK_BATCH) | EVENT_INDEX(0));
+   }
+
    pm4->atom.emit = si_emit_shader_ps;
 
    /* SPI_BARYC_CNTL.POS_FLOAT_LOCATION
