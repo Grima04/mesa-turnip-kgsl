@@ -406,10 +406,9 @@ struct tu_device
 };
 
 VkResult _tu_device_set_lost(struct tu_device *device,
-                             const char *file, int line,
-                             const char *msg, ...) PRINTFLIKE(4, 5);
+                             const char *msg, ...) PRINTFLIKE(2, 3);
 #define tu_device_set_lost(dev, ...) \
-   _tu_device_set_lost(dev, __FILE__, __LINE__, __VA_ARGS__)
+   _tu_device_set_lost(dev, __VA_ARGS__)
 
 static inline bool
 tu_device_is_lost(struct tu_device *device)

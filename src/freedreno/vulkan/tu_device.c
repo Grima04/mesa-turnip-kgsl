@@ -1197,7 +1197,6 @@ tu_DestroyDevice(VkDevice _device, const VkAllocationCallbacks *pAllocator)
 
 VkResult
 _tu_device_set_lost(struct tu_device *device,
-                    const char *file, int line,
                     const char *msg, ...)
 {
    /* Set the flag indicating that waits should return in finite time even
@@ -1206,10 +1205,9 @@ _tu_device_set_lost(struct tu_device *device,
    p_atomic_inc(&device->_lost);
 
    /* TODO: Report the log message through VkDebugReportCallbackEXT instead */
-   fprintf(stderr, "%s:%d: ", file, line);
    va_list ap;
    va_start(ap, msg);
-   vfprintf(stderr, msg, ap);
+   mesa_loge_v(msg, ap);
    va_end(ap);
 
    if (env_var_as_boolean("TU_ABORT_ON_DEVICE_LOSS", false))
