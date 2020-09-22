@@ -295,12 +295,11 @@ void radv_CmdCopyBufferToImage2KHR(
 }
 
 static void
-meta_copy_image_to_buffer(struct radv_cmd_buffer *cmd_buffer,
-                          struct radv_buffer* buffer,
-                          struct radv_image* image,
-			  VkImageLayout layout,
-                          uint32_t regionCount,
-                          const VkBufferImageCopy* pRegions)
+copy_image_to_buffer(struct radv_cmd_buffer *cmd_buffer,
+		     struct radv_buffer *buffer,
+		     struct radv_image *image,
+		     VkImageLayout layout,
+		     const VkBufferImageCopy2KHR *region)
 {
 	struct radv_meta_saved_state saved_state;
 	bool old_predicating;
@@ -316,94 +315,91 @@ meta_copy_image_to_buffer(struct radv_cmd_buffer *cmd_buffer,
 	old_predicating = cmd_buffer->state.predicating;
 	cmd_buffer->state.predicating = false;
 
-	for (unsigned r = 0; r < regionCount; r++) {
+	/**
+	 * From the Vulkan 1.0.6 spec: 18.3 Copying Data Between Images
+	 *    extent is the size in texels of the source image to copy in width,
+	 *    height and depth. 1D images use only x and width. 2D images use x, y,
+	 *    width and height. 3D images use x, y, z, width, height and depth.
+	 *
+	 *
+	 * Also, convert the offsets and extent from units of texels to units of
+	 * blocks - which is the highest resolution accessible in this command.
+	 */
+	const VkOffset3D img_offset_el =
+		meta_region_offset_el(image, &region->imageOffset);
+	const VkExtent3D bufferExtent = {
+		.width  = region->bufferRowLength ?
+		region->bufferRowLength : region->imageExtent.width,
+		.height = region->bufferImageHeight ?
+		region->bufferImageHeight : region->imageExtent.height,
+	};
+	const VkExtent3D buf_extent_el =
+		meta_region_extent_el(image, image->type, &bufferExtent);
 
-		/**
-		 * From the Vulkan 1.0.6 spec: 18.3 Copying Data Between Images
-		 *    extent is the size in texels of the source image to copy in width,
-		 *    height and depth. 1D images use only x and width. 2D images use x, y,
-		 *    width and height. 3D images use x, y, z, width, height and depth.
-		 *
-		 *
-		 * Also, convert the offsets and extent from units of texels to units of
-		 * blocks - which is the highest resolution accessible in this command.
-		 */
-		const VkOffset3D img_offset_el =
-			meta_region_offset_el(image, &pRegions[r].imageOffset);
-		const VkExtent3D bufferExtent = {
-			.width  = pRegions[r].bufferRowLength ?
-			pRegions[r].bufferRowLength : pRegions[r].imageExtent.width,
-			.height = pRegions[r].bufferImageHeight ?
-			pRegions[r].bufferImageHeight : pRegions[r].imageExtent.height,
-		};
-		const VkExtent3D buf_extent_el =
-			meta_region_extent_el(image, image->type, &bufferExtent);
+	/* Start creating blit rect */
+	const VkExtent3D img_extent_el =
+		meta_region_extent_el(image, image->type, &region->imageExtent);
+	struct radv_meta_blit2d_rect rect = {
+		.width = img_extent_el.width,
+		.height =  img_extent_el.height,
+	};
 
-		/* Start creating blit rect */
-		const VkExtent3D img_extent_el =
-			meta_region_extent_el(image, image->type, &pRegions[r].imageExtent);
-		struct radv_meta_blit2d_rect rect = {
-			.width = img_extent_el.width,
-			.height =  img_extent_el.height,
-		};
+	/* Create blit surfaces */
+	struct radv_meta_blit2d_surf img_info =
+		blit_surf_for_image_level_layer(image,
+						layout,
+						&region->imageSubresource,
+						region->imageSubresource.aspectMask);
 
-		/* Create blit surfaces */
-		struct radv_meta_blit2d_surf img_info =
-			blit_surf_for_image_level_layer(image,
-							layout,
-							&pRegions[r].imageSubresource,
-							pRegions[r].imageSubresource.aspectMask);
-
-		if (!radv_is_buffer_format_supported(img_info.format, NULL)) {
-			uint32_t queue_mask = radv_image_queue_family_mask(image,
-			                                                   cmd_buffer->queue_family_index,
-			                                                   cmd_buffer->queue_family_index);
-			bool compressed = radv_layout_dcc_compressed(cmd_buffer->device, image, layout, false, queue_mask);
-			if (compressed) {
-				radv_decompress_dcc(cmd_buffer, image, &(VkImageSubresourceRange) {
-								.aspectMask = pRegions[r].imageSubresource.aspectMask,
-								.baseMipLevel = pRegions[r].imageSubresource.mipLevel,
-								.levelCount = 1,
-								.baseArrayLayer = pRegions[r].imageSubresource.baseArrayLayer,
-								.layerCount = pRegions[r].imageSubresource.layerCount,
-			                                });
-			}
-			img_info.format = vk_format_for_size(vk_format_get_blocksize(img_info.format));
-			img_info.current_layout = VK_IMAGE_LAYOUT_GENERAL;
+	if (!radv_is_buffer_format_supported(img_info.format, NULL)) {
+		uint32_t queue_mask = radv_image_queue_family_mask(image,
+								   cmd_buffer->queue_family_index,
+								   cmd_buffer->queue_family_index);
+		bool compressed = radv_layout_dcc_compressed(cmd_buffer->device, image, layout, false, queue_mask);
+		if (compressed) {
+			radv_decompress_dcc(cmd_buffer, image, &(VkImageSubresourceRange) {
+							.aspectMask = region->imageSubresource.aspectMask,
+							.baseMipLevel = region->imageSubresource.mipLevel,
+							.levelCount = 1,
+							.baseArrayLayer = region->imageSubresource.baseArrayLayer,
+							.layerCount = region->imageSubresource.layerCount,
+						});
 		}
+		img_info.format = vk_format_for_size(vk_format_get_blocksize(img_info.format));
+		img_info.current_layout = VK_IMAGE_LAYOUT_GENERAL;
+	}
 
-		struct radv_meta_blit2d_buffer buf_info = {
-			.bs = img_info.bs,
-			.format = img_info.format,
-			.buffer = buffer,
-			.offset = pRegions[r].bufferOffset,
-			.pitch = buf_extent_el.width,
-		};
+	struct radv_meta_blit2d_buffer buf_info = {
+		.bs = img_info.bs,
+		.format = img_info.format,
+		.buffer = buffer,
+		.offset = region->bufferOffset,
+		.pitch = buf_extent_el.width,
+	};
 
+	if (image->type == VK_IMAGE_TYPE_3D)
+		img_info.layer = img_offset_el.z;
+	/* Loop through each 3D or array slice */
+	unsigned num_slices_3d = img_extent_el.depth;
+	unsigned num_slices_array = region->imageSubresource.layerCount;
+	unsigned slice_3d = 0;
+	unsigned slice_array = 0;
+	while (slice_3d < num_slices_3d && slice_array < num_slices_array) {
+
+		rect.src_x = img_offset_el.x;
+		rect.src_y = img_offset_el.y;
+
+
+		/* Perform Blit */
+		radv_meta_image_to_buffer(cmd_buffer, &img_info, &buf_info, 1, &rect);
+
+		buf_info.offset += buf_extent_el.width *
+				    buf_extent_el.height * buf_info.bs;
+		img_info.layer++;
 		if (image->type == VK_IMAGE_TYPE_3D)
-			img_info.layer = img_offset_el.z;
-		/* Loop through each 3D or array slice */
-		unsigned num_slices_3d = img_extent_el.depth;
-		unsigned num_slices_array = pRegions[r].imageSubresource.layerCount;
-		unsigned slice_3d = 0;
-		unsigned slice_array = 0;
-		while (slice_3d < num_slices_3d && slice_array < num_slices_array) {
-
-			rect.src_x = img_offset_el.x;
-			rect.src_y = img_offset_el.y;
-
-
-			/* Perform Blit */
-			radv_meta_image_to_buffer(cmd_buffer, &img_info, &buf_info, 1, &rect);
-
-			buf_info.offset += buf_extent_el.width *
-			                    buf_extent_el.height * buf_info.bs;
-			img_info.layer++;
-			if (image->type == VK_IMAGE_TYPE_3D)
-				slice_3d++;
-			else
-				slice_array++;
-		}
+			slice_3d++;
+		else
+			slice_array++;
 	}
 
 	/* Restore conditional rendering. */
@@ -424,9 +420,35 @@ void radv_CmdCopyImageToBuffer(
 	RADV_FROM_HANDLE(radv_image, src_image, srcImage);
 	RADV_FROM_HANDLE(radv_buffer, dst_buffer, destBuffer);
 
-	meta_copy_image_to_buffer(cmd_buffer, dst_buffer, src_image,
-				  srcImageLayout,
-				  regionCount, pRegions);
+	for (unsigned r = 0; r < regionCount; r++) {
+		VkBufferImageCopy2KHR copy = {
+			.sType = VK_STRUCTURE_TYPE_BUFFER_IMAGE_COPY_2_KHR,
+			.bufferOffset      = pRegions[r].bufferOffset,
+			.bufferRowLength   = pRegions[r].bufferRowLength,
+			.bufferImageHeight = pRegions[r].bufferImageHeight,
+			.imageSubresource  = pRegions[r].imageSubresource,
+			.imageOffset       = pRegions[r].imageOffset,
+			.imageExtent       = pRegions[r].imageExtent,
+		};
+
+		copy_image_to_buffer(cmd_buffer, dst_buffer, src_image,
+				     srcImageLayout, &copy);
+	}
+}
+
+void radv_CmdCopyImageToBuffer2KHR(
+	VkCommandBuffer                             commandBuffer,
+	const VkCopyImageToBufferInfo2KHR*          pCopyImageToBufferInfo)
+{
+	RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
+	RADV_FROM_HANDLE(radv_image, src_image, pCopyImageToBufferInfo->srcImage);
+	RADV_FROM_HANDLE(radv_buffer, dst_buffer, pCopyImageToBufferInfo->dstBuffer);
+
+	for (unsigned r = 0; r < pCopyImageToBufferInfo->regionCount; r++) {
+		copy_image_to_buffer(cmd_buffer, dst_buffer, src_image,
+				     pCopyImageToBufferInfo->srcImageLayout,
+				     &pCopyImageToBufferInfo->pRegions[r]);
+	}
 }
 
 static void
