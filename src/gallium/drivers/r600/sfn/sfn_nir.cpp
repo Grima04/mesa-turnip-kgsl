@@ -416,6 +416,39 @@ void sort_uniforms(nir_shader *shader)
    exec_list_append(&shader->variables, &new_list);
 }
 
+static void
+insert_fsoutput_sorted(struct exec_list *var_list, nir_variable *new_var)
+{
+
+   nir_foreach_variable_in_list(var, var_list) {
+      if (var->data.location > new_var->data.location ||
+          (var->data.location == new_var->data.location &&
+           var->data.index > new_var->data.index)) {
+         exec_node_insert_node_before(&var->node, &new_var->node);
+         return;
+      }
+   }
+
+   exec_list_push_tail(var_list, &new_var->node);
+}
+
+void sort_fsoutput(nir_shader *shader)
+{
+   struct exec_list new_list;
+   exec_list_make_empty(&new_list);
+
+   nir_foreach_shader_out_variable_safe(var, shader) {
+      exec_node_remove(&var->node);
+      insert_fsoutput_sorted(&new_list, var);
+   }
+
+   unsigned driver_location = 0;
+   nir_foreach_variable_in_list(var, &new_list)
+      var->data.driver_location = driver_location++;
+
+   exec_list_append(&shader->variables, &new_list);
+}
+
 }
 
 static nir_intrinsic_op
@@ -801,8 +834,10 @@ int r600_shader_from_nir(struct r600_context *rctx,
    while (optimize_once(sel->nir));
 
    auto sh = nir_shader_clone(sel->nir, sel->nir);
-
    NIR_PASS_V(sh, nir_opt_algebraic_late);
+
+   if (sel->nir->info.stage == MESA_SHADER_FRAGMENT)
+      r600::sort_fsoutput(sh);
 
    NIR_PASS_V(sh, nir_lower_locals_to_regs);
 
