@@ -110,21 +110,10 @@ brw_compiler_create(void *mem_ctx, const struct gen_device_info *devinfo)
       devinfo->gen >= 12 ||
       (devinfo->gen >= 9 && (INTEL_DEBUG & DEBUG_TCS_EIGHT_PATCH));
 
-   if (devinfo->gen >= 10) {
-      /* We don't support vec4 mode on Cannonlake. */
-      for (int i = MESA_SHADER_VERTEX; i < MESA_ALL_SHADER_STAGES; i++)
-         compiler->scalar_stage[i] = true;
-   } else {
-      compiler->scalar_stage[MESA_SHADER_VERTEX] =
-         devinfo->gen >= 8 && env_var_as_boolean("INTEL_SCALAR_VS", true);
-      compiler->scalar_stage[MESA_SHADER_TESS_CTRL] =
-         devinfo->gen >= 8 && env_var_as_boolean("INTEL_SCALAR_TCS", true);
-      compiler->scalar_stage[MESA_SHADER_TESS_EVAL] =
-         devinfo->gen >= 8 && env_var_as_boolean("INTEL_SCALAR_TES", true);
-      compiler->scalar_stage[MESA_SHADER_GEOMETRY] =
-         devinfo->gen >= 8 && env_var_as_boolean("INTEL_SCALAR_GS", true);
-      compiler->scalar_stage[MESA_SHADER_FRAGMENT] = true;
-      compiler->scalar_stage[MESA_SHADER_COMPUTE] = true;
+   /* There is no vec4 mode on Gen10+, and we don't use it at all on Gen8+. */
+   for (int i = MESA_SHADER_VERTEX; i < MESA_ALL_SHADER_STAGES; i++) {
+      compiler->scalar_stage[i] = devinfo->gen >= 8 ||
+         i == MESA_SHADER_FRAGMENT || i == MESA_SHADER_COMPUTE;
    }
 
    nir_lower_int64_options int64_options =
