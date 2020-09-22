@@ -3067,8 +3067,7 @@ brw_svb_write(struct brw_codegen *p,
 }
 
 static unsigned
-brw_surface_payload_size(struct brw_codegen *p,
-                         unsigned num_channels,
+brw_surface_payload_size(unsigned num_channels,
                          unsigned exec_size /**< 0 for SIMD4x2 */)
 {
    if (exec_size == 0)
@@ -3099,7 +3098,7 @@ brw_untyped_atomic(struct brw_codegen *p,
    const unsigned exec_size = align1 ? 1 << brw_get_default_exec_size(p) :
                               has_simd4x2 ? 0 : 8;
    const unsigned response_length =
-      brw_surface_payload_size(p, response_expected, exec_size);
+      brw_surface_payload_size(response_expected, exec_size);
    const unsigned desc =
       brw_message_desc(devinfo, msg_length, response_length, header_present) |
       brw_dp_untyped_atomic_desc(devinfo, exec_size, atomic_op,
@@ -3131,7 +3130,7 @@ brw_untyped_surface_read(struct brw_codegen *p,
    const bool align1 = brw_get_default_access_mode(p) == BRW_ALIGN_1;
    const unsigned exec_size = align1 ? 1 << brw_get_default_exec_size(p) : 0;
    const unsigned response_length =
-      brw_surface_payload_size(p, num_channels, exec_size);
+      brw_surface_payload_size(num_channels, exec_size);
    const unsigned desc =
       brw_message_desc(devinfo, msg_length, response_length, false) |
       brw_dp_untyped_surface_rw_desc(devinfo, exec_size, num_channels, false);
