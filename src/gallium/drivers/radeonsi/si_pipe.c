@@ -906,18 +906,8 @@ static void si_disk_cache_create(struct si_screen *sscreen)
    _mesa_sha1_final(&ctx, sha1);
    disk_cache_format_hex_id(cache_id, sha1, 20 * 2);
 
-/* These flags affect shader compilation. */
-#define ALL_FLAGS (DBG(GISEL) | DBG(KILL_PS_INF_INTERP) | DBG(CLAMP_DIV_BY_ZERO))
-   uint64_t shader_debug_flags = sscreen->debug_flags & ALL_FLAGS;
-
-   /* Add the high bits of 32-bit addresses, which affects
-    * how 32-bit addresses are expanded to 64 bits.
-    */
-   STATIC_ASSERT(ALL_FLAGS <= UINT_MAX);
-   assert((int16_t)sscreen->info.address32_hi == (int32_t)sscreen->info.address32_hi);
-   shader_debug_flags |= (uint64_t)(sscreen->info.address32_hi & 0xffff) << 32;
-
-   sscreen->disk_shader_cache = disk_cache_create(sscreen->info.name, cache_id, shader_debug_flags);
+   sscreen->disk_shader_cache = disk_cache_create(sscreen->info.name, cache_id,
+                                                  sscreen->info.address32_hi);
 }
 
 static void si_set_max_shader_compiler_threads(struct pipe_screen *screen, unsigned max_threads)
