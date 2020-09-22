@@ -745,7 +745,7 @@ meson-clang:
     DRI_LOADERS: >
       -D glvnd=true
     DRI_DRIVERS: "auto"
-    GALLIUM_DRIVERS: "auto"
+    GALLIUM_DRIVERS: "iris,nouveau,kmsro,r300,r600,freedreno,swr,swrast,svga,v3d,vc4,virgl,etnaviv,panfrost,lima,zink,radeonsi,tegra"
     VULKAN_DRIVERS: intel,amd,freedreno
     CC: "ccache clang-9"
     CXX: "ccache clang++-9"
