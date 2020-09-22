@@ -89,8 +89,10 @@ tu_bo_init_new(struct tu_device *dev, struct tu_bo *bo, uint64_t size, bool dump
 
    ret = safe_ioctl(dev->physical_device->local_fd,
                     IOCTL_KGSL_GPUMEM_ALLOC_ID, &req);
-   if (ret)
-      return vk_error(dev->instance, VK_ERROR_OUT_OF_DEVICE_MEMORY);
+   if (ret) {
+      return vk_errorf(dev->instance, VK_ERROR_OUT_OF_DEVICE_MEMORY,
+                       "GPUMEM_ALLOC_ID failed (%s)", strerror(errno));
+   }
 
    *bo = (struct tu_bo) {
       .gem_handle = req.id,
