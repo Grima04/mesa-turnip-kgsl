@@ -75,6 +75,39 @@ zink_context_destroy(struct pipe_context *pctx)
    FREE(ctx);
 }
 
+static enum pipe_reset_status
+zink_get_device_reset_status(struct pipe_context *pctx)
+{
+   struct zink_context *ctx = zink_context(pctx);
+
+   enum pipe_reset_status status = PIPE_NO_RESET;
+
+   if (ctx->is_device_lost) {
+      // Since we don't know what really happened to the hardware, just
+      // assume that we are in the wrong
+      status = PIPE_GUILTY_CONTEXT_RESET;
+
+      debug_printf("ZINK: device lost detected!\n");
+
+      if (ctx->reset.reset)
+         ctx->reset.reset(ctx->reset.data, status);
+   }
+
+   return status;
+}
+
+static void
+zink_set_device_reset_callback(struct pipe_context *pctx,
+                               const struct pipe_device_reset_callback *cb)
+{
+   struct zink_context *ctx = zink_context(pctx);
+
+   if (cb)
+      ctx->reset = *cb;
+   else
+      memset(&ctx->reset, 0, sizeof(ctx->reset));
+}
+
 static VkSamplerMipmapMode
 sampler_mipmap_mode(enum pipe_tex_mipfilter filter)
 {
@@ -1166,6 +1199,8 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
    ctx->base.priv = priv;
 
    ctx->base.destroy = zink_context_destroy;
+   ctx->base.get_device_reset_status = zink_get_device_reset_status;
+   ctx->base.set_device_reset_callback = zink_set_device_reset_callback;
 
    zink_context_state_init(&ctx->base);
 

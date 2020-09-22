@@ -81,8 +81,11 @@ struct zink_context {
    struct slab_child_pool transfer_pool;
    struct blitter_context *blitter;
 
+   struct pipe_device_reset_callback reset;
+
    VkCommandPool cmdpool;
    struct zink_batch batches[4];
+   bool is_device_lost;
    unsigned curr_batch;
 
    VkQueue queue;

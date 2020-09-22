@@ -99,8 +99,8 @@ zink_end_batch(struct zink_context *ctx, struct zink_batch *batch)
    si.pCommandBuffers = &batch->cmdbuf;
 
    if (vkQueueSubmit(ctx->queue, 1, &si, batch->fence->fence) != VK_SUCCESS) {
-      debug_printf("vkQueueSubmit failed\n");
-      abort();
+      debug_printf("ZINK: vkQueueSubmit() failed\n");
+      ctx->is_device_lost = true;
    }
 }
 
