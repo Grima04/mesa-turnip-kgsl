@@ -872,6 +872,11 @@ brw_compile_gs(const struct brw_compiler *compiler, void *log_data,
          g.add_const_data(nir->constant_data, nir->constant_data_size);
          return g.get_assembly();
       }
+
+      if (error_str)
+         *error_str = ralloc_strdup(mem_ctx, v.fail_msg);
+
+      return NULL;
    }
 
    if (compiler->devinfo->gen >= 7) {
