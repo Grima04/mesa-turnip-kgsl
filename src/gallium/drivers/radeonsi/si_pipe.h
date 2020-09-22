@@ -513,6 +513,8 @@ struct si_screen {
    unsigned eqaa_force_coverage_samples;
    unsigned eqaa_force_z_samples;
    unsigned eqaa_force_color_samples;
+   unsigned pbb_context_states_per_bin;
+   unsigned pbb_persistent_states_per_bin;
    bool has_draw_indirect_multi;
    bool has_out_of_order_rast;
    bool assume_no_z_fights;

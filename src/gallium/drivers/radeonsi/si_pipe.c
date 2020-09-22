@@ -1180,6 +1180,31 @@ static struct pipe_screen *radeonsi_screen_create_impl(struct radeon_winsys *ws,
       sscreen->dfsm_allowed = false;
    }
 
+   if (sscreen->dpbb_allowed) {
+      if (sscreen->info.has_dedicated_vram) {
+         if (sscreen->info.num_render_backends > 4) {
+            sscreen->pbb_context_states_per_bin = 1;
+            sscreen->pbb_persistent_states_per_bin = 1;
+         } else {
+            sscreen->pbb_context_states_per_bin = 3;
+            sscreen->pbb_persistent_states_per_bin = 8;
+         }
+      } else {
+         /* This is a workaround for:
+          *    https://bugs.freedesktop.org/show_bug.cgi?id=110214
+          * (an alternative is to insert manual BATCH_BREAK event when
+          *  a context_roll is detected). */
+         sscreen->pbb_context_states_per_bin = sscreen->info.has_gfx9_scissor_bug ? 1 : 6;
+         /* Using 32 here can cause GPU hangs on RAVEN1 */
+         sscreen->pbb_persistent_states_per_bin = 16;
+      }
+
+      assert(sscreen->pbb_context_states_per_bin >= 1 &&
+             sscreen->pbb_context_states_per_bin <= 6);
+      assert(sscreen->pbb_persistent_states_per_bin >= 1 &&
+             sscreen->pbb_persistent_states_per_bin <= 32);
+   }
+
    /* While it would be nice not to have this flag, we are constrained
     * by the reality that LLVM 9.0 has buggy VGPR indexing on GFX9.
     */
