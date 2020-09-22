@@ -769,7 +769,8 @@ vl_mpeg12_end_frame(struct pipe_video_codec *decoder,
 
    vl_vb_unmap(&buf->vertex_stream, dec->context);
 
-   dec->context->transfer_unmap(dec->context, buf->tex_transfer);
+   if (buf->tex_transfer)
+      dec->context->transfer_unmap(dec->context, buf->tex_transfer);
 
    vb[0] = dec->quads;
    vb[1] = dec->pos;
