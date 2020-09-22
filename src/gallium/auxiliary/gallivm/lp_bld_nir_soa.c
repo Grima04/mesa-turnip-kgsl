@@ -1252,8 +1252,8 @@ static void emit_barrier(struct lp_build_nir_context *bld_base)
    LLVMPositionBuilderAtEnd(gallivm->builder, resume);
 }
 
-static LLVMValueRef emit_get_buffer_size(struct lp_build_nir_context *bld_base,
-                                         LLVMValueRef index)
+static LLVMValueRef emit_get_ssbo_size(struct lp_build_nir_context *bld_base,
+                                       LLVMValueRef index)
 {
    struct gallivm_state *gallivm = bld_base->base.gallivm;
    struct lp_build_nir_soa_context *bld = (struct lp_build_nir_soa_context *)bld_base;
@@ -1890,7 +1890,7 @@ void lp_build_nir_soa(struct gallivm_state *gallivm,
    bld.bld_base.end_primitive = end_primitive;
    bld.bld_base.load_mem = emit_load_mem;
    bld.bld_base.store_mem = emit_store_mem;
-   bld.bld_base.get_buffer_size = emit_get_buffer_size;
+   bld.bld_base.get_ssbo_size = emit_get_ssbo_size;
    bld.bld_base.atomic_mem = emit_atomic_mem;
    bld.bld_base.barrier = emit_barrier;
    bld.bld_base.image_op = emit_image_op;

@@ -127,7 +127,7 @@ struct ir3_ubo_analysis_state {
  * be required, rather than allocating worst-case const space, we scan the
  * shader and allocate consts as-needed:
  *
- *   + SSBO sizes: only needed if shader has a get_buffer_size intrinsic
+ *   + SSBO sizes: only needed if shader has a get_ssbo_size intrinsic
  *     for a given SSBO
  *
  *   + Image dimensions: needed to calculate pixel offset, but only for
@@ -171,9 +171,9 @@ struct ir3_const_state {
 	} offsets;
 
 	struct {
-		uint32_t mask;  /* bitmask of SSBOs that have get_buffer_size */
+		uint32_t mask;  /* bitmask of SSBOs that have get_ssbo_size */
 		uint32_t count; /* number of consts allocated */
-		/* one const allocated per SSBO which has get_buffer_size,
+		/* one const allocated per SSBO which has get_ssbo_size,
 		 * ssbo_sizes.off[ssbo_id] is offset from start of ssbo_sizes
 		 * consts:
 		 */

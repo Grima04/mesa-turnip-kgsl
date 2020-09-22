@@ -1997,7 +1997,7 @@ Converter::visit(nir_intrinsic_instr *insn)
       }
       break;
    }
-   case nir_intrinsic_get_buffer_size: {
+   case nir_intrinsic_get_ssbo_size: {
       LValues &newDefs = convert(&insn->dest);
       const DataType dType = getDType(insn);
       Value *indirectBuffer;

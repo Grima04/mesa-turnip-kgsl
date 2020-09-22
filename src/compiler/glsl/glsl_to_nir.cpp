@@ -2090,7 +2090,7 @@ nir_visitor::visit(ir_expression *ir)
    case ir_unop_get_buffer_size: {
       nir_intrinsic_instr *load = nir_intrinsic_instr_create(
          this->shader,
-         nir_intrinsic_get_buffer_size);
+         nir_intrinsic_get_ssbo_size);
       load->num_components = ir->type->vector_elements;
       load->src[0] = nir_src_for_ssa(evaluate_rvalue(ir->operands[0]));
       unsigned bit_size = glsl_get_bit_size(ir->type);

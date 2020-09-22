@@ -387,7 +387,7 @@ lower_intrinsic(nir_builder *b, nir_intrinsic_instr *instr,
    case nir_intrinsic_ssbo_atomic_fmin:
    case nir_intrinsic_ssbo_atomic_fmax:
    case nir_intrinsic_ssbo_atomic_fcomp_swap:
-   case nir_intrinsic_get_buffer_size:
+   case nir_intrinsic_get_ssbo_size:
       lower_ssbo_ubo_intrinsic(b, instr);
       return true;
 

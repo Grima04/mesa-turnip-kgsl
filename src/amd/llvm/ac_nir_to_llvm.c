@@ -1569,8 +1569,8 @@ static LLVMValueRef visit_load_push_constant(struct ac_nir_context *ctx, nir_int
    return LLVMBuildLoad(ctx->ac.builder, ptr, "");
 }
 
-static LLVMValueRef visit_get_buffer_size(struct ac_nir_context *ctx,
-                                          const nir_intrinsic_instr *instr)
+static LLVMValueRef visit_get_ssbo_size(struct ac_nir_context *ctx,
+                                        const nir_intrinsic_instr *instr)
 {
    LLVMValueRef index = get_src(ctx, instr->src[0]);
 
@@ -3716,8 +3716,8 @@ static void visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
    case nir_intrinsic_load_ubo:
       result = visit_load_ubo_buffer(ctx, instr);
       break;
-   case nir_intrinsic_get_buffer_size:
-      result = visit_get_buffer_size(ctx, instr);
+   case nir_intrinsic_get_ssbo_size:
+      result = visit_get_ssbo_size(ctx, instr);
       break;
    case nir_intrinsic_load_deref:
       result = visit_load_var(ctx, instr);

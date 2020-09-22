@@ -454,7 +454,7 @@ emit_intrinsic(bi_context *ctx, nir_intrinsic_instr *instr)
                 bi_emit_sysval(ctx, &instr->instr, 1, 0);
                 break;
 
-        case nir_intrinsic_get_buffer_size:
+        case nir_intrinsic_get_ssbo_size:
                 bi_emit_sysval(ctx, &instr->instr, 1, 8);
                 break;
 

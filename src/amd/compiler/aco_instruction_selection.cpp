@@ -6208,7 +6208,7 @@ void visit_atomic_ssbo(isel_context *ctx, nir_intrinsic_instr *instr)
    ctx->block->instructions.emplace_back(std::move(mubuf));
 }
 
-void visit_get_buffer_size(isel_context *ctx, nir_intrinsic_instr *instr) {
+void visit_get_ssbo_size(isel_context *ctx, nir_intrinsic_instr *instr) {
 
    Temp index = convert_pointer_to_64_bit(ctx, get_ssa_temp(ctx, instr->src[0].ssa));
    Builder bld(ctx->program, ctx->block);
@@ -7414,8 +7414,8 @@ void visit_intrinsic(isel_context *ctx, nir_intrinsic_instr *instr)
    case nir_intrinsic_store_scratch:
       visit_store_scratch(ctx, instr);
       break;
-   case nir_intrinsic_get_buffer_size:
-      visit_get_buffer_size(ctx, instr);
+   case nir_intrinsic_get_ssbo_size:
+      visit_get_ssbo_size(ctx, instr);
       break;
    case nir_intrinsic_scoped_barrier:
       emit_scoped_barrier(ctx, instr);

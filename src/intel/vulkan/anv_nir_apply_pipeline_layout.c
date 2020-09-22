@@ -319,8 +319,8 @@ lower_direct_buffer_access(nir_function_impl *impl,
             try_lower_direct_buffer_intrinsic(intrin, true, state);
             break;
 
-         case nir_intrinsic_get_buffer_size: {
-            /* The get_buffer_size intrinsic always just takes a
+         case nir_intrinsic_get_ssbo_size: {
+            /* The get_ssbo_size intrinsic always just takes a
              * index/reindex intrinsic.
              */
             if (!find_descriptor_for_index_src(intrin->src[0], state))
@@ -674,8 +674,8 @@ lower_load_vulkan_descriptor(nir_intrinsic_instr *intrin,
 }
 
 static void
-lower_get_buffer_size(nir_intrinsic_instr *intrin,
-                      struct apply_pipeline_layout_state *state)
+lower_get_ssbo_size(nir_intrinsic_instr *intrin,
+                    struct apply_pipeline_layout_state *state)
 {
    if (_mesa_set_search(state->lowered_instrs, intrin))
       return;
@@ -1095,8 +1095,8 @@ apply_pipeline_layout_block(nir_block *block,
          case nir_intrinsic_load_vulkan_descriptor:
             lower_load_vulkan_descriptor(intrin, state);
             break;
-         case nir_intrinsic_get_buffer_size:
-            lower_get_buffer_size(intrin, state);
+         case nir_intrinsic_get_ssbo_size:
+            lower_get_ssbo_size(intrin, state);
             break;
          case nir_intrinsic_image_deref_load:
          case nir_intrinsic_image_deref_store:

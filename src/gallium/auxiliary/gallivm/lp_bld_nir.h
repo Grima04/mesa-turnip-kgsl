@@ -110,8 +110,8 @@ struct lp_build_nir_context
                     struct lp_img_params *params);
    void (*image_size)(struct lp_build_nir_context *bld_base,
                       struct lp_sampler_size_query_params *params);
-   LLVMValueRef (*get_buffer_size)(struct lp_build_nir_context *bld_base,
-                                   LLVMValueRef index);
+   LLVMValueRef (*get_ssbo_size)(struct lp_build_nir_context *bld_base,
+                                 LLVMValueRef index);
 
    void (*load_var)(struct lp_build_nir_context *bld_base,
                     nir_variable_mode deref_mode,

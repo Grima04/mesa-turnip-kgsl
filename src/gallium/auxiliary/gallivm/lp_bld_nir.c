@@ -1083,12 +1083,12 @@ static void visit_store_ssbo(struct lp_build_nir_context *bld_base,
    bld_base->store_mem(bld_base, writemask, nc, bitsize, idx, offset, val);
 }
 
-static void visit_get_buffer_size(struct lp_build_nir_context *bld_base,
-                                  nir_intrinsic_instr *instr,
-                                  LLVMValueRef result[NIR_MAX_VEC_COMPONENTS])
+static void visit_get_ssbo_size(struct lp_build_nir_context *bld_base,
+                                nir_intrinsic_instr *instr,
+                                LLVMValueRef result[NIR_MAX_VEC_COMPONENTS])
 {
    LLVMValueRef idx = get_src(bld_base, instr->src[0]);
-   result[0] = bld_base->get_buffer_size(bld_base, idx);
+   result[0] = bld_base->get_ssbo_size(bld_base, idx);
 }
 
 static void visit_ssbo_atomic(struct lp_build_nir_context *bld_base,
@@ -1446,8 +1446,8 @@ static void visit_intrinsic(struct lp_build_nir_context *bld_base,
    case nir_intrinsic_store_ssbo:
       visit_store_ssbo(bld_base, instr);
       break;
-   case nir_intrinsic_get_buffer_size:
-      visit_get_buffer_size(bld_base, instr, result);
+   case nir_intrinsic_get_ssbo_size:
+      visit_get_ssbo_size(bld_base, instr, result);
       break;
    case nir_intrinsic_load_vertex_id:
    case nir_intrinsic_load_primitive_id:

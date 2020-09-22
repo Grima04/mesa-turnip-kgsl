@@ -879,7 +879,7 @@ iris_setup_binding_table(const struct gen_device_info *devinfo,
             mark_used_with_src(bt, &intrin->src[1], IRIS_SURFACE_GROUP_SSBO);
             break;
 
-         case nir_intrinsic_get_buffer_size:
+         case nir_intrinsic_get_ssbo_size:
          case nir_intrinsic_ssbo_atomic_add:
          case nir_intrinsic_ssbo_atomic_imin:
          case nir_intrinsic_ssbo_atomic_umin:
@@ -984,7 +984,7 @@ iris_setup_binding_table(const struct gen_device_info *devinfo,
             }
             break;
 
-         case nir_intrinsic_get_buffer_size:
+         case nir_intrinsic_get_ssbo_size:
          case nir_intrinsic_ssbo_atomic_add:
          case nir_intrinsic_ssbo_atomic_imin:
          case nir_intrinsic_ssbo_atomic_umin:

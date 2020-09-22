@@ -98,7 +98,7 @@ bool EmitSSBOInstruction::do_emit(nir_instr* instr)
       return emit_image_load(intr);
    case nir_intrinsic_image_size:
       return emit_image_size(intr);
-   case nir_intrinsic_get_buffer_size:
+   case nir_intrinsic_get_ssbo_size:
       return emit_buffer_size(intr);
    default:
       return false;

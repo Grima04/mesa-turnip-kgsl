@@ -194,9 +194,9 @@ intrinsic("interp_deref_at_vertex", src_comp=[1, 1], dest_comp=0,
 intrinsic("deref_buffer_array_length", src_comp=[-1], dest_comp=1,
           flags=[CAN_ELIMINATE, CAN_REORDER])
 
-# Ask the driver for the size of a given buffer. It takes the buffer index
+# Ask the driver for the size of a given SSBO. It takes the buffer index
 # as source.
-intrinsic("get_buffer_size", src_comp=[-1], dest_comp=1,
+intrinsic("get_ssbo_size", src_comp=[-1], dest_comp=1,
           flags=[CAN_ELIMINATE, CAN_REORDER])
 
 # a barrier is an intrinsic with no inputs/outputs but which can't be moved

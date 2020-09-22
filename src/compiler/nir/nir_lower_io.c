@@ -1653,6 +1653,7 @@ lower_explicit_io_array_length(nir_builder *b, nir_intrinsic_instr *intrin,
 
    assert(glsl_type_is_array(deref->type));
    assert(glsl_get_length(deref->type) == 0);
+   assert(deref->mode == nir_var_mem_ssbo);
    unsigned stride = glsl_get_explicit_stride(deref->type);
    assert(stride > 0);
 
@@ -1661,7 +1662,7 @@ lower_explicit_io_array_length(nir_builder *b, nir_intrinsic_instr *intrin,
    nir_ssa_def *offset = addr_to_offset(b, addr, addr_format);
 
    nir_intrinsic_instr *bsize =
-      nir_intrinsic_instr_create(b->shader, nir_intrinsic_get_buffer_size);
+      nir_intrinsic_instr_create(b->shader, nir_intrinsic_get_ssbo_size);
    bsize->src[0] = nir_src_for_ssa(index);
    nir_ssa_dest_init(&bsize->instr, &bsize->dest, 1, 32, NULL);
    nir_builder_instr_insert(b, &bsize->instr);
