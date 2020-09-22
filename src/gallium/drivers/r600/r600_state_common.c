@@ -821,8 +821,10 @@ static inline void r600_shader_selector_key(const struct pipe_context *ctx,
 		key->ps.nr_cbufs = rctx->framebuffer.state.nr_cbufs;
                 key->ps.apply_sample_id_mask = (rctx->ps_iter_samples > 1) || !rctx->rasterizer->multisample_enable;
 		/* Dual-source blending only makes sense with nr_cbufs == 1. */
-		if (key->ps.nr_cbufs == 1 && rctx->dual_src_blend)
+		if (key->ps.nr_cbufs == 1 && rctx->dual_src_blend) {
 			key->ps.nr_cbufs = 2;
+			key->ps.dual_source_blend = 1;
+		}
 		break;
 	}
 	case PIPE_SHADER_TESS_EVAL:
