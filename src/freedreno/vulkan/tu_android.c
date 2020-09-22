@@ -24,6 +24,11 @@
 #include "tu_private.h"
 
 #include <hardware/gralloc.h>
+
+#if ANDROID_API_LEVEL >= 26
+#include <hardware/gralloc1.h>
+#endif
+
 #include <hardware/hardware.h>
 #include <hardware/hwvulkan.h>
 
@@ -228,18 +233,14 @@ fail_create_image:
    return result;
 }
 
-VkResult
-tu_GetSwapchainGrallocUsageANDROID(VkDevice device_h,
-                                   VkFormat format,
-                                   VkImageUsageFlags imageUsage,
-                                   int *grallocUsage)
+static VkResult
+format_supported_with_usage(VkDevice device_h, VkFormat format,
+                            VkImageUsageFlags imageUsage)
 {
    TU_FROM_HANDLE(tu_device, device, device_h);
    struct tu_physical_device *phys_dev = device->physical_device;
    VkPhysicalDevice phys_dev_h = tu_physical_device_to_handle(phys_dev);
    VkResult result;
-
-   *grallocUsage = 0;
 
    /* WARNING: Android Nougat's libvulkan.so hardcodes the VkImageUsageFlags
     * returned to applications via
@@ -277,6 +278,13 @@ tu_GetSwapchainGrallocUsageANDROID(VkDevice device_h,
                        __func__);
    }
 
+   return VK_SUCCESS;
+}
+
+static VkResult
+setup_gralloc0_usage(struct tu_device *device, VkFormat format,
+                     VkImageUsageFlags imageUsage, int *grallocUsage)
+{
    if (unmask32(&imageUsage, VK_IMAGE_USAGE_TRANSFER_DST_BIT |
                                 VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT))
       *grallocUsage |= GRALLOC_USAGE_HW_RENDER;
@@ -315,17 +323,68 @@ tu_GetSwapchainGrallocUsageANDROID(VkDevice device_h,
 }
 
 VkResult
-tu_GetSwapchainGrallocUsage2ANDROID(VkDevice device,
+tu_GetSwapchainGrallocUsageANDROID(VkDevice device_h,
+                                   VkFormat format,
+                                   VkImageUsageFlags imageUsage,
+                                   int *grallocUsage)
+{
+   TU_FROM_HANDLE(tu_device, device, device_h);
+   VkResult result;
+
+   result = format_supported_with_usage(device_h, format, imageUsage);
+   if (result != VK_SUCCESS)
+      return result;
+
+   *grallocUsage = 0;
+   return setup_gralloc0_usage(device, format, imageUsage, grallocUsage);
+}
+
+#if ANDROID_API_LEVEL >= 26
+VkResult
+tu_GetSwapchainGrallocUsage2ANDROID(VkDevice device_h,
                                     VkFormat format,
                                     VkImageUsageFlags imageUsage,
                                     VkSwapchainImageUsageFlagsANDROID swapchainImageUsage,
                                     uint64_t *grallocConsumerUsage,
                                     uint64_t *grallocProducerUsage)
 {
-   tu_stub();
+   TU_FROM_HANDLE(tu_device, device, device_h);
+   VkResult result;
+
+   *grallocConsumerUsage = 0;
+   *grallocProducerUsage = 0;
+   mesa_logd("%s: format=%d, usage=0x%x", __func__, format, imageUsage);
+
+   result = format_supported_with_usage(device_h, format, imageUsage);
+   if (result != VK_SUCCESS)
+      return result;
+
+   int32_t grallocUsage = 0;
+   result = setup_gralloc0_usage(device, format, imageUsage, &grallocUsage);
+   if (result != VK_SUCCESS)
+      return result;
+
+   /* Setup gralloc1 usage flags from gralloc0 flags. */
+
+   if (grallocUsage & GRALLOC_USAGE_HW_RENDER) {
+      *grallocProducerUsage |= GRALLOC1_PRODUCER_USAGE_GPU_RENDER_TARGET;
+      *grallocConsumerUsage |= GRALLOC1_CONSUMER_USAGE_CLIENT_TARGET;
+   }
+
+   if (grallocUsage & GRALLOC_USAGE_HW_TEXTURE) {
+      *grallocConsumerUsage |= GRALLOC1_CONSUMER_USAGE_GPU_TEXTURE;
+   }
+
+   if (grallocUsage & (GRALLOC_USAGE_HW_FB |
+                       GRALLOC_USAGE_HW_COMPOSER |
+                       GRALLOC_USAGE_EXTERNAL_DISP)) {
+      *grallocProducerUsage |= GRALLOC1_PRODUCER_USAGE_GPU_RENDER_TARGET;
+      *grallocConsumerUsage |= GRALLOC1_CONSUMER_USAGE_HWCOMPOSER;
+   }
 
    return VK_SUCCESS;
 }
+#endif
 
 VkResult
 tu_AcquireImageANDROID(VkDevice device,
