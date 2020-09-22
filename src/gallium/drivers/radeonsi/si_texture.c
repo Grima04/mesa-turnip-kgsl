@@ -2271,17 +2271,26 @@ static void si_memobj_destroy(struct pipe_screen *screen, struct pipe_memory_obj
    free(memobj);
 }
 
-static struct pipe_resource *si_texture_from_memobj(struct pipe_screen *screen,
+static struct pipe_resource *si_resource_from_memobj(struct pipe_screen *screen,
                                                     const struct pipe_resource *templ,
                                                     struct pipe_memory_object *_memobj,
                                                     uint64_t offset)
 {
    struct si_screen *sscreen = (struct si_screen *)screen;
    struct si_memory_object *memobj = (struct si_memory_object *)_memobj;
-   struct pipe_resource *tex = si_texture_from_winsys_buffer(
-      sscreen, templ, memobj->buf, memobj->stride, offset,
-      PIPE_HANDLE_USAGE_FRAMEBUFFER_WRITE | PIPE_HANDLE_USAGE_SHADER_WRITE, memobj->b.dedicated);
-   if (!tex)
+   struct pipe_resource *res;
+
+   if (templ->target == PIPE_BUFFER)
+      res = si_buffer_from_winsys_buffer(screen, templ, memobj->buf,
+                                         memobj->b.dedicated);
+   else
+      res = si_texture_from_winsys_buffer(sscreen, templ, memobj->buf,
+                                          memobj->stride,
+                                          offset,
+                                          PIPE_HANDLE_USAGE_FRAMEBUFFER_WRITE | PIPE_HANDLE_USAGE_SHADER_WRITE,
+                                          memobj->b.dedicated);
+
+   if (!res)
       return NULL;
 
    /* si_texture_from_winsys_buffer doesn't increment refcount of
@@ -2289,7 +2298,7 @@ static struct pipe_resource *si_texture_from_memobj(struct pipe_screen *screen,
     */
    struct pb_buffer *buf = NULL;
    pb_reference(&buf, memobj->buf);
-   return tex;
+   return res;
 }
 
 static bool si_check_resource_capability(struct pipe_screen *screen, struct pipe_resource *resource,
@@ -2317,7 +2326,7 @@ void si_init_screen_texture_functions(struct si_screen *sscreen)
    sscreen->b.resource_get_handle = si_texture_get_handle;
    sscreen->b.resource_get_param = si_resource_get_param;
    sscreen->b.resource_get_info = si_texture_get_info;
-   sscreen->b.resource_from_memobj = si_texture_from_memobj;
+   sscreen->b.resource_from_memobj = si_resource_from_memobj;
    sscreen->b.memobj_create_from_handle = si_memobj_from_handle;
    sscreen->b.memobj_destroy = si_memobj_destroy;
    sscreen->b.check_resource_capability = si_check_resource_capability;

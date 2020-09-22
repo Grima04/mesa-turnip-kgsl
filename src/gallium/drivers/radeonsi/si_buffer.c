@@ -731,6 +731,39 @@ static struct pipe_resource *si_buffer_from_user_memory(struct pipe_screen *scre
    return &buf->b.b;
 }
 
+struct pipe_resource *si_buffer_from_winsys_buffer(struct pipe_screen *screen,
+                                                   const struct pipe_resource *templ,
+                                                   struct pb_buffer *imported_buf,
+                                                   bool dedicated)
+{
+   struct si_screen *sscreen = (struct si_screen *)screen;
+   struct si_resource *res = si_alloc_buffer_struct(screen, templ);
+
+   if (!res)
+      return 0;
+
+   res->buf = imported_buf;
+   res->gpu_address = sscreen->ws->buffer_get_virtual_address(res->buf);
+   res->bo_size = imported_buf->size;
+   res->bo_alignment = imported_buf->alignment;
+   res->domains = sscreen->ws->buffer_get_initial_domain(res->buf);
+
+   if (res->domains & RADEON_DOMAIN_VRAM)
+      res->vram_usage = res->bo_size;
+   else if (res->domains & RADEON_DOMAIN_GTT)
+      res->gart_usage = res->bo_size;
+
+   if (sscreen->ws->buffer_get_flags)
+      res->flags = sscreen->ws->buffer_get_flags(res->buf);
+
+   if (templ->flags & PIPE_RESOURCE_FLAG_SPARSE) {
+      res->b.b.flags |= SI_RESOURCE_FLAG_UNMAPPABLE;
+      res->flags |= RADEON_FLAG_SPARSE;
+   }
+
+   return &res->b.b;
+}
+
 static struct pipe_resource *si_resource_create(struct pipe_screen *screen,
                                                 const struct pipe_resource *templ)
 {
