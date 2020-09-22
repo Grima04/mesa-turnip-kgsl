@@ -275,6 +275,12 @@ typedef struct shader_info {
          bool needs_quad_helper_invocations:1;
 
          /**
+          * True if this fragment shader requires helper invocations for
+          * all subgroup operations, not just quad ops and derivatives.
+          */
+         bool needs_all_helper_invocations:1;
+
+         /**
           * Whether any inputs are declared with the "sample" qualifier.
           */
          bool uses_sample_qualifier:1;

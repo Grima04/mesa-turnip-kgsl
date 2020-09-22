@@ -533,6 +533,33 @@ gather_intrinsic_info(nir_intrinsic_instr *instr, nir_shader *shader,
          shader->info.fs.needs_quad_helper_invocations = true;
       break;
 
+   case nir_intrinsic_vote_any:
+   case nir_intrinsic_vote_all:
+   case nir_intrinsic_vote_feq:
+   case nir_intrinsic_vote_ieq:
+   case nir_intrinsic_ballot:
+   case nir_intrinsic_ballot_bit_count_exclusive:
+   case nir_intrinsic_ballot_bit_count_inclusive:
+   case nir_intrinsic_ballot_bitfield_extract:
+   case nir_intrinsic_ballot_bit_count_reduce:
+   case nir_intrinsic_ballot_find_lsb:
+   case nir_intrinsic_ballot_find_msb:
+   case nir_intrinsic_first_invocation:
+   case nir_intrinsic_read_invocation:
+   case nir_intrinsic_read_first_invocation:
+   case nir_intrinsic_elect:
+   case nir_intrinsic_reduce:
+   case nir_intrinsic_inclusive_scan:
+   case nir_intrinsic_exclusive_scan:
+   case nir_intrinsic_shuffle:
+   case nir_intrinsic_shuffle_xor:
+   case nir_intrinsic_shuffle_up:
+   case nir_intrinsic_shuffle_down:
+   case nir_intrinsic_write_invocation_amd:
+      if (shader->info.stage == MESA_SHADER_FRAGMENT)
+         shader->info.fs.needs_all_helper_invocations = true;
+      break;
+
    case nir_intrinsic_end_primitive:
    case nir_intrinsic_end_primitive_with_counter:
       assert(shader->info.stage == MESA_SHADER_GEOMETRY);
@@ -808,6 +835,7 @@ nir_shader_gather_info(nir_shader *shader, nir_function_impl *entrypoint)
       shader->info.fs.color_is_dual_source = false;
       shader->info.fs.uses_fbfetch_output = false;
       shader->info.fs.needs_quad_helper_invocations = false;
+      shader->info.fs.needs_all_helper_invocations = false;
    }
    if (shader->info.stage == MESA_SHADER_TESS_CTRL) {
       shader->info.tess.tcs_cross_invocation_inputs_read = 0;
