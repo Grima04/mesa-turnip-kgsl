@@ -130,7 +130,7 @@ generate_tex(struct brw_codegen *p,
       case SHADER_OPCODE_TXD:
          if (inst->shadow_compare) {
             /* Gen7.5+.  Otherwise, lowered by brw_lower_texture_gradients(). */
-            assert(devinfo->gen >= 8 || devinfo->is_haswell);
+            assert(devinfo->is_haswell);
             msg_type = HSW_SAMPLER_MESSAGE_SAMPLE_DERIV_COMPARE;
          } else {
             msg_type = GEN5_SAMPLER_MESSAGE_SAMPLE_DERIVS;
@@ -139,10 +139,6 @@ generate_tex(struct brw_codegen *p,
       case SHADER_OPCODE_TXF:
 	 msg_type = GEN5_SAMPLER_MESSAGE_SAMPLE_LD;
 	 break;
-      case SHADER_OPCODE_TXF_CMS_W:
-         assert(devinfo->gen >= 9);
-         msg_type = GEN9_SAMPLER_MESSAGE_SAMPLE_LD2DMS_W;
-         break;
       case SHADER_OPCODE_TXF_CMS:
          if (devinfo->gen >= 7)
             msg_type = GEN7_SAMPLER_MESSAGE_SAMPLE_LD2DMS;
@@ -233,12 +229,6 @@ generate_tex(struct brw_codegen *p,
          if (inst->offset)
             /* Set the texel offset bits in DWord 2. */
             dw2 = inst->offset;
-
-         if (devinfo->gen >= 9)
-            /* SKL+ overloads BRW_SAMPLER_SIMD_MODE_SIMD4X2 to also do SIMD8D,
-             * based on bit 22 in the header.
-             */
-            dw2 |= GEN9_SAMPLER_SIMD_MODE_EXTENSION_SIMD4X2;
 
          /* The VS, DS, and FS stages have the g0.2 payload delivered as 0,
           * so header0.2 is 0 when g0 is copied.  The HS and GS stages do
@@ -472,29 +462,24 @@ generate_gs_set_vertex_count(struct brw_codegen *p,
    brw_push_insn_state(p);
    brw_set_default_mask_control(p, BRW_MASK_DISABLE);
 
-   if (p->devinfo->gen >= 8) {
-      /* Move the vertex count into the second MRF for the EOT write. */
-      brw_MOV(p, retype(brw_message_reg(dst.nr + 1), BRW_REGISTER_TYPE_UD),
-              src);
-   } else {
-      /* If we think of the src and dst registers as composed of 8 DWORDs each,
-       * we want to pick up the contents of DWORDs 0 and 4 from src, truncate
-       * them to WORDs, and then pack them into DWORD 2 of dst.
-       *
-       * It's easier to get the EU to do this if we think of the src and dst
-       * registers as composed of 16 WORDS each; then, we want to pick up the
-       * contents of WORDs 0 and 8 from src, and pack them into WORDs 4 and 5
-       * of dst.
-       *
-       * We can do that by the following EU instruction:
-       *
-       *     mov (2) dst.4<1>:uw src<8;1,0>:uw   { Align1, Q1, NoMask }
-       */
-      brw_set_default_access_mode(p, BRW_ALIGN_1);
-      brw_MOV(p,
-              suboffset(stride(retype(dst, BRW_REGISTER_TYPE_UW), 2, 2, 1), 4),
-              stride(retype(src, BRW_REGISTER_TYPE_UW), 8, 1, 0));
-   }
+   /* If we think of the src and dst registers as composed of 8 DWORDs each,
+    * we want to pick up the contents of DWORDs 0 and 4 from src, truncate
+    * them to WORDs, and then pack them into DWORD 2 of dst.
+    *
+    * It's easier to get the EU to do this if we think of the src and dst
+    * registers as composed of 16 WORDS each; then, we want to pick up the
+    * contents of WORDs 0 and 8 from src, and pack them into WORDs 4 and 5
+    * of dst.
+    *
+    * We can do that by the following EU instruction:
+    *
+    *     mov (2) dst.4<1>:uw src<8;1,0>:uw   { Align1, Q1, NoMask }
+    */
+   brw_set_default_access_mode(p, BRW_ALIGN_1);
+   brw_MOV(p,
+           suboffset(stride(retype(dst, BRW_REGISTER_TYPE_UW), 2, 2, 1), 4),
+           stride(retype(src, BRW_REGISTER_TYPE_UW), 8, 1, 0));
+
    brw_pop_insn_state(p);
 }
 

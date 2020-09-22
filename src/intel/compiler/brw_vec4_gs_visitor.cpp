@@ -214,35 +214,17 @@ vec4_gs_visitor::emit_thread_end()
     */
    int base_mrf = 1;
 
-   bool static_vertex_count = gs_prog_data->static_vertex_count != -1;
-
-   /* If the previous instruction was a URB write, we don't need to issue
-    * a second one - we can just set the EOT bit on the previous write.
-    *
-    * Skip this on Gen8+ unless there's a static vertex count, as we also
-    * need to write the vertex count out, and combining the two may not be
-    * possible (or at least not straightforward).
-    */
-   vec4_instruction *last = (vec4_instruction *) instructions.get_tail();
-   if (last && last->opcode == GS_OPCODE_URB_WRITE &&
-       !(INTEL_DEBUG & DEBUG_SHADER_TIME) &&
-       devinfo->gen >= 8 && static_vertex_count) {
-      last->urb_write_flags = BRW_URB_WRITE_EOT | last->urb_write_flags;
-      return;
-   }
-
    current_annotation = "thread end";
    dst_reg mrf_reg(MRF, base_mrf);
    src_reg r0(retype(brw_vec8_grf(0, 0), BRW_REGISTER_TYPE_UD));
    vec4_instruction *inst = emit(MOV(mrf_reg, r0));
    inst->force_writemask_all = true;
-   if (devinfo->gen < 8 || !static_vertex_count)
-      emit(GS_OPCODE_SET_VERTEX_COUNT, mrf_reg, this->vertex_count);
+   emit(GS_OPCODE_SET_VERTEX_COUNT, mrf_reg, this->vertex_count);
    if (INTEL_DEBUG & DEBUG_SHADER_TIME)
       emit_shader_time_end();
    inst = emit(GS_OPCODE_THREAD_END);
    inst->base_mrf = base_mrf;
-   inst->mlen = devinfo->gen >= 8 && !static_vertex_count ? 2 : 1;
+   inst->mlen = 1;
 }
 
 
@@ -278,12 +260,6 @@ vec4_gs_visitor::emit_urb_write_opcode(bool complete)
 
    vec4_instruction *inst = emit(GS_OPCODE_URB_WRITE);
    inst->offset = gs_prog_data->control_data_header_size_hwords;
-
-   /* We need to increment Global Offset by 1 to make room for Broadwell's
-    * extra "Vertex Count" payload at the beginning of the URB entry.
-    */
-   if (devinfo->gen >= 8 && gs_prog_data->static_vertex_count == -1)
-      inst->offset++;
 
    inst->urb_write_flags = BRW_URB_WRITE_PER_SLOT_OFFSET;
    return inst;
@@ -398,13 +374,6 @@ vec4_gs_visitor::emit_control_data_bits()
    inst->force_writemask_all = true;
    inst = emit(GS_OPCODE_URB_WRITE);
    inst->urb_write_flags = urb_write_flags;
-   /* We need to increment Global Offset by 256-bits to make room for
-    * Broadwell's extra "Vertex Count" payload at the beginning of the
-    * URB entry.  Since this is an OWord message, Global Offset is counted
-    * in 128-bit units, so we must set it to 2.
-    */
-   if (devinfo->gen >= 8 && gs_prog_data->static_vertex_count == -1)
-      inst->offset = 2;
    inst->base_mrf = base_mrf;
    inst->mlen = 2;
 }

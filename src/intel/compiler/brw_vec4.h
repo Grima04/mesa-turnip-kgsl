@@ -241,7 +241,6 @@ public:
    void fix_float_operands(src_reg op[3], nir_alu_instr *instr);
 
    src_reg fix_3src_operand(const src_reg &src);
-   src_reg resolve_source_modifiers(const src_reg &src);
 
    vec4_instruction *emit_math(enum opcode opcode, const dst_reg &dst, const src_reg &src0,
                                const src_reg &src1 = src_reg());
