@@ -378,6 +378,9 @@ class Group(object):
             if self.count > 1:
                 dim = "%s[%d]" % (dim, self.count)
 
+            if len(self.fields) == 0:
+                print("   int dummy;")
+
             for field in self.fields:
                 if field.exact is not None:
                     continue
@@ -692,10 +695,8 @@ class Parser(object):
         print('#define %-40s\\' % (name + '_header'))
         if default_fields:
             print(",  \\\n".join(default_fields))
-        elif len(self.group.fields) > 0:
-            print('   0')
         else:
-            print('   ')
+            print('   0')
         print('')
 
     def emit_template_struct(self, name, group, opaque_structs):
