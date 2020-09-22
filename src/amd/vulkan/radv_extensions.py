@@ -35,8 +35,6 @@ sys.path.append(VULKAN_UTIL)
 from vk_extensions import *
 from vk_extensions_gen import *
 
-MAX_API_VERSION = '1.2.128'
-
 # Supported API versions.  Each one is the maximum patch version for the given
 # version.  Version come in increasing order and each version is available if
 # it's provided "enable" condition is true and all previous versions are
