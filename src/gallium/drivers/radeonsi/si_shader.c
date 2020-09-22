@@ -2180,7 +2180,7 @@ void si_get_ps_prolog_key(struct si_shader *shader, union si_shader_part_key *ke
    key->ps_prolog.num_input_sgprs = shader->info.num_input_sgprs;
    key->ps_prolog.num_input_vgprs = shader->info.num_input_vgprs;
    key->ps_prolog.wqm =
-      info->base.fs.needs_helper_invocations &&
+      info->base.fs.needs_quad_helper_invocations &&
       (key->ps_prolog.colors_read || key->ps_prolog.states.force_persp_sample_interp ||
        key->ps_prolog.states.force_linear_sample_interp ||
        key->ps_prolog.states.force_persp_center_interp ||

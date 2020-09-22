@@ -1142,7 +1142,7 @@ static bool
 bi_terminate_discarded_threads(bi_context *ctx)
 {
         if (ctx->stage == MESA_SHADER_FRAGMENT)
-                return !ctx->nir->info.fs.needs_helper_invocations;
+                return !ctx->nir->info.fs.needs_quad_helper_invocations;
         else
                 return false;
 }

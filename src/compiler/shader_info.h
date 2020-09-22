@@ -272,7 +272,7 @@ typedef struct shader_info {
           * instructions which do implicit derivatives, and the use of quad
           * subgroup operations.
           */
-         bool needs_helper_invocations:1;
+         bool needs_quad_helper_invocations:1;
 
          /**
           * Whether any inputs are declared with the "sample" qualifier.

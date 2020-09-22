@@ -336,7 +336,7 @@ panfrost_shader_compile(struct panfrost_context *ctx,
         }
 
         state->can_discard = s->info.fs.uses_discard;
-        state->helper_invocations = s->info.fs.needs_helper_invocations;
+        state->helper_invocations = s->info.fs.needs_quad_helper_invocations;
         state->stack_size = program->tls_size;
 
         state->reads_frag_coord = (s->info.inputs_read & (1 << VARYING_SLOT_POS)) ||
