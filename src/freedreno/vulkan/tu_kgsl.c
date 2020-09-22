@@ -109,7 +109,38 @@ tu_bo_init_dmabuf(struct tu_device *dev,
                   uint64_t size,
                   int fd)
 {
-   tu_stub();
+   struct kgsl_gpuobj_import_dma_buf import_dmabuf = {
+      .fd = fd,
+   };
+   struct kgsl_gpuobj_import req = {
+      .priv = (uintptr_t)&import_dmabuf,
+      .priv_len = sizeof(import_dmabuf),
+      .flags = 0,
+      .type = KGSL_USER_MEM_TYPE_DMABUF,
+   };
+   int ret;
+
+   ret = safe_ioctl(dev->physical_device->local_fd,
+                    IOCTL_KGSL_GPUOBJ_IMPORT, &req);
+   if (ret)
+      return vk_errorf(dev->instance, VK_ERROR_OUT_OF_DEVICE_MEMORY,
+                       "Failed to import dma-buf (%s)\n", strerror(errno));
+
+   struct kgsl_gpuobj_info info_req = {
+      .id = req.id,
+   };
+
+   ret = safe_ioctl(dev->physical_device->local_fd,
+                    IOCTL_KGSL_GPUOBJ_INFO, &info_req);
+   if (ret)
+      return vk_errorf(dev->instance, VK_ERROR_OUT_OF_DEVICE_MEMORY,
+                       "Failed to get dma-buf info (%s)\n", strerror(errno));
+
+   *bo = (struct tu_bo) {
+      .gem_handle = req.id,
+      .size = info_req.size,
+      .iova = info_req.gpuaddr,
+   };
 
    return VK_SUCCESS;
 }
