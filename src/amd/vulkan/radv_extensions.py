@@ -35,15 +35,16 @@ sys.path.append(VULKAN_UTIL)
 from vk_extensions import *
 from vk_extensions_gen import *
 
+API_PATCH_VERSION = 145
+
 # Supported API versions.  Each one is the maximum patch version for the given
 # version.  Version come in increasing order and each version is available if
 # it's provided "enable" condition is true and all previous versions are
 # available.
-# TODO: The patch version should be unified!
 API_VERSIONS = [
-    ApiVersion('1.0.68',  True),
-    ApiVersion('1.1.107', True),
-    ApiVersion('1.2.131', '!ANDROID'),
+    ApiVersion('1.0', True),
+    ApiVersion('1.1', True),
+    ApiVersion('1.2', '!ANDROID'),
 ]
 
 MAX_API_VERSION = None # Computed later
@@ -192,6 +193,7 @@ EXTENSIONS = [
 MAX_API_VERSION = VkVersion('0.0.0')
 for version in API_VERSIONS:
     version.version = VkVersion(version.version)
+    version.version.patch = API_PATCH_VERSION
     assert version.version > MAX_API_VERSION
     MAX_API_VERSION = version.version
 
