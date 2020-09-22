@@ -4980,7 +4980,8 @@ typedef enum {
 bool nir_lower_interpolation(nir_shader *shader,
                              nir_lower_interpolation_options options);
 
-bool nir_lower_discard_to_demote(nir_shader *shader);
+bool nir_lower_discard_or_demote(nir_shader *shader,
+                                 bool force_correct_quad_ops_after_discard);
 
 bool nir_lower_memory_model(nir_shader *shader);
 

@@ -535,8 +535,8 @@ radv_shader_compile_to_nir(struct radv_device *device,
 
 		NIR_PASS_V(nir, nir_lower_clip_cull_distance_arrays);
 
-		if (device->instance->debug_flags & RADV_DEBUG_DISCARD_TO_DEMOTE)
-			NIR_PASS_V(nir, nir_lower_discard_to_demote);
+		NIR_PASS_V(nir, nir_lower_discard_or_demote,
+			   device->instance->debug_flags & RADV_DEBUG_DISCARD_TO_DEMOTE);
 
 		nir_lower_doubles_options lower_doubles =
 			nir->options->lower_doubles_options;
