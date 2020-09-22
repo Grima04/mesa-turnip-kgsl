@@ -1403,24 +1403,6 @@ generate_pull_constant_load_gen7(struct brw_codegen *p,
 }
 
 static void
-generate_set_simd4x2_header_gen9(struct brw_codegen *p,
-                                 vec4_instruction *,
-                                 struct brw_reg dst)
-{
-   brw_push_insn_state(p);
-   brw_set_default_mask_control(p, BRW_MASK_DISABLE);
-
-   brw_set_default_exec_size(p, BRW_EXECUTE_8);
-   brw_MOV(p, vec8(dst), retype(brw_vec8_grf(0, 0), BRW_REGISTER_TYPE_UD));
-
-   brw_set_default_access_mode(p, BRW_ALIGN_1);
-   brw_MOV(p, get_element_ud(dst, 2),
-           brw_imm_ud(GEN9_SAMPLER_SIMD_MODE_EXTENSION_SIMD4X2));
-
-   brw_pop_insn_state(p);
-}
-
-static void
 generate_mov_indirect(struct brw_codegen *p,
                       vec4_instruction *,
                       struct brw_reg dst, struct brw_reg reg,
@@ -1808,10 +1790,6 @@ generate_code(struct brw_codegen *p,
       case VS_OPCODE_PULL_CONSTANT_LOAD_GEN7:
          generate_pull_constant_load_gen7(p, inst, dst, src[0], src[1]);
          send_count++;
-         break;
-
-      case VS_OPCODE_SET_SIMD4X2_HEADER_GEN9:
-         generate_set_simd4x2_header_gen9(p, inst, dst);
          break;
 
       case GS_OPCODE_URB_WRITE:

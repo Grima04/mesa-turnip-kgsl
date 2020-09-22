@@ -873,7 +873,6 @@ vec4_visitor::emit_texture(ir_texture_opcode op,
 
    /* The message header is necessary for:
     * - Gen4 (always)
-    * - Gen9+ for selecting SIMD4x2
     * - Texel offsets
     * - Gather channel selection
     * - Sampler indices too large to fit in a 4-bit value.

@@ -824,15 +824,6 @@ namespace {
                                   0, 12 /* XXX */, 8 /* XXX */, 18 /* XXX */,
                                   0, 0);
 
-      case VS_OPCODE_SET_SIMD4X2_HEADER_GEN9:
-         if (devinfo->gen >= 8)
-            return calculate_desc(info, unit_fpu, 12 /* XXX */, 0, 0,
-                                  4 /* XXX */, 0,
-                                  0, 8 /* XXX */, 4 /* XXX */, 12 /* XXX */,
-                                  0, 0);
-         else
-            abort();
-
       case VS_OPCODE_UNPACK_FLAGS_SIMD4X2:
       case TCS_OPCODE_GET_INSTANCE_ID:
       case TCS_OPCODE_SET_INPUT_URB_OFFSETS:
