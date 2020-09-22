@@ -284,14 +284,14 @@ void FragmentShaderFromNir::emit_shader_start()
 bool FragmentShaderFromNir::do_emit_store_deref(const nir_variable *out_var, nir_intrinsic_instr* instr)
 {
    if (out_var->data.location == FRAG_RESULT_COLOR)
-      return emit_export_pixel(out_var, instr, true);
+      return emit_export_pixel(out_var, instr, m_dual_source_blend ? 1 : m_max_color_exports);
 
    if ((out_var->data.location >= FRAG_RESULT_DATA0 &&
         out_var->data.location <= FRAG_RESULT_DATA7) ||
        out_var->data.location == FRAG_RESULT_DEPTH ||
        out_var->data.location == FRAG_RESULT_STENCIL ||
        out_var->data.location == FRAG_RESULT_SAMPLE_MASK)
-      return emit_export_pixel(out_var, instr, false);
+      return emit_export_pixel(out_var, instr, 1);
 
    sfn_log << SfnLog::err << "r600-NIR: Unimplemented store_deref for " <<
               out_var->data.location << "(" << out_var->data.driver_location << ")\n";
