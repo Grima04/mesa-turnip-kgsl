@@ -932,7 +932,9 @@ static void *si_create_rs_state(struct pipe_context *ctx, const struct pipe_rast
                      S_028814_POLY_OFFSET_PARA_ENABLE(state->offset_point || state->offset_line) |
                      S_028814_POLY_MODE(rs->polygon_mode_enabled) |
                      S_028814_POLYMODE_FRONT_PTYPE(si_translate_fill(state->fill_front)) |
-                     S_028814_POLYMODE_BACK_PTYPE(si_translate_fill(state->fill_back)));
+                     S_028814_POLYMODE_BACK_PTYPE(si_translate_fill(state->fill_back)) |
+                     /* this must be set if POLY_MODE or PERPENDICULAR_ENDCAP_ENA is set */
+                     S_028814_KEEP_TOGETHER_ENABLE(sscreen->info.chip_class >= GFX10 ? rs->polygon_mode_enabled : 0));
 
    if (!rs->uses_poly_offset)
       return rs;
