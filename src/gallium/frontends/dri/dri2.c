@@ -1559,7 +1559,6 @@ dri2_map_image(__DRIcontext *context, __DRIimage *image,
    struct dri_context *ctx = dri_context(context);
    struct pipe_context *pipe = ctx->st->pipe;
    enum pipe_map_flags pipe_access = 0;
-   struct pipe_resource *resource = image->texture;
    struct pipe_transfer *trans;
    void *map;
 
@@ -1570,6 +1569,7 @@ dri2_map_image(__DRIcontext *context, __DRIimage *image,
    if (plane >= dri2_get_mapping_by_format(image->dri_format)->nplanes)
       return NULL;
 
+   struct pipe_resource *resource = image->texture;
    while (plane--)
       resource = resource->next;
 
