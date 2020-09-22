@@ -712,10 +712,8 @@ bool FragmentShaderFromNir::load_interpolated_two_comp_for_one(GPRVector &dest,
 }
 
 
-bool FragmentShaderFromNir::emit_export_pixel(const nir_variable *out_var, nir_intrinsic_instr* instr, bool all_chanels)
+bool FragmentShaderFromNir::emit_export_pixel(const nir_variable *out_var, nir_intrinsic_instr* instr, int outputs)
 {
-   int outputs = all_chanels ? m_max_color_exports : 1;
-
    std::array<uint32_t,4> swizzle;
    unsigned writemask = nir_intrinsic_write_mask(instr);
    switch (out_var->data.location) {
@@ -746,10 +744,14 @@ bool FragmentShaderFromNir::emit_export_pixel(const nir_variable *out_var, nir_i
         out_var->data.location <= FRAG_RESULT_DATA7)) {
       for (int k = 0 ; k < outputs; ++k) {
 
-         unsigned location = out_var->data.driver_location + k - m_depth_exports;
+         unsigned location = (m_dual_source_blend ? out_var->data.index : out_var->data.driver_location) + k - m_depth_exports;
+
+         sfn_log << SfnLog::io << "Pixel output " << out_var->name << " at loc:" << location << "\n";
+
          if (location >= m_max_color_exports) {
-            sfn_log << SfnLog::io << "Pixel output " << location
-                    << " skipped  because  we have only "   << m_max_color_exports << "CBs\n";
+            sfn_log << SfnLog::io << "Pixel output loc:" << location
+                    << " dl:" << out_var->data.location
+                    << " skipped  because  we have only "   << m_max_color_exports << " CBs\n";
             continue;
          }
 
