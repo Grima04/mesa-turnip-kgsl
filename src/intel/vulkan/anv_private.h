@@ -3895,6 +3895,19 @@ anv_image_aux_layers(const struct anv_image * const image,
 }
 
 static inline struct anv_address
+anv_image_get_aux_addr(UNUSED const struct anv_device *device,
+                       const struct anv_image *image,
+                       uint32_t plane)
+{
+   const struct anv_image_plane *p = &image->planes[plane];
+
+   if (p->aux_surface.isl.size_B == 0)
+      return ANV_NULL_ADDRESS;
+
+   return anv_address_add(p->address, p->aux_surface.offset);
+}
+
+static inline struct anv_address
 anv_image_get_clear_color_addr(UNUSED const struct anv_device *device,
                                const struct anv_image *image,
                                VkImageAspectFlagBits aspect)

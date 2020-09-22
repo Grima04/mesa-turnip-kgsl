@@ -227,11 +227,13 @@ get_blorp_surf_for_anv_image(const struct anv_device *device,
 
    if (aux_usage != ISL_AUX_USAGE_NONE) {
       const struct anv_surface *aux_surface = &image->planes[plane].aux_surface;
+      const struct anv_address aux_addr = anv_image_get_aux_addr(device, image, plane);
+
       blorp_surf->aux_surf = &aux_surface->isl,
       blorp_surf->aux_addr = (struct blorp_address) {
-         .buffer = image->planes[plane].address.bo,
-         .offset = image->planes[plane].address.offset + aux_surface->offset,
-         .mocs = anv_mocs(device, image->planes[plane].address.bo, 0),
+         .buffer = aux_addr.bo,
+         .offset = aux_addr.offset,
+         .mocs = anv_mocs(device, aux_addr.bo, 0),
       };
       blorp_surf->aux_usage = aux_usage;
 

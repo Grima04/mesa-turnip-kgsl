@@ -1880,8 +1880,7 @@ anv_image_fill_surface_state(struct anv_device *device,
 
       struct anv_address aux_address = ANV_NULL_ADDRESS;
       if (aux_usage != ISL_AUX_USAGE_NONE) {
-         aux_address = anv_address_add(image->planes[plane].address,
-                                       aux_surface->offset);
+         aux_address = anv_image_get_aux_addr(device, image, plane);
       }
       state_inout->aux_address = aux_address;
 
