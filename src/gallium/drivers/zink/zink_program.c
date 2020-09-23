@@ -231,6 +231,7 @@ static void
 shader_key_fs_gen(struct zink_context *ctx, struct zink_shader *zs,
                   struct zink_shader *shaders[ZINK_SHADER_COUNT], struct zink_shader_key *key)
 {
+   struct zink_screen *screen = zink_screen(ctx->base.screen);
    struct zink_fs_key *fs_key = &key->key.fs;
    key->size = sizeof(struct zink_fs_key);
 
@@ -243,6 +244,9 @@ shader_key_fs_gen(struct zink_context *ctx, struct zink_shader *zs,
     */
    if (zs->nir->info.outputs_written & (1 << FRAG_RESULT_SAMPLE_MASK))
       fs_key->samples = !!ctx->fb_state.samples;
+   fs_key->force_dual_color_blend = screen->driconf.dual_color_blend_by_location &&
+                                    ctx->gfx_pipeline_state.blend_state->dual_src_blend &&
+                                    ctx->gfx_pipeline_state.blend_state->attachments[1].blendEnable;
 }
 
 static void

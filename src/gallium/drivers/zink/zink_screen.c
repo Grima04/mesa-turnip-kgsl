@@ -40,6 +40,7 @@
 #include "util/u_screen.h"
 #include "util/u_string.h"
 #include "util/u_transfer_helper.h"
+#include "util/xmlconfig.h"
 
 #include "frontend/sw_winsys.h"
 
@@ -1282,6 +1283,9 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
    free((void*)pcci.pInitialData);
 
    slab_create_parent(&screen->transfer_pool, sizeof(struct zink_transfer), 16);
+
+   if (config)
+      screen->driconf.dual_color_blend_by_location = driQueryOptionb(config->options, "dual_color_blend_by_location");
 
    return screen;
 

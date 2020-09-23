@@ -296,6 +296,20 @@ lower_drawid(nir_shader *shader)
    return nir_shader_instructions_pass(shader, lower_drawid_instr, nir_metadata_dominance, NULL);
 }
 
+static bool
+lower_dual_blend(nir_shader *shader)
+{
+   bool progress = false;
+   nir_variable *var = nir_find_variable_with_location(shader, nir_var_shader_out, FRAG_RESULT_DATA1);
+   if (var) {
+      var->data.location = FRAG_RESULT_DATA0;
+      var->data.index = 1;
+      progress = true;
+   }
+   nir_shader_preserve_all_metadata(shader);
+   return progress;
+}
+
 void
 zink_screen_init_compiler(struct zink_screen *screen)
 {
@@ -449,6 +463,11 @@ zink_shader_compile(struct zink_screen *screen, struct zink_shader *zs, struct z
          nir_fixup_deref_modes(nir);
          NIR_PASS_V(nir, nir_remove_dead_variables, nir_var_shader_temp, NULL);
          optimize_nir(nir);
+      }
+      if (zink_fs_key(key)->force_dual_color_blend && nir->info.outputs_written & BITFIELD64_BIT(FRAG_RESULT_DATA1)) {
+         if (nir == zs->nir)
+            nir = nir_shader_clone(NULL, zs->nir);
+         NIR_PASS_V(nir, lower_dual_blend);
       }
    }
    struct spirv_shader *spirv = nir_to_spirv(nir, streamout, shader_slot_map, shader_slots_reserved);
