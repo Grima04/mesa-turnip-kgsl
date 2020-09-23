@@ -738,28 +738,20 @@ organize_levels(struct list_head *levels, struct set *children,
 
       struct set *prev_frontier = NULL;
       if (!prev_level) {
-         prev_frontier = reach;
+         prev_frontier = _mesa_set_clone(reach, curr_level);
       } else if (prev_level->irreducible) {
-         prev_frontier = prev_level->reach;
-      } else {
-         set_foreach(curr_level->blocks, blocks_entry) {
-            nir_block *level_block = (nir_block *) blocks_entry->key;
-            if (curr_level->blocks->entries == 1) {
-               /* If we only have one block, there's no union operation and we
-                * can just use the one from the one block.
-                */
-               prev_frontier = level_block->dom_frontier;
-               break;
-            }
+         prev_frontier = _mesa_set_clone(prev_level->reach, curr_level);
+      }
 
-            if (prev_frontier == NULL) {
-               prev_frontier =
-                  _mesa_set_clone(level_block->dom_frontier, prev_level);
-            } else {
-               set_foreach(level_block->dom_frontier, entry)
-                  _mesa_set_add_pre_hashed(prev_frontier, entry->hash,
-                                           entry->key);
-            }
+      set_foreach(curr_level->blocks, blocks_entry) {
+         nir_block *level_block = (nir_block *) blocks_entry->key;
+         if (prev_frontier == NULL) {
+            prev_frontier =
+               _mesa_set_clone(level_block->dom_frontier, curr_level);
+         } else {
+            set_foreach(level_block->dom_frontier, entry)
+               _mesa_set_add_pre_hashed(prev_frontier, entry->hash,
+                                        entry->key);
          }
       }
 
