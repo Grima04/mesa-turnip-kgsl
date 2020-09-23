@@ -184,6 +184,10 @@
     - changes:
       - src/gallium/drivers/radeonsi/**/*
       - src/gallium/winsys/amdgpu/**/*
-      - src/amd/**/*
+      - src/amd/*
+      - src/amd/addrlib/**/*
+      - src/amd/common/**/*
+      - src/amd/llvm/**/*
+      - src/amd/registers/**/*
       when: on_success
     - when: never
