@@ -38,7 +38,8 @@ GPRValue::GPRValue(uint32_t sel, uint32_t chan, int base_offset):
    Value(Value::gpr, chan),
    m_sel(sel),
    m_base_offset(base_offset),
-   m_input(false)
+   m_input(false),
+   m_pin_to_channel(false)
 {
 }
 
@@ -46,7 +47,8 @@ GPRValue::GPRValue(uint32_t sel, uint32_t chan):
    Value(Value::gpr, chan),
    m_sel(sel),
    m_base_offset(0),
-   m_input(false)
+   m_input(false),
+   m_pin_to_channel(false)
 {
 }
 
