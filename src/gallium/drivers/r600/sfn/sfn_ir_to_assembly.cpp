@@ -1071,14 +1071,10 @@ bool AssemblyFromShaderLegacyImpl::emit_ldsatomic(const LDSAtomicInstruction& in
    alu_fetch.op = instr.op();
 
    copy_src(alu_fetch.src[0], instr.address());
-   auto& src0 = instr.src0();
-   alu_fetch.src[1].sel = src0.sel();
-   alu_fetch.src[1].chan = src0.chan();
-   if (instr.src1()) {
-      auto& src1 = *instr.src1();
-      alu_fetch.src[2].sel = src1.sel();
-      alu_fetch.src[2].chan = src1.chan();
-   }
+   copy_src(alu_fetch.src[1], instr.src0());
+
+   if (instr.src1())
+      copy_src(alu_fetch.src[2], *instr.src1());
    alu_fetch.last = 1;
    int r = r600_bytecode_add_alu(m_bc, &alu_fetch);
    if (r)
