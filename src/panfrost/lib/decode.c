@@ -1385,7 +1385,7 @@ pandecode_tiler_job_mdg(const struct MALI_JOB_HEADER *h,
         pan_section_unpack(p, MIDGARD_TILER_JOB, DRAW, draw);
         pandecode_vertex_tiler_postfix_pre(&draw, job_no, h->type, "", false, gpu_id);
 
-        pandecode_log("Tiler Job Payload:\n", job + MALI_JOB_HEADER_LENGTH);
+        pandecode_log("Tiler Job Payload:\n");
         pandecode_indent++;
         pandecode_invocation(pan_section_ptr(p, MIDGARD_TILER_JOB, INVOCATION), true);
         pandecode_primitive(pan_section_ptr(p, MIDGARD_TILER_JOB, PRIMITIVE));
@@ -1461,8 +1461,7 @@ pandecode_fragment_job(const struct pandecode_mapped_memory *mem,
                 pandecode_msg("XXX: tile coordinates overflow in Y direction\n");
 
         /* After validation, we print */
-        DUMP_UNPACKED(FRAGMENT_JOB_PAYLOAD, s, "Fragment Job Payload:\n",
-                      job + MALI_JOB_HEADER_LENGTH, job_no);
+        DUMP_UNPACKED(FRAGMENT_JOB_PAYLOAD, s, "Fragment Job Payload:\n");
 
         /* The FBD is a tagged pointer */
 
