@@ -157,6 +157,21 @@ r2d_src(struct tu_cmd_buffer *cmd,
 }
 
 static void
+r2d_src_stencil(struct tu_cmd_buffer *cmd,
+                struct tu_cs *cs,
+                const struct tu_image_view *iview,
+                uint32_t layer,
+                VkFilter filter)
+{
+   tu_cs_emit_pkt4(cs, REG_A6XX_SP_PS_2D_SRC_INFO, 5);
+   tu_cs_emit(cs, tu_image_view_stencil(iview, SP_PS_2D_SRC_INFO) & ~A6XX_SP_PS_2D_SRC_INFO_FLAGS);
+   tu_cs_emit(cs, iview->SP_PS_2D_SRC_SIZE);
+   tu_cs_emit_qw(cs, iview->stencil_base_addr + iview->stencil_layer_size * layer);
+   /* SP_PS_2D_SRC_PITCH has shifted pitch field */
+   tu_cs_emit(cs, iview->stencil_PITCH << 9);
+}
+
+static void
 r2d_src_buffer(struct tu_cmd_buffer *cmd,
                struct tu_cs *cs,
                VkFormat vk_format,
@@ -1671,6 +1686,37 @@ tu_CmdResolveImage(VkCommandBuffer commandBuffer,
         layer++) \
       if (!layer_mask || (layer_mask & BIT(layer)))
 
+static void
+resolve_sysmem(struct tu_cmd_buffer *cmd,
+               struct tu_cs *cs,
+               VkFormat format,
+               struct tu_image_view *src,
+               struct tu_image_view *dst,
+               uint32_t layer_mask,
+               uint32_t layers,
+               const VkRect2D *rect,
+               bool separate_stencil)
+{
+   const struct blit_ops *ops = &r2d_ops;
+
+   ops->setup(cmd, cs, format, VK_IMAGE_ASPECT_COLOR_BIT,
+              ROTATE_0, false, dst->ubwc_enabled);
+   ops->coords(cs, &rect->offset, &rect->offset, &rect->extent);
+
+   for_each_layer(i, layer_mask, layers) {
+      if (separate_stencil) {
+         r2d_src_stencil(cmd, cs, src, i, VK_FILTER_NEAREST);
+         r2d_dst_stencil(cs, dst, i);
+      } else {
+         ops->src(cmd, cs, src, i, VK_FILTER_NEAREST);
+         ops->dst(cs, dst, i);
+      }
+      ops->run(cmd, cs);
+   }
+
+   ops->teardown(cmd, cs);
+}
+
 void
 tu_resolve_sysmem(struct tu_cmd_buffer *cmd,
                   struct tu_cs *cs,
@@ -1680,21 +1726,17 @@ tu_resolve_sysmem(struct tu_cmd_buffer *cmd,
                   uint32_t layers,
                   const VkRect2D *rect)
 {
-   const struct blit_ops *ops = &r2d_ops;
-
    assert(src->image->vk_format == dst->image->vk_format);
 
-   ops->setup(cmd, cs, dst->image->vk_format, VK_IMAGE_ASPECT_COLOR_BIT,
-              ROTATE_0, false, dst->ubwc_enabled);
-   ops->coords(cs, &rect->offset, &rect->offset, &rect->extent);
-
-   for_each_layer(i, layer_mask, layers) {
-      ops->src(cmd, cs, src, i, VK_FILTER_NEAREST);
-      ops->dst(cs, dst, i);
-      ops->run(cmd, cs);
+   if (dst->image->vk_format == VK_FORMAT_D32_SFLOAT_S8_UINT) {
+      resolve_sysmem(cmd, cs, VK_FORMAT_D32_SFLOAT,
+                     src, dst, layer_mask, layers, rect, false);
+      resolve_sysmem(cmd, cs, VK_FORMAT_S8_UINT,
+                     src, dst, layer_mask, layers, rect, true);
+   } else {
+      resolve_sysmem(cmd, cs, dst->image->vk_format,
+                     src, dst, layer_mask, layers, rect, false);
    }
-
-   ops->teardown(cmd, cs);
 }
 
 static void
@@ -2382,7 +2424,8 @@ store_cp_blit(struct tu_cmd_buffer *cmd,
                       .tile_mode = TILE6_2,
                       .srgb = vk_format_is_srgb(format),
                       .samples = tu_msaa_samples(samples),
-                      .samples_average = !vk_format_is_int(format),
+                      .samples_average = !vk_format_is_int(format) &&
+                                         !vk_format_is_depth_or_stencil(format),
                       .unk20 = 1,
                       .unk22 = 1),
                    /* note: src size does not matter when not scaling */

@@ -1448,6 +1448,8 @@ struct tu_subpass
 {
    uint32_t input_count;
    uint32_t color_count;
+   uint32_t resolve_count;
+   bool resolve_depth_stencil;
    struct tu_subpass_attachment *input_attachments;
    struct tu_subpass_attachment *color_attachments;
    struct tu_subpass_attachment *resolve_attachments;
@@ -1501,6 +1503,9 @@ struct tu_query_pool
    uint32_t pipeline_statistics;
    struct tu_bo bo;
 };
+
+uint32_t
+tu_subpass_get_attachment_to_resolve(const struct tu_subpass *subpass, uint32_t index);
 
 void
 tu_update_descriptor_sets(VkDescriptorSet overrideSet,
