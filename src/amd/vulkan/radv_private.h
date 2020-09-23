@@ -1813,7 +1813,8 @@ uint32_t radv_translate_tex_numformat(VkFormat format,
 bool radv_format_pack_clear_color(VkFormat format,
 				  uint32_t clear_vals[2],
 				  VkClearColorValue *value);
-bool radv_is_colorbuffer_format_supported(VkFormat format, bool *blendable);
+bool radv_is_colorbuffer_format_supported(const struct radv_physical_device *pdevice,
+                                          VkFormat format, bool *blendable);
 bool radv_dcc_formats_compatible(VkFormat format1,
                                  VkFormat format2);
 bool radv_device_supports_etc(struct radv_physical_device *physical_device);

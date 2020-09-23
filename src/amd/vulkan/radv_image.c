@@ -222,8 +222,8 @@ radv_use_dcc_for_image(struct radv_device *device,
 
 	/* Determine if the formats are DCC compatible. */
 	dcc_compatible_formats =
-		radv_is_colorbuffer_format_supported(format,
-						     &blendable);
+		radv_is_colorbuffer_format_supported(device->physical_device,
+						     format, &blendable);
 
 	if (pCreateInfo->flags & VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT) {
 		const struct VkImageFormatListCreateInfo *format_list =

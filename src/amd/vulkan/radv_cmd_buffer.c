@@ -1196,6 +1196,10 @@ radv_emit_rbplus_state(struct radv_cmd_buffer *cmd_buffer)
 				sx_blend_opt_epsilon |= V_028758_10BIT_FORMAT << (i * 4);
 			}
 			break;
+		case V_028C70_COLOR_5_9_9_9:
+			if (spi_format == V_028714_SPI_SHADER_FP16_ABGR)
+				sx_ps_downconvert |= V_028754_SX_RT_EXPORT_9_9_9_E5 << (i * 4);
+			break;
 		}
 	}
 
