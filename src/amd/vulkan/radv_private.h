@@ -319,6 +319,7 @@ struct radv_physical_device {
 	VkPhysicalDeviceMemoryProperties memory_properties;
 	enum radeon_bo_domain memory_domains[VK_MAX_MEMORY_TYPES];
 	enum radeon_bo_flag memory_flags[VK_MAX_MEMORY_TYPES];
+	unsigned heaps;
 
 	drmPciBusInfo bus_info;
 
