@@ -5650,9 +5650,6 @@ radv_destroy_fence_part(struct radv_device *device,
 	case RADV_FENCE_SYNCOBJ:
 		device->ws->destroy_syncobj(device->ws, part->syncobj);
 		break;
-	case RADV_FENCE_WSI:
-		part->fence_wsi->destroy(part->fence_wsi);
-		break;
 	default:
 		unreachable("Invalid fence type");
 	}
@@ -5876,12 +5873,6 @@ VkResult radv_WaitForFences(
 						      timeout))
 				return VK_TIMEOUT;
 			break;
-		case RADV_FENCE_WSI: {
-			VkResult result = part->fence_wsi->wait(part->fence_wsi, timeout);
-			if (result != VK_SUCCESS)
-				return result;
-			break;
-		}
 		default:
 			unreachable("Invalid fence type");
 		}
@@ -5951,15 +5942,6 @@ VkResult radv_GetFenceStatus(VkDevice _device, VkFence _fence)
 							&part->syncobj, 1, true, 0);
 		if (!success)
 			return VK_NOT_READY;
-		break;
-	}
-	case RADV_FENCE_WSI: {
-		VkResult result = part->fence_wsi->wait(part->fence_wsi, 0);
-		if (result != VK_SUCCESS) {
-			if (result == VK_TIMEOUT)
-				return VK_NOT_READY;
-			return result;
-		}
 		break;
 	}
 	default:

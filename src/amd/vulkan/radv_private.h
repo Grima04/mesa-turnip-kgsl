@@ -2418,7 +2418,6 @@ typedef enum {
 	RADV_FENCE_NONE,
 	RADV_FENCE_WINSYS,
 	RADV_FENCE_SYNCOBJ,
-	RADV_FENCE_WSI,
 } radv_fence_kind;
 
 struct radv_fence_part {
@@ -2430,9 +2429,6 @@ struct radv_fence_part {
 
 		/* DRM syncobj handle for syncobj-based fences. */
 		uint32_t syncobj;
-
-		/* WSI fence. */
-		struct wsi_fence *fence_wsi;
 	};
 };
 
