@@ -286,6 +286,19 @@ si_emit_graphics(struct radv_device *device,
 		radeon_set_context_reg(cs, R_028408_VGT_INDX_OFFSET, 0);
 	}
 
+	unsigned cu_mask_ps = 0xffffffff;
+
+	/* It's wasteful to enable all CUs for PS if shader arrays have a
+	 * different number of CUs. The reason is that the hardware sends the
+	 * same number of PS waves to each shader array, so the slowest shader
+	 * array limits the performance.  Disable the extra CUs for PS in
+	 * other shader arrays to save power and thus increase clocks for busy
+	 * CUs. In the future, we might disable or enable this tweak only for
+	 * certain apps.
+	 */
+	if (physical_device->rad_info.chip_class >= GFX10_3)
+		cu_mask_ps = u_bit_consecutive(0, physical_device->rad_info.min_good_cu_per_sa);
+
 	if (physical_device->rad_info.chip_class >= GFX7) {
 		if (physical_device->rad_info.chip_class >= GFX10) {
 			/* Logical CUs 16 - 31 */
@@ -294,7 +307,7 @@ si_emit_graphics(struct radv_device *device,
 			radeon_set_sh_reg_idx(physical_device, cs, R_00B104_SPI_SHADER_PGM_RSRC4_VS,
 					      3, S_00B104_CU_EN(0xffff));
 			radeon_set_sh_reg_idx(physical_device, cs, R_00B004_SPI_SHADER_PGM_RSRC4_PS,
-					      3, S_00B004_CU_EN(0xffff));
+					      3, S_00B004_CU_EN(cu_mask_ps >> 16));
 		}
 
 		if (physical_device->rad_info.chip_class >= GFX9) {
@@ -392,7 +405,7 @@ si_emit_graphics(struct radv_device *device,
 		}
 
 		radeon_set_sh_reg_idx(physical_device, cs, R_00B01C_SPI_SHADER_PGM_RSRC3_PS,
-				      3, S_00B01C_CU_EN(0xffff) | S_00B01C_WAVE_LIMIT(0x3F));
+				      3, S_00B01C_CU_EN(cu_mask_ps) | S_00B01C_WAVE_LIMIT(0x3F));
 	}
 
 	if (physical_device->rad_info.chip_class >= GFX10) {
