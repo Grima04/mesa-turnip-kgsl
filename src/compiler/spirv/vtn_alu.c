@@ -388,7 +388,8 @@ handle_rounding_mode(struct vtn_builder *b, struct vtn_value *val, int member,
       *out_rounding_mode = nir_rounding_mode_rtz;
       break;
    default:
-      unreachable("Not supported rounding mode");
+      vtn_fail("Unsupported rounding mode: %s",
+               spirv_fproundingmode_to_string(dec->operands[0]));
       break;
    }
 }
