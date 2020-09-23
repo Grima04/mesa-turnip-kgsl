@@ -2555,6 +2555,7 @@ cmd_buffer_execute_inside_pass(struct v3dv_cmd_buffer *primary,
              */
             primary_job->serialize |= secondary_job->serialize;
             primary_job->needs_bcl_sync |= secondary_job->needs_bcl_sync;
+            primary_job->tmu_dirty_rcl |= secondary_job->tmu_dirty_rcl;
          } else if (secondary_job->type == V3DV_JOB_TYPE_CPU_CLEAR_ATTACHMENTS) {
             const struct v3dv_clear_attachments_cpu_job_info *info =
                &secondary_job->cpu.clear_attachments;
