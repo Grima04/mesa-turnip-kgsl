@@ -493,20 +493,13 @@ physical_device_init(struct v3dv_physical_device *device,
    mem->memoryHeaps[0].size = compute_heap_size();
    mem->memoryHeaps[0].flags = VK_MEMORY_HEAP_DEVICE_LOCAL_BIT;
 
-   mem->memoryTypeCount = 2;
-
    /* This is the only combination required by the spec */
+   mem->memoryTypeCount = 1;
    mem->memoryTypes[0].propertyFlags =
       VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT |
       VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
       VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
    mem->memoryTypes[0].heapIndex = 0;
-
-   mem->memoryTypes[1].propertyFlags =
-      VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT |
-      VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-      VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
-   mem->memoryTypes[1].heapIndex = 0;
 
    device->options.merge_jobs = getenv("V3DV_NO_MERGE_JOBS") == NULL;
 
@@ -1786,7 +1779,7 @@ v3dv_GetImageMemoryRequirements(VkDevice _device,
 
    pMemoryRequirements->size = image->size;
    pMemoryRequirements->alignment = image->alignment;
-   pMemoryRequirements->memoryTypeBits = 0x3; /* Both memory types */
+   pMemoryRequirements->memoryTypeBits = 0x1;
 }
 
 VkResult
@@ -1820,7 +1813,7 @@ v3dv_GetBufferMemoryRequirements(VkDevice _device,
 {
    V3DV_FROM_HANDLE(v3dv_buffer, buffer, _buffer);
 
-   pMemoryRequirements->memoryTypeBits = 0x3; /* Both memory types */
+   pMemoryRequirements->memoryTypeBits = 0x1;
    pMemoryRequirements->alignment = buffer->alignment;
    pMemoryRequirements->size =
       align64(buffer->size, pMemoryRequirements->alignment);
