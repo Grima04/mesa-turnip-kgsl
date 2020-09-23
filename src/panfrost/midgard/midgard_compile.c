@@ -672,7 +672,7 @@ nir_is_non_scalar_swizzle(nir_alu_src *src, unsigned nr_components)
                 roundmode = MIDGARD_RTZ; \
 		break;
 
-#define ALU_CHECK_CMP(sext) \
+#define ALU_CHECK_CMP() \
                 assert(src_bitsize == 16 || src_bitsize == 32); \
                 assert(dst_bitsize == 16 || dst_bitsize == 32); \
 
@@ -680,14 +680,14 @@ nir_is_non_scalar_swizzle(nir_alu_src *src, unsigned nr_components)
         case nir_op_##nir: \
                 op = midgard_alu_op_##_op; \
                 broadcast_swizzle = count; \
-                ALU_CHECK_CMP(true); \
+                ALU_CHECK_CMP(); \
                 break;
 
-#define ALU_CASE_CMP(nir, _op, sext) \
+#define ALU_CASE_CMP(nir, _op) \
 	case nir_op_##nir: \
 		op = midgard_alu_op_##_op; \
-                ALU_CHECK_CMP(sext); \
-                 break;
+                ALU_CHECK_CMP(); \
+                break;
 
 /* Compare mir_lower_invert */
 static bool
@@ -902,13 +902,13 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
 
                 ALU_CASE(mov, imov);
 
-                ALU_CASE_CMP(feq32, feq, false);
-                ALU_CASE_CMP(fneu32, fne, false);
-                ALU_CASE_CMP(flt32, flt, false);
-                ALU_CASE_CMP(ieq32, ieq, true);
-                ALU_CASE_CMP(ine32, ine, true);
-                ALU_CASE_CMP(ilt32, ilt, true);
-                ALU_CASE_CMP(ult32, ult, false);
+                ALU_CASE_CMP(feq32, feq);
+                ALU_CASE_CMP(fneu32, fne);
+                ALU_CASE_CMP(flt32, flt);
+                ALU_CASE_CMP(ieq32, ieq);
+                ALU_CASE_CMP(ine32, ine);
+                ALU_CASE_CMP(ilt32, ilt);
+                ALU_CASE_CMP(ult32, ult);
 
                 /* We don't have a native b2f32 instruction. Instead, like many
                  * GPUs, we exploit booleans as 0/~0 for false/true, and
@@ -921,15 +921,15 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
                  * At the end of emit_alu (as MIR), we'll fix-up the constant
                  */
 
-                ALU_CASE_CMP(b2f32, iand, true);
-                ALU_CASE_CMP(b2f16, iand, true);
-                ALU_CASE_CMP(b2i32, iand, true);
+                ALU_CASE_CMP(b2f32, iand);
+                ALU_CASE_CMP(b2f16, iand);
+                ALU_CASE_CMP(b2i32, iand);
 
                 /* Likewise, we don't have a dedicated f2b32 instruction, but
                  * we can do a "not equal to 0.0" test. */
 
-                ALU_CASE_CMP(f2b32, fne, false);
-                ALU_CASE_CMP(i2b32, ine, true);
+                ALU_CASE_CMP(f2b32, fne);
+                ALU_CASE_CMP(i2b32, ine);
 
                 ALU_CASE(frcp, frcp);
                 ALU_CASE(frsq, frsqrt);
@@ -970,19 +970,19 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
 
                 ALU_CASE_BCAST(b32all_fequal2, fball_eq, 2);
                 ALU_CASE_BCAST(b32all_fequal3, fball_eq, 3);
-                ALU_CASE_CMP(b32all_fequal4, fball_eq, true);
+                ALU_CASE_CMP(b32all_fequal4, fball_eq);
 
                 ALU_CASE_BCAST(b32any_fnequal2, fbany_neq, 2);
                 ALU_CASE_BCAST(b32any_fnequal3, fbany_neq, 3);
-                ALU_CASE_CMP(b32any_fnequal4, fbany_neq, true);
+                ALU_CASE_CMP(b32any_fnequal4, fbany_neq);
 
                 ALU_CASE_BCAST(b32all_iequal2, iball_eq, 2);
                 ALU_CASE_BCAST(b32all_iequal3, iball_eq, 3);
-                ALU_CASE_CMP(b32all_iequal4, iball_eq, true);
+                ALU_CASE_CMP(b32all_iequal4, iball_eq);
 
                 ALU_CASE_BCAST(b32any_inequal2, ibany_neq, 2);
                 ALU_CASE_BCAST(b32any_inequal3, ibany_neq, 3);
-                ALU_CASE_CMP(b32any_inequal4, ibany_neq, true);
+                ALU_CASE_CMP(b32any_inequal4, ibany_neq);
 
                 /* Source mods will be shoved in later */
                 ALU_CASE(fabs, fmov);
@@ -1033,7 +1033,7 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
                         0;
 
                 flip_src12 = true;
-                ALU_CHECK_CMP(false);
+                ALU_CHECK_CMP();
                 break;
         }
 
