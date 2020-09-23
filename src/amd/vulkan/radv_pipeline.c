@@ -1707,6 +1707,12 @@ radv_pipeline_init_raster_state(struct radv_pipeline *pipeline,
 		S_028814_POLY_OFFSET_FRONT_ENABLE(raster_info->depthBiasEnable ? 1 : 0) |
 		S_028814_POLY_OFFSET_BACK_ENABLE(raster_info->depthBiasEnable ? 1 : 0) |
 		S_028814_POLY_OFFSET_PARA_ENABLE(raster_info->depthBiasEnable ? 1 : 0);
+
+	if (pipeline->device->physical_device->rad_info.chip_class >= GFX10) {
+		/* It should also be set if PERPENDICULAR_ENDCAP_ENA is set. */
+		pipeline->graphics.pa_su_sc_mode_cntl |=
+			S_028814_KEEP_TOGETHER_ENABLE(raster_info->polygonMode != VK_POLYGON_MODE_FILL);
+	}
 }
 
 static void
