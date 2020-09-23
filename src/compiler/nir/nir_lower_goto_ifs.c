@@ -170,10 +170,12 @@ set_path_vars_cond(nir_builder *b, struct path_fork *fork, nir_src condition,
       for (i = 0; i < 2; i++) {
          if (_mesa_set_search(fork->paths[i].reachable, then_block)) {
             if (_mesa_set_search(fork->paths[i].reachable, else_block)) {
-               if (fork->is_var)
+               if (fork->is_var) {
                   nir_store_var(b, fork->path_var, nir_imm_bool(b, i), 1);
-               else
+               } else {
+                  assert(fork->path_ssa == NULL);
                   fork->path_ssa = nir_imm_bool(b, i);
+               }
                fork = fork->paths[i].fork;
                break;
             }
@@ -184,10 +186,12 @@ set_path_vars_cond(nir_builder *b, struct path_fork *fork, nir_src condition,
                assert(ssa_def->num_components == 1);
                if (!i)
                   ssa_def = nir_inot(b, ssa_def);
-               if (fork->is_var)
+               if (fork->is_var) {
                   nir_store_var(b, fork->path_var, ssa_def, 1);
-               else
+               } else {
+                  assert(fork->path_ssa == NULL);
                   fork->path_ssa = ssa_def;
+               }
                set_path_vars(b, fork->paths[i].fork, then_block);
                set_path_vars(b, fork->paths[!i].fork, else_block);
                return;
