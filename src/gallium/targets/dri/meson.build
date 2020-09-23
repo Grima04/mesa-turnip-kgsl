@@ -75,6 +75,7 @@ foreach d : [[with_gallium_kmsro, [
                'imx-dcss_dri.so',
                'ingenic-drm_dri.so',
                'mcde_dri.so',
+               'mediatek_dri.so',
                'meson_dri.so',
                'mi0283qt_dri.so',
                'mxsfb-drm_dri.so',
