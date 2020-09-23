@@ -2720,9 +2720,15 @@ bool si_gfx_resources_check_encrypted(struct si_context *sctx)
       }
    }
 
-   /* TODO: we should assert that either use_encrypted_bo is false,
-    * or all writable buffers are encrypted.
-    */
+   if (sctx->framebuffer.state.zsbuf) {
+      struct si_texture* zs = (struct si_texture *)sctx->framebuffer.state.zsbuf->texture;
+      if (zs &&
+          (zs->buffer.flags & RADEON_FLAG_ENCRYPTED)) {
+         /* TODO: This isn't needed if depth.func is PIPE_FUNC_NEVER or PIPE_FUNC_ALWAYS */
+         use_encrypted_bo = true;
+      }
+   }
+
    return use_encrypted_bo;
 }
 
