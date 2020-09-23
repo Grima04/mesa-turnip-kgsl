@@ -836,6 +836,11 @@ lower_gs_block(nir_block *block, nir_builder *b, struct state *state)
 
 		switch (intr->intrinsic) {
 		case nir_intrinsic_end_primitive: {
+			/* Note: This ignores the stream, which seems to match the blob
+			 * behavior. I'm guessing the HW ignores any extraneous cut
+			 * signals from an EndPrimitive() that doesn't correspond to the
+			 * rasterized stream.
+			 */
 			b->cursor = nir_before_instr(&intr->instr);
 			nir_store_var(b, state->vertex_flags_out, nir_imm_int(b, 4), 0x1);
 			nir_instr_remove(&intr->instr);
@@ -848,6 +853,12 @@ lower_gs_block(nir_block *block, nir_builder *b, struct state *state)
 			nir_ssa_def *count = nir_load_var(b, state->vertex_count_var);
 
 			nir_push_if(b, nir_ieq(b, count, local_thread_id(b)));
+
+			unsigned stream = nir_intrinsic_stream_id(intr);
+			/* vertex_flags_out |= stream */
+			nir_store_var(b, state->vertex_flags_out,
+						  nir_ior(b, nir_load_var(b, state->vertex_flags_out),
+								  nir_imm_int(b, stream)), 0x1 /* .x */);
 
 			foreach_two_lists(dest_node, &state->emit_outputs, src_node, &state->old_outputs) {
 				nir_variable *dest = exec_node_data(nir_variable, dest_node, node);

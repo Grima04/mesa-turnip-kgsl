@@ -219,6 +219,10 @@ struct ir3_stream_output_info {
 	/** stride for an entire vertex for each buffer in dwords */
 	uint16_t stride[IR3_MAX_SO_BUFFERS];
 
+	/* These correspond to the VPC_SO_STREAM_CNTL fields */
+	uint8_t streams_written;
+	uint8_t buffer_to_stream[IR3_MAX_SO_BUFFERS];
+
 	/**
 	 * Array of stream outputs, in the order they are to be written in.
 	 * Selected components are tightly packed into the output buffer.
