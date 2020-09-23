@@ -283,11 +283,11 @@ radv_is_hw_resolve_pipeline(struct radv_cmd_buffer *cmd_buffer)
 	struct radv_meta_state *meta_state = &cmd_buffer->device->meta_state;
 	struct radv_pipeline *pipeline = cmd_buffer->state.pipeline;
 
-	for (uint32_t i = 0; i < NUM_META_FS_KEYS; ++i) {
-		VkFormat format = radv_fs_key_format_exemplars[i];
-		unsigned fs_key = radv_format_meta_fs_key(format);
+	if (!pipeline)
+		return false;
 
-		if (radv_pipeline_to_handle(pipeline) == meta_state->resolve.pipeline[fs_key])
+	for (uint32_t i = 0; i < NUM_META_FS_KEYS; ++i) {
+		if (radv_pipeline_to_handle(pipeline) == meta_state->resolve.pipeline[i])
 			return true;
 	}
 	return false;
