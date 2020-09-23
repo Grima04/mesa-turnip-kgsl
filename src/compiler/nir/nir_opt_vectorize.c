@@ -62,8 +62,9 @@ hash_alu(uint32_t hash, const nir_alu_instr *instr)
 }
 
 static uint32_t
-hash_instr(const nir_instr *instr)
+hash_instr(const void *data)
 {
+   const nir_instr *instr = (nir_instr *) data;
    uint32_t hash = 0;
 
    switch (instr->type) {
@@ -96,8 +97,10 @@ alu_srcs_equal(const nir_alu_src *src1, const nir_alu_src *src2)
 }
 
 static bool
-instrs_equal(const nir_instr *instr1, const nir_instr *instr2)
+instrs_equal(const void *data1, const void *data2)
 {
+   const nir_instr *instr1 = (nir_instr *) data1;
+   const nir_instr *instr2 = (nir_instr *) data2;
    switch (instr1->type) {
    case nir_instr_type_alu: {
       nir_alu_instr *alu1 = nir_instr_as_alu(instr1);
@@ -315,78 +318,10 @@ instr_try_combine(struct nir_shader *nir, nir_instr *instr1, nir_instr *instr2,
    return &new_alu->instr;
 }
 
-/*
- * Use an array to represent a stack of instructions that are equivalent.
- *
- * We push and pop instructions off the stack in dominance order. The first
- * element dominates the second element which dominates the third, etc. When
- * trying to add to the stack, first we try and combine the instruction with
- * each of the instructions on the stack and, if successful, replace the
- * instruction on the stack with the newly-combined instruction.
- */
-
-static struct util_dynarray *
-vec_instr_stack_create(void *mem_ctx)
-{
-   struct util_dynarray *stack = ralloc(mem_ctx, struct util_dynarray);
-   util_dynarray_init(stack, mem_ctx);
-   return stack;
-}
-
-/* returns true if we were able to successfully replace the instruction */
-
-static bool
-vec_instr_stack_push(struct nir_shader *nir, struct util_dynarray *stack,
-                     nir_instr *instr,
-                     nir_opt_vectorize_cb filter, void *data)
-{
-   /* Walk the stack from child to parent to make live ranges shorter by
-    * matching the closest thing we can
-    */
-   util_dynarray_foreach_reverse(stack, nir_instr *, stack_instr) {
-      nir_instr *new_instr = instr_try_combine(nir, *stack_instr, instr,
-                                               filter, data);
-      if (new_instr) {
-         *stack_instr = new_instr;
-         return true;
-      }
-   }
-
-   util_dynarray_append(stack, nir_instr *, instr);
-   return false;
-}
-
-static void
-vec_instr_stack_pop(struct util_dynarray *stack, nir_instr *instr)
-{
-   ASSERTED nir_instr *last = util_dynarray_pop(stack, nir_instr *);
-   assert(last == instr);
-}
-
-static bool
-cmp_func(const void *data1, const void *data2)
-{
-   const struct util_dynarray *arr1 = data1;
-   const struct util_dynarray *arr2 = data2;
-
-   const nir_instr *instr1 = *(nir_instr **)util_dynarray_begin(arr1);
-   const nir_instr *instr2 = *(nir_instr **)util_dynarray_begin(arr2);
-
-   return instrs_equal(instr1, instr2);
-}
-
-static uint32_t
-hash_stack(const void *data)
-{
-   const struct util_dynarray *stack = data;
-   const nir_instr *first = *(nir_instr **)util_dynarray_begin(stack);
-   return hash_instr(first);
-}
-
 static struct set *
 vec_instr_set_create(void)
 {
-   return _mesa_set_create(NULL, hash_stack, cmp_func);
+   return _mesa_set_create(NULL, hash_instr, instrs_equal);
 }
 
 static void
@@ -403,52 +338,20 @@ vec_instr_set_add_or_rewrite(struct nir_shader *nir, struct set *instr_set,
    if (!instr_can_rewrite(instr))
       return false;
 
-   struct util_dynarray *new_stack = vec_instr_stack_create(instr_set);
-   vec_instr_stack_push(nir, new_stack, instr, filter, data);
-
-   struct set_entry *entry = _mesa_set_search(instr_set, new_stack);
-
+   struct set_entry *entry = _mesa_set_search(instr_set, instr);
    if (entry) {
-      ralloc_free(new_stack);
-      struct util_dynarray *stack = (struct util_dynarray *) entry->key;
-      return vec_instr_stack_push(nir, stack, instr, filter, data);
+      nir_instr *old_instr = (nir_instr *) entry->key;
+      _mesa_set_remove(instr_set, entry);
+      nir_instr *new_instr = instr_try_combine(nir, old_instr, instr,
+                                               filter, data);
+      if (new_instr) {
+         _mesa_set_add(instr_set, new_instr);
+         return true;
+      }
    }
 
-   _mesa_set_add(instr_set, new_stack);
+   _mesa_set_add(instr_set, instr);
    return false;
-}
-
-static void
-vec_instr_set_remove(struct nir_shader *nir, struct set *instr_set,
-                     nir_instr *instr, nir_opt_vectorize_cb filter, void *data)
-{
-   if (!instr_can_rewrite(instr))
-      return;
-
-   /*
-    * It's pretty unfortunate that we have to do this, but it's a side effect
-    * of the hash set interfaces. The hash set assumes that we're only
-    * interested in storing one equivalent element at a time, and if we try to
-    * insert a duplicate element it will remove the original. We could hack up
-    * the comparison function to "know" which input is an instruction we
-    * passed in and which is an array that's part of the entry, but that
-    * wouldn't work because we need to pass an array to _mesa_set_add() in
-    * vec_instr_add_or_rewrite() above, and _mesa_set_add() will call our
-    * comparison function as well.
-    */
-   struct util_dynarray *temp = vec_instr_stack_create(instr_set);
-   vec_instr_stack_push(nir, temp, instr, filter, data);
-   struct set_entry *entry = _mesa_set_search(instr_set, temp);
-   ralloc_free(temp);
-
-   if (entry) {
-      struct util_dynarray *stack = (struct util_dynarray *) entry->key;
-
-      if (util_dynarray_num_elements(stack, nir_instr *) > 1)
-         vec_instr_stack_pop(stack, instr);
-      else
-         _mesa_set_remove(instr_set, entry);
-   }
 }
 
 static bool
@@ -468,8 +371,14 @@ vectorize_block(struct nir_shader *nir, nir_block *block,
       progress |= vectorize_block(nir, child, instr_set, filter, data);
    }
 
-   nir_foreach_instr_reverse(instr, block)
-      vec_instr_set_remove(nir, instr_set, instr, filter, data);
+   nir_foreach_instr_reverse(instr, block) {
+      if (instr->type != nir_instr_type_alu)
+         continue;
+
+      struct set_entry *entry = _mesa_set_search(instr_set, instr);
+      if (entry)
+         _mesa_set_remove(instr_set, entry);
+   }
 
    return progress;
 }
