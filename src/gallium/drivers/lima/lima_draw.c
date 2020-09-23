@@ -175,8 +175,7 @@ lima_clear(struct pipe_context *pctx, unsigned buffers, const struct pipe_scisso
       clear->depth = util_pack_z(PIPE_FORMAT_Z24X8_UNORM, depth);
       if (zsbuf)
          zsbuf->reload &= ~PIPE_CLEAR_DEPTH;
-   } else
-      clear->depth = 0x00ffffff;
+   }
 
    if (buffers & PIPE_CLEAR_STENCIL) {
       clear->stencil = stencil;

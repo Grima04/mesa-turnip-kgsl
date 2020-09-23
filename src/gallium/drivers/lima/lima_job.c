@@ -100,6 +100,8 @@ lima_job_create(struct lima_context *ctx)
    s->damage_rect.minx = s->damage_rect.miny = 0xffff;
    s->damage_rect.maxx = s->damage_rect.maxy = 0;
 
+   s->clear.depth = 0x00ffffff;
+
    for (int i = 0; i < 2; i++) {
       util_dynarray_init(s->gem_bos + i, s);
       util_dynarray_init(s->bos + i, s);
