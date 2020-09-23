@@ -5913,7 +5913,7 @@ VkResult radv_ResetFences(VkDevice _device,
 		struct radv_fence_part *part = &fence->permanent;
 
 		switch (part->kind) {
-		case RADV_FENCE_WSI:
+		case RADV_FENCE_WINSYS:
 			device->ws->reset_fence(part->fence);
 			break;
 		case RADV_FENCE_SYNCOBJ:
