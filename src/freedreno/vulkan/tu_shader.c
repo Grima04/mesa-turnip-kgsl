@@ -65,6 +65,7 @@ tu_spirv_to_nir(struct tu_device *dev,
          .stencil_export = true,
          .multiview = true,
          .shader_viewport_index_layer = true,
+         .geometry_streams = true,
       },
    };
    const nir_shader_compiler_options *nir_options =
@@ -704,8 +705,12 @@ tu_gather_xfb_info(nir_shader *nir, struct ir3_stream_output_info *info)
    assert(xfb->output_count < IR3_MAX_SO_OUTPUTS);
    info->num_outputs = xfb->output_count;
 
-   for (int i = 0; i < IR3_MAX_SO_BUFFERS; i++)
+   for (int i = 0; i < IR3_MAX_SO_BUFFERS; i++) {
       info->stride[i] = xfb->buffers[i].stride / 4;
+      info->buffer_to_stream[i] = xfb->buffer_to_stream[i];
+   }
+
+   info->streams_written = xfb->streams_written;
 
    for (int i = 0; i < xfb->output_count; i++) {
       info->output[i].register_index = output_map[xfb->outputs[i].location];

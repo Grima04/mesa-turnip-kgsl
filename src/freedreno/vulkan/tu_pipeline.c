@@ -608,9 +608,13 @@ tu6_setup_streamout(struct tu_cs *cs,
                     struct ir3_shader_linkage *l)
 {
    const struct ir3_stream_output_info *info = &v->shader->stream_output;
-   uint32_t prog[IR3_MAX_SO_OUTPUTS * 2] = {};
+   /* Note: 64 here comes from the HW layout of the program RAM. The program
+    * for stream N is at DWORD 64 * N.
+    */
+#define A6XX_SO_PROG_DWORDS 64
+   uint32_t prog[A6XX_SO_PROG_DWORDS * IR3_MAX_SO_STREAMS] = {};
+   BITSET_DECLARE(valid_dwords, A6XX_SO_PROG_DWORDS * IR3_MAX_SO_STREAMS) = {0};
    uint32_t ncomp[IR3_MAX_SO_BUFFERS] = {};
-   uint32_t prog_count = align(l->max_loc, 2) / 2;
 
    /* TODO: streamout state should be in a non-GMEM draw state */
 
@@ -651,34 +655,54 @@ tu6_setup_streamout(struct tu_cs *cs,
          unsigned loc = l->var[idx].loc + c;
          unsigned off = j + out->dst_offset;  /* in dwords */
 
+         assert(loc < A6XX_SO_PROG_DWORDS * 2);
+         unsigned dword = out->stream * A6XX_SO_PROG_DWORDS + loc/2;
          if (loc & 1) {
-            prog[loc/2] |= A6XX_VPC_SO_PROG_B_EN |
+            prog[dword] |= A6XX_VPC_SO_PROG_B_EN |
                            A6XX_VPC_SO_PROG_B_BUF(out->output_buffer) |
                            A6XX_VPC_SO_PROG_B_OFF(off * 4);
          } else {
-            prog[loc/2] |= A6XX_VPC_SO_PROG_A_EN |
+            prog[dword] |= A6XX_VPC_SO_PROG_A_EN |
                            A6XX_VPC_SO_PROG_A_BUF(out->output_buffer) |
                            A6XX_VPC_SO_PROG_A_OFF(off * 4);
          }
+         BITSET_SET(valid_dwords, dword);
       }
    }
 
-   tu_cs_emit_pkt7(cs, CP_CONTEXT_REG_BUNCH, 12 + 2 * prog_count);
+   unsigned prog_count = 0;
+   unsigned start, end;
+   BITSET_FOREACH_RANGE(start, end, valid_dwords,
+                        A6XX_SO_PROG_DWORDS * IR3_MAX_SO_STREAMS) {
+      prog_count += end - start + 1;
+   }
+
+   tu_cs_emit_pkt7(cs, CP_CONTEXT_REG_BUNCH, 10 + 2 * prog_count);
    tu_cs_emit(cs, REG_A6XX_VPC_SO_STREAM_CNTL);
-   tu_cs_emit(cs, A6XX_VPC_SO_STREAM_CNTL_STREAM_ENABLE(0x1) |
-                  COND(ncomp[0] > 0, A6XX_VPC_SO_STREAM_CNTL_BUF0_STREAM(1)) |
-                  COND(ncomp[1] > 0, A6XX_VPC_SO_STREAM_CNTL_BUF1_STREAM(1)) |
-                  COND(ncomp[2] > 0, A6XX_VPC_SO_STREAM_CNTL_BUF2_STREAM(1)) |
-                  COND(ncomp[3] > 0, A6XX_VPC_SO_STREAM_CNTL_BUF3_STREAM(1)));
+   tu_cs_emit(cs, A6XX_VPC_SO_STREAM_CNTL_STREAM_ENABLE(info->streams_written) |
+                  COND(ncomp[0] > 0,
+                       A6XX_VPC_SO_STREAM_CNTL_BUF0_STREAM(1 + info->buffer_to_stream[0])) |
+                  COND(ncomp[1] > 0,
+                       A6XX_VPC_SO_STREAM_CNTL_BUF1_STREAM(1 + info->buffer_to_stream[1])) |
+                  COND(ncomp[2] > 0,
+                       A6XX_VPC_SO_STREAM_CNTL_BUF2_STREAM(1 + info->buffer_to_stream[2])) |
+                  COND(ncomp[3] > 0,
+                       A6XX_VPC_SO_STREAM_CNTL_BUF3_STREAM(1 + info->buffer_to_stream[3])));
    for (uint32_t i = 0; i < 4; i++) {
       tu_cs_emit(cs, REG_A6XX_VPC_SO_NCOMP(i));
       tu_cs_emit(cs, ncomp[i]);
    }
-   tu_cs_emit(cs, REG_A6XX_VPC_SO_CNTL);
-   tu_cs_emit(cs, A6XX_VPC_SO_CNTL_RESET);
-   for (uint32_t i = 0; i < prog_count; i++) {
-      tu_cs_emit(cs, REG_A6XX_VPC_SO_PROG);
-      tu_cs_emit(cs, prog[i]);
+   bool first = true;
+   BITSET_FOREACH_RANGE(start, end, valid_dwords,
+                        A6XX_SO_PROG_DWORDS * IR3_MAX_SO_STREAMS) {
+      tu_cs_emit(cs, REG_A6XX_VPC_SO_CNTL);
+      tu_cs_emit(cs, COND(first, A6XX_VPC_SO_CNTL_RESET) |
+                     A6XX_VPC_SO_CNTL_ADDR(start));
+      for (unsigned i = start; i < end; i++) {
+         tu_cs_emit(cs, REG_A6XX_VPC_SO_PROG);
+         tu_cs_emit(cs, prog[i]);
+      }
+      first = false;
    }
 }
 
