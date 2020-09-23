@@ -795,7 +795,7 @@ load_device_extensions(struct zink_screen *screen)
 }
 
 static struct pipe_screen *
-zink_internal_create_screen(struct sw_winsys *winsys, int fd)
+zink_internal_create_screen(struct sw_winsys *winsys, int fd, const struct pipe_screen_config *config)
 {
    struct zink_screen *screen = CALLOC_STRUCT(zink_screen);
    if (!screen)
@@ -876,11 +876,11 @@ fail:
 struct pipe_screen *
 zink_create_screen(struct sw_winsys *winsys)
 {
-   return zink_internal_create_screen(winsys, -1);
+   return zink_internal_create_screen(winsys, -1, NULL);
 }
 
 struct pipe_screen *
-zink_drm_create_screen(int fd)
+zink_drm_create_screen(int fd, const struct pipe_screen_config *config)
 {
-   return zink_internal_create_screen(NULL, fd);
+   return zink_internal_create_screen(NULL, fd, config);
 }

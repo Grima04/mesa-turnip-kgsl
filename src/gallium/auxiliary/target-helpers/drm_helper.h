@@ -377,10 +377,14 @@ static struct pipe_screen *
 pipe_zink_create_screen(int fd, const struct pipe_screen_config *config)
 {
    struct pipe_screen *screen;
-   screen = zink_drm_create_screen(fd);
+   screen = zink_drm_create_screen(fd, config);
    return screen ? debug_screen_wrap(screen) : NULL;
 }
-DRM_DRIVER_DESCRIPTOR(zink, NULL, 0)
+
+const driOptionDescription zink_driconf[] = {
+      #include "zink/driinfo_zink.h"
+};
+DRM_DRIVER_DESCRIPTOR(zink, zink_driconf, ARRAY_SIZE(zink_driconf))
 
 #else
 DRM_DRIVER_DESCRIPTOR_STUB(zink)
