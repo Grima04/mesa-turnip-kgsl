@@ -619,7 +619,7 @@ tu6_setup_streamout(struct tu_cs *cs,
       tu_cs_emit_pkt7(cs, CP_CONTEXT_REG_BUNCH, 4);
       tu_cs_emit(cs, REG_A6XX_VPC_SO_CNTL);
       tu_cs_emit(cs, 0);
-      tu_cs_emit(cs, REG_A6XX_VPC_SO_BUF_CNTL);
+      tu_cs_emit(cs, REG_A6XX_VPC_SO_STREAM_CNTL);
       tu_cs_emit(cs, 0);
       return;
    }
@@ -664,19 +664,18 @@ tu6_setup_streamout(struct tu_cs *cs,
    }
 
    tu_cs_emit_pkt7(cs, CP_CONTEXT_REG_BUNCH, 12 + 2 * prog_count);
-   tu_cs_emit(cs, REG_A6XX_VPC_SO_BUF_CNTL);
-   tu_cs_emit(cs, A6XX_VPC_SO_BUF_CNTL_ENABLE |
-                  COND(ncomp[0] > 0, A6XX_VPC_SO_BUF_CNTL_BUF0) |
-                  COND(ncomp[1] > 0, A6XX_VPC_SO_BUF_CNTL_BUF1) |
-                  COND(ncomp[2] > 0, A6XX_VPC_SO_BUF_CNTL_BUF2) |
-                  COND(ncomp[3] > 0, A6XX_VPC_SO_BUF_CNTL_BUF3));
+   tu_cs_emit(cs, REG_A6XX_VPC_SO_STREAM_CNTL);
+   tu_cs_emit(cs, A6XX_VPC_SO_STREAM_CNTL_STREAM_ENABLE(0x1) |
+                  COND(ncomp[0] > 0, A6XX_VPC_SO_STREAM_CNTL_BUF0_STREAM(1)) |
+                  COND(ncomp[1] > 0, A6XX_VPC_SO_STREAM_CNTL_BUF1_STREAM(1)) |
+                  COND(ncomp[2] > 0, A6XX_VPC_SO_STREAM_CNTL_BUF2_STREAM(1)) |
+                  COND(ncomp[3] > 0, A6XX_VPC_SO_STREAM_CNTL_BUF3_STREAM(1)));
    for (uint32_t i = 0; i < 4; i++) {
       tu_cs_emit(cs, REG_A6XX_VPC_SO_NCOMP(i));
       tu_cs_emit(cs, ncomp[i]);
    }
-   /* note: "VPC_SO_CNTL" write seems to be responsible for resetting the SO_PROG */
    tu_cs_emit(cs, REG_A6XX_VPC_SO_CNTL);
-   tu_cs_emit(cs, A6XX_VPC_SO_CNTL_ENABLE);
+   tu_cs_emit(cs, A6XX_VPC_SO_CNTL_RESET);
    for (uint32_t i = 0; i < prog_count; i++) {
       tu_cs_emit(cs, REG_A6XX_VPC_SO_PROG);
       tu_cs_emit(cs, prog[i]);

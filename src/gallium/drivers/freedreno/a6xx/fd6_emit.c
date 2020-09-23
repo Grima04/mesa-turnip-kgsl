@@ -772,7 +772,7 @@ fd6_emit_streamout(struct fd_ringbuffer *ring, struct fd6_emit *emit, struct ir3
 			OUT_PKT7(obj, CP_CONTEXT_REG_BUNCH, 4);
 			OUT_RING(obj, REG_A6XX_VPC_SO_CNTL);
 			OUT_RING(obj, 0);
-			OUT_RING(obj, REG_A6XX_VPC_SO_BUF_CNTL);
+			OUT_RING(obj, REG_A6XX_VPC_SO_STREAM_CNTL);
 			OUT_RING(obj, 0);
 
 			fd6_emit_take_group(emit, obj, FD6_GROUP_SO, ENABLE_ALL);
@@ -1211,7 +1211,7 @@ fd6_emit_restore(struct fd_batch *batch, struct fd_ringbuffer *ring)
 
 	WRITE(REG_A6XX_VPC_SO_DISABLE, A6XX_VPC_SO_DISABLE(true).value);
 
-	WRITE(REG_A6XX_PC_UNKNOWN_9980, 0);
+	WRITE(REG_A6XX_PC_RASTER_CNTL, 0);
 
 	WRITE(REG_A6XX_PC_MULTIVIEW_CNTL, 0);
 
@@ -1256,8 +1256,8 @@ fd6_emit_restore(struct fd_batch *batch, struct fd_ringbuffer *ring)
 	OUT_RING(ring, CP_SET_DRAW_STATE__1_ADDR_LO(0));
 	OUT_RING(ring, CP_SET_DRAW_STATE__2_ADDR_HI(0));
 
-	OUT_PKT4(ring, REG_A6XX_VPC_SO_BUF_CNTL, 1);
-	OUT_RING(ring, 0x00000000);   /* VPC_SO_BUF_CNTL */
+	OUT_PKT4(ring, REG_A6XX_VPC_SO_STREAM_CNTL, 1);
+	OUT_RING(ring, 0x00000000);   /* VPC_SO_STREAM_CNTL */
 
 	OUT_PKT4(ring, REG_A6XX_GRAS_LRZ_CNTL, 1);
 	OUT_RING(ring, 0x00000000);
