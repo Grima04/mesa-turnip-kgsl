@@ -605,10 +605,10 @@ panfrost_emit_viewport(struct panfrost_batch *batch)
         /* Scissor to the intersection of viewport and to the scissor, clamped
          * to the framebuffer */
 
-        unsigned minx = MIN2(fb->width, vp_minx);
-        unsigned maxx = MIN2(fb->width, vp_maxx);
-        unsigned miny = MIN2(fb->height, vp_miny);
-        unsigned maxy = MIN2(fb->height, vp_maxy);
+        unsigned minx = MIN2(fb->width, MAX2((int) vp_minx, 0));
+        unsigned maxx = MIN2(fb->width, MAX2((int) vp_maxx, 0));
+        unsigned miny = MIN2(fb->height, MAX2((int) vp_miny, 0));
+        unsigned maxy = MIN2(fb->height, MAX2((int) vp_maxy, 0));
 
         if (ss && rast->scissor) {
                 minx = MAX2(ss->minx, minx);
@@ -617,9 +617,15 @@ panfrost_emit_viewport(struct panfrost_batch *batch)
                 maxy = MIN2(ss->maxy, maxy);
         }
 
+        /* Set the range to [1, 1) so max values don't wrap round */
+        if (maxx == 0 || maxy == 0)
+                maxx = maxy = minx = miny = 1;
+
         struct panfrost_transfer T = panfrost_pool_alloc(&batch->pool, MALI_VIEWPORT_LENGTH);
 
         pan_pack(T.cpu, VIEWPORT, cfg) {
+                /* [minx, maxx) and [miny, maxy) are exclusive ranges, but
+                 * these are inclusive */
                 cfg.scissor_minimum_x = minx;
                 cfg.scissor_minimum_y = miny;
                 cfg.scissor_maximum_x = maxx - 1;
