@@ -595,10 +595,10 @@ panfrost_emit_viewport(struct panfrost_batch *batch)
         /* Derive min/max from translate/scale. Note since |x| >= 0 by
          * definition, we have that -|x| <= |x| hence translate - |scale| <=
          * translate + |scale|, so the ordering is correct here. */
-        float vp_minx = (int) (vp->translate[0] - fabsf(vp->scale[0]));
-        float vp_maxx = (int) (vp->translate[0] + fabsf(vp->scale[0]));
-        float vp_miny = (int) (vp->translate[1] - fabsf(vp->scale[1]));
-        float vp_maxy = (int) (vp->translate[1] + fabsf(vp->scale[1]));
+        float vp_minx = vp->translate[0] - fabsf(vp->scale[0]);
+        float vp_maxx = vp->translate[0] + fabsf(vp->scale[0]);
+        float vp_miny = vp->translate[1] - fabsf(vp->scale[1]);
+        float vp_maxy = vp->translate[1] + fabsf(vp->scale[1]);
         float minz = (vp->translate[2] - fabsf(vp->scale[2]));
         float maxz = (vp->translate[2] + fabsf(vp->scale[2]));
 
