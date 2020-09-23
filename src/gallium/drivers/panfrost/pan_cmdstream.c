@@ -326,6 +326,8 @@ panfrost_emit_blend(struct panfrost_batch *batch, void *rts,
                                 brts[i].constant = blend[i].equation.constant;
 
                                 brts[i].format = panfrost_format_to_bifrost_blend(format_desc);
+                                if (dev->quirks & HAS_SWIZZLES)
+                                        brts[i].swizzle = panfrost_get_default_swizzle(4);
 
                                 /* 0x19 disables blending and forces REPLACE
                                  * mode (equivalent to rgb_mode = alpha_mode =

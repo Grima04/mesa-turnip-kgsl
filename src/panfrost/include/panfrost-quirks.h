@@ -105,6 +105,7 @@ panfrost_get_quirks(unsigned gpu_id)
                 return MIDGARD_QUIRKS;
 
         case 0x6000: /* G71 */
+        case 0x6221: /* G72 */
                 return BIFROST_QUIRKS | HAS_SWIZZLES;
 
         case 0x7093: /* G31 */

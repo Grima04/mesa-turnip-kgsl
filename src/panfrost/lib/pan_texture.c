@@ -28,6 +28,7 @@
 #include "util/macros.h"
 #include "util/u_math.h"
 #include "pan_texture.h"
+#include "panfrost-quirks.h"
 
 /* Generates a texture descriptor. Ideally, descriptors are immutable after the
  * texture is created, so we can keep these hanging around in GPU memory in a
@@ -352,6 +353,7 @@ panfrost_new_texture(
 
 void
 panfrost_new_texture_bifrost(
+        const struct panfrost_device *dev,
         struct mali_bifrost_texture_packed *out,
         uint16_t width, uint16_t height,
         uint16_t depth, uint16_t array_size,
@@ -393,6 +395,9 @@ panfrost_new_texture_bifrost(
         pan_pack(out, BIFROST_TEXTURE, cfg) {
                 cfg.dimension = dim;
                 cfg.format = (mali_format << 12) | (srgb << 20);
+                if (dev->quirks & HAS_SWIZZLES)
+	                cfg.format |= panfrost_get_default_swizzle(desc->nr_channels);
+
                 cfg.width = u_minify(width, first_level);
                 cfg.height = u_minify(height, first_level);
                 cfg.swizzle = swizzle;

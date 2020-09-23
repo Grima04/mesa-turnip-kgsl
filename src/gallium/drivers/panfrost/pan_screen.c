@@ -714,6 +714,7 @@ panfrost_create_screen(int fd, struct renderonly *ro)
         case 0x820: /* T820 */
         case 0x860: /* T860 */
                 break;
+        case 0x6221: /* G72 */
         case 0x7093: /* G31 */
         case 0x7212: /* G52 */
                 if (dev->debug & PAN_DBG_BIFROST)

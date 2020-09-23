@@ -113,6 +113,7 @@ panfrost_new_texture(
 
 void
 panfrost_new_texture_bifrost(
+        const struct panfrost_device *dev,
         struct mali_bifrost_texture_packed *out,
         uint16_t width, uint16_t height,
         uint16_t depth, uint16_t array_size,
