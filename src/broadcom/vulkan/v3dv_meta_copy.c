@@ -104,6 +104,7 @@ struct framebuffer_data {
    /* Format info */
    VkFormat vk_format;
    const struct v3dv_format *format;
+   uint8_t internal_depth_type;
 };
 
 static void
@@ -127,6 +128,10 @@ setup_framebuffer_data(struct framebuffer_data *fb,
 
    fb->vk_format = vk_format;
    fb->format = v3dv_get_format(vk_format);
+
+   fb->internal_depth_type = V3D_INTERNAL_TYPE_DEPTH_32F;
+   if (vk_format_is_depth_or_stencil(vk_format))
+      fb->internal_depth_type = v3dv_get_internal_depth_type(vk_format);
 }
 
 /* This chooses a tile buffer format that is appropriate for the copy operation.
@@ -253,7 +258,7 @@ struct rcl_clear_info {
 
 static struct v3dv_cl *
 emit_rcl_prologue(struct v3dv_job *job,
-                  uint32_t rt_internal_type,
+                  struct framebuffer_data *fb,
                   const struct rcl_clear_info *clear_info)
 {
    const struct v3dv_frame_tiling *tiling = &job->frame_tiling;
@@ -272,6 +277,7 @@ emit_rcl_prologue(struct v3dv_job *job,
       config.number_of_render_targets = 1;
       config.multisample_mode_4x = tiling->msaa;
       config.maximum_bpp_of_all_render_targets = tiling->internal_bpp;
+      config.internal_depth_type = fb->internal_depth_type;
    }
 
    if (clear_info && (clear_info->aspects & VK_IMAGE_ASPECT_COLOR_BIT)) {
@@ -322,7 +328,7 @@ emit_rcl_prologue(struct v3dv_job *job,
 
    cl_emit(rcl, TILE_RENDERING_MODE_CFG_COLOR, rt) {
       rt.render_target_0_internal_bpp = tiling->internal_bpp;
-      rt.render_target_0_internal_type = rt_internal_type;
+      rt.render_target_0_internal_type = fb->internal_type;
       rt.render_target_0_clamp = V3D_RENDER_TARGET_CLAMP_NONE;
    }
 
@@ -691,8 +697,7 @@ emit_copy_image_to_buffer_rcl(struct v3dv_job *job,
                               struct framebuffer_data *framebuffer,
                               const VkBufferImageCopy *region)
 {
-   struct v3dv_cl *rcl =
-      emit_rcl_prologue(job, framebuffer->internal_type, NULL);
+   struct v3dv_cl *rcl = emit_rcl_prologue(job, framebuffer, NULL);
    v3dv_return_if_oom(NULL, job);
 
    for (int layer = 0; layer < job->frame_tiling.layers; layer++)
@@ -1177,8 +1182,7 @@ emit_copy_image_rcl(struct v3dv_job *job,
                     struct framebuffer_data *framebuffer,
                     const VkImageCopy *region)
 {
-   struct v3dv_cl *rcl =
-      emit_rcl_prologue(job, framebuffer->internal_type, NULL);
+   struct v3dv_cl *rcl = emit_rcl_prologue(job, framebuffer, NULL);
    v3dv_return_if_oom(NULL, job);
 
    for (int layer = 0; layer < job->frame_tiling.layers; layer++)
@@ -1457,8 +1461,7 @@ emit_clear_image_rcl(struct v3dv_job *job,
       .level = level,
    };
 
-   struct v3dv_cl *rcl =
-      emit_rcl_prologue(job, framebuffer->internal_type, &clear_info);
+   struct v3dv_cl *rcl = emit_rcl_prologue(job, framebuffer, &clear_info);
    v3dv_return_if_oom(NULL, job);
 
    emit_frame_setup(job, 0, clear_value);
@@ -1688,8 +1691,7 @@ emit_copy_buffer_rcl(struct v3dv_job *job,
                      struct framebuffer_data *framebuffer,
                      uint32_t format)
 {
-   struct v3dv_cl *rcl =
-      emit_rcl_prologue(job, framebuffer->internal_type, NULL);
+   struct v3dv_cl *rcl = emit_rcl_prologue(job, framebuffer, NULL);
    v3dv_return_if_oom(NULL, job);
 
    emit_frame_setup(job, 0, NULL);
@@ -1944,8 +1946,7 @@ emit_fill_buffer_rcl(struct v3dv_job *job,
       .level = 0,
    };
 
-   struct v3dv_cl *rcl =
-      emit_rcl_prologue(job, framebuffer->internal_type, &clear_info);
+   struct v3dv_cl *rcl = emit_rcl_prologue(job, framebuffer, &clear_info);
    v3dv_return_if_oom(NULL, job);
 
    emit_frame_setup(job, 0, &clear_value);
@@ -2283,8 +2284,7 @@ emit_copy_buffer_to_image_rcl(struct v3dv_job *job,
                               struct framebuffer_data *framebuffer,
                               const VkBufferImageCopy *region)
 {
-   struct v3dv_cl *rcl =
-      emit_rcl_prologue(job, framebuffer->internal_type, NULL);
+   struct v3dv_cl *rcl = emit_rcl_prologue(job, framebuffer, NULL);
    v3dv_return_if_oom(NULL, job);
 
    for (int layer = 0; layer < job->frame_tiling.layers; layer++)
@@ -4290,8 +4290,7 @@ emit_resolve_image_rcl(struct v3dv_job *job,
                        struct framebuffer_data *framebuffer,
                        const VkImageResolve *region)
 {
-   struct v3dv_cl *rcl =
-      emit_rcl_prologue(job, framebuffer->internal_type, NULL);
+   struct v3dv_cl *rcl = emit_rcl_prologue(job, framebuffer, NULL);
    v3dv_return_if_oom(NULL, job);
 
    for (int layer = 0; layer < job->frame_tiling.layers; layer++)

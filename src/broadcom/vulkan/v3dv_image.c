@@ -660,25 +660,8 @@ v3dv_CreateImageView(VkDevice _device,
    assert(iview->format && iview->format->supported);
    iview->swap_rb = iview->format->swizzle[0] == PIPE_SWIZZLE_Z;
 
-   /* FIXME: should we just move this to
-    * v3dv_get_internal_type_bpp_for_output_format instead?
-    */
    if (vk_format_is_depth_or_stencil(iview->vk_format)) {
-      switch (iview->vk_format) {
-      case VK_FORMAT_D16_UNORM:
-         iview->internal_type = V3D_INTERNAL_TYPE_DEPTH_16;
-         break;
-      case VK_FORMAT_D32_SFLOAT:
-         iview->internal_type = V3D_INTERNAL_TYPE_DEPTH_32F;
-         break;
-      case VK_FORMAT_X8_D24_UNORM_PACK32:
-      case VK_FORMAT_D24_UNORM_S8_UINT:
-         iview->internal_type = V3D_INTERNAL_TYPE_DEPTH_24;
-         break;
-      default:
-         assert(!"unsupported format");
-         break;
-      }
+      iview->internal_type = v3dv_get_internal_depth_type(iview->vk_format);
    } else {
       v3dv_get_internal_type_bpp_for_output_format(iview->format->rt_type,
                                                    &iview->internal_type,

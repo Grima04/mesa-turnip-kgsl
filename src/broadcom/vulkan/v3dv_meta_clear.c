@@ -1392,10 +1392,15 @@ emit_tlb_clear_job(struct v3dv_cmd_buffer *cmd_buffer,
    uint32_t color_attachment_count = 0;
    VkClearAttachment color_attachments[4];
    const VkClearDepthStencilValue *ds_clear_value = NULL;
+   uint8_t internal_depth_type = V3D_INTERNAL_TYPE_DEPTH_32F;
    for (uint32_t i = 0; i < attachment_count; i++) {
       if (attachments[i].aspectMask & (VK_IMAGE_ASPECT_DEPTH_BIT |
                                        VK_IMAGE_ASPECT_STENCIL_BIT)) {
+         assert(subpass->ds_attachment.attachment != VK_ATTACHMENT_UNUSED);
          ds_clear_value = &attachments[i].clearValue.depthStencil;
+         struct v3dv_render_pass_attachment *att =
+            &state->pass->attachments[subpass->ds_attachment.attachment];
+         internal_depth_type = v3dv_get_internal_depth_type(att->desc.format);
       } else if (attachments[i].aspectMask & VK_IMAGE_ASPECT_COLOR_BIT) {
          color_attachments[color_attachment_count++] = attachments[i];
       }
@@ -1427,6 +1432,7 @@ emit_tlb_clear_job(struct v3dv_cmd_buffer *cmd_buffer,
       config.number_of_render_targets = MAX2(color_attachment_count, 1);
       config.multisample_mode_4x = false; /* FIXME */
       config.maximum_bpp_of_all_render_targets = tiling->internal_bpp;
+      config.internal_depth_type = internal_depth_type;
    }
 
    for (uint32_t i = 0; i < color_attachment_count; i++) {

@@ -1681,6 +1681,23 @@ v3dv_zs_buffer(bool depth, bool stencil)
    return NONE;
 }
 
+static inline uint8_t
+v3dv_get_internal_depth_type(VkFormat format)
+{
+   switch (format) {
+   case VK_FORMAT_D16_UNORM:
+      return V3D_INTERNAL_TYPE_DEPTH_16;
+   case VK_FORMAT_D32_SFLOAT:
+      return V3D_INTERNAL_TYPE_DEPTH_32F;
+   case VK_FORMAT_X8_D24_UNORM_PACK32:
+   case VK_FORMAT_D24_UNORM_S8_UINT:
+      return V3D_INTERNAL_TYPE_DEPTH_24;
+   default:
+      unreachable("Invalid depth format");
+      break;
+   }
+}
+
 uint32_t v3dv_physical_device_api_version(struct v3dv_physical_device *dev);
 uint32_t v3dv_physical_device_vendor_id(struct v3dv_physical_device *dev);
 uint32_t v3dv_physical_device_device_id(struct v3dv_physical_device *dev);
