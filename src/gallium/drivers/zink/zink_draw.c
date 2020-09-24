@@ -210,6 +210,7 @@ zink_draw_vbo(struct pipe_context *pctx,
    struct zink_context *ctx = zink_context(pctx);
    struct zink_screen *screen = zink_screen(pctx->screen);
    struct zink_rasterizer_state *rast_state = ctx->rast_state;
+   struct zink_depth_stencil_alpha_state *dsa_state = ctx->dsa_state;
    struct zink_so_target *so_target = zink_so_target(dinfo->count_from_stream_output);
    VkBuffer counter_buffers[PIPE_MAX_SO_OUTPUTS];
    VkDeviceSize counter_buffer_offsets[PIPE_MAX_SO_OUTPUTS] = {};
@@ -413,8 +414,17 @@ zink_draw_vbo(struct pipe_context *pctx,
          debug_printf("BUG: wide lines not supported, needs fallback!");
    }
 
-   vkCmdSetStencilReference(batch->cmdbuf, VK_STENCIL_FACE_FRONT_BIT, ctx->stencil_ref.ref_value[0]);
-   vkCmdSetStencilReference(batch->cmdbuf, VK_STENCIL_FACE_BACK_BIT, ctx->stencil_ref.ref_value[1]);
+   if (dsa_state->base.stencil[0].enabled) {
+      if (dsa_state->base.stencil[1].enabled) {
+         vkCmdSetStencilReference(batch->cmdbuf, VK_STENCIL_FACE_FRONT_BIT,
+                                  ctx->stencil_ref.ref_value[0]);
+         vkCmdSetStencilReference(batch->cmdbuf, VK_STENCIL_FACE_BACK_BIT,
+                                  ctx->stencil_ref.ref_value[1]);
+      } else
+         vkCmdSetStencilReference(batch->cmdbuf,
+                                  VK_STENCIL_FACE_FRONT_AND_BACK,
+                                  ctx->stencil_ref.ref_value[0]);
+   }
 
    if (depth_bias)
       vkCmdSetDepthBias(batch->cmdbuf, rast_state->offset_units, rast_state->offset_clamp, rast_state->offset_scale);
