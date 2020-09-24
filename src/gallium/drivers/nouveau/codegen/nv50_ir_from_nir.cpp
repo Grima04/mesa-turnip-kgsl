@@ -3206,6 +3206,12 @@ nvir_nir_shader_compiler_options(int chipset)
 {
    nir_shader_compiler_options op = {};
    op.lower_fdiv = (chipset >= NVISA_GV100_CHIPSET);
+   op.lower_ffma16 = false;
+   op.lower_ffma32 = false;
+   op.lower_ffma64 = false;
+   op.fuse_ffma16 = false; /* nir doesn't track mad vs fma */
+   op.fuse_ffma32 = false; /* nir doesn't track mad vs fma */
+   op.fuse_ffma64 = false; /* nir doesn't track mad vs fma */
    op.lower_flrp16 = (chipset >= NVISA_GV100_CHIPSET);
    op.lower_flrp32 = true;
    op.lower_flrp64 = true;
