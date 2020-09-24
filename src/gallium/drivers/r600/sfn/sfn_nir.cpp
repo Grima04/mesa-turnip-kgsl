@@ -699,7 +699,7 @@ r600_lower_shared_io(nir_shader *nir)
 }
 
 static bool
-optimize_once(nir_shader *shader)
+optimize_once(nir_shader *shader, bool vectorize)
 {
    bool progress = false;
    NIR_PASS(progress, shader, nir_copy_prop);
@@ -707,7 +707,8 @@ optimize_once(nir_shader *shader)
    NIR_PASS(progress, shader, nir_opt_algebraic);
    NIR_PASS(progress, shader, nir_opt_constant_folding);
    NIR_PASS(progress, shader, nir_opt_copy_prop_vars);
-   NIR_PASS(progress, shader, nir_opt_vectorize, NULL, NULL);
+   if (vectorize)
+      NIR_PASS(progress, shader, nir_opt_vectorize, NULL, NULL);
 
    NIR_PASS(progress, shader, nir_opt_remove_phis);
 
@@ -816,11 +817,9 @@ int r600_shader_from_nir(struct r600_context *rctx,
 
    NIR_PASS_V(sel->nir, nir_lower_ubo_vec4);
 
-   /* It seems the output of this optimization is cached somewhere, and
-    * when there are registers, then we can no longer copy propagate, so
-    * skip the optimization then. (There is probably a better way, but yeah)
-    */
-   while(optimize_once(sel->nir));
+   /* Lower to scalar to let some optimization work out better */
+   NIR_PASS_V(sel->nir, nir_lower_alu_to_scalar, NULL, NULL);
+   while(optimize_once(sel->nir, false));
 
    NIR_PASS_V(sel->nir, nir_remove_dead_variables, nir_var_shader_in, NULL);
    NIR_PASS_V(sel->nir, nir_remove_dead_variables,  nir_var_shader_out, NULL);
@@ -831,7 +830,7 @@ int r600_shader_from_nir(struct r600_context *rctx,
               40,
               r600_get_natural_size_align_bytes);
 
-   while (optimize_once(sel->nir));
+   while (optimize_once(sel->nir, true));
 
    auto sh = nir_shader_clone(sel->nir, sel->nir);
    NIR_PASS_V(sh, nir_opt_algebraic_late);
