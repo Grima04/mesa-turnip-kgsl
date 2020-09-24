@@ -312,7 +312,7 @@ loop_routing_start(struct routes *routing, nir_builder *b,
       printf("\n");
    }
 
-   struct routes *routing_backup = ralloc(mem_ctx, struct routes);
+   struct routes *routing_backup = rzalloc(mem_ctx, struct routes);
    *routing_backup = *routing;
    bool break_needed = false;
    bool continue_needed = false;
@@ -342,7 +342,7 @@ loop_routing_start(struct routes *routing, nir_builder *b,
    routing->loop_backup = routing_backup;
 
    if (break_needed) {
-      struct path_fork *fork = ralloc(mem_ctx, struct path_fork);
+      struct path_fork *fork = rzalloc(mem_ctx, struct path_fork);
       fork->is_var = true;
       fork->path_var = nir_local_variable_create(b->impl, glsl_bool_type(),
                                                  "path_break");
@@ -352,7 +352,7 @@ loop_routing_start(struct routes *routing, nir_builder *b,
       routing->brk.reachable = fork_reachable(fork);
    }
    if (continue_needed) {
-      struct path_fork *fork = ralloc(mem_ctx, struct path_fork);
+      struct path_fork *fork = rzalloc(mem_ctx, struct path_fork);
       fork->is_var = true;
       fork->path_var = nir_local_variable_create(b->impl, glsl_bool_type(),
                                                  "path_continue");
@@ -522,7 +522,7 @@ select_fork_recur(struct nir_block **blocks, unsigned start, unsigned end,
    if (start == end - 1)
       return NULL;
 
-   struct path_fork *fork = ralloc(mem_ctx, struct path_fork);
+   struct path_fork *fork = rzalloc(mem_ctx, struct path_fork);
    fork->is_var = need_var;
    if (need_var)
       fork->path_var = nir_local_variable_create(impl, glsl_bool_type(),
@@ -801,7 +801,7 @@ organize_levels(struct list_head *levels, struct set *children,
       routing->regular.fork = select_fork(routing->regular.reachable, impl,
                                           need_var, mem_ctx);
       if (level->skip_start) {
-         struct path_fork *fork = ralloc(mem_ctx, struct path_fork);
+         struct path_fork *fork = rzalloc(mem_ctx, struct path_fork);
          fork->is_var = need_var;
          if (need_var)
             fork->path_var = nir_local_variable_create(impl, glsl_bool_type(),
@@ -984,7 +984,7 @@ nir_lower_goto_ifs_impl(nir_function_impl *impl)
       exec_node_data(nir_cf_node, exec_list_get_head(&cf_list.list), node);
    nir_block *start_block = nir_cf_node_as_block(start_node);
 
-   struct routes *routing = ralloc(mem_ctx, struct routes);
+   struct routes *routing = rzalloc(mem_ctx, struct routes);
    *routing = (struct routes) {
       .outside = empty_set,
       .regular.reachable = end_set,
