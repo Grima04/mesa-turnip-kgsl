@@ -1681,14 +1681,16 @@ cmd_buffer_render_pass_emit_stores(struct v3dv_cmd_buffer *cmd_buffer,
          state->tile_aligned_render_area &&
          state->job->first_subpass == ds_attachment->first_subpass &&
          ds_attachment->desc.loadOp == VK_ATTACHMENT_LOAD_OP_CLEAR &&
-         !state->job->is_subpass_continue;
+         !state->job->is_subpass_continue &&
+         !subpass->do_depth_clear_with_draw;
 
       bool needs_stencil_clear =
          (aspects & VK_IMAGE_ASPECT_STENCIL_BIT) &&
          state->tile_aligned_render_area &&
          state->job->first_subpass == ds_attachment->first_subpass &&
          ds_attachment->desc.stencilLoadOp == VK_ATTACHMENT_LOAD_OP_CLEAR &&
-         !state->job->is_subpass_continue;
+         !state->job->is_subpass_continue &&
+         !subpass->do_stencil_clear_with_draw;
 
       /* Skip the last store if it is not required */
       bool needs_depth_store =
@@ -1703,10 +1705,9 @@ cmd_buffer_render_pass_emit_stores(struct v3dv_cmd_buffer *cmd_buffer,
           ds_attachment->desc.stencilStoreOp == VK_ATTACHMENT_STORE_OP_STORE ||
           !state->job->is_subpass_finish);
 
-      /* GFXH-1461/GFXH-1689: The per-buffer store command's clear
-       * buffer bit is broken for depth/stencil.  In addition, the
-       * clear packet's Z/S bit is broken, but the RTs bit ends up
-       * clearing Z/S.
+      /* GFXH-1689: The per-buffer store command's clear buffer bit is broken
+       * for depth/stencil.  In addition, the clear packet's Z/S bit is broken,
+       * but the RTs bit ends up clearing Z/S.
        *
        * So if we have to emit a clear of depth or stencil we don't use
        * per-buffer clears, not even for color, since we will have to emit
@@ -2148,36 +2149,57 @@ cmd_buffer_emit_subpass_clears(struct v3dv_cmd_buffer *cmd_buffer)
    const struct v3dv_render_pass *pass = state->pass;
    const struct v3dv_subpass *subpass = &pass->subpasses[state->subpass_idx];
 
-   uint32_t att_count = 0;
-   VkClearAttachment atts[V3D_MAX_DRAW_BUFFERS + 1]; /* 4 color + D/S */
-   for (uint32_t i = 0; i < subpass->color_count; i++) {
-      const uint32_t att_idx = subpass->color_attachments[i].attachment;
-      if (att_idx == VK_ATTACHMENT_UNUSED)
-         continue;
-
-      struct v3dv_render_pass_attachment *att = &pass->attachments[att_idx];
-      if (att->desc.loadOp != VK_ATTACHMENT_LOAD_OP_CLEAR)
-         continue;
-
-      if (state->subpass_idx != att->first_subpass)
-         continue;
-
-      atts[att_count].aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-      atts[att_count].colorAttachment = i;
-      atts[att_count].clearValue = state->attachments[att_idx].vk_clear_value;
-      att_count++;
+   /* We only need to emit subpass clears as draw calls when the render
+    * area is not aligned to tile boundaries or for GFXH-1461.
+    */
+   if (cmd_buffer->state.tile_aligned_render_area &&
+       !subpass->do_depth_clear_with_draw &&
+       !subpass->do_depth_clear_with_draw) {
+      return;
    }
 
+   uint32_t att_count = 0;
+   VkClearAttachment atts[V3D_MAX_DRAW_BUFFERS + 1]; /* 4 color + D/S */
+
+   /* We only need to emit subpass clears as draw calls for color attachments
+    * if the render area is not aligned to tile boundaries.
+    */
+   if (!cmd_buffer->state.tile_aligned_render_area) {
+      for (uint32_t i = 0; i < subpass->color_count; i++) {
+         const uint32_t att_idx = subpass->color_attachments[i].attachment;
+         if (att_idx == VK_ATTACHMENT_UNUSED)
+            continue;
+
+         struct v3dv_render_pass_attachment *att = &pass->attachments[att_idx];
+         if (att->desc.loadOp != VK_ATTACHMENT_LOAD_OP_CLEAR)
+            continue;
+
+         if (state->subpass_idx != att->first_subpass)
+            continue;
+
+         atts[att_count].aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+         atts[att_count].colorAttachment = i;
+         atts[att_count].clearValue = state->attachments[att_idx].vk_clear_value;
+         att_count++;
+      }
+   }
+
+   /* For D/S we may also need to emit a subpass clear for GFXH-1461 */
    const uint32_t ds_att_idx = subpass->ds_attachment.attachment;
    if (ds_att_idx != VK_ATTACHMENT_UNUSED) {
       struct v3dv_render_pass_attachment *att = &pass->attachments[ds_att_idx];
       if (state->subpass_idx == att->first_subpass) {
          VkImageAspectFlags aspects = vk_format_aspects(att->desc.format);
-         if (att->desc.loadOp != VK_ATTACHMENT_LOAD_OP_CLEAR)
+         if (att->desc.loadOp != VK_ATTACHMENT_LOAD_OP_CLEAR ||
+             (cmd_buffer->state.tile_aligned_render_area &&
+              !subpass->do_depth_clear_with_draw)) {
             aspects &= ~VK_IMAGE_ASPECT_DEPTH_BIT;
-         if (att->desc.stencilLoadOp != VK_ATTACHMENT_LOAD_OP_CLEAR)
+         }
+         if (att->desc.stencilLoadOp != VK_ATTACHMENT_LOAD_OP_CLEAR ||
+             (cmd_buffer->state.tile_aligned_render_area &&
+              !subpass->do_stencil_clear_with_draw)) {
             aspects &= ~VK_IMAGE_ASPECT_STENCIL_BIT;
-
+         }
          if (aspects) {
             atts[att_count].aspectMask = aspects;
             atts[att_count].colorAttachment = 0; /* Ignored */
@@ -2191,8 +2213,16 @@ cmd_buffer_emit_subpass_clears(struct v3dv_cmd_buffer *cmd_buffer)
    if (att_count == 0)
       return;
 
-   perf_debug("Render area doesn't match render pass granularity, falling back "
-              "to vkCmdClearAttachments for VK_ATTACHMENT_LOAD_OP_CLEAR.\n");
+   if (!cmd_buffer->state.tile_aligned_render_area) {
+      perf_debug("Render area doesn't match render pass granularity, falling "
+                 "back to vkCmdClearAttachments for "
+                 "VK_ATTACHMENT_LOAD_OP_CLEAR.\n");
+   } else if (subpass->do_depth_clear_with_draw ||
+              subpass->do_stencil_clear_with_draw) {
+      perf_debug("Subpass clears DEPTH but loads STENCIL (or viceversa), "
+                 "falling back to vkCmdClearAttachments for "
+                 "VK_ATTACHMENT_LOAD_OP_CLEAR.\n");
+   }
 
    /* From the Vulkan 1.0 spec:
     *
@@ -2284,7 +2314,8 @@ v3dv_cmd_buffer_subpass_start(struct v3dv_cmd_buffer *cmd_buffer,
    cmd_buffer_update_tile_alignment(cmd_buffer);
 
    /* If we can't use TLB clears then we need to emit draw clears for any
-    * LOAD_OP_CLEAR attachments in this subpass now.
+    * LOAD_OP_CLEAR attachments in this subpass now. We might also need to emit
+    * Depth/Stencil clears if we hit GFXH-1461.
     *
     * Secondary command buffers don't start subpasses (and may not even have
     * framebuffer state), so we only care about this in primaries. The only
@@ -2293,10 +2324,8 @@ v3dv_cmd_buffer_subpass_start(struct v3dv_cmd_buffer *cmd_buffer,
     * attachment load clears, but we don't have any instances of that right
     * now.
     */
-   if (cmd_buffer->level == VK_COMMAND_BUFFER_LEVEL_PRIMARY &&
-       !cmd_buffer->state.tile_aligned_render_area) {
+   if (cmd_buffer->level == VK_COMMAND_BUFFER_LEVEL_PRIMARY)
       cmd_buffer_emit_subpass_clears(cmd_buffer);
-   }
 
    return job;
 }

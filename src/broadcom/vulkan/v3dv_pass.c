@@ -206,6 +206,26 @@ v3dv_CreateRenderPass(VkDevice _device,
             .attachment = desc->pDepthStencilAttachment->attachment,
             .layout = desc->pDepthStencilAttachment->layout,
          };
+
+         /* GFXH-1461: if depth is cleared but stencil is loaded (or viceversa),
+          * the clear might get lost. If a subpass has this then we can't emit
+          * the clear using the TLB and we have to do it as a draw call.
+          *
+          * FIXME: separate stencil.
+          */
+         if (subpass->ds_attachment.attachment != VK_ATTACHMENT_UNUSED) {
+            struct v3dv_render_pass_attachment *att =
+               &pass->attachments[subpass->ds_attachment.attachment];
+            if (att->desc.format == VK_FORMAT_D24_UNORM_S8_UINT) {
+               if (att->desc.loadOp == VK_ATTACHMENT_LOAD_OP_CLEAR &&
+                   att->desc.stencilLoadOp == VK_ATTACHMENT_LOAD_OP_LOAD) {
+                  subpass->do_depth_clear_with_draw = true;
+               } else if (att->desc.loadOp == VK_ATTACHMENT_LOAD_OP_LOAD &&
+                          att->desc.stencilLoadOp == VK_ATTACHMENT_LOAD_OP_CLEAR) {
+                  subpass->do_stencil_clear_with_draw = true;
+               }
+            }
+         }
       } else {
          subpass->ds_attachment.attachment = VK_ATTACHMENT_UNUSED;
       }
