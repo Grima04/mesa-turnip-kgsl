@@ -104,7 +104,7 @@ pandecode_inject_mmap(uint64_t gpu_va, void *cpu, unsigned sz, const char *name)
         /* Otherwise, add a fresh mapping */
         struct pandecode_mapped_memory *mapped_mem = NULL;
 
-        mapped_mem = malloc(sizeof(*mapped_mem));
+        mapped_mem = calloc(1, sizeof(*mapped_mem));
         mapped_mem->gpu_va = gpu_va;
         mapped_mem->length = sz;
         mapped_mem->addr = cpu;
