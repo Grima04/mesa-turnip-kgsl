@@ -1462,6 +1462,11 @@ gen_get_device_info_from_fd(int fd, struct gen_device_info *devinfo)
       devinfo->no_hw = false;
    }
 
+   if (devinfo->gen == 10) {
+      fprintf(stderr, "Gen10 support is redacted.\n");
+      return false;
+   }
+
    /* remaining initializion queries the kernel for device info */
    if (devinfo->no_hw)
       return true;
