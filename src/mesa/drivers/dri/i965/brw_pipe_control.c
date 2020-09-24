@@ -166,7 +166,7 @@ gen7_emit_vs_workaround_flush(struct brw_context *brw)
  * so that it doesn't hang a previous 3DPRIMITIVE.
  */
 void
-gen10_emit_isp_disable(struct brw_context *brw)
+gen7_emit_isp_disable(struct brw_context *brw)
 {
    brw->vtbl.emit_raw_pipe_control(brw,
                                    PIPE_CONTROL_STALL_AT_SCOREBOARD |

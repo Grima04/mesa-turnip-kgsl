@@ -644,7 +644,7 @@ brw_finish_batch(struct brw_context *brw)
 
    /* Do not restore push constant packets during context restore. */
    if (devinfo->gen >= 7)
-      gen10_emit_isp_disable(brw);
+      gen7_emit_isp_disable(brw);
 
    /* Emit MI_BATCH_BUFFER_END to finish our batch.  Note that execbuf2
     * requires our batch size to be QWord aligned, so we pad it out if
