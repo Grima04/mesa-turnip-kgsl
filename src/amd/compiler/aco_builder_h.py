@@ -166,6 +166,8 @@ public:
       s_bcnt1_i32 = (unsigned) aco_opcode::s_bcnt1_i32_b64,
       s_bitcmp1 = (unsigned) aco_opcode::s_bitcmp1_b64,
       s_ff1_i32 = (unsigned) aco_opcode::s_ff1_i32_b64,
+      s_flbit_i32 = (unsigned) aco_opcode::s_flbit_i32_b64,
+      s_lshl = (unsigned) aco_opcode::s_lshl_b64,
    };
 
    Program *program;
@@ -309,6 +311,10 @@ public:
          return aco_opcode::s_bitcmp1_b32;
       case s_ff1_i32:
          return aco_opcode::s_ff1_i32_b32;
+      case s_flbit_i32:
+         return aco_opcode::s_flbit_i32_b32;
+      case s_lshl:
+         return aco_opcode::s_lshl_b32;
       default:
          unreachable("Unsupported wave specific opcode.");
       }
