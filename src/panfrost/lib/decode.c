@@ -589,7 +589,7 @@ pandecode_shader_address(const char *name, mali_ptr ptr)
 
 /* Decodes a Bifrost blend constant. See the notes in bifrost_blend_rt */
 
-static unsigned
+static float
 decode_bifrost_constant(u16 constant)
 {
         float lo = (float) (constant & 0xFF);
