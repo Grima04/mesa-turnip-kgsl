@@ -470,16 +470,6 @@ setup_vs_output_info(isel_context *ctx, nir_shader *nir,
 void
 setup_vs_variables(isel_context *ctx, nir_shader *nir)
 {
-   nir_foreach_shader_in_variable(variable, nir)
-   {
-      variable->data.driver_location = variable->data.location;
-   }
-   nir_foreach_shader_out_variable(variable, nir)
-   {
-      if (ctx->stage == vertex_vs || ctx->stage == ngg_vertex_gs)
-         variable->data.driver_location = variable->data.location;
-   }
-
    if (ctx->stage == vertex_vs || ctx->stage == ngg_vertex_gs) {
       radv_vs_output_info *outinfo = &ctx->program->info->vs.outinfo;
       setup_vs_output_info(ctx, nir, outinfo->export_prim_id,
@@ -500,10 +490,6 @@ void setup_gs_variables(isel_context *ctx, nir_shader *nir)
 {
    if (ctx->stage == vertex_geometry_gs || ctx->stage == tess_eval_geometry_gs)
       ctx->program->config->lds_size = ctx->program->info->gs_ring_info.lds_size; /* Already in units of the alloc granularity */
-
-   nir_foreach_shader_out_variable(variable, nir) {
-      variable->data.driver_location = variable->data.location;
-   }
 
    if (ctx->stage == vertex_geometry_gs)
       ctx->program->info->gs.es_type = MESA_SHADER_VERTEX;
@@ -568,11 +554,6 @@ setup_tes_variables(isel_context *ctx, nir_shader *nir)
    ctx->tcs_num_patches = ctx->args->options->key.tes.num_patches;
    ctx->tcs_num_outputs = ctx->program->info->tes.num_linked_inputs;
 
-   nir_foreach_shader_out_variable(variable, nir) {
-      if (ctx->stage == tess_eval_vs || ctx->stage == ngg_tess_eval_gs)
-         variable->data.driver_location = variable->data.location;
-   }
-
    if (ctx->stage == tess_eval_vs || ctx->stage == ngg_tess_eval_gs) {
       radv_vs_output_info *outinfo = &ctx->program->info->tes.outinfo;
       setup_vs_output_info(ctx, nir, outinfo->export_prim_id,
@@ -585,11 +566,6 @@ setup_variables(isel_context *ctx, nir_shader *nir)
 {
    switch (nir->info.stage) {
    case MESA_SHADER_FRAGMENT: {
-      nir_foreach_shader_out_variable(variable, nir)
-      {
-         int idx = variable->data.location + variable->data.index;
-         variable->data.driver_location = idx;
-      }
       break;
    }
    case MESA_SHADER_COMPUTE: {

@@ -2263,22 +2263,33 @@ radv_link_shaders(struct radv_pipeline *pipeline, nir_shader **shaders)
 }
 
 static void
-radv_set_linked_driver_locations(struct radv_pipeline *pipeline, nir_shader **shaders,
-                                 struct radv_shader_info infos[MESA_SHADER_STAGES])
+radv_set_driver_locations(struct radv_pipeline *pipeline, nir_shader **shaders,
+                              struct radv_shader_info infos[MESA_SHADER_STAGES])
 {
-	bool has_tess = shaders[MESA_SHADER_TESS_CTRL];
-	bool has_gs = shaders[MESA_SHADER_GEOMETRY];
+	if (shaders[MESA_SHADER_FRAGMENT]) {
+		nir_foreach_shader_out_variable(var, shaders[MESA_SHADER_FRAGMENT])
+		{
+			var->data.driver_location = var->data.location + var->data.index;
+		}
+	}
 
-	if (!has_tess && !has_gs)
+	if (!shaders[MESA_SHADER_VERTEX])
 		return;
 
+	bool has_tess = shaders[MESA_SHADER_TESS_CTRL];
+	bool has_gs = shaders[MESA_SHADER_GEOMETRY];
 	unsigned vs_info_idx = MESA_SHADER_VERTEX;
 	unsigned tes_info_idx = MESA_SHADER_TESS_EVAL;
+	unsigned last_vtg_stage = MESA_SHADER_VERTEX;
 
 	if (pipeline->device->physical_device->rad_info.chip_class >= GFX9) {
 		/* These are merged into the next stage */
 		vs_info_idx = has_tess ? MESA_SHADER_TESS_CTRL : MESA_SHADER_GEOMETRY;
 		tes_info_idx = has_gs ? MESA_SHADER_GEOMETRY : MESA_SHADER_TESS_EVAL;
+	}
+
+	nir_foreach_shader_in_variable(var, shaders[MESA_SHADER_VERTEX]) {
+		var->data.driver_location = var->data.location;
 	}
 
 	if (has_tess) {
@@ -2300,6 +2311,9 @@ radv_set_linked_driver_locations(struct radv_pipeline *pipeline, nir_shader **sh
 
 			infos[tes_info_idx].tes.num_linked_outputs = tes2gs.num_linked_io_vars;
 			infos[MESA_SHADER_GEOMETRY].gs.num_linked_inputs = tes2gs.num_linked_io_vars;
+			last_vtg_stage = MESA_SHADER_GEOMETRY;
+		} else {
+			last_vtg_stage = MESA_SHADER_TESS_EVAL;
 		}
 	} else if (has_gs) {
 		nir_linked_io_var_info vs2gs =
@@ -2307,6 +2321,11 @@ radv_set_linked_driver_locations(struct radv_pipeline *pipeline, nir_shader **sh
 
 		infos[vs_info_idx].vs.num_linked_outputs = vs2gs.num_linked_io_vars;
 		infos[MESA_SHADER_GEOMETRY].gs.num_linked_inputs = vs2gs.num_linked_io_vars;
+		last_vtg_stage = MESA_SHADER_GEOMETRY;
+	}
+
+	nir_foreach_shader_out_variable(var, shaders[last_vtg_stage]) {
+		var->data.driver_location = var->data.location;
 	}
 }
 
@@ -2937,7 +2956,7 @@ VkResult radv_create_shaders(struct radv_pipeline *pipeline,
 	if (!(flags & VK_PIPELINE_CREATE_DISABLE_OPTIMIZATION_BIT))
 		radv_link_shaders(pipeline, nir);
 
-	radv_set_linked_driver_locations(pipeline, nir, infos);
+	radv_set_driver_locations(pipeline, nir, infos);
 
 	for (int i = 0; i < MESA_SHADER_STAGES; ++i) {
 		if (nir[i]) {
@@ -4653,10 +4672,10 @@ radv_pipeline_generate_vgt_shader_config(struct radeon_cmdbuf *ctx_cs,
 			vs_size = pipeline->shaders[MESA_SHADER_TESS_EVAL]->info.wave_size;
 		else if (pipeline->shaders[MESA_SHADER_VERTEX])
 			vs_size = pipeline->shaders[MESA_SHADER_VERTEX]->info.wave_size;
-		
+
 		if (radv_pipeline_has_ngg(pipeline))
 			gs_size = vs_size;
-			
+
 		/* legacy GS only supports Wave64 */
 		stages |= S_028B54_HS_W32_EN(hs_size == 32 ? 1 : 0) |
 			  S_028B54_GS_W32_EN(gs_size == 32 ? 1 : 0) |
@@ -5237,7 +5256,7 @@ static uint32_t radv_get_executable_count(const struct radv_pipeline *pipeline)
 		} else {
 			ret += 1u;
 		}
-		
+
 	}
 	return ret;
 }
