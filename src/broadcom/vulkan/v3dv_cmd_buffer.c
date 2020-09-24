@@ -1502,6 +1502,17 @@ cmd_buffer_render_pass_emit_load(struct v3dv_cmd_buffer *cmd_buffer,
    }
 }
 
+static bool
+check_needs_load(const struct v3dv_cmd_buffer_state *state,
+                 uint32_t att_first_subpass_idx,
+                 VkAttachmentLoadOp load_op)
+{
+   return state->job->first_subpass > att_first_subpass_idx ||
+          state->job->is_subpass_continue ||
+          load_op == VK_ATTACHMENT_LOAD_OP_LOAD ||
+          !state->tile_aligned_render_area;
+}
+
 static void
 cmd_buffer_render_pass_emit_loads(struct v3dv_cmd_buffer *cmd_buffer,
                                   struct v3dv_cl *cl,
@@ -1539,13 +1550,9 @@ cmd_buffer_render_pass_emit_loads(struct v3dv_cmd_buffer *cmd_buffer,
        * load the tiles so we can preserve the pixels that are outside the
        * render area for any such tiles.
        */
-      assert(state->job->first_subpass >= attachment->first_subpass);
-      bool needs_load =
-         state->job->first_subpass > attachment->first_subpass ||
-         state->job->is_subpass_continue ||
-         attachment->desc.loadOp == VK_ATTACHMENT_LOAD_OP_LOAD ||
-         !state->tile_aligned_render_area;
-
+      bool needs_load = check_needs_load(state,
+                                         attachment->first_subpass,
+                                         attachment->desc.loadOp);
       if (needs_load) {
          struct v3dv_image_view *iview = framebuffer->attachments[attachment_idx];
          cmd_buffer_render_pass_emit_load(cmd_buffer, cl, iview,
@@ -1558,21 +1565,15 @@ cmd_buffer_render_pass_emit_loads(struct v3dv_cmd_buffer *cmd_buffer,
       const struct v3dv_render_pass_attachment *ds_attachment =
          &state->pass->attachments[ds_attachment_idx];
 
-      assert(state->job->first_subpass >= ds_attachment->first_subpass);
-      const bool might_need_load =
-         state->job->first_subpass > ds_attachment->first_subpass ||
-         state->job->is_subpass_continue ||
-         !state->tile_aligned_render_area;
-
       const bool needs_depth_load =
          vk_format_has_depth(ds_attachment->desc.format) &&
-         (ds_attachment->desc.loadOp == VK_ATTACHMENT_LOAD_OP_LOAD ||
-          might_need_load);
+         check_needs_load(state, ds_attachment->first_subpass,
+                          ds_attachment->desc.loadOp);
 
       const bool needs_stencil_load =
          vk_format_has_stencil(ds_attachment->desc.format) &&
-         (ds_attachment->desc.stencilLoadOp == VK_ATTACHMENT_LOAD_OP_LOAD ||
-          might_need_load);
+         check_needs_load(state, ds_attachment->first_subpass,
+                          ds_attachment->desc.stencilLoadOp);
 
       if (needs_depth_load || needs_stencil_load) {
          struct v3dv_image_view *iview =
@@ -1960,6 +1961,9 @@ cmd_buffer_emit_render_pass_layer_rcl(struct v3dv_cmd_buffer *cmd_buffer,
 
 static void
 set_rcl_early_z_config(struct v3dv_job *job,
+                       uint32_t fb_width,
+                       uint32_t fb_height,
+                       bool needs_depth_load,
                        bool *early_z_disable,
                        uint32_t *early_z_test_and_update_direction)
 {
@@ -1976,6 +1980,16 @@ set_rcl_early_z_config(struct v3dv_job *job,
    case VC5_EZ_DISABLED:
       *early_z_disable = true;
       break;
+   }
+
+   /* GFXH-1918: the early-z buffer may load incorrect depth values
+    * if the frame has odd width or height.
+    */
+   if (*early_z_disable == false && needs_depth_load &&
+       ((fb_width % 2) != 0 || (fb_height % 2) != 0)) {
+      perf_debug("Loading depth aspect for framebuffer with odd width "
+                 "or height disables early-Z tests.\n");
+      *early_z_disable = true;
    }
 }
 
@@ -2007,8 +2021,8 @@ cmd_buffer_emit_render_pass_rcl(struct v3dv_cmd_buffer *cmd_buffer)
    v3dv_return_if_oom(cmd_buffer, NULL);
 
    assert(state->subpass_idx < state->pass->subpass_count);
-   const struct v3dv_subpass *subpass =
-      &state->pass->subpasses[state->subpass_idx];
+   const struct v3dv_render_pass *pass = state->pass;
+   const struct v3dv_subpass *subpass = &pass->subpasses[state->subpass_idx];
 
    struct v3dv_cl *rcl = &job->rcl;
 
@@ -2029,11 +2043,21 @@ cmd_buffer_emit_render_pass_rcl(struct v3dv_cmd_buffer *cmd_buffer)
          const struct v3dv_image_view *iview =
             framebuffer->attachments[ds_attachment_idx];
          config.internal_depth_type = iview->internal_type;
-      }
 
-      set_rcl_early_z_config(job,
-                             &config.early_z_disable,
-                             &config.early_z_test_and_update_direction);
+         bool needs_depth_load =
+            check_needs_load(state,
+                             pass->attachments[ds_attachment_idx].first_subpass,
+                             pass->attachments[ds_attachment_idx].desc.loadOp);
+
+         set_rcl_early_z_config(job,
+                                framebuffer->width,
+                                framebuffer->height,
+                                needs_depth_load,
+                                &config.early_z_disable,
+                                &config.early_z_test_and_update_direction);
+      } else {
+         config.early_z_disable = true;
+      }
    }
 
    for (uint32_t i = 0; i < subpass->color_count; i++) {
