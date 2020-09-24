@@ -472,6 +472,9 @@ clone_phi(clone_state *state, const nir_phi_instr *phi, nir_block *nblk)
 static nir_jump_instr *
 clone_jump(clone_state *state, const nir_jump_instr *jmp)
 {
+   /* These aren't handled because they require special block linking */
+   assert(jmp->type != nir_jump_goto && jmp->type != nir_jump_goto_if);
+
    nir_jump_instr *njmp = nir_jump_instr_create(state->ns, jmp->type);
 
    return njmp;

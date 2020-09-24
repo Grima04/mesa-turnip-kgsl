@@ -1636,6 +1636,9 @@ read_fixup_phis(read_ctx *ctx)
 static void
 write_jump(write_ctx *ctx, const nir_jump_instr *jmp)
 {
+   /* These aren't handled because they require special block linking */
+   assert(jmp->type != nir_jump_goto && jmp->type != nir_jump_goto_if);
+
    assert(jmp->type < 4);
 
    union packed_instr header;
@@ -1650,6 +1653,10 @@ write_jump(write_ctx *ctx, const nir_jump_instr *jmp)
 static nir_jump_instr *
 read_jump(read_ctx *ctx, union packed_instr header)
 {
+   /* These aren't handled because they require special block linking */
+   assert(header.jump.type != nir_jump_goto &&
+          header.jump.type != nir_jump_goto_if);
+
    nir_jump_instr *jmp = nir_jump_instr_create(ctx->nir, header.jump.type);
    return jmp;
 }
