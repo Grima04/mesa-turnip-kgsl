@@ -696,23 +696,34 @@ zink_program_allocate_desc_set(struct zink_context *ctx,
    }
 
    VkDescriptorSetAllocateInfo dsai;
+#define DESC_BUCKET_SIZE 10
+   VkDescriptorSetLayout layouts[DESC_BUCKET_SIZE];
    memset((void *)&dsai, 0, sizeof(dsai));
    dsai.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
    dsai.pNext = NULL;
    dsai.descriptorPool = pg->descpool;
-   dsai.descriptorSetCount = 1;
-   dsai.pSetLayouts = &pg->dsl;
+   dsai.descriptorSetCount = DESC_BUCKET_SIZE;
+   for (unsigned i = 0; i < DESC_BUCKET_SIZE; i ++)
+      layouts[i] = pg->dsl;
+   dsai.pSetLayouts = layouts;
 
-   VkDescriptorSet desc_set;
-   if (vkAllocateDescriptorSets(screen->dev, &dsai, &desc_set) != VK_SUCCESS) {
+   VkDescriptorSet desc_set[DESC_BUCKET_SIZE] = {};
+   if (vkAllocateDescriptorSets(screen->dev, &dsai, desc_set) != VK_SUCCESS) {
       debug_printf("ZINK: %p failed to allocate descriptor set :/\n", pg);
       return VK_NULL_HANDLE;
    }
-   zds = ralloc_size(NULL, sizeof(struct zink_descriptor_set));
-   assert(zds);
-   pipe_reference_init(&zds->reference, 1);
-   zds->desc_set = desc_set;
-   pg->descs_used++;
+
+   struct zink_descriptor_set *alloc = ralloc_array(pg, struct zink_descriptor_set, DESC_BUCKET_SIZE);
+   assert(alloc);
+   for (unsigned i = 0; i < DESC_BUCKET_SIZE; i ++) {
+      zds = &alloc[i];
+      pipe_reference_init(&zds->reference, 1);
+      zds->desc_set = desc_set[i];
+      if (i > 0)
+         util_dynarray_append(&pg->alloc_desc_sets, struct zink_descriptor_set *, zds);
+   }
+   pg->descs_used += DESC_BUCKET_SIZE;
+   zds = alloc;
 out:
    if (zink_batch_add_desc_set(batch, pg, zds))
       batch->descs_used += pg->num_descriptors;
