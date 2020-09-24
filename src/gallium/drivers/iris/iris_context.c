@@ -221,9 +221,6 @@ iris_destroy_context(struct pipe_context *ctx)
    case 11:                                       \
       gen11_##func(__VA_ARGS__);                  \
       break;                                      \
-   case 10:                                       \
-      gen10_##func(__VA_ARGS__);                  \
-      break;                                      \
    case 9:                                        \
       gen9_##func(__VA_ARGS__);                   \
       break;                                      \
