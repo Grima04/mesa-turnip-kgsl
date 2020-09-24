@@ -89,6 +89,7 @@ struct zink_context {
 
    struct zink_vertex_elements_state *element_state;
    struct zink_rasterizer_state *rast_state;
+   struct zink_depth_stencil_alpha_state *dsa_state;
 
    struct zink_shader *gfx_stages[ZINK_SHADER_COUNT];
    struct zink_gfx_pipeline_state gfx_pipeline_state;

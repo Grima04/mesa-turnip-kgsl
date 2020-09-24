@@ -334,28 +334,30 @@ zink_create_depth_stencil_alpha_state(struct pipe_context *pctx,
    if (!cso)
       return NULL;
 
+   cso->base = *depth_stencil_alpha;
+
    if (depth_stencil_alpha->depth.enabled) {
-      cso->depth_test = VK_TRUE;
-      cso->depth_compare_op = compare_op(depth_stencil_alpha->depth.func);
+      cso->hw_state.depth_test = VK_TRUE;
+      cso->hw_state.depth_compare_op = compare_op(depth_stencil_alpha->depth.func);
    }
 
    if (depth_stencil_alpha->depth.bounds_test) {
-      cso->depth_bounds_test = VK_TRUE;
-      cso->min_depth_bounds = depth_stencil_alpha->depth.bounds_min;
-      cso->max_depth_bounds = depth_stencil_alpha->depth.bounds_max;
+      cso->hw_state.depth_bounds_test = VK_TRUE;
+      cso->hw_state.min_depth_bounds = depth_stencil_alpha->depth.bounds_min;
+      cso->hw_state.max_depth_bounds = depth_stencil_alpha->depth.bounds_max;
    }
 
    if (depth_stencil_alpha->stencil[0].enabled) {
-      cso->stencil_test = VK_TRUE;
-      cso->stencil_front = stencil_op_state(depth_stencil_alpha->stencil);
+      cso->hw_state.stencil_test = VK_TRUE;
+      cso->hw_state.stencil_front = stencil_op_state(depth_stencil_alpha->stencil);
    }
 
    if (depth_stencil_alpha->stencil[1].enabled)
-      cso->stencil_back = stencil_op_state(depth_stencil_alpha->stencil + 1);
+      cso->hw_state.stencil_back = stencil_op_state(depth_stencil_alpha->stencil + 1);
    else
-      cso->stencil_back = cso->stencil_front;
+      cso->hw_state.stencil_back = cso->hw_state.stencil_front;
 
-   cso->depth_write = depth_stencil_alpha->depth.writemask;
+   cso->hw_state.depth_write = depth_stencil_alpha->depth.writemask;
 
    return cso;
 }
@@ -363,11 +365,16 @@ zink_create_depth_stencil_alpha_state(struct pipe_context *pctx,
 static void
 zink_bind_depth_stencil_alpha_state(struct pipe_context *pctx, void *cso)
 {
-   struct zink_gfx_pipeline_state* state = &zink_context(pctx)->gfx_pipeline_state;
+   struct zink_context *ctx = zink_context(pctx);
 
-   if (state->depth_stencil_alpha_state != cso) {
-      state->depth_stencil_alpha_state = cso;
-      state->hash = 0;
+   ctx->dsa_state = cso;
+
+   if (cso) {
+      struct zink_gfx_pipeline_state *state = &ctx->gfx_pipeline_state;
+      if (state->depth_stencil_alpha_state != &ctx->dsa_state->hw_state) {
+         state->depth_stencil_alpha_state = &ctx->dsa_state->hw_state;
+         state->hash = 0;
+      }
    }
 }
 

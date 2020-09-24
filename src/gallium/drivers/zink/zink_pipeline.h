@@ -49,7 +49,7 @@ struct zink_gfx_pipeline_state {
 
    struct zink_rasterizer_hw_state *rast_state;
 
-   struct zink_depth_stencil_alpha_state *depth_stencil_alpha_state;
+   struct zink_depth_stencil_alpha_hw_state *depth_stencil_alpha_state;
 
    VkSampleMask sample_mask;
    uint8_t rast_samples;

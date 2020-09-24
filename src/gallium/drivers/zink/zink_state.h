@@ -71,7 +71,7 @@ struct zink_blend_state {
    bool need_blend_constants;
 };
 
-struct zink_depth_stencil_alpha_state {
+struct zink_depth_stencil_alpha_hw_state {
    VkBool32 depth_test;
    VkCompareOp depth_compare_op;
 
@@ -83,6 +83,11 @@ struct zink_depth_stencil_alpha_state {
    VkStencilOpState stencil_back;
 
    VkBool32 depth_write;
+};
+
+struct zink_depth_stencil_alpha_state {
+   struct pipe_depth_stencil_alpha_state base;
+   struct zink_depth_stencil_alpha_hw_state hw_state;
 };
 
 void
