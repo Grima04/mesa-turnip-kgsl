@@ -820,16 +820,20 @@ bool EmitTexInstruction::emit_tex_txf_ms(nir_tex_instr* instr, TexInputs& src)
 
    emit_instruction(tex_sample_id_ir);
 
-   emit_instruction(new AluInstruction(op2_mullo_int, help,
-                                       {src.ms_index, PValue(new LiteralValue(4))},
-                                       {alu_write, alu_last_instr}));
 
-   emit_instruction(new AluInstruction(op2_lshr_int, src.coord.reg_i(3),
-                                       {sample_id_dest.reg_i(0), help},
-                                       {alu_write, alu_last_instr}));
+   if (src.ms_index->type() != Value::literal ||
+       static_cast<const LiteralValue&>(*src.ms_index).value() != 0) {
+      emit_instruction(new AluInstruction(op2_lshl_int, help,
+                                          src.ms_index, literal(2),
+      {alu_write, alu_last_instr}));
+
+      emit_instruction(new AluInstruction(op2_lshr_int, sample_id_dest.reg_i(0),
+                                          {sample_id_dest.reg_i(0), help},
+                                          {alu_write, alu_last_instr}));
+   }
 
    emit_instruction(new AluInstruction(op2_and_int, src.coord.reg_i(3),
-                                       {src.coord.reg_i(3), PValue(new LiteralValue(15))},
+                                       {sample_id_dest.reg_i(0), PValue(new LiteralValue(15))},
                                        {alu_write, alu_last_instr}));
 
    auto dst = make_dest(*instr);
