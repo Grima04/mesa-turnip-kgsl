@@ -402,7 +402,7 @@ pinned_bo_high_bits(struct brw_bo *bo)
  * This HW issue is gone on Gen11+.
  */
 static void
-vf_invalidate_for_vb_48bit_transitions(struct brw_context *brw)
+vf_invalidate_for_vb_48bit_transitions(UNUSED struct brw_context *brw)
 {
 #if GEN_GEN >= 8 && GEN_GEN < 11
    bool need_invalidate = false;
@@ -441,7 +441,7 @@ vf_invalidate_for_vb_48bit_transitions(struct brw_context *brw)
 }
 
 static void
-vf_invalidate_for_ib_48bit_transition(struct brw_context *brw)
+vf_invalidate_for_ib_48bit_transition(UNUSED struct brw_context *brw)
 {
 #if GEN_GEN >= 8
    uint16_t high_bits = pinned_bo_high_bits(brw->ib.bo);
@@ -4948,7 +4948,8 @@ has_component(mesa_format format, int i)
 static void
 genX(upload_default_color)(struct brw_context *brw,
                            const struct gl_sampler_object *sampler,
-                           mesa_format format, GLenum base_format,
+                           UNUSED mesa_format format,
+                           GLenum base_format,
                            bool is_integer_format, bool is_stencil_sampling,
                            uint32_t *sdc_offset)
 {
