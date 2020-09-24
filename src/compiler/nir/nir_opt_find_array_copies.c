@@ -191,6 +191,17 @@ node_for_path_with_wildcard(nir_deref_path *path, unsigned wildcard_idx,
 typedef void (*match_cb)(struct match_node *, struct match_state *);
 
 static void
+_foreach_child(match_cb cb, struct match_node *node, struct match_state *state)
+{
+   if (node->num_children == 0) {
+      cb(node, state);
+   } else {
+      for (unsigned i = 0; i < node->num_children; i++)
+         _foreach_child(cb, node->children[i], state);
+   }
+}
+
+static void
 _foreach_aliasing(nir_deref_instr **deref, match_cb cb,
                   struct match_node *node, struct match_state *state)
 {
@@ -233,19 +244,12 @@ _foreach_aliasing(nir_deref_instr **deref, match_cb cb,
       return;
    }
 
+   case nir_deref_type_cast:
+      _foreach_child(cb, node, state);
+      return;
+
    default:
       unreachable("bad deref type");
-   }
-}
-
-static void
-_foreach_child(match_cb cb, struct match_node *node, struct match_state *state)
-{
-   if (node->num_children == 0) {
-      cb(node, state);
-   } else {
-      for (unsigned i = 0; i < node->num_children; i++)
-         _foreach_child(cb, node->children[i], state);
    }
 }
 
