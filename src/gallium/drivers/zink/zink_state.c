@@ -350,7 +350,7 @@ zink_create_depth_stencil_alpha_state(struct pipe_context *pctx,
       cso->stencil_front = stencil_op_state(depth_stencil_alpha->stencil);
    }
 
-   if (depth_stencil_alpha->stencil[0].enabled)
+   if (depth_stencil_alpha->stencil[1].enabled)
       cso->stencil_back = stencil_op_state(depth_stencil_alpha->stencil + 1);
    else
       cso->stencil_back = cso->stencil_front;
