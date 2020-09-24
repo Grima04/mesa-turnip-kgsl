@@ -172,6 +172,8 @@ tu_spirv_to_nir(struct tu_device *dev,
    NIR_PASS_V(nir, nir_lower_system_values);
    NIR_PASS_V(nir, nir_lower_compute_system_values, NULL);
 
+   NIR_PASS_V(nir, nir_lower_clip_cull_distance_arrays);
+
    NIR_PASS_V(nir, nir_lower_frexp);
 
    ir3_optimize_loop(nir);
