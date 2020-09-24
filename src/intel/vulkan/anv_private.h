@@ -4600,9 +4600,6 @@ VK_DEFINE_NONDISP_HANDLE_CASTS(anv_performance_configuration_intel, base,
 #  define genX(x) gen9_##x
 #  include "anv_genX.h"
 #  undef genX
-#  define genX(x) gen10_##x
-#  include "anv_genX.h"
-#  undef genX
 #  define genX(x) gen11_##x
 #  include "anv_genX.h"
 #  undef genX

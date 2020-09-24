@@ -110,9 +110,6 @@ anv_device_init_blorp(struct anv_device *device)
    case 9:
       device->blorp.exec = gen9_blorp_exec;
       break;
-   case 10:
-      device->blorp.exec = gen10_blorp_exec;
-      break;
    case 11:
       device->blorp.exec = gen11_blorp_exec;
       break;
