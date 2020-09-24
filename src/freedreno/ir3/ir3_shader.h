@@ -653,6 +653,8 @@ struct ir3_shader_variant {
 	/* Are we using split or merged register file? */
 	bool mergedregs;
 
+	uint8_t clip_mask, cull_mask;
+
 	/* for astc srgb workaround, the number/base of additional
 	 * alpha tex states we need, and index of original tex states
 	 */
@@ -863,6 +865,9 @@ struct ir3_shader_linkage {
 
 	/* location for fixed-function gl_ViewIndex passthrough */
 	uint8_t viewid_loc;
+
+	/* location for combined clip/cull distance arrays */
+	uint8_t clip0_loc, clip1_loc;
 };
 
 static inline void
@@ -904,6 +909,8 @@ ir3_link_shaders(struct ir3_shader_linkage *l,
 
 	l->primid_loc = 0xff;
 	l->viewid_loc = 0xff;
+	l->clip0_loc = 0xff;
+	l->clip1_loc = 0xff;
 
 	while (l->cnt < ARRAY_SIZE(l->var)) {
 		j = ir3_next_varying(fs, j);
@@ -924,6 +931,12 @@ ir3_link_shaders(struct ir3_shader_linkage *l,
 			assert(k < 0);
 			l->viewid_loc = fs->inputs[j].inloc;
 		}
+
+		if (fs->inputs[j].slot == VARYING_SLOT_CLIP_DIST0)
+			l->clip0_loc = fs->inputs[j].inloc;
+
+		if (fs->inputs[j].slot == VARYING_SLOT_CLIP_DIST1)
+			l->clip1_loc = fs->inputs[j].inloc;
 
 		ir3_link_add(l, k >= 0 ? vs->outputs[k].regid : default_regid,
 			fs->inputs[j].compmask, fs->inputs[j].inloc);
