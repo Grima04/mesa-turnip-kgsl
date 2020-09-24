@@ -55,7 +55,7 @@
 #include "brw_defines.h"
 #include "brw_wm.h"
 
-uint32_t wb_mocs[] = {
+static const uint32_t wb_mocs[] = {
    [7] = GEN7_MOCS_L3,
    [8] = BDW_MOCS_WB,
    [9] = SKL_MOCS_WB,
@@ -63,7 +63,7 @@ uint32_t wb_mocs[] = {
    [11] = ICL_MOCS_WB,
 };
 
-uint32_t pte_mocs[] = {
+static const uint32_t pte_mocs[] = {
    [7] = GEN7_MOCS_L3,
    [8] = BDW_MOCS_PTE,
    [9] = SKL_MOCS_PTE,
