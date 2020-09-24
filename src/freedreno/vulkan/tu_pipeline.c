@@ -686,7 +686,7 @@ tu6_setup_streamout(struct tu_cs *cs,
 static void
 tu6_emit_const(struct tu_cs *cs, uint32_t opcode, uint32_t base,
                enum a6xx_state_block block, uint32_t offset,
-               uint32_t size, uint32_t *dwords) {
+               uint32_t size, const uint32_t *dwords) {
    assert(size % 4 == 0);
 
    tu_cs_emit_pkt7(cs, opcode, 3 + size);
@@ -711,16 +711,14 @@ tu6_emit_link_map(struct tu_cs *cs,
 {
    const struct ir3_const_state *const_state = ir3_const_state(consumer);
    uint32_t base = const_state->offsets.primitive_map;
-   uint32_t patch_locs[MAX_VARYING] = { }, num_loc;
-   num_loc = ir3_link_geometry_stages(producer, consumer, patch_locs);
-   int size = DIV_ROUND_UP(num_loc, 4);
+   int size = DIV_ROUND_UP(consumer->input_size, 4);
 
    size = (MIN2(size + base, consumer->constlen) - base) * 4;
    if (size <= 0)
       return;
 
    tu6_emit_const(cs, CP_LOAD_STATE6_GEOM, base, sb, 0, size,
-                         patch_locs);
+                         producer->output_loc);
 }
 
 static uint16_t

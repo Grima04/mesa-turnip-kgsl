@@ -433,17 +433,17 @@ ir3_nir_lower_variant(struct ir3_shader_variant *so, nir_shader *s)
 			break;
 		case MESA_SHADER_TESS_CTRL:
 			NIR_PASS_V(s, ir3_nir_lower_tess_ctrl, so, so->key.tessellation);
-			NIR_PASS_V(s, ir3_nir_lower_to_explicit_input, so->shader->compiler);
+			NIR_PASS_V(s, ir3_nir_lower_to_explicit_input, so);
 			progress = true;
 			break;
 		case MESA_SHADER_TESS_EVAL:
-			NIR_PASS_V(s, ir3_nir_lower_tess_eval, so->key.tessellation);
+			NIR_PASS_V(s, ir3_nir_lower_tess_eval, so, so->key.tessellation);
 			if (so->key.has_gs)
 				NIR_PASS_V(s, ir3_nir_lower_to_explicit_output, so, so->key.tessellation);
 			progress = true;
 			break;
 		case MESA_SHADER_GEOMETRY:
-			NIR_PASS_V(s, ir3_nir_lower_to_explicit_input, so->shader->compiler);
+			NIR_PASS_V(s, ir3_nir_lower_to_explicit_input, so);
 			progress = true;
 			break;
 		default:
@@ -694,12 +694,12 @@ ir3_setup_const_state(nir_shader *nir, struct ir3_shader_variant *v,
 		constoff = align(constoff - 1, 4) + 3;
 		const_state->offsets.primitive_param = constoff;
 		const_state->offsets.primitive_map = constoff + 5;
-		constoff += 5 + DIV_ROUND_UP(nir->num_inputs, 4);
+		constoff += 5 + DIV_ROUND_UP(v->input_size, 4);
 		break;
 	case MESA_SHADER_GEOMETRY:
 		const_state->offsets.primitive_param = constoff;
 		const_state->offsets.primitive_map = constoff + 1;
-		constoff += 1 + DIV_ROUND_UP(nir->num_inputs, 4);
+		constoff += 1 + DIV_ROUND_UP(v->input_size, 4);
 		break;
 	default:
 		break;

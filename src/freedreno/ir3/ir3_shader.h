@@ -570,7 +570,13 @@ struct ir3_shader_variant {
 	/* Size in dwords of all outputs for VS, size of entire patch for HS. */
 	uint32_t output_size;
 
-	/* Map from driver_location to byte offset in per-primitive storage */
+	/* Expected size of incoming output_loc for HS, DS, and GS */
+	uint32_t input_size;
+
+	/* Map from location to offset in per-primitive storage. In dwords for
+	 * HS, where varyings are read in the next stage via ldg with a dword
+	 * offset, and in bytes for all other stages.
+	 */
 	unsigned output_loc[32];
 
 	/* attributes (VS) / varyings (FS):
