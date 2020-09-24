@@ -312,7 +312,7 @@ void brw_init_state( struct brw_context *brw )
    if (devinfo->gen >= 11)
       gen11_init_atoms(brw);
    else if (devinfo->gen >= 10)
-      gen10_init_atoms(brw);
+      unreachable("Gen10 support dropped.");
    else if (devinfo->gen >= 9)
       gen9_init_atoms(brw);
    else if (devinfo->gen >= 8)

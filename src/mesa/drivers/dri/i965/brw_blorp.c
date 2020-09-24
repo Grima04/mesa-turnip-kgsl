@@ -103,9 +103,6 @@ brw_blorp_init(struct brw_context *brw)
    case 9:
       brw->blorp.exec = gen9_blorp_exec;
       break;
-   case 10:
-      brw->blorp.exec = gen10_blorp_exec;
-      break;
    case 11:
       brw->blorp.exec = gen11_blorp_exec;
       break;
@@ -164,8 +161,7 @@ blorp_surf_for_miptree(struct brw_context *brw,
        * surface.  Without one, it does nothing.
        */
       surf->clear_color =
-         intel_miptree_get_clear_color(devinfo, mt, mt->surf.format,
-                                       !is_render_target, (struct brw_bo **)
+         intel_miptree_get_clear_color(mt, (struct brw_bo **)
                                        &surf->clear_color_addr.buffer,
                                        &surf->clear_color_addr.offset);
 
