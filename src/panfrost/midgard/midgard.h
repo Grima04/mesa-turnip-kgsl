@@ -521,9 +521,10 @@ typedef enum {
         midgard_op_st_vary_32i = 0xD7,
 
         /* Value to st in r27, location r26.w as short2 */
-        midgard_op_st_image_f = 0xD8,
-        midgard_op_st_image_ui = 0xDA,
-        midgard_op_st_image_i = 0xDB,
+        midgard_op_st_image_32f = 0xD8,
+        midgard_op_st_image_16f = 0xD9,
+        midgard_op_st_image_32u = 0xDA,
+        midgard_op_st_image_32i = 0xDB,
 } midgard_load_store_op;
 
 typedef enum {

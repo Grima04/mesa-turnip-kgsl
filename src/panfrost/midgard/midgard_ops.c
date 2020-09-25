@@ -242,8 +242,8 @@ struct mir_ldst_op_props load_store_opcode_props[256] = {
         [midgard_op_ld_ubo_short4] = {"ld_ubo_short4", M32},
         [midgard_op_ld_ubo_int4]   = {"ld_ubo_int4",   M32},
 
-        [midgard_op_ld_image_32f] = {"ld_image_32f",  M32},
-        [midgard_op_ld_image_16f] = {"ld_image_16f",  M16},
+        [midgard_op_ld_image_32f] = {"ld_image_32f", M32},
+        [midgard_op_ld_image_16f] = {"ld_image_16f", M16},
         [midgard_op_ld_image_32i] = {"ld_image_32i", M32},
         [midgard_op_ld_image_32u] = {"ld_image_32u", M32},
 
@@ -258,9 +258,10 @@ struct mir_ldst_op_props load_store_opcode_props[256] = {
         [midgard_op_st_vary_32u] = {"st_vary_32u", M32 | LDST_STORE},
         [midgard_op_st_vary_16]  = {"st_vary_16",  M16 | LDST_STORE},
 
-        [midgard_op_st_image_f]  = {"st_image_f",  M32 | LDST_STORE},
-        [midgard_op_st_image_ui] = {"st_image_ui", M32 | LDST_STORE},
-        [midgard_op_st_image_i]  = {"st_image_i",  M32 | LDST_STORE},
+        [midgard_op_st_image_32f] = {"st_image_32f",  M32 | LDST_STORE},
+        [midgard_op_st_image_16f] = {"st_image_16f",  M16 | LDST_STORE},
+        [midgard_op_st_image_32i] = {"st_image_32i", M32 | LDST_STORE},
+        [midgard_op_st_image_32u] = {"st_image_32u", M32 | LDST_STORE},
 };
 
 #undef M8
