@@ -2771,20 +2771,39 @@ static void *si_create_shader_selector(struct pipe_context *ctx,
    default:;
    }
 
-   sel->ngg_culling_allowed =
+   bool ngg_culling_allowed =
       sscreen->info.chip_class >= GFX10 &&
       sscreen->info.has_dedicated_vram &&
       sscreen->use_ngg_culling &&
       (sel->info.stage == MESA_SHADER_VERTEX ||
-       (sel->info.stage == MESA_SHADER_TESS_EVAL &&
-        (sscreen->always_use_ngg_culling_all ||
-         sscreen->always_use_ngg_culling_tess))) &&
+       sel->info.stage == MESA_SHADER_TESS_EVAL) &&
       sel->info.writes_position &&
       !sel->info.writes_viewport_index && /* cull only against viewport 0 */
       !sel->info.base.writes_memory && !sel->so.num_outputs &&
       (sel->info.stage != MESA_SHADER_VERTEX ||
        (!sel->info.base.vs.blit_sgprs_amd &&
         !sel->info.base.vs.window_space_position));
+
+   sel->ngg_cull_vert_threshold = UINT_MAX; /* disabled (changed below) */
+   sel->ngg_cull_nonindexed_fast_launch_vert_threshold = UINT_MAX;
+
+   if (ngg_culling_allowed) {
+      if (sel->info.stage == MESA_SHADER_VERTEX) {
+         /* 1000 non-indexed vertices (roughly 8 primgroups) are needed
+          * per draw call (no TES/GS) to enable NGG culling by default.
+          */
+         sel->ngg_cull_nonindexed_fast_launch_vert_threshold = 1000;
+
+         if (sscreen->debug_flags & DBG(ALWAYS_NGG_CULLING_ALL))
+            sel->ngg_cull_vert_threshold = 0; /* always enabled */
+         else if (sscreen->options.shader_culling)
+            sel->ngg_cull_vert_threshold = 1500; /* vertex count must be more than this */
+      } else if (sel->info.stage == MESA_SHADER_TESS_EVAL) {
+         if (sscreen->debug_flags & DBG(ALWAYS_NGG_CULLING_ALL) ||
+             sscreen->debug_flags & DBG(ALWAYS_NGG_CULLING_TESS))
+            sel->ngg_cull_vert_threshold = 0; /* always enabled */
+      }
+   }
 
    /* PA_CL_VS_OUT_CNTL */
    if (sctx->chip_class <= GFX9)

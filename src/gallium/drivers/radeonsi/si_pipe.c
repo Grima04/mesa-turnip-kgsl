@@ -1190,10 +1190,6 @@ static struct pipe_screen *radeonsi_screen_create_impl(struct radeon_winsys *ws,
                       sscreen->info.family != CHIP_NAVI14 &&
                       sscreen->info.has_dedicated_vram;
    sscreen->use_ngg_culling = sscreen->use_ngg && !(sscreen->debug_flags & DBG(NO_NGG_CULLING));
-   sscreen->always_use_ngg_culling_all =
-      sscreen->use_ngg_culling && sscreen->debug_flags & DBG(ALWAYS_NGG_CULLING_ALL);
-   sscreen->always_use_ngg_culling_tess =
-      sscreen->use_ngg_culling && sscreen->debug_flags & DBG(ALWAYS_NGG_CULLING_TESS);
    sscreen->use_ngg_streamout = false;
 
    /* Only enable primitive binning on APUs by default. */

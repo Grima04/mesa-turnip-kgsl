@@ -527,8 +527,6 @@ struct si_screen {
    bool llvm_has_working_vgpr_indexing;
    bool use_ngg;
    bool use_ngg_culling;
-   bool always_use_ngg_culling_all;
-   bool always_use_ngg_culling_tess;
    bool use_ngg_streamout;
 
    struct {

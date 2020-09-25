@@ -422,7 +422,6 @@ struct si_shader_selector {
    ubyte sampler_and_images_descriptors_index;
    bool vs_needs_prolog;
    bool prim_discard_cs_allowed;
-   bool ngg_culling_allowed;
    ubyte cs_shaderbufs_sgpr_index;
    ubyte cs_num_shaderbufs_in_user_sgprs;
    ubyte cs_images_sgpr_index;
@@ -431,6 +430,8 @@ struct si_shader_selector {
    ubyte num_vs_inputs;
    ubyte num_vbos_in_user_sgprs;
    unsigned pa_cl_vs_out_cntl;
+   unsigned ngg_cull_vert_threshold; /* 0 = disabled */
+   unsigned ngg_cull_nonindexed_fast_launch_vert_threshold; /* 0 = disabled */
    ubyte clipdist_mask;
    ubyte culldist_mask;
    ubyte rast_prim;
