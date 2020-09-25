@@ -255,6 +255,16 @@ lima_set_stencil_ref(struct pipe_context *pctx,
 }
 
 static void
+lima_set_clip_state(struct pipe_context *pctx,
+                    const struct pipe_clip_state *clip)
+{
+   struct lima_context *ctx = lima_context(pctx);
+   ctx->clip = *clip;
+
+   ctx->dirty |= LIMA_CONTEXT_DIRTY_CLIP;
+}
+
+static void
 lima_set_constant_buffer(struct pipe_context *pctx,
                          enum pipe_shader_type shader, uint index,
                          const struct pipe_constant_buffer *cb)
@@ -396,6 +406,7 @@ lima_state_init(struct lima_context *ctx)
    ctx->base.set_scissor_states = lima_set_scissor_states;
    ctx->base.set_blend_color = lima_set_blend_color;
    ctx->base.set_stencil_ref = lima_set_stencil_ref;
+   ctx->base.set_clip_state = lima_set_clip_state;
 
    ctx->base.set_vertex_buffers = lima_set_vertex_buffers;
    ctx->base.set_constant_buffer = lima_set_constant_buffer;
