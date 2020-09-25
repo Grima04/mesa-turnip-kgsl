@@ -112,6 +112,25 @@ gather_intrinsic_load_deref_info(const nir_shader *nir,
 	}
 }
 
+static void
+gather_intrinsic_load_input_info(const nir_shader *nir,
+			       const nir_intrinsic_instr *instr,
+			       struct radv_shader_info *info)
+{
+	switch (nir->info.stage) {
+	case MESA_SHADER_VERTEX: {
+		unsigned idx = nir_intrinsic_io_semantics(instr).location;
+		unsigned component = nir_intrinsic_component(instr);
+		unsigned mask = nir_ssa_def_components_read(&instr->dest.ssa);
+
+		info->vs.input_usage_mask[idx] |= mask << component;
+		break;
+	}
+	default:
+		break;
+	}
+}
+
 static uint32_t
 widen_writemask(uint32_t wrmask)
 {
@@ -383,6 +402,9 @@ gather_intrinsic_info(const nir_shader *nir, const nir_intrinsic_instr *instr,
 	case nir_intrinsic_global_atomic_exchange:
 	case nir_intrinsic_global_atomic_comp_swap:
 		set_writes_memory(nir, info);
+		break;
+	case nir_intrinsic_load_input:
+		gather_intrinsic_load_input_info(nir, instr, info);
 		break;
 	case nir_intrinsic_load_deref:
 		gather_intrinsic_load_deref_info(nir, instr, info);
