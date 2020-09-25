@@ -1,8 +1,8 @@
 import os
 
 redirects = [
-    ('llvmpipe', 'gallium/drivers/llvmpipe'),
-    ('postprocess', 'gallium/postprocess')
+    ('llvmpipe', 'gallium/drivers/llvmpipe.html'),
+    ('postprocess', 'gallium/postprocess.html')
 ]
 
 def create_redirect(dst):
@@ -14,9 +14,8 @@ def create_redirects(app, docname):
         return
     for src, dst in redirects:
         path = os.path.join(app.outdir, '{0}.html'.format(src))
-        url = '{0}.html'.format(dst)
         with open(path, 'w') as f:
-            f.write(create_redirect(url))
+            f.write(create_redirect(dst))
 
 def setup(app):
     app.connect('build-finished', create_redirects)
