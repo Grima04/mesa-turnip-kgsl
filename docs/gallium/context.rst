@@ -66,7 +66,7 @@ objects. They all follow simple, one-method binding calls, e.g.
 * ``set_blend_color``
 * ``set_sample_mask``  sets the per-context multisample sample mask.  Note
   that this takes effect even if multisampling is not explicitly enabled if
-  the frambuffer surface(s) are multisampled.  Also, this mask is AND-ed
+  the framebuffer surface(s) are multisampled.  Also, this mask is AND-ed
   with the optional fragment shader sample mask output (when emitted).
 * ``set_sample_locations`` sets the sample locations used for rasterization.
   ```get_sample_position``` still returns the default locations. When NULL,
