@@ -499,6 +499,11 @@ typedef enum {
         midgard_op_ld_ubo_short4 = 0xAC,
         midgard_op_ld_ubo_int4   = 0xB0,
 
+        midgard_op_ld_image_32f = 0xB4,
+        midgard_op_ld_image_16f = 0xB5,
+        midgard_op_ld_image_32u = 0xB6,
+        midgard_op_ld_image_32i = 0xB7,
+
         /* New-style blending ops. Works on T760/T860 */
         midgard_op_ld_color_buffer_as_fp32 = 0xB8,
         midgard_op_ld_color_buffer_as_fp16 = 0xB9,

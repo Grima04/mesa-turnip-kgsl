@@ -242,6 +242,11 @@ struct mir_ldst_op_props load_store_opcode_props[256] = {
         [midgard_op_ld_ubo_short4] = {"ld_ubo_short4", M32},
         [midgard_op_ld_ubo_int4]   = {"ld_ubo_int4",   M32},
 
+        [midgard_op_ld_image_32f] = {"ld_image_32f",  M32},
+        [midgard_op_ld_image_16f] = {"ld_image_16f",  M16},
+        [midgard_op_ld_image_32i] = {"ld_image_32i", M32},
+        [midgard_op_ld_image_32u] = {"ld_image_32u", M32},
+
         [midgard_op_st_char]   = {"st_char",   M32 | LDST_STORE | LDST_ADDRESS},
         [midgard_op_st_char2]  = {"st_char2",  M16 | LDST_STORE | LDST_ADDRESS},
         [midgard_op_st_char4]  = {"st_char4",  M32 | LDST_STORE | LDST_ADDRESS},
