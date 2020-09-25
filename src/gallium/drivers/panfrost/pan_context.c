@@ -369,8 +369,13 @@ panfrost_draw_emit_tiler(struct panfrost_batch *batch,
                           pan_section_ptr(job, BIFROST_TILER_JOB, PRIMITIVE_SIZE) :
                           pan_section_ptr(job, MIDGARD_TILER_JOB, PRIMITIVE_SIZE);
 
-        if (is_bifrost)
+        if (is_bifrost) {
                 panfrost_emit_primitive_size(ctx, points, psiz, prim_size);
+                pan_section_pack(job, BIFROST_TILER_JOB, TILER, cfg) {
+                        cfg.address = panfrost_batch_get_bifrost_tiler(batch, ~0);
+                }
+                pan_section_pack(job, BIFROST_TILER_JOB, PADDING, padding) {}
+        }
 
         section = is_bifrost ?
                   pan_section_ptr(job, BIFROST_TILER_JOB, DRAW) :
