@@ -18,7 +18,7 @@ and ``P`` is the patch number (0 for the first release, 1 for the first
 patch after that).
 
 When a new release is coming, release candidates (betas) may be found in
-the same directory, and are recognisable by the
+the same directory, and are recognizable by the
 ``mesa-Y.N.P-rcX.tar.gz`` filename.
 
 Unpacking
