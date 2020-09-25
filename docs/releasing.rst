@@ -35,7 +35,7 @@ Feature releases
 ----------------
 
 -  Available approximately every three months.
--  Initial timeplan available 2-4 weeks before the planned branchpoint
+-  Initial time plan available 2-4 weeks before the planned branchpoint
    (rc1) on the mesa-announce@ mailing list.
 -  Typically, the final release will happen after 4 candidates.
    Additional ones may be needed in order to resolve blocking
