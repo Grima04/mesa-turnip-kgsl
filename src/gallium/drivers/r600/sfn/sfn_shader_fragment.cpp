@@ -481,7 +481,7 @@ bool FragmentShaderFromNir::emit_interp_deref_at_offset(nir_intrinsic_instr* ins
 
    auto& io = m_shaderio.input(var->data.driver_location, var->data.location_frac);
    auto interpolator = m_interpolator[io.ij_index()];
-   PValue dummy(new GPRValue(interpolator.i->sel(), 7));
+   PValue dummy(new GPRValue(interpolator.i->sel(), 0));
 
    GPRVector interp({interpolator.j, interpolator.i, dummy, dummy});
 
@@ -491,6 +491,7 @@ bool FragmentShaderFromNir::emit_interp_deref_at_offset(nir_intrinsic_instr* ins
    getgradh->set_flag(TexInstruction::y_unnormalized);
    getgradh->set_flag(TexInstruction::z_unnormalized);
    getgradh->set_flag(TexInstruction::w_unnormalized);
+   getgradh->set_flag(TexInstruction::grad_fine);
    emit_instruction(getgradh);
 
    auto getgradv = new TexInstruction(TexInstruction::get_gradient_v, help, interp, 0, 0, PValue());
@@ -499,6 +500,7 @@ bool FragmentShaderFromNir::emit_interp_deref_at_offset(nir_intrinsic_instr* ins
    getgradv->set_flag(TexInstruction::y_unnormalized);
    getgradv->set_flag(TexInstruction::z_unnormalized);
    getgradv->set_flag(TexInstruction::w_unnormalized);
+   getgradv->set_flag(TexInstruction::grad_fine);
    emit_instruction(getgradv);
 
    PValue ofs_x = from_nir(instr->src[1], 0);
