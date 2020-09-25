@@ -33,119 +33,95 @@
 #ifndef __DRICONF_H
 #define __DRICONF_H
 
+#include "xmlconfig.h"
+
 /*
  * generic macros
  */
 
-/** \brief Begin __driConfigOptions */
-#define DRI_CONF_BEGIN \
-"<?xml version=\"1.0\" standalone=\"yes\"?>" \
-"<!DOCTYPE driinfo [" \
-"   <!ELEMENT driinfo      (section*)>" \
-"   <!ELEMENT section      (description+, option+)>" \
-"   <!ELEMENT description  (enum*)>" \
-"   <!ATTLIST description  lang CDATA #FIXED \"en\"" \
-"                          text CDATA #REQUIRED>" \
-"   <!ELEMENT option       (description+)>" \
-"   <!ATTLIST option       name CDATA #REQUIRED" \
-"                          type (bool|enum|int|float) #REQUIRED" \
-"                          default CDATA #REQUIRED" \
-"                          valid CDATA #IMPLIED>" \
-"   <!ELEMENT enum         EMPTY>" \
-"   <!ATTLIST enum         value CDATA #REQUIRED" \
-"                          text CDATA #REQUIRED>" \
-"]>" \
-"<driinfo>\n"
-
-/** \brief End __driConfigOptions */
-#define DRI_CONF_END \
-"</driinfo>\n"
-
-/** \brief Begin a section of related options */
-#define DRI_CONF_SECTION_BEGIN \
-"<section>\n"
-
-/** \brief End a section of related options */
-#define DRI_CONF_SECTION_END \
-"</section>\n"
-
-/** \brief Begin an option definition */
-#define DRI_CONF_OPT_BEGIN(name,type,def) \
-"<option name=\""#name"\" type=\""#type"\" default=\""#def"\">\n"
-
-/** \brief Begin an option definition with restrictions on valid values */
-#define DRI_CONF_OPT_BEGIN_V(name,type,def,valid) \
-"<option name=\""#name"\" type=\""#type"\" default=\""#def"\" valid=\"" valid "\">\n"
+/** \brief Names a section of related options to follow */
+#define DRI_CONF_SECTION(text) { .desc = text, .info = { .type = DRI_SECTION } },
+#define DRI_CONF_SECTION_END
 
 /** \brief End an option description */
-#define DRI_CONF_OPT_END \
-"</option>\n"
+#define DRI_CONF_OPT_END },
 
 /** \brief A verbal description (empty version) */
-#define DRI_CONF_DESC(text) \
-"<description lang=\"en\" text=\"" text "\"/>\n"
-
-/** \brief Begining of a verbal description */
-#define DRI_CONF_DESC_BEGIN(text) \
-"<description lang=\"en\" text=\"" text "\">\n"
-
-/** \brief End a description */
-#define DRI_CONF_DESC_END \
-"</description>\n"
+#define DRI_CONF_DESC(text) .desc = text,
 
 /** \brief A verbal description of an enum value */
-#define DRI_CONF_ENUM(value,text) \
-"<enum value=\""#value"\" text=\"" text "\"/>\n"
+#define DRI_CONF_ENUM(_value,text) { .value = _value, .desc = text },
 
-#define DRI_CONF(sections) \
-   DRI_CONF_BEGIN          \
-      sections             \
-   DRI_CONF_END
+#define DRI_CONF_RANGE_I(min, max)              \
+      .range = {                                \
+         .start = { ._int = min },              \
+         .end = { ._int = max },                \
+      }                                         \
 
-#define DRI_CONF_SECTION(desc, options) \
-   DRI_CONF_SECTION_BEGIN               \
-      DRI_CONF_DESC(desc)               \
-      options                           \
-   DRI_CONF_SECTION_END
+#define DRI_CONF_RANGE_F(min, max)              \
+      .range = {                                \
+         .start = { ._float = min },            \
+         .end = { ._float = max },              \
+      }                                         \
 
 /**
  * \brief A boolean option definition, with the default value passed in as a
  * string
  */
-#define DRI_CONF_OPT_B(name, def, desc) \
-   "<option name=\""#name"\" type=\"bool\" default="#def">\n" \
-      DRI_CONF_DESC(desc)               \
-   DRI_CONF_OPT_END
 
-#define DRI_CONF_OPT_I(name, def, min, max, desc)        \
-   DRI_CONF_OPT_BEGIN_V(name, int, def, #min ":" #max)   \
-      DRI_CONF_DESC(desc)                                \
-   DRI_CONF_OPT_END
+#define DRI_CONF_OPT_B(_name, def, _desc) {                     \
+      .desc = _desc,                                            \
+      .info = {                                                 \
+         .name = #_name,                                        \
+         .type = DRI_BOOL,                                      \
+      },                                                        \
+      .value = { ._string = (char *)def },                      \
+   },
 
-#define DRI_CONF_OPT_F(name, def, min, max, desc)        \
-   DRI_CONF_OPT_BEGIN_V(name, float, def, #min ":" #max) \
-      DRI_CONF_DESC(desc)                                \
-   DRI_CONF_OPT_END
+#define DRI_CONF_OPT_I(_name, def, min, max, _desc) {           \
+      .desc = _desc,                                            \
+      .info = {                                                 \
+         .name = #_name,                                        \
+         .type = DRI_INT,                                       \
+         DRI_CONF_RANGE_I(min, max),                            \
+      },                                                        \
+      .value = { ._int = def },                                 \
+   },
 
-/* Note that def should not be quoted in the caller! */
-#define DRI_CONF_OPT_S(name, def, desc)                   \
-   DRI_CONF_OPT_BEGIN(name, string, def)                  \
-      DRI_CONF_DESC(desc)                                 \
-   DRI_CONF_OPT_END
+#define DRI_CONF_OPT_F(_name, def, min, max, _desc) {           \
+      .desc = _desc,                                            \
+      .info = {                                                 \
+         .name = #_name,                                        \
+         .type = DRI_FLOAT,                                     \
+         DRI_CONF_RANGE_F(min, max),                            \
+      },                                                        \
+      .value = { ._float = def },                               \
+   },
 
-#define DRI_CONF_OPT_E(name, def, min, max, desc, values) \
-   DRI_CONF_OPT_BEGIN_V(name, enum, def, #min ":" #max)   \
-      DRI_CONF_DESC_BEGIN(desc)                           \
-         values                                           \
-      DRI_CONF_DESC_END                                   \
-   DRI_CONF_OPT_END
+#define DRI_CONF_OPT_E(_name, def, min, max, _desc, values) {   \
+      .desc = _desc,                                            \
+      .info = {                                                 \
+         .name = #_name,                                        \
+         .type = DRI_ENUM,                                      \
+         DRI_CONF_RANGE_I(min, max),                            \
+      },                                                        \
+      .value = { ._int = def },                                 \
+      .enums = { values },                                      \
+   },
+
+#define DRI_CONF_OPT_S(_name, def, _desc) {                     \
+      .desc = _desc,                                            \
+      .info = {                                                 \
+         .name = #_name,                                        \
+         .type = DRI_STRING,                                    \
+      },                                                        \
+      .value = { ._string = #def },                             \
+   },
 
 /**
  * \brief Debugging options
  */
-#define DRI_CONF_SECTION_DEBUG \
-DRI_CONF_SECTION_BEGIN \
-        DRI_CONF_DESC("Debugging")
+#define DRI_CONF_SECTION_DEBUG DRI_CONF_SECTION("Debugging")
 
 #define DRI_CONF_ALWAYS_FLUSH_BATCH(def) \
    DRI_CONF_OPT_B(always_flush_batch, def,                              \
@@ -244,9 +220,7 @@ DRI_CONF_SECTION_BEGIN \
 /**
  * \brief Image quality-related options
  */
-#define DRI_CONF_SECTION_QUALITY \
-DRI_CONF_SECTION_BEGIN \
-        DRI_CONF_DESC("Image Quality")
+#define DRI_CONF_SECTION_QUALITY DRI_CONF_SECTION("Image Quality")
 
 #define DRI_CONF_PRECISE_TRIG(def) \
    DRI_CONF_OPT_B(precise_trig, def, \
@@ -255,22 +229,22 @@ DRI_CONF_SECTION_BEGIN \
 #define DRI_CONF_PP_CELSHADE(def) \
    DRI_CONF_OPT_E(pp_celshade, def, 0, 1, \
                   "A post-processing filter to cel-shade the output", \
-                  "")
+                  )
 
 #define DRI_CONF_PP_NORED(def) \
    DRI_CONF_OPT_E(pp_nored, def, 0, 1, \
                   "A post-processing filter to remove the red channel", \
-                  "")
+                  )
 
 #define DRI_CONF_PP_NOGREEN(def) \
    DRI_CONF_OPT_E(pp_nogreen, def, 0, 1, \
                   "A post-processing filter to remove the green channel", \
-                  "")
+                  )
 
 #define DRI_CONF_PP_NOBLUE(def) \
    DRI_CONF_OPT_E(pp_noblue, def, 0, 1, \
                   "A post-processing filter to remove the blue channel", \
-                  "")
+                  )
 
 #define DRI_CONF_PP_JIMENEZMLAA(def,min,max) \
    DRI_CONF_OPT_I(pp_jimenezmlaa, def, min, max, \
@@ -283,9 +257,7 @@ DRI_CONF_SECTION_BEGIN \
 /**
  * \brief Performance-related options
  */
-#define DRI_CONF_SECTION_PERFORMANCE \
-DRI_CONF_SECTION_BEGIN \
-        DRI_CONF_DESC("Performance")
+#define DRI_CONF_SECTION_PERFORMANCE DRI_CONF_SECTION("Performance")
 
 #define DRI_CONF_VBLANK_NEVER 0
 #define DRI_CONF_VBLANK_DEF_INTERVAL_0 1
@@ -344,9 +316,7 @@ DRI_CONF_SECTION_BEGIN \
 /**
  * \brief Miscellaneous configuration options
  */
-#define DRI_CONF_SECTION_MISCELLANEOUS \
-DRI_CONF_SECTION_BEGIN \
-        DRI_CONF_DESC("Miscellaneous")
+#define DRI_CONF_SECTION_MISCELLANEOUS DRI_CONF_SECTION("Miscellaneous")
 
 #define DRI_CONF_ALWAYS_HAVE_DEPTH_BUFFER(def) \
    DRI_CONF_OPT_B(always_have_depth_buffer, def, \
@@ -379,9 +349,7 @@ DRI_CONF_SECTION_BEGIN \
 /**
  * \brief Initialization configuration options
  */
-#define DRI_CONF_SECTION_INITIALIZATION \
-DRI_CONF_SECTION_BEGIN \
-        DRI_CONF_DESC("Initialization")
+#define DRI_CONF_SECTION_INITIALIZATION DRI_CONF_SECTION("Initialization")
 
 #define DRI_CONF_DEVICE_ID_PATH_TAG(def) \
    DRI_CONF_OPT_S(device_id, def, "Define the graphic device to use if possible")
@@ -393,9 +361,7 @@ DRI_CONF_SECTION_BEGIN \
  * \brief Gallium-Nine specific configuration options
  */
 
-#define DRI_CONF_SECTION_NINE \
-DRI_CONF_SECTION_BEGIN \
-        DRI_CONF_DESC("Gallium Nine")
+#define DRI_CONF_SECTION_NINE DRI_CONF_SECTION("Gallium Nine")
 
 #define DRI_CONF_NINE_THROTTLE(def) \
    DRI_CONF_OPT_I(throttle_value, def, 0, 0, \

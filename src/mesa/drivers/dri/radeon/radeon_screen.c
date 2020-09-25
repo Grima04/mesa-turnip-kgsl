@@ -91,10 +91,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
                   "Initial maximum value for anisotropic texture filtering")
 
 #if defined(RADEON_R100)	/* R100 */
-static const __DRIconfigOptionsExtension radeon_config_options = {
-   .base = { __DRI_CONFIG_OPTIONS, 1 },
-   .xml =
-DRI_CONF_BEGIN
+static const driOptionDescription radeon_driconf[] = {
     DRI_CONF_SECTION_PERFORMANCE
         DRI_CONF_TCL_MODE(DRI_CONF_TCL_CODEGEN)
         DRI_CONF_FTHROTTLE_MODE(DRI_CONF_FTHROTTLE_IRQS)
@@ -110,15 +107,10 @@ DRI_CONF_BEGIN
         DRI_CONF_ROUND_MODE(DRI_CONF_ROUND_TRUNC)
         DRI_CONF_DITHER_MODE(DRI_CONF_DITHER_XERRORDIFF)
     DRI_CONF_SECTION_END
-DRI_CONF_END
 };
 
 #elif defined(RADEON_R200)
-
-static const __DRIconfigOptionsExtension radeon_config_options = {
-   .base = { __DRI_CONFIG_OPTIONS, 1 },
-   .xml =
-DRI_CONF_BEGIN
+static const driOptionDescription radeon_driconf[] = {
     DRI_CONF_SECTION_PERFORMANCE
         DRI_CONF_TCL_MODE(DRI_CONF_TCL_CODEGEN)
         DRI_CONF_FTHROTTLE_MODE(DRI_CONF_FTHROTTLE_IRQS)
@@ -136,9 +128,20 @@ DRI_CONF_BEGIN
         DRI_CONF_OPT_F(texture_blend_quality, 1.0, 0.0, 1.0,
                        "Texture filtering quality vs. speed, AKA “brilinear” texture filtering")
     DRI_CONF_SECTION_END
-DRI_CONF_END
 };
 #endif
+
+static char *
+radeon_driconf_get_xml(const char *driver_name)
+{
+   return driGetOptionsXml(radeon_driconf, ARRAY_SIZE(radeon_driconf));
+}
+
+static const __DRIconfigOptionsExtension radeon_config_options = {
+   .base = { __DRI_CONFIG_OPTIONS, 2 },
+   .xml = NULL,
+   .getXml = radeon_driconf_get_xml,
+};
 
 static int
 radeonGetParam(__DRIscreen *sPriv, int param, void *value)
@@ -578,7 +581,8 @@ radeonCreateScreen2(__DRIscreen *sPriv)
    radeon_init_debug();
 
    /* parse information in __driConfigOptions */
-   driParseOptionInfo (&screen->optionCache, radeon_config_options.xml);
+   driParseOptionInfo (&screen->optionCache, radeon_driconf,
+                       ARRAY_SIZE(radeon_driconf));
 
    screen->chip_flags = 0;
 

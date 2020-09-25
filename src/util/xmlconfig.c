@@ -279,6 +279,8 @@ parseValue(driOptionValue *v, driOptionType type, const XML_Char *string)
       free(v->_string);
       v->_string = strndup(string, STRING_CONF_MAXLEN);
       return true;
+   case DRI_SECTION:
+      unreachable("shouldn't be parsing values in section declarations");
    }
 
    if (tail == string)
@@ -323,7 +325,7 @@ parseRange(driOptionInfo *info, const XML_Char *string)
 }
 
 /** \brief Check if a value is in info->range. */
-static bool
+UNUSED static bool
 checkValue(const driOptionValue *v, const driOptionInfo *info)
 {
    switch (info->type) {
@@ -391,245 +393,12 @@ __driUtilMessage(const char *f, ...)
                         (int) XML_GetCurrentColumnNumber(data->parser), \
                         ##__VA_ARGS__);                                 \
    } while (0)
-/** \brief Output a fatal error message and abort. */
-#define XML_FATAL1(msg) do {                                            \
-      fprintf(stderr, "Fatal error in %s line %d, column %d: "msg"\n", \
-               data->name,                                              \
-               (int) XML_GetCurrentLineNumber(data->parser),            \
-               (int) XML_GetCurrentColumnNumber(data->parser));         \
-      abort();                                                          \
-   } while (0)
-#define XML_FATAL(msg, ...) do {                                        \
-      fprintf(stderr, "Fatal error in %s line %d, column %d: "msg"\n", \
-               data->name,                                              \
-               (int) XML_GetCurrentLineNumber(data->parser),            \
-               (int) XML_GetCurrentColumnNumber(data->parser),          \
-               ##__VA_ARGS__);                                          \
-      abort();                                                          \
-   } while (0)
-
-/** \brief Parser context for __driConfigOptions. */
-struct OptInfoData {
-   const char *name;
-   XML_Parser parser;
-   driOptionCache *cache;
-   bool inDriInfo;
-   bool inSection;
-   bool inDesc;
-   bool inOption;
-   bool inEnum;
-   int curOption;
-};
-
-/** \brief Elements in __driConfigOptions. */
-enum OptInfoElem {
-   OI_DESCRIPTION = 0, OI_DRIINFO, OI_ENUM, OI_OPTION, OI_SECTION, OI_COUNT
-};
-static const XML_Char *OptInfoElems[] = {
-   "description", "driinfo", "enum", "option", "section"
-};
-
-/** \brief Parse attributes of an enum element.
- *
- * We're not actually interested in the data. Just make sure this is ok
- * for external configuration tools.
- */
-static void
-parseEnumAttr(struct OptInfoData *data, const XML_Char **attr)
-{
-   uint32_t i;
-   const XML_Char *value = NULL, *text = NULL;
-   driOptionValue v;
-   uint32_t opt = data->curOption;
-   for (i = 0; attr[i]; i += 2) {
-      if (!strcmp(attr[i], "value")) value = attr[i+1];
-      else if (!strcmp(attr[i], "text")) text = attr[i+1];
-      else XML_FATAL("illegal enum attribute: %s.", attr[i]);
-   }
-   if (!value) XML_FATAL1("value attribute missing in enum.");
-   if (!text) XML_FATAL1("text attribute missing in enum.");
-   if (!parseValue(&v, data->cache->info[opt].type, value))
-      XML_FATAL("illegal enum value: %s.", value);
-   if (!checkValue(&v, &data->cache->info[opt]))
-      XML_FATAL("enum value out of valid range: %s.", value);
-}
-
-/** \brief Parse attributes of a description element.
- *
- * We're not actually interested in the data. Just make sure this is ok
- * for external configuration tools.
- */
-static void
-parseDescAttr(struct OptInfoData *data, const XML_Char **attr)
-{
-   uint32_t i;
-   const XML_Char *lang = NULL, *text = NULL;
-   for (i = 0; attr[i]; i += 2) {
-      if (!strcmp(attr[i], "lang")) lang = attr[i+1];
-      else if (!strcmp(attr[i], "text")) text = attr[i+1];
-      else XML_FATAL("illegal description attribute: %s.", attr[i]);
-   }
-   if (!lang) XML_FATAL1("lang attribute missing in description.");
-   if (!text) XML_FATAL1("text attribute missing in description.");
-}
-
-/** \brief Parse attributes of an option element. */
-static void
-parseOptInfoAttr(struct OptInfoData *data, const XML_Char **attr)
-{
-   enum OptAttr {OA_DEFAULT = 0, OA_NAME, OA_TYPE, OA_VALID, OA_COUNT};
-   static const XML_Char *optAttr[] = {"default", "name", "type", "valid"};
-   const XML_Char *attrVal[OA_COUNT] = {NULL, NULL, NULL, NULL};
-   const char *defaultVal;
-   driOptionCache *cache = data->cache;
-   uint32_t opt, i;
-   for (i = 0; attr[i]; i += 2) {
-      uint32_t attrName = bsearchStr(attr[i], optAttr, OA_COUNT);
-      if (attrName >= OA_COUNT)
-         XML_FATAL("illegal option attribute: %s", attr[i]);
-      attrVal[attrName] = attr[i+1];
-   }
-   if (!attrVal[OA_NAME]) XML_FATAL1("name attribute missing in option.");
-   if (!attrVal[OA_TYPE]) XML_FATAL1("type attribute missing in option.");
-   if (!attrVal[OA_DEFAULT]) XML_FATAL1("default attribute missing in option.");
-
-   opt = findOption(cache, attrVal[OA_NAME]);
-   if (cache->info[opt].name)
-      XML_FATAL("option %s redefined.", attrVal[OA_NAME]);
-   data->curOption = opt;
-
-   XSTRDUP(cache->info[opt].name, attrVal[OA_NAME]);
-
-   if (!strcmp(attrVal[OA_TYPE], "bool"))
-      cache->info[opt].type = DRI_BOOL;
-   else if (!strcmp(attrVal[OA_TYPE], "enum"))
-      cache->info[opt].type = DRI_ENUM;
-   else if (!strcmp(attrVal[OA_TYPE], "int"))
-      cache->info[opt].type = DRI_INT;
-   else if (!strcmp(attrVal[OA_TYPE], "float"))
-      cache->info[opt].type = DRI_FLOAT;
-   else if (!strcmp(attrVal[OA_TYPE], "string"))
-      cache->info[opt].type = DRI_STRING;
-   else
-      XML_FATAL("illegal type in option: %s.", attrVal[OA_TYPE]);
-
-   defaultVal = getenv(cache->info[opt].name);
-   if (defaultVal != NULL) {
-      /* don't use XML_WARNING, we want the user to see this! */
-      if (be_verbose()) {
-         fprintf(stderr,
-                 "ATTENTION: default value of option %s overridden by environment.\n",
-                 cache->info[opt].name);
-      }
-   } else
-      defaultVal = attrVal[OA_DEFAULT];
-   if (!parseValue(&cache->values[opt], cache->info[opt].type, defaultVal))
-      XML_FATAL("illegal default value for %s: %s.", cache->info[opt].name, defaultVal);
-
-   if (attrVal[OA_VALID]) {
-      if (cache->info[opt].type == DRI_BOOL)
-         XML_FATAL1("boolean option with valid attribute.");
-      if (!parseRange(&cache->info[opt], attrVal[OA_VALID]))
-         XML_FATAL("illegal valid attribute: %s.", attrVal[OA_VALID]);
-      if (!checkValue(&cache->values[opt], &cache->info[opt]))
-         XML_FATAL("default value out of valid range '%s': %s.",
-                    attrVal[OA_VALID], defaultVal);
-   } else if (cache->info[opt].type == DRI_ENUM) {
-      XML_FATAL1("valid attribute missing in option (mandatory for enums).");
-   } else {
-      memset(&cache->info[opt].range, 0, sizeof(cache->info[opt].range));
-   }
-}
-
-/** \brief Handler for start element events. */
-static void
-optInfoStartElem(void *userData, const XML_Char *name, const XML_Char **attr)
-{
-   struct OptInfoData *data = (struct OptInfoData *)userData;
-   enum OptInfoElem elem = bsearchStr(name, OptInfoElems, OI_COUNT);
-   switch (elem) {
-   case OI_DRIINFO:
-      if (data->inDriInfo)
-         XML_FATAL1("nested <driinfo> elements.");
-      if (attr[0])
-         XML_FATAL1("attributes specified on <driinfo> element.");
-      data->inDriInfo = true;
-      break;
-   case OI_SECTION:
-      if (!data->inDriInfo)
-         XML_FATAL1("<section> must be inside <driinfo>.");
-      if (data->inSection)
-         XML_FATAL1("nested <section> elements.");
-      if (attr[0])
-         XML_FATAL1("attributes specified on <section> element.");
-      data->inSection = true;
-      break;
-   case OI_DESCRIPTION:
-      if (!data->inSection && !data->inOption)
-         XML_FATAL1("<description> must be inside <description> or <option.");
-      if (data->inDesc)
-         XML_FATAL1("nested <description> elements.");
-      data->inDesc = true;
-      parseDescAttr(data, attr);
-      break;
-   case OI_OPTION:
-      if (!data->inSection)
-         XML_FATAL1("<option> must be inside <section>.");
-      if (data->inDesc)
-         XML_FATAL1("<option> nested in <description> element.");
-      if (data->inOption)
-         XML_FATAL1("nested <option> elements.");
-      data->inOption = true;
-      parseOptInfoAttr(data, attr);
-      break;
-   case OI_ENUM:
-      if (!(data->inOption && data->inDesc))
-         XML_FATAL1("<enum> must be inside <option> and <description>.");
-      if (data->inEnum)
-         XML_FATAL1("nested <enum> elements.");
-      data->inEnum = true;
-      parseEnumAttr(data, attr);
-      break;
-   default:
-      XML_FATAL("unknown element: %s.", name);
-   }
-}
-
-/** \brief Handler for end element events. */
-static void
-optInfoEndElem(void *userData, const XML_Char *name)
-{
-   struct OptInfoData *data = (struct OptInfoData *)userData;
-   enum OptInfoElem elem = bsearchStr(name, OptInfoElems, OI_COUNT);
-   switch (elem) {
-   case OI_DRIINFO:
-      data->inDriInfo = false;
-      break;
-   case OI_SECTION:
-      data->inSection = false;
-      break;
-   case OI_DESCRIPTION:
-      data->inDesc = false;
-      break;
-   case OI_OPTION:
-      data->inOption = false;
-      break;
-   case OI_ENUM:
-      data->inEnum = false;
-      break;
-   default:
-      assert(0); /* should have been caught by StartElem */
-   }
-}
 
 void
-driParseOptionInfo(driOptionCache *info, const char *configOptions)
+driParseOptionInfo(driOptionCache *info,
+                   const driOptionDescription *configOptions,
+                   unsigned numOptions)
 {
-   XML_Parser p;
-   int status;
-   struct OptInfoData userData;
-   struct OptInfoData *data = &userData;
-
    /* Make the hash table big enough to fit more than the maximum number of
     * config options we've ever seen in a driver.
     */
@@ -641,25 +410,187 @@ driParseOptionInfo(driOptionCache *info, const char *configOptions)
       abort();
    }
 
-   p = XML_ParserCreate("UTF-8"); /* always UTF-8 */
-   XML_SetElementHandler(p, optInfoStartElem, optInfoEndElem);
-   XML_SetUserData(p, data);
+   UNUSED bool in_section = false;
+   for (int o = 0; o < numOptions; o++) {
+      const driOptionDescription *opt = &configOptions[o];
 
-   userData.name = "__driConfigOptions";
-   userData.parser = p;
-   userData.cache = info;
-   userData.inDriInfo = false;
-   userData.inSection = false;
-   userData.inDesc = false;
-   userData.inOption = false;
-   userData.inEnum = false;
-   userData.curOption = -1;
+      if (opt->info.type == DRI_SECTION) {
+         in_section = true;
+         continue;
+      }
 
-   status = XML_Parse(p, configOptions, strlen(configOptions), 1);
-   if (!status)
-      XML_FATAL("%s.", XML_ErrorString(XML_GetErrorCode(p)));
+      /* for driconf xml generation, options must always be preceded by a
+       * DRI_CONF_SECTION
+       */
+      assert(in_section);
 
-   XML_ParserFree(p);
+      const char *name = opt->info.name;
+      int i = findOption(info, name);
+      driOptionInfo *optinfo = &info->info[i];
+      driOptionValue *optval = &info->values[i];
+
+      assert(!optinfo->name); /* No duplicate options in your list. */
+
+      optinfo->type = opt->info.type;
+      XSTRDUP(optinfo->name, name);
+
+      switch (opt->info.type) {
+      case DRI_BOOL:
+         if (strcmp(opt->value._string, "true") == 0)
+            optval->_bool = true;
+         else {
+            assert(strcmp(opt->value._string, "false") == 0);
+            optval->_bool = false;
+         }
+         break;
+
+      case DRI_INT:
+      case DRI_ENUM:
+         optval->_int = opt->value._int;
+         break;
+
+      case DRI_FLOAT:
+         optval->_float = opt->value._float;
+         break;
+
+      case DRI_STRING:
+         XSTRDUP(optval->_string, opt->value._string);
+         break;
+
+      case DRI_SECTION:
+         unreachable("handled above");
+      }
+
+      assert(checkValue(optval, optinfo));
+   }
+}
+
+char *
+driGetOptionsXml(const driOptionDescription *configOptions, unsigned numOptions)
+{
+   char *str = ralloc_strdup(NULL,
+      "<?xml version=\"1.0\" standalone=\"yes\"?>\n" \
+      "<!DOCTYPE driinfo [\n" \
+      "   <!ELEMENT driinfo      (section*)>\n" \
+      "   <!ELEMENT section      (description+, option+)>\n" \
+      "   <!ELEMENT description  (enum*)>\n" \
+      "   <!ATTLIST description  lang CDATA #FIXED \"en\"\n" \
+      "                          text CDATA #REQUIRED>\n" \
+      "   <!ELEMENT option       (description+)>\n" \
+      "   <!ATTLIST option       name CDATA #REQUIRED\n" \
+      "                          type (bool|enum|int|float) #REQUIRED\n" \
+      "                          default CDATA #REQUIRED\n" \
+      "                          valid CDATA #IMPLIED>\n" \
+      "   <!ELEMENT enum         EMPTY>\n" \
+      "   <!ATTLIST enum         value CDATA #REQUIRED\n" \
+      "                          text CDATA #REQUIRED>\n" \
+      "]>" \
+      "<driinfo>\n");
+
+   bool in_section = false;
+   for (int o = 0; o < numOptions; o++) {
+      const driOptionDescription *opt = &configOptions[o];
+
+      const char *name = opt->info.name;
+      const char *types[] = {
+         [DRI_BOOL] = "bool",
+         [DRI_INT] = "int",
+         [DRI_FLOAT] = "float",
+         [DRI_ENUM] = "enum",
+         [DRI_STRING] = "string",
+      };
+
+      if (opt->info.type == DRI_SECTION) {
+         if (in_section)
+            ralloc_asprintf_append(&str, "  </section>\n");
+
+         ralloc_asprintf_append(&str,
+                                "  <section>\n"
+                                "    <description lang=\"en\" text=\"%s\"/>\n",
+                                opt->desc);
+
+         in_section = true;
+         continue;
+      }
+
+      ralloc_asprintf_append(&str,
+                             "      <option name=\"%s\" type=\"%s\" default=\"",
+                             name,
+                             types[opt->info.type]);
+
+      switch (opt->info.type) {
+      case DRI_BOOL:
+         ralloc_asprintf_append(&str, opt->value._bool ? "true" : "false");
+         break;
+
+      case DRI_INT:
+      case DRI_ENUM:
+         ralloc_asprintf_append(&str, "%d", opt->value._int);
+         break;
+
+      case DRI_FLOAT:
+         ralloc_asprintf_append(&str, "%f", opt->value._float);
+         break;
+
+      case DRI_STRING:
+         ralloc_asprintf_append(&str, "%s", opt->value._string);
+         break;
+
+      case DRI_SECTION:
+         unreachable("handled above");
+         break;
+      }
+      ralloc_asprintf_append(&str, "\"");
+
+
+      switch (opt->info.type) {
+      case DRI_INT:
+      case DRI_ENUM:
+         if (opt->info.range.start._int < opt->info.range.end._int) {
+            ralloc_asprintf_append(&str, " valid=\"%d:%d\"",
+                                   opt->info.range.start._int,
+                                   opt->info.range.end._int);
+         }
+         break;
+
+      case DRI_FLOAT:
+         if (opt->info.range.start._float < opt->info.range.end._float) {
+            ralloc_asprintf_append(&str, " valid=\"%f:%f\"",
+                                   opt->info.range.start._float,
+                                   opt->info.range.end._float);
+         }
+         break;
+
+      default:
+         break;
+      }
+
+      ralloc_asprintf_append(&str, ">\n"); /* end of <option> */
+
+
+      ralloc_asprintf_append(&str, "        <description lang=\"en\" text=\"%s\"%s>\n",
+                             opt->desc, opt->info.type != DRI_ENUM ? "/" : "");
+
+      if (opt->info.type == DRI_ENUM) {
+         for (int i = 0; i < ARRAY_SIZE(opt->enums) && opt->enums[i].desc; i++) {
+            ralloc_asprintf_append(&str, "          <enum value=\"%d\" text=\"%s\"/>\n",
+                                   opt->enums[i].value, opt->enums[i].desc);
+         }
+         ralloc_asprintf_append(&str, "        </description>\n");
+      }
+
+      ralloc_asprintf_append(&str, "      </option>\n");
+   }
+
+   assert(in_section);
+   ralloc_asprintf_append(&str, "  </section>\n");
+
+   ralloc_asprintf_append(&str, "</driinfo>\n");
+
+   char *output = strdup(str);
+   ralloc_free(str);
+
+   return output;
 }
 
 /** \brief Parser context for configuration files. */

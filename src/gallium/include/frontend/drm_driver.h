@@ -19,11 +19,13 @@ struct drm_driver_descriptor
    const char *driver_name;
 
    /**
-    * Pointer to the XML string fragment describing driver-specific driconf
-    * options.  Use DRI_CONF_* macros to create the string, do not wrap in
-    * DRI_CONF_BEGIN/END.
+    * Optional pointer to the array of driOptionDescription describing
+    * driver-specific driconf options.
     */
-   const char **driconf_xml;
+   const struct driOptionDescription *driconf;
+
+   /* Number of entries in the driconf array. */
+   unsigned driconf_count;
 
    /**
     * Create a pipe srcreen.

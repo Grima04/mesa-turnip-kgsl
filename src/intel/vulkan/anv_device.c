@@ -49,8 +49,7 @@
 
 #include "genxml/gen7_pack.h"
 
-static const char anv_dri_options_xml[] =
-DRI_CONF_BEGIN
+static const driOptionDescription anv_dri_options[] = {
    DRI_CONF_SECTION_PERFORMANCE
       DRI_CONF_VK_X11_OVERRIDE_MIN_IMAGE_COUNT(0)
       DRI_CONF_VK_X11_STRICT_IMAGE_COUNT("false")
@@ -60,7 +59,7 @@ DRI_CONF_BEGIN
       DRI_CONF_ALWAYS_FLUSH_CACHE("false")
       DRI_CONF_VK_WSI_FORCE_BGRA8_UNORM_FIRST("false")
    DRI_CONF_SECTION_END
-DRI_CONF_END;
+};
 
 /* This is probably far to big but it reflects the max size used for messages
  * in OpenGLs KHR_debug.
@@ -768,7 +767,8 @@ VkResult anv_CreateInstance(
 
    VG(VALGRIND_CREATE_MEMPOOL(instance, 0, false));
 
-   driParseOptionInfo(&instance->available_dri_options, anv_dri_options_xml);
+   driParseOptionInfo(&instance->available_dri_options, anv_dri_options,
+                      ARRAY_SIZE(anv_dri_options));
    driParseConfigFiles(&instance->dri_options, &instance->available_dri_options,
                        0, "anv", NULL,
                        instance->app_info.app_name,

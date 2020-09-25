@@ -49,10 +49,7 @@
 
 #include "common/gen_defines.h"
 
-static const __DRIconfigOptionsExtension brw_config_options = {
-   .base = { __DRI_CONFIG_OPTIONS, 1 },
-   .xml =
-DRI_CONF_BEGIN
+static const driOptionDescription brw_driconf[] = {
    DRI_CONF_SECTION_PERFORMANCE
       /* Options correspond to DRI_CONF_BO_REUSE_DISABLED,
        * DRI_CONF_BO_REUSE_ALL
@@ -100,7 +97,18 @@ DRI_CONF_BEGIN
       DRI_CONF_ALLOW_RGB565_CONFIGS("true")
       DRI_CONF_ALLOW_FP16_CONFIGS("false")
    DRI_CONF_SECTION_END
-DRI_CONF_END
+};
+
+static char *
+brw_driconf_get_xml(const char *driver_name)
+{
+   return driGetOptionsXml(brw_driconf, ARRAY_SIZE(brw_driconf));
+}
+
+static const __DRIconfigOptionsExtension brw_config_options = {
+   .base = { __DRI_CONFIG_OPTIONS, 2 },
+   .xml = NULL,
+   .getXml = brw_driconf_get_xml,
 };
 
 #include "intel_batchbuffer.h"
@@ -2538,7 +2546,7 @@ __DRIconfig **intelInitScreen2(__DRIscreen *dri_screen)
    driOptionCache options;
    memset(&options, 0, sizeof(options));
 
-   driParseOptionInfo(&options, brw_config_options.xml);
+   driParseOptionInfo(&options, brw_driconf, ARRAY_SIZE(brw_driconf));
    driParseConfigFiles(&screen->optionCache, &options, dri_screen->myNum,
                        "i965", NULL, NULL, 0, NULL, 0);
    driDestroyOptionCache(&options);

@@ -43,11 +43,7 @@
 #include "util/driconf.h"
 #include "util/u_memory.h"
 
-static const __DRIconfigOptionsExtension i915_config_options = {
-   .base = { __DRI_CONFIG_OPTIONS, 1 },
-   .xml =
-
-DRI_CONF_BEGIN
+static const driOptionDescription i915_driconf[] = {
    DRI_CONF_SECTION_PERFORMANCE
       /* Options correspond to DRI_CONF_BO_REUSE_DISABLED,
        * DRI_CONF_BO_REUSE_ALL
@@ -75,7 +71,18 @@ DRI_CONF_BEGIN
 
       DRI_CONF_OPT_B(shader_precompile, "true", "Perform code generation at shader link time.")
    DRI_CONF_SECTION_END
-DRI_CONF_END
+};
+
+static char *
+i915_driconf_get_xml(const char *driver_name)
+{
+   return driGetOptionsXml(i915_driconf, ARRAY_SIZE(i915_driconf));
+}
+
+static const __DRIconfigOptionsExtension i915_config_options = {
+   .base = { __DRI_CONFIG_OPTIONS, 2 },
+   .xml = NULL,
+   .getXml = i915_driconf_get_xml,
 };
 
 #include "intel_batchbuffer.h"
@@ -1155,7 +1162,8 @@ __DRIconfig **intelInitScreen2(__DRIscreen *psp)
       return false;
    }
    /* parse information in __driConfigOptions */
-   driParseOptionInfo(&intelScreen->optionCache, i915_config_options.xml);
+   driParseOptionInfo(&intelScreen->optionCache, i915_driconf,
+                      ARRAY_SIZE(i915_driconf));
 
    intelScreen->driScrnPriv = psp;
    psp->driverPrivate = (void *) intelScreen;

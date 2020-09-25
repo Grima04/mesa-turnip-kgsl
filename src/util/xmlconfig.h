@@ -43,7 +43,7 @@ extern "C" {
 
 /** \brief Option data types */
 typedef enum driOptionType {
-   DRI_BOOL, DRI_ENUM, DRI_INT, DRI_FLOAT, DRI_STRING
+   DRI_BOOL, DRI_ENUM, DRI_INT, DRI_FLOAT, DRI_STRING, DRI_SECTION
 } driOptionType;
 
 /** \brief Option value */
@@ -91,19 +91,41 @@ typedef struct driOptionCache {
     * The value is the same in the screen and all contexts. */
 } driOptionCache;
 
-/** \brief Parse XML option info from configOptions
+typedef struct driEnumDescription {
+   int value;
+   const char *desc;
+} driEnumDescription;
+
+/**
+ * Struct for a driver's definition of an option, its default value, and the
+ * text documenting it.
+ */
+typedef struct driOptionDescription {
+   const char *desc;
+
+   driOptionInfo info;
+   driOptionValue value;
+   driEnumDescription enums[4];
+} driOptionDescription;
+
+/** Returns an XML string describing the options for the driver. */
+char *
+driGetOptionsXml(const driOptionDescription *configOptions, unsigned numOptions);
+
+/** \brief Parse driconf option array from configOptions
  *
  * To be called in <driver>CreateScreen
  *
  * \param info    pointer to a driOptionCache that will store the option info
- * \param configOptions   XML document describing available configuration opts
+ * \param configOptions   Array of XML document describing available configuration opts
  *
  * For the option information to be available to external configuration tools
  * it must be a public symbol __driConfigOptions. It is also passed as a
  * parameter to driParseOptionInfo in order to avoid driver-independent code
  * depending on symbols in driver-specific code. */
 void driParseOptionInfo(driOptionCache *info,
-                        const char *configOptions);
+                        const driOptionDescription *configOptions,
+                        unsigned numOptions);
 /** \brief Initialize option cache from info and parse configuration files
  *
  * To be called in <driver>CreateContext. screenNum, driverName,

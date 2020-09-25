@@ -46,6 +46,7 @@
 #include "util/u_memory.h"
 #include "util/u_dl.h"
 #include "util/u_debug.h"
+#include "util/xmlconfig.h"
 
 #define DRM_RENDER_NODE_DEV_NAME_FORMAT "%s/renderD%d"
 #define DRM_RENDER_NODE_MAX_NODES 63
@@ -241,15 +242,13 @@ pipe_loader_drm_release(struct pipe_loader_device **dev)
    pipe_loader_base_release(dev);
 }
 
-static const char *
-pipe_loader_drm_get_driconf_xml(struct pipe_loader_device *dev)
+static const struct driOptionDescription *
+pipe_loader_drm_get_driconf(struct pipe_loader_device *dev, unsigned *count)
 {
    struct pipe_loader_drm_device *ddev = pipe_loader_drm_device(dev);
 
-   if (!ddev->dd->driconf_xml)
-      return NULL;
-
-   return *ddev->dd->driconf_xml;
+   *count = ddev->dd->driconf_count;
+   return ddev->dd->driconf;
 }
 
 static struct pipe_screen *
@@ -261,24 +260,30 @@ pipe_loader_drm_create_screen(struct pipe_loader_device *dev,
    return ddev->dd->create_screen(ddev->fd, config);
 }
 
-char *
-pipe_loader_drm_get_driinfo_xml(const char *driver_name)
+const struct driOptionDescription *
+pipe_loader_drm_get_driconf_by_name(const char *driver_name, unsigned *count)
 {
-   char *xml = NULL;
+   driOptionDescription *driconf = NULL;
    struct util_dl_library *lib = NULL;
    const struct drm_driver_descriptor *dd =
       get_driver_descriptor(driver_name, &lib);
 
-   if (dd && dd->driconf_xml && *dd->driconf_xml)
-      xml = strdup(*dd->driconf_xml);
-
+   if (!dd) {
+      *count = 0;
+   } else {
+      *count = dd->driconf_count;
+      size_t size = sizeof(*driconf) * *count;
+      driconf = malloc(size);
+      memcpy(driconf, dd->driconf, size);
+   }
    if (lib)
       util_dl_close(lib);
-   return xml;
+
+   return driconf;
 }
 
 static const struct pipe_loader_ops pipe_loader_drm_ops = {
    .create_screen = pipe_loader_drm_create_screen,
-   .get_driconf_xml = pipe_loader_drm_get_driconf_xml,
+   .get_driconf = pipe_loader_drm_get_driconf,
    .release = pipe_loader_drm_release
 };

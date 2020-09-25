@@ -294,9 +294,10 @@ pipe_loader_sw_release(struct pipe_loader_device **dev)
    pipe_loader_base_release(dev);
 }
 
-static const char *
-pipe_loader_sw_get_driconf_xml(struct pipe_loader_device *dev)
+static const struct driOptionDescription *
+pipe_loader_sw_get_driconf(struct pipe_loader_device *dev, unsigned *count)
 {
+   *count = 0;
    return NULL;
 }
 
@@ -316,6 +317,6 @@ pipe_loader_sw_create_screen(struct pipe_loader_device *dev,
 
 static const struct pipe_loader_ops pipe_loader_sw_ops = {
    .create_screen = pipe_loader_sw_create_screen,
-   .get_driconf_xml = pipe_loader_sw_get_driconf_xml,
+   .get_driconf = pipe_loader_sw_get_driconf,
    .release = pipe_loader_sw_release
 };

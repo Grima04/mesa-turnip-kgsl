@@ -51,7 +51,6 @@
 
 const __DRIconfigOptionsExtension gallium_config_options = {
    .base = { __DRI_CONFIG_OPTIONS, 2 },
-   .xml = gallium_driinfo_xml,
    .getXml = pipe_loader_get_driinfo_xml
 };
 

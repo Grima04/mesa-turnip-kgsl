@@ -31,8 +31,6 @@ protected:
    ~xmlconfig_test();
 
    driOptionCache options;
-
-   void driconf(const char *driconf);
 };
 
 xmlconfig_test::xmlconfig_test()
@@ -45,23 +43,16 @@ xmlconfig_test::~xmlconfig_test()
 }
 
 /* wraps a DRI_CONF_OPT_* in the required xml bits */
-#define DRI_CONF_TEST_OPT(x) \
-   DRI_CONF(DRI_CONF_SECTION("section", x))
-
-void
-xmlconfig_test::driconf(const char *driconf)
-{
-   /* If your XML fails to parse, printing it here can help. */
-   /* printf("%s", driconf); */
-
-   driParseOptionInfo(&options, driconf);
-}
+#define DRI_CONF_TEST_OPT(x) x
 
 TEST_F(xmlconfig_test, bools)
 {
-   driconf(DRI_CONF_TEST_OPT(
-              DRI_CONF_GLSL_ZERO_INIT("false")
-              DRI_CONF_ALWAYS_HAVE_DEPTH_BUFFER("true")));
+   driOptionDescription driconf[] = {
+      DRI_CONF_SECTION_MISCELLANEOUS
+      DRI_CONF_GLSL_ZERO_INIT("false")
+      DRI_CONF_ALWAYS_HAVE_DEPTH_BUFFER("true")
+   };
+   driParseOptionInfo(&options, driconf, ARRAY_SIZE(driconf));
 
    EXPECT_EQ(driQueryOptionb(&options, "glsl_zero_init"), false);
    EXPECT_EQ(driQueryOptionb(&options, "always_have_depth_buffer"), true);
@@ -69,41 +60,56 @@ TEST_F(xmlconfig_test, bools)
 
 TEST_F(xmlconfig_test, ints)
 {
-   driconf(DRI_CONF_TEST_OPT(
-              DRI_CONF_OPT_I(opt, 2, 0, 999, "option")));
+   driOptionDescription driconf[] = {
+      DRI_CONF_SECTION_MISCELLANEOUS
+      DRI_CONF_OPT_I(opt, 2, 0, 999, "option")
+   };
+   driParseOptionInfo(&options, driconf, ARRAY_SIZE(driconf));
 
    EXPECT_EQ(driQueryOptioni(&options, "opt"), 2);
 }
 
 TEST_F(xmlconfig_test, floats)
 {
-   driconf(DRI_CONF_TEST_OPT(
-              DRI_CONF_OPT_F(opt, 2.0, 1.0, 2.0, "option")));
+   driOptionDescription driconf[] = {
+      DRI_CONF_SECTION_MISCELLANEOUS
+      DRI_CONF_OPT_F(opt, 2.0, 1.0, 2.0, "option")
+   };
+   driParseOptionInfo(&options, driconf, ARRAY_SIZE(driconf));
 
    EXPECT_EQ(driQueryOptionf(&options, "opt"), 2.0);
 }
 
 TEST_F(xmlconfig_test, enums)
 {
-   driconf(DRI_CONF_TEST_OPT(
-              DRI_CONF_VBLANK_MODE(DRI_CONF_VBLANK_DEF_INTERVAL_1)));
+   driOptionDescription driconf[] = {
+      DRI_CONF_SECTION_MISCELLANEOUS
+      DRI_CONF_VBLANK_MODE(DRI_CONF_VBLANK_DEF_INTERVAL_1)
+   };
+   driParseOptionInfo(&options, driconf, ARRAY_SIZE(driconf));
 
    EXPECT_EQ(driQueryOptioni(&options, "vblank_mode"), DRI_CONF_VBLANK_DEF_INTERVAL_1);
 }
 
 TEST_F(xmlconfig_test, string)
 {
-   driconf(DRI_CONF_TEST_OPT(
-              DRI_CONF_OPT_S(opt, value, "option")));
+   driOptionDescription driconf[] = {
+      DRI_CONF_SECTION_MISCELLANEOUS
+      DRI_CONF_OPT_S(opt, value, "option")
+   };
+   driParseOptionInfo(&options, driconf, ARRAY_SIZE(driconf));
 
    EXPECT_STREQ(driQueryOptionstr(&options, "opt"), "value");
 }
 
 TEST_F(xmlconfig_test, check_option)
 {
-   driconf(DRI_CONF_TEST_OPT(
-              DRI_CONF_GLSL_ZERO_INIT("true")
-              DRI_CONF_ALWAYS_HAVE_DEPTH_BUFFER("true")));
+   driOptionDescription driconf[] = {
+      DRI_CONF_SECTION_MISCELLANEOUS
+      DRI_CONF_GLSL_ZERO_INIT("true")
+      DRI_CONF_ALWAYS_HAVE_DEPTH_BUFFER("true")
+   };
+   driParseOptionInfo(&options, driconf, ARRAY_SIZE(driconf));
 
    EXPECT_EQ(driCheckOption(&options, "glsl_zero_init", DRI_BOOL), true);
 
@@ -117,9 +123,12 @@ TEST_F(xmlconfig_test, check_option)
 
 TEST_F(xmlconfig_test, copy_cache)
 {
-   driconf(DRI_CONF_TEST_OPT(
-              DRI_CONF_OPT_B(mesa_b_option, "true", "description")
-              DRI_CONF_OPT_S(mesa_s_option, value, "description")));
+   driOptionDescription driconf[] = {
+      DRI_CONF_SECTION_MISCELLANEOUS
+      DRI_CONF_OPT_B(mesa_b_option, "true", "description")
+      DRI_CONF_OPT_S(mesa_s_option, value, "description")
+   };
+   driParseOptionInfo(&options, driconf, ARRAY_SIZE(driconf));
 
    driOptionCache cache;
 
