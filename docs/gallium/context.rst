@@ -45,7 +45,7 @@ buffers, surfaces) are bound to the driver.
 
 
 * ``set_constant_buffer`` sets a constant buffer to be used for a given shader
-  type. index is used to indicate which buffer to set (some apis may allow
+  type. index is used to indicate which buffer to set (some APIs may allow
   multiple ones to be set, and binding a specific one later, though drivers
   are mostly restricted to the first one right now).
 
