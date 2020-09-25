@@ -21,7 +21,7 @@ exposes > 1 MRT, and we should revisit this issue if anyone ever does.
 Logical Operations
 ------------------
 
-Logical operations, also known as logicops, lops, or rops, are supported.
+Logical operations, also known as logicops, LOPs, or ROPs, are supported.
 Only two-operand logicops are available. When logicops are enabled, all other
 blend state is ignored, including per-render-target state, so logicops are
 performed on all render targets.
