@@ -609,7 +609,7 @@ the unsignaled state by performing a wait operation on said object, i.e.
 ``pipe_fence_handle`` can only have one waiter.
 
 This behaviour is useful in producer <-> consumer chains. It helps avoid
-unecessarily sharing a new ``pipe_fence_handle`` each time a new frame is
+unnecessarily sharing a new ``pipe_fence_handle`` each time a new frame is
 ready. Instead, the fences are exchanged once ahead of time, and access is synchronized
 through GPU signaling instead of direct producer <-> consumer communication.
 
