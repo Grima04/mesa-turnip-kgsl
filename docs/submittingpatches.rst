@@ -59,7 +59,7 @@ Patch formatting
 
       Closes: https://gitlab.freedesktop.org/mesa/mesa/-/issues/1
 
-   Prefer the full url to just ``Closes: #1``, since the url makes it
+   Prefer the full URL to just ``Closes: #1``, since the URL makes it
    easier to get to the bug page from ``git log``
 
    **Do not use the ``Fixes:`` tag for this!** Mesa already uses

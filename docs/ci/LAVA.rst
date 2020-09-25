@@ -67,7 +67,7 @@ the web interface, and create an API token.  Copy that into a
 
   default:
     token: <token contents>
-    uri: <url to the instance>
+    uri: <URL to the instance>
     username: gitlab-runner
 
 Add a volume mount of that ``lavacli.yaml`` to
