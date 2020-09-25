@@ -2540,6 +2540,74 @@ glsl_type::get_explicit_type_for_size_align(glsl_type_size_align_func type_info,
    }
 }
 
+const glsl_type *
+glsl_type::replace_vec3_with_vec4() const
+{
+   if (this->is_scalar() || this->is_vector() || this->is_matrix()) {
+      if (this->interface_row_major) {
+         if (this->matrix_columns == 3) {
+            return glsl_type::get_instance(this->base_type,
+                                           this->vector_elements,
+                                           4, /* matrix columns */
+                                           this->explicit_stride,
+                                           this->interface_row_major,
+                                           this->explicit_alignment);
+         } else {
+            return this;
+         }
+      } else {
+         if (this->vector_elements == 3) {
+            return glsl_type::get_instance(this->base_type,
+                                           4, /* vector elements */
+                                           this->matrix_columns,
+                                           this->explicit_stride,
+                                           this->interface_row_major,
+                                           this->explicit_alignment);
+         } else {
+            return this;
+         }
+      }
+   } else if (this->is_array()) {
+      const glsl_type *vec4_elem_type =
+         this->fields.array->replace_vec3_with_vec4();
+      if (vec4_elem_type == this->fields.array)
+         return this;
+      return glsl_type::get_array_instance(vec4_elem_type,
+                                           this->length,
+                                           this->explicit_stride);
+   } else if (this->is_struct() || this->is_interface()) {
+      struct glsl_struct_field *fields = (struct glsl_struct_field *)
+         malloc(sizeof(struct glsl_struct_field) * this->length);
+
+      bool needs_new_type = false;
+      for (unsigned i = 0; i < this->length; i++) {
+         fields[i] = this->fields.structure[i];
+         assert(fields[i].matrix_layout != GLSL_MATRIX_LAYOUT_ROW_MAJOR);
+         fields[i].type = fields[i].type->replace_vec3_with_vec4();
+         if (fields[i].type != this->fields.structure[i].type)
+            needs_new_type = true;
+      }
+
+      const glsl_type *type;
+      if (!needs_new_type) {
+         type = this;
+      } else if (this->is_struct()) {
+         type = get_struct_instance(fields, this->length, this->name,
+                                    this->packed, this->explicit_alignment);
+      } else {
+         assert(!this->packed);
+         type = get_interface_instance(fields, this->length,
+                                       (enum glsl_interface_packing)this->interface_packing,
+                                       this->interface_row_major,
+                                       this->name);
+      }
+      free(fields);
+      return type;
+   } else {
+      unreachable("Unhandled type.");
+   }
+}
+
 unsigned
 glsl_type::count_vec4_slots(bool is_gl_vertex_input, bool is_bindless) const
 {

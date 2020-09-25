@@ -234,6 +234,8 @@ const struct glsl_type *glsl_get_explicit_type_for_size_align(const struct glsl_
                                                               glsl_type_size_align_func type_info,
                                                               unsigned *size, unsigned *align);
 
+const struct glsl_type *glsl_type_replace_vec3_with_vec4(const struct glsl_type *type);
+
 unsigned glsl_type_get_sampler_count(const struct glsl_type *type);
 unsigned glsl_type_get_image_count(const struct glsl_type *type);
 

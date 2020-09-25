@@ -4234,6 +4234,8 @@ nir_lower_vars_to_explicit_types(nir_shader *shader,
 bool nir_lower_mem_constant_vars(nir_shader *shader,
                                  glsl_type_size_align_func type_info);
 
+bool nir_lower_vec3_to_vec4(nir_shader *shader, nir_variable_mode modes);
+
 typedef enum {
    /**
     * An address format which is a simple 32-bit global GPU address.

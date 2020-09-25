@@ -930,3 +930,9 @@ glsl_get_explicit_type_for_size_align(const struct glsl_type *type,
 {
    return type->get_explicit_type_for_size_align(type_info, size, align);
 }
+
+const struct glsl_type *
+glsl_type_replace_vec3_with_vec4(const struct glsl_type *type)
+{
+   return type->replace_vec3_with_vec4();
+}

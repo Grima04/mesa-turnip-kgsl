@@ -647,6 +647,8 @@ public:
    const glsl_type *get_explicit_type_for_size_align(glsl_type_size_align_func type_info,
                                                      unsigned *size, unsigned *align) const;
 
+   const glsl_type *replace_vec3_with_vec4() const;
+
    /**
     * Alignment in bytes of the start of this type in OpenCL memory.
     */
