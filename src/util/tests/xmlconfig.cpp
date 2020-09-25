@@ -122,8 +122,7 @@ TEST_F(xmlconfig_test, check_option)
 TEST_F(xmlconfig_test, copy_cache)
 {
    driconf(DRI_CONF_TEST_OPT(
-              DRI_CONF_OPT_BEGIN_B(mesa_b_option, "true")
-              DRI_CONF_OPT_END
+              DRI_CONF_OPT_B(mesa_b_option, "true", "description")
               DRI_CONF_OPT_BEGIN(mesa_s_option, string, value)
               DRI_CONF_DESC("option")
               DRI_CONF_OPT_END));

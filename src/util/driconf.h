@@ -73,13 +73,6 @@
 #define DRI_CONF_OPT_BEGIN(name,type,def) \
 "<option name=\""#name"\" type=\""#type"\" default=\""#def"\">\n"
 
-/**
- * \brief Begin a boolean option definition, with the default value passed in
- * as a string
- */
-#define DRI_CONF_OPT_BEGIN_B(name,def) \
-"<option name=\""#name"\" type=\"bool\" default="#def">\n"
-
 /** \brief Begin an option definition with restrictions on valid values */
 #define DRI_CONF_OPT_BEGIN_V(name,type,def,valid) \
 "<option name=\""#name"\" type=\""#type"\" default=\""#def"\" valid=\"" valid "\">\n"
@@ -115,8 +108,12 @@
       options                           \
    DRI_CONF_SECTION_END
 
+/**
+ * \brief A boolean option definition, with the default value passed in as a
+ * string
+ */
 #define DRI_CONF_OPT_B(name, def, desc) \
-   DRI_CONF_OPT_BEGIN_B(name, def)      \
+   "<option name=\""#name"\" type=\"bool\" default="#def">\n" \
       DRI_CONF_DESC(desc)               \
    DRI_CONF_OPT_END
 
