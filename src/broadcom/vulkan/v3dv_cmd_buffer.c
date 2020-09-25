@@ -2503,7 +2503,7 @@ clone_bo_list(struct v3dv_cmd_buffer *cmd_buffer,
  * for jobs recorded in secondary command buffers when we want to execute
  * them in primaries.
  */
-static void
+static struct v3dv_job *
 job_clone_in_cmd_buffer(struct v3dv_job *job,
                         struct v3dv_cmd_buffer *cmd_buffer)
 {
@@ -2512,7 +2512,7 @@ job_clone_in_cmd_buffer(struct v3dv_job *job,
                                          VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
    if (!clone_job) {
       v3dv_flag_oom(cmd_buffer, NULL);
-      return;
+      return NULL;
    }
 
    /* Cloned jobs don't duplicate resources! */
@@ -2530,6 +2530,25 @@ job_clone_in_cmd_buffer(struct v3dv_job *job,
       clone_bo_list(cmd_buffer, &clone_job->indirect.bo_list,
                     &job->indirect.bo_list);
    }
+
+   return clone_job;
+}
+
+static struct v3dv_job *
+cmd_buffer_subpass_split_for_barrier(struct v3dv_cmd_buffer *cmd_buffer,
+                                     bool is_bcl_barrier)
+{
+   assert(cmd_buffer->state.subpass_idx >= 0);
+   v3dv_cmd_buffer_finish_job(cmd_buffer);
+   struct v3dv_job *job =
+      v3dv_cmd_buffer_subpass_resume(cmd_buffer,
+                                     cmd_buffer->state.subpass_idx);
+   if (!job)
+      return NULL;
+
+   job->serialize = true;
+   job->needs_bcl_sync = is_bcl_barrier;
+   return job;
 }
 
 static void
@@ -2546,6 +2565,8 @@ cmd_buffer_execute_inside_pass(struct v3dv_cmd_buffer *primary,
     * pipelines used by the secondaries do, we need to re-start the primary
     * job to enable MSAA. See cmd_buffer_restart_job_for_msaa_if_needed.
     */
+   bool pending_barrier = false;
+   bool pending_bcl_barrier = false;
    for (uint32_t i = 0; i < cmd_buffer_count; i++) {
       V3DV_FROM_HANDLE(v3dv_cmd_buffer, secondary, cmd_buffers[i]);
 
@@ -2569,19 +2590,23 @@ cmd_buffer_execute_inside_pass(struct v3dv_cmd_buffer *primary,
             assert(*(((uint8_t *)secondary_job->bcl.next) - 1) ==
                    V3D42_RETURN_FROM_SUB_LIST_opcode);
 
-            /* If we had to split the primary job while executing the secondary
-             * we will have to create a new one so we can emit the branch
-             * instruction.
+            /* If this secondary has any barriers (or we had any pending barrier
+             * to apply), then we can't just branch to it from the primary, we
+             * need to split the primary to create a new job that can consume
+             * the barriers first.
              *
              * FIXME: in this case, maybe just copy the secondary BCL without
              * the RETURN_FROM_SUB_LIST into the primary job to skip the
              * branch?
              */
             struct v3dv_job *primary_job = primary->state.job;
-            if (!primary_job) {
+            if (!primary_job || secondary_job->serialize || pending_barrier) {
+               const bool needs_bcl_barrier =
+                  secondary_job->needs_bcl_sync || pending_bcl_barrier;
                primary_job =
-                  v3dv_cmd_buffer_subpass_resume(primary,
-                                                 primary->state.subpass_idx);
+                  cmd_buffer_subpass_split_for_barrier(primary,
+                                                       needs_bcl_barrier);
+               v3dv_return_if_oom(primary, NULL);
             }
 
             /* Make sure our primary job has all required BO references */
@@ -2599,17 +2624,13 @@ cmd_buffer_execute_inside_pass(struct v3dv_cmd_buffer *primary,
                branch.address = v3dv_cl_address(secondary_job->bcl.bo, 0);
             }
 
-            /* If this secondary has barriers, we need to flag them in the
-             * primary job.
-             *
-             * FIXME: This might be moving the sync point too early though,
-             * maybe we would need to split the primary in this case to ensure
-             * that barriers execute right before the secondary.
-             */
-            primary_job->serialize |= secondary_job->serialize;
-            primary_job->needs_bcl_sync |= secondary_job->needs_bcl_sync;
             primary_job->tmu_dirty_rcl |= secondary_job->tmu_dirty_rcl;
          } else if (secondary_job->type == V3DV_JOB_TYPE_CPU_CLEAR_ATTACHMENTS) {
+            if (pending_barrier) {
+               cmd_buffer_subpass_split_for_barrier(primary, pending_bcl_barrier);
+               v3dv_return_if_oom(primary, NULL);
+            }
+
             const struct v3dv_clear_attachments_cpu_job_info *info =
                &secondary_job->cpu.clear_attachments;
             v3dv_CmdClearAttachments(v3dv_cmd_buffer_to_handle(primary),
@@ -2624,7 +2645,15 @@ cmd_buffer_execute_inside_pass(struct v3dv_cmd_buffer *primary,
              */
             v3dv_cmd_buffer_finish_job(primary);
             job_clone_in_cmd_buffer(secondary_job, primary);
+            if (pending_barrier) {
+               secondary_job->serialize = true;
+               if (pending_bcl_barrier)
+                  secondary_job->needs_bcl_sync = true;
+            }
          }
+
+         pending_barrier = false;
+         pending_bcl_barrier = false;
       }
 
       /* If the secondary has recorded any vkCmdEndQuery commands, we need to
@@ -2632,6 +2661,18 @@ cmd_buffer_execute_inside_pass(struct v3dv_cmd_buffer *primary,
        * current primary job is finished.
        */
       cmd_buffer_copy_secondary_end_query_state(primary, secondary);
+
+      /* If this secondary had any pending barrier state we will need that
+       * barrier state consumed with whatever comes next in the primary.
+       */
+      assert(secondary->state.has_barrier || !secondary->state.has_bcl_barrier);
+      pending_barrier = secondary->state.has_barrier;
+      pending_bcl_barrier = secondary->state.has_bcl_barrier;
+   }
+
+   if (pending_barrier) {
+      primary->state.has_barrier = true;
+      primary->state.has_bcl_barrier |= pending_bcl_barrier;
    }
 }
 
@@ -2640,6 +2681,8 @@ cmd_buffer_execute_outside_pass(struct v3dv_cmd_buffer *primary,
                                 uint32_t cmd_buffer_count,
                                 const VkCommandBuffer *cmd_buffers)
 {
+   bool pending_barrier = false;
+   bool pending_bcl_barrier = false;
    for (uint32_t i = 0; i < cmd_buffer_count; i++) {
       V3DV_FROM_HANDLE(v3dv_cmd_buffer, secondary, cmd_buffers[i]);
 
@@ -2664,8 +2707,31 @@ cmd_buffer_execute_outside_pass(struct v3dv_cmd_buffer *primary,
          /* These can only happen inside a render pass */
          assert(secondary_job->type != V3DV_JOB_TYPE_CPU_CLEAR_ATTACHMENTS);
          assert(secondary_job->type != V3DV_JOB_TYPE_GPU_CL_SECONDARY);
-         job_clone_in_cmd_buffer(secondary_job, primary);
+         struct v3dv_job *job = job_clone_in_cmd_buffer(secondary_job, primary);
+         if (!job)
+            return;
+
+         if (pending_barrier) {
+            job->serialize = true;
+            if (pending_bcl_barrier)
+               job->needs_bcl_sync = true;
+            pending_barrier = false;
+            pending_bcl_barrier = false;
+         }
       }
+
+      /* If this secondary had any pending barrier state we will need that
+       * barrier state consumed with whatever comes after it (first job in
+       * the next secondary or the primary, if this was the last secondary).
+       */
+      assert(secondary->state.has_barrier || !secondary->state.has_bcl_barrier);
+      pending_barrier = secondary->state.has_barrier;
+      pending_bcl_barrier = secondary->state.has_bcl_barrier;
+   }
+
+   if (pending_barrier) {
+      primary->state.has_barrier = true;
+      primary->state.has_bcl_barrier |= pending_bcl_barrier;
    }
 }
 
