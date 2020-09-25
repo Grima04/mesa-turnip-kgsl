@@ -76,6 +76,14 @@ nir_num_components_valid(unsigned num_components)
            num_components == 16;
 }
 
+bool nir_component_mask_can_reinterpret(nir_component_mask_t mask,
+                                        unsigned old_bit_size,
+                                        unsigned new_bit_size);
+nir_component_mask_t
+nir_component_mask_reinterpret(nir_component_mask_t mask,
+                               unsigned old_bit_size,
+                               unsigned new_bit_size);
+
 /** Defines a cast function
  *
  * This macro defines a cast function from in_type to out_type where

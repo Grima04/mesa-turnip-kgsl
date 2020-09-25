@@ -36,6 +36,68 @@
 
 #include "main/menums.h" /* BITFIELD64_MASK */
 
+
+/** Return true if the component mask "mask" with bit size "old_bit_size" can
+ * be re-interpreted to be used with "new_bit_size".
+ */
+bool
+nir_component_mask_can_reinterpret(nir_component_mask_t mask,
+                                   unsigned old_bit_size,
+                                   unsigned new_bit_size)
+{
+   assert(util_is_power_of_two_nonzero(old_bit_size));
+   assert(util_is_power_of_two_nonzero(new_bit_size));
+
+   if (old_bit_size == new_bit_size)
+      return true;
+
+   if (old_bit_size == 1 || new_bit_size == 1)
+      return false;
+
+   if (old_bit_size > new_bit_size) {
+      unsigned ratio = old_bit_size / new_bit_size;
+      return util_last_bit(mask) * ratio <= NIR_MAX_VEC_COMPONENTS;
+   }
+
+   unsigned iter = mask;
+   while (iter) {
+      int start, count;
+      u_bit_scan_consecutive_range(&iter, &start, &count);
+      start *= old_bit_size;
+      count *= old_bit_size;
+      if (start % new_bit_size != 0)
+         return false;
+      if (count % new_bit_size != 0)
+         return false;
+   }
+   return true;
+}
+
+/** Re-interprets a component mask "mask" with bit size "old_bit_size" so that
+ * it can be used can be used with "new_bit_size".
+ */
+nir_component_mask_t
+nir_component_mask_reinterpret(nir_component_mask_t mask,
+                               unsigned old_bit_size,
+                               unsigned new_bit_size)
+{
+   assert(nir_component_mask_can_reinterpret(mask, old_bit_size, new_bit_size));
+
+   if (old_bit_size == new_bit_size)
+      return mask;
+
+   nir_component_mask_t new_mask = 0;
+   unsigned iter = mask;
+   while (iter) {
+      int start, count;
+      u_bit_scan_consecutive_range(&iter, &start, &count);
+      start = start * old_bit_size / new_bit_size;
+      count = count * old_bit_size / new_bit_size;
+      new_mask |= BITFIELD_RANGE(start, count);
+   }
+   return new_mask;
+}
+
 nir_shader *
 nir_shader_create(void *mem_ctx,
                   gl_shader_stage stage,
