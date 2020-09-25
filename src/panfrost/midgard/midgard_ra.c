@@ -971,6 +971,7 @@ mir_ra(compiler_context *ctx)
 
                         if (spill_node == -1) {
                                 fprintf(stderr, "ERROR: Failed to choose spill node\n");
+                                lcra_free(l);
                                 return;
                         }
 
