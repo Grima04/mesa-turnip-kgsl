@@ -45,7 +45,7 @@ and some public images, and figure out how to get your boards booting.
 
 Once you can boot your board using a custom job definition, it's time
 to connect Mesa CI to it.  Install gitlab-runner and register as a
-shared runner (you'll need a gitlab admin for help with this).  The
+shared runner (you'll need a GitLab admin for help with this).  The
 runner *must* have a tag (like "mesa-lava-db410c") to restrict the
 jobs it takes or it will grab random jobs from tasks across fd.o, and
 your runner isn't ready for that.
@@ -78,7 +78,7 @@ access it.  You probably have a ``volumes = ["/cache"]`` already, so now it woul
 
 Note that this token is visible to anybody that can submit MRs to
 Mesa!  It is not an actual secret.  We could just bake it into the
-gitlab CI yml, but this way the current method of connecting to the
+GitLab CI yml, but this way the current method of connecting to the
 LAVA instance is separated from the Mesa branches (particularly
 relevant as we have many stable branches all using CI).
 

@@ -52,7 +52,7 @@ Patch formatting
       platform.
 
 -  A "Signed-off-by:" line is not required, but not discouraged either.
--  If a patch addresses an issue in gitlab, use the Closes: tag For
+-  If a patch addresses an issue in GitLab, use the Closes: tag For
    example:
 
    ::
@@ -225,7 +225,7 @@ Reviewing Patches
 
 To participate in code review, you can monitor the GitLab Mesa `Merge
 Requests <https://gitlab.freedesktop.org/mesa/mesa/-/merge_requests>`__
-page, and/or register for notifications in your gitlab settings.
+page, and/or register for notifications in your GitLab settings.
 
 When you've reviewed a patch, please be unambiguous about your review.
 That is, state either
@@ -254,14 +254,14 @@ the issues are resolved first.
 These Reviewed-by, Acked-by, and Tested-by tags should also be amended
 into commits in a MR before it is merged.
 
-When providing a Reviewed-by, Acked-by, or Tested-by tag in a gitlab MR,
+When providing a Reviewed-by, Acked-by, or Tested-by tag in a GitLab MR,
 enclose the tag in backticks:
 
 ::
 
    `Reviewed-by: Joe Hacker <jhacker@example.com>`
 
-This is the markdown format for literal, and will prevent gitlab from
+This is the markdown format for literal, and will prevent GitLab from
 hiding the < and > symbols.
 
 Review by non-experts is encouraged. Understanding how someone else goes
@@ -280,7 +280,7 @@ branch and release. In order or preference:
   a specific commit.
 - By adding the ``Cc: mesa-stable`` tag in the commit message as described above.
 - By submitting a merge request against the ``staging/year.quarter``
-  branch on gitlab.
+  branch on GitLab.
 
 Please **DO NOT** send patches to mesa-stable@lists.freedesktop.org, it
 is not monitored actively and is a historical artifact.
@@ -354,7 +354,7 @@ de-nominate the patch.
 
 For patches that either need to be nominated after they've landed in
 master, or that are known ahead of time to not not apply cleanly to a
-stable branch (such as due to a rename), using a gitlab MR is most
+stable branch (such as due to a rename), using a GitLab MR is most
 appropriate. The MR should be based on and target the
 staging/year.quarter branch, not on the year.quarter branch, per the
 stable branch policy. Assigning the MR to release maintainer for said

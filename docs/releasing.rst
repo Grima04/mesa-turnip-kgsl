@@ -71,11 +71,11 @@ Commits nominated for the active branch are picked as based on the
 section.
 
 Nominations happen via special tags in the commit messages, and via
-gitlab merge requests against the staging branches. There are special
+GitLab merge requests against the staging branches. There are special
 scripts used to read the tags.
 
 The maintainer should watch or be in contact with the Intel CI team, as
-well as watch the gitlab CI for regressions.
+well as watch the GitLab CI for regressions.
 
 Cherry picking should be done with the '-x' switch (to automatically add
 "cherry picked from ..." to the commit message):
@@ -92,7 +92,7 @@ Following developers have requested permanent exception
 -  *Ilia Mirkin*
 -  *AMD team*
 
-The gitlab CI must pass.
+The GitLab CI must pass.
 
 For Windows related changes, the main contact point is Brian Paul. Jose
 Fonseca can also help as a fallback contact.
@@ -191,7 +191,7 @@ To setup the branchpoint:
    git push origin X.Y-branchpoint X.Y
 
 Now go to
-`gitlab <https://gitlab.freedesktop.org/mesa/mesa/-/milestones>`__ and
+`GitLab <https://gitlab.freedesktop.org/mesa/mesa/-/milestones>`__ and
 add the new Mesa version X.Y.
 
 Check that there are no distribution breaking changes and revert them if
@@ -326,7 +326,7 @@ Use the generated template during the releasing process.
 Again, pay attention to add a note to warn about a final release in a
 series, if that is the case.
 
-Update gitlab issues
+Update GitLab issues
 --------------------
 
 Parse through the bug reports as listed in the docs/relnotes/X.Y.Z.rst

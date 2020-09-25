@@ -47,7 +47,7 @@ To get the Mesa sources anonymously (read-only):
 Developer git Access
 --------------------
 
-If you wish to become a Mesa developer with gitlab merge privilege,
+If you wish to become a Mesa developer with GitLab merge privilege,
 please follow this procedure:
 
 #. Subscribe to the
@@ -56,7 +56,7 @@ please follow this procedure:
 #. Start contributing to the project by :doc:`submitting
    patches <submittingpatches>`. Specifically,
 
-   -  Use `gitlab <https://gitlab.freedesktop.org/>`__ to create your
+   -  Use `GitLab <https://gitlab.freedesktop.org/>`__ to create your
       merge requests.
    -  Wait for someone to review the code and give you a ``Reviewed-by``
       statement.
@@ -67,7 +67,7 @@ please follow this procedure:
    a dozen or so patches accepted, a maintainer may use their discretion
    to give you access to merge your own code.
 
-Pushing code to your gitlab account via HTTPS
+Pushing code to your GitLab account via HTTPS
 ---------------------------------------------
 
 Useful for people behind strict proxies

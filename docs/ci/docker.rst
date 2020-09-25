@@ -2,7 +2,7 @@ Docker CI
 =========
 
 For llvmpipe and swrast CI, we run tests in a container containing
-VK-GL-CTS, on the shared gitlab runners provided by `freedesktop
+VK-GL-CTS, on the shared GitLab runners provided by `freedesktop
 <http://freedesktop.org>`_
 
 Software architecture
@@ -19,7 +19,7 @@ come up with a working MR!).
 gitlab-runner is a client that polls gitlab.freedesktop.org for
 available jobs, with no inbound networking requirements.  Jobs can
 have tags, so we can have DUT-specific jobs that only run on runners
-with that tag marked in the gitlab UI.
+with that tag marked in the GitLab UI.
 
 Since dEQP takes a long time to run, we mark the job as "parallel" at
 some level, which spawns multiple jobs from one definition, and then
