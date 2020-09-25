@@ -582,6 +582,49 @@ handle_special(struct vtn_builder *b, uint32_t opcode,
    return ret;
 }
 
+static nir_ssa_def *
+handle_core(struct vtn_builder *b, uint32_t opcode,
+            unsigned num_srcs, nir_ssa_def **srcs, struct vtn_type **src_types,
+            const struct vtn_type *dest_type)
+{
+   nir_deref_instr *ret_deref = NULL;
+
+   switch ((SpvOp)opcode) {
+   case SpvOpGroupAsyncCopy: {
+      /* Libclc doesn't include 3-component overloads of the async copy functions.
+       * However, the CLC spec says:
+       * async_work_group_copy and async_work_group_strided_copy for 3-component vector types
+       * behave as async_work_group_copy and async_work_group_strided_copy respectively for 4-component
+       * vector types
+       */
+      for (unsigned i = 0; i < num_srcs; ++i) {
+         if (src_types[i]->base_type == vtn_base_type_pointer &&
+             src_types[i]->deref->base_type == vtn_base_type_vector &&
+             src_types[i]->deref->length == 3) {
+            src_types[i] =
+               get_pointer_type(b,
+                                get_vtn_type_for_glsl_type(b, glsl_replace_vector_type(src_types[i]->deref->type, 4)),
+                                src_types[i]->storage_class);
+         }
+      }
+      if (!call_mangled_function(b, "async_work_group_strided_copy", (1 << 1), num_srcs, src_types, dest_type, srcs, &ret_deref))
+         return NULL;
+      break;
+   }
+   case SpvOpGroupWaitEvents: {
+      src_types[0] = get_vtn_type_for_glsl_type(b, glsl_int_type());
+      if (!call_mangled_function(b, "wait_group_events", 0, num_srcs, src_types, dest_type, srcs, &ret_deref))
+         return NULL;
+      break;
+   }
+   default:
+      return NULL;
+   }
+
+   return ret_deref ? nir_load_deref(&b->nb, ret_deref) : NULL;
+}
+
+
 static void
 _handle_v_load_store(struct vtn_builder *b, enum OpenCLstd_Entrypoints opcode,
                      const uint32_t *w, unsigned count, bool load)
@@ -887,4 +930,21 @@ vtn_handle_opencl_instruction(struct vtn_builder *b, SpvOp ext_opcode,
       vtn_fail("unhandled opencl opc: %u\n", ext_opcode);
       return false;
    }
+}
+
+bool
+vtn_handle_opencl_core_instruction(struct vtn_builder *b, SpvOp opcode,
+                                   const uint32_t *w, unsigned count)
+{
+   switch (opcode) {
+   case SpvOpGroupAsyncCopy:
+      handle_instr(b, opcode, w + 4, count - 4, w + 1, handle_core);
+      return true;
+   case SpvOpGroupWaitEvents:
+      handle_instr(b, opcode, w + 2, count - 2, NULL, handle_core);
+      return true;
+   default:
+      return false;
+   }
+   return true;
 }

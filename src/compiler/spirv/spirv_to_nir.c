@@ -5500,6 +5500,11 @@ vtn_handle_body_instruction(struct vtn_builder *b, SpvOp opcode,
    case SpvOpLifetimeStop:
       break;
 
+   case SpvOpGroupAsyncCopy:
+   case SpvOpGroupWaitEvents:
+      vtn_handle_opencl_core_instruction(b, opcode, w, count);
+      break;
+
    default:
       vtn_fail_with_opcode("Unhandled opcode", opcode);
    }
