@@ -27,7 +27,6 @@
 
    lists
    bugs
-   webmaster
    Mesa/DRI Wiki <https://dri.freedesktop.org/>
 
 .. toctree::

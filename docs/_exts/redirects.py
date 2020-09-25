@@ -2,7 +2,8 @@ import os
 
 redirects = [
     ('llvmpipe', 'gallium/drivers/llvmpipe.html'),
-    ('postprocess', 'gallium/postprocess.html')
+    ('postprocess', 'gallium/postprocess.html'),
+    ('webmaster', 'https://www.mesa3d.org/website/')
 ]
 
 def create_redirect(dst):
