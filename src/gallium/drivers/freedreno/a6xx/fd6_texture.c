@@ -311,11 +311,14 @@ fd6_sampler_view_create(struct pipe_context *pctx, struct pipe_resource *prsc,
 		break;
 	}
 
+	if (rsc->layout.tile_all)
+		so->texconst3 |= A6XX_TEX_CONST_3_TILE_ALL;
+
 	if (so->ubwc_enabled) {
 		uint32_t block_width, block_height;
 		fdl6_get_ubwc_blockwidth(&rsc->layout, &block_width, &block_height);
 
-		so->texconst3 |= A6XX_TEX_CONST_3_FLAG | A6XX_TEX_CONST_3_TILE_ALL;
+		so->texconst3 |= A6XX_TEX_CONST_3_FLAG;
 		so->texconst9 |= A6XX_TEX_CONST_9_FLAG_BUFFER_ARRAY_PITCH(rsc->layout.ubwc_layer_size >> 2);
 		so->texconst10 |=
 			A6XX_TEX_CONST_10_FLAG_BUFFER_PITCH(fdl_ubwc_pitch(&rsc->layout, lvl)) |
