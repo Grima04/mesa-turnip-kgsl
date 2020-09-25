@@ -32,7 +32,7 @@ Bug fixes
 ---------
 
 - Crash in ruvd_end_frame when calling vaBeginPicture/vaEndPicture without rendering anything
-- khr_debug-push-pop-group_gl: ../src/util/simple_mtx.h:86: simple_mtx_lock: Assertion `c != _SIMPLE_MTX_INVALID_VALUE' failed.
+- khr_debug-push-pop-group_gl: ../src/util/simple_mtx.h:86: simple_mtx_lock: Assertion \`c != _SIMPLE_MTX_INVALID_VALUE' failed.
 - Amber test opt_peel_loop_initial_if: Assertion failed
 - Dirt Rally: Flickering glitches on certain foliage since Mesa 20.1.0 caused by MSAA
 - [BRW] WRC 5 asserts with gallium nine and iris.
