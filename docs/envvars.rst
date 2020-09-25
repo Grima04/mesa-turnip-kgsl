@@ -39,7 +39,7 @@ Core Mesa environment variables
    if set, disables Intel SSE optimizations
 ``MESA_NO_ERROR``
    if set to 1, error checking is disabled as per ``KHR_no_error``. This
-   will result in undefined behaviour for invalid use of the api, but
+   will result in undefined behavior for invalid use of the api, but
    can reduce CPU use for apps that are known to be error free.
 ``MESA_DEBUG``
    if set, error messages are printed to stderr. For example, if the
@@ -48,7 +48,7 @@ Core Mesa environment variables
    will be printed to stderr. For release builds, ``MESA_DEBUG``
    defaults to off (no debug output). ``MESA_DEBUG`` accepts the
    following comma-separated list of named flags, which adds extra
-   behaviour to just set ``MESA_DEBUG=1``:
+   behavior to just set ``MESA_DEBUG=1``:
 
    ``silent``
       turn off debug messages. Only useful for debug builds.
@@ -185,7 +185,7 @@ NIR passes environment variables
 --------------------------------
 
 The following are only applicable for drivers that uses NIR, as they
-modify the behaviour for the common NIR_PASS and NIR_PASS_V macros, that
+modify the behavior for the common NIR_PASS and NIR_PASS_V macros, that
 wrap calls to NIR lowering/optimizations.
 
 ``NIR_PRINT``

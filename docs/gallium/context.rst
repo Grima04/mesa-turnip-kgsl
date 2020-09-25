@@ -605,10 +605,10 @@ is forever considered to be signaled.
 Once a re-usable ``pipe_fence_handle`` becomes signaled, it can be reset
 back into an unsignaled state. The ``pipe_fence_handle`` will be reset to
 the unsignaled state by performing a wait operation on said object, i.e.
-``fence_server_sync``. As a corollary to this behaviour, a re-usable
+``fence_server_sync``. As a corollary to this behavior, a re-usable
 ``pipe_fence_handle`` can only have one waiter.
 
-This behaviour is useful in producer <-> consumer chains. It helps avoid
+This behavior is useful in producer <-> consumer chains. It helps avoid
 unnecessarily sharing a new ``pipe_fence_handle`` each time a new frame is
 ready. Instead, the fences are exchanged once ahead of time, and access is synchronized
 through GPU signaling instead of direct producer <-> consumer communication.

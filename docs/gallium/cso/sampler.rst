@@ -30,7 +30,7 @@ The wrap modes are:
   scaling to the texture size.  This corresponds to the legacy OpenGL GL_CLAMP
   texture wrap mode.  Historically, this mode hasn't acted consistantly across
   all graphics hardware.  It sometimes acts like CLAMP_TO_EDGE or
-  CLAMP_TO_BORDER.  The behaviour may also vary depending on linear vs.
+  CLAMP_TO_BORDER.  The behavior may also vary depending on linear vs.
   nearest sampling mode.
 * ``PIPE_TEX_WRAP_MIRROR_REPEAT``: If the integer part of the coordinate
   is odd, the coord becomes (1 - coord).  Then, normal texture REPEAT is
