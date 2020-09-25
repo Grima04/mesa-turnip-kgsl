@@ -740,6 +740,7 @@ static __DRIimage *
 dri2_create_image_from_winsys(__DRIscreen *_screen,
                               int width, int height, const struct dri2_format_mapping *map,
                               int num_handles, struct winsys_handle *whandle,
+                              bool is_protected_content,
                               void *loaderPrivate)
 {
    struct dri_screen *screen = dri_screen(_screen);
@@ -829,6 +830,16 @@ dri2_create_image_from_winsys(__DRIscreen *_screen,
          return NULL;
       }
 
+      /* Reject image creation if there's an inconsistency between
+       * content protection status of tex and img.
+       */
+      if ((tex->bind & PIPE_BIND_PROTECTED) != is_protected_content) {
+         pipe_resource_reference(&img->texture, NULL);
+         pipe_resource_reference(&tex, NULL);
+         FREE(img);
+         return NULL;
+      }
+
       img->texture = tex;
    }
 
@@ -861,7 +872,7 @@ dri2_create_image_from_name(__DRIscreen *_screen,
    whandle.stride = pitch * util_format_get_blocksize(map->pipe_format);
 
    img = dri2_create_image_from_winsys(_screen, width, height, map,
-                                       1, &whandle, loaderPrivate);
+                                       1, &whandle, false, loaderPrivate);
 
    if (!img)
       return NULL;
@@ -923,8 +934,8 @@ static __DRIimage *
 dri2_create_image_from_fd(__DRIscreen *_screen,
                           int width, int height, int fourcc,
                           uint64_t modifier, int *fds, int num_fds,
-                          int *strides, int *offsets, unsigned *error,
-                          void *loaderPrivate)
+                          int *strides, int *offsets, bool protected_content,
+                          unsigned *error, void *loaderPrivate)
 {
    struct winsys_handle whandles[4];
    const struct dri2_format_mapping *map = dri2_get_mapping_by_fourcc(fourcc);
@@ -961,7 +972,8 @@ dri2_create_image_from_fd(__DRIscreen *_screen,
    }
 
    img = dri2_create_image_from_winsys(_screen, width, height, map,
-                                       num_fds, whandles, loaderPrivate);
+                                       num_fds, whandles, protected_content,
+                                       loaderPrivate);
    if(img == NULL) {
       err = __DRI_IMAGE_ERROR_BAD_ALLOC;
       goto exit;
@@ -1366,7 +1378,7 @@ dri2_from_names(__DRIscreen *screen, int width, int height, int format,
    whandle.modifier = DRM_FORMAT_MOD_INVALID;
 
    img = dri2_create_image_from_winsys(screen, width, height, map,
-                                       1, &whandle, loaderPrivate);
+                                       1, &whandle, false, loaderPrivate);
    if (img == NULL)
       return NULL;
 
@@ -1435,7 +1447,7 @@ dri2_from_fds(__DRIscreen *screen, int width, int height, int fourcc,
 {
    return dri2_create_image_from_fd(screen, width, height, fourcc,
                                    DRM_FORMAT_MOD_INVALID, fds, num_fds,
-                                   strides, offsets, NULL, loaderPrivate);
+                                   strides, offsets, false, NULL, loaderPrivate);
 }
 
 static boolean
@@ -1507,7 +1519,7 @@ dri2_from_dma_bufs(__DRIscreen *screen,
 
    img = dri2_create_image_from_fd(screen, width, height, fourcc,
                                    DRM_FORMAT_MOD_INVALID, fds, num_fds,
-                                   strides, offsets, error, loaderPrivate);
+                                   strides, offsets, false, error, loaderPrivate);
    if (img == NULL)
       return NULL;
 
@@ -1536,6 +1548,37 @@ dri2_from_dma_bufs2(__DRIscreen *screen,
 
    img = dri2_create_image_from_fd(screen, width, height, fourcc,
                                    modifier, fds, num_fds, strides, offsets,
+                                   false, error, loaderPrivate);
+   if (img == NULL)
+      return NULL;
+
+   img->yuv_color_space = yuv_color_space;
+   img->sample_range = sample_range;
+   img->horizontal_siting = horizontal_siting;
+   img->vertical_siting = vertical_siting;
+
+   *error = __DRI_IMAGE_ERROR_SUCCESS;
+   return img;
+}
+
+static __DRIimage *
+dri2_from_dma_bufs3(__DRIscreen *screen,
+                    int width, int height, int fourcc,
+                    uint64_t modifier, int *fds, int num_fds,
+                    int *strides, int *offsets,
+                    enum __DRIYUVColorSpace yuv_color_space,
+                    enum __DRISampleRange sample_range,
+                    enum __DRIChromaSiting horizontal_siting,
+                    enum __DRIChromaSiting vertical_siting,
+                    uint32_t flags,
+                    unsigned *error,
+                    void *loaderPrivate)
+{
+   __DRIimage *img;
+
+   img = dri2_create_image_from_fd(screen, width, height, fourcc,
+                                   modifier, fds, num_fds, strides, offsets,
+                                   flags & __DRI_IMAGE_PROTECTED_CONTENT_FLAG,
                                    error, loaderPrivate);
    if (img == NULL)
       return NULL;
@@ -1652,7 +1695,7 @@ dri2_get_capabilities(__DRIscreen *_screen)
 
 /* The extension is modified during runtime if DRI_PRIME is detected */
 static __DRIimageExtension dri2ImageExtension = {
-    .base = { __DRI_IMAGE, 17 },
+    .base = { __DRI_IMAGE, 18 },
 
     .createImageFromName          = dri2_create_image_from_name,
     .createImageFromRenderbuffer  = dri2_create_image_from_renderbuffer,
@@ -1672,6 +1715,7 @@ static __DRIimageExtension dri2ImageExtension = {
     .unmapImage                   = dri2_unmap_image,
     .createImageWithModifiers     = NULL,
     .createImageFromDmaBufs2      = NULL,
+    .createImageFromDmaBufs3      = NULL,
     .queryDmaBufFormats           = NULL,
     .queryDmaBufModifiers         = NULL,
     .queryDmaBufFormatModifierAttribs = NULL,
@@ -2180,6 +2224,7 @@ dri2_init_screen(__DRIscreen * sPriv)
          dri2ImageExtension.createImageFromFds = dri2_from_fds;
          dri2ImageExtension.createImageFromDmaBufs = dri2_from_dma_bufs;
          dri2ImageExtension.createImageFromDmaBufs2 = dri2_from_dma_bufs2;
+         dri2ImageExtension.createImageFromDmaBufs3 = dri2_from_dma_bufs3;
          dri2ImageExtension.queryDmaBufFormats = dri2_query_dma_buf_formats;
          dri2ImageExtension.queryDmaBufModifiers =
             dri2_query_dma_buf_modifiers;
@@ -2260,6 +2305,7 @@ dri_kms_init_screen(__DRIscreen * sPriv)
       dri2ImageExtension.createImageFromFds = dri2_from_fds;
       dri2ImageExtension.createImageFromDmaBufs = dri2_from_dma_bufs;
       dri2ImageExtension.createImageFromDmaBufs2 = dri2_from_dma_bufs2;
+      dri2ImageExtension.createImageFromDmaBufs3 = dri2_from_dma_bufs3;
       dri2ImageExtension.queryDmaBufFormats = dri2_query_dma_buf_formats;
       dri2ImageExtension.queryDmaBufModifiers = dri2_query_dma_buf_modifiers;
    }

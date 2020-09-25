@@ -2866,7 +2866,28 @@ dri2_create_image_dma_buf(_EGLDisplay *disp, _EGLContext *ctx,
       has_modifier = true;
    }
 
-   if (has_modifier) {
+   if (attrs.ProtectedContent) {
+      if (dri2_dpy->image->base.version < 18 ||
+          dri2_dpy->image->createImageFromDmaBufs3 == NULL) {
+         _eglError(EGL_BAD_MATCH, "unsupported protected_content attribute");
+         return EGL_NO_IMAGE_KHR;
+      }
+      if (!has_modifier)
+         modifier = DRM_FORMAT_MOD_INVALID;
+
+      dri_image =
+         dri2_dpy->image->createImageFromDmaBufs3(dri2_dpy->dri_screen,
+            attrs.Width, attrs.Height, attrs.DMABufFourCC.Value,
+            modifier, fds, num_fds, pitches, offsets,
+            attrs.DMABufYuvColorSpaceHint.Value,
+            attrs.DMABufSampleRangeHint.Value,
+            attrs.DMABufChromaHorizontalSiting.Value,
+            attrs.DMABufChromaVerticalSiting.Value,
+            attrs.ProtectedContent ? __DRI_IMAGE_PROTECTED_CONTENT_FLAG : 0,
+            &error,
+            NULL);
+   }
+   else if (has_modifier) {
       if (dri2_dpy->image->base.version < 15 ||
           dri2_dpy->image->createImageFromDmaBufs2 == NULL) {
          _eglError(EGL_BAD_MATCH, "unsupported dma_buf format modifier");
