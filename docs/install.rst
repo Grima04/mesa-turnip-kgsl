@@ -38,7 +38,7 @@ Third party/extra tools.
 ^^^^^^^^^^^^^^^^^^^^^^^^
 
 -  `Python <https://www.python.org/>`__ - Python is required. When
-   building with scons 2.7 is required. When building with meson 3.5 or
+   building with SCons 2.7 is required. When building with meson 3.5 or
    newer is required.
 -  `Python Mako module <http://www.makotemplates.org/>`__ - Python Mako
    module is required. Version 0.8.0 or later should work.
