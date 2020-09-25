@@ -846,6 +846,29 @@ blorp_can_hiz_clear_depth(const struct gen_device_info *devinfo,
    return isl_aux_usage_has_hiz(aux_usage);
 }
 
+static bool
+blorp_can_clear_full_surface(const struct blorp_surf *depth,
+                             const struct blorp_surf *stencil,
+                             uint32_t level,
+                             uint32_t x0, uint32_t y0,
+                             uint32_t x1, uint32_t y1,
+                             bool clear_depth,
+                             bool clear_stencil)
+{
+   uint32_t width = 0, height = 0;
+   if (clear_stencil) {
+      width = minify(stencil->surf->logical_level0_px.width, level);
+      height = minify(stencil->surf->logical_level0_px.height, level);
+   }
+
+   if (clear_depth && !(width || height)) {
+      width = minify(depth->surf->logical_level0_px.width, level);
+      height = minify(depth->surf->logical_level0_px.height, level);
+   }
+
+   return x0 == 0 && y0 == 0 && width == x1 && height == y1;
+}
+
 void
 blorp_hiz_clear_depth_stencil(struct blorp_batch *batch,
                               const struct blorp_surf *depth,
@@ -864,6 +887,14 @@ blorp_hiz_clear_depth_stencil(struct blorp_batch *batch,
    assert(ISL_DEV_GEN(batch->blorp->isl_dev) >= 8);
 
    params.hiz_op = ISL_AUX_OP_FAST_CLEAR;
+   /* From BSpec: 3DSTATE_WM_HZ_OP_BODY >> Full Surface Depth and Stencil Clear
+    *
+    *    "Software must set this only when the APP requires the entire Depth
+    *    surface to be cleared."
+    */
+   params.full_surface_hiz_op =
+      blorp_can_clear_full_surface(depth, stencil, level, x0, y0, x1, y1,
+                                   clear_depth, clear_stencil);
    params.num_layers = 1;
 
    params.x0 = x0;
