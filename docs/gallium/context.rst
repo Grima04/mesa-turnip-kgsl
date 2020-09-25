@@ -214,7 +214,7 @@ Two stream output targets can use the same resource at the same time, but
 with a disjoint memory range.
 
 Additionally, the stream output target internally maintains the offset
-into the buffer which is incremented everytime something is written to it.
+into the buffer which is incremented every time something is written to it.
 The internal offset is equal to how much data has already been written.
 It can be stored in device memory and the CPU actually doesn't have to query
 it.
