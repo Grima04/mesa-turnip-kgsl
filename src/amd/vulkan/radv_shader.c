@@ -758,7 +758,7 @@ radv_lower_fs_io(nir_shader *nir)
 	nir_assign_io_var_locations(nir, nir_var_shader_in, &nir->num_inputs,
 				    MESA_SHADER_FRAGMENT);
 
-	NIR_PASS_V(nir, nir_lower_io, nir_var_shader_in, type_size_vec4, 0);
+	NIR_PASS_V(nir, nir_lower_io, nir_var_shader_in | nir_var_shader_out, type_size_vec4, 0);
 
 	/* This pass needs actual constants */
 	nir_opt_constant_folding(nir);

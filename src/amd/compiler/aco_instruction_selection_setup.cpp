@@ -646,7 +646,8 @@ setup_nir(isel_context *ctx, nir_shader *nir)
       lower_to_scalar = true;
       lower_pack = true;
    }
-   if (nir->info.stage != MESA_SHADER_COMPUTE)
+   if (nir->info.stage != MESA_SHADER_COMPUTE &&
+       nir->info.stage != MESA_SHADER_FRAGMENT)
       nir_lower_io(nir, nir_var_shader_in | nir_var_shader_out, type_size, (nir_lower_io_options)0);
 
    lower_to_scalar |= nir_opt_shrink_vectors(nir);
