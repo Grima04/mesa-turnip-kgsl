@@ -1319,7 +1319,7 @@ struct __DRIdri2ExtensionRec {
  * extensions.
  */
 #define __DRI_IMAGE "DRI_IMAGE"
-#define __DRI_IMAGE_VERSION 17
+#define __DRI_IMAGE_VERSION 18
 
 /**
  * These formats correspond to the similarly named MESA_FORMAT_*
@@ -1486,6 +1486,11 @@ enum __DRIChromaSiting {
 
 #define __BLIT_FLAG_FLUSH		0x0001
 #define __BLIT_FLAG_FINISH		0x0002
+
+/**
+ * Flags for createImageFromDmaBufs3
+ */
+#define __DRI_IMAGE_PROTECTED_CONTENT_FLAG 0x00000001
 
 /**
  * queryDmaBufFormatModifierAttribs attributes
@@ -1769,6 +1774,26 @@ struct __DRIimageExtensionRec {
                                                 int renderbuffer,
                                                 void *loaderPrivate,
                                                 unsigned *error);
+
+   /*
+    * Like createImageFromDmaBufs2, but with an added flags parameter.
+    *
+    * See __DRI_IMAGE_*_FLAG for valid definitions of flags.
+    *
+    * \since 18
+    */
+   __DRIimage *(*createImageFromDmaBufs3)(__DRIscreen *screen,
+                                          int width, int height, int fourcc,
+                                          uint64_t modifier,
+                                          int *fds, int num_fds,
+                                          int *strides, int *offsets,
+                                          enum __DRIYUVColorSpace color_space,
+                                          enum __DRISampleRange sample_range,
+                                          enum __DRIChromaSiting horiz_siting,
+                                          enum __DRIChromaSiting vert_siting,
+                                          uint32_t flags,
+                                          unsigned *error,
+                                          void *loaderPrivate);
 };
 
 
