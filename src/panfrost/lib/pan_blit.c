@@ -53,6 +53,8 @@ panfrost_build_blit_shader(panfrost_program *program, unsigned gpu_id, gl_frag_r
         nir_builder *b = &_b;
         nir_shader *shader = b->shader;
 
+        shader->info.internal = true;
+
         nir_variable *c_src = nir_variable_create(shader, nir_var_shader_in, glsl_vector_type(GLSL_TYPE_FLOAT, 2), "coord");
         nir_variable *c_out = nir_variable_create(shader, nir_var_shader_out, glsl_vector_type(
                                 GLSL_TYPE_FLOAT, is_colour ? 4 : 1), "out");
