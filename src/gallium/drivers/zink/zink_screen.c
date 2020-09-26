@@ -798,9 +798,6 @@ static struct pipe_screen *
 zink_internal_create_screen(struct sw_winsys *winsys, int fd)
 {
    struct zink_screen *screen = CALLOC_STRUCT(zink_screen);
-   bool have_tf_ext = false, have_cond_render_ext = false, have_EXT_index_type_uint8 = false,
-      have_EXT_robustness2_features = false, have_EXT_vertex_attribute_divisor = false,
-      have_EXT_calibrated_timestamps = false;
    if (!screen)
       return NULL;
 
@@ -810,153 +807,10 @@ zink_internal_create_screen(struct sw_winsys *winsys, int fd)
    screen->pdev = choose_pdev(screen->instance);
    update_queue_props(screen);
 
-   vkGetPhysicalDeviceMemoryProperties(screen->pdev, &screen->mem_props);
-
    screen->have_X8_D24_UNORM_PACK32 = zink_is_depth_format_supported(screen,
                                               VK_FORMAT_X8_D24_UNORM_PACK32);
    screen->have_D24_UNORM_S8_UINT = zink_is_depth_format_supported(screen,
                                               VK_FORMAT_D24_UNORM_S8_UINT);
-
-   uint32_t num_extensions = 0;
-   if (vkEnumerateDeviceExtensionProperties(screen->pdev, NULL,
-       &num_extensions, NULL) == VK_SUCCESS && num_extensions > 0) {
-      VkExtensionProperties *extensions = MALLOC(sizeof(VkExtensionProperties) *
-                                                num_extensions);
-      if (extensions) {
-         vkEnumerateDeviceExtensionProperties(screen->pdev, NULL,
-                                              &num_extensions, extensions);
-
-         for (uint32_t  i = 0; i < num_extensions; ++i) {
-            if (!strcmp(extensions[i].extensionName,
-                        VK_KHR_MAINTENANCE1_EXTENSION_NAME))
-               screen->have_KHR_maintenance1 = true;
-            if (!strcmp(extensions[i].extensionName,
-                        VK_KHR_EXTERNAL_MEMORY_FD_EXTENSION_NAME))
-               screen->have_KHR_external_memory_fd = true;
-            if (!strcmp(extensions[i].extensionName,
-                        VK_EXT_CONDITIONAL_RENDERING_EXTENSION_NAME))
-               have_cond_render_ext = true;
-            if (!strcmp(extensions[i].extensionName,
-                        VK_EXT_TRANSFORM_FEEDBACK_EXTENSION_NAME))
-               have_tf_ext = true;
-            if (!strcmp(extensions[i].extensionName,
-                        VK_EXT_INDEX_TYPE_UINT8_EXTENSION_NAME))
-               have_EXT_index_type_uint8 = true;
-            if (!strcmp(extensions[i].extensionName,
-                        VK_EXT_ROBUSTNESS_2_EXTENSION_NAME))
-               have_EXT_robustness2_features = true;
-            if (!strcmp(extensions[i].extensionName,
-                        VK_EXT_VERTEX_ATTRIBUTE_DIVISOR_EXTENSION_NAME))
-               have_EXT_vertex_attribute_divisor = true;
-            if (!strcmp(extensions[i].extensionName,
-                        VK_EXT_CALIBRATED_TIMESTAMPS_EXTENSION_NAME))
-               have_EXT_calibrated_timestamps = true;
-
-         }
-         FREE(extensions);
-      }
-   }
-   VkPhysicalDeviceFeatures2 feats = {};
-   VkPhysicalDeviceTransformFeedbackFeaturesEXT tf_feats = {};
-   VkPhysicalDeviceConditionalRenderingFeaturesEXT cond_render_feats = {};
-   VkPhysicalDeviceIndexTypeUint8FeaturesEXT index_uint8_feats = {};
-
-   feats.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
-   if (have_tf_ext) {
-      tf_feats.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TRANSFORM_FEEDBACK_FEATURES_EXT;
-      tf_feats.pNext = feats.pNext;
-      feats.pNext = &tf_feats;
-   }
-   if (have_cond_render_ext) {
-      cond_render_feats.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CONDITIONAL_RENDERING_FEATURES_EXT;
-      cond_render_feats.pNext = feats.pNext;
-      feats.pNext = &cond_render_feats;
-   }
-   if (have_EXT_index_type_uint8) {
-      index_uint8_feats.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INDEX_TYPE_UINT8_FEATURES_EXT;
-      index_uint8_feats.pNext = feats.pNext;
-      feats.pNext = &index_uint8_feats;
-   }
-   if (have_EXT_robustness2_features) {
-      screen->rb2_feats.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_FEATURES_EXT;
-      screen->rb2_feats.pNext = feats.pNext;
-      feats.pNext = &screen->rb2_feats;
-   }
-   if (have_EXT_vertex_attribute_divisor) {
-      screen->vdiv_feats.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_FEATURES_EXT;
-      screen->vdiv_feats.pNext = feats.pNext;
-      feats.pNext = &screen->vdiv_feats;
-   }
-   vkGetPhysicalDeviceFeatures2(screen->pdev, &feats);
-   memcpy(&screen->feats, &feats.features, sizeof(screen->feats));
-   if (have_tf_ext && tf_feats.transformFeedback)
-      screen->have_EXT_transform_feedback = true;
-   if (have_cond_render_ext && cond_render_feats.conditionalRendering)
-      screen->have_EXT_conditional_rendering = true;
-   if (have_EXT_index_type_uint8 && index_uint8_feats.indexTypeUint8)
-      screen->have_EXT_index_type_uint8 = true;
-   screen->have_EXT_robustness2_features = have_EXT_robustness2_features;
-   if (have_EXT_vertex_attribute_divisor && screen->vdiv_feats.vertexAttributeInstanceRateDivisor)
-      screen->have_EXT_vertex_attribute_divisor = true;
-   screen->have_EXT_calibrated_timestamps = have_EXT_calibrated_timestamps;
-
-   VkPhysicalDeviceProperties2 props = {};
-   VkPhysicalDeviceVertexAttributeDivisorPropertiesEXT vdiv_props = {};
-   props.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
-   if (screen->have_EXT_transform_feedback) {
-      screen->tf_props.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TRANSFORM_FEEDBACK_PROPERTIES_EXT;
-      screen->tf_props.pNext = props.pNext;
-      props.pNext = &screen->tf_props;
-   }
-   if (have_EXT_robustness2_features) {
-      screen->rb2_props.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_PROPERTIES_EXT;
-      screen->rb2_props.pNext = props.pNext;
-      props.pNext = &screen->rb2_props;
-   }
-   if (have_EXT_vertex_attribute_divisor) {
-      vdiv_props.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_PROPERTIES_EXT;
-      vdiv_props.pNext = props.pNext;
-      props.pNext = &vdiv_props;
-   }
-   vkGetPhysicalDeviceProperties2(screen->pdev, &props);
-   memcpy(&screen->props, &props.properties, sizeof(screen->props));
-   screen->max_vertex_attrib_divisor = vdiv_props.maxVertexAttribDivisor;
-
-   if (!screen->have_KHR_maintenance1) {
-      debug_printf("ZINK: VK_KHR_maintenance1 required!\n");
-      goto fail;
-   }
-
-   const char *extensions[9] = {
-      VK_KHR_MAINTENANCE1_EXTENSION_NAME,
-   };
-   num_extensions = 1;
-
-   if (fd >= 0 && !screen->have_KHR_external_memory_fd) {
-      debug_printf("ZINK: KHR_external_memory_fd required!\n");
-      goto fail;
-   }
-
-   if (screen->have_KHR_external_memory_fd) {
-      extensions[num_extensions++] = VK_KHR_EXTERNAL_MEMORY_EXTENSION_NAME;
-      extensions[num_extensions++] = VK_KHR_EXTERNAL_MEMORY_FD_EXTENSION_NAME;
-   }
-
-   if (screen->have_EXT_conditional_rendering)
-      extensions[num_extensions++] = VK_EXT_CONDITIONAL_RENDERING_EXTENSION_NAME;
-
-   if (screen->have_EXT_index_type_uint8)
-      extensions[num_extensions++] = VK_EXT_INDEX_TYPE_UINT8_EXTENSION_NAME;
-
-   if (screen->have_EXT_transform_feedback)
-      extensions[num_extensions++] = VK_EXT_TRANSFORM_FEEDBACK_EXTENSION_NAME;
-   if (screen->have_EXT_robustness2_features)
-      extensions[num_extensions++] = VK_EXT_ROBUSTNESS_2_EXTENSION_NAME;
-   if (screen->have_EXT_vertex_attribute_divisor)
-      extensions[num_extensions++] = VK_EXT_VERTEX_ATTRIBUTE_DIVISOR_EXTENSION_NAME;
-   if (screen->have_EXT_calibrated_timestamps)
-      extensions[num_extensions++] = VK_EXT_CALIBRATED_TIMESTAMPS_EXTENSION_NAME;
-   assert(num_extensions <= ARRAY_SIZE(extensions));
 
    if (!zink_get_physical_device_info(screen)) {
       debug_printf("ZINK: failed to detect features\n");
