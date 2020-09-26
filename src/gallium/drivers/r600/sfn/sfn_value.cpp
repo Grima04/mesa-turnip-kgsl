@@ -238,8 +238,10 @@ void UniformValue::do_print(std::ostream& os) const
 {
    if (m_index < 512)
       os << "KC" << m_kcache_bank << "[" << m_index;
+   else if (m_addr)
+      os << "KC[" << *m_addr << "][" << m_index;
    else
-      os << "KCX[" << m_index;
+      os << "KCx[" << m_index;
    os << "]." << component_names[chan()];
 }
 

@@ -71,6 +71,7 @@ public:
                          std::vector<PValue> src0,
                          const std::set<AluModifiers>& m_flags);
    void emit_export_instruction(WriteoutInstruction *ir);
+   void emit_instruction(AluInstruction *ir);
 
    void split_constants(nir_alu_instr* instr);
    void load_uniform(const nir_alu_src& src);
@@ -141,8 +142,12 @@ protected:
 
    bool allocate_reserved_registers();
 
+
 private:
    virtual bool do_allocate_reserved_registers() = 0;
+
+
+   void emit_instruction_internal(Instruction *ir);
 
    bool emit_alu_instruction(nir_instr *instr);
    bool emit_deref_instruction(nir_deref_instr* instr);
@@ -175,6 +180,7 @@ private:
    virtual bool do_process_outputs(nir_variable *output) = 0;
    virtual bool do_emit_load_deref(const nir_variable *in_var, nir_intrinsic_instr* instr) = 0;
    virtual bool do_emit_store_deref(const nir_variable *out_var, nir_intrinsic_instr* instr) = 0;
+
 
    bool emit_store_scratch(nir_intrinsic_instr* instr);
    bool emit_load_scratch(nir_intrinsic_instr* instr);
@@ -217,6 +223,7 @@ private:
    int m_image_count;
 
    std::unordered_map<int, int> m_atomic_base_map;
+   AluInstruction *last_emitted_alu;
 };
 
 }

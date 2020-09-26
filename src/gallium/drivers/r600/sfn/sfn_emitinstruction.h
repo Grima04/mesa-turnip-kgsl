@@ -72,6 +72,7 @@ protected:
 
    // forwards from ShaderFromNirProcessor
    void emit_instruction(Instruction *ir);
+   void emit_instruction(AluInstruction *ir);
    bool emit_instruction(EAluOp opcode, PValue dest,
                          std::vector<PValue> src0,
                          const std::set<AluModifiers>& m_flags);
@@ -94,7 +95,6 @@ protected:
                         const PValue& reg, bool map);
 
    int remap_atomic_base(int base);
-
 private:
 
    ShaderFromNirProcessor& m_proc;

@@ -80,6 +80,11 @@ void EmitInstruction::emit_instruction(Instruction *ir)
    return m_proc.emit_instruction(ir);
 }
 
+void EmitInstruction::emit_instruction(AluInstruction *ir)
+{
+   return m_proc.emit_instruction(ir);
+}
+
 bool EmitInstruction::emit_instruction(EAluOp opcode, PValue dest,
                                        std::vector<PValue> src0,
                                        const std::set<AluModifiers>& m_flags)
@@ -178,7 +183,6 @@ int EmitInstruction::remap_atomic_base(int base)
 {
 	return m_proc.remap_atomic_base(base);
 }
-
 
 const std::set<AluModifiers> EmitInstruction::empty = {};
 const std::set<AluModifiers> EmitInstruction::write = {alu_write};

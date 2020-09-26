@@ -362,7 +362,7 @@ static int assign_alu_units(struct r600_bytecode *bc, struct r600_bytecode_alu *
 			}
 			assignment[4] = alu;
 		} else {
-			if (assignment[chan]) {
+			if (assignment[chan]) {                           
 				assert(0); /* ALU.chan has already been allocated. */
 				return -1;
 			}
@@ -1232,7 +1232,7 @@ int r600_bytecode_add_alu_type(struct r600_bytecode *bc,
 	/* Load index register if required */
 	if (bc->chip_class >= EVERGREEN) {
 		for (i = 0; i < 3; i++)
-			if (nalu->src[i].kc_bank && nalu->src[i].kc_rel)
+			if (nalu->src[i].kc_bank &&  nalu->src[i].kc_rel)
 				egcm_load_index_reg(bc, 0, true);
 	}
 

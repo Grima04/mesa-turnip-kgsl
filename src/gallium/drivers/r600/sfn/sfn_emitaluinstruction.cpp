@@ -196,6 +196,7 @@ void EmitAluInstruction::preload_src(const nir_alu_instr& instr)
       for (unsigned c = 0; c < nsrc_comp; ++c) {
          m_src[i][c] = from_nir(instr.src[i], c);
          sfn_log << SfnLog::reg << " " << *m_src[i][c];
+
       }
       sfn_log << SfnLog::reg << "\n";
    }
@@ -262,7 +263,7 @@ void EmitAluInstruction::split_constants(const nir_alu_instr& instr, unsigned ns
        if (src->type() == Value::kconst) {
           c[nconst] = static_cast<const UniformValue *>(src.get());
           idx[nconst++] = i;
-          sfn_log << SfnLog::reg << "is constant " << i;
+          sfn_log << SfnLog::reg << " is constant " << i;
        }
        sfn_log << SfnLog::reg << "\n";
     }

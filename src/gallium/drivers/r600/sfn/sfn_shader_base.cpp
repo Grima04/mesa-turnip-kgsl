@@ -75,8 +75,8 @@ ShaderFromNirProcessor::ShaderFromNirProcessor(pipe_shader_type ptype,
    m_next_hwatomic_loc(0),
    m_sel(sel),
    m_atomic_base(atomic_base),
-   m_image_count(0)
-
+   m_image_count(0),
+   last_emitted_alu(nullptr)
 {
    m_sh_info.processor_type = ptype;
 
@@ -363,7 +363,33 @@ bool ShaderFromNirProcessor::emit_tex_instruction(nir_instr* instr)
    return m_tex_instr.emit(instr);
 }
 
+void ShaderFromNirProcessor::emit_instruction(AluInstruction *ir)
+{
+   if (last_emitted_alu && !last_emitted_alu->flag(alu_last_instr)) {
+      for (unsigned i = 0; i < ir->n_sources(); ++i) {
+         auto& s = ir->src(i);
+         if (s.type() == Value::kconst) {
+            auto& c = static_cast<UniformValue&>(s);
+            if (c.addr()) {
+               last_emitted_alu->set_flag(alu_last_instr);
+               break;
+            }
+         }
+      }
+   }
+   last_emitted_alu = ir;
+   emit_instruction_internal(ir);
+}
+
+
 void ShaderFromNirProcessor::emit_instruction(Instruction *ir)
+{
+
+   emit_instruction_internal(ir);
+   last_emitted_alu = nullptr;
+}
+
+void ShaderFromNirProcessor::emit_instruction_internal(Instruction *ir)
 {
    if (m_pending_else) {
       append_block(-1);
@@ -858,6 +884,24 @@ bool ShaderFromNirProcessor::emit_load_ubo_vec4(nir_intrinsic_instr* instr)
          return load_uniform_indirect(instr, from_nir(instr->src[1], 0, 0), 0, bufid->u32);
       }
    } else {
+      if (buf_offset) {
+         int buf_cmp = nir_intrinsic_component(instr);
+         AluInstruction *ir = nullptr;
+         auto kc_id = from_nir(instr->src[0], 0);
+         for (unsigned i = 0; i < nir_dest_num_components(instr->dest); ++i) {
+            int cmp = buf_cmp + i;
+            auto u = PValue(new UniformValue(512 +  buf_offset->u32, cmp, kc_id));
+            if (instr->dest.is_ssa)
+               load_preloaded_value(instr->dest, i, u);
+            else {
+               ir = new AluInstruction(op1_mov, from_nir(instr->dest, i), u, {alu_write});
+               emit_instruction(ir);
+            }
+         }
+         if (ir)
+            ir->set_flag(alu_last_instr);
+         return true;
+      }
       /* TODO: if buf_offset is constant then this can also be solved by using the CF indes
        * on the ALU block, and this would probably make sense when there are more then one
        * loads with the same buffer ID. */
@@ -883,7 +927,6 @@ bool ShaderFromNirProcessor::emit_load_ubo_vec4(nir_intrinsic_instr* instr)
    }
 
 }
-
 
 bool ShaderFromNirProcessor::emit_discard_if(nir_intrinsic_instr* instr)
 {
