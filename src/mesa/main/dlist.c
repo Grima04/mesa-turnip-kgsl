@@ -34,7 +34,6 @@
 
 #include "api_arrayelt.h"
 #include "api_exec.h"
-#include "api_loopback.h"
 #include "draw_validate.h"
 #include "atifragshader.h"
 #include "config.h"
@@ -6116,6 +6115,48 @@ save_Rectf(GLfloat a, GLfloat b, GLfloat c, GLfloat d)
    if (ctx->ExecuteFlag) {
       CALL_Rectf(ctx->Exec, (a, b, c, d));
    }
+}
+
+static void GLAPIENTRY
+save_Rectd(GLdouble x1, GLdouble y1, GLdouble x2, GLdouble y2)
+{
+   save_Rectf((GLfloat) x1, (GLfloat) y1, (GLfloat) x2, (GLfloat) y2);
+}
+
+static void GLAPIENTRY
+save_Rectdv(const GLdouble *v1, const GLdouble *v2)
+{
+   save_Rectf((GLfloat) v1[0], (GLfloat) v1[1], (GLfloat) v2[0], (GLfloat) v2[1]);
+}
+
+static void GLAPIENTRY
+save_Rectfv(const GLfloat *v1, const GLfloat *v2)
+{
+   save_Rectf(v1[0], v1[1], v2[0], v2[1]);
+}
+
+static void GLAPIENTRY
+save_Recti(GLint x1, GLint y1, GLint x2, GLint y2)
+{
+   save_Rectf((GLfloat) x1, (GLfloat) y1, (GLfloat) x2, (GLfloat) y2);
+}
+
+static void GLAPIENTRY
+save_Rectiv(const GLint *v1, const GLint *v2)
+{
+   save_Rectf((GLfloat) v1[0], (GLfloat) v1[1], (GLfloat) v2[0], (GLfloat) v2[1]);
+}
+
+static void GLAPIENTRY
+save_Rects(GLshort x1, GLshort y1, GLshort x2, GLshort y2)
+{
+   save_Rectf((GLfloat) x1, (GLfloat) y1, (GLfloat) x2, (GLfloat) y2);
+}
+
+static void GLAPIENTRY
+save_Rectsv(const GLshort *v1, const GLshort *v2)
+{
+   save_Rectf((GLfloat) v1[0], (GLfloat) v1[1], (GLfloat) v2[0], (GLfloat) v2[1]);
 }
 
 static void GLAPIENTRY
@@ -13988,8 +14029,6 @@ _mesa_initialize_save_table(const struct gl_context *ctx)
     */
    memcpy(table, ctx->Exec, numEntries * sizeof(_glapi_proc));
 
-   _mesa_loopback_init_api_table(ctx, table);
-
    /* VBO functions */
    vbo_initialize_save_dispatch(ctx, table);
 
@@ -14104,6 +14143,13 @@ _mesa_initialize_save_table(const struct gl_context *ctx)
    SET_RasterPos4sv(table, save_RasterPos4sv);
    SET_ReadBuffer(table, save_ReadBuffer);
    SET_Rectf(table, save_Rectf);
+   SET_Rectd(table, save_Rectd);
+   SET_Rectdv(table, save_Rectdv);
+   SET_Rectfv(table, save_Rectfv);
+   SET_Recti(table, save_Recti);
+   SET_Rectiv(table, save_Rectiv);
+   SET_Rects(table, save_Rects);
+   SET_Rectsv(table, save_Rectsv);
    SET_Rotated(table, save_Rotated);
    SET_Rotatef(table, save_Rotatef);
    SET_Scaled(table, save_Scaled);

@@ -101,6 +101,14 @@ USE OR OTHER DEALINGS IN THE SOFTWARE.
 /* An interesting VBO number/name to help with debugging */
 #define VBO_BUF_ID  12345
 
+static void GLAPIENTRY
+_save_Materialfv(GLenum face, GLenum pname, const GLfloat *params);
+
+static void GLAPIENTRY
+_save_EvalCoord1f(GLfloat u);
+
+static void GLAPIENTRY
+_save_EvalCoord2f(GLfloat u, GLfloat v);
 
 /*
  * NOTE: Old 'parity' issue is gone, but copying can still be
@@ -1254,6 +1262,49 @@ _save_OBE_Rectf(GLfloat x1, GLfloat y1, GLfloat x2, GLfloat y2)
 
 
 static void GLAPIENTRY
+_save_OBE_Rectd(GLdouble x1, GLdouble y1, GLdouble x2, GLdouble y2)
+{
+   _save_OBE_Rectf((GLfloat) x1, (GLfloat) y1, (GLfloat) x2, (GLfloat) y2);
+}
+
+static void GLAPIENTRY
+_save_OBE_Rectdv(const GLdouble *v1, const GLdouble *v2)
+{
+   _save_OBE_Rectf((GLfloat) v1[0], (GLfloat) v1[1], (GLfloat) v2[0], (GLfloat) v2[1]);
+}
+
+static void GLAPIENTRY
+_save_OBE_Rectfv(const GLfloat *v1, const GLfloat *v2)
+{
+   _save_OBE_Rectf(v1[0], v1[1], v2[0], v2[1]);
+}
+
+static void GLAPIENTRY
+_save_OBE_Recti(GLint x1, GLint y1, GLint x2, GLint y2)
+{
+   _save_OBE_Rectf((GLfloat) x1, (GLfloat) y1, (GLfloat) x2, (GLfloat) y2);
+}
+
+static void GLAPIENTRY
+_save_OBE_Rectiv(const GLint *v1, const GLint *v2)
+{
+   _save_OBE_Rectf((GLfloat) v1[0], (GLfloat) v1[1], (GLfloat) v2[0], (GLfloat) v2[1]);
+}
+
+static void GLAPIENTRY
+_save_OBE_Rects(GLshort x1, GLshort y1, GLshort x2, GLshort y2)
+{
+   _save_OBE_Rectf((GLfloat) x1, (GLfloat) y1, (GLfloat) x2, (GLfloat) y2);
+}
+
+static void GLAPIENTRY
+_save_OBE_Rectsv(const GLshort *v1, const GLshort *v2)
+{
+   _save_OBE_Rectf((GLfloat) v1[0], (GLfloat) v1[1], (GLfloat) v2[0], (GLfloat) v2[1]);
+}
+
+
+static void GLAPIENTRY
 _save_OBE_DrawArrays(GLenum mode, GLint start, GLsizei count)
 {
    GET_CURRENT_CONTEXT(ctx);
@@ -1522,6 +1573,14 @@ vbo_initialize_save_dispatch(const struct gl_context *ctx,
    SET_MultiDrawElementsEXT(exec, _save_OBE_MultiDrawElements);
    SET_MultiDrawElementsBaseVertex(exec, _save_OBE_MultiDrawElementsBaseVertex);
    SET_Rectf(exec, _save_OBE_Rectf);
+   SET_Rectd(exec, _save_OBE_Rectd);
+   SET_Rectdv(exec, _save_OBE_Rectdv);
+   SET_Rectfv(exec, _save_OBE_Rectfv);
+   SET_Recti(exec, _save_OBE_Recti);
+   SET_Rectiv(exec, _save_OBE_Rectiv);
+   SET_Rects(exec, _save_OBE_Rects);
+   SET_Rectsv(exec, _save_OBE_Rectsv);
+
    /* Note: other glDraw functins aren't compiled into display lists */
 }
 
