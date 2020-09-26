@@ -25,6 +25,7 @@
 
 #include "zink_compiler.h"
 #include "zink_context.h"
+#include "zink_device_info.h"
 #include "zink_fence.h"
 #include "zink_public.h"
 #include "zink_resource.h"
@@ -974,6 +975,17 @@ zink_internal_create_screen(struct sw_winsys *winsys, int fd)
 
    dci.ppEnabledExtensionNames = extensions;
    dci.enabledExtensionCount = num_extensions;
+
+   if (!zink_get_physical_device_info(screen)) {
+      debug_printf("ZINK: failed to detect features\n");
+      goto fail;
+   }
+
+   if (fd >= 0 && !screen->info.have_KHR_external_memory_fd) {
+      debug_printf("ZINK: KHR_external_memory_fd required!\n");
+      goto fail;
+   }
+
    if (vkCreateDevice(screen->pdev, &dci, NULL, &screen->dev) != VK_SUCCESS)
       goto fail;
 

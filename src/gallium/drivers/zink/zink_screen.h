@@ -24,6 +24,8 @@
 #ifndef ZINK_SCREEN_H
 #define ZINK_SCREEN_H
 
+#include "zink_device_info.h"
+
 #include "pipe/p_screen.h"
 #include "util/slab.h"
 
@@ -44,6 +46,8 @@ struct zink_screen {
 
    VkInstance instance;
    VkPhysicalDevice pdev;
+
+   struct zink_device_info info;
 
    VkPhysicalDeviceProperties props;
    VkPhysicalDeviceFeatures feats;
