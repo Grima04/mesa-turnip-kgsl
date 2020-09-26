@@ -5524,7 +5524,8 @@ radv_emit_dispatch_packets(struct radv_cmd_buffer *cmd_buffer,
 	struct radeon_cmdbuf *cs = cmd_buffer->cs;
 	struct radv_userdata_info *loc;
 
-	radv_describe_dispatch(cmd_buffer, 8, 8, 8);
+	radv_describe_dispatch(cmd_buffer, info->blocks[0], info->blocks[1],
+	                       info->blocks[2]);
 
 	loc = radv_lookup_user_sgpr(pipeline, MESA_SHADER_COMPUTE,
 				    AC_UD_CS_GRID_SIZE);
