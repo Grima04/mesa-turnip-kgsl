@@ -2946,7 +2946,7 @@ mir_add_writeout_loops(compiler_context *ctx)
 }
 
 int
-midgard_compile_shader_nir(nir_shader *nir, panfrost_program *program, bool is_blend, unsigned blend_rt, unsigned gpu_id, bool shaderdb, bool silent)
+midgard_compile_shader_nir(nir_shader *nir, panfrost_program *program, bool is_blend, unsigned blend_rt, unsigned gpu_id, bool shaderdb)
 {
         struct util_dynarray *compiled = &program->compiled;
 
@@ -3006,7 +3006,7 @@ midgard_compile_shader_nir(nir_shader *nir, panfrost_program *program, bool is_b
 
         NIR_PASS_V(nir, midgard_nir_reorder_writeout);
 
-        if ((midgard_debug & MIDGARD_DBG_SHADERS) && !silent) {
+        if ((midgard_debug & MIDGARD_DBG_SHADERS) && !nir->info.internal) {
                 nir_print_shader(nir, stdout);
         }
 
@@ -3140,10 +3140,10 @@ midgard_compile_shader_nir(nir_shader *nir, panfrost_program *program, bool is_b
         program->blend_patch_offset = ctx->blend_constant_offset;
         program->tls_size = ctx->tls_size;
 
-        if ((midgard_debug & MIDGARD_DBG_SHADERS) && !silent)
+        if ((midgard_debug & MIDGARD_DBG_SHADERS) && !nir->info.internal)
                 disassemble_midgard(stdout, program->compiled.data, program->compiled.size, gpu_id, ctx->stage);
 
-        if ((midgard_debug & MIDGARD_DBG_SHADERDB || shaderdb) && !silent) {
+        if ((midgard_debug & MIDGARD_DBG_SHADERDB || shaderdb) && !nir->info.internal) {
                 unsigned nr_bundles = 0, nr_ins = 0;
 
                 /* Count instructions and bundles */
