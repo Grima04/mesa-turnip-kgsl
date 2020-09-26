@@ -127,6 +127,12 @@
       DRI_CONF_DESC(desc)                                \
    DRI_CONF_OPT_END
 
+/* Note that def should not be quoted in the caller! */
+#define DRI_CONF_OPT_S(name, def, desc)                   \
+   DRI_CONF_OPT_BEGIN(name, string, def)                  \
+      DRI_CONF_DESC(desc)                                 \
+   DRI_CONF_OPT_END
+
 #define DRI_CONF_OPT_E(name, def, min, max, desc, values) \
    DRI_CONF_OPT_BEGIN_V(name, enum, def, #min ":" #max)   \
       DRI_CONF_DESC_BEGIN(desc)                           \
@@ -222,9 +228,7 @@ DRI_CONF_SECTION_BEGIN \
                   "Allow out-of-order draw optimizations. Set when Z fighting doesn't have to be accurate.")
 
 #define DRI_CONF_FORCE_GL_VENDOR(def) \
-DRI_CONF_OPT_BEGIN(force_gl_vendor, string, def) \
-        DRI_CONF_DESC("Override GPU vendor string.") \
-DRI_CONF_OPT_END
+   DRI_CONF_OPT_S(force_gl_vendor, def, "Override GPU vendor string.")
 
 #define DRI_CONF_FORCE_COMPAT_PROFILE(def) \
    DRI_CONF_OPT_B(force_compat_profile, def, \
@@ -380,14 +384,10 @@ DRI_CONF_SECTION_BEGIN \
         DRI_CONF_DESC("Initialization")
 
 #define DRI_CONF_DEVICE_ID_PATH_TAG(def) \
-DRI_CONF_OPT_BEGIN(device_id, string, def) \
-        DRI_CONF_DESC("Define the graphic device to use if possible") \
-DRI_CONF_OPT_END
+   DRI_CONF_OPT_S(device_id, def, "Define the graphic device to use if possible")
 
 #define DRI_CONF_DRI_DRIVER(def) \
-DRI_CONF_OPT_BEGIN(dri_driver, string, def) \
-        DRI_CONF_DESC("Override the DRI driver to load") \
-DRI_CONF_OPT_END
+   DRI_CONF_OPT_S(dri_driver, def, "Override the DRI driver to load")
 
 /**
  * \brief Gallium-Nine specific configuration options

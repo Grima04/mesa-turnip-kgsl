@@ -96,9 +96,7 @@ TEST_F(xmlconfig_test, enums)
 TEST_F(xmlconfig_test, string)
 {
    driconf(DRI_CONF_TEST_OPT(
-              DRI_CONF_OPT_BEGIN(opt, string, value)
-              DRI_CONF_DESC("option")
-              DRI_CONF_OPT_END));
+              DRI_CONF_OPT_S(opt, value, "option")));
 
    EXPECT_STREQ(driQueryOptionstr(&options, "opt"), "value");
 }
@@ -123,9 +121,7 @@ TEST_F(xmlconfig_test, copy_cache)
 {
    driconf(DRI_CONF_TEST_OPT(
               DRI_CONF_OPT_B(mesa_b_option, "true", "description")
-              DRI_CONF_OPT_BEGIN(mesa_s_option, string, value)
-              DRI_CONF_DESC("option")
-              DRI_CONF_OPT_END));
+              DRI_CONF_OPT_S(mesa_s_option, value, "description")));
 
    driOptionCache cache;
 
