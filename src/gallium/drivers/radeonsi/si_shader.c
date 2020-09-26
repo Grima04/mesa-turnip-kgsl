@@ -1290,7 +1290,7 @@ static void si_dump_shader_key(const struct si_shader *shader, FILE *f)
         stage == MESA_SHADER_VERTEX) &&
        !key->as_es && !key->as_ls) {
       fprintf(f, "  opt.kill_outputs = 0x%" PRIx64 "\n", key->opt.kill_outputs);
-      fprintf(f, "  opt.clip_disable = %u\n", key->opt.clip_disable);
+      fprintf(f, "  opt.kill_clip_distances = 0x%x\n", key->opt.kill_clip_distances);
       if (stage != MESA_SHADER_GEOMETRY)
          fprintf(f, "  opt.ngg_culling = 0x%x\n", key->opt.ngg_culling);
    }

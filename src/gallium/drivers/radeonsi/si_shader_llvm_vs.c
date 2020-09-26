@@ -372,20 +372,29 @@ static void si_llvm_emit_clipvertex(struct si_shader_context *ctx, struct ac_exp
    LLVMValueRef ptr = ac_get_arg(&ctx->ac, ctx->rw_buffers);
    LLVMValueRef constbuf_index = LLVMConstInt(ctx->ac.i32, SI_VS_CONST_CLIP_PLANES, 0);
    LLVMValueRef const_resource = ac_build_load_to_sgpr(&ctx->ac, ptr, constbuf_index);
+   unsigned clipdist_mask = ctx->shader->selector->clipdist_mask &
+                            ~ctx->shader->key.opt.kill_clip_distances;
 
    for (reg_index = 0; reg_index < 2; reg_index++) {
       struct ac_export_args *args = &pos[2 + reg_index];
 
-      args->out[0] = args->out[1] = args->out[2] = args->out[3] = LLVMConstReal(ctx->ac.f32, 0.0f);
+      if (!(clipdist_mask & BITFIELD_RANGE(reg_index * 4, 4)))
+         continue;
+
+      args->out[0] = args->out[1] = args->out[2] = args->out[3] = LLVMGetUndef(ctx->ac.f32);
 
       /* Compute dot products of position and user clip plane vectors */
       for (chan = 0; chan < 4; chan++) {
+         if (!(clipdist_mask & BITFIELD_BIT(reg_index * 4 + chan)))
+            continue;
+
          for (const_chan = 0; const_chan < 4; const_chan++) {
             LLVMValueRef addr =
                LLVMConstInt(ctx->ac.i32, ((reg_index * 4 + chan) * 4 + const_chan) * 4, 0);
             base_elt = si_buffer_load_const(ctx, const_resource, addr);
             args->out[chan] =
-               ac_build_fmad(&ctx->ac, base_elt, out_elts[const_chan], args->out[chan]);
+               ac_build_fmad(&ctx->ac, base_elt, out_elts[const_chan],
+                             const_chan == 0 ? ctx->ac.f32_0 : args->out[chan]);
          }
       }
 
@@ -541,7 +550,10 @@ void si_llvm_build_vs_exports(struct si_shader_context *ctx,
    struct ac_export_args pos_args[4] = {};
    LLVMValueRef psize_value = NULL, edgeflag_value = NULL, layer_value = NULL,
                 viewport_index_value = NULL;
-   unsigned pos_idx;
+   unsigned pos_idx, index;
+   unsigned clipdist_mask = (shader->selector->clipdist_mask &
+                             ~shader->key.opt.kill_clip_distances) |
+                            shader->selector->culldist_mask;
    int i;
 
    si_vertex_color_clamping(ctx, outputs, noutput);
@@ -566,16 +578,14 @@ void si_llvm_build_vs_exports(struct si_shader_context *ctx,
          break;
       case VARYING_SLOT_CLIP_DIST0:
       case VARYING_SLOT_CLIP_DIST1:
-         if (!shader->key.opt.clip_disable) {
-            unsigned index = 2 + (outputs[i].semantic - VARYING_SLOT_CLIP_DIST0);
-            si_llvm_init_vs_export_args(ctx, outputs[i].values, V_008DFC_SQ_EXP_POS + index,
-                                        &pos_args[index]);
+         index = outputs[i].semantic - VARYING_SLOT_CLIP_DIST0;
+         if (clipdist_mask & BITFIELD_RANGE(index * 4, 4)) {
+            si_llvm_init_vs_export_args(ctx, outputs[i].values, V_008DFC_SQ_EXP_POS + 2 + index,
+                                        &pos_args[2 + index]);
          }
          break;
       case VARYING_SLOT_CLIP_VERTEX:
-         if (!shader->key.opt.clip_disable) {
-            si_llvm_emit_clipvertex(ctx, pos_args, outputs[i].values);
-         }
+         si_llvm_emit_clipvertex(ctx, pos_args, outputs[i].values);
          break;
       }
    }

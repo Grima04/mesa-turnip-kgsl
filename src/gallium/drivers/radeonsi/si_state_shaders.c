@@ -1774,9 +1774,7 @@ static void si_shader_selector_key_hw_vs(struct si_context *sctx, struct si_shad
 {
    struct si_shader_selector *ps = sctx->ps_shader.cso;
 
-   key->opt.clip_disable = sctx->queued.named.rasterizer->clip_plane_enable == 0 &&
-                           (vs->info.base.clip_distance_array_size || vs->info.writes_clipvertex) &&
-                           !vs->info.base.cull_distance_array_size;
+   key->opt.kill_clip_distances = vs->clipdist_mask & ~sctx->queued.named.rasterizer->clip_plane_enable;
 
    /* Find out if PS is disabled. */
    bool ps_disabled = true;
@@ -2920,7 +2918,7 @@ static void si_update_clip_regs(struct si_context *sctx, struct si_shader_select
         old_hw_vs->clipdist_mask != next_hw_vs->clipdist_mask ||
         old_hw_vs->culldist_mask != next_hw_vs->culldist_mask || !old_hw_vs_variant ||
         !next_hw_vs_variant ||
-        old_hw_vs_variant->key.opt.clip_disable != next_hw_vs_variant->key.opt.clip_disable))
+        old_hw_vs_variant->key.opt.kill_clip_distances != next_hw_vs_variant->key.opt.kill_clip_distances))
       si_mark_atom_dirty(sctx, &sctx->atoms.s.clip_regs);
 }
 
@@ -3862,7 +3860,7 @@ bool si_update_shaders(struct si_context *sctx)
    struct si_compiler_ctx_state compiler_state;
    struct si_state_rasterizer *rs = sctx->queued.named.rasterizer;
    struct si_shader *old_vs = si_get_vs_state(sctx);
-   bool old_clip_disable = old_vs ? old_vs->key.opt.clip_disable : false;
+   unsigned old_kill_clip_distances = old_vs ? old_vs->key.opt.kill_clip_distances : 0;
    struct si_shader *old_ps = sctx->ps_shader.current;
    union si_vgt_stages_key key;
    unsigned old_spi_shader_col_format =
@@ -3988,7 +3986,7 @@ bool si_update_shaders(struct si_context *sctx)
 
    si_update_vgt_shader_config(sctx, key);
 
-   if (old_clip_disable != si_get_vs_state(sctx)->key.opt.clip_disable)
+   if (old_kill_clip_distances != si_get_vs_state(sctx)->key.opt.kill_clip_distances)
       si_mark_atom_dirty(sctx, &sctx->atoms.s.clip_regs);
 
    if (sctx->ps_shader.cso) {
