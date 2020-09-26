@@ -37,6 +37,14 @@
 #include "main/dispatch.h"
 #include "main/context.h"
 
+static struct _glapi_table *
+get_dispatch(void)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   return ctx->CurrentServerDispatch;
+}
+
+
 /* KW: A set of functions to convert unusual Color/Normal/Vertex/etc
  * calls to a smaller set of driver-provided formats.  Currently just
  * go back to dispatch to find these (eg. call glNormal3f directly),
@@ -46,43 +54,43 @@
  * listed in dd.h.  The easiest way for a driver to do this is to
  * install the supplied software t&l module.
  */
-#define COLORF(r,g,b,a)             CALL_Color4f(GET_DISPATCH(), (r,g,b,a))
-#define VERTEX2(x,y)	            CALL_Vertex2f(GET_DISPATCH(), (x,y))
-#define VERTEX3(x,y,z)	            CALL_Vertex3f(GET_DISPATCH(), (x,y,z))
-#define VERTEX4(x,y,z,w)            CALL_Vertex4f(GET_DISPATCH(), (x,y,z,w))
-#define NORMAL(x,y,z)               CALL_Normal3f(GET_DISPATCH(), (x,y,z))
-#define TEXCOORD1(s)                CALL_TexCoord1f(GET_DISPATCH(), (s))
-#define TEXCOORD2(s,t)              CALL_TexCoord2f(GET_DISPATCH(), (s,t))
-#define TEXCOORD3(s,t,u)            CALL_TexCoord3f(GET_DISPATCH(), (s,t,u))
-#define TEXCOORD4(s,t,u,v)          CALL_TexCoord4f(GET_DISPATCH(), (s,t,u,v))
-#define INDEX(c)		    CALL_Indexf(GET_DISPATCH(), (c))
-#define MULTI_TEXCOORD1(z,s)	    CALL_MultiTexCoord1fARB(GET_DISPATCH(), (z,s))
-#define MULTI_TEXCOORD2(z,s,t)	    CALL_MultiTexCoord2fARB(GET_DISPATCH(), (z,s,t))
-#define MULTI_TEXCOORD3(z,s,t,u)    CALL_MultiTexCoord3fARB(GET_DISPATCH(), (z,s,t,u))
-#define MULTI_TEXCOORD4(z,s,t,u,v)  CALL_MultiTexCoord4fARB(GET_DISPATCH(), (z,s,t,u,v))
-#define EVALCOORD1(x)               CALL_EvalCoord1f(GET_DISPATCH(), (x))
-#define EVALCOORD2(x,y)             CALL_EvalCoord2f(GET_DISPATCH(), (x,y))
-#define MATERIALFV(a,b,c)           CALL_Materialfv(GET_DISPATCH(), (a,b,c))
-#define RECTF(a,b,c,d)              CALL_Rectf(GET_DISPATCH(), (a,b,c,d))
+#define COLORF(r,g,b,a)             CALL_Color4f(get_dispatch(), (r,g,b,a))
+#define VERTEX2(x,y)	            CALL_Vertex2f(get_dispatch(), (x,y))
+#define VERTEX3(x,y,z)	            CALL_Vertex3f(get_dispatch(), (x,y,z))
+#define VERTEX4(x,y,z,w)            CALL_Vertex4f(get_dispatch(), (x,y,z,w))
+#define NORMAL(x,y,z)               CALL_Normal3f(get_dispatch(), (x,y,z))
+#define TEXCOORD1(s)                CALL_TexCoord1f(get_dispatch(), (s))
+#define TEXCOORD2(s,t)              CALL_TexCoord2f(get_dispatch(), (s,t))
+#define TEXCOORD3(s,t,u)            CALL_TexCoord3f(get_dispatch(), (s,t,u))
+#define TEXCOORD4(s,t,u,v)          CALL_TexCoord4f(get_dispatch(), (s,t,u,v))
+#define INDEX(c)		    CALL_Indexf(get_dispatch(), (c))
+#define MULTI_TEXCOORD1(z,s)	    CALL_MultiTexCoord1fARB(get_dispatch(), (z,s))
+#define MULTI_TEXCOORD2(z,s,t)	    CALL_MultiTexCoord2fARB(get_dispatch(), (z,s,t))
+#define MULTI_TEXCOORD3(z,s,t,u)    CALL_MultiTexCoord3fARB(get_dispatch(), (z,s,t,u))
+#define MULTI_TEXCOORD4(z,s,t,u,v)  CALL_MultiTexCoord4fARB(get_dispatch(), (z,s,t,u,v))
+#define EVALCOORD1(x)               CALL_EvalCoord1f(get_dispatch(), (x))
+#define EVALCOORD2(x,y)             CALL_EvalCoord2f(get_dispatch(), (x,y))
+#define MATERIALFV(a,b,c)           CALL_Materialfv(get_dispatch(), (a,b,c))
+#define RECTF(a,b,c,d)              CALL_Rectf(get_dispatch(), (a,b,c,d))
 
-#define FOGCOORDF(x)                CALL_FogCoordfEXT(GET_DISPATCH(), (x))
-#define SECONDARYCOLORF(a,b,c)      CALL_SecondaryColor3fEXT(GET_DISPATCH(), (a,b,c))
+#define FOGCOORDF(x)                CALL_FogCoordfEXT(get_dispatch(), (x))
+#define SECONDARYCOLORF(a,b,c)      CALL_SecondaryColor3fEXT(get_dispatch(), (a,b,c))
 
-#define ATTRIB1NV(index,x)          CALL_VertexAttrib1fNV(GET_DISPATCH(), (index,x))
-#define ATTRIB2NV(index,x,y)        CALL_VertexAttrib2fNV(GET_DISPATCH(), (index,x,y))
-#define ATTRIB3NV(index,x,y,z)      CALL_VertexAttrib3fNV(GET_DISPATCH(), (index,x,y,z))
-#define ATTRIB4NV(index,x,y,z,w)    CALL_VertexAttrib4fNV(GET_DISPATCH(), (index,x,y,z,w))
+#define ATTRIB1NV(index,x)          CALL_VertexAttrib1fNV(get_dispatch(), (index,x))
+#define ATTRIB2NV(index,x,y)        CALL_VertexAttrib2fNV(get_dispatch(), (index,x,y))
+#define ATTRIB3NV(index,x,y,z)      CALL_VertexAttrib3fNV(get_dispatch(), (index,x,y,z))
+#define ATTRIB4NV(index,x,y,z,w)    CALL_VertexAttrib4fNV(get_dispatch(), (index,x,y,z,w))
 
-#define ATTRIB1ARB(index,x)         CALL_VertexAttrib1fARB(GET_DISPATCH(), (index,x))
-#define ATTRIB2ARB(index,x,y)       CALL_VertexAttrib2fARB(GET_DISPATCH(), (index,x,y))
-#define ATTRIB3ARB(index,x,y,z)     CALL_VertexAttrib3fARB(GET_DISPATCH(), (index,x,y,z))
-#define ATTRIB4ARB(index,x,y,z,w)   CALL_VertexAttrib4fARB(GET_DISPATCH(), (index,x,y,z,w))
+#define ATTRIB1ARB(index,x)         CALL_VertexAttrib1fARB(get_dispatch(), (index,x))
+#define ATTRIB2ARB(index,x,y)       CALL_VertexAttrib2fARB(get_dispatch(), (index,x,y))
+#define ATTRIB3ARB(index,x,y,z)     CALL_VertexAttrib3fARB(get_dispatch(), (index,x,y,z))
+#define ATTRIB4ARB(index,x,y,z,w)   CALL_VertexAttrib4fARB(get_dispatch(), (index,x,y,z,w))
 
-#define ATTRIBI_1I(index,x)   CALL_VertexAttribI1iEXT(GET_DISPATCH(), (index,x))
-#define ATTRIBI_1UI(index,x)   CALL_VertexAttribI1uiEXT(GET_DISPATCH(), (index,x))
-#define ATTRIBI_4I(index,x,y,z,w)   CALL_VertexAttribI4iEXT(GET_DISPATCH(), (index,x,y,z,w))
+#define ATTRIBI_1I(index,x)   CALL_VertexAttribI1iEXT(get_dispatch(), (index,x))
+#define ATTRIBI_1UI(index,x)   CALL_VertexAttribI1uiEXT(get_dispatch(), (index,x))
+#define ATTRIBI_4I(index,x,y,z,w)   CALL_VertexAttribI4iEXT(get_dispatch(), (index,x,y,z,w))
 
-#define ATTRIBI_4UI(index,x,y,z,w)   CALL_VertexAttribI4uiEXT(GET_DISPATCH(), (index,x,y,z,w))
+#define ATTRIBI_4UI(index,x,y,z,w)   CALL_VertexAttribI4uiEXT(get_dispatch(), (index,x,y,z,w))
 
 void GLAPIENTRY
 _mesa_Color3b( GLbyte red, GLbyte green, GLbyte blue )
@@ -353,7 +361,7 @@ _mesa_Indexubv( const GLubyte *c )
 void GLAPIENTRY
 _mesa_EdgeFlagv(const GLboolean *flag)
 {
-   CALL_EdgeFlag(GET_DISPATCH(), (*flag));
+   CALL_EdgeFlag(get_dispatch(), (*flag));
 }
 
 

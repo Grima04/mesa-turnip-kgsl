@@ -383,12 +383,14 @@ _mesa_exec_Rectf(GLfloat x1, GLfloat y1, GLfloat x2, GLfloat y2)
    GET_CURRENT_CONTEXT(ctx);
    ASSERT_OUTSIDE_BEGIN_END(ctx);
 
-   CALL_Begin(GET_DISPATCH(), (GL_QUADS));
-   CALL_Vertex2f(GET_DISPATCH(), (x1, y1));
-   CALL_Vertex2f(GET_DISPATCH(), (x2, y1));
-   CALL_Vertex2f(GET_DISPATCH(), (x2, y2));
-   CALL_Vertex2f(GET_DISPATCH(), (x1, y2));
-   CALL_End(GET_DISPATCH(), ());
+   CALL_Begin(ctx->CurrentServerDispatch, (GL_QUADS));
+   /* Begin can change CurrentServerDispatch. */
+   struct _glapi_table *dispatch = ctx->CurrentServerDispatch;
+   CALL_Vertex2f(dispatch, (x1, y1));
+   CALL_Vertex2f(dispatch, (x2, y1));
+   CALL_Vertex2f(dispatch, (x2, y2));
+   CALL_Vertex2f(dispatch, (x1, y2));
+   CALL_End(dispatch, ());
 }
 
 
@@ -420,11 +422,14 @@ _mesa_EvalMesh1(GLenum mode, GLint i1, GLint i2)
    du = ctx->Eval.MapGrid1du;
    u = ctx->Eval.MapGrid1u1 + i1 * du;
 
-   CALL_Begin(GET_DISPATCH(), (prim));
+
+   CALL_Begin(ctx->CurrentServerDispatch, (prim));
+   /* Begin can change CurrentServerDispatch. */
+   struct _glapi_table *dispatch = ctx->CurrentServerDispatch;
    for (i = i1; i <= i2; i++, u += du) {
-      CALL_EvalCoord1f(GET_DISPATCH(), (u));
+      CALL_EvalCoord1f(dispatch, (u));
    }
-   CALL_End(GET_DISPATCH(), ());
+   CALL_End(dispatch, ());
 }
 
 
@@ -455,40 +460,50 @@ _mesa_EvalMesh2(GLenum mode, GLint i1, GLint i2, GLint j1, GLint j2)
    v1 = ctx->Eval.MapGrid2v1 + j1 * dv;
    u1 = ctx->Eval.MapGrid2u1 + i1 * du;
 
+   struct _glapi_table *dispatch;
+
    switch (mode) {
    case GL_POINT:
-      CALL_Begin(GET_DISPATCH(), (GL_POINTS));
+      CALL_Begin(ctx->CurrentServerDispatch, (GL_POINTS));
+      /* Begin can change CurrentServerDispatch. */
+      dispatch = ctx->CurrentServerDispatch;
       for (v = v1, j = j1; j <= j2; j++, v += dv) {
          for (u = u1, i = i1; i <= i2; i++, u += du) {
-            CALL_EvalCoord2f(GET_DISPATCH(), (u, v));
+            CALL_EvalCoord2f(dispatch, (u, v));
          }
       }
-      CALL_End(GET_DISPATCH(), ());
+      CALL_End(dispatch, ());
       break;
    case GL_LINE:
       for (v = v1, j = j1; j <= j2; j++, v += dv) {
-         CALL_Begin(GET_DISPATCH(), (GL_LINE_STRIP));
+         CALL_Begin(ctx->CurrentServerDispatch, (GL_LINE_STRIP));
+         /* Begin can change CurrentServerDispatch. */
+         dispatch = ctx->CurrentServerDispatch;
          for (u = u1, i = i1; i <= i2; i++, u += du) {
-            CALL_EvalCoord2f(GET_DISPATCH(), (u, v));
+            CALL_EvalCoord2f(dispatch, (u, v));
          }
-         CALL_End(GET_DISPATCH(), ());
+         CALL_End(dispatch, ());
       }
       for (u = u1, i = i1; i <= i2; i++, u += du) {
-         CALL_Begin(GET_DISPATCH(), (GL_LINE_STRIP));
+         CALL_Begin(ctx->CurrentServerDispatch, (GL_LINE_STRIP));
+         /* Begin can change CurrentServerDispatch. */
+         dispatch = ctx->CurrentServerDispatch;
          for (v = v1, j = j1; j <= j2; j++, v += dv) {
-            CALL_EvalCoord2f(GET_DISPATCH(), (u, v));
+            CALL_EvalCoord2f(dispatch, (u, v));
          }
-         CALL_End(GET_DISPATCH(), ());
+         CALL_End(dispatch, ());
       }
       break;
    case GL_FILL:
       for (v = v1, j = j1; j < j2; j++, v += dv) {
-         CALL_Begin(GET_DISPATCH(), (GL_TRIANGLE_STRIP));
+         CALL_Begin(ctx->CurrentServerDispatch, (GL_TRIANGLE_STRIP));
+         /* Begin can change CurrentServerDispatch. */
+         dispatch = ctx->CurrentServerDispatch;
          for (u = u1, i = i1; i <= i2; i++, u += du) {
-            CALL_EvalCoord2f(GET_DISPATCH(), (u, v));
-            CALL_EvalCoord2f(GET_DISPATCH(), (u, v + dv));
+            CALL_EvalCoord2f(dispatch, (u, v));
+            CALL_EvalCoord2f(dispatch, (u, v + dv));
          }
-         CALL_End(GET_DISPATCH(), ());
+         CALL_End(dispatch, ());
       }
       break;
    }

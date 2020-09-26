@@ -1227,7 +1227,7 @@ _save_PrimitiveRestartNV(void)
       bool no_current_update = save->no_current_update;
 
       /* restart primitive */
-      CALL_End(GET_DISPATCH(), ());
+      CALL_End(ctx->CurrentServerDispatch, ());
       vbo_save_NotifyBegin(ctx, curPrim, no_current_update);
    }
 }
@@ -1242,12 +1242,14 @@ static void GLAPIENTRY
 _save_OBE_Rectf(GLfloat x1, GLfloat y1, GLfloat x2, GLfloat y2)
 {
    GET_CURRENT_CONTEXT(ctx);
+   struct _glapi_table *dispatch = ctx->CurrentServerDispatch;
+
    vbo_save_NotifyBegin(ctx, GL_QUADS, false);
-   CALL_Vertex2f(GET_DISPATCH(), (x1, y1));
-   CALL_Vertex2f(GET_DISPATCH(), (x2, y1));
-   CALL_Vertex2f(GET_DISPATCH(), (x2, y2));
-   CALL_Vertex2f(GET_DISPATCH(), (x1, y2));
-   CALL_End(GET_DISPATCH(), ());
+   CALL_Vertex2f(dispatch, (x1, y1));
+   CALL_Vertex2f(dispatch, (x2, y1));
+   CALL_Vertex2f(dispatch, (x2, y2));
+   CALL_Vertex2f(dispatch, (x1, y2));
+   CALL_End(dispatch, ());
 }
 
 
@@ -1280,7 +1282,7 @@ _save_OBE_DrawArrays(GLenum mode, GLint start, GLsizei count)
 
    for (i = 0; i < count; i++)
       _mesa_array_element(ctx, start + i);
-   CALL_End(GET_DISPATCH(), ());
+   CALL_End(ctx->CurrentServerDispatch, ());
 
    _mesa_vao_unmap_arrays(ctx, vao);
 }
@@ -1335,7 +1337,7 @@ array_element(struct gl_context *ctx,
     */
    if (ctx->Array._PrimitiveRestart &&
        elt == ctx->Array._RestartIndex[index_size - 1]) {
-      CALL_PrimitiveRestartNV(GET_DISPATCH(), ());
+      CALL_PrimitiveRestartNV(ctx->CurrentServerDispatch, ());
       return;
    }
 
@@ -1403,7 +1405,7 @@ _save_OBE_DrawElementsBaseVertex(GLenum mode, GLsizei count, GLenum type,
       break;
    }
 
-   CALL_End(GET_DISPATCH(), ());
+   CALL_End(ctx->CurrentServerDispatch, ());
 
    _mesa_vao_unmap(ctx, vao);
 }
@@ -1456,11 +1458,13 @@ static void GLAPIENTRY
 _save_OBE_MultiDrawElements(GLenum mode, const GLsizei *count, GLenum type,
                             const GLvoid * const *indices, GLsizei primcount)
 {
+   GET_CURRENT_CONTEXT(ctx);
+   struct _glapi_table *dispatch = ctx->CurrentServerDispatch;
    GLsizei i;
 
    for (i = 0; i < primcount; i++) {
       if (count[i] > 0) {
-	 CALL_DrawElements(GET_DISPATCH(), (mode, count[i], type, indices[i]));
+	 CALL_DrawElements(dispatch, (mode, count[i], type, indices[i]));
       }
    }
 }
@@ -1473,11 +1477,13 @@ _save_OBE_MultiDrawElementsBaseVertex(GLenum mode, const GLsizei *count,
                                       GLsizei primcount,
                                       const GLint *basevertex)
 {
+   GET_CURRENT_CONTEXT(ctx);
+   struct _glapi_table *dispatch = ctx->CurrentServerDispatch;
    GLsizei i;
 
    for (i = 0; i < primcount; i++) {
       if (count[i] > 0) {
-	 CALL_DrawElementsBaseVertex(GET_DISPATCH(), (mode, count[i], type,
+	 CALL_DrawElementsBaseVertex(dispatch, (mode, count[i], type,
 						      indices[i],
 						      basevertex[i]));
       }
