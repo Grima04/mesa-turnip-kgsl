@@ -92,9 +92,6 @@ class PrintCode(gl_XML.gl_print_base):
             out('return {0};'.format(call))
             assert not func.marshal_call_after
 
-    def print_sync_dispatch(self, func):
-        self.print_sync_call(func)
-
     def print_sync_body(self, func):
         out('/* {0}: marshalled synchronously */'.format(func.name))
         out('{0} GLAPIENTRY'.format(func.return_type))
@@ -277,7 +274,7 @@ class PrintCode(gl_XML.gl_print_base):
         out('if (unlikely({0})) {{'.format(' || '.join(list)))
         with indent():
             out('_mesa_glthread_finish_before(ctx, "{0}");'.format(func.name))
-            self.print_sync_dispatch(func)
+            self.print_sync_call(func)
             out('return;')
         out('}')
 
@@ -307,7 +304,7 @@ class PrintCode(gl_XML.gl_print_base):
                 out('if ({0}) {{'.format(func.marshal_sync))
                 with indent():
                     out('_mesa_glthread_finish_before(ctx, "{0}");'.format(func.name))
-                    self.print_sync_dispatch(func)
+                    self.print_sync_call(func)
                     out('return;')
                 out('}')
 
