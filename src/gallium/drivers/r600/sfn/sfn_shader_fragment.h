@@ -96,6 +96,7 @@ private:
 
    std::map<unsigned, PValue> m_input_cache;
    bool m_enable_centroid_interpolators;
+   bool m_enable_sample_interpolators;
    unsigned m_apply_sample_mask;
    bool m_dual_source_blend;
 };

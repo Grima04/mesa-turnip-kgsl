@@ -48,6 +48,7 @@ FragmentShaderFromNir::FragmentShaderFromNir(const nir_shader& nir,
    m_front_face_loaded(false),
    m_depth_exports(0),
    m_enable_centroid_interpolators(false),
+   m_enable_sample_interpolators(false),
    m_apply_sample_mask(key.ps.apply_sample_id_mask),
    m_dual_source_blend(key.ps.dual_source_blend)
 {
@@ -132,6 +133,9 @@ bool FragmentShaderFromNir::scan_sysvalue_access(nir_instr *instr)
          /* This is not a sysvalue, should go elsewhere */
          m_enable_centroid_interpolators = true;
          break;
+      case nir_intrinsic_interp_deref_at_sample:
+         m_enable_sample_interpolators = true;
+         break;
       default:
          ;
       }
@@ -161,6 +165,11 @@ bool FragmentShaderFromNir::do_allocate_reserved_registers()
    if (m_enable_centroid_interpolators) {
       m_interpolator[2].enabled = true; /* perspective */
       m_interpolator[5].enabled = true; /* linear */
+   }
+
+   if (m_enable_sample_interpolators) {
+      m_interpolator[0].enabled = true; /* perspective */
+      m_interpolator[3].enabled = true; /* linear */
    }
 
    // sort the varying inputs
@@ -439,16 +448,29 @@ bool FragmentShaderFromNir::emit_interp_deref_at_sample(nir_intrinsic_instr* ins
    assert(var);
 
    auto& io = m_shaderio.input(var->data.driver_location, var->data.location_frac);
-   auto interpolator = m_interpolator[io.ij_index()];
-   PValue dummy(new GPRValue(interpolator.i->sel(), 7));
+
+   int ij_index = io.ij_index() >= 3 ? 3 : 0;
+   auto interpolator = m_interpolator[ij_index];
+   assert(interpolator.enabled);
+   PValue dummy(new GPRValue(interpolator.i->sel(), 0));
 
    GPRVector src({interpolator.j, interpolator.i, dummy, dummy});
 
    auto tex = new TexInstruction(TexInstruction::get_gradient_h, grad, src, 0, 0, PValue());
+   tex->set_flag(TexInstruction::grad_fine);
+   tex->set_flag(TexInstruction::x_unnormalized);
+   tex->set_flag(TexInstruction::y_unnormalized);
+   tex->set_flag(TexInstruction::z_unnormalized);
+   tex->set_flag(TexInstruction::w_unnormalized);
    tex->set_dest_swizzle({0,1,7,7});
    emit_instruction(tex);
 
    tex = new TexInstruction(TexInstruction::get_gradient_v, grad, src, 0, 0, PValue());
+   tex->set_flag(TexInstruction::x_unnormalized);
+   tex->set_flag(TexInstruction::y_unnormalized);
+   tex->set_flag(TexInstruction::z_unnormalized);
+   tex->set_flag(TexInstruction::w_unnormalized);
+   tex->set_flag(TexInstruction::grad_fine);
    tex->set_dest_swizzle({7,7,0,1});
    emit_instruction(tex);
 
