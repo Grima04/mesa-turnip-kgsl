@@ -30,18 +30,7 @@ LOCAL_SRC_FILES := \
 
 LOCAL_MODULE := libmesa_pipe_virgl
 
-LOCAL_MODULE_CLASS := STATIC_LIBRARIES
-
 LOCAL_C_INCLUDES := $(MESA_TOP)/src/virtio
-
-intermediates := $(call local-generated-sources-dir)
-LOCAL_GENERATED_SOURCES := $(intermediates)/virgl/virgl_driinfo.h
-
-GEN_DRIINFO_INPUTS := \
-	$(MESA_TOP)/src/gallium/auxiliary/pipe-loader/driinfo_gallium.h \
-	$(LOCAL_PATH)/virgl_driinfo.h.in
-
-LOCAL_EXPORT_C_INCLUDE_DIRS := $(intermediates)
 
 include $(GALLIUM_COMMON_MK)
 include $(BUILD_STATIC_LIBRARY)
