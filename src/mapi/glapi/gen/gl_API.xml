@@ -3234,7 +3234,8 @@
         <glx handcode="true"/>
     </function>
 
-    <function name="InterleavedArrays" deprecated="3.1">
+    <function name="InterleavedArrays" deprecated="3.1" marshal="async"
+              marshal_call_after="_mesa_glthread_InterleavedArrays(ctx, format, stride, pointer);">
         <param name="format" type="GLenum"/>
         <param name="stride" type="GLsizei"/>
         <param name="pointer" type="const GLvoid *"/>
