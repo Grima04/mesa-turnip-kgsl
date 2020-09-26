@@ -145,13 +145,6 @@ include $(BUILD_STATIC_LIBRARY)
 include $(CLEAR_VARS)
 
 LOCAL_MODULE := libmesa_pipe_iris
-LOCAL_MODULE_CLASS := STATIC_LIBRARIES
-
-intermediates := $(call local-generated-sources-dir)
-
-LOCAL_GENERATED_SOURCES := $(addprefix $(intermediates)/iris/,$(GENERATED_SOURCES))
-
-LOCAL_EXPORT_C_INCLUDE_DIRS := $(intermediates)
 
 LOCAL_SRC_FILES := \
 	$(IRIS_C_SOURCES)
