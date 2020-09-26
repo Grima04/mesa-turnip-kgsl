@@ -166,6 +166,7 @@ private:
 
    bool emit_store_deref(nir_intrinsic_instr* instr);
 
+   bool load_uniform(nir_intrinsic_instr* instr);
    bool process_uniforms(nir_variable *uniform);
    bool process_inputs(nir_variable *input);
    bool process_outputs(nir_variable *output);

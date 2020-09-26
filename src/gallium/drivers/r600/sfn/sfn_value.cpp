@@ -210,7 +210,7 @@ UniformValue::UniformValue(uint32_t sel, uint32_t chan, uint32_t kcache_bank):
 UniformValue::UniformValue(uint32_t sel, uint32_t chan, PValue addr):
    Value(Value::kconst, chan),
    m_index(sel),
-   m_kcache_bank(0),
+   m_kcache_bank(1),
    m_addr(addr)
 {
 
