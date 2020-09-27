@@ -696,7 +696,7 @@ module
 clover::spirv::link_program(const std::vector<module> &modules,
                             const device &dev, const std::string &opts,
                             std::string &r_log) {
-   std::vector<std::string> options = clover::llvm::tokenize(opts);
+   std::vector<std::string> options = tokenize(opts);
 
    bool create_library = false;
 
