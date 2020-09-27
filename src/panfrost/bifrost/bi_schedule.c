@@ -241,10 +241,11 @@ bi_schedule(bi_context *ctx)
 
                 /* Back-to-back bit affects only the last clause of a block,
                  * the rest are implicitly true */
-                bi_clause *last_clause = list_last_entry(&bblock->clauses, bi_clause, link);
 
-                if (last_clause)
+                if (!list_is_empty(&bblock->clauses)) {
+                        bi_clause *last_clause = list_last_entry(&bblock->clauses, bi_clause, link);
                         last_clause->back_to_back = bi_back_to_back(bblock);
+                }
 
                 bblock->scheduled = true;
         }
