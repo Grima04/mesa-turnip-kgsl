@@ -133,6 +133,7 @@ protected:
       es_vertexid,
       es_tess_coord,
       es_primitive_id,
+      es_helper_invocation,
       es_last
    };
 

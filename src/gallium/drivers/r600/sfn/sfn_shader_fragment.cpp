@@ -136,6 +136,9 @@ bool FragmentShaderFromNir::scan_sysvalue_access(nir_instr *instr)
       case nir_intrinsic_interp_deref_at_sample:
          m_enable_sample_interpolators = true;
          break;
+      case nir_intrinsic_load_helper_invocation:
+         m_sv_values.set(es_helper_invocation);
+         break;
       default:
          ;
       }
@@ -288,6 +291,20 @@ void FragmentShaderFromNir::emit_shader_start()
          m_frag_pos[i] = reg;
       }
    }
+
+   if (m_sv_values.test(es_helper_invocation)) {
+      m_helper_invocation = get_temp_register();
+      auto dummy = PValue(new GPRValue(m_helper_invocation->sel(), 7));
+      emit_instruction(new AluInstruction(op1_mov, m_helper_invocation, literal(-1), {alu_write, alu_last_instr}));
+      GPRVector dst({m_helper_invocation, dummy, dummy, dummy});
+
+      auto vtx = new FetchInstruction(dst, m_helper_invocation,
+                                      R600_BUFFER_INFO_CONST_BUFFER, bim_none);
+      vtx->set_flag(vtx_vpm);
+      vtx->set_flag(vtx_use_tc);
+      vtx->set_dest_swizzle({4,7,7,7});
+      emit_instruction(vtx);
+   }
 }
 
 bool FragmentShaderFromNir::do_emit_store_deref(const nir_variable *out_var, nir_intrinsic_instr* instr)
@@ -387,7 +404,8 @@ bool FragmentShaderFromNir::emit_intrinsic_instruction_override(nir_intrinsic_in
       return emit_interp_deref_at_centroid(instr);
    case nir_intrinsic_load_sample_pos:
       return emit_load_sample_pos(instr);
-
+   case nir_intrinsic_load_helper_invocation:
+      return load_preloaded_value(instr->dest, 0, m_helper_invocation);
    default:
       return false;
    }

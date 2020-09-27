@@ -88,6 +88,7 @@ private:
    PValue m_front_face_reg;
    PValue m_sample_mask_reg;
    PValue m_sample_id_reg;
+   PValue m_helper_invocation;
    GPRVector m_frag_pos;
    bool m_need_back_color;
    bool m_front_face_loaded;
