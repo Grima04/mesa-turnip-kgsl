@@ -66,8 +66,8 @@ output_if_debug(const char *prefixString, const char *outputString,
       else
          debug = 1;
 #else
-      /* in release builds, be silent unless MESA_DEBUG is set */
-      debug = getenv("MESA_DEBUG") != NULL;
+      const char *env = getenv("MESA_DEBUG");
+      debug = env && strstr(env, "silent") == NULL;
 #endif
    }
 
