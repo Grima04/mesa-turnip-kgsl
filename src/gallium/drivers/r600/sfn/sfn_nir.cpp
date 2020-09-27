@@ -246,8 +246,8 @@ bool ShaderFromNir::emit_instruction(nir_instr *instr)
       return impl->emit_deref_instruction(nir_instr_as_deref(instr));
    case nir_instr_type_intrinsic:
       return impl->emit_intrinsic_instruction(nir_instr_as_intrinsic(instr));
-   case nir_instr_type_load_const:
-      return impl->set_literal_constant(nir_instr_as_load_const(instr));
+   case nir_instr_type_load_const: /* const values are loaded when needed */
+      return true;
    case nir_instr_type_tex:
       return impl->emit_tex_instruction(instr);
    case nir_instr_type_jump:

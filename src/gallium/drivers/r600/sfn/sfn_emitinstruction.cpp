@@ -134,15 +134,6 @@ int EmitInstruction::lookup_register_index(const nir_dest& dst)
    return m_proc.lookup_register_index(dst);
 }
 
-const nir_load_const_instr*
-EmitInstruction::get_literal_register(const nir_src& src) const
-{
-   if (src.is_ssa)
-      return m_proc.get_literal_constant(src.ssa->index);
-   else
-      return nullptr;
-}
-
 PValue EmitInstruction::get_temp_register(int channel)
 {
    return m_proc.get_temp_register(channel);

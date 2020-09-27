@@ -682,7 +682,7 @@ bool EmitTexInstruction::emit_tex_tg4(nir_tex_instr* instr, TexInputs& src)
 
    bool literal_offset = false;
    if (src.offset) {
-      literal_offset =  src.offset->is_ssa && get_literal_register(*src.offset);
+      literal_offset =  nir_src_as_const_value(*src.offset) != 0;
       r600::sfn_log << SfnLog::tex << " really have offsets and they are " <<
                        (literal_offset ? "literal" : "varying") <<
                        "\n";
@@ -976,11 +976,11 @@ void EmitTexInstruction::set_offsets(TexInstruction* ir, nir_src *offset)
       return;
 
    assert(offset->is_ssa);
-   auto literal = get_literal_register(*offset);
+   auto literal = nir_src_as_const_value(*offset);
    assert(literal);
 
    for (int i = 0; i < offset->ssa->num_components; ++i) {
-      ir->set_offset(i, literal->value[i].i32);
+      ir->set_offset(i, literal[i].i32);
    }
 }
 

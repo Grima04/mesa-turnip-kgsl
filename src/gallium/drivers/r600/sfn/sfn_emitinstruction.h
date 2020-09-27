@@ -59,8 +59,6 @@ protected:
    PValue from_nir(const nir_alu_dest& v, unsigned component);
    PValue from_nir(const nir_dest& v, unsigned component);
 
-   const nir_load_const_instr* get_literal_register(const nir_src& src) const;
-
    int lookup_register_index(const nir_src& src) const;
    int lookup_register_index(const nir_dest& dst);
    PValue create_register_from_nir_src(const nir_src& src, unsigned comp);

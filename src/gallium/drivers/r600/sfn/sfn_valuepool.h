@@ -159,9 +159,6 @@ public:
     */
    bool create_undef(nir_ssa_undef_instr* instr);
 
-   bool set_literal_constant(nir_load_const_instr* instr);
-
-   const nir_load_const_instr *get_literal_constant(int index);
 
    void add_uniform(unsigned index, const PValue &value);
 
@@ -224,8 +221,6 @@ private:
     */
 
    std::set<unsigned> m_ssa_undef;
-
-   LiteralBuffer m_literal_constants;
 
    std::map<unsigned, unsigned> m_local_register_map;
    std::map<unsigned, unsigned> m_ssa_register_map;
