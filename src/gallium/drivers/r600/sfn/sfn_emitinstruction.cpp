@@ -109,16 +109,6 @@ GPRVector EmitInstruction::vec_from_nir_with_fetch_constant(const nir_src& src, 
    return m_proc.vec_from_nir_with_fetch_constant(src, mask, swizzle, match);
 }
 
-void EmitInstruction::add_uniform(unsigned index, const PValue &value)
-{
-   m_proc.add_uniform(index, value);
-}
-
-void EmitInstruction::load_uniform(const nir_alu_src& src)
-{
-   m_proc.load_uniform(src);
-}
-
 int EmitInstruction::lookup_register_index(const nir_src& src) const
 {
    return m_proc.lookup_register_index(src);

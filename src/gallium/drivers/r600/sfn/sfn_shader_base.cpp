@@ -921,9 +921,6 @@ bool ShaderFromNirProcessor::emit_load_ubo_vec4(nir_intrinsic_instr* instr)
       ir->set_dest_swizzle(swz);
 
       emit_instruction(ir);
-      for (int i = 0; i < instr->num_components ; ++i) {
-         add_uniform((instr->dest.ssa.index << 2) + i, trgt.reg_i(i));
-      }
       m_sh_info.indirect_files |= 1 << TGSI_FILE_CONSTANT;
       return true;
    }
@@ -1110,30 +1107,6 @@ bool ShaderFromNirProcessor::emit_deref_instruction(nir_deref_instr* instr)
    }
    return false;
 }
-
-void ShaderFromNirProcessor::load_uniform(const nir_alu_src &src)
-{
-   AluInstruction *ir = nullptr;
-   PValue sv[4];
-
-   assert(src.src.is_ssa);
-
-   for (int i = 0; i < src.src.ssa->num_components ; ++i)  {
-      unsigned uindex = (src.src.ssa->index << 2) + i;
-      sv[i] = uniform(uindex);
-      assert(sv[i]);
-   }
-
-   for (int i = 0; i < src.src.ssa->num_components ; ++i) {
-      ir = new AluInstruction(op1_mov, create_register_from_nir_src(src.src, i), sv[i],
-                              EmitInstruction::write);
-      emit_instruction(ir);
-   }
-   if (ir)
-      ir->set_flag(alu_last_instr);
-}
-
-
 
 bool ShaderFromNirProcessor::emit_instruction(EAluOp opcode, PValue dest,
                                               std::vector<PValue> srcs,

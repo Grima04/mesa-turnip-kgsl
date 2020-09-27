@@ -128,11 +128,6 @@ PValue ValuePool::from_nir(const nir_src& v, unsigned component, unsigned swizzl
       }
    }
 
-   unsigned uindex = (index << 2) + swizzled;
-   auto u = m_uniforms.find(uindex);
-   if (u != m_uniforms.end())
-      return u->second;
-
    return PValue();
 }
 

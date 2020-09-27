@@ -79,8 +79,6 @@ protected:
    GPRVector vec_from_nir_with_fetch_constant(const nir_src& src, unsigned mask,
                                               const GPRVector::Swizzle& swizzle, bool match = false);
 
-   void add_uniform(unsigned index, const PValue &value);
-   void load_uniform(const nir_alu_src& src);
    const nir_variable *get_deref_location(const nir_src& v) const;
 
    enum chip_class get_chip_class(void) const;

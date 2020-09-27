@@ -159,11 +159,6 @@ public:
     */
    bool create_undef(nir_ssa_undef_instr* instr);
 
-
-   void add_uniform(unsigned index, const PValue &value);
-
-   PValue uniform(unsigned index);
-
    /** Create a new register with the given index and store it in the
     * lookup map
     */
@@ -224,8 +219,6 @@ private:
 
    std::map<unsigned, unsigned> m_local_register_map;
    std::map<unsigned, unsigned> m_ssa_register_map;
-
-   std::map<unsigned, PValue> m_uniforms;
 
    std::map<unsigned, PValue> m_registers;
 
