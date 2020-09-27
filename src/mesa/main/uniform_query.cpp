@@ -1683,22 +1683,37 @@ _mesa_uniform_handle(GLint location, GLsizei count, const GLvoid *values,
       count = MIN2(count, (int) (uni->array_elements - offset));
    }
 
-   _mesa_flush_vertices_for_uniforms(ctx, uni);
 
    /* Store the data in the "actual type" backing storage for the uniform.
     */
-   gl_constant_value *storage;
    if (ctx->Const.PackedDriverUniformStorage) {
-      for (unsigned s = 0; s < uni->num_driver_storage; s++) {
-         storage = (gl_constant_value *)
-            uni->driver_storage[s].data + (size_mul * offset * components);
-         memcpy(storage, values,
-                sizeof(uni->storage[0]) * components * count * size_mul);
-      }
-   } else {
-      memcpy(&uni->storage[size_mul * components * offset], values,
-             sizeof(uni->storage[0]) * components * count * size_mul);
+      bool flushed = false;
 
+      for (unsigned s = 0; s < uni->num_driver_storage; s++) {
+         void *storage = (gl_constant_value *)
+            uni->driver_storage[s].data + (size_mul * offset * components);
+         unsigned size = sizeof(uni->storage[0]) * components * count * size_mul;
+
+         if (!memcmp(storage, values, size))
+            continue;
+
+         if (!flushed) {
+            _mesa_flush_vertices_for_uniforms(ctx, uni);
+            flushed = true;
+         }
+         memcpy(storage, values, size);
+      }
+      if (!flushed)
+         return;
+   } else {
+      void *storage = &uni->storage[size_mul * components * offset];
+      unsigned size = sizeof(uni->storage[0]) * components * count * size_mul;
+
+      if (!memcmp(storage, values, size))
+         return;
+
+      _mesa_flush_vertices_for_uniforms(ctx, uni);
+      memcpy(storage, values, size);
       _mesa_propagate_uniforms_to_driver_storage(uni, offset, count);
    }
 
