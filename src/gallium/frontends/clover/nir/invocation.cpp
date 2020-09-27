@@ -390,7 +390,8 @@ module clover::nir::spirv_to_nir(const module &mod, const device &dev,
                        reinterpret_cast<const char *>(&header) + sizeof(header));
       text.data.insert(text.data.end(), blob.data, blob.data + blob.size);
 
-      m.syms.emplace_back(sym.name, std::string(), section_id, 0, args);
+      m.syms.emplace_back(sym.name, std::string(),
+                          std::vector<size_t>(), section_id, 0, args);
       m.secs.push_back(text);
       section_id++;
    }

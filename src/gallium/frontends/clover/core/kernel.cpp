@@ -140,7 +140,7 @@ kernel::optimal_block_size(const command_queue &q,
 
 std::vector<size_t>
 kernel::required_block_size() const {
-   return { 0, 0, 0 };
+   return find(name_equals(_name), program().symbols()).reqd_work_group_size;
 }
 
 kernel::argument_range

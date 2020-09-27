@@ -103,6 +103,16 @@ namespace {
                               cl_address_qualifier, cl_access_qualifier);
    }
 
+   std::vector<size_t>
+   get_reqd_work_group_size(const Module &mod,
+                            const std::string &kernel_name) {
+      const Function &f = *mod.getFunction(kernel_name);
+      auto vector_metadata = get_uint_vector_kernel_metadata(f, "reqd_work_group_size");
+
+      return vector_metadata.empty() ? std::vector<size_t>({0, 0, 0}) : vector_metadata;
+   }
+
+
    std::string
    kernel_attributes(const Module &mod, const std::string &kernel_name) {
       std::vector<std::string> attributes;
@@ -285,6 +295,7 @@ clover::llvm::build_module_common(const Module &mod,
       const ::std::string name(llvm_name);
       if (offsets.count(name))
          m.syms.emplace_back(name, kernel_attributes(mod, name),
+                             get_reqd_work_group_size(mod, name),
                              0, offsets.at(name),
                              make_kernel_args(mod, name, c));
    }
