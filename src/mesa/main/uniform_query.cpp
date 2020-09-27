@@ -1337,51 +1337,117 @@ _mesa_uniform(GLint location, GLsizei count, const GLvoid *values,
 }
 
 
-static void
-copy_uniform_matrix_to_storage(gl_constant_value *storage,
-                               GLsizei count, const void *values,
+static bool
+copy_uniform_matrix_to_storage(struct gl_context *ctx,
+                               gl_constant_value *storage,
+                               struct gl_uniform_storage *const uni,
+                               unsigned count, const void *values,
                                const unsigned size_mul, const unsigned offset,
                                const unsigned components,
                                const unsigned vectors, bool transpose,
                                unsigned cols, unsigned rows,
-                               enum glsl_base_type basicType)
+                               enum glsl_base_type basicType, bool flush)
 {
    const unsigned elements = components * vectors;
+   const unsigned size = sizeof(storage[0]) * elements * count * size_mul;
 
    if (!transpose) {
-      memcpy(storage, values,
-             sizeof(storage[0]) * elements * count * size_mul);
-   } else if (basicType == GLSL_TYPE_FLOAT) {
-      /* Copy and transpose the matrix.
-       */
-      const float *src = (const float *)values;
-      float *dst = &storage->f;
+      if (!memcmp(storage, values, size))
+         return false;
 
-      for (int i = 0; i < count; i++) {
-         for (unsigned r = 0; r < rows; r++) {
-            for (unsigned c = 0; c < cols; c++) {
-               dst[(c * components) + r] = src[c + (r * vectors)];
+      if (flush)
+         _mesa_flush_vertices_for_uniforms(ctx, uni);
+
+      memcpy(storage, values, size);
+      return true;
+   } else if (basicType == GLSL_TYPE_FLOAT) {
+      /* Transpose the matrix. */
+      const float *src = (const float *)values;
+      float *dst = (float*)storage;
+
+      unsigned i = 0, r = 0, c = 0;
+
+      if (flush) {
+         /* Find the first element that's different. */
+         for (; i < count; i++) {
+            for (; r < rows; r++) {
+               for (; c < cols; c++) {
+                  if (dst[(c * components) + r] != src[c + (r * vectors)]) {
+                     _mesa_flush_vertices_for_uniforms(ctx, uni);
+                     flush = false;
+                     goto break_loops;
+                  }
+               }
+               c = 0;
             }
+            r = 0;
+            dst += elements;
+            src += elements;
          }
 
+      break_loops:
+         if (flush)
+            return false; /* No change. */
+      }
+
+      /* Set the remaining elements. We know that at least 1 element is
+       * different and that we have flushed.
+       */
+      for (; i < count; i++) {
+         for (; r < rows; r++) {
+            for (; c < cols; c++)
+               dst[(c * components) + r] = src[c + (r * vectors)];
+            c = 0;
+         }
+         r = 0;
          dst += elements;
          src += elements;
       }
+      return true;
    } else {
       assert(basicType == GLSL_TYPE_DOUBLE);
       const double *src = (const double *)values;
-      double *dst = (double *)&storage->f;
+      double *dst = (double*)storage;
 
-      for (int i = 0; i < count; i++) {
-         for (unsigned r = 0; r < rows; r++) {
-            for (unsigned c = 0; c < cols; c++) {
-               dst[(c * components) + r] = src[c + (r * vectors)];
+      unsigned i = 0, r = 0, c = 0;
+
+      if (flush) {
+         /* Find the first element that's different. */
+         for (; i < count; i++) {
+            for (; r < rows; r++) {
+               for (; c < cols; c++) {
+                  if (dst[(c * components) + r] != src[c + (r * vectors)]) {
+                     _mesa_flush_vertices_for_uniforms(ctx, uni);
+                     flush = false;
+                     goto break_loops2;
+                  }
+               }
+               c = 0;
             }
+            r = 0;
+            dst += elements;
+            src += elements;
          }
 
+      break_loops2:
+         if (flush)
+            return false; /* No change. */
+      }
+
+      /* Set the remaining elements. We know that at least 1 element is
+       * different and that we have flushed.
+       */
+      for (; i < count; i++) {
+         for (; r < rows; r++) {
+            for (; c < cols; c++)
+               dst[(c * components) + r] = src[c + (r * vectors)];
+            c = 0;
+         }
+         r = 0;
          dst += elements;
          src += elements;
       }
+      return true;
    }
 }
 
@@ -1481,28 +1547,30 @@ _mesa_uniform_matrix(GLint location, GLsizei count,
       count = MIN2(count, (int) (uni->array_elements - offset));
    }
 
-   _mesa_flush_vertices_for_uniforms(ctx, uni);
-
    /* Store the data in the "actual type" backing storage for the uniform.
     */
    gl_constant_value *storage;
    const unsigned elements = components * vectors;
    if (ctx->Const.PackedDriverUniformStorage) {
+      bool flushed = false;
+
       for (unsigned s = 0; s < uni->num_driver_storage; s++) {
          storage = (gl_constant_value *)
             uni->driver_storage[s].data + (size_mul * offset * elements);
 
-         copy_uniform_matrix_to_storage(storage, count, values, size_mul,
-                                        offset, components, vectors,
-                                        transpose, cols, rows, basicType);
+         if (copy_uniform_matrix_to_storage(ctx, storage, uni, count, values,
+                                            size_mul, offset, components,
+                                            vectors, transpose, cols, rows,
+                                            basicType, !flushed))
+            flushed = true;
       }
    } else {
       storage =  &uni->storage[size_mul * elements * offset];
-      copy_uniform_matrix_to_storage(storage, count, values, size_mul, offset,
-                                     components, vectors, transpose, cols,
-                                     rows, basicType);
-
-      _mesa_propagate_uniforms_to_driver_storage(uni, offset, count);
+      if (copy_uniform_matrix_to_storage(ctx, storage, uni, count, values,
+                                         size_mul, offset, components, vectors,
+                                         transpose, cols, rows, basicType,
+                                         true))
+         _mesa_propagate_uniforms_to_driver_storage(uni, offset, count);
    }
 }
 
