@@ -2922,8 +2922,10 @@ static void si_update_clip_regs(struct si_context *sctx, struct si_shader_select
       si_mark_atom_dirty(sctx, &sctx->atoms.s.clip_regs);
 }
 
-static void si_update_common_shader_state(struct si_context *sctx)
+static void si_update_common_shader_state(struct si_context *sctx, struct si_shader_selector *sel)
 {
+   si_set_active_descriptors_for_shader(sctx, sel);
+
    sctx->uses_bindless_samplers = si_shader_uses_bindless_samplers(sctx->vs_shader.cso) ||
                                   si_shader_uses_bindless_samplers(sctx->gs_shader.cso) ||
                                   si_shader_uses_bindless_samplers(sctx->ps_shader.cso) ||
@@ -2954,9 +2956,8 @@ static void si_bind_vs_shader(struct pipe_context *ctx, void *state)
    if (si_update_ngg(sctx))
       si_shader_change_notify(sctx);
 
-   si_update_common_shader_state(sctx);
+   si_update_common_shader_state(sctx, sel);
    si_update_vs_viewport_state(sctx);
-   si_set_active_descriptors_for_shader(sctx, sel);
    si_update_streamout_state(sctx);
    si_update_clip_regs(sctx, old_hw_vs, old_hw_vs_variant, si_get_vs(sctx)->cso,
                        si_get_vs_state(sctx));
@@ -3020,7 +3021,7 @@ static void si_bind_gs_shader(struct pipe_context *ctx, void *state)
    sctx->gs_shader.current = sel ? sel->first_variant : NULL;
    sctx->ia_multi_vgt_param_key.u.uses_gs = sel != NULL;
 
-   si_update_common_shader_state(sctx);
+   si_update_common_shader_state(sctx, sel);
    sctx->last_gs_out_prim = -1; /* reset this so that it gets updated */
 
    ngg_changed = si_update_ngg(sctx);
@@ -3031,7 +3032,6 @@ static void si_bind_gs_shader(struct pipe_context *ctx, void *state)
          si_update_tess_uses_prim_id(sctx);
    }
    si_update_vs_viewport_state(sctx);
-   si_set_active_descriptors_for_shader(sctx, sel);
    si_update_streamout_state(sctx);
    si_update_clip_regs(sctx, old_hw_vs, old_hw_vs_variant, si_get_vs(sctx)->cso,
                        si_get_vs_state(sctx));
@@ -3050,12 +3050,10 @@ static void si_bind_tcs_shader(struct pipe_context *ctx, void *state)
    sctx->tcs_shader.current = sel ? sel->first_variant : NULL;
    si_update_tess_uses_prim_id(sctx);
 
-   si_update_common_shader_state(sctx);
+   si_update_common_shader_state(sctx, sel);
 
    if (enable_changed)
       sctx->last_tcs = NULL; /* invalidate derived tess state */
-
-   si_set_active_descriptors_for_shader(sctx, sel);
 }
 
 static void si_bind_tes_shader(struct pipe_context *ctx, void *state)
@@ -3074,7 +3072,7 @@ static void si_bind_tes_shader(struct pipe_context *ctx, void *state)
    sctx->ia_multi_vgt_param_key.u.uses_tess = sel != NULL;
    si_update_tess_uses_prim_id(sctx);
 
-   si_update_common_shader_state(sctx);
+   si_update_common_shader_state(sctx, sel);
    sctx->last_gs_out_prim = -1; /* reset this so that it gets updated */
 
    bool ngg_changed = si_update_ngg(sctx);
@@ -3083,7 +3081,6 @@ static void si_bind_tes_shader(struct pipe_context *ctx, void *state)
    if (enable_changed)
       sctx->last_tes_sh_base = -1; /* invalidate derived tess state */
    si_update_vs_viewport_state(sctx);
-   si_set_active_descriptors_for_shader(sctx, sel);
    si_update_streamout_state(sctx);
    si_update_clip_regs(sctx, old_hw_vs, old_hw_vs_variant, si_get_vs(sctx)->cso,
                        si_get_vs_state(sctx));
@@ -3102,7 +3099,7 @@ static void si_bind_ps_shader(struct pipe_context *ctx, void *state)
    sctx->ps_shader.cso = sel;
    sctx->ps_shader.current = sel ? sel->first_variant : NULL;
 
-   si_update_common_shader_state(sctx);
+   si_update_common_shader_state(sctx, sel);
    if (sel) {
       if (sctx->ia_multi_vgt_param_key.u.uses_tess)
          si_update_tess_uses_prim_id(sctx);
@@ -3116,7 +3113,6 @@ static void si_bind_ps_shader(struct pipe_context *ctx, void *state)
               sel->info.base.fs.early_fragment_tests))
          si_mark_atom_dirty(sctx, &sctx->atoms.s.msaa_config);
    }
-   si_set_active_descriptors_for_shader(sctx, sel);
    si_update_ps_colorbuf0_slot(sctx);
 }
 
