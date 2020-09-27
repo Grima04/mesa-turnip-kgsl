@@ -1203,6 +1203,10 @@ _mesa_uniform(GLint location, GLsizei count, const GLvoid *values,
                /* Mark this bindless sampler as bound to a texture unit.
                 */
                if (sampler->unit != value || !sampler->bound) {
+                  if (!flushed) {
+                     FLUSH_VERTICES(ctx, _NEW_TEXTURE_OBJECT | _NEW_PROGRAM);
+                     flushed = true;
+                  }
                   sampler->unit = value;
                   changed = true;
                }
@@ -1210,6 +1214,10 @@ _mesa_uniform(GLint location, GLsizei count, const GLvoid *values,
                sh->Program->sh.HasBoundBindlessSampler = true;
             } else {
                if (sh->Program->SamplerUnits[unit] != value) {
+                  if (!flushed) {
+                     FLUSH_VERTICES(ctx, _NEW_TEXTURE_OBJECT | _NEW_PROGRAM);
+                     flushed = true;
+                  }
                   sh->Program->SamplerUnits[unit] = value;
                   changed = true;
                }
@@ -1217,11 +1225,6 @@ _mesa_uniform(GLint location, GLsizei count, const GLvoid *values,
          }
 
          if (changed) {
-            if (!flushed) {
-               FLUSH_VERTICES(ctx, _NEW_TEXTURE_OBJECT | _NEW_PROGRAM);
-               flushed = true;
-            }
-
             struct gl_program *const prog = sh->Program;
             _mesa_update_shader_textures_used(shProg, prog);
             if (ctx->Driver.SamplerUniformChange)
