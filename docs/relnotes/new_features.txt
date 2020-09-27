@@ -1,6 +1,7 @@
 GL 4.5 on llvmpipe
 GL_NV_copy_depth_to_color for NIR
 GL_NV_half_float
+GL_NV_shader_atomic_int64 on radeonsi
 EGL_KHR_swap_buffers_with_damage on X11 (DRI3)
 VK_PRESENT_MODE_FIFO_RELAXED on X11
 GLX_EXT_swap_control for DRI2 and DRI3
