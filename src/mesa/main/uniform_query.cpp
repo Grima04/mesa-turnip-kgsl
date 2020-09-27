@@ -1059,40 +1059,106 @@ _mesa_flush_vertices_for_uniforms(struct gl_context *ctx,
    ctx->NewDriverState |= new_driver_state;
 }
 
-static void
+static bool
 copy_uniforms_to_storage(gl_constant_value *storage,
                          struct gl_uniform_storage *uni,
                          struct gl_context *ctx, GLsizei count,
                          const GLvoid *values, const int size_mul,
                          const unsigned offset, const unsigned components,
-                         enum glsl_base_type basicType)
+                         enum glsl_base_type basicType, bool flush)
 {
+   const gl_constant_value *src = (const gl_constant_value*)values;
    bool copy_as_uint64 = uni->is_bindless &&
                          (uni->type->is_sampler() || uni->type->is_image());
+
    if (!uni->type->is_boolean() && !copy_as_uint64) {
-      memcpy(storage, values,
-             sizeof(storage[0]) * components * count * size_mul);
+      unsigned size = sizeof(storage[0]) * components * count * size_mul;
+
+      if (!memcmp(storage, values, size))
+         return false;
+
+      if (flush)
+         _mesa_flush_vertices_for_uniforms(ctx, uni);
+
+      memcpy(storage, values, size);
+      return true;
    } else if (copy_as_uint64) {
-      const union gl_constant_value *src =
-         (const union gl_constant_value *) values;
-      GLuint64 *dst = (GLuint64 *)&storage->i;
       const unsigned elems = components * count;
+      uint64_t *dst = (uint64_t*)storage;
+      unsigned i = 0;
 
-      for (unsigned i = 0; i < elems; i++) {
-         dst[i] = src[i].i;
-      }
-   } else {
-      const union gl_constant_value *src =
-         (const union gl_constant_value *) values;
-      union gl_constant_value *dst = storage;
-      const unsigned elems = components * count;
-
-      for (unsigned i = 0; i < elems; i++) {
-         if (basicType == GLSL_TYPE_FLOAT) {
-            dst[i].i = src[i].f != 0.0f ? ctx->Const.UniformBooleanTrue : 0;
-         } else {
-            dst[i].i = src[i].i != 0    ? ctx->Const.UniformBooleanTrue : 0;
+      if (flush) {
+         /* Find the first element that's different. */
+         for (; i < elems; i++) {
+            if (dst[i] != src[i].u) {
+               _mesa_flush_vertices_for_uniforms(ctx, uni);
+               flush = false;
+               break;
+            }
          }
+         if (flush)
+            return false; /* No change. */
+      }
+
+      /* Set the remaining elements. We know that at least 1 element is
+       * different and that we have flushed.
+       */
+      for (; i < elems; i++)
+         dst[i] = src[i].u;
+
+      return true;
+   } else {
+      const unsigned elems = components * count;
+      gl_constant_value *dst = storage;
+
+      if (basicType == GLSL_TYPE_FLOAT) {
+         unsigned i = 0;
+
+         if (flush) {
+            /* Find the first element that's different. */
+            for (; i < elems; i++) {
+               if (dst[i].u !=
+                   (src[i].f != 0.0f ? ctx->Const.UniformBooleanTrue : 0)) {
+                  _mesa_flush_vertices_for_uniforms(ctx, uni);
+                  flush = false;
+                  break;
+               }
+            }
+            if (flush)
+               return false; /* No change. */
+         }
+
+         /* Set the remaining elements. We know that at least 1 element is
+          * different and that we have flushed.
+          */
+         for (; i < elems; i++)
+            dst[i].u = src[i].f != 0.0f ? ctx->Const.UniformBooleanTrue : 0;
+
+         return true;
+      } else {
+         unsigned i = 0;
+
+         if (flush) {
+            /* Find the first element that's different. */
+            for (; i < elems; i++) {
+               if (dst[i].u !=
+                   (src[i].u ? ctx->Const.UniformBooleanTrue : 0)) {
+                  _mesa_flush_vertices_for_uniforms(ctx, uni);
+                  flush = false;
+                  break;
+               }
+            }
+            if (flush)
+               return false; /* No change. */
+         }
+
+         /* Set the remaining elements. We know that at least 1 element is
+          * different and that we have flushed.
+          */
+         for (; i < elems; i++)
+            dst[i].u = src[i].u ? ctx->Const.UniformBooleanTrue : 0;
+
+         return true;
       }
    }
 }
@@ -1151,10 +1217,9 @@ _mesa_uniform(GLint location, GLsizei count, const GLvoid *values,
       count = MIN2(count, (int) (uni->array_elements - offset));
    }
 
-   _mesa_flush_vertices_for_uniforms(ctx, uni);
-
    /* Store the data in the "actual type" backing storage for the uniform.
     */
+   bool ctx_flushed = false;
    gl_constant_value *storage;
    if (ctx->Const.PackedDriverUniformStorage &&
        (uni->is_bindless || !uni->type->contains_opaque())) {
@@ -1162,21 +1227,28 @@ _mesa_uniform(GLint location, GLsizei count, const GLvoid *values,
          storage = (gl_constant_value *)
             uni->driver_storage[s].data + (size_mul * offset * components);
 
-         copy_uniforms_to_storage(storage, uni, ctx, count, values, size_mul,
-                                  offset, components, basicType);
+         if (copy_uniforms_to_storage(storage, uni, ctx, count, values, size_mul,
+                                      offset, components, basicType, !ctx_flushed))
+            ctx_flushed = true;
       }
    } else {
       storage = &uni->storage[size_mul * components * offset];
-      copy_uniforms_to_storage(storage, uni, ctx, count, values, size_mul,
-                               offset, components, basicType);
-
-      _mesa_propagate_uniforms_to_driver_storage(uni, offset, count);
+      if (copy_uniforms_to_storage(storage, uni, ctx, count, values, size_mul,
+                                   offset, components, basicType, !ctx_flushed)) {
+         _mesa_propagate_uniforms_to_driver_storage(uni, offset, count);
+         ctx_flushed = true;
+      }
    }
+   if (!ctx_flushed)
+      return; /* no change in uniform values */
 
    /* If the uniform is a sampler, do the extra magic necessary to propagate
     * the changes through.
     */
    if (uni->type->is_sampler()) {
+      /* Note that samplers are the only uniforms that don't call
+       * FLUSH_VERTICES above.
+       */
       bool flushed = false;
 
       shProg->SamplersValidated = GL_TRUE;
