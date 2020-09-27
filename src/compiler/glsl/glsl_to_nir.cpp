@@ -955,9 +955,11 @@ nir_visitor::visit(ir_call *ir)
          break;
       case ir_intrinsic_generic_atomic_min:
          assert(ir->return_deref);
-         if (ir->return_deref->type == glsl_type::int_type)
+         if (ir->return_deref->type == glsl_type::int_type ||
+             ir->return_deref->type == glsl_type::int64_t_type)
             op = nir_intrinsic_deref_atomic_imin;
-         else if (ir->return_deref->type == glsl_type::uint_type)
+         else if (ir->return_deref->type == glsl_type::uint_type ||
+                  ir->return_deref->type == glsl_type::uint64_t_type)
             op = nir_intrinsic_deref_atomic_umin;
          else if (ir->return_deref->type == glsl_type::float_type)
             op = nir_intrinsic_deref_atomic_fmin;
@@ -966,9 +968,11 @@ nir_visitor::visit(ir_call *ir)
          break;
       case ir_intrinsic_generic_atomic_max:
          assert(ir->return_deref);
-         if (ir->return_deref->type == glsl_type::int_type)
+         if (ir->return_deref->type == glsl_type::int_type ||
+             ir->return_deref->type == glsl_type::int64_t_type)
             op = nir_intrinsic_deref_atomic_imax;
-         else if (ir->return_deref->type == glsl_type::uint_type)
+         else if (ir->return_deref->type == glsl_type::uint_type ||
+                  ir->return_deref->type == glsl_type::uint64_t_type)
             op = nir_intrinsic_deref_atomic_umax;
          else if (ir->return_deref->type == glsl_type::float_type)
             op = nir_intrinsic_deref_atomic_fmax;
@@ -1135,9 +1139,11 @@ nir_visitor::visit(ir_call *ir)
          break;
       case ir_intrinsic_shared_atomic_min:
          assert(ir->return_deref);
-         if (ir->return_deref->type == glsl_type::int_type)
+         if (ir->return_deref->type == glsl_type::int_type ||
+             ir->return_deref->type == glsl_type::int64_t_type)
             op = nir_intrinsic_shared_atomic_imin;
-         else if (ir->return_deref->type == glsl_type::uint_type)
+         else if (ir->return_deref->type == glsl_type::uint_type ||
+                  ir->return_deref->type == glsl_type::uint64_t_type)
             op = nir_intrinsic_shared_atomic_umin;
          else if (ir->return_deref->type == glsl_type::float_type)
             op = nir_intrinsic_shared_atomic_fmin;
@@ -1146,9 +1152,11 @@ nir_visitor::visit(ir_call *ir)
          break;
       case ir_intrinsic_shared_atomic_max:
          assert(ir->return_deref);
-         if (ir->return_deref->type == glsl_type::int_type)
+         if (ir->return_deref->type == glsl_type::int_type ||
+             ir->return_deref->type == glsl_type::int64_t_type)
             op = nir_intrinsic_shared_atomic_imax;
-         else if (ir->return_deref->type == glsl_type::uint_type)
+         else if (ir->return_deref->type == glsl_type::uint_type ||
+                  ir->return_deref->type == glsl_type::uint64_t_type)
             op = nir_intrinsic_shared_atomic_umax;
          else if (ir->return_deref->type == glsl_type::float_type)
             op = nir_intrinsic_shared_atomic_fmax;
@@ -1246,8 +1254,13 @@ nir_visitor::visit(ir_call *ir)
 
          /* Atomic result */
          assert(ir->return_deref);
-         nir_ssa_dest_init(&instr->instr, &instr->dest,
-                           ir->return_deref->type->vector_elements, 32, NULL);
+         if (ir->return_deref->type->is_integer_64()) {
+            nir_ssa_dest_init(&instr->instr, &instr->dest,
+                              ir->return_deref->type->vector_elements, 64, NULL);
+         } else {
+            nir_ssa_dest_init(&instr->instr, &instr->dest,
+                              ir->return_deref->type->vector_elements, 32, NULL);
+         }
          nir_builder_instr_insert(&b, &instr->instr);
          break;
       }
