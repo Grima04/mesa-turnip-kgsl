@@ -288,7 +288,7 @@ radv_RegisterDeviceEventEXT(VkDevice                    _device,
 
 	RADV_FROM_HANDLE(radv_fence, fence, *_fence);
 
-	assert(fence->permanent.kind = RADV_FENCE_SYNCOBJ);
+	assert(fence->permanent.kind == RADV_FENCE_SYNCOBJ);
 
 	if (device->ws->export_syncobj(device->ws, fence->permanent.syncobj, &fd)) {
 		ret = VK_ERROR_OUT_OF_HOST_MEMORY;
@@ -331,7 +331,7 @@ radv_RegisterDisplayEventEXT(VkDevice                           _device,
 
 	RADV_FROM_HANDLE(radv_fence, fence, *_fence);
 
-	assert(fence->permanent.kind = RADV_FENCE_SYNCOBJ);
+	assert(fence->permanent.kind == RADV_FENCE_SYNCOBJ);
 
 	if (device->ws->export_syncobj(device->ws, fence->permanent.syncobj, &fd)) {
 		ret = VK_ERROR_OUT_OF_HOST_MEMORY;
