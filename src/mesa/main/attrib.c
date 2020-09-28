@@ -1219,36 +1219,37 @@ _mesa_PopAttrib(void)
                   _math_matrix_analyse(ctx->ModelviewMatrixStack.Top);
 
                for (i = 0; i < ctx->Const.MaxLights; i++) {
+                  const struct gl_light_uniforms *lu = &light->LightSource[i];
                   const struct gl_light *l = &light->Light[i];
                   _mesa_set_enable(ctx, GL_LIGHT0 + i, l->Enabled);
-                  _mesa_light(ctx, i, GL_AMBIENT, l->Ambient);
-                  _mesa_light(ctx, i, GL_DIFFUSE, l->Diffuse);
-                  _mesa_light(ctx, i, GL_SPECULAR, l->Specular);
-                  _mesa_light(ctx, i, GL_POSITION, l->EyePosition);
-                  _mesa_light(ctx, i, GL_SPOT_DIRECTION, l->SpotDirection);
+                  _mesa_light(ctx, i, GL_AMBIENT, lu->Ambient);
+                  _mesa_light(ctx, i, GL_DIFFUSE, lu->Diffuse);
+                  _mesa_light(ctx, i, GL_SPECULAR, lu->Specular);
+                  _mesa_light(ctx, i, GL_POSITION, lu->EyePosition);
+                  _mesa_light(ctx, i, GL_SPOT_DIRECTION, lu->SpotDirection);
                   {
                      GLfloat p[4] = { 0 };
-                     p[0] = l->SpotExponent;
+                     p[0] = lu->SpotExponent;
                      _mesa_light(ctx, i, GL_SPOT_EXPONENT, p);
                   }
                   {
                      GLfloat p[4] = { 0 };
-                     p[0] = l->SpotCutoff;
+                     p[0] = lu->SpotCutoff;
                      _mesa_light(ctx, i, GL_SPOT_CUTOFF, p);
                   }
                   {
                      GLfloat p[4] = { 0 };
-                     p[0] = l->ConstantAttenuation;
+                     p[0] = lu->ConstantAttenuation;
                      _mesa_light(ctx, i, GL_CONSTANT_ATTENUATION, p);
                   }
                   {
                      GLfloat p[4] = { 0 };
-                     p[0] = l->LinearAttenuation;
+                     p[0] = lu->LinearAttenuation;
                      _mesa_light(ctx, i, GL_LINEAR_ATTENUATION, p);
                   }
                   {
                      GLfloat p[4] = { 0 };
-                     p[0] = l->QuadraticAttenuation;
+                     p[0] = lu->QuadraticAttenuation;
                      _mesa_light(ctx, i, GL_QUADRATIC_ATTENUATION, p);
                   }
                }

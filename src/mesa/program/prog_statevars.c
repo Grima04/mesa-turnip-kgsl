@@ -129,9 +129,9 @@ fetch_state(struct gl_context *ctx, const gl_state_index16 state[],
          const unsigned index = state[2] - STATE_AMBIENT;
          assert(index < 8);
          if (index != STATE_SPOT_CUTOFF)
-            COPY_4V(value, &ctx->Light.Light[ln].Values[index * 4]);
+            COPY_4V(value, (float*)&ctx->Light.LightSource[ln] + index * 4);
          else
-            value[0] = ctx->Light.Light[ln].Values[index * 4];
+            value[0] = ctx->Light.LightSource[ln].SpotCutoff;
          return;
       }
    case STATE_LIGHTMODEL_AMBIENT:
@@ -168,7 +168,7 @@ fetch_state(struct gl_context *ctx, const gl_state_index16 state[],
          switch (state[3]) {
             case STATE_AMBIENT:
                for (i = 0; i < 3; i++) {
-                  value[i] = ctx->Light.Light[ln].Ambient[i] *
+                  value[i] = ctx->Light.LightSource[ln].Ambient[i] *
                      ctx->Light.Material.Attrib[MAT_ATTRIB_FRONT_AMBIENT+face][i];
                }
                /* [3] = material alpha */
@@ -176,7 +176,7 @@ fetch_state(struct gl_context *ctx, const gl_state_index16 state[],
                return;
             case STATE_DIFFUSE:
                for (i = 0; i < 3; i++) {
-                  value[i] = ctx->Light.Light[ln].Diffuse[i] *
+                  value[i] = ctx->Light.LightSource[ln].Diffuse[i] *
                      ctx->Light.Material.Attrib[MAT_ATTRIB_FRONT_DIFFUSE+face][i];
                }
                /* [3] = material alpha */
@@ -184,7 +184,7 @@ fetch_state(struct gl_context *ctx, const gl_state_index16 state[],
                return;
             case STATE_SPECULAR:
                for (i = 0; i < 3; i++) {
-                  value[i] = ctx->Light.Light[ln].Specular[i] *
+                  value[i] = ctx->Light.LightSource[ln].Specular[i] *
                      ctx->Light.Material.Attrib[MAT_ATTRIB_FRONT_SPECULAR+face][i];
                }
                /* [3] = material alpha */
@@ -552,7 +552,7 @@ fetch_state(struct gl_context *ctx, const gl_state_index16 state[],
             /* pre-normalize spot dir */
             const GLuint ln = (GLuint) state[2];
             COPY_3V(value, ctx->Light.Light[ln]._NormSpotDirection);
-            value[3] = ctx->Light.Light[ln]._CosCutoff;
+            value[3] = ctx->Light.LightSource[ln]._CosCutoff;
          }
          return;
 

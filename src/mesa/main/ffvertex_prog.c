@@ -189,19 +189,19 @@ static void make_state_key( struct gl_context *ctx, struct state_key *key )
       mask = ctx->Light._EnabledLights;
       while (mask) {
          const int i = u_bit_scan(&mask);
-         struct gl_light *light = &ctx->Light.Light[i];
+         struct gl_light_uniforms *lu = &ctx->Light.LightSource[i];
 
          key->unit[i].light_enabled = 1;
 
-         if (light->EyePosition[3] == 0.0F)
+         if (lu->EyePosition[3] == 0.0F)
             key->unit[i].light_eyepos3_is_zero = 1;
 
-         if (light->SpotCutoff == 180.0F)
+         if (lu->SpotCutoff == 180.0F)
             key->unit[i].light_spotcutoff_is_180 = 1;
 
-         if (light->ConstantAttenuation != 1.0F ||
-             light->LinearAttenuation != 0.0F ||
-             light->QuadraticAttenuation != 0.0F)
+         if (lu->ConstantAttenuation != 1.0F ||
+             lu->LinearAttenuation != 0.0F ||
+             lu->QuadraticAttenuation != 0.0F)
             key->unit[i].light_attenuated = 1;
       }
 

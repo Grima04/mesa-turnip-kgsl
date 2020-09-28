@@ -299,27 +299,6 @@ struct gl_material
  */
 struct gl_light
 {
-   union {
-      struct {
-         /* These must be in the same order as the STATE_* enums,
-          * which should also match the order of gl_LightSource members.
-          */
-         GLfloat Ambient[4];           /**< STATE_AMBIENT */
-         GLfloat Diffuse[4];           /**< STATE_DIFFUSE */
-         GLfloat Specular[4];          /**< STATE_SPECULAR */
-         GLfloat EyePosition[4];       /**< STATE_POSITION in eye coordinates */
-         GLfloat _HalfVector[4];       /**< STATE_HALF_VECTOR */
-         GLfloat SpotDirection[3];     /**< STATE_SPOT_DIRECTION in eye coordinates */
-         GLfloat _CosCutoff;           /**< = MAX(0, cos(SpotCutoff)) */
-         GLfloat ConstantAttenuation;  /**< STATE_ATTENUATION */
-         GLfloat LinearAttenuation;
-         GLfloat QuadraticAttenuation;
-         GLfloat SpotExponent;
-         GLfloat SpotCutoff;           /**< STATE_SPOT_CUTOFF in degrees */
-      };
-      GLfloat Values[29];
-   };
-
    GLboolean Enabled;		/**< On/off flag */
 
    /**
@@ -616,11 +595,36 @@ struct gl_hint_attrib
 };
 
 
+struct gl_light_uniforms {
+   /* These must be in the same order as the STATE_* enums,
+    * which should also match the order of gl_LightSource members.
+    */
+   GLfloat Ambient[4];           /**< STATE_AMBIENT */
+   GLfloat Diffuse[4];           /**< STATE_DIFFUSE */
+   GLfloat Specular[4];          /**< STATE_SPECULAR */
+   GLfloat EyePosition[4];       /**< STATE_POSITION in eye coordinates */
+   GLfloat _HalfVector[4];       /**< STATE_HALF_VECTOR */
+   GLfloat SpotDirection[3];     /**< STATE_SPOT_DIRECTION in eye coordinates */
+   GLfloat _CosCutoff;           /**< = MAX(0, cos(SpotCutoff)) */
+   GLfloat ConstantAttenuation;  /**< STATE_ATTENUATION */
+   GLfloat LinearAttenuation;
+   GLfloat QuadraticAttenuation;
+   GLfloat SpotExponent;
+   GLfloat SpotCutoff;           /**< STATE_SPOT_CUTOFF in degrees */
+};
+
+
 /**
  * Lighting attribute group (GL_LIGHT_BIT).
  */
 struct gl_light_attrib
 {
+   /* gl_LightSource uniforms */
+   union {
+      struct gl_light_uniforms LightSource[MAX_LIGHTS];
+      GLfloat LightSourceData[(sizeof(struct gl_light_uniforms) / 4) * MAX_LIGHTS];
+   };
+
    struct gl_light Light[MAX_LIGHTS];	/**< Array of light sources */
    struct gl_lightmodel Model;		/**< Lighting model */
 
