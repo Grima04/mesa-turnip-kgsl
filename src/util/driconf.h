@@ -270,11 +270,11 @@ DRI_CONF_SECTION_BEGIN \
 
 #define DRI_CONF_PP_JIMENEZMLAA(def,min,max) \
    DRI_CONF_OPT_I(pp_jimenezmlaa, def, min, max, \
-                  "Morphological anti-aliasing based on Jimenez\\\' MLAA. 0 to disable, 8 for default quality")
+                  "Morphological anti-aliasing based on Jimenez' MLAA. 0 to disable, 8 for default quality")
 
 #define DRI_CONF_PP_JIMENEZMLAA_COLOR(def,min,max) \
    DRI_CONF_OPT_I(pp_jimenezmlaa_color, def, min, max, \
-                  "Morphological anti-aliasing based on Jimenez\\\' MLAA. 0 to disable, 8 for default quality. Color version, usable with 2d GL apps")
+                  "Morphological anti-aliasing based on Jimenez' MLAA. 0 to disable, 8 for default quality. Color version, usable with 2d GL apps")
 
 /**
  * \brief Performance-related options
