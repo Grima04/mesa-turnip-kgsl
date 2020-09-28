@@ -180,7 +180,7 @@ lower_make_visible(nir_cf_node *cf_node, uint32_t *cur_modes)
    case nir_cf_node_block: {
       nir_block *block = nir_cf_node_as_block(cf_node);
       nir_foreach_instr(instr, block)
-         visit_instr(instr, cur_modes, NIR_MEMORY_MAKE_VISIBLE);
+         progress |= visit_instr(instr, cur_modes, NIR_MEMORY_MAKE_VISIBLE);
       break;
    }
    case nir_cf_node_if: {
@@ -219,7 +219,7 @@ lower_make_available(nir_cf_node *cf_node, uint32_t *cur_modes)
    case nir_cf_node_block: {
       nir_block *block = nir_cf_node_as_block(cf_node);
       nir_foreach_instr_reverse(instr, block)
-         visit_instr(instr, cur_modes, NIR_MEMORY_MAKE_AVAILABLE);
+         progress |= visit_instr(instr, cur_modes, NIR_MEMORY_MAKE_AVAILABLE);
       break;
    }
    case nir_cf_node_if: {
