@@ -2225,6 +2225,20 @@ LLVMValueRef ac_build_image_opcode(struct ac_llvm_context *ctx, struct ac_image_
       unreachable("invalid dim");
    }
 
+   LLVMTypeRef data_type;
+   char data_type_str[8];
+
+   if (atomic) {
+      data_type = ctx->i32;
+   } else if (a->opcode == ac_image_store || a->opcode == ac_image_store_mip) {
+      /* Image stores might have been shrinked using the format. */
+      data_type = LLVMTypeOf(a->data[0]);
+   } else {
+      data_type = a->d16 ? ctx->v4f16 : ctx->v4f32;
+   }
+
+   ac_build_type_name_for_intr(data_type, data_type_str, sizeof(data_type_str));
+
    bool lod_suffix = a->lod && (a->opcode == ac_image_sample || a->opcode == ac_image_gather4);
    char intr_name[96];
    snprintf(intr_name, sizeof(intr_name),
@@ -2234,7 +2248,7 @@ LLVMValueRef ac_build_image_opcode(struct ac_llvm_context *ctx, struct ac_image_
             name, atomic_subop, a->compare ? ".c" : "",
             a->bias ? ".b" : lod_suffix ? ".l" : a->derivs[0] ? ".d" : a->level_zero ? ".lz" : "",
             a->min_lod ? ".cl" : "", a->offset ? ".o" : "", dimname,
-            atomic ? "i32" : (a->d16 ? "v4f16" : "v4f32"), overload[0], overload[1], overload[2]);
+            data_type_str, overload[0], overload[1], overload[2]);
 
    LLVMTypeRef retty;
    if (atomic)
