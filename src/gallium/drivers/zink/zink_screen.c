@@ -927,21 +927,6 @@ zink_internal_create_screen(struct sw_winsys *winsys, int fd)
       goto fail;
    }
 
-   VkDeviceQueueCreateInfo qci = {};
-   float dummy = 0.0f;
-   qci.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-   qci.queueFamilyIndex = screen->gfx_queue;
-   qci.queueCount = 1;
-   qci.pQueuePriorities = &dummy;
-
-   VkDeviceCreateInfo dci = {};
-   dci.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-   dci.queueCreateInfoCount = 1;
-   dci.pQueueCreateInfos = &qci;
-   /* extensions don't have bool members in pEnabledFeatures.
-    * this requires us to pass the whole VkPhysicalDeviceFeatures2 struct
-    */
-   dci.pNext = &feats;
    const char *extensions[9] = {
       VK_KHR_MAINTENANCE1_EXTENSION_NAME,
    };
@@ -973,9 +958,6 @@ zink_internal_create_screen(struct sw_winsys *winsys, int fd)
       extensions[num_extensions++] = VK_EXT_CALIBRATED_TIMESTAMPS_EXTENSION_NAME;
    assert(num_extensions <= ARRAY_SIZE(extensions));
 
-   dci.ppEnabledExtensionNames = extensions;
-   dci.enabledExtensionCount = num_extensions;
-
    if (!zink_get_physical_device_info(screen)) {
       debug_printf("ZINK: failed to detect features\n");
       goto fail;
@@ -985,6 +967,25 @@ zink_internal_create_screen(struct sw_winsys *winsys, int fd)
       debug_printf("ZINK: KHR_external_memory_fd required!\n");
       goto fail;
    }
+   
+   VkDeviceQueueCreateInfo qci = {};
+   float dummy = 0.0f;
+   qci.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+   qci.queueFamilyIndex = screen->gfx_queue;
+   qci.queueCount = 1;
+   qci.pQueuePriorities = &dummy;
+
+   VkDeviceCreateInfo dci = {};
+   dci.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+   dci.queueCreateInfoCount = 1;
+   dci.pQueueCreateInfos = &qci;
+   /* extensions don't have bool members in pEnabledFeatures.
+    * this requires us to pass the whole VkPhysicalDeviceFeatures2 struct
+    */
+   dci.pNext = &screen->info.feats;
+
+   dci.ppEnabledExtensionNames = screen->info.extensions;
+   dci.enabledExtensionCount = screen->info.num_extensions;
 
    if (vkCreateDevice(screen->pdev, &dci, NULL, &screen->dev) != VK_SUCCESS)
       goto fail;
