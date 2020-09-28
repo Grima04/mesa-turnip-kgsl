@@ -204,6 +204,45 @@ gather_intrinsic_store_deref_info(const nir_shader *nir,
 }
 
 static void
+gather_intrinsic_store_output_info(const nir_shader *nir,
+				   const nir_intrinsic_instr *instr,
+				   struct radv_shader_info *info)
+{
+	unsigned idx = nir_intrinsic_io_semantics(instr).location;
+	unsigned num_slots = nir_intrinsic_io_semantics(instr).num_slots;
+	unsigned component = nir_intrinsic_component(instr);
+	unsigned write_mask = nir_intrinsic_write_mask(instr);
+	uint8_t *output_usage_mask = NULL;
+
+	if (instr->src[0].ssa->bit_size == 64)
+		write_mask = widen_writemask(write_mask);
+
+	switch (nir->info.stage) {
+	case MESA_SHADER_VERTEX:
+		output_usage_mask = info->vs.output_usage_mask;
+		break;
+	case MESA_SHADER_TESS_EVAL:
+		output_usage_mask = info->tes.output_usage_mask;
+		break;
+	case MESA_SHADER_TESS_CTRL:
+		/* TODO: Gather tess outputs for LLVM. */
+		break;
+	case MESA_SHADER_GEOMETRY:
+		output_usage_mask = info->gs.output_usage_mask;
+		break;
+	default:
+		break;
+	}
+
+	if (output_usage_mask) {
+		for (unsigned i = 0; i < num_slots; i++) {
+			output_usage_mask[idx + i] |=
+				((write_mask >> (i * 4)) & 0xf) << component;
+		}
+	}
+}
+
+static void
 gather_push_constant_info(const nir_shader *nir,
 			  const nir_intrinsic_instr *instr,
 			  struct radv_shader_info *info)
@@ -363,6 +402,9 @@ gather_intrinsic_info(const nir_shader *nir, const nir_intrinsic_instr *instr,
 	case nir_intrinsic_deref_atomic_comp_swap: {
 		if (nir_src_as_deref(instr->src[0])->mode & (nir_var_mem_global | nir_var_mem_ssbo))
 			set_writes_memory(nir, info);
+		break;
+	case nir_intrinsic_store_output:
+		gather_intrinsic_store_output_info(nir, instr, info);
 		break;
 	}
 	default:
