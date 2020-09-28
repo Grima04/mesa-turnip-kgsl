@@ -137,8 +137,9 @@ fetch_state(struct gl_context *ctx, const gl_state_index16 state[],
                 */
                COPY_3V(p, ctx->Light.Light[ln].EyePosition);
                NORMALIZE_3FV(p);
-	       ADD_3V(value, p, eye_z);
-	       NORMALIZE_3FV(value);
+               ADD_3V(p, p, eye_z);
+               NORMALIZE_3FV(p);
+               COPY_3V(value, p);
 	       value[3] = 1.0;
             }
             return;
@@ -458,7 +459,7 @@ fetch_state(struct gl_context *ctx, const gl_state_index16 state[],
                    1);
          return;
 
-      case STATE_FOG_PARAMS_OPTIMIZED:
+      case STATE_FOG_PARAMS_OPTIMIZED: {
          /* for simpler per-vertex/pixel fog calcs. POW (for EXP/EXP2 fog)
           * might be more expensive than EX2 on some hw, plus it needs
           * another constant (e) anyway. Linear fog can now be done with a
@@ -467,12 +468,14 @@ fetch_state(struct gl_context *ctx, const gl_state_index16 state[],
           * exp: 2^-(density/ln(2) * fogcoord)
           * exp2: 2^-((density/(sqrt(ln(2))) * fogcoord)^2)
           */
-         value[0] = (ctx->Fog.End == ctx->Fog.Start)
+         float val =  (ctx->Fog.End == ctx->Fog.Start)
             ? 1.0f : (GLfloat)(-1.0F / (ctx->Fog.End - ctx->Fog.Start));
-         value[1] = ctx->Fog.End * -value[0];
+         value[0] = val;
+         value[1] = ctx->Fog.End * -val;
          value[2] = (GLfloat)(ctx->Fog.Density * M_LOG2E); /* M_LOG2E == 1/ln(2) */
          value[3] = (GLfloat)(ctx->Fog.Density * ONE_DIV_SQRT_LN2);
          return;
+      }
 
       case STATE_POINT_SIZE_CLAMPED:
          {
@@ -526,8 +529,10 @@ fetch_state(struct gl_context *ctx, const gl_state_index16 state[],
       case STATE_LIGHT_POSITION_NORMALIZED:
          {
             const GLuint ln = (GLuint) state[2];
-            COPY_4V(value, ctx->Light.Light[ln]._Position);
-            NORMALIZE_3FV( value );
+            float p[4];
+            COPY_4V(p, ctx->Light.Light[ln]._Position);
+            NORMALIZE_3FV(p);
+            COPY_4V(value, p);
          }
          return;
 
@@ -541,8 +546,9 @@ fetch_state(struct gl_context *ctx, const gl_state_index16 state[],
              */
             COPY_3V(p, ctx->Light.Light[ln]._Position);
             NORMALIZE_3FV(p);
-            ADD_3V(value, p, ctx->_EyeZDir);
-            NORMALIZE_3FV(value);
+            ADD_3V(p, p, ctx->_EyeZDir);
+            NORMALIZE_3FV(p);
+            COPY_3V(value, p);
             value[3] = 1.0;
          }
          return;
