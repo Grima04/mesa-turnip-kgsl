@@ -496,6 +496,12 @@ radv_thread_trace_init_bo(struct radv_device *device)
 	struct radeon_winsys *ws = device->ws;
 	uint64_t size;
 
+	/* The buffer size and address need to be aligned in HW regs. Align the
+	 * size as early as possible so that we do all the allocation & addressing
+	 * correctly. */
+	device->thread_trace_buffer_size = align64(device->thread_trace_buffer_size,
+	                                           1u << SQTT_BUFFER_ALIGN_SHIFT);
+
 	/* Compute total size of the thread trace BO for 4 SEs. */
 	size = align64(sizeof(struct radv_thread_trace_info) * 4,
 		       1 << SQTT_BUFFER_ALIGN_SHIFT);
