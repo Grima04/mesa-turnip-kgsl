@@ -614,8 +614,8 @@ static void si_lower_io(struct nir_shader *nir)
 
    /* This pass needs actual constants */
    NIR_PASS_V(nir, nir_opt_constant_folding);
-   NIR_PASS_V(nir, nir_io_add_const_offset_to_base, nir_var_shader_in);
-   NIR_PASS_V(nir, nir_io_add_const_offset_to_base, nir_var_shader_out);
+   NIR_PASS_V(nir, nir_io_add_const_offset_to_base, nir_var_shader_in |
+                                                    nir_var_shader_out);
 
    /* Remove dead derefs, so that nir_validate doesn't fail. */
    NIR_PASS_V(nir, nir_opt_dce);
