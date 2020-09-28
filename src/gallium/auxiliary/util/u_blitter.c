@@ -2818,7 +2818,7 @@ void
 util_blitter_stencil_fallback(struct blitter_context *blitter,
                               struct pipe_resource *dst,
                               unsigned dst_level,
-                              unsigned dstx, unsigned dsty, unsigned dstz,
+                              const struct pipe_box *dstbox,
                               struct pipe_resource *src,
                               unsigned src_level,
                               const struct pipe_box *srcbox)
@@ -2835,7 +2835,7 @@ util_blitter_stencil_fallback(struct blitter_context *blitter,
 
    /* Initialize the surface. */
    struct pipe_surface *dst_view, dst_templ;
-   util_blitter_default_dst_texture(&dst_templ, dst, dst_level, dstz);
+   util_blitter_default_dst_texture(&dst_templ, dst, dst_level, dstbox->z);
    dst_view = pipe->create_surface(pipe, dst, &dst_templ);
 
    /* Initialize the sampler view. */
@@ -2851,8 +2851,8 @@ util_blitter_stencil_fallback(struct blitter_context *blitter,
 
    /* set a framebuffer state */
    struct pipe_framebuffer_state fb_state = { 0 };
-   fb_state.width = srcbox->width;
-   fb_state.height = srcbox->height;
+   fb_state.width = dstbox->width;
+   fb_state.height = dstbox->height;
    fb_state.zsbuf = dst_view;
    pipe->set_framebuffer_state(pipe, &fb_state);
    pipe->set_sample_mask(pipe, ~0);
@@ -2862,7 +2862,7 @@ util_blitter_stencil_fallback(struct blitter_context *blitter,
    blitter_set_dst_dimensions(ctx, dst_view->width, dst_view->height);
 
    pipe->clear_depth_stencil(pipe, dst_view, PIPE_CLEAR_STENCIL, 0.0, 0,
-                             dstx, dsty, srcbox->width, srcbox->height,
+                             dstbox->x, dstbox->y, dstbox->width, dstbox->height,
                              true);
 
    pipe->set_sampler_views(pipe, PIPE_SHADER_FRAGMENT, 0, 1, &src_view);
@@ -2894,9 +2894,11 @@ util_blitter_stencil_fallback(struct blitter_context *blitter,
       pipe->bind_depth_stencil_alpha_state(pipe,
          get_stencil_blit_fallback_dsa(ctx, i));
 
-      blitter->draw_rectangle(blitter, ctx->velem_state, get_vs_passthrough_pos,
-                              dstx, dsty,
-                              dstx + srcbox->width, dsty + srcbox->height,
+      blitter->draw_rectangle(blitter, ctx->velem_state,
+                              get_vs_passthrough_pos_generic,
+                              dstbox->x, dstbox->y,
+                              dstbox->x + dstbox->width,
+                              dstbox->y + dstbox->height,
                               0, stencil_bits,
                               UTIL_BLITTER_ATTRIB_TEXCOORD_XYZW,
                               &coord);
