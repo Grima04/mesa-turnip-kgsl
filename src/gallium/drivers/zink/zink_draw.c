@@ -670,6 +670,11 @@ zink_draw_vbo(struct pipe_context *pctx,
    VkDeviceSize counter_buffer_offsets[PIPE_MAX_SO_OUTPUTS] = {};
    bool need_index_buffer_unref = false;
 
+   /* flush anytime our total batch memory usage is potentially >= 1/10 of total gpu memory
+    * this should also eventually trigger a stall if the app is going nuts with gpu memory
+    */
+   if (zink_curr_batch(ctx)->resource_size >= screen->total_mem / 10 / ZINK_NUM_BATCHES)
+      ctx->base.flush(&ctx->base, NULL, 0);
 
    if (dinfo->primitive_restart && !restart_supported(dinfo->mode)) {
        util_draw_vbo_without_prim_restart(pctx, dinfo, dindirect, &draws[0]);
@@ -964,6 +969,13 @@ zink_launch_grid(struct pipe_context *pctx, const struct pipe_grid_info *info)
    struct zink_context *ctx = zink_context(pctx);
    struct zink_screen *screen = zink_screen(pctx->screen);
    struct zink_batch *batch = &ctx->compute_batch;
+
+   /* flush anytime our total batch memory usage is potentially >= 1/10 of total gpu memory
+    * this should also eventually trigger a stall if the app is going nuts with gpu memory
+    */
+   if (batch->resource_size >= screen->total_mem / 10 / ZINK_NUM_BATCHES)
+      zink_flush_compute(ctx);
+
    struct zink_compute_program *comp_program = get_compute_program(ctx);
    if (!comp_program)
       return;
