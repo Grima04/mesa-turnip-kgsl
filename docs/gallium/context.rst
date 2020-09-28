@@ -40,7 +40,7 @@ CSO objects handled by the context object:
 Resource Binding State
 ^^^^^^^^^^^^^^^^^^^^^^
 
-This state describes how resources in various flavours (textures,
+This state describes how resources in various flavors (textures,
 buffers, surfaces) are bound to the driver.
 
 
