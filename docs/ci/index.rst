@@ -151,13 +151,13 @@ lines in ``/etc/gitlab-runner/config.toml``, for example::
 Docker caching
 --------------
 
-The CI system uses docker images extensively to cache
+The CI system uses Docker images extensively to cache
 infrequently-updated build content like the CTS.  The `freedesktop.org
 CI templates
 <https://gitlab.freedesktop.org/freedesktop/ci-templates/>`_ help us
 manage the building of the images to reduce how frequently rebuilds
 happen, and trim down the images (stripping out manpages, cleaning the
-apt cache, and other such common pitfalls of building docker images).
+apt cache, and other such common pitfalls of building Docker images).
 
 When running a container job, the templates will look for an existing
 build of that image in the container registry under
@@ -170,7 +170,7 @@ string related to your branch (so that if you rebase on someone else's
 container update from the same day, you will get a git conflict
 instead of silently reusing their container)
 
-When developing a given change to your docker image, you would have to
+When developing a given change to your Docker image, you would have to
 bump the tag on each ``git commit --amend`` to your development
 branch, which can get tedious.  Instead, you can navigate to the
 `container registry

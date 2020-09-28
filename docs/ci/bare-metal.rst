@@ -1,7 +1,7 @@
 Bare-metal CI
 =============
 
-The bare-metal scripts run on a system with gitlab-runner and docker,
+The bare-metal scripts run on a system with gitlab-runner and Docker,
 connected to potentially multiple bare-metal boards that run tests of
 Mesa.  Currently only "fastboot" and "ChromeOS Servo" devices are
 supported.
@@ -120,7 +120,7 @@ required by your bare-metal script, something like::
 
 If you want to collect the results for fastboot you need to add the following
 two board-specific environment variables ``BM_WEBDAV_IP`` and ``BM_WEBDAV_PORT``.
-These represent the IP address of the docker host and the board specific port number
+These represent the IP address of the Docker host and the board specific port number
 that gets used to start a nginx server.
 
 Once you've updated your runners' configs, restart with ``sudo service
