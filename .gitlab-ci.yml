@@ -258,7 +258,7 @@ x86_build:
   extends:
     - .use-x86_build-base
   variables:
-    FDO_DISTRIBUTION_TAG: &x86_build "2020-10-06-clang10-2"
+    FDO_DISTRIBUTION_TAG: &x86_build "2020-10-06-clang10-cl3"
 
 .use-x86_build:
   variables:
@@ -330,7 +330,7 @@ x86_test-base:
 x86_test-gl:
   extends: .use-x86_test-base
   variables:
-    FDO_DISTRIBUTION_TAG: &x86_test-gl "2020-10-06-clang10-2"
+    FDO_DISTRIBUTION_TAG: &x86_test-gl "2020-10-06-clang10-cl3"
 
 # Debian 10 based x86 test image for VK
 x86_test-vk:
@@ -562,6 +562,26 @@ meson-testing:
       -D werror=true
     UPLOAD_FOR_LAVA: 1
     DEBIAN_ARCH: amd64
+  script:
+    - .gitlab-ci/meson-build.sh
+    - .gitlab-ci/prepare-artifacts.sh
+
+meson-clover-testing:
+  extends:
+    - .meson-build
+    - .ci-deqp-artifacts
+  variables:
+    UNWIND: "enabled"
+    LLVM_VERSION: 10
+    DRI_LOADERS: >
+      -D glx=disabled
+      -D egl=disabled
+      -D gbm=disabled
+    GALLIUM_ST: >
+      -D gallium-opencl=icd
+      -D opencl-spirv=true
+    GALLIUM_DRIVERS: "swrast"
+    BUILDTYPE: "debugoptimized"
   script:
     - .gitlab-ci/meson-build.sh
     - .gitlab-ci/prepare-artifacts.sh
@@ -881,15 +901,21 @@ meson-mingw32-x86_64:
     paths:
       - results/
 
-.test-gl:
+.use-x86_test-gl:
   extends:
     - .test
   variables:
     TAG: *x86_test-gl
   image: "$CI_REGISTRY_IMAGE/debian/x86_test-gl:$TAG"
   needs:
-    - meson-testing
     - x86_test-gl
+
+.test-gl:
+  extends:
+    - .use-x86_test-gl
+  needs:
+    - x86_test-gl
+    - meson-testing
 
 .test-vk:
   extends:
@@ -900,6 +926,13 @@ meson-mingw32-x86_64:
   needs:
     - meson-testing
     - x86_test-vk
+
+.test-cl:
+  extends:
+    - .use-x86_test-gl
+  needs:
+    - x86_test-gl
+    - meson-clover-testing
 
 .piglit-test:
   extends:
@@ -915,6 +948,19 @@ meson-mingw32-x86_64:
     PIGLIT_NO_WINDOW: 1
   script:
     - install/piglit/run.sh
+
+piglit-cl:
+  extends:
+    - .piglit-test
+    - .test-cl
+  variables:
+    LP_CL: 1
+    LP_NUM_THREADS: 1
+    PIGLIT_PROFILES: cl
+    PIGLIT_OPTIONS: >
+      -x bswap -x phatk
+  script:
+    - install/piglit/run_cl.sh
 
 piglit-quick_gl:
   extends: .piglit-test

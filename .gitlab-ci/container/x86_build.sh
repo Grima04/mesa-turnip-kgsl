@@ -27,8 +27,11 @@ apt-get update
 apt-get install -y --no-remove \
       $STABLE_EPHEMERAL \
       libarchive-dev \
+      libclang-cpp10-dev \
       liblua5.3-dev \
       libxml2-dev \
+      ocl-icd-opencl-dev \
+      spirv-tools \
       wine-development \
       wine32-development
 
@@ -98,6 +101,12 @@ tar -xvf libglvnd-v$GLVND_VERSION.tar.gz && rm libglvnd-v$GLVND_VERSION.tar.gz
 pushd libglvnd-v$GLVND_VERSION; ./autogen.sh; ./configure; make install; popd
 rm -rf libglvnd-v$GLVND_VERSION
 
+git clone https://github.com/KhronosGroup/SPIRV-LLVM-Translator -b llvm_release_100 --depth 1
+pushd SPIRV-LLVM-Translator
+cmake -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_FLAGS=-fPIC -DCMAKE_CXX_FLAGS=-fPIC
+ninja
+ninja install
+popd
 
 pushd /usr/local
 git clone https://gitlab.freedesktop.org/mesa/shader-db.git --depth 1
