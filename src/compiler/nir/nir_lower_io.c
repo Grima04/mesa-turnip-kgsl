@@ -2246,7 +2246,7 @@ static bool is_dual_slot(nir_intrinsic_instr *intrin)
 
 static bool
 add_const_offset_to_base_block(nir_block *block, nir_builder *b,
-                               nir_variable_mode mode)
+                               nir_variable_mode modes)
 {
    bool progress = false;
    nir_foreach_instr_safe(instr, block) {
@@ -2255,8 +2255,8 @@ add_const_offset_to_base_block(nir_block *block, nir_builder *b,
 
       nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
 
-      if ((mode == nir_var_shader_in && is_input(intrin)) ||
-          (mode == nir_var_shader_out && is_output(intrin))) {
+      if (((modes & nir_var_shader_in) && is_input(intrin)) ||
+          ((modes & nir_var_shader_out) && is_output(intrin))) {
          nir_src *offset = nir_get_io_offset_src(intrin);
 
          if (nir_src_is_const(*offset)) {
@@ -2282,7 +2282,7 @@ add_const_offset_to_base_block(nir_block *block, nir_builder *b,
 }
 
 bool
-nir_io_add_const_offset_to_base(nir_shader *nir, nir_variable_mode mode)
+nir_io_add_const_offset_to_base(nir_shader *nir, nir_variable_mode modes)
 {
    bool progress = false;
 
@@ -2291,7 +2291,7 @@ nir_io_add_const_offset_to_base(nir_shader *nir, nir_variable_mode mode)
          nir_builder b;
          nir_builder_init(&b, f->impl);
          nir_foreach_block(block, f->impl) {
-            progress |= add_const_offset_to_base_block(block, &b, mode);
+            progress |= add_const_offset_to_base_block(block, &b, modes);
          }
       }
    }
