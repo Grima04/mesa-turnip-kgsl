@@ -107,7 +107,6 @@ struct gl_program_parameter
     * Number of components (1..4), or more.
     * If the number of components is greater than 4,
     * this parameter is part of a larger uniform like a GLSL matrix or array.
-    * The next program parameter's Size will be Size-4 of this parameter.
     */
    GLushort Size;
    /**
