@@ -299,6 +299,7 @@ struct ureg {
 struct tnl_program {
    const struct state_key *state;
    struct gl_program *program;
+   struct gl_program_parameter_list *state_params;
    GLuint max_inst;  /** number of instructions allocated for program */
    GLboolean mvp_with_dp4;
 
@@ -421,7 +422,7 @@ static struct ureg register_param5(struct tnl_program *p,
    tokens[2] = s2;
    tokens[3] = s3;
    tokens[4] = s4;
-   idx = _mesa_add_state_reference(p->program->Parameters, tokens );
+   idx = _mesa_add_state_reference(p->state_params, tokens);
    return make_ureg(PROGRAM_STATE_VAR, idx);
 }
 
@@ -1648,8 +1649,12 @@ create_new_program( const struct state_key *key,
    p.program->Parameters = _mesa_new_parameter_list();
    p.program->info.inputs_read = 0;
    p.program->info.outputs_written = 0;
+   p.state_params = _mesa_new_parameter_list();
 
    build_tnl_program( &p );
+
+   _mesa_add_separate_state_parameters(p.program, p.state_params);
+   _mesa_free_parameter_list(p.state_params);
 }
 
 
