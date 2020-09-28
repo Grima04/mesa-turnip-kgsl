@@ -124,10 +124,8 @@ v3d_nir_lower_uniform(struct v3d_compile *c, nir_builder *b,
 }
 
 static int
-v3d_varying_slot_vpm_offset(struct v3d_compile *c, nir_variable *var, int chan)
+v3d_varying_slot_vpm_offset(struct v3d_compile *c, unsigned location, unsigned component)
 {
-        int component = var->data.location_frac + chan;
-
         uint32_t num_used_outputs = 0;
         struct v3d_varying_slot *used_outputs = NULL;
         switch (c->s->info.stage) {
@@ -146,7 +144,7 @@ v3d_varying_slot_vpm_offset(struct v3d_compile *c, nir_variable *var, int chan)
         for (int i = 0; i < num_used_outputs; i++) {
                 struct v3d_varying_slot slot = used_outputs[i];
 
-                if (v3d_slot_get_slot(slot) == var->data.location &&
+                if (v3d_slot_get_slot(slot) == location &&
                     v3d_slot_get_component(slot) == component) {
                         return i;
                 }
@@ -176,36 +174,25 @@ v3d_nir_lower_vpm_output(struct v3d_compile *c, nir_builder *b,
                         nir_load_var(b, state->gs.output_offset_var) : NULL;
 
         int start_comp = nir_intrinsic_component(intr);
+        unsigned location = nir_intrinsic_io_semantics(intr).location;
         nir_ssa_def *src = nir_ssa_for_src(b, intr->src[0],
                                            intr->num_components);
-        nir_variable *var = NULL;
-        nir_foreach_shader_out_variable(scan_var, c->s) {
-                int components = glsl_get_component_slots(scan_var->type);
-                if (scan_var->data.driver_location != nir_intrinsic_base(intr) ||
-                    start_comp < scan_var->data.location_frac ||
-                    start_comp >= scan_var->data.location_frac + components) {
-                        continue;
-                }
-                var = scan_var;
-        }
-        assert(var);
-
         /* Save off the components of the position for the setup of VPM inputs
          * read by fixed function HW.
          */
-        if (var->data.location == VARYING_SLOT_POS) {
+        if (location == VARYING_SLOT_POS) {
                 for (int i = 0; i < intr->num_components; i++) {
                         state->pos[start_comp + i] = nir_channel(b, src, i);
                 }
         }
 
         /* Just psiz to the position in the FF header right now. */
-        if (var->data.location == VARYING_SLOT_PSIZ &&
+        if (location == VARYING_SLOT_PSIZ &&
             state->psiz_vpm_offset != -1) {
                 v3d_nir_store_output(b, state->psiz_vpm_offset, offset_reg, src);
         }
 
-        if (var->data.location == VARYING_SLOT_LAYER) {
+        if (location == VARYING_SLOT_LAYER) {
                 assert(c->s->info.stage == MESA_SHADER_GEOMETRY);
                 nir_ssa_def *header = nir_load_var(b, state->gs.header_var);
                 header = nir_iand(b, header, nir_imm_int(b, 0xff00ffff));
@@ -250,15 +237,13 @@ v3d_nir_lower_vpm_output(struct v3d_compile *c, nir_builder *b,
          */
         for (int i = 0; i < intr->num_components; i++) {
                 int vpm_offset =
-                        v3d_varying_slot_vpm_offset(c, var,
-                                                    i +
-                                                    start_comp -
-                                                    var->data.location_frac);
+                        v3d_varying_slot_vpm_offset(c, location, start_comp + i);
+
 
                 if (vpm_offset == -1)
                         continue;
 
-                if (var->data.compact || glsl_type_is_struct(var->type))
+                if (nir_src_is_const(intr->src[1]))
                     vpm_offset += nir_src_as_uint(intr->src[1]) * 4;
 
                 BITSET_SET(state->varyings_stored, vpm_offset);
@@ -418,7 +403,10 @@ v3d_nir_lower_io_update_output_var_base(struct v3d_compile *c,
                         continue;
                 }
 
-                int vpm_offset = v3d_varying_slot_vpm_offset(c, var, 0);
+                int vpm_offset =
+                        v3d_varying_slot_vpm_offset(c,
+                                                    var->data.location,
+                                                    var->data.location_frac);
                 if (vpm_offset != -1) {
                         var->data.driver_location =
                                 state->varyings_vpm_offset + vpm_offset;
