@@ -15,7 +15,7 @@ supported in the guest. This requires:
 -  The host OS, GPU and graphics driver supports DX11 (Windows) or
    OpenGL 4.0 (Linux, Mac)
 -  On Linux, the vmwgfx kernel module must be version 2.9.0 or later.
--  A recent version of Mesa with the updated svga gallium driver.
+-  A recent version of Mesa with the updated svga Gallium driver.
 
 Otherwise, OpenGL 2.1 is supported.
 
@@ -58,7 +58,7 @@ The components involved in this include:
 -  Linux kernel module: vmwgfx
 -  X server 2D driver: xf86-video-vmware
 -  User-space libdrm library
--  Mesa/gallium OpenGL driver: "svga"
+-  Mesa/Gallium OpenGL driver: "svga"
 
 All of these components reside in the guest Linux virtual machine. On
 the host, all you're doing is running VMware
