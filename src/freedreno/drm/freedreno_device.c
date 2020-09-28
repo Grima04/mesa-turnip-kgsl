@@ -111,6 +111,7 @@ static void fd_device_del_impl(struct fd_device *dev)
 {
 	int close_fd = dev->closefd ? dev->fd : -1;
 	fd_bo_cache_cleanup(&dev->bo_cache, 0);
+	fd_bo_cache_cleanup(&dev->ring_cache, 0);
 	_mesa_hash_table_destroy(dev->handle_table, NULL);
 	_mesa_hash_table_destroy(dev->name_table, NULL);
 	dev->funcs->destroy(dev);
