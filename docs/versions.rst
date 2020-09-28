@@ -160,7 +160,7 @@ Bug fixes:
 
 -  glGet*(GL_DEPTH_BITS) returned bytes, not bits
 -  point, line, and bitmap rasterization suffered from roundoff errors
--  fixed a division by zero error in line clippping
+-  fixed a division by zero error in line clipping
 -  occasional wrong default background color really fixed!
 -  glDepthFunc(GL_ALWAYS) with glDepthMask(GL_FALSE) didn't work
 -  gluBuild2DMipmaps malloc problem fixed
