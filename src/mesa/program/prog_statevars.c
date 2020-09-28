@@ -1208,16 +1208,15 @@ void
 _mesa_load_state_parameters(struct gl_context *ctx,
                             struct gl_program_parameter_list *paramList)
 {
-   GLuint i;
-
    if (!paramList)
       return;
 
-   for (i = 0; i < paramList->NumParameters; i++) {
-      if (paramList->Parameters[i].Type == PROGRAM_STATE_VAR) {
-         unsigned pvo = paramList->ParameterValueOffset[i];
-         fetch_state(ctx, paramList->Parameters[i].StateIndexes,
-                     paramList->ParameterValues + pvo);
-      }
+   assert(paramList->LastUniformIndex < paramList->FirstStateVarIndex);
+   int num = paramList->NumParameters;
+
+   for (int i = paramList->FirstStateVarIndex; i < num; i++) {
+      unsigned pvo = paramList->ParameterValueOffset[i];
+      fetch_state(ctx, paramList->Parameters[i].StateIndexes,
+                  paramList->ParameterValues + pvo);
    }
 }

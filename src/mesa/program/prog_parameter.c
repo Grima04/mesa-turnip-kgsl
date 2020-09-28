@@ -135,7 +135,14 @@ lookup_parameter_constant(const struct gl_program_parameter_list *list,
 struct gl_program_parameter_list *
 _mesa_new_parameter_list(void)
 {
-   return CALLOC_STRUCT(gl_program_parameter_list);
+   struct gl_program_parameter_list *list =
+      CALLOC_STRUCT(gl_program_parameter_list);
+   if (!list)
+      return NULL;
+
+   list->LastUniformIndex = -1;
+   list->FirstStateVarIndex = INT_MAX;
+   return list;
 }
 
 
@@ -262,7 +269,7 @@ _mesa_add_parameter(struct gl_program_parameter_list *paramList,
                     bool pad_and_align)
 {
    assert(0 < size);
-   const GLuint oldNum = paramList->NumParameters;
+   const int oldNum = paramList->NumParameters;
    unsigned oldValNum = paramList->NumParameterValues;
    const unsigned padded_size = pad_and_align ? align(size, 4) : size;
 
@@ -323,6 +330,16 @@ _mesa_add_parameter(struct gl_program_parameter_list *paramList,
    if (state) {
       for (unsigned i = 0; i < STATE_LENGTH; i++)
          paramList->Parameters[oldNum].StateIndexes[i] = state[i];
+   }
+
+   if (type == PROGRAM_UNIFORM || type == PROGRAM_CONSTANT) {
+      paramList->LastUniformIndex =
+         MAX2(paramList->LastUniformIndex, oldNum);
+   } else if (type == PROGRAM_STATE_VAR) {
+      paramList->FirstStateVarIndex =
+         MIN2(paramList->FirstStateVarIndex, oldNum);
+   } else {
+      unreachable("invalid parameter type");
    }
 
    return (GLint) oldNum;
@@ -431,4 +448,20 @@ _mesa_add_state_reference(struct gl_program_parameter_list *paramList,
                           const gl_state_index16 stateTokens[STATE_LENGTH])
 {
    return _mesa_add_sized_state_reference(paramList, stateTokens, 4, true);
+}
+
+void
+_mesa_recompute_parameter_bounds(struct gl_program_parameter_list *list)
+{
+   list->FirstStateVarIndex = INT_MAX;
+   list->LastUniformIndex = -1;
+
+   for (int i = 0; i < (int)list->NumParameters; i++) {
+      if (list->Parameters[i].Type == PROGRAM_STATE_VAR) {
+         list->FirstStateVarIndex = MIN2(list->FirstStateVarIndex, i);
+      } else {
+         list->LastUniformIndex = MAX2(list->LastUniformIndex, i);
+      }
+   }
+   assert(list->LastUniformIndex < list->FirstStateVarIndex);
 }
