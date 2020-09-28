@@ -159,6 +159,9 @@ visit_instr(nir_instr *instr, uint32_t *cur_modes, unsigned vis_avail_sem)
    if (!writes && vis_avail_sem == NIR_MEMORY_MAKE_AVAILABLE)
       return false;
 
+   if (!nir_intrinsic_has_access(intrin))
+      return false;
+
    unsigned access = nir_intrinsic_access(intrin);
 
    if (access & (ACCESS_NON_READABLE | ACCESS_NON_WRITEABLE | ACCESS_CAN_REORDER | ACCESS_COHERENT))
