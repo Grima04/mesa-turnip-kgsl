@@ -1220,3 +1220,101 @@ _mesa_load_state_parameters(struct gl_context *ctx,
                   paramList->ParameterValues + pvo);
    }
 }
+
+/* Merge consecutive state vars into one for the state vars that allow
+ * multiple vec4s.
+ *
+ * This should be done after shader compilation, so that drivers don't
+ * have to deal with multi-slot state parameters in their backends.
+ * It's only meant to optimize _mesa_load/upload_state_parameters.
+ */
+void
+_mesa_optimize_state_parameters(struct gl_program_parameter_list *list)
+{
+   assert(list->LastUniformIndex < list->FirstStateVarIndex);
+
+   for (int first_param = list->FirstStateVarIndex;
+        first_param < (int)list->NumParameters; first_param++) {
+      int last_param = first_param;
+      int param_diff = 0;
+
+      assert(list->Parameters[first_param].Type == PROGRAM_STATE_VAR);
+
+      switch (list->Parameters[first_param].StateIndexes[0]) {
+      case STATE_MODELVIEW_MATRIX:
+      case STATE_MODELVIEW_MATRIX_INVERSE:
+      case STATE_MODELVIEW_MATRIX_TRANSPOSE:
+      case STATE_MODELVIEW_MATRIX_INVTRANS:
+      case STATE_PROJECTION_MATRIX:
+      case STATE_PROJECTION_MATRIX_INVERSE:
+      case STATE_PROJECTION_MATRIX_TRANSPOSE:
+      case STATE_PROJECTION_MATRIX_INVTRANS:
+      case STATE_MVP_MATRIX:
+      case STATE_MVP_MATRIX_INVERSE:
+      case STATE_MVP_MATRIX_TRANSPOSE:
+      case STATE_MVP_MATRIX_INVTRANS:
+      case STATE_TEXTURE_MATRIX:
+      case STATE_TEXTURE_MATRIX_INVERSE:
+      case STATE_TEXTURE_MATRIX_TRANSPOSE:
+      case STATE_TEXTURE_MATRIX_INVTRANS:
+      case STATE_PROGRAM_MATRIX:
+      case STATE_PROGRAM_MATRIX_INVERSE:
+      case STATE_PROGRAM_MATRIX_TRANSPOSE:
+      case STATE_PROGRAM_MATRIX_INVTRANS:
+         /* Skip unaligned state vars. */
+         if (list->Parameters[first_param].Size % 4)
+            break;
+
+         /* Search for adjacent state vars that refer to adjacent rows. */
+         for (int i = first_param + 1; i < (int)list->NumParameters; i++) {
+            if (list->Parameters[i].StateIndexes[0] ==
+                list->Parameters[i - 1].StateIndexes[0] &&
+                list->Parameters[i].StateIndexes[1] ==
+                list->Parameters[i - 1].StateIndexes[1] &&
+                list->Parameters[i].StateIndexes[2] ==         /* FirstRow */
+                list->Parameters[i - 1].StateIndexes[3] + 1 && /* LastRow + 1 */
+                list->Parameters[i].Size == 4) {
+               last_param = i;
+               continue;
+            }
+            break; /* The adjacent state var is incompatible. */
+         }
+         if (last_param > first_param) {
+            int first_vec = list->Parameters[first_param].StateIndexes[2];
+            int last_vec = list->Parameters[last_param].StateIndexes[3];
+
+            assert(first_vec < last_vec);
+            assert(last_vec - first_vec == last_param - first_param);
+
+            /* Update LastRow. */
+            list->Parameters[first_param].StateIndexes[3] = last_vec;
+            list->Parameters[first_param].Size = (last_vec - first_vec + 1) * 4;
+
+            param_diff = last_param - first_param;
+         }
+         break;
+      }
+
+      if (param_diff) {
+         /* Update the name. */
+         free((void*)list->Parameters[first_param].Name);
+         list->Parameters[first_param].Name =
+            _mesa_program_state_string(list->Parameters[first_param].StateIndexes);
+
+         /* Free names that we are going to overwrite. */
+         for (int i = first_param + 1; i <= last_param; i++)
+            free((char*)list->Parameters[i].Name);
+
+         /* Remove the merged state vars. */
+         memmove(&list->Parameters[first_param + 1],
+                 &list->Parameters[last_param + 1],
+                 sizeof(list->Parameters[0]) *
+                 (list->NumParameters - last_param - 1));
+         memmove(&list->ParameterValueOffset[first_param + 1],
+                 &list->ParameterValueOffset[last_param + 1],
+                 sizeof(list->ParameterValueOffset[0]) *
+                 (list->NumParameters - last_param - 1));
+         list->NumParameters -= param_diff;
+      }
+   }
+}
