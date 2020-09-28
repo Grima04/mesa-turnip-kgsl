@@ -165,7 +165,7 @@ Making a branchpoint
 --------------------
 
 A branchpoint is made such that new development can continue in parallel
-to stabilisation and bugfixing.
+to stabilization and bugfixing.
 
 .. note::
 
