@@ -320,7 +320,6 @@ fetch_state(struct gl_context *ctx, const gl_state_index16 state[],
    }
    case STATE_MODELVIEW_MATRIX_INVERSE: {
       const GLmatrix *matrix = ctx->ModelviewMatrixStack.Top;
-      _math_matrix_analyse((GLmatrix*)matrix); /* Be sure inverse is up to date: */
       copy_matrix(value, matrix->inv, state[2], state[3]);
       return;
    }
@@ -331,7 +330,6 @@ fetch_state(struct gl_context *ctx, const gl_state_index16 state[],
    }
    case STATE_MODELVIEW_MATRIX_INVTRANS: {
       const GLmatrix *matrix = ctx->ModelviewMatrixStack.Top;
-      _math_matrix_analyse((GLmatrix*)matrix); /* Be sure inverse is up to date: */
       copy_matrix_transposed(value, matrix->inv, state[2], state[3]);
       return;
    }
@@ -342,7 +340,6 @@ fetch_state(struct gl_context *ctx, const gl_state_index16 state[],
    }
    case STATE_PROJECTION_MATRIX_INVERSE: {
       const GLmatrix *matrix = ctx->ProjectionMatrixStack.Top;
-      _math_matrix_analyse((GLmatrix*)matrix); /* Be sure inverse is up to date: */
       copy_matrix(value, matrix->inv, state[2], state[3]);
       return;
    }
@@ -353,7 +350,6 @@ fetch_state(struct gl_context *ctx, const gl_state_index16 state[],
    }
    case STATE_PROJECTION_MATRIX_INVTRANS: {
       const GLmatrix *matrix = ctx->ProjectionMatrixStack.Top;
-      _math_matrix_analyse((GLmatrix*)matrix); /* Be sure inverse is up to date: */
       copy_matrix_transposed(value, matrix->inv, state[2], state[3]);
       return;
    }
@@ -364,7 +360,6 @@ fetch_state(struct gl_context *ctx, const gl_state_index16 state[],
    }
    case STATE_MVP_MATRIX_INVERSE: {
       const GLmatrix *matrix = &ctx->_ModelProjectMatrix;
-      _math_matrix_analyse((GLmatrix*)matrix); /* Be sure inverse is up to date: */
       copy_matrix(value, matrix->inv, state[2], state[3]);
       return;
    }
@@ -375,7 +370,6 @@ fetch_state(struct gl_context *ctx, const gl_state_index16 state[],
    }
    case STATE_MVP_MATRIX_INVTRANS: {
       const GLmatrix *matrix = &ctx->_ModelProjectMatrix;
-      _math_matrix_analyse((GLmatrix*)matrix); /* Be sure inverse is up to date: */
       copy_matrix_transposed(value, matrix->inv, state[2], state[3]);
       return;
    }
@@ -390,7 +384,6 @@ fetch_state(struct gl_context *ctx, const gl_state_index16 state[],
       const GLuint index = (GLuint) state[1];
       assert(index < ARRAY_SIZE(ctx->TextureMatrixStack));
       const GLmatrix *matrix = ctx->TextureMatrixStack[index].Top;
-      _math_matrix_analyse((GLmatrix*)matrix); /* Be sure inverse is up to date: */
       copy_matrix(value, matrix->inv, state[2], state[3]);
       return;
    }
@@ -405,7 +398,6 @@ fetch_state(struct gl_context *ctx, const gl_state_index16 state[],
       const GLuint index = (GLuint) state[1];
       assert(index < ARRAY_SIZE(ctx->TextureMatrixStack));
       const GLmatrix *matrix = ctx->TextureMatrixStack[index].Top;
-      _math_matrix_analyse((GLmatrix*)matrix); /* Be sure inverse is up to date: */
       copy_matrix_transposed(value, matrix->inv, state[2], state[3]);
       return;
    }
