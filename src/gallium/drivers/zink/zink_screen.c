@@ -1053,6 +1053,7 @@ load_device_extensions(struct zink_screen *screen)
    if (screen->info.have_EXT_extended_dynamic_state) {
       GET_PROC_ADDR(CmdSetViewportWithCountEXT);
       GET_PROC_ADDR(CmdSetScissorWithCountEXT);
+      GET_PROC_ADDR(CmdBindVertexBuffers2EXT);
    }
 
    screen->have_triangle_fans = true;

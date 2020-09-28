@@ -103,6 +103,7 @@ struct zink_screen {
 
    PFN_vkCmdSetViewportWithCountEXT vk_CmdSetViewportWithCountEXT;
    PFN_vkCmdSetScissorWithCountEXT vk_CmdSetScissorWithCountEXT;
+   PFN_vkCmdBindVertexBuffers2EXT vk_CmdBindVertexBuffers2EXT;
 
    PFN_vkCreateDebugUtilsMessengerEXT vk_CreateDebugUtilsMessengerEXT;
    PFN_vkDestroyDebugUtilsMessengerEXT vk_DestroyDebugUtilsMessengerEXT;
