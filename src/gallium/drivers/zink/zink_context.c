@@ -385,7 +385,7 @@ zink_set_constant_buffer(struct pipe_context *pctx,
       if (cb->user_buffer) {
          struct zink_screen *screen = zink_screen(pctx->screen);
          u_upload_data(ctx->base.const_uploader, 0, cb->buffer_size,
-                       screen->props.limits.minUniformBufferOffsetAlignment,
+                       screen->info.props.limits.minUniformBufferOffsetAlignment,
                        cb->user_buffer, &offset, &buffer);
       }
 
@@ -875,7 +875,7 @@ zink_flush(struct pipe_context *pctx,
    struct zink_batch *batch = zink_curr_batch(ctx);
    flush_batch(ctx);
 
-   if (zink_screen(pctx->screen)->have_EXT_transform_feedback && ctx->num_so_targets)
+   if (zink_screen(pctx->screen)->info.have_EXT_transform_feedback && ctx->num_so_targets)
       ctx->dirty_so_targets = true;
 
    if (pfence)

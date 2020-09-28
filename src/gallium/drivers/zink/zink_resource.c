@@ -58,7 +58,7 @@ get_memory_type_index(struct zink_screen *screen,
 {
    for (uint32_t i = 0u; i < VK_MAX_MEMORY_TYPES; i++) {
       if (((reqs->memoryTypeBits >> i) & 1) == 1) {
-         if ((screen->mem_props.memoryTypes[i].propertyFlags & props) == props) {
+         if ((screen->info.mem_props.memoryTypes[i].propertyFlags & props) == props) {
             return i;
             break;
          }
@@ -642,7 +642,7 @@ zink_screen_resource_init(struct pipe_screen *pscreen)
    pscreen->resource_destroy = zink_resource_destroy;
    pscreen->transfer_helper = u_transfer_helper_create(&transfer_vtbl, true, true, false, false);
 
-   if (zink_screen(pscreen)->have_KHR_external_memory_fd) {
+   if (zink_screen(pscreen)->info.have_KHR_external_memory_fd) {
       pscreen->resource_get_handle = zink_resource_get_handle;
       pscreen->resource_from_handle = zink_resource_from_handle;
    }

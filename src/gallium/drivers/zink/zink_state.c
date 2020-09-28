@@ -60,9 +60,9 @@ zink_create_vertex_elements_state(struct pipe_context *pctx,
       ves->bindings[binding].binding = binding;
       ves->bindings[binding].inputRate = elem->instance_divisor ? VK_VERTEX_INPUT_RATE_INSTANCE : VK_VERTEX_INPUT_RATE_VERTEX;
 
-      assert(!elem->instance_divisor || zink_screen(pctx->screen)->have_EXT_vertex_attribute_divisor);
+      assert(!elem->instance_divisor || zink_screen(pctx->screen)->info.have_EXT_vertex_attribute_divisor);
       ves->divisor[binding] = elem->instance_divisor;
-      assert(elem->instance_divisor <= screen->max_vertex_attrib_divisor);
+      assert(elem->instance_divisor <= screen->info.vdiv_props.maxVertexAttribDivisor);
 
       ves->hw_state.attribs[i].binding = binding;
       ves->hw_state.attribs[i].location = i; // TODO: unsure
@@ -437,8 +437,8 @@ zink_create_rasterizer_state(struct pipe_context *pctx,
    state->offset_scale = rs_state->offset_scale;
 
    state->line_width = line_width(rs_state->line_width,
-                                  screen->props.limits.lineWidthGranularity,
-                                  screen->props.limits.lineWidthRange);
+                                  screen->info.props.limits.lineWidthGranularity,
+                                  screen->info.props.limits.lineWidthRange);
 
    return state;
 }
