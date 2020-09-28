@@ -82,7 +82,7 @@ zink_get_name(struct pipe_screen *pscreen)
    return buf;
 }
 
-static int
+static VkDeviceSize
 get_video_mem(struct zink_screen *screen)
 {
    VkDeviceSize size = 0;
@@ -91,7 +91,7 @@ get_video_mem(struct zink_screen *screen)
           VK_MEMORY_HEAP_DEVICE_LOCAL_BIT)
          size += screen->info.mem_props.memoryHeaps[i].size;
    }
-   return (int)(size >> 20);
+   return size;
 }
 
 static void
@@ -401,7 +401,7 @@ zink_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_ACCELERATED:
       return 1;
    case PIPE_CAP_VIDEO_MEMORY:
-      return get_video_mem(screen);
+      return get_video_mem(screen) >> 20;
    case PIPE_CAP_UMA:
       return screen->info.props.deviceType == VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU;
 
@@ -1329,6 +1329,8 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
    if (config)
       screen->driconf.dual_color_blend_by_location = driQueryOptionb(config->options, "dual_color_blend_by_location");
 #endif
+
+   screen->total_mem = get_video_mem(screen);
 
    return screen;
 
