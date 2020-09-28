@@ -331,6 +331,20 @@ i945/i965 driver environment variables (non-Gallium)
 ``INTEL_PRECISE_TRIG``
    if set to 1, true or yes, then the driver prefers accuracy over
    performance in trig functions.
+``INTEL_SHADER_ASM_READ_PATH``
+   if set, determines the directory to be used for overriding shader
+   assembly. The binaries with custom assembly should be placed in
+   this folder and have a name formatted as ``sha1_of_assembly.bin``.
+   The sha1 of a shader assembly is printed when assembly is dumped via
+   corresponding ``INTEL_DEBUG`` flag (e.g. ``vs`` for vertex shader).
+   A binary could be generated from a dumped assembly by ``i965_asm``.
+   For ``INTEL_SHADER_ASM_READ_PATH`` to work it is necessary to enable
+   dumping of corresponding shader stages via ``INTEL_DEBUG``.
+   It is advised to use ``nocompact`` flag of ``INTEL_DEBUG`` when
+   dumping and overriding shader assemblies.
+   The success of assembly override would be signified by "Successfully
+   overrode shader with sha1 <sha1>" in stderr replacing the original
+   assembly.
 
 Radeon driver environment variables (radeon, r200, and r300g)
 -------------------------------------------------------------
