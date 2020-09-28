@@ -16,6 +16,3 @@ as
 If you're reading this page from your local copy of Mesa, and have run
 the doxygen scripts, you can read the documentation
 `here <../doxygen/main/index.html>`__
-
-Gallium is also documented using Sphinx. The generated output can be
-found `on Gallium.ReadTheDocs.io <https://gallium.readthedocs.io>`__.
