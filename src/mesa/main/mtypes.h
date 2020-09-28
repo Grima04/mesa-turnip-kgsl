@@ -299,17 +299,27 @@ struct gl_material
  */
 struct gl_light
 {
-   GLfloat Ambient[4];		/**< ambient color */
-   GLfloat Diffuse[4];		/**< diffuse color */
-   GLfloat Specular[4];		/**< specular color */
-   GLfloat EyePosition[4];	/**< position in eye coordinates */
-   GLfloat SpotDirection[4];	/**< spotlight direction in eye coordinates */
-   GLfloat SpotExponent;
-   GLfloat SpotCutoff;		/**< in degrees */
-   GLfloat _CosCutoff;		/**< = MAX(0, cos(SpotCutoff)) */
-   GLfloat ConstantAttenuation;
-   GLfloat LinearAttenuation;
-   GLfloat QuadraticAttenuation;
+   union {
+      struct {
+         /* These must be in the same order as the STATE_* enums,
+          * which should also match the order of gl_LightSource members.
+          */
+         GLfloat Ambient[4];           /**< STATE_AMBIENT */
+         GLfloat Diffuse[4];           /**< STATE_DIFFUSE */
+         GLfloat Specular[4];          /**< STATE_SPECULAR */
+         GLfloat EyePosition[4];       /**< STATE_POSITION in eye coordinates */
+         GLfloat _HalfVector[4];       /**< STATE_HALF_VECTOR */
+         GLfloat SpotDirection[3];     /**< STATE_SPOT_DIRECTION in eye coordinates */
+         GLfloat _CosCutoff;           /**< = MAX(0, cos(SpotCutoff)) */
+         GLfloat ConstantAttenuation;  /**< STATE_ATTENUATION */
+         GLfloat LinearAttenuation;
+         GLfloat QuadraticAttenuation;
+         GLfloat SpotExponent;
+         GLfloat SpotCutoff;           /**< STATE_SPOT_CUTOFF in degrees */
+      };
+      GLfloat Values[29];
+   };
+
    GLboolean Enabled;		/**< On/off flag */
 
    /**

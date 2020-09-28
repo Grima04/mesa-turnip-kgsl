@@ -126,52 +126,13 @@ fetch_state(struct gl_context *ctx, const gl_state_index16 state[],
          /* state[1] is the light number */
          const GLuint ln = (GLuint) state[1];
          /* state[2] is the light attribute */
-         switch (state[2]) {
-         case STATE_AMBIENT:
-            COPY_4V(value, ctx->Light.Light[ln].Ambient);
-            return;
-         case STATE_DIFFUSE:
-            COPY_4V(value, ctx->Light.Light[ln].Diffuse);
-            return;
-         case STATE_SPECULAR:
-            COPY_4V(value, ctx->Light.Light[ln].Specular);
-            return;
-         case STATE_POSITION:
-            COPY_4V(value, ctx->Light.Light[ln].EyePosition);
-            return;
-         case STATE_ATTENUATION:
-            value[0] = ctx->Light.Light[ln].ConstantAttenuation;
-            value[1] = ctx->Light.Light[ln].LinearAttenuation;
-            value[2] = ctx->Light.Light[ln].QuadraticAttenuation;
-            value[3] = ctx->Light.Light[ln].SpotExponent;
-            return;
-         case STATE_SPOT_DIRECTION:
-            COPY_3V(value, ctx->Light.Light[ln].SpotDirection);
-            value[3] = ctx->Light.Light[ln]._CosCutoff;
-            return;
-         case STATE_SPOT_CUTOFF:
-            value[0] = ctx->Light.Light[ln].SpotCutoff;
-            return;
-         case STATE_HALF_VECTOR:
-            {
-               static const GLfloat eye_z[] = {0, 0, 1};
-               GLfloat p[3];
-               /* Compute infinite half angle vector:
-                *   halfVector = normalize(normalize(lightPos) + (0, 0, 1))
-		* light.EyePosition.w should be 0 for infinite lights.
-                */
-               COPY_3V(p, ctx->Light.Light[ln].EyePosition);
-               NORMALIZE_3FV(p);
-               ADD_3V(p, p, eye_z);
-               NORMALIZE_3FV(p);
-               COPY_3V(value, p);
-	       value[3] = 1.0;
-            }
-            return;
-         default:
-            unreachable("Invalid light state in fetch_state");
-            return;
-         }
+         const unsigned index = state[2] - STATE_AMBIENT;
+         assert(index < 8);
+         if (index != STATE_SPOT_CUTOFF)
+            COPY_4V(value, &ctx->Light.Light[ln].Values[index * 4]);
+         else
+            value[0] = ctx->Light.Light[ln].Values[index * 4];
+         return;
       }
    case STATE_LIGHTMODEL_AMBIENT:
       COPY_4V(value, ctx->Light.Model.Ambient);

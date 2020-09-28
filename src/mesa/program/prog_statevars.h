@@ -91,17 +91,20 @@ typedef enum gl_state_index_ {
    STATE_PROGRAM_MATRIX_TRANSPOSE,
    STATE_PROGRAM_MATRIX_INVTRANS,
 
+   /* These 8 enums must be in the same order as the gl_light union members,
+    * which should also match the order of gl_LightSource members.
+    */
    STATE_AMBIENT,
    STATE_DIFFUSE,
    STATE_SPECULAR,
+   STATE_POSITION,       /**< xyzw = position */
+   STATE_HALF_VECTOR,
+   STATE_SPOT_DIRECTION, /**< xyz = direction, w = cos(cutoff) */
+   STATE_ATTENUATION,    /**< xyz = attenuation, w = spot exponent */
+   STATE_SPOT_CUTOFF,    /**< x = cutoff, yzw = undefined */
+
    STATE_EMISSION,
    STATE_SHININESS,
-   STATE_HALF_VECTOR,
-
-   STATE_POSITION,       /**< xyzw = position */
-   STATE_ATTENUATION,    /**< xyz = attenuation, w = spot exponent */
-   STATE_SPOT_DIRECTION, /**< xyz = direction, w = cos(cutoff) */
-   STATE_SPOT_CUTOFF,    /**< x = cutoff, yzw = undefined */
 
    STATE_TEXGEN_EYE_S,
    STATE_TEXGEN_EYE_T,

@@ -123,7 +123,7 @@ _mesa_light(struct gl_context *ctx, GLuint lnum, GLenum pname, const GLfloat *pa
       FLUSH_VERTICES(ctx, _NEW_LIGHT);
       COPY_4V( light->Specular, params );
       break;
-   case GL_POSITION:
+   case GL_POSITION: {
       /* NOTE: position has already been transformed by ModelView! */
       if (TEST_EQ_4V(light->EyePosition, params))
 	 return;
@@ -133,7 +133,21 @@ _mesa_light(struct gl_context *ctx, GLuint lnum, GLenum pname, const GLfloat *pa
 	 light->_Flags |= LIGHT_POSITIONAL;
       else
 	 light->_Flags &= ~LIGHT_POSITIONAL;
+
+      static const GLfloat eye_z[] = {0, 0, 1};
+      GLfloat p[3];
+      /* Compute infinite half angle vector:
+       *   halfVector = normalize(normalize(lightPos) + (0, 0, 1))
+       * light.EyePosition.w should be 0 for infinite lights.
+       */
+      COPY_3V(p, params);
+      NORMALIZE_3FV(p);
+      ADD_3V(p, p, eye_z);
+      NORMALIZE_3FV(p);
+      COPY_3V(light->_HalfVector, p);
+      light->_HalfVector[3] = 1.0;
       break;
+   }
    case GL_SPOT_DIRECTION:
       /* NOTE: Direction already transformed by inverse ModelView! */
       if (TEST_EQ_3V(light->SpotDirection, params))
