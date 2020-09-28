@@ -28,7 +28,7 @@ The wrap modes are:
   border color is sampled when coords go outside the range [0,1].
 * ``PIPE_TEX_WRAP_CLAMP``: The coord is clamped to the range [0,1] before
   scaling to the texture size.  This corresponds to the legacy OpenGL GL_CLAMP
-  texture wrap mode.  Historically, this mode hasn't acted consistantly across
+  texture wrap mode.  Historically, this mode hasn't acted consistently across
   all graphics hardware.  It sometimes acts like CLAMP_TO_EDGE or
   CLAMP_TO_BORDER.  The behavior may also vary depending on linear vs.
   nearest sampling mode.

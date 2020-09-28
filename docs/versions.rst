@@ -435,7 +435,7 @@ Bug fixes:
 -  linear interpolation of mipmap levels was incorrectly weighted
 -  readpix.c didn't compile on Macintosh
 -  GL_INVERT and related logic ops didn't work right
--  glTexImage[12]D() didn't check its parameters consistantly
+-  glTexImage[12]D() didn't check its parameters consistently
 -  fixed a memory leak in glTexImage[12]D()
 -  kludged around a SunOS 5.x/GCC compiler bug in the feedback code
 -  glReadPixels aborted instead of normally catching some errors
