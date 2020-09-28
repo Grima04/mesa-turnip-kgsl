@@ -73,6 +73,7 @@ zink_reset_batch(struct zink_context *ctx, struct zink_batch *batch)
    if (vkResetCommandPool(screen->dev, batch->cmdpool, 0) != VK_SUCCESS)
       fprintf(stderr, "vkResetCommandPool failed\n");
    batch->submitted = batch->has_work = false;
+   batch->resource_size = 0;
 }
 
 void
@@ -170,8 +171,11 @@ zink_batch_reference_resource_rw(struct zink_batch *batch, struct zink_resource 
    if (!entry) {
       entry = _mesa_set_add(batch->resources, res);
       pipe_reference(NULL, &res->base.reference);
-      if (stencil)
+      batch->resource_size += res->size;
+      if (stencil) {
          pipe_reference(NULL, &stencil->base.reference);
+         batch->resource_size += stencil->size;
+      }
    }
    /* multiple array entries are fine */
    if (res->persistent_maps)

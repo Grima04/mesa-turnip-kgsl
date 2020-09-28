@@ -62,6 +62,9 @@ struct zink_batch {
    struct util_dynarray zombie_samplers;
 
    struct set *active_queries; /* zink_query objects which were active at some point in this batch */
+
+   VkDeviceSize resource_size;
+
    bool has_work;
    bool submitted;
    bool in_rp; //renderpass is currently active
