@@ -375,13 +375,6 @@ RegClass get_reg_class(isel_context *ctx, RegType type, unsigned components, uns
       return RegClass::get(type, components * bitsize / 8u);
 }
 
-int
-type_size(const struct glsl_type *type, bool bindless)
-{
-   // TODO: don't we need type->std430_base_alignment() here?
-   return glsl_count_attribute_slots(type, false);
-}
-
 bool
 mem_vectorize_callback(unsigned align_mul, unsigned align_offset,
                        unsigned bit_size,
@@ -653,9 +646,6 @@ setup_nir(isel_context *ctx, nir_shader *nir)
       lower_to_scalar = true;
       lower_pack = true;
    }
-   if (nir->info.stage != MESA_SHADER_COMPUTE &&
-       nir->info.stage != MESA_SHADER_FRAGMENT)
-      nir_lower_io(nir, nir_var_shader_in | nir_var_shader_out, type_size, (nir_lower_io_options)0);
 
    lower_to_scalar |= nir_opt_shrink_vectors(nir);
 

@@ -634,6 +634,6 @@ get_tcs_num_patches(unsigned tcs_num_input_vertices,
 }
 
 void
-radv_lower_fs_io(nir_shader *nir);
+radv_lower_io(struct radv_device *device, nir_shader *nir);
 
 #endif

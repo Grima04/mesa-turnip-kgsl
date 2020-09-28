@@ -2973,11 +2973,10 @@ VkResult radv_create_shaders(struct radv_pipeline *pipeline,
 				           nir_lower_non_uniform_image_access);
 			}
 			NIR_PASS_V(nir[i], nir_lower_memory_model);
+
+			radv_lower_io(device, nir[i]);
 		}
 	}
-
-	if (nir[MESA_SHADER_FRAGMENT])
-		radv_lower_fs_io(nir[MESA_SHADER_FRAGMENT]);
 
 	for (int i = 0; i < MESA_SHADER_STAGES; ++i) {
 		if (radv_can_dump_shader(device, modules[i], false))
