@@ -488,6 +488,8 @@ enum pipe_format {
    PIPE_FORMAT_AYUV,
    PIPE_FORMAT_XYUV,
 
+   PIPE_FORMAT_R8_G8B8_420_UNORM,
+
    PIPE_FORMAT_COUNT
 };
 
