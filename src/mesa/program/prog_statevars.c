@@ -869,7 +869,7 @@ append_token(char *dst, gl_state_index k)
 {
    switch (k) {
    case STATE_MATERIAL:
-      append(dst, "material");
+      append(dst, "material.");
       break;
    case STATE_LIGHT:
       append(dst, "light");
@@ -901,40 +901,40 @@ append_token(char *dst, gl_state_index k)
       append(dst, "point.attenuation");
       break;
    case STATE_MODELVIEW_MATRIX:
-      append(dst, "matrix.modelview");
+      append(dst, "matrix.modelview.");
       break;
    case STATE_MODELVIEW_MATRIX_INVERSE:
-      append(dst, "matrix.modelview.inverse");
+      append(dst, "matrix.modelview.inverse.");
       break;
    case STATE_MODELVIEW_MATRIX_TRANSPOSE:
-      append(dst, "matrix.modelview.transpose");
+      append(dst, "matrix.modelview.transpose.");
       break;
    case STATE_MODELVIEW_MATRIX_INVTRANS:
-      append(dst, "matrix.modelview.invtrans");
+      append(dst, "matrix.modelview.invtrans.");
       break;
    case STATE_PROJECTION_MATRIX:
-      append(dst, "matrix.projection");
+      append(dst, "matrix.projection.");
       break;
    case STATE_PROJECTION_MATRIX_INVERSE:
-      append(dst, "matrix.projection.inverse");
+      append(dst, "matrix.projection.inverse.");
       break;
    case STATE_PROJECTION_MATRIX_TRANSPOSE:
-      append(dst, "matrix.projection.transpose");
+      append(dst, "matrix.projection.transpose.");
       break;
    case STATE_PROJECTION_MATRIX_INVTRANS:
-      append(dst, "matrix.projection.invtrans");
+      append(dst, "matrix.projection.invtrans.");
       break;
    case STATE_MVP_MATRIX:
-      append(dst, "matrix.mvp");
+      append(dst, "matrix.mvp.");
       break;
    case STATE_MVP_MATRIX_INVERSE:
-      append(dst, "matrix.mvp.inverse");
+      append(dst, "matrix.mvp.inverse.");
       break;
    case STATE_MVP_MATRIX_TRANSPOSE:
-      append(dst, "matrix.mvp.transpose");
+      append(dst, "matrix.mvp.transpose.");
       break;
    case STATE_MVP_MATRIX_INVTRANS:
-      append(dst, "matrix.mvp.invtrans");
+      append(dst, "matrix.mvp.invtrans.");
       break;
    case STATE_TEXTURE_MATRIX:
       append(dst, "matrix.texture");
@@ -962,58 +962,58 @@ append_token(char *dst, gl_state_index k)
       break;
       break;
    case STATE_AMBIENT:
-      append(dst, ".ambient");
+      append(dst, "ambient");
       break;
    case STATE_DIFFUSE:
-      append(dst, ".diffuse");
+      append(dst, "diffuse");
       break;
    case STATE_SPECULAR:
-      append(dst, ".specular");
+      append(dst, "specular");
       break;
    case STATE_EMISSION:
-      append(dst, ".emission");
+      append(dst, "emission");
       break;
    case STATE_SHININESS:
-      append(dst, "lshininess");
+      append(dst, "shininess");
       break;
    case STATE_HALF_VECTOR:
-      append(dst, ".half");
+      append(dst, "half");
       break;
    case STATE_POSITION:
-      append(dst, ".position");
+      append(dst, "position");
       break;
    case STATE_ATTENUATION:
-      append(dst, ".attenuation");
+      append(dst, "attenuation");
       break;
    case STATE_SPOT_DIRECTION:
-      append(dst, ".spot.direction");
+      append(dst, "spot.direction");
       break;
    case STATE_SPOT_CUTOFF:
-      append(dst, ".spot.cutoff");
+      append(dst, "spot.cutoff");
       break;
    case STATE_TEXGEN_EYE_S:
-      append(dst, ".eye.s");
+      append(dst, "eye.s");
       break;
    case STATE_TEXGEN_EYE_T:
-      append(dst, ".eye.t");
+      append(dst, "eye.t");
       break;
    case STATE_TEXGEN_EYE_R:
-      append(dst, ".eye.r");
+      append(dst, "eye.r");
       break;
    case STATE_TEXGEN_EYE_Q:
-      append(dst, ".eye.q");
+      append(dst, "eye.q");
       break;
    case STATE_TEXGEN_OBJECT_S:
-      append(dst, ".object.s");
+      append(dst, "object.s");
       break;
    case STATE_TEXGEN_OBJECT_T:
-      append(dst, ".object.t");
+      append(dst, "object.t");
       break;
    case STATE_TEXGEN_OBJECT_R:
-      append(dst, ".object.r");
+      append(dst, "object.r");
       break;
    case STATE_TEXGEN_OBJECT_Q:
-      append(dst, ".object.q");
+      append(dst, "object.q");
       break;
    case STATE_TEXENV_COLOR:
       append(dst, "texenv");
@@ -1035,7 +1035,7 @@ append_token(char *dst, gl_state_index k)
       break;
    /* BEGIN internal state vars */
    case STATE_INTERNAL:
-      append(dst, ".internal.");
+      append(dst, "internal.");
       break;
    case STATE_CURRENT_ATTRIB:
       append(dst, "current");
@@ -1101,10 +1101,10 @@ append_face(char *dst, GLint face)
 }
 
 static void
-append_index(char *dst, GLint index)
+append_index(char *dst, GLint index, bool structure)
 {
    char s[20];
-   sprintf(s, "[%d]", index);
+   sprintf(s, "[%d]%s", index, structure ? "." : "");
    append(dst, s);
 }
 
@@ -1128,11 +1128,10 @@ _mesa_program_state_string(const gl_state_index16 state[STATE_LENGTH])
       append_token(str, state[2]);
       break;
    case STATE_LIGHT:
-      append_index(str, state[1]); /* light number [i]. */
+      append_index(str, state[1], true); /* light number [i]. */
       append_token(str, state[2]); /* coefficients */
       break;
    case STATE_LIGHTMODEL_AMBIENT:
-      append(str, "lightmodel.ambient");
       break;
    case STATE_LIGHTMODEL_SCENECOLOR:
       if (state[1] == 0) {
@@ -1143,21 +1142,21 @@ _mesa_program_state_string(const gl_state_index16 state[STATE_LENGTH])
       }
       break;
    case STATE_LIGHTPROD:
-      append_index(str, state[1]); /* light number [i]. */
+      append_index(str, state[1], true); /* light number [i]. */
       append_face(str, state[2]);
       append_token(str, state[3]);
       break;
    case STATE_TEXGEN:
-      append_index(str, state[1]); /* tex unit [i] */
+      append_index(str, state[1], true); /* tex unit [i] */
       append_token(str, state[2]); /* plane coef */
       break;
    case STATE_TEXENV_COLOR:
-      append_index(str, state[1]); /* tex unit [i] */
+      append_index(str, state[1], true); /* tex unit [i] */
       append(str, "color");
       break;
    case STATE_CLIPPLANE:
-      append_index(str, state[1]); /* plane [i] */
-      append(str, ".plane");
+      append_index(str, state[1], true); /* plane [i] */
+      append(str, "plane");
       break;
    case STATE_MODELVIEW_MATRIX:
    case STATE_MODELVIEW_MATRIX_INVERSE:
@@ -1192,11 +1191,11 @@ _mesa_program_state_string(const gl_state_index16 state[STATE_LENGTH])
          if (index ||
              (mat >= STATE_TEXTURE_MATRIX &&
               mat <= STATE_PROGRAM_MATRIX_INVTRANS))
-            append_index(str, index);
+            append_index(str, index, true);
          if (firstRow == lastRow)
-            sprintf(tmp, ".row[%d]", firstRow);
+            sprintf(tmp, "row[%d]", firstRow);
          else
-            sprintf(tmp, ".row[%d..%d]", firstRow, lastRow);
+            sprintf(tmp, "row[%d..%d]", firstRow, lastRow);
          append(str, tmp);
       }
       break;
@@ -1217,14 +1216,15 @@ _mesa_program_state_string(const gl_state_index16 state[STATE_LENGTH])
       /* state[1] = {STATE_ENV, STATE_LOCAL} */
       /* state[2] = parameter index          */
       append_token(str, state[1]);
-      append_index(str, state[2]);
+      append_index(str, state[2], false);
       break;
    case STATE_NORMAL_SCALE:
       break;
    case STATE_INTERNAL:
       append_token(str, state[1]);
-      if (state[1] == STATE_CURRENT_ATTRIB)
-         append_index(str, state[2]);
+      if (state[1] == STATE_CURRENT_ATTRIB ||
+          state[1] == STATE_CURRENT_ATTRIB_MAYBE_VP_CLAMPED)
+         append_index(str, state[2], false);
        break;
    default:
       _mesa_problem(NULL, "Invalid state in _mesa_program_state_string");
