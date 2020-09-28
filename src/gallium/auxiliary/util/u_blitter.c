@@ -2859,7 +2859,7 @@ util_blitter_stencil_fallback(struct blitter_context *blitter,
 
    blitter_set_common_draw_rect_state(ctx, false,
       util_framebuffer_get_num_samples(&fb_state) > 1);
-   blitter_set_dst_dimensions(ctx, srcbox->width, srcbox->height);
+   blitter_set_dst_dimensions(ctx, dst_view->width, dst_view->height);
 
    pipe->clear_depth_stencil(pipe, dst_view, PIPE_CLEAR_STENCIL, 0.0, 0,
                              dstx, dsty, srcbox->width, srcbox->height,
