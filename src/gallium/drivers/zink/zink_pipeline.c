@@ -126,19 +126,25 @@ zink_create_gfx_pipeline(struct zink_screen *screen,
    depth_stencil_state.back = state->depth_stencil_alpha_state->stencil_back;
    depth_stencil_state.depthWriteEnable = state->depth_stencil_alpha_state->depth_write;
 
-   VkDynamicState dynamicStateEnables[] = {
-      screen->info.have_EXT_extended_dynamic_state ? VK_DYNAMIC_STATE_VIEWPORT_WITH_COUNT_EXT : VK_DYNAMIC_STATE_VIEWPORT,
-      screen->info.have_EXT_extended_dynamic_state ? VK_DYNAMIC_STATE_SCISSOR_WITH_COUNT_EXT : VK_DYNAMIC_STATE_SCISSOR,
+   VkDynamicState dynamicStateEnables[24] = {
       VK_DYNAMIC_STATE_LINE_WIDTH,
       VK_DYNAMIC_STATE_DEPTH_BIAS,
       VK_DYNAMIC_STATE_BLEND_CONSTANTS,
       VK_DYNAMIC_STATE_STENCIL_REFERENCE,
    };
+   unsigned state_count = 4;
+   if (screen->info.have_EXT_extended_dynamic_state) {
+      dynamicStateEnables[state_count++] = VK_DYNAMIC_STATE_VIEWPORT_WITH_COUNT_EXT;
+      dynamicStateEnables[state_count++] = VK_DYNAMIC_STATE_SCISSOR_WITH_COUNT_EXT;
+   } else {
+      dynamicStateEnables[state_count++] = VK_DYNAMIC_STATE_VIEWPORT;
+      dynamicStateEnables[state_count++] = VK_DYNAMIC_STATE_SCISSOR;
+   }
 
    VkPipelineDynamicStateCreateInfo pipelineDynamicStateCreateInfo = {};
    pipelineDynamicStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
    pipelineDynamicStateCreateInfo.pDynamicStates = dynamicStateEnables;
-   pipelineDynamicStateCreateInfo.dynamicStateCount = ARRAY_SIZE(dynamicStateEnables);
+   pipelineDynamicStateCreateInfo.dynamicStateCount = state_count;
 
    VkGraphicsPipelineCreateInfo pci = {};
    pci.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
