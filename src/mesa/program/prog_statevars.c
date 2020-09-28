@@ -92,7 +92,7 @@ fetch_state(struct gl_context *ctx, const gl_state_index16 state[],
             value[3] = 1.0F;
             return;
          default:
-            _mesa_problem(ctx, "Invalid material state in fetch_state");
+            unreachable("Invalid material state in fetch_state");
             return;
          }
       }
@@ -144,7 +144,7 @@ fetch_state(struct gl_context *ctx, const gl_state_index16 state[],
             }
             return;
          default:
-            _mesa_problem(ctx, "Invalid light state in fetch_state");
+            unreachable("Invalid light state in fetch_state");
             return;
          }
       }
@@ -205,7 +205,7 @@ fetch_state(struct gl_context *ctx, const gl_state_index16 state[],
                value[3] = ctx->Light.Material.Attrib[MAT_ATTRIB_FRONT_SPECULAR+face][3];
                return;
             default:
-               _mesa_problem(ctx, "Invalid lightprod state in fetch_state");
+               unreachable("Invalid lightprod state in fetch_state");
                return;
          }
       }
@@ -240,7 +240,7 @@ fetch_state(struct gl_context *ctx, const gl_state_index16 state[],
             COPY_4V(value, ctx->Texture.FixedFuncUnit[unit].GenQ.ObjectPlane);
             return;
          default:
-            _mesa_problem(ctx, "Invalid texgen state in fetch_state");
+            unreachable("Invalid texgen state in fetch_state");
             return;
          }
       }
@@ -323,7 +323,7 @@ fetch_state(struct gl_context *ctx, const gl_state_index16 state[],
             matrix = ctx->ProgramMatrixStack[index].Top;
          }
          else {
-            _mesa_problem(ctx, "Bad matrix name in fetch_state()");
+            unreachable("Bad matrix name in fetch_state()");
             return;
          }
          if (modifier == STATE_MATRIX_INVERSE ||
@@ -387,7 +387,7 @@ fetch_state(struct gl_context *ctx, const gl_state_index16 state[],
                        ctx->FragmentProgram.Current->arb.LocalParams[idx]);
                return;
             default:
-               _mesa_problem(ctx, "Bad state switch in fetch_state()");
+               unreachable("Bad state switch in fetch_state()");
                return;
          }
       }
@@ -416,7 +416,7 @@ fetch_state(struct gl_context *ctx, const gl_state_index16 state[],
                        ctx->VertexProgram.Current->arb.LocalParams[idx]);
                return;
             default:
-               _mesa_problem(ctx, "Bad state switch in fetch_state()");
+               unreachable("Bad state switch in fetch_state()");
                return;
          }
       }
@@ -631,7 +631,7 @@ fetch_state(struct gl_context *ctx, const gl_state_index16 state[],
       return;
 
    default:
-      _mesa_problem(ctx, "Invalid state in _mesa_fetch_state");
+      unreachable("Invalid state in _mesa_fetch_state");
       return;
    }
 }
