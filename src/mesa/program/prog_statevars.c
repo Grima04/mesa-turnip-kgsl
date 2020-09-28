@@ -1236,6 +1236,21 @@ _mesa_load_state_parameters(struct gl_context *ctx,
    }
 }
 
+void
+_mesa_upload_state_parameters(struct gl_context *ctx,
+                              struct gl_program_parameter_list *paramList,
+                              uint32_t *dst)
+{
+   assert(paramList->LastUniformIndex < paramList->FirstStateVarIndex);
+   int num = paramList->NumParameters;
+
+   for (int i = paramList->FirstStateVarIndex; i < num; i++) {
+      unsigned pvo = paramList->ParameterValueOffset[i];
+      fetch_state(ctx, paramList->Parameters[i].StateIndexes,
+                  (gl_constant_value*)(dst + pvo));
+   }
+}
+
 /* Merge consecutive state vars into one for the state vars that allow
  * multiple vec4s.
  *

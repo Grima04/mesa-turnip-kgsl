@@ -1044,6 +1044,7 @@ write_shader_parameters(struct blob *metadata,
                     sizeof(gl_constant_value) * params->NumParameterValues);
 
    blob_write_uint32(metadata, params->StateFlags);
+   blob_write_uint32(metadata, params->UniformBytes);
    blob_write_uint32(metadata, params->LastUniformIndex);
    blob_write_uint32(metadata, params->FirstStateVarIndex);
 }
@@ -1080,6 +1081,7 @@ read_shader_parameters(struct blob_reader *metadata,
                    sizeof(gl_constant_value) * params->NumParameterValues);
 
    params->StateFlags = blob_read_uint32(metadata);
+   params->UniformBytes = blob_read_uint32(metadata);
    params->LastUniformIndex = blob_read_uint32(metadata);
    params->FirstStateVarIndex = blob_read_uint32(metadata);
 }

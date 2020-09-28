@@ -28,6 +28,7 @@
 
 #include "main/glheader.h"
 #include "compiler/shader_enums.h"
+#include <stdint.h>
 
 
 #ifdef __cplusplus
@@ -158,6 +159,11 @@ typedef enum gl_state_index_ {
 extern void
 _mesa_load_state_parameters(struct gl_context *ctx,
                             struct gl_program_parameter_list *paramList);
+
+extern void
+_mesa_upload_state_parameters(struct gl_context *ctx,
+                              struct gl_program_parameter_list *paramList,
+                              uint32_t *dst);
 
 extern void
 _mesa_optimize_state_parameters(struct gl_program_parameter_list *list);

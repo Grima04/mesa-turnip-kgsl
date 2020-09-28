@@ -146,6 +146,7 @@ struct gl_program_parameter_list
    /* Parameters are optionally sorted as follows. Uniforms and constants
     * are first, then state vars.
     */
+   int UniformBytes;
    int LastUniformIndex;
    int FirstStateVarIndex;
 };
