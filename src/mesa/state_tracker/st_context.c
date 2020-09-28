@@ -700,6 +700,8 @@ st_create_context_priv(struct gl_context *ctx, struct pipe_context *pipe,
       !screen->get_param(screen, PIPE_CAP_TWO_SIDED_COLOR);
    st->lower_ucp =
       !screen->get_param(screen, PIPE_CAP_CLIP_PLANES);
+   st->prefer_real_buffer_in_constbuf0 =
+      screen->get_param(screen, PIPE_CAP_PREFER_REAL_BUFFER_IN_CONSTBUF0);
    st->allow_st_finalize_nir_twice = screen->finalize_nir != NULL;
 
    st->has_hw_atomics =

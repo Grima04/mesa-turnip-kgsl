@@ -223,11 +223,24 @@ st_feedback_draw_vbo(struct gl_context *ctx,
       info.has_user_indices = false;
    }
 
-   /* set constant buffers */
+   /* set constant buffer 0 */
+   struct gl_program_parameter_list *params = st->vp->Base.Parameters;
+
+   /* Update the constants which come from fixed-function state, such as
+    * transformation matrices, fog factors, etc.
+    *
+    * It must be done here if the state tracker doesn't update state vars
+    * in gl_program_parameter_list because allow_constbuf0_as_real_buffer
+    * is set.
+    */
+   if (st->prefer_real_buffer_in_constbuf0 && params->StateFlags)
+      _mesa_load_state_parameters(st->ctx, params);
+
    draw_set_mapped_constant_buffer(draw, PIPE_SHADER_VERTEX, 0,
                                    st->state.constants[PIPE_SHADER_VERTEX].ptr,
                                    st->state.constants[PIPE_SHADER_VERTEX].size);
 
+   /* set uniform buffers */
    const struct gl_program *prog = &vp->Base.Base;
    struct pipe_transfer *ubo_transfer[PIPE_MAX_CONSTANT_BUFFERS] = {0};
    assert(prog->info.num_ubos <= ARRAY_SIZE(ubo_transfer));
