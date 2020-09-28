@@ -49,7 +49,7 @@ on Mesa developers working on other drivers.
 * DUTs must be able to run docker
 
 The Mesa gitlab-runner based test architecture is built around docker,
-so that we can cache the debian package installation and CTS build
+so that we can cache the Debian package installation and CTS build
 step across multiple test runs.  Since the images are large and change
 approximately weekly, the DUTs also need to be running some script to
 prune stale docker images periodically in order to not run out of disk

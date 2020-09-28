@@ -133,7 +133,7 @@ Mesa's CI is currently run primarily on packet.net's m1xlarge nodes
 (2.2Ghz Sandybridge), with each job getting 8 cores allocated.  You
 can speed up your personal CI builds (and marge-bot merges) by using a
 faster personal machine as a runner.  You can find the gitlab-runner
-package in debian, or use GitLab's own builds.
+package in Debian, or use GitLab's own builds.
 
 To do so, follow `GitLab's instructions
 <https://docs.gitlab.com/ce/ci/runners/#create-a-specific-runner>`__ to
