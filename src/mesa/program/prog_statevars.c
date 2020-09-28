@@ -45,6 +45,31 @@
 
 #define ONE_DIV_SQRT_LN2 (1.201122408786449815)
 
+static ALWAYS_INLINE void
+copy_matrix(float *value, const float *m, unsigned firstRow, unsigned lastRow)
+{
+   unsigned i, row;
+
+   assert(firstRow < 4);
+   assert(lastRow < 4);
+
+   for (i = 0, row = firstRow; row <= lastRow; row++) {
+      value[i++] = m[row + 0];
+      value[i++] = m[row + 4];
+      value[i++] = m[row + 8];
+      value[i++] = m[row + 12];
+   }
+}
+
+static ALWAYS_INLINE void
+copy_matrix_transposed(float *value, const float *m, unsigned firstRow, unsigned lastRow)
+{
+   assert(firstRow < 4);
+   assert(lastRow < 4);
+
+   memcpy(value, &m[firstRow * 4],
+          (lastRow - firstRow + 1) * 4 * sizeof(GLfloat));
+}
 
 /**
  * Use the list of tokens in the state[] array to find global GL state
@@ -284,77 +309,136 @@ fetch_state(struct gl_context *ctx, const gl_state_index16 state[],
       value[2] = ctx->Point.Params[2];
       value[3] = 1.0F;
       return;
-   case STATE_MODELVIEW_MATRIX:
-   case STATE_PROJECTION_MATRIX:
-   case STATE_MVP_MATRIX:
-   case STATE_TEXTURE_MATRIX:
-   case STATE_PROGRAM_MATRIX:
-      {
-         /* state[0] = modelview, projection, texture, etc. */
-         /* state[1] = which texture matrix or program matrix */
-         /* state[2] = first row to fetch */
-         /* state[3] = last row to fetch */
-         /* state[4] = transpose, inverse or invtrans */
-         const GLmatrix *matrix;
-         const gl_state_index mat = state[0];
-         const GLuint index = (GLuint) state[1];
-         const GLuint firstRow = (GLuint) state[2];
-         const GLuint lastRow = (GLuint) state[3];
-         const gl_state_index modifier = state[4];
-         const GLfloat *m;
-         GLuint row, i;
-         assert(firstRow < 4);
-         assert(lastRow < 4);
-         if (mat == STATE_MODELVIEW_MATRIX) {
-            matrix = ctx->ModelviewMatrixStack.Top;
-         }
-         else if (mat == STATE_PROJECTION_MATRIX) {
-            matrix = ctx->ProjectionMatrixStack.Top;
-         }
-         else if (mat == STATE_MVP_MATRIX) {
-            matrix = &ctx->_ModelProjectMatrix;
-         }
-         else if (mat == STATE_TEXTURE_MATRIX) {
-            assert(index < ARRAY_SIZE(ctx->TextureMatrixStack));
-            matrix = ctx->TextureMatrixStack[index].Top;
-         }
-         else if (mat == STATE_PROGRAM_MATRIX) {
-            assert(index < ARRAY_SIZE(ctx->ProgramMatrixStack));
-            matrix = ctx->ProgramMatrixStack[index].Top;
-         }
-         else {
-            unreachable("Bad matrix name in fetch_state()");
-            return;
-         }
-         if (modifier == STATE_MATRIX_INVERSE ||
-             modifier == STATE_MATRIX_INVTRANS) {
-            /* Be sure inverse is up to date:
-	     */
-	    _math_matrix_analyse( (GLmatrix*) matrix );
-            m = matrix->inv;
-         }
-         else {
-            m = matrix->m;
-         }
-         if (modifier == STATE_MATRIX_TRANSPOSE ||
-             modifier == STATE_MATRIX_INVTRANS) {
-            for (i = 0, row = firstRow; row <= lastRow; row++) {
-               value[i++] = m[row * 4 + 0];
-               value[i++] = m[row * 4 + 1];
-               value[i++] = m[row * 4 + 2];
-               value[i++] = m[row * 4 + 3];
-            }
-         }
-         else {
-            for (i = 0, row = firstRow; row <= lastRow; row++) {
-               value[i++] = m[row + 0];
-               value[i++] = m[row + 4];
-               value[i++] = m[row + 8];
-               value[i++] = m[row + 12];
-            }
-         }
-      }
+   /* state[0] = modelview, projection, texture, etc. */
+   /* state[1] = which texture matrix or program matrix */
+   /* state[2] = first row to fetch */
+   /* state[3] = last row to fetch */
+   case STATE_MODELVIEW_MATRIX: {
+      const GLmatrix *matrix = ctx->ModelviewMatrixStack.Top;
+      copy_matrix(value, matrix->m, state[2], state[3]);
       return;
+   }
+   case STATE_MODELVIEW_MATRIX_INVERSE: {
+      const GLmatrix *matrix = ctx->ModelviewMatrixStack.Top;
+      _math_matrix_analyse((GLmatrix*)matrix); /* Be sure inverse is up to date: */
+      copy_matrix(value, matrix->inv, state[2], state[3]);
+      return;
+   }
+   case STATE_MODELVIEW_MATRIX_TRANSPOSE: {
+      const GLmatrix *matrix = ctx->ModelviewMatrixStack.Top;
+      copy_matrix_transposed(value, matrix->m, state[2], state[3]);
+      return;
+   }
+   case STATE_MODELVIEW_MATRIX_INVTRANS: {
+      const GLmatrix *matrix = ctx->ModelviewMatrixStack.Top;
+      _math_matrix_analyse((GLmatrix*)matrix); /* Be sure inverse is up to date: */
+      copy_matrix_transposed(value, matrix->inv, state[2], state[3]);
+      return;
+   }
+   case STATE_PROJECTION_MATRIX: {
+      const GLmatrix *matrix = ctx->ProjectionMatrixStack.Top;
+      copy_matrix(value, matrix->m, state[2], state[3]);
+      return;
+   }
+   case STATE_PROJECTION_MATRIX_INVERSE: {
+      const GLmatrix *matrix = ctx->ProjectionMatrixStack.Top;
+      _math_matrix_analyse((GLmatrix*)matrix); /* Be sure inverse is up to date: */
+      copy_matrix(value, matrix->inv, state[2], state[3]);
+      return;
+   }
+   case STATE_PROJECTION_MATRIX_TRANSPOSE: {
+      const GLmatrix *matrix = ctx->ProjectionMatrixStack.Top;
+      copy_matrix_transposed(value, matrix->m, state[2], state[3]);
+      return;
+   }
+   case STATE_PROJECTION_MATRIX_INVTRANS: {
+      const GLmatrix *matrix = ctx->ProjectionMatrixStack.Top;
+      _math_matrix_analyse((GLmatrix*)matrix); /* Be sure inverse is up to date: */
+      copy_matrix_transposed(value, matrix->inv, state[2], state[3]);
+      return;
+   }
+   case STATE_MVP_MATRIX: {
+      const GLmatrix *matrix = &ctx->_ModelProjectMatrix;
+      copy_matrix(value, matrix->m, state[2], state[3]);
+      return;
+   }
+   case STATE_MVP_MATRIX_INVERSE: {
+      const GLmatrix *matrix = &ctx->_ModelProjectMatrix;
+      _math_matrix_analyse((GLmatrix*)matrix); /* Be sure inverse is up to date: */
+      copy_matrix(value, matrix->inv, state[2], state[3]);
+      return;
+   }
+   case STATE_MVP_MATRIX_TRANSPOSE: {
+      const GLmatrix *matrix = &ctx->_ModelProjectMatrix;
+      copy_matrix_transposed(value, matrix->m, state[2], state[3]);
+      return;
+   }
+   case STATE_MVP_MATRIX_INVTRANS: {
+      const GLmatrix *matrix = &ctx->_ModelProjectMatrix;
+      _math_matrix_analyse((GLmatrix*)matrix); /* Be sure inverse is up to date: */
+      copy_matrix_transposed(value, matrix->inv, state[2], state[3]);
+      return;
+   }
+   case STATE_TEXTURE_MATRIX: {
+      const GLuint index = (GLuint) state[1];
+      assert(index < ARRAY_SIZE(ctx->TextureMatrixStack));
+      const GLmatrix *matrix = ctx->TextureMatrixStack[index].Top;
+      copy_matrix(value, matrix->m, state[2], state[3]);
+      return;
+   }
+   case STATE_TEXTURE_MATRIX_INVERSE: {
+      const GLuint index = (GLuint) state[1];
+      assert(index < ARRAY_SIZE(ctx->TextureMatrixStack));
+      const GLmatrix *matrix = ctx->TextureMatrixStack[index].Top;
+      _math_matrix_analyse((GLmatrix*)matrix); /* Be sure inverse is up to date: */
+      copy_matrix(value, matrix->inv, state[2], state[3]);
+      return;
+   }
+   case STATE_TEXTURE_MATRIX_TRANSPOSE: {
+      const GLuint index = (GLuint) state[1];
+      assert(index < ARRAY_SIZE(ctx->TextureMatrixStack));
+      const GLmatrix *matrix = ctx->TextureMatrixStack[index].Top;
+      copy_matrix_transposed(value, matrix->m, state[2], state[3]);
+      return;
+   }
+   case STATE_TEXTURE_MATRIX_INVTRANS: {
+      const GLuint index = (GLuint) state[1];
+      assert(index < ARRAY_SIZE(ctx->TextureMatrixStack));
+      const GLmatrix *matrix = ctx->TextureMatrixStack[index].Top;
+      _math_matrix_analyse((GLmatrix*)matrix); /* Be sure inverse is up to date: */
+      copy_matrix_transposed(value, matrix->inv, state[2], state[3]);
+      return;
+   }
+   case STATE_PROGRAM_MATRIX: {
+      const GLuint index = (GLuint) state[1];
+      assert(index < ARRAY_SIZE(ctx->ProgramMatrixStack));
+      const GLmatrix *matrix = ctx->ProgramMatrixStack[index].Top;
+      copy_matrix(value, matrix->m, state[2], state[3]);
+      return;
+   }
+   case STATE_PROGRAM_MATRIX_INVERSE: {
+      const GLuint index = (GLuint) state[1];
+      assert(index < ARRAY_SIZE(ctx->ProgramMatrixStack));
+      const GLmatrix *matrix = ctx->ProgramMatrixStack[index].Top;
+      _math_matrix_analyse((GLmatrix*)matrix); /* Be sure inverse is up to date: */
+      copy_matrix(value, matrix->inv, state[2], state[3]);
+      return;
+   }
+   case STATE_PROGRAM_MATRIX_TRANSPOSE: {
+      const GLuint index = (GLuint) state[1];
+      assert(index < ARRAY_SIZE(ctx->ProgramMatrixStack));
+      const GLmatrix *matrix = ctx->ProgramMatrixStack[index].Top;
+      copy_matrix_transposed(value, matrix->m, state[2], state[3]);
+      return;
+   }
+   case STATE_PROGRAM_MATRIX_INVTRANS: {
+      const GLuint index = (GLuint) state[1];
+      assert(index < ARRAY_SIZE(ctx->ProgramMatrixStack));
+      const GLmatrix *matrix = ctx->ProgramMatrixStack[index].Top;
+      _math_matrix_analyse((GLmatrix*)matrix); /* Be sure inverse is up to date: */
+      copy_matrix_transposed(value, matrix->inv, state[2], state[3]);
+      return;
+   }
    case STATE_NUM_SAMPLES:
       val[0].i = MAX2(1, _mesa_geometric_samples(ctx->DrawBuffer));
       return;
@@ -685,14 +769,29 @@ _mesa_program_state_flags(const gl_state_index16 state[STATE_LENGTH])
       return _NEW_POINT;
 
    case STATE_MODELVIEW_MATRIX:
+   case STATE_MODELVIEW_MATRIX_INVERSE:
+   case STATE_MODELVIEW_MATRIX_TRANSPOSE:
+   case STATE_MODELVIEW_MATRIX_INVTRANS:
       return _NEW_MODELVIEW;
    case STATE_PROJECTION_MATRIX:
+   case STATE_PROJECTION_MATRIX_INVERSE:
+   case STATE_PROJECTION_MATRIX_TRANSPOSE:
+   case STATE_PROJECTION_MATRIX_INVTRANS:
       return _NEW_PROJECTION;
    case STATE_MVP_MATRIX:
+   case STATE_MVP_MATRIX_INVERSE:
+   case STATE_MVP_MATRIX_TRANSPOSE:
+   case STATE_MVP_MATRIX_INVTRANS:
       return _NEW_MODELVIEW | _NEW_PROJECTION;
    case STATE_TEXTURE_MATRIX:
+   case STATE_TEXTURE_MATRIX_INVERSE:
+   case STATE_TEXTURE_MATRIX_TRANSPOSE:
+   case STATE_TEXTURE_MATRIX_INVTRANS:
       return _NEW_TEXTURE_MATRIX;
    case STATE_PROGRAM_MATRIX:
+   case STATE_PROGRAM_MATRIX_INVERSE:
+   case STATE_PROGRAM_MATRIX_TRANSPOSE:
+   case STATE_PROGRAM_MATRIX_INVTRANS:
       return _NEW_TRACK_MATRIX;
 
    case STATE_NUM_SAMPLES:
@@ -812,26 +911,63 @@ append_token(char *dst, gl_state_index k)
    case STATE_MODELVIEW_MATRIX:
       append(dst, "matrix.modelview");
       break;
+   case STATE_MODELVIEW_MATRIX_INVERSE:
+      append(dst, "matrix.modelview.inverse");
+      break;
+   case STATE_MODELVIEW_MATRIX_TRANSPOSE:
+      append(dst, "matrix.modelview.transpose");
+      break;
+   case STATE_MODELVIEW_MATRIX_INVTRANS:
+      append(dst, "matrix.modelview.invtrans");
+      break;
    case STATE_PROJECTION_MATRIX:
       append(dst, "matrix.projection");
+      break;
+   case STATE_PROJECTION_MATRIX_INVERSE:
+      append(dst, "matrix.projection.inverse");
+      break;
+   case STATE_PROJECTION_MATRIX_TRANSPOSE:
+      append(dst, "matrix.projection.transpose");
+      break;
+   case STATE_PROJECTION_MATRIX_INVTRANS:
+      append(dst, "matrix.projection.invtrans");
       break;
    case STATE_MVP_MATRIX:
       append(dst, "matrix.mvp");
       break;
+   case STATE_MVP_MATRIX_INVERSE:
+      append(dst, "matrix.mvp.inverse");
+      break;
+   case STATE_MVP_MATRIX_TRANSPOSE:
+      append(dst, "matrix.mvp.transpose");
+      break;
+   case STATE_MVP_MATRIX_INVTRANS:
+      append(dst, "matrix.mvp.invtrans");
+      break;
    case STATE_TEXTURE_MATRIX:
       append(dst, "matrix.texture");
+      break;
+   case STATE_TEXTURE_MATRIX_INVERSE:
+      append(dst, "matrix.texture.inverse");
+      break;
+   case STATE_TEXTURE_MATRIX_TRANSPOSE:
+      append(dst, "matrix.texture.transpose");
+      break;
+   case STATE_TEXTURE_MATRIX_INVTRANS:
+      append(dst, "matrix.texture.invtrans");
       break;
    case STATE_PROGRAM_MATRIX:
       append(dst, "matrix.program");
       break;
-   case STATE_MATRIX_INVERSE:
-      append(dst, ".inverse");
+   case STATE_PROGRAM_MATRIX_INVERSE:
+      append(dst, "matrix.program.inverse");
       break;
-   case STATE_MATRIX_TRANSPOSE:
-      append(dst, ".transpose");
+   case STATE_PROGRAM_MATRIX_TRANSPOSE:
+      append(dst, "matrix.program.transpose");
       break;
-   case STATE_MATRIX_INVTRANS:
-      append(dst, ".invtrans");
+   case STATE_PROGRAM_MATRIX_INVTRANS:
+      append(dst, "matrix.program.invtrans");
+      break;
       break;
    case STATE_AMBIENT:
       append(dst, ".ambient");
@@ -1032,10 +1168,25 @@ _mesa_program_state_string(const gl_state_index16 state[STATE_LENGTH])
       append(str, ".plane");
       break;
    case STATE_MODELVIEW_MATRIX:
+   case STATE_MODELVIEW_MATRIX_INVERSE:
+   case STATE_MODELVIEW_MATRIX_TRANSPOSE:
+   case STATE_MODELVIEW_MATRIX_INVTRANS:
    case STATE_PROJECTION_MATRIX:
+   case STATE_PROJECTION_MATRIX_INVERSE:
+   case STATE_PROJECTION_MATRIX_TRANSPOSE:
+   case STATE_PROJECTION_MATRIX_INVTRANS:
    case STATE_MVP_MATRIX:
+   case STATE_MVP_MATRIX_INVERSE:
+   case STATE_MVP_MATRIX_TRANSPOSE:
+   case STATE_MVP_MATRIX_INVTRANS:
    case STATE_TEXTURE_MATRIX:
+   case STATE_TEXTURE_MATRIX_INVERSE:
+   case STATE_TEXTURE_MATRIX_TRANSPOSE:
+   case STATE_TEXTURE_MATRIX_INVTRANS:
    case STATE_PROGRAM_MATRIX:
+   case STATE_PROGRAM_MATRIX_INVERSE:
+   case STATE_PROGRAM_MATRIX_TRANSPOSE:
+   case STATE_PROGRAM_MATRIX_INVTRANS:
       {
          /* state[0] = modelview, projection, texture, etc. */
          /* state[1] = which texture matrix or program matrix */
@@ -1046,13 +1197,10 @@ _mesa_program_state_string(const gl_state_index16 state[STATE_LENGTH])
          const GLuint index = (GLuint) state[1];
          const GLuint firstRow = (GLuint) state[2];
          const GLuint lastRow = (GLuint) state[3];
-         const gl_state_index modifier = state[4];
          if (index ||
-             mat == STATE_TEXTURE_MATRIX ||
-             mat == STATE_PROGRAM_MATRIX)
+             (mat >= STATE_TEXTURE_MATRIX &&
+              mat <= STATE_PROGRAM_MATRIX_INVTRANS))
             append_index(str, index);
-         if (modifier)
-            append_token(str, modifier);
          if (firstRow == lastRow)
             sprintf(tmp, ".row[%d]", firstRow);
          else

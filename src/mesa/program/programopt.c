@@ -126,10 +126,10 @@ insert_mvp_mad_code(struct gl_context *ctx, struct gl_program *vprog)
     * XXX we should check if these state vars are already declared.
     */
    static const gl_state_index16 mvpState[4][STATE_LENGTH] = {
-      { STATE_MVP_MATRIX, 0, 0, 0, STATE_MATRIX_TRANSPOSE },
-      { STATE_MVP_MATRIX, 0, 1, 1, STATE_MATRIX_TRANSPOSE },
-      { STATE_MVP_MATRIX, 0, 2, 2, STATE_MATRIX_TRANSPOSE },
-      { STATE_MVP_MATRIX, 0, 3, 3, STATE_MATRIX_TRANSPOSE },
+      { STATE_MVP_MATRIX_TRANSPOSE, 0, 0, 0, 0 },
+      { STATE_MVP_MATRIX_TRANSPOSE, 0, 1, 1, 0 },
+      { STATE_MVP_MATRIX_TRANSPOSE, 0, 2, 2, 0 },
+      { STATE_MVP_MATRIX_TRANSPOSE, 0, 3, 3, 0 },
    };
    GLint mvpRef[4];
 

@@ -722,8 +722,8 @@ static struct ureg get_eye_position( struct tnl_program *p )
 	 emit_matrix_transform_vec4(p, p->eye_position, modelview, pos);
       }
       else {
-	 register_matrix_param5( p, STATE_MODELVIEW_MATRIX, 0, 0, 3,
-				 STATE_MATRIX_TRANSPOSE, modelview );
+	 register_matrix_param5( p, STATE_MODELVIEW_MATRIX_TRANSPOSE, 0, 0, 3,
+				 0, modelview );
 
 	 emit_transpose_matrix_transform_vec4(p, p->eye_position, modelview, pos);
       }
@@ -782,8 +782,8 @@ static struct ureg get_transformed_normal( struct tnl_program *p )
       struct ureg transformed_normal = reserve_temp(p);
 
       if (p->state->need_eye_coords) {
-         register_matrix_param5( p, STATE_MODELVIEW_MATRIX, 0, 0, 2,
-                                 STATE_MATRIX_INVTRANS, mvinv );
+         register_matrix_param5( p, STATE_MODELVIEW_MATRIX_INVTRANS, 0, 0, 2,
+                                 0, mvinv );
 
          /* Transform to eye space:
           */
@@ -827,8 +827,8 @@ static void build_hpos( struct tnl_program *p )
       emit_matrix_transform_vec4( p, hpos, mvp, pos );
    }
    else {
-      register_matrix_param5( p, STATE_MVP_MATRIX, 0, 0, 3,
-			      STATE_MATRIX_TRANSPOSE, mvp );
+      register_matrix_param5( p, STATE_MVP_MATRIX_TRANSPOSE, 0, 0, 3,
+			      0, mvp );
       emit_transpose_matrix_transform_vec4( p, hpos, mvp, pos );
    }
 }
@@ -1490,8 +1490,8 @@ static void build_texture_transform( struct tnl_program *p )
 	       emit_matrix_transform_vec4( p, out, texmat, in );
 	    }
 	    else {
-	       register_matrix_param5( p, STATE_TEXTURE_MATRIX, i, 0, 3,
-				       STATE_MATRIX_TRANSPOSE, texmat );
+	       register_matrix_param5( p, STATE_TEXTURE_MATRIX_TRANSPOSE, i, 0, 3,
+				       0, texmat );
 	       emit_transpose_matrix_transform_vec4( p, out, texmat, in );
 	    }
 	 }
