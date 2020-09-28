@@ -490,6 +490,4 @@ nv10_emit_projection(struct gl_context *ctx, int emit)
 
 	BEGIN_NV04(push, NV10_3D(PROJECTION_MATRIX(0)), 16);
 	PUSH_DATAm(push, m.m);
-
-	_math_matrix_dtr(&m);
 }

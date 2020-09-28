@@ -1012,17 +1012,10 @@ init_matrix_stack(struct gl_matrix_stack *stack,
  * Free matrix stack.
  *
  * \param stack matrix stack.
- *
- * Calls _math_matrix_dtr() for each element of the matrix stack and
- * frees the array.
  */
 static void
 free_matrix_stack( struct gl_matrix_stack *stack )
 {
-   GLuint i;
-   for (i = 0; i < stack->StackSize; i++) {
-      _math_matrix_dtr(&stack->Stack[i]);
-   }
    free(stack->Stack);
    stack->Stack = stack->Top = NULL;
    stack->StackSize = 0;
@@ -1071,8 +1064,7 @@ void _mesa_init_matrix( struct gl_context * ctx )
  *
  * \param ctx GL context.
  *
- * Frees each of the matrix stacks and the combined modelview-projection
- * matrix.
+ * Frees each of the matrix stacks.
  */
 void _mesa_free_matrix_data( struct gl_context *ctx )
 {
@@ -1084,8 +1076,6 @@ void _mesa_free_matrix_data( struct gl_context *ctx )
       free_matrix_stack(&ctx->TextureMatrixStack[i]);
    for (i = 0; i < ARRAY_SIZE(ctx->ProgramMatrixStack); i++)
       free_matrix_stack(&ctx->ProgramMatrixStack[i]);
-   /* combined Modelview*Projection matrix */
-   _math_matrix_dtr( &ctx->_ModelProjectMatrix );
 
 }
 

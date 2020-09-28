@@ -1499,31 +1499,10 @@ _math_matrix_loadf( GLmatrix *mat, const GLfloat *m )
 void
 _math_matrix_ctr( GLmatrix *m )
 {
-   m->m = align_malloc( 16 * sizeof(GLfloat), 16 );
-   if (m->m)
-      memcpy( m->m, Identity, sizeof(Identity) );
-   m->inv = align_malloc( 16 * sizeof(GLfloat), 16 );
-   if (m->inv)
-      memcpy( m->inv, Identity, sizeof(Identity) );
+   memcpy( m->m, Identity, sizeof(Identity) );
+   memcpy( m->inv, Identity, sizeof(Identity) );
    m->type = MATRIX_IDENTITY;
    m->flags = 0;
-}
-
-/**
- * Matrix destructor.
- *
- * \param m matrix.
- *
- * Frees the data in a GLmatrix.
- */
-void
-_math_matrix_dtr( GLmatrix *m )
-{
-   align_free( m->m );
-   m->m = NULL;
-
-   align_free( m->inv );
-   m->inv = NULL;
 }
 
 /*@}*/
