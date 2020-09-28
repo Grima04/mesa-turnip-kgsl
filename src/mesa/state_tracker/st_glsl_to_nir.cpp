@@ -829,6 +829,17 @@ st_link_nir(struct gl_context *ctx,
       struct gl_program *prog = shader->Program;
       struct st_program *stp = st_program(prog);
 
+      /* Make sure that prog->info is in sync with nir->info, but st/mesa
+       * expects some of the values to be from before lowering.
+       */
+      shader_info old_info = prog->info;
+      prog->info = prog->nir->info;
+      prog->info.num_ssbos = old_info.num_ssbos;
+      prog->info.num_ubos = old_info.num_ubos;
+      prog->info.num_abos = old_info.num_abos;
+      if (prog->info.stage == MESA_SHADER_VERTEX)
+         prog->info.inputs_read = old_info.inputs_read;
+
       /* Initialize st_vertex_program members. */
       if (shader->Stage == MESA_SHADER_VERTEX)
          st_prepare_vertex_program(stp);
