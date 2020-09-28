@@ -100,7 +100,9 @@ struct ac_shader_abi {
    LLVMValueRef (*load_tess_level)(struct ac_shader_abi *abi, unsigned varying_id,
                                    bool load_default_state);
 
-   LLVMValueRef (*load_ubo)(struct ac_shader_abi *abi, LLVMValueRef index);
+   LLVMValueRef (*load_ubo)(struct ac_shader_abi *abi,
+                            unsigned desc_set, unsigned binding,
+                            bool valid_binding, LLVMValueRef index);
 
    /**
     * Load the descriptor for the given buffer.

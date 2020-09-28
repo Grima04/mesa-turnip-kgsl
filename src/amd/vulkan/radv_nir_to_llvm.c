@@ -375,32 +375,6 @@ radv_load_resource(struct ac_shader_abi *abi, LLVMValueRef index,
 	desc_ptr = ac_cast_ptr(&ctx->ac, desc_ptr, ctx->ac.v4i32);
 	LLVMSetMetadata(desc_ptr, ctx->ac.uniform_md_kind, ctx->ac.empty_md);
 
-	if (layout->binding[binding].type == VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT) {
-		uint32_t desc_type = S_008F0C_DST_SEL_X(V_008F0C_SQ_SEL_X) |
-			S_008F0C_DST_SEL_Y(V_008F0C_SQ_SEL_Y) |
-			S_008F0C_DST_SEL_Z(V_008F0C_SQ_SEL_Z) |
-			S_008F0C_DST_SEL_W(V_008F0C_SQ_SEL_W);
-
-		if (ctx->ac.chip_class >= GFX10) {
-			desc_type |= S_008F0C_FORMAT(V_008F0C_IMG_FORMAT_32_FLOAT) |
-				     S_008F0C_OOB_SELECT(V_008F0C_OOB_SELECT_RAW) |
-				     S_008F0C_RESOURCE_LEVEL(1);
-		} else {
-			desc_type |= S_008F0C_NUM_FORMAT(V_008F0C_BUF_NUM_FORMAT_FLOAT) |
-				     S_008F0C_DATA_FORMAT(V_008F0C_BUF_DATA_FORMAT_32);
-		}
-
-		LLVMValueRef desc_components[4] = {
-			LLVMBuildPtrToInt(ctx->ac.builder, desc_ptr, ctx->ac.intptr, ""),
-			LLVMConstInt(ctx->ac.i32, S_008F04_BASE_ADDRESS_HI(ctx->args->options->address32_hi), false),
-			/* High limit to support variable sizes. */
-			LLVMConstInt(ctx->ac.i32, 0xffffffff, false),
-			LLVMConstInt(ctx->ac.i32, desc_type, false),
-		};
-
-		return ac_build_gather_values(&ctx->ac, desc_components, 4);
-	}
-
 	return desc_ptr;
 }
 
@@ -950,14 +924,41 @@ static LLVMValueRef radv_load_ssbo(struct ac_shader_abi *abi,
 	return result;
 }
 
-static LLVMValueRef radv_load_ubo(struct ac_shader_abi *abi, LLVMValueRef buffer_ptr)
+static LLVMValueRef radv_load_ubo(struct ac_shader_abi *abi,
+				  unsigned desc_set, unsigned binding,
+				  bool valid_binding, LLVMValueRef buffer_ptr)
 {
 	struct radv_shader_context *ctx = radv_shader_context_from_abi(abi);
 	LLVMValueRef result;
 
-	if (LLVMGetTypeKind(LLVMTypeOf(buffer_ptr)) != LLVMPointerTypeKind) {
-		/* Do not load the descriptor for inlined uniform blocks. */
-		return buffer_ptr;
+	if (valid_binding) {
+		struct radv_pipeline_layout *pipeline_layout = ctx->args->options->layout;
+		struct radv_descriptor_set_layout *layout = pipeline_layout->set[desc_set].layout;
+
+		if (layout->binding[binding].type == VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT) {
+			uint32_t desc_type = S_008F0C_DST_SEL_X(V_008F0C_SQ_SEL_X) |
+					     S_008F0C_DST_SEL_Y(V_008F0C_SQ_SEL_Y) |
+					     S_008F0C_DST_SEL_Z(V_008F0C_SQ_SEL_Z) |
+					     S_008F0C_DST_SEL_W(V_008F0C_SQ_SEL_W);
+
+			if (ctx->ac.chip_class >= GFX10) {
+				desc_type |= S_008F0C_FORMAT(V_008F0C_IMG_FORMAT_32_FLOAT) |
+					     S_008F0C_OOB_SELECT(V_008F0C_OOB_SELECT_RAW) |
+					     S_008F0C_RESOURCE_LEVEL(1);
+			} else {
+				desc_type |= S_008F0C_NUM_FORMAT(V_008F0C_BUF_NUM_FORMAT_FLOAT) |
+					     S_008F0C_DATA_FORMAT(V_008F0C_BUF_DATA_FORMAT_32);
+			}
+
+			LLVMValueRef desc_components[4] = {
+				LLVMBuildPtrToInt(ctx->ac.builder, buffer_ptr, ctx->ac.intptr, ""),
+				LLVMConstInt(ctx->ac.i32, S_008F04_BASE_ADDRESS_HI(ctx->args->options->address32_hi), false),
+				LLVMConstInt(ctx->ac.i32, 0xffffffff, false),
+				LLVMConstInt(ctx->ac.i32, desc_type, false),
+			};
+
+			return ac_build_gather_values(&ctx->ac, desc_components, 4);
+		}
 	}
 
 	LLVMSetMetadata(buffer_ptr, ctx->ac.uniform_md_kind, ctx->ac.empty_md);
