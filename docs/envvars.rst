@@ -218,7 +218,7 @@ the :doc:`Xlib software driver page <xlibdriver>` for details.
 ``MESA_XSYNC``
    enable synchronous X behavior (for debugging only)
 ``MESA_GLX_FORCE_CI``
-   if set, force GLX to treat 8bpp visuals as CI visuals
+   if set, force GLX to treat 8 BPP visuals as CI visuals
 ``MESA_GLX_FORCE_ALPHA``
    if set, forces RGB windows to have an alpha channel.
 ``MESA_GLX_DEPTH_BITS``
