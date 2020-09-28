@@ -1064,6 +1064,10 @@ fd_resource_from_handle(struct pipe_screen *pscreen,
 {
 	struct fd_screen *screen = fd_screen(pscreen);
 	struct fd_resource *rsc = CALLOC_STRUCT(fd_resource);
+
+	if (!rsc)
+		return NULL;
+
 	struct fdl_slice *slice = fd_resource_slice(rsc, 0);
 	struct pipe_resource *prsc = &rsc->base;
 
@@ -1073,9 +1077,6 @@ fd_resource_from_handle(struct pipe_screen *pscreen,
 			tmpl->width0, tmpl->height0, tmpl->depth0,
 			tmpl->array_size, tmpl->last_level, tmpl->nr_samples,
 			tmpl->usage, tmpl->bind, tmpl->flags);
-
-	if (!rsc)
-		return NULL;
 
 	*prsc = *tmpl;
 	fd_resource_layout_init(prsc);
