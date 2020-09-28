@@ -2875,6 +2875,13 @@ util_blitter_stencil_fallback(struct blitter_context *blitter,
    struct pipe_stencil_ref sr = { { (1u << stencil_bits) - 1 } };
    pipe->set_stencil_ref(pipe, &sr);
 
+   union blitter_attrib coord;
+   get_texcoords(src_view, src->width0, src->height0,
+                 srcbox->x, srcbox->y,
+                 srcbox->x + srcbox->width, srcbox->y + srcbox->height,
+                 srcbox->z, 0, true,
+                 &coord);
+
    for (int i = 0; i < stencil_bits; ++i) {
       uint32_t mask = 1 << i;
       struct pipe_constant_buffer cb = {
@@ -2890,7 +2897,9 @@ util_blitter_stencil_fallback(struct blitter_context *blitter,
       blitter->draw_rectangle(blitter, ctx->velem_state, get_vs_passthrough_pos,
                               dstx, dsty,
                               dstx + srcbox->width, dsty + srcbox->height,
-                              0, stencil_bits, UTIL_BLITTER_ATTRIB_NONE, NULL);
+                              0, stencil_bits,
+                              UTIL_BLITTER_ATTRIB_TEXCOORD_XYZW,
+                              &coord);
    }
 
    util_blitter_restore_vertex_states(blitter);
