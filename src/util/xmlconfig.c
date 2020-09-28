@@ -294,94 +294,53 @@ parseValue(driOptionValue *v, driOptionType type, const XML_Char *string)
 
 /** \brief Parse a list of ranges of type info->type. */
 static unsigned char
-parseRanges(driOptionInfo *info, const XML_Char *string)
+parseRange(driOptionInfo *info, const XML_Char *string)
 {
-   XML_Char *cp, *range;
-   uint32_t nRanges, i;
-   driOptionRange *ranges;
+   XML_Char *cp;
 
    XSTRDUP(cp, string);
-   /* pass 1: determine the number of ranges (number of commas + 1) */
-   range = cp;
-   for (nRanges = 1; *range; ++range)
-      if (*range == ',')
-         ++nRanges;
 
-   if ((ranges = malloc(nRanges*sizeof(driOptionRange))) == NULL) {
-      fprintf(stderr, "%s: %d: out of memory.\n", __FILE__, __LINE__);
-      abort();
-   }
-
-   /* pass 2: parse all ranges into preallocated array */
-   range = cp;
-   for (i = 0; i < nRanges; ++i) {
-      XML_Char *end, *sep;
-      assert(range);
-      end = strchr(range, ',');
-      if (end)
-         *end = '\0';
-      sep = strchr(range, ':');
-      if (sep) { /* non-empty interval */
-         *sep = '\0';
-         if (!parseValue(&ranges[i].start, info->type, range) ||
-             !parseValue(&ranges[i].end, info->type, sep+1))
-            break;
-         if (info->type == DRI_INT &&
-             ranges[i].start._int > ranges[i].end._int)
-            break;
-         if (info->type == DRI_FLOAT &&
-             ranges[i].start._float > ranges[i].end._float)
-            break;
-      } else { /* empty interval */
-         if (!parseValue(&ranges[i].start, info->type, range))
-            break;
-         ranges[i].end = ranges[i].start;
-      }
-      if (end)
-         range = end+1;
-      else
-         range = NULL;
-   }
-   free(cp);
-   if (i < nRanges) {
-      free(ranges);
+   XML_Char *sep;
+   sep = strchr(cp, ':');
+   if (!sep) {
+      free(cp);
       return false;
-   } else
-      assert(range == NULL);
+   }
 
-   info->nRanges = nRanges;
-   info->ranges = ranges;
+   *sep = '\0';
+   if (!parseValue(&info->range.start, info->type, cp) ||
+       !parseValue(&info->range.end, info->type, sep+1))
+      return false;
+   if (info->type == DRI_INT &&
+       info->range.start._int >= info->range.end._int)
+      return false;
+   if (info->type == DRI_FLOAT &&
+       info->range.start._float >= info->range.end._float)
+      return false;
+
+   free(cp);
    return true;
 }
 
-/** \brief Check if a value is in one of info->ranges. */
+/** \brief Check if a value is in info->range. */
 static bool
 checkValue(const driOptionValue *v, const driOptionInfo *info)
 {
-   uint32_t i;
-   assert(info->type != DRI_BOOL); /* should be caught by the parser */
-   if (info->nRanges == 0)
-      return true;
    switch (info->type) {
    case DRI_ENUM: /* enum is just a special integer */
    case DRI_INT:
-      for (i = 0; i < info->nRanges; ++i)
-         if (v->_int >= info->ranges[i].start._int &&
-             v->_int <= info->ranges[i].end._int)
-            return true;
-      break;
+      return (info->range.start._int == info->range.end._int ||
+              (v->_int >= info->range.start._int &&
+               v->_int <= info->range.end._int));
+
    case DRI_FLOAT:
-      for (i = 0; i < info->nRanges; ++i)
-         if (v->_float >= info->ranges[i].start._float &&
-             v->_float <= info->ranges[i].end._float)
-            return true;
-      break;
-   case DRI_STRING:
-      break;
+      return (info->range.start._float == info->range.end._float ||
+              (v->_float >= info->range.start._float &&
+               v->_float <= info->range.end._float));
+
    default:
-      assert(0); /* should never happen */
+      return true;
    }
-   return false;
 }
 
 /**
@@ -570,7 +529,7 @@ parseOptInfoAttr(struct OptInfoData *data, const XML_Char **attr)
    if (attrVal[OA_VALID]) {
       if (cache->info[opt].type == DRI_BOOL)
          XML_FATAL1("boolean option with valid attribute.");
-      if (!parseRanges(&cache->info[opt], attrVal[OA_VALID]))
+      if (!parseRange(&cache->info[opt], attrVal[OA_VALID]))
          XML_FATAL("illegal valid attribute: %s.", attrVal[OA_VALID]);
       if (!checkValue(&cache->values[opt], &cache->info[opt]))
          XML_FATAL("default value out of valid range '%s': %s.",
@@ -578,8 +537,7 @@ parseOptInfoAttr(struct OptInfoData *data, const XML_Char **attr)
    } else if (cache->info[opt].type == DRI_ENUM) {
       XML_FATAL1("valid attribute missing in option (mandatory for enums).");
    } else {
-      cache->info[opt].nRanges = 0;
-      cache->info[opt].ranges = NULL;
+      memset(&cache->info[opt].range, 0, sizeof(cache->info[opt].range));
    }
 }
 
@@ -762,20 +720,6 @@ parseDeviceAttr(struct OptConfData *data, const XML_Char **attr)
    }
 }
 
-static bool
-valueInRanges(const driOptionInfo *info, uint32_t value)
-{
-   uint32_t i;
-
-   for (i = 0; i < info->nRanges; i++) {
-      if (info->ranges[i].start._int <= value &&
-          info->ranges[i].end._int >= value)
-         return true;
-   }
-
-   return false;
-}
-
 /** \brief Parse attributes of an application element. */
 static void
 parseAppAttr(struct OptConfData *data, const XML_Char **attr)
@@ -785,7 +729,7 @@ parseAppAttr(struct OptConfData *data, const XML_Char **attr)
    const XML_Char *sha1 = NULL;
    const XML_Char *application_name_match = NULL;
    const XML_Char *application_versions = NULL;
-   driOptionInfo version_ranges = {
+   driOptionInfo version_range = {
       .type = DRI_INT,
    };
 
@@ -836,8 +780,9 @@ parseAppAttr(struct OptConfData *data, const XML_Char **attr)
          XML_WARNING("Invalid application_name_match=\"%s\".", application_name_match);
    }
    if (application_versions) {
-      if (parseRanges(&version_ranges, application_versions) &&
-          !valueInRanges(&version_ranges, data->applicationVersion))
+      driOptionValue v = { ._int = data->applicationVersion };
+      if (parseRange(&version_range, application_versions) &&
+          !checkValue(&v, &version_range))
          data->ignoringApp = data->inApp;
    }
 }
@@ -848,7 +793,7 @@ parseEngineAttr(struct OptConfData *data, const XML_Char **attr)
 {
    uint32_t i;
    const XML_Char *engine_name_match = NULL, *engine_versions = NULL;
-   driOptionInfo version_ranges = {
+   driOptionInfo version_range = {
       .type = DRI_INT,
    };
    for (i = 0; attr[i]; i += 2) {
@@ -868,12 +813,11 @@ parseEngineAttr(struct OptConfData *data, const XML_Char **attr)
          XML_WARNING("Invalid engine_name_match=\"%s\".", engine_name_match);
    }
    if (engine_versions) {
-      if (parseRanges(&version_ranges, engine_versions) &&
-          !valueInRanges(&version_ranges, data->engineVersion))
+      driOptionValue v = { ._int = data->engineVersion };
+      if (parseRange(&version_range, engine_versions) &&
+          !checkValue(&v, &version_range))
          data->ignoringApp = data->inApp;
    }
-
-   free(version_ranges.ranges);
 }
 
 /** \brief Parse attributes of an option element. */
@@ -1167,7 +1111,6 @@ driDestroyOptionInfo(driOptionCache *info)
       for (i = 0; i < size; ++i) {
          if (info->info[i].name) {
             free(info->info[i].name);
-            free(info->info[i].ranges);
          }
       }
       free(info->info);

@@ -78,9 +78,7 @@ TEST_F(xmlconfig_test, ints)
 TEST_F(xmlconfig_test, floats)
 {
    driconf(DRI_CONF_TEST_OPT(
-              DRI_CONF_OPT_BEGIN_V(opt, float, 2.0, "1.0,2.0,3.0")
-              DRI_CONF_DESC("option")
-              DRI_CONF_OPT_END));
+              DRI_CONF_OPT_F(opt, 2.0, 1.0, 2.0, "option")));
 
    EXPECT_EQ(driQueryOptionf(&options, "opt"), 2.0);
 }
