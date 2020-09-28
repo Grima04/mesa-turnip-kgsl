@@ -696,7 +696,9 @@ tc_set_constant_buffer(struct pipe_context *_pipe,
       } else {
          tc_set_resource_reference(&p->cb.buffer,
                                    cb->buffer);
-         memcpy(&p->cb, cb, sizeof(*cb));
+         p->cb.user_buffer = NULL;
+         p->cb.buffer_offset = cb->buffer_offset;
+         p->cb.buffer_size = cb->buffer_size;
       }
    } else {
       memset(&p->cb, 0, sizeof(*cb));
