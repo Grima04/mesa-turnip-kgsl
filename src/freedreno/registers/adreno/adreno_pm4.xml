@@ -383,6 +383,7 @@ xsi:schemaLocation="http://nouveau.freedesktop.org/ rules-ng.xsd">
 	<value name="CP_SKIP_IB2_ENABLE_GLOBAL" value="0x1d" varset="chip" variants="A5XX-"/>
 	<value name="CP_SKIP_IB2_ENABLE_LOCAL" value="0x23" varset="chip" variants="A5XX-"/>
 	<value name="CP_SET_SUBDRAW_SIZE" value="0x35" varset="chip" variants="A5XX-"/>
+	<value name="CP_WHERE_AM_I" value="0x62" varset="chip" variants="A5XX-"/>
 	<value name="CP_SET_VISIBILITY_OVERRIDE" value="0x64" varset="chip" variants="A5XX-"/>
 	<!-- Enable/Disable/Defer A5x global preemption model -->
 	<value name="CP_PREEMPT_ENABLE_GLOBAL" value="0x69" varset="chip" variants="A5XX"/>
