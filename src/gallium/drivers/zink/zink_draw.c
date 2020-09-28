@@ -284,12 +284,30 @@ add_transition(struct zink_resource *res, VkImageLayout layout, VkAccessFlags fl
    t->stage |= pipeline;
 }
 
+struct zink_descriptor_resource {
+   struct zink_resource *res;
+   bool write;
+};
+
+static inline void
+read_descriptor_resource(struct zink_descriptor_resource *resource, struct zink_resource *res)
+{
+   resource->res = res;
+   resource->write = false;
+}
+
+static inline void
+write_descriptor_resource(struct zink_descriptor_resource *resource, struct zink_resource *res)
+{
+   resource->res = res;
+   resource->write = true;
+}
+
 static void
 update_descriptors(struct zink_context *ctx, struct zink_screen *screen, bool is_compute)
 {
    VkWriteDescriptorSet wds[MAX_DESCRIPTORS];
-   struct zink_resource *read_desc_resources[MAX_DESCRIPTORS] = {};
-   struct zink_resource *write_desc_resources[MAX_DESCRIPTORS] = {};
+   struct zink_descriptor_resource resources[MAX_DESCRIPTORS];
    struct zink_surface *surface_refs[PIPE_SHADER_TYPES * PIPE_MAX_SHADER_IMAGES] = {};
    VkDescriptorBufferInfo buffer_infos[PIPE_SHADER_TYPES * (PIPE_MAX_CONSTANT_BUFFERS + PIPE_MAX_SHADER_BUFFERS + PIPE_MAX_SHADER_IMAGES)];
    VkDescriptorImageInfo image_infos[PIPE_SHADER_TYPES * (PIPE_MAX_SAMPLERS + PIPE_MAX_SHADER_IMAGES)];
@@ -330,7 +348,7 @@ update_descriptors(struct zink_context *ctx, struct zink_screen *screen, bool is
             struct zink_resource *res = zink_resource(ctx->ubos[stage][index].buffer);
             assert(!res || ctx->ubos[stage][index].buffer_size > 0);
             assert(!res || ctx->ubos[stage][index].buffer);
-            read_desc_resources[num_wds] = res;
+            read_descriptor_resource(&resources[num_wds], res);
             buffer_infos[num_buffer_info].buffer = res ? res->buffer :
                                                    (screen->info.rb2_feats.nullDescriptor ?
                                                     VK_NULL_HANDLE :
@@ -348,10 +366,10 @@ update_descriptors(struct zink_context *ctx, struct zink_screen *screen, bool is
                assert(ctx->ssbos[stage][index].buffer_size <= screen->info.props.limits.maxStorageBufferRange);
                unsigned flag = VK_ACCESS_SHADER_READ_BIT;
                if (ctx->writable_ssbos[stage] & (1 << index)) {
-                  write_desc_resources[num_wds] = res;
+                  write_descriptor_resource(&resources[num_wds], res);
                   flag |= VK_ACCESS_SHADER_WRITE_BIT;
                } else {
-                  read_desc_resources[num_wds] = res;
+                  read_descriptor_resource(&resources[num_wds], res);
                }
                add_transition(res, 0, flag, stage, &transitions[num_transitions], &num_transitions, ht);
                buffer_infos[num_buffer_info].buffer = res->buffer;
@@ -389,7 +407,7 @@ update_descriptors(struct zink_context *ctx, struct zink_screen *screen, bool is
                      sampler = ctx->samplers[stage][index + k];
                   }
                   add_transition(res, layout, VK_ACCESS_SHADER_READ_BIT, stage, &transitions[num_transitions], &num_transitions, ht);
-                  read_desc_resources[num_wds] = res;
+                  read_descriptor_resource(&resources[num_wds], res);
                }
                break;
                case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
@@ -414,9 +432,9 @@ update_descriptors(struct zink_context *ctx, struct zink_screen *screen, bool is
                      flags |= VK_ACCESS_SHADER_WRITE_BIT;
                   add_transition(res, layout, flags, stage, &transitions[num_transitions], &num_transitions, ht);
                   if (image_view->base.access & PIPE_IMAGE_ACCESS_WRITE)
-                     write_desc_resources[num_wds] = res;
+                     write_descriptor_resource(&resources[num_wds], res);
                   else
-                     read_desc_resources[num_wds] = res;
+                     read_descriptor_resource(&resources[num_wds], res);
                }
                break;
                default:
@@ -428,7 +446,7 @@ update_descriptors(struct zink_context *ctx, struct zink_screen *screen, bool is
                    * the results of this codepath are undefined in ARB_texture_buffer_object spec
                    */
                   assert(screen->info.rb2_feats.nullDescriptor);
-                  read_desc_resources[num_wds] = res;
+                  read_descriptor_resource(&resources[num_wds], res);
                   switch (shader->bindings[j].type) {
                   case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
                   case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
@@ -551,9 +569,9 @@ update_descriptors(struct zink_context *ctx, struct zink_screen *screen, bool is
    if (num_wds > 0) {
       for (int i = 0; i < num_wds; ++i) {
          wds[i].dstSet = desc_set;
-         struct zink_resource *res = read_desc_resources[i] ? read_desc_resources[i] : write_desc_resources[i];
+         struct zink_resource *res = resources[i].res;
          if (res) {
-            need_flush |= zink_batch_reference_resource_rw(batch, res, res == write_desc_resources[i]) == check_flush_id;
+            need_flush |= zink_batch_reference_resource_rw(batch, res, resources[i].write) == check_flush_id;
          }
       }
       vkUpdateDescriptorSets(screen->dev, num_wds, wds, 0, NULL);
