@@ -51,7 +51,8 @@ struct gl_program_parameter_list;
 typedef enum gl_state_index_ {
    STATE_MATERIAL = 100,  /* start at 100 so small ints are seen as ints */
 
-   STATE_LIGHT,
+   STATE_LIGHT,         /* One gl_light attribute. */
+   STATE_LIGHT_ATTRIBS, /* Multiple gl_light attributes loaded at once. */
    STATE_LIGHTMODEL_AMBIENT,
    STATE_LIGHTMODEL_SCENECOLOR,
    STATE_LIGHTPROD,
