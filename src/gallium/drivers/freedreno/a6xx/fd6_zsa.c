@@ -88,6 +88,7 @@ update_lrz_stencil(struct fd6_zsa_stateobj *so, enum pipe_compare_func func,
 		break;
 	}
 }
+
 void *
 fd6_zsa_state_create(struct pipe_context *pctx,
 		const struct pipe_depth_stencil_alpha_state *cso)
@@ -225,7 +226,7 @@ fd6_zsa_state_create(struct pipe_context *pctx,
 }
 
 void
-fd6_depth_stencil_alpha_state_delete(struct pipe_context *pctx, void *hwcso)
+fd6_zsa_state_delete(struct pipe_context *pctx, void *hwcso)
 {
 	struct fd6_zsa_stateobj *so = hwcso;
 

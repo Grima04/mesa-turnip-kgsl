@@ -75,7 +75,7 @@ fd6_zsa_state(struct fd_context *ctx, bool no_alpha, bool depth_clamp)
 void * fd6_zsa_state_create(struct pipe_context *pctx,
 		const struct pipe_depth_stencil_alpha_state *cso);
 
-void fd6_depth_stencil_alpha_state_delete(struct pipe_context *pctx,
+void fd6_zsa_state_delete(struct pipe_context *pctx,
 		void *hwcso);
 
 #endif /* FD6_ZSA_H_ */

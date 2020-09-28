@@ -226,7 +226,7 @@ PC_UNKNOWN_9805:
 	 * here. */
 	pctx->delete_rasterizer_state = fd6_rasterizer_state_delete;
 	pctx->delete_blend_state = fd6_blend_state_delete;
-	pctx->delete_depth_stencil_alpha_state = fd6_depth_stencil_alpha_state_delete;
+	pctx->delete_depth_stencil_alpha_state = fd6_zsa_state_delete;
 
 	/* initial sizes for VSC buffers (or rather the per-pipe sizes
 	 * which is used to derive entire buffer size:
