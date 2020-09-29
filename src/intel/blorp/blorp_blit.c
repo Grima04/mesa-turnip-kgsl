@@ -1489,7 +1489,7 @@ brw_blorp_get_blit_kernel(struct blorp_batch *batch,
    struct brw_wm_prog_data prog_data;
 
    nir_shader *nir = brw_blorp_build_nir_shader(blorp, mem_ctx, prog_key);
-   nir->info.name = ralloc_strdup(nir, "BLORP-blit");
+   nir->info.name = ralloc_strdup(nir, blorp_shader_type_to_name(prog_key->shader_type));
 
    struct brw_wm_prog_key wm_key;
    brw_blorp_init_wm_prog_key(&wm_key);
@@ -2644,7 +2644,7 @@ blorp_copy(struct blorp_batch *batch,
                                dst_layer, ISL_FORMAT_UNSUPPORTED, true);
 
    struct brw_blorp_blit_prog_key wm_prog_key = {
-      .shader_type = BLORP_SHADER_TYPE_BLIT,
+      .shader_type = BLORP_SHADER_TYPE_COPY,
       .filter = BLORP_FILTER_NONE,
       .need_src_offset = src_surf->tile_x_sa || src_surf->tile_y_sa,
       .need_dst_offset = dst_surf->tile_x_sa || dst_surf->tile_y_sa,
