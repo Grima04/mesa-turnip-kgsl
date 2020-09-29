@@ -486,21 +486,14 @@ tu_CreateSemaphore(VkDevice _device,
    if (!sem)
       return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
-   const VkExportSemaphoreCreateInfo *export =
-      vk_find_struct_const(pCreateInfo->pNext, EXPORT_SEMAPHORE_CREATE_INFO);
-   VkExternalSemaphoreHandleTypeFlags handleTypes =
-      export ? export->handleTypes : 0;
-
-   sem->permanent.kind = TU_SEMAPHORE_NONE;
    sem->temporary.kind = TU_SEMAPHORE_NONE;
+   sem->permanent.kind = TU_SEMAPHORE_SYNCOBJ;
 
-   if (handleTypes) {
-      if (drmSyncobjCreate(device->fd, 0, &sem->permanent.syncobj) < 0) {
-          vk_free2(&device->vk.alloc, pAllocator, sem);
-          return VK_ERROR_OUT_OF_HOST_MEMORY;
-      }
-      sem->permanent.kind = TU_SEMAPHORE_SYNCOBJ;
+   if (drmSyncobjCreate(device->fd, 0, &sem->permanent.syncobj) < 0) {
+         vk_free2(&device->vk.alloc, pAllocator, sem);
+         return VK_ERROR_OUT_OF_HOST_MEMORY;
    }
+
    *pSemaphore = tu_semaphore_to_handle(sem);
    return VK_SUCCESS;
 }
