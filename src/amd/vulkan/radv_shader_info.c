@@ -647,6 +647,21 @@ gather_info_output_decl(const nir_shader *nir, const nir_variable *var,
 		if (!key->vs_common_out.as_es)
 			vs_info = &info->tes.outinfo;
 		break;
+       case MESA_SHADER_TESS_CTRL: {
+               unsigned param = shader_io_get_unique_index(var->data.location);
+               const struct glsl_type *type = var->type;
+
+               if (!var->data.patch)
+                       type = glsl_get_array_element(var->type);
+
+               unsigned slots =
+                       var->data.compact ? DIV_ROUND_UP(var->data.location_frac + glsl_get_length(type), 4)
+                                         : glsl_count_attribute_slots(type, false);
+
+               mark_tess_output(info, var->data.patch, param, slots);
+               break;
+       }
+
 	default:
 		break;
 	}
