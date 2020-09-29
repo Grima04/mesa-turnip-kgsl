@@ -38,6 +38,7 @@ struct zink_fence {
    VkFence fence;
    struct set *active_queries; /* zink_query objects which were active at some point in this batch */
    struct util_dynarray resources;
+   bool submitted;
 };
 
 static inline struct zink_fence *

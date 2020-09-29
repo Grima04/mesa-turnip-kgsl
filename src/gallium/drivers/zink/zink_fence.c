@@ -71,6 +71,7 @@ zink_create_fence(struct pipe_screen *pscreen, struct zink_batch *batch)
       pipe_resource_reference(&r, pres);
       util_dynarray_append(&ret->resources, struct pipe_resource*, pres);
    }
+   ret->submitted = true;
 
    pipe_reference_init(&ret->reference, 1);
    return ret;
@@ -110,6 +111,8 @@ bool
 zink_fence_finish(struct zink_screen *screen, struct zink_fence *fence,
                   uint64_t timeout_ns)
 {
+   if (!fence->submitted)
+      return true;
    bool success = vkWaitForFences(screen->dev, 1, &fence->fence, VK_TRUE,
                                   timeout_ns) == VK_SUCCESS;
    if (success) {
@@ -128,6 +131,7 @@ zink_fence_finish(struct zink_screen *screen, struct zink_fence *fence,
          pipe_resource_reference(pres, NULL);
       }
       util_dynarray_clear(&fence->resources);
+      fence->submitted = false;
    }
    return success;
 }
