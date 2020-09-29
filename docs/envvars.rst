@@ -364,7 +364,7 @@ Gallium environment variables
 -----------------------------
 
 ``GALLIUM_HUD``
-   draws various information on the screen, like framerate, cpu load,
+   draws various information on the screen, like framerate, CPU load,
    driver statistics, performance counters, etc. Set
    ``GALLIUM_HUD=help`` and run e.g. ``glxgears`` for more info.
 ``GALLIUM_HUD_PERIOD``
