@@ -98,7 +98,7 @@ For Windows related changes, the main contact point is Brian Paul. Jose
 Fonseca can also help as a fallback contact.
 
 For Android related changes, the main contact is Tapani Pälli. Mauro
-Rossi is collaborating with android-x86 and may provide feedback about
+Rossi is collaborating with Android-x86 and may provide feedback about
 the build status in that project.
 
 For MacOSX related changes, Jeremy Huddleston Sequoia is currently a

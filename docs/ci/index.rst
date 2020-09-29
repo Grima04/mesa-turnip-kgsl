@@ -65,7 +65,7 @@ can access a better interface on
 `mesa-ci-results.jf.intel.com <http://mesa-ci-results.jf.intel.com>`__.
 
 The Intel CI runs a much larger array of tests, on a number of generations
-of Intel hardware and on multiple platforms (X11, Wayland, DRM & android),
+of Intel hardware and on multiple platforms (X11, Wayland, DRM & Android),
 with the purpose of detecting regressions.
 Tests include
 `Crucible <https://gitlab.freedesktop.org/mesa/crucible>`__,
