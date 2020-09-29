@@ -1393,7 +1393,7 @@ pandecode_tiler_job_mdg(const struct MALI_JOB_HEADER *h,
 
         pan_section_unpack(p, MIDGARD_TILER_JOB, PRIMITIVE, primitive);
         pandecode_primitive_size(pan_section_ptr(p, MIDGARD_TILER_JOB, PRIMITIVE_SIZE),
-                                 primitive.point_size_array == 0);
+                                 primitive.point_size_array_format == MALI_POINT_SIZE_ARRAY_FORMAT_NONE);
         pandecode_indent--;
         pandecode_log("\n");
 }

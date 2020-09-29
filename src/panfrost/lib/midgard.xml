@@ -324,24 +324,37 @@
     <field name="Unknown shift" size="4" start="1:28" type="uint"/>
   </struct>
 
+  <enum name="Point Size Array Format">
+    <value name="None" value="0"/>
+    <value name="FP16" value="2"/>
+    <value name="FP32" value="3"/>
+  </enum>
+
+  <enum name="Primitive Restart">
+    <value name="None" value="0"/>
+    <value name="Implicit" value="2"/>
+    <value name="Explicit" value="3"/>
+  </enum>
+
   <struct name="Primitive">
-    <field name="Draw mode" size="4" start="0:0" type="Draw Mode" default="None"/>
-    <field name="Index type" size="2" start="0:8" type="Index Type" default="None"/>
-    <field name="Point size array" size="1" start="0:12" type="bool"/>
-    <!--- TODO -->
+    <field name="Draw mode" size="8" start="0:0" type="Draw Mode" default="None"/>
+    <field name="Index type" size="3" start="0:8" type="Index Type" default="None"/>
+    <field name="Point size array format" size="2" start="0:11" type="Point Size Array Format"/>
+    <field name="Primitive Index Enable" size="1" start="0:13" type="bool"/>
+    <field name="Primitive Index Writeback" size="1" start="0:14" type="bool"/>
     <field name="First provoking vertex" size="1" start="0:15" type="bool" default="true"/>
-    <field name="Unknown 1" size="1" start="0:16" type="bool" default="true"/>
-    <field name="Unknown 2" size="1" start="0:17" type="bool" default="true"/>
-    <!--- TODO -->
-    <field name="Primitive restart" size="1" start="0:20" type="bool"/>
-    <field name="Unknown 3" size="6" start="0:26" type="uint"/>
+    <field name="Low Depth Cull" size="1" start="0:16" type="bool" default="true"/>
+    <field name="High Depth Cull" size="1" start="0:17" type="bool" default="true"/>
+    <field name="Secondary Shader" size="1" start="0:18" type="bool"/>
+    <field name="Primitive restart" size="2" start="0:19" type="Primitive Restart"/>
+    <field name="Job Task Split" size="6" start="0:26" type="uint"/>
     <field name="Base vertex offset" size="32" start="1:0" type="uint"/>
-    <!--- TODO: word 2 -->
+    <field name="Primitive Restart Index" size="32" start="2:0" type="uint"/>
     <field name="Index count" size="32" start="3:0" type="uint" modifier="minus(1)"/>
     <field name="Indices" size="64" start="4:0" type="address"/>
   </struct>
 
-  <struct name="Draw" size="30">
+  <struct name="Draw" size="32">
     <field name="Four Components Per Vertex" size="1" start="0:0" type="bool"/>
     <field name="Draw Descriptor Is 64b" size="1" start="0:1" type="bool"/>
     <field name="Texture Descriptor Is 64b" size="1" start="0:2" type="bool"/>

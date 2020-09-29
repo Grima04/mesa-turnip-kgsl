@@ -349,10 +349,12 @@ panfrost_draw_emit_tiler(struct panfrost_batch *batch,
                   pan_section_ptr(job, MIDGARD_TILER_JOB, PRIMITIVE);
         pan_pack(section, PRIMITIVE, cfg) {
                 cfg.draw_mode = pan_draw_mode(info->mode);
-                cfg.point_size_array = panfrost_writes_point_size(ctx);
+                if (panfrost_writes_point_size(ctx))
+                        cfg.point_size_array_format = MALI_POINT_SIZE_ARRAY_FORMAT_FP16;
                 cfg.first_provoking_vertex = rast->flatshade_first;
-                cfg.primitive_restart = info->primitive_restart;
-                cfg.unknown_3 = 6;
+                if (info->primitive_restart)
+                        cfg.primitive_restart = MALI_PRIMITIVE_RESTART_IMPLICIT;
+                cfg.job_task_split = 6;
 
                 if (info->index_size) {
                         cfg.index_type = panfrost_translate_index_size(info->index_size);

@@ -362,7 +362,7 @@ panfrost_load_midg(
         pan_section_pack(t.cpu, MIDGARD_TILER_JOB, PRIMITIVE, cfg) {
                 cfg.draw_mode = MALI_DRAW_MODE_TRIANGLES;
                 cfg.index_count = vertex_count;
-                cfg.unknown_3 = 6;
+                cfg.job_task_split = 6;
         }
 
         panfrost_pack_work_groups_compute(pan_section_ptr(t.cpu, MIDGARD_TILER_JOB, INVOCATION),
