@@ -52,13 +52,13 @@ You will need to install Python 3 and Meson as a module using pip. This
 is because we use Python for generating code, and rely on external
 modules (Mako). You also need pkg-config (a hard dependency of Meson),
 Flex, and Bison. The easiest way to install everything you need is with
-`chocolatey <https://chocolatey.org/>`__.
+`Chocolatey <https://chocolatey.org/>`__.
 
 .. code-block:: console
 
    choco install python3 winflexbison pkgconfiglite
 
-You can even use chocolatey to install mingw and ninja (ninja can be
+You can even use Chocolatey to install mingw and ninja (ninja can be
 used with MSVC as well)
 
 .. code-block:: console
@@ -145,7 +145,7 @@ Windows specific instructions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 On windows you have a couple of choices for compilers. If you installed
-mingw with chocolatey and want to use ninja you should be able to open
+mingw with Chocolatey and want to use ninja you should be able to open
 any shell and follow the instructions above. If you want to you MSVC,
 clang-cl, or ICL (the Intel Compiler), read on.
 
