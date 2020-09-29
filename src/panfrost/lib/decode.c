@@ -115,7 +115,7 @@ pandecode_make_indent(void)
                 fprintf(pandecode_dump_stream, "  ");
 }
 
-static void
+static void PRINTFLIKE(2, 3)
 pandecode_log_typed(enum pandecode_log_type type, const char *format, ...)
 {
         va_list ap;
