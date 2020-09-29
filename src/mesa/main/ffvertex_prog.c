@@ -836,7 +836,20 @@ static void build_hpos( struct tnl_program *p )
 
 static GLuint material_attrib( GLuint side, GLuint property )
 {
-   return (property - STATE_AMBIENT) * 2 + side;
+   switch (property) {
+   case STATE_AMBIENT:
+      return MAT_ATTRIB_FRONT_AMBIENT + side;
+   case STATE_DIFFUSE:
+      return MAT_ATTRIB_FRONT_DIFFUSE + side;
+   case STATE_SPECULAR:
+      return MAT_ATTRIB_FRONT_SPECULAR + side;
+   case STATE_EMISSION:
+      return MAT_ATTRIB_FRONT_EMISSION + side;
+   case STATE_SHININESS:
+      return MAT_ATTRIB_FRONT_SHININESS + side;
+   default:
+      unreachable("invalid value");
+   }
 }
 
 
