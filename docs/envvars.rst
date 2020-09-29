@@ -180,6 +180,8 @@ Core Mesa environment variables
       instance version as advertised by ``vkEnumerateInstanceVersion``
    -  This can be very useful for debugging but some features may not be
       implemented correctly. (For developers only)
+``MESA_LOADER_DRIVER_OVERRIDE``
+   chooses a different driver binary such as ``etnaviv`` or ``zink``.
 
 NIR passes environment variables
 --------------------------------
