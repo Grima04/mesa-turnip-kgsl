@@ -1110,23 +1110,12 @@ update_align(struct entry *entry)
 }
 
 static bool
-vectorize_entries(struct vectorize_ctx *ctx, nir_function_impl *impl, struct hash_table *ht)
+vectorize_sorted_entries(struct vectorize_ctx *ctx, nir_function_impl *impl,
+                         struct util_dynarray *arr)
 {
-   if (!ht)
-      return false;
-
-   bool progress = false;
-   hash_table_foreach(ht, entry) {
-      struct util_dynarray *arr = entry->data;
-      if (!arr->size)
-         continue;
-
-      qsort(util_dynarray_begin(arr),
-            util_dynarray_num_elements(arr, struct entry *),
-            sizeof(struct entry *), &sort_entries);
-
       unsigned num_entries = util_dynarray_num_elements(arr, struct entry *);
 
+   bool progress = false;
       for (unsigned first_idx = 0; first_idx < num_entries; first_idx++) {
          struct entry *low = *util_dynarray_element(arr, struct entry *, first_idx);
          if (!low)
@@ -1153,6 +1142,28 @@ vectorize_entries(struct vectorize_ctx *ctx, nir_function_impl *impl, struct has
 
          *util_dynarray_element(arr, struct entry *, first_idx) = low;
       }
+
+   return progress;
+}
+
+static bool
+vectorize_entries(struct vectorize_ctx *ctx, nir_function_impl *impl, struct hash_table *ht)
+{
+   if (!ht)
+      return false;
+
+   bool progress = false;
+   hash_table_foreach(ht, entry) {
+      struct util_dynarray *arr = entry->data;
+      if (!arr->size)
+         continue;
+
+      qsort(util_dynarray_begin(arr),
+            util_dynarray_num_elements(arr, struct entry *),
+            sizeof(struct entry *), &sort_entries);
+
+      while (vectorize_sorted_entries(ctx, impl, arr))
+         progress = true;
 
       util_dynarray_foreach(arr, struct entry *, elem) {
          if (*elem)
