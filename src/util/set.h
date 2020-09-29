@@ -61,6 +61,9 @@ _mesa_set_create(void *mem_ctx,
                  bool (*key_equals_function)(const void *a,
                                              const void *b));
 struct set *
+_mesa_set_create_u32_keys(void *mem_ctx);
+
+struct set *
 _mesa_set_clone(struct set *set, void *dst_mem_ctx);
 
 void

@@ -148,6 +148,26 @@ _mesa_set_create(void *mem_ctx,
    return ht;
 }
 
+static uint32_t
+key_u32_hash(const void *key)
+{
+   uint32_t u = (uint32_t)(uintptr_t)key;
+   return _mesa_hash_uint(&u);
+}
+
+static bool
+key_u32_equals(const void *a, const void *b)
+{
+   return (uint32_t)(uintptr_t)a == (uint32_t)(uintptr_t)b;
+}
+
+/* key == 0 and key == deleted_key are not allowed */
+struct set *
+_mesa_set_create_u32_keys(void *mem_ctx)
+{
+   return _mesa_set_create(NULL, key_u32_hash, key_u32_equals);
+}
+
 struct set *
 _mesa_set_clone(struct set *set, void *dst_mem_ctx)
 {
