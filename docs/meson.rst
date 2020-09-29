@@ -50,7 +50,7 @@ Windows
 
 You will need to install Python 3 and Meson as a module using pip. This
 is because we use Python for generating code, and rely on external
-modules (mako). You also need pkg-config (a hard dependency of Meson),
+modules (Mako). You also need pkg-config (a hard dependency of Meson),
 Flex, and Bison. The easiest way to install everything you need is with
 `chocolatey <https://chocolatey.org/>`__.
 
