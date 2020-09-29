@@ -464,17 +464,6 @@ end:
 }
 
 void
-tu_GetPhysicalDeviceFormatProperties(VkPhysicalDevice physicalDevice,
-                                     VkFormat format,
-                                     VkFormatProperties *pFormatProperties)
-{
-   TU_FROM_HANDLE(tu_physical_device, physical_device, physicalDevice);
-
-   tu_physical_device_get_format_properties(physical_device, format,
-                                            pFormatProperties);
-}
-
-void
 tu_GetPhysicalDeviceFormatProperties2(
    VkPhysicalDevice physicalDevice,
    VkFormat format,
@@ -647,32 +636,6 @@ unsupported:
    return VK_ERROR_FORMAT_NOT_SUPPORTED;
 }
 
-VkResult
-tu_GetPhysicalDeviceImageFormatProperties(
-   VkPhysicalDevice physicalDevice,
-   VkFormat format,
-   VkImageType type,
-   VkImageTiling tiling,
-   VkImageUsageFlags usage,
-   VkImageCreateFlags createFlags,
-   VkImageFormatProperties *pImageFormatProperties)
-{
-   TU_FROM_HANDLE(tu_physical_device, physical_device, physicalDevice);
-
-   const VkPhysicalDeviceImageFormatInfo2 info = {
-      .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_FORMAT_INFO_2,
-      .pNext = NULL,
-      .format = format,
-      .type = type,
-      .tiling = tiling,
-      .usage = usage,
-      .flags = createFlags,
-   };
-
-   return tu_get_image_format_properties(physical_device, &info,
-                                         pImageFormatProperties, NULL);
-}
-
 static VkResult
 tu_get_external_image_format_properties(
    const struct tu_physical_device *physical_device,
@@ -829,21 +792,6 @@ fail:
    }
 
    return result;
-}
-
-void
-tu_GetPhysicalDeviceSparseImageFormatProperties(
-   VkPhysicalDevice physicalDevice,
-   VkFormat format,
-   VkImageType type,
-   uint32_t samples,
-   VkImageUsageFlags usage,
-   VkImageTiling tiling,
-   uint32_t *pNumProperties,
-   VkSparseImageFormatProperties *pProperties)
-{
-   /* Sparse images are not yet supported. */
-   *pNumProperties = 0;
 }
 
 void

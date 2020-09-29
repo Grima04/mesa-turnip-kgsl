@@ -2881,9 +2881,9 @@ tu_subpass_barrier(struct tu_cmd_buffer *cmd_buffer,
 }
 
 void
-tu_CmdBeginRenderPass(VkCommandBuffer commandBuffer,
-                      const VkRenderPassBeginInfo *pRenderPassBegin,
-                      VkSubpassContents contents)
+tu_CmdBeginRenderPass2(VkCommandBuffer commandBuffer,
+                       const VkRenderPassBeginInfo *pRenderPassBegin,
+                       const VkSubpassBeginInfo *pSubpassBeginInfo)
 {
    TU_FROM_HANDLE(tu_cmd_buffer, cmd, commandBuffer);
    TU_FROM_HANDLE(tu_render_pass, pass, pRenderPassBegin->renderPass);
@@ -2918,16 +2918,9 @@ tu_CmdBeginRenderPass(VkCommandBuffer commandBuffer,
 }
 
 void
-tu_CmdBeginRenderPass2(VkCommandBuffer commandBuffer,
-                       const VkRenderPassBeginInfo *pRenderPassBeginInfo,
-                       const VkSubpassBeginInfoKHR *pSubpassBeginInfo)
-{
-   tu_CmdBeginRenderPass(commandBuffer, pRenderPassBeginInfo,
-                         pSubpassBeginInfo->contents);
-}
-
-void
-tu_CmdNextSubpass(VkCommandBuffer commandBuffer, VkSubpassContents contents)
+tu_CmdNextSubpass2(VkCommandBuffer commandBuffer,
+                   const VkSubpassBeginInfo *pSubpassBeginInfo,
+                   const VkSubpassEndInfo *pSubpassEndInfo)
 {
    TU_FROM_HANDLE(tu_cmd_buffer, cmd, commandBuffer);
    const struct tu_render_pass *pass = cmd->state.pass;
@@ -2978,14 +2971,6 @@ tu_CmdNextSubpass(VkCommandBuffer commandBuffer, VkSubpassContents contents)
    tu6_emit_render_cntl(cmd, cmd->state.subpass, cs, false);
 
    tu_set_input_attachments(cmd, cmd->state.subpass);
-}
-
-void
-tu_CmdNextSubpass2(VkCommandBuffer commandBuffer,
-                   const VkSubpassBeginInfoKHR *pSubpassBeginInfo,
-                   const VkSubpassEndInfoKHR *pSubpassEndInfo)
-{
-   tu_CmdNextSubpass(commandBuffer, pSubpassBeginInfo->contents);
 }
 
 static void
@@ -3839,7 +3824,8 @@ tu_CmdDispatchIndirect(VkCommandBuffer commandBuffer,
 }
 
 void
-tu_CmdEndRenderPass(VkCommandBuffer commandBuffer)
+tu_CmdEndRenderPass2(VkCommandBuffer commandBuffer,
+                     const VkSubpassEndInfoKHR *pSubpassEndInfo)
 {
    TU_FROM_HANDLE(tu_cmd_buffer, cmd_buffer, commandBuffer);
 
@@ -3867,13 +3853,6 @@ tu_CmdEndRenderPass(VkCommandBuffer commandBuffer)
    cmd_buffer->state.framebuffer = NULL;
    cmd_buffer->state.has_tess = false;
    cmd_buffer->state.has_subpass_predication = false;
-}
-
-void
-tu_CmdEndRenderPass2(VkCommandBuffer commandBuffer,
-                     const VkSubpassEndInfoKHR *pSubpassEndInfo)
-{
-   tu_CmdEndRenderPass(commandBuffer);
 }
 
 struct tu_barrier_info

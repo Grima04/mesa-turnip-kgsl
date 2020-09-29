@@ -367,12 +367,10 @@ tu_EnumeratePhysicalDeviceGroups(
 }
 
 void
-tu_GetPhysicalDeviceFeatures(VkPhysicalDevice physicalDevice,
-                             VkPhysicalDeviceFeatures *pFeatures)
+tu_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
+                              VkPhysicalDeviceFeatures2 *pFeatures)
 {
-   memset(pFeatures, 0, sizeof(*pFeatures));
-
-   *pFeatures = (VkPhysicalDeviceFeatures) {
+   pFeatures->features = (VkPhysicalDeviceFeatures) {
       .robustBufferAccess = true,
       .fullDrawIndexUint32 = true,
       .imageCubeArray = true,
@@ -419,12 +417,7 @@ tu_GetPhysicalDeviceFeatures(VkPhysicalDevice physicalDevice,
       .variableMultisampleRate = false,
       .inheritedQueries = false,
    };
-}
 
-void
-tu_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
-                              VkPhysicalDeviceFeatures2 *pFeatures)
-{
    vk_foreach_struct(ext, pFeatures->pNext)
    {
       switch (ext->sType) {
@@ -629,12 +622,11 @@ tu_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
          break;
       }
    }
-   return tu_GetPhysicalDeviceFeatures(physicalDevice, &pFeatures->features);
 }
 
 void
-tu_GetPhysicalDeviceProperties(VkPhysicalDevice physicalDevice,
-                               VkPhysicalDeviceProperties *pProperties)
+tu_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
+                                VkPhysicalDeviceProperties2 *pProperties)
 {
    TU_FROM_HANDLE(tu_physical_device, pdevice, physicalDevice);
    VkSampleCountFlags sample_counts =
@@ -757,7 +749,7 @@ tu_GetPhysicalDeviceProperties(VkPhysicalDevice physicalDevice,
       .nonCoherentAtomSize = 64,
    };
 
-   *pProperties = (VkPhysicalDeviceProperties) {
+   pProperties->properties = (VkPhysicalDeviceProperties) {
       .apiVersion = tu_physical_device_api_version(pdevice),
       .driverVersion = vk_get_driver_version(),
       .vendorID = 0, /* TODO */
@@ -767,16 +759,8 @@ tu_GetPhysicalDeviceProperties(VkPhysicalDevice physicalDevice,
       .sparseProperties = { 0 },
    };
 
-   strcpy(pProperties->deviceName, pdevice->name);
-   memcpy(pProperties->pipelineCacheUUID, pdevice->cache_uuid, VK_UUID_SIZE);
-}
-
-void
-tu_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
-                                VkPhysicalDeviceProperties2 *pProperties)
-{
-   TU_FROM_HANDLE(tu_physical_device, pdevice, physicalDevice);
-   tu_GetPhysicalDeviceProperties(physicalDevice, &pProperties->properties);
+   strcpy(pProperties->properties.deviceName, pdevice->name);
+   memcpy(pProperties->properties.pipelineCacheUUID, pdevice->cache_uuid, VK_UUID_SIZE);
 
    vk_foreach_struct(ext, pProperties->pNext)
    {
@@ -893,17 +877,6 @@ static const VkQueueFamilyProperties tu_queue_family_properties = {
 };
 
 void
-tu_GetPhysicalDeviceQueueFamilyProperties(
-   VkPhysicalDevice physicalDevice,
-   uint32_t *pQueueFamilyPropertyCount,
-   VkQueueFamilyProperties *pQueueFamilyProperties)
-{
-   VK_OUTARRAY_MAKE(out, pQueueFamilyProperties, pQueueFamilyPropertyCount);
-
-   vk_outarray_append(&out, p) { *p = tu_queue_family_properties; }
-}
-
-void
 tu_GetPhysicalDeviceQueueFamilyProperties2(
    VkPhysicalDevice physicalDevice,
    uint32_t *pQueueFamilyPropertyCount,
@@ -938,29 +911,21 @@ tu_get_system_heap_size()
 }
 
 void
-tu_GetPhysicalDeviceMemoryProperties(
-   VkPhysicalDevice physicalDevice,
-   VkPhysicalDeviceMemoryProperties *pMemoryProperties)
+tu_GetPhysicalDeviceMemoryProperties2(VkPhysicalDevice pdev,
+                                      VkPhysicalDeviceMemoryProperties2 *props2)
 {
-   pMemoryProperties->memoryHeapCount = 1;
-   pMemoryProperties->memoryHeaps[0].size = tu_get_system_heap_size();
-   pMemoryProperties->memoryHeaps[0].flags = VK_MEMORY_HEAP_DEVICE_LOCAL_BIT;
+   VkPhysicalDeviceMemoryProperties *props = &props2->memoryProperties;
 
-   pMemoryProperties->memoryTypeCount = 1;
-   pMemoryProperties->memoryTypes[0].propertyFlags =
+   props->memoryHeapCount = 1;
+   props->memoryHeaps[0].size = tu_get_system_heap_size();
+   props->memoryHeaps[0].flags = VK_MEMORY_HEAP_DEVICE_LOCAL_BIT;
+
+   props->memoryTypeCount = 1;
+   props->memoryTypes[0].propertyFlags =
       VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT |
       VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
       VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
-   pMemoryProperties->memoryTypes[0].heapIndex = 0;
-}
-
-void
-tu_GetPhysicalDeviceMemoryProperties2(
-   VkPhysicalDevice physicalDevice,
-   VkPhysicalDeviceMemoryProperties2 *pMemoryProperties)
-{
-   return tu_GetPhysicalDeviceMemoryProperties(
-      physicalDevice, &pMemoryProperties->memoryProperties);
+   props->memoryTypes[0].heapIndex = 0;
 }
 
 static VkResult
@@ -1316,20 +1281,6 @@ tu_GetDeviceQueue2(VkDevice _device,
    *pQueue = tu_queue_to_handle(queue);
 }
 
-void
-tu_GetDeviceQueue(VkDevice _device,
-                  uint32_t queueFamilyIndex,
-                  uint32_t queueIndex,
-                  VkQueue *pQueue)
-{
-   const VkDeviceQueueInfo2 info =
-      (VkDeviceQueueInfo2) { .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_INFO_2,
-                             .queueFamilyIndex = queueFamilyIndex,
-                             .queueIndex = queueIndex };
-
-   tu_GetDeviceQueue2(_device, &info, pQueue);
-}
-
 VkResult
 tu_QueueWaitIdle(VkQueue _queue)
 {
@@ -1573,38 +1524,18 @@ tu_InvalidateMappedMemoryRanges(VkDevice _device,
 }
 
 void
-tu_GetBufferMemoryRequirements(VkDevice _device,
-                               VkBuffer _buffer,
-                               VkMemoryRequirements *pMemoryRequirements)
-{
-   TU_FROM_HANDLE(tu_buffer, buffer, _buffer);
-
-   pMemoryRequirements->memoryTypeBits = 1;
-   pMemoryRequirements->alignment = 64;
-   pMemoryRequirements->size =
-      align64(buffer->size, pMemoryRequirements->alignment);
-}
-
-void
 tu_GetBufferMemoryRequirements2(
    VkDevice device,
    const VkBufferMemoryRequirementsInfo2 *pInfo,
    VkMemoryRequirements2 *pMemoryRequirements)
 {
-   tu_GetBufferMemoryRequirements(device, pInfo->buffer,
-                                  &pMemoryRequirements->memoryRequirements);
-}
+   TU_FROM_HANDLE(tu_buffer, buffer, pInfo->buffer);
 
-void
-tu_GetImageMemoryRequirements(VkDevice _device,
-                              VkImage _image,
-                              VkMemoryRequirements *pMemoryRequirements)
-{
-   TU_FROM_HANDLE(tu_image, image, _image);
-
-   pMemoryRequirements->memoryTypeBits = 1;
-   pMemoryRequirements->size = image->total_size;
-   pMemoryRequirements->alignment = image->layout[0].base_align;
+   pMemoryRequirements->memoryRequirements = (VkMemoryRequirements) {
+      .memoryTypeBits = 1,
+      .alignment = 64,
+      .size = align64(buffer->size, 64),
+   };
 }
 
 void
@@ -1612,18 +1543,13 @@ tu_GetImageMemoryRequirements2(VkDevice device,
                                const VkImageMemoryRequirementsInfo2 *pInfo,
                                VkMemoryRequirements2 *pMemoryRequirements)
 {
-   tu_GetImageMemoryRequirements(device, pInfo->image,
-                                 &pMemoryRequirements->memoryRequirements);
-}
+   TU_FROM_HANDLE(tu_image, image, pInfo->image);
 
-void
-tu_GetImageSparseMemoryRequirements(
-   VkDevice device,
-   VkImage image,
-   uint32_t *pSparseMemoryRequirementCount,
-   VkSparseImageMemoryRequirements *pSparseMemoryRequirements)
-{
-   tu_stub();
+   pMemoryRequirements->memoryRequirements = (VkMemoryRequirements) {
+      .memoryTypeBits = 1,
+      .alignment = image->layout[0].base_align,
+      .size = image->total_size
+   };
 }
 
 void
@@ -1664,22 +1590,6 @@ tu_BindBufferMemory2(VkDevice device,
 }
 
 VkResult
-tu_BindBufferMemory(VkDevice device,
-                    VkBuffer buffer,
-                    VkDeviceMemory memory,
-                    VkDeviceSize memoryOffset)
-{
-   const VkBindBufferMemoryInfo info = {
-      .sType = VK_STRUCTURE_TYPE_BIND_BUFFER_MEMORY_INFO,
-      .buffer = buffer,
-      .memory = memory,
-      .memoryOffset = memoryOffset
-   };
-
-   return tu_BindBufferMemory2(device, 1, &info);
-}
-
-VkResult
 tu_BindImageMemory2(VkDevice device,
                     uint32_t bindInfoCount,
                     const VkBindImageMemoryInfo *pBindInfos)
@@ -1701,22 +1611,6 @@ tu_BindImageMemory2(VkDevice device,
 }
 
 VkResult
-tu_BindImageMemory(VkDevice device,
-                   VkImage image,
-                   VkDeviceMemory memory,
-                   VkDeviceSize memoryOffset)
-{
-   const VkBindImageMemoryInfo info = {
-      .sType = VK_STRUCTURE_TYPE_BIND_BUFFER_MEMORY_INFO,
-      .image = image,
-      .memory = memory,
-      .memoryOffset = memoryOffset
-   };
-
-   return tu_BindImageMemory2(device, 1, &info);
-}
-
-VkResult
 tu_QueueBindSparse(VkQueue _queue,
                    uint32_t bindInfoCount,
                    const VkBindSparseInfo *pBindInfo,
@@ -1724,7 +1618,6 @@ tu_QueueBindSparse(VkQueue _queue,
 {
    return VK_SUCCESS;
 }
-
 
 VkResult
 tu_CreateEvent(VkDevice _device,

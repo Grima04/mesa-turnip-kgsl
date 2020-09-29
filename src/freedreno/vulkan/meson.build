@@ -49,6 +49,7 @@ libtu_files = files(
   'tu_descriptor_set.h',
   'tu_formats.c',
   'tu_image.c',
+  'tu_legacy.c',
   'tu_nir_lower_multiview.c',
   'tu_pass.c',
   'tu_pipeline.c',
