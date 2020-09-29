@@ -1119,7 +1119,7 @@ AssemblyFromShaderLegacyImpl::emit_index_reg(const Value& addr, unsigned idx)
       m_bc->index_loaded[idx] = true;
       sfn_log << SfnLog::assembly << "\n";
    }
-   return idx == 1 ? bim_zero : bim_one;
+   return idx == 0 ? bim_zero : bim_one;
 }
 
 bool AssemblyFromShaderLegacyImpl::copy_dst(r600_bytecode_alu_dst& dst,
