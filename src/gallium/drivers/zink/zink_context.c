@@ -1319,7 +1319,7 @@ static void
 zink_texture_barrier(struct pipe_context *pctx, unsigned flags)
 {
    struct zink_context *ctx = zink_context(pctx);
-   if (zink_curr_batch(ctx)->has_draw)
+   if (zink_curr_batch(ctx)->has_work)
       pctx->flush(pctx, NULL, 0);
    zink_flush_compute(ctx);
 }
@@ -1438,7 +1438,7 @@ zink_memory_barrier(struct pipe_context *pctx, unsigned flags)
    b.dstAccessMask = dflags;
 
    struct zink_batch *batch = zink_curr_batch(ctx);
-   if (batch->has_draw) {
+   if (batch->has_work) {
       zink_end_render_pass(ctx, batch);
 
       /* this should be the only call needed */
@@ -1446,7 +1446,7 @@ zink_memory_barrier(struct pipe_context *pctx, unsigned flags)
       flush_batch(ctx);
    }
    batch = &ctx->compute_batch;
-   if (batch->has_draw) {
+   if (batch->has_work) {
       /* this should be the only call needed */
       vkCmdPipelineBarrier(batch->cmdbuf, src, dst, 0, 0, &b, 0, NULL, 0, NULL);
       zink_end_batch(ctx, batch);

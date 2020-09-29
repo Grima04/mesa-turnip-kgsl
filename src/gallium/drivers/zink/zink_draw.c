@@ -919,7 +919,7 @@ zink_draw_vbo(struct pipe_context *pctx,
       }
       screen->vk_CmdEndTransformFeedbackEXT(batch->cmdbuf, 0, ctx->num_so_targets, counter_buffers, counter_buffer_offsets);
    }
-   batch->has_draw = true;
+   batch->has_work = true;
 }
 
 void
@@ -945,5 +945,5 @@ zink_launch_grid(struct pipe_context *pctx, const struct pipe_grid_info *info)
       zink_batch_reference_resource_rw(batch, zink_resource(info->indirect), false);
    } else
       vkCmdDispatch(batch->cmdbuf, info->grid[0], info->grid[1], info->grid[2]);
-   batch->has_draw = true;
+   batch->has_work = true;
 }
