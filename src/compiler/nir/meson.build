@@ -107,6 +107,7 @@ files_libnir = files(
   'nir_gather_xfb_info.c',
   'nir_gs_count_vertices.c',
   'nir_inline_functions.c',
+  'nir_inline_uniforms.c',
   'nir_instr_set.c',
   'nir_instr_set.h',
   'nir_linking_helpers.c',

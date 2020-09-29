@@ -4124,6 +4124,11 @@ void nir_inline_function_impl(struct nir_builder *b,
                               struct hash_table *shader_var_remap);
 bool nir_inline_functions(nir_shader *shader);
 
+void nir_find_inlinable_uniforms(nir_shader *shader);
+void nir_inline_uniforms(nir_shader *shader, unsigned num_uniforms,
+                         const uint32_t *uniform_values,
+                         const uint16_t *uniform_dw_offsets);
+
 bool nir_propagate_invariant(nir_shader *shader);
 
 void nir_lower_var_copy_instr(nir_intrinsic_instr *copy, nir_shader *shader);

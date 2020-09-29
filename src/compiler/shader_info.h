@@ -32,6 +32,8 @@
 extern "C" {
 #endif
 
+#define MAX_INLINABLE_UNIFORMS 4
+
 struct spirv_supported_capabilities {
    bool address;
    bool atomic_storage;
@@ -164,6 +166,9 @@ typedef struct shader_info {
 
    /* SPV_KHR_float_controls: execution mode for floating point ops */
    uint16_t float_controls_execution_mode;
+
+   uint16_t inlinable_uniform_dw_offsets[MAX_INLINABLE_UNIFORMS];
+   uint8_t num_inlinable_uniforms:4;
 
    /* The size of the gl_ClipDistance[] array, if declared. */
    uint8_t clip_distance_array_size:4;
