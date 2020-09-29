@@ -302,21 +302,8 @@ spec/arb_shader_ballot/execution/fs-readinvocation-uint: skip
 spec/arb_shader_ballot/execution/fs-readinvocation-uint-uniform: skip
 spec/arb_shader_clock/execution/clock: skip
 spec/arb_shader_clock/execution/clock2x32: skip
-spec/arb_shader_precision/fs-pow-float-float: fail
-spec/arb_shader_precision/fs-pow-vec2-vec2: fail
-spec/arb_shader_precision/fs-pow-vec3-vec3: fail
-spec/arb_shader_precision/fs-pow-vec4-vec4: fail
-spec/arb_shader_precision/gs-pow-float-float: fail
-spec/arb_shader_precision/gs-pow-vec2-vec2: fail
-spec/arb_shader_precision/gs-pow-vec3-vec3: fail
-spec/arb_shader_precision/gs-pow-vec4-vec4: fail
-spec/arb_shader_precision/vs-pow-float-float: fail
-spec/arb_shader_precision/vs-pow-vec2-vec2: fail
-spec/arb_shader_precision/vs-pow-vec3-vec3: fail
-spec/arb_shader_precision/vs-pow-vec4-vec4: fail
 spec/arb_shader_storage_buffer_object/execution/ssbo-atomiccompswap-int: fail
 spec/arb_shader_subroutine/execution/simple-subroutine-dlist: skip
-spec/arb_tessellation_shader/execution/built-in-functions/tcs-pow-float-float: fail
 spec/arb_tessellation_shader/execution/compatibility/tcs-tes-ff-frag: skip
 spec/arb_tessellation_shader/execution/compatibility/tes-clamp-vertex-color: skip
 spec/arb_tessellation_shader/execution/compatibility/tes-clip-vertex-different-from-position: skip
@@ -365,12 +352,9 @@ spec/ext_shader_framebuffer_fetch_non_coherent/execution/gles3/nonuniform-ms8: s
 spec/ext_shader_framebuffer_fetch_non_coherent/execution/gles3/simple-ms16: skip
 spec/ext_shader_framebuffer_fetch_non_coherent/execution/gles3/simple-ms8: skip
 spec/ext_shader_image_load_formatted/execution/image_checkerboard: skip
-spec/glsl-1.10/execution/built-in-functions/fs-pow-float-float: fail
-spec/glsl-1.10/execution/built-in-functions/vs-pow-float-float: fail
 spec/glsl-1.10/preprocessor/extension-defined-test: skip
 spec/glsl-1.10/preprocessor/extension-if-1: skip
 spec/glsl-1.30/execution/fs-texturegrad-miplevels: fail
-spec/glsl-1.50/execution/built-in-functions/gs-pow-float-float: fail
 spec/glsl-1.50/execution/compatibility/clipping/gs-clip-vertex-const-accept: skip
 spec/glsl-1.50/execution/compatibility/clipping/gs-clip-vertex-const-reject: skip
 spec/glsl-1.50/execution/compatibility/clipping/gs-clip-vertex-different-from-position: skip
@@ -491,7 +475,6 @@ spec/glsl-4.00/execution/inout/vs-out-fs-in-s2/2/2-vec3-double: crash
 spec/glsl-4.00/execution/inout/vs-out-fs-in-s2/3-double-float: crash
 spec/glsl-4.00/execution/inout/vs-out-fs-in-s2/3-dvec2-float: crash
 spec/glsl-4.00/execution/inout/vs-out-fs-in-s2/3-dvec3-float: crash
-spec/glsl-4.30/execution/built-in-functions/cs-pow-float-float: fail
 spec/glsl-4.50/execution/ssbo-atomiccompswap-int: fail
 spec/intel_shader_atomic_float_minmax/execution/shared-atomiccompswap-float: skip
 spec/intel_shader_atomic_float_minmax/execution/shared-atomicexchange-float: skip
@@ -586,8 +569,8 @@ spec/nv_viewport_swizzle/viewport_swizzle: skip
 summary:
        name:  results
        ----  --------
-       pass:    15790
-       fail:      100
+       pass:    15807
+       fail:       83
       crash:      170
        skip:      315
     timeout:        0

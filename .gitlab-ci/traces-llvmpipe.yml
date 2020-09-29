@@ -77,7 +77,7 @@ traces:
   - path: bgfx/09-hdr.rdc
     expectations:
       - device: gl-vmware-llvmpipe
-        checksum: 5cb45bd2636213242f9f2088ceb6ed67
+        checksum: 6bd4f501dfbee14fcea6912ced5a068d
   - path: bgfx/10-font.rdc
     expectations:
       - device: gl-vmware-llvmpipe
