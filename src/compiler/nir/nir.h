@@ -786,12 +786,6 @@ typedef struct nir_ssa_def {
    /** for debugging only, can be NULL */
    const char* name;
 
-   /** generic SSA definition index. */
-   unsigned index;
-
-   /** Ordered SSA definition index used by nir_liveness. */
-   unsigned live_index;
-
    /** Instruction which produces this SSA value. */
    nir_instr *parent_instr;
 
@@ -800,6 +794,9 @@ typedef struct nir_ssa_def {
 
    /** set of nir_ifs where this register is used as a condition */
    struct list_head if_uses;
+
+   /** generic SSA definition index. */
+   unsigned index;
 
    uint8_t num_components;
 
@@ -2841,7 +2838,6 @@ typedef enum {
     *
     * This includes:
     *
-    *   - nir_ssa_def::live_index
     *   - nir_block::live_in
     *   - nir_block::live_out
     *
