@@ -1486,26 +1486,9 @@ struct tu_query_pool
    struct tu_bo bo;
 };
 
-enum tu_semaphore_kind
-{
-   TU_SEMAPHORE_NONE,
-   TU_SEMAPHORE_SYNCOBJ,
-};
-
-struct tu_semaphore_part
-{
-   enum tu_semaphore_kind kind;
-   union {
-      uint32_t syncobj;
-   };
-};
-
-struct tu_semaphore
-{
+struct tu_semaphore {
    struct vk_object_base base;
-
-   struct tu_semaphore_part permanent;
-   struct tu_semaphore_part temporary;
+   uint32_t permanent, temporary;
 };
 
 void
