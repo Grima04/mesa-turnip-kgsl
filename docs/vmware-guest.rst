@@ -124,7 +124,7 @@ Begin by saving your current directory location:
       git clone git://anongit.freedesktop.org/git/mesa/vmwgfx
         
 
--  libdrm, a user-space library that interfaces with drm. Most distros
+-  libdrm, a user-space library that interfaces with DRM. Most distros
    ship with this but it's safest to install a newer version. To get the
    latest code from git:
 
