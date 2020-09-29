@@ -542,34 +542,30 @@ tu_ImportSemaphoreFdKHR(VkDevice _device,
 
 VkResult
 tu_GetSemaphoreFdKHR(VkDevice _device,
-                     const VkSemaphoreGetFdInfoKHR *pGetFdInfo,
+                     const VkSemaphoreGetFdInfoKHR *info,
                      int *pFd)
 {
    TU_FROM_HANDLE(tu_device, device, _device);
-   TU_FROM_HANDLE(tu_semaphore, sem, pGetFdInfo->semaphore);
+   TU_FROM_HANDLE(tu_semaphore, sem, info->semaphore);
    int ret;
-   uint32_t syncobj_handle = sem->temporary ?: sem->permanent;
 
-   switch(pGetFdInfo->handleType) {
-   case VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_FD_BIT:
-      ret = drmSyncobjHandleToFD(device->fd, syncobj_handle, pFd);
-      break;
-   case VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_SYNC_FD_BIT:
-      ret = drmSyncobjExportSyncFile(device->fd, syncobj_handle, pFd);
-      if (!ret) {
-         if (sem->temporary) {
-            semaphore_set_temporary(device, sem, 0);
-         } else {
-            drmSyncobjReset(device->fd, &syncobj_handle, 1);
-         }
-      }
-      break;
-   default:
-      unreachable("Unhandled semaphore handle type");
-   }
+   assert(info->handleType == VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_SYNC_FD_BIT ||
+          info->handleType == VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_FD_BIT);
 
+   struct drm_syncobj_handle handle = {
+      .handle = sem->temporary ?: sem->permanent,
+      .flags = COND(info->handleType == VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_SYNC_FD_BIT,
+                    DRM_SYNCOBJ_HANDLE_TO_FD_FLAGS_EXPORT_SYNC_FILE),
+      .fd = -1,
+   };
+   ret = ioctl(device->fd, DRM_IOCTL_SYNCOBJ_HANDLE_TO_FD, &handle);
    if (ret)
       return vk_error(device->instance, VK_ERROR_INVALID_EXTERNAL_HANDLE);
+
+   /* restore permanent payload on export */
+   semaphore_set_temporary(device, sem, 0);
+
+   *pFd = handle.fd;
    return VK_SUCCESS;
 }
 
