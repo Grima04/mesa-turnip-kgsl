@@ -516,18 +516,19 @@
   <struct name="Multisample, Misc" size="1">
     <field name="Sample mask" size="16" start="0" type="uint"/>
     <field name="Multisample enable" size="1" start="16" type="bool"/>
-    <!-- TODO 17 -->
+    <field name="Multisample late coverage" size="1" start="17" type="bool"/>
     <field name="Evaluate per-sample" size="1" start="18" type="bool"/>
     <field name="Unknown 1" size="1" start="19" type="bool"/>
     <field name="Unknown 2" size="1" start="20" type="bool"/>
     <field name="SFBD Load destination" size="1" start="21" type="bool"/>
     <field name="SFBD Blend shader" size="1" start="22" type="bool"/>
-    <!-- TODO 23 -->
+    <field name="SFBD Blend shader discard" size="1" start="23" type="bool"/>
     <field name="Depth function" size="3" start="24" type="Func"/>
     <field name="Depth write mask" size="1" start="27" type="bool"/>
-    <field name="Near discard" size="1" start="28" type="bool"/>
-    <field name="Far discard" size="1" start="29" type="bool"/>
-    <!-- TODO: 30-31 -->
+    <field name="Fixed-function near discard" size="1" start="28" type="bool"/>
+    <field name="Fixed-function far discard" size="1" start="29" type="bool"/>
+    <field name="Fragment near discard" size="1" start="30" type="bool"/>
+    <field name="Fragment far discard" size="1" start="31" type="bool"/>
   </struct>
 
   <struct name="Stencil Mask, Misc" size="1">
@@ -535,7 +536,8 @@
     <field name="Stencil mask back" size="8" start="8" type="uint"/>
     <field name="Stencil enable" size="1" start="16" type="bool"/>
     <field name="Alpha-to-coverage" size="1" start="17" type="bool"/>
-    <!-- TODO 18-19 -->
+    <field name="Alpha-to-coverage Invert" size="1" start="18" type="bool"/>
+    <field name="Alpha to one" size="1" start="19" type="bool"/>
     <field name="SFBD Write enable" size="1" start="20" type="bool"/>
     <field name="Unknown 1" size="3" start="21" type="uint"/>
     <field name="SFBD sRGB" size="1" start="24" type="bool"/>
@@ -544,7 +546,7 @@
     <field name="Depth Range 1" size="1" start="28" type="bool"/>
     <field name="Depth Range 2" size="1" start="29" type="bool"/>
     <field name="Single-sampled lines" size="1" start="30" type="bool"/>
-   <!-- TODO: 31 -->
+    <field name="Point snap" size="1" start="31" type="bool"/>
   </struct>
 
   <struct name="Stencil">
@@ -556,18 +558,18 @@
     <field name="Depth Pass" size="3" start="25" type="Stencil Op"/>
   </struct>
 
-  <struct name="State" with_opaque="true">
+  <struct name="Renderer State" with_opaque="true">
     <field name="Shader" size="128" start="0:0" type="Shader"/>
     <field name="Properties" size="32" start="4:0" type="uint"/>
     <field name="Depth units" size="32" start="5:0" type="float"/>
     <field name="Depth factor" size="32" start="6:0" type="float"/>
-    <!-- TODO: word 7 -->
+    <field name="Depth bias clamp" size="32" start="7:0" type="float"/>
     <field name="Multisample, Misc" size="32" start="8:0" type="Multisample, Misc"/>
     <field name="Stencil Mask, Misc" size="32" start="9:0" type="Stencil Mask, Misc"/>
     <field name="Stencil front" size="32" start="10:0" type="Stencil"/>
     <field name="Stencil back" size="32" start="11:0" type="Stencil"/>
     <field name="Preload" size="32" start="12:0" type="Preload"/>
-    <!--- TODO: word 13 -->
+    <field name="Thread Balancing" size="16" start="13:0" type="uint"/>
     <field name="SFBD Blend" size="64" start="14:0" type="uint"/>
   </struct>
 

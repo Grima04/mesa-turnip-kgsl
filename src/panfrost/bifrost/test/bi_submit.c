@@ -173,7 +173,7 @@ bit_vertex(struct panfrost_device *dev, panfrost_program prog,
                 cfg.wls_instances = MALI_LOCAL_STORAGE_NO_WORKGROUP_MEM;
         }
 
-        pan_pack(shader_desc->cpu, STATE, cfg) {
+        pan_pack(shader_desc->cpu, RENDERER_STATE, cfg) {
                 cfg.shader.shader = shader->gpu;
                 cfg.shader.attribute_count = cfg.shader.varying_count = 1;
                 cfg.properties = 0x800001;

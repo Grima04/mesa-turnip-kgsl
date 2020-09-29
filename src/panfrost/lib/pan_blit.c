@@ -238,7 +238,7 @@ panfrost_load_midg(
         struct mali_midgard_properties_packed properties;
 
         struct panfrost_transfer shader_meta_t = panfrost_pool_alloc_aligned(
-                pool, MALI_STATE_LENGTH + 8 * sizeof(struct midgard_blend_rt), 128);
+                pool, MALI_RENDERER_STATE_LENGTH + 8 * sizeof(struct midgard_blend_rt), 128);
 
         pan_pack(&properties, MIDGARD_PROPERTIES, cfg) {
                 cfg.work_register_count = 4;
@@ -249,7 +249,7 @@ panfrost_load_midg(
                         MALI_DEPTH_SOURCE_FIXED_FUNCTION;
         }
 
-        pan_pack(shader_meta_t.cpu, STATE, cfg) {
+        pan_pack(shader_meta_t.cpu, RENDERER_STATE, cfg) {
                 cfg.shader.shader = pool->dev->blit_shaders.loads[loc][T][ms];
                 cfg.shader.varying_count = 1;
                 cfg.shader.texture_count = 1;
@@ -318,7 +318,7 @@ panfrost_load_midg(
                 cfg.normalized_coordinates = false;
 
         for (unsigned i = 0; i < 8; ++i) {
-                void *dest = shader_meta_t.cpu + MALI_STATE_LENGTH + sizeof(struct midgard_blend_rt) * i;
+                void *dest = shader_meta_t.cpu + MALI_RENDERER_STATE_LENGTH + sizeof(struct midgard_blend_rt) * i;
 
                 if (loc == (FRAG_RESULT_DATA0 + i)) {
                         struct midgard_blend_rt blend_rt = {

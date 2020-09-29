@@ -356,8 +356,8 @@ panfrost_emit_blend(struct panfrost_batch *batch, void *rts,
 
 static void
 panfrost_emit_frag_shader(struct panfrost_context *ctx,
-                               struct mali_state_packed *fragmeta,
-                               struct panfrost_blend_final *blend)
+                          struct mali_renderer_state_packed *fragmeta,
+                          struct panfrost_blend_final *blend)
 {
         const struct panfrost_device *dev = pan_device(ctx->base.screen);
         struct panfrost_shader_state *fs = panfrost_get_shader_state(ctx, PIPE_SHADER_FRAGMENT);
@@ -456,8 +456,8 @@ panfrost_emit_frag_shader(struct panfrost_context *ctx,
                         MALI_FUNC_ALWAYS;
 
                 cfg.depth_write_mask = zsa->base.depth.writemask;
-                cfg.near_discard = rast->depth_clip_near;
-                cfg.far_discard = rast->depth_clip_far;
+                cfg.fixed_function_near_discard = rast->depth_clip_near;
+                cfg.fixed_function_far_discard = rast->depth_clip_far;
                 cfg.unknown_2 = true;
         }
 
@@ -500,7 +500,7 @@ panfrost_emit_frag_shader(struct panfrost_context *ctx,
                 }
         }
 
-        pan_pack(fragmeta, STATE_OPAQUE, cfg) {
+        pan_pack(fragmeta, RENDERER_STATE_OPAQUE, cfg) {
                 cfg.shader = fs->shader;
                 cfg.properties = properties;
                 cfg.depth_units = rast->offset_units * 2.0f;
@@ -565,8 +565,8 @@ panfrost_emit_frag_shader_meta(struct panfrost_batch *batch)
         else
                 rt_size = sizeof(struct midgard_blend_rt);
 
-        unsigned desc_size = MALI_STATE_LENGTH + rt_size * rt_count;
-        xfer = panfrost_pool_alloc_aligned(&batch->pool, desc_size, MALI_STATE_LENGTH);
+        unsigned desc_size = MALI_RENDERER_STATE_LENGTH + rt_size * rt_count;
+        xfer = panfrost_pool_alloc_aligned(&batch->pool, desc_size, MALI_RENDERER_STATE_LENGTH);
 
         struct panfrost_blend_final blend[PIPE_MAX_COLOR_BUFS];
         unsigned shader_offset = 0;
@@ -575,10 +575,10 @@ panfrost_emit_frag_shader_meta(struct panfrost_batch *batch)
         for (unsigned c = 0; c < ctx->pipe_framebuffer.nr_cbufs; ++c)
                 blend[c] = panfrost_get_blend_for_context(ctx, c, &shader_bo,
                                                           &shader_offset);
-        panfrost_emit_frag_shader(ctx, (struct mali_state_packed *) xfer.cpu, blend);
+        panfrost_emit_frag_shader(ctx, (struct mali_renderer_state_packed *) xfer.cpu, blend);
 
         if (!(dev->quirks & MIDGARD_SFBD))
-                panfrost_emit_blend(batch, xfer.cpu + MALI_STATE_LENGTH, blend);
+                panfrost_emit_blend(batch, xfer.cpu + MALI_RENDERER_STATE_LENGTH, blend);
         else
                 batch->draws |= PIPE_CLEAR_COLOR0;
 

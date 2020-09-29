@@ -1138,7 +1138,7 @@ pandecode_vertex_tiler_postfix_pre(
 
         if (p->state) {
                 struct pandecode_mapped_memory *smem = pandecode_find_mapped_gpu_mem_containing(p->state);
-                uint32_t *cl = pandecode_fetch_gpu_mem(smem, p->state, MALI_STATE_LENGTH);
+                uint32_t *cl = pandecode_fetch_gpu_mem(smem, p->state, MALI_RENDERER_STATE_LENGTH);
 
                 /* Disassemble ahead-of-time to get stats. Initialize with
                  * stats for the missing-shader case so we get validation
@@ -1155,12 +1155,12 @@ pandecode_vertex_tiler_postfix_pre(
                         .uniform_buffer_count = 0
                 };
 
-                pan_unpack(cl, STATE, state);
+                pan_unpack(cl, RENDERER_STATE, state);
 
                 if (state.shader.shader & ~0xF)
                         info = pandecode_shader_disassemble(state.shader.shader & ~0xF, job_no, job_type, is_bifrost, gpu_id);
 
-                DUMP_UNPACKED(STATE, state, "State:\n");
+                DUMP_UNPACKED(RENDERER_STATE, state, "State:\n");
                 pandecode_indent++;
 
                 /* Save for dumps */
@@ -1225,7 +1225,7 @@ pandecode_vertex_tiler_postfix_pre(
 
                 if (job_type == MALI_JOB_TYPE_TILER &&
                     (is_bifrost || p->fbd & MALI_FBD_TAG_IS_MFBD)) {
-                        void* blend_base = ((void *) cl) + MALI_STATE_LENGTH;
+                        void* blend_base = ((void *) cl) + MALI_RENDERER_STATE_LENGTH;
 
                         for (unsigned i = 0; i < fbd_info.rt_count; i++) {
                                 mali_ptr shader = 0;

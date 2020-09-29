@@ -106,10 +106,10 @@ pan_upload_shader_descriptor(struct panfrost_context *ctx,
         const struct panfrost_device *dev = pan_device(ctx->base.screen);
         struct mali_state_packed *out;
 
-        u_upload_alloc(ctx->state_uploader, 0, MALI_STATE_LENGTH, MALI_STATE_LENGTH,
+        u_upload_alloc(ctx->state_uploader, 0, MALI_RENDERER_STATE_LENGTH, MALI_RENDERER_STATE_LENGTH,
                         &state->upload.offset, &state->upload.rsrc, (void **) &out);
 
-        pan_pack(out, STATE_OPAQUE, cfg) {
+        pan_pack(out, RENDERER_STATE_OPAQUE, cfg) {
                 cfg.shader = state->shader;
                 memcpy(&cfg.properties, &state->properties, sizeof(state->properties));
 
