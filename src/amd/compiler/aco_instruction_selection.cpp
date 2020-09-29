@@ -3883,9 +3883,12 @@ Temp thread_id_in_threadgroup(isel_context *ctx)
    /* tid_in_tg = wave_id * wave_size + tid_in_wave */
 
    Builder bld(ctx->program, ctx->block);
+   Temp tid_in_wave = emit_mbcnt(ctx, bld.tmp(v1));
+
+   if (ctx->program->workgroup_size <= ctx->program->wave_size)
+      return tid_in_wave;
 
    Temp wave_id_in_tg = wave_id_in_threadgroup(ctx);
-   Temp tid_in_wave = emit_mbcnt(ctx, bld.tmp(v1));
    Temp num_pre_threads = bld.sop2(aco_opcode::s_lshl_b32, bld.def(s1), bld.def(s1, scc), wave_id_in_tg,
                                    Operand(ctx->program->wave_size == 64 ? 6u : 5u));
    return bld.vadd32(bld.def(v1), Operand(num_pre_threads), Operand(tid_in_wave));
