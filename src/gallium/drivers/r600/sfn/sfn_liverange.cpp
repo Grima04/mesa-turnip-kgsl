@@ -358,6 +358,11 @@ register_live_range temp_access::get_required_live_range()
          break;
    }
    result.is_array_elm = is_array_element;
+
+   /* This fixes a few tests, but it is not clear why. */
+   if (result.end != result.begin)
+      ++result.end;
+
    return result;
 }
 
