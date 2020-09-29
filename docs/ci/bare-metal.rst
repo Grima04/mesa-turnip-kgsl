@@ -7,9 +7,9 @@ Mesa.  Currently only "fastboot" and "ChromeOS Servo" devices are
 supported.
 
 In comparison with LAVA, this doesn't involve maintaining a separate
-webservice with its own job scheduler and replicating jobs between the
+web service with its own job scheduler and replicating jobs between the
 two.  It also places more of the board support in git, instead of
-webservice configuration.  On the other hand, the serial interactions
+web service configuration.  On the other hand, the serial interactions
 and bootloader support are more primitive.
 
 Requirements (fastboot)
