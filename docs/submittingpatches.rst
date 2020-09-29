@@ -26,8 +26,8 @@ Patch formatting
 ----------------
 
 -  Lines should be limited to 75 characters or less so that Git logs
-   displayed in 80-column terminals avoid line wrapping. Note that git
-   log uses 4 spaces of indentation (4 + 75 < 80).
+   displayed in 80-column terminals avoid line wrapping. Note that
+   ``git log`` uses 4 spaces of indentation (4 + 75 < 80).
 -  The first line should be a short, concise summary of the change
    prefixed with a module name. Examples:
 
