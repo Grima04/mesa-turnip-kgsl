@@ -58,7 +58,7 @@ Flex, and Bison. The easiest way to install everything you need is with
 
    choco install python3 winflexbison pkgconfiglite
 
-You can even use Chocolatey to install mingw and ninja (ninja can be
+You can even use Chocolatey to install mingw and Ninja (Ninja can be
 used with MSVC as well)
 
 .. code-block:: console
@@ -78,8 +78,8 @@ Meson.
 --------------
 
 The Meson program is used to configure the source directory and
-generates either a ninja build file or Visual Studio® build files. The
-latter must be enabled via the ``--backend`` switch, as ninja is the
+generates either a Ninja build file or Visual Studio® build files. The
+latter must be enabled via the ``--backend`` switch, as Ninja is the
 default backend on all operating systems.
 
 Meson only supports out-of-tree builds, and must be passed a directory
@@ -145,7 +145,7 @@ Windows specific instructions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 On windows you have a couple of choices for compilers. If you installed
-mingw with Chocolatey and want to use ninja you should be able to open
+mingw with Chocolatey and want to use Ninja you should be able to open
 any shell and follow the instructions above. If you want to you MSVC,
 clang-cl, or ICL (the Intel Compiler), read on.
 
@@ -155,7 +155,7 @@ an MSVC shell, and then override the compilers, either using a `native
 file <https://mesonbuild.com/Native-environments.html>`__, or with the
 CC and CXX environment variables.
 
-All of these compilers are tested and work with ninja, but if you want
+All of these compilers are tested and work with Ninja, but if you want
 visual studio integration or you just like msbuild, passing
 ``--backend=vs`` to Meson will generate a visual studio solution. If you
 want to use ICL or clang-cl with the vsbackend you will need Meson
