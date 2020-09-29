@@ -706,7 +706,6 @@ static void si_lower_nir(struct si_screen *sscreen, struct nir_shader *nir)
       NIR_PASS_V(nir, nir_opt_cse);
    }
 
-   NIR_PASS_V(nir, nir_lower_bool_to_int32);
    NIR_PASS_V(nir, nir_remove_dead_variables, nir_var_function_temp, NULL);
 
    if (sscreen->debug_flags & DBG(FS_CORRECT_DERIVS_AFTER_KILL))

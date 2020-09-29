@@ -1604,10 +1604,11 @@ static bool si_should_optimize_less(struct ac_llvm_compiler *compiler,
 
 static struct nir_shader *get_nir_shader(struct si_shader_selector *sel, bool *free_nir)
 {
+   nir_shader *nir;
    *free_nir = false;
 
    if (sel->nir) {
-      return sel->nir;
+      nir = sel->nir;
    } else if (sel->nir_binary) {
       struct pipe_screen *screen = &sel->screen->b;
       const void *options = screen->get_compiler_options(screen, PIPE_SHADER_IR_NIR,
@@ -1616,9 +1617,14 @@ static struct nir_shader *get_nir_shader(struct si_shader_selector *sel, bool *f
       struct blob_reader blob_reader;
       blob_reader_init(&blob_reader, sel->nir_binary, sel->nir_size);
       *free_nir = true;
-      return nir_deserialize(NULL, options, &blob_reader);
+      nir = nir_deserialize(NULL, options, &blob_reader);
+   } else {
+      return NULL;
    }
-   return NULL;
+
+   NIR_PASS_V(nir, nir_lower_bool_to_int32);
+
+   return nir;
 }
 
 static bool si_llvm_compile_shader(struct si_screen *sscreen, struct ac_llvm_compiler *compiler,
