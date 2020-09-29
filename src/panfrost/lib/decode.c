@@ -1124,14 +1124,14 @@ pandecode_vertex_tiler_postfix_pre(
         };
 
         if (is_bifrost)
-                pandecode_compute_fbd(p->shared & ~1, job_no);
-        else if (p->shared & MALI_FBD_TAG_IS_MFBD)
-                fbd_info = pandecode_mfbd_bfr((u64) ((uintptr_t) p->shared) & ~MALI_FBD_TAG_MASK,
+                pandecode_compute_fbd(p->fbd & ~1, job_no);
+        else if (p->fbd & MALI_FBD_TAG_IS_MFBD)
+                fbd_info = pandecode_mfbd_bfr((u64) ((uintptr_t) p->fbd) & ~MALI_FBD_TAG_MASK,
                                               job_no, false, job_type == MALI_JOB_TYPE_COMPUTE, is_bifrost, gpu_id);
         else if (job_type == MALI_JOB_TYPE_COMPUTE)
-                pandecode_compute_fbd((u64) (uintptr_t) p->shared, job_no);
+                pandecode_compute_fbd((u64) (uintptr_t) p->fbd, job_no);
         else
-                fbd_info = pandecode_sfbd((u64) (uintptr_t) p->shared, job_no, false, gpu_id);
+                fbd_info = pandecode_sfbd((u64) (uintptr_t) p->fbd, job_no, false, gpu_id);
 
         int varying_count = 0, attribute_count = 0, uniform_count = 0, uniform_buffer_count = 0;
         int texture_count = 0, sampler_count = 0;
@@ -1224,7 +1224,7 @@ pandecode_vertex_tiler_postfix_pre(
                  * per-RT descriptors */
 
                 if (job_type == MALI_JOB_TYPE_TILER &&
-                    (is_bifrost || p->shared & MALI_FBD_TAG_IS_MFBD)) {
+                    (is_bifrost || p->fbd & MALI_FBD_TAG_IS_MFBD)) {
                         void* blend_base = ((void *) cl) + MALI_STATE_LENGTH;
 
                         for (unsigned i = 0; i < fbd_info.rt_count; i++) {

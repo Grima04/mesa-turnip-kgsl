@@ -195,8 +195,8 @@ bit_vertex(struct panfrost_device *dev, panfrost_program prog,
         }
 
         pan_section_pack(&job, COMPUTE_JOB, DRAW, cfg) {
-                cfg.unknown_1 = 0x2;
-                cfg.shared = shmem->gpu;
+                cfg.draw_descriptor_is_64b = true;
+                cfg.thread_storage = shmem->gpu;
                 cfg.state = shader_desc->gpu;
                 cfg.push_uniforms = ubo->gpu + 1024;
                 cfg.uniform_buffers = ubo->gpu;

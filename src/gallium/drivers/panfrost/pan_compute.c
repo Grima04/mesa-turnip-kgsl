@@ -141,9 +141,11 @@ panfrost_launch_grid(struct pipe_context *pipe,
         }
 
         pan_section_pack(t.cpu, COMPUTE_JOB, DRAW, cfg) {
-                cfg.unknown_1 = (dev->quirks & IS_BIFROST) ? 0x2 : 0x6;
+                cfg.draw_descriptor_is_64b = true;
+                if (!(dev->quirks & IS_BIFROST))
+                        cfg.texture_descriptor_is_64b = true;
                 cfg.state = panfrost_emit_compute_shader_meta(batch, PIPE_SHADER_COMPUTE);
-                cfg.shared = panfrost_emit_shared_memory(batch, info);
+                cfg.thread_storage = panfrost_emit_shared_memory(batch, info);
                 cfg.uniform_buffers = panfrost_emit_const_buf(batch,
                                 PIPE_SHADER_COMPUTE, &cfg.push_uniforms);
                 cfg.textures = panfrost_emit_texture_descriptors(batch,

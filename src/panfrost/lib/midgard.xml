@@ -342,16 +342,21 @@
   </struct>
 
   <struct name="Draw" size="30">
-    <field name="Unknown 1" size="3" start="0:0" type="uint"/>
+    <field name="Four Components Per Vertex" size="1" start="0:0" type="bool"/>
+    <field name="Draw Descriptor Is 64b" size="1" start="0:1" type="bool"/>
+    <field name="Texture Descriptor Is 64b" size="1" start="0:2" type="bool"/>
     <field name="Occlusion query" size="2" start="0:3" type="Occlusion Mode" default="Disabled"/>
     <field name="Front face CCW" size="1" start="0:5" type="bool"/>
     <field name="Cull front face" size="1" start="0:6" type="bool"/>
     <field name="Cull back face" size="1" start="0:7" type="bool"/>
-    <!-- TODO 0:7-0:15 -->
-    <field name="Instances" size="8" start="0:16" type="padded" default="1"/>
-    <!-- TODO: 0:16-0:24 -->
+    <field name="Flat Shading Vertex" size="1" start="0:8" type="uint"/>
+    <field name="Exclude Filtered Perf Counters" size="1" start="0:9" type="bool"/>
+    <field name="Primitive Barrier" size="1" start="0:10" type="bool"/>
+    <field name="Clean Fragment Write" size="1" start="0:11" type="bool"/>
+    <field name="Instance Size" size="8" start="0:16" type="padded" default="1"/>
+    <field name="Instance Primitive Size" size="8" start="0:24" type="padded" default="1"/>
     <field name="Offset start" size="32" start="1:0" type="uint"/>
-    <!-- TODO: 2-3 -->
+    <field name="Primitive Index Base" size="32" start="2:0" type="uint"/>
     <field name="Position" size="64" start="4:0" type="address"/>
     <field name="Uniform buffers" size="64" start="6:0" type="address"/>
     <field name="Textures" size="64" start="8:0" type="address"/>
@@ -364,7 +369,8 @@
     <field name="Varyings" size="64" start="22:0" type="address"/>
     <field name="Viewport" size="64" start="24:0" type="address"/>
     <field name="Occlusion" size="64" start="26:0" type="address"/>
-    <field name="Shared" size="64" start="28:0" type="address"/>
+    <field name="Thread Storage" size="64" start="28:0" type="address"/>
+    <field name="FBD" size="64" start="28:0" type="address"/>
   </struct>
 
   <struct name="Midgard Sampler">

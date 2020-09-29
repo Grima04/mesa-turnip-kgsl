@@ -346,7 +346,9 @@ panfrost_load_midg(
                 panfrost_pool_alloc_aligned(pool, MALI_MIDGARD_TILER_JOB_LENGTH, 64);
 
         pan_section_pack(t.cpu, MIDGARD_TILER_JOB, DRAW, cfg) {
-                cfg.unknown_1 = 0x7;
+                cfg.four_components_per_vertex = true;
+                cfg.draw_descriptor_is_64b = true;
+                cfg.texture_descriptor_is_64b = true;
                 cfg.position = coordinates;
                 cfg.textures = panfrost_pool_upload(pool, &texture_t.gpu, sizeof(texture_t.gpu));
                 cfg.samplers = sampler.gpu;
@@ -354,7 +356,7 @@ panfrost_load_midg(
                 cfg.varying_buffers = varying_buffer.gpu;
                 cfg.varyings = varying.gpu;
                 cfg.viewport = viewport.gpu;
-                cfg.shared = fbd;
+                cfg.fbd = fbd;
         }
 
         pan_section_pack(t.cpu, MIDGARD_TILER_JOB, PRIMITIVE, cfg) {
