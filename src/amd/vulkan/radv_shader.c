@@ -762,8 +762,7 @@ radv_lower_io(struct radv_device *device, nir_shader *nir)
 
 	/* TODO: Lower IO for all stages with LLVM. */
 	if ((nir->info.stage == MESA_SHADER_VERTEX ||
-	     nir->info.stage == MESA_SHADER_TESS_CTRL ||
-	     nir->info.stage == MESA_SHADER_TESS_EVAL) &&
+	     nir->info.stage == MESA_SHADER_TESS_CTRL) &&
 	    radv_use_llvm_for_stage(device, nir->info.stage))
 		return;
 

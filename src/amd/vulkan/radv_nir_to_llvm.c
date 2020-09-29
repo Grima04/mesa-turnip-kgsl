@@ -686,25 +686,16 @@ load_tes_input(struct ac_shader_abi *abi,
 	LLVMValueRef buf_addr;
 	LLVMValueRef result;
 	LLVMValueRef oc_lds = ac_get_arg(&ctx->ac, ctx->args->oc_lds);
-	unsigned param = shader_io_get_unique_index(location);
-
-	if ((location == VARYING_SLOT_CLIP_DIST0 || location == VARYING_SLOT_CLIP_DIST1) && is_compact) {
-		const_index += component;
-		component = 0;
-		if (const_index >= 4) {
-			const_index -= 4;
-			param++;
-		}
-	}
+	unsigned param = shader_io_get_unique_index(driver_location / 4);
 
 	buf_addr = get_tcs_tes_buffer_address_params(ctx, param, const_index,
-						     is_compact, vertex_index, param_index);
+						     false, vertex_index, param_index);
 
 	LLVMValueRef comp_offset = LLVMConstInt(ctx->ac.i32, component * 4, false);
 	buf_addr = LLVMBuildAdd(ctx->ac.builder, buf_addr, comp_offset, "");
 
 	result = ac_build_buffer_load(&ctx->ac, ctx->hs_ring_tess_offchip, num_components, NULL,
-				      buf_addr, oc_lds, is_compact ? (4 * const_index) : 0, ac_glc, true, false);
+				      buf_addr, oc_lds, 0, ac_glc, true, false);
 	result = ac_trim_vector(&ctx->ac, result, num_components);
 	return result;
 }
