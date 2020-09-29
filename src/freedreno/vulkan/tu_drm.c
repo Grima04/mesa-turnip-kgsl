@@ -439,8 +439,10 @@ tu_enumerate_devices(struct tu_instance *instance)
 static void
 semaphore_set_temporary(struct tu_device *device, struct tu_semaphore *sem, uint32_t syncobj)
 {
-   if (sem->temporary)
-      drmSyncobjDestroy(device->fd, sem->temporary);
+   if (sem->temporary) {
+      ioctl(device->fd, DRM_IOCTL_SYNCOBJ_DESTROY,
+            &(struct drm_syncobj_destroy) { .handle = sem->temporary });
+   }
    sem->temporary = syncobj;
 }
 
@@ -458,11 +460,14 @@ tu_CreateSemaphore(VkDevice _device,
    if (!sem)
       return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
-   if (drmSyncobjCreate(device->fd, 0, &sem->permanent) < 0) {
-         vk_free2(&device->vk.alloc, pAllocator, sem);
-         return VK_ERROR_OUT_OF_HOST_MEMORY;
+   struct drm_syncobj_create create = {};
+   int ret = ioctl(device->fd, DRM_IOCTL_SYNCOBJ_CREATE, &create);
+   if (ret) {
+      vk_free2(&device->vk.alloc, pAllocator, sem);
+      return VK_ERROR_OUT_OF_HOST_MEMORY;
    }
 
+   sem->permanent = create.handle;
    sem->temporary = 0;
 
    *pSemaphore = tu_semaphore_to_handle(sem);
@@ -480,7 +485,8 @@ tu_DestroySemaphore(VkDevice _device,
       return;
 
    semaphore_set_temporary(device, sem, 0);
-   drmSyncobjDestroy(device->fd, sem->permanent);
+   ioctl(device->fd, DRM_IOCTL_SYNCOBJ_DESTROY,
+         &(struct drm_syncobj_destroy) { .handle = sem->permanent });
 
    vk_object_free(&device->vk, pAllocator, sem);
 }
