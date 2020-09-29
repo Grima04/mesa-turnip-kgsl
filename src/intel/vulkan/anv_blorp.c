@@ -819,12 +819,19 @@ blit_image(struct anv_cmd_buffer *cmd_buffer,
       }
 
       bool flip_z = flip_coords(&src_start, &src_end, &dst_start, &dst_end);
-      float src_z_step = (float)(src_end + 1 - src_start) /
-         (float)(dst_end + 1 - dst_start);
+      const unsigned num_layers = dst_end - dst_start;
+      float src_z_step = (float)(src_end - src_start) / (float)num_layers;
+
+      /* There is no interpolation to the pixel center during rendering, so
+       * add the 0.5 offset ourselves here. */
+      float depth_center_offset = 0;
+      if (src_image->type == VK_IMAGE_TYPE_3D)
+         depth_center_offset = 0.5 / num_layers * (src_end - src_start);
 
       if (flip_z) {
          src_start = src_end;
          src_z_step *= -1;
+         depth_center_offset *= -1;
       }
 
       unsigned src_x0 = region->srcOffsets[0].x;
@@ -839,7 +846,6 @@ blit_image(struct anv_cmd_buffer *cmd_buffer,
       unsigned dst_y1 = region->dstOffsets[1].y;
       bool flip_y = flip_coords(&src_y0, &src_y1, &dst_y0, &dst_y1);
 
-      const unsigned num_layers = dst_end - dst_start;
       anv_cmd_buffer_mark_image_written(cmd_buffer, dst_image,
                                         1U << aspect_bit,
                                         dst.aux_usage,
@@ -848,7 +854,7 @@ blit_image(struct anv_cmd_buffer *cmd_buffer,
 
       for (unsigned i = 0; i < num_layers; i++) {
          unsigned dst_z = dst_start + i;
-         unsigned src_z = src_start + i * src_z_step;
+         float src_z = src_start + i * src_z_step + depth_center_offset;
 
          blorp_blit(batch, &src, src_res->mipLevel, src_z,
                     src_format.isl_format, src_format.swizzle,
@@ -870,7 +876,6 @@ void anv_CmdBlitImage(
     uint32_t                                    regionCount,
     const VkImageBlit*                          pRegions,
     VkFilter                                    filter)
-
 {
    ANV_FROM_HANDLE(anv_cmd_buffer, cmd_buffer, commandBuffer);
    ANV_FROM_HANDLE(anv_image, src_image, srcImage);
