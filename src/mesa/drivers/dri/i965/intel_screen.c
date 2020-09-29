@@ -68,10 +68,9 @@ DRI_CONF_BEGIN
    DRI_CONF_SECTION_QUALITY
       DRI_CONF_PRECISE_TRIG("false")
 
-      DRI_CONF_OPT_BEGIN(clamp_max_samples, int, -1)
-              DRI_CONF_DESC("Clamp the value of GL_MAX_SAMPLES to the "
-                            "given integer. If negative, then do not clamp.")
-      DRI_CONF_OPT_END
+      DRI_CONF_OPT_I(clamp_max_samples, -1, 0, 0,
+                     "Clamp the value of GL_MAX_SAMPLES to the "
+                     "given integer. If negative, then do not clamp.")
    DRI_CONF_SECTION_END
 
    DRI_CONF_SECTION_DEBUG
