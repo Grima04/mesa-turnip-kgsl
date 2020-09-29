@@ -699,7 +699,7 @@ static LLVMValueRef do_alu_action(struct lp_build_nir_context *bld_base,
       break;
    case nir_op_imul_high: {
       LLVMValueRef hi_bits;
-      lp_build_mul_32_lohi(&bld_base->int_bld, src[0], src[1], &hi_bits);
+      lp_build_mul_32_lohi(get_int_bld(bld_base, false, src_bit_size[0]), src[0], src[1], &hi_bits);
       result = hi_bits;
       break;
    }
@@ -818,7 +818,7 @@ static LLVMValueRef do_alu_action(struct lp_build_nir_context *bld_base,
       break;
    case nir_op_umul_high: {
       LLVMValueRef hi_bits;
-      lp_build_mul_32_lohi(&bld_base->uint_bld, src[0], src[1], &hi_bits);
+      lp_build_mul_32_lohi(get_int_bld(bld_base, true, src_bit_size[0]), src[0], src[1], &hi_bits);
       result = hi_bits;
       break;
    }
