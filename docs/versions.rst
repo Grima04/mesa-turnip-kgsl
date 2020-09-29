@@ -1366,7 +1366,7 @@ Bug fixes:
 -  fixed bug in GL_IBM_rasterpos_clip (missing return)
 -  GL_DEPTH_TEXTURE_MODE = GL_ALPHA didn't work correctly
 -  a few Solaris compilation fixes
--  fixed glClear() problem for DRI drivers (non-existant stencil, etc)
+-  fixed glClear() problem for DRI drivers (non-existent stencil, etc)
 -  fixed int/REAL mixup in GLU NURBS curve evaluator (Eric Cazeaux)
 -  fixed delete [] bug in SI GLU (bug 721765) (Diego Santa Cruz)
 -  glFog() didn't clamp fog colors
