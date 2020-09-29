@@ -10769,19 +10769,19 @@ Temp ngg_pack_prim_exp_arg(isel_context *ctx, unsigned num_vertices, const Temp 
       assert(vtxindex[i].id());
 
       if (i)
-         tmp = bld.vop3(aco_opcode::v_lshl_add_u32, bld.def(v1), vtxindex[i], Operand(10u * i), tmp);
+         tmp = bld.vop3(aco_opcode::v_lshl_or_b32, bld.def(v1), vtxindex[i], Operand(10u * i), tmp);
       else
          tmp = vtxindex[i];
 
       /* The initial edge flag is always false in tess eval shaders. */
       if (ctx->stage == ngg_vertex_gs) {
-         Temp edgeflag = bld.vop3(aco_opcode::v_bfe_u32, bld.def(v1), gs_invocation_id, Operand(8 + i), Operand(1u));
-         tmp = bld.vop3(aco_opcode::v_lshl_add_u32, bld.def(v1), edgeflag, Operand(10u * i + 9u), tmp);
+         Temp edgeflag = bld.vop3(aco_opcode::v_bfe_u32, bld.def(v1), gs_invocation_id, Operand(8u + i), Operand(1u));
+         tmp = bld.vop3(aco_opcode::v_lshl_or_b32, bld.def(v1), edgeflag, Operand(10u * i + 9u), tmp);
       }
    }
 
    if (is_null.id())
-      tmp = bld.vop3(aco_opcode::v_lshl_add_u32, bld.def(v1), is_null, Operand(31u), tmp);
+      tmp = bld.vop3(aco_opcode::v_lshl_or_b32, bld.def(v1), is_null, Operand(31u), tmp);
 
    return tmp;
 }
