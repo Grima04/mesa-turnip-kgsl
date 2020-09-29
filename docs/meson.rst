@@ -230,9 +230,9 @@ LLVM
 Meson includes upstream logic to wrap llvm-config using its standard
 dependency interface.
 
-As of Meson 0.51.0 Meson can use cmake to find LLVM (the cmake finder
+As of Meson 0.51.0 Meson can use CMake to find LLVM (the CMake finder
 was added in Meson 0.49.0, but LLVM cannot be found until 0.51) Due to
-the way LLVM implements its cmake finder it will only find static
+the way LLVM implements its CMake finder it will only find static
 libraries, it will never find libllvm.so. There is also a
 ``-Dcmake_module_path`` option in this Meson version, which points to
 the root of an alternative installation (the prefix). For example:
@@ -293,7 +293,7 @@ Then configure Meson:
 See the :ref:`Cross Compilation <cross-compilation>` section for more
 information.
 
-On Windows (and in other cases), using llvm-config or cmake may be
+On Windows (and in other cases), using llvm-config or CMake may be
 either undesirable or impossible. Meson's solution for this is a
 `wrap <https://mesonbuild.com/Wrap-dependency-system-manual.html>`__, in
 this case a "binary wrap". Follow the steps below:
