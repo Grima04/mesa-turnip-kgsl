@@ -170,10 +170,8 @@ bool FragmentShaderFromNir::do_allocate_reserved_registers()
       m_interpolator[5].enabled = true; /* linear */
    }
 
-   if (m_enable_sample_interpolators) {
-      m_interpolator[0].enabled = true; /* perspective */
-      m_interpolator[3].enabled = true; /* linear */
-   }
+   if (m_enable_sample_interpolators)
+      m_interpolator[1].enabled = true; /* perspective */
 
    // sort the varying inputs
    m_shaderio.sort_varying_inputs();
@@ -467,8 +465,7 @@ bool FragmentShaderFromNir::emit_interp_deref_at_sample(nir_intrinsic_instr* ins
 
    auto& io = m_shaderio.input(var->data.driver_location, var->data.location_frac);
 
-   int ij_index = io.ij_index() >= 3 ? 3 : 0;
-   auto interpolator = m_interpolator[ij_index];
+   auto interpolator = m_interpolator[1];
    assert(interpolator.enabled);
    PValue dummy(new GPRValue(interpolator.i->sel(), 0));
 
@@ -607,7 +604,9 @@ bool FragmentShaderFromNir::do_emit_load_deref(const nir_variable *in_var, nir_i
    auto dst = vec_from_nir(instr->dest, 4);
 
    sfn_log << SfnLog::io << "Set input[" << in_var->data.driver_location
-           << "].gpr=" << dst.sel() << "\n";
+           << "].gpr=" << dst.sel()
+           << " interp=" << io.ij_index()
+           << "\n";
 
    io.set_gpr(dst.sel());
 
