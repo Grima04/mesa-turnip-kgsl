@@ -2260,7 +2260,9 @@ add_const_offset_to_base_block(nir_block *block, nir_builder *b,
           ((modes & nir_var_shader_out) && is_output(intrin))) {
          nir_src *offset = nir_get_io_offset_src(intrin);
 
-         if (nir_src_is_const(*offset)) {
+         /* TODO: Better handling of per-view variables here */
+         if (nir_src_is_const(*offset) &&
+             !nir_intrinsic_io_semantics(intrin).per_view) {
             unsigned off = nir_src_as_uint(*offset);
 
             nir_intrinsic_set_base(intrin, nir_intrinsic_base(intrin) + off);
