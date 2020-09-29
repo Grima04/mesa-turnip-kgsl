@@ -116,7 +116,7 @@ To build Mesa with SCons on Linux or Windows do
 
 The build output will be placed in
 build/\ *platform*-*machine*-*debug*/..., where *platform* is for
-example linux or windows, *machine* is x86 or x86_64, optionally
+example Linux or windows, *machine* is x86 or x86_64, optionally
 followed by -debug for debug builds.
 
 To build Mesa with SCons for Windows on Linux using the MinGW
