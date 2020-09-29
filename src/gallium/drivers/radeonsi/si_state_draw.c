@@ -2032,6 +2032,14 @@ static void si_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *i
       sctx->do_update_shaders = true;
    }
 
+   if (sctx->shader_has_inlinable_uniforms_mask &
+       sctx->inlinable_uniforms_valid_mask &
+       sctx->inlinable_uniforms_dirty_mask) {
+      sctx->do_update_shaders = true;
+      /* If inlinable uniforms are not valid, they are also not dirty, so clear all bits. */
+      sctx->inlinable_uniforms_dirty_mask = 0;
+   }
+
    if (unlikely(sctx->do_update_shaders && !si_update_shaders(sctx)))
       goto return_cleanup;
 

@@ -418,6 +418,7 @@ struct si_shader_selector {
    struct pipe_stream_output_info so;
    struct si_shader_info info;
 
+   enum pipe_shader_type pipe_shader_type;
    ubyte const_and_shader_buf_descriptors_index;
    ubyte sampler_and_images_descriptors_index;
    bool vs_needs_prolog;
@@ -672,6 +673,9 @@ struct si_shader_key {
       unsigned cs_cull_back : 1;
       unsigned cs_cull_z : 1;
       unsigned cs_halfz_clip_space : 1;
+      unsigned inline_uniforms:1;
+
+      uint32_t inlined_uniform_values[MAX_INLINABLE_UNIFORMS];
    } opt;
 };
 
@@ -847,6 +851,7 @@ struct si_shader *si_generate_gs_copy_shader(struct si_screen *sscreen,
 
 /* si_shader_nir.c */
 void si_nir_scan_shader(const struct nir_shader *nir, struct si_shader_info *info);
+void si_nir_opts(struct si_screen *sscreen, struct nir_shader *nir, bool first);
 void si_finalize_nir(struct pipe_screen *screen, void *nirptr, bool optimize);
 
 /* si_state_shaders.c */

@@ -428,7 +428,7 @@ static bool si_alu_to_scalar_filter(const nir_instr *instr, const void *data)
    return true;
 }
 
-static void si_nir_opts(struct si_screen *sscreen, struct nir_shader *nir, bool first)
+void si_nir_opts(struct si_screen *sscreen, struct nir_shader *nir, bool first)
 {
    bool progress;
 
@@ -723,4 +723,7 @@ void si_finalize_nir(struct pipe_screen *screen, void *nirptr, bool optimize)
    si_lower_io(nir);
    si_lower_nir(sscreen, nir);
    nir_shader_gather_info(nir, nir_shader_get_entrypoint(nir));
+
+   if (sscreen->options.inline_uniforms)
+      nir_find_inlinable_uniforms(nir);
 }
