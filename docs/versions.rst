@@ -999,7 +999,7 @@ Bug fixes:
 -  fixed segfaults in FX and X drivers when using tex unit 1 but not 0
 -  GL_NAND logicop didn't work right in RGBA mode
 -  fixed a memory corruption bug in vertex buffer reset code
--  clearing the softwara alpha buffer with scissoring was broken
+-  clearing the software alpha buffer with scissoring was broken
 -  fixed a few color index mode fog bugs
 -  fixed some bad assertions in color index mode
 -  fixed FX line 'stipple' bug #420091
