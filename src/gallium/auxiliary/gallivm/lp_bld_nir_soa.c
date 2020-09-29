@@ -1431,6 +1431,7 @@ static void emit_sysval_intrin(struct lp_build_nir_context *bld_base,
 {
    struct lp_build_nir_soa_context *bld = (struct lp_build_nir_soa_context *)bld_base;
    struct gallivm_state *gallivm = bld_base->base.gallivm;
+   struct lp_build_context *bld_broad = get_int_bld(bld_base, true, instr->dest.ssa.bit_size);
    switch (instr->intrinsic) {
    case nir_intrinsic_load_instance_id:
       result[0] = lp_build_broadcast_scalar(&bld_base->uint_bld, bld->system_values.instance_id);
@@ -1447,18 +1448,30 @@ static void emit_sysval_intrin(struct lp_build_nir_context *bld_base,
    case nir_intrinsic_load_primitive_id:
       result[0] = bld->system_values.prim_id;
       break;
-   case nir_intrinsic_load_work_group_id:
-      for (unsigned i = 0; i < 3; i++)
-         result[i] = lp_build_broadcast_scalar(&bld_base->uint_bld, LLVMBuildExtractElement(gallivm->builder, bld->system_values.block_id, lp_build_const_int32(gallivm, i), ""));
+   case nir_intrinsic_load_work_group_id: {
+      LLVMValueRef tmp[3];
+      for (unsigned i = 0; i < 3; i++) {
+         tmp[i] = LLVMBuildExtractElement(gallivm->builder, bld->system_values.block_id, lp_build_const_int32(gallivm, i), "");
+         if (instr->dest.ssa.bit_size == 64)
+            tmp[i] = LLVMBuildZExt(gallivm->builder, tmp[i], bld_base->uint64_bld.elem_type, "");
+         result[i] = lp_build_broadcast_scalar(bld_broad, tmp[i]);
+      }
       break;
+   }
    case nir_intrinsic_load_local_invocation_id:
       for (unsigned i = 0; i < 3; i++)
          result[i] = LLVMBuildExtractValue(gallivm->builder, bld->system_values.thread_id, i, "");
       break;
-   case nir_intrinsic_load_num_work_groups:
-      for (unsigned i = 0; i < 3; i++)
-         result[i] = lp_build_broadcast_scalar(&bld_base->uint_bld, LLVMBuildExtractElement(gallivm->builder, bld->system_values.grid_size, lp_build_const_int32(gallivm, i), ""));
+   case nir_intrinsic_load_num_work_groups: {
+      LLVMValueRef tmp[3];
+      for (unsigned i = 0; i < 3; i++) {
+         tmp[i] = LLVMBuildExtractElement(gallivm->builder, bld->system_values.grid_size, lp_build_const_int32(gallivm, i), "");
+         if (instr->dest.ssa.bit_size == 64)
+            tmp[i] = LLVMBuildZExt(gallivm->builder, tmp[i], bld_base->uint64_bld.elem_type, "");
+         result[i] = lp_build_broadcast_scalar(bld_broad, tmp[i]);
+      }
       break;
+   }
    case nir_intrinsic_load_invocation_id:
       if (bld_base->shader->info.stage == MESA_SHADER_TESS_CTRL)
          result[0] = bld->system_values.invocation_id;
