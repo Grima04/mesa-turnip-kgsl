@@ -70,7 +70,7 @@ Prerequisites
 
 -  Kernel version at least 2.6.25
 -  Xserver version at least 1.7
--  Ubuntu: For ubuntu you need to install a number of build
+-  Ubuntu: For Ubuntu you need to install a number of build
    dependencies.
 
    ::
