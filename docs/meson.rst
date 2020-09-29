@@ -156,8 +156,8 @@ file <https://mesonbuild.com/Native-environments.html>`__, or with the
 CC and CXX environment variables.
 
 All of these compilers are tested and work with Ninja, but if you want
-visual studio integration or you just like msbuild, passing
-``--backend=vs`` to Meson will generate a visual studio solution. If you
+Visual Studio integration or you just like msbuild, passing
+``--backend=vs`` to Meson will generate a Visual Studio solution. If you
 want to use ICL or clang-cl with the vsbackend you will need Meson
 0.52.0 or greater. Older versions always use the Microsoft compiler.
 

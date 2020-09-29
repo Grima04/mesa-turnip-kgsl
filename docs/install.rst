@@ -94,7 +94,7 @@ The general approach is:
      ninja -C builddir/
      sudo ninja -C builddir/ install
 
-On Windows you can also use the visual studio backend
+On Windows you can also use the Visual Studio backend
 
 ::
 
