@@ -75,7 +75,7 @@
          .name = #_name,                                        \
          .type = DRI_BOOL,                                      \
       },                                                        \
-      .value = { ._string = (char *)def },                      \
+      .value = { ._bool = def },                                \
    },
 
 #define DRI_CONF_OPT_I(_name, def, min, max, _desc) {           \

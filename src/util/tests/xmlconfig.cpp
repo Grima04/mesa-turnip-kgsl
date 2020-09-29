@@ -49,8 +49,8 @@ TEST_F(xmlconfig_test, bools)
 {
    driOptionDescription driconf[] = {
       DRI_CONF_SECTION_MISCELLANEOUS
-      DRI_CONF_GLSL_ZERO_INIT("false")
-      DRI_CONF_ALWAYS_HAVE_DEPTH_BUFFER("true")
+      DRI_CONF_GLSL_ZERO_INIT(false)
+      DRI_CONF_ALWAYS_HAVE_DEPTH_BUFFER(true)
    };
    driParseOptionInfo(&options, driconf, ARRAY_SIZE(driconf));
 
@@ -106,8 +106,8 @@ TEST_F(xmlconfig_test, check_option)
 {
    driOptionDescription driconf[] = {
       DRI_CONF_SECTION_MISCELLANEOUS
-      DRI_CONF_GLSL_ZERO_INIT("true")
-      DRI_CONF_ALWAYS_HAVE_DEPTH_BUFFER("true")
+      DRI_CONF_GLSL_ZERO_INIT(true)
+      DRI_CONF_ALWAYS_HAVE_DEPTH_BUFFER(true)
    };
    driParseOptionInfo(&options, driconf, ARRAY_SIZE(driconf));
 
@@ -125,7 +125,7 @@ TEST_F(xmlconfig_test, copy_cache)
 {
    driOptionDescription driconf[] = {
       DRI_CONF_SECTION_MISCELLANEOUS
-      DRI_CONF_OPT_B(mesa_b_option, "true", "description")
+      DRI_CONF_OPT_B(mesa_b_option, true, "description")
       DRI_CONF_OPT_S(mesa_s_option, value, "description")
    };
    driParseOptionInfo(&options, driconf, ARRAY_SIZE(driconf));

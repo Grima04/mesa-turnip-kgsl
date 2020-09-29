@@ -53,23 +53,23 @@ static const driOptionDescription i915_driconf[] = {
                      DRI_CONF_ENUM(0, "Disable buffer object reuse")
                      DRI_CONF_ENUM(1, "Enable reuse of all sizes of buffer objects"))
 
-      DRI_CONF_OPT_B(fragment_shader, "true",
+      DRI_CONF_OPT_B(fragment_shader, true,
                      "Enable limited ARB_fragment_shader support on 915/945.")
 
    DRI_CONF_SECTION_END
    DRI_CONF_SECTION_QUALITY
    DRI_CONF_SECTION_END
    DRI_CONF_SECTION_DEBUG
-      DRI_CONF_ALWAYS_FLUSH_BATCH("false")
-      DRI_CONF_ALWAYS_FLUSH_CACHE("false")
-      DRI_CONF_DISABLE_THROTTLING("false")
-      DRI_CONF_FORCE_GLSL_EXTENSIONS_WARN("false")
-      DRI_CONF_DISABLE_GLSL_LINE_CONTINUATIONS("false")
-      DRI_CONF_DISABLE_BLEND_FUNC_EXTENDED("false")
+      DRI_CONF_ALWAYS_FLUSH_BATCH(false)
+      DRI_CONF_ALWAYS_FLUSH_CACHE(false)
+      DRI_CONF_DISABLE_THROTTLING(false)
+      DRI_CONF_FORCE_GLSL_EXTENSIONS_WARN(false)
+      DRI_CONF_DISABLE_GLSL_LINE_CONTINUATIONS(false)
+      DRI_CONF_DISABLE_BLEND_FUNC_EXTENDED(false)
 
-      DRI_CONF_OPT_B(stub_occlusion_query, "false", "Enable stub ARB_occlusion_query support on 915/945.")
+      DRI_CONF_OPT_B(stub_occlusion_query, false, "Enable stub ARB_occlusion_query support on 915/945.")
 
-      DRI_CONF_OPT_B(shader_precompile, "true", "Perform code generation at shader link time.")
+      DRI_CONF_OPT_B(shader_precompile, true, "Perform code generation at shader link time.")
    DRI_CONF_SECTION_END
 };
 

@@ -436,12 +436,7 @@ driParseOptionInfo(driOptionCache *info,
 
       switch (opt->info.type) {
       case DRI_BOOL:
-         if (strcmp(opt->value._string, "true") == 0)
-            optval->_bool = true;
-         else {
-            assert(strcmp(opt->value._string, "false") == 0);
-            optval->_bool = false;
-         }
+         optval->_bool = opt->value._bool;
          break;
 
       case DRI_INT:
