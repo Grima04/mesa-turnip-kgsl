@@ -1351,10 +1351,12 @@ zink_flush(struct pipe_context *pctx,
    struct zink_context *ctx = zink_context(pctx);
 
    struct zink_batch *batch = zink_curr_batch(ctx);
-   flush_batch(ctx);
+   if (batch->has_work) {
+      flush_batch(ctx);
 
-   if (zink_screen(pctx->screen)->info.have_EXT_transform_feedback && ctx->num_so_targets)
-      ctx->dirty_so_targets = true;
+      if (zink_screen(pctx->screen)->info.have_EXT_transform_feedback && ctx->num_so_targets)
+         ctx->dirty_so_targets = true;
+   }
 
    if (pfence)
       zink_fence_reference(zink_screen(pctx->screen),
