@@ -55,7 +55,7 @@ Deprecated Systems and Drivers
 In the past there were other drivers for older GPUs and operating
 systems. These have been removed from the Mesa source tree and
 distribution. If anyone's interested though, the code can be found in
-the git repo. The list includes:
+the Git repo. The list includes:
 
 -  3dfx/glide
 -  Matrox

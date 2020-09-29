@@ -13,7 +13,7 @@ Basic guidelines
 -  Whenever possible, patches should only affect individual Mesa/Gallium
    components.
 -  Patches should never introduce build breaks and should be bisectable
-   (see ``git bisect``.)
+   (see ``Git bisect``.)
 -  Patches should be properly :ref:`formatted <formatting>`.
 -  Patches should be sufficiently :ref:`tested <testing>` before
    submitting.
@@ -25,7 +25,7 @@ Basic guidelines
 Patch formatting
 ----------------
 
--  Lines should be limited to 75 characters or less so that git logs
+-  Lines should be limited to 75 characters or less so that Git logs
    displayed in 80-column terminals avoid line wrapping. Note that git
    log uses 4 spaces of indentation (4 + 75 < 80).
 -  The first line should be a short, concise summary of the change

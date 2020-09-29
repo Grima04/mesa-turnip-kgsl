@@ -8,7 +8,7 @@ supported.
 
 In comparison with LAVA, this doesn't involve maintaining a separate
 web service with its own job scheduler and replicating jobs between the
-two.  It also places more of the board support in git, instead of
+two.  It also places more of the board support in Git, instead of
 web service configuration.  On the other hand, the serial interactions
 and bootloader support are more primitive.
 

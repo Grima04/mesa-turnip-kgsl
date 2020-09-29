@@ -311,7 +311,7 @@ Then run the
 
 , where X.Y.Z is the version you just made. This will update
 docs/relnotes.rst and docs/release-calendar.rst. It will then generate
-a git commit automatically. Check that everything looks correct and
+a Git commit automatically. Check that everything looks correct and
 push:
 
 ::

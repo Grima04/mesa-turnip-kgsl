@@ -58,7 +58,7 @@ The Mesa demos collection is available
 
 In the past, GLUT, GLU and the Mesa demos were released in conjunction
 with Mesa releases. But since GLUT, GLU and the demos change
-infrequently, they were split off into their own git repositories:
+infrequently, they were split off into their own Git repositories:
 `GLUT <https://gitlab.freedesktop.org/mesa/glut>`__,
 `GLU <https://gitlab.freedesktop.org/mesa/glu>`__ and
 `Demos <https://gitlab.freedesktop.org/mesa/demos>`__,

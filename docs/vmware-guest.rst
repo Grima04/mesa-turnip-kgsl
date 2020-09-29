@@ -126,7 +126,7 @@ Begin by saving your current directory location:
 
 -  libdrm, a user-space library that interfaces with DRM. Most distros
    ship with this but it's safest to install a newer version. To get the
-   latest code from git:
+   latest code from Git:
 
    ::
 

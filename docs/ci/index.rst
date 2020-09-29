@@ -4,7 +4,7 @@ Continuous Integration
 GitLab CI
 ---------
 
-GitLab provides a convenient framework for running commands in response to git pushes.
+GitLab provides a convenient framework for running commands in response to Git pushes.
 We use it to test merge requests (MRs) before merging them (pre-merge testing),
 as well as post-merge testing, for everything that hits ``master``
 (this is necessary because we still allow commits to be pushed outside of MRs,
@@ -167,7 +167,7 @@ to build it.  So, when developing any change to container build
 scripts, you need to update the associated ``FDO_DISTRIBUTION_TAG`` to
 a new unique string.  We recommend using the current date plus some
 string related to your branch (so that if you rebase on someone else's
-container update from the same day, you will get a git conflict
+container update from the same day, you will get a Git conflict
 instead of silently reusing their container)
 
 When developing a given change to your Docker image, you would have to
