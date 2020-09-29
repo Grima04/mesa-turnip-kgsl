@@ -1188,6 +1188,7 @@ ast_node::print(void) const
 
 ast_node::ast_node(void)
 {
+   this->location.path = NULL;
    this->location.source = 0;
    this->location.first_line = 0;
    this->location.first_column = 0;
