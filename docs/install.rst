@@ -44,9 +44,9 @@ Third party/extra tools.
    module is required. Version 0.8.0 or later should work.
 -  lex / yacc - for building the Mesa IR and GLSL compiler.
 
-   On Linux systems, flex and bison versions 2.5.35 and 2.4.1,
+   On Linux systems, Flex and bison versions 2.5.35 and 2.4.1,
    respectively, (or later) should work. On Windows with MinGW, install
-   flex and bison with:
+   Flex and bison with:
 
    ::
 
@@ -57,7 +57,7 @@ Third party/extra tools.
 
 .. note::
 
-   Some versions can be buggy (eg. flex 2.6.2) so do try others
+   Some versions can be buggy (eg. Flex 2.6.2) so do try others
    if things fail.
 
 1.2 Requirements
