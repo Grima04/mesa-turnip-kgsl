@@ -660,7 +660,7 @@ tu_QueueSubmit(VkQueue _queue,
             continue;
          in_syncobjs[nr_in_syncobjs++] = (struct drm_msm_gem_submit_syncobj) {
             .handle = part->syncobj,
-            .flags = 0,
+            .flags = MSM_SUBMIT_SYNCOBJ_RESET,
          };
       }
 
