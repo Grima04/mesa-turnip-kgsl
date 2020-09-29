@@ -804,6 +804,8 @@ fd_resource_destroy(struct pipe_screen *pscreen,
 	fd_bc_invalidate_resource(rsc, true);
 	if (rsc->bo)
 		fd_bo_del(rsc->bo);
+	if (rsc->lrz)
+		fd_bo_del(rsc->lrz);
 	if (rsc->scanout)
 		renderonly_scanout_destroy(rsc->scanout, fd_screen(pscreen)->ro);
 
