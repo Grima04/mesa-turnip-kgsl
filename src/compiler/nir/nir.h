@@ -2869,6 +2869,18 @@ typedef enum {
     */
    nir_metadata_loop_analysis = 0x10,
 
+   /** Indicates that nir_instr::index values are valid.
+    *
+    * The start instruction has index 0 and they increase through a natural
+    * walk of instructions in blocks in the CFG.  The indices my have holes
+    * after passes such as DCE.
+    *
+    * A pass can preserve this metadata type if it never adds or moves any
+    * instructions (most passes shouldn't preserve this metadata type), but
+    * can preserve it if it only removes instructions.
+    */
+   nir_metadata_instr_index = 0x20,
+
    /** All metadata
     *
     * This includes all nir_metadata flags except not_properly_reset.  Passes

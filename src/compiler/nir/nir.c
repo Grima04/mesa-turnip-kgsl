@@ -935,6 +935,9 @@ nir_instr_insert(nir_cursor cursor, nir_instr *instr)
 
    if (instr->type == nir_instr_type_jump)
       nir_handle_add_jump(instr->block);
+
+   nir_function_impl *impl = nir_cf_node_get_function(&instr->block->cf_node);
+   impl->valid_metadata &= ~nir_metadata_instr_index;
 }
 
 static bool
