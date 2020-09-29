@@ -17,7 +17,7 @@ Build system
 ^^^^^^^^^^^^
 
 -  `Meson <https://mesonbuild.com>`__ is required when building on \*nix
-   platforms and is supported on windows.
+   platforms and is supported on Windows.
 -  `SCons <http://www.scons.org/>`__ is an alternative for building on
    Windows and Linux.
 -  Android Build system when building as native Android component. Meson
@@ -94,7 +94,7 @@ The general approach is:
      ninja -C builddir/
      sudo ninja -C builddir/ install
 
-On windows you can also use the visual studio backend
+On Windows you can also use the visual studio backend
 
 ::
 
@@ -116,7 +116,7 @@ To build Mesa with SCons on Linux or Windows do
 
 The build output will be placed in
 build/\ *platform*-*machine*-*debug*/..., where *platform* is for
-example Linux or windows, *machine* is x86 or x86_64, optionally
+example Linux or Windows, *machine* is x86 or x86_64, optionally
 followed by -debug for debug builds.
 
 To build Mesa with SCons for Windows on Linux using the MinGW

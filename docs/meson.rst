@@ -144,7 +144,7 @@ symbolic links for drivers). To install:
 Windows specific instructions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-On windows you have a couple of choices for compilers. If you installed
+On Windows you have a couple of choices for compilers. If you installed
 MinGW with Chocolatey and want to use Ninja you should be able to open
 any shell and follow the instructions above. If you want to you MSVC,
 clang-cl, or ICL (the Intel Compiler), read on.
@@ -262,7 +262,7 @@ Then configure Meson:
 
 Meson < 0.49 doesn't support native files, so to specify a custom
 ``llvm-config`` you need to modify your ``$PATH`` (or ``%PATH%`` on
-windows), which will be searched for ``llvm-config``,
+Windows), which will be searched for ``llvm-config``,
 ``llvm-config$version``, and ``llvm-config-$version``:
 
 .. code-block:: console
@@ -293,7 +293,7 @@ Then configure Meson:
 See the :ref:`Cross Compilation <cross-compilation>` section for more
 information.
 
-On windows (and in other cases), using llvm-config or cmake may be
+On Windows (and in other cases), using llvm-config or cmake may be
 either undesirable or impossible. Meson's solution for this is a
 `wrap <https://mesonbuild.com/Wrap-dependency-system-manual.html>`__, in
 this case a "binary wrap". Follow the steps below:
@@ -467,7 +467,7 @@ of those, as they'll have the right values for your system:
    cpu = 'aarch64'
    endian = 'little'
 
-64-bit build on x86 windows:
+64-bit build on x86 Windows:
 
 ::
 
