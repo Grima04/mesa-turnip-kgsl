@@ -16,7 +16,7 @@ Compiling and Installing
 Build system
 ^^^^^^^^^^^^
 
--  `meson <https://mesonbuild.com>`__ is required when building on \*nix
+-  `Meson <https://mesonbuild.com>`__ is required when building on \*nix
    platforms and is supported on windows.
 -  `SCons <http://www.scons.org/>`__ is an alternative for building on
    Windows and Linux.
