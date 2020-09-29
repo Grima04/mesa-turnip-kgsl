@@ -21,20 +21,20 @@
  * IN THE SOFTWARE.
  */
 
-#include "val_private.h"
+#include "lvp_private.h"
 #include "util/format/u_format.h"
 #include "util/u_inlines.h"
 #include "pipe/p_state.h"
 
 VkResult
-val_image_create(VkDevice _device,
-                 const struct val_image_create_info *create_info,
+lvp_image_create(VkDevice _device,
+                 const struct lvp_image_create_info *create_info,
                  const VkAllocationCallbacks* alloc,
                  VkImage *pImage)
 {
-   VAL_FROM_HANDLE(val_device, device, _device);
+   LVP_FROM_HANDLE(lvp_device, device, _device);
    const VkImageCreateInfo *pCreateInfo = create_info->vk_info;
-   struct val_image *image;
+   struct lvp_image *image;
 
    assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO);
 
@@ -81,19 +81,19 @@ val_image_create(VkDevice _device,
                                                             &template,
                                                             &image->size);
    }
-   *pImage = val_image_to_handle(image);
+   *pImage = lvp_image_to_handle(image);
 
    return VK_SUCCESS;
 }
 
 VkResult
-val_CreateImage(VkDevice device,
+lvp_CreateImage(VkDevice device,
                 const VkImageCreateInfo *pCreateInfo,
                 const VkAllocationCallbacks *pAllocator,
                 VkImage *pImage)
 {
-   return val_image_create(device,
-      &(struct val_image_create_info) {
+   return lvp_image_create(device,
+      &(struct lvp_image_create_info) {
          .vk_info = pCreateInfo,
          .bind_flags = 0,
       },
@@ -102,11 +102,11 @@ val_CreateImage(VkDevice device,
 }
 
 void
-val_DestroyImage(VkDevice _device, VkImage _image,
+lvp_DestroyImage(VkDevice _device, VkImage _image,
                  const VkAllocationCallbacks *pAllocator)
 {
-   VAL_FROM_HANDLE(val_device, device, _device);
-   VAL_FROM_HANDLE(val_image, image, _image);
+   LVP_FROM_HANDLE(lvp_device, device, _device);
+   LVP_FROM_HANDLE(lvp_image, image, _image);
 
    if (!_image)
      return;
@@ -116,14 +116,14 @@ val_DestroyImage(VkDevice _device, VkImage _image,
 }
 
 VkResult
-val_CreateImageView(VkDevice _device,
+lvp_CreateImageView(VkDevice _device,
                     const VkImageViewCreateInfo *pCreateInfo,
                     const VkAllocationCallbacks *pAllocator,
                     VkImageView *pView)
 {
-   VAL_FROM_HANDLE(val_device, device, _device);
-   VAL_FROM_HANDLE(val_image, image, pCreateInfo->image);
-   struct val_image_view *view;
+   LVP_FROM_HANDLE(lvp_device, device, _device);
+   LVP_FROM_HANDLE(lvp_image, image, pCreateInfo->image);
+   struct lvp_image_view *view;
 
    view = vk_alloc2(&device->alloc, pAllocator, sizeof(*view), 8,
                      VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
@@ -139,17 +139,17 @@ val_CreateImageView(VkDevice _device,
    view->subresourceRange = pCreateInfo->subresourceRange;
    view->image = image;
    view->surface = NULL;
-   *pView = val_image_view_to_handle(view);
+   *pView = lvp_image_view_to_handle(view);
 
    return VK_SUCCESS;
 }
 
 void
-val_DestroyImageView(VkDevice _device, VkImageView _iview,
+lvp_DestroyImageView(VkDevice _device, VkImageView _iview,
                      const VkAllocationCallbacks *pAllocator)
 {
-   VAL_FROM_HANDLE(val_device, device, _device);
-   VAL_FROM_HANDLE(val_image_view, iview, _iview);
+   LVP_FROM_HANDLE(lvp_device, device, _device);
+   LVP_FROM_HANDLE(lvp_image_view, iview, _iview);
 
    if (!_iview)
      return;
@@ -159,14 +159,14 @@ val_DestroyImageView(VkDevice _device, VkImageView _iview,
    vk_free2(&device->alloc, pAllocator, iview);
 }
 
-void val_GetImageSubresourceLayout(
+void lvp_GetImageSubresourceLayout(
     VkDevice                                    _device,
     VkImage                                     _image,
     const VkImageSubresource*                   pSubresource,
     VkSubresourceLayout*                        pLayout)
 {
-   VAL_FROM_HANDLE(val_device, device, _device);
-   VAL_FROM_HANDLE(val_image, image, _image);
+   LVP_FROM_HANDLE(lvp_device, device, _device);
+   LVP_FROM_HANDLE(lvp_image, image, _image);
    uint32_t stride, offset;
    device->pscreen->resource_get_info(device->pscreen,
                                       image->bo,
@@ -187,14 +187,14 @@ void val_GetImageSubresourceLayout(
    }
 }
 
-VkResult val_CreateBuffer(
+VkResult lvp_CreateBuffer(
     VkDevice                                    _device,
     const VkBufferCreateInfo*                   pCreateInfo,
     const VkAllocationCallbacks*                pAllocator,
     VkBuffer*                                   pBuffer)
 {
-   VAL_FROM_HANDLE(val_device, device, _device);
-   struct val_buffer *buffer;
+   LVP_FROM_HANDLE(lvp_device, device, _device);
+   struct lvp_buffer *buffer;
 
    assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO);
 
@@ -231,18 +231,18 @@ VkResult val_CreateBuffer(
          return vk_error(device->instance, VK_ERROR_OUT_OF_DEVICE_MEMORY);
       }
    }
-   *pBuffer = val_buffer_to_handle(buffer);
+   *pBuffer = lvp_buffer_to_handle(buffer);
 
    return VK_SUCCESS;
 }
 
-void val_DestroyBuffer(
+void lvp_DestroyBuffer(
     VkDevice                                    _device,
     VkBuffer                                    _buffer,
     const VkAllocationCallbacks*                pAllocator)
 {
-   VAL_FROM_HANDLE(val_device, device, _device);
-   VAL_FROM_HANDLE(val_buffer, buffer, _buffer);
+   LVP_FROM_HANDLE(lvp_device, device, _device);
+   LVP_FROM_HANDLE(lvp_buffer, buffer, _buffer);
 
    if (!_buffer)
      return;
@@ -253,14 +253,14 @@ void val_DestroyBuffer(
 }
 
 VkResult
-val_CreateBufferView(VkDevice _device,
+lvp_CreateBufferView(VkDevice _device,
                      const VkBufferViewCreateInfo *pCreateInfo,
                      const VkAllocationCallbacks *pAllocator,
                      VkBufferView *pView)
 {
-   VAL_FROM_HANDLE(val_device, device, _device);
-   VAL_FROM_HANDLE(val_buffer, buffer, pCreateInfo->buffer);
-   struct val_buffer_view *view;
+   LVP_FROM_HANDLE(lvp_device, device, _device);
+   LVP_FROM_HANDLE(lvp_buffer, buffer, pCreateInfo->buffer);
+   struct lvp_buffer_view *view;
    view = vk_alloc2(&device->alloc, pAllocator, sizeof(*view), 8,
                      VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
    if (!view)
@@ -273,17 +273,17 @@ val_CreateBufferView(VkDevice _device,
    view->pformat = vk_format_to_pipe(pCreateInfo->format);
    view->offset = pCreateInfo->offset;
    view->range = pCreateInfo->range;
-   *pView = val_buffer_view_to_handle(view);
+   *pView = lvp_buffer_view_to_handle(view);
 
    return VK_SUCCESS;
 }
 
 void
-val_DestroyBufferView(VkDevice _device, VkBufferView bufferView,
+lvp_DestroyBufferView(VkDevice _device, VkBufferView bufferView,
                       const VkAllocationCallbacks *pAllocator)
 {
-   VAL_FROM_HANDLE(val_device, device, _device);
-   VAL_FROM_HANDLE(val_buffer_view, view, bufferView);
+   LVP_FROM_HANDLE(lvp_device, device, _device);
+   LVP_FROM_HANDLE(lvp_buffer_view, view, bufferView);
 
    if (!bufferView)
      return;

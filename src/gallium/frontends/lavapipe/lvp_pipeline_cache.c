@@ -21,16 +21,16 @@
  * IN THE SOFTWARE.
  */
 
-#include "val_private.h"
+#include "lvp_private.h"
 
-VkResult val_CreatePipelineCache(
+VkResult lvp_CreatePipelineCache(
     VkDevice                                    _device,
     const VkPipelineCacheCreateInfo*            pCreateInfo,
     const VkAllocationCallbacks*                pAllocator,
     VkPipelineCache*                            pPipelineCache)
 {
-   VAL_FROM_HANDLE(val_device, device, _device);
-   struct val_pipeline_cache *cache;
+   LVP_FROM_HANDLE(lvp_device, device, _device);
+   struct lvp_pipeline_cache *cache;
 
    assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO);
    assert(pCreateInfo->flags == 0);
@@ -49,27 +49,27 @@ VkResult val_CreatePipelineCache(
      cache->alloc = device->alloc;
 
    cache->device = device;
-   *pPipelineCache = val_pipeline_cache_to_handle(cache);
+   *pPipelineCache = lvp_pipeline_cache_to_handle(cache);
 
    return VK_SUCCESS;
 }
 
-void val_DestroyPipelineCache(
+void lvp_DestroyPipelineCache(
     VkDevice                                    _device,
     VkPipelineCache                             _cache,
     const VkAllocationCallbacks*                pAllocator)
 {
-   VAL_FROM_HANDLE(val_device, device, _device);
-   VAL_FROM_HANDLE(val_pipeline_cache, cache, _cache);
+   LVP_FROM_HANDLE(lvp_device, device, _device);
+   LVP_FROM_HANDLE(lvp_pipeline_cache, cache, _cache);
 
    if (!_cache)
       return;
-//   val_pipeline_cache_finish(cache);
+//   lvp_pipeline_cache_finish(cache);
    vk_object_base_finish(&cache->base);
    vk_free2(&device->alloc, pAllocator, cache);
 }
 
-VkResult val_GetPipelineCacheData(
+VkResult lvp_GetPipelineCacheData(
         VkDevice                                    _device,
         VkPipelineCache                             _cache,
         size_t*                                     pDataSize,
@@ -86,14 +86,14 @@ VkResult val_GetPipelineCacheData(
          hdr[1] = 1;
          hdr[2] = VK_VENDOR_ID_MESA;
          hdr[3] = 0;
-         val_device_get_cache_uuid(&hdr[4]);
+         lvp_device_get_cache_uuid(&hdr[4]);
       }
    } else
       *pDataSize = 32;
    return result;
 }
 
-VkResult val_MergePipelineCaches(
+VkResult lvp_MergePipelineCaches(
         VkDevice                                    _device,
         VkPipelineCache                             destCache,
         uint32_t                                    srcCacheCount,

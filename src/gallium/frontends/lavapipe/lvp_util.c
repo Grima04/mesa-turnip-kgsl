@@ -21,10 +21,10 @@
  * IN THE SOFTWARE.
  */
 
-#include "val_private.h"
+#include "lvp_private.h"
 #include "vk_enum_to_str.h"
-void val_printflike(3, 4)
-__val_finishme(const char *file, int line, const char *format, ...)
+void lvp_printflike(3, 4)
+__lvp_finishme(const char *file, int line, const char *format, ...)
 {
    va_list ap;
    char buffer[256];
@@ -37,7 +37,7 @@ __val_finishme(const char *file, int line, const char *format, ...)
 }
 
 VkResult
-__vk_errorf(struct val_instance *instance, VkResult error, const char *file, int line, const char *format, ...)
+__vk_errorf(struct lvp_instance *instance, VkResult error, const char *file, int line, const char *format, ...)
 {
    va_list ap;
    char buffer[256];

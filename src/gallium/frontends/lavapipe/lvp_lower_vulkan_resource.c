@@ -21,10 +21,10 @@
  * IN THE SOFTWARE.
  */
 
-#include "val_private.h"
+#include "lvp_private.h"
 #include "nir.h"
 #include "nir_builder.h"
-#include "val_lower_vulkan_resource.h"
+#include "lvp_lower_vulkan_resource.h"
 
 static bool
 lower_vulkan_resource_index(const nir_instr *instr, const void *data_cb)
@@ -53,8 +53,8 @@ static nir_ssa_def *lower_vri_intrin_vri(struct nir_builder *b,
    nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
    unsigned desc_set_idx = nir_intrinsic_desc_set(intrin);
    unsigned binding_idx = nir_intrinsic_binding(intrin);
-   struct val_pipeline_layout *layout = data_cb;
-   struct val_descriptor_set_binding_layout *binding = &layout->set[desc_set_idx].layout->binding[binding_idx];
+   struct lvp_pipeline_layout *layout = data_cb;
+   struct lvp_descriptor_set_binding_layout *binding = &layout->set[desc_set_idx].layout->binding[binding_idx];
    int value = 0;
    bool is_ubo = (binding->type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER ||
                   binding->type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC);
@@ -103,7 +103,7 @@ static nir_ssa_def *lower_vri_intrin_lvd(struct nir_builder *b,
 static int lower_vri_instr_tex_deref(nir_tex_instr *tex,
                                      nir_tex_src_type deref_src_type,
                                      gl_shader_stage stage,
-                                     struct val_pipeline_layout *layout)
+                                     struct lvp_pipeline_layout *layout)
 {
    int deref_src_idx = nir_tex_instr_src_index(tex, deref_src_type);
 
@@ -115,7 +115,7 @@ static int lower_vri_instr_tex_deref(nir_tex_instr *tex,
    unsigned desc_set_idx = var->data.descriptor_set;
    unsigned binding_idx = var->data.binding;
    int value = 0;
-   struct val_descriptor_set_binding_layout *binding = &layout->set[desc_set_idx].layout->binding[binding_idx];
+   struct lvp_descriptor_set_binding_layout *binding = &layout->set[desc_set_idx].layout->binding[binding_idx];
    nir_tex_instr_remove_src(tex, deref_src_idx);
    for (unsigned s = 0; s < desc_set_idx; s++) {
       if (deref_src_type == nir_tex_src_sampler_deref)
@@ -148,7 +148,7 @@ static int lower_vri_instr_tex_deref(nir_tex_instr *tex,
 static void lower_vri_instr_tex(struct nir_builder *b,
                                 nir_tex_instr *tex, void *data_cb)
 {
-   struct val_pipeline_layout *layout = data_cb;
+   struct lvp_pipeline_layout *layout = data_cb;
    int tex_value = 0;
 
    lower_vri_instr_tex_deref(tex, nir_tex_src_sampler_deref, b->shader->info.stage, layout);
@@ -192,8 +192,8 @@ static nir_ssa_def *lower_vri_instr(struct nir_builder *b,
    return NULL;
 }
 
-void val_lower_pipeline_layout(const struct val_device *device,
-                               struct val_pipeline_layout *layout,
+void lvp_lower_pipeline_layout(const struct lvp_device *device,
+                               struct lvp_pipeline_layout *layout,
                                nir_shader *shader)
 {
    nir_shader_lower_instructions(shader, lower_vulkan_resource_index, lower_vri_instr, layout);
@@ -203,7 +203,7 @@ void val_lower_pipeline_layout(const struct val_device *device,
          glsl_get_base_type(glsl_without_array(type));
       unsigned desc_set_idx = var->data.descriptor_set;
       unsigned binding_idx = var->data.binding;
-      struct val_descriptor_set_binding_layout *binding = &layout->set[desc_set_idx].layout->binding[binding_idx];
+      struct lvp_descriptor_set_binding_layout *binding = &layout->set[desc_set_idx].layout->binding[binding_idx];
       int value = 0;
       var->data.descriptor_set = 0;
       if (base_type == GLSL_TYPE_SAMPLER) {

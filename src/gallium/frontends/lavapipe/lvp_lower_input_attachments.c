@@ -23,7 +23,7 @@
 
 #include "nir.h"
 #include "nir_builder.h"
-#include "val_lower_vulkan_resource.h"
+#include "lvp_lower_vulkan_resource.h"
 
 static nir_ssa_def *
 load_frag_coord(nir_builder *b)
@@ -80,7 +80,7 @@ try_lower_input_load(nir_function_impl *impl, nir_intrinsic_instr *load,
 }
 
 bool
-val_lower_input_attachments(nir_shader *shader, bool use_fragcoord_sysval)
+lvp_lower_input_attachments(nir_shader *shader, bool use_fragcoord_sysval)
 {
    assert(shader->info.stage == MESA_SHADER_FRAGMENT);
    bool progress = false;

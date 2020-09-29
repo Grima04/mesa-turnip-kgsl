@@ -50,8 +50,8 @@ typedef uint32_t xcb_window_t;
 #include <vulkan/vulkan.h>
 #include <vulkan/vk_icd.h>
 
-#include "val_extensions.h"
-#include "val_entrypoints.h"
+#include "lvp_extensions.h"
+#include "lvp_entrypoints.h"
 #include "vk_object.h"
 
 #include "wsi_common.h"
@@ -64,119 +64,119 @@ extern "C" {
 #define MAX_SETS         8
 #define MAX_PUSH_CONSTANTS_SIZE 128
 
-#define val_printflike(a, b) __attribute__((__format__(__printf__, a, b)))
+#define lvp_printflike(a, b) __attribute__((__format__(__printf__, a, b)))
 
 #define typed_memcpy(dest, src, count) ({ \
    memcpy((dest), (src), (count) * sizeof(*(src))); \
 })
 
-int val_get_instance_entrypoint_index(const char *name);
-int val_get_device_entrypoint_index(const char *name);
-int val_get_physical_device_entrypoint_index(const char *name);
+int lvp_get_instance_entrypoint_index(const char *name);
+int lvp_get_device_entrypoint_index(const char *name);
+int lvp_get_physical_device_entrypoint_index(const char *name);
 
-const char *val_get_instance_entry_name(int index);
-const char *val_get_physical_device_entry_name(int index);
-const char *val_get_device_entry_name(int index);
+const char *lvp_get_instance_entry_name(int index);
+const char *lvp_get_physical_device_entry_name(int index);
+const char *lvp_get_device_entry_name(int index);
 
-bool val_instance_entrypoint_is_enabled(int index, uint32_t core_version,
-                                         const struct val_instance_extension_table *instance);
-bool val_physical_device_entrypoint_is_enabled(int index, uint32_t core_version,
-                                                const struct val_instance_extension_table *instance);
-bool val_device_entrypoint_is_enabled(int index, uint32_t core_version,
-                                       const struct val_instance_extension_table *instance,
-                                       const struct val_device_extension_table *device);
+bool lvp_instance_entrypoint_is_enabled(int index, uint32_t core_version,
+                                         const struct lvp_instance_extension_table *instance);
+bool lvp_physical_device_entrypoint_is_enabled(int index, uint32_t core_version,
+                                                const struct lvp_instance_extension_table *instance);
+bool lvp_device_entrypoint_is_enabled(int index, uint32_t core_version,
+                                       const struct lvp_instance_extension_table *instance,
+                                       const struct lvp_device_extension_table *device);
 
-void *val_lookup_entrypoint(const char *name);
+void *lvp_lookup_entrypoint(const char *name);
 
-#define VAL_DEFINE_HANDLE_CASTS(__val_type, __VkType)                      \
+#define LVP_DEFINE_HANDLE_CASTS(__lvp_type, __VkType)                      \
                                                                            \
-   static inline struct __val_type *                                       \
-   __val_type ## _from_handle(__VkType _handle)                            \
+   static inline struct __lvp_type *                                       \
+   __lvp_type ## _from_handle(__VkType _handle)                            \
    {                                                                       \
-      return (struct __val_type *) _handle;                                \
+      return (struct __lvp_type *) _handle;                                \
    }                                                                       \
                                                                            \
    static inline __VkType                                                  \
-   __val_type ## _to_handle(struct __val_type *_obj)                       \
+   __lvp_type ## _to_handle(struct __lvp_type *_obj)                       \
    {                                                                       \
       return (__VkType) _obj;                                              \
    }
 
-#define VAL_DEFINE_NONDISP_HANDLE_CASTS(__val_type, __VkType)              \
+#define LVP_DEFINE_NONDISP_HANDLE_CASTS(__lvp_type, __VkType)              \
                                                                            \
-   static inline struct __val_type *                                       \
-   __val_type ## _from_handle(__VkType _handle)                            \
+   static inline struct __lvp_type *                                       \
+   __lvp_type ## _from_handle(__VkType _handle)                            \
    {                                                                       \
-      return (struct __val_type *)(uintptr_t) _handle;                     \
+      return (struct __lvp_type *)(uintptr_t) _handle;                     \
    }                                                                       \
                                                                            \
    static inline __VkType                                                  \
-   __val_type ## _to_handle(struct __val_type *_obj)                       \
+   __lvp_type ## _to_handle(struct __lvp_type *_obj)                       \
    {                                                                       \
       return (__VkType)(uintptr_t) _obj;                                   \
    }
 
-#define VAL_FROM_HANDLE(__val_type, __name, __handle) \
-   struct __val_type *__name = __val_type ## _from_handle(__handle)
+#define LVP_FROM_HANDLE(__lvp_type, __name, __handle) \
+   struct __lvp_type *__name = __lvp_type ## _from_handle(__handle)
 
-VAL_DEFINE_HANDLE_CASTS(val_cmd_buffer, VkCommandBuffer)
-VAL_DEFINE_HANDLE_CASTS(val_device, VkDevice)
-VAL_DEFINE_HANDLE_CASTS(val_instance, VkInstance)
-VAL_DEFINE_HANDLE_CASTS(val_physical_device, VkPhysicalDevice)
-VAL_DEFINE_HANDLE_CASTS(val_queue, VkQueue)
+LVP_DEFINE_HANDLE_CASTS(lvp_cmd_buffer, VkCommandBuffer)
+LVP_DEFINE_HANDLE_CASTS(lvp_device, VkDevice)
+LVP_DEFINE_HANDLE_CASTS(lvp_instance, VkInstance)
+LVP_DEFINE_HANDLE_CASTS(lvp_physical_device, VkPhysicalDevice)
+LVP_DEFINE_HANDLE_CASTS(lvp_queue, VkQueue)
 
-VAL_DEFINE_NONDISP_HANDLE_CASTS(val_cmd_pool, VkCommandPool)
-VAL_DEFINE_NONDISP_HANDLE_CASTS(val_buffer, VkBuffer)
-VAL_DEFINE_NONDISP_HANDLE_CASTS(val_buffer_view, VkBufferView)
-VAL_DEFINE_NONDISP_HANDLE_CASTS(val_descriptor_pool, VkDescriptorPool)
-VAL_DEFINE_NONDISP_HANDLE_CASTS(val_descriptor_set, VkDescriptorSet)
-VAL_DEFINE_NONDISP_HANDLE_CASTS(val_descriptor_set_layout, VkDescriptorSetLayout)
-VAL_DEFINE_NONDISP_HANDLE_CASTS(val_device_memory, VkDeviceMemory)
-VAL_DEFINE_NONDISP_HANDLE_CASTS(val_event, VkEvent)
-VAL_DEFINE_NONDISP_HANDLE_CASTS(val_framebuffer, VkFramebuffer)
-VAL_DEFINE_NONDISP_HANDLE_CASTS(val_image, VkImage)
-VAL_DEFINE_NONDISP_HANDLE_CASTS(val_image_view, VkImageView);
-VAL_DEFINE_NONDISP_HANDLE_CASTS(val_pipeline_cache, VkPipelineCache)
-VAL_DEFINE_NONDISP_HANDLE_CASTS(val_pipeline, VkPipeline)
-VAL_DEFINE_NONDISP_HANDLE_CASTS(val_pipeline_layout, VkPipelineLayout)
-VAL_DEFINE_NONDISP_HANDLE_CASTS(val_query_pool, VkQueryPool)
-VAL_DEFINE_NONDISP_HANDLE_CASTS(val_render_pass, VkRenderPass)
-VAL_DEFINE_NONDISP_HANDLE_CASTS(val_sampler, VkSampler)
-VAL_DEFINE_NONDISP_HANDLE_CASTS(val_shader_module, VkShaderModule)
-VAL_DEFINE_NONDISP_HANDLE_CASTS(val_fence, VkFence);
-VAL_DEFINE_NONDISP_HANDLE_CASTS(val_semaphore, VkSemaphore);
+LVP_DEFINE_NONDISP_HANDLE_CASTS(lvp_cmd_pool, VkCommandPool)
+LVP_DEFINE_NONDISP_HANDLE_CASTS(lvp_buffer, VkBuffer)
+LVP_DEFINE_NONDISP_HANDLE_CASTS(lvp_buffer_view, VkBufferView)
+LVP_DEFINE_NONDISP_HANDLE_CASTS(lvp_descriptor_pool, VkDescriptorPool)
+LVP_DEFINE_NONDISP_HANDLE_CASTS(lvp_descriptor_set, VkDescriptorSet)
+LVP_DEFINE_NONDISP_HANDLE_CASTS(lvp_descriptor_set_layout, VkDescriptorSetLayout)
+LVP_DEFINE_NONDISP_HANDLE_CASTS(lvp_device_memory, VkDeviceMemory)
+LVP_DEFINE_NONDISP_HANDLE_CASTS(lvp_event, VkEvent)
+LVP_DEFINE_NONDISP_HANDLE_CASTS(lvp_framebuffer, VkFramebuffer)
+LVP_DEFINE_NONDISP_HANDLE_CASTS(lvp_image, VkImage)
+LVP_DEFINE_NONDISP_HANDLE_CASTS(lvp_image_view, VkImageView);
+LVP_DEFINE_NONDISP_HANDLE_CASTS(lvp_pipeline_cache, VkPipelineCache)
+LVP_DEFINE_NONDISP_HANDLE_CASTS(lvp_pipeline, VkPipeline)
+LVP_DEFINE_NONDISP_HANDLE_CASTS(lvp_pipeline_layout, VkPipelineLayout)
+LVP_DEFINE_NONDISP_HANDLE_CASTS(lvp_query_pool, VkQueryPool)
+LVP_DEFINE_NONDISP_HANDLE_CASTS(lvp_render_pass, VkRenderPass)
+LVP_DEFINE_NONDISP_HANDLE_CASTS(lvp_sampler, VkSampler)
+LVP_DEFINE_NONDISP_HANDLE_CASTS(lvp_shader_module, VkShaderModule)
+LVP_DEFINE_NONDISP_HANDLE_CASTS(lvp_fence, VkFence);
+LVP_DEFINE_NONDISP_HANDLE_CASTS(lvp_semaphore, VkSemaphore);
 
 /* Whenever we generate an error, pass it through this function. Useful for
  * debugging, where we can break on it. Only call at error site, not when
  * propagating errors. Might be useful to plug in a stack trace here.
  */
 
-VkResult __vk_errorf(struct val_instance *instance, VkResult error, const char *file, int line, const char *format, ...);
+VkResult __vk_errorf(struct lvp_instance *instance, VkResult error, const char *file, int line, const char *format, ...);
 
-#define VAL_DEBUG_ALL_ENTRYPOINTS (1 << 0)
+#define LVP_DEBUG_ALL_ENTRYPOINTS (1 << 0)
 
 #define vk_error(instance, error) __vk_errorf(instance, error, __FILE__, __LINE__, NULL);
 #define vk_errorf(instance, error, format, ...) __vk_errorf(instance, error, __FILE__, __LINE__, format, ## __VA_ARGS__);
 
-void __val_finishme(const char *file, int line, const char *format, ...)
-   val_printflike(3, 4);
+void __lvp_finishme(const char *file, int line, const char *format, ...)
+   lvp_printflike(3, 4);
 
-#define val_finishme(format, ...) \
-   __val_finishme(__FILE__, __LINE__, format, ##__VA_ARGS__);
+#define lvp_finishme(format, ...) \
+   __lvp_finishme(__FILE__, __LINE__, format, ##__VA_ARGS__);
 
 #define stub_return(v) \
    do { \
-      val_finishme("stub %s", __func__); \
+      lvp_finishme("stub %s", __func__); \
       return (v); \
    } while (0)
 
 #define stub() \
    do { \
-      val_finishme("stub %s", __func__); \
+      lvp_finishme("stub %s", __func__); \
       return; \
    } while (0)
 
-struct val_shader_module {
+struct lvp_shader_module {
    struct vk_object_base base;
    uint32_t                                     size;
    char                                         data[0];
@@ -195,58 +195,58 @@ mesa_to_vk_shader_stage(gl_shader_stage mesa_stage)
    return (1 << mesa_stage);
 }
 
-#define VAL_STAGE_MASK ((1 << MESA_SHADER_STAGES) - 1)
+#define LVP_STAGE_MASK ((1 << MESA_SHADER_STAGES) - 1)
 
-#define val_foreach_stage(stage, stage_bits)                         \
+#define lvp_foreach_stage(stage, stage_bits)                         \
    for (gl_shader_stage stage,                                       \
-        __tmp = (gl_shader_stage)((stage_bits) & VAL_STAGE_MASK);    \
+        __tmp = (gl_shader_stage)((stage_bits) & LVP_STAGE_MASK);    \
         stage = __builtin_ffs(__tmp) - 1, __tmp;                     \
         __tmp &= ~(1 << (stage)))
 
-struct val_physical_device {
+struct lvp_physical_device {
    VK_LOADER_DATA                              _loader_data;
-   struct val_instance *                       instance;
+   struct lvp_instance *                       instance;
 
    struct pipe_loader_device *pld;
    struct pipe_screen *pscreen;
    uint32_t max_images;
 
    struct wsi_device                       wsi_device;
-   struct val_device_extension_table supported_extensions;
+   struct lvp_device_extension_table supported_extensions;
 };
 
-struct val_instance {
+struct lvp_instance {
    struct vk_object_base base;
 
    VkAllocationCallbacks alloc;
 
    uint32_t apiVersion;
    int physicalDeviceCount;
-   struct val_physical_device physicalDevice;
+   struct lvp_physical_device physicalDevice;
 
    uint64_t debug_flags;
 
    struct pipe_loader_device *devs;
    int num_devices;
 
-   struct val_instance_extension_table enabled_extensions;
-   struct val_instance_dispatch_table dispatch;
-   struct val_physical_device_dispatch_table physical_device_dispatch;
-   struct val_device_dispatch_table device_dispatch;
+   struct lvp_instance_extension_table enabled_extensions;
+   struct lvp_instance_dispatch_table dispatch;
+   struct lvp_physical_device_dispatch_table physical_device_dispatch;
+   struct lvp_device_dispatch_table device_dispatch;
 };
 
-VkResult val_init_wsi(struct val_physical_device *physical_device);
-void val_finish_wsi(struct val_physical_device *physical_device);
+VkResult lvp_init_wsi(struct lvp_physical_device *physical_device);
+void lvp_finish_wsi(struct lvp_physical_device *physical_device);
 
-bool val_instance_extension_supported(const char *name);
-uint32_t val_physical_device_api_version(struct val_physical_device *dev);
-bool val_physical_device_extension_supported(struct val_physical_device *dev,
+bool lvp_instance_extension_supported(const char *name);
+uint32_t lvp_physical_device_api_version(struct lvp_physical_device *dev);
+bool lvp_physical_device_extension_supported(struct lvp_physical_device *dev,
                                               const char *name);
 
-struct val_queue {
+struct lvp_queue {
    VK_LOADER_DATA                              _loader_data;
    VkDeviceQueueCreateFlags flags;
-   struct val_device *                         device;
+   struct lvp_device *                         device;
    struct pipe_context *ctx;
    bool shutdown;
    thrd_t exec_thread;
@@ -256,37 +256,37 @@ struct val_queue {
    uint32_t count;
 };
 
-struct val_queue_work {
+struct lvp_queue_work {
    struct list_head list;
    uint32_t cmd_buffer_count;
-   struct val_cmd_buffer **cmd_buffers;
-   struct val_fence *fence;
+   struct lvp_cmd_buffer **cmd_buffers;
+   struct lvp_fence *fence;
 };
 
-struct val_pipeline_cache {
+struct lvp_pipeline_cache {
    struct vk_object_base                        base;
-   struct val_device *                          device;
+   struct lvp_device *                          device;
    VkAllocationCallbacks                        alloc;
 };
 
-struct val_device {
+struct lvp_device {
    struct vk_device vk;
 
    VkAllocationCallbacks                       alloc;
 
-   struct val_queue queue;
-   struct val_instance *                       instance;
-   struct val_physical_device *physical_device;
+   struct lvp_queue queue;
+   struct lvp_instance *                       instance;
+   struct lvp_physical_device *physical_device;
    struct pipe_screen *pscreen;
 
    mtx_t fence_lock;
-   struct val_device_extension_table enabled_extensions;
-   struct val_device_dispatch_table dispatch;
+   struct lvp_device_extension_table enabled_extensions;
+   struct lvp_device_dispatch_table dispatch;
 };
 
-void val_device_get_cache_uuid(void *uuid);
+void lvp_device_get_cache_uuid(void *uuid);
 
-struct val_device_memory {
+struct lvp_device_memory {
    struct vk_object_base base;
    struct pipe_memory_allocation *pmem;
    uint32_t                                     type_index;
@@ -294,7 +294,7 @@ struct val_device_memory {
    void *                                       map;
 };
 
-struct val_image {
+struct lvp_image {
    struct vk_object_base base;
    VkImageType type;
    VkFormat vk_format;
@@ -304,7 +304,7 @@ struct val_image {
 };
 
 static inline uint32_t
-val_get_layerCount(const struct val_image *image,
+lvp_get_layerCount(const struct lvp_image *image,
                    const VkImageSubresourceRange *range)
 {
    return range->layerCount == VK_REMAINING_ARRAY_LAYERS ?
@@ -312,28 +312,28 @@ val_get_layerCount(const struct val_image *image,
 }
 
 static inline uint32_t
-val_get_levelCount(const struct val_image *image,
+lvp_get_levelCount(const struct lvp_image *image,
                    const VkImageSubresourceRange *range)
 {
    return range->levelCount == VK_REMAINING_MIP_LEVELS ?
       (image->bo->last_level + 1) - range->baseMipLevel : range->levelCount;
 }
 
-struct val_image_create_info {
+struct lvp_image_create_info {
    const VkImageCreateInfo *vk_info;
    uint32_t bind_flags;
    uint32_t stride;
 };
 
 VkResult
-val_image_create(VkDevice _device,
-                 const struct val_image_create_info *create_info,
+lvp_image_create(VkDevice _device,
+                 const struct lvp_image_create_info *create_info,
                  const VkAllocationCallbacks* alloc,
                  VkImage *pImage);
 
-struct val_image_view {
+struct lvp_image_view {
    struct vk_object_base base;
-   const struct val_image *image; /**< VkImageViewCreateInfo::image */
+   const struct lvp_image *image; /**< VkImageViewCreateInfo::image */
 
    VkImageViewType view_type;
    VkFormat format;
@@ -344,23 +344,23 @@ struct val_image_view {
    struct pipe_surface *surface; /* have we created a pipe surface for this? */
 };
 
-struct val_subpass_attachment {
+struct lvp_subpass_attachment {
    uint32_t         attachment;
    VkImageLayout    layout;
    bool             in_render_loop;
 };
 
-struct val_subpass {
+struct lvp_subpass {
    uint32_t                                     attachment_count;
-   struct val_subpass_attachment *             attachments;
+   struct lvp_subpass_attachment *             attachments;
 
    uint32_t                                     input_count;
    uint32_t                                     color_count;
-   struct val_subpass_attachment *              input_attachments;
-   struct val_subpass_attachment *              color_attachments;
-   struct val_subpass_attachment *              resolve_attachments;
-   struct val_subpass_attachment *              depth_stencil_attachment;
-   struct val_subpass_attachment *              ds_resolve_attachment;
+   struct lvp_subpass_attachment *              input_attachments;
+   struct lvp_subpass_attachment *              color_attachments;
+   struct lvp_subpass_attachment *              resolve_attachments;
+   struct lvp_subpass_attachment *              depth_stencil_attachment;
+   struct lvp_subpass_attachment *              ds_resolve_attachment;
 
    /** Subpass has at least one color resolve attachment */
    bool                                         has_color_resolve;
@@ -371,7 +371,7 @@ struct val_subpass {
    VkSampleCountFlagBits                        max_sample_count;
 };
 
-struct val_render_pass_attachment {
+struct lvp_render_pass_attachment {
    VkFormat                                     format;
    uint32_t                                     samples;
    VkAttachmentLoadOp                           load_op;
@@ -384,32 +384,32 @@ struct val_render_pass_attachment {
    uint32_t                                     last_subpass_idx;
 };
 
-struct val_render_pass {
+struct lvp_render_pass {
    struct vk_object_base                        base;
    uint32_t                                     attachment_count;
    uint32_t                                     subpass_count;
-   struct val_subpass_attachment *              subpass_attachments;
-   struct val_render_pass_attachment *          attachments;
-   struct val_subpass                           subpasses[0];
+   struct lvp_subpass_attachment *              subpass_attachments;
+   struct lvp_render_pass_attachment *          attachments;
+   struct lvp_subpass                           subpasses[0];
 };
 
-struct val_sampler {
+struct lvp_sampler {
    struct vk_object_base base;
    VkSamplerCreateInfo create_info;
    uint32_t state[4];
 };
 
-struct val_framebuffer {
+struct lvp_framebuffer {
    struct vk_object_base                        base;
    uint32_t                                     width;
    uint32_t                                     height;
    uint32_t                                     layers;
 
    uint32_t                                     attachment_count;
-   struct val_image_view *                      attachments[0];
+   struct lvp_image_view *                      attachments[0];
 };
 
-struct val_descriptor_set_binding_layout {
+struct lvp_descriptor_set_binding_layout {
    uint16_t descriptor_index;
    /* Number of array elements in this binding */
    VkDescriptorType type;
@@ -426,10 +426,10 @@ struct val_descriptor_set_binding_layout {
    } stage[MESA_SHADER_STAGES];
 
    /* Immutable samplers (or NULL if no immutable samplers) */
-   struct val_sampler **immutable_samplers;
+   struct lvp_sampler **immutable_samplers;
 };
 
-struct val_descriptor_set_layout {
+struct lvp_descriptor_set_layout {
    struct vk_object_base base;
    /* Number of bindings in this descriptor set */
    uint16_t binding_count;
@@ -452,34 +452,34 @@ struct val_descriptor_set_layout {
    uint16_t dynamic_offset_count;
 
    /* Bindings in this descriptor set */
-   struct val_descriptor_set_binding_layout binding[0];
+   struct lvp_descriptor_set_binding_layout binding[0];
 };
 
-struct val_descriptor {
+struct lvp_descriptor {
    VkDescriptorType type;
 
    union {
       struct {
-         struct val_image_view *image_view;
-         struct val_sampler *sampler;
+         struct lvp_image_view *image_view;
+         struct lvp_sampler *sampler;
       };
       struct {
          uint64_t offset;
          uint64_t range;
-         struct val_buffer *buffer;
+         struct lvp_buffer *buffer;
       } buf;
-      struct val_buffer_view *buffer_view;
+      struct lvp_buffer_view *buffer_view;
    };
 };
 
-struct val_descriptor_set {
+struct lvp_descriptor_set {
    struct vk_object_base base;
-   const struct val_descriptor_set_layout *layout;
+   const struct lvp_descriptor_set_layout *layout;
    struct list_head link;
-   struct val_descriptor descriptors[0];
+   struct lvp_descriptor descriptors[0];
 };
 
-struct val_descriptor_pool {
+struct lvp_descriptor_pool {
    struct vk_object_base base;
    VkDescriptorPoolCreateFlags flags;
    uint32_t max_sets;
@@ -488,18 +488,18 @@ struct val_descriptor_pool {
 };
 
 VkResult
-val_descriptor_set_create(struct val_device *device,
-                          const struct val_descriptor_set_layout *layout,
-                          struct val_descriptor_set **out_set);
+lvp_descriptor_set_create(struct lvp_device *device,
+                          const struct lvp_descriptor_set_layout *layout,
+                          struct lvp_descriptor_set **out_set);
 
 void
-val_descriptor_set_destroy(struct val_device *device,
-                           struct val_descriptor_set *set);
+lvp_descriptor_set_destroy(struct lvp_device *device,
+                           struct lvp_descriptor_set *set);
 
-struct val_pipeline_layout {
+struct lvp_pipeline_layout {
    struct vk_object_base base;
    struct {
-      struct val_descriptor_set_layout *layout;
+      struct lvp_descriptor_set_layout *layout;
       uint32_t dynamic_offset_start;
    } set[MAX_SETS];
 
@@ -510,10 +510,10 @@ struct val_pipeline_layout {
    } stage[MESA_SHADER_STAGES];
 };
 
-struct val_pipeline {
+struct lvp_pipeline {
    struct vk_object_base base;
-   struct val_device *                          device;
-   struct val_pipeline_layout *                 layout;
+   struct lvp_device *                          device;
+   struct lvp_pipeline_layout *                 layout;
 
    bool is_compute_pipeline;
    bool force_min_sample;
@@ -523,25 +523,25 @@ struct val_pipeline {
    VkComputePipelineCreateInfo compute_create_info;
 };
 
-struct val_event {
+struct lvp_event {
    struct vk_object_base base;
    uint64_t event_storage;
 };
 
-struct val_fence {
+struct lvp_fence {
    struct vk_object_base base;
    bool signaled;
    struct pipe_fence_handle *handle;
 };
 
-struct val_semaphore {
+struct lvp_semaphore {
    struct vk_object_base base;
    bool dummy;
 };
 
-struct val_buffer {
+struct lvp_buffer {
    struct vk_object_base base;
-   struct val_device *                          device;
+   struct lvp_device *                          device;
    VkDeviceSize                                 size;
 
    VkBufferUsageFlags                           usage;
@@ -551,16 +551,16 @@ struct val_buffer {
    uint64_t total_size;
 };
 
-struct val_buffer_view {
+struct lvp_buffer_view {
    struct vk_object_base base;
    VkFormat format;
    enum pipe_format pformat;
-   struct val_buffer *buffer;
+   struct lvp_buffer *buffer;
    uint32_t offset;
    uint64_t range;
 };
 
-struct val_query_pool {
+struct lvp_query_pool {
    struct vk_object_base base;
    VkQueryType type;
    uint32_t count;
@@ -568,7 +568,7 @@ struct val_query_pool {
    struct pipe_query *queries[0];
 };
 
-struct val_cmd_pool {
+struct lvp_cmd_pool {
    struct vk_object_base                        base;
    VkAllocationCallbacks                        alloc;
    struct list_head                             cmd_buffers;
@@ -576,22 +576,22 @@ struct val_cmd_pool {
 };
 
 
-enum val_cmd_buffer_status {
-   VAL_CMD_BUFFER_STATUS_INVALID,
-   VAL_CMD_BUFFER_STATUS_INITIAL,
-   VAL_CMD_BUFFER_STATUS_RECORDING,
-   VAL_CMD_BUFFER_STATUS_EXECUTABLE,
-   VAL_CMD_BUFFER_STATUS_PENDING,
+enum lvp_cmd_buffer_status {
+   LVP_CMD_BUFFER_STATUS_INVALID,
+   LVP_CMD_BUFFER_STATUS_INITIAL,
+   LVP_CMD_BUFFER_STATUS_RECORDING,
+   LVP_CMD_BUFFER_STATUS_EXECUTABLE,
+   LVP_CMD_BUFFER_STATUS_PENDING,
 };
 
-struct val_cmd_buffer {
+struct lvp_cmd_buffer {
    struct vk_object_base base;
 
-   struct val_device *                          device;
+   struct lvp_device *                          device;
 
    VkCommandBufferLevel                         level;
-   enum val_cmd_buffer_status status;
-   struct val_cmd_pool *                        pool;
+   enum lvp_cmd_buffer_status status;
+   struct lvp_cmd_pool *                        pool;
    struct list_head                             pool_link;
 
    struct list_head                             cmds;
@@ -600,125 +600,125 @@ struct val_cmd_buffer {
 };
 
 /* in same order and buffer building commands in spec. */
-enum val_cmds {
-   VAL_CMD_BIND_PIPELINE,
-   VAL_CMD_SET_VIEWPORT,
-   VAL_CMD_SET_SCISSOR,
-   VAL_CMD_SET_LINE_WIDTH,
-   VAL_CMD_SET_DEPTH_BIAS,
-   VAL_CMD_SET_BLEND_CONSTANTS,
-   VAL_CMD_SET_DEPTH_BOUNDS,
-   VAL_CMD_SET_STENCIL_COMPARE_MASK,
-   VAL_CMD_SET_STENCIL_WRITE_MASK,
-   VAL_CMD_SET_STENCIL_REFERENCE,
-   VAL_CMD_BIND_DESCRIPTOR_SETS,
-   VAL_CMD_BIND_INDEX_BUFFER,
-   VAL_CMD_BIND_VERTEX_BUFFERS,
-   VAL_CMD_DRAW,
-   VAL_CMD_DRAW_INDEXED,
-   VAL_CMD_DRAW_INDIRECT,
-   VAL_CMD_DRAW_INDEXED_INDIRECT,
-   VAL_CMD_DISPATCH,
-   VAL_CMD_DISPATCH_INDIRECT,
-   VAL_CMD_COPY_BUFFER,
-   VAL_CMD_COPY_IMAGE,
-   VAL_CMD_BLIT_IMAGE,
-   VAL_CMD_COPY_BUFFER_TO_IMAGE,
-   VAL_CMD_COPY_IMAGE_TO_BUFFER,
-   VAL_CMD_UPDATE_BUFFER,
-   VAL_CMD_FILL_BUFFER,
-   VAL_CMD_CLEAR_COLOR_IMAGE,
-   VAL_CMD_CLEAR_DEPTH_STENCIL_IMAGE,
-   VAL_CMD_CLEAR_ATTACHMENTS,
-   VAL_CMD_RESOLVE_IMAGE,
-   VAL_CMD_SET_EVENT,
-   VAL_CMD_RESET_EVENT,
-   VAL_CMD_WAIT_EVENTS,
-   VAL_CMD_PIPELINE_BARRIER,
-   VAL_CMD_BEGIN_QUERY,
-   VAL_CMD_END_QUERY,
-   VAL_CMD_RESET_QUERY_POOL,
-   VAL_CMD_WRITE_TIMESTAMP,
-   VAL_CMD_COPY_QUERY_POOL_RESULTS,
-   VAL_CMD_PUSH_CONSTANTS,
-   VAL_CMD_BEGIN_RENDER_PASS,
-   VAL_CMD_NEXT_SUBPASS,
-   VAL_CMD_END_RENDER_PASS,
-   VAL_CMD_EXECUTE_COMMANDS,
+enum lvp_cmds {
+   LVP_CMD_BIND_PIPELINE,
+   LVP_CMD_SET_VIEWPORT,
+   LVP_CMD_SET_SCISSOR,
+   LVP_CMD_SET_LINE_WIDTH,
+   LVP_CMD_SET_DEPTH_BIAS,
+   LVP_CMD_SET_BLEND_CONSTANTS,
+   LVP_CMD_SET_DEPTH_BOUNDS,
+   LVP_CMD_SET_STENCIL_COMPARE_MASK,
+   LVP_CMD_SET_STENCIL_WRITE_MASK,
+   LVP_CMD_SET_STENCIL_REFERENCE,
+   LVP_CMD_BIND_DESCRIPTOR_SETS,
+   LVP_CMD_BIND_INDEX_BUFFER,
+   LVP_CMD_BIND_VERTEX_BUFFERS,
+   LVP_CMD_DRAW,
+   LVP_CMD_DRAW_INDEXED,
+   LVP_CMD_DRAW_INDIRECT,
+   LVP_CMD_DRAW_INDEXED_INDIRECT,
+   LVP_CMD_DISPATCH,
+   LVP_CMD_DISPATCH_INDIRECT,
+   LVP_CMD_COPY_BUFFER,
+   LVP_CMD_COPY_IMAGE,
+   LVP_CMD_BLIT_IMAGE,
+   LVP_CMD_COPY_BUFFER_TO_IMAGE,
+   LVP_CMD_COPY_IMAGE_TO_BUFFER,
+   LVP_CMD_UPDATE_BUFFER,
+   LVP_CMD_FILL_BUFFER,
+   LVP_CMD_CLEAR_COLOR_IMAGE,
+   LVP_CMD_CLEAR_DEPTH_STENCIL_IMAGE,
+   LVP_CMD_CLEAR_ATTACHMENTS,
+   LVP_CMD_RESOLVE_IMAGE,
+   LVP_CMD_SET_EVENT,
+   LVP_CMD_RESET_EVENT,
+   LVP_CMD_WAIT_EVENTS,
+   LVP_CMD_PIPELINE_BARRIER,
+   LVP_CMD_BEGIN_QUERY,
+   LVP_CMD_END_QUERY,
+   LVP_CMD_RESET_QUERY_POOL,
+   LVP_CMD_WRITE_TIMESTAMP,
+   LVP_CMD_COPY_QUERY_POOL_RESULTS,
+   LVP_CMD_PUSH_CONSTANTS,
+   LVP_CMD_BEGIN_RENDER_PASS,
+   LVP_CMD_NEXT_SUBPASS,
+   LVP_CMD_END_RENDER_PASS,
+   LVP_CMD_EXECUTE_COMMANDS,
 };
 
-struct val_cmd_bind_pipeline {
+struct lvp_cmd_bind_pipeline {
    VkPipelineBindPoint bind_point;
-   struct val_pipeline *pipeline;
+   struct lvp_pipeline *pipeline;
 };
 
-struct val_cmd_set_viewport {
+struct lvp_cmd_set_viewport {
    uint32_t first_viewport;
    uint32_t viewport_count;
    VkViewport viewports[16];
 };
 
-struct val_cmd_set_scissor {
+struct lvp_cmd_set_scissor {
    uint32_t first_scissor;
    uint32_t scissor_count;
    VkRect2D scissors[16];
 };
 
-struct val_cmd_set_line_width {
+struct lvp_cmd_set_line_width {
    float line_width;
 };
 
-struct val_cmd_set_depth_bias {
+struct lvp_cmd_set_depth_bias {
    float constant_factor;
    float clamp;
    float slope_factor;
 };
 
-struct val_cmd_set_blend_constants {
+struct lvp_cmd_set_blend_constants {
    float blend_constants[4];
 };
 
-struct val_cmd_set_depth_bounds {
+struct lvp_cmd_set_depth_bounds {
    float min_depth;
    float max_depth;
 };
 
-struct val_cmd_set_stencil_vals {
+struct lvp_cmd_set_stencil_vals {
    VkStencilFaceFlags face_mask;
    uint32_t value;
 };
 
-struct val_cmd_bind_descriptor_sets {
+struct lvp_cmd_bind_descriptor_sets {
    VkPipelineBindPoint bind_point;
-   struct val_pipeline_layout *layout;
+   struct lvp_pipeline_layout *layout;
    uint32_t first;
    uint32_t count;
-   struct val_descriptor_set **sets;
+   struct lvp_descriptor_set **sets;
    uint32_t dynamic_offset_count;
    const uint32_t *dynamic_offsets;
 };
 
-struct val_cmd_bind_index_buffer {
-   const struct val_buffer *buffer;
+struct lvp_cmd_bind_index_buffer {
+   const struct lvp_buffer *buffer;
    VkDeviceSize offset;
    VkIndexType index_type;
 };
 
-struct val_cmd_bind_vertex_buffers {
+struct lvp_cmd_bind_vertex_buffers {
    uint32_t first;
    uint32_t binding_count;
-   struct val_buffer **buffers;
+   struct lvp_buffer **buffers;
    const VkDeviceSize *offsets;
 };
 
-struct val_cmd_draw {
+struct lvp_cmd_draw {
    uint32_t vertex_count;
    uint32_t instance_count;
    uint32_t first_vertex;
    uint32_t first_instance;
 };
 
-struct val_cmd_draw_indexed {
+struct lvp_cmd_draw_indexed {
    uint32_t index_count;
    uint32_t instance_count;
    uint32_t first_index;
@@ -726,43 +726,43 @@ struct val_cmd_draw_indexed {
    uint32_t first_instance;
 };
 
-struct val_cmd_draw_indirect {
+struct lvp_cmd_draw_indirect {
    VkDeviceSize offset;
-   struct val_buffer *buffer;
+   struct lvp_buffer *buffer;
    uint32_t draw_count;
    uint32_t stride;
 };
 
-struct val_cmd_dispatch {
+struct lvp_cmd_dispatch {
    uint32_t x;
    uint32_t y;
    uint32_t z;
 };
 
-struct val_cmd_dispatch_indirect {
-   const struct val_buffer *buffer;
+struct lvp_cmd_dispatch_indirect {
+   const struct lvp_buffer *buffer;
    VkDeviceSize offset;
 };
 
-struct val_cmd_copy_buffer {
-   struct val_buffer *src;
-   struct val_buffer *dst;
+struct lvp_cmd_copy_buffer {
+   struct lvp_buffer *src;
+   struct lvp_buffer *dst;
    uint32_t region_count;
    const VkBufferCopy *regions;
 };
 
-struct val_cmd_copy_image {
-   struct val_image *src;
-   struct val_image *dst;
+struct lvp_cmd_copy_image {
+   struct lvp_image *src;
+   struct lvp_image *dst;
    VkImageLayout src_layout;
    VkImageLayout dst_layout;
    uint32_t region_count;
    const VkImageCopy *regions;
 };
 
-struct val_cmd_blit_image {
-  struct val_image *src;
-  struct val_image *dst;
+struct lvp_cmd_blit_image {
+  struct lvp_image *src;
+  struct lvp_image *dst;
   VkImageLayout src_layout;
   VkImageLayout dst_layout;
   uint32_t region_count;
@@ -770,77 +770,77 @@ struct val_cmd_blit_image {
   VkFilter filter;
 };
 
-struct val_cmd_copy_buffer_to_image {
-   struct val_buffer *src;
-   struct val_image *dst;
+struct lvp_cmd_copy_buffer_to_image {
+   struct lvp_buffer *src;
+   struct lvp_image *dst;
    VkImageLayout dst_layout;
    uint32_t region_count;
    const VkBufferImageCopy *regions;
 };
 
-struct val_cmd_copy_image_to_buffer {
-   struct val_image *src;
-   struct val_buffer *dst;
+struct lvp_cmd_copy_image_to_buffer {
+   struct lvp_image *src;
+   struct lvp_buffer *dst;
    VkImageLayout src_layout;
    uint32_t region_count;
    const VkBufferImageCopy *regions;
 };
 
-struct val_cmd_update_buffer {
-   struct val_buffer *buffer;
+struct lvp_cmd_update_buffer {
+   struct lvp_buffer *buffer;
    VkDeviceSize offset;
    VkDeviceSize data_size;
    char data[0];
 };
 
-struct val_cmd_fill_buffer {
-   struct val_buffer *buffer;
+struct lvp_cmd_fill_buffer {
+   struct lvp_buffer *buffer;
    VkDeviceSize offset;
    VkDeviceSize fill_size;
    uint32_t data;
 };
 
-struct val_cmd_clear_color_image {
-   struct val_image *image;
+struct lvp_cmd_clear_color_image {
+   struct lvp_image *image;
    VkImageLayout layout;
    VkClearColorValue clear_val;
    uint32_t range_count;
    VkImageSubresourceRange *ranges;
 };
 
-struct val_cmd_clear_ds_image {
-   struct val_image *image;
+struct lvp_cmd_clear_ds_image {
+   struct lvp_image *image;
    VkImageLayout layout;
    VkClearDepthStencilValue clear_val;
    uint32_t range_count;
    VkImageSubresourceRange *ranges;
 };
 
-struct val_cmd_clear_attachments {
+struct lvp_cmd_clear_attachments {
    uint32_t attachment_count;
    VkClearAttachment *attachments;
    uint32_t rect_count;
    VkClearRect *rects;
 };
 
-struct val_cmd_resolve_image {
-   struct val_image *src;
-   struct val_image *dst;
+struct lvp_cmd_resolve_image {
+   struct lvp_image *src;
+   struct lvp_image *dst;
    VkImageLayout src_layout;
    VkImageLayout dst_layout;
    uint32_t region_count;
    VkImageResolve *regions;
 };
 
-struct val_cmd_event_set {
-   struct val_event *event;
+struct lvp_cmd_event_set {
+   struct lvp_event *event;
    bool value;
    bool flush;
 };
 
-struct val_cmd_wait_events {
+struct lvp_cmd_wait_events {
    uint32_t event_count;
-   struct val_event **events;
+   struct lvp_event **events;
    VkPipelineStageFlags src_stage_mask;
    VkPipelineStageFlags dst_stage_mask;
    uint32_t memory_barrier_count;
@@ -851,7 +851,7 @@ struct val_cmd_wait_events {
    VkImageMemoryBarrier *image_memory_barriers;
 };
 
-struct val_cmd_pipeline_barrier {
+struct lvp_cmd_pipeline_barrier {
    VkPipelineStageFlags src_stage_mask;
    VkPipelineStageFlags dst_stage_mask;
    bool by_region;
@@ -863,99 +863,99 @@ struct val_cmd_pipeline_barrier {
    VkImageMemoryBarrier *image_memory_barriers;
 };
 
-struct val_cmd_query_cmd {
-   struct val_query_pool *pool;
+struct lvp_cmd_query_cmd {
+   struct lvp_query_pool *pool;
    uint32_t query;
    uint32_t index;
    bool precise;
    bool flush;
 };
 
-struct val_cmd_copy_query_pool_results {
-   struct val_query_pool *pool;
+struct lvp_cmd_copy_query_pool_results {
+   struct lvp_query_pool *pool;
    uint32_t first_query;
    uint32_t query_count;
-   struct val_buffer *dst;
+   struct lvp_buffer *dst;
    VkDeviceSize dst_offset;
    VkDeviceSize stride;
    VkQueryResultFlags flags;
 };
 
-struct val_cmd_push_constants {
+struct lvp_cmd_push_constants {
    VkShaderStageFlags stage;
    uint32_t offset;
    uint32_t size;
    uint32_t val[1];
 };
 
-struct val_attachment_state {
+struct lvp_attachment_state {
    VkImageAspectFlags pending_clear_aspects;
    VkClearValue clear_value;
 };
 
-struct val_cmd_begin_render_pass {
-   struct val_framebuffer *framebuffer;
-   struct val_render_pass *render_pass;
+struct lvp_cmd_begin_render_pass {
+   struct lvp_framebuffer *framebuffer;
+   struct lvp_render_pass *render_pass;
    VkRect2D render_area;
-   struct val_attachment_state *attachments;
+   struct lvp_attachment_state *attachments;
 };
 
-struct val_cmd_next_subpass {
+struct lvp_cmd_next_subpass {
    VkSubpassContents contents;
 };
 
-struct val_cmd_execute_commands {
+struct lvp_cmd_execute_commands {
    uint32_t command_buffer_count;
-   struct val_cmd_buffer *cmd_buffers[0];
+   struct lvp_cmd_buffer *cmd_buffers[0];
 };
 
-struct val_cmd_buffer_entry {
+struct lvp_cmd_buffer_entry {
    struct list_head cmd_link;
    uint32_t cmd_type;
    union {
-      struct val_cmd_bind_pipeline pipeline;
-      struct val_cmd_set_viewport set_viewport;
-      struct val_cmd_set_scissor set_scissor;
-      struct val_cmd_set_line_width set_line_width;
-      struct val_cmd_set_depth_bias set_depth_bias;
-      struct val_cmd_set_blend_constants set_blend_constants;
-      struct val_cmd_set_depth_bounds set_depth_bounds;
-      struct val_cmd_set_stencil_vals stencil_vals;
-      struct val_cmd_bind_descriptor_sets descriptor_sets;
-      struct val_cmd_bind_vertex_buffers vertex_buffers;
-      struct val_cmd_bind_index_buffer index_buffer;
-      struct val_cmd_draw draw;
-      struct val_cmd_draw_indexed draw_indexed;
-      struct val_cmd_draw_indirect draw_indirect;
-      struct val_cmd_dispatch dispatch;
-      struct val_cmd_dispatch_indirect dispatch_indirect;
-      struct val_cmd_copy_buffer copy_buffer;
-      struct val_cmd_copy_image copy_image;
-      struct val_cmd_blit_image blit_image;
-      struct val_cmd_copy_buffer_to_image buffer_to_img;
-      struct val_cmd_copy_image_to_buffer img_to_buffer;
-      struct val_cmd_update_buffer update_buffer;
-      struct val_cmd_fill_buffer fill_buffer;
-      struct val_cmd_clear_color_image clear_color_image;
-      struct val_cmd_clear_ds_image clear_ds_image;
-      struct val_cmd_clear_attachments clear_attachments;
-      struct val_cmd_resolve_image resolve_image;
-      struct val_cmd_event_set event_set;
-      struct val_cmd_wait_events wait_events;
-      struct val_cmd_pipeline_barrier pipeline_barrier;
-      struct val_cmd_query_cmd query;
-      struct val_cmd_copy_query_pool_results copy_query_pool_results;
-      struct val_cmd_push_constants push_constants;
-      struct val_cmd_begin_render_pass begin_render_pass;
-      struct val_cmd_next_subpass next_subpass;
-      struct val_cmd_execute_commands execute_commands;
+      struct lvp_cmd_bind_pipeline pipeline;
+      struct lvp_cmd_set_viewport set_viewport;
+      struct lvp_cmd_set_scissor set_scissor;
+      struct lvp_cmd_set_line_width set_line_width;
+      struct lvp_cmd_set_depth_bias set_depth_bias;
+      struct lvp_cmd_set_blend_constants set_blend_constants;
+      struct lvp_cmd_set_depth_bounds set_depth_bounds;
+      struct lvp_cmd_set_stencil_vals stencil_vals;
+      struct lvp_cmd_bind_descriptor_sets descriptor_sets;
+      struct lvp_cmd_bind_vertex_buffers vertex_buffers;
+      struct lvp_cmd_bind_index_buffer index_buffer;
+      struct lvp_cmd_draw draw;
+      struct lvp_cmd_draw_indexed draw_indexed;
+      struct lvp_cmd_draw_indirect draw_indirect;
+      struct lvp_cmd_dispatch dispatch;
+      struct lvp_cmd_dispatch_indirect dispatch_indirect;
+      struct lvp_cmd_copy_buffer copy_buffer;
+      struct lvp_cmd_copy_image copy_image;
+      struct lvp_cmd_blit_image blit_image;
+      struct lvp_cmd_copy_buffer_to_image buffer_to_img;
+      struct lvp_cmd_copy_image_to_buffer img_to_buffer;
+      struct lvp_cmd_update_buffer update_buffer;
+      struct lvp_cmd_fill_buffer fill_buffer;
+      struct lvp_cmd_clear_color_image clear_color_image;
+      struct lvp_cmd_clear_ds_image clear_ds_image;
+      struct lvp_cmd_clear_attachments clear_attachments;
+      struct lvp_cmd_resolve_image resolve_image;
+      struct lvp_cmd_event_set event_set;
+      struct lvp_cmd_wait_events wait_events;
+      struct lvp_cmd_pipeline_barrier pipeline_barrier;
+      struct lvp_cmd_query_cmd query;
+      struct lvp_cmd_copy_query_pool_results copy_query_pool_results;
+      struct lvp_cmd_push_constants push_constants;
+      struct lvp_cmd_begin_render_pass begin_render_pass;
+      struct lvp_cmd_next_subpass next_subpass;
+      struct lvp_cmd_execute_commands execute_commands;
    } u;
 };
 
-VkResult val_execute_cmds(struct val_device *device,
-                          struct val_queue *queue,
-                          struct val_fence *fence,
-                          struct val_cmd_buffer *cmd_buffer);
+VkResult lvp_execute_cmds(struct lvp_device *device,
+                          struct lvp_queue *queue,
+                          struct lvp_fence *fence,
+                          struct lvp_cmd_buffer *cmd_buffer);
 
 enum pipe_format vk_format_to_pipe(VkFormat format);
 

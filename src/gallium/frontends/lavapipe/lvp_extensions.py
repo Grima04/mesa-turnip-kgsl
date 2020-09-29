@@ -79,10 +79,10 @@ EXTENSIONS = [
     Extension('VK_KHR_get_display_properties2',           1, 'VK_USE_PLATFORM_DISPLAY_KHR'),
     Extension('VK_KHR_get_memory_requirements2',          1, True),
     Extension('VK_KHR_get_physical_device_properties2',   1, True),
-    Extension('VK_KHR_get_surface_capabilities2',         1, 'VAL_HAS_SURFACE'),
+    Extension('VK_KHR_get_surface_capabilities2',         1, 'LVP_HAS_SURFACE'),
     Extension('VK_KHR_image_format_list',                 1, False),
     Extension('VK_KHR_imageless_framebuffer',             1, False),
-    Extension('VK_KHR_incremental_present',               1, 'VAL_HAS_SURFACE'),
+    Extension('VK_KHR_incremental_present',               1, 'LVP_HAS_SURFACE'),
     Extension('VK_KHR_maintenance1',                      1, True),
     Extension('VK_KHR_maintenance2',                      1, False),
     Extension('VK_KHR_maintenance3',                      1, False),
@@ -95,9 +95,9 @@ EXTENSIONS = [
     Extension('VK_KHR_shader_draw_parameters',            1, False),
     Extension('VK_KHR_shader_float16_int8',               1, False),
     Extension('VK_KHR_storage_buffer_storage_class',      1, True),
-    Extension('VK_KHR_surface',                          25, 'VAL_HAS_SURFACE'),
-    Extension('VK_KHR_surface_protected_capabilities',    1, 'VAL_HAS_SURFACE'),
-    Extension('VK_KHR_swapchain',                        68, 'VAL_HAS_SURFACE'),
+    Extension('VK_KHR_surface',                          25, 'LVP_HAS_SURFACE'),
+    Extension('VK_KHR_surface_protected_capabilities',    1, 'LVP_HAS_SURFACE'),
+    Extension('VK_KHR_swapchain',                        68, 'LVP_HAS_SURFACE'),
     Extension('VK_KHR_uniform_buffer_standard_layout',    1, False),
     Extension('VK_KHR_variable_pointers',                 1, False),
     Extension('VK_KHR_wayland_surface',                   6, 'VK_USE_PLATFORM_WAYLAND_KHR'),
@@ -163,4 +163,4 @@ if __name__ == '__main__':
                         dest='xml_files')
     args = parser.parse_args()
 
-    gen_extensions('val', args.xml_files, API_VERSIONS, MAX_API_VERSION, EXTENSIONS, args.out_c, args.out_h)
+    gen_extensions('lvp', args.xml_files, API_VERSIONS, MAX_API_VERSION, EXTENSIONS, args.out_c, args.out_h)

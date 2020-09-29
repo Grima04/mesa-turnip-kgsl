@@ -21,16 +21,16 @@
  * IN THE SOFTWARE.
  */
 
-#include "val_private.h"
+#include "lvp_private.h"
 #include "pipe/p_context.h"
 
-VkResult val_CreateQueryPool(
+VkResult lvp_CreateQueryPool(
     VkDevice                                    _device,
     const VkQueryPoolCreateInfo*                pCreateInfo,
     const VkAllocationCallbacks*                pAllocator,
     VkQueryPool*                                pQueryPool)
 {
-   VAL_FROM_HANDLE(val_device, device, _device);
+   LVP_FROM_HANDLE(lvp_device, device, _device);
 
    enum pipe_query_type pipeq;
    switch (pCreateInfo->queryType) {
@@ -43,7 +43,7 @@ VkResult val_CreateQueryPool(
    default:
       return VK_ERROR_FEATURE_NOT_PRESENT;
    }
-   struct val_query_pool *pool;
+   struct lvp_query_pool *pool;
    uint32_t pool_size = sizeof(*pool) + pCreateInfo->queryCount * sizeof(struct pipe_query *);
 
    pool = vk_zalloc2(&device->alloc, pAllocator,
@@ -58,17 +58,17 @@ VkResult val_CreateQueryPool(
    pool->count = pCreateInfo->queryCount;
    pool->base_type = pipeq;
 
-   *pQueryPool = val_query_pool_to_handle(pool);
+   *pQueryPool = lvp_query_pool_to_handle(pool);
    return VK_SUCCESS;
 }
 
-void val_DestroyQueryPool(
+void lvp_DestroyQueryPool(
     VkDevice                                    _device,
     VkQueryPool                                 _pool,
     const VkAllocationCallbacks*                pAllocator)
 {
-   VAL_FROM_HANDLE(val_device, device, _device);
-   VAL_FROM_HANDLE(val_query_pool, pool, _pool);
+   LVP_FROM_HANDLE(lvp_device, device, _device);
+   LVP_FROM_HANDLE(lvp_query_pool, pool, _pool);
 
    if (!pool)
       return;
@@ -80,7 +80,7 @@ void val_DestroyQueryPool(
    vk_free2(&device->alloc, pAllocator, pool);
 }
 
-VkResult val_GetQueryPoolResults(
+VkResult lvp_GetQueryPoolResults(
    VkDevice                                    _device,
    VkQueryPool                                 queryPool,
    uint32_t                                    firstQuery,
@@ -90,11 +90,11 @@ VkResult val_GetQueryPoolResults(
    VkDeviceSize                                stride,
    VkQueryResultFlags                          flags)
 {
-   VAL_FROM_HANDLE(val_device, device, _device);
-   VAL_FROM_HANDLE(val_query_pool, pool, queryPool);
+   LVP_FROM_HANDLE(lvp_device, device, _device);
+   LVP_FROM_HANDLE(lvp_query_pool, pool, queryPool);
    VkResult vk_result = VK_SUCCESS;
 
-   val_DeviceWaitIdle(_device);
+   lvp_DeviceWaitIdle(_device);
 
    for (unsigned i = firstQuery; i < firstQuery + queryCount; i++) {
       uint8_t *dptr = (uint8_t *)((char *)pData + (stride * (i - firstQuery)));

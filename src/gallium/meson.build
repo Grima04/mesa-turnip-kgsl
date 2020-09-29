@@ -226,6 +226,6 @@ if with_tests
   subdir('tests')
 endif
 if with_swrast_vk
-  subdir('frontends/vallium')
-  subdir('targets/vallium')
+  subdir('frontends/lavapipe')
+  subdir('targets/lavapipe')
 endif

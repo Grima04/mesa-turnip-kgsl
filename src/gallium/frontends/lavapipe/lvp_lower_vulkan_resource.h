@@ -21,16 +21,16 @@
  * IN THE SOFTWARE.
  */
 
-#ifndef VAL_LOWER_VULKAN_RESOURCE_H
-#define VAL_LOWER_VULKAN_RESOURCE_H
+#ifndef LVP_LOWER_VULKAN_RESOURCE_H
+#define LVP_LOWER_VULKAN_RESOURCE_H
 
-struct val_pipeline_layout;
-struct val_device;
-void val_lower_pipeline_layout(const struct val_device *device,
-                               struct val_pipeline_layout *layout,
+struct lvp_pipeline_layout;
+struct lvp_device;
+void lvp_lower_pipeline_layout(const struct lvp_device *device,
+                               struct lvp_pipeline_layout *layout,
                                nir_shader *shader);
 
 bool
-val_lower_input_attachments(nir_shader *shader, bool use_fragcoord_sysval);
+lvp_lower_input_attachments(nir_shader *shader, bool use_fragcoord_sysval);
 
 #endif

@@ -21,7 +21,7 @@
  * IN THE SOFTWARE.
  */
 
-#include "val_private.h"
+#include "lvp_private.h"
 #include "util/format/u_format.h"
 #include "util/u_math.h"
 #define COMMON_NAME(x) [VK_FORMAT_##x] = PIPE_FORMAT_##x
@@ -148,7 +148,7 @@ enum pipe_format vk_format_to_pipe(VkFormat format)
 }
 
 static void
-val_physical_device_get_format_properties(struct val_physical_device *physical_device,
+lvp_physical_device_get_format_properties(struct lvp_physical_device *physical_device,
                                           VkFormat format,
                                           VkFormatProperties *out_properties)
 {
@@ -231,30 +231,30 @@ val_physical_device_get_format_properties(struct val_physical_device *physical_d
    return;
 }
 
-void val_GetPhysicalDeviceFormatProperties(
+void lvp_GetPhysicalDeviceFormatProperties(
     VkPhysicalDevice                            physicalDevice,
     VkFormat                                    format,
     VkFormatProperties*                         pFormatProperties)
 {
-   VAL_FROM_HANDLE(val_physical_device, physical_device, physicalDevice);
+   LVP_FROM_HANDLE(lvp_physical_device, physical_device, physicalDevice);
 
-   val_physical_device_get_format_properties(physical_device,
+   lvp_physical_device_get_format_properties(physical_device,
                                              format,
                                              pFormatProperties);
 }
 
-void val_GetPhysicalDeviceFormatProperties2(
+void lvp_GetPhysicalDeviceFormatProperties2(
         VkPhysicalDevice                            physicalDevice,
         VkFormat                                    format,
         VkFormatProperties2*                        pFormatProperties)
 {
-   VAL_FROM_HANDLE(val_physical_device, physical_device, physicalDevice);
+   LVP_FROM_HANDLE(lvp_physical_device, physical_device, physicalDevice);
 
-   val_physical_device_get_format_properties(physical_device,
+   lvp_physical_device_get_format_properties(physical_device,
                                              format,
                                              &pFormatProperties->formatProperties);
 }
-static VkResult val_get_image_format_properties(struct val_physical_device *physical_device,
+static VkResult lvp_get_image_format_properties(struct lvp_physical_device *physical_device,
                                                  const VkPhysicalDeviceImageFormatInfo2 *info,
                                                  VkImageFormatProperties *pImageFormatProperties)
 {
@@ -265,7 +265,7 @@ static VkResult val_get_image_format_properties(struct val_physical_device *phys
    uint32_t maxArraySize;
    VkSampleCountFlags sampleCounts = VK_SAMPLE_COUNT_1_BIT;
    enum pipe_format pformat = vk_format_to_pipe(info->format);
-   val_physical_device_get_format_properties(physical_device, info->format,
+   lvp_physical_device_get_format_properties(physical_device, info->format,
                                              &format_props);
    if (info->tiling == VK_IMAGE_TILING_LINEAR) {
       format_feature_flags = format_props.linearTilingFeatures;
@@ -377,7 +377,7 @@ static VkResult val_get_image_format_properties(struct val_physical_device *phys
    return VK_ERROR_FORMAT_NOT_SUPPORTED;
 }
 
-VkResult val_GetPhysicalDeviceImageFormatProperties(
+VkResult lvp_GetPhysicalDeviceImageFormatProperties(
     VkPhysicalDevice                            physicalDevice,
     VkFormat                                    format,
     VkImageType                                 type,
@@ -386,7 +386,7 @@ VkResult val_GetPhysicalDeviceImageFormatProperties(
     VkImageCreateFlags                          createFlags,
     VkImageFormatProperties*                    pImageFormatProperties)
 {
-   VAL_FROM_HANDLE(val_physical_device, physical_device, physicalDevice);
+   LVP_FROM_HANDLE(lvp_physical_device, physical_device, physicalDevice);
 
    const VkPhysicalDeviceImageFormatInfo2 info = {
       .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_FORMAT_INFO_2,
@@ -398,18 +398,18 @@ VkResult val_GetPhysicalDeviceImageFormatProperties(
       .flags = createFlags,
    };
 
-   return val_get_image_format_properties(physical_device, &info,
+   return lvp_get_image_format_properties(physical_device, &info,
                                            pImageFormatProperties);
 }
 
-VkResult val_GetPhysicalDeviceImageFormatProperties2(
+VkResult lvp_GetPhysicalDeviceImageFormatProperties2(
         VkPhysicalDevice                            physicalDevice,
         const VkPhysicalDeviceImageFormatInfo2     *base_info,
         VkImageFormatProperties2                   *base_props)
 {
-   VAL_FROM_HANDLE(val_physical_device, physical_device, physicalDevice);
+   LVP_FROM_HANDLE(lvp_physical_device, physical_device, physicalDevice);
    VkResult result;
-   result = val_get_image_format_properties(physical_device, base_info,
+   result = lvp_get_image_format_properties(physical_device, base_info,
                                              &base_props->imageFormatProperties);
    if (result != VK_SUCCESS)
       return result;
@@ -417,7 +417,7 @@ VkResult val_GetPhysicalDeviceImageFormatProperties2(
    return VK_SUCCESS;
 }
 
-void val_GetPhysicalDeviceSparseImageFormatProperties(
+void lvp_GetPhysicalDeviceSparseImageFormatProperties(
     VkPhysicalDevice                            physicalDevice,
     VkFormat                                    format,
     VkImageType                                 type,
@@ -431,7 +431,7 @@ void val_GetPhysicalDeviceSparseImageFormatProperties(
    *pNumProperties = 0;
 }
 
-void val_GetPhysicalDeviceSparseImageFormatProperties2(
+void lvp_GetPhysicalDeviceSparseImageFormatProperties2(
         VkPhysicalDevice                            physicalDevice,
         const VkPhysicalDeviceSparseImageFormatInfo2 *pFormatInfo,
         uint32_t                                   *pPropertyCount,

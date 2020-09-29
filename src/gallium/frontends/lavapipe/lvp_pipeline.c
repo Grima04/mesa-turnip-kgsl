@@ -21,25 +21,25 @@
  * IN THE SOFTWARE.
  */
 
-#include "val_private.h"
+#include "lvp_private.h"
 
 #include "glsl_types.h"
 #include "spirv/nir_spirv.h"
 #include "nir/nir_builder.h"
-#include "val_lower_vulkan_resource.h"
+#include "lvp_lower_vulkan_resource.h"
 #include "pipe/p_state.h"
 #include "pipe/p_context.h"
 
 #define SPIR_V_MAGIC_NUMBER 0x07230203
 
-VkResult val_CreateShaderModule(
+VkResult lvp_CreateShaderModule(
    VkDevice                                    _device,
    const VkShaderModuleCreateInfo*             pCreateInfo,
    const VkAllocationCallbacks*                pAllocator,
    VkShaderModule*                             pShaderModule)
 {
-   VAL_FROM_HANDLE(val_device, device, _device);
-   struct val_shader_module *module;
+   LVP_FROM_HANDLE(lvp_device, device, _device);
+   struct lvp_shader_module *module;
 
    assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO);
    assert(pCreateInfo->flags == 0);
@@ -55,19 +55,19 @@ VkResult val_CreateShaderModule(
    module->size = pCreateInfo->codeSize;
    memcpy(module->data, pCreateInfo->pCode, module->size);
 
-   *pShaderModule = val_shader_module_to_handle(module);
+   *pShaderModule = lvp_shader_module_to_handle(module);
 
    return VK_SUCCESS;
 
 }
 
-void val_DestroyShaderModule(
+void lvp_DestroyShaderModule(
    VkDevice                                    _device,
    VkShaderModule                              _module,
    const VkAllocationCallbacks*                pAllocator)
 {
-   VAL_FROM_HANDLE(val_device, device, _device);
-   VAL_FROM_HANDLE(val_shader_module, module, _module);
+   LVP_FROM_HANDLE(lvp_device, device, _device);
+   LVP_FROM_HANDLE(lvp_shader_module, module, _module);
 
    if (!_module)
       return;
@@ -75,13 +75,13 @@ void val_DestroyShaderModule(
    vk_free2(&device->alloc, pAllocator, module);
 }
 
-void val_DestroyPipeline(
+void lvp_DestroyPipeline(
    VkDevice                                    _device,
    VkPipeline                                  _pipeline,
    const VkAllocationCallbacks*                pAllocator)
 {
-   VAL_FROM_HANDLE(val_device, device, _device);
-   VAL_FROM_HANDLE(val_pipeline, pipeline, _pipeline);
+   LVP_FROM_HANDLE(lvp_device, device, _device);
+   LVP_FROM_HANDLE(lvp_pipeline, pipeline, _pipeline);
 
    if (!_pipeline)
       return;
@@ -463,8 +463,8 @@ shared_var_info(const struct glsl_type *type, unsigned *size, unsigned *align)
       })
 
 static void
-val_shader_compile_to_ir(struct val_pipeline *pipeline,
-                         struct val_shader_module *module,
+lvp_shader_compile_to_ir(struct lvp_pipeline *pipeline,
+                         struct lvp_shader_module *module,
                          const char *entrypoint_name,
                          gl_shader_stage stage,
                          const VkSpecializationInfo *spec_info)
@@ -508,7 +508,7 @@ val_shader_compile_to_ir(struct val_pipeline *pipeline,
          }
       }
    }
-   struct val_device *pdevice = pipeline->device;
+   struct lvp_device *pdevice = pipeline->device;
    const struct spirv_to_nir_options spirv_options = {
       .environment = NIR_SPIRV_VULKAN,
       .caps = {
@@ -559,14 +559,14 @@ val_shader_compile_to_ir(struct val_pipeline *pipeline,
               nir_var_shader_in | nir_var_shader_out | nir_var_system_value, NULL);
 
    if (stage == MESA_SHADER_FRAGMENT)
-      val_lower_input_attachments(nir, false);
+      lvp_lower_input_attachments(nir, false);
    NIR_PASS_V(nir, nir_lower_system_values);
    NIR_PASS_V(nir, nir_lower_compute_system_values, NULL);
 
    NIR_PASS_V(nir, nir_lower_clip_cull_distance_arrays);
    nir_remove_dead_variables(nir, nir_var_uniform, NULL);
 
-   val_lower_pipeline_layout(pipeline->device, pipeline->layout, nir);
+   lvp_lower_pipeline_layout(pipeline->device, pipeline->layout, nir);
 
    NIR_PASS_V(nir, nir_lower_io_to_temporaries, nir_shader_get_entrypoint(nir), true, true);
    NIR_PASS_V(nir, nir_split_var_copies);
@@ -633,7 +633,7 @@ val_shader_compile_to_ir(struct val_pipeline *pipeline,
    pipeline->pipeline_nir[stage] = nir;
 }
 
-static void fill_shader_prog(struct pipe_shader_state *state, gl_shader_stage stage, struct val_pipeline *pipeline)
+static void fill_shader_prog(struct pipe_shader_state *state, gl_shader_stage stage, struct lvp_pipeline *pipeline)
 {
    state->type = PIPE_SHADER_IR_NIR;
    state->ir.nir = pipeline->pipeline_nir[stage];
@@ -679,7 +679,7 @@ merge_tess_info(struct shader_info *tes_info,
 }
 
 static gl_shader_stage
-val_shader_stage(VkShaderStageFlagBits stage)
+lvp_shader_stage(VkShaderStageFlagBits stage)
 {
    switch (stage) {
    case VK_SHADER_STAGE_VERTEX_BIT:
@@ -701,10 +701,10 @@ val_shader_stage(VkShaderStageFlagBits stage)
 }
 
 static VkResult
-val_pipeline_compile(struct val_pipeline *pipeline,
+lvp_pipeline_compile(struct lvp_pipeline *pipeline,
                      gl_shader_stage stage)
 {
-   struct val_device *device = pipeline->device;
+   struct lvp_device *device = pipeline->device;
    device->physical_device->pscreen->finalize_nir(device->physical_device->pscreen, pipeline->pipeline_nir[stage], true);
    if (stage == MESA_SHADER_COMPUTE) {
       struct pipe_compute_state shstate = {};
@@ -740,16 +740,16 @@ val_pipeline_compile(struct val_pipeline *pipeline,
 }
 
 static VkResult
-val_graphics_pipeline_init(struct val_pipeline *pipeline,
-                           struct val_device *device,
-                           struct val_pipeline_cache *cache,
+lvp_graphics_pipeline_init(struct lvp_pipeline *pipeline,
+                           struct lvp_device *device,
+                           struct lvp_pipeline_cache *cache,
                            const VkGraphicsPipelineCreateInfo *pCreateInfo,
                            const VkAllocationCallbacks *alloc)
 {
    if (alloc == NULL)
       alloc = &device->alloc;
    pipeline->device = device;
-   pipeline->layout = val_pipeline_layout_from_handle(pCreateInfo->layout);
+   pipeline->layout = lvp_pipeline_layout_from_handle(pCreateInfo->layout);
    pipeline->force_min_sample = false;
 
    /* recreate createinfo */
@@ -757,10 +757,10 @@ val_graphics_pipeline_init(struct val_pipeline *pipeline,
    pipeline->is_compute_pipeline = false;
 
    for (uint32_t i = 0; i < pCreateInfo->stageCount; i++) {
-      VAL_FROM_HANDLE(val_shader_module, module,
+      LVP_FROM_HANDLE(lvp_shader_module, module,
                       pCreateInfo->pStages[i].module);
-      gl_shader_stage stage = val_shader_stage(pCreateInfo->pStages[i].stage);
-      val_shader_compile_to_ir(pipeline, module,
+      gl_shader_stage stage = lvp_shader_stage(pCreateInfo->pStages[i].stage);
+      lvp_shader_compile_to_ir(pipeline, module,
                                pCreateInfo->pStages[i].pName,
                                stage,
                                pCreateInfo->pStages[i].pSpecializationInfo);
@@ -781,8 +781,8 @@ val_graphics_pipeline_init(struct val_pipeline *pipeline,
 
    bool has_fragment_shader = false;
    for (uint32_t i = 0; i < pCreateInfo->stageCount; i++) {
-      gl_shader_stage stage = val_shader_stage(pCreateInfo->pStages[i].stage);
-      val_pipeline_compile(pipeline, stage);
+      gl_shader_stage stage = lvp_shader_stage(pCreateInfo->pStages[i].stage);
+      lvp_pipeline_compile(pipeline, stage);
       if (stage == MESA_SHADER_FRAGMENT)
          has_fragment_shader = true;
    }
@@ -804,16 +804,16 @@ val_graphics_pipeline_init(struct val_pipeline *pipeline,
 }
 
 static VkResult
-val_graphics_pipeline_create(
+lvp_graphics_pipeline_create(
    VkDevice _device,
    VkPipelineCache _cache,
    const VkGraphicsPipelineCreateInfo *pCreateInfo,
    const VkAllocationCallbacks *pAllocator,
    VkPipeline *pPipeline)
 {
-   VAL_FROM_HANDLE(val_device, device, _device);
-   VAL_FROM_HANDLE(val_pipeline_cache, cache, _cache);
-   struct val_pipeline *pipeline;
+   LVP_FROM_HANDLE(lvp_device, device, _device);
+   LVP_FROM_HANDLE(lvp_pipeline_cache, cache, _cache);
+   struct lvp_pipeline *pipeline;
    VkResult result;
 
    assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO);
@@ -825,19 +825,19 @@ val_graphics_pipeline_create(
 
    vk_object_base_init(&device->vk, &pipeline->base,
                        VK_OBJECT_TYPE_PIPELINE);
-   result = val_graphics_pipeline_init(pipeline, device, cache, pCreateInfo,
+   result = lvp_graphics_pipeline_init(pipeline, device, cache, pCreateInfo,
                                        pAllocator);
    if (result != VK_SUCCESS) {
       vk_free2(&device->alloc, pAllocator, pipeline);
       return result;
    }
 
-   *pPipeline = val_pipeline_to_handle(pipeline);
+   *pPipeline = lvp_pipeline_to_handle(pipeline);
 
    return VK_SUCCESS;
 }
 
-VkResult val_CreateGraphicsPipelines(
+VkResult lvp_CreateGraphicsPipelines(
    VkDevice                                    _device,
    VkPipelineCache                             pipelineCache,
    uint32_t                                    count,
@@ -850,7 +850,7 @@ VkResult val_CreateGraphicsPipelines(
 
    for (; i < count; i++) {
       VkResult r;
-      r = val_graphics_pipeline_create(_device,
+      r = lvp_graphics_pipeline_create(_device,
                                        pipelineCache,
                                        &pCreateInfos[i],
                                        pAllocator, &pPipelines[i]);
@@ -864,42 +864,42 @@ VkResult val_CreateGraphicsPipelines(
 }
 
 static VkResult
-val_compute_pipeline_init(struct val_pipeline *pipeline,
-                          struct val_device *device,
-                          struct val_pipeline_cache *cache,
+lvp_compute_pipeline_init(struct lvp_pipeline *pipeline,
+                          struct lvp_device *device,
+                          struct lvp_pipeline_cache *cache,
                           const VkComputePipelineCreateInfo *pCreateInfo,
                           const VkAllocationCallbacks *alloc)
 {
-   VAL_FROM_HANDLE(val_shader_module, module,
+   LVP_FROM_HANDLE(lvp_shader_module, module,
                    pCreateInfo->stage.module);
    if (alloc == NULL)
       alloc = &device->alloc;
    pipeline->device = device;
-   pipeline->layout = val_pipeline_layout_from_handle(pCreateInfo->layout);
+   pipeline->layout = lvp_pipeline_layout_from_handle(pCreateInfo->layout);
    pipeline->force_min_sample = false;
 
    deep_copy_compute_create_info(&pipeline->compute_create_info, pCreateInfo);
    pipeline->is_compute_pipeline = true;
 
-   val_shader_compile_to_ir(pipeline, module,
+   lvp_shader_compile_to_ir(pipeline, module,
                             pCreateInfo->stage.pName,
                             MESA_SHADER_COMPUTE,
                             pCreateInfo->stage.pSpecializationInfo);
-   val_pipeline_compile(pipeline, MESA_SHADER_COMPUTE);
+   lvp_pipeline_compile(pipeline, MESA_SHADER_COMPUTE);
    return VK_SUCCESS;
 }
 
 static VkResult
-val_compute_pipeline_create(
+lvp_compute_pipeline_create(
    VkDevice _device,
    VkPipelineCache _cache,
    const VkComputePipelineCreateInfo *pCreateInfo,
    const VkAllocationCallbacks *pAllocator,
    VkPipeline *pPipeline)
 {
-   VAL_FROM_HANDLE(val_device, device, _device);
-   VAL_FROM_HANDLE(val_pipeline_cache, cache, _cache);
-   struct val_pipeline *pipeline;
+   LVP_FROM_HANDLE(lvp_device, device, _device);
+   LVP_FROM_HANDLE(lvp_pipeline_cache, cache, _cache);
+   struct lvp_pipeline *pipeline;
    VkResult result;
 
    assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO);
@@ -911,19 +911,19 @@ val_compute_pipeline_create(
 
    vk_object_base_init(&device->vk, &pipeline->base,
                        VK_OBJECT_TYPE_PIPELINE);
-   result = val_compute_pipeline_init(pipeline, device, cache, pCreateInfo,
+   result = lvp_compute_pipeline_init(pipeline, device, cache, pCreateInfo,
                                       pAllocator);
    if (result != VK_SUCCESS) {
       vk_free2(&device->alloc, pAllocator, pipeline);
       return result;
    }
 
-   *pPipeline = val_pipeline_to_handle(pipeline);
+   *pPipeline = lvp_pipeline_to_handle(pipeline);
 
    return VK_SUCCESS;
 }
 
-VkResult val_CreateComputePipelines(
+VkResult lvp_CreateComputePipelines(
    VkDevice                                    _device,
    VkPipelineCache                             pipelineCache,
    uint32_t                                    count,
@@ -936,7 +936,7 @@ VkResult val_CreateComputePipelines(
 
    for (; i < count; i++) {
       VkResult r;
-      r = val_compute_pipeline_create(_device,
+      r = lvp_compute_pipeline_create(_device,
                                       pipelineCache,
                                       &pCreateInfos[i],
                                       pAllocator, &pPipelines[i]);

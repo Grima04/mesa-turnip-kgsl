@@ -24,25 +24,25 @@
  */
 
 #include "wsi_common_wayland.h"
-#include "val_private.h"
+#include "lvp_private.h"
 
-VkBool32 val_GetPhysicalDeviceWaylandPresentationSupportKHR(
+VkBool32 lvp_GetPhysicalDeviceWaylandPresentationSupportKHR(
     VkPhysicalDevice                            physicalDevice,
     uint32_t                                    queueFamilyIndex,
     struct wl_display*                          display)
 {
-   VAL_FROM_HANDLE(val_physical_device, physical_device, physicalDevice);
+   LVP_FROM_HANDLE(lvp_physical_device, physical_device, physicalDevice);
 
    return wsi_wl_get_presentation_support(&physical_device->wsi_device, display);
 }
 
-VkResult val_CreateWaylandSurfaceKHR(
+VkResult lvp_CreateWaylandSurfaceKHR(
     VkInstance                                  _instance,
     const VkWaylandSurfaceCreateInfoKHR*        pCreateInfo,
     const VkAllocationCallbacks*                pAllocator,
     VkSurfaceKHR*                               pSurface)
 {
-   VAL_FROM_HANDLE(val_instance, instance, _instance);
+   LVP_FROM_HANDLE(lvp_instance, instance, _instance);
    const VkAllocationCallbacks *alloc;
    assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_WAYLAND_SURFACE_CREATE_INFO_KHR);
 

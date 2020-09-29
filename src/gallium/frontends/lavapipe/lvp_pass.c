@@ -21,21 +21,21 @@
  * IN THE SOFTWARE.
  */
 
-#include "val_private.h"
+#include "lvp_private.h"
 
 static void
-val_render_pass_compile(struct val_render_pass *pass)
+lvp_render_pass_compile(struct lvp_render_pass *pass)
 {
    for (uint32_t i = 0; i < pass->subpass_count; i++) {
-      struct val_subpass *subpass = &pass->subpasses[i];
+      struct lvp_subpass *subpass = &pass->subpasses[i];
 
       for (uint32_t j = 0; j < subpass->attachment_count; j++) {
-         struct val_subpass_attachment *subpass_att =
+         struct lvp_subpass_attachment *subpass_att =
             &subpass->attachments[j];
          if (subpass_att->attachment == VK_ATTACHMENT_UNUSED)
             continue;
 
-         struct val_render_pass_attachment *pass_att =
+         struct lvp_render_pass_attachment *pass_att =
             &pass->attachments[subpass_att->attachment];
 
          pass_att->first_subpass_idx = UINT32_MAX;
@@ -43,7 +43,7 @@ val_render_pass_compile(struct val_render_pass *pass)
    }
 
    for (uint32_t i = 0; i < pass->subpass_count; i++) {
-      struct val_subpass *subpass = &pass->subpasses[i];
+      struct lvp_subpass *subpass = &pass->subpasses[i];
       uint32_t color_sample_count = 1, depth_sample_count = 1;
 
       /* We don't allow depth_stencil_attachment to be non-NULL and
@@ -60,12 +60,12 @@ val_render_pass_compile(struct val_render_pass *pass)
          subpass->ds_resolve_attachment = NULL;
 
       for (uint32_t j = 0; j < subpass->attachment_count; j++) {
-         struct val_subpass_attachment *subpass_att =
+         struct lvp_subpass_attachment *subpass_att =
             &subpass->attachments[j];
          if (subpass_att->attachment == VK_ATTACHMENT_UNUSED)
             continue;
 
-         struct val_render_pass_attachment *pass_att =
+         struct lvp_render_pass_attachment *pass_att =
             &pass->attachments[subpass_att->attachment];
 
          if (i < pass_att->first_subpass_idx)
@@ -75,14 +75,14 @@ val_render_pass_compile(struct val_render_pass *pass)
 
       subpass->has_color_att = false;
       for (uint32_t j = 0; j < subpass->color_count; j++) {
-         struct val_subpass_attachment *subpass_att =
+         struct lvp_subpass_attachment *subpass_att =
             &subpass->color_attachments[j];
          if (subpass_att->attachment == VK_ATTACHMENT_UNUSED)
             continue;
 
          subpass->has_color_att = true;
 
-         struct val_render_pass_attachment *pass_att =
+         struct lvp_render_pass_attachment *pass_att =
             &pass->attachments[subpass_att->attachment];
 
          color_sample_count = pass_att->samples;
@@ -91,7 +91,7 @@ val_render_pass_compile(struct val_render_pass *pass)
       if (subpass->depth_stencil_attachment) {
          const uint32_t a =
             subpass->depth_stencil_attachment->attachment;
-         struct val_render_pass_attachment *pass_att =
+         struct lvp_render_pass_attachment *pass_att =
             &pass->attachments[a];
          depth_sample_count = pass_att->samples;
       }
@@ -103,7 +103,7 @@ val_render_pass_compile(struct val_render_pass *pass)
       subpass->has_color_resolve = false;
       if (subpass->resolve_attachments) {
          for (uint32_t j = 0; j < subpass->color_count; j++) {
-            struct val_subpass_attachment *resolve_att =
+            struct lvp_subpass_attachment *resolve_att =
                &subpass->resolve_attachments[j];
 
             if (resolve_att->attachment == VK_ATTACHMENT_UNUSED)
@@ -134,7 +134,7 @@ val_render_pass_compile(struct val_render_pass *pass)
 }
 
 static unsigned
-val_num_subpass_attachments(const VkSubpassDescription *desc)
+lvp_num_subpass_attachments(const VkSubpassDescription *desc)
 {
    return desc->inputAttachmentCount +
       desc->colorAttachmentCount +
@@ -142,14 +142,14 @@ val_num_subpass_attachments(const VkSubpassDescription *desc)
       (desc->pDepthStencilAttachment != NULL);
 }
 
-VkResult val_CreateRenderPass(
+VkResult lvp_CreateRenderPass(
    VkDevice                                    _device,
    const VkRenderPassCreateInfo*               pCreateInfo,
    const VkAllocationCallbacks*                pAllocator,
    VkRenderPass*                               pRenderPass)
 {
-   VAL_FROM_HANDLE(val_device, device, _device);
-   struct val_render_pass *pass;
+   LVP_FROM_HANDLE(lvp_device, device, _device);
+   struct lvp_render_pass *pass;
    size_t size;
    size_t attachments_offset;
 
@@ -166,7 +166,7 @@ VkResult val_CreateRenderPass(
       return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
    /* Clear the subpasses along with the parent pass. This required because
-    * each array member of val_subpass must be a valid pointer if not NULL.
+    * each array member of lvp_subpass must be a valid pointer if not NULL.
     */
    memset(pass, 0, size);
 
@@ -177,7 +177,7 @@ VkResult val_CreateRenderPass(
    pass->attachments = (void *) pass + attachments_offset;
 
    for (uint32_t i = 0; i < pCreateInfo->attachmentCount; i++) {
-      struct val_render_pass_attachment *att = &pass->attachments[i];
+      struct lvp_render_pass_attachment *att = &pass->attachments[i];
 
       att->format = pCreateInfo->pAttachments[i].format;
       att->samples = pCreateInfo->pAttachments[i].samples;
@@ -189,13 +189,13 @@ VkResult val_CreateRenderPass(
 
    uint32_t subpass_attachment_count = 0;
    for (uint32_t i = 0; i < pCreateInfo->subpassCount; i++) {
-      subpass_attachment_count += val_num_subpass_attachments(&pCreateInfo->pSubpasses[i]);
+      subpass_attachment_count += lvp_num_subpass_attachments(&pCreateInfo->pSubpasses[i]);
    }
 
    if (subpass_attachment_count) {
       pass->subpass_attachments =
          vk_alloc2(&device->alloc, pAllocator,
-                   subpass_attachment_count * sizeof(struct val_subpass_attachment), 8,
+                   subpass_attachment_count * sizeof(struct lvp_subpass_attachment), 8,
                    VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
       if (pass->subpass_attachments == NULL) {
          vk_free2(&device->alloc, pAllocator, pass);
@@ -204,14 +204,14 @@ VkResult val_CreateRenderPass(
    } else
       pass->subpass_attachments = NULL;
 
-   struct val_subpass_attachment *p = pass->subpass_attachments;
+   struct lvp_subpass_attachment *p = pass->subpass_attachments;
    for (uint32_t i = 0; i < pCreateInfo->subpassCount; i++) {
       const VkSubpassDescription *desc = &pCreateInfo->pSubpasses[i];
-      struct val_subpass *subpass = &pass->subpasses[i];
+      struct lvp_subpass *subpass = &pass->subpasses[i];
 
       subpass->input_count = desc->inputAttachmentCount;
       subpass->color_count = desc->colorAttachmentCount;
-      subpass->attachment_count = val_num_subpass_attachments(desc);
+      subpass->attachment_count = lvp_num_subpass_attachments(desc);
       subpass->attachments = p;
 
       if (desc->inputAttachmentCount > 0) {
@@ -219,7 +219,7 @@ VkResult val_CreateRenderPass(
          p += desc->inputAttachmentCount;
 
          for (uint32_t j = 0; j < desc->inputAttachmentCount; j++) {
-            subpass->input_attachments[j] = (struct val_subpass_attachment) {
+            subpass->input_attachments[j] = (struct lvp_subpass_attachment) {
                .attachment = desc->pInputAttachments[j].attachment,
                .layout = desc->pInputAttachments[j].layout,
             };
@@ -231,7 +231,7 @@ VkResult val_CreateRenderPass(
          p += desc->colorAttachmentCount;
 
          for (uint32_t j = 0; j < desc->colorAttachmentCount; j++) {
-            subpass->color_attachments[j] = (struct val_subpass_attachment) {
+            subpass->color_attachments[j] = (struct lvp_subpass_attachment) {
                .attachment = desc->pColorAttachments[j].attachment,
                .layout = desc->pColorAttachments[j].layout,
             };
@@ -243,7 +243,7 @@ VkResult val_CreateRenderPass(
          p += desc->colorAttachmentCount;
 
          for (uint32_t j = 0; j < desc->colorAttachmentCount; j++) {
-            subpass->resolve_attachments[j] = (struct val_subpass_attachment) {
+            subpass->resolve_attachments[j] = (struct lvp_subpass_attachment) {
                .attachment = desc->pResolveAttachments[j].attachment,
                .layout = desc->pResolveAttachments[j].layout,
             };
@@ -253,26 +253,26 @@ VkResult val_CreateRenderPass(
       if (desc->pDepthStencilAttachment) {
          subpass->depth_stencil_attachment = p++;
 
-         *subpass->depth_stencil_attachment = (struct val_subpass_attachment) {
+         *subpass->depth_stencil_attachment = (struct lvp_subpass_attachment) {
             .attachment = desc->pDepthStencilAttachment->attachment,
             .layout = desc->pDepthStencilAttachment->layout,
          };
       }
    }
 
-   val_render_pass_compile(pass);
-   *pRenderPass = val_render_pass_to_handle(pass);
+   lvp_render_pass_compile(pass);
+   *pRenderPass = lvp_render_pass_to_handle(pass);
 
    return VK_SUCCESS;
 }
 
-void val_DestroyRenderPass(
+void lvp_DestroyRenderPass(
    VkDevice                                    _device,
    VkRenderPass                                _pass,
    const VkAllocationCallbacks*                pAllocator)
 {
-   VAL_FROM_HANDLE(val_device, device, _device);
-   VAL_FROM_HANDLE(val_render_pass, pass, _pass);
+   LVP_FROM_HANDLE(lvp_device, device, _device);
+   LVP_FROM_HANDLE(lvp_render_pass, pass, _pass);
 
    if (!_pass)
       return;
@@ -281,7 +281,7 @@ void val_DestroyRenderPass(
    vk_free2(&device->alloc, pAllocator, pass);
 }
 
-void val_GetRenderAreaGranularity(
+void lvp_GetRenderAreaGranularity(
    VkDevice                                    device,
    VkRenderPass                                renderPass,
    VkExtent2D*                                 pGranularity)

@@ -31,23 +31,23 @@ import xml.etree.ElementTree as et
 from collections import OrderedDict, namedtuple
 from mako.template import Template
 
-from val_extensions import *
+from lvp_extensions import *
 
 # We generate a static hash table for entry point lookup
 # (vkGetProcAddress). We use a linear congruential generator for our hash
 # function and a power-of-two size table. The prime numbers are determined
 # experimentally.
 
-# We currently don't use layers in val, but keeping the ability for anv
+# We currently don't use layers in lvp, but keeping the ability for anv
 # anyways, so we can use it for device groups.
 LAYERS = [
-    'val'
+    'lvp'
 ]
 
 TEMPLATE_H = Template("""\
 /* This file generated from ${filename}, don't edit directly. */
 
-struct val_instance_dispatch_table {
+struct lvp_instance_dispatch_table {
    union {
       void *entrypoints[${len(instance_entrypoints)}];
       struct {
@@ -66,7 +66,7 @@ struct val_instance_dispatch_table {
    };
 };
 
-struct val_physical_device_dispatch_table {
+struct lvp_physical_device_dispatch_table {
    union {
       void *entrypoints[${len(physical_device_entrypoints)}];
       struct {
@@ -85,7 +85,7 @@ struct val_physical_device_dispatch_table {
    };
 };
 
-struct val_device_dispatch_table {
+struct lvp_device_dispatch_table {
    union {
       void *entrypoints[${len(device_entrypoints)}];
       struct {
@@ -104,12 +104,12 @@ struct val_device_dispatch_table {
    };
 };
 
-extern const struct val_instance_dispatch_table val_instance_dispatch_table;
+extern const struct lvp_instance_dispatch_table lvp_instance_dispatch_table;
 %for layer in LAYERS:
-extern const struct val_physical_device_dispatch_table ${layer}_physical_device_dispatch_table;
+extern const struct lvp_physical_device_dispatch_table ${layer}_physical_device_dispatch_table;
 %endfor
 %for layer in LAYERS:
-extern const struct val_device_dispatch_table ${layer}_device_dispatch_table;
+extern const struct lvp_device_dispatch_table ${layer}_device_dispatch_table;
 %endfor
 
 % for e in instance_entrypoints:
@@ -119,7 +119,7 @@ extern const struct val_device_dispatch_table ${layer}_device_dispatch_table;
   % if e.guard is not None:
 #ifdef ${e.guard}
   % endif
-  ${e.return_type} ${e.prefixed_name('val')}(${e.decl_params()});
+  ${e.return_type} ${e.prefixed_name('lvp')}(${e.decl_params()});
   % if e.guard is not None:
 #endif // ${e.guard}
   % endif
@@ -182,7 +182,7 @@ TEMPLATE_C = Template(u"""\
 
 /* This file generated from ${filename}, don't edit directly. */
 
-#include "val_private.h"
+#include "lvp_private.h"
 
 #include "util/macros.h"
 struct string_map_entry {
@@ -279,18 +279,18 @@ ${strmap(device_strmap, 'device')}
   % if e.guard is not None:
 #ifdef ${e.guard}
   % endif
-  ${e.return_type} ${e.prefixed_name('val')}(${e.decl_params()}) __attribute__ ((weak));
+  ${e.return_type} ${e.prefixed_name('lvp')}(${e.decl_params()}) __attribute__ ((weak));
   % if e.guard is not None:
 #endif // ${e.guard}
   % endif
 % endfor
 
-const struct val_instance_dispatch_table val_instance_dispatch_table = {
+const struct lvp_instance_dispatch_table lvp_instance_dispatch_table = {
 % for e in instance_entrypoints:
   % if e.guard is not None:
 #ifdef ${e.guard}
   % endif
-  .${e.name} = ${e.prefixed_name('val')},
+  .${e.name} = ${e.prefixed_name('lvp')},
   % if e.guard is not None:
 #endif // ${e.guard}
   % endif
@@ -304,18 +304,18 @@ const struct val_instance_dispatch_table val_instance_dispatch_table = {
   % if e.guard is not None:
 #ifdef ${e.guard}
   % endif
-  ${e.return_type} ${e.prefixed_name('val')}(${e.decl_params()}) __attribute__ ((weak));
+  ${e.return_type} ${e.prefixed_name('lvp')}(${e.decl_params()}) __attribute__ ((weak));
   % if e.guard is not None:
 #endif // ${e.guard}
   % endif
 % endfor
 
-const struct val_physical_device_dispatch_table val_physical_device_dispatch_table = {
+const struct lvp_physical_device_dispatch_table lvp_physical_device_dispatch_table = {
 % for e in physical_device_entrypoints:
   % if e.guard is not None:
 #ifdef ${e.guard}
   % endif
-  .${e.name} = ${e.prefixed_name('val')},
+  .${e.name} = ${e.prefixed_name('lvp')},
   % if e.guard is not None:
 #endif // ${e.guard}
   % endif
@@ -331,19 +331,19 @@ const struct val_physical_device_dispatch_table val_physical_device_dispatch_tab
     % if e.guard is not None:
 #ifdef ${e.guard}
     % endif
-    % if layer == 'val':
+    % if layer == 'lvp':
       ${e.return_type} __attribute__ ((weak))
-      ${e.prefixed_name('val')}(${e.decl_params()})
+      ${e.prefixed_name('lvp')}(${e.decl_params()})
       {
         % if e.params[0].type == 'VkDevice':
-          VAL_FROM_HANDLE(val_device, val_device, ${e.params[0].name});
-          return val_device->dispatch.${e.name}(${e.call_params()});
+          LVP_FROM_HANDLE(lvp_device, lvp_device, ${e.params[0].name});
+          return lvp_device->dispatch.${e.name}(${e.call_params()});
         % elif e.params[0].type == 'VkCommandBuffer':
-          VAL_FROM_HANDLE(val_cmd_buffer, val_cmd_buffer, ${e.params[0].name});
-          return val_cmd_buffer->device->dispatch.${e.name}(${e.call_params()});
+          LVP_FROM_HANDLE(lvp_cmd_buffer, lvp_cmd_buffer, ${e.params[0].name});
+          return lvp_cmd_buffer->device->dispatch.${e.name}(${e.call_params()});
         % elif e.params[0].type == 'VkQueue':
-          VAL_FROM_HANDLE(val_queue, val_queue, ${e.params[0].name});
-          return val_queue->device->dispatch.${e.name}(${e.call_params()});
+          LVP_FROM_HANDLE(lvp_queue, lvp_queue, ${e.params[0].name});
+          return lvp_queue->device->dispatch.${e.name}(${e.call_params()});
         % else:
           assert(!"Unhandled device child trampoline case: ${e.params[0].type}");
         % endif
@@ -356,7 +356,7 @@ const struct val_physical_device_dispatch_table val_physical_device_dispatch_tab
     % endif
   % endfor
 
-  const struct val_device_dispatch_table ${layer}_device_dispatch_table = {
+  const struct lvp_device_dispatch_table ${layer}_device_dispatch_table = {
   % for e in device_entrypoints:
     % if e.guard is not None:
 #ifdef ${e.guard}
@@ -376,8 +376,8 @@ const struct val_physical_device_dispatch_table val_physical_device_dispatch_tab
  * If device is NULL, all device extensions are considered enabled.
  */
 bool
-val_instance_entrypoint_is_enabled(int index, uint32_t core_version,
-                                   const struct val_instance_extension_table *instance)
+lvp_instance_entrypoint_is_enabled(int index, uint32_t core_version,
+                                   const struct lvp_instance_extension_table *instance)
 {
    switch (index) {
 % for e in instance_entrypoints:
@@ -410,8 +410,8 @@ val_instance_entrypoint_is_enabled(int index, uint32_t core_version,
  * If device is NULL, all device extensions are considered enabled.
  */
 bool
-val_physical_device_entrypoint_is_enabled(int index, uint32_t core_version,
-                                          const struct val_instance_extension_table *instance)
+lvp_physical_device_entrypoint_is_enabled(int index, uint32_t core_version,
+                                          const struct lvp_instance_extension_table *instance)
 {
    switch (index) {
 % for e in physical_device_entrypoints:
@@ -444,9 +444,9 @@ val_physical_device_entrypoint_is_enabled(int index, uint32_t core_version,
  * If device is NULL, all device extensions are considered enabled.
  */
 bool
-val_device_entrypoint_is_enabled(int index, uint32_t core_version,
-                                 const struct val_instance_extension_table *instance,
-                                 const struct val_device_extension_table *device)
+lvp_device_entrypoint_is_enabled(int index, uint32_t core_version,
+                                 const struct lvp_instance_extension_table *instance,
+                                 const struct lvp_device_extension_table *device)
 {
    switch (index) {
 % for e in device_entrypoints:
@@ -473,61 +473,61 @@ val_device_entrypoint_is_enabled(int index, uint32_t core_version,
 }
 
 int
-val_get_instance_entrypoint_index(const char *name)
+lvp_get_instance_entrypoint_index(const char *name)
 {
    return instance_string_map_lookup(name);
 }
 
 int
-val_get_physical_device_entrypoint_index(const char *name)
+lvp_get_physical_device_entrypoint_index(const char *name)
 {
    return physical_device_string_map_lookup(name);
 }
 
 int
-val_get_device_entrypoint_index(const char *name)
+lvp_get_device_entrypoint_index(const char *name)
 {
    return device_string_map_lookup(name);
 }
 
 const char *
-val_get_instance_entry_name(int index)
+lvp_get_instance_entry_name(int index)
 {
    return instance_entry_name(index);
 }
 
 const char *
-val_get_physical_device_entry_name(int index)
+lvp_get_physical_device_entry_name(int index)
 {
    return physical_device_entry_name(index);
 }
 
 const char *
-val_get_device_entry_name(int index)
+lvp_get_device_entry_name(int index)
 {
    return device_entry_name(index);
 }
 
 static void * __attribute__ ((noinline))
-val_resolve_device_entrypoint(uint32_t index)
+lvp_resolve_device_entrypoint(uint32_t index)
 {
-    return val_device_dispatch_table.entrypoints[index];
+    return lvp_device_dispatch_table.entrypoints[index];
 }
 
 void *
-val_lookup_entrypoint(const char *name)
+lvp_lookup_entrypoint(const char *name)
 {
-   int idx = val_get_instance_entrypoint_index(name);
+   int idx = lvp_get_instance_entrypoint_index(name);
    if (idx >= 0)
-      return val_instance_dispatch_table.entrypoints[idx];
+      return lvp_instance_dispatch_table.entrypoints[idx];
 
-   idx = val_get_physical_device_entrypoint_index(name);
+   idx = lvp_get_physical_device_entrypoint_index(name);
    if (idx >= 0)
-      return val_physical_device_dispatch_table.entrypoints[idx];
+      return lvp_physical_device_dispatch_table.entrypoints[idx];
 
-   idx = val_get_device_entrypoint_index(name);
+   idx = lvp_get_device_entrypoint_index(name);
    if (idx >= 0)
-      return val_resolve_device_entrypoint(idx);
+      return lvp_resolve_device_entrypoint(idx);
 
    return NULL;
 }""", output_encoding='utf-8')
@@ -781,16 +781,16 @@ def main():
         e.num = num
     instance_strmap.bake()
 
-    # For outputting entrypoints.h we generate a val_EntryPoint() prototype
+    # For outputting entrypoints.h we generate a lvp_EntryPoint() prototype
     # per entry point.
     try:
-        with open(os.path.join(args.outdir, 'val_entrypoints.h'), 'wb') as f:
+        with open(os.path.join(args.outdir, 'lvp_entrypoints.h'), 'wb') as f:
             f.write(TEMPLATE_H.render(instance_entrypoints=instance_entrypoints,
                                       physical_device_entrypoints=physical_device_entrypoints,
                                       device_entrypoints=device_entrypoints,
                                       LAYERS=LAYERS,
                                       filename=os.path.basename(__file__)))
-        with open(os.path.join(args.outdir, 'val_entrypoints.c'), 'wb') as f:
+        with open(os.path.join(args.outdir, 'lvp_entrypoints.c'), 'wb') as f:
             f.write(TEMPLATE_C.render(instance_entrypoints=instance_entrypoints,
                                       physical_device_entrypoints=physical_device_entrypoints,
                                       device_entrypoints=device_entrypoints,

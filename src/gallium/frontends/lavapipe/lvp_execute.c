@@ -23,11 +23,11 @@
 
 /* use a gallium context to execute a command buffer */
 
-#include "val_private.h"
+#include "lvp_private.h"
 
 #include "pipe/p_context.h"
 #include "pipe/p_state.h"
-#include "val_conv.h"
+#include "lvp_conv.h"
 
 #include "pipe/p_shader_tokens.h"
 #include "tgsi/tgsi_text.h"
@@ -111,15 +111,15 @@ struct rendering_state {
 
    uint8_t push_constants[128 * 4];
 
-   struct val_render_pass *pass;
+   struct lvp_render_pass *pass;
    uint32_t subpass;
-   struct val_framebuffer *vk_framebuffer;
+   struct lvp_framebuffer *vk_framebuffer;
    VkRect2D render_area;
 
    uint32_t sample_mask;
    unsigned min_samples;
 
-   struct val_attachment_state *attachments;
+   struct lvp_attachment_state *attachments;
 };
 
 static void emit_compute_state(struct rendering_state *state)
@@ -312,10 +312,10 @@ static void emit_state(struct rendering_state *state)
    }
 }
 
-static void handle_compute_pipeline(struct val_cmd_buffer_entry *cmd,
+static void handle_compute_pipeline(struct lvp_cmd_buffer_entry *cmd,
                                     struct rendering_state *state)
 {
-   struct val_pipeline *pipeline = cmd->u.pipeline.pipeline;
+   struct lvp_pipeline *pipeline = cmd->u.pipeline.pipeline;
 
    state->dispatch_info.block[0] = pipeline->pipeline_nir[MESA_SHADER_COMPUTE]->info.cs.local_size[0];
    state->dispatch_info.block[1] = pipeline->pipeline_nir[MESA_SHADER_COMPUTE]->info.cs.local_size[1];
@@ -343,10 +343,10 @@ get_viewport_xform(const VkViewport *viewport,
    translate[2] = n;
 }
 
-static void handle_graphics_pipeline(struct val_cmd_buffer_entry *cmd,
+static void handle_graphics_pipeline(struct lvp_cmd_buffer_entry *cmd,
                                      struct rendering_state *state)
 {
-   struct val_pipeline *pipeline = cmd->u.pipeline.pipeline;
+   struct lvp_pipeline *pipeline = cmd->u.pipeline.pipeline;
    bool dynamic_states[VK_DYNAMIC_STATE_STENCIL_REFERENCE+1];
    unsigned fb_samples = 0;
 
@@ -618,21 +618,21 @@ static void handle_graphics_pipeline(struct val_cmd_buffer_entry *cmd,
    }
 }
 
-static void handle_pipeline(struct val_cmd_buffer_entry *cmd,
+static void handle_pipeline(struct lvp_cmd_buffer_entry *cmd,
                             struct rendering_state *state)
 {
-   struct val_pipeline *pipeline = cmd->u.pipeline.pipeline;
+   struct lvp_pipeline *pipeline = cmd->u.pipeline.pipeline;
    if (pipeline->is_compute_pipeline)
       handle_compute_pipeline(cmd, state);
    else
       handle_graphics_pipeline(cmd, state);
 }
 
-static void handle_vertex_buffers(struct val_cmd_buffer_entry *cmd,
+static void handle_vertex_buffers(struct lvp_cmd_buffer_entry *cmd,
                                   struct rendering_state *state)
 {
    int i;
-   struct val_cmd_bind_vertex_buffers *vcb = &cmd->u.vertex_buffers;
+   struct lvp_cmd_bind_vertex_buffers *vcb = &cmd->u.vertex_buffers;
    for (i = 0; i < vcb->binding_count; i++) {
       int idx = i + vcb->first;
 
@@ -661,7 +661,7 @@ struct dyn_info {
 };
 
 static void fill_sampler(struct pipe_sampler_state *ss,
-                         struct val_sampler *samp)
+                         struct lvp_sampler *samp)
 {
    ss->wrap_s = vk_conv_wrap_mode(samp->create_info.addressModeU);
    ss->wrap_t = vk_conv_wrap_mode(samp->create_info.addressModeV);
@@ -708,8 +708,8 @@ static void fill_sampler_stage(struct rendering_state *state,
                                gl_shader_stage stage,
                                enum pipe_shader_type p_stage,
                                int array_idx,
-                               const struct val_descriptor *descriptor,
-                               const struct val_descriptor_set_binding_layout *binding)
+                               const struct lvp_descriptor *descriptor,
+                               const struct lvp_descriptor_set_binding_layout *binding)
 {
    int ss_idx = binding->stage[stage].sampler_index;
    if (ss_idx == -1)
@@ -727,15 +727,15 @@ static void fill_sampler_view_stage(struct rendering_state *state,
                                     gl_shader_stage stage,
                                     enum pipe_shader_type p_stage,
                                     int array_idx,
-                                    const struct val_descriptor *descriptor,
-                                    const struct val_descriptor_set_binding_layout *binding)
+                                    const struct lvp_descriptor *descriptor,
+                                    const struct lvp_descriptor_set_binding_layout *binding)
 {
    int sv_idx = binding->stage[stage].sampler_view_index;
    if (sv_idx == -1)
       return;
    sv_idx += array_idx;
    sv_idx += dyn_info->stage[stage].sampler_view_count;
-   struct val_image_view *iv = descriptor->image_view;
+   struct lvp_image_view *iv = descriptor->image_view;
    struct pipe_sampler_view templ;
 
    enum pipe_format pformat;
@@ -755,9 +755,9 @@ static void fill_sampler_view_stage(struct rendering_state *state,
    if (iv->view_type == VK_IMAGE_VIEW_TYPE_CUBE)
       templ.target = PIPE_TEXTURE_CUBE;
    templ.u.tex.first_layer = iv->subresourceRange.baseArrayLayer;
-   templ.u.tex.last_layer = iv->subresourceRange.baseArrayLayer + val_get_layerCount(iv->image, &iv->subresourceRange) - 1;
+   templ.u.tex.last_layer = iv->subresourceRange.baseArrayLayer + lvp_get_layerCount(iv->image, &iv->subresourceRange) - 1;
    templ.u.tex.first_level = iv->subresourceRange.baseMipLevel;
-   templ.u.tex.last_level = iv->subresourceRange.baseMipLevel + val_get_levelCount(iv->image, &iv->subresourceRange) - 1;
+   templ.u.tex.last_level = iv->subresourceRange.baseMipLevel + lvp_get_levelCount(iv->image, &iv->subresourceRange) - 1;
    if (iv->components.r != VK_COMPONENT_SWIZZLE_IDENTITY)
       templ.swizzle_r = vk_conv_swizzle(iv->components.r);
    if (iv->components.g != VK_COMPONENT_SWIZZLE_IDENTITY)
@@ -786,15 +786,15 @@ static void fill_sampler_buffer_view_stage(struct rendering_state *state,
                                            gl_shader_stage stage,
                                            enum pipe_shader_type p_stage,
                                            int array_idx,
-                                           const struct val_descriptor *descriptor,
-                                           const struct val_descriptor_set_binding_layout *binding)
+                                           const struct lvp_descriptor *descriptor,
+                                           const struct lvp_descriptor_set_binding_layout *binding)
 {
    int sv_idx = binding->stage[stage].sampler_view_index;
    if (sv_idx == -1)
       return;
    sv_idx += array_idx;
    sv_idx += dyn_info->stage[stage].sampler_view_count;
-   struct val_buffer_view *bv = descriptor->buffer_view;
+   struct lvp_buffer_view *bv = descriptor->buffer_view;
    struct pipe_sampler_view templ;
    memset(&templ, 0, sizeof(templ));
    templ.target = PIPE_BUFFER;
@@ -821,10 +821,10 @@ static void fill_image_view_stage(struct rendering_state *state,
                                   gl_shader_stage stage,
                                   enum pipe_shader_type p_stage,
                                   int array_idx,
-                                  const struct val_descriptor *descriptor,
-                                  const struct val_descriptor_set_binding_layout *binding)
+                                  const struct lvp_descriptor *descriptor,
+                                  const struct lvp_descriptor_set_binding_layout *binding)
 {
-   struct val_image_view *iv = descriptor->image_view;
+   struct lvp_image_view *iv = descriptor->image_view;
    int idx = binding->stage[stage].image_index;
    if (idx == -1)
       return;
@@ -843,7 +843,7 @@ static void fill_image_view_stage(struct rendering_state *state,
       state->iv[p_stage][idx].u.tex.last_layer = u_minify(iv->image->bo->depth0, iv->subresourceRange.baseMipLevel) - 1;
    } else {
       state->iv[p_stage][idx].u.tex.first_layer = iv->subresourceRange.baseArrayLayer;
-      state->iv[p_stage][idx].u.tex.last_layer = iv->subresourceRange.baseArrayLayer + val_get_layerCount(iv->image, &iv->subresourceRange) - 1;
+      state->iv[p_stage][idx].u.tex.last_layer = iv->subresourceRange.baseArrayLayer + lvp_get_layerCount(iv->image, &iv->subresourceRange) - 1;
    }
    state->iv[p_stage][idx].u.tex.level = iv->subresourceRange.baseMipLevel;
    if (state->num_shader_images[p_stage] <= idx)
@@ -856,10 +856,10 @@ static void fill_image_buffer_view_stage(struct rendering_state *state,
                                          gl_shader_stage stage,
                                          enum pipe_shader_type p_stage,
                                          int array_idx,
-                                         const struct val_descriptor *descriptor,
-                                         const struct val_descriptor_set_binding_layout *binding)
+                                         const struct lvp_descriptor *descriptor,
+                                         const struct lvp_descriptor_set_binding_layout *binding)
 {
-   struct val_buffer_view *bv = descriptor->buffer_view;
+   struct lvp_buffer_view *bv = descriptor->buffer_view;
    int idx = binding->stage[stage].image_index;
    if (idx == -1)
       return;
@@ -876,11 +876,11 @@ static void fill_image_buffer_view_stage(struct rendering_state *state,
 
 static void handle_descriptor(struct rendering_state *state,
                               struct dyn_info *dyn_info,
-                              const struct val_descriptor_set_binding_layout *binding,
+                              const struct lvp_descriptor_set_binding_layout *binding,
                               gl_shader_stage stage,
                               enum pipe_shader_type p_stage,
                               int array_idx,
-                              const struct val_descriptor *descriptor)
+                              const struct lvp_descriptor *descriptor)
 {
    bool is_dynamic = descriptor->type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC ||
       descriptor->type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;
@@ -961,14 +961,14 @@ static void handle_descriptor(struct rendering_state *state,
 
 static void handle_set_stage(struct rendering_state *state,
                              struct dyn_info *dyn_info,
-                             const struct val_descriptor_set *set,
+                             const struct lvp_descriptor_set *set,
                              gl_shader_stage stage,
                              enum pipe_shader_type p_stage)
 {
    int j;
    for (j = 0; j < set->layout->binding_count; j++) {
-      const struct val_descriptor_set_binding_layout *binding;
-      const struct val_descriptor *descriptor;
+      const struct lvp_descriptor_set_binding_layout *binding;
+      const struct lvp_descriptor *descriptor;
       binding = &set->layout->binding[j];
 
       if (binding->valid) {
@@ -981,7 +981,7 @@ static void handle_set_stage(struct rendering_state *state,
 }
 
 static void increment_dyn_info(struct dyn_info *dyn_info,
-                               struct val_descriptor_set_layout *layout, bool inc_dyn)
+                               struct lvp_descriptor_set_layout *layout, bool inc_dyn)
 {
    for (gl_shader_stage stage = MESA_SHADER_VERTEX; stage < MESA_SHADER_STAGES; stage++) {
       dyn_info->stage[stage].const_buffer_count += layout->stage[stage].const_buffer_count;
@@ -994,18 +994,18 @@ static void increment_dyn_info(struct dyn_info *dyn_info,
       dyn_info->dyn_index += layout->dynamic_offset_count;
 }
 
-static void handle_compute_descriptor_sets(struct val_cmd_buffer_entry *cmd,
+static void handle_compute_descriptor_sets(struct lvp_cmd_buffer_entry *cmd,
                                            struct dyn_info *dyn_info,
                                            struct rendering_state *state)
 {
-   struct val_cmd_bind_descriptor_sets *bds = &cmd->u.descriptor_sets;
+   struct lvp_cmd_bind_descriptor_sets *bds = &cmd->u.descriptor_sets;
    int i;
 
    for (i = 0; i < bds->first; i++) {
       increment_dyn_info(dyn_info, bds->layout->set[i].layout, false);
    }
    for (i = 0; i < bds->count; i++) {
-      const struct val_descriptor_set *set = bds->sets[i];
+      const struct lvp_descriptor_set *set = bds->sets[i];
 
       if (set->layout->shader_stages & VK_SHADER_STAGE_COMPUTE_BIT)
          handle_set_stage(state, dyn_info, set, MESA_SHADER_COMPUTE, PIPE_SHADER_COMPUTE);
@@ -1013,10 +1013,10 @@ static void handle_compute_descriptor_sets(struct val_cmd_buffer_entry *cmd,
    }
 }
 
-static void handle_descriptor_sets(struct val_cmd_buffer_entry *cmd,
+static void handle_descriptor_sets(struct lvp_cmd_buffer_entry *cmd,
                                    struct rendering_state *state)
 {
-   struct val_cmd_bind_descriptor_sets *bds = &cmd->u.descriptor_sets;
+   struct lvp_cmd_bind_descriptor_sets *bds = &cmd->u.descriptor_sets;
    int i;
    struct dyn_info dyn_info;
 
@@ -1035,7 +1035,7 @@ static void handle_descriptor_sets(struct val_cmd_buffer_entry *cmd,
    }
 
    for (i = 0; i < bds->count; i++) {
-      const struct val_descriptor_set *set = bds->sets[i];
+      const struct lvp_descriptor_set *set = bds->sets[i];
 
       if (set->layout->shader_stages & VK_SHADER_STAGE_VERTEX_BIT)
          handle_set_stage(state, &dyn_info, set, MESA_SHADER_VERTEX, PIPE_SHADER_VERTEX);
@@ -1056,7 +1056,7 @@ static void handle_descriptor_sets(struct val_cmd_buffer_entry *cmd,
 }
 
 static void add_img_view_surface(struct rendering_state *state,
-                                 struct val_image_view *imgv, VkFormat format, int width, int height)
+                                 struct lvp_image_view *imgv, VkFormat format, int width, int height)
 {
    if (!imgv->surface) {
       struct pipe_surface template;
@@ -1067,7 +1067,7 @@ static void add_img_view_surface(struct rendering_state *state,
       template.width = width;
       template.height = height;
       template.u.tex.first_layer = imgv->subresourceRange.baseArrayLayer;
-      template.u.tex.last_layer = imgv->subresourceRange.baseArrayLayer + val_get_layerCount(imgv->image, &imgv->subresourceRange) - 1;
+      template.u.tex.last_layer = imgv->subresourceRange.baseArrayLayer + lvp_get_layerCount(imgv->image, &imgv->subresourceRange) - 1;
       template.u.tex.level = imgv->subresourceRange.baseMipLevel;
 
       if (template.format == PIPE_FORMAT_NONE)
@@ -1089,7 +1089,7 @@ static bool
 subpass_needs_clear(struct rendering_state *state)
 {
    uint32_t a;
-   struct val_subpass *subpass = &state->pass->subpasses[state->subpass];
+   struct lvp_subpass *subpass = &state->pass->subpasses[state->subpass];
    for (uint32_t i = 0; i < subpass->color_count; i++) {
       a = subpass->color_attachments[i].attachment;
       if (attachment_needs_clear(state, a))
@@ -1105,7 +1105,7 @@ subpass_needs_clear(struct rendering_state *state)
 
 static void render_subpass_clear(struct rendering_state *state)
 {
-   struct val_subpass *subpass = &state->pass->subpasses[state->subpass];
+   struct lvp_subpass *subpass = &state->pass->subpasses[state->subpass];
 
    if (!subpass_needs_clear(state))
       return;
@@ -1116,8 +1116,8 @@ static void render_subpass_clear(struct rendering_state *state)
       if (!attachment_needs_clear(state, a))
          continue;
 
-      struct val_render_pass_attachment *att = &state->pass->attachments[a];
-      struct val_image_view *imgv = state->vk_framebuffer->attachments[a];
+      struct lvp_render_pass_attachment *att = &state->pass->attachments[a];
+      struct lvp_image_view *imgv = state->vk_framebuffer->attachments[a];
 
       add_img_view_surface(state, imgv, att->format, state->framebuffer.width, state->framebuffer.height);
 
@@ -1143,8 +1143,8 @@ static void render_subpass_clear(struct rendering_state *state)
       if (!attachment_needs_clear(state, ds))
          return;
 
-      struct val_render_pass_attachment *att = &state->pass->attachments[ds];
-      struct val_image_view *imgv = state->vk_framebuffer->attachments[ds];
+      struct lvp_render_pass_attachment *att = &state->pass->attachments[ds];
+      struct lvp_image_view *imgv = state->vk_framebuffer->attachments[ds];
 
       add_img_view_surface(state, imgv, att->format, state->framebuffer.width, state->framebuffer.height);
 
@@ -1179,18 +1179,18 @@ static void render_subpass_clear(struct rendering_state *state)
 
 static void render_pass_resolve(struct rendering_state *state)
 {
-   struct val_subpass *subpass = &state->pass->subpasses[state->subpass];
+   struct lvp_subpass *subpass = &state->pass->subpasses[state->subpass];
    if (!subpass->has_color_resolve)
       return;
    for (uint32_t i = 0; i < subpass->color_count; i++) {
-      struct val_subpass_attachment src_att = subpass->color_attachments[i];
-      struct val_subpass_attachment dst_att = subpass->resolve_attachments[i];
+      struct lvp_subpass_attachment src_att = subpass->color_attachments[i];
+      struct lvp_subpass_attachment dst_att = subpass->resolve_attachments[i];
 
       if (dst_att.attachment == VK_ATTACHMENT_UNUSED)
          continue;
 
-      struct val_image_view *src_imgv = state->vk_framebuffer->attachments[src_att.attachment];
-      struct val_image_view *dst_imgv = state->vk_framebuffer->attachments[dst_att.attachment];
+      struct lvp_image_view *src_imgv = state->vk_framebuffer->attachments[src_att.attachment];
+      struct lvp_image_view *dst_imgv = state->vk_framebuffer->attachments[dst_att.attachment];
 
       struct pipe_blit_info info;
       memset(&info, 0, sizeof(info));
@@ -1222,11 +1222,11 @@ static void begin_render_subpass(struct rendering_state *state,
 
    state->framebuffer.nr_cbufs = 0;
 
-   struct val_subpass *subpass = &state->pass->subpasses[subpass_idx];
+   struct lvp_subpass *subpass = &state->pass->subpasses[subpass_idx];
    for (unsigned i = 0; i < subpass->color_count; i++) {
-      struct val_subpass_attachment *color_att = &subpass->color_attachments[i];
+      struct lvp_subpass_attachment *color_att = &subpass->color_attachments[i];
       if (color_att->attachment != VK_ATTACHMENT_UNUSED) {
-         struct val_image_view *imgv = state->vk_framebuffer->attachments[color_att->attachment];
+         struct lvp_image_view *imgv = state->vk_framebuffer->attachments[color_att->attachment];
 
          add_img_view_surface(state, imgv, state->pass->attachments[color_att->attachment].format, state->framebuffer.width, state->framebuffer.height);
          state->framebuffer.cbufs[state->framebuffer.nr_cbufs] = imgv->surface;
@@ -1236,10 +1236,10 @@ static void begin_render_subpass(struct rendering_state *state,
    }
 
    if (subpass->depth_stencil_attachment) {
-      struct val_subpass_attachment *ds_att = subpass->depth_stencil_attachment;
+      struct lvp_subpass_attachment *ds_att = subpass->depth_stencil_attachment;
 
       if (ds_att->attachment != VK_ATTACHMENT_UNUSED) {
-         struct val_image_view *imgv = state->vk_framebuffer->attachments[ds_att->attachment];
+         struct lvp_image_view *imgv = state->vk_framebuffer->attachments[ds_att->attachment];
          add_img_view_surface(state, imgv, state->pass->attachments[ds_att->attachment].format, state->framebuffer.width, state->framebuffer.height);
          state->framebuffer.zsbuf = imgv->surface;
       }
@@ -1249,7 +1249,7 @@ static void begin_render_subpass(struct rendering_state *state,
                                       &state->framebuffer);
 }
 
-static void handle_begin_render_pass(struct val_cmd_buffer_entry *cmd,
+static void handle_begin_render_pass(struct lvp_cmd_buffer_entry *cmd,
                                      struct rendering_state *state)
 {
    state->pass = cmd->u.begin_render_pass.render_pass;
@@ -1265,7 +1265,7 @@ static void handle_begin_render_pass(struct val_cmd_buffer_entry *cmd,
    begin_render_subpass(state, 0);
 }
 
-static void handle_end_render_pass(struct val_cmd_buffer_entry *cmd,
+static void handle_end_render_pass(struct lvp_cmd_buffer_entry *cmd,
                                    struct rendering_state *state)
 {
    state->pctx->flush(state->pctx, NULL, 0);
@@ -1277,7 +1277,7 @@ static void handle_end_render_pass(struct val_cmd_buffer_entry *cmd,
    state->subpass = 0;
 }
 
-static void handle_next_subpass(struct val_cmd_buffer_entry *cmd,
+static void handle_next_subpass(struct lvp_cmd_buffer_entry *cmd,
                                 struct rendering_state *state)
 {
    state->pctx->flush(state->pctx, NULL, 0);
@@ -1286,7 +1286,7 @@ static void handle_next_subpass(struct val_cmd_buffer_entry *cmd,
    begin_render_subpass(state, state->subpass);
 }
 
-static void handle_draw(struct val_cmd_buffer_entry *cmd,
+static void handle_draw(struct lvp_cmd_buffer_entry *cmd,
                         struct rendering_state *state)
 {
    state->info.index_size = 0;
@@ -1299,7 +1299,7 @@ static void handle_draw(struct val_cmd_buffer_entry *cmd,
    state->pctx->draw_vbo(state->pctx, &state->info);
 }
 
-static void handle_set_viewport(struct val_cmd_buffer_entry *cmd,
+static void handle_set_viewport(struct lvp_cmd_buffer_entry *cmd,
                                 struct rendering_state *state)
 {
    int i;
@@ -1312,7 +1312,7 @@ static void handle_set_viewport(struct val_cmd_buffer_entry *cmd,
    state->vp_dirty = true;
 }
 
-static void handle_set_scissor(struct val_cmd_buffer_entry *cmd,
+static void handle_set_scissor(struct lvp_cmd_buffer_entry *cmd,
                                struct rendering_state *state)
 {
    int i;
@@ -1328,14 +1328,14 @@ static void handle_set_scissor(struct val_cmd_buffer_entry *cmd,
    state->scissor_dirty = true;
 }
 
-static void handle_set_line_width(struct val_cmd_buffer_entry *cmd,
+static void handle_set_line_width(struct lvp_cmd_buffer_entry *cmd,
                                   struct rendering_state *state)
 {
    state->rs_state.line_width = cmd->u.set_line_width.line_width;
    state->rs_dirty = true;
 }
 
-static void handle_set_depth_bias(struct val_cmd_buffer_entry *cmd,
+static void handle_set_depth_bias(struct lvp_cmd_buffer_entry *cmd,
                                   struct rendering_state *state)
 {
    state->rs_state.offset_units = cmd->u.set_depth_bias.constant_factor;
@@ -1344,14 +1344,14 @@ static void handle_set_depth_bias(struct val_cmd_buffer_entry *cmd,
    state->rs_dirty = true;
 }
 
-static void handle_set_blend_constants(struct val_cmd_buffer_entry *cmd,
+static void handle_set_blend_constants(struct lvp_cmd_buffer_entry *cmd,
                                        struct rendering_state *state)
 {
    memcpy(state->blend_color.color, cmd->u.set_blend_constants.blend_constants, 4 * sizeof(float));
    state->blend_color_dirty = true;
 }
 
-static void handle_set_depth_bounds(struct val_cmd_buffer_entry *cmd,
+static void handle_set_depth_bounds(struct lvp_cmd_buffer_entry *cmd,
                                     struct rendering_state *state)
 {
    state->dsa_state.depth.bounds_min = cmd->u.set_depth_bounds.min_depth;
@@ -1359,7 +1359,7 @@ static void handle_set_depth_bounds(struct val_cmd_buffer_entry *cmd,
    state->dsa_dirty = true;
 }
 
-static void handle_set_stencil_compare_mask(struct val_cmd_buffer_entry *cmd,
+static void handle_set_stencil_compare_mask(struct lvp_cmd_buffer_entry *cmd,
                                             struct rendering_state *state)
 {
    if (cmd->u.stencil_vals.face_mask & VK_STENCIL_FACE_FRONT_BIT)
@@ -1369,7 +1369,7 @@ static void handle_set_stencil_compare_mask(struct val_cmd_buffer_entry *cmd,
    state->dsa_dirty = true;
 }
 
-static void handle_set_stencil_write_mask(struct val_cmd_buffer_entry *cmd,
+static void handle_set_stencil_write_mask(struct lvp_cmd_buffer_entry *cmd,
                                           struct rendering_state *state)
 {
    if (cmd->u.stencil_vals.face_mask & VK_STENCIL_FACE_FRONT_BIT)
@@ -1379,7 +1379,7 @@ static void handle_set_stencil_write_mask(struct val_cmd_buffer_entry *cmd,
    state->dsa_dirty = true;
 }
 
-static void handle_set_stencil_reference(struct val_cmd_buffer_entry *cmd,
+static void handle_set_stencil_reference(struct lvp_cmd_buffer_entry *cmd,
                                          struct rendering_state *state)
 {
    if (cmd->u.stencil_vals.face_mask & VK_STENCIL_FACE_FRONT_BIT)
@@ -1499,11 +1499,11 @@ copy_depth_box(ubyte *dst,
    }
 }
 
-static void handle_copy_image_to_buffer(struct val_cmd_buffer_entry *cmd,
+static void handle_copy_image_to_buffer(struct lvp_cmd_buffer_entry *cmd,
                                         struct rendering_state *state)
 {
    int i;
-   struct val_cmd_copy_image_to_buffer *copycmd = &cmd->u.img_to_buffer;
+   struct lvp_cmd_copy_image_to_buffer *copycmd = &cmd->u.img_to_buffer;
    struct pipe_box box, dbox;
    struct pipe_transfer *src_t, *dst_t;
    ubyte *src_data, *dst_data;
@@ -1578,11 +1578,11 @@ static void handle_copy_image_to_buffer(struct val_cmd_buffer_entry *cmd,
    }
 }
 
-static void handle_copy_buffer_to_image(struct val_cmd_buffer_entry *cmd,
+static void handle_copy_buffer_to_image(struct lvp_cmd_buffer_entry *cmd,
                                         struct rendering_state *state)
 {
    int i;
-   struct val_cmd_copy_buffer_to_image *copycmd = &cmd->u.buffer_to_img;
+   struct lvp_cmd_copy_buffer_to_image *copycmd = &cmd->u.buffer_to_img;
    struct pipe_box box, sbox;
    struct pipe_transfer *src_t, *dst_t;
    void *src_data, *dst_data;
@@ -1660,11 +1660,11 @@ static void handle_copy_buffer_to_image(struct val_cmd_buffer_entry *cmd,
    }
 }
 
-static void handle_copy_image(struct val_cmd_buffer_entry *cmd,
+static void handle_copy_image(struct lvp_cmd_buffer_entry *cmd,
                               struct rendering_state *state)
 {
    int i;
-   struct val_cmd_copy_image *copycmd = &cmd->u.copy_image;
+   struct lvp_cmd_copy_image *copycmd = &cmd->u.copy_image;
 
    state->pctx->flush(state->pctx, NULL, 0);
 
@@ -1688,11 +1688,11 @@ static void handle_copy_image(struct val_cmd_buffer_entry *cmd,
    }
 }
 
-static void handle_copy_buffer(struct val_cmd_buffer_entry *cmd,
+static void handle_copy_buffer(struct lvp_cmd_buffer_entry *cmd,
                                struct rendering_state *state)
 {
    int i;
-   struct val_cmd_copy_buffer *copycmd = &cmd->u.copy_buffer;
+   struct lvp_cmd_copy_buffer *copycmd = &cmd->u.copy_buffer;
 
    for (i = 0; i < copycmd->region_count; i++) {
       struct pipe_box box = { 0 };
@@ -1703,11 +1703,11 @@ static void handle_copy_buffer(struct val_cmd_buffer_entry *cmd,
    }
 }
 
-static void handle_blit_image(struct val_cmd_buffer_entry *cmd,
+static void handle_blit_image(struct lvp_cmd_buffer_entry *cmd,
                               struct rendering_state *state)
 {
    int i;
-   struct val_cmd_blit_image *blitcmd = &cmd->u.blit_image;
+   struct lvp_cmd_blit_image *blitcmd = &cmd->u.blit_image;
    struct pipe_blit_info info;
 
    memset(&info, 0, sizeof(info));
@@ -1773,10 +1773,10 @@ static void handle_blit_image(struct val_cmd_buffer_entry *cmd,
    }
 }
 
-static void handle_fill_buffer(struct val_cmd_buffer_entry *cmd,
+static void handle_fill_buffer(struct lvp_cmd_buffer_entry *cmd,
                                struct rendering_state *state)
 {
-   struct val_cmd_fill_buffer *fillcmd = &cmd->u.fill_buffer;
+   struct lvp_cmd_fill_buffer *fillcmd = &cmd->u.fill_buffer;
    uint32_t *dst;
    struct pipe_transfer *dst_t;
    struct pipe_box box;
@@ -1798,10 +1798,10 @@ static void handle_fill_buffer(struct val_cmd_buffer_entry *cmd,
    state->pctx->transfer_unmap(state->pctx, dst_t);
 }
 
-static void handle_update_buffer(struct val_cmd_buffer_entry *cmd,
+static void handle_update_buffer(struct lvp_cmd_buffer_entry *cmd,
                                  struct rendering_state *state)
 {
-   struct val_cmd_update_buffer *updcmd = &cmd->u.update_buffer;
+   struct lvp_cmd_update_buffer *updcmd = &cmd->u.update_buffer;
    uint32_t *dst;
    struct pipe_transfer *dst_t;
    struct pipe_box box;
@@ -1818,7 +1818,7 @@ static void handle_update_buffer(struct val_cmd_buffer_entry *cmd,
    state->pctx->transfer_unmap(state->pctx, dst_t);
 }
 
-static void handle_draw_indexed(struct val_cmd_buffer_entry *cmd,
+static void handle_draw_indexed(struct lvp_cmd_buffer_entry *cmd,
                                 struct rendering_state *state)
 {
    state->info.indirect = NULL;
@@ -1842,7 +1842,7 @@ static void handle_draw_indexed(struct val_cmd_buffer_entry *cmd,
    state->pctx->draw_vbo(state->pctx, &state->info);
 }
 
-static void handle_draw_indirect(struct val_cmd_buffer_entry *cmd,
+static void handle_draw_indirect(struct lvp_cmd_buffer_entry *cmd,
                                  struct rendering_state *state, bool indexed)
 {
    if (indexed) {
@@ -1859,10 +1859,10 @@ static void handle_draw_indirect(struct val_cmd_buffer_entry *cmd,
    state->pctx->draw_vbo(state->pctx, &state->info);
 }
 
-static void handle_index_buffer(struct val_cmd_buffer_entry *cmd,
+static void handle_index_buffer(struct lvp_cmd_buffer_entry *cmd,
                                 struct rendering_state *state)
 {
-   struct val_cmd_bind_index_buffer *ib = &cmd->u.index_buffer;
+   struct lvp_cmd_bind_index_buffer *ib = &cmd->u.index_buffer;
    switch (ib->index_type) {
    case VK_INDEX_TYPE_UINT16:
       state->index_size = 2;
@@ -1882,7 +1882,7 @@ static void handle_index_buffer(struct val_cmd_buffer_entry *cmd,
    state->ib_dirty = true;
 }
 
-static void handle_dispatch(struct val_cmd_buffer_entry *cmd,
+static void handle_dispatch(struct lvp_cmd_buffer_entry *cmd,
                             struct rendering_state *state)
 {
    state->dispatch_info.grid[0] = cmd->u.dispatch.x;
@@ -1892,7 +1892,7 @@ static void handle_dispatch(struct val_cmd_buffer_entry *cmd,
    state->pctx->launch_grid(state->pctx, &state->dispatch_info);
 }
 
-static void handle_dispatch_indirect(struct val_cmd_buffer_entry *cmd,
+static void handle_dispatch_indirect(struct lvp_cmd_buffer_entry *cmd,
                                      struct rendering_state *state)
 {
    state->dispatch_info.indirect = cmd->u.dispatch_indirect.buffer->bo;
@@ -1900,7 +1900,7 @@ static void handle_dispatch_indirect(struct val_cmd_buffer_entry *cmd,
    state->pctx->launch_grid(state->pctx, &state->dispatch_info);
 }
 
-static void handle_push_constants(struct val_cmd_buffer_entry *cmd,
+static void handle_push_constants(struct lvp_cmd_buffer_entry *cmd,
                                   struct rendering_state *state)
 {
    memcpy(state->push_constants + cmd->u.push_constants.offset, cmd->u.push_constants.val, cmd->u.push_constants.size);
@@ -1931,50 +1931,50 @@ static void handle_push_constants(struct val_cmd_buffer_entry *cmd,
    state->pcbuf_dirty[PIPE_SHADER_COMPUTE] = true;
 }
 
-static void val_execute_cmd_buffer(struct val_cmd_buffer *cmd_buffer,
+static void lvp_execute_cmd_buffer(struct lvp_cmd_buffer *cmd_buffer,
                                    struct rendering_state *state);
 
-static void handle_execute_commands(struct val_cmd_buffer_entry *cmd,
+static void handle_execute_commands(struct lvp_cmd_buffer_entry *cmd,
                                     struct rendering_state *state)
 {
    for (unsigned i = 0; i < cmd->u.execute_commands.command_buffer_count; i++) {
-      struct val_cmd_buffer *secondary_buf = cmd->u.execute_commands.cmd_buffers[i];
-      val_execute_cmd_buffer(secondary_buf, state);
+      struct lvp_cmd_buffer *secondary_buf = cmd->u.execute_commands.cmd_buffers[i];
+      lvp_execute_cmd_buffer(secondary_buf, state);
    }
 }
 
-static void handle_event_set(struct val_cmd_buffer_entry *cmd,
+static void handle_event_set(struct lvp_cmd_buffer_entry *cmd,
                              struct rendering_state *state)
 {
-   struct val_event *event = cmd->u.event_set.event;
+   struct lvp_event *event = cmd->u.event_set.event;
 
    if (cmd->u.event_set.flush)
       state->pctx->flush(state->pctx, NULL, 0);
    event->event_storage = (cmd->u.event_set.value == true) ? 1 : 0;
 }
 
-static void handle_wait_events(struct val_cmd_buffer_entry *cmd,
+static void handle_wait_events(struct lvp_cmd_buffer_entry *cmd,
                                struct rendering_state *state)
 {
    for (unsigned i = 0; i < cmd->u.wait_events.event_count; i++) {
-      struct val_event *event = cmd->u.wait_events.events[i];
+      struct lvp_event *event = cmd->u.wait_events.events[i];
 
       while (event->event_storage != true);
    }
 }
 
-static void handle_pipeline_barrier(struct val_cmd_buffer_entry *cmd,
+static void handle_pipeline_barrier(struct lvp_cmd_buffer_entry *cmd,
                                     struct rendering_state *state)
 {
    /* why hello nail, I'm a hammer. - TODO */
    state->pctx->flush(state->pctx, NULL, 0);
 }
 
-static void handle_begin_query(struct val_cmd_buffer_entry *cmd,
+static void handle_begin_query(struct lvp_cmd_buffer_entry *cmd,
                                struct rendering_state *state)
 {
-   struct val_cmd_query_cmd *qcmd = &cmd->u.query;
-   struct val_query_pool *pool = qcmd->pool;
+   struct lvp_cmd_query_cmd *qcmd = &cmd->u.query;
+   struct lvp_query_pool *pool = qcmd->pool;
 
    if (!pool->queries[qcmd->query]) {
       enum pipe_query_type qtype = pool->base_type;
@@ -1987,21 +1987,21 @@ static void handle_begin_query(struct val_cmd_buffer_entry *cmd,
    state->pctx->begin_query(state->pctx, pool->queries[qcmd->query]);
 }
 
-static void handle_end_query(struct val_cmd_buffer_entry *cmd,
+static void handle_end_query(struct lvp_cmd_buffer_entry *cmd,
                              struct rendering_state *state)
 {
-   struct val_cmd_query_cmd *qcmd = &cmd->u.query;
-   struct val_query_pool *pool = qcmd->pool;
+   struct lvp_cmd_query_cmd *qcmd = &cmd->u.query;
+   struct lvp_query_pool *pool = qcmd->pool;
    assert(pool->queries[qcmd->query]);
 
    state->pctx->end_query(state->pctx, pool->queries[qcmd->query]);
 }
 
-static void handle_reset_query_pool(struct val_cmd_buffer_entry *cmd,
+static void handle_reset_query_pool(struct lvp_cmd_buffer_entry *cmd,
                                     struct rendering_state *state)
 {
-   struct val_cmd_query_cmd *qcmd = &cmd->u.query;
-   struct val_query_pool *pool = qcmd->pool;
+   struct lvp_cmd_query_cmd *qcmd = &cmd->u.query;
+   struct lvp_query_pool *pool = qcmd->pool;
    for (unsigned i = qcmd->query; i < qcmd->query + qcmd->index; i++) {
       if (pool->queries[i]) {
          state->pctx->destroy_query(state->pctx, pool->queries[i]);
@@ -2010,11 +2010,11 @@ static void handle_reset_query_pool(struct val_cmd_buffer_entry *cmd,
    }
 }
 
-static void handle_write_timestamp(struct val_cmd_buffer_entry *cmd,
+static void handle_write_timestamp(struct lvp_cmd_buffer_entry *cmd,
                                    struct rendering_state *state)
 {
-   struct val_cmd_query_cmd *qcmd = &cmd->u.query;
-   struct val_query_pool *pool = qcmd->pool;
+   struct lvp_cmd_query_cmd *qcmd = &cmd->u.query;
+   struct lvp_query_pool *pool = qcmd->pool;
    if (!pool->queries[qcmd->query]) {
       pool->queries[qcmd->query] = state->pctx->create_query(state->pctx,
                                                              PIPE_QUERY_TIMESTAMP, 0);
@@ -2026,11 +2026,11 @@ static void handle_write_timestamp(struct val_cmd_buffer_entry *cmd,
 
 }
 
-static void handle_copy_query_pool_results(struct val_cmd_buffer_entry *cmd,
+static void handle_copy_query_pool_results(struct lvp_cmd_buffer_entry *cmd,
                                            struct rendering_state *state)
 {
-   struct val_cmd_copy_query_pool_results *copycmd = &cmd->u.copy_query_pool_results;
-   struct val_query_pool *pool = copycmd->pool;
+   struct lvp_cmd_copy_query_pool_results *copycmd = &cmd->u.copy_query_pool_results;
+   struct lvp_query_pool *pool = copycmd->pool;
 
    for (unsigned i = copycmd->first_query; i < copycmd->first_query + copycmd->query_count; i++) {
       unsigned offset = copycmd->dst->offset + (copycmd->stride * (i - copycmd->first_query));
@@ -2102,10 +2102,10 @@ static void pack_clear_color(enum pipe_format pformat, VkClearColorValue *in_val
    }
 }
 
-static void handle_clear_color_image(struct val_cmd_buffer_entry *cmd,
+static void handle_clear_color_image(struct lvp_cmd_buffer_entry *cmd,
                                      struct rendering_state *state)
 {
-   struct val_image *image = cmd->u.clear_color_image.image;
+   struct lvp_image *image = cmd->u.clear_color_image.image;
    uint32_t col_val[4];
    pack_clear_color(image->bo->format, &cmd->u.clear_color_image.clear_val, col_val);
    for (unsigned i = 0; i < cmd->u.clear_color_image.range_count; i++) {
@@ -2115,7 +2115,7 @@ static void handle_clear_color_image(struct val_cmd_buffer_entry *cmd,
       box.y = 0;
       box.z = 0;
 
-      uint32_t level_count = val_get_levelCount(image, range);
+      uint32_t level_count = lvp_get_levelCount(image, range);
       for (unsigned j = range->baseMipLevel; j < range->baseMipLevel + level_count; j++) {
          box.width = u_minify(image->bo->width0, j);
          box.height = u_minify(image->bo->height0, j);
@@ -2124,11 +2124,11 @@ static void handle_clear_color_image(struct val_cmd_buffer_entry *cmd,
             box.depth = u_minify(image->bo->depth0, j);
          else if (image->bo->target == PIPE_TEXTURE_1D_ARRAY) {
             box.y = range->baseArrayLayer;
-            box.height = val_get_layerCount(image, range);
+            box.height = lvp_get_layerCount(image, range);
             box.depth = 1;
          } else {
             box.z = range->baseArrayLayer;
-            box.depth = val_get_layerCount(image, range);
+            box.depth = lvp_get_layerCount(image, range);
          }
 
          state->pctx->clear_texture(state->pctx, image->bo,
@@ -2137,10 +2137,10 @@ static void handle_clear_color_image(struct val_cmd_buffer_entry *cmd,
    }
 }
 
-static void handle_clear_ds_image(struct val_cmd_buffer_entry *cmd,
+static void handle_clear_ds_image(struct lvp_cmd_buffer_entry *cmd,
                                   struct rendering_state *state)
 {
-   struct val_image *image = cmd->u.clear_ds_image.image;
+   struct lvp_image *image = cmd->u.clear_ds_image.image;
    uint64_t col_val;
    col_val = util_pack64_z_stencil(image->bo->format, cmd->u.clear_ds_image.clear_val.depth, cmd->u.clear_ds_image.clear_val.stencil);
    for (unsigned i = 0; i < cmd->u.clear_ds_image.range_count; i++) {
@@ -2150,7 +2150,7 @@ static void handle_clear_ds_image(struct val_cmd_buffer_entry *cmd,
       box.y = 0;
       box.z = 0;
 
-      uint32_t level_count = val_get_levelCount(image, range);
+      uint32_t level_count = lvp_get_levelCount(image, range);
       for (unsigned j = range->baseMipLevel; j < range->baseMipLevel + level_count; j++) {
          box.width = u_minify(image->bo->width0, j);
          box.height = u_minify(image->bo->height0, j);
@@ -2159,11 +2159,11 @@ static void handle_clear_ds_image(struct val_cmd_buffer_entry *cmd,
             box.depth = u_minify(image->bo->depth0, j);
          else if (image->bo->target == PIPE_TEXTURE_1D_ARRAY) {
             box.y = range->baseArrayLayer;
-            box.height = val_get_layerCount(image, range);
+            box.height = lvp_get_layerCount(image, range);
             box.depth = 1;
          } else {
             box.z = range->baseArrayLayer;
-            box.depth = val_get_layerCount(image, range);
+            box.depth = lvp_get_layerCount(image, range);
          }
 
          state->pctx->clear_texture(state->pctx, image->bo,
@@ -2172,21 +2172,21 @@ static void handle_clear_ds_image(struct val_cmd_buffer_entry *cmd,
    }
 }
 
-static void handle_clear_attachments(struct val_cmd_buffer_entry *cmd,
+static void handle_clear_attachments(struct lvp_cmd_buffer_entry *cmd,
                                      struct rendering_state *state)
 {
    for (uint32_t a = 0; a < cmd->u.clear_attachments.attachment_count; a++) {
       VkClearAttachment *att = &cmd->u.clear_attachments.attachments[a];
-      struct val_subpass *subpass = &state->pass->subpasses[state->subpass];
-      struct val_image_view *imgv;
+      struct lvp_subpass *subpass = &state->pass->subpasses[state->subpass];
+      struct lvp_image_view *imgv;
 
       if (att->aspectMask == VK_IMAGE_ASPECT_COLOR_BIT) {
-         struct val_subpass_attachment *color_att = &subpass->color_attachments[att->colorAttachment];
+         struct lvp_subpass_attachment *color_att = &subpass->color_attachments[att->colorAttachment];
          if (!color_att || color_att->attachment == VK_ATTACHMENT_UNUSED)
             continue;
          imgv = state->vk_framebuffer->attachments[color_att->attachment];
       } else {
-         struct val_subpass_attachment *ds_att = subpass->depth_stencil_attachment;
+         struct lvp_subpass_attachment *ds_att = subpass->depth_stencil_attachment;
          if (!ds_att || ds_att->attachment == VK_ATTACHMENT_UNUSED)
             continue;
          imgv = state->vk_framebuffer->attachments[ds_att->attachment];
@@ -2214,11 +2214,11 @@ static void handle_clear_attachments(struct val_cmd_buffer_entry *cmd,
    }
 }
 
-static void handle_resolve_image(struct val_cmd_buffer_entry *cmd,
+static void handle_resolve_image(struct lvp_cmd_buffer_entry *cmd,
                                  struct rendering_state *state)
 {
    int i;
-   struct val_cmd_resolve_image *resolvecmd = &cmd->u.resolve_image;
+   struct lvp_cmd_resolve_image *resolvecmd = &cmd->u.resolve_image;
    struct pipe_blit_info info;
 
    memset(&info, 0, sizeof(info));
@@ -2263,157 +2263,157 @@ static void handle_resolve_image(struct val_cmd_buffer_entry *cmd,
    }
 }
 
-static void val_execute_cmd_buffer(struct val_cmd_buffer *cmd_buffer,
+static void lvp_execute_cmd_buffer(struct lvp_cmd_buffer *cmd_buffer,
                                    struct rendering_state *state)
 {
-   struct val_cmd_buffer_entry *cmd;
+   struct lvp_cmd_buffer_entry *cmd;
 
    LIST_FOR_EACH_ENTRY(cmd, &cmd_buffer->cmds, cmd_link) {
       switch (cmd->cmd_type) {
-      case VAL_CMD_BIND_PIPELINE:
+      case LVP_CMD_BIND_PIPELINE:
          handle_pipeline(cmd, state);
          break;
-      case VAL_CMD_SET_VIEWPORT:
+      case LVP_CMD_SET_VIEWPORT:
          handle_set_viewport(cmd, state);
          break;
-      case VAL_CMD_SET_SCISSOR:
+      case LVP_CMD_SET_SCISSOR:
          handle_set_scissor(cmd, state);
          break;
-      case VAL_CMD_SET_LINE_WIDTH:
+      case LVP_CMD_SET_LINE_WIDTH:
          handle_set_line_width(cmd, state);
          break;
-      case VAL_CMD_SET_DEPTH_BIAS:
+      case LVP_CMD_SET_DEPTH_BIAS:
          handle_set_depth_bias(cmd, state);
          break;
-      case VAL_CMD_SET_BLEND_CONSTANTS:
+      case LVP_CMD_SET_BLEND_CONSTANTS:
          handle_set_blend_constants(cmd, state);
          break;
-      case VAL_CMD_SET_DEPTH_BOUNDS:
+      case LVP_CMD_SET_DEPTH_BOUNDS:
          handle_set_depth_bounds(cmd, state);
          break;
-      case VAL_CMD_SET_STENCIL_COMPARE_MASK:
+      case LVP_CMD_SET_STENCIL_COMPARE_MASK:
          handle_set_stencil_compare_mask(cmd, state);
          break;
-      case VAL_CMD_SET_STENCIL_WRITE_MASK:
+      case LVP_CMD_SET_STENCIL_WRITE_MASK:
          handle_set_stencil_write_mask(cmd, state);
          break;
-      case VAL_CMD_SET_STENCIL_REFERENCE:
+      case LVP_CMD_SET_STENCIL_REFERENCE:
          handle_set_stencil_reference(cmd, state);
          break;
-      case VAL_CMD_BIND_DESCRIPTOR_SETS:
+      case LVP_CMD_BIND_DESCRIPTOR_SETS:
          handle_descriptor_sets(cmd, state);
          break;
-      case VAL_CMD_BIND_INDEX_BUFFER:
+      case LVP_CMD_BIND_INDEX_BUFFER:
          handle_index_buffer(cmd, state);
          break;
-      case VAL_CMD_BIND_VERTEX_BUFFERS:
+      case LVP_CMD_BIND_VERTEX_BUFFERS:
          handle_vertex_buffers(cmd, state);
          break;
-      case VAL_CMD_DRAW:
+      case LVP_CMD_DRAW:
          emit_state(state);
          handle_draw(cmd, state);
          break;
-      case VAL_CMD_DRAW_INDEXED:
+      case LVP_CMD_DRAW_INDEXED:
          emit_state(state);
          handle_draw_indexed(cmd, state);
          break;
-      case VAL_CMD_DRAW_INDIRECT:
+      case LVP_CMD_DRAW_INDIRECT:
          emit_state(state);
          handle_draw_indirect(cmd, state, false);
          break;
-      case VAL_CMD_DRAW_INDEXED_INDIRECT:
+      case LVP_CMD_DRAW_INDEXED_INDIRECT:
          emit_state(state);
          handle_draw_indirect(cmd, state, true);
          break;
-      case VAL_CMD_DISPATCH:
+      case LVP_CMD_DISPATCH:
          emit_compute_state(state);
          handle_dispatch(cmd, state);
          break;
-      case VAL_CMD_DISPATCH_INDIRECT:
+      case LVP_CMD_DISPATCH_INDIRECT:
          emit_compute_state(state);
          handle_dispatch_indirect(cmd, state);
          break;
-      case VAL_CMD_COPY_BUFFER:
+      case LVP_CMD_COPY_BUFFER:
          handle_copy_buffer(cmd, state);
          break;
-      case VAL_CMD_COPY_IMAGE:
+      case LVP_CMD_COPY_IMAGE:
          handle_copy_image(cmd, state);
          break;
-      case VAL_CMD_BLIT_IMAGE:
+      case LVP_CMD_BLIT_IMAGE:
          handle_blit_image(cmd, state);
          break;
-      case VAL_CMD_COPY_BUFFER_TO_IMAGE:
+      case LVP_CMD_COPY_BUFFER_TO_IMAGE:
          handle_copy_buffer_to_image(cmd, state);
          break;
-      case VAL_CMD_COPY_IMAGE_TO_BUFFER:
+      case LVP_CMD_COPY_IMAGE_TO_BUFFER:
          handle_copy_image_to_buffer(cmd, state);
          break;
-      case VAL_CMD_UPDATE_BUFFER:
+      case LVP_CMD_UPDATE_BUFFER:
          handle_update_buffer(cmd, state);
          break;
-      case VAL_CMD_FILL_BUFFER:
+      case LVP_CMD_FILL_BUFFER:
          handle_fill_buffer(cmd, state);
          break;
-      case VAL_CMD_CLEAR_COLOR_IMAGE:
+      case LVP_CMD_CLEAR_COLOR_IMAGE:
          handle_clear_color_image(cmd, state);
          break;
-      case VAL_CMD_CLEAR_DEPTH_STENCIL_IMAGE:
+      case LVP_CMD_CLEAR_DEPTH_STENCIL_IMAGE:
          handle_clear_ds_image(cmd, state);
          break;
-      case VAL_CMD_CLEAR_ATTACHMENTS:
+      case LVP_CMD_CLEAR_ATTACHMENTS:
          handle_clear_attachments(cmd, state);
          break;
-      case VAL_CMD_RESOLVE_IMAGE:
+      case LVP_CMD_RESOLVE_IMAGE:
          handle_resolve_image(cmd, state);
          break;
-      case VAL_CMD_SET_EVENT:
-      case VAL_CMD_RESET_EVENT:
+      case LVP_CMD_SET_EVENT:
+      case LVP_CMD_RESET_EVENT:
          handle_event_set(cmd, state);
          break;
-      case VAL_CMD_WAIT_EVENTS:
+      case LVP_CMD_WAIT_EVENTS:
          handle_wait_events(cmd, state);
          break;
-      case VAL_CMD_PIPELINE_BARRIER:
+      case LVP_CMD_PIPELINE_BARRIER:
          handle_pipeline_barrier(cmd, state);
          break;
-      case VAL_CMD_BEGIN_QUERY:
+      case LVP_CMD_BEGIN_QUERY:
          handle_begin_query(cmd, state);
          break;
-      case VAL_CMD_END_QUERY:
+      case LVP_CMD_END_QUERY:
          handle_end_query(cmd, state);
          break;
-      case VAL_CMD_RESET_QUERY_POOL:
+      case LVP_CMD_RESET_QUERY_POOL:
          handle_reset_query_pool(cmd, state);
          break;
-      case VAL_CMD_WRITE_TIMESTAMP:
+      case LVP_CMD_WRITE_TIMESTAMP:
          handle_write_timestamp(cmd, state);
          break;
-      case VAL_CMD_COPY_QUERY_POOL_RESULTS:
+      case LVP_CMD_COPY_QUERY_POOL_RESULTS:
          handle_copy_query_pool_results(cmd, state);
          break;
-      case VAL_CMD_PUSH_CONSTANTS:
+      case LVP_CMD_PUSH_CONSTANTS:
          handle_push_constants(cmd, state);
          break;
-      case VAL_CMD_BEGIN_RENDER_PASS:
+      case LVP_CMD_BEGIN_RENDER_PASS:
          handle_begin_render_pass(cmd, state);
          break;
-      case VAL_CMD_NEXT_SUBPASS:
+      case LVP_CMD_NEXT_SUBPASS:
          handle_next_subpass(cmd, state);
          break;
-      case VAL_CMD_END_RENDER_PASS:
+      case LVP_CMD_END_RENDER_PASS:
          handle_end_render_pass(cmd, state);
          break;
-      case VAL_CMD_EXECUTE_COMMANDS:
+      case LVP_CMD_EXECUTE_COMMANDS:
          handle_execute_commands(cmd, state);
          break;
       }
    }
 }
 
-VkResult val_execute_cmds(struct val_device *device,
-                          struct val_queue *queue,
-                          struct val_fence *fence,
-                          struct val_cmd_buffer *cmd_buffer)
+VkResult lvp_execute_cmds(struct lvp_device *device,
+                          struct lvp_queue *queue,
+                          struct lvp_fence *fence,
+                          struct lvp_cmd_buffer *cmd_buffer)
 {
    struct rendering_state state;
    struct pipe_fence_handle *handle = NULL;
@@ -2423,7 +2423,7 @@ VkResult val_execute_cmds(struct val_device *device,
    state.dsa_dirty = true;
    state.rs_dirty = true;
    /* create a gallium context */
-   val_execute_cmd_buffer(cmd_buffer, &state);
+   lvp_execute_cmd_buffer(cmd_buffer, &state);
 
    state.pctx->flush(state.pctx, fence ? &handle : NULL, 0);
    if (fence) {

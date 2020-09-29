@@ -25,15 +25,15 @@
 #include <xcb/xcb.h>
 
 #include "wsi_common_x11.h"
-#include "val_private.h"
+#include "lvp_private.h"
 
-VkBool32 val_GetPhysicalDeviceXcbPresentationSupportKHR(
+VkBool32 lvp_GetPhysicalDeviceXcbPresentationSupportKHR(
     VkPhysicalDevice                            physicalDevice,
     uint32_t                                    queueFamilyIndex,
     xcb_connection_t*                           connection,
     xcb_visualid_t                              visual_id)
 {
-   VAL_FROM_HANDLE(val_physical_device, device, physicalDevice);
+   LVP_FROM_HANDLE(lvp_physical_device, device, physicalDevice);
 
    return wsi_get_physical_device_xcb_presentation_support(
       &device->wsi_device,
@@ -41,13 +41,13 @@ VkBool32 val_GetPhysicalDeviceXcbPresentationSupportKHR(
       connection, visual_id);
 }
 
-VkBool32 val_GetPhysicalDeviceXlibPresentationSupportKHR(
+VkBool32 lvp_GetPhysicalDeviceXlibPresentationSupportKHR(
     VkPhysicalDevice                            physicalDevice,
     uint32_t                                    queueFamilyIndex,
     Display*                                    dpy,
     VisualID                                    visualID)
 {
-   VAL_FROM_HANDLE(val_physical_device, device, physicalDevice);
+   LVP_FROM_HANDLE(lvp_physical_device, device, physicalDevice);
 
    return wsi_get_physical_device_xcb_presentation_support(
       &device->wsi_device,
@@ -55,13 +55,13 @@ VkBool32 val_GetPhysicalDeviceXlibPresentationSupportKHR(
       XGetXCBConnection(dpy), visualID);
 }
 
-VkResult val_CreateXcbSurfaceKHR(
+VkResult lvp_CreateXcbSurfaceKHR(
     VkInstance                                  _instance,
     const VkXcbSurfaceCreateInfoKHR*            pCreateInfo,
     const VkAllocationCallbacks*                pAllocator,
     VkSurfaceKHR*                               pSurface)
 {
-   VAL_FROM_HANDLE(val_instance, instance, _instance);
+   LVP_FROM_HANDLE(lvp_instance, instance, _instance);
    const VkAllocationCallbacks *alloc;
    assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_XCB_SURFACE_CREATE_INFO_KHR);
 
@@ -73,13 +73,13 @@ VkResult val_CreateXcbSurfaceKHR(
    return wsi_create_xcb_surface(alloc, pCreateInfo, pSurface);
 }
 
-VkResult val_CreateXlibSurfaceKHR(
+VkResult lvp_CreateXlibSurfaceKHR(
     VkInstance                                  _instance,
     const VkXlibSurfaceCreateInfoKHR*           pCreateInfo,
     const VkAllocationCallbacks*                pAllocator,
     VkSurfaceKHR*                               pSurface)
 {
-   VAL_FROM_HANDLE(val_instance, instance, _instance);
+   LVP_FROM_HANDLE(lvp_instance, instance, _instance);
    const VkAllocationCallbacks *alloc;
 
    assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR);
