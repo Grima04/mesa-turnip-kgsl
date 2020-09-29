@@ -300,7 +300,7 @@ this case a "binary wrap". Follow the steps below:
 
 -  Install the binaries and headers into the
    ``$mesa_src/subprojects/llvm``
--  Add a meson build.build file to that directory (more on that later)
+-  Add a meson.build file to that directory (more on that later)
 
 The wrap file must define the following:
 
