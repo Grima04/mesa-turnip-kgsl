@@ -232,6 +232,14 @@ split_struct_derefs_impl(nir_function_impl *impl,
             continue;
 
          nir_variable *base_var = nir_deref_instr_get_variable(deref);
+         /* If we can't chase back to the variable, then we're a complex use.
+          * This should have been detected by get_complex_used_vars() and the
+          * variable should not have been split.  However, we have no way of
+          * knowing that here, so we just have to trust it.
+          */
+         if (base_var == NULL)
+            continue;
+
          struct hash_entry *entry =
             _mesa_hash_table_search(var_field_map, base_var);
          if (!entry)
