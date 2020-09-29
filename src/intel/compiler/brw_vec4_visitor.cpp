@@ -944,16 +944,7 @@ vec4_visitor::emit_texture(ir_texture_opcode op,
       } else if (op == ir_txf_ms) {
          emit(MOV(dst_reg(MRF, param_base + 1, sample_index.type, WRITEMASK_X),
                   sample_index));
-         if (opcode == SHADER_OPCODE_TXF_CMS_W) {
-            /* MCS data is stored in the first two channels of ‘mcs’, but we
-             * need to get it into the .y and .z channels of the second vec4
-             * of params.
-             */
-            mcs.swizzle = BRW_SWIZZLE4(0, 0, 1, 1);
-            emit(MOV(dst_reg(MRF, param_base + 1,
-                             glsl_type::uint_type, WRITEMASK_YZ),
-                     mcs));
-         } else if (devinfo->gen >= 7) {
+         if (devinfo->gen >= 7) {
             /* MCS data is in the first channel of `mcs`, but we need to get it into
              * the .y channel of the second vec4 of params, so replicate .x across
              * the whole vec4 and then mask off everything except .y
