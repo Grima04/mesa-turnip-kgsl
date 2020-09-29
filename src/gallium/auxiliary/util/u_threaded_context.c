@@ -30,6 +30,7 @@
 #include "util/u_inlines.h"
 #include "util/u_memory.h"
 #include "util/u_upload_mgr.h"
+#include "compiler/shader_info.h"
 
 /* 0 = disabled, 1 = assertions, 2 = printfs */
 #define TC_DEBUG 0
@@ -703,6 +704,34 @@ tc_set_constant_buffer(struct pipe_context *_pipe,
    } else {
       memset(&p->cb, 0, sizeof(*cb));
    }
+}
+
+struct tc_inlinable_constants {
+   ubyte shader;
+   ubyte num_values;
+   uint32_t values[MAX_INLINABLE_UNIFORMS];
+};
+
+static void
+tc_call_set_inlinable_constants(struct pipe_context *pipe, union tc_payload *payload)
+{
+   struct tc_inlinable_constants *p = (struct tc_inlinable_constants *)payload;
+
+   pipe->set_inlinable_constants(pipe, p->shader, p->num_values, p->values);
+}
+
+static void
+tc_set_inlinable_constants(struct pipe_context *_pipe,
+                           enum pipe_shader_type shader,
+                           uint num_values, uint32_t *values)
+{
+   struct threaded_context *tc = threaded_context(_pipe);
+   struct tc_inlinable_constants *p =
+      tc_add_struct_typed_call(tc, TC_CALL_set_inlinable_constants,
+                               tc_inlinable_constants);
+   p->shader = shader;
+   p->num_values = num_values;
+   memcpy(p->values, values, num_values * 4);
 }
 
 struct tc_scissors {
@@ -2750,6 +2779,7 @@ threaded_context_create(struct pipe_context *pipe,
    CTX_INIT(set_min_samples);
    CTX_INIT(set_clip_state);
    CTX_INIT(set_constant_buffer);
+   CTX_INIT(set_inlinable_constants);
    CTX_INIT(set_framebuffer_state);
    CTX_INIT(set_polygon_stipple);
    CTX_INIT(set_scissor_states);

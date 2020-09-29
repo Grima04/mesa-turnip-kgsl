@@ -320,6 +320,26 @@ struct pipe_context {
                                 enum pipe_shader_type shader, uint index,
                                 const struct pipe_constant_buffer *buf );
 
+   /**
+    * Set inlinable constants for constant buffer 0.
+    *
+    * These are constants that the driver would like to inline in the IR
+    * of the current shader and recompile it. Drivers can determine which
+    * constants they prefer to inline in finalize_nir and store that
+    * information in shader_info::*inlinable_uniform*. When the state tracker
+    * or frontend uploads constants to a constant buffer, it can pass
+    * inlinable constants separately via this call.
+    *
+    * Any set_constant_buffer call invalidates this state, so this function
+    * must be called after it. Binding a shader also invalidates this state.
+    *
+    * There is no PIPE_CAP for this. Drivers shouldn't set the shader_info
+    * fields if they don't want this or if they don't implement this.
+    */
+   void (*set_inlinable_constants)( struct pipe_context *,
+                                    enum pipe_shader_type shader,
+                                    uint num_values, uint32_t *values );
+
    void (*set_framebuffer_state)( struct pipe_context *,
                                   const struct pipe_framebuffer_state * );
 

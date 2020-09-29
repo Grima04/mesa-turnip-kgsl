@@ -49,6 +49,22 @@ buffers, surfaces) are bound to the driver.
   multiple ones to be set, and binding a specific one later, though drivers
   are mostly restricted to the first one right now).
 
+* ``set_inlinable_constants`` sets inlinable constants for constant buffer 0.
+
+These are constants that the driver would like to inline in the IR
+of the current shader and recompile it. Drivers can determine which
+constants they prefer to inline in finalize_nir and store that
+information in shader_info::*inlinable_uniform*. When the state tracker
+or frontend uploads constants to a constant buffer, it can pass
+inlinable constants separately via this call.
+
+Any ``set_constant_buffer`` call invalidates inlinable constants, so
+``set_inlinable_constants`` must be called after it. Binding a shader also
+invalidates this state.
+
+There is no ``PIPE_CAP`` for this. Drivers shouldn't set the shader_info
+fields if they don't implement ``set_inlinable_constants``.
+
 * ``set_framebuffer_state``
 
 * ``set_vertex_buffers``
