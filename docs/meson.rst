@@ -230,7 +230,7 @@ LLVM
 Meson includes upstream logic to wrap llvm-config using its standard
 dependency interface.
 
-As of meson 0.51.0 meson can use cmake to find llvm (the cmake finder
+As of meson 0.51.0 meson can use cmake to find LLVM (the cmake finder
 was added in meson 0.49.0, but LLVM cannot be found until 0.51) Due to
 the way LLVM implements its cmake finder it will only find static
 libraries, it will never find libllvm.so. There is also a
