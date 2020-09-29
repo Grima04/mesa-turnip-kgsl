@@ -761,7 +761,9 @@ radv_lower_io(struct radv_device *device, nir_shader *nir)
 		return;
 
 	/* TODO: Lower IO for all stages with LLVM. */
-	if (nir->info.stage != MESA_SHADER_FRAGMENT &&
+	if ((nir->info.stage == MESA_SHADER_VERTEX ||
+	     nir->info.stage == MESA_SHADER_TESS_CTRL ||
+	     nir->info.stage == MESA_SHADER_TESS_EVAL) &&
 	    radv_use_llvm_for_stage(device, nir->info.stage))
 		return;
 
@@ -771,7 +773,12 @@ radv_lower_io(struct radv_device *device, nir_shader *nir)
 					    MESA_SHADER_FRAGMENT);
 	}
 
-	NIR_PASS_V(nir, nir_lower_io, nir_var_shader_in | nir_var_shader_out, type_size_vec4, 0);
+	/* The RADV/LLVM backend expects 64-bit IO to be lowered. */
+	nir_lower_io_options options =
+		radv_use_llvm_for_stage(device, nir->info.stage) ? nir_lower_io_lower_64bit_to_32 : 0;
+
+	NIR_PASS_V(nir, nir_lower_io, nir_var_shader_in | nir_var_shader_out,
+		   type_size_vec4, options);
 
 	/* This pass needs actual constants */
 	nir_opt_constant_folding(nir);

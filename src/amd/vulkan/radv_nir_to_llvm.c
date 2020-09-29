@@ -741,18 +741,18 @@ load_gs_input(struct ac_shader_abi *abi,
 	vtx_offset = LLVMBuildMul(ctx->ac.builder, ctx->gs_vtx_offset[vtx_offset_param],
 				  LLVMConstInt(ctx->ac.i32, 4, false), "");
 
-	param = shader_io_get_unique_index(location);
+	param = shader_io_get_unique_index(driver_location / 4);
 
 	for (unsigned i = component; i < num_components + component; i++) {
 		if (ctx->ac.chip_class >= GFX9) {
 			LLVMValueRef dw_addr = ctx->gs_vtx_offset[vtx_offset_param];
 			dw_addr = LLVMBuildAdd(ctx->ac.builder, dw_addr,
-			                       LLVMConstInt(ctx->ac.i32, param * 4 + i + const_index, 0), "");
+			                       LLVMConstInt(ctx->ac.i32, param * 4 + i, 0), "");
 			value[i] = ac_lds_load(&ctx->ac, dw_addr);
 
 			if (ac_get_type_size(type) == 8) {
 				dw_addr = LLVMBuildAdd(ctx->ac.builder, dw_addr,
-					               LLVMConstInt(ctx->ac.i32, param * 4 + i + const_index + 1, 0), "");
+					               LLVMConstInt(ctx->ac.i32, param * 4 + i + 1, 0), "");
 				LLVMValueRef tmp = ac_lds_load(&ctx->ac, dw_addr);
 
 				value[i] = radv_emit_fetch_64bit(ctx, type, value[i], tmp);
@@ -760,7 +760,7 @@ load_gs_input(struct ac_shader_abi *abi,
 		} else {
 			LLVMValueRef soffset =
 				LLVMConstInt(ctx->ac.i32,
-					     (param * 4 + i + const_index) * 256,
+					     (param * 4 + i) * 256,
 					     false);
 
 			value[i] = ac_build_buffer_load(&ctx->ac,
@@ -771,7 +771,7 @@ load_gs_input(struct ac_shader_abi *abi,
 
 			if (ac_get_type_size(type) == 8) {
 				soffset = LLVMConstInt(ctx->ac.i32,
-						       (param * 4 + i + const_index + 1) * 256,
+						       (param * 4 + i + 1) * 256,
 						       false);
 
 				LLVMValueRef tmp =
