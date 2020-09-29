@@ -58,7 +58,7 @@ Flex, and Bison. The easiest way to install everything you need is with
 
    choco install python3 winflexbison pkgconfiglite
 
-You can even use Chocolatey to install mingw and Ninja (Ninja can be
+You can even use Chocolatey to install MinGW and Ninja (Ninja can be
 used with MSVC as well)
 
 .. code-block:: console
@@ -145,7 +145,7 @@ Windows specific instructions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 On windows you have a couple of choices for compilers. If you installed
-mingw with Chocolatey and want to use Ninja you should be able to open
+MinGW with Chocolatey and want to use Ninja you should be able to open
 any shell and follow the instructions above. If you want to you MSVC,
 clang-cl, or ICL (the Intel Compiler), read on.
 
