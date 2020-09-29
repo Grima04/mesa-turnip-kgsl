@@ -558,15 +558,6 @@ struct tu_device_memory
    struct vk_object_base base;
 
    struct tu_bo bo;
-   VkDeviceSize size;
-
-   /* for dedicated allocations */
-   struct tu_image *image;
-   struct tu_buffer *buffer;
-
-   uint32_t type_index;
-   void *map;
-   void *user_ptr;
 };
 
 struct tu_descriptor_range

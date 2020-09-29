@@ -1448,12 +1448,13 @@ tu_GetDeviceProcAddr(VkDevice _device, const char *pName)
                                        &device->enabled_extensions);
 }
 
-static VkResult
-tu_alloc_memory(struct tu_device *device,
-                const VkMemoryAllocateInfo *pAllocateInfo,
-                const VkAllocationCallbacks *pAllocator,
-                VkDeviceMemory *pMem)
+VkResult
+tu_AllocateMemory(VkDevice _device,
+                  const VkMemoryAllocateInfo *pAllocateInfo,
+                  const VkAllocationCallbacks *pAllocator,
+                  VkDeviceMemory *pMem)
 {
+   TU_FROM_HANDLE(tu_device, device, _device);
    struct tu_device_memory *mem;
    VkResult result;
 
@@ -1502,25 +1503,9 @@ tu_alloc_memory(struct tu_device *device,
       return result;
    }
 
-   mem->size = pAllocateInfo->allocationSize;
-   mem->type_index = pAllocateInfo->memoryTypeIndex;
-
-   mem->map = NULL;
-   mem->user_ptr = NULL;
-
    *pMem = tu_device_memory_to_handle(mem);
 
    return VK_SUCCESS;
-}
-
-VkResult
-tu_AllocateMemory(VkDevice _device,
-                  const VkMemoryAllocateInfo *pAllocateInfo,
-                  const VkAllocationCallbacks *pAllocator,
-                  VkDeviceMemory *pMem)
-{
-   TU_FROM_HANDLE(tu_device, device, _device);
-   return tu_alloc_memory(device, pAllocateInfo, pAllocator, pMem);
 }
 
 void
@@ -1555,28 +1540,20 @@ tu_MapMemory(VkDevice _device,
       return VK_SUCCESS;
    }
 
-   if (mem->user_ptr) {
-      *ppData = mem->user_ptr;
-   } else if (!mem->map) {
+   if (!mem->bo.map) {
       result = tu_bo_map(device, &mem->bo);
       if (result != VK_SUCCESS)
          return result;
-      *ppData = mem->map = mem->bo.map;
-   } else
-      *ppData = mem->map;
-
-   if (*ppData) {
-      *ppData += offset;
-      return VK_SUCCESS;
    }
 
-   return vk_error(device->instance, VK_ERROR_MEMORY_MAP_FAILED);
+   *ppData = mem->bo.map + offset;
+   return VK_SUCCESS;
 }
 
 void
 tu_UnmapMemory(VkDevice _device, VkDeviceMemory _memory)
 {
-   /* I do not see any unmapping done by the freedreno Gallium driver. */
+   /* TODO: unmap here instead of waiting for FreeMemory */
 }
 
 VkResult
