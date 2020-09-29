@@ -113,8 +113,13 @@ zink_fence_finish(struct zink_screen *screen, struct zink_fence *fence,
 {
    if (!fence->submitted)
       return true;
-   bool success = vkWaitForFences(screen->dev, 1, &fence->fence, VK_TRUE,
-                                  timeout_ns) == VK_SUCCESS;
+   bool success;
+
+   if (timeout_ns)
+      success = vkWaitForFences(screen->dev, 1, &fence->fence, VK_TRUE, timeout_ns) == VK_SUCCESS;
+   else
+      success = vkGetFenceStatus(screen->dev, fence->fence) == VK_SUCCESS;
+
    if (success) {
       if (fence->active_queries)
          zink_prune_queries(screen, fence);
