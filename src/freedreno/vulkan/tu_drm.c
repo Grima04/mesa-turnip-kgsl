@@ -487,55 +487,65 @@ tu_DestroySemaphore(VkDevice _device,
 
 VkResult
 tu_ImportSemaphoreFdKHR(VkDevice _device,
-                        const VkImportSemaphoreFdInfoKHR *pImportSemaphoreFdInfo)
+                        const VkImportSemaphoreFdInfoKHR *info)
 {
    TU_FROM_HANDLE(tu_device, device, _device);
-   TU_FROM_HANDLE(tu_semaphore, sem, pImportSemaphoreFdInfo->semaphore);
+   TU_FROM_HANDLE(tu_semaphore, sem, info->semaphore);
    int ret;
-   uint32_t *dst = NULL;
 
-   if (pImportSemaphoreFdInfo->flags & VK_SEMAPHORE_IMPORT_TEMPORARY_BIT) {
-      dst = &sem->temporary;
-   } else {
-      dst = &sem->permanent;
-   }
-
-   uint32_t syncobj = *dst;
-
-   switch(pImportSemaphoreFdInfo->handleType) {
+   switch(info->handleType) {
       case VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_FD_BIT: {
-         uint32_t old_syncobj = syncobj;
-         ret = drmSyncobjFDToHandle(device->fd, pImportSemaphoreFdInfo->fd, &syncobj);
-         if (ret == 0) {
-            close(pImportSemaphoreFdInfo->fd);
-            if (old_syncobj)
-               drmSyncobjDestroy(device->fd, old_syncobj);
+         uint32_t *dst;
+         if (info->flags & VK_SEMAPHORE_IMPORT_TEMPORARY_BIT)
+            dst = &sem->temporary;
+         else
+            dst = &sem->permanent;
+
+         struct drm_syncobj_handle handle = { .fd = info->fd };
+         ret = ioctl(device->fd, DRM_IOCTL_SYNCOBJ_FD_TO_HANDLE, &handle);
+         if (ret)
+            return VK_ERROR_INVALID_EXTERNAL_HANDLE;
+
+         if (*dst) {
+            ioctl(device->fd, DRM_IOCTL_SYNCOBJ_DESTROY,
+                  &(struct drm_syncobj_destroy) { .handle = *dst });
          }
+         *dst = handle.handle;
+         close(info->fd);
          break;
       }
       case VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_SYNC_FD_BIT: {
-         if (!syncobj) {
-            ret = drmSyncobjCreate(device->fd, 0, &syncobj);
-            if (ret)
-               break;
+         assert(info->flags & VK_SEMAPHORE_IMPORT_TEMPORARY_BIT);
+
+         struct drm_syncobj_create create = {};
+
+         if (info->fd == -1)
+            create.flags |= DRM_SYNCOBJ_CREATE_SIGNALED;
+
+         ret = ioctl(device->fd, DRM_IOCTL_SYNCOBJ_CREATE, &create);
+         if (ret)
+            return VK_ERROR_INVALID_EXTERNAL_HANDLE;
+
+         if (info->fd != -1) {
+            ret = ioctl(device->fd, DRM_IOCTL_SYNCOBJ_FD_TO_HANDLE, &(struct drm_syncobj_handle) {
+               .fd = info->fd,
+               .handle = create.handle,
+               .flags = DRM_SYNCOBJ_FD_TO_HANDLE_FLAGS_IMPORT_SYNC_FILE,
+            });
+            if (ret) {
+               ioctl(device->fd, DRM_IOCTL_SYNCOBJ_DESTROY,
+                     &(struct drm_syncobj_destroy) { .handle = create.handle });
+               return VK_ERROR_INVALID_EXTERNAL_HANDLE;
+            }
+            close(info->fd);
          }
-         if (pImportSemaphoreFdInfo->fd == -1) {
-            ret = drmSyncobjSignal(device->fd, &syncobj, 1);
-         } else {
-            ret = drmSyncobjImportSyncFile(device->fd, syncobj, pImportSemaphoreFdInfo->fd);
-         }
-         if (!ret)
-            close(pImportSemaphoreFdInfo->fd);
+
+         semaphore_set_temporary(device, sem, create.handle);
          break;
       }
       default:
          unreachable("Unhandled semaphore handle type");
    }
-
-   if (ret) {
-      return VK_ERROR_INVALID_EXTERNAL_HANDLE;
-   }
-   *dst = syncobj;
 
    return VK_SUCCESS;
 }
