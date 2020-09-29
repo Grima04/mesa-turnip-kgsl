@@ -27,6 +27,12 @@
  * \author Felix Kuehling
  */
 
+#ifdef ANDROID
+#define WITH_XMLCONFIG 0
+#else
+#define WITH_XMLCONFIG 1
+#endif
+
 #include <limits.h>
 #include <stdarg.h>
 #include <stdbool.h>
@@ -35,7 +41,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
+#if WITH_XMLCONFIG
 #include <expat.h>
+#endif
 #include <fcntl.h>
 #include <math.h>
 #include <unistd.h>
@@ -52,16 +60,6 @@
 #ifndef PATH_MAX
 #define PATH_MAX 4096
 #endif
-
-static bool
-be_verbose(void)
-{
-   const char *s = getenv("MESA_DEBUG");
-   if (!s)
-      return true;
-
-   return strstr(s, "silent") == NULL;
-}
 
 /** \brief Find an option in an option cache with the name as key */
 static uint32_t
@@ -99,6 +97,314 @@ findOption(const driOptionCache *cache, const char *name)
          abort();                                                       \
       }                                                                 \
    } while (0)
+
+/** \brief Check if a value is in info->range. */
+UNUSED static bool
+checkValue(const driOptionValue *v, const driOptionInfo *info)
+{
+   switch (info->type) {
+   case DRI_ENUM: /* enum is just a special integer */
+   case DRI_INT:
+      return (info->range.start._int == info->range.end._int ||
+              (v->_int >= info->range.start._int &&
+               v->_int <= info->range.end._int));
+
+   case DRI_FLOAT:
+      return (info->range.start._float == info->range.end._float ||
+              (v->_float >= info->range.start._float &&
+               v->_float <= info->range.end._float));
+
+   default:
+      return true;
+   }
+}
+
+void
+driParseOptionInfo(driOptionCache *info,
+                   const driOptionDescription *configOptions,
+                   unsigned numOptions)
+{
+   /* Make the hash table big enough to fit more than the maximum number of
+    * config options we've ever seen in a driver.
+    */
+   info->tableSize = 6;
+   info->info = calloc(1 << info->tableSize, sizeof(driOptionInfo));
+   info->values = calloc(1 << info->tableSize, sizeof(driOptionValue));
+   if (info->info == NULL || info->values == NULL) {
+      fprintf(stderr, "%s: %d: out of memory.\n", __FILE__, __LINE__);
+      abort();
+   }
+
+   UNUSED bool in_section = false;
+   for (int o = 0; o < numOptions; o++) {
+      const driOptionDescription *opt = &configOptions[o];
+
+      if (opt->info.type == DRI_SECTION) {
+         in_section = true;
+         continue;
+      }
+
+      /* for driconf xml generation, options must always be preceded by a
+       * DRI_CONF_SECTION
+       */
+      assert(in_section);
+
+      const char *name = opt->info.name;
+      int i = findOption(info, name);
+      driOptionInfo *optinfo = &info->info[i];
+      driOptionValue *optval = &info->values[i];
+
+      assert(!optinfo->name); /* No duplicate options in your list. */
+
+      optinfo->type = opt->info.type;
+      XSTRDUP(optinfo->name, name);
+
+      switch (opt->info.type) {
+      case DRI_BOOL:
+         optval->_bool = opt->value._bool;
+         break;
+
+      case DRI_INT:
+      case DRI_ENUM:
+         optval->_int = opt->value._int;
+         break;
+
+      case DRI_FLOAT:
+         optval->_float = opt->value._float;
+         break;
+
+      case DRI_STRING:
+         XSTRDUP(optval->_string, opt->value._string);
+         break;
+
+      case DRI_SECTION:
+         unreachable("handled above");
+      }
+
+      assert(checkValue(optval, optinfo));
+   }
+}
+
+char *
+driGetOptionsXml(const driOptionDescription *configOptions, unsigned numOptions)
+{
+   char *str = ralloc_strdup(NULL,
+      "<?xml version=\"1.0\" standalone=\"yes\"?>\n" \
+      "<!DOCTYPE driinfo [\n" \
+      "   <!ELEMENT driinfo      (section*)>\n" \
+      "   <!ELEMENT section      (description+, option+)>\n" \
+      "   <!ELEMENT description  (enum*)>\n" \
+      "   <!ATTLIST description  lang CDATA #FIXED \"en\"\n" \
+      "                          text CDATA #REQUIRED>\n" \
+      "   <!ELEMENT option       (description+)>\n" \
+      "   <!ATTLIST option       name CDATA #REQUIRED\n" \
+      "                          type (bool|enum|int|float) #REQUIRED\n" \
+      "                          default CDATA #REQUIRED\n" \
+      "                          valid CDATA #IMPLIED>\n" \
+      "   <!ELEMENT enum         EMPTY>\n" \
+      "   <!ATTLIST enum         value CDATA #REQUIRED\n" \
+      "                          text CDATA #REQUIRED>\n" \
+      "]>" \
+      "<driinfo>\n");
+
+   bool in_section = false;
+   for (int o = 0; o < numOptions; o++) {
+      const driOptionDescription *opt = &configOptions[o];
+
+      const char *name = opt->info.name;
+      const char *types[] = {
+         [DRI_BOOL] = "bool",
+         [DRI_INT] = "int",
+         [DRI_FLOAT] = "float",
+         [DRI_ENUM] = "enum",
+         [DRI_STRING] = "string",
+      };
+
+      if (opt->info.type == DRI_SECTION) {
+         if (in_section)
+            ralloc_asprintf_append(&str, "  </section>\n");
+
+         ralloc_asprintf_append(&str,
+                                "  <section>\n"
+                                "    <description lang=\"en\" text=\"%s\"/>\n",
+                                opt->desc);
+
+         in_section = true;
+         continue;
+      }
+
+      ralloc_asprintf_append(&str,
+                             "      <option name=\"%s\" type=\"%s\" default=\"",
+                             name,
+                             types[opt->info.type]);
+
+      switch (opt->info.type) {
+      case DRI_BOOL:
+         ralloc_asprintf_append(&str, opt->value._bool ? "true" : "false");
+         break;
+
+      case DRI_INT:
+      case DRI_ENUM:
+         ralloc_asprintf_append(&str, "%d", opt->value._int);
+         break;
+
+      case DRI_FLOAT:
+         ralloc_asprintf_append(&str, "%f", opt->value._float);
+         break;
+
+      case DRI_STRING:
+         ralloc_asprintf_append(&str, "%s", opt->value._string);
+         break;
+
+      case DRI_SECTION:
+         unreachable("handled above");
+         break;
+      }
+      ralloc_asprintf_append(&str, "\"");
+
+
+      switch (opt->info.type) {
+      case DRI_INT:
+      case DRI_ENUM:
+         if (opt->info.range.start._int < opt->info.range.end._int) {
+            ralloc_asprintf_append(&str, " valid=\"%d:%d\"",
+                                   opt->info.range.start._int,
+                                   opt->info.range.end._int);
+         }
+         break;
+
+      case DRI_FLOAT:
+         if (opt->info.range.start._float < opt->info.range.end._float) {
+            ralloc_asprintf_append(&str, " valid=\"%f:%f\"",
+                                   opt->info.range.start._float,
+                                   opt->info.range.end._float);
+         }
+         break;
+
+      default:
+         break;
+      }
+
+      ralloc_asprintf_append(&str, ">\n"); /* end of <option> */
+
+
+      ralloc_asprintf_append(&str, "        <description lang=\"en\" text=\"%s\"%s>\n",
+                             opt->desc, opt->info.type != DRI_ENUM ? "/" : "");
+
+      if (opt->info.type == DRI_ENUM) {
+         for (int i = 0; i < ARRAY_SIZE(opt->enums) && opt->enums[i].desc; i++) {
+            ralloc_asprintf_append(&str, "          <enum value=\"%d\" text=\"%s\"/>\n",
+                                   opt->enums[i].value, opt->enums[i].desc);
+         }
+         ralloc_asprintf_append(&str, "        </description>\n");
+      }
+
+      ralloc_asprintf_append(&str, "      </option>\n");
+   }
+
+   assert(in_section);
+   ralloc_asprintf_append(&str, "  </section>\n");
+
+   ralloc_asprintf_append(&str, "</driinfo>\n");
+
+   char *output = strdup(str);
+   ralloc_free(str);
+
+   return output;
+}
+
+#if WITH_XMLCONFIG
+
+static bool
+be_verbose(void)
+{
+   const char *s = getenv("MESA_DEBUG");
+   if (!s)
+      return true;
+
+   return strstr(s, "silent") == NULL;
+}
+
+/**
+ * Print message to \c stderr if the \c LIBGL_DEBUG environment variable
+ * is set.
+ *
+ * Is called from the drivers.
+ *
+ * \param f \c printf like format string.
+ */
+static void
+__driUtilMessage(const char *f, ...)
+{
+   va_list args;
+   const char *libgl_debug;
+
+   libgl_debug=getenv("LIBGL_DEBUG");
+   if (libgl_debug && !strstr(libgl_debug, "quiet")) {
+      fprintf(stderr, "libGL: ");
+      va_start(args, f);
+      vfprintf(stderr, f, args);
+      va_end(args);
+      fprintf(stderr, "\n");
+   }
+}
+
+/** \brief Output a warning message. */
+#define XML_WARNING1(msg) do {                                          \
+      __driUtilMessage("Warning in %s line %d, column %d: "msg, data->name, \
+                        (int) XML_GetCurrentLineNumber(data->parser),   \
+                        (int) XML_GetCurrentColumnNumber(data->parser)); \
+   } while (0)
+#define XML_WARNING(msg, ...) do {                                      \
+      __driUtilMessage("Warning in %s line %d, column %d: "msg, data->name, \
+                        (int) XML_GetCurrentLineNumber(data->parser),   \
+                        (int) XML_GetCurrentColumnNumber(data->parser), \
+                        ##__VA_ARGS__);                                 \
+   } while (0)
+/** \brief Output an error message. */
+#define XML_ERROR1(msg) do {                                            \
+      __driUtilMessage("Error in %s line %d, column %d: "msg, data->name, \
+                        (int) XML_GetCurrentLineNumber(data->parser),   \
+                        (int) XML_GetCurrentColumnNumber(data->parser)); \
+   } while (0)
+#define XML_ERROR(msg, ...) do {                                        \
+      __driUtilMessage("Error in %s line %d, column %d: "msg, data->name, \
+                        (int) XML_GetCurrentLineNumber(data->parser),   \
+                        (int) XML_GetCurrentColumnNumber(data->parser), \
+                        ##__VA_ARGS__);                                 \
+   } while (0)
+
+/** \brief Parser context for configuration files. */
+struct OptConfData {
+   const char *name;
+   XML_Parser parser;
+   driOptionCache *cache;
+   int screenNum;
+   const char *driverName, *execName;
+   const char *kernelDriverName;
+   const char *engineName;
+   const char *applicationName;
+   uint32_t engineVersion;
+   uint32_t applicationVersion;
+   uint32_t ignoringDevice;
+   uint32_t ignoringApp;
+   uint32_t inDriConf;
+   uint32_t inDevice;
+   uint32_t inApp;
+   uint32_t inOption;
+};
+
+/** \brief Elements in configuration files. */
+enum OptConfElem {
+   OC_APPLICATION = 0, OC_DEVICE, OC_DRICONF, OC_ENGINE, OC_OPTION, OC_COUNT
+};
+static const char *OptConfElems[] = {
+   [OC_APPLICATION]  = "application",
+   [OC_DEVICE] = "device",
+   [OC_DRICONF] = "driconf",
+   [OC_ENGINE]  = "engine",
+   [OC_OPTION] = "option",
+};
 
 static int compare(const void *a, const void *b) {
    return strcmp(*(char *const*)a, *(char *const*)b);
@@ -323,302 +629,6 @@ parseRange(driOptionInfo *info, const char *string)
    free(cp);
    return true;
 }
-
-/** \brief Check if a value is in info->range. */
-UNUSED static bool
-checkValue(const driOptionValue *v, const driOptionInfo *info)
-{
-   switch (info->type) {
-   case DRI_ENUM: /* enum is just a special integer */
-   case DRI_INT:
-      return (info->range.start._int == info->range.end._int ||
-              (v->_int >= info->range.start._int &&
-               v->_int <= info->range.end._int));
-
-   case DRI_FLOAT:
-      return (info->range.start._float == info->range.end._float ||
-              (v->_float >= info->range.start._float &&
-               v->_float <= info->range.end._float));
-
-   default:
-      return true;
-   }
-}
-
-/**
- * Print message to \c stderr if the \c LIBGL_DEBUG environment variable
- * is set.
- *
- * Is called from the drivers.
- *
- * \param f \c printf like format string.
- */
-static void
-__driUtilMessage(const char *f, ...)
-{
-   va_list args;
-   const char *libgl_debug;
-
-   libgl_debug=getenv("LIBGL_DEBUG");
-   if (libgl_debug && !strstr(libgl_debug, "quiet")) {
-      fprintf(stderr, "libGL: ");
-      va_start(args, f);
-      vfprintf(stderr, f, args);
-      va_end(args);
-      fprintf(stderr, "\n");
-   }
-}
-
-/** \brief Output a warning message. */
-#define XML_WARNING1(msg) do {                                          \
-      __driUtilMessage("Warning in %s line %d, column %d: "msg, data->name, \
-                        (int) XML_GetCurrentLineNumber(data->parser),   \
-                        (int) XML_GetCurrentColumnNumber(data->parser)); \
-   } while (0)
-#define XML_WARNING(msg, ...) do {                                      \
-      __driUtilMessage("Warning in %s line %d, column %d: "msg, data->name, \
-                        (int) XML_GetCurrentLineNumber(data->parser),   \
-                        (int) XML_GetCurrentColumnNumber(data->parser), \
-                        ##__VA_ARGS__);                                 \
-   } while (0)
-/** \brief Output an error message. */
-#define XML_ERROR1(msg) do {                                            \
-      __driUtilMessage("Error in %s line %d, column %d: "msg, data->name, \
-                        (int) XML_GetCurrentLineNumber(data->parser),   \
-                        (int) XML_GetCurrentColumnNumber(data->parser)); \
-   } while (0)
-#define XML_ERROR(msg, ...) do {                                        \
-      __driUtilMessage("Error in %s line %d, column %d: "msg, data->name, \
-                        (int) XML_GetCurrentLineNumber(data->parser),   \
-                        (int) XML_GetCurrentColumnNumber(data->parser), \
-                        ##__VA_ARGS__);                                 \
-   } while (0)
-
-void
-driParseOptionInfo(driOptionCache *info,
-                   const driOptionDescription *configOptions,
-                   unsigned numOptions)
-{
-   /* Make the hash table big enough to fit more than the maximum number of
-    * config options we've ever seen in a driver.
-    */
-   info->tableSize = 6;
-   info->info = calloc(1 << info->tableSize, sizeof(driOptionInfo));
-   info->values = calloc(1 << info->tableSize, sizeof(driOptionValue));
-   if (info->info == NULL || info->values == NULL) {
-      fprintf(stderr, "%s: %d: out of memory.\n", __FILE__, __LINE__);
-      abort();
-   }
-
-   UNUSED bool in_section = false;
-   for (int o = 0; o < numOptions; o++) {
-      const driOptionDescription *opt = &configOptions[o];
-
-      if (opt->info.type == DRI_SECTION) {
-         in_section = true;
-         continue;
-      }
-
-      /* for driconf xml generation, options must always be preceded by a
-       * DRI_CONF_SECTION
-       */
-      assert(in_section);
-
-      const char *name = opt->info.name;
-      int i = findOption(info, name);
-      driOptionInfo *optinfo = &info->info[i];
-      driOptionValue *optval = &info->values[i];
-
-      assert(!optinfo->name); /* No duplicate options in your list. */
-
-      optinfo->type = opt->info.type;
-      XSTRDUP(optinfo->name, name);
-
-      switch (opt->info.type) {
-      case DRI_BOOL:
-         optval->_bool = opt->value._bool;
-         break;
-
-      case DRI_INT:
-      case DRI_ENUM:
-         optval->_int = opt->value._int;
-         break;
-
-      case DRI_FLOAT:
-         optval->_float = opt->value._float;
-         break;
-
-      case DRI_STRING:
-         XSTRDUP(optval->_string, opt->value._string);
-         break;
-
-      case DRI_SECTION:
-         unreachable("handled above");
-      }
-
-      assert(checkValue(optval, optinfo));
-   }
-}
-
-char *
-driGetOptionsXml(const driOptionDescription *configOptions, unsigned numOptions)
-{
-   char *str = ralloc_strdup(NULL,
-      "<?xml version=\"1.0\" standalone=\"yes\"?>\n" \
-      "<!DOCTYPE driinfo [\n" \
-      "   <!ELEMENT driinfo      (section*)>\n" \
-      "   <!ELEMENT section      (description+, option+)>\n" \
-      "   <!ELEMENT description  (enum*)>\n" \
-      "   <!ATTLIST description  lang CDATA #FIXED \"en\"\n" \
-      "                          text CDATA #REQUIRED>\n" \
-      "   <!ELEMENT option       (description+)>\n" \
-      "   <!ATTLIST option       name CDATA #REQUIRED\n" \
-      "                          type (bool|enum|int|float) #REQUIRED\n" \
-      "                          default CDATA #REQUIRED\n" \
-      "                          valid CDATA #IMPLIED>\n" \
-      "   <!ELEMENT enum         EMPTY>\n" \
-      "   <!ATTLIST enum         value CDATA #REQUIRED\n" \
-      "                          text CDATA #REQUIRED>\n" \
-      "]>" \
-      "<driinfo>\n");
-
-   bool in_section = false;
-   for (int o = 0; o < numOptions; o++) {
-      const driOptionDescription *opt = &configOptions[o];
-
-      const char *name = opt->info.name;
-      const char *types[] = {
-         [DRI_BOOL] = "bool",
-         [DRI_INT] = "int",
-         [DRI_FLOAT] = "float",
-         [DRI_ENUM] = "enum",
-         [DRI_STRING] = "string",
-      };
-
-      if (opt->info.type == DRI_SECTION) {
-         if (in_section)
-            ralloc_asprintf_append(&str, "  </section>\n");
-
-         ralloc_asprintf_append(&str,
-                                "  <section>\n"
-                                "    <description lang=\"en\" text=\"%s\"/>\n",
-                                opt->desc);
-
-         in_section = true;
-         continue;
-      }
-
-      ralloc_asprintf_append(&str,
-                             "      <option name=\"%s\" type=\"%s\" default=\"",
-                             name,
-                             types[opt->info.type]);
-
-      switch (opt->info.type) {
-      case DRI_BOOL:
-         ralloc_asprintf_append(&str, opt->value._bool ? "true" : "false");
-         break;
-
-      case DRI_INT:
-      case DRI_ENUM:
-         ralloc_asprintf_append(&str, "%d", opt->value._int);
-         break;
-
-      case DRI_FLOAT:
-         ralloc_asprintf_append(&str, "%f", opt->value._float);
-         break;
-
-      case DRI_STRING:
-         ralloc_asprintf_append(&str, "%s", opt->value._string);
-         break;
-
-      case DRI_SECTION:
-         unreachable("handled above");
-         break;
-      }
-      ralloc_asprintf_append(&str, "\"");
-
-
-      switch (opt->info.type) {
-      case DRI_INT:
-      case DRI_ENUM:
-         if (opt->info.range.start._int < opt->info.range.end._int) {
-            ralloc_asprintf_append(&str, " valid=\"%d:%d\"",
-                                   opt->info.range.start._int,
-                                   opt->info.range.end._int);
-         }
-         break;
-
-      case DRI_FLOAT:
-         if (opt->info.range.start._float < opt->info.range.end._float) {
-            ralloc_asprintf_append(&str, " valid=\"%f:%f\"",
-                                   opt->info.range.start._float,
-                                   opt->info.range.end._float);
-         }
-         break;
-
-      default:
-         break;
-      }
-
-      ralloc_asprintf_append(&str, ">\n"); /* end of <option> */
-
-
-      ralloc_asprintf_append(&str, "        <description lang=\"en\" text=\"%s\"%s>\n",
-                             opt->desc, opt->info.type != DRI_ENUM ? "/" : "");
-
-      if (opt->info.type == DRI_ENUM) {
-         for (int i = 0; i < ARRAY_SIZE(opt->enums) && opt->enums[i].desc; i++) {
-            ralloc_asprintf_append(&str, "          <enum value=\"%d\" text=\"%s\"/>\n",
-                                   opt->enums[i].value, opt->enums[i].desc);
-         }
-         ralloc_asprintf_append(&str, "        </description>\n");
-      }
-
-      ralloc_asprintf_append(&str, "      </option>\n");
-   }
-
-   assert(in_section);
-   ralloc_asprintf_append(&str, "  </section>\n");
-
-   ralloc_asprintf_append(&str, "</driinfo>\n");
-
-   char *output = strdup(str);
-   ralloc_free(str);
-
-   return output;
-}
-
-/** \brief Parser context for configuration files. */
-struct OptConfData {
-   const char *name;
-   XML_Parser parser;
-   driOptionCache *cache;
-   int screenNum;
-   const char *driverName, *execName;
-   const char *kernelDriverName;
-   const char *engineName;
-   const char *applicationName;
-   uint32_t engineVersion;
-   uint32_t applicationVersion;
-   uint32_t ignoringDevice;
-   uint32_t ignoringApp;
-   uint32_t inDriConf;
-   uint32_t inDevice;
-   uint32_t inApp;
-   uint32_t inOption;
-};
-
-/** \brief Elements in configuration files. */
-enum OptConfElem {
-   OC_APPLICATION = 0, OC_DEVICE, OC_DRICONF, OC_ENGINE, OC_OPTION, OC_COUNT
-};
-static const char *OptConfElems[] = {
-   [OC_APPLICATION]  = "application",
-   [OC_DEVICE] = "device",
-   [OC_DRICONF] = "driconf",
-   [OC_ENGINE]  = "engine",
-   [OC_OPTION] = "option",
-};
 
 /** \brief Parse attributes of a device element. */
 static void
@@ -861,26 +871,6 @@ optConfEndElem(void *userData, const char *name)
    }
 }
 
-/** \brief Initialize an option cache based on info */
-static void
-initOptionCache(driOptionCache *cache, const driOptionCache *info)
-{
-   unsigned i, size = 1 << info->tableSize;
-   cache->info = info->info;
-   cache->tableSize = info->tableSize;
-   cache->values = malloc((1<<info->tableSize) * sizeof(driOptionValue));
-   if (cache->values == NULL) {
-      fprintf(stderr, "%s: %d: out of memory.\n", __FILE__, __LINE__);
-      abort();
-   }
-   memcpy(cache->values, info->values,
-           (1<<info->tableSize) * sizeof(driOptionValue));
-   for (i = 0; i < size; ++i) {
-      if (cache->info[i].type == DRI_STRING)
-         XSTRDUP(cache->values[i]._string, info->values[i]._string);
-   }
-}
-
 static void
 _parseOneConfigFile(XML_Parser p)
 {
@@ -986,6 +976,27 @@ parseConfigDir(struct OptConfData *data, const char *dirname)
 
    free(entries);
 }
+#endif /* WITH_XMLCONFIG */
+
+/** \brief Initialize an option cache based on info */
+static void
+initOptionCache(driOptionCache *cache, const driOptionCache *info)
+{
+   unsigned i, size = 1 << info->tableSize;
+   cache->info = info->info;
+   cache->tableSize = info->tableSize;
+   cache->values = malloc((1<<info->tableSize) * sizeof(driOptionValue));
+   if (cache->values == NULL) {
+      fprintf(stderr, "%s: %d: out of memory.\n", __FILE__, __LINE__);
+      abort();
+   }
+   memcpy(cache->values, info->values,
+           (1<<info->tableSize) * sizeof(driOptionValue));
+   for (i = 0; i < size; ++i) {
+      if (cache->info[i].type == DRI_STRING)
+         XSTRDUP(cache->values[i]._string, info->values[i]._string);
+   }
+}
 
 #ifndef SYSCONFDIR
 #define SYSCONFDIR "/etc"
@@ -1002,10 +1013,11 @@ driParseConfigFiles(driOptionCache *cache, const driOptionCache *info,
                     const char *applicationName, uint32_t applicationVersion,
                     const char *engineName, uint32_t engineVersion)
 {
+   initOptionCache(cache, info);
+
+#if WITH_XMLCONFIG
    char *home;
    struct OptConfData userData;
-
-   initOptionCache(cache, info);
 
    userData.cache = cache;
    userData.screenNum = screenNum;
@@ -1026,6 +1038,7 @@ driParseConfigFiles(driOptionCache *cache, const driOptionCache *info,
       snprintf(filename, PATH_MAX, "%s/.drirc", home);
       parseOneConfigFile(&userData, filename);
    }
+#endif /* WITH_XMLCONFIG */
 }
 
 void

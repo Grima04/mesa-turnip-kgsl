@@ -196,11 +196,16 @@ idep_mesautil = declare_dependency(
   dependencies : [dep_zlib, dep_clock, dep_thread, dep_atomic, dep_m],
 )
 
+xmlconfig_deps = []
+if not with_platform_android
+  xmlconfig_deps += dep_expat
+endif
+
 _libxmlconfig = static_library(
   'xmlconfig',
   files_xmlconfig,
   include_directories : [inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_gallium_aux],
-  dependencies : [idep_mesautil, dep_expat, dep_m],
+  dependencies : [idep_mesautil, dep_m, xmlconfig_deps],
   c_args : [
     c_msvc_compat_args,
     '-DSYSCONFDIR="@0@"'.format(
@@ -215,7 +220,7 @@ _libxmlconfig = static_library(
 )
 
 idep_xmlconfig = declare_dependency(
-  dependencies : dep_expat,
+  dependencies : xmlconfig_deps,
   link_with : _libxmlconfig,
 )
 
