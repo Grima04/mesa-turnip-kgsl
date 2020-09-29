@@ -2327,6 +2327,18 @@ radv_set_driver_locations(struct radv_pipeline *pipeline, nir_shader **shaders,
 	nir_foreach_shader_out_variable(var, shaders[last_vtg_stage]) {
 		var->data.driver_location = var->data.location;
 	}
+
+	/* TODO: Switch RADV/LLVM to the assigned IO locations. */
+	for (unsigned i = MESA_SHADER_VERTEX; i <= MESA_SHADER_GEOMETRY; i++) {
+		if (!shaders[i] ||
+		    !radv_use_llvm_for_stage(pipeline->device, i))
+			continue;
+
+		nir_foreach_shader_in_variable(var, shaders[i])
+			var->data.driver_location = var->data.location;
+		nir_foreach_shader_out_variable(var, shaders[i])
+			var->data.driver_location = var->data.location;
+	}
 }
 
 static uint32_t
