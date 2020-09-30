@@ -22,6 +22,7 @@
  */
 
 #include "zink_batch.h"
+#include "zink_context.h"
 #include "zink_fence.h"
 
 #include "zink_query.h"
@@ -84,6 +85,7 @@ zink_fence_init(struct zink_fence *fence, struct zink_batch *batch)
       pipe_resource_reference(&r, pres);
       util_dynarray_append(&fence->resources, struct pipe_resource*, pres);
    }
+   fence->deferred_ctx = NULL;
    fence->submitted = true;
 }
 
@@ -114,9 +116,15 @@ fence_remove_resource_access(struct zink_fence *fence, struct zink_resource *res
 }
 
 bool
-zink_fence_finish(struct zink_screen *screen, struct zink_fence *fence,
+zink_fence_finish(struct zink_screen *screen, struct pipe_context *pctx, struct zink_fence *fence,
                   uint64_t timeout_ns)
 {
+   if (pctx && fence->deferred_ctx == pctx) {
+      zink_curr_batch(zink_context(pctx))->has_work = true;
+      /* this must be the current batch */
+      pctx->flush(pctx, NULL, 0);
+   }
+
    if (!fence->submitted)
       return true;
    bool success;
@@ -151,7 +159,7 @@ static bool
 fence_finish(struct pipe_screen *pscreen, struct pipe_context *pctx,
                   struct pipe_fence_handle *pfence, uint64_t timeout_ns)
 {
-   return zink_fence_finish(zink_screen(pscreen), zink_fence(pfence),
+   return zink_fence_finish(zink_screen(pscreen), pctx, zink_fence(pfence),
                             timeout_ns);
 }
 

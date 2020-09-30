@@ -29,7 +29,9 @@
 
 #include <vulkan/vulkan.h>
 
+struct pipe_context;
 struct pipe_screen;
+struct zink_context;
 struct zink_screen;
 
 struct zink_fence {
@@ -38,6 +40,7 @@ struct zink_fence {
    VkFence fence;
    struct set *active_queries; /* zink_query objects which were active at some point in this batch */
    struct util_dynarray resources;
+   struct pipe_context *deferred_ctx;
    bool submitted;
 };
 
@@ -58,7 +61,7 @@ zink_fence_reference(struct zink_screen *screen,
                      struct zink_fence *fence);
 
 bool
-zink_fence_finish(struct zink_screen *screen, struct zink_fence *fence,
+zink_fence_finish(struct zink_screen *screen, struct pipe_context *pctx, struct zink_fence *fence,
                   uint64_t timeout_ns);
 
 void

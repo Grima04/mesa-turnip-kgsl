@@ -22,7 +22,7 @@ zink_reset_batch(struct zink_context *ctx, struct zink_batch *batch)
 
    // cmdbuf hasn't been submitted before
    if (batch->submitted)
-      zink_fence_finish(screen, batch->fence, PIPE_TIMEOUT_INFINITE);
+      zink_fence_finish(screen, &ctx->base, batch->fence, PIPE_TIMEOUT_INFINITE);
 
    zink_framebuffer_reference(screen, &batch->fb, NULL);
    set_foreach(batch->programs, entry) {

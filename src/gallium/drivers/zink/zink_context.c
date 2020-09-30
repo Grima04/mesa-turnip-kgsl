@@ -1349,20 +1349,26 @@ zink_flush(struct pipe_context *pctx,
            enum pipe_flush_flags flags)
 {
    struct zink_context *ctx = zink_context(pctx);
-
+   bool deferred = flags & PIPE_FLUSH_DEFERRED;
    struct zink_batch *batch = zink_curr_batch(ctx);
-   if (batch->has_work) {
+
+   if (deferred)
+      batch->fence->deferred_ctx = pctx;
+   else if (batch->has_work) {
       flush_batch(ctx);
 
       if (zink_screen(pctx->screen)->info.have_EXT_transform_feedback && ctx->num_so_targets)
          ctx->dirty_so_targets = true;
    }
 
-   if (pfence)
-      zink_fence_reference(zink_screen(pctx->screen),
-                           (struct zink_fence **)pfence,
-                           batch->fence);
-
+   if (!pfence)
+      return;
+   if (deferred && !batch->has_work) {
+      batch = zink_prev_batch(ctx);
+   }
+   zink_fence_reference(zink_screen(pctx->screen),
+                        (struct zink_fence **)pfence,
+                        batch->fence);
    /* HACK:
     * For some strange reason, we need to finish before presenting, or else
     * we start rendering on top of the back-buffer for the next frame. This
