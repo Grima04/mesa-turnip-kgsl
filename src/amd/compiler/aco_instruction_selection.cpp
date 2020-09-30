@@ -4194,10 +4194,7 @@ void visit_store_ls_or_es_output(isel_context *ctx, nir_intrinsic_instr *instr)
          unsigned itemsize = ctx->stage == vertex_geometry_gs
                              ? ctx->program->info->vs.es_info.esgs_itemsize
                              : ctx->program->info->tes.es_info.esgs_itemsize;
-         Temp thread_id = emit_mbcnt(ctx, bld.tmp(v1));
-         Temp wave_idx = bld.sop2(aco_opcode::s_bfe_u32, bld.def(s1), bld.def(s1, scc), get_arg(ctx, ctx->args->merged_wave_info), Operand(4u << 16 | 24));
-         Temp vertex_idx = bld.vop2(aco_opcode::v_or_b32, bld.def(v1), thread_id,
-                               bld.v_mul24_imm(bld.def(v1), as_vgpr(ctx, wave_idx), ctx->program->wave_size));
+         Temp vertex_idx = thread_id_in_threadgroup(ctx);
          lds_base = bld.v_mul24_imm(bld.def(v1), vertex_idx, itemsize);
       } else if (ctx->stage == vertex_ls || ctx->stage == vertex_tess_control_hs) {
          /* GFX6-8: VS runs on LS stage when tessellation is used, but LS shares LDS space with HS.
