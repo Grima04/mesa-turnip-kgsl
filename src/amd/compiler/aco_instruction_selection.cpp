@@ -4192,9 +4192,10 @@ void visit_store_ls_or_es_output(isel_context *ctx, nir_intrinsic_instr *instr)
    } else {
       Temp lds_base;
 
-      if (ctx->stage == vertex_geometry_gs || ctx->stage == tess_eval_geometry_gs) {
+      if (ctx->stage == vertex_geometry_gs || ctx->stage == tess_eval_geometry_gs ||
+          ctx->stage == ngg_vertex_geometry_gs || ctx->stage == ngg_tess_eval_geometry_gs) {
          /* GFX9+: ES stage is merged into GS, data is passed between them using LDS. */
-         unsigned itemsize = ctx->stage == vertex_geometry_gs
+         unsigned itemsize = (ctx->stage & sw_vs)
                              ? ctx->program->info->vs.es_info.esgs_itemsize
                              : ctx->program->info->tes.es_info.esgs_itemsize;
          Temp vertex_idx = thread_id_in_threadgroup(ctx);
@@ -4305,12 +4306,9 @@ void visit_store_output(isel_context *ctx, nir_intrinsic_instr *instr)
          isel_err(instr->src[1].ssa->parent_instr, "Unimplemented output offset instruction");
          abort();
       }
-   } else if (ctx->stage == vertex_es ||
-              ctx->stage == vertex_ls ||
-              ctx->stage == tess_eval_es ||
+   } else if ((ctx->stage & (hw_ls | hw_es)) ||
               (ctx->stage == vertex_tess_control_hs && ctx->shader->info.stage == MESA_SHADER_VERTEX) ||
-              (ctx->stage == vertex_geometry_gs && ctx->shader->info.stage == MESA_SHADER_VERTEX) ||
-              (ctx->stage == tess_eval_geometry_gs && ctx->shader->info.stage == MESA_SHADER_TESS_EVAL)) {
+              ((ctx->stage & sw_gs) && ctx->shader->info.stage != MESA_SHADER_GEOMETRY)) {
       visit_store_ls_or_es_output(ctx, instr);
    } else if (ctx->shader->info.stage == MESA_SHADER_TESS_CTRL) {
       visit_store_tcs_output(ctx, instr, false);
