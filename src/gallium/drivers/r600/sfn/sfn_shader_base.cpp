@@ -408,6 +408,7 @@ void ShaderFromNirProcessor::emit_instruction_internal(Instruction *ir)
 void ShaderFromNirProcessor::emit_shader_start()
 {
    /* placeholder, may become an abstract method */
+   m_ssbo_instr.set_ssbo_offset(m_image_count);
 }
 
 bool ShaderFromNirProcessor::emit_jump_instruction(nir_jump_instr *instr)

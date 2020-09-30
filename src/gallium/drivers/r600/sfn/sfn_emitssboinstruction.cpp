@@ -301,7 +301,8 @@ bool EmitSSBOInstruction::emit_load_ssbo(const nir_intrinsic_instr* instr)
 
    /* TODO fix resource index */
    auto ir = new FetchInstruction(dest, addr_temp,
-                                  R600_IMAGE_REAL_RESOURCE_OFFSET, from_nir(instr->src[0], 0),
+                                  R600_IMAGE_REAL_RESOURCE_OFFSET + m_ssbo_image_offset
+                                  , from_nir(instr->src[0], 0),
                                   formats[nir_dest_num_components(instr->dest) - 1], vtx_nf_int);
    ir->set_dest_swizzle(dest_swt[nir_dest_num_components(instr->dest) - 1]);
    ir->set_flag(vtx_use_tc);
