@@ -332,6 +332,17 @@ gather_intrinsic_info(const nir_shader *nir, const nir_intrinsic_instr *instr,
 	case nir_intrinsic_ssbo_atomic_xor:
 	case nir_intrinsic_ssbo_atomic_exchange:
 	case nir_intrinsic_ssbo_atomic_comp_swap:
+	case nir_intrinsic_store_global:
+	case nir_intrinsic_global_atomic_add:
+	case nir_intrinsic_global_atomic_imin:
+	case nir_intrinsic_global_atomic_umin:
+	case nir_intrinsic_global_atomic_imax:
+	case nir_intrinsic_global_atomic_umax:
+	case nir_intrinsic_global_atomic_and:
+	case nir_intrinsic_global_atomic_or:
+	case nir_intrinsic_global_atomic_xor:
+	case nir_intrinsic_global_atomic_exchange:
+	case nir_intrinsic_global_atomic_comp_swap:
 		set_writes_memory(nir, info);
 		break;
 	case nir_intrinsic_load_deref:
