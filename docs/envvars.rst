@@ -57,7 +57,7 @@ Core Mesa environment variables
    ``incomplete_tex``
       extra debug messages when a texture is incomplete
    ``incomplete_fbo``
-      extra debug messages when a fbo is incomplete
+      extra debug messages when a FBO is incomplete
    ``context``
       create a debug context (see ``GLX_CONTEXT_DEBUG_BIT_ARB``) and
       print error and performance messages to stderr (or
