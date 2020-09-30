@@ -352,13 +352,13 @@ x86_test-base:
 x86_test-gl:
   extends: .use-x86_test-base
   variables:
-    FDO_DISTRIBUTION_TAG: &x86_test-gl "2020-11-05-deqp-runner"
+    FDO_DISTRIBUTION_TAG: &x86_test-gl "2020-11-06-deqp-version"
 
 # Debian 10 based x86 test image for VK
 x86_test-vk:
   extends: .use-x86_test-base
   variables:
-    FDO_DISTRIBUTION_TAG: &x86_test-vk "2020-11-05-deqp-runner"
+    FDO_DISTRIBUTION_TAG: &x86_test-vk "2020-11-06-deqp-version"
 
 # Debian 9 based x86 build image (old LLVM)
 x86_build_old:
@@ -414,7 +414,7 @@ arm64_test:
   extends:
     - .use-arm_test-base
   variables:
-    FDO_DISTRIBUTION_TAG: &arm64_test "2020-11-09-kmod"
+    FDO_DISTRIBUTION_TAG: &arm64_test "2020-11-09-deqp-version"
 
 .use-arm64_test:
   variables:
@@ -1239,9 +1239,11 @@ arm64_a630_gles2:
     BM_CMDLINE: "ip=dhcp console=ttyMSM0,115200n8 root=/dev/nfs rw nfsrootdebug nfsroot=,tcp,nfsvers=4.2 init=/init"
     DEQP_EXPECTED_FAILS: deqp-freedreno-a630-fails.txt
     DEQP_FLAKES: deqp-freedreno-a630-flakes.txt
+    DEQP_SKIPS: deqp-freedreno-a630-skips.txt
     GIT_STRATEGY: none
     DEQP_EXPECTED_RENDERER: FD630
     DEQP_NO_SAVE_RESULTS: ""
+    VK_DRIVER: freedreno
   tags:
     - google-freedreno-cheza
   script:
@@ -1286,10 +1288,10 @@ arm64_a630_gles_others:
 
 arm64_a630_vk:
   extends: arm64_a630_gles2
+  parallel: 2
   variables:
     DEQP_VER: vk
-    DEQP_FRACTION: 50
-    VK_DRIVER: freedreno
+    DEQP_FRACTION: 10
     # Force binning in the main run, which makes sure we render at
     # least 2 bins.  This is the path that impacts the most different
     # features.  However, we end up with flaky results in
@@ -1301,9 +1303,10 @@ arm64_a630_vk:
 # to click play on in their branches.
 arm64_a630_vk_sysmem:
   extends:
-    - arm64_a630_vk
+    - arm64_a630_gles2
   variables:
-    DEQP_FRACTION: 10
+    DEQP_VER: vk
+    DEQP_FRACTION: 15
     DEQP_CASELIST_FILTER: "dEQP-VK.renderpass.*"
     DEQP_EXPECTED_FAILS: deqp-freedreno-a630-bypass-fails.txt
     TU_DEBUG: sysmem

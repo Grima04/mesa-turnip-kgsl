@@ -1,4 +1,3 @@
-dEQP-GLES2.functional.clipping.triangle_vertex.clip_three.clip_neg_x_neg_z_and_pos_x_pos_z_and_neg_x_neg_y_pos_z,Fail
 dEQP-GLES2.functional.fbo.completeness.renderable.renderbuffer.color0.r16f,Fail
 dEQP-GLES2.functional.fbo.completeness.renderable.renderbuffer.color0.rg16f,Fail
 dEQP-GLES2.functional.fbo.completeness.renderable.renderbuffer.color0.rgba16f,Fail
