@@ -2327,43 +2327,6 @@ static LLVMValueRef visit_load_var(struct ac_nir_context *ctx, nir_intrinsic_ins
          }
       }
       break;
-   case nir_var_mem_global: {
-      LLVMValueRef address = get_src(ctx, instr->src[0]);
-      LLVMTypeRef result_type = get_def_type(ctx, &instr->dest.ssa);
-      unsigned explicit_stride = glsl_get_explicit_stride(deref->type);
-      unsigned natural_stride = type_scalar_size_bytes(deref->type);
-      unsigned stride = explicit_stride ? explicit_stride : natural_stride;
-      int elem_size_bytes = ac_get_elem_bits(&ctx->ac, result_type) / 8;
-      bool split_loads = ctx->ac.chip_class == GFX6 && elem_size_bytes < 4;
-
-      if (stride != natural_stride || split_loads) {
-         if (LLVMGetTypeKind(result_type) == LLVMVectorTypeKind)
-            result_type = LLVMGetElementType(result_type);
-
-         LLVMTypeRef ptr_type =
-            LLVMPointerType(result_type, LLVMGetPointerAddressSpace(LLVMTypeOf(address)));
-         address = LLVMBuildBitCast(ctx->ac.builder, address, ptr_type, "");
-
-         for (unsigned i = 0; i < instr->dest.ssa.num_components; ++i) {
-            LLVMValueRef offset = LLVMConstInt(ctx->ac.i32, i * stride / natural_stride, 0);
-            values[i] =
-               LLVMBuildLoad(ctx->ac.builder, ac_build_gep_ptr(&ctx->ac, address, offset), "");
-
-            if (nir_intrinsic_access(instr) & (ACCESS_COHERENT | ACCESS_VOLATILE))
-               LLVMSetOrdering(values[i], LLVMAtomicOrderingMonotonic);
-         }
-         return ac_build_gather_values(&ctx->ac, values, instr->dest.ssa.num_components);
-      } else {
-         LLVMTypeRef ptr_type =
-            LLVMPointerType(result_type, LLVMGetPointerAddressSpace(LLVMTypeOf(address)));
-         address = LLVMBuildBitCast(ctx->ac.builder, address, ptr_type, "");
-         LLVMValueRef val = LLVMBuildLoad(ctx->ac.builder, address, "");
-
-         if (nir_intrinsic_access(instr) & (ACCESS_COHERENT | ACCESS_VOLATILE))
-            LLVMSetOrdering(val, LLVMAtomicOrderingMonotonic);
-         return val;
-      }
-   }
    default:
       unreachable("unhandle variable mode");
    }
@@ -2456,57 +2419,6 @@ static void visit_store_var(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
          }
       }
       break;
-   case nir_var_mem_global: {
-      int writemask = instr->const_index[0];
-      LLVMValueRef address = get_src(ctx, instr->src[0]);
-      LLVMValueRef val = get_src(ctx, instr->src[1]);
-
-      unsigned explicit_stride = glsl_get_explicit_stride(deref->type);
-      unsigned natural_stride = type_scalar_size_bytes(deref->type);
-      unsigned stride = explicit_stride ? explicit_stride : natural_stride;
-      int elem_size_bytes = ac_get_elem_bits(&ctx->ac, LLVMTypeOf(val)) / 8;
-      bool split_stores = ctx->ac.chip_class == GFX6 && elem_size_bytes < 4;
-
-      LLVMTypeRef ptr_type =
-         LLVMPointerType(LLVMTypeOf(val), LLVMGetPointerAddressSpace(LLVMTypeOf(address)));
-      address = LLVMBuildBitCast(ctx->ac.builder, address, ptr_type, "");
-
-      if (writemask == (1u << ac_get_llvm_num_components(val)) - 1 && stride == natural_stride &&
-          !split_stores) {
-         LLVMTypeRef ptr_type =
-            LLVMPointerType(LLVMTypeOf(val), LLVMGetPointerAddressSpace(LLVMTypeOf(address)));
-         address = LLVMBuildBitCast(ctx->ac.builder, address, ptr_type, "");
-
-         val = LLVMBuildBitCast(ctx->ac.builder, val, LLVMGetElementType(LLVMTypeOf(address)), "");
-         LLVMValueRef store = LLVMBuildStore(ctx->ac.builder, val, address);
-
-         if (nir_intrinsic_access(instr) & (ACCESS_COHERENT | ACCESS_VOLATILE))
-            LLVMSetOrdering(store, LLVMAtomicOrderingMonotonic);
-      } else {
-         LLVMTypeRef val_type = LLVMTypeOf(val);
-         if (LLVMGetTypeKind(LLVMTypeOf(val)) == LLVMVectorTypeKind)
-            val_type = LLVMGetElementType(val_type);
-
-         LLVMTypeRef ptr_type =
-            LLVMPointerType(val_type, LLVMGetPointerAddressSpace(LLVMTypeOf(address)));
-         address = LLVMBuildBitCast(ctx->ac.builder, address, ptr_type, "");
-         for (unsigned chan = 0; chan < 4; chan++) {
-            if (!(writemask & (1 << chan)))
-               continue;
-
-            LLVMValueRef offset = LLVMConstInt(ctx->ac.i32, chan * stride / natural_stride, 0);
-
-            LLVMValueRef ptr = ac_build_gep_ptr(&ctx->ac, address, offset);
-            LLVMValueRef src = ac_llvm_extract_elem(&ctx->ac, val, chan);
-            src = LLVMBuildBitCast(ctx->ac.builder, src, LLVMGetElementType(LLVMTypeOf(ptr)), "");
-            LLVMValueRef store = LLVMBuildStore(ctx->ac.builder, src, ptr);
-
-            if (nir_intrinsic_access(instr) & (ACCESS_COHERENT | ACCESS_VOLATILE))
-               LLVMSetOrdering(store, LLVMAtomicOrderingMonotonic);
-         }
-      }
-      break;
-   }
    default:
       abort();
       break;
@@ -3264,20 +3176,7 @@ static LLVMValueRef visit_var_atomic(struct ac_nir_context *ctx, const nir_intri
 
    const char *sync_scope = LLVM_VERSION_MAJOR >= 9 ? "workgroup-one-as" : "workgroup";
 
-   if (instr->src[0].ssa->parent_instr->type == nir_instr_type_deref) {
-      nir_deref_instr *deref = nir_instr_as_deref(instr->src[0].ssa->parent_instr);
-      if (deref->mode == nir_var_mem_global) {
-         /* use "singlethread" sync scope to implement relaxed ordering */
-         sync_scope = LLVM_VERSION_MAJOR >= 9 ? "singlethread-one-as" : "singlethread";
-
-         LLVMTypeRef ptr_type =
-            LLVMPointerType(LLVMTypeOf(src), LLVMGetPointerAddressSpace(LLVMTypeOf(ptr)));
-         ptr = LLVMBuildBitCast(ctx->ac.builder, ptr, ptr_type, "");
-      }
-   }
-
-   if (instr->intrinsic == nir_intrinsic_shared_atomic_comp_swap ||
-       instr->intrinsic == nir_intrinsic_deref_atomic_comp_swap) {
+   if (instr->intrinsic == nir_intrinsic_shared_atomic_comp_swap) {
       LLVMValueRef src1 = get_src(ctx, instr->src[src_idx + 1]);
       result = ac_build_atomic_cmp_xchg(&ctx->ac, ptr, src, src1, sync_scope);
       result = LLVMBuildExtractValue(ctx->ac.builder, result, 0, "");
@@ -3285,44 +3184,34 @@ static LLVMValueRef visit_var_atomic(struct ac_nir_context *ctx, const nir_intri
       LLVMAtomicRMWBinOp op;
       switch (instr->intrinsic) {
       case nir_intrinsic_shared_atomic_add:
-      case nir_intrinsic_deref_atomic_add:
          op = LLVMAtomicRMWBinOpAdd;
          break;
       case nir_intrinsic_shared_atomic_umin:
-      case nir_intrinsic_deref_atomic_umin:
          op = LLVMAtomicRMWBinOpUMin;
          break;
       case nir_intrinsic_shared_atomic_umax:
-      case nir_intrinsic_deref_atomic_umax:
          op = LLVMAtomicRMWBinOpUMax;
          break;
       case nir_intrinsic_shared_atomic_imin:
-      case nir_intrinsic_deref_atomic_imin:
          op = LLVMAtomicRMWBinOpMin;
          break;
       case nir_intrinsic_shared_atomic_imax:
-      case nir_intrinsic_deref_atomic_imax:
          op = LLVMAtomicRMWBinOpMax;
          break;
       case nir_intrinsic_shared_atomic_and:
-      case nir_intrinsic_deref_atomic_and:
          op = LLVMAtomicRMWBinOpAnd;
          break;
       case nir_intrinsic_shared_atomic_or:
-      case nir_intrinsic_deref_atomic_or:
          op = LLVMAtomicRMWBinOpOr;
          break;
       case nir_intrinsic_shared_atomic_xor:
-      case nir_intrinsic_deref_atomic_xor:
          op = LLVMAtomicRMWBinOpXor;
          break;
       case nir_intrinsic_shared_atomic_exchange:
-      case nir_intrinsic_deref_atomic_exchange:
          op = LLVMAtomicRMWBinOpXchg;
          break;
 #if LLVM_VERSION_MAJOR >= 10
       case nir_intrinsic_shared_atomic_fadd:
-      case nir_intrinsic_deref_atomic_fadd:
          op = LLVMAtomicRMWBinOpFAdd;
          break;
 #endif
@@ -3332,8 +3221,7 @@ static LLVMValueRef visit_var_atomic(struct ac_nir_context *ctx, const nir_intri
 
       LLVMValueRef val;
 
-      if (instr->intrinsic == nir_intrinsic_shared_atomic_fadd ||
-          instr->intrinsic == nir_intrinsic_deref_atomic_fadd) {
+      if (instr->intrinsic == nir_intrinsic_shared_atomic_fadd) {
          val = ac_to_float(&ctx->ac, src);
 
          LLVMTypeRef ptr_type =
