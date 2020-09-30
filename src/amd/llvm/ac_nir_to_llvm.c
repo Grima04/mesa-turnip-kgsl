@@ -1053,6 +1053,18 @@ static void visit_alu(struct ac_nir_context *ctx, const nir_alu_instr *instr)
    case nir_op_unpack_half_2x16:
       result = emit_unpack_half_2x16(&ctx->ac, src[0]);
       break;
+   case nir_op_unpack_half_2x16_split_x: {
+      assert(ac_get_llvm_num_components(src[0]) == 1);
+      LLVMValueRef tmp = emit_unpack_half_2x16(&ctx->ac, src[0]);
+      result = LLVMBuildExtractElement(ctx->ac.builder, tmp, ctx->ac.i32_0, "");
+      break;
+   }
+   case nir_op_unpack_half_2x16_split_y: {
+      assert(ac_get_llvm_num_components(src[0]) == 1);
+      LLVMValueRef tmp = emit_unpack_half_2x16(&ctx->ac, src[0]);
+      result = LLVMBuildExtractElement(ctx->ac.builder, tmp, ctx->ac.i32_1, "");
+      break;
+   }
    case nir_op_fddx:
    case nir_op_fddy:
    case nir_op_fddx_fine:
