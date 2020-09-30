@@ -89,6 +89,7 @@ files_libnir = files(
   'nir_builder.h',
   'nir_builtin_builder.c',
   'nir_builtin_builder.h',
+  'nir_conversion_builder.h',
   'nir_clone.c',
   'nir_constant_expressions.h',
   'nir_control_flow.c',
