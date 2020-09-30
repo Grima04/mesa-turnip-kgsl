@@ -338,7 +338,12 @@ ir3_setup_used_key(struct ir3_shader *shader)
 
 	key->safe_constlen = true;
 
-	key->ucp_enables = 0xff;
+	/* When clip/cull distances are natively supported, we only use
+	 * ucp_enables to determine whether to lower legacy clip planes to
+	 * gl_ClipDistance.
+	 */
+	if (info->stage != MESA_SHADER_FRAGMENT || !shader->compiler->has_clip_cull)
+		key->ucp_enables = 0xff;
 
 	if (info->stage == MESA_SHADER_FRAGMENT) {
 		key->fsaturate_s = ~0;

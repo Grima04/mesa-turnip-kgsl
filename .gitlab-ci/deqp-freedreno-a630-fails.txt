@@ -13,7 +13,6 @@ dEQP-VK.spirv_assembly.instruction.graphics.opquantize.spec_const_positive_round
 dEQP-VK.tessellation.invariance.outer_edge_index_independence.quads_fractional_even_spacing_ccw_point_mode
 dEQP-VK.tessellation.invariance.outer_edge_symmetry.triangles_fractional_odd_spacing_cw_point_mode
 
-KHR-GL30.clip_distance.functional
 KHR-GL30.transform_feedback.api_errors_test
 KHR-GL30.transform_feedback.capture_vertex_interleaved_test
 KHR-GL30.transform_feedback.capture_vertex_separate_test

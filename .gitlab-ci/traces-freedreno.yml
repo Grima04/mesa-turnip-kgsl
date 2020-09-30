@@ -236,7 +236,7 @@ traces:
   - path: neverball/neverball.trace
     expectations:
       - device: freedreno-a630
-        checksum: e67cdf15590f1729201eb82393f5513e
+        checksum: 3e0a972c2a2180b349cb1c529d3ceca5
   - path: pathfinder/canvas_moire.trace
     expectations:
       - device: freedreno-a630

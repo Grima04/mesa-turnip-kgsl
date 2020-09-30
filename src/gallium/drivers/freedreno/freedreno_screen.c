@@ -461,6 +461,8 @@ fd_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
 		return fd_device_version(screen->dev) >= FD_VERSION_FENCE_FD;
 	case PIPE_CAP_FENCE_SIGNAL:
 		return screen->has_syncobj;
+	case PIPE_CAP_CULL_DISTANCE:
+		return is_a6xx(screen);
 	default:
 		return u_pipe_screen_get_param_defaults(pscreen, param);
 	}

@@ -460,7 +460,7 @@ ir3_nir_lower_variant(struct ir3_shader_variant *so, nir_shader *s)
 		bool layer_zero = so->key.layer_zero && (s->info.inputs_read & VARYING_BIT_LAYER);
 		bool view_zero = so->key.view_zero && (s->info.inputs_read & VARYING_BIT_VIEWPORT);
 
-		if (so->key.ucp_enables)
+		if (so->key.ucp_enables && !so->shader->compiler->has_clip_cull)
 			progress |= OPT(s, nir_lower_clip_fs, so->key.ucp_enables, false);
 		if (so->key.fclamp_color)
 			progress |= OPT(s, nir_lower_clamp_color_outputs);

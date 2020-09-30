@@ -307,6 +307,7 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_screen *screen,
 		bool binning_pass)
 {
 	uint32_t pos_regid, psize_regid, color_regid[8], posz_regid;
+	uint32_t clip0_regid, clip1_regid;
 	uint32_t face_regid, coord_regid, zwcoord_regid, samp_id_regid;
 	uint32_t smask_in_regid, smask_regid;
 	uint32_t vertex_regid, instance_regid, layer_regid, primitive_regid;
@@ -316,6 +317,7 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_screen *screen,
 	uint32_t gs_header_regid;
 	enum a3xx_threadsize fssz;
 	uint8_t psize_loc = ~0, pos_loc = ~0, layer_loc = ~0;
+	uint8_t clip0_loc, clip1_loc;
 	int i, j;
 
 	static const struct ir3_shader_variant dummy_fs = {0};
@@ -337,6 +339,8 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_screen *screen,
 
 	pos_regid = ir3_find_output_regid(vs, VARYING_SLOT_POS);
 	psize_regid = ir3_find_output_regid(vs, VARYING_SLOT_PSIZ);
+	clip0_regid = ir3_find_output_regid(vs, VARYING_SLOT_CLIP_DIST0);
+	clip1_regid = ir3_find_output_regid(vs, VARYING_SLOT_CLIP_DIST1);
 	vertex_regid = ir3_find_sysval_regid(vs, SYSTEM_VALUE_VERTEX_ID);
 	instance_regid = ir3_find_sysval_regid(vs, SYSTEM_VALUE_INSTANCE_ID);
 
@@ -349,6 +353,8 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_screen *screen,
 
 		pos_regid = ir3_find_output_regid(ds, VARYING_SLOT_POS);
 		psize_regid = ir3_find_output_regid(ds, VARYING_SLOT_PSIZ);
+		clip0_regid = ir3_find_output_regid(ds, VARYING_SLOT_CLIP_DIST0);
+		clip1_regid = ir3_find_output_regid(ds, VARYING_SLOT_CLIP_DIST1);
 	} else {
 		tess_coord_x_regid = regid(63, 0);
 		tess_coord_y_regid = regid(63, 0);
@@ -362,6 +368,8 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_screen *screen,
 		primitive_regid = ir3_find_sysval_regid(gs, SYSTEM_VALUE_PRIMITIVE_ID);
 		pos_regid = ir3_find_output_regid(gs, VARYING_SLOT_POS);
 		psize_regid = ir3_find_output_regid(gs, VARYING_SLOT_PSIZ);
+		clip0_regid = ir3_find_output_regid(gs, VARYING_SLOT_CLIP_DIST0);
+		clip1_regid = ir3_find_output_regid(gs, VARYING_SLOT_CLIP_DIST1);
 		layer_regid = ir3_find_output_regid(gs, VARYING_SLOT_LAYER);
 	} else {
 		gs_header_regid = regid(63, 0);
@@ -464,6 +472,8 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_screen *screen,
 	const struct ir3_shader_variant *last_shader = fd6_last_shader(state);
 
 	bool do_streamout = (last_shader->shader->stream_output.num_outputs > 0);
+	uint8_t clip_mask = last_shader->clip_mask, cull_mask = last_shader->cull_mask;
+	uint8_t clip_cull_mask = clip_mask | cull_mask;
 
 	/* If we have streamout, link against the real FS, rather than the
 	 * dummy FS used for binning pass state, to ensure the OUTLOC's
@@ -475,6 +485,8 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_screen *screen,
 	ir3_link_shaders(&l, last_shader, do_streamout ? state->fs : fs, true);
 
 	bool primid_passthru = l.primid_loc != 0xff;
+	clip0_loc = l.clip0_loc;
+	clip1_loc = l.clip1_loc;
 
 	OUT_PKT4(ring, REG_A6XX_VPC_VAR_DISABLE(0), 4);
 	OUT_RING(ring, ~l.varmask[0]);  /* VPC_VAR[0].DISABLE */
@@ -498,6 +510,20 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_screen *screen,
 	if (VALIDREG(psize_regid)) {
 		psize_loc = l.max_loc;
 		ir3_link_add(&l, psize_regid, 0x1, l.max_loc);
+	}
+
+	/* Handle the case where clip/cull distances aren't read by the FS. Make
+	 * sure to avoid adding an output with an empty writemask if the user
+	 * disables all the clip distances in the API so that the slot is unused.
+	 */
+	if (clip0_loc == 0xff && VALIDREG(clip0_regid) && (clip_cull_mask & 0xf) != 0) {
+		clip0_loc = l.max_loc;
+		ir3_link_add(&l, clip0_regid, clip_cull_mask & 0xf, l.max_loc);
+	}
+
+	if (clip1_loc == 0xff && VALIDREG(clip1_regid) && (clip_cull_mask >> 4) != 0) {
+		clip1_loc = l.max_loc;
+		ir3_link_add(&l, clip1_regid, clip_cull_mask >> 4, l.max_loc);
 	}
 
 	/* If we have stream-out, we use the full shader for binning
@@ -602,7 +628,9 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_screen *screen,
 				A6XX_PC_TESS_CNTL_OUTPUT(output));
 
 		OUT_PKT4(ring, REG_A6XX_VPC_DS_CLIP_CNTL, 1);
-		OUT_RING(ring, 0x00ffff00);
+		OUT_RING(ring, A6XX_VPC_DS_CLIP_CNTL_CLIP_MASK(clip_cull_mask) |
+				       A6XX_VPC_DS_CLIP_CNTL_CLIP_DIST_03_LOC(clip0_loc) |
+					   A6XX_VPC_DS_CLIP_CNTL_CLIP_DIST_47_LOC(clip1_loc));
 
 		OUT_PKT4(ring, REG_A6XX_VPC_DS_LAYER_CNTL, 1);
 		OUT_RING(ring, 0x0000ffff);
@@ -611,7 +639,8 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_screen *screen,
 		OUT_RING(ring, 0x0);
 
 		OUT_PKT4(ring, REG_A6XX_GRAS_DS_CL_CNTL, 1);
-		OUT_RING(ring, 0x0);
+		OUT_RING(ring, A6XX_GRAS_DS_CL_CNTL_CLIP_MASK(clip_mask) |
+				       A6XX_GRAS_DS_CL_CNTL_CULL_MASK(cull_mask));
 
 		OUT_PKT4(ring, REG_A6XX_VPC_VS_PACK, 1);
 		OUT_RING(ring, A6XX_VPC_VS_PACK_POSITIONLOC(pos_loc) |
@@ -628,7 +657,8 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_screen *screen,
 
 		OUT_PKT4(ring, REG_A6XX_PC_DS_OUT_CNTL, 1);
 		OUT_RING(ring, A6XX_PC_DS_OUT_CNTL_STRIDE_IN_VPC(l.max_loc) |
-				CONDREG(psize_regid, 0x100));
+				CONDREG(psize_regid, A6XX_PC_DS_OUT_CNTL_PSIZE) |
+				A6XX_PC_DS_OUT_CNTL_CLIP_MASK(clip_cull_mask));
 
 	} else {
 		OUT_PKT4(ring, REG_A6XX_SP_HS_UNKNOWN_A831, 1);
@@ -648,7 +678,8 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_screen *screen,
 
 	OUT_PKT4(ring, REG_A6XX_PC_VS_OUT_CNTL, 1);
 	OUT_RING(ring, A6XX_PC_VS_OUT_CNTL_STRIDE_IN_VPC(l.max_loc) |
-			CONDREG(psize_regid, A6XX_PC_VS_OUT_CNTL_PSIZE));
+			CONDREG(psize_regid, A6XX_PC_VS_OUT_CNTL_PSIZE) |
+			A6XX_PC_VS_OUT_CNTL_CLIP_MASK(clip_cull_mask));
 
 	OUT_PKT4(ring, REG_A6XX_PC_PRIMITIVE_CNTL_3, 1);
 	OUT_RING(ring, 0);
@@ -785,7 +816,8 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_screen *screen,
 		OUT_RING(ring, A6XX_PC_GS_OUT_CNTL_STRIDE_IN_VPC(l.max_loc) |
 				CONDREG(psize_regid, A6XX_PC_GS_OUT_CNTL_PSIZE) |
 				CONDREG(layer_regid, A6XX_PC_GS_OUT_CNTL_LAYER) |
-				CONDREG(primitive_regid, A6XX_PC_GS_OUT_CNTL_PRIMITIVE_ID));
+				CONDREG(primitive_regid, A6XX_PC_GS_OUT_CNTL_PRIMITIVE_ID) |
+				A6XX_PC_GS_OUT_CNTL_CLIP_MASK(clip_cull_mask));
 
 		uint32_t output;
 		switch (gs->shader->nir->info.gs.output_primitive) {
@@ -808,13 +840,16 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_screen *screen,
 				A6XX_PC_PRIMITIVE_CNTL_5_GS_INVOCATIONS(gs->shader->nir->info.gs.invocations - 1));
 
 		OUT_PKT4(ring, REG_A6XX_GRAS_GS_CL_CNTL, 1);
-		OUT_RING(ring, 0);
+		OUT_RING(ring, A6XX_GRAS_GS_CL_CNTL_CLIP_MASK(clip_mask) |
+				       A6XX_GRAS_GS_CL_CNTL_CULL_MASK(cull_mask));
 
 		OUT_PKT4(ring, REG_A6XX_VPC_UNKNOWN_9100, 1);
 		OUT_RING(ring, 0xff);
 
 		OUT_PKT4(ring, REG_A6XX_VPC_GS_CLIP_CNTL, 1);
-		OUT_RING(ring, 0xffff00);
+		OUT_RING(ring, A6XX_VPC_GS_CLIP_CNTL_CLIP_MASK(clip_cull_mask) |
+				       A6XX_VPC_GS_CLIP_CNTL_CLIP_DIST_03_LOC(clip0_loc) |
+					   A6XX_VPC_GS_CLIP_CNTL_CLIP_DIST_47_LOC(clip1_loc));
 
 		const struct ir3_shader_variant *prev = state->ds ? state->ds : state->vs;
 
@@ -838,7 +873,13 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_screen *screen,
 	}
 
 	OUT_PKT4(ring, REG_A6XX_VPC_VS_CLIP_CNTL, 1);
-	OUT_RING(ring, 0xffff00);
+	OUT_RING(ring, A6XX_VPC_VS_CLIP_CNTL_CLIP_MASK(clip_cull_mask) |
+				   A6XX_VPC_VS_CLIP_CNTL_CLIP_DIST_03_LOC(clip0_loc) |
+				   A6XX_VPC_VS_CLIP_CNTL_CLIP_DIST_47_LOC(clip1_loc));
+
+	OUT_PKT4(ring, REG_A6XX_GRAS_VS_CL_CNTL, 1);
+	OUT_RING(ring, A6XX_GRAS_VS_CL_CNTL_CLIP_MASK(clip_mask) |
+				   A6XX_GRAS_VS_CL_CNTL_CULL_MASK(cull_mask));
 
 	OUT_PKT4(ring, REG_A6XX_VPC_UNKNOWN_9107, 1);
 	OUT_RING(ring, 0);
