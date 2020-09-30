@@ -370,21 +370,21 @@ Gallium environment variables
    driver statistics, performance counters, etc. Set
    ``GALLIUM_HUD=help`` and run e.g. ``glxgears`` for more info.
 ``GALLIUM_HUD_PERIOD``
-   sets the hud update rate in seconds (float). Use zero to update every
+   sets the HUD update rate in seconds (float). Use zero to update every
    frame. The default period is 1/2 second.
 ``GALLIUM_HUD_VISIBLE``
    control default visibility, defaults to true.
 ``GALLIUM_HUD_TOGGLE_SIGNAL``
    toggle visibility via user specified signal. Especially useful to
-   toggle hud at specific points of application and disable for
+   toggle HUD at specific points of application and disable for
    unencumbered viewing the rest of the time. For example, set
    ``GALLIUM_HUD_VISIBLE`` to ``false`` and
    ``GALLIUM_HUD_TOGGLE_SIGNAL`` to ``10`` (``SIGUSR1``). Use
-   ``kill -10 <pid>`` to toggle the hud as desired.
+   ``kill -10 <pid>`` to toggle the HUD as desired.
 ``GALLIUM_HUD_SCALE``
-   Scale hud by an integer factor, for high DPI displays. Default is 1.
+   Scale HUD by an integer factor, for high DPI displays. Default is 1.
 ``GALLIUM_HUD_DUMP_DIR``
-   specifies a directory for writing the displayed hud values into
+   specifies a directory for writing the displayed HUD values into
    files.
 ``GALLIUM_DRIVER``
    useful in combination with ``LIBGL_ALWAYS_SOFTWARE=true`` for
