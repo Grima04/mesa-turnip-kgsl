@@ -21,7 +21,7 @@ External Structure
 ------------------
 
 ``ir3_shader``
-    A single vertex/fragment/etc shader from gallium perspective (ie.
+    A single vertex/fragment/etc shader from gallium perspective (i.e.
     maps to a single TGSI shader), and manages a set of shader variants
     which are generated on demand based on the shader key.
 
@@ -255,18 +255,18 @@ And likewise, for the consecutive scalar registers for the destination:
 Relative Addressing
 ~~~~~~~~~~~~~~~~~~~
 
-Most instructions support addressing indirectly (relative to address register) into const or gpr register file in some or all of their src/dst registers.  In this case the register accessed is taken from ``r<a0.x + n>`` or ``c<a0.x + n>``, ie. address register (``a0.x``) value plus ``n``, where ``n`` is encoded in the instruction (rather than the absolute register number).
+Most instructions support addressing indirectly (relative to address register) into const or gpr register file in some or all of their src/dst registers.  In this case the register accessed is taken from ``r<a0.x + n>`` or ``c<a0.x + n>``, i.e. address register (``a0.x``) value plus ``n``, where ``n`` is encoded in the instruction (rather than the absolute register number).
 
     Note that cat5 (texture sample) instructions are the notable exception, not
     supporting relative addressing of src or dst.
 
 Relative addressing of the const file (for example, a uniform array) is relatively simple.  We don't do register assignment of the const file, so all that is required is to schedule things properly.  Ie. the instruction that writes the address register must be scheduled first, and we cannot have two different address register values live at one time.
 
-But relative addressing of gpr file (which can be as src or dst) has additional restrictions on register assignment (ie. the array elements must be assigned to consecutive scalar registers).  And in the case of relative dst, subsequent instructions now depend on both the relative write, as well as the previous instruction which wrote that register, since we do not know at compile time which actual register was written.
+But relative addressing of gpr file (which can be as src or dst) has additional restrictions on register assignment (i.e. the array elements must be assigned to consecutive scalar registers).  And in the case of relative dst, subsequent instructions now depend on both the relative write, as well as the previous instruction which wrote that register, since we do not know at compile time which actual register was written.
 
-Each instruction has an optional ``address`` pointer, to capture the dependency on the address register value when relative addressing is used for any of the src/dst register(s).  This behaves as an additional virtual src register, ie. ``foreach_ssa_src()`` will also iterate the address register (last).
+Each instruction has an optional ``address`` pointer, to capture the dependency on the address register value when relative addressing is used for any of the src/dst register(s).  This behaves as an additional virtual src register, i.e. ``foreach_ssa_src()`` will also iterate the address register (last).
 
-    Note that ``nop``\'s for timing constraints, type specifiers (ie.
+    Note that ``nop``\'s for timing constraints, type specifiers (i.e.
     ``add.f`` vs ``add.u``), etc, omitted for brevity in examples
 
 ::
@@ -324,7 +324,7 @@ results in:
     fanin -> a3;
   }
 
-TODO better describe how actual deref offset is derived, ie. based on array base register.
+TODO better describe how actual deref offset is derived, i.e. based on array base register.
 
 To do an indirect write to a variable array, a ``fanout`` is used.  Say the array was assigned to registers ``r0.z`` through ``r1.y`` (hence the constant offset of 2):
 
@@ -391,7 +391,7 @@ In this stage, simple if/else blocks are flattened into a single block with ``ph
 Copy Propagation
 ~~~~~~~~~~~~~~~~
 
-Currently the frontend inserts ``mov``\s in various cases, because certain categories of instructions have limitations about const regs as sources.  And the CP pass simply removes all simple ``mov``\s (ie. src-type is same as dst-type, no abs/neg flags, etc).
+Currently the frontend inserts ``mov``\s in various cases, because certain categories of instructions have limitations about const regs as sources.  And the CP pass simply removes all simple ``mov``\s (i.e. src-type is same as dst-type, no abs/neg flags, etc).
 
 The eventual plan is to invert that, with the front-end inserting no ``mov``\s and CP legalize things.
 
@@ -401,7 +401,7 @@ The eventual plan is to invert that, with the front-end inserting no ``mov``\s a
 Grouping
 ~~~~~~~~
 
-In the grouping pass, instructions which need to be grouped (for ``fanin``\s, etc) have their ``left`` / ``right`` neighbor pointers setup.  In cases where there is a conflict (ie. one instruction cannot have two unique left or right neighbors), an additional ``mov`` instruction is inserted.  This ensures that there is some possible valid `register assignment`_ at the later stages.
+In the grouping pass, instructions which need to be grouped (for ``fanin``\s, etc) have their ``left`` / ``right`` neighbor pointers setup.  In cases where there is a conflict (i.e. one instruction cannot have two unique left or right neighbors), an additional ``mov`` instruction is inserted.  This ensures that there is some possible valid `register assignment`_ at the later stages.
 
 
 .. _depth:
