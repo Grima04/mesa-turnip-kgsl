@@ -131,7 +131,7 @@ good contact point.
 
        ralloc: don't leave out the alignment factor
 
-       Experimentation shows that without alignment factor GCC and clang choose
+       Experimentation shows that without alignment factor GCC and Clang choose
        ...
 
        (cherry picked from commit ff494fe999510ea40e3ed5827e7818550b6de126)

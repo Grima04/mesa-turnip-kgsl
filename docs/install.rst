@@ -30,7 +30,7 @@ The following compilers are known to work, if you know of others or
 you're willing to maintain support for other compiler get in touch.
 
 -  GCC 4.2.0 or later (some parts of Mesa may require later versions)
--  clang - exact minimum requirement is currently unknown.
+-  Clang - exact minimum requirement is currently unknown.
 -  Microsoft Visual Studio 2015 or later is required, for building on
    Windows.
 
