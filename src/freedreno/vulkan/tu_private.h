@@ -1369,19 +1369,16 @@ tu_cs_image_stencil_ref(struct tu_cs *cs, const struct tu_image_view *iview, uin
    ((iview->x & ~A6XX_##x##_COLOR_FORMAT__MASK) | A6XX_##x##_COLOR_FORMAT(FMT6_8_UINT))
 
 VkResult
-tu_image_create(VkDevice _device,
-                const VkImageCreateInfo *pCreateInfo,
-                const VkAllocationCallbacks *alloc,
-                VkImage *pImage,
-                uint64_t modifier,
-                const VkSubresourceLayout *plane_layouts);
+tu_gralloc_info(struct tu_device *device,
+                const VkNativeBufferANDROID *gralloc_info,
+                int *dma_buf,
+                uint64_t *modifier);
 
 VkResult
-tu_image_from_gralloc(VkDevice device_h,
-                      const VkImageCreateInfo *base_info,
-                      const VkNativeBufferANDROID *gralloc_info,
-                      const VkAllocationCallbacks *alloc,
-                      VkImage *out_image_h);
+tu_import_memory_from_gralloc_handle(VkDevice device_h,
+                                     int dma_buf,
+                                     const VkAllocationCallbacks *alloc,
+                                     VkImage image_h);
 
 void
 tu_image_view_init(struct tu_image_view *iview,
