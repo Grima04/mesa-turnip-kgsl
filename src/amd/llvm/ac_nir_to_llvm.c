@@ -3364,11 +3364,20 @@ static LLVMValueRef visit_var_atomic(struct ac_nir_context *ctx, const nir_intri
       if (instr->intrinsic == nir_intrinsic_shared_atomic_fadd ||
           instr->intrinsic == nir_intrinsic_deref_atomic_fadd) {
          val = ac_to_float(&ctx->ac, src);
+
+         LLVMTypeRef ptr_type =
+            LLVMPointerType(LLVMTypeOf(val), LLVMGetPointerAddressSpace(LLVMTypeOf(ptr)));
+         ptr = LLVMBuildBitCast(ctx->ac.builder, ptr, ptr_type, "");
       } else {
          val = ac_to_integer(&ctx->ac, src);
       }
 
       result = ac_build_atomic_rmw(&ctx->ac, op, ptr, val, sync_scope);
+
+      if (instr->intrinsic == nir_intrinsic_shared_atomic_fadd ||
+          instr->intrinsic == nir_intrinsic_deref_atomic_fadd) {
+         result = ac_to_integer(&ctx->ac, result);
+      }
    }
 
    if (ctx->ac.postponed_kill)

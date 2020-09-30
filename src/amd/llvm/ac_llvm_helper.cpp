@@ -309,6 +309,11 @@ LLVMValueRef ac_build_atomic_rmw(struct ac_llvm_context *ctx, LLVMAtomicRMWBinOp
    case LLVMAtomicRMWBinOpUMin:
       binop = llvm::AtomicRMWInst::UMin;
       break;
+#if LLVM_VERSION_MAJOR >= 10
+   case LLVMAtomicRMWBinOpFAdd:
+      binop = llvm::AtomicRMWInst::FAdd;
+      break;
+#endif
    default:
       unreachable("invalid LLVMAtomicRMWBinOp");
       break;
