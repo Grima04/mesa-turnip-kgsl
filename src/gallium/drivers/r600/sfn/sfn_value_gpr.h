@@ -54,6 +54,8 @@ public:
 
    void set_as_input(){ m_input = true; }
    bool is_input() const {return  m_input; }
+   void set_keep_alive() { m_keep_alive = true; }
+   bool keep_alive() const {return  m_keep_alive; }
    void set_pin_to_channel() override { m_pin_to_channel = true;}
    bool pin_to_channel()  const { return m_pin_to_channel;}
 
@@ -65,6 +67,7 @@ private:
    bool m_base_offset;
    bool m_input;
    bool m_pin_to_channel;
+   bool m_keep_alive;
 };
 
 class GPRVector : public Value {

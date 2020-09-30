@@ -359,10 +359,6 @@ register_live_range temp_access::get_required_live_range()
    }
    result.is_array_elm = is_array_element;
 
-   /* This fixes a few tests, but it is not clear why. */
-   if (result.end != result.begin)
-      ++result.end;
-
    return result;
 }
 
@@ -785,7 +781,10 @@ void LiverangeEvaluator::run(const Shader& shader,
             sfn_log << SfnLog::merge << "Record INPUT write for "
                     << g << " in " << temp_acc.size() << " temps\n";
             temp_acc[g.sel()].record_write(line, cur_scope, 1 << g.chan(), false);
-            temp_acc[g.sel()].record_read(line, cur_scope, 1 << g.chan(), false);
+            if (g.keep_alive())
+               temp_acc[g.sel()].record_read(0x7fffff, cur_scope, 1 << g.chan(), false);
+            else
+               temp_acc[g.sel()].record_read(line, cur_scope, 1 << g.chan(), false);
          }
       }
    }
