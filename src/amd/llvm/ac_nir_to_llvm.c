@@ -743,6 +743,11 @@ static void visit_alu(struct ac_nir_context *ctx, const nir_alu_instr *instr)
          result = ac_build_canonicalize(&ctx->ac, result, instr->dest.dest.ssa.bit_size);
       }
       break;
+   case nir_op_fsat:
+      src[0] = ac_to_float(&ctx->ac, src[0]);
+      result = ac_build_fsat(&ctx->ac, src[0],
+                             ac_to_float_type(&ctx->ac, def_type));
+      break;
    case nir_op_iabs:
       result = emit_iabs(&ctx->ac, src[0]);
       break;

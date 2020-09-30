@@ -2447,6 +2447,50 @@ void ac_build_waitcnt(struct ac_llvm_context *ctx, unsigned wait_flags)
    ac_build_intrinsic(ctx, "llvm.amdgcn.s.waitcnt", ctx->voidt, args, 1, 0);
 }
 
+LLVMValueRef ac_build_fsat(struct ac_llvm_context *ctx, LLVMValueRef src,
+                           LLVMTypeRef type)
+{
+   unsigned bitsize = ac_get_elem_bits(ctx, type);
+   LLVMValueRef zero = LLVMConstReal(type, 0.0);
+   LLVMValueRef one = LLVMConstReal(type, 1.0);
+   LLVMValueRef result;
+
+   if (bitsize == 64 || (bitsize == 16 && ctx->chip_class <= GFX8)) {
+      /* Use fmin/fmax for 64-bit fsat or 16-bit on GFX6-GFX8 because LLVM
+       * doesn't expose an intrinsic.
+       */
+      result = ac_build_fmin(ctx, ac_build_fmax(ctx, src, zero), one);
+   } else {
+      LLVMTypeRef type;
+      char *intr;
+
+      if (bitsize == 16) {
+         intr = "llvm.amdgcn.fmed3.f16";
+         type = ctx->f16;
+      } else {
+         assert(bitsize == 32);
+         intr = "llvm.amdgcn.fmed3.f32";
+         type = ctx->f32;
+      }
+
+      LLVMValueRef params[] = {
+         zero,
+         one,
+         src,
+      };
+
+      result = ac_build_intrinsic(ctx, intr, type, params, 3,
+                                  AC_FUNC_ATTR_READNONE);
+   }
+
+   if (ctx->chip_class < GFX9 && bitsize == 32) {
+      /* Only pre-GFX9 chips do not flush denorms. */
+      result = ac_build_canonicalize(ctx, result, bitsize);
+   }
+
+   return result;
+}
+
 LLVMValueRef ac_build_fract(struct ac_llvm_context *ctx, LLVMValueRef src0, unsigned bitsize)
 {
    LLVMTypeRef type;
