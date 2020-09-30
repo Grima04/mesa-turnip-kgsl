@@ -205,20 +205,6 @@ tu_image_view_init(struct tu_image_view *iview,
    const struct tu_sampler_ycbcr_conversion *conversion = ycbcr_conversion ?
       tu_sampler_ycbcr_conversion_from_handle(ycbcr_conversion->conversion) : NULL;
 
-   switch (image->type) {
-   case VK_IMAGE_TYPE_1D:
-   case VK_IMAGE_TYPE_2D:
-      assert(range->baseArrayLayer + tu_get_layerCount(image, range) <=
-             image->layer_count);
-      break;
-   case VK_IMAGE_TYPE_3D:
-      assert(range->baseArrayLayer + tu_get_layerCount(image, range) <=
-             u_minify(image->extent.depth, range->baseMipLevel));
-      break;
-   default:
-      unreachable("bad VkImageType");
-   }
-
    iview->image = image;
 
    memset(iview->descriptor, 0, sizeof(iview->descriptor));
@@ -514,15 +500,6 @@ tu_CreateImage(VkDevice _device,
    }
 #endif
 
-   assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO);
-
-   assert(pCreateInfo->mipLevels > 0);
-   assert(pCreateInfo->arrayLayers > 0);
-   assert(pCreateInfo->samples > 0);
-   assert(pCreateInfo->extent.width > 0);
-   assert(pCreateInfo->extent.height > 0);
-   assert(pCreateInfo->extent.depth > 0);
-
    image = vk_object_zalloc(&device->vk, alloc, sizeof(*image),
                             VK_OBJECT_TYPE_IMAGE);
    if (!image)
@@ -787,9 +764,6 @@ VkResult tu_GetImageDrmFormatModifierPropertiesEXT(
     VkImageDrmFormatModifierPropertiesEXT*      pProperties)
 {
    TU_FROM_HANDLE(tu_image, image, _image);
-
-   assert(pProperties->sType ==
-          VK_STRUCTURE_TYPE_IMAGE_DRM_FORMAT_MODIFIER_PROPERTIES_EXT);
 
    /* TODO invent a modifier for tiled but not UBWC buffers */
 
