@@ -3975,12 +3975,8 @@ tu_barrier(struct tu_cmd_buffer *cmd,
    enum tu_cmd_access_mask dst_flags = 0;
 
    for (uint32_t i = 0; i < imageMemoryBarrierCount; i++) {
-      TU_FROM_HANDLE(tu_image, image, pImageMemoryBarriers[i].image);
       VkImageLayout old_layout = pImageMemoryBarriers[i].oldLayout;
-      /* For non-linear images, PREINITIALIZED is the same as UNDEFINED */
-      if (old_layout == VK_IMAGE_LAYOUT_UNDEFINED ||
-          (image->tiling != VK_IMAGE_TILING_LINEAR &&
-           old_layout == VK_IMAGE_LAYOUT_PREINITIALIZED)) {
+      if (old_layout == VK_IMAGE_LAYOUT_UNDEFINED) {
          /* The underlying memory for this image may have been used earlier
           * within the same queue submission for a different image, which
           * means that there may be old, stale cache entries which are in the
