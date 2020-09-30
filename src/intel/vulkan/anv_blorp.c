@@ -132,6 +132,7 @@ get_blorp_surf_for_anv_buffer(struct anv_device *device,
                               struct anv_buffer *buffer, uint64_t offset,
                               uint32_t width, uint32_t height,
                               uint32_t row_pitch, enum isl_format format,
+                              bool is_dest,
                               struct blorp_surf *blorp_surf,
                               struct isl_surf *isl_surf)
 {
@@ -171,8 +172,8 @@ get_blorp_surf_for_anv_buffer(struct anv_device *device,
                      .array_len = 1,
                      .samples = 1,
                      .row_pitch_B = row_pitch,
-                     .usage = ISL_SURF_USAGE_TEXTURE_BIT |
-                              ISL_SURF_USAGE_RENDER_TARGET_BIT,
+                     .usage = is_dest ? ISL_SURF_USAGE_RENDER_TARGET_BIT
+                                      : ISL_SURF_USAGE_TEXTURE_BIT,
                      .tiling_flags = ISL_TILING_LINEAR_BIT);
    assert(ok);
 }
@@ -567,7 +568,7 @@ copy_buffer_to_image(struct anv_cmd_buffer *cmd_buffer,
    get_blorp_surf_for_anv_buffer(cmd_buffer->device,
                                  anv_buffer, region->bufferOffset,
                                  buffer_extent.width, buffer_extent.height,
-                                 buffer_row_pitch, buffer_format,
+                                 buffer_row_pitch, buffer_format, false,
                                  &buffer.surf, &buffer_isl_surf);
 
    bool dst_has_shadow = false;
@@ -1111,7 +1112,7 @@ void anv_CmdFillBuffer(
       get_blorp_surf_for_anv_buffer(cmd_buffer->device,
                                     dst_buffer, dstOffset,
                                     MAX_SURFACE_DIM, MAX_SURFACE_DIM,
-                                    MAX_SURFACE_DIM * bs, isl_format,
+                                    MAX_SURFACE_DIM * bs, isl_format, true,
                                     &surf, &isl_surf);
 
       blorp_clear(&batch, &surf, isl_format, ISL_SWIZZLE_IDENTITY,
@@ -1128,7 +1129,7 @@ void anv_CmdFillBuffer(
       get_blorp_surf_for_anv_buffer(cmd_buffer->device,
                                     dst_buffer, dstOffset,
                                     MAX_SURFACE_DIM, height,
-                                    MAX_SURFACE_DIM * bs, isl_format,
+                                    MAX_SURFACE_DIM * bs, isl_format, true,
                                     &surf, &isl_surf);
 
       blorp_clear(&batch, &surf, isl_format, ISL_SWIZZLE_IDENTITY,
@@ -1143,7 +1144,7 @@ void anv_CmdFillBuffer(
       get_blorp_surf_for_anv_buffer(cmd_buffer->device,
                                     dst_buffer, dstOffset,
                                     width, 1,
-                                    width * bs, isl_format,
+                                    width * bs, isl_format, true,
                                     &surf, &isl_surf);
 
       blorp_clear(&batch, &surf, isl_format, ISL_SWIZZLE_IDENTITY,
