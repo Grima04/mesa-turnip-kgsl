@@ -1380,6 +1380,9 @@ tu_image_view_init(struct tu_image_view *iview,
                    const VkImageViewCreateInfo *pCreateInfo,
                    bool limited_z24s8);
 
+bool
+ubwc_possible(VkFormat format, VkImageType type, VkImageUsageFlags usage, bool limited_z24s8);
+
 struct tu_buffer_view
 {
    struct vk_object_base base;

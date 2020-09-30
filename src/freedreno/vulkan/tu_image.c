@@ -446,6 +446,53 @@ tu_image_view_init(struct tu_image_view *iview,
    }
 }
 
+bool
+ubwc_possible(VkFormat format, VkImageType type, VkImageUsageFlags usage, bool limited_z24s8)
+{
+   /* no UBWC with compressed formats, E5B9G9R9, S8_UINT
+    * (S8_UINT because separate stencil doesn't have UBWC-enable bit)
+    */
+   if (vk_format_is_compressed(format) ||
+       format == VK_FORMAT_E5B9G9R9_UFLOAT_PACK32 ||
+       format == VK_FORMAT_S8_UINT)
+      return false;
+
+   if (type == VK_IMAGE_TYPE_3D) {
+      tu_finishme("UBWC with 3D textures");
+      return false;
+   }
+
+   /* Disable UBWC for storage images.
+    *
+    * The closed GL driver skips UBWC for storage images (and additionally
+    * uses linear for writeonly images).  We seem to have image tiling working
+    * in freedreno in general, so turnip matches that.  freedreno also enables
+    * UBWC on images, but it's not really tested due to the lack of
+    * UBWC-enabled mipmaps in freedreno currently.  Just match the closed GL
+    * behavior of no UBWC.
+   */
+   if (usage & VK_IMAGE_USAGE_STORAGE_BIT)
+      return false;
+
+   /* Disable UBWC for D24S8 on A630 in some cases
+    *
+    * VK_IMAGE_ASPECT_STENCIL_BIT image view requires to be able to sample
+    * from the stencil component as UINT, however no format allows this
+    * on a630 (the special FMT6_Z24_UINT_S8_UINT format is missing)
+    *
+    * It must be sampled as FMT6_8_8_8_8_UINT, which is not UBWC-compatible
+    *
+    * Additionally, the special AS_R8G8B8A8 format is broken without UBWC,
+    * so we have to fallback to 8_8_8_8_UNORM when UBWC is disabled
+    */
+   if (limited_z24s8 &&
+       format == VK_FORMAT_D24_UNORM_S8_UINT &&
+       (usage & (VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT)))
+      return false;
+
+   return true;
+}
+
 VkResult
 tu_CreateImage(VkDevice _device,
                const VkImageCreateInfo *pCreateInfo,
@@ -510,16 +557,8 @@ tu_CreateImage(VkDevice _device,
    bool ubwc_enabled =
       !(device->physical_device->instance->debug_flags & TU_DEBUG_NOUBWC);
 
-   /* use linear tiling if requested and for special ycbcr formats
-    * TODO: NV12 can be UBWC but has a special UBWC format for accessing the Y plane aspect
-    * for 3plane, tiling/UBWC might be supported, but the blob doesn't use tiling
-    */
-   if (pCreateInfo->tiling == VK_IMAGE_TILING_LINEAR ||
-       modifier == DRM_FORMAT_MOD_LINEAR ||
-       image->vk_format == VK_FORMAT_G8B8G8R8_422_UNORM ||
-       image->vk_format == VK_FORMAT_B8G8R8G8_422_UNORM ||
-       image->vk_format == VK_FORMAT_G8_B8R8_2PLANE_420_UNORM ||
-       image->vk_format == VK_FORMAT_G8_B8_R8_3PLANE_420_UNORM) {
+   /* use linear tiling if requested */
+   if (pCreateInfo->tiling == VK_IMAGE_TILING_LINEAR || modifier == DRM_FORMAT_MOD_LINEAR) {
       tile_mode = TILE6_LINEAR;
       ubwc_enabled = false;
    }
@@ -555,51 +594,9 @@ tu_CreateImage(VkDevice _device,
       ubwc_enabled = false;
    }
 
-   /* don't use UBWC with compressed formats */
-   if (vk_format_is_compressed(image->vk_format))
+   if (!ubwc_possible(image->vk_format, pCreateInfo->imageType, pCreateInfo->usage,
+                      device->physical_device->limited_z24s8))
       ubwc_enabled = false;
-
-   /* UBWC can't be used with E5B9G9R9 */
-   if (image->vk_format == VK_FORMAT_E5B9G9R9_UFLOAT_PACK32)
-      ubwc_enabled = false;
-
-   /* separate stencil doesn't have a UBWC enable bit */
-   if (image->vk_format == VK_FORMAT_S8_UINT)
-      ubwc_enabled = false;
-
-   if (pCreateInfo->extent.depth > 1) {
-      tu_finishme("UBWC with 3D textures");
-      ubwc_enabled = false;
-   }
-
-   /* Disable UBWC for storage images.
-    *
-    * The closed GL driver skips UBWC for storage images (and additionally
-    * uses linear for writeonly images).  We seem to have image tiling working
-    * in freedreno in general, so turnip matches that.  freedreno also enables
-    * UBWC on images, but it's not really tested due to the lack of
-    * UBWC-enabled mipmaps in freedreno currently.  Just match the closed GL
-    * behavior of no UBWC.
-   */
-   if (pCreateInfo->usage & VK_IMAGE_USAGE_STORAGE_BIT)
-      ubwc_enabled = false;
-
-   /* Disable UBWC for D24S8 on A630 in some cases
-    *
-    * VK_IMAGE_ASPECT_STENCIL_BIT image view requires to be able to sample
-    * from the stencil component as UINT, however no format allows this
-    * on a630 (the special FMT6_Z24_UINT_S8_UINT format is missing)
-    *
-    * It must be sampled as FMT6_8_8_8_8_UINT, which is not UBWC-compatible
-    *
-    * Additionally, the special AS_R8G8B8A8 format is broken without UBWC,
-    * so we have to fallback to 8_8_8_8_UNORM when UBWC is disabled
-    */
-   if (device->physical_device->limited_z24s8 &&
-       image->vk_format == VK_FORMAT_D24_UNORM_S8_UINT &&
-       (pCreateInfo->usage & (VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT))) {
-      ubwc_enabled = false;
-   }
 
    /* expect UBWC enabled if we asked for it */
    assert(modifier != DRM_FORMAT_MOD_QCOM_COMPRESSED || ubwc_enabled);
