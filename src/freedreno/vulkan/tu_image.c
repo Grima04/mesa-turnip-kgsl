@@ -81,235 +81,6 @@ tu6_plane_index(VkFormat format, VkImageAspectFlags aspect_mask)
    }
 }
 
-static VkResult
-tu_image_create(VkDevice _device,
-                const VkImageCreateInfo *pCreateInfo,
-                const VkAllocationCallbacks *alloc,
-                VkImage *pImage,
-                uint64_t modifier,
-                const VkSubresourceLayout *plane_layouts)
-{
-   TU_FROM_HANDLE(tu_device, device, _device);
-   struct tu_image *image = NULL;
-   assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO);
-
-   assert(pCreateInfo->mipLevels > 0);
-   assert(pCreateInfo->arrayLayers > 0);
-   assert(pCreateInfo->samples > 0);
-   assert(pCreateInfo->extent.width > 0);
-   assert(pCreateInfo->extent.height > 0);
-   assert(pCreateInfo->extent.depth > 0);
-
-   image = vk_object_zalloc(&device->vk, alloc, sizeof(*image),
-                            VK_OBJECT_TYPE_IMAGE);
-   if (!image)
-      return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
-
-   image->type = pCreateInfo->imageType;
-
-   image->vk_format = pCreateInfo->format;
-   image->tiling = pCreateInfo->tiling;
-   image->usage = pCreateInfo->usage;
-   image->flags = pCreateInfo->flags;
-   image->extent = pCreateInfo->extent;
-   image->level_count = pCreateInfo->mipLevels;
-   image->layer_count = pCreateInfo->arrayLayers;
-   image->samples = pCreateInfo->samples;
-
-   enum a6xx_tile_mode tile_mode = TILE6_3;
-   bool ubwc_enabled =
-      !(device->physical_device->instance->debug_flags & TU_DEBUG_NOUBWC);
-
-   /* disable tiling when linear is requested, for YUYV/UYVY, and for mutable
-    * images. Mutable images can be reinterpreted as any other compatible
-    * format, including swapped formats which aren't supported with tiling.
-    * This means that we have to fall back to linear almost always. However
-    * depth and stencil formats cannot be reintepreted as another format, and
-    * cannot be linear with sysmem rendering, so don't fall back for those.
-    *
-    * TODO: Be smarter and use usage bits and VK_KHR_image_format_list to
-    * enable tiling and/or UBWC when possible.
-    */
-   if (pCreateInfo->tiling == VK_IMAGE_TILING_LINEAR ||
-       modifier == DRM_FORMAT_MOD_LINEAR ||
-       vk_format_description(image->vk_format)->layout == UTIL_FORMAT_LAYOUT_SUBSAMPLED ||
-       (pCreateInfo->flags & VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT &&
-        !vk_format_is_depth_or_stencil(image->vk_format))) {
-      tile_mode = TILE6_LINEAR;
-      ubwc_enabled = false;
-   }
-
-   /* UBWC is supported for these formats, but NV12 has a special UBWC
-    * format for accessing the Y plane aspect, which isn't implemented
-    * For IYUV, the blob doesn't use UBWC, but it seems to work, but
-    * disable it since we don't know if a special UBWC format is needed
-    * like NV12
-    *
-    * Disable tiling completely, because we set the TILE_ALL bit to
-    * match the blob, however fdl expects the TILE_ALL bit to not be
-    * set for non-UBWC tiled formats
-    */
-   if (image->vk_format == VK_FORMAT_G8_B8R8_2PLANE_420_UNORM ||
-       image->vk_format == VK_FORMAT_G8_B8_R8_3PLANE_420_UNORM) {
-      tile_mode = TILE6_LINEAR;
-      ubwc_enabled = false;
-   }
-
-   /* don't use UBWC with compressed formats */
-   if (vk_format_is_compressed(image->vk_format))
-      ubwc_enabled = false;
-
-   /* UBWC can't be used with E5B9G9R9 */
-   if (image->vk_format == VK_FORMAT_E5B9G9R9_UFLOAT_PACK32)
-      ubwc_enabled = false;
-
-   /* separate stencil doesn't have a UBWC enable bit */
-   if (image->vk_format == VK_FORMAT_S8_UINT)
-      ubwc_enabled = false;
-
-   if (image->extent.depth > 1) {
-      tu_finishme("UBWC with 3D textures");
-      ubwc_enabled = false;
-   }
-
-   /* Disable UBWC for storage images.
-    *
-    * The closed GL driver skips UBWC for storage images (and additionally
-    * uses linear for writeonly images).  We seem to have image tiling working
-    * in freedreno in general, so turnip matches that.  freedreno also enables
-    * UBWC on images, but it's not really tested due to the lack of
-    * UBWC-enabled mipmaps in freedreno currently.  Just match the closed GL
-    * behavior of no UBWC.
-   */
-   if (image->usage & VK_IMAGE_USAGE_STORAGE_BIT)
-      ubwc_enabled = false;
-
-   /* Disable UBWC for D24S8 on A630 in some cases
-    *
-    * VK_IMAGE_ASPECT_STENCIL_BIT image view requires to be able to sample
-    * from the stencil component as UINT, however no format allows this
-    * on a630 (the special FMT6_Z24_UINT_S8_UINT format is missing)
-    *
-    * It must be sampled as FMT6_8_8_8_8_UINT, which is not UBWC-compatible
-    *
-    * Additionally, the special AS_R8G8B8A8 format is broken without UBWC,
-    * so we have to fallback to 8_8_8_8_UNORM when UBWC is disabled
-    */
-   if (device->physical_device->limited_z24s8 &&
-       image->vk_format == VK_FORMAT_D24_UNORM_S8_UINT &&
-       (image->usage & (VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT))) {
-      ubwc_enabled = false;
-   }
-
-   /* expect UBWC enabled if we asked for it */
-   assert(modifier != DRM_FORMAT_MOD_QCOM_COMPRESSED || ubwc_enabled);
-
-   for (uint32_t i = 0; i < tu6_plane_count(image->vk_format); i++) {
-      struct fdl_layout *layout = &image->layout[i];
-      VkFormat format = tu6_plane_format(image->vk_format, i);
-      uint32_t width0 = pCreateInfo->extent.width;
-      uint32_t height0 = pCreateInfo->extent.height;
-
-      if (i > 0) {
-         switch (image->vk_format) {
-         case VK_FORMAT_G8_B8R8_2PLANE_420_UNORM:
-         case VK_FORMAT_G8_B8_R8_3PLANE_420_UNORM:
-            /* half width/height on chroma planes */
-            width0 = (width0 + 1) >> 1;
-            height0 = (height0 + 1) >> 1;
-            break;
-         case VK_FORMAT_D32_SFLOAT_S8_UINT:
-            /* no UBWC for separate stencil */
-            ubwc_enabled = false;
-            break;
-         default:
-            break;
-         }
-      }
-
-      struct fdl_explicit_layout plane_layout;
-
-      if (plane_layouts) {
-         /* only expect simple 2D images for now */
-         if (pCreateInfo->mipLevels != 1 ||
-            pCreateInfo->arrayLayers != 1 ||
-            image->extent.depth != 1)
-            goto invalid_layout;
-
-         plane_layout.offset = plane_layouts[i].offset;
-         plane_layout.pitch = plane_layouts[i].rowPitch;
-         /* note: use plane_layouts[0].arrayPitch to support array formats */
-      }
-
-      layout->tile_mode = tile_mode;
-      layout->ubwc = ubwc_enabled;
-
-      if (!fdl6_layout(layout, vk_format_to_pipe_format(format),
-                       image->samples,
-                       width0, height0,
-                       pCreateInfo->extent.depth,
-                       pCreateInfo->mipLevels,
-                       pCreateInfo->arrayLayers,
-                       pCreateInfo->imageType == VK_IMAGE_TYPE_3D,
-                       plane_layouts ? &plane_layout : NULL)) {
-         assert(plane_layouts); /* can only fail with explicit layout */
-         goto invalid_layout;
-      }
-
-      /* fdl6_layout can't take explicit offset without explicit pitch
-       * add offset manually for extra layouts for planes
-       */
-      if (!plane_layouts && i > 0) {
-         uint32_t offset = ALIGN_POT(image->total_size, 4096);
-         for (int i = 0; i < pCreateInfo->mipLevels; i++) {
-            layout->slices[i].offset += offset;
-            layout->ubwc_slices[i].offset += offset;
-         }
-         layout->size += offset;
-      }
-
-      image->total_size = MAX2(image->total_size, layout->size);
-   }
-
-   const struct util_format_description *desc = util_format_description(image->layout[0].format);
-   if (util_format_has_depth(desc) && !(device->instance->debug_flags & TU_DEBUG_NOLRZ))
-   {
-      /* Depth plane is the first one */
-      struct fdl_layout *layout = &image->layout[0];
-      unsigned width = layout->width0;
-      unsigned height = layout->height0;
-
-      /* LRZ buffer is super-sampled */
-      switch (layout->nr_samples) {
-      case 4:
-         width *= 2;
-         /* fallthru */
-      case 2:
-         height *= 2;
-         break;
-      default:
-         break;
-      }
-
-      unsigned lrz_pitch  = align(DIV_ROUND_UP(width, 8), 32);
-      unsigned lrz_height = align(DIV_ROUND_UP(height, 8), 16);
-
-      image->lrz_height = lrz_height;
-      image->lrz_pitch = lrz_pitch;
-      image->lrz_offset = image->total_size;
-      unsigned lrz_size = lrz_pitch * lrz_height * 2;
-      image->total_size += lrz_size;
-   }
-
-   *pImage = tu_image_to_handle(image);
-
-   return VK_SUCCESS;
-
-invalid_layout:
-   vk_object_free(&device->vk, alloc, image);
-   return vk_error(device->instance, VK_ERROR_INVALID_DRM_FORMAT_MODIFIER_PLANE_LAYOUT_EXT);
-}
-
 static void
 compose_swizzle(unsigned char *swiz, const VkComponentMapping *mapping)
 {
@@ -693,13 +464,15 @@ tu_image_view_init(struct tu_image_view *iview,
 }
 
 VkResult
-tu_CreateImage(VkDevice device,
+tu_CreateImage(VkDevice _device,
                const VkImageCreateInfo *pCreateInfo,
-               const VkAllocationCallbacks *pAllocator,
+               const VkAllocationCallbacks *alloc,
                VkImage *pImage)
 {
+   TU_FROM_HANDLE(tu_device, device, _device);
    uint64_t modifier = DRM_FORMAT_MOD_INVALID;
    const VkSubresourceLayout *plane_layouts = NULL;
+   struct tu_image *image;
 
    if (pCreateInfo->tiling == VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT) {
       const VkImageDrmFormatModifierListCreateInfoEXT *mod_info =
@@ -741,15 +514,227 @@ tu_CreateImage(VkDevice device,
    }
 #endif
 
-   VkResult result = tu_image_create(device, pCreateInfo, pAllocator, pImage, modifier, plane_layouts);
-   if (result != VK_SUCCESS)
-      return result;
+   assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO);
+
+   assert(pCreateInfo->mipLevels > 0);
+   assert(pCreateInfo->arrayLayers > 0);
+   assert(pCreateInfo->samples > 0);
+   assert(pCreateInfo->extent.width > 0);
+   assert(pCreateInfo->extent.height > 0);
+   assert(pCreateInfo->extent.depth > 0);
+
+   image = vk_object_zalloc(&device->vk, alloc, sizeof(*image),
+                            VK_OBJECT_TYPE_IMAGE);
+   if (!image)
+      return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
+
+   image->type = pCreateInfo->imageType;
+
+   image->vk_format = pCreateInfo->format;
+   image->tiling = pCreateInfo->tiling;
+   image->usage = pCreateInfo->usage;
+   image->flags = pCreateInfo->flags;
+   image->extent = pCreateInfo->extent;
+   image->level_count = pCreateInfo->mipLevels;
+   image->layer_count = pCreateInfo->arrayLayers;
+   image->samples = pCreateInfo->samples;
+
+   enum a6xx_tile_mode tile_mode = TILE6_3;
+   bool ubwc_enabled =
+      !(device->physical_device->instance->debug_flags & TU_DEBUG_NOUBWC);
+
+   /* disable tiling when linear is requested, for YUYV/UYVY, and for mutable
+    * images. Mutable images can be reinterpreted as any other compatible
+    * format, including swapped formats which aren't supported with tiling.
+    * This means that we have to fall back to linear almost always. However
+    * depth and stencil formats cannot be reintepreted as another format, and
+    * cannot be linear with sysmem rendering, so don't fall back for those.
+    *
+    * TODO: Be smarter and use usage bits and VK_KHR_image_format_list to
+    * enable tiling and/or UBWC when possible.
+    */
+   if (pCreateInfo->tiling == VK_IMAGE_TILING_LINEAR ||
+       modifier == DRM_FORMAT_MOD_LINEAR ||
+       vk_format_description(image->vk_format)->layout == UTIL_FORMAT_LAYOUT_SUBSAMPLED ||
+       (pCreateInfo->flags & VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT &&
+        !vk_format_is_depth_or_stencil(image->vk_format))) {
+      tile_mode = TILE6_LINEAR;
+      ubwc_enabled = false;
+   }
+
+   /* UBWC is supported for these formats, but NV12 has a special UBWC
+    * format for accessing the Y plane aspect, which isn't implemented
+    * For IYUV, the blob doesn't use UBWC, but it seems to work, but
+    * disable it since we don't know if a special UBWC format is needed
+    * like NV12
+    *
+    * Disable tiling completely, because we set the TILE_ALL bit to
+    * match the blob, however fdl expects the TILE_ALL bit to not be
+    * set for non-UBWC tiled formats
+    */
+   if (image->vk_format == VK_FORMAT_G8_B8R8_2PLANE_420_UNORM ||
+       image->vk_format == VK_FORMAT_G8_B8_R8_3PLANE_420_UNORM) {
+      tile_mode = TILE6_LINEAR;
+      ubwc_enabled = false;
+   }
+
+   /* don't use UBWC with compressed formats */
+   if (vk_format_is_compressed(image->vk_format))
+      ubwc_enabled = false;
+
+   /* UBWC can't be used with E5B9G9R9 */
+   if (image->vk_format == VK_FORMAT_E5B9G9R9_UFLOAT_PACK32)
+      ubwc_enabled = false;
+
+   /* separate stencil doesn't have a UBWC enable bit */
+   if (image->vk_format == VK_FORMAT_S8_UINT)
+      ubwc_enabled = false;
+
+   if (image->extent.depth > 1) {
+      tu_finishme("UBWC with 3D textures");
+      ubwc_enabled = false;
+   }
+
+   /* Disable UBWC for storage images.
+    *
+    * The closed GL driver skips UBWC for storage images (and additionally
+    * uses linear for writeonly images).  We seem to have image tiling working
+    * in freedreno in general, so turnip matches that.  freedreno also enables
+    * UBWC on images, but it's not really tested due to the lack of
+    * UBWC-enabled mipmaps in freedreno currently.  Just match the closed GL
+    * behavior of no UBWC.
+   */
+   if (image->usage & VK_IMAGE_USAGE_STORAGE_BIT)
+      ubwc_enabled = false;
+
+   /* Disable UBWC for D24S8 on A630 in some cases
+    *
+    * VK_IMAGE_ASPECT_STENCIL_BIT image view requires to be able to sample
+    * from the stencil component as UINT, however no format allows this
+    * on a630 (the special FMT6_Z24_UINT_S8_UINT format is missing)
+    *
+    * It must be sampled as FMT6_8_8_8_8_UINT, which is not UBWC-compatible
+    *
+    * Additionally, the special AS_R8G8B8A8 format is broken without UBWC,
+    * so we have to fallback to 8_8_8_8_UNORM when UBWC is disabled
+    */
+   if (device->physical_device->limited_z24s8 &&
+       image->vk_format == VK_FORMAT_D24_UNORM_S8_UINT &&
+       (image->usage & (VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT))) {
+      ubwc_enabled = false;
+   }
+
+   /* expect UBWC enabled if we asked for it */
+   assert(modifier != DRM_FORMAT_MOD_QCOM_COMPRESSED || ubwc_enabled);
+
+   for (uint32_t i = 0; i < tu6_plane_count(image->vk_format); i++) {
+      struct fdl_layout *layout = &image->layout[i];
+      VkFormat format = tu6_plane_format(image->vk_format, i);
+      uint32_t width0 = pCreateInfo->extent.width;
+      uint32_t height0 = pCreateInfo->extent.height;
+
+      if (i > 0) {
+         switch (image->vk_format) {
+         case VK_FORMAT_G8_B8R8_2PLANE_420_UNORM:
+         case VK_FORMAT_G8_B8_R8_3PLANE_420_UNORM:
+            /* half width/height on chroma planes */
+            width0 = (width0 + 1) >> 1;
+            height0 = (height0 + 1) >> 1;
+            break;
+         case VK_FORMAT_D32_SFLOAT_S8_UINT:
+            /* no UBWC for separate stencil */
+            ubwc_enabled = false;
+            break;
+         default:
+            break;
+         }
+      }
+
+      struct fdl_explicit_layout plane_layout;
+
+      if (plane_layouts) {
+         /* only expect simple 2D images for now */
+         if (pCreateInfo->mipLevels != 1 ||
+            pCreateInfo->arrayLayers != 1 ||
+            image->extent.depth != 1)
+            goto invalid_layout;
+
+         plane_layout.offset = plane_layouts[i].offset;
+         plane_layout.pitch = plane_layouts[i].rowPitch;
+         /* note: use plane_layouts[0].arrayPitch to support array formats */
+      }
+
+      layout->tile_mode = tile_mode;
+      layout->ubwc = ubwc_enabled;
+
+      if (!fdl6_layout(layout, vk_format_to_pipe_format(format),
+                       image->samples,
+                       width0, height0,
+                       pCreateInfo->extent.depth,
+                       pCreateInfo->mipLevels,
+                       pCreateInfo->arrayLayers,
+                       pCreateInfo->imageType == VK_IMAGE_TYPE_3D,
+                       plane_layouts ? &plane_layout : NULL)) {
+         assert(plane_layouts); /* can only fail with explicit layout */
+         goto invalid_layout;
+      }
+
+      /* fdl6_layout can't take explicit offset without explicit pitch
+       * add offset manually for extra layouts for planes
+       */
+      if (!plane_layouts && i > 0) {
+         uint32_t offset = ALIGN_POT(image->total_size, 4096);
+         for (int i = 0; i < pCreateInfo->mipLevels; i++) {
+            layout->slices[i].offset += offset;
+            layout->ubwc_slices[i].offset += offset;
+         }
+         layout->size += offset;
+      }
+
+      image->total_size = MAX2(image->total_size, layout->size);
+   }
+
+   const struct util_format_description *desc = util_format_description(image->layout[0].format);
+   if (util_format_has_depth(desc) && !(device->instance->debug_flags & TU_DEBUG_NOLRZ))
+   {
+      /* Depth plane is the first one */
+      struct fdl_layout *layout = &image->layout[0];
+      unsigned width = layout->width0;
+      unsigned height = layout->height0;
+
+      /* LRZ buffer is super-sampled */
+      switch (layout->nr_samples) {
+      case 4:
+         width *= 2;
+         /* fallthru */
+      case 2:
+         height *= 2;
+         break;
+      default:
+         break;
+      }
+
+      unsigned lrz_pitch  = align(DIV_ROUND_UP(width, 8), 32);
+      unsigned lrz_height = align(DIV_ROUND_UP(height, 8), 16);
+
+      image->lrz_height = lrz_height;
+      image->lrz_pitch = lrz_pitch;
+      image->lrz_offset = image->total_size;
+      unsigned lrz_size = lrz_pitch * lrz_height * 2;
+      image->total_size += lrz_size;
+   }
+
+   *pImage = tu_image_to_handle(image);
 
 #ifdef ANDROID
    if (gralloc_info)
-      return tu_import_memory_from_gralloc_handle(device, dma_buf, pAllocator, *pImage);
+      return tu_import_memory_from_gralloc_handle(_device, dma_buf, alloc, *pImage);
 #endif
    return VK_SUCCESS;
+
+invalid_layout:
+   vk_object_free(&device->vk, alloc, image);
+   return vk_error(device->instance, VK_ERROR_INVALID_DRM_FORMAT_MODIFIER_PLANE_LAYOUT_EXT);
 }
 
 void
