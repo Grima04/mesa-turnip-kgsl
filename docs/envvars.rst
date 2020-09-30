@@ -39,7 +39,7 @@ Core Mesa environment variables
    if set, disables Intel SSE optimizations
 ``MESA_NO_ERROR``
    if set to 1, error checking is disabled as per ``KHR_no_error``. This
-   will result in undefined behavior for invalid use of the api, but
+   will result in undefined behavior for invalid use of the API, but
    can reduce CPU use for apps that are known to be error free.
 ``MESA_DEBUG``
    if set, error messages are printed to stderr. For example, if the
