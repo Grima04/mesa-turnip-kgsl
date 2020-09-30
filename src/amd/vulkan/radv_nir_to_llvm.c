@@ -1172,11 +1172,7 @@ handle_vs_input_decl(struct radv_shader_context *ctx,
 	LLVMValueRef input;
 	LLVMValueRef buffer_index;
 	unsigned attrib_count = glsl_count_attribute_slots(variable->type, true);
-	uint8_t input_usage_mask =
-		ctx->args->shader_info->vs.input_usage_mask[variable->data.location];
-	unsigned num_input_channels = util_last_bit(input_usage_mask);
 
-	variable->data.driver_location = variable->data.location * 4;
 
 	enum glsl_base_type type = glsl_get_base_type(variable->type);
 	for (unsigned i = 0; i < attrib_count; ++i) {
@@ -1187,6 +1183,12 @@ handle_vs_input_decl(struct radv_shader_context *ctx,
 		unsigned num_format = (attrib_format >> 4) & 0x07;
 		bool is_float = num_format != V_008F0C_BUF_NUM_FORMAT_UINT &&
 		                num_format != V_008F0C_BUF_NUM_FORMAT_SINT;
+		uint8_t input_usage_mask =
+			ctx->args->shader_info->vs.input_usage_mask[variable->data.location + i];
+		unsigned num_input_channels = util_last_bit(input_usage_mask);
+
+		if (num_input_channels == 0)
+			continue;
 
 		if (ctx->args->options->key.vs.instance_rate_inputs & (1u << attrib_index)) {
 			uint32_t divisor = ctx->args->options->key.vs.instance_rate_divisors[attrib_index];
