@@ -1244,25 +1244,20 @@ struct tu_image
 {
    struct vk_object_base base;
 
-   VkImageType type;
    /* The original VkFormat provided by the client.  This may not match any
     * of the actual surface formats.
     */
    VkFormat vk_format;
-   VkImageAspectFlags aspects;
-   VkImageUsageFlags usage;  /**< Superset of VkImageCreateInfo::usage. */
-   VkImageTiling tiling;     /** VkImageCreateInfo::tiling */
-   VkImageCreateFlags flags; /** VkImageCreateInfo::flags */
-   VkExtent3D extent;
    uint32_t level_count;
    uint32_t layer_count;
-   VkSampleCountFlagBits samples;
 
    struct fdl_layout layout[3];
    uint32_t total_size;
 
+#ifdef ANDROID
    /* For VK_ANDROID_native_buffer, the WSI image owns the memory, */
    VkDeviceMemory owned_memory;
+#endif
 
    /* Set when bound */
    struct tu_bo *bo;

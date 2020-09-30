@@ -181,8 +181,6 @@ r2d_src_buffer(struct tu_cmd_buffer *cmd,
 static void
 r2d_dst(struct tu_cs *cs, const struct tu_image_view *iview, uint32_t layer)
 {
-   assert(iview->image->samples == 1);
-
    tu_cs_emit_pkt4(cs, REG_A6XX_RB_2D_DST_INFO, 4);
    tu_cs_emit(cs, iview->RB_2D_DST_INFO);
    tu_cs_image_ref_2d(cs, iview, layer, false);
@@ -194,8 +192,6 @@ r2d_dst(struct tu_cs *cs, const struct tu_image_view *iview, uint32_t layer)
 static void
 r2d_dst_stencil(struct tu_cs *cs, const struct tu_image_view *iview, uint32_t layer)
 {
-   assert(iview->image->samples == 1);
-
    tu_cs_emit_pkt4(cs, REG_A6XX_RB_2D_DST_INFO, 4);
    tu_cs_emit(cs, tu_image_view_stencil(iview, RB_2D_DST_INFO) & ~A6XX_RB_2D_DST_INFO_FLAGS);
    tu_cs_emit_qw(cs, iview->stencil_base_addr + iview->stencil_layer_size * layer);
@@ -665,7 +661,7 @@ r3d_src_buffer(struct tu_cmd_buffer *cmd,
 static void
 r3d_dst(struct tu_cs *cs, const struct tu_image_view *iview, uint32_t layer)
 {
-   tu6_emit_msaa(cs, iview->image->samples); /* TODO: move to setup */
+   tu6_emit_msaa(cs, iview->image->layout[0].nr_samples); /* TODO: move to setup */
 
    tu_cs_emit_pkt4(cs, REG_A6XX_RB_MRT_BUF_INFO(0), 6);
    tu_cs_emit(cs, iview->RB_MRT_BUF_INFO);
@@ -681,7 +677,7 @@ r3d_dst(struct tu_cs *cs, const struct tu_image_view *iview, uint32_t layer)
 static void
 r3d_dst_stencil(struct tu_cs *cs, const struct tu_image_view *iview, uint32_t layer)
 {
-   tu6_emit_msaa(cs, iview->image->samples); /* TODO: move to setup */
+   tu6_emit_msaa(cs, iview->image->layout[0].nr_samples); /* TODO: move to setup */
 
    tu_cs_emit_pkt4(cs, REG_A6XX_RB_MRT_BUF_INFO(0), 6);
    tu_cs_emit(cs, tu_image_view_stencil(iview, RB_MRT_BUF_INFO));
@@ -1040,7 +1036,7 @@ tu6_blit_image(struct tu_cmd_buffer *cmd,
     * the 2d path.
     */
 
-   if (dst_image->samples > 1 ||
+   if (dst_image->layout[0].nr_samples > 1 ||
        src_image->vk_format == VK_FORMAT_BC1_RGB_UNORM_BLOCK ||
        src_image->vk_format == VK_FORMAT_BC1_RGB_SRGB_BLOCK ||
        filter == VK_FILTER_CUBIC_EXT)
@@ -1344,7 +1340,7 @@ tu_copy_image_to_image(struct tu_cmd_buffer *cmd,
    const struct blit_ops *ops = &r2d_ops;
    struct tu_cs *cs = &cmd->cs;
 
-   if (dst_image->samples > 1)
+   if (dst_image->layout[0].nr_samples > 1)
       ops = &r3d_ops;
 
    VkFormat format = VK_FORMAT_UNDEFINED;
@@ -1418,12 +1414,8 @@ tu_copy_image_to_image(struct tu_cmd_buffer *cmd,
 
       struct tu_image staging_image = {
          .vk_format = src_format,
-         .type = src_image->type,
-         .tiling = VK_IMAGE_TILING_LINEAR,
-         .extent = extent,
          .level_count = 1,
          .layer_count = info->srcSubresource.layerCount,
-         .samples = src_image->samples,
          .bo_offset = 0,
       }; 
 
@@ -1441,13 +1433,13 @@ tu_copy_image_to_image(struct tu_cmd_buffer *cmd,
 
       fdl6_layout(&staging_image.layout[0],
                   vk_format_to_pipe_format(staging_image.vk_format),
-                  staging_image.samples,
-                  staging_image.extent.width,
-                  staging_image.extent.height,
-                  staging_image.extent.depth,
+                  src_image->layout[0].nr_samples,
+                  extent.width,
+                  extent.height,
+                  extent.depth,
                   staging_image.level_count,
                   staging_image.layer_count,
-                  staging_image.type == VK_IMAGE_TYPE_3D,
+                  extent.depth > 1,
                   NULL);
 
       VkResult result = tu_get_scratch_bo(cmd->device,
@@ -1719,12 +1711,12 @@ clear_image(struct tu_cmd_buffer *cmd,
    if (format == VK_FORMAT_D32_SFLOAT_S8_UINT || format == VK_FORMAT_E5B9G9R9_UFLOAT_PACK32)
       format = copy_format(format, aspect_mask, false);
 
-   if (image->type == VK_IMAGE_TYPE_3D) {
+   if (image->layout[0].depth0 > 1) {
       assert(layer_count == 1);
       assert(range->baseArrayLayer == 0);
    }
 
-   const struct blit_ops *ops = image->samples > 1 ? &r3d_ops : &r2d_ops;
+   const struct blit_ops *ops = image->layout[0].nr_samples > 1 ? &r3d_ops : &r2d_ops;
 
    ops->setup(cmd, cs, format, aspect_mask, ROTATE_0, true, image->layout[0].ubwc);
    if (image->vk_format == VK_FORMAT_E5B9G9R9_UFLOAT_PACK32)
@@ -1733,12 +1725,12 @@ clear_image(struct tu_cmd_buffer *cmd,
       ops->clear_value(cs, format, clear_value);
 
    for (unsigned j = 0; j < level_count; j++) {
-      if (image->type == VK_IMAGE_TYPE_3D)
-         layer_count = u_minify(image->extent.depth, range->baseMipLevel + j);
+      if (image->layout[0].depth0 > 1)
+         layer_count = u_minify(image->layout[0].depth0, range->baseMipLevel + j);
 
       ops->coords(cs, &(VkOffset2D){}, NULL, &(VkExtent2D) {
-                     u_minify(image->extent.width, range->baseMipLevel + j),
-                     u_minify(image->extent.height, range->baseMipLevel + j)
+                     u_minify(image->layout[0].width0, range->baseMipLevel + j),
+                     u_minify(image->layout[0].height0, range->baseMipLevel + j)
                   });
 
       struct tu_image_view dst;

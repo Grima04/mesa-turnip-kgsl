@@ -216,7 +216,7 @@ tu_image_view_init(struct tu_image_view *iview,
    uint32_t height = u_minify(layout->height0, range->baseMipLevel);
    uint32_t storage_depth = tu_get_layerCount(image, range);
    if (pCreateInfo->viewType == VK_IMAGE_VIEW_TYPE_3D) {
-      storage_depth = u_minify(image->extent.depth, range->baseMipLevel);
+      storage_depth = u_minify(image->layout[0].depth0, range->baseMipLevel);
    }
 
    uint32_t depth = storage_depth;
@@ -268,7 +268,7 @@ tu_image_view_init(struct tu_image_view *iview,
       A6XX_TEX_CONST_0_TILE_MODE(fmt.tile_mode) |
       COND(vk_format_is_srgb(format), A6XX_TEX_CONST_0_SRGB) |
       A6XX_TEX_CONST_0_FMT(fmt_tex) |
-      A6XX_TEX_CONST_0_SAMPLES(tu_msaa_samples(image->samples)) |
+      A6XX_TEX_CONST_0_SAMPLES(tu_msaa_samples(layout->nr_samples)) |
       A6XX_TEX_CONST_0_SWAP(fmt.swap) |
       tu6_texswiz(&pCreateInfo->components, conversion, format, aspect_mask, limited_z24s8) |
       A6XX_TEX_CONST_0_MIPLVLS(tu_get_levelCount(image, range) - 1);
@@ -322,7 +322,6 @@ tu_image_view_init(struct tu_image_view *iview,
       iview->descriptor[10] = base_addr[2] >> 32;
 
       assert(pCreateInfo->viewType != VK_IMAGE_VIEW_TYPE_3D);
-      assert(!(image->usage & VK_IMAGE_USAGE_STORAGE_BIT));
       return;
    }
 
@@ -351,8 +350,8 @@ tu_image_view_init(struct tu_image_view *iview,
       .color_swap = fmt.swap,
       .flags = ubwc_enabled,
       .srgb = vk_format_is_srgb(format),
-      .samples = tu_msaa_samples(image->samples),
-      .samples_average = image->samples > 1 &&
+      .samples = tu_msaa_samples(layout->nr_samples),
+      .samples_average = layout->nr_samples > 1 &&
                            !vk_format_is_int(format) &&
                            !vk_format_is_depth_or_stencil(format),
       .unk20 = 1,
@@ -382,31 +381,29 @@ tu_image_view_init(struct tu_image_view *iview,
    if (is_d24s8 && ubwc_enabled)
       cfmt.fmt = FMT6_Z24_UNORM_S8_UINT_AS_R8G8B8A8;
 
-   if (image->usage & VK_IMAGE_USAGE_STORAGE_BIT) {
-      memset(iview->storage_descriptor, 0, sizeof(iview->storage_descriptor));
+   memset(iview->storage_descriptor, 0, sizeof(iview->storage_descriptor));
 
-      iview->storage_descriptor[0] =
-         A6XX_IBO_0_FMT(fmt.fmt) |
-         A6XX_IBO_0_TILE_MODE(fmt.tile_mode);
-      iview->storage_descriptor[1] =
-         A6XX_IBO_1_WIDTH(width) |
-         A6XX_IBO_1_HEIGHT(height);
-      iview->storage_descriptor[2] =
-         A6XX_IBO_2_PITCH(pitch) |
-         A6XX_IBO_2_TYPE(tu6_tex_type(pCreateInfo->viewType, true));
-      iview->storage_descriptor[3] = A6XX_IBO_3_ARRAY_PITCH(layer_size);
+   iview->storage_descriptor[0] =
+      A6XX_IBO_0_FMT(fmt.fmt) |
+      A6XX_IBO_0_TILE_MODE(fmt.tile_mode);
+   iview->storage_descriptor[1] =
+      A6XX_IBO_1_WIDTH(width) |
+      A6XX_IBO_1_HEIGHT(height);
+   iview->storage_descriptor[2] =
+      A6XX_IBO_2_PITCH(pitch) |
+      A6XX_IBO_2_TYPE(tu6_tex_type(pCreateInfo->viewType, true));
+   iview->storage_descriptor[3] = A6XX_IBO_3_ARRAY_PITCH(layer_size);
 
-      iview->storage_descriptor[4] = base_addr;
-      iview->storage_descriptor[5] = (base_addr >> 32) | A6XX_IBO_5_DEPTH(storage_depth);
+   iview->storage_descriptor[4] = base_addr;
+   iview->storage_descriptor[5] = (base_addr >> 32) | A6XX_IBO_5_DEPTH(storage_depth);
 
-      if (ubwc_enabled) {
-         iview->storage_descriptor[3] |= A6XX_IBO_3_FLAG | A6XX_IBO_3_UNK27;
-         iview->storage_descriptor[7] |= ubwc_addr;
-         iview->storage_descriptor[8] |= ubwc_addr >> 32;
-         iview->storage_descriptor[9] = A6XX_IBO_9_FLAG_BUFFER_ARRAY_PITCH(layout->ubwc_layer_size >> 2);
-         iview->storage_descriptor[10] =
-            A6XX_IBO_10_FLAG_BUFFER_PITCH(ubwc_pitch);
-      }
+   if (ubwc_enabled) {
+      iview->storage_descriptor[3] |= A6XX_IBO_3_FLAG | A6XX_IBO_3_UNK27;
+      iview->storage_descriptor[7] |= ubwc_addr;
+      iview->storage_descriptor[8] |= ubwc_addr >> 32;
+      iview->storage_descriptor[9] = A6XX_IBO_9_FLAG_BUFFER_ARRAY_PITCH(layout->ubwc_layer_size >> 2);
+      iview->storage_descriptor[10] =
+         A6XX_IBO_10_FLAG_BUFFER_PITCH(ubwc_pitch);
    }
 
    iview->extent.width = width;
@@ -435,7 +432,7 @@ tu_image_view_init(struct tu_image_view *iview,
 
    iview->RB_BLIT_DST_INFO = A6XX_RB_BLIT_DST_INFO(
       .tile_mode = cfmt.tile_mode,
-      .samples = tu_msaa_samples(iview->image->samples),
+      .samples = tu_msaa_samples(layout->nr_samples),
       .color_format = cfmt.fmt,
       .color_swap = cfmt.swap,
       .flags = ubwc_enabled).value;
@@ -505,16 +502,9 @@ tu_CreateImage(VkDevice _device,
    if (!image)
       return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
-   image->type = pCreateInfo->imageType;
-
    image->vk_format = pCreateInfo->format;
-   image->tiling = pCreateInfo->tiling;
-   image->usage = pCreateInfo->usage;
-   image->flags = pCreateInfo->flags;
-   image->extent = pCreateInfo->extent;
    image->level_count = pCreateInfo->mipLevels;
    image->layer_count = pCreateInfo->arrayLayers;
-   image->samples = pCreateInfo->samples;
 
    enum a6xx_tile_mode tile_mode = TILE6_3;
    bool ubwc_enabled =
@@ -567,7 +557,7 @@ tu_CreateImage(VkDevice _device,
    if (image->vk_format == VK_FORMAT_S8_UINT)
       ubwc_enabled = false;
 
-   if (image->extent.depth > 1) {
+   if (pCreateInfo->extent.depth > 1) {
       tu_finishme("UBWC with 3D textures");
       ubwc_enabled = false;
    }
@@ -581,7 +571,7 @@ tu_CreateImage(VkDevice _device,
     * UBWC-enabled mipmaps in freedreno currently.  Just match the closed GL
     * behavior of no UBWC.
    */
-   if (image->usage & VK_IMAGE_USAGE_STORAGE_BIT)
+   if (pCreateInfo->usage & VK_IMAGE_USAGE_STORAGE_BIT)
       ubwc_enabled = false;
 
    /* Disable UBWC for D24S8 on A630 in some cases
@@ -597,7 +587,7 @@ tu_CreateImage(VkDevice _device,
     */
    if (device->physical_device->limited_z24s8 &&
        image->vk_format == VK_FORMAT_D24_UNORM_S8_UINT &&
-       (image->usage & (VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT))) {
+       (pCreateInfo->usage & (VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT))) {
       ubwc_enabled = false;
    }
 
@@ -633,7 +623,7 @@ tu_CreateImage(VkDevice _device,
          /* only expect simple 2D images for now */
          if (pCreateInfo->mipLevels != 1 ||
             pCreateInfo->arrayLayers != 1 ||
-            image->extent.depth != 1)
+            pCreateInfo->extent.depth != 1)
             goto invalid_layout;
 
          plane_layout.offset = plane_layouts[i].offset;
@@ -645,7 +635,7 @@ tu_CreateImage(VkDevice _device,
       layout->ubwc = ubwc_enabled;
 
       if (!fdl6_layout(layout, vk_format_to_pipe_format(format),
-                       image->samples,
+                       pCreateInfo->samples,
                        width0, height0,
                        pCreateInfo->extent.depth,
                        pCreateInfo->mipLevels,
@@ -725,8 +715,10 @@ tu_DestroyImage(VkDevice _device,
    if (!image)
       return;
 
+#ifdef ANDROID
    if (image->owned_memory != VK_NULL_HANDLE)
       tu_FreeMemory(_device, image->owned_memory, pAllocator);
+#endif
 
    vk_object_free(&device->vk, pAllocator, image);
 }
