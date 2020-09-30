@@ -103,7 +103,8 @@ util_idalloc_free(struct util_idalloc *buf, unsigned id)
 void
 util_idalloc_reserve(struct util_idalloc *buf, unsigned id)
 {
-   assert(id < buf->num_elements);
+   if (id >= buf->num_elements)
+      util_idalloc_resize(buf, id * 2);
    assert((buf->data[id / 32] & (1u << (id % 32))) == 0);
    buf->data[id / 32] |= 1u << (id % 32);
 }
