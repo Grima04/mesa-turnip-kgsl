@@ -4384,6 +4384,10 @@ bool nir_lower_alu_to_scalar(nir_shader *shader, nir_instr_filter_cb cb, const v
 bool nir_lower_bool_to_bitsize(nir_shader *shader);
 bool nir_lower_bool_to_float(nir_shader *shader);
 bool nir_lower_bool_to_int32(nir_shader *shader);
+bool nir_opt_simplify_convert_alu_types(nir_shader *shader);
+bool nir_lower_convert_alu_types(nir_shader *shader,
+                                 bool (*should_lower)(nir_intrinsic_instr *));
+bool nir_lower_constant_convert_alu_types(nir_shader *shader);
 bool nir_lower_int_to_float(nir_shader *shader);
 bool nir_lower_load_const_to_scalar(nir_shader *shader);
 bool nir_lower_read_invocation_to_scalar(nir_shader *shader);
