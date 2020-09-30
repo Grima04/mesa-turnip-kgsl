@@ -210,6 +210,44 @@ vtn_handle_matrix_alu(struct vtn_builder *b, SpvOp opcode,
    }
 }
 
+static nir_alu_type
+convert_op_src_type(SpvOp opcode)
+{
+   switch (opcode) {
+   case SpvOpFConvert:
+   case SpvOpConvertFToS:
+   case SpvOpConvertFToU:
+      return nir_type_float;
+   case SpvOpSConvert:
+   case SpvOpConvertSToF:
+      return nir_type_int;
+   case SpvOpUConvert:
+   case SpvOpConvertUToF:
+      return nir_type_uint;
+   default:
+      unreachable("Unhandled conversion op");
+   }
+}
+
+static nir_alu_type
+convert_op_dst_type(SpvOp opcode)
+{
+   switch (opcode) {
+   case SpvOpFConvert:
+   case SpvOpConvertSToF:
+   case SpvOpConvertUToF:
+      return nir_type_float;
+   case SpvOpSConvert:
+   case SpvOpConvertFToS:
+      return nir_type_int;
+   case SpvOpUConvert:
+   case SpvOpConvertFToU:
+      return nir_type_uint;
+   default:
+      unreachable("Unhandled conversion op");
+   }
+}
+
 nir_op
 vtn_nir_alu_op_for_spirv_opcode(struct vtn_builder *b,
                                 SpvOp opcode, bool *swap,
@@ -309,40 +347,8 @@ vtn_nir_alu_op_for_spirv_opcode(struct vtn_builder *b,
    case SpvOpConvertUToF:
    case SpvOpSConvert:
    case SpvOpFConvert: {
-      nir_alu_type src_type;
-      nir_alu_type dst_type;
-
-      switch (opcode) {
-      case SpvOpConvertFToS:
-         src_type = nir_type_float;
-         dst_type = nir_type_int;
-         break;
-      case SpvOpConvertFToU:
-         src_type = nir_type_float;
-         dst_type = nir_type_uint;
-         break;
-      case SpvOpFConvert:
-         src_type = dst_type = nir_type_float;
-         break;
-      case SpvOpConvertSToF:
-         src_type = nir_type_int;
-         dst_type = nir_type_float;
-         break;
-      case SpvOpSConvert:
-         src_type = dst_type = nir_type_int;
-         break;
-      case SpvOpConvertUToF:
-         src_type = nir_type_uint;
-         dst_type = nir_type_float;
-         break;
-      case SpvOpUConvert:
-         src_type = dst_type = nir_type_uint;
-         break;
-      default:
-         unreachable("Invalid opcode");
-      }
-      src_type |= src_bit_size;
-      dst_type |= dst_bit_size;
+      nir_alu_type src_type = convert_op_src_type(opcode) | src_bit_size;
+      nir_alu_type dst_type = convert_op_dst_type(opcode) | dst_bit_size;
       return nir_type_conversion_op(src_type, dst_type, nir_rounding_mode_undef);
    }
    /* Derivatives: */
@@ -372,6 +378,21 @@ handle_no_contraction(struct vtn_builder *b, struct vtn_value *val, int member,
    b->nb.exact = true;
 }
 
+static nir_rounding_mode
+vtn_rounding_mode_to_nir(struct vtn_builder *b, SpvFPRoundingMode mode)
+{
+   switch (mode) {
+   case SpvFPRoundingModeRTE:
+      return nir_rounding_mode_rtne;
+   case SpvFPRoundingModeRTZ:
+      return nir_rounding_mode_rtz;
+   default:
+      vtn_fail("Unsupported rounding mode: %s",
+               spirv_fproundingmode_to_string(mode));
+      break;
+   }
+}
+
 static void
 handle_rounding_mode(struct vtn_builder *b, struct vtn_value *val, int member,
                      const struct vtn_decoration *dec, void *_out_rounding_mode)
@@ -380,18 +401,7 @@ handle_rounding_mode(struct vtn_builder *b, struct vtn_value *val, int member,
    assert(dec->scope == VTN_DEC_DECORATION);
    if (dec->decoration != SpvDecorationFPRoundingMode)
       return;
-   switch (dec->operands[0]) {
-   case SpvFPRoundingModeRTE:
-      *out_rounding_mode = nir_rounding_mode_rtne;
-      break;
-   case SpvFPRoundingModeRTZ:
-      *out_rounding_mode = nir_rounding_mode_rtz;
-      break;
-   default:
-      vtn_fail("Unsupported rounding mode: %s",
-               spirv_fproundingmode_to_string(dec->operands[0]));
-      break;
-   }
+   *out_rounding_mode = vtn_rounding_mode_to_nir(b, dec->operands[0]);
 }
 
 static void
