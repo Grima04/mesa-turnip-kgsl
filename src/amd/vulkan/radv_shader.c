@@ -47,7 +47,7 @@
 
 #include "aco_interface.h"
 
-static const struct nir_shader_compiler_options nir_options_llvm = {
+static const struct nir_shader_compiler_options nir_options = {
 	.vertex_id_zero_based = true,
 	.lower_scmp = true,
 	.lower_flrp16 = true,
@@ -80,49 +80,6 @@ static const struct nir_shader_compiler_options nir_options_llvm = {
 	.use_interpolated_input_intrinsics = true,
 	/* nir_lower_int64() isn't actually called for the LLVM backend, but
 	 * this helps the loop unrolling heuristics. */
-	.lower_int64_options = nir_lower_imul64 |
-                               nir_lower_imul_high64 |
-                               nir_lower_imul_2x32_64 |
-                               nir_lower_divmod64 |
-                               nir_lower_minmax64 |
-                               nir_lower_iabs64,
-	.lower_doubles_options = nir_lower_drcp |
-				 nir_lower_dsqrt |
-				 nir_lower_drsq |
-				 nir_lower_ddiv,
-};
-
-static const struct nir_shader_compiler_options nir_options_aco = {
-	.vertex_id_zero_based = true,
-	.lower_scmp = true,
-	.lower_flrp16 = true,
-	.lower_flrp32 = true,
-	.lower_flrp64 = true,
-	.lower_device_index_to_zero = true,
-	.lower_fdiv = true,
-	.lower_fmod = true,
-	.lower_bitfield_insert_to_bitfield_select = true,
-	.lower_bitfield_extract = true,
-	.lower_pack_snorm_2x16 = true,
-	.lower_pack_snorm_4x8 = true,
-	.lower_pack_unorm_2x16 = true,
-	.lower_pack_unorm_4x8 = true,
-	.lower_unpack_snorm_2x16 = true,
-	.lower_unpack_snorm_4x8 = true,
-	.lower_unpack_unorm_2x16 = true,
-	.lower_unpack_unorm_4x8 = true,
-	.lower_unpack_half_2x16 = true,
-	.lower_extract_byte = true,
-	.lower_extract_word = true,
-	.lower_ffma16 = true,
-	.lower_ffma32 = true,
-	.lower_ffma64 = true,
-	.lower_fpow = true,
-	.lower_mul_2x32_64 = true,
-	.lower_rotate = true,
-	.use_scoped_barrier = true,
-	.max_unroll_iterations = 32,
-	.use_interpolated_input_intrinsics = true,
 	.lower_int64_options = nir_lower_imul64 |
                                nir_lower_imul_high64 |
                                nir_lower_imul_2x32_64 |
@@ -396,15 +353,13 @@ radv_shader_compile_to_nir(struct radv_device *device,
 			   unsigned subgroup_size, unsigned ballot_bit_size)
 {
 	nir_shader *nir;
-	const nir_shader_compiler_options *nir_options =
-		radv_use_llvm_for_stage(device, stage) ? &nir_options_llvm : &nir_options_aco;
 
 	if (module->nir) {
 		/* Some things such as our meta clear/blit code will give us a NIR
 		 * shader directly.  In that case, we just ignore the SPIR-V entirely
 		 * and just use the NIR shader */
 		nir = module->nir;
-		nir->options = nir_options;
+		nir->options = &nir_options;
 		nir_validate_shader(nir, "in internal shader");
 
 		assert(exec_list_length(&nir->functions) == 1);
@@ -515,7 +470,7 @@ radv_shader_compile_to_nir(struct radv_device *device,
 		nir = spirv_to_nir(spirv, module->size / 4,
 				   spec_entries, num_spec_entries,
 				   stage, entrypoint_name,
-				   &spirv_options, nir_options);
+				   &spirv_options, &nir_options);
 		assert(nir->info.stage == stage);
 		nir_validate_shader(nir, "after spirv_to_nir");
 
