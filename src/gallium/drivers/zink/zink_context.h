@@ -204,6 +204,18 @@ zink_curr_batch(struct zink_context *ctx)
    return ctx->batches + ctx->curr_batch;
 }
 
+static inline struct zink_batch *
+zink_prev_batch(struct zink_context *ctx)
+{
+   unsigned curr_batch = ctx->curr_batch;
+   if (!curr_batch)
+      curr_batch = ZINK_NUM_GFX_BATCHES - 1;
+   else
+      curr_batch--;
+   assert(curr_batch < ARRAY_SIZE(ctx->batches));
+   return ctx->batches + curr_batch;
+}
+
 struct zink_batch *
 zink_batch_rp(struct zink_context *ctx);
 
