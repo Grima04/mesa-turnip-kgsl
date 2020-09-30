@@ -603,7 +603,7 @@ RADV driver environment variables
       initialize all memory allocated in VRAM as zero
 
 ``RADV_FORCE_FAMILY``
-   create a null device to compile shaders without a AMD GPU (eg.
+   create a null device to compile shaders without a AMD GPU (e.g.
    gfx900)
 ``RADV_PERFTEST``
    a comma-separated list of named flags, which do various things:

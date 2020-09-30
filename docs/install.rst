@@ -57,7 +57,7 @@ Third party/extra tools.
 
 .. note::
 
-   Some versions can be buggy (eg. Flex 2.6.2) so do try others
+   Some versions can be buggy (e.g. Flex 2.6.2) so do try others
    if things fail.
 
 1.2 Requirements
