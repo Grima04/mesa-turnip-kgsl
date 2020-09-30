@@ -124,9 +124,9 @@ ALIGN_MUL = "NIR_INTRINSIC_ALIGN_MUL"
 ALIGN_OFFSET = "NIR_INTRINSIC_ALIGN_OFFSET"
 # The vulkan descriptor type for vulkan_resource_index
 DESC_TYPE = "NIR_INTRINSIC_DESC_TYPE"
-# The nir_alu_type of input data to a store
+# The nir_alu_type of input data to a store or conversion
 SRC_TYPE = "NIR_INTRINSIC_SRC_TYPE"
-# The nir_alu_type of the data output from a load
+# The nir_alu_type of the data output from a load or conversion
 DEST_TYPE = "NIR_INTRINSIC_DEST_TYPE"
 # The swizzle mask for quad_swizzle_amd & masked_swizzle_amd
 SWIZZLE_MASK = "NIR_INTRINSIC_SWIZZLE_MASK"
@@ -141,6 +141,10 @@ MEMORY_SCOPE = "NIR_INTRINSIC_MEMORY_SCOPE"
 # Scope of a control barrier
 EXECUTION_SCOPE = "NIR_INTRINSIC_EXECUTION_SCOPE"
 IO_SEMANTICS = "NIR_INTRINSIC_IO_SEMANTICS"
+# Rounding mode for conversions
+ROUNDING_MODE = "NIR_INTRINSIC_ROUNDING_MODE"
+# Whether or not to saturate in conversions
+SATURATE = "NIR_INTRINSIC_SATURATE"
 
 #
 # Possible flags:
@@ -169,6 +173,10 @@ def intrinsic(name, src_comp=[], dest_comp=-1, indices=[],
                                    indices, flags, sysval, bit_sizes)
 
 intrinsic("nop", flags=[CAN_ELIMINATE])
+
+intrinsic("convert_alu_types", dest_comp=0, src_comp=[0],
+          indices=[SRC_TYPE, DEST_TYPE, ROUNDING_MODE, SATURATE],
+          flags=[CAN_ELIMINATE, CAN_REORDER])
 
 intrinsic("load_param", dest_comp=0, indices=[PARAM_IDX], flags=[CAN_ELIMINATE])
 

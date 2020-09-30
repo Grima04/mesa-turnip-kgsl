@@ -1736,12 +1736,12 @@ typedef enum {
    NIR_INTRINSIC_DESC_TYPE,
 
    /**
-    * The nir_alu_type of input data to a store
+    * The nir_alu_type of input data to a store or conversion
     */
    NIR_INTRINSIC_SRC_TYPE,
 
    /**
-    * The nir_alu_type of the data output from a load
+    * The nir_alu_type of the data output from a load or conversion
     */
    NIR_INTRINSIC_DEST_TYPE,
 
@@ -1782,6 +1782,16 @@ typedef enum {
     * Value of nir_io_semantics.
     */
    NIR_INTRINSIC_IO_SEMANTICS,
+
+   /**
+    * The rounding mode of a conversion
+    */
+   NIR_INTRINSIC_ROUNDING_MODE,
+
+   /**
+    * Whether or not to saturate in conversions
+    */
+   NIR_INTRINSIC_SATURATE,
 
    NIR_INTRINSIC_NUM_INDEX_FLAGS,
 
@@ -1949,6 +1959,8 @@ INTRINSIC_IDX_ACCESSORS(memory_semantics, MEMORY_SEMANTICS, nir_memory_semantics
 INTRINSIC_IDX_ACCESSORS(memory_modes, MEMORY_MODES, nir_variable_mode)
 INTRINSIC_IDX_ACCESSORS(memory_scope, MEMORY_SCOPE, nir_scope)
 INTRINSIC_IDX_ACCESSORS(execution_scope, EXECUTION_SCOPE, nir_scope)
+INTRINSIC_IDX_ACCESSORS(rounding_mode, ROUNDING_MODE, nir_rounding_mode)
+INTRINSIC_IDX_ACCESSORS(saturate, SATURATE, bool)
 
 static inline void
 nir_intrinsic_set_align(nir_intrinsic_instr *intrin,

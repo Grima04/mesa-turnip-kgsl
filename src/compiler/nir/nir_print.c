@@ -846,6 +846,8 @@ print_intrinsic_instr(nir_intrinsic_instr *instr, print_state *state)
       [NIR_INTRINSIC_MEMORY_SCOPE] = "mem_scope",
       [NIR_INTRINSIC_EXECUTION_SCOPE] = "exec_scope",
       [NIR_INTRINSIC_IO_SEMANTICS] = "io_semantics",
+      [NIR_INTRINSIC_ROUNDING_MODE] = "src_type",
+      [NIR_INTRINSIC_SATURATE] = "src_type",
    };
 
    for (unsigned idx = 1; idx < NIR_INTRINSIC_NUM_INDEX_FLAGS; idx++) {
@@ -1003,6 +1005,19 @@ print_intrinsic_instr(nir_intrinsic_instr *instr, print_state *state)
             }
          }
          break;
+
+      case NIR_INTRINSIC_ROUNDING_MODE: {
+         fprintf(fp, " rounding_mode=");
+         switch (nir_intrinsic_rounding_mode(instr)) {
+         case nir_rounding_mode_undef: fprintf(fp, "undef");   break;
+         case nir_rounding_mode_rtne:  fprintf(fp, "rtne");    break;
+         case nir_rounding_mode_ru:    fprintf(fp, "ru");      break;
+         case nir_rounding_mode_rd:    fprintf(fp, "rd");      break;
+         case nir_rounding_mode_rtz:   fprintf(fp, "rtz");     break;
+         default:                      fprintf(fp, "unkown");  break;
+         }
+         break;
+      }
 
       default: {
          unsigned off = info->index_map[idx] - 1;

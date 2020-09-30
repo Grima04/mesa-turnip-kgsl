@@ -546,6 +546,16 @@ validate_intrinsic_instr(nir_intrinsic_instr *instr, validate_state *state)
    unsigned dest_bit_size = 0;
    unsigned src_bit_sizes[NIR_INTRINSIC_MAX_INPUTS] = { 0, };
    switch (instr->intrinsic) {
+   case nir_intrinsic_convert_alu_types: {
+      nir_alu_type src_type = nir_intrinsic_src_type(instr);
+      nir_alu_type dest_type = nir_intrinsic_dest_type(instr);
+      dest_bit_size = nir_alu_type_get_type_size(dest_type);
+      src_bit_sizes[0] = nir_alu_type_get_type_size(src_type);
+      validate_assert(state, dest_bit_size != 0);
+      validate_assert(state, src_bit_sizes[0] != 0);
+      break;
+   }
+
    case nir_intrinsic_load_param: {
       unsigned param_idx = nir_intrinsic_param_idx(instr);
       validate_assert(state, param_idx < state->impl->function->num_params);
