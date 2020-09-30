@@ -483,8 +483,6 @@ static LLVMValueRef get_tcs_tes_buffer_address(struct radv_shader_context *ctx,
 
 static LLVMValueRef get_tcs_tes_buffer_address_params(struct radv_shader_context *ctx,
 						      unsigned param,
-						      unsigned const_index,
-						      bool is_compact,
 						      LLVMValueRef vertex_index,
 						      LLVMValueRef indir_index)
 {
@@ -494,8 +492,6 @@ static LLVMValueRef get_tcs_tes_buffer_address_params(struct radv_shader_context
 		param_index = LLVMBuildAdd(ctx->ac.builder, LLVMConstInt(ctx->ac.i32, param, false),
 					   indir_index, "");
 	else {
-		if (const_index && !is_compact)
-			param += const_index;
 		param_index = LLVMConstInt(ctx->ac.i32, param, false);
 	}
 	return get_tcs_tes_buffer_address(ctx, vertex_index, param_index);
@@ -505,8 +501,6 @@ static LLVMValueRef
 get_dw_address(struct radv_shader_context *ctx,
 	       LLVMValueRef dw_addr,
 	       unsigned param,
-	       unsigned const_index,
-	       bool compact_const_index,
 	       LLVMValueRef vertex_index,
 	       LLVMValueRef stride,
 	       LLVMValueRef indir_index)
@@ -524,16 +518,10 @@ get_dw_address(struct radv_shader_context *ctx,
 		dw_addr = LLVMBuildAdd(ctx->ac.builder, dw_addr,
 				       LLVMBuildMul(ctx->ac.builder, indir_index,
 						    LLVMConstInt(ctx->ac.i32, 4, false), ""), "");
-	else if (const_index && !compact_const_index)
-		dw_addr = LLVMBuildAdd(ctx->ac.builder, dw_addr,
-				       LLVMConstInt(ctx->ac.i32, const_index * 4, false), "");
 
 	dw_addr = LLVMBuildAdd(ctx->ac.builder, dw_addr,
 			       LLVMConstInt(ctx->ac.i32, param * 4, false), "");
 
-	if (const_index && compact_const_index)
-		dw_addr = LLVMBuildAdd(ctx->ac.builder, dw_addr,
-				       LLVMConstInt(ctx->ac.i32, const_index, false), "");
 	return dw_addr;
 }
 
@@ -547,14 +535,16 @@ load_tcs_varyings(struct ac_shader_abi *abi,
 		  unsigned driver_location,
 		  unsigned component,
 		  unsigned num_components,
-		  bool is_patch,
+		  bool unused,
 		  bool is_compact,
 		  bool load_input)
 {
 	struct radv_shader_context *ctx = radv_shader_context_from_abi(abi);
 	LLVMValueRef dw_addr, stride;
 	LLVMValueRef value[4], result;
-	unsigned param = shader_io_get_unique_index(location);
+	unsigned param = shader_io_get_unique_index(driver_location / 4);
+
+	bool is_patch = vertex_index == NULL;
 
 	if (load_input) {
 		uint32_t input_vertex_size = (ctx->tcs_num_inputs * 16) / 4;
@@ -570,8 +560,7 @@ load_tcs_varyings(struct ac_shader_abi *abi,
 		}
 	}
 
-	dw_addr = get_dw_address(ctx, dw_addr, param, const_index, is_compact, vertex_index, stride,
-				 indir_index);
+	dw_addr = get_dw_address(ctx, dw_addr, param, vertex_index, stride, indir_index);
 
 	for (unsigned i = 0; i < num_components + component; i++) {
 		value[i] = ac_lds_load(&ctx->ac, dw_addr);
@@ -594,9 +583,8 @@ store_tcs_output(struct ac_shader_abi *abi,
 		 unsigned driver_location)
 {
 	struct radv_shader_context *ctx = radv_shader_context_from_abi(abi);
-	const unsigned location = var->data.location;
-	const bool is_patch = var->data.patch;
-	const bool is_compact = var->data.compact;
+	const unsigned location = driver_location / 4;
+	const bool is_patch = vertex_index == NULL;
 	LLVMValueRef dw_addr;
 	LLVMValueRef stride = NULL;
 	LLVMValueRef buf_addr = NULL;
@@ -613,15 +601,6 @@ store_tcs_output(struct ac_shader_abi *abi,
 	}
 
 	param = shader_io_get_unique_index(location);
-	if ((location == VARYING_SLOT_CLIP_DIST0 || location == VARYING_SLOT_CLIP_DIST1) && is_compact) {
-		const_index += component;
-		component = 0;
-
-		if (const_index >= 4) {
-			const_index -= 4;
-			param++;
-		}
-	}
 
 	if (!is_patch) {
 		stride = get_tcs_out_vertex_stride(ctx);
@@ -630,17 +609,14 @@ store_tcs_output(struct ac_shader_abi *abi,
 		dw_addr = get_tcs_out_current_patch_data_offset(ctx);
 	}
 
-	dw_addr = get_dw_address(ctx, dw_addr, param, const_index, is_compact, vertex_index, stride,
-				 param_index);
-	buf_addr = get_tcs_tes_buffer_address_params(ctx, param, const_index, is_compact,
-						     vertex_index, param_index);
+	dw_addr = get_dw_address(ctx, dw_addr, param, vertex_index, stride, param_index);
+	buf_addr = get_tcs_tes_buffer_address_params(ctx, param, vertex_index, param_index);
 
 	bool is_tess_factor = false;
 	if (location == VARYING_SLOT_TESS_LEVEL_INNER ||
 	    location == VARYING_SLOT_TESS_LEVEL_OUTER)
 		is_tess_factor = true;
 
-	unsigned base = is_compact ? const_index : 0;
 	for (unsigned chan = 0; chan < 8; chan++) {
 		if (!(writemask & (1 << chan)))
 			continue;
@@ -658,13 +634,12 @@ store_tcs_output(struct ac_shader_abi *abi,
 		if (!is_tess_factor && writemask != 0xF)
 			ac_build_buffer_store_dword(&ctx->ac, ctx->hs_ring_tess_offchip, value, 1,
 						    buf_addr, oc_lds,
-						    4 * (base + chan), ac_glc);
+						    4 * chan, ac_glc);
 	}
 
 	if (writemask == 0xF) {
 		ac_build_buffer_store_dword(&ctx->ac, ctx->hs_ring_tess_offchip, src, 4,
-					    buf_addr, oc_lds,
-					    (base * 4), ac_glc);
+					    buf_addr, oc_lds, 0, ac_glc);
 	}
 }
 
@@ -688,8 +663,7 @@ load_tes_input(struct ac_shader_abi *abi,
 	LLVMValueRef oc_lds = ac_get_arg(&ctx->ac, ctx->args->oc_lds);
 	unsigned param = shader_io_get_unique_index(driver_location / 4);
 
-	buf_addr = get_tcs_tes_buffer_address_params(ctx, param, const_index,
-						     false, vertex_index, param_index);
+	buf_addr = get_tcs_tes_buffer_address_params(ctx, param, vertex_index, param_index);
 
 	LLVMValueRef comp_offset = LLVMConstInt(ctx->ac.i32, component * 4, false);
 	buf_addr = LLVMBuildAdd(ctx->ac.builder, buf_addr, comp_offset, "");
