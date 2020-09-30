@@ -510,38 +510,48 @@ tu_CreateImage(VkDevice _device,
    bool ubwc_enabled =
       !(device->physical_device->instance->debug_flags & TU_DEBUG_NOUBWC);
 
-   /* disable tiling when linear is requested, for YUYV/UYVY, and for mutable
-    * images. Mutable images can be reinterpreted as any other compatible
-    * format, including swapped formats which aren't supported with tiling.
-    * This means that we have to fall back to linear almost always. However
-    * depth and stencil formats cannot be reintepreted as another format, and
-    * cannot be linear with sysmem rendering, so don't fall back for those.
-    *
-    * TODO: Be smarter and use usage bits and VK_KHR_image_format_list to
-    * enable tiling and/or UBWC when possible.
+   /* use linear tiling if requested and for special ycbcr formats
+    * TODO: NV12 can be UBWC but has a special UBWC format for accessing the Y plane aspect
+    * for 3plane, tiling/UBWC might be supported, but the blob doesn't use tiling
     */
    if (pCreateInfo->tiling == VK_IMAGE_TILING_LINEAR ||
        modifier == DRM_FORMAT_MOD_LINEAR ||
-       vk_format_description(image->vk_format)->layout == UTIL_FORMAT_LAYOUT_SUBSAMPLED ||
-       (pCreateInfo->flags & VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT &&
-        !vk_format_is_depth_or_stencil(image->vk_format))) {
+       image->vk_format == VK_FORMAT_G8B8G8R8_422_UNORM ||
+       image->vk_format == VK_FORMAT_B8G8R8G8_422_UNORM ||
+       image->vk_format == VK_FORMAT_G8_B8R8_2PLANE_420_UNORM ||
+       image->vk_format == VK_FORMAT_G8_B8_R8_3PLANE_420_UNORM) {
       tile_mode = TILE6_LINEAR;
       ubwc_enabled = false;
    }
 
-   /* UBWC is supported for these formats, but NV12 has a special UBWC
-    * format for accessing the Y plane aspect, which isn't implemented
-    * For IYUV, the blob doesn't use UBWC, but it seems to work, but
-    * disable it since we don't know if a special UBWC format is needed
-    * like NV12
+   /* Mutable images can be reinterpreted as any other compatible format.
+    * This is a problem with UBWC (compression for different formats is different),
+    * but also tiling ("swap" affects how tiled formats are stored in memory)
+    * Depth and stencil formats cannot be reintepreted as another format, and
+    * cannot be linear with sysmem rendering, so don't fall back for those.
     *
-    * Disable tiling completely, because we set the TILE_ALL bit to
-    * match the blob, however fdl expects the TILE_ALL bit to not be
-    * set for non-UBWC tiled formats
+    * TODO:
+    * - if the fmt_list contains only formats which are swapped, but compatible
+    *   with each other (B8G8R8A8_UNORM and B8G8R8A8_UINT for example), then
+    *   tiling is still possible
+    * - figure out which UBWC compressions are compatible to keep it enabled
     */
-   if (image->vk_format == VK_FORMAT_G8_B8R8_2PLANE_420_UNORM ||
-       image->vk_format == VK_FORMAT_G8_B8_R8_3PLANE_420_UNORM) {
-      tile_mode = TILE6_LINEAR;
+   if ((pCreateInfo->flags & VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT) &&
+       !vk_format_is_depth_or_stencil(image->vk_format)) {
+      const VkImageFormatListCreateInfo *fmt_list =
+         vk_find_struct_const(pCreateInfo->pNext, IMAGE_FORMAT_LIST_CREATE_INFO);
+      bool may_be_swapped = true;
+      if (fmt_list) {
+         may_be_swapped = false;
+         for (uint32_t i = 0; i < fmt_list->viewFormatCount; i++) {
+            if (tu6_format_color(fmt_list->pViewFormats[i], TILE6_LINEAR).swap) {
+               may_be_swapped = true;
+               break;
+            }
+         }
+      }
+      if (may_be_swapped)
+         tile_mode = TILE6_LINEAR;
       ubwc_enabled = false;
    }
 
