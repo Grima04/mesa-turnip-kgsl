@@ -530,13 +530,9 @@ load_tcs_varyings(struct ac_shader_abi *abi,
 		  LLVMTypeRef type,
 		  LLVMValueRef vertex_index,
 		  LLVMValueRef indir_index,
-		  unsigned const_index,
-		  unsigned location,
 		  unsigned driver_location,
 		  unsigned component,
 		  unsigned num_components,
-		  bool unused,
-		  bool is_compact,
 		  bool load_input)
 {
 	struct radv_shader_context *ctx = radv_shader_context_from_abi(abi);
@@ -573,10 +569,8 @@ load_tcs_varyings(struct ac_shader_abi *abi,
 
 static void
 store_tcs_output(struct ac_shader_abi *abi,
-		 const nir_variable *var,
 		 LLVMValueRef vertex_index,
 		 LLVMValueRef param_index,
-		 unsigned const_index,
 		 LLVMValueRef src,
 		 unsigned writemask,
 		 unsigned component,
@@ -648,13 +642,9 @@ load_tes_input(struct ac_shader_abi *abi,
 	       LLVMTypeRef type,
 	       LLVMValueRef vertex_index,
 	       LLVMValueRef param_index,
-	       unsigned const_index,
-	       unsigned location,
 	       unsigned driver_location,
 	       unsigned component,
 	       unsigned num_components,
-	       bool is_patch,
-	       bool is_compact,
 	       bool load_input)
 {
 	struct radv_shader_context *ctx = radv_shader_context_from_abi(abi);
@@ -688,12 +678,10 @@ radv_emit_fetch_64bit(struct radv_shader_context *ctx,
 
 static LLVMValueRef
 load_gs_input(struct ac_shader_abi *abi,
-	      unsigned location,
 	      unsigned driver_location,
 	      unsigned component,
 	      unsigned num_components,
 	      unsigned vertex_index,
-	      unsigned const_index,
 	      LLVMTypeRef type)
 {
 	struct radv_shader_context *ctx = radv_shader_context_from_abi(abi);

@@ -2145,8 +2145,8 @@ static void visit_store_output(struct ac_nir_context *ctx, nir_intrinsic_instr *
       nir_src *vertex_index_src = nir_get_io_vertex_index_src(instr);
       LLVMValueRef vertex_index = vertex_index_src ? get_src(ctx, *vertex_index_src) : NULL;
 
-      ctx->abi->store_tcs_outputs(ctx->abi, NULL, vertex_index, indir_index, 0, src, writemask,
-                                  component, base * 4);
+      ctx->abi->store_tcs_outputs(ctx->abi, vertex_index, indir_index, src,
+                                  writemask, component, base * 4);
       return;
    }
 
@@ -3127,9 +3127,8 @@ static LLVMValueRef visit_load(struct ac_nir_context *ctx, nir_intrinsic_instr *
        (ctx->stage == MESA_SHADER_TESS_EVAL && !is_output)) {
       LLVMValueRef result = ctx->abi->load_tess_varyings(ctx->abi, component_type,
                                                          vertex_index, indir_index,
-                                                         0, 0, base * 4,
-                                                         component, count,
-                                                         false, false, !is_output);
+                                                         base * 4, component,
+                                                         count, !is_output);
       if (instr->dest.ssa.bit_size == 16) {
          result = ac_to_integer(&ctx->ac, result);
          result = LLVMBuildTrunc(ctx->ac.builder, result, dest_type, "");
@@ -3143,8 +3142,8 @@ static LLVMValueRef visit_load(struct ac_nir_context *ctx, nir_intrinsic_instr *
    if (ctx->stage == MESA_SHADER_GEOMETRY) {
       assert(nir_src_is_const(*vertex_index_src));
 
-      return ctx->abi->load_inputs(ctx->abi, 0, base * 4, component, count,
-                                   nir_src_as_uint(*vertex_index_src), 0, component_type);
+      return ctx->abi->load_inputs(ctx->abi, base * 4, component, count,
+                                   nir_src_as_uint(*vertex_index_src), component_type);
    }
 
    if (ctx->stage == MESA_SHADER_FRAGMENT && is_output &&
