@@ -35,6 +35,7 @@ protected:
 
 xmlconfig_test::xmlconfig_test()
 {
+   options = {};
 }
 
 xmlconfig_test::~xmlconfig_test()
