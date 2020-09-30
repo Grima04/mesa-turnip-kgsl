@@ -175,8 +175,6 @@ set_writes_memory(const nir_shader *nir, struct radv_shader_info *info)
 {
 	if (nir->info.stage == MESA_SHADER_FRAGMENT)
 		info->ps.writes_memory = true;
-	else if (nir->info.stage == MESA_SHADER_GEOMETRY)
-		info->gs.writes_memory = true;
 }
 
 static void
