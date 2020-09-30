@@ -299,6 +299,8 @@ module clover::nir::spirv_to_nir(const module &mod, const device &dev,
       NIR_PASS_V(nir, nir_lower_vars_to_ssa);
       NIR_PASS_V(nir, nir_opt_dce);
 
+      NIR_PASS_V(nir, nir_lower_convert_alu_types, NULL);
+
       NIR_PASS_V(nir, nir_lower_system_values);
       nir_lower_compute_system_values_options sysval_options = { 0 };
       sysval_options.has_base_global_invocation_id = true;
