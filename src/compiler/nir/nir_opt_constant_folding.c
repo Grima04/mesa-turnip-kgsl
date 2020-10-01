@@ -35,14 +35,12 @@
  */
 
 struct constant_fold_state {
-   nir_builder build;
-
    bool has_load_constant;
    bool has_indirect_load_const;
 };
 
 static bool
-constant_fold_alu_instr(nir_builder *b, nir_alu_instr *instr)
+try_fold_alu(nir_builder *b, nir_alu_instr *instr)
 {
    nir_const_value src[NIR_MAX_VEC_COMPONENTS][NIR_MAX_VEC_COMPONENTS];
 
@@ -113,12 +111,10 @@ constant_fold_alu_instr(nir_builder *b, nir_alu_instr *instr)
 }
 
 static bool
-constant_fold_intrinsic_instr(struct constant_fold_state *state,
-                              nir_intrinsic_instr *instr)
+try_fold_intrinsic(nir_builder *b, nir_intrinsic_instr *instr,
+                   struct constant_fold_state *state)
 {
    bool progress = false;
-
-   nir_builder *b = &state->build;
 
    if ((instr->intrinsic == nir_intrinsic_demote_if ||
         instr->intrinsic == nir_intrinsic_discard_if) &&
@@ -174,63 +170,30 @@ constant_fold_intrinsic_instr(struct constant_fold_state *state,
 }
 
 static bool
-constant_fold_block(struct constant_fold_state *state, nir_block *block)
+try_fold_instr(nir_builder *b, nir_instr *instr, void *_state)
 {
-   bool progress = false;
-
-   nir_foreach_instr_safe(instr, block) {
-      switch (instr->type) {
-      case nir_instr_type_alu:
-         progress |= constant_fold_alu_instr(&state->build,
-                                             nir_instr_as_alu(instr));
-         break;
-      case nir_instr_type_intrinsic:
-         progress |=
-            constant_fold_intrinsic_instr(state, nir_instr_as_intrinsic(instr));
-         break;
-      default:
-         /* Don't know how to constant fold */
-         break;
-      }
+   switch (instr->type) {
+   case nir_instr_type_alu:
+      return try_fold_alu(b, nir_instr_as_alu(instr));
+   case nir_instr_type_intrinsic:
+      return try_fold_intrinsic(b, nir_instr_as_intrinsic(instr), _state);
+   default:
+      /* Don't know how to constant fold */
+      return false;
    }
-
-   return progress;
-}
-
-static bool
-nir_opt_constant_folding_impl(struct constant_fold_state *state,
-                              nir_function_impl *impl)
-{
-   bool progress = false;
-
-   nir_builder_init(&state->build, impl);
-
-   nir_foreach_block(block, impl) {
-      progress |= constant_fold_block(state, block);
-   }
-
-   if (progress) {
-      nir_metadata_preserve(impl, nir_metadata_block_index |
-                                  nir_metadata_dominance);
-   } else {
-      nir_metadata_preserve(impl, nir_metadata_all);
-   }
-
-   return progress;
 }
 
 bool
 nir_opt_constant_folding(nir_shader *shader)
 {
-   bool progress = false;
    struct constant_fold_state state;
    state.has_load_constant = false;
    state.has_indirect_load_const = false;
 
-   nir_foreach_function(function, shader) {
-      if (function->impl)
-         progress |= nir_opt_constant_folding_impl(&state, function->impl);
-   }
+   bool progress = nir_shader_instructions_pass(shader, try_fold_instr,
+                                                nir_metadata_block_index |
+                                                nir_metadata_dominance,
+                                                &state);
 
    /* This doesn't free the constant data if there are no constant loads because
     * the data might still be used but the loads have been lowered to load_ubo
