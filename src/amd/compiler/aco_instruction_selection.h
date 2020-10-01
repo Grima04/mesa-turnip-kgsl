@@ -131,11 +131,15 @@ inline void get_buffer_resource_flags(isel_context *ctx, nir_ssa_def *def, unsig
       /* global resources are considered aliasing with all other buffers and
        * buffer images */
       // TODO: only merge flags of resources which can really alias.
-   } else if (def->parent_instr->type == nir_instr_type_intrinsic) {
-      nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(def->parent_instr);
-      if (intrin->intrinsic == nir_intrinsic_vulkan_resource_index) {
-         desc_set = nir_intrinsic_desc_set(intrin);
-         binding = nir_intrinsic_binding(intrin);
+   } else if (def->parent_instr->type == nir_instr_type_alu) {
+      nir_alu_instr* mov_instr = nir_instr_as_alu(def->parent_instr);
+      if (mov_instr->op == nir_op_mov && mov_instr->src[0].swizzle[0] == 0 &&
+          mov_instr->src[0].src.ssa->parent_instr->type == nir_instr_type_intrinsic) {
+         nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(mov_instr->src[0].src.ssa->parent_instr);
+         if (intrin->intrinsic == nir_intrinsic_vulkan_resource_index) {
+            desc_set = nir_intrinsic_desc_set(intrin);
+            binding = nir_intrinsic_binding(intrin);
+         }
       }
    } else if (def->parent_instr->type == nir_instr_type_deref) {
       nir_deref_instr *deref = nir_instr_as_deref(def->parent_instr);
