@@ -3148,9 +3148,6 @@ typedef struct nir_shader_compiler_options {
    /* lower b/fall_equalN/b/fany_nequalN (ex:fany_nequal4 to sne+fdot4+fsat) */
    bool lower_vector_cmp;
 
-   /** enables rules to lower idiv by power-of-two: */
-   bool lower_idiv;
-
    /** enable rules to avoid bit ops */
    bool lower_bitops;
 
