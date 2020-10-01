@@ -1259,6 +1259,59 @@ copy_image_tlb(struct v3dv_cmd_buffer *cmd_buffer,
 }
 
 /**
+ * Takes the image provided as argument and creates a new image that has
+ * the same specification and aliases the same memory storage, except that:
+ *
+ *   - It has the uncompressed format passed in.
+ *   - Its original width/height are scaled by the factors passed in.
+ *
+ * This is useful to implement copies from compressed images using the blit
+ * path. The idea is that we create uncompressed "image views" of both the
+ * source and destination images using the uncompressed format and then we
+ * define the copy blit in terms of that format.
+ */
+static struct v3dv_image *
+create_image_alias(struct v3dv_cmd_buffer *cmd_buffer,
+                   struct v3dv_image *src,
+                   float width_scale,
+                   float height_scale,
+                   VkFormat format)
+{
+   assert(!vk_format_is_compressed(format));
+
+   VkDevice _device = v3dv_device_to_handle(cmd_buffer->device);
+
+   VkImageCreateInfo info = {
+      .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+      .imageType = src->type,
+      .format = format,
+      .extent = {
+         .width = src->extent.width * width_scale,
+         .height = src->extent.height * height_scale,
+         .depth = src->extent.depth,
+      },
+      .mipLevels = src->levels,
+      .arrayLayers = src->array_size,
+      .samples = src->samples,
+      .tiling = src->tiling,
+      .usage = src->usage,
+   };
+
+    VkImage _image;
+    VkResult result =
+      v3dv_CreateImage(_device, &info, &cmd_buffer->device->alloc, &_image);
+    if (result != VK_SUCCESS) {
+       v3dv_flag_oom(cmd_buffer, NULL);
+       return NULL;
+    }
+
+    struct v3dv_image *image = v3dv_image_from_handle(_image);
+    image->mem = src->mem;
+    image->mem_offset = src->mem_offset;
+    return image;
+}
+
+/**
  * Returns true if the implementation supports the requested operation (even if
  * it failed to process it, for example, due to an out-of-memory error).
  */
@@ -1268,40 +1321,77 @@ copy_image_blit(struct v3dv_cmd_buffer *cmd_buffer,
                 struct v3dv_image *src,
                 const VkImageCopy *region)
 {
+   const uint32_t src_block_w = vk_format_get_blockwidth(src->vk_format);
+   const uint32_t src_block_h = vk_format_get_blockheight(src->vk_format);
+   const uint32_t dst_block_w = vk_format_get_blockwidth(dst->vk_format);
+   const uint32_t dst_block_h = vk_format_get_blockheight(dst->vk_format);
+   const float block_scale_w = (float)src_block_w / (float)dst_block_w;
+   const float block_scale_h = (float)src_block_h / (float)dst_block_h;
+
    /* We need to choose a single format for the blit to ensure that this is
     * really a copy and there are not format conversions going on. Since we
     * going to blit, we need to make sure that the selected format can be
     * both rendered to and textured from.
     */
    VkFormat format;
-   uint32_t divisor = 1;
+   float src_scale_w = 1.0f;
+   float src_scale_h = 1.0f;
+   float dst_scale_w = block_scale_w;
+   float dst_scale_h = block_scale_h;
    if (vk_format_is_compressed(src->vk_format)) {
       /* If we are copying from a compressed format we should be aware that we
        * are going to texture from the source image, and the texture setup
        * knows the actual size of the image, so we need to choose a format
        * that has a per-texel (not per-block) bpp that is compatible for that
-       * image size. For example, for a source image with size Bw*WxBh*H image
+       * image size. For example, for a source image with size Bw*WxBh*H
        * and format ETC2_RGBA8_UNORM copied to a WxH image of format RGBA32UI,
        * each of the Bw*WxBh*H texels in the compressed source image is 8-bit
        * (which translates to a 128-bit 4x4 RGBA32 block when uncompressed),
-       * so we specify a blit with size Bw*WxBh*H and we choose a format with
+       * so we could specify a blit with size Bw*WxBh*H and a format with
        * a bpp of 8-bit per texel (R8_UINT).
        *
-       * Unfortunately, when copying from a format like ETC2_RGB8A1_UNORM we
-       * would need a 4-bit format, which we don't have, so instead we still
-       * choose an 8-bit format, but we apply a divisor to the row dimensions
-       * of the blit, since we are copying two texels per item.
+       * Unfortunately, when copying from a format like ETC2_RGB8A1_UNORM,
+       * which is 64-bit per texel, then we would need a 4-bit format, which
+       * we don't have, so instead we still choose an 8-bit format, but we
+       * apply a divisor to the row dimensions of the blit, since we are
+       * copying two texels per item.
+       *
+       * Generally, we can choose any format so long as we compute appropriate
+       * divisors for the width and height depending on the source image's
+       * bpp.
        */
-      format = VK_FORMAT_R8_UINT;
+      assert(src->cpp == dst->cpp);
+
+      uint32_t divisor_w, divisor_h;
+      format = VK_FORMAT_R32G32_UINT;
       switch (src->cpp) {
       case 16:
+         format = VK_FORMAT_R32G32B32A32_UINT;
+         divisor_w = 4;
+         divisor_h = 4;
          break;
       case 8:
-         divisor = 2;
+         format = VK_FORMAT_R16G16B16A16_UINT;
+         divisor_w = 4;
+         divisor_h = 4;
          break;
       default:
          unreachable("Unsupported compressed format");
       }
+
+      /* Create image views of the src/dst images that we can interpret in
+       * terms of the canonical format.
+       */
+      src_scale_w /= divisor_w;
+      src_scale_h /= divisor_h;
+      dst_scale_w /= divisor_w;
+      dst_scale_h /= divisor_h;
+
+      src = create_image_alias(cmd_buffer, src,
+                               src_scale_w, src_scale_h, format);
+
+      dst = create_image_alias(cmd_buffer, dst,
+                               dst_scale_w, dst_scale_h, format);
    } else {
       format = src->format->rt_type != V3D_OUTPUT_IMAGE_FORMAT_NO ?
          src->vk_format : get_compatible_tlb_format(src->vk_format);
@@ -1326,35 +1416,31 @@ copy_image_blit(struct v3dv_cmd_buffer *cmd_buffer,
     * to the copy command are specified in terms of the source image. With that
     * in mind, below we adjust the blit destination region to be consistent with
     * the source region for the compatible format, so basically, we apply
-    * the block size factor to the destination offset provided by the copy
+    * the block scale factor to the destination offset provided by the copy
     * command (because it is specified in terms of the destination image, not
     * the source), and then we just add the region copy dimensions to that
     * (since the region dimensions are already specified in terms of the source
     * image).
     */
    const VkOffset3D src_start = {
-      region->srcOffset.x / divisor,
-      region->srcOffset.y,
+      region->srcOffset.x * src_scale_w,
+      region->srcOffset.y * src_scale_h,
       region->srcOffset.z,
    };
    const VkOffset3D src_end = {
-      src_start.x + region->extent.width / divisor,
-      src_start.y + region->extent.height,
+      src_start.x + region->extent.width * src_scale_w,
+      src_start.y + region->extent.height * src_scale_h,
       src_start.z + region->extent.depth,
    };
 
-   const uint32_t src_block_w = vk_format_get_blockwidth(src->vk_format);
-   const uint32_t src_block_h = vk_format_get_blockheight(src->vk_format);
-   const uint32_t dst_block_w = vk_format_get_blockwidth(dst->vk_format);
-   const uint32_t dst_block_h = vk_format_get_blockheight(dst->vk_format);
    const VkOffset3D dst_start = {
-      DIV_ROUND_UP(region->dstOffset.x * src_block_w, dst_block_w) / divisor,
-      DIV_ROUND_UP(region->dstOffset.y * src_block_h, dst_block_h),
+      region->dstOffset.x * dst_scale_w,
+      region->dstOffset.y * dst_scale_h,
       region->dstOffset.z,
    };
    const VkOffset3D dst_end = {
-      dst_start.x + region->extent.width / divisor,
-      dst_start.y + region->extent.height,
+      dst_start.x + region->extent.width * src_scale_w,
+      dst_start.y + region->extent.height * src_scale_h,
       dst_start.z + region->extent.depth,
    };
 
