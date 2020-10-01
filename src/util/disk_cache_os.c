@@ -873,7 +873,12 @@ disk_cache_enabled()
       return false;
 
    /* At user request, disable shader cache entirely. */
-   if (env_var_as_boolean("MESA_GLSL_CACHE_DISABLE", false))
+#ifdef SHADER_CACHE_DISABLE_BY_DEFAULT
+   bool disable_by_default = true;
+#else
+   bool disable_by_default = false;
+#endif
+   if (env_var_as_boolean("MESA_GLSL_CACHE_DISABLE", disable_by_default))
       return false;
 
    return true;

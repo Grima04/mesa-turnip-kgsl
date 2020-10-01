@@ -908,11 +908,14 @@ elif _shader_cache == 'false'
 endif
 if _shader_cache != 'disabled'
   if host_machine.system() == 'windows'
-    if _shader_cache == 'enabled'
+    if ['enabled', 'default-disabled'].contains(_shader_cache)
       error('Shader Cache does not currently work on Windows')
     endif
   else
     pre_args += '-DENABLE_SHADER_CACHE'
+    if _shader_cache == 'default-disabled'
+      pre_args += '-DSHADER_CACHE_DISABLE_BY_DEFAULT'
+    endif
     with_shader_cache = true
   endif
 endif

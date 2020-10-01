@@ -141,7 +141,9 @@ Core Mesa environment variables
    features of the given language version if it's higher than what's
    normally reported. (for developers only)
 ``MESA_GLSL_CACHE_DISABLE``
-   if set to ``true``, disables the GLSL shader cache
+   if set to ``true``, disables the GLSL shader cache. If set to
+   ``false``, enables the GLSL shader cache when it is disabled by
+   default.
 ``MESA_GLSL_CACHE_MAX_SIZE``
    if set, determines the maximum size of the on-disk cache of compiled
    GLSL programs. Should be set to a number optionally followed by
