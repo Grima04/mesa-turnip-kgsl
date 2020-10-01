@@ -854,7 +854,7 @@ emit_image(struct ntv_context *ctx, struct nir_variable *var)
    assert(ctx->num_entry_ifaces < ARRAY_SIZE(ctx->entry_ifaces));
    ctx->entry_ifaces[ctx->num_entry_ifaces++] = var_id;
 
-   spirv_builder_emit_descriptor_set(&ctx->builder, var_id, 0);
+   spirv_builder_emit_descriptor_set(&ctx->builder, var_id, is_sampler ? ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW : ZINK_DESCRIPTOR_TYPE_IMAGE);
    int binding = zink_binding(ctx->stage,
                               is_sampler ? zink_sampler_type(type) : zink_image_type(type),
                               var->data.binding);
@@ -976,7 +976,7 @@ emit_bo(struct ntv_context *ctx, struct nir_variable *var)
       assert(ctx->num_entry_ifaces < ARRAY_SIZE(ctx->entry_ifaces));
       ctx->entry_ifaces[ctx->num_entry_ifaces++] = var_id;
 
-      spirv_builder_emit_descriptor_set(&ctx->builder, var_id, 0);
+      spirv_builder_emit_descriptor_set(&ctx->builder, var_id, ssbo ? ZINK_DESCRIPTOR_TYPE_SSBO : ZINK_DESCRIPTOR_TYPE_UBO);
       int binding = zink_binding(ctx->stage,
                                  ssbo ? VK_DESCRIPTOR_TYPE_STORAGE_BUFFER : VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
                                  var->data.binding + i);

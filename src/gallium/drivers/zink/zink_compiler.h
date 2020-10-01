@@ -63,6 +63,14 @@ zink_get_compiler_options(struct pipe_screen *screen,
 struct nir_shader *
 zink_tgsi_to_nir(struct pipe_screen *screen, const struct tgsi_token *tokens);
 
+enum zink_descriptor_type {
+   ZINK_DESCRIPTOR_TYPE_UBO,
+   ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW,
+   ZINK_DESCRIPTOR_TYPE_SSBO,
+   ZINK_DESCRIPTOR_TYPE_IMAGE,
+   ZINK_DESCRIPTOR_TYPES,
+};
+
 struct zink_shader {
    unsigned shader_id;
    struct nir_shader *nir;
@@ -74,8 +82,10 @@ struct zink_shader {
       int binding;
       VkDescriptorType type;
       unsigned char size;
-   } bindings[PIPE_MAX_CONSTANT_BUFFERS + PIPE_MAX_SAMPLERS + PIPE_MAX_SHADER_BUFFERS + PIPE_MAX_SHADER_IMAGES];
-   size_t num_bindings;
+   } bindings[ZINK_DESCRIPTOR_TYPES][32];
+   size_t num_bindings[ZINK_DESCRIPTOR_TYPES];
+   uint32_t ubos_used; // bitfield of which ubo indices are used
+   uint32_t ssbos_used; // bitfield of which ssbo indices are used
    struct set *programs;
 
    union {

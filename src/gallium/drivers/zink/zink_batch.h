@@ -97,5 +97,5 @@ zink_batch_reference_surface(struct zink_batch *batch,
                              struct zink_surface *surface);
 
 bool
-zink_batch_add_desc_set(struct zink_batch *batch, struct zink_program *pg, uint32_t hash, struct zink_descriptor_set *zds);
+zink_batch_add_desc_set(struct zink_batch *batch, struct zink_program *pg, struct zink_descriptor_set *zds);
 #endif

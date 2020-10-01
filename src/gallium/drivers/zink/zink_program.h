@@ -31,6 +31,7 @@
 #include "util/u_inlines.h"
 
 #include "zink_context.h"
+#include "zink_compiler.h"
 #include "zink_shader_keys.h"
 
 struct zink_screen;
@@ -64,21 +65,24 @@ struct zink_shader_cache {
 };
 
 struct zink_descriptor_set {
+   enum zink_descriptor_type type;
    struct pipe_reference reference; //incremented for batch usage
    VkDescriptorSet desc_set;
-   bool valid;
+   uint32_t hash;
+   bool invalid;
    struct zink_resource **resources;
 };
 
 struct zink_program {
    struct pipe_reference reference;
 
-   struct hash_table *desc_sets;
-   struct hash_table *free_desc_sets;
-   struct util_dynarray alloc_desc_sets;
-   VkDescriptorPool descpool;
-   VkDescriptorSetLayout dsl;
-   unsigned num_descriptors;
+   struct hash_table *desc_sets[ZINK_DESCRIPTOR_TYPES];
+   struct hash_table *free_desc_sets[ZINK_DESCRIPTOR_TYPES];
+   struct util_dynarray alloc_desc_sets[ZINK_DESCRIPTOR_TYPES];
+   VkDescriptorPool descpool[ZINK_DESCRIPTOR_TYPES];
+   VkDescriptorSetLayout dsl[ZINK_DESCRIPTOR_TYPES];
+   unsigned num_descriptors[ZINK_DESCRIPTOR_TYPES];
+   struct zink_descriptor_set *null_set;
 };
 
 struct zink_gfx_program {
@@ -103,6 +107,42 @@ struct zink_compute_program {
    struct hash_table *pipelines;
 };
 
+static inline enum zink_descriptor_type
+zink_desc_type_from_vktype(VkDescriptorType type)
+{
+   switch (type) {
+   case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
+      return ZINK_DESCRIPTOR_TYPE_UBO;
+   case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
+   case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
+      return ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW;
+   case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
+      return ZINK_DESCRIPTOR_TYPE_SSBO;
+   case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
+   case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
+      return ZINK_DESCRIPTOR_TYPE_IMAGE;
+   default:
+      unreachable("unhandled descriptor type");
+   }
+   return 0;
+   
+}
+
+static inline unsigned
+zink_program_num_descriptors(const struct zink_program *pg)
+{
+   unsigned num_descriptors = 0;
+   for (unsigned i = 0; i < ZINK_DESCRIPTOR_TYPES; i++)
+      num_descriptors += pg->num_descriptors[i];
+   return num_descriptors;
+}
+
+unsigned
+zink_program_num_bindings_typed(const struct zink_program *pg, enum zink_descriptor_type type, bool is_compute);
+
+unsigned
+zink_program_num_bindings(const struct zink_program *pg, bool is_compute);
+
 void
 zink_update_gfx_program(struct zink_context *ctx, struct zink_gfx_program *prog);
 
@@ -122,6 +162,9 @@ zink_get_gfx_pipeline(struct zink_screen *screen,
 
 void
 zink_program_init(struct zink_context *ctx);
+
+uint32_t
+zink_program_get_descriptor_usage(struct zink_context *ctx, enum pipe_shader_type stage, enum zink_descriptor_type type);
 
 void
 debug_describe_zink_gfx_program(char* buf, const struct zink_gfx_program *ptr);
@@ -174,7 +217,8 @@ zink_program_allocate_desc_set(struct zink_context *ctx,
                                struct zink_batch *batch,
                                struct zink_program *pg,
                                uint32_t desc_hash,
+                               enum zink_descriptor_type type,
                                bool *cache_hit);
 void
-zink_program_recycle_desc_set(struct zink_program *pg, uint32_t hash, struct zink_descriptor_set *zds);
+zink_program_recycle_desc_set(struct zink_program *pg, struct zink_descriptor_set *zds);
 #endif

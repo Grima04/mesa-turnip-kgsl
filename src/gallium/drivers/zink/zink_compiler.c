@@ -609,7 +609,6 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
       fprintf(stderr, "---8<---\n");
    }
 
-   ret->num_bindings = 0;
    uint32_t cur_ubo = 0;
    /* UBO buffers are zero-indexed, but buffer 0 is always the one created by nir_lower_uniforms_to_ubo,
     * which means there is no buffer 0 if there are no uniforms
@@ -623,12 +622,14 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
       if (_nir_shader_variable_has_mode(var, nir_var_uniform |
                                         nir_var_mem_ubo |
                                         nir_var_mem_ssbo)) {
+         enum zink_descriptor_type ztype;
          if (var->data.mode == nir_var_mem_ubo) {
             /* ignore variables being accessed if they aren't the base of the UBO */
             bool ubo_array = glsl_type_is_array(var->type) && glsl_type_is_interface(glsl_without_array(var->type));
             if (var->data.location && !ubo_array && var->type != var->interface_type)
                continue;
             var->data.binding = cur_ubo;
+            ztype = ZINK_DESCRIPTOR_TYPE_UBO;
             /* if this is a ubo array, create a binding point for each array member:
              * 
                "For uniform blocks declared as arrays, each individual array element
@@ -642,11 +643,12 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
                int binding = zink_binding(nir->info.stage,
                                           VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
                                           cur_ubo++);
-               ret->bindings[ret->num_bindings].index = ubo_index++;
-               ret->bindings[ret->num_bindings].binding = binding;
-               ret->bindings[ret->num_bindings].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-               ret->bindings[ret->num_bindings].size = 1;
-               ret->num_bindings++;
+               ret->bindings[ztype][ret->num_bindings[ztype]].index = ubo_index++;
+               ret->bindings[ztype][ret->num_bindings[ztype]].binding = binding;
+               ret->bindings[ztype][ret->num_bindings[ztype]].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+               ret->bindings[ztype][ret->num_bindings[ztype]].size = 1;
+               ret->ubos_used |= (1 << ret->bindings[ztype][ret->num_bindings[ztype]].index);
+               ret->num_bindings[ztype]++;
             }
          } else if (var->data.mode == nir_var_mem_ssbo) {
             /* same-ish mechanics as ubos */
@@ -656,35 +658,38 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
             if (!var->data.explicit_binding) {
                var->data.binding = ssbo_array_index;
             }
+            ztype = ZINK_DESCRIPTOR_TYPE_SSBO;
             for (unsigned i = 0; i < (bo_array ? glsl_get_aoa_size(var->type) : 1); i++) {
                int binding = zink_binding(nir->info.stage,
                                           VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
                                           var->data.binding + i);
                if (strcmp(glsl_get_type_name(var->interface_type), "counters"))
-                  ret->bindings[ret->num_bindings].index = ssbo_array_index++;
+                  ret->bindings[ztype][ret->num_bindings[ztype]].index = ssbo_array_index++;
                else
-                  ret->bindings[ret->num_bindings].index = var->data.binding;
-               ret->bindings[ret->num_bindings].binding = binding;
-               ret->bindings[ret->num_bindings].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-               ret->bindings[ret->num_bindings].size = 1;
-               ret->num_bindings++;
+                  ret->bindings[ztype][ret->num_bindings[ztype]].index = var->data.binding;
+               ret->ssbos_used |= (1 << ret->bindings[ztype][ret->num_bindings[ztype]].index);
+               ret->bindings[ztype][ret->num_bindings[ztype]].binding = binding;
+               ret->bindings[ztype][ret->num_bindings[ztype]].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+               ret->bindings[ztype][ret->num_bindings[ztype]].size = 1;
+               ret->num_bindings[ztype]++;
             }
          } else {
             assert(var->data.mode == nir_var_uniform);
             const struct glsl_type *type = glsl_without_array(var->type);
             if (glsl_type_is_sampler(type) || glsl_type_is_image(type)) {
                VkDescriptorType vktype = glsl_type_is_image(type) ? zink_image_type(type) : zink_sampler_type(type);
+               ztype = zink_desc_type_from_vktype(vktype);
                int binding = zink_binding(nir->info.stage,
                                           vktype,
                                           var->data.binding);
-               ret->bindings[ret->num_bindings].index = var->data.binding;
-               ret->bindings[ret->num_bindings].binding = binding;
-               ret->bindings[ret->num_bindings].type = vktype;
+               ret->bindings[ztype][ret->num_bindings[ztype]].index = var->data.binding;
+               ret->bindings[ztype][ret->num_bindings[ztype]].binding = binding;
+               ret->bindings[ztype][ret->num_bindings[ztype]].type = vktype;
                if (glsl_type_is_array(var->type))
-                  ret->bindings[ret->num_bindings].size = glsl_get_aoa_size(var->type);
+                  ret->bindings[ztype][ret->num_bindings[ztype]].size = glsl_get_aoa_size(var->type);
                else
-                  ret->bindings[ret->num_bindings].size = 1;
-               ret->num_bindings++;
+                  ret->bindings[ztype][ret->num_bindings[ztype]].size = 1;
+               ret->num_bindings[ztype]++;
             }
          }
       }
