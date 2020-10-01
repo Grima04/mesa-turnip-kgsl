@@ -224,12 +224,12 @@ get_gfx_program(struct zink_context *ctx)
 }
 
 static struct zink_descriptor_set *
-get_descriptor_set(struct zink_context *ctx, bool is_compute, uint32_t desc_hash, enum zink_descriptor_type type, bool *cache_hit)
+get_descriptor_set(struct zink_context *ctx, bool is_compute, enum zink_descriptor_type type, bool *cache_hit)
 {
    struct zink_program *pg = is_compute ? (struct zink_program *)ctx->curr_compute : (struct zink_program *)ctx->curr_program;
    struct zink_batch *batch = is_compute ? &ctx->compute_batch : zink_curr_batch(ctx);
    zink_batch_reference_program(batch, pg);
-   return zink_program_allocate_desc_set(ctx, batch, pg, desc_hash, type, cache_hit);
+   return zink_program_allocate_desc_set(ctx, batch, pg, type, is_compute, cache_hit);
 }
 
 struct zink_transition {
@@ -338,11 +338,11 @@ update_descriptors(struct zink_context *ctx, struct zink_screen *screen, bool is
    else
       stages = &ctx->gfx_stages[0];
 
+   zink_context_update_descriptor_states(ctx, is_compute);
+
    struct zink_transition transitions[num_bindings];
    int num_transitions = 0;
    struct set *ht = _mesa_set_create(NULL, transition_hash, transition_equals);
-   uint32_t desc_hash[ZINK_DESCRIPTOR_TYPES] = {0};
-
 
 
    for (int h = 0; h < ZINK_DESCRIPTOR_TYPES; h++) {
@@ -375,7 +375,6 @@ update_descriptors(struct zink_context *ctx, struct zink_screen *screen, bool is
                } else
                   buffer_infos[h][num_buffer_info[h]].offset = res ? ctx->ubos[stage][index].buffer_offset : 0;
                buffer_infos[h][num_buffer_info[h]].range  = res ? ctx->ubos[stage][index].buffer_size : VK_WHOLE_SIZE;
-               desc_hash[h] = XXH32(&buffer_infos[h][num_buffer_info[h]], sizeof(VkDescriptorBufferInfo), desc_hash[h]);
                if (res)
                   add_transition(res, 0, VK_ACCESS_UNIFORM_READ_BIT, stage, &transitions[num_transitions], &num_transitions, ht);
                wds[h][num_wds[h]].pBufferInfo = buffer_infos[h] + num_buffer_info[h];
@@ -405,7 +404,6 @@ update_descriptors(struct zink_context *ctx, struct zink_screen *screen, bool is
                   buffer_infos[h][num_buffer_info[h]].offset = 0;
                   buffer_infos[h][num_buffer_info[h]].range  = VK_WHOLE_SIZE;
                }
-               desc_hash[h] = XXH32(&buffer_infos[h][num_buffer_info[h]], sizeof(VkDescriptorBufferInfo), desc_hash[h]);
                wds[h][num_wds[h]].pBufferInfo = buffer_infos[h] + num_buffer_info[h];
                ++num_buffer_info[h];
             } else {
@@ -426,7 +424,6 @@ update_descriptors(struct zink_context *ctx, struct zink_screen *screen, bool is
                         break;
                      if (res->base.target == PIPE_BUFFER) {
                         wds[h][num_wds[h]].pTexelBufferView = &sampler_view->buffer_view;
-                        desc_hash[h] = XXH32(&sampler_view->base.u.buf, sizeof(sampler_view->base.u.buf), desc_hash[h]);
                      } else {
                         imageview = sampler_view->image_view;
                         layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
@@ -450,7 +447,6 @@ update_descriptors(struct zink_context *ctx, struct zink_screen *screen, bool is
                         break;
                      if (image_view->base.resource->target == PIPE_BUFFER) {
                         wds[h][num_wds[h]].pTexelBufferView = &image_view->buffer_view;
-                        desc_hash[h] = XXH32(&image_view->base.u.buf, sizeof(image_view->base.u.buf), desc_hash[h]);
                      } else {
                         imageview = image_view->surface->image_view;
                         layout = VK_IMAGE_LAYOUT_GENERAL;
@@ -483,7 +479,6 @@ update_descriptors(struct zink_context *ctx, struct zink_screen *screen, bool is
                      case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
                      case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
                         wds[h][num_wds[h]].pTexelBufferView = &buffer_view[0];
-                        desc_hash[h] = XXH32(&buffer_view[0], sizeof(VkBufferView), desc_hash[h]);
                         break;
                      case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
                      case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
@@ -493,7 +488,6 @@ update_descriptors(struct zink_context *ctx, struct zink_screen *screen, bool is
                         image_infos[h][num_image_info[h]].sampler = sampler;
                         if (!k)
                            wds[h][num_wds[h]].pImageInfo = image_infos[h] + num_image_info[h];
-                        desc_hash[h] = XXH32(&image_infos[h][num_image_info[h]], sizeof(VkDescriptorImageInfo), desc_hash[h]);
                         ++num_image_info[h];
                         break;
                      default:
@@ -507,10 +501,8 @@ update_descriptors(struct zink_context *ctx, struct zink_screen *screen, bool is
                      image_infos[h][num_image_info[h]].sampler = sampler;
                      if (!k)
                         wds[h][num_wds[h]].pImageInfo = image_infos[h] + num_image_info[h];
-                     desc_hash[h] = XXH32(&image_infos[h][num_image_info[h]], sizeof(VkDescriptorImageInfo), desc_hash[h]);
                      ++num_image_info[h];
-                  } else
-                     desc_hash[h] = XXH32(&res->buffer, sizeof(VkBuffer), desc_hash[h]);
+                  }
                }
             }
 
@@ -543,7 +535,7 @@ update_descriptors(struct zink_context *ctx, struct zink_screen *screen, bool is
    struct zink_descriptor_set *zds[ZINK_DESCRIPTOR_TYPES];
    for (int h = 0; h < ZINK_DESCRIPTOR_TYPES; h++) {
       if (pg->dsl[h])
-         zds[h] = get_descriptor_set(ctx, is_compute, desc_hash[h], h, &cache_hit[h]);
+         zds[h] = get_descriptor_set(ctx, is_compute, h, &cache_hit[h]);
       else
          zds[h] = NULL;
    }

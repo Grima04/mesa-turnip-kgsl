@@ -51,6 +51,176 @@
 #include "util/u_memory.h"
 #include "util/u_upload_mgr.h"
 
+#define XXH_INLINE_ALL
+#include "util/xxhash.h"
+
+static uint32_t
+calc_descriptor_state_hash_ubo(struct zink_context *ctx, struct zink_shader *zs, enum pipe_shader_type shader, int i, int idx, uint32_t hash)
+{
+   hash = XXH32(&ctx->ubos[shader][idx].buffer, sizeof(void*), hash);
+   void *hash_data = &ctx->ubos[shader][idx].buffer_size;
+   size_t data_size = sizeof(unsigned);
+   hash = XXH32(hash_data, data_size, hash);
+   if (zs->bindings[ZINK_DESCRIPTOR_TYPE_UBO][i].type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
+      hash = XXH32(&ctx->ubos[shader][idx].buffer_offset, sizeof(unsigned), hash);
+   return hash;
+}
+
+static uint32_t
+calc_descriptor_state_hash_ssbo(struct zink_context *ctx, struct zink_shader *zs, enum pipe_shader_type shader, int i, int idx, uint32_t hash)
+{
+   void *hash_data = &ctx->ssbos[shader][idx];
+   size_t data_size = sizeof(struct pipe_shader_buffer);
+   return XXH32(hash_data, data_size, hash);
+}
+
+static uint32_t
+calc_descriptor_state_hash_sampler(struct zink_context *ctx, struct zink_shader *zs, enum pipe_shader_type shader, int i, int idx, uint32_t hash)
+{
+   void *hash_data;
+   size_t data_size;
+
+   for (unsigned k = 0; k < zs->bindings[ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW][i].size; k++) {
+      VkDescriptorImageInfo info;
+      if (!ctx->sampler_views[shader][idx + k]) {
+         VkDescriptorImageInfo null_info = {VK_NULL_HANDLE, VK_NULL_HANDLE, VK_IMAGE_LAYOUT_UNDEFINED};
+         hash_data = &null_info;
+         data_size = sizeof(VkDescriptorImageInfo);
+         hash = XXH32(hash_data, data_size, hash);
+         continue;
+      }
+      hash = XXH32(&ctx->sampler_views[shader][idx + k]->texture, sizeof(void*), hash);
+      if (ctx->sampler_views[shader][idx + k]->target == PIPE_BUFFER) {
+         hash_data = &ctx->sampler_views[shader][idx + k]->u.buf;
+         data_size = sizeof(ctx->sampler_views[shader][idx + k]->u.buf);
+         hash = XXH32(hash_data, data_size, hash);
+      } else {
+         struct zink_sampler_state *sampler_state = ctx->sampler_states[shader][idx + k];
+         info.sampler = sampler_state ? sampler_state->sampler : VK_NULL_HANDLE;
+         info.imageView = zink_sampler_view(ctx->sampler_views[shader][idx + k])->image_view;
+         if (util_format_is_depth_and_stencil(ctx->sampler_views[shader][idx + k]->format))
+            info.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
+         else
+            info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+         hash_data = &info;
+         data_size = sizeof(VkDescriptorImageInfo);
+         hash = XXH32(hash_data, data_size, hash);
+      }
+   }
+   return hash;
+}
+
+static uint32_t
+calc_descriptor_state_hash_image(struct zink_context *ctx, struct zink_shader *zs, enum pipe_shader_type shader, int i, int idx, uint32_t hash)
+{
+   void *hash_data;
+   size_t data_size;
+
+   for (unsigned k = 0; k < zs->bindings[ZINK_DESCRIPTOR_TYPE_IMAGE][i].size; k++) {
+      VkDescriptorImageInfo info;
+      if (!ctx->image_views[shader][idx + k].base.resource) {
+         VkDescriptorImageInfo null_info = {VK_NULL_HANDLE, VK_NULL_HANDLE, VK_IMAGE_LAYOUT_UNDEFINED};
+         hash_data = &null_info;
+         data_size = sizeof(VkDescriptorImageInfo);
+         hash = XXH32(hash_data, data_size, hash);
+         break;
+      }
+      struct zink_resource *res = zink_resource(ctx->image_views[shader][idx + k].base.resource);
+      if (res->base.target == PIPE_BUFFER) {
+         hash = XXH32(&ctx->image_views[shader][idx + k].base.resource, sizeof(void*), hash);
+         hash_data = &ctx->image_views[shader][idx + k].base.u.buf;
+         data_size = sizeof(ctx->image_views[shader][idx + k].base.u.buf);
+         hash = XXH32(hash_data, data_size, hash);
+      } else {
+         info.imageView = ctx->image_views[shader][idx + k].surface->image_view;
+         info.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+         hash_data = &info;
+         data_size = sizeof(VkDescriptorImageInfo);
+         hash = XXH32(hash_data, data_size, hash);
+      }
+   }
+   return hash;
+}
+
+static uint32_t
+update_descriptor_stage_state(struct zink_context *ctx, enum pipe_shader_type shader, enum zink_descriptor_type type)
+{
+   struct zink_shader *zs = shader == PIPE_SHADER_COMPUTE ? ctx->compute_stage : ctx->gfx_stages[shader];
+
+   if (!zink_program_get_descriptor_usage(ctx, shader, type))
+      return 0;
+
+   uint32_t hash = 0;
+   for (int i = 0; i < zs->num_bindings[type]; i++) {
+      int idx = zs->bindings[type][i].index;
+      switch (type) {
+      case ZINK_DESCRIPTOR_TYPE_UBO:
+         hash = calc_descriptor_state_hash_ubo(ctx, zs, shader, i, idx, hash);
+         break;
+      case ZINK_DESCRIPTOR_TYPE_SSBO:
+         hash = calc_descriptor_state_hash_ssbo(ctx, zs, shader, i, idx, hash);
+         break;
+      case ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW:
+         hash = calc_descriptor_state_hash_sampler(ctx, zs, shader, i, idx, hash);
+         break;
+      case ZINK_DESCRIPTOR_TYPE_IMAGE:
+         hash = calc_descriptor_state_hash_image(ctx, zs, shader, i, idx, hash);
+         break;
+      default:
+         unreachable("unknown descriptor type");
+      }
+   }
+   return hash;
+}
+
+static void
+update_descriptor_state(struct zink_context *ctx, enum zink_descriptor_type type, bool is_compute)
+{
+   /* we shouldn't be calling this if we don't have to */
+   assert(!ctx->descriptor_states[is_compute].valid[type]);
+
+   if (is_compute)
+      /* just update compute state */
+      ctx->descriptor_states[is_compute].state[type] = update_descriptor_stage_state(ctx, PIPE_SHADER_COMPUTE, type);
+   else {
+      /* update all gfx states */
+      for (unsigned i = 0; i < ZINK_SHADER_COUNT; i++) {
+         /* this is the incremental update for the shader stage */
+         if (!ctx->gfx_descriptor_states[i].valid[type] && ctx->gfx_stages[i]) {
+            ctx->gfx_descriptor_states[i].state[type] = update_descriptor_stage_state(ctx, i, type);
+            ctx->gfx_descriptor_states[i].valid[type] = true;
+         }
+         if (ctx->gfx_descriptor_states[i].valid[type]) {
+            /* this is the overall state update for the descriptor set hash */
+            ctx->descriptor_states[is_compute].state[type] = XXH32(&ctx->gfx_descriptor_states[i].state[type],
+                                                                   sizeof(uint32_t),
+                                                                   ctx->descriptor_states[is_compute].state[type]);
+         }
+      }
+   }
+   ctx->descriptor_states[is_compute].valid[type] = true;
+}
+
+void
+zink_context_update_descriptor_states(struct zink_context *ctx, bool is_compute)
+{
+   for (unsigned i = 0; i < ZINK_DESCRIPTOR_TYPES; i++) {
+      if (!ctx->descriptor_states[is_compute].valid[i])
+         update_descriptor_state(ctx, i, is_compute);
+   }
+}
+
+static void
+invalidate_descriptor_state(struct zink_context *ctx, enum pipe_shader_type shader, enum zink_descriptor_type type)
+{
+   if (shader != PIPE_SHADER_COMPUTE) {
+      ctx->gfx_descriptor_states[shader].valid[type] = false;
+      ctx->gfx_descriptor_states[shader].state[type] = 0;
+   }
+   ctx->descriptor_states[shader == PIPE_SHADER_COMPUTE].valid[type] = false;
+   ctx->descriptor_states[shader == PIPE_SHADER_COMPUTE].state[type] = 0;
+}
+
 static void
 destroy_batch(struct zink_context* ctx, struct zink_batch* batch)
 {
@@ -186,11 +356,6 @@ wrap_needs_border_color(unsigned wrap)
           wrap == PIPE_TEX_WRAP_MIRROR_CLAMP || wrap == PIPE_TEX_WRAP_MIRROR_CLAMP_TO_BORDER;
 }
 
-struct zink_sampler_state {
-   VkSampler sampler;
-   bool custom_border_color;
-};
-
 static void *
 zink_create_sampler_state(struct pipe_context *pctx,
                           const struct pipe_sampler_state *state)
@@ -269,12 +434,16 @@ zink_bind_sampler_states(struct pipe_context *pctx,
                          void **samplers)
 {
    struct zink_context *ctx = zink_context(pctx);
+   bool update = false;
    for (unsigned i = 0; i < num_samplers; ++i) {
       VkSampler *sampler = samplers[i];
+      update |= ctx->sampler_states[shader][start_slot + i] != samplers[i];
       ctx->sampler_states[shader][start_slot + i] = sampler;
       ctx->samplers[shader][start_slot + i] = sampler ? *sampler : VK_NULL_HANDLE;
    }
    ctx->num_samplers[shader] = start_slot + num_samplers;
+   if (update)
+      invalidate_descriptor_state(ctx, shader, ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW);
 }
 
 static void
@@ -548,6 +717,7 @@ zink_set_constant_buffer(struct pipe_context *pctx,
                          const struct pipe_constant_buffer *cb)
 {
    struct zink_context *ctx = zink_context(pctx);
+   bool update = false;
 
    if (cb) {
       struct pipe_resource *buffer = cb->buffer;
@@ -558,6 +728,10 @@ zink_set_constant_buffer(struct pipe_context *pctx,
                        screen->info.props.limits.minUniformBufferOffsetAlignment,
                        cb->user_buffer, &offset, &buffer);
       }
+      struct zink_resource *res = zink_resource(ctx->ubos[shader][index].buffer);
+      update |= (index && ctx->ubos[shader][index].buffer_offset != offset) ||
+                !!res != !!buffer || (res && res->buffer != zink_resource(buffer)->buffer) ||
+                ctx->ubos[shader][index].buffer_size != cb->buffer_size;
 
       if (take_ownership) {
          pipe_resource_reference(&ctx->ubos[shader][index].buffer, NULL);
@@ -572,11 +746,15 @@ zink_set_constant_buffer(struct pipe_context *pctx,
       if (cb->user_buffer)
          pipe_resource_reference(&buffer, NULL);
    } else {
+      update = !!ctx->ubos[shader][index].buffer;
+
       pipe_resource_reference(&ctx->ubos[shader][index].buffer, NULL);
       ctx->ubos[shader][index].buffer_offset = 0;
       ctx->ubos[shader][index].buffer_size = 0;
       ctx->ubos[shader][index].user_buffer = NULL;
    }
+   if (update)
+      invalidate_descriptor_state(ctx, shader, ZINK_DESCRIPTOR_TYPE_UBO);
 }
 
 static void
@@ -587,6 +765,7 @@ zink_set_shader_buffers(struct pipe_context *pctx,
                         unsigned writable_bitmask)
 {
    struct zink_context *ctx = zink_context(pctx);
+   bool update = false;
 
    unsigned modified_bits = u_bit_consecutive(start_slot, count);
    ctx->writable_ssbos[p_stage] &= ~modified_bits;
@@ -601,12 +780,17 @@ zink_set_shader_buffers(struct pipe_context *pctx,
          ssbo->buffer_size = MIN2(buffers[i].buffer_size, res->size - ssbo->buffer_offset);
          util_range_add(&res->base, &res->valid_buffer_range, ssbo->buffer_offset,
                         ssbo->buffer_offset + ssbo->buffer_size);
+         update = true;
       } else {
+         update |= !!ssbo->buffer;
+
          pipe_resource_reference(&ssbo->buffer, NULL);
          ssbo->buffer_offset = 0;
          ssbo->buffer_size = 0;
       }
    }
+   if (update)
+      invalidate_descriptor_state(ctx, p_stage, ZINK_DESCRIPTOR_TYPE_SSBO);
 }
 
 static void
@@ -633,7 +817,7 @@ zink_set_shader_images(struct pipe_context *pctx,
                        const struct pipe_image_view *images)
 {
    struct zink_context *ctx = zink_context(pctx);
-
+   bool update = false;
    for (unsigned i = 0; i < count; i++) {
       struct zink_image_view *image_view = &ctx->image_views[p_stage][start_slot + i];
       if (images && images[i].resource) {
@@ -654,12 +838,19 @@ zink_set_shader_images(struct pipe_context *pctx,
             image_view->surface = zink_surface(pctx->create_surface(pctx, &res->base, &tmpl));
             assert(image_view->surface);
          }
-      } else if (image_view->base.resource)
-         unbind_shader_image(ctx, p_stage, start_slot + i);
-   }
+         update = true;
+      } else if (image_view->base.resource) {
+         update |= !!image_view->base.resource;
 
-   for (unsigned i = 0; i < unbind_num_trailing_slots; i++)
+         unbind_shader_image(ctx, p_stage, start_slot + i);
+      }
+   }
+   for (unsigned i = 0; i < unbind_num_trailing_slots; i++) {
+      update |= !!ctx->image_views[p_stage][start_slot + count + i].base.resource;
       unbind_shader_image(ctx, p_stage, start_slot + count + i);
+   }
+   if (update)
+      invalidate_descriptor_state(ctx, p_stage, ZINK_DESCRIPTOR_TYPE_IMAGE);
 }
 
 static void
@@ -673,18 +864,21 @@ zink_set_sampler_views(struct pipe_context *pctx,
    struct zink_context *ctx = zink_context(pctx);
    unsigned i;
 
+   bool update = false;
    for (i = 0; i < num_views; ++i) {
       struct pipe_sampler_view *pview = views ? views[i] : NULL;
-      pipe_sampler_view_reference(
-         &ctx->sampler_views[shader_type][start_slot + i],
-         pview);
+      update |= ctx->sampler_views[shader_type][start_slot + i] != pview;
+      pipe_sampler_view_reference(&ctx->sampler_views[shader_type][start_slot + i], pview);
    }
    for (; i < num_views + unbind_num_trailing_slots; ++i) {
+      update |= !!ctx->sampler_views[shader_type][start_slot + i];
       pipe_sampler_view_reference(
          &ctx->sampler_views[shader_type][start_slot + i],
          NULL);
    }
    ctx->num_sampler_views[shader_type] = start_slot + num_views;
+   if (update)
+      invalidate_descriptor_state(ctx, shader_type, ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW);
 }
 
 static void

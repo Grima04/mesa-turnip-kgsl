@@ -36,6 +36,9 @@
 #include "util/u_memory.h"
 #include "tgsi/tgsi_from_mesa.h"
 
+#define XXH_INLINE_ALL
+#include "util/xxhash.h"
+
 struct gfx_pipeline_cache_entry {
    struct zink_gfx_pipeline_state state;
    VkPipeline pipeline;
@@ -625,6 +628,38 @@ zink_update_gfx_program(struct zink_context *ctx, struct zink_gfx_program *prog)
    update_shader_modules(ctx, ctx->gfx_stages, prog, true);
 }
 
+static bool
+desc_state_equal(const void *a, const void *b)
+{
+   const struct zink_descriptor_state_key *a_k = (void*)a;
+   const struct zink_descriptor_state_key *b_k = (void*)b;
+
+   for (unsigned i = 0; i < ZINK_SHADER_COUNT; i++) {
+      if (a_k->exists[i] != b_k->exists[i])
+         return false;
+      if (a_k->exists[i] && b_k->exists[i] &&
+          a_k->state[i] != b_k->state[i])
+         return false;
+   }
+   return true;
+}
+
+static uint32_t
+desc_state_hash(const void *key)
+{
+   const struct zink_descriptor_state_key *d_key = (void*)key;
+   uint32_t hash = 0;
+   /* this is a compute shader */
+   if (!d_key->exists[PIPE_SHADER_FRAGMENT])
+      return d_key->state[0];
+   for (unsigned i = 0; i < ZINK_SHADER_COUNT; i++) {
+      if (d_key->exists[i])
+         hash = XXH32(&d_key->state[i], sizeof(uint32_t), hash);
+   }
+   return hash;
+}
+
+
 struct zink_gfx_program *
 zink_create_gfx_program(struct zink_context *ctx,
                         struct zink_shader *stages[ZINK_SHADER_COUNT])
@@ -665,11 +700,11 @@ zink_create_gfx_program(struct zink_context *ctx,
    for (unsigned i = 0; i < ZINK_DESCRIPTOR_TYPES; i++) {
       if (!prog->base.num_descriptors[i])
          continue;
-      prog->base.desc_sets[i] = _mesa_hash_table_create(NULL, NULL, _mesa_key_pointer_equal);
+      prog->base.desc_sets[i] = _mesa_hash_table_create(NULL, desc_state_hash, desc_state_equal);
       if (!prog->base.desc_sets[i])
          goto fail;
 
-      prog->base.free_desc_sets[i] = _mesa_hash_table_create(NULL, NULL, _mesa_key_pointer_equal);
+      prog->base.free_desc_sets[i] = _mesa_hash_table_create(NULL, desc_state_hash, desc_state_equal);
       if (!prog->base.free_desc_sets[i])
          goto fail;
 
@@ -777,11 +812,11 @@ zink_create_compute_program(struct zink_context *ctx, struct zink_shader *shader
    for (unsigned i = 0; i < ZINK_DESCRIPTOR_TYPES; i++) {
       if (!comp->base.num_descriptors[i])
          continue;
-      comp->base.desc_sets[i] = _mesa_hash_table_create(NULL, NULL, _mesa_key_pointer_equal);
+      comp->base.desc_sets[i] = _mesa_hash_table_create(NULL, desc_state_hash, desc_state_equal);
       if (!comp->base.desc_sets[i])
          goto fail;
 
-      comp->base.free_desc_sets[i] = _mesa_hash_table_create(NULL, NULL, _mesa_key_pointer_equal);
+      comp->base.free_desc_sets[i] = _mesa_hash_table_create(NULL, desc_state_hash, desc_state_equal);
       if (!comp->base.free_desc_sets[i])
          goto fail;
 
@@ -857,12 +892,28 @@ allocate_desc_set(struct zink_screen *screen, struct zink_program *pg, enum zink
    return alloc;
 }
 
+static void
+populate_zds_key(struct zink_context *ctx, enum zink_descriptor_type type, bool is_compute,
+                 struct zink_descriptor_state_key *key) {
+   if (is_compute) {
+      for (unsigned i = 1; i < ZINK_SHADER_COUNT; i++)
+         key->exists[i] = false;
+      key->exists[0] = true;
+      key->state[0] = ctx->descriptor_states[is_compute].state[type];
+   } else {
+      for (unsigned i = 0; i < ZINK_SHADER_COUNT; i++) {
+         key->exists[i] = ctx->gfx_descriptor_states[i].valid[type];
+         key->state[i] = ctx->gfx_descriptor_states[i].state[type];
+      }
+   }
+}
+
 struct zink_descriptor_set *
 zink_program_allocate_desc_set(struct zink_context *ctx,
                                struct zink_batch *batch,
                                struct zink_program *pg,
-                               uint32_t hash,
                                enum zink_descriptor_type type,
+                               bool is_compute,
                                bool *cache_hit)
 {
    *cache_hit = false;
@@ -870,9 +921,12 @@ zink_program_allocate_desc_set(struct zink_context *ctx,
    struct zink_screen *screen = zink_screen(ctx->base.screen);
    unsigned descs_used = 1;
    assert(type < ZINK_DESCRIPTOR_TYPES);
+   uint32_t hash = pg->num_descriptors[type] ? ctx->descriptor_states[is_compute].state[type] : 0;
+   struct zink_descriptor_state_key key;
+   populate_zds_key(ctx, type, is_compute, &key);
 
    if (pg->num_descriptors[type]) {
-      struct hash_entry *he = _mesa_hash_table_search_pre_hashed(pg->desc_sets[type], hash, (void*)(uintptr_t)hash);
+      struct hash_entry *he = _mesa_hash_table_search_pre_hashed(pg->desc_sets[type], hash, &key);
       bool recycled = false;
       if (he) {
           zds = (void*)he->data;
@@ -882,7 +936,7 @@ zink_program_allocate_desc_set(struct zink_context *ctx,
           assert(!zds->invalid);
       }
       if (!he) {
-         he = _mesa_hash_table_search_pre_hashed(pg->free_desc_sets[type], hash, (void*)(uintptr_t)hash);
+         he = _mesa_hash_table_search_pre_hashed(pg->free_desc_sets[type], hash, &key);
          recycled = true;
       }
       if (he) {
@@ -921,7 +975,7 @@ zink_program_allocate_desc_set(struct zink_context *ctx,
       if (descs_used + pg->num_descriptors[type] > ZINK_DEFAULT_MAX_DESCS) {
          batch = zink_flush_batch(ctx, batch);
          zink_batch_reference_program(batch, pg);
-         return zink_program_allocate_desc_set(ctx, batch, pg, hash, type, cache_hit);
+         return zink_program_allocate_desc_set(ctx, batch, pg, type, is_compute, cache_hit);
       }
    } else {
       zds = pg->null_set;
@@ -934,8 +988,9 @@ zink_program_allocate_desc_set(struct zink_context *ctx,
    zds = allocate_desc_set(screen, pg, type, descs_used);
 out:
    zds->hash = hash;
+   populate_zds_key(ctx, type, is_compute, &zds->key);
    if (pg->num_descriptors[type])
-      _mesa_hash_table_insert_pre_hashed(pg->desc_sets[type], hash, (void*)(uintptr_t)hash, zds);
+      _mesa_hash_table_insert_pre_hashed(pg->desc_sets[type], hash, &zds->key, zds);
    else
       pg->null_set = zds;
 quick_out:
@@ -953,14 +1008,14 @@ zink_program_recycle_desc_set(struct zink_program *pg, struct zink_descriptor_se
    uint32_t refcount = p_atomic_read(&zds->reference.count);
    if (refcount != 1)
       return;
-   if (zds->hash) {
-      struct hash_entry *he = _mesa_hash_table_search_pre_hashed(pg->desc_sets[zds->type], zds->hash, (void*)(uintptr_t)zds->hash);
+   if (!zds->invalid) {
+      struct hash_entry *he = _mesa_hash_table_search_pre_hashed(pg->desc_sets[zds->type], zds->hash, &zds->key);
       if (!he)
          /* desc sets can be used multiple times in the same batch */
          return;
 
       _mesa_hash_table_remove(pg->desc_sets[zds->type], he);
-      _mesa_hash_table_insert_pre_hashed(pg->free_desc_sets[zds->type], zds->hash, (void*)(uintptr_t)zds->hash, zds);
+      _mesa_hash_table_insert_pre_hashed(pg->free_desc_sets[zds->type], zds->hash, &zds->key, zds);
    } else
       util_dynarray_append(&pg->alloc_desc_sets[zds->type], struct zink_descriptor_set *, zds);
 }

@@ -64,12 +64,18 @@ struct zink_shader_cache {
    struct hash_table *shader_cache;
 };
 
+struct zink_descriptor_state_key {
+   bool exists[ZINK_SHADER_COUNT];
+   uint32_t state[ZINK_SHADER_COUNT];
+};
+
 struct zink_descriptor_set {
    enum zink_descriptor_type type;
    struct pipe_reference reference; //incremented for batch usage
    VkDescriptorSet desc_set;
    uint32_t hash;
    bool invalid;
+   struct zink_descriptor_state_key key;
    struct zink_resource **resources;
 };
 
@@ -217,8 +223,8 @@ struct zink_descriptor_set *
 zink_program_allocate_desc_set(struct zink_context *ctx,
                                struct zink_batch *batch,
                                struct zink_program *pg,
-                               uint32_t desc_hash,
                                enum zink_descriptor_type type,
+                               bool is_compute,
                                bool *cache_hit);
 void
 zink_program_recycle_desc_set(struct zink_program *pg, struct zink_descriptor_set *zds);
