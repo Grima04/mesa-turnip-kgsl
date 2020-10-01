@@ -712,7 +712,7 @@ meson-android:
     - .meson-cross
     - .use-arm_build
   variables:
-    VULKAN_DRIVERS: freedreno
+    VULKAN_DRIVERS: freedreno,broadcom
     GALLIUM_DRIVERS: "etnaviv,freedreno,kmsro,lima,nouveau,panfrost,swrast,tegra,v3d,vc4"
     BUILDTYPE: "debugoptimized"
   tags:
@@ -738,7 +738,7 @@ meson-arm64:
     - .meson-arm
     - .ci-deqp-artifacts
   variables:
-    VULKAN_DRIVERS: "freedreno"
+    VULKAN_DRIVERS: "freedreno,broadcom"
     EXTRA_OPTION: >
       -D llvm=disabled
     UPLOAD_FOR_LAVA: 1
@@ -766,7 +766,7 @@ meson-clang:
       -D glvnd=true
     DRI_DRIVERS: "auto"
     GALLIUM_DRIVERS: "iris,nouveau,kmsro,r300,r600,freedreno,swr,swrast,svga,v3d,vc4,virgl,etnaviv,panfrost,lima,zink,radeonsi,tegra"
-    VULKAN_DRIVERS: intel,amd,freedreno
+    VULKAN_DRIVERS: intel,amd,freedreno,broadcom
     CC: "ccache clang-10"
     CXX: "ccache clang++-10"
 
@@ -831,7 +831,7 @@ meson-vulkan:
       -D c_args=-fno-sanitize-recover=all
       -D cpp_args=-fno-sanitize-recover=all
     UBSAN_OPTIONS: "print_stacktrace=1"
-    VULKAN_DRIVERS: intel,amd,freedreno
+    VULKAN_DRIVERS: intel,amd,freedreno,broadcom
     EXTRA_OPTION: >
       -D vulkan-overlay-layer=true
       -D build-aco-tests=true
