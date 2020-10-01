@@ -782,9 +782,14 @@ static void emit_load_global(struct lp_build_nir_context *bld_base,
 
    for (unsigned c = 0; c < nc; c++) {
       LLVMValueRef result = lp_build_alloca(gallivm, res_bld->vec_type, "");
-
+      LLVMValueRef exec_mask = mask_vec(bld_base);
       struct lp_build_loop_state loop_state;
       lp_build_loop_begin(&loop_state, gallivm, lp_build_const_int32(gallivm, 0));
+
+      struct lp_build_if_state ifthen;
+      LLVMValueRef cond = LLVMBuildICmp(gallivm->builder, LLVMIntNE, exec_mask, uint_bld->zero, "");
+      cond = LLVMBuildExtractElement(gallivm->builder, cond, loop_state.counter, "");
+      lp_build_if(&ifthen, gallivm, cond);
 
       LLVMValueRef addr_ptr = LLVMBuildExtractElement(gallivm->builder, addr,
                                                       loop_state.counter, "");
@@ -796,6 +801,7 @@ static void emit_load_global(struct lp_build_nir_context *bld_base,
       temp_res = LLVMBuildLoad(builder, result, "");
       temp_res = LLVMBuildInsertElement(builder, temp_res, value_ptr, loop_state.counter, "");
       LLVMBuildStore(builder, temp_res, result);
+      lp_build_endif(&ifthen);
       lp_build_loop_end_cond(&loop_state, lp_build_const_int32(gallivm, uint_bld->type.length),
                              NULL, LLVMIntUGE);
       outval[c] = LLVMBuildLoad(builder, result, "");
