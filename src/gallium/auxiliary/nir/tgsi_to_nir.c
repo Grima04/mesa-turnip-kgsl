@@ -2122,11 +2122,11 @@ ttn_emit_instruction(struct ttn_compile *c)
       break;
 
    case TGSI_OPCODE_IF:
-      nir_push_if(b, nir_fneu(b, src[0], nir_imm_float(b, 0.0)));
+      nir_push_if(b, nir_fneu(b, nir_channel(b, src[0], 0), nir_imm_float(b, 0.0)));
       break;
 
    case TGSI_OPCODE_UIF:
-      nir_push_if(b, nir_ine(b, src[0], nir_imm_int(b, 0)));
+      nir_push_if(b, nir_ine(b, nir_channel(b, src[0], 0), nir_imm_int(b, 0)));
       break;
 
    case TGSI_OPCODE_ELSE:
