@@ -407,7 +407,8 @@ void util_blitter_stencil_fallback(struct blitter_context *blitter,
                                    const struct pipe_box *dstbox,
                                    struct pipe_resource *src,
                                    unsigned src_level,
-                                   const struct pipe_box *srcbox);
+                                   const struct pipe_box *srcbox,
+                                   const struct pipe_scissor_state *scissor);
 
 /* The functions below should be used to save currently bound constant state
  * objects inside a driver. The objects are automatically restored at the end
