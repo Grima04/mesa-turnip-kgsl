@@ -164,7 +164,9 @@ void print_asm(Program *program, std::vector<uint32_t>& binary,
       if (!l &&
           ((program->chip_class >= GFX9 && (binary[pos] & 0xffff8000) == 0xd1348000) || /* v_add_u32_e64 + clamp */
            (program->chip_class >= GFX10 && (binary[pos] & 0xffff8000) == 0xd7038000) || /* v_add_u16_e64 + clamp */
-           (program->chip_class <= GFX9 && (binary[pos] & 0xffff8000) == 0xd1268000)) /* v_add_u16_e64 + clamp */) {
+           (program->chip_class <= GFX9 && (binary[pos] & 0xffff8000) == 0xd1268000) || /* v_add_u16_e64 + clamp */
+           (program->chip_class >= GFX10 && (binary[pos] & 0xffff8000) == 0xd76d8000) || /* v_add3_u32 + clamp */
+           (program->chip_class == GFX9 && (binary[pos] & 0xffff8000) == 0xd1ff8000)) /* v_add3_u32 + clamp */) {
          out << "\tinteger addition + clamp";
          bool has_literal = program->chip_class >= GFX10 &&
                             (((binary[pos+1] & 0x1ff) == 0xff) || (((binary[pos+1] >> 9) & 0x1ff) == 0xff));
