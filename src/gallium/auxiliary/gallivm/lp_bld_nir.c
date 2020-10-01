@@ -573,9 +573,15 @@ static LLVMValueRef do_alu_action(struct lp_build_nir_context *bld_base,
    case nir_op_fge32:
       result = fcmp32(bld_base, PIPE_FUNC_GEQUAL, src_bit_size[0], src);
       break;
-   case nir_op_find_lsb:
-      result = lp_build_cttz(get_int_bld(bld_base, false, src_bit_size[0]), src[0]);
+   case nir_op_find_lsb: {
+      struct lp_build_context *int_bld = get_int_bld(bld_base, false, src_bit_size[0]);
+      result = lp_build_cttz(int_bld, src[0]);
+      if (src_bit_size[0] < 32)
+         result = LLVMBuildZExt(builder, result, bld_base->uint_bld.vec_type, "");
+      else if (src_bit_size[0] > 32)
+         result = LLVMBuildTrunc(builder, result, bld_base->uint_bld.vec_type, "");
       break;
+   }
    case nir_op_flog2:
       result = lp_build_log2_safe(&bld_base->base, src[0]);
       break;
@@ -799,6 +805,10 @@ static LLVMValueRef do_alu_action(struct lp_build_nir_context *bld_base,
       struct lp_build_context *uint_bld = get_int_bld(bld_base, true, src_bit_size[0]);
       result = lp_build_ctlz(uint_bld, src[0]);
       result = lp_build_sub(uint_bld, lp_build_const_int_vec(gallivm, uint_bld->type, src_bit_size[0] - 1), result);
+      if (src_bit_size[0] < 32)
+         result = LLVMBuildZExt(builder, result, bld_base->uint_bld.vec_type, "");
+      else
+         result = LLVMBuildTrunc(builder, result, bld_base->uint_bld.vec_type, "");
       break;
    }
    case nir_op_uge32:
