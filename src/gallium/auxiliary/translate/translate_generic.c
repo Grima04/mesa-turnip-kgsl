@@ -32,7 +32,7 @@
 
 #include "util/u_memory.h"
 #include "util/format/u_format.h"
-#include "util/half_float.h"
+#include "util/u_half.h"
 #include "util/u_math.h"
 #include "pipe/p_state.h"
 #include "translate.h"
@@ -110,7 +110,7 @@ emit_##NAME(const void *attrib, void *ptr)		\
 
 #define TO_64_FLOAT(x)   ((double) x)
 #define TO_32_FLOAT(x)   (x)
-#define TO_16_FLOAT(x)   _mesa_float_to_half(x)
+#define TO_16_FLOAT(x)   util_float_to_half(x)
 
 #define TO_8_USCALED(x)  ((unsigned char) x)
 #define TO_16_USCALED(x) ((unsigned short) x)

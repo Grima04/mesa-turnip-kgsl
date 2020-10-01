@@ -738,6 +738,7 @@ spec/arb_sparse_buffer/commit: skip
 spec/arb_sparse_buffer/minmax: skip
 spec/arb_tessellation_shader/arb_tessellation_shader-immediate-mode-draw-patches: skip
 spec/arb_texture_buffer_object/negative-unsupported: skip
+spec/arb_texture_compression_bptc/bptc-float-modes: fail
 spec/arb_texture_cube_map/copyteximage cube samples=16: skip
 spec/arb_texture_cube_map/copyteximage cube samples=2: skip
 spec/arb_texture_cube_map/copyteximage cube samples=32: skip
@@ -1655,8 +1656,8 @@ wgl/wgl-sanity: skip
 summary:
        name:  results
        ----  --------
-       pass:    23075
-       fail:      197
+       pass:    23074
+       fail:      198
       crash:        0
        skip:     1433
     timeout:        0

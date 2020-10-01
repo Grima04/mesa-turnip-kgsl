@@ -27,8 +27,7 @@
 #ifndef FD6_PERFCNTR_H_
 #define FD6_PERFCNTR_H_
 
-#include "util/half_float.h"
-#include "util/u_math.h"
+#include "util/u_half.h"
 #include "adreno_common.xml.h"
 #include "adreno_pm4.xml.h"
 #include "a6xx.xml.h"

@@ -360,7 +360,7 @@ def conversion_expr(src_channel,
 
     # Promote half to float
     if src_type == FLOAT and src_size == 16:
-        value = '_mesa_half_to_float(%s)' % value
+        value = 'util_half_to_float(%s)' % value
         src_size = 32
 
     # Special case for float <-> ubytes for more accurate results
@@ -436,7 +436,7 @@ def conversion_expr(src_channel,
             src_size = 32
 
         if dst_channel.size == 16:
-            value = '_mesa_float_to_float16_rtz(%s)' % value
+            value = 'util_float_to_half_rtz(%s)' % value
         elif dst_channel.size == 64 and src_size < 64:
             value = '(double)%s' % value
 
@@ -715,7 +715,7 @@ def generate(formats):
     print()
     print('#include "pipe/p_compiler.h"')
     print('#include "util/u_math.h"')
-    print('#include "util/half_float.h"')
+    print('#include "util/u_half.h"')
     print('#include "u_format.h"')
     print('#include "u_format_other.h"')
     print('#include "util/format_srgb.h"')

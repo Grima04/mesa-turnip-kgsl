@@ -29,7 +29,7 @@
 
 #include "vk_util.h"
 
-#include "util/half_float.h"
+#include "util/u_half.h"
 #include "util/format_srgb.h"
 #include "util/format_r11g11b10f.h"
 #include "util/format_rgb9e5.h"
@@ -1079,7 +1079,7 @@ bool radv_format_pack_clear_color(VkFormat format,
 			if (channel->size == 32) {
 				memcpy(&v, &value->float32[c], 4);
 			} else if(channel->size == 16) {
-				v = _mesa_float_to_float16_rtz(value->float32[c]);
+				v = util_float_to_half_rtz(value->float32[c]);
 			} else {
 				fprintf(stderr, "failed to fast clear for unhandled float size in format %d\n", format);
 				return false;
