@@ -239,7 +239,7 @@ static nir_ssa_def *
 emit_load(struct lower_io_state *state,
           nir_ssa_def *vertex_index, nir_variable *var, nir_ssa_def *offset,
           unsigned component, unsigned num_components, unsigned bit_size,
-          nir_alu_type type)
+          nir_alu_type dest_type)
 {
    nir_builder *b = &state->builder;
    const nir_shader *nir = b->shader;
@@ -302,7 +302,7 @@ emit_load(struct lower_io_state *state,
    if (load->intrinsic == nir_intrinsic_load_input ||
        load->intrinsic == nir_intrinsic_load_input_vertex ||
        load->intrinsic == nir_intrinsic_load_uniform)
-      nir_intrinsic_set_type(load, type);
+      nir_intrinsic_set_dest_type(load, dest_type);
 
    if (load->intrinsic != nir_intrinsic_load_uniform) {
       nir_io_semantics semantics = {0};
@@ -386,7 +386,7 @@ static void
 emit_store(struct lower_io_state *state, nir_ssa_def *data,
            nir_ssa_def *vertex_index, nir_variable *var, nir_ssa_def *offset,
            unsigned component, unsigned num_components,
-           nir_component_mask_t write_mask, nir_alu_type type)
+           nir_component_mask_t write_mask, nir_alu_type src_type)
 {
    nir_builder *b = &state->builder;
    nir_variable_mode mode = var->data.mode;
@@ -408,7 +408,7 @@ emit_store(struct lower_io_state *state, nir_ssa_def *data,
       nir_intrinsic_set_component(store, component);
 
    if (store->intrinsic == nir_intrinsic_store_output)
-      nir_intrinsic_set_type(store, type);
+      nir_intrinsic_set_src_type(store, src_type);
 
    nir_intrinsic_set_write_mask(store, write_mask);
 

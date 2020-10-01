@@ -90,8 +90,8 @@ bi_load(enum bi_class T, nir_intrinsic_instr *instr)
         if (info->has_dest)
                 load.dest = pan_dest_index(&instr->dest);
 
-        if (info->has_dest && nir_intrinsic_has_type(instr))
-                load.dest_type = nir_intrinsic_type(instr);
+        if (info->has_dest && nir_intrinsic_has_dest_type(instr))
+                load.dest_type = nir_intrinsic_dest_type(instr);
 
         nir_src *offset = nir_get_io_offset_src(instr);
 
@@ -136,7 +136,7 @@ bi_emit_frag_out(bi_context *ctx, nir_intrinsic_instr *instr)
                         },
                         .src_types = {
                                 nir_type_uint32,
-                                nir_intrinsic_type(instr)
+                                nir_intrinsic_src_type(instr)
                         },
                         .swizzle = {
                                 { 0 },
@@ -161,7 +161,7 @@ bi_emit_frag_out(bi_context *ctx, nir_intrinsic_instr *instr)
                         BIR_INDEX_PASS | BIFROST_SRC_CONST_HI,
                 },
                 .src_types = {
-                        nir_intrinsic_type(instr),
+                        nir_intrinsic_src_type(instr),
                         nir_type_uint32
                 },
                 .swizzle = {
@@ -189,7 +189,7 @@ bi_load_with_r61(enum bi_class T, nir_intrinsic_instr *instr)
         ld.src[2] = BIR_INDEX_REGISTER | 62;
         ld.src_types[1] = nir_type_uint32;
         ld.src_types[2] = nir_type_uint32;
-        ld.format = nir_intrinsic_type(instr);
+        ld.format = nir_intrinsic_dest_type(instr);
         return ld;
 }
 

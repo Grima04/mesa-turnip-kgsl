@@ -118,9 +118,12 @@ ir3_get_type_for_image_intrinsic(const nir_intrinsic_instr *instr)
 	switch (instr->intrinsic) {
 	case nir_intrinsic_image_load:
 	case nir_intrinsic_bindless_image_load:
+		type = nir_alu_type_get_base_type(nir_intrinsic_dest_type(instr));
+		break;
+
 	case nir_intrinsic_image_store:
 	case nir_intrinsic_bindless_image_store:
-		type = nir_alu_type_get_base_type(nir_intrinsic_type(instr));
+		type = nir_alu_type_get_base_type(nir_intrinsic_src_type(instr));
 		break;
 
 	case nir_intrinsic_image_atomic_add:

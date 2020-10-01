@@ -1344,10 +1344,13 @@ nir_visitor::visit(ir_call *ir)
 
          if (op == nir_intrinsic_image_deref_size) {
             instr->num_components = instr->dest.ssa.num_components;
-         } else if (op == nir_intrinsic_image_deref_load ||
-                    op == nir_intrinsic_image_deref_store) {
+         } else if (op == nir_intrinsic_image_deref_load) {
             instr->num_components = 4;
-            nir_intrinsic_set_type(instr,
+            nir_intrinsic_set_dest_type(instr,
+               nir_get_nir_type_for_glsl_base_type(type->sampled_type));
+         } else if (op == nir_intrinsic_image_deref_store) {
+            instr->num_components = 4;
+            nir_intrinsic_set_src_type(instr,
                nir_get_nir_type_for_glsl_base_type(type->sampled_type));
          }
 

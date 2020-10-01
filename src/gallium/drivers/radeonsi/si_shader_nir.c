@@ -154,8 +154,10 @@ static void scan_io_usage(struct si_shader_info *info, nir_intrinsic_instr *intr
                }
             }
 
-            if (nir_intrinsic_has_type(intr))
-               info->output_type[loc] = nir_intrinsic_type(intr);
+            if (nir_intrinsic_has_src_type(intr))
+               info->output_type[loc] = nir_intrinsic_src_type(intr);
+            else if (nir_intrinsic_has_dest_type(intr))
+               info->output_type[loc] = nir_intrinsic_dest_type(intr);
             else
                info->output_type[loc] = nir_type_float32;
 
@@ -166,11 +168,11 @@ static void scan_io_usage(struct si_shader_info *info, nir_intrinsic_instr *intr
                 semantic >= FRAG_RESULT_DATA0 && semantic <= FRAG_RESULT_DATA7) {
                unsigned index = semantic - FRAG_RESULT_DATA0;
 
-               if (nir_intrinsic_type(intr) == nir_type_float16)
+               if (nir_intrinsic_src_type(intr) == nir_type_float16)
                   info->output_color_types |= SI_TYPE_FLOAT16 << (index * 2);
-               else if (nir_intrinsic_type(intr) == nir_type_int16)
+               else if (nir_intrinsic_src_type(intr) == nir_type_int16)
                   info->output_color_types |= SI_TYPE_INT16 << (index * 2);
-               else if (nir_intrinsic_type(intr) == nir_type_uint16)
+               else if (nir_intrinsic_src_type(intr) == nir_type_uint16)
                   info->output_color_types |= SI_TYPE_UINT16 << (index * 2);
             }
          }

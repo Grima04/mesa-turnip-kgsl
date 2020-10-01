@@ -1736,7 +1736,7 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
                 nir_alu_type t =
                         (is_ubo || is_global || is_shared) ? nir_type_uint :
                         (is_interp) ? nir_type_float :
-                        nir_intrinsic_type(instr);
+                        nir_intrinsic_dest_type(instr);
 
                 t = nir_alu_type_get_base_type(t);
 
@@ -1948,7 +1948,7 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
                         st.load_store.arg_1 = 0x9E;
                         st.load_store.arg_2 = 0x1E;
 
-                        switch (nir_alu_type_get_base_type(nir_intrinsic_type(instr))) {
+                        switch (nir_alu_type_get_base_type(nir_intrinsic_src_type(instr))) {
                         case nir_type_uint:
                         case nir_type_bool:
                                 st.op = midgard_op_st_vary_32u;

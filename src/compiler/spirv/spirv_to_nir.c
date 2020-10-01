@@ -3237,7 +3237,7 @@ vtn_handle_image(struct vtn_builder *b, SpvOp opcode,
       intrin->src[4] = nir_src_for_ssa(image.lod);
 
       if (opcode == SpvOpImageWrite)
-         nir_intrinsic_set_type(intrin, nir_get_nir_type_for_glsl_type(value->type));
+         nir_intrinsic_set_src_type(intrin, nir_get_nir_type_for_glsl_type(value->type));
       break;
    }
 
@@ -3292,7 +3292,7 @@ vtn_handle_image(struct vtn_builder *b, SpvOp opcode,
       vtn_push_nir_ssa(b, w[2], result);
 
       if (opcode == SpvOpImageRead)
-         nir_intrinsic_set_type(intrin, nir_get_nir_type_for_glsl_type(type->type));
+         nir_intrinsic_set_dest_type(intrin, nir_get_nir_type_for_glsl_type(type->type));
    } else {
       nir_builder_instr_insert(&b->nb, &intrin->instr);
    }

@@ -837,7 +837,8 @@ print_intrinsic_instr(nir_intrinsic_instr *instr, print_state *state)
       [NIR_INTRINSIC_ALIGN_MUL] = "align_mul",
       [NIR_INTRINSIC_ALIGN_OFFSET] = "align_offset",
       [NIR_INTRINSIC_DESC_TYPE] = "desc_type",
-      [NIR_INTRINSIC_TYPE] = "type",
+      [NIR_INTRINSIC_SRC_TYPE] = "src_type",
+      [NIR_INTRINSIC_DEST_TYPE] = "dest_type",
       [NIR_INTRINSIC_SWIZZLE_MASK] = "swizzle_mask",
       [NIR_INTRINSIC_DRIVER_LOCATION] = "driver_location",
       [NIR_INTRINSIC_MEMORY_SEMANTICS] = "mem_semantics",
@@ -898,9 +899,15 @@ print_intrinsic_instr(nir_intrinsic_instr *instr, print_state *state)
          break;
       }
 
-      case NIR_INTRINSIC_TYPE: {
-         fprintf(fp, " type=");
-         print_alu_type(nir_intrinsic_type(instr), state);
+      case NIR_INTRINSIC_SRC_TYPE: {
+         fprintf(fp, " src_type=");
+         print_alu_type(nir_intrinsic_src_type(instr), state);
+         break;
+      }
+
+      case NIR_INTRINSIC_DEST_TYPE: {
+         fprintf(fp, " src_type=");
+         print_alu_type(nir_intrinsic_dest_type(instr), state);
          break;
       }
 

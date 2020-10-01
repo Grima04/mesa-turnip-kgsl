@@ -2295,9 +2295,16 @@ nir_rewrite_image_intrinsic(nir_intrinsic_instr *intrin, nir_ssa_def *src,
                             bool bindless)
 {
    enum gl_access_qualifier access = nir_intrinsic_access(intrin);
-   nir_alu_type type = nir_type_invalid;
-   if (nir_intrinsic_infos[intrin->intrinsic].index_map[NIR_INTRINSIC_TYPE])
-      type = nir_intrinsic_type(intrin);
+
+   /* Image intrinsics only have one of these */
+   assert(!nir_intrinsic_has_src_type(intrin) ||
+          !nir_intrinsic_has_dest_type(intrin));
+
+   nir_alu_type data_type = nir_type_invalid;
+   if (nir_intrinsic_has_src_type(intrin))
+      data_type = nir_intrinsic_src_type(intrin);
+   if (nir_intrinsic_has_dest_type(intrin))
+      data_type = nir_intrinsic_dest_type(intrin);
 
    switch (intrin->intrinsic) {
 #define CASE(op) \
@@ -2336,8 +2343,10 @@ nir_rewrite_image_intrinsic(nir_intrinsic_instr *intrin, nir_ssa_def *src,
    nir_intrinsic_set_image_array(intrin, glsl_sampler_type_is_array(deref->type));
    nir_intrinsic_set_access(intrin, access | var->data.access);
    nir_intrinsic_set_format(intrin, var->data.image.format);
-   if (nir_intrinsic_infos[intrin->intrinsic].index_map[NIR_INTRINSIC_TYPE])
-      nir_intrinsic_set_type(intrin, type);
+   if (nir_intrinsic_has_src_type(intrin))
+      nir_intrinsic_set_src_type(intrin, data_type);
+   if (nir_intrinsic_has_dest_type(intrin))
+      nir_intrinsic_set_dest_type(intrin, data_type);
 
    nir_instr_rewrite_src(&intrin->instr, &intrin->src[0],
                          nir_src_for_ssa(src));

@@ -694,8 +694,8 @@ ttn_src_for_file_and_index(struct ttn_compile *c, unsigned file, unsigned index,
 
       load = nir_intrinsic_instr_create(b->shader, op);
       if (op == nir_intrinsic_load_uniform) {
-         nir_intrinsic_set_type(load, src_is_float ? nir_type_float :
-                                                     nir_type_int);
+         nir_intrinsic_set_dest_type(load, src_is_float ? nir_type_float :
+                                                          nir_type_int);
       }
 
       load->num_components = 4;

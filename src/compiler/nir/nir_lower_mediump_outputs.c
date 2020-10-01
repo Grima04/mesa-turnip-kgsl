@@ -50,26 +50,26 @@ nir_lower_mediump_outputs(nir_shader *nir)
          if (!nir_intrinsic_io_semantics(intr).medium_precision)
             break; /* can't lower */
 
-         switch (nir_intrinsic_type(intr)) {
+         switch (nir_intrinsic_src_type(intr)) {
          case nir_type_float32:
             b.cursor = nir_before_instr(&intr->instr);
             nir_instr_rewrite_src(&intr->instr, &intr->src[0],
                   nir_src_for_ssa(nir_f2f16(&b, intr->src[0].ssa)));
-            nir_intrinsic_set_type(intr, nir_type_float16);
+            nir_intrinsic_set_src_type(intr, nir_type_float16);
             break;
 
          case nir_type_int32:
             b.cursor = nir_before_instr(&intr->instr);
             nir_instr_rewrite_src(&intr->instr, &intr->src[0],
                   nir_src_for_ssa(nir_i2i16(&b, intr->src[0].ssa)));
-            nir_intrinsic_set_type(intr, nir_type_int16);
+            nir_intrinsic_set_src_type(intr, nir_type_int16);
             break;
 
          case nir_type_uint32:
             b.cursor = nir_before_instr(&intr->instr);
             nir_instr_rewrite_src(&intr->instr, &intr->src[0],
                   nir_src_for_ssa(nir_u2u16(&b, intr->src[0].ssa)));
-            nir_intrinsic_set_type(intr, nir_type_uint16);
+            nir_intrinsic_set_src_type(intr, nir_type_uint16);
             break;
 
          default:;

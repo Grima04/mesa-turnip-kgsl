@@ -78,7 +78,7 @@ lima_nir_split_load_input_block(nir_block *block, nir_builder *b)
       new_intrin->num_components = nir_dest_num_components(alu->dest.dest);
       nir_intrinsic_set_base(new_intrin, nir_intrinsic_base(intrin));
       nir_intrinsic_set_component(new_intrin, nir_intrinsic_component(intrin) + swizzle);
-      nir_intrinsic_set_type(new_intrin, nir_intrinsic_type(intrin));
+      nir_intrinsic_set_dest_type(new_intrin, nir_intrinsic_dest_type(intrin));
 
       /* offset */
       nir_src_copy(&new_intrin->src[0], &intrin->src[0], new_intrin);

@@ -53,7 +53,7 @@ lower_impl(nir_function_impl *impl)
 
       nir_intrinsic_set_base(load, shader->num_inputs++);
       nir_intrinsic_set_component(load, 0);
-      nir_intrinsic_set_type(load, nir_type_float32);
+      nir_intrinsic_set_dest_type(load, nir_type_float32);
 
       nir_io_semantics load_sem = {0};
       load_sem.location = VERT_ATTRIB_EDGEFLAG;
@@ -70,7 +70,7 @@ lower_impl(nir_function_impl *impl)
 
       nir_intrinsic_set_base(store, shader->num_outputs++);
       nir_intrinsic_set_component(store, 0);
-      nir_intrinsic_set_type(store, nir_type_float32);
+      nir_intrinsic_set_src_type(store, nir_type_float32);
       nir_intrinsic_set_write_mask(store, 0x1);
 
       nir_io_semantics semantics = {0};

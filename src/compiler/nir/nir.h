@@ -1736,9 +1736,14 @@ typedef enum {
    NIR_INTRINSIC_DESC_TYPE,
 
    /**
-    * The nir_alu_type of a uniform/input/output
+    * The nir_alu_type of input data to a store
     */
-   NIR_INTRINSIC_TYPE,
+   NIR_INTRINSIC_SRC_TYPE,
+
+   /**
+    * The nir_alu_type of the data output from a load
+    */
+   NIR_INTRINSIC_DEST_TYPE,
 
    /**
     * The swizzle mask for the instructions
@@ -1936,7 +1941,8 @@ INTRINSIC_IDX_ACCESSORS(format, FORMAT, enum pipe_format)
 INTRINSIC_IDX_ACCESSORS(align_mul, ALIGN_MUL, unsigned)
 INTRINSIC_IDX_ACCESSORS(align_offset, ALIGN_OFFSET, unsigned)
 INTRINSIC_IDX_ACCESSORS(desc_type, DESC_TYPE, unsigned)
-INTRINSIC_IDX_ACCESSORS(type, TYPE, nir_alu_type)
+INTRINSIC_IDX_ACCESSORS(src_type, SRC_TYPE, nir_alu_type)
+INTRINSIC_IDX_ACCESSORS(dest_type, DEST_TYPE, nir_alu_type)
 INTRINSIC_IDX_ACCESSORS(swizzle_mask, SWIZZLE_MASK, unsigned)
 INTRINSIC_IDX_ACCESSORS(driver_location, DRIVER_LOCATION, unsigned)
 INTRINSIC_IDX_ACCESSORS(memory_semantics, MEMORY_SEMANTICS, nir_memory_semantics)

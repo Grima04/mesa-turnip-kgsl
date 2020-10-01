@@ -101,7 +101,7 @@ lower_cl_images_to_tex_impl(nir_function_impl *impl)
 
             assert(num_srcs == 3);
 
-            tex->dest_type = nir_intrinsic_type(intrin);
+            tex->dest_type = nir_intrinsic_dest_type(intrin);
             nir_ssa_dest_init(&tex->instr, &tex->dest, 4, 32, NULL);
             break;
          }
