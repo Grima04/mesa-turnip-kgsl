@@ -151,8 +151,8 @@ struct zink_context {
    struct zink_framebuffer *framebuffer;
    struct zink_framebuffer_clear fb_clears[PIPE_MAX_COLOR_BUFS + 1];
 
-   struct pipe_vertex_buffer buffers[PIPE_MAX_ATTRIBS];
-   uint32_t buffers_enabled_mask;
+   struct pipe_vertex_buffer vertex_buffers[PIPE_MAX_ATTRIBS];
+   uint32_t vertex_buffers_enabled_mask;
 
    void *sampler_states[PIPE_SHADER_TYPES][PIPE_MAX_SAMPLERS];
    VkSampler samplers[PIPE_SHADER_TYPES][PIPE_MAX_SAMPLERS];

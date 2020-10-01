@@ -505,7 +505,7 @@ zink_set_vertex_buffers(struct pipe_context *pctx,
 {
    struct zink_context *ctx = zink_context(pctx);
 
-   util_set_vertex_buffers_mask(ctx->buffers, &ctx->buffers_enabled_mask,
+   util_set_vertex_buffers_mask(ctx->vertex_buffers, &ctx->vertex_buffers_enabled_mask,
                                 buffers, start_slot, num_buffers,
                                 unbind_num_trailing_slots, take_ownership);
 }

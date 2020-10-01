@@ -230,7 +230,7 @@ zink_blit_begin(struct zink_context *ctx, enum zink_blit_flags flags)
    util_blitter_save_vertex_elements(ctx->blitter, ctx->element_state);
    util_blitter_save_viewport(ctx->blitter, ctx->vp_state.viewport_states);
 
-   util_blitter_save_vertex_buffer_slot(ctx->blitter, ctx->buffers);
+   util_blitter_save_vertex_buffer_slot(ctx->blitter, ctx->vertex_buffers);
    util_blitter_save_vertex_shader(ctx->blitter, ctx->gfx_stages[PIPE_SHADER_VERTEX]);
    util_blitter_save_tessctrl_shader(ctx->blitter, ctx->gfx_stages[PIPE_SHADER_TESS_CTRL]);
    util_blitter_save_tesseval_shader(ctx->blitter, ctx->gfx_stages[PIPE_SHADER_TESS_EVAL]);

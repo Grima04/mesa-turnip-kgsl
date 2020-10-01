@@ -122,7 +122,7 @@ barrier_vertex_buffers(struct zink_context *ctx)
 {
    const struct zink_vertex_elements_state *elems = ctx->element_state;
    for (unsigned i = 0; i < elems->hw_state.num_bindings; i++) {
-      struct pipe_vertex_buffer *vb = ctx->buffers + ctx->element_state->binding_map[i];
+      struct pipe_vertex_buffer *vb = ctx->vertex_buffers + ctx->element_state->binding_map[i];
       assert(vb);
       if (vb->buffer.resource) {
          struct zink_resource *res = zink_resource(vb->buffer.resource);
@@ -167,7 +167,7 @@ zink_bind_vertex_buffers(struct zink_batch *batch, struct zink_context *ctx)
       return;
 
    for (unsigned i = 0; i < elems->hw_state.num_bindings; i++) {
-      struct pipe_vertex_buffer *vb = ctx->buffers + ctx->element_state->binding_map[i];
+      struct pipe_vertex_buffer *vb = ctx->vertex_buffers + ctx->element_state->binding_map[i];
       assert(vb);
       if (vb->buffer.resource) {
          struct zink_resource *res = zink_resource(vb->buffer.resource);
@@ -711,7 +711,7 @@ zink_draw_vbo(struct pipe_context *pctx,
    if (!zink_screen(pctx->screen)->info.have_EXT_extended_dynamic_state) {
       for (unsigned i = 0; i < ctx->element_state->hw_state.num_bindings; i++) {
          unsigned binding = ctx->element_state->binding_map[i];
-         const struct pipe_vertex_buffer *vb = ctx->buffers + binding;
+         const struct pipe_vertex_buffer *vb = ctx->vertex_buffers + binding;
          if (ctx->gfx_pipeline_state.bindings[i].stride != vb->stride) {
             ctx->gfx_pipeline_state.bindings[i].stride = vb->stride;
             ctx->gfx_pipeline_state.dirty = true;
