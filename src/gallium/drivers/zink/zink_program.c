@@ -212,8 +212,12 @@ create_desc_set_layout(VkDevice dev,
       switch (i) {
       case ZINK_DESCRIPTOR_TYPE_UBO:
          if (type_map[VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER] != -1) {
-            num_type_sizes = 1;
-            type_sizes[0] = sizes[type_map[VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER]];
+            type_sizes[num_type_sizes] = sizes[type_map[VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER]];
+            num_type_sizes++;
+         }
+         if (type_map[VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC] != -1) {
+            type_sizes[num_type_sizes] = sizes[type_map[VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC]];
+            num_type_sizes++;
          }
          break;
       case ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW:

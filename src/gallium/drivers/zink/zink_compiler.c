@@ -639,13 +639,13 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
                (also it's just easier)
              */
             for (unsigned i = 0; i < (ubo_array ? glsl_get_aoa_size(var->type) : 1); i++) {
-
+               VkDescriptorType vktype = !ubo_index ? VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC : VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
                int binding = zink_binding(nir->info.stage,
-                                          VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                                          vktype,
                                           cur_ubo++);
                ret->bindings[ztype][ret->num_bindings[ztype]].index = ubo_index++;
                ret->bindings[ztype][ret->num_bindings[ztype]].binding = binding;
-               ret->bindings[ztype][ret->num_bindings[ztype]].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+               ret->bindings[ztype][ret->num_bindings[ztype]].type = vktype;
                ret->bindings[ztype][ret->num_bindings[ztype]].size = 1;
                ret->ubos_used |= (1 << ret->bindings[ztype][ret->num_bindings[ztype]].index);
                ret->num_bindings[ztype]++;
