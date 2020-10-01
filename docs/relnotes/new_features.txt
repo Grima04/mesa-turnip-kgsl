@@ -8,3 +8,4 @@ VK_PRESENT_MODE_FIFO_RELAXED on X11
 GLX_EXT_swap_control for DRI2 and DRI3
 GLX_EXT_swap_control_tear for DRI3
 VK_KHR_copy_commands2 on RADV
+NGG GS support in ACO
