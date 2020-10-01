@@ -199,7 +199,7 @@ lower_alu_conversion(nir_builder *b, nir_instr *instr, UNUSED void *_data)
 }
 
 bool
-nir_lower_alu_covnersion_to_intrinsic(nir_shader *shader)
+nir_lower_alu_conversion_to_intrinsic(nir_shader *shader)
 {
    return nir_shader_lower_instructions(shader, is_alu_conversion,
                                         lower_alu_conversion, NULL);
