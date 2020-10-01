@@ -227,3 +227,40 @@ BEGIN_TEST(assembler.long_jump.constaddr)
 
    finish_assembler_test();
 END_TEST
+
+BEGIN_TEST(assembler.v_add3)
+   for (unsigned i = GFX9; i <= GFX10; i++) {
+      if (!setup_cs(NULL, (chip_class)i))
+         continue;
+
+      //~gfx9>> v_add3_u32 v0, 0, 0, 0 ; d1ff0000 02010080
+      //~gfx10>> v_add3_u32 v0, 0, 0, 0 ; d76d0000 02010080
+      aco_ptr<VOP3A_instruction> add3{create_instruction<VOP3A_instruction>(aco_opcode::v_add3_u32, Format::VOP3A, 3, 1)};
+      add3->operands[0] = Operand(0u);
+      add3->operands[1] = Operand(0u);
+      add3->operands[2] = Operand(0u);
+      add3->definitions[0] = Definition(PhysReg(0), v1);
+      bld.insert(std::move(add3));
+
+      finish_assembler_test();
+   }
+END_TEST
+
+BEGIN_TEST(assembler.v_add3_clamp)
+   for (unsigned i = GFX9; i <= GFX10; i++) {
+      if (!setup_cs(NULL, (chip_class)i))
+         continue;
+
+      //~gfx9>> integer addition + clamp ; d1ff8000 02010080
+      //~gfx10>> integer addition + clamp ; d76d8000 02010080
+      aco_ptr<VOP3A_instruction> add3{create_instruction<VOP3A_instruction>(aco_opcode::v_add3_u32, Format::VOP3A, 3, 1)};
+      add3->operands[0] = Operand(0u);
+      add3->operands[1] = Operand(0u);
+      add3->operands[2] = Operand(0u);
+      add3->definitions[0] = Definition(PhysReg(0), v1);
+      add3->clamp = 1;
+      bld.insert(std::move(add3));
+
+      finish_assembler_test();
+   }
+END_TEST
