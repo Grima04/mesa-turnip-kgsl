@@ -2911,4 +2911,7 @@ util_blitter_stencil_fallback(struct blitter_context *blitter,
    util_blitter_restore_render_cond(blitter);
    util_blitter_restore_constant_buffer_state(blitter);
    util_blitter_unset_running_flag(blitter);
+
+   pipe_surface_reference(&dst_view, NULL);
+   pipe_sampler_view_reference(&src_view, NULL);
 }
