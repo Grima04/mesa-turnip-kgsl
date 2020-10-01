@@ -32,6 +32,8 @@
 
 #else
 
+#include "util/fossilize_db.h"
+
 /* Number of bits to mask off from a cache key to get an index. */
 #define CACHE_INDEX_KEY_BITS 16
 
@@ -48,6 +50,8 @@ struct disk_cache {
 
    /* Thread queue for compressing and writing cache entries to disk */
    struct util_queue cache_queue;
+
+   struct foz_db foz_db;
 
    /* Seed for rand, which is used to pick a random directory */
    uint64_t seed_xorshift128plus[2];
@@ -90,7 +94,8 @@ struct disk_cache_put_job {
 };
 
 char *
-disk_cache_generate_cache_dir(void *mem_ctx);
+disk_cache_generate_cache_dir(void *mem_ctx, const char *gpu_name,
+                              const char *driver_id);
 
 void
 disk_cache_evict_lru_item(struct disk_cache *cache);
@@ -99,10 +104,17 @@ void
 disk_cache_evict_item(struct disk_cache *cache, char *filename);
 
 void *
+disk_cache_load_item_foz(struct disk_cache *cache, const cache_key key,
+                         size_t *size);
+
+void *
 disk_cache_load_item(struct disk_cache *cache, char *filename, size_t *size);
 
 char *
 disk_cache_get_cache_filename(struct disk_cache *cache, const cache_key key);
+
+bool
+disk_cache_write_item_to_disk_foz(struct disk_cache_put_job *dc_job);
 
 void
 disk_cache_write_item_to_disk(struct disk_cache_put_job *dc_job,
@@ -110,6 +122,10 @@ disk_cache_write_item_to_disk(struct disk_cache_put_job *dc_job,
 
 bool
 disk_cache_enabled(void);
+
+bool
+disk_cache_load_cache_index(void *mem_ctx, struct disk_cache *cache,
+                            char *path);
 
 bool
 disk_cache_mmap_cache_index(void *mem_ctx, struct disk_cache *cache,

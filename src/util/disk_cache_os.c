@@ -841,7 +841,8 @@ disk_cache_write_item_to_disk(struct disk_cache_put_job *dc_job,
  *   <pwd.pw_dir>/.cache/mesa_shader_cache
  */
 char *
-disk_cache_generate_cache_dir(void *mem_ctx)
+disk_cache_generate_cache_dir(void *mem_ctx, const char *gpu_name,
+                              const char *driver_id)
 {
    char *cache_dir_name = CACHE_DIR_NAME;
    if (env_var_as_boolean("MESA_DISK_CACHE_SINGLE_FILE", false))
@@ -905,6 +906,16 @@ disk_cache_generate_cache_dir(void *mem_ctx)
          return NULL;
    }
 
+   if (env_var_as_boolean("MESA_DISK_CACHE_SINGLE_FILE", false)) {
+      path = concatenate_and_mkdir(mem_ctx, path, driver_id);
+      if (!path)
+         return NULL;
+
+      path = concatenate_and_mkdir(mem_ctx, path, gpu_name);
+      if (!path)
+         return NULL;
+   }
+
    return path;
 }
 
@@ -925,6 +936,32 @@ disk_cache_enabled()
       return false;
 
    return true;
+}
+
+void *
+disk_cache_load_item_foz(struct disk_cache *cache, const cache_key key,
+                         size_t *size)
+{
+   return foz_read_entry(&cache->foz_db, key, size);
+}
+
+bool
+disk_cache_write_item_to_disk_foz(struct disk_cache_put_job *dc_job)
+{
+   return foz_write_entry(&dc_job->cache->foz_db, dc_job->key, dc_job->data,
+                          dc_job->size);
+}
+
+bool
+disk_cache_load_cache_index(void *mem_ctx, struct disk_cache *cache,
+                            char *path)
+{
+   path = ralloc_asprintf(mem_ctx, "%s/foz_cache", cache->path);
+   if (path == NULL)
+      return false;
+
+   /* Load cache index into a hash map (from fossilise files) */
+   return foz_prepare(&cache->foz_db, path);
 }
 
 bool
