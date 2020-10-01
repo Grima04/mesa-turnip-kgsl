@@ -87,17 +87,17 @@ class CrosServoRun:
                 self.cpu_write("\016")
                 break
 
-        tftp_failures = 0
-        for line in self.serial_queue_lines():
-            if re.search("---. end Kernel panic", line):
-                return 1
-
             # The Cheza boards have issues with failing to bring up power to
             # the system sometimes, possibly dependent on ambient temperature
             # in the farm.
             if re.search("POWER_GOOD not seen in time", line):
                 print("Detected intermittent poweron failure, restarting run...")
                 return 2
+
+        tftp_failures = 0
+        for line in self.serial_queue_lines():
+            if re.search("---. end Kernel panic", line):
+                return 1
 
             # The Cheza firmware seems to occasionally get stuck looping in
             # this error state during TFTP booting, possibly based on amount of
