@@ -10686,12 +10686,6 @@ Temp merged_wave_info_to_mask(isel_context *ctx, unsigned i)
    return lanecount_to_mask(ctx, count);
 }
 
-bool ngg_early_prim_export(isel_context *ctx)
-{
-   /* TODO: Check edge flags, and if they are written, return false. (Needed for OpenGL, not for Vulkan.) */
-   return true;
-}
-
 Temp ngg_max_vertex_count(isel_context *ctx)
 {
    Builder bld(ctx->program, ctx->block);
@@ -10801,7 +10795,7 @@ void ngg_emit_prim_export(isel_context *ctx, unsigned num_vertices_per_primitive
         false /* compressed */, true/* done */, false /* valid mask */);
 }
 
-void ngg_emit_nogs_gsthreads(isel_context *ctx)
+void ngg_nogs_export_primitives(isel_context *ctx)
 {
    /* Emit the things that NGG GS threads need to do, for shaders that don't have SW GS.
     * These must always come before VS exports.
@@ -10860,28 +10854,9 @@ void ngg_emit_nogs_gsthreads(isel_context *ctx)
    end_divergent_if(ctx, &ic);
 }
 
-void ngg_emit_nogs_output(isel_context *ctx)
+void ngg_nogs_export_vertices(isel_context *ctx)
 {
-   /* Emits NGG GS output, for stages that don't have SW GS. */
-
-   if_context ic;
    Builder bld(ctx->program, ctx->block);
-   bool late_prim_export = !ngg_early_prim_export(ctx);
-
-   /* NGG streamout is currently disabled by default. */
-   assert(!ctx->args->shader_info->so.num_outputs);
-
-   if (late_prim_export) {
-      /* VS exports are output to registers in a predecessor block. Emit phis to get them into this block. */
-      create_export_phis(ctx);
-      /* Do what we need to do in the GS threads. */
-      ngg_emit_nogs_gsthreads(ctx);
-
-      /* What comes next should be executed on ES threads. */
-      Temp is_es_thread = merged_wave_info_to_mask(ctx, 0);
-      begin_divergent_if_then(ctx, &ic, is_es_thread);
-      bld.reset(ctx->block);
-   }
 
    /* Export VS outputs */
    ctx->block->kind |= block_kind_export_end;
@@ -10905,7 +10880,7 @@ void ngg_emit_nogs_output(isel_context *ctx)
          /* TES: Just use the patch ID as the primitive ID. */
          prim_id = get_arg(ctx, ctx->args->ac.tes_patch_id);
       } else {
-         unreachable("unsupported NGG shader stage.");
+         unreachable("unsupported NGG non-GS shader stage.");
       }
 
       ctx->outputs.mask[VARYING_SLOT_PRIMITIVE_ID] |= 0x1;
@@ -10913,12 +10888,32 @@ void ngg_emit_nogs_output(isel_context *ctx)
 
       export_vs_varying(ctx, VARYING_SLOT_PRIMITIVE_ID, false, nullptr);
    }
+}
 
-   if (late_prim_export) {
-      begin_divergent_if_else(ctx, &ic);
-      end_divergent_if(ctx, &ic);
-      bld.reset(ctx->block);
-   }
+void ngg_nogs_prelude(isel_context *ctx)
+{
+   ngg_emit_sendmsg_gs_alloc_req(ctx);
+
+   if (ctx->ngg_nogs_early_prim_export)
+      ngg_nogs_export_primitives(ctx);
+}
+
+void ngg_nogs_late_export_finale(isel_context *ctx)
+{
+   assert(!ctx->ngg_nogs_early_prim_export);
+
+   /* VS exports are output to registers in a predecessor block. Emit phis to get them into this block. */
+   create_export_phis(ctx);
+   /* Export VS/TES primitives. */
+   ngg_nogs_export_primitives(ctx);
+
+   /* What comes next must be executed on ES threads. */
+   if_context ic;
+   Temp is_es_thread = merged_wave_info_to_mask(ctx, 0);
+   begin_divergent_if_then(ctx, &ic, is_es_thread);
+   ngg_nogs_export_vertices(ctx);
+   begin_divergent_if_else(ctx, &ic);
+   end_divergent_if(ctx, &ic);
 }
 
 } /* end namespace */
@@ -10950,12 +10945,8 @@ void select_program(Program *program,
          split_arguments(&ctx, startpgm);
       }
 
-      if (ngg_no_gs) {
-         ngg_emit_sendmsg_gs_alloc_req(&ctx);
-
-         if (ngg_early_prim_export(&ctx))
-            ngg_emit_nogs_gsthreads(&ctx);
-      }
+      if (ngg_no_gs)
+         ngg_nogs_prelude(&ctx);
 
       /* In a merged VS+TCS HS, the VS implementation can be completely empty. */
       nir_function_impl *func = nir_shader_get_entrypoint(nir);
@@ -10994,8 +10985,8 @@ void select_program(Program *program,
       if (ctx.stage & hw_vs) {
          create_vs_exports(&ctx);
          ctx.block->kind |= block_kind_export_end;
-      } else if (ngg_no_gs && ngg_early_prim_export(&ctx)) {
-         ngg_emit_nogs_output(&ctx);
+      } else if (ngg_no_gs && ctx.ngg_nogs_early_prim_export) {
+         ngg_nogs_export_vertices(&ctx);
       } else if (nir->info.stage == MESA_SHADER_GEOMETRY) {
          Builder bld(ctx.program, ctx.block);
          bld.barrier(aco_opcode::p_barrier,
@@ -11015,8 +11006,8 @@ void select_program(Program *program,
          end_divergent_if(&ctx, &ic_merged_wave_info);
       }
 
-      if (ngg_no_gs && !ngg_early_prim_export(&ctx))
-         ngg_emit_nogs_output(&ctx);
+      if (ngg_no_gs && !ctx.ngg_nogs_early_prim_export)
+         ngg_nogs_late_export_finale(&ctx);
 
       if (i == 0 && ctx.stage == vertex_tess_control_hs && ctx.tcs_in_out_eq) {
          /* Outputs of the previous stage are inputs to the next stage */

@@ -474,6 +474,13 @@ setup_vs_variables(isel_context *ctx, nir_shader *nir)
       radv_vs_output_info *outinfo = &ctx->program->info->vs.outinfo;
       setup_vs_output_info(ctx, nir, outinfo->export_prim_id,
                            ctx->options->key.vs_common_out.export_clip_dists, outinfo);
+
+      /* TODO: NGG streamout */
+      if (ctx->stage & hw_ngg_gs)
+         assert(!ctx->args->shader_info->so.num_outputs);
+
+      /* TODO: check if the shader writes edge flags (not in Vulkan) */
+      ctx->ngg_nogs_early_prim_export = true;
    } else if (ctx->stage == vertex_ls) {
       ctx->tcs_num_inputs = ctx->program->info->vs.num_linked_outputs;
    }
@@ -558,6 +565,13 @@ setup_tes_variables(isel_context *ctx, nir_shader *nir)
       radv_vs_output_info *outinfo = &ctx->program->info->tes.outinfo;
       setup_vs_output_info(ctx, nir, outinfo->export_prim_id,
                            ctx->options->key.vs_common_out.export_clip_dists, outinfo);
+
+      /* TODO: NGG streamout */
+      if (ctx->stage & hw_ngg_gs)
+         assert(!ctx->args->shader_info->so.num_outputs);
+
+      /* Tess eval shaders can't write edge flags, so this can be always true. */
+      ctx->ngg_nogs_early_prim_export = true;
    }
 }
 

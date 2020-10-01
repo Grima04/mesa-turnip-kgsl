@@ -93,6 +93,7 @@ struct isel_context {
    Temp persp_centroid, linear_centroid;
 
    /* GS inputs */
+   bool ngg_nogs_early_prim_export = false;
    Temp gs_wave_id;
 
    /* VS output information */
