@@ -623,8 +623,8 @@ _handle_v_load_store(struct vtn_builder *b, enum OpenCLstd_Entrypoints opcode,
       type = vtn_get_value_type(b, w[5]);
    unsigned a = load ? 0 : 1;
 
-   const struct glsl_type *dest_type = type->type;
-   unsigned components = glsl_get_vector_elements(dest_type);
+   enum glsl_base_type base_type = glsl_get_base_type(type->type);
+   unsigned components = glsl_get_vector_elements(type->type);
 
    nir_ssa_def *offset = vtn_get_nir_ssa(b, w[5 + a]);
    struct vtn_value *p = vtn_value(b, w[6 + a], vtn_value_type_pointer);
@@ -643,7 +643,7 @@ _handle_v_load_store(struct vtn_builder *b, enum OpenCLstd_Entrypoints opcode,
          comps[i] = vtn_local_load(b, arr_deref, p->type->access);
          ncomps[i] = comps[i]->def;
       } else {
-         struct vtn_ssa_value *ssa = vtn_create_ssa_value(b, glsl_scalar_type(glsl_get_base_type(dest_type)));
+         struct vtn_ssa_value *ssa = vtn_create_ssa_value(b, glsl_scalar_type(base_type));
          struct vtn_ssa_value *val = vtn_ssa_value(b, w[5]);
          ssa->def = nir_channel(&b->nb, val->def, i);
          vtn_local_store(b, ssa, arr_deref, p->type->access);
