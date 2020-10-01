@@ -88,7 +88,7 @@ struct zink_program {
    VkDescriptorPool descpool[ZINK_DESCRIPTOR_TYPES];
    VkDescriptorSetLayout dsl[ZINK_DESCRIPTOR_TYPES];
    unsigned num_descriptors[ZINK_DESCRIPTOR_TYPES];
-   struct zink_descriptor_set *null_set;
+   struct zink_descriptor_set *last_set[ZINK_DESCRIPTOR_TYPES];
 };
 
 struct zink_gfx_program {
