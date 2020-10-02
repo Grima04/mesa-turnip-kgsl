@@ -2112,6 +2112,19 @@ LLVMValueRef ac_build_image_opcode(struct ac_llvm_context *ctx, struct ac_image_
    bool load = a->opcode == ac_image_sample || a->opcode == ac_image_gather4 ||
                a->opcode == ac_image_load || a->opcode == ac_image_load_mip;
    LLVMTypeRef coord_type = sample ? ctx->f32 : ctx->i32;
+   uint8_t dmask = a->dmask;
+   LLVMTypeRef data_type;
+   char data_type_str[8];
+
+   if (atomic) {
+      data_type = ctx->i32;
+   } else if (a->opcode == ac_image_store || a->opcode == ac_image_store_mip) {
+      /* Image stores might have been shrinked using the format. */
+      data_type = LLVMTypeOf(a->data[0]);
+      dmask = (1 << ac_get_llvm_num_components(a->data[0])) - 1;
+   } else {
+      data_type = a->d16 ? ctx->v4f16 : ctx->v4f32;
+   }
 
    if (atomic || a->opcode == ac_image_store || a->opcode == ac_image_store_mip) {
       args[num_args++] = a->data[0];
@@ -2120,7 +2133,7 @@ LLVMValueRef ac_build_image_opcode(struct ac_llvm_context *ctx, struct ac_image_
    }
 
    if (!atomic)
-      args[num_args++] = LLVMConstInt(ctx->i32, a->dmask, false);
+      args[num_args++] = LLVMConstInt(ctx->i32, dmask, false);
 
    if (a->offset)
       args[num_args++] = ac_to_integer(ctx, a->offset);
@@ -2223,18 +2236,6 @@ LLVMValueRef ac_build_image_opcode(struct ac_llvm_context *ctx, struct ac_image_
       break;
    default:
       unreachable("invalid dim");
-   }
-
-   LLVMTypeRef data_type;
-   char data_type_str[8];
-
-   if (atomic) {
-      data_type = ctx->i32;
-   } else if (a->opcode == ac_image_store || a->opcode == ac_image_store_mip) {
-      /* Image stores might have been shrinked using the format. */
-      data_type = LLVMTypeOf(a->data[0]);
-   } else {
-      data_type = a->d16 ? ctx->v4f16 : ctx->v4f32;
    }
 
    ac_build_type_name_for_intr(data_type, data_type_str, sizeof(data_type_str));
