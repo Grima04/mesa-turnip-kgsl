@@ -25,6 +25,7 @@
 
 #include "zink_batch.h"
 #include "zink_context.h"
+#include "zink_program.h"
 #include "zink_screen.h"
 
 #include "vulkan/wsi/wsi_common.h"
@@ -77,6 +78,12 @@ zink_resource_destroy(struct pipe_screen *pscreen,
       util_range_destroy(&res->valid_buffer_range);
    } else
       vkDestroyImage(screen->dev, res->image, NULL);
+
+   util_dynarray_foreach(&res->desc_set_refs, struct zink_resource **, ref) {
+      if (**ref == res)
+         **ref = NULL;
+   }
+   util_dynarray_fini(&res->desc_set_refs);
 
    vkFreeMemory(screen->dev, res->mem, NULL);
    FREE(res);
@@ -391,6 +398,7 @@ resource_create(struct pipe_screen *pscreen,
                                              &res->dt_stride);
    }
 
+   util_dynarray_init(&res->desc_set_refs, NULL);
    return &res->base;
 
 fail:
@@ -825,6 +833,13 @@ zink_resource_setup_transfer_layouts(struct zink_context *ctx, struct zink_resou
                                   VK_ACCESS_TRANSFER_WRITE_BIT,
                                   VK_PIPELINE_STAGE_TRANSFER_BIT);
    }
+}
+
+void
+zink_resource_desc_set_add(struct zink_resource *res, struct zink_descriptor_set *zds, unsigned idx)
+{
+   zds->resources[idx] = res;
+   util_dynarray_append(&res->desc_set_refs, struct zink_resource**, &zds->resources[idx]);
 }
 
 void

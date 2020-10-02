@@ -563,6 +563,10 @@ zink_create_gfx_program(struct zink_context *ctx,
    if (!prog->layout)
       goto fail;
 
+   prog->base.desc_sets = _mesa_hash_table_create(NULL, NULL, _mesa_key_pointer_equal);
+   if (!prog->base.desc_sets)
+      goto fail;
+
    util_dynarray_init(&prog->base.alloc_desc_sets, NULL);
    return prog;
 
@@ -664,6 +668,10 @@ zink_create_compute_program(struct zink_context *ctx, struct zink_shader *shader
    if (!comp->layout)
       goto fail;
 
+   comp->base.desc_sets = _mesa_hash_table_create(NULL, NULL, _mesa_key_pointer_equal);
+   if (!comp->base.desc_sets)
+      goto fail;
+
    util_dynarray_init(&comp->base.alloc_desc_sets, NULL);
 
    return comp;
@@ -672,6 +680,14 @@ fail:
    if (comp)
       zink_destroy_compute_program(screen, comp);
    return NULL;
+}
+
+static inline void
+desc_set_invalidate_resources(struct zink_program *pg, struct zink_descriptor_set *zds)
+{
+   for (unsigned i = 0; i < pg->num_descriptors; i++)
+      zds->resources[i] = NULL;
+   zds->valid = false;
 }
 
 static struct zink_descriptor_set *
@@ -700,9 +716,13 @@ allocate_desc_set(struct zink_screen *screen, struct zink_program *pg, unsigned 
 
    struct zink_descriptor_set *alloc = ralloc_array(pg, struct zink_descriptor_set, bucket_size);
    assert(alloc);
+   struct zink_resource **resources = rzalloc_array(pg, struct zink_resource*, pg->num_descriptors * bucket_size);
+   assert(resources);
    for (unsigned i = 0; i < bucket_size; i ++) {
       struct zink_descriptor_set *zds = &alloc[i];
       pipe_reference_init(&zds->reference, 1);
+      zds->valid = false;
+      zds->resources = &resources[i * pg->num_descriptors];
       zds->desc_set = desc_set[i];
       if (i > 0)
          util_dynarray_append(&pg->alloc_desc_sets, struct zink_descriptor_set *, zds);
@@ -713,39 +733,80 @@ allocate_desc_set(struct zink_screen *screen, struct zink_program *pg, unsigned 
 struct zink_descriptor_set *
 zink_program_allocate_desc_set(struct zink_context *ctx,
                                struct zink_batch *batch,
-                               struct zink_program *pg)
+                               struct zink_program *pg,
+                               uint32_t hash,
+                               bool *cache_hit)
 {
+   *cache_hit = false;
    struct zink_descriptor_set *zds;
    struct zink_screen *screen = zink_screen(ctx->base.screen);
+   struct hash_entry *he = _mesa_hash_table_search_pre_hashed(pg->desc_sets, hash, (void*)(uintptr_t)hash);
+   if (he) {
+       zds = (void*)he->data;
+       /* this shouldn't happen, but if we somehow get a cache hit on an invalidated, active desc set then
+        * we probably should just crash here rather than later
+        */
+       assert(zds->valid);
+   }
+   if (he) {
+      zds = (void*)he->data;
+      *cache_hit = zds->valid;
+      if (zink_batch_add_desc_set(batch, pg, hash, zds))
+         batch->descs_used += pg->num_descriptors;
+      return zds;
+   }
 
    if (util_dynarray_num_elements(&pg->alloc_desc_sets, struct zink_descriptor_set *)) {
       /* grab one off the allocated array */
       zds = util_dynarray_pop(&pg->alloc_desc_sets, struct zink_descriptor_set *);
+      //printf("POP%u %p %u\n", batch->batch_id, pg, hash);
       goto out;
    }
 
-   unsigned descs_used = pg->descs_used;
+   unsigned descs_used = _mesa_hash_table_num_entries(pg->desc_sets);
    if (descs_used + pg->num_descriptors > ZINK_DEFAULT_MAX_DESCS) {
       batch = zink_flush_batch(ctx, batch);
       zink_batch_reference_program(batch, pg);
-      return zink_program_allocate_desc_set(ctx, batch, pg);
+      return zink_program_allocate_desc_set(ctx, batch, pg, hash, cache_hit);
    }
 
    zds = allocate_desc_set(screen, pg, descs_used);
+   //printf("NEW%u %p %u (%u total - %u / %u)\n", batch->batch_id, pg, hash,
+          //_mesa_hash_table_num_entries(pg->desc_sets),
+          //_mesa_hash_table_num_entries(pg->desc_sets));
 out:
-   if (zink_batch_add_desc_set(batch, pg, zds))
+   zds->valid = true;
+   _mesa_hash_table_insert_pre_hashed(pg->desc_sets, hash, (void*)(uintptr_t)hash, zds);
+   if (zink_batch_add_desc_set(batch, pg, hash, zds))
       batch->descs_used += pg->num_descriptors;
 
    return zds;
 }
 
 void
-zink_program_invalidate_desc_set(struct zink_program *pg, struct zink_descriptor_set *zds)
+zink_program_recycle_desc_set(struct zink_program *pg, uint32_t hash, struct zink_descriptor_set *zds)
 {
+   /* if desc set is still in use by a batch, don't recache */
    uint32_t refcount = p_atomic_read(&zds->reference.count);
-   /* refcount > 1 means this is currently in use, so we can't recycle it yet */
-   if (refcount == 1)
-      util_dynarray_append(&pg->alloc_desc_sets, struct zink_descriptor_set *, zds);
+   if (refcount != 1)
+      return;
+   struct hash_entry *he = _mesa_hash_table_search_pre_hashed(pg->desc_sets, hash, (void*)(uintptr_t)hash);
+   if (!he)
+      /* desc sets can be used multiple times in the same batch */
+      return;
+   _mesa_hash_table_remove(pg->desc_sets, he);
+   util_dynarray_append(&pg->alloc_desc_sets, struct zink_descriptor_set *, zds);
+}
+
+static void
+zink_program_clear_desc_sets(struct zink_program *pg, struct hash_table *ht)
+{
+ //printf("CLEAR %p\n", pg);
+   hash_table_foreach(ht, entry) {
+      struct zink_descriptor_set *zds = entry->data;
+      desc_set_invalidate_resources(pg, zds);
+   }
+   _mesa_hash_table_clear(ht, NULL);
 }
 
 static void
@@ -786,6 +847,8 @@ zink_destroy_gfx_program(struct zink_screen *screen,
    }
    zink_shader_cache_reference(screen, &prog->shader_cache, NULL);
 
+   zink_program_clear_desc_sets((struct zink_program*)prog, prog->base.desc_sets);
+   _mesa_hash_table_destroy(prog->base.desc_sets, NULL);
    if (prog->base.descpool)
       vkDestroyDescriptorPool(screen->dev, prog->base.descpool, NULL);
 
@@ -818,6 +881,8 @@ zink_destroy_compute_program(struct zink_screen *screen,
    _mesa_hash_table_destroy(comp->pipelines, NULL);
    zink_shader_cache_reference(screen, &comp->shader_cache, NULL);
 
+   zink_program_clear_desc_sets((struct zink_program*)comp, comp->base.desc_sets);
+   _mesa_hash_table_destroy(comp->base.desc_sets, NULL);
    if (comp->base.descpool)
       vkDestroyDescriptorPool(screen->dev, comp->base.descpool, NULL);
 

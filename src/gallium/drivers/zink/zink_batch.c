@@ -52,16 +52,16 @@ zink_reset_batch(struct zink_context *ctx, struct zink_batch *batch)
 
    hash_table_foreach(batch->programs, entry) {
       struct zink_program *pg = (struct zink_program*)entry->key;
-      struct set *desc_sets = (struct set*)entry->data;
-      set_foreach(desc_sets, sentry) {
-         struct zink_descriptor_set *zds = (void*)sentry->key;
+      struct hash_table *desc_sets = (struct hash_table*)entry->data;
+      hash_table_foreach(desc_sets, sentry) {
+         struct zink_descriptor_set *zds = (void*)sentry->data;
          /* reset descriptor pools when no batch is using this program to avoid
           * having some inactive program hogging a billion descriptors
           */
          pipe_reference(&zds->reference, NULL);
-         zink_program_invalidate_desc_set(pg, zds);
+         zink_program_recycle_desc_set(pg, sentry->hash, zds);
       }
-      _mesa_set_destroy(desc_sets, NULL);
+      _mesa_hash_table_destroy(desc_sets, NULL);
       if (batch->batch_id == ZINK_COMPUTE_BATCH_ID) {
          struct zink_compute_program *comp = (struct zink_compute_program*)entry->key;
          zink_compute_program_reference(screen, &comp, NULL);
@@ -228,21 +228,21 @@ zink_batch_reference_program(struct zink_batch *batch,
 {
    struct hash_entry *entry = _mesa_hash_table_search(batch->programs, pg);
    if (!entry) {
-      entry = _mesa_hash_table_insert(batch->programs, pg, _mesa_pointer_set_create(NULL));
+      entry = _mesa_hash_table_insert(batch->programs, pg, _mesa_hash_table_create(batch->programs, NULL, _mesa_key_pointer_equal));
       pipe_reference(NULL, &pg->reference);
    }
    batch->has_work = true;
 }
 
 bool
-zink_batch_add_desc_set(struct zink_batch *batch, struct zink_program *pg, struct zink_descriptor_set *zds)
+zink_batch_add_desc_set(struct zink_batch *batch, struct zink_program *pg, uint32_t hash, struct zink_descriptor_set *zds)
 {
    struct hash_entry *entry = _mesa_hash_table_search(batch->programs, pg);
    assert(entry);
-   struct set *desc_sets = (void*)entry->data;
-   if (!_mesa_set_search(desc_sets, zds)) {
+   struct hash_table *desc_sets = (void*)entry->data;
+   if (!_mesa_hash_table_search_pre_hashed(desc_sets, hash, (void*)(uintptr_t)hash)) {
       pipe_reference(NULL, &zds->reference);
-      _mesa_set_add(desc_sets, zds);
+      _mesa_hash_table_insert_pre_hashed(desc_sets, hash, (void*)(uintptr_t)hash, zds);
       return true;
    }
    return false;
