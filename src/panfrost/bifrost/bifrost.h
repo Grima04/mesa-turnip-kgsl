@@ -92,10 +92,11 @@ struct bifrost_header {
          * hardware may not. Clear for unconditional branches. */
         unsigned next_clause_prefetch : 1;
 
-        // This bit is set when the next clause writes to the data register of some
-        // previous clause.
-        unsigned datareg_writebarrier: 1;
-        unsigned datareg : 6;
+        /* If set, a barrier will be inserted after the clause waiting for all
+         * message passing instructions to read their staging registers, such
+         * that it is safe for the next clause to write them. */
+        unsigned staging_barrier: 1;
+        unsigned staging_register : 6;
         unsigned scoreboard_deps: 8;
         unsigned scoreboard_index: 3;
         enum bifrost_clause_type clause_type: 4;

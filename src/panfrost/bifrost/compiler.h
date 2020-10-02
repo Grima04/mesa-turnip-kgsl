@@ -406,10 +406,10 @@ typedef struct {
         bool next_clause_prefetch;
 
         /* Assigned data register */
-        unsigned data_register;
+        unsigned staging_register;
 
         /* Corresponds to the usual bit but shifted by a clause */
-        bool data_register_write_barrier;
+        bool staging_barrier;
 
         /* Constants read by this clause. ISA limit. Must satisfy:
          *

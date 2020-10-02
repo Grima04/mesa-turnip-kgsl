@@ -29,24 +29,24 @@
 #include "compiler.h"
 
 static inline void
-bi_set_data_register(bi_clause *clause, unsigned idx)
+bi_set_staging_register(bi_clause *clause, unsigned idx)
 {
         assert(idx & BIR_INDEX_REGISTER);
         unsigned reg = idx & ~BIR_INDEX_REGISTER;
         assert(reg <= 63);
-        clause->data_register = reg;
+        clause->staging_register = reg;
 }
 
 static inline void
-bi_read_data_register(bi_clause *clause, bi_instruction *ins)
+bi_read_staging_register(bi_clause *clause, bi_instruction *ins)
 {
-        bi_set_data_register(clause, ins->src[0]);
+        bi_set_staging_register(clause, ins->src[0]);
 }
 
 static inline void
-bi_write_data_register(bi_clause *clause, bi_instruction *ins)
+bi_write_staging_register(bi_clause *clause, bi_instruction *ins)
 {
-        bi_set_data_register(clause, ins->dest);
+        bi_set_staging_register(clause, ins->dest);
 }
 
 static inline enum bifrost_packed_src

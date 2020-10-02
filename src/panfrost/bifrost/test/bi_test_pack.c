@@ -121,7 +121,7 @@ bit_test_single(struct panfrost_device *dev,
 
                 if (i) {
                         clauses[i]->dependencies = 1 << (~i & 1);
-                        clauses[i]->data_register_write_barrier = true;
+                        clauses[i]->staging_barrier = true;
                 }
         }
 

@@ -208,7 +208,7 @@ bi_schedule(bi_context *ctx)
                         else {
                                 /* Rule: first instructions cannot have write barriers */
                                 u->dependencies |= (1 << last_id);
-                                u->data_register_write_barrier = true;
+                                u->staging_barrier = true;
                         }
 
                         if (ins->type == BI_ATEST)

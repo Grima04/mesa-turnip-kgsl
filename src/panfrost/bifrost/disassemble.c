@@ -101,8 +101,8 @@ static void dump_header(FILE *fp, struct bifrost_header header, bool verbose)
                 fprintf(fp, ") ");
         }
 
-        if (header.datareg_writebarrier)
-                fprintf(fp, "data-reg-barrier ");
+        if (header.staging_barrier)
+                fprintf(fp, "osrb ");
 
         if (!header.no_end_of_shader)
                 fprintf(fp, "eos ");
@@ -688,10 +688,13 @@ static bool dump_clause(FILE *fp, uint32_t *words, unsigned *size, unsigned offs
                         dump_regs(fp, regs, i == 0);
                 }
 
-                bi_disasm_fma(fp, instrs[i].fma_bits, &regs, &next_regs, header.datareg,
-                              offset, &consts, i + 1 == num_instrs);
-                bi_disasm_add(fp, instrs[i].add_bits, &regs, &next_regs, header.datareg,
-                              offset, &consts, i + 1 == num_instrs);
+                bi_disasm_fma(fp, instrs[i].fma_bits, &regs, &next_regs,
+                                header.staging_register, offset, &consts,
+                                i + 1 == num_instrs);
+
+                bi_disasm_add(fp, instrs[i].add_bits, &regs, &next_regs,
+                                header.staging_register, offset, &consts,
+                                i + 1 == num_instrs);
         }
         fprintf(fp, "}\n");
 

@@ -516,15 +516,15 @@ def pack_variant(opname, states):
             st.append('({} << {})'.format(name, pos))
 
     if staging == 'r':
-        common_body.append('bi_read_data_register(clause, ins);')
+        common_body.append('bi_read_staging_register(clause, ins);')
     elif staging == 'w':
-        common_body.append('bi_write_data_register(clause, ins);')
+        common_body.append('bi_write_staging_register(clause, ins);')
     elif staging == '':
         pass
     else:
         assert staging == 'rw'
         # XXX: register allocation requirement (!)
-        common_body.append('bi_read_data_register(clause, ins);')
+        common_body.append('bi_read_staging_register(clause, ins);')
         common_body.append('assert(ins->src[0] == ins->dest);')
 
     # After this, we have to branch off, since deriveds *do* vary based on state.

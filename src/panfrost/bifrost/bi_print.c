@@ -415,8 +415,8 @@ bi_print_clause(bi_clause *clause, FILE *fp)
         if (!clause->next_clause_prefetch)
                fprintf(fp, " no_prefetch");
 
-        if (clause->data_register_write_barrier)
-                fprintf(fp, " drwb");
+        if (clause->staging_barrier)
+                fprintf(fp, " osrb");
 
         fprintf(fp, "\n");
 
