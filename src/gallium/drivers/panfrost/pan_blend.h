@@ -30,6 +30,8 @@
 
 #include "util/hash_table.h"
 
+struct panfrost_bo;
+
 /* An internal blend shader descriptor, from the compiler */
 
 struct panfrost_blend_shader {
