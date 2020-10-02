@@ -103,8 +103,12 @@ struct bifrost_header {
          * that it is safe for the next clause to write them. */
         unsigned staging_barrier: 1;
         unsigned staging_register : 6;
-        unsigned scoreboard_deps: 8;
-        unsigned scoreboard_index: 3;
+
+        /* Slots to wait on and slot to be used for message passing
+         * instructions respectively */
+        unsigned dependency_wait : 8;
+        unsigned dependency_slot : 3;
+
         enum bifrost_message_type message_type : 5;
         enum bifrost_message_type next_message_type : 5;
 } __attribute__((packed));

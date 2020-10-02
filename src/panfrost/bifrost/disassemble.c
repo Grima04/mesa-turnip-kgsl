@@ -75,7 +75,7 @@ struct bifrost_reg_ctrl {
 
 static void dump_header(FILE *fp, struct bifrost_header header, bool verbose)
 {
-        fprintf(fp, "id(%du) ", header.scoreboard_index);
+        fprintf(fp, "ds(%du) ", header.dependency_slot);
 
         if (header.message_type != 0) {
                 const char *name = bi_message_type_name(header.message_type);
@@ -84,21 +84,6 @@ static void dump_header(FILE *fp, struct bifrost_header header, bool verbose)
                         fprintf(fp, "unk%u ", header.message_type);
                 else
                         fprintf(fp, "%s ", name);
-        }
-
-        if (header.scoreboard_deps != 0) {
-                fprintf(fp, "next-wait(");
-                bool first = true;
-                for (unsigned i = 0; i < 8; i++) {
-                        if (header.scoreboard_deps & (1 << i)) {
-                                if (!first) {
-                                        fprintf(fp, ", ");
-                                }
-                                fprintf(fp, "%d", i);
-                                first = false;
-                        }
-                }
-                fprintf(fp, ") ");
         }
 
         if (header.staging_barrier)
@@ -146,6 +131,20 @@ static void dump_header(FILE *fp, struct bifrost_header header, bool verbose)
 
         if (header.next_message_type)
                 fprintf(fp, "next_%s ", bi_message_type_name(header.next_message_type));
+        if (header.dependency_wait != 0) {
+                fprintf(fp, "dwb(");
+                bool first = true;
+                for (unsigned i = 0; i < 8; i++) {
+                        if (header.dependency_wait & (1 << i)) {
+                                if (!first) {
+                                        fprintf(fp, ", ");
+                                }
+                                fprintf(fp, "%d", i);
+                                first = false;
+                        }
+                }
+                fprintf(fp, ") ");
+        }
 
         fprintf(fp, "\n");
 }

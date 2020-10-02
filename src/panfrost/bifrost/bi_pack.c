@@ -41,8 +41,8 @@ bi_pack_header(bi_clause *clause, bi_clause *next_1, bi_clause *next_2, bool is_
         /* next_dependencies are the union of the dependencies of successors'
          * dependencies */
 
-        unsigned scoreboard_deps = next_1 ? next_1->dependencies : 0;
-        scoreboard_deps |= next_2 ? next_2->dependencies : 0;
+        unsigned dependency_wait = next_1 ? next_1->dependencies : 0;
+        dependency_wait |= next_2 ? next_2->dependencies : 0;
 
         struct bifrost_header header = {
                 .back_to_back = clause->back_to_back,
@@ -51,8 +51,8 @@ bi_pack_header(bi_clause *clause, bi_clause *next_1, bi_clause *next_2, bool is_
                 .next_clause_prefetch = clause->next_clause_prefetch,
                 .staging_barrier = clause->staging_barrier,
                 .staging_register = clause->staging_register,
-                .scoreboard_deps = scoreboard_deps,
-                .scoreboard_index = clause->scoreboard_id,
+                .dependency_wait = dependency_wait,
+                .dependency_slot = clause->scoreboard_id,
                 .message_type = clause->message_type,
                 .next_message_type = next_1 ? next_1->message_type : 0,
                 .suppress_inf = true,
