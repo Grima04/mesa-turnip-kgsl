@@ -34,6 +34,7 @@ struct pipe_reference;
 struct zink_context;
 struct zink_fence;
 struct zink_framebuffer;
+struct zink_program;
 struct zink_render_pass;
 struct zink_resource;
 struct zink_sampler_view;
@@ -85,7 +86,7 @@ zink_batch_reference_sampler_view(struct zink_batch *batch,
 
 void
 zink_batch_reference_program(struct zink_batch *batch,
-                             struct pipe_reference *prog);
+                             struct zink_program *pg);
 
 void
 zink_batch_reference_surface(struct zink_batch *batch,

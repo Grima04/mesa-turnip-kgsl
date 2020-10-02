@@ -520,9 +520,9 @@ update_descriptors(struct zink_context *ctx, struct zink_screen *screen, bool is
    }
 
    if (is_compute)
-      zink_batch_reference_program(batch, &ctx->curr_compute->base.reference);
+      zink_batch_reference_program(batch, &ctx->curr_compute->base);
    else
-      zink_batch_reference_program(batch, &ctx->curr_program->base.reference);
+      zink_batch_reference_program(batch, &ctx->curr_program->base);
 
    if (batch->descs_used + num_descriptors >= batch->max_descs) {
       if (is_compute)
