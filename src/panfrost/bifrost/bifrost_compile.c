@@ -763,9 +763,8 @@ emit_alu(bi_context *ctx, nir_alu_instr *instr)
         assert((alu.type != BI_SPECIAL) || !(ctx->quirks & BIFROST_NO_FAST_OP));
 
         unsigned comps = nir_dest_num_components(instr->dest.dest);
-
-        if (alu.type != BI_COMBINE)
-                assert(comps <= MAX2(1, 32 / comps));
+        bool vector = comps > MAX2(1, 32 / nir_dest_bit_size(instr->dest.dest));
+        assert(!vector || alu.type == BI_COMBINE || alu.type == BI_MOV);
 
         if (!instr->dest.dest.is_ssa) {
                 for (unsigned i = 0; i < comps; ++i)
@@ -924,6 +923,15 @@ emit_alu(bi_context *ctx, nir_alu_instr *instr)
 
         default:
                 break;
+        }
+
+        if (alu.type == BI_MOV && vector) {
+                alu.type = BI_COMBINE;
+
+                for (unsigned i = 0; i < comps; ++i) {
+                        alu.src[i] = alu.src[0];
+                        alu.swizzle[i][0] = instr->src[0].swizzle[i];
+                }
         }
 
         if (alu.type == BI_CSEL) {
