@@ -2477,8 +2477,7 @@ struct radv_shader_variant_key;
 void radv_nir_shader_info_pass(const struct nir_shader *nir,
 			       const struct radv_pipeline_layout *layout,
 			       const struct radv_shader_variant_key *key,
-			       struct radv_shader_info *info,
-			       bool use_llvm);
+			       struct radv_shader_info *info);
 
 void radv_nir_shader_info_init(struct radv_shader_info *info);
 
