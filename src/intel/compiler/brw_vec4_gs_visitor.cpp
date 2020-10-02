@@ -628,7 +628,7 @@ brw_compile_gs(const struct brw_compiler *compiler, void *log_data,
    prog_data->invocations = nir->info.gs.invocations;
 
    if (compiler->devinfo->gen >= 8)
-      prog_data->static_vertex_count = nir_gs_count_vertices(nir);
+      nir_gs_count_vertices(nir, &prog_data->static_vertex_count, 1u);
 
    if (compiler->devinfo->gen >= 7) {
       if (nir->info.gs.output_primitive == GL_POINTS) {

@@ -44,16 +44,21 @@ as_set_vertex_and_primitive_count(nir_instr *instr)
 }
 
 /**
- * If a geometry shader emits a constant number of vertices, return the
- * number of vertices.  Otherwise, return -1 (unknown).
+ * Count the number of vertices emitted by a geometry shader per stream.
+ * If a constant number of vertices is emitted, the output is set to
+ * that number, otherwise it is unknown at compile time and the
+ * result will be -1.
  *
  * This only works if you've used nir_lower_gs_intrinsics() to do vertex
  * counting at the NIR level.
  */
-int
-nir_gs_count_vertices(const nir_shader *shader)
+void
+nir_gs_count_vertices(const nir_shader *shader, int *out_vtxcnt, unsigned num_streams)
 {
-   int count = -1;
+   assert(num_streams);
+
+   int vtxcnt_arr[4] = {-1, -1, -1, -1};
+   bool cnt_found[4] = {false, false, false, false};
 
    nir_foreach_function(function, shader) {
       if (!function->impl)
@@ -70,22 +75,31 @@ nir_gs_count_vertices(const nir_shader *shader)
             if (!intrin)
                continue;
 
-            /* We've found a non-constant value.  Bail. */
-            if (!nir_src_is_const(intrin->src[0]))
-               return -1;
+            unsigned stream = nir_intrinsic_stream_id(intrin);
+            if (stream >= num_streams)
+               continue;
 
-            if (count == -1)
-               count = nir_src_as_int(intrin->src[0]);
+            int vtxcnt = -1;
+
+            /* If the number of vertices is compile-time known, we use that,
+             * otherwise we leave it at -1 which means that it's unknown.
+             */
+            if (nir_src_is_const(intrin->src[0]))
+               vtxcnt = nir_src_as_int(intrin->src[0]);
 
             /* We've found contradictory set_vertex_and_primitive_count intrinsics.
              * This can happen if there are early-returns in main() and
              * different paths emit different numbers of vertices.
              */
-            if (count != nir_src_as_int(intrin->src[0]))
-               return -1;
+            if (cnt_found[stream] && vtxcnt != vtxcnt_arr[stream])
+               vtxcnt = -1;
+
+            vtxcnt_arr[stream] = vtxcnt;
+            cnt_found[stream] = true;
          }
       }
    }
 
-   return count;
+   if (out_vtxcnt)
+      memcpy(out_vtxcnt, vtxcnt_arr, num_streams * sizeof(int));
 }
