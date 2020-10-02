@@ -3904,6 +3904,15 @@ Temp wave_count_in_threadgroup(isel_context *ctx)
 Temp ngg_gs_vertex_lds_addr(isel_context *ctx, Temp vertex_idx)
 {
    Builder bld(ctx->program, ctx->block);
+   unsigned write_stride_2exp = ffs(ctx->shader->info.gs.vertices_out) - 1;
+
+   /* gs_max_out_vertices = 2^(write_stride_2exp) * some odd number */
+   if (write_stride_2exp) {
+      Temp row = bld.vop2(aco_opcode::v_lshrrev_b32, bld.def(v1), Operand(5u), vertex_idx);
+      Temp swizzle = bld.vop2(aco_opcode::v_and_b32, bld.def(v1), Operand((1u << write_stride_2exp) - 1), row);
+      vertex_idx = bld.vop2(aco_opcode::v_xor_b32, bld.def(v1), vertex_idx, swizzle);
+   }
+
    Temp vertex_idx_bytes = bld.v_mul24_imm(bld.def(v1), vertex_idx, ctx->ngg_gs_emit_vtx_bytes);
    return bld.vadd32(bld.def(v1), vertex_idx_bytes, Operand(ctx->ngg_gs_emit_addr));
 }
