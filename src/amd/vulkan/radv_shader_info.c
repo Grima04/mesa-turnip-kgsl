@@ -31,23 +31,6 @@ static void mark_sampler_desc(const nir_variable *var,
 	info->desc_set_used_mask |= (1u << var->data.descriptor_set);
 }
 
-static void mark_ls_output(struct radv_shader_info *info,
-			   uint32_t param, int num_slots)
-{
-	uint64_t mask = (1ull << num_slots) - 1ull;
-	info->vs.ls_outputs_written |= (mask << param);
-}
-
-static void mark_tess_output(struct radv_shader_info *info,
-			     bool is_patch, uint32_t param, int num_slots)
-{
-	uint64_t mask = (1ull << num_slots) - 1ull;
-	if (is_patch)
-		info->tcs.patch_outputs_written |= (mask << param);
-	else
-		info->tcs.outputs_written |= (mask << param);
-}
-
 static void
 gather_intrinsic_load_input_info(const nir_shader *nir,
 			       const nir_intrinsic_instr *instr,
@@ -423,18 +406,6 @@ gather_info_input_decl(const nir_shader *nir, const nir_variable *var,
 }
 
 static void
-gather_info_output_decl_ls(const nir_shader *nir, const nir_variable *var,
-			   struct radv_shader_info *info)
-{
-	int idx = var->data.location;
-	unsigned param = shader_io_get_unique_index(idx);
-	int num_slots = glsl_count_attribute_slots(var->type, false);
-	if (var->data.compact)
-		num_slots = DIV_ROUND_UP(var->data.location_frac + glsl_get_length(var->type), 4);
-	mark_ls_output(info, param, num_slots);
-}
-
-static void
 gather_info_output_decl_ps(const nir_shader *nir, const nir_variable *var,
 			   struct radv_shader_info *info)
 {
@@ -497,9 +468,8 @@ gather_info_output_decl(const nir_shader *nir, const nir_variable *var,
 		    !key->vs_common_out.as_es)
 			vs_info = &info->vs.outinfo;
 
-		if (key->vs_common_out.as_ls)
-			gather_info_output_decl_ls(nir, var, info);
-		else if (key->vs_common_out.as_ngg)
+		/* TODO: Adjust as_ls/as_nng. */
+		if (!key->vs_common_out.as_ls && key->vs_common_out.as_ngg)
 			gather_info_output_decl_gs(nir, var, info);
 		break;
 	case MESA_SHADER_GEOMETRY:
@@ -510,21 +480,6 @@ gather_info_output_decl(const nir_shader *nir, const nir_variable *var,
 		if (!key->vs_common_out.as_es)
 			vs_info = &info->tes.outinfo;
 		break;
-       case MESA_SHADER_TESS_CTRL: {
-               unsigned param = shader_io_get_unique_index(var->data.location);
-               const struct glsl_type *type = var->type;
-
-               if (!var->data.patch)
-                       type = glsl_get_array_element(var->type);
-
-               unsigned slots =
-                       var->data.compact ? DIV_ROUND_UP(var->data.location_frac + glsl_get_length(type), 4)
-                                         : glsl_count_attribute_slots(type, false);
-
-               mark_tess_output(info, var->data.patch, param, slots);
-               break;
-       }
-
 	default:
 		break;
 	}

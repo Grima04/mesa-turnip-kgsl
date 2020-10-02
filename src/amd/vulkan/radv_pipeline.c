@@ -2544,7 +2544,6 @@ radv_fill_shader_keys(struct radv_device *device,
 
 	if (nir[MESA_SHADER_TESS_CTRL]) {
 		keys[MESA_SHADER_VERTEX].vs_common_out.as_ls = true;
-		keys[MESA_SHADER_TESS_CTRL].tcs.num_inputs = 0;
 		keys[MESA_SHADER_TESS_CTRL].tcs.input_vertices = key->tess_input_vertices;
 		keys[MESA_SHADER_TESS_CTRL].tcs.primitive_mode = nir[MESA_SHADER_TESS_EVAL]->info.tess.primitive_mode;
 
@@ -2733,8 +2732,6 @@ radv_fill_shader_info(struct radv_pipeline *pipeline,
 
 		keys[MESA_SHADER_TESS_EVAL].tes.num_patches =
 			infos[MESA_SHADER_TESS_CTRL].tcs.num_patches;
-		keys[MESA_SHADER_TESS_EVAL].tes.tcs_num_outputs =
-			util_last_bit64(infos[MESA_SHADER_TESS_CTRL].tcs.outputs_written);
 
 		filled_stages |= (1 << MESA_SHADER_VERTEX);
 		filled_stages |= (1 << MESA_SHADER_TESS_CTRL);
@@ -2762,16 +2759,9 @@ radv_fill_shader_info(struct radv_pipeline *pipeline,
 	while (active_stages) {
 		int i = u_bit_scan(&active_stages);
 
-		if (i == MESA_SHADER_TESS_CTRL) {
-			keys[MESA_SHADER_TESS_CTRL].tcs.num_inputs =
-				util_last_bit64(infos[MESA_SHADER_VERTEX].vs.ls_outputs_written);
-		}
-
 		if (i == MESA_SHADER_TESS_EVAL) {
 			keys[MESA_SHADER_TESS_EVAL].tes.num_patches =
 				infos[MESA_SHADER_TESS_CTRL].tcs.num_patches;
-			keys[MESA_SHADER_TESS_EVAL].tes.tcs_num_outputs =
-				util_last_bit64(infos[MESA_SHADER_TESS_CTRL].tcs.outputs_written);
 		}
 
 		radv_nir_shader_info_init(&infos[i]);
@@ -3104,7 +3094,6 @@ VkResult radv_create_shaders(struct radv_pipeline *pipeline,
 		}
 		modules[MESA_SHADER_VERTEX] = NULL;
 		keys[MESA_SHADER_TESS_EVAL].tes.num_patches = pipeline->shaders[MESA_SHADER_TESS_CTRL]->info.tcs.num_patches;
-		keys[MESA_SHADER_TESS_EVAL].tes.tcs_num_outputs = util_last_bit64(pipeline->shaders[MESA_SHADER_TESS_CTRL]->info.tcs.outputs_written);
 	}
 
 	if (device->physical_device->rad_info.chip_class >= GFX9 && modules[MESA_SHADER_GEOMETRY]) {
@@ -3128,12 +3117,8 @@ VkResult radv_create_shaders(struct radv_pipeline *pipeline,
 
 	for (int i = 0; i < MESA_SHADER_STAGES; ++i) {
 		if(modules[i] && !pipeline->shaders[i]) {
-			if (i == MESA_SHADER_TESS_CTRL) {
-				keys[MESA_SHADER_TESS_CTRL].tcs.num_inputs = util_last_bit64(pipeline->shaders[MESA_SHADER_VERTEX]->info.vs.ls_outputs_written);
-			}
 			if (i == MESA_SHADER_TESS_EVAL) {
 				keys[MESA_SHADER_TESS_EVAL].tes.num_patches = pipeline->shaders[MESA_SHADER_TESS_CTRL]->info.tcs.num_patches;
-				keys[MESA_SHADER_TESS_EVAL].tes.tcs_num_outputs = util_last_bit64(pipeline->shaders[MESA_SHADER_TESS_CTRL]->info.tcs.outputs_written);
 			}
 
 			radv_start_feedback(stage_feedbacks[i]);

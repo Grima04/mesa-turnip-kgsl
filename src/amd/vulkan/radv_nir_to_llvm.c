@@ -149,8 +149,8 @@ get_tcs_in_patch_stride(struct radv_shader_context *ctx)
 static LLVMValueRef
 get_tcs_out_patch_stride(struct radv_shader_context *ctx)
 {
-	uint32_t num_tcs_outputs = util_last_bit64(ctx->args->shader_info->tcs.outputs_written);
-	uint32_t num_tcs_patch_outputs = util_last_bit64(ctx->args->shader_info->tcs.patch_outputs_written);
+	uint32_t num_tcs_outputs = ctx->args->shader_info->tcs.num_linked_outputs;
+	uint32_t num_tcs_patch_outputs = ctx->args->shader_info->tcs.num_linked_patch_outputs;
 	uint32_t output_vertex_size = num_tcs_outputs * 16;
 	uint32_t pervertex_output_patch_size = ctx->shader->info.tess.tcs_vertices_out * output_vertex_size;
 	uint32_t output_patch_size = pervertex_output_patch_size + num_tcs_patch_outputs * 16;
@@ -161,7 +161,7 @@ get_tcs_out_patch_stride(struct radv_shader_context *ctx)
 static LLVMValueRef
 get_tcs_out_vertex_stride(struct radv_shader_context *ctx)
 {
-	uint32_t num_tcs_outputs = util_last_bit64(ctx->args->shader_info->tcs.outputs_written);
+	uint32_t num_tcs_outputs = ctx->args->shader_info->tcs.num_linked_outputs;
 	uint32_t output_vertex_size = num_tcs_outputs * 16;
 	output_vertex_size /= 4;
 	return LLVMConstInt(ctx->ac.i32, output_vertex_size, false);
@@ -189,7 +189,7 @@ get_tcs_out_patch0_patch_data_offset(struct radv_shader_context *ctx)
 	uint32_t input_patch_size = ctx->args->options->key.tcs.input_vertices * input_vertex_size;
 	uint32_t output_patch0_offset = input_patch_size;
 
-	uint32_t num_tcs_outputs = util_last_bit64(ctx->args->shader_info->tcs.outputs_written);
+	uint32_t num_tcs_outputs = ctx->args->shader_info->tcs.num_linked_outputs;
 	uint32_t output_vertex_size = num_tcs_outputs * 16;
 	uint32_t pervertex_output_patch_size = ctx->shader->info.tess.tcs_vertices_out * output_vertex_size;
 	unsigned num_patches = ctx->tcs_num_patches;
@@ -404,9 +404,9 @@ static LLVMValueRef get_non_vertex_index_offset(struct radv_shader_context *ctx)
 	uint32_t num_patches = ctx->tcs_num_patches;
 	uint32_t num_tcs_outputs;
 	if (ctx->stage == MESA_SHADER_TESS_CTRL)
-		num_tcs_outputs = util_last_bit64(ctx->args->shader_info->tcs.outputs_written);
+		num_tcs_outputs = ctx->args->shader_info->tcs.num_linked_outputs;
 	else
-		num_tcs_outputs = ctx->args->options->key.tes.tcs_num_outputs;
+		num_tcs_outputs = ctx->args->shader_info->tes.num_linked_inputs;
 
 	uint32_t output_vertex_size = num_tcs_outputs * 16;
 	uint32_t pervertex_output_patch_size = ctx->shader->info.tess.tcs_vertices_out * output_vertex_size;
@@ -2031,7 +2031,7 @@ static void
 handle_ls_outputs_post(struct radv_shader_context *ctx)
 {
 	LLVMValueRef vertex_id = ctx->rel_auto_id;
-	uint32_t num_tcs_inputs = util_last_bit64(ctx->args->shader_info->vs.ls_outputs_written);
+	uint32_t num_tcs_inputs = ctx->args->shader_info->vs.num_linked_outputs;
 	LLVMValueRef vertex_dw_stride = LLVMConstInt(ctx->ac.i32, num_tcs_inputs * 4, false);
 	LLVMValueRef base_dw_addr = LLVMBuildMul(ctx->ac.builder, vertex_id,
 						 vertex_dw_stride, "");
@@ -3945,12 +3945,9 @@ LLVMModuleRef ac_translate_nir_to_llvm(struct ac_llvm_compiler *ac_llvm,
 			ctx.abi.load_tess_varyings = load_tcs_varyings;
 			ctx.abi.load_patch_vertices_in = load_patch_vertices_in;
 			ctx.abi.store_tcs_outputs = store_tcs_output;
-			if (shader_count == 1)
-				ctx.tcs_num_inputs = args->options->key.tcs.num_inputs;
-			else
-				ctx.tcs_num_inputs = util_last_bit64(args->shader_info->vs.ls_outputs_written);
-			unsigned tcs_num_outputs = util_last_bit64(ctx.args->shader_info->tcs.outputs_written);
-			unsigned tcs_num_patch_outputs = util_last_bit64(ctx.args->shader_info->tcs.patch_outputs_written);
+			ctx.tcs_num_inputs = ctx.args->shader_info->tcs.num_linked_inputs;
+			unsigned tcs_num_outputs = ctx.args->shader_info->tcs.num_linked_outputs;
+			unsigned tcs_num_patch_outputs = ctx.args->shader_info->tcs.num_linked_patch_outputs;
 			ctx.tcs_num_patches =
 				get_tcs_num_patches(
 					ctx.args->options->key.tcs.input_vertices,
@@ -4061,8 +4058,8 @@ LLVMModuleRef ac_translate_nir_to_llvm(struct ac_llvm_compiler *ac_llvm,
 		}
 
 		if (shaders[i]->info.stage == MESA_SHADER_TESS_CTRL) {
-			unsigned tcs_num_outputs = util_last_bit64(ctx.args->shader_info->tcs.outputs_written);
-			unsigned tcs_num_patch_outputs = util_last_bit64(ctx.args->shader_info->tcs.patch_outputs_written);
+			unsigned tcs_num_outputs = ctx.args->shader_info->tcs.num_linked_outputs;
+			unsigned tcs_num_patch_outputs = ctx.args->shader_info->tcs.num_linked_patch_outputs;
 			args->shader_info->tcs.num_patches = ctx.tcs_num_patches;
 			args->shader_info->tcs.num_lds_blocks =
 				calculate_tess_lds_size(

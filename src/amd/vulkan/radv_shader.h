@@ -91,14 +91,12 @@ struct radv_tes_variant_key {
 	struct radv_vs_out_key out;
 
 	uint8_t num_patches;
-	uint8_t tcs_num_outputs;
 };
 
 struct radv_tcs_variant_key {
 	struct radv_vs_variant_key vs_key;
 	unsigned primitive_mode;
 	unsigned input_vertices;
-	unsigned num_inputs;
 	uint32_t tes_reads_tess_factors:1;
 };
 
@@ -267,7 +265,6 @@ struct radv_shader_info {
 	bool is_ngg;
 	bool is_ngg_passthrough;
 	struct {
-		uint64_t ls_outputs_written;
 		uint8_t input_usage_mask[RADV_VERT_ATTRIB_MAX];
 		uint8_t output_usage_mask[VARYING_SLOT_VAR31 + 1];
 		bool has_vertex_buffers; /* needs vertex buffers and base/start */
@@ -339,8 +336,6 @@ struct radv_shader_info {
 		unsigned block_size[3];
 	} cs;
 	struct {
-		uint64_t outputs_written;
-		uint64_t patch_outputs_written;
 		uint64_t tes_inputs_read;
 		uint64_t tes_patch_inputs_read;
 		unsigned tcs_vertices_out;
@@ -525,30 +520,6 @@ VkResult
 radv_dump_shader_stats(struct radv_device *device,
 		       struct radv_pipeline *pipeline,
 		       gl_shader_stage stage, FILE *output);
-
-static inline unsigned
-shader_io_get_unique_index(gl_varying_slot slot)
-{
-	/* handle patch indices separate */
-	if (slot == VARYING_SLOT_TESS_LEVEL_OUTER)
-		return 0;
-	if (slot == VARYING_SLOT_TESS_LEVEL_INNER)
-		return 1;
-	if (slot >= VARYING_SLOT_PATCH0 && slot <= VARYING_SLOT_TESS_MAX)
-		return 2 + (slot - VARYING_SLOT_PATCH0);
-	if (slot == VARYING_SLOT_POS)
-		return 0;
-	if (slot == VARYING_SLOT_PSIZ)
-		return 1;
-	if (slot == VARYING_SLOT_CLIP_DIST0)
-		return 2;
-	if (slot == VARYING_SLOT_CLIP_DIST1)
-		return 3;
-	/* 3 is reserved for clip dist as well */
-	if (slot >= VARYING_SLOT_VAR0 && slot <= VARYING_SLOT_VAR31)
-		return 4 + (slot - VARYING_SLOT_VAR0);
-	unreachable("illegal slot in get unique index\n");
-}
 
 static inline unsigned
 calculate_tess_lds_size(enum chip_class chip_class,
