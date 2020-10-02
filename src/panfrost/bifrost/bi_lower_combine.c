@@ -197,14 +197,58 @@ bi_lower_combine_src(bi_context *ctx, bi_instruction *ins, unsigned s, unsigned 
 }
 #endif
 
+/* Copies result of combine from the temp R to the instruction destination,
+ * given a bitsize sz */
+
+static void
+bi_combine_copy(bi_context *ctx, bi_instruction *ins, unsigned R, unsigned sz)
+{
+        bi_foreach_src(ins, s) {
+                if (!ins->src[s])
+                        continue;
+
+                /* Iterate by 32-bits */
+                unsigned shift = (sz == 8) ? 2 :
+                        (sz == 16) ? 1 : 0;
+
+                if (s & ((1 << shift) - 1))
+                        continue;
+
+                bi_instruction copy = {
+                        .type = BI_MOV,
+                        .dest = ins->dest,
+                        .dest_type = nir_type_uint32,
+                        .dest_offset = s >> shift,
+                        .src = { R },
+                        .src_types = { nir_type_uint32 },
+                        .swizzle = { { s >> shift } }
+                };
+
+                bi_emit_before(ctx, ins, copy);
+        }
+}
+
 void
 bi_lower_combine(bi_context *ctx, bi_block *block)
 {
         bi_foreach_instr_in_block_safe(block, ins) {
                 if (ins->type != BI_COMBINE) continue;
 
+                /* If a register COMBINE reads its own output, we need a
+                 * temporary move to allow for swapping. TODO: Could do a bit
+                 * better for pairwise swaps of 16-bit vectors */
+                bool reads_self = false;
+
+                bi_foreach_src(ins, s) {
+                        if(ins->src[s] == ins->dest)
+                                reads_self = true;
+                }
+
                 bool needs_rewrite = !(ins->dest & PAN_IS_REG);
-                unsigned R = needs_rewrite ? bi_make_temp_reg(ctx) : ins->dest;
+                bool needs_copy = (ins->dest & PAN_IS_REG) && reads_self;
+                bool needs_temp = needs_rewrite || needs_copy;
+
+                unsigned R = needs_temp ? bi_make_temp_reg(ctx) : ins->dest;
                 unsigned sz = nir_alu_type_get_type_size(ins->dest_type);
 
                 bi_foreach_src(ins, s) {
@@ -235,6 +279,8 @@ bi_lower_combine(bi_context *ctx, bi_block *block)
 
                 if (needs_rewrite)
                         bi_rewrite_uses(ctx, ins->dest, 0, R, 0);
+                else if (needs_copy)
+                        bi_combine_copy(ctx, ins, R, sz);
 
                 bi_remove_instruction(ins);
         }
