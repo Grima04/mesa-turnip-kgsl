@@ -115,9 +115,6 @@ static void dump_header(FILE *fp, struct bifrost_header header, bool verbose)
                         fprintf(fp, "branch-uncond ");
         }
 
-        if (header.elide_writes)
-                fprintf(fp, "we ");
-
         if (header.suppress_inf)
                 fprintf(fp, "inf_suppress ");
         if (header.suppress_nan)
@@ -145,6 +142,9 @@ static void dump_header(FILE *fp, struct bifrost_header header, bool verbose)
                 fprintf(fp, "unk3 ");
         if (header.unk4)
                 fprintf(fp, "unk4 ");
+
+        if (header.terminate_discarded_threads)
+                fprintf(fp, "td ");
 
         fprintf(fp, "\n");
 

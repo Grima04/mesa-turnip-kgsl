@@ -47,7 +47,7 @@ bi_pack_header(bi_clause *clause, bi_clause *next_1, bi_clause *next_2, bool is_
         struct bifrost_header header = {
                 .back_to_back = clause->back_to_back,
                 .no_end_of_shader = (next_1 != NULL),
-                .elide_writes = is_fragment,
+                .terminate_discarded_threads = is_fragment,
                 .branch_cond = clause->branch_conditional || clause->back_to_back,
                 .datareg_writebarrier = clause->data_register_write_barrier,
                 .datareg = clause->data_register,

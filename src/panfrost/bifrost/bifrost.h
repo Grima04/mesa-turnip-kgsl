@@ -83,19 +83,11 @@ struct bifrost_header {
         unsigned back_to_back : 1;
         unsigned no_end_of_shader: 1;
         unsigned unk2 : 2;
-        // Set to true for fragment shaders, to implement this bit of spec text
-        // from section 7.1.5 of the GLSL ES spec:
-        //
-        // "Stores to image and buffer variables performed by helper invocations
-        // have no effect on the underlying image or buffer memory."
-        //
-        // Helper invocations are threads (invocations) corresponding to pixels in
-        // a quad that aren't actually part of the triangle, but are included to
-        // make derivatives work correctly. They're usually turned on, but they
-        // need to be masked off for GLSL-level stores. This bit seems to be the
-        // only bit that's actually different between fragment shaders and other
-        // shaders, so this is probably what it's doing.
-        unsigned elide_writes : 1;
+
+        /* Terminate discarded threads, rather than continuing execution. Set
+         * for fragment shaders for standard GL behaviour of DISCARD. */
+        unsigned terminate_discarded_threads : 1;
+
         // If backToBack is off:
         // - true for conditional branches and fallthrough
         // - false for unconditional branches
