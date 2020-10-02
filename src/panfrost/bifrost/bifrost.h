@@ -88,11 +88,10 @@ struct bifrost_header {
          * for fragment shaders for standard GL behaviour of DISCARD. */
         unsigned terminate_discarded_threads : 1;
 
-        // If backToBack is off:
-        // - true for conditional branches and fallthrough
-        // - false for unconditional branches
-        // The blob seems to always set it to true if back-to-back is on.
-        unsigned branch_cond : 1;
+        /* If set, the hardware may prefetch the next clause. If false, the
+         * hardware may not. Clear for unconditional branches. */
+        unsigned next_clause_prefetch : 1;
+
         // This bit is set when the next clause writes to the data register of some
         // previous clause.
         unsigned datareg_writebarrier: 1;

@@ -48,7 +48,7 @@ bi_pack_header(bi_clause *clause, bi_clause *next_1, bi_clause *next_2, bool is_
                 .back_to_back = clause->back_to_back,
                 .no_end_of_shader = (next_1 != NULL),
                 .terminate_discarded_threads = is_fragment,
-                .branch_cond = clause->branch_conditional || clause->back_to_back,
+                .next_clause_prefetch = clause->next_clause_prefetch,
                 .datareg_writebarrier = clause->data_register_write_barrier,
                 .datareg = clause->data_register,
                 .scoreboard_deps = scoreboard_deps,
@@ -58,8 +58,6 @@ bi_pack_header(bi_clause *clause, bi_clause *next_1, bi_clause *next_2, bool is_
                 .suppress_inf = true,
                 .suppress_nan = true,
         };
-
-        header.branch_cond |= header.back_to_back;
 
         uint64_t u = 0;
         memcpy(&u, &header, sizeof(header));

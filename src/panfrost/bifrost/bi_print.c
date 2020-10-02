@@ -410,7 +410,10 @@ bi_print_clause(bi_clause *clause, FILE *fp)
         }
 
         if (!clause->back_to_back)
-                fprintf(fp, " nbb %s", clause->branch_conditional ? "branch-cond" : "branch-uncond");
+                fprintf(fp, " nbb");
+
+        if (!clause->next_clause_prefetch)
+               fprintf(fp, " no_prefetch");
 
         if (clause->data_register_write_barrier)
                 fprintf(fp, " drwb");

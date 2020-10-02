@@ -400,7 +400,10 @@ typedef struct {
          * the emitted code it's always set if back-to-bit is, whereas we use
          * the actual value (without back-to-back so to speak) internally */
         bool back_to_back;
-        bool branch_conditional;
+
+        /* Can we prefetch the next clause? Usually it makes sense, except for
+         * clauses ending in unconditional branches */
+        bool next_clause_prefetch;
 
         /* Assigned data register */
         unsigned data_register;

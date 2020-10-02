@@ -109,10 +109,6 @@ static void dump_header(FILE *fp, struct bifrost_header header, bool verbose)
 
         if (!header.back_to_back) {
                 fprintf(fp, "nbb ");
-                if (header.branch_cond)
-                        fprintf(fp, "branch-cond ");
-                else
-                        fprintf(fp, "branch-uncond ");
         }
 
         if (header.suppress_inf)
@@ -145,6 +141,9 @@ static void dump_header(FILE *fp, struct bifrost_header header, bool verbose)
 
         if (header.terminate_discarded_threads)
                 fprintf(fp, "td ");
+
+        if (header.next_clause_prefetch)
+                fprintf(fp, "ncph ");
 
         fprintf(fp, "\n");
 
