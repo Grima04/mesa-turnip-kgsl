@@ -98,3 +98,19 @@ bi_interp_mode_name(enum bifrost_interp_mode mode)
         default: return ".unknown";
         }
 }
+
+const char *
+bi_flow_control_name(enum bifrost_flow mode)
+{
+        switch (mode) {
+        case BIFROST_FLOW_END: return "eos";
+        case BIFROST_FLOW_NBTB_PC: return "nbb br_pc";
+        case BIFROST_FLOW_NBTB_UNCONDITIONAL: return "nbb r_uncond";
+        case BIFROST_FLOW_NBTB: return "nbb";
+        case BIFROST_FLOW_BTB_UNCONDITIONAL: return "bb r_uncond";
+        case BIFROST_FLOW_BTB_NONE: return "bb";
+        case BIFROST_FLOW_WE_UNCONDITIONAL: return "we r_uncond";
+        case BIFROST_FLOW_WE: return "we";
+        default: return "XXX";
+        }
+}

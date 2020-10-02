@@ -89,12 +89,7 @@ static void dump_header(FILE *fp, struct bifrost_header header, bool verbose)
         if (header.staging_barrier)
                 fprintf(fp, "osrb ");
 
-        if (!header.no_end_of_shader)
-                fprintf(fp, "eos ");
-
-        if (!header.back_to_back) {
-                fprintf(fp, "nbb ");
-        }
+        fprintf(fp, "%s ", bi_flow_control_name(header.flow_control));
 
         if (header.suppress_inf)
                 fprintf(fp, "inf_suppress ");
@@ -109,6 +104,7 @@ static void dump_header(FILE *fp, struct bifrost_header header, bool verbose)
                 fprintf(fp, "ftz_au ");
 
         assert(!header.zero1);
+        assert(!header.zero2);
 
         if (header.float_exceptions == BIFROST_EXCEPTIONS_DISABLED)
                 fprintf(fp, "fpe_ts ");
@@ -119,9 +115,6 @@ static void dump_header(FILE *fp, struct bifrost_header header, bool verbose)
 
         if (header.message_type)
                 fprintf(fp, "%s ", bi_message_type_name(header.next_message_type));
-
-        if  (header.unk2)
-                fprintf(fp, "unk2 ");
 
         if (header.terminate_discarded_threads)
                 fprintf(fp, "td ");
@@ -663,7 +656,7 @@ static bool dump_clause(FILE *fp, uint32_t *words, unsigned *size, unsigned offs
         struct bifrost_header header;
         memcpy((char *) &header, (char *) &header_bits, sizeof(struct bifrost_header));
         dump_header(fp, header, verbose);
-        if (!header.no_end_of_shader)
+        if (header.flow_control == BIFROST_FLOW_END)
                 stopbit = true;
 
         fprintf(fp, "{\n");

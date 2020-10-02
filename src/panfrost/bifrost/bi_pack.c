@@ -45,8 +45,9 @@ bi_pack_header(bi_clause *clause, bi_clause *next_1, bi_clause *next_2, bool is_
         dependency_wait |= next_2 ? next_2->dependencies : 0;
 
         struct bifrost_header header = {
-                .back_to_back = clause->back_to_back,
-                .no_end_of_shader = (next_1 != NULL),
+                .flow_control =
+                        (next_1 == NULL) ? BIFROST_FLOW_END :
+                        (clause->back_to_back ? BIFROST_FLOW_NBTB : BIFROST_FLOW_NBTB_UNCONDITIONAL),
                 .terminate_discarded_threads = is_fragment,
                 .next_clause_prefetch = clause->next_clause_prefetch,
                 .staging_barrier = clause->staging_barrier,

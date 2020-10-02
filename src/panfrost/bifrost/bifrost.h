@@ -67,6 +67,48 @@ enum bifrost_exceptions {
         BIFROST_EXCEPTIONS_PRECISE_SQRT = 3,
 };
 
+/* Describes clause flow control, with respect to control flow and branch
+ * reconvergence.
+ *
+ * Control flow may be considered back-to-back (execute clauses back-to-back),
+ * non-back-to-back (switch warps after clause before the next clause), write
+ * elision (back-to-back and elide register slot #3 write from the clause), or
+ * end of shader.
+ *
+ * Branch reconvergence may be disabled, enabled unconditionally, or enabled
+ * based on the program counter. A clause requires reconvergence if it has a
+ * successor that can be executed without first executing the clause itself.
+ * Separate iterations of a loop are treated separately here, so it is also the
+ * case for a loop exit where the iteration count is not warp-invariant.
+ *
+ */
+
+enum bifrost_flow {
+        /* End-of-shader */
+        BIFROST_FLOW_END = 0,
+
+        /* Non back-to-back, PC-encoded reconvergence */
+        BIFROST_FLOW_NBTB_PC = 1,
+
+        /* Non back-to-back, unconditional reconvergence */
+        BIFROST_FLOW_NBTB_UNCONDITIONAL = 2,
+
+        /* Non back-to-back, no reconvergence */
+        BIFROST_FLOW_NBTB = 3,
+
+        /* Back-to-back, unconditional reconvergence */
+        BIFROST_FLOW_BTB_UNCONDITIONAL = 4,
+
+        /* Back-to-back, no reconvergence */
+        BIFROST_FLOW_BTB_NONE = 5,
+
+        /* Write elision, unconditional reconvergence */
+        BIFROST_FLOW_WE_UNCONDITIONAL = 6,
+
+        /* Write elision, no reconvergence */
+        BIFROST_FLOW_WE = 7,
+};
+
 struct bifrost_header {
         /* Reserved */
         unsigned zero1 : 5;
@@ -84,11 +126,12 @@ struct bifrost_header {
         /* Floating-point excception handling mode */
         enum bifrost_exceptions float_exceptions : 2;
 
-        // true if the execution mask of the next clause is the same as the mask of
-        // the current clause.
-        unsigned back_to_back : 1;
-        unsigned no_end_of_shader: 1;
-        unsigned unk2 : 2;
+        /* Enum describing the flow control, which matters for handling
+         * divergence and reconvergence efficiently */
+        enum bifrost_flow flow_control : 3;
+
+        /* Reserved */
+        unsigned zero2 : 1;
 
         /* Terminate discarded threads, rather than continuing execution. Set
          * for fragment shaders for standard GL behaviour of DISCARD. */
