@@ -185,14 +185,11 @@ st_upload_constants(struct st_context *st, struct gl_program *prog)
          }
       }
 
-      st->state.constants[shader_type].ptr = params->ParameterValues;
-      st->state.constants[shader_type].size = paramBytes;
-   }
-   else if (st->state.constants[shader_type].ptr) {
+      st->state.constbuf0_enabled_shader_mask |= 1 << shader_type;
+   } else if (st->state.constbuf0_enabled_shader_mask & (1 << shader_type)) {
       /* Unbind. */
-      st->state.constants[shader_type].ptr = NULL;
-      st->state.constants[shader_type].size = 0;
       cso_set_constant_buffer(st->cso_context, shader_type, 0, NULL);
+      st->state.constbuf0_enabled_shader_mask &= ~(1 << shader_type);
    }
 }
 

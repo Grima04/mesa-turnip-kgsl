@@ -237,8 +237,8 @@ st_feedback_draw_vbo(struct gl_context *ctx,
       _mesa_load_state_parameters(st->ctx, params);
 
    draw_set_mapped_constant_buffer(draw, PIPE_SHADER_VERTEX, 0,
-                                   st->state.constants[PIPE_SHADER_VERTEX].ptr,
-                                   st->state.constants[PIPE_SHADER_VERTEX].size);
+                                   params->ParameterValues,
+                                   params->NumParameterValues * 4);
 
    /* set uniform buffers */
    const struct gl_program *prog = &vp->Base.Base;

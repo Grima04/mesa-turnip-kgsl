@@ -202,10 +202,7 @@ struct st_context
       struct pipe_sampler_view *frag_sampler_views[PIPE_MAX_SAMPLERS];
       GLuint num_sampler_views[PIPE_SHADER_TYPES];
       struct pipe_clip_state clip;
-      struct {
-         void *ptr;
-         unsigned size;
-      } constants[PIPE_SHADER_TYPES];
+      unsigned constbuf0_enabled_shader_mask;
       unsigned fb_width;
       unsigned fb_height;
       unsigned fb_num_samples;
