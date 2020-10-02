@@ -36,14 +36,20 @@ extern int bifrost_debug;
 
 enum bifrost_clause_type {
         BIFROST_CLAUSE_NONE       = 0,
-        BIFROST_CLAUSE_LOAD_VARY  = 1,
-        BIFROST_CLAUSE_UBO        = 2,
+        BIFROST_CLAUSE_VARYING    = 1,
+        BIFROST_CLAUSE_ATTRIBUTE  = 2,
         BIFROST_CLAUSE_TEX        = 3,
-        BIFROST_CLAUSE_SSBO_LOAD  = 5,
-        BIFROST_CLAUSE_SSBO_STORE = 6,
+        BIFROST_CLAUSE_VARTEX     = 4,
+        BIFROST_CLAUSE_LOAD       = 5,
+        BIFROST_CLAUSE_STORE      = 6,
+        BIFROST_CLAUSE_ATOMIC     = 7,
+        BIFROST_CLAUSE_BARRIER    = 8,
         BIFROST_CLAUSE_BLEND      = 9,
-        BIFROST_CLAUSE_FRAGZ      = 12,
+        BIFROST_CLAUSE_TILE       = 10,
+        /* type 11 reserved */
+        BIFROST_CLAUSE_Z_STENCIL  = 12,
         BIFROST_CLAUSE_ATEST      = 13,
+        BIFROST_CLAUSE_JOB        = 14,
         BIFROST_CLAUSE_64BIT      = 15
 };
 

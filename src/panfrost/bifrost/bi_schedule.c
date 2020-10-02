@@ -53,24 +53,24 @@ bi_clause_type_for_ins(bi_instruction *ins)
 
         case BI_LOAD_VAR:
                 if (bi_is_fragz(ins))
-                        return BIFROST_CLAUSE_FRAGZ;
+                        return BIFROST_CLAUSE_Z_STENCIL;
 
-                return BIFROST_CLAUSE_LOAD_VARY;
+                return BIFROST_CLAUSE_VARYING;
 
         case BI_LOAD_UNIFORM:
         case BI_LOAD_ATTR:
         case BI_LOAD_VAR_ADDRESS:
-                return BIFROST_CLAUSE_UBO;
+                return BIFROST_CLAUSE_ATTRIBUTE;
 
         case BI_TEX:
                 return BIFROST_CLAUSE_TEX;
 
         case BI_LOAD:
-                return BIFROST_CLAUSE_SSBO_LOAD;
+                return BIFROST_CLAUSE_LOAD;
 
         case BI_STORE:
         case BI_STORE_VAR:
-                return BIFROST_CLAUSE_SSBO_STORE;
+                return BIFROST_CLAUSE_STORE;
 
         case BI_BLEND:
                 return BIFROST_CLAUSE_BLEND;

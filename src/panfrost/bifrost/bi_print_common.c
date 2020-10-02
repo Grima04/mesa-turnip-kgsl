@@ -33,16 +33,21 @@ bi_clause_type_name(enum bifrost_clause_type T)
 {
         switch (T) {
         case BIFROST_CLAUSE_NONE: return "";
-        case BIFROST_CLAUSE_LOAD_VARY: return "load_vary";
-        case BIFROST_CLAUSE_UBO: return "ubo";
+        case BIFROST_CLAUSE_VARYING: return "vary";
+        case BIFROST_CLAUSE_ATTRIBUTE: return "attr";
         case BIFROST_CLAUSE_TEX: return "tex";
-        case BIFROST_CLAUSE_SSBO_LOAD: return "load";
-        case BIFROST_CLAUSE_SSBO_STORE: return "store";
+        case BIFROST_CLAUSE_VARTEX: return "vartex";
+        case BIFROST_CLAUSE_LOAD: return "load";
+        case BIFROST_CLAUSE_STORE: return "store";
+        case BIFROST_CLAUSE_ATOMIC: return "atomic";
+        case BIFROST_CLAUSE_BARRIER: return "barrier";
         case BIFROST_CLAUSE_BLEND: return "blend";
-        case BIFROST_CLAUSE_FRAGZ: return "fragz";
+        case BIFROST_CLAUSE_TILE: return "tile";
+        case BIFROST_CLAUSE_Z_STENCIL: return "z_stencil";
         case BIFROST_CLAUSE_ATEST: return "atest";
+        case BIFROST_CLAUSE_JOB: return "job";
         case BIFROST_CLAUSE_64BIT: return "64";
-        default: return "??";
+        default: return "XXX reserved";
         }
 }
 

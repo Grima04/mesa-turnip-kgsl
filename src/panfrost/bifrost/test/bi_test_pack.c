@@ -126,7 +126,7 @@ bit_test_single(struct panfrost_device *dev,
         }
 
         clauses[0]->bundles[0].add = &ldubo;
-        clauses[0]->clause_type = BIFROST_CLAUSE_UBO;
+        clauses[0]->clause_type = BIFROST_CLAUSE_ATTRIBUTE;
 
         if (fma)
                 clauses[1]->bundles[0].fma = ins;
@@ -140,8 +140,8 @@ bit_test_single(struct panfrost_device *dev,
         clauses[2]->bundles[0].add = &ldva;
         clauses[3]->bundles[0].add = &st;
 
-        clauses[2]->clause_type = BIFROST_CLAUSE_UBO;
-        clauses[3]->clause_type = BIFROST_CLAUSE_SSBO_STORE;
+        clauses[2]->clause_type = BIFROST_CLAUSE_ATTRIBUTE;
+        clauses[3]->clause_type = BIFROST_CLAUSE_STORE;
 
         panfrost_program prog;
         bi_pack(ctx, &prog.compiled);
