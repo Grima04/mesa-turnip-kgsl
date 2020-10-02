@@ -16,27 +16,28 @@
 #include "util/u_prim.h"
 #include "util/u_prim_restart.h"
 
+
 static VkDescriptorSet
 allocate_descriptor_set(struct zink_screen *screen,
                         struct zink_batch *batch,
-                        VkDescriptorSetLayout dsl,
-                        unsigned num_descriptors)
+                        struct zink_program *pg)
 {
    VkDescriptorSetAllocateInfo dsai;
    memset((void *)&dsai, 0, sizeof(dsai));
    dsai.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
    dsai.pNext = NULL;
-   dsai.descriptorPool = batch->descpool;
+   dsai.descriptorPool = pg->descpool;
    dsai.descriptorSetCount = 1;
-   dsai.pSetLayouts = &dsl;
+   dsai.pSetLayouts = &pg->dsl;
 
    VkDescriptorSet desc_set;
    if (vkAllocateDescriptorSets(screen->dev, &dsai, &desc_set) != VK_SUCCESS) {
-      debug_printf("ZINK: failed to allocate descriptor set :/\n");
+      debug_printf("ZINK: %p failed to allocate descriptor set :/\n", pg);
       return VK_NULL_HANDLE;
    }
+   if (zink_batch_add_desc_set(batch, pg, desc_set))
+      batch->descs_used += pg->num_descriptors;
 
-   batch->descs_used += num_descriptors;
    return desc_set;
 }
 
@@ -528,9 +529,8 @@ update_descriptors(struct zink_context *ctx, struct zink_screen *screen, bool is
 
    struct zink_program *pg = is_compute ? &ctx->curr_compute->base : &ctx->curr_program->base;
    zink_batch_reference_program(batch, pg);
-
-   VkDescriptorSet desc_set = allocate_descriptor_set(screen, batch,
-                                                      pg->dsl, num_descriptors);
+   assert(pg->num_descriptors == num_descriptors);
+   VkDescriptorSet desc_set = allocate_descriptor_set(screen, batch, pg);
    /* probably oom, so we need to stall until we free up some descriptors */
    if (!desc_set) {
       /* update our max descriptor count so we can try and avoid this happening again */
@@ -553,7 +553,8 @@ update_descriptors(struct zink_context *ctx, struct zink_screen *screen, bool is
             zink_reset_batch(ctx, &ctx->batches[i]);
          }
       }
-      desc_set = allocate_descriptor_set(screen, batch, pg->dsl, num_descriptors);
+      zink_batch_reference_program(batch, pg);
+      desc_set = allocate_descriptor_set(screen, batch, pg);
    }
    assert(desc_set != VK_NULL_HANDLE);
 

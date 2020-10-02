@@ -105,6 +105,8 @@ struct zink_viewport_state {
 #define ZINK_COMPUTE_BATCH_COUNT 1
 #define ZINK_NUM_BATCHES (ZINK_NUM_GFX_BATCHES + 1)
 
+#define ZINK_DEFAULT_MAX_DESCS 5000
+
 struct zink_context {
    struct pipe_context base;
    struct slab_child_pool transfer_pool;

@@ -57,7 +57,6 @@ destroy_batch(struct zink_context* ctx, struct zink_batch* batch)
    struct zink_screen *screen = zink_screen(ctx->base.screen);
 
    zink_reset_batch(ctx, batch);
-   vkDestroyDescriptorPool(screen->dev, batch->descpool, NULL);
    vkFreeCommandBuffers(screen->dev, batch->cmdpool, 1, &batch->cmdbuf);
    vkDestroyCommandPool(screen->dev, batch->cmdpool, NULL);
    zink_fence_reference(screen, &batch->fence, NULL);
@@ -66,7 +65,7 @@ destroy_batch(struct zink_context* ctx, struct zink_batch* batch)
    _mesa_set_destroy(batch->sampler_views, NULL);
    util_dynarray_fini(&batch->zombie_samplers);
    _mesa_set_destroy(batch->surfaces, NULL);
-   _mesa_set_destroy(batch->programs, NULL);
+   _mesa_hash_table_destroy(batch->programs, NULL);
    _mesa_set_destroy(batch->active_queries, NULL);
 }
 
@@ -1763,28 +1762,13 @@ init_batch(struct zink_context *ctx, struct zink_batch *batch, unsigned idx)
    cbai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
    cbai.commandBufferCount = 1;
 
-   VkDescriptorPoolSize sizes[] = {
-      {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,         ZINK_BATCH_DESC_SIZE},
-      {VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER,   ZINK_BATCH_DESC_SIZE},
-      {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, ZINK_BATCH_DESC_SIZE},
-      {VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER,   ZINK_BATCH_DESC_SIZE},
-      {VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,          ZINK_BATCH_DESC_SIZE},
-      {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,         ZINK_BATCH_DESC_SIZE},
-   };
-   VkDescriptorPoolCreateInfo dpci = {};
-   dpci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-   dpci.pPoolSizes = sizes;
-   dpci.poolSizeCount = ARRAY_SIZE(sizes);
-   dpci.flags = 0;
-   dpci.maxSets = ZINK_BATCH_DESC_SIZE;
-
    if (vkAllocateCommandBuffers(screen->dev, &cbai, &batch->cmdbuf) != VK_SUCCESS)
       return false;
 
    batch->fbs = _mesa_pointer_set_create(NULL);
    batch->resources = _mesa_pointer_set_create(NULL);
    batch->sampler_views = _mesa_pointer_set_create(NULL);
-   batch->programs = _mesa_pointer_set_create(NULL);
+   batch->programs = _mesa_pointer_hash_table_create(NULL);
    batch->surfaces = _mesa_pointer_set_create(NULL);
 
    if (!batch->resources || !batch->sampler_views ||
@@ -1793,10 +1777,6 @@ init_batch(struct zink_context *ctx, struct zink_batch *batch, unsigned idx)
 
    util_dynarray_init(&batch->zombie_samplers, NULL);
    util_dynarray_init(&batch->persistent_resources, NULL);
-
-   if (vkCreateDescriptorPool(screen->dev, &dpci, 0,
-                              &batch->descpool) != VK_SUCCESS)
-      return false;
 
    batch->batch_id = idx;
 

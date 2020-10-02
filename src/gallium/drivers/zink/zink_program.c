@@ -26,6 +26,7 @@
 #include "zink_compiler.h"
 #include "zink_context.h"
 #include "zink_render_pass.h"
+#include "zink_resource.h"
 #include "zink_screen.h"
 #include "zink_state.h"
 
@@ -112,7 +113,8 @@ keybox_equals(const void *void_a, const void *void_b)
 static VkDescriptorSetLayout
 create_desc_set_layout(VkDevice dev,
                        struct zink_shader *stages[ZINK_SHADER_COUNT],
-                       unsigned *num_descriptors)
+                       unsigned *num_descriptors,
+                       VkDescriptorPool *descpool)
 {
    VkDescriptorSetLayoutBinding bindings[(PIPE_SHADER_TYPES * (PIPE_MAX_CONSTANT_BUFFERS + PIPE_MAX_SAMPLERS + PIPE_MAX_SHADER_BUFFERS + PIPE_MAX_SHADER_IMAGES))];
    int num_bindings = 0;
@@ -148,6 +150,25 @@ create_desc_set_layout(VkDevice dev,
    VkDescriptorSetLayout dsl;
    if (vkCreateDescriptorSetLayout(dev, &dcslci, 0, &dsl) != VK_SUCCESS) {
       debug_printf("vkCreateDescriptorSetLayout failed\n");
+      return VK_NULL_HANDLE;
+   }
+   VkDescriptorPoolSize sizes[] = {
+      {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,         ZINK_BATCH_DESC_SIZE},
+      {VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER,   ZINK_BATCH_DESC_SIZE},
+      {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, ZINK_BATCH_DESC_SIZE},
+      {VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER,   ZINK_BATCH_DESC_SIZE},
+      {VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,          ZINK_BATCH_DESC_SIZE},
+      {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,         ZINK_BATCH_DESC_SIZE},
+   };
+
+   VkDescriptorPoolCreateInfo dpci = {};
+   dpci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+   dpci.pPoolSizes = sizes;
+   dpci.poolSizeCount = ARRAY_SIZE(sizes);
+   dpci.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
+   dpci.maxSets = ZINK_BATCH_DESC_SIZE;
+   if (vkCreateDescriptorPool(dev, &dpci, 0, descpool) != VK_SUCCESS) {
+      vkDestroyDescriptorSetLayout(dev, dsl, NULL);
       return VK_NULL_HANDLE;
    }
 
@@ -530,14 +551,15 @@ zink_create_gfx_program(struct zink_context *ctx,
    }
 
    prog->base.dsl = create_desc_set_layout(screen->dev, stages,
-                                      &prog->base.num_descriptors);
-   if (prog->base.num_descriptors && !prog->base.dsl)
+                                      &prog->base.num_descriptors, &prog->base.descpool);
+   if (prog->base.num_descriptors && (!prog->base.dsl || !prog->base.descpool))
       goto fail;
 
    prog->layout = create_gfx_pipeline_layout(screen->dev, prog->base.dsl);
    if (!prog->layout)
       goto fail;
 
+   util_dynarray_init(&prog->base.alloc_desc_sets, NULL);
    return prog;
 
 fail:
@@ -630,13 +652,15 @@ zink_create_compute_program(struct zink_context *ctx, struct zink_shader *shader
    struct zink_shader *stages[ZINK_SHADER_COUNT] = {};
    stages[0] = shader;
    comp->base.dsl = create_desc_set_layout(screen->dev, stages,
-                                      &comp->base.num_descriptors);
-   if (comp->base.num_descriptors && !comp->base.dsl)
+                                      &comp->base.num_descriptors, &comp->base.descpool);
+   if (comp->base.num_descriptors && (!comp->base.dsl || !comp->base.descpool))
       goto fail;
 
    comp->layout = create_compute_pipeline_layout(screen->dev, comp->base.dsl);
    if (!comp->layout)
       goto fail;
+
+   util_dynarray_init(&comp->base.alloc_desc_sets, NULL);
 
    return comp;
 
@@ -684,6 +708,11 @@ zink_destroy_gfx_program(struct zink_screen *screen,
    }
    zink_shader_cache_reference(screen, &prog->shader_cache, NULL);
 
+   if (prog->base.descpool)
+      vkDestroyDescriptorPool(screen->dev, prog->base.descpool, NULL);
+
+   util_dynarray_fini(&prog->base.alloc_desc_sets);
+
    ralloc_free(prog);
 }
 
@@ -710,6 +739,11 @@ zink_destroy_compute_program(struct zink_screen *screen,
    }
    _mesa_hash_table_destroy(comp->pipelines, NULL);
    zink_shader_cache_reference(screen, &comp->shader_cache, NULL);
+
+   if (comp->base.descpool)
+      vkDestroyDescriptorPool(screen->dev, comp->base.descpool, NULL);
+
+   util_dynarray_fini(&comp->base.alloc_desc_sets);
 
    ralloc_free(comp);
 }

@@ -32,6 +32,7 @@
 struct pipe_reference;
 
 struct zink_context;
+struct zink_descriptor_set;
 struct zink_fence;
 struct zink_framebuffer;
 struct zink_program;
@@ -46,13 +47,13 @@ struct zink_batch {
    unsigned batch_id : 3;
    VkCommandPool cmdpool;
    VkCommandBuffer cmdbuf;
-   VkDescriptorPool descpool;
+
    unsigned short max_descs; //set if the device gives oom when allocating a new desc set
    unsigned short descs_used; //number of descriptors currently allocated
    struct zink_fence *fence;
 
    struct set *fbs;
-   struct set *programs;
+   struct hash_table *programs;
 
    struct set *resources;
    struct set *sampler_views;
@@ -97,4 +98,7 @@ zink_batch_reference_program(struct zink_batch *batch,
 void
 zink_batch_reference_surface(struct zink_batch *batch,
                              struct zink_surface *surface);
+
+bool
+zink_batch_add_desc_set(struct zink_batch *batch, struct zink_program *pg, VkDescriptorSet desc_set);
 #endif
