@@ -221,7 +221,7 @@ bi_schedule(bi_context *ctx)
                         last_id = u->scoreboard_id;
 
                         /* Let's be optimistic, we'll fix up later */
-                        u->back_to_back = true;
+                        u->flow_control = BIFROST_FLOW_NBTB;
 
                         u->constant_count = 1;
                         u->constants[0] = ins->constant.u64;
@@ -246,7 +246,8 @@ bi_schedule(bi_context *ctx)
 
                 if (!list_is_empty(&bblock->clauses)) {
                         bi_clause *last_clause = list_last_entry(&bblock->clauses, bi_clause, link);
-                        last_clause->back_to_back = bi_back_to_back(bblock);
+                        if (!bi_back_to_back(bblock))
+                                last_clause->flow_control = BIFROST_FLOW_NBTB_UNCONDITIONAL;
                 }
 
                 bblock->scheduled = true;

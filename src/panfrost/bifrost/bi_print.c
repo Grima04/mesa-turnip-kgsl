@@ -409,8 +409,7 @@ bi_print_clause(bi_clause *clause, FILE *fp)
                 fprintf(fp, ")");
         }
 
-        if (!clause->back_to_back)
-                fprintf(fp, " nbb");
+        fprintf(fp, " %s", bi_flow_control_name(clause->flow_control));
 
         if (!clause->next_clause_prefetch)
                fprintf(fp, " no_prefetch");

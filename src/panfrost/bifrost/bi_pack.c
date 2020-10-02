@@ -47,7 +47,7 @@ bi_pack_header(bi_clause *clause, bi_clause *next_1, bi_clause *next_2, bool is_
         struct bifrost_header header = {
                 .flow_control =
                         (next_1 == NULL) ? BIFROST_FLOW_END :
-                        (clause->back_to_back ? BIFROST_FLOW_NBTB : BIFROST_FLOW_NBTB_UNCONDITIONAL),
+                        clause->flow_control,
                 .terminate_discarded_threads = is_fragment,
                 .next_clause_prefetch = clause->next_clause_prefetch,
                 .staging_barrier = clause->staging_barrier,
