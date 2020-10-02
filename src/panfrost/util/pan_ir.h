@@ -129,6 +129,7 @@ typedef struct pan_block {
         /* Control flow graph */
         struct pan_block *successors[2];
         struct set *predecessors;
+        bool unconditional_jumps;
 
         /* In liveness analysis, these are live masks (per-component) for
          * indices for the block. Scalar compilers have the luxury of using

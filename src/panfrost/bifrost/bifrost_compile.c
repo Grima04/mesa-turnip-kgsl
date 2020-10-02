@@ -72,6 +72,7 @@ emit_jump(bi_context *ctx, nir_jump_instr *instr)
         }
 
         pan_block_add_successor(&ctx->current_block->base, &branch->branch_target->base);
+        ctx->current_block->base.unconditional_jumps = true;
 }
 
 static bi_instruction
