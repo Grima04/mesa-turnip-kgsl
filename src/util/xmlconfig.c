@@ -741,9 +741,13 @@ parseAppAttr(struct OptConfData *data, const char **attr)
    }
    if (application_versions) {
       driOptionValue v = { ._int = data->applicationVersion };
-      if (parseRange(&version_range, application_versions) &&
-          !checkValue(&v, &version_range))
-         data->ignoringApp = data->inApp;
+      if (parseRange(&version_range, application_versions)) {
+         if (!checkValue(&v, &version_range))
+            data->ignoringApp = data->inApp;
+      } else {
+         XML_WARNING("Failed to parse application_versions range=\"%s\".",
+                     application_versions);
+      }
    }
 }
 
@@ -774,9 +778,13 @@ parseEngineAttr(struct OptConfData *data, const char **attr)
    }
    if (engine_versions) {
       driOptionValue v = { ._int = data->engineVersion };
-      if (parseRange(&version_range, engine_versions) &&
-          !checkValue(&v, &version_range))
-         data->ignoringApp = data->inApp;
+      if (parseRange(&version_range, engine_versions)) {
+         if (!checkValue(&v, &version_range))
+            data->ignoringApp = data->inApp;
+      } else {
+         XML_WARNING("Failed to parse engine_versions range=\"%s\".",
+                     engine_versions);
+      }
    }
 }
 
