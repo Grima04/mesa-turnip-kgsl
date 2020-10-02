@@ -652,11 +652,23 @@ fs_generator::generate_shuffle(fs_inst *inst,
 
          uint32_t src_start_offset = src.nr * REG_SIZE + src.subnr;
 
-         /* Whether we can use destination dependency control without running
-          * the risk of a hang if an instruction gets shot down.
+         /* From the Haswell PRM:
+          *
+          *    "When a sequence of NoDDChk and NoDDClr are used, the last
+          *    instruction that completes the scoreboard clear must have a
+          *    non-zero execution mask. This means, if any kind of predication
+          *    can change the execution mask or channel enable of the last
+          *    instruction, the optimization must be avoided.  This is to
+          *    avoid instructions being shot down the pipeline when no writes
+          *    are required."
+          *
+          * Whenever predication is enabled or the instructions being emitted
+          * aren't the full width, it's possible that it will be run with zero
+          * channels enabled so we can't use dependency control without
+          * running the risk of a hang if an instruction gets shot down.
           */
          const bool use_dep_ctrl = !inst->predicate &&
-                                   inst->exec_size == dispatch_width;
+                                   lower_width == dispatch_width;
          brw_inst *insn;
 
          /* Due to a hardware bug some platforms (particularly Gen11+) seem
