@@ -189,7 +189,9 @@ bi_load_with_r61(enum bi_class T, nir_intrinsic_instr *instr)
         ld.src[2] = BIR_INDEX_REGISTER | 62;
         ld.src_types[1] = nir_type_uint32;
         ld.src_types[2] = nir_type_uint32;
-        ld.format = nir_intrinsic_dest_type(instr);
+        ld.format = instr->intrinsic == nir_intrinsic_store_output ?
+                nir_intrinsic_src_type(instr) :
+                nir_intrinsic_dest_type(instr);
         return ld;
 }
 
