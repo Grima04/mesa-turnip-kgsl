@@ -34,23 +34,23 @@
 
 extern int bifrost_debug;
 
-enum bifrost_clause_type {
-        BIFROST_CLAUSE_NONE       = 0,
-        BIFROST_CLAUSE_VARYING    = 1,
-        BIFROST_CLAUSE_ATTRIBUTE  = 2,
-        BIFROST_CLAUSE_TEX        = 3,
-        BIFROST_CLAUSE_VARTEX     = 4,
-        BIFROST_CLAUSE_LOAD       = 5,
-        BIFROST_CLAUSE_STORE      = 6,
-        BIFROST_CLAUSE_ATOMIC     = 7,
-        BIFROST_CLAUSE_BARRIER    = 8,
-        BIFROST_CLAUSE_BLEND      = 9,
-        BIFROST_CLAUSE_TILE       = 10,
+enum bifrost_message_type {
+        BIFROST_MESSAGE_NONE       = 0,
+        BIFROST_MESSAGE_VARYING    = 1,
+        BIFROST_MESSAGE_ATTRIBUTE  = 2,
+        BIFROST_MESSAGE_TEX        = 3,
+        BIFROST_MESSAGE_VARTEX     = 4,
+        BIFROST_MESSAGE_LOAD       = 5,
+        BIFROST_MESSAGE_STORE      = 6,
+        BIFROST_MESSAGE_ATOMIC     = 7,
+        BIFROST_MESSAGE_BARRIER    = 8,
+        BIFROST_MESSAGE_BLEND      = 9,
+        BIFROST_MESSAGE_TILE       = 10,
         /* type 11 reserved */
-        BIFROST_CLAUSE_Z_STENCIL  = 12,
-        BIFROST_CLAUSE_ATEST      = 13,
-        BIFROST_CLAUSE_JOB        = 14,
-        BIFROST_CLAUSE_64BIT      = 15
+        BIFROST_MESSAGE_Z_STENCIL  = 12,
+        BIFROST_MESSAGE_ATEST      = 13,
+        BIFROST_MESSAGE_JOB        = 14,
+        BIFROST_MESSAGE_64BIT      = 15
 };
 
 enum bifrost_ftz {
@@ -105,8 +105,8 @@ struct bifrost_header {
         unsigned staging_register : 6;
         unsigned scoreboard_deps: 8;
         unsigned scoreboard_index: 3;
-        enum bifrost_clause_type clause_type : 5;
-        enum bifrost_clause_type next_clause_type : 5;
+        enum bifrost_message_type message_type : 5;
+        enum bifrost_message_type next_message_type : 5;
 } __attribute__((packed));
 
 enum bifrost_packed_src {

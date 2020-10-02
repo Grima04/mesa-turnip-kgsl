@@ -77,11 +77,11 @@ static void dump_header(FILE *fp, struct bifrost_header header, bool verbose)
 {
         fprintf(fp, "id(%du) ", header.scoreboard_index);
 
-        if (header.clause_type != 0) {
-                const char *name = bi_clause_type_name(header.clause_type);
+        if (header.message_type != 0) {
+                const char *name = bi_message_type_name(header.message_type);
 
                 if (name[0] == '?')
-                        fprintf(fp, "unk%u ", header.clause_type);
+                        fprintf(fp, "unk%u ", header.message_type);
                 else
                         fprintf(fp, "%s ", name);
         }
@@ -132,8 +132,8 @@ static void dump_header(FILE *fp, struct bifrost_header header, bool verbose)
         else if (header.float_exceptions == BIFROST_EXCEPTIONS_PRECISE_SQRT)
                 fprintf(fp, "fpe_psqr ");
 
-        if (header.clause_type)
-                fprintf(fp, "%s ", bi_clause_type_name(header.next_clause_type));
+        if (header.message_type)
+                fprintf(fp, "%s ", bi_message_type_name(header.next_message_type));
 
         if  (header.unk2)
                 fprintf(fp, "unk2 ");
@@ -144,8 +144,8 @@ static void dump_header(FILE *fp, struct bifrost_header header, bool verbose)
         if (header.next_clause_prefetch)
                 fprintf(fp, "ncph ");
 
-        if (header.next_clause_type)
-                fprintf(fp, "next_%s ", bi_clause_type_name(header.next_clause_type));
+        if (header.next_message_type)
+                fprintf(fp, "next_%s ", bi_message_type_name(header.next_message_type));
 
         fprintf(fp, "\n");
 }

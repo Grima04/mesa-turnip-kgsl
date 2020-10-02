@@ -29,24 +29,24 @@
 #include "bi_print_common.h"
 
 const char *
-bi_clause_type_name(enum bifrost_clause_type T)
+bi_message_type_name(enum bifrost_message_type T)
 {
         switch (T) {
-        case BIFROST_CLAUSE_NONE: return "";
-        case BIFROST_CLAUSE_VARYING: return "vary";
-        case BIFROST_CLAUSE_ATTRIBUTE: return "attr";
-        case BIFROST_CLAUSE_TEX: return "tex";
-        case BIFROST_CLAUSE_VARTEX: return "vartex";
-        case BIFROST_CLAUSE_LOAD: return "load";
-        case BIFROST_CLAUSE_STORE: return "store";
-        case BIFROST_CLAUSE_ATOMIC: return "atomic";
-        case BIFROST_CLAUSE_BARRIER: return "barrier";
-        case BIFROST_CLAUSE_BLEND: return "blend";
-        case BIFROST_CLAUSE_TILE: return "tile";
-        case BIFROST_CLAUSE_Z_STENCIL: return "z_stencil";
-        case BIFROST_CLAUSE_ATEST: return "atest";
-        case BIFROST_CLAUSE_JOB: return "job";
-        case BIFROST_CLAUSE_64BIT: return "64";
+        case BIFROST_MESSAGE_NONE: return "";
+        case BIFROST_MESSAGE_VARYING: return "vary";
+        case BIFROST_MESSAGE_ATTRIBUTE: return "attr";
+        case BIFROST_MESSAGE_TEX: return "tex";
+        case BIFROST_MESSAGE_VARTEX: return "vartex";
+        case BIFROST_MESSAGE_LOAD: return "load";
+        case BIFROST_MESSAGE_STORE: return "store";
+        case BIFROST_MESSAGE_ATOMIC: return "atomic";
+        case BIFROST_MESSAGE_BARRIER: return "barrier";
+        case BIFROST_MESSAGE_BLEND: return "blend";
+        case BIFROST_MESSAGE_TILE: return "tile";
+        case BIFROST_MESSAGE_Z_STENCIL: return "z_stencil";
+        case BIFROST_MESSAGE_ATEST: return "atest";
+        case BIFROST_MESSAGE_JOB: return "job";
+        case BIFROST_MESSAGE_64BIT: return "64";
         default: return "XXX reserved";
         }
 }

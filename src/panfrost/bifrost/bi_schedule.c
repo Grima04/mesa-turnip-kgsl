@@ -37,46 +37,46 @@ bi_is_fragz(bi_instruction *ins)
         return (ins->constant.u32 == BIFROST_FRAGZ);
 }
 
-static enum bifrost_clause_type
-bi_clause_type_for_ins(bi_instruction *ins)
+static enum bifrost_message_type
+bi_message_type_for_ins(bi_instruction *ins)
 {
         unsigned T = ins->type;
 
         /* Only high latency ops impose clause types */
         if (!(bi_class_props[T] & BI_SCHED_HI_LATENCY))
-                return BIFROST_CLAUSE_NONE;
+                return BIFROST_MESSAGE_NONE;
 
         switch (T) {
         case BI_BRANCH:
         case BI_DISCARD:
-                return BIFROST_CLAUSE_NONE;
+                return BIFROST_MESSAGE_NONE;
 
         case BI_LOAD_VAR:
                 if (bi_is_fragz(ins))
-                        return BIFROST_CLAUSE_Z_STENCIL;
+                        return BIFROST_MESSAGE_Z_STENCIL;
 
-                return BIFROST_CLAUSE_VARYING;
+                return BIFROST_MESSAGE_VARYING;
 
         case BI_LOAD_UNIFORM:
         case BI_LOAD_ATTR:
         case BI_LOAD_VAR_ADDRESS:
-                return BIFROST_CLAUSE_ATTRIBUTE;
+                return BIFROST_MESSAGE_ATTRIBUTE;
 
         case BI_TEX:
-                return BIFROST_CLAUSE_TEX;
+                return BIFROST_MESSAGE_TEX;
 
         case BI_LOAD:
-                return BIFROST_CLAUSE_LOAD;
+                return BIFROST_MESSAGE_LOAD;
 
         case BI_STORE:
         case BI_STORE_VAR:
-                return BIFROST_CLAUSE_STORE;
+                return BIFROST_MESSAGE_STORE;
 
         case BI_BLEND:
-                return BIFROST_CLAUSE_BLEND;
+                return BIFROST_MESSAGE_BLEND;
 
         case BI_ATEST:
-                return BIFROST_CLAUSE_ATEST;
+                return BIFROST_MESSAGE_ATEST;
 
         default:
                 unreachable("Invalid high-latency class");
@@ -235,7 +235,7 @@ bi_schedule(bi_context *ctx)
                                 (ins->type == BI_BRANCH) &&
                                 (ins->cond == BI_COND_ALWAYS));
 
-                        u->clause_type = bi_clause_type_for_ins(ins);
+                        u->message_type = bi_message_type_for_ins(ins);
                         u->block = (struct bi_block *) block;
 
                         list_addtail(&u->link, &bblock->clauses);

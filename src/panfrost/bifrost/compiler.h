@@ -428,7 +428,7 @@ typedef struct {
         bool branch_constant;
 
         /* What type of high latency instruction is here, basically */
-        unsigned clause_type;
+        unsigned message_type;
 } bi_clause;
 
 typedef struct bi_block {

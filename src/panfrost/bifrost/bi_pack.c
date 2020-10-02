@@ -53,8 +53,8 @@ bi_pack_header(bi_clause *clause, bi_clause *next_1, bi_clause *next_2, bool is_
                 .staging_register = clause->staging_register,
                 .scoreboard_deps = scoreboard_deps,
                 .scoreboard_index = clause->scoreboard_id,
-                .clause_type = clause->clause_type,
-                .next_clause_type = next_1 ? next_1->clause_type : 0,
+                .message_type = clause->message_type,
+                .next_message_type = next_1 ? next_1->message_type : 0,
                 .suppress_inf = true,
                 .suppress_nan = true,
         };
