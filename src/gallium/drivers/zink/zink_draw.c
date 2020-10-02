@@ -510,19 +510,19 @@ update_descriptors(struct zink_context *ctx, struct zink_screen *screen, bool is
    unsigned num_descriptors;
    VkDescriptorSetLayout dsl;
    if (is_compute) {
-      num_descriptors = ctx->curr_compute->num_descriptors;
-      dsl = ctx->curr_compute->dsl;
+      num_descriptors = ctx->curr_compute->base.num_descriptors;
+      dsl = ctx->curr_compute->base.dsl;
       batch = &ctx->compute_batch;
    } else {
       batch = zink_batch_rp(ctx);
-      num_descriptors = ctx->curr_program->num_descriptors;
-      dsl = ctx->curr_program->dsl;
+      num_descriptors = ctx->curr_program->base.num_descriptors;
+      dsl = ctx->curr_program->base.dsl;
    }
 
    if (is_compute)
-      zink_batch_reference_program(batch, &ctx->curr_compute->reference);
+      zink_batch_reference_program(batch, &ctx->curr_compute->base.reference);
    else
-      zink_batch_reference_program(batch, &ctx->curr_program->reference);
+      zink_batch_reference_program(batch, &ctx->curr_program->base.reference);
 
    if (batch->descs_used + num_descriptors >= batch->max_descs) {
       if (is_compute)
@@ -769,7 +769,7 @@ zink_draw_vbo(struct pipe_context *pctx,
    barrier_vertex_buffers(ctx);
    barrier_draw_buffers(ctx, dinfo, dindirect, index_buffer);
 
-   if (gfx_program->num_descriptors)
+   if (gfx_program->base.num_descriptors)
       update_descriptors(ctx, screen, false);
 
    struct zink_batch *batch = zink_batch_rp(ctx);
@@ -971,7 +971,7 @@ zink_launch_grid(struct pipe_context *pctx, const struct pipe_grid_info *info)
    VkPipeline pipeline = zink_get_compute_pipeline(screen, comp_program,
                                                &ctx->compute_pipeline_state);
 
-   if (comp_program->num_descriptors)
+   if (comp_program->base.num_descriptors)
       update_descriptors(ctx, screen, true);
 
 

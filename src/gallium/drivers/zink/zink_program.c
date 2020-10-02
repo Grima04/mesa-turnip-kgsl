@@ -457,7 +457,7 @@ zink_create_gfx_program(struct zink_context *ctx,
    if (!prog)
       goto fail;
 
-   pipe_reference_init(&prog->reference, 1);
+   pipe_reference_init(&prog->base.reference, 1);
 
    init_slot_map(ctx, prog);
 
@@ -478,12 +478,12 @@ zink_create_gfx_program(struct zink_context *ctx,
       }
    }
 
-   prog->dsl = create_desc_set_layout(screen->dev, stages,
-                                      &prog->num_descriptors);
-   if (prog->num_descriptors && !prog->dsl)
+   prog->base.dsl = create_desc_set_layout(screen->dev, stages,
+                                      &prog->base.num_descriptors);
+   if (prog->base.num_descriptors && !prog->base.dsl)
       goto fail;
 
-   prog->layout = create_gfx_pipeline_layout(screen->dev, prog->dsl);
+   prog->layout = create_gfx_pipeline_layout(screen->dev, prog->base.dsl);
    if (!prog->layout)
       goto fail;
 
@@ -540,7 +540,7 @@ zink_create_compute_program(struct zink_context *ctx, struct zink_shader *shader
    if (!comp)
       goto fail;
 
-   pipe_reference_init(&comp->reference, 1);
+   pipe_reference_init(&comp->base.reference, 1);
 
    if (!ctx->curr_compute || !ctx->curr_compute->shader_cache) {
       /* TODO: cs shader keys placeholder for now */
@@ -578,12 +578,12 @@ zink_create_compute_program(struct zink_context *ctx, struct zink_shader *shader
 
    struct zink_shader *stages[ZINK_SHADER_COUNT] = {};
    stages[0] = shader;
-   comp->dsl = create_desc_set_layout(screen->dev, stages,
-                                      &comp->num_descriptors);
-   if (comp->num_descriptors && !comp->dsl)
+   comp->base.dsl = create_desc_set_layout(screen->dev, stages,
+                                      &comp->base.num_descriptors);
+   if (comp->base.num_descriptors && !comp->base.dsl)
       goto fail;
 
-   comp->layout = create_compute_pipeline_layout(screen->dev, comp->dsl);
+   comp->layout = create_compute_pipeline_layout(screen->dev, comp->base.dsl);
    if (!comp->layout)
       goto fail;
 
@@ -612,8 +612,8 @@ zink_destroy_gfx_program(struct zink_screen *screen,
    if (prog->layout)
       vkDestroyPipelineLayout(screen->dev, prog->layout, NULL);
 
-   if (prog->dsl)
-      vkDestroyDescriptorSetLayout(screen->dev, prog->dsl, NULL);
+   if (prog->base.dsl)
+      vkDestroyDescriptorSetLayout(screen->dev, prog->base.dsl, NULL);
 
    for (int i = 0; i < ZINK_SHADER_COUNT; ++i) {
       if (prog->shaders[i])
@@ -643,8 +643,8 @@ zink_destroy_compute_program(struct zink_screen *screen,
    if (comp->layout)
       vkDestroyPipelineLayout(screen->dev, comp->layout, NULL);
 
-   if (comp->dsl)
-      vkDestroyDescriptorSetLayout(screen->dev, comp->dsl, NULL);
+   if (comp->base.dsl)
+      vkDestroyDescriptorSetLayout(screen->dev, comp->base.dsl, NULL);
 
    if (comp->shader)
       _mesa_set_remove_key(comp->shader->programs, comp);
