@@ -119,14 +119,26 @@ static void dump_header(FILE *fp, struct bifrost_header header, bool verbose)
                 fprintf(fp, "we ");
 
         if (header.suppress_inf)
-                fprintf(fp, "suppress-inf ");
+                fprintf(fp, "inf_suppress ");
         if (header.suppress_nan)
-                fprintf(fp, "suppress-nan ");
+                fprintf(fp, "nan_suppress ");
 
-        if (header.unk0)
-                fprintf(fp, "unk0 ");
-        if (header.unk1)
-                fprintf(fp, "unk1 ");
+        if (header.flush_to_zero == BIFROST_FTZ_DX11)
+                fprintf(fp, "ftz_dx11 ");
+        else if (header.flush_to_zero == BIFROST_FTZ_ALWAYS)
+                fprintf(fp, "ftz_hsa ");
+        if (header.flush_to_zero == BIFROST_FTZ_ABRUPT)
+                fprintf(fp, "ftz_au ");
+
+        assert(!header.zero1);
+
+        if (header.float_exceptions == BIFROST_EXCEPTIONS_DISABLED)
+                fprintf(fp, "fpe_ts ");
+        else if (header.float_exceptions == BIFROST_EXCEPTIONS_PRECISE_DIVISION)
+                fprintf(fp, "fpe_pd ");
+        else if (header.float_exceptions == BIFROST_EXCEPTIONS_PRECISE_SQRT)
+                fprintf(fp, "fpe_psqr ");
+
         if  (header.unk2)
                 fprintf(fp, "unk2 ");
         if (header.unk3)

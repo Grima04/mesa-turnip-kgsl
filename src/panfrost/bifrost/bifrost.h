@@ -47,14 +47,37 @@ enum bifrost_clause_type {
         BIFROST_CLAUSE_64BIT      = 15
 };
 
+enum bifrost_ftz {
+        BIFROST_FTZ_DISABLE = 0,
+        BIFROST_FTZ_DX11 = 1,
+        BIFROST_FTZ_ALWAYS = 2,
+        BIFROST_FTZ_ABRUPT = 3
+};
+
+enum bifrost_exceptions {
+        BIFROST_EXCEPTIONS_ENABLED = 0,
+        BIFROST_EXCEPTIONS_DISABLED = 1,
+        BIFROST_EXCEPTIONS_PRECISE_DIVISION = 2,
+        BIFROST_EXCEPTIONS_PRECISE_SQRT = 3,
+};
+
 struct bifrost_header {
-        unsigned unk0 : 7;
-        // If true, convert any infinite result of any floating-point operation to
-        // the biggest representable number.
+        /* Reserved */
+        unsigned zero1 : 5;
+
+        /* Flush-to-zero mode, leave zero for GL */
+        enum bifrost_ftz flush_to_zero : 2;
+
+        /* Convert any infinite result of any floating-point operation to the
+         * biggest representable number */
         unsigned suppress_inf: 1;
-        // Convert any NaN results to 0.
+
+        /* Convert NaN to +0.0 */
         unsigned suppress_nan : 1;
-        unsigned unk1 : 2;
+
+        /* Floating-point excception handling mode */
+        enum bifrost_exceptions float_exceptions : 2;
+
         // true if the execution mask of the next clause is the same as the mask of
         // the current clause.
         unsigned back_to_back : 1;
