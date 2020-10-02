@@ -130,14 +130,15 @@ panfrost_get_param(struct pipe_screen *screen, enum pipe_cap param)
                 /* WIP */
                 return is_gl3 ? 1 : 0;
 
+        case PIPE_CAP_OCCLUSION_QUERY:
+        case PIPE_CAP_PRIMITIVE_RESTART:
+        case PIPE_CAP_PRIMITIVE_RESTART_FIXED_INDEX:
+                return true;
 
         /* ES3 features unsupported on Bifrost */
-        case PIPE_CAP_OCCLUSION_QUERY:
         case PIPE_CAP_TGSI_INSTANCEID:
         case PIPE_CAP_TEXTURE_MULTISAMPLE:
         case PIPE_CAP_SURFACE_SAMPLE_COUNT:
-        case PIPE_CAP_PRIMITIVE_RESTART:
-        case PIPE_CAP_PRIMITIVE_RESTART_FIXED_INDEX:
                 return !is_bifrost;
 
         case PIPE_CAP_SAMPLER_VIEW_TARGET:
@@ -171,7 +172,7 @@ panfrost_get_param(struct pipe_screen *screen, enum pipe_cap param)
 
         case PIPE_CAP_GLSL_FEATURE_LEVEL:
         case PIPE_CAP_GLSL_FEATURE_LEVEL_COMPATIBILITY:
-                return is_gl3 ? 330 : (is_bifrost ? 120 : 140);
+                return is_gl3 ? 330 : 140;
         case PIPE_CAP_ESSL_FEATURE_LEVEL:
                 return is_bifrost ? 120 : 300;
 
