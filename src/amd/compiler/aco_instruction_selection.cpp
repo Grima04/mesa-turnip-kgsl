@@ -6805,7 +6805,114 @@ void visit_load_sample_mask_in(isel_context *ctx, nir_intrinsic_instr *instr) {
    bld.vop2(aco_opcode::v_and_b32, Definition(dst), mask, get_arg(ctx, ctx->args->ac.sample_coverage));
 }
 
-void visit_emit_vertex_with_counter(isel_context *ctx, nir_intrinsic_instr *instr) {
+unsigned gs_outprim_vertices(unsigned outprim)
+{
+   switch (outprim) {
+   case 0: /* GL_POINTS */
+      return 1;
+   case 3: /* GL_LINE_STRIP */
+      return 2;
+   case 5: /* GL_TRIANGLE_STRIP */
+      return 3;
+   default:
+      unreachable("Unsupported GS output primitive type.");
+   }
+}
+
+void ngg_visit_emit_vertex_with_counter(isel_context *ctx, nir_intrinsic_instr *instr)
+{
+   Builder bld(ctx->program, ctx->block);
+   Temp emit_vertex_idx = get_ssa_temp(ctx, instr->src[0].ssa);
+   Temp emit_vertex_addr = ngg_gs_emit_vertex_lds_addr(ctx, emit_vertex_idx);
+   unsigned stream = nir_intrinsic_stream_id(instr);
+   unsigned out_idx = 0;
+
+   for (unsigned i = 0; i <= VARYING_SLOT_VAR31; i++) {
+      if (ctx->program->info->gs.output_streams[i] != stream) {
+         continue;
+      } else if (!ctx->outputs.mask[i] && ctx->program->info->gs.output_usage_mask[i]) {
+         /* The GS can write this output, but it's empty for the current vertex. */
+         out_idx++;
+         continue;
+      }
+
+      uint32_t wrmask = ctx->program->info->gs.output_usage_mask[i] &
+                        ctx->outputs.mask[i];
+
+      /* Clear output for the next vertex. */
+      ctx->outputs.mask[i] = 0;
+
+      if (!wrmask)
+         continue;
+
+      for (unsigned j = 0; j < 4; j++) {
+         if (wrmask & (1 << j)) {
+            Temp elem = ctx->outputs.temps[i * 4u + j];
+            store_lds(ctx, elem.bytes(), elem, 0x1u, emit_vertex_addr, out_idx * 4u, 4u);
+         }
+
+         out_idx++;
+      }
+   }
+
+   /* Calculate per-vertex primitive flags based on current and total vertex count per primitive:
+    *   bit 0: whether this vertex finishes a primitive
+    *   bit 1: whether the primitive is odd (if we are emitting triangle strips, otherwise always 0)
+    *   bit 2: always 1 (so that we can use it for determining vertex liveness)
+    */
+   unsigned total_vtx_per_prim = gs_outprim_vertices(ctx->shader->info.gs.output_primitive);
+   bool calc_odd = stream == 0 && total_vtx_per_prim == 3;
+   Temp prim_flag;
+
+   if (nir_src_is_const(instr->src[1])) {
+      uint8_t current_vtx_per_prim = nir_src_as_uint(instr->src[1]);
+      uint8_t completes_prim = (current_vtx_per_prim >= (total_vtx_per_prim - 1)) ? 1 : 0;
+      uint8_t odd = calc_odd & current_vtx_per_prim;
+      uint8_t flag = completes_prim | (odd << 1) | (1 << 2);
+      prim_flag = bld.copy(bld.def(v1b), Operand(flag));
+   } else if (!instr->src[1].ssa->divergent) {
+      Temp current_vtx_per_prim = bld.as_uniform(get_ssa_temp(ctx, instr->src[1].ssa));
+      Temp completes_prim = bld.sopc(aco_opcode::s_cmp_le_u32, bld.def(s1, scc), Operand(total_vtx_per_prim - 1), current_vtx_per_prim);
+      prim_flag = bld.sop2(aco_opcode::s_cselect_b32, bld.def(s1), Operand(0b101u), Operand(0b100u), bld.scc(completes_prim));
+      if (calc_odd) {
+         Temp odd = bld.sopc(aco_opcode::s_bitcmp1_b32, bld.def(s1, scc), current_vtx_per_prim, Operand(0u));
+         prim_flag = bld.sop2(aco_opcode::s_lshl1_add_u32, bld.def(s1), bld.def(s1, scc), odd, prim_flag);
+      }
+   } else {
+      Temp current_vtx_per_prim = as_vgpr(ctx, get_ssa_temp(ctx, instr->src[1].ssa));
+      Temp completes_prim = bld.vopc(aco_opcode::v_cmp_le_u32, bld.hint_vcc(bld.def(bld.lm)), Operand(total_vtx_per_prim - 1), current_vtx_per_prim);
+      prim_flag = bld.vop2_e64(aco_opcode::v_cndmask_b32, bld.def(v1), Operand(0b100u), Operand(0b101u), Operand(completes_prim));
+      if (calc_odd) {
+         Temp odd = bld.vop2(aco_opcode::v_and_b32, bld.def(v1), Operand(1u), current_vtx_per_prim);
+         prim_flag = bld.vop3(aco_opcode::v_lshl_or_b32, bld.def(v1), odd, Operand(1u), prim_flag);
+      }
+   }
+
+   /* Store the per-vertex primitive flags at the end of the vertex data */
+   prim_flag = bld.pseudo(aco_opcode::p_extract_vector, bld.def(v1b), as_vgpr(ctx, prim_flag), Operand(0u));
+   unsigned primflag_offset = ctx->ngg_gs_primflags_offset + stream;
+   store_lds(ctx, 1, prim_flag, 1u, emit_vertex_addr, primflag_offset, 1);
+}
+
+void ngg_gs_clear_primflags(isel_context *ctx, Temp vtx_cnt, unsigned stream);
+
+void ngg_visit_set_vertex_and_primitive_count(isel_context *ctx, nir_intrinsic_instr *instr)
+{
+   unsigned stream = nir_intrinsic_stream_id(instr);
+   if (!ctx->args->shader_info->gs.num_stream_output_components[stream])
+      return;
+
+   /* Clear the primitive flags of non-emitted GS vertices. */
+   if (!nir_src_is_const(instr->src[0]) || nir_src_as_uint(instr->src[0]) < ctx->shader->info.gs.vertices_out) {
+      Temp vtx_cnt = get_ssa_temp(ctx, instr->src[0].ssa);
+      ngg_gs_clear_primflags(ctx, vtx_cnt, stream);
+   }
+
+   /* TODO: also take the primitive count into use */
+}
+
+void visit_emit_vertex_with_counter(isel_context *ctx, nir_intrinsic_instr *instr)
+{
    Builder bld(ctx->program, ctx->block);
 
    unsigned stream = nir_intrinsic_stream_id(instr);
@@ -8033,16 +8140,23 @@ void visit_intrinsic(isel_context *ctx, nir_intrinsic_instr *instr)
       break;
    }
    case nir_intrinsic_emit_vertex_with_counter: {
-      visit_emit_vertex_with_counter(ctx, instr);
+      if (ctx->stage & hw_ngg_gs)
+         ngg_visit_emit_vertex_with_counter(ctx, instr);
+      else
+         visit_emit_vertex_with_counter(ctx, instr);
       break;
    }
    case nir_intrinsic_end_primitive_with_counter: {
-      unsigned stream = nir_intrinsic_stream_id(instr);
-      bld.sopp(aco_opcode::s_sendmsg, bld.m0(ctx->gs_wave_id), -1, sendmsg_gs(true, false, stream));
+      if ((ctx->stage & hw_ngg_gs) == 0) {
+         unsigned stream = nir_intrinsic_stream_id(instr);
+         bld.sopp(aco_opcode::s_sendmsg, bld.m0(ctx->gs_wave_id), -1, sendmsg_gs(true, false, stream));
+      }
       break;
    }
    case nir_intrinsic_set_vertex_and_primitive_count: {
-      /* unused, the HW keeps track of this for us */
+      if (ctx->stage & hw_ngg_gs)
+         ngg_visit_set_vertex_and_primitive_count(ctx, instr);
+      /* unused in the legacy pipeline, the HW keeps track of this for us */
       break;
    }
    default:
@@ -11017,6 +11131,213 @@ std::pair<Temp, Temp> ngg_gs_workgroup_reduce_and_scan(isel_context *ctx, Temp s
    return std::make_pair(wg_reduction, wg_excl);
 }
 
+void ngg_gs_clear_primflags(isel_context *ctx, Temp vtx_cnt, unsigned stream)
+{
+   loop_context lc;
+   if_context ic;
+   Builder bld(ctx->program, ctx->block);
+   Temp zero = bld.copy(bld.def(v1b), Operand(uint8_t(0)));
+   Temp counter_init = bld.copy(bld.def(v1), as_vgpr(ctx, vtx_cnt));
+
+   begin_loop(ctx, &lc);
+
+   Temp incremented_counter = bld.tmp(counter_init.regClass());
+   bld.reset(&ctx->block->instructions, ctx->block->instructions.begin());
+   Temp counter = bld.pseudo(aco_opcode::p_phi, bld.def(counter_init.regClass()), Operand(counter_init), incremented_counter);
+   bld.reset(ctx->block);
+   Temp break_cond = bld.vopc(aco_opcode::v_cmp_le_u32, bld.def(bld.lm), Operand(ctx->shader->info.gs.vertices_out), counter);
+
+   /* Break when vertices_out <= counter  */
+   begin_divergent_if_then(ctx, &ic, break_cond);
+   emit_loop_break(ctx);
+   begin_divergent_if_else(ctx, &ic);
+   end_divergent_if(ctx, &ic);
+   bld.reset(ctx->block);
+
+   /* Store zero to the primitive flag of the current vertex for the current stream */
+   Temp emit_vertex_addr = ngg_gs_emit_vertex_lds_addr(ctx, counter);
+   unsigned primflag_offset = ctx->ngg_gs_primflags_offset + stream;
+   store_lds(ctx, 1, zero, 0xf, emit_vertex_addr, primflag_offset, 1);
+
+   /* Increment counter */
+   bld.vadd32(Definition(incremented_counter), counter, Operand(1u));
+
+   end_loop(ctx, &lc);
+}
+
+Temp ngg_gs_load_prim_flag_0(isel_context *ctx, Temp tid_in_tg, Temp max_vtxcnt, Temp vertex_lds_addr)
+{
+   if_context ic;
+   Builder bld(ctx->program, ctx->block);
+
+   Temp is_vertex_emit_thread = bld.vopc(aco_opcode::v_cmp_gt_u32, bld.def(bld.lm), max_vtxcnt, tid_in_tg);
+   begin_divergent_if_then(ctx, &ic, is_vertex_emit_thread);
+   bld.reset(ctx->block);
+
+   Operand m = load_lds_size_m0(bld);
+   Temp prim_flag_0 = bld.ds(aco_opcode::ds_read_u8, bld.def(v1), vertex_lds_addr, m, ctx->ngg_gs_primflags_offset);
+
+   begin_divergent_if_else(ctx, &ic);
+   end_divergent_if(ctx, &ic);
+
+   bld.reset(&ctx->block->instructions, ctx->block->instructions.begin());
+   prim_flag_0 = bld.pseudo(aco_opcode::p_phi, bld.def(prim_flag_0.regClass()), Operand(prim_flag_0), Operand(0u));
+
+   return prim_flag_0;
+}
+
+void ngg_gs_setup_vertex_compaction(isel_context *ctx, Temp vertex_live, Temp tid_in_tg, Temp exporter_tid_in_tg)
+{
+   if_context ic;
+   Builder bld(ctx->program, ctx->block);
+   assert(vertex_live.regClass() == bld.lm);
+
+   begin_divergent_if_then(ctx, &ic, vertex_live);
+   bld.reset(ctx->block);
+
+   /* Setup the vertex compaction.
+    * Save the current thread's id for the thread which will export the current vertex.
+    * We reuse stream 1 of the primitive flag of the other thread's vertex for storing this.
+    */
+   Temp export_thread_lds_addr = ngg_gs_vertex_lds_addr(ctx, exporter_tid_in_tg);
+   tid_in_tg = bld.pseudo(aco_opcode::p_extract_vector, bld.def(v1b), tid_in_tg, Operand(0u));
+   store_lds(ctx, 1u, tid_in_tg, 1u, export_thread_lds_addr, ctx->ngg_gs_primflags_offset + 1u, 1u);
+
+   begin_divergent_if_else(ctx, &ic);
+   end_divergent_if(ctx, &ic);
+   bld.reset(ctx->block);
+
+   /* Wait for all waves to setup the vertex compaction. */
+   create_workgroup_barrier(bld);
+}
+
+void ngg_gs_export_primitives(isel_context *ctx, Temp max_prmcnt, Temp tid_in_tg, Temp exporter_tid_in_tg,
+                              Temp prim_flag_0)
+{
+   if_context ic;
+   Builder bld(ctx->program, ctx->block);
+   unsigned total_vtx_per_prim = gs_outprim_vertices(ctx->shader->info.gs.output_primitive);
+   assert(total_vtx_per_prim <= 3);
+
+   Temp is_prim_export_thread = bld.vopc(aco_opcode::v_cmp_gt_u32, bld.def(bld.lm), max_prmcnt, tid_in_tg);
+   begin_divergent_if_then(ctx, &ic, is_prim_export_thread);
+   bld.reset(ctx->block);
+
+   Temp is_null_prim = bld.vop2(aco_opcode::v_xor_b32, bld.def(v1), Operand(-1u), prim_flag_0);
+   Temp indices[3];
+
+   indices[total_vtx_per_prim - 1] = exporter_tid_in_tg;
+   if (total_vtx_per_prim >= 2)
+      indices[total_vtx_per_prim - 2] = bld.vsub32(bld.def(v1), exporter_tid_in_tg, Operand(1u));
+   if (total_vtx_per_prim == 3)
+      indices[total_vtx_per_prim - 3] = bld.vsub32(bld.def(v1), exporter_tid_in_tg, Operand(2u));
+
+   if (total_vtx_per_prim == 3) {
+      /* API GS outputs triangle strips, but NGG HW needs triangles.
+      * We already have triangles due to how we set the primitive flags, but we need to
+      * make sure the vertex order is so that the front/back is correct, and the provoking vertex is kept.
+      */
+
+      /* If the primitive is odd, this will increment indices[1] and decrement indices[2] */
+      Temp is_odd = bld.vop3(aco_opcode::v_bfe_u32, bld.def(v1), Operand(prim_flag_0), Operand(1u), Operand(1u));
+      indices[1] = bld.vadd32(bld.def(v1), indices[1], Operand(is_odd));
+      indices[2] = bld.vsub32(bld.def(v1), indices[2], Operand(is_odd));
+   }
+
+   ngg_emit_prim_export(ctx, total_vtx_per_prim, indices, is_null_prim);
+
+   begin_divergent_if_else(ctx, &ic);
+   end_divergent_if(ctx, &ic);
+}
+
+void ngg_gs_export_vertices(isel_context *ctx, Temp wg_vtx_cnt, Temp tid_in_tg, Temp vertex_lds_addr)
+{
+   if_context ic;
+   Builder bld(ctx->program, ctx->block);
+
+   /* See if the current thread has to export a vertex. */
+   Temp is_vtx_export_thread = bld.vopc(aco_opcode::v_cmp_gt_u32, bld.def(bld.lm), wg_vtx_cnt, tid_in_tg);
+   begin_divergent_if_then(ctx, &ic, is_vtx_export_thread);
+   bld.reset(ctx->block);
+
+   /* Vertex compaction: read stream 1 of the primitive flags to see which vertex the current thread needs to export */
+   Operand m = load_lds_size_m0(bld);
+   Temp exported_vtx_idx = bld.ds(aco_opcode::ds_read_u8, bld.def(v1), vertex_lds_addr, m, ctx->ngg_gs_primflags_offset + 1);
+   /* Get the LDS address of the vertex that the current thread must export. */
+   Temp exported_vtx_addr = ngg_gs_vertex_lds_addr(ctx, exported_vtx_idx);
+
+   /* Read the vertex attributes from LDS. */
+   unsigned out_idx = 0;
+   for (unsigned i = 0; i <= VARYING_SLOT_VAR31; i++) {
+      if (ctx->program->info->gs.output_streams[i] != 0)
+         continue;
+
+      /* Set the output mask to the GS output usage mask. */
+      unsigned rdmask =
+         ctx->outputs.mask[i] =
+         ctx->program->info->gs.output_usage_mask[i];
+
+      if (!rdmask)
+         continue;
+
+      for (unsigned j = 0; j < 4; j++) {
+         if (rdmask & (1 << j))
+            ctx->outputs.temps[i * 4u + j] =
+               load_lds(ctx, 4u, bld.tmp(v1), exported_vtx_addr, out_idx * 4u, 4u);
+
+         out_idx++;
+      }
+   }
+
+   /* Export the vertex parameters. */
+   create_vs_exports(ctx);
+   ctx->block->kind |= block_kind_export_end;
+
+   begin_divergent_if_else(ctx, &ic);
+   end_divergent_if(ctx, &ic);
+}
+
+void ngg_gs_finale(isel_context *ctx)
+{
+   if_context ic;
+   Builder bld(ctx->program, ctx->block);
+
+   /* Wait for all waves to reach the epilogue. */
+   create_workgroup_barrier(bld);
+
+   /* Thread ID in the entire threadgroup */
+   Temp tid_in_tg = thread_id_in_threadgroup(ctx);
+   /* Number of threads that may need to export a vertex or primitive. */
+   Temp max_vtxcnt = ngg_max_vertex_count(ctx);
+   /* LDS address of the vertex corresponding to the current thread. */
+   Temp vertex_lds_addr = ngg_gs_vertex_lds_addr(ctx, tid_in_tg);
+   /* Primitive flag from stream 0 of the vertex corresponding to the current thread. */
+   Temp prim_flag_0 = ngg_gs_load_prim_flag_0(ctx, tid_in_tg, max_vtxcnt, vertex_lds_addr);
+
+   bld.reset(ctx->block);
+
+   /* NIR already filters out incomplete primitives and vertices,
+    * so any vertex whose primitive flag is non-zero is considered live/valid.
+    */
+   Temp vertex_live = bld.vopc(aco_opcode::v_cmp_lg_u32, bld.def(bld.lm), Operand(0u), Operand(prim_flag_0));
+
+   /* Perform a workgroup reduction and exclusive scan. */
+   std::pair<Temp, Temp> wg_scan = ngg_gs_workgroup_reduce_and_scan(ctx, vertex_live);
+   bld.reset(ctx->block);
+   /* Total number of vertices emitted by the workgroup. */
+   Temp wg_vtx_cnt = wg_scan.first;
+   /* ID of the thread which will export the current thread's vertex. */
+   Temp exporter_tid_in_tg = wg_scan.second;
+   /* Skip all exports when possible. */
+   Temp have_exports = bld.sopc(aco_opcode::s_cmp_lg_u32, bld.def(s1, scc), wg_vtx_cnt, Operand(0u));
+   max_vtxcnt = bld.sop2(aco_opcode::s_cselect_b32, bld.def(s1), max_vtxcnt, Operand(0u), bld.scc(have_exports));
+
+   ngg_emit_sendmsg_gs_alloc_req(ctx, wg_vtx_cnt, max_vtxcnt);
+   ngg_gs_setup_vertex_compaction(ctx, vertex_live, tid_in_tg, exporter_tid_in_tg);
+   ngg_gs_export_primitives(ctx, max_vtxcnt, tid_in_tg, exporter_tid_in_tg, prim_flag_0);
+   ngg_gs_export_vertices(ctx, wg_vtx_cnt, tid_in_tg, vertex_lds_addr);
+}
+
 } /* end namespace */
 
 void select_program(Program *program,
@@ -11028,6 +11349,7 @@ void select_program(Program *program,
    isel_context ctx = setup_isel_context(program, shader_count, shaders, config, args, false);
    if_context ic_merged_wave_info;
    bool ngg_no_gs = ctx.stage == ngg_vertex_gs || ctx.stage == ngg_tess_eval_gs;
+   bool ngg_gs = ctx.stage == ngg_vertex_geometry_gs || ctx.stage == ngg_tess_eval_geometry_gs;
 
    for (unsigned i = 0; i < shader_count; i++) {
       nir_shader *nir = shaders[i];
@@ -11088,7 +11410,7 @@ void select_program(Program *program,
          ctx.block->kind |= block_kind_export_end;
       } else if (ngg_no_gs && ctx.ngg_nogs_early_prim_export) {
          ngg_nogs_export_vertices(&ctx);
-      } else if (nir->info.stage == MESA_SHADER_GEOMETRY) {
+      } else if (nir->info.stage == MESA_SHADER_GEOMETRY && !ngg_gs) {
          Builder bld(ctx.program, ctx.block);
          bld.barrier(aco_opcode::p_barrier,
                      memory_sync_info(storage_vmem_output, semantic_release, scope_device));
@@ -11109,6 +11431,8 @@ void select_program(Program *program,
 
       if (ngg_no_gs && !ctx.ngg_nogs_early_prim_export)
          ngg_nogs_late_export_finale(&ctx);
+      else if (ngg_gs && nir->info.stage == MESA_SHADER_GEOMETRY)
+         ngg_gs_finale(&ctx);
 
       if (i == 0 && ctx.stage == vertex_tess_control_hs && ctx.tcs_in_out_eq) {
          /* Outputs of the previous stage are inputs to the next stage */
