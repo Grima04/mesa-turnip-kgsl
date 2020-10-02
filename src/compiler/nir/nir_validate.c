@@ -1227,6 +1227,34 @@ postvalidate_reg_decl(nir_register *reg, validate_state *state)
 }
 
 static void
+validate_constant(nir_constant *c, const struct glsl_type *type,
+                  validate_state *state)
+{
+   if (glsl_type_is_vector_or_scalar(type)) {
+      unsigned num_components = glsl_get_vector_elements(type);
+      unsigned bit_size = glsl_get_bit_size(type);
+      for (unsigned i = 0; i < num_components; i++)
+         validate_const_value(&c->values[i], bit_size, state);
+      for (unsigned i = num_components; i < NIR_MAX_VEC_COMPONENTS; i++)
+         validate_assert(state, c->values[i].u64 == 0);
+   } else {
+      validate_assert(state, c->num_elements == glsl_get_length(type));
+      if (glsl_type_is_struct_or_ifc(type)) {
+         for (unsigned i = 0; i < c->num_elements; i++) {
+            const struct glsl_type *elem_type = glsl_get_struct_field(type, i);
+            validate_constant(c->elements[i], elem_type, state);
+         }
+      } else if (glsl_type_is_array_or_matrix(type)) {
+         const struct glsl_type *elem_type = glsl_get_array_element(type);
+         for (unsigned i = 0; i < c->num_elements; i++)
+            validate_constant(c->elements[i], elem_type, state);
+      } else {
+         validate_assert(state, !"Invalid type for nir_constant");
+      }
+   }
+}
+
+static void
 validate_var_decl(nir_variable *var, nir_variable_mode valid_modes,
                   validate_state *state)
 {
@@ -1258,6 +1286,9 @@ validate_var_decl(nir_variable *var, nir_variable_mode valid_modes,
 
    if (var->data.per_view)
       validate_assert(state, glsl_type_is_array(var->type));
+
+   if (var->constant_initializer)
+      validate_constant(var->constant_initializer, var->type, state);
 
    /*
     * TODO validate some things ir_validate.cpp does (requires more GLSL type
