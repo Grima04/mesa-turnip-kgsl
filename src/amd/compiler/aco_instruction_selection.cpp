@@ -10865,7 +10865,7 @@ void ngg_emit_sendmsg_gs_alloc_req(isel_context *ctx, Temp vtx_cnt = Temp(), Tem
    /* VS/TES: we infer the vertex and primitive count from arguments
     * GS: the caller needs to supply them
     */
-   assert(ctx->shader->info.stage == MESA_SHADER_GEOMETRY
+   assert((ctx->stage & sw_gs)
           ? (vtx_cnt.id() && prm_cnt.id())
           : (!vtx_cnt.id() && !prm_cnt.id()));
 
@@ -11330,9 +11330,18 @@ void ngg_gs_export_vertices(isel_context *ctx, Temp wg_vtx_cnt, Temp tid_in_tg, 
    begin_divergent_if_then(ctx, &ic, is_vtx_export_thread);
    bld.reset(ctx->block);
 
-   /* Vertex compaction: read stream 1 of the primitive flags to see which vertex the current thread needs to export */
-   Operand m = load_lds_size_m0(bld);
-   Temp exported_vtx_idx = bld.ds(aco_opcode::ds_read_u8, bld.def(v1), vertex_lds_addr, m, ctx->ngg_gs_primflags_offset + 1);
+   /* The index of the vertex that the current thread will export. */
+   Temp exported_vtx_idx;
+
+   if (ctx->ngg_gs_early_alloc) {
+      /* No vertex compaction necessary, the thread can export its own vertex. */
+      exported_vtx_idx = tid_in_tg;
+   } else {
+      /* Vertex compaction: read stream 1 of the primitive flags to see which vertex the current thread needs to export */
+      Operand m = load_lds_size_m0(bld);
+      exported_vtx_idx = bld.ds(aco_opcode::ds_read_u8, bld.def(v1), vertex_lds_addr, m, ctx->ngg_gs_primflags_offset + 1);
+   }
+
    /* Get the LDS address of the vertex that the current thread must export. */
    Temp exported_vtx_addr = ngg_gs_vertex_lds_addr(ctx, exported_vtx_idx);
 
@@ -11367,6 +11376,19 @@ void ngg_gs_export_vertices(isel_context *ctx, Temp wg_vtx_cnt, Temp tid_in_tg, 
    end_divergent_if(ctx, &ic);
 }
 
+void ngg_gs_prelude(isel_context *ctx)
+{
+   if (!ctx->ngg_gs_early_alloc)
+      return;
+
+   /* We know the GS writes the maximum possible number of vertices, so
+    * it's likely that most threads need to export a primitive, too.
+    * Thus, we won't have to worry about primitive compaction here.
+    */
+   Temp num_max_vertices = ngg_max_vertex_count(ctx);
+   ngg_emit_sendmsg_gs_alloc_req(ctx, num_max_vertices, num_max_vertices);
+}
+
 void ngg_gs_finale(isel_context *ctx)
 {
    if_context ic;
@@ -11391,19 +11413,33 @@ void ngg_gs_finale(isel_context *ctx)
     */
    Temp vertex_live = bld.vopc(aco_opcode::v_cmp_lg_u32, bld.def(bld.lm), Operand(0u), Operand(prim_flag_0));
 
-   /* Perform a workgroup reduction and exclusive scan. */
-   std::pair<Temp, Temp> wg_scan = ngg_gs_workgroup_reduce_and_scan(ctx, vertex_live);
-   bld.reset(ctx->block);
    /* Total number of vertices emitted by the workgroup. */
-   Temp wg_vtx_cnt = wg_scan.first;
+   Temp wg_vtx_cnt;
    /* ID of the thread which will export the current thread's vertex. */
-   Temp exporter_tid_in_tg = wg_scan.second;
-   /* Skip all exports when possible. */
-   Temp have_exports = bld.sopc(aco_opcode::s_cmp_lg_u32, bld.def(s1, scc), wg_vtx_cnt, Operand(0u));
-   max_vtxcnt = bld.sop2(aco_opcode::s_cselect_b32, bld.def(s1), max_vtxcnt, Operand(0u), bld.scc(have_exports));
+   Temp exporter_tid_in_tg;
 
-   ngg_emit_sendmsg_gs_alloc_req(ctx, wg_vtx_cnt, max_vtxcnt);
-   ngg_gs_setup_vertex_compaction(ctx, vertex_live, tid_in_tg, exporter_tid_in_tg);
+   if (ctx->ngg_gs_early_alloc) {
+      /* There is no need for a scan or vertex compaction, we know that
+       * the GS writes all possible vertices so each thread can export its own vertex.
+       */
+      wg_vtx_cnt = max_vtxcnt;
+      exporter_tid_in_tg = tid_in_tg;
+   } else {
+      /* Perform a workgroup reduction and exclusive scan. */
+      std::pair<Temp, Temp> wg_scan = ngg_gs_workgroup_reduce_and_scan(ctx, vertex_live);
+      bld.reset(ctx->block);
+      /* Total number of vertices emitted by the workgroup. */
+      wg_vtx_cnt = wg_scan.first;
+      /* ID of the thread which will export the current thread's vertex. */
+      exporter_tid_in_tg = wg_scan.second;
+      /* Skip all exports when possible. */
+      Temp have_exports = bld.sopc(aco_opcode::s_cmp_lg_u32, bld.def(s1, scc), wg_vtx_cnt, Operand(0u));
+      max_vtxcnt = bld.sop2(aco_opcode::s_cselect_b32, bld.def(s1), max_vtxcnt, Operand(0u), bld.scc(have_exports));
+
+      ngg_emit_sendmsg_gs_alloc_req(ctx, wg_vtx_cnt, max_vtxcnt);
+      ngg_gs_setup_vertex_compaction(ctx, vertex_live, tid_in_tg, exporter_tid_in_tg);
+   }
+
    ngg_gs_export_primitives(ctx, max_vtxcnt, tid_in_tg, exporter_tid_in_tg, prim_flag_0);
    ngg_gs_export_vertices(ctx, wg_vtx_cnt, tid_in_tg, vertex_lds_addr);
 }
@@ -11440,6 +11476,8 @@ void select_program(Program *program,
 
       if (ngg_no_gs)
          ngg_nogs_prelude(&ctx);
+      else if (!i && ngg_gs)
+         ngg_gs_prelude(&ctx);
 
       /* In a merged VS+TCS HS, the VS implementation can be completely empty. */
       nir_function_impl *func = nir_shader_get_entrypoint(nir);
