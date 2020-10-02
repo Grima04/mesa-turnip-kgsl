@@ -11381,6 +11381,13 @@ void select_program(Program *program,
 
       bool check_merged_wave_info = ctx.tcs_in_out_eq ? i == 0 : ((shader_count >= 2 && !empty_shader) || ngg_no_gs);
       bool endif_merged_wave_info = ctx.tcs_in_out_eq ? i == 1 : check_merged_wave_info;
+
+      if (i && ngg_gs) {
+         /* NGG GS waves need to wait for each other after the GS half is done. */
+         Builder bld(ctx.program, ctx.block);
+         create_workgroup_barrier(bld);
+      }
+
       if (check_merged_wave_info) {
          Temp cond = merged_wave_info_to_mask(&ctx, i);
          begin_divergent_if_then(&ctx, &ic_merged_wave_info, cond);
@@ -11389,7 +11396,8 @@ void select_program(Program *program,
       if (i) {
          Builder bld(ctx.program, ctx.block);
 
-         create_workgroup_barrier(bld);
+         if (!ngg_gs)
+            create_workgroup_barrier(bld);
 
          if (ctx.stage == vertex_geometry_gs || ctx.stage == tess_eval_geometry_gs) {
             ctx.gs_wave_id = bld.sop2(aco_opcode::s_bfe_u32, bld.def(s1, m0), bld.def(s1, scc), get_arg(&ctx, args->merged_wave_info), Operand((8u << 16) | 16u));
