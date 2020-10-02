@@ -275,10 +275,29 @@ static void
 dri3_update_max_num_back(struct loader_dri3_drawable *draw)
 {
    switch (draw->last_present_mode) {
-   case XCB_PRESENT_COMPLETE_MODE_FLIP:
-      /* Leave cur_num_back unchanged, it'll grow as needed */
-      draw->max_num_back = 3;
+   case XCB_PRESENT_COMPLETE_MODE_FLIP: {
+      int new_max;
+
+      if (draw->swap_interval == 0)
+         new_max = 4;
+      else
+         new_max = 3;
+
+      assert(new_max <= LOADER_DRI3_MAX_BACK);
+
+      if (new_max != draw->max_num_back) {
+         /* On transition from swap interval == 0 to != 0, start with two
+          * buffers again. Otherwise keep the current number of buffers. Either
+          * way, more will be allocated if needed.
+          */
+         if (new_max < draw->max_num_back)
+            draw->cur_num_back = 2;
+
+         draw->max_num_back = new_max;
+      }
+
       break;
+   }
 
    case XCB_PRESENT_COMPLETE_MODE_SKIP:
       break;
