@@ -1693,7 +1693,7 @@ void spill(Program* program, live& live_vars, const struct radv_nir_compiler_opt
 void insert_wait_states(Program* program);
 void insert_NOPs(Program* program);
 unsigned emit_program(Program* program, std::vector<uint32_t>& code);
-void print_asm(Program *program, std::vector<uint32_t>& binary,
+bool print_asm(Program *program, std::vector<uint32_t>& binary,
                unsigned exec_size, std::ostream& out);
 bool validate_ir(Program* program);
 bool validate_ra(Program* program, const struct radv_nir_compiler_options *options);

@@ -172,7 +172,12 @@ void aco_compile_shader(unsigned shader_count,
    std::string disasm;
    if (get_disasm) {
       std::ostringstream stream;
-      aco::print_asm(program.get(), code, exec_size / 4u, stream);
+      if (aco::print_asm(program.get(), code, exec_size / 4u, stream)) {
+         std::cerr << "Failed to disassemble program:\n";
+         aco_print_program(program.get(), stderr);
+         std::cerr << stream.str() << std::endl;
+         abort();
+      }
       stream << '\0';
       disasm = stream.str();
       size += disasm.size();

@@ -14,7 +14,7 @@ namespace aco {
 /* LLVM disassembler only supports GFX8+, try to disassemble with CLRXdisasm
  * for GFX6-GFX7 if found on the system, this is better than nothing.
 */
-void print_asm_gfx6_gfx7(Program *program, std::vector<uint32_t>& binary,
+bool print_asm_gfx6_gfx7(Program *program, std::vector<uint32_t>& binary,
                          std::ostream& out)
 {
    char path[] = "/tmp/fileXXXXXX";
@@ -26,7 +26,7 @@ void print_asm_gfx6_gfx7(Program *program, std::vector<uint32_t>& binary,
    /* Dump the binary into a temporary file. */
    fd = mkstemp(path);
    if (fd < 0)
-      return;
+      return true;
 
    for (uint32_t w : binary)
    {
@@ -83,17 +83,21 @@ void print_asm_gfx6_gfx7(Program *program, std::vector<uint32_t>& binary,
       pclose(p);
    }
 
+   return false;
+
 fail:
    close(fd);
    unlink(path);
+   return true;
 }
 
-void print_asm(Program *program, std::vector<uint32_t>& binary,
+bool print_asm(Program *program, std::vector<uint32_t>& binary,
                unsigned exec_size, std::ostream& out)
 {
    if (program->chip_class <= GFX7) {
+      /* Do not abort if clrxdisasm isn't found. */
       print_asm_gfx6_gfx7(program, binary, out);
-      return;
+      return false;
    }
 
    std::vector<bool> referenced_blocks(program->blocks.size());
@@ -224,13 +228,7 @@ void print_asm(Program *program, std::vector<uint32_t>& binary,
 
    out << std::setfill(' ') << std::setw(0) << std::dec;
 
-   if (invalid) {
-      /* Invalid instructions usually lead to GPU hangs, which can make
-       * getting the actual invalid instruction hard. Abort here so that we
-       * can find the problem.
-       */
-      abort();
-   }
+   return invalid;
 }
 
 }
