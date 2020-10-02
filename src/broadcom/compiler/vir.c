@@ -1167,6 +1167,28 @@ v3d_prog_data_size(gl_shader_stage stage)
         return prog_data_size[stage];
 }
 
+int v3d_shaderdb_dump(struct v3d_compile *c,
+		      char **shaderdb_str)
+{
+        if (c == NULL)
+                return -1;
+
+        return asprintf(shaderdb_str,
+                        "%s shader: %d inst, %d threads, %d loops, "
+                        "%d uniforms, %d max-temps, %d:%d spills:fills, "
+                        "%d sfu-stalls, %d inst-and-stalls",
+                        vir_get_stage_name(c),
+                        c->qpu_inst_count,
+                        c->threads,
+                        c->loops,
+                        c->num_uniforms,
+                        vir_get_max_temps(c),
+                        c->spills,
+                        c->fills,
+                        c->qpu_inst_stalled_count,
+                        c->qpu_inst_count + c->qpu_inst_stalled_count);
+}
+
 uint64_t *v3d_compile(const struct v3d_compiler *compiler,
                       struct v3d_key *key,
                       struct v3d_prog_data **out_prog_data,
@@ -1217,20 +1239,7 @@ uint64_t *v3d_compile(const struct v3d_compiler *compiler,
         *out_prog_data = prog_data;
 
         char *shaderdb;
-        int ret = asprintf(&shaderdb,
-                           "%s shader: %d inst, %d threads, %d loops, "
-                           "%d uniforms, %d max-temps, %d:%d spills:fills, "
-                           "%d sfu-stalls, %d inst-and-stalls",
-                           vir_get_stage_name(c),
-                           c->qpu_inst_count,
-                           c->threads,
-                           c->loops,
-                           c->num_uniforms,
-                           vir_get_max_temps(c),
-                           c->spills,
-                           c->fills,
-                           c->qpu_inst_stalled_count,
-                           c->qpu_inst_count + c->qpu_inst_stalled_count);
+        int ret = v3d_shaderdb_dump(c, &shaderdb);
         if (ret >= 0) {
                 if (V3D_DEBUG & V3D_DEBUG_SHADERDB)
                         fprintf(stderr, "SHADER-DB: %s\n", shaderdb);

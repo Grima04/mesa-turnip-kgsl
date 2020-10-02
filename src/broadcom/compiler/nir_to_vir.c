@@ -3046,13 +3046,29 @@ v3d_nir_to_vir(struct v3d_compile *c)
                 if (temp_registers)
                         break;
 
+                if (c->threads == min_threads &&
+                    (V3D_DEBUG & V3D_DEBUG_RA)) {
+                        fprintf(stderr,
+                                "Failed to register allocate using %s\n",
+                                c->fallback_scheduler ? "the fallback scheduler:" :
+                                "the normal scheduler: \n");
+
+                        vir_dump(c);
+
+                        char *shaderdb;
+                        int ret = v3d_shaderdb_dump(c, &shaderdb);
+                        if (ret > 0) {
+                                fprintf(stderr, "%s\n", shaderdb);
+                                free(shaderdb);
+                        }
+                }
+
                 if (c->threads == min_threads) {
                         if (c->fallback_scheduler) {
                                 fprintf(stderr,
                                         "Failed to register allocate at %d "
-                                        "threads:\n",
+                                        "threads with any strategy.\n",
                                         c->threads);
-                                vir_dump(c);
                         }
                         c->compilation_result =
                                 V3D_COMPILATION_FAILED_REGISTER_ALLOCATION;

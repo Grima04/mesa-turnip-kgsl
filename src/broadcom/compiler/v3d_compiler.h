@@ -900,6 +900,8 @@ void qpu_validate(struct v3d_compile *c);
 struct qpu_reg *v3d_register_allocate(struct v3d_compile *c, bool *spilled);
 bool vir_init_reg_sets(struct v3d_compiler *compiler);
 
+int v3d_shaderdb_dump(struct v3d_compile *c, char **shaderdb_str);
+
 bool v3d_gl_format_is_return_32(GLenum format);
 
 uint32_t
