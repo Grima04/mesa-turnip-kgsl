@@ -132,6 +132,9 @@ static void dump_header(FILE *fp, struct bifrost_header header, bool verbose)
         else if (header.float_exceptions == BIFROST_EXCEPTIONS_PRECISE_SQRT)
                 fprintf(fp, "fpe_psqr ");
 
+        if (header.clause_type)
+                fprintf(fp, "%s ", bi_clause_type_name(header.next_clause_type));
+
         if  (header.unk2)
                 fprintf(fp, "unk2 ");
 
@@ -141,12 +144,10 @@ static void dump_header(FILE *fp, struct bifrost_header header, bool verbose)
         if (header.next_clause_prefetch)
                 fprintf(fp, "ncph ");
 
-        fprintf(fp, "\n");
+        if (header.next_clause_type)
+                fprintf(fp, "next_%s ", bi_clause_type_name(header.next_clause_type));
 
-        if (verbose) {
-                fprintf(fp, "# clause type %d, next clause type %d\n",
-                       header.clause_type, header.next_clause_type);
-        }
+        fprintf(fp, "\n");
 }
 
 static struct bifrost_reg_ctrl DecodeRegCtrl(FILE *fp, struct bifrost_regs regs, bool first)
