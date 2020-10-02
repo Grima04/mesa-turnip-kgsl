@@ -229,7 +229,8 @@ iris_upload_shader(struct iris_context *ice,
                      &shader->map);
       memcpy(shader->map, assembly, prog_data->program_size);
 
-      uint64_t shader_data_addr = IRIS_MEMZONE_SHADER_START +
+      struct iris_resource *res = (void *) shader->assembly.res;
+      uint64_t shader_data_addr = res->bo->gtt_offset +
                                   shader->assembly.offset +
                                   prog_data->const_data_offset;
 
