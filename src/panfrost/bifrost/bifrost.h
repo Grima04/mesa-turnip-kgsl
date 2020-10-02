@@ -99,10 +99,8 @@ struct bifrost_header {
         unsigned staging_register : 6;
         unsigned scoreboard_deps: 8;
         unsigned scoreboard_index: 3;
-        enum bifrost_clause_type clause_type: 4;
-        unsigned unk3 : 1; // part of clauseType?
-        enum bifrost_clause_type next_clause_type: 4;
-        unsigned unk4 : 1; // part of nextClauseType?
+        enum bifrost_clause_type clause_type : 5;
+        enum bifrost_clause_type next_clause_type : 5;
 } __attribute__((packed));
 
 enum bifrost_packed_src {

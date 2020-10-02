@@ -134,10 +134,6 @@ static void dump_header(FILE *fp, struct bifrost_header header, bool verbose)
 
         if  (header.unk2)
                 fprintf(fp, "unk2 ");
-        if (header.unk3)
-                fprintf(fp, "unk3 ");
-        if (header.unk4)
-                fprintf(fp, "unk4 ");
 
         if (header.terminate_discarded_threads)
                 fprintf(fp, "td ");
