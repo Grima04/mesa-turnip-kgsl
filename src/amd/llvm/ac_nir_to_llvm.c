@@ -56,9 +56,6 @@ struct ac_nir_context {
    LLVMValueRef main_function;
    LLVMBasicBlockRef continue_block;
    LLVMBasicBlockRef break_block;
-
-   int num_locals;
-   LLVMValueRef *locals;
 };
 
 static LLVMValueRef get_sampler_desc_index(struct ac_nir_context *ctx, nir_deref_instr *deref_instr,
@@ -2260,8 +2257,7 @@ static LLVMValueRef visit_load_var(struct ac_nir_context *ctx, nir_intrinsic_ins
    }
 
    if (instr->dest.ssa.bit_size == 64 &&
-       (deref->mode == nir_var_shader_in || deref->mode == nir_var_shader_out ||
-        deref->mode == nir_var_function_temp))
+       (deref->mode == nir_var_shader_in || deref->mode == nir_var_shader_out))
       ve *= 2;
 
    switch (mode) {
@@ -2294,21 +2290,6 @@ static LLVMValueRef visit_load_var(struct ac_nir_context *ctx, nir_intrinsic_ins
             values[chan] = LLVMBuildExtractElement(ctx->ac.builder, tmp_vec, indir_index, "");
          } else
             values[chan] = ctx->abi->inputs[idx + chan + const_index * stride];
-      }
-      break;
-   case nir_var_function_temp:
-      for (unsigned chan = 0; chan < ve; chan++) {
-         if (indir_index) {
-            unsigned count = glsl_count_attribute_slots(var->type, false);
-            count -= chan / 4;
-            LLVMValueRef tmp_vec = ac_build_gather_values_extended(
-               &ctx->ac, ctx->locals + idx + chan, count, stride, true, true);
-
-            values[chan] = LLVMBuildExtractElement(ctx->ac.builder, tmp_vec, indir_index, "");
-         } else {
-            values[chan] =
-               LLVMBuildLoad(ctx->ac.builder, ctx->locals[idx + chan + const_index * stride], "");
-         }
       }
       break;
    case nir_var_shader_out:
@@ -2408,7 +2389,7 @@ static void visit_store_var(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
    }
 
    if (ac_get_elem_bits(&ctx->ac, LLVMTypeOf(src)) == 64 &&
-       (deref->mode == nir_var_shader_out || deref->mode == nir_var_function_temp)) {
+       deref->mode == nir_var_shader_out) {
 
       src = LLVMBuildBitCast(ctx->ac.builder, src,
                              LLVMVectorType(ctx->ac.f32, ac_get_llvm_num_components(src) * 2), "");
@@ -2463,28 +2444,6 @@ static void visit_store_var(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
          }
       }
       break;
-   case nir_var_function_temp:
-      for (unsigned chan = 0; chan < 8; chan++) {
-         if (!(writemask & (1 << chan)))
-            continue;
-
-         value = ac_llvm_extract_elem(&ctx->ac, src, chan);
-         if (indir_index) {
-            unsigned count = glsl_count_attribute_slots(var->type, false);
-            count -= chan / 4;
-            LLVMValueRef tmp_vec = ac_build_gather_values_extended(
-               &ctx->ac, ctx->locals + idx + chan, count, 4, true, true);
-
-            tmp_vec = LLVMBuildInsertElement(ctx->ac.builder, tmp_vec, value, indir_index, "");
-            build_store_values_extended(&ctx->ac, ctx->locals + idx + chan, count, 4, tmp_vec);
-         } else {
-            temp_ptr = ctx->locals[idx + chan + const_index * 4];
-
-            LLVMBuildStore(ctx->ac.builder, value, temp_ptr);
-         }
-      }
-      break;
-
    case nir_var_mem_global: {
       int writemask = instr->const_index[0];
       LLVMValueRef address = get_src(ctx, instr->src[0]);
@@ -5163,28 +5122,6 @@ void ac_handle_shader_output_decl(struct ac_llvm_context *ctx, struct ac_shader_
    }
 }
 
-static void setup_locals(struct ac_nir_context *ctx, struct nir_function *func)
-{
-   int i, j;
-   ctx->num_locals = 0;
-   nir_foreach_function_temp_variable(variable, func->impl)
-   {
-      unsigned attrib_count = glsl_count_attribute_slots(variable->type, false);
-      variable->data.driver_location = ctx->num_locals * 4;
-      variable->data.location_frac = 0;
-      ctx->num_locals += attrib_count;
-   }
-   ctx->locals = malloc(4 * ctx->num_locals * sizeof(LLVMValueRef));
-   if (!ctx->locals)
-      return;
-
-   for (i = 0; i < ctx->num_locals; i++) {
-      for (j = 0; j < 4; j++) {
-         ctx->locals[i * 4 + j] = ac_build_alloca_undef(&ctx->ac, ctx->ac.f32, "temp");
-      }
-   }
-}
-
 static void setup_scratch(struct ac_nir_context *ctx, struct nir_shader *shader)
 {
    if (shader->scratch_size == 0)
@@ -5271,7 +5208,6 @@ void ac_nir_translate(struct ac_llvm_context *ac, struct ac_shader_abi *abi,
    nir_index_ssa_defs(func->impl);
    ctx.ssa_defs = calloc(func->impl->ssa_alloc, sizeof(LLVMValueRef));
 
-   setup_locals(&ctx, func);
    setup_scratch(&ctx, nir);
    setup_constant_data(&ctx, nir);
 
@@ -5293,7 +5229,6 @@ void ac_nir_translate(struct ac_llvm_context *ac, struct ac_shader_abi *abi,
    if (!gl_shader_stage_is_compute(nir->info.stage))
       ctx.abi->emit_outputs(ctx.abi, AC_LLVM_MAX_OUTPUTS, ctx.abi->outputs);
 
-   free(ctx.locals);
    free(ctx.ssa_defs);
    ralloc_free(ctx.defs);
    ralloc_free(ctx.phis);
