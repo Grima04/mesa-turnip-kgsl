@@ -241,8 +241,13 @@ _mesa_PushAttrib(GLbitfield mask)
       /* copy state/contents of the currently bound texture objects */
       for (u = 0; u < ctx->Const.MaxTextureUnits; u++) {
          for (tex = 0; tex < NUM_TEXTURE_TARGETS; tex++) {
-            _mesa_copy_texture_object(&head->Texture.SavedObj[u][tex],
-                                      ctx->Texture.Unit[u].CurrentTex[tex]);
+            struct gl_texture_object *dst = &head->Texture.SavedObj[u][tex];
+            struct gl_texture_object *src = ctx->Texture.Unit[u].CurrentTex[tex];
+
+            dst->Target = src->Target;
+            dst->Name = src->Name;
+            memcpy(&dst->Sampler.Attrib, &src->Sampler.Attrib, sizeof(src->Sampler.Attrib));
+            memcpy(&dst->Attrib, &src->Attrib, sizeof(src->Attrib));
          }
       }
 
@@ -563,70 +568,20 @@ pop_texture_group(struct gl_context *ctx, struct gl_texture_attrib_node *texstat
 
       /* Restore texture object state for each target */
       for (tgt = 0; tgt < NUM_TEXTURE_TARGETS; tgt++) {
-         const struct gl_texture_object *obj = NULL;
-         const struct gl_sampler_object *samp;
-         GLenum target;
+         const struct gl_texture_object *savedObj = &texstate->SavedObj[u][tgt];
+         struct gl_texture_object *texObj =
+            texObj = _mesa_get_tex_unit(ctx, u)->CurrentTex[tgt];
 
-         obj = &texstate->SavedObj[u][tgt];
-
-         /* don't restore state for unsupported targets to prevent
-          * raising GL errors.
-          */
-         if (obj->Target == GL_TEXTURE_CUBE_MAP &&
-             !ctx->Extensions.ARB_texture_cube_map) {
-            continue;
+         if (texObj->Name != savedObj->Name) {
+            /* We don't need to check whether the texture target is supported,
+             * because we wouldn't get in this conditional block if it wasn't.
+             */
+            _mesa_BindTexture_no_error(savedObj->Target, savedObj->Name);
          }
-         else if (obj->Target == GL_TEXTURE_RECTANGLE_NV &&
-                  !ctx->Extensions.NV_texture_rectangle) {
-            continue;
-         }
-         else if ((obj->Target == GL_TEXTURE_1D_ARRAY_EXT ||
-                   obj->Target == GL_TEXTURE_2D_ARRAY_EXT) &&
-                  !ctx->Extensions.EXT_texture_array) {
-            continue;
-         }
-         else if (obj->Target == GL_TEXTURE_CUBE_MAP_ARRAY &&
-             !ctx->Extensions.ARB_texture_cube_map_array) {
-            continue;
-         } else if (obj->Target == GL_TEXTURE_BUFFER)
-            continue;
-         else if (obj->Target == GL_TEXTURE_EXTERNAL_OES)
-            continue;
-         else if (obj->Target == GL_TEXTURE_2D_MULTISAMPLE ||
-                  obj->Target == GL_TEXTURE_2D_MULTISAMPLE_ARRAY)
-            continue;
 
-         target = obj->Target;
-
-         _mesa_BindTexture(target, obj->Name);
-
-         samp = &obj->Sampler;
-
-         _mesa_TexParameterfv(target, GL_TEXTURE_BORDER_COLOR, samp->Attrib.BorderColor.f);
-         _mesa_TexParameteri(target, GL_TEXTURE_WRAP_S, samp->Attrib.WrapS);
-         _mesa_TexParameteri(target, GL_TEXTURE_WRAP_T, samp->Attrib.WrapT);
-         _mesa_TexParameteri(target, GL_TEXTURE_WRAP_R, samp->Attrib.WrapR);
-         _mesa_TexParameteri(target, GL_TEXTURE_MIN_FILTER, samp->Attrib.MinFilter);
-         _mesa_TexParameteri(target, GL_TEXTURE_MAG_FILTER, samp->Attrib.MagFilter);
-         _mesa_TexParameterf(target, GL_TEXTURE_MIN_LOD, samp->Attrib.MinLod);
-         _mesa_TexParameterf(target, GL_TEXTURE_MAX_LOD, samp->Attrib.MaxLod);
-         _mesa_TexParameterf(target, GL_TEXTURE_LOD_BIAS, samp->Attrib.LodBias);
-         _mesa_TexParameterf(target, GL_TEXTURE_PRIORITY, obj->Attrib.Priority);
-         _mesa_TexParameteri(target, GL_TEXTURE_BASE_LEVEL, obj->Attrib.BaseLevel);
-         if (target != GL_TEXTURE_RECTANGLE_ARB)
-            _mesa_TexParameteri(target, GL_TEXTURE_MAX_LEVEL, obj->Attrib.MaxLevel);
-         if (ctx->Extensions.EXT_texture_filter_anisotropic) {
-            _mesa_TexParameterf(target, GL_TEXTURE_MAX_ANISOTROPY_EXT,
-                                samp->Attrib.MaxAnisotropy);
-         }
-         if (ctx->Extensions.ARB_shadow) {
-            _mesa_TexParameteri(target, GL_TEXTURE_COMPARE_MODE,
-                                samp->Attrib.CompareMode);
-            _mesa_TexParameteri(target, GL_TEXTURE_COMPARE_FUNC,
-                                samp->Attrib.CompareFunc);
-         }
-         if (ctx->Extensions.ARB_depth_texture)
-            _mesa_TexParameteri(target, GL_DEPTH_TEXTURE_MODE, obj->Attrib.DepthMode);
+         memcpy(&texObj->Sampler.Attrib, &savedObj->Sampler.Attrib,
+                sizeof(savedObj->Sampler.Attrib));
+         memcpy(&texObj->Attrib, &savedObj->Attrib, sizeof(savedObj->Attrib));
       }
 
       /* remove saved references to the texture objects */

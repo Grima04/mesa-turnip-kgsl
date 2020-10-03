@@ -460,56 +460,6 @@ _mesa_delete_texture_object(struct gl_context *ctx,
 
 
 /**
- * Copy texture object state from one texture object to another.
- * Use for glPush/PopAttrib.
- *
- * \param dest destination texture object.
- * \param src source texture object.
- */
-void
-_mesa_copy_texture_object( struct gl_texture_object *dest,
-                           const struct gl_texture_object *src )
-{
-   dest->Target = src->Target;
-   dest->TargetIndex = src->TargetIndex;
-   dest->Name = src->Name;
-   dest->Attrib.Priority = src->Attrib.Priority;
-   dest->Sampler.Attrib.BorderColor.f[0] = src->Sampler.Attrib.BorderColor.f[0];
-   dest->Sampler.Attrib.BorderColor.f[1] = src->Sampler.Attrib.BorderColor.f[1];
-   dest->Sampler.Attrib.BorderColor.f[2] = src->Sampler.Attrib.BorderColor.f[2];
-   dest->Sampler.Attrib.BorderColor.f[3] = src->Sampler.Attrib.BorderColor.f[3];
-   dest->Sampler.Attrib.WrapS = src->Sampler.Attrib.WrapS;
-   dest->Sampler.Attrib.WrapT = src->Sampler.Attrib.WrapT;
-   dest->Sampler.Attrib.WrapR = src->Sampler.Attrib.WrapR;
-   dest->Sampler.Attrib.MinFilter = src->Sampler.Attrib.MinFilter;
-   dest->Sampler.Attrib.MagFilter = src->Sampler.Attrib.MagFilter;
-   dest->Sampler.Attrib.MinLod = src->Sampler.Attrib.MinLod;
-   dest->Sampler.Attrib.MaxLod = src->Sampler.Attrib.MaxLod;
-   dest->Sampler.Attrib.LodBias = src->Sampler.Attrib.LodBias;
-   dest->Attrib.BaseLevel = src->Attrib.BaseLevel;
-   dest->Attrib.MaxLevel = src->Attrib.MaxLevel;
-   dest->Sampler.Attrib.MaxAnisotropy = src->Sampler.Attrib.MaxAnisotropy;
-   dest->Sampler.Attrib.CompareMode = src->Sampler.Attrib.CompareMode;
-   dest->Sampler.Attrib.CompareFunc = src->Sampler.Attrib.CompareFunc;
-   dest->Sampler.Attrib.CubeMapSeamless = src->Sampler.Attrib.CubeMapSeamless;
-   dest->Attrib.DepthMode = src->Attrib.DepthMode;
-   dest->Attrib.StencilSampling = src->Attrib.StencilSampling;
-   dest->Sampler.Attrib.sRGBDecode = src->Sampler.Attrib.sRGBDecode;
-   dest->_MaxLevel = src->_MaxLevel;
-   dest->_MaxLambda = src->_MaxLambda;
-   dest->Attrib.GenerateMipmap = src->Attrib.GenerateMipmap;
-   dest->_BaseComplete = src->_BaseComplete;
-   dest->_MipmapComplete = src->_MipmapComplete;
-   COPY_4V(dest->Attrib.Swizzle, src->Attrib.Swizzle);
-   dest->Attrib._Swizzle = src->Attrib._Swizzle;
-   dest->_IsHalfFloat = src->_IsHalfFloat;
-   dest->_IsFloat = src->_IsFloat;
-
-   dest->RequiredTextureImageUnits = src->RequiredTextureImageUnits;
-}
-
-
-/**
  * Free all texture images of the given texture objectm, except for
  * \p retainTexImage.
  *
