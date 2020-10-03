@@ -62,6 +62,10 @@ glthread_unmarshal_batch(void *job, int thread_index)
 
    assert(pos == used);
    batch->used = 0;
+
+   unsigned batch_index = batch - ctx->GLThread.batches;
+   /* Atomically set this to -1 if it's equal to batch_index. */
+   p_atomic_cmpxchg(&ctx->GLThread.LastProgramChangeBatch, batch_index, -1);
 }
 
 static void
