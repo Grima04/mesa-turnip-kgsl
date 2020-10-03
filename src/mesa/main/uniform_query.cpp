@@ -39,21 +39,32 @@
 #include "util/bitscan.h"
 
 
-extern "C" void GLAPIENTRY
-_mesa_GetActiveUniform(GLuint program, GLuint index,
-                       GLsizei maxLength, GLsizei *length, GLint *size,
-                       GLenum *type, GLcharARB *nameOut)
+/* This is one of the few glGet that can be called from the app thread safely.
+ * Only these conditions must be met:
+ * - There are no unfinished glLinkProgram and glDeleteProgram calls
+ *   for the program object. This assures that the program object is immutable.
+ * - glthread=true for GL errors to be passed to the driver thread safely
+ *
+ * Program objects can be looked up from any thread because they are part
+ * of the multi-context shared state.
+ */
+extern "C" void
+_mesa_GetActiveUniform_impl(GLuint program, GLuint index,
+                            GLsizei maxLength, GLsizei *length, GLint *size,
+                            GLenum *type, GLcharARB *nameOut, bool glthread)
 {
    GET_CURRENT_CONTEXT(ctx);
    struct gl_shader_program *shProg;
    struct gl_program_resource *res;
 
    if (maxLength < 0) {
-      _mesa_error(ctx, GL_INVALID_VALUE, "glGetActiveUniform(maxLength < 0)");
+      _mesa_error_glthread_safe(ctx, GL_INVALID_VALUE, glthread,
+                                "glGetActiveUniform(maxLength < 0)");
       return;
    }
 
-   shProg = _mesa_lookup_shader_program_err(ctx, program, "glGetActiveUniform");
+   shProg = _mesa_lookup_shader_program_err_glthread(ctx, program, glthread,
+                                                     "glGetActiveUniform");
    if (!shProg)
       return;
 
@@ -61,21 +72,32 @@ _mesa_GetActiveUniform(GLuint program, GLuint index,
                                            GL_UNIFORM, index);
 
    if (!res) {
-      _mesa_error(ctx, GL_INVALID_VALUE, "glGetActiveUniform(index)");
+      _mesa_error_glthread_safe(ctx, GL_INVALID_VALUE, glthread,
+                                "glGetActiveUniform(index)");
       return;
    }
 
    if (nameOut)
       _mesa_get_program_resource_name(shProg, GL_UNIFORM, index, maxLength,
-                                      length, nameOut, "glGetActiveUniform");
+                                      length, nameOut, glthread,
+                                      "glGetActiveUniform");
    if (type)
       _mesa_program_resource_prop((struct gl_shader_program *) shProg,
                                   res, index, GL_TYPE, (GLint*) type,
-                                  "glGetActiveUniform");
+                                  glthread, "glGetActiveUniform");
    if (size)
       _mesa_program_resource_prop((struct gl_shader_program *) shProg,
                                   res, index, GL_ARRAY_SIZE, (GLint*) size,
-                                  "glGetActiveUniform");
+                                  glthread, "glGetActiveUniform");
+}
+
+extern "C" void GLAPIENTRY
+_mesa_GetActiveUniform(GLuint program, GLuint index,
+                       GLsizei maxLength, GLsizei *length, GLint *size,
+                       GLenum *type, GLcharARB *nameOut)
+{
+   _mesa_GetActiveUniform_impl(program, index, maxLength, length, size,
+                               type, nameOut, false);
 }
 
 static GLenum
@@ -151,7 +173,7 @@ _mesa_GetActiveUniformsiv(GLuint program,
                                               uniformIndices[i]);
       if (!_mesa_program_resource_prop(shProg, res, uniformIndices[i],
                                        res_prop, &params[i],
-                                       "glGetActiveUniformsiv"))
+                                       false, "glGetActiveUniformsiv"))
          break;
    }
 }

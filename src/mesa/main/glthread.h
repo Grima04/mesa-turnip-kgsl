@@ -53,6 +53,10 @@
 #include "compiler/shader_enums.h"
 #include "main/config.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 struct gl_context;
 struct gl_buffer_object;
 struct _mesa_HashTable;
@@ -193,6 +197,8 @@ void _mesa_glthread_upload(struct gl_context *ctx, const void *data,
                            struct gl_buffer_object **out_buffer,
                            uint8_t **out_ptr);
 void _mesa_glthread_reset_vao(struct glthread_vao *vao);
+void _mesa_error_glthread_safe(struct gl_context *ctx, GLenum error,
+                               bool glthread, const char *format, ...);
 
 void _mesa_glthread_BindBuffer(struct gl_context *ctx, GLenum target,
                                GLuint buffer);
@@ -249,5 +255,9 @@ void _mesa_glthread_PopClientAttrib(struct gl_context *ctx);
 void _mesa_glthread_ClientAttribDefault(struct gl_context *ctx, GLbitfield mask);
 void _mesa_glthread_InterleavedArrays(struct gl_context *ctx, GLenum format,
                                       GLsizei stride, const GLvoid *pointer);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* _GLTHREAD_H*/

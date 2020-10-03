@@ -2936,7 +2936,7 @@ _mesa_GetActiveSubroutineUniformName(GLuint program, GLenum shadertype,
    /* get program resource name */
    _mesa_get_program_resource_name(shProg, resource_type,
                                    index, bufsize,
-                                   length, name, api_name);
+                                   length, name, false, api_name);
 }
 
 
@@ -2968,7 +2968,7 @@ _mesa_GetActiveSubroutineName(GLuint program, GLenum shadertype,
    resource_type = _mesa_shader_stage_to_subroutine(stage);
    _mesa_get_program_resource_name(shProg, resource_type,
                                    index, bufsize,
-                                   length, name, api_name);
+                                   length, name, false, api_name);
 }
 
 GLvoid GLAPIENTRY

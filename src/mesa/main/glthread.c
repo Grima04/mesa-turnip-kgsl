@@ -293,3 +293,24 @@ _mesa_glthread_finish_before(struct gl_context *ctx, const char *func)
    /* Uncomment this if you want to know where glthread syncs. */
    /*printf("fallback to sync: %s\n", func);*/
 }
+
+void
+_mesa_error_glthread_safe(struct gl_context *ctx, GLenum error, bool glthread,
+                          const char *format, ...)
+{
+   if (glthread) {
+      _mesa_marshal_InternalSetError(error);
+   } else {
+      char s[MAX_DEBUG_MESSAGE_LENGTH];
+      va_list args;
+
+      va_start(args, format);
+      ASSERTED size_t len = vsnprintf(s, MAX_DEBUG_MESSAGE_LENGTH, format, args);
+      va_end(args);
+
+      /* Whoever calls _mesa_error should use shorter strings. */
+      assert(len < MAX_DEBUG_MESSAGE_LENGTH);
+
+      _mesa_error(ctx, error, "%s", s);
+   }
+}
