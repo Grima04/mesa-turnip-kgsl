@@ -2402,11 +2402,13 @@
         <glx sop="142" handcode="true"/>
     </function>
 
-    <function name="PopAttrib" deprecated="3.1">
+    <function name="PopAttrib" deprecated="3.1"
+              marshal_call_after="_mesa_glthread_PopAttrib(ctx);">
         <glx rop="141"/>
     </function>
 
-    <function name="PushAttrib" deprecated="3.1">
+    <function name="PushAttrib" deprecated="3.1"
+              marshal_call_after="_mesa_glthread_PushAttrib(ctx, mask);">
         <param name="mask" type="GLbitfield"/>
         <glx rop="142"/>
     </function>
@@ -2910,7 +2912,8 @@
         <glx rop="178"/>
     </function>
 
-    <function name="MatrixMode" es1="1.0" deprecated="3.1">
+    <function name="MatrixMode" es1="1.0" deprecated="3.1"
+              marshal_call_after="_mesa_glthread_MatrixMode(ctx, mode);">
         <param name="mode" type="GLenum"/>
         <glx rop="179"/>
     </function>
@@ -2935,11 +2938,13 @@
         <glx rop="182"/>
     </function>
 
-    <function name="PopMatrix" es1="1.0" deprecated="3.1">
+    <function name="PopMatrix" es1="1.0" deprecated="3.1"
+              marshal_call_after="_mesa_glthread_PopMatrix(ctx);">
         <glx rop="183"/>
     </function>
 
-    <function name="PushMatrix" es1="1.0" deprecated="3.1">
+    <function name="PushMatrix" es1="1.0" deprecated="3.1"
+              marshal_call_after="_mesa_glthread_PushMatrix(ctx);">
         <glx rop="184"/>
     </function>
 
@@ -4292,7 +4297,8 @@
     <enum name="DOT3_RGB"                                 value="0x86AE"/>
     <enum name="DOT3_RGBA"                                value="0x86AF"/>
 
-    <function name="ActiveTexture" es1="1.0" es2="2.0" no_error="true">
+    <function name="ActiveTexture" es1="1.0" es2="2.0" no_error="true"
+              marshal_call_after="ctx->GLThread.ActiveTexture = texture - GL_TEXTURE0; if (ctx->GLThread.MatrixMode == GL_TEXTURE) ctx->GLThread.MatrixIndex = _mesa_get_matrix_index(ctx, texture);">
         <param name="texture" type="GLenum"/>
         <glx rop="197"/>
     </function>

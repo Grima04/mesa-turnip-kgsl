@@ -93,10 +93,12 @@
       <param name="n" type="GLdouble" />
       <param name="f" type="GLdouble" />
    </function>
-   <function name="MatrixPushEXT" offset="assign">
+   <function name="MatrixPushEXT" offset="assign"
+             marshal_call_after="_mesa_glthread_MatrixPushEXT(ctx, matrixMode);">
       <param name="matrixMode" type="GLenum" />
    </function>
-   <function name="MatrixPopEXT" offset="assign">
+   <function name="MatrixPopEXT" offset="assign"
+             marshal_call_after="_mesa_glthread_MatrixPopEXT(ctx, matrixMode);">
       <param name="matrixMode" type="GLenum" />
    </function>
 

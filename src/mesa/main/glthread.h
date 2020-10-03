@@ -124,6 +124,24 @@ struct glthread_client_attrib {
    bool Valid;
 };
 
+/* For glPushAttrib / glPopAttrib. */
+struct glthread_attrib_node {
+   GLbitfield Mask;
+   int ActiveTexture;
+   GLenum MatrixMode;
+};
+
+typedef enum {
+   M_MODELVIEW,
+   M_PROJECTION,
+   M_PROGRAM0,
+   M_PROGRAM_LAST = M_PROGRAM0 + MAX_PROGRAM_MATRICES - 1,
+   M_TEXTURE0,
+   M_TEXTURE_LAST = M_TEXTURE0 + MAX_TEXTURE_UNITS - 1,
+   M_DUMMY, /* used instead of reporting errors */
+   M_NUM_MATRIX_STACKS,
+} gl_matrix_index;
+
 struct glthread_state
 {
    /** Multithreaded queue. */
@@ -191,6 +209,14 @@ struct glthread_state
     * glDeleteProgram or -1 if there is no such enqueued call.
     */
    int LastProgramChangeBatch;
+
+   /** Basic matrix state tracking. */
+   int ActiveTexture;
+   GLenum MatrixMode;
+   gl_matrix_index MatrixIndex;
+   struct glthread_attrib_node AttribStack[MAX_ATTRIB_STACK_DEPTH];
+   int AttribStackDepth;
+   int MatrixStackDepth[M_NUM_MATRIX_STACKS];
 };
 
 void _mesa_glthread_init(struct gl_context *ctx);

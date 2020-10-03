@@ -405,4 +405,92 @@ _mesa_array_to_attrib(struct gl_context *ctx, GLenum array)
    }
 }
 
+static inline gl_matrix_index
+_mesa_get_matrix_index(struct gl_context *ctx, GLenum mode)
+{
+   if (mode == GL_MODELVIEW || mode == GL_PROJECTION)
+      return M_MODELVIEW + (mode - GL_MODELVIEW);
+
+   if (mode == GL_TEXTURE)
+      return M_TEXTURE0 + ctx->GLThread.ActiveTexture;
+
+   if (mode >= GL_TEXTURE0 && mode <= GL_TEXTURE0 + MAX_TEXTURE_UNITS - 1)
+      return M_TEXTURE0 + (mode - GL_TEXTURE0);
+
+   if (mode >= GL_MATRIX0_ARB && mode <= GL_MATRIX0_ARB + MAX_PROGRAM_MATRICES - 1)
+      return M_PROGRAM0 + (mode - GL_MATRIX0_ARB);
+
+   return M_DUMMY;
+}
+
+static inline void
+_mesa_glthread_PushAttrib(struct gl_context *ctx, GLbitfield mask)
+{
+   struct glthread_attrib_node *attr =
+      &ctx->GLThread.AttribStack[ctx->GLThread.AttribStackDepth++];
+
+   attr->Mask = mask;
+
+   if (mask & GL_TEXTURE_BIT)
+      attr->ActiveTexture = ctx->GLThread.ActiveTexture;
+
+   if (mask & GL_TRANSFORM_BIT)
+      attr->MatrixMode = ctx->GLThread.MatrixMode;
+}
+
+static inline void
+_mesa_glthread_PopAttrib(struct gl_context *ctx)
+{
+   struct glthread_attrib_node *attr =
+      &ctx->GLThread.AttribStack[--ctx->GLThread.AttribStackDepth];
+   unsigned mask = attr->Mask;
+
+   if (mask & GL_TEXTURE_BIT)
+      ctx->GLThread.ActiveTexture = attr->ActiveTexture;
+
+   if (mask & GL_TRANSFORM_BIT) {
+      ctx->GLThread.MatrixMode = attr->MatrixMode;
+      ctx->GLThread.MatrixIndex = _mesa_get_matrix_index(ctx, attr->MatrixMode);
+   }
+}
+
+static inline void
+_mesa_glthread_MatrixPushEXT(struct gl_context *ctx, GLenum matrixMode)
+{
+   ctx->GLThread.MatrixStackDepth[_mesa_get_matrix_index(ctx, matrixMode)]++;
+}
+
+static inline void
+_mesa_glthread_MatrixPopEXT(struct gl_context *ctx, GLenum matrixMode)
+{
+   ctx->GLThread.MatrixStackDepth[_mesa_get_matrix_index(ctx, matrixMode)]--;
+}
+
+static inline void
+_mesa_glthread_ActiveTexture(struct gl_context *ctx, GLenum texture)
+{
+   ctx->GLThread.ActiveTexture = texture - GL_TEXTURE0;
+   if (ctx->GLThread.MatrixMode == GL_TEXTURE)
+      ctx->GLThread.MatrixIndex = _mesa_get_matrix_index(ctx, texture);
+}
+
+static inline void
+_mesa_glthread_PushMatrix(struct gl_context *ctx)
+{
+   ctx->GLThread.MatrixStackDepth[ctx->GLThread.MatrixIndex]++;
+}
+
+static inline void
+_mesa_glthread_PopMatrix(struct gl_context *ctx)
+{
+   ctx->GLThread.MatrixStackDepth[ctx->GLThread.MatrixIndex]--;
+}
+
+static inline void
+_mesa_glthread_MatrixMode(struct gl_context *ctx, GLenum mode)
+{
+   ctx->GLThread.MatrixIndex = _mesa_get_matrix_index(ctx, mode);
+   ctx->GLThread.MatrixMode = mode;
+}
+
 #endif /* MARSHAL_H */
