@@ -232,16 +232,6 @@ _mesa_PushAttrib(GLbitfield mask)
       memcpy(&head->Texture.FixedFuncUnit, &ctx->Texture.FixedFuncUnit,
              sizeof(ctx->Texture.FixedFuncUnit));
 
-      /* Save references to the currently bound texture objects so they don't
-       * accidentally get deleted while referenced in the attribute stack.
-       */
-      for (u = 0; u < ctx->Const.MaxTextureUnits; u++) {
-         for (tex = 0; tex < NUM_TEXTURE_TARGETS; tex++) {
-            _mesa_reference_texobj(&head->Texture.SavedTexRef[u][tex],
-                                   ctx->Texture.Unit[u].CurrentTex[tex]);
-         }
-      }
-
       /* copy state/contents of the currently bound texture objects */
       for (u = 0; u < ctx->Const.MaxTextureUnits; u++) {
          head->Texture.LodBias[u] = ctx->Texture.Unit[u].LodBias;
@@ -605,11 +595,6 @@ pop_texture_group(struct gl_context *ctx, struct gl_texture_attrib_node *texstat
          memcpy(&texObj->Sampler.Attrib, &savedObj->Sampler.Attrib,
                 sizeof(savedObj->Sampler.Attrib));
          memcpy(&texObj->Attrib, &savedObj->Attrib, sizeof(savedObj->Attrib));
-      }
-
-      /* remove saved references to the texture objects */
-      for (tgt = 0; tgt < NUM_TEXTURE_TARGETS; tgt++) {
-         _mesa_reference_texobj(&texstate->SavedTexRef[u][tgt], NULL);
       }
    }
 
@@ -1488,15 +1473,8 @@ _mesa_free_attrib_data(struct gl_context *ctx)
       ctx->AttribStackDepth--;
       attr = &ctx->AttribStack[ctx->AttribStackDepth];
 
-      if (attr->Mask & GL_TEXTURE_BIT) {
-         /* clear references to the saved texture objects */
-         for (unsigned u = 0; u < ctx->Const.MaxTextureUnits; u++) {
-            for (unsigned tgt = 0; tgt < NUM_TEXTURE_TARGETS; tgt++) {
-               _mesa_reference_texobj(&attr->Texture.SavedTexRef[u][tgt], NULL);
-            }
-         }
+      if (attr->Mask & GL_TEXTURE_BIT)
          _mesa_reference_shared_state(ctx, &attr->Texture.SharedRef, NULL);
-      }
    }
 }
 

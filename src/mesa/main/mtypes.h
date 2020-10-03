@@ -5044,12 +5044,6 @@ struct gl_texture_attrib_node
    /** to save per texture object state (wrap modes, filters, etc): */
    struct gl_texture_object SavedObj[MAX_TEXTURE_UNITS][NUM_TEXTURE_TARGETS];
 
-   /**
-    * To save references to texture objects (so they don't get accidentally
-    * deleted while saved in the attribute stack).
-    */
-   struct gl_texture_object *SavedTexRef[MAX_TEXTURE_UNITS][NUM_TEXTURE_TARGETS];
-
    /* We need to keep a reference to the shared state.  That's where the
     * default texture objects are kept.  We don't want that state to be
     * freed while the attribute stack contains pointers to any default
