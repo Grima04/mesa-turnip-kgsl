@@ -879,50 +879,63 @@ _mesa_PopAttrib(void)
       if (_math_matrix_is_dirty(ctx->ModelviewMatrixStack.Top))
          _math_matrix_analyse(ctx->ModelviewMatrixStack.Top);
 
-      for (i = 0; i < ctx->Const.MaxLights; i++) {
-         const struct gl_light_uniforms *lu = &attr->Light.LightSource[i];
-         const struct gl_light *l = &attr->Light.Light[i];
-         _mesa_set_enable(ctx, GL_LIGHT0 + i, l->Enabled);
-         _mesa_light(ctx, i, GL_AMBIENT, lu->Ambient);
-         _mesa_light(ctx, i, GL_DIFFUSE, lu->Diffuse);
-         _mesa_light(ctx, i, GL_SPECULAR, lu->Specular);
-         _mesa_light(ctx, i, GL_POSITION, lu->EyePosition);
-         _mesa_light(ctx, i, GL_SPOT_DIRECTION, lu->SpotDirection);
-         {
-            GLfloat p[4] = { 0 };
-            p[0] = lu->SpotExponent;
-            _mesa_light(ctx, i, GL_SPOT_EXPONENT, p);
+      if (ctx->Driver.Lightfv) {
+         /* Legacy slow path for some classic drivers. */
+         for (i = 0; i < ctx->Const.MaxLights; i++) {
+            const struct gl_light_uniforms *lu = &attr->Light.LightSource[i];
+            const struct gl_light *l = &attr->Light.Light[i];
+            _mesa_set_enable(ctx, GL_LIGHT0 + i, l->Enabled);
+            _mesa_light(ctx, i, GL_AMBIENT, lu->Ambient);
+            _mesa_light(ctx, i, GL_DIFFUSE, lu->Diffuse);
+            _mesa_light(ctx, i, GL_SPECULAR, lu->Specular);
+            _mesa_light(ctx, i, GL_POSITION, lu->EyePosition);
+            _mesa_light(ctx, i, GL_SPOT_DIRECTION, lu->SpotDirection);
+            {
+               GLfloat p[4] = { 0 };
+               p[0] = lu->SpotExponent;
+               _mesa_light(ctx, i, GL_SPOT_EXPONENT, p);
+            }
+            {
+               GLfloat p[4] = { 0 };
+               p[0] = lu->SpotCutoff;
+               _mesa_light(ctx, i, GL_SPOT_CUTOFF, p);
+            }
+            {
+               GLfloat p[4] = { 0 };
+               p[0] = lu->ConstantAttenuation;
+               _mesa_light(ctx, i, GL_CONSTANT_ATTENUATION, p);
+            }
+            {
+               GLfloat p[4] = { 0 };
+               p[0] = lu->LinearAttenuation;
+               _mesa_light(ctx, i, GL_LINEAR_ATTENUATION, p);
+            }
+            {
+               GLfloat p[4] = { 0 };
+               p[0] = lu->QuadraticAttenuation;
+               _mesa_light(ctx, i, GL_QUADRATIC_ATTENUATION, p);
+            }
          }
-         {
-            GLfloat p[4] = { 0 };
-            p[0] = lu->SpotCutoff;
-            _mesa_light(ctx, i, GL_SPOT_CUTOFF, p);
-         }
-         {
-            GLfloat p[4] = { 0 };
-            p[0] = lu->ConstantAttenuation;
-            _mesa_light(ctx, i, GL_CONSTANT_ATTENUATION, p);
-         }
-         {
-            GLfloat p[4] = { 0 };
-            p[0] = lu->LinearAttenuation;
-            _mesa_light(ctx, i, GL_LINEAR_ATTENUATION, p);
-         }
-         {
-            GLfloat p[4] = { 0 };
-            p[0] = lu->QuadraticAttenuation;
-            _mesa_light(ctx, i, GL_QUADRATIC_ATTENUATION, p);
-         }
+         /* light model */
+         _mesa_LightModelfv(GL_LIGHT_MODEL_AMBIENT,
+                            attr->Light.Model.Ambient);
+         _mesa_LightModelf(GL_LIGHT_MODEL_LOCAL_VIEWER,
+                           (GLfloat) attr->Light.Model.LocalViewer);
+         _mesa_LightModelf(GL_LIGHT_MODEL_TWO_SIDE,
+                           (GLfloat) attr->Light.Model.TwoSide);
+         _mesa_LightModelf(GL_LIGHT_MODEL_COLOR_CONTROL,
+                           (GLfloat) attr->Light.Model.ColorControl);
+      } else {
+         /* Fast path for other drivers. */
+         FLUSH_VERTICES(ctx, _NEW_LIGHT);
+
+         memcpy(ctx->Light.LightSource, attr->Light.LightSource,
+                sizeof(attr->Light.LightSource));
+         memcpy(&ctx->Light.Light, &attr->Light.Light,
+                sizeof(attr->Light.Light));
+         memcpy(&ctx->Light.Model, &attr->Light.Model,
+                sizeof(attr->Light.Model));
       }
-      /* light model */
-      _mesa_LightModelfv(GL_LIGHT_MODEL_AMBIENT,
-                         attr->Light.Model.Ambient);
-      _mesa_LightModelf(GL_LIGHT_MODEL_LOCAL_VIEWER,
-                        (GLfloat) attr->Light.Model.LocalViewer);
-      _mesa_LightModelf(GL_LIGHT_MODEL_TWO_SIDE,
-                        (GLfloat) attr->Light.Model.TwoSide);
-      _mesa_LightModelf(GL_LIGHT_MODEL_COLOR_CONTROL,
-                        (GLfloat) attr->Light.Model.ColorControl);
       /* shade model */
       _mesa_ShadeModel(attr->Light.ShadeModel);
       /* color material */
