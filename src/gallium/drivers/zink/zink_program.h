@@ -76,6 +76,10 @@ struct zink_descriptor_set {
    uint32_t hash;
    bool invalid;
    struct zink_descriptor_state_key key;
+#ifndef NDEBUG
+   /* for extra debug asserts */
+   unsigned num_resources;
+#endif
    struct zink_resource **resources;
 };
 

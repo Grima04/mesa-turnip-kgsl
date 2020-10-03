@@ -849,7 +849,7 @@ get_invalidated_desc_set(struct zink_descriptor_set *zds)
 
 
 static struct zink_descriptor_set *
-allocate_desc_set(struct zink_screen *screen, struct zink_program *pg, enum zink_descriptor_type type, unsigned descs_used)
+allocate_desc_set(struct zink_screen *screen, struct zink_program *pg, enum zink_descriptor_type type, unsigned descs_used, bool is_compute)
 {
    VkDescriptorSetAllocateInfo dsai;
 #define DESC_BUCKET_FACTOR 10
@@ -876,7 +876,8 @@ allocate_desc_set(struct zink_screen *screen, struct zink_program *pg, enum zink
 
    struct zink_descriptor_set *alloc = ralloc_array(pg, struct zink_descriptor_set, bucket_size);
    assert(alloc);
-   struct zink_resource **resources = rzalloc_array(pg, struct zink_resource*, pg->num_descriptors[type] * bucket_size);
+   unsigned num_resources = zink_program_num_bindings_typed(pg, type, is_compute);
+   struct zink_resource **resources = rzalloc_array(pg, struct zink_resource*, num_resources * bucket_size);
    assert(resources);
    for (unsigned i = 0; i < bucket_size; i ++) {
       struct zink_descriptor_set *zds = &alloc[i];
@@ -884,6 +885,9 @@ allocate_desc_set(struct zink_screen *screen, struct zink_program *pg, enum zink
       zds->hash = 0;
       zds->invalid = true;
       zds->type = type;
+#ifndef NDEBUG
+      zds->num_resources = num_resources;
+#endif
       zds->resources = &resources[i * pg->num_descriptors[type]];
       zds->desc_set = desc_set[i];
       if (i > 0)
@@ -996,7 +1000,7 @@ zink_program_allocate_desc_set(struct zink_context *ctx,
       }
    }
 
-   zds = allocate_desc_set(screen, pg, type, descs_used);
+   zds = allocate_desc_set(screen, pg, type, descs_used, is_compute);
 out:
    zds->hash = hash;
    populate_zds_key(ctx, type, is_compute, &zds->key);
