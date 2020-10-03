@@ -4928,6 +4928,147 @@ struct vbo_context {
 };
 
 /**
+ * glEnable node for the attribute stack. (glPushAttrib/glPopAttrib)
+ */
+struct gl_enable_attrib_node
+{
+   GLboolean AlphaTest;
+   GLboolean AutoNormal;
+   GLboolean Blend;
+   GLbitfield ClipPlanes;
+   GLboolean ColorMaterial;
+   GLboolean CullFace;
+   GLboolean DepthClampNear;
+   GLboolean DepthClampFar;
+   GLboolean DepthTest;
+   GLboolean Dither;
+   GLboolean Fog;
+   GLboolean Light[MAX_LIGHTS];
+   GLboolean Lighting;
+   GLboolean LineSmooth;
+   GLboolean LineStipple;
+   GLboolean IndexLogicOp;
+   GLboolean ColorLogicOp;
+
+   GLboolean Map1Color4;
+   GLboolean Map1Index;
+   GLboolean Map1Normal;
+   GLboolean Map1TextureCoord1;
+   GLboolean Map1TextureCoord2;
+   GLboolean Map1TextureCoord3;
+   GLboolean Map1TextureCoord4;
+   GLboolean Map1Vertex3;
+   GLboolean Map1Vertex4;
+   GLboolean Map2Color4;
+   GLboolean Map2Index;
+   GLboolean Map2Normal;
+   GLboolean Map2TextureCoord1;
+   GLboolean Map2TextureCoord2;
+   GLboolean Map2TextureCoord3;
+   GLboolean Map2TextureCoord4;
+   GLboolean Map2Vertex3;
+   GLboolean Map2Vertex4;
+
+   GLboolean Normalize;
+   GLboolean PixelTexture;
+   GLboolean PointSmooth;
+   GLboolean PolygonOffsetPoint;
+   GLboolean PolygonOffsetLine;
+   GLboolean PolygonOffsetFill;
+   GLboolean PolygonSmooth;
+   GLboolean PolygonStipple;
+   GLboolean RescaleNormals;
+   GLbitfield Scissor;
+   GLboolean Stencil;
+   GLboolean StencilTwoSide;          /* GL_EXT_stencil_two_side */
+   GLboolean MultisampleEnabled;      /* GL_ARB_multisample */
+   GLboolean SampleAlphaToCoverage;   /* GL_ARB_multisample */
+   GLboolean SampleAlphaToOne;        /* GL_ARB_multisample */
+   GLboolean SampleCoverage;          /* GL_ARB_multisample */
+   GLboolean RasterPositionUnclipped; /* GL_IBM_rasterpos_clip */
+
+   GLbitfield Texture[MAX_TEXTURE_UNITS];
+   GLbitfield TexGen[MAX_TEXTURE_UNITS];
+
+   /* GL_ARB_vertex_program */
+   GLboolean VertexProgram;
+   GLboolean VertexProgramPointSize;
+   GLboolean VertexProgramTwoSide;
+
+   /* GL_ARB_fragment_program */
+   GLboolean FragmentProgram;
+
+   /* GL_ARB_point_sprite / GL_NV_point_sprite */
+   GLboolean PointSprite;
+   GLboolean FragmentShaderATI;
+
+   /* GL_ARB_framebuffer_sRGB / GL_EXT_framebuffer_sRGB */
+   GLboolean sRGBEnabled;
+
+   /* GL_NV_conservative_raster */
+   GLboolean ConservativeRasterization;
+};
+
+/**
+ * Texture node for the attribute stack. (glPushAttrib/glPopAttrib)
+ */
+struct gl_texture_attrib_node
+{
+   struct gl_texture_attrib Texture;  /**< The usual context state */
+
+   /** to save per texture object state (wrap modes, filters, etc): */
+   struct gl_texture_object SavedObj[MAX_TEXTURE_UNITS][NUM_TEXTURE_TARGETS];
+
+   /**
+    * To save references to texture objects (so they don't get accidentally
+    * deleted while saved in the attribute stack).
+    */
+   struct gl_texture_object *SavedTexRef[MAX_TEXTURE_UNITS][NUM_TEXTURE_TARGETS];
+
+   /* We need to keep a reference to the shared state.  That's where the
+    * default texture objects are kept.  We don't want that state to be
+    * freed while the attribute stack contains pointers to any default
+    * texture objects.
+    */
+   struct gl_shared_state *SharedRef;
+};
+
+
+/**
+ * Node for the attribute stack. (glPushAttrib/glPopAttrib)
+ */
+struct gl_attrib_node
+{
+   GLbitfield Mask;
+   struct gl_accum_attrib Accum;
+   struct gl_colorbuffer_attrib Color;
+   struct gl_current_attrib Current;
+   struct gl_depthbuffer_attrib Depth;
+   struct gl_enable_attrib_node Enable;
+   struct gl_eval_attrib Eval;
+   struct gl_fog_attrib Fog;
+   struct gl_hint_attrib Hint;
+   struct gl_light_attrib Light;
+   struct gl_line_attrib Line;
+   struct gl_list_attrib List;
+   struct gl_pixel_attrib Pixel;
+   struct gl_point_attrib Point;
+   struct gl_polygon_attrib Polygon;
+   GLuint PolygonStipple[32];
+   struct gl_scissor_attrib Scissor;
+   struct gl_stencil_attrib Stencil;
+   struct gl_transform_attrib Transform;
+   struct gl_multisample_attrib Multisample;
+   struct gl_texture_attrib_node Texture;
+
+   struct viewport_state
+   {
+      struct gl_viewport_attrib ViewportArray[MAX_VIEWPORTS];
+      GLuint SubpixelPrecisionBias[2];
+   } Viewport;
+};
+
+/**
  * Mesa rendering context.
  *
  * This is the central context data structure for Mesa.  Almost all
@@ -5035,7 +5176,7 @@ struct gl_context
    /** \name State attribute stack (for glPush/PopAttrib) */
    /*@{*/
    GLuint AttribStackDepth;
-   struct gl_attrib_node *AttribStack[MAX_ATTRIB_STACK_DEPTH];
+   struct gl_attrib_node AttribStack[MAX_ATTRIB_STACK_DEPTH];
    /*@}*/
 
    /** \name Renderer attribute groups
