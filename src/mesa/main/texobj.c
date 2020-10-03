@@ -2193,7 +2193,8 @@ _mesa_IsTexture( GLuint texture )
 void
 _mesa_lock_context_textures( struct gl_context *ctx )
 {
-   mtx_lock(&ctx->Shared->TexMutex);
+   if (!ctx->TexturesLocked)
+      mtx_lock(&ctx->Shared->TexMutex);
 
    if (ctx->Shared->TextureStateStamp != ctx->TextureStateTimestamp) {
       ctx->NewState |= _NEW_TEXTURE_OBJECT;
@@ -2206,7 +2207,8 @@ void
 _mesa_unlock_context_textures( struct gl_context *ctx )
 {
    assert(ctx->Shared->TextureStateStamp == ctx->TextureStateTimestamp);
-   mtx_unlock(&ctx->Shared->TexMutex);
+   if (!ctx->TexturesLocked)
+      mtx_unlock(&ctx->Shared->TexMutex);
 }
 
 

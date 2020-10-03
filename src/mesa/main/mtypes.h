@@ -4928,6 +4928,8 @@ struct gl_context
 
    /** Whether Shared->BufferObjects has already been locked for this context. */
    bool BufferObjectsLocked;
+   /** Whether Shared->TexMutex has already been locked for this context. */
+   bool TexturesLocked;
 
    /** \name API function pointer tables */
    /*@{*/

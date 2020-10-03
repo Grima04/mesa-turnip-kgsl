@@ -106,7 +106,8 @@ _mesa_reference_texobj(struct gl_texture_object **ptr,
 static inline void
 _mesa_lock_texture(struct gl_context *ctx, struct gl_texture_object *texObj)
 {
-   mtx_lock(&ctx->Shared->TexMutex);
+   if (!ctx->TexturesLocked)
+      mtx_lock(&ctx->Shared->TexMutex);
    ctx->Shared->TextureStateStamp++;
    (void) texObj;
 }
@@ -115,7 +116,8 @@ static inline void
 _mesa_unlock_texture(struct gl_context *ctx, struct gl_texture_object *texObj)
 {
    (void) texObj;
-   mtx_unlock(&ctx->Shared->TexMutex);
+   if (!ctx->TexturesLocked)
+      mtx_unlock(&ctx->Shared->TexMutex);
 }
 
 
