@@ -1443,6 +1443,7 @@ const struct function common_desktop_functions_possible[] = {
    { "glViewportSwizzleNV", 11, -1 },
 
    { "glInternalBufferSubDataCopyMESA", 11, -1 },
+   { "glInternalSetError", 20, -1 },
 
    { NULL, 0, -1 }
 };
@@ -2494,6 +2495,7 @@ const struct function gles2_functions_possible[] = {
    { "glMaxShaderCompilerThreadsKHR", 20, -1 },
 
    { "glInternalBufferSubDataCopyMESA", 20, -1 },
+   { "glInternalSetError", 20, -1 },
 
    { NULL, 0, -1 }
 };

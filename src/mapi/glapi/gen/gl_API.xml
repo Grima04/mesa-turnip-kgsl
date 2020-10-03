@@ -13305,6 +13305,11 @@
         <param name="named" type="GLboolean"/>
         <param name="ext_dsa" type="GLboolean"/>
     </function>
+
+    <!-- Set a GL error. Used by glthread to set errors without syncing. -->
+    <function name="InternalSetError" es2="2.0">
+        <param name="error" type="GLenum"/>
+    </function>
 </category>
 
 <xi:include href="OES_EGL_image.xml" xmlns:xi="http://www.w3.org/2001/XInclude"/>

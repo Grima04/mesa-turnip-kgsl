@@ -432,3 +432,13 @@ _mesa_shader_debug(struct gl_context *ctx, GLenum type, GLuint *id,
 
    _mesa_log_msg(ctx, source, type, *id, severity, len, msg);
 }
+
+/**
+ * Set the parameter as the current GL error. Used by glthread.
+ */
+void GLAPIENTRY
+_mesa_InternalSetError(GLenum error)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   _mesa_error(ctx, error, "glthread");
+}
