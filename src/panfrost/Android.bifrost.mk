@@ -50,7 +50,7 @@ bifrost_gen_disasm_deps := $(LOCAL_PATH)/bifrost/ISA.xml
 
 $(intermediates)/bifrost_gen_disasm.c: $(bifrost_gen_disasm_deps)
 	@mkdir -p $(dir $@)
-	$(hide) $(MESA_PYTHON2) $(bifrost_gen_disasm_gen) $< > $@
+	$(hide) $(MESA_PYTHON3) $(bifrost_gen_disasm_gen) $< > $@
 
 include $(MESA_COMMON_MK)
 include $(BUILD_STATIC_LIBRARY)
@@ -92,14 +92,14 @@ bifrost_nir_algebraic_deps := \
 
 $(intermediates)/bifrost_nir_algebraic.c: $(bifrost_nir_algebraic_deps)
 	@mkdir -p $(dir $@)
-	$(hide) $(MESA_PYTHON2) $(bifrost_nir_algebraic_gen) -p $< > $@
+	$(hide) $(MESA_PYTHON3) $(bifrost_nir_algebraic_gen) -p $< > $@
 
 bi_generated_pack_gen := $(LOCAL_PATH)/bifrost/gen_pack.py
 bi_generated_pack_deps := $(LOCAL_PATH)/bifrost/ISA.xml
 
 $(intermediates)/bi_generated_pack.h: $(bi_generated_pack_deps)
 	@mkdir -p $(dir $@)
-	$(hide) $(MESA_PYTHON2) $(bi_generated_pack_gen) $< > $@
+	$(hide) $(MESA_PYTHON3) $(bi_generated_pack_gen) $< > $@
 
 LOCAL_EXPORT_C_INCLUDE_DIRS := \
 	$(MESA_TOP)/src/panfrost/bifrost/ \

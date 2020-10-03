@@ -45,7 +45,7 @@ midgard_pack_deps := $(LOCAL_PATH)/lib/midgard.xml
 
 $(intermediates)/panfrost/lib/midgard_pack.h: $(midgard_pack_deps)
 	@mkdir -p $(dir $@)
-	$(hide) $(MESA_PYTHON2) $(midgard_pack_gen) $< > $@
+	$(hide) $(MESA_PYTHON3) $(midgard_pack_gen) $< > $@
 
 LOCAL_EXPORT_C_INCLUDE_DIRS := \
 	$(MESA_TOP)/src/panfrost/lib/ \

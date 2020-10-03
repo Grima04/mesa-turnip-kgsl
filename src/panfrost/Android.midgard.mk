@@ -79,7 +79,7 @@ midgard_nir_algebraic_deps := \
 
 $(intermediates)/midgard_nir_algebraic.c: $(midgard_nir_algebraic_deps)
 	@mkdir -p $(dir $@)
-	$(hide) $(MESA_PYTHON2) $(midgard_nir_algebraic_gen) -p $< > $@
+	$(hide) $(MESA_PYTHON3) $(midgard_nir_algebraic_gen) -p $< > $@
 
 LOCAL_EXPORT_C_INCLUDE_DIRS := \
 	$(MESA_TOP)/src/panfrost/midgard/ \
