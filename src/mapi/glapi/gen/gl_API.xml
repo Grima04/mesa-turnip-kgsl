@@ -2712,7 +2712,7 @@
         <glx sop="116" handcode="client"/>
     </function>
 
-    <function name="GetIntegerv" es1="1.0" es2="2.0">
+    <function name="GetIntegerv" es1="1.0" es2="2.0" marshal="custom">
         <param name="pname" type="GLenum"/>
         <param name="params" type="GLint *" output="true" variable_param="pname"/>
         <glx sop="117" handcode="client"/>
