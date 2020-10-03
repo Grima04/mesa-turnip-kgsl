@@ -2055,19 +2055,7 @@ tc_flush(struct pipe_context *_pipe, struct pipe_fence_handle **fence,
    struct threaded_context *tc = threaded_context(_pipe);
    struct pipe_context *pipe = tc->pipe;
    struct pipe_screen *screen = pipe->screen;
-   bool async = flags & PIPE_FLUSH_DEFERRED;
-
-   if (flags & PIPE_FLUSH_ASYNC) {
-      struct tc_batch *last = &tc->batch_slots[tc->last];
-
-      /* Prefer to do the flush in the driver thread, but avoid the inter-thread
-       * communication overhead if the driver thread is currently idle and the
-       * caller is going to wait for the fence immediately anyway.
-       */
-      if (!(util_queue_fence_is_signalled(&last->fence) &&
-            (flags & PIPE_FLUSH_HINT_FINISH)))
-         async = true;
-   }
+   bool async = flags & (PIPE_FLUSH_DEFERRED | PIPE_FLUSH_ASYNC);
 
    if (async && tc->create_fence) {
       if (fence) {
