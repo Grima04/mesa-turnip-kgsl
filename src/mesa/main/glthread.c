@@ -52,6 +52,9 @@ glthread_unmarshal_batch(void *job, int thread_index)
 
    _glapi_set_dispatch(ctx->CurrentServerDispatch);
 
+   _mesa_HashLockMutex(ctx->Shared->BufferObjects);
+   ctx->BufferObjectsLocked = true;
+
    while (pos < used) {
       const struct marshal_cmd_base *cmd =
          (const struct marshal_cmd_base *)&buffer[pos];
@@ -60,12 +63,16 @@ glthread_unmarshal_batch(void *job, int thread_index)
       pos += cmd->cmd_size;
    }
 
+   ctx->BufferObjectsLocked = false;
+   _mesa_HashUnlockMutex(ctx->Shared->BufferObjects);
+
    assert(pos == used);
    batch->used = 0;
 
    unsigned batch_index = batch - ctx->GLThread.batches;
    /* Atomically set this to -1 if it's equal to batch_index. */
    p_atomic_cmpxchg(&ctx->GLThread.LastProgramChangeBatch, batch_index, -1);
+
 }
 
 static void

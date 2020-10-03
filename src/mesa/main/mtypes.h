@@ -4926,6 +4926,9 @@ struct gl_context
    /** State possibly shared with other contexts in the address space */
    struct gl_shared_state *Shared;
 
+   /** Whether Shared->BufferObjects has already been locked for this context. */
+   bool BufferObjectsLocked;
+
    /** \name API function pointer tables */
    /*@{*/
    gl_api API;
