@@ -481,74 +481,85 @@ pop_texture_group(struct gl_context *ctx, struct gl_texture_attrib_node *texstat
    for (u = 0; u < ctx->Const.MaxTextureUnits; u++) {
       const struct gl_fixedfunc_texture_unit *unit =
          &texstate->Texture.FixedFuncUnit[u];
+      struct gl_fixedfunc_texture_unit *destUnit =
+         &ctx->Texture.FixedFuncUnit[u];
       GLuint tgt;
 
       _mesa_ActiveTexture(GL_TEXTURE0_ARB + u);
-      _mesa_set_enable(ctx, GL_TEXTURE_1D, !!(unit->Enabled & TEXTURE_1D_BIT));
-      _mesa_set_enable(ctx, GL_TEXTURE_2D, !!(unit->Enabled & TEXTURE_2D_BIT));
-      _mesa_set_enable(ctx, GL_TEXTURE_3D, !!(unit->Enabled & TEXTURE_3D_BIT));
-      if (ctx->Extensions.ARB_texture_cube_map) {
-         _mesa_set_enable(ctx, GL_TEXTURE_CUBE_MAP,
-                          !!(unit->Enabled & TEXTURE_CUBE_BIT));
-      }
-      if (ctx->Extensions.NV_texture_rectangle) {
-         _mesa_set_enable(ctx, GL_TEXTURE_RECTANGLE_NV,
-                          !!(unit->Enabled & TEXTURE_RECT_BIT));
-      }
-      _mesa_TexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, unit->EnvMode);
-      _mesa_TexEnvfv(GL_TEXTURE_ENV, GL_TEXTURE_ENV_COLOR, unit->EnvColor);
-      _mesa_TexGeni(GL_S, GL_TEXTURE_GEN_MODE, unit->GenS.Mode);
-      _mesa_TexGeni(GL_T, GL_TEXTURE_GEN_MODE, unit->GenT.Mode);
-      _mesa_TexGeni(GL_R, GL_TEXTURE_GEN_MODE, unit->GenR.Mode);
-      _mesa_TexGeni(GL_Q, GL_TEXTURE_GEN_MODE, unit->GenQ.Mode);
-      _mesa_TexGenfv(GL_S, GL_OBJECT_PLANE, unit->GenS.ObjectPlane);
-      _mesa_TexGenfv(GL_T, GL_OBJECT_PLANE, unit->GenT.ObjectPlane);
-      _mesa_TexGenfv(GL_R, GL_OBJECT_PLANE, unit->GenR.ObjectPlane);
-      _mesa_TexGenfv(GL_Q, GL_OBJECT_PLANE, unit->GenQ.ObjectPlane);
-      /* Eye plane done differently to avoid re-transformation */
-      {
-         struct gl_fixedfunc_texture_unit *destUnit =
-            &ctx->Texture.FixedFuncUnit[u];
 
-         COPY_4FV(destUnit->GenS.EyePlane, unit->GenS.EyePlane);
-         COPY_4FV(destUnit->GenT.EyePlane, unit->GenT.EyePlane);
-         COPY_4FV(destUnit->GenR.EyePlane, unit->GenR.EyePlane);
-         COPY_4FV(destUnit->GenQ.EyePlane, unit->GenQ.EyePlane);
-         if (ctx->Driver.TexGen) {
-            ctx->Driver.TexGen(ctx, GL_S, GL_EYE_PLANE, unit->GenS.EyePlane);
-            ctx->Driver.TexGen(ctx, GL_T, GL_EYE_PLANE, unit->GenT.EyePlane);
-            ctx->Driver.TexGen(ctx, GL_R, GL_EYE_PLANE, unit->GenR.EyePlane);
-            ctx->Driver.TexGen(ctx, GL_Q, GL_EYE_PLANE, unit->GenQ.EyePlane);
+      if (ctx->Driver.TexEnv || ctx->Driver.TexGen) {
+         /* Slow path for legacy classic drivers. */
+         _mesa_set_enable(ctx, GL_TEXTURE_1D, !!(unit->Enabled & TEXTURE_1D_BIT));
+         _mesa_set_enable(ctx, GL_TEXTURE_2D, !!(unit->Enabled & TEXTURE_2D_BIT));
+         _mesa_set_enable(ctx, GL_TEXTURE_3D, !!(unit->Enabled & TEXTURE_3D_BIT));
+         if (ctx->Extensions.ARB_texture_cube_map) {
+            _mesa_set_enable(ctx, GL_TEXTURE_CUBE_MAP,
+                             !!(unit->Enabled & TEXTURE_CUBE_BIT));
          }
-      }
-      _mesa_set_enable(ctx, GL_TEXTURE_GEN_S, !!(unit->TexGenEnabled & S_BIT));
-      _mesa_set_enable(ctx, GL_TEXTURE_GEN_T, !!(unit->TexGenEnabled & T_BIT));
-      _mesa_set_enable(ctx, GL_TEXTURE_GEN_R, !!(unit->TexGenEnabled & R_BIT));
-      _mesa_set_enable(ctx, GL_TEXTURE_GEN_Q, !!(unit->TexGenEnabled & Q_BIT));
-      _mesa_TexEnvf(GL_TEXTURE_FILTER_CONTROL, GL_TEXTURE_LOD_BIAS,
-		    texstate->Texture.Unit[u].LodBias);
-      _mesa_TexEnvi(GL_TEXTURE_ENV, GL_COMBINE_RGB,
-                    unit->Combine.ModeRGB);
-      _mesa_TexEnvi(GL_TEXTURE_ENV, GL_COMBINE_ALPHA,
-                    unit->Combine.ModeA);
-      {
-         const GLuint n = ctx->Extensions.NV_texture_env_combine4 ? 4 : 3;
-         GLuint i;
-         for (i = 0; i < n; i++) {
-            _mesa_TexEnvi(GL_TEXTURE_ENV, GL_SOURCE0_RGB + i,
-                          unit->Combine.SourceRGB[i]);
-            _mesa_TexEnvi(GL_TEXTURE_ENV, GL_SOURCE0_ALPHA + i,
-                          unit->Combine.SourceA[i]);
-            _mesa_TexEnvi(GL_TEXTURE_ENV, GL_OPERAND0_RGB + i,
-                          unit->Combine.OperandRGB[i]);
-            _mesa_TexEnvi(GL_TEXTURE_ENV, GL_OPERAND0_ALPHA + i,
-                          unit->Combine.OperandA[i]);
+         if (ctx->Extensions.NV_texture_rectangle) {
+            _mesa_set_enable(ctx, GL_TEXTURE_RECTANGLE_NV,
+                             !!(unit->Enabled & TEXTURE_RECT_BIT));
          }
+
+         _mesa_TexGeni(GL_S, GL_TEXTURE_GEN_MODE, unit->GenS.Mode);
+         _mesa_TexGeni(GL_T, GL_TEXTURE_GEN_MODE, unit->GenT.Mode);
+         _mesa_TexGeni(GL_R, GL_TEXTURE_GEN_MODE, unit->GenR.Mode);
+         _mesa_TexGeni(GL_Q, GL_TEXTURE_GEN_MODE, unit->GenQ.Mode);
+         _mesa_TexGenfv(GL_S, GL_OBJECT_PLANE, unit->GenS.ObjectPlane);
+         _mesa_TexGenfv(GL_T, GL_OBJECT_PLANE, unit->GenT.ObjectPlane);
+         _mesa_TexGenfv(GL_R, GL_OBJECT_PLANE, unit->GenR.ObjectPlane);
+         _mesa_TexGenfv(GL_Q, GL_OBJECT_PLANE, unit->GenQ.ObjectPlane);
+         /* Eye plane done differently to avoid re-transformation */
+         {
+
+            COPY_4FV(destUnit->GenS.EyePlane, unit->GenS.EyePlane);
+            COPY_4FV(destUnit->GenT.EyePlane, unit->GenT.EyePlane);
+            COPY_4FV(destUnit->GenR.EyePlane, unit->GenR.EyePlane);
+            COPY_4FV(destUnit->GenQ.EyePlane, unit->GenQ.EyePlane);
+            if (ctx->Driver.TexGen) {
+               ctx->Driver.TexGen(ctx, GL_S, GL_EYE_PLANE, unit->GenS.EyePlane);
+               ctx->Driver.TexGen(ctx, GL_T, GL_EYE_PLANE, unit->GenT.EyePlane);
+               ctx->Driver.TexGen(ctx, GL_R, GL_EYE_PLANE, unit->GenR.EyePlane);
+               ctx->Driver.TexGen(ctx, GL_Q, GL_EYE_PLANE, unit->GenQ.EyePlane);
+            }
+         }
+         _mesa_set_enable(ctx, GL_TEXTURE_GEN_S, !!(unit->TexGenEnabled & S_BIT));
+         _mesa_set_enable(ctx, GL_TEXTURE_GEN_T, !!(unit->TexGenEnabled & T_BIT));
+         _mesa_set_enable(ctx, GL_TEXTURE_GEN_R, !!(unit->TexGenEnabled & R_BIT));
+         _mesa_set_enable(ctx, GL_TEXTURE_GEN_Q, !!(unit->TexGenEnabled & Q_BIT));
+
+         _mesa_TexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, unit->EnvMode);
+         _mesa_TexEnvfv(GL_TEXTURE_ENV, GL_TEXTURE_ENV_COLOR, unit->EnvColor);
+         _mesa_TexEnvf(GL_TEXTURE_FILTER_CONTROL, GL_TEXTURE_LOD_BIAS,
+                       texstate->Texture.Unit[u].LodBias);
+         _mesa_TexEnvi(GL_TEXTURE_ENV, GL_COMBINE_RGB,
+                       unit->Combine.ModeRGB);
+         _mesa_TexEnvi(GL_TEXTURE_ENV, GL_COMBINE_ALPHA,
+                       unit->Combine.ModeA);
+         {
+            const GLuint n = ctx->Extensions.NV_texture_env_combine4 ? 4 : 3;
+            GLuint i;
+            for (i = 0; i < n; i++) {
+               _mesa_TexEnvi(GL_TEXTURE_ENV, GL_SOURCE0_RGB + i,
+                             unit->Combine.SourceRGB[i]);
+               _mesa_TexEnvi(GL_TEXTURE_ENV, GL_SOURCE0_ALPHA + i,
+                             unit->Combine.SourceA[i]);
+               _mesa_TexEnvi(GL_TEXTURE_ENV, GL_OPERAND0_RGB + i,
+                             unit->Combine.OperandRGB[i]);
+               _mesa_TexEnvi(GL_TEXTURE_ENV, GL_OPERAND0_ALPHA + i,
+                             unit->Combine.OperandA[i]);
+            }
+         }
+         _mesa_TexEnvi(GL_TEXTURE_ENV, GL_RGB_SCALE,
+                       1 << unit->Combine.ScaleShiftRGB);
+         _mesa_TexEnvi(GL_TEXTURE_ENV, GL_ALPHA_SCALE,
+                       1 << unit->Combine.ScaleShiftA);
+      } else {
+         /* Fast path for other drivers. */
+         memcpy(destUnit, unit, sizeof(*unit));
+         destUnit->_CurrentCombine = NULL;
+         ctx->Texture.Unit[u].LodBias = texstate->Texture.Unit[u].LodBias;
       }
-      _mesa_TexEnvi(GL_TEXTURE_ENV, GL_RGB_SCALE,
-                    1 << unit->Combine.ScaleShiftRGB);
-      _mesa_TexEnvi(GL_TEXTURE_ENV, GL_ALPHA_SCALE,
-                    1 << unit->Combine.ScaleShiftA);
 
       /* Restore texture object state for each target */
       for (tgt = 0; tgt < NUM_TEXTURE_TARGETS; tgt++) {
@@ -622,6 +633,11 @@ pop_texture_group(struct gl_context *ctx, struct gl_texture_attrib_node *texstat
       for (tgt = 0; tgt < NUM_TEXTURE_TARGETS; tgt++) {
          _mesa_reference_texobj(&texstate->SavedTexRef[u][tgt], NULL);
       }
+   }
+
+   if (!ctx->Driver.TexEnv && !ctx->Driver.TexGen) {
+      ctx->Texture._TexGenEnabled = texstate->Texture._TexGenEnabled;
+      ctx->Texture._GenFlags = texstate->Texture._GenFlags;
    }
 
    _mesa_ActiveTexture(GL_TEXTURE0_ARB + texstate->Texture.CurrentUnit);
