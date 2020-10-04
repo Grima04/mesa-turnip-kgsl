@@ -468,6 +468,78 @@ update_ubo_descriptors(struct zink_context *ctx, struct zink_descriptor_set *zds
    return bind_descriptors(ctx, zds, num_wds, wds, num_resources, resources, dynamic_offsets, dynamic_offset_idx, is_compute, cache_hit);
 }
 
+static bool
+update_ssbo_descriptors(struct zink_context *ctx, struct zink_descriptor_set *zds, struct zink_transition *transitions, int *num_transitions,
+                        struct set *transition_hash, bool is_compute, bool cache_hit)
+{
+   struct zink_program *pg = zds->pg;
+   ASSERTED struct zink_screen *screen = zink_screen(ctx->base.screen);
+   unsigned num_descriptors = pg->num_descriptors[zds->type];
+   unsigned num_bindings = zink_program_num_bindings_typed(pg, zds->type, is_compute);
+   VkWriteDescriptorSet wds[num_descriptors];
+   struct zink_descriptor_resource resources[num_bindings];
+   VkDescriptorBufferInfo buffer_infos[num_bindings];
+   unsigned num_wds = 0;
+   unsigned num_buffer_info = 0;
+   unsigned num_resources = 0;
+   struct zink_shader **stages;
+
+   unsigned num_stages = is_compute ? 1 : ZINK_SHADER_COUNT;
+   if (is_compute)
+      stages = &ctx->curr_compute->shader;
+   else
+      stages = &ctx->gfx_stages[0];
+
+   for (int i = 0; i < num_stages; i++) {
+      struct zink_shader *shader = stages[i];
+      if (!shader)
+         continue;
+      enum pipe_shader_type stage = pipe_shader_type_from_mesa(shader->nir->info.stage);
+
+      for (int j = 0; j < shader->num_bindings[zds->type]; j++) {
+         int index = shader->bindings[zds->type][j].index;
+         assert(shader->bindings[zds->type][j].type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
+         assert(num_resources < num_bindings);
+         struct zink_resource *res = zink_resource(ctx->ssbos[stage][index].buffer);
+         desc_set_res_add(zds, res, num_resources, cache_hit);
+         if (res) {
+            assert(ctx->ssbos[stage][index].buffer_size > 0);
+            assert(ctx->ssbos[stage][index].buffer_size <= screen->info.props.limits.maxStorageBufferRange);
+            assert(num_buffer_info < num_bindings);
+            unsigned flag = VK_ACCESS_SHADER_READ_BIT;
+            if (ctx->writable_ssbos[stage] & (1 << index)) {
+               write_descriptor_resource(&resources[num_resources], res, &num_resources);
+               flag |= VK_ACCESS_SHADER_WRITE_BIT;
+            } else {
+               read_descriptor_resource(&resources[num_resources], res, &num_resources);
+            }
+            add_transition(res, 0, flag, stage, &transitions[*num_transitions], num_transitions, transition_hash);
+            buffer_infos[num_buffer_info].buffer = res->buffer;
+            buffer_infos[num_buffer_info].offset = ctx->ssbos[stage][index].buffer_offset;
+            buffer_infos[num_buffer_info].range  = ctx->ssbos[stage][index].buffer_size;
+         } else {
+            assert(screen->info.rb2_feats.nullDescriptor);
+            buffer_infos[num_buffer_info].buffer = VK_NULL_HANDLE;
+            buffer_infos[num_buffer_info].offset = 0;
+            buffer_infos[num_buffer_info].range  = VK_WHOLE_SIZE;
+         }
+         wds[num_wds].pBufferInfo = buffer_infos + num_buffer_info;
+         ++num_buffer_info;
+
+         wds[num_wds].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+         wds[num_wds].pNext = NULL;
+         wds[num_wds].dstBinding = shader->bindings[zds->type][j].binding;
+         wds[num_wds].dstArrayElement = 0;
+         wds[num_wds].descriptorCount = shader->bindings[zds->type][j].size;
+         wds[num_wds].descriptorType = shader->bindings[zds->type][j].type;
+         wds[num_wds].dstSet = zds->desc_set;
+         ++num_wds;
+      }
+   }
+
+   return bind_descriptors(ctx, zds, num_wds, wds, num_resources, resources, NULL, 0, is_compute, cache_hit);
+}
+
 static void
 update_descriptors(struct zink_context *ctx, struct zink_screen *screen, bool is_compute)
 {
@@ -478,11 +550,9 @@ update_descriptors(struct zink_context *ctx, struct zink_screen *screen, bool is
    VkWriteDescriptorSet wds[ZINK_DESCRIPTOR_TYPES][num_descriptors];
    struct zink_descriptor_resource resources[ZINK_DESCRIPTOR_TYPES][num_bindings];
    struct zink_surface *surface_refs[num_image_bindings];
-   VkDescriptorBufferInfo buffer_infos[ZINK_DESCRIPTOR_TYPES][num_bindings];
    VkDescriptorImageInfo image_infos[ZINK_DESCRIPTOR_TYPES][num_bindings];
    VkBufferView buffer_view[] = {VK_NULL_HANDLE};
    unsigned num_wds[ZINK_DESCRIPTOR_TYPES] = {0};
-   unsigned num_buffer_info[ZINK_DESCRIPTOR_TYPES] = {0};
    unsigned num_image_info[ZINK_DESCRIPTOR_TYPES] = {0};
    unsigned num_surface_refs = 0;
    unsigned num_resources[ZINK_DESCRIPTOR_TYPES] = {0};
@@ -515,7 +585,12 @@ update_descriptors(struct zink_context *ctx, struct zink_screen *screen, bool is
    if (zds[ZINK_DESCRIPTOR_TYPE_UBO])
       need_flush |= update_ubo_descriptors(ctx, zds[ZINK_DESCRIPTOR_TYPE_UBO], transitions, &num_transitions, ht, is_compute, cache_hit[ZINK_DESCRIPTOR_TYPE_UBO]);
    assert(num_transitions <= num_bindings);
+   if (zds[ZINK_DESCRIPTOR_TYPE_SSBO])
+      need_flush |= update_ssbo_descriptors(ctx, zds[ZINK_DESCRIPTOR_TYPE_SSBO], transitions, &num_transitions, ht, is_compute, cache_hit[ZINK_DESCRIPTOR_TYPE_SSBO]);
+   assert(num_transitions <= num_bindings);
    for (int h = 1; h < ZINK_DESCRIPTOR_TYPES; h++) {
+      if (h == ZINK_DESCRIPTOR_TYPE_SSBO)
+         continue;
       for (int i = 0; i < num_stages; i++) {
          struct zink_shader *shader = stages[i];
          if (!shader)
@@ -524,138 +599,106 @@ update_descriptors(struct zink_context *ctx, struct zink_screen *screen, bool is
 
          for (int j = 0; j < shader->num_bindings[h]; j++) {
             int index = shader->bindings[h][j].index;
-            if (shader->bindings[h][j].type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER) {
-               struct zink_resource *res = zink_resource(ctx->ssbos[stage][index].buffer);
-               desc_set_res_add(zds[h], res, num_resources[h], cache_hit[h]);
-               if (res) {
-                  assert(ctx->ssbos[stage][index].buffer_size > 0);
-                  assert(ctx->ssbos[stage][index].buffer_size <= screen->info.props.limits.maxStorageBufferRange);
-                  assert(num_buffer_info[h] < num_bindings);
-                  unsigned flag = VK_ACCESS_SHADER_READ_BIT;
-                  assert(num_resources[h] < num_bindings);
-                  if (ctx->writable_ssbos[stage] & (1 << index)) {
-                     write_descriptor_resource(&resources[h][num_resources[h]], res, &num_resources[h]);
-                     flag |= VK_ACCESS_SHADER_WRITE_BIT;
-                  } else {
-                     read_descriptor_resource(&resources[h][num_resources[h]], res, &num_resources[h]);
-                  }
-                  add_transition(res, 0, flag, stage, &transitions[num_transitions], &num_transitions, ht);
-                  buffer_infos[h][num_buffer_info[h]].buffer = res->buffer;
-                  buffer_infos[h][num_buffer_info[h]].offset = ctx->ssbos[stage][index].buffer_offset;
-                  buffer_infos[h][num_buffer_info[h]].range  = ctx->ssbos[stage][index].buffer_size;
-               } else {
-                  assert(screen->info.rb2_feats.nullDescriptor);
-                  read_descriptor_resource(&resources[h][num_resources[h]], res, &num_resources[h]);
-                  buffer_infos[h][num_buffer_info[h]].buffer = VK_NULL_HANDLE;
-                  buffer_infos[h][num_buffer_info[h]].offset = 0;
-                  buffer_infos[h][num_buffer_info[h]].range  = VK_WHOLE_SIZE;
-               }
-               wds[h][num_wds[h]].pBufferInfo = buffer_infos[h] + num_buffer_info[h];
-               ++num_buffer_info[h];
-            } else {
-               for (unsigned k = 0; k < shader->bindings[h][j].size; k++) {
-                  VkImageView imageview = VK_NULL_HANDLE;
-                  struct zink_resource *res = NULL;
-                  VkImageLayout layout = VK_IMAGE_LAYOUT_UNDEFINED;
-                  VkSampler sampler = VK_NULL_HANDLE;
+            for (unsigned k = 0; k < shader->bindings[h][j].size; k++) {
+               VkImageView imageview = VK_NULL_HANDLE;
+               struct zink_resource *res = NULL;
+               VkImageLayout layout = VK_IMAGE_LAYOUT_UNDEFINED;
+               struct zink_sampler_state *sampler = NULL;
 
+               switch (shader->bindings[h][j].type) {
+               case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
+               /* fallthrough */
+               case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER: {
+                  struct pipe_sampler_view *psampler_view = ctx->sampler_views[stage][index + k];
+                  struct zink_sampler_view *sampler_view = zink_sampler_view(psampler_view);
+                  res = psampler_view ? zink_resource(psampler_view->texture) : NULL;
+                  if (!res)
+                     break;
+                  if (res->base.target == PIPE_BUFFER) {
+                     wds[h][num_wds[h]].pTexelBufferView = &sampler_view->buffer_view;
+                  } else {
+                     imageview = sampler_view->image_view;
+                     layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+                     sampler = ctx->sampler_states[stage][index + k];
+                  }
+                  add_transition(res, layout, VK_ACCESS_SHADER_READ_BIT, stage, &transitions[num_transitions], &num_transitions, ht);
+                  assert(num_resources[h] < num_bindings);
+                  desc_set_sampler_add(zds[h], sampler_view, sampler, num_resources[h], cache_hit[h]);
+                  read_descriptor_resource(&resources[h][num_resources[h]], res, &num_resources[h]);
+               }
+               break;
+               case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
+               /* fallthrough */
+               case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE: {
+                  struct zink_image_view *image_view = &ctx->image_views[stage][index + k];
+                  assert(image_view);
+                  assert(num_surface_refs < num_image_bindings);
+                  surface_refs[num_surface_refs++] = image_view->surface;
+                  res = zink_resource(image_view->base.resource);
+
+                  if (!res)
+                     break;
+                  if (image_view->base.resource->target == PIPE_BUFFER) {
+                     wds[h][num_wds[h]].pTexelBufferView = &image_view->buffer_view;
+                  } else {
+                     imageview = image_view->surface->image_view;
+                     layout = VK_IMAGE_LAYOUT_GENERAL;
+                  }
+                  VkAccessFlags flags = 0;
+                  if (image_view->base.access & PIPE_IMAGE_ACCESS_READ)
+                     flags |= VK_ACCESS_SHADER_READ_BIT;
+                  if (image_view->base.access & PIPE_IMAGE_ACCESS_WRITE)
+                     flags |= VK_ACCESS_SHADER_WRITE_BIT;
+                  add_transition(res, layout, VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT, stage, &transitions[num_transitions], &num_transitions, ht);
+                  assert(num_resources[h] < num_bindings);
+                  desc_set_image_add(zds[h], image_view, num_resources[h], cache_hit[h]);
+                  if (image_view->base.access & PIPE_IMAGE_ACCESS_WRITE)
+                     write_descriptor_resource(&resources[h][num_resources[h]], res, &num_resources[h]);
+                  else
+                     read_descriptor_resource(&resources[h][num_resources[h]], res, &num_resources[h]);
+               }
+               break;
+               default:
+                  unreachable("unknown descriptor type");
+               }
+
+               if (!res) {
+                  /* if we're hitting this assert often, we can probably just throw a junk buffer in since
+                   * the results of this codepath are undefined in ARB_texture_buffer_object spec
+                   */
+                  assert(screen->info.rb2_feats.nullDescriptor);
+                  assert(num_resources[h] < num_bindings);
+                  read_descriptor_resource(&resources[h][num_resources[h]], res, &num_resources[h]);
                   switch (shader->bindings[h][j].type) {
                   case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
-                  /* fallthrough */
-                  case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER: {
-                     struct pipe_sampler_view *psampler_view = ctx->sampler_views[stage][index + k];
-                     struct zink_sampler_view *sampler_view = zink_sampler_view(psampler_view);
-                     struct zink_sampler_state *sampler_state = NULL;
-                     res = psampler_view ? zink_resource(psampler_view->texture) : NULL;
-                     if (!res)
-                        break;
-                     if (res->base.target == PIPE_BUFFER) {
-                        wds[h][num_wds[h]].pTexelBufferView = &sampler_view->buffer_view;
-                     } else {
-                        imageview = sampler_view->image_view;
-                        layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-                        sampler = ctx->samplers[stage][index + k];
-                        sampler_state = ctx->sampler_states[stage][index + k];
-                     }
-                     add_transition(res, layout, VK_ACCESS_SHADER_READ_BIT, stage, &transitions[num_transitions], &num_transitions, ht);
-                     assert(num_resources[h] < num_bindings);
-                     desc_set_sampler_add(zds[h], sampler_view, sampler_state, num_resources[h], cache_hit[h]);
-                     read_descriptor_resource(&resources[h][num_resources[h]], res, &num_resources[h]);
-                  }
-                  break;
                   case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
-                  /* fallthrough */
-                  case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE: {
-                     struct zink_image_view *image_view = &ctx->image_views[stage][index + k];
-                     assert(image_view);
-                     assert(num_surface_refs < num_image_bindings);
-                     surface_refs[num_surface_refs++] = image_view->surface;
-                     res = zink_resource(image_view->base.resource);
-
-                     if (!res)
-                        break;
-                     if (image_view->base.resource->target == PIPE_BUFFER) {
-                        wds[h][num_wds[h]].pTexelBufferView = &image_view->buffer_view;
-                     } else {
-                        imageview = image_view->surface->image_view;
-                        layout = VK_IMAGE_LAYOUT_GENERAL;
-                     }
-                     VkAccessFlags flags = 0;
-                     if (image_view->base.access & PIPE_IMAGE_ACCESS_READ)
-                        flags |= VK_ACCESS_SHADER_READ_BIT;
-                     if (image_view->base.access & PIPE_IMAGE_ACCESS_WRITE)
-                        flags |= VK_ACCESS_SHADER_WRITE_BIT;
-                     add_transition(res, layout, flags, stage, &transitions[num_transitions], &num_transitions, ht);
-                     assert(num_resources[h] < num_bindings);
-                     desc_set_image_add(zds[h], image_view, num_resources[h], cache_hit[h]);
-                     if (image_view->base.access & PIPE_IMAGE_ACCESS_WRITE)
-                        write_descriptor_resource(&resources[h][num_resources[h]], res, &num_resources[h]);
-                     else
-                        read_descriptor_resource(&resources[h][num_resources[h]], res, &num_resources[h]);
-                  }
-                  break;
-                  default:
-                     unreachable("unknown descriptor type");
-                  }
-
-                  if (!res) {
-                     /* if we're hitting this assert often, we can probably just throw a junk buffer in since
-                      * the results of this codepath are undefined in ARB_texture_buffer_object spec
-                      */
-                     assert(screen->info.rb2_feats.nullDescriptor);
-                     assert(num_resources[h] < num_bindings);
-                     read_descriptor_resource(&resources[h][num_resources[h]], res, &num_resources[h]);
-                     switch (shader->bindings[h][j].type) {
-                     case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
-                     case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
-                        wds[h][num_wds[h]].pTexelBufferView = &buffer_view[0];
-                        break;
-                     case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
-                     case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
-                        assert(num_image_info[h] < num_bindings);
-                        image_infos[h][num_image_info[h]].imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-                        image_infos[h][num_image_info[h]].imageView = VK_NULL_HANDLE;
-                        image_infos[h][num_image_info[h]].sampler = sampler;
-                        if (!k)
-                           wds[h][num_wds[h]].pImageInfo = image_infos[h] + num_image_info[h];
-                        ++num_image_info[h];
-                        break;
-                     default:
-                        unreachable("unknown descriptor type");
-                     }
-                  } else if (res->base.target != PIPE_BUFFER) {
-                     assert(layout != VK_IMAGE_LAYOUT_UNDEFINED);
+                     wds[h][num_wds[h]].pTexelBufferView = &buffer_view[0];
+                     break;
+                  case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
+                  case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
                      assert(num_image_info[h] < num_bindings);
-                     image_infos[h][num_image_info[h]].imageLayout = layout;
-                     image_infos[h][num_image_info[h]].imageView = imageview;
-                     image_infos[h][num_image_info[h]].sampler = sampler;
+                     image_infos[h][num_image_info[h]].imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+                     image_infos[h][num_image_info[h]].imageView = VK_NULL_HANDLE;
+                     image_infos[h][num_image_info[h]].sampler = sampler ? sampler->sampler : VK_NULL_HANDLE;
                      if (!k)
                         wds[h][num_wds[h]].pImageInfo = image_infos[h] + num_image_info[h];
                      ++num_image_info[h];
+                     break;
+                  default:
+                     unreachable("unknown descriptor type");
                   }
-                  assert(num_transitions <= num_bindings);
-                  assert(num_resources[h] <= num_bindings);
+               } else if (res->base.target != PIPE_BUFFER) {
+                  assert(layout != VK_IMAGE_LAYOUT_UNDEFINED);
+                  assert(num_image_info[h] < num_bindings);
+                  image_infos[h][num_image_info[h]].imageLayout = layout;
+                  image_infos[h][num_image_info[h]].imageView = imageview;
+                  image_infos[h][num_image_info[h]].sampler = sampler ? sampler->sampler : VK_NULL_HANDLE;
+                  if (!k)
+                     wds[h][num_wds[h]].pImageInfo = image_infos[h] + num_image_info[h];
+                  ++num_image_info[h];
                }
+               assert(num_transitions <= num_bindings);
+               assert(num_resources[h] <= num_bindings);
             }
 
             wds[h][num_wds[h]].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -674,6 +717,8 @@ update_descriptors(struct zink_context *ctx, struct zink_screen *screen, bool is
 
    unsigned check_flush_id = is_compute ? 0 : ZINK_COMPUTE_BATCH_ID;
    for (int h = 1; h < ZINK_DESCRIPTOR_TYPES; h++) {
+      if (h == ZINK_DESCRIPTOR_TYPE_SSBO)
+         continue;
       if (!zds[h])
          continue;
       assert(zds[h]->desc_set);
