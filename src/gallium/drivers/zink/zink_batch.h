@@ -50,11 +50,12 @@ struct zink_batch {
    struct zink_fence *fence;
 
    struct set *fbs;
-   struct hash_table *programs;
+   struct set *programs;
 
    struct set *resources;
    struct set *sampler_views;
    struct set *surfaces;
+   struct set *desc_sets;
 
    struct util_dynarray persistent_resources;
    struct util_dynarray zombie_samplers;
@@ -97,5 +98,5 @@ zink_batch_reference_surface(struct zink_batch *batch,
                              struct zink_surface *surface);
 
 bool
-zink_batch_add_desc_set(struct zink_batch *batch, struct zink_program *pg, struct zink_descriptor_set *zds);
+zink_batch_add_desc_set(struct zink_batch *batch, struct zink_descriptor_set *zds);
 #endif

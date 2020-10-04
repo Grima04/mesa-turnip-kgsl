@@ -50,18 +50,17 @@ zink_reset_batch(struct zink_context *ctx, struct zink_batch *batch)
    util_dynarray_clear(&batch->zombie_samplers);
    util_dynarray_clear(&batch->persistent_resources);
 
-   hash_table_foreach(batch->programs, entry) {
-      struct zink_program *pg = (struct zink_program*)entry->key;
-      struct set *desc_sets = (struct set*)entry->data;
-      set_foreach(desc_sets, sentry) {
-         struct zink_descriptor_set *zds = (void*)sentry->key;
-         /* reset descriptor pools when no batch is using this program to avoid
-          * having some inactive program hogging a billion descriptors
-          */
-         pipe_reference(&zds->reference, NULL);
-         zink_program_recycle_desc_set(pg, zds);
-      }
-      _mesa_set_destroy(desc_sets, NULL);
+   set_foreach(batch->desc_sets, entry) {
+      struct zink_descriptor_set *zds = (void*)entry->key;
+      /* reset descriptor pools when no batch is using this program to avoid
+       * having some inactive program hogging a billion descriptors
+       */
+      pipe_reference(&zds->reference, NULL);
+      zink_program_recycle_desc_set(zds->pg, zds);
+      _mesa_set_remove(batch->desc_sets, entry);
+   }
+
+   set_foreach(batch->programs, entry) {
       if (batch->batch_id == ZINK_COMPUTE_BATCH_ID) {
          struct zink_compute_program *comp = (struct zink_compute_program*)entry->key;
          zink_compute_program_reference(screen, &comp, NULL);
@@ -70,7 +69,7 @@ zink_reset_batch(struct zink_context *ctx, struct zink_batch *batch)
          zink_gfx_program_reference(screen, &prog, NULL);
       }
    }
-   _mesa_hash_table_clear(batch->programs, NULL);
+   _mesa_set_clear(batch->programs, NULL);
 
    set_foreach(batch->fbs, entry) {
       struct zink_framebuffer *fb = (void*)entry->key;
@@ -226,23 +225,19 @@ void
 zink_batch_reference_program(struct zink_batch *batch,
                              struct zink_program *pg)
 {
-   struct hash_entry *entry = _mesa_hash_table_search(batch->programs, pg);
-   if (!entry) {
-      entry = _mesa_hash_table_insert(batch->programs, pg, _mesa_pointer_set_create(batch->programs));
+   if (!_mesa_set_search(batch->programs, pg)) {
+      _mesa_set_add(batch->programs, pg);
       pipe_reference(NULL, &pg->reference);
    }
    batch->has_work = true;
 }
 
 bool
-zink_batch_add_desc_set(struct zink_batch *batch, struct zink_program *pg, struct zink_descriptor_set *zds)
+zink_batch_add_desc_set(struct zink_batch *batch, struct zink_descriptor_set *zds)
 {
-   struct hash_entry *entry = _mesa_hash_table_search(batch->programs, pg);
-   assert(entry);
-   struct set *desc_sets = (void*)entry->data;
-   if (!_mesa_set_search(desc_sets, zds)) {
+   if (!_mesa_set_search(batch->desc_sets, zds)) {
       pipe_reference(NULL, &zds->reference);
-      _mesa_set_add(desc_sets, zds);
+      _mesa_set_add(batch->desc_sets, zds);
       return true;
    }
    return false;

@@ -42,6 +42,8 @@ struct hash_table;
 struct set;
 struct util_dynarray;
 
+struct zink_program;
+
 struct zink_push_constant {
    unsigned draw_mode_is_indexed;
    unsigned draw_id;
@@ -70,6 +72,7 @@ struct zink_descriptor_state_key {
 };
 
 struct zink_descriptor_set {
+   struct zink_program *pg;
    enum zink_descriptor_type type;
    struct pipe_reference reference; //incremented for batch usage
    VkDescriptorSet desc_set;

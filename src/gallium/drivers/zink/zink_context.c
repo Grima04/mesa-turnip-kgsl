@@ -262,7 +262,7 @@ destroy_batch(struct zink_context* ctx, struct zink_batch* batch)
    _mesa_set_destroy(batch->sampler_views, NULL);
    util_dynarray_fini(&batch->zombie_samplers);
    _mesa_set_destroy(batch->surfaces, NULL);
-   _mesa_hash_table_destroy(batch->programs, NULL);
+   _mesa_set_destroy(batch->programs, NULL);
    _mesa_set_destroy(batch->active_queries, NULL);
 }
 
@@ -2004,10 +2004,11 @@ init_batch(struct zink_context *ctx, struct zink_batch *batch, unsigned idx)
    batch->fbs = _mesa_pointer_set_create(NULL);
    batch->resources = _mesa_pointer_set_create(NULL);
    batch->sampler_views = _mesa_pointer_set_create(NULL);
-   batch->programs = _mesa_pointer_hash_table_create(NULL);
    batch->surfaces = _mesa_pointer_set_create(NULL);
+   batch->programs = _mesa_pointer_set_create(NULL);
+   batch->desc_sets = _mesa_pointer_set_create(ctx);
 
-   if (!batch->resources || !batch->sampler_views ||
+   if (!batch->resources || !batch->sampler_views || !batch->desc_sets ||
        !batch->programs || !batch->surfaces)
       return false;
 

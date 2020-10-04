@@ -882,6 +882,7 @@ allocate_desc_set(struct zink_screen *screen, struct zink_program *pg, enum zink
    for (unsigned i = 0; i < bucket_size; i ++) {
       struct zink_descriptor_set *zds = &alloc[i];
       pipe_reference_init(&zds->reference, 1);
+      zds->pg = pg;
       zds->hash = 0;
       zds->invalid = true;
       zds->type = type;
@@ -1015,7 +1016,7 @@ out:
    }
 quick_out:
    zds->invalid = false;
-   if (zink_batch_add_desc_set(batch, pg, zds))
+   if (zink_batch_add_desc_set(batch, zds))
       batch->descs_used += pg->num_descriptors[type];
    pg->last_set[type] = zds;
    return zds;
