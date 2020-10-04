@@ -81,6 +81,7 @@ files_libradeonsi = files(
   '../radeon/radeon_vcn_dec_jpeg.c',
   '../radeon/radeon_vcn_dec.c',
   '../radeon/radeon_vcn_dec.h',
+  '../radeon/radeon_vcn_av1_default.h',
   '../radeon/radeon_uvd_enc_1_1.c',
   '../radeon/radeon_uvd_enc.c',
   '../radeon/radeon_uvd_enc.h',
