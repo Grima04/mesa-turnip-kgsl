@@ -28,21 +28,21 @@ zink_reset_batch(struct zink_context *ctx, struct zink_batch *batch)
    set_foreach(batch->resources, entry) {
       struct pipe_resource *pres = (struct pipe_resource *)entry->key;
       pipe_resource_reference(&pres, NULL);
+      _mesa_set_remove(batch->resources, entry);
    }
-   _mesa_set_clear(batch->resources, NULL);
 
    /* unref all used sampler-views */
    set_foreach(batch->sampler_views, entry) {
       struct pipe_sampler_view *pres = (struct pipe_sampler_view *)entry->key;
       pipe_sampler_view_reference(&pres, NULL);
+      _mesa_set_remove(batch->sampler_views, entry);
    }
-   _mesa_set_clear(batch->sampler_views, NULL);
 
    set_foreach(batch->surfaces, entry) {
       struct pipe_surface *surf = (struct pipe_surface *)entry->key;
       pipe_surface_reference(&surf, NULL);
+      _mesa_set_remove(batch->surfaces, entry);
    }
-   _mesa_set_clear(batch->surfaces, NULL);
 
    util_dynarray_foreach(&batch->zombie_samplers, VkSampler, samp) {
       vkDestroySampler(screen->dev, *samp, NULL);
@@ -68,8 +68,8 @@ zink_reset_batch(struct zink_context *ctx, struct zink_batch *batch)
          struct zink_gfx_program *prog = (struct zink_gfx_program*)entry->key;
          zink_gfx_program_reference(screen, &prog, NULL);
       }
+      _mesa_set_remove(batch->programs, entry);
    }
-   _mesa_set_clear(batch->programs, NULL);
 
    set_foreach(batch->fbs, entry) {
       struct zink_framebuffer *fb = (void*)entry->key;
