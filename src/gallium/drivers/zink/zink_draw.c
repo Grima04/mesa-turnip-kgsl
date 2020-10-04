@@ -616,10 +616,10 @@ update_descriptors(struct zink_context *ctx, struct zink_screen *screen, bool is
 
       if (is_compute)
          vkCmdBindDescriptorSets(batch->cmdbuf, VK_PIPELINE_BIND_POINT_COMPUTE,
-                                 ctx->curr_compute->layout, h, 1, &zds[h]->desc_set, h == ZINK_DESCRIPTOR_TYPE_UBO ? dynamic_offset_idx : 0, dynamic_offsets);
+                                 ctx->curr_compute->base.layout, h, 1, &zds[h]->desc_set, h == ZINK_DESCRIPTOR_TYPE_UBO ? dynamic_offset_idx : 0, dynamic_offsets);
       else
          vkCmdBindDescriptorSets(batch->cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                 ctx->curr_program->layout, h, 1, &zds[h]->desc_set, h == ZINK_DESCRIPTOR_TYPE_UBO ? dynamic_offset_idx : 0, dynamic_offsets);
+                                 ctx->curr_program->base.layout, h, 1, &zds[h]->desc_set, h == ZINK_DESCRIPTOR_TYPE_UBO ? dynamic_offset_idx : 0, dynamic_offsets);
 
       for (int i = 0; i < num_stages; i++) {
          struct zink_shader *shader = stages[i];
@@ -917,18 +917,18 @@ zink_draw_vbo(struct pipe_context *pctx,
 
    if (BITSET_TEST(ctx->gfx_stages[PIPE_SHADER_VERTEX]->nir->info.system_values_read, SYSTEM_VALUE_BASE_VERTEX)) {
       unsigned draw_mode_is_indexed = dinfo->index_size > 0;
-      vkCmdPushConstants(batch->cmdbuf, gfx_program->layout, VK_SHADER_STAGE_VERTEX_BIT,
+      vkCmdPushConstants(batch->cmdbuf, gfx_program->base.layout, VK_SHADER_STAGE_VERTEX_BIT,
                          offsetof(struct zink_push_constant, draw_mode_is_indexed), sizeof(unsigned),
                          &draw_mode_is_indexed);
    }
    if (ctx->drawid_broken) {
       unsigned draw_id = dinfo->drawid;
-      vkCmdPushConstants(batch->cmdbuf, gfx_program->layout, VK_SHADER_STAGE_VERTEX_BIT,
+      vkCmdPushConstants(batch->cmdbuf, gfx_program->base.layout, VK_SHADER_STAGE_VERTEX_BIT,
                          offsetof(struct zink_push_constant, draw_id), sizeof(unsigned),
                          &draw_id);
    }
    if (gfx_program->shaders[PIPE_SHADER_TESS_CTRL] && gfx_program->shaders[PIPE_SHADER_TESS_CTRL]->is_generated)
-      vkCmdPushConstants(batch->cmdbuf, gfx_program->layout, VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT,
+      vkCmdPushConstants(batch->cmdbuf, gfx_program->base.layout, VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT,
                          offsetof(struct zink_push_constant, default_inner_level), sizeof(float) * 6,
                          &ctx->tess_levels[0]);
 

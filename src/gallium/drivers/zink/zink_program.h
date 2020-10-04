@@ -121,6 +121,8 @@ struct zink_program {
    VkDescriptorSetLayout dsl[ZINK_DESCRIPTOR_TYPES];
    unsigned num_descriptors[ZINK_DESCRIPTOR_TYPES];
    struct zink_descriptor_set *last_set[ZINK_DESCRIPTOR_TYPES];
+
+   VkPipelineLayout layout;
 };
 
 struct zink_gfx_program {
@@ -131,7 +133,6 @@ struct zink_gfx_program {
    struct zink_shader_cache *shader_cache;
    unsigned char shader_slot_map[VARYING_SLOT_MAX];
    unsigned char shader_slots_reserved;
-   VkPipelineLayout layout;
    struct hash_table *pipelines[11]; // number of draw modes we support
 };
 
@@ -141,7 +142,6 @@ struct zink_compute_program {
    struct zink_shader_module *module;
    struct zink_shader *shader;
    struct zink_shader_cache *shader_cache;
-   VkPipelineLayout layout;
    struct hash_table *pipelines;
 };
 
