@@ -584,6 +584,10 @@ static int si_get_video_param(struct pipe_screen *screen, enum pipe_video_profil
          if (sscreen->info.family < CHIP_RAVEN)
             return false;
          return true;
+      case PIPE_VIDEO_FORMAT_AV1:
+         if (sscreen->info.family < CHIP_SIENNA_CICHLID)
+            return false;
+         return true;
       default:
          return false;
       }
