@@ -1629,6 +1629,9 @@ struct pipe_video_codec *radeon_create_decoder(struct pipe_context *context,
    case PIPE_VIDEO_FORMAT_VP9:
       stream_type = RDECODE_CODEC_VP9;
       break;
+   case PIPE_VIDEO_FORMAT_AV1:
+      stream_type = RDECODE_CODEC_AV1;
+      break;
    case PIPE_VIDEO_FORMAT_JPEG:
       stream_type = RDECODE_CODEC_JPEG;
       ring = RING_VCN_JPEG;
@@ -1690,7 +1693,7 @@ struct pipe_video_codec *radeon_create_decoder(struct pipe_context *context,
       si_vid_clear_buffer(context, &dec->msg_fb_it_probs_buffers[i]);
       si_vid_clear_buffer(context, &dec->bs_buffers[i]);
 
-      if (have_probs(dec)) {
+      if (have_probs(dec) && dec->stream_type == RDECODE_CODEC_VP9) {
          struct rvid_buffer *buf;
          void *ptr;
 
