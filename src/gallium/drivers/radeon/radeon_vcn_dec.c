@@ -816,6 +816,8 @@ static rvcn_dec_message_av1_t get_av1_msg(struct radeon_decoder *dec,
          result.feature_data[i][j] = pic->picture_parameter.seg_info.feature_data[i][j];
       result.feature_mask[i] = pic->picture_parameter.seg_info.feature_mask[i];
    }
+   memcpy(dec->probs, &pic->picture_parameter.seg_info.feature_data, 128);
+   memcpy((dec->probs + 128), &pic->picture_parameter.seg_info.feature_mask, 8);
 
    result.cdef_damping = pic->picture_parameter.cdef_damping_minus_3 + 3;
    result.cdef_bits = pic->picture_parameter.cdef_bits;
@@ -1695,7 +1697,7 @@ static bool have_it(struct radeon_decoder *dec)
 /* do the codec needs an probs buffer? */
 static bool have_probs(struct radeon_decoder *dec)
 {
-   return dec->stream_type == RDECODE_CODEC_VP9;
+   return (dec->stream_type == RDECODE_CODEC_VP9 || dec->stream_type == RDECODE_CODEC_AV1);
 }
 
 /* map the next available message/feedback/itscaling buffer */
@@ -2201,7 +2203,9 @@ struct pipe_video_codec *radeon_create_decoder(struct pipe_context *context,
       if (have_it(dec))
          msg_fb_it_probs_size += IT_SCALING_TABLE_SIZE;
       else if (have_probs(dec))
-         msg_fb_it_probs_size += VP9_PROBS_TABLE_SIZE;
+         msg_fb_it_probs_size += (dec->stream_type == RDECODE_CODEC_VP9) ?
+                                 VP9_PROBS_TABLE_SIZE :
+                                 sizeof(rvcn_dec_av1_segment_fg_t);
       /* use vram to improve performance, workaround an unknown bug */
       if (!si_vid_create_buffer(dec->screen, &dec->msg_fb_it_probs_buffers[i], msg_fb_it_probs_size,
                                 PIPE_USAGE_DEFAULT)) {
