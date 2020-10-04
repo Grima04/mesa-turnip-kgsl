@@ -2126,7 +2126,9 @@ void anv_GetPhysicalDeviceProperties2(
          props->transformFeedbackQueries = true;
          props->transformFeedbackStreamsLinesTriangles = false;
          props->transformFeedbackRasterizationStreamSelect = false;
-         props->transformFeedbackDraw = true;
+         /* This requires MI_MATH */
+         props->transformFeedbackDraw = pdevice->info.is_haswell ||
+                                        pdevice->info.gen >= 8;
          break;
       }
 

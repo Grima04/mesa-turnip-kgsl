@@ -3471,6 +3471,7 @@ struct anv_graphics_pipeline {
       uint32_t                                  sf[7];
       uint32_t                                  depth_stencil_state[3];
       uint32_t                                  clip[4];
+      uint32_t                                  xfb_bo_pitch[4];
    } gen7;
 
    struct {
