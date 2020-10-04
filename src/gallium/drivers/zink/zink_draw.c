@@ -351,6 +351,123 @@ write_descriptor_resource(struct zink_descriptor_resource *resource, struct zink
    (*num_resources)++;
 }
 
+static bool
+bind_descriptors(struct zink_context *ctx, struct zink_descriptor_set *zds, unsigned num_wds, VkWriteDescriptorSet *wds,
+                 unsigned num_resources, struct zink_descriptor_resource *resources,
+                 uint32_t *dynamic_offsets, unsigned dynamic_offset_idx, bool is_compute, bool cache_hit)
+{
+   bool need_flush = false;
+   struct zink_program *pg = zds->pg;
+   struct zink_batch *batch = is_compute ? &ctx->compute_batch : zink_curr_batch(ctx);
+   struct zink_screen *screen = zink_screen(ctx->base.screen);
+   assert(zds->desc_set);
+   unsigned check_flush_id = is_compute ? 0 : ZINK_COMPUTE_BATCH_ID;
+   for (int i = 0; i < num_resources; ++i) {
+      assert(num_resources <= zink_program_num_bindings_typed(pg, zds->type, is_compute));
+      assert(num_resources <= zds->num_resources);
+
+      struct zink_resource *res = resources[i].res;
+      if (res) {
+         need_flush |= zink_batch_reference_resource_rw(batch, res, resources[i].write) == check_flush_id;
+      }
+   }
+   if (!cache_hit && num_wds)
+      vkUpdateDescriptorSets(screen->dev, num_wds, wds, 0, NULL);
+
+   vkCmdBindDescriptorSets(batch->cmdbuf, is_compute ? VK_PIPELINE_BIND_POINT_COMPUTE : VK_PIPELINE_BIND_POINT_GRAPHICS,
+                           pg->layout, zds->type, 1, &zds->desc_set, zds->type == ZINK_DESCRIPTOR_TYPE_UBO ? dynamic_offset_idx : 0, dynamic_offsets);
+   return need_flush;
+}
+
+static bool
+update_ubo_descriptors(struct zink_context *ctx, struct zink_descriptor_set *zds, struct zink_transition *transitions, int *num_transitions,
+                       struct set *transition_hash, bool is_compute, bool cache_hit)
+{
+   struct zink_program *pg = zds->pg;
+   struct zink_screen *screen = zink_screen(ctx->base.screen);
+   unsigned num_descriptors = pg->num_descriptors[zds->type];
+   unsigned num_bindings = zink_program_num_bindings_typed(pg, zds->type, is_compute);
+   VkWriteDescriptorSet wds[num_descriptors];
+   struct zink_descriptor_resource resources[num_bindings];
+   VkDescriptorBufferInfo buffer_infos[num_bindings];
+   unsigned num_wds = 0;
+   unsigned num_buffer_info = 0;
+   unsigned num_resources = 0;
+   struct zink_shader **stages;
+   struct {
+      uint32_t binding;
+      uint32_t offset;
+   } dynamic_buffers[PIPE_MAX_CONSTANT_BUFFERS];
+   uint32_t dynamic_offsets[PIPE_MAX_CONSTANT_BUFFERS];
+   unsigned dynamic_offset_idx = 0;
+
+   unsigned num_stages = is_compute ? 1 : ZINK_SHADER_COUNT;
+   if (is_compute)
+      stages = &ctx->curr_compute->shader;
+   else
+      stages = &ctx->gfx_stages[0];
+
+   for (int i = 0; i < num_stages; i++) {
+      struct zink_shader *shader = stages[i];
+      if (!shader)
+         continue;
+      enum pipe_shader_type stage = pipe_shader_type_from_mesa(shader->nir->info.stage);
+
+      for (int j = 0; j < shader->num_bindings[zds->type]; j++) {
+         int index = shader->bindings[zds->type][j].index;
+         assert(shader->bindings[zds->type][j].type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER ||
+             shader->bindings[zds->type][j].type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC);
+         assert(ctx->ubos[stage][index].buffer_size <= screen->info.props.limits.maxUniformBufferRange);
+         struct zink_resource *res = zink_resource(ctx->ubos[stage][index].buffer);
+         assert(!res || ctx->ubos[stage][index].buffer_size > 0);
+         assert(!res || ctx->ubos[stage][index].buffer);
+         assert(num_resources < num_bindings);
+         desc_set_res_add(zds, res, num_resources, cache_hit);
+         read_descriptor_resource(&resources[num_resources], res, &num_resources);
+         assert(num_buffer_info < num_bindings);
+         buffer_infos[num_buffer_info].buffer = res ? res->buffer :
+                                                (screen->info.rb2_feats.nullDescriptor ?
+                                                 VK_NULL_HANDLE :
+                                                 zink_resource(ctx->dummy_vertex_buffer)->buffer);
+         if (shader->bindings[zds->type][j].type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC) {
+            buffer_infos[num_buffer_info].offset = 0;
+            /* we're storing this to qsort later */
+            dynamic_buffers[dynamic_offset_idx].binding = shader->bindings[zds->type][j].binding;
+            dynamic_buffers[dynamic_offset_idx++].offset = res ? ctx->ubos[stage][index].buffer_offset : 0;
+         } else
+            buffer_infos[num_buffer_info].offset = res ? ctx->ubos[stage][index].buffer_offset : 0;
+         buffer_infos[num_buffer_info].range = res ? ctx->ubos[stage][index].buffer_size : VK_WHOLE_SIZE;
+         if (res)
+            add_transition(res, 0, VK_ACCESS_UNIFORM_READ_BIT, stage, &transitions[*num_transitions], num_transitions, transition_hash);
+         wds[num_wds].pBufferInfo = buffer_infos + num_buffer_info;
+         ++num_buffer_info;
+
+         wds[num_wds].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+         wds[num_wds].pNext = NULL;
+         wds[num_wds].dstBinding = shader->bindings[zds->type][j].binding;
+         wds[num_wds].dstArrayElement = 0;
+         wds[num_wds].descriptorCount = shader->bindings[zds->type][j].size;
+         wds[num_wds].descriptorType = shader->bindings[zds->type][j].type;
+         wds[num_wds].dstSet = zds->desc_set;
+         ++num_wds;
+      }
+   }
+
+   /* Values are taken from pDynamicOffsets in an order such that all entries for set N come before set N+1;
+    * within a set, entries are ordered by the binding numbers in the descriptor set layouts
+    * - vkCmdBindDescriptorSets spec
+    *
+    * because of this, we have to sort all the dynamic offsets by their associated binding to ensure they
+    * match what the driver expects
+    */
+   if (dynamic_offset_idx > 1)
+      qsort(dynamic_buffers, dynamic_offset_idx, sizeof(uint32_t) * 2, cmp_dynamic_offset_binding);
+   for (int i = 0; i < dynamic_offset_idx; i++)
+      dynamic_offsets[i] = dynamic_buffers[i].offset;
+
+   return bind_descriptors(ctx, zds, num_wds, wds, num_resources, resources, dynamic_offsets, dynamic_offset_idx, is_compute, cache_hit);
+}
+
 static void
 update_descriptors(struct zink_context *ctx, struct zink_screen *screen, bool is_compute)
 {
@@ -370,12 +487,6 @@ update_descriptors(struct zink_context *ctx, struct zink_screen *screen, bool is
    unsigned num_surface_refs = 0;
    unsigned num_resources[ZINK_DESCRIPTOR_TYPES] = {0};
    struct zink_shader **stages;
-   struct {
-      uint32_t binding;
-      uint32_t offset;
-   } dynamic_buffers[PIPE_MAX_CONSTANT_BUFFERS];
-   uint32_t dynamic_offsets[PIPE_MAX_CONSTANT_BUFFERS];
-   unsigned dynamic_offset_idx = 0;
 
    unsigned num_stages = is_compute ? 1 : ZINK_SHADER_COUNT;
    if (is_compute)
@@ -399,7 +510,12 @@ update_descriptors(struct zink_context *ctx, struct zink_screen *screen, bool is
    int num_transitions = 0;
    struct set *ht = _mesa_set_create(NULL, transition_hash, transition_equals);
 
-   for (int h = 0; h < ZINK_DESCRIPTOR_TYPES; h++) {
+
+   bool need_flush = false;
+   if (zds[ZINK_DESCRIPTOR_TYPE_UBO])
+      need_flush |= update_ubo_descriptors(ctx, zds[ZINK_DESCRIPTOR_TYPE_UBO], transitions, &num_transitions, ht, is_compute, cache_hit[ZINK_DESCRIPTOR_TYPE_UBO]);
+   assert(num_transitions <= num_bindings);
+   for (int h = 1; h < ZINK_DESCRIPTOR_TYPES; h++) {
       for (int i = 0; i < num_stages; i++) {
          struct zink_shader *shader = stages[i];
          if (!shader)
@@ -408,33 +524,7 @@ update_descriptors(struct zink_context *ctx, struct zink_screen *screen, bool is
 
          for (int j = 0; j < shader->num_bindings[h]; j++) {
             int index = shader->bindings[h][j].index;
-            if (shader->bindings[h][j].type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER ||
-                shader->bindings[h][j].type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC) {
-               assert(ctx->ubos[stage][index].buffer_size <= screen->info.props.limits.maxUniformBufferRange);
-               struct zink_resource *res = zink_resource(ctx->ubos[stage][index].buffer);
-               assert(!res || ctx->ubos[stage][index].buffer_size > 0);
-               assert(!res || ctx->ubos[stage][index].buffer);
-               assert(num_resources[h] < num_bindings);
-               desc_set_res_add(zds[h], res, num_resources[h], cache_hit[h]);
-               read_descriptor_resource(&resources[h][num_resources[h]], res, &num_resources[h]);
-               assert(num_buffer_info[h] < num_bindings);
-               buffer_infos[h][num_buffer_info[h]].buffer = res ? res->buffer :
-                                                            (screen->info.rb2_feats.nullDescriptor ?
-                                                             VK_NULL_HANDLE :
-                                                             zink_resource(ctx->dummy_vertex_buffer)->buffer);
-               if (shader->bindings[h][j].type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC) {
-                  buffer_infos[h][num_buffer_info[h]].offset = 0;
-                  /* we're storing this to qsort later */
-                  dynamic_buffers[dynamic_offset_idx].binding = shader->bindings[h][j].binding;
-                  dynamic_buffers[dynamic_offset_idx++].offset = res ? ctx->ubos[stage][index].buffer_offset : 0;
-               } else
-                  buffer_infos[h][num_buffer_info[h]].offset = res ? ctx->ubos[stage][index].buffer_offset : 0;
-               buffer_infos[h][num_buffer_info[h]].range  = res ? ctx->ubos[stage][index].buffer_size : VK_WHOLE_SIZE;
-               if (res)
-                  add_transition(res, 0, VK_ACCESS_UNIFORM_READ_BIT, stage, &transitions[num_transitions], &num_transitions, ht);
-               wds[h][num_wds[h]].pBufferInfo = buffer_infos[h] + num_buffer_info[h];
-               ++num_buffer_info[h];
-            } else if (shader->bindings[h][j].type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER) {
+            if (shader->bindings[h][j].type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER) {
                struct zink_resource *res = zink_resource(ctx->ssbos[stage][index].buffer);
                desc_set_res_add(zds[h], res, num_resources[h], cache_hit[h]);
                if (res) {
@@ -582,21 +672,8 @@ update_descriptors(struct zink_context *ctx, struct zink_screen *screen, bool is
    }
    _mesa_set_destroy(ht, NULL);
 
-   /* Values are taken from pDynamicOffsets in an order such that all entries for set N come before set N+1;
-    * within a set, entries are ordered by the binding numbers in the descriptor set layouts
-    * - vkCmdBindDescriptorSets spec
-    *
-    * because of this, we have to sort all the dynamic offsets by their associated binding to ensure they
-    * match what the driver expects
-    */
-   if (dynamic_offset_idx > 1)
-      qsort(dynamic_buffers, dynamic_offset_idx, sizeof(uint32_t) * 2, cmp_dynamic_offset_binding);
-   for (int i = 0; i < dynamic_offset_idx; i++)
-      dynamic_offsets[i] = dynamic_buffers[i].offset;
-
    unsigned check_flush_id = is_compute ? 0 : ZINK_COMPUTE_BATCH_ID;
-   bool need_flush = false;
-   for (int h = 0; h < ZINK_DESCRIPTOR_TYPES; h++) {
+   for (int h = 1; h < ZINK_DESCRIPTOR_TYPES; h++) {
       if (!zds[h])
          continue;
       assert(zds[h]->desc_set);
@@ -616,10 +693,10 @@ update_descriptors(struct zink_context *ctx, struct zink_screen *screen, bool is
 
       if (is_compute)
          vkCmdBindDescriptorSets(batch->cmdbuf, VK_PIPELINE_BIND_POINT_COMPUTE,
-                                 ctx->curr_compute->base.layout, h, 1, &zds[h]->desc_set, h == ZINK_DESCRIPTOR_TYPE_UBO ? dynamic_offset_idx : 0, dynamic_offsets);
+                                 ctx->curr_compute->base.layout, h, 1, &zds[h]->desc_set, 0, NULL);
       else
          vkCmdBindDescriptorSets(batch->cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                 ctx->curr_program->base.layout, h, 1, &zds[h]->desc_set, h == ZINK_DESCRIPTOR_TYPE_UBO ? dynamic_offset_idx : 0, dynamic_offsets);
+                                 ctx->curr_program->base.layout, h, 1, &zds[h]->desc_set, 0, NULL);
 
       for (int i = 0; i < num_stages; i++) {
          struct zink_shader *shader = stages[i];
