@@ -74,6 +74,7 @@ struct zink_program {
    struct pipe_reference reference;
 
    struct hash_table *desc_sets;
+   struct hash_table *free_desc_sets;
    struct util_dynarray alloc_desc_sets;
    VkDescriptorPool descpool;
    VkDescriptorSetLayout dsl;
