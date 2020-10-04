@@ -282,36 +282,44 @@ _mesa_PushAttrib(GLbitfield mask)
 }
 
 
+#define TEST_AND_UPDATE(VALUE, NEWVALUE, ENUM) do {  \
+      if ((VALUE) != (NEWVALUE))                     \
+         _mesa_set_enable(ctx, ENUM, (NEWVALUE));    \
+   } while (0)
+
+#define TEST_AND_UPDATE_BIT(VALUE, NEW_VALUE, BIT, ENUM) do {                 \
+      if (((VALUE) & BITFIELD_BIT(BIT)) != ((NEW_VALUE) & BITFIELD_BIT(BIT))) \
+         _mesa_set_enable(ctx, ENUM, ((NEW_VALUE) >> (BIT)) & 0x1);           \
+   } while (0)
+
+#define TEST_AND_UPDATE_INDEX(VALUE, NEW_VALUE, INDEX, ENUM) do {                 \
+      if (((VALUE) & BITFIELD_BIT(INDEX)) != ((NEW_VALUE) & BITFIELD_BIT(INDEX))) \
+         _mesa_set_enablei(ctx, ENUM, INDEX, ((NEW_VALUE) >> (INDEX)) & 0x1);     \
+   } while (0)
+
 
 static void
 pop_enable_group(struct gl_context *ctx, const struct gl_enable_attrib_node *enable)
 {
-   const GLuint curTexUnitSave = ctx->Texture.CurrentUnit;
    GLuint i;
-
-#define TEST_AND_UPDATE(VALUE, NEWVALUE, ENUM)                \
-        if ((VALUE) != (NEWVALUE)) {                        \
-           _mesa_set_enable(ctx, ENUM, (NEWVALUE));        \
-        }
 
    TEST_AND_UPDATE(ctx->Color.AlphaEnabled, enable->AlphaTest, GL_ALPHA_TEST);
    if (ctx->Color.BlendEnabled != enable->Blend) {
       if (ctx->Extensions.EXT_draw_buffers2) {
-         GLuint i;
-         for (i = 0; i < ctx->Const.MaxDrawBuffers; i++) {
-            _mesa_set_enablei(ctx, GL_BLEND, i, (enable->Blend >> i) & 1);
+         for (unsigned i = 0; i < ctx->Const.MaxDrawBuffers; i++) {
+            TEST_AND_UPDATE_INDEX(ctx->Color.BlendEnabled, enable->Blend,
+                                  i, GL_BLEND);
          }
-      }
-      else {
+      } else {
          _mesa_set_enable(ctx, GL_BLEND, (enable->Blend & 1));
       }
    }
 
-   for (i=0;i<ctx->Const.MaxClipPlanes;i++) {
-      const GLuint mask = 1 << i;
-      if ((ctx->Transform.ClipPlanesEnabled & mask) != (enable->ClipPlanes & mask))
-          _mesa_set_enable(ctx, (GLenum) (GL_CLIP_PLANE0 + i),
-                           !!(enable->ClipPlanes & mask));
+   if (ctx->Transform.ClipPlanesEnabled != enable->ClipPlanes) {
+      for (unsigned i = 0; i < ctx->Const.MaxClipPlanes; i++) {
+         TEST_AND_UPDATE_BIT(ctx->Transform.ClipPlanesEnabled,
+                             enable->ClipPlanes, i, GL_CLIP_PLANE0 + i);
+      }
    }
 
    TEST_AND_UPDATE(ctx->Light.ColorMaterialEnabled, enable->ColorMaterial,
@@ -400,12 +408,14 @@ pop_enable_group(struct gl_context *ctx, const struct gl_enable_attrib_node *ena
       unsigned i;
 
       for (i = 0; i < ctx->Const.MaxViewports; i++) {
-         _mesa_set_enablei(ctx, GL_SCISSOR_TEST, i, (enable->Scissor >> i) & 1);
+         TEST_AND_UPDATE_INDEX(ctx->Scissor.EnableFlags, enable->Scissor,
+                               i, GL_SCISSOR_TEST);
       }
    }
    TEST_AND_UPDATE(ctx->Stencil.Enabled, enable->Stencil, GL_STENCIL_TEST);
    if (ctx->Extensions.EXT_stencil_two_side) {
-      TEST_AND_UPDATE(ctx->Stencil.TestTwoSide, enable->StencilTwoSide, GL_STENCIL_TEST_TWO_SIDE_EXT);
+      TEST_AND_UPDATE(ctx->Stencil.TestTwoSide, enable->StencilTwoSide,
+                      GL_STENCIL_TEST_TWO_SIDE_EXT);
    }
    TEST_AND_UPDATE(ctx->Multisample.Enabled, enable->MultisampleEnabled,
                    GL_MULTISAMPLE_ARB);
@@ -445,33 +455,40 @@ pop_enable_group(struct gl_context *ctx, const struct gl_enable_attrib_node *ena
                       GL_CONSERVATIVE_RASTERIZATION_NV);
    }
 
+   const unsigned curTexUnitSave = ctx->Texture.CurrentUnit;
+
    /* texture unit enables */
    for (i = 0; i < ctx->Const.MaxTextureUnits; i++) {
       const GLbitfield enabled = enable->Texture[i];
-      const GLbitfield genEnabled = enable->TexGen[i];
+      const GLbitfield gen_enabled = enable->TexGen[i];
+      const struct gl_fixedfunc_texture_unit *unit = &ctx->Texture.FixedFuncUnit[i];
+      const GLbitfield old_enabled = unit->Enabled;
+      const GLbitfield old_gen_enabled = unit->TexGenEnabled;
 
-      if (ctx->Texture.FixedFuncUnit[i].Enabled != enabled) {
-         _mesa_ActiveTexture(GL_TEXTURE0 + i);
+      if (old_enabled == enabled && old_gen_enabled == gen_enabled)
+         continue;
 
-         _mesa_set_enable(ctx, GL_TEXTURE_1D, !!(enabled & TEXTURE_1D_BIT));
-         _mesa_set_enable(ctx, GL_TEXTURE_2D, !!(enabled & TEXTURE_2D_BIT));
-         _mesa_set_enable(ctx, GL_TEXTURE_3D, !!(enabled & TEXTURE_3D_BIT));
+      _mesa_ActiveTexture(GL_TEXTURE0 + i);
+
+      if (old_enabled != enabled) {
+         TEST_AND_UPDATE_BIT(old_enabled, enabled, TEXTURE_1D_INDEX, GL_TEXTURE_1D);
+         TEST_AND_UPDATE_BIT(old_enabled, enabled, TEXTURE_2D_INDEX, GL_TEXTURE_2D);
+         TEST_AND_UPDATE_BIT(old_enabled, enabled, TEXTURE_3D_INDEX, GL_TEXTURE_3D);
          if (ctx->Extensions.NV_texture_rectangle) {
-            _mesa_set_enable(ctx, GL_TEXTURE_RECTANGLE_ARB,
-                             !!(enabled & TEXTURE_RECT_BIT));
+            TEST_AND_UPDATE_BIT(old_enabled, enabled, TEXTURE_RECT_INDEX,
+                                GL_TEXTURE_RECTANGLE);
          }
          if (ctx->Extensions.ARB_texture_cube_map) {
-            _mesa_set_enable(ctx, GL_TEXTURE_CUBE_MAP,
-                             !!(enabled & TEXTURE_CUBE_BIT));
+            TEST_AND_UPDATE_BIT(old_enabled, enabled, TEXTURE_CUBE_INDEX,
+                                GL_TEXTURE_CUBE_MAP);
          }
       }
 
-      if (ctx->Texture.FixedFuncUnit[i].TexGenEnabled != genEnabled) {
-         _mesa_ActiveTexture(GL_TEXTURE0 + i);
-         _mesa_set_enable(ctx, GL_TEXTURE_GEN_S, !!(genEnabled & S_BIT));
-         _mesa_set_enable(ctx, GL_TEXTURE_GEN_T, !!(genEnabled & T_BIT));
-         _mesa_set_enable(ctx, GL_TEXTURE_GEN_R, !!(genEnabled & R_BIT));
-         _mesa_set_enable(ctx, GL_TEXTURE_GEN_Q, !!(genEnabled & Q_BIT));
+      if (old_gen_enabled != gen_enabled) {
+         TEST_AND_UPDATE_BIT(old_gen_enabled, gen_enabled, 0, GL_TEXTURE_GEN_S);
+         TEST_AND_UPDATE_BIT(old_gen_enabled, gen_enabled, 1, GL_TEXTURE_GEN_T);
+         TEST_AND_UPDATE_BIT(old_gen_enabled, gen_enabled, 2, GL_TEXTURE_GEN_R);
+         TEST_AND_UPDATE_BIT(old_gen_enabled, gen_enabled, 3, GL_TEXTURE_GEN_Q);
       }
    }
 
@@ -700,18 +717,19 @@ _mesa_PopAttrib(void)
             _mesa_DrawBuffer(attr->Color.DrawBuffer[0]);
          }
       }
-      _mesa_set_enable(ctx, GL_ALPHA_TEST, attr->Color.AlphaEnabled);
+      TEST_AND_UPDATE(ctx->Color.AlphaEnabled, attr->Color.AlphaEnabled,
+                      GL_ALPHA_TEST);
       _mesa_AlphaFunc(attr->Color.AlphaFunc, attr->Color.AlphaRefUnclamped);
       if (ctx->Color.BlendEnabled != attr->Color.BlendEnabled) {
          if (ctx->Extensions.EXT_draw_buffers2) {
-            GLuint i;
-            for (i = 0; i < ctx->Const.MaxDrawBuffers; i++) {
-               _mesa_set_enablei(ctx, GL_BLEND, i,
-                                 (attr->Color.BlendEnabled >> i) & 1);
+            for (unsigned i = 0; i < ctx->Const.MaxDrawBuffers; i++) {
+               TEST_AND_UPDATE_INDEX(ctx->Color.BlendEnabled,
+                                     attr->Color.BlendEnabled, i, GL_BLEND);
             }
          }
          else {
-            _mesa_set_enable(ctx, GL_BLEND, (attr->Color.BlendEnabled & 1));
+            TEST_AND_UPDATE(ctx->Color.BlendEnabled & 0x1,
+                            attr->Color.BlendEnabled & 0x1, GL_BLEND);
          }
       }
       if (ctx->Color._BlendFuncPerBuffer ||
@@ -752,11 +770,12 @@ _mesa_PopAttrib(void)
                        attr->Color.BlendColorUnclamped[2],
                        attr->Color.BlendColorUnclamped[3]);
       _mesa_LogicOp(attr->Color.LogicOp);
-      _mesa_set_enable(ctx, GL_COLOR_LOGIC_OP,
-                       attr->Color.ColorLogicOpEnabled);
-      _mesa_set_enable(ctx, GL_INDEX_LOGIC_OP,
-                       attr->Color.IndexLogicOpEnabled);
-      _mesa_set_enable(ctx, GL_DITHER, attr->Color.DitherFlag);
+      TEST_AND_UPDATE(ctx->Color.ColorLogicOpEnabled,
+                      attr->Color.ColorLogicOpEnabled, GL_COLOR_LOGIC_OP);
+      TEST_AND_UPDATE(ctx->Color.IndexLogicOpEnabled,
+                      attr->Color.IndexLogicOpEnabled, GL_INDEX_LOGIC_OP);
+      TEST_AND_UPDATE(ctx->Color.DitherFlag, attr->Color.DitherFlag,
+                      GL_DITHER);
       if (ctx->Extensions.ARB_color_buffer_float)
          _mesa_ClampColor(GL_CLAMP_FRAGMENT_COLOR_ARB,
                           attr->Color.ClampFragmentColor);
@@ -764,8 +783,10 @@ _mesa_PopAttrib(void)
          _mesa_ClampColor(GL_CLAMP_READ_COLOR_ARB, attr->Color.ClampReadColor);
 
       /* GL_ARB_framebuffer_sRGB / GL_EXT_framebuffer_sRGB */
-      if (ctx->Extensions.EXT_framebuffer_sRGB)
-         _mesa_set_enable(ctx, GL_FRAMEBUFFER_SRGB, attr->Color.sRGBEnabled);
+      if (ctx->Extensions.EXT_framebuffer_sRGB) {
+         TEST_AND_UPDATE(ctx->Color.sRGBEnabled, attr->Color.sRGBEnabled,
+                         GL_FRAMEBUFFER_SRGB);
+      }
    }
 
    if (mask & GL_CURRENT_BIT) {
@@ -777,11 +798,11 @@ _mesa_PopAttrib(void)
    if (mask & GL_DEPTH_BUFFER_BIT) {
       _mesa_DepthFunc(attr->Depth.Func);
       _mesa_ClearDepth(attr->Depth.Clear);
-      _mesa_set_enable(ctx, GL_DEPTH_TEST, attr->Depth.Test);
+      TEST_AND_UPDATE(ctx->Depth.Test, attr->Depth.Test, GL_DEPTH_TEST);
       _mesa_DepthMask(attr->Depth.Mask);
       if (ctx->Extensions.EXT_depth_bounds_test) {
-         _mesa_set_enable(ctx, GL_DEPTH_BOUNDS_TEST_EXT,
-                          attr->Depth.BoundsTest);
+          TEST_AND_UPDATE(ctx->Depth.BoundsTest, attr->Depth.BoundsTest,
+                          GL_DEPTH_BOUNDS_TEST_EXT);
          _mesa_DepthBoundsEXT(attr->Depth.BoundsMin, attr->Depth.BoundsMax);
       }
    }
@@ -812,7 +833,7 @@ _mesa_PopAttrib(void)
    }
 
    if (mask & GL_FOG_BIT) {
-      _mesa_set_enable(ctx, GL_FOG, attr->Fog.Enabled);
+      TEST_AND_UPDATE(ctx->Fog.Enabled, attr->Fog.Enabled, GL_FOG);
       _mesa_Fogfv(GL_FOG_COLOR, attr->Fog.Color);
       _mesa_Fogf(GL_FOG_DENSITY, attr->Fog.Density);
       _mesa_Fogf(GL_FOG_START, attr->Fog.Start);
@@ -835,7 +856,7 @@ _mesa_PopAttrib(void)
    if (mask & GL_LIGHTING_BIT) {
       GLuint i;
       /* lighting enable */
-      _mesa_set_enable(ctx, GL_LIGHTING, attr->Light.Enabled);
+      TEST_AND_UPDATE(ctx->Light.Enabled, attr->Light.Enabled, GL_LIGHTING);
       /* per-light state */
       if (_math_matrix_is_dirty(ctx->ModelviewMatrixStack.Top))
          _math_matrix_analyse(ctx->ModelviewMatrixStack.Top);
@@ -845,7 +866,8 @@ _mesa_PopAttrib(void)
          for (i = 0; i < ctx->Const.MaxLights; i++) {
             const struct gl_light_uniforms *lu = &attr->Light.LightSource[i];
             const struct gl_light *l = &attr->Light.Light[i];
-            _mesa_set_enable(ctx, GL_LIGHT0 + i, l->Enabled);
+            TEST_AND_UPDATE(ctx->Light.Light[i].Enabled, l->Enabled,
+                            GL_LIGHT0 + i);
             _mesa_light(ctx, i, GL_AMBIENT, lu->Ambient);
             _mesa_light(ctx, i, GL_DIFFUSE, lu->Diffuse);
             _mesa_light(ctx, i, GL_SPECULAR, lu->Specular);
@@ -902,8 +924,8 @@ _mesa_PopAttrib(void)
       /* color material */
       _mesa_ColorMaterial(attr->Light.ColorMaterialFace,
                           attr->Light.ColorMaterialMode);
-      _mesa_set_enable(ctx, GL_COLOR_MATERIAL,
-                       attr->Light.ColorMaterialEnabled);
+      TEST_AND_UPDATE(ctx->Light.ColorMaterialEnabled,
+                      attr->Light.ColorMaterialEnabled, GL_COLOR_MATERIAL);
       /* materials */
       memcpy(&ctx->Light.Material, &attr->Light.Material,
              sizeof(struct gl_material));
@@ -914,8 +936,8 @@ _mesa_PopAttrib(void)
    }
 
    if (mask & GL_LINE_BIT) {
-      _mesa_set_enable(ctx, GL_LINE_SMOOTH, attr->Line.SmoothFlag);
-      _mesa_set_enable(ctx, GL_LINE_STIPPLE, attr->Line.StippleFlag);
+      TEST_AND_UPDATE(ctx->Line.SmoothFlag, attr->Line.SmoothFlag, GL_LINE_SMOOTH);
+      TEST_AND_UPDATE(ctx->Line.StippleFlag, attr->Line.StippleFlag, GL_LINE_STIPPLE);
       _mesa_LineStipple(attr->Line.StippleFactor, attr->Line.StipplePattern);
       _mesa_LineWidth(attr->Line.Width);
    }
@@ -932,7 +954,7 @@ _mesa_PopAttrib(void)
 
    if (mask & GL_POINT_BIT) {
       _mesa_PointSize(attr->Point.Size);
-      _mesa_set_enable(ctx, GL_POINT_SMOOTH, attr->Point.SmoothFlag);
+      TEST_AND_UPDATE(ctx->Point.SmoothFlag, attr->Point.SmoothFlag, GL_POINT_SMOOTH);
       if (ctx->Extensions.EXT_point_parameters) {
          _mesa_PointParameterfv(GL_DISTANCE_ATTENUATION_EXT,
                                 attr->Point.Params);
@@ -950,7 +972,8 @@ _mesa_PopAttrib(void)
             _mesa_TexEnvi(GL_POINT_SPRITE_NV, GL_COORD_REPLACE_NV,
                           !!(attr->Point.CoordReplace & (1u << u)));
          }
-         _mesa_set_enable(ctx, GL_POINT_SPRITE_NV,attr->Point.PointSprite);
+         TEST_AND_UPDATE(ctx->Point.PointSprite, attr->Point.PointSprite,
+                         GL_POINT_SPRITE_NV);
          if (ctx->Extensions.NV_point_sprite)
             _mesa_PointParameteri(GL_POINT_SPRITE_R_MODE_NV,
                                   ctx->Point.SpriteRMode);
@@ -971,15 +994,15 @@ _mesa_PopAttrib(void)
                                  attr->Polygon.OffsetFactor,
                                  attr->Polygon.OffsetUnits,
                                  attr->Polygon.OffsetClamp);
-      _mesa_set_enable(ctx, GL_POLYGON_SMOOTH, attr->Polygon.SmoothFlag);
-      _mesa_set_enable(ctx, GL_POLYGON_STIPPLE, attr->Polygon.StippleFlag);
-      _mesa_set_enable(ctx, GL_CULL_FACE, attr->Polygon.CullFlag);
-      _mesa_set_enable(ctx, GL_POLYGON_OFFSET_POINT,
-                       attr->Polygon.OffsetPoint);
-      _mesa_set_enable(ctx, GL_POLYGON_OFFSET_LINE,
-                       attr->Polygon.OffsetLine);
-      _mesa_set_enable(ctx, GL_POLYGON_OFFSET_FILL,
-                       attr->Polygon.OffsetFill);
+      TEST_AND_UPDATE(ctx->Polygon.SmoothFlag, attr->Polygon.SmoothFlag, GL_POLYGON_SMOOTH);
+      TEST_AND_UPDATE(ctx->Polygon.StippleFlag, attr->Polygon.StippleFlag, GL_POLYGON_STIPPLE);
+      TEST_AND_UPDATE(ctx->Polygon.CullFlag, attr->Polygon.CullFlag, GL_CULL_FACE);
+      TEST_AND_UPDATE(ctx->Polygon.OffsetPoint, attr->Polygon.OffsetPoint,
+                      GL_POLYGON_OFFSET_POINT);
+      TEST_AND_UPDATE(ctx->Polygon.OffsetLine, attr->Polygon.OffsetLine,
+                      GL_POLYGON_OFFSET_LINE);
+      TEST_AND_UPDATE(ctx->Polygon.OffsetFill, attr->Polygon.OffsetFill,
+                      GL_POLYGON_OFFSET_FILL);
    }
 
    if (mask & GL_POLYGON_STIPPLE_BIT) {
@@ -1003,8 +1026,8 @@ _mesa_PopAttrib(void)
                            attr->Scissor.ScissorArray[i].Y,
                            attr->Scissor.ScissorArray[i].Width,
                            attr->Scissor.ScissorArray[i].Height);
-         _mesa_set_enablei(ctx, GL_SCISSOR_TEST, i,
-                           (attr->Scissor.EnableFlags >> i) & 1);
+         TEST_AND_UPDATE_INDEX(ctx->Scissor.EnableFlags,
+                               attr->Scissor.EnableFlags, i, GL_SCISSOR_TEST);
       }
       if (ctx->Extensions.EXT_window_rectangles) {
          STATIC_ASSERT(sizeof(struct gl_scissor_rect) ==
@@ -1016,11 +1039,12 @@ _mesa_PopAttrib(void)
    }
 
    if (mask & GL_STENCIL_BUFFER_BIT) {
-      _mesa_set_enable(ctx, GL_STENCIL_TEST, attr->Stencil.Enabled);
+      TEST_AND_UPDATE(ctx->Stencil.Enabled, attr->Stencil.Enabled,
+                      GL_STENCIL_TEST);
       _mesa_ClearStencil(attr->Stencil.Clear);
       if (ctx->Extensions.EXT_stencil_two_side) {
-         _mesa_set_enable(ctx, GL_STENCIL_TEST_TWO_SIDE_EXT,
-                          attr->Stencil.TestTwoSide);
+         TEST_AND_UPDATE(ctx->Stencil.TestTwoSide, attr->Stencil.TestTwoSide,
+                         GL_STENCIL_TEST_TWO_SIDE_EXT);
          _mesa_ActiveStencilFaceEXT(attr->Stencil.ActiveFace
                                     ? GL_BACK : GL_FRONT);
       }
@@ -1050,38 +1074,38 @@ _mesa_PopAttrib(void)
       if (_math_matrix_is_dirty(ctx->ProjectionMatrixStack.Top))
          _math_matrix_analyse(ctx->ProjectionMatrixStack.Top);
 
+      ctx->NewState |= _NEW_TRANSFORM;
+      ctx->NewDriverState |= ctx->DriverFlags.NewClipPlane;
+
       /* restore clip planes */
       for (i = 0; i < ctx->Const.MaxClipPlanes; i++) {
-         const GLuint mask = 1 << i;
          const GLfloat *eyePlane = attr->Transform.EyeUserPlane[i];
          COPY_4V(ctx->Transform.EyeUserPlane[i], eyePlane);
-         _mesa_set_enable(ctx, GL_CLIP_PLANE0 + i,
-                          !!(attr->Transform.ClipPlanesEnabled & mask));
+         TEST_AND_UPDATE_BIT(ctx->Transform.ClipPlanesEnabled,
+                             attr->Transform.ClipPlanesEnabled, i,
+                             GL_CLIP_PLANE0 + i);
          if (ctx->Driver.ClipPlane)
             ctx->Driver.ClipPlane(ctx, GL_CLIP_PLANE0 + i, eyePlane);
       }
 
       /* normalize/rescale */
-      if (attr->Transform.Normalize != ctx->Transform.Normalize)
-         _mesa_set_enable(ctx, GL_NORMALIZE,ctx->Transform.Normalize);
-      if (attr->Transform.RescaleNormals != ctx->Transform.RescaleNormals)
-         _mesa_set_enable(ctx, GL_RESCALE_NORMAL_EXT,
-                          ctx->Transform.RescaleNormals);
+      TEST_AND_UPDATE(ctx->Transform.Normalize, attr->Transform.Normalize,
+                      GL_NORMALIZE);
+      TEST_AND_UPDATE(ctx->Transform.RescaleNormals,
+                      attr->Transform.RescaleNormals, GL_RESCALE_NORMAL_EXT);
 
       if (!ctx->Extensions.AMD_depth_clamp_separate) {
-         if (attr->Transform.DepthClampNear != ctx->Transform.DepthClampNear &&
-             attr->Transform.DepthClampFar != ctx->Transform.DepthClampFar) {
-            _mesa_set_enable(ctx, GL_DEPTH_CLAMP,
-                             ctx->Transform.DepthClampNear &&
-                             ctx->Transform.DepthClampFar);
-         }
+         TEST_AND_UPDATE(ctx->Transform.DepthClampNear &&
+                         ctx->Transform.DepthClampFar,
+                         attr->Transform.DepthClampNear &&
+                         attr->Transform.DepthClampFar, GL_DEPTH_CLAMP);
       } else {
-         if (attr->Transform.DepthClampNear != ctx->Transform.DepthClampNear)
-            _mesa_set_enable(ctx, GL_DEPTH_CLAMP_NEAR_AMD,
-                             ctx->Transform.DepthClampNear);
-         if (attr->Transform.DepthClampFar != ctx->Transform.DepthClampFar)
-            _mesa_set_enable(ctx, GL_DEPTH_CLAMP_FAR_AMD,
-                             ctx->Transform.DepthClampFar);
+         TEST_AND_UPDATE(ctx->Transform.DepthClampNear,
+                         attr->Transform.DepthClampNear,
+                         GL_DEPTH_CLAMP_NEAR_AMD);
+         TEST_AND_UPDATE(ctx->Transform.DepthClampFar,
+                         attr->Transform.DepthClampFar,
+                         GL_DEPTH_CLAMP_FAR_AMD);
       }
 
       if (ctx->Extensions.ARB_clip_control)
