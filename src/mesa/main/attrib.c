@@ -226,7 +226,11 @@ _mesa_PushAttrib(GLbitfield mask)
       _mesa_lock_context_textures(ctx);
 
       /* copy/save the bulk of texture state here */
-      memcpy(&head->Texture.Texture, &ctx->Texture, sizeof(ctx->Texture));
+      head->Texture.CurrentUnit = ctx->Texture.CurrentUnit;
+      head->Texture._TexGenEnabled = ctx->Texture._TexGenEnabled;
+      head->Texture._GenFlags = ctx->Texture._GenFlags;
+      memcpy(&head->Texture.FixedFuncUnit, &ctx->Texture.FixedFuncUnit,
+             sizeof(ctx->Texture.FixedFuncUnit));
 
       /* Save references to the currently bound texture objects so they don't
        * accidentally get deleted while referenced in the attribute stack.
@@ -240,6 +244,8 @@ _mesa_PushAttrib(GLbitfield mask)
 
       /* copy state/contents of the currently bound texture objects */
       for (u = 0; u < ctx->Const.MaxTextureUnits; u++) {
+         head->Texture.LodBias[u] = ctx->Texture.Unit[u].LodBias;
+
          for (tex = 0; tex < NUM_TEXTURE_TARGETS; tex++) {
             struct gl_texture_object *dst = &head->Texture.SavedObj[u][tex];
             struct gl_texture_object *src = ctx->Texture.Unit[u].CurrentTex[tex];
@@ -485,7 +491,7 @@ pop_texture_group(struct gl_context *ctx, struct gl_texture_attrib_node *texstat
 
    for (u = 0; u < ctx->Const.MaxTextureUnits; u++) {
       const struct gl_fixedfunc_texture_unit *unit =
-         &texstate->Texture.FixedFuncUnit[u];
+         &texstate->FixedFuncUnit[u];
       struct gl_fixedfunc_texture_unit *destUnit =
          &ctx->Texture.FixedFuncUnit[u];
       GLuint tgt;
@@ -536,7 +542,7 @@ pop_texture_group(struct gl_context *ctx, struct gl_texture_attrib_node *texstat
          _mesa_TexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, unit->EnvMode);
          _mesa_TexEnvfv(GL_TEXTURE_ENV, GL_TEXTURE_ENV_COLOR, unit->EnvColor);
          _mesa_TexEnvf(GL_TEXTURE_FILTER_CONTROL, GL_TEXTURE_LOD_BIAS,
-                       texstate->Texture.Unit[u].LodBias);
+                       texstate->LodBias[u]);
          _mesa_TexEnvi(GL_TEXTURE_ENV, GL_COMBINE_RGB,
                        unit->Combine.ModeRGB);
          _mesa_TexEnvi(GL_TEXTURE_ENV, GL_COMBINE_ALPHA,
@@ -563,7 +569,7 @@ pop_texture_group(struct gl_context *ctx, struct gl_texture_attrib_node *texstat
          /* Fast path for other drivers. */
          memcpy(destUnit, unit, sizeof(*unit));
          destUnit->_CurrentCombine = NULL;
-         ctx->Texture.Unit[u].LodBias = texstate->Texture.Unit[u].LodBias;
+         ctx->Texture.Unit[u].LodBias = texstate->LodBias[u];
       }
 
       /* Restore texture object state for each target */
@@ -591,11 +597,11 @@ pop_texture_group(struct gl_context *ctx, struct gl_texture_attrib_node *texstat
    }
 
    if (!ctx->Driver.TexEnv && !ctx->Driver.TexGen) {
-      ctx->Texture._TexGenEnabled = texstate->Texture._TexGenEnabled;
-      ctx->Texture._GenFlags = texstate->Texture._GenFlags;
+      ctx->Texture._TexGenEnabled = texstate->_TexGenEnabled;
+      ctx->Texture._GenFlags = texstate->_GenFlags;
    }
 
-   _mesa_ActiveTexture(GL_TEXTURE0_ARB + texstate->Texture.CurrentUnit);
+   _mesa_ActiveTexture(GL_TEXTURE0_ARB + texstate->CurrentUnit);
 
    _mesa_reference_shared_state(ctx, &texstate->SharedRef, NULL);
 

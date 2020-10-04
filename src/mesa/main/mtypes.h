@@ -5035,7 +5035,11 @@ struct gl_enable_attrib_node
  */
 struct gl_texture_attrib_node
 {
-   struct gl_texture_attrib Texture;  /**< The usual context state */
+   GLuint CurrentUnit;   /**< GL_ACTIVE_TEXTURE */
+   GLbitfield8 _TexGenEnabled;
+   GLbitfield8 _GenFlags;
+   struct gl_fixedfunc_texture_unit FixedFuncUnit[MAX_TEXTURE_COORD_UNITS];
+   GLfloat LodBias[MAX_TEXTURE_UNITS];
 
    /** to save per texture object state (wrap modes, filters, etc): */
    struct gl_texture_object SavedObj[MAX_TEXTURE_UNITS][NUM_TEXTURE_TARGETS];
