@@ -228,7 +228,6 @@ get_descriptor_set(struct zink_context *ctx, bool is_compute, enum zink_descript
 {
    struct zink_program *pg = is_compute ? (struct zink_program *)ctx->curr_compute : (struct zink_program *)ctx->curr_program;
    struct zink_batch *batch = is_compute ? &ctx->compute_batch : zink_curr_batch(ctx);
-   zink_batch_reference_program(batch, pg);
    return zink_program_allocate_desc_set(ctx, batch, pg, type, is_compute, cache_hit);
 }
 
@@ -351,6 +350,7 @@ update_descriptors(struct zink_context *ctx, struct zink_screen *screen, bool is
          zds[h] = NULL;
    }
    struct zink_batch *batch = is_compute ? &ctx->compute_batch : zink_curr_batch(ctx);
+   zink_batch_reference_program(batch, pg);
 
    struct zink_transition transitions[num_bindings];
    int num_transitions = 0;
