@@ -379,6 +379,19 @@ bind_descriptors(struct zink_context *ctx, struct zink_descriptor_set *zds, unsi
    return need_flush;
 }
 
+static unsigned
+init_write_descriptor(struct zink_shader *shader, struct zink_descriptor_set *zds, int idx, VkWriteDescriptorSet *wd, unsigned num_wds)
+{
+    wd->sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    wd->pNext = NULL;
+    wd->dstBinding = shader->bindings[zds->type][idx].binding;
+    wd->dstArrayElement = 0;
+    wd->descriptorCount = shader->bindings[zds->type][idx].size;
+    wd->descriptorType = shader->bindings[zds->type][idx].type;
+    wd->dstSet = zds->desc_set;
+    return num_wds + 1;
+}
+
 static bool
 update_ubo_descriptors(struct zink_context *ctx, struct zink_descriptor_set *zds, struct zink_transition *transitions, int *num_transitions,
                        struct set *transition_hash, bool is_compute, bool cache_hit)
@@ -442,14 +455,7 @@ update_ubo_descriptors(struct zink_context *ctx, struct zink_descriptor_set *zds
          wds[num_wds].pBufferInfo = buffer_infos + num_buffer_info;
          ++num_buffer_info;
 
-         wds[num_wds].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-         wds[num_wds].pNext = NULL;
-         wds[num_wds].dstBinding = shader->bindings[zds->type][j].binding;
-         wds[num_wds].dstArrayElement = 0;
-         wds[num_wds].descriptorCount = shader->bindings[zds->type][j].size;
-         wds[num_wds].descriptorType = shader->bindings[zds->type][j].type;
-         wds[num_wds].dstSet = zds->desc_set;
-         ++num_wds;
+         num_wds = init_write_descriptor(shader, zds, j, &wds[num_wds], num_wds);
       }
    }
 
@@ -526,14 +532,7 @@ update_ssbo_descriptors(struct zink_context *ctx, struct zink_descriptor_set *zd
          wds[num_wds].pBufferInfo = buffer_infos + num_buffer_info;
          ++num_buffer_info;
 
-         wds[num_wds].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-         wds[num_wds].pNext = NULL;
-         wds[num_wds].dstBinding = shader->bindings[zds->type][j].binding;
-         wds[num_wds].dstArrayElement = 0;
-         wds[num_wds].descriptorCount = shader->bindings[zds->type][j].size;
-         wds[num_wds].descriptorType = shader->bindings[zds->type][j].type;
-         wds[num_wds].dstSet = zds->desc_set;
-         ++num_wds;
+         num_wds = init_write_descriptor(shader, zds, j, &wds[num_wds], num_wds);
       }
    }
 
@@ -645,14 +644,7 @@ update_sampler_descriptors(struct zink_context *ctx, struct zink_descriptor_set 
          }
          assert(num_wds < num_descriptors);
 
-         wds[num_wds].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-         wds[num_wds].pNext = NULL;
-         wds[num_wds].dstBinding = shader->bindings[zds->type][j].binding;
-         wds[num_wds].dstArrayElement = 0;
-         wds[num_wds].descriptorCount = shader->bindings[zds->type][j].size;
-         wds[num_wds].descriptorType = shader->bindings[zds->type][j].type;
-         wds[num_wds].dstSet = zds->desc_set;
-         ++num_wds;
+         num_wds = init_write_descriptor(shader, zds, j, &wds[num_wds], num_wds);
       }
    }
 
@@ -733,14 +725,7 @@ update_image_descriptors(struct zink_context *ctx, struct zink_descriptor_set *z
          }
          assert(num_wds < num_descriptors);
 
-         wds[num_wds].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-         wds[num_wds].pNext = NULL;
-         wds[num_wds].dstBinding = shader->bindings[zds->type][j].binding;
-         wds[num_wds].dstArrayElement = 0;
-         wds[num_wds].descriptorCount = shader->bindings[zds->type][j].size;
-         wds[num_wds].descriptorType = shader->bindings[zds->type][j].type;
-         wds[num_wds].dstSet = zds->desc_set;
-         ++num_wds;
+         num_wds = init_write_descriptor(shader, zds, j, &wds[num_wds], num_wds);
       }
    }
 
