@@ -541,6 +541,125 @@ update_ssbo_descriptors(struct zink_context *ctx, struct zink_descriptor_set *zd
 }
 
 static void
+handle_image_descriptor(struct zink_screen *screen, struct zink_resource *res, enum zink_descriptor_type type, VkDescriptorType vktype, VkWriteDescriptorSet *wd,
+                        VkImageLayout layout, unsigned *num_image_info, VkDescriptorImageInfo *image_info, struct zink_sampler_state *sampler,
+                        VkBufferView *null_view, VkImageView imageview, bool do_set)
+{
+    if (!res) {
+        /* if we're hitting this assert often, we can probably just throw a junk buffer in since
+         * the results of this codepath are undefined in ARB_texture_buffer_object spec
+         */
+        assert(screen->info.rb2_feats.nullDescriptor);
+        
+        switch (vktype) {
+        case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
+        case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
+           wd->pTexelBufferView = null_view;
+           break;
+        case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
+        case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
+           image_info->imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+           image_info->imageView = VK_NULL_HANDLE;
+           image_info->sampler = sampler ? sampler->sampler : VK_NULL_HANDLE;
+           if (do_set)
+              wd->pImageInfo = image_info;
+           ++(*num_image_info);
+           break;
+        default:
+           unreachable("unknown descriptor type");
+        }
+     } else if (res->base.target != PIPE_BUFFER) {
+        assert(layout != VK_IMAGE_LAYOUT_UNDEFINED);
+        image_info->imageLayout = layout;
+        image_info->imageView = imageview;
+        image_info->sampler = sampler ? sampler->sampler : VK_NULL_HANDLE;
+        if (do_set)
+           wd->pImageInfo = image_info;
+        ++(*num_image_info);
+     }
+}
+
+static bool
+update_sampler_descriptors(struct zink_context *ctx, struct zink_descriptor_set *zds, struct zink_transition *transitions, int *num_transitions,
+                           struct set *transition_hash, bool is_compute, bool cache_hit)
+{
+   struct zink_program *pg = zds->pg;
+   struct zink_screen *screen = zink_screen(ctx->base.screen);
+   unsigned num_descriptors = pg->num_descriptors[zds->type];
+   unsigned num_bindings = zink_program_num_bindings(pg, is_compute);
+   VkWriteDescriptorSet wds[num_descriptors];
+   struct zink_descriptor_resource resources[num_bindings];
+   VkDescriptorImageInfo image_infos[num_bindings];
+   VkBufferView buffer_view[] = {VK_NULL_HANDLE};
+   unsigned num_wds = 0;
+   unsigned num_image_info = 0;
+   unsigned num_resources = 0;
+   struct zink_shader **stages;
+
+   unsigned num_stages = is_compute ? 1 : ZINK_SHADER_COUNT;
+   if (is_compute)
+      stages = &ctx->curr_compute->shader;
+   else
+      stages = &ctx->gfx_stages[0];
+
+   for (int i = 0; i < num_stages; i++) {
+      struct zink_shader *shader = stages[i];
+      if (!shader)
+         continue;
+      enum pipe_shader_type stage = pipe_shader_type_from_mesa(shader->nir->info.stage);
+
+      for (int j = 0; j < shader->num_bindings[zds->type]; j++) {
+         int index = shader->bindings[zds->type][j].index;
+         assert(shader->bindings[zds->type][j].type == VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER ||
+                shader->bindings[zds->type][j].type == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+
+         for (unsigned k = 0; k < shader->bindings[zds->type][j].size; k++) {
+            VkImageView imageview = VK_NULL_HANDLE;
+            struct zink_resource *res = NULL;
+            VkImageLayout layout = VK_IMAGE_LAYOUT_UNDEFINED;
+            struct zink_sampler_state *sampler = NULL;
+
+            struct pipe_sampler_view *psampler_view = ctx->sampler_views[stage][index + k];
+            struct zink_sampler_view *sampler_view = zink_sampler_view(psampler_view);
+            res = psampler_view ? zink_resource(psampler_view->texture) : NULL;
+            if (res && res->base.target == PIPE_BUFFER) {
+               wds[num_wds].pTexelBufferView = &sampler_view->buffer_view;
+            } else if (res) {
+               imageview = sampler_view->image_view;
+               layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+               sampler = ctx->sampler_states[stage][index + k];
+            }
+            add_transition(res, layout, VK_ACCESS_SHADER_READ_BIT, stage, &transitions[*num_transitions], num_transitions, transition_hash);
+            assert(num_resources < num_bindings);
+            desc_set_sampler_add(zds, sampler_view, sampler, num_resources, cache_hit);
+            if (res)
+               read_descriptor_resource(&resources[num_resources], res, &num_resources);
+            assert(num_image_info < num_bindings);
+            handle_image_descriptor(screen, res, zds->type, shader->bindings[zds->type][j].type,
+                                    &wds[num_wds], layout, &num_image_info, &image_infos[num_image_info],
+                                    sampler, &buffer_view[0], imageview, !k);
+
+            struct zink_batch *batch = is_compute ? &ctx->compute_batch : zink_curr_batch(ctx);
+            if (sampler_view)
+               zink_batch_reference_sampler_view(batch, sampler_view);
+         }
+         assert(num_wds < num_descriptors);
+
+         wds[num_wds].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+         wds[num_wds].pNext = NULL;
+         wds[num_wds].dstBinding = shader->bindings[zds->type][j].binding;
+         wds[num_wds].dstArrayElement = 0;
+         wds[num_wds].descriptorCount = shader->bindings[zds->type][j].size;
+         wds[num_wds].descriptorType = shader->bindings[zds->type][j].type;
+         wds[num_wds].dstSet = zds->desc_set;
+         ++num_wds;
+      }
+   }
+
+   return bind_descriptors(ctx, zds, num_wds, wds, num_resources, resources, NULL, 0, is_compute, cache_hit);
+}
+
+static void
 update_descriptors(struct zink_context *ctx, struct zink_screen *screen, bool is_compute)
 {
    struct zink_program *pg = is_compute ? (struct zink_program *)ctx->curr_compute : (struct zink_program *)ctx->curr_program;
@@ -585,12 +704,13 @@ update_descriptors(struct zink_context *ctx, struct zink_screen *screen, bool is
    if (zds[ZINK_DESCRIPTOR_TYPE_UBO])
       need_flush |= update_ubo_descriptors(ctx, zds[ZINK_DESCRIPTOR_TYPE_UBO], transitions, &num_transitions, ht, is_compute, cache_hit[ZINK_DESCRIPTOR_TYPE_UBO]);
    assert(num_transitions <= num_bindings);
+   if (zds[ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW])
+      need_flush |= update_sampler_descriptors(ctx, zds[ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW], transitions, &num_transitions, ht, is_compute, cache_hit[ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW]);
+   assert(num_transitions <= num_bindings);
    if (zds[ZINK_DESCRIPTOR_TYPE_SSBO])
       need_flush |= update_ssbo_descriptors(ctx, zds[ZINK_DESCRIPTOR_TYPE_SSBO], transitions, &num_transitions, ht, is_compute, cache_hit[ZINK_DESCRIPTOR_TYPE_SSBO]);
    assert(num_transitions <= num_bindings);
-   for (int h = 1; h < ZINK_DESCRIPTOR_TYPES; h++) {
-      if (h == ZINK_DESCRIPTOR_TYPE_SSBO)
-         continue;
+   for (int h = ZINK_DESCRIPTOR_TYPE_IMAGE; h < ZINK_DESCRIPTOR_TYPES; h++) {
       for (int i = 0; i < num_stages; i++) {
          struct zink_shader *shader = stages[i];
          if (!shader)
@@ -603,30 +723,8 @@ update_descriptors(struct zink_context *ctx, struct zink_screen *screen, bool is
                VkImageView imageview = VK_NULL_HANDLE;
                struct zink_resource *res = NULL;
                VkImageLayout layout = VK_IMAGE_LAYOUT_UNDEFINED;
-               struct zink_sampler_state *sampler = NULL;
 
                switch (shader->bindings[h][j].type) {
-               case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
-               /* fallthrough */
-               case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER: {
-                  struct pipe_sampler_view *psampler_view = ctx->sampler_views[stage][index + k];
-                  struct zink_sampler_view *sampler_view = zink_sampler_view(psampler_view);
-                  res = psampler_view ? zink_resource(psampler_view->texture) : NULL;
-                  if (!res)
-                     break;
-                  if (res->base.target == PIPE_BUFFER) {
-                     wds[h][num_wds[h]].pTexelBufferView = &sampler_view->buffer_view;
-                  } else {
-                     imageview = sampler_view->image_view;
-                     layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-                     sampler = ctx->sampler_states[stage][index + k];
-                  }
-                  add_transition(res, layout, VK_ACCESS_SHADER_READ_BIT, stage, &transitions[num_transitions], &num_transitions, ht);
-                  assert(num_resources[h] < num_bindings);
-                  desc_set_sampler_add(zds[h], sampler_view, sampler, num_resources[h], cache_hit[h]);
-                  read_descriptor_resource(&resources[h][num_resources[h]], res, &num_resources[h]);
-               }
-               break;
                case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
                /* fallthrough */
                case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE: {
@@ -670,16 +768,13 @@ update_descriptors(struct zink_context *ctx, struct zink_screen *screen, bool is
                   assert(num_resources[h] < num_bindings);
                   read_descriptor_resource(&resources[h][num_resources[h]], res, &num_resources[h]);
                   switch (shader->bindings[h][j].type) {
-                  case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
                   case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
                      wds[h][num_wds[h]].pTexelBufferView = &buffer_view[0];
                      break;
-                  case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
                   case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
                      assert(num_image_info[h] < num_bindings);
                      image_infos[h][num_image_info[h]].imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
                      image_infos[h][num_image_info[h]].imageView = VK_NULL_HANDLE;
-                     image_infos[h][num_image_info[h]].sampler = sampler ? sampler->sampler : VK_NULL_HANDLE;
                      if (!k)
                         wds[h][num_wds[h]].pImageInfo = image_infos[h] + num_image_info[h];
                      ++num_image_info[h];
@@ -692,7 +787,6 @@ update_descriptors(struct zink_context *ctx, struct zink_screen *screen, bool is
                   assert(num_image_info[h] < num_bindings);
                   image_infos[h][num_image_info[h]].imageLayout = layout;
                   image_infos[h][num_image_info[h]].imageView = imageview;
-                  image_infos[h][num_image_info[h]].sampler = sampler ? sampler->sampler : VK_NULL_HANDLE;
                   if (!k)
                      wds[h][num_wds[h]].pImageInfo = image_infos[h] + num_image_info[h];
                   ++num_image_info[h];
@@ -716,9 +810,7 @@ update_descriptors(struct zink_context *ctx, struct zink_screen *screen, bool is
    _mesa_set_destroy(ht, NULL);
 
    unsigned check_flush_id = is_compute ? 0 : ZINK_COMPUTE_BATCH_ID;
-   for (int h = 1; h < ZINK_DESCRIPTOR_TYPES; h++) {
-      if (h == ZINK_DESCRIPTOR_TYPE_SSBO)
-         continue;
+   for (int h = ZINK_DESCRIPTOR_TYPE_IMAGE; h < ZINK_DESCRIPTOR_TYPES; h++) {
       if (!zds[h])
          continue;
       assert(zds[h]->desc_set);
@@ -742,22 +834,6 @@ update_descriptors(struct zink_context *ctx, struct zink_screen *screen, bool is
       else
          vkCmdBindDescriptorSets(batch->cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS,
                                  ctx->curr_program->base.layout, h, 1, &zds[h]->desc_set, 0, NULL);
-
-      for (int i = 0; i < num_stages; i++) {
-         struct zink_shader *shader = stages[i];
-         if (!shader)
-            continue;
-         enum pipe_shader_type stage = pipe_shader_type_from_mesa(shader->nir->info.stage);
-
-         for (int j = 0; j < shader->num_bindings[h]; j++) {
-            int index = shader->bindings[h][j].index;
-            if (shader->bindings[h][j].type != VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER) {
-               struct zink_sampler_view *sampler_view = zink_sampler_view(ctx->sampler_views[stage][index]);
-               if (sampler_view)
-                  zink_batch_reference_sampler_view(batch, sampler_view);
-            }
-         }
-      }
 
    }
 
