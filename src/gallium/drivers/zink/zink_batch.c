@@ -25,16 +25,6 @@ zink_reset_batch(struct zink_context *ctx, struct zink_batch *batch)
       zink_fence_finish(screen, &ctx->base, batch->fence, PIPE_TIMEOUT_INFINITE);
 
    zink_framebuffer_reference(screen, &batch->fb, NULL);
-   set_foreach(batch->programs, entry) {
-      if (batch->batch_id == ZINK_COMPUTE_BATCH_ID) {
-         struct zink_compute_program *comp = (struct zink_compute_program*)entry->key;
-         zink_compute_program_reference(screen, &comp, NULL);
-      } else {
-         struct zink_gfx_program *prog = (struct zink_gfx_program*)entry->key;
-         zink_gfx_program_reference(screen, &prog, NULL);
-      }
-   }
-   _mesa_set_clear(batch->programs, NULL);
 
    /* unref all used resources */
    set_foreach(batch->resources, entry) {
@@ -61,6 +51,17 @@ zink_reset_batch(struct zink_context *ctx, struct zink_batch *batch)
    }
    util_dynarray_clear(&batch->zombie_samplers);
    util_dynarray_clear(&batch->persistent_resources);
+
+   set_foreach(batch->programs, entry) {
+      if (batch->batch_id == ZINK_COMPUTE_BATCH_ID) {
+         struct zink_compute_program *comp = (struct zink_compute_program*)entry->key;
+         zink_compute_program_reference(screen, &comp, NULL);
+      } else {
+         struct zink_gfx_program *prog = (struct zink_gfx_program*)entry->key;
+         zink_gfx_program_reference(screen, &prog, NULL);
+      }
+   }
+   _mesa_set_clear(batch->programs, NULL);
 
    if (vkResetDescriptorPool(screen->dev, batch->descpool, 0) != VK_SUCCESS)
       fprintf(stderr, "vkResetDescriptorPool failed\n");
