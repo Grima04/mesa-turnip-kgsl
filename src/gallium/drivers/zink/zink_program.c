@@ -890,6 +890,7 @@ allocate_desc_set(struct zink_screen *screen, struct zink_program *pg, enum zink
       zds->pg = pg;
       zds->hash = 0;
       zds->invalid = true;
+      zds->recycled = false;
       zds->type = type;
 #ifndef NDEBUG
       zds->num_resources = num_resources;
@@ -942,7 +943,7 @@ zink_program_allocate_desc_set(struct zink_context *ctx,
        desc_state_equal(&pg->last_set[type]->key, &key)) {
       zds = pg->last_set[type];
       *cache_hit = !zds->invalid;
-      if (pg->num_descriptors[type]) {
+      if (pg->num_descriptors[type] && zds->recycled) {
          struct hash_entry *he = _mesa_hash_table_search_pre_hashed(pg->free_desc_sets[type], hash, &key);
          if (he)
             _mesa_hash_table_remove(pg->free_desc_sets[type], he);
@@ -1014,6 +1015,7 @@ zink_program_allocate_desc_set(struct zink_context *ctx,
 out:
    zds->hash = hash;
    populate_zds_key(ctx, type, is_compute, &zds->key);
+   zds->recycled = false;
    if (pg->num_descriptors[type])
       _mesa_hash_table_insert_pre_hashed(pg->desc_sets[type], hash, &zds->key, zds);
    else {
@@ -1049,10 +1051,14 @@ zink_program_recycle_desc_set(struct zink_program *pg, struct zink_descriptor_se
 
    _mesa_hash_table_remove(pg->desc_sets[zds->type], he);
    if (zds->invalid) {
+      if (pg->last_set[zds->type] == zds)
+         pg->last_set[zds->type] = NULL;
       desc_set_invalidate_resources(pg, zds);
       util_dynarray_append(&pg->alloc_desc_sets[zds->type], struct zink_descriptor_set *, zds);
-   } else
+   } else {
+      zds->recycled = true;
       _mesa_hash_table_insert_pre_hashed(pg->free_desc_sets[zds->type], zds->hash, &zds->key, zds);
+   }
 }
 
 static void
