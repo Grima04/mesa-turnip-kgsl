@@ -877,8 +877,13 @@ allocate_desc_set(struct zink_screen *screen, struct zink_program *pg, enum zink
    struct zink_descriptor_set *alloc = ralloc_array(pg, struct zink_descriptor_set, bucket_size);
    assert(alloc);
    unsigned num_resources = zink_program_num_bindings_typed(pg, type, is_compute);
-   struct zink_resource **resources = rzalloc_array(pg, struct zink_resource*, num_resources * bucket_size);
+   void **resources = rzalloc_array(pg, void*, num_resources * bucket_size);
    assert(resources);
+   void **samplers = NULL;
+   if (type == ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW) {
+      samplers = rzalloc_array(pg, void*, num_resources * bucket_size);
+      assert(samplers);
+   }
    for (unsigned i = 0; i < bucket_size; i ++) {
       struct zink_descriptor_set *zds = &alloc[i];
       pipe_reference_init(&zds->reference, 1);
@@ -889,7 +894,11 @@ allocate_desc_set(struct zink_screen *screen, struct zink_program *pg, enum zink
 #ifndef NDEBUG
       zds->num_resources = num_resources;
 #endif
-      zds->resources = &resources[i * pg->num_descriptors[type]];
+      if (type == ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW) {
+         zds->sampler_views = (struct zink_sampler_view**)&resources[i * pg->num_descriptors[type]];
+         zds->sampler_states = (struct zink_sampler_state**)&samplers[i * pg->num_descriptors[type]];
+      } else
+         zds->resources = (struct zink_resource**)&resources[i * pg->num_descriptors[type]];
       zds->desc_set = desc_set[i];
       if (i > 0)
          util_dynarray_append(&pg->alloc_desc_sets[type], struct zink_descriptor_set *, zds);
@@ -932,7 +941,7 @@ zink_program_allocate_desc_set(struct zink_context *ctx,
    if (pg->last_set[type] && pg->last_set[type]->hash == hash &&
        desc_state_equal(&pg->last_set[type]->key, &key)) {
       zds = pg->last_set[type];
-      *cache_hit = true;
+      *cache_hit = !zds->invalid;
       if (pg->num_descriptors[type]) {
          struct hash_entry *he = _mesa_hash_table_search_pre_hashed(pg->free_desc_sets[type], hash, &key);
          if (he)
@@ -1039,7 +1048,11 @@ zink_program_recycle_desc_set(struct zink_program *pg, struct zink_descriptor_se
       return;
 
    _mesa_hash_table_remove(pg->desc_sets[zds->type], he);
-   _mesa_hash_table_insert_pre_hashed(pg->free_desc_sets[zds->type], zds->hash, &zds->key, zds);
+   if (zds->invalid) {
+      desc_set_invalidate_resources(pg, zds);
+      util_dynarray_append(&pg->alloc_desc_sets[zds->type], struct zink_descriptor_set *, zds);
+   } else
+      _mesa_hash_table_insert_pre_hashed(pg->free_desc_sets[zds->type], zds->hash, &zds->key, zds);
 }
 
 static void
@@ -1517,4 +1530,50 @@ zink_program_init(struct zink_context *ctx)
    ctx->base.create_compute_state = zink_create_cs_state;
    ctx->base.bind_compute_state = zink_bind_cs_state;
    ctx->base.delete_compute_state = zink_delete_shader_state;
+}
+
+
+static void
+desc_set_ref_add(struct zink_descriptor_set *zds, struct zink_descriptor_refs *refs, void **ref_ptr, void *ptr)
+{
+   struct zink_descriptor_reference ref = {ref_ptr, &zds->invalid};
+   *ref_ptr = ptr;
+   if (ptr)
+      util_dynarray_append(&refs->refs, struct zink_descriptor_reference, ref);
+}
+
+void
+zink_image_view_desc_set_add(struct zink_image_view *image_view, struct zink_descriptor_set *zds, unsigned idx)
+{
+   desc_set_ref_add(zds, &image_view->desc_set_refs, (void**)&zds->image_views[idx], image_view);
+}
+
+void
+zink_sampler_state_desc_set_add(struct zink_sampler_state *sampler_state, struct zink_descriptor_set *zds, unsigned idx)
+{
+   desc_set_ref_add(zds, &sampler_state->desc_set_refs, (void**)&zds->sampler_states[idx], sampler_state);
+}
+
+void
+zink_sampler_view_desc_set_add(struct zink_sampler_view *sampler_view, struct zink_descriptor_set *zds, unsigned idx)
+{
+   desc_set_ref_add(zds, &sampler_view->desc_set_refs, (void**)&zds->sampler_views[idx], sampler_view);
+}
+
+void
+zink_resource_desc_set_add(struct zink_resource *res, struct zink_descriptor_set *zds, unsigned idx)
+{
+   desc_set_ref_add(zds, &res->desc_set_refs, (void**)&zds->resources[idx], res);
+}
+
+void
+zink_descriptor_set_refs_clear(struct zink_descriptor_refs *refs, void *ptr)
+{
+   util_dynarray_foreach(&refs->refs, struct zink_descriptor_reference, ref) {
+      if (*ref->ref == ptr) {
+         *ref->invalid = true;
+         *ref->ref = NULL;
+      }
+   }
+   util_dynarray_fini(&refs->refs);
 }

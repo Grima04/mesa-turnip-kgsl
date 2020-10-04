@@ -83,8 +83,32 @@ struct zink_descriptor_set {
    /* for extra debug asserts */
    unsigned num_resources;
 #endif
-   struct zink_resource **resources;
+   union {
+      struct zink_resource **resources;
+      struct zink_image_view **image_views;
+      struct {
+         struct zink_sampler_view **sampler_views;
+         struct zink_sampler_state **sampler_states;
+      };
+   };
 };
+
+
+struct zink_descriptor_reference {
+   void **ref;
+   bool *invalid;
+};
+void
+zink_descriptor_set_refs_clear(struct zink_descriptor_refs *refs, void *ptr);
+
+void
+zink_image_view_desc_set_add(struct zink_image_view *image_view, struct zink_descriptor_set *zds, unsigned idx);
+void
+zink_sampler_state_desc_set_add(struct zink_sampler_state *sampler_state, struct zink_descriptor_set *zds, unsigned idx);
+void
+zink_sampler_view_desc_set_add(struct zink_sampler_view *sv, struct zink_descriptor_set *zds, unsigned idx);
+void
+zink_resource_desc_set_add(struct zink_resource *res, struct zink_descriptor_set *zds, unsigned idx);
 
 struct zink_program {
    struct pipe_reference reference;

@@ -28,11 +28,12 @@ struct pipe_screen;
 struct sw_displaytarget;
 struct zink_batch;
 struct zink_context;
-struct zink_descriptor_set;
 
 #include "util/u_transfer.h"
 #include "util/u_range.h"
 #include "util/u_dynarray.h"
+
+#include "zink_context.h"
 
 #include <vulkan/vulkan.h>
 
@@ -67,7 +68,7 @@ struct zink_resource {
    unsigned dt_stride;
    unsigned persistent_maps; //if nonzero, requires vkFlushMappedMemoryRanges during batch use
 
-   struct util_dynarray desc_set_refs;
+   struct zink_descriptor_refs desc_set_refs;
 
    /* this has to be atomic for fence access, so we can't use a bitmask and make everything neat */
    uint8_t batch_uses[5]; //ZINK_NUM_BATCHES
