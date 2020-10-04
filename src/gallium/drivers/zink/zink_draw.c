@@ -342,6 +342,15 @@ update_descriptors(struct zink_context *ctx, struct zink_screen *screen, bool is
       stages = &ctx->gfx_stages[0];
 
    zink_context_update_descriptor_states(ctx, is_compute);
+   bool cache_hit[ZINK_DESCRIPTOR_TYPES];
+   struct zink_descriptor_set *zds[ZINK_DESCRIPTOR_TYPES];
+   for (int h = 0; h < ZINK_DESCRIPTOR_TYPES; h++) {
+      if (pg->dsl[h])
+         zds[h] = get_descriptor_set(ctx, is_compute, h, &cache_hit[h]);
+      else
+         zds[h] = NULL;
+   }
+   struct zink_batch *batch = is_compute ? &ctx->compute_batch : zink_curr_batch(ctx);
 
    struct zink_transition transitions[num_bindings];
    int num_transitions = 0;
@@ -536,17 +545,6 @@ update_descriptors(struct zink_context *ctx, struct zink_screen *screen, bool is
       qsort(dynamic_buffers, dynamic_offset_idx, sizeof(uint32_t) * 2, cmp_dynamic_offset_binding);
    for (int i = 0; i < dynamic_offset_idx; i++)
       dynamic_offsets[i] = dynamic_buffers[i].offset;
-
-   struct zink_batch *batch = NULL;
-   bool cache_hit[ZINK_DESCRIPTOR_TYPES];
-   struct zink_descriptor_set *zds[ZINK_DESCRIPTOR_TYPES];
-   for (int h = 0; h < ZINK_DESCRIPTOR_TYPES; h++) {
-      if (pg->dsl[h])
-         zds[h] = get_descriptor_set(ctx, is_compute, h, &cache_hit[h]);
-      else
-         zds[h] = NULL;
-   }
-   batch = is_compute ? &ctx->compute_batch : zink_curr_batch(ctx);
 
    unsigned check_flush_id = is_compute ? 0 : ZINK_COMPUTE_BATCH_ID;
    bool need_flush = false;
