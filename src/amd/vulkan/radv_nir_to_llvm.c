@@ -512,7 +512,7 @@ load_tcs_varyings(struct ac_shader_abi *abi,
 	struct radv_shader_context *ctx = radv_shader_context_from_abi(abi);
 	LLVMValueRef dw_addr, stride;
 	LLVMValueRef value[4], result;
-	unsigned param = shader_io_get_unique_index(driver_location / 4);
+	unsigned param = shader_io_get_unique_index(driver_location);
 
 	bool is_patch = vertex_index == NULL;
 
@@ -551,7 +551,7 @@ store_tcs_output(struct ac_shader_abi *abi,
 		 unsigned driver_location)
 {
 	struct radv_shader_context *ctx = radv_shader_context_from_abi(abi);
-	const unsigned location = driver_location / 4;
+	const unsigned location = driver_location;
 	const bool is_patch = vertex_index == NULL;
 	LLVMValueRef dw_addr;
 	LLVMValueRef stride = NULL;
@@ -625,7 +625,7 @@ load_tes_input(struct ac_shader_abi *abi,
 	LLVMValueRef buf_addr;
 	LLVMValueRef result;
 	LLVMValueRef oc_lds = ac_get_arg(&ctx->ac, ctx->args->oc_lds);
-	unsigned param = shader_io_get_unique_index(driver_location / 4);
+	unsigned param = shader_io_get_unique_index(driver_location);
 
 	buf_addr = get_tcs_tes_buffer_address_params(ctx, param, vertex_index, param_index);
 
@@ -656,7 +656,7 @@ load_gs_input(struct ac_shader_abi *abi,
 	vtx_offset = LLVMBuildMul(ctx->ac.builder, ctx->gs_vtx_offset[vtx_offset_param],
 				  LLVMConstInt(ctx->ac.i32, 4, false), "");
 
-	param = shader_io_get_unique_index(driver_location / 4);
+	param = shader_io_get_unique_index(driver_location);
 
 	for (unsigned i = component; i < num_components + component; i++) {
 		if (ctx->ac.chip_class >= GFX9) {

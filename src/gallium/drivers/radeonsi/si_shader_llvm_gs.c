@@ -104,7 +104,7 @@ static LLVMValueRef si_nir_load_input_gs(struct ac_shader_abi *abi,
 
    LLVMValueRef value[4];
    for (unsigned i = component; i < component + num_components; i++) {
-      value[i] = si_llvm_load_input_gs(&ctx->abi, driver_location / 4,
+      value[i] = si_llvm_load_input_gs(&ctx->abi, driver_location,
                                        vertex_index, type, i);
    }
 

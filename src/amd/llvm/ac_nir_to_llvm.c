@@ -2168,7 +2168,7 @@ static void visit_store_output(struct ac_nir_context *ctx, nir_intrinsic_instr *
       LLVMValueRef vertex_index = vertex_index_src ? get_src(ctx, *vertex_index_src) : NULL;
 
       ctx->abi->store_tcs_outputs(ctx->abi, vertex_index, indir_index, src,
-                                  writemask, component, base * 4);
+                                  writemask, component, base);
       return;
    }
 
@@ -3149,7 +3149,7 @@ static LLVMValueRef visit_load(struct ac_nir_context *ctx, nir_intrinsic_instr *
        (ctx->stage == MESA_SHADER_TESS_EVAL && !is_output)) {
       LLVMValueRef result = ctx->abi->load_tess_varyings(ctx->abi, component_type,
                                                          vertex_index, indir_index,
-                                                         base * 4, component,
+                                                         base, component,
                                                          count, !is_output);
       if (instr->dest.ssa.bit_size == 16) {
          result = ac_to_integer(&ctx->ac, result);
@@ -3164,7 +3164,7 @@ static LLVMValueRef visit_load(struct ac_nir_context *ctx, nir_intrinsic_instr *
    if (ctx->stage == MESA_SHADER_GEOMETRY) {
       assert(nir_src_is_const(*vertex_index_src));
 
-      return ctx->abi->load_inputs(ctx->abi, base * 4, component, count,
+      return ctx->abi->load_inputs(ctx->abi, base, component, count,
                                    nir_src_as_uint(*vertex_index_src), component_type);
    }
 
