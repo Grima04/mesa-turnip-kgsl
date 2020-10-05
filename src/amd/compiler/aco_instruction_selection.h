@@ -61,7 +61,7 @@ struct isel_context {
    Block *block;
    std::unique_ptr<Temp[]> allocated;
    std::unordered_map<unsigned, std::array<Temp,NIR_MAX_VEC_COMPONENTS>> allocated_vec;
-   Stage stage; /* Stage */
+   Stage stage;
    bool has_gfx10_wave64_bpermute = false;
    struct {
       bool has_branch;

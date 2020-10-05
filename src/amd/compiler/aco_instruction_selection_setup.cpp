@@ -435,7 +435,7 @@ setup_vs_variables(isel_context *ctx, nir_shader *nir)
                            ctx->options->key.vs_common_out.export_clip_dists, outinfo);
 
       /* TODO: NGG streamout */
-      if (ctx->stage & hw_ngg_gs)
+      if (ctx->stage.hw == HWStage::NGG_GS)
          assert(!ctx->args->shader_info->so.num_outputs);
 
       /* TODO: check if the shader writes edge flags (not in Vulkan) */
@@ -481,9 +481,9 @@ void setup_gs_variables(isel_context *ctx, nir_shader *nir)
       ctx->ngg_gs_early_alloc = ctx->ngg_gs_const_vtxcnt[0] == nir->info.gs.vertices_out && ctx->ngg_gs_const_prmcnt[0] != -1;
    }
 
-   if (ctx->stage & sw_vs)
+   if (ctx->stage.has(SWStage::VS))
       ctx->program->info->gs.es_type = MESA_SHADER_VERTEX;
-   else if (ctx->stage & sw_tes)
+   else if (ctx->stage.has(SWStage::TES))
       ctx->program->info->gs.es_type = MESA_SHADER_TESS_EVAL;
 }
 
@@ -550,7 +550,7 @@ setup_tes_variables(isel_context *ctx, nir_shader *nir)
                            ctx->options->key.vs_common_out.export_clip_dists, outinfo);
 
       /* TODO: NGG streamout */
-      if (ctx->stage & hw_ngg_gs)
+      if (ctx->stage.hw == HWStage::NGG_GS)
          assert(!ctx->args->shader_info->so.num_outputs);
 
       /* Tess eval shaders can't write edge flags, so this can be always true. */
@@ -644,7 +644,7 @@ void init_context(isel_context *ctx, nir_shader *shader)
    /* we'll need this for isel */
    nir_metadata_require(impl, nir_metadata_block_index);
 
-   if (!(ctx->stage & sw_gs_copy) && ctx->options->dump_preoptir) {
+   if (!ctx->stage.has(SWStage::GSCopy) && ctx->options->dump_preoptir) {
       fprintf(stderr, "NIR shader before instruction selection:\n");
       nir_print_shader(shader, stderr);
    }
@@ -1022,26 +1022,26 @@ setup_isel_context(Program* program,
                    struct radv_shader_args *args,
                    bool is_gs_copy_shader)
 {
-   Stage stage = 0;
+   SWStage sw_stage = SWStage::None;
    for (unsigned i = 0; i < shader_count; i++) {
       switch (shaders[i]->info.stage) {
       case MESA_SHADER_VERTEX:
-         stage |= sw_vs;
+         sw_stage = sw_stage | SWStage::VS;
          break;
       case MESA_SHADER_TESS_CTRL:
-         stage |= sw_tcs;
+         sw_stage = sw_stage | SWStage::TCS;
          break;
       case MESA_SHADER_TESS_EVAL:
-         stage |= sw_tes;
+         sw_stage = sw_stage | SWStage::TES;
          break;
       case MESA_SHADER_GEOMETRY:
-         stage |= is_gs_copy_shader ? sw_gs_copy : sw_gs;
+         sw_stage = sw_stage | (is_gs_copy_shader ? SWStage::GSCopy : SWStage::GS);
          break;
       case MESA_SHADER_FRAGMENT:
-         stage |= sw_fs;
+         sw_stage = sw_stage | SWStage::FS;
          break;
       case MESA_SHADER_COMPUTE:
-         stage |= sw_cs;
+         sw_stage = sw_stage | SWStage::CS;
          break;
       default:
          unreachable("Shader stage not implemented");
@@ -1049,44 +1049,45 @@ setup_isel_context(Program* program,
    }
    bool gfx9_plus = args->options->chip_class >= GFX9;
    bool ngg = args->shader_info->is_ngg && args->options->chip_class >= GFX10;
-   if (stage == sw_vs && args->shader_info->vs.as_es && !ngg)
-      stage |= hw_es;
-   else if (stage == sw_vs && !args->shader_info->vs.as_ls && !ngg)
-      stage |= hw_vs;
-   else if (stage == sw_vs && ngg)
-      stage |= hw_ngg_gs; /* GFX10/NGG: VS without GS uses the HW GS stage */
-   else if (stage == sw_gs)
-      stage |= hw_gs;
-   else if (stage == sw_fs)
-      stage |= hw_fs;
-   else if (stage == sw_cs)
-      stage |= hw_cs;
-   else if (stage == sw_gs_copy)
-      stage |= hw_vs;
-   else if (stage == (sw_vs | sw_gs) && gfx9_plus && !ngg)
-      stage |= hw_gs; /* GFX6-9: VS+GS merged into a GS (and GFX10/legacy) */
-   else if (stage == (sw_vs | sw_gs) && ngg)
-      stage |= hw_ngg_gs; /* GFX10+: VS+GS merged into an NGG GS */
-   else if (stage == sw_vs && args->shader_info->vs.as_ls)
-      stage |= hw_ls; /* GFX6-8: VS is a Local Shader, when tessellation is used */
-   else if (stage == sw_tcs)
-      stage |= hw_hs; /* GFX6-8: TCS is a Hull Shader */
-   else if (stage == (sw_vs | sw_tcs))
-      stage |= hw_hs; /* GFX9-10: VS+TCS merged into a Hull Shader */
-   else if (stage == sw_tes && !args->shader_info->tes.as_es && !ngg)
-      stage |= hw_vs; /* GFX6-9: TES without GS uses the HW VS stage (and GFX10/legacy) */
-   else if (stage == sw_tes && !args->shader_info->tes.as_es && ngg)
-      stage |= hw_ngg_gs; /* GFX10/NGG: TES without GS uses the HW GS stage */
-   else if (stage == sw_tes && args->shader_info->tes.as_es && !ngg)
-      stage |= hw_es; /* GFX6-8: TES is an Export Shader */
-   else if (stage == (sw_tes | sw_gs) && gfx9_plus && !ngg)
-      stage |= hw_gs; /* GFX9: TES+GS merged into a GS (and GFX10/legacy) */
-   else if (stage == (sw_tes | sw_gs) && ngg)
-      stage |= hw_ngg_gs; /* GFX10+: TES+GS merged into an NGG GS */
+   HWStage hw_stage { };
+   if (sw_stage == SWStage::VS && args->shader_info->vs.as_es && !ngg)
+      hw_stage = HWStage::ES;
+   else if (sw_stage == SWStage::VS && !args->shader_info->vs.as_ls && !ngg)
+      hw_stage = HWStage::VS;
+   else if (sw_stage == SWStage::VS && ngg)
+      hw_stage = HWStage::NGG_GS; /* GFX10/NGG: VS without GS uses the HW GS stage */
+   else if (sw_stage == SWStage::GS)
+      hw_stage = HWStage::GS;
+   else if (sw_stage == SWStage::FS)
+      hw_stage = HWStage::FS;
+   else if (sw_stage == SWStage::CS)
+      hw_stage = HWStage::CS;
+   else if (sw_stage == SWStage::GSCopy)
+      hw_stage = HWStage::VS;
+   else if (sw_stage == SWStage::VS_GS && gfx9_plus && !ngg)
+      hw_stage = HWStage::GS; /* GFX6-9: VS+GS merged into a GS (and GFX10/legacy) */
+   else if (sw_stage == SWStage::VS_GS && ngg)
+      hw_stage = HWStage::NGG_GS; /* GFX10+: VS+GS merged into an NGG GS */
+   else if (sw_stage == SWStage::VS && args->shader_info->vs.as_ls)
+      hw_stage = HWStage::LS; /* GFX6-8: VS is a Local Shader, when tessellation is used */
+   else if (sw_stage == SWStage::TCS)
+      hw_stage = HWStage::HS; /* GFX6-8: TCS is a Hull Shader */
+   else if (sw_stage == SWStage::VS_TCS)
+      hw_stage = HWStage::HS; /* GFX9-10: VS+TCS merged into a Hull Shader */
+   else if (sw_stage == SWStage::TES && !args->shader_info->tes.as_es && !ngg)
+      hw_stage = HWStage::VS; /* GFX6-9: TES without GS uses the HW VS stage (and GFX10/legacy) */
+   else if (sw_stage == SWStage::TES && !args->shader_info->tes.as_es && ngg)
+      hw_stage = HWStage::NGG_GS; /* GFX10/NGG: TES without GS uses the HW GS stage */
+   else if (sw_stage == SWStage::TES && args->shader_info->tes.as_es && !ngg)
+      hw_stage = HWStage::ES; /* GFX6-8: TES is an Export Shader */
+   else if (sw_stage == SWStage::TES_GS && gfx9_plus && !ngg)
+      hw_stage = HWStage::GS; /* GFX9: TES+GS merged into a GS (and GFX10/legacy) */
+   else if (sw_stage == SWStage::TES_GS && ngg)
+      hw_stage = HWStage::NGG_GS; /* GFX10+: TES+GS merged into an NGG GS */
    else
       unreachable("Shader stage not implemented");
 
-   init_program(program, stage, args->shader_info,
+   init_program(program, Stage { hw_stage, sw_stage }, args->shader_info,
                 args->options->chip_class, args->options->family, config);
 
    isel_context ctx = {};
@@ -1096,7 +1097,7 @@ setup_isel_context(Program* program,
    ctx.stage = program->stage;
 
    /* TODO: Check if we need to adjust min_waves for unknown workgroup sizes. */
-   if (program->stage & (hw_vs | hw_fs)) {
+   if (program->stage.hw == HWStage::VS || program->stage.hw == HWStage::FS) {
       /* PS and legacy VS have separate waves, no workgroups */
       program->workgroup_size = program->wave_size;
    } else if (program->stage == compute_cs) {
@@ -1104,10 +1105,10 @@ setup_isel_context(Program* program,
       program->workgroup_size = shaders[0]->info.cs.local_size[0] *
                                 shaders[0]->info.cs.local_size[1] *
                                 shaders[0]->info.cs.local_size[2];
-   } else if ((program->stage & hw_es) || program->stage == geometry_gs) {
+   } else if (program->stage.hw == HWStage::ES || program->stage == geometry_gs) {
       /* Unmerged ESGS operate in workgroups if on-chip GS (LDS rings) are enabled on GFX7-8 (not implemented in Mesa)  */
       program->workgroup_size = program->wave_size;
-   } else if (program->stage & hw_gs) {
+   } else if (program->stage.hw == HWStage::GS) {
       /* If on-chip GS (LDS rings) are enabled on GFX9 or later, merged GS operates in workgroups */
       assert(program->chip_class >= GFX9);
       uint32_t es_verts_per_subgrp = G_028A44_ES_VERTS_PER_SUBGRP(program->info->gs_ring_info.vgt_gs_onchip_cntl);
@@ -1125,7 +1126,7 @@ setup_isel_context(Program* program,
       /* Merged LSHS operates in workgroups, but can still have a different number of LS and HS invocations */
       setup_tcs_info(&ctx, shaders[1], shaders[0]);
       program->workgroup_size = ctx.tcs_num_patches * MAX2(shaders[1]->info.tess.tcs_vertices_out, ctx.args->options->key.tcs.input_vertices);
-   } else if (program->stage & hw_ngg_gs) {
+   } else if (program->stage.hw == HWStage::NGG_GS) {
       gfx10_ngg_info &ngg_info = args->shader_info->ngg_info;
 
       /* Max ES (SW VS) threads */

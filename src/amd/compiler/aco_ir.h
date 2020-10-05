@@ -1500,50 +1500,101 @@ struct Block {
    Block() : index(0) {}
 };
 
-using Stage = uint16_t;
+/*
+ * Shader stages as provided in Vulkan by the application. Contrast this to HWStage.
+ */
+enum class SWStage : uint8_t {
+    None = 0,
+    VS = 1 << 0,     /* Vertex Shader */
+    GS = 1 << 1,     /* Geometry Shader */
+    TCS = 1 << 2,    /* Tessellation Control aka Hull Shader */
+    TES = 1 << 3,    /* Tessellation Evaluation aka Domain Shader */
+    FS = 1 << 4,     /* Fragment aka Pixel Shader */
+    CS = 1 << 5,     /* Compute Shader */
+    GSCopy = 1 << 6, /* GS Copy Shader (internal) */
 
-/* software stages */
-static constexpr Stage sw_vs = 1 << 0;
-static constexpr Stage sw_gs = 1 << 1;
-static constexpr Stage sw_tcs = 1 << 2;
-static constexpr Stage sw_tes = 1 << 3;
-static constexpr Stage sw_fs = 1 << 4;
-static constexpr Stage sw_cs = 1 << 5;
-static constexpr Stage sw_gs_copy = 1 << 6;
-static constexpr Stage sw_mask = 0x7f;
+    /* Stage combinations merged to run on a single HWStage */
+    VS_GS = VS | GS,
+    VS_TCS = VS | TCS,
+    TES_GS = TES | GS,
+};
 
-/* hardware stages (can't be OR'd, just a mask for convenience when testing multiple) */
-static constexpr Stage hw_vs = 1 << 7;
-static constexpr Stage hw_es = 1 << 8; /* Export shader: pre-GS (VS or TES) on GFX6-8. Combined into GS on GFX9 (and GFX10/legacy). */
-static constexpr Stage hw_gs = 1 << 9; /* Geometry shader on GFX10/legacy and GFX6-9. */
-static constexpr Stage hw_ngg_gs = 1 << 10; /* Geometry shader on GFX10/NGG. */
-static constexpr Stage hw_ls = 1 << 11; /* Local shader: pre-TCS (VS) on GFX6-8. Combined into HS on GFX9 (and GFX10/legacy). */
-static constexpr Stage hw_hs = 1 << 12; /* Hull shader: TCS on GFX6-8. Merged VS and TCS on GFX9-10. */
-static constexpr Stage hw_fs = 1 << 13;
-static constexpr Stage hw_cs = 1 << 14;
-static constexpr Stage hw_mask = 0xff << 7;
+constexpr SWStage operator|(SWStage a, SWStage b) {
+    return static_cast<SWStage>(static_cast<uint8_t>(a) | static_cast<uint8_t>(b));
+}
+
+/*
+ * Shader stages as running on the AMD GPU.
+ *
+ * The relation between HWStages and SWStages is not a one-to-one mapping:
+ * Some SWStages are merged by ACO to run on a single HWStage.
+ * See README.md for details.
+ */
+enum class HWStage : uint8_t {
+    VS,
+    ES,     /* Export shader: pre-GS (VS or TES) on GFX6-8. Combined into GS on GFX9 (and GFX10/legacy). */
+    GS,     /* Geometry shader on GFX10/legacy and GFX6-9. */
+    NGG_GS, /* Geometry shader on GFX10/NGG. */
+    LS,     /* Local shader: pre-TCS (VS) on GFX6-8. Combined into HS on GFX9 (and GFX10/legacy). */
+    HS,     /* Hull shader: TCS on GFX6-8. Merged VS and TCS on GFX9-10. */
+    FS,
+    CS,
+};
+
+/*
+ * Set of SWStages to be merged into a single shader paired with the
+ * HWStage it will run on.
+ */
+struct Stage {
+    constexpr Stage() = default;
+
+    explicit constexpr Stage(HWStage hw_, SWStage sw_) : sw(sw_), hw(hw_) { }
+
+    /* Check if the given SWStage is included */
+    constexpr bool has(SWStage stage) const {
+        return (static_cast<uint8_t>(sw) & static_cast<uint8_t>(stage));
+    }
+
+    unsigned num_sw_stages() const {
+        return util_bitcount(static_cast<uint8_t>(sw));
+    }
+
+    constexpr bool operator==(const Stage& other) const {
+        return sw == other.sw && hw == other.hw;
+    }
+
+    constexpr bool operator!=(const Stage& other) const {
+        return sw != other.sw || hw != other.hw;
+    }
+
+    /* Mask of merged software stages */
+    SWStage sw = SWStage::None;
+
+    /* Active hardware stage */
+    HWStage hw {};
+};
 
 /* possible settings of Program::stage */
-static constexpr Stage vertex_vs = sw_vs | hw_vs;
-static constexpr Stage fragment_fs = sw_fs | hw_fs;
-static constexpr Stage compute_cs = sw_cs | hw_cs;
-static constexpr Stage tess_eval_vs = sw_tes | hw_vs;
-static constexpr Stage gs_copy_vs = sw_gs_copy | hw_vs;
+static constexpr Stage vertex_vs(HWStage::VS, SWStage::VS);
+static constexpr Stage fragment_fs(HWStage::FS, SWStage::FS);
+static constexpr Stage compute_cs(HWStage::CS, SWStage::CS);
+static constexpr Stage tess_eval_vs(HWStage::VS, SWStage::TES);
+static constexpr Stage gs_copy_vs(HWStage::VS, SWStage::GSCopy);
 /* GFX10/NGG */
-static constexpr Stage ngg_vertex_gs = sw_vs | hw_ngg_gs;
-static constexpr Stage ngg_vertex_geometry_gs = sw_vs | sw_gs | hw_ngg_gs;
-static constexpr Stage ngg_tess_eval_gs = sw_tes | hw_ngg_gs;
-static constexpr Stage ngg_tess_eval_geometry_gs = sw_tes | sw_gs | hw_ngg_gs;
+static constexpr Stage ngg_vertex_gs(HWStage::NGG_GS, SWStage::VS);
+static constexpr Stage ngg_vertex_geometry_gs(HWStage::NGG_GS, SWStage::VS_GS);
+static constexpr Stage ngg_tess_eval_gs(HWStage::NGG_GS, SWStage::TES);
+static constexpr Stage ngg_tess_eval_geometry_gs(HWStage::NGG_GS, SWStage::TES_GS);
 /* GFX9 (and GFX10 if NGG isn't used) */
-static constexpr Stage vertex_geometry_gs = sw_vs | sw_gs | hw_gs;
-static constexpr Stage vertex_tess_control_hs = sw_vs | sw_tcs | hw_hs;
-static constexpr Stage tess_eval_geometry_gs = sw_tes | sw_gs | hw_gs;
+static constexpr Stage vertex_geometry_gs(HWStage::GS, SWStage::VS_GS);
+static constexpr Stage vertex_tess_control_hs(HWStage::HS, SWStage::VS_TCS);
+static constexpr Stage tess_eval_geometry_gs(HWStage::GS, SWStage::TES_GS);
 /* pre-GFX9 */
-static constexpr Stage vertex_ls = sw_vs | hw_ls; /* vertex before tesselation control */
-static constexpr Stage vertex_es = sw_vs | hw_es; /* vertex before geometry */
-static constexpr Stage tess_control_hs = sw_tcs | hw_hs;
-static constexpr Stage tess_eval_es = sw_tes | hw_es; /* tesselation evaluation before geometry */
-static constexpr Stage geometry_gs = sw_gs | hw_gs;
+static constexpr Stage vertex_ls(HWStage::LS, SWStage::VS); /* vertex before tesselation control */
+static constexpr Stage vertex_es(HWStage::ES, SWStage::VS); /* vertex before geometry */
+static constexpr Stage tess_control_hs(HWStage::HS, SWStage::TCS);
+static constexpr Stage tess_eval_es(HWStage::ES, SWStage::TES); /* tesselation evaluation before geometry */
+static constexpr Stage geometry_gs(HWStage::GS, SWStage::GS);
 
 enum statistic {
    statistic_hash,
@@ -1574,7 +1625,7 @@ public:
    enum radeon_family family;
    unsigned wave_size;
    RegClass lane_mask;
-   Stage stage; /* Stage */
+   Stage stage;
    bool needs_exact = false; /* there exists an instruction with disable_wqm = true */
    bool needs_wqm = false; /* there exists a p_wqm instruction */
    bool wb_smem_l1_on_end = false;

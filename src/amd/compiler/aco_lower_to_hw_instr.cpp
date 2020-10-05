@@ -1726,7 +1726,7 @@ void lower_to_hw_instr(Program* program)
                /* don't bother with an early exit near the end of the program */
                if ((block->instructions.size() - 1 - j) <= 4 &&
                     block->instructions.back()->opcode == aco_opcode::s_endpgm) {
-                  unsigned null_exp_dest = (ctx.program->stage & hw_fs) ? 9 /* NULL */ : V_008DFC_SQ_EXP_POS;
+                  unsigned null_exp_dest = (ctx.program->stage.hw == HWStage::FS) ? 9 /* NULL */ : V_008DFC_SQ_EXP_POS;
                   bool ignore_early_exit = true;
 
                   for (unsigned k = j + 1; k < block->instructions.size(); ++k) {

@@ -4252,7 +4252,7 @@ void visit_store_ls_or_es_output(isel_context *ctx, nir_intrinsic_instr *instr)
       if (ctx->stage == vertex_geometry_gs || ctx->stage == tess_eval_geometry_gs ||
           ctx->stage == ngg_vertex_geometry_gs || ctx->stage == ngg_tess_eval_geometry_gs) {
          /* GFX9+: ES stage is merged into GS, data is passed between them using LDS. */
-         unsigned itemsize = (ctx->stage & sw_vs)
+         unsigned itemsize = ctx->stage.has(SWStage::VS)
                              ? ctx->program->info->vs.es_info.esgs_itemsize
                              : ctx->program->info->tes.es_info.esgs_itemsize;
          Temp vertex_idx = thread_id_in_threadgroup(ctx);
@@ -4363,9 +4363,9 @@ void visit_store_output(isel_context *ctx, nir_intrinsic_instr *instr)
          isel_err(instr->src[1].ssa->parent_instr, "Unimplemented output offset instruction");
          abort();
       }
-   } else if ((ctx->stage & (hw_ls | hw_es)) ||
+   } else if ((ctx->stage.hw == HWStage::LS || ctx->stage.hw == HWStage::ES) ||
               (ctx->stage == vertex_tess_control_hs && ctx->shader->info.stage == MESA_SHADER_VERTEX) ||
-              ((ctx->stage & sw_gs) && ctx->shader->info.stage != MESA_SHADER_GEOMETRY)) {
+              (ctx->stage.has(SWStage::GS) && ctx->shader->info.stage != MESA_SHADER_GEOMETRY)) {
       visit_store_ls_or_es_output(ctx, instr);
    } else if (ctx->shader->info.stage == MESA_SHADER_TESS_CTRL) {
       visit_store_tcs_output(ctx, instr, false);
@@ -7588,7 +7588,10 @@ void visit_intrinsic(isel_context *ctx, nir_intrinsic_instr *instr)
       break;
    }
    case nir_intrinsic_load_view_index: {
-      if (ctx->stage & (sw_vs | sw_gs | sw_tcs | sw_tes)) {
+      if (ctx->stage.has(SWStage::VS) ||
+          ctx->stage.has(SWStage::GS) ||
+          ctx->stage.has(SWStage::TCS) ||
+          ctx->stage.has(SWStage::TES)) {
          Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
          bld.copy(Definition(dst), Operand(get_arg(ctx, ctx->args->ac.view_index)));
          break;
@@ -8348,21 +8351,21 @@ void visit_intrinsic(isel_context *ctx, nir_intrinsic_instr *instr)
       break;
    }
    case nir_intrinsic_emit_vertex_with_counter: {
-      if (ctx->stage & hw_ngg_gs)
+      if (ctx->stage.hw == HWStage::NGG_GS)
          ngg_visit_emit_vertex_with_counter(ctx, instr);
       else
          visit_emit_vertex_with_counter(ctx, instr);
       break;
    }
    case nir_intrinsic_end_primitive_with_counter: {
-      if ((ctx->stage & hw_ngg_gs) == 0) {
+      if (ctx->stage.hw != HWStage::NGG_GS) {
          unsigned stream = nir_intrinsic_stream_id(instr);
          bld.sopp(aco_opcode::s_sendmsg, bld.m0(ctx->gs_wave_id), -1, sendmsg_gs(true, false, stream));
       }
       break;
    }
    case nir_intrinsic_set_vertex_and_primitive_count: {
-      if (ctx->stage & hw_ngg_gs)
+      if (ctx->stage.hw == HWStage::NGG_GS)
          ngg_visit_set_vertex_and_primitive_count(ctx, instr);
       /* unused in the legacy pipeline, the HW keeps track of this for us */
       break;
@@ -10079,9 +10082,9 @@ static bool visit_cf_list(isel_context *ctx,
 
 static void export_vs_varying(isel_context *ctx, int slot, bool is_pos, int *next_pos)
 {
-   assert(ctx->stage & (hw_vs | hw_ngg_gs));
+   assert(ctx->stage.hw == HWStage::VS || ctx->stage.hw == HWStage::NGG_GS);
 
-   int offset = ((ctx->stage & sw_tes) && !(ctx->stage & sw_gs))
+   int offset = (ctx->stage.has(SWStage::TES) && !ctx->stage.has(SWStage::GS))
                 ? ctx->program->info->tes.outinfo.vs_output_param_offset[slot]
                 : ctx->program->info->vs.outinfo.vs_output_param_offset[slot];
    uint64_t mask = ctx->outputs.mask[slot];
@@ -10176,15 +10179,15 @@ static void create_export_phis(isel_context *ctx)
 
 static void create_vs_exports(isel_context *ctx)
 {
-   assert(ctx->stage & (hw_vs | hw_ngg_gs));
+   assert(ctx->stage.hw == HWStage::VS || ctx->stage.hw == HWStage::NGG_GS);
 
-   radv_vs_output_info *outinfo = ((ctx->stage & sw_tes) && !(ctx->stage & sw_gs))
+   radv_vs_output_info *outinfo = (ctx->stage.has(SWStage::TES) && !ctx->stage.has(SWStage::GS))
                                   ? &ctx->program->info->tes.outinfo
                                   : &ctx->program->info->vs.outinfo;
 
-   if (outinfo->export_prim_id && !(ctx->stage & hw_ngg_gs)) {
+   if (outinfo->export_prim_id && ctx->stage.hw != HWStage::NGG_GS) {
       ctx->outputs.mask[VARYING_SLOT_PRIMITIVE_ID] |= 0x1;
-      if (ctx->stage & sw_tes)
+      if (ctx->stage.has(SWStage::TES))
          ctx->outputs.temps[VARYING_SLOT_PRIMITIVE_ID * 4u] = get_arg(ctx, ctx->args->ac.tes_patch_id);
       else
          ctx->outputs.temps[VARYING_SLOT_PRIMITIVE_ID * 4u] = get_arg(ctx, ctx->args->vs_prim_id);
@@ -10646,7 +10649,7 @@ static void emit_stream_output(isel_context *ctx,
 
    Temp out[4];
    bool all_undef = true;
-   assert(ctx->stage & hw_vs);
+   assert(ctx->stage.hw == HWStage::VS);
    for (unsigned i = 0; i < num_comps; i++) {
       out[i] = ctx->outputs.temps[loc * 4 + start + i];
       all_undef = all_undef && !out[i].id();
@@ -11055,7 +11058,7 @@ void ngg_emit_sendmsg_gs_alloc_req(isel_context *ctx, Temp vtx_cnt = Temp(), Tem
    /* VS/TES: we infer the vertex and primitive count from arguments
     * GS: the caller needs to supply them
     */
-   assert((ctx->stage & sw_gs)
+   assert(ctx->stage.has(SWStage::GS)
           ? (vtx_cnt.id() && prm_cnt.id())
           : (!vtx_cnt.id() && !prm_cnt.id()));
 
@@ -11117,7 +11120,7 @@ void ngg_emit_prim_export(isel_context *ctx, unsigned num_vertices_per_primitive
    Builder bld(ctx->program, ctx->block);
    Temp prim_exp_arg;
 
-   if (!(ctx->stage & sw_gs) && ctx->args->options->key.vs_common_out.as_ngg_passthrough)
+   if (!ctx->stage.has(SWStage::GS) && ctx->args->options->key.vs_common_out.as_ngg_passthrough)
       prim_exp_arg = get_arg(ctx, ctx->args->gs_vtx_offset[0]);
    else
       prim_exp_arg = ngg_pack_prim_exp_arg(ctx, num_vertices_per_primitive, vtxindex, is_null);
@@ -11144,7 +11147,7 @@ void ngg_nogs_export_primitives(isel_context *ctx)
    constexpr unsigned max_vertices_per_primitive = 3;
    unsigned num_vertices_per_primitive = max_vertices_per_primitive;
 
-   assert(!(ctx->stage & sw_gs));
+   assert(!ctx->stage.has(SWStage::GS));
 
    if (ctx->stage == ngg_vertex_gs) {
       /* TODO: optimize for points & lines */
@@ -11711,10 +11714,10 @@ void select_program(Program *program,
 
       visit_cf_list(&ctx, &func->body);
 
-      if (ctx.program->info->so.num_outputs && (ctx.stage & hw_vs))
+      if (ctx.program->info->so.num_outputs && ctx.stage.hw == HWStage::VS)
          emit_streamout(&ctx, 0);
 
-      if (ctx.stage & hw_vs) {
+      if (ctx.stage.hw == HWStage::VS) {
          create_vs_exports(&ctx);
          ctx.block->kind |= block_kind_export_end;
       } else if (ngg_no_gs && ctx.ngg_nogs_early_prim_export) {
