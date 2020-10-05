@@ -4687,7 +4687,7 @@ void ac_handle_shader_output_decl(struct ac_llvm_context *ctx, struct ac_shader_
                                   struct nir_shader *nir, struct nir_variable *variable,
                                   gl_shader_stage stage)
 {
-   unsigned output_loc = variable->data.driver_location / 4;
+   unsigned output_loc = variable->data.driver_location;
    unsigned attrib_count = glsl_count_attribute_slots(variable->type, false);
 
    /* tess ctrl has it's own load/store paths for outputs */

@@ -1338,8 +1338,6 @@ scan_shader_output_decl(struct radv_shader_context *ctx,
 	unsigned attrib_count = glsl_count_attribute_slots(variable->type, false);
 	uint64_t mask_attribs;
 
-	variable->data.driver_location = idx * 4;
-
 	/* tess ctrl has it's own load/store paths for outputs */
 	if (stage == MESA_SHADER_TESS_CTRL)
 		return;
