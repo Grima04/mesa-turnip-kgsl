@@ -446,22 +446,17 @@ static void amdgpu_add_buffer_to_global_list(struct amdgpu_winsys_bo *bo)
 static uint64_t amdgpu_get_optimal_vm_alignment(struct amdgpu_winsys *ws,
                                                 uint64_t size, unsigned alignment)
 {
-   uint64_t vm_alignment = alignment;
-
-   /* Increase the VM alignment for faster address translation. */
-   if (size >= ws->info.pte_fragment_size)
-      vm_alignment = MAX2(vm_alignment, ws->info.pte_fragment_size);
-
-   /* Gfx9: Increase the VM alignment to the most significant bit set
-    * in the size for faster address translation.
+   /* Increase the alignment for faster address translation and better memory
+    * access pattern.
     */
-   if (ws->info.chip_class >= GFX9) {
-      unsigned msb = util_last_bit64(size); /* 0 = no bit is set */
-      uint64_t msb_alignment = msb ? 1ull << (msb - 1) : 0;
+   if (size >= ws->info.pte_fragment_size) {
+      alignment = MAX2(alignment, ws->info.pte_fragment_size);
+   } else if (size) {
+      unsigned msb = util_last_bit(size);
 
-      vm_alignment = MAX2(vm_alignment, msb_alignment);
+      alignment = MAX2(alignment, 1u << (msb - 1));
    }
-   return vm_alignment;
+   return alignment;
 }
 
 static struct amdgpu_winsys_bo *amdgpu_create_bo(struct amdgpu_winsys *ws,
