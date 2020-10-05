@@ -501,6 +501,8 @@ schedule_node::set_latency_gen7(bool is_haswell)
          case GEN8_DATAPORT_DC_PORT1_A64_UNTYPED_SURFACE_READ:
          case GEN8_DATAPORT_DC_PORT1_A64_SCATTERED_WRITE:
          case GEN9_DATAPORT_DC_PORT1_A64_SCATTERED_READ:
+         case GEN9_DATAPORT_DC_PORT1_A64_OWORD_BLOCK_READ:
+         case GEN9_DATAPORT_DC_PORT1_A64_OWORD_BLOCK_WRITE:
             /* See also GEN7_DATAPORT_DC_UNTYPED_SURFACE_READ */
             latency = 300;
             break;

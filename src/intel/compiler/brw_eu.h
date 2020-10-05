@@ -806,6 +806,27 @@ brw_dp_a64_untyped_surface_rw_desc(const struct gen_device_info *devinfo,
                       msg_type, msg_control);
 }
 
+static inline uint32_t
+brw_dp_a64_oword_block_rw_desc(const struct gen_device_info *devinfo,
+                               bool align_16B,
+                               unsigned num_dwords,
+                               bool write)
+{
+   /* Writes can only have addresses aligned by OWORDs (16 Bytes). */
+   assert(!write || align_16B);
+
+   unsigned msg_type =
+      write ? GEN9_DATAPORT_DC_PORT1_A64_OWORD_BLOCK_WRITE :
+              GEN9_DATAPORT_DC_PORT1_A64_OWORD_BLOCK_READ;
+
+   unsigned msg_control =
+      SET_BITS(!align_16B, 4, 3) |
+      SET_BITS(BRW_DATAPORT_OWORD_BLOCK_DWORDS(num_dwords), 2, 0);
+
+   return brw_dp_desc(devinfo, GEN8_BTI_STATELESS_NON_COHERENT,
+                      msg_type, msg_control);
+}
+
 /**
  * Calculate the data size (see MDC_A64_DS in the "Structures" volume of the
  * Skylake PRM).
