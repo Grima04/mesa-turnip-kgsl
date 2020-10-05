@@ -140,7 +140,8 @@ __vk_errorf(struct tu_instance *instance,
 #define vk_errorf(instance, error, format, ...)                              \
    __vk_errorf(instance, error, false, __FILE__, __LINE__, format, ##__VA_ARGS__);
 
-/* Prints startup errors if TU_DEBUG=startup is set.
+/* Prints startup errors if TU_DEBUG=startup is set or on a debug driver
+ * build.
  */
 #define vk_startup_errorf(instance, error, format, ...) \
    __vk_errorf(instance, error, instance->debug_flags & TU_DEBUG_STARTUP, \

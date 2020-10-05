@@ -256,6 +256,14 @@ tu_CreateInstance(const VkInstanceCreateInfo *pCreateInfo,
    instance->debug_flags =
       parse_debug_string(getenv("TU_DEBUG"), tu_debug_options);
 
+#ifdef DEBUG
+   /* Enable startup debugging by default on debug drivers.  You almost always
+    * want to see your startup failures in that case, and it's hard to set
+    * this env var on android.
+    */
+   instance->debug_flags |= TU_DEBUG_STARTUP;
+#endif
+
    if (instance->debug_flags & TU_DEBUG_STARTUP)
       mesa_logi("Created an instance");
 
