@@ -271,7 +271,7 @@ get_descriptor_set(struct zink_context *ctx, bool is_compute, enum zink_descript
 {
    struct zink_program *pg = is_compute ? (struct zink_program *)ctx->curr_compute : (struct zink_program *)ctx->curr_program;
    struct zink_batch *batch = is_compute ? &ctx->compute_batch : zink_curr_batch(ctx);
-   return zink_program_allocate_desc_set(ctx, batch, pg, type, is_compute, cache_hit);
+   return zink_descriptor_set_get(ctx, batch, pg, type, is_compute, cache_hit);
 }
 
 struct zink_transition {

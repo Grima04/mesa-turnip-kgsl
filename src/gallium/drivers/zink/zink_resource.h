@@ -33,7 +33,7 @@ struct zink_context;
 #include "util/u_range.h"
 #include "util/u_dynarray.h"
 
-#include "zink_context.h"
+#include "zink_descriptors.h"
 
 #include <vulkan/vulkan.h>
 

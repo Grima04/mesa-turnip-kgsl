@@ -37,6 +37,7 @@
 struct zink_screen;
 struct zink_shader;
 struct zink_gfx_pipeline_state;
+struct zink_descriptor_set;
 
 struct hash_table;
 struct set;
@@ -65,51 +66,6 @@ struct zink_shader_cache {
    struct pipe_reference reference;
    struct hash_table *shader_cache;
 };
-
-struct zink_descriptor_state_key {
-   bool exists[ZINK_SHADER_COUNT];
-   uint32_t state[ZINK_SHADER_COUNT];
-};
-
-struct zink_descriptor_set {
-   struct zink_program *pg;
-   enum zink_descriptor_type type;
-   struct pipe_reference reference; //incremented for batch usage
-   VkDescriptorSet desc_set;
-   uint32_t hash;
-   bool invalid;
-   bool recycled;
-   struct zink_descriptor_state_key key;
-#ifndef NDEBUG
-   /* for extra debug asserts */
-   unsigned num_resources;
-#endif
-   union {
-      struct zink_resource **resources;
-      struct zink_image_view **image_views;
-      struct {
-         struct zink_sampler_view **sampler_views;
-         struct zink_sampler_state **sampler_states;
-      };
-   };
-};
-
-
-struct zink_descriptor_reference {
-   void **ref;
-   bool *invalid;
-};
-void
-zink_descriptor_set_refs_clear(struct zink_descriptor_refs *refs, void *ptr);
-
-void
-zink_image_view_desc_set_add(struct zink_image_view *image_view, struct zink_descriptor_set *zds, unsigned idx);
-void
-zink_sampler_state_desc_set_add(struct zink_sampler_state *sampler_state, struct zink_descriptor_set *zds, unsigned idx);
-void
-zink_sampler_view_desc_set_add(struct zink_sampler_view *sv, struct zink_descriptor_set *zds, unsigned idx);
-void
-zink_resource_desc_set_add(struct zink_resource *res, struct zink_descriptor_set *zds, unsigned idx);
 
 struct zink_program {
    struct pipe_reference reference;
@@ -251,13 +207,4 @@ zink_get_compute_pipeline(struct zink_screen *screen,
                       struct zink_compute_program *comp,
                       struct zink_compute_pipeline_state *state);
 
-struct zink_descriptor_set *
-zink_program_allocate_desc_set(struct zink_context *ctx,
-                               struct zink_batch *batch,
-                               struct zink_program *pg,
-                               enum zink_descriptor_type type,
-                               bool is_compute,
-                               bool *cache_hit);
-void
-zink_program_recycle_desc_set(struct zink_program *pg, struct zink_descriptor_set *zds);
 #endif

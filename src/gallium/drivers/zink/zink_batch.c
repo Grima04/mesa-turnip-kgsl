@@ -56,7 +56,7 @@ zink_reset_batch(struct zink_context *ctx, struct zink_batch *batch)
        * having some inactive program hogging a billion descriptors
        */
       pipe_reference(&zds->reference, NULL);
-      zink_program_recycle_desc_set(zds->pg, zds);
+      zink_descriptor_set_recycle(zds);
       _mesa_set_remove(batch->desc_sets, entry);
    }
 
