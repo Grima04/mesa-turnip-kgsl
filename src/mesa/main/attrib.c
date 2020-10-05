@@ -626,6 +626,22 @@ pop_texture_group(struct gl_context *ctx, struct gl_texture_attrib_node *texstat
 }
 
 
+#define TEST_AND_CALL1(FIELD, CALL) do { \
+      if (ctx->FIELD != attr->FIELD)     \
+         _mesa_##CALL(attr->FIELD);      \
+   } while (0)
+
+#define TEST_AND_CALL1_SEL(FIELD, CALL, SEL) do { \
+      if (ctx->FIELD != attr->FIELD)              \
+         _mesa_##CALL(SEL, attr->FIELD);          \
+   } while (0)
+
+#define TEST_AND_CALL2(FIELD1, FIELD2, CALL) do {                     \
+      if (ctx->FIELD1 != attr->FIELD1 || ctx->FIELD2 != attr->FIELD2) \
+         _mesa_##CALL(attr->FIELD1, attr->FIELD2);                    \
+   } while (0)
+
+
 /*
  * This function is kind of long just because we have to call a lot
  * of device driver functions to update device driver state.
@@ -661,12 +677,12 @@ _mesa_PopAttrib(void)
    }
 
    if (mask & GL_COLOR_BUFFER_BIT) {
-      _mesa_ClearIndex((GLfloat) attr->Color.ClearIndex);
+      TEST_AND_CALL1(Color.ClearIndex, ClearIndex);
       _mesa_ClearColor(attr->Color.ClearColor.f[0],
                        attr->Color.ClearColor.f[1],
                        attr->Color.ClearColor.f[2],
                        attr->Color.ClearColor.f[3]);
-      _mesa_IndexMask(attr->Color.IndexMask);
+      TEST_AND_CALL1(Color.IndexMask, IndexMask);
       if (!ctx->Extensions.EXT_draw_buffers2) {
          _mesa_ColorMask(GET_COLORMASK_BIT(attr->Color.ColorMask, 0, 0),
                          GET_COLORMASK_BIT(attr->Color.ColorMask, 0, 1),
@@ -719,7 +735,7 @@ _mesa_PopAttrib(void)
       }
       TEST_AND_UPDATE(ctx->Color.AlphaEnabled, attr->Color.AlphaEnabled,
                       GL_ALPHA_TEST);
-      _mesa_AlphaFunc(attr->Color.AlphaFunc, attr->Color.AlphaRefUnclamped);
+      TEST_AND_CALL2(Color.AlphaFunc, Color.AlphaRefUnclamped, AlphaFunc);
       if (ctx->Color.BlendEnabled != attr->Color.BlendEnabled) {
          if (ctx->Extensions.EXT_draw_buffers2) {
             for (unsigned i = 0; i < ctx->Const.MaxDrawBuffers; i++) {
@@ -757,31 +773,32 @@ _mesa_PopAttrib(void)
           */
          if (attr->Color.Blend[0].EquationRGB ==
              attr->Color.Blend[0].EquationA) {
-            _mesa_BlendEquation(attr->Color.Blend[0].EquationRGB);
+            TEST_AND_CALL1(Color.Blend[0].EquationRGB, BlendEquation);
          }
          else {
-            _mesa_BlendEquationSeparate(
-                                        attr->Color.Blend[0].EquationRGB,
-                                        attr->Color.Blend[0].EquationA);
+            TEST_AND_CALL2(Color.Blend[0].EquationRGB,
+                           Color.Blend[0].EquationA, BlendEquationSeparate);
          }
       }
       _mesa_BlendColor(attr->Color.BlendColorUnclamped[0],
                        attr->Color.BlendColorUnclamped[1],
                        attr->Color.BlendColorUnclamped[2],
                        attr->Color.BlendColorUnclamped[3]);
-      _mesa_LogicOp(attr->Color.LogicOp);
+      TEST_AND_CALL1(Color.LogicOp, LogicOp);
       TEST_AND_UPDATE(ctx->Color.ColorLogicOpEnabled,
                       attr->Color.ColorLogicOpEnabled, GL_COLOR_LOGIC_OP);
       TEST_AND_UPDATE(ctx->Color.IndexLogicOpEnabled,
                       attr->Color.IndexLogicOpEnabled, GL_INDEX_LOGIC_OP);
       TEST_AND_UPDATE(ctx->Color.DitherFlag, attr->Color.DitherFlag,
                       GL_DITHER);
-      if (ctx->Extensions.ARB_color_buffer_float)
-         _mesa_ClampColor(GL_CLAMP_FRAGMENT_COLOR_ARB,
-                          attr->Color.ClampFragmentColor);
-      if (ctx->Extensions.ARB_color_buffer_float || ctx->Version >= 30)
-         _mesa_ClampColor(GL_CLAMP_READ_COLOR_ARB, attr->Color.ClampReadColor);
-
+      if (ctx->Extensions.ARB_color_buffer_float) {
+         TEST_AND_CALL1_SEL(Color.ClampFragmentColor, ClampColor,
+                            GL_CLAMP_FRAGMENT_COLOR);
+      }
+      if (ctx->Extensions.ARB_color_buffer_float || ctx->Version >= 30) {
+         TEST_AND_CALL1_SEL(Color.ClampReadColor, ClampColor,
+                            GL_CLAMP_READ_COLOR);
+      }
       /* GL_ARB_framebuffer_sRGB / GL_EXT_framebuffer_sRGB */
       if (ctx->Extensions.EXT_framebuffer_sRGB) {
          TEST_AND_UPDATE(ctx->Color.sRGBEnabled, attr->Color.sRGBEnabled,
@@ -796,14 +813,14 @@ _mesa_PopAttrib(void)
    }
 
    if (mask & GL_DEPTH_BUFFER_BIT) {
-      _mesa_DepthFunc(attr->Depth.Func);
-      _mesa_ClearDepth(attr->Depth.Clear);
+      TEST_AND_CALL1(Depth.Func, DepthFunc);
+      TEST_AND_CALL1(Depth.Clear, ClearDepth);
       TEST_AND_UPDATE(ctx->Depth.Test, attr->Depth.Test, GL_DEPTH_TEST);
-      _mesa_DepthMask(attr->Depth.Mask);
+      TEST_AND_CALL1(Depth.Mask, DepthMask);
       if (ctx->Extensions.EXT_depth_bounds_test) {
-          TEST_AND_UPDATE(ctx->Depth.BoundsTest, attr->Depth.BoundsTest,
-                          GL_DEPTH_BOUNDS_TEST_EXT);
-         _mesa_DepthBoundsEXT(attr->Depth.BoundsMin, attr->Depth.BoundsMax);
+         TEST_AND_UPDATE(ctx->Depth.BoundsTest, attr->Depth.BoundsTest,
+                         GL_DEPTH_BOUNDS_TEST_EXT);
+         TEST_AND_CALL2(Depth.BoundsMin, Depth.BoundsMax, DepthBoundsEXT);
       }
    }
 
@@ -835,22 +852,20 @@ _mesa_PopAttrib(void)
    if (mask & GL_FOG_BIT) {
       TEST_AND_UPDATE(ctx->Fog.Enabled, attr->Fog.Enabled, GL_FOG);
       _mesa_Fogfv(GL_FOG_COLOR, attr->Fog.Color);
-      _mesa_Fogf(GL_FOG_DENSITY, attr->Fog.Density);
-      _mesa_Fogf(GL_FOG_START, attr->Fog.Start);
-      _mesa_Fogf(GL_FOG_END, attr->Fog.End);
-      _mesa_Fogf(GL_FOG_INDEX, attr->Fog.Index);
-      _mesa_Fogi(GL_FOG_MODE, attr->Fog.Mode);
+      TEST_AND_CALL1_SEL(Fog.Density, Fogf, GL_FOG_DENSITY);
+      TEST_AND_CALL1_SEL(Fog.Start, Fogf, GL_FOG_START);
+      TEST_AND_CALL1_SEL(Fog.End, Fogf, GL_FOG_END);
+      TEST_AND_CALL1_SEL(Fog.Index, Fogf, GL_FOG_INDEX);
+      TEST_AND_CALL1_SEL(Fog.Mode, Fogi, GL_FOG_MODE);
    }
 
    if (mask & GL_HINT_BIT) {
-      _mesa_Hint(GL_PERSPECTIVE_CORRECTION_HINT,
-                 attr->Hint.PerspectiveCorrection);
-      _mesa_Hint(GL_POINT_SMOOTH_HINT, attr->Hint.PointSmooth);
-      _mesa_Hint(GL_LINE_SMOOTH_HINT, attr->Hint.LineSmooth);
-      _mesa_Hint(GL_POLYGON_SMOOTH_HINT, attr->Hint.PolygonSmooth);
-      _mesa_Hint(GL_FOG_HINT, attr->Hint.Fog);
-      _mesa_Hint(GL_TEXTURE_COMPRESSION_HINT_ARB,
-                 attr->Hint.TextureCompression);
+      TEST_AND_CALL1_SEL(Hint.PerspectiveCorrection, Hint, GL_PERSPECTIVE_CORRECTION_HINT);
+      TEST_AND_CALL1_SEL(Hint.PointSmooth, Hint, GL_POINT_SMOOTH_HINT);
+      TEST_AND_CALL1_SEL(Hint.LineSmooth, Hint, GL_LINE_SMOOTH_HINT);
+      TEST_AND_CALL1_SEL(Hint.PolygonSmooth, Hint, GL_POLYGON_SMOOTH_HINT);
+      TEST_AND_CALL1_SEL(Hint.Fog, Hint, GL_FOG_HINT);
+      TEST_AND_CALL1_SEL(Hint.TextureCompression, Hint, GL_TEXTURE_COMPRESSION_HINT_ARB);
    }
 
    if (mask & GL_LIGHTING_BIT) {
@@ -920,26 +935,25 @@ _mesa_PopAttrib(void)
                 sizeof(attr->Light.Model));
       }
       /* shade model */
-      _mesa_ShadeModel(attr->Light.ShadeModel);
+      TEST_AND_CALL1(Light.ShadeModel, ShadeModel);
       /* color material */
-      _mesa_ColorMaterial(attr->Light.ColorMaterialFace,
-                          attr->Light.ColorMaterialMode);
+      TEST_AND_CALL2(Light.ColorMaterialFace, Light.ColorMaterialMode,
+                     ColorMaterial);
       TEST_AND_UPDATE(ctx->Light.ColorMaterialEnabled,
                       attr->Light.ColorMaterialEnabled, GL_COLOR_MATERIAL);
       /* materials */
       memcpy(&ctx->Light.Material, &attr->Light.Material,
              sizeof(struct gl_material));
       if (ctx->Extensions.ARB_color_buffer_float) {
-         _mesa_ClampColor(GL_CLAMP_VERTEX_COLOR_ARB,
-                          attr->Light.ClampVertexColor);
+         TEST_AND_CALL1_SEL(Light.ClampVertexColor, ClampColor, GL_CLAMP_VERTEX_COLOR_ARB);
       }
    }
 
    if (mask & GL_LINE_BIT) {
       TEST_AND_UPDATE(ctx->Line.SmoothFlag, attr->Line.SmoothFlag, GL_LINE_SMOOTH);
       TEST_AND_UPDATE(ctx->Line.StippleFlag, attr->Line.StippleFlag, GL_LINE_STIPPLE);
-      _mesa_LineStipple(attr->Line.StippleFactor, attr->Line.StipplePattern);
-      _mesa_LineWidth(attr->Line.Width);
+      TEST_AND_CALL2(Line.StippleFactor, Line.StipplePattern, LineStipple);
+      TEST_AND_CALL1(Line.Width, LineWidth);
    }
 
    if (mask & GL_LIST_BIT)
@@ -953,17 +967,14 @@ _mesa_PopAttrib(void)
    }
 
    if (mask & GL_POINT_BIT) {
-      _mesa_PointSize(attr->Point.Size);
+      TEST_AND_CALL1(Point.Size, PointSize);
       TEST_AND_UPDATE(ctx->Point.SmoothFlag, attr->Point.SmoothFlag, GL_POINT_SMOOTH);
       if (ctx->Extensions.EXT_point_parameters) {
          _mesa_PointParameterfv(GL_DISTANCE_ATTENUATION_EXT,
                                 attr->Point.Params);
-         _mesa_PointParameterf(GL_POINT_SIZE_MIN_EXT,
-                               attr->Point.MinSize);
-         _mesa_PointParameterf(GL_POINT_SIZE_MAX_EXT,
-                               attr->Point.MaxSize);
-         _mesa_PointParameterf(GL_POINT_FADE_THRESHOLD_SIZE_EXT,
-                               attr->Point.Threshold);
+         TEST_AND_CALL1_SEL(Point.MinSize, PointParameterf, GL_POINT_SIZE_MIN_EXT);
+         TEST_AND_CALL1_SEL(Point.MaxSize, PointParameterf, GL_POINT_SIZE_MAX_EXT);
+         TEST_AND_CALL1_SEL(Point.Threshold, PointParameterf, GL_POINT_FADE_THRESHOLD_SIZE_EXT);
       }
       if (ctx->Extensions.NV_point_sprite
           || ctx->Extensions.ARB_point_sprite) {
@@ -975,21 +986,19 @@ _mesa_PopAttrib(void)
          TEST_AND_UPDATE(ctx->Point.PointSprite, attr->Point.PointSprite,
                          GL_POINT_SPRITE_NV);
          if (ctx->Extensions.NV_point_sprite)
-            _mesa_PointParameteri(GL_POINT_SPRITE_R_MODE_NV,
-                                  ctx->Point.SpriteRMode);
+            TEST_AND_CALL1_SEL(Point.SpriteRMode, PointParameteri, GL_POINT_SPRITE_R_MODE_NV);
 
          if ((ctx->API == API_OPENGL_COMPAT && ctx->Version >= 20)
              || ctx->API == API_OPENGL_CORE)
-            _mesa_PointParameterf(GL_POINT_SPRITE_COORD_ORIGIN,
-                                  (GLfloat)ctx->Point.SpriteOrigin);
+            TEST_AND_CALL1_SEL(Point.SpriteOrigin, PointParameterf, GL_POINT_SPRITE_COORD_ORIGIN);
       }
    }
 
    if (mask & GL_POLYGON_BIT) {
-      _mesa_CullFace(attr->Polygon.CullFaceMode);
-      _mesa_FrontFace(attr->Polygon.FrontFace);
-      _mesa_PolygonMode(GL_FRONT, attr->Polygon.FrontMode);
-      _mesa_PolygonMode(GL_BACK, attr->Polygon.BackMode);
+      TEST_AND_CALL1(Polygon.CullFaceMode, CullFace);
+      TEST_AND_CALL1(Polygon.FrontFace, FrontFace);
+      TEST_AND_CALL1_SEL(Polygon.FrontMode, PolygonMode, GL_FRONT);
+      TEST_AND_CALL1_SEL(Polygon.BackMode, PolygonMode, GL_BACK);
       _mesa_polygon_offset_clamp(ctx,
                                  attr->Polygon.OffsetFactor,
                                  attr->Polygon.OffsetUnits,
@@ -1041,7 +1050,7 @@ _mesa_PopAttrib(void)
    if (mask & GL_STENCIL_BUFFER_BIT) {
       TEST_AND_UPDATE(ctx->Stencil.Enabled, attr->Stencil.Enabled,
                       GL_STENCIL_TEST);
-      _mesa_ClearStencil(attr->Stencil.Clear);
+      TEST_AND_CALL1(Stencil.Clear, ClearStencil);
       if (ctx->Extensions.EXT_stencil_two_side) {
          TEST_AND_UPDATE(ctx->Stencil.TestTwoSide, attr->Stencil.TestTwoSide,
                          GL_STENCIL_TEST_TWO_SIDE_EXT);
@@ -1053,7 +1062,7 @@ _mesa_PopAttrib(void)
                                 attr->Stencil.Function[0],
                                 attr->Stencil.Ref[0],
                                 attr->Stencil.ValueMask[0]);
-      _mesa_StencilMaskSeparate(GL_FRONT, attr->Stencil.WriteMask[0]);
+      TEST_AND_CALL1_SEL(Stencil.WriteMask[0], StencilMaskSeparate, GL_FRONT);
       _mesa_StencilOpSeparate(GL_FRONT, attr->Stencil.FailFunc[0],
                               attr->Stencil.ZFailFunc[0],
                               attr->Stencil.ZPassFunc[0]);
@@ -1062,7 +1071,7 @@ _mesa_PopAttrib(void)
                                 attr->Stencil.Function[1],
                                 attr->Stencil.Ref[1],
                                 attr->Stencil.ValueMask[1]);
-      _mesa_StencilMaskSeparate(GL_BACK, attr->Stencil.WriteMask[1]);
+      TEST_AND_CALL1_SEL(Stencil.WriteMask[1], StencilMaskSeparate, GL_BACK);
       _mesa_StencilOpSeparate(GL_BACK, attr->Stencil.FailFunc[1],
                               attr->Stencil.ZFailFunc[1],
                               attr->Stencil.ZPassFunc[1]);
@@ -1070,7 +1079,7 @@ _mesa_PopAttrib(void)
 
    if (mask & GL_TRANSFORM_BIT) {
       GLuint i;
-      _mesa_MatrixMode(attr->Transform.MatrixMode);
+      TEST_AND_CALL1(Transform.MatrixMode, MatrixMode);
       if (_math_matrix_is_dirty(ctx->ProjectionMatrixStack.Top))
          _math_matrix_analyse(ctx->ProjectionMatrixStack.Top);
 
@@ -1108,8 +1117,10 @@ _mesa_PopAttrib(void)
                          GL_DEPTH_CLAMP_FAR_AMD);
       }
 
-      if (ctx->Extensions.ARB_clip_control)
-         _mesa_ClipControl(attr->Transform.ClipOrigin, attr->Transform.ClipDepthMode);
+      if (ctx->Extensions.ARB_clip_control) {
+         TEST_AND_CALL2(Transform.ClipOrigin, Transform.ClipDepthMode,
+                        ClipControl);
+      }
    }
 
    if (mask & GL_TEXTURE_BIT) {
@@ -1151,10 +1162,11 @@ _mesa_PopAttrib(void)
                       attr->Multisample.SampleAlphaToOne,
                       GL_SAMPLE_ALPHA_TO_ONE);
 
-      _mesa_SampleCoverage(attr->Multisample.SampleCoverageValue,
-                              attr->Multisample.SampleCoverageInvert);
+      TEST_AND_CALL2(Multisample.SampleCoverageValue,
+                     Multisample.SampleCoverageInvert, SampleCoverage);
 
-      _mesa_AlphaToCoverageDitherControlNV(attr->Multisample.SampleAlphaToCoverageDitherControl);
+      TEST_AND_CALL1(Multisample.SampleAlphaToCoverageDitherControl,
+                     AlphaToCoverageDitherControlNV);
    }
 }
 
