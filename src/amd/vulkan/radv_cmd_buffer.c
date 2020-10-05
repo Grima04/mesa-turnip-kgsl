@@ -6016,19 +6016,16 @@ static void radv_init_color_image_metadata(struct radv_cmd_buffer *cmd_buffer,
 
 	if (radv_dcc_enabled(image, range->baseMipLevel)) {
 		uint32_t value = 0xffffffffu; /* Fully expanded mode. */
-		bool need_decompress_pass = false;
 
 		if (radv_layout_dcc_compressed(cmd_buffer->device, image, dst_layout,
 					       dst_render_loop,
 					       dst_queue_mask)) {
-			value = 0x20202020u;
-			need_decompress_pass = true;
+			value = 0u;
 		}
 
 		radv_initialize_dcc(cmd_buffer, image, range, value);
 
-		radv_update_fce_metadata(cmd_buffer, image, range,
-					 need_decompress_pass);
+		radv_update_fce_metadata(cmd_buffer, image, range, false);
 	}
 
 	if (radv_image_has_cmask(image) ||
