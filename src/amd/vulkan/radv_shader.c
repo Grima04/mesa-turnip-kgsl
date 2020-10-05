@@ -553,8 +553,18 @@ radv_shader_compile_to_nir(struct radv_device *device,
 
 	nir_shader_gather_info(nir, nir_shader_get_entrypoint(nir));
 
-	if (nir->info.stage == MESA_SHADER_GEOMETRY)
-		nir_lower_gs_intrinsics(nir, nir_lower_gs_intrinsics_per_stream);
+	if (nir->info.stage == MESA_SHADER_GEOMETRY) {
+		unsigned nir_gs_flags = nir_lower_gs_intrinsics_per_stream;
+
+		if (device->physical_device->use_ngg && !radv_use_llvm_for_stage(device, stage)) {
+			/* ACO needs NIR to do some of the hard lifting */
+			nir_gs_flags |= nir_lower_gs_intrinsics_count_primitives |
+			                nir_lower_gs_intrinsics_count_vertices_per_primitive |
+							nir_lower_gs_intrinsics_overwrite_incomplete;
+		}
+
+		nir_lower_gs_intrinsics(nir, nir_gs_flags);
+	}
 
 	static const nir_lower_tex_options tex_options = {
 	  .lower_txp = ~0,
