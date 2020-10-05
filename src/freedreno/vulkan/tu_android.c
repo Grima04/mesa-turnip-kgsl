@@ -109,6 +109,12 @@ tu_hal_close(struct hw_device_t *dev)
    return -1;
 }
 
+/**
+ * Creates the VkImage using the gralloc handle in *gralloc_info.
+ *
+ * We support two different grallocs here, gbm_gralloc, and the qcom gralloc
+ * used on Android phones.
+ */
 VkResult
 tu_image_from_gralloc(VkDevice device_h,
                       const VkImageCreateInfo *base_info,
@@ -121,24 +127,62 @@ tu_image_from_gralloc(VkDevice device_h,
    VkImage image_h = VK_NULL_HANDLE;
    struct tu_image *image = NULL;
    VkResult result;
+   bool ubwc = false;
 
-   result = tu_image_create(device_h, base_info, alloc, &image_h,
-                            DRM_FORMAT_MOD_LINEAR, NULL);
-   if (result != VK_SUCCESS)
-      return result;
+   const uint32_t *handle_fds = (uint32_t *)gralloc_info->handle->data;
+   const uint32_t *handle_data = &handle_fds[gralloc_info->handle->numFds];
+   int dma_buf;
 
-   if (gralloc_info->handle->numFds != 1) {
+   if (gralloc_info->handle->numFds == 1) {
+      /* gbm_gralloc.  TODO: modifiers support */
+      dma_buf = handle_fds[0];
+   } else if (gralloc_info->handle->numFds == 2) {
+      /* Qualcomm gralloc, find it at:
+       *
+       * https://android.googlesource.com/platform/hardware/qcom/display/.
+       *
+       * The gralloc_info->handle is a pointer to a struct private_handle_t
+       * from your platform's gralloc.  On msm8996 (a5xx) and newer grallocs
+       * that's libgralloc1/gr_priv_handle.h, while previously it was
+       * libgralloc/gralloc_priv.h.
+       */
+
+      if (gralloc_info->handle->numInts < 2) {
+         return vk_errorf(device->instance, VK_ERROR_INVALID_EXTERNAL_HANDLE,
+                          "VkNativeBufferANDROID::handle::numInts is %d, "
+                          "expected at least 2 for qcom gralloc",
+                          gralloc_info->handle->numFds);
+      }
+
+      uint32_t gmsm = ('g' << 24) | ('m' << 16) | ('s' << 8) | 'm';
+      if (handle_data[0] != gmsm) {
+         return vk_errorf(device->instance, VK_ERROR_INVALID_EXTERNAL_HANDLE,
+                          "private_handle_t::magic is %x, expected %x",
+                          handle_data[0], gmsm);
+      }
+
+      /* This UBWC flag was introduced in a5xx. */
+      ubwc = handle_data[1] & 0x08000000;
+
+      /* QCOM gralloc has two fds passed in: the actual GPU buffer, and a buffer
+       * of CPU-side metadata.  I haven't found any need for the metadata buffer
+       * yet.  See qdMetaData.h for what's in the metadata fd.
+       */
+      dma_buf = handle_fds[0];
+   } else {
       return vk_errorf(device->instance, VK_ERROR_INVALID_EXTERNAL_HANDLE,
                        "VkNativeBufferANDROID::handle::numFds is %d, "
-                       "expected 1",
+                       "expected 1 (gbm_gralloc) or 2 (qcom gralloc)",
                        gralloc_info->handle->numFds);
    }
 
-   /* Do not close the gralloc handle's dma_buf. The lifetime of the dma_buf
-    * must exceed that of the gralloc handle, and we do not own the gralloc
-    * handle.
-    */
-   int dma_buf = gralloc_info->handle->data[0];
+   result = tu_image_create(device_h, base_info, alloc, &image_h,
+                            ubwc ?
+                            DRM_FORMAT_MOD_QCOM_COMPRESSED :
+                            DRM_FORMAT_MOD_LINEAR,
+                            NULL);
+   if (result != VK_SUCCESS)
+      return result;
 
    image = tu_image_from_handle(image_h);
 
