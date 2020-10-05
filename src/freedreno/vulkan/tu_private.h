@@ -132,7 +132,7 @@ __vk_errorf(struct tu_instance *instance,
             const char *file,
             int line,
             const char *format,
-            ...);
+            ...) PRINTFLIKE(5, 6);
 
 #define vk_error(instance, error)                                            \
    __vk_errorf(instance, error, __FILE__, __LINE__, NULL);
