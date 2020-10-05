@@ -49,7 +49,7 @@
 #include <unistd.h>
 #include <errno.h>
 #include <dirent.h>
-#include <fnmatch.h>
+#include <sys/stat.h>
 #include <regex.h>
 #include "strndup.h"
 #include "xmlconfig.h"
