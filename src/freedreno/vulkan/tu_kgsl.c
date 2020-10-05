@@ -31,6 +31,12 @@
 
 #include "msm_kgsl.h"
 
+struct tu_syncobj {
+   struct vk_object_base base;
+   uint32_t timestamp;
+   bool timestamp_valid;
+};
+
 static int
 safe_ioctl(int fd, unsigned long request, void *arg)
 {
@@ -214,6 +220,75 @@ fail:
    return VK_ERROR_INITIALIZATION_FAILED;
 }
 
+static int
+timestamp_to_fd(struct tu_queue *queue, uint32_t timestamp)
+{
+   int fd;
+   struct kgsl_timestamp_event event = {
+      .type = KGSL_TIMESTAMP_EVENT_FENCE,
+      .context_id = queue->msm_queue_id,
+      .timestamp = timestamp,
+      .priv = &fd,
+      .len = sizeof(fd),
+   };
+
+   int ret = safe_ioctl(queue->device->fd, IOCTL_KGSL_TIMESTAMP_EVENT, &event);
+   if (ret)
+      return -1;
+
+   return fd;
+}
+
+/* return true if timestamp a is greater (more recent) then b
+ * this relies on timestamps never having a difference > (1<<31)
+ */
+static inline bool
+timestamp_cmp(uint32_t a, uint32_t b)
+{
+   return (int32_t) (a - b) >= 0;
+}
+
+static uint32_t
+max_ts(uint32_t a, uint32_t b)
+{
+   return timestamp_cmp(a, b) ? a : b;
+}
+
+static uint32_t
+min_ts(uint32_t a, uint32_t b)
+{
+   return timestamp_cmp(a, b) ? b : a;
+}
+
+static struct tu_syncobj
+sync_merge(const VkSemaphore *syncobjs, uint32_t count, bool wait_all, bool reset)
+{
+   struct tu_syncobj ret;
+
+   ret.timestamp_valid = false;
+
+   for (uint32_t i = 0; i < count; ++i) {
+      TU_FROM_HANDLE(tu_syncobj, sync, syncobjs[i]);
+
+      /* TODO: this means the fence is unsignaled and will never become signaled */
+      if (!sync->timestamp_valid)
+         continue;
+
+      if (!ret.timestamp_valid)
+         ret.timestamp = sync->timestamp;
+      else if (wait_all)
+         ret.timestamp = max_ts(ret.timestamp, sync->timestamp);
+      else
+         ret.timestamp = min_ts(ret.timestamp, sync->timestamp);
+
+      ret.timestamp_valid = true;
+      if (reset)
+         sync->timestamp_value = false;
+
+   }
+   return ret;
+}
+
 VkResult
 tu_QueueSubmit(VkQueue _queue,
                uint32_t submitCount,
@@ -221,6 +296,7 @@ tu_QueueSubmit(VkQueue _queue,
                VkFence _fence)
 {
    TU_FROM_HANDLE(tu_queue, queue, _queue);
+   TU_FROM_HANDLE(tu_syncobj, fence, _fence);
    VkResult result = VK_SUCCESS;
 
    uint32_t max_entry_count = 0;
@@ -261,12 +337,29 @@ tu_QueueSubmit(VkQueue _queue,
          }
       }
 
+      struct tu_syncobj s = sync_merge(submit->pWaitSemaphores,
+                                       submit->waitSemaphoreCount,
+                                       true, true);
+
+      struct kgsl_cmd_syncpoint_timestamp ts = {
+         .context_id = queue->msm_queue_id,
+         .timestamp = s.timestamp,
+      };
+      struct kgsl_command_syncpoint sync = {
+         .type = KGSL_CMD_SYNCPOINT_TYPE_TIMESTAMP,
+         .size = sizeof(ts),
+         .priv = (uintptr_t) &ts,
+      };
+
       struct kgsl_gpu_command req = {
          .flags = KGSL_CMDBATCH_SUBMIT_IB_LIST,
          .context_id = queue->msm_queue_id,
          .cmdlist = (uint64_t) (uintptr_t) cmds,
          .numcmds = entry_idx,
          .cmdsize = sizeof(struct kgsl_command_object),
+         .synclist = (uintptr_t) &sync,
+         .syncsize = sizeof(struct kgsl_command_syncpoint),
+         .numsyncs = s.timestamp_valid ? 1 : 0,
       };
 
       int ret = safe_ioctl(queue->device->physical_device->local_fd,
@@ -277,20 +370,16 @@ tu_QueueSubmit(VkQueue _queue,
          goto fail;
       }
 
+      for (uint32_t i = 0; i < submit->signalSemaphoreCount; i++) {
+         TU_FROM_HANDLE(tu_syncobj, sem, submit->pSignalSemaphores[i]);
+         sem->timestamp = req.timestamp;
+         sem->timestamp_valid = true;
+      }
+
       /* no need to merge fences as queue execution is serialized */
       if (i == submitCount - 1) {
-         int fd;
-         struct kgsl_timestamp_event event = {
-            .type = KGSL_TIMESTAMP_EVENT_FENCE,
-            .context_id = queue->msm_queue_id,
-            .timestamp = req.timestamp,
-            .priv = &fd,
-            .len = sizeof(fd),
-         };
-
-         int ret = safe_ioctl(queue->device->physical_device->local_fd,
-                              IOCTL_KGSL_TIMESTAMP_EVENT, &event);
-         if (ret != 0) {
+         int fd = timestamp_to_fd(queue, req.timestamp);
+         if (fd < 0) {
             result = tu_device_set_lost(queue->device,
                                         "Failed to create sync file for timestamp: %s\n",
                                         strerror(errno));
@@ -300,12 +389,41 @@ tu_QueueSubmit(VkQueue _queue,
          if (queue->fence >= 0)
             close(queue->fence);
          queue->fence = fd;
+
+         if (fence) {
+            fence->timestamp = req.timestamp;
+            fence->timestamp_valid = true;
+         }
       }
    }
 fail:
    vk_free(&queue->device->vk.alloc, cmds);
 
    return result;
+}
+
+static VkResult
+sync_create(VkDevice _device,
+            bool signaled,
+            bool fence,
+            const VkAllocationCallbacks *pAllocator,
+            void **p_sync)
+{
+   TU_FROM_HANDLE(tu_device, device, _device);
+
+   struct tu_syncobj *sync =
+         vk_object_alloc(&device->vk, pAllocator, sizeof(*sync),
+                         fence ? VK_OBJECT_TYPE_FENCE : VK_OBJECT_TYPE_SEMAPHORE);
+   if (!sync)
+      return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
+
+   if (signaled)
+      tu_finishme("CREATE FENCE SIGNALED");
+
+   sync->timestamp_valid = false;
+   *p_sync = sync;
+
+   return VK_SUCCESS;
 }
 
 VkResult
@@ -326,21 +444,26 @@ tu_GetSemaphoreFdKHR(VkDevice _device,
 }
 
 VkResult
-tu_CreateSemaphore(VkDevice _device,
+tu_CreateSemaphore(VkDevice device,
                    const VkSemaphoreCreateInfo *pCreateInfo,
                    const VkAllocationCallbacks *pAllocator,
                    VkSemaphore *pSemaphore)
 {
-   tu_finishme("CreateSemaphore");
-   return VK_SUCCESS;
+   return sync_create(device, false, false, pAllocator, (void**) pSemaphore);
 }
 
 void
 tu_DestroySemaphore(VkDevice _device,
-                    VkSemaphore _semaphore,
+                    VkSemaphore semaphore,
                     const VkAllocationCallbacks *pAllocator)
 {
-   tu_finishme("DestroySemaphore");
+   TU_FROM_HANDLE(tu_device, device, _device);
+   TU_FROM_HANDLE(tu_syncobj, sync, semaphore);
+
+   if (!sync)
+      return;
+
+   vk_object_free(&device->vk, pAllocator, sync);
 }
 
 VkResult
@@ -363,43 +486,84 @@ tu_GetFenceFdKHR(VkDevice _device,
 }
 
 VkResult
-tu_CreateFence(VkDevice _device,
-               const VkFenceCreateInfo *pCreateInfo,
+tu_CreateFence(VkDevice device,
+               const VkFenceCreateInfo *info,
                const VkAllocationCallbacks *pAllocator,
                VkFence *pFence)
 {
-   tu_finishme("CreateFence");
-   return VK_SUCCESS;
+   return sync_create(device, info->flags & VK_FENCE_CREATE_SIGNALED_BIT, true,
+                      pAllocator, (void**) pFence);
 }
 
 void
-tu_DestroyFence(VkDevice _device, VkFence _fence, const VkAllocationCallbacks *pAllocator)
+tu_DestroyFence(VkDevice _device, VkFence fence, const VkAllocationCallbacks *pAllocator)
 {
-   tu_finishme("DestroyFence");
+   TU_FROM_HANDLE(tu_device, device, _device);
+   TU_FROM_HANDLE(tu_syncobj, sync, fence);
+
+   if (!sync)
+      return;
+
+   vk_object_free(&device->vk, pAllocator, sync);
 }
 
 VkResult
 tu_WaitForFences(VkDevice _device,
-                 uint32_t fenceCount,
+                 uint32_t count,
                  const VkFence *pFences,
                  VkBool32 waitAll,
                  uint64_t timeout)
 {
-   tu_finishme("WaitForFences");
+   TU_FROM_HANDLE(tu_device, device, _device);
+   struct tu_syncobj s = sync_merge((const VkSemaphore*) pFences, count, waitAll, false);
+
+   if (!s.timestamp_valid)
+      return VK_SUCCESS;
+
+   int ret = ioctl(device->fd, IOCTL_KGSL_DEVICE_WAITTIMESTAMP_CTXTID,
+                   &(struct kgsl_device_waittimestamp_ctxtid) {
+      .context_id = device->queues[0]->msm_queue_id,
+      .timestamp = s.timestamp,
+      .timeout = timeout / 1000000,
+   });
+   if (ret) {
+      assert(errno == ETIME);
+      return VK_TIMEOUT;
+   }
+
    return VK_SUCCESS;
 }
 
 VkResult
-tu_ResetFences(VkDevice _device, uint32_t fenceCount, const VkFence *pFences)
+tu_ResetFences(VkDevice _device, uint32_t count, const VkFence *pFences)
 {
-   tu_finishme("ResetFences");
+   for (uint32_t i = 0; i < count; i++) {
+      TU_FROM_HANDLE(tu_syncobj, sync, pFences[i]);
+      sync->timestamp_valid = false;
+   }
    return VK_SUCCESS;
 }
 
 VkResult
 tu_GetFenceStatus(VkDevice _device, VkFence _fence)
 {
-   tu_finishme("GetFenceStatus");
+   TU_FROM_HANDLE(tu_device, device, _device);
+   TU_FROM_HANDLE(tu_syncobj, sync, _fence);
+
+   if (!sync->timestamp_valid)
+      return VK_NOT_READY;
+
+   int ret = ioctl(device->fd, IOCTL_KGSL_DEVICE_WAITTIMESTAMP_CTXTID,
+               &(struct kgsl_device_waittimestamp_ctxtid) {
+      .context_id = device->queues[0]->msm_queue_id,
+      .timestamp = sync->timestamp,
+      .timeout = 0,
+   });
+   if (ret) {
+      assert(errno == ETIME);
+      return VK_NOT_READY;
+   }
+
    return VK_SUCCESS;
 }
 
@@ -409,3 +573,35 @@ tu_signal_fences(struct tu_device *device, struct tu_syncobj *fence1, struct tu_
    tu_finishme("tu_signal_fences");
    return 0;
 }
+
+int
+tu_syncobj_to_fd(struct tu_device *device, struct tu_syncobj *sync)
+{
+   tu_finishme("tu_syncobj_to_fd");
+   return -1;
+}
+
+#ifdef ANDROID
+VkResult
+tu_QueueSignalReleaseImageANDROID(VkQueue _queue,
+                                  uint32_t waitSemaphoreCount,
+                                  const VkSemaphore *pWaitSemaphores,
+                                  VkImage image,
+                                  int *pNativeFenceFd)
+{
+   TU_FROM_HANDLE(tu_queue, queue, _queue);
+   if (!pNativeFenceFd)
+      return VK_SUCCESS;
+
+   struct tu_syncobj s = sync_merge(pWaitSemaphores, waitSemaphoreCount, true, true);
+
+   if (!s.timestamp_valid) {
+      *pNativeFenceFd = -1;
+      return VK_SUCCESS;
+   }
+
+   *pNativeFenceFd = timestamp_to_fd(queue, s.timestamp);
+
+   return VK_SUCCESS;
+}
+#endif

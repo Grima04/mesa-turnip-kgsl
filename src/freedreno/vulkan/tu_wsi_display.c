@@ -259,19 +259,6 @@ tu_DisplayPowerControlEXT(VkDevice                    _device,
                                     display_power_info);
 }
 
-static int
-import_syncobj(int fd, uint32_t syncobj)
-{
-   struct drm_syncobj_handle handle = { .handle = syncobj };
-   int ret;
-
-   ret = ioctl(fd, DRM_IOCTL_SYNCOBJ_HANDLE_TO_FD, &handle);
-   if (ret)
-      return 0;
-
-   return ret ? -1 : handle.fd;
-}
-
 VkResult
 tu_RegisterDeviceEventEXT(VkDevice                    _device,
                           const VkDeviceEventInfoEXT  *device_event_info,
@@ -287,7 +274,7 @@ tu_RegisterDeviceEventEXT(VkDevice                    _device,
 
    TU_FROM_HANDLE(tu_syncobj, fence, *_fence);
 
-   int sync_fd = import_syncobj(device->fd, fence->permanent);
+   int sync_fd = tu_syncobj_to_fd(device, fence);
    if (sync_fd >= 0) {
       ret = wsi_register_device_event(_device,
                                       &device->physical_device->wsi_device,
@@ -323,7 +310,7 @@ tu_RegisterDisplayEventEXT(VkDevice                           _device,
 
    TU_FROM_HANDLE(tu_syncobj, fence, *_fence);
 
-   int sync_fd = import_syncobj(device->fd, fence->permanent);
+   int sync_fd = tu_syncobj_to_fd(device, fence);
    if (sync_fd >= 0) {
       ret = wsi_register_display_event(_device,
                                        &device->physical_device->wsi_device,

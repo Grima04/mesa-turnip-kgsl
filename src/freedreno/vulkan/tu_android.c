@@ -26,7 +26,6 @@
 #include <hardware/gralloc.h>
 #include <hardware/hardware.h>
 #include <hardware/hwvulkan.h>
-#include <libsync.h>
 
 #include <vulkan/vk_android_native_buffer.h>
 #include <vulkan/vk_icd.h>
@@ -321,56 +320,4 @@ tu_AcquireImageANDROID(VkDevice device,
    if (semaphore_result != VK_SUCCESS)
       return semaphore_result;
    return fence_result;
-}
-
-VkResult
-tu_QueueSignalReleaseImageANDROID(VkQueue _queue,
-                                  uint32_t waitSemaphoreCount,
-                                  const VkSemaphore *pWaitSemaphores,
-                                  VkImage image,
-                                  int *pNativeFenceFd)
-{
-   TU_FROM_HANDLE(tu_queue, queue, _queue);
-   VkResult result = VK_SUCCESS;
-
-   if (waitSemaphoreCount == 0) {
-      if (pNativeFenceFd)
-         *pNativeFenceFd = -1;
-      return VK_SUCCESS;
-   }
-
-   int fd = -1;
-
-   for (uint32_t i = 0; i < waitSemaphoreCount; ++i) {
-      int tmp_fd;
-      result = tu_GetSemaphoreFdKHR(
-         tu_device_to_handle(queue->device),
-         &(VkSemaphoreGetFdInfoKHR) {
-            .sType = VK_STRUCTURE_TYPE_SEMAPHORE_GET_FD_INFO_KHR,
-            .handleType = VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_SYNC_FD_BIT,
-            .semaphore = pWaitSemaphores[i],
-         },
-         &tmp_fd);
-      if (result != VK_SUCCESS) {
-         if (fd >= 0)
-            close(fd);
-         return result;
-      }
-
-      if (fd < 0)
-         fd = tmp_fd;
-      else if (tmp_fd >= 0) {
-         sync_accumulate("tu", &fd, tmp_fd);
-         close(tmp_fd);
-      }
-   }
-
-   if (pNativeFenceFd) {
-      *pNativeFenceFd = fd;
-   } else if (fd >= 0) {
-      close(fd);
-      /* We still need to do the exports, to reset the semaphores, but
-       * otherwise we don't wait on them. */
-   }
-   return VK_SUCCESS;
 }

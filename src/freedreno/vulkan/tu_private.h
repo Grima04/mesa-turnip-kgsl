@@ -289,10 +289,7 @@ struct tu_pipeline_key
 
 #define TU_MAX_QUEUE_FAMILIES 1
 
-struct tu_syncobj {
-   struct vk_object_base base;
-   uint32_t permanent, temporary;
-};
+struct tu_syncobj;
 
 struct tu_queue
 {
@@ -1545,6 +1542,9 @@ tu_drm_submitqueue_close(const struct tu_device *dev, uint32_t queue_id);
 
 int
 tu_signal_fences(struct tu_device *device, struct tu_syncobj *fence1, struct tu_syncobj *fence2);
+
+int
+tu_syncobj_to_fd(struct tu_device *device, struct tu_syncobj *sync);
 
 #define TU_DEFINE_HANDLE_CASTS(__tu_type, __VkType)                          \
                                                                              \
