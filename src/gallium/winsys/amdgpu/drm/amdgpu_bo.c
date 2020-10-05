@@ -443,8 +443,8 @@ static void amdgpu_add_buffer_to_global_list(struct amdgpu_winsys_bo *bo)
    }
 }
 
-static uint64_t amdgpu_get_optimal_vm_alignment(struct amdgpu_winsys *ws,
-                                                uint64_t size, unsigned alignment)
+static unsigned amdgpu_get_optimal_alignment(struct amdgpu_winsys *ws,
+                                             uint64_t size, unsigned alignment)
 {
    /* Increase the alignment for faster address translation and better memory
     * access pattern.
@@ -477,6 +477,8 @@ static struct amdgpu_winsys_bo *amdgpu_create_bo(struct amdgpu_winsys *ws,
    assert(util_bitcount(initial_domain & (RADEON_DOMAIN_VRAM_GTT |
                                           RADEON_DOMAIN_GDS |
                                           RADEON_DOMAIN_OA)) == 1);
+
+   alignment = amdgpu_get_optimal_alignment(ws, size, alignment);
 
    bo = CALLOC_STRUCT(amdgpu_winsys_bo);
    if (!bo) {
@@ -544,8 +546,7 @@ static struct amdgpu_winsys_bo *amdgpu_create_bo(struct amdgpu_winsys *ws,
       unsigned va_gap_size = ws->check_vm ? MAX2(4 * alignment, 64 * 1024) : 0;
 
       r = amdgpu_va_range_alloc(ws->dev, amdgpu_gpu_va_range_general,
-                                size + va_gap_size,
-                                amdgpu_get_optimal_vm_alignment(ws, size, alignment),
+                                size + va_gap_size, alignment,
                                 0, &va, &va_handle,
                                 (flags & RADEON_FLAG_32BIT ? AMDGPU_VA_RANGE_32_BIT : 0) |
                                 AMDGPU_VA_RANGE_HIGH);
@@ -1447,8 +1448,8 @@ static struct pb_buffer *amdgpu_bo_from_handle(struct radeon_winsys *rws,
 
    r = amdgpu_va_range_alloc(ws->dev, amdgpu_gpu_va_range_general,
                              result.alloc_size,
-                             amdgpu_get_optimal_vm_alignment(ws, result.alloc_size,
-                                                             vm_alignment),
+                             amdgpu_get_optimal_alignment(ws, result.alloc_size,
+                                                          vm_alignment),
                              0, &va, &va_handle, AMDGPU_VA_RANGE_HIGH);
    if (r)
       goto error;
@@ -1607,8 +1608,8 @@ static struct pb_buffer *amdgpu_bo_from_ptr(struct radeon_winsys *rws,
 
     if (amdgpu_va_range_alloc(ws->dev, amdgpu_gpu_va_range_general,
                               aligned_size,
-                              amdgpu_get_optimal_vm_alignment(ws, aligned_size,
-                                                              ws->info.gart_page_size),
+                              amdgpu_get_optimal_alignment(ws, aligned_size,
+                                                           ws->info.gart_page_size),
                               0, &va, &va_handle, AMDGPU_VA_RANGE_HIGH))
         goto error_va_alloc;
 
