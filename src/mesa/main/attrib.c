@@ -683,23 +683,24 @@ _mesa_PopAttrib(void)
                        attr->Color.ClearColor.f[2],
                        attr->Color.ClearColor.f[3]);
       TEST_AND_CALL1(Color.IndexMask, IndexMask);
-      if (!ctx->Extensions.EXT_draw_buffers2) {
-         _mesa_ColorMask(GET_COLORMASK_BIT(attr->Color.ColorMask, 0, 0),
-                         GET_COLORMASK_BIT(attr->Color.ColorMask, 0, 1),
-                         GET_COLORMASK_BIT(attr->Color.ColorMask, 0, 2),
-                         GET_COLORMASK_BIT(attr->Color.ColorMask, 0, 3));
-      }
-      else {
-         GLuint i;
-         for (i = 0; i < ctx->Const.MaxDrawBuffers; i++) {
-            _mesa_ColorMaski(i,
-                             GET_COLORMASK_BIT(attr->Color.ColorMask, i, 0),
-                             GET_COLORMASK_BIT(attr->Color.ColorMask, i, 1),
-                             GET_COLORMASK_BIT(attr->Color.ColorMask, i, 2),
-                             GET_COLORMASK_BIT(attr->Color.ColorMask, i, 3));
+      if (ctx->Color.ColorMask != attr->Color.ColorMask) {
+         if (!ctx->Extensions.EXT_draw_buffers2) {
+            _mesa_ColorMask(GET_COLORMASK_BIT(attr->Color.ColorMask, 0, 0),
+                            GET_COLORMASK_BIT(attr->Color.ColorMask, 0, 1),
+                            GET_COLORMASK_BIT(attr->Color.ColorMask, 0, 2),
+                            GET_COLORMASK_BIT(attr->Color.ColorMask, 0, 3));
+         } else {
+            for (unsigned i = 0; i < ctx->Const.MaxDrawBuffers; i++) {
+               _mesa_ColorMaski(i,
+                                GET_COLORMASK_BIT(attr->Color.ColorMask, i, 0),
+                                GET_COLORMASK_BIT(attr->Color.ColorMask, i, 1),
+                                GET_COLORMASK_BIT(attr->Color.ColorMask, i, 2),
+                                GET_COLORMASK_BIT(attr->Color.ColorMask, i, 3));
+            }
          }
       }
-      {
+      if (memcmp(ctx->Color.DrawBuffer, attr->Color.DrawBuffer,
+                 sizeof(attr->Color.DrawBuffer))) {
          /* Need to determine if more than one color output is
           * specified.  If so, call glDrawBuffersARB, else call
           * glDrawBuffer().  This is a subtle, but essential point
@@ -978,10 +979,9 @@ _mesa_PopAttrib(void)
       }
       if (ctx->Extensions.NV_point_sprite
           || ctx->Extensions.ARB_point_sprite) {
-         GLuint u;
-         for (u = 0; u < ctx->Const.MaxTextureUnits; u++) {
-            _mesa_TexEnvi(GL_POINT_SPRITE_NV, GL_COORD_REPLACE_NV,
-                          !!(attr->Point.CoordReplace & (1u << u)));
+         if (ctx->Point.CoordReplace != attr->Point.CoordReplace) {
+            ctx->NewState |= _NEW_POINT;
+            ctx->Point.CoordReplace = attr->Point.CoordReplace;
          }
          TEST_AND_UPDATE(ctx->Point.PointSprite, attr->Point.PointSprite,
                          GL_POINT_SPRITE_NV);
