@@ -1186,7 +1186,12 @@ _mesa_uniform(GLint location, GLsizei count, const GLvoid *values,
       if (location == -1)
          return;
 
+      if (location >= (int)shProg->NumUniformRemapTable)
+         return;
+
       uni = shProg->UniformRemapTable[location];
+      if (!uni)
+         return;
 
       /* The array index specified by the uniform location is just the
        * uniform location minus the base location of of the uniform.
