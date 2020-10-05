@@ -78,8 +78,8 @@ build_resolve_compute_shader(struct radv_device *dev, bool is_integer, bool is_s
 						       "meta_resolve_cs-%d-%s",
 						       samples,
 						       is_integer ? "int" : (is_srgb ? "srgb" : "float"));
-	b.shader->info.cs.local_size[0] = 16;
-	b.shader->info.cs.local_size[1] = 16;
+	b.shader->info.cs.local_size[0] = 8;
+	b.shader->info.cs.local_size[1] = 8;
 	b.shader->info.cs.local_size[2] = 1;
 
 	nir_variable *input_img = nir_variable_create(b.shader, nir_var_uniform,
@@ -158,8 +158,8 @@ build_depth_stencil_resolve_compute_shader(struct radv_device *dev, int samples,
 						       "meta_resolve_cs_%s-%s-%d",
 						       index == DEPTH_RESOLVE ? "depth" : "stencil",
 						       get_resolve_mode_str(resolve_mode), samples);
-	b.shader->info.cs.local_size[0] = 16;
-	b.shader->info.cs.local_size[1] = 16;
+	b.shader->info.cs.local_size[0] = 8;
+	b.shader->info.cs.local_size[1] = 8;
 	b.shader->info.cs.local_size[2] = 1;
 
 	nir_variable *input_img = nir_variable_create(b.shader, nir_var_uniform,
