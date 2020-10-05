@@ -237,6 +237,18 @@ panfrost-t860-traces:arm64:
   variables:
     ENV_VARS: "PAN_MESA_DEBUG=deqp MESA_GLES_VERSION_OVERRIDE=3.1 MESA_GL_VERSION_OVERRIDE=3.3 MESA_GLSL_VERSION_OVERRIDE=330"
 
+panfrost-g52-gles2:arm64:
+  extends:
+    - .lava-test:arm64
+    - .panfrost-rules
+  variables:
+    DEVICE_TYPE: meson-g12b-a311d-khadas-vim3
+    DTB: ${DEVICE_TYPE}
+    GPU_VERSION: panfrost-g52
+    ENV_VARS: "PAN_MESA_DEBUG=bifrost DEQP_PARALLEL=6 DEQP_EXPECTED_RENDERER=G52"
+  tags:
+    - mesa-ci-aarch64-lava-collabora
+
 .panfrost-t820-gles2:arm64:
   extends:
     - .lava-test:arm64
