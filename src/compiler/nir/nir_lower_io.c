@@ -1468,7 +1468,8 @@ nir_lower_explicit_io_instr(nir_builder *b,
       align_offset = 0;
    }
 
-   if (intrin->intrinsic == nir_intrinsic_load_deref) {
+   switch (intrin->intrinsic) {
+   case nir_intrinsic_load_deref: {
       nir_ssa_def *value;
       if (vec_stride > scalar_size) {
          nir_ssa_def *comps[NIR_MAX_VEC_COMPONENTS] = { NULL, };
@@ -1489,7 +1490,10 @@ nir_lower_explicit_io_instr(nir_builder *b,
                                         intrin->num_components);
       }
       nir_ssa_def_rewrite_uses(&intrin->dest.ssa, nir_src_for_ssa(value));
-   } else if (intrin->intrinsic == nir_intrinsic_store_deref) {
+      break;
+   }
+
+   case nir_intrinsic_store_deref: {
       assert(intrin->src[1].is_ssa);
       nir_ssa_def *value = intrin->src[1].ssa;
       nir_component_mask_t write_mask = nir_intrinsic_write_mask(intrin);
@@ -1511,10 +1515,15 @@ nir_lower_explicit_io_instr(nir_builder *b,
                                  align_mul, align_offset,
                                  value, write_mask);
       }
-   } else {
+      break;
+   }
+
+   default: {
       nir_ssa_def *value =
          build_explicit_io_atomic(b, intrin, addr, addr_format);
       nir_ssa_def_rewrite_uses(&intrin->dest.ssa, nir_src_for_ssa(value));
+      break;
+   }
    }
 
    nir_instr_remove(&intrin->instr);
