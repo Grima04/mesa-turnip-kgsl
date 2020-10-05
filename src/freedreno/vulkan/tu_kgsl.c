@@ -285,7 +285,7 @@ sync_merge(const VkSemaphore *syncobjs, uint32_t count, bool wait_all, bool rese
 
       ret.timestamp_valid = true;
       if (reset)
-         sync->timestamp_value = false;
+         sync->timestamp_valid = false;
 
    }
    return ret;
