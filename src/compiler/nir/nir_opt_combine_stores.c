@@ -356,6 +356,21 @@ combine_stores_block(struct combine_stores_state *state, nir_block *block)
          break;
       }
 
+      case nir_intrinsic_load_deref_block_intel:
+      case nir_intrinsic_store_deref_block_intel: {
+         /* Combine all the stores that may alias with the whole variable (or
+          * cast).
+          */
+         nir_deref_instr *operand = nir_src_as_deref(intrin->src[0]);
+         while (nir_deref_instr_parent(operand))
+            operand = nir_deref_instr_parent(operand);
+         assert(operand->deref_type == nir_deref_type_var ||
+                operand->deref_type == nir_deref_type_cast);
+
+         combine_stores_with_deref(state, operand);
+         break;
+      }
+
       case nir_intrinsic_copy_deref:
       case nir_intrinsic_memcpy_deref: {
          nir_deref_instr *dst = nir_src_as_deref(intrin->src[0]);

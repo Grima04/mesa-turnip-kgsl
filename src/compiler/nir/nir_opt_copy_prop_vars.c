@@ -1076,6 +1076,24 @@ copy_prop_vars_block(struct copy_prop_var_state *state,
          kill_aliases(copies, dst, full_mask);
          break;
 
+      case nir_intrinsic_store_deref_block_intel: {
+         if (debug) dump_instr(instr);
+
+         /* Invalidate the whole variable (or cast) and anything that alias
+          * with it.
+          */
+         nir_deref_instr *dst = nir_src_as_deref(intrin->src[0]);
+         while (nir_deref_instr_parent(dst))
+            dst = nir_deref_instr_parent(dst);
+         assert(dst->deref_type == nir_deref_type_var ||
+                dst->deref_type == nir_deref_type_cast);
+
+         unsigned num_components = glsl_get_vector_elements(dst->type);
+         unsigned full_mask = (1 << num_components) - 1;
+         kill_aliases(copies, dst, full_mask);
+         break;
+      }
+
       default:
          continue; /* To skip the debug below. */
       }

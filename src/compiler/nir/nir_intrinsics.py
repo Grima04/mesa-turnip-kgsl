@@ -976,3 +976,27 @@ system_value("simd_width_intel", 1)
 # Load a relocatable 32-bit value
 intrinsic("load_reloc_const_intel", dest_comp=1, bit_sizes=[32],
           indices=[PARAM_IDX], flags=[CAN_ELIMINATE, CAN_REORDER])
+
+# OpSubgroupBlockReadINTEL and OpSubgroupBlockWriteINTEL from SPV_INTEL_subgroups.
+intrinsic("load_deref_block_intel", dest_comp=0, src_comp=[-1],
+          indices=[ACCESS], flags=[CAN_ELIMINATE])
+intrinsic("store_deref_block_intel", src_comp=[-1, 0], indices=[WRMASK, ACCESS])
+
+# src[] = { address }.
+load("global_block_intel", [1], [ACCESS, ALIGN_MUL, ALIGN_OFFSET], [CAN_ELIMINATE])
+
+# src[] = { buffer_index, offset }.
+load("ssbo_block_intel", [-1, 1], [ACCESS, ALIGN_MUL, ALIGN_OFFSET], [CAN_ELIMINATE])
+
+# src[] = { offset }.
+load("shared_block_intel", [1], [BASE, ALIGN_MUL, ALIGN_OFFSET], [CAN_ELIMINATE])
+
+# src[] = { value, address }.
+store("global_block_intel", [1], [WRMASK, ACCESS, ALIGN_MUL, ALIGN_OFFSET])
+
+# src[] = { value, block_index, offset }
+store("ssbo_block_intel", [-1, 1], [WRMASK, ACCESS, ALIGN_MUL, ALIGN_OFFSET])
+
+# src[] = { value, offset }.
+store("shared_block_intel", [1], [BASE, WRMASK, ALIGN_MUL, ALIGN_OFFSET])
+
