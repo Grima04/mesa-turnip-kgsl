@@ -157,6 +157,7 @@ driParseOptionInfo(driOptionCache *info,
       assert(!optinfo->name); /* No duplicate options in your list. */
 
       optinfo->type = opt->info.type;
+      optinfo->range = opt->info.range;
       XSTRDUP(optinfo->name, name);
 
       switch (opt->info.type) {
@@ -181,6 +182,7 @@ driParseOptionInfo(driOptionCache *info,
          unreachable("handled above");
       }
 
+      /* Built-in default values should always be valid. */
       assert(checkValue(optval, optinfo));
    }
 }
