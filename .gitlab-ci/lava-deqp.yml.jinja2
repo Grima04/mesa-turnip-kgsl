@@ -80,6 +80,12 @@ actions:
           # amdgpu failed to find its firmware during boot, rebind
           - echo 0000:00:01.0 > /sys/bus/pci/drivers/amdgpu/bind || true
 
+          - DEVFREQ_GOVERNOR=`find /sys/devices -name governor | grep gpu || true`
+          - echo performance > $DEVFREQ_GOVERNOR || true
+
+          - GPU_AUTOSUSPEND=`find /sys/devices -name autosuspend_delay_ms | grep gpu | head -1`
+          - echo -1 > $GPU_AUTOSUSPEND || true
+
 {% if env_vars %}
           - export {{ env_vars }}
 {% endif %}
