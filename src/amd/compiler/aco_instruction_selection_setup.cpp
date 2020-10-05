@@ -1261,8 +1261,18 @@ setup_isel_context(Program* program,
       setup_tcs_info(&ctx, shaders[1], shaders[0]);
       program->workgroup_size = ctx.tcs_num_patches * MAX2(shaders[1]->info.tess.tcs_vertices_out, ctx.args->options->key.tcs.input_vertices);
    } else if (program->stage & hw_ngg_gs) {
-      /* TODO: Calculate workgroup size of NGG shaders. */
-      program->workgroup_size = UINT_MAX;
+      gfx10_ngg_info &ngg_info = args->shader_info->ngg_info;
+
+      /* Max ES (SW VS) threads */
+      uint32_t max_esverts = ngg_info.hw_max_esverts;
+      /* Max GS input primitives = max GS threads */
+      uint32_t max_gs_input_prims = ngg_info.max_gsprims;
+      /* Maximum output vertices -- each thread can export only 1 vertex */
+      uint32_t max_out_vtx = ngg_info.max_out_verts;
+      /* Maximum output primitives -- each thread can export only 1 or 0 primitive */
+      uint32_t max_out_prm = ngg_info.max_gsprims * ngg_info.prim_amp_factor;
+
+      program->workgroup_size = MAX4(max_esverts, max_gs_input_prims, max_out_vtx, max_out_prm);
    } else {
       unreachable("Unsupported shader stage.");
    }
