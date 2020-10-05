@@ -998,9 +998,9 @@ build_bitmap_atlas(struct gl_context *ctx, struct gl_bitmap_atlas *atlas,
       goto out_of_memory;
    }
 
-   atlas->texObj->Sampler.MinFilter = GL_NEAREST;
-   atlas->texObj->Sampler.MagFilter = GL_NEAREST;
-   atlas->texObj->MaxLevel = 0;
+   atlas->texObj->Sampler.Attrib.MinFilter = GL_NEAREST;
+   atlas->texObj->Sampler.Attrib.MagFilter = GL_NEAREST;
+   atlas->texObj->Attrib.MaxLevel = 0;
    atlas->texObj->Immutable = GL_TRUE;
 
    atlas->texImage = _mesa_get_tex_image(ctx, atlas->texObj,

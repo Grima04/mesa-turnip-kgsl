@@ -1902,7 +1902,7 @@ dri2_interop_export_object(__DRIcontext *_ctx,
           *    section 3.8.10 (Texture Completeness) of the OpenGL 2.1
           *    specification and section 3.7.10 of the OpenGL ES 2.0."
           */
-         if (in->miplevel < obj->BaseLevel || in->miplevel > obj->_MaxLevel) {
+         if (in->miplevel < obj->Attrib.BaseLevel || in->miplevel > obj->_MaxLevel) {
             simple_mtx_unlock(&ctx->Shared->Mutex);
             return MESA_GLINTEROP_INVALID_MIP_LEVEL;
          }

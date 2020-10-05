@@ -933,6 +933,47 @@ typedef enum
    MAX_FACES = 6
 } gl_face_index;
 
+/**
+ * Sampler state saved and restore by glPush/PopAttrib.
+ *
+ * Don't put fields here that glPushAttrib shouldn't save.
+ * E.g. no GLES fields because GLES doesn't have glPushAttrib.
+ */
+struct gl_sampler_attrib
+{
+   GLenum16 WrapS;		/**< S-axis texture image wrap mode */
+   GLenum16 WrapT;		/**< T-axis texture image wrap mode */
+   GLenum16 WrapR;		/**< R-axis texture image wrap mode */
+   GLenum16 MinFilter;		/**< minification filter */
+   GLenum16 MagFilter;		/**< magnification filter */
+   GLenum16 sRGBDecode;         /**< GL_DECODE_EXT or GL_SKIP_DECODE_EXT */
+   union gl_color_union BorderColor;  /**< Interpreted according to texture format */
+   GLfloat MinLod;		/**< min lambda, OpenGL 1.2 */
+   GLfloat MaxLod;		/**< max lambda, OpenGL 1.2 */
+   GLfloat LodBias;		/**< OpenGL 1.4 */
+   GLfloat MaxAnisotropy;	/**< GL_EXT_texture_filter_anisotropic */
+   GLenum16 CompareMode;	/**< GL_ARB_shadow */
+   GLenum16 CompareFunc;	/**< GL_ARB_shadow */
+   GLboolean CubeMapSeamless;   /**< GL_AMD_seamless_cubemap_per_texture */
+};
+
+/**
+ * Texture state saved and restored by glPush/PopAttrib.
+ *
+ * Don't put fields here that glPushAttrib shouldn't save.
+ * E.g. no GLES fields because GLES doesn't have glPushAttrib.
+ */
+struct gl_texture_object_attrib
+{
+   GLfloat Priority;           /**< in [0,1] */
+   GLint BaseLevel;            /**< min mipmap level, OpenGL 1.2 */
+   GLint MaxLevel;             /**< max mipmap level (max=1000), OpenGL 1.2 */
+   GLenum Swizzle[4];          /**< GL_EXT_texture_swizzle */
+   GLushort _Swizzle;          /**< same as Swizzle, but SWIZZLE_* format */
+   GLenum16 DepthMode;         /**< GL_ARB_depth_texture */
+   bool StencilSampling;       /**< Should we sample stencil instead of depth? */
+   GLboolean GenerateMipmap;   /**< GL_SGIS_generate_mipmap */
+};
 
 /**
  * Sampler object state.  These objects are new with GL_ARB_sampler_objects
@@ -945,20 +986,7 @@ struct gl_sampler_object
    GLchar *Label;               /**< GL_KHR_debug */
    GLint RefCount;
 
-   GLenum16 WrapS;		/**< S-axis texture image wrap mode */
-   GLenum16 WrapT;		/**< T-axis texture image wrap mode */
-   GLenum16 WrapR;		/**< R-axis texture image wrap mode */
-   GLenum16 MinFilter;		/**< minification filter */
-   GLenum16 MagFilter;		/**< magnification filter */
-   GLenum16 sRGBDecode;         /**< GL_DECODE_EXT or GL_SKIP_DECODE_EXT */
-   union gl_color_union BorderColor;  /**< Interpreted according to texture format */
-   GLfloat MinLod;		/**< min lambda, OpenGL 1.2 */
-   GLfloat MaxLod;		/**< max lambda, OpenGL 1.2 */
-   GLfloat LodBias;		/**< OpenGL 1.4 */
-   GLfloat MaxAnisotropy;	/**< GL_EXT_texture_filter_anisotropic */
-   GLenum16 CompareMode;		/**< GL_ARB_shadow */
-   GLenum16 CompareFunc;		/**< GL_ARB_shadow */
-   GLboolean CubeMapSeamless;   /**< GL_AMD_seamless_cubemap_per_texture */
+   struct gl_sampler_attrib Attrib;  /**< State saved by glPushAttrib */
 
    /** GL_ARB_bindless_texture */
    bool HandleAllocated;
@@ -976,23 +1004,17 @@ struct gl_texture_object
    GLint RefCount;             /**< reference count */
    GLuint Name;                /**< the user-visible texture object ID */
    GLenum16 Target;            /**< GL_TEXTURE_1D, GL_TEXTURE_2D, etc. */
-   GLenum16 DepthMode;         /**< GL_ARB_depth_texture */
    GLchar *Label;              /**< GL_KHR_debug */
 
    struct gl_sampler_object Sampler;
+   struct gl_texture_object_attrib Attrib;  /**< State saved by glPushAttrib */
 
    gl_texture_index TargetIndex; /**< The gl_texture_unit::CurrentTex index.
                                       Only valid when Target is valid. */
-   GLfloat Priority;           /**< in [0,1] */
-   GLint MaxLevel;           /**< max mipmap level (max=1000), OpenGL 1.2 */
-   GLint BaseLevel;           /**< min mipmap level, OpenGL 1.2 */
    GLbyte _MaxLevel;           /**< actual max mipmap level (q in the spec) */
    GLfloat _MaxLambda;         /**< = _MaxLevel - BaseLevel (q - p in spec) */
    GLint CropRect[4];          /**< GL_OES_draw_texture */
-   GLenum Swizzle[4];          /**< GL_EXT_texture_swizzle */
-   GLushort _Swizzle;          /**< same as Swizzle, but SWIZZLE_* format */
    GLbyte ImmutableLevels;     /**< ES 3.0 / ARB_texture_view */
-   GLboolean GenerateMipmap;   /**< GL_SGIS_generate_mipmap */
    GLboolean _BaseComplete;    /**< Is the base texture level valid? */
    GLboolean _MipmapComplete;  /**< Is the whole mipmap valid? */
    GLboolean _IsIntegerFormat; /**< Does the texture store integer values? */
@@ -1002,7 +1024,6 @@ struct gl_texture_object
    GLboolean Immutable;        /**< GL_ARB_texture_storage */
    GLboolean _IsFloat;         /**< GL_OES_float_texture */
    GLboolean _IsHalfFloat;     /**< GL_OES_half_float_texture */
-   bool StencilSampling;       /**< Should we sample stencil instead of depth? */
    bool HandleAllocated;       /**< GL_ARB_bindless_texture */
 
    /** GL_OES_EGL_image_external */

@@ -543,7 +543,7 @@ brw_predraw_resolve_inputs(struct brw_context *brw, bool rendering,
 
       struct gl_sampler_object *sampler = _mesa_get_samplerobj(ctx, i);
       enum isl_format view_format =
-         translate_tex_format(brw, tex_obj->_Format, sampler->sRGBDecode);
+         translate_tex_format(brw, tex_obj->_Format, sampler->Attrib.sRGBDecode);
 
       unsigned min_level, min_layer, num_levels, num_layers;
       if (tex_obj->base.Immutable) {
@@ -553,8 +553,8 @@ brw_predraw_resolve_inputs(struct brw_context *brw, bool rendering,
          num_layers = tex_obj->base.Target != GL_TEXTURE_3D ?
                       tex_obj->base.NumLayers : INTEL_REMAINING_LAYERS;
       } else {
-         min_level  = tex_obj->base.BaseLevel;
-         num_levels = tex_obj->_MaxLevel - tex_obj->base.BaseLevel + 1;
+         min_level  = tex_obj->base.Attrib.BaseLevel;
+         num_levels = tex_obj->_MaxLevel - tex_obj->base.Attrib.BaseLevel + 1;
          min_layer  = 0;
          num_layers = INTEL_REMAINING_LAYERS;
       }
@@ -586,7 +586,7 @@ brw_predraw_resolve_inputs(struct brw_context *brw, bool rendering,
 
       brw_cache_flush_for_read(brw, tex_obj->mt->bo);
 
-      if (tex_obj->base.StencilSampling ||
+      if (tex_obj->base.Attrib.StencilSampling ||
           tex_obj->mt->format == MESA_FORMAT_S_UINT8) {
          intel_update_r8stencil(brw, tex_obj->mt);
       }

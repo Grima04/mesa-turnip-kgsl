@@ -546,7 +546,7 @@ allocate_full_mipmap(const struct st_texture_object *stObj,
       return FALSE;
    }
 
-   if (stImage->base.Level > 0 || stObj->base.GenerateMipmap)
+   if (stImage->base.Level > 0 || stObj->base.Attrib.GenerateMipmap)
       return TRUE;
 
    /* If the application has explicitly called glTextureParameter to set
@@ -556,8 +556,8 @@ allocate_full_mipmap(const struct st_texture_object *stObj,
     * Core Mesa will initialize MaxLevel to value much larger than
     * MAX_TEXTURE_LEVELS, so we check that to see if it's been set at all.
     */
-   if (stObj->base.MaxLevel < MAX_TEXTURE_LEVELS &&
-       stObj->base.MaxLevel - stObj->base.BaseLevel > 0)
+   if (stObj->base.Attrib.MaxLevel < MAX_TEXTURE_LEVELS &&
+       stObj->base.Attrib.MaxLevel - stObj->base.Attrib.BaseLevel > 0)
       return TRUE;
 
    if (stImage->base._BaseFormat == GL_DEPTH_COMPONENT ||
@@ -565,11 +565,11 @@ allocate_full_mipmap(const struct st_texture_object *stObj,
       /* depth/stencil textures are seldom mipmapped */
       return FALSE;
 
-   if (stObj->base.BaseLevel == 0 && stObj->base.MaxLevel == 0)
+   if (stObj->base.Attrib.BaseLevel == 0 && stObj->base.Attrib.MaxLevel == 0)
       return FALSE;
 
-   if (stObj->base.Sampler.MinFilter == GL_NEAREST ||
-       stObj->base.Sampler.MinFilter == GL_LINEAR)
+   if (stObj->base.Sampler.Attrib.MinFilter == GL_NEAREST ||
+       stObj->base.Sampler.Attrib.MinFilter == GL_LINEAR)
       /* not a mipmap minification filter */
       return FALSE;
 
@@ -582,7 +582,7 @@ allocate_full_mipmap(const struct st_texture_object *stObj,
     * allocate a mipmapped texture by default. This may cause texture
     * reallocation later, but GL_NEAREST_MIPMAP_LINEAR is pretty rare.
     */
-   if (stObj->base.Sampler.MinFilter == GL_NEAREST_MIPMAP_LINEAR)
+   if (stObj->base.Sampler.Attrib.MinFilter == GL_NEAREST_MIPMAP_LINEAR)
       return FALSE;
 
    if (stObj->base.Target == GL_TEXTURE_3D)
@@ -2676,14 +2676,14 @@ st_finalize_texture(struct gl_context *ctx,
    if (tObj->_MipmapComplete)
       stObj->lastLevel = stObj->base._MaxLevel;
    else if (tObj->_BaseComplete)
-      stObj->lastLevel = stObj->base.BaseLevel;
+      stObj->lastLevel = stObj->base.Attrib.BaseLevel;
 
    /* Skip the loop over images in the common case of no images having
     * changed.  But if the GL_BASE_LEVEL or GL_MAX_LEVEL change to something we
     * haven't looked at, then we do need to look at those new images.
     */
    if (!stObj->needs_validation &&
-       stObj->base.BaseLevel >= stObj->validated_first_level &&
+       stObj->base.Attrib.BaseLevel >= stObj->validated_first_level &&
        stObj->lastLevel <= stObj->validated_last_level) {
       return GL_TRUE;
    }
@@ -2694,7 +2694,7 @@ st_finalize_texture(struct gl_context *ctx,
    }
 
    firstImage = st_texture_image_const(stObj->base.Image[cubeMapFace]
-                                       [stObj->base.BaseLevel]);
+                                       [stObj->base.Attrib.BaseLevel]);
    assert(firstImage);
 
    /* If both firstImage and stObj point to a texture which can contain
@@ -2817,7 +2817,7 @@ st_finalize_texture(struct gl_context *ctx,
     */
    for (face = 0; face < nr_faces; face++) {
       GLuint level;
-      for (level = stObj->base.BaseLevel; level <= stObj->lastLevel; level++) {
+      for (level = stObj->base.Attrib.BaseLevel; level <= stObj->lastLevel; level++) {
          struct st_texture_image *stImage =
             st_texture_image(stObj->base.Image[face][level]);
 
@@ -2850,7 +2850,7 @@ st_finalize_texture(struct gl_context *ctx,
       }
    }
 
-   stObj->validated_first_level = stObj->base.BaseLevel;
+   stObj->validated_first_level = stObj->base.Attrib.BaseLevel;
    stObj->validated_last_level = stObj->lastLevel;
    stObj->needs_validation = false;
 
@@ -3094,8 +3094,8 @@ st_TestProxyTexImage(struct gl_context *ctx, GLenum target,
          /* For immutable textures we know the final number of mip levels */
          pt.last_level = numLevels - 1;
       }
-      else if (level == 0 && (texObj->Sampler.MinFilter == GL_LINEAR ||
-                              texObj->Sampler.MinFilter == GL_NEAREST)) {
+      else if (level == 0 && (texObj->Sampler.Attrib.MinFilter == GL_LINEAR ||
+                              texObj->Sampler.Attrib.MinFilter == GL_NEAREST)) {
          /* assume just one mipmap level */
          pt.last_level = 0;
       }

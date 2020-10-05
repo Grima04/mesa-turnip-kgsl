@@ -529,10 +529,10 @@ update_tex_combine(struct gl_context *ctx,
    }
    else {
       const struct gl_texture_object *texObj = texUnit->_Current;
-      GLenum format = texObj->Image[0][texObj->BaseLevel]->_BaseFormat;
+      GLenum format = texObj->Image[0][texObj->Attrib.BaseLevel]->_BaseFormat;
 
       if (format == GL_DEPTH_COMPONENT || format == GL_DEPTH_STENCIL_EXT) {
-         format = texObj->DepthMode;
+         format = texObj->Attrib.DepthMode;
       }
       calculate_derived_texenv(&fftexUnit->_EnvMode, fftexUnit->EnvMode, format);
       fftexUnit->_CurrentCombine = & fftexUnit->_EnvMode;
