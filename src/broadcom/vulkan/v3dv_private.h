@@ -138,7 +138,10 @@ struct v3dv_physical_device {
    char *name;
    int32_t render_fd;
    int32_t display_fd;
+
    uint8_t pipeline_cache_uuid[VK_UUID_SIZE];
+   uint8_t device_uuid[VK_UUID_SIZE];
+   uint8_t driver_uuid[VK_UUID_SIZE];
 
    struct wsi_device wsi_device;
 

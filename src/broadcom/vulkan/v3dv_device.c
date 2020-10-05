@@ -407,10 +407,12 @@ init_uuids(struct v3dv_physical_device *device)
                        "build-id too short.  It needs to be a SHA");
    }
 
+   uint32_t vendor_id = v3dv_physical_device_vendor_id(device);
+   uint32_t device_id = v3dv_physical_device_device_id(device);
+
    struct mesa_sha1 sha1_ctx;
    uint8_t sha1[20];
    STATIC_ASSERT(VK_UUID_SIZE <= sizeof(sha1));
-   uint32_t device_id = v3dv_physical_device_device_id(device);
 
    /* The pipeline cache UUID is used for determining when a pipeline cache is
     * invalid.  It needs both a driver build and the PCI ID of the device.
@@ -419,8 +421,24 @@ init_uuids(struct v3dv_physical_device *device)
    _mesa_sha1_update(&sha1_ctx, build_id_data(note), build_id_len);
    _mesa_sha1_update(&sha1_ctx, &device_id, sizeof(device_id));
    _mesa_sha1_final(&sha1_ctx, sha1);
-
    memcpy(device->pipeline_cache_uuid, sha1, VK_UUID_SIZE);
+
+   /* The driver UUID is used for determining sharability of images and memory
+    * between two Vulkan instances in separate processes.  People who want to
+    * share memory need to also check the device UUID (below) so all this
+    * needs to be is the build-id.
+    */
+   memcpy(device->driver_uuid, build_id_data(note), VK_UUID_SIZE);
+
+   /* The device UUID uniquely identifies the given device within the machine.
+    * Since we never have more than one device, this doesn't need to be a real
+    * UUID.
+    */
+   _mesa_sha1_init(&sha1_ctx);
+   _mesa_sha1_update(&sha1_ctx, &vendor_id, sizeof(vendor_id));
+   _mesa_sha1_update(&sha1_ctx, &device_id, sizeof(device_id));
+   _mesa_sha1_final(&sha1_ctx, sha1);
+   memcpy(device->device_uuid, sha1, VK_UUID_SIZE);
 
    return VK_SUCCESS;
 }
@@ -458,10 +476,6 @@ physical_device_init(struct v3dv_physical_device *device,
    device->render_fd = render_fd;       /* The v3d render node  */
    device->display_fd = display_fd;    /* The vc4 primary node */
 
-   result = init_uuids(device);
-   if (result != VK_SUCCESS)
-      goto fail;
-
 #if using_v3d_simulator
    device->sim_file = v3d_simulator_init(device->render_fd);
 #endif
@@ -480,6 +494,10 @@ physical_device_init(struct v3dv_physical_device *device,
       result = VK_ERROR_INCOMPATIBLE_DRIVER;
       goto fail;
    }
+
+   result = init_uuids(device);
+   if (result != VK_SUCCESS)
+      goto fail;
 
    device->compiler = v3d_compiler_init(&device->devinfo);
    device->next_program_id = 0;
@@ -726,7 +744,7 @@ v3dv_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
 uint32_t
 v3dv_physical_device_vendor_id(struct v3dv_physical_device *dev)
 {
-   return 0x14E4;
+   return 0x14E4; /* Broadcom */
 }
 
 
@@ -750,13 +768,6 @@ get_i915_param(int fd, uint32_t param, int *value)
 }
 #endif
 
-/* FIXME:
- * Getting deviceID and UUID will probably require to use the kernel pci
- * interface. See this:
- * https://www.kernel.org/doc/html/latest/PCI/pci.html#how-to-find-pci-devices-manually
- * And check the getparam ioctl in the i915 kernel with CHIPSET_ID for
- * example.
- */
 uint32_t
 v3dv_physical_device_device_id(struct v3dv_physical_device *dev)
 {
@@ -764,12 +775,11 @@ v3dv_physical_device_device_id(struct v3dv_physical_device *dev)
    int devid = 0;
 
    if (!get_i915_param(dev->render_fd, I915_PARAM_CHIPSET_ID, &devid))
-      fprintf(stderr, "Error getting for device_id\n");
+      fprintf(stderr, "Error getting device_id\n");
 
    return devid;
 #else
-   /* FIXME */
-   return 0;
+   return dev->devinfo.ver;
 #endif
 }
 
@@ -951,6 +961,8 @@ void
 v3dv_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
                                   VkPhysicalDeviceProperties2 *pProperties)
 {
+   V3DV_FROM_HANDLE(v3dv_physical_device, pdevice, physicalDevice);
+
    v3dv_GetPhysicalDeviceProperties(physicalDevice, &pProperties->properties);
 
    vk_foreach_struct(ext, pProperties->pNext) {
@@ -958,9 +970,8 @@ v3dv_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ID_PROPERTIES: {
          VkPhysicalDeviceIDProperties *id_props =
             (VkPhysicalDeviceIDProperties *)ext;
-         /* FIXME */
-         memset(id_props->deviceUUID, 0, VK_UUID_SIZE);
-         memset(id_props->driverUUID, 0, VK_UUID_SIZE);
+         memcpy(id_props->deviceUUID, pdevice->device_uuid, VK_UUID_SIZE);
+         memcpy(id_props->driverUUID, pdevice->driver_uuid, VK_UUID_SIZE);
          /* The LUID is for Windows. */
          id_props->deviceLUIDValid = false;
          break;
