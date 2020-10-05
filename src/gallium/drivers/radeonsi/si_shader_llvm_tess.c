@@ -463,7 +463,7 @@ static LLVMValueRef si_nir_load_input_tes(struct ac_shader_abi *abi, LLVMTypeRef
 static void si_nir_store_output_tcs(struct ac_shader_abi *abi,
                                     LLVMValueRef vertex_index, LLVMValueRef param_index,
                                     LLVMValueRef src, unsigned writemask,
-                                    unsigned component, unsigned driver_location)
+                                    unsigned component, unsigned location, unsigned driver_location)
 {
    struct si_shader_context *ctx = si_shader_context_from_abi(abi);
    struct si_shader_info *info = &ctx->shader->selector->info;

@@ -548,10 +548,10 @@ store_tcs_output(struct ac_shader_abi *abi,
 		 LLVMValueRef src,
 		 unsigned writemask,
 		 unsigned component,
+		 unsigned location,
 		 unsigned driver_location)
 {
 	struct radv_shader_context *ctx = radv_shader_context_from_abi(abi);
-	const unsigned location = driver_location;
 	const bool is_patch = vertex_index == NULL;
 	LLVMValueRef dw_addr;
 	LLVMValueRef stride = NULL;
