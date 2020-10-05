@@ -2424,6 +2424,37 @@ vtn_handle_variables(struct vtn_builder *b, SpvOp opcode,
       break;
    }
 
+   case SpvOpSubgroupBlockReadINTEL: {
+      struct vtn_type *res_type = vtn_get_type(b, w[1]);
+      nir_deref_instr *src = vtn_nir_deref(b, w[3]);
+
+      nir_intrinsic_instr *load =
+         nir_intrinsic_instr_create(b->nb.shader,
+                                    nir_intrinsic_load_deref_block_intel);
+      load->src[0] = nir_src_for_ssa(&src->dest.ssa);
+      nir_ssa_dest_init_for_type(&load->instr, &load->dest,
+                                 res_type->type, NULL);
+      load->num_components = load->dest.ssa.num_components;
+      nir_builder_instr_insert(&b->nb, &load->instr);
+
+      vtn_push_nir_ssa(b, w[2], &load->dest.ssa);
+      break;
+   }
+
+   case SpvOpSubgroupBlockWriteINTEL: {
+      nir_deref_instr *dest = vtn_nir_deref(b, w[1]);
+      nir_ssa_def *data = vtn_ssa_value(b, w[2])->def;
+
+      nir_intrinsic_instr *store =
+         nir_intrinsic_instr_create(b->nb.shader,
+                                    nir_intrinsic_store_deref_block_intel);
+      store->src[0] = nir_src_for_ssa(&dest->dest.ssa);
+      store->src[1] = nir_src_for_ssa(data);
+      store->num_components = data->num_components;
+      nir_builder_instr_insert(&b->nb, &store->instr);
+      break;
+   }
+
    default:
       vtn_fail_with_opcode("Unhandled opcode", opcode);
    }

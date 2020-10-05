@@ -4397,6 +4397,10 @@ vtn_handle_preamble_instruction(struct vtn_builder *b, SpvOp opcode,
          spv_check_supported(intel_subgroup_shuffle, cap);
          break;
 
+      case SpvCapabilitySubgroupBufferBlockIOINTEL:
+         spv_check_supported(intel_subgroup_buffer_block_io, cap);
+         break;
+
       default:
          vtn_fail("Unhandled capability: %s (%u)",
                   spirv_capability_to_string(cap), cap);
@@ -5040,6 +5044,8 @@ vtn_handle_body_instruction(struct vtn_builder *b, SpvOp opcode,
    case SpvOpConvertUToPtr:
    case SpvOpGenericCastToPtrExplicit:
    case SpvOpGenericPtrMemSemantics:
+   case SpvOpSubgroupBlockReadINTEL:
+   case SpvOpSubgroupBlockWriteINTEL:
       vtn_handle_variables(b, opcode, w, count);
       break;
 
