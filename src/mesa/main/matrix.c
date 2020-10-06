@@ -326,7 +326,6 @@ push_matrix(struct gl_context *ctx, struct gl_matrix_stack *stack,
                       &stack->Stack[stack->Depth] );
    stack->Depth++;
    stack->Top = &(stack->Stack[stack->Depth]);
-   ctx->NewState |= stack->DirtyFlag;
 }
 
 
