@@ -230,6 +230,7 @@ try_fold_intrinsic(nir_builder *b, nir_intrinsic_instr *instr,
                                 instr->dest.ssa.bit_size);
       } else {
          nir_const_value imm[NIR_MAX_VEC_COMPONENTS];
+         memset(imm, 0, sizeof(imm));
          uint8_t *data = (uint8_t*)b->shader->constant_data + base;
          for (unsigned i = 0; i < instr->num_components; i++) {
             unsigned bytes = instr->dest.ssa.bit_size / 8;
