@@ -51,6 +51,7 @@ struct zink_screen {
    struct sw_winsys *winsys;
 
    struct slab_parent_pool transfer_pool;
+   VkPipelineCache pipeline_cache;
 
    unsigned shader_id;
 

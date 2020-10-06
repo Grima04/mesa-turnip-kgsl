@@ -181,7 +181,7 @@ zink_create_gfx_pipeline(struct zink_screen *screen,
    pci.stageCount = num_stages;
 
    VkPipeline pipeline;
-   if (vkCreateGraphicsPipelines(screen->dev, VK_NULL_HANDLE, 1, &pci,
+   if (vkCreateGraphicsPipelines(screen->dev, screen->pipeline_cache, 1, &pci,
                                  NULL, &pipeline) != VK_SUCCESS) {
       debug_printf("vkCreateGraphicsPipelines failed\n");
       return VK_NULL_HANDLE;
@@ -207,7 +207,7 @@ zink_create_compute_pipeline(struct zink_screen *screen, struct zink_compute_pro
    pci.stage = stage;
 
    VkPipeline pipeline;
-   if (vkCreateComputePipelines(screen->dev, VK_NULL_HANDLE, 1, &pci,
+   if (vkCreateComputePipelines(screen->dev, screen->pipeline_cache, 1, &pci,
                                  NULL, &pipeline) != VK_SUCCESS) {
       debug_printf("vkCreateComputePipelines failed\n");
       return VK_NULL_HANDLE;
