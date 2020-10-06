@@ -256,6 +256,7 @@ lower_mem_access_bit_sizes_impl(nir_function_impl *impl,
          nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
          switch (intrin->intrinsic) {
          case nir_intrinsic_load_global:
+         case nir_intrinsic_load_global_constant:
          case nir_intrinsic_load_ssbo:
          case nir_intrinsic_load_shared:
          case nir_intrinsic_load_scratch:
