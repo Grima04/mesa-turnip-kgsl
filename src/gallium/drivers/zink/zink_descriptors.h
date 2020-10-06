@@ -58,6 +58,7 @@ struct zink_descriptor_state_key {
 };
 
 struct zink_descriptor_pool {
+   enum zink_descriptor_type type;
    struct hash_table *desc_sets;
    struct hash_table *free_desc_sets;
    struct util_dynarray alloc_desc_sets;
@@ -69,7 +70,6 @@ struct zink_descriptor_pool {
 
 struct zink_descriptor_set {
    struct zink_descriptor_pool *pool;
-   enum zink_descriptor_type type;
    struct pipe_reference reference; //incremented for batch usage
    VkDescriptorSet desc_set;
    uint32_t hash;

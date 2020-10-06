@@ -66,11 +66,12 @@ desc_state_hash(const void *key)
 }
 
 static struct zink_descriptor_pool *
-descriptor_pool_create(struct zink_screen *screen, VkDescriptorSetLayoutBinding *bindings, unsigned num_bindings, VkDescriptorPoolSize *sizes, unsigned num_type_sizes)
+descriptor_pool_create(struct zink_screen *screen, enum zink_descriptor_type type, VkDescriptorSetLayoutBinding *bindings, unsigned num_bindings, VkDescriptorPoolSize *sizes, unsigned num_type_sizes)
 {
    struct zink_descriptor_pool *pool = rzalloc(NULL, struct zink_descriptor_pool);
    if (!pool)
       return NULL;
+   pool->type = type;
    pool->num_descriptors = num_bindings;
    pool->desc_sets = _mesa_hash_table_create(NULL, desc_state_hash, desc_state_equal);
    if (!pool->desc_sets)
@@ -162,7 +163,6 @@ allocate_desc_set(struct zink_screen *screen, struct zink_program *pg, enum zink
       zds->hash = 0;
       zds->invalid = true;
       zds->recycled = false;
-      zds->type = type;
 #ifndef NDEBUG
       zds->num_resources = num_resources;
 #endif
@@ -439,9 +439,10 @@ zink_descriptor_program_init(struct zink_screen *screen,
                                    VK_SHADER_STAGE_GEOMETRY_BIT | VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT |
                                    VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT | VK_SHADER_STAGE_COMPUTE_BIT;
          VkDescriptorPoolSize null_size = {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, ZINK_DEFAULT_MAX_DESCS};
-         pg->pool[i] = descriptor_pool_create(screen, &null_binding, 1, &null_size, 1);
+         pg->pool[i] = descriptor_pool_create(screen, i, &null_binding, 1, &null_size, 1);
          if (!pg->pool[i])
             return false;
+         pg->pool[i]->num_descriptors = 0;
          continue;
       }
       found_descriptors = true;
@@ -486,7 +487,7 @@ zink_descriptor_program_init(struct zink_screen *screen,
          }
          break;
       }
-      pg->pool[i] = descriptor_pool_create(screen, bindings[i], num_bindings[i], type_sizes, num_type_sizes);
+      pg->pool[i] = descriptor_pool_create(screen, i, bindings[i], num_bindings[i], type_sizes, num_type_sizes);
       if (!pg->pool[i])
          return false;
    }

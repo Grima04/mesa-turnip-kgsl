@@ -363,7 +363,7 @@ bind_descriptors(struct zink_context *ctx, struct zink_descriptor_set *zds, unsi
    assert(zds->desc_set);
    unsigned check_flush_id = is_compute ? 0 : ZINK_COMPUTE_BATCH_ID;
    for (int i = 0; i < num_resources; ++i) {
-      assert(num_resources <= zink_program_num_bindings_typed(pg, zds->type, is_compute));
+      assert(num_resources <= zink_program_num_bindings_typed(pg, zds->pool->type, is_compute));
       assert(num_resources <= zds->num_resources);
 
       struct zink_resource *res = resources[i].res;
@@ -375,7 +375,7 @@ bind_descriptors(struct zink_context *ctx, struct zink_descriptor_set *zds, unsi
       vkUpdateDescriptorSets(screen->dev, num_wds, wds, 0, NULL);
 
    vkCmdBindDescriptorSets(batch->cmdbuf, is_compute ? VK_PIPELINE_BIND_POINT_COMPUTE : VK_PIPELINE_BIND_POINT_GRAPHICS,
-                           pg->layout, zds->type, 1, &zds->desc_set, zds->type == ZINK_DESCRIPTOR_TYPE_UBO ? dynamic_offset_idx : 0, dynamic_offsets);
+                           pg->layout, zds->pool->type, 1, &zds->desc_set, zds->pool->type == ZINK_DESCRIPTOR_TYPE_UBO ? dynamic_offset_idx : 0, dynamic_offsets);
    return need_flush;
 }
 
@@ -384,10 +384,10 @@ init_write_descriptor(struct zink_shader *shader, struct zink_descriptor_set *zd
 {
     wd->sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
     wd->pNext = NULL;
-    wd->dstBinding = shader->bindings[zds->type][idx].binding;
+    wd->dstBinding = shader->bindings[zds->pool->type][idx].binding;
     wd->dstArrayElement = 0;
-    wd->descriptorCount = shader->bindings[zds->type][idx].size;
-    wd->descriptorType = shader->bindings[zds->type][idx].type;
+    wd->descriptorCount = shader->bindings[zds->pool->type][idx].size;
+    wd->descriptorType = shader->bindings[zds->pool->type][idx].type;
     wd->dstSet = zds->desc_set;
     return num_wds + 1;
 }
@@ -398,8 +398,8 @@ update_ubo_descriptors(struct zink_context *ctx, struct zink_descriptor_set *zds
 {
    struct zink_program *pg = is_compute ? (struct zink_program *)ctx->curr_compute : (struct zink_program *)ctx->curr_program;
    struct zink_screen *screen = zink_screen(ctx->base.screen);
-   unsigned num_descriptors = pg->pool[zds->type]->num_descriptors;
-   unsigned num_bindings = zink_program_num_bindings_typed(pg, zds->type, is_compute);
+   unsigned num_descriptors = pg->pool[zds->pool->type]->num_descriptors;
+   unsigned num_bindings = zink_program_num_bindings_typed(pg, zds->pool->type, is_compute);
    VkWriteDescriptorSet wds[num_descriptors];
    struct zink_descriptor_resource resources[num_bindings];
    VkDescriptorBufferInfo buffer_infos[num_bindings];
@@ -426,10 +426,10 @@ update_ubo_descriptors(struct zink_context *ctx, struct zink_descriptor_set *zds
          continue;
       enum pipe_shader_type stage = pipe_shader_type_from_mesa(shader->nir->info.stage);
 
-      for (int j = 0; j < shader->num_bindings[zds->type]; j++) {
-         int index = shader->bindings[zds->type][j].index;
-         assert(shader->bindings[zds->type][j].type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER ||
-             shader->bindings[zds->type][j].type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC);
+      for (int j = 0; j < shader->num_bindings[zds->pool->type]; j++) {
+         int index = shader->bindings[zds->pool->type][j].index;
+         assert(shader->bindings[zds->pool->type][j].type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER ||
+             shader->bindings[zds->pool->type][j].type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC);
          assert(ctx->ubos[stage][index].buffer_size <= screen->info.props.limits.maxUniformBufferRange);
          struct zink_resource *res = zink_resource(ctx->ubos[stage][index].buffer);
          assert(!res || ctx->ubos[stage][index].buffer_size > 0);
@@ -442,10 +442,10 @@ update_ubo_descriptors(struct zink_context *ctx, struct zink_descriptor_set *zds
                                                 (screen->info.rb2_feats.nullDescriptor ?
                                                  VK_NULL_HANDLE :
                                                  zink_resource(ctx->dummy_vertex_buffer)->buffer);
-         if (shader->bindings[zds->type][j].type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC) {
+         if (shader->bindings[zds->pool->type][j].type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC) {
             buffer_infos[num_buffer_info].offset = 0;
             /* we're storing this to qsort later */
-            dynamic_buffers[dynamic_offset_idx].binding = shader->bindings[zds->type][j].binding;
+            dynamic_buffers[dynamic_offset_idx].binding = shader->bindings[zds->pool->type][j].binding;
             dynamic_buffers[dynamic_offset_idx++].offset = res ? ctx->ubos[stage][index].buffer_offset : 0;
          } else
             buffer_infos[num_buffer_info].offset = res ? ctx->ubos[stage][index].buffer_offset : 0;
@@ -480,8 +480,8 @@ update_ssbo_descriptors(struct zink_context *ctx, struct zink_descriptor_set *zd
 {
    struct zink_program *pg = is_compute ? (struct zink_program *)ctx->curr_compute : (struct zink_program *)ctx->curr_program;
    ASSERTED struct zink_screen *screen = zink_screen(ctx->base.screen);
-   unsigned num_descriptors = pg->pool[zds->type]->num_descriptors;
-   unsigned num_bindings = zink_program_num_bindings_typed(pg, zds->type, is_compute);
+   unsigned num_descriptors = pg->pool[zds->pool->type]->num_descriptors;
+   unsigned num_bindings = zink_program_num_bindings_typed(pg, zds->pool->type, is_compute);
    VkWriteDescriptorSet wds[num_descriptors];
    struct zink_descriptor_resource resources[num_bindings];
    VkDescriptorBufferInfo buffer_infos[num_bindings];
@@ -502,9 +502,9 @@ update_ssbo_descriptors(struct zink_context *ctx, struct zink_descriptor_set *zd
          continue;
       enum pipe_shader_type stage = pipe_shader_type_from_mesa(shader->nir->info.stage);
 
-      for (int j = 0; j < shader->num_bindings[zds->type]; j++) {
-         int index = shader->bindings[zds->type][j].index;
-         assert(shader->bindings[zds->type][j].type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
+      for (int j = 0; j < shader->num_bindings[zds->pool->type]; j++) {
+         int index = shader->bindings[zds->pool->type][j].index;
+         assert(shader->bindings[zds->pool->type][j].type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
          assert(num_resources < num_bindings);
          struct zink_resource *res = zink_resource(ctx->ssbos[stage][index].buffer);
          desc_set_res_add(zds, res, num_resources, cache_hit);
@@ -584,7 +584,7 @@ update_sampler_descriptors(struct zink_context *ctx, struct zink_descriptor_set 
 {
    struct zink_program *pg = is_compute ? (struct zink_program *)ctx->curr_compute : (struct zink_program *)ctx->curr_program;
    struct zink_screen *screen = zink_screen(ctx->base.screen);
-   unsigned num_descriptors = pg->pool[zds->type]->num_descriptors;
+   unsigned num_descriptors = pg->pool[zds->pool->type]->num_descriptors;
    unsigned num_bindings = zink_program_num_bindings(pg, is_compute);
    VkWriteDescriptorSet wds[num_descriptors];
    struct zink_descriptor_resource resources[num_bindings];
@@ -607,12 +607,12 @@ update_sampler_descriptors(struct zink_context *ctx, struct zink_descriptor_set 
          continue;
       enum pipe_shader_type stage = pipe_shader_type_from_mesa(shader->nir->info.stage);
 
-      for (int j = 0; j < shader->num_bindings[zds->type]; j++) {
-         int index = shader->bindings[zds->type][j].index;
-         assert(shader->bindings[zds->type][j].type == VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER ||
-                shader->bindings[zds->type][j].type == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+      for (int j = 0; j < shader->num_bindings[zds->pool->type]; j++) {
+         int index = shader->bindings[zds->pool->type][j].index;
+         assert(shader->bindings[zds->pool->type][j].type == VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER ||
+                shader->bindings[zds->pool->type][j].type == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
 
-         for (unsigned k = 0; k < shader->bindings[zds->type][j].size; k++) {
+         for (unsigned k = 0; k < shader->bindings[zds->pool->type][j].size; k++) {
             VkImageView imageview = VK_NULL_HANDLE;
             struct zink_resource *res = NULL;
             VkImageLayout layout = VK_IMAGE_LAYOUT_UNDEFINED;
@@ -634,7 +634,7 @@ update_sampler_descriptors(struct zink_context *ctx, struct zink_descriptor_set 
             if (res)
                read_descriptor_resource(&resources[num_resources], res, &num_resources);
             assert(num_image_info < num_bindings);
-            handle_image_descriptor(screen, res, zds->type, shader->bindings[zds->type][j].type,
+            handle_image_descriptor(screen, res, zds->pool->type, shader->bindings[zds->pool->type][j].type,
                                     &wds[num_wds], layout, &num_image_info, &image_infos[num_image_info],
                                     sampler, &buffer_view[0], imageview, !k);
 
@@ -657,7 +657,7 @@ update_image_descriptors(struct zink_context *ctx, struct zink_descriptor_set *z
 {
    struct zink_program *pg = is_compute ? (struct zink_program *)ctx->curr_compute : (struct zink_program *)ctx->curr_program;
    struct zink_screen *screen = zink_screen(ctx->base.screen);
-   unsigned num_descriptors = pg->pool[zds->type]->num_descriptors;
+   unsigned num_descriptors = pg->pool[zds->pool->type]->num_descriptors;
    unsigned num_bindings = zink_program_num_bindings(pg, is_compute);
    VkWriteDescriptorSet wds[num_descriptors];
    struct zink_descriptor_resource resources[num_bindings];
@@ -680,12 +680,12 @@ update_image_descriptors(struct zink_context *ctx, struct zink_descriptor_set *z
          continue;
       enum pipe_shader_type stage = pipe_shader_type_from_mesa(shader->nir->info.stage);
 
-      for (int j = 0; j < shader->num_bindings[zds->type]; j++) {
-         int index = shader->bindings[zds->type][j].index;
-         assert(shader->bindings[zds->type][j].type == VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER ||
-                shader->bindings[zds->type][j].type == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
+      for (int j = 0; j < shader->num_bindings[zds->pool->type]; j++) {
+         int index = shader->bindings[zds->pool->type][j].index;
+         assert(shader->bindings[zds->pool->type][j].type == VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER ||
+                shader->bindings[zds->pool->type][j].type == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
 
-         for (unsigned k = 0; k < shader->bindings[zds->type][j].size; k++) {
+         for (unsigned k = 0; k < shader->bindings[zds->pool->type][j].size; k++) {
             VkImageView imageview = VK_NULL_HANDLE;
             struct zink_resource *res = NULL;
             VkImageLayout layout = VK_IMAGE_LAYOUT_UNDEFINED;
@@ -715,7 +715,7 @@ update_image_descriptors(struct zink_context *ctx, struct zink_descriptor_set *z
                
             }
             assert(num_image_info < num_bindings);
-            handle_image_descriptor(screen, res, zds->type, shader->bindings[zds->type][j].type,
+            handle_image_descriptor(screen, res, zds->pool->type, shader->bindings[zds->pool->type][j].type,
                                     &wds[num_wds], layout, &num_image_info, &image_infos[num_image_info],
                                     NULL, &buffer_view[0], imageview, !k);
 
