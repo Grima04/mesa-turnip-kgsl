@@ -88,7 +88,7 @@ gather_intrinsic_store_output_info(const nir_shader *nir,
 				   const nir_intrinsic_instr *instr,
 				   struct radv_shader_info *info)
 {
-	unsigned idx = nir_intrinsic_io_semantics(instr).location;
+	unsigned idx = nir_intrinsic_base(instr);
 	unsigned num_slots = nir_intrinsic_io_semantics(instr).num_slots;
 	unsigned component = nir_intrinsic_component(instr);
 	unsigned write_mask = nir_intrinsic_write_mask(instr);

@@ -80,6 +80,8 @@ struct radv_shader_context {
 
 	uint32_t tcs_num_inputs;
 	uint32_t tcs_num_patches;
+	uint32_t tcs_tess_lvl_inner;
+	uint32_t tcs_tess_lvl_outer;
 
 	LLVMValueRef vertexptr; /* GFX10 only */
 };
@@ -512,7 +514,7 @@ load_tcs_varyings(struct ac_shader_abi *abi,
 	struct radv_shader_context *ctx = radv_shader_context_from_abi(abi);
 	LLVMValueRef dw_addr, stride;
 	LLVMValueRef value[4], result;
-	unsigned param = shader_io_get_unique_index(driver_location);
+	unsigned param = driver_location;
 
 	bool is_patch = vertex_index == NULL;
 
@@ -557,7 +559,7 @@ store_tcs_output(struct ac_shader_abi *abi,
 	LLVMValueRef stride = NULL;
 	LLVMValueRef buf_addr = NULL;
 	LLVMValueRef oc_lds = ac_get_arg(&ctx->ac, ctx->args->oc_lds);
-	unsigned param;
+	unsigned param = driver_location;
 	bool store_lds = true;
 
 	if (is_patch) {
@@ -567,8 +569,6 @@ store_tcs_output(struct ac_shader_abi *abi,
 		if (!(ctx->shader->info.outputs_read & (1ULL << location)))
 			store_lds = false;
 	}
-
-	param = shader_io_get_unique_index(location);
 
 	if (!is_patch) {
 		stride = get_tcs_out_vertex_stride(ctx);
@@ -625,7 +625,7 @@ load_tes_input(struct ac_shader_abi *abi,
 	LLVMValueRef buf_addr;
 	LLVMValueRef result;
 	LLVMValueRef oc_lds = ac_get_arg(&ctx->ac, ctx->args->oc_lds);
-	unsigned param = shader_io_get_unique_index(driver_location);
+	unsigned param = driver_location;
 
 	buf_addr = get_tcs_tes_buffer_address_params(ctx, param, vertex_index, param_index);
 
@@ -648,15 +648,14 @@ load_gs_input(struct ac_shader_abi *abi,
 {
 	struct radv_shader_context *ctx = radv_shader_context_from_abi(abi);
 	LLVMValueRef vtx_offset;
-	unsigned param, vtx_offset_param;
+	unsigned param = driver_location;
+	unsigned vtx_offset_param;
 	LLVMValueRef value[4], result;
 
 	vtx_offset_param = vertex_index;
 	assert(vtx_offset_param < 6);
 	vtx_offset = LLVMBuildMul(ctx->ac.builder, ctx->gs_vtx_offset[vtx_offset_param],
 				  LLVMConstInt(ctx->ac.i32, 4, false), "");
-
-	param = shader_io_get_unique_index(driver_location);
 
 	for (unsigned i = component; i < num_components + component; i++) {
 		if (ctx->ac.chip_class >= GFX9) {
@@ -1334,13 +1333,22 @@ scan_shader_output_decl(struct radv_shader_context *ctx,
 			struct nir_shader *shader,
 			gl_shader_stage stage)
 {
-	int idx = variable->data.location + variable->data.index;
+	int idx = variable->data.driver_location;
 	unsigned attrib_count = glsl_count_attribute_slots(variable->type, false);
 	uint64_t mask_attribs;
 
 	/* tess ctrl has it's own load/store paths for outputs */
-	if (stage == MESA_SHADER_TESS_CTRL)
+	if (stage == MESA_SHADER_TESS_CTRL) {
+		/* Remember driver location of tess factors, so we can read
+		 * them later, in write_tess_factors.
+		 */
+		if (variable->data.location == VARYING_SLOT_TESS_LEVEL_INNER) {
+			ctx->tcs_tess_lvl_inner = idx;
+		} else if (variable->data.location == VARYING_SLOT_TESS_LEVEL_OUTER) {
+			ctx->tcs_tess_lvl_outer = idx;
+		}
 		return;
+	}
 
 	if (variable->data.compact) {
 		unsigned component_count = variable->data.location_frac +
@@ -1972,7 +1980,6 @@ handle_es_outputs_post(struct radv_shader_context *ctx,
 		LLVMValueRef dw_addr = NULL;
 		LLVMValueRef *out_ptr = &ctx->abi.outputs[i * 4];
 		unsigned output_usage_mask;
-		int param_index;
 
 		if (!(ctx->output_mask & (1ull << i)))
 			continue;
@@ -1986,11 +1993,9 @@ handle_es_outputs_post(struct radv_shader_context *ctx,
 				ctx->args->shader_info->tes.output_usage_mask[i];
 		}
 
-		param_index = shader_io_get_unique_index(i);
-
 		if (lds_base) {
 			dw_addr = LLVMBuildAdd(ctx->ac.builder, lds_base,
-			                       LLVMConstInt(ctx->ac.i32, param_index * 4, false),
+			                       LLVMConstInt(ctx->ac.i32, i * 4, false),
 			                       "");
 		}
 
@@ -2015,7 +2020,7 @@ handle_es_outputs_post(struct radv_shader_context *ctx,
 				                            out_val, 1,
 				                            NULL,
 							    ac_get_arg(&ctx->ac, ctx->args->es2gs_offset),
-				                            (4 * param_index + j) * 4,
+				                            (4 * i + j) * 4,
 				                            ac_glc | ac_slc | ac_swizzled);
 			}
 		}
@@ -2037,9 +2042,8 @@ handle_ls_outputs_post(struct radv_shader_context *ctx)
 		if (!(ctx->output_mask & (1ull << i)))
 			continue;
 
-		int param = shader_io_get_unique_index(i);
 		LLVMValueRef dw_addr = LLVMBuildAdd(ctx->ac.builder, base_dw_addr,
-						    LLVMConstInt(ctx->ac.i32, param * 4, false),
+						    LLVMConstInt(ctx->ac.i32, i * 4, false),
 						    "");
 		for (unsigned j = 0; j < 4; j++) {
 			LLVMValueRef value = LLVMBuildLoad(ctx->ac.builder, out_ptr[j], "");
@@ -3318,7 +3322,6 @@ write_tess_factors(struct radv_shader_context *ctx)
 	LLVMValueRef tcs_rel_ids = ac_get_arg(&ctx->ac, ctx->args->ac.tcs_rel_ids);
 	LLVMValueRef invocation_id = ac_unpack_param(&ctx->ac, tcs_rel_ids, 8, 5);
 	LLVMValueRef rel_patch_id = ac_unpack_param(&ctx->ac, tcs_rel_ids, 0, 8);
-	unsigned tess_inner_index = 0, tess_outer_index;
 	LLVMValueRef lds_base, lds_inner = NULL, lds_outer, byteoffset, buffer;
 	LLVMValueRef out[6], vec0, vec1, tf_base, inner[4], outer[4];
 	int i;
@@ -3351,14 +3354,12 @@ write_tess_factors(struct radv_shader_context *ctx)
 	lds_base = get_tcs_out_current_patch_data_offset(ctx);
 
 	if (inner_comps) {
-		tess_inner_index = shader_io_get_unique_index(VARYING_SLOT_TESS_LEVEL_INNER);
 		lds_inner = LLVMBuildAdd(ctx->ac.builder, lds_base,
-					 LLVMConstInt(ctx->ac.i32, tess_inner_index * 4, false), "");
+					 LLVMConstInt(ctx->ac.i32, ctx->tcs_tess_lvl_inner * 4, false), "");
 	}
 
-	tess_outer_index = shader_io_get_unique_index(VARYING_SLOT_TESS_LEVEL_OUTER);
 	lds_outer = LLVMBuildAdd(ctx->ac.builder, lds_base,
-				 LLVMConstInt(ctx->ac.i32, tess_outer_index * 4, false), "");
+				 LLVMConstInt(ctx->ac.i32, ctx->tcs_tess_lvl_outer * 4, false), "");
 
 	for (i = 0; i < 4; i++) {
 		inner[i] = LLVMGetUndef(ctx->ac.i32);
@@ -3428,11 +3429,9 @@ write_tess_factors(struct radv_shader_context *ctx)
 	if (ctx->args->options->key.tcs.tes_reads_tess_factors) {
 		LLVMValueRef inner_vec, outer_vec, tf_outer_offset;
 		LLVMValueRef tf_inner_offset;
-		unsigned param_outer, param_inner;
 
-		param_outer = shader_io_get_unique_index(VARYING_SLOT_TESS_LEVEL_OUTER);
 		tf_outer_offset = get_tcs_tes_buffer_address(ctx, NULL,
-							     LLVMConstInt(ctx->ac.i32, param_outer, 0));
+							     LLVMConstInt(ctx->ac.i32, ctx->tcs_tess_lvl_outer, 0));
 
 		outer_vec = ac_build_gather_values(&ctx->ac, outer,
 						   util_next_power_of_two(outer_comps));
@@ -3442,9 +3441,8 @@ write_tess_factors(struct radv_shader_context *ctx)
 					    ac_get_arg(&ctx->ac, ctx->args->oc_lds),
 					    0, ac_glc);
 		if (inner_comps) {
-			param_inner = shader_io_get_unique_index(VARYING_SLOT_TESS_LEVEL_INNER);
 			tf_inner_offset = get_tcs_tes_buffer_address(ctx, NULL,
-								     LLVMConstInt(ctx->ac.i32, param_inner, 0));
+								     LLVMConstInt(ctx->ac.i32, ctx->tcs_tess_lvl_inner, 0));
 
 			inner_vec = inner_comps == 1 ? inner[0] :
 				ac_build_gather_values(&ctx->ac, inner, inner_comps);
