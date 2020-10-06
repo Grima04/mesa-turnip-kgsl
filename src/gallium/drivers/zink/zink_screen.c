@@ -93,6 +93,40 @@ get_video_mem(struct zink_screen *screen)
    return (int)(size >> 20);
 }
 
+static void
+disk_cache_init(struct zink_screen *screen)
+{
+#ifdef ENABLE_SHADER_CACHE
+   static char buf[1000];
+   snprintf(buf, sizeof(buf), "zink_%x04x", screen->info.props.vendorID);
+
+   screen->disk_cache = disk_cache_create(buf, screen->info.props.deviceName, 0);
+   if (screen->disk_cache)
+      disk_cache_compute_key(screen->disk_cache, buf, strlen(buf), screen->disk_cache_key);
+#endif
+}
+
+void
+zink_screen_update_pipeline_cache(struct zink_screen *screen)
+{
+   size_t size = 0;
+
+   if (!screen->disk_cache)
+      return;
+   if (vkGetPipelineCacheData(screen->dev, screen->pipeline_cache, &size, NULL) != VK_SUCCESS)
+      return;
+   if (screen->pipeline_cache_size == size)
+      return;
+   void *data = malloc(size);
+   if (!data)
+      return;
+   if (vkGetPipelineCacheData(screen->dev, screen->pipeline_cache, &size, data) == VK_SUCCESS) {
+      screen->pipeline_cache_size = size;
+      disk_cache_put(screen->disk_cache, screen->disk_cache_key, data, size, NULL);
+   }
+   free(data);
+}
+
 static int
 zink_get_compute_param(struct pipe_screen *pscreen, enum pipe_shader_ir ir_type,
                        enum pipe_compute_cap param, void *ret)
@@ -772,6 +806,10 @@ zink_destroy_screen(struct pipe_screen *pscreen)
    }
 
    u_transfer_helper_destroy(pscreen->transfer_helper);
+   zink_screen_update_pipeline_cache(screen);
+   if (screen->disk_cache)
+      disk_cache_wait_for_idle(screen->disk_cache);
+   disk_cache_destroy(screen->disk_cache);
    vkDestroyPipelineCache(screen->dev, screen->pipeline_cache, NULL);
 
    vkDestroyDevice(screen->dev, NULL);
@@ -1230,6 +1268,7 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
    zink_screen_fence_init(&screen->base);
 
    zink_screen_init_compiler(screen);
+   disk_cache_init(screen);
 
    VkPipelineCacheCreateInfo pcci;
    pcci.sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO;
@@ -1238,7 +1277,12 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
    pcci.flags = screen->info.have_EXT_pipeline_creation_cache_control ? VK_PIPELINE_CACHE_CREATE_EXTERNALLY_SYNCHRONIZED_BIT_EXT : 0;
    pcci.initialDataSize = 0;
    pcci.pInitialData = NULL;
+   if (screen->disk_cache) {
+      pcci.pInitialData = disk_cache_get(screen->disk_cache, screen->disk_cache_key, &screen->pipeline_cache_size);
+      pcci.initialDataSize = screen->pipeline_cache_size;
+   }
    vkCreatePipelineCache(screen->dev, &pcci, NULL, &screen->pipeline_cache);
+   free((void*)pcci.pInitialData);
 
    slab_create_parent(&screen->transfer_pool, sizeof(struct zink_transfer), 16);
 

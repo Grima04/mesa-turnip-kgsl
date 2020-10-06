@@ -30,6 +30,7 @@
 #include "pipe/p_screen.h"
 #include "util/slab.h"
 #include "compiler/nir/nir.h"
+#include "util/disk_cache.h"
 
 #include <vulkan/vulkan.h>
 
@@ -52,6 +53,9 @@ struct zink_screen {
 
    struct slab_parent_pool transfer_pool;
    VkPipelineCache pipeline_cache;
+   size_t pipeline_cache_size;
+   struct disk_cache *disk_cache;
+   cache_key disk_cache_key;
 
    unsigned shader_id;
 
@@ -142,5 +146,8 @@ zink_is_depth_format_supported(struct zink_screen *screen, VkFormat format);
    } while (0)
 
 #define GET_PROC_ADDR_INSTANCE_LOCAL(instance, x) PFN_vk##x vk_##x = (PFN_vk##x)vkGetInstanceProcAddr(instance, "vk"#x)
+
+void
+zink_screen_update_pipeline_cache(struct zink_screen *screen);
 
 #endif
