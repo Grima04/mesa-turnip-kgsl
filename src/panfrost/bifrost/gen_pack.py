@@ -392,7 +392,7 @@ IMMEDIATE_TABLE = {
         'attribute_index': 'bi_get_immediate(ins, 0)',
         'varying_index': 'bi_get_immediate(ins, 0)',
         'index': 'bi_get_immediate(ins, 0)',
-        'image_index': 'ins->texture.texture_index',
+        'texture_index': 'ins->texture.texture_index',
         'sampler_index': 'ins->texture.sampler_index',
         'table': '63', # Bindless (flat addressing) mode for DTSEL_IMM
 

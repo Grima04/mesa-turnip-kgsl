@@ -7023,7 +7023,7 @@
   <ins name="+LEA_TEX_IMM" staging="w" mask="0xff000" exact="0xd6000">
     <src start="0"/>
     <src start="3"/>
-    <immediate name="image_index" start="6" size="5"/>
+    <immediate name="texture_index" start="6" size="5"/>
     <mod name="format" start="11" size="1">
       <opt>u16</opt>
       <opt>u32</opt>
@@ -7662,7 +7662,7 @@
   <ins name="+TEXS_2D.f16" staging="w" mask="0xfc000" exact="0xd8000">
     <src start="0"/>
     <src start="3"/>
-    <immediate name="image_index" start="6" size="3"/>
+    <immediate name="texture_index" start="6" size="3"/>
     <immediate name="sampler_index" start="10" size="3"/>
     <mod name="skip" start="9" size="1" opt="skip"/>
     <mod name="lod_mode" start="13" size="1" default="zero_lod">
@@ -7674,7 +7674,7 @@
   <ins name="+TEXS_2D.f32" staging="w" mask="0xfc000" exact="0x58000">
     <src start="0"/>
     <src start="3"/>
-    <immediate name="image_index" start="6" size="3"/>
+    <immediate name="texture_index" start="6" size="3"/>
     <immediate name="sampler_index" start="10" size="3"/>
     <mod name="skip" start="9" size="1" opt="skip"/>
     <mod name="lod_mode" start="13" size="1" default="zero_lod">
@@ -7688,7 +7688,7 @@
     <src start="3"/>
     <src start="6"/>
     <immediate name="sampler_index" start="10" size="2"/>
-    <immediate name="image_index" start="12" size="2"/>
+    <immediate name="texture_index" start="12" size="2"/>
     <mod name="skip" start="9" size="1" opt="skip"/>
   </ins>
 
@@ -7697,7 +7697,7 @@
     <src start="3"/>
     <src start="6"/>
     <immediate name="sampler_index" start="10" size="2"/>
-    <immediate name="image_index" start="12" size="2"/>
+    <immediate name="texture_index" start="12" size="2"/>
     <mod name="skip" start="9" size="1" opt="skip"/>
   </ins>
 
@@ -8016,7 +8016,7 @@
 
   <ins name="+VAR_TEX.f16" staging="w" mask="0xffd00" exact="0xca100">
     <immediate name="varying_index" start="0" size="3"/>
-    <immediate name="image_index" start="3" size="2"/>
+    <immediate name="texture_index" start="3" size="2"/>
     <mod name="update" size="1">
       <opt>store</opt>
       <opt>retrieve</opt>
@@ -8046,7 +8046,7 @@
 
   <ins name="+VAR_TEX.f32" staging="w" mask="0xffd00" exact="0xca000">
     <immediate name="varying_index" start="0" size="3"/>
-    <immediate name="image_index" start="3" size="2"/>
+    <immediate name="texture_index" start="3" size="2"/>
     <mod name="update" size="1">
       <opt>store</opt>
       <opt>retrieve</opt>
