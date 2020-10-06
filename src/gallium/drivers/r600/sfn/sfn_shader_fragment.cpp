@@ -210,11 +210,10 @@ bool FragmentShaderFromNir::do_allocate_reserved_registers()
    // handle system values
    if (m_sv_values.test(es_face) || m_need_back_color) {
       face_reg_index = m_reserved_registers++;
-      auto ffr = new GPRValue(face_reg_index,0);
-      ffr->set_as_input();
-      m_front_face_reg.reset(ffr);
+      m_front_face_reg = std::make_shared<GPRValue>(face_reg_index,0);
+      m_front_face_reg->set_as_input();
       sfn_log << SfnLog::io << "Set front_face register to " <<  *m_front_face_reg << "\n";
-      inject_register(ffr->sel(), ffr->chan(), m_front_face_reg, false);
+      inject_register(m_front_face_reg->sel(), m_front_face_reg->chan(), m_front_face_reg, false);
 
       m_shaderio.add_input(new ShaderInputSystemValue(TGSI_SEMANTIC_FACE, face_reg_index));
       load_front_face();
@@ -224,11 +223,9 @@ bool FragmentShaderFromNir::do_allocate_reserved_registers()
       if (face_reg_index < 0)
          face_reg_index = m_reserved_registers++;
 
-      auto smi = new GPRValue(face_reg_index,2);
-      smi->set_as_input();
-      m_sample_mask_reg.reset(smi);
+      m_sample_mask_reg = std::make_shared<GPRValue>(face_reg_index,2);
+      m_sample_mask_reg->set_as_input();
       sfn_log << SfnLog::io << "Set sample mask in register to " <<  *m_sample_mask_reg << "\n";
-      //inject_register(smi->sel(), smi->chan(), m_sample_mask_reg, false);
       sh_info().nsys_inputs = 1;
       m_shaderio.add_input(new ShaderInputSystemValue(TGSI_SEMANTIC_SAMPLEMASK, face_reg_index));
    }
@@ -238,9 +235,8 @@ bool FragmentShaderFromNir::do_allocate_reserved_registers()
       if (sample_id_index < 0)
          sample_id_index = m_reserved_registers++;
 
-      auto smi = new GPRValue(sample_id_index, 3);
-      smi->set_as_input();
-      m_sample_id_reg.reset(smi);
+      m_sample_id_reg = std::make_shared<GPRValue>(sample_id_index, 3);
+      m_sample_id_reg->set_as_input();
       sfn_log << SfnLog::io << "Set sample id register to " <<  *m_sample_id_reg << "\n";
       sh_info().nsys_inputs++;
       m_shaderio.add_input(new ShaderInputSystemValue(TGSI_SEMANTIC_SAMPLEID, sample_id_index));

@@ -85,10 +85,10 @@ private:
    std::array<Interpolator, 6> m_interpolator;
    unsigned m_reserved_registers;
    unsigned m_frag_pos_index;
-   PValue m_front_face_reg;
-   PValue m_sample_mask_reg;
-   PValue m_sample_id_reg;
-   PValue m_helper_invocation;
+   PGPRValue m_front_face_reg;
+   PGPRValue m_sample_mask_reg;
+   PGPRValue m_sample_id_reg;
+   PGPRValue m_helper_invocation;
    GPRVector m_frag_pos;
    bool m_need_back_color;
    bool m_front_face_loaded;
