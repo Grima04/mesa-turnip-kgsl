@@ -947,9 +947,9 @@ scandir_filter(const struct dirent *ent)
       return 0;
 #endif
 
-    int len = strlen(ent->d_name);
-    if (len > 5 && strcmp(ent->d_name + len - 5, ".conf") == 0)
-       return 0;
+   int len = strlen(ent->d_name);
+   if (len <= 5 || strcmp(ent->d_name + len - 5, ".conf"))
+      return 0;
 
    return 1;
 }
