@@ -118,7 +118,7 @@ extern unsigned bi_class_props[BI_NUM_CLASSES];
 #define BI_VECTOR (1 << 8)
 
 /* Use a data register for src0/dest respectively, bypassing the usual
- * register accessor. Mutually exclusive. */
+ * register accessor. */
 #define BI_DATA_REG_SRC (1 << 9)
 #define BI_DATA_REG_DEST (1 << 10)
 
@@ -624,6 +624,7 @@ uint16_t bi_bytemask_of_read_components(bi_instruction *ins, unsigned node);
 uint64_t bi_get_immediate(bi_instruction *ins, unsigned index);
 bool bi_writes_component(bi_instruction *ins, unsigned comp);
 unsigned bi_writemask(bi_instruction *ins);
+void bi_rewrite_uses(bi_context *ctx, unsigned old, unsigned oldc, unsigned new, unsigned newc);
 
 /* BIR passes */
 

@@ -84,28 +84,6 @@ bi_combine_sel16(bi_context *ctx, bi_instruction *parent, unsigned comp, unsigne
         bi_emit_before(ctx, parent, sel);
 }
 
-/* Rewrites uses of an index. Again, this could be O(n) to the program but is
- * currently O(nc) to the program and number of combines, so the pass becomes
- * effectively O(n^2). Better bookkeeping would bring down to linear if that's
- * an issue. */
-
-static void
-bi_rewrite_uses(bi_context *ctx,
-                unsigned old, unsigned oldc,
-                unsigned new, unsigned newc)
-{
-        bi_foreach_instr_global(ctx, ins) {
-                bi_foreach_src(ins, s) {
-                        if (ins->src[s] != old) continue;
-
-                        for (unsigned i = 0; i < 16; ++i)
-                                ins->swizzle[s][i] += (newc - oldc);
-
-                        ins->src[s] = new;
-                }
-        }
-}
-
 /* Copies result of combine from the temp R to the instruction destination,
  * given a bitsize sz */
 

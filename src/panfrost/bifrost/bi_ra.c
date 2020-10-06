@@ -173,6 +173,19 @@ bi_register_allocate(bi_context *ctx)
         struct lcra_state *l = NULL;
         bool success = false;
 
+        /* For instructions that both read and write from a data register, it's
+         * the *same* data register. We enforce that constraint by just doing a
+         * quick rewrite. TODO: are there cases where this causes RA to have no
+         * solutions due to copyprop? */
+        bi_foreach_instr_global(ctx, ins) {
+                unsigned props = bi_class_props[ins->type];
+                unsigned both = BI_DATA_REG_SRC | BI_DATA_REG_DEST;
+                if ((props & both) != both) continue;
+
+                bi_rewrite_uses(ctx, ins->dest, 0, ins->src[0], 0);
+                ins->dest = ins->src[0];
+        }
+
         do {
                 if (l) {
                         lcra_free(l);

@@ -180,3 +180,26 @@ bi_writemask(bi_instruction *ins)
         unsigned shift = ins->dest_offset * 4; /* 32-bit words */
         return (mask << shift);
 }
+
+/* Rewrites uses of an index. This is O(nc) to the program and number of
+ * uses, so combine lowering is effectively O(n^2).  Better bookkeeping
+ * would bring down to linear if that's an issue. */
+
+void
+bi_rewrite_uses(bi_context *ctx,
+                unsigned old, unsigned oldc,
+                unsigned new, unsigned newc)
+{
+        bi_foreach_instr_global(ctx, ins) {
+                bi_foreach_src(ins, s) {
+                        if (ins->src[s] != old) continue;
+
+                        for (unsigned i = 0; i < 16; ++i)
+                                ins->swizzle[s][i] += (newc - oldc);
+
+                        ins->src[s] = new;
+                }
+        }
+}
+
+
