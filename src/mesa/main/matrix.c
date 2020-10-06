@@ -322,8 +322,8 @@ push_matrix(struct gl_context *ctx, struct gl_matrix_stack *stack,
       stack->StackSize = new_stack_size;
    }
 
-   _math_matrix_copy( &stack->Stack[stack->Depth + 1],
-                      &stack->Stack[stack->Depth] );
+   _math_matrix_push_copy(&stack->Stack[stack->Depth + 1],
+                          &stack->Stack[stack->Depth]);
    stack->Depth++;
    stack->Top = &(stack->Stack[stack->Depth]);
 }

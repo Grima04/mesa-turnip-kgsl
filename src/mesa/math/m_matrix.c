@@ -1474,6 +1474,26 @@ _math_matrix_copy( GLmatrix *to, const GLmatrix *from )
 }
 
 /**
+ * Copy a matrix as part of glPushMatrix.
+ *
+ * The makes the source matrix canonical (inverse and flags are up-to-date),
+ * so that later glPopMatrix is evaluated as a no-op if there is no state
+ * change.
+ *
+ * It this wasn't done, a draw call would canonicalize the matrix, which
+ * would make it different from the pushed one and so glPopMatrix wouldn't be
+ * recognized as a no-op.
+ */
+void
+_math_matrix_push_copy(GLmatrix *to, GLmatrix *from)
+{
+   if (from->flags & MAT_DIRTY)
+      _math_matrix_analyse(from);
+
+   _math_matrix_copy(to, from);
+}
+
+/**
  * Loads a matrix array into GLmatrix.
  *
  * \param m matrix array.

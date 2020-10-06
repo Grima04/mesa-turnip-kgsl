@@ -135,6 +135,9 @@ extern void
 _math_matrix_copy( GLmatrix *to, const GLmatrix *from );
 
 extern void
+_math_matrix_push_copy(GLmatrix *to, GLmatrix *from);
+
+extern void
 _math_matrix_analyse( GLmatrix *mat );
 
 extern void
