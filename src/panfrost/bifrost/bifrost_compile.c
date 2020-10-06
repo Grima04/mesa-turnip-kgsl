@@ -955,7 +955,7 @@ emit_alu(bi_context *ctx, nir_alu_instr *instr)
  * space-efficient and with simpler RA/scheduling requirements*/
 
 static void
-emit_tex_compact(bi_context *ctx, nir_tex_instr *instr)
+emit_texs(bi_context *ctx, nir_tex_instr *instr)
 {
         bi_instruction tex = {
                 .type = BI_TEXS,
@@ -989,7 +989,7 @@ emit_tex_compact(bi_context *ctx, nir_tex_instr *instr)
 }
 
 static void
-emit_tex_full(bi_context *ctx, nir_tex_instr *instr)
+emit_texc(bi_context *ctx, nir_tex_instr *instr)
 {
         unreachable("stub");
 }
@@ -1026,12 +1026,10 @@ emit_tex(bi_context *ctx, nir_tex_instr *instr)
                 instr->sampler_dim == GLSL_SAMPLER_DIM_EXTERNAL;
         bool is_f = base == nir_type_float && (sz == 16 || sz == 32);
 
-        bool is_compact = is_normal && is_2d && is_f && !instr->is_shadow;
-
-        if (is_compact)
-                emit_tex_compact(ctx, instr);
+        if (is_normal && is_2d && is_f && !instr->is_shadow)
+                emit_texs(ctx, instr);
         else
-                emit_tex_full(ctx, instr);
+                emit_texc(ctx, instr);
 }
 
 static void
