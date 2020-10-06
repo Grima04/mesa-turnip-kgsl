@@ -163,6 +163,7 @@ zink_batch_reference_resource_rw(struct zink_batch *batch, struct zink_resource 
    zink_get_depth_stencil_resources((struct pipe_resource*)res, NULL, &stencil);
 
    uint32_t cur_uses = zink_get_resource_usage(res);
+   uint32_t uses_check = cur_uses;
    cur_uses &= ~(ZINK_RESOURCE_ACCESS_READ << batch->batch_id);
    cur_uses &= ~(ZINK_RESOURCE_ACCESS_WRITE << batch->batch_id);
    if (batch->batch_id == ZINK_COMPUTE_BATCH_ID) {
@@ -174,14 +175,18 @@ zink_batch_reference_resource_rw(struct zink_batch *batch, struct zink_resource 
          batch_to_flush = ZINK_COMPUTE_BATCH_ID;
    }
 
-   struct set_entry *entry = _mesa_set_search(batch->resources, res);
-   if (!entry) {
-      entry = _mesa_set_add(batch->resources, res);
-      pipe_reference(NULL, &res->base.reference);
-      batch->resource_size += res->size;
-      if (stencil) {
-         pipe_reference(NULL, &stencil->base.reference);
-         batch->resource_size += stencil->size;
+   /* if the resource already has usage of any sort set for this batch, we can skip hashing */
+   uint32_t check_mask = (ZINK_RESOURCE_ACCESS_READ | ZINK_RESOURCE_ACCESS_WRITE) << batch->batch_id;
+   if (!(uses_check & check_mask)) {
+      struct set_entry *entry = _mesa_set_search(batch->resources, res);
+      if (!entry) {
+         entry = _mesa_set_add(batch->resources, res);
+         pipe_reference(NULL, &res->base.reference);
+         batch->resource_size += res->size;
+         if (stencil) {
+            pipe_reference(NULL, &stencil->base.reference);
+            batch->resource_size += stencil->size;
+         }
       }
    }
    /* multiple array entries are fine */
