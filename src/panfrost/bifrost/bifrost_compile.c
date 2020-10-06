@@ -1030,6 +1030,77 @@ bi_texture_format(nir_alu_type T, enum bifrost_outmod outmod)
         }
 }
 
+/* TEXC's explicit and bias LOD modes requires the LOD to be transformed to a
+ * 16-bit 8:8 fixed-point format. We lower as:
+ *
+ * F32_TO_S32(clamp(x, -16.0, +16.0) * 256.0) & 0xFFFF =
+ * MKVEC(F32_TO_S32(clamp(x * 1.0/16.0, -1.0, 1.0) * (16.0 * 256.0)), #0)
+ */
+
+static unsigned
+bi_emit_lod_88(bi_context *ctx, unsigned lod, bool fp16)
+{
+        nir_alu_type T = fp16 ? nir_type_float16 : nir_type_float32;
+
+        /* Sort of arbitrary. Must be less than 128.0, greater than or equal to
+         * the max LOD (16 since we cap at 2^16 texture dimensions), and
+         * preferably small to minimize precision loss */
+        const float max_lod = 16.0;
+
+        /* FMA.f16/f32.sat_signed, saturated, lod, #1.0/max_lod, #0 */
+        bi_instruction fsat = {
+                .type = BI_FMA,
+                .dest = bi_make_temp(ctx),
+                .dest_type = nir_type_float32,
+                .src = { lod, BIR_INDEX_CONSTANT, BIR_INDEX_ZERO },
+                .src_types = { T, nir_type_float32, nir_type_float32 },
+                .outmod = BIFROST_SAT_SIGNED,
+                .roundmode = BIFROST_RTE,
+                .constant = {
+                        .u64 = fui(1.0 / max_lod)
+                },
+        };
+
+        /* FMA.f32 scaled, saturated, lod, #(max_lod * 256.0), #0 */
+        bi_instruction fmul = {
+                .type = BI_FMA,
+                .dest = bi_make_temp(ctx),
+                .dest_type = T,
+                .src = { fsat.dest, BIR_INDEX_CONSTANT, BIR_INDEX_ZERO },
+                .src_types = { nir_type_float32, nir_type_float32, nir_type_float32 },
+                .roundmode = BIFROST_RTE,
+                .constant = {
+                        .u64 = fui(max_lod * 256.0)
+                },
+        };
+
+        /* F32_TO_S32 s32, scaled */
+        bi_instruction f2i = {
+                .type = BI_CONVERT,
+                .dest = bi_make_temp(ctx),
+                .dest_type = nir_type_int32,
+                .src = { fmul.dest },
+                .src_types = { T },
+                .roundmode = BIFROST_RTZ
+        };
+
+        /* MKVEC.v2i16 s32.h0, #0 */
+        bi_instruction mkvec = {
+                .type = BI_SELECT,
+                .dest = bi_make_temp(ctx),
+                .dest_type = nir_type_int16,
+                .src = { f2i.dest, BIR_INDEX_ZERO },
+                .src_types = { nir_type_int16, nir_type_int16 },
+        };
+
+        bi_emit(ctx, fsat);
+        bi_emit(ctx, fmul);
+        bi_emit(ctx, f2i);
+        bi_emit(ctx, mkvec);
+
+        return mkvec.dest;
+}
+
 /* Data registers required by texturing in the order they appear. All are
  * optional, the texture operation descriptor determines which are present.
  * Note since 3D arrays are not permitted at an API level, Z_COORD and
@@ -1095,6 +1166,8 @@ emit_texc(bi_context *ctx, nir_tex_instr *instr)
 
         for (unsigned i = 0; i < instr->num_srcs; ++i) {
                 unsigned index = pan_src_index(&instr->src[i].src);
+                unsigned sz = nir_src_bit_size(instr->src[i].src);
+                ASSERTED nir_alu_type base = nir_tex_instr_src_type(instr, i);
 
                 switch (instr->src[i].src_type) {
                 case nir_tex_src_coord:
@@ -1103,6 +1176,18 @@ emit_texc(bi_context *ctx, nir_tex_instr *instr)
                         tex.src[2] = index;
                         tex.swizzle[1][0] = 0;
                         tex.swizzle[2][0] = 1;
+                        break;
+                case nir_tex_src_lod:
+                        if (nir_src_is_const(instr->src[i].src) && nir_src_as_uint(instr->src[i].src) == 0) {
+                                desc.lod_mode = BIFROST_LOD_MODE_ZERO;
+                        } else {
+                                assert(base == nir_type_float);
+                                assert(sz == 16 || sz == 32);
+                                dregs[BIFROST_TEX_DREG_LOD] =
+                                        bi_emit_lod_88(ctx, index, sz == 16);
+                                desc.lod_mode = BIFROST_LOD_MODE_EXPLICIT;
+                        }
+
                         break;
                 default:
                         unreachable("Unhandled src type in texc emit");
