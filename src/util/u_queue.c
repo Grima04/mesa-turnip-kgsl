@@ -251,19 +251,15 @@ util_queue_thread_func(void *input)
 
    free(input);
 
-#ifdef HAVE_PTHREAD_SETAFFINITY
    if (queue->flags & UTIL_QUEUE_INIT_SET_FULL_THREAD_AFFINITY) {
       /* Don't inherit the thread affinity from the parent thread.
        * Set the full mask.
        */
-      cpu_set_t cpuset;
-      CPU_ZERO(&cpuset);
-      for (unsigned i = 0; i < CPU_SETSIZE; i++)
-         CPU_SET(i, &cpuset);
+      uint32_t mask[UTIL_MAX_CPUS / 32];
 
-      pthread_setaffinity_np(pthread_self(), sizeof(cpuset), &cpuset);
+      memset(mask, 0xff, sizeof(mask));
+      util_set_current_thread_affinity(mask, NULL, UTIL_MAX_CPUS);
    }
-#endif
 
 #if defined(__linux__)
    if (queue->flags & UTIL_QUEUE_INIT_USE_MINIMUM_PRIORITY) {

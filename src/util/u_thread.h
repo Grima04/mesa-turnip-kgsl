@@ -29,9 +29,11 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <string.h>
 
 #include "c11/threads.h"
 #include "detect_os.h"
+#include "macros.h"
 
 #ifdef HAVE_PTHREAD
 #include <signal.h>
@@ -51,6 +53,9 @@
 #undef ALIGN
 #define cpu_set_t cpuset_t
 #endif
+
+/* For util_set_thread_affinity to size the mask. */
+#define UTIL_MAX_CPUS               1024  /* this should be enough */
 
 static inline thrd_t u_thread_create(int (*routine)(void *), void *param)
 {
@@ -95,6 +100,85 @@ static inline void u_thread_setname( const char *name )
 }
 
 /**
+ * Set thread affinity.
+ *
+ * \param thread         Thread
+ * \param mask           Set this affinity mask
+ * \param old_mask       Previous affinity mask returned if not NULL
+ * \param num_mask_bits  Number of bits in both masks
+ * \return  true on success
+ */
+static inline bool
+util_set_thread_affinity(thrd_t thread,
+                         const uint32_t *mask,
+                         uint32_t *old_mask,
+                         unsigned num_mask_bits)
+{
+#if defined(HAVE_PTHREAD_SETAFFINITY)
+   cpu_set_t cpuset;
+
+   if (old_mask) {
+      if (pthread_getaffinity_np(thread, sizeof(cpuset), &cpuset) != 0)
+         return false;
+
+      memset(old_mask, 0, num_mask_bits / 32);
+      for (unsigned i = 0; i < num_mask_bits && i < CPU_SETSIZE; i++) {
+         if (CPU_ISSET(i, &cpuset))
+            old_mask[i / 32] |= 1u << (i % 32);
+      }
+   }
+
+   CPU_ZERO(&cpuset);
+   for (unsigned i = 0; i < num_mask_bits && i < CPU_SETSIZE; i++) {
+      if (mask[i / 32] & (1u << (i % 32)))
+         CPU_SET(i, &cpuset);
+   }
+   return pthread_setaffinity_np(thread, sizeof(cpuset), &cpuset) == 0;
+
+#elif defined(_WIN32) && !defined(__CYGWIN__)
+   DWORD_PTR m = mask[0];
+
+   if (sizeof(m) > 4 && num_mask_bits > 32)
+      m |= (uint64_t)mask[1] << 32;
+
+   m = SetThreadAffinityMask(thread, m);
+   if (!m)
+      return false;
+
+   if (old_mask) {
+      memset(old_mask, 0, num_mask_bits / 32);
+
+      old_mask[0] = m;
+      if (sizeof(m) > 4)
+         old_mask[1] = m >> 32;
+   }
+
+   return true;
+#else
+   return false;
+#endif
+}
+
+static inline bool
+util_set_current_thread_affinity(const uint32_t *mask,
+                                 uint32_t *old_mask,
+                                 unsigned num_mask_bits)
+{
+#if defined(HAVE_PTHREAD_SETAFFINITY)
+   return util_set_thread_affinity(pthread_self(), mask, old_mask,
+                                   num_mask_bits);
+
+#elif defined(_WIN32) && !defined(__CYGWIN__)
+   /* The GetCurrentThreadId() handle is only valid within the current thread. */
+   return util_set_thread_affinity(GetCurrentThread(), mask, old_mask,
+                                   num_mask_bits);
+
+#else
+   return false;
+#endif
+}
+
+/**
  * An AMD Zen CPU consists of multiple modules where each module has its own L3
  * cache. Inter-thread communication such as locks and atomics between modules
  * is very expensive. It's desirable to pin a group of closely cooperating
@@ -104,17 +188,21 @@ static inline void u_thread_setname( const char *name )
  * \param L3_index      index of the L3 cache
  * \param cores_per_L3  number of CPU cores shared by one L3
  */
-static inline void
+static inline bool
 util_pin_thread_to_L3(thrd_t thread, unsigned L3_index, unsigned cores_per_L3)
 {
-#if defined(HAVE_PTHREAD_SETAFFINITY)
-   cpu_set_t cpuset;
+   unsigned num_mask_bits = DIV_ROUND_UP((L3_index + 1) * cores_per_L3, 32);
+   uint32_t mask[UTIL_MAX_CPUS / 32];
 
-   CPU_ZERO(&cpuset);
-   for (unsigned i = 0; i < cores_per_L3; i++)
-      CPU_SET(L3_index * cores_per_L3 + i, &cpuset);
-   pthread_setaffinity_np(thread, sizeof(cpuset), &cpuset);
-#endif
+   assert((L3_index + 1) * cores_per_L3 <= UTIL_MAX_CPUS);
+
+   for (unsigned i = 0; i < cores_per_L3; i++) {
+      unsigned core = L3_index * cores_per_L3 + i;
+
+      mask[core / 32] |= 1u << (core % 32);
+   }
+
+   return util_set_thread_affinity(thread, mask, NULL, num_mask_bits);
 }
 
 
