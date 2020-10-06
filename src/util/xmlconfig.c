@@ -637,14 +637,20 @@ parseRange(driOptionInfo *info, const char *string)
 
    *sep = '\0';
    if (!parseValue(&info->range.start, info->type, cp) ||
-       !parseValue(&info->range.end, info->type, sep+1))
+       !parseValue(&info->range.end, info->type, sep+1)) {
+      free(cp);
       return false;
+   }
    if (info->type == DRI_INT &&
-       info->range.start._int >= info->range.end._int)
+       info->range.start._int >= info->range.end._int) {
+      free(cp);
       return false;
+   }
    if (info->type == DRI_FLOAT &&
-       info->range.start._float >= info->range.end._float)
+       info->range.start._float >= info->range.end._float) {
+      free(cp);
       return false;
+   }
 
    free(cp);
    return true;
