@@ -315,8 +315,10 @@ etna_resource_alloc(struct pipe_screen *pscreen, unsigned layout,
    }
 
    if (DBG_ENABLED(ETNA_DBG_ZERO)) {
-      void *map = etna_bo_map(bo);
+      void *map = etna_bo_map(rsc->bo);
+      etna_bo_cpu_prep(rsc->bo, DRM_ETNA_PREP_WRITE);
       memset(map, 0, size);
+      etna_bo_cpu_fini(rsc->bo);
    }
 
    mtx_init(&rsc->lock, mtx_recursive);
