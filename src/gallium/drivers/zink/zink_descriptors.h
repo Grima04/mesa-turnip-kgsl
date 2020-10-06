@@ -57,21 +57,14 @@ struct zink_descriptor_state_key {
    uint32_t state[ZINK_SHADER_COUNT];
 };
 
-static inline bool
-zink_desc_state_equal(const void *a, const void *b)
-{
-   const struct zink_descriptor_state_key *a_k = (void*)a;
-   const struct zink_descriptor_state_key *b_k = (void*)b;
-
-   for (unsigned i = 0; i < ZINK_SHADER_COUNT; i++) {
-      if (a_k->exists[i] != b_k->exists[i])
-         return false;
-      if (a_k->exists[i] && b_k->exists[i] &&
-          a_k->state[i] != b_k->state[i])
-         return false;
-   }
-   return true;
-}
+struct zink_descriptor_pool {
+   struct hash_table *desc_sets;
+   struct hash_table *free_desc_sets;
+   struct util_dynarray alloc_desc_sets;
+   VkDescriptorPool descpool;
+   VkDescriptorSetLayout dsl;
+   unsigned num_descriptors;
+};
 
 struct zink_descriptor_set {
    struct zink_program *pg;
@@ -124,10 +117,14 @@ void
 zink_descriptor_set_recycle(struct zink_descriptor_set *zds);
 
 bool
-zink_descriptor_program_init(VkDevice dev,
+zink_descriptor_program_init(struct zink_screen *screen,
                        struct zink_shader *stages[ZINK_SHADER_COUNT],
                        struct zink_program *pg);
 
 void
 zink_descriptor_set_invalidate(struct zink_descriptor_set *zds);
+
+void
+zink_descriptor_pool_free(struct zink_screen *screen, struct zink_descriptor_pool *pool);
+
 #endif

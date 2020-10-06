@@ -70,12 +70,7 @@ struct zink_shader_cache {
 struct zink_program {
    struct pipe_reference reference;
 
-   struct hash_table *desc_sets[ZINK_DESCRIPTOR_TYPES];
-   struct hash_table *free_desc_sets[ZINK_DESCRIPTOR_TYPES];
-   struct util_dynarray alloc_desc_sets[ZINK_DESCRIPTOR_TYPES];
-   VkDescriptorPool descpool[ZINK_DESCRIPTOR_TYPES];
-   VkDescriptorSetLayout dsl[ZINK_DESCRIPTOR_TYPES];
-   unsigned num_descriptors[ZINK_DESCRIPTOR_TYPES];
+   struct zink_descriptor_pool *pool[ZINK_DESCRIPTOR_TYPES];
    struct zink_descriptor_set *last_set[ZINK_DESCRIPTOR_TYPES];
 
    VkPipelineLayout layout;
@@ -123,14 +118,8 @@ zink_desc_type_from_vktype(VkDescriptorType type)
    
 }
 
-static inline unsigned
-zink_program_num_descriptors(const struct zink_program *pg)
-{
-   unsigned num_descriptors = 0;
-   for (unsigned i = 0; i < ZINK_DESCRIPTOR_TYPES; i++)
-      num_descriptors += pg->num_descriptors[i];
-   return num_descriptors;
-}
+unsigned
+zink_program_num_descriptors(const struct zink_program *pg);
 
 unsigned
 zink_program_num_bindings_typed(const struct zink_program *pg, enum zink_descriptor_type type, bool is_compute);
