@@ -297,6 +297,9 @@ zink_context_destroy(struct pipe_context *pctx)
    _mesa_hash_table_destroy(ctx->program_cache, NULL);
    _mesa_hash_table_destroy(ctx->compute_program_cache, NULL);
    _mesa_hash_table_destroy(ctx->render_pass_cache, NULL);
+
+   zink_descriptor_pool_deinit(ctx);
+
    ralloc_free(ctx);
 }
 
@@ -2149,6 +2152,9 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
    ctx->dummy_xfb_buffer = pipe_buffer_create_with_data(&ctx->base,
       PIPE_BIND_STREAM_OUTPUT, PIPE_USAGE_DEFAULT, sizeof(data), data);
    if (!ctx->dummy_xfb_buffer)
+      goto fail;
+
+   if (!zink_descriptor_pool_init(ctx))
       goto fail;
 
    /* start the first batch */

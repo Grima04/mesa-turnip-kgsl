@@ -398,7 +398,7 @@ update_ubo_descriptors(struct zink_context *ctx, struct zink_descriptor_set *zds
 {
    struct zink_program *pg = is_compute ? (struct zink_program *)ctx->curr_compute : (struct zink_program *)ctx->curr_program;
    struct zink_screen *screen = zink_screen(ctx->base.screen);
-   unsigned num_descriptors = pg->pool[zds->pool->type]->num_descriptors;
+   unsigned num_descriptors = pg->pool[zds->pool->type]->key.num_descriptors;
    unsigned num_bindings = zink_program_num_bindings_typed(pg, zds->pool->type, is_compute);
    VkWriteDescriptorSet wds[num_descriptors];
    struct zink_descriptor_resource resources[num_bindings];
@@ -480,7 +480,7 @@ update_ssbo_descriptors(struct zink_context *ctx, struct zink_descriptor_set *zd
 {
    struct zink_program *pg = is_compute ? (struct zink_program *)ctx->curr_compute : (struct zink_program *)ctx->curr_program;
    ASSERTED struct zink_screen *screen = zink_screen(ctx->base.screen);
-   unsigned num_descriptors = pg->pool[zds->pool->type]->num_descriptors;
+   unsigned num_descriptors = pg->pool[zds->pool->type]->key.num_descriptors;
    unsigned num_bindings = zink_program_num_bindings_typed(pg, zds->pool->type, is_compute);
    VkWriteDescriptorSet wds[num_descriptors];
    struct zink_descriptor_resource resources[num_bindings];
@@ -584,7 +584,7 @@ update_sampler_descriptors(struct zink_context *ctx, struct zink_descriptor_set 
 {
    struct zink_program *pg = is_compute ? (struct zink_program *)ctx->curr_compute : (struct zink_program *)ctx->curr_program;
    struct zink_screen *screen = zink_screen(ctx->base.screen);
-   unsigned num_descriptors = pg->pool[zds->pool->type]->num_descriptors;
+   unsigned num_descriptors = pg->pool[zds->pool->type]->key.num_descriptors;
    unsigned num_bindings = zink_program_num_bindings(pg, is_compute);
    VkWriteDescriptorSet wds[num_descriptors];
    struct zink_descriptor_resource resources[num_bindings];
@@ -657,7 +657,7 @@ update_image_descriptors(struct zink_context *ctx, struct zink_descriptor_set *z
 {
    struct zink_program *pg = is_compute ? (struct zink_program *)ctx->curr_compute : (struct zink_program *)ctx->curr_program;
    struct zink_screen *screen = zink_screen(ctx->base.screen);
-   unsigned num_descriptors = pg->pool[zds->pool->type]->num_descriptors;
+   unsigned num_descriptors = pg->pool[zds->pool->type]->key.num_descriptors;
    unsigned num_bindings = zink_program_num_bindings(pg, is_compute);
    VkWriteDescriptorSet wds[num_descriptors];
    struct zink_descriptor_resource resources[num_bindings];

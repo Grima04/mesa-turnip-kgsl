@@ -28,6 +28,7 @@
 # define  ZINK_DESCRIPTOR_H
 #include <vulkan/vulkan.h>
 #include "util/u_dynarray.h"
+#include "util/u_inlines.h"
 
 enum zink_descriptor_type {
    ZINK_DESCRIPTOR_TYPE_UBO,
@@ -57,14 +58,22 @@ struct zink_descriptor_state_key {
    uint32_t state[ZINK_SHADER_COUNT];
 };
 
+struct zink_descriptor_pool_key {
+   unsigned num_type_sizes;
+   unsigned num_descriptors;
+   VkDescriptorSetLayoutBinding *bindings;
+   VkDescriptorPoolSize *sizes;
+};
+
 struct zink_descriptor_pool {
+   struct pipe_reference reference;
    enum zink_descriptor_type type;
    struct hash_table *desc_sets;
    struct hash_table *free_desc_sets;
    struct util_dynarray alloc_desc_sets;
    VkDescriptorPool descpool;
    VkDescriptorSetLayout dsl;
-   unsigned num_descriptors;
+   struct zink_descriptor_pool_key key;
    unsigned num_sets_allocated;
 };
 
@@ -118,7 +127,7 @@ void
 zink_descriptor_set_recycle(struct zink_descriptor_set *zds);
 
 bool
-zink_descriptor_program_init(struct zink_screen *screen,
+zink_descriptor_program_init(struct zink_context *ctx,
                        struct zink_shader *stages[ZINK_SHADER_COUNT],
                        struct zink_program *pg);
 
@@ -128,4 +137,26 @@ zink_descriptor_set_invalidate(struct zink_descriptor_set *zds);
 void
 zink_descriptor_pool_free(struct zink_screen *screen, struct zink_descriptor_pool *pool);
 
+void
+zink_descriptor_pool_deinit(struct zink_context *ctx);
+
+bool
+zink_descriptor_pool_init(struct zink_context *ctx);
+
+
+void
+debug_describe_zink_descriptor_pool(char* buf, const struct zink_descriptor_pool *ptr);
+
+static inline void
+zink_descriptor_pool_reference(struct zink_screen *screen,
+                               struct zink_descriptor_pool **dst,
+                               struct zink_descriptor_pool *src)
+{
+   struct zink_descriptor_pool *old_dst = dst ? *dst : NULL;
+
+   if (pipe_reference_described(old_dst ? &old_dst->reference : NULL, &src->reference,
+                                (debug_reference_descriptor)debug_describe_zink_descriptor_pool))
+      zink_descriptor_pool_free(screen, old_dst);
+   if (dst) *dst = src;
+}
 #endif
