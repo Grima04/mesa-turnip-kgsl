@@ -498,25 +498,22 @@ static struct pipe_context *si_create_context(struct pipe_screen *screen, unsign
    if (!sctx->ctx)
       goto fail;
 
+   /* SDMA causes corruption on: :
+    *    - RX 580: https://gitlab.freedesktop.org/mesa/mesa/-/issues/1399, 1889
+    *    - gfx9 APUs: https://gitlab.freedesktop.org/mesa/mesa/-/issues/2814
+    *    - gfx10: https://gitlab.freedesktop.org/mesa/mesa/-/issues/1907,
+                  https://gitlab.freedesktop.org/drm/amd/issues/892
+    *
+    * While we could keep buffer copies and clears enabled, let's disable
+    * everything because SDMA decreases CPU performance because of its
+    * command submission overhead.
+    *
+    * And SDMA is disabled on all chips (instead of just the ones listed above),
+    * because it doesn't make sense to keep it enabled on old chips only
+    * that are not tested as often as newer chips.
+    */
    if (sscreen->info.num_rings[RING_DMA] && !(sscreen->debug_flags & DBG(NO_SDMA)) &&
-       /* SDMA causes corruption on RX 580:
-        *    https://gitlab.freedesktop.org/mesa/mesa/-/issues/1399
-        *    https://gitlab.freedesktop.org/mesa/mesa/-/issues/1889
-        */
-       (sctx->chip_class != GFX8 || sscreen->debug_flags & DBG(FORCE_SDMA)) &&
-       /* SDMA causes corruption on gfx9 APUs:
-        *    https://gitlab.freedesktop.org/mesa/mesa/-/issues/2814
-        *
-        * While we could keep buffer copies and clears enabled, let's disable
-        * everything, because neither gfx8 nor gfx10 enable SDMA, and it's not
-        * easy to test.
-        */
-       (sctx->chip_class != GFX9 || sscreen->debug_flags & DBG(FORCE_SDMA)) &&
-       /* SDMA timeouts sometimes on gfx10 so disable it for now. See:
-        *    https://bugs.freedesktop.org/show_bug.cgi?id=111481
-        *    https://gitlab.freedesktop.org/mesa/mesa/-/issues/1907
-        */
-       (sctx->chip_class != GFX10 || sscreen->debug_flags & DBG(FORCE_SDMA))) {
+       sscreen->debug_flags & DBG(FORCE_SDMA)) {
       sctx->sdma_cs = sctx->ws->cs_create(sctx->ctx, RING_DMA, (void *)si_flush_dma_cs, sctx,
                                           stop_exec_on_failure);
    }
