@@ -84,44 +84,22 @@ get_existing_range(nir_intrinsic_instr *instr,
 	if (!get_ubo_info(instr, &ubo))
 		return NULL;
 
-	for (int i = 0; i < IR3_MAX_UBO_PUSH_RANGES; i++) {
+	for (int i = 0; i < state->num_enabled; i++) {
 		const struct ir3_ubo_range *range = &state->range[i];
-		if (range->end < range->start) {
-			break;
-		} else if (!memcmp(&range->ubo, &ubo, sizeof(ubo))) {
+		if (!memcmp(&range->ubo, &ubo, sizeof(ubo)))
 			return range;
-		}
 	}
 
 	return NULL;
 }
 
 /**
- * Get an existing range, or create a new one if necessary/possible.
+ * During the first pass over the shader, makes the plan of which UBO upload
+ * should include the range covering this UBO load.
+ *
+ * We are passed in an upload_remaining of how much space is left for us in
+ * the const file, and we make sure our plan doesn't exceed that.
  */
-static struct ir3_ubo_range *
-get_range(nir_intrinsic_instr *instr, struct ir3_ubo_analysis_state *state)
-{
-	struct ir3_ubo_info ubo = {};
-
-	if (!get_ubo_info(instr, &ubo))
-		return NULL;
-
-	for (int i = 0; i < IR3_MAX_UBO_PUSH_RANGES; i++) {
-		struct ir3_ubo_range *range = &state->range[i];
-		if (range->end < range->start) {
-			/* We don't have a matching range, but there are more available.
-			 */
-			range->ubo = ubo;
-			return range;
-		} else if (!memcmp(&range->ubo, &ubo, sizeof(ubo))) {
-			return range;
-		}
-	}
-
-	return NULL;
-}
-
 static void
 gather_ubo_ranges(nir_shader *nir, nir_intrinsic_instr *instr,
 		struct ir3_ubo_analysis_state *state, uint32_t alignment,
@@ -130,28 +108,45 @@ gather_ubo_ranges(nir_shader *nir, nir_intrinsic_instr *instr,
 	if (ir3_shader_debug & IR3_DBG_NOUBOOPT)
 		return;
 
-	struct ir3_ubo_range *old_r = get_range(instr, state);
-	if (!old_r)
+	struct ir3_ubo_info ubo = {};
+	if (!get_ubo_info(instr, &ubo))
 		return;
 
 	struct ir3_ubo_range r;
 	if (!get_ubo_load_range(nir, instr, alignment, &r))
 		return;
 
-	r.start = MIN2(r.start, old_r->start);
-	r.end = MAX2(r.end, old_r->end);
+	/* See if there's an existing range for this UBO we want to merge into. */
+	for (int i = 0; i < state->num_enabled; i++) {
+		struct ir3_ubo_range *plan_r = &state->range[i];
+		if (memcmp(&plan_r->ubo, &ubo, sizeof(ubo)))
+			continue;
 
-	/* If adding this range would definitely put us over the limit, don't try.
-	 * Prevents sparse access or large indirects from occupying all the
-	 * planned UBO space
-	 */
-	uint32_t added = (old_r->start - r.start) + (r.end - old_r->end);
+		r.start = MIN2(r.start, plan_r->start);
+		r.end = MAX2(r.end, plan_r->end);
+
+		uint32_t added = (plan_r->start - r.start) + (r.end - plan_r->end);
+		if (added >= *upload_remaining)
+			return;
+
+		plan_r->start = r.start;
+		plan_r->end = r.end;
+		*upload_remaining -= added;
+		return;
+	}
+
+	if (state->num_enabled == ARRAY_SIZE(state->range))
+		return;
+
+	uint32_t added = r.end - r.start;
 	if (added >= *upload_remaining)
 		return;
 
+	struct ir3_ubo_range *plan_r = &state->range[state->num_enabled++];
+	plan_r->ubo = ubo;
+	plan_r->start = r.start;
+	plan_r->end = r.end;
 	*upload_remaining -= added;
-	old_r->start = r.start;
-	old_r->end = r.end;
 }
 
 /* For indirect offset, it is common to see a pattern of multiple
@@ -352,9 +347,6 @@ ir3_nir_analyze_ubo_ranges(nir_shader *nir, struct ir3_shader_variant *v)
 			worst_case_const_state.offsets.immediate) * 16;
 
 	memset(state, 0, sizeof(*state));
-	for (int i = 0; i < IR3_MAX_UBO_PUSH_RANGES; i++) {
-		state->range[i].start = UINT32_MAX;
-	}
 
 	uint32_t upload_remaining = max_upload;
 	nir_foreach_function (function, nir) {
@@ -380,13 +372,7 @@ ir3_nir_analyze_ubo_ranges(nir_shader *nir, struct ir3_shader_variant *v)
 	 */
 
 	uint32_t offset = v->shader->num_reserved_user_consts * 16;
-	state->num_enabled = ARRAY_SIZE(state->range);
-	for (uint32_t i = 0; i < ARRAY_SIZE(state->range); i++) {
-		if (state->range[i].start >= state->range[i].end) {
-			state->num_enabled = i;
-			break;
-		}
-
+	for (uint32_t i = 0; i < state->num_enabled; i++) {
 		uint32_t range_size = state->range[i].end - state->range[i].start;
 
 		debug_assert(offset <= max_upload);
