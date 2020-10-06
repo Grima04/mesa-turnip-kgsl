@@ -1437,6 +1437,8 @@ static struct pipe_resource *si_texture_from_winsys_buffer(struct si_screen *ssc
    tex->buffer.b.is_shared = true;
    tex->buffer.external_usage = usage;
    tex->num_planes = 1;
+   if (tex->buffer.flags & RADEON_FLAG_ENCRYPTED)
+      tex->buffer.b.b.bind |= PIPE_BIND_PROTECTED;
 
    /* Account for multiple planes with lowered yuv import. */
    struct pipe_resource *next_plane = tex->buffer.b.b.next;
