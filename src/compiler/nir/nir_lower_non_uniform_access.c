@@ -142,6 +142,9 @@ lower_non_uniform_tex_access(nir_builder *b, nir_tex_instr *tex)
    nir_builder_instr_insert(b, &tex->instr);
    nir_jump(b, nir_jump_break);
 
+   tex->texture_non_uniform = false;
+   tex->sampler_non_uniform = false;
+
    return true;
 }
 
@@ -169,6 +172,8 @@ lower_non_uniform_access_intrin(nir_builder *b, nir_intrinsic_instr *intrin,
 
    nir_builder_instr_insert(b, &intrin->instr);
    nir_jump(b, nir_jump_break);
+
+   nir_intrinsic_set_access(intrin, nir_intrinsic_access(intrin) & ~ACCESS_NON_UNIFORM);
 
    return true;
 }
