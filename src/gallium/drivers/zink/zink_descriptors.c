@@ -262,8 +262,6 @@ populate_zds_key(struct zink_context *ctx, enum zink_descriptor_type type, bool 
 
 struct zink_descriptor_set *
 zink_descriptor_set_get(struct zink_context *ctx,
-                               struct zink_batch *batch,
-                               struct zink_program *pg,
                                enum zink_descriptor_type type,
                                bool is_compute,
                                bool *cache_hit)
@@ -271,6 +269,8 @@ zink_descriptor_set_get(struct zink_context *ctx,
    *cache_hit = false;
    struct zink_descriptor_set *zds;
    struct zink_screen *screen = zink_screen(ctx->base.screen);
+   struct zink_program *pg = is_compute ? (struct zink_program *)ctx->curr_compute : (struct zink_program *)ctx->curr_program;
+   struct zink_batch *batch = is_compute ? &ctx->compute_batch : zink_curr_batch(ctx);
    struct zink_descriptor_pool *pool = pg->pool[type];
    unsigned descs_used = 1;
    assert(type < ZINK_DESCRIPTOR_TYPES);
@@ -338,7 +338,7 @@ zink_descriptor_set_get(struct zink_context *ctx,
       if (pool->num_sets_allocated + pool->key.num_descriptors > ZINK_DEFAULT_MAX_DESCS) {
          batch = zink_flush_batch(ctx, batch);
          zink_batch_reference_program(batch, pg);
-         return zink_descriptor_set_get(ctx, batch, pg, type, is_compute, cache_hit);
+         return zink_descriptor_set_get(ctx, type, is_compute, cache_hit);
       }
    } else {
       if (pg->last_set[type] && !pg->last_set[type]->hash) {

@@ -266,14 +266,6 @@ get_gfx_program(struct zink_context *ctx)
    return ctx->curr_program;
 }
 
-static struct zink_descriptor_set *
-get_descriptor_set(struct zink_context *ctx, bool is_compute, enum zink_descriptor_type type, bool *cache_hit)
-{
-   struct zink_program *pg = is_compute ? (struct zink_program *)ctx->curr_compute : (struct zink_program *)ctx->curr_program;
-   struct zink_batch *batch = is_compute ? &ctx->compute_batch : zink_curr_batch(ctx);
-   return zink_descriptor_set_get(ctx, batch, pg, type, is_compute, cache_hit);
-}
-
 struct zink_transition {
    struct zink_resource *res;
    VkImageLayout layout;
@@ -743,7 +735,7 @@ update_descriptors(struct zink_context *ctx, struct zink_screen *screen, bool is
    struct zink_descriptor_set *zds[ZINK_DESCRIPTOR_TYPES];
    for (int h = 0; h < ZINK_DESCRIPTOR_TYPES; h++) {
       if (pg->pool[h])
-         zds[h] = get_descriptor_set(ctx, is_compute, h, &cache_hit[h]);
+         zds[h] = zink_descriptor_set_get(ctx, h, is_compute, &cache_hit[h]);
       else
          zds[h] = NULL;
    }

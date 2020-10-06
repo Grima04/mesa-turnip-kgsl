@@ -118,8 +118,6 @@ zink_resource_desc_set_add(struct zink_resource *res, struct zink_descriptor_set
 
 struct zink_descriptor_set *
 zink_descriptor_set_get(struct zink_context *ctx,
-                               struct zink_batch *batch,
-                               struct zink_program *pg,
                                enum zink_descriptor_type type,
                                bool is_compute,
                                bool *cache_hit);
