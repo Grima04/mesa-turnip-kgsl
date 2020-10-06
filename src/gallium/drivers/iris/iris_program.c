@@ -2405,6 +2405,7 @@ iris_create_compute_state(struct pipe_context *ctx,
    struct iris_uncompiled_shader *ish =
       iris_create_uncompiled_shader(ctx, nir, NULL);
    ish->kernel_input_size = state->req_input_mem;
+   ish->kernel_shared_size = state->req_local_mem;
 
    // XXX: disallow more than 64KB of shared variables
 

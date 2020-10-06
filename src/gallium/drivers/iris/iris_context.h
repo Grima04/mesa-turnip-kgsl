@@ -385,6 +385,9 @@ struct iris_uncompiled_shader {
 
    /** Size (in bytes) of the kernel input data */
    unsigned kernel_input_size;
+
+   /** Size (in bytes) of the local (shared) data passed as kernel inputs */
+   unsigned kernel_shared_size;
 };
 
 enum iris_surface_group {

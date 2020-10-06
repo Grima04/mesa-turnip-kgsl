@@ -4464,14 +4464,11 @@ iris_store_cs_state(struct iris_context *ice,
                     const struct gen_device_info *devinfo,
                     struct iris_compiled_shader *shader)
 {
-   struct brw_stage_prog_data *prog_data = shader->prog_data;
    struct brw_cs_prog_data *cs_prog_data = (void *) shader->prog_data;
    void *map = shader->derived_data;
 
    iris_pack_state(GENX(INTERFACE_DESCRIPTOR_DATA), map, desc) {
       desc.ConstantURBEntryReadLength = cs_prog_data->push.per_thread.regs;
-      desc.SharedLocalMemorySize =
-         encode_slm_size(GEN_GEN, prog_data->total_shared);
       desc.BarrierEnable = cs_prog_data->uses_barrier;
       desc.CrossThreadConstantDataReadLength =
          cs_prog_data->push.cross_thread.regs;
@@ -6652,6 +6649,8 @@ iris_upload_gpgpu_walker(struct iris_context *ice,
    const struct gen_device_info *devinfo = &screen->devinfo;
    struct iris_binder *binder = &ice->state.binder;
    struct iris_shader_state *shs = &ice->state.shaders[MESA_SHADER_COMPUTE];
+   struct iris_uncompiled_shader *ish =
+      ice->shaders.uncompiled[MESA_SHADER_COMPUTE];
    struct iris_compiled_shader *shader =
       ice->shaders.prog[MESA_SHADER_COMPUTE];
    struct brw_stage_prog_data *prog_data = shader->prog_data;
@@ -6741,7 +6740,12 @@ iris_upload_gpgpu_walker(struct iris_context *ice,
                       IRIS_STAGE_DIRTY_CS)) {
       uint32_t desc[GENX(INTERFACE_DESCRIPTOR_DATA_length)];
 
+      unsigned slm_size = prog_data->total_shared;
+      if (ish->kernel_shared_size)
+         slm_size = ALIGN(slm_size, 8) + ish->kernel_shared_size;
+
       iris_pack_state(GENX(INTERFACE_DESCRIPTOR_DATA), desc, idd) {
+         idd.SharedLocalMemorySize = encode_slm_size(GEN_GEN, slm_size);
          idd.KernelStartPointer =
             KSP(shader) + brw_cs_prog_data_prog_offset(cs_prog_data, simd_size);
          idd.SamplerStatePointer = shs->sampler_table.offset;
