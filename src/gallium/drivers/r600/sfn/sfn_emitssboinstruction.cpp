@@ -534,7 +534,7 @@ bool EmitSSBOInstruction::fetch_return_value(const nir_intrinsic_instr *intrin)
                                      dest,
                                      0,
                                      false,
-                                     0xf,
+                                     0x3,
                                      R600_IMAGE_IMMED_RESOURCE_OFFSET + imageid,
                                      0,
                                      bim_none,
