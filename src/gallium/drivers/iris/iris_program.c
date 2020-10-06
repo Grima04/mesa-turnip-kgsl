@@ -396,6 +396,7 @@ iris_setup_uniforms(const struct brw_compiler *compiler,
    unsigned ucp_idx[IRIS_MAX_CLIP_PLANES];
    unsigned img_idx[PIPE_MAX_SHADER_IMAGES];
    unsigned variable_group_size_idx = -1;
+   unsigned work_dim_idx = -1;
    memset(ucp_idx, -1, sizeof(ucp_idx));
    memset(img_idx, -1, sizeof(img_idx));
 
@@ -537,6 +538,16 @@ iris_setup_uniforms(const struct brw_compiler *compiler,
             b.cursor = nir_before_instr(instr);
             offset = nir_imm_int(&b, system_values_start +
                                      variable_group_size_idx * sizeof(uint32_t));
+            break;
+         }
+         case nir_intrinsic_load_work_dim: {
+            if (work_dim_idx == -1) {
+               work_dim_idx = num_system_values++;
+               system_values[work_dim_idx] = BRW_PARAM_BUILTIN_WORK_DIM;
+            }
+            b.cursor = nir_before_instr(instr);
+            offset = nir_imm_int(&b, system_values_start +
+                                     work_dim_idx * sizeof(uint32_t));
             break;
          }
          case nir_intrinsic_load_kernel_input: {

@@ -3314,6 +3314,8 @@ upload_sysvals(struct iris_context *ice,
                  sysval <= BRW_PARAM_BUILTIN_WORK_GROUP_SIZE_Z) {
          unsigned i = sysval - BRW_PARAM_BUILTIN_WORK_GROUP_SIZE_X;
          value = ice->state.last_block[i];
+      } else if (sysval == BRW_PARAM_BUILTIN_WORK_DIM) {
+         value = grid->work_dim;
       } else {
          assert(!"unhandled system value");
       }
