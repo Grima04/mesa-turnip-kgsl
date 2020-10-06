@@ -988,10 +988,111 @@ emit_texs(bi_context *ctx, nir_tex_instr *instr)
         bi_emit(ctx, tex);
 }
 
+/* Returns dimension with 0 special casing cubemaps. Shamelessly copied from Midgard */
+static unsigned
+bifrost_tex_format(enum glsl_sampler_dim dim)
+{
+        switch (dim) {
+        case GLSL_SAMPLER_DIM_1D:
+        case GLSL_SAMPLER_DIM_BUF:
+                return 1;
+
+        case GLSL_SAMPLER_DIM_2D:
+        case GLSL_SAMPLER_DIM_MS:
+        case GLSL_SAMPLER_DIM_EXTERNAL:
+        case GLSL_SAMPLER_DIM_RECT:
+                return 2;
+
+        case GLSL_SAMPLER_DIM_3D:
+                return 3;
+
+        case GLSL_SAMPLER_DIM_CUBE:
+                return 0;
+
+        default:
+                DBG("Unknown sampler dim type\n");
+                assert(0);
+                return 0;
+        }
+}
+
+static enum bifrost_texture_format_full
+bi_texture_format(nir_alu_type T, enum bifrost_outmod outmod)
+{
+        switch (T) {
+        case nir_type_float16: return BIFROST_TEXTURE_FORMAT_F16 + outmod;
+        case nir_type_float32: return BIFROST_TEXTURE_FORMAT_F32 + outmod;
+        case nir_type_uint16:  return BIFROST_TEXTURE_FORMAT_U16;
+        case nir_type_int16:   return BIFROST_TEXTURE_FORMAT_S16;
+        case nir_type_uint32:  return BIFROST_TEXTURE_FORMAT_U32;
+        case nir_type_int32:   return BIFROST_TEXTURE_FORMAT_S32;
+        default:              unreachable("Invalid type for texturing");
+        }
+}
+
 static void
 emit_texc(bi_context *ctx, nir_tex_instr *instr)
 {
-        unreachable("stub");
+        /* TODO: support more with other encodings */
+        assert(instr->sampler_index < 16);
+
+        /* TODO: support more ops */
+        switch (instr->op) {
+        case nir_texop_tex:
+        case nir_texop_txl:
+                break;
+        default:
+                unreachable("Unsupported texture op");
+        }
+
+        bi_instruction tex = {
+                .type = BI_TEXC,
+                .dest = pan_dest_index(&instr->dest),
+                .dest_type = instr->dest_type,
+                .src_types = {
+                        /* Staging registers */
+                        nir_type_uint32,
+                        nir_type_float32, nir_type_float32,
+                        nir_type_uint32
+                },
+                .vector_channels = 4
+        };
+
+        struct bifrost_texture_operation desc = {
+                .sampler_index_or_mode = instr->sampler_index,
+                .index = instr->texture_index,
+                .immediate_indices = 1, /* TODO */
+                .op = BIFROST_TEX_OP_TEX, /* TODO */
+                .offset_or_bias_disable = false, /* TODO */
+                .shadow_or_clamp_disable = instr->is_shadow,
+                .array = false, /* TODO */
+                .dimension = bifrost_tex_format(instr->sampler_dim),
+                .lod_mode = BIFROST_LOD_MODE_COMPUTE,
+                .format_or_fetch = bi_texture_format(instr->dest_type, BIFROST_NONE), /* TODO */
+                .mask = (1 << tex.vector_channels) - 1
+        };
+
+        for (unsigned i = 0; i < instr->num_srcs; ++i) {
+                unsigned index = pan_src_index(&instr->src[i].src);
+
+                switch (instr->src[i].src_type) {
+                case nir_tex_src_coord:
+                        /* TODO: cube map descriptor */
+                        tex.src[1] = index;
+                        tex.src[2] = index;
+                        tex.swizzle[1][0] = 0;
+                        tex.swizzle[2][0] = 1;
+                        break;
+                default:
+                        unreachable("Unhandled src type in texc emit");
+                }
+        }
+
+        /* Pass the texture operation descriptor in src2 */
+        tex.src[3] = BIR_INDEX_CONSTANT;
+        memcpy(&tex.constant.u64, &desc, sizeof(desc));
+
+        bi_emit(ctx, tex);
 }
 
 /* Simple textures ops correspond to NIR tex or txl with LOD = 0. Anything else
