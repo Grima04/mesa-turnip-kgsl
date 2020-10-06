@@ -4111,8 +4111,8 @@ blit_shader(struct v3dv_cmd_buffer *cmd_buffer,
          .renderPass = pipeline->pass,
          .attachmentCount = 1,
          .pAttachments = &dst_image_view,
-         .width = dst_level_w,
-         .height = dst_level_h,
+         .width = dst_x + dst_w,
+         .height = dst_y + dst_h,
          .layers = 1,
       };
 
