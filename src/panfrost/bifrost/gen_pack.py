@@ -271,6 +271,7 @@ modifier_map = {
 
         # 0: compute 1: zero
         "lod_mode": lambda a,b,c,d: '1 - ins->texture.compute_lod',
+        "skip": lambda a,b,c,d: 'ins->skip',
 
         # Not much choice in the matter...
         "divzero": lambda a,b,c,d: '0',
@@ -294,7 +295,6 @@ modifier_map = {
         "sample": lambda a,b,c,d: '0', # LD_VAR center
         "function": lambda a,b,c,d: '3', # LD_VAR_FLAT none
         "preserve_null": lambda a,b,c,d: '0', # SEG_ADD none
-        "skip": lambda a,b,c,d: '0', # texturing (no skip)
         "bytes2": lambda a,b,c,d: '0', # NIR shifts are in bits
         "result_word": lambda a,b,c,d: '0', # 32-bit only shifts for now (TODO)
         "source": lambda a,b,c,d: '7', # cycle_counter for LD_GCLK
