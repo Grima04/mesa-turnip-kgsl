@@ -854,6 +854,7 @@ bi_pack_add(bi_clause *clause, bi_bundle bundle, bi_registers *regs, gl_shader_s
                 assert(nir_alu_type_get_type_size(bundle.add->src_types[0]) == 16);
                 return pan_pack_add_mkvec_v2i16(clause, bundle.add, regs);
         case BI_TEXC:
+                return pan_pack_add_texc(clause, bundle.add, regs);
         case BI_TEXC_DUAL:
                 unreachable("Packing todo");
         case BI_TEXS:
