@@ -118,6 +118,16 @@ zink_desc_type_from_vktype(VkDescriptorType type)
    
 }
 
+static inline bool
+zink_program_has_descriptors(const struct zink_program *pg)
+{
+   for (unsigned i = 0; i < ARRAY_SIZE(pg->pool); i++) {
+      if (pg->pool[i])
+         return true;
+   }
+   return false;
+}
+
 unsigned
 zink_program_num_descriptors(const struct zink_program *pg);
 
