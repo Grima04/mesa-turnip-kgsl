@@ -4241,7 +4241,7 @@ void visit_store_ls_or_es_output(isel_context *ctx, nir_intrinsic_instr *instr)
    unsigned write_mask = nir_intrinsic_write_mask(instr);
    unsigned elem_size_bytes = instr->src[0].ssa->bit_size / 8u;
 
-   if (ctx->stage == vertex_es || ctx->stage == tess_eval_es) {
+   if (ctx->stage.hw == HWStage::ES) {
       /* GFX6-8: ES stage is not merged into GS, data is passed from ES to GS in VMEM. */
       Temp esgs_ring = bld.smem(aco_opcode::s_load_dwordx4, bld.def(s4), ctx->program->private_segment_buffer, Operand(RING_ESGS_VS * 16u));
       Temp es2gs_offset = get_arg(ctx, ctx->args->es2gs_offset);
@@ -11650,8 +11650,8 @@ void select_program(Program *program,
 {
    isel_context ctx = setup_isel_context(program, shader_count, shaders, config, args, false);
    if_context ic_merged_wave_info;
-   bool ngg_no_gs = ctx.stage == vertex_ngg || ctx.stage == tess_eval_ngg;
-   bool ngg_gs = ctx.stage == vertex_geometry_ngg || ctx.stage == tess_eval_geometry_ngg;
+   bool ngg_no_gs = ctx.stage.hw == HWStage::NGG && !ctx.stage.has(SWStage::GS);
+   bool ngg_gs    = ctx.stage.hw == HWStage::NGG &&  ctx.stage.has(SWStage::GS);
 
    for (unsigned i = 0; i < shader_count; i++) {
       nir_shader *nir = shaders[i];
