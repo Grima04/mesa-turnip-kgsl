@@ -158,7 +158,7 @@ allocate_desc_set(struct zink_screen *screen, struct zink_program *pg, enum zink
    for (unsigned i = 0; i < bucket_size; i ++) {
       struct zink_descriptor_set *zds = &alloc[i];
       pipe_reference_init(&zds->reference, 1);
-      zds->pg = pg;
+      zds->pool = pool;
       zds->hash = 0;
       zds->invalid = true;
       zds->recycled = false;
@@ -308,8 +308,7 @@ quick_out:
 void
 zink_descriptor_set_recycle(struct zink_descriptor_set *zds)
 {
-   struct zink_program *pg = zds->pg;
-   struct zink_descriptor_pool *pool = pg->pool[zds->type];
+   struct zink_descriptor_pool *pool = zds->pool;
    /* if desc set is still in use by a batch, don't recache */
    uint32_t refcount = p_atomic_read(&zds->reference.count);
    if (refcount != 1)
@@ -325,8 +324,6 @@ zink_descriptor_set_recycle(struct zink_descriptor_set *zds)
 
    _mesa_hash_table_remove(pool->desc_sets, he);
    if (zds->invalid) {
-      if (pg->last_set[zds->type] == zds)
-         pg->last_set[zds->type] = NULL;
       zink_descriptor_set_invalidate(zds);
       util_dynarray_append(&pool->alloc_desc_sets, struct zink_descriptor_set *, zds);
    } else {
@@ -441,7 +438,7 @@ zink_descriptor_program_init(struct zink_screen *screen,
          null_binding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT |
                                    VK_SHADER_STAGE_GEOMETRY_BIT | VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT |
                                    VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT | VK_SHADER_STAGE_COMPUTE_BIT;
-         VkDescriptorPoolSize null_size = {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, ZINK_DESCRIPTOR_TYPES};
+         VkDescriptorPoolSize null_size = {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, ZINK_DEFAULT_MAX_DESCS};
          pg->pool[i] = descriptor_pool_create(screen, &null_binding, 1, &null_size, 1);
          if (!pg->pool[i])
             return false;

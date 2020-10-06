@@ -67,7 +67,7 @@ struct zink_descriptor_pool {
 };
 
 struct zink_descriptor_set {
-   struct zink_program *pg;
+   struct zink_descriptor_pool *pool;
    enum zink_descriptor_type type;
    struct pipe_reference reference; //incremented for batch usage
    VkDescriptorSet desc_set;

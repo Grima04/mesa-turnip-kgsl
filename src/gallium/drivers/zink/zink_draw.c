@@ -357,7 +357,7 @@ bind_descriptors(struct zink_context *ctx, struct zink_descriptor_set *zds, unsi
                  uint32_t *dynamic_offsets, unsigned dynamic_offset_idx, bool is_compute, bool cache_hit)
 {
    bool need_flush = false;
-   struct zink_program *pg = zds->pg;
+   struct zink_program *pg = is_compute ? (struct zink_program *)ctx->curr_compute : (struct zink_program *)ctx->curr_program;
    struct zink_batch *batch = is_compute ? &ctx->compute_batch : zink_curr_batch(ctx);
    struct zink_screen *screen = zink_screen(ctx->base.screen);
    assert(zds->desc_set);
@@ -396,7 +396,7 @@ static bool
 update_ubo_descriptors(struct zink_context *ctx, struct zink_descriptor_set *zds, struct zink_transition *transitions, int *num_transitions,
                        struct set *transition_hash, bool is_compute, bool cache_hit)
 {
-   struct zink_program *pg = zds->pg;
+   struct zink_program *pg = is_compute ? (struct zink_program *)ctx->curr_compute : (struct zink_program *)ctx->curr_program;
    struct zink_screen *screen = zink_screen(ctx->base.screen);
    unsigned num_descriptors = pg->pool[zds->type]->num_descriptors;
    unsigned num_bindings = zink_program_num_bindings_typed(pg, zds->type, is_compute);
@@ -478,7 +478,7 @@ static bool
 update_ssbo_descriptors(struct zink_context *ctx, struct zink_descriptor_set *zds, struct zink_transition *transitions, int *num_transitions,
                         struct set *transition_hash, bool is_compute, bool cache_hit)
 {
-   struct zink_program *pg = zds->pg;
+   struct zink_program *pg = is_compute ? (struct zink_program *)ctx->curr_compute : (struct zink_program *)ctx->curr_program;
    ASSERTED struct zink_screen *screen = zink_screen(ctx->base.screen);
    unsigned num_descriptors = pg->pool[zds->type]->num_descriptors;
    unsigned num_bindings = zink_program_num_bindings_typed(pg, zds->type, is_compute);
@@ -582,7 +582,7 @@ static bool
 update_sampler_descriptors(struct zink_context *ctx, struct zink_descriptor_set *zds, struct zink_transition *transitions, int *num_transitions,
                            struct set *transition_hash, bool is_compute, bool cache_hit)
 {
-   struct zink_program *pg = zds->pg;
+   struct zink_program *pg = is_compute ? (struct zink_program *)ctx->curr_compute : (struct zink_program *)ctx->curr_program;
    struct zink_screen *screen = zink_screen(ctx->base.screen);
    unsigned num_descriptors = pg->pool[zds->type]->num_descriptors;
    unsigned num_bindings = zink_program_num_bindings(pg, is_compute);
@@ -655,7 +655,7 @@ static bool
 update_image_descriptors(struct zink_context *ctx, struct zink_descriptor_set *zds, struct zink_transition *transitions, int *num_transitions,
                          struct set *transition_hash, bool is_compute, bool cache_hit)
 {
-   struct zink_program *pg = zds->pg;
+   struct zink_program *pg = is_compute ? (struct zink_program *)ctx->curr_compute : (struct zink_program *)ctx->curr_program;
    struct zink_screen *screen = zink_screen(ctx->base.screen);
    unsigned num_descriptors = pg->pool[zds->type]->num_descriptors;
    unsigned num_bindings = zink_program_num_bindings(pg, is_compute);
