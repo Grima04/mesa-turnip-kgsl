@@ -225,6 +225,9 @@
    DRI_CONF_OPT_S(indirect_gl_extension_override, def, \
                   "Allow enabling/disabling a list of indirect-GL extensions")
 
+#define DRI_CONF_DISABLE_PROTECTED_CONTENT_CHECK(def) \
+   DRI_CONF_OPT_B(disable_protected_content_check, def, \
+                  "Don't reject image import if protected_content attribute doesn't match")
 
 /**
  * \brief Image quality-related options
