@@ -37,7 +37,7 @@ traces:
   - path: gputest/pixmark-piano.trace
     expectations:
       - device: gl-radeonsi-stoney
-        checksum: 777d48e82cabceef6d9489189f91d266
+        checksum: 014b88f3357d32af0c306d4a14eb36ef
   - path: gputest/triangle.trace
     expectations:
       - device: gl-radeonsi-stoney
@@ -173,7 +173,7 @@ traces:
   - path: godot/Material Testers.x86_64_2020.04.08_13.38_frame799.rdc
     expectations:
       - device: gl-radeonsi-stoney
-        checksum: 990abd360dc380c95ee2645f8b402d47
+        checksum: 41a0b6eddecdf1df645ccf34082aac88
   - path: gputest/gimark.trace
     expectations:
       - device: gl-radeonsi-stoney
@@ -189,7 +189,7 @@ traces:
   - path: gputest/pixmark-piano.trace
     expectations:
       - device: gl-radeonsi-stoney
-        checksum: 777d48e82cabceef6d9489189f91d266
+        checksum: 014b88f3357d32af0c306d4a14eb36ef
   - path: gputest/pixmark-volplosion.trace
     expectations:
       - device: gl-radeonsi-stoney

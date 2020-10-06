@@ -8,11 +8,11 @@ elif [ $DEBIAN_ARCH = amd64 ]; then
     # Upstream LLVM package repository
     apt-get -y install --no-install-recommends gnupg ca-certificates
     apt-key add /llvm-snapshot.gpg.key
-    echo "deb https://apt.llvm.org/buster/ llvm-toolchain-buster-9 main" >/etc/apt/sources.list.d/llvm9.list
+    echo "deb https://apt.llvm.org/buster/ llvm-toolchain-buster-10 main" >/etc/apt/sources.list.d/llvm10.list
     apt-get update
 
     ARCH_PACKAGES="libelf1
-                   libllvm9
+                   libllvm10
                    libxcb-dri2-0
                    libxcb-dri3-0
                    libxcb-present0

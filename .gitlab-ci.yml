@@ -240,7 +240,7 @@ x86_build-base:
     - .fdo.container-build@debian
     - .container
   variables:
-    FDO_DISTRIBUTION_TAG: &x86_build-base "2020-08-13-gold"
+    FDO_DISTRIBUTION_TAG: &x86_build-base "2020-10-06-clang10-2"
 
 .use-x86_build-base:
   extends:
@@ -258,7 +258,7 @@ x86_build:
   extends:
     - .use-x86_build-base
   variables:
-    FDO_DISTRIBUTION_TAG: &x86_build "2020-09-10-libdrm"
+    FDO_DISTRIBUTION_TAG: &x86_build "2020-10-06-clang10-2"
 
 .use-x86_build:
   variables:
@@ -272,7 +272,7 @@ i386_build:
   extends:
     - .use-x86_build-base
   variables:
-    FDO_DISTRIBUTION_TAG: &i386_build "2020-09-10-libdrm"
+    FDO_DISTRIBUTION_TAG: &i386_build "2020-10-06-clang10-2"
 
 .use-i386_build:
   variables:
@@ -286,7 +286,7 @@ ppc64el_build:
   extends:
     - .use-x86_build-base
   variables:
-    FDO_DISTRIBUTION_TAG: &ppc64el_build "2020-09-10-libdrm"
+    FDO_DISTRIBUTION_TAG: &ppc64el_build "2020-10-06-clang10-2"
 
 .use-ppc64el_build:
   variables:
@@ -300,7 +300,7 @@ s390x_build:
   extends:
     - .use-x86_build-base
   variables:
-    FDO_DISTRIBUTION_TAG: &s390x_build "2020-09-10-libdrm"
+    FDO_DISTRIBUTION_TAG: &s390x_build "2020-10-06-clang10-2"
 
 .use-s390x_build:
   variables:
@@ -313,7 +313,7 @@ s390x_build:
 x86_test-base:
   extends: x86_build-base
   variables:
-    FDO_DISTRIBUTION_TAG: &x86_test-base "2020-08-13-gold"
+    FDO_DISTRIBUTION_TAG: &x86_test-base "2020-10-06-clang10-2"
 
 .use-x86_test-base:
   extends:
@@ -330,13 +330,13 @@ x86_test-base:
 x86_test-gl:
   extends: .use-x86_test-base
   variables:
-    FDO_DISTRIBUTION_TAG: &x86_test-gl "2020-09-10-libdrm"
+    FDO_DISTRIBUTION_TAG: &x86_test-gl "2020-10-06-clang10-2"
 
 # Debian 10 based x86 test image for VK
 x86_test-vk:
   extends: .use-x86_test-base
   variables:
-    FDO_DISTRIBUTION_TAG: &x86_test-vk "2020-08-31-deqp-version"
+    FDO_DISTRIBUTION_TAG: &x86_test-vk "2020-10-06-clang10-2"
 
 # Debian 9 based x86 build image (old LLVM)
 x86_build_old:
@@ -373,7 +373,7 @@ arm_test-base:
     - .fdo.container-build@debian
     - .container
   variables:
-    FDO_DISTRIBUTION_TAG: &arm_test-base "2020-09-10-libdrm"
+    FDO_DISTRIBUTION_TAG: &arm_test-base "2020-10-06-clang10-2"
 
 .use-arm_test-base:
   extends:
@@ -530,7 +530,7 @@ make git archive:
     - .use-x86_build
   stage: meson-x86_64
   variables:
-    LLVM_VERSION: 9
+    LLVM_VERSION: 10
   script:
     - .gitlab-ci/meson-build.sh
 
@@ -747,8 +747,8 @@ meson-clang:
     DRI_DRIVERS: "auto"
     GALLIUM_DRIVERS: "iris,nouveau,kmsro,r300,r600,freedreno,swr,swrast,svga,v3d,vc4,virgl,etnaviv,panfrost,lima,zink,radeonsi,tegra"
     VULKAN_DRIVERS: intel,amd,freedreno
-    CC: "ccache clang-9"
-    CXX: "ccache clang++-9"
+    CC: "ccache clang-10"
+    CXX: "ccache clang++-10"
 
 .meson-windows-vs2019:
   extends:
@@ -784,8 +784,9 @@ meson-clover:
       -D gallium-nine=false
       -D gallium-opencl=icd
   script:
-    - .gitlab-ci/meson-build.sh
     - LLVM_VERSION=8 .gitlab-ci/meson-build.sh
+    - LLVM_VERSION=9 .gitlab-ci/meson-build.sh
+    - .gitlab-ci/meson-build.sh
 
 meson-vulkan:
   extends: .meson-build
