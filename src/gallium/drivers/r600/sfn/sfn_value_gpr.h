@@ -70,6 +70,8 @@ private:
    bool m_keep_alive;
 };
 
+using PGPRValue = std::shared_ptr<GPRValue>;
+
 class GPRVector : public Value {
 public:
    using Swizzle = std::array<uint32_t,4>;

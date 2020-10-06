@@ -3,6 +3,7 @@
 
 #include "sfn_emitinstruction.h"
 #include "sfn_instruction_gds.h"
+#include "sfn_value_gpr.h"
 
 namespace r600 {
 
@@ -41,7 +42,7 @@ private:
 
    GPRVector make_dest(const nir_intrinsic_instr* instr);
 
-   PValue m_atomic_update;
+   PGPRValue m_atomic_update;
 
    bool m_require_rat_return_address;
    GPRVector m_rat_return_address;

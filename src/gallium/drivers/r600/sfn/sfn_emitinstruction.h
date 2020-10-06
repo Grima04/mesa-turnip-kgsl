@@ -65,7 +65,7 @@ protected:
 
    int allocate_temp_register();
 
-   PValue get_temp_register(int channel = -1);
+   PGPRValue get_temp_register(int channel = -1);
    GPRVector get_temp_vec4();
 
    // forwards from ShaderFromNirProcessor

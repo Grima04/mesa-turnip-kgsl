@@ -146,7 +146,7 @@ PValue ValuePool::from_nir(const nir_alu_src &v, unsigned component)
    return from_nir(v.src, component, v.swizzle[component]);
 }
 
-PValue ValuePool::get_temp_register(int channel)
+PGPRValue ValuePool::get_temp_register(int channel)
 {
    /* Skip to next register to get the channel we want */
    if (channel >= 0) {
@@ -160,7 +160,7 @@ PValue ValuePool::get_temp_register(int channel)
       current_temp_reg_index = allocate_temp_register();
       next_temp_reg_comp = 0;
    }
-   return PValue(new GPRValue(current_temp_reg_index, next_temp_reg_comp++));
+   return std::make_shared<GPRValue>(current_temp_reg_index, next_temp_reg_comp++);
 }
 
 GPRVector ValuePool::get_temp_vec4()

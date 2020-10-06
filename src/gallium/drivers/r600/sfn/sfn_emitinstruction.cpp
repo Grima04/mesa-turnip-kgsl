@@ -124,7 +124,7 @@ int EmitInstruction::lookup_register_index(const nir_dest& dst)
    return m_proc.lookup_register_index(dst);
 }
 
-PValue EmitInstruction::get_temp_register(int channel)
+PGPRValue EmitInstruction::get_temp_register(int channel)
 {
    return m_proc.get_temp_register(channel);
 }
