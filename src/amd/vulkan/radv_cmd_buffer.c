@@ -3267,10 +3267,10 @@ static void radv_stage_flush(struct radv_cmd_buffer *cmd_buffer,
 	}
 }
 
-static enum radv_cmd_flush_bits
+enum radv_cmd_flush_bits
 radv_src_access_flush(struct radv_cmd_buffer *cmd_buffer,
 		      VkAccessFlags src_flags,
-		      struct radv_image *image)
+		      const struct radv_image *image)
 {
 	bool flush_CB_meta = true, flush_DB_meta = true;
 	enum radv_cmd_flush_bits flush_bits = 0;
@@ -3339,10 +3339,10 @@ radv_src_access_flush(struct radv_cmd_buffer *cmd_buffer,
 	return flush_bits;
 }
 
-static enum radv_cmd_flush_bits
+enum radv_cmd_flush_bits
 radv_dst_access_flush(struct radv_cmd_buffer *cmd_buffer,
                       VkAccessFlags dst_flags,
-                      struct radv_image *image)
+                      const struct radv_image *image)
 {
 	bool flush_CB_meta = true, flush_DB_meta = true;
 	enum radv_cmd_flush_bits flush_bits = 0;
@@ -6029,15 +6029,14 @@ static void radv_initialize_htile(struct radv_cmd_buffer *cmd_buffer,
 	VkClearDepthStencilValue value = {0};
 	struct radv_barrier_data barrier = {0};
 
-	state->flush_bits |= RADV_CMD_FLAG_FLUSH_AND_INV_DB |
-			     RADV_CMD_FLAG_FLUSH_AND_INV_DB_META;
-
 	barrier.layout_transitions.init_mask_ram = 1;
 	radv_describe_layout_transition(cmd_buffer, &barrier);
 
-	state->flush_bits |= radv_clear_htile(cmd_buffer, image, range, htile_value);
+	/* Transitioning from LAYOUT_UNDEFINED layout not everyone is consistent
+	 * in considering previous rendering work for WAW hazards. */
+	state->flush_bits |= radv_src_access_flush(cmd_buffer, VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT, image);
 
-	state->flush_bits |= RADV_CMD_FLAG_FLUSH_AND_INV_DB_META;
+	state->flush_bits |= radv_clear_htile(cmd_buffer, image, range, htile_value);
 
 	if (vk_format_is_stencil(image->vk_format))
 		aspects |= VK_IMAGE_ASPECT_STENCIL_BIT;
@@ -6096,15 +6095,14 @@ static void radv_initialise_cmask(struct radv_cmd_buffer *cmd_buffer,
 	struct radv_cmd_state *state = &cmd_buffer->state;
 	struct radv_barrier_data barrier = {0};
 
-	state->flush_bits |= RADV_CMD_FLAG_FLUSH_AND_INV_CB |
-			    RADV_CMD_FLAG_FLUSH_AND_INV_CB_META;
-
 	barrier.layout_transitions.init_mask_ram = 1;
 	radv_describe_layout_transition(cmd_buffer, &barrier);
 
-	state->flush_bits |= radv_clear_cmask(cmd_buffer, image, range, value);
+	/* Transitioning from LAYOUT_UNDEFINED layout not everyone is consistent
+	 * in considering previous rendering work for WAW hazards. */
+	state->flush_bits |= radv_src_access_flush(cmd_buffer, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, image);
 
-	state->flush_bits |= RADV_CMD_FLAG_FLUSH_AND_INV_CB_META;
+	state->flush_bits |= radv_clear_cmask(cmd_buffer, image, range, value);
 }
 
 void radv_initialize_fmask(struct radv_cmd_buffer *cmd_buffer,
@@ -6122,15 +6120,14 @@ void radv_initialize_fmask(struct radv_cmd_buffer *cmd_buffer,
 	uint32_t value = fmask_clear_values[log2_samples];
 	struct radv_barrier_data barrier = {0};
 
-	state->flush_bits |= RADV_CMD_FLAG_FLUSH_AND_INV_CB |
-			     RADV_CMD_FLAG_FLUSH_AND_INV_CB_META;
-
 	barrier.layout_transitions.init_mask_ram = 1;
 	radv_describe_layout_transition(cmd_buffer, &barrier);
 
-	state->flush_bits |= radv_clear_fmask(cmd_buffer, image, range, value);
+	/* Transitioning from LAYOUT_UNDEFINED layout not everyone is consistent
+	 * in considering previous rendering work for WAW hazards. */
+	state->flush_bits |= radv_src_access_flush(cmd_buffer, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, image);
 
-	state->flush_bits |= RADV_CMD_FLAG_FLUSH_AND_INV_CB_META;
+	state->flush_bits |= radv_clear_fmask(cmd_buffer, image, range, value);
 }
 
 void radv_initialize_dcc(struct radv_cmd_buffer *cmd_buffer,
@@ -6141,11 +6138,12 @@ void radv_initialize_dcc(struct radv_cmd_buffer *cmd_buffer,
 	struct radv_barrier_data barrier = {0};
 	unsigned size = 0;
 
-	state->flush_bits |= RADV_CMD_FLAG_FLUSH_AND_INV_CB |
-			     RADV_CMD_FLAG_FLUSH_AND_INV_CB_META;
-
 	barrier.layout_transitions.init_mask_ram = 1;
 	radv_describe_layout_transition(cmd_buffer, &barrier);
+
+	/* Transitioning from LAYOUT_UNDEFINED layout not everyone is consistent
+	 * in considering previous rendering work for WAW hazards. */
+	state->flush_bits |= radv_src_access_flush(cmd_buffer, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, image);
 
 	state->flush_bits |= radv_clear_dcc(cmd_buffer, image, range, value);
 
@@ -6170,15 +6168,12 @@ void radv_initialize_dcc(struct radv_cmd_buffer *cmd_buffer,
 		/* Initialize the mipmap levels without DCC. */
 		if (size != image->planes[0].surface.dcc_size) {
 			state->flush_bits |=
-				radv_fill_buffer(cmd_buffer, image->bo,
+				radv_fill_buffer(cmd_buffer, image, image->bo,
 						 image->offset + image->planes[0].surface.dcc_offset + size,
 						 image->planes[0].surface.dcc_size - size,
 						 0xffffffff);
 		}
 	}
-
-	state->flush_bits |= RADV_CMD_FLAG_FLUSH_AND_INV_CB |
-			     RADV_CMD_FLAG_FLUSH_AND_INV_CB_META;
 }
 
 /**

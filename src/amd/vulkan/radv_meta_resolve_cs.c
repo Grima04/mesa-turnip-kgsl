@@ -898,7 +898,8 @@ radv_cmd_buffer_resolve_subpass_cs(struct radv_cmd_buffer *cmd_buffer)
 	 */
 	barrier.src_stage_mask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 	barrier.src_access_mask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-	barrier.dst_access_mask = VK_ACCESS_INPUT_ATTACHMENT_READ_BIT;
+	barrier.dst_access_mask = VK_ACCESS_SHADER_READ_BIT |
+	                          VK_ACCESS_SHADER_WRITE_BIT;
 	radv_subpass_barrier(cmd_buffer, &barrier);
 
 	for (uint32_t i = 0; i < subpass->color_count; ++i) {
@@ -940,8 +941,9 @@ radv_cmd_buffer_resolve_subpass_cs(struct radv_cmd_buffer *cmd_buffer)
 						&region);
 	}
 
-	cmd_buffer->state.flush_bits |= RADV_CMD_FLAG_CS_PARTIAL_FLUSH |
-	                                RADV_CMD_FLAG_INV_VCACHE;
+	cmd_buffer->state.flush_bits |=
+		RADV_CMD_FLAG_CS_PARTIAL_FLUSH |
+		radv_src_access_flush(cmd_buffer, VK_ACCESS_SHADER_WRITE_BIT, NULL);
 }
 
 void
@@ -952,7 +954,6 @@ radv_depth_stencil_resolve_subpass_cs(struct radv_cmd_buffer *cmd_buffer,
 	struct radv_framebuffer *fb = cmd_buffer->state.framebuffer;
 	const struct radv_subpass *subpass = cmd_buffer->state.subpass;
 	struct radv_meta_saved_state saved_state;
-	struct radv_subpass_barrier barrier;
 	uint32_t layer_count = fb->layers;
 
 	if (subpass->view_mask)
@@ -961,10 +962,10 @@ radv_depth_stencil_resolve_subpass_cs(struct radv_cmd_buffer *cmd_buffer,
 	/* Resolves happen before the end-of-subpass barriers get executed, so
 	 * we have to make the attachment shader-readable.
 	 */
-	barrier.src_stage_mask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-	barrier.src_access_mask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-	barrier.dst_access_mask = VK_ACCESS_INPUT_ATTACHMENT_READ_BIT;
-	radv_subpass_barrier(cmd_buffer, &barrier);
+	cmd_buffer->state.flush_bits |=
+		radv_src_access_flush(cmd_buffer, VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT, NULL) |
+		radv_dst_access_flush(cmd_buffer, VK_ACCESS_SHADER_READ_BIT, NULL) |
+		radv_dst_access_flush(cmd_buffer, VK_ACCESS_SHADER_WRITE_BIT, NULL);
 
 	radv_decompress_resolve_subpass_src(cmd_buffer);
 
@@ -1019,8 +1020,9 @@ radv_depth_stencil_resolve_subpass_cs(struct radv_cmd_buffer *cmd_buffer,
 				   &(VkExtent3D) { fb->width, fb->height, layer_count },
 				   aspects, resolve_mode);
 
-	cmd_buffer->state.flush_bits |= RADV_CMD_FLAG_CS_PARTIAL_FLUSH |
-	                                RADV_CMD_FLAG_INV_VCACHE;
+	cmd_buffer->state.flush_bits |=
+		RADV_CMD_FLAG_CS_PARTIAL_FLUSH |
+		radv_src_access_flush(cmd_buffer, VK_ACCESS_SHADER_WRITE_BIT, NULL);
 
 	VkImageLayout layout =
 		cmd_buffer->state.attachments[dest_att.attachment].current_layout;

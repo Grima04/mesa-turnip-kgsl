@@ -858,7 +858,9 @@ emit_resolve(struct radv_cmd_buffer *cmd_buffer,
 					      },
 				      });
 
-	cmd_buffer->state.flush_bits |= RADV_CMD_FLAG_FLUSH_AND_INV_CB;
+	cmd_buffer->state.flush_bits |=
+		radv_dst_access_flush(cmd_buffer, VK_ACCESS_SHADER_READ_BIT, src_iview->image) |
+		radv_dst_access_flush(cmd_buffer, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, dest_iview->image);
 
 	unsigned push_constants[2] = {
 		src_offset->x - dest_offset->x,
@@ -889,7 +891,8 @@ emit_resolve(struct radv_cmd_buffer *cmd_buffer,
 	});
 
 	radv_CmdDraw(cmd_buffer_h, 3, 1, 0, 0);
-	cmd_buffer->state.flush_bits |= RADV_CMD_FLAG_FLUSH_AND_INV_CB;
+	cmd_buffer->state.flush_bits |=
+		radv_src_access_flush(cmd_buffer, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, dest_iview->image);
 }
 
 static void

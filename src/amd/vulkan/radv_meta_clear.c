@@ -882,7 +882,7 @@ emit_depthstencil_clear(struct radv_cmd_buffer *cmd_buffer,
 }
 
 static uint32_t
-clear_htile_mask(struct radv_cmd_buffer *cmd_buffer,
+clear_htile_mask(struct radv_cmd_buffer *cmd_buffer, const struct radv_image *image,
 		 struct radeon_winsys_bo *bo, uint64_t offset, uint64_t size,
 		 uint32_t htile_value, uint32_t htile_mask)
 {
@@ -940,8 +940,7 @@ clear_htile_mask(struct radv_cmd_buffer *cmd_buffer,
 	radv_meta_restore(&saved_state, cmd_buffer);
 
 	return RADV_CMD_FLAG_CS_PARTIAL_FLUSH |
-	       RADV_CMD_FLAG_INV_VCACHE |
-	       RADV_CMD_FLAG_WB_L2;
+	       radv_src_access_flush(cmd_buffer, VK_ACCESS_SHADER_WRITE_BIT, image);
 }
 
 static uint32_t
@@ -1046,8 +1045,10 @@ radv_fast_clear_depth(struct radv_cmd_buffer *cmd_buffer,
 	clear_word = radv_get_htile_fast_clear_value(cmd_buffer->device, iview->image, clear_value);
 
 	if (pre_flush) {
-		cmd_buffer->state.flush_bits |= (RADV_CMD_FLAG_FLUSH_AND_INV_DB |
-						 RADV_CMD_FLAG_FLUSH_AND_INV_DB_META) & ~ *pre_flush;
+		enum radv_cmd_flush_bits bits =
+			radv_src_access_flush(cmd_buffer, VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT, iview->image) |
+			radv_dst_access_flush(cmd_buffer, VK_ACCESS_SHADER_WRITE_BIT, iview->image);
+		cmd_buffer->state.flush_bits |= bits & ~ *pre_flush;
 		*pre_flush |= cmd_buffer->state.flush_bits;
 	}
 
@@ -1372,7 +1373,7 @@ radv_clear_cmask(struct radv_cmd_buffer *cmd_buffer,
 		size = cmask_slice_size * radv_get_layerCount(image, range);
 	}
 
-	return radv_fill_buffer(cmd_buffer, image->bo, offset, size, value);
+	return radv_fill_buffer(cmd_buffer, image, image->bo, offset, size, value);
 }
 
 
@@ -1392,7 +1393,7 @@ radv_clear_fmask(struct radv_cmd_buffer *cmd_buffer,
 	offset += slice_size * range->baseArrayLayer;
 	size = slice_size * radv_get_layerCount(image, range);
 
-	return radv_fill_buffer(cmd_buffer, image->bo, offset, size, value);
+	return radv_fill_buffer(cmd_buffer, image, image->bo, offset, size, value);
 }
 
 uint32_t
@@ -1440,7 +1441,7 @@ radv_clear_dcc(struct radv_cmd_buffer *cmd_buffer,
 		if (!size)
 			continue;
 
-		flush_bits |= radv_fill_buffer(cmd_buffer, image->bo, offset,
+		flush_bits |= radv_fill_buffer(cmd_buffer, image, image->bo, offset,
 					       size, value);
 	}
 
@@ -1463,11 +1464,11 @@ radv_clear_htile(struct radv_cmd_buffer *cmd_buffer,
 
 	if (htile_mask == UINT_MAX) {
 		/* Clear the whole HTILE buffer. */
-		flush_bits = radv_fill_buffer(cmd_buffer, image->bo, offset,
+		flush_bits = radv_fill_buffer(cmd_buffer, image, image->bo, offset,
 					      size, value);
 	} else {
 		/* Only clear depth or stencil bytes in the HTILE buffer. */
-		flush_bits = clear_htile_mask(cmd_buffer, image->bo, offset,
+		flush_bits = clear_htile_mask(cmd_buffer, image, image->bo, offset,
 					      size, value, htile_mask);
 	}
 
@@ -1670,8 +1671,10 @@ radv_fast_clear_color(struct radv_cmd_buffer *cmd_buffer,
 	};
 
 	if (pre_flush) {
-		cmd_buffer->state.flush_bits |= (RADV_CMD_FLAG_FLUSH_AND_INV_CB |
-						 RADV_CMD_FLAG_FLUSH_AND_INV_CB_META) & ~ *pre_flush;
+		enum radv_cmd_flush_bits bits =
+			radv_src_access_flush(cmd_buffer, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, iview->image) |
+			radv_dst_access_flush(cmd_buffer, VK_ACCESS_SHADER_WRITE_BIT, iview->image);
+		cmd_buffer->state.flush_bits |= bits & ~ *pre_flush;
 		*pre_flush |= cmd_buffer->state.flush_bits;
 	}
 

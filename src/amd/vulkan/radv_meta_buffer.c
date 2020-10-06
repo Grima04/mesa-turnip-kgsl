@@ -351,10 +351,10 @@ static void copy_buffer_shader(struct radv_cmd_buffer *cmd_buffer,
 	radv_meta_restore(&saved_state, cmd_buffer);
 }
 
-
 uint32_t radv_fill_buffer(struct radv_cmd_buffer *cmd_buffer,
-		      struct radeon_winsys_bo *bo,
-		      uint64_t offset, uint64_t size, uint32_t value)
+                          const struct radv_image *image,
+                          struct radeon_winsys_bo *bo,
+                          uint64_t offset, uint64_t size, uint32_t value)
 {
 	uint32_t flush_bits = 0;
 
@@ -362,10 +362,13 @@ uint32_t radv_fill_buffer(struct radv_cmd_buffer *cmd_buffer,
 	assert(!(size & 3));
 
 	if (size >= RADV_BUFFER_OPS_CS_THRESHOLD) {
+		cmd_buffer->state.flush_bits |=
+			radv_dst_access_flush(cmd_buffer, VK_ACCESS_SHADER_WRITE_BIT, image);
+
 		fill_buffer_shader(cmd_buffer, bo, offset, size, value);
+
 		flush_bits = RADV_CMD_FLAG_CS_PARTIAL_FLUSH |
-			     RADV_CMD_FLAG_INV_VCACHE |
-			     RADV_CMD_FLAG_WB_L2;
+			     radv_src_access_flush(cmd_buffer, VK_ACCESS_SHADER_WRITE_BIT, image);
 	} else if (size) {
 		uint64_t va = radv_buffer_get_va(bo);
 		va += offset;
@@ -412,7 +415,7 @@ void radv_CmdFillBuffer(
 	if (fillSize == VK_WHOLE_SIZE)
 		fillSize = (dst_buffer->size - dstOffset) & ~3ull;
 
-	radv_fill_buffer(cmd_buffer, dst_buffer->bo, dst_buffer->offset + dstOffset,
+	radv_fill_buffer(cmd_buffer, NULL, dst_buffer->bo, dst_buffer->offset + dstOffset,
 			 fillSize, data);
 }
 

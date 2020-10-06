@@ -310,6 +310,8 @@ cleanup:
 
 static void
 emit_resolve(struct radv_cmd_buffer *cmd_buffer,
+             const struct radv_image *src_image,
+	     const struct radv_image *dst_image,
 	     VkFormat vk_format,
              const VkOffset2D *dest_offset,
              const VkExtent2D *resolve_extent)
@@ -318,7 +320,10 @@ emit_resolve(struct radv_cmd_buffer *cmd_buffer,
 	VkCommandBuffer cmd_buffer_h = radv_cmd_buffer_to_handle(cmd_buffer);
 	unsigned fs_key = radv_format_meta_fs_key(device, vk_format);
 
-	cmd_buffer->state.flush_bits |= RADV_CMD_FLAG_FLUSH_AND_INV_CB;
+	cmd_buffer->state.flush_bits |=
+		radv_src_access_flush(cmd_buffer, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, src_image) |
+		radv_dst_access_flush(cmd_buffer, VK_ACCESS_COLOR_ATTACHMENT_READ_BIT, src_image) |
+		radv_dst_access_flush(cmd_buffer, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, dst_image);
 
 	radv_CmdBindPipeline(cmd_buffer_h, VK_PIPELINE_BIND_POINT_GRAPHICS,
 			     device->meta_state.resolve.pipeline[fs_key]);
@@ -338,7 +343,8 @@ emit_resolve(struct radv_cmd_buffer *cmd_buffer,
 	});
 
 	radv_CmdDraw(cmd_buffer_h, 3, 1, 0, 0);
-	cmd_buffer->state.flush_bits |= RADV_CMD_FLAG_FLUSH_AND_INV_CB;
+	cmd_buffer->state.flush_bits |=
+		radv_src_access_flush(cmd_buffer, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, dst_image);
 }
 
 enum radv_resolve_method {
@@ -581,7 +587,7 @@ radv_meta_resolve_hardware_image(struct radv_cmd_buffer *cmd_buffer,
 		radv_cmd_buffer_set_subpass(cmd_buffer,
 					    &cmd_buffer->state.pass->subpasses[0]);
 
-		emit_resolve(cmd_buffer,
+		emit_resolve(cmd_buffer, src_image, dst_image,
 			     dst_iview.vk_format,
 			     &(VkOffset2D) {
 				     .x = dstOffset.x,
@@ -860,6 +866,9 @@ radv_cmd_buffer_resolve_subpass(struct radv_cmd_buffer *cmd_buffer)
 		if (dest_att.attachment == VK_ATTACHMENT_UNUSED)
 			continue;
 
+		struct radv_image_view *src_iview = cmd_buffer->state.attachments[src_att.attachment].iview;
+		struct radv_image *src_img = src_iview->image;
+
 		struct radv_image_view *dest_iview = cmd_buffer->state.attachments[dest_att.attachment].iview;
 		struct radv_image *dst_img = dest_iview->image;
 
@@ -890,7 +899,7 @@ radv_cmd_buffer_resolve_subpass(struct radv_cmd_buffer *cmd_buffer)
 			continue;
 		}
 
-		emit_resolve(cmd_buffer,
+		emit_resolve(cmd_buffer, src_img, dst_img,
 			     dest_iview->vk_format,
 			     &(VkOffset2D) { 0, 0 },
 			     &(VkExtent2D) { fb->width, fb->height });
