@@ -124,7 +124,7 @@ util_pin_thread_to_L3(thrd_t thread, unsigned L3_index, unsigned cores_per_L3)
 
 /* Return the time of a thread's CPU time clock. */
 static inline int64_t
-u_thread_get_time_nano(thrd_t thread)
+util_thread_get_time_nano(thrd_t thread)
 {
 #if defined(HAVE_PTHREAD) && !defined(__APPLE__) && !defined(__HAIKU__)
    struct timespec ts;
@@ -133,6 +133,22 @@ u_thread_get_time_nano(thrd_t thread)
    pthread_getcpuclockid(thread, &cid);
    clock_gettime(cid, &ts);
    return (int64_t)ts.tv_sec * 1000000000 + ts.tv_nsec;
+#else
+   return 0;
+#endif
+}
+
+/* Return the time of the current thread's CPU time clock. */
+static inline int64_t
+util_current_thread_get_time_nano(void)
+{
+#if defined(HAVE_PTHREAD)
+   return util_thread_get_time_nano(pthread_self());
+
+#elif defined(_WIN32) && !defined(__CYGWIN__)
+   /* The GetCurrentThreadId() handle is only valid within the current thread. */
+   return util_thread_get_time_nano(GetCurrentThread());
+
 #else
    return 0;
 #endif

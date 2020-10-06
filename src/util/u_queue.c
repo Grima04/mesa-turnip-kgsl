@@ -696,5 +696,5 @@ util_queue_get_thread_time_nano(struct util_queue *queue, unsigned thread_index)
    if (thread_index >= queue->num_threads)
       return 0;
 
-   return u_thread_get_time_nano(queue->threads[thread_index]);
+   return util_thread_get_time_nano(queue->threads[thread_index]);
 }
