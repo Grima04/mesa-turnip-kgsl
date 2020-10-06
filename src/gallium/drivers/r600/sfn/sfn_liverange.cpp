@@ -388,7 +388,8 @@ temp_comp_access::temp_comp_access():
 void temp_comp_access::record_read(int line, prog_scope *scope)
 {
    last_read_scope = scope;
-   last_read = line;
+   if (last_read < line)
+      last_read = line;
 
    if (first_read > line) {
       first_read = line;
