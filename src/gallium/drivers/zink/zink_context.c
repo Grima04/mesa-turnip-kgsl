@@ -2104,6 +2104,8 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
    zink_context_resource_init(&ctx->base);
    zink_context_query_init(&ctx->base);
 
+   ctx->gfx_pipeline_state.have_EXT_extended_dynamic_state = screen->info.have_EXT_extended_dynamic_state;
+
    slab_create_child(&ctx->transfer_pool, &screen->transfer_pool);
 
    ctx->base.stream_uploader = u_upload_create_default(&ctx->base);

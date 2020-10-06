@@ -257,6 +257,8 @@ get_gfx_program(struct zink_context *ctx)
          if (!entry)
             return NULL;
       }
+      if (ctx->curr_program != entry->data)
+         ctx->gfx_pipeline_state.combined_dirty = true;
       ctx->curr_program = entry->data;
       unsigned bits = u_bit_consecutive(PIPE_SHADER_VERTEX, 5);
       ctx->dirty_shader_stages &= ~bits;
