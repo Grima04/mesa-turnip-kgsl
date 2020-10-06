@@ -1030,6 +1030,24 @@ bi_texture_format(nir_alu_type T, enum bifrost_outmod outmod)
         }
 }
 
+/* Data registers required by texturing in the order they appear. All are
+ * optional, the texture operation descriptor determines which are present.
+ * Note since 3D arrays are not permitted at an API level, Z_COORD and
+ * ARRAY/SHADOW are exlusive, so TEXC in practice reads at most 8 registers */
+
+enum bifrost_tex_dreg {
+        BIFROST_TEX_DREG_Z_COORD = 0,
+        BIFROST_TEX_DREG_Y_DELTAS = 1,
+        BIFROST_TEX_DREG_LOD = 2,
+        BIFROST_TEX_DREG_GRDESC_HI = 3,
+        BIFROST_TEX_DREG_SHADOW = 4,
+        BIFROST_TEX_DREG_ARRAY = 5,
+        BIFROST_TEX_DREG_OFFSETMS = 6,
+        BIFROST_TEX_DREG_SAMPLER = 7,
+        BIFROST_TEX_DREG_TEXTURE = 8,
+        BIFROST_TEX_DREG_COUNT,
+};
+
 static void
 emit_texc(bi_context *ctx, nir_tex_instr *instr)
 {
@@ -1072,6 +1090,9 @@ emit_texc(bi_context *ctx, nir_tex_instr *instr)
                 .mask = (1 << tex.vector_channels) - 1
         };
 
+        /* 32-bit indices to be allocated as consecutive data registers. */
+        unsigned dregs[BIFROST_TEX_DREG_COUNT] = { 0 };
+
         for (unsigned i = 0; i < instr->num_srcs; ++i) {
                 unsigned index = pan_src_index(&instr->src[i].src);
 
@@ -1086,6 +1107,35 @@ emit_texc(bi_context *ctx, nir_tex_instr *instr)
                 default:
                         unreachable("Unhandled src type in texc emit");
                 }
+        }
+
+        /* Allocate data registers contiguously */
+        bi_instruction combine = {
+                .type = BI_COMBINE,
+                .dest_type = nir_type_uint32,
+                .dest = bi_make_temp(ctx),
+                .src_types = {
+                        nir_type_uint32, nir_type_uint32,
+                        nir_type_uint32, nir_type_uint32,
+                },
+        };
+
+        unsigned dreg_index = 0;
+
+        for (unsigned i = 0; i < ARRAY_SIZE(dregs); ++i) {
+                assert(dreg_index < 4);
+
+                if (dregs[i])
+                        combine.src[dreg_index++] = dregs[i];
+        }
+
+        /* Pass combined data registers together */
+        if (dreg_index > 0) {
+                tex.src[0] = combine.dest;
+                bi_emit(ctx, combine);
+
+                for (unsigned i = 0; i < dreg_index; ++i)
+                        tex.swizzle[0][i] = i;
         }
 
         /* Pass the texture operation descriptor in src2 */
