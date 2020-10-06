@@ -529,7 +529,6 @@ VkResult anv_CreatePipelineCache(
    struct anv_pipeline_cache *cache;
 
    assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO);
-   assert(pCreateInfo->flags == 0);
 
    cache = vk_alloc2(&device->vk.alloc, pAllocator,
                        sizeof(*cache), 8,
