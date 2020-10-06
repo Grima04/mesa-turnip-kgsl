@@ -280,6 +280,9 @@ dri3_update_max_num_back(struct loader_dri3_drawable *draw)
       draw->max_num_back = 3;
       break;
 
+   case XCB_PRESENT_COMPLETE_MODE_SKIP:
+      break;
+
    default:
       /* On transition from flips to copies, start with a single buffer again,
        * a second one will be allocated if needed
