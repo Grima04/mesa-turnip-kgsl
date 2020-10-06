@@ -28,6 +28,7 @@
 #ifndef _NIR_SPIRV_H_
 #define _NIR_SPIRV_H_
 
+#include "util/disk_cache.h"
 #include "compiler/nir/nir.h"
 #include "compiler/shader_info.h"
 
@@ -101,6 +102,14 @@ nir_shader *spirv_to_nir(const uint32_t *words, size_t word_count,
                          gl_shader_stage stage, const char *entry_point_name,
                          const struct spirv_to_nir_options *options,
                          const nir_shader_compiler_options *nir_options);
+
+bool nir_can_find_libclc(unsigned ptr_bit_size);
+
+nir_shader *
+nir_load_libclc_shader(unsigned ptr_bit_size,
+                       struct disk_cache *disk_cache,
+                       const struct spirv_to_nir_options *spirv_options,
+                       const nir_shader_compiler_options *nir_options);
 
 #ifdef __cplusplus
 }

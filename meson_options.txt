@@ -157,6 +157,13 @@ option(
   description : 'build gallium "clover" OpenCL frontend with SPIR-V binary support.',
 )
 option(
+  'static-libclc',
+  type : 'array',
+  value : [],
+  choices : ['spirv', 'spirv64', 'all'],
+  description : 'Link libclc SPIR-V statically.',
+)
+option(
   'd3d-drivers-path',
   type : 'string',
   value : '',
