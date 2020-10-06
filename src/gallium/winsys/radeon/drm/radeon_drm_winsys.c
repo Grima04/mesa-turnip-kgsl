@@ -798,8 +798,9 @@ static void radeon_pin_threads_to_L3_cache(struct radeon_winsys *ws,
    struct radeon_drm_winsys *rws = (struct radeon_drm_winsys*)ws;
 
    if (util_queue_is_initialized(&rws->cs_queue)) {
-      util_pin_thread_to_L3(rws->cs_queue.threads[0], cache,
-            util_cpu_caps.cores_per_L3);
+      util_set_thread_affinity(rws->cs_queue.threads[0],
+                               util_cpu_caps.L3_affinity_mask[cache],
+                               NULL, UTIL_MAX_CPUS);
    }
 }
 

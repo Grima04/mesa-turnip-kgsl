@@ -311,8 +311,9 @@ static void amdgpu_pin_threads_to_L3_cache(struct radeon_winsys *rws,
 {
    struct amdgpu_winsys *ws = amdgpu_winsys(rws);
 
-   util_pin_thread_to_L3(ws->cs_queue.threads[0], cache,
-                         util_cpu_caps.cores_per_L3);
+   util_set_thread_affinity(ws->cs_queue.threads[0],
+                            util_cpu_caps.L3_affinity_mask[cache],
+                            NULL, UTIL_MAX_CPUS);
 }
 
 static uint32_t kms_handle_hash(const void *key)

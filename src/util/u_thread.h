@@ -62,6 +62,7 @@
 
 /* For util_set_thread_affinity to size the mask. */
 #define UTIL_MAX_CPUS               1024  /* this should be enough */
+#define UTIL_MAX_L3_CACHES          UTIL_MAX_CPUS
 
 static inline int
 util_get_current_cpu(void)
@@ -196,33 +197,6 @@ util_set_current_thread_affinity(const uint32_t *mask,
 #else
    return false;
 #endif
-}
-
-/**
- * An AMD Zen CPU consists of multiple modules where each module has its own L3
- * cache. Inter-thread communication such as locks and atomics between modules
- * is very expensive. It's desirable to pin a group of closely cooperating
- * threads to one group of cores sharing L3.
- *
- * \param thread        thread
- * \param L3_index      index of the L3 cache
- * \param cores_per_L3  number of CPU cores shared by one L3
- */
-static inline bool
-util_pin_thread_to_L3(thrd_t thread, unsigned L3_index, unsigned cores_per_L3)
-{
-   unsigned num_mask_bits = DIV_ROUND_UP((L3_index + 1) * cores_per_L3, 32);
-   uint32_t mask[UTIL_MAX_CPUS / 32];
-
-   assert((L3_index + 1) * cores_per_L3 <= UTIL_MAX_CPUS);
-
-   for (unsigned i = 0; i < cores_per_L3; i++) {
-      unsigned core = L3_index * cores_per_L3 + i;
-
-      mask[core / 32] |= 1u << (core % 32);
-   }
-
-   return util_set_thread_affinity(thread, mask, NULL, num_mask_bits);
 }
 
 

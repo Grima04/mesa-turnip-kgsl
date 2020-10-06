@@ -2002,8 +2002,9 @@ tc_set_context_param(struct pipe_context *_pipe,
 
    if (param == PIPE_CONTEXT_PARAM_PIN_THREADS_TO_L3_CACHE) {
       /* Pin the gallium thread as requested. */
-      util_pin_thread_to_L3(tc->queue.threads[0], value,
-                            util_cpu_caps.cores_per_L3);
+      util_set_thread_affinity(tc->queue.threads[0],
+                               util_cpu_caps.L3_affinity_mask[value],
+                               NULL, UTIL_MAX_CPUS);
 
       /* Execute this immediately (without enqueuing).
        * It's required to be thread-safe.
