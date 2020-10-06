@@ -1519,6 +1519,7 @@ _math_matrix_loadf( GLmatrix *mat, const GLfloat *m )
 void
 _math_matrix_ctr( GLmatrix *m )
 {
+   memset(m, 0, sizeof(*m));
    memcpy( m->m, Identity, sizeof(Identity) );
    memcpy( m->inv, Identity, sizeof(Identity) );
    m->type = MATRIX_IDENTITY;
