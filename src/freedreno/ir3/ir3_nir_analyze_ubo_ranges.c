@@ -72,12 +72,12 @@ get_ubo_info(nir_intrinsic_instr *instr, struct ir3_ubo_info *ubo)
 }
 
 /**
- * Get an existing range, but don't create a new range associated with
- * the ubo, but don't create a new one if one does not already exist.
+ * Finds the given instruction's UBO load in the UBO upload plan, if any.
  */
 static const struct ir3_ubo_range *
 get_existing_range(nir_intrinsic_instr *instr,
-				   const struct ir3_ubo_analysis_state *state)
+		const struct ir3_ubo_analysis_state *state,
+		struct ir3_ubo_range *r)
 {
 	struct ir3_ubo_info ubo = {};
 
@@ -86,11 +86,43 @@ get_existing_range(nir_intrinsic_instr *instr,
 
 	for (int i = 0; i < state->num_enabled; i++) {
 		const struct ir3_ubo_range *range = &state->range[i];
-		if (!memcmp(&range->ubo, &ubo, sizeof(ubo)))
+		if (!memcmp(&range->ubo, &ubo, sizeof(ubo)) &&
+				r->start >= range->start &&
+				r->end <= range->end) {
 			return range;
+		}
 	}
 
 	return NULL;
+}
+
+/**
+ * Merges together neighboring/overlapping ranges in the range plan with a
+ * newly updated range.
+ */
+static void
+merge_neighbors(struct ir3_ubo_analysis_state *state, int index)
+{
+	struct ir3_ubo_range *a = &state->range[index];
+
+	/* index is always the first slot that would have neighbored/overlapped with
+	 * the new range.
+	 */
+	for (int i = index + 1; i < state->num_enabled; i++) {
+		struct ir3_ubo_range *b = &state->range[i];
+		if (memcmp(&a->ubo, &b->ubo, sizeof(a->ubo)))
+			continue;
+
+		if (a->start > b->end || a->end < b->start)
+			continue;
+
+		/* Merge B into A. */
+		a->start = MIN2(a->start, b->start);
+		a->end = MAX2(a->end, b->end);
+
+		/* Swap the last enabled range into B's now unused slot */
+		*b = state->range[--state->num_enabled];
+	}
 }
 
 /**
@@ -122,6 +154,12 @@ gather_ubo_ranges(nir_shader *nir, nir_intrinsic_instr *instr,
 		if (memcmp(&plan_r->ubo, &ubo, sizeof(ubo)))
 			continue;
 
+		/* Don't extend existing uploads unless they're
+		 * neighboring/overlapping.
+		 */
+		if (r.start > plan_r->end || r.end < plan_r->start)
+			continue;
+
 		r.start = MIN2(r.start, plan_r->start);
 		r.end = MAX2(r.end, plan_r->end);
 
@@ -132,6 +170,8 @@ gather_ubo_ranges(nir_shader *nir, nir_intrinsic_instr *instr,
 		plan_r->start = r.start;
 		plan_r->end = r.end;
 		*upload_remaining -= added;
+
+		merge_neighbors(state, i);
 		return;
 	}
 
@@ -235,26 +275,18 @@ lower_ubo_load_to_uniform(nir_intrinsic_instr *instr, nir_builder *b,
 {
 	b->cursor = nir_before_instr(&instr->instr);
 
-	/* We don't lower dynamic block index UBO loads to load_uniform, but we
-	 * could probably with some effort determine a block stride in number of
-	 * registers.
-	 */
-	const struct ir3_ubo_range *range = get_existing_range(instr, state);
-	if (!range) {
-		track_ubo_use(instr, b, num_ubos);
-		return false;
-	}
-
 	struct ir3_ubo_range r;
 	if (!get_ubo_load_range(b->shader, instr, alignment, &r)) {
 		track_ubo_use(instr, b, num_ubos);
 		return false;
 	}
 
-	/* After gathering the UBO access ranges, we limit the total
-	 * upload. Don't lower if this load is outside the range.
+	/* We don't lower dynamic block index UBO loads to load_uniform, but we
+	 * could probably with some effort determine a block stride in number of
+	 * registers.
 	 */
-	if (!(range->start <= r.start && r.end <= range->end)) {
+	const struct ir3_ubo_range *range = get_existing_range(instr, state, &r);
+	if (!range) {
 		track_ubo_use(instr, b, num_ubos);
 		return false;
 	}
