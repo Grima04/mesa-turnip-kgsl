@@ -87,9 +87,6 @@ gather_intrinsic_store_output_info(const nir_shader *nir,
 	case MESA_SHADER_TESS_EVAL:
 		output_usage_mask = info->tes.output_usage_mask;
 		break;
-	case MESA_SHADER_TESS_CTRL:
-		/* TODO: Gather tess outputs for LLVM. */
-		break;
 	case MESA_SHADER_GEOMETRY:
 		output_usage_mask = info->gs.output_usage_mask;
 		break;
