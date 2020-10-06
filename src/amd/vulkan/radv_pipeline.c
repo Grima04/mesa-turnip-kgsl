@@ -2217,6 +2217,11 @@ radv_link_shaders(struct radv_pipeline *pipeline, nir_shader **shaders,
 		    ordered_shaders[1]->info.has_transform_feedback_varyings)
 			nir_link_xfb_varyings(ordered_shaders[1], ordered_shaders[0]);
 
+		for (int i = 1; i < shader_count; ++i) {
+			nir_lower_io_arrays_to_elements(ordered_shaders[i],
+							ordered_shaders[i - 1]);
+		}
+
 		for (int i = 0; i < shader_count; ++i)  {
 			nir_variable_mode mask = 0;
 
@@ -2259,9 +2264,6 @@ radv_link_shaders(struct radv_pipeline *pipeline, nir_shader **shaders,
 	}
 
 	for (int i = 1; !optimize_conservatively && (i < shader_count); ++i)  {
-		nir_lower_io_arrays_to_elements(ordered_shaders[i],
-						ordered_shaders[i - 1]);
-
 		if (nir_link_opt_varyings(ordered_shaders[i], ordered_shaders[i - 1])) {
 			nir_opt_constant_folding(ordered_shaders[i - 1]);
 			nir_opt_algebraic(ordered_shaders[i - 1]);
