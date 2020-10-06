@@ -229,7 +229,7 @@ files_xxd = files('xxd.py')
 if with_tests
   # DRI_CONF macros use designated initializers (required for union
   # initializaiton), so we need c++2a since gtest forces us to use c++
-  if host_machine.system() != 'windows' and cpp.has_argument('--std=c++2a')
+  if host_machine.system() != 'windows' and cpp.has_argument('-std=c++2a')
     test('xmlconfig',
       executable('xmlconfig_test',
         files('tests/xmlconfig.cpp'),
