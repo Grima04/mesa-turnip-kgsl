@@ -853,17 +853,17 @@ bi_pack_add(bi_clause *clause, bi_bundle bundle, bi_registers *regs, gl_shader_s
         case BI_SELECT:
                 assert(nir_alu_type_get_type_size(bundle.add->src_types[0]) == 16);
                 return pan_pack_add_mkvec_v2i16(clause, bundle.add, regs);
-        case BI_TEX:
-                if (bundle.add->op.texture == BI_TEX_COMPACT) {
-                        assert(f16 || f32);
+        case BI_TEXC:
+        case BI_TEXC_DUAL:
+                unreachable("Packing todo");
+        case BI_TEXS:
+                assert(f16 || f32);
 
-                        if (f16)
-                                return pan_pack_add_texs_2d_f16(clause, bundle.add, regs);
-                        else
-                                return pan_pack_add_texs_2d_f32(clause, bundle.add, regs);
-                } else
-                        unreachable("Unknown tex type");
-        case BI_ROUND:
+                if (f16)
+                        return pan_pack_add_texs_2d_f16(clause, bundle.add, regs);
+                else
+                        return pan_pack_add_texs_2d_f32(clause, bundle.add, regs);
+case BI_ROUND:
                 unreachable("Packing todo");
         default:
                 unreachable("Cannot encode class as ADD");

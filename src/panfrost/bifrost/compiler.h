@@ -74,7 +74,9 @@ enum bi_class {
         BI_STORE_VAR,
         BI_SPECIAL, /* _FAST on supported GPUs */
         BI_TABLE,
-        BI_TEX,
+        BI_TEXS,
+        BI_TEXC,
+        BI_TEXC_DUAL,
         BI_ROUND,
         BI_IMUL,
         BI_NUM_CLASSES
@@ -231,12 +233,6 @@ enum bi_special_op {
         BI_SPECIAL_IABS,
 };
 
-enum bi_tex_op {
-        BI_TEX_NORMAL,
-        BI_TEX_COMPACT,
-        BI_TEX_DUAL
-};
-
 struct bi_bitwise {
         bool dest_invert;
         bool src1_invert;
@@ -320,7 +316,6 @@ typedef struct {
                 enum bi_reduce_op reduce;
                 enum bi_table_op table;
                 enum bi_frexp_op frexp;
-                enum bi_tex_op texture;
                 enum bi_imath_op imath;
                 enum bi_imul_op imul;
 

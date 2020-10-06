@@ -62,7 +62,9 @@ bi_message_type_for_ins(bi_instruction *ins)
         case BI_LOAD_VAR_ADDRESS:
                 return BIFROST_MESSAGE_ATTRIBUTE;
 
-        case BI_TEX:
+        case BI_TEXS:
+        case BI_TEXC:
+        case BI_TEXC_DUAL:
                 return BIFROST_MESSAGE_TEX;
 
         case BI_LOAD:

@@ -69,7 +69,9 @@ bi_class_name(enum bi_class cl)
         case BI_STORE_VAR: return "store_var";
         case BI_SPECIAL: return "special";
         case BI_TABLE: return "table";
-        case BI_TEX: return "tex";
+        case BI_TEXS: return "texs";
+        case BI_TEXC: return "texc";
+        case BI_TEXC_DUAL: return "texc_dual";
         case BI_ROUND: return "round";
         case BI_IMUL: return "imul";
         default: return "unknown_class";
@@ -205,17 +207,6 @@ bi_frexp_op_name(enum bi_frexp_op op)
         }
 }
 
-const char *
-bi_tex_op_name(enum bi_tex_op op)
-{
-        switch (op) {
-        case BI_TEX_NORMAL: return "normal";
-        case BI_TEX_COMPACT: return "compact";
-        case BI_TEX_DUAL: return "dual";
-        default: return "invalid";
-        }
-}
-
 static void
 bi_print_load_vary(struct bi_load_vary *load, FILE *fp)
 {
@@ -280,9 +271,7 @@ bi_print_instruction(bi_instruction *ins, FILE *fp)
                 bi_print_load_vary(&ins->load_vary, fp);
         else if (ins->type == BI_BLEND)
                 fprintf(fp, ".loc%u", ins->blend_location);
-        else if (ins->type == BI_TEX) {
-                fprintf(fp, ".%s", bi_tex_op_name(ins->op.texture));
-        } else if (ins->type == BI_BITWISE)
+        else if (ins->type == BI_BITWISE)
                 fprintf(fp, ".%cshift", ins->bitwise.rshift ? 'r' : 'l');
 
         if (bi_class_props[ins->type] & BI_CONDITIONAL)
@@ -336,7 +325,7 @@ bi_print_instruction(bi_instruction *ins, FILE *fp)
                 } else {
                         fprintf(fp, "-> void");
                 }
-        } else if (ins->type == BI_TEX) {
+        } else if (ins->type == BI_TEXS) {
                 bi_print_texture(&ins->texture, fp);
         }
 

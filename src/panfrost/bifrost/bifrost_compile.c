@@ -951,15 +951,14 @@ emit_alu(bi_context *ctx, nir_alu_instr *instr)
         bi_emit(ctx, alu);
 }
 
-/* TEX_COMPACT instructions assume normal 2D f32 operation but are more
+/* TEXS instructions assume normal 2D f32 operation but are more
  * space-efficient and with simpler RA/scheduling requirements*/
 
 static void
 emit_tex_compact(bi_context *ctx, nir_tex_instr *instr)
 {
         bi_instruction tex = {
-                .type = BI_TEX,
-                .op = { .texture = BI_TEX_COMPACT },
+                .type = BI_TEXS,
                 .texture = {
                         .texture_index = instr->texture_index,
                         .sampler_index = instr->sampler_index,

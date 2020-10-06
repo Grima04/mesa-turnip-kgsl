@@ -666,7 +666,9 @@ bit_step(struct bit_state *s, bi_instruction *ins, bool FMA)
         case BI_LOAD:
         case BI_STORE:
         case BI_STORE_VAR:
-        case BI_TEX:
+        case BI_TEXS:
+        case BI_TEXC:
+        case BI_TEXC_DUAL:
                 unreachable("Unsupported I/O in interpreter");
 
         default:
