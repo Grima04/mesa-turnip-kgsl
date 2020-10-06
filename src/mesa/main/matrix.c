@@ -371,8 +371,17 @@ pop_matrix( struct gl_context *ctx, struct gl_matrix_stack *stack )
       return GL_FALSE;
 
    stack->Depth--;
+
+   /* If the popped matrix is the same as the current one, treat it as
+    * a no-op change.
+    */
+   if (memcmp(stack->Top, &stack->Stack[stack->Depth],
+              sizeof(GLmatrix))) {
+      FLUSH_VERTICES(ctx, 0);
+      ctx->NewState |= stack->DirtyFlag;
+   }
+
    stack->Top = &(stack->Stack[stack->Depth]);
-   ctx->NewState |= stack->DirtyFlag;
    return GL_TRUE;
 }
 
@@ -391,8 +400,6 @@ _mesa_PopMatrix( void )
 {
    GET_CURRENT_CONTEXT(ctx);
    struct gl_matrix_stack *stack = ctx->CurrentStack;
-
-   FLUSH_VERTICES(ctx, 0);
 
    if (MESA_VERBOSE&VERBOSE_API)
       _mesa_debug(ctx, "glPopMatrix %s\n",
