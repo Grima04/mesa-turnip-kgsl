@@ -60,9 +60,6 @@ namespace clover {
       // Returns a vector (sorted in increasing order) of supported SPIR-V
       // versions.
       std::vector<uint32_t> supported_versions();
-
-      // Load the SPIR-V for the CLC module.
-      module load_clc(const device &dev);
    }
 }
 

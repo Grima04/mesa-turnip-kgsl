@@ -200,60 +200,19 @@ struct disk_cache *clover::nir::create_clc_disk_cache(void)
    return disk_cache_create("clover-clc", cache_id, 0);
 }
 
-nir_shader *clover::nir::libclc_spirv_to_nir(const module &mod, const device &dev,
-                                             std::string &r_log)
+void clover::nir::check_for_libclc(const device &dev)
+{
+   if (!nir_can_find_libclc(dev.address_bits()))
+      throw error(CL_COMPILER_NOT_AVAILABLE);
+}
+
+nir_shader *clover::nir::load_libclc_nir(const device &dev, std::string &r_log)
 {
    spirv_to_nir_options spirv_options = create_spirv_options(dev, r_log);
-   spirv_options.create_library = true;
-
-   auto &section = mod.secs[0];
-   const auto *binary =
-      reinterpret_cast<const pipe_binary_program_header *>(section.data.data());
-   const uint32_t *data = reinterpret_cast<const uint32_t *>(binary->blob);
-   const size_t num_words = binary->num_bytes / 4;
    auto *compiler_options = dev_get_nir_compiler_options(dev);
-   unsigned char clc_cache_key[20];
-   unsigned char sha1[CACHE_KEY_SIZE];
-   /* caching ftw. */
-   struct mesa_sha1 ctx;
 
-   size_t binary_size = 0;
-   uint8_t *buffer = NULL;
-   if (dev.clc_cache) {
-      _mesa_sha1_init(&ctx);
-      _mesa_sha1_update(&ctx, data, num_words * 4);
-      _mesa_sha1_final(&ctx, clc_cache_key);
-
-      disk_cache_compute_key(dev.clc_cache, clc_cache_key, 20, sha1);
-
-      buffer = (uint8_t *)disk_cache_get(dev.clc_cache, sha1, &binary_size);
-   }
-
-   nir_shader *nir;
-   if (!buffer) {
-      nir = spirv_to_nir(data, num_words, nullptr, 0,
-                                     MESA_SHADER_KERNEL, "clcspirv",
-                                     &spirv_options, compiler_options);
-      nir_validate_shader(nir, "clover-libclc");
-      nir->info.internal = true;
-      NIR_PASS_V(nir, nir_lower_variable_initializers, nir_var_function_temp);
-      NIR_PASS_V(nir, nir_lower_returns);
-
-      if (dev.clc_cache) {
-         struct blob blob = { 0 };
-         blob_init(&blob);
-         nir_serialize(&blob, nir, true);
-         disk_cache_put(dev.clc_cache, sha1, blob.data, blob.size, NULL);
-         blob_finish(&blob);
-      }
-   } else {
-      struct blob_reader blob_read;
-      blob_reader_init(&blob_read, buffer, binary_size);
-      nir = nir_deserialize(NULL, compiler_options, &blob_read);
-      free(buffer);
-   }
-
-   return nir;
+   return nir_load_libclc_shader(dev.address_bits(), dev.clc_cache,
+				 &spirv_options, compiler_options);
 }
 
 module clover::nir::spirv_to_nir(const module &mod, const device &dev,

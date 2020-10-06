@@ -106,7 +106,6 @@ namespace clover {
          return svm_support() & CL_DEVICE_SVM_FINE_GRAIN_SYSTEM;
       }
 
-      module clc;
       lazy<std::shared_ptr<nir_shader>> clc_nir;
       disk_cache *clc_cache;
    private:

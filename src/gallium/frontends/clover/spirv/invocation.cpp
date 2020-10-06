@@ -876,26 +876,3 @@ clover::spirv::supported_versions() {
    return {};
 }
 #endif
-
-module
-clover::spirv::load_clc(const device &dev)
-{
-   std::vector<char> ilfile;
-   std::ifstream file;
-   std::string name32 = "spirv-mesa3d-.spv";
-   std::string name64 = "spirv64-mesa3d-.spv";
-   file.open(LIBCLC_LIBEXECDIR + (dev.address_bits() == 64 ? name64 : name32), std::ifstream::in | std::ifstream::binary);
-   if (!file.good())
-      throw error(CL_COMPILER_NOT_AVAILABLE);
-
-   file.seekg(0, std::ios::end);
-   std::streampos length(file.tellg());
-   if (length) {
-      file.seekg(0, std::ios::beg);
-      ilfile.resize(static_cast<std::size_t>(length));
-      file.read(&ilfile.front(), static_cast<std::size_t>(length));
-   }
-
-   std::string log;
-   return spirv::compile_program(ilfile, dev, log, false);
-}
