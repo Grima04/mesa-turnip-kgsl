@@ -745,6 +745,7 @@ update_descriptors(struct zink_context *ctx, struct zink_screen *screen, bool is
    struct zink_transition transitions[num_bindings];
    int num_transitions = 0;
    struct set *ht = _mesa_set_create(NULL, transition_hash, transition_equals);
+   _mesa_set_resize(ht, num_bindings);
 
 
    bool need_flush = false;
