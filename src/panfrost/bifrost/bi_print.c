@@ -277,6 +277,9 @@ bi_print_instruction(bi_instruction *ins, FILE *fp)
         if (bi_class_props[ins->type] & BI_CONDITIONAL)
                 fprintf(fp, ".%s", bi_cond_name(ins->cond));
 
+        if (ins->skip)
+                fprintf(fp, ".skip");
+
         if (ins->vector_channels)
                 fprintf(fp, ".v%u", ins->vector_channels);
 

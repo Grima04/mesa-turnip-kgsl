@@ -300,6 +300,13 @@ typedef struct {
         /* For VECTOR ops, how many channels are written? */
         unsigned vector_channels;
 
+        /* For texture ops, the skip bit. Set if helper invocations can skip
+         * the operation. That is, set if the result of this texture operation
+         * is never used for cross-lane operation (including texture
+         * coordinates and derivatives) as determined by data flow analysis
+         * (like Midgard) */
+        bool skip;
+
         /* The comparison op. BI_COND_ALWAYS may not be valid. */
         enum bi_cond cond;
 
