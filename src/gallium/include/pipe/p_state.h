@@ -726,12 +726,6 @@ struct pipe_draw_indirect_info
  */
 struct pipe_draw_info
 {
-   ubyte index_size;  /**< if 0, the draw is not indexed. */
-   enum pipe_prim_type mode:8;  /**< the mode of the primitive */
-   unsigned primitive_restart:1;
-   unsigned has_user_indices:1; /**< if true, use index.user_buffer */
-   ubyte vertices_per_patch; /**< the number of vertices per patch */
-
    /**
     * Direct draws: start is the index of the first vertex
     * Non-indexed indirect draws: not used
@@ -739,6 +733,13 @@ struct pipe_draw_info
     */
    unsigned start;
    unsigned count;  /**< number of vertices */
+
+   enum pipe_prim_type mode:8;  /**< the mode of the primitive */
+   ubyte vertices_per_patch; /**< the number of vertices per patch */
+   ubyte index_size;  /**< if 0, the draw is not indexed. */
+   bool primitive_restart:1;
+   bool has_user_indices:1; /**< if true, use index.user_buffer */
+   char _pad:6;             /**< padding for memcmp */
 
    unsigned start_instance; /**< first instance id */
    unsigned instance_count; /**< number of instances */

@@ -183,6 +183,7 @@ st_draw_vbo(struct gl_context *ctx,
    info.restart_index = 0;
    info.start_instance = base_instance;
    info.instance_count = num_instances;
+   info._pad = 0;
 
    if (ib) {
       struct gl_buffer_object *bufobj = ib->obj;
