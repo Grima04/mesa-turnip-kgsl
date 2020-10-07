@@ -221,6 +221,7 @@ fd6_sampler_view_create(struct pipe_context *pctx, struct pipe_resource *prsc,
 	struct fd6_pipe_sampler_view *so = CALLOC_STRUCT(fd6_pipe_sampler_view);
 	struct fd_resource *rsc = fd_resource(prsc);
 	enum pipe_format format = cso->format;
+	bool ubwc_enabled = false;
 	unsigned lvl, layers = 0;
 
 	if (!so)
@@ -239,6 +240,7 @@ fd6_sampler_view_create(struct pipe_context *pctx, struct pipe_resource *prsc,
 	so->base.reference.count = 1;
 	so->base.context = pctx;
 	so->seqno = ++fd6_context(fd_context(pctx))->tex_seqno;
+	so->ptr1 = rsc;
 
 	if (cso->target == PIPE_BUFFER) {
 		unsigned elements = cso->u.buf.size / util_format_get_blocksize(format);
@@ -250,7 +252,7 @@ fd6_sampler_view_create(struct pipe_context *pctx, struct pipe_resource *prsc,
 		so->texconst2 =
 			A6XX_TEX_CONST_2_UNK4 |
 			A6XX_TEX_CONST_2_UNK31;
-		so->offset = cso->u.buf.offset;
+		so->offset1 = cso->u.buf.offset;
 	} else {
 		unsigned miplevels;
 
@@ -265,9 +267,12 @@ fd6_sampler_view_create(struct pipe_context *pctx, struct pipe_resource *prsc,
 		so->texconst2 =
 			A6XX_TEX_CONST_2_PITCHALIGN(rsc->layout.pitchalign - 6) |
 			A6XX_TEX_CONST_2_PITCH(fd_resource_pitch(rsc, lvl));
-		so->offset = fd_resource_offset(rsc, lvl, cso->u.tex.first_layer);
-		so->ubwc_offset = fd_resource_ubwc_offset(rsc, lvl, cso->u.tex.first_layer);
-		so->ubwc_enabled = fd_resource_ubwc_enabled(rsc, lvl);
+		so->offset1 = fd_resource_offset(rsc, lvl, cso->u.tex.first_layer);
+		ubwc_enabled = fd_resource_ubwc_enabled(rsc, lvl);
+		if (ubwc_enabled) {
+			so->ptr2 = rsc;
+			so->offset2 = fd_resource_ubwc_offset(rsc, lvl, cso->u.tex.first_layer);
+		}
 	}
 
 	so->texconst0 |= fd6_tex_const_0(prsc, lvl, cso->format,
@@ -314,7 +319,7 @@ fd6_sampler_view_create(struct pipe_context *pctx, struct pipe_resource *prsc,
 	if (rsc->layout.tile_all)
 		so->texconst3 |= A6XX_TEX_CONST_3_TILE_ALL;
 
-	if (so->ubwc_enabled) {
+	if (ubwc_enabled) {
 		uint32_t block_width, block_height;
 		fdl6_get_ubwc_blockwidth(&rsc->layout, &block_width, &block_height);
 
