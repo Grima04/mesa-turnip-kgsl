@@ -1976,7 +1976,8 @@ bool match_op3_for_vop3(opt_ctx &ctx, aco_opcode op1, aco_opcode op2,
                         Instruction* op1_instr, bool swap, const char *shuffle_str,
                         Operand operands[3], bool neg[3], bool abs[3], uint8_t *opsel,
                         bool *op1_clamp, uint8_t *op1_omod,
-                        bool *inbetween_neg, bool *inbetween_abs, bool *inbetween_opsel)
+                        bool *inbetween_neg, bool *inbetween_abs, bool *inbetween_opsel,
+                        bool *precise)
 {
    /* checks */
    if (op1_instr->opcode != op1)
@@ -2016,6 +2017,9 @@ bool match_op3_for_vop3(opt_ctx &ctx, aco_opcode op1, aco_opcode op2,
       *inbetween_opsel = op1_vop3 ? op1_vop3->opsel & (1 << swap) : false;
    else if (op1_vop3 && op1_vop3->opsel & (1 << swap))
       return false;
+
+   *precise = op1_instr->definitions[0].isPrecise() ||
+              op2_instr->definitions[0].isPrecise();
 
    int shuffle[3];
    shuffle[shuffle_str[0] - '0'] = 0;
@@ -2069,12 +2073,12 @@ bool combine_three_valu_op(opt_ctx& ctx, aco_ptr<Instruction>& instr, aco_opcode
          continue;
 
       Operand operands[3];
-      bool neg[3], abs[3], clamp;
+      bool neg[3], abs[3], clamp, precise;
       uint8_t opsel = 0, omod = 0;
       if (match_op3_for_vop3(ctx, instr->opcode, op2,
                              instr.get(), swap, shuffle,
                              operands, neg, abs, &opsel,
-                             &clamp, &omod, NULL, NULL, NULL)) {
+                             &clamp, &omod, NULL, NULL, NULL, &precise)) {
          ctx.uses[instr->operands[swap].tempId()]--;
          create_vop3_for_op3(ctx, new_op, instr, operands, neg, abs, opsel, clamp, omod);
          return true;
@@ -2092,13 +2096,13 @@ bool combine_minmax(opt_ctx& ctx, aco_ptr<Instruction>& instr, aco_opcode opposi
     * max(-min(a, b), c) -> max3(-a, -b, c) */
    for (unsigned swap = 0; swap < 2; swap++) {
       Operand operands[3];
-      bool neg[3], abs[3], clamp;
+      bool neg[3], abs[3], clamp, precise;
       uint8_t opsel = 0, omod = 0;
       bool inbetween_neg;
       if (match_op3_for_vop3(ctx, instr->opcode, opposite,
                              instr.get(), swap, "012",
                              operands, neg, abs, &opsel,
-                             &clamp, &omod, &inbetween_neg, NULL, NULL) &&
+                             &clamp, &omod, &inbetween_neg, NULL, NULL, &precise) &&
           inbetween_neg) {
          ctx.uses[instr->operands[swap].tempId()]--;
          neg[1] = true;
@@ -2378,11 +2382,17 @@ bool combine_clamp(opt_ctx& ctx, aco_ptr<Instruction>& instr,
 
    for (unsigned swap = 0; swap < 2; swap++) {
       Operand operands[3];
-      bool neg[3], abs[3], clamp;
+      bool neg[3], abs[3], clamp, precise;
       uint8_t opsel = 0, omod = 0;
       if (match_op3_for_vop3(ctx, instr->opcode, other_op, instr.get(), swap,
                              "012", operands, neg, abs, &opsel,
-                             &clamp, &omod, NULL, NULL, NULL)) {
+                             &clamp, &omod, NULL, NULL, NULL, &precise)) {
+         /* max(min(src, upper), lower) returns upper if src is NaN, but
+          * med3(src, lower, upper) returns lower.
+          */
+         if (precise && instr->opcode != min)
+            continue;
+
          int const0_idx = -1, const1_idx = -1;
          uint32_t const0 = 0, const1 = 0;
          for (int i = 0; i < 3; i++) {

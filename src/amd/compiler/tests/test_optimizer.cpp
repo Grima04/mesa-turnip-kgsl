@@ -264,3 +264,38 @@ BEGIN_TEST(optimize.bcnt)
       finish_opt_test();
    }
 END_TEST
+
+BEGIN_TEST(optimize.clamp)
+   //>> v1: %a, v1: %b, v1: %c, s2: %_:exec = p_startpgm
+   if (!setup_cs("v1 v1 v1", GFX9))
+      return;
+
+   //! v1: %res0 = v_med3_f32 4.0, 0, %a
+   //! p_unit_test 0, %res0
+   writeout(0, bld.vop2(aco_opcode::v_min_f32, bld.def(v1), Operand(0x40800000u),
+                        bld.vop2(aco_opcode::v_max_f32, bld.def(v1), Operand(0u), inputs[0])));
+
+   //! v1: %res1 = v_med3_f32 0, 4.0, %a
+   //! p_unit_test 1, %res1
+   writeout(1, bld.vop2(aco_opcode::v_max_f32, bld.def(v1), Operand(0u),
+                        bld.vop2(aco_opcode::v_min_f32, bld.def(v1), Operand(0x40800000u), inputs[0])));
+
+   /* correct NaN behaviour with precise */
+
+   //! v1: %res2 = v_med3_f32 4.0, 0, %a
+   //! p_unit_test 2, %res2
+   Builder::Result max = bld.vop2(aco_opcode::v_max_f32, bld.def(v1), Operand(0u), inputs[0]);
+   max.def(0).setPrecise(true);
+   Builder::Result min = bld.vop2(aco_opcode::v_min_f32, bld.def(v1), Operand(0x40800000u), max);
+   max.def(0).setPrecise(true);
+   writeout(2, min);
+
+   //! v1: (precise)%res3_tmp = v_min_f32 4.0, %a
+   //! v1: %res3 = v_max_f32 0, %res3_tmp
+   //! p_unit_test 3, %res3
+   min = bld.vop2(aco_opcode::v_min_f32, bld.def(v1), Operand(0x40800000u), inputs[0]);
+   min.def(0).setPrecise(true);
+   writeout(3, bld.vop2(aco_opcode::v_max_f32, bld.def(v1), Operand(0u), min));
+
+   finish_opt_test();
+END_TEST
