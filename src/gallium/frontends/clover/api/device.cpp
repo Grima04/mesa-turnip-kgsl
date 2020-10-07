@@ -417,6 +417,10 @@ clGetDeviceInfo(cl_device_id d_dev, cl_device_info param,
       buf.as_vector<cl_name_version>() = dev.opencl_c_all_versions();
       break;
 
+   case CL_DEVICE_EXTENSIONS_WITH_VERSION:
+      buf.as_vector<cl_name_version>() = dev.supported_extensions();
+      break;
+
    default:
       throw error(CL_INVALID_VALUE);
    }

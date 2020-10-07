@@ -341,19 +341,42 @@ device::supports_ir(enum pipe_shader_ir ir) const {
                                  PIPE_SHADER_CAP_SUPPORTED_IRS) & (1 << ir);
 }
 
+std::vector<cl_name_version>
+device::supported_extensions() const {
+   std::vector<cl_name_version> vec;
+
+   vec.push_back( (cl_name_version){ CL_MAKE_VERSION(1, 0, 0), "cl_khr_byte_addressable_store" } );
+   vec.push_back( (cl_name_version){ CL_MAKE_VERSION(1, 0, 0), "cl_khr_global_int32_base_atomics" } );
+   vec.push_back( (cl_name_version){ CL_MAKE_VERSION(1, 0, 0), "cl_khr_global_int32_extended_atomics" } );
+   vec.push_back( (cl_name_version){ CL_MAKE_VERSION(1, 0, 0), "cl_khr_local_int32_base_atomics" } );
+   vec.push_back( (cl_name_version){ CL_MAKE_VERSION(1, 0, 0), "cl_khr_local_int32_extended_atomics" } );
+   if (has_int64_atomics()) {
+      vec.push_back( (cl_name_version){ CL_MAKE_VERSION(1, 0, 0), "cl_khr_int64_base_atomics" } );
+      vec.push_back( (cl_name_version){ CL_MAKE_VERSION(1, 0, 0), "cl_khr_int64_extended_atomics" } );
+   }
+   if (has_doubles())
+      vec.push_back( (cl_name_version){ CL_MAKE_VERSION(1, 0, 0), "cl_khr_fp64" } );
+   if (has_halves())
+      vec.push_back( (cl_name_version){ CL_MAKE_VERSION(1, 0, 0), "cl_khr_fp16" } );
+   if (svm_support())
+      vec.push_back( (cl_name_version){ CL_MAKE_VERSION(1, 0, 0), "cl_arm_shared_virtual_memory" } );
+   return vec;
+}
+
 std::string
 device::supported_extensions_as_string() const {
-   return
-      "cl_khr_byte_addressable_store"
-      " cl_khr_global_int32_base_atomics"
-      " cl_khr_global_int32_extended_atomics"
-      " cl_khr_local_int32_base_atomics"
-      " cl_khr_local_int32_extended_atomics"
-      + std::string(has_int64_atomics() ? " cl_khr_int64_base_atomics" : "")
-      + std::string(has_int64_atomics() ? " cl_khr_int64_extended_atomics" : "")
-      + std::string(has_doubles() ? " cl_khr_fp64" : "")
-      + std::string(has_halves() ? " cl_khr_fp16" : "")
-      + std::string(svm_support() ? " cl_arm_shared_virtual_memory" : "");
+   static std::string extensions_string;
+
+   if (!extensions_string.empty())
+      return extensions_string;
+
+   const auto extension_list = supported_extensions();
+   for (const auto &extension : extension_list) {
+      if (!extensions_string.empty())
+         extensions_string += " ";
+      extensions_string += extension.name;
+   }
+   return extensions_string;
 }
 
 const void *
