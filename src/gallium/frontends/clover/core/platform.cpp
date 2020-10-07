@@ -45,9 +45,28 @@ platform::platform() : adaptor_range(evals(), devs) {
    }
 }
 
+std::vector<cl_name_version>
+platform::supported_extensions() const {
+   std::vector<cl_name_version> vec;
+
+   vec.push_back( (cl_name_version){ CL_MAKE_VERSION(1, 0, 0), "cl_khr_icd" } );
+   return vec;
+}
+
 std::string
 platform::supported_extensions_as_string() const {
-   return "cl_khr_icd";
+   static std::string extensions_string;
+
+   if (!extensions_string.empty())
+      return extensions_string;
+
+   const auto extension_list = supported_extensions();
+   for (const auto &extension : extension_list) {
+      if (!extensions_string.empty())
+         extensions_string += " ";
+      extensions_string += extension.name;
+   }
+   return extensions_string;
 }
 
 std::string

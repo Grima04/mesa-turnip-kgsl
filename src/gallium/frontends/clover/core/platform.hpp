@@ -41,6 +41,7 @@ namespace clover {
       operator=(const platform &platform) = delete;
 
       std::string supported_extensions_as_string() const;
+      std::vector<cl_name_version> supported_extensions() const;
 
       std::string platform_version_as_string() const;
       cl_version platform_version() const;
