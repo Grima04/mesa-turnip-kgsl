@@ -60,6 +60,13 @@ enum tc_call_id {
    TC_NUM_CALLS,
 };
 
+/* This is actually variable-sized, because indirect isn't allocated if it's
+ * not needed. */
+struct tc_full_draw_info {
+   struct pipe_draw_info draw;
+   struct pipe_draw_indirect_info indirect;
+};
+
 typedef void (*tc_execute)(struct pipe_context *pipe, union tc_payload *payload);
 
 static const tc_execute execute_func[TC_NUM_CALLS];
@@ -2124,13 +2131,6 @@ out_of_memory:
       tc_flush_queries(tc);
    pipe->flush(pipe, fence, flags);
 }
-
-/* This is actually variable-sized, because indirect isn't allocated if it's
- * not needed. */
-struct tc_full_draw_info {
-   struct pipe_draw_info draw;
-   struct pipe_draw_indirect_info indirect;
-};
 
 static void
 tc_call_draw_vbo(struct pipe_context *pipe, union tc_payload *payload)
