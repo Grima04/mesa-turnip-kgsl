@@ -216,7 +216,7 @@ allocate_desc_set(struct zink_screen *screen, struct zink_program *pg, enum zink
 
    struct zink_descriptor_set *alloc = ralloc_array(pool, struct zink_descriptor_set, bucket_size);
    assert(alloc);
-   unsigned num_resources = zink_program_num_bindings_typed(pg, type, is_compute);
+   unsigned num_resources = pool->num_resources;
    struct zink_resource **resources = rzalloc_array(pool, struct zink_resource*, num_resources * bucket_size);
    assert(resources);
    void **samplers = NULL;
