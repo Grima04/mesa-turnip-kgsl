@@ -38,7 +38,7 @@ namespace clover {
       // warnings and errors are appended to |r_log|.
       bool is_valid_spirv(const std::vector<char> &binary,
                           const std::string &opencl_version,
-                          std::string &r_log, bool validate = true);
+                          std::string &r_log);
 
       // Creates a clover module out of the given SPIR-V binary.
       module compile_program(const std::vector<char> &binary,

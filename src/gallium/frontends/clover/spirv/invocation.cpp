@@ -678,7 +678,7 @@ clover::spirv::compile_program(const std::vector<char> &binary,
                                bool validate) {
    std::vector<char> source = spirv_to_cpu(binary);
 
-   if (!is_valid_spirv(source, dev.device_version(), r_log, validate))
+   if (validate && !is_valid_spirv(source, dev.device_version(), r_log))
       throw build_error();
 
    if (!check_capabilities(dev, source, r_log))
@@ -781,8 +781,7 @@ clover::spirv::link_program(const std::vector<module> &modules,
 bool
 clover::spirv::is_valid_spirv(const std::vector<char> &binary,
                               const std::string &opencl_version,
-                              std::string &r_log,
-                              bool validate) {
+                              std::string &r_log) {
    auto const validator_consumer =
       [&r_log](spv_message_level_t level, const char *source,
                const spv_position_t &position, const char *message) {
@@ -794,8 +793,6 @@ clover::spirv::is_valid_spirv(const std::vector<char> &binary,
    spvtools::SpirvTools spvTool(target_env);
    spvTool.SetMessageConsumer(validator_consumer);
 
-   if (!validate)
-      return true;
    return spvTool.Validate(reinterpret_cast<const uint32_t *>(binary.data()),
                            binary.size() / 4u);
 }
@@ -840,7 +837,7 @@ clover::spirv::supported_versions() {
 bool
 clover::spirv::is_valid_spirv(const std::vector<char> &/*binary*/,
                               const std::string &/*opencl_version*/,
-                              std::string &/*r_log*/, bool /*validate*/) {
+                              std::string &/*r_log*/) {
    return false;
 }
 
