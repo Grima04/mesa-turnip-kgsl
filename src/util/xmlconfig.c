@@ -27,12 +27,7 @@
  * \author Felix Kuehling
  */
 
-#if defined(ANDROID) || defined(_WIN32)
-#define WITH_XMLCONFIG 0
-#else
-#define WITH_XMLCONFIG 1
-#endif
-
+#include "xmlconfig.h"
 #include <limits.h>
 #include <stdarg.h>
 #include <stdbool.h>
@@ -52,7 +47,6 @@
 #include <fcntl.h>
 #include <math.h>
 #include "strndup.h"
-#include "xmlconfig.h"
 #include "u_process.h"
 #include "os_file.h"
 
@@ -1036,6 +1030,21 @@ initOptionCache(driOptionCache *cache, const driOptionCache *info)
 #define DATADIR "/usr/share"
 #endif
 
+static const char *datadir = DATADIR "/drirc.d";
+static const char *execname;
+
+void
+driInjectDataDir(const char *dir)
+{
+   datadir = dir;
+}
+
+void
+driInjectExecName(const char *exec)
+{
+   execname = exec;
+}
+
 void
 driParseConfigFiles(driOptionCache *cache, const driOptionCache *info,
                     int screenNum, const char *driverName,
@@ -1057,9 +1066,9 @@ driParseConfigFiles(driOptionCache *cache, const driOptionCache *info,
    userData.applicationVersion = applicationVersion;
    userData.engineName = engineName ? engineName : "";
    userData.engineVersion = engineVersion;
-   userData.execName = util_get_process_name();
+   userData.execName = execname ?: util_get_process_name();
 
-   parseConfigDir(&userData, DATADIR "/drirc.d");
+   parseConfigDir(&userData, datadir);
    parseOneConfigFile(&userData, SYSCONFDIR "/drirc");
 
    if ((home = getenv("HOME"))) {

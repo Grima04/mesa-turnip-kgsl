@@ -243,6 +243,10 @@ if with_tests
         cpp_args: ['-Wno-write-strings']
       ),
       suite : ['util'],
+      env: ['HOME=' + join_paths(meson.current_source_dir(),
+                                 'tests', 'drirc_home'),
+            'DRIRC_CONFIGDIR=' + join_paths(meson.current_source_dir(),
+                                            'tests', 'drirc_configdir')]
         )
   endif
 
