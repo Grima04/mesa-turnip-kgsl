@@ -306,6 +306,19 @@ clGetSupportedImageFormats(cl_context d_ctx, cl_mem_flags flags,
    auto &ctx = obj(d_ctx);
    auto formats = supported_formats(ctx, type);
 
+   if (flags & CL_MEM_KERNEL_READ_AND_WRITE) {
+      if (r_count)
+         *r_count = 0;
+      return CL_SUCCESS;
+   }
+
+   if (flags & (CL_MEM_WRITE_ONLY | CL_MEM_READ_WRITE) &&
+       type == CL_MEM_OBJECT_IMAGE3D) {
+      if (r_count)
+         *r_count = 0;
+      return CL_SUCCESS;
+   }
+
    validate_flags(NULL, flags, false);
 
    if (r_buf && !count)
