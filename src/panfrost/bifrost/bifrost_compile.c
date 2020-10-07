@@ -1129,6 +1129,7 @@ emit_texc(bi_context *ctx, nir_tex_instr *instr)
         switch (instr->op) {
         case nir_texop_tex:
         case nir_texop_txl:
+        case nir_texop_txb:
                 break;
         default:
                 unreachable("Unsupported texture op");
@@ -1177,11 +1178,13 @@ emit_texc(bi_context *ctx, nir_tex_instr *instr)
                         tex.swizzle[1][0] = 0;
                         tex.swizzle[2][0] = 1;
                         break;
+
                 case nir_tex_src_lod:
                         if (nir_src_is_const(instr->src[i].src) && nir_src_as_uint(instr->src[i].src) == 0) {
                                 desc.lod_mode = BIFROST_LOD_MODE_ZERO;
                         } else {
                                 assert(base == nir_type_float);
+
                                 assert(sz == 16 || sz == 32);
                                 dregs[BIFROST_TEX_DREG_LOD] =
                                         bi_emit_lod_88(ctx, index, sz == 16);
@@ -1189,6 +1192,16 @@ emit_texc(bi_context *ctx, nir_tex_instr *instr)
                         }
 
                         break;
+
+                case nir_tex_src_bias:
+                        /* Upper 16-bits interpreted as a clamp, leave zero */
+                        assert(base == nir_type_float);
+                        assert(sz == 16 || sz == 32);
+                        dregs[BIFROST_TEX_DREG_LOD] =
+                                bi_emit_lod_88(ctx, index, sz == 16);
+                        desc.lod_mode = BIFROST_LOD_MODE_BIAS;
+                        break;
+
                 default:
                         unreachable("Unhandled src type in texc emit");
                 }
