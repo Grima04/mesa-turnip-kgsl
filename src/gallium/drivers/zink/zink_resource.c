@@ -522,76 +522,24 @@ zink_resource_from_handle(struct pipe_screen *pscreen,
 #endif
 }
 
-static bool
+static void
 zink_transfer_copy_bufimage(struct zink_context *ctx,
-                            struct zink_resource *res,
-                            struct zink_resource *staging_res,
-                            struct zink_transfer *trans,
-                            bool buf2img)
+                            struct zink_resource *dst,
+                            struct zink_resource *src,
+                            struct zink_transfer *trans)
 {
-   struct zink_batch *batch = zink_batch_no_rp(ctx);
-
-   if (buf2img) {
-      zink_resource_image_barrier(ctx, batch, res, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 0, 0);
-   } else {
-      zink_resource_image_barrier(ctx, batch, res, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, 0, 0);
-   }
-
-   VkBufferImageCopy copyRegion = {};
-   copyRegion.bufferOffset = staging_res->offset;
-   copyRegion.bufferRowLength = 0;
-   copyRegion.bufferImageHeight = 0;
-   copyRegion.imageSubresource.mipLevel = trans->base.level;
-   copyRegion.imageSubresource.layerCount = 1;
-   if (res->base.array_size > 1) {
-      copyRegion.imageSubresource.baseArrayLayer = trans->base.box.z;
-      copyRegion.imageSubresource.layerCount = trans->base.box.depth;
-      copyRegion.imageExtent.depth = 1;
-   } else {
-      copyRegion.imageOffset.z = trans->base.box.z;
-      copyRegion.imageExtent.depth = trans->base.box.depth;
-   }
-   copyRegion.imageOffset.x = trans->base.box.x;
-   copyRegion.imageOffset.y = trans->base.box.y;
-
-   copyRegion.imageExtent.width = trans->base.box.width;
-   copyRegion.imageExtent.height = trans->base.box.height;
-
-   zink_batch_reference_resource_rw(batch, res, buf2img);
-   zink_batch_reference_resource_rw(batch, staging_res, !buf2img);
-
-   /* we're using u_transfer_helper_deinterleave, which means we'll be getting PIPE_MAP_* usage
-    * to indicate whether to copy either the depth or stencil aspects
-    */
-   unsigned aspects = 0;
    assert((trans->base.usage & (PIPE_MAP_DEPTH_ONLY | PIPE_MAP_STENCIL_ONLY)) !=
           (PIPE_MAP_DEPTH_ONLY | PIPE_MAP_STENCIL_ONLY));
-   if (trans->base.usage & PIPE_MAP_DEPTH_ONLY)
-      aspects = VK_IMAGE_ASPECT_DEPTH_BIT;
-   else if (trans->base.usage & PIPE_MAP_STENCIL_ONLY)
-      aspects = VK_IMAGE_ASPECT_STENCIL_BIT;
-   else {
-      aspects = aspect_from_format(res->base.format);
-   }
-   while (aspects) {
-      int aspect = 1 << u_bit_scan(&aspects);
-      copyRegion.imageSubresource.aspectMask = aspect;
 
-      /* this may or may not work with multisampled depth/stencil buffers depending on the driver implementation:
-       *
-       * srcImage must have a sample count equal to VK_SAMPLE_COUNT_1_BIT
-       * - vkCmdCopyImageToBuffer spec
-       *
-       * dstImage must have a sample count equal to VK_SAMPLE_COUNT_1_BIT
-       * - vkCmdCopyBufferToImage spec
-       */
-      if (buf2img)
-         vkCmdCopyBufferToImage(batch->cmdbuf, staging_res->buffer, res->image, res->layout, 1, &copyRegion);
-      else
-         vkCmdCopyImageToBuffer(batch->cmdbuf, res->image, res->layout, staging_res->buffer, 1, &copyRegion);
-   }
+   bool buf2img = src->base.target == PIPE_BUFFER;
 
-   return true;
+   struct pipe_box box = trans->base.box;
+   int x = box.x;
+   if (buf2img)
+      box.x = src->offset;
+
+   zink_copy_image_buffer(ctx, NULL, dst, src, trans->base.level, buf2img ? x : dst->offset,
+                           box.y, box.z, trans->base.level, &box, trans->base.usage);
 }
 
 uint32_t
@@ -722,12 +670,7 @@ zink_transfer_map(struct pipe_context *pctx,
                /* don't actually have to stall here, only ensure batch is submitted */
                zink_flush_compute(ctx);
             struct zink_context *ctx = zink_context(pctx);
-            bool ret = zink_transfer_copy_bufimage(ctx, res,
-                                                   staging_res, trans,
-                                                   false);
-            if (ret == false)
-               return NULL;
-
+            zink_transfer_copy_bufimage(ctx, staging_res, res, trans);
             /* need to wait for rendering to finish */
             zink_fence_wait(pctx);
          }
@@ -800,7 +743,7 @@ zink_transfer_flush_region(struct pipe_context *pctx,
          if (ptrans->resource->target == PIPE_BUFFER)
             zink_copy_buffer(ctx, NULL, res, staging_res, box->x, box->x, box->width);
          else
-            zink_transfer_copy_bufimage(ctx, res, staging_res, trans, true);
+            zink_transfer_copy_bufimage(ctx, res, staging_res, trans);
          if (batch_uses)
             pctx->flush(pctx, NULL, 0);
       }

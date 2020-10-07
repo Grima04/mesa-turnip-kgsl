@@ -1841,6 +1841,84 @@ zink_copy_buffer(struct zink_context *ctx, struct zink_batch *batch, struct zink
    vkCmdCopyBuffer(batch->cmdbuf, src->buffer, dst->buffer, 1, &region);
 }
 
+void
+zink_copy_image_buffer(struct zink_context *ctx, struct zink_batch *batch, struct zink_resource *dst, struct zink_resource *src,
+                       unsigned dst_level, unsigned dstx, unsigned dsty, unsigned dstz,
+                       unsigned src_level, const struct pipe_box *src_box, enum pipe_map_flags map_flags)
+{
+   struct zink_resource *img = dst->base.target == PIPE_BUFFER ? src : dst;
+   struct zink_resource *buf = dst->base.target == PIPE_BUFFER ? dst : src;
+
+   if (!batch)
+      batch = zink_batch_no_rp(ctx);
+
+   bool buf2img = buf == src;
+
+   if (buf2img) {
+      zink_resource_image_barrier(ctx, batch, img, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 0, 0);
+      zink_resource_buffer_barrier(ctx, batch, buf, VK_ACCESS_TRANSFER_READ_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
+   } else {
+      zink_resource_image_barrier(ctx, batch, img, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, 0, 0);
+      zink_resource_buffer_barrier(ctx, batch, buf, VK_ACCESS_TRANSFER_WRITE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
+      util_range_add(&dst->base, &dst->valid_buffer_range, dstx, dstx + src_box->width);
+   }
+
+   VkBufferImageCopy region = {};
+   region.bufferOffset = buf2img ? src_box->x : dstx;
+   region.bufferRowLength = 0;
+   region.bufferImageHeight = 0;
+   region.imageSubresource.mipLevel = buf2img ? dst_level : src_level;
+   region.imageSubresource.layerCount = 1;
+   if (img->base.array_size > 1) {
+      region.imageSubresource.baseArrayLayer = buf2img ? dstz : src_box->z;
+      region.imageSubresource.layerCount = src_box->depth;
+      region.imageExtent.depth = 1;
+   } else {
+      region.imageOffset.z = buf2img ? dstz : src_box->z;
+      region.imageExtent.depth = src_box->depth;
+   }
+   region.imageOffset.x = buf2img ? dstx : src_box->x;
+   region.imageOffset.y = buf2img ? dsty : src_box->y;
+
+   region.imageExtent.width = src_box->width;
+   region.imageExtent.height = src_box->height;
+
+   zink_batch_reference_resource_rw(batch, img, buf2img);
+   zink_batch_reference_resource_rw(batch, buf, !buf2img);
+
+   /* we're using u_transfer_helper_deinterleave, which means we'll be getting PIPE_MAP_* usage
+    * to indicate whether to copy either the depth or stencil aspects
+    */
+   unsigned aspects = 0;
+   if (map_flags) {
+      assert((map_flags & (PIPE_MAP_DEPTH_ONLY | PIPE_MAP_STENCIL_ONLY)) !=
+             (PIPE_MAP_DEPTH_ONLY | PIPE_MAP_STENCIL_ONLY));
+      if (map_flags & PIPE_MAP_DEPTH_ONLY)
+         aspects = VK_IMAGE_ASPECT_DEPTH_BIT;
+      else if (map_flags & PIPE_MAP_STENCIL_ONLY)
+         aspects = VK_IMAGE_ASPECT_STENCIL_BIT;
+   }
+   if (!aspects)
+      aspects = img->aspect;
+   while (aspects) {
+      int aspect = 1 << u_bit_scan(&aspects);
+      region.imageSubresource.aspectMask = aspect;
+
+      /* this may or may not work with multisampled depth/stencil buffers depending on the driver implementation:
+       *
+       * srcImage must have a sample count equal to VK_SAMPLE_COUNT_1_BIT
+       * - vkCmdCopyImageToBuffer spec
+       *
+       * dstImage must have a sample count equal to VK_SAMPLE_COUNT_1_BIT
+       * - vkCmdCopyBufferToImage spec
+       */
+      if (buf2img)
+         vkCmdCopyBufferToImage(batch->cmdbuf, buf->buffer, img->image, img->layout, 1, &region);
+      else
+         vkCmdCopyImageToBuffer(batch->cmdbuf, img->image, img->layout, buf->buffer, 1, &region);
+   }
+}
+
 static void
 zink_resource_copy_region(struct pipe_context *pctx,
                           struct pipe_resource *pdst,
@@ -1911,8 +1989,7 @@ zink_resource_copy_region(struct pipe_context *pctx,
               src->base.target == PIPE_BUFFER) {
       zink_copy_buffer(ctx, NULL, dst, src, dstx, src_box->x, src_box->width);
    } else
-      debug_printf("zink: TODO resource copy\n");
-      //util_range_add(dst, &dst->valid_buffer_range, dstx, dstx + src_box->width);
+      zink_copy_image_buffer(ctx, NULL, dst, src, dst_level, dstx, dsty, dstz, src_level, src_box, 0);
 }
 
 static struct pipe_stream_output_target *
