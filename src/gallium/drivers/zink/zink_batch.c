@@ -178,9 +178,9 @@ zink_batch_reference_resource_rw(struct zink_batch *batch, struct zink_resource 
    /* if the resource already has usage of any sort set for this batch, we can skip hashing */
    uint32_t check_mask = (ZINK_RESOURCE_ACCESS_READ | ZINK_RESOURCE_ACCESS_WRITE) << batch->batch_id;
    if (!(uses_check & check_mask)) {
-      struct set_entry *entry = _mesa_set_search(batch->resources, res);
-      if (!entry) {
-         entry = _mesa_set_add(batch->resources, res);
+      bool found = false;
+      _mesa_set_search_and_add(batch->resources, res, &found);
+      if (!found) {
          pipe_reference(NULL, &res->base.reference);
          batch->resource_size += res->size;
          if (stencil) {
@@ -208,11 +208,10 @@ void
 zink_batch_reference_sampler_view(struct zink_batch *batch,
                                   struct zink_sampler_view *sv)
 {
-   struct set_entry *entry = _mesa_set_search(batch->sampler_views, sv);
-   if (!entry) {
-      entry = _mesa_set_add(batch->sampler_views, sv);
+   bool found = false;
+   _mesa_set_search_and_add(batch->sampler_views, sv, &found);
+   if (!found)
       pipe_reference(NULL, &sv->base.reference);
-   }
    batch->has_work = true;
 }
 
@@ -230,22 +229,21 @@ void
 zink_batch_reference_program(struct zink_batch *batch,
                              struct zink_program *pg)
 {
-   if (!_mesa_set_search(batch->programs, pg)) {
-      _mesa_set_add(batch->programs, pg);
+   bool found = false;
+   _mesa_set_search_and_add(batch->programs, pg, &found);
+   if (!found)
       pipe_reference(NULL, &pg->reference);
-   }
    batch->has_work = true;
 }
 
 bool
 zink_batch_add_desc_set(struct zink_batch *batch, struct zink_descriptor_set *zds)
 {
-   if (!_mesa_set_search(batch->desc_sets, zds)) {
+   bool found = false;
+   _mesa_set_search_and_add(batch->desc_sets, zds, &found);
+   if (!found)
       pipe_reference(NULL, &zds->reference);
-      _mesa_set_add(batch->desc_sets, zds);
-      return true;
-   }
-   return false;
+   return !found;
 }
 
 void
@@ -253,10 +251,9 @@ zink_batch_reference_surface(struct zink_batch *batch,
                              struct zink_surface *surface)
 {
    struct pipe_surface *surf = &surface->base;
-   struct set_entry *entry = _mesa_set_search(batch->surfaces, surf);
-   if (!entry) {
-      entry = _mesa_set_add(batch->surfaces, surf);
+   bool found = false;
+   _mesa_set_search_and_add(batch->surfaces, surf, &found);
+   if (!found)
       pipe_reference(NULL, &surf->reference);
-   }
    batch->has_work = true;
 }
