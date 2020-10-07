@@ -186,10 +186,6 @@ traces:
     expectations:
       - device: gl-radeonsi-stoney
         checksum: b181b0a910f5ae5b161df70f834c3d5f
-  - path: gputest/pixmark-piano.trace
-    expectations:
-      - device: gl-radeonsi-stoney
-        checksum: 014b88f3357d32af0c306d4a14eb36ef
   - path: gputest/pixmark-volplosion.trace
     expectations:
       - device: gl-radeonsi-stoney
