@@ -573,15 +573,28 @@
     <field name="Wrap Mode R" size="4" start="0:8" type="Wrap Mode" default="Clamp to Edge"/>
     <field name="Wrap Mode T" size="4" start="0:12" type="Wrap Mode" default="Clamp to Edge"/>
     <field name="Wrap Mode S" size="4" start="0:16" type="Wrap Mode" default="Clamp to Edge"/>
+    <field name="Round to nearest even" size="1" start="0:21" type="bool" default="false"/>
+    <!--- Disable sRGB-to-linear conversion (assume linear) -->
+    <field name="sRGB override" size="1" start="0:22" type="bool" default="false"/>
     <field name="Seamless Cube Map" size="1" start="0:23" type="bool" default="true"/>
+    <field name="Clamp integer coordinates" size="1" start="0:24" type="bool"/>
     <field name="Normalized Coordinates" size="1" start="0:25" type="bool" default="true"/>
-    <field name="Minify Linear" size="1" start="0:27" type="bool" default="false"/>
-    <field name="Magnify Linear" size="1" start="0:28" type="bool" default="false"/>
+    <field name="Clamp integer array indices" size="1" start="0:26" type="bool" default="true"/>
+    <field name="Point sample minify" size="1" start="0:27" type="bool" default="false"/>
+    <field name="Point sample magnify" size="1" start="0:28" type="bool" default="false"/>
+    <!--- Set for 0.5, clear for 0.0 -->
+    <field name="Magnify cutoff" size="1" start="0:29" type="bool" default="false"/>
     <field name="Mipmap Mode" size="2" start="0:30" type="Mipmap Mode" default="Nearest"/>
     <field name="Minimum LOD" size="13" start="1:0" type="uint" default="0"/>
     <field name="Compare Function" size="3" start="1:13" type="Func" default="Never"/>
     <field name="Maximum LOD" size="13" start="1:16" type="uint" default="0"/>
     <field name="LOD bias" size="16" start="2:0" type="uint" default="0"/>
+    <field name="Maximum anisotropy" size="5" start="2:16" type="uint"/>
+    <field name="Anisotropy" size="1" start="2:25" type="bool"/>
+    <field name="Border Color R" size="32" start="4:0" type="float" default="0.0"/>
+    <field name="Border Color G" size="32" start="5:0" type="float" default="0.0"/>
+    <field name="Border Color B" size="32" start="6:0" type="float" default="0.0"/>
+    <field name="Border Color A" size="32" start="7:0" type="float" default="0.0"/>
   </struct>
 
   <struct name="Bifrost Texture" size="8">
