@@ -720,6 +720,10 @@ struct pipe_draw_indirect_info
    struct pipe_resource *indirect_draw_count;
 };
 
+struct pipe_draw_start_count {
+   unsigned start;
+   unsigned count;
+};
 
 /**
  * Information to describe a draw_vbo call.
