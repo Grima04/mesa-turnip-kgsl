@@ -103,8 +103,10 @@ static void *
 panfrost_create_blend_state(struct pipe_context *pipe,
                             const struct pipe_blend_state *blend)
 {
+        struct panfrost_device *dev = pan_device(pipe->screen);
         struct panfrost_context *ctx = pan_context(pipe);
         struct panfrost_blend_state *so = rzalloc(ctx, struct panfrost_blend_state);
+        unsigned version = dev->gpu_id >> 12;
         so->base = *blend;
 
         /* TODO: The following features are not yet implemented */
@@ -128,6 +130,10 @@ panfrost_create_blend_state(struct pipe_context *pipe,
                                         pipe,
                                         &rt->equation,
                                         &rt->constant_mask);
+
+                /* v6 doesn't support blend constants in FF blend equations. */
+                if (rt->has_fixed_function && version == 6 && rt->constant_mask)
+                        rt->has_fixed_function = false;
 
                 if (rt->has_fixed_function) {
                         rt->opaque = pipe.rgb_src_factor == PIPE_BLENDFACTOR_ONE &&
