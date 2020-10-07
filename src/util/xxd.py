@@ -34,6 +34,8 @@ def get_args():
     parser.add_argument('output', help="Name of output file")
     parser.add_argument("-n", "--name",
                         help="Name of C variable")
+    parser.add_argument("-b", "--binary", dest='binary', action='store_const',
+                        const=True, default=False)
     args = parser.parse_args()
     return args
 
@@ -69,13 +71,17 @@ def process_file(args):
                     if byte == b"":
                         break
 
+                    if not args.binary:
+                        assert(ord(byte) != 0)
+
                     emit_byte(outfile, byte)
                     linecount = linecount + 1
                     if linecount > 20:
                         outfile.write(b"\n ")
                         linecount = 0
-
-                outfile.write(b"\n0 };\n")
+                if not args.binary:
+                    outfile.write(b"\n0")
+                outfile.write(b"\n};\n\n")
         except Exception:
             # In the event that anything goes wrong, delete the output file,
             # then re-raise the exception. Deleteing the output file should
