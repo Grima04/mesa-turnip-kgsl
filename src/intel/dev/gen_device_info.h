@@ -61,7 +61,6 @@ struct gen_device_info
    bool is_kabylake;
    bool is_geminilake;
    bool is_coffeelake;
-   bool is_cannonlake;
    bool is_elkhartlake;
    bool is_dg1;
 
