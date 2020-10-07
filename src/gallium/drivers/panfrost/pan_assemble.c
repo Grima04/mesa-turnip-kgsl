@@ -82,6 +82,7 @@ pan_prepare_bifrost_props(struct panfrost_shader_state *state,
                 /* Early-Z set at draw-time */
                 state->properties.unknown = 0x950020; /* XXX */
                 state->properties.uniform_buffer_count = state->ubo_count;
+                state->properties.helper_invocation_enable = state->helper_invocations;
 
                 pan_prepare(&state->preload, PRELOAD);
                 state->preload.uniform_count = state->uniform_count;
