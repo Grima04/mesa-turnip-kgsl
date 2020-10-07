@@ -29,7 +29,7 @@
  */
 #include "nir.h"
 #include "nir_builder.h"
-#include "nir_lower_libclc.h"
+#include "nir_spirv.h"
 
 static bool
 lower_clc_call_instr(nir_instr *instr, nir_builder *b,

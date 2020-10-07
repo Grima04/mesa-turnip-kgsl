@@ -37,10 +37,6 @@
 #include <compiler/spirv/nir_spirv.h>
 #include <util/u_math.h>
 
-extern "C" {
-#include "nir_lower_libclc.h"
-}
-
 using namespace clover;
 
 #ifdef HAVE_CLOVER_SPIRV

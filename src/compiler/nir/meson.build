@@ -252,6 +252,7 @@ files_libnir = files(
   '../spirv/GLSL.std.450.h',
   '../spirv/gl_spirv.c',
   '../spirv/nir_load_libclc.c',
+  '../spirv/nir_lower_libclc.c',
   '../spirv/nir_spirv.h',
   '../spirv/OpenCL.std.h',
   '../spirv/spirv.h',
