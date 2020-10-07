@@ -98,6 +98,15 @@ clGetCommandQueueInfo(cl_command_queue d_q, cl_command_queue_info param,
       buf.as_vector<cl_queue_properties>() = q.properties();
       break;
 
+   case CL_QUEUE_DEVICE_DEFAULT:
+      if (r_size)
+	 *r_size = 0;
+      break;
+
+   case CL_QUEUE_SIZE:
+      throw error(CL_INVALID_COMMAND_QUEUE);
+      break;
+
    default:
       throw error(CL_INVALID_VALUE);
    }
