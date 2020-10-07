@@ -228,6 +228,13 @@ allocate_desc_set(struct zink_screen *screen, struct zink_program *pg, enum zink
       zds->hash = 0;
       zds->invalid = true;
       zds->recycled = false;
+      if (num_resources) {
+         util_dynarray_init(&zds->barriers, alloc);
+         if (!util_dynarray_grow(&zds->barriers, struct zink_descriptor_barrier, num_resources)) {
+            debug_printf("ZINK: %p failed to allocate descriptor set barriers :/\n", pg);
+            return NULL;
+         }
+      }
 #ifndef NDEBUG
       zds->num_resources = num_resources;
 #endif
@@ -363,6 +370,8 @@ out:
       }
    }
 quick_out:
+   if (pool->key.num_descriptors && !*cache_hit)
+      util_dynarray_clear(&zds->barriers);
    zds->invalid = false;
    if (zink_batch_add_desc_set(batch, zds))
       batch->descs_used += pool->key.num_descriptors;
