@@ -405,9 +405,10 @@ panfrost_new_texture_bifrost(
                 cfg.levels = last_level - first_level;
                 cfg.surfaces = payload->gpu;
 
-                /* Use the sampler descriptor for LOD clamping */
-                cfg.minimum_lod = 0;
-                cfg.maximum_lod = last_level - first_level;
+                /* We specify API-level LOD clamps in the sampler descriptor
+                 * and use these clamps simply for bounds checking */
+                cfg.minimum_lod = FIXED_16(0, false);
+                cfg.maximum_lod = FIXED_16(cfg.levels, false);
         }
 }
 
