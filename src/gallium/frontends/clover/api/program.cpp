@@ -461,6 +461,15 @@ clGetProgramInfo(cl_program d_prog, cl_program_info param,
          }, std::string(), prog.symbols());
       break;
 
+   case CL_PROGRAM_SCOPE_GLOBAL_CTORS_PRESENT:
+   case CL_PROGRAM_SCOPE_GLOBAL_DTORS_PRESENT:
+      buf.as_scalar<cl_bool>() = CL_FALSE;
+      break;
+
+   case CL_PROGRAM_IL:
+      if (r_size)
+         *r_size = 0;
+      break;
    default:
       throw error(CL_INVALID_VALUE);
    }
@@ -497,6 +506,10 @@ clGetProgramBuildInfo(cl_program d_prog, cl_device_id d_dev,
 
    case CL_PROGRAM_BINARY_TYPE:
       buf.as_scalar<cl_program_binary_type>() = prog.build(dev).binary_type();
+      break;
+
+   case CL_PROGRAM_BUILD_GLOBAL_VARIABLE_TOTAL_SIZE:
+      buf.as_scalar<size_t>() = 0;
       break;
 
    default:
