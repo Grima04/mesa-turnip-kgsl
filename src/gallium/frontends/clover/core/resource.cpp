@@ -112,6 +112,26 @@ resource::unbind_sampler_view(command_queue &q,
    q.pipe->sampler_view_destroy(q.pipe, st);
 }
 
+pipe_image_view
+resource::create_image_view(command_queue &q) {
+   pipe_image_view view;
+   view.resource = pipe;
+   view.format = pipe->format;
+   view.access = 0;
+   view.shader_access = PIPE_IMAGE_ACCESS_WRITE;
+
+   if (pipe->target == PIPE_BUFFER) {
+      view.u.buf.offset = 0;
+      view.u.buf.size = obj.size();
+   } else {
+      view.u.tex.first_layer = 0;
+      view.u.tex.last_layer = 0;
+      view.u.tex.level = 0;
+   }
+
+   return view;
+}
+
 pipe_surface *
 resource::bind_surface(command_queue &q, bool rw) {
    pipe_surface info {};

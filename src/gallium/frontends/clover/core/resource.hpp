@@ -75,6 +75,8 @@ namespace clover {
       pipe_surface *bind_surface(command_queue &q, bool rw);
       void unbind_surface(command_queue &q, pipe_surface *st);
 
+      pipe_image_view create_image_view(command_queue &q);
+
       pipe_resource *pipe;
       vector offset;
 
