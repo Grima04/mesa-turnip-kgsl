@@ -2043,7 +2043,7 @@ static void si_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *i
    if (unlikely(sctx->do_update_shaders && !si_update_shaders(sctx)))
       goto return_cleanup;
 
-   si_need_gfx_cs_space(sctx);
+   si_need_gfx_cs_space(sctx, 0);
 
    /* If we're using a secure context, determine if cs must be secure or not */
    if (unlikely(radeon_uses_secure_bos(sctx->ws))) {

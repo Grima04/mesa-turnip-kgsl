@@ -1032,7 +1032,7 @@ si_prepare_prim_discard_or_split_draw(struct si_context *sctx, const struct pipe
    unsigned need_compute_dw = 11 /* shader */ + 34 /* first draw */ +
                               24 * (num_subdraws - 1) + /* subdraws */
                               30;                       /* leave some space at the end */
-   unsigned need_gfx_dw = si_get_minimum_num_gfx_cs_dwords(sctx);
+   unsigned need_gfx_dw = si_get_minimum_num_gfx_cs_dwords(sctx, 0);
 
    if (sctx->chip_class <= GFX7 || FORCE_REWIND_EMULATION)
       need_gfx_dw += 9; /* NOP(2) + WAIT_REG_MEM(7), then chain */

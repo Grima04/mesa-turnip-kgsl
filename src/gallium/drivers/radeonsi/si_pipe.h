@@ -1433,7 +1433,7 @@ void si_flush_gfx_cs(struct si_context *ctx, unsigned flags, struct pipe_fence_h
 void si_allocate_gds(struct si_context *ctx);
 void si_set_tracked_regs_to_clear_state(struct si_context *ctx);
 void si_begin_new_gfx_cs(struct si_context *ctx, bool first_cs);
-void si_need_gfx_cs_space(struct si_context *ctx);
+void si_need_gfx_cs_space(struct si_context *ctx, unsigned num_draws);
 void si_unref_sdma_uploads(struct si_context *sctx);
 
 /* si_gpu_load.c */
@@ -1593,14 +1593,17 @@ static inline unsigned si_tile_mode_index(struct si_texture *tex, unsigned level
       return tex->surface.u.legacy.tiling_index[level];
 }
 
-static inline unsigned si_get_minimum_num_gfx_cs_dwords(struct si_context *sctx)
+static inline unsigned si_get_minimum_num_gfx_cs_dwords(struct si_context *sctx,
+                                                        unsigned num_draws)
 {
    /* Don't count the needed CS space exactly and just use an upper bound.
     *
     * Also reserve space for stopping queries at the end of IB, because
     * the number of active queries is unlimited in theory.
+    *
+    * Both indexed and non-indexed draws use 6 dwords per draw.
     */
-   return 2048 + sctx->num_cs_dw_queries_suspend;
+   return 2048 + sctx->num_cs_dw_queries_suspend + num_draws * 6;
 }
 
 static inline void si_context_add_resource_size(struct si_context *sctx, struct pipe_resource *r)

@@ -941,7 +941,7 @@ static void si_pc_query_resume(struct si_context *sctx, struct si_query *squery)
 
    if (!si_query_buffer_alloc(sctx, &query->buffer, NULL, query->result_size))
       return;
-   si_need_gfx_cs_space(sctx);
+   si_need_gfx_cs_space(sctx, 0);
 
    if (query->shaders)
       si_pc_emit_shaders(sctx, query->shaders);
