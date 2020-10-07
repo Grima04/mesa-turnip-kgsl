@@ -112,6 +112,9 @@ isl_device_setup_mocs(struct isl_device *dev)
          dev->mocs.external = 3 << 1;
          /* TC=LLC/eLLC, LeCC=WB, LRUM=3, L3CC=WB */
          dev->mocs.internal = 2 << 1;
+
+         /* L1 - HDC:L1 + L3 + LLC */
+         dev->mocs.l1_hdc_l3_llc = 48 << 1;
       }
    } else if (dev->info->gen >= 9) {
       /* TC=LLC/eLLC, LeCC=PTE, LRUM=3, L3CC=WB */
@@ -160,6 +163,24 @@ isl_device_setup_mocs(struct isl_device *dev)
 uint32_t
 isl_mocs(const struct isl_device *dev, isl_surf_usage_flags_t usage)
 {
+   if (dev->info->gen >= 12 && !dev->info->is_dg1) {
+      if (usage & ISL_SURF_USAGE_STAGING_BIT)
+         return dev->mocs.internal;
+
+      /* Using L1:HDC for storage buffers breaks Vulkan memory model
+       * tests that use shader atomics.  This isn't likely to work out,
+       * and we can't know a priori whether they'll be used.  So just
+       * continue with ordinary internal MOCS for now.
+       */
+      if (usage & ISL_SURF_USAGE_STORAGE_BIT)
+         return dev->mocs.internal;
+
+      if (usage & (ISL_SURF_USAGE_CONSTANT_BUFFER_BIT |
+                   ISL_SURF_USAGE_RENDER_TARGET_BIT |
+                   ISL_SURF_USAGE_TEXTURE_BIT))
+         return dev->mocs.l1_hdc_l3_llc;
+   }
+
    return dev->mocs.internal;
 }
 
