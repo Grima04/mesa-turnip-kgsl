@@ -291,6 +291,13 @@
     <value name="Counter" value="3"/>
   </enum>
 
+  <enum name="Sample Count">
+    <value name="Samples 1x" value="0"/>
+    <value name="Samples 4x" value="2"/>
+    <value name="Samples 8x" value="3"/>
+    <value name="Samples 16x" value="4"/>
+  </enum>
+
   <enum name="Stencil Op">
     <value name="Keep" value="0"/>
     <value name="Replace" value="1"/>
@@ -600,13 +607,17 @@
   <struct name="Bifrost Texture" size="8">
     <field name="Type" size="4" start="0:0" type="uint" default="2"/>
     <field name="Dimension" size="2" start="0:4" type="Texture Dimension"/>
+    <field name="Sample corner position" size="1" start="0:8" type="bool" default="false"/>
+    <field name="Normalize coordinatess" size="1" start="0:9" type="bool" default="false"/>
     <field name="Format" size="22" start="0:10" type="uint"/>
     <field name="Width" size="16" start="1:0" type="uint" modifier="minus(1)"/>
     <field name="Height" size="16" start="1:16" type="uint" modifier="minus(1)"/>
     <field name="Swizzle" size="12" start="2:0" type="uint"/>
     <field name="Texel ordering" size="4" start="2:12" type="Texture Layout"/>
     <field name="Levels" size="5" start="2:16" type="uint"/>
+    <field name="Minimum level" size="5" start="2:24" type="uint"/>
     <field name="Minimum LOD" size="13" start="3:0" type="uint" default="0"/>
+    <field name="Multisample count" size="3" start="3:13" type="Sample Count" default="Samples 1x"/>
     <field name="Maximum LOD" size="13" start="3:16" type="uint" default="0"/>
     <field name="Surfaces" size="64" start="4:0" type="address"/>
   </struct>
