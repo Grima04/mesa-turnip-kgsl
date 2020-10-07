@@ -862,7 +862,7 @@ void schedule_block(sched_ctx& ctx, Program *program, Block* block, live& live_v
       }
    }
 
-   if ((program->stage.hw == HWStage::VS || program->stage.hw == HWStage::NGG_GS) &&
+   if ((program->stage.hw == HWStage::VS || program->stage.hw == HWStage::NGG) &&
        (block->kind & block_kind_export_end)) {
       /* Try to move position exports as far up as possible, to reduce register
        * usage and because ISA reference guides say so. */

@@ -4250,7 +4250,7 @@ void visit_store_ls_or_es_output(isel_context *ctx, nir_intrinsic_instr *instr)
       Temp lds_base;
 
       if (ctx->stage == vertex_geometry_gs || ctx->stage == tess_eval_geometry_gs ||
-          ctx->stage == ngg_vertex_geometry_gs || ctx->stage == ngg_tess_eval_geometry_gs) {
+          ctx->stage == vertex_geometry_ngg || ctx->stage == tess_eval_geometry_ngg) {
          /* GFX9+: ES stage is merged into GS, data is passed between them using LDS. */
          unsigned itemsize = ctx->stage.has(SWStage::VS)
                              ? ctx->program->info->vs.es_info.esgs_itemsize
@@ -4355,8 +4355,8 @@ void visit_store_output(isel_context *ctx, nir_intrinsic_instr *instr)
    if (ctx->stage == vertex_vs ||
        ctx->stage == tess_eval_vs ||
        ctx->stage == fragment_fs ||
-       ctx->stage == ngg_vertex_gs ||
-       ctx->stage == ngg_tess_eval_gs ||
+       ctx->stage == vertex_ngg ||
+       ctx->stage == tess_eval_ngg ||
        ctx->shader->info.stage == MESA_SHADER_GEOMETRY) {
       bool stored_to_temps = store_output_to_temps(ctx, instr);
       if (!stored_to_temps) {
@@ -8351,21 +8351,21 @@ void visit_intrinsic(isel_context *ctx, nir_intrinsic_instr *instr)
       break;
    }
    case nir_intrinsic_emit_vertex_with_counter: {
-      if (ctx->stage.hw == HWStage::NGG_GS)
+      if (ctx->stage.hw == HWStage::NGG)
          ngg_visit_emit_vertex_with_counter(ctx, instr);
       else
          visit_emit_vertex_with_counter(ctx, instr);
       break;
    }
    case nir_intrinsic_end_primitive_with_counter: {
-      if (ctx->stage.hw != HWStage::NGG_GS) {
+      if (ctx->stage.hw != HWStage::NGG) {
          unsigned stream = nir_intrinsic_stream_id(instr);
          bld.sopp(aco_opcode::s_sendmsg, bld.m0(ctx->gs_wave_id), -1, sendmsg_gs(true, false, stream));
       }
       break;
    }
    case nir_intrinsic_set_vertex_and_primitive_count: {
-      if (ctx->stage.hw == HWStage::NGG_GS)
+      if (ctx->stage.hw == HWStage::NGG)
          ngg_visit_set_vertex_and_primitive_count(ctx, instr);
       /* unused in the legacy pipeline, the HW keeps track of this for us */
       break;
@@ -10082,7 +10082,7 @@ static bool visit_cf_list(isel_context *ctx,
 
 static void export_vs_varying(isel_context *ctx, int slot, bool is_pos, int *next_pos)
 {
-   assert(ctx->stage.hw == HWStage::VS || ctx->stage.hw == HWStage::NGG_GS);
+   assert(ctx->stage.hw == HWStage::VS || ctx->stage.hw == HWStage::NGG);
 
    int offset = (ctx->stage.has(SWStage::TES) && !ctx->stage.has(SWStage::GS))
                 ? ctx->program->info->tes.outinfo.vs_output_param_offset[slot]
@@ -10179,13 +10179,13 @@ static void create_export_phis(isel_context *ctx)
 
 static void create_vs_exports(isel_context *ctx)
 {
-   assert(ctx->stage.hw == HWStage::VS || ctx->stage.hw == HWStage::NGG_GS);
+   assert(ctx->stage.hw == HWStage::VS || ctx->stage.hw == HWStage::NGG);
 
    radv_vs_output_info *outinfo = (ctx->stage.has(SWStage::TES) && !ctx->stage.has(SWStage::GS))
                                   ? &ctx->program->info->tes.outinfo
                                   : &ctx->program->info->vs.outinfo;
 
-   if (outinfo->export_prim_id && ctx->stage.hw != HWStage::NGG_GS) {
+   if (outinfo->export_prim_id && ctx->stage.hw != HWStage::NGG) {
       ctx->outputs.mask[VARYING_SLOT_PRIMITIVE_ID] |= 0x1;
       if (ctx->stage.has(SWStage::TES))
          ctx->outputs.temps[VARYING_SLOT_PRIMITIVE_ID * 4u] = get_arg(ctx, ctx->args->ac.tes_patch_id);
@@ -11091,7 +11091,7 @@ Temp ngg_pack_prim_exp_arg(isel_context *ctx, unsigned num_vertices, const Temp 
    Temp tmp;
    Temp gs_invocation_id;
 
-   if (ctx->stage == ngg_vertex_gs)
+   if (ctx->stage == vertex_ngg)
       gs_invocation_id = get_arg(ctx, ctx->args->ac.gs_invocation_id);
 
    for (unsigned i = 0; i < num_vertices; ++i) {
@@ -11103,7 +11103,7 @@ Temp ngg_pack_prim_exp_arg(isel_context *ctx, unsigned num_vertices, const Temp 
          tmp = vtxindex[i];
 
       /* The initial edge flag is always false in tess eval shaders. */
-      if (ctx->stage == ngg_vertex_gs) {
+      if (ctx->stage == vertex_ngg) {
          Temp edgeflag = bld.vop3(aco_opcode::v_bfe_u32, bld.def(v1), gs_invocation_id, Operand(8u + i), Operand(1u));
          tmp = bld.vop3(aco_opcode::v_lshl_or_b32, bld.def(v1), edgeflag, Operand(10u * i + 9u), tmp);
       }
@@ -11149,9 +11149,9 @@ void ngg_nogs_export_primitives(isel_context *ctx)
 
    assert(!ctx->stage.has(SWStage::GS));
 
-   if (ctx->stage == ngg_vertex_gs) {
+   if (ctx->stage == vertex_ngg) {
       /* TODO: optimize for points & lines */
-   } else if (ctx->stage == ngg_tess_eval_gs) {
+   } else if (ctx->stage == tess_eval_ngg) {
       if (ctx->shader->info.tess.point_mode)
          num_vertices_per_primitive = 1;
       else if (ctx->shader->info.tess.primitive_mode == GL_ISOLINES)
@@ -11176,7 +11176,7 @@ void ngg_nogs_export_primitives(isel_context *ctx)
    ngg_emit_prim_export(ctx, num_vertices_per_primitive, vtxindex);
 
    /* Export primitive ID. */
-   if (ctx->stage == ngg_vertex_gs && ctx->args->options->key.vs_common_out.export_prim_id) {
+   if (ctx->stage == vertex_ngg && ctx->args->options->key.vs_common_out.export_prim_id) {
       /* Copy Primitive IDs from GS threads to the LDS address corresponding to the ES thread of the provoking vertex. */
       Temp prim_id = get_arg(ctx, ctx->args->ac.gs_prim_id);
       Temp provoking_vtx_index = vtxindex[0];
@@ -11201,7 +11201,7 @@ void ngg_nogs_export_vertices(isel_context *ctx)
    if (ctx->args->options->key.vs_common_out.export_prim_id) {
       Temp prim_id;
 
-      if (ctx->stage == ngg_vertex_gs) {
+      if (ctx->stage == vertex_ngg) {
          /* Wait for GS threads to store primitive ID in LDS. */
          create_workgroup_barrier(bld);
 
@@ -11211,7 +11211,7 @@ void ngg_nogs_export_vertices(isel_context *ctx)
 
          /* Load primitive ID from LDS. */
          prim_id = load_lds(ctx, 4, bld.tmp(v1), addr, 0u, 4u);
-      } else if (ctx->stage == ngg_tess_eval_gs) {
+      } else if (ctx->stage == tess_eval_ngg) {
          /* TES: Just use the patch ID as the primitive ID. */
          prim_id = get_arg(ctx, ctx->args->ac.tes_patch_id);
       } else {
@@ -11650,8 +11650,8 @@ void select_program(Program *program,
 {
    isel_context ctx = setup_isel_context(program, shader_count, shaders, config, args, false);
    if_context ic_merged_wave_info;
-   bool ngg_no_gs = ctx.stage == ngg_vertex_gs || ctx.stage == ngg_tess_eval_gs;
-   bool ngg_gs = ctx.stage == ngg_vertex_geometry_gs || ctx.stage == ngg_tess_eval_geometry_gs;
+   bool ngg_no_gs = ctx.stage == vertex_ngg || ctx.stage == tess_eval_ngg;
+   bool ngg_gs = ctx.stage == vertex_geometry_ngg || ctx.stage == tess_eval_geometry_ngg;
 
    for (unsigned i = 0; i < shader_count; i++) {
       nir_shader *nir = shaders[i];

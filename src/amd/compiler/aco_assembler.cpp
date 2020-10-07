@@ -732,7 +732,7 @@ void fix_exports(asm_context& ctx, std::vector<uint32_t>& out, Program* program)
       {
          if ((*it)->format == Format::EXP) {
             Export_instruction* exp = static_cast<Export_instruction*>((*it).get());
-            if (program->stage.hw == HWStage::VS || program->stage.hw == HWStage::NGG_GS) {
+            if (program->stage.hw == HWStage::VS || program->stage.hw == HWStage::NGG) {
                if (exp->dest >= V_008DFC_SQ_EXP_POS && exp->dest <= (V_008DFC_SQ_EXP_POS + 3)) {
                   exp->done = true;
                   exported = true;
@@ -752,7 +752,7 @@ void fix_exports(asm_context& ctx, std::vector<uint32_t>& out, Program* program)
 
    if (!exported) {
       /* Abort in order to avoid a GPU hang. */
-      bool is_vertex_or_ngg = (program->stage.hw == HWStage::VS || program->stage.hw == HWStage::NGG_GS);
+      bool is_vertex_or_ngg = (program->stage.hw == HWStage::VS || program->stage.hw == HWStage::NGG);
       aco_err(program, "Missing export in %s shader:", is_vertex_or_ngg ? "vertex or NGG" : "fragment");
       aco_print_program(program, stderr);
       abort();
@@ -920,7 +920,7 @@ unsigned emit_program(Program* program,
 
    if (program->stage.hw == HWStage::VS ||
        program->stage.hw == HWStage::FS ||
-       program->stage.hw == HWStage::NGG_GS)
+       program->stage.hw == HWStage::NGG)
       fix_exports(ctx, code, program);
 
    for (Block& block : program->blocks) {

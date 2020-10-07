@@ -1532,11 +1532,11 @@ constexpr SWStage operator|(SWStage a, SWStage b) {
  */
 enum class HWStage : uint8_t {
     VS,
-    ES,     /* Export shader: pre-GS (VS or TES) on GFX6-8. Combined into GS on GFX9 (and GFX10/legacy). */
-    GS,     /* Geometry shader on GFX10/legacy and GFX6-9. */
-    NGG_GS, /* Geometry shader on GFX10/NGG. */
-    LS,     /* Local shader: pre-TCS (VS) on GFX6-8. Combined into HS on GFX9 (and GFX10/legacy). */
-    HS,     /* Hull shader: TCS on GFX6-8. Merged VS and TCS on GFX9-10. */
+    ES,  /* Export shader: pre-GS (VS or TES) on GFX6-8. Combined into GS on GFX9 (and GFX10/legacy). */
+    GS,  /* Geometry shader on GFX10/legacy and GFX6-9. */
+    NGG, /* Primitive shader, used to implement VS, TES, GS. */
+    LS,  /* Local shader: pre-TCS (VS) on GFX6-8. Combined into HS on GFX9 (and GFX10/legacy). */
+    HS,  /* Hull shader: TCS on GFX6-8. Merged VS and TCS on GFX9-10. */
     FS,
     CS,
 };
@@ -1581,10 +1581,10 @@ static constexpr Stage compute_cs(HWStage::CS, SWStage::CS);
 static constexpr Stage tess_eval_vs(HWStage::VS, SWStage::TES);
 static constexpr Stage gs_copy_vs(HWStage::VS, SWStage::GSCopy);
 /* GFX10/NGG */
-static constexpr Stage ngg_vertex_gs(HWStage::NGG_GS, SWStage::VS);
-static constexpr Stage ngg_vertex_geometry_gs(HWStage::NGG_GS, SWStage::VS_GS);
-static constexpr Stage ngg_tess_eval_gs(HWStage::NGG_GS, SWStage::TES);
-static constexpr Stage ngg_tess_eval_geometry_gs(HWStage::NGG_GS, SWStage::TES_GS);
+static constexpr Stage vertex_ngg(HWStage::NGG, SWStage::VS);
+static constexpr Stage vertex_geometry_ngg(HWStage::NGG, SWStage::VS_GS);
+static constexpr Stage tess_eval_ngg(HWStage::NGG, SWStage::TES);
+static constexpr Stage tess_eval_geometry_ngg(HWStage::NGG, SWStage::TES_GS);
 /* GFX9 (and GFX10 if NGG isn't used) */
 static constexpr Stage vertex_geometry_gs(HWStage::GS, SWStage::VS_GS);
 static constexpr Stage vertex_tess_control_hs(HWStage::HS, SWStage::VS_TCS);

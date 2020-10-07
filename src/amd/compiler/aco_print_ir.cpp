@@ -830,14 +830,14 @@ static void print_stage(Stage stage, FILE *output)
       fprintf(output, "vertex_geometry_gs");
    else if (stage == tess_eval_geometry_gs)
       fprintf(output, "tess_eval_geometry_gs");
-   else if (stage == ngg_vertex_gs)
-      fprintf(output, "ngg_vertex_gs");
-   else if (stage == ngg_tess_eval_gs)
-      fprintf(output, "ngg_tess_eval_gs");
-   else if (stage == ngg_vertex_geometry_gs)
-      fprintf(output, "ngg_vertex_geometry_gs");
-   else if (stage == ngg_tess_eval_geometry_gs)
-      fprintf(output, "ngg_tess_eval_geometry_gs");
+   else if (stage == vertex_ngg)
+      fprintf(output, "vertex_ngg");
+   else if (stage == tess_eval_ngg)
+      fprintf(output, "tess_eval_ngg");
+   else if (stage == vertex_geometry_ngg)
+      fprintf(output, "vertex_geometry_ngg");
+   else if (stage == tess_eval_geometry_ngg)
+      fprintf(output, "tess_eval_geometry_ngg");
    else
       fprintf(output, "unknown");
 
