@@ -214,9 +214,10 @@ bi_disasm_dest_mask(FILE *fp, enum bifrost_reg_op op)
 }
 
 void
-bi_disasm_dest_fma(FILE *fp, struct bifrost_regs *next_regs, bool first)
+bi_disasm_dest_fma(FILE *fp, struct bifrost_regs *next_regs, bool last)
 {
-    struct bifrost_reg_ctrl ctrl = DecodeRegCtrl(fp, *next_regs, first);
+    /* If this is the last instruction, next_regs points to the first reg entry. */
+    struct bifrost_reg_ctrl ctrl = DecodeRegCtrl(fp, *next_regs, last);
     if (ctrl.slot23.slot2 >= BIFROST_OP_WRITE) {
         fprintf(fp, "r%u:t0", next_regs->reg2);
         bi_disasm_dest_mask(fp, ctrl.slot23.slot2);
@@ -228,9 +229,10 @@ bi_disasm_dest_fma(FILE *fp, struct bifrost_regs *next_regs, bool first)
 }
 
 void
-bi_disasm_dest_add(FILE *fp, struct bifrost_regs *next_regs, bool first)
+bi_disasm_dest_add(FILE *fp, struct bifrost_regs *next_regs, bool last)
 {
-    struct bifrost_reg_ctrl ctrl = DecodeRegCtrl(fp, *next_regs, first);
+    /* If this is the last instruction, next_regs points to the first reg entry. */
+    struct bifrost_reg_ctrl ctrl = DecodeRegCtrl(fp, *next_regs, last);
 
     if (ctrl.slot23.slot3 >= BIFROST_OP_WRITE && !ctrl.slot23.slot3_fma) {
         fprintf(fp, "r%u:t0", next_regs->reg3);
@@ -671,12 +673,14 @@ static bool dump_clause(FILE *fp, uint32_t *words, unsigned *size, unsigned offs
                 memcpy((char *) &regs, (char *) &instrs[i].reg_bits, sizeof(regs));
 
                 if (verbose) {
-                        fprintf(fp, "# regs: %016" PRIx64 "\n", instrs->reg_bits);
+                        fprintf(fp, "# regs: %016" PRIx64 "\n", instrs[i].reg_bits);
                         dump_regs(fp, regs, i == 0);
                 }
 
-                bi_disasm_fma(fp, instrs[i].fma_bits, &regs, &next_regs, header.datareg, offset, &consts, i == 0);
-                bi_disasm_add(fp, instrs[i].add_bits, &regs, &next_regs, header.datareg, offset, &consts, i == 0);
+                bi_disasm_fma(fp, instrs[i].fma_bits, &regs, &next_regs, header.datareg,
+                              offset, &consts, i + 1 == num_instrs);
+                bi_disasm_add(fp, instrs[i].add_bits, &regs, &next_regs, header.datareg,
+                              offset, &consts, i + 1 == num_instrs);
         }
         fprintf(fp, "}\n");
 
