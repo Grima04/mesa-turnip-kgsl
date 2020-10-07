@@ -175,6 +175,7 @@ allocate_desc_set(struct zink_screen *screen, struct zink_program *pg, enum zink
       if (i > 0)
          util_dynarray_append(&pool->alloc_desc_sets, struct zink_descriptor_set *, zds);
    }
+   pool->num_sets_allocated += bucket_size;
    return alloc;
 }
 
@@ -269,8 +270,7 @@ zink_descriptor_set_get(struct zink_context *ctx,
          }
       }
 
-      descs_used = _mesa_hash_table_num_entries(pool->desc_sets) + _mesa_hash_table_num_entries(pool->free_desc_sets);
-      if (descs_used + pool->num_descriptors > ZINK_DEFAULT_MAX_DESCS) {
+      if (pool->num_sets_allocated + pool->num_descriptors > ZINK_DEFAULT_MAX_DESCS) {
          batch = zink_flush_batch(ctx, batch);
          zink_batch_reference_program(batch, pg);
          return zink_descriptor_set_get(ctx, batch, pg, type, is_compute, cache_hit);
