@@ -365,3 +365,31 @@ BEGIN_TEST(optimize.const_comparison_ordering)
 
    finish_opt_test();
 END_TEST
+
+BEGIN_TEST(optimize.add3)
+   //>> v1: %a, v1: %b, v1: %c, s2: %_:exec = p_startpgm
+   if (!setup_cs("v1 v1 v1", GFX9))
+      return;
+
+   //! v1: %res0 = v_add3_u32 %a, %b, %c
+   //! p_unit_test 0, %res0
+   Builder::Result tmp = bld.vop2(aco_opcode::v_add_u32, bld.def(v1), inputs[1], inputs[2]);
+   writeout(0, bld.vop2(aco_opcode::v_add_u32, bld.def(v1), inputs[0], tmp));
+
+   //! v1: %tmp1 = v_add_u32 %b, %c clamp
+   //! v1: %res1 = v_add_u32 %a, %tmp1
+   //! p_unit_test 1, %res1
+   tmp = bld.vop2_e64(aco_opcode::v_add_u32, bld.def(v1), inputs[1], inputs[2]);
+   static_cast<VOP3A_instruction *>(tmp.instr)->clamp = true;
+   writeout(1, bld.vop2(aco_opcode::v_add_u32, bld.def(v1), inputs[0], tmp));
+
+   //! v1: %tmp2 = v_add_u32 %b, %c
+   //! v1: %res2 = v_add_u32 %a, %tmp2 clamp
+   //! p_unit_test 2, %res2
+   tmp = bld.vop2(aco_opcode::v_add_u32, bld.def(v1), inputs[1], inputs[2]);
+   tmp = bld.vop2_e64(aco_opcode::v_add_u32, bld.def(v1), inputs[0], tmp);
+   static_cast<VOP3A_instruction *>(tmp.instr)->clamp = true;
+   writeout(2, tmp);
+
+   finish_opt_test();
+END_TEST
