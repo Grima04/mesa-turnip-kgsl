@@ -517,7 +517,7 @@ valid_array_index(const GLchar *name, unsigned *array_index)
    long idx = 0;
    const GLchar *out_base_name_end;
 
-   idx = parse_program_resource_name(name, &out_base_name_end);
+   idx = parse_program_resource_name(name, strlen(name), &out_base_name_end);
    if (idx < 0)
       return false;
 
@@ -528,17 +528,9 @@ valid_array_index(const GLchar *name, unsigned *array_index)
 }
 
 static uint32_t
-compute_resource_key(GLenum programInterface, const char *name)
+compute_resource_key(GLenum programInterface, const char *name, size_t len)
 {
-   struct mesa_sha1 ctx;
-   unsigned char sha1[20];
-
-   _mesa_sha1_init(&ctx);
-   _mesa_sha1_update(&ctx, &programInterface, sizeof(programInterface));
-   _mesa_sha1_update(&ctx, name, strlen(name));
-   _mesa_sha1_final(&ctx, sha1);
-
-   return _mesa_hash_data(sha1, sizeof(sha1));
+   return _mesa_hash_data_with_seed(name, len, programInterface + len);
 }
 
 static struct gl_program_resource *
@@ -547,7 +539,8 @@ search_resource_hash(struct gl_shader_program *shProg,
                      unsigned *array_index)
 {
    const char *base_name_end;
-   long index = parse_program_resource_name(name, &base_name_end);
+   size_t len = strlen(name);
+   long index = parse_program_resource_name(name, len, &base_name_end);
    char *name_copy;
 
    /* If dealing with array, we need to get the basename. */
@@ -555,11 +548,12 @@ search_resource_hash(struct gl_shader_program *shProg,
       name_copy = (char *) malloc(base_name_end - name + 1);
       memcpy(name_copy, name, base_name_end - name);
       name_copy[base_name_end - name] = '\0';
+      len = base_name_end - name;
    } else {
       name_copy = (char*) name;
    }
 
-   uint32_t key = compute_resource_key(programInterface, name_copy);
+   uint32_t key = compute_resource_key(programInterface, name_copy, len);
    struct gl_program_resource *res = (struct gl_program_resource *)
       _mesa_hash_table_u64_search(shProg->data->ProgramResourceHash, key);
 
@@ -1927,7 +1921,7 @@ _mesa_create_program_resource_hash(struct gl_shader_program *shProg)
    for (unsigned i = 0; i < shProg->data->NumProgramResourceList; i++, res++) {
       const char *name = _mesa_program_resource_name(res);
       if (name) {
-         uint32_t key = compute_resource_key(res->Type, name);
+         uint32_t key = compute_resource_key(res->Type, name, strlen(name));
          _mesa_hash_table_u64_insert(shProg->data->ProgramResourceHash, key,
                                      res);
       }
