@@ -34,6 +34,7 @@
 #include "radv_private.h"
 #include "radv_cs.h"
 #include "sid.h"
+#include "util/u_atomic.h"
 
 #define TIMESTAMP_NOT_READY UINT64_MAX
 
