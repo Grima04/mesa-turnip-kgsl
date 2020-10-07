@@ -221,8 +221,8 @@ void panfrost_sampler_desc_init_bifrost(const struct pipe_sampler_state *cso,
                                         struct mali_bifrost_sampler_packed *hw)
 {
         pan_pack(hw, BIFROST_SAMPLER, cfg) {
-                cfg.point_sample_magnify = cso->mag_img_filter == PIPE_TEX_FILTER_LINEAR;
-                cfg.point_sample_minify = cso->min_img_filter == PIPE_TEX_FILTER_LINEAR;
+                cfg.point_sample_magnify = cso->mag_img_filter == PIPE_TEX_FILTER_NEAREST;
+                cfg.point_sample_minify = cso->min_img_filter == PIPE_TEX_FILTER_NEAREST;
                 cfg.mipmap_mode = pan_pipe_to_mipmode(cso->min_mip_filter);
                 cfg.normalized_coordinates = cso->normalized_coords;
 
