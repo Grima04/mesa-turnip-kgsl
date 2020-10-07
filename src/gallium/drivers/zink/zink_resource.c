@@ -153,8 +153,7 @@ resource_create(struct pipe_screen *pscreen,
                       VK_BUFFER_USAGE_INDEX_BUFFER_BIT |
                       VK_BUFFER_USAGE_VERTEX_BUFFER_BIT |
                       VK_BUFFER_USAGE_TRANSFORM_FEEDBACK_BUFFER_BIT_EXT;
-         VkFormatProperties props;
-         vkGetPhysicalDeviceFormatProperties(screen->pdev, zink_get_format(screen, templ->format), &props);
+         VkFormatProperties props = screen->format_props[templ->format];
          if (props.bufferFeatures & VK_FORMAT_FEATURE_STORAGE_TEXEL_BUFFER_BIT)
             bci.usage |= VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT;
       }
@@ -260,8 +259,7 @@ resource_create(struct pipe_screen *pscreen,
       if ((templ->nr_samples <= 1 || screen->info.feats.features.shaderStorageImageMultisample) &&
           (templ->bind & PIPE_BIND_SHADER_IMAGE ||
           (templ->bind & PIPE_BIND_SAMPLER_VIEW && templ->flags & PIPE_RESOURCE_FLAG_TEXTURING_MORE_LIKELY))) {
-         VkFormatProperties props;
-         vkGetPhysicalDeviceFormatProperties(screen->pdev, res->format, &props);
+         VkFormatProperties props = screen->format_props[templ->format];
          /* gallium doesn't provide any way to actually know whether this will be used as a shader image,
           * so we have to just assume and set the bit if it's available
           */

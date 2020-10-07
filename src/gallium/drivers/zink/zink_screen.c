@@ -775,8 +775,7 @@ zink_is_format_supported(struct pipe_screen *pscreen,
       }
    }
 
-   VkFormatProperties props;
-   vkGetPhysicalDeviceFormatProperties(screen->pdev, vkformat, &props);
+   VkFormatProperties props = screen->format_props[format];
 
    if (target == PIPE_BUFFER) {
       if (bind & PIPE_BIND_VERTEX_BUFFER &&
