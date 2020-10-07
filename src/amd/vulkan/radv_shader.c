@@ -728,7 +728,7 @@ lower_view_index(nir_shader *nir)
 	nir_function_impl *entry = nir_shader_get_entrypoint(nir);
 	nir_builder b;
 	nir_builder_init(&b, entry);
-	
+
 	nir_variable *layer = NULL;
 	nir_foreach_block(block, entry) {
 		nir_foreach_instr_safe(instr, block) {
@@ -1159,7 +1159,7 @@ radv_shader_variant_create(struct radv_device *device,
 			.num_shared_lds_symbols = num_lds_symbols,
 			.shared_lds_symbols = lds_symbols,
 		};
-		
+
 		if (!ac_rtld_open(&rtld_binary, open_info)) {
 			free(variant);
 			return NULL;
@@ -1203,7 +1203,7 @@ radv_shader_variant_create(struct radv_device *device,
 		struct ac_rtld_upload_info info = {
 			.binary = &rtld_binary,
 			.rx_va = radv_buffer_get_va(variant->bo) + variant->bo_offset,
-			.rx_ptr = dest_ptr, 
+			.rx_ptr = dest_ptr,
 		};
 
 		if (!ac_rtld_upload(&info)) {
@@ -1316,7 +1316,7 @@ shader_variant_compile(struct radv_device *device,
 	args.is_gs_copy_shader = gs_copy_shader;
 	args.is_trap_handler_shader = trap_handler_shader;
 
-	radv_declare_shader_args(&args, 
+	radv_declare_shader_args(&args,
 				 gs_copy_shader ? MESA_SHADER_VERTEX
 						: shaders[shader_count - 1]->info.stage,
 				 shader_count >= 2,

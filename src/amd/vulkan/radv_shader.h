@@ -383,7 +383,7 @@ struct radv_shader_binary_legacy {
 	unsigned ir_size;
 	unsigned disasm_size;
 	unsigned stats_size;
-	
+
 	/* data has size of stats_size + code_size + ir_size + disasm_size + 2,
 	 * where the +2 is for 0 of the ir strings. */
 	uint8_t data[0];

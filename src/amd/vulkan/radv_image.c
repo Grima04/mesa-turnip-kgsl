@@ -1822,7 +1822,7 @@ void radv_GetImageSubresourceLayout(
 
 	if (device->physical_device->rad_info.chip_class >= GFX9) {
 		uint64_t level_offset = surface->is_linear ? surface->u.gfx9.offset[level] : 0;
-		
+
 		pLayout->offset = plane->offset + level_offset + surface->u.gfx9.surf_slice_size * layer;
 		if (image->vk_format == VK_FORMAT_R32G32B32_UINT ||
 		    image->vk_format == VK_FORMAT_R32G32B32_SINT ||

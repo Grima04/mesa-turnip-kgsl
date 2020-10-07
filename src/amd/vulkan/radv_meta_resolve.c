@@ -373,7 +373,7 @@ static void radv_pick_resolve_method_images(struct radv_device *device,
 		else if (src_image->info.array_size > 1 ||
 			 dest_image->info.array_size > 1)
 			*method = RESOLVE_COMPUTE;
-	
+
 		if (radv_layout_dcc_compressed(device, dest_image, dest_image_layout,
 		                               dest_render_loop, queue_mask)) {
 			*method = RESOLVE_FRAGMENT;

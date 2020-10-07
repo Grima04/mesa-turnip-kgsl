@@ -2749,7 +2749,7 @@ handle_ngg_outputs_post_2(struct radv_shader_context *ctx)
 
 	LLVMValueRef prims_in_wave = ac_unpack_param(&ctx->ac,
 						     ac_get_arg(&ctx->ac, ctx->args->merged_wave_info), 8, 8);
-	LLVMValueRef vtx_in_wave = ac_unpack_param(&ctx->ac, 
+	LLVMValueRef vtx_in_wave = ac_unpack_param(&ctx->ac,
 						   ac_get_arg(&ctx->ac, ctx->args->merged_wave_info), 0, 8);
 	LLVMValueRef is_gs_thread = LLVMBuildICmp(builder, LLVMIntULT,
 						  ac_get_thread_id(&ctx->ac), prims_in_wave, "");
@@ -3491,7 +3491,7 @@ write_tess_factors(struct radv_shader_context *ctx)
 						    0, ac_glc);
 		}
 	}
-	
+
 	ac_build_endif(&ctx->ac, 6503);
 }
 
@@ -4385,7 +4385,7 @@ radv_compile_gs_copy_shader(struct ac_llvm_compiler *ac_llvm,
 	ac_compile_llvm_module(ac_llvm, ctx.ac.module, rbinary,
 			       MESA_SHADER_VERTEX, "GS Copy Shader", args->options);
 	(*rbinary)->is_gs_copy_shader = true;
-	
+
 }
 
 void
