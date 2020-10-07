@@ -126,6 +126,9 @@ struct zink_screen {
    } driconf;
 
    VkFormatProperties format_props[PIPE_FORMAT_COUNT];
+   struct {
+      uint32_t sampler_view;
+   } null_descriptor_hashes;
 };
 
 static inline struct zink_screen *

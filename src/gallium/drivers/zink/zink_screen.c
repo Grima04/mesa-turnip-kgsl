@@ -1249,6 +1249,13 @@ zink_create_logical_device(struct zink_screen *screen)
    return dev;
 }
 
+static void
+pre_hash_descriptor_states(struct zink_screen *screen)
+{
+   VkDescriptorImageInfo null_info = {};
+   screen->null_descriptor_hashes.sampler_view = _mesa_hash_data(&null_info, sizeof(VkDescriptorImageInfo));
+}
+
 static struct zink_screen *
 zink_internal_create_screen(const struct pipe_screen_config *config)
 {
@@ -1319,6 +1326,7 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
    zink_screen_init_compiler(screen);
    disk_cache_init(screen);
    populate_format_props(screen);
+   pre_hash_descriptor_states(screen);
 
    VkPipelineCacheCreateInfo pcci;
    pcci.sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO;
