@@ -451,12 +451,4 @@
    DRI_CONF_OPT_I(radv_override_uniform_offset_alignment, def, 0, 128, \
                   "Override the minUniformBufferOffsetAlignment exposed to the application. (0 = default)")
 
-/**
- * \brief ANV specific configuration options
- */
-
-#define DRI_CONF_DISABLE_D16UNORM_COMPRESSION(def) \
-   DRI_CONF_OPT_B(disable_d16unorm_compression, def, \
-                  "Disable HIZ_CCS_WT compression for D16_UNORM surface format")
-
 #endif

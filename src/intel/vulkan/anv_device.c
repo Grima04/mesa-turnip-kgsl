@@ -54,7 +54,6 @@ static const driOptionDescription anv_dri_options[] = {
    DRI_CONF_SECTION_PERFORMANCE
       DRI_CONF_VK_X11_OVERRIDE_MIN_IMAGE_COUNT(0)
       DRI_CONF_VK_X11_STRICT_IMAGE_COUNT(false)
-      DRI_CONF_DISABLE_D16UNORM_COMPRESSION(false)
    DRI_CONF_SECTION_END
 
    DRI_CONF_SECTION_DEBUG
@@ -766,8 +765,6 @@ VkResult anv_CreateInstance(
    VG(VALGRIND_CREATE_MEMPOOL(instance, 0, false));
 
    anv_init_dri_options(instance);
-   instance->disable_d16unorm_compression =
-      driQueryOptionb(&instance->dri_options, "disable_d16unorm_compression");
 
    *pInstance = anv_instance_to_handle(instance);
 

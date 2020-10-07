@@ -420,20 +420,7 @@ add_aux_surface_if_supported(struct anv_device *device,
           * TODO: This is a heuristic trade-off; we haven't tuned it at all.
           */
          assert(device->info.gen >= 12);
-         /* The experiment showed that running the benchmark with HIZ performs
-          * better than HIZ_CCS and HIZ_CCS_WT. Because the benchmark uses the
-          * depth pass with D16_UNORM surfaces format which fills the L3 cache
-          * and next pass doesn't make use of it where we end up clearing cache
-          * which results in performance regression.
-          *
-          * In order to avoid perf regression, disable HIZ_CCS_WT compression
-          * for D16_UNORM surface format on Fallout4 via driconf option.
-          */
-         if (plane_format.isl_format == ISL_FORMAT_R16_UNORM &&
-             device->physical->instance->disable_d16unorm_compression)
-            image->planes[plane].aux_usage = ISL_AUX_USAGE_HIZ;
-         else
-            image->planes[plane].aux_usage = ISL_AUX_USAGE_HIZ_CCS_WT;
+         image->planes[plane].aux_usage = ISL_AUX_USAGE_HIZ_CCS_WT;
       } else {
          assert(device->info.gen >= 12);
          image->planes[plane].aux_usage = ISL_AUX_USAGE_HIZ_CCS;
