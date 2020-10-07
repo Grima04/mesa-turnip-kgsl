@@ -1175,6 +1175,17 @@ check_device_needs_mesa_wsi(struct zink_screen *screen)
        screen->info.driver_props.driverID == VK_DRIVER_ID_MESA_RADV_KHR
       ) {
       screen->needs_mesa_wsi = true;
+       }
+}
+
+static void
+populate_format_props(struct zink_screen *screen)
+{
+   for (unsigned i = 0; i < PIPE_FORMAT_COUNT; i++) {
+      VkFormat format = zink_get_format(screen, i);
+      if (!format)
+         continue;
+      vkGetPhysicalDeviceFormatProperties(screen->pdev, format, &screen->format_props[i]);
    }
 }
 
@@ -1297,6 +1308,7 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
 
    zink_screen_init_compiler(screen);
    disk_cache_init(screen);
+   populate_format_props(screen);
 
    VkPipelineCacheCreateInfo pcci;
    pcci.sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO;
