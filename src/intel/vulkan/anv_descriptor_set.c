@@ -1085,6 +1085,7 @@ anv_descriptor_set_create(struct anv_device *device,
 
       set->desc_surface_state = anv_descriptor_pool_alloc_state(pool);
       anv_fill_buffer_surface_state(device, set->desc_surface_state, format,
+                                    ISL_SURF_USAGE_CONSTANT_BUFFER_BIT,
                                     (struct anv_address) {
                                        .bo = pool->bo,
                                        .offset = set->desc_mem.offset,
@@ -1508,8 +1509,15 @@ anv_descriptor_set_write_buffer(struct anv_device *device,
       if (alloc_stream)
          bview->surface_state = anv_state_stream_alloc(alloc_stream, 64, 64);
 
+      isl_surf_usage_flags_t usage =
+         (type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER ||
+          type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC) ?
+         ISL_SURF_USAGE_CONSTANT_BUFFER_BIT :
+         ISL_SURF_USAGE_STORAGE_BIT;
+
       anv_fill_buffer_surface_state(device, bview->surface_state,
-                                    bview->format, bind_addr, bind_range, 1);
+                                    bview->format, usage,
+                                    bind_addr, bind_range, 1);
 
       *desc = (struct anv_descriptor) {
          .type = type,

@@ -158,7 +158,9 @@ get_blorp_surf_for_anv_buffer(struct anv_device *device,
       .addr = {
          .buffer = buffer->address.bo,
          .offset = buffer->address.offset + offset,
-         .mocs = anv_mocs_for_bo(device, buffer->address.bo),
+         .mocs = anv_mocs(device, buffer->address.bo,
+                          is_dest ? ISL_SURF_USAGE_RENDER_TARGET_BIT
+                                  : ISL_SURF_USAGE_TEXTURE_BIT),
       },
    };
 
@@ -209,13 +211,17 @@ get_blorp_surf_for_anv_image(const struct anv_device *device,
                                           aspect, usage, layout);
    }
 
+   isl_surf_usage_flags_t mocs_usage =
+      (usage & VK_IMAGE_USAGE_TRANSFER_DST_BIT) ?
+      ISL_SURF_USAGE_RENDER_TARGET_BIT : ISL_SURF_USAGE_TEXTURE_BIT;
+
    const struct anv_surface *surface = &image->planes[plane].surface;
    *blorp_surf = (struct blorp_surf) {
       .surf = &surface->isl,
       .addr = {
          .buffer = image->planes[plane].address.bo,
          .offset = image->planes[plane].address.offset + surface->offset,
-         .mocs = anv_mocs_for_bo(device, image->planes[plane].address.bo),
+         .mocs = anv_mocs(device, image->planes[plane].address.bo, mocs_usage),
       },
    };
 
@@ -225,7 +231,7 @@ get_blorp_surf_for_anv_image(const struct anv_device *device,
       blorp_surf->aux_addr = (struct blorp_address) {
          .buffer = image->planes[plane].address.bo,
          .offset = image->planes[plane].address.offset + aux_surface->offset,
-         .mocs = anv_mocs_for_bo(device, image->planes[plane].address.bo),
+         .mocs = anv_mocs(device, image->planes[plane].address.bo, 0),
       };
       blorp_surf->aux_usage = aux_usage;
 
@@ -277,7 +283,8 @@ get_blorp_surf_for_anv_shadow_image(const struct anv_device *device,
          .buffer = image->planes[plane].address.bo,
          .offset = image->planes[plane].address.offset +
                    image->planes[plane].shadow_surface.offset,
-         .mocs = anv_mocs_for_bo(device, image->planes[plane].address.bo),
+         .mocs = anv_mocs(device, image->planes[plane].address.bo,
+                          ISL_SURF_USAGE_RENDER_TARGET_BIT),
       },
    };
 
@@ -948,12 +955,14 @@ copy_buffer(struct anv_device *device,
    struct blorp_address src = {
       .buffer = src_buffer->address.bo,
       .offset = src_buffer->address.offset + region->srcOffset,
-      .mocs = anv_mocs_for_bo(device, src_buffer->address.bo),
+      .mocs = anv_mocs(device, src_buffer->address.bo,
+                       ISL_SURF_USAGE_TEXTURE_BIT),
    };
    struct blorp_address dst = {
       .buffer = dst_buffer->address.bo,
       .offset = dst_buffer->address.offset + region->dstOffset,
-      .mocs = anv_mocs_for_bo(device, dst_buffer->address.bo),
+      .mocs = anv_mocs(device, dst_buffer->address.bo,
+                       ISL_SURF_USAGE_RENDER_TARGET_BIT),
    };
 
    blorp_buffer_copy(batch, src, dst, region->size);
@@ -1048,12 +1057,14 @@ void anv_CmdUpdateBuffer(
       struct blorp_address src = {
          .buffer = cmd_buffer->device->dynamic_state_pool.block_pool.bo,
          .offset = tmp_data.offset,
-         .mocs = cmd_buffer->device->isl_dev.mocs.internal,
+         .mocs = isl_mocs(&cmd_buffer->device->isl_dev,
+                          ISL_SURF_USAGE_TEXTURE_BIT)
       };
       struct blorp_address dst = {
          .buffer = dst_buffer->address.bo,
          .offset = dst_buffer->address.offset + dstOffset,
-         .mocs = anv_mocs_for_bo(cmd_buffer->device, dst_buffer->address.bo),
+         .mocs = anv_mocs(cmd_buffer->device, dst_buffer->address.bo,
+                          ISL_SURF_USAGE_RENDER_TARGET_BIT),
       };
 
       blorp_buffer_copy(&batch, src, dst, copy_size);
@@ -1553,7 +1564,8 @@ anv_image_msaa_resolve(struct anv_cmd_buffer *cmd_buffer,
 
    struct blorp_surf src_surf, dst_surf;
    get_blorp_surf_for_anv_image(cmd_buffer->device, src_image, aspect,
-                                0, ANV_IMAGE_LAYOUT_EXPLICIT_AUX,
+                                VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
+                                ANV_IMAGE_LAYOUT_EXPLICIT_AUX,
                                 src_aux_usage, &src_surf);
    if (src_aux_usage == ISL_AUX_USAGE_MCS) {
       src_surf.clear_color_addr = anv_to_blorp_address(
@@ -1561,7 +1573,8 @@ anv_image_msaa_resolve(struct anv_cmd_buffer *cmd_buffer,
                                         VK_IMAGE_ASPECT_COLOR_BIT));
    }
    get_blorp_surf_for_anv_image(cmd_buffer->device, dst_image, aspect,
-                                0, ANV_IMAGE_LAYOUT_EXPLICIT_AUX,
+                                VK_IMAGE_USAGE_TRANSFER_DST_BIT,
+                                ANV_IMAGE_LAYOUT_EXPLICIT_AUX,
                                 dst_aux_usage, &dst_surf);
    anv_cmd_buffer_mark_image_written(cmd_buffer, dst_image,
                                      aspect, dst_aux_usage,
@@ -1769,7 +1782,8 @@ anv_image_clear_color(struct anv_cmd_buffer *cmd_buffer,
 
    struct blorp_surf surf;
    get_blorp_surf_for_anv_image(cmd_buffer->device, image, aspect,
-                                0, ANV_IMAGE_LAYOUT_EXPLICIT_AUX,
+                                VK_IMAGE_USAGE_TRANSFER_DST_BIT,
+                                ANV_IMAGE_LAYOUT_EXPLICIT_AUX,
                                 aux_usage, &surf);
    anv_cmd_buffer_mark_image_written(cmd_buffer, image, aspect, aux_usage,
                                      level, base_layer, layer_count);

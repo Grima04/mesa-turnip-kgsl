@@ -332,7 +332,8 @@ iris_update_grid_size_resource(struct iris_context *ice,
                          .size_B = sizeof(grid->grid),
                          .format = ISL_FORMAT_RAW,
                          .stride_B = 1,
-                         .mocs = iris_mocs(grid_bo, isl_dev));
+                         .mocs = iris_mocs(grid_bo, isl_dev,
+                                           ISL_SURF_USAGE_CONSTANT_BUFFER_BIT));
 
    ice->state.stage_dirty |= IRIS_STAGE_DIRTY_BINDINGS_CS;
 }

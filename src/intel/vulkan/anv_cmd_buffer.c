@@ -1275,6 +1275,7 @@ anv_cmd_buffer_push_descriptor_set(struct anv_cmd_buffer *cmd_buffer,
                                 isl_dev->ss.size, isl_dev->ss.align);
       anv_fill_buffer_surface_state(cmd_buffer->device,
                                     set->desc_surface_state, format,
+                                    ISL_SURF_USAGE_CONSTANT_BUFFER_BIT,
                                     addr, layout->descriptor_buffer_size, 1);
    }
 

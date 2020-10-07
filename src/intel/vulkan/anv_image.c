@@ -1754,7 +1754,7 @@ anv_image_fill_surface_state(struct anv_device *device,
                             .format = ISL_FORMAT_RAW,
                             .swizzle = ISL_SWIZZLE_IDENTITY,
                             .stride_B = 1,
-                            .mocs = anv_mocs_for_bo(device, address.bo));
+                            .mocs = anv_mocs(device, address.bo, view_usage));
       state_inout->address = address,
       state_inout->aux_address = ANV_NULL_ADDRESS;
       state_inout->clear_address = ANV_NULL_ADDRESS;
@@ -1852,8 +1852,8 @@ anv_image_fill_surface_state(struct anv_device *device,
                           .aux_address = anv_address_physical(aux_address),
                           .clear_address = anv_address_physical(clear_address),
                           .use_clear_address = !anv_address_is_null(clear_address),
-                          .mocs = anv_mocs_for_bo(device,
-                                                  state_inout->address.bo),
+                          .mocs = anv_mocs(device, state_inout->address.bo,
+                                           view_usage),
                           .x_offset_sa = tile_x_sa,
                           .y_offset_sa = tile_y_sa);
 
@@ -2226,7 +2226,7 @@ anv_CreateBufferView(VkDevice _device,
       view->surface_state = alloc_surface_state(device);
 
       anv_fill_buffer_surface_state(device, view->surface_state,
-                                    view->format,
+                                    view->format, ISL_SURF_USAGE_TEXTURE_BIT,
                                     view->address, view->range, format_bs);
    } else {
       view->surface_state = (struct anv_state){ 0 };
@@ -2243,14 +2243,14 @@ anv_CreateBufferView(VkDevice _device,
          ISL_FORMAT_RAW;
 
       anv_fill_buffer_surface_state(device, view->storage_surface_state,
-                                    storage_format,
+                                    storage_format, ISL_SURF_USAGE_STORAGE_BIT,
                                     view->address, view->range,
                                     (storage_format == ISL_FORMAT_RAW ? 1 :
                                      isl_format_get_layout(storage_format)->bpb / 8));
 
       /* Write-only accesses should use the original format. */
       anv_fill_buffer_surface_state(device, view->writeonly_storage_surface_state,
-                                    view->format,
+                                    view->format, ISL_SURF_USAGE_STORAGE_BIT,
                                     view->address, view->range,
                                     isl_format_get_layout(view->format)->bpb / 8);
 

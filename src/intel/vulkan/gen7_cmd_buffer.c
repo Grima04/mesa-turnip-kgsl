@@ -313,16 +313,16 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
 
       anv_batch_emit(&cmd_buffer->batch, GENX(3DSTATE_INDEX_BUFFER), ib) {
 #if !GEN_IS_HASWELL
-         ib.CutIndexEnable             = pipeline->primitive_restart;
+         ib.CutIndexEnable        = pipeline->primitive_restart;
 #endif
-         ib.IndexFormat                = cmd_buffer->state.gfx.gen7.index_type;
-         ib.MOCS                       = anv_mocs_for_bo(cmd_buffer->device,
-                                                         buffer->address.bo);
+         ib.IndexFormat           = cmd_buffer->state.gfx.gen7.index_type;
+         ib.MOCS                  = anv_mocs(cmd_buffer->device,
+                                             buffer->address.bo,
+                                             ISL_SURF_USAGE_INDEX_BUFFER_BIT);
 
-         ib.BufferStartingAddress      = anv_address_add(buffer->address,
-                                                         offset);
-         ib.BufferEndingAddress        = anv_address_add(buffer->address,
-                                                         buffer->size);
+         ib.BufferStartingAddress = anv_address_add(buffer->address, offset);
+         ib.BufferEndingAddress   = anv_address_add(buffer->address,
+                                                    buffer->size);
       }
    }
 

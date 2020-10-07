@@ -511,6 +511,9 @@ iris_resource_configure_main(const struct iris_screen *screen,
 
    isl_surf_usage_flags_t usage = 0;
 
+   if (templ->usage == PIPE_USAGE_STAGING)
+      usage |= ISL_SURF_USAGE_STAGING_BIT;
+
    if (templ->bind & PIPE_BIND_RENDER_TARGET)
       usage |= ISL_SURF_USAGE_RENDER_TARGET_BIT;
 

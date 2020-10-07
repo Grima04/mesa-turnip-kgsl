@@ -850,7 +850,7 @@ uint32_t iris_upload_border_color(struct iris_context *ice,
 void iris_upload_ubo_ssbo_surf_state(struct iris_context *ice,
                                      struct pipe_shader_buffer *buf,
                                      struct iris_state_ref *surf_state,
-                                     bool ssbo);
+                                     isl_surf_usage_flags_t usage);
 const struct shader_info *iris_get_shader_info(const struct iris_context *ice,
                                                gl_shader_stage stage);
 struct iris_bo *iris_get_scratch_space(struct iris_context *ice,

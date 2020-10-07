@@ -292,9 +292,11 @@ iris_resource_bo(struct pipe_resource *p_res)
 }
 
 static inline uint32_t
-iris_mocs(const struct iris_bo *bo, const struct isl_device *dev)
+iris_mocs(const struct iris_bo *bo,
+          const struct isl_device *dev,
+          isl_surf_usage_flags_t usage)
 {
-   return bo && bo->external ? dev->mocs.external : dev->mocs.internal;
+   return bo && bo->external ? dev->mocs.external : isl_mocs(dev, usage);
 }
 
 struct iris_format_info iris_format_for_usage(const struct gen_device_info *,

@@ -1453,12 +1453,14 @@ anv_binding_table_pool_free(struct anv_device *device, struct anv_state state) {
 }
 
 static inline uint32_t
-anv_mocs_for_bo(const struct anv_device *device, const struct anv_bo *bo)
+anv_mocs(const struct anv_device *device,
+         const struct anv_bo *bo,
+         isl_surf_usage_flags_t usage)
 {
    if (bo->is_external)
       return device->isl_dev.mocs.external;
-   else
-      return device->isl_dev.mocs.internal;
+
+   return isl_mocs(&device->isl_dev, usage);
 }
 
 void anv_device_init_blorp(struct anv_device *device);
@@ -4257,6 +4259,7 @@ anv_get_image_format_features(const struct gen_device_info *devinfo,
 void anv_fill_buffer_surface_state(struct anv_device *device,
                                    struct anv_state state,
                                    enum isl_format format,
+                                   isl_surf_usage_flags_t usage,
                                    struct anv_address address,
                                    uint32_t range, uint32_t stride);
 

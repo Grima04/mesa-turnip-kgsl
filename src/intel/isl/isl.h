@@ -917,6 +917,10 @@ typedef uint64_t isl_surf_usage_flags_t;
 #define ISL_SURF_USAGE_HIZ_BIT                 (1u << 13)
 #define ISL_SURF_USAGE_MCS_BIT                 (1u << 14)
 #define ISL_SURF_USAGE_CCS_BIT                 (1u << 15)
+#define ISL_SURF_USAGE_VERTEX_BUFFER_BIT       (1u << 16)
+#define ISL_SURF_USAGE_INDEX_BUFFER_BIT        (1u << 17)
+#define ISL_SURF_USAGE_CONSTANT_BUFFER_BIT     (1u << 18)
+#define ISL_SURF_USAGE_STAGING_BIT             (1u << 19)
 /** @} */
 
 /**
@@ -1995,6 +1999,8 @@ struct isl_swizzle
 isl_swizzle_compose(struct isl_swizzle first, struct isl_swizzle second);
 struct isl_swizzle
 isl_swizzle_invert(struct isl_swizzle swizzle);
+
+uint32_t isl_mocs(const struct isl_device *dev, isl_surf_usage_flags_t usage);
 
 #define isl_surf_init(dev, surf, ...) \
    isl_surf_init_s((dev), (surf), \

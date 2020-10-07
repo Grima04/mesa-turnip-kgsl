@@ -154,6 +154,15 @@ isl_device_setup_mocs(struct isl_device *dev)
    }
 }
 
+/**
+ * Return an appropriate MOCS entry for the given usage flags.
+ */
+uint32_t
+isl_mocs(const struct isl_device *dev, isl_surf_usage_flags_t usage)
+{
+   return dev->mocs.internal;
+}
+
 void
 isl_device_init(struct isl_device *dev,
                 const struct gen_device_info *info,

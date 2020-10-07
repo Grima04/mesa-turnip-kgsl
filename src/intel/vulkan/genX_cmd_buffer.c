@@ -60,7 +60,7 @@ genX(cmd_buffer_emit_state_base_address)(struct anv_cmd_buffer *cmd_buffer)
 {
    struct anv_device *device = cmd_buffer->device;
    UNUSED const struct gen_device_info *devinfo = &device->info;
-   uint32_t mocs = device->isl_dev.mocs.internal;
+   uint32_t mocs = isl_mocs(&device->isl_dev, 0);
 
    /* If we are emitting a new state base address we probably need to re-emit
     * binding tables.
@@ -2552,6 +2552,7 @@ emit_binding_table(struct anv_cmd_buffer *cmd_buffer,
                                                VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
          anv_fill_buffer_surface_state(cmd_buffer->device,
                                        surface_state, format,
+                                       ISL_SURF_USAGE_CONSTANT_BUFFER_BIT,
                                        constant_data, constant_data_size, 1);
 
          assert(surface_state.map);
@@ -2572,6 +2573,7 @@ emit_binding_table(struct anv_cmd_buffer *cmd_buffer,
                                                VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
          anv_fill_buffer_surface_state(cmd_buffer->device, surface_state,
                                        format,
+                                       ISL_SURF_USAGE_CONSTANT_BUFFER_BIT,
                                        cmd_buffer->state.compute.num_workgroups,
                                        12, 1);
 
@@ -2724,8 +2726,13 @@ emit_binding_table(struct anv_cmd_buffer *cmd_buffer,
                   anv_isl_format_for_descriptor_type(cmd_buffer->device,
                                                      desc->type);
 
+               isl_surf_usage_flags_t usage =
+                  desc->type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC ?
+                  ISL_SURF_USAGE_CONSTANT_BUFFER_BIT :
+                  ISL_SURF_USAGE_STORAGE_BIT;
+
                anv_fill_buffer_surface_state(cmd_buffer->device, surface_state,
-                                             format, address, range, 1);
+                                             format, usage, address, range, 1);
                if (need_client_mem_relocs)
                   add_surface_reloc(cmd_buffer, surface_state, address);
             } else {
@@ -3096,7 +3103,7 @@ cmd_buffer_emit_push_constant(struct anv_cmd_buffer *cmd_buffer,
           * same bit of memory for both scanout and a UBO is nuts.  Let's not
           * bother and assume it's all internal.
           */
-         c.MOCS = cmd_buffer->device->isl_dev.mocs.internal;
+         c.MOCS = isl_mocs(&cmd_buffer->device->isl_dev, 0);
 #endif
 
 #if GEN_GEN >= 8 || GEN_IS_HASWELL
@@ -3160,7 +3167,7 @@ cmd_buffer_emit_push_constant_all(struct anv_cmd_buffer *cmd_buffer,
    if (buffer_count == 0) {
       anv_batch_emit(&cmd_buffer->batch, GENX(3DSTATE_CONSTANT_ALL), c) {
          c.ShaderUpdateEnable = shader_mask;
-         c.MOCS = cmd_buffer->device->isl_dev.mocs.internal;
+         c.MOCS = isl_mocs(&cmd_buffer->device->isl_dev, 0);
       }
       return;
    }
@@ -3192,7 +3199,7 @@ cmd_buffer_emit_push_constant_all(struct anv_cmd_buffer *cmd_buffer,
                         GENX(3DSTATE_CONSTANT_ALL),
                         .ShaderUpdateEnable = shader_mask,
                         .PointerBufferMask = buffer_mask,
-                        .MOCS = cmd_buffer->device->isl_dev.mocs.internal);
+                        .MOCS = isl_mocs(&cmd_buffer->device->isl_dev, 0));
 
    for (int i = 0; i < buffer_count; i++) {
       const struct anv_push_range *range = &bind_map->push_ranges[i];
@@ -3417,7 +3424,8 @@ genX(cmd_buffer_flush_state)(struct anv_cmd_buffer *cmd_buffer)
             state = (struct GENX(VERTEX_BUFFER_STATE)) {
                .VertexBufferIndex = vb,
 
-               .MOCS = anv_mocs_for_bo(cmd_buffer->device, buffer->address.bo),
+               .MOCS = anv_mocs(cmd_buffer->device, buffer->address.bo,
+                                ISL_SURF_USAGE_VERTEX_BUFFER_BIT),
 #if GEN_GEN <= 7
                .BufferAccessType = pipeline->vb[vb].instanced ? INSTANCEDATA : VERTEXDATA,
                .InstanceDataStepRate = pipeline->vb[vb].instance_divisor,
@@ -3470,7 +3478,7 @@ genX(cmd_buffer_flush_state)(struct anv_cmd_buffer *cmd_buffer)
 #endif
 
             if (cmd_buffer->state.xfb_enabled && xfb->buffer && xfb->size != 0) {
-               sob.MOCS = cmd_buffer->device->isl_dev.mocs.internal,
+               sob.MOCS = isl_mocs(&cmd_buffer->device->isl_dev, 0);
                sob.SurfaceBaseAddress = anv_address_add(xfb->buffer->address,
                                                         xfb->offset);
 #if GEN_GEN >= 8
@@ -3591,7 +3599,8 @@ emit_vertex_bo(struct anv_cmd_buffer *cmd_buffer,
          .VertexBufferIndex = index,
          .AddressModifyEnable = true,
          .BufferPitch = 0,
-         .MOCS = addr.bo ? anv_mocs_for_bo(cmd_buffer->device, addr.bo) : 0,
+         .MOCS = addr.bo ? anv_mocs(cmd_buffer->device, addr.bo,
+                                    ISL_SURF_USAGE_VERTEX_BUFFER_BIT) : 0,
          .NullVertexBuffer = size == 0,
 #if (GEN_GEN >= 8)
          .BufferStartingAddress = addr,
@@ -5024,7 +5033,8 @@ cmd_buffer_emit_depth_stencil(struct anv_cmd_buffer *cmd_buffer)
                               image->planes[depth_plane].address.offset +
                               surface->offset);
       info.mocs =
-         anv_mocs_for_bo(device, image->planes[depth_plane].address.bo);
+         anv_mocs(device, image->planes[depth_plane].address.bo,
+                  ISL_SURF_USAGE_DEPTH_BIT);
 
       const uint32_t ds =
          cmd_buffer->state.subpass->depth_stencil_attachment->attachment;
@@ -5058,7 +5068,8 @@ cmd_buffer_emit_depth_stencil(struct anv_cmd_buffer *cmd_buffer)
                               image->planes[stencil_plane].address.offset +
                               surface->offset);
       info.mocs =
-         anv_mocs_for_bo(device, image->planes[stencil_plane].address.bo);
+         anv_mocs(device, image->planes[stencil_plane].address.bo,
+                  ISL_SURF_USAGE_STENCIL_BIT);
    }
 
    isl_emit_depth_stencil_hiz_s(&device->isl_dev, dw, &info);

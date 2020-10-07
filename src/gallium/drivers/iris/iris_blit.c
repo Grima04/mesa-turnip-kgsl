@@ -250,7 +250,9 @@ iris_blorp_surf_for_resource(struct isl_device *isl_dev,
          .buffer = res->bo,
          .offset = res->offset,
          .reloc_flags = is_render_target ? EXEC_OBJECT_WRITE : 0,
-         .mocs = iris_mocs(res->bo, isl_dev),
+         .mocs = iris_mocs(res->bo, isl_dev,
+                           is_render_target ? ISL_SURF_USAGE_RENDER_TARGET_BIT
+                                            : ISL_SURF_USAGE_TEXTURE_BIT),
       },
       .aux_usage = aux_usage,
    };
@@ -261,7 +263,7 @@ iris_blorp_surf_for_resource(struct isl_device *isl_dev,
          .buffer = res->aux.bo,
          .offset = res->aux.offset,
          .reloc_flags = is_render_target ? EXEC_OBJECT_WRITE : 0,
-         .mocs = iris_mocs(res->bo, isl_dev),
+         .mocs = iris_mocs(res->bo, isl_dev, 0),
       };
       surf->clear_color =
          iris_resource_get_clear_color(res, NULL, NULL);
@@ -269,7 +271,7 @@ iris_blorp_surf_for_resource(struct isl_device *isl_dev,
          .buffer = res->aux.clear_color_bo,
          .offset = res->aux.clear_color_offset,
          .reloc_flags = 0,
-         .mocs = iris_mocs(res->aux.clear_color_bo, isl_dev),
+         .mocs = iris_mocs(res->aux.clear_color_bo, isl_dev, 0),
       };
    }
 }

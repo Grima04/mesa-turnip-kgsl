@@ -153,10 +153,11 @@ void
 iris_upload_ubo_ssbo_surf_state(struct iris_context *ice,
                                 struct pipe_shader_buffer *buf,
                                 struct iris_state_ref *surf_state,
-                                bool ssbo)
+                                isl_surf_usage_flags_t usage)
 {
    struct pipe_context *ctx = &ice->ctx;
    struct iris_screen *screen = (struct iris_screen *) ctx->screen;
+   bool ssbo = usage & ISL_SURF_USAGE_STORAGE_BIT;
 
    void *map =
       upload_state(ice->state.surface_uploader, surf_state,
@@ -178,7 +179,7 @@ iris_upload_ubo_ssbo_surf_state(struct iris_context *ice,
                                         : ISL_FORMAT_R32G32B32A32_FLOAT,
                          .swizzle = ISL_SWIZZLE_IDENTITY,
                          .stride_B = 1,
-                         .mocs = iris_mocs(res->bo, &screen->isl_dev));
+                         .mocs = iris_mocs(res->bo, &screen->isl_dev, usage));
 }
 
 static nir_ssa_def *
@@ -1833,7 +1834,8 @@ iris_update_pull_constant_descriptors(struct iris_context *ice,
       struct pipe_shader_buffer *cbuf = &shs->constbuf[i];
       struct iris_state_ref *surf_state = &shs->constbuf_surf_state[i];
       if (!surf_state->res && cbuf->buffer) {
-         iris_upload_ubo_ssbo_surf_state(ice, cbuf, surf_state, false);
+         iris_upload_ubo_ssbo_surf_state(ice, cbuf, surf_state,
+                                         ISL_SURF_USAGE_CONSTANT_BUFFER_BIT);
          any_new_descriptors = true;
       }
    }
