@@ -82,6 +82,7 @@ struct zink_descriptor_pool {
    VkDescriptorPool descpool;
    VkDescriptorSetLayout dsl;
    struct zink_descriptor_pool_key key;
+   unsigned num_resources;
    unsigned num_sets_allocated;
 };
 

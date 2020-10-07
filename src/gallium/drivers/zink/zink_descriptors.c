@@ -94,6 +94,9 @@ descriptor_pool_create(struct zink_screen *screen, enum zink_descriptor_type typ
    }
    memcpy(pool->key.bindings, bindings, bindings_size);
    memcpy(pool->key.sizes, sizes, types_size);
+   for (unsigned i = 0; i < num_bindings; i++) {
+       pool->num_resources += bindings[i].descriptorCount;
+   }
    pool->desc_sets = _mesa_hash_table_create(NULL, desc_state_hash, desc_state_equal);
    if (!pool->desc_sets)
       goto fail;
