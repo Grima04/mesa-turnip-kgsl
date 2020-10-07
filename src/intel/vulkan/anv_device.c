@@ -45,6 +45,7 @@
 #include "vk_util.h"
 #include "common/gen_aux_map.h"
 #include "common/gen_defines.h"
+#include "common/gen_uuid.h"
 #include "compiler/glsl_types.h"
 
 #include "genxml/gen7_pack.h"
@@ -253,26 +254,9 @@ anv_physical_device_init_uuids(struct anv_physical_device *device)
    _mesa_sha1_final(&sha1_ctx, sha1);
    memcpy(device->pipeline_cache_uuid, sha1, VK_UUID_SIZE);
 
-   /* The driver UUID is used for determining sharability of images and memory
-    * between two Vulkan instances in separate processes.  People who want to
-    * share memory need to also check the device UUID (below) so all this
-    * needs to be is the build-id.
-    */
-   memcpy(device->driver_uuid, build_id_data(note), VK_UUID_SIZE);
-
-   /* The device UUID uniquely identifies the given device within the machine.
-    * Since we never have more than one device, this doesn't need to be a real
-    * UUID.  However, on the off-chance that someone tries to use this to
-    * cache pre-tiled images or something of the like, we use the PCI ID and
-    * some bits of ISL info to ensure that this is safe.
-    */
-   _mesa_sha1_init(&sha1_ctx);
-   _mesa_sha1_update(&sha1_ctx, &device->info.chipset_id,
-                     sizeof(device->info.chipset_id));
-   _mesa_sha1_update(&sha1_ctx, &device->isl_dev.has_bit6_swizzling,
-                     sizeof(device->isl_dev.has_bit6_swizzling));
-   _mesa_sha1_final(&sha1_ctx, sha1);
-   memcpy(device->device_uuid, sha1, VK_UUID_SIZE);
+   gen_uuid_compute_driver_id(device->driver_uuid, &device->info, VK_UUID_SIZE);
+   gen_uuid_compute_device_id(device->device_uuid, &device->info,
+                              &device->isl_dev, VK_UUID_SIZE);
 
    return VK_SUCCESS;
 }
