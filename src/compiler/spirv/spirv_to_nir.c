@@ -4090,6 +4090,8 @@ vtn_handle_preamble_instruction(struct vtn_builder *b, SpvOp opcode,
          (count > 3) ? vtn_value(b, w[3], vtn_value_type_string)->str : "";
 
       vtn_info("Parsing SPIR-V from %s %u source file %s", lang, version, file);
+
+      b->source_lang = w[1];
       break;
    }
 
@@ -4350,6 +4352,7 @@ vtn_handle_preamble_instruction(struct vtn_builder *b, SpvOp opcode,
 
       case SpvCapabilityDemoteToHelperInvocationEXT:
          spv_check_supported(demote_to_helper_invocation, cap);
+         b->uses_demote_to_helper_invocation = true;
          break;
 
       case SpvCapabilityShaderClockKHR:
@@ -5448,7 +5451,7 @@ vtn_create_builder(const uint32_t *words, size_t word_count,
       goto fail;
    }
 
-   uint16_t generator_id = words[2] >> 16;
+   b->generator_id = words[2] >> 16;
    uint16_t generator_version = words[2];
 
    /* In GLSLang commit 8297936dd6eb3, their handling of barrier() was fixed
@@ -5457,7 +5460,7 @@ vtn_create_builder(const uint32_t *words, size_t word_count,
     * GLSLang fix caused them to bump to generator version 3.
     */
    b->wa_glslang_cs_barrier =
-      (generator_id == vtn_generator_glslang_reference_front_end &&
+      (b->generator_id == vtn_generator_glslang_reference_front_end &&
        generator_version < 3);
 
    /* words[2] == generator magic */
@@ -5578,6 +5581,20 @@ spirv_to_nir(const uint32_t *words, size_t word_count,
    /* Handle all the preamble instructions */
    words = vtn_foreach_instruction(b, words, word_end,
                                    vtn_handle_preamble_instruction);
+
+   /* DirectXShaderCompiler and glslang/shaderc both create OpKill from HLSL's
+    * discard/clip, which uses demote semantics. DirectXShaderCompiler will use
+    * demote if the extension is enabled, so we disable this workaround in that
+    * case.
+    *
+    * Related glslang issue: https://github.com/KhronosGroup/glslang/issues/2416
+    */
+   bool glslang = b->generator_id == vtn_generator_glslang_reference_front_end ||
+                  b->generator_id == vtn_generator_shaderc_over_glslang;
+   bool dxsc = b->generator_id == vtn_generator_spiregg;
+   b->convert_discard_to_demote = ((dxsc && !b->uses_demote_to_helper_invocation) ||
+                                   (glslang && b->source_lang == SpvSourceLanguageHLSL)) &&
+                                  options->caps.demote_to_helper_invocation;
 
    if (!options->create_library && b->entry_point == NULL) {
       vtn_fail("Entry point not found for %s shader \"%s\"",

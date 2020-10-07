@@ -659,8 +659,16 @@ struct vtn_builder {
    unsigned value_id_bound;
    struct vtn_value *values;
 
+   /* Information on the origin of the SPIR-V */
+   enum vtn_generator generator_id;
+   SpvSourceLanguage source_lang;
+
    /* True if we need to fix up CS OpControlBarrier */
    bool wa_glslang_cs_barrier;
+
+   /* Workaround discard bugs in HLSL -> SPIR-V compilers */
+   bool uses_demote_to_helper_invocation;
+   bool convert_discard_to_demote;
 
    gl_shader_stage entry_point_stage;
    const char *entry_point_name;
