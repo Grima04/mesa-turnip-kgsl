@@ -145,6 +145,8 @@
  *    another resource's backing storage. The threaded context uses it to
  *    implement buffer invalidation. This call is always queued.
  *
+ * pipe_context::multi_draw() must be implemented.
+ *
  *
  * Performance gotchas
  * -------------------
