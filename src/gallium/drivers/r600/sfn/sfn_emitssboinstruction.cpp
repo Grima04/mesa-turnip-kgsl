@@ -100,6 +100,11 @@ bool EmitSSBOInstruction::do_emit(nir_instr* instr)
       return emit_image_size(intr);
    case nir_intrinsic_get_ssbo_size:
       return emit_buffer_size(intr);
+   case nir_intrinsic_memory_barrier:
+   case nir_intrinsic_memory_barrier_image:
+   case nir_intrinsic_memory_barrier_buffer:
+   case nir_intrinsic_group_memory_barrier:
+      return make_stores_ack_and_waitack();
    default:
       return false;
    }
@@ -352,17 +357,21 @@ bool EmitSSBOInstruction::emit_store_ssbo(const nir_intrinsic_instr* instr)
    auto values = vec_from_nir_with_fetch_constant(instr->src[0],
          (1 << nir_src_num_components(instr->src[0])) - 1, {0,1,2,3}, true);
 
-   emit_instruction(new RatInstruction(cf_mem_rat, RatInstruction::STORE_TYPED,
-                                       values, addr_vec, m_ssbo_image_offset, rat_id, 1,
-                                       1, 0, false));
+   auto store = new RatInstruction(cf_mem_rat, RatInstruction::STORE_TYPED,
+                                   values, addr_vec, m_ssbo_image_offset, rat_id, 1,
+                                   1, 0, false);
+   emit_instruction(store);
+   m_store_ops.push_back(store);
 
    for (unsigned i = 1; i < nir_src_num_components(instr->src[0]); ++i) {
       emit_instruction(new AluInstruction(op1_mov, temp2.reg_i(0), from_nir(instr->src[0], i), write));
       emit_instruction(new AluInstruction(op2_add_int, addr_vec.reg_i(0),
                                           {addr_vec.reg_i(0), Value::one_i}, last_write));
-      emit_instruction(new RatInstruction(cf_mem_rat, RatInstruction::STORE_TYPED,
-                                          temp2, addr_vec, 0, rat_id, 1,
-                                          1, 0, false));
+      store = new RatInstruction(cf_mem_rat, RatInstruction::STORE_TYPED,
+                                 temp2, addr_vec, 0, rat_id, 1,
+                                 1, 0, false);
+      emit_instruction(store);
+      m_store_ops.push_back(store);
    }
 #endif
    return true;
@@ -392,6 +401,8 @@ EmitSSBOInstruction::emit_image_store(const nir_intrinsic_instr *intrin)
 
    auto store = new RatInstruction(cf_mem_rat, RatInstruction::STORE_TYPED, value, coord, imageid,
                                    image_offset, 1, 0xf, 0, false);
+
+   m_store_ops.push_back(store);
    emit_instruction(store);
    return true;
 }
@@ -613,6 +624,19 @@ bool EmitSSBOInstruction::emit_buffer_size(const nir_intrinsic_instr *intr)
 
    emit_instruction(new FetchInstruction(dst, PValue(new GPRValue(0, 7)),
                     res_id, bim_none));
+
+   return true;
+}
+
+bool EmitSSBOInstruction::make_stores_ack_and_waitack()
+{
+   for (auto&& store: m_store_ops)
+      store->set_ack();
+
+   if (!m_store_ops.empty())
+      emit_instruction(new WaitAck(0));
+
+   m_store_ops.clear();
 
    return true;
 }
