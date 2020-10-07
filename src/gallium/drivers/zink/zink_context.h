@@ -60,6 +60,7 @@ enum zink_blit_flags {
 
 struct zink_sampler_state {
    VkSampler sampler;
+   uint32_t hash;
    bool custom_border_color;
 };
 
@@ -69,6 +70,7 @@ struct zink_sampler_view {
       VkImageView image_view;
       VkBufferView buffer_view;
    };
+   uint32_t hash;
 };
 
 struct zink_image_view {

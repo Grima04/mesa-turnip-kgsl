@@ -74,38 +74,65 @@ calc_descriptor_state_hash_ssbo(struct zink_context *ctx, struct zink_shader *zs
    return XXH32(hash_data, data_size, hash);
 }
 
-static uint32_t
-calc_descriptor_state_hash_sampler(struct zink_context *ctx, struct zink_shader *zs, enum pipe_shader_type shader, int i, int idx, uint32_t hash)
+static void
+calc_descriptor_hash_sampler_view(struct zink_context *ctx, struct zink_sampler_view *sampler_view)
 {
    void *hash_data;
    size_t data_size;
 
+   if (!sampler_view) {
+      sampler_view->hash = zink_screen(ctx->base.screen)->null_descriptor_hashes.sampler_view;
+      return;
+   }
+
+   uint32_t hash = _mesa_hash_pointer(sampler_view->base.texture);
+   if (sampler_view->base.target == PIPE_BUFFER) {
+      hash_data = &sampler_view->base.u.buf;
+      data_size = sizeof(sampler_view->base.u.buf);
+      sampler_view->hash = XXH32(hash_data, data_size, hash);
+      return;
+   }
+
+   hash_data = &sampler_view->image_view;
+   data_size = sizeof(VkImageView);
+   hash = XXH32(hash_data, data_size, hash);
+   VkImageLayout layout;
+   if (util_format_is_depth_and_stencil(sampler_view->base.format))
+      layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
+   else
+      layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+   hash_data = &layout;
+   data_size = sizeof(VkImageLayout);
+   sampler_view->hash = XXH32(hash_data, data_size, hash);
+}
+
+static void
+calc_descriptor_hash_sampler_state(struct zink_sampler_state *sampler_state)
+{
+   void *hash_data = &sampler_state->sampler;
+   size_t data_size = sizeof(VkSampler);
+   sampler_state->hash = XXH32(hash_data, data_size, 0);
+}
+
+static uint32_t
+calc_descriptor_state_hash_sampler(struct zink_context *ctx, struct zink_shader *zs, enum pipe_shader_type shader, int i, int idx, uint32_t hash)
+{
+   struct zink_screen *screen = zink_screen(ctx->base.screen);
+
    for (unsigned k = 0; k < zs->bindings[ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW][i].size; k++) {
-      VkDescriptorImageInfo info;
-      if (!ctx->sampler_views[shader][idx + k]) {
-         VkDescriptorImageInfo null_info = {VK_NULL_HANDLE, VK_NULL_HANDLE, VK_IMAGE_LAYOUT_UNDEFINED};
-         hash_data = &null_info;
-         data_size = sizeof(VkDescriptorImageInfo);
-         hash = XXH32(hash_data, data_size, hash);
+      struct zink_sampler_view *sampler_view = zink_sampler_view(ctx->sampler_views[shader][idx + k]);
+      if (!sampler_view) {
+         hash = XXH32(&screen->null_descriptor_hashes.sampler_view, sizeof(uint32_t), hash);
          continue;
       }
-      hash = XXH32(&ctx->sampler_views[shader][idx + k]->texture, sizeof(void*), hash);
-      if (ctx->sampler_views[shader][idx + k]->target == PIPE_BUFFER) {
-         hash_data = &ctx->sampler_views[shader][idx + k]->u.buf;
-         data_size = sizeof(ctx->sampler_views[shader][idx + k]->u.buf);
-         hash = XXH32(hash_data, data_size, hash);
-      } else {
-         struct zink_sampler_state *sampler_state = ctx->sampler_states[shader][idx + k];
-         info.sampler = sampler_state ? sampler_state->sampler : VK_NULL_HANDLE;
-         info.imageView = zink_sampler_view(ctx->sampler_views[shader][idx + k])->image_view;
-         if (util_format_is_depth_and_stencil(ctx->sampler_views[shader][idx + k]->format))
-            info.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
-         else
-            info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-         hash_data = &info;
-         data_size = sizeof(VkDescriptorImageInfo);
-         hash = XXH32(hash_data, data_size, hash);
-      }
+      hash = XXH32(&sampler_view->hash, sizeof(uint32_t), hash);
+      if (sampler_view->base.target == PIPE_BUFFER)
+         continue;
+
+      struct zink_sampler_state *sampler_state = ctx->sampler_states[shader][idx + k];
+
+      if (sampler_state)
+         hash = XXH32(&sampler_state->hash, sizeof(uint32_t), hash);
    }
    return hash;
 }
@@ -422,6 +449,7 @@ zink_create_sampler_state(struct pipe_context *pctx,
       FREE(sampler);
       return NULL;
    }
+   calc_descriptor_hash_sampler_state(sampler);
 
    return sampler;
 }
@@ -571,6 +599,7 @@ zink_create_sampler_view(struct pipe_context *pctx, struct pipe_resource *pres,
       FREE(sampler_view);
       return NULL;
    }
+   calc_descriptor_hash_sampler_view(zink_context(pctx), sampler_view);
    return &sampler_view->base;
 }
 
@@ -867,7 +896,9 @@ zink_set_sampler_views(struct pipe_context *pctx,
    bool update = false;
    for (i = 0; i < num_views; ++i) {
       struct pipe_sampler_view *pview = views ? views[i] : NULL;
-      update |= ctx->sampler_views[shader_type][start_slot + i] != pview;
+      struct zink_sampler_view *a = zink_sampler_view(ctx->sampler_views[shader_type][start_slot + i]);
+      struct zink_sampler_view *b = zink_sampler_view(pview);
+      update |= !!a != !!b || (a && a->hash != b->hash);
       pipe_sampler_view_reference(&ctx->sampler_views[shader_type][start_slot + i], pview);
    }
    for (; i < num_views + unbind_num_trailing_slots; ++i) {
