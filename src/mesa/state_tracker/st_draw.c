@@ -68,13 +68,6 @@
 #include "draw/draw_context.h"
 #include "cso_cache/cso_context.h"
 
-#if defined(PIPE_OS_LINUX) && !defined(ANDROID)
-#include <sched.h>
-#define HAVE_SCHED_GETCPU 1
-#else
-#define sched_getcpu() 0
-#define HAVE_SCHED_GETCPU 0
-#endif
 
 /**
  * Set the restart index.
@@ -136,8 +129,7 @@ prepare_draw(struct st_context *st, struct gl_context *ctx)
    /* Pin threads regularly to the same Zen CCX that the main thread is
     * running on. The main thread can move between CCXs.
     */
-   if (unlikely(HAVE_SCHED_GETCPU && /* Linux */
-                /* AMD Zen */
+   if (unlikely(/* AMD Zen */
                 util_cpu_caps.nr_cpus != util_cpu_caps.cores_per_L3 &&
                 /* no glthread */
                 ctx->CurrentClientDispatch != ctx->MarshalExec &&
@@ -145,7 +137,7 @@ prepare_draw(struct st_context *st, struct gl_context *ctx)
                 pipe->set_context_param &&
                 /* do it occasionally */
                 ++st->pin_thread_counter % 512 == 0)) {
-      int cpu = sched_getcpu();
+      int cpu = util_get_current_cpu();
       if (cpu >= 0) {
          unsigned L3_cache = cpu / util_cpu_caps.cores_per_L3;
 

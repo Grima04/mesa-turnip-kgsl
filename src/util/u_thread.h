@@ -46,6 +46,12 @@
 #include <OS.h>
 #endif
 
+#if DETECT_OS_LINUX && !defined(ANDROID)
+#include <sched.h>
+#elif defined(_WIN32) && !defined(__CYGWIN__) && _WIN32_WINNT >= 0x0600
+#include <windows.h>
+#endif
+
 #ifdef __FreeBSD__
 /* pthread_np.h -> sys/param.h -> machine/param.h
  * - defines ALIGN which clashes with our ALIGN
@@ -56,6 +62,20 @@
 
 /* For util_set_thread_affinity to size the mask. */
 #define UTIL_MAX_CPUS               1024  /* this should be enough */
+
+static inline int
+util_get_current_cpu(void)
+{
+#if DETECT_OS_LINUX && !defined(ANDROID)
+   return sched_getcpu();
+
+#elif defined(_WIN32) && !defined(__CYGWIN__) && _WIN32_WINNT >= 0x0600
+   return GetCurrentProcessorNumber();
+
+#else
+   return -1;
+#endif
+}
 
 static inline thrd_t u_thread_create(int (*routine)(void *), void *param)
 {
