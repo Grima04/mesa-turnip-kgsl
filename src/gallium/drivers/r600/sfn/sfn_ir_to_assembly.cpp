@@ -1050,7 +1050,7 @@ bool AssemblyFromShaderLegacyImpl::emit_rat(const RatInstruction& instr)
    }
    memset(&gds, 0, sizeof(struct r600_bytecode_gds));
 
-   r600_bytecode_add_cfinst(m_bc, CF_OP_MEM_RAT);
+   r600_bytecode_add_cfinst(m_bc, instr.cf_opcode());
    auto cf = m_bc->cf_last;
    cf->rat.id = rat_idx + m_shader->rat_base;
    cf->rat.inst = instr.rat_op();

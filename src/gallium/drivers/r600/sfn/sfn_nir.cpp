@@ -918,8 +918,8 @@ int r600_shader_from_nir(struct r600_context *rctx,
    } else {
       r600::sfn_log << r600::SfnLog::shader_info << "This is not a Geometry shader\n";
    }
-   if (pipeshader->shader.bc.ngpr < 4)
-      pipeshader->shader.bc.ngpr = 4;
+   if (pipeshader->shader.bc.ngpr < 6)
+      pipeshader->shader.bc.ngpr = 6;
 
    return 0;
 }
