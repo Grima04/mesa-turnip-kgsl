@@ -909,6 +909,16 @@ st_get_driver_uuid(struct gl_context *ctx, char *uuid)
 
 
 static void
+st_pin_driver_to_l3_cache(struct gl_context *ctx, unsigned L3_cache)
+{
+   struct pipe_context *pipe = st_context(ctx)->pipe;
+
+   pipe->set_context_param(pipe, PIPE_CONTEXT_PARAM_PIN_THREADS_TO_L3_CACHE,
+                           L3_cache);
+}
+
+
+static void
 st_init_driver_functions(struct pipe_screen *screen,
                          struct dd_function_table *functions)
 {
@@ -998,6 +1008,9 @@ st_create_context(gl_api api, struct pipe_context *pipe,
 
    memset(&funcs, 0, sizeof(funcs));
    st_init_driver_functions(pipe->screen, &funcs);
+
+   if (pipe->set_context_param)
+      funcs.PinDriverToL3Cache = st_pin_driver_to_l3_cache;
 
    ctx = calloc(1, sizeof(struct gl_context));
    if (!ctx)
