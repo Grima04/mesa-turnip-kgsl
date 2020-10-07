@@ -481,6 +481,10 @@ clSVMAlloc(cl_context d_ctx,
            size_t size,
            unsigned int alignment) try {
    auto &ctx = obj(d_ctx);
+
+   if (!any_of(std::mem_fn(&device::svm_support), ctx.devices()))
+      return NULL;
+
    validate_flags(NULL, flags, true);
 
    if (!size ||
@@ -515,6 +519,10 @@ CLOVER_API void
 clSVMFree(cl_context d_ctx,
           void *svm_pointer) try {
    auto &ctx = obj(d_ctx);
+
+   if (!any_of(std::mem_fn(&device::svm_support), ctx.devices()))
+      return;
+
    bool can_emulate = all_of(std::mem_fn(&device::has_system_svm), ctx.devices());
 
    if (can_emulate)
