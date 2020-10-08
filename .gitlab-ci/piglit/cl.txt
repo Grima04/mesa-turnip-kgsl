@@ -194,18 +194,12 @@ program/execute/vload/vload-half-private: skip
 program/execute/vstore/vstore-half-global: skip
 program/execute/vstore/vstore-half-local: skip
 program/execute/vstore/vstore-half-private: skip
-program/execute/vstore/vstore_half-double-global: crash
-program/execute/vstore/vstore_half-double-local: crash
-program/execute/vstore/vstore_half-double-private: crash
-program/execute/vstore/vstorea_half-double-global: crash
-program/execute/vstore/vstorea_half-double-local: crash
-program/execute/vstore/vstorea_half-double-private: crash
 summary:
        name:  results
        ----  --------
-       pass:     3560
+       pass:     3627
        fail:      107
-      crash:       18
+      crash:       12
        skip:       73
     timeout:        4
        warn:        0
@@ -215,4 +209,4 @@ summary:
     changes:        0
       fixes:        0
 regressions:        0
-      total:     3762
+      total:     3823

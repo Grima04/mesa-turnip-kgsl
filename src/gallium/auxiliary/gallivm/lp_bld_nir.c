@@ -492,6 +492,9 @@ static LLVMValueRef do_alu_action(struct lp_build_nir_context *bld_base,
       result = flt_to_bool32(bld_base, src_bit_size[0], src[0]);
       break;
    case nir_op_f2f16:
+      if (src_bit_size[0] == 64)
+         src[0] = LLVMBuildFPTrunc(builder, src[0],
+                                   bld_base->base.vec_type, "");
       result = LLVMBuildFPTrunc(builder, src[0],
                                 LLVMVectorType(LLVMHalfTypeInContext(gallivm->context), bld_base->base.type.length), "");
       break;
