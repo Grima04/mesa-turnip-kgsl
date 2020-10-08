@@ -35,6 +35,7 @@
 #include "util/u_dynarray.h"
 #include "nir_spirv.h"
 #include "spirv.h"
+#include "vtn_generator_ids.h"
 
 struct vtn_builder;
 struct vtn_decoration;

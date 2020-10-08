@@ -5456,7 +5456,9 @@ vtn_create_builder(const uint32_t *words, size_t word_count,
     * commands.  Prior to that, we need to fix them up ourselves.  This
     * GLSLang fix caused them to bump to generator version 3.
     */
-   b->wa_glslang_cs_barrier = (generator_id == 8 && generator_version < 3);
+   b->wa_glslang_cs_barrier =
+      (generator_id == vtn_generator_glslang_reference_front_end &&
+       generator_version < 3);
 
    /* words[2] == generator magic */
    unsigned value_id_bound = words[3];
