@@ -2240,6 +2240,8 @@ void lp_build_opt_nir(struct nir_shader *nir)
    NIR_PASS_V(nir, nir_lower_tex, &lower_tex_options);
    NIR_PASS_V(nir, nir_lower_frexp);
 
+   NIR_PASS_V(nir, nir_lower_flrp, 16|32|64, true);
+
    do {
       progress = false;
       NIR_PASS_V(nir, nir_opt_constant_folding);

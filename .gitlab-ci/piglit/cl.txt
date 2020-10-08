@@ -56,7 +56,6 @@ program/execute/builtin/builtin-float-cos-1.0.generated: timeout
 program/execute/builtin/builtin-float-isfinite-1.0.generated: crash
 program/execute/builtin/builtin-float-isnormal-1.0.generated: crash
 program/execute/builtin/builtin-float-ldexp-1.0.generated: fail
-program/execute/builtin/builtin-float-mix-1.0.generated: crash
 program/execute/builtin/builtin-float-sin-1.0.generated: timeout
 program/execute/builtin/builtin-float-sincos-1.0.generated: timeout
 program/execute/builtin/builtin-float-tan-1.0.generated: timeout
@@ -98,9 +97,9 @@ program/execute/vstore/vstore-half-private: skip
 summary:
        name:  results
        ----  --------
-       pass:     3766
+       pass:     3774
        fail:       14
-      crash:        6
+      crash:        5
        skip:       73
     timeout:        4
        warn:        0
@@ -110,4 +109,4 @@ summary:
     changes:        0
       fixes:        0
 regressions:        0
-      total:     3863
+      total:     3870
