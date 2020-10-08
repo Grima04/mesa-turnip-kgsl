@@ -61,6 +61,22 @@ struct ac_spi_color_formats {
    unsigned blend_alpha : 8;
 };
 
+/* For ac_build_fetch_format.
+ *
+ * Note: FLOAT must be 0 (used for convenience of encoding in radeonsi).
+ */
+enum ac_fetch_format
+{
+   AC_FETCH_FORMAT_FLOAT = 0,
+   AC_FETCH_FORMAT_FIXED,
+   AC_FETCH_FORMAT_UNORM,
+   AC_FETCH_FORMAT_SNORM,
+   AC_FETCH_FORMAT_USCALED,
+   AC_FETCH_FORMAT_SSCALED,
+   AC_FETCH_FORMAT_UINT,
+   AC_FETCH_FORMAT_SINT,
+};
+
 unsigned ac_get_spi_shader_z_format(bool writes_z, bool writes_stencil, bool writes_samplemask);
 
 unsigned ac_get_cb_shader_mask(unsigned spi_shader_col_format);
