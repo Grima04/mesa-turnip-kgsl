@@ -97,14 +97,6 @@ def emit_read(tmp_id, args):
     c("uint64_t tmp{0} = results->accumulator[query->{1}_offset + {2}];".format(tmp_id, type, args[0]))
     return tmp_id + 1
 
-def emit_read_reg(tmp_id, args):
-    offsets = {
-        'PERFCNT1': 0,
-        'PERFCNT2': 1,
-    }
-    c("uint64_t tmp{0} = results->accumulator[query->perfcnt_offset + {1}];".format(tmp_id, offsets[args[0]]))
-    return tmp_id + 1
-
 def emit_uadd(tmp_id, args):
     c("uint64_t tmp{0} = {1} + {2};".format(tmp_id, args[1], args[0]))
     return tmp_id + 1
@@ -152,7 +144,6 @@ ops["FMAX"] = (2, emit_fmax)
 ops["FMUL"] = (2, emit_fmul)
 ops["FSUB"] = (2, emit_fsub)
 ops["READ"] = (2, emit_read)
-ops["READ_REG"] = (1, emit_read_reg)
 ops["UADD"] = (2, emit_uadd)
 ops["UDIV"] = (2, emit_udiv)
 ops["UMUL"] = (2, emit_umul)
