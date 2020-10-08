@@ -1178,8 +1178,8 @@ lp_build_mul_32_lohi_cpu(struct lp_build_context *bld,
 
 
 /*
- * Widening mul, valid for 32x32 bit -> 64bit only.
- * Result is low 32bits, high bits returned in res_hi.
+ * Widening mul, valid for <= 32 (8, 16, 32) -> 64
+ * Result is low N bits, high bits returned in res_hi.
  *
  * Emits generic code.
  */
@@ -1197,9 +1197,12 @@ lp_build_mul_32_lohi(struct lp_build_context *bld,
 
    type_tmp = bld->type;
    narrow_type = lp_build_vec_type(gallivm, type_tmp);
-   type_tmp.width *= 2;
+   if (bld->type.width < 32)
+      type_tmp.width = 32;
+   else
+      type_tmp.width *= 2;
    wide_type = lp_build_vec_type(gallivm, type_tmp);
-   shift = lp_build_const_vec(gallivm, type_tmp, 32);
+   shift = lp_build_const_vec(gallivm, type_tmp, bld->type.width);
 
    if (bld->type.sign) {
       a = LLVMBuildSExt(builder, a, wide_type, "");
