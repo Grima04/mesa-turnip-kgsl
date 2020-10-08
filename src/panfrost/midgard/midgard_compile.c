@@ -1864,12 +1864,9 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
                 assert(ctx->is_blend);
                 reg = nir_dest_index(&instr->dest);
 
-                /* Blend constants are embedded directly in the shader and
-                 * patched in, so we use some magic routing */
-
                 midgard_instruction ins = v_mov(SSA_FIXED_REGISTER(REGISTER_CONSTANT), reg);
                 ins.has_constants = true;
-                ins.has_blend_constant = true;
+                memcpy(ins.constants.f32, ctx->blend_constants, sizeof(ctx->blend_constants));
                 emit_mir_instruction(ctx, ins);
                 break;
         }
@@ -2543,9 +2540,6 @@ embedded_to_inline_constant(compiler_context *ctx, midgard_block *block)
                 if (!ins->has_constants) continue;
                 if (ins->has_inline_constant) continue;
 
-                /* Blend constants must not be inlined by definition */
-                if (ins->has_blend_constant) continue;
-
                 unsigned max_bitsize = max_bitsize_for_alu(ins);
 
                 /* We can inline 32-bit (sometimes) or 16-bit (usually) */
@@ -2963,6 +2957,7 @@ midgard_compile_shader_nir(nir_shader *nir, panfrost_program *program,
         ctx->stage = nir->info.stage;
         ctx->is_blend = inputs->is_blend;
         ctx->blend_rt = MIDGARD_COLOR_RT0 + inputs->blend.rt;
+        memcpy(ctx->blend_constants, inputs->blend.constants, sizeof(ctx->blend_constants));
         ctx->blend_input = ~0;
         ctx->blend_src1 = ~0;
         ctx->quirks = midgard_get_quirks(inputs->gpu_id);
@@ -3141,7 +3136,6 @@ midgard_compile_shader_nir(nir_shader *nir, panfrost_program *program,
         program->work_register_count = ctx->work_registers + 1;
         program->uniform_cutoff = ctx->uniform_cutoff;
 
-        program->blend_patch_offset = ctx->blend_constant_offset;
         program->tls_size = ctx->tls_size;
 
         if ((midgard_debug & MIDGARD_DBG_SHADERS) && !nir->info.internal) {

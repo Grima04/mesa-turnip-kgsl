@@ -32,9 +32,13 @@
 #include "pan_blend.h"
 
 struct panfrost_blend_shader *
-panfrost_compile_blend_shader(struct panfrost_context *ctx,
-                              struct panfrost_blend_state *state,
-                              enum pipe_format format,
-                              unsigned rt);
+panfrost_create_blend_shader(struct panfrost_context *ctx,
+                             struct panfrost_blend_state *state,
+                             enum pipe_format format,
+                             unsigned rt);
+
+void
+panfrost_compile_blend_shader(struct panfrost_blend_shader *shader,
+                              const float *constants);
 
 #endif

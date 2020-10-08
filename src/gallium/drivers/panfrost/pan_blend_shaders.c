@@ -130,15 +130,16 @@ nir_iclamp(nir_builder *b, nir_ssa_def *v, int32_t lo, int32_t hi)
 }
 
 struct panfrost_blend_shader *
-panfrost_compile_blend_shader(struct panfrost_context *ctx,
-                              struct panfrost_blend_state *state,
-                              enum pipe_format format,
-                              unsigned rt)
+panfrost_create_blend_shader(struct panfrost_context *ctx,
+                             struct panfrost_blend_state *state,
+                             enum pipe_format format,
+                             unsigned rt)
 {
-        struct panfrost_device *dev = pan_device(ctx->base.screen);
-        struct panfrost_blend_shader *res = ralloc(state, struct panfrost_blend_shader);
+        struct panfrost_blend_shader *res = rzalloc(state, struct panfrost_blend_shader);
 
         res->ctx = ctx;
+        res->rt = rt;
+        res->format = format;
 
         /* Build the shader */
 
@@ -209,27 +210,45 @@ panfrost_compile_blend_shader(struct panfrost_context *ctx,
 
         NIR_PASS_V(shader, nir_lower_blend, options);
 
-        /* Compile the built shader */
+        res->nir = shader;
+        return res;
+}
 
+void
+panfrost_compile_blend_shader(struct panfrost_blend_shader *shader,
+                              const float *constants)
+{
+        struct panfrost_device *dev = pan_device(shader->ctx->base.screen);
+
+        /* If the shader has already been compiled and the constants match
+         * or the shader doesn't use the blend constants, we can keep the
+         * compiled version.
+         */
+        if (shader->buffer &&
+            (!constants ||
+             !memcmp(shader->constants, constants, sizeof(shader->constants))))
+                return;
+
+        /* Compile or recompile the NIR shader */
         panfrost_program program;
 
         struct panfrost_compile_inputs inputs = {
                 .gpu_id = dev->gpu_id,
                 .is_blend = true,
-                .blend.rt = rt,
-                .rt_formats = {format},
+                .blend.rt = shader->rt,
+                .rt_formats = {shader->format},
         };
 
-        midgard_compile_shader_nir(shader, &program, &inputs);
+        if (constants)
+                memcpy(inputs.blend.constants, constants, sizeof(inputs.blend.constants));
+
+        midgard_compile_shader_nir(shader->nir, &program, &inputs);
 
         /* Allow us to patch later */
-        res->patch_index = program.blend_patch_offset;
-        res->first_tag = program.first_tag;
-        res->size = program.compiled.size;
-        res->buffer = ralloc_size(res, res->size);
-        memcpy(res->buffer, program.compiled.data, res->size);
+        shader->first_tag = program.first_tag;
+        shader->size = program.compiled.size;
+        shader->buffer = reralloc_size(shader, shader->buffer, shader->size);
+        memcpy(shader->buffer, program.compiled.data, shader->size);
         util_dynarray_fini(&program.compiled);
-        res->work_count = program.work_register_count;
-
-        return res;
+        shader->work_count = program.work_register_count;
 }

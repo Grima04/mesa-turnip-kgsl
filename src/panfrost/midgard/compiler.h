@@ -140,7 +140,6 @@ typedef struct midgard_instruction {
         bool has_constants;
         midgard_constants constants;
         uint16_t inline_constant;
-        bool has_blend_constant;
         bool has_inline_constant;
 
         bool compact_branch;
@@ -221,7 +220,6 @@ typedef struct midgard_bundle {
         int control;
         bool has_embedded_constants;
         midgard_constants constants;
-        bool has_blend_constant;
         bool last_writeout;
 } midgard_bundle;
 
@@ -254,8 +252,8 @@ typedef struct compiler_context {
         /* Index to precolour to r2 for a dual-source blend colour */
         unsigned blend_src1;
 
-        /* Tracking for blend constant patching */
-        int blend_constant_offset;
+        /* Blend constants */
+        float blend_constants[4];
 
         /* Number of bytes used for Thread Local Storage */
         unsigned tls_size;

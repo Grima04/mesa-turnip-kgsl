@@ -29,6 +29,7 @@
 #define __PAN_BLEND_H
 
 #include "util/hash_table.h"
+#include "nir.h"
 
 struct panfrost_bo;
 
@@ -36,6 +37,17 @@ struct panfrost_bo;
 
 struct panfrost_blend_shader {
         struct panfrost_context *ctx;
+
+        nir_shader *nir;
+
+        /* Render target */
+        unsigned rt;
+
+        /* RT format */
+        enum pipe_format format;
+
+        /* Blend constants */
+        float constants[4];
 
         /* The compiled shader */
         void *buffer;
@@ -45,10 +57,6 @@ struct panfrost_blend_shader {
 
         /* Number of 128-bit work registers required by the shader */
         unsigned work_count;
-
-        /* Offset into the shader to patch constants. Zero to disable patching
-         * (it is illogical to have constants at offset 0). */
-        unsigned patch_index;
 
         /* First instruction tag (for tagging the pointer) */
         unsigned first_tag;
@@ -126,10 +134,10 @@ struct panfrost_blend_final
 panfrost_get_blend_for_context(struct panfrost_context *ctx, unsigned rt, struct panfrost_bo **bo, unsigned *shader_offset);
 
 struct panfrost_blend_shader *
-panfrost_get_blend_shader(
-        struct panfrost_context *ctx,
-        struct panfrost_blend_state *blend,
-        enum pipe_format fmt,
-        unsigned rt);
+panfrost_get_blend_shader(struct panfrost_context *ctx,
+                          struct panfrost_blend_state *blend,
+                          enum pipe_format fmt,
+                          unsigned rt,
+                          const float *constants);
 
 #endif

@@ -98,11 +98,6 @@ typedef struct {
 
         struct util_dynarray compiled;
 
-        /* For a blend shader using a constant color -- patch point. If
-         * negative, there's no constant. */
-
-        int blend_patch_offset;
-
         /* The number of bytes to allocate per-thread for Thread Local Storage
          * (register spilling), or zero if no spilling is used */
         unsigned tls_size;
@@ -114,6 +109,7 @@ struct panfrost_compile_inputs {
         bool is_blend;
         struct {
                 unsigned rt;
+                float constants[4];
         } blend;
         bool shaderdb;
 
