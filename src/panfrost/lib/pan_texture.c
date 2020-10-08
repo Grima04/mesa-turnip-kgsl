@@ -231,14 +231,20 @@ panfrost_block_dim(uint64_t modifier, bool width, unsigned plane)
 
 static unsigned
 panfrost_nonlinear_stride(uint64_t modifier,
-                unsigned bytes_per_pixel,
+                unsigned bytes_per_block,
+                unsigned pixels_per_block,
                 unsigned width,
                 unsigned height,
                 bool plane)
 {
         unsigned block_w = panfrost_block_dim(modifier, true, plane);
         unsigned block_h = panfrost_block_dim(modifier, false, plane);
-        unsigned block_size = block_w * block_h * bytes_per_pixel;
+
+        /* Calculate block size. Ensure the division happens only at the end to
+         * avoid rounding errors if bytes per block < pixels per block */
+
+        unsigned block_size = (block_w * block_h * bytes_per_block)
+                / pixels_per_block;
 
         if (height <= block_h)
                 return 0;
@@ -291,6 +297,7 @@ panfrost_emit_texture_payload(
                                                         slices[l].stride :
                                                         panfrost_nonlinear_stride(modifier,
                                                                         MAX2(desc->block.bits / 8, 1),
+                                                                        desc->block.width * desc->block.height,
                                                                         u_minify(width, l),
                                                                         u_minify(height, l), false);
                                         }
