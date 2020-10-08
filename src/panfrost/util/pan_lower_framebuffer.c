@@ -722,7 +722,7 @@ pan_lower_fb_load(nir_shader *shader,
 }
 
 bool
-pan_lower_framebuffer(nir_shader *shader, enum pipe_format *rt_fmts,
+pan_lower_framebuffer(nir_shader *shader, const enum pipe_format *rt_fmts,
                       bool is_blend, unsigned quirks)
 {
         if (shader->info.stage != MESA_SHADER_FRAGMENT)
