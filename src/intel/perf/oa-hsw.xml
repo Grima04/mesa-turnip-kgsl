@@ -1,11 +1,11 @@
 <?xml version="1.0"?>
-<metrics version="1520266058" merge_md5="">
+<metrics version="1582124704" merge_md5="">
   <set name="Render Metrics Basic Gen7.5"
        chipset="HSW"
        symbol_name="RenderBasic"
        underscore_name="render_basic"
        mdapi_supported_apis="OGL OCL IO BB"
-       hw_config_guid="403d8832-1a27-4aa6-a64e-f5389ce7b212"
+       hw_config_guid="a490e9d2-55b3-4db0-8dab-53011032c5f3"
        >
     <counter name="GPU Time Elapsed"
              symbol_name="GpuTime"
@@ -818,6 +818,49 @@
              mdapi_supported_apis=""
              mdapi_hw_unit_type="gpu"
              />
+    <counter name="LLC GPU Accesses"
+             symbol_name="LlcAccesses"
+             underscore_name="llc_accesses"
+             description="The total number of LLC cache lookups done from the GPU (64b reads, 32B writes)."
+             data_type="uint64"
+             units="messages"
+             semantic_type="event"
+             equation="PERFCNT1 READ_REG"
+             availability="true $QueryMode &amp;&amp;"
+             mdapi_group="LLC"
+             mdapi_usage_flags="Tier1 Overview System Frame Batch Draw"
+             mdapi_supported_apis="OGL4 OCL"
+             mdapi_hw_unit_type="gpu"
+             />
+    <counter name="LLC GPU Hits"
+             symbol_name="LlcHits"
+             underscore_name="llc_hits"
+             description="The total number of successful LLC cache lookups done from the GPU."
+             data_type="uint64"
+             units="messages"
+             semantic_type="event"
+             equation="PERFCNT2 READ_REG"
+             availability="true $QueryMode &amp;&amp;"
+             mdapi_group="LLC"
+             mdapi_usage_flags="Tier1 Overview System Frame Batch Draw"
+             mdapi_supported_apis="OGL4 OCL"
+             mdapi_hw_unit_type="gpu"
+             />
+    <counter name="LLC GPU Throughput"
+             symbol_name="LlcGpuThroughput"
+             underscore_name="llc_gpu_throughput"
+             description="The total number of GPU memory bytes transferred between GPU and LLC."
+             data_type="uint64"
+             max_equation="$GpuCoreClocks 64 UMUL"
+             units="bytes"
+             semantic_type="throughput"
+             equation="PERFCNT1 READ_REG C 7 READ USUB 64 UMUL"
+             availability="true $QueryMode &amp;&amp;"
+             mdapi_group="LLC"
+             mdapi_usage_flags="Tier1 Overview System Frame Batch Draw"
+             mdapi_supported_apis="OGL4 OCL"
+             mdapi_hw_unit_type="gpu"
+             />
     <counter name="FS Duration"
              symbol_name="PsDuration"
              underscore_name="ps_duration"
@@ -987,6 +1030,8 @@
         <register type="NOA" address="0x00025424" value="0x1284A420" />
         <register type="NOA" address="0x0002541C" value="0x00000000" />
         <register type="NOA" address="0x00025428" value="0x00042049" />
+        <register type="NOA" address="0x000091BC" value="0xE0400000" />
+        <register type="NOA" address="0x000091C4" value="0xE4500000" />
     </register_config>
     <register_config type="OA">
         <register type="OA" address="0x00002724" value="0x00800000" /> <!--OASTARTTRIG6 -->
@@ -1001,7 +1046,7 @@
        symbol_name="ComputeBasic"
        underscore_name="compute_basic"
        mdapi_supported_apis="OGL4 OCL IO BB"
-       hw_config_guid="39ad14bc-2380-45c4-91eb-fbcb3aa7ae7b"
+       hw_config_guid="b344c8cb-a291-4cbf-aa9c-b40213bfc96f"
        >
     <counter name="GPU Time Elapsed"
              symbol_name="GpuTime"
@@ -1681,6 +1726,34 @@
              mdapi_supported_apis="OGL4 OCL IO BB"
              mdapi_hw_unit_type="gpu"
              />
+    <counter name="LLC GPU Accesses"
+             symbol_name="LlcAccesses"
+             underscore_name="llc_accesses"
+             description="The total number of LLC cache lookups done from the GPU (64b reads, 32B writes)."
+             data_type="uint64"
+             units="messages"
+             semantic_type="event"
+             equation="PERFCNT1 READ_REG"
+             availability="true $QueryMode &amp;&amp;"
+             mdapi_group="LLC"
+             mdapi_usage_flags="Tier1 Overview System Frame Batch Draw"
+             mdapi_supported_apis="OGL4 OCL"
+             mdapi_hw_unit_type="gpu"
+             />
+    <counter name="LLC GPU Hits"
+             symbol_name="LlcHits"
+             underscore_name="llc_hits"
+             description="The total number of successful LLC cache lookups done from the GPU."
+             data_type="uint64"
+             units="messages"
+             semantic_type="event"
+             equation="PERFCNT2 READ_REG"
+             availability="true $QueryMode &amp;&amp;"
+             mdapi_group="LLC"
+             mdapi_usage_flags="Tier1 Overview System Frame Batch Draw"
+             mdapi_supported_apis="OGL4 OCL"
+             mdapi_hw_unit_type="gpu"
+             />
     <register_config type="NOA">
         <register type="NOA" address="0x00009840" value="0x00000080" />
         <register type="NOA" address="0x000253A4" value="0x00000000" />
@@ -1715,6 +1788,8 @@
         <register type="NOA" address="0x00025424" value="0x06820C83" />
         <register type="NOA" address="0x0002541C" value="0x00000000" />
         <register type="NOA" address="0x00025428" value="0x00000C03" />
+        <register type="NOA" address="0x000091BC" value="0xE0400000" />
+        <register type="NOA" address="0x000091C4" value="0xE4500000" />
     </register_config>
     <register_config type="OA">
         <register type="OA" address="0x00002710" value="0x00000000" /> <!--OASTARTTRIG1 -->
@@ -1741,7 +1816,7 @@
        symbol_name="ComputeExtended"
        underscore_name="compute_extended"
        mdapi_supported_apis="OGL4 OCL IO BB"
-       hw_config_guid="3865be28-6982-49fe-9494-e4d1b4795413"
+       hw_config_guid="480f9795-cf6a-4204-a9e3-cd7015515f8d"
        >
     <counter name="GPU Time Elapsed"
              symbol_name="GpuTime"
@@ -2003,6 +2078,34 @@
              mdapi_supported_apis=""
              mdapi_hw_unit_type="subslice"
              />
+    <counter name="LLC GPU Accesses"
+             symbol_name="LlcAccesses"
+             underscore_name="llc_accesses"
+             description="The total number of LLC cache lookups done from the GPU (64b reads, 32B writes)."
+             data_type="uint64"
+             units="messages"
+             semantic_type="event"
+             equation="PERFCNT1 READ_REG"
+             availability="true $QueryMode &amp;&amp;"
+             mdapi_group="LLC"
+             mdapi_usage_flags="Tier1 Overview System Frame Batch Draw"
+             mdapi_supported_apis="OGL4 OCL"
+             mdapi_hw_unit_type="gpu"
+             />
+    <counter name="LLC GPU Hits"
+             symbol_name="LlcHits"
+             underscore_name="llc_hits"
+             description="The total number of successful LLC cache lookups done from the GPU."
+             data_type="uint64"
+             units="messages"
+             semantic_type="event"
+             equation="PERFCNT2 READ_REG"
+             availability="true $QueryMode &amp;&amp;"
+             mdapi_group="LLC"
+             mdapi_usage_flags="Tier1 Overview System Frame Batch Draw"
+             mdapi_supported_apis="OGL4 OCL"
+             mdapi_hw_unit_type="gpu"
+             />
     <register_config type="NOA">
         <register type="NOA" address="0x00009840" value="0x00000080" />
         <register type="NOA" address="0x0002681C" value="0x3EB00800" />
@@ -2020,6 +2123,8 @@
         <register type="NOA" address="0x00025424" value="0x00000000" />
         <register type="NOA" address="0x0002541C" value="0x00000000" />
         <register type="NOA" address="0x00025428" value="0x00000000" />
+        <register type="NOA" address="0x000091BC" value="0xE0400000" />
+        <register type="NOA" address="0x000091C4" value="0xE4500000" />
     </register_config>
     <register_config type="OA">
         <register type="OA" address="0x00002724" value="0xF0800000" /> <!--OASTARTTRIG6 -->
@@ -2050,7 +2155,7 @@
        symbol_name="MemoryReads"
        underscore_name="memory_reads"
        mdapi_supported_apis="OGL OCL IO BB"
-       hw_config_guid="bb5ed49b-2497-4095-94f6-26ba294db88a"
+       hw_config_guid="399d3001-97d6-4240-b065-4fb843138e17"
        >
     <counter name="GPU Time Elapsed"
              symbol_name="GpuTime"
@@ -2776,6 +2881,34 @@
              mdapi_supported_apis=""
              mdapi_hw_unit_type="gpu"
              />
+    <counter name="LLC GPU Accesses"
+             symbol_name="LlcAccesses"
+             underscore_name="llc_accesses"
+             description="The total number of LLC cache lookups done from the GPU (64b reads, 32B writes)."
+             data_type="uint64"
+             units="messages"
+             semantic_type="event"
+             equation="PERFCNT1 READ_REG"
+             availability="true $QueryMode &amp;&amp;"
+             mdapi_group="LLC"
+             mdapi_usage_flags="Tier1 Overview System Frame Batch Draw"
+             mdapi_supported_apis="OGL4 OCL"
+             mdapi_hw_unit_type="gpu"
+             />
+    <counter name="LLC GPU Hits"
+             symbol_name="LlcHits"
+             underscore_name="llc_hits"
+             description="The total number of successful LLC cache lookups done from the GPU."
+             data_type="uint64"
+             units="messages"
+             semantic_type="event"
+             equation="PERFCNT2 READ_REG"
+             availability="true $QueryMode &amp;&amp;"
+             mdapi_group="LLC"
+             mdapi_usage_flags="Tier1 Overview System Frame Batch Draw"
+             mdapi_supported_apis="OGL4 OCL"
+             mdapi_hw_unit_type="gpu"
+             />
     <register_config type="NOA">
         <register type="NOA" address="0x00009840" value="0x00000080" />
         <register type="NOA" address="0x000253A4" value="0x34300000" />
@@ -2796,6 +2929,8 @@
         <register type="NOA" address="0x00025424" value="0x00008421" />
         <register type="NOA" address="0x0002541C" value="0x00000000" />
         <register type="NOA" address="0x00025428" value="0x00000000" />
+        <register type="NOA" address="0x000091BC" value="0xE0400000" />
+        <register type="NOA" address="0x000091C4" value="0xE4500000" />
     </register_config>
     <register_config type="OA">
         <register type="OA" address="0x00002724" value="0xF0800000" /> <!--OASTARTTRIG6 -->
@@ -2834,7 +2969,7 @@
        symbol_name="MemoryWrites"
        underscore_name="memory_writes"
        mdapi_supported_apis="OGL OCL IO BB"
-       hw_config_guid="3358d639-9b5f-45ab-976d-9b08cbfc6240"
+       hw_config_guid="f3c1ff4b-d0da-4ffa-8780-2c6b98f3f2d5"
        >
     <counter name="GPU Time Elapsed"
              symbol_name="GpuTime"
@@ -3547,6 +3682,49 @@
              mdapi_supported_apis=""
              mdapi_hw_unit_type="gpu"
              />
+    <counter name="LLC GPU Accesses"
+             symbol_name="LlcAccesses"
+             underscore_name="llc_accesses"
+             description="The total number of LLC cache lookups done from the GPU (64b reads, 32B writes)."
+             data_type="uint64"
+             units="messages"
+             semantic_type="event"
+             equation="PERFCNT1 READ_REG"
+             availability="true $QueryMode &amp;&amp;"
+             mdapi_group="LLC"
+             mdapi_usage_flags="Tier1 Overview System Frame Batch Draw"
+             mdapi_supported_apis="OGL4 OCL"
+             mdapi_hw_unit_type="gpu"
+             />
+    <counter name="LLC GPU Hits"
+             symbol_name="LlcHits"
+             underscore_name="llc_hits"
+             description="The total number of successful LLC cache lookups done from the GPU."
+             data_type="uint64"
+             units="messages"
+             semantic_type="event"
+             equation="PERFCNT2 READ_REG"
+             availability="true $QueryMode &amp;&amp;"
+             mdapi_group="LLC"
+             mdapi_usage_flags="Tier1 Overview System Frame Batch Draw"
+             mdapi_supported_apis="OGL4 OCL"
+             mdapi_hw_unit_type="gpu"
+             />
+    <counter name="LLC GPU Throughput"
+             symbol_name="LlcGpuThroughput"
+             underscore_name="llc_gpu_throughput"
+             description="The total number of GPU memory bytes transferred between GPU and LLC."
+             data_type="uint64"
+             max_equation="$GpuCoreClocks 64 UMUL"
+             units="bytes"
+             semantic_type="throughput"
+             equation="PERFCNT1 READ_REG $LlcWrAccesses USUB 64 UMUL $LlcWrAccesses 32 UMUL UADD"
+             availability="true $QueryMode &amp;&amp;"
+             mdapi_group="LLC"
+             mdapi_usage_flags="Tier1 Overview System Frame Batch Draw"
+             mdapi_supported_apis="OGL4 OCL"
+             mdapi_hw_unit_type="gpu"
+             />
     <register_config type="NOA">
         <register type="NOA" address="0x00009840" value="0x00000080" />
         <register type="NOA" address="0x000253A4" value="0x34300000" />
@@ -3567,6 +3745,8 @@
         <register type="NOA" address="0x00025424" value="0x00008421" />
         <register type="NOA" address="0x0002541C" value="0x00000000" />
         <register type="NOA" address="0x00025428" value="0x00000000" />
+        <register type="NOA" address="0x000091BC" value="0xE0400000" />
+        <register type="NOA" address="0x000091C4" value="0xE4500000" />
     </register_config>
     <register_config type="OA">
         <register type="OA" address="0x00002724" value="0xF0800000" /> <!--OASTARTTRIG6 -->
@@ -3605,7 +3785,7 @@
        symbol_name="SamplerBalance"
        underscore_name="sampler_balance"
        mdapi_supported_apis="OGL OCL IO BB"
-       hw_config_guid="bc274488-b4b6-40c7-90da-b77d7ad16189"
+       hw_config_guid="e111cda4-19c3-41ee-b326-f99ac44ebf78"
        >
     <counter name="GPU Time Elapsed"
              symbol_name="GpuTime"
@@ -4349,6 +4529,34 @@
              mdapi_supported_apis=""
              mdapi_hw_unit_type="subslice"
              />
+    <counter name="LLC GPU Accesses"
+             symbol_name="LlcAccesses"
+             underscore_name="llc_accesses"
+             description="The total number of LLC cache lookups done from the GPU (64b reads, 32B writes)."
+             data_type="uint64"
+             units="messages"
+             semantic_type="event"
+             equation="PERFCNT1 READ_REG"
+             availability="true $QueryMode &amp;&amp;"
+             mdapi_group="LLC"
+             mdapi_usage_flags="Tier1 Overview System Frame Batch Draw"
+             mdapi_supported_apis="OGL4 OCL"
+             mdapi_hw_unit_type="gpu"
+             />
+    <counter name="LLC GPU Hits"
+             symbol_name="LlcHits"
+             underscore_name="llc_hits"
+             description="The total number of successful LLC cache lookups done from the GPU."
+             data_type="uint64"
+             units="messages"
+             semantic_type="event"
+             equation="PERFCNT2 READ_REG"
+             availability="true $QueryMode &amp;&amp;"
+             mdapi_group="LLC"
+             mdapi_usage_flags="Tier1 Overview System Frame Batch Draw"
+             mdapi_supported_apis="OGL4 OCL"
+             mdapi_hw_unit_type="gpu"
+             />
     <register_config type="NOA">
         <register type="NOA" address="0x00009840" value="0x00000080" />
         <register type="NOA" address="0x0002EB9C" value="0x01906400" />
@@ -4391,6 +4599,8 @@
         <register type="NOA" address="0x00025424" value="0x00008620" />
         <register type="NOA" address="0x0002541C" value="0x00000000" />
         <register type="NOA" address="0x00025428" value="0x0004A54A" />
+        <register type="NOA" address="0x000091BC" value="0xE0400000" />
+        <register type="NOA" address="0x000091C4" value="0xE4500000" />
     </register_config>
     <register_config type="OA">
         <register type="OA" address="0x00002740" value="0x00000000" /> <!--OAREPORTTRIG1 -->

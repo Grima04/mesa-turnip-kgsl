@@ -1,10 +1,10 @@
 <?xml version="1.0"?>
-<metrics version="1572342629" merge_md5="">
+<metrics version="1582124705" merge_md5="">
   <set name="Render Metrics Basic Gen11"
        chipset="ICL"
        symbol_name="RenderBasic"
        underscore_name="render_basic"
-       mdapi_supported_apis="OGL OCL IO BB"
+       mdapi_supported_apis="VK OGL OCL IO BB"
        hw_config_guid="193093b2-da24-49bf-b407-442c213b71b4"
        >
     <counter name="GPU Time Elapsed"
@@ -436,7 +436,7 @@
              data_type="uint64"
              units="messages"
              semantic_type="event"
-             equation="C 4 READ C 5 READ UADD 8 UMUL"
+             equation="C 4 READ C 5 READ UADD 2 UMUL"
              mdapi_group="Sampler/Sampler Cache"
              mdapi_usage_flags="Tier3 Overview Frame Batch Draw"
              mdapi_supported_apis=""
@@ -652,8 +652,8 @@
        chipset="ICL"
        symbol_name="ComputeBasic"
        underscore_name="compute_basic"
-       mdapi_supported_apis="OGL OCL IO BB"
-       hw_config_guid="5c99b520-174d-4e94-a95e-5392e9b2a944"
+       mdapi_supported_apis="VK OGL OCL IO BB"
+       hw_config_guid="12ca7e9c-55cb-45cd-9f87-4fc821488e6d"
        >
     <counter name="GPU Time Elapsed"
              symbol_name="GpuTime"
@@ -1161,7 +1161,7 @@
              max_equation="$GpuCoreClocks 64 UMUL $EuSlicesTotalCount UMUL"
              units="events"
              semantic_type="throughput"
-             equation="B 4 READ B 5 READ UADD 2 UDIV $EuSubslicesTotalCount UMUL"
+             equation="B 4 READ B 5 READ FADD 2 FDIV $EuSubslicesTotalCount FMUL"
              mdapi_group="L3/Data Port"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
              mdapi_supported_apis=""
@@ -1319,6 +1319,7 @@
         <register type="OA" address="0x00002724" value="0x00800000" />
     </register_config>
     <register_config type="FLEX">
+        <register type="FLEX" address="0x0000E65C" value="0xFFFFFFFF" />
         <register type="FLEX" address="0x0000E458" value="0x00005004" />
         <register type="FLEX" address="0x0000E558" value="0x00000003" />
         <register type="FLEX" address="0x0000E658" value="0x00002001" />
@@ -1330,7 +1331,7 @@
        chipset="ICL"
        symbol_name="ComputeExtended"
        underscore_name="compute_extended"
-       mdapi_supported_apis="OGL OGL4 OCL MEDIA IO BB"
+       mdapi_supported_apis="VK OGL OGL4 OCL MEDIA IO BB"
        hw_config_guid="43eb7fc1-dc5e-45e2-a90a-0053f5397271"
        >
     <counter name="GPU Time Elapsed"
@@ -1766,7 +1767,7 @@
        chipset="ICL"
        symbol_name="ComputeL3Cache"
        underscore_name="compute_l3_cache"
-       mdapi_supported_apis="OGL OCL IO BB"
+       mdapi_supported_apis="VK OGL OCL IO BB"
        hw_config_guid="05d5e01f-0800-4975-b36b-7b169cad3fab"
        >
     <counter name="GPU Time Elapsed"
@@ -2440,7 +2441,7 @@
              data_type="uint64"
              units="messages"
              semantic_type="event"
-             equation="B 7 READ B 6 READ UADD 8 UMUL A 32 READ UADD"
+             equation="B 7 READ B 6 READ UADD 2 UMUL A 32 READ UADD"
              mdapi_group="L3/TAG"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
              mdapi_supported_apis=""
@@ -2454,7 +2455,7 @@
              max_equation="$GpuCoreClocks 64 UMUL $EuSlicesTotalCount UMUL"
              units="bytes"
              semantic_type="throughput"
-             equation="64  B 7 READ B 6 READ UADD 8 UMUL UMUL"
+             equation="64  B 7 READ B 6 READ UADD 2 UMUL UMUL"
              mdapi_group="L3/Sampler"
              mdapi_usage_flags="Tier2 Frame Batch Draw"
              mdapi_supported_apis=""
@@ -2598,7 +2599,7 @@
        chipset="ICL"
        symbol_name="RenderPipeProfile"
        underscore_name="render_pipe_profile"
-       mdapi_supported_apis="OGL OCL IO BB"
+       mdapi_supported_apis="VK OGL OCL IO BB"
        hw_config_guid="03c7a167-2abc-4ba6-878a-f1d80082abca"
        >
     <counter name="GPU Time Elapsed"
@@ -3324,7 +3325,7 @@
        chipset="ICL"
        symbol_name="HDCAndSF"
        underscore_name="hdc_and_sf"
-       mdapi_supported_apis="OGL OCL IO BB"
+       mdapi_supported_apis="VK OGL OCL IO BB"
        hw_config_guid="c5cbc488-6569-41dd-9128-42bf6f0d317c"
        >
     <counter name="GPU Time Elapsed"
@@ -3984,7 +3985,7 @@
        chipset="ICL"
        symbol_name="RasterizerAndPixelBackend"
        underscore_name="rasterizer_and_pixel_backend"
-       mdapi_supported_apis="OGL OCL IO BB"
+       mdapi_supported_apis="VK OGL OCL IO BB"
        hw_config_guid="0316ce4f-e03f-4738-8262-13528fce8eea"
        >
     <counter name="GPU Time Elapsed"
@@ -4697,7 +4698,7 @@
        chipset="ICL"
        symbol_name="L3_1"
        underscore_name="l3_1"
-       mdapi_supported_apis="OGL OCL IO BB"
+       mdapi_supported_apis="VK OGL OCL IO BB"
        hw_config_guid="21d69ec3-91e1-48a8-acd6-c0c4ec6e819a"
        >
     <counter name="GPU Time Elapsed"
@@ -5395,7 +5396,7 @@
        chipset="ICL"
        symbol_name="L3_2"
        underscore_name="l3_2"
-       mdapi_supported_apis="OGL OGL4 OCL MEDIA IO BB"
+       mdapi_supported_apis="VK OGL OGL4 OCL MEDIA IO BB"
        hw_config_guid="e60e9155-6830-4aec-baf2-1c3c15a73869"
        >
     <counter name="GPU Time Elapsed"
@@ -5848,7 +5849,7 @@
        chipset="ICL"
        symbol_name="L3_3"
        underscore_name="l3_3"
-       mdapi_supported_apis="OGL OGL4 OCL MEDIA IO BB"
+       mdapi_supported_apis="VK OGL OGL4 OCL MEDIA IO BB"
        hw_config_guid="47c364d5-1799-4d17-9447-add9358c6451"
        >
     <counter name="GPU Time Elapsed"
@@ -6301,7 +6302,7 @@
        chipset="ICL"
        symbol_name="L3_4"
        underscore_name="l3_4"
-       mdapi_supported_apis="OGL OGL4 OCL MEDIA IO BB"
+       mdapi_supported_apis="VK OGL OGL4 OCL MEDIA IO BB"
        hw_config_guid="e5ab5c08-3130-4469-8eaf-b23d3dc817d4"
        >
     <counter name="GPU Time Elapsed"
@@ -6783,7 +6784,7 @@
        chipset="ICL"
        symbol_name="L3_5"
        underscore_name="l3_5"
-       mdapi_supported_apis="OGL OGL4 OCL MEDIA IO BB"
+       mdapi_supported_apis="VK OGL OGL4 OCL MEDIA IO BB"
        hw_config_guid="6cdf23c1-f725-414c-959a-c90fa5571b1f"
        >
     <counter name="GPU Time Elapsed"
@@ -7265,7 +7266,7 @@
        chipset="ICL"
        symbol_name="Sampler_1"
        underscore_name="sampler_1"
-       mdapi_supported_apis="OGL OCL IO BB"
+       mdapi_supported_apis="VK OGL OCL IO BB"
        hw_config_guid="51a2eb6d-9fad-4489-8f22-ab845fe7882a"
        >
     <counter name="GPU Time Elapsed"
@@ -8064,7 +8065,7 @@
        chipset="ICL"
        symbol_name="Sampler_2"
        underscore_name="sampler_2"
-       mdapi_supported_apis="OGL OCL IO BB"
+       mdapi_supported_apis="VK OGL OCL IO BB"
        hw_config_guid="afc0f021-8c33-4d60-803d-93487f96c7c1"
        >
     <counter name="GPU Time Elapsed"
@@ -8830,7 +8831,7 @@
        chipset="ICL"
        symbol_name="TDL_1"
        underscore_name="tdl_1"
-       mdapi_supported_apis="OGL OCL IO BB"
+       mdapi_supported_apis="VK OGL OCL IO BB"
        hw_config_guid="eddc2f32-b196-4a72-9bf8-21770e35f8bd"
        >
     <counter name="GPU Time Elapsed"
@@ -9757,7 +9758,7 @@
        chipset="ICL"
        symbol_name="TDL_2"
        underscore_name="tdl_2"
-       mdapi_supported_apis="OGL OCL IO BB"
+       mdapi_supported_apis="VK OGL OCL IO BB"
        hw_config_guid="c6d3af7b-037b-4656-95e1-4f838f0a2c14"
        >
     <counter name="GPU Time Elapsed"
@@ -10513,7 +10514,7 @@
        chipset="ICL"
        symbol_name="TDL_3"
        underscore_name="tdl_3"
-       mdapi_supported_apis="OGL OCL IO BB"
+       mdapi_supported_apis="VK OGL OCL IO BB"
        hw_config_guid="fd25ec19-3ed1-40c9-8648-1d2387449a92"
        >
     <counter name="GPU Time Elapsed"
@@ -11439,7 +11440,7 @@
        chipset="ICL"
        symbol_name="GpuBusyness"
        underscore_name="gpu_busyness"
-       mdapi_supported_apis="OGL OCL MEDIA IO BB"
+       mdapi_supported_apis="VK OGL OCL MEDIA IO BB"
        hw_config_guid="40dc79f2-88c8-47c6-8f86-f509e39fbe5d"
        >
     <counter name="GPU Time Elapsed"
@@ -11666,7 +11667,7 @@
        chipset="ICL"
        symbol_name="TestOa"
        underscore_name="test_oa"
-       mdapi_supported_apis="OGL OCL IO BB"
+       mdapi_supported_apis="VK OGL OCL IO BB"
        hw_config_guid="3c0bf614-5d67-4326-887f-a24eb8a58244"
        >
     <counter name="GPU Time Elapsed"

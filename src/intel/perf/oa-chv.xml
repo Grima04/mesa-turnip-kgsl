@@ -1,10 +1,10 @@
 <?xml version="1.0"?>
-<metrics version="1508420698" merge_md5="">
+<metrics version="1582124704" merge_md5="">
   <set name="Render Metrics Basic Gen8LP"
        chipset="CHV"
        symbol_name="RenderBasic"
        underscore_name="render_basic"
-       mdapi_supported_apis="OGL OCL IO BB"
+       mdapi_supported_apis="VK OGL OCL IO BB"
        hw_config_guid="9d8a3af5-c02c-4a4a-b947-f1672469e0fb"
        >
     <counter name="GPU Time Elapsed"
@@ -57,7 +57,7 @@
              equation="A 1 READ"
              mdapi_group="EU Array/Vertex Shader"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="HS Threads Dispatched"
@@ -70,7 +70,7 @@
              equation="A 2 READ"
              mdapi_group="EU Array/Hull Shader"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL4 IO BB"
+             mdapi_supported_apis="VK OGL4 IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="DS Threads Dispatched"
@@ -83,7 +83,7 @@
              equation="A 3 READ"
              mdapi_group="EU Array/Domain Shader"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL4 IO BB"
+             mdapi_supported_apis="VK OGL4 IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="GS Threads Dispatched"
@@ -96,7 +96,7 @@
              equation="A 5 READ"
              mdapi_group="EU Array/Geometry Shader"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL4 IO BB"
+             mdapi_supported_apis="VK OGL4 IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="FS Threads Dispatched"
@@ -109,7 +109,7 @@
              equation="A 6 READ"
              mdapi_group="EU Array/Fragment Shader"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="CS Threads Dispatched"
@@ -122,7 +122,7 @@
              equation="A 4 READ"
              mdapi_group="EU Array/Compute Shader"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL4 OCL IO BB"
+             mdapi_supported_apis="VK OGL4 OCL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="GPU Busy"
@@ -192,7 +192,7 @@
              equation="A 10 READ $EuCoresTotalCount UDIV 100 UMUL $GpuCoreClocks FDIV"
              mdapi_group="EU Array/Vertex Shader"
              mdapi_usage_flags="Tier3 Overview System Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="VS FPU1 Pipe Active"
@@ -206,7 +206,7 @@
              equation="A 11 READ $EuCoresTotalCount UDIV 100 UMUL $GpuCoreClocks FDIV"
              mdapi_group="EU Array/Vertex Shader"
              mdapi_usage_flags="Tier3 Overview System Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="VS Send Pipe Active"
@@ -220,7 +220,7 @@
              equation="A 12 READ $EuCoresTotalCount UDIV 100 UMUL $GpuCoreClocks FDIV"
              mdapi_group="EU Array/Vertex Shader"
              mdapi_usage_flags="Tier3 Overview System Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="PS FPU0 Pipe Active"
@@ -234,7 +234,7 @@
              equation="A 15 READ $EuCoresTotalCount UDIV 100 UMUL $GpuCoreClocks FDIV"
              mdapi_group="EU Array/Pixel Shader"
              mdapi_usage_flags="Tier3 Overview System Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="PS FPU1 Pipe Active"
@@ -248,7 +248,7 @@
              equation="A 16 READ $EuCoresTotalCount UDIV 100 UMUL $GpuCoreClocks FDIV"
              mdapi_group="EU Array/Pixel Shader"
              mdapi_usage_flags="Tier3 Overview System Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="PS Send Pipeline Active"
@@ -262,7 +262,7 @@
              equation="A 17 READ $EuCoresTotalCount UDIV 100 UMUL $GpuCoreClocks FDIV"
              mdapi_group="EU Array/Pixel Shader"
              mdapi_usage_flags="Tier3 Overview System Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="FS Both FPU Active"
@@ -276,7 +276,7 @@
              equation="A 18 READ $EuCoresTotalCount UDIV 100 UMUL $GpuCoreClocks FDIV"
              mdapi_group="3D Pipe/Fragment Shader"
              mdapi_usage_flags="Tier4 Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Sampler 0 Busy"
@@ -334,7 +334,7 @@
              equation="B 2 READ 100 UMUL $GpuCoreClocks FDIV"
              mdapi_group="Sampler"
              mdapi_usage_flags="Tier3 Indicate Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="subslice"
              />
     <counter name="Sampler 1 Bottleneck"
@@ -350,7 +350,7 @@
              equation="B 3 READ 100 UMUL $GpuCoreClocks FDIV"
              mdapi_group="Sampler"
              mdapi_usage_flags="Tier3 Indicate Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="subslice"
              />
     <counter name="Samples Written"
@@ -363,7 +363,7 @@
              equation="A 26 READ 4 UMUL"
              mdapi_group="3D Pipe/Output Merger"
              mdapi_usage_flags="Tier3 Overview Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Samples Blended"
@@ -376,7 +376,7 @@
              equation="A 27 READ 4 UMUL"
              mdapi_group="3D Pipe/Output Merger"
              mdapi_usage_flags="Tier3 Overview Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Sampler Texels"
@@ -415,7 +415,7 @@
              equation="A 21 READ 4 UMUL"
              mdapi_group="3D Pipe/Rasterizer"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Early Hi-Depth Test Fails"
@@ -428,7 +428,7 @@
              equation="A 22 READ 4 UMUL"
              mdapi_group="3D Pipe/Rasterizer/Hi-Depth Test"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Early Depth Test Fails"
@@ -441,7 +441,7 @@
              equation="A 23 READ 4 UMUL"
              mdapi_group="3D Pipe/Rasterizer/Early Depth Test"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Samples Killed in FS"
@@ -454,7 +454,7 @@
              equation="A 24 READ 4 UMUL"
              mdapi_group="3D Pipe/Fragment Shader"
              mdapi_usage_flags="Tier4 Overview Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Pixels Failing Tests"
@@ -467,7 +467,7 @@
              equation="A 25 READ 4 UMUL"
              mdapi_group="3D Pipe/Output Merger"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="SLM Bytes Read"
@@ -481,7 +481,7 @@
              equation="A 30 READ 64 UMUL"
              mdapi_group="L3/Data Port/SLM"
              mdapi_usage_flags="Tier3 Draw"
-             mdapi_supported_apis="OGL4 OCL IO BB"
+             mdapi_supported_apis="VK OGL4 OCL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="SLM Bytes Written"
@@ -495,7 +495,7 @@
              equation="A 31 READ 64 UMUL"
              mdapi_group="L3/Data Port/SLM"
              mdapi_usage_flags="Tier3 Draw"
-             mdapi_supported_apis="OGL4 OCL IO BB"
+             mdapi_supported_apis="VK OGL4 OCL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Shader Memory Accesses"
@@ -521,7 +521,7 @@
              equation="A 34 READ"
              mdapi_group="L3/Data Port/Atomics"
              mdapi_usage_flags="Tier3 Draw"
-             mdapi_supported_apis="OGL OCL IO BB"
+             mdapi_supported_apis="VK OGL OCL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="L3 Misses"
@@ -562,7 +562,7 @@
              equation="A 30 READ  A 31 READ $ShaderMemoryAccesses UADD UADD 64 UMUL"
              mdapi_group="L3/Data Port"
              mdapi_usage_flags="Tier2 Frame Batch Draw"
-             mdapi_supported_apis="OGL4 OCL IO BB"
+             mdapi_supported_apis="VK OGL4 OCL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Shader Barrier Messages"
@@ -589,7 +589,7 @@
              equation="B 6 READ B 7 READ UADD 64 UMUL"
              mdapi_group="GTI/3D Pipe"
              mdapi_usage_flags="Tier2 Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="GTI Depth Throughput"
@@ -603,7 +603,7 @@
              equation="C 0 READ C 1 READ UADD 64 UMUL"
              mdapi_group="GTI/Depth Cache"
              mdapi_usage_flags="Tier2 Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="GTI RCC Throughput"
@@ -617,7 +617,7 @@
              equation="C 2 READ C 3 READ UADD 64 UMUL"
              mdapi_group="GTI/Color Cache"
              mdapi_usage_flags="Tier2 Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="GTI L3 Throughput"
@@ -789,7 +789,7 @@
        chipset="CHV"
        symbol_name="ComputeBasic"
        underscore_name="compute_basic"
-       mdapi_supported_apis="OGL4 OCL IO BB"
+       mdapi_supported_apis="VK OGL4 OCL IO BB"
        hw_config_guid="f522a89c-ecd1-4522-8331-3383c54af5f5"
        >
     <counter name="GPU Time Elapsed"
@@ -802,7 +802,7 @@
              equation="GPU_TIME 0 READ 1000000000 UMUL $GpuTimestampFrequency UDIV"
              mdapi_group="GPU"
              mdapi_usage_flags="Tier1 Overview System Frame Batch Draw"
-             mdapi_supported_apis="OGL OCL IO BB"
+             mdapi_supported_apis="VK OGL OCL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="GPU Core Clocks"
@@ -815,7 +815,7 @@
              equation="GPU_CLOCK 0 READ"
              mdapi_group="GPU"
              mdapi_usage_flags="Tier1 Frame Batch Draw"
-             mdapi_supported_apis="OGL OCL IO BB"
+             mdapi_supported_apis="VK OGL OCL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="AVG GPU Core Frequency"
@@ -829,7 +829,7 @@
              equation="$GpuCoreClocks 1000000000 UMUL $GpuTime UDIV"
              mdapi_group="GPU"
              mdapi_usage_flags="Tier1 Overview System Frame Batch Draw"
-             mdapi_supported_apis="OGL OCL IO BB"
+             mdapi_supported_apis="VK OGL OCL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="GPU Busy"
@@ -843,7 +843,7 @@
              equation="A 0 READ 100 UMUL $GpuCoreClocks FDIV"
              mdapi_group="GPU"
              mdapi_usage_flags="Tier1 Overview System Frame"
-             mdapi_supported_apis="OGL OCL IO BB"
+             mdapi_supported_apis="VK OGL OCL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="VS Threads Dispatched"
@@ -856,7 +856,7 @@
              equation="A 1 READ"
              mdapi_group="EU Array/Vertex Shader"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="HS Threads Dispatched"
@@ -869,7 +869,7 @@
              equation="A 2 READ"
              mdapi_group="EU Array/Hull Shader"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL4 IO BB"
+             mdapi_supported_apis="VK OGL4 IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="DS Threads Dispatched"
@@ -882,7 +882,7 @@
              equation="A 3 READ"
              mdapi_group="EU Array/Domain Shader"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL4 IO BB"
+             mdapi_supported_apis="VK OGL4 IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="GS Threads Dispatched"
@@ -895,7 +895,7 @@
              equation="A 5 READ"
              mdapi_group="EU Array/Geometry Shader"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL4 IO BB"
+             mdapi_supported_apis="VK OGL4 IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="FS Threads Dispatched"
@@ -908,7 +908,7 @@
              equation="A 6 READ"
              mdapi_group="EU Array/Fragment Shader"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="CS Threads Dispatched"
@@ -921,7 +921,7 @@
              equation="A 4 READ"
              mdapi_group="EU Array/Compute Shader"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL4 OCL IO BB"
+             mdapi_supported_apis="VK OGL4 OCL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="EU Active"
@@ -935,7 +935,7 @@
              equation="A 7 READ $EuCoresTotalCount UDIV 100 UMUL $GpuCoreClocks FDIV"
              mdapi_group="EU Array"
              mdapi_usage_flags="Tier2 Overview System Frame Batch Draw"
-             mdapi_supported_apis="OGL OCL IO BB"
+             mdapi_supported_apis="VK OGL OCL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="EU Stall"
@@ -949,7 +949,7 @@
              equation="A 8 READ $EuCoresTotalCount UDIV 100 UMUL $GpuCoreClocks FDIV"
              mdapi_group="EU Array"
              mdapi_usage_flags="Tier2 Overview System Frame Batch Draw"
-             mdapi_supported_apis="OGL OCL IO BB"
+             mdapi_supported_apis="VK OGL OCL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="EU Both FPU Pipes Active"
@@ -963,7 +963,7 @@
              equation="A 9 READ $EuCoresTotalCount UDIV 100 UMUL $GpuCoreClocks FDIV"
              mdapi_group="EU Array/Pipes"
              mdapi_usage_flags="Tier3 Overview System Frame Batch Draw"
-             mdapi_supported_apis="OGL OCL IO BB"
+             mdapi_supported_apis="VK OGL OCL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="EU FPU0 Pipe Active"
@@ -977,7 +977,7 @@
              equation="A 10 READ $EuCoresTotalCount UDIV 100 UMUL $GpuCoreClocks FDIV"
              mdapi_group="EU Array/Pipes"
              mdapi_usage_flags="Tier3 Overview System Frame Batch Draw"
-             mdapi_supported_apis="OGL OCL IO BB"
+             mdapi_supported_apis="VK OGL OCL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="EU FPU1 Pipe Active"
@@ -991,7 +991,7 @@
              equation="A 11 READ $EuCoresTotalCount UDIV 100 UMUL $GpuCoreClocks FDIV"
              mdapi_group="EU Array/Pipes"
              mdapi_usage_flags="Tier3 Overview System Frame Batch Draw"
-             mdapi_supported_apis="OGL OCL IO BB"
+             mdapi_supported_apis="VK OGL OCL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="EU AVG IPC Rate"
@@ -1005,7 +1005,7 @@
              equation="A 9 READ  A 10 READ  A 11 READ UADD  A 9 READ USUB FDIV 1 FADD"
              mdapi_group="EU Array"
              mdapi_usage_flags="Tier4 Overview System Frame Batch Draw"
-             mdapi_supported_apis="OGL OCL IO BB"
+             mdapi_supported_apis="VK OGL OCL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="EU Send Pipe Active"
@@ -1019,7 +1019,7 @@
              equation="A 12 READ $EuCoresTotalCount UDIV 100 UMUL $GpuCoreClocks FDIV"
              mdapi_group="EU Array/Pipes"
              mdapi_usage_flags="Tier3 Overview System Frame Batch Draw"
-             mdapi_supported_apis="OGL OCL IO BB"
+             mdapi_supported_apis="VK OGL OCL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="EU Thread Occupancy"
@@ -1033,7 +1033,7 @@
              equation="A 13 READ 8 UMUL $EuCoresTotalCount UDIV $EuThreadsCount UDIV 100 UMUL $GpuCoreClocks FDIV"
              mdapi_group="EU Array"
              mdapi_usage_flags="Tier2 Overview System Frame Batch Draw"
-             mdapi_supported_apis="OGL OCL IO BB"
+             mdapi_supported_apis="VK OGL OCL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Rasterized Pixels"
@@ -1046,7 +1046,7 @@
              equation="A 21 READ 4 UMUL"
              mdapi_group="3D Pipe/Rasterizer"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Early Hi-Depth Test Fails"
@@ -1059,7 +1059,7 @@
              equation="A 22 READ 4 UMUL"
              mdapi_group="3D Pipe/Rasterizer/Hi-Depth Test"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Early Depth Test Fails"
@@ -1072,7 +1072,7 @@
              equation="A 23 READ 4 UMUL"
              mdapi_group="3D Pipe/Rasterizer/Early Depth Test"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Samples Killed in FS"
@@ -1085,7 +1085,7 @@
              equation="A 24 READ 4 UMUL"
              mdapi_group="3D Pipe/Fragment Shader"
              mdapi_usage_flags="Tier4 Overview Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Pixels Failing Tests"
@@ -1098,7 +1098,7 @@
              equation="A 25 READ 4 UMUL"
              mdapi_group="3D Pipe/Output Merger"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Samples Written"
@@ -1111,7 +1111,7 @@
              equation="A 26 READ 4 UMUL"
              mdapi_group="3D Pipe/Output Merger"
              mdapi_usage_flags="Tier3 Overview Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Samples Blended"
@@ -1124,7 +1124,7 @@
              equation="A 27 READ 4 UMUL"
              mdapi_group="3D Pipe/Output Merger"
              mdapi_usage_flags="Tier3 Overview Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Sampler Texels"
@@ -1137,7 +1137,7 @@
              equation="A 28 READ 4 UMUL"
              mdapi_group="Sampler/Sampler Input"
              mdapi_usage_flags="Tier3 Overview Frame Batch Draw"
-             mdapi_supported_apis="OGL OCL IO BB"
+             mdapi_supported_apis="VK OGL OCL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Sampler Texels Misses"
@@ -1150,7 +1150,7 @@
              equation="A 29 READ 4 UMUL"
              mdapi_group="Sampler/Sampler Cache"
              mdapi_usage_flags="Tier3 Batch Frame Draw"
-             mdapi_supported_apis="OGL OCL IO BB"
+             mdapi_supported_apis="VK OGL OCL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="SLM Bytes Read"
@@ -1164,7 +1164,7 @@
              equation="A 30 READ 64 UMUL"
              mdapi_group="L3/Data Port/SLM"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL4 OCL IO BB"
+             mdapi_supported_apis="VK OGL4 OCL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="SLM Bytes Written"
@@ -1178,7 +1178,7 @@
              equation="A 31 READ 64 UMUL"
              mdapi_group="L3/Data Port/SLM"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL4 OCL IO BB"
+             mdapi_supported_apis="VK OGL4 OCL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Shader Memory Accesses"
@@ -1191,7 +1191,7 @@
              equation="A 32 READ"
              mdapi_group="L3/Data Port"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL OCL IO BB"
+             mdapi_supported_apis="VK OGL OCL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Shader Atomic Memory Accesses"
@@ -1204,7 +1204,7 @@
              equation="A 34 READ"
              mdapi_group="L3/Data Port/Atomics"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL OCL IO BB"
+             mdapi_supported_apis="VK OGL OCL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="L3 Shader Throughput"
@@ -1218,7 +1218,7 @@
              equation="A 30 READ  A 31 READ $ShaderMemoryAccesses UADD UADD 64 UMUL"
              mdapi_group="L3/Data Port"
              mdapi_usage_flags="Tier2 Frame Batch Draw"
-             mdapi_supported_apis="OGL4 OCL IO BB"
+             mdapi_supported_apis="VK OGL4 OCL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Shader Barrier Messages"
@@ -1231,7 +1231,7 @@
              equation="A 35 READ"
              mdapi_group="EU Array/Barrier"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL OCL IO BB"
+             mdapi_supported_apis="VK OGL OCL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Typed Bytes Read"
@@ -1245,7 +1245,7 @@
              equation="B 0 READ B 1 READ UADD 64 UMUL"
              mdapi_group="L3/Data Port"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL4 OCL IO BB"
+             mdapi_supported_apis="VK OGL4 OCL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Typed Bytes Written"
@@ -1259,7 +1259,7 @@
              equation="B 2 READ B 3 READ UADD 64 UMUL"
              mdapi_group="L3/Data Port"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL4 OCL IO BB"
+             mdapi_supported_apis="VK OGL4 OCL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Untyped Bytes Read"
@@ -1273,7 +1273,7 @@
              equation="B 4 READ B 5 READ UADD 64 UMUL"
              mdapi_group="L3/Data Port"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL4 OCL IO BB"
+             mdapi_supported_apis="VK OGL4 OCL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Untyped Writes"
@@ -1287,7 +1287,7 @@
              equation="B 6 READ B 7 READ UADD $EuSlicesTotalCount 64 UMUL UMUL"
              mdapi_group="L3/Data Port"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL4 OCL IO BB"
+             mdapi_supported_apis="VK OGL4 OCL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="GTI Read Throughput"
@@ -1301,7 +1301,7 @@
              equation="C 0 READ 64 UMUL"
              mdapi_group="GTI"
              mdapi_usage_flags="Tier1 Overview System Frame Batch Draw"
-             mdapi_supported_apis="OGL OCL IO BB"
+             mdapi_supported_apis="VK OGL OCL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="GTI Write Throughput"
@@ -1315,7 +1315,7 @@
              equation="C 1 READ 64 UMUL"
              mdapi_group="GTI"
              mdapi_usage_flags="Tier1 Overview System Frame Batch Draw"
-             mdapi_supported_apis="OGL OCL IO BB"
+             mdapi_supported_apis="VK OGL OCL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="GTI Ring Throughput"
@@ -1329,7 +1329,7 @@
              equation="C 2 READ 128 UMUL"
              mdapi_group="GTI"
              mdapi_usage_flags="Tier1 Overview System Frame Batch Draw"
-             mdapi_supported_apis="OGL OCL IO BB"
+             mdapi_supported_apis="VK OGL OCL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="GTI Read-Only Stall"
@@ -1343,7 +1343,7 @@
              equation="C 3 READ 100 UMUL $GpuCoreClocks FDIV"
              mdapi_group="GTI"
              mdapi_usage_flags="Tier2 Frame Batch Draw"
-             mdapi_supported_apis="OGL OCL IO BB"
+             mdapi_supported_apis="VK OGL OCL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="GTI Read-Write Stall"
@@ -1357,7 +1357,7 @@
              equation="C 4 READ 100 UMUL $GpuCoreClocks FDIV"
              mdapi_group="GTI"
              mdapi_usage_flags="Tier2 Frame Batch Draw"
-             mdapi_supported_apis="OGL OCL IO BB"
+             mdapi_supported_apis="VK OGL OCL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <register_config type="NOA">
@@ -1426,7 +1426,7 @@
        chipset="CHV"
        symbol_name="RenderPipeProfile"
        underscore_name="render_pipe_profile"
-       mdapi_supported_apis="OGL OCL IO BB"
+       mdapi_supported_apis="VK OGL OCL IO BB"
        hw_config_guid="a9ccc03d-a943-4e6b-9cd6-13e063075927"
        >
     <counter name="GPU Time Elapsed"
@@ -1493,7 +1493,7 @@
              equation="A 1 READ"
              mdapi_group="EU Array/Vertex Shader"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="HS Threads Dispatched"
@@ -1506,7 +1506,7 @@
              equation="A 2 READ"
              mdapi_group="EU Array/Hull Shader"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL4 IO BB"
+             mdapi_supported_apis="VK OGL4 IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="DS Threads Dispatched"
@@ -1519,7 +1519,7 @@
              equation="A 3 READ"
              mdapi_group="EU Array/Domain Shader"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL4 IO BB"
+             mdapi_supported_apis="VK OGL4 IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="GS Threads Dispatched"
@@ -1532,7 +1532,7 @@
              equation="A 5 READ"
              mdapi_group="EU Array/Geometry Shader"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL4 IO BB"
+             mdapi_supported_apis="VK OGL4 IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="FS Threads Dispatched"
@@ -1545,7 +1545,7 @@
              equation="A 6 READ"
              mdapi_group="EU Array/Fragment Shader"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="CS Threads Dispatched"
@@ -1558,7 +1558,7 @@
              equation="A 4 READ"
              mdapi_group="EU Array/Compute Shader"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL4 OCL IO BB"
+             mdapi_supported_apis="VK OGL4 OCL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="EU Active"
@@ -1599,7 +1599,7 @@
              equation="A 21 READ 4 UMUL"
              mdapi_group="3D Pipe/Rasterizer"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Early Hi-Depth Test Fails"
@@ -1612,7 +1612,7 @@
              equation="A 22 READ 4 UMUL"
              mdapi_group="3D Pipe/Rasterizer/Hi-Depth Test"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Early Depth Test Fails"
@@ -1625,7 +1625,7 @@
              equation="A 23 READ 4 UMUL"
              mdapi_group="3D Pipe/Rasterizer/Early Depth Test"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Samples Killed in FS"
@@ -1638,7 +1638,7 @@
              equation="A 24 READ 4 UMUL"
              mdapi_group="3D Pipe/Fragment Shader"
              mdapi_usage_flags="Tier4 Overview Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Pixels Failing Tests"
@@ -1651,7 +1651,7 @@
              equation="A 25 READ 4 UMUL"
              mdapi_group="3D Pipe/Output Merger"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Samples Written"
@@ -1664,7 +1664,7 @@
              equation="A 26 READ 4 UMUL"
              mdapi_group="3D Pipe/Output Merger"
              mdapi_usage_flags="Tier3 Overview Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Samples Blended"
@@ -1677,7 +1677,7 @@
              equation="A 27 READ 4 UMUL"
              mdapi_group="3D Pipe/Output Merger"
              mdapi_usage_flags="Tier3 Overview Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Sampler Accesses"
@@ -1730,7 +1730,7 @@
              equation="A 30 READ 64 UMUL"
              mdapi_group="L3/Data Port/SLM"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL4 OCL IO BB"
+             mdapi_supported_apis="VK OGL4 OCL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="SLM Bytes Written"
@@ -1744,7 +1744,7 @@
              equation="A 31 READ 64 UMUL"
              mdapi_group="L3/Data Port/SLM"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL4 OCL IO BB"
+             mdapi_supported_apis="VK OGL4 OCL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Shader Memory Accesses"
@@ -1770,7 +1770,7 @@
              equation="A 34 READ"
              mdapi_group="L3/Data Port/Atomics"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL4 OCL IO BB"
+             mdapi_supported_apis="VK OGL4 OCL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="L3 Shader Throughput"
@@ -1784,7 +1784,7 @@
              equation="A 30 READ  A 31 READ $ShaderMemoryAccesses UADD UADD 64 UMUL"
              mdapi_group="L3/Data Port"
              mdapi_usage_flags="Tier2 Frame Batch Draw"
-             mdapi_supported_apis="OGL4 OCL IO BB"
+             mdapi_supported_apis="VK OGL4 OCL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Shader Barrier Messages"
@@ -1797,7 +1797,7 @@
              equation="A 35 READ"
              mdapi_group="EU Array/Barrier"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL4 OCL IO BB"
+             mdapi_supported_apis="VK OGL4 OCL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="VF Bottleneck"
@@ -1812,7 +1812,7 @@
              equation="C 0 READ 100 UMUL $GpuCoreClocks FDIV"
              mdapi_group="3D Pipe/Input Assembler"
              mdapi_usage_flags="Tier3 Indicate Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="VS Bottleneck"
@@ -1827,7 +1827,7 @@
              equation="B 0 READ 100 UMUL $GpuCoreClocks FDIV"
              mdapi_group="3D Pipe/Vertex Shader"
              mdapi_usage_flags="Tier3 Indicate Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="HS Bottleneck"
@@ -1842,7 +1842,7 @@
              equation="B 1 READ 100 UMUL $GpuCoreClocks FDIV"
              mdapi_group="3D Pipe/Hull Shader"
              mdapi_usage_flags="Tier3 Indicate Draw"
-             mdapi_supported_apis="OGL4 IO BB"
+             mdapi_supported_apis="VK OGL4 IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="DS Bottleneck"
@@ -1857,7 +1857,7 @@
              equation="B 2 READ 100 UMUL $GpuCoreClocks FDIV"
              mdapi_group="3D Pipe/Domain Shader"
              mdapi_usage_flags="Tier3 Indicate Draw"
-             mdapi_supported_apis="OGL4 IO BB"
+             mdapi_supported_apis="VK OGL4 IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="GS Bottleneck"
@@ -1872,7 +1872,7 @@
              equation="B 3 READ 100 UMUL $GpuCoreClocks FDIV"
              mdapi_group="3D Pipe/Geometry Shader"
              mdapi_usage_flags="Tier3 Indicate Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="SO Bottleneck"
@@ -1887,7 +1887,7 @@
              equation="B 4 READ 100 UMUL $GpuCoreClocks FDIV"
              mdapi_group="3D Pipe/Stream Output"
              mdapi_usage_flags="Tier3 Indicate Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Clipper Bottleneck"
@@ -1902,7 +1902,7 @@
              equation="B 5 READ 100 UMUL $GpuCoreClocks FDIV"
              mdapi_group="3D Pipe/Clipper"
              mdapi_usage_flags="Tier3 Indicate Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Strip-Fans Bottleneck"
@@ -1917,7 +1917,7 @@
              equation="B 6 READ 100 UMUL $GpuCoreClocks FDIV"
              mdapi_group="3D Pipe/Rasterizer/Strip-Fans"
              mdapi_usage_flags="Tier3 Indicate Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Hi-Depth Bottleneck"
@@ -1932,7 +1932,7 @@
              equation="C 6 READ 100 UMUL $GpuCoreClocks FDIV"
              mdapi_group="3D Pipe/Rasterizer/Hi-Depth Test"
              mdapi_usage_flags="Tier3 Indicate Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Early Depth Bottleneck"
@@ -1947,7 +1947,7 @@
              equation="B 7 READ 100 UMUL $GpuCoreClocks FDIV"
              mdapi_group="3D Pipe/Rasterizer/Early Depth Test"
              mdapi_usage_flags="Tier3 Indicate Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="BC Bottleneck"
@@ -1962,7 +1962,7 @@
              equation="C 7 READ 100 UMUL $GpuCoreClocks FDIV"
              mdapi_group="3D Pipe/Rasterizer/Barycentric Calc"
              mdapi_usage_flags="Tier3 Indicate Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="HS Stall"
@@ -1975,7 +1975,7 @@
              equation="C 1 READ 100 UMUL $GpuCoreClocks FDIV"
              mdapi_group="3D Pipe/Hull Shader"
              mdapi_usage_flags="Tier4 Correlate Draw"
-             mdapi_supported_apis="OGL4 IO BB"
+             mdapi_supported_apis="VK OGL4 IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="DS Stall"
@@ -1988,7 +1988,7 @@
              equation="C 2 READ 100 UMUL $GpuCoreClocks FDIV"
              mdapi_group="3D Pipe/Domain Shader"
              mdapi_usage_flags="Tier4 Correlate Draw"
-             mdapi_supported_apis="OGL4 IO BB"
+             mdapi_supported_apis="VK OGL4 IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="SO Stall"
@@ -2001,7 +2001,7 @@
              equation="C 3 READ 100 UMUL $GpuCoreClocks FDIV"
              mdapi_group="3D Pipe/Stream Output"
              mdapi_usage_flags="Tier4 Correlate Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="CL Stall"
@@ -2014,7 +2014,7 @@
              equation="C 4 READ 100 UMUL $GpuCoreClocks FDIV"
              mdapi_group="3D Pipe/Clipper"
              mdapi_usage_flags="Tier4 Correlate Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="SF Stall"
@@ -2027,7 +2027,7 @@
              equation="C 5 READ 100 UMUL $GpuCoreClocks FDIV"
              mdapi_group="3D Pipe/Rasterizer/Strip-Fans"
              mdapi_usage_flags="Tier4 Correlate Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <register_config type="NOA">
@@ -2151,8 +2151,8 @@
        chipset="CHV"
        symbol_name="HDCAndSF"
        underscore_name="hdc_and_sf"
-       mdapi_supported_apis="OGL OCL IO BB"
-       hw_config_guid="2cf0c064-68df-4fac-9b3f-57f51ca8a069"
+       mdapi_supported_apis="VK OGL OCL IO BB"
+       hw_config_guid="33af8252-7a51-4aa3-b0ba-1b946f209d7b"
        >
     <counter name="GPU Time Elapsed"
              symbol_name="GpuTime"
@@ -2218,7 +2218,7 @@
              equation="A 1 READ"
              mdapi_group="EU Array/Vertex Shader"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="HS Threads Dispatched"
@@ -2231,7 +2231,7 @@
              equation="A 2 READ"
              mdapi_group="EU Array/Hull Shader"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL4 IO BB"
+             mdapi_supported_apis="VK OGL4 IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="DS Threads Dispatched"
@@ -2244,7 +2244,7 @@
              equation="A 3 READ"
              mdapi_group="EU Array/Domain Shader"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL4 IO BB"
+             mdapi_supported_apis="VK OGL4 IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="GS Threads Dispatched"
@@ -2257,7 +2257,7 @@
              equation="A 5 READ"
              mdapi_group="EU Array/Geometry Shader"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL4 IO BB"
+             mdapi_supported_apis="VK OGL4 IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="FS Threads Dispatched"
@@ -2270,7 +2270,7 @@
              equation="A 6 READ"
              mdapi_group="EU Array/Fragment Shader"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="CS Threads Dispatched"
@@ -2283,7 +2283,7 @@
              equation="A 4 READ"
              mdapi_group="EU Array/Compute Shader"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL4 OCL IO BB"
+             mdapi_supported_apis="VK OGL4 OCL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="EU Active"
@@ -2339,7 +2339,7 @@
              equation="A 10 READ $EuCoresTotalCount UDIV 100 UMUL $GpuCoreClocks FDIV"
              mdapi_group="EU Array/Vertex Shader"
              mdapi_usage_flags="Tier3 Overview System Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="VS FPU1 Pipe Active"
@@ -2353,7 +2353,7 @@
              equation="A 11 READ $EuCoresTotalCount UDIV 100 UMUL $GpuCoreClocks FDIV"
              mdapi_group="EU Array/Vertex Shader"
              mdapi_usage_flags="Tier3 Overview System Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="VS Send Pipe Active"
@@ -2367,7 +2367,7 @@
              equation="A 12 READ $EuCoresTotalCount UDIV 100 UMUL $GpuCoreClocks FDIV"
              mdapi_group="EU Array/Vertex Shader"
              mdapi_usage_flags="Tier3 Overview System Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="PS FPU0 Pipe Active"
@@ -2381,7 +2381,7 @@
              equation="A 15 READ $EuCoresTotalCount UDIV 100 UMUL $GpuCoreClocks FDIV"
              mdapi_group="EU Array/Pixel Shader"
              mdapi_usage_flags="Tier3 Overview System Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="PS FPU1 Pipe Active"
@@ -2395,7 +2395,7 @@
              equation="A 16 READ $EuCoresTotalCount UDIV 100 UMUL $GpuCoreClocks FDIV"
              mdapi_group="EU Array/Pixel Shader"
              mdapi_usage_flags="Tier3 Overview System Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="PS Send Pipeline Active"
@@ -2409,7 +2409,7 @@
              equation="A 17 READ $EuCoresTotalCount UDIV 100 UMUL $GpuCoreClocks FDIV"
              mdapi_group="EU Array/Pixel Shader"
              mdapi_usage_flags="Tier3 Overview System Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="FS Both FPU Active"
@@ -2423,7 +2423,7 @@
              equation="A 18 READ $EuCoresTotalCount UDIV 100 UMUL $GpuCoreClocks FDIV"
              mdapi_group="3D Pipe/Fragment Shader"
              mdapi_usage_flags="Tier4 Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Rasterized Pixels"
@@ -2436,7 +2436,7 @@
              equation="A 21 READ 4 UMUL"
              mdapi_group="3D Pipe/Rasterizer"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Early Hi-Depth Test Fails"
@@ -2449,7 +2449,7 @@
              equation="A 22 READ 4 UMUL"
              mdapi_group="3D Pipe/Rasterizer/Hi-Depth Test"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Early Depth Test Fails"
@@ -2462,7 +2462,7 @@
              equation="A 23 READ 4 UMUL"
              mdapi_group="3D Pipe/Rasterizer/Early Depth Test"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Samples Killed in FS"
@@ -2475,7 +2475,7 @@
              equation="A 24 READ 4 UMUL"
              mdapi_group="3D Pipe/Fragment Shader"
              mdapi_usage_flags="Tier4 Overview Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Pixels Failing Tests"
@@ -2488,7 +2488,7 @@
              equation="A 25 READ 4 UMUL"
              mdapi_group="3D Pipe/Output Merger"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Samples Written"
@@ -2501,7 +2501,7 @@
              equation="A 26 READ 4 UMUL"
              mdapi_group="3D Pipe/Output Merger"
              mdapi_usage_flags="Tier3 Overview Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Samples Blended"
@@ -2514,7 +2514,7 @@
              equation="A 27 READ 4 UMUL"
              mdapi_group="3D Pipe/Output Merger"
              mdapi_usage_flags="Tier3 Overview Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Sampler Texels"
@@ -2554,7 +2554,7 @@
              equation="A 30 READ 64 UMUL"
              mdapi_group="L3/Data Port/SLM"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL4 OCL IO BB"
+             mdapi_supported_apis="VK OGL4 OCL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="SLM Bytes Written"
@@ -2568,7 +2568,7 @@
              equation="A 31 READ 64 UMUL"
              mdapi_group="L3/Data Port/SLM"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL4 OCL IO BB"
+             mdapi_supported_apis="VK OGL4 OCL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Shader Memory Accesses"
@@ -2594,7 +2594,7 @@
              equation="A 34 READ"
              mdapi_group="L3/Data Port/Atomics"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL4 OCL IO BB"
+             mdapi_supported_apis="VK OGL4 OCL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="L3 Shader Throughput"
@@ -2605,10 +2605,10 @@
              max_equation="$GpuCoreClocks 64 UMUL $EuSubslicesTotalCount UMUL 2 UMUL"
              units="bytes"
              semantic_type="throughput"
-             equation="A 30 READ  A 31 READ $ShaderMemoryAccesses 64 UMUL UADD UADD"
+             equation="A 30 READ  A 31 READ $ShaderMemoryAccesses UADD UADD 64 UMUL"
              mdapi_group="L3/Data Port"
              mdapi_usage_flags="Tier2 Frame Batch Draw"
-             mdapi_supported_apis="OGL4 OCL IO BB"
+             mdapi_supported_apis="VK OGL4 OCL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Shader Barrier Messages"
@@ -2728,6 +2728,21 @@
              mdapi_supported_apis=""
              mdapi_hw_unit_type="subslice"
              />
+    <counter name="SQ is full"
+             symbol_name="GTRequestQueueFull"
+             underscore_name="gt_request_queue_full"
+             description="The percentage of time when SQ is filled above a threshold (usually 48 entries)"
+             data_type="float"
+             max_equation="100"
+             units="percent"
+             semantic_type="duration"
+             equation="PERFCNT1 READ_REG 100 UMUL $GpuCoreClocks FDIV"
+             availability="true $QueryMode &amp;&amp;"
+             mdapi_group="GTI"
+             mdapi_usage_flags="Tier3 Overview System Frame Batch Draw"
+             mdapi_supported_apis="VK OGL4 OCL"
+             mdapi_hw_unit_type="gpu"
+             />
     <register_config type="NOA">
         <register type="NOA" address="0x00009840" value="0x000000A0" />
         <register type="NOA" address="0x00009888" value="0x105C0232" />
@@ -2827,6 +2842,7 @@
         <register type="NOA" address="0x00009888" value="0x4F800000" />
         <register type="NOA" address="0x00009888" value="0x418014A4" />
         <register type="NOA" address="0x00009840" value="0x00000080" />
+        <register type="NOA" address="0x000091BC" value="0xE0500000" />
     </register_config>
     <register_config type="OA">
         <register type="OA" address="0x00002740" value="0x00000000" />
@@ -2853,8 +2869,8 @@
        chipset="CHV"
        symbol_name="L3_1"
        underscore_name="l3_1"
-       mdapi_supported_apis="OGL OCL IO BB"
-       hw_config_guid="78a87ff9-543a-49ce-95ea-26d86071ea93"
+       mdapi_supported_apis="VK OGL OCL IO BB"
+       hw_config_guid="78f52900-5317-4417-8067-966fbf215a1f"
        >
     <counter name="GPU Time Elapsed"
              symbol_name="GpuTime"
@@ -2920,7 +2936,7 @@
              equation="A 1 READ"
              mdapi_group="EU Array/Vertex Shader"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="HS Threads Dispatched"
@@ -2933,7 +2949,7 @@
              equation="A 2 READ"
              mdapi_group="EU Array/Hull Shader"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL4 IO BB"
+             mdapi_supported_apis="VK OGL4 IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="DS Threads Dispatched"
@@ -2946,7 +2962,7 @@
              equation="A 3 READ"
              mdapi_group="EU Array/Domain Shader"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL4 IO BB"
+             mdapi_supported_apis="VK OGL4 IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="GS Threads Dispatched"
@@ -2959,7 +2975,7 @@
              equation="A 5 READ"
              mdapi_group="EU Array/Geometry Shader"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL4 IO BB"
+             mdapi_supported_apis="VK OGL4 IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="FS Threads Dispatched"
@@ -2972,7 +2988,7 @@
              equation="A 6 READ"
              mdapi_group="EU Array/Fragment Shader"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="CS Threads Dispatched"
@@ -2985,7 +3001,7 @@
              equation="A 4 READ"
              mdapi_group="EU Array/Compute Shader"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL4 OCL IO BB"
+             mdapi_supported_apis="VK OGL4 OCL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="EU Active"
@@ -3041,7 +3057,7 @@
              equation="A 10 READ $EuCoresTotalCount UDIV 100 UMUL $GpuCoreClocks FDIV"
              mdapi_group="EU Array/Vertex Shader"
              mdapi_usage_flags="Tier3 Overview System Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="VS FPU1 Pipe Active"
@@ -3055,7 +3071,7 @@
              equation="A 11 READ $EuCoresTotalCount UDIV 100 UMUL $GpuCoreClocks FDIV"
              mdapi_group="EU Array/Vertex Shader"
              mdapi_usage_flags="Tier3 Overview System Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="VS Send Pipe Active"
@@ -3069,7 +3085,7 @@
              equation="A 12 READ $EuCoresTotalCount UDIV 100 UMUL $GpuCoreClocks FDIV"
              mdapi_group="EU Array/Vertex Shader"
              mdapi_usage_flags="Tier3 Overview System Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="PS FPU0 Pipe Active"
@@ -3083,7 +3099,7 @@
              equation="A 15 READ $EuCoresTotalCount UDIV 100 UMUL $GpuCoreClocks FDIV"
              mdapi_group="EU Array/Pixel Shader"
              mdapi_usage_flags="Tier3 Overview System Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="PS FPU1 Pipe Active"
@@ -3097,7 +3113,7 @@
              equation="A 16 READ $EuCoresTotalCount UDIV 100 UMUL $GpuCoreClocks FDIV"
              mdapi_group="EU Array/Pixel Shader"
              mdapi_usage_flags="Tier3 Overview System Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="PS Send Pipeline Active"
@@ -3111,7 +3127,7 @@
              equation="A 17 READ $EuCoresTotalCount UDIV 100 UMUL $GpuCoreClocks FDIV"
              mdapi_group="EU Array/Pixel Shader"
              mdapi_usage_flags="Tier3 Overview System Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="FS Both FPU Active"
@@ -3125,7 +3141,7 @@
              equation="A 18 READ $EuCoresTotalCount UDIV 100 UMUL $GpuCoreClocks FDIV"
              mdapi_group="3D Pipe/Fragment Shader"
              mdapi_usage_flags="Tier4 Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Rasterized Pixels"
@@ -3138,7 +3154,7 @@
              equation="A 21 READ 4 UMUL"
              mdapi_group="3D Pipe/Rasterizer"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Early Hi-Depth Test Fails"
@@ -3151,7 +3167,7 @@
              equation="A 22 READ 4 UMUL"
              mdapi_group="3D Pipe/Rasterizer/Hi-Depth Test"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Early Depth Test Fails"
@@ -3164,7 +3180,7 @@
              equation="A 23 READ 4 UMUL"
              mdapi_group="3D Pipe/Rasterizer/Early Depth Test"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Samples Killed in FS"
@@ -3177,7 +3193,7 @@
              equation="A 24 READ 4 UMUL"
              mdapi_group="3D Pipe/Fragment Shader"
              mdapi_usage_flags="Tier4 Overview Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Pixels Failing Tests"
@@ -3190,7 +3206,7 @@
              equation="A 25 READ 4 UMUL"
              mdapi_group="3D Pipe/Output Merger"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Samples Written"
@@ -3203,7 +3219,7 @@
              equation="A 26 READ 4 UMUL"
              mdapi_group="3D Pipe/Output Merger"
              mdapi_usage_flags="Tier3 Overview Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Samples Blended"
@@ -3216,7 +3232,7 @@
              equation="A 27 READ 4 UMUL"
              mdapi_group="3D Pipe/Output Merger"
              mdapi_usage_flags="Tier3 Overview Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Sampler Texels"
@@ -3256,7 +3272,7 @@
              equation="A 30 READ 64 UMUL"
              mdapi_group="L3/Data Port/SLM"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL4 OCL IO BB"
+             mdapi_supported_apis="VK OGL4 OCL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="SLM Bytes Written"
@@ -3270,7 +3286,7 @@
              equation="A 31 READ 64 UMUL"
              mdapi_group="L3/Data Port/SLM"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL4 OCL IO BB"
+             mdapi_supported_apis="VK OGL4 OCL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Shader Memory Accesses"
@@ -3296,7 +3312,7 @@
              equation="A 34 READ"
              mdapi_group="L3/Data Port/Atomics"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL4 OCL IO BB"
+             mdapi_supported_apis="VK OGL4 OCL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="L3 Shader Throughput"
@@ -3307,10 +3323,10 @@
              max_equation="$GpuCoreClocks 64 UMUL $EuSubslicesTotalCount UMUL 2 UMUL"
              units="bytes"
              semantic_type="throughput"
-             equation="A 30 READ  A 31 READ $ShaderMemoryAccesses 64 UMUL UADD UADD"
+             equation="A 30 READ  A 31 READ $ShaderMemoryAccesses UADD UADD 64 UMUL"
              mdapi_group="L3/Data Port"
              mdapi_usage_flags="Tier2 Frame Batch Draw"
-             mdapi_supported_apis="OGL4 OCL IO BB"
+             mdapi_supported_apis="VK OGL4 OCL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Shader Barrier Messages"
@@ -3385,6 +3401,21 @@
              mdapi_usage_flags="Tier3 Overview Frame Batch Draw"
              mdapi_supported_apis=""
              mdapi_hw_unit_type="slice"
+             />
+    <counter name="SQ is full"
+             symbol_name="GTRequestQueueFull"
+             underscore_name="gt_request_queue_full"
+             description="The percentage of time when SQ is filled above a threshold (usually 48 entries)"
+             data_type="float"
+             max_equation="100"
+             units="percent"
+             semantic_type="duration"
+             equation="PERFCNT1 READ_REG 100 UMUL $GpuCoreClocks FDIV"
+             availability="true $QueryMode &amp;&amp;"
+             mdapi_group="GTI"
+             mdapi_usage_flags="Tier3 Overview System Frame Batch Draw"
+             mdapi_supported_apis="VK OGL4 OCL"
+             mdapi_hw_unit_type="gpu"
              />
     <register_config type="NOA">
         <register type="NOA" address="0x00009840" value="0x000000A0" />
@@ -3478,6 +3509,7 @@
         <register type="NOA" address="0x00009888" value="0x4F800000" />
         <register type="NOA" address="0x00009888" value="0x41800060" />
         <register type="NOA" address="0x00009840" value="0x00000080" />
+        <register type="NOA" address="0x000091BC" value="0xE0500000" />
     </register_config>
     <register_config type="OA">
         <register type="OA" address="0x00002740" value="0x00000000" />
@@ -3518,8 +3550,8 @@
        chipset="CHV"
        symbol_name="L3_2"
        underscore_name="l3_2"
-       mdapi_supported_apis="OGL OCL IO BB"
-       hw_config_guid="9f2cece5-7bfe-4320-ad66-8c7cc526bec5"
+       mdapi_supported_apis="VK OGL OCL IO BB"
+       hw_config_guid="0db4fe4a-2648-4064-bd6a-89c06d0c27b3"
        >
     <counter name="GPU Time Elapsed"
              symbol_name="GpuTime"
@@ -3585,7 +3617,7 @@
              equation="A 1 READ"
              mdapi_group="EU Array/Vertex Shader"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="HS Threads Dispatched"
@@ -3598,7 +3630,7 @@
              equation="A 2 READ"
              mdapi_group="EU Array/Hull Shader"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL4 IO BB"
+             mdapi_supported_apis="VK OGL4 IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="DS Threads Dispatched"
@@ -3611,7 +3643,7 @@
              equation="A 3 READ"
              mdapi_group="EU Array/Domain Shader"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL4 IO BB"
+             mdapi_supported_apis="VK OGL4 IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="GS Threads Dispatched"
@@ -3624,7 +3656,7 @@
              equation="A 5 READ"
              mdapi_group="EU Array/Geometry Shader"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL4 IO BB"
+             mdapi_supported_apis="VK OGL4 IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="FS Threads Dispatched"
@@ -3637,7 +3669,7 @@
              equation="A 6 READ"
              mdapi_group="EU Array/Fragment Shader"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="CS Threads Dispatched"
@@ -3650,7 +3682,7 @@
              equation="A 4 READ"
              mdapi_group="EU Array/Compute Shader"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL4 OCL IO BB"
+             mdapi_supported_apis="VK OGL4 OCL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="EU Active"
@@ -3706,7 +3738,7 @@
              equation="A 10 READ $EuCoresTotalCount UDIV 100 UMUL $GpuCoreClocks FDIV"
              mdapi_group="EU Array/Vertex Shader"
              mdapi_usage_flags="Tier3 Overview System Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="VS FPU1 Pipe Active"
@@ -3720,7 +3752,7 @@
              equation="A 11 READ $EuCoresTotalCount UDIV 100 UMUL $GpuCoreClocks FDIV"
              mdapi_group="EU Array/Vertex Shader"
              mdapi_usage_flags="Tier3 Overview System Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="VS Send Pipe Active"
@@ -3734,7 +3766,7 @@
              equation="A 12 READ $EuCoresTotalCount UDIV 100 UMUL $GpuCoreClocks FDIV"
              mdapi_group="EU Array/Vertex Shader"
              mdapi_usage_flags="Tier3 Overview System Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="PS FPU0 Pipe Active"
@@ -3748,7 +3780,7 @@
              equation="A 15 READ $EuCoresTotalCount UDIV 100 UMUL $GpuCoreClocks FDIV"
              mdapi_group="EU Array/Pixel Shader"
              mdapi_usage_flags="Tier3 Overview System Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="PS FPU1 Pipe Active"
@@ -3762,7 +3794,7 @@
              equation="A 16 READ $EuCoresTotalCount UDIV 100 UMUL $GpuCoreClocks FDIV"
              mdapi_group="EU Array/Pixel Shader"
              mdapi_usage_flags="Tier3 Overview System Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="PS Send Pipeline Active"
@@ -3776,7 +3808,7 @@
              equation="A 17 READ $EuCoresTotalCount UDIV 100 UMUL $GpuCoreClocks FDIV"
              mdapi_group="EU Array/Pixel Shader"
              mdapi_usage_flags="Tier3 Overview System Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="FS Both FPU Active"
@@ -3790,7 +3822,7 @@
              equation="A 18 READ $EuCoresTotalCount UDIV 100 UMUL $GpuCoreClocks FDIV"
              mdapi_group="3D Pipe/Fragment Shader"
              mdapi_usage_flags="Tier4 Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Rasterized Pixels"
@@ -3803,7 +3835,7 @@
              equation="A 21 READ 4 UMUL"
              mdapi_group="3D Pipe/Rasterizer"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Early Hi-Depth Test Fails"
@@ -3816,7 +3848,7 @@
              equation="A 22 READ 4 UMUL"
              mdapi_group="3D Pipe/Rasterizer/Hi-Depth Test"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Early Depth Test Fails"
@@ -3829,7 +3861,7 @@
              equation="A 23 READ 4 UMUL"
              mdapi_group="3D Pipe/Rasterizer/Early Depth Test"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Samples Killed in FS"
@@ -3842,7 +3874,7 @@
              equation="A 24 READ 4 UMUL"
              mdapi_group="3D Pipe/Fragment Shader"
              mdapi_usage_flags="Tier4 Overview Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Pixels Failing Tests"
@@ -3855,7 +3887,7 @@
              equation="A 25 READ 4 UMUL"
              mdapi_group="3D Pipe/Output Merger"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Samples Written"
@@ -3868,7 +3900,7 @@
              equation="A 26 READ 4 UMUL"
              mdapi_group="3D Pipe/Output Merger"
              mdapi_usage_flags="Tier3 Overview Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Samples Blended"
@@ -3881,7 +3913,7 @@
              equation="A 27 READ 4 UMUL"
              mdapi_group="3D Pipe/Output Merger"
              mdapi_usage_flags="Tier3 Overview Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Sampler Texels"
@@ -3921,7 +3953,7 @@
              equation="A 30 READ 64 UMUL"
              mdapi_group="L3/Data Port/SLM"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL4 OCL IO BB"
+             mdapi_supported_apis="VK OGL4 OCL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="SLM Bytes Written"
@@ -3935,7 +3967,7 @@
              equation="A 31 READ 64 UMUL"
              mdapi_group="L3/Data Port/SLM"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL4 OCL IO BB"
+             mdapi_supported_apis="VK OGL4 OCL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Shader Memory Accesses"
@@ -3961,7 +3993,7 @@
              equation="A 34 READ"
              mdapi_group="L3/Data Port/Atomics"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL4 OCL IO BB"
+             mdapi_supported_apis="VK OGL4 OCL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="L3 Shader Throughput"
@@ -3972,10 +4004,10 @@
              max_equation="$GpuCoreClocks 64 UMUL $EuSubslicesTotalCount UMUL 2 UMUL"
              units="bytes"
              semantic_type="throughput"
-             equation="A 30 READ  A 31 READ $ShaderMemoryAccesses 64 UMUL UADD UADD"
+             equation="A 30 READ  A 31 READ $ShaderMemoryAccesses UADD UADD 64 UMUL"
              mdapi_group="L3/Data Port"
              mdapi_usage_flags="Tier2 Frame Batch Draw"
-             mdapi_supported_apis="OGL4 OCL IO BB"
+             mdapi_supported_apis="VK OGL4 OCL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Shader Barrier Messages"
@@ -4050,6 +4082,21 @@
              mdapi_usage_flags="Tier3 Overview Frame Batch Draw"
              mdapi_supported_apis=""
              mdapi_hw_unit_type="slice"
+             />
+    <counter name="SQ is full"
+             symbol_name="GTRequestQueueFull"
+             underscore_name="gt_request_queue_full"
+             description="The percentage of time when SQ is filled above a threshold (usually 48 entries)"
+             data_type="float"
+             max_equation="100"
+             units="percent"
+             semantic_type="duration"
+             equation="PERFCNT1 READ_REG 100 UMUL $GpuCoreClocks FDIV"
+             availability="true $QueryMode &amp;&amp;"
+             mdapi_group="GTI"
+             mdapi_usage_flags="Tier3 Overview System Frame Batch Draw"
+             mdapi_supported_apis="VK OGL4 OCL"
+             mdapi_hw_unit_type="gpu"
              />
     <register_config type="NOA">
         <register type="NOA" address="0x00009840" value="0x000000A0" />
@@ -4130,6 +4177,7 @@
         <register type="NOA" address="0x00009888" value="0x4F800000" />
         <register type="NOA" address="0x00009888" value="0x41800060" />
         <register type="NOA" address="0x00009840" value="0x00000080" />
+        <register type="NOA" address="0x000091BC" value="0xE0500000" />
     </register_config>
     <register_config type="OA">
         <register type="OA" address="0x00002740" value="0x00000000" />
@@ -4170,8 +4218,8 @@
        chipset="CHV"
        symbol_name="L3_3"
        underscore_name="l3_3"
-       mdapi_supported_apis="OGL OCL IO BB"
-       hw_config_guid="d890ef38-d309-47e4-b8b5-aa779bb19ab0"
+       mdapi_supported_apis="VK OGL OCL IO BB"
+       hw_config_guid="0de6539e-33b4-4aee-83c4-9ab45a579b94"
        >
     <counter name="GPU Time Elapsed"
              symbol_name="GpuTime"
@@ -4237,7 +4285,7 @@
              equation="A 1 READ"
              mdapi_group="EU Array/Vertex Shader"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="HS Threads Dispatched"
@@ -4250,7 +4298,7 @@
              equation="A 2 READ"
              mdapi_group="EU Array/Hull Shader"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL4 IO BB"
+             mdapi_supported_apis="VK OGL4 IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="DS Threads Dispatched"
@@ -4263,7 +4311,7 @@
              equation="A 3 READ"
              mdapi_group="EU Array/Domain Shader"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL4 IO BB"
+             mdapi_supported_apis="VK OGL4 IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="GS Threads Dispatched"
@@ -4276,7 +4324,7 @@
              equation="A 5 READ"
              mdapi_group="EU Array/Geometry Shader"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL4 IO BB"
+             mdapi_supported_apis="VK OGL4 IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="FS Threads Dispatched"
@@ -4289,7 +4337,7 @@
              equation="A 6 READ"
              mdapi_group="EU Array/Fragment Shader"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="CS Threads Dispatched"
@@ -4302,7 +4350,7 @@
              equation="A 4 READ"
              mdapi_group="EU Array/Compute Shader"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL4 OCL IO BB"
+             mdapi_supported_apis="VK OGL4 OCL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="EU Active"
@@ -4358,7 +4406,7 @@
              equation="A 10 READ $EuCoresTotalCount UDIV 100 UMUL $GpuCoreClocks FDIV"
              mdapi_group="EU Array/Vertex Shader"
              mdapi_usage_flags="Tier3 Overview System Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="VS FPU1 Pipe Active"
@@ -4372,7 +4420,7 @@
              equation="A 11 READ $EuCoresTotalCount UDIV 100 UMUL $GpuCoreClocks FDIV"
              mdapi_group="EU Array/Vertex Shader"
              mdapi_usage_flags="Tier3 Overview System Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="VS Send Pipe Active"
@@ -4386,7 +4434,7 @@
              equation="A 12 READ $EuCoresTotalCount UDIV 100 UMUL $GpuCoreClocks FDIV"
              mdapi_group="EU Array/Vertex Shader"
              mdapi_usage_flags="Tier3 Overview System Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="PS FPU0 Pipe Active"
@@ -4400,7 +4448,7 @@
              equation="A 15 READ $EuCoresTotalCount UDIV 100 UMUL $GpuCoreClocks FDIV"
              mdapi_group="EU Array/Pixel Shader"
              mdapi_usage_flags="Tier3 Overview System Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="PS FPU1 Pipe Active"
@@ -4414,7 +4462,7 @@
              equation="A 16 READ $EuCoresTotalCount UDIV 100 UMUL $GpuCoreClocks FDIV"
              mdapi_group="EU Array/Pixel Shader"
              mdapi_usage_flags="Tier3 Overview System Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="PS Send Pipeline Active"
@@ -4428,7 +4476,7 @@
              equation="A 17 READ $EuCoresTotalCount UDIV 100 UMUL $GpuCoreClocks FDIV"
              mdapi_group="EU Array/Pixel Shader"
              mdapi_usage_flags="Tier3 Overview System Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="FS Both FPU Active"
@@ -4442,7 +4490,7 @@
              equation="A 18 READ $EuCoresTotalCount UDIV 100 UMUL $GpuCoreClocks FDIV"
              mdapi_group="3D Pipe/Fragment Shader"
              mdapi_usage_flags="Tier4 Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Rasterized Pixels"
@@ -4455,7 +4503,7 @@
              equation="A 21 READ 4 UMUL"
              mdapi_group="3D Pipe/Rasterizer"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Early Hi-Depth Test Fails"
@@ -4468,7 +4516,7 @@
              equation="A 22 READ 4 UMUL"
              mdapi_group="3D Pipe/Rasterizer/Hi-Depth Test"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Early Depth Test Fails"
@@ -4481,7 +4529,7 @@
              equation="A 23 READ 4 UMUL"
              mdapi_group="3D Pipe/Rasterizer/Early Depth Test"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Samples Killed in FS"
@@ -4494,7 +4542,7 @@
              equation="A 24 READ 4 UMUL"
              mdapi_group="3D Pipe/Fragment Shader"
              mdapi_usage_flags="Tier4 Overview Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Pixels Failing Tests"
@@ -4507,7 +4555,7 @@
              equation="A 25 READ 4 UMUL"
              mdapi_group="3D Pipe/Output Merger"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Samples Written"
@@ -4520,7 +4568,7 @@
              equation="A 26 READ 4 UMUL"
              mdapi_group="3D Pipe/Output Merger"
              mdapi_usage_flags="Tier3 Overview Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Samples Blended"
@@ -4533,7 +4581,7 @@
              equation="A 27 READ 4 UMUL"
              mdapi_group="3D Pipe/Output Merger"
              mdapi_usage_flags="Tier3 Overview Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Sampler Texels"
@@ -4573,7 +4621,7 @@
              equation="A 30 READ 64 UMUL"
              mdapi_group="L3/Data Port/SLM"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL4 OCL IO BB"
+             mdapi_supported_apis="VK OGL4 OCL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="SLM Bytes Written"
@@ -4587,7 +4635,7 @@
              equation="A 31 READ 64 UMUL"
              mdapi_group="L3/Data Port/SLM"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL4 OCL IO BB"
+             mdapi_supported_apis="VK OGL4 OCL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Shader Memory Accesses"
@@ -4613,7 +4661,7 @@
              equation="A 34 READ"
              mdapi_group="L3/Data Port/Atomics"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL4 OCL IO BB"
+             mdapi_supported_apis="VK OGL4 OCL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="L3 Shader Throughput"
@@ -4624,10 +4672,10 @@
              max_equation="$GpuCoreClocks 64 UMUL $EuSubslicesTotalCount UMUL 2 UMUL"
              units="bytes"
              semantic_type="throughput"
-             equation="A 30 READ  A 31 READ $ShaderMemoryAccesses 64 UMUL UADD UADD"
+             equation="A 30 READ  A 31 READ $ShaderMemoryAccesses UADD UADD 64 UMUL"
              mdapi_group="L3/Data Port"
              mdapi_usage_flags="Tier2 Frame Batch Draw"
-             mdapi_supported_apis="OGL4 OCL IO BB"
+             mdapi_supported_apis="VK OGL4 OCL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Shader Barrier Messages"
@@ -4702,6 +4750,21 @@
              mdapi_usage_flags="Tier3 Overview Frame Batch Draw"
              mdapi_supported_apis=""
              mdapi_hw_unit_type="slice"
+             />
+    <counter name="SQ is full"
+             symbol_name="GTRequestQueueFull"
+             underscore_name="gt_request_queue_full"
+             description="The percentage of time when SQ is filled above a threshold (usually 48 entries)"
+             data_type="float"
+             max_equation="100"
+             units="percent"
+             semantic_type="duration"
+             equation="PERFCNT1 READ_REG 100 UMUL $GpuCoreClocks FDIV"
+             availability="true $QueryMode &amp;&amp;"
+             mdapi_group="GTI"
+             mdapi_usage_flags="Tier3 Overview System Frame Batch Draw"
+             mdapi_supported_apis="VK OGL4 OCL"
+             mdapi_hw_unit_type="gpu"
              />
     <register_config type="NOA">
         <register type="NOA" address="0x00009840" value="0x000000A0" />
@@ -4798,6 +4861,7 @@
         <register type="NOA" address="0x00009888" value="0x4F800000" />
         <register type="NOA" address="0x00009888" value="0x41800045" />
         <register type="NOA" address="0x00009840" value="0x00000080" />
+        <register type="NOA" address="0x000091BC" value="0xE0500000" />
     </register_config>
     <register_config type="OA">
         <register type="OA" address="0x00002740" value="0x00000000" />
@@ -4838,8 +4902,8 @@
        chipset="CHV"
        symbol_name="L3_4"
        underscore_name="l3_4"
-       mdapi_supported_apis="OGL OCL IO BB"
-       hw_config_guid="5fdff4a6-9dc8-45e1-bfda-ef54869fbdd4"
+       mdapi_supported_apis="VK OGL OCL IO BB"
+       hw_config_guid="be74c9d6-268f-4d7f-b2e8-8d91d4441883"
        >
     <counter name="GPU Time Elapsed"
              symbol_name="GpuTime"
@@ -4905,7 +4969,7 @@
              equation="A 1 READ"
              mdapi_group="EU Array/Vertex Shader"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="HS Threads Dispatched"
@@ -4918,7 +4982,7 @@
              equation="A 2 READ"
              mdapi_group="EU Array/Hull Shader"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL4 IO BB"
+             mdapi_supported_apis="VK OGL4 IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="DS Threads Dispatched"
@@ -4931,7 +4995,7 @@
              equation="A 3 READ"
              mdapi_group="EU Array/Domain Shader"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL4 IO BB"
+             mdapi_supported_apis="VK OGL4 IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="GS Threads Dispatched"
@@ -4944,7 +5008,7 @@
              equation="A 5 READ"
              mdapi_group="EU Array/Geometry Shader"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL4 IO BB"
+             mdapi_supported_apis="VK OGL4 IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="FS Threads Dispatched"
@@ -4957,7 +5021,7 @@
              equation="A 6 READ"
              mdapi_group="EU Array/Fragment Shader"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="CS Threads Dispatched"
@@ -4970,7 +5034,7 @@
              equation="A 4 READ"
              mdapi_group="EU Array/Compute Shader"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL4 OCL IO BB"
+             mdapi_supported_apis="VK OGL4 OCL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="EU Active"
@@ -5026,7 +5090,7 @@
              equation="A 10 READ $EuCoresTotalCount UDIV 100 UMUL $GpuCoreClocks FDIV"
              mdapi_group="EU Array/Vertex Shader"
              mdapi_usage_flags="Tier3 Overview System Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="VS FPU1 Pipe Active"
@@ -5040,7 +5104,7 @@
              equation="A 11 READ $EuCoresTotalCount UDIV 100 UMUL $GpuCoreClocks FDIV"
              mdapi_group="EU Array/Vertex Shader"
              mdapi_usage_flags="Tier3 Overview System Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="VS Send Pipe Active"
@@ -5054,7 +5118,7 @@
              equation="A 12 READ $EuCoresTotalCount UDIV 100 UMUL $GpuCoreClocks FDIV"
              mdapi_group="EU Array/Vertex Shader"
              mdapi_usage_flags="Tier3 Overview System Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="PS FPU0 Pipe Active"
@@ -5068,7 +5132,7 @@
              equation="A 15 READ $EuCoresTotalCount UDIV 100 UMUL $GpuCoreClocks FDIV"
              mdapi_group="EU Array/Pixel Shader"
              mdapi_usage_flags="Tier3 Overview System Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="PS FPU1 Pipe Active"
@@ -5082,7 +5146,7 @@
              equation="A 16 READ $EuCoresTotalCount UDIV 100 UMUL $GpuCoreClocks FDIV"
              mdapi_group="EU Array/Pixel Shader"
              mdapi_usage_flags="Tier3 Overview System Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="PS Send Pipeline Active"
@@ -5096,7 +5160,7 @@
              equation="A 17 READ $EuCoresTotalCount UDIV 100 UMUL $GpuCoreClocks FDIV"
              mdapi_group="EU Array/Pixel Shader"
              mdapi_usage_flags="Tier3 Overview System Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="FS Both FPU Active"
@@ -5110,7 +5174,7 @@
              equation="A 18 READ $EuCoresTotalCount UDIV 100 UMUL $GpuCoreClocks FDIV"
              mdapi_group="3D Pipe/Fragment Shader"
              mdapi_usage_flags="Tier4 Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Rasterized Pixels"
@@ -5123,7 +5187,7 @@
              equation="A 21 READ 4 UMUL"
              mdapi_group="3D Pipe/Rasterizer"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Early Hi-Depth Test Fails"
@@ -5136,7 +5200,7 @@
              equation="A 22 READ 4 UMUL"
              mdapi_group="3D Pipe/Rasterizer/Hi-Depth Test"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Early Depth Test Fails"
@@ -5149,7 +5213,7 @@
              equation="A 23 READ 4 UMUL"
              mdapi_group="3D Pipe/Rasterizer/Early Depth Test"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Samples Killed in FS"
@@ -5162,7 +5226,7 @@
              equation="A 24 READ 4 UMUL"
              mdapi_group="3D Pipe/Fragment Shader"
              mdapi_usage_flags="Tier4 Overview Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Pixels Failing Tests"
@@ -5175,7 +5239,7 @@
              equation="A 25 READ 4 UMUL"
              mdapi_group="3D Pipe/Output Merger"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Samples Written"
@@ -5188,7 +5252,7 @@
              equation="A 26 READ 4 UMUL"
              mdapi_group="3D Pipe/Output Merger"
              mdapi_usage_flags="Tier3 Overview Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Samples Blended"
@@ -5201,7 +5265,7 @@
              equation="A 27 READ 4 UMUL"
              mdapi_group="3D Pipe/Output Merger"
              mdapi_usage_flags="Tier3 Overview Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Sampler Texels"
@@ -5241,7 +5305,7 @@
              equation="A 30 READ 64 UMUL"
              mdapi_group="L3/Data Port/SLM"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL4 OCL IO BB"
+             mdapi_supported_apis="VK OGL4 OCL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="SLM Bytes Written"
@@ -5255,7 +5319,7 @@
              equation="A 31 READ 64 UMUL"
              mdapi_group="L3/Data Port/SLM"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL4 OCL IO BB"
+             mdapi_supported_apis="VK OGL4 OCL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Shader Memory Accesses"
@@ -5281,7 +5345,7 @@
              equation="A 34 READ"
              mdapi_group="L3/Data Port/Atomics"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL4 OCL IO BB"
+             mdapi_supported_apis="VK OGL4 OCL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="L3 Shader Throughput"
@@ -5292,10 +5356,10 @@
              max_equation="$GpuCoreClocks 64 UMUL $EuSubslicesTotalCount UMUL 2 UMUL"
              units="bytes"
              semantic_type="throughput"
-             equation="A 30 READ  A 31 READ $ShaderMemoryAccesses 64 UMUL UADD UADD"
+             equation="A 30 READ  A 31 READ $ShaderMemoryAccesses UADD UADD 64 UMUL"
              mdapi_group="L3/Data Port"
              mdapi_usage_flags="Tier2 Frame Batch Draw"
-             mdapi_supported_apis="OGL4 OCL IO BB"
+             mdapi_supported_apis="VK OGL4 OCL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Shader Barrier Messages"
@@ -5370,6 +5434,21 @@
              mdapi_usage_flags="Tier3 Overview Frame Batch Draw"
              mdapi_supported_apis=""
              mdapi_hw_unit_type="slice"
+             />
+    <counter name="SQ is full"
+             symbol_name="GTRequestQueueFull"
+             underscore_name="gt_request_queue_full"
+             description="The percentage of time when SQ is filled above a threshold (usually 48 entries)"
+             data_type="float"
+             max_equation="100"
+             units="percent"
+             semantic_type="duration"
+             equation="PERFCNT1 READ_REG 100 UMUL $GpuCoreClocks FDIV"
+             availability="true $QueryMode &amp;&amp;"
+             mdapi_group="GTI"
+             mdapi_usage_flags="Tier3 Overview System Frame Batch Draw"
+             mdapi_supported_apis="VK OGL4 OCL"
+             mdapi_hw_unit_type="gpu"
              />
     <register_config type="NOA">
         <register type="NOA" address="0x00009840" value="0x000000A0" />
@@ -5465,6 +5544,7 @@
         <register type="NOA" address="0x00009888" value="0x4F800000" />
         <register type="NOA" address="0x00009888" value="0x41800044" />
         <register type="NOA" address="0x00009840" value="0x00000080" />
+        <register type="NOA" address="0x000091BC" value="0xE0500000" />
     </register_config>
     <register_config type="OA">
         <register type="OA" address="0x00002740" value="0x00000000" />
@@ -5505,8 +5585,8 @@
        chipset="CHV"
        symbol_name="RasterizerAndPixelBackend"
        underscore_name="rasterizer_and_pixel_backend"
-       mdapi_supported_apis="OGL OCL IO BB"
-       hw_config_guid="2c0e45e1-7e2c-4a14-ae00-0b7ec868b8aa"
+       mdapi_supported_apis="VK OGL OCL IO BB"
+       hw_config_guid="31bc1ff3-8d09-4497-9d79-59c4f943b502"
        >
     <counter name="GPU Time Elapsed"
              symbol_name="GpuTime"
@@ -5572,7 +5652,7 @@
              equation="A 1 READ"
              mdapi_group="EU Array/Vertex Shader"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="HS Threads Dispatched"
@@ -5585,7 +5665,7 @@
              equation="A 2 READ"
              mdapi_group="EU Array/Hull Shader"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL4 IO BB"
+             mdapi_supported_apis="VK OGL4 IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="DS Threads Dispatched"
@@ -5598,7 +5678,7 @@
              equation="A 3 READ"
              mdapi_group="EU Array/Domain Shader"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL4 IO BB"
+             mdapi_supported_apis="VK OGL4 IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="GS Threads Dispatched"
@@ -5611,7 +5691,7 @@
              equation="A 5 READ"
              mdapi_group="EU Array/Geometry Shader"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL4 IO BB"
+             mdapi_supported_apis="VK OGL4 IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="FS Threads Dispatched"
@@ -5624,7 +5704,7 @@
              equation="A 6 READ"
              mdapi_group="EU Array/Fragment Shader"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="CS Threads Dispatched"
@@ -5637,7 +5717,7 @@
              equation="A 4 READ"
              mdapi_group="EU Array/Compute Shader"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL4 OCL IO BB"
+             mdapi_supported_apis="VK OGL4 OCL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="EU Active"
@@ -5693,7 +5773,7 @@
              equation="A 10 READ $EuCoresTotalCount UDIV 100 UMUL $GpuCoreClocks FDIV"
              mdapi_group="EU Array/Vertex Shader"
              mdapi_usage_flags="Tier3 Overview System Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="VS FPU1 Pipe Active"
@@ -5707,7 +5787,7 @@
              equation="A 11 READ $EuCoresTotalCount UDIV 100 UMUL $GpuCoreClocks FDIV"
              mdapi_group="EU Array/Vertex Shader"
              mdapi_usage_flags="Tier3 Overview System Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="VS Send Pipe Active"
@@ -5721,7 +5801,7 @@
              equation="A 12 READ $EuCoresTotalCount UDIV 100 UMUL $GpuCoreClocks FDIV"
              mdapi_group="EU Array/Vertex Shader"
              mdapi_usage_flags="Tier3 Overview System Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="PS FPU0 Pipe Active"
@@ -5735,7 +5815,7 @@
              equation="A 15 READ $EuCoresTotalCount UDIV 100 UMUL $GpuCoreClocks FDIV"
              mdapi_group="EU Array/Pixel Shader"
              mdapi_usage_flags="Tier3 Overview System Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="PS FPU1 Pipe Active"
@@ -5749,7 +5829,7 @@
              equation="A 16 READ $EuCoresTotalCount UDIV 100 UMUL $GpuCoreClocks FDIV"
              mdapi_group="EU Array/Pixel Shader"
              mdapi_usage_flags="Tier3 Overview System Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="PS Send Pipeline Active"
@@ -5763,7 +5843,7 @@
              equation="A 17 READ $EuCoresTotalCount UDIV 100 UMUL $GpuCoreClocks FDIV"
              mdapi_group="EU Array/Pixel Shader"
              mdapi_usage_flags="Tier3 Overview System Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="FS Both FPU Active"
@@ -5777,7 +5857,7 @@
              equation="A 18 READ $EuCoresTotalCount UDIV 100 UMUL $GpuCoreClocks FDIV"
              mdapi_group="3D Pipe/Fragment Shader"
              mdapi_usage_flags="Tier4 Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Rasterized Pixels"
@@ -5790,7 +5870,7 @@
              equation="A 21 READ 4 UMUL"
              mdapi_group="3D Pipe/Rasterizer"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Early Hi-Depth Test Fails"
@@ -5803,7 +5883,7 @@
              equation="A 22 READ 4 UMUL"
              mdapi_group="3D Pipe/Rasterizer/Hi-Depth Test"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Early Depth Test Fails"
@@ -5816,7 +5896,7 @@
              equation="A 23 READ 4 UMUL"
              mdapi_group="3D Pipe/Rasterizer/Early Depth Test"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Samples Killed in FS"
@@ -5829,7 +5909,7 @@
              equation="A 24 READ 4 UMUL"
              mdapi_group="3D Pipe/Fragment Shader"
              mdapi_usage_flags="Tier4 Overview Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Pixels Failing Tests"
@@ -5842,7 +5922,7 @@
              equation="A 25 READ 4 UMUL"
              mdapi_group="3D Pipe/Output Merger"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Samples Written"
@@ -5855,7 +5935,7 @@
              equation="A 26 READ 4 UMUL"
              mdapi_group="3D Pipe/Output Merger"
              mdapi_usage_flags="Tier3 Overview Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Samples Blended"
@@ -5868,7 +5948,7 @@
              equation="A 27 READ 4 UMUL"
              mdapi_group="3D Pipe/Output Merger"
              mdapi_usage_flags="Tier3 Overview Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Sampler Texels"
@@ -5908,7 +5988,7 @@
              equation="A 30 READ 64 UMUL"
              mdapi_group="L3/Data Port/SLM"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL4 OCL IO BB"
+             mdapi_supported_apis="VK OGL4 OCL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="SLM Bytes Written"
@@ -5922,7 +6002,7 @@
              equation="A 31 READ 64 UMUL"
              mdapi_group="L3/Data Port/SLM"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL4 OCL IO BB"
+             mdapi_supported_apis="VK OGL4 OCL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Shader Memory Accesses"
@@ -5948,7 +6028,7 @@
              equation="A 34 READ"
              mdapi_group="L3/Data Port/Atomics"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL4 OCL IO BB"
+             mdapi_supported_apis="VK OGL4 OCL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="L3 Shader Throughput"
@@ -5959,10 +6039,10 @@
              max_equation="$GpuCoreClocks 64 UMUL $EuSubslicesTotalCount UMUL 2 UMUL"
              units="bytes"
              semantic_type="throughput"
-             equation="A 30 READ  A 31 READ $ShaderMemoryAccesses 64 UMUL UADD UADD"
+             equation="A 30 READ  A 31 READ $ShaderMemoryAccesses UADD UADD 64 UMUL"
              mdapi_group="L3/Data Port"
              mdapi_usage_flags="Tier2 Frame Batch Draw"
-             mdapi_supported_apis="OGL4 OCL IO BB"
+             mdapi_supported_apis="VK OGL4 OCL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Shader Barrier Messages"
@@ -6128,6 +6208,21 @@
              mdapi_supported_apis=""
              mdapi_hw_unit_type="slice"
              />
+    <counter name="SQ is full"
+             symbol_name="GTRequestQueueFull"
+             underscore_name="gt_request_queue_full"
+             description="The percentage of time when SQ is filled above a threshold (usually 48 entries)"
+             data_type="float"
+             max_equation="100"
+             units="percent"
+             semantic_type="duration"
+             equation="PERFCNT1 READ_REG 100 UMUL $GpuCoreClocks FDIV"
+             availability="true $QueryMode &amp;&amp;"
+             mdapi_group="GTI"
+             mdapi_usage_flags="Tier3 Overview System Frame Batch Draw"
+             mdapi_supported_apis="VK OGL4 OCL"
+             mdapi_hw_unit_type="gpu"
+             />
     <register_config type="NOA">
         <register type="NOA" address="0x00009840" value="0x000000A0" />
         <register type="NOA" address="0x00009888" value="0x143B000E" />
@@ -6243,6 +6338,7 @@
         <register type="NOA" address="0x00009888" value="0x3F800000" />
         <register type="NOA" address="0x00009888" value="0x41800840" />
         <register type="NOA" address="0x00009840" value="0x00000080" />
+        <register type="NOA" address="0x000091BC" value="0xE0500000" />
     </register_config>
     <register_config type="OA">
         <register type="OA" address="0x00002740" value="0x00000000" />
@@ -6279,8 +6375,8 @@
        chipset="CHV"
        symbol_name="Sampler_1"
        underscore_name="sampler_1"
-       mdapi_supported_apis="OGL OCL IO BB"
-       hw_config_guid="71148d78-baf5-474f-878a-e23158d0265d"
+       mdapi_supported_apis="VK OGL OCL IO BB"
+       hw_config_guid="05450fec-bb5c-4b0a-8995-e03631168a34"
        >
     <counter name="GPU Time Elapsed"
              symbol_name="GpuTime"
@@ -6346,7 +6442,7 @@
              equation="A 1 READ"
              mdapi_group="EU Array/Vertex Shader"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="HS Threads Dispatched"
@@ -6359,7 +6455,7 @@
              equation="A 2 READ"
              mdapi_group="EU Array/Hull Shader"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL4 IO BB"
+             mdapi_supported_apis="VK OGL4 IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="DS Threads Dispatched"
@@ -6372,7 +6468,7 @@
              equation="A 3 READ"
              mdapi_group="EU Array/Domain Shader"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL4 IO BB"
+             mdapi_supported_apis="VK OGL4 IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="GS Threads Dispatched"
@@ -6385,7 +6481,7 @@
              equation="A 5 READ"
              mdapi_group="EU Array/Geometry Shader"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL4 IO BB"
+             mdapi_supported_apis="VK OGL4 IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="FS Threads Dispatched"
@@ -6398,7 +6494,7 @@
              equation="A 6 READ"
              mdapi_group="EU Array/Fragment Shader"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="CS Threads Dispatched"
@@ -6411,7 +6507,7 @@
              equation="A 4 READ"
              mdapi_group="EU Array/Compute Shader"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL4 OCL IO BB"
+             mdapi_supported_apis="VK OGL4 OCL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="EU Active"
@@ -6467,7 +6563,7 @@
              equation="A 10 READ $EuCoresTotalCount UDIV 100 UMUL $GpuCoreClocks FDIV"
              mdapi_group="EU Array/Vertex Shader"
              mdapi_usage_flags="Tier3 Overview System Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="VS FPU1 Pipe Active"
@@ -6481,7 +6577,7 @@
              equation="A 11 READ $EuCoresTotalCount UDIV 100 UMUL $GpuCoreClocks FDIV"
              mdapi_group="EU Array/Vertex Shader"
              mdapi_usage_flags="Tier3 Overview System Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="VS Send Pipe Active"
@@ -6495,7 +6591,7 @@
              equation="A 12 READ $EuCoresTotalCount UDIV 100 UMUL $GpuCoreClocks FDIV"
              mdapi_group="EU Array/Vertex Shader"
              mdapi_usage_flags="Tier3 Overview System Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="PS FPU0 Pipe Active"
@@ -6509,7 +6605,7 @@
              equation="A 15 READ $EuCoresTotalCount UDIV 100 UMUL $GpuCoreClocks FDIV"
              mdapi_group="EU Array/Pixel Shader"
              mdapi_usage_flags="Tier3 Overview System Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="PS FPU1 Pipe Active"
@@ -6523,7 +6619,7 @@
              equation="A 16 READ $EuCoresTotalCount UDIV 100 UMUL $GpuCoreClocks FDIV"
              mdapi_group="EU Array/Pixel Shader"
              mdapi_usage_flags="Tier3 Overview System Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="PS Send Pipeline Active"
@@ -6537,7 +6633,7 @@
              equation="A 17 READ $EuCoresTotalCount UDIV 100 UMUL $GpuCoreClocks FDIV"
              mdapi_group="EU Array/Pixel Shader"
              mdapi_usage_flags="Tier3 Overview System Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="FS Both FPU Active"
@@ -6551,7 +6647,7 @@
              equation="A 18 READ $EuCoresTotalCount UDIV 100 UMUL $GpuCoreClocks FDIV"
              mdapi_group="3D Pipe/Fragment Shader"
              mdapi_usage_flags="Tier4 Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Rasterized Pixels"
@@ -6564,7 +6660,7 @@
              equation="A 21 READ 4 UMUL"
              mdapi_group="3D Pipe/Rasterizer"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Early Hi-Depth Test Fails"
@@ -6577,7 +6673,7 @@
              equation="A 22 READ 4 UMUL"
              mdapi_group="3D Pipe/Rasterizer/Hi-Depth Test"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Early Depth Test Fails"
@@ -6590,7 +6686,7 @@
              equation="A 23 READ 4 UMUL"
              mdapi_group="3D Pipe/Rasterizer/Early Depth Test"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Samples Killed in FS"
@@ -6603,7 +6699,7 @@
              equation="A 24 READ 4 UMUL"
              mdapi_group="3D Pipe/Fragment Shader"
              mdapi_usage_flags="Tier4 Overview Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Pixels Failing Tests"
@@ -6616,7 +6712,7 @@
              equation="A 25 READ 4 UMUL"
              mdapi_group="3D Pipe/Output Merger"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Samples Written"
@@ -6629,7 +6725,7 @@
              equation="A 26 READ 4 UMUL"
              mdapi_group="3D Pipe/Output Merger"
              mdapi_usage_flags="Tier3 Overview Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Samples Blended"
@@ -6642,7 +6738,7 @@
              equation="A 27 READ 4 UMUL"
              mdapi_group="3D Pipe/Output Merger"
              mdapi_usage_flags="Tier3 Overview Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Sampler Texels"
@@ -6682,7 +6778,7 @@
              equation="A 30 READ 64 UMUL"
              mdapi_group="L3/Data Port/SLM"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL4 OCL IO BB"
+             mdapi_supported_apis="VK OGL4 OCL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="SLM Bytes Written"
@@ -6696,7 +6792,7 @@
              equation="A 31 READ 64 UMUL"
              mdapi_group="L3/Data Port/SLM"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL4 OCL IO BB"
+             mdapi_supported_apis="VK OGL4 OCL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Shader Memory Accesses"
@@ -6722,7 +6818,7 @@
              equation="A 34 READ"
              mdapi_group="L3/Data Port/Atomics"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL4 OCL IO BB"
+             mdapi_supported_apis="VK OGL4 OCL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="L3 Shader Throughput"
@@ -6733,10 +6829,10 @@
              max_equation="$GpuCoreClocks 64 UMUL $EuSubslicesTotalCount UMUL 2 UMUL"
              units="bytes"
              semantic_type="throughput"
-             equation="A 30 READ  A 31 READ $ShaderMemoryAccesses 64 UMUL UADD UADD"
+             equation="A 30 READ  A 31 READ $ShaderMemoryAccesses UADD UADD 64 UMUL"
              mdapi_group="L3/Data Port"
              mdapi_usage_flags="Tier2 Frame Batch Draw"
-             mdapi_supported_apis="OGL4 OCL IO BB"
+             mdapi_supported_apis="VK OGL4 OCL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Shader Barrier Messages"
@@ -6841,6 +6937,21 @@
              mdapi_usage_flags="Tier3 Overview Frame Batch Draw"
              mdapi_supported_apis=""
              mdapi_hw_unit_type="subslice"
+             />
+    <counter name="SQ is full"
+             symbol_name="GTRequestQueueFull"
+             underscore_name="gt_request_queue_full"
+             description="The percentage of time when SQ is filled above a threshold (usually 48 entries)"
+             data_type="float"
+             max_equation="100"
+             units="percent"
+             semantic_type="duration"
+             equation="PERFCNT1 READ_REG 100 UMUL $GpuCoreClocks FDIV"
+             availability="true $QueryMode &amp;&amp;"
+             mdapi_group="GTI"
+             mdapi_usage_flags="Tier3 Overview System Frame Batch Draw"
+             mdapi_supported_apis="VK OGL4 OCL"
+             mdapi_hw_unit_type="gpu"
              />
     <register_config type="NOA">
         <register type="NOA" address="0x00009840" value="0x000000A0" />
@@ -6969,6 +7080,7 @@
         <register type="NOA" address="0x00009888" value="0x4F800000" />
         <register type="NOA" address="0x00009888" value="0x41800C02" />
         <register type="NOA" address="0x00009840" value="0x00000080" />
+        <register type="NOA" address="0x000091BC" value="0xE0500000" />
     </register_config>
     <register_config type="OA">
         <register type="OA" address="0x00002740" value="0x00000000" />
@@ -6999,8 +7111,8 @@
        chipset="CHV"
        symbol_name="Sampler_2"
        underscore_name="sampler_2"
-       mdapi_supported_apis="OGL OCL IO BB"
-       hw_config_guid="b996a2b7-c59c-492d-877a-8cd54fd6df84"
+       mdapi_supported_apis="VK OGL OCL IO BB"
+       hw_config_guid="883c8a56-8767-4de8-beec-a99462c6674b"
        >
     <counter name="GPU Time Elapsed"
              symbol_name="GpuTime"
@@ -7066,7 +7178,7 @@
              equation="A 1 READ"
              mdapi_group="EU Array/Vertex Shader"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="HS Threads Dispatched"
@@ -7079,7 +7191,7 @@
              equation="A 2 READ"
              mdapi_group="EU Array/Hull Shader"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL4 IO BB"
+             mdapi_supported_apis="VK OGL4 IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="DS Threads Dispatched"
@@ -7092,7 +7204,7 @@
              equation="A 3 READ"
              mdapi_group="EU Array/Domain Shader"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL4 IO BB"
+             mdapi_supported_apis="VK OGL4 IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="GS Threads Dispatched"
@@ -7105,7 +7217,7 @@
              equation="A 5 READ"
              mdapi_group="EU Array/Geometry Shader"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL4 IO BB"
+             mdapi_supported_apis="VK OGL4 IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="FS Threads Dispatched"
@@ -7118,7 +7230,7 @@
              equation="A 6 READ"
              mdapi_group="EU Array/Fragment Shader"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="CS Threads Dispatched"
@@ -7131,7 +7243,7 @@
              equation="A 4 READ"
              mdapi_group="EU Array/Compute Shader"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL4 OCL IO BB"
+             mdapi_supported_apis="VK OGL4 OCL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="EU Active"
@@ -7187,7 +7299,7 @@
              equation="A 10 READ $EuCoresTotalCount UDIV 100 UMUL $GpuCoreClocks FDIV"
              mdapi_group="EU Array/Vertex Shader"
              mdapi_usage_flags="Tier3 Overview System Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="VS FPU1 Pipe Active"
@@ -7201,7 +7313,7 @@
              equation="A 11 READ $EuCoresTotalCount UDIV 100 UMUL $GpuCoreClocks FDIV"
              mdapi_group="EU Array/Vertex Shader"
              mdapi_usage_flags="Tier3 Overview System Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="VS Send Pipe Active"
@@ -7215,7 +7327,7 @@
              equation="A 12 READ $EuCoresTotalCount UDIV 100 UMUL $GpuCoreClocks FDIV"
              mdapi_group="EU Array/Vertex Shader"
              mdapi_usage_flags="Tier3 Overview System Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="PS FPU0 Pipe Active"
@@ -7229,7 +7341,7 @@
              equation="A 15 READ $EuCoresTotalCount UDIV 100 UMUL $GpuCoreClocks FDIV"
              mdapi_group="EU Array/Pixel Shader"
              mdapi_usage_flags="Tier3 Overview System Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="PS FPU1 Pipe Active"
@@ -7243,7 +7355,7 @@
              equation="A 16 READ $EuCoresTotalCount UDIV 100 UMUL $GpuCoreClocks FDIV"
              mdapi_group="EU Array/Pixel Shader"
              mdapi_usage_flags="Tier3 Overview System Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="PS Send Pipeline Active"
@@ -7257,7 +7369,7 @@
              equation="A 17 READ $EuCoresTotalCount UDIV 100 UMUL $GpuCoreClocks FDIV"
              mdapi_group="EU Array/Pixel Shader"
              mdapi_usage_flags="Tier3 Overview System Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="FS Both FPU Active"
@@ -7271,7 +7383,7 @@
              equation="A 18 READ $EuCoresTotalCount UDIV 100 UMUL $GpuCoreClocks FDIV"
              mdapi_group="3D Pipe/Fragment Shader"
              mdapi_usage_flags="Tier4 Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Rasterized Pixels"
@@ -7284,7 +7396,7 @@
              equation="A 21 READ 4 UMUL"
              mdapi_group="3D Pipe/Rasterizer"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Early Hi-Depth Test Fails"
@@ -7297,7 +7409,7 @@
              equation="A 22 READ 4 UMUL"
              mdapi_group="3D Pipe/Rasterizer/Hi-Depth Test"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Early Depth Test Fails"
@@ -7310,7 +7422,7 @@
              equation="A 23 READ 4 UMUL"
              mdapi_group="3D Pipe/Rasterizer/Early Depth Test"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Samples Killed in FS"
@@ -7323,7 +7435,7 @@
              equation="A 24 READ 4 UMUL"
              mdapi_group="3D Pipe/Fragment Shader"
              mdapi_usage_flags="Tier4 Overview Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Pixels Failing Tests"
@@ -7336,7 +7448,7 @@
              equation="A 25 READ 4 UMUL"
              mdapi_group="3D Pipe/Output Merger"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Samples Written"
@@ -7349,7 +7461,7 @@
              equation="A 26 READ 4 UMUL"
              mdapi_group="3D Pipe/Output Merger"
              mdapi_usage_flags="Tier3 Overview Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Samples Blended"
@@ -7362,7 +7474,7 @@
              equation="A 27 READ 4 UMUL"
              mdapi_group="3D Pipe/Output Merger"
              mdapi_usage_flags="Tier3 Overview Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Sampler Texels"
@@ -7402,7 +7514,7 @@
              equation="A 30 READ 64 UMUL"
              mdapi_group="L3/Data Port/SLM"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL4 OCL IO BB"
+             mdapi_supported_apis="VK OGL4 OCL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="SLM Bytes Written"
@@ -7416,7 +7528,7 @@
              equation="A 31 READ 64 UMUL"
              mdapi_group="L3/Data Port/SLM"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL4 OCL IO BB"
+             mdapi_supported_apis="VK OGL4 OCL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Shader Memory Accesses"
@@ -7442,7 +7554,7 @@
              equation="A 34 READ"
              mdapi_group="L3/Data Port/Atomics"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL4 OCL IO BB"
+             mdapi_supported_apis="VK OGL4 OCL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="L3 Shader Throughput"
@@ -7453,10 +7565,10 @@
              max_equation="$GpuCoreClocks 64 UMUL $EuSubslicesTotalCount UMUL 2 UMUL"
              units="bytes"
              semantic_type="throughput"
-             equation="A 30 READ  A 31 READ $ShaderMemoryAccesses 64 UMUL UADD UADD"
+             equation="A 30 READ  A 31 READ $ShaderMemoryAccesses UADD UADD 64 UMUL"
              mdapi_group="L3/Data Port"
              mdapi_usage_flags="Tier2 Frame Batch Draw"
-             mdapi_supported_apis="OGL4 OCL IO BB"
+             mdapi_supported_apis="VK OGL4 OCL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Shader Barrier Messages"
@@ -7561,6 +7673,21 @@
              mdapi_usage_flags="Tier3 Overview Frame Batch Draw"
              mdapi_supported_apis=""
              mdapi_hw_unit_type="subslice"
+             />
+    <counter name="SQ is full"
+             symbol_name="GTRequestQueueFull"
+             underscore_name="gt_request_queue_full"
+             description="The percentage of time when SQ is filled above a threshold (usually 48 entries)"
+             data_type="float"
+             max_equation="100"
+             units="percent"
+             semantic_type="duration"
+             equation="PERFCNT1 READ_REG 100 UMUL $GpuCoreClocks FDIV"
+             availability="true $QueryMode &amp;&amp;"
+             mdapi_group="GTI"
+             mdapi_usage_flags="Tier3 Overview System Frame Batch Draw"
+             mdapi_supported_apis="VK OGL4 OCL"
+             mdapi_hw_unit_type="gpu"
              />
     <register_config type="NOA">
         <register type="NOA" address="0x00009840" value="0x000000A0" />
@@ -7677,6 +7804,7 @@
         <register type="NOA" address="0x00009888" value="0x4F800000" />
         <register type="NOA" address="0x00009888" value="0x41800C02" />
         <register type="NOA" address="0x00009840" value="0x00000080" />
+        <register type="NOA" address="0x000091BC" value="0xE0500000" />
     </register_config>
     <register_config type="OA">
         <register type="OA" address="0x00002740" value="0x00000000" />
@@ -7707,8 +7835,8 @@
        chipset="CHV"
        symbol_name="TDL_1"
        underscore_name="tdl_1"
-       mdapi_supported_apis="OGL OCL IO BB"
-       hw_config_guid="eb2fecba-b431-42e7-8261-fe9429a6e67a"
+       mdapi_supported_apis="VK OGL OCL IO BB"
+       hw_config_guid="eb97e523-d9ac-48a9-b7f8-9cc909ddbf14"
        >
     <counter name="GPU Time Elapsed"
              symbol_name="GpuTime"
@@ -7774,7 +7902,7 @@
              equation="A 1 READ"
              mdapi_group="EU Array/Vertex Shader"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="HS Threads Dispatched"
@@ -7787,7 +7915,7 @@
              equation="A 2 READ"
              mdapi_group="EU Array/Hull Shader"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL4 IO BB"
+             mdapi_supported_apis="VK OGL4 IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="DS Threads Dispatched"
@@ -7800,7 +7928,7 @@
              equation="A 3 READ"
              mdapi_group="EU Array/Domain Shader"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL4 IO BB"
+             mdapi_supported_apis="VK OGL4 IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="GS Threads Dispatched"
@@ -7813,7 +7941,7 @@
              equation="A 5 READ"
              mdapi_group="EU Array/Geometry Shader"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL4 IO BB"
+             mdapi_supported_apis="VK OGL4 IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="FS Threads Dispatched"
@@ -7826,7 +7954,7 @@
              equation="A 6 READ"
              mdapi_group="EU Array/Fragment Shader"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="CS Threads Dispatched"
@@ -7839,7 +7967,7 @@
              equation="A 4 READ"
              mdapi_group="EU Array/Compute Shader"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL4 OCL IO BB"
+             mdapi_supported_apis="VK OGL4 OCL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="EU Active"
@@ -7895,7 +8023,7 @@
              equation="A 10 READ $EuCoresTotalCount UDIV 100 UMUL $GpuCoreClocks FDIV"
              mdapi_group="EU Array/Vertex Shader"
              mdapi_usage_flags="Tier3 Overview System Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="VS FPU1 Pipe Active"
@@ -7909,7 +8037,7 @@
              equation="A 11 READ $EuCoresTotalCount UDIV 100 UMUL $GpuCoreClocks FDIV"
              mdapi_group="EU Array/Vertex Shader"
              mdapi_usage_flags="Tier3 Overview System Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="VS Send Pipe Active"
@@ -7923,7 +8051,7 @@
              equation="A 12 READ $EuCoresTotalCount UDIV 100 UMUL $GpuCoreClocks FDIV"
              mdapi_group="EU Array/Vertex Shader"
              mdapi_usage_flags="Tier3 Overview System Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="PS FPU0 Pipe Active"
@@ -7937,7 +8065,7 @@
              equation="A 15 READ $EuCoresTotalCount UDIV 100 UMUL $GpuCoreClocks FDIV"
              mdapi_group="EU Array/Pixel Shader"
              mdapi_usage_flags="Tier3 Overview System Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="PS FPU1 Pipe Active"
@@ -7951,7 +8079,7 @@
              equation="A 16 READ $EuCoresTotalCount UDIV 100 UMUL $GpuCoreClocks FDIV"
              mdapi_group="EU Array/Pixel Shader"
              mdapi_usage_flags="Tier3 Overview System Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="PS Send Pipeline Active"
@@ -7965,7 +8093,7 @@
              equation="A 17 READ $EuCoresTotalCount UDIV 100 UMUL $GpuCoreClocks FDIV"
              mdapi_group="EU Array/Pixel Shader"
              mdapi_usage_flags="Tier3 Overview System Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="FS Both FPU Active"
@@ -7979,7 +8107,7 @@
              equation="A 18 READ $EuCoresTotalCount UDIV 100 UMUL $GpuCoreClocks FDIV"
              mdapi_group="3D Pipe/Fragment Shader"
              mdapi_usage_flags="Tier4 Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Rasterized Pixels"
@@ -7992,7 +8120,7 @@
              equation="A 21 READ 4 UMUL"
              mdapi_group="3D Pipe/Rasterizer"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Early Hi-Depth Test Fails"
@@ -8005,7 +8133,7 @@
              equation="A 22 READ 4 UMUL"
              mdapi_group="3D Pipe/Rasterizer/Hi-Depth Test"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Early Depth Test Fails"
@@ -8018,7 +8146,7 @@
              equation="A 23 READ 4 UMUL"
              mdapi_group="3D Pipe/Rasterizer/Early Depth Test"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Samples Killed in FS"
@@ -8031,7 +8159,7 @@
              equation="A 24 READ 4 UMUL"
              mdapi_group="3D Pipe/Fragment Shader"
              mdapi_usage_flags="Tier4 Overview Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Pixels Failing Tests"
@@ -8044,7 +8172,7 @@
              equation="A 25 READ 4 UMUL"
              mdapi_group="3D Pipe/Output Merger"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Samples Written"
@@ -8057,7 +8185,7 @@
              equation="A 26 READ 4 UMUL"
              mdapi_group="3D Pipe/Output Merger"
              mdapi_usage_flags="Tier3 Overview Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Samples Blended"
@@ -8070,7 +8198,7 @@
              equation="A 27 READ 4 UMUL"
              mdapi_group="3D Pipe/Output Merger"
              mdapi_usage_flags="Tier3 Overview Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Sampler Texels"
@@ -8110,7 +8238,7 @@
              equation="A 30 READ 64 UMUL"
              mdapi_group="L3/Data Port/SLM"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL4 OCL IO BB"
+             mdapi_supported_apis="VK OGL4 OCL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="SLM Bytes Written"
@@ -8124,7 +8252,7 @@
              equation="A 31 READ 64 UMUL"
              mdapi_group="L3/Data Port/SLM"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL4 OCL IO BB"
+             mdapi_supported_apis="VK OGL4 OCL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Shader Memory Accesses"
@@ -8150,7 +8278,7 @@
              equation="A 34 READ"
              mdapi_group="L3/Data Port/Atomics"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL4 OCL IO BB"
+             mdapi_supported_apis="VK OGL4 OCL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="L3 Shader Throughput"
@@ -8161,10 +8289,10 @@
              max_equation="$GpuCoreClocks 64 UMUL $EuSubslicesTotalCount UMUL 2 UMUL"
              units="bytes"
              semantic_type="throughput"
-             equation="A 30 READ  A 31 READ $ShaderMemoryAccesses 64 UMUL UADD UADD"
+             equation="A 30 READ  A 31 READ $ShaderMemoryAccesses UADD UADD 64 UMUL"
              mdapi_group="L3/Data Port"
              mdapi_usage_flags="Tier2 Frame Batch Draw"
-             mdapi_supported_apis="OGL4 OCL IO BB"
+             mdapi_supported_apis="VK OGL4 OCL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Shader Barrier Messages"
@@ -8360,6 +8488,21 @@
              mdapi_supported_apis=""
              mdapi_hw_unit_type="subslice"
              />
+    <counter name="SQ is full"
+             symbol_name="GTRequestQueueFull"
+             underscore_name="gt_request_queue_full"
+             description="The percentage of time when SQ is filled above a threshold (usually 48 entries)"
+             data_type="float"
+             max_equation="100"
+             units="percent"
+             semantic_type="duration"
+             equation="PERFCNT1 READ_REG 100 UMUL $GpuCoreClocks FDIV"
+             availability="true $QueryMode &amp;&amp;"
+             mdapi_group="GTI"
+             mdapi_usage_flags="Tier3 Overview System Frame Batch Draw"
+             mdapi_supported_apis="VK OGL4 OCL"
+             mdapi_hw_unit_type="gpu"
+             />
     <register_config type="NOA">
         <register type="NOA" address="0x00009840" value="0x000000A0" />
         <register type="NOA" address="0x00009888" value="0x16154D60" />
@@ -8512,6 +8655,7 @@
         <register type="NOA" address="0x00009888" value="0x3F8014A4" />
         <register type="NOA" address="0x00009888" value="0x41801042" />
         <register type="NOA" address="0x00009840" value="0x00000080" />
+        <register type="NOA" address="0x000091BC" value="0xE0500000" />
     </register_config>
     <register_config type="OA">
         <register type="OA" address="0x00002740" value="0x00000000" />
@@ -8548,8 +8692,8 @@
        chipset="CHV"
        symbol_name="TDL_2"
        underscore_name="tdl_2"
-       mdapi_supported_apis="OGL OCL IO BB"
-       hw_config_guid="60749470-a648-4a4b-9f10-dbfe1e36e44d"
+       mdapi_supported_apis="VK OGL OCL IO BB"
+       hw_config_guid="dff6158e-8409-452c-be76-91c9946330bd"
        >
     <counter name="GPU Time Elapsed"
              symbol_name="GpuTime"
@@ -8615,7 +8759,7 @@
              equation="A 1 READ"
              mdapi_group="EU Array/Vertex Shader"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="HS Threads Dispatched"
@@ -8628,7 +8772,7 @@
              equation="A 2 READ"
              mdapi_group="EU Array/Hull Shader"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL4 IO BB"
+             mdapi_supported_apis="VK OGL4 IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="DS Threads Dispatched"
@@ -8641,7 +8785,7 @@
              equation="A 3 READ"
              mdapi_group="EU Array/Domain Shader"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL4 IO BB"
+             mdapi_supported_apis="VK OGL4 IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="GS Threads Dispatched"
@@ -8654,7 +8798,7 @@
              equation="A 5 READ"
              mdapi_group="EU Array/Geometry Shader"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL4 IO BB"
+             mdapi_supported_apis="VK OGL4 IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="FS Threads Dispatched"
@@ -8667,7 +8811,7 @@
              equation="A 6 READ"
              mdapi_group="EU Array/Fragment Shader"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="CS Threads Dispatched"
@@ -8680,7 +8824,7 @@
              equation="A 4 READ"
              mdapi_group="EU Array/Compute Shader"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL4 OCL IO BB"
+             mdapi_supported_apis="VK OGL4 OCL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="EU Active"
@@ -8736,7 +8880,7 @@
              equation="A 10 READ $EuCoresTotalCount UDIV 100 UMUL $GpuCoreClocks FDIV"
              mdapi_group="EU Array/Vertex Shader"
              mdapi_usage_flags="Tier3 Overview System Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="VS FPU1 Pipe Active"
@@ -8750,7 +8894,7 @@
              equation="A 11 READ $EuCoresTotalCount UDIV 100 UMUL $GpuCoreClocks FDIV"
              mdapi_group="EU Array/Vertex Shader"
              mdapi_usage_flags="Tier3 Overview System Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="VS Send Pipe Active"
@@ -8764,7 +8908,7 @@
              equation="A 12 READ $EuCoresTotalCount UDIV 100 UMUL $GpuCoreClocks FDIV"
              mdapi_group="EU Array/Vertex Shader"
              mdapi_usage_flags="Tier3 Overview System Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="PS FPU0 Pipe Active"
@@ -8778,7 +8922,7 @@
              equation="A 15 READ $EuCoresTotalCount UDIV 100 UMUL $GpuCoreClocks FDIV"
              mdapi_group="EU Array/Pixel Shader"
              mdapi_usage_flags="Tier3 Overview System Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="PS FPU1 Pipe Active"
@@ -8792,7 +8936,7 @@
              equation="A 16 READ $EuCoresTotalCount UDIV 100 UMUL $GpuCoreClocks FDIV"
              mdapi_group="EU Array/Pixel Shader"
              mdapi_usage_flags="Tier3 Overview System Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="PS Send Pipeline Active"
@@ -8806,7 +8950,7 @@
              equation="A 17 READ $EuCoresTotalCount UDIV 100 UMUL $GpuCoreClocks FDIV"
              mdapi_group="EU Array/Pixel Shader"
              mdapi_usage_flags="Tier3 Overview System Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="FS Both FPU Active"
@@ -8820,7 +8964,7 @@
              equation="A 18 READ $EuCoresTotalCount UDIV 100 UMUL $GpuCoreClocks FDIV"
              mdapi_group="3D Pipe/Fragment Shader"
              mdapi_usage_flags="Tier4 Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Rasterized Pixels"
@@ -8833,7 +8977,7 @@
              equation="A 21 READ 4 UMUL"
              mdapi_group="3D Pipe/Rasterizer"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Early Hi-Depth Test Fails"
@@ -8846,7 +8990,7 @@
              equation="A 22 READ 4 UMUL"
              mdapi_group="3D Pipe/Rasterizer/Hi-Depth Test"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Early Depth Test Fails"
@@ -8859,7 +9003,7 @@
              equation="A 23 READ 4 UMUL"
              mdapi_group="3D Pipe/Rasterizer/Early Depth Test"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Samples Killed in FS"
@@ -8872,7 +9016,7 @@
              equation="A 24 READ 4 UMUL"
              mdapi_group="3D Pipe/Fragment Shader"
              mdapi_usage_flags="Tier4 Overview Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Pixels Failing Tests"
@@ -8885,7 +9029,7 @@
              equation="A 25 READ 4 UMUL"
              mdapi_group="3D Pipe/Output Merger"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Samples Written"
@@ -8898,7 +9042,7 @@
              equation="A 26 READ 4 UMUL"
              mdapi_group="3D Pipe/Output Merger"
              mdapi_usage_flags="Tier3 Overview Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Samples Blended"
@@ -8911,7 +9055,7 @@
              equation="A 27 READ 4 UMUL"
              mdapi_group="3D Pipe/Output Merger"
              mdapi_usage_flags="Tier3 Overview Frame Batch Draw"
-             mdapi_supported_apis="OGL IO BB"
+             mdapi_supported_apis="VK OGL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Sampler Texels"
@@ -8951,7 +9095,7 @@
              equation="A 30 READ 64 UMUL"
              mdapi_group="L3/Data Port/SLM"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL4 OCL IO BB"
+             mdapi_supported_apis="VK OGL4 OCL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="SLM Bytes Written"
@@ -8965,7 +9109,7 @@
              equation="A 31 READ 64 UMUL"
              mdapi_group="L3/Data Port/SLM"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL4 OCL IO BB"
+             mdapi_supported_apis="VK OGL4 OCL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Shader Memory Accesses"
@@ -8991,7 +9135,7 @@
              equation="A 34 READ"
              mdapi_group="L3/Data Port/Atomics"
              mdapi_usage_flags="Tier3 Frame Batch Draw"
-             mdapi_supported_apis="OGL4 OCL IO BB"
+             mdapi_supported_apis="VK OGL4 OCL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="L3 Shader Throughput"
@@ -9002,10 +9146,10 @@
              max_equation="$GpuCoreClocks 64 UMUL $EuSubslicesTotalCount UMUL 2 UMUL"
              units="bytes"
              semantic_type="throughput"
-             equation="A 30 READ  A 31 READ $ShaderMemoryAccesses 64 UMUL UADD UADD"
+             equation="A 30 READ  A 31 READ $ShaderMemoryAccesses UADD UADD 64 UMUL"
              mdapi_group="L3/Data Port"
              mdapi_usage_flags="Tier2 Frame Batch Draw"
-             mdapi_supported_apis="OGL4 OCL IO BB"
+             mdapi_supported_apis="VK OGL4 OCL IO BB"
              mdapi_hw_unit_type="gpu"
              />
     <counter name="Shader Barrier Messages"
@@ -9201,6 +9345,21 @@
              mdapi_supported_apis=""
              mdapi_hw_unit_type="subslice"
              />
+    <counter name="SQ is full"
+             symbol_name="GTRequestQueueFull"
+             underscore_name="gt_request_queue_full"
+             description="The percentage of time when SQ is filled above a threshold (usually 48 entries)"
+             data_type="float"
+             max_equation="100"
+             units="percent"
+             semantic_type="duration"
+             equation="PERFCNT1 READ_REG 100 UMUL $GpuCoreClocks FDIV"
+             availability="true $QueryMode &amp;&amp;"
+             mdapi_group="GTI"
+             mdapi_usage_flags="Tier3 Overview System Frame Batch Draw"
+             mdapi_supported_apis="VK OGL4 OCL"
+             mdapi_hw_unit_type="gpu"
+             />
     <register_config type="NOA">
         <register type="NOA" address="0x00009840" value="0x000000A0" />
         <register type="NOA" address="0x00009888" value="0x16150000" />
@@ -9357,6 +9516,7 @@
         <register type="NOA" address="0x00009888" value="0x3F800002" />
         <register type="NOA" address="0x00009888" value="0x41800C62" />
         <register type="NOA" address="0x00009840" value="0x00000080" />
+        <register type="NOA" address="0x000091BC" value="0xE0500000" />
     </register_config>
     <register_config type="OA">
         <register type="OA" address="0x00002740" value="0x00000000" />
@@ -9393,7 +9553,7 @@
        chipset="CHV"
        symbol_name="TestOa"
        underscore_name="test_oa"
-       mdapi_supported_apis="OGL OCL IO BB"
+       mdapi_supported_apis="VK OGL OCL IO BB"
        hw_config_guid="4a534b07-cba3-414d-8d60-874830e883aa"
        >
     <counter name="GPU Time Elapsed"
