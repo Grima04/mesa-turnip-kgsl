@@ -639,6 +639,7 @@
     <field name="Full thread" size="1" start="13" type="bool" default="false"/>
     <field name="Reads tilebuffer" size="1" start="14" type="bool" default="false"/>
     <field name="Work register count" size="5" start="16" type="uint"/>
+    <field name="Shader modifies coverage" size="1" start="16" type="bool"/>
     <field name="Allow forward pixel to kill" size="1" start="19" type="bool" default="false"/>
     <field name="Allow forward pixel to be killed" size="1" start="20" type="bool" default="false"/>
     <field name="Pixel kill operation" size="2" start="21" type="Pixel Kill" default="Force early"/>
