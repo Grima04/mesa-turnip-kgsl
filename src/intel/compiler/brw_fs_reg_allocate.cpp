@@ -881,10 +881,12 @@ emit_spill(const fs_builder &bld, fs_reg src,
    for (unsigned i = 0; i < count / reg_size; i++) {
       fs_inst *spill_inst =
          bld.emit(SHADER_OPCODE_GEN4_SCRATCH_WRITE, bld.null_reg_f(), src);
-      src.offset += reg_size * REG_SIZE;
-      spill_inst->offset = spill_offset + i * reg_size * REG_SIZE;
+      spill_inst->offset = spill_offset;
       spill_inst->mlen = 1 + reg_size; /* header, value */
       spill_inst->base_mrf = spill_base_mrf(bld.shader);
+
+      src.offset += reg_size * REG_SIZE;
+      spill_offset += reg_size * REG_SIZE;
    }
 }
 
