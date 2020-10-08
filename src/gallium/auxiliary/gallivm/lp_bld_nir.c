@@ -329,6 +329,10 @@ static LLVMValueRef emit_b2i(struct lp_build_nir_context *bld_base,
    LLVMValueRef result = LLVMBuildAnd(builder, cast_type(bld_base, src0, nir_type_int, 32),
                                       lp_build_const_int_vec(bld_base->base.gallivm, bld_base->base.type, 1), "");
    switch (bitsize) {
+   case 8:
+      return LLVMBuildTrunc(builder, result, bld_base->int8_bld.vec_type, "");
+   case 16:
+      return LLVMBuildTrunc(builder, result, bld_base->int16_bld.vec_type, "");
    case 32:
       return result;
    case 64:
@@ -518,6 +522,12 @@ static LLVMValueRef do_alu_action(struct lp_build_nir_context *bld_base,
       break;
    case nir_op_b2f64:
       result = emit_b2f(bld_base, src[0], 64);
+      break;
+   case nir_op_b2i8:
+      result = emit_b2i(bld_base, src[0], 8);
+      break;
+   case nir_op_b2i16:
+      result = emit_b2i(bld_base, src[0], 16);
       break;
    case nir_op_b2i32:
       result = emit_b2i(bld_base, src[0], 32);
