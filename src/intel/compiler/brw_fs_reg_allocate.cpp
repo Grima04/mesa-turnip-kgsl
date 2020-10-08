@@ -440,6 +440,7 @@ public:
       node_count = 0;
       first_payload_node = 0;
       first_mrf_hack_node = 0;
+      scratch_header_node = 0;
       grf127_send_hack_node = 0;
       first_vgrf_node = 0;
       last_vgrf_node = 0;
@@ -472,6 +473,7 @@ private:
 
    void set_spill_costs();
    int choose_spill_reg();
+   fs_reg alloc_scratch_header();
    fs_reg alloc_spill_reg(unsigned size, int ip);
    void spill_reg(unsigned spill_reg);
 
@@ -496,6 +498,7 @@ private:
    int node_count;
    int first_payload_node;
    int first_mrf_hack_node;
+   int scratch_header_node;
    int grf127_send_hack_node;
    int first_vgrf_node;
    int last_vgrf_node;
@@ -504,6 +507,8 @@ private:
    int *spill_vgrf_ip;
    int spill_vgrf_ip_alloc;
    int spill_node_count;
+
+   fs_reg scratch_header;
 };
 
 /**
@@ -579,6 +584,8 @@ namespace {
    unsigned
    spill_base_mrf(const backend_shader *s)
    {
+      /* We don't use the MRF hack on Gen9+ */
+      assert(s->devinfo->gen < 9);
       return BRW_MAX_MRF(s->devinfo->gen) - spill_max_size(s) - 1;
    }
 }
@@ -609,6 +616,10 @@ fs_reg_alloc::setup_live_interference(unsigned node,
       for (int i = spill_base_mrf(fs); i < BRW_MAX_MRF(devinfo->gen); i++)
          ra_add_node_interference(g, node, first_mrf_hack_node + i);
    }
+
+   /* Everything interferes with the scratch header */
+   if (scratch_header_node >= 0)
+      ra_add_node_interference(g, node, scratch_header_node);
 
    /* Add interference with every vgrf whose live range intersects this
     * node's.  We only need to look at nodes below this one as the reflexivity
@@ -748,7 +759,7 @@ fs_reg_alloc::build_interference_graph(bool allow_spilling)
    node_count = 0;
    first_payload_node = node_count;
    node_count += payload_node_count;
-   if (devinfo->gen >= 7 && allow_spilling) {
+   if (devinfo->gen >= 7 && devinfo->gen < 9 && allow_spilling) {
       first_mrf_hack_node = node_count;
       node_count += BRW_MAX_GRF - GEN7_MRF_HACK_START;
    } else {
@@ -763,6 +774,11 @@ fs_reg_alloc::build_interference_graph(bool allow_spilling)
    first_vgrf_node = node_count;
    node_count += fs->alloc.count;
    last_vgrf_node = node_count - 1;
+   if (devinfo->gen >= 9 && allow_spilling) {
+      scratch_header_node = node_count++;
+   } else {
+      scratch_header_node = -1;
+   }
    first_spill_node = node_count;
 
    fs->calculate_payload_ranges(payload_node_count,
@@ -865,8 +881,29 @@ fs_reg_alloc::emit_unspill(const fs_builder &bld, fs_reg dst,
 
    for (unsigned i = 0; i < count / reg_size; i++) {
       fs_inst *unspill_inst;
-      if (devinfo->gen >= 7 && devinfo->gen < 9 &&
-          spill_offset < (1 << 12) * REG_SIZE) {
+      if (devinfo->gen >= 9) {
+         fs_reg header = this->scratch_header;
+         fs_builder ubld = bld.exec_all().group(1, 0);
+         assert(spill_offset % 16 == 0);
+         unspill_inst = ubld.MOV(component(header, 2),
+                                 brw_imm_ud(spill_offset / 16));
+         _mesa_set_add(spill_insts, unspill_inst);
+
+         fs_reg srcs[] = { brw_imm_ud(0), brw_imm_ud(0), header };
+         unspill_inst = bld.emit(SHADER_OPCODE_SEND, dst,
+                                 srcs, ARRAY_SIZE(srcs));
+         unspill_inst->mlen = 1;
+         unspill_inst->header_size = 1;
+         unspill_inst->size_written = reg_size * REG_SIZE;
+         unspill_inst->send_has_side_effects = false;
+         unspill_inst->send_is_volatile = true;
+         unspill_inst->sfid = GEN7_SFID_DATAPORT_DATA_CACHE;
+         unspill_inst->desc =
+            brw_dp_read_desc(devinfo, GEN8_BTI_STATELESS_NON_COHERENT,
+                             BRW_DATAPORT_OWORD_BLOCK_DWORDS(reg_size * 8),
+                             BRW_DATAPORT_READ_MESSAGE_OWORD_BLOCK_READ,
+                             BRW_DATAPORT_READ_TARGET_RENDER_CACHE);
+      } else if (devinfo->gen >= 7 && spill_offset < (1 << 12) * REG_SIZE) {
          /* The Gen7 descriptor-based offset is 12 bits of HWORD units.
           * Because the Gen7-style scratch block read is hardwired to BTI 255,
           * on Gen9+ it would cause the DC to do an IA-coherent read, what
@@ -893,16 +930,44 @@ void
 fs_reg_alloc::emit_spill(const fs_builder &bld, fs_reg src,
                          uint32_t spill_offset, unsigned count)
 {
+   const gen_device_info *devinfo = bld.shader->devinfo;
    const unsigned reg_size = src.component_size(bld.dispatch_width()) /
                              REG_SIZE;
    assert(count % reg_size == 0);
 
    for (unsigned i = 0; i < count / reg_size; i++) {
-      fs_inst *spill_inst =
-         bld.emit(SHADER_OPCODE_GEN4_SCRATCH_WRITE, bld.null_reg_f(), src);
-      spill_inst->offset = spill_offset;
-      spill_inst->mlen = 1 + reg_size; /* header, value */
-      spill_inst->base_mrf = spill_base_mrf(bld.shader);
+      fs_inst *spill_inst;
+      if (devinfo->gen >= 9) {
+         fs_reg header = this->scratch_header;
+         fs_builder ubld = bld.exec_all().group(1, 0);
+         assert(spill_offset % 16 == 0);
+         spill_inst = ubld.MOV(component(header, 2),
+                               brw_imm_ud(spill_offset / 16));
+         _mesa_set_add(spill_insts, spill_inst);
+
+         fs_reg srcs[] = { brw_imm_ud(0), brw_imm_ud(0), header, src };
+         spill_inst = bld.emit(SHADER_OPCODE_SEND, bld.null_reg_f(),
+                               srcs, ARRAY_SIZE(srcs));
+         spill_inst->mlen = 1;
+         spill_inst->ex_mlen = reg_size;
+         spill_inst->size_written = 0;
+         spill_inst->header_size = 1;
+         spill_inst->send_has_side_effects = true;
+         spill_inst->send_is_volatile = false;
+         spill_inst->sfid = GEN7_SFID_DATAPORT_DATA_CACHE;
+         spill_inst->desc =
+            brw_dp_write_desc(devinfo, GEN8_BTI_STATELESS_NON_COHERENT,
+                              BRW_DATAPORT_OWORD_BLOCK_DWORDS(reg_size * 8),
+                              GEN6_DATAPORT_WRITE_MESSAGE_OWORD_BLOCK_WRITE,
+                              0 /* not a render target */,
+                              false /* send_commit_msg */);
+      } else {
+         spill_inst = bld.emit(SHADER_OPCODE_GEN4_SCRATCH_WRITE,
+                               bld.null_reg_f(), src);
+         spill_inst->offset = spill_offset;
+         spill_inst->mlen = 1 + reg_size; /* header, value */
+         spill_inst->base_mrf = spill_base_mrf(bld.shader);
+      }
       _mesa_set_add(spill_insts, spill_inst);
 
       src.offset += reg_size * REG_SIZE;
@@ -1012,6 +1077,19 @@ fs_reg_alloc::choose_spill_reg()
 }
 
 fs_reg
+fs_reg_alloc::alloc_scratch_header()
+{
+   int vgrf = fs->alloc.allocate(1);
+   assert(first_vgrf_node + vgrf == scratch_header_node);
+   ra_set_node_class(g, scratch_header_node,
+                        compiler->fs_reg_sets[rsi].classes[0]);
+
+   setup_live_interference(scratch_header_node, 0, INT_MAX);
+
+   return fs_reg(VGRF, vgrf, BRW_REGISTER_TYPE_UD);
+}
+
+fs_reg
 fs_reg_alloc::alloc_spill_reg(unsigned size, int ip)
 {
    int vgrf = fs->alloc.allocate(size);
@@ -1058,13 +1136,22 @@ fs_reg_alloc::spill_reg(unsigned spill_reg)
     * SIMD16 mode, because we'd stomp the FB writes.
     */
    if (!fs->spilled_any_registers) {
-      bool mrf_used[BRW_MAX_MRF(devinfo->gen)];
-      get_used_mrfs(fs, mrf_used);
+      if (devinfo->gen >= 9) {
+         this->scratch_header = alloc_scratch_header();
+         fs_builder ubld = fs->bld.exec_all().group(8, 0).at(
+            fs->cfg->first_block(), fs->cfg->first_block()->start());
+         fs_inst *header_inst = ubld.emit(SHADER_OPCODE_SCRATCH_HEADER,
+                                          this->scratch_header);
+         _mesa_set_add(spill_insts, header_inst);
+      } else {
+         bool mrf_used[BRW_MAX_MRF(devinfo->gen)];
+         get_used_mrfs(fs, mrf_used);
 
-      for (int i = spill_base_mrf(fs); i < BRW_MAX_MRF(devinfo->gen); i++) {
-         if (mrf_used[i]) {
-            fs->fail("Register spilling not supported with m%d used", i);
-          return;
+         for (int i = spill_base_mrf(fs); i < BRW_MAX_MRF(devinfo->gen); i++) {
+            if (mrf_used[i]) {
+               fs->fail("Register spilling not supported with m%d used", i);
+             return;
+            }
          }
       }
 
@@ -1115,8 +1202,8 @@ fs_reg_alloc::spill_reg(unsigned spill_reg)
              * 32 bit channels.  It shouldn't hurt in any case because the
              * unspill destination is a block-local temporary.
              */
-            emit_unspill(ibld.exec_all().group(width, 0),
-                         unspill_dst, subset_spill_offset, count);
+            emit_unspill(ibld.exec_all().group(width, 0), unspill_dst,
+                         subset_spill_offset, count);
 	 }
       }
 
