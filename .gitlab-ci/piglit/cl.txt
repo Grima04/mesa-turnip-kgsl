@@ -127,7 +127,6 @@ program/execute/builtin/builtin-short-mul_hi-1.0.generated/mul_hi short2: fail
 program/execute/builtin/builtin-short-mul_hi-1.0.generated/mul_hi short4: fail
 program/execute/builtin/builtin-short-mul_hi-1.0.generated/mul_hi short8: fail
 program/execute/builtin/builtin-short-popcount-1.2.generated: skip
-program/execute/builtin/builtin-short-upsample-1.0.generated: crash
 program/execute/builtin/builtin-shuffle-half-ushort: skip
 program/execute/builtin/builtin-shuffle2-half-ushort: skip
 program/execute/builtin/builtin-uchar-mad_hi-1.0.generated/mad_hi uchar1: fail
@@ -165,7 +164,6 @@ program/execute/builtin/builtin-ushort-mul_hi-1.0.generated/mul_hi ushort2: fail
 program/execute/builtin/builtin-ushort-mul_hi-1.0.generated/mul_hi ushort4: fail
 program/execute/builtin/builtin-ushort-mul_hi-1.0.generated/mul_hi ushort8: fail
 program/execute/builtin/builtin-ushort-popcount-1.2.generated: skip
-program/execute/builtin/builtin-ushort-upsample-1.0.generated: crash
 program/execute/call-clobbers-amdgcn: skip
 program/execute/calls-large-struct: crash
 program/execute/calls-struct/regs struct: fail
@@ -176,9 +174,7 @@ program/execute/image-read-2d/read float from cl_float cl_rgba image.: fail
 program/execute/image-read-2d/read signed integer from cl_signed_int8 cl_rgba image.: fail
 program/execute/image-read-2d/read unsigned integer from cl_unsigned_int8 cl_rgba image.: fail
 program/execute/image-write-2d: crash
-program/execute/load-hi16: crash
 program/execute/load-hi16-generic: skip
-program/execute/load-lo16: crash
 program/execute/load-lo16-generic: skip
 program/execute/mad-mix: skip
 program/execute/program-tester-check-local-size-test-should-skip/this test should skip: skip
@@ -197,9 +193,9 @@ program/execute/vstore/vstore-half-private: skip
 summary:
        name:  results
        ----  --------
-       pass:     3627
+       pass:     3654
        fail:      107
-      crash:       12
+      crash:        8
        skip:       73
     timeout:        4
        warn:        0
@@ -209,4 +205,4 @@ summary:
     changes:        0
       fixes:        0
 regressions:        0
-      total:     3823
+      total:     3846

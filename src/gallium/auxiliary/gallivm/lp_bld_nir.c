@@ -398,6 +398,55 @@ merge_64bit(struct lp_build_nir_context *bld_base,
    return LLVMBuildShuffleVector(builder, input, input2, LLVMConstVector(shuffles, len), "");
 }
 
+static LLVMValueRef split_16bit(struct lp_build_nir_context *bld_base,
+                                LLVMValueRef src,
+                                bool hi)
+{
+   struct gallivm_state *gallivm = bld_base->base.gallivm;
+   LLVMValueRef shuffles[LP_MAX_VECTOR_WIDTH/32];
+   LLVMValueRef shuffles2[LP_MAX_VECTOR_WIDTH/32];
+   int len = bld_base->base.type.length * 2;
+   for (unsigned i = 0; i < bld_base->base.type.length; i++) {
+#if UTIL_ARCH_LITTLE_ENDIAN
+      shuffles[i] = lp_build_const_int32(gallivm, i * 2);
+      shuffles2[i] = lp_build_const_int32(gallivm, (i * 2) + 1);
+#else
+      shuffles[i] = lp_build_const_int32(gallivm, (i * 2) + 1);
+      shuffles2[i] = lp_build_const_int32(gallivm, (i * 2));
+#endif
+   }
+
+   src = LLVMBuildBitCast(gallivm->builder, src, LLVMVectorType(LLVMInt16TypeInContext(gallivm->context), len), "");
+   return LLVMBuildShuffleVector(gallivm->builder, src,
+                                 LLVMGetUndef(LLVMTypeOf(src)),
+                                 LLVMConstVector(hi ? shuffles2 : shuffles,
+                                                 bld_base->base.type.length),
+                                 "");
+}
+static LLVMValueRef
+merge_16bit(struct lp_build_nir_context *bld_base,
+            LLVMValueRef input,
+            LLVMValueRef input2)
+{
+   struct gallivm_state *gallivm = bld_base->base.gallivm;
+   LLVMBuilderRef builder = gallivm->builder;
+   int i;
+   LLVMValueRef shuffles[2 * (LP_MAX_VECTOR_WIDTH/32)];
+   int len = bld_base->int16_bld.type.length * 2;
+   assert(len <= (2 * (LP_MAX_VECTOR_WIDTH/32)));
+
+   for (i = 0; i < bld_base->int_bld.type.length * 2; i+=2) {
+#if UTIL_ARCH_LITTLE_ENDIAN
+      shuffles[i] = lp_build_const_int32(gallivm, i / 2);
+      shuffles[i + 1] = lp_build_const_int32(gallivm, i / 2 + bld_base->base.type.length);
+#else
+      shuffles[i] = lp_build_const_int32(gallivm, i / 2 + bld_base->base.type.length);
+      shuffles[i + 1] = lp_build_const_int32(gallivm, i / 2);
+#endif
+   }
+   return LLVMBuildShuffleVector(builder, input, input2, LLVMConstVector(shuffles, len), "");
+}
+
 static LLVMValueRef
 do_int_divide(struct lp_build_nir_context *bld_base,
               bool is_unsigned, unsigned src_bit_size,
@@ -773,6 +822,17 @@ static LLVMValueRef do_alu_action(struct lp_build_nir_context *bld_base,
       result = split_64bit(bld_base, src[0], true);
       break;
 
+   case nir_op_pack_32_2x16_split: {
+      LLVMValueRef tmp = merge_16bit(bld_base, src[0], src[1]);
+      result = LLVMBuildBitCast(builder, tmp, bld_base->base.vec_type, "");
+      break;
+   }
+   case nir_op_unpack_32_2x16_split_x:
+      result = split_16bit(bld_base, src[0], false);
+      break;
+   case nir_op_unpack_32_2x16_split_y:
+      result = split_16bit(bld_base, src[0], true);
+      break;
    case nir_op_pack_64_2x32_split: {
       LLVMValueRef tmp = merge_64bit(bld_base, src[0], src[1]);
       result = LLVMBuildBitCast(builder, tmp, bld_base->dbl_bld.vec_type, "");
