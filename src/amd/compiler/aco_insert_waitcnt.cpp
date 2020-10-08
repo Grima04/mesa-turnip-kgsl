@@ -28,7 +28,6 @@
 #include <math.h>
 
 #include "aco_ir.h"
-#include "vulkan/radv_shader.h"
 
 namespace aco {
 

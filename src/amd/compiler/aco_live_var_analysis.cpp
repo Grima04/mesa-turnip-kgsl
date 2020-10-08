@@ -33,8 +33,6 @@
 #include <set>
 #include <vector>
 
-#include "vulkan/radv_shader.h"
-
 namespace aco {
 RegisterDemand get_live_changes(aco_ptr<Instruction>& instr)
 {
