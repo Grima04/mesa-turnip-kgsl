@@ -62,7 +62,6 @@ program/execute/builtin/builtin-char-mul_hi-1.0.generated/mul_hi char2: fail
 program/execute/builtin/builtin-char-mul_hi-1.0.generated/mul_hi char4: fail
 program/execute/builtin/builtin-char-mul_hi-1.0.generated/mul_hi char8: fail
 program/execute/builtin/builtin-char-popcount-1.2.generated: skip
-program/execute/builtin/builtin-char-rotate-1.0.generated: crash
 program/execute/builtin/builtin-float-cos-1.0.generated: timeout
 program/execute/builtin/builtin-float-fmax-1.0.generated/fmax float1: fail
 program/execute/builtin/builtin-float-fmax-1.0.generated/fmax float16: fail
@@ -140,7 +139,6 @@ program/execute/builtin/builtin-uchar-mul_hi-1.0.generated/mul_hi uchar2: fail
 program/execute/builtin/builtin-uchar-mul_hi-1.0.generated/mul_hi uchar4: fail
 program/execute/builtin/builtin-uchar-mul_hi-1.0.generated/mul_hi uchar8: fail
 program/execute/builtin/builtin-uchar-popcount-1.2.generated: skip
-program/execute/builtin/builtin-uchar-rotate-1.0.generated: crash
 program/execute/builtin/builtin-uint-popcount-1.2.generated: skip
 program/execute/builtin/builtin-ulong-mad_hi-1.0.generated/mad_hi ulong1: fail
 program/execute/builtin/builtin-ulong-mad_hi-1.0.generated/mad_hi ulong16: fail
@@ -193,9 +191,9 @@ program/execute/vstore/vstore-half-private: skip
 summary:
        name:  results
        ----  --------
-       pass:     3654
+       pass:     3672
        fail:      107
-      crash:        8
+      crash:        6
        skip:       73
     timeout:        4
        warn:        0
@@ -205,4 +203,4 @@ summary:
     changes:        0
       fixes:        0
 regressions:        0
-      total:     3846
+      total:     3862
