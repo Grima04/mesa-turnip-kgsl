@@ -1485,6 +1485,28 @@ static void visit_interp(struct lp_build_nir_context *bld_base,
    bld_base->interp_at(bld_base, num_components, var, centroid, sample, const_index, indir_index, offsets, result);
 }
 
+static void visit_load_scratch(struct lp_build_nir_context *bld_base,
+                               nir_intrinsic_instr *instr,
+                               LLVMValueRef result[NIR_MAX_VEC_COMPONENTS])
+{
+   LLVMValueRef offset = get_src(bld_base, instr->src[0]);
+
+   bld_base->load_scratch(bld_base, nir_dest_num_components(instr->dest),
+                          nir_dest_bit_size(instr->dest), offset, result);
+}
+
+static void visit_store_scratch(struct lp_build_nir_context *bld_base,
+                                nir_intrinsic_instr *instr)
+{
+   LLVMValueRef val = get_src(bld_base, instr->src[0]);
+   LLVMValueRef offset = get_src(bld_base, instr->src[1]);
+   int writemask = instr->const_index[2];
+   int nc = nir_src_num_components(instr->src[0]);
+   int bitsize = nir_src_bit_size(instr->src[0]);
+   bld_base->store_scratch(bld_base, writemask, nc, bitsize, offset, val);
+}
+
+
 static void visit_intrinsic(struct lp_build_nir_context *bld_base,
                             nir_intrinsic_instr *instr)
 {
@@ -1647,6 +1669,12 @@ static void visit_intrinsic(struct lp_build_nir_context *bld_base,
    case nir_intrinsic_interp_deref_at_centroid:
    case nir_intrinsic_interp_deref_at_sample:
       visit_interp(bld_base, instr, result);
+      break;
+   case nir_intrinsic_load_scratch:
+      visit_load_scratch(bld_base, instr, result);
+      break;
+   case nir_intrinsic_store_scratch:
+      visit_store_scratch(bld_base, instr);
       break;
    default:
       fprintf(stderr, "Unsupported intrinsic: ");

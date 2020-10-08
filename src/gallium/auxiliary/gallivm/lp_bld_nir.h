@@ -147,6 +147,15 @@ struct lp_build_nir_context
                      LLVMValueRef reg_storage,
                      LLVMValueRef dst[NIR_MAX_VEC_COMPONENTS]);
 
+   void (*load_scratch)(struct lp_build_nir_context *bld_base,
+                        unsigned nc, unsigned bit_size,
+                        LLVMValueRef offset,
+                        LLVMValueRef result[NIR_MAX_VEC_COMPONENTS]);
+   void (*store_scratch)(struct lp_build_nir_context *bld_base,
+                         unsigned writemask, unsigned nc,
+                         unsigned bit_size, LLVMValueRef offset,
+                         LLVMValueRef val);
+
    void (*emit_var_decl)(struct lp_build_nir_context *bld_base,
                          nir_variable *var);
 
@@ -209,6 +218,8 @@ struct lp_build_nir_soa_context
    LLVMValueRef ssbo_sizes[LP_MAX_TGSI_SHADER_BUFFERS];
 
    LLVMValueRef shared_ptr;
+   LLVMValueRef scratch_ptr;
+   unsigned scratch_size;
 
    const struct lp_build_coro_suspend_info *coro;
 
