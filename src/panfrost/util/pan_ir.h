@@ -107,9 +107,18 @@ typedef struct {
          * (register spilling), or zero if no spilling is used */
         unsigned tls_size;
 
-        /* IN: Render target formats for output load/store lowering */
-        enum pipe_format rt_formats[8];
 } panfrost_program;
+
+struct panfrost_compile_inputs {
+        unsigned gpu_id;
+        bool is_blend;
+        struct {
+                unsigned rt;
+        } blend;
+        bool shaderdb;
+
+        enum pipe_format rt_formats[8];
+};
 
 typedef struct pan_block {
         /* Link to next block. Must be first for mir_get_block */

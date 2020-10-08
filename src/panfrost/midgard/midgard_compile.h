@@ -29,7 +29,8 @@
 #include "panfrost/util/pan_ir.h"
 
 int
-midgard_compile_shader_nir(nir_shader *nir, panfrost_program *program, bool is_blend, unsigned blend_rt, unsigned gpu_id, bool shaderdb);
+midgard_compile_shader_nir(nir_shader *nir, panfrost_program *program,
+                           const struct panfrost_compile_inputs *inputs);
 
 /* NIR options are shared between the standalone compiler and the online
  * compiler. Defining it here is the simplest, though maybe not the Right

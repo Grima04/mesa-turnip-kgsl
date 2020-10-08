@@ -2949,7 +2949,8 @@ mir_add_writeout_loops(compiler_context *ctx)
 }
 
 int
-midgard_compile_shader_nir(nir_shader *nir, panfrost_program *program, bool is_blend, unsigned blend_rt, unsigned gpu_id, bool shaderdb)
+midgard_compile_shader_nir(nir_shader *nir, panfrost_program *program,
+                           const struct panfrost_compile_inputs *inputs)
 {
         struct util_dynarray *compiled = &program->compiled;
 
@@ -2960,11 +2961,11 @@ midgard_compile_shader_nir(nir_shader *nir, panfrost_program *program, bool is_b
 
         ctx->nir = nir;
         ctx->stage = nir->info.stage;
-        ctx->is_blend = is_blend;
-        ctx->blend_rt = MIDGARD_COLOR_RT0 + blend_rt;
+        ctx->is_blend = inputs->is_blend;
+        ctx->blend_rt = MIDGARD_COLOR_RT0 + inputs->blend.rt;
         ctx->blend_input = ~0;
         ctx->blend_src1 = ~0;
-        ctx->quirks = midgard_get_quirks(gpu_id);
+        ctx->quirks = midgard_get_quirks(inputs->gpu_id);
 
         /* Start off with a safe cutoff, allowing usage of all 16 work
          * registers. Later, we'll promote uniform reads to uniform registers
@@ -2994,9 +2995,9 @@ midgard_compile_shader_nir(nir_shader *nir, panfrost_program *program, bool is_b
         NIR_PASS_V(nir, nir_lower_var_copies);
         NIR_PASS_V(nir, nir_lower_vars_to_ssa);
 
-        unsigned pan_quirks = panfrost_get_quirks(gpu_id);
+        unsigned pan_quirks = panfrost_get_quirks(inputs->gpu_id);
         NIR_PASS_V(nir, pan_lower_framebuffer,
-                   program->rt_formats, is_blend, pan_quirks);
+                   inputs->rt_formats, inputs->is_blend, pan_quirks);
 
         NIR_PASS_V(nir, nir_lower_io, nir_var_shader_in | nir_var_shader_out,
                         glsl_type_size, 0);
@@ -3005,7 +3006,7 @@ midgard_compile_shader_nir(nir_shader *nir, panfrost_program *program, bool is_b
 
         /* Optimisation passes */
 
-        optimise_nir(nir, ctx->quirks, is_blend);
+        optimise_nir(nir, ctx->quirks, inputs->is_blend);
 
         NIR_PASS_V(nir, midgard_nir_reorder_writeout);
 
@@ -3029,7 +3030,7 @@ midgard_compile_shader_nir(nir_shader *nir, panfrost_program *program, bool is_b
                 ctx->func = func;
                 ctx->already_emitted = calloc(BITSET_WORDS(func->impl->ssa_alloc), sizeof(BITSET_WORD));
 
-                if (nir->info.outputs_read && !is_blend) {
+                if (nir->info.outputs_read && !inputs->is_blend) {
                         emit_block_init(ctx);
 
                         struct midgard_instruction wait = v_branch(false, false);
@@ -3143,10 +3144,15 @@ midgard_compile_shader_nir(nir_shader *nir, panfrost_program *program, bool is_b
         program->blend_patch_offset = ctx->blend_constant_offset;
         program->tls_size = ctx->tls_size;
 
-        if ((midgard_debug & MIDGARD_DBG_SHADERS) && !nir->info.internal)
-                disassemble_midgard(stdout, program->compiled.data, program->compiled.size, gpu_id, ctx->stage);
+        if ((midgard_debug & MIDGARD_DBG_SHADERS) && !nir->info.internal) {
+                disassemble_midgard(stdout,
+                                    program->compiled.data,
+                                    program->compiled.size,
+                                    inputs->gpu_id, ctx->stage);
+        }
 
-        if ((midgard_debug & MIDGARD_DBG_SHADERDB || shaderdb) && !nir->info.internal) {
+        if ((midgard_debug & MIDGARD_DBG_SHADERDB || inputs->shaderdb) &&
+            !nir->info.internal) {
                 unsigned nr_bundles = 0, nr_ins = 0;
 
                 /* Count instructions and bundles */

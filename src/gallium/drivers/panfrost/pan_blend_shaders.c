@@ -213,11 +213,16 @@ panfrost_compile_blend_shader(
 
         /* Compile the built shader */
 
-        panfrost_program program = {
-           .rt_formats = {format}
+        panfrost_program program;
+
+        struct panfrost_compile_inputs inputs = {
+                .gpu_id = dev->gpu_id,
+                .is_blend = true,
+                .blend.rt = rt,
+                .rt_formats = {format},
         };
 
-        midgard_compile_shader_nir(shader, &program, true, rt, dev->gpu_id, false);
+        midgard_compile_shader_nir(shader, &program, &inputs);
 
         /* Allow us to patch later */
         res.patch_index = program.blend_patch_offset;

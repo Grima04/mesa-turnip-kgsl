@@ -98,7 +98,11 @@ panfrost_build_blit_shader(panfrost_program *program, unsigned gpu_id, gl_frag_r
         else
                 nir_store_var(b, c_out, nir_channel(b, &tex->dest.ssa, 0), 0xFF);
 
-        midgard_compile_shader_nir(shader, program, false, 0, gpu_id, false);
+        struct panfrost_compile_inputs inputs = {
+                .gpu_id = gpu_id,
+        };
+
+        midgard_compile_shader_nir(shader, program, &inputs);
         ralloc_free(shader);
 }
 

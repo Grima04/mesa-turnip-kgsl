@@ -28,7 +28,8 @@
 #include "util/u_dynarray.h"
 #include "panfrost/util/pan_ir.h"
 
-void bifrost_compile_shader_nir(nir_shader *nir, panfrost_program *program, unsigned product_id);
+void bifrost_compile_shader_nir(nir_shader *nir, panfrost_program *program,
+                                const struct panfrost_compile_inputs *inputs);
 
 static const nir_shader_compiler_options bifrost_nir_options = {
         .lower_scmp = true,

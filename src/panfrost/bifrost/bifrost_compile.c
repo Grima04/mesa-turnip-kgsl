@@ -1321,14 +1321,15 @@ bi_optimize_nir(nir_shader *nir)
 }
 
 void
-bifrost_compile_shader_nir(nir_shader *nir, panfrost_program *program, unsigned product_id)
+bifrost_compile_shader_nir(nir_shader *nir, panfrost_program *program,
+                           const struct panfrost_compile_inputs *inputs)
 {
         bifrost_debug = debug_get_option_bifrost_debug();
 
         bi_context *ctx = rzalloc(NULL, bi_context);
         ctx->nir = nir;
         ctx->stage = nir->info.stage;
-        ctx->quirks = bifrost_get_quirks(product_id);
+        ctx->quirks = bifrost_get_quirks(inputs->gpu_id);
         list_inithead(&ctx->blocks);
 
         /* Lower gl_Position pre-optimisation, but after lowering vars to ssa
