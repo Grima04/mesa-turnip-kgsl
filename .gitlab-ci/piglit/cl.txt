@@ -179,7 +179,6 @@ program/execute/builtin/builtin-ushort-mul_hi-1.0.generated/mul_hi ushort8: fail
 program/execute/builtin/builtin-ushort-popcount-1.2.generated: skip
 program/execute/builtin/builtin-ushort-upsample-1.0.generated: crash
 program/execute/call-clobbers-amdgcn: skip
-program/execute/calls: crash
 program/execute/calls-large-struct: crash
 program/execute/calls-struct: crash
 program/execute/gegl-rgb-gamma-u8-to-ragabaf: crash
@@ -246,9 +245,9 @@ program/execute/vstore/vstorea_half-float-private: crash
 summary:
        name:  results
        ----  --------
-       pass:     2964
+       pass:     2967
        fail:       99
-      crash:       66
+      crash:       65
        skip:       79
     timeout:        1
        warn:        0
@@ -258,4 +257,4 @@ summary:
     changes:        0
       fixes:        0
 regressions:        0
-      total:     3209
+      total:     3211

@@ -513,14 +513,15 @@ validate_deref_instr(nir_deref_instr *instr, validate_state *state)
     */
    validate_assert(state, list_is_empty(&instr->dest.ssa.if_uses));
 
-   /* Only certain modes can be used as sources for phi instructions. */
+   /* Certain modes cannot be used as sources for phi instructions because
+    * way too many passes assume that they can always chase deref chains.
+    */
    nir_foreach_use(use, &instr->dest.ssa) {
       if (use->parent_instr->type == nir_instr_type_phi) {
-         validate_assert(state, instr->mode == nir_var_mem_ubo ||
-                                instr->mode == nir_var_mem_ssbo ||
-                                instr->mode == nir_var_mem_shared ||
-                                instr->mode == nir_var_mem_global ||
-                                instr->mode == nir_var_mem_constant);
+         validate_assert(state, instr->mode != nir_var_shader_in &&
+                                instr->mode != nir_var_shader_out &&
+                                instr->mode != nir_var_shader_out &&
+                                instr->mode != nir_var_uniform);
       }
    }
 }
