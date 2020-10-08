@@ -434,6 +434,7 @@ public:
       first_mrf_hack_node = 0;
       grf127_send_hack_node = 0;
       first_vgrf_node = 0;
+      last_vgrf_node = 0;
       first_spill_node = 0;
 
       spill_vgrf_ip = NULL;
@@ -481,6 +482,7 @@ private:
    int first_mrf_hack_node;
    int grf127_send_hack_node;
    int first_vgrf_node;
+   int last_vgrf_node;
    int first_spill_node;
 
    int *spill_vgrf_ip;
@@ -597,7 +599,7 @@ fs_reg_alloc::setup_live_interference(unsigned node,
     * of interference will take care of the rest.
     */
    for (unsigned n2 = first_vgrf_node;
-        n2 < (unsigned)first_spill_node && n2 < node; n2++) {
+        n2 <= (unsigned)last_vgrf_node && n2 < node; n2++) {
       unsigned vgrf = n2 - first_vgrf_node;
       if (!(node_end_ip <= live.vgrf_start[vgrf] ||
             live.vgrf_end[vgrf] <= node_start_ip))
@@ -744,6 +746,7 @@ fs_reg_alloc::build_interference_graph(bool allow_spilling)
    }
    first_vgrf_node = node_count;
    node_count += fs->alloc.count;
+   last_vgrf_node = node_count - 1;
    first_spill_node = node_count;
 
    fs->calculate_payload_ranges(payload_node_count,
