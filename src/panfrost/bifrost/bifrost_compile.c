@@ -1101,6 +1101,38 @@ bi_emit_lod_88(bi_context *ctx, unsigned lod, bool fp16)
         return mkvec.dest;
 }
 
+/* Map to the main texture op used. Some of these (txd in particular) will
+ * lower to multiple texture ops with different opcodes (GRDESC_DER + TEX in
+ * sequence). We assume that lowering is handled elsewhere.
+ */
+
+static enum bifrost_tex_op
+bi_tex_op(nir_texop op)
+{
+        switch (op) {
+        case nir_texop_tex:
+        case nir_texop_txb:
+        case nir_texop_txl:
+        case nir_texop_txd:
+        case nir_texop_tex_prefetch:
+                return BIFROST_TEX_OP_TEX;
+        case nir_texop_txf:
+        case nir_texop_txf_ms:
+        case nir_texop_txf_ms_fb:
+        case nir_texop_txf_ms_mcs:
+        case nir_texop_tg4:
+                return BIFROST_TEX_OP_FETCH;
+        case nir_texop_txs:
+        case nir_texop_lod:
+        case nir_texop_query_levels:
+        case nir_texop_texture_samples:
+        case nir_texop_samples_identical:
+                unreachable("should've been lowered");
+        default:
+                unreachable("unsupported tex op");
+        }
+}
+
 /* Data registers required by texturing in the order they appear. All are
  * optional, the texture operation descriptor determines which are present.
  * Note since 3D arrays are not permitted at an API level, Z_COORD and
@@ -1152,7 +1184,7 @@ emit_texc(bi_context *ctx, nir_tex_instr *instr)
                 .sampler_index_or_mode = instr->sampler_index,
                 .index = instr->texture_index,
                 .immediate_indices = 1, /* TODO */
-                .op = BIFROST_TEX_OP_TEX, /* TODO */
+                .op = bi_tex_op(instr->op),
                 .offset_or_bias_disable = false, /* TODO */
                 .shadow_or_clamp_disable = instr->is_shadow,
                 .array = false, /* TODO */
