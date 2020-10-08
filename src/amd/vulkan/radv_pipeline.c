@@ -2902,6 +2902,77 @@ void radv_stop_feedback(VkPipelineCreationFeedbackEXT *feedback, bool cache_hit)
 	                   (cache_hit ? VK_PIPELINE_CREATION_FEEDBACK_APPLICATION_PIPELINE_CACHE_HIT_BIT_EXT : 0);
 }
 
+static bool
+mem_vectorize_callback(unsigned align_mul, unsigned align_offset,
+                       unsigned bit_size,
+                       unsigned num_components,
+                       nir_intrinsic_instr *low, nir_intrinsic_instr *high)
+{
+	if (num_components > 4)
+		return false;
+
+	/* >128 bit loads are split except with SMEM */
+	if (bit_size * num_components > 128)
+		return false;
+
+	uint32_t align;
+	if (align_offset)
+		align = 1 << (ffs(align_offset) - 1);
+	else
+		align = align_mul;
+
+	switch (low->intrinsic) {
+	case nir_intrinsic_load_global:
+	case nir_intrinsic_store_global:
+	case nir_intrinsic_store_ssbo:
+	case nir_intrinsic_load_ssbo:
+	case nir_intrinsic_load_ubo:
+	case nir_intrinsic_load_push_constant:
+		return align % (bit_size == 8 ? 2 : 4) == 0;
+	case nir_intrinsic_load_deref:
+	case nir_intrinsic_store_deref:
+		assert(nir_src_as_deref(low->src[0])->mode == nir_var_mem_shared);
+		/* fallthrough */
+	case nir_intrinsic_load_shared:
+	case nir_intrinsic_store_shared:
+		if (bit_size * num_components > 64) /* 96 and 128 bit loads require 128 bit alignment and are split otherwise */
+			return align % 16 == 0;
+		else
+			return align % (bit_size == 8 ? 2 : 4) == 0;
+	default:
+		return false;
+	}
+	return false;
+}
+
+static unsigned
+lower_bit_size_callback(const nir_alu_instr *alu, void *_)
+{
+	if (nir_op_is_vec(alu->op))
+		return 0;
+
+	unsigned bit_size = alu->dest.dest.ssa.bit_size;
+	if (nir_alu_instr_is_comparison(alu))
+		bit_size = nir_src_bit_size(alu->src[0].src);
+
+	if (bit_size >= 32 || bit_size == 1)
+		return 0;
+
+	if (alu->op == nir_op_bcsel)
+		return 0;
+
+	const nir_op_info *info = &nir_op_infos[alu->op];
+
+	if (info->is_conversion)
+		return 0;
+
+	bool is_integer = info->output_type & (nir_type_uint | nir_type_int);
+	for (unsigned i = 0; is_integer && (i < info->num_inputs); i++)
+		is_integer = info->input_types[i] & (nir_type_uint | nir_type_int);
+
+	return is_integer ? 32 : 0;
+}
+
 VkResult radv_create_shaders(struct radv_pipeline *pipeline,
                              struct radv_device *device,
                              struct radv_pipeline_cache *cache,
@@ -3029,6 +3100,80 @@ VkResult radv_create_shaders(struct radv_pipeline *pipeline,
 			NIR_PASS_V(nir[i], nir_lower_memory_model);
 
 			radv_lower_io(device, nir[i]);
+
+			bool lower_to_scalar = false;
+			bool lower_pack = false;
+			nir_variable_mode robust_modes = (nir_variable_mode)0;
+
+			if (device->robust_buffer_access) {
+				robust_modes = nir_var_mem_ubo |
+					       nir_var_mem_ssbo |
+					       nir_var_mem_global |
+					       nir_var_mem_push_const;
+			}
+
+			if (nir_opt_load_store_vectorize(nir[i],
+							 nir_var_mem_ssbo | nir_var_mem_ubo |
+							 nir_var_mem_push_const | nir_var_mem_shared |
+							 nir_var_mem_global,
+							 mem_vectorize_callback, robust_modes)) {
+				lower_to_scalar = true;
+				lower_pack = true;
+			}
+
+			lower_to_scalar |= nir_opt_shrink_vectors(nir[i]);
+
+			if (lower_to_scalar)
+				nir_lower_alu_to_scalar(nir[i], NULL, NULL);
+			if (lower_pack)
+				nir_lower_pack(nir[i]);
+
+			/* lower ALU operations */
+			/* TODO: Some 64-bit tests crash inside LLVM. */
+			if (!radv_use_llvm_for_stage(device, i))
+				nir_lower_int64(nir[i]);
+
+			if (nir_lower_bit_size(nir[i], lower_bit_size_callback, NULL))
+				nir_copy_prop(nir[i]); /* allow nir_opt_idiv_const() to optimize lowered divisions */
+
+			/* TODO: Implement nir_op_uadd_sat with LLVM. */
+			if (!radv_use_llvm_for_stage(device, i))
+				nir_opt_idiv_const(nir[i], 32);
+			nir_lower_idiv(nir[i], nir_lower_idiv_precise);
+
+			/* optimize the lowered ALU operations */
+			bool more_algebraic = true;
+			while (more_algebraic) {
+				more_algebraic = false;
+				NIR_PASS_V(nir[i], nir_copy_prop);
+				NIR_PASS_V(nir[i], nir_opt_dce);
+				NIR_PASS_V(nir[i], nir_opt_constant_folding);
+				NIR_PASS(more_algebraic, nir[i], nir_opt_algebraic);
+			}
+
+			/* Do late algebraic optimization to turn add(a,
+			 * neg(b)) back into subs, then the mandatory cleanup
+			 * after algebraic.  Note that it may produce fnegs,
+			 * and if so then we need to keep running to squash
+			 * fneg(fneg(a)).
+			 */
+			bool more_late_algebraic = true;
+			while (more_late_algebraic) {
+				more_late_algebraic = false;
+				NIR_PASS(more_late_algebraic, nir[i], nir_opt_algebraic_late);
+				NIR_PASS_V(nir[i], nir_opt_constant_folding);
+				NIR_PASS_V(nir[i], nir_copy_prop);
+				NIR_PASS_V(nir[i], nir_opt_dce);
+				NIR_PASS_V(nir[i], nir_opt_cse);
+			}
+
+			/* cleanup passes */
+			nir_lower_load_const_to_scalar(nir[i]);
+			nir_move_options move_opts = (nir_move_options)(
+				nir_move_const_undef | nir_move_load_ubo | nir_move_load_input |
+				nir_move_comparisons | nir_move_copies);
+			nir_opt_sink(nir[i], move_opts);
+			nir_opt_move(nir[i], move_opts);
 		}
 	}
 
