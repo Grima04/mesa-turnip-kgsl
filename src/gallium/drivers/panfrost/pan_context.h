@@ -179,6 +179,7 @@ struct panfrost_context {
         unsigned min_samples;
 
         struct panfrost_blend_state *blit_blend;
+        struct hash_table *blend_shaders;
 };
 
 /* Corresponds to the CSO */

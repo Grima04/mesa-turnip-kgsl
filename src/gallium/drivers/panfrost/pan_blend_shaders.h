@@ -34,8 +34,7 @@
 struct panfrost_blend_shader *
 panfrost_create_blend_shader(struct panfrost_context *ctx,
                              struct panfrost_blend_state *state,
-                             enum pipe_format format,
-                             unsigned rt);
+                             const struct panfrost_blend_shader_key *key);
 
 void
 panfrost_compile_blend_shader(struct panfrost_blend_shader *shader,

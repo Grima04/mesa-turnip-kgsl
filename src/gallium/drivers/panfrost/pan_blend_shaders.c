@@ -132,23 +132,21 @@ nir_iclamp(nir_builder *b, nir_ssa_def *v, int32_t lo, int32_t hi)
 struct panfrost_blend_shader *
 panfrost_create_blend_shader(struct panfrost_context *ctx,
                              struct panfrost_blend_state *state,
-                             enum pipe_format format,
-                             unsigned rt)
+                             const struct panfrost_blend_shader_key *key)
 {
-        struct panfrost_blend_shader *res = rzalloc(state, struct panfrost_blend_shader);
+        struct panfrost_blend_shader *res = rzalloc(ctx, struct panfrost_blend_shader);
 
         res->ctx = ctx;
-        res->rt = rt;
-        res->format = format;
+        res->key = *key;
 
         /* Build the shader */
 
-        nir_shader *shader = nir_shader_create(state, MESA_SHADER_FRAGMENT, &midgard_nir_options, NULL);
+        nir_shader *shader = nir_shader_create(ctx, MESA_SHADER_FRAGMENT, &midgard_nir_options, NULL);
         nir_function *fn = nir_function_create(shader, "main");
         nir_function_impl *impl = nir_function_impl_create(fn);
 
         const struct util_format_description *format_desc =
-                util_format_description(format);
+                util_format_description(key->format);
 
         nir_alu_type T = pan_unpacked_type_for_format(format_desc);
         enum glsl_base_type g =
@@ -201,8 +199,8 @@ panfrost_create_blend_shader(struct panfrost_context *ctx,
         /* Build a trivial blend shader */
         nir_store_var(b, c_out, s_src[0], 0xFF);
 
-        nir_lower_blend_options options = nir_make_options(&state->base, rt);
-        options.format = format;
+        nir_lower_blend_options options = nir_make_options(&state->base, key->rt);
+        options.format = key->format;
         options.src1 = s_src[1];
 
         if (T == nir_type_float16)
@@ -235,8 +233,8 @@ panfrost_compile_blend_shader(struct panfrost_blend_shader *shader,
         struct panfrost_compile_inputs inputs = {
                 .gpu_id = dev->gpu_id,
                 .is_blend = true,
-                .blend.rt = shader->rt,
-                .rt_formats = {shader->format},
+                .blend.rt = shader->key.rt,
+                .rt_formats = {shader->key.format},
         };
 
         if (constants)

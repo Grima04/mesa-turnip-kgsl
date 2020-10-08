@@ -77,16 +77,30 @@ panfrost_get_blend_shader(struct panfrost_context *ctx,
         assert(fmt != 0);
 
         /* Check the cache. Key by the RT and format */
-        struct hash_table_u64 *shaders = blend->rt[rt].shaders;
-        unsigned key = (fmt << 4) | ((constants != NULL) << 3) | rt;
+        struct hash_table *shaders = ctx->blend_shaders;
+        struct panfrost_blend_shader_key key = {
+                .rt = rt,
+                .format = fmt,
+                .has_constants = constants != NULL,
+                .logicop_enable = blend->base.logicop_enable,
+        };
 
-        struct panfrost_blend_shader *shader =
-                _mesa_hash_table_u64_search(shaders, key);
+        if (blend->base.logicop_enable) {
+                key.logicop_func = blend->base.logicop_func;
+        } else {
+                unsigned idx = blend->base.independent_blend_enable ? rt : 0;
+
+                if (blend->base.rt[idx].blend_enable)
+                        key.equation = blend->base.rt[idx];
+        }
+
+        struct hash_entry *he = _mesa_hash_table_search(shaders, &key);
+        struct panfrost_blend_shader *shader = he ? he->data : NULL;
 
         if (!shader) {
                 /* Cache miss. Build one instead, cache it, and go */
-                shader = panfrost_create_blend_shader(ctx, blend, fmt, rt);
-                _mesa_hash_table_u64_insert(shaders, key, shader);
+                shader = panfrost_create_blend_shader(ctx, blend, &key);
+                _mesa_hash_table_insert(shaders, &shader->key, shader);
         }
 
         panfrost_compile_blend_shader(shader, constants);
@@ -114,7 +128,6 @@ panfrost_create_blend_state(struct pipe_context *pipe,
                 struct pipe_rt_blend_state pipe = blend->rt[g];
 
                 struct panfrost_blend_rt *rt = &so->rt[c];
-                rt->shaders = _mesa_hash_table_u64_create(so);
 
                 /* Logic ops are always shader */
                 if (blend->logicop_enable) {
