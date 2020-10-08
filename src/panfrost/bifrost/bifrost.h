@@ -134,7 +134,9 @@ struct bifrost_header {
         unsigned zero2 : 1;
 
         /* Terminate discarded threads, rather than continuing execution. Set
-         * for fragment shaders for standard GL behaviour of DISCARD. */
+         * for fragment shaders for standard GL behaviour of DISCARD. Also in a
+         * fragment shader, this disables helper invocations, so cannot be used
+         * in a shader that requires derivatives or texture LOD computation */
         unsigned terminate_discarded_threads : 1;
 
         /* If set, the hardware may prefetch the next clause. If false, the

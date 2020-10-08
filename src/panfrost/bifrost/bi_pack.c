@@ -36,7 +36,7 @@
  * bits on the wire (as well as fixup branches) */
 
 static uint64_t
-bi_pack_header(bi_clause *clause, bi_clause *next_1, bi_clause *next_2, bool is_fragment)
+bi_pack_header(bi_clause *clause, bi_clause *next_1, bi_clause *next_2, bool tdd)
 {
         /* next_dependencies are the union of the dependencies of successors'
          * dependencies */
@@ -48,7 +48,7 @@ bi_pack_header(bi_clause *clause, bi_clause *next_1, bi_clause *next_2, bool is_
                 .flow_control =
                         (next_1 == NULL) ? BIFROST_FLOW_END :
                         clause->flow_control,
-                .terminate_discarded_threads = is_fragment,
+                .terminate_discarded_threads = tdd,
                 .next_clause_prefetch = clause->next_clause_prefetch,
                 .staging_barrier = clause->staging_barrier,
                 .staging_register = clause->staging_register,
@@ -992,20 +992,18 @@ bi_pack_constants(bi_context *ctx, bi_clause *clause,
 static void
 bi_pack_clause(bi_context *ctx, bi_clause *clause,
                 bi_clause *next_1, bi_clause *next_2,
-                struct util_dynarray *emission, gl_shader_stage stage)
+                struct util_dynarray *emission, gl_shader_stage stage,
+                bool tdd)
 {
         struct bi_packed_bundle ins_1 = bi_pack_bundle(clause, clause->bundles[0], clause->bundles[0], true, stage);
         assert(clause->bundle_count == 1);
-
-        /* Used to decide if we elide writes */
-        bool is_fragment = ctx->stage == MESA_SHADER_FRAGMENT;
 
         /* State for packing constants throughout */
         unsigned constant_index = 0;
 
         struct bifrost_fmt1 quad_1 = {
                 .tag = clause->constant_count ? BIFROST_FMT1_CONSTANTS : BIFROST_FMT1_FINAL,
-                .header = bi_pack_header(clause, next_1, next_2, is_fragment),
+                .header = bi_pack_header(clause, next_1, next_2, tdd),
                 .ins_1 = ins_1.lo,
                 .ins_2 = ins_1.hi & ((1 << 11) - 1),
                 .ins_0 = (ins_1.hi >> 11) & 0b111,
@@ -1045,9 +1043,25 @@ bi_next_clause(bi_context *ctx, pan_block *block, bi_clause *clause)
         return NULL;
 }
 
+/* We should terminate discarded threads if there may be discarded threads (a
+ * fragment shader) and helper invocations are not used. Further logic may be
+ * required for future discard/demote differentiation
+ */
+
+static bool
+bi_terminate_discarded_threads(bi_context *ctx)
+{
+        if (ctx->stage == MESA_SHADER_FRAGMENT)
+                return !ctx->nir->info.fs.needs_helper_invocations;
+        else
+                return false;
+}
+
 void
 bi_pack(bi_context *ctx, struct util_dynarray *emission)
 {
+        bool tdd = bi_terminate_discarded_threads(ctx);
+
         util_dynarray_init(emission, NULL);
 
         bi_foreach_block(ctx, _block) {
@@ -1065,7 +1079,7 @@ bi_pack(bi_context *ctx, struct util_dynarray *emission)
                         bi_clause *next = bi_next_clause(ctx, _block, clause);
                         bi_clause *next_2 = is_last ? succ_clause : NULL;
 
-                        bi_pack_clause(ctx, clause, next, next_2, emission, ctx->stage);
+                        bi_pack_clause(ctx, clause, next, next_2, emission, ctx->stage, tdd);
                 }
         }
 }
