@@ -649,7 +649,9 @@ void init_context(isel_context *ctx, nir_shader *shader)
       nir_print_shader(shader, stderr);
    }
 
-   std::unique_ptr<Temp[]> allocated{new Temp[impl->ssa_alloc]()};
+   ctx->first_temp_id = ctx->program->peekAllocationId();
+   ctx->program->allocateRange(impl->ssa_alloc);
+   RegClass *regclasses = ctx->program->temp_rc.data() + ctx->first_temp_id;
 
    unsigned spi_ps_inputs = 0;
 
@@ -736,21 +738,21 @@ void init_context(isel_context *ctx, nir_shader *shader)
                      /* fallthrough */
                   default:
                      for (unsigned i = 0; i < nir_op_infos[alu_instr->op].num_inputs; i++) {
-                        if (allocated[alu_instr->src[i].src.ssa->index].type() == RegType::vgpr)
+                        if (regclasses[alu_instr->src[i].src.ssa->index].type() == RegType::vgpr)
                            type = RegType::vgpr;
                      }
                      break;
                }
 
                RegClass rc = get_reg_class(ctx, type, alu_instr->dest.dest.ssa.num_components, alu_instr->dest.dest.ssa.bit_size);
-               allocated[alu_instr->dest.dest.ssa.index] = Temp(0, rc);
+               regclasses[alu_instr->dest.dest.ssa.index] = rc;
                break;
             }
             case nir_instr_type_load_const: {
                unsigned num_components = nir_instr_as_load_const(instr)->def.num_components;
                unsigned bit_size = nir_instr_as_load_const(instr)->def.bit_size;
                RegClass rc = get_reg_class(ctx, RegType::sgpr, num_components, bit_size);
-               allocated[nir_instr_as_load_const(instr)->def.index] = Temp(0, rc);
+               regclasses[nir_instr_as_load_const(instr)->def.index] = rc;
                break;
             }
             case nir_instr_type_intrinsic: {
@@ -870,13 +872,13 @@ void init_context(isel_context *ctx, nir_shader *shader)
                      break;
                   default:
                      for (unsigned i = 0; i < nir_intrinsic_infos[intrinsic->intrinsic].num_srcs; i++) {
-                        if (allocated[intrinsic->src[i].ssa->index].type() == RegType::vgpr)
+                        if (regclasses[intrinsic->src[i].ssa->index].type() == RegType::vgpr)
                            type = RegType::vgpr;
                      }
                      break;
                }
                RegClass rc = get_reg_class(ctx, type, intrinsic->dest.ssa.num_components, intrinsic->dest.ssa.bit_size);
-               allocated[intrinsic->dest.ssa.index] = Temp(0, rc);
+               regclasses[intrinsic->dest.ssa.index] = rc;
 
                switch(intrinsic->intrinsic) {
                   case nir_intrinsic_load_barycentric_sample:
@@ -926,12 +928,12 @@ void init_context(isel_context *ctx, nir_shader *shader)
 
                RegClass rc = get_reg_class(ctx, type, tex->dest.ssa.num_components,
                                            tex->dest.ssa.bit_size);
-               allocated[tex->dest.ssa.index] = Temp(0, rc);
+               regclasses[tex->dest.ssa.index] = rc;
                break;
             }
             case nir_instr_type_parallel_copy: {
                nir_foreach_parallel_copy_entry(entry, nir_instr_as_parallel_copy(instr)) {
-                  allocated[entry->dest.ssa.index] = allocated[entry->src.ssa->index];
+                  regclasses[entry->dest.ssa.index] = regclasses[entry->src.ssa->index];
                }
                break;
             }
@@ -939,7 +941,7 @@ void init_context(isel_context *ctx, nir_shader *shader)
                unsigned num_components = nir_instr_as_ssa_undef(instr)->def.num_components;
                unsigned bit_size = nir_instr_as_ssa_undef(instr)->def.bit_size;
                RegClass rc = get_reg_class(ctx, RegType::sgpr, num_components, bit_size);
-               allocated[nir_instr_as_ssa_undef(instr)->def.index] = Temp(0, rc);
+               regclasses[nir_instr_as_ssa_undef(instr)->def.index] = rc;
                break;
             }
             case nir_instr_type_phi: {
@@ -951,7 +953,7 @@ void init_context(isel_context *ctx, nir_shader *shader)
                   assert(size == 1 && "multiple components not yet supported on boolean phis.");
                   type = RegType::sgpr;
                   size *= lane_mask_size;
-                  allocated[phi->dest.ssa.index] = Temp(0, RegClass(type, size));
+                  regclasses[phi->dest.ssa.index] = RegClass(type, size);
                   break;
                }
 
@@ -960,21 +962,21 @@ void init_context(isel_context *ctx, nir_shader *shader)
                } else {
                   type = RegType::sgpr;
                   nir_foreach_phi_src (src, phi) {
-                     if (allocated[src->src.ssa->index].type() == RegType::vgpr)
+                     if (regclasses[src->src.ssa->index].type() == RegType::vgpr)
                         type = RegType::vgpr;
-                     if (allocated[src->src.ssa->index].type() == RegType::none)
+                     if (regclasses[src->src.ssa->index].type() == RegType::none)
                         done = false;
                   }
                }
 
                RegClass rc = get_reg_class(ctx, type, phi->dest.ssa.num_components, phi->dest.ssa.bit_size);
-               if (rc != allocated[phi->dest.ssa.index].regClass()) {
+               if (rc != regclasses[phi->dest.ssa.index]) {
                   done = false;
                } else {
                   nir_foreach_phi_src(src, phi)
-                     assert(allocated[src->src.ssa->index].size() == rc.size());
+                     assert(regclasses[src->src.ssa->index].size() == rc.size());
                }
-               allocated[phi->dest.ssa.index] = Temp(0, rc);
+               regclasses[phi->dest.ssa.index] = rc;
                break;
             }
             default:
@@ -997,10 +999,6 @@ void init_context(isel_context *ctx, nir_shader *shader)
    ctx->program->config->spi_ps_input_ena = spi_ps_inputs;
    ctx->program->config->spi_ps_input_addr = spi_ps_inputs;
 
-   for (unsigned i = 0; i < impl->ssa_alloc; i++)
-      allocated[i] = ctx->program->allocateTmp(allocated[i].regClass());
-
-   ctx->allocated.reset(allocated.release());
    ctx->cf_info.nir_to_aco.reset(nir_to_aco.release());
 
    /* align and copy constant data */

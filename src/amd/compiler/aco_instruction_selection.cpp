@@ -121,8 +121,8 @@ static void append_logical_end(Block *b)
 
 Temp get_ssa_temp(struct isel_context *ctx, nir_ssa_def *def)
 {
-   assert(ctx->allocated[def->index].id());
-   return ctx->allocated[def->index];
+   uint32_t id = ctx->first_temp_id + def->index;
+   return Temp(id, ctx->program->temp_rc[id]);
 }
 
 Temp emit_mbcnt(isel_context *ctx, Temp dst, Operand mask = Operand(), Operand base = Operand(0u))
@@ -923,8 +923,8 @@ void emit_comparison(isel_context *ctx, nir_alu_instr *instr, Temp dst,
    aco_opcode v_op = instr->src[0].src.ssa->bit_size == 64 ? v64_op : instr->src[0].src.ssa->bit_size == 32 ? v32_op : v16_op;
    bool use_valu = s_op == aco_opcode::num_opcodes ||
                    nir_dest_is_divergent(instr->dest.dest) ||
-                   ctx->allocated[instr->src[0].src.ssa->index].type() == RegType::vgpr ||
-                   ctx->allocated[instr->src[1].src.ssa->index].type() == RegType::vgpr;
+                   get_ssa_temp(ctx, instr->src[0].src.ssa).type() == RegType::vgpr ||
+                   get_ssa_temp(ctx, instr->src[1].src.ssa).type() == RegType::vgpr;
    aco_opcode op = use_valu ? v_op : s_op;
    assert(op != aco_opcode::num_opcodes);
    assert(dst.regClass() == ctx->program->lane_mask);

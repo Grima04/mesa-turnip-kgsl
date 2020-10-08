@@ -1669,6 +1669,13 @@ public:
       return allocationID++;
    }
 
+   void allocateRange(unsigned amount)
+   {
+      assert(allocationID + amount <= 16777216);
+      temp_rc.resize(temp_rc.size() + amount);
+      allocationID += amount;
+   }
+
    Temp allocateTmp(RegClass rc)
    {
       return Temp(allocateId(rc), rc);
@@ -1677,11 +1684,6 @@ public:
    uint32_t peekAllocationId()
    {
       return allocationID;
-   }
-
-   void setAllocationId(uint32_t id)
-   {
-      allocationID = id;
    }
 
    Block* create_and_insert_block() {

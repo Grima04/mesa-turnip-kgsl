@@ -59,7 +59,7 @@ struct isel_context {
    nir_shader *shader;
    uint32_t constant_data_offset;
    Block *block;
-   std::unique_ptr<Temp[]> allocated;
+   uint32_t first_temp_id;
    std::unordered_map<unsigned, std::array<Temp,NIR_MAX_VEC_COMPONENTS>> allocated_vec;
    Stage stage;
    bool has_gfx10_wave64_bpermute = false;
