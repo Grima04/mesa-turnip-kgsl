@@ -358,7 +358,6 @@ program/execute/vload/vload-ulong-private: fail
 program/execute/vload/vload-ushort-global: fail
 program/execute/vload/vload-ushort-local: fail
 program/execute/vload/vload-ushort-private: fail
-program/execute/vload/vload_half-float-local: crash
 program/execute/vload/vload_half-float-private: crash
 program/execute/vload/vloada_half-float-private: crash
 program/execute/vstore/vstore-char-global: fail
@@ -405,9 +404,9 @@ program/execute/vstore/vstorea_half-float-private: crash
 summary:
        name:  results
        ----  --------
-       pass:     1418
+       pass:     1430
        fail:      296
-      crash:       29
+      crash:       28
        skip:       79
     timeout:        0
        warn:        0
@@ -417,4 +416,4 @@ summary:
     changes:        0
       fixes:        0
 regressions:        0
-      total:     1822
+      total:     1833

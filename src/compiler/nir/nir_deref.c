@@ -1123,6 +1123,10 @@ is_vector_bitcast_deref(nir_deref_instr *cast,
    if (parent == NULL)
       return false;
 
+   /* The parent has to be a vector or scalar */
+   if (!glsl_type_is_vector_or_scalar(parent->type))
+      return false;
+
    /* Don't bother with 1-bit types */
    unsigned cast_bit_size = glsl_get_bit_size(cast->type);
    unsigned parent_bit_size = glsl_get_bit_size(parent->type);
