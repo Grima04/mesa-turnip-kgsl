@@ -605,25 +605,67 @@ compile_vertex_list(struct gl_context *ctx)
       int end = node->prims[node->prim_count - 1].start +
                 node->prims[node->prim_count - 1].count;
       int total_vert_count = end - node->prims[0].start;
-      int max_indices_count = total_vert_count * 2;
+      /* Estimate for the worst case: all prims are line strips (the +1 is because
+       * wrap_buffers may call use but the last primitive may not be complete) */
+      int max_indices_count = MAX2(total_vert_count * 2 - (node->prim_count * 2) + 1,
+                                   total_vert_count);
       int size = max_indices_count * sizeof(uint32_t);
       uint32_t* indices = (uint32_t*) malloc(size);
       uint32_t max_index = 0, min_index = 0xFFFFFFFF;
 
       int idx = 0;
 
+      int last_valid_prim = -1;
       /* Construct indices array. */
       for (unsigned i = 0; i < node->prim_count; i++) {
          assert(node->prims[i].basevertex == 0);
+         GLubyte mode = node->prims[i].mode;
+
          int vertex_count = node->prims[i].count;
+         if (!vertex_count) {
+            continue;
+         }
+
+         /* Line strips get converted to lines */
+         if (mode == GL_LINE_STRIP)
+            mode = GL_LINES;
+
+         /* If 2 consecutive prims use the same mode => merge them. */
+         bool merge_prims = last_valid_prim >= 0 &&
+                            mode == node->prims[last_valid_prim].mode &&
+                            mode != GL_LINE_LOOP && mode != GL_TRIANGLE_FAN &&
+                            mode != GL_QUAD_STRIP && mode != GL_POLYGON &&
+                            mode != GL_PATCHES;
+
+         /* To be able to merge consecutive triangle strips we need to insert
+          * a degenerate triangle.
+          */
+         if (merge_prims &&
+             mode == GL_TRIANGLE_STRIP) {
+            /* Insert a degenerate triangle */
+            assert(node->prims[last_valid_prim].mode == GL_TRIANGLE_STRIP);
+            unsigned tri_count = node->prims[last_valid_prim].count - 2;
+
+            indices[idx] = indices[idx - 1];
+            indices[idx + 1] = node->prims[i].start;
+            idx += 2;
+            node->prims[last_valid_prim].count += 2;
+
+            if (tri_count % 2) {
+               /* Add another index to preserve winding order */
+               indices[idx++] = node->prims[i].start;
+               node->prims[last_valid_prim].count++;
+            }
+         }
+
          int start = idx;
 
          /* Convert line strips to lines if it'll allow if the previous
-          * prim mode is GL_LINES or if the next primitive mode is
-          * GL_LINES or GL_LINE_LOOP.
+          * prim mode is GL_LINES (so merge_prims is true) or if the next
+          * primitive mode is GL_LINES or GL_LINE_LOOP.
           */
          if (node->prims[i].mode == GL_LINE_STRIP &&
-             ((i > 0 && node->prims[i - 1].mode == GL_LINES) ||
+             (merge_prims ||
               (i < node->prim_count - 1 &&
                (node->prims[i + 1].mode == GL_LINE_STRIP ||
                 node->prims[i + 1].mode == GL_LINES)))) {
@@ -635,7 +677,7 @@ compile_vertex_list(struct gl_context *ctx)
                   node->prims[i].count++;
                }
             }
-            node->prims[i].mode = GL_LINES;
+            node->prims[i].mode = mode;
          } else {
             for (unsigned j = 0; j < vertex_count; j++) {
                indices[idx++] = node->prims[i].start + j;
@@ -645,15 +687,27 @@ compile_vertex_list(struct gl_context *ctx)
          min_index = MIN2(min_index, indices[start]);
          max_index = MAX2(max_index, indices[idx - 1]);
 
-         node->prims[i].start = start;
+         if (merge_prims) {
+            /* Update vertex count. */
+            node->prims[last_valid_prim].count += idx - start;
+         } else {
+            /* Keep this primitive */
+            last_valid_prim += 1;
+            assert(last_valid_prim <= i);
+            node->prims[i].start = start;
+            node->prims[last_valid_prim] = node->prims[i];
+         }
       }
+
+      if (idx == 0)
+         goto skip_node;
 
       assert(idx <= max_indices_count);
 
+      node->prim_count = last_valid_prim + 1;
       node->ib.ptr = NULL;
       node->ib.count = idx;
       node->ib.index_size_shift = (GL_UNSIGNED_INT - GL_UNSIGNED_BYTE) >> 1;
-
       node->min_index = min_index;
       node->max_index = max_index;
 
@@ -663,14 +717,19 @@ compile_vertex_list(struct gl_context *ctx)
                                             idx * sizeof(uint32_t), indices,
                                             GL_STATIC_DRAW_ARB, GL_MAP_WRITE_BIT,
                                             node->ib.obj);
-      assert(success);
-      if (!success) {
-         node->min_index = node->max_index = 0;
-         ctx->Driver.DeleteBuffer(ctx, node->ib.obj);
-         node->ib.obj = NULL;
-         node->vertex_count = 0;
-         _mesa_error(ctx, GL_OUT_OF_MEMORY, "IB allocation");
-      }
+
+      if (success)
+         goto out;
+
+      ctx->Driver.DeleteBuffer(ctx, node->ib.obj);
+      _mesa_error(ctx, GL_OUT_OF_MEMORY, "IB allocation");
+
+   skip_node:
+      node->ib.obj = NULL;
+      node->vertex_count = 0;
+      node->prim_count = 0;
+
+   out:
       free(indices);
    } else {
       node->ib.obj = NULL;
