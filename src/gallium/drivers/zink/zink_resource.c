@@ -48,23 +48,40 @@
 #endif
 
 static void
-resource_sync_writes_from_batch_id(struct zink_context *ctx, uint32_t batch_uses, unsigned cur_batch)
+resource_sync_writes_from_batch_usage(struct zink_context *ctx, uint32_t batch_uses)
 {
+   uint32_t write_mask = 0;
+   for (int i = 0; i < ZINK_NUM_GFX_BATCHES + ZINK_COMPUTE_BATCH_COUNT; i++)
+      write_mask |= ZINK_RESOURCE_ACCESS_WRITE << i;
+   while (batch_uses & write_mask) {
+      int batch_id = zink_get_resource_latest_batch_usage(ctx, batch_uses);
+      if (batch_id == -1)
+         break;
+      zink_wait_on_batch(ctx, batch_id);
+      batch_uses &= ~((ZINK_RESOURCE_ACCESS_READ | ZINK_RESOURCE_ACCESS_WRITE) << batch_id);
+   }
+}
+
+int
+zink_get_resource_latest_batch_usage(struct zink_context *ctx, uint32_t batch_uses)
+{
+   unsigned cur_batch = zink_curr_batch(ctx)->batch_id;
+
    if (batch_uses & ZINK_RESOURCE_ACCESS_WRITE << ZINK_COMPUTE_BATCH_ID)
-      zink_wait_on_batch(ctx, ZINK_COMPUTE_BATCH_ID);
+      return ZINK_COMPUTE_BATCH_ID;
    batch_uses &= ~(ZINK_RESOURCE_ACCESS_WRITE << ZINK_COMPUTE_BATCH_ID);
    if (!batch_uses)
-      return;
+      return -1;
    for (unsigned i = 0; i < ZINK_NUM_BATCHES + 1; i++) {
       /* loop backwards and sync with highest batch id that has writes */
       if (batch_uses & (ZINK_RESOURCE_ACCESS_WRITE << cur_batch)) {
-          zink_wait_on_batch(ctx, cur_batch);
-          break;
+          return cur_batch;
       }
       cur_batch--;
       if (cur_batch > ZINK_COMPUTE_BATCH_ID - 1) // underflowed past max batch id
          cur_batch = ZINK_COMPUTE_BATCH_ID - 1;
    }
+   return -1;
 }
 
 static uint32_t
@@ -585,7 +602,7 @@ zink_transfer_map(struct pipe_context *pctx,
                zink_wait_on_batch(ctx, ZINK_COMPUTE_BATCH_ID);
             batch_uses &= ~(ZINK_RESOURCE_ACCESS_READ << ZINK_COMPUTE_BATCH_ID);
             if (usage & PIPE_MAP_READ && batch_uses >= ZINK_RESOURCE_ACCESS_WRITE)
-               resource_sync_writes_from_batch_id(ctx, batch_uses, zink_curr_batch(ctx)->batch_id);
+               resource_sync_writes_from_batch_usage(ctx, batch_uses);
             else if (usage & PIPE_MAP_WRITE && batch_uses) {
                /* need to wait for all rendering to finish
                 * TODO: optimize/fix this to be much less obtrusive
@@ -689,7 +706,7 @@ zink_transfer_map(struct pipe_context *pctx,
          batch_uses &= ~(ZINK_RESOURCE_ACCESS_READ << ZINK_COMPUTE_BATCH_ID);
          if (batch_uses >= ZINK_RESOURCE_ACCESS_WRITE) {
             if (usage & PIPE_MAP_READ)
-               resource_sync_writes_from_batch_id(ctx, batch_uses, zink_curr_batch(ctx)->batch_id);
+               resource_sync_writes_from_batch_usage(ctx, batch_uses);
             else
                zink_fence_wait(pctx);
          }
