@@ -340,6 +340,7 @@ create_spirv_options(const device &dev, std::string &r_log)
    spirv_options.caps.int16 = true;
    spirv_options.caps.int64 = true;
    spirv_options.caps.kernel = true;
+   spirv_options.caps.kernel_image = dev.image_support();
    spirv_options.caps.int64_atomics = dev.has_int64_atomics();
    spirv_options.debug.func = &debug_function;
    spirv_options.debug.private_data = &r_log;
