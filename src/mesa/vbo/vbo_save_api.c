@@ -599,6 +599,63 @@ compile_vertex_list(struct gl_context *ctx)
       node->prims[i].start += start_offset;
    }
 
+   /* Create an index buffer. */
+   node->min_index = node->max_index = 0;
+   if (save->vert_count) {
+      int end = node->prims[node->prim_count - 1].start +
+                node->prims[node->prim_count - 1].count;
+      int total_vert_count = end - node->prims[0].start;
+      int max_indices_count = total_vert_count;
+      int size = max_indices_count * sizeof(uint32_t);
+      uint32_t* indices = (uint32_t*) malloc(size);
+      uint32_t max_index = 0, min_index = 0xFFFFFFFF;
+
+      int idx = 0;
+
+      /* Construct indices array. */
+      for (unsigned i = 0; i < node->prim_count; i++) {
+         assert(node->prims[i].basevertex == 0);
+         int vertex_count = node->prims[i].count;
+         int start = idx;
+
+         for (unsigned j = 0; j < vertex_count; j++) {
+            indices[idx++] = node->prims[i].start + j;
+         }
+
+         min_index = MIN2(min_index, indices[start]);
+         max_index = MAX2(max_index, indices[idx - 1]);
+
+         node->prims[i].start = start;
+      }
+
+      assert(idx <= max_indices_count);
+
+      node->ib.ptr = NULL;
+      node->ib.count = idx;
+      node->ib.index_size_shift = (GL_UNSIGNED_INT - GL_UNSIGNED_BYTE) >> 1;
+
+      node->min_index = min_index;
+      node->max_index = max_index;
+
+      node->ib.obj = ctx->Driver.NewBufferObject(ctx, VBO_BUF_ID + 1);
+      bool success = ctx->Driver.BufferData(ctx,
+                                            GL_ELEMENT_ARRAY_BUFFER_ARB,
+                                            idx * sizeof(uint32_t), indices,
+                                            GL_STATIC_DRAW_ARB, GL_MAP_WRITE_BIT,
+                                            node->ib.obj);
+      assert(success);
+      if (!success) {
+         node->min_index = node->max_index = 0;
+         ctx->Driver.DeleteBuffer(ctx, node->ib.obj);
+         node->ib.obj = NULL;
+         node->vertex_count = 0;
+         _mesa_error(ctx, GL_OUT_OF_MEMORY, "IB allocation");
+      }
+      free(indices);
+   } else {
+      node->ib.obj = NULL;
+   }
+
    /* Deal with GL_COMPILE_AND_EXECUTE:
     */
    if (ctx->ExecuteFlag) {
@@ -1709,6 +1766,7 @@ vbo_destroy_vertex_list(struct gl_context *ctx, void *data)
    if (--node->prim_store->refcount == 0)
       free(node->prim_store);
 
+   _mesa_reference_buffer_object(ctx, &node->ib.obj, NULL);
    free(node->current_data);
    node->current_data = NULL;
 }

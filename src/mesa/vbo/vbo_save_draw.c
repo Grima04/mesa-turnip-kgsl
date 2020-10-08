@@ -31,6 +31,7 @@
 #include "main/glheader.h"
 #include "main/bufferobj.h"
 #include "main/context.h"
+#include "main/enable.h"
 #include "main/mesa_private.h"
 #include "main/macros.h"
 #include "main/light.h"
@@ -210,10 +211,8 @@ vbo_save_playback_vertex_list(struct gl_context *ctx, void *data)
       assert(ctx->NewState == 0);
 
       if (node->vertex_count > 0) {
-         GLuint min_index = _vbo_save_get_min_index(node);
-         GLuint max_index = _vbo_save_get_max_index(node);
-         ctx->Driver.Draw(ctx, node->prims, node->prim_count, NULL, true,
-                          false, 0, min_index, max_index, 1, 0);
+         ctx->Driver.Draw(ctx, node->prims, node->prim_count, &node->ib, true,
+                          false, 0, node->min_index, node->max_index, 1, 0);
       }
    }
 
