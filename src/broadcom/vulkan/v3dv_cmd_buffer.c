@@ -1181,11 +1181,6 @@ emit_clip_window(struct v3dv_job *job, const VkRect2D *rect)
    }
 }
 
-/* Checks whether the render area rectangle covers a region that is aligned to
- * tile boundaries, which means that for all tiles covered by the render area
- * region, there are no uncovered pixels (unless they are also outside the
- * framebuffer).
- */
 static void
 cmd_buffer_update_tile_alignment(struct v3dv_cmd_buffer *cmd_buffer)
 {
@@ -1200,24 +1195,11 @@ cmd_buffer_update_tile_alignment(struct v3dv_cmd_buffer *cmd_buffer)
     * always have framebuffer information available.
     */
    assert(cmd_buffer->state.framebuffer);
-
-   const VkExtent2D fb_extent = {
-      .width = cmd_buffer->state.framebuffer->width,
-      .height = cmd_buffer->state.framebuffer->height
-   };
-
-   VkExtent2D granularity;
-   v3dv_subpass_get_granularity(cmd_buffer->state.pass,
-                                cmd_buffer->state.subpass_idx,
-                                &granularity);
-
    cmd_buffer->state.tile_aligned_render_area =
-      rect->offset.x % granularity.width == 0 &&
-      rect->offset.y % granularity.height == 0 &&
-      (rect->extent.width % granularity.width == 0 ||
-       rect->offset.x + rect->extent.width >= fb_extent.width) &&
-      (rect->extent.height % granularity.height == 0 ||
-       rect->offset.y + rect->extent.height >= fb_extent.height);
+      v3dv_subpass_area_is_tile_aligned(rect,
+                                        cmd_buffer->state.framebuffer,
+                                        cmd_buffer->state.pass,
+                                        cmd_buffer->state.subpass_idx);
 
    if (!cmd_buffer->state.tile_aligned_render_area) {
       perf_debug("Render area for subpass %d of render pass %p doesn't "
@@ -2023,7 +2005,6 @@ cmd_buffer_emit_render_pass_rcl(struct v3dv_cmd_buffer *cmd_buffer)
    assert(state->subpass_idx < state->pass->subpass_count);
    const struct v3dv_render_pass *pass = state->pass;
    const struct v3dv_subpass *subpass = &pass->subpasses[state->subpass_idx];
-
    struct v3dv_cl *rcl = &job->rcl;
 
    /* Comon config must be the first TILE_RENDERING_MODE_CFG and
@@ -2031,7 +2012,6 @@ cmd_buffer_emit_render_pass_rcl(struct v3dv_cmd_buffer *cmd_buffer)
     * updates to the previous HW state.
     */
    const uint32_t ds_attachment_idx = subpass->ds_attachment.attachment;
-
    cl_emit(rcl, TILE_RENDERING_MODE_CFG_COMMON, config) {
       config.image_width_pixels = framebuffer->width;
       config.image_height_pixels = framebuffer->height;

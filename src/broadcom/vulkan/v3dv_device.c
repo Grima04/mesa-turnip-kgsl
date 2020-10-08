@@ -1977,6 +1977,8 @@ v3dv_CreateFramebuffer(VkDevice _device,
    framebuffer->width = pCreateInfo->width;
    framebuffer->height = pCreateInfo->height;
    framebuffer->layers = pCreateInfo->layers;
+   framebuffer->has_edge_padding = true;
+
    framebuffer->attachment_count = pCreateInfo->attachmentCount;
    framebuffer->color_attachment_count = 0;
    for (uint32_t i = 0; i < pCreateInfo->attachmentCount; i++) {

@@ -257,6 +257,7 @@ struct v3dv_meta_depth_clear_pipeline {
 struct v3dv_meta_blit_pipeline {
    VkPipeline pipeline;
    VkRenderPass pass;
+   VkRenderPass pass_no_load;
    uint8_t key[V3DV_META_BLIT_CACHE_KEY_SIZE];
 };
 
@@ -555,14 +556,21 @@ struct v3dv_render_pass {
    struct v3dv_subpass_attachment *subpass_attachments;
 };
 
-void v3dv_subpass_get_granularity(struct v3dv_render_pass *pass,
-                                  uint32_t subpass_idx,
-                                  VkExtent2D *granularity);
-
 struct v3dv_framebuffer {
    uint32_t width;
    uint32_t height;
    uint32_t layers;
+
+   /* Typically, edge tiles in the framebuffer have padding depending on the
+    * underlying tiling layout. One consequnce of this is that when the
+    * framebuffer dimensions are not aligned to tile boundaries, tile stores
+    * would still write full tiles on the edges and write to the padded area.
+    * If the framebuffer is aliasing a smaller region of a larger image, then
+    * we need to be careful with this though, as we won't have padding on the
+    * edge tiles (which typically means that we need to load the tile buffer
+    * before we store).
+    */
+   bool has_edge_padding;
 
    uint32_t attachment_count;
    uint32_t color_attachment_count;
@@ -590,6 +598,10 @@ void v3dv_framebuffer_compute_internal_bpp_msaa(const struct v3dv_framebuffer *f
                                                 const struct v3dv_subpass *subpass,
                                                 uint8_t *max_bpp, bool *msaa);
 
+bool v3dv_subpass_area_is_tile_aligned(const VkRect2D *area,
+                                       struct v3dv_framebuffer *fb,
+                                       struct v3dv_render_pass *pass,
+                                       uint32_t subpass_idx);
 struct v3dv_cmd_pool {
    VkAllocationCallbacks alloc;
    struct list_head cmd_buffers;

@@ -61,6 +61,7 @@ v3dv_meta_blit_finish(struct v3dv_device *device)
          struct v3dv_meta_blit_pipeline *item = entry->data;
          v3dv_DestroyPipeline(_device, item->pipeline, &device->alloc);
          v3dv_DestroyRenderPass(_device, item->pass, &device->alloc);
+         v3dv_DestroyRenderPass(_device, item->pass_no_load, &device->alloc);
          vk_free(&device->alloc, item);
       }
       _mesa_hash_table_destroy(device->meta.blit.cache[i], NULL);
@@ -771,7 +772,8 @@ blit_shader(struct v3dv_cmd_buffer *cmd_buffer,
             VkColorComponentFlags cmask,
             VkComponentMapping *cswizzle,
             const VkImageBlit *region,
-            VkFilter filter);
+            VkFilter filter,
+            bool dst_is_padded_image);
 
 /**
  * Returns true if the implementation supports the requested operation (even if
@@ -998,7 +1000,7 @@ copy_image_to_buffer_blit(struct v3dv_cmd_buffer *cmd_buffer,
                             v3dv_image_from_handle(buffer_image), dst_format,
                             image, src_format,
                             cmask, &cswizzle,
-                            &blit_region, VK_FILTER_NEAREST);
+                            &blit_region, VK_FILTER_NEAREST, false);
       if (!handled) {
          /* This is unexpected, we should have a supported blit spec */
          unreachable("Unable to blit buffer to destination image");
@@ -1454,7 +1456,7 @@ copy_image_blit(struct v3dv_cmd_buffer *cmd_buffer,
                               dst, format,
                               src, format,
                               0, NULL,
-                              &blit_region, VK_FILTER_NEAREST);
+                              &blit_region, VK_FILTER_NEAREST, true);
 
    /* We should have selected formats that we can blit */
    assert(handled);
@@ -2693,7 +2695,7 @@ copy_buffer_to_image_blit(struct v3dv_cmd_buffer *cmd_buffer,
                             image, dst_format,
                             v3dv_image_from_handle(buffer_image), src_format,
                             cmask, NULL,
-                            &blit_region, VK_FILTER_NEAREST);
+                            &blit_region, VK_FILTER_NEAREST, true);
       if (!handled) {
          /* This is unexpected, we should have a supported blit spec */
          unreachable("Unable to blit buffer to destination image");
@@ -3101,20 +3103,15 @@ static bool
 create_blit_render_pass(struct v3dv_device *device,
                         VkFormat dst_format,
                         VkFormat src_format,
-                        VkRenderPass *pass)
+                        VkRenderPass *pass_load,
+                        VkRenderPass *pass_no_load)
 {
    const bool is_color_blit = vk_format_is_color(dst_format);
 
-   /* FIXME: if blitting to tile boundaries or to the whole image, we could
-    * use LOAD_DONT_CARE, but then we would have to include that in the
-    * pipeline hash key. Or maybe we should just create both render passes and
-    * use one or the other at draw time since they would both be compatible
-    * with the pipeline anyway
-    */
+   /* Attachment load operation is specified below */
    VkAttachmentDescription att = {
       .format = dst_format,
       .samples = VK_SAMPLE_COUNT_1_BIT,
-      .loadOp = VK_ATTACHMENT_LOAD_OP_LOAD,
       .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
       .initialLayout = VK_IMAGE_LAYOUT_GENERAL,
       .finalLayout = VK_IMAGE_LAYOUT_GENERAL,
@@ -3146,8 +3143,16 @@ create_blit_render_pass(struct v3dv_device *device,
       .pDependencies = NULL,
    };
 
-   VkResult result = v3dv_CreateRenderPass(v3dv_device_to_handle(device),
-                                           &info, &device->alloc, pass);
+   VkResult result;
+   att.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+   result = v3dv_CreateRenderPass(v3dv_device_to_handle(device),
+                                  &info, &device->alloc, pass_load);
+   if (result != VK_SUCCESS)
+      return false;
+
+   att.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+   result = v3dv_CreateRenderPass(v3dv_device_to_handle(device),
+                                  &info, &device->alloc, pass_no_load);
    return result == VK_SUCCESS;
 }
 
@@ -3763,10 +3768,14 @@ get_blit_pipeline(struct v3dv_device *device,
       goto fail;
 
    ok = create_blit_render_pass(device, dst_format, src_format,
-                                &(*pipeline)->pass);
+                                &(*pipeline)->pass,
+                                &(*pipeline)->pass_no_load);
    if (!ok)
       goto fail;
 
+   /* Create the pipeline using one of the render passes, they are both
+    * compatible, so we don't care which one we use here.
+    */
    ok = create_blit_pipeline(device,
                              dst_format,
                              src_format,
@@ -3794,6 +3803,8 @@ fail:
    if (*pipeline) {
       if ((*pipeline)->pass)
          v3dv_DestroyRenderPass(_device, (*pipeline)->pass, &device->alloc);
+      if ((*pipeline)->pass_no_load)
+         v3dv_DestroyRenderPass(_device, (*pipeline)->pass_no_load, &device->alloc);
       if ((*pipeline)->pipeline)
          v3dv_DestroyPipeline(_device, (*pipeline)->pipeline, &device->alloc);
       vk_free(&device->alloc, *pipeline);
@@ -3896,7 +3907,8 @@ blit_shader(struct v3dv_cmd_buffer *cmd_buffer,
             VkColorComponentFlags cmask,
             VkComponentMapping *cswizzle,
             const VkImageBlit *_region,
-            VkFilter filter)
+            VkFilter filter,
+            bool dst_is_padded_image)
 {
    bool handled = true;
 
@@ -3907,7 +3919,6 @@ blit_shader(struct v3dv_cmd_buffer *cmd_buffer,
           !vk_format_is_depth_or_stencil(dst_format));
 
    VkImageBlit region = *_region;
-
    /* Rewrite combined D/S blits to compatible color blits */
    if (vk_format_is_depth_or_stencil(dst_format)) {
       assert(src_format == dst_format);
@@ -3940,12 +3951,12 @@ blit_shader(struct v3dv_cmd_buffer *cmd_buffer,
       region.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
    }
 
-   if (cmask == 0) {
-      cmask = VK_COLOR_COMPONENT_R_BIT |
-              VK_COLOR_COMPONENT_G_BIT |
-              VK_COLOR_COMPONENT_B_BIT |
-              VK_COLOR_COMPONENT_A_BIT;
-   }
+   const VkColorComponentFlags full_cmask = VK_COLOR_COMPONENT_R_BIT |
+                                            VK_COLOR_COMPONENT_G_BIT |
+                                            VK_COLOR_COMPONENT_B_BIT |
+                                            VK_COLOR_COMPONENT_A_BIT;
+   if (cmask == 0)
+      cmask = full_cmask;
 
    VkComponentMapping ident_swizzle = {
       .r = VK_COMPONENT_SWIZZLE_IDENTITY,
@@ -4072,7 +4083,8 @@ blit_shader(struct v3dv_cmd_buffer *cmd_buffer,
                                &pipeline);
    if (!ok)
       return handled;
-   assert(pipeline && pipeline->pipeline && pipeline->pass);
+   assert(pipeline && pipeline->pipeline &&
+          pipeline->pass && pipeline->pass_no_load);
 
    struct v3dv_device *device = cmd_buffer->device;
    assert(cmd_buffer->meta.blit.dspool);
@@ -4127,6 +4139,11 @@ blit_shader(struct v3dv_cmd_buffer *cmd_buffer,
                                       &cmd_buffer->device->alloc, &fb);
       if (result != VK_SUCCESS)
          goto fail;
+
+      struct v3dv_framebuffer *framebuffer = v3dv_framebuffer_from_handle(fb);
+      framebuffer->has_edge_padding = fb_info.width == dst_level_w &&
+                                      fb_info.height == dst_level_h &&
+                                      dst_is_padded_image;
 
       v3dv_cmd_buffer_add_private_obj(
          cmd_buffer, (uintptr_t)fb,
@@ -4208,15 +4225,30 @@ blit_shader(struct v3dv_cmd_buffer *cmd_buffer,
       };
       v3dv_UpdateDescriptorSets(_device, 1, &write, 0, NULL);
 
+      /* If the region we are about to blit is tile-aligned, then we can
+       * use the render pass version that won't pre-load the tile buffer
+       * with the dst image contents before the blit. The exception is when we
+       * don't have a full color mask, since in that case we need to preserve
+       * the original value of some of the color components.
+       */
+      const VkRect2D render_area = {
+         .offset = { dst_x, dst_y },
+         .extent = { dst_w, dst_h },
+      };
+      struct v3dv_render_pass *pipeline_pass =
+         v3dv_render_pass_from_handle(pipeline->pass);
+      bool can_skip_tlb_load =
+         cmask == full_cmask &&
+         v3dv_subpass_area_is_tile_aligned(&render_area, framebuffer,
+                                           pipeline_pass, 0);
+
       /* Record blit */
       VkRenderPassBeginInfo rp_info = {
          .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
-         .renderPass = pipeline->pass,
+         .renderPass = can_skip_tlb_load ? pipeline->pass_no_load :
+                                           pipeline->pass,
          .framebuffer = fb,
-         .renderArea = {
-            .offset = { dst_x, dst_y },
-            .extent = { dst_w, dst_h }
-         },
+         .renderArea = render_area,
          .clearValueCount = 0,
       };
 
@@ -4308,7 +4340,7 @@ v3dv_CmdBlitImage(VkCommandBuffer commandBuffer,
                       dst, dst->vk_format,
                       src, src->vk_format,
                       0, NULL,
-                      &pRegions[i], filter)) {
+                      &pRegions[i], filter, true)) {
          continue;
       }
       unreachable("Unsupported blit operation");
@@ -4469,7 +4501,7 @@ resolve_image_blit(struct v3dv_cmd_buffer *cmd_buffer,
                       dst, dst->vk_format,
                       src, src->vk_format,
                       0, NULL,
-                      &blit_region, VK_FILTER_NEAREST);
+                      &blit_region, VK_FILTER_NEAREST, true);
 }
 
 void
