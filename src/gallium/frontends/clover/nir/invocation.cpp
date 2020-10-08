@@ -342,11 +342,15 @@ module clover::nir::spirv_to_nir(const module &mod, const device &dev,
       blob_init(&blob);
       nir_serialize(&blob, nir, false);
 
+      ralloc_free(nir);
+
       const pipe_binary_program_header header { uint32_t(blob.size) };
       module::section text { section_id, module::section::text_executable, header.num_bytes, {} };
       text.data.insert(text.data.end(), reinterpret_cast<const char *>(&header),
                        reinterpret_cast<const char *>(&header) + sizeof(header));
       text.data.insert(text.data.end(), blob.data, blob.data + blob.size);
+
+      free(blob.data);
 
       m.syms.emplace_back(sym.name, std::string(),
                           sym.reqd_work_group_size, section_id, 0, args);
