@@ -1101,6 +1101,28 @@ bi_emit_lod_88(bi_context *ctx, unsigned lod, bool fp16)
         return mkvec.dest;
 }
 
+/* FETCH takes a 32-bit staging register containing the LOD as an integer in
+ * the bottom 16-bits and (if present) the cube face index in the top 16-bits.
+ * TODO: Cube face.
+ */
+
+static unsigned
+bi_emit_lod_cube(bi_context *ctx, unsigned lod)
+{
+        /* MKVEC.v2i16 out, lod.h0, #0 */
+        bi_instruction mkvec = {
+                .type = BI_SELECT,
+                .dest = bi_make_temp(ctx),
+                .dest_type = nir_type_int16,
+                .src = { lod, BIR_INDEX_ZERO },
+                .src_types = { nir_type_int16, nir_type_int16 },
+        };
+
+        bi_emit(ctx, mkvec);
+
+        return mkvec.dest;
+}
+
 /* Map to the main texture op used. Some of these (txd in particular) will
  * lower to multiple texture ops with different opcodes (GRDESC_DER + TEX in
  * sequence). We assume that lowering is handled elsewhere.
