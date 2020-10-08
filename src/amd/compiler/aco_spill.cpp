@@ -1766,7 +1766,7 @@ void assign_spill_slots(spill_ctx& ctx, unsigned spills_to_vgpr) {
 } /* end namespace */
 
 
-void spill(Program* program, live& live_vars, const struct radv_nir_compiler_options *options)
+void spill(Program* program, live& live_vars)
 {
    program->config->spilled_vgprs = 0;
    program->config->spilled_sgprs = 0;
@@ -1776,7 +1776,7 @@ void spill(Program* program, live& live_vars, const struct radv_nir_compiler_opt
       return;
 
    /* lower to CSSA before spilling to ensure correctness w.r.t. phis */
-   lower_to_cssa(program, live_vars, options);
+   lower_to_cssa(program, live_vars);
 
    /* calculate target register demand */
    RegisterDemand register_target = program->max_reg_demand;
@@ -1802,7 +1802,7 @@ void spill(Program* program, live& live_vars, const struct radv_nir_compiler_opt
    assign_spill_slots(ctx, spills_to_vgpr);
 
    /* update live variable information */
-   live_vars = live_var_analysis(program, options);
+   live_vars = live_var_analysis(program);
 
    assert(program->num_waves > 0);
 }

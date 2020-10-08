@@ -936,9 +936,7 @@ void schedule_program(Program *program, live& live_vars)
       demands[j] = program->blocks[j].register_demand;
    }
 
-   struct radv_nir_compiler_options options;
-   options.chip_class = program->chip_class;
-   live live_vars2 = aco::live_var_analysis(program, &options);
+   live live_vars2 = aco::live_var_analysis(program);
 
    for (unsigned j = 0; j < program->blocks.size(); j++) {
       Block &b = program->blocks[j];

@@ -664,12 +664,12 @@ unsigned get_subdword_bytes_written(Program *program, const aco_ptr<Instruction>
 
 } /* end namespace */
 
-bool validate_ra(Program *program, const struct radv_nir_compiler_options *options) {
+bool validate_ra(Program *program) {
    if (!(debug_flags & DEBUG_VALIDATE_RA))
       return false;
 
    bool err = false;
-   aco::live live_vars = aco::live_var_analysis(program, options);
+   aco::live live_vars = aco::live_var_analysis(program);
    std::vector<std::vector<Temp>> phi_sgpr_ops(program->blocks.size());
 
    std::map<unsigned, Assignment> assignments;

@@ -102,8 +102,8 @@ void aco_compile_shader(unsigned shader_count,
       validate(program.get());
 
       /* spilling and scheduling */
-      live_vars = aco::live_var_analysis(program.get(), args->options);
-      aco::spill(program.get(), live_vars, args->options);
+      live_vars = aco::live_var_analysis(program.get());
+      aco::spill(program.get(), live_vars);
    }
 
    std::string llvm_ir;
@@ -137,7 +137,7 @@ void aco_compile_shader(unsigned shader_count,
          aco_print_program(program.get(), stderr);
       }
 
-      if (aco::validate_ra(program.get(), args->options)) {
+      if (aco::validate_ra(program.get())) {
          std::cerr << "Program after RA validation failure:\n";
          aco_print_program(program.get(), stderr);
          abort();

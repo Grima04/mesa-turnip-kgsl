@@ -39,7 +39,6 @@
 
 #include "vulkan/radv_shader.h"
 
-struct radv_nir_compiler_options;
 struct radv_shader_args;
 struct radv_shader_info;
 
@@ -1677,26 +1676,26 @@ void select_trap_handler_shader(Program *program, struct nir_shader *shader,
 void lower_phis(Program* program);
 void calc_min_waves(Program* program);
 void update_vgpr_sgpr_demand(Program* program, const RegisterDemand new_demand);
-live live_var_analysis(Program* program, const struct radv_nir_compiler_options *options);
+live live_var_analysis(Program* program);
 std::vector<uint16_t> dead_code_analysis(Program *program);
 void dominator_tree(Program* program);
 void insert_exec_mask(Program *program);
 void value_numbering(Program* program);
 void optimize(Program* program);
 void setup_reduce_temp(Program* program);
-void lower_to_cssa(Program* program, live& live_vars, const struct radv_nir_compiler_options *options);
+void lower_to_cssa(Program* program, live& live_vars);
 void register_allocation(Program *program, std::vector<IDSet>& live_out_per_block);
 void ssa_elimination(Program* program);
 void lower_to_hw_instr(Program* program);
 void schedule_program(Program* program, live& live_vars);
-void spill(Program* program, live& live_vars, const struct radv_nir_compiler_options *options);
+void spill(Program* program, live& live_vars);
 void insert_wait_states(Program* program);
 void insert_NOPs(Program* program);
 unsigned emit_program(Program* program, std::vector<uint32_t>& code);
 bool print_asm(Program *program, std::vector<uint32_t>& binary,
                unsigned exec_size, std::ostream& out);
 bool validate_ir(Program* program);
-bool validate_ra(Program* program, const struct radv_nir_compiler_options *options);
+bool validate_ra(Program* program);
 #ifndef NDEBUG
 void perfwarn(Program *program, bool cond, const char *msg, Instruction *instr=NULL);
 #else

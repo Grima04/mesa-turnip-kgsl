@@ -194,7 +194,7 @@ void insert_parallelcopies(cssa_ctx& ctx)
 } /* end namespace */
 
 
-void lower_to_cssa(Program* program, live& live_vars, const struct radv_nir_compiler_options *options)
+void lower_to_cssa(Program* program, live& live_vars)
 {
    cssa_ctx ctx = {program, live_vars};
    /* collect information about all interfering phi operands */
@@ -206,7 +206,7 @@ void lower_to_cssa(Program* program, live& live_vars, const struct radv_nir_comp
    insert_parallelcopies(ctx);
 
    /* update live variable information */
-   live_vars = live_var_analysis(program, options);
+   live_vars = live_var_analysis(program);
 }
 }
 
