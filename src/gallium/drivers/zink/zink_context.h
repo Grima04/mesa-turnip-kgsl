@@ -214,6 +214,7 @@ struct zink_context {
    struct pipe_stream_output_target *so_targets[PIPE_MAX_SO_OUTPUTS];
    bool dirty_so_targets;
    bool xfb_barrier;
+   bool first_frame_done;
 };
 
 static inline struct zink_context *
