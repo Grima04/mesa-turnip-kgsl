@@ -845,22 +845,21 @@ emit_unspill(const fs_builder &bld, fs_reg dst,
    assert(count % reg_size == 0);
 
    for (unsigned i = 0; i < count / reg_size; i++) {
-      /* The Gen7 descriptor-based offset is 12 bits of HWORD units.  Because
-       * the Gen7-style scratch block read is hardwired to BTI 255, on Gen9+
-       * it would cause the DC to do an IA-coherent read, what largely
-       * outweighs the slight advantage from not having to provide the address
-       * as part of the message header, so we're better off using plain old
-       * oword block reads.
-       */
-      bool gen7_read = (devinfo->gen >= 7 && devinfo->gen < 9 &&
-                        spill_offset < (1 << 12) * REG_SIZE);
-      fs_inst *unspill_inst = bld.emit(gen7_read ?
-                                       SHADER_OPCODE_GEN7_SCRATCH_READ :
-                                       SHADER_OPCODE_GEN4_SCRATCH_READ,
-                                       dst);
-      unspill_inst->offset = spill_offset;
-
-      if (!gen7_read) {
+      fs_inst *unspill_inst;
+      if (devinfo->gen >= 7 && devinfo->gen < 9 &&
+          spill_offset < (1 << 12) * REG_SIZE) {
+         /* The Gen7 descriptor-based offset is 12 bits of HWORD units.
+          * Because the Gen7-style scratch block read is hardwired to BTI 255,
+          * on Gen9+ it would cause the DC to do an IA-coherent read, what
+          * largely outweighs the slight advantage from not having to provide
+          * the address as part of the message header, so we're better off
+          * using plain old oword block reads.
+          */
+         unspill_inst = bld.emit(SHADER_OPCODE_GEN7_SCRATCH_READ, dst);
+         unspill_inst->offset = spill_offset;
+      } else {
+         unspill_inst = bld.emit(SHADER_OPCODE_GEN4_SCRATCH_READ, dst);
+         unspill_inst->offset = spill_offset;
          unspill_inst->base_mrf = spill_base_mrf(bld.shader);
          unspill_inst->mlen = 1; /* header contains offset */
       }
