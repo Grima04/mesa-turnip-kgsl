@@ -63,6 +63,7 @@ def EXTENSIONS():
         Extension("VK_EXT_custom_border_color",      alias="border_color", properties=True, feature="customBorderColors"),
         Extension("VK_EXT_blend_operation_advanced", alias="blend", properties=True),
         Extension("VK_EXT_extended_dynamic_state",   alias="dynamic_state", feature="extendedDynamicState"),
+        Extension("VK_EXT_pipeline_creation_cache_control",   alias="pipeline_cache_control", feature="pipelineCreationCacheControl"),
     ]
 
 # There exists some inconsistencies regarding the enum constants, fix them.
