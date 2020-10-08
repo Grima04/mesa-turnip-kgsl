@@ -911,15 +911,12 @@ clEnqueueMigrateMemObjects(cl_command_queue d_q,
    auto deps = objs<wait_list_tag>(d_deps, num_deps);
 
    validate_common(q, deps);
+   validate_mem_migration_flags(flags);
 
    if (any_of([&](const memory_obj &m) {
          return m.context() != q.context();
          }, mems))
       throw error(CL_INVALID_CONTEXT);
-
-   if (flags & ~(CL_MIGRATE_MEM_OBJECT_HOST |
-                 CL_MIGRATE_MEM_OBJECT_CONTENT_UNDEFINED))
-      throw error(CL_INVALID_VALUE);
 
    auto hev = create<hard_event>(
       q, CL_COMMAND_MIGRATE_MEM_OBJECTS, deps,
