@@ -402,7 +402,7 @@ panfrost_prepare_bifrost_fs_state(struct panfrost_context *ctx,
 
         if (!panfrost_fs_required(fs, blend, rt_count)) {
                 state->properties.unknown = 0x950020; /* XXX */
-                state->properties.bifrost_early_z_enable = true;
+                state->properties.allow_forward_pixel_to_kill = true;
         } else {
                 bool no_blend = true;
 
@@ -410,7 +410,7 @@ panfrost_prepare_bifrost_fs_state(struct panfrost_context *ctx,
                         no_blend &= (!blend[i].load_dest | blend[i].no_colour);
 
                 state->properties = fs->properties;
-                state->properties.bifrost_early_z_enable = !fs->can_discard && !fs->writes_depth && no_blend;
+                state->properties.allow_forward_pixel_to_kill = !fs->can_discard && !fs->writes_depth && no_blend;
                 state->shader = fs->shader;
                 state->preload = fs->preload;
         }

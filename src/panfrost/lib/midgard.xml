@@ -235,6 +235,13 @@
     <value name="Replicated" value="7"/>
   </enum>
 
+  <enum name="Pixel Kill">
+    <value name="Force Early" value="0"/>
+    <value name="Strong Early" value="1"/>
+    <value name="Weak Early" value="2"/>
+    <value name="Force Late" value="3"/>
+  </enum>
+
   <struct name="Pixel Format" no-direct-packing="true">
     <field name="RGB Component Order" size="8" start="0" type="RGB Component Order"/>
     <field name="YUV Component Order" size="3" start="0" type="YUV Swizzle"/>
@@ -632,7 +639,9 @@
     <field name="Full thread" size="1" start="13" type="bool" default="false"/>
     <field name="Reads tilebuffer" size="1" start="14" type="bool" default="false"/>
     <field name="Work register count" size="5" start="16" type="uint"/>
-    <field name="Bifrost Early-z enable" size="1" start="19" type="bool" default="false"/>
+    <field name="Allow forward pixel to kill" size="1" start="19" type="bool" default="false"/>
+    <field name="Allow forward pixel to be killed" size="1" start="20" type="bool" default="false"/>
+    <field name="Pixel kill operation" size="2" start="21" type="Pixel Kill" default="Force early"/>
     <field name="Uniform count" size="5" start="21" type="uint"/>
     <field name="Stencil from shader" size="1" start="28" type="bool"/>
     <field name="Suppress Inf/NaN" size="1" start="29" type="bool"/>
