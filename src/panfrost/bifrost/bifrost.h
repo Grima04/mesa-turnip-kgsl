@@ -526,15 +526,15 @@ struct bifrost_texture_operation {
         /* Texture dimension, or 0 for a cubemap */
         unsigned dimension : 2;
 
-        /* Method to compute LOD value */
-        enum bifrost_lod_mode lod_mode : 3;
+        /* Method to compute LOD value or for a FETCH, the
+         * bifrost_texture_fetch component specification */
+        enum bifrost_lod_mode lod_or_fetch : 3;
 
         /* Reserved */
         unsigned zero : 1;
 
-        /* Register format for the result or for a FETCH, the
-         * bifrost_texture_fetch component specification */
-        enum bifrost_texture_format_full format_or_fetch : 4;
+        /* Register format for the result */
+        enum bifrost_texture_format_full format : 4;
 
         /* Write mask for the result */
         unsigned mask : 4;

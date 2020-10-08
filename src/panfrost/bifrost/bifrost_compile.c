@@ -1184,6 +1184,7 @@ emit_texc(bi_context *ctx, nir_tex_instr *instr)
         case nir_texop_tex:
         case nir_texop_txl:
         case nir_texop_txb:
+        case nir_texop_txf:
                 break;
         default:
                 unreachable("Unsupported texture op");
@@ -1211,10 +1212,21 @@ emit_texc(bi_context *ctx, nir_tex_instr *instr)
                 .shadow_or_clamp_disable = instr->is_shadow,
                 .array = false, /* TODO */
                 .dimension = bifrost_tex_format(instr->sampler_dim),
-                .lod_mode = BIFROST_LOD_MODE_COMPUTE,
-                .format_or_fetch = bi_texture_format(instr->dest_type, BIFROST_NONE), /* TODO */
+                .format = bi_texture_format(instr->dest_type, BIFROST_NONE), /* TODO */
                 .mask = (1 << tex.vector_channels) - 1
         };
+
+        switch (desc.op) {
+        case BIFROST_TEX_OP_TEX:
+                desc.lod_or_fetch = BIFROST_LOD_MODE_COMPUTE;
+                break;
+        case BIFROST_TEX_OP_FETCH:
+                /* TODO: gathers */
+                desc.lod_or_fetch = BIFROST_TEXTURE_FETCH_TEXEL;
+                break;
+        default:
+                unreachable("texture op unsupported");
+        }
 
         /* 32-bit indices to be allocated as consecutive data registers. */
         unsigned dregs[BIFROST_TEX_DREG_COUNT] = { 0 };
@@ -1235,25 +1247,33 @@ emit_texc(bi_context *ctx, nir_tex_instr *instr)
 
                 case nir_tex_src_lod:
                         if (nir_src_is_const(instr->src[i].src) && nir_src_as_uint(instr->src[i].src) == 0) {
-                                desc.lod_mode = BIFROST_LOD_MODE_ZERO;
-                        } else {
+                                desc.lod_or_fetch = BIFROST_LOD_MODE_ZERO;
+                        } else if (desc.op == BIFROST_TEX_OP_TEX) {
                                 assert(base == nir_type_float);
 
                                 assert(sz == 16 || sz == 32);
                                 dregs[BIFROST_TEX_DREG_LOD] =
                                         bi_emit_lod_88(ctx, index, sz == 16);
-                                desc.lod_mode = BIFROST_LOD_MODE_EXPLICIT;
+                                desc.lod_or_fetch = BIFROST_LOD_MODE_EXPLICIT;
+                        } else {
+                                assert(desc.op == BIFROST_TEX_OP_FETCH);
+                                assert(base == nir_type_uint || base == nir_type_int);
+                                assert(sz == 16 || sz == 32);
+
+                                dregs[BIFROST_TEX_DREG_LOD] =
+                                        bi_emit_lod_cube(ctx, index);
                         }
 
                         break;
 
                 case nir_tex_src_bias:
                         /* Upper 16-bits interpreted as a clamp, leave zero */
+                        assert(desc.op == BIFROST_TEX_OP_TEX);
                         assert(base == nir_type_float);
                         assert(sz == 16 || sz == 32);
                         dregs[BIFROST_TEX_DREG_LOD] =
                                 bi_emit_lod_88(ctx, index, sz == 16);
-                        desc.lod_mode = BIFROST_LOD_MODE_BIAS;
+                        desc.lod_or_fetch = BIFROST_LOD_MODE_BIAS;
                         break;
 
                 default:
