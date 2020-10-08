@@ -1361,6 +1361,14 @@ zink_flush(struct pipe_context *pctx,
    if (deferred)
       batch->fence->deferred_ctx = pctx;
    else if (batch->has_work) {
+      if (flags & PIPE_FLUSH_END_OF_FRAME) {
+         if (ctx->fb_state.nr_cbufs)
+            zink_end_render_pass(ctx, batch);
+         for (int i = 0; i < ctx->fb_state.nr_cbufs; i++)
+            zink_resource_image_barrier(ctx, batch,
+                                        ctx->fb_state.cbufs[i] ? zink_resource(ctx->fb_state.cbufs[i]->texture) : NULL,
+                                        VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, 0, 0);
+      }
       flush_batch(ctx);
 
       if (zink_screen(pctx->screen)->info.have_EXT_transform_feedback && ctx->num_so_targets)
