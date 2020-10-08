@@ -1056,6 +1056,9 @@ access_src_flags(VkImageLayout layout)
    case VK_IMAGE_LAYOUT_PREINITIALIZED:
       return VK_ACCESS_HOST_WRITE_BIT;
 
+   case VK_IMAGE_LAYOUT_PRESENT_SRC_KHR:
+      return 0;
+
    default:
       unreachable("unexpected layout");
    }
@@ -1087,6 +1090,9 @@ access_dst_flags(VkImageLayout layout)
 
    case VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL:
       return VK_ACCESS_TRANSFER_WRITE_BIT;
+
+   case VK_IMAGE_LAYOUT_PRESENT_SRC_KHR:
+      return 0;
 
    default:
       unreachable("unexpected layout");
