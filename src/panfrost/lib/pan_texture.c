@@ -200,10 +200,11 @@ panfrost_estimate_texture_payload_size(
         return sizeof(mali_ptr) * elements;
 }
 
-/* Bifrost requires a tile stride for tiled textures. This stride is computed
- * as (16 * bpp * width) assuming there is at least one tile (width >= 16).
- * Otherwise if height <= 16, the blob puts zero. Interactions with AFBC are
- * currently unknown.
+/* If not explicitly, line stride is calculated for block-based formats as
+ * (ceil(width / block_width) * block_size). As a special case, this is left
+ * zero if there is only a single block vertically. So, we have a helper to
+ * extract the dimensions of a block-based format and use that to calculate the
+ * line stride as such.
  */
 
 static unsigned
@@ -232,13 +233,17 @@ static unsigned
 panfrost_nonlinear_stride(uint64_t modifier,
                 unsigned bytes_per_pixel,
                 unsigned width,
-                unsigned height)
+                unsigned height,
+                bool plane)
 {
-        if (modifier == DRM_FORMAT_MOD_ARM_16X16_BLOCK_U_INTERLEAVED) {
-                return (height <= 16) ? 0 : (16 * bytes_per_pixel * ALIGN_POT(width, 16));
-        } else {
-                unreachable("TODO: AFBC on Bifrost");
-        }
+        unsigned block_w = panfrost_block_dim(modifier, true, plane);
+        unsigned block_h = panfrost_block_dim(modifier, false, plane);
+        unsigned block_size = block_w * block_h * bytes_per_pixel;
+
+        if (height <= block_h)
+                return 0;
+        else
+                return DIV_ROUND_UP(width, block_w) * block_size;
 }
 
 static void
@@ -287,7 +292,7 @@ panfrost_emit_texture_payload(
                                                         panfrost_nonlinear_stride(modifier,
                                                                         MAX2(desc->block.bits / 8, 1),
                                                                         u_minify(width, l),
-                                                                        u_minify(height, l));
+                                                                        u_minify(height, l), false);
                                         }
                                 }
                         }
