@@ -207,6 +207,28 @@ panfrost_estimate_texture_payload_size(
  */
 
 static unsigned
+panfrost_block_dim(uint64_t modifier, bool width, unsigned plane)
+{
+        if (!drm_is_afbc(modifier)) {
+                assert(modifier == DRM_FORMAT_MOD_ARM_16X16_BLOCK_U_INTERLEAVED);
+                return 16;
+        }
+
+        switch (modifier & AFBC_FORMAT_MOD_BLOCK_SIZE_MASK) {
+        case AFBC_FORMAT_MOD_BLOCK_SIZE_16x16:
+                return 16;
+        case AFBC_FORMAT_MOD_BLOCK_SIZE_32x8:
+                return width ? 32 : 32;
+        case AFBC_FORMAT_MOD_BLOCK_SIZE_64x4:
+                return width ? 64 : 4;
+        case AFBC_FORMAT_MOD_BLOCK_SIZE_32x8_64x4:
+                return plane ? (width ? 64 : 4) : (width ? 32 : 8);
+        default:
+                unreachable("Invalid AFBC block size");
+        }
+}
+
+static unsigned
 panfrost_nonlinear_stride(uint64_t modifier,
                 unsigned bytes_per_pixel,
                 unsigned width,
