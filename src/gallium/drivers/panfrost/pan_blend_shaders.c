@@ -132,7 +132,7 @@ nir_iclamp(nir_builder *b, nir_ssa_def *v, int32_t lo, int32_t hi)
 struct panfrost_blend_shader
 panfrost_compile_blend_shader(
         struct panfrost_context *ctx,
-        struct pipe_blend_state *cso,
+        struct panfrost_blend_state *state,
         enum pipe_format format,
         unsigned rt)
 {
@@ -143,7 +143,7 @@ panfrost_compile_blend_shader(
 
         /* Build the shader */
 
-        nir_shader *shader = nir_shader_create(NULL, MESA_SHADER_FRAGMENT, &midgard_nir_options, NULL);
+        nir_shader *shader = nir_shader_create(state, MESA_SHADER_FRAGMENT, &midgard_nir_options, NULL);
         nir_function *fn = nir_function_create(shader, "main");
         nir_function_impl *impl = nir_function_impl_create(fn);
 
@@ -201,8 +201,7 @@ panfrost_compile_blend_shader(
         /* Build a trivial blend shader */
         nir_store_var(b, c_out, s_src[0], 0xFF);
 
-        nir_lower_blend_options options =
-                nir_make_options(cso, rt);
+        nir_lower_blend_options options = nir_make_options(&state->base, rt);
         options.format = format;
         options.src1 = s_src[1];
 

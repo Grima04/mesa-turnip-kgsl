@@ -89,7 +89,7 @@ panfrost_get_blend_shader(
         /* Cache miss. Build one instead, cache it, and go */
 
         struct panfrost_blend_shader generated =
-                panfrost_compile_blend_shader(ctx, &blend->base, fmt, rt);
+                panfrost_compile_blend_shader(ctx, blend, fmt, rt);
 
         shader = mem_dup(&generated, sizeof(generated));
         _mesa_hash_table_u64_insert(shaders, key, shader);

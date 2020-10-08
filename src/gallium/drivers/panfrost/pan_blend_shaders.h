@@ -34,7 +34,7 @@
 struct panfrost_blend_shader
 panfrost_compile_blend_shader(
         struct panfrost_context *ctx,
-        struct pipe_blend_state *cso,
+        struct panfrost_blend_state *state,
         enum pipe_format format,
         unsigned rt);
 
