@@ -815,7 +815,7 @@ void emit_gfx10_wave64_bpermute(Program *program, aco_ptr<Instruction> &instr, B
     */
 
    assert(program->chip_class >= GFX10);
-   assert(program->info->wave_size == 64);
+   assert(program->wave_size == 64);
 
    unsigned shared_vgpr_reg_0 = align(program->config->num_vgprs, 4) + 256;
    Definition dst = instr->definitions[0];
