@@ -1889,6 +1889,7 @@ lower_vars_to_explicit(nir_shader *shader,
       if (explicit_type != var->type)
          var->type = explicit_type;
 
+      assert(util_is_power_of_two_nonzero(align));
       var->data.driver_location = ALIGN_POT(offset, align);
       offset = var->data.driver_location + size;
       progress = true;
