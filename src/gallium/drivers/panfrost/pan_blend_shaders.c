@@ -129,17 +129,16 @@ nir_iclamp(nir_builder *b, nir_ssa_def *v, int32_t lo, int32_t hi)
         return nir_imin(b, nir_imax(b, v, nir_imm_int(b, lo)), nir_imm_int(b, hi));
 }
 
-struct panfrost_blend_shader
-panfrost_compile_blend_shader(
-        struct panfrost_context *ctx,
-        struct panfrost_blend_state *state,
-        enum pipe_format format,
-        unsigned rt)
+struct panfrost_blend_shader *
+panfrost_compile_blend_shader(struct panfrost_context *ctx,
+                              struct panfrost_blend_state *state,
+                              enum pipe_format format,
+                              unsigned rt)
 {
         struct panfrost_device *dev = pan_device(ctx->base.screen);
-        struct panfrost_blend_shader res;
+        struct panfrost_blend_shader *res = ralloc(state, struct panfrost_blend_shader);
 
-        res.ctx = ctx;
+        res->ctx = ctx;
 
         /* Build the shader */
 
@@ -224,11 +223,13 @@ panfrost_compile_blend_shader(
         midgard_compile_shader_nir(shader, &program, &inputs);
 
         /* Allow us to patch later */
-        res.patch_index = program.blend_patch_offset;
-        res.first_tag = program.first_tag;
-        res.size = program.compiled.size;
-        res.buffer = program.compiled.data;
-        res.work_count = program.work_register_count;
+        res->patch_index = program.blend_patch_offset;
+        res->first_tag = program.first_tag;
+        res->size = program.compiled.size;
+        res->buffer = ralloc_size(res, res->size);
+        memcpy(res->buffer, program.compiled.data, res->size);
+        util_dynarray_fini(&program.compiled);
+        res->work_count = program.work_register_count;
 
         return res;
 }

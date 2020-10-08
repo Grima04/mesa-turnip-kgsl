@@ -31,11 +31,10 @@
 #include "pan_context.h"
 #include "pan_blend.h"
 
-struct panfrost_blend_shader
-panfrost_compile_blend_shader(
-        struct panfrost_context *ctx,
-        struct panfrost_blend_state *state,
-        enum pipe_format format,
-        unsigned rt);
+struct panfrost_blend_shader *
+panfrost_compile_blend_shader(struct panfrost_context *ctx,
+                              struct panfrost_blend_state *state,
+                              enum pipe_format format,
+                              unsigned rt);
 
 #endif

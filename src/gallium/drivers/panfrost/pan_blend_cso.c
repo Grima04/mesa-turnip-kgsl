@@ -88,10 +88,7 @@ panfrost_get_blend_shader(
 
         /* Cache miss. Build one instead, cache it, and go */
 
-        struct panfrost_blend_shader generated =
-                panfrost_compile_blend_shader(ctx, blend, fmt, rt);
-
-        shader = mem_dup(&generated, sizeof(generated));
+        shader = panfrost_compile_blend_shader(ctx, blend, fmt, rt);
         _mesa_hash_table_u64_insert(shaders, key, shader);
         return  shader;
 }
@@ -163,23 +160,10 @@ panfrost_bind_blend_state(struct pipe_context *pipe,
 }
 
 static void
-panfrost_delete_blend_shader(struct hash_entry *entry)
-{
-        struct panfrost_blend_shader *shader = (struct panfrost_blend_shader *)entry->data;
-        free(shader->buffer);
-        free(shader);
-}
-
-static void
 panfrost_delete_blend_state(struct pipe_context *pipe,
                             void *cso)
 {
         struct panfrost_blend_state *blend = (struct panfrost_blend_state *) cso;
-
-        for (unsigned c = 0; c < PIPE_MAX_COLOR_BUFS; ++c) {
-                struct panfrost_blend_rt *rt = &blend->rt[c];
-                _mesa_hash_table_u64_clear(rt->shaders, panfrost_delete_blend_shader);
-        }
         ralloc_free(blend);
 }
 
