@@ -1045,14 +1045,14 @@ adjust_vertex_fetch_alpha(struct radv_shader_context *ctx,
                           unsigned adjustment,
                           LLVMValueRef alpha)
 {
-	if (adjustment == RADV_ALPHA_ADJUST_NONE)
+	if (adjustment == AC_FETCH_FORMAT_NONE)
 		return alpha;
 
 	LLVMValueRef c30 = LLVMConstInt(ctx->ac.i32, 30, 0);
 
 	alpha = LLVMBuildBitCast(ctx->ac.builder, alpha, ctx->ac.f32, "");
 
-	if (adjustment == RADV_ALPHA_ADJUST_SSCALED)
+	if (adjustment == AC_FETCH_FORMAT_SSCALED)
 		alpha = LLVMBuildFPToUI(ctx->ac.builder, alpha, ctx->ac.i32, "");
 	else
 		alpha = ac_to_integer(&ctx->ac, alpha);
@@ -1064,18 +1064,18 @@ adjust_vertex_fetch_alpha(struct radv_shader_context *ctx,
 	 * exponent.
 	 */
 	alpha = LLVMBuildShl(ctx->ac.builder, alpha,
-	                     adjustment == RADV_ALPHA_ADJUST_SNORM ?
+	                     adjustment == AC_FETCH_FORMAT_SNORM ?
 	                     LLVMConstInt(ctx->ac.i32, 7, 0) : c30, "");
 	alpha = LLVMBuildAShr(ctx->ac.builder, alpha, c30, "");
 
 	/* Convert back to the right type. */
-	if (adjustment == RADV_ALPHA_ADJUST_SNORM) {
+	if (adjustment == AC_FETCH_FORMAT_SNORM) {
 		LLVMValueRef clamp;
 		LLVMValueRef neg_one = LLVMConstReal(ctx->ac.f32, -1.0);
 		alpha = LLVMBuildSIToFP(ctx->ac.builder, alpha, ctx->ac.f32, "");
 		clamp = LLVMBuildFCmp(ctx->ac.builder, LLVMRealULT, alpha, neg_one, "");
 		alpha = LLVMBuildSelect(ctx->ac.builder, clamp, neg_one, alpha, "");
-	} else if (adjustment == RADV_ALPHA_ADJUST_SSCALED) {
+	} else if (adjustment == AC_FETCH_FORMAT_SSCALED) {
 		alpha = LLVMBuildSIToFP(ctx->ac.builder, alpha, ctx->ac.f32, "");
 	}
 
@@ -1177,6 +1177,7 @@ handle_vs_input_decl(struct radv_shader_context *ctx,
 		unsigned attrib_binding = ctx->args->options->key.vs.vertex_attribute_bindings[attrib_index];
 		unsigned attrib_offset = ctx->args->options->key.vs.vertex_attribute_offsets[attrib_index];
 		unsigned attrib_stride = ctx->args->options->key.vs.vertex_attribute_strides[attrib_index];
+		unsigned alpha_adjust = ctx->args->options->key.vs.alpha_adjust[attrib_index];
 
 		if (ctx->args->options->key.vs.post_shuffle & (1 << attrib_index)) {
 			/* Always load, at least, 3 channels for formats that
@@ -1272,7 +1273,6 @@ handle_vs_input_decl(struct radv_shader_context *ctx,
 			}
 		}
 
-		unsigned alpha_adjust = (ctx->args->options->key.vs.alpha_adjust >> (attrib_index * 2)) & 3;
 		output[3] = adjust_vertex_fetch_alpha(ctx, alpha_adjust, output[3]);
 
 		for (unsigned chan = 0; chan < 4; chan++) {

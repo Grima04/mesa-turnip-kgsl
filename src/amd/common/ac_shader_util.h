@@ -75,6 +75,7 @@ enum ac_fetch_format
    AC_FETCH_FORMAT_SSCALED,
    AC_FETCH_FORMAT_UINT,
    AC_FETCH_FORMAT_SINT,
+   AC_FETCH_FORMAT_NONE,
 };
 
 unsigned ac_get_spi_shader_z_format(bool writes_z, bool writes_stencil, bool writes_samplemask);

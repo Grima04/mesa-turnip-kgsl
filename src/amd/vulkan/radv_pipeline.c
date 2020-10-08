@@ -2449,21 +2449,21 @@ radv_generate_graphics_pipeline_key(struct radv_pipeline *pipeline,
 			switch(format) {
 			case VK_FORMAT_A2R10G10B10_SNORM_PACK32:
 			case VK_FORMAT_A2B10G10R10_SNORM_PACK32:
-				adjust = RADV_ALPHA_ADJUST_SNORM;
+				adjust = AC_FETCH_FORMAT_SNORM;
 				break;
 			case VK_FORMAT_A2R10G10B10_SSCALED_PACK32:
 			case VK_FORMAT_A2B10G10R10_SSCALED_PACK32:
-				adjust = RADV_ALPHA_ADJUST_SSCALED;
+				adjust = AC_FETCH_FORMAT_SSCALED;
 				break;
 			case VK_FORMAT_A2R10G10B10_SINT_PACK32:
 			case VK_FORMAT_A2B10G10R10_SINT_PACK32:
-				adjust = RADV_ALPHA_ADJUST_SINT;
+				adjust = AC_FETCH_FORMAT_SINT;
 				break;
 			default:
-				adjust = 0;
+				adjust = AC_FETCH_FORMAT_NONE;
 				break;
 			}
-			key.vertex_alpha_adjust |= adjust << (2 * location);
+			key.vertex_alpha_adjust[location] = adjust;
 		}
 
 		switch (desc->format) {
@@ -2531,7 +2531,6 @@ radv_fill_shader_keys(struct radv_device *device,
                       nir_shader **nir)
 {
 	keys[MESA_SHADER_VERTEX].vs.instance_rate_inputs = key->instance_rate_inputs;
-	keys[MESA_SHADER_VERTEX].vs.alpha_adjust = key->vertex_alpha_adjust;
 	keys[MESA_SHADER_VERTEX].vs.post_shuffle = key->vertex_post_shuffle;
 	for (unsigned i = 0; i < MAX_VERTEX_ATTRIBS; ++i) {
 		keys[MESA_SHADER_VERTEX].vs.instance_rate_divisors[i] = key->instance_rate_divisors[i];
@@ -2539,6 +2538,7 @@ radv_fill_shader_keys(struct radv_device *device,
 		keys[MESA_SHADER_VERTEX].vs.vertex_attribute_bindings[i] = key->vertex_attribute_bindings[i];
 		keys[MESA_SHADER_VERTEX].vs.vertex_attribute_offsets[i] = key->vertex_attribute_offsets[i];
 		keys[MESA_SHADER_VERTEX].vs.vertex_attribute_strides[i] = key->vertex_attribute_strides[i];
+		keys[MESA_SHADER_VERTEX].vs.alpha_adjust[i] = key->vertex_alpha_adjust[i];
 	}
 	keys[MESA_SHADER_VERTEX].vs.outprim = si_conv_prim_to_gs_out(key->topology);
 

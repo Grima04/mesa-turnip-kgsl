@@ -29,6 +29,8 @@
 #define RADV_SHADER_H
 
 #include "ac_binary.h"
+#include "ac_shader_util.h"
+
 #include "amd_family.h"
 #include "radv_constants.h"
 
@@ -46,13 +48,6 @@ struct radv_shader_module {
 	unsigned char sha1[20];
 	uint32_t size;
 	char data[0];
-};
-
-enum {
-	RADV_ALPHA_ADJUST_NONE = 0,
-	RADV_ALPHA_ADJUST_SNORM = 1,
-	RADV_ALPHA_ADJUST_SINT = 2,
-	RADV_ALPHA_ADJUST_SSCALED = 3,
 };
 
 struct radv_vs_out_key {
@@ -78,7 +73,7 @@ struct radv_vs_variant_key {
 
 	/* For 2_10_10_10 formats the alpha is handled as unsigned by pre-vega HW.
 	 * so we may need to fix it up. */
-	uint64_t alpha_adjust;
+	enum ac_fetch_format alpha_adjust[MAX_VERTEX_ATTRIBS];
 
 	/* For some formats the channels have to be shuffled. */
 	uint32_t post_shuffle;

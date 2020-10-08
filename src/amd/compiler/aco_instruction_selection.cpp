@@ -4509,7 +4509,7 @@ Temp adjust_vertex_fetch_alpha(isel_context *ctx, unsigned adjustment, Temp alph
 {
    Builder bld(ctx->program, ctx->block);
 
-   if (adjustment == RADV_ALPHA_ADJUST_SSCALED)
+   if (adjustment == AC_FETCH_FORMAT_SSCALED)
       alpha = bld.vop1(aco_opcode::v_cvt_u32_f32, bld.def(v1), alpha);
 
    /* For the integer-like cases, do a natural sign extension.
@@ -4518,15 +4518,15 @@ Temp adjust_vertex_fetch_alpha(isel_context *ctx, unsigned adjustment, Temp alph
     * and happen to contain 0, 1, 2, 3 as the two LSBs of the
     * exponent.
     */
-   alpha = bld.vop2(aco_opcode::v_lshlrev_b32, bld.def(v1), Operand(adjustment == RADV_ALPHA_ADJUST_SNORM ? 7u : 30u), alpha);
+   alpha = bld.vop2(aco_opcode::v_lshlrev_b32, bld.def(v1), Operand(adjustment == AC_FETCH_FORMAT_SNORM ? 7u : 30u), alpha);
    alpha = bld.vop2(aco_opcode::v_ashrrev_i32, bld.def(v1), Operand(30u), alpha);
 
    /* Convert back to the right type. */
-   if (adjustment == RADV_ALPHA_ADJUST_SNORM) {
+   if (adjustment == AC_FETCH_FORMAT_SNORM) {
       alpha = bld.vop1(aco_opcode::v_cvt_f32_i32, bld.def(v1), alpha);
       Temp clamp = bld.vopc(aco_opcode::v_cmp_le_f32, bld.hint_vcc(bld.def(bld.lm)), Operand(0xbf800000u), alpha);
       alpha = bld.vop2(aco_opcode::v_cndmask_b32, bld.def(v1), Operand(0xbf800000u), alpha, clamp);
-   } else if (adjustment == RADV_ALPHA_ADJUST_SSCALED) {
+   } else if (adjustment == AC_FETCH_FORMAT_SSCALED) {
       alpha = bld.vop1(aco_opcode::v_cvt_f32_i32, bld.def(v1), alpha);
    }
 
@@ -4553,6 +4553,7 @@ void visit_load_input(isel_context *ctx, nir_intrinsic_instr *instr)
       uint32_t attrib_offset = ctx->options->key.vs.vertex_attribute_offsets[location];
       uint32_t attrib_stride = ctx->options->key.vs.vertex_attribute_strides[location];
       unsigned attrib_format = ctx->options->key.vs.vertex_attribute_formats[location];
+      enum ac_fetch_format alpha_adjust = ctx->options->key.vs.alpha_adjust[location];
 
       unsigned dfmt = attrib_format & 0xf;
       unsigned nfmt = (attrib_format >> 4) & 0x7;
@@ -4560,7 +4561,6 @@ void visit_load_input(isel_context *ctx, nir_intrinsic_instr *instr)
 
       unsigned mask = nir_ssa_def_components_read(&instr->dest.ssa) << component;
       unsigned num_channels = MIN2(util_last_bit(mask), vtx_info->num_channels);
-      unsigned alpha_adjust = (ctx->options->key.vs.alpha_adjust >> (location * 2)) & 3;
       bool post_shuffle = ctx->options->key.vs.post_shuffle & (1 << location);
       if (post_shuffle)
          num_channels = MAX2(num_channels, 3);
@@ -4680,7 +4680,7 @@ void visit_load_input(isel_context *ctx, nir_intrinsic_instr *instr)
 
          Temp fetch_dst;
          if (channel_start == 0 && fetch_bytes == dst.bytes() && !post_shuffle &&
-             !expanded && (alpha_adjust == RADV_ALPHA_ADJUST_NONE ||
+             !expanded && (alpha_adjust == AC_FETCH_FORMAT_NONE ||
                            num_channels <= 3)) {
             direct_fetch = true;
             fetch_dst = dst;
@@ -4726,7 +4726,7 @@ void visit_load_input(isel_context *ctx, nir_intrinsic_instr *instr)
             unsigned idx = i + component;
             if (swizzle[idx] < num_channels && channels[swizzle[idx]].id()) {
                Temp channel = channels[swizzle[idx]];
-               if (idx == 3 && alpha_adjust != RADV_ALPHA_ADJUST_NONE)
+               if (idx == 3 && alpha_adjust != AC_FETCH_FORMAT_NONE)
                   channel = adjust_vertex_fetch_alpha(ctx, alpha_adjust, channel);
                vec->operands[i] = Operand(channel);
 
