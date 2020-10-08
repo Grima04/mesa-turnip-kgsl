@@ -1674,8 +1674,6 @@ void select_trap_handler_shader(Program *program, struct nir_shader *shader,
                                 ac_shader_config* config,
                                 struct radv_shader_args *args);
 
-void lower_wqm(Program* program, live& live_vars,
-               const struct radv_nir_compiler_options *options);
 void lower_phis(Program* program);
 void calc_min_waves(Program* program);
 void update_vgpr_sgpr_demand(Program* program, const RegisterDemand new_demand);
