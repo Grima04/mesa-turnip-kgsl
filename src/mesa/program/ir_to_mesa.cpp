@@ -2190,6 +2190,10 @@ ir_to_mesa_visitor::ir_to_mesa_visitor()
    next_signature_id = 1;
    current_function = NULL;
    mem_ctx = ralloc_context(NULL);
+   ctx = NULL;
+   prog = NULL;
+   shader_program = NULL;
+   options = NULL;
 }
 
 ir_to_mesa_visitor::~ir_to_mesa_visitor()
