@@ -744,8 +744,6 @@ zink_transfer_flush_region(struct pipe_context *pctx,
             zink_copy_buffer(ctx, NULL, res, staging_res, box->x, box->x, box->width);
          else
             zink_transfer_copy_bufimage(ctx, res, staging_res, trans);
-         if (batch_uses)
-            pctx->flush(pctx, NULL, 0);
       }
    }
 }
