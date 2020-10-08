@@ -1762,9 +1762,6 @@ v3dv_FlushMappedMemoryRanges(VkDevice _device,
                              uint32_t memoryRangeCount,
                              const VkMappedMemoryRange *pMemoryRanges)
 {
-   /* FIXME: stub (although note that both radv and tu just returns success
-    * here. Pending further research)
-    */
    return VK_SUCCESS;
 }
 
@@ -1773,9 +1770,6 @@ v3dv_InvalidateMappedMemoryRanges(VkDevice _device,
                                   uint32_t memoryRangeCount,
                                   const VkMappedMemoryRange *pMemoryRanges)
 {
-   /* FIXME: stub (although note that both radv and tu just returns success
-    * here. Pending further research)
-    */
    return VK_SUCCESS;
 }
 
