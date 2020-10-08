@@ -1608,8 +1608,9 @@ panfrost_create_context(struct pipe_screen *screen, void *priv, unsigned flags)
         panfrost_batch_init(ctx);
 
         if (!(dev->quirks & IS_BIFROST)) {
+                ctx->blit_blend = rzalloc(ctx, struct panfrost_blend_state);
                 for (unsigned c = 0; c < PIPE_MAX_COLOR_BUFS; ++c)
-                        ctx->blit_blend.rt[c].shaders = _mesa_hash_table_u64_create(ctx);
+                        ctx->blit_blend->rt[c].shaders = _mesa_hash_table_u64_create(ctx);
         }
 
         /* By default mask everything on */

@@ -178,7 +178,7 @@ struct panfrost_context {
         unsigned sample_mask;
         unsigned min_samples;
 
-        struct panfrost_blend_state blit_blend;
+        struct panfrost_blend_state *blit_blend;
 };
 
 /* Corresponds to the CSO */
