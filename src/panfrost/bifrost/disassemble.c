@@ -77,15 +77,6 @@ static void dump_header(FILE *fp, struct bifrost_header header, bool verbose)
 {
         fprintf(fp, "ds(%du) ", header.dependency_slot);
 
-        if (header.message_type != 0) {
-                const char *name = bi_message_type_name(header.message_type);
-
-                if (name[0] == '?')
-                        fprintf(fp, "unk%u ", header.message_type);
-                else
-                        fprintf(fp, "%s ", name);
-        }
-
         if (header.staging_barrier)
                 fprintf(fp, "osrb ");
 
@@ -114,7 +105,7 @@ static void dump_header(FILE *fp, struct bifrost_header header, bool verbose)
                 fprintf(fp, "fpe_psqr ");
 
         if (header.message_type)
-                fprintf(fp, "%s ", bi_message_type_name(header.next_message_type));
+                fprintf(fp, "%s ", bi_message_type_name(header.message_type));
 
         if (header.terminate_discarded_threads)
                 fprintf(fp, "td ");
