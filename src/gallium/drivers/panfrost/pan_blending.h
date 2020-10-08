@@ -32,10 +32,12 @@
 
 struct panfrost_blend_state;
 
+unsigned
+panfrost_blend_constant_mask(const struct pipe_rt_blend_state *blend);
+
 bool
 panfrost_make_fixed_blend_mode(const struct pipe_rt_blend_state blend,
-                               struct MALI_BLEND_EQUATION *equation,
-                               unsigned *constant_mask);
+                               struct MALI_BLEND_EQUATION *equation);
 
 bool
 panfrost_can_fixed_blend(enum pipe_format format);

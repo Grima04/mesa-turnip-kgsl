@@ -256,20 +256,26 @@ to_panfrost_function(unsigned blend_func,
  * the factors for constants used to create a mask to check later. */
 
 static unsigned
-panfrost_constant_mask(unsigned *factors, unsigned num_factors)
+panfrost_blend_factor_constant_mask(enum pipe_blendfactor factor)
 {
         unsigned mask = 0;
 
-        for (unsigned i = 0; i < num_factors; ++i) {
-                unsigned factor = uncomplement_factor(factors[i]);
-
-                if (factor == PIPE_BLENDFACTOR_CONST_COLOR)
-                        mask |= 0b0111; /* RGB */
-                else if (factor == PIPE_BLENDFACTOR_CONST_ALPHA)
-                        mask |= 0b1000; /* A */
-        }
+        factor = uncomplement_factor(factor);
+        if (factor == PIPE_BLENDFACTOR_CONST_COLOR)
+                mask |= 0b0111; /* RGB */
+        else if (factor == PIPE_BLENDFACTOR_CONST_ALPHA)
+                mask |= 0b1000; /* A */
 
         return mask;
+}
+
+unsigned
+panfrost_blend_constant_mask(const struct pipe_rt_blend_state *blend)
+{
+        return panfrost_blend_factor_constant_mask(blend->rgb_src_factor) |
+               panfrost_blend_factor_constant_mask(blend->rgb_dst_factor) |
+               panfrost_blend_factor_constant_mask(blend->alpha_src_factor) |
+               panfrost_blend_factor_constant_mask(blend->alpha_dst_factor);
 }
 
 /* Create the descriptor for a fixed blend mode given the corresponding Gallium
@@ -280,8 +286,7 @@ panfrost_constant_mask(unsigned *factors, unsigned num_factors)
 
 bool
 panfrost_make_fixed_blend_mode(const struct pipe_rt_blend_state blend,
-                               struct MALI_BLEND_EQUATION *equation,
-                               unsigned *constant_mask)
+                               struct MALI_BLEND_EQUATION *equation)
 {
         /* If no blending is enabled, default back on `replace` mode */
 
@@ -295,17 +300,6 @@ panfrost_make_fixed_blend_mode(const struct pipe_rt_blend_state blend,
                 equation->alpha.c = MALI_BLEND_OPERAND_C_ZERO;
                 return true;
         }
-
-        /* At draw-time, we'll need to analyze the blend constant, so
-         * precompute a mask for it -- even if we don't end up able to use
-         * fixed-function blending */
-
-        unsigned factors[] = {
-                blend.rgb_src_factor, blend.rgb_dst_factor,
-                blend.alpha_src_factor, blend.alpha_dst_factor,
-        };
-
-        *constant_mask = panfrost_constant_mask(factors, ARRAY_SIZE(factors));
 
         /* Try to compile the actual fixed-function blend */
         if (!to_panfrost_function(blend.rgb_func, blend.rgb_src_factor,

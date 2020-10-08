@@ -125,11 +125,9 @@ panfrost_create_blend_state(struct pipe_context *pipe,
                         continue;
                 }
 
+                rt->constant_mask = panfrost_blend_constant_mask(&pipe);
                 rt->has_fixed_function =
-                                panfrost_make_fixed_blend_mode(
-                                        pipe,
-                                        &rt->equation,
-                                        &rt->constant_mask);
+                        panfrost_make_fixed_blend_mode(pipe, &rt->equation);
 
                 /* v6 doesn't support blend constants in FF blend equations. */
                 if (rt->has_fixed_function && version == 6 && rt->constant_mask)
