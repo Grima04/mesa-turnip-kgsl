@@ -45,8 +45,6 @@
 #include "util/debug.h"
 #include "ac_exp_param.h"
 
-#include "aco_interface.h"
-
 static const struct nir_shader_compiler_options nir_options = {
 	.vertex_id_zero_based = true,
 	.lower_scmp = true,

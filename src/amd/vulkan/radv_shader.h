@@ -38,6 +38,8 @@
 #include "vulkan/vulkan.h"
 #include "vulkan/util/vk_object.h"
 
+#include "aco_interface.h"
+
 #define RADV_VERT_ATTRIB_MAX MAX2(VERT_ATTRIB_MAX, VERT_ATTRIB_GENERIC0 + MAX_VERTEX_ATTRIBS)
 
 struct radv_device;
@@ -386,17 +388,6 @@ struct radv_shader_binary_rtld {
 	uint8_t data[0];
 };
 
-struct radv_compiler_statistic_info {
-	char name[32];
-	char desc[64];
-};
-
-struct radv_compiler_statistics {
-	unsigned count;
-	struct radv_compiler_statistic_info *infos;
-	uint32_t values[];
-};
-
 struct radv_shader_variant {
 	uint32_t ref_count;
 
@@ -413,7 +404,7 @@ struct radv_shader_variant {
 	char *nir_string;
 	char *disasm_string;
 	char *ir_string;
-	struct radv_compiler_statistics *statistics;
+	struct aco_compiler_statistics *statistics;
 
 	struct list_head slab_list;
 };

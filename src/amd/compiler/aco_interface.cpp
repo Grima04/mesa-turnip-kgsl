@@ -29,7 +29,7 @@
 #include <iostream>
 #include <sstream>
 
-static radv_compiler_statistic_info statistic_infos[] = {
+static aco_compiler_statistic_info statistic_infos[] = {
    [aco::statistic_hash] = {"Hash", "CRC32 hash of code and constant data"},
    [aco::statistic_instructions] = {"Instructions", "Instruction count"},
    [aco::statistic_copies] = {"Copies", "Copy instructions created for pseudo-instructions"},
@@ -185,7 +185,7 @@ void aco_compile_shader(unsigned shader_count,
 
    size_t stats_size = 0;
    if (program->collect_statistics)
-      stats_size = sizeof(radv_compiler_statistics) + aco::num_statistics * sizeof(uint32_t);
+      stats_size = sizeof(aco_compiler_statistics) + aco::num_statistics * sizeof(uint32_t);
    size += stats_size;
 
    size += code.size() * sizeof(uint32_t) + sizeof(radv_shader_binary_legacy);
@@ -201,7 +201,7 @@ void aco_compile_shader(unsigned shader_count,
    legacy_binary->base.total_size = size;
 
    if (program->collect_statistics) {
-      radv_compiler_statistics *statistics = (radv_compiler_statistics *)legacy_binary->data;
+      aco_compiler_statistics *statistics = (aco_compiler_statistics *)legacy_binary->data;
       statistics->count = aco::num_statistics;
       statistics->infos = statistic_infos;
       memcpy(statistics->values, program->statistics, aco::num_statistics * sizeof(uint32_t));
