@@ -2479,6 +2479,7 @@ glsl_type::get_explicit_type_for_size_align(glsl_type_size_align_func type_info,
       return this;
    } else if (this->is_vector()) {
       type_info(this, size, alignment);
+      assert(*alignment > 0);
       assert(*alignment % explicit_type_scalar_byte_size(this) == 0);
       return glsl_type::get_instance(this->base_type, this->vector_elements,
                                      1, 0, false, *alignment);
@@ -2532,6 +2533,7 @@ glsl_type::get_explicit_type_for_size_align(glsl_type_size_align_func type_info,
 
       *size = this->matrix_columns * stride;
       /* Matrix and column alignments match. See glsl_type::column_type() */
+      assert(col_align > 0);
       *alignment = col_align;
       return glsl_type::get_instance(this->base_type, this->vector_elements,
                                      this->matrix_columns, stride, false, *alignment);
