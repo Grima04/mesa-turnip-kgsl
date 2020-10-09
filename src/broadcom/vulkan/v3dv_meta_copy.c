@@ -2544,6 +2544,12 @@ copy_buffer_to_image_blit(struct v3dv_cmd_buffer *cmd_buffer,
    else
       buf_height = region->bufferImageHeight;
 
+   /* If the image is compressed, the bpp refers to blocks, not pixels */
+   uint32_t block_width = vk_format_get_blockwidth(image->vk_format);
+   uint32_t block_height = vk_format_get_blockheight(image->vk_format);
+   buf_width = buf_width / block_width;
+   buf_height = buf_height / block_height;
+
    /* Compute layers to copy */
    uint32_t num_layers;
    if (image->type != VK_IMAGE_TYPE_3D)
@@ -2620,8 +2626,8 @@ copy_buffer_to_image_blit(struct v3dv_cmd_buffer *cmd_buffer,
          region->bufferOffset + i * buf_height * buf_width * buffer_bpp;
       const VkBufferImageCopy buffer_image_copy = {
          .bufferOffset = buffer_offset,
-         .bufferRowLength = region->bufferRowLength,
-         .bufferImageHeight = region->bufferImageHeight,
+         .bufferRowLength = region->bufferRowLength / block_width,
+         .bufferImageHeight = region->bufferImageHeight / block_height,
          .imageSubresource = {
             .aspectMask = aspect,
             .mipLevel = 0,
@@ -2671,13 +2677,13 @@ copy_buffer_to_image_blit(struct v3dv_cmd_buffer *cmd_buffer,
          },
          .dstOffsets = {
             {
-               region->imageOffset.x,
-               region->imageOffset.y,
+               region->imageOffset.x / block_width,
+               region->imageOffset.y / block_height,
                region->imageOffset.z + i,
             },
             {
-               region->imageOffset.x + region->imageExtent.width,
-               region->imageOffset.y + region->imageExtent.height,
+               (region->imageOffset.x + region->imageExtent.width) / block_width,
+               (region->imageOffset.y + region->imageExtent.height) / block_height,
                region->imageOffset.z + i + 1,
             },
          },
