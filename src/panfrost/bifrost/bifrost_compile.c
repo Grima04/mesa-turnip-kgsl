@@ -1671,7 +1671,8 @@ bifrost_compile_shader_nir(nir_shader *nir, panfrost_program *program,
         NIR_PASS_V(nir, nir_lower_io, nir_var_shader_in | nir_var_shader_out,
                         glsl_type_size, 0);
         NIR_PASS_V(nir, nir_lower_ssbo);
-        NIR_PASS_V(nir, nir_lower_mediump_outputs);
+        // TODO: re-enable when fp16 is flipped on
+        // NIR_PASS_V(nir, nir_lower_mediump_outputs);
 
         bi_optimize_nir(nir);
 
