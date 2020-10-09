@@ -958,7 +958,14 @@ static void si_emit_draw_packets(struct si_context *sctx, const struct pipe_draw
             radeon_emit(cs, va);
             radeon_emit(cs, va >> 32);
             radeon_emit(cs, draws[i].count);
-            radeon_emit(cs, V_0287F0_DI_SRC_SEL_DMA);
+            radeon_emit(cs, V_0287F0_DI_SRC_SEL_DMA |
+                        /* NOT_EOP allows merging multiple draws into 1 wave, but only user VGPRs
+                         * can be changed between draws and GS fast launch must be disabled.
+                         * NOT_EOP doesn't work on gfx9 and older.
+                         */
+                        S_0287F0_NOT_EOP(sctx->chip_class >= GFX10 &&
+                                         i < num_draws - 1 &&
+                                         !(sctx->ngg_culling & SI_NGG_CULL_GS_FAST_LAUNCH_ALL)));
          }
       } else {
          for (unsigned i = 0; i < num_draws; i++) {
