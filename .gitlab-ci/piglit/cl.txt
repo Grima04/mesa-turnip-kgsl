@@ -53,37 +53,9 @@ program/execute/atomic_int64_xor-global-return: skip
 program/execute/atomic_int64_xor-local: skip
 program/execute/builtin/builtin-char-popcount-1.2.generated: skip
 program/execute/builtin/builtin-float-cos-1.0.generated: timeout
-program/execute/builtin/builtin-float-fmax-1.0.generated/fmax float1: fail
-program/execute/builtin/builtin-float-fmax-1.0.generated/fmax float16: fail
-program/execute/builtin/builtin-float-fmax-1.0.generated/fmax float2: fail
-program/execute/builtin/builtin-float-fmax-1.0.generated/fmax float4: fail
-program/execute/builtin/builtin-float-fmax-1.0.generated/fmax float8: fail
-program/execute/builtin/builtin-float-fmax-1.0.generated/tss_fmax float16: fail
-program/execute/builtin/builtin-float-fmax-1.0.generated/tss_fmax float2: fail
-program/execute/builtin/builtin-float-fmax-1.0.generated/tss_fmax float4: fail
-program/execute/builtin/builtin-float-fmax-1.0.generated/tss_fmax float8: fail
-program/execute/builtin/builtin-float-fmin-1.0.generated/fmin float1: fail
-program/execute/builtin/builtin-float-fmin-1.0.generated/fmin float16: fail
-program/execute/builtin/builtin-float-fmin-1.0.generated/fmin float2: fail
-program/execute/builtin/builtin-float-fmin-1.0.generated/fmin float4: fail
-program/execute/builtin/builtin-float-fmin-1.0.generated/fmin float8: fail
-program/execute/builtin/builtin-float-fmin-1.0.generated/tss_fmin float16: fail
-program/execute/builtin/builtin-float-fmin-1.0.generated/tss_fmin float2: fail
-program/execute/builtin/builtin-float-fmin-1.0.generated/tss_fmin float4: fail
-program/execute/builtin/builtin-float-fmin-1.0.generated/tss_fmin float8: fail
 program/execute/builtin/builtin-float-isfinite-1.0.generated: crash
 program/execute/builtin/builtin-float-isnormal-1.0.generated: crash
 program/execute/builtin/builtin-float-ldexp-1.0.generated: fail
-program/execute/builtin/builtin-float-maxmag-1.1.generated/maxmag float1: fail
-program/execute/builtin/builtin-float-maxmag-1.1.generated/maxmag float16: fail
-program/execute/builtin/builtin-float-maxmag-1.1.generated/maxmag float2: fail
-program/execute/builtin/builtin-float-maxmag-1.1.generated/maxmag float4: fail
-program/execute/builtin/builtin-float-maxmag-1.1.generated/maxmag float8: fail
-program/execute/builtin/builtin-float-minmag-1.1.generated/minmag float1: fail
-program/execute/builtin/builtin-float-minmag-1.1.generated/minmag float16: fail
-program/execute/builtin/builtin-float-minmag-1.1.generated/minmag float2: fail
-program/execute/builtin/builtin-float-minmag-1.1.generated/minmag float4: fail
-program/execute/builtin/builtin-float-minmag-1.1.generated/minmag float8: fail
 program/execute/builtin/builtin-float-mix-1.0.generated: crash
 program/execute/builtin/builtin-float-sin-1.0.generated: timeout
 program/execute/builtin/builtin-float-sincos-1.0.generated: timeout
@@ -126,8 +98,8 @@ program/execute/vstore/vstore-half-private: skip
 summary:
        name:  results
        ----  --------
-       pass:     3737
-       fail:       42
+       pass:     3766
+       fail:       14
       crash:        6
        skip:       73
     timeout:        4
@@ -138,4 +110,4 @@ summary:
     changes:        0
       fixes:        0
 regressions:        0
-      total:     3862
+      total:     3863
