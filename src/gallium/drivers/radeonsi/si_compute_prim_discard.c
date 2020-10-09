@@ -956,7 +956,8 @@ static bool si_check_ring_space(struct si_context *sctx, unsigned out_indexbuf_s
 enum si_prim_discard_outcome
 si_prepare_prim_discard_or_split_draw(struct si_context *sctx, const struct pipe_draw_info *info,
                                       const struct pipe_draw_start_count *draws,
-                                      unsigned num_draws, bool primitive_restart)
+                                      unsigned num_draws, bool primitive_restart,
+                                      unsigned total_count)
 {
    /* If the compute shader compilation isn't finished, this returns false. */
    if (!si_shader_select_prim_discard_cs(sctx, info, primitive_restart))
@@ -967,7 +968,7 @@ si_prepare_prim_discard_or_split_draw(struct si_context *sctx, const struct pipe
 
    struct radeon_cmdbuf *gfx_cs = sctx->gfx_cs;
    unsigned prim = info->mode;
-   unsigned count = draws[0].count;
+   unsigned count = total_count;
    unsigned instance_count = info->instance_count;
    unsigned num_prims_per_instance = u_decomposed_prims_for_vertices(prim, count);
    unsigned num_prims = num_prims_per_instance * instance_count;
@@ -981,16 +982,54 @@ si_prepare_prim_discard_or_split_draw(struct si_context *sctx, const struct pipe
    if (ring_full && num_prims > split_prims_draw_level &&
        instance_count == 1 && /* TODO: support splitting instanced draws */
        (1 << prim) & ((1 << PIPE_PRIM_TRIANGLES) | (1 << PIPE_PRIM_TRIANGLE_STRIP))) {
-      /* Split draws. */
+      unsigned vert_count_per_subdraw = 0;
+
+      if (prim == PIPE_PRIM_TRIANGLES)
+         vert_count_per_subdraw = split_prims_draw_level * 3;
+      else if (prim == PIPE_PRIM_TRIANGLE_STRIP)
+         vert_count_per_subdraw = split_prims_draw_level;
+      else
+         unreachable("shouldn't get here");
+
+      /* Split multi draws first. */
+      if (num_draws > 1) {
+         unsigned count = 0;
+         unsigned first_draw = 0;
+         unsigned num_draws_split = 0;
+
+         for (unsigned i = 0; i < num_draws; i++) {
+            if (count && count + draws[i].count > vert_count_per_subdraw) {
+               /* Submit previous draws.  */
+               sctx->b.multi_draw(&sctx->b, info, draws + first_draw, num_draws_split);
+               count = 0;
+               first_draw = i;
+               num_draws_split = 0;
+            }
+
+            if (draws[i].count > vert_count_per_subdraw) {
+               /* Submit just 1 draw. It will be split. */
+               sctx->b.multi_draw(&sctx->b, info, draws + i, 1);
+               assert(count == 0);
+               assert(first_draw == i);
+               assert(num_draws_split == 0);
+               first_draw = i + 1;
+               continue;
+            }
+
+            count += draws[i].count;
+            num_draws_split++;
+         }
+         return SI_PRIM_DISCARD_MULTI_DRAW_SPLIT;
+      }
+
+      /* Split single draws if splitting multi draws isn't enough. */
       struct pipe_draw_info split_draw = *info;
       struct pipe_draw_start_count split_draw_range = draws[0];
+      unsigned base_start = split_draw_range.start;
 
       split_draw.primitive_restart = primitive_restart;
 
-      unsigned base_start = split_draw_range.start;
-
       if (prim == PIPE_PRIM_TRIANGLES) {
-         unsigned vert_count_per_subdraw = split_prims_draw_level * 3;
          assert(vert_count_per_subdraw < count);
 
          for (unsigned start = 0; start < count; start += vert_count_per_subdraw) {
@@ -1004,8 +1043,6 @@ si_prepare_prim_discard_or_split_draw(struct si_context *sctx, const struct pipe
           * for odd primitives. */
          STATIC_ASSERT(split_prims_draw_level % 2 == 0);
 
-         unsigned vert_count_per_subdraw = split_prims_draw_level;
-
          for (unsigned start = 0; start < count - 2; start += vert_count_per_subdraw) {
             split_draw_range.start = base_start + start;
             split_draw_range.count = MIN2(count - start, vert_count_per_subdraw + 2);
@@ -1017,8 +1054,6 @@ si_prepare_prim_discard_or_split_draw(struct si_context *sctx, const struct pipe
                sctx->preserve_prim_restart_gds_at_flush = true;
          }
          sctx->preserve_prim_restart_gds_at_flush = false;
-      } else {
-         assert(0);
       }
 
       return SI_PRIM_DISCARD_DRAW_SPLIT;
@@ -1031,7 +1066,7 @@ si_prepare_prim_discard_or_split_draw(struct si_context *sctx, const struct pipe
       return SI_PRIM_DISCARD_DISABLED;
    }
 
-   unsigned num_subdraws = DIV_ROUND_UP(num_prims, SPLIT_PRIMS_PACKET_LEVEL);
+   unsigned num_subdraws = DIV_ROUND_UP(num_prims, SPLIT_PRIMS_PACKET_LEVEL) * num_draws;
    unsigned need_compute_dw = 11 /* shader */ + 34 /* first draw */ +
                               24 * (num_subdraws - 1) + /* subdraws */
                               30;                       /* leave some space at the end */

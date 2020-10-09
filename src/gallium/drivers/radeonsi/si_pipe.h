@@ -1451,13 +1451,15 @@ enum si_prim_discard_outcome
    SI_PRIM_DISCARD_ENABLED,
    SI_PRIM_DISCARD_DISABLED,
    SI_PRIM_DISCARD_DRAW_SPLIT,
+   SI_PRIM_DISCARD_MULTI_DRAW_SPLIT,
 };
 
 void si_build_prim_discard_compute_shader(struct si_shader_context *ctx);
 enum si_prim_discard_outcome
 si_prepare_prim_discard_or_split_draw(struct si_context *sctx, const struct pipe_draw_info *info,
                                       const struct pipe_draw_start_count *draws,
-                                      unsigned num_draws, bool primitive_restart);
+                                      unsigned num_draws, bool primitive_restart,
+                                      unsigned total_count);
 void si_compute_signal_gfx(struct si_context *sctx);
 void si_dispatch_prim_discard_cs_and_draw(struct si_context *sctx,
                                           const struct pipe_draw_info *info,

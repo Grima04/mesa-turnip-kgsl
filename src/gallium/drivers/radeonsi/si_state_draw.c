@@ -941,12 +941,13 @@ static void si_emit_draw_packets(struct si_context *sctx, const struct pipe_draw
 
       if (index_size) {
          if (dispatch_prim_discard_cs) {
-            index_va += draws[0].start * original_index_size;
-            index_max_size = MIN2(index_max_size, draws[0].count);
+            for (unsigned i = 0; i < num_draws; i++) {
+               uint64_t va = index_va + draws[0].start * original_index_size;
 
-            si_dispatch_prim_discard_cs_and_draw(sctx, info, draws[0].count,
-                                                 original_index_size, base_vertex,
-                                                 index_va, index_max_size);
+               si_dispatch_prim_discard_cs_and_draw(sctx, info, draws[i].count,
+                                                    original_index_size, base_vertex,
+                                                    va, MIN2(index_max_size, draws[i].count));
+            }
             return;
          }
 
@@ -1998,7 +1999,7 @@ static void si_multi_draw_vbo(struct pipe_context *ctx,
        (si_all_vs_resources_read_only(sctx, index_size ? indexbuf : NULL) ||
         pd_msg("write reference"))) {
       switch (si_prepare_prim_discard_or_split_draw(sctx, info, draws, num_draws,
-                                                    primitive_restart)) {
+                                                    primitive_restart, total_direct_count)) {
       case SI_PRIM_DISCARD_ENABLED:
          original_index_size = index_size;
          prim_discard_cs_instancing = instance_count > 1;
@@ -2016,6 +2017,8 @@ static void si_multi_draw_vbo(struct pipe_context *ctx,
          break;
       case SI_PRIM_DISCARD_DRAW_SPLIT:
          sctx->compute_num_verts_rejected -= total_direct_count;
+         goto return_cleanup;
+      case SI_PRIM_DISCARD_MULTI_DRAW_SPLIT:
          goto return_cleanup;
       }
    }
