@@ -1972,17 +1972,6 @@ isl_surf_supports_ccs(const struct isl_device *dev,
       if (isl_surf_usage_is_stencil(surf->usage) && surf->samples > 1)
          return false;
 
-      /* On Gen12, 8BPP surfaces cannot be compressed if any level is not
-       * 32Bx4row-aligned. For now, just reject the cases where alignment
-       * matters.
-       */
-      if (isl_format_get_layout(surf->format)->bpb == 8 && surf->levels >= 3) {
-         isl_finishme("%s:%s: CCS for 8BPP textures with 3+ miplevels is "
-                      "disabled, but support for more levels is possible.",
-                      __FILE__, __func__);
-         return false;
-      }
-
       /* On Gen12, all CCS-compressed surface pitches must be multiples of
        * 512B.
        */
