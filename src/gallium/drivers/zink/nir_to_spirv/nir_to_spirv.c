@@ -1560,7 +1560,6 @@ emit_load_ubo_vec4(struct ntv_context *ctx, nir_intrinsic_instr *intr)
 {
    ASSERTED nir_const_value *const_block_index = nir_src_as_const_value(intr->src[0]);
    assert(const_block_index); // no dynamic indexing for now
-   assert(const_block_index->u32 == 0); // we only support the default UBO for now
 
    SpvId offset = get_src(ctx, &intr->src[1]);
    SpvId uvec4_type = get_uvec_type(ctx, 32, 4);
@@ -1571,8 +1570,8 @@ emit_load_ubo_vec4(struct ntv_context *ctx, nir_intrinsic_instr *intr)
    SpvId member = emit_uint_const(ctx, 32, 0);
    SpvId offsets[] = { member, offset };
    SpvId ptr = spirv_builder_emit_access_chain(&ctx->builder, pointer_type,
-                                               ctx->ubos[0], offsets,
-                                               ARRAY_SIZE(offsets));
+                                               ctx->ubos[const_block_index->u32],
+                                               offsets, ARRAY_SIZE(offsets));
    SpvId result = spirv_builder_emit_load(&ctx->builder, uvec4_type, ptr);
 
    SpvId type = get_dest_uvec_type(ctx, &intr->dest);
