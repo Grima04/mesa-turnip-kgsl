@@ -28,6 +28,7 @@
 #include "brw_eu.h"
 #include "brw_fs.h"
 #include "brw_cfg.h"
+#include "util/set.h"
 #include "util/register_allocate.h"
 
 using namespace brw;
@@ -421,6 +422,8 @@ public:
        */
       live_instr_count = fs->cfg->last_block()->end_ip + 1;
 
+      spill_insts = _mesa_pointer_set_create(mem_ctx);
+
       /* Most of this allocation was written for a reg_width of 1
        * (dispatch_width == 8).  In extending to SIMD16, the code was
        * left in place and it was converted to have the hardware
@@ -462,6 +465,11 @@ private:
    void build_interference_graph(bool allow_spilling);
    void discard_interference_graph();
 
+   void emit_unspill(const fs_builder &bld, fs_reg dst,
+                     uint32_t spill_offset, unsigned count);
+   void emit_spill(const fs_builder &bld, fs_reg src,
+                   uint32_t spill_offset, unsigned count);
+
    void set_spill_costs();
    int choose_spill_reg();
    fs_reg alloc_spill_reg(unsigned size, int ip);
@@ -473,6 +481,8 @@ private:
    const brw_compiler *compiler;
    const fs_live_variables &live;
    int live_instr_count;
+
+   set *spill_insts;
 
    /* Which compiler->fs_reg_sets[] to use */
    int rsi;
@@ -844,9 +854,9 @@ fs_reg_alloc::discard_interference_graph()
    have_spill_costs = false;
 }
 
-static void
-emit_unspill(const fs_builder &bld, fs_reg dst,
-             uint32_t spill_offset, unsigned count)
+void
+fs_reg_alloc::emit_unspill(const fs_builder &bld, fs_reg dst,
+                           uint32_t spill_offset, unsigned count)
 {
    const gen_device_info *devinfo = bld.shader->devinfo;
    const unsigned reg_size = dst.component_size(bld.dispatch_width()) /
@@ -872,15 +882,16 @@ emit_unspill(const fs_builder &bld, fs_reg dst,
          unspill_inst->base_mrf = spill_base_mrf(bld.shader);
          unspill_inst->mlen = 1; /* header contains offset */
       }
+      _mesa_set_add(spill_insts, unspill_inst);
 
       dst.offset += reg_size * REG_SIZE;
       spill_offset += reg_size * REG_SIZE;
    }
 }
 
-static void
-emit_spill(const fs_builder &bld, fs_reg src,
-           uint32_t spill_offset, unsigned count)
+void
+fs_reg_alloc::emit_spill(const fs_builder &bld, fs_reg src,
+                         uint32_t spill_offset, unsigned count)
 {
    const unsigned reg_size = src.component_size(bld.dispatch_width()) /
                              REG_SIZE;
@@ -892,6 +903,7 @@ emit_spill(const fs_builder &bld, fs_reg src,
       spill_inst->offset = spill_offset;
       spill_inst->mlen = 1 + reg_size; /* header, value */
       spill_inst->base_mrf = spill_base_mrf(bld.shader);
+      _mesa_set_add(spill_insts, spill_inst);
 
       src.offset += reg_size * REG_SIZE;
       spill_offset += reg_size * REG_SIZE;
@@ -923,6 +935,16 @@ fs_reg_alloc::set_spill_costs()
       if (inst->dst.file == VGRF)
          spill_costs[inst->dst.nr] += regs_written(inst) * block_scale;
 
+      /* Don't spill anything we generated while spilling */
+      if (_mesa_set_search(spill_insts, inst)) {
+         for (unsigned int i = 0; i < inst->sources; i++) {
+	    if (inst->src[i].file == VGRF)
+               no_spill[inst->src[i].nr] = true;
+         }
+	 if (inst->dst.file == VGRF)
+            no_spill[inst->dst.nr] = true;
+      }
+
       switch (inst->opcode) {
 
       case BRW_OPCODE_DO:
@@ -941,17 +963,6 @@ fs_reg_alloc::set_spill_costs()
       case BRW_OPCODE_ENDIF:
          block_scale /= 0.5;
          break;
-
-      case SHADER_OPCODE_GEN4_SCRATCH_WRITE:
-	 if (inst->src[0].file == VGRF)
-            no_spill[inst->src[0].nr] = true;
-	 break;
-
-      case SHADER_OPCODE_GEN4_SCRATCH_READ:
-      case SHADER_OPCODE_GEN7_SCRATCH_READ:
-	 if (inst->dst.file == VGRF)
-            no_spill[inst->dst.nr] = true;
-	 break;
 
       default:
 	 break;
@@ -1171,11 +1182,11 @@ fs_reg_alloc::spill_reg(unsigned spill_reg)
 
       /* We don't advance the ip for scratch read/write instructions
        * because we consider them to have the same ip as instruction we're
-       * spilling around for the purposes of interference.
+       * spilling around for the purposes of interference.  Also, we're
+       * inserting spill instructions without re-running liveness analysis
+       * and we don't want to mess up our IPs.
        */
-      if (inst->opcode != SHADER_OPCODE_GEN4_SCRATCH_WRITE &&
-          inst->opcode != SHADER_OPCODE_GEN4_SCRATCH_READ &&
-          inst->opcode != SHADER_OPCODE_GEN7_SCRATCH_READ)
+      if (!_mesa_set_search(spill_insts, inst))
          ip++;
    }
 
