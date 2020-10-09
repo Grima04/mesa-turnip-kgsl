@@ -96,11 +96,7 @@ calc_descriptor_hash_sampler_view(struct zink_context *ctx, struct zink_sampler_
    hash_data = &sampler_view->image_view;
    data_size = sizeof(VkImageView);
    hash = XXH32(hash_data, data_size, hash);
-   VkImageLayout layout;
-   if (util_format_is_depth_and_stencil(sampler_view->base.format))
-      layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
-   else
-      layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+   VkImageLayout layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
    hash_data = &layout;
    data_size = sizeof(VkImageLayout);
    sampler_view->hash = XXH32(hash_data, data_size, hash);
