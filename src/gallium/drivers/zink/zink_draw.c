@@ -150,7 +150,7 @@ zink_bind_vertex_buffers(struct zink_batch *batch, struct zink_context *ctx)
          buffer_offsets[i] = vb->buffer_offset;
          zink_batch_reference_resource_rw(batch, res, false);
       } else {
-         buffers[i] = zink_resource(ctx->dummy_buffer)->buffer;
+         buffers[i] = zink_resource(ctx->dummy_vertex_buffer)->buffer;
          buffer_offsets[i] = 0;
       }
    }
@@ -267,7 +267,7 @@ update_descriptors(struct zink_context *ctx, struct zink_screen *screen, bool is
             buffer_infos[num_buffer_info].buffer = res ? res->buffer :
                                                    (screen->info.rb2_feats.nullDescriptor ?
                                                     VK_NULL_HANDLE :
-                                                    zink_resource(ctx->dummy_buffer)->buffer);
+                                                    zink_resource(ctx->dummy_vertex_buffer)->buffer);
             buffer_infos[num_buffer_info].offset = res ? ctx->ubos[stage][index].buffer_offset : 0;
             buffer_infos[num_buffer_info].range  = res ? ctx->ubos[stage][index].buffer_size : VK_WHOLE_SIZE;
             wds[num_wds].pBufferInfo = buffer_infos + num_buffer_info;

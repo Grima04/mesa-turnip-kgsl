@@ -61,7 +61,7 @@ zink_context_destroy(struct pipe_context *pctx)
 
    util_blitter_destroy(ctx->blitter);
 
-   pipe_resource_reference(&ctx->dummy_buffer, NULL);
+   pipe_resource_reference(&ctx->dummy_vertex_buffer, NULL);
    for (unsigned i = 0; i < ARRAY_SIZE(ctx->null_buffers); i++)
       pipe_resource_reference(&ctx->null_buffers[i], NULL);
 
@@ -1750,9 +1750,9 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
       goto fail;
 
    const uint8_t data[] = { 0 };
-   ctx->dummy_buffer = pipe_buffer_create_with_data(&ctx->base,
+   ctx->dummy_vertex_buffer = pipe_buffer_create_with_data(&ctx->base,
       PIPE_BIND_VERTEX_BUFFER, PIPE_USAGE_IMMUTABLE, sizeof(data), data);
-   if (!ctx->dummy_buffer)
+   if (!ctx->dummy_vertex_buffer)
       goto fail;
 
    /* start the first batch */
