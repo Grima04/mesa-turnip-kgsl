@@ -1425,6 +1425,9 @@ static int gfx9_compute_miptree(struct ac_addrlib *addrlib, const struct radeon_
       }
    }
 
+   surf->u.gfx9.base_mip_width = mip_info[0].pitch;
+   surf->u.gfx9.base_mip_height = mip_info[0].height;
+
    if (in->flags.depth) {
       assert(in->swizzleMode != ADDR_SW_LINEAR);
 
