@@ -910,6 +910,12 @@ copy_image_to_buffer_blit(struct v3dv_cmd_buffer *cmd_buffer,
    else
       buf_height = region->bufferImageHeight;
 
+   /* If the image is compressed, the bpp refers to blocks, not pixels */
+   uint32_t block_width = vk_format_get_blockwidth(image->vk_format);
+   uint32_t block_height = vk_format_get_blockheight(image->vk_format);
+   buf_width = buf_width / block_width;
+   buf_height = buf_height / block_height;
+
    /* Compute layers to copy */
    uint32_t num_layers;
    if (image->type != VK_IMAGE_TYPE_3D)
@@ -918,9 +924,51 @@ copy_image_to_buffer_blit(struct v3dv_cmd_buffer *cmd_buffer,
       num_layers = region->imageExtent.depth;
    assert(num_layers > 0);
 
-  /* Copy requested layers */
+   /* Our blit interface can see the real format of the images to detect
+    * copies between compressed and uncompressed images and adapt the
+    * blit region accordingly. Here we are just doing a raw copy of
+    * compressed data, but we are passing an uncompressed view of the
+    * buffer for the blit destination image (since compressed formats are
+    * not renderable), so we also want to provide an uncompressed view of
+    * the source image.
+    */
+   VkResult result;
    struct v3dv_device *device = cmd_buffer->device;
    VkDevice _device = v3dv_device_to_handle(device);
+   if (vk_format_is_compressed(image->vk_format)) {
+      VkImage uiview;
+      VkImageCreateInfo uiview_info = {
+         .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+         .imageType = VK_IMAGE_TYPE_3D,
+         .format = dst_format,
+         .extent = { buf_width, buf_height, image->extent.depth },
+         .mipLevels = image->levels,
+         .arrayLayers = image->array_size,
+         .samples = image->samples,
+         .tiling = image->tiling,
+         .usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT,
+         .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+         .queueFamilyIndexCount = 0,
+         .initialLayout = VK_IMAGE_LAYOUT_GENERAL,
+      };
+      result = v3dv_CreateImage(_device, &uiview_info, &device->alloc, &uiview);
+      if (result != VK_SUCCESS)
+         return handled;
+
+      v3dv_cmd_buffer_add_private_obj(
+         cmd_buffer, (uintptr_t)uiview,
+         (v3dv_cmd_buffer_private_obj_destroy_cb)v3dv_DestroyImage);
+
+      result = v3dv_BindImageMemory(_device, uiview,
+                                    v3dv_device_memory_to_handle(image->mem),
+                                    image->mem_offset);
+      if (result != VK_SUCCESS)
+         return handled;
+
+      image = v3dv_image_from_handle(uiview);
+   }
+
+   /* Copy requested layers */
    for (uint32_t i = 0; i < num_layers; i++) {
       /* Create the destination blit image from the destination buffer */
       VkImageCreateInfo image_info = {
@@ -939,7 +987,7 @@ copy_image_to_buffer_blit(struct v3dv_cmd_buffer *cmd_buffer,
       };
 
       VkImage buffer_image;
-      VkResult result =
+      result =
          v3dv_CreateImage(_device, &image_info, &device->alloc, &buffer_image);
       if (result != VK_SUCCESS)
          return handled;
@@ -974,13 +1022,15 @@ copy_image_to_buffer_blit(struct v3dv_cmd_buffer *cmd_buffer,
          },
          .srcOffsets = {
             {
-               region->imageOffset.x,
-               region->imageOffset.y,
+               DIV_ROUND_UP(region->imageOffset.x, block_width),
+               DIV_ROUND_UP(region->imageOffset.y, block_height),
                region->imageOffset.z + i,
             },
             {
-               region->imageOffset.x + region->imageExtent.width,
-               region->imageOffset.y + region->imageExtent.height,
+               DIV_ROUND_UP(region->imageOffset.x + region->imageExtent.width,
+                            block_width),
+               DIV_ROUND_UP(region->imageOffset.y + region->imageExtent.height,
+                            block_height),
                region->imageOffset.z + i + 1,
             },
          },
@@ -992,7 +1042,11 @@ copy_image_to_buffer_blit(struct v3dv_cmd_buffer *cmd_buffer,
          },
          .dstOffsets = {
             { 0, 0, 0 },
-            { region->imageExtent.width, region->imageExtent.height, 1 },
+            {
+               DIV_ROUND_UP(region->imageExtent.width, block_width),
+               DIV_ROUND_UP(region->imageExtent.height, block_height),
+               1
+            },
          },
       };
 
@@ -2679,13 +2733,15 @@ copy_buffer_to_image_blit(struct v3dv_cmd_buffer *cmd_buffer,
          },
          .dstOffsets = {
             {
-               region->imageOffset.x / block_width,
-               region->imageOffset.y / block_height,
+               DIV_ROUND_UP(region->imageOffset.x, block_width),
+               DIV_ROUND_UP(region->imageOffset.y, block_height),
                region->imageOffset.z + i,
             },
             {
-               (region->imageOffset.x + region->imageExtent.width) / block_width,
-               (region->imageOffset.y + region->imageExtent.height) / block_height,
+               DIV_ROUND_UP(region->imageOffset.x + region->imageExtent.width,
+                            block_width),
+               DIV_ROUND_UP(region->imageOffset.y + region->imageExtent.height,
+                            block_height),
                region->imageOffset.z + i + 1,
             },
          },
