@@ -1556,7 +1556,7 @@ emit_load_const(struct ntv_context *ctx, nir_load_const_instr *load_const)
 }
 
 static void
-emit_load_ubo(struct ntv_context *ctx, nir_intrinsic_instr *intr)
+emit_load_ubo_vec4(struct ntv_context *ctx, nir_intrinsic_instr *intr)
 {
    ASSERTED nir_const_value *const_block_index = nir_src_as_const_value(intr->src[0]);
    assert(const_block_index); // no dynamic indexing for now
@@ -1569,8 +1569,7 @@ emit_load_ubo(struct ntv_context *ctx, nir_intrinsic_instr *intr)
                                                       SpvStorageClassUniform,
                                                       uvec4_type);
 
-      assert(const_offset->u32 % 16 == 0);
-      unsigned idx = const_offset->u32 / 16;
+      unsigned idx = const_offset->u32;
       SpvId member = emit_uint_const(ctx, 32, 0);
       SpvId offset = emit_uint_const(ctx, 32, idx);
       SpvId offsets[] = { member, offset };
@@ -1715,8 +1714,8 @@ static void
 emit_intrinsic(struct ntv_context *ctx, nir_intrinsic_instr *intr)
 {
    switch (intr->intrinsic) {
-   case nir_intrinsic_load_ubo:
-      emit_load_ubo(ctx, intr);
+   case nir_intrinsic_load_ubo_vec4:
+      emit_load_ubo_vec4(ctx, intr);
       break;
 
    case nir_intrinsic_discard:
