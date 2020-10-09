@@ -2188,23 +2188,20 @@ type_size(const struct glsl_type *type, bool bindless)
  * can handle for 64-bit values in TGSI.
  */
 static bool
-ntt_should_vectorize_instr(const nir_instr *in_a, const nir_instr *in_b,
-                           void *data)
+ntt_should_vectorize_instr(const nir_instr *instr, void *data)
 {
-   if (in_a->type != nir_instr_type_alu)
+   if (instr->type != nir_instr_type_alu)
       return false;
 
-   nir_alu_instr *a = nir_instr_as_alu(in_a);
-   nir_alu_instr *b = nir_instr_as_alu(in_b);
+   nir_alu_instr *alu = nir_instr_as_alu(instr);
 
-   unsigned a_num_components = a->dest.dest.ssa.num_components;
-   unsigned b_num_components = b->dest.dest.ssa.num_components;
+   unsigned num_components = alu->dest.dest.ssa.num_components;
 
-   int src_bit_size = nir_src_bit_size(a->src[0].src);
-   int dst_bit_size = nir_dest_bit_size(a->dest.dest);
+   int src_bit_size = nir_src_bit_size(alu->src[0].src);
+   int dst_bit_size = nir_dest_bit_size(alu->dest.dest);
 
    if (src_bit_size == 64 || dst_bit_size == 64) {
-      if (a_num_components + b_num_components > 2)
+      if (num_components > 1)
          return false;
    }
 
