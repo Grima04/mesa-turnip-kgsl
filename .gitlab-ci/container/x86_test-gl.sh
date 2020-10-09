@@ -62,7 +62,7 @@ apt-get install -y --no-remove \
 
 ############### Build piglit
 
-. .gitlab-ci/build-piglit.sh
+INCLUDE_OPENCL_TESTS=1 . .gitlab-ci/build-piglit.sh
 
 ############### Build dEQP runner
 
