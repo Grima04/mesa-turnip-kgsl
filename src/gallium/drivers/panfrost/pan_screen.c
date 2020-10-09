@@ -65,6 +65,7 @@ static const struct debug_named_value debug_options[] = {
         {"nofp16",     PAN_DBG_NOFP16,     "Disable 16-bit support"},
         {"bifrost",   PAN_DBG_BIFROST, "Enable experimental Mali G31 and G52 support"},
         {"gl3",       PAN_DBG_GL3,      "Enable experimental GL 3.x implementation, up to 3.3"},
+        {"noafbc",    PAN_DBG_NO_AFBC,  "Disable AFBC support"},
         DEBUG_NAMED_VALUE_END
 };
 
@@ -694,6 +695,9 @@ panfrost_create_screen(int fd, struct renderonly *ro)
         panfrost_open_device(screen, fd, dev);
 
         dev->debug = debug_get_flags_option("PAN_MESA_DEBUG", debug_options, 0);
+
+        if (dev->debug & PAN_DBG_NO_AFBC)
+                dev->quirks |= MIDGARD_NO_AFBC;
 
         if (ro) {
                 dev->ro = renderonly_dup(ro);
