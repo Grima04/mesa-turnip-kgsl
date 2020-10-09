@@ -402,7 +402,10 @@ panfrost_draw_emit_tiler(struct panfrost_batch *batch,
                 pan_emit_draw_descs(batch, &cfg, PIPE_SHADER_FRAGMENT);
 
                 if (ctx->occlusion_query) {
-                        cfg.occlusion_query = MALI_OCCLUSION_MODE_PREDICATE;
+                        if (ctx->occlusion_query->type == PIPE_QUERY_OCCLUSION_COUNTER)
+                                cfg.occlusion_query = MALI_OCCLUSION_MODE_COUNTER;
+                        else
+                                cfg.occlusion_query = MALI_OCCLUSION_MODE_PREDICATE;
                         cfg.occlusion = ctx->occlusion_query->bo->gpu;
                         panfrost_batch_add_bo(ctx->batch, ctx->occlusion_query->bo,
                                               PAN_BO_ACCESS_SHARED |
@@ -1347,23 +1350,28 @@ static bool
 panfrost_begin_query(struct pipe_context *pipe, struct pipe_query *q)
 {
         struct panfrost_context *ctx = pan_context(pipe);
+        struct panfrost_device *dev = pan_device(ctx->base.screen);
         struct panfrost_query *query = (struct panfrost_query *) q;
 
         switch (query->type) {
         case PIPE_QUERY_OCCLUSION_COUNTER:
         case PIPE_QUERY_OCCLUSION_PREDICATE:
-        case PIPE_QUERY_OCCLUSION_PREDICATE_CONSERVATIVE:
+        case PIPE_QUERY_OCCLUSION_PREDICATE_CONSERVATIVE: {
+                unsigned size = sizeof(uint64_t) * dev->core_count;
+
                 /* Allocate a bo for the query results to be stored */
                 if (!query->bo) {
-                        query->bo = panfrost_bo_create(
-                                        pan_device(ctx->base.screen),
-                                        sizeof(unsigned), 0);
+                        query->bo = panfrost_bo_create(dev, size, 0);
                 }
 
-                unsigned *result = (unsigned *)query->bo->cpu;
-                *result = 0; /* Default to 0 if nothing at all drawn. */
+                /* Default to 0 if nothing at all drawn. */
+                memset(query->bo->cpu, 0, size);
+
+                query->msaa = (ctx->pipe_framebuffer.samples > 1);
+
                 ctx->occlusion_query = query;
                 break;
+        }
 
         /* Geometry statistics are computed in the driver. XXX: geom/tess
          * shaders.. */
@@ -1414,7 +1422,7 @@ panfrost_get_query_result(struct pipe_context *pipe,
 {
         struct panfrost_query *query = (struct panfrost_query *) q;
         struct panfrost_context *ctx = pan_context(pipe);
-
+        struct panfrost_device *dev = pan_device(ctx->base.screen);
 
         switch (query->type) {
         case PIPE_QUERY_OCCLUSION_COUNTER:
@@ -1424,13 +1432,19 @@ panfrost_get_query_result(struct pipe_context *pipe,
                 panfrost_bo_wait(query->bo, INT64_MAX, false);
 
                 /* Read back the query results */
-                unsigned *result = (unsigned *) query->bo->cpu;
-                unsigned passed = *result;
+                uint64_t *result = (uint64_t *) query->bo->cpu;
 
                 if (query->type == PIPE_QUERY_OCCLUSION_COUNTER) {
+                        uint64_t passed = 0;
+                        for (int i = 0; i < dev->core_count; ++i)
+                                passed += result[i];
+
+                        if (!query->msaa)
+                                passed /= 4;
+
                         vresult->u64 = passed;
                 } else {
-                        vresult->b = !!passed;
+                        vresult->b = !!result[0];
                 }
 
                 break;
