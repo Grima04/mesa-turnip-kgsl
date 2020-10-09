@@ -2674,8 +2674,8 @@ copy_buffer_to_image_blit(struct v3dv_cmd_buffer *cmd_buffer,
          .dstSubresource = {
             .aspectMask = aspect,
             .mipLevel = region->imageSubresource.mipLevel,
-            .baseArrayLayer = region->imageSubresource.baseArrayLayer,
-            .layerCount = region->imageSubresource.layerCount,
+            .baseArrayLayer = region->imageSubresource.baseArrayLayer + i,
+            .layerCount = 1,
          },
          .dstOffsets = {
             {
