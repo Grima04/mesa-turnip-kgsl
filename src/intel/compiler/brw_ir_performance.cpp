@@ -327,6 +327,7 @@ namespace {
       case BRW_OPCODE_LINE:
       case BRW_OPCODE_NOP:
       case SHADER_OPCODE_CLUSTER_BROADCAST:
+      case SHADER_OPCODE_SCRATCH_HEADER:
       case FS_OPCODE_DDX_COARSE:
       case FS_OPCODE_DDX_FINE:
       case FS_OPCODE_DDY_COARSE:

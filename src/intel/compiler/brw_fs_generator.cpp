@@ -1533,6 +1533,76 @@ fs_generator::generate_scratch_read_gen7(fs_inst *inst, struct brw_reg dst)
    gen7_block_read_scratch(p, dst, inst->exec_size / 8, inst->offset);
 }
 
+/* The A32 messages take a buffer base address in header.5:[31:0] (See
+ * MH1_A32_PSM for typed messages or MH_A32_GO for byte/dword scattered
+ * and OWord block messages in the SKL PRM Vol. 2d for more details.)
+ * Unfortunately, there are a number of subtle differences:
+ *
+ * For the block read/write messages:
+ *
+ *   - We always stomp header.2 to fill in the actual scratch address (in
+ *     units of OWORDs) so we don't care what's in there.
+ *
+ *   - They rely on per-thread scratch space value in header.3[3:0] to do
+ *     bounds checking so that needs to be valid.  The upper bits of
+ *     header.3 are ignored, though, so we can copy all of g0.3.
+ *
+ *   - They ignore header.5[9:0] and assumes the address is 1KB aligned.
+ *
+ *
+ * For the byte/dword scattered read/write messages:
+ *
+ *   - We want header.2 to be zero because that gets added to the per-channel
+ *     offset in the non-header portion of the message.
+ *
+ *   - Contrary to what the docs claim, they don't do any bounds checking so
+ *     the value of header.3[3:0] doesn't matter.
+ *
+ *   - They consider all of header.5 for the base address and header.5[9:0]
+ *     are not ignored.  This means that we can't copy g0.5 verbatim because
+ *     g0.5[9:0] contains the FFTID on most platforms.  Instead, we have to
+ *     use an AND to mask off the bottom 10 bits.
+ *
+ *
+ * For block messages, just copying g0 gives a valid header because all the
+ * garbage gets ignored except for header.2 which we stomp as part of message
+ * setup.  For byte/dword scattered messages, we can just zero out the header
+ * and copy over the bits we need from g0.5.  This opcode, however, tries to
+ * satisfy the requirements of both by starting with 0 and filling out the
+ * information required by either set of opcodes.
+ */
+void
+fs_generator::generate_scratch_header(fs_inst *inst, struct brw_reg dst)
+{
+   assert(inst->exec_size == 8 && inst->force_writemask_all);
+   assert(dst.file == BRW_GENERAL_REGISTER_FILE);
+
+   dst.type = BRW_REGISTER_TYPE_UD;
+
+   brw_inst *insn = brw_MOV(p, dst, brw_imm_ud(0));
+   if (devinfo->gen >= 12)
+      brw_set_default_swsb(p, tgl_swsb_null());
+   else
+      brw_inst_set_no_dd_clear(p->devinfo, insn, true);
+
+   /* Copy the per-thread scratch space size from g0.3[3:0] */
+   brw_set_default_exec_size(p, BRW_EXECUTE_1);
+   insn = brw_AND(p, suboffset(dst, 3),
+                     retype(brw_vec1_grf(0, 3), BRW_REGISTER_TYPE_UD),
+                     brw_imm_ud(INTEL_MASK(3, 0)));
+   if (devinfo->gen < 12) {
+      brw_inst_set_no_dd_clear(p->devinfo, insn, true);
+      brw_inst_set_no_dd_check(p->devinfo, insn, true);
+   }
+
+   /* Copy the scratch base address from g0.5[31:10] */
+   insn = brw_AND(p, suboffset(dst, 5),
+                     retype(brw_vec1_grf(0, 5), BRW_REGISTER_TYPE_UD),
+                     brw_imm_ud(INTEL_MASK(31, 10)));
+   if (devinfo->gen < 12)
+      brw_inst_set_no_dd_check(p->devinfo, insn, true);
+}
+
 void
 fs_generator::generate_uniform_pull_constant_load(fs_inst *inst,
                                                   struct brw_reg dst,
@@ -2264,6 +2334,10 @@ fs_generator::generate_code(const cfg_t *cfg, int dispatch_width,
 	 generate_scratch_read_gen7(inst, dst);
          fill_count++;
 	 break;
+
+      case SHADER_OPCODE_SCRATCH_HEADER:
+         generate_scratch_header(inst, dst);
+         break;
 
       case SHADER_OPCODE_MOV_INDIRECT:
          generate_mov_indirect(inst, dst, src[0], src[1]);

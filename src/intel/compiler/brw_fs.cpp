@@ -5429,41 +5429,14 @@ lower_surface_logical_send(const fs_builder &bld, fs_inst *inst)
    if ((devinfo->gen < 9 && is_typed_access) || is_stateless) {
       fs_builder ubld = bld.exec_all().group(8, 0);
       header = ubld.vgrf(BRW_REGISTER_TYPE_UD);
-      ubld.MOV(header, brw_imm_d(0));
       if (is_stateless) {
-         /* Copy the per-thread scratch from g0 for bounds checking */
-         ubld.group(1, 0).AND(component(header, 3),
-                              retype(brw_vec1_grf(0, 3), BRW_REGISTER_TYPE_UD),
-                              brw_imm_ud(0xf));
-
-         /* Both the typed and scattered byte/dword A32 messages take a buffer
-          * base address in R0.5:[31:0] (See MH1_A32_PSM for typed messages or
-          * MH_A32_GO for byte/dword scattered messages in the SKL PRM Vol. 2d
-          * for more details.)  This is conveniently where the HW places the
-          * scratch surface base address.
-          *
-          * From the SKL PRM Vol. 7 "Per-Thread Scratch Space":
-          *
-          *    "When a thread becomes 'active' it is allocated a portion of
-          *    scratch space, sized according to PerThreadScratchSpace. The
-          *    starting location of each thread’s scratch space allocation,
-          *    ScratchSpaceOffset, is passed in the thread payload in
-          *    R0.5[31:10] and is specified as a 1KB-granular offset from the
-          *    GeneralStateBaseAddress.  The computation of ScratchSpaceOffset
-          *    includes the starting address of the stage’s scratch space
-          *    allocation, as programmed by ScratchSpaceBasePointer."
-          *
-          * The base address is passed in bits R0.5[31:10] and the bottom 10
-          * bits of R0.5 are used for other things.  Therefore, we have to
-          * mask off the bottom 10 bits so that we don't get a garbage base
-          * address.
-          */
-         ubld.group(1, 0).AND(component(header, 5),
-                              retype(brw_vec1_grf(0, 5), BRW_REGISTER_TYPE_UD),
-                              brw_imm_ud(0xfffffc00));
+         assert(!is_surface_access);
+         ubld.emit(SHADER_OPCODE_SCRATCH_HEADER, header);
+      } else {
+         ubld.MOV(header, brw_imm_d(0));
+         if (is_surface_access)
+            ubld.group(1, 0).MOV(component(header, 7), sample_mask);
       }
-      if (is_surface_access)
-         ubld.group(1, 0).MOV(component(header, 7), sample_mask);
    }
    const unsigned header_sz = header.file != BAD_FILE ? 1 : 0;
 

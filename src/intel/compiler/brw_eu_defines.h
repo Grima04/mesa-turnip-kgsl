@@ -475,6 +475,8 @@ enum opcode {
    SHADER_OPCODE_GEN4_SCRATCH_WRITE,
    SHADER_OPCODE_GEN7_SCRATCH_READ,
 
+   SHADER_OPCODE_SCRATCH_HEADER,
+
    /**
     * Gen8+ SIMD8 URB Read messages.
     */
