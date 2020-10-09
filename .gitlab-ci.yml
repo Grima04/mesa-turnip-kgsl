@@ -258,7 +258,7 @@ x86_build:
   extends:
     - .use-x86_build-base
   variables:
-    FDO_DISTRIBUTION_TAG: &x86_build "2020-10-06-clang10-cl3"
+    FDO_DISTRIBUTION_TAG: &x86_build "2020-10-09-spvtools-1"
 
 .use-x86_build:
   variables:
@@ -330,7 +330,7 @@ x86_test-base:
 x86_test-gl:
   extends: .use-x86_test-base
   variables:
-    FDO_DISTRIBUTION_TAG: &x86_test-gl "2020-10-06-clang10-cl3"
+    FDO_DISTRIBUTION_TAG: &x86_test-gl "2020-10-09-spvtools-1"
 
 # Debian 10 based x86 test image for VK
 x86_test-vk:

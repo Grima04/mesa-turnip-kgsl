@@ -42,11 +42,15 @@ apt-get install -y --no-remove \
       libclang-cpp10 \
       libxcb-shm0 \
       ocl-icd-libopencl1 \
-      spirv-tools \
       $STABLE_EPHEMERAL
 
 
 . .gitlab-ci/container/container_pre_build.sh
+
+
+############### Build spirv-tools (debian too old)
+
+. .gitlab-ci/build-spirv-tools.sh
 
 ############### Build libclc
 

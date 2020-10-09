@@ -31,7 +31,6 @@ apt-get install -y --no-remove \
       liblua5.3-dev \
       libxml2-dev \
       ocl-icd-opencl-dev \
-      spirv-tools \
       wine-development \
       wine32-development
 
@@ -100,6 +99,8 @@ wget https://gitlab.freedesktop.org/glvnd/libglvnd/-/archive/v$GLVND_VERSION/lib
 tar -xvf libglvnd-v$GLVND_VERSION.tar.gz && rm libglvnd-v$GLVND_VERSION.tar.gz
 pushd libglvnd-v$GLVND_VERSION; ./autogen.sh; ./configure; make install; popd
 rm -rf libglvnd-v$GLVND_VERSION
+
+. .gitlab-ci/build-spirv-tools.sh
 
 git clone https://github.com/KhronosGroup/SPIRV-LLVM-Translator -b llvm_release_100 --depth 1
 pushd SPIRV-LLVM-Translator
