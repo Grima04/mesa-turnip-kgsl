@@ -1739,18 +1739,12 @@ static void si_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *i
       (!sctx->screen->options.prim_restart_tri_strips_only ||
        (prim != PIPE_PRIM_TRIANGLE_STRIP && prim != PIPE_PRIM_TRIANGLE_STRIP_ADJACENCY));
 
-   if (likely(!info->indirect)) {
-      /* GFX6-GFX7 treat instance_count==0 as instance_count==1. There is
-       * no workaround for indirect draws, but we can at least skip
-       * direct draws.
-       */
-      if (unlikely(!instance_count))
-         return;
-
-      /* Handle count == 0. */
-      if (unlikely(!info->count && (index_size || !info->count_from_stream_output)))
-         return;
-   }
+   /* GFX6-GFX7 treat instance_count==0 as instance_count==1. There is
+    * no workaround for indirect draws, but we can at least skip
+    * direct draws.
+    */
+   if (unlikely(!info->indirect && !instance_count))
+      return;
 
    struct si_shader_selector *vs = sctx->vs_shader.cso;
    if (unlikely(!vs || sctx->num_vertex_elements < vs->num_vs_inputs ||
