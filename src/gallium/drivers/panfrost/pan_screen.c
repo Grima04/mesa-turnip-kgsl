@@ -62,6 +62,7 @@ static const struct debug_named_value debug_options[] = {
         {"afbc",      PAN_DBG_AFBC,     "Enable AFBC buffer sharing"},
         {"sync",      PAN_DBG_SYNC,     "Wait for each job's completion and check for any GPU fault"},
         {"precompile", PAN_DBG_PRECOMPILE, "Precompile shaders for shader-db"},
+        {"fp16",     PAN_DBG_FP16,     "Enable 16-bit support"},
         {"nofp16",     PAN_DBG_NOFP16,     "Disable 16-bit support"},
         {"bifrost",   PAN_DBG_BIFROST, "Enable experimental Mali G31 and G52 support"},
         {"gl3",       PAN_DBG_GL3,      "Enable experimental GL 3.x implementation, up to 3.3"},
@@ -284,6 +285,7 @@ panfrost_get_shader_param(struct pipe_screen *screen,
 {
         struct panfrost_device *dev = pan_device(screen);
         bool is_deqp = dev->debug & PAN_DBG_DEQP;
+        bool is_fp16 = dev->debug & PAN_DBG_FP16;
         bool is_nofp16 = dev->debug & PAN_DBG_NOFP16;
         bool is_bifrost = dev->quirks & IS_BIFROST;
 
@@ -343,7 +345,7 @@ panfrost_get_shader_param(struct pipe_screen *screen,
 
         case PIPE_SHADER_CAP_FP16:
         case PIPE_SHADER_CAP_GLSL_16BIT_CONSTS:
-                return !is_nofp16;
+                return (!is_nofp16 && !is_bifrost) || is_fp16;
 
         case PIPE_SHADER_CAP_FP16_DERIVATIVES:
         case PIPE_SHADER_CAP_INT16:
