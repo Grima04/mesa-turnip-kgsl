@@ -7,12 +7,10 @@ git config --global user.name "Mesa CI"
 git clone \
     https://github.com/KhronosGroup/VK-GL-CTS.git \
     -b vulkan-cts-1.2.3.2 \
-    --depth 1 \
     /VK-GL-CTS
 pushd /VK-GL-CTS
 
 # cherry-pick fix for surfaceless config choosing:
-git fetch origin master
 git cherry-pick -x 8f3bfc6c7def0c0cb452d5dadf31aa7fef242365
 
 
