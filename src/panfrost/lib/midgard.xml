@@ -173,6 +173,8 @@
     <value name="RGBA16I" value="220"/>
     <value name="RGBA32I" value="221"/>
     <value name="RGBA16F" value="223"/>
+    <value name="RGB5 A1" value="224"/>
+    <value name="R5G6B5" value="226"/>
     <value name="RGBA4" value="232"/>
     <value name="RGBA8 2" value="237"/>
     <value name="RGB10 A2 2" value="238"/>
