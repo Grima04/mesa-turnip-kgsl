@@ -311,7 +311,7 @@ panfrost_emit_bifrost_blend(struct panfrost_batch *batch,
                                 cfg.bifrost.equation = blend[i].equation.equation;
 
                                 /* Fixed point constant */
-                                u16 constant = blend[i].equation.constant / ((1 << chan_size) - 1);
+                                u16 constant = blend[i].equation.constant * ((1 << chan_size) - 1);
                                 constant <<= 16 - chan_size;
                                 cfg.bifrost.constant = constant;
 
