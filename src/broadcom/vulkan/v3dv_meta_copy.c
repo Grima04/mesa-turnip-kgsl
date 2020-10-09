@@ -4270,7 +4270,7 @@ blit_shader(struct v3dv_cmd_buffer *cmd_buffer,
          tex_coords[4] =
             !mirror_z ?
             (min_src_layer + (i + 0.5f) * src_z_step) / (float)src_level_d :
-            (max_dst_layer - (i + 0.5f) * src_z_step) / (float)src_level_d ;
+            (max_src_layer - (i + 0.5f) * src_z_step) / (float)src_level_d;
       }
 
       v3dv_CmdPushConstants(_cmd_buffer,
