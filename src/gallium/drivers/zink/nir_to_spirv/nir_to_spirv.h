@@ -63,6 +63,7 @@ zink_sampler_type(const struct glsl_type *type)
    case GLSL_SAMPLER_DIM_CUBE:
    case GLSL_SAMPLER_DIM_RECT:
    case GLSL_SAMPLER_DIM_MS:
+   case GLSL_SAMPLER_DIM_EXTERNAL:
       return VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
    case GLSL_SAMPLER_DIM_BUF:
       return VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER;
@@ -83,6 +84,7 @@ zink_image_type(const struct glsl_type *type)
    case GLSL_SAMPLER_DIM_CUBE:
    case GLSL_SAMPLER_DIM_RECT:
    case GLSL_SAMPLER_DIM_MS:
+   case GLSL_SAMPLER_DIM_EXTERNAL:
       return VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
    case GLSL_SAMPLER_DIM_BUF:
       return VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER;
