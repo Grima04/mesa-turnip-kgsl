@@ -4271,10 +4271,8 @@ static void visit_tex(struct ac_nir_context *ctx, nir_tex_instr *instr)
       int num_offsets = instr->src[offset_src].src.ssa->num_components;
       num_offsets = MIN2(num_offsets, instr->coord_components);
       for (unsigned i = 0; i < num_offsets; ++i) {
-         args.coords[i] = LLVMBuildAdd(
-            ctx->ac.builder, args.coords[i],
-            LLVMConstInt(ctx->ac.i32, nir_src_comp_as_uint(instr->src[offset_src].src, i), false),
-            "");
+         LLVMValueRef off = ac_llvm_extract_elem(&ctx->ac, args.offset, i);
+         args.coords[i] = LLVMBuildAdd(ctx->ac.builder, args.coords[i], off, "");
       }
       args.offset = NULL;
    }
