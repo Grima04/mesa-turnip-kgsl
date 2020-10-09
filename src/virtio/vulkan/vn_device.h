@@ -70,10 +70,13 @@ struct vn_physical_device {
    VkPhysicalDeviceFeatures2 features;
    VkPhysicalDeviceVulkan11Features vulkan_1_1_features;
    VkPhysicalDeviceVulkan12Features vulkan_1_2_features;
+   VkPhysicalDeviceTransformFeedbackFeaturesEXT transform_feedback_features;
 
    VkPhysicalDeviceProperties2 properties;
    VkPhysicalDeviceVulkan11Properties vulkan_1_1_properties;
    VkPhysicalDeviceVulkan12Properties vulkan_1_2_properties;
+   VkPhysicalDeviceTransformFeedbackPropertiesEXT
+      transform_feedback_properties;
 
    VkQueueFamilyProperties2 *queue_family_properties;
    uint32_t *queue_family_sync_queue_bases;

@@ -704,6 +704,15 @@ vn_physical_device_init_features(struct vn_physical_device *physical_dev)
       local_feats.vulkan_memory_model.pNext = NULL;
    }
 
+   if (physical_dev->renderer_extensions.EXT_transform_feedback) {
+      physical_dev->transform_feedback_features.sType =
+         VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TRANSFORM_FEEDBACK_FEATURES_EXT;
+      physical_dev->transform_feedback_features.pNext =
+         physical_dev->features.pNext;
+      physical_dev->features.pNext =
+         &physical_dev->transform_feedback_features;
+   }
+
    vn_call_vkGetPhysicalDeviceFeatures2(
       instance, vn_physical_device_to_handle(physical_dev),
       &physical_dev->features);
@@ -1006,6 +1015,15 @@ vn_physical_device_init_properties(struct vn_physical_device *physical_dev)
       local_props.timeline_semaphore.sType =
          VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_PROPERTIES;
       local_props.timeline_semaphore.pNext = NULL;
+   }
+
+   if (physical_dev->renderer_extensions.EXT_transform_feedback) {
+      physical_dev->transform_feedback_properties.sType =
+         VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TRANSFORM_FEEDBACK_PROPERTIES_EXT;
+      physical_dev->transform_feedback_properties.pNext =
+         physical_dev->properties.pNext;
+      physical_dev->properties.pNext =
+         &physical_dev->transform_feedback_properties;
    }
 
    vn_call_vkGetPhysicalDeviceProperties2(
@@ -1418,6 +1436,9 @@ vn_physical_device_get_supported_extensions(
       .EXT_scalar_block_layout = true,
       .EXT_separate_stencil_usage = true,
       .EXT_shader_viewport_index_layer = true,
+
+      /* EXT */
+      .EXT_transform_feedback = true,
    };
 }
 
@@ -2143,6 +2164,8 @@ vn_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
       VkPhysicalDeviceTimelineSemaphoreFeatures *timeline_semaphore;
       VkPhysicalDeviceBufferDeviceAddressFeatures *buffer_device_address;
       VkPhysicalDeviceVulkanMemoryModelFeatures *vulkan_memory_model;
+
+      VkPhysicalDeviceTransformFeedbackFeaturesEXT *transform_feedback;
    } u;
 
    u.pnext = (VkBaseOutStructure *)pFeatures;
@@ -2299,6 +2322,11 @@ vn_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
          u.vulkan_memory_model->vulkanMemoryModelAvailabilityVisibilityChains =
             vk12_feats->vulkanMemoryModelAvailabilityVisibilityChains;
          break;
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TRANSFORM_FEEDBACK_FEATURES_EXT:
+         memcpy(u.transform_feedback,
+                &physical_dev->transform_feedback_features,
+                sizeof(physical_dev->transform_feedback_features));
+         break;
       default:
          break;
       }
@@ -2338,6 +2366,7 @@ vn_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
       VkPhysicalDeviceTimelineSemaphoreProperties *timeline_semaphore;
 
       VkPhysicalDevicePCIBusInfoPropertiesEXT *pci_bus_info;
+      VkPhysicalDeviceTransformFeedbackPropertiesEXT *transform_feedback;
    } u;
 
    u.pnext = (VkBaseOutStructure *)pProperties;
@@ -2528,6 +2557,11 @@ vn_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
             u.pci_bus_info->pciFunction =
                physical_dev->instance->renderer_info.pci.function;
          }
+         break;
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TRANSFORM_FEEDBACK_PROPERTIES_EXT:
+         memcpy(u.transform_feedback,
+                &physical_dev->transform_feedback_properties,
+                sizeof(physical_dev->transform_feedback_properties));
          break;
       default:
          break;
@@ -6195,6 +6229,9 @@ vn_CreateQueryPool(VkDevice device,
    case VK_QUERY_TYPE_TIMESTAMP:
       pool->result_array_size = 1;
       break;
+   case VK_QUERY_TYPE_TRANSFORM_FEEDBACK_STREAM_EXT:
+      pool->result_array_size = 2;
+      break;
    default:
       unreachable("bad query type");
       break;
@@ -7902,4 +7939,133 @@ vn_CmdDispatchBase(VkCommandBuffer commandBuffer,
    vn_encode_vkCmdDispatchBase(&cmd->cs, 0, commandBuffer, baseGroupX,
                                baseGroupY, baseGroupZ, groupCountX,
                                groupCountY, groupCountZ);
+}
+
+void
+vn_CmdBeginQueryIndexedEXT(VkCommandBuffer commandBuffer,
+                           VkQueryPool queryPool,
+                           uint32_t query,
+                           VkQueryControlFlags flags,
+                           uint32_t index)
+{
+   struct vn_command_buffer *cmd =
+      vn_command_buffer_from_handle(commandBuffer);
+   size_t cmd_size;
+
+   cmd_size = vn_sizeof_vkCmdBeginQueryIndexedEXT(commandBuffer, queryPool,
+                                                  query, flags, index);
+   if (!vn_cs_encoder_reserve(&cmd->cs, cmd_size))
+      return;
+
+   vn_encode_vkCmdBeginQueryIndexedEXT(&cmd->cs, 0, commandBuffer, queryPool,
+                                       query, flags, index);
+}
+
+void
+vn_CmdEndQueryIndexedEXT(VkCommandBuffer commandBuffer,
+                         VkQueryPool queryPool,
+                         uint32_t query,
+                         uint32_t index)
+{
+   struct vn_command_buffer *cmd =
+      vn_command_buffer_from_handle(commandBuffer);
+   size_t cmd_size;
+
+   cmd_size = vn_sizeof_vkCmdEndQueryIndexedEXT(commandBuffer, queryPool,
+                                                query, index);
+   if (!vn_cs_encoder_reserve(&cmd->cs, cmd_size))
+      return;
+
+   vn_encode_vkCmdEndQueryIndexedEXT(&cmd->cs, 0, commandBuffer, queryPool,
+                                     query, index);
+}
+
+void
+vn_CmdBindTransformFeedbackBuffersEXT(VkCommandBuffer commandBuffer,
+                                      uint32_t firstBinding,
+                                      uint32_t bindingCount,
+                                      const VkBuffer *pBuffers,
+                                      const VkDeviceSize *pOffsets,
+                                      const VkDeviceSize *pSizes)
+{
+   struct vn_command_buffer *cmd =
+      vn_command_buffer_from_handle(commandBuffer);
+   size_t cmd_size;
+
+   cmd_size = vn_sizeof_vkCmdBindTransformFeedbackBuffersEXT(
+      commandBuffer, firstBinding, bindingCount, pBuffers, pOffsets, pSizes);
+   if (!vn_cs_encoder_reserve(&cmd->cs, cmd_size))
+      return;
+
+   vn_encode_vkCmdBindTransformFeedbackBuffersEXT(&cmd->cs, 0, commandBuffer,
+                                                  firstBinding, bindingCount,
+                                                  pBuffers, pOffsets, pSizes);
+}
+
+void
+vn_CmdBeginTransformFeedbackEXT(VkCommandBuffer commandBuffer,
+                                uint32_t firstCounterBuffer,
+                                uint32_t counterBufferCount,
+                                const VkBuffer *pCounterBuffers,
+                                const VkDeviceSize *pCounterBufferOffsets)
+{
+   struct vn_command_buffer *cmd =
+      vn_command_buffer_from_handle(commandBuffer);
+   size_t cmd_size;
+
+   cmd_size = vn_sizeof_vkCmdBeginTransformFeedbackEXT(
+      commandBuffer, firstCounterBuffer, counterBufferCount, pCounterBuffers,
+      pCounterBufferOffsets);
+   if (!vn_cs_encoder_reserve(&cmd->cs, cmd_size))
+      return;
+
+   vn_encode_vkCmdBeginTransformFeedbackEXT(
+      &cmd->cs, 0, commandBuffer, firstCounterBuffer, counterBufferCount,
+      pCounterBuffers, pCounterBufferOffsets);
+}
+
+void
+vn_CmdEndTransformFeedbackEXT(VkCommandBuffer commandBuffer,
+                              uint32_t firstCounterBuffer,
+                              uint32_t counterBufferCount,
+                              const VkBuffer *pCounterBuffers,
+                              const VkDeviceSize *pCounterBufferOffsets)
+{
+   struct vn_command_buffer *cmd =
+      vn_command_buffer_from_handle(commandBuffer);
+   size_t cmd_size;
+
+   cmd_size = vn_sizeof_vkCmdEndTransformFeedbackEXT(
+      commandBuffer, firstCounterBuffer, counterBufferCount, pCounterBuffers,
+      pCounterBufferOffsets);
+   if (!vn_cs_encoder_reserve(&cmd->cs, cmd_size))
+      return;
+
+   vn_encode_vkCmdEndTransformFeedbackEXT(
+      &cmd->cs, 0, commandBuffer, firstCounterBuffer, counterBufferCount,
+      pCounterBuffers, pCounterBufferOffsets);
+}
+
+void
+vn_CmdDrawIndirectByteCountEXT(VkCommandBuffer commandBuffer,
+                               uint32_t instanceCount,
+                               uint32_t firstInstance,
+                               VkBuffer counterBuffer,
+                               VkDeviceSize counterBufferOffset,
+                               uint32_t counterOffset,
+                               uint32_t vertexStride)
+{
+   struct vn_command_buffer *cmd =
+      vn_command_buffer_from_handle(commandBuffer);
+   size_t cmd_size;
+
+   cmd_size = vn_sizeof_vkCmdDrawIndirectByteCountEXT(
+      commandBuffer, instanceCount, firstInstance, counterBuffer,
+      counterBufferOffset, counterOffset, vertexStride);
+   if (!vn_cs_encoder_reserve(&cmd->cs, cmd_size))
+      return;
+
+   vn_encode_vkCmdDrawIndirectByteCountEXT(
+      &cmd->cs, 0, commandBuffer, instanceCount, firstInstance, counterBuffer,
+      counterBufferOffset, counterOffset, vertexStride);
 }
