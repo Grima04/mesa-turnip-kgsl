@@ -3918,6 +3918,10 @@ blit_shader(struct v3dv_cmd_buffer *cmd_buffer,
    assert(dst->tiling != VK_IMAGE_TILING_LINEAR ||
           !vk_format_is_depth_or_stencil(dst_format));
 
+   /* Can't sample from linear images */
+   if (src->tiling == VK_IMAGE_TILING_LINEAR && src->type != VK_IMAGE_TYPE_1D)
+      return false;
+
    VkImageBlit region = *_region;
    /* Rewrite combined D/S blits to compatible color blits */
    if (vk_format_is_depth_or_stencil(dst_format)) {
