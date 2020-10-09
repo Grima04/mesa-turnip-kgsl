@@ -1456,10 +1456,12 @@ enum si_prim_discard_outcome
 void si_build_prim_discard_compute_shader(struct si_shader_context *ctx);
 enum si_prim_discard_outcome
 si_prepare_prim_discard_or_split_draw(struct si_context *sctx, const struct pipe_draw_info *info,
-                                      bool primitive_restart);
+                                      const struct pipe_draw_start_count *draws,
+                                      unsigned num_draws, bool primitive_restart);
 void si_compute_signal_gfx(struct si_context *sctx);
 void si_dispatch_prim_discard_cs_and_draw(struct si_context *sctx,
-                                          const struct pipe_draw_info *info, unsigned index_size,
+                                          const struct pipe_draw_info *info,
+                                          unsigned count, unsigned index_size,
                                           unsigned base_vertex, uint64_t input_indexbuf_va,
                                           unsigned input_indexbuf_max_elements);
 void si_initialize_prim_discard_tunables(struct si_screen *sscreen, bool is_aux_context,

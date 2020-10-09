@@ -760,6 +760,8 @@ static void si_emit_draw_registers(struct si_context *sctx, const struct pipe_dr
 }
 
 static void si_emit_draw_packets(struct si_context *sctx, const struct pipe_draw_info *info,
+                                 const struct pipe_draw_start_count *draws,
+                                 unsigned num_draws,
                                  struct pipe_resource *indexbuf, unsigned index_size,
                                  unsigned index_offset, unsigned instance_count,
                                  bool dispatch_prim_discard_cs, unsigned original_index_size)
@@ -838,6 +840,7 @@ static void si_emit_draw_packets(struct si_context *sctx, const struct pipe_draw
    }
 
    if (indirect) {
+      assert(num_draws == 1);
       uint64_t indirect_va = si_resource(indirect->buffer)->gpu_address;
 
       assert(indirect_va % 8 == 0);
@@ -912,7 +915,7 @@ static void si_emit_draw_packets(struct si_context *sctx, const struct pipe_draw
       }
 
       /* Base vertex and start instance. */
-      base_vertex = original_index_size ? info->index_bias : info->start;
+      base_vertex = original_index_size ? info->index_bias : draws[0].start;
 
       if (sctx->num_vs_blit_sgprs) {
          /* Re-emit draw constants after we leave u_blitter. */
@@ -938,25 +941,26 @@ static void si_emit_draw_packets(struct si_context *sctx, const struct pipe_draw
 
       if (index_size) {
          if (dispatch_prim_discard_cs) {
-            index_va += info->start * original_index_size;
-            index_max_size = MIN2(index_max_size, info->count);
+            index_va += draws[0].start * original_index_size;
+            index_max_size = MIN2(index_max_size, draws[0].count);
 
-            si_dispatch_prim_discard_cs_and_draw(sctx, info, original_index_size, base_vertex,
+            si_dispatch_prim_discard_cs_and_draw(sctx, info, draws[0].count,
+                                                 original_index_size, base_vertex,
                                                  index_va, index_max_size);
             return;
          }
 
-         index_va += info->start * index_size;
+         index_va += draws[0].start * index_size;
 
          radeon_emit(cs, PKT3(PKT3_DRAW_INDEX_2, 4, render_cond_bit));
          radeon_emit(cs, index_max_size);
          radeon_emit(cs, index_va);
          radeon_emit(cs, index_va >> 32);
-         radeon_emit(cs, info->count);
+         radeon_emit(cs, draws[0].count);
          radeon_emit(cs, V_0287F0_DI_SRC_SEL_DMA);
       } else {
          radeon_emit(cs, PKT3(PKT3_DRAW_INDEX_AUTO, 1, render_cond_bit));
-         radeon_emit(cs, info->count);
+         radeon_emit(cs, draws[0].count);
          radeon_emit(cs, V_0287F0_DI_SRC_SEL_AUTO_INDEX |
                             S_0287F0_USE_OPAQUE(!!info->count_from_stream_output));
       }
@@ -1537,7 +1541,8 @@ static bool si_upload_vertex_buffer_descriptors(struct si_context *sctx)
 }
 
 static void si_get_draw_start_count(struct si_context *sctx, const struct pipe_draw_info *info,
-                                    unsigned *start, unsigned *count)
+                                    const struct pipe_draw_start_count *draws,
+                                    unsigned num_draws, unsigned *start, unsigned *count)
 {
    struct pipe_draw_indirect_info *indirect = info->indirect;
 
@@ -1593,8 +1598,16 @@ static void si_get_draw_start_count(struct si_context *sctx, const struct pipe_d
          *start = *count = 0;
       }
    } else {
-      *start = info->start;
-      *count = info->count;
+      unsigned min_element = UINT_MAX;
+      unsigned max_element = 0;
+
+      for (unsigned i = 0; i < num_draws; i++) {
+         min_element = MIN2(min_element, draws[i].start);
+         max_element = MAX2(max_element, draws[i].start + draws[i].count);
+      }
+
+      *start = min_element;
+      *count = max_element;
    }
 }
 
@@ -1724,7 +1737,10 @@ static ALWAYS_INLINE bool pd_msg(const char *s)
    return false;
 }
 
-static void si_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *info)
+static void si_multi_draw_vbo(struct pipe_context *ctx,
+                              const struct pipe_draw_info *info,
+                              const struct pipe_draw_start_count *draws,
+                              unsigned num_draws)
 {
    struct si_context *sctx = (struct si_context *)ctx;
    struct si_state_rasterizer *rs = sctx->queued.named.rasterizer;
@@ -1732,7 +1748,7 @@ static void si_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *i
    unsigned dirty_tex_counter, dirty_buf_counter;
    enum pipe_prim_type rast_prim, prim = info->mode;
    unsigned index_size = info->index_size;
-   unsigned index_offset = info->indirect ? info->start * index_size : 0;
+   unsigned index_offset = info->indirect ? draws[0].start * index_size : 0;
    unsigned instance_count = info->instance_count;
    bool primitive_restart =
       info->primitive_restart &&
@@ -1841,7 +1857,7 @@ static void si_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *i
          unsigned start, count, start_offset, size, offset;
          void *ptr;
 
-         si_get_draw_start_count(sctx, info, &start, &count);
+         si_get_draw_start_count(sctx, info, draws, num_draws, &start, &count);
          start_offset = start * 2;
          size = count * 2;
 
@@ -1860,10 +1876,11 @@ static void si_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *i
          unsigned start_offset;
 
          assert(!info->indirect);
-         start_offset = info->start * index_size;
+         assert(num_draws == 1);
+         start_offset = draws[0].start * index_size;
 
          indexbuf = NULL;
-         u_upload_data(ctx->stream_uploader, start_offset, info->count * index_size,
+         u_upload_data(ctx->stream_uploader, start_offset, draws[0].count * index_size,
                        sctx->screen->info.tcc_cache_line_size,
                        (char *)info->index.user + start_offset, &index_offset, &indexbuf);
          if (unlikely(!indexbuf))
@@ -1882,7 +1899,9 @@ static void si_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *i
    bool dispatch_prim_discard_cs = false;
    bool prim_discard_cs_instancing = false;
    unsigned original_index_size = index_size;
-   unsigned direct_count = 0;
+   unsigned avg_direct_count = 0;
+   unsigned min_direct_count = 0;
+   unsigned total_direct_count = 0;
 
    if (info->indirect) {
       struct pipe_draw_indirect_info *indirect = info->indirect;
@@ -1904,17 +1923,21 @@ static void si_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *i
          }
       }
    } else {
-      /* Multiply by 3 for strips and fans to get an approximate vertex
-       * count as triangles. */
-      direct_count = info->count * instance_count * (prim == PIPE_PRIM_TRIANGLES ? 1 : 3);
+      for (unsigned i = 0; i < num_draws; i++) {
+         unsigned count = draws[i].count;
+
+         total_direct_count += count;
+         min_direct_count = MIN2(min_direct_count, count);
+      }
+      avg_direct_count = (total_direct_count / num_draws) * instance_count;
    }
 
    /* Determine if we can use the primitive discard compute shader. */
    if (si_compute_prim_discard_enabled(sctx) &&
-       (direct_count > sctx->prim_discard_vertex_count_threshold
-           ? (sctx->compute_num_verts_rejected += direct_count, true)
+       (avg_direct_count > sctx->prim_discard_vertex_count_threshold
+           ? (sctx->compute_num_verts_rejected += total_direct_count, true)
            : /* Add, then return true. */
-           (sctx->compute_num_verts_ineligible += direct_count,
+           (sctx->compute_num_verts_ineligible += total_direct_count,
             false)) && /* Add, then return false. */
        (!info->count_from_stream_output || pd_msg("draw_opaque")) &&
        (primitive_restart ?
@@ -1958,7 +1981,8 @@ static void si_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *i
         * dispatches can run ahead. */
        (si_all_vs_resources_read_only(sctx, index_size ? indexbuf : NULL) ||
         pd_msg("write reference"))) {
-      switch (si_prepare_prim_discard_or_split_draw(sctx, info, primitive_restart)) {
+      switch (si_prepare_prim_discard_or_split_draw(sctx, info, draws, num_draws,
+                                                    primitive_restart)) {
       case SI_PRIM_DISCARD_ENABLED:
          original_index_size = index_size;
          prim_discard_cs_instancing = instance_count > 1;
@@ -1969,13 +1993,13 @@ static void si_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *i
          index_size = 4;
          instance_count = 1;
          primitive_restart = false;
-         sctx->compute_num_verts_rejected -= direct_count;
-         sctx->compute_num_verts_accepted += direct_count;
+         sctx->compute_num_verts_rejected -= total_direct_count;
+         sctx->compute_num_verts_accepted += total_direct_count;
          break;
       case SI_PRIM_DISCARD_DISABLED:
          break;
       case SI_PRIM_DISCARD_DRAW_SPLIT:
-         sctx->compute_num_verts_rejected -= direct_count;
+         sctx->compute_num_verts_rejected -= total_direct_count;
          goto return_cleanup;
       }
    }
@@ -1989,9 +2013,9 @@ static void si_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *i
    struct si_shader_selector *hw_vs;
    if (sctx->ngg && !dispatch_prim_discard_cs && rast_prim == PIPE_PRIM_TRIANGLES &&
        (hw_vs = si_get_vs(sctx)->cso) &&
-       (direct_count > hw_vs->ngg_cull_vert_threshold ||
+       (avg_direct_count > hw_vs->ngg_cull_vert_threshold ||
         (!index_size &&
-         direct_count > hw_vs->ngg_cull_nonindexed_fast_launch_vert_threshold &&
+         avg_direct_count > hw_vs->ngg_cull_nonindexed_fast_launch_vert_threshold &&
          prim & ((1 << PIPE_PRIM_TRIANGLES) |
                  (1 << PIPE_PRIM_TRIANGLE_STRIP))))) {
       unsigned ngg_culling = 0;
@@ -2015,7 +2039,7 @@ static void si_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *i
       /* Use NGG fast launch for certain non-indexed primitive types.
        * A draw must have at least 1 full primitive.
        */
-      if (ngg_culling && !index_size && direct_count >= 3 && !sctx->tes_shader.cso &&
+      if (ngg_culling && !index_size && min_direct_count >= 3 && !sctx->tes_shader.cso &&
           !sctx->gs_shader.cso) {
          if (prim == PIPE_PRIM_TRIANGLES)
             ngg_culling |= SI_NGG_CULL_GS_FAST_LAUNCH_TRI_LIST;
@@ -2048,7 +2072,7 @@ static void si_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *i
    if (unlikely(sctx->do_update_shaders && !si_update_shaders(sctx)))
       goto return_cleanup;
 
-   si_need_gfx_cs_space(sctx, 0);
+   si_need_gfx_cs_space(sctx, num_draws);
 
    /* If we're using a secure context, determine if cs must be secure or not */
    if (unlikely(radeon_uses_secure_bos(sctx->ws))) {
@@ -2101,7 +2125,7 @@ static void si_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *i
          masked_atoms |= si_get_atom_bit(sctx, &sctx->atoms.s.render_cond);
 
       /* Emit all states except possibly render condition. */
-      si_emit_all_states(sctx, info, prim, instance_count, info->count,
+      si_emit_all_states(sctx, info, prim, instance_count, min_direct_count,
                          primitive_restart, masked_atoms);
       sctx->emit_cache_flush(sctx);
       /* <-- CUs are idle here. */
@@ -2118,7 +2142,8 @@ static void si_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *i
       }
       assert(sctx->dirty_atoms == 0);
 
-      si_emit_draw_packets(sctx, info, indexbuf, index_size, index_offset, instance_count,
+      si_emit_draw_packets(sctx, info, draws, num_draws,
+                           indexbuf, index_size, index_offset, instance_count,
                            dispatch_prim_discard_cs, original_index_size);
       /* <-- CUs are busy here. */
 
@@ -2138,7 +2163,7 @@ static void si_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *i
       if (sctx->chip_class >= GFX7 && sctx->prefetch_L2_mask)
          cik_emit_prefetch_L2(sctx, true);
 
-      si_emit_all_states(sctx, info, prim, instance_count, info->count,
+      si_emit_all_states(sctx, info, prim, instance_count, min_direct_count,
                          primitive_restart, masked_atoms);
 
       if (gfx9_scissor_bug &&
@@ -2148,7 +2173,8 @@ static void si_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *i
       }
       assert(sctx->dirty_atoms == 0);
 
-      si_emit_draw_packets(sctx, info, indexbuf, index_size, index_offset, instance_count,
+      si_emit_draw_packets(sctx, info, draws, num_draws,
+                           indexbuf, index_size, index_offset, instance_count,
                            dispatch_prim_discard_cs, original_index_size);
 
       /* Prefetch the remaining shaders after the draw has been
@@ -2187,6 +2213,14 @@ static void si_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *i
 return_cleanup:
    if (index_size && indexbuf != info->index.resource)
       pipe_resource_reference(&indexbuf, NULL);
+}
+
+static void si_draw_vbo(struct pipe_context *ctx,
+                        const struct pipe_draw_info *info)
+{
+   struct pipe_draw_start_count draw = {info->start, info->count};
+
+   si_multi_draw_vbo(ctx, info, &draw, 1);
 }
 
 static void si_draw_rectangle(struct blitter_context *blitter, void *vertex_elements_cso,
@@ -2245,6 +2279,7 @@ void si_trace_emit(struct si_context *sctx)
 void si_init_draw_functions(struct si_context *sctx)
 {
    sctx->b.draw_vbo = si_draw_vbo;
+   sctx->b.multi_draw = si_multi_draw_vbo;
 
    sctx->blitter->draw_rectangle = si_draw_rectangle;
 

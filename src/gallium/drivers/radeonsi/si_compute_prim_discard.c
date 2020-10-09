@@ -955,7 +955,8 @@ static bool si_check_ring_space(struct si_context *sctx, unsigned out_indexbuf_s
 
 enum si_prim_discard_outcome
 si_prepare_prim_discard_or_split_draw(struct si_context *sctx, const struct pipe_draw_info *info,
-                                      bool primitive_restart)
+                                      const struct pipe_draw_start_count *draws,
+                                      unsigned num_draws, bool primitive_restart)
 {
    /* If the compute shader compilation isn't finished, this returns false. */
    if (!si_shader_select_prim_discard_cs(sctx, info, primitive_restart))
@@ -966,7 +967,7 @@ si_prepare_prim_discard_or_split_draw(struct si_context *sctx, const struct pipe
 
    struct radeon_cmdbuf *gfx_cs = sctx->gfx_cs;
    unsigned prim = info->mode;
-   unsigned count = info->count;
+   unsigned count = draws[0].count;
    unsigned instance_count = info->instance_count;
    unsigned num_prims_per_instance = u_decomposed_prims_for_vertices(prim, count);
    unsigned num_prims = num_prims_per_instance * instance_count;
@@ -982,19 +983,21 @@ si_prepare_prim_discard_or_split_draw(struct si_context *sctx, const struct pipe
        (1 << prim) & ((1 << PIPE_PRIM_TRIANGLES) | (1 << PIPE_PRIM_TRIANGLE_STRIP))) {
       /* Split draws. */
       struct pipe_draw_info split_draw = *info;
+      struct pipe_draw_start_count split_draw_range = draws[0];
+
       split_draw.primitive_restart = primitive_restart;
 
-      unsigned base_start = split_draw.start;
+      unsigned base_start = split_draw_range.start;
 
       if (prim == PIPE_PRIM_TRIANGLES) {
          unsigned vert_count_per_subdraw = split_prims_draw_level * 3;
          assert(vert_count_per_subdraw < count);
 
          for (unsigned start = 0; start < count; start += vert_count_per_subdraw) {
-            split_draw.start = base_start + start;
-            split_draw.count = MIN2(count - start, vert_count_per_subdraw);
+            split_draw_range.start = base_start + start;
+            split_draw_range.count = MIN2(count - start, vert_count_per_subdraw);
 
-            sctx->b.draw_vbo(&sctx->b, &split_draw);
+            sctx->b.multi_draw(&sctx->b, &split_draw, &split_draw_range, 1);
          }
       } else if (prim == PIPE_PRIM_TRIANGLE_STRIP) {
          /* No primitive pair can be split, because strips reverse orientation
@@ -1004,10 +1007,10 @@ si_prepare_prim_discard_or_split_draw(struct si_context *sctx, const struct pipe
          unsigned vert_count_per_subdraw = split_prims_draw_level;
 
          for (unsigned start = 0; start < count - 2; start += vert_count_per_subdraw) {
-            split_draw.start = base_start + start;
-            split_draw.count = MIN2(count - start, vert_count_per_subdraw + 2);
+            split_draw_range.start = base_start + start;
+            split_draw_range.count = MIN2(count - start, vert_count_per_subdraw + 2);
 
-            sctx->b.draw_vbo(&sctx->b, &split_draw);
+            sctx->b.multi_draw(&sctx->b, &split_draw, &split_draw_range, 1);
 
             if (start == 0 && primitive_restart &&
                 sctx->cs_prim_discard_state.current->key.opt.cs_need_correct_orientation)
@@ -1098,13 +1101,14 @@ void si_compute_signal_gfx(struct si_context *sctx)
 
 /* Dispatch a primitive discard compute shader. */
 void si_dispatch_prim_discard_cs_and_draw(struct si_context *sctx,
-                                          const struct pipe_draw_info *info, unsigned index_size,
+                                          const struct pipe_draw_info *info,
+                                          unsigned count, unsigned index_size,
                                           unsigned base_vertex, uint64_t input_indexbuf_va,
                                           unsigned input_indexbuf_num_elements)
 {
    struct radeon_cmdbuf *gfx_cs = sctx->gfx_cs;
    struct radeon_cmdbuf *cs = sctx->prim_discard_compute_cs;
-   unsigned num_prims_per_instance = u_decomposed_prims_for_vertices(info->mode, info->count);
+   unsigned num_prims_per_instance = u_decomposed_prims_for_vertices(info->mode, count);
    if (!num_prims_per_instance)
       return;
 
