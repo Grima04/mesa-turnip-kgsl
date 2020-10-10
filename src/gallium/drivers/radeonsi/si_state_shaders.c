@@ -1994,6 +1994,14 @@ static inline void si_shader_selector_key(struct pipe_context *ctx, struct si_sh
          key->part.ps.epilog.color_is_int10 &= sel->info.colors_written;
       }
 
+      /* Eliminate shader code computing output values that are unused.
+       * This enables dead code elimination between shader parts.
+       * Check if any output is eliminated.
+       */
+      if (sel->colors_written_4bit &
+          ~(sctx->framebuffer.colorbuf_enabled_4bit & blend->cb_target_enabled_4bit))
+         key->opt.prefer_mono = 1;
+
       bool is_poly = !util_prim_is_points_or_lines(sctx->current_rast_prim);
       bool is_line = util_prim_is_lines(sctx->current_rast_prim);
 
