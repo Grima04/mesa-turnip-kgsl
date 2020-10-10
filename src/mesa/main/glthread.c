@@ -121,6 +121,7 @@ _mesa_glthread_init(struct gl_context *ctx)
       util_queue_fence_init(&glthread->batches[i].fence);
    }
    glthread->next_batch = &glthread->batches[glthread->next];
+   glthread->used = 0;
 
    glthread->enabled = true;
    glthread->stats.queue = &glthread->queue;
@@ -207,8 +208,7 @@ _mesa_glthread_flush_batch(struct gl_context *ctx)
    if (!glthread->enabled)
       return;
 
-   struct glthread_batch *next = glthread->next_batch;
-   if (!next->used)
+   if (!glthread->used)
       return;
 
    /* Pin threads regularly to the same Zen CCX that the main thread is
@@ -230,6 +230,8 @@ _mesa_glthread_flush_batch(struct gl_context *ctx)
       }
    }
 
+   struct glthread_batch *next = glthread->next_batch;
+
    /* Debug: execute the batch immediately from this thread.
     *
     * Note that glthread_unmarshal_batch() changes the dispatch table so we'll
@@ -241,13 +243,15 @@ _mesa_glthread_flush_batch(struct gl_context *ctx)
       return;
    }
 
-   p_atomic_add(&glthread->stats.num_offloaded_items, next->used);
+   p_atomic_add(&glthread->stats.num_offloaded_items, glthread->used);
+   next->used = glthread->used;
 
    util_queue_add_job(&glthread->queue, next, &next->fence,
                       glthread_unmarshal_batch, NULL, 0);
    glthread->last = glthread->next;
    glthread->next = (glthread->next + 1) % MARSHAL_MAX_BATCHES;
    glthread->next_batch = &glthread->batches[glthread->next];
+   glthread->used = 0;
 }
 
 /**
@@ -280,8 +284,10 @@ _mesa_glthread_finish(struct gl_context *ctx)
       synced = true;
    }
 
-   if (next->used) {
-      p_atomic_add(&glthread->stats.num_direct_items, next->used);
+   if (glthread->used) {
+      p_atomic_add(&glthread->stats.num_direct_items, glthread->used);
+      next->used = glthread->used;
+      glthread->used = 0;
 
       /* Since glthread_unmarshal_batch changes the dispatch to direct,
        * restore it after it's done.
