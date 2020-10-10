@@ -64,6 +64,7 @@ def EXTENSIONS():
         Extension("VK_EXT_blend_operation_advanced", alias="blend", properties=True),
         Extension("VK_EXT_extended_dynamic_state",   alias="dynamic_state", feature="extendedDynamicState"),
         Extension("VK_EXT_pipeline_creation_cache_control",   alias="pipeline_cache_control", feature="pipelineCreationCacheControl"),
+        Extension("VK_EXT_shader_stencil_export",    alias="stencil_export"),
     ]
 
 # There exists some inconsistencies regarding the enum constants, fix them.
