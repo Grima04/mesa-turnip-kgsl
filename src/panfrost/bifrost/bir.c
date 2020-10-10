@@ -190,6 +190,8 @@ bi_rewrite_uses(bi_context *ctx,
                 unsigned old, unsigned oldc,
                 unsigned new, unsigned newc)
 {
+        assert(newc >= oldc);
+
         bi_foreach_instr_global(ctx, ins) {
                 bi_foreach_src(ins, s) {
                         if (ins->src[s] != old) continue;
