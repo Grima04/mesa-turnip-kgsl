@@ -101,7 +101,7 @@ struct glthread_batch
    struct gl_context *ctx;
 
    /**
-    * Amount of data used by batch commands, in bytes.
+    * Number of uint64_t elements filled already.
     * This is 0 when it's being filled because glthread::used holds the real
     * value temporarily, and glthread::used is copied to this variable when
     * the batch is submitted.
@@ -153,7 +153,7 @@ struct glthread_state
    /** Index of the batch being filled and about to be submitted. */
    unsigned next;
 
-   /** Amount of data filled in next_batch, in bytes. */
+   /** Number of uint64_t elements filled already. */
    unsigned used;
 
    /** Upload buffer. */

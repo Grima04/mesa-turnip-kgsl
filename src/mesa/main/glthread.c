@@ -59,7 +59,7 @@ glthread_unmarshal_batch(void *job, int thread_index)
 
    while (pos < used) {
       const struct marshal_cmd_base *cmd =
-         (const struct marshal_cmd_base *)&buffer[pos / 8];
+         (const struct marshal_cmd_base *)&buffer[pos];
 
       _mesa_unmarshal_dispatch[cmd->cmd_id](ctx, cmd);
       pos += cmd->cmd_size;

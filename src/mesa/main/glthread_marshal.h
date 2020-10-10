@@ -43,7 +43,7 @@ struct marshal_cmd_base
    uint16_t cmd_id;
 
    /**
-    * Size of command, in multiples of 4 bytes, including cmd_base.
+    * Number of uint64_t elements used by the command.
     */
    uint16_t cmd_size;
 };
@@ -57,17 +57,17 @@ _mesa_glthread_allocate_command(struct gl_context *ctx,
                                 unsigned size)
 {
    struct glthread_state *glthread = &ctx->GLThread;
+   const unsigned num_elements = align(size, 8) / 8;
 
-   if (unlikely(glthread->used + size > MARSHAL_MAX_CMD_SIZE))
+   if (unlikely(glthread->used + num_elements > MARSHAL_MAX_CMD_SIZE / 8))
       _mesa_glthread_flush_batch(ctx);
 
    struct glthread_batch *next = glthread->next_batch;
-   const unsigned aligned_size = align(size, 8);
    struct marshal_cmd_base *cmd_base =
-      (struct marshal_cmd_base *)&next->buffer[glthread->used / 8];
-   glthread->used += aligned_size;
+      (struct marshal_cmd_base *)&next->buffer[glthread->used];
+   glthread->used += num_elements;
    cmd_base->cmd_id = cmd_id;
-   cmd_base->cmd_size = aligned_size;
+   cmd_base->cmd_size = num_elements;
    return cmd_base;
 }
 
