@@ -109,12 +109,7 @@ struct glthread_batch
    int used;
 
    /** Data contained in the command buffer. */
-#ifdef _MSC_VER
-   __declspec(align(8))
-#else
-   __attribute__((aligned(8)))
-#endif
-   uint8_t buffer[MARSHAL_MAX_CMD_SIZE];
+   uint64_t buffer[MARSHAL_MAX_CMD_SIZE / 8];
 };
 
 struct glthread_client_attrib {

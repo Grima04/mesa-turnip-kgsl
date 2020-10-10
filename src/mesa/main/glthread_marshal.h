@@ -64,7 +64,7 @@ _mesa_glthread_allocate_command(struct gl_context *ctx,
    struct glthread_batch *next = glthread->next_batch;
    const int aligned_size = align(size, 8);
    struct marshal_cmd_base *cmd_base =
-      (struct marshal_cmd_base *)&next->buffer[glthread->used];
+      (struct marshal_cmd_base *)&next->buffer[glthread->used / 8];
    glthread->used += aligned_size;
    cmd_base->cmd_id = cmd_id;
    cmd_base->cmd_size = aligned_size;

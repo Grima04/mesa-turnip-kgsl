@@ -48,7 +48,7 @@ glthread_unmarshal_batch(void *job, int thread_index)
    struct gl_context *ctx = batch->ctx;
    int pos = 0;
    int used = batch->used;
-   uint8_t *buffer = batch->buffer;
+   uint64_t *buffer = batch->buffer;
 
    _glapi_set_dispatch(ctx->CurrentServerDispatch);
 
@@ -59,7 +59,7 @@ glthread_unmarshal_batch(void *job, int thread_index)
 
    while (pos < used) {
       const struct marshal_cmd_base *cmd =
-         (const struct marshal_cmd_base *)&buffer[pos];
+         (const struct marshal_cmd_base *)&buffer[pos / 8];
 
       _mesa_unmarshal_dispatch[cmd->cmd_id](ctx, cmd);
       pos += cmd->cmd_size;
