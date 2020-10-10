@@ -106,7 +106,7 @@ struct glthread_batch
     * value temporarily, and glthread::used is copied to this variable when
     * the batch is submitted.
     */
-   int used;
+   unsigned used;
 
    /** Data contained in the command buffer. */
    uint64_t buffer[MARSHAL_MAX_CMD_SIZE / 8];
@@ -154,7 +154,7 @@ struct glthread_state
    unsigned next;
 
    /** Amount of data filled in next_batch, in bytes. */
-   int used;
+   unsigned used;
 
    /** Upload buffer. */
    struct gl_buffer_object *upload_buffer;

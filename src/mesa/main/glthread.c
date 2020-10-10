@@ -46,8 +46,8 @@ glthread_unmarshal_batch(void *job, int thread_index)
 {
    struct glthread_batch *batch = (struct glthread_batch*)job;
    struct gl_context *ctx = batch->ctx;
-   int pos = 0;
-   int used = batch->used;
+   unsigned pos = 0;
+   unsigned used = batch->used;
    uint64_t *buffer = batch->buffer;
 
    _glapi_set_dispatch(ctx->CurrentServerDispatch);
