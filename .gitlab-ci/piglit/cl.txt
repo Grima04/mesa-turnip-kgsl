@@ -4,11 +4,9 @@ api/clenqueuefillbuffer: skip
 api/clenqueuefillimage: skip
 api/clenqueuemigratememobjects: skip
 api/clgetextensionfunctionaddressforplatform: skip
-api/clgetimageinfo: skip
 api/clgetkernelarginfo: skip
 api/cllinkprogram: skip
 api/clsetkernelarg/set kernel argument for cl_int3: fail
-api/clsetkernelarg/set kernel argument for sampler: skip
 interop/egl_khr_cl_event2: skip
 program/build/include-directories: fail
 program/build/printf: skip
@@ -184,9 +182,11 @@ program/execute/calls-struct: crash
 program/execute/gegl-rgb-gamma-u8-to-ragabaf: crash
 program/execute/global-offset/3d, input dependent: fail
 program/execute/i32-stack-array: crash
-program/execute/image-attributes: skip
-program/execute/image-read-2d: skip
-program/execute/image-write-2d: skip
+program/execute/image-attributes: crash
+program/execute/image-read-2d/read float from cl_float cl_rgba image.: fail
+program/execute/image-read-2d/read signed integer from cl_signed_int8 cl_rgba image.: fail
+program/execute/image-read-2d/read unsigned integer from cl_unsigned_int8 cl_rgba image.: fail
+program/execute/image-write-2d: crash
 program/execute/load-hi16: crash
 program/execute/load-hi16-generic: skip
 program/execute/load-lo16: crash
@@ -198,7 +198,9 @@ program/execute/program-tester-check-local-size-test-should-skip/this test shoul
 program/execute/pyrit-wpa-psk: crash
 program/execute/realign-stack: crash
 program/execute/reference: crash
-program/execute/sampler: skip
+program/execute/sampler/read from image using clamp_to_edge addressing mode: fail
+program/execute/sampler/read from image using linear filtering and normalized coords: fail
+program/execute/sampler/read from image using linear filtering and unnormalized coords: fail
 program/execute/scalar-logical-float: skip
 program/execute/store-hi16-generic: skip
 program/execute/v2i32-stack: crash
@@ -245,10 +247,10 @@ program/execute/vstore/vstorea_half-float-private: crash
 summary:
        name:  results
        ----  --------
-       pass:     2967
-       fail:       99
-      crash:       65
-       skip:       79
+       pass:     2969
+       fail:      105
+      crash:       67
+       skip:       73
     timeout:        1
        warn:        0
  incomplete:        0
@@ -257,4 +259,4 @@ summary:
     changes:        0
       fixes:        0
 regressions:        0
-      total:     3211
+      total:     3215
