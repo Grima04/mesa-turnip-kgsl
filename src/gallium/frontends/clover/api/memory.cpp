@@ -418,7 +418,7 @@ clGetImageInfo(cl_mem d_mem, cl_image_info param,
       break;
 
    case CL_IMAGE_ELEMENT_SIZE:
-      buf.as_scalar<size_t>() = 0;
+      buf.as_scalar<size_t>() = img.pixel_size();
       break;
 
    case CL_IMAGE_ROW_PITCH:
