@@ -3267,20 +3267,42 @@ static void radv_stage_flush(struct radv_cmd_buffer *cmd_buffer,
 	}
 }
 
+static bool
+radv_image_is_l2_coherent(const struct radv_device *device, const struct radv_image *image)
+{
+	if (device->physical_device->rad_info.chip_class >= GFX10) {
+		return !device->physical_device->rad_info.tcc_harvested;
+	} else if (device->physical_device->rad_info.chip_class == GFX9 && image) {
+		if (image->info.samples == 1 &&
+		    (image->usage & (VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
+				     VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)) &&
+		    !vk_format_is_stencil(image->vk_format)) {
+			/* Single-sample color and single-sample depth
+			 * (not stencil) are coherent with shaders on
+			 * GFX9.
+			 */
+			return true;
+		}
+	}
+
+	return false;
+}
+
 enum radv_cmd_flush_bits
 radv_src_access_flush(struct radv_cmd_buffer *cmd_buffer,
 		      VkAccessFlags src_flags,
 		      const struct radv_image *image)
 {
-	bool flush_CB_meta = true, flush_DB_meta = true;
+	bool has_CB_meta = true, has_DB_meta = true;
+	bool image_is_coherent = radv_image_is_l2_coherent(cmd_buffer->device, image);
 	enum radv_cmd_flush_bits flush_bits = 0;
 	uint32_t b;
 
 	if (image) {
 		if (!radv_image_has_CB_metadata(image))
-			flush_CB_meta = false;
+			has_CB_meta = false;
 		if (!radv_image_has_htile(image))
-			flush_DB_meta = false;
+			has_DB_meta = false;
 	}
 
 	for_each_bit(b, src_flags) {
@@ -3296,40 +3318,44 @@ radv_src_access_flush(struct radv_cmd_buffer *cmd_buffer,
 					flush_bits |= RADV_CMD_FLAG_FLUSH_AND_INV_CB;
 				}
 			}
-			flush_bits |= RADV_CMD_FLAG_WB_L2;
+			if (!image_is_coherent)
+				flush_bits |= RADV_CMD_FLAG_WB_L2;
 			break;
 		case VK_ACCESS_TRANSFORM_FEEDBACK_WRITE_BIT_EXT:
 		case VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_WRITE_BIT_EXT:
-			flush_bits |= RADV_CMD_FLAG_WB_L2;
+			if (!image_is_coherent)
+				flush_bits |= RADV_CMD_FLAG_WB_L2;
 			break;
 		case VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT:
 			flush_bits |= RADV_CMD_FLAG_FLUSH_AND_INV_CB;
-			if (flush_CB_meta)
+			if (has_CB_meta)
 				flush_bits |= RADV_CMD_FLAG_FLUSH_AND_INV_CB_META;
 			break;
 		case VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT:
 			flush_bits |= RADV_CMD_FLAG_FLUSH_AND_INV_DB;
-			if (flush_DB_meta)
+			if (has_DB_meta)
 				flush_bits |= RADV_CMD_FLAG_FLUSH_AND_INV_DB_META;
 			break;
 		case VK_ACCESS_TRANSFER_WRITE_BIT:
 			flush_bits |= RADV_CMD_FLAG_FLUSH_AND_INV_CB |
-			              RADV_CMD_FLAG_FLUSH_AND_INV_DB |
-			              RADV_CMD_FLAG_INV_L2;
+			              RADV_CMD_FLAG_FLUSH_AND_INV_DB;
 
-			if (flush_CB_meta)
+			if (!image_is_coherent)
+				flush_bits |= RADV_CMD_FLAG_INV_L2;
+			if (has_CB_meta)
 				flush_bits |= RADV_CMD_FLAG_FLUSH_AND_INV_CB_META;
-			if (flush_DB_meta)
+			if (has_DB_meta)
 				flush_bits |= RADV_CMD_FLAG_FLUSH_AND_INV_DB_META;
 			break;
 		case VK_ACCESS_MEMORY_WRITE_BIT:
-			flush_bits |= RADV_CMD_FLAG_INV_L2 |
-				      RADV_CMD_FLAG_FLUSH_AND_INV_CB |
+			flush_bits |= RADV_CMD_FLAG_FLUSH_AND_INV_CB |
 				      RADV_CMD_FLAG_FLUSH_AND_INV_DB;
 
-			if (flush_CB_meta)
+			if (!image_is_coherent)
+				flush_bits |= RADV_CMD_FLAG_INV_L2;
+			if (has_CB_meta)
 				flush_bits |= RADV_CMD_FLAG_FLUSH_AND_INV_CB_META;
-			if (flush_DB_meta)
+			if (has_DB_meta)
 				flush_bits |= RADV_CMD_FLAG_FLUSH_AND_INV_DB_META;
 			break;
 		default:
@@ -3344,10 +3370,10 @@ radv_dst_access_flush(struct radv_cmd_buffer *cmd_buffer,
                       VkAccessFlags dst_flags,
                       const struct radv_image *image)
 {
-	bool flush_CB_meta = true, flush_DB_meta = true;
+	bool has_CB_meta = true, has_DB_meta = true;
 	enum radv_cmd_flush_bits flush_bits = 0;
 	bool flush_CB = true, flush_DB = true;
-	bool image_is_coherent = false;
+	bool image_is_coherent = radv_image_is_l2_coherent(cmd_buffer->device, image);
 	uint32_t b;
 
 	if (image) {
@@ -3357,24 +3383,9 @@ radv_dst_access_flush(struct radv_cmd_buffer *cmd_buffer,
 		}
 
 		if (!radv_image_has_CB_metadata(image))
-			flush_CB_meta = false;
+			has_CB_meta = false;
 		if (!radv_image_has_htile(image))
-			flush_DB_meta = false;
-
-		/* TODO: implement shader coherent for GFX10 */
-
-		if (cmd_buffer->device->physical_device->rad_info.chip_class == GFX9) {
-			if (image->info.samples == 1 &&
-			    (image->usage & (VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
-					     VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)) &&
-			    !vk_format_is_stencil(image->vk_format)) {
-				/* Single-sample color and single-sample depth
-				 * (not stencil) are coherent with shaders on
-				 * GFX9.
-				 */
-				image_is_coherent = true;
-			}
-		}
+			has_DB_meta = false;
 	}
 
 	for_each_bit(b, dst_flags) {
@@ -3390,8 +3401,12 @@ radv_dst_access_flush(struct radv_cmd_buffer *cmd_buffer,
 		case VK_ACCESS_INPUT_ATTACHMENT_READ_BIT:
 		case VK_ACCESS_TRANSFER_READ_BIT:
 		case VK_ACCESS_TRANSFER_WRITE_BIT:
-			flush_bits |= RADV_CMD_FLAG_INV_VCACHE |
-			              RADV_CMD_FLAG_INV_L2;
+			flush_bits |= RADV_CMD_FLAG_INV_VCACHE;
+
+			if (has_CB_meta || has_DB_meta)
+				flush_bits |= RADV_CMD_FLAG_INV_L2_METADATA;
+			if (!image_is_coherent)
+				flush_bits |= RADV_CMD_FLAG_INV_L2;
 			break;
 		case VK_ACCESS_SHADER_READ_BIT:
 			flush_bits |= RADV_CMD_FLAG_INV_VCACHE;
@@ -3400,6 +3415,8 @@ radv_dst_access_flush(struct radv_cmd_buffer *cmd_buffer,
 			if (!cmd_buffer->device->physical_device->use_llvm && !image)
 				flush_bits |= RADV_CMD_FLAG_INV_SCACHE;
 
+			if (has_CB_meta || has_DB_meta)
+				flush_bits |= RADV_CMD_FLAG_INV_L2_METADATA;
 			if (!image_is_coherent)
 				flush_bits |= RADV_CMD_FLAG_INV_L2;
 			break;
@@ -3409,28 +3426,29 @@ radv_dst_access_flush(struct radv_cmd_buffer *cmd_buffer,
 		case VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT:
 			if (flush_CB)
 				flush_bits |= RADV_CMD_FLAG_FLUSH_AND_INV_CB;
-			if (flush_CB_meta)
+			if (has_CB_meta)
 				flush_bits |= RADV_CMD_FLAG_FLUSH_AND_INV_CB_META;
 			break;
 		case VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT:
 		case VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT:
 			if (flush_DB)
 				flush_bits |= RADV_CMD_FLAG_FLUSH_AND_INV_DB;
-			if (flush_DB_meta)
+			if (has_DB_meta)
 				flush_bits |= RADV_CMD_FLAG_FLUSH_AND_INV_DB_META;
 			break;
 		case VK_ACCESS_MEMORY_READ_BIT:
 		case VK_ACCESS_MEMORY_WRITE_BIT:
 			flush_bits |= RADV_CMD_FLAG_INV_VCACHE |
-				      RADV_CMD_FLAG_INV_SCACHE |
-			              RADV_CMD_FLAG_INV_L2;
+				      RADV_CMD_FLAG_INV_SCACHE;
+			if (!image_is_coherent)
+				flush_bits |= RADV_CMD_FLAG_INV_L2;
 			if (flush_CB)
 				flush_bits |= RADV_CMD_FLAG_FLUSH_AND_INV_CB;
-			if (flush_CB_meta)
+			if (has_CB_meta)
 				flush_bits |= RADV_CMD_FLAG_FLUSH_AND_INV_CB_META;
 			if (flush_DB)
 				flush_bits |= RADV_CMD_FLAG_FLUSH_AND_INV_DB;
-			if (flush_DB_meta)
+			if (has_DB_meta)
 				flush_bits |= RADV_CMD_FLAG_FLUSH_AND_INV_DB_META;
 			break;
 		default:

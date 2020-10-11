@@ -1066,20 +1066,23 @@ enum radv_cmd_flush_bits {
 	 * Only used for coherency with non-L2 clients like CB, DB, CP on GFX6-8.
 	 * GFX6-7 will do complete invalidation, because the writeback is unsupported. */
 	RADV_CMD_FLAG_WB_L2				 = 1 << 4,
+	/* Invalidate the metadata cache. To be used when the DCC/HTILE metadata
+	 * changed and we want to read an image from shaders. */
+	RADV_CMD_FLAG_INV_L2_METADATA			 = 1 << 5,
 	/* Framebuffer caches */
-	RADV_CMD_FLAG_FLUSH_AND_INV_CB_META		 = 1 << 5,
-	RADV_CMD_FLAG_FLUSH_AND_INV_DB_META		 = 1 << 6,
-	RADV_CMD_FLAG_FLUSH_AND_INV_DB			 = 1 << 7,
-	RADV_CMD_FLAG_FLUSH_AND_INV_CB			 = 1 << 8,
+	RADV_CMD_FLAG_FLUSH_AND_INV_CB_META		 = 1 << 6,
+	RADV_CMD_FLAG_FLUSH_AND_INV_DB_META		 = 1 << 7,
+	RADV_CMD_FLAG_FLUSH_AND_INV_DB			 = 1 << 8,
+	RADV_CMD_FLAG_FLUSH_AND_INV_CB			 = 1 << 9,
 	/* Engine synchronization. */
-	RADV_CMD_FLAG_VS_PARTIAL_FLUSH			 = 1 << 9,
-	RADV_CMD_FLAG_PS_PARTIAL_FLUSH			 = 1 << 10,
-	RADV_CMD_FLAG_CS_PARTIAL_FLUSH			 = 1 << 11,
-	RADV_CMD_FLAG_VGT_FLUSH				 = 1 << 12,
+	RADV_CMD_FLAG_VS_PARTIAL_FLUSH			 = 1 << 10,
+	RADV_CMD_FLAG_PS_PARTIAL_FLUSH			 = 1 << 11,
+	RADV_CMD_FLAG_CS_PARTIAL_FLUSH			 = 1 << 12,
+	RADV_CMD_FLAG_VGT_FLUSH				 = 1 << 13,
 	/* Pipeline query controls. */
-	RADV_CMD_FLAG_START_PIPELINE_STATS		 = 1 << 13,
-	RADV_CMD_FLAG_STOP_PIPELINE_STATS		 = 1 << 14,
-	RADV_CMD_FLAG_VGT_STREAMOUT_SYNC		 = 1 << 15,
+	RADV_CMD_FLAG_START_PIPELINE_STATS		 = 1 << 14,
+	RADV_CMD_FLAG_STOP_PIPELINE_STATS		 = 1 << 15,
+	RADV_CMD_FLAG_VGT_STREAMOUT_SYNC		 = 1 << 16,
 
 	RADV_CMD_FLUSH_AND_INV_FRAMEBUFFER = (RADV_CMD_FLAG_FLUSH_AND_INV_CB |
 					      RADV_CMD_FLAG_FLUSH_AND_INV_CB_META |
