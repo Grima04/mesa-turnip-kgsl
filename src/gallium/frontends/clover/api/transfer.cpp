@@ -36,6 +36,8 @@ namespace {
 
    vector_t
    vector(const size_t *p) {
+      if (!p)
+         throw error(CL_INVALID_VALUE);
       return range(p, 3);
    }
 
