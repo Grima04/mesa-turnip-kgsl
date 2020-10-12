@@ -66,6 +66,7 @@ enum bi_class {
         BI_LOAD_ATTR,
         BI_LOAD_VAR,
         BI_LOAD_VAR_ADDRESS,
+        BI_LOAD_TILE,
         BI_MINMAX,
         BI_MOV,
         BI_REDUCE_FMA,

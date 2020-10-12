@@ -77,6 +77,9 @@ bi_message_type_for_ins(bi_instruction *ins)
         case BI_BLEND:
                 return BIFROST_MESSAGE_BLEND;
 
+        case BI_LOAD_TILE:
+                return BIFROST_MESSAGE_TILE;
+
         case BI_ATEST:
                 return BIFROST_MESSAGE_ATEST;
 

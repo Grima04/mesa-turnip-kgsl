@@ -105,6 +105,46 @@ bi_load(enum bi_class T, nir_intrinsic_instr *instr)
 }
 
 static void
+bi_emit_ld_output(bi_context *ctx, nir_intrinsic_instr *instr)
+{
+        assert(ctx->is_blend);
+
+        bi_instruction ins = {
+                .type = BI_LOAD_TILE,
+                .vector_channels = instr->num_components,
+                .dest = pan_dest_index(&instr->dest),
+                .dest_type = nir_type_float16,
+                .src = {
+                        /* PixelIndices */
+                        BIR_INDEX_CONSTANT,
+                        /* PixelCoverage: we simply pass r60 which contains the cumulative
+                         * coverage bitmap
+                         */
+                        BIR_INDEX_REGISTER | 60,
+                        /* InternalConversionDescriptor (see src/panfrost/lib/midgard.xml for more
+                         * details)
+			 */
+                        BIR_INDEX_CONSTANT | 32
+                },
+                .src_types = { nir_type_uint32, nir_type_uint32, nir_type_uint32 },
+        };
+
+        /* We want to load the current pixel.
+         * FIXME: The sample to load is currently hardcoded to 0. This should
+         * be addressed for multi-sample FBs.
+         */
+        struct bifrost_pixel_indices pix = {
+                .y = BIFROST_CURRENT_PIXEL,
+        };
+        memcpy(&ins.constant.u64, &pix, sizeof(pix));
+
+        /* Only keep the conversion part of the blend descriptor. */
+        ins.constant.u64 |= ctx->blend_desc & 0xffffffff00000000ULL;
+
+        bi_emit(ctx, ins);
+}
+
+static void
 bi_emit_ld_vary(bi_context *ctx, nir_intrinsic_instr *instr)
 {
         bi_instruction ins = bi_load(BI_LOAD_VAR, instr);
@@ -486,6 +526,10 @@ emit_intrinsic(bi_context *ctx, nir_intrinsic_instr *instr)
 
         case nir_intrinsic_get_ssbo_size:
                 bi_emit_sysval(ctx, &instr->instr, 1, 8);
+                break;
+
+        case nir_intrinsic_load_output:
+                bi_emit_ld_output(ctx, instr);
                 break;
 
         case nir_intrinsic_load_viewport_scale:

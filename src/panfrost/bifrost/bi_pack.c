@@ -831,6 +831,8 @@ bi_pack_add(bi_clause *clause, bi_bundle bundle, bi_registers *regs, gl_shader_s
                 }
         case BI_LOAD_VAR_ADDRESS:
                 return pan_pack_add_lea_attr_imm(clause, bundle.add, regs);
+        case BI_LOAD_TILE:
+                return pan_pack_add_ld_tile(clause, bundle.add, regs);
         case BI_MINMAX:
                 if (bundle.add->op.minmax == BI_MINMAX_MIN) {
                         if (bundle.add->dest_type == nir_type_float32)

@@ -540,4 +540,15 @@ struct bifrost_texture_operation {
         unsigned mask : 4;
 } __attribute__((packed));
 
+#define BIFROST_MEGA_SAMPLE 128
+#define BIFROST_ALL_SAMPLES 255
+#define BIFROST_CURRENT_PIXEL 255
+
+struct bifrost_pixel_indices {
+        unsigned sample : 8;
+        unsigned rt : 8;
+        unsigned x : 8;
+        unsigned y : 8;
+} __attribute__((packed));
+
 #endif

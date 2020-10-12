@@ -62,6 +62,7 @@ bi_class_name(enum bi_class cl)
         case BI_LOAD_ATTR: return "load_attr";
         case BI_LOAD_VAR: return "load_var";
         case BI_LOAD_VAR_ADDRESS: return "load_var_address";
+        case BI_LOAD_TILE: return "load_tile";
         case BI_MINMAX: return "minmax";
         case BI_MOV: return "mov";
         case BI_SELECT: return "select";
