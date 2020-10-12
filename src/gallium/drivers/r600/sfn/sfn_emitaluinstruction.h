@@ -86,6 +86,7 @@ private:
    bool emit_discard_if(const nir_intrinsic_instr *instr);
 
    bool emit_find_msb(const nir_alu_instr& instr, bool sgn);
+   bool emit_alu_f2b32(const nir_alu_instr& instr);
    bool emit_b2i32(const nir_alu_instr& instr);
    bool emit_alu_f2i32_or_u32(const nir_alu_instr& instr, EAluOp op);
    bool emit_pack_64_2x32_split(const nir_alu_instr& instr);

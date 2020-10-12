@@ -52,8 +52,10 @@ bool EmitAluInstruction::do_emit(nir_instr* ir)
    preload_src(instr);
 
    switch (instr.op) {
+   case nir_op_f2b32: return emit_alu_f2b32(instr);
    case nir_op_b2f32: return emit_alu_b2f(instr);
    case nir_op_i2b1: return emit_alu_i2orf2_b1(instr, op2_setne_int);
+   case nir_op_i2b32: return emit_alu_i2orf2_b1(instr, op2_setne_int);
    case nir_op_f2b1: return emit_alu_i2orf2_b1(instr, op2_setne_dx10);
    case nir_op_b2b1:
    case nir_op_b2b32:
@@ -89,11 +91,22 @@ bool EmitAluInstruction::do_emit(nir_instr* ir)
    case nir_op_bit_count: return emit_alu_op1(instr, op1_bcnt_int);
    case nir_op_bitfield_reverse: return emit_alu_op1(instr, op1_bfrev_int);
 
+   case nir_op_ieq32:
    case nir_op_ieq: return emit_alu_op2_int(instr, op2_sete_int);
+
+   case nir_op_ine32:
    case nir_op_ine: return emit_alu_op2_int(instr, op2_setne_int);
+   case nir_op_uge32:
+   case nir_op_uge: return emit_alu_op2_int(instr, op2_setge_uint);
+   case nir_op_ige32:
    case nir_op_ige: return emit_alu_op2_int(instr, op2_setge_int);
    case nir_op_ishl: return emit_alu_op2_int(instr, op2_lshl_int);
    case nir_op_ishr: return emit_alu_op2_int(instr, op2_ashr_int);
+
+   case nir_op_ult32:
+   case nir_op_ult: return emit_alu_op2_int(instr, op2_setgt_uint, op2_opt_reverse);
+
+   case nir_op_ilt32:
    case nir_op_ilt: return emit_alu_op2_int(instr, op2_setgt_int, op2_opt_reverse);
    case nir_op_iand: return emit_alu_op2_int(instr, op2_and_int);
    case nir_op_ixor: return emit_alu_op2_int(instr, op2_xor_int);
@@ -112,14 +125,16 @@ bool EmitAluInstruction::do_emit(nir_instr* ir)
    case nir_op_umod: return emit_alu_div_int(instr, false, true);
    case nir_op_isign: return emit_alu_isign(instr);
 
-   case nir_op_uge: return emit_alu_op2_int(instr, op2_setge_uint);
-   case nir_op_ult: return emit_alu_op2_int(instr, op2_setgt_uint, op2_opt_reverse);
    case nir_op_ushr: return emit_alu_op2_int(instr, op2_lshr_int);
 
+   case nir_op_flt32:
    case nir_op_flt: return emit_alu_op2(instr, op2_setgt_dx10, op2_opt_reverse);
 
+   case nir_op_fge32:
    case nir_op_fge: return emit_alu_op2(instr, op2_setge_dx10);
+   case nir_op_fneu32:
    case nir_op_fneu: return emit_alu_op2(instr, op2_setne_dx10);
+   case nir_op_feq32:
    case nir_op_feq: return emit_alu_op2(instr, op2_sete_dx10);
 
    case nir_op_fmin: return emit_alu_op2(instr, op2_min_dx10);
@@ -152,6 +167,7 @@ bool EmitAluInstruction::do_emit(nir_instr* ir)
 
 
    case nir_op_ffma: return emit_alu_op3(instr, op3_muladd_ieee);
+   case nir_op_b32csel: return emit_alu_op3(instr, op3_cnde,  {0, 2, 1});
    case nir_op_bcsel: return emit_alu_op3(instr, op3_cnde,  {0, 2, 1});
    case nir_op_vec2: return emit_create_vec(instr, 2);
    case nir_op_vec3: return emit_create_vec(instr, 3);
@@ -465,6 +481,20 @@ bool EmitAluInstruction::emit_alu_f2i32_or_u32(const nir_alu_instr& instr, EAluO
    }
    make_last(ir);
 
+   return true;
+}
+
+bool EmitAluInstruction::emit_alu_f2b32(const nir_alu_instr& instr)
+{
+   AluInstruction *ir = nullptr;
+   for (int i = 0; i < 4 ; ++i) {
+      if (instr.dest.write_mask & (1 << i)){
+         ir = new AluInstruction(op2_setne_dx10, from_nir(instr.dest, i),
+                                 m_src[0][i], literal(0.0f), write);
+         emit_instruction(ir);
+      }
+   }
+   make_last(ir);
    return true;
 }
 

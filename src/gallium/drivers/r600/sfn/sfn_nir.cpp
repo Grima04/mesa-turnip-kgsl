@@ -830,6 +830,8 @@ int r600_shader_from_nir(struct r600_context *rctx,
               40,
               r600_get_natural_size_align_bytes);
 
+   NIR_PASS_V(sel->nir, nir_lower_bool_to_int32);
+
    while (optimize_once(sel->nir, true));
 
    auto sh = nir_shader_clone(sel->nir, sel->nir);
