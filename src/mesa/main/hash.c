@@ -378,23 +378,21 @@ _mesa_HashWalkLocked(const struct _mesa_HashTable *table,
    hash_walk_unlocked(table, callback, userData);
 }
 
-static void
-debug_print_entry(GLuint key, void *data, void *userData)
-{
-   _mesa_debug(NULL, "%u %p\n", key, data);
-}
-
 /**
  * Dump contents of hash table for debugging.
- * 
+ *
  * \param table the hash table.
  */
 void
 _mesa_HashPrint(const struct _mesa_HashTable *table)
 {
    if (table->deleted_key_data)
-      debug_print_entry(DELETED_KEY_VALUE, table->deleted_key_data, NULL);
-   _mesa_HashWalk(table, debug_print_entry, NULL);
+      _mesa_debug(NULL, "%u %p\n", DELETED_KEY_VALUE, table->deleted_key_data);
+
+   hash_table_foreach(table->ht, entry) {
+      _mesa_debug(NULL, "%u %p\n", (unsigned)(uintptr_t) entry->key,
+                  entry->data);
+   }
 }
 
 
