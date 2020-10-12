@@ -158,8 +158,8 @@ bi_emit_frag_out(bi_context *ctx, nir_intrinsic_instr *instr)
                         pan_src_index(&instr->src[0]),
                         BIR_INDEX_REGISTER | 60 /* Can this be arbitrary? */,
                         /* Blend descriptor */
-                        BIR_INDEX_PASS | BIFROST_SRC_CONST_LO,
-                        BIR_INDEX_PASS | BIFROST_SRC_CONST_HI,
+                        BIR_INDEX_PASS | BIFROST_SRC_FAU_LO,
+                        BIR_INDEX_PASS | BIFROST_SRC_FAU_HI,
                 },
                 .src_types = {
                         nir_intrinsic_src_type(instr),
@@ -343,7 +343,7 @@ bi_emit_ld_frag_coord(bi_context *ctx, nir_intrinsic_instr *instr)
                         .dest = bi_make_temp(ctx),
                         .src = {
                                 BIR_INDEX_CONSTANT,
-                                BIR_INDEX_PASS | BIFROST_SRC_CONST_LO
+                                BIR_INDEX_PASS | BIFROST_SRC_FAU_LO
                         },
                         .src_types = { nir_type_uint32, nir_type_uint32 },
                         .constant = {

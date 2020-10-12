@@ -186,9 +186,9 @@ static void dump_regs(FILE *fp, struct bifrost_regs srcs, bool first)
         else if (ctrl.slot23.slot3 == BIFROST_OP_WRITE_HI)
                 fprintf(fp, "slot 3: r%d (write hi %s) ", srcs.reg3, slot3_fma);
 
-        if (srcs.uniform_const) {
-                if (srcs.uniform_const & 0x80) {
-                        fprintf(fp, "uniform: u%d", (srcs.uniform_const & 0x7f) * 2);
+        if (srcs.fau_idx) {
+                if (srcs.fau_idx & 0x80) {
+                        fprintf(fp, "uniform: u%d", (srcs.fau_idx & 0x7f) * 2);
                 }
         }
 
@@ -291,15 +291,15 @@ const_fau_to_idx(unsigned fau_value)
         return map[fau_value];
 }
 
-static void dump_uniform_const_src(FILE *fp, struct bifrost_regs srcs, struct bi_constants *consts, bool high32)
+static void dump_fau_src(FILE *fp, struct bifrost_regs srcs, struct bi_constants *consts, bool high32)
 {
-        if (srcs.uniform_const & 0x80) {
-                unsigned uniform = (srcs.uniform_const & 0x7f);
+        if (srcs.fau_idx & 0x80) {
+                unsigned uniform = (srcs.fau_idx & 0x7f);
                 fprintf(fp, "u%d.w%d", uniform, high32);
-        } else if (srcs.uniform_const >= 0x20) {
-                unsigned idx = const_fau_to_idx(srcs.uniform_const >> 4);
+        } else if (srcs.fau_idx >= 0x20) {
+                unsigned idx = const_fau_to_idx(srcs.fau_idx >> 4);
                 uint64_t imm = consts->raw[idx];
-                imm |= (srcs.uniform_const & 0xf);
+                imm |= (srcs.fau_idx & 0xf);
                 if (consts->mods[idx] != BI_CONSTMOD_NONE)
                         dump_pc_imm(fp, imm, consts->mods[idx], high32);
                 else if (high32)
@@ -307,7 +307,7 @@ static void dump_uniform_const_src(FILE *fp, struct bifrost_regs srcs, struct bi
                 else
                         dump_const_imm(fp, imm);
         } else {
-                switch (srcs.uniform_const) {
+                switch (srcs.fau_idx) {
                 case 0:
                         fprintf(fp, "#0");
                         break;
@@ -337,10 +337,10 @@ static void dump_uniform_const_src(FILE *fp, struct bifrost_regs srcs, struct bi
                 case 13:
                 case 14:
                 case 15:
-                        fprintf(fp, "blend_descriptor_%u", (unsigned) srcs.uniform_const - 8);
+                        fprintf(fp, "blend_descriptor_%u", (unsigned) srcs.fau_idx - 8);
                         break;
                 default:
-                        fprintf(fp, "XXX - reserved%u", (unsigned) srcs.uniform_const);
+                        fprintf(fp, "XXX - reserved%u", (unsigned) srcs.fau_idx);
                         break;
                 }
 
@@ -371,10 +371,10 @@ dump_src(FILE *fp, unsigned src, struct bifrost_regs srcs, struct bi_constants *
                         fprintf(fp, "t"); // i.e. the output of FMA this cycle
                 break;
         case 4:
-                dump_uniform_const_src(fp, srcs, consts, false);
+                dump_fau_src(fp, srcs, consts, false);
                 break;
         case 5:
-                dump_uniform_const_src(fp, srcs, consts, true);
+                dump_fau_src(fp, srcs, consts, true);
                 break;
         case 6:
                 fprintf(fp, "t0");

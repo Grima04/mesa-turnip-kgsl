@@ -163,8 +163,8 @@ enum bifrost_packed_src {
         BIFROST_SRC_PORT1    = 1,
         BIFROST_SRC_PORT2    = 2,
         BIFROST_SRC_STAGE    = 3,
-        BIFROST_SRC_CONST_LO = 4,
-        BIFROST_SRC_CONST_HI = 5,
+        BIFROST_SRC_FAU_LO   = 4,
+        BIFROST_SRC_FAU_HI   = 5,
         BIFROST_SRC_PASS_FMA = 6,
         BIFROST_SRC_PASS_ADD = 7,
 };
@@ -252,7 +252,7 @@ enum branch_bit_size {
 };
 
 struct bifrost_regs {
-        unsigned uniform_const : 8;
+        unsigned fau_idx : 8;
         unsigned reg3 : 6;
         unsigned reg2 : 6;
         unsigned reg0 : 5;

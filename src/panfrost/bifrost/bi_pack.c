@@ -115,17 +115,18 @@ bi_constant_field(unsigned idx)
 }
 
 static bool
-bi_assign_uniform_constant_single(
-                bi_registers *regs,
-                bi_clause *clause,
-                bi_instruction *ins, bool assigned, bool fast_zero)
+bi_assign_fau_idx_single(bi_registers *regs,
+                         bi_clause *clause,
+                         bi_instruction *ins,
+                         bool assigned,
+                         bool fast_zero)
 {
         if (!ins)
                 return assigned;
 
         if (ins->type == BI_BLEND) {
                 assert(!assigned);
-                regs->uniform_constant = 0x8;
+                regs->fau_idx = 0x8;
                 return true;
         }
 
@@ -140,10 +141,10 @@ bi_assign_uniform_constant_single(
                 /* Build the constant */
                 unsigned C = bi_constant_field(idx) | lo;
 
-                if (assigned && regs->uniform_constant != C)
-                        unreachable("Mismatched uniform/const field: branch");
+                if (assigned && regs->fau_idx != C)
+                        unreachable("Mismatched fau_idx: branch");
 
-                regs->uniform_constant = C;
+                regs->fau_idx = C;
                 return true;
         }
 
@@ -163,25 +164,25 @@ bi_assign_uniform_constant_single(
                         unsigned lo = clause->constants[idx] & 0xF;
                         unsigned f = bi_constant_field(idx) | lo;
 
-                        if (assigned && regs->uniform_constant != f)
+                        if (assigned && regs->fau_idx != f)
                                 unreachable("Mismatched uniform/const field: imm");
 
-                        regs->uniform_constant = f;
-                        ins->src[s] = BIR_INDEX_PASS | (hi ? BIFROST_SRC_CONST_HI : BIFROST_SRC_CONST_LO);
+                        regs->fau_idx = f;
+                        ins->src[s] = BIR_INDEX_PASS | (hi ? BIFROST_SRC_FAU_HI : BIFROST_SRC_FAU_LO);
                         assigned = true;
                 } else if (ins->src[s] & BIR_INDEX_ZERO && (ins->type == BI_LOAD_UNIFORM || ins->type == BI_LOAD_VAR)) {
                         /* XXX: HACK UNTIL WE HAVE HI MATCHING DUE TO OVERFLOW XXX */
-                        ins->src[s] = BIR_INDEX_PASS | BIFROST_SRC_CONST_HI;
+                        ins->src[s] = BIR_INDEX_PASS | BIFROST_SRC_FAU_HI;
                 } else if (ins->src[s] & BIR_INDEX_ZERO && !fast_zero) {
                         /* FMAs have a fast zero slot, ADD needs to use the
                          * uniform/const slot's special 0 mode handled here */
                         unsigned f = 0;
 
-                        if (assigned && regs->uniform_constant != f)
+                        if (assigned && regs->fau_idx != f)
                                 unreachable("Mismatched uniform/const field: 0");
 
-                        regs->uniform_constant = f;
-                        ins->src[s] = BIR_INDEX_PASS | BIFROST_SRC_CONST_LO;
+                        regs->fau_idx = f;
+                        ins->src[s] = BIR_INDEX_PASS | BIFROST_SRC_FAU_LO;
                         assigned = true;
                 } else if (ins->src[s] & BIR_INDEX_ZERO && fast_zero) {
                         ins->src[s] = BIR_INDEX_PASS | BIFROST_SRC_STAGE;
@@ -194,15 +195,14 @@ bi_assign_uniform_constant_single(
 }
 
 static void
-bi_assign_uniform_constant(
-                bi_clause *clause,
-                bi_registers *regs,
-                bi_bundle bundle)
+bi_assign_fau_idx(bi_clause *clause,
+                  bi_registers *regs,
+                  bi_bundle bundle)
 {
         bool assigned =
-                bi_assign_uniform_constant_single(regs, clause, bundle.fma, false, true);
+                bi_assign_fau_idx_single(regs, clause, bundle.fma, false, true);
 
-        bi_assign_uniform_constant_single(regs, clause, bundle.add, assigned, false);
+        bi_assign_fau_idx_single(regs, clause, bundle.add, assigned, false);
 }
 
 /* Assigns a slot for reading, before anything is written */
@@ -395,7 +395,7 @@ bi_pack_registers(bi_registers regs)
 
         s.reg2 = regs.slot[2];
         s.reg3 = regs.slot[3];
-        s.uniform_const = regs.uniform_constant;
+        s.fau_idx = regs.fau_idx;
 
         memcpy(&packed, &s, sizeof(s));
         return packed;
@@ -612,7 +612,7 @@ bi_pack_add_branch_cond(bi_instruction *ins, bi_registers *regs)
         struct bifrost_branch pack = {
                 .src0 = bi_get_src(ins, regs, 0),
                 .src1 = (zero_ctrl << 1) | !slot_swapped,
-                .src2 = BIFROST_SRC_CONST_HI,
+                .src2 = BIFROST_SRC_FAU_HI,
                 .cond = BR_COND_EQ,
                 .size = BR_SIZE_ZERO,
                 .op = BIFROST_ADD_OP_BRANCH
@@ -626,11 +626,11 @@ bi_pack_add_branch_uncond(bi_instruction *ins, bi_registers *regs)
 {
         struct bifrost_branch pack = {
                 /* It's unclear what these bits actually mean */
-                .src0 = BIFROST_SRC_CONST_LO,
+                .src0 = BIFROST_SRC_FAU_LO,
                 .src1 = BIFROST_SRC_PASS_FMA,
 
                 /* Offset, see above */
-                .src2 = BIFROST_SRC_CONST_HI,
+                .src2 = BIFROST_SRC_FAU_HI,
 
                 /* All ones in fact */
                 .cond = (BR_ALWAYS & 0x7),
@@ -894,7 +894,7 @@ static struct bi_packed_bundle
 bi_pack_bundle(bi_clause *clause, bi_bundle bundle, bi_bundle prev, bool first_bundle, gl_shader_stage stage)
 {
         bi_assign_slots(&bundle, &prev);
-        bi_assign_uniform_constant(clause, &bundle.regs, bundle);
+        bi_assign_fau_idx(clause, &bundle.regs, bundle);
         bundle.regs.first_instruction = first_bundle;
 
         bi_flip_slots(&bundle.regs);

@@ -356,8 +356,8 @@ typedef struct {
         /* Configuration for slots 2/3 */
         struct bifrost_reg_ctrl_23 slot23;
 
-        /* Packed uniform/constant */
-        uint8_t uniform_constant;
+        /* Fast-Access-Uniform RAM index */
+        uint8_t fau_idx;
 
         /* Whether writes are actually for the last instruction */
         bool first_instruction;
@@ -369,6 +369,7 @@ typedef struct {
  */
 
 typedef struct {
+        uint8_t fau_idx;
         bi_registers regs;
         bi_instruction *fma;
         bi_instruction *add;
