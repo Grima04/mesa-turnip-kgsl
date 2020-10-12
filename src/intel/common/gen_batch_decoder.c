@@ -507,7 +507,7 @@ decode_single_ksp(struct gen_batch_decode_ctx *ctx, const uint32_t *p)
    struct gen_group *inst = gen_ctx_find_instruction(ctx, p);
 
    uint64_t ksp = 0;
-   bool is_simd8 = false; /* vertex shaders on Gen8+ only */
+   bool is_simd8 = ctx->devinfo.gen >= 11; /* vertex shaders on Gen8+ only */
    bool is_enabled = true;
 
    struct gen_field_iterator iter;
