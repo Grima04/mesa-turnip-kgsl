@@ -1822,7 +1822,7 @@ bind_texture(struct gl_context *ctx, GLenum target, GLuint texName,
 {
    struct gl_texture_object *newTexObj =
       _mesa_lookup_or_create_texture(ctx, target, texName, no_error, false,
-                                     "glBindTexture");
+                                     caller);
    if (!newTexObj)
       return;
 
