@@ -2465,7 +2465,8 @@ vtn_handle_variables(struct vtn_builder *b, SpvOp opcode,
 
          nir_ssa_def *array_length =
             nir_build_deref_buffer_array_length(&b->nb, 32,
-                                                vtn_pointer_to_ssa(b, array));
+                                                vtn_pointer_to_ssa(b, array),
+                                                .access=ptr->access | ptr->type->access);
 
          vtn_push_nir_ssa(b, w[2], array_length);
       } else {
@@ -2480,7 +2481,8 @@ vtn_handle_variables(struct vtn_builder *b, SpvOp opcode,
             vtn_assert(ptr->block_index);
          }
 
-         nir_ssa_def *buf_size = nir_get_ssbo_size(&b->nb, ptr->block_index);
+         nir_ssa_def *buf_size = nir_get_ssbo_size(&b->nb, ptr->block_index,
+                                                   .access=ptr->access | ptr->type->access);
 
          /* array_length = max(buffer_size - offset, 0) / stride */
          nir_ssa_def *array_length =
