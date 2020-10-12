@@ -416,6 +416,11 @@ public:
    {
       mem_ctx = ralloc_context(NULL);
 
+      /* Stash the number of instructions so we can sanity check that our
+       * counts still match liveness.
+       */
+      live_instr_count = fs->cfg->last_block()->end_ip + 1;
+
       /* Most of this allocation was written for a reg_width of 1
        * (dispatch_width == 8).  In extending to SIMD16, the code was
        * left in place and it was converted to have the hardware
@@ -467,6 +472,7 @@ private:
    const gen_device_info *devinfo;
    const brw_compiler *compiler;
    const fs_live_variables &live;
+   int live_instr_count;
 
    /* Which compiler->fs_reg_sets[] to use */
    int rsi;
@@ -1172,6 +1178,8 @@ fs_reg_alloc::spill_reg(unsigned spill_reg)
           inst->opcode != SHADER_OPCODE_GEN7_SCRATCH_READ)
          ip++;
    }
+
+   assert(ip == live_instr_count);
 }
 
 bool
