@@ -1,6 +1,6 @@
 COPYRIGHT = """\
 /*
- * Copyright © 2020 Valve Corporation
+ * Copyright (C) 2020 Valve Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
