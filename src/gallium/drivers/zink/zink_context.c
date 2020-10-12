@@ -95,10 +95,6 @@ calc_descriptor_hash_sampler_view(struct zink_context *ctx, struct zink_sampler_
 
    hash_data = &sampler_view->image_view;
    data_size = sizeof(VkImageView);
-   hash = XXH32(hash_data, data_size, hash);
-   VkImageLayout layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-   hash_data = &layout;
-   data_size = sizeof(VkImageLayout);
    sampler_view->hash = XXH32(hash_data, data_size, hash);
 }
 
@@ -140,7 +136,6 @@ calc_descriptor_state_hash_image(struct zink_context *ctx, struct zink_shader *z
    size_t data_size;
 
    for (unsigned k = 0; k < zs->bindings[ZINK_DESCRIPTOR_TYPE_IMAGE][i].size; k++) {
-      VkDescriptorImageInfo info;
       if (!ctx->image_views[shader][idx + k].base.resource) {
          VkDescriptorImageInfo null_info = {VK_NULL_HANDLE, VK_NULL_HANDLE, VK_IMAGE_LAYOUT_UNDEFINED};
          hash_data = &null_info;
@@ -155,10 +150,8 @@ calc_descriptor_state_hash_image(struct zink_context *ctx, struct zink_shader *z
          data_size = sizeof(ctx->image_views[shader][idx + k].base.u.buf);
          hash = XXH32(hash_data, data_size, hash);
       } else {
-         info.imageView = ctx->image_views[shader][idx + k].surface->image_view;
-         info.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
-         hash_data = &info;
-         data_size = sizeof(VkDescriptorImageInfo);
+         hash_data = &ctx->image_views[shader][idx + k].surface->image_view;
+         data_size = sizeof(VkImageView);
          hash = XXH32(hash_data, data_size, hash);
       }
    }
