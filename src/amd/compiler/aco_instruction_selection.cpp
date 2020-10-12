@@ -10083,7 +10083,7 @@ static void create_null_export(isel_context *ctx)
            /* enabled_mask */ 0, dest, /* compr */ false, /* done */ true, vm);
 }
 
-static bool export_vs_varying(isel_context *ctx, int slot, bool is_pos, int *next_pos)
+static void export_vs_varying(isel_context *ctx, int slot, bool is_pos, int *next_pos)
 {
    assert(ctx->stage & (hw_vs | hw_ngg_gs));
 
@@ -10092,9 +10092,9 @@ static bool export_vs_varying(isel_context *ctx, int slot, bool is_pos, int *nex
                 : ctx->program->info->vs.outinfo.vs_output_param_offset[slot];
    uint64_t mask = ctx->outputs.mask[slot];
    if (!is_pos && !mask)
-      return false;
+      return;
    if (!is_pos && offset == AC_EXP_PARAM_UNDEFINED)
-      return false;
+      return;
    aco_ptr<Export_instruction> exp{create_instruction<Export_instruction>(aco_opcode::exp, Format::EXP, 4, 0)};
    exp->enabled_mask = mask;
    for (unsigned i = 0; i < 4; ++i) {
@@ -10114,8 +10114,6 @@ static bool export_vs_varying(isel_context *ctx, int slot, bool is_pos, int *nex
    else
       exp->dest = V_008DFC_SQ_EXP_PARAM + offset;
    ctx->block->instructions.emplace_back(std::move(exp));
-
-   return true;
 }
 
 static void export_vs_psiz_layer_viewport(isel_context *ctx, int *next_pos)
@@ -10210,15 +10208,14 @@ static void create_vs_exports(isel_context *ctx)
 
    /* the order these position exports are created is important */
    int next_pos = 0;
-   bool exported_pos = export_vs_varying(ctx, VARYING_SLOT_POS, true, &next_pos);
+   export_vs_varying(ctx, VARYING_SLOT_POS, true, &next_pos);
    if (outinfo->writes_pointsize || outinfo->writes_layer || outinfo->writes_viewport_index) {
       export_vs_psiz_layer_viewport(ctx, &next_pos);
-      exported_pos = true;
    }
    if (ctx->num_clip_distances + ctx->num_cull_distances > 0)
-      exported_pos |= export_vs_varying(ctx, VARYING_SLOT_CLIP_DIST0, true, &next_pos);
+      export_vs_varying(ctx, VARYING_SLOT_CLIP_DIST0, true, &next_pos);
    if (ctx->num_clip_distances + ctx->num_cull_distances > 4)
-      exported_pos |= export_vs_varying(ctx, VARYING_SLOT_CLIP_DIST1, true, &next_pos);
+      export_vs_varying(ctx, VARYING_SLOT_CLIP_DIST1, true, &next_pos);
 
    if (ctx->export_clip_dists) {
       if (ctx->num_clip_distances + ctx->num_cull_distances > 0)
@@ -10236,9 +10233,6 @@ static void create_vs_exports(isel_context *ctx)
 
       export_vs_varying(ctx, i, false, NULL);
    }
-
-   if (!exported_pos)
-      create_null_export(ctx);
 }
 
 static bool export_fs_mrt_z(isel_context *ctx)
