@@ -270,8 +270,8 @@ static void gfx10_sh_query_add_result(struct gfx10_sh_query *query,
       break;
    case PIPE_QUERY_SO_OVERFLOW_ANY_PREDICATE:
       for (unsigned stream = 0; stream < SI_MAX_STREAMS; ++stream) {
-         result->b |= qmem->stream[query->stream].emitted_primitives !=
-                      qmem->stream[query->stream].generated_primitives;
+         result->b |= qmem->stream[stream].emitted_primitives !=
+                      qmem->stream[stream].generated_primitives;
       }
       break;
    default:
