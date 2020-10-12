@@ -282,6 +282,14 @@ struct threaded_resource {
     * are too large for the visible VRAM window.
     */
    int max_forced_staging_uploads;
+
+   /* If positive, then a staging transfer is in progress.
+    */
+   int pending_staging_uploads;
+   /* If staging uploads are pending, this will hold the union of the mapped
+    * ranges.
+    */
+   struct util_range pending_staging_uploads_range;
 };
 
 struct threaded_transfer {
