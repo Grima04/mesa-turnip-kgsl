@@ -371,8 +371,11 @@ update_ubo_descriptors(struct zink_context *ctx, struct zink_descriptor_set *zds
       uint32_t offset;
    } dynamic_buffers[PIPE_MAX_CONSTANT_BUFFERS];
    unsigned dynamic_offset_count = 0;
-   struct set *ht = _mesa_set_create(NULL, barrier_hash, barrier_equals);
-   _mesa_set_resize(ht, num_bindings);
+   struct set *ht = NULL;
+   if (!cache_hit) {
+      ht = _mesa_set_create(NULL, barrier_hash, barrier_equals);
+      _mesa_set_resize(ht, num_bindings);
+   }
 
    unsigned num_stages = is_compute ? 1 : ZINK_SHADER_COUNT;
    if (is_compute)
@@ -448,8 +451,12 @@ update_ssbo_descriptors(struct zink_context *ctx, struct zink_descriptor_set *zd
    unsigned num_buffer_info = 0;
    unsigned num_resources = 0;
    struct zink_shader **stages;
-   struct set *ht = _mesa_set_create(NULL, barrier_hash, barrier_equals);
-   _mesa_set_resize(ht, num_bindings);
+   struct set *ht = NULL;
+   if (!cache_hit) {
+      ht = _mesa_set_create(NULL, barrier_hash, barrier_equals);
+      _mesa_set_resize(ht, num_bindings);
+   }
+
    unsigned num_stages = is_compute ? 1 : ZINK_SHADER_COUNT;
    if (is_compute)
       stages = &ctx->curr_compute->shader;
@@ -550,8 +557,12 @@ update_sampler_descriptors(struct zink_context *ctx, struct zink_descriptor_set 
    unsigned num_image_info = 0;
    unsigned num_resources = 0;
    struct zink_shader **stages;
-   struct set *ht = _mesa_set_create(NULL, barrier_hash, barrier_equals);
-   _mesa_set_resize(ht, num_bindings);
+   struct set *ht = NULL;
+   if (!cache_hit) {
+      ht = _mesa_set_create(NULL, barrier_hash, barrier_equals);
+      _mesa_set_resize(ht, num_bindings);
+   }
+
    unsigned num_stages = is_compute ? 1 : ZINK_SHADER_COUNT;
    if (is_compute)
       stages = &ctx->curr_compute->shader;
@@ -624,8 +635,12 @@ update_image_descriptors(struct zink_context *ctx, struct zink_descriptor_set *z
    unsigned num_image_info = 0;
    unsigned num_resources = 0;
    struct zink_shader **stages;
-   struct set *ht = _mesa_set_create(NULL, barrier_hash, barrier_equals);
-   _mesa_set_resize(ht, num_bindings);
+   struct set *ht = NULL;
+   if (!cache_hit) {
+      ht = _mesa_set_create(NULL, barrier_hash, barrier_equals);
+      _mesa_set_resize(ht, num_bindings);
+   }
+
    unsigned num_stages = is_compute ? 1 : ZINK_SHADER_COUNT;
    if (is_compute)
       stages = &ctx->curr_compute->shader;
