@@ -410,6 +410,33 @@ bi_emit_discard_if(bi_context *ctx, nir_intrinsic_instr *instr)
 }
 
 static void
+bi_emit_blend_const(bi_context *ctx, nir_intrinsic_instr *instr)
+{
+        assert(ctx->is_blend);
+
+        unsigned comp;
+        switch (instr->intrinsic) {
+        case nir_intrinsic_load_blend_const_color_r_float: comp = 0; break;
+        case nir_intrinsic_load_blend_const_color_g_float: comp = 1; break;
+        case nir_intrinsic_load_blend_const_color_b_float: comp = 2; break;
+        case nir_intrinsic_load_blend_const_color_a_float: comp = 3; break;
+        default: unreachable("Invalid load blend constant intrinsic");
+        }
+
+        bi_instruction move = {
+                .type = BI_MOV,
+                .dest = pan_dest_index(&instr->dest),
+                .dest_type = nir_type_uint32,
+                .src = { BIR_INDEX_CONSTANT },
+                .src_types = { nir_type_uint32 },
+        };
+
+        memcpy(&move.constant.u32, &ctx->blend_constants[comp], sizeof(float));
+
+        bi_emit(ctx, move);
+}
+
+static void
 emit_intrinsic(bi_context *ctx, nir_intrinsic_instr *instr)
 {
 
@@ -466,6 +493,13 @@ emit_intrinsic(bi_context *ctx, nir_intrinsic_instr *instr)
         case nir_intrinsic_load_num_work_groups:
         case nir_intrinsic_load_sampler_lod_parameters_pan:
                 bi_emit_sysval(ctx, &instr->instr, 3, 0);
+                break;
+
+        case nir_intrinsic_load_blend_const_color_r_float:
+        case nir_intrinsic_load_blend_const_color_g_float:
+        case nir_intrinsic_load_blend_const_color_b_float:
+        case nir_intrinsic_load_blend_const_color_a_float:
+                bi_emit_blend_const(ctx, instr);
                 break;
 
         default:
