@@ -1766,10 +1766,17 @@ void si_cp_dma_buffer_copy(struct radv_cmd_buffer *cmd_buffer,
 		unsigned dma_flags = 0;
 		unsigned byte_count = MIN2(size, cp_dma_max_byte_count(cmd_buffer));
 
-		if (cmd_buffer->device->physical_device->rad_info.chip_class >= GFX10) {
+		if (cmd_buffer->device->physical_device->rad_info.chip_class >= GFX9) {
 			/* DMA operations via L2 are coherent and faster.
-			 * TODO: GFX7-GFX9 should also support this but it
+			 * TODO: GFX7-GFX8 should also support this but it
 			 * requires tests/benchmarks.
+			 *
+			 * Also enable on GFX9 so we can use L2 at rest on GFX9+. On Raven
+			 * this didn't seem to be worse.
+			 *
+			 * Note that we only use CP DMA for sizes < RADV_BUFFER_OPS_CS_THRESHOLD,
+			 * which is 4k at the moment, so this is really unlikely to cause
+			 * significant thrashing.
 			 */
 			dma_flags |= CP_DMA_USE_L2;
 		}
@@ -1818,10 +1825,12 @@ void si_cp_dma_clear_buffer(struct radv_cmd_buffer *cmd_buffer, uint64_t va,
 		unsigned byte_count = MIN2(size, cp_dma_max_byte_count(cmd_buffer));
 		unsigned dma_flags = CP_DMA_CLEAR;
 
-		if (cmd_buffer->device->physical_device->rad_info.chip_class >= GFX10) {
+		if (cmd_buffer->device->physical_device->rad_info.chip_class >= GFX9) {
 			/* DMA operations via L2 are coherent and faster.
-			 * TODO: GFX7-GFX9 should also support this but it
+			 * TODO: GFX7-GFX8 should also support this but it
 			 * requires tests/benchmarks.
+			 *
+			 * Also enable on GFX9 so we can use L2 at rest on GFX9+.
 			 */
 			dma_flags |= CP_DMA_USE_L2;
 		}
