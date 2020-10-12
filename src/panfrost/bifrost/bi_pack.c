@@ -196,13 +196,12 @@ bi_assign_fau_idx_single(bi_registers *regs,
 
 static void
 bi_assign_fau_idx(bi_clause *clause,
-                  bi_registers *regs,
-                  bi_bundle bundle)
+                  bi_bundle *bundle)
 {
         bool assigned =
-                bi_assign_fau_idx_single(regs, clause, bundle.fma, false, true);
+                bi_assign_fau_idx_single(&bundle->regs, clause, bundle->fma, false, true);
 
-        bi_assign_fau_idx_single(regs, clause, bundle.add, assigned, false);
+        bi_assign_fau_idx_single(&bundle->regs, clause, bundle->add, assigned, false);
 }
 
 /* Assigns a slot for reading, before anything is written */
@@ -894,7 +893,7 @@ static struct bi_packed_bundle
 bi_pack_bundle(bi_clause *clause, bi_bundle bundle, bi_bundle prev, bool first_bundle, gl_shader_stage stage)
 {
         bi_assign_slots(&bundle, &prev);
-        bi_assign_fau_idx(clause, &bundle.regs, bundle);
+        bi_assign_fau_idx(clause, &bundle);
         bundle.regs.first_instruction = first_bundle;
 
         bi_flip_slots(&bundle.regs);
