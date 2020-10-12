@@ -271,7 +271,7 @@ panfrost_emit_bifrost_blend(struct panfrost_batch *batch,
                 /* Disable blending for depth-only */
                 pan_pack(rts, BLEND, cfg) {
                         cfg.enable = false;
-                        cfg.bifrost.mode = MALI_BIFROST_BLEND_MODE_OFF;
+                        cfg.bifrost.internal.mode = MALI_BIFROST_BLEND_MODE_OFF;
                 }
                 return;
         }
@@ -296,8 +296,8 @@ panfrost_emit_bifrost_blend(struct panfrost_batch *batch,
                                  */
                                 assert((blend[i].shader.gpu & (0xffffffffull << 32)) ==
                                        (fs->bo->gpu & (0xffffffffull << 32)));
-                                cfg.bifrost.shader.pc = (u32)blend[i].shader.gpu;
-                                cfg.bifrost.mode = MALI_BIFROST_BLEND_MODE_SHADER;
+                                cfg.bifrost.internal.shader.pc = (u32)blend[i].shader.gpu;
+                                cfg.bifrost.internal.mode = MALI_BIFROST_BLEND_MODE_SHADER;
                         } else {
                                 enum pipe_format format = batch->key.cbufs[i]->format;
                                 const struct util_format_description *format_desc;
@@ -316,18 +316,19 @@ panfrost_emit_bifrost_blend(struct panfrost_batch *batch,
                                 cfg.bifrost.constant = constant;
 
                                 if (blend[i].opaque)
-                                        cfg.bifrost.mode = MALI_BIFROST_BLEND_MODE_OPAQUE;
+                                        cfg.bifrost.internal.mode = MALI_BIFROST_BLEND_MODE_OPAQUE;
                                 else
-                                        cfg.bifrost.mode = MALI_BIFROST_BLEND_MODE_FIXED_FUNCTION;
+                                        cfg.bifrost.internal.mode = MALI_BIFROST_BLEND_MODE_FIXED_FUNCTION;
 
-                                cfg.bifrost.fixed_function.num_comps = format_desc->nr_channels;
-                                cfg.bifrost.fixed_function.conversion.memory_format.format =
+                                cfg.bifrost.internal.fixed_function.num_comps = format_desc->nr_channels;
+                                cfg.bifrost.internal.fixed_function.conversion.memory_format.format =
                                         panfrost_format_to_bifrost_blend(format_desc);
                                 if (dev->quirks & HAS_SWIZZLES) {
-                                        cfg.bifrost.fixed_function.conversion.memory_format.swizzle =
+                                        cfg.bifrost.internal.fixed_function.conversion.memory_format.swizzle =
                                                 panfrost_get_default_swizzle(4);
                                 }
-                                cfg.bifrost.fixed_function.conversion.register_format = fs->blend_types[i];
+                                cfg.bifrost.internal.fixed_function.conversion.register_format =
+                                        fs->blend_types[i];
                         }
                 }
         }

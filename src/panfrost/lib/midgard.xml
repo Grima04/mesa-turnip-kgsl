@@ -451,12 +451,16 @@
     <field name="Conversion" size="32" start="1:0" type="Bifrost Internal Conversion"/>
   </struct>
 
+  <struct name="Bifrost Internal Blend">
+    <field name="Mode" size="2" start="0:0" type="Bifrost Blend Mode"/>
+    <field name="Shader" size="64" start="0:0" type="Bifrost Blend Shader"/>
+    <field name="Fixed-Function" size="64" start="0:0" type="Bifrost Blend Fixed-Function"/>
+  </struct>
+
   <struct name="Bifrost Blend Overlay" no-direct-packing="true">
     <field name="Constant" size="16" start="0:16" type="uint"/>
     <field name="Equation" size="32" start="1:0" type="Blend Equation"/>
-    <field name="Mode" size="2" start="2:0" type="Bifrost Blend Mode"/>
-    <field name="Shader" size="64" start="2:0" type="Bifrost Blend Shader"/>
-    <field name="Fixed-Function" size="64" start="2:0" type="Bifrost Blend Fixed-Function"/>
+    <field name="Internal" size="64" start="2:0" type="Bifrost Internal Blend"/>
   </struct>
 
   <struct name="Blend" size="4">
