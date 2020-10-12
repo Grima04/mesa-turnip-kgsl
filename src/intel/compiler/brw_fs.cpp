@@ -5431,6 +5431,11 @@ lower_surface_logical_send(const fs_builder &bld, fs_inst *inst)
       header = ubld.vgrf(BRW_REGISTER_TYPE_UD);
       ubld.MOV(header, brw_imm_d(0));
       if (is_stateless) {
+         /* Copy the per-thread scratch from g0 for bounds checking */
+         ubld.group(1, 0).AND(component(header, 3),
+                              retype(brw_vec1_grf(0, 3), BRW_REGISTER_TYPE_UD),
+                              brw_imm_ud(0xf));
+
          /* Both the typed and scattered byte/dword A32 messages take a buffer
           * base address in R0.5:[31:0] (See MH1_A32_PSM for typed messages or
           * MH_A32_GO for byte/dword scattered messages in the SKL PRM Vol. 2d
