@@ -957,14 +957,6 @@ draw_stencil_pixels(struct gl_context *ctx, GLint x, GLint y,
    GLubyte *sValues;
    GLuint *zValues;
 
-   if (!zoom) {
-      if (!_mesa_clip_drawpixels(ctx, &x, &y, &width, &height,
-                                 &clippedUnpack)) {
-         /* totally clipped */
-         return;
-      }
-   }
-
    strb = st_renderbuffer(ctx->DrawBuffer->
                           Attachment[BUFFER_STENCIL].Renderbuffer);
 
@@ -1320,12 +1312,18 @@ st_DrawPixels(struct gl_context *ctx, GLint x, GLint y,
 
    st_validate_state(st, ST_PIPELINE_META);
 
+   clippedUnpack = *unpack;
+   unpack = &clippedUnpack;
+
+   /* Skip totally clipped DrawPixels. */
+   if (ctx->Pixel.ZoomX == 1 && ctx->Pixel.ZoomY == 1 &&
+       !_mesa_clip_drawpixels(ctx, &x, &y, &width, &height, &clippedUnpack))
+      return;
+
    /* Limit the size of the glDrawPixels to the max texture size.
     * Strictly speaking, that's not correct but since we don't handle
     * larger images yet, this is better than crashing.
     */
-   clippedUnpack = *unpack;
-   unpack = &clippedUnpack;
    clamp_size(st, &width, &height, &clippedUnpack);
 
    if (format == GL_DEPTH_STENCIL)
