@@ -25,6 +25,7 @@
 #include <stdio.h>
 #include "pan_blend_shaders.h"
 #include "pan_util.h"
+#include "panfrost-quirks.h"
 #include "midgard/midgard_compile.h"
 #include "compiler/nir/nir_builder.h"
 #include "nir/nir_lower_blend.h"
@@ -134,6 +135,7 @@ panfrost_create_blend_shader(struct panfrost_context *ctx,
                              struct panfrost_blend_state *state,
                              const struct panfrost_blend_shader_key *key)
 {
+        struct panfrost_device *dev = pan_device(ctx->base.screen);
         struct panfrost_blend_shader *res = rzalloc(ctx, struct panfrost_blend_shader);
 
         res->ctx = ctx;
@@ -201,6 +203,7 @@ panfrost_create_blend_shader(struct panfrost_context *ctx,
 
         nir_lower_blend_options options = nir_make_options(&state->base, key->rt);
         options.format = key->format;
+        options.is_bifrost = !!(dev->quirks & IS_BIFROST);
         options.src1 = s_src[1];
 
         if (T == nir_type_float16)
