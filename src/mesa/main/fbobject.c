@@ -2433,7 +2433,7 @@ _mesa_base_fbo_format(const struct gl_context *ctx, GLenum internalFormat)
  * Invalidate a renderbuffer attachment.  Called from _mesa_HashWalk().
  */
 static void
-invalidate_rb(GLuint key, void *data, void *userData)
+invalidate_rb(void *data, void *userData)
 {
    struct gl_framebuffer *fb = (struct gl_framebuffer *) data;
    struct gl_renderbuffer *rb = (struct gl_renderbuffer *) userData;

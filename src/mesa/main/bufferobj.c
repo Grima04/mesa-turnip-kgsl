@@ -568,13 +568,12 @@ _mesa_initialize_buffer_object(struct gl_context *ctx,
  * Callback called from _mesa_HashWalk()
  */
 static void
-count_buffer_size(GLuint key, void *data, void *userData)
+count_buffer_size(void *data, void *userData)
 {
    const struct gl_buffer_object *bufObj =
       (const struct gl_buffer_object *) data;
    GLuint *total = (GLuint *) userData;
 
-   (void) key;
    *total = *total + bufObj->Size;
 }
 

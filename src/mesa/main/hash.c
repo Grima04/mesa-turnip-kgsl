@@ -343,23 +343,23 @@ _mesa_HashDeleteAll(struct _mesa_HashTable *table,
  */
 static void
 hash_walk_unlocked(const struct _mesa_HashTable *table,
-                   void (*callback)(GLuint key, void *data, void *userData),
+                   void (*callback)(void *data, void *userData),
                    void *userData)
 {
    assert(table);
    assert(callback);
 
    hash_table_foreach(table->ht, entry) {
-      callback((uintptr_t)entry->key, entry->data, userData);
+      callback(entry->data, userData);
    }
    if (table->deleted_key_data)
-      callback(DELETED_KEY_VALUE, table->deleted_key_data, userData);
+      callback(table->deleted_key_data, userData);
 }
 
 
 void
 _mesa_HashWalk(const struct _mesa_HashTable *table,
-               void (*callback)(GLuint key, void *data, void *userData),
+               void (*callback)(void *data, void *userData),
                void *userData)
 {
    /* cast-away const */
@@ -372,7 +372,7 @@ _mesa_HashWalk(const struct _mesa_HashTable *table,
 
 void
 _mesa_HashWalkLocked(const struct _mesa_HashTable *table,
-               void (*callback)(GLuint key, void *data, void *userData),
+               void (*callback)(void *data, void *userData),
                void *userData)
 {
    hash_walk_unlocked(table, callback, userData);

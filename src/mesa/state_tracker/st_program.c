@@ -1850,7 +1850,7 @@ destroy_program_variants(struct st_context *st, struct gl_program *target)
  * which match the given context.
  */
 static void
-destroy_shader_program_variants_cb(GLuint key, void *data, void *userData)
+destroy_shader_program_variants_cb(void *data, void *userData)
 {
    struct st_context *st = (struct st_context *) userData;
    struct gl_shader *shader = (struct gl_shader *) data;
@@ -1885,7 +1885,7 @@ destroy_shader_program_variants_cb(GLuint key, void *data, void *userData)
  * the given context.
  */
 static void
-destroy_program_variants_cb(GLuint key, void *data, void *userData)
+destroy_program_variants_cb(void *data, void *userData)
 {
    struct st_context *st = (struct st_context *) userData;
    struct gl_program *program = (struct gl_program *) data;

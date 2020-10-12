@@ -1036,7 +1036,7 @@ st_create_context(gl_api api, struct pipe_context *pipe,
  * texture's sampler views which belong to the context.
  */
 static void
-destroy_tex_sampler_cb(GLuint id, void *data, void *userData)
+destroy_tex_sampler_cb(void *data, void *userData)
 {
    struct gl_texture_object *texObj = (struct gl_texture_object *) data;
    struct st_context *st = (struct st_context *) userData;
@@ -1045,7 +1045,7 @@ destroy_tex_sampler_cb(GLuint id, void *data, void *userData)
 }
 
 static void
-destroy_framebuffer_attachment_sampler_cb(GLuint id, void *data, void *userData)
+destroy_framebuffer_attachment_sampler_cb(void *data, void *userData)
 {
    struct gl_framebuffer* glfb = (struct gl_framebuffer*) data;
    struct st_context *st = (struct st_context *) userData;

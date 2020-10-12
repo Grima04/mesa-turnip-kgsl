@@ -1407,7 +1407,7 @@ _mesa_delete_list(struct gl_context *ctx, struct gl_display_list *dlist)
  * deleted belongs to a bitmap texture atlas.
  */
 static void
-check_atlas_for_deleted_list(UNUSED GLuint key, void *data, void *userData)
+check_atlas_for_deleted_list(void *data, void *userData)
 {
    struct gl_bitmap_atlas *atlas = (struct gl_bitmap_atlas *) data;
    GLuint list_id = *((GLuint *) userData);  /* the list being deleted */

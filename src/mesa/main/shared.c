@@ -226,7 +226,7 @@ delete_bufferobj_cb(GLuint id, void *data, void *userData)
  * to avoid memory access error.
  */
 static void
-free_shader_program_data_cb(GLuint id, void *data, void *userData)
+free_shader_program_data_cb(void *data, void *userData)
 {
    struct gl_context *ctx = (struct gl_context *) userData;
    struct gl_shader_program *shProg = (struct gl_shader_program *) data;
