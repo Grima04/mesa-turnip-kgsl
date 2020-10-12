@@ -145,6 +145,7 @@ panfrost_create_blend_shader(struct panfrost_context *ctx,
 
         nir_shader *shader = nir_shader_create(ctx, MESA_SHADER_FRAGMENT, &midgard_nir_options, NULL);
         nir_function *fn = nir_function_create(shader, "main");
+        fn->is_entrypoint = true;
         nir_function_impl *impl = nir_function_impl_create(fn);
 
         const struct util_format_description *format_desc =
