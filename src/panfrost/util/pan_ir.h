@@ -110,6 +110,7 @@ struct panfrost_compile_inputs {
         struct {
                 unsigned rt;
                 float constants[4];
+                uint64_t bifrost_blend_desc;
         } blend;
         bool shaderdb;
 
