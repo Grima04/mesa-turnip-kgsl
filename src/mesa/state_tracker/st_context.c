@@ -98,7 +98,7 @@ DEBUG_GET_ONCE_BOOL_OPTION(mesa_mvp_dp4, "MESA_MVP_DP4", FALSE)
  * Called via ctx->Driver.Enable()
  */
 static void
-st_Enable(struct gl_context *ctx, GLenum cap, GLboolean state)
+st_Enable(struct gl_context *ctx, GLenum cap, UNUSED GLboolean state)
 {
    struct st_context *st = st_context(ctx);
 
