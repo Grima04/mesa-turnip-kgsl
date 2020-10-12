@@ -124,12 +124,6 @@ bi_assign_fau_idx_single(bi_registers *regs,
         if (!ins)
                 return assigned;
 
-        if (ins->type == BI_BLEND) {
-                assert(!assigned);
-                regs->fau_idx = 0x8;
-                return true;
-        }
-
         if (ins->type == BI_BRANCH && clause->branch_constant) {
                 /* By convention branch constant is last */
                 unsigned idx = clause->constant_count - 1;
@@ -186,6 +180,18 @@ bi_assign_fau_idx_single(bi_registers *regs,
                         assigned = true;
                 } else if (ins->src[s] & BIR_INDEX_ZERO && fast_zero) {
                         ins->src[s] = BIR_INDEX_PASS | BIFROST_SRC_STAGE;
+                } else if (ins->src[s] & BIR_INDEX_BLEND) {
+                        unsigned rt = ins->blend_location;
+
+                        assert(rt <= 7);
+                        assert((ins->src[s] & ~BIR_SPECIAL) == BIFROST_SRC_FAU_HI ||
+                               (ins->src[s] & ~BIR_SPECIAL) == BIFROST_SRC_FAU_LO);
+                        ins->src[s] = BIR_INDEX_PASS | (ins->src[s] & ~BIR_SPECIAL);
+                        if (assigned && regs->fau_idx != (8 | rt))
+                                unreachable("Mismatched FAU index");
+
+                        regs->fau_idx = 8 | rt;
+                        assigned = true;
                 } else if (s & BIR_INDEX_UNIFORM) {
                         unreachable("Push uniforms not implemented yet");
                 }
