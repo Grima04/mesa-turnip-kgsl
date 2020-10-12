@@ -10203,6 +10203,11 @@ static void create_vs_exports(isel_context *ctx)
       ctx->outputs.temps[VARYING_SLOT_LAYER * 4u] = as_vgpr(ctx, get_arg(ctx, ctx->args->ac.view_index));
    }
 
+   /* Hardware requires position data to always be exported, even if the
+    * application did not write gl_Position.
+    */
+   ctx->outputs.mask[VARYING_SLOT_POS] = 0xf;
+
    /* the order these position exports are created is important */
    int next_pos = 0;
    bool exported_pos = export_vs_varying(ctx, VARYING_SLOT_POS, true, &next_pos);
