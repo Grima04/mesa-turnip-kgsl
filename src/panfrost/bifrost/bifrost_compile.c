@@ -1651,6 +1651,9 @@ bifrost_compile_shader_nir(nir_shader *nir, panfrost_program *program,
         ctx->nir = nir;
         ctx->stage = nir->info.stage;
         ctx->quirks = bifrost_get_quirks(inputs->gpu_id);
+        ctx->is_blend = inputs->is_blend;
+        ctx->blend_desc = inputs->blend.bifrost_blend_desc;
+        memcpy(ctx->blend_constants, inputs->blend.constants, sizeof(ctx->blend_constants));
         list_inithead(&ctx->blocks);
 
         /* Lower gl_Position pre-optimisation, but after lowering vars to ssa

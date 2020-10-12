@@ -445,6 +445,15 @@ typedef struct {
        struct panfrost_sysvals sysvals;
        uint32_t quirks;
 
+       /* Is internally a blend shader? Depends on stage == FRAGMENT */
+       bool is_blend;
+
+       /* Blend constants */
+       float blend_constants[4];
+
+       /* Blend tile buffer conversion desc */
+       uint64_t blend_desc;
+
        /* During NIR->BIR */
        nir_function_impl *impl;
        bi_block *current_block;
