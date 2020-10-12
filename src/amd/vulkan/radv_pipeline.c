@@ -2444,10 +2444,10 @@ radv_generate_graphics_pipeline_key(struct radv_pipeline *pipeline,
 		key.vertex_attribute_offsets[location] = desc->offset;
 		key.vertex_attribute_strides[location] = radv_get_attrib_stride(input_state, desc->binding);
 
+		enum ac_fetch_format adjust = AC_FETCH_FORMAT_NONE;
 		if (pipeline->device->physical_device->rad_info.chip_class <= GFX8 &&
 		    pipeline->device->physical_device->rad_info.family != CHIP_STONEY) {
 			VkFormat format = input_state->pVertexAttributeDescriptions[i].format;
-			uint64_t adjust;
 			switch(format) {
 			case VK_FORMAT_A2R10G10B10_SNORM_PACK32:
 			case VK_FORMAT_A2B10G10R10_SNORM_PACK32:
@@ -2462,11 +2462,10 @@ radv_generate_graphics_pipeline_key(struct radv_pipeline *pipeline,
 				adjust = AC_FETCH_FORMAT_SINT;
 				break;
 			default:
-				adjust = AC_FETCH_FORMAT_NONE;
 				break;
 			}
-			key.vertex_alpha_adjust[location] = adjust;
 		}
+		key.vertex_alpha_adjust[location] = adjust;
 
 		switch (desc->format) {
 		case VK_FORMAT_B8G8R8A8_UNORM:
