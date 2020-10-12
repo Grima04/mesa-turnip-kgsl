@@ -6246,7 +6246,10 @@ void visit_atomic_ssbo(isel_context *ctx, nir_intrinsic_instr *instr)
 
 void visit_get_ssbo_size(isel_context *ctx, nir_intrinsic_instr *instr) {
 
-   Temp index = convert_pointer_to_64_bit(ctx, get_ssa_temp(ctx, instr->src[0].ssa));
+   Temp rsrc = get_ssa_temp(ctx, instr->src[0].ssa);
+   rsrc = emit_extract_vector(ctx, rsrc, 0, RegClass(rsrc.type(), 1));
+   Temp index = convert_pointer_to_64_bit(ctx, rsrc);
+
    Builder bld(ctx->program, ctx->block);
    Temp desc = bld.smem(aco_opcode::s_load_dwordx4, bld.def(s4), index, Operand(0u));
    get_buffer_size(ctx, desc, get_ssa_temp(ctx, &instr->dest.ssa), false);
