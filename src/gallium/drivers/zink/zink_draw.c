@@ -317,50 +317,21 @@ cmp_dynamic_offset_binding(const void *a, const void *b)
    return *binding_a - *binding_b;
 }
 
-struct zink_descriptor_resource {
-   struct zink_resource *res;
-   bool write;
-};
-
-static inline void
-read_descriptor_resource(struct zink_descriptor_resource *resource, struct zink_resource *res, unsigned *num_resources)
-{
-   resource->res = res;
-   resource->write = false;
-   (*num_resources)++;
-}
-
-static inline void
-write_descriptor_resource(struct zink_descriptor_resource *resource, struct zink_resource *res, unsigned *num_resources)
-{
-   resource->res = res;
-   resource->write = true;
-   (*num_resources)++;
-}
-
 static bool
 write_descriptors(struct zink_context *ctx, struct zink_descriptor_set *zds, unsigned num_wds, VkWriteDescriptorSet *wds,
-                 unsigned num_resources, struct zink_descriptor_resource *resources,
-                 bool is_compute, bool cache_hit)
+                  bool is_compute, bool cache_hit)
 {
    bool need_flush = false;
    struct zink_batch *batch = is_compute ? &ctx->compute_batch : zink_curr_batch(ctx);
    struct zink_screen *screen = zink_screen(ctx->base.screen);
    assert(zds->desc_set);
    unsigned check_flush_id = is_compute ? 0 : ZINK_COMPUTE_BATCH_ID;
-   for (int i = 0; i < num_resources; ++i) {
-      assert(num_resources <= zds->pool->num_resources);
-
-      struct zink_resource *res = resources[i].res;
-      if (res) {
-         need_flush |= zink_batch_reference_resource_rw(batch, res, resources[i].write) == check_flush_id;
-      }
-   }
    if (!cache_hit && num_wds)
       vkUpdateDescriptorSets(screen->dev, num_wds, wds, 0, NULL);
 
    for (int i = 0; zds->pool->key.num_descriptors && i < util_dynarray_num_elements(&zds->barriers, struct zink_descriptor_barrier); ++i) {
       struct zink_descriptor_barrier *barrier = util_dynarray_element(&zds->barriers, struct zink_descriptor_barrier, i);
+      need_flush |= zink_batch_reference_resource_rw(batch, barrier->res, zink_resource_access_is_write(barrier->access)) == check_flush_id;
       zink_resource_barrier(ctx, NULL, barrier->res,
                             barrier->layout, barrier->access, barrier->stage);
    }
@@ -390,7 +361,6 @@ update_ubo_descriptors(struct zink_context *ctx, struct zink_descriptor_set *zds
    unsigned num_descriptors = pg->pool[zds->pool->type]->key.num_descriptors;
    unsigned num_bindings = zds->pool->num_resources;
    VkWriteDescriptorSet wds[num_descriptors];
-   struct zink_descriptor_resource resources[num_bindings];
    VkDescriptorBufferInfo buffer_infos[num_bindings];
    unsigned num_wds = 0;
    unsigned num_buffer_info = 0;
@@ -425,8 +395,7 @@ update_ubo_descriptors(struct zink_context *ctx, struct zink_descriptor_set *zds
          assert(!res || ctx->ubos[stage][index].buffer_size > 0);
          assert(!res || ctx->ubos[stage][index].buffer);
          assert(num_resources < num_bindings);
-         desc_set_res_add(zds, res, num_resources, cache_hit);
-         read_descriptor_resource(&resources[num_resources], res, &num_resources);
+         desc_set_res_add(zds, res, num_resources++, cache_hit);
          assert(num_buffer_info < num_bindings);
          buffer_infos[num_buffer_info].buffer = res ? res->buffer :
                                                 (screen->info.rb2_feats.nullDescriptor ?
@@ -462,7 +431,7 @@ update_ubo_descriptors(struct zink_context *ctx, struct zink_descriptor_set *zds
       dynamic_offsets[i] = dynamic_buffers[i].offset;
    *dynamic_offset_idx = dynamic_offset_count;
 
-   return write_descriptors(ctx, zds, num_wds, wds, num_resources, resources, is_compute, cache_hit);
+   return write_descriptors(ctx, zds, num_wds, wds, is_compute, cache_hit);
 }
 
 static bool
@@ -474,7 +443,6 @@ update_ssbo_descriptors(struct zink_context *ctx, struct zink_descriptor_set *zd
    unsigned num_descriptors = pg->pool[zds->pool->type]->key.num_descriptors;
    unsigned num_bindings = zds->pool->num_resources;
    VkWriteDescriptorSet wds[num_descriptors];
-   struct zink_descriptor_resource resources[num_bindings];
    VkDescriptorBufferInfo buffer_infos[num_bindings];
    unsigned num_wds = 0;
    unsigned num_buffer_info = 0;
@@ -499,18 +467,14 @@ update_ssbo_descriptors(struct zink_context *ctx, struct zink_descriptor_set *zd
          assert(shader->bindings[zds->pool->type][j].type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
          assert(num_resources < num_bindings);
          struct zink_resource *res = zink_resource(ctx->ssbos[stage][index].buffer);
-         desc_set_res_add(zds, res, num_resources, cache_hit);
+         desc_set_res_add(zds, res, num_resources++, cache_hit);
          if (res) {
             assert(ctx->ssbos[stage][index].buffer_size > 0);
             assert(ctx->ssbos[stage][index].buffer_size <= screen->info.props.limits.maxStorageBufferRange);
             assert(num_buffer_info < num_bindings);
             unsigned flag = VK_ACCESS_SHADER_READ_BIT;
-            if (ctx->writable_ssbos[stage] & (1 << index)) {
-               write_descriptor_resource(&resources[num_resources], res, &num_resources);
+            if (ctx->writable_ssbos[stage] & (1 << index))
                flag |= VK_ACCESS_SHADER_WRITE_BIT;
-            } else {
-               read_descriptor_resource(&resources[num_resources], res, &num_resources);
-            }
             if (!cache_hit)
                add_barrier(res, 0, flag, stage, &zds->barriers, ht);
             buffer_infos[num_buffer_info].buffer = res->buffer;
@@ -529,7 +493,7 @@ update_ssbo_descriptors(struct zink_context *ctx, struct zink_descriptor_set *zd
       }
    }
    _mesa_set_destroy(ht, NULL);
-   return write_descriptors(ctx, zds, num_wds, wds, num_resources, resources, is_compute, cache_hit);
+   return write_descriptors(ctx, zds, num_wds, wds, is_compute, cache_hit);
 }
 
 static void
@@ -580,7 +544,6 @@ update_sampler_descriptors(struct zink_context *ctx, struct zink_descriptor_set 
    unsigned num_descriptors = pg->pool[zds->pool->type]->key.num_descriptors;
    unsigned num_bindings = zds->pool->num_resources;
    VkWriteDescriptorSet wds[num_descriptors];
-   struct zink_descriptor_resource resources[num_bindings];
    VkDescriptorImageInfo image_infos[num_bindings];
    VkBufferView buffer_view[] = {VK_NULL_HANDLE};
    unsigned num_wds = 0;
@@ -623,11 +586,10 @@ update_sampler_descriptors(struct zink_context *ctx, struct zink_descriptor_set 
                sampler = ctx->sampler_states[stage][index + k];
             }
             assert(num_resources < num_bindings);
-            desc_set_sampler_add(zds, sampler_view, sampler, num_resources, cache_hit);
+            desc_set_sampler_add(zds, sampler_view, sampler, num_resources++, cache_hit);
             if (res) {
                if (!cache_hit)
                   add_barrier(res, layout, VK_ACCESS_SHADER_READ_BIT, stage, &zds->barriers, ht);
-               read_descriptor_resource(&resources[num_resources], res, &num_resources);
             }
             assert(num_image_info < num_bindings);
             handle_image_descriptor(screen, res, zds->pool->type, shader->bindings[zds->pool->type][j].type,
@@ -644,7 +606,7 @@ update_sampler_descriptors(struct zink_context *ctx, struct zink_descriptor_set 
       }
    }
    _mesa_set_destroy(ht, NULL);
-   return write_descriptors(ctx, zds, num_wds, wds, num_resources, resources, is_compute, cache_hit);
+   return write_descriptors(ctx, zds, num_wds, wds, is_compute, cache_hit);
 }
 
 static bool
@@ -656,7 +618,6 @@ update_image_descriptors(struct zink_context *ctx, struct zink_descriptor_set *z
    unsigned num_descriptors = pg->pool[zds->pool->type]->key.num_descriptors;
    unsigned num_bindings = zds->pool->num_resources;
    VkWriteDescriptorSet wds[num_descriptors];
-   struct zink_descriptor_resource resources[num_bindings];
    VkDescriptorImageInfo image_infos[num_bindings];
    VkBufferView buffer_view[] = {VK_NULL_HANDLE};
    unsigned num_wds = 0;
@@ -697,7 +658,7 @@ update_image_descriptors(struct zink_context *ctx, struct zink_descriptor_set *z
                layout = VK_IMAGE_LAYOUT_GENERAL;
             }
             assert(num_resources < num_bindings);
-            desc_set_image_add(zds, image_view, num_resources, cache_hit);
+            desc_set_image_add(zds, image_view, num_resources++, cache_hit);
             if (res) {
                VkAccessFlags flags = 0;
                if (image_view->base.access & PIPE_IMAGE_ACCESS_READ)
@@ -706,12 +667,8 @@ update_image_descriptors(struct zink_context *ctx, struct zink_descriptor_set *z
                   flags |= VK_ACCESS_SHADER_WRITE_BIT;
                if (!cache_hit)
                   add_barrier(res, layout, flags, stage, &zds->barriers, ht);
-               if (image_view->base.access & PIPE_IMAGE_ACCESS_WRITE)
-                  write_descriptor_resource(&resources[num_resources], res, &num_resources);
-               else
-                  read_descriptor_resource(&resources[num_resources], res, &num_resources);
-               
             }
+
             assert(num_image_info < num_bindings);
             handle_image_descriptor(screen, res, zds->pool->type, shader->bindings[zds->pool->type][j].type,
                                     &wds[num_wds], layout, &num_image_info, &image_infos[num_image_info],
@@ -727,7 +684,7 @@ update_image_descriptors(struct zink_context *ctx, struct zink_descriptor_set *z
       }
    }
    _mesa_set_destroy(ht, NULL);
-   return write_descriptors(ctx, zds, num_wds, wds, num_resources, resources, is_compute, cache_hit);
+   return write_descriptors(ctx, zds, num_wds, wds, is_compute, cache_hit);
 }
 
 static void
