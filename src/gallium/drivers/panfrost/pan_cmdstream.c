@@ -297,6 +297,8 @@ panfrost_emit_bifrost_blend(struct panfrost_batch *batch,
                                 assert((blend[i].shader.gpu & (0xffffffffull << 32)) ==
                                        (fs->bo->gpu & (0xffffffffull << 32)));
                                 cfg.bifrost.internal.shader.pc = (u32)blend[i].shader.gpu;
+                                assert(!(fs->blend_ret_addrs[i] & 0x7));
+                                cfg.bifrost.internal.shader.return_value = fs->blend_ret_addrs[i];
                                 cfg.bifrost.internal.mode = MALI_BIFROST_BLEND_MODE_SHADER;
                         } else {
                                 enum pipe_format format = batch->key.cbufs[i]->format;

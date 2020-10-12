@@ -27,6 +27,7 @@
 #include "pan_util.h"
 #include "panfrost-quirks.h"
 #include "midgard/midgard_compile.h"
+#include "bifrost/bifrost_compile.h"
 #include "compiler/nir/nir_builder.h"
 #include "nir/nir_lower_blend.h"
 #include "panfrost/util/pan_lower_framebuffer.h"
@@ -216,6 +217,84 @@ panfrost_create_blend_shader(struct panfrost_context *ctx,
         return res;
 }
 
+static uint64_t
+bifrost_get_blend_desc(enum pipe_format fmt, unsigned rt)
+{
+        const struct util_format_description *desc = util_format_description(fmt);
+        uint64_t res;
+
+        pan_pack(&res, BIFROST_INTERNAL_BLEND, cfg) {
+                cfg.mode = MALI_BIFROST_BLEND_MODE_OPAQUE;
+                cfg.fixed_function.num_comps = desc->nr_channels;
+                cfg.fixed_function.rt = rt;
+
+                nir_alu_type T = pan_unpacked_type_for_format(desc);
+                switch (T) {
+                case nir_type_float16:
+                        cfg.fixed_function.conversion.register_format =
+                                MALI_BIFROST_REGISTER_FILE_FORMAT_F16;
+                        break;
+                case nir_type_float32:
+                        cfg.fixed_function.conversion.register_format =
+                                MALI_BIFROST_REGISTER_FILE_FORMAT_F32;
+                        break;
+                case nir_type_int16:
+                        cfg.fixed_function.conversion.register_format =
+                                MALI_BIFROST_REGISTER_FILE_FORMAT_I16;
+                        break;
+                case nir_type_int32:
+                        cfg.fixed_function.conversion.register_format =
+                                MALI_BIFROST_REGISTER_FILE_FORMAT_I32;
+                        break;
+                case nir_type_uint16:
+                        cfg.fixed_function.conversion.register_format =
+                                MALI_BIFROST_REGISTER_FILE_FORMAT_U16;
+                        break;
+                case nir_type_uint32:
+                        cfg.fixed_function.conversion.register_format =
+                                MALI_BIFROST_REGISTER_FILE_FORMAT_U32;
+                        break;
+                default:
+                        unreachable("Invalid format");
+                }
+
+                cfg.fixed_function.conversion.memory_format.srgb =
+                        desc->colorspace == UTIL_FORMAT_COLORSPACE_SRGB;
+
+                if (util_format_is_unorm8(desc)) {
+                        cfg.fixed_function.conversion.memory_format.format = MALI_RGBA8_2;
+                        continue;
+                }
+
+                enum pipe_format linearized = util_format_linear(fmt);
+                switch (linearized) {
+                case PIPE_FORMAT_B5G6R5_UNORM:
+                        cfg.fixed_function.conversion.memory_format.format = MALI_R5G6B5;
+                        break;
+                case PIPE_FORMAT_A4B4G4R4_UNORM:
+                case PIPE_FORMAT_B4G4R4A4_UNORM:
+                case PIPE_FORMAT_R4G4B4A4_UNORM:
+                        cfg.fixed_function.conversion.memory_format.format = MALI_RGBA4;
+                        break;
+                case PIPE_FORMAT_R10G10B10A2_UNORM:
+                case PIPE_FORMAT_B10G10R10A2_UNORM:
+                case PIPE_FORMAT_R10G10B10X2_UNORM:
+                case PIPE_FORMAT_B10G10R10X2_UNORM:
+                        cfg.fixed_function.conversion.memory_format.format = MALI_RGB10_A2_2;
+                        break;
+                case PIPE_FORMAT_B5G5R5A1_UNORM:
+                case PIPE_FORMAT_R5G5B5A1_UNORM:
+                case PIPE_FORMAT_B5G5R5X1_UNORM:
+                        cfg.fixed_function.conversion.memory_format.format = MALI_RGB5_A1;
+                        break;
+                default:
+                        unreachable("Invalid format");
+                }
+        }
+
+        return res;
+}
+
 void
 panfrost_compile_blend_shader(struct panfrost_blend_shader *shader,
                               const float *constants)
@@ -244,7 +323,13 @@ panfrost_compile_blend_shader(struct panfrost_blend_shader *shader,
         if (constants)
                 memcpy(inputs.blend.constants, constants, sizeof(inputs.blend.constants));
 
-        midgard_compile_shader_nir(shader->nir, &program, &inputs);
+        if (dev->quirks & IS_BIFROST) {
+                inputs.blend.bifrost_blend_desc =
+                        bifrost_get_blend_desc(shader->key.format, shader->key.rt);
+                bifrost_compile_shader_nir(shader->nir, &program, &inputs);
+	} else {
+                midgard_compile_shader_nir(shader->nir, &program, &inputs);
+        }
 
         /* Allow us to patch later */
         shader->first_tag = program.first_tag;

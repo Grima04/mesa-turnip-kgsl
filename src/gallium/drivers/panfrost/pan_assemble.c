@@ -298,6 +298,14 @@ panfrost_shader_compile(struct panfrost_context *ctx,
 
                 break;
         case MESA_SHADER_FRAGMENT:
+                for (unsigned i = 0; i < ARRAY_SIZE(state->blend_ret_addrs); i++) {
+                        if (!program.blend_ret_offsets[i])
+                                continue;
+
+                        state->blend_ret_addrs[i] = (state->bo->gpu & UINT32_MAX) +
+                                                    program.blend_ret_offsets[i];
+                        assert(!(state->blend_ret_addrs[i] & 0x7));
+                }
                 varying_count = util_bitcount64(s->info.inputs_read);
                 if (s->info.outputs_written & BITFIELD64_BIT(FRAG_RESULT_DEPTH))
                         state->writes_depth = true;

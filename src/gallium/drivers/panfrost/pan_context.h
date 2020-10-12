@@ -246,6 +246,9 @@ struct panfrost_shader_state {
 
         BITSET_WORD outputs_read;
         enum pipe_format rt_formats[8];
+
+        /* Blend return addresses */
+        uint32_t blend_ret_addrs[8];
 };
 
 /* A collection of varyings (the CSO) */
