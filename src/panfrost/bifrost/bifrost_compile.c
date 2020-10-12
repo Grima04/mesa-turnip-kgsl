@@ -168,7 +168,7 @@ bi_emit_ld_vary(bi_context *ctx, nir_intrinsic_instr *instr)
 static void
 bi_emit_frag_out(bi_context *ctx, nir_intrinsic_instr *instr)
 {
-        if (!ctx->emitted_atest) {
+        if (!ctx->emitted_atest && !ctx->is_blend) {
                 bi_instruction ins = {
                         .type = BI_ATEST,
                         .src = {
@@ -197,22 +197,40 @@ bi_emit_frag_out(bi_context *ctx, nir_intrinsic_instr *instr)
                 .src = {
                         pan_src_index(&instr->src[0]),
                         BIR_INDEX_REGISTER | 60 /* Can this be arbitrary? */,
-                        /* Blend descriptor */
-                        BIR_INDEX_BLEND | BIFROST_SRC_FAU_LO,
-                        BIR_INDEX_BLEND | BIFROST_SRC_FAU_HI,
                 },
                 .src_types = {
                         nir_intrinsic_src_type(instr),
-                        nir_type_uint32
+                        nir_type_uint32,
+                        nir_type_uint32,
+                        nir_type_uint32,
                 },
                 .swizzle = {
                         { 0, 1, 2, 3 },
                         { 0 }
                 },
-                .dest = BIR_INDEX_REGISTER | 48 /* Looks like magic */,
                 .dest_type = nir_type_uint32,
                 .vector_channels = 4
         };
+
+        if (ctx->is_blend) {
+                /* Blend descriptor comes from the compile inputs */
+                blend.src[2] = BIR_INDEX_CONSTANT | 0;
+                blend.src[3] = BIR_INDEX_CONSTANT | 32;
+                blend.constant.u64 = ctx->blend_desc;
+
+                /* Put the result in r0 */
+                blend.dest = BIR_INDEX_REGISTER | 0;
+        } else {
+                /* Blend descriptor comes from the FAU RAM */
+                blend.src[2] = BIR_INDEX_BLEND | BIFROST_SRC_FAU_LO;
+                blend.src[3] = BIR_INDEX_BLEND | BIFROST_SRC_FAU_HI;
+
+                /* By convention, the return address is stored in r48 and will
+                 * be used by the blend shader to jump back to the fragment
+                 * shader when it's done.
+                 */
+                blend.dest = BIR_INDEX_REGISTER | 48;
+        }
 
         assert(blend.blend_location < 8);
         assert(ctx->blend_types);
@@ -220,6 +238,14 @@ bi_emit_frag_out(bi_context *ctx, nir_intrinsic_instr *instr)
         ctx->blend_types[blend.blend_location] = blend.src_types[0];
 
         bi_emit(ctx, blend);
+
+        if (ctx->is_blend) {
+                /* Jump back to the fragment shader, return address is stored
+                 * in r48 (see above).
+                 */
+                bi_instruction *ret = bi_emit_branch(ctx);
+                ret->src[2] = BIR_INDEX_REGISTER | 48;
+        }
 }
 
 static bi_instruction
