@@ -2394,6 +2394,7 @@ radv_generate_graphics_pipeline_key(const struct radv_pipeline *pipeline,
 	                                         pCreateInfo->pVertexInputState;
 	const VkPipelineVertexInputDivisorStateCreateInfoEXT *divisor_state =
 		vk_find_struct_const(input_state->pNext, PIPELINE_VERTEX_INPUT_DIVISOR_STATE_CREATE_INFO_EXT);
+	bool uses_dynamic_stride = false;
 
 	struct radv_pipeline_key key;
 	memset(&key, 0, sizeof(key));
@@ -2416,6 +2417,16 @@ radv_generate_graphics_pipeline_key(const struct radv_pipeline *pipeline,
 		for (unsigned i = 0; i < divisor_state->vertexBindingDivisorCount; ++i) {
 			instance_rate_divisors[divisor_state->pVertexBindingDivisors[i].binding] =
 				divisor_state->pVertexBindingDivisors[i].divisor;
+		}
+	}
+
+	if (pCreateInfo->pDynamicState) {
+		uint32_t count = pCreateInfo->pDynamicState->dynamicStateCount;
+		for (uint32_t i = 0; i < count; i++) {
+			if (pCreateInfo->pDynamicState->pDynamicStates[i] == VK_DYNAMIC_STATE_VERTEX_INPUT_BINDING_STRIDE_EXT) {
+				uses_dynamic_stride = true;
+				break;
+			}
 		}
 	}
 
@@ -2442,7 +2453,26 @@ radv_generate_graphics_pipeline_key(const struct radv_pipeline *pipeline,
 		key.vertex_attribute_formats[location] = data_format | (num_format << 4);
 		key.vertex_attribute_bindings[location] = desc->binding;
 		key.vertex_attribute_offsets[location] = desc->offset;
-		key.vertex_attribute_strides[location] = radv_get_attrib_stride(input_state, desc->binding);
+
+		if (!uses_dynamic_stride) {
+			/* From the Vulkan spec 1.2.157:
+			 *
+			 * "If the bound pipeline state object was created
+			 *  with the
+			 *  VK_DYNAMIC_STATE_VERTEX_INPUT_BINDING_STRIDE_EXT
+			 *  dynamic state enabled then pStrides[i] specifies
+			 *  the distance in bytes between two consecutive
+			 *  elements within the corresponding buffer. In this
+			 *  case the VkVertexInputBindingDescription::stride
+			 *  state from the pipeline state object is ignored."
+			 *
+			 * Make sure the vertex attribute stride is zero to
+			 * avoid computing a wrong offset if it's initialized
+			 * to something else than zero.
+			 */
+			key.vertex_attribute_strides[location] =
+				radv_get_attrib_stride(input_state, desc->binding);
+		}
 
 		enum ac_fetch_format adjust = AC_FETCH_FORMAT_NONE;
 		if (pipeline->device->physical_device->rad_info.chip_class <= GFX8 &&
