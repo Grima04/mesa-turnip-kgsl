@@ -1618,9 +1618,9 @@ static LLVMValueRef visit_load_push_constant(struct ac_nir_context *ctx, nir_int
 static LLVMValueRef visit_get_ssbo_size(struct ac_nir_context *ctx,
                                         const nir_intrinsic_instr *instr)
 {
-   LLVMValueRef index = get_src(ctx, instr->src[0]);
-
-   return get_buffer_size(ctx, ctx->abi->load_ssbo(ctx->abi, index, false), false);
+   bool non_uniform = nir_intrinsic_access(instr) & ACCESS_NON_UNIFORM;
+   LLVMValueRef rsrc = ctx->abi->load_ssbo(ctx->abi, get_src(ctx, instr->src[0]), false, non_uniform);
+   return get_buffer_size(ctx, rsrc, false);
 }
 
 static LLVMValueRef extract_vector_range(struct ac_llvm_context *ctx, LLVMValueRef src,
@@ -1693,7 +1693,7 @@ static void visit_store_ssbo(struct ac_nir_context *ctx, nir_intrinsic_instr *in
    struct waterfall_context wctx;
    LLVMValueRef rsrc_base = enter_waterfall_ssbo(ctx, &wctx, instr, instr->src[1]);
 
-   LLVMValueRef rsrc = ctx->abi->load_ssbo(ctx->abi, rsrc_base, true);
+   LLVMValueRef rsrc = ctx->abi->load_ssbo(ctx->abi, rsrc_base, true, false);
    LLVMValueRef base_data = src_data;
    base_data = ac_trim_vector(&ctx->ac, base_data, instr->num_components);
    LLVMValueRef base_offset = get_src(ctx, instr->src[2]);
@@ -1889,7 +1889,7 @@ static LLVMValueRef visit_atomic_ssbo(struct ac_nir_context *ctx, nir_intrinsic_
       abort();
    }
 
-   descriptor = ctx->abi->load_ssbo(ctx->abi, rsrc_base, true);
+   descriptor = ctx->abi->load_ssbo(ctx->abi, rsrc_base, true, false);
 
    if (instr->intrinsic == nir_intrinsic_ssbo_atomic_comp_swap && return_type == ctx->ac.i64) {
       result = emit_ssbo_comp_swap_64(ctx, descriptor, get_src(ctx, instr->src[1]),
@@ -1940,7 +1940,7 @@ static LLVMValueRef visit_load_buffer(struct ac_nir_context *ctx, nir_intrinsic_
    unsigned cache_policy = get_cache_policy(ctx, access, false, false);
 
    LLVMValueRef offset = get_src(ctx, instr->src[1]);
-   LLVMValueRef rsrc = ctx->abi->load_ssbo(ctx->abi, rsrc_base, false);
+   LLVMValueRef rsrc = ctx->abi->load_ssbo(ctx->abi, rsrc_base, false, false);
    LLVMValueRef vindex = ctx->ac.i32_0;
 
    LLVMTypeRef def_type = get_def_type(ctx, &instr->dest.ssa);

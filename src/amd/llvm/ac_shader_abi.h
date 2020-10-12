@@ -110,8 +110,9 @@ struct ac_shader_abi {
     * \param buffer the buffer as presented in NIR: this is the descriptor
     *               in Vulkan, and the buffer index in OpenGL/Gallium
     * \param write whether buffer contents will be written
+    * \param non_uniform whether the buffer descriptor is not assumed to be uniform
     */
-   LLVMValueRef (*load_ssbo)(struct ac_shader_abi *abi, LLVMValueRef buffer, bool write);
+   LLVMValueRef (*load_ssbo)(struct ac_shader_abi *abi, LLVMValueRef buffer, bool write, bool non_uniform);
 
    /**
     * Load a descriptor associated to a sampler.
