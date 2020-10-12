@@ -100,7 +100,7 @@ static const driOptionDescription brw_driconf[] = {
 };
 
 static char *
-brw_driconf_get_xml(const char *driver_name)
+brw_driconf_get_xml(UNUSED const char *driver_name)
 {
    return driGetOptionsXml(brw_driconf, ARRAY_SIZE(brw_driconf));
 }
@@ -879,7 +879,8 @@ intel_map_image(__DRIcontext *context, __DRIimage *image,
 }
 
 static void
-intel_unmap_image(__DRIcontext *context, __DRIimage *image, void *map_info)
+intel_unmap_image(UNUSED __DRIcontext *context, UNUSED __DRIimage *image,
+                  void *map_info)
 {
    struct brw_bo *bo = map_info;
 
@@ -2896,7 +2897,7 @@ intelAllocateBuffer(__DRIscreen *dri_screen,
 }
 
 static void
-intelReleaseBuffer(__DRIscreen *dri_screen, __DRIbuffer *buffer)
+intelReleaseBuffer(UNUSED __DRIscreen *dri_screen, __DRIbuffer *buffer)
 {
    struct intel_buffer *intelBuffer = (struct intel_buffer *) buffer;
 

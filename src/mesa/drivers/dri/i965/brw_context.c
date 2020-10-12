@@ -141,7 +141,7 @@ intel_get_string(struct gl_context * ctx, GLenum name)
 
 static void
 brw_set_background_context(struct gl_context *ctx,
-                           struct util_queue_monitoring *queue_info)
+                           UNUSED struct util_queue_monitoring *queue_info)
 {
    struct brw_context *brw = brw_context(ctx);
    __DRIcontext *driContext = brw->driContext;
