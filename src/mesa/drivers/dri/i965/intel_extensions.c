@@ -220,10 +220,12 @@ intelInitExtensions(struct gl_context *ctx)
       ctx->Extensions.EXT_disjoint_timer_query =
          ctx->Extensions.ARB_timer_query;
 
-      /* Only enable this in core profile because other parts of Mesa behave
-       * slightly differently when the extension is enabled.
+      /* Only enable this in core profile because geometry shaders are
+       * required, and Mesa only supports geometry shaders in OpenGL 3.2 and
+       * later.  In this driver, that currently means Core profile.
        */
-      if (ctx->API == API_OPENGL_CORE) {
+      if (ctx->API == API_OPENGL_CORE ||
+          ctx->Const.AllowHigherCompatVersion) {
          ctx->Extensions.ARB_shader_viewport_layer_array = true;
          ctx->Extensions.ARB_viewport_array = true;
          ctx->Extensions.AMD_vertex_shader_viewport_index = true;
