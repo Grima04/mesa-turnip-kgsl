@@ -131,7 +131,8 @@ struct zink_descriptor_set *
 zink_descriptor_set_get(struct zink_context *ctx,
                                enum zink_descriptor_type type,
                                bool is_compute,
-                               bool *cache_hit);
+                               bool *cache_hit,
+                               bool *need_resource_refs);
 void
 zink_descriptor_set_recycle(struct zink_descriptor_set *zds);
 

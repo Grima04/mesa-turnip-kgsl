@@ -278,7 +278,8 @@ struct zink_descriptor_set *
 zink_descriptor_set_get(struct zink_context *ctx,
                                enum zink_descriptor_type type,
                                bool is_compute,
-                               bool *cache_hit)
+                               bool *cache_hit,
+                               bool *need_resource_refs)
 {
    *cache_hit = false;
    struct zink_descriptor_set *zds;
@@ -352,7 +353,7 @@ zink_descriptor_set_get(struct zink_context *ctx,
       if (pool->num_sets_allocated + pool->key.num_descriptors > ZINK_DEFAULT_MAX_DESCS) {
          batch = zink_flush_batch(ctx, batch);
          zink_batch_reference_program(batch, pg);
-         return zink_descriptor_set_get(ctx, type, is_compute, cache_hit);
+         return zink_descriptor_set_get(ctx, type, is_compute, cache_hit, need_resource_refs);
       }
    } else {
       if (pg->last_set[type] && !pg->last_set[type]->hash) {
@@ -380,8 +381,11 @@ quick_out:
    if (pool->key.num_descriptors && !*cache_hit)
       util_dynarray_clear(&zds->barriers);
    zds->invalid = false;
-   if (zink_batch_add_desc_set(batch, zds))
+   *need_resource_refs = false;
+   if (zink_batch_add_desc_set(batch, zds)) {
       batch->descs_used += pool->key.num_descriptors;
+      *need_resource_refs = true;
+   }
    pg->last_set[type] = zds;
    return zds;
 }
