@@ -234,8 +234,8 @@ panfrost_load_midg(
                 cfg.shader.texture_count = 1;
                 cfg.shader.sampler_count = 1;
 
-                cfg.properties.work_register_count = 4;
-                cfg.properties.midgard_early_z_enable = (loc >= FRAG_RESULT_DATA0);
+                cfg.properties.midgard.work_register_count = 4;
+                cfg.properties.midgard.force_early_z = (loc >= FRAG_RESULT_DATA0);
                 cfg.properties.stencil_from_shader = (loc == FRAG_RESULT_STENCIL);
                 cfg.properties.depth_source = (loc == FRAG_RESULT_DEPTH) ?
                                               MALI_DEPTH_SOURCE_SHADER :

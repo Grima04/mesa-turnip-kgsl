@@ -635,26 +635,49 @@
     <field name="Surfaces" size="64" start="4:0" type="address"/>
   </struct>
 
+  <enum name="FP Mode">
+    <value name="GL Inf/NaN Allowed" value="0"/>
+    <value name="GL Inf/NaN Suppressed" value="1"/>
+    <value name="CL" value="2"/>
+    <value name="D3D11" value="3"/>
+  </enum>
+
+  <struct name="Midgard Renderer Properties" size="1" no-direct-packing="true">
+    <field name="Force early-z" size="1" start="10" type="bool"/>
+    <field name="Shader contains discard" size="1" start="12" type="bool"/>
+    <field name="Shader has side-effects" size="1" start="13" type="bool"/>
+    <field name="Shader reads tilebuffer" size="1" start="14" type="bool"/>
+    <field name="Forward pixel kill" size="1" start="15" type="bool"/>
+    <field name="Work register count" size="5" start="16" type="uint"/>
+    <field name="Uniform count" size="5" start="21" type="uint"/>
+    <field name="FP mode" size="3" start="29" type="FP Mode"/>
+  </struct>
+
+  <enum name="Shader Register Allocation">
+    <value name="64 Per Thread" value="0"/>
+    <value name="32 Per Thread" value="2"/>
+  </enum>
+
+  <struct name="Bifrost Renderer Properties" size="1" no-direct-packing="true">
+    <field name="Shader register allocation" size="2" start="12" type="Shader Register Allocation"/>
+    <field name="Secondary shader register allocation" size="2" start="14" type="Shader Register Allocation"/>
+    <field name="Shader modifies coverage" size="1" start="16" type="bool"/>
+    <field name="Allow forward pixel to kill" size="1" start="19" type="bool"/>
+    <field name="Allow forward pixel to be killed" size="1" start="20" type="bool"/>
+    <field name="Pixel kill operation" size="2" start="21" type="Pixel Kill"/>
+    <field name="ZS update operation" size="2" start="23" type="Pixel Kill"/>
+    <field name="Point sprite coord origin max Y" size="1" start="27" type="bool"/>
+    <field name="Shader wait dependency 6" size="1" start="30" type="bool"/>
+    <field name="Shader wait dependency 7" size="1" start="31" type="bool"/>
+  </struct>
+
   <struct name="Renderer Properties" size="1">
+    <field name="Midgard" size="32" start="0" type="Midgard Renderer Properties"/>
+    <field name="Bifrost" size="32" start="0" type="Bifrost Renderer Properties"/>
     <field name="Uniform buffer count" size="8" start="0" type="uint"/>
     <field name="Depth source" size="2" start="8" type="Depth Source" default="None"/>
-    <field name="Midgard Early-z enable" size="1" start="10" type="bool" default="false"/>
-    <field name="Helper invocation enable" size="1" start="11" type="bool" default="false"/>
-    <field name="Reads depth/stencil" size="1" start="12" type="bool" default="false"/>
-    <field name="Writes globals" size="1" start="13" type="bool" default="false"/>
-    <field name="Full thread" size="1" start="13" type="bool" default="false"/>
-    <field name="Reads tilebuffer" size="1" start="14" type="bool" default="false"/>
-    <field name="Work register count" size="5" start="16" type="uint"/>
-    <field name="Shader modifies coverage" size="1" start="16" type="bool"/>
-    <field name="Allow forward pixel to kill" size="1" start="19" type="bool" default="false"/>
-    <field name="Allow forward pixel to be killed" size="1" start="20" type="bool" default="false"/>
-    <field name="Pixel kill operation" size="2" start="21" type="Pixel Kill" default="Force early"/>
-    <field name="Uniform count" size="5" start="21" type="uint"/>
+    <field name="Shader contains barrier" size="1" start="11" type="bool"/>
     <field name="Stencil from shader" size="1" start="28" type="bool"/>
-    <field name="Suppress Inf/NaN" size="1" start="29" type="bool"/>
-    <field name="First ATEST" size="1" start="30" type="bool" default="false"/>
-    <!-- XXX: This is awful -->
-    <field name="Unknown" size="32" start="0" type="uint"/>
   </struct>
 
   <struct name="Preload" size="1">

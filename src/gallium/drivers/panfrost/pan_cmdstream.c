@@ -404,8 +404,11 @@ panfrost_prepare_bifrost_fs_state(struct panfrost_context *ctx,
         unsigned rt_count = ctx->pipe_framebuffer.nr_cbufs;
 
         if (!panfrost_fs_required(fs, blend, rt_count)) {
-                state->properties.unknown = 0x950020; /* XXX */
-                state->properties.allow_forward_pixel_to_kill = true;
+                state->properties.uniform_buffer_count = 32;
+                state->properties.bifrost.shader_modifies_coverage = true;
+                state->properties.bifrost.allow_forward_pixel_to_kill = true;
+                state->properties.bifrost.allow_forward_pixel_to_be_killed = true;
+                state->properties.bifrost.zs_update_operation = MALI_PIXEL_KILL_STRONG_EARLY;
         } else {
                 bool no_blend = true;
 
@@ -413,7 +416,8 @@ panfrost_prepare_bifrost_fs_state(struct panfrost_context *ctx,
                         no_blend &= (!blend[i].load_dest | blend[i].no_colour);
 
                 state->properties = fs->properties;
-                state->properties.allow_forward_pixel_to_kill = !fs->can_discard && !fs->writes_depth && no_blend;
+                state->properties.bifrost.allow_forward_pixel_to_kill =
+                        !fs->can_discard && !fs->writes_depth && no_blend;
                 state->shader = fs->shader;
                 state->preload = fs->preload;
         }
@@ -432,9 +436,9 @@ panfrost_prepare_midgard_fs_state(struct panfrost_context *ctx,
 
         if (!panfrost_fs_required(fs, blend, rt_count)) {
                 state->shader.shader = 0x1;
-                state->properties.work_register_count = 1;
+                state->properties.midgard.work_register_count = 1;
                 state->properties.depth_source = MALI_DEPTH_SOURCE_FIXED_FUNCTION;
-                state->properties.midgard_early_z_enable = true;
+                state->properties.midgard.force_early_z = true;
         } else {
                 /* Reasons to disable early-Z from a shader perspective */
                 bool late_z = fs->can_discard || fs->writes_global ||
@@ -453,13 +457,19 @@ panfrost_prepare_midgard_fs_state(struct panfrost_context *ctx,
                 /* TODO: Reduce this limit? */
                 state->properties = fs->properties;
                 if (has_blend_shader)
-                        state->properties.work_register_count = MAX2(fs->work_reg_count, 8);
+                        state->properties.midgard.work_register_count = MAX2(fs->work_reg_count, 8);
                 else
-                        state->properties.work_register_count = fs->work_reg_count;
+                        state->properties.midgard.work_register_count = fs->work_reg_count;
 
-                state->properties.midgard_early_z_enable = !(late_z || alpha_to_coverage);
-                state->properties.reads_tilebuffer = fs->outputs_read || (!zs_enabled && fs->can_discard);
-                state->properties.reads_depth_stencil = zs_enabled && fs->can_discard;
+                state->properties.midgard.force_early_z = !(late_z || alpha_to_coverage);
+
+                /* Workaround a hardware errata where early-z cannot be enabled
+                 * when discarding even when the depth buffer is read-only, by
+                 * lying to the hardware about the discard and setting the
+                 * reads tilebuffer? flag to compensate */
+                state->properties.midgard.shader_reads_tilebuffer =
+                        fs->outputs_read || (!zs_enabled && fs->can_discard);
+                state->properties.midgard.shader_contains_discard = zs_enabled && fs->can_discard;
                 state->shader = fs->shader;
         }
 

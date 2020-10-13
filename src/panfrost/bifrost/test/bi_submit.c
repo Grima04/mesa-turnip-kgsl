@@ -177,7 +177,7 @@ bit_vertex(struct panfrost_device *dev, panfrost_program prog,
                 cfg.shader.shader = shader->gpu;
                 cfg.shader.attribute_count = cfg.shader.varying_count = 1;
                 cfg.properties.uniform_buffer_count = 1;
-                cfg.properties.uniform_count = 4;
+                cfg.properties.bifrost.zs_update_operation = MALI_PIXEL_KILL_STRONG_EARLY;
                 cfg.preload.vertex_id = true;
                 cfg.preload.instance_id = true;
                 cfg.preload.uniform_count = (sz_ubo / 16);
