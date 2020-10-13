@@ -10070,19 +10070,6 @@ static bool visit_cf_list(isel_context *ctx,
    return false;
 }
 
-static void create_null_export(isel_context *ctx)
-{
-   /* Some shader stages always need to have exports.
-    * So when there is none, we need to add a null export.
-    */
-
-   unsigned dest = (ctx->program->stage & hw_fs) ? 9 /* NULL */ : V_008DFC_SQ_EXP_POS;
-   bool vm = (ctx->program->stage & hw_fs) || ctx->program->chip_class >= GFX10;
-   Builder bld(ctx->program, ctx->block);
-   bld.exp(aco_opcode::exp, Operand(v1), Operand(v1), Operand(v1), Operand(v1),
-           /* enabled_mask */ 0, dest, /* compr */ false, /* done */ true, vm);
-}
-
 static void export_vs_varying(isel_context *ctx, int slot, bool is_pos, int *next_pos)
 {
    assert(ctx->stage & (hw_vs | hw_ngg_gs));
@@ -10491,6 +10478,18 @@ static bool export_fs_mrt_color(isel_context *ctx, int slot)
    return true;
 }
 
+static void create_fs_null_export(isel_context *ctx)
+{
+   /* FS must always have exports.
+    * So when there are none, we need to add a null export.
+    */
+
+   Builder bld(ctx->program, ctx->block);
+   unsigned dest = V_008DFC_SQ_EXP_NULL;
+   bld.exp(aco_opcode::exp, Operand(v1), Operand(v1), Operand(v1), Operand(v1),
+           /* enabled_mask */ 0, dest, /* compr */ false, /* done */ true, /* vm */ true);
+}
+
 static void create_fs_exports(isel_context *ctx)
 {
    bool exported = false;
@@ -10507,7 +10506,7 @@ static void create_fs_exports(isel_context *ctx)
          exported |= export_fs_mrt_color(ctx, i);
 
    if (!exported)
-      create_null_export(ctx);
+      create_fs_null_export(ctx);
 }
 
 static void create_workgroup_barrier(Builder& bld)
