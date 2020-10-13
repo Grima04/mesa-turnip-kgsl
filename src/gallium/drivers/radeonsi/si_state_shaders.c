@@ -2794,11 +2794,15 @@ static void *si_create_shader_selector(struct pipe_context *ctx,
 
          if (sscreen->debug_flags & DBG(ALWAYS_NGG_CULLING_ALL))
             sel->ngg_cull_vert_threshold = 0; /* always enabled */
-         else if (sscreen->options.shader_culling)
+         else if (sscreen->options.shader_culling ||
+                  (sscreen->info.chip_class == GFX10_3 &&
+                   sscreen->info.has_dedicated_vram))
             sel->ngg_cull_vert_threshold = 1500; /* vertex count must be more than this */
       } else if (sel->info.stage == MESA_SHADER_TESS_EVAL) {
          if (sscreen->debug_flags & DBG(ALWAYS_NGG_CULLING_ALL) ||
-             sscreen->debug_flags & DBG(ALWAYS_NGG_CULLING_TESS))
+             sscreen->debug_flags & DBG(ALWAYS_NGG_CULLING_TESS) ||
+             (sscreen->info.chip_class == GFX10_3 &&
+              sscreen->info.has_dedicated_vram))
             sel->ngg_cull_vert_threshold = 0; /* always enabled */
       }
    }
