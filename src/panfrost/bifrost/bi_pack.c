@@ -611,17 +611,24 @@ bi_pack_add_branch_cond(bi_instruction *ins, bi_registers *regs)
         /* EQ swap to NE */
         bool slot_swapped = false;
 
-        /* We assigned the constant slot to fetch the branch offset so we can
-         * just passthrough here. We put in the HI slot to match the blob since
-         * that's where the magic flags end up */
         struct bifrost_branch pack = {
                 .src0 = bi_get_src(ins, regs, 0),
                 .src1 = (zero_ctrl << 1) | !slot_swapped,
-                .src2 = BIFROST_SRC_FAU_HI,
                 .cond = BR_COND_EQ,
                 .size = BR_SIZE_ZERO,
                 .op = BIFROST_ADD_OP_BRANCH
         };
+
+        if (ins->branch_target) {
+                /* We assigned the constant slot to fetch the branch offset so
+                 * we can just passthrough here. We put in the HI slot to match
+                 * the blob since that's where the magic flags end up
+                 */
+                assert(!ins->src[2]);
+                pack.src2 = BIFROST_SRC_FAU_HI;
+        } else {
+                pack.src2 = bi_get_src(ins, regs, 2);
+        }
 
         RETURN_PACKED(pack);
 }
@@ -634,14 +641,21 @@ bi_pack_add_branch_uncond(bi_instruction *ins, bi_registers *regs)
                 .src0 = BIFROST_SRC_FAU_LO,
                 .src1 = BIFROST_SRC_PASS_FMA,
 
-                /* Offset, see above */
-                .src2 = BIFROST_SRC_FAU_HI,
-
                 /* All ones in fact */
                 .cond = (BR_ALWAYS & 0x7),
                 .size = (BR_ALWAYS >> 3),
                 .op = BIFROST_ADD_OP_BRANCH
         };
+
+        if (ins->branch_target) {
+                /* Offset is passed as a PC-relative offset through an
+                 * embedded constant.
+                 */
+                assert(!ins->src[2]);
+                pack.src2 = BIFROST_SRC_FAU_HI;
+        } else {
+                pack.src2 = bi_get_src(ins, regs, 2);
+        }
 
         RETURN_PACKED(pack);
 }

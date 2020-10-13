@@ -228,8 +228,7 @@ bi_schedule(bi_context *ctx)
                         u->constant_count = 1;
                         u->constants[0] = ins->constant.u64;
 
-                        /* No indirect jumps yet */
-                        if (ins->type == BI_BRANCH)
+                        if (ins->type == BI_BRANCH && ins->branch_target)
                                 u->branch_constant = true;
 
                         /* We always prefetch except unconditional branches */
