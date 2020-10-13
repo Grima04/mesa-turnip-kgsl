@@ -979,6 +979,26 @@ uint32_t get_intersection_mask(int a_start, int a_size,
    return u_bit_consecutive(intersection_start, intersection_end - intersection_start) & mask;
 }
 
+void copy_16bit_literal(lower_context *ctx, Builder& bld, Definition def, Operand op)
+{
+   if (ctx->program->chip_class < GFX10) {
+      unsigned offset = def.physReg().byte() * 8u;
+      def = Definition(PhysReg(def.physReg().reg()), v1);
+      Operand def_op(def.physReg(), v1);
+      bld.vop2(aco_opcode::v_and_b32, def, Operand(~(0xffffu << offset)), def_op);
+      bld.vop2(aco_opcode::v_or_b32, def, Operand(op.constantValue() << offset), def_op);
+   } else if (def.physReg().byte() == 2) {
+      Operand def_lo(def.physReg().advance(-2), v2b);
+      Instruction* instr = bld.vop3(aco_opcode::v_pack_b32_f16, def, def_lo, op);
+      static_cast<VOP3A_instruction*>(instr)->opsel = 0;
+   } else {
+      assert(def.physReg().byte() == 0);
+      Operand def_hi(def.physReg().advance(2), v2b);
+      Instruction* instr = bld.vop3(aco_opcode::v_pack_b32_f16, def, op, def_hi);
+      static_cast<VOP3A_instruction*>(instr)->opsel = 2;
+   }
+}
+
 bool do_copy(lower_context* ctx, Builder& bld, const copy_operation& copy, bool *preserve_scc, PhysReg scratch_sgpr)
 {
    bool did_copy = false;
@@ -1029,6 +1049,8 @@ bool do_copy(lower_context* ctx, Builder& bld, const copy_operation& copy, bool 
          } else {
             bld.vop1(aco_opcode::v_mov_b32, def, op);
          }
+      } else if (def.regClass() == v2b && op.isLiteral()) {
+         copy_16bit_literal(ctx, bld, def, op);
       } else {
          bld.copy(def, op);
       }
@@ -1141,6 +1163,25 @@ void do_swap(lower_context *ctx, Builder& bld, const copy_operation& copy, bool 
 
 void do_pack_2x16(lower_context *ctx, Builder& bld, Definition def, Operand lo, Operand hi)
 {
+   if (lo.isConstant() && hi.isConstant()) {
+      bld.copy(def, Operand(lo.constantValue() | (hi.constantValue() << 16)));
+      return;
+   } else if (lo.isLiteral() && ctx->program->chip_class < GFX10) {
+      if (def.physReg().reg() != hi.physReg().reg())
+         bld.copy(def, Operand(lo.constantValue()));
+      bld.copy(Definition(def.physReg().advance(2), v2b), hi);
+      if (def.physReg().reg() == hi.physReg().reg()) //TODO: create better code in this case with a v_lshlrev_b32+v_or_b32
+         copy_16bit_literal(ctx, bld, Definition(def.physReg(), v2b), lo);
+      return;
+   } else if (hi.isLiteral() && ctx->program->chip_class < GFX10) {
+      if (def.physReg().reg() != lo.physReg().reg())
+         bld.copy(def, Operand(hi.constantValue() << 16));
+      bld.copy(Definition(def.physReg(), v2b), lo);
+      if (def.physReg().reg() == lo.physReg().reg())
+         copy_16bit_literal(ctx, bld, Definition(def.physReg().advance(2), v2b), hi);
+      return;
+   }
+
    if (ctx->program->chip_class >= GFX9) {
       Instruction* instr = bld.vop3(aco_opcode::v_pack_b32_f16, def, lo, hi);
       /* opsel: 0 = select low half, 1 = select high half. [0] = src0, [1] = src1 */

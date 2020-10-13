@@ -349,7 +349,6 @@ bool validate_ir(Program* program)
 
                check(!is_subdword || !has_const_sgpr || program->chip_class >= GFX9,
                      "Sub-dword pseudo instructions can only take constants or SGPRs on GFX9+", instr.get());
-               check(!is_subdword || !has_literal, "Sub-dword pseudo instructions cannot take literals", instr.get());
             }
 
             if (instr->opcode == aco_opcode::p_create_vector) {

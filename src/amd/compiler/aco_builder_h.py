@@ -415,7 +415,7 @@ public:
         return sop1(aco_opcode::s_mov_b64, dst, op);
       } else if (dst.regClass() == v1 || dst.regClass() == v1.as_linear()) {
         return vop1(aco_opcode::v_mov_b32, dst, op);
-      } else if (op.bytes() > 2) {
+      } else if (op.bytes() > 2 || (op.isLiteral() && dst.regClass().is_subdword())) {
          return pseudo(aco_opcode::p_create_vector, dst, op);
       } else if (op.bytes() == 1 && op.isConstant()) {
         uint8_t val = op.constantValue();
