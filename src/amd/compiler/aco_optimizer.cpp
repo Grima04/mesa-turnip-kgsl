@@ -836,7 +836,7 @@ void label_instruction(opt_ctx &ctx, Block& block, aco_ptr<Instruction>& instr)
             is_subdword = std::any_of(instr->definitions.begin(), instr->definitions.end(),
                                       [] (const Definition& def) { return def.regClass().is_subdword();});
             is_subdword = is_subdword || std::any_of(instr->operands.begin(), instr->operands.end(),
-                                                     [] (const Operand& op) { return op.hasRegClass() && op.regClass().is_subdword();});
+                                                     [] (const Operand& op) { return op.bytes() % 4;});
             if (is_subdword && ctx.program->chip_class < GFX9)
                continue;
          }
@@ -864,7 +864,7 @@ void label_instruction(opt_ctx &ctx, Block& block, aco_ptr<Instruction>& instr)
             }
          }
          unsigned bits = get_operand_size(instr, i);
-         if ((info.is_constant(bits) || (!is_subdword && info.is_literal(bits) && instr->format == Format::PSEUDO)) &&
+         if ((info.is_constant(bits) || (info.is_literal(bits) && instr->format == Format::PSEUDO)) &&
              !instr->operands[i].isFixed() && alu_can_accept_constant(instr->opcode, i)) {
             instr->operands[i] = get_constant_op(ctx, info, bits);
             continue;
