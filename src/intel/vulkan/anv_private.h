@@ -3870,10 +3870,7 @@ anv_image_aux_levels(const struct anv_image * const image,
    if (image->planes[plane].aux_usage == ISL_AUX_USAGE_NONE)
       return 0;
 
-   /* The Gen12 CCS aux surface is represented with only one level. */
-   return image->planes[plane].aux_surface.isl.tiling == ISL_TILING_GEN12_CCS ?
-          image->planes[plane].surface.isl.levels :
-          image->planes[plane].aux_surface.isl.levels;
+   return image->levels;
 }
 
 /* Returns the number of auxiliary buffer layers attached to an image. */
@@ -3892,18 +3889,9 @@ anv_image_aux_layers(const struct anv_image * const image,
        * auxiliary data.
        */
       return 0;
-   } else {
-      uint32_t plane = anv_image_aspect_to_plane(image->aspects, aspect);
-
-      /* The Gen12 CCS aux surface is represented with only one layer. */
-      const struct isl_extent4d *aux_logical_level0_px =
-         image->planes[plane].aux_surface.isl.tiling == ISL_TILING_GEN12_CCS ?
-         &image->planes[plane].surface.isl.logical_level0_px :
-         &image->planes[plane].aux_surface.isl.logical_level0_px;
-
-      return MAX2(aux_logical_level0_px->array_len,
-                  aux_logical_level0_px->depth >> miplevel);
    }
+
+   return MAX2(image->array_size, image->extent.depth >> miplevel);
 }
 
 static inline struct anv_address
