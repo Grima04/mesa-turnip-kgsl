@@ -912,6 +912,21 @@ radv_order_invariant_stencil_state(const VkStencilOpState *state)
 }
 
 static bool
+radv_is_state_dynamic(const VkGraphicsPipelineCreateInfo *pCreateInfo,
+		      VkDynamicState state)
+{
+	if (pCreateInfo->pDynamicState) {
+		uint32_t count = pCreateInfo->pDynamicState->dynamicStateCount;
+		for (uint32_t i = 0; i < count; i++) {
+			if (pCreateInfo->pDynamicState->pDynamicStates[i] == state)
+				return true;
+		}
+	}
+
+	return false;
+}
+
+static bool
 radv_pipeline_has_dynamic_ds_states(const VkGraphicsPipelineCreateInfo *pCreateInfo)
 {
 	VkDynamicState ds_states[] = {
@@ -922,14 +937,9 @@ radv_pipeline_has_dynamic_ds_states(const VkGraphicsPipelineCreateInfo *pCreateI
 		VK_DYNAMIC_STATE_STENCIL_OP_EXT,
 	};
 
-	if (pCreateInfo->pDynamicState) {
-		uint32_t count = pCreateInfo->pDynamicState->dynamicStateCount;
-		for (uint32_t i = 0; i < count; i++) {
-			for (uint32_t j = 0; j < ARRAY_SIZE(ds_states); j++) {
-				if (pCreateInfo->pDynamicState->pDynamicStates[i] == ds_states[j])
-					return true;
-			}
-		}
+	for (uint32_t i = 0; i < ARRAY_SIZE(ds_states); i++) {
+		if (radv_is_state_dynamic(pCreateInfo, ds_states[i]))
+			return true;
 	}
 
 	return false;
@@ -1329,11 +1339,13 @@ static uint32_t radv_pipeline_needed_dynamic_state(const VkGraphicsPipelineCreat
 		states &= ~RADV_DYNAMIC_DEPTH_BIAS;
 
 	if (!pCreateInfo->pDepthStencilState ||
-	    !pCreateInfo->pDepthStencilState->depthBoundsTestEnable)
+	    (!pCreateInfo->pDepthStencilState->depthBoundsTestEnable &&
+	     !radv_is_state_dynamic(pCreateInfo, VK_DYNAMIC_STATE_DEPTH_BOUNDS_TEST_ENABLE_EXT)))
 		states &= ~RADV_DYNAMIC_DEPTH_BOUNDS;
 
 	if (!pCreateInfo->pDepthStencilState ||
-	    !pCreateInfo->pDepthStencilState->stencilTestEnable)
+	    (!pCreateInfo->pDepthStencilState->stencilTestEnable &&
+	     !radv_is_state_dynamic(pCreateInfo, VK_DYNAMIC_STATE_STENCIL_TEST_ENABLE_EXT)))
 		states &= ~(RADV_DYNAMIC_STENCIL_COMPARE_MASK |
 		            RADV_DYNAMIC_STENCIL_WRITE_MASK |
 		            RADV_DYNAMIC_STENCIL_REFERENCE);
