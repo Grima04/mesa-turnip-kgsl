@@ -88,6 +88,9 @@ typedef struct {
         /* For Bifrost - output type for each RT */
         nir_alu_type blend_types[8];
 
+        /* For Bifrost - return address for blend instructions */
+        uint32_t blend_ret_offsets[8];
+
         /* Prepended before uniforms, mapping to SYSVAL_ names for the
          * sysval */
 

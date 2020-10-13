@@ -453,6 +453,9 @@ typedef struct {
        /* Blend constants */
        float blend_constants[4];
 
+       /* Blend return offsets */
+       uint32_t blend_ret_offsets[8];
+
        /* Blend tile buffer conversion desc */
        uint64_t blend_desc;
 

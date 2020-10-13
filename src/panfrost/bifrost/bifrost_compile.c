@@ -1806,6 +1806,8 @@ bifrost_compile_shader_nir(nir_shader *nir, panfrost_program *program,
                 bi_print_shader(ctx, stdout);
         bi_pack(ctx, &program->compiled);
 
+        memcpy(program->blend_ret_offsets, ctx->blend_ret_offsets, sizeof(program->blend_ret_offsets));
+
         if (bifrost_debug & BIFROST_DBG_SHADERS)
                 disassemble_bifrost(stdout, program->compiled.data, program->compiled.size, true);
 

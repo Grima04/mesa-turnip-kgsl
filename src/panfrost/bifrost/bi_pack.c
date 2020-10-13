@@ -1078,6 +1078,34 @@ bi_terminate_discarded_threads(bi_context *ctx)
                 return false;
 }
 
+static void
+bi_collect_blend_ret_addr(bi_context *ctx, struct util_dynarray *emission,
+                          const bi_clause *clause)
+{
+        /* No need to collect return addresses when we're in a blend shader. */
+        if (ctx->is_blend)
+                return;
+
+        const bi_bundle *bundle = &clause->bundles[clause->bundle_count - 1];
+        const bi_instruction *ins = bundle->add;
+
+        if (!ins || ins->type != BI_BLEND)
+                return;
+
+        /* We don't support non-terminal blend instructions yet.
+         * That would requires fixing blend shaders to restore the registers
+         * they use before jumping back to the fragment shader, which is
+         * currently not supported.
+         */
+        assert(0);
+
+        assert(ins->blend_location < ARRAY_SIZE(ctx->blend_ret_offsets));
+        assert(!ctx->blend_ret_offsets[ins->blend_location]);
+        ctx->blend_ret_offsets[ins->blend_location] =
+                util_dynarray_num_elements(emission, uint8_t);
+        assert(!(ctx->blend_ret_offsets[ins->blend_location] & 0x7));
+}
+
 void
 bi_pack(bi_context *ctx, struct util_dynarray *emission)
 {
@@ -1101,6 +1129,9 @@ bi_pack(bi_context *ctx, struct util_dynarray *emission)
                         bi_clause *next_2 = is_last ? succ_clause : NULL;
 
                         bi_pack_clause(ctx, clause, next, next_2, emission, ctx->stage, tdd);
+
+                        if (!is_last)
+                                bi_collect_blend_ret_addr(ctx, emission, clause);
                 }
         }
 }
