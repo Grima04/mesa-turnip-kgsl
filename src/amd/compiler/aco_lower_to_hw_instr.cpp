@@ -37,6 +37,7 @@ namespace aco {
 
 struct lower_context {
    Program *program;
+   Block *block;
    std::vector<aco_ptr<Instruction>> instructions;
 };
 
@@ -981,7 +982,7 @@ uint32_t get_intersection_mask(int a_start, int a_size,
 
 void copy_16bit_literal(lower_context *ctx, Builder& bld, Definition def, Operand op)
 {
-   if (ctx->program->chip_class < GFX10) {
+   if (ctx->program->chip_class < GFX10 || !(ctx->block->fp_mode.denorm16_64 & fp_denorm_keep_in)) {
       unsigned offset = def.physReg().byte() * 8u;
       def = Definition(PhysReg(def.physReg().reg()), v1);
       Operand def_op(def.physReg(), v1);
@@ -1182,7 +1183,7 @@ void do_pack_2x16(lower_context *ctx, Builder& bld, Definition def, Operand lo, 
       return;
    }
 
-   if (ctx->program->chip_class >= GFX9) {
+   if (ctx->program->chip_class >= GFX9 && (ctx->block->fp_mode.denorm16_64 & fp_denorm_keep_in)) {
       Instruction* instr = bld.vop3(aco_opcode::v_pack_b32_f16, def, lo, hi);
       /* opsel: 0 = select low half, 1 = select high half. [0] = src0, [1] = src1 */
       static_cast<VOP3A_instruction*>(instr)->opsel = hi.physReg().byte() | (lo.physReg().byte() >> 1);
@@ -1622,6 +1623,7 @@ void lower_to_hw_instr(Program* program)
       Block *block = &program->blocks[i];
       lower_context ctx;
       ctx.program = program;
+      ctx.block = block;
       Builder bld(program, &ctx.instructions);
 
       float_mode config_mode;

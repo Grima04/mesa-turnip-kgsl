@@ -192,6 +192,8 @@ enum fp_denorm {
    /* Note that v_rcp_f32, v_exp_f32, v_log_f32, v_sqrt_f32, v_rsq_f32 and
     * v_mad_f32/v_madak_f32/v_madmk_f32/v_mac_f32 always flush denormals. */
    fp_denorm_flush = 0x0,
+   fp_denorm_keep_in = 0x1,
+   fp_denorm_keep_out = 0x2,
    fp_denorm_keep = 0x3,
 };
 
