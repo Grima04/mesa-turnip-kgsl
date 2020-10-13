@@ -1445,6 +1445,7 @@ zink_resource_image_barrier(struct zink_context *ctx, struct zink_batch *batch, 
       else
          batch = zink_batch_no_rp(ctx);
    }
+   assert(!batch->in_rp);
    VkImageSubresourceRange isr = {
       res->aspect,
       0, VK_REMAINING_MIP_LEVELS,
@@ -1542,6 +1543,7 @@ zink_resource_buffer_barrier(struct zink_context *ctx, struct zink_batch *batch,
       else
          batch = zink_batch_no_rp(ctx);
    }
+   assert(!batch->in_rp);
    VkBufferMemoryBarrier bmb = {
       VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
       NULL,
