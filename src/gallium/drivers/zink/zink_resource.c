@@ -67,6 +67,42 @@ resource_sync_writes_from_batch_id(struct zink_context *ctx, uint32_t batch_uses
    }
 }
 
+static uint32_t
+mem_hash(const void *key)
+{
+   return _mesa_hash_data(key, sizeof(struct mem_key));
+}
+
+static bool
+mem_equals(const void *a, const void *b)
+{
+   return !memcmp(a, b, sizeof(struct mem_key));
+}
+
+static void
+cache_or_free_mem(struct zink_screen *screen, struct zink_resource *res)
+{
+   if (res->mkey.flags) {
+      simple_mtx_lock(&screen->mem_cache_mtx);
+      struct hash_entry *he = _mesa_hash_table_search_pre_hashed(screen->resource_mem_cache, res->mem_hash, &res->mkey);
+      struct util_dynarray *array = he ? (void*)he->data : NULL;
+      if (!array) {
+         struct mem_key *mkey = rzalloc(screen->resource_mem_cache, struct mem_key);
+         memcpy(mkey, &res->mkey, sizeof(struct mem_key));
+         array = rzalloc(screen->resource_mem_cache, struct util_dynarray);
+         util_dynarray_init(array, screen->resource_mem_cache);
+         _mesa_hash_table_insert_pre_hashed(screen->resource_mem_cache, res->mem_hash, mkey, array);
+      }
+      if (util_dynarray_num_elements(array, VkDeviceMemory) < 5) {
+         util_dynarray_append(array, VkDeviceMemory, res->mem);
+         simple_mtx_unlock(&screen->mem_cache_mtx);
+         return;
+      }
+      simple_mtx_unlock(&screen->mem_cache_mtx);
+   }
+   vkFreeMemory(screen->dev, res->mem, NULL);
+}
+
 static void
 zink_resource_destroy(struct pipe_screen *pscreen,
                       struct pipe_resource *pres)
@@ -81,7 +117,8 @@ zink_resource_destroy(struct pipe_screen *pscreen,
 
    zink_descriptor_set_refs_clear(&res->desc_set_refs, res);
 
-   vkFreeMemory(screen->dev, res->mem, NULL);
+   cache_or_free_mem(screen, res);
+
    FREE(res);
 }
 
@@ -369,7 +406,21 @@ resource_create(struct pipe_screen *pscreen,
       mai.pNext = &memory_wsi_info;
    }
 
-   if (vkAllocateMemory(screen->dev, &mai, NULL, &res->mem) != VK_SUCCESS) {
+   if (!mai.pNext && !(templ->flags & PIPE_RESOURCE_FLAG_MAP_COHERENT)) {
+      res->mkey.reqs = reqs;
+      res->mkey.flags = flags;
+      res->mem_hash = mem_hash(&res->mkey);
+      simple_mtx_lock(&screen->mem_cache_mtx);
+
+      struct hash_entry *he = _mesa_hash_table_search_pre_hashed(screen->resource_mem_cache, res->mem_hash, &res->mkey);
+      struct util_dynarray *array = he ? (void*)he->data : NULL;
+      if (array && util_dynarray_num_elements(array, VkDeviceMemory)) {
+         res->mem = util_dynarray_pop(array, VkDeviceMemory);
+      }
+      simple_mtx_unlock(&screen->mem_cache_mtx);
+   }
+
+   if (!res->mem && vkAllocateMemory(screen->dev, &mai, NULL, &res->mem) != VK_SUCCESS) {
       debug_printf("vkAllocateMemory failed\n");
       goto fail;
    }
@@ -877,17 +928,21 @@ static const struct u_transfer_vtbl transfer_vtbl = {
    .get_stencil           = zink_resource_get_separate_stencil,
 };
 
-void
+bool
 zink_screen_resource_init(struct pipe_screen *pscreen)
 {
+   struct zink_screen *screen = zink_screen(pscreen);
    pscreen->resource_create = zink_resource_create;
    pscreen->resource_destroy = zink_resource_destroy;
    pscreen->transfer_helper = u_transfer_helper_create(&transfer_vtbl, true, true, false, false);
 
-   if (zink_screen(pscreen)->info.have_KHR_external_memory_fd) {
+   if (screen->info.have_KHR_external_memory_fd) {
       pscreen->resource_get_handle = zink_resource_get_handle;
       pscreen->resource_from_handle = zink_resource_from_handle;
    }
+   simple_mtx_init(&screen->mem_cache_mtx, mtx_plain);
+   screen->resource_mem_cache = _mesa_hash_table_create(NULL, mem_hash, mem_equals);
+   return !!screen->resource_mem_cache;
 }
 
 void

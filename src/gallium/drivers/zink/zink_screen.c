@@ -35,6 +35,7 @@
 #include "os/os_process.h"
 #include "util/u_debug.h"
 #include "util/format/u_format.h"
+#include "util/hash_table.h"
 #include "util/u_math.h"
 #include "util/u_memory.h"
 #include "util/u_screen.h"
@@ -828,6 +829,15 @@ zink_is_format_supported(struct pipe_screen *pscreen,
 }
 
 static void
+resource_cache_entry_destroy(struct zink_screen *screen, struct hash_entry *he)
+{
+   struct util_dynarray *array = (void*)he->data;
+   util_dynarray_foreach(array, VkDeviceMemory, mem)
+      vkFreeMemory(screen->dev, *mem, NULL);
+   util_dynarray_fini(array);
+}
+
+static void
 zink_destroy_screen(struct pipe_screen *pscreen)
 {
    struct zink_screen *screen = zink_screen(pscreen);
@@ -843,6 +853,12 @@ zink_destroy_screen(struct pipe_screen *pscreen)
       disk_cache_wait_for_idle(screen->disk_cache);
 #endif
    disk_cache_destroy(screen->disk_cache);
+   simple_mtx_lock(&screen->mem_cache_mtx);
+   hash_table_foreach(screen->resource_mem_cache, he)
+      resource_cache_entry_destroy(screen, he);
+   _mesa_hash_table_destroy(screen->resource_mem_cache, NULL);
+   simple_mtx_unlock(&screen->mem_cache_mtx);
+   simple_mtx_destroy(&screen->mem_cache_mtx);
    vkDestroyPipelineCache(screen->dev, screen->pipeline_cache, NULL);
 
    vkDestroyDevice(screen->dev, NULL);
@@ -1320,7 +1336,8 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
    screen->base.flush_frontbuffer = zink_flush_frontbuffer;
    screen->base.destroy = zink_destroy_screen;
 
-   zink_screen_resource_init(&screen->base);
+   if (!zink_screen_resource_init(&screen->base))
+      goto fail;
    zink_screen_fence_init(&screen->base);
 
    zink_screen_init_compiler(screen);

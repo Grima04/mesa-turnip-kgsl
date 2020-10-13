@@ -32,6 +32,7 @@
 #include "compiler/nir/nir.h"
 #include "util/disk_cache.h"
 #include "util/log.h"
+#include "util/simple_mtx.h"
 
 #include <vulkan/vulkan.h>
 
@@ -41,6 +42,7 @@
 #endif
 
 extern uint32_t zink_debug;
+struct hash_table;
 
 #define ZINK_DEBUG_NIR 0x1
 #define ZINK_DEBUG_SPIRV 0x2
@@ -57,6 +59,9 @@ struct zink_screen {
    size_t pipeline_cache_size;
    struct disk_cache *disk_cache;
    cache_key disk_cache_key;
+
+   simple_mtx_t mem_cache_mtx;
+   struct hash_table *resource_mem_cache;
 
    unsigned shader_id;
 

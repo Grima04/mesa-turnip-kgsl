@@ -40,6 +40,11 @@ struct zink_context;
 #define ZINK_RESOURCE_ACCESS_READ 1
 #define ZINK_RESOURCE_ACCESS_WRITE 32
 
+struct mem_key {
+   VkMemoryRequirements reqs;
+   VkMemoryPropertyFlags flags;
+};
+
 struct zink_resource {
    struct pipe_resource base;
 
@@ -62,6 +67,8 @@ struct zink_resource {
       };
    };
    VkDeviceMemory mem;
+   uint32_t mem_hash;
+   struct mem_key mkey;
    VkDeviceSize offset, size;
 
    struct sw_displaytarget *dt;
@@ -85,7 +92,7 @@ zink_resource(struct pipe_resource *r)
    return (struct zink_resource *)r;
 }
 
-void
+bool
 zink_screen_resource_init(struct pipe_screen *pscreen);
 
 void
