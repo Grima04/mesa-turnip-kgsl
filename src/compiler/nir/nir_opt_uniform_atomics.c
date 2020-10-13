@@ -53,8 +53,6 @@ parse_atomic_op(nir_intrinsic_op op, unsigned *offset_src, unsigned *data_src)
    case nir_intrinsic_deref_atomic_##intrin: \
       *offset_src = 0; \
       *data_src = 1; \
-      return nir_op_##alu; \
-      return nir_op_##alu; \
       return nir_op_##alu;
    #define OP(intrin, alu) \
    OP_NOIMG(intrin, alu) \
