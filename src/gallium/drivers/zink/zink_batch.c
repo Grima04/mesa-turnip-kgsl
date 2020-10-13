@@ -36,6 +36,8 @@ zink_reset_batch(struct zink_context *ctx, struct zink_batch *batch)
    /* unref all used sampler-views */
    set_foreach(batch->sampler_views, entry) {
       struct pipe_sampler_view *pres = (struct pipe_sampler_view *)entry->key;
+      struct zink_sampler_view *sampler_view = zink_sampler_view(pres);
+      sampler_view->batch_uses &= ~BITFIELD_BIT(batch->batch_id);
       pipe_sampler_view_reference(&pres, NULL);
       _mesa_set_remove(batch->sampler_views, entry);
    }
@@ -54,6 +56,7 @@ zink_reset_batch(struct zink_context *ctx, struct zink_batch *batch)
 
    set_foreach(batch->desc_sets, entry) {
       struct zink_descriptor_set *zds = (void*)entry->key;
+      zds->batch_uses &= ~BITFIELD_BIT(batch->batch_id);
       /* reset descriptor pools when no batch is using this program to avoid
        * having some inactive program hogging a billion descriptors
        */
@@ -226,9 +229,13 @@ zink_batch_reference_sampler_view(struct zink_batch *batch,
                                   struct zink_sampler_view *sv)
 {
    bool found = false;
+   uint32_t bit = BITFIELD_BIT(batch->batch_id);
+   if (sv->batch_uses & bit)
+      return;
    _mesa_set_search_and_add(batch->sampler_views, sv, &found);
-   if (!found)
-      pipe_reference(NULL, &sv->base.reference);
+   assert(!found);
+   sv->batch_uses |= bit;
+   pipe_reference(NULL, &sv->base.reference);
    batch->has_work = true;
 }
 
@@ -257,9 +264,13 @@ bool
 zink_batch_add_desc_set(struct zink_batch *batch, struct zink_descriptor_set *zds)
 {
    bool found = false;
+   uint32_t bit = BITFIELD_BIT(batch->batch_id);
+   if (zds->batch_uses & bit)
+      return false;
    _mesa_set_search_and_add(batch->desc_sets, zds, &found);
-   if (!found)
-      pipe_reference(NULL, &zds->reference);
+   assert(!found);
+   zds->batch_uses |= bit;
+   pipe_reference(NULL, &zds->reference);
    return !found;
 }
 

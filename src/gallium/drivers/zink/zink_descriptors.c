@@ -232,6 +232,7 @@ allocate_desc_set(struct zink_screen *screen, struct zink_program *pg, enum zink
       pipe_reference_init(&zds->reference, 1);
       zds->pool = pool;
       zds->hash = 0;
+      zds->batch_uses = 0;
       zds->invalid = true;
       zds->recycled = false;
       if (num_resources) {
