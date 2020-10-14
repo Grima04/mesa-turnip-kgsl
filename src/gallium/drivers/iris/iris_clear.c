@@ -464,10 +464,7 @@ fast_clear_depth(struct iris_context *ice,
                  const struct pipe_box *box,
                  float depth)
 {
-   struct pipe_resource *p_res = (void *) res;
    struct iris_batch *batch = &ice->batches[IRIS_BATCH_RENDER];
-
-   depth = convert_depth_value(p_res->format, depth);
 
    bool update_clear_depth = false;
 
@@ -690,7 +687,7 @@ iris_clear(struct pipe_context *ctx,
       clear_depth_stencil(ice, psurf->texture, psurf->u.tex.level, &box, true,
                           buffers & PIPE_CLEAR_DEPTH,
                           buffers & PIPE_CLEAR_STENCIL,
-                          depth, stencil);
+                          convert_depth_value(psurf->format, depth), stencil);
    }
 
    if (buffers & PIPE_CLEAR_COLOR) {
@@ -837,7 +834,7 @@ iris_clear_depth_stencil(struct pipe_context *ctx,
    clear_depth_stencil(ice, psurf->texture, psurf->u.tex.level, &box,
                        render_condition_enabled,
                        flags & PIPE_CLEAR_DEPTH, flags & PIPE_CLEAR_STENCIL,
-                       depth, stencil);
+                       convert_depth_value(psurf->format, depth), stencil);
 }
 
 void
