@@ -68,7 +68,8 @@ struct ntv_context {
    unsigned char *shader_slot_map;
    unsigned char shader_slots_reserved;
 
-   SpvId front_face_var, instance_id_var, vertex_id_var;
+   SpvId front_face_var, instance_id_var, vertex_id_var,
+         primitive_id_var, invocation_id_var; // geometry
 };
 
 static SpvId
@@ -1670,6 +1671,14 @@ emit_intrinsic(struct ntv_context *ctx, nir_intrinsic_instr *intr)
 
    case nir_intrinsic_load_vertex_id:
       emit_load_uint_input(ctx, intr, &ctx->vertex_id_var, "gl_VertexId", SpvBuiltInVertexIndex);
+      break;
+
+   case nir_intrinsic_load_primitive_id:
+      emit_load_uint_input(ctx, intr, &ctx->primitive_id_var, "gl_PrimitiveIdIn", SpvBuiltInPrimitiveId);
+      break;
+
+   case nir_intrinsic_load_invocation_id:
+      emit_load_uint_input(ctx, intr, &ctx->invocation_id_var, "gl_InvocationId", SpvBuiltInInvocationId);
       break;
 
    default:
