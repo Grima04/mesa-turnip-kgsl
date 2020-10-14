@@ -385,7 +385,7 @@ v3dv_GetImageDrmFormatModifierPropertiesEXT(
 {
    V3DV_FROM_HANDLE(v3dv_image, image, _image);
 
-   assert(pProperties->sType =
+   assert(pProperties->sType ==
           VK_STRUCTURE_TYPE_IMAGE_DRM_FORMAT_MODIFIER_PROPERTIES_EXT);
 
    pProperties->drmFormatModifier = image->drm_format_mod;
