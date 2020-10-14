@@ -747,7 +747,7 @@ typedef struct nir_instr {
    uint8_t pass_flags;
 
    /** generic instruction index. */
-   unsigned index;
+   uint32_t index;
 } nir_instr;
 
 static inline nir_instr *
@@ -2669,6 +2669,19 @@ typedef struct nir_block {
     * a given block is dominated by another block an O(1) operation.
     */
    uint32_t dom_pre_index, dom_post_index;
+
+   /**
+    * nir_instr->index for the first nir_instr in the block.  If the block is
+    * empty, it will be the index of the immediately previous instr, or 0.
+    * Valid when the impl has nir_metadata_instr_index.
+    */
+   uint32_t start_ip;
+   /**
+    * nir_instr->index for the last nir_instr in the block.  If the block is
+    * empty, it will be the same as start_ip.  Valid when the impl has
+    * nir_metadata_instr_index.
+    */
+   uint32_t end_ip;
 
    /* SSA def live in and out for this block; used for liveness analysis.
     * Indexed by ssa_def->index
