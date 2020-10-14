@@ -416,7 +416,7 @@ we DO NOT WANT implementations of these extensions for Mesa.
   GL_ARB_shadow_ambient                                 Superseded by GL_ARB_fragment_program
   GL_ARB_vertex_blend                                   Superseded by GL_ARB_vertex_program
 
-Vulkan 1.0 -- all DONE: anv, radv
+Vulkan 1.0 -- all DONE: anv, radv, v3dv
 
 Vulkan 1.1 -- all DONE: anv, radv
 
@@ -428,12 +428,12 @@ Vulkan 1.1 -- all DONE: anv, radv
   VK_KHR_device_group_creation                          not started
   VK_KHR_external_fence                                 DONE (anv, radv)
   VK_KHR_external_fence_capabilities                    DONE (anv, radv)
-  VK_KHR_external_memory                                DONE (anv, radv)
-  VK_KHR_external_memory_capabilities                   DONE (anv, radv)
+  VK_KHR_external_memory                                DONE (anv, radv, v3dv)
+  VK_KHR_external_memory_capabilities                   DONE (anv, radv, v3dv)
   VK_KHR_external_semaphore                             DONE (anv, radv)
   VK_KHR_external_semaphore_capabilities                DONE (anv, radv)
   VK_KHR_get_memory_requirements2                       DONE (anv, radv)
-  VK_KHR_get_physical_device_properties2                DONE (anv, radv)
+  VK_KHR_get_physical_device_properties2                DONE (anv, radv, v3dv)
   VK_KHR_maintenance1                                   DONE (anv, radv)
   VK_KHR_maintenance2                                   DONE (anv, radv)
   VK_KHR_maintenance3                                   DONE (anv, radv)
@@ -456,7 +456,7 @@ Khronos extensions that are not part of any Vulkan version:
   VK_KHR_driver_properties                              DONE (anv, radv)
   VK_KHR_external_fence_fd                              DONE (anv, radv)
   VK_KHR_external_fence_win32                           not started
-  VK_KHR_external_memory_fd                             DONE (anv, radv)
+  VK_KHR_external_memory_fd                             DONE (anv, radv, v3dv)
   VK_KHR_external_memory_win32                          not started
   VK_KHR_external_semaphore_fd                          DONE (anv, radv)
   VK_KHR_external_semaphore_win32                       not started
