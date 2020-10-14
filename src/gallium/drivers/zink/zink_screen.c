@@ -216,7 +216,7 @@ zink_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_MAX_GEOMETRY_OUTPUT_VERTICES:
       return screen->info.props.limits.maxGeometryOutputVertices;
    case PIPE_CAP_MAX_GEOMETRY_TOTAL_OUTPUT_COMPONENTS:
-      return screen->info.props.limits.maxGeometryOutputComponents;
+      return screen->info.props.limits.maxGeometryTotalOutputComponents;
 
 #if 0 /* TODO: Enable me. Enables ARB_texture_gather */
    case PIPE_CAP_MAX_TEXTURE_GATHER_COMPONENTS:
@@ -286,7 +286,7 @@ zink_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
       return 0; /* not sure */
 
    case PIPE_CAP_MAX_GS_INVOCATIONS:
-      return 0; /* not implemented */
+      return screen->info.props.limits.maxGeometryShaderInvocations;
 
    case PIPE_CAP_MAX_COMBINED_SHADER_BUFFERS:
       return screen->info.props.limits.maxDescriptorSetStorageBuffers;
@@ -374,6 +374,15 @@ zink_get_shader_param(struct pipe_screen *pscreen,
 
    switch (param) {
    case PIPE_SHADER_CAP_MAX_INSTRUCTIONS:
+      switch (shader) {
+      case PIPE_SHADER_FRAGMENT:
+      case PIPE_SHADER_VERTEX:
+      case PIPE_SHADER_GEOMETRY:
+         return INT_MAX;
+      default:
+         break;
+      }
+      return 0;
    case PIPE_SHADER_CAP_MAX_ALU_INSTRUCTIONS:
    case PIPE_SHADER_CAP_MAX_TEX_INSTRUCTIONS:
    case PIPE_SHADER_CAP_MAX_TEX_INDIRECTIONS:
@@ -388,6 +397,9 @@ zink_get_shader_param(struct pipe_screen *pscreen,
       case PIPE_SHADER_VERTEX:
          return MIN2(screen->info.props.limits.maxVertexInputAttributes,
                      PIPE_MAX_SHADER_INPUTS);
+      case PIPE_SHADER_GEOMETRY:
+         return MIN2(screen->info.props.limits.maxGeometryInputComponents,
+                     PIPE_MAX_SHADER_INPUTS);
       case PIPE_SHADER_FRAGMENT:
          return MIN2(screen->info.props.limits.maxFragmentInputComponents / 4,
                      PIPE_MAX_SHADER_INPUTS);
@@ -400,6 +412,9 @@ zink_get_shader_param(struct pipe_screen *pscreen,
       case PIPE_SHADER_VERTEX:
          return MIN2(screen->info.props.limits.maxVertexOutputComponents / 4,
                      PIPE_MAX_SHADER_OUTPUTS);
+      case PIPE_SHADER_GEOMETRY:
+         return MIN2(screen->info.props.limits.maxGeometryOutputComponents / 4,
+                     PIPE_MAX_SHADER_OUTPUTS);
       case PIPE_SHADER_FRAGMENT:
          return MIN2(screen->info.props.limits.maxColorAttachments,
                 PIPE_MAX_SHADER_OUTPUTS);
@@ -411,6 +426,7 @@ zink_get_shader_param(struct pipe_screen *pscreen,
       switch (shader) {
       case PIPE_SHADER_VERTEX:
       case PIPE_SHADER_FRAGMENT:
+      case PIPE_SHADER_GEOMETRY:
          /* this might be a bit simplistic... */
          return MIN2(screen->info.props.limits.maxPerStageDescriptorSamplers,
                      PIPE_MAX_SAMPLERS);
