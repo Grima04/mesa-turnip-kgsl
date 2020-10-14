@@ -9584,7 +9584,7 @@ static Operand create_continue_phis(isel_context *ctx, unsigned first, unsigned 
          continue;
       }
 
-      if (block.kind & block_kind_continue) {
+      if ((block.kind & block_kind_continue) && block.index != last) {
          vals[idx - first] = header_phi->operands[next_pred];
          next_pred++;
          continue;
