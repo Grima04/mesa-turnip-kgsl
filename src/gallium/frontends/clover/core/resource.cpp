@@ -79,11 +79,11 @@ resource::clear(command_queue &q, const vector &origin, const vector &region,
    }
 }
 
-void *
+mapping *
 resource::add_map(command_queue &q, cl_map_flags flags, bool blocking,
                   const vector &origin, const vector &region) {
    maps.emplace_back(q, *this, flags, blocking, origin, region);
-   return maps.back();
+   return &maps.back();
 }
 
 void

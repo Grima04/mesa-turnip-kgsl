@@ -53,8 +53,8 @@ namespace clover {
       void clear(command_queue &q, const vector &origin, const vector &region,
                  const std::string &data);
 
-      void *add_map(command_queue &q, cl_map_flags flags, bool blocking,
-                    const vector &origin, const vector &region);
+      mapping *add_map(command_queue &q, cl_map_flags flags, bool blocking,
+                       const vector &origin, const vector &region);
       void del_map(void *p);
       unsigned map_count() const;
 
