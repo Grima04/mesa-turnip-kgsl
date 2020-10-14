@@ -166,6 +166,38 @@ bi_emit_ld_vary(bi_context *ctx, nir_intrinsic_instr *instr)
 }
 
 static void
+bi_emit_ld_blend_input(bi_context *ctx, nir_intrinsic_instr *instr)
+{
+        ASSERTED nir_io_semantics sem = nir_intrinsic_io_semantics(instr);
+
+        /* We don't support dual-source blending yet. */
+        assert(sem.location == VARYING_SLOT_COL0);
+
+        bi_instruction ins = {
+                .type = BI_COMBINE,
+                .dest_type = nir_type_uint32,
+                .dest = pan_dest_index(&instr->dest),
+                .src_types = {
+                        nir_type_uint32, nir_type_uint32,
+                        nir_type_uint32, nir_type_uint32,
+                },
+
+                /* Source color is passed through r0-r3.
+                 * TODO: We should probably find a way to avoid this
+                 * combine/mov and use r0-r3 directly.
+                 */
+                .src = {
+                        BIR_INDEX_REGISTER | 0,
+                        BIR_INDEX_REGISTER | 1,
+                        BIR_INDEX_REGISTER | 2,
+                        BIR_INDEX_REGISTER | 3,
+                },
+        };
+
+        bi_emit(ctx, ins);
+}
+
+static void
 bi_emit_frag_out(bi_context *ctx, nir_intrinsic_instr *instr)
 {
         if (!ctx->emitted_atest && !ctx->is_blend) {
@@ -512,7 +544,9 @@ emit_intrinsic(bi_context *ctx, nir_intrinsic_instr *instr)
                 break;
         case nir_intrinsic_load_interpolated_input:
         case nir_intrinsic_load_input:
-                if (ctx->stage == MESA_SHADER_FRAGMENT)
+                if (ctx->is_blend)
+                        bi_emit_ld_blend_input(ctx, instr);
+                else if (ctx->stage == MESA_SHADER_FRAGMENT)
                         bi_emit_ld_vary(ctx, instr);
                 else if (ctx->stage == MESA_SHADER_VERTEX)
                         bi_emit(ctx, bi_load_with_r61(BI_LOAD_ATTR, instr));
