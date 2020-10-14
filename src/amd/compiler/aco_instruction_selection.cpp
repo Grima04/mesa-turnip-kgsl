@@ -11342,6 +11342,8 @@ void ngg_gs_write_shader_query(isel_context *ctx, nir_intrinsic_instr *instr)
       Temp prm_cnt = gs_vtx_cnt;
       if (total_vtx_per_prim > 1)
          prm_cnt = bld.vop3(aco_opcode::v_mad_i32_i24, bld.def(v1), gs_prm_cnt, Operand(-1u * (total_vtx_per_prim - 1)), gs_vtx_cnt);
+      else
+         prm_cnt = as_vgpr(ctx, prm_cnt);
 
       /* Reduction calculates the primitive count for the entire subgroup. */
       sg_prm_cnt = bld.tmp(s1);
