@@ -853,7 +853,8 @@ void label_instruction(opt_ctx &ctx, Block& block, aco_ptr<Instruction>& instr)
             case aco_opcode::p_create_vector:
             case aco_opcode::p_split_vector:
             case aco_opcode::p_extract_vector:
-            case aco_opcode::p_phi: {
+            case aco_opcode::p_phi:
+            case aco_opcode::p_parallelcopy: {
                const bool all_vgpr = std::none_of(instr->definitions.begin(), instr->definitions.end(),
                                                   [] (const Definition& def) { return def.getTemp().type() != RegType::vgpr;});
                if (all_vgpr) {
@@ -1212,6 +1213,7 @@ void label_instruction(opt_ctx &ctx, Block& block, aco_ptr<Instruction>& instr)
    case aco_opcode::s_mov_b32: /* propagate */
    case aco_opcode::s_mov_b64:
    case aco_opcode::v_mov_b32:
+   case aco_opcode::p_parallelcopy:
       if (instr->operands[0].isTemp() && ctx.info[instr->operands[0].tempId()].is_vec() &&
           instr->operands[0].regClass() != instr->definitions[0].regClass()) {
          /* We might not be able to copy-propagate if it's a SGPR->VGPR copy, so

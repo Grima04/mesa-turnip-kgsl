@@ -393,6 +393,7 @@ void process_block(vn_ctx& ctx, Block& block)
          instr->opcode == aco_opcode::s_mov_b32 ||
          instr->opcode == aco_opcode::s_mov_b64 ||
          instr->opcode == aco_opcode::v_mov_b32 ||
+         instr->opcode == aco_opcode::p_parallelcopy ||
          (instr->opcode == aco_opcode::p_create_vector && instr->operands.size() == 1);
       if (copy_instr && !instr->definitions[0].isFixed() && instr->operands[0].isTemp() &&
           instr->operands[0].regClass() == instr->definitions[0].regClass() &&

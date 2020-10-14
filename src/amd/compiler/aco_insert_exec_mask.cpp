@@ -109,6 +109,7 @@ bool pred_by_exec_mask(aco_ptr<Instruction>& instr) {
       case aco_opcode::p_create_vector:
       case aco_opcode::p_extract_vector:
       case aco_opcode::p_split_vector:
+      case aco_opcode::p_parallelcopy:
          for (Definition def : instr->definitions) {
             if (def.getTemp().type() == RegType::vgpr)
                return true;
