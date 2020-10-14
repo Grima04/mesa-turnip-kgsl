@@ -48,8 +48,10 @@ public:
    lower_ubo_reference_visitor(struct gl_linked_shader *shader,
                                bool clamp_block_indices,
                                bool use_std430_as_default)
-   : shader(shader), clamp_block_indices(clamp_block_indices),
-     struct_field(NULL), variable(NULL)
+   : buffer_access_type(ubo_load_access),
+     shader(shader), clamp_block_indices(clamp_block_indices),
+     struct_field(NULL), variable(NULL), uniform_block(NULL),
+     progress(false)
    {
       this->use_std430_as_default = use_std430_as_default;
    }
