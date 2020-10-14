@@ -146,6 +146,17 @@ spirv_builder_emit_entry_point(struct spirv_builder *b,
 }
 
 void
+spirv_builder_emit_exec_mode_literal(struct spirv_builder *b, SpvId entry_point,
+                                     SpvExecutionMode exec_mode, uint32_t param)
+{
+   spirv_buffer_prepare(&b->exec_modes, b->mem_ctx, 4);
+   spirv_buffer_emit_word(&b->exec_modes, SpvOpExecutionMode | (4 << 16));
+   spirv_buffer_emit_word(&b->exec_modes, entry_point);
+   spirv_buffer_emit_word(&b->exec_modes, exec_mode);
+   spirv_buffer_emit_word(&b->exec_modes, param);
+}
+
+void
 spirv_builder_emit_exec_mode(struct spirv_builder *b, SpvId entry_point,
                              SpvExecutionMode exec_mode)
 {
@@ -210,6 +221,20 @@ spirv_builder_emit_builtin(struct spirv_builder *b, SpvId target,
 {
    uint32_t args[] = { builtin };
    emit_decoration(b, target, SpvDecorationBuiltIn, args, ARRAY_SIZE(args));
+}
+
+void
+spirv_builder_emit_vertex(struct spirv_builder *b)
+{
+   spirv_buffer_prepare(&b->instructions, b->mem_ctx, 1);
+   spirv_buffer_emit_word(&b->instructions, SpvOpEmitVertex | (1 << 16));
+}
+
+void
+spirv_builder_end_primitive(struct spirv_builder *b)
+{
+   spirv_buffer_prepare(&b->instructions, b->mem_ctx, 1);
+   spirv_buffer_emit_word(&b->instructions, SpvOpEndPrimitive | (1 << 16));
 }
 
 void

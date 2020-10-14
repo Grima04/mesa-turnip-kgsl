@@ -135,7 +135,9 @@ spirv_builder_emit_entry_point(struct spirv_builder *b,
                                SpvExecutionModel exec_model, SpvId entry_point,
                                const char *name, const SpvId interfaces[],
                                size_t num_interfaces);
-
+void
+spirv_builder_emit_exec_mode_literal(struct spirv_builder *b, SpvId entry_point,
+                                     SpvExecutionMode exec_mode, uint32_t param);
 void
 spirv_builder_emit_exec_mode(struct spirv_builder *b, SpvId entry_point,
                              SpvExecutionMode exec_mode);
@@ -349,4 +351,8 @@ size_t
 spirv_builder_get_words(struct spirv_builder *b, uint32_t *words,
                         size_t num_words);
 
+void
+spirv_builder_emit_vertex(struct spirv_builder *b);
+void
+spirv_builder_end_primitive(struct spirv_builder *b);
 #endif
