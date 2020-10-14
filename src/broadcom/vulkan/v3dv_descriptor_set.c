@@ -88,7 +88,7 @@ v3dv_descriptor_map_get_descriptor(struct v3dv_descriptor_state *descriptor_stat
                                    uint32_t index,
                                    uint32_t *dynamic_offset)
 {
-   assert(index >= 0 && index < map->num_desc);
+   assert(index < map->num_desc);
 
    uint32_t set_number = map->set[index];
    assert((descriptor_state->valid & 1 << set_number));
