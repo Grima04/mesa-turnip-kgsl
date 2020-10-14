@@ -174,6 +174,24 @@ bi_install_registers(bi_context *ctx, struct lcra_state *l)
         }
 }
 
+/* If register allocation fails, find the best spill node */
+
+static signed
+bi_choose_spill_node(bi_context *ctx, struct lcra_state *l)
+{
+        /* Pick a node satisfying bi_spill_register's preconditions */
+
+        bi_foreach_instr_global(ctx, ins) {
+                if (ins->no_spill)
+                        lcra_set_node_spill_cost(l, ins->dest, -1);
+        }
+
+        for (unsigned i = PAN_IS_REG; i < l->node_count; i += 2)
+                lcra_set_node_spill_cost(l, i, -1);
+
+        return lcra_get_best_spill_node(l);
+}
+
 void
 bi_register_allocate(bi_context *ctx)
 {
@@ -197,8 +215,14 @@ bi_register_allocate(bi_context *ctx)
 
         do {
                 if (l) {
+                        signed spill_node = bi_choose_spill_node(ctx, l);
                         lcra_free(l);
                         l = NULL;
+
+
+                        if (spill_node == -1)
+                                unreachable("Failed to choose spill node\n");
+
                         unreachable("Spilling not implemented");
                 }
 
