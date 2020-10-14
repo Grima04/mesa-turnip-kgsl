@@ -69,8 +69,15 @@ bi_allocate_registers(bi_context *ctx, bool *success)
         struct lcra_state *l =
                 lcra_alloc_equations(node_count, 1);
 
-        l->class_start[BI_REG_CLASS_WORK] = 0;
-        l->class_size[BI_REG_CLASS_WORK] = 64 * 4; /* R0 - R63, all 32-bit */
+        if (ctx->is_blend) {
+                /* R0-R3 are reserved for the blend input */
+                l->class_start[BI_REG_CLASS_WORK] = 4 * 4;
+                l->class_size[BI_REG_CLASS_WORK] = 64 * 4;
+        } else {
+                /* R0 - R63, all 32-bit */
+                l->class_start[BI_REG_CLASS_WORK] = 0;
+                l->class_size[BI_REG_CLASS_WORK] = 64 * 4;
+        }
 
         bi_foreach_instr_global(ctx, ins) {
                 unsigned dest = ins->dest;
