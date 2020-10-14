@@ -197,6 +197,29 @@ bi_spill(unsigned node, uint64_t offset, unsigned channels)
         return store;
 }
 
+static bi_instruction
+bi_fill(unsigned node, uint64_t offset, unsigned channels)
+{
+        bi_instruction load = {
+                .type = BI_LOAD,
+                .segment = BI_SEGMENT_TLS,
+                .vector_channels = channels,
+                .dest = node,
+                .dest_type = nir_type_uint32,
+                .src = {
+                        BIR_INDEX_CONSTANT,
+                        BIR_INDEX_CONSTANT | 32,
+                },
+                .src_types = {
+                        nir_type_uint32,
+                        nir_type_uint32
+                },
+                .constant = { .u64 = offset },
+        };
+
+        return load;
+}
+
 /* If register allocation fails, find the best spill node */
 
 static signed
