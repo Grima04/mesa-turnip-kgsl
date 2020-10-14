@@ -180,6 +180,8 @@ bi_register_allocate(bi_context *ctx)
         struct lcra_state *l = NULL;
         bool success = false;
 
+        unsigned iter_count = 100; /* max iterations */
+
         /* For instructions that both read and write from a data register, it's
          * the *same* data register. We enforce that constraint by just doing a
          * quick rewrite. TODO: are there cases where this causes RA to have no
@@ -197,14 +199,12 @@ bi_register_allocate(bi_context *ctx)
                 if (l) {
                         lcra_free(l);
                         l = NULL;
+                        unreachable("Spilling not implemented");
                 }
 
                 bi_invalidate_liveness(ctx);
                 l = bi_allocate_registers(ctx, &success);
-
-                /* TODO: Spilling */
-                assert(success);
-        } while(!success);
+        } while(!success && ((iter_count--) > 0));
 
         bi_install_registers(ctx, l);
 
