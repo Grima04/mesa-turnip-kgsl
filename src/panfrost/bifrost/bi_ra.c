@@ -174,6 +174,29 @@ bi_install_registers(bi_context *ctx, struct lcra_state *l)
         }
 }
 
+static bi_instruction
+bi_spill(unsigned node, uint64_t offset, unsigned channels)
+{
+        bi_instruction store = {
+                .type = BI_STORE,
+                .segment = BI_SEGMENT_TLS,
+                .vector_channels = channels,
+                .src = {
+                        node,
+                        BIR_INDEX_CONSTANT,
+                        BIR_INDEX_CONSTANT | 32,
+                },
+                .src_types = {
+                        nir_type_uint32,
+                        nir_type_uint32,
+                        nir_type_uint32
+                },
+                .constant = { .u64 = offset },
+        };
+
+        return store;
+}
+
 /* If register allocation fails, find the best spill node */
 
 static signed
