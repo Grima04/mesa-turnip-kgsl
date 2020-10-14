@@ -3286,6 +3286,18 @@ radv_src_access_flush(struct radv_cmd_buffer *cmd_buffer,
 	for_each_bit(b, src_flags) {
 		switch ((VkAccessFlagBits)(1 << b)) {
 		case VK_ACCESS_SHADER_WRITE_BIT:
+			/* since the STORAGE bit isn't set we know that this is a meta operation.
+			 * on the dst flush side we skip CB/DB flushes without the STORAGE bit, so
+			 * set it here. */
+			if (image && !(image->usage & VK_IMAGE_USAGE_STORAGE_BIT)) {
+				if (vk_format_is_depth_or_stencil(image->vk_format)) {
+					flush_bits |= RADV_CMD_FLAG_FLUSH_AND_INV_DB;
+				} else {
+					flush_bits |= RADV_CMD_FLAG_FLUSH_AND_INV_CB;
+				}
+			}
+			flush_bits |= RADV_CMD_FLAG_WB_L2;
+			break;
 		case VK_ACCESS_TRANSFORM_FEEDBACK_WRITE_BIT_EXT:
 		case VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_WRITE_BIT_EXT:
 			flush_bits |= RADV_CMD_FLAG_WB_L2;
