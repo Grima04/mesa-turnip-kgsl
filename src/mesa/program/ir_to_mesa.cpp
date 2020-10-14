@@ -2336,7 +2336,8 @@ public:
    add_uniform_to_shader(struct gl_context *ctx,
                          struct gl_shader_program *shader_program,
 			 struct gl_program_parameter_list *params)
-      : ctx(ctx), shader_program(shader_program), params(params), idx(-1)
+      : ctx(ctx), shader_program(shader_program), params(params), idx(-1),
+        var(NULL)
    {
       /* empty */
    }
