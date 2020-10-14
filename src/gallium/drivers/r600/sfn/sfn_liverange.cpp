@@ -777,15 +777,18 @@ void LiverangeEvaluator::run(const Shader& shader,
 
    for (auto& v: shader.m_temp) {
       if (v.second->type() == Value::gpr) {
+         sfn_log << SfnLog::merge << "Record " << *v.second << "\n";
          const auto& g = static_cast<const GPRValue&>(*v.second);
          if (g.is_input()) {
             sfn_log << SfnLog::merge << "Record INPUT write for "
                     << g << " in " << temp_acc.size() << " temps\n";
             temp_acc[g.sel()].record_write(line, cur_scope, 1 << g.chan(), false);
-            if (g.keep_alive())
-               temp_acc[g.sel()].record_read(0x7fffff, cur_scope, 1 << g.chan(), false);
-            else
-               temp_acc[g.sel()].record_read(line, cur_scope, 1 << g.chan(), false);
+            temp_acc[g.sel()].record_read(line, cur_scope, 1 << g.chan(), false);
+         }
+         if (g.keep_alive()) {
+            sfn_log << SfnLog::merge << "Record KEEP ALIVE for "
+                    << g << " in " << temp_acc.size() << " temps\n";
+            temp_acc[g.sel()].record_read(0x7fffff, cur_scope, 1 << g.chan(), false);
          }
       }
    }
@@ -812,7 +815,7 @@ void LiverangeEvaluator::record_read(const Value& src, bool is_array_elm)
    if (src.type() == Value::gpr) {
       const GPRValue& v = static_cast<const GPRValue&>(src);
       if (v.chan() < 4)
-         temp_acc[v.sel()].record_read(line, cur_scope, 1 << v.chan(), is_array_elm);
+         temp_acc[v.sel()].record_read(v.keep_alive() ? 0x7fffff: line, cur_scope, 1 << v.chan(), is_array_elm);
       return;
    } else if (src.type() == Value::gpr_array_value) {
       const GPRArrayValue& v = static_cast<const GPRArrayValue&>(src);

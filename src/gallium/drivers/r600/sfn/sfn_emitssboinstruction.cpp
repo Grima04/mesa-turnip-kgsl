@@ -248,6 +248,7 @@ bool EmitSSBOInstruction::emit_atomic_add(const nir_intrinsic_instr* instr)
 bool EmitSSBOInstruction::load_atomic_inc_limits()
 {
    m_atomic_update = get_temp_register();
+   m_atomic_update->set_keep_alive();
    emit_instruction(new AluInstruction(op1_mov, m_atomic_update, literal(1),
    {alu_write, alu_last_instr}));
    return true;
