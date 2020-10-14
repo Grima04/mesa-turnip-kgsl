@@ -456,6 +456,33 @@ zink_delete_fs_state(struct pipe_context *pctx,
    zink_shader_free(zink_context(pctx), cso);
 }
 
+static void *
+zink_create_gs_state(struct pipe_context *pctx,
+                     const struct pipe_shader_state *shader)
+{
+   struct nir_shader *nir;
+   if (shader->type != PIPE_SHADER_IR_NIR)
+      nir = zink_tgsi_to_nir(pctx->screen, shader->tokens);
+   else
+      nir = (struct nir_shader *)shader->ir.nir;
+
+   return zink_shader_create(zink_screen(pctx->screen), nir, &shader->stream_output);
+}
+
+static void
+zink_bind_gs_state(struct pipe_context *pctx,
+                   void *cso)
+{
+   bind_stage(zink_context(pctx), PIPE_SHADER_GEOMETRY, cso);
+}
+
+static void
+zink_delete_gs_state(struct pipe_context *pctx,
+                     void *cso)
+{
+   zink_shader_free(zink_context(pctx), cso);
+}
+
 
 void
 zink_program_init(struct zink_context *ctx)
@@ -467,4 +494,8 @@ zink_program_init(struct zink_context *ctx)
    ctx->base.create_fs_state = zink_create_fs_state;
    ctx->base.bind_fs_state = zink_bind_fs_state;
    ctx->base.delete_fs_state = zink_delete_fs_state;
+
+   ctx->base.create_gs_state = zink_create_gs_state;
+   ctx->base.bind_gs_state = zink_bind_gs_state;
+   ctx->base.delete_gs_state = zink_delete_gs_state;
 }

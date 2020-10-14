@@ -174,6 +174,7 @@ zink_blit(struct pipe_context *pctx,
    util_blitter_save_rasterizer(ctx->blitter, ctx->rast_state);
    util_blitter_save_fragment_shader(ctx->blitter, ctx->gfx_stages[PIPE_SHADER_FRAGMENT]);
    util_blitter_save_vertex_shader(ctx->blitter, ctx->gfx_stages[PIPE_SHADER_VERTEX]);
+   util_blitter_save_geometry_shader(ctx->blitter, ctx->gfx_stages[PIPE_SHADER_GEOMETRY]);
    util_blitter_save_framebuffer(ctx->blitter, &ctx->fb_state);
    util_blitter_save_viewport(ctx->blitter, ctx->viewport_states);
    util_blitter_save_scissor(ctx->blitter, ctx->scissor_states);
