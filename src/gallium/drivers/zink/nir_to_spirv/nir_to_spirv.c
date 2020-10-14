@@ -277,8 +277,11 @@ emit_input(struct ntv_context *ctx, struct nir_variable *var)
    if (var->name)
       spirv_builder_emit_name(&ctx->builder, var_id, var->name);
 
-   if (ctx->stage == MESA_SHADER_FRAGMENT) {
-      unsigned slot = var->data.location;
+   unsigned slot = var->data.location;
+   if (ctx->stage == MESA_SHADER_VERTEX)
+      spirv_builder_emit_location(&ctx->builder, var_id,
+                                  var->data.driver_location);
+   else if (ctx->stage == MESA_SHADER_FRAGMENT) {
       switch (slot) {
       HANDLE_EMIT_BUILTIN(POS, FragCoord);
       HANDLE_EMIT_BUILTIN(PNTC, PointCoord);
@@ -293,9 +296,26 @@ emit_input(struct ntv_context *ctx, struct nir_variable *var)
          slot = handle_slot(ctx, slot);
          spirv_builder_emit_location(&ctx->builder, var_id, slot);
       }
-   } else {
-      spirv_builder_emit_location(&ctx->builder, var_id,
-                                  var->data.driver_location);
+   } else if (ctx->stage < MESA_SHADER_FRAGMENT) {
+      switch (slot) {
+      HANDLE_EMIT_BUILTIN(POS, Position);
+      HANDLE_EMIT_BUILTIN(PSIZ, PointSize);
+      HANDLE_EMIT_BUILTIN(LAYER, Layer);
+      HANDLE_EMIT_BUILTIN(PRIMITIVE_ID, PrimitiveId);
+      HANDLE_EMIT_BUILTIN(CULL_DIST0, CullDistance);
+      HANDLE_EMIT_BUILTIN(VIEWPORT, ViewportIndex);
+      HANDLE_EMIT_BUILTIN(TESS_LEVEL_OUTER, TessLevelOuter);
+      HANDLE_EMIT_BUILTIN(TESS_LEVEL_INNER, TessLevelInner);
+
+      case VARYING_SLOT_CLIP_DIST0:
+         assert(glsl_type_is_array(var->type));
+         spirv_builder_emit_builtin(&ctx->builder, var_id, SpvBuiltInClipDistance);
+         break;
+
+      default:
+         slot = handle_slot(ctx, slot);
+         spirv_builder_emit_location(&ctx->builder, var_id, slot);
+      }
    }
 
    if (var->data.location_frac)
@@ -323,9 +343,8 @@ emit_output(struct ntv_context *ctx, struct nir_variable *var)
    if (var->name)
       spirv_builder_emit_name(&ctx->builder, var_id, var->name);
 
-
-   if (ctx->stage == MESA_SHADER_VERTEX) {
-      unsigned slot = var->data.location;
+   unsigned slot = var->data.location;
+   if (ctx->stage != MESA_SHADER_FRAGMENT) {
       switch (slot) {
       HANDLE_EMIT_BUILTIN(POS, Position);
       HANDLE_EMIT_BUILTIN(PSIZ, PointSize);
@@ -352,7 +371,7 @@ emit_output(struct ntv_context *ctx, struct nir_variable *var)
       ctx->outputs[var->data.location] = var_id;
       ctx->so_output_gl_types[var->data.location] = var->type;
       ctx->so_output_types[var->data.location] = var_type;
-   } else if (ctx->stage == MESA_SHADER_FRAGMENT) {
+   } else {
       if (var->data.location >= FRAG_RESULT_DATA0) {
          spirv_builder_emit_location(&ctx->builder, var_id,
                                      var->data.location - FRAG_RESULT_DATA0);
@@ -367,8 +386,8 @@ emit_output(struct ntv_context *ctx, struct nir_variable *var)
             break;
 
          default:
-            spirv_builder_emit_location(&ctx->builder, var_id,
-                                        var->data.driver_location);
+            slot = handle_slot(ctx, slot);
+            spirv_builder_emit_location(&ctx->builder, var_id, slot);
             spirv_builder_emit_index(&ctx->builder, var_id, var->data.index);
          }
       }
@@ -913,7 +932,7 @@ emit_so_outputs(struct ntv_context *ctx,
       for (unsigned c = 0; c < so_output.num_components; c++) {
          components[c] = so_output.start_component + c;
          /* this is the second half of a 2 * vec4 array */
-         if (ctx->stage == MESA_SHADER_VERTEX && slot == VARYING_SLOT_CLIP_DIST1)
+         if (slot == VARYING_SLOT_CLIP_DIST1)
             components[c] += 4;
       }
 
@@ -940,7 +959,7 @@ emit_so_outputs(struct ntv_context *ctx,
                 uint32_t member[] = { so_output.start_component + c };
                 SpvId base_type = get_glsl_type(ctx, glsl_without_array(out_type));
 
-                if (ctx->stage == MESA_SHADER_VERTEX && slot == VARYING_SLOT_CLIP_DIST1)
+                if (slot == VARYING_SLOT_CLIP_DIST1)
                    member[0] += 4;
                 components[c] = spirv_builder_emit_composite_extract(&ctx->builder, base_type, src, member, 1);
              }
