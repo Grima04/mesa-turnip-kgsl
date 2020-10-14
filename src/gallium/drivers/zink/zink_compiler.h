@@ -69,6 +69,8 @@ struct zink_shader {
    } bindings[PIPE_MAX_CONSTANT_BUFFERS + PIPE_MAX_SHADER_SAMPLER_VIEWS];
    size_t num_bindings;
    struct set *programs;
+
+   bool has_geometry_shader; // vertex shaders need to know if a geometry shader exists
 };
 
 VkShaderModule

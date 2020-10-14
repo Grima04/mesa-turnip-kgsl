@@ -39,6 +39,7 @@ struct ntv_context {
    SpvId GLSL_std_450;
 
    gl_shader_stage stage;
+   const struct zink_so_info *so_info;
 
    SpvId ubos[128];
    size_t num_ubos;
@@ -1703,6 +1704,23 @@ emit_intrinsic(struct ntv_context *ctx, nir_intrinsic_instr *intr)
       emit_load_uint_input(ctx, intr, &ctx->invocation_id_var, "gl_InvocationId", SpvBuiltInInvocationId);
       break;
 
+   case nir_intrinsic_emit_vertex_with_counter:
+      /* geometry shader emits copied xfb outputs just prior to EmitVertex(),
+       * since that's the end of the shader
+       */
+      if (ctx->so_info)
+         emit_so_outputs(ctx, ctx->so_info);
+      spirv_builder_emit_vertex(&ctx->builder);
+      break;
+
+   case nir_intrinsic_set_vertex_and_primitive_count:
+      /* do nothing */
+      break;
+
+   case nir_intrinsic_end_primitive_with_counter:
+      spirv_builder_end_primitive(&ctx->builder);
+      break;
+
    default:
       fprintf(stderr, "emit_intrinsic: not implemented (%s)\n",
               nir_intrinsic_infos[intr->intrinsic].name);
@@ -2202,6 +2220,86 @@ emit_cf_list(struct ntv_context *ctx, struct exec_list *list)
    }
 }
 
+static SpvExecutionMode
+get_input_prim_type_mode(uint16_t type)
+{
+   switch (type) {
+   case GL_POINTS:
+      return SpvExecutionModeInputPoints;
+   case GL_LINES:
+   case GL_LINE_LOOP:
+   case GL_LINE_STRIP:
+      return SpvExecutionModeInputLines;
+   case GL_TRIANGLE_STRIP:
+   case GL_TRIANGLES:
+   case GL_TRIANGLE_FAN:
+      return SpvExecutionModeTriangles;
+   case GL_QUADS:
+   case GL_QUAD_STRIP:
+      return SpvExecutionModeQuads;
+      break;
+   case GL_POLYGON:
+      unreachable("handle polygons in gs");
+      break;
+   case GL_LINES_ADJACENCY:
+   case GL_LINE_STRIP_ADJACENCY:
+      return SpvExecutionModeInputLinesAdjacency;
+   case GL_TRIANGLES_ADJACENCY:
+   case GL_TRIANGLE_STRIP_ADJACENCY:
+      return SpvExecutionModeInputTrianglesAdjacency;
+      break;
+   case GL_ISOLINES:
+      return SpvExecutionModeIsolines;
+   default:
+      debug_printf("unknown geometry shader input mode %u\n", type);
+      unreachable("error!");
+      break;
+   }
+
+   return 0;
+}
+static SpvExecutionMode
+get_output_prim_type_mode(uint16_t type)
+{
+   switch (type) {
+   case GL_POINTS:
+      return SpvExecutionModeOutputPoints;
+   case GL_LINES:
+   case GL_LINE_LOOP:
+      unreachable("GL_LINES/LINE_LOOP passed as gs output");
+      break;
+   case GL_LINE_STRIP:
+      return SpvExecutionModeOutputLineStrip;
+   case GL_TRIANGLE_STRIP:
+      return SpvExecutionModeOutputTriangleStrip;
+   case GL_TRIANGLES:
+   case GL_TRIANGLE_FAN: //FIXME: not sure if right for output
+      return SpvExecutionModeTriangles;
+   case GL_QUADS:
+   case GL_QUAD_STRIP:
+      return SpvExecutionModeQuads;
+   case GL_POLYGON:
+      unreachable("handle polygons in gs");
+      break;
+   case GL_LINES_ADJACENCY:
+   case GL_LINE_STRIP_ADJACENCY:
+      unreachable("handle line adjacency in gs");
+      break;
+   case GL_TRIANGLES_ADJACENCY:
+   case GL_TRIANGLE_STRIP_ADJACENCY:
+      unreachable("handle triangle adjacency in gs");
+      break;
+   case GL_ISOLINES:
+      return SpvExecutionModeIsolines;
+   default:
+      debug_printf("unknown geometry shader output mode %u\n", type);
+      unreachable("error!");
+      break;
+   }
+
+   return 0;
+}
+
 struct spirv_shader *
 nir_to_spirv(struct nir_shader *s, const struct zink_so_info *so_info,
              unsigned char *shader_slot_map, unsigned char *shader_slots_reserved)
@@ -2228,6 +2326,10 @@ nir_to_spirv(struct nir_shader *s, const struct zink_so_info *so_info,
 
    case MESA_SHADER_GEOMETRY:
       spirv_builder_emit_cap(&ctx.builder, SpvCapabilityGeometry);
+      if (s->info.gs.active_stream_mask)
+         spirv_builder_emit_cap(&ctx.builder, SpvCapabilityGeometryStreams);
+      if (s->info.outputs_written & BITFIELD64_BIT(VARYING_SLOT_PSIZ))
+         spirv_builder_emit_cap(&ctx.builder, SpvCapabilityGeometryPointSize);
       break;
 
    default:
@@ -2249,6 +2351,7 @@ nir_to_spirv(struct nir_shader *s, const struct zink_so_info *so_info,
    }
 
    ctx.stage = s->info.stage;
+   ctx.so_info = so_info;
    ctx.shader_slot_map = shader_slot_map;
    ctx.shader_slots_reserved = *shader_slots_reserved;
    ctx.GLSL_std_450 = spirv_builder_import(&ctx.builder, "GLSL.std.450");
@@ -2309,20 +2412,28 @@ nir_to_spirv(struct nir_shader *s, const struct zink_so_info *so_info,
                                         nir_var_mem_ssbo))
          emit_uniform(&ctx, var);
 
-   if (s->info.stage == MESA_SHADER_FRAGMENT) {
+   switch (s->info.stage) {
+   case MESA_SHADER_FRAGMENT:
       spirv_builder_emit_exec_mode(&ctx.builder, entry_point,
                                    SpvExecutionModeOriginUpperLeft);
       if (s->info.outputs_written & BITFIELD64_BIT(FRAG_RESULT_DEPTH))
          spirv_builder_emit_exec_mode(&ctx.builder, entry_point,
                                       SpvExecutionModeDepthReplacing);
+      break;
+   case MESA_SHADER_GEOMETRY:
+      spirv_builder_emit_exec_mode(&ctx.builder, entry_point, get_input_prim_type_mode(s->info.gs.input_primitive));
+      spirv_builder_emit_exec_mode(&ctx.builder, entry_point, get_output_prim_type_mode(s->info.gs.output_primitive));
+      spirv_builder_emit_exec_mode_literal(&ctx.builder, entry_point, SpvExecutionModeInvocations, s->info.gs.invocations);
+      spirv_builder_emit_exec_mode_literal(&ctx.builder, entry_point, SpvExecutionModeOutputVertices, s->info.gs.vertices_out);
+      break;
+   default:
+      break;
    }
-
    if (so_info && so_info->so_info.num_outputs) {
       spirv_builder_emit_cap(&ctx.builder, SpvCapabilityTransformFeedback);
       spirv_builder_emit_exec_mode(&ctx.builder, entry_point,
                                    SpvExecutionModeXfb);
    }
-
    spirv_builder_function(&ctx.builder, entry_point, type_void,
                                             SpvFunctionControlMaskNone,
                                             type_main);
@@ -2369,7 +2480,8 @@ nir_to_spirv(struct nir_shader *s, const struct zink_so_info *so_info,
 
    emit_cf_list(&ctx, &entry->body);
 
-   if (so_info)
+   /* vertex shader emits copied xfb outputs at the end of the shader */
+   if (so_info && ctx.stage == MESA_SHADER_VERTEX)
       emit_so_outputs(&ctx, so_info);
 
    spirv_builder_return(&ctx.builder); // doesn't belong here, but whatevz

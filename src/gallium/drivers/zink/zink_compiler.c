@@ -221,7 +221,9 @@ zink_shader_compile(struct zink_screen *screen, struct zink_shader *zs,
                     unsigned char *shader_slot_map, unsigned char *shader_slots_reserved)
 {
    VkShaderModule mod = VK_NULL_HANDLE;
-   void *streamout = zs->streamout.so_info_slots ? &zs->streamout : NULL;
+   void *streamout = NULL;
+   if (zs->streamout.so_info_slots && (zs->nir->info.stage != MESA_SHADER_VERTEX || !zs->has_geometry_shader))
+      streamout = &zs->streamout;
    struct spirv_shader *spirv = nir_to_spirv(zs->nir, streamout, shader_slot_map, shader_slots_reserved);
    assert(spirv);
 
@@ -267,8 +269,10 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
       NIR_PASS_V(nir, nir_lower_uniforms_to_ubo, 16);
    NIR_PASS_V(nir, nir_lower_ubo_vec4);
    NIR_PASS_V(nir, nir_lower_clip_halfz);
-   if (nir->info.stage == MESA_SHADER_VERTEX)
+   if (nir->info.stage < MESA_SHADER_FRAGMENT)
       have_psiz = check_psiz(nir);
+   if (nir->info.stage == MESA_SHADER_GEOMETRY)
+      NIR_PASS_V(nir, nir_lower_gs_intrinsics, nir_lower_gs_intrinsics_per_stream);
    NIR_PASS_V(nir, nir_lower_regs_to_ssa);
    optimize_nir(nir);
    NIR_PASS_V(nir, nir_remove_dead_variables, nir_var_function_temp, NULL);

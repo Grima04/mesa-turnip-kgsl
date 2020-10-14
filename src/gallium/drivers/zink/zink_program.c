@@ -153,6 +153,7 @@ update_shader_modules(struct zink_context *ctx, struct zink_shader *stages[ZINK_
          prog->modules[type] = CALLOC_STRUCT(zink_shader_module);
          assert(prog->modules[type]);
          pipe_reference_init(&prog->modules[type]->reference, 1);
+         dirty[i]->has_geometry_shader = dirty[MESA_SHADER_GEOMETRY] || stages[PIPE_SHADER_GEOMETRY];
          prog->modules[type]->shader = zink_shader_compile(zink_screen(ctx->base.screen), dirty[i],
                                                            prog->shader_slot_map, &prog->shader_slots_reserved);
       } else if (stages[type]) /* reuse existing shader module */
