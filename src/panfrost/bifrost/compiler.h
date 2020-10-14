@@ -481,6 +481,8 @@ typedef struct {
        /* Stats for shader-db */
        unsigned instruction_count;
        unsigned loop_count;
+       unsigned spills;
+       unsigned fills;
 } bi_context;
 
 static inline bi_instruction *
