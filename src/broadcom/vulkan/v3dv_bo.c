@@ -447,6 +447,7 @@ v3dv_bo_free(struct v3dv_device *device,
 
    if (bo->private &&
        bo->size > cache->max_cache_size - cache->cache_size) {
+      clock_gettime(CLOCK_MONOTONIC, &time);
       mtx_lock(&cache->lock);
       free_stale_bos(device, time.tv_sec);
       mtx_unlock(&cache->lock);
