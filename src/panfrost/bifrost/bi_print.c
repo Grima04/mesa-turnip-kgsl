@@ -285,6 +285,9 @@ bi_print_instruction(bi_instruction *ins, FILE *fp)
         if (ins->skip)
                 fprintf(fp, ".skip");
 
+        if (ins->no_spill)
+                fprintf(fp, ".no_spill");
+
         if (ins->vector_channels)
                 fprintf(fp, ".v%u", ins->vector_channels);
 

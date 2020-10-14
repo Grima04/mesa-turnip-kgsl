@@ -314,6 +314,10 @@ typedef struct {
         /* For memory ops, base address */
         enum bi_segment segment;
 
+        /* Can we spill the value written here? Used to prevent
+         * useless double fills */
+        bool no_spill;
+
         /* A class-specific op from which the actual opcode can be derived
          * (along with the above information) */
 
