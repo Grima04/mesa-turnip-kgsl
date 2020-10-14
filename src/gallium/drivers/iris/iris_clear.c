@@ -135,14 +135,12 @@ can_fast_clear_color(struct iris_context *ice,
 }
 
 static union isl_color_value
-convert_fast_clear_color(struct iris_context *ice,
-                         struct iris_resource *res,
-                         const union isl_color_value color)
+convert_clear_color(enum pipe_format format,
+                    const union pipe_color_union *color)
 {
-   union isl_color_value override_color = color;
-   struct pipe_resource *p_res = (void *) res;
+   /* pipe_color_union and isl_color_value are interchangeable */
+   union isl_color_value override_color = *(union isl_color_value *)color;
 
-   const enum pipe_format format = p_res->format;
    const struct util_format_description *desc =
       util_format_description(format);
    unsigned colormask = util_format_colormask(desc);
@@ -213,8 +211,6 @@ fast_clear_color(struct iris_context *ice,
 {
    struct iris_batch *batch = &ice->batches[IRIS_BATCH_RENDER];
    struct pipe_resource *p_res = (void *) res;
-
-   color = convert_fast_clear_color(ice, res, color);
 
    bool color_changed = !!memcmp(&res->aux.clear_color, &color,
                                  sizeof(color));
@@ -694,9 +690,6 @@ iris_clear(struct pipe_context *ctx,
    }
 
    if (buffers & PIPE_CLEAR_COLOR) {
-      /* pipe_color_union and isl_color_value are interchangeable */
-      union isl_color_value *color = (void *) p_color;
-
       for (unsigned i = 0; i < cso_fb->nr_cbufs; i++) {
          if (buffers & (PIPE_CLEAR_COLOR0 << i)) {
             struct pipe_surface *psurf = cso_fb->cbufs[i];
@@ -706,7 +699,7 @@ iris_clear(struct pipe_context *ctx,
 
             clear_color(ice, psurf->texture, psurf->u.tex.level, &box,
                         true, isurf->view.format, isurf->view.swizzle,
-                        *color);
+                        convert_clear_color(psurf->format, p_color));
          }
       }
    }
@@ -804,12 +797,10 @@ iris_clear_render_target(struct pipe_context *ctx,
       .depth = psurf->u.tex.last_layer - psurf->u.tex.first_layer + 1
    };
 
-   /* pipe_color_union and isl_color_value are interchangeable */
-   union isl_color_value *color = (void *) p_color;
-
    clear_color(ice, psurf->texture, psurf->u.tex.level, &box,
                render_condition_enabled,
-               isurf->view.format, isurf->view.swizzle, *color);
+               isurf->view.format, isurf->view.swizzle,
+               convert_clear_color(psurf->format, p_color));
 }
 
 /**
