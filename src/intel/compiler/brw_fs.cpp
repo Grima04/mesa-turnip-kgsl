@@ -8975,7 +8975,6 @@ brw_compile_cs(const struct brw_compiler *compiler, void *log_data,
                char **error_str)
 {
    prog_data->base.total_shared = nir->info.cs.shared_size;
-   prog_data->slm_size = nir->shared_size;
 
    /* Generate code for all the possible SIMD variants. */
    bool generate_all;

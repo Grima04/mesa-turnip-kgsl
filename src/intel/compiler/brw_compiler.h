@@ -969,7 +969,6 @@ struct brw_cs_prog_data {
    struct brw_stage_prog_data base;
 
    unsigned local_size[3];
-   unsigned slm_size;
 
    /* Program offsets for the 8/16/32 SIMD variants.  Multiple variants are
     * kept when using variable group size, and the right one can only be

@@ -2408,7 +2408,7 @@ VkResult anv_GetPipelineExecutableStatisticsKHR(
                    "Number of bytes of workgroup shared memory used by this "
                    "compute shader including any padding.");
          stat->format = VK_PIPELINE_EXECUTABLE_STATISTIC_FORMAT_UINT64_KHR;
-         stat->value.u64 = brw_cs_prog_data_const(prog_data)->slm_size;
+         stat->value.u64 = prog_data->total_shared;
       }
    }
 
