@@ -70,6 +70,9 @@ zink_clear_texture(struct pipe_context *ctx,
 bool
 zink_fb_clear_needs_explicit(struct zink_framebuffer_clear *fb_clear);
 
+bool
+zink_fb_clear_first_needs_explicit(struct zink_framebuffer_clear *fb_clear);
+
 void
 zink_clear_framebuffer(struct zink_context *ctx, unsigned clear_buffers);
 
@@ -90,6 +93,12 @@ zink_fb_clear_reset(struct zink_framebuffer_clear *fb_clear)
 {
    util_dynarray_fini(&fb_clear->clears);
    fb_clear->enabled = false;
+}
+
+static inline bool
+zink_fb_clear_element_needs_explicit(struct zink_framebuffer_clear_data *clear)
+{
+   return clear->has_scissor || clear->conditional;
 }
 
 void
