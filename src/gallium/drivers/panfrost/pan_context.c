@@ -401,7 +401,7 @@ panfrost_draw_emit_tiler(struct panfrost_batch *batch,
 
                 pan_emit_draw_descs(batch, &cfg, PIPE_SHADER_FRAGMENT);
 
-                if (ctx->occlusion_query) {
+                if (ctx->occlusion_query && ctx->active_queries) {
                         if (ctx->occlusion_query->type == PIPE_QUERY_OCCLUSION_COUNTER)
                                 cfg.occlusion_query = MALI_OCCLUSION_MODE_COUNTER;
                         else
