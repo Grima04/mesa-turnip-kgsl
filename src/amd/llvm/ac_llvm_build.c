@@ -2701,7 +2701,7 @@ static bool ac_eliminate_const_output(uint8_t *vs_output_param_offset, uint32_t 
                                       struct ac_vs_exp_inst *exp)
 {
    unsigned i, default_val; /* SPI_PS_INPUT_CNTL_i.DEFAULT_VAL */
-   bool is_zero[4] = {}, is_one[4] = {};
+   bool is_zero[4] = {0}, is_one[4] = {0};
 
    for (i = 0; i < 4; i++) {
       /* It's a constant expression. Undef outputs are eliminated too. */
@@ -3268,7 +3268,7 @@ LLVMValueRef ac_unpack_param(struct ac_llvm_context *ctx, LLVMValueRef param, un
 void ac_apply_fmask_to_sample(struct ac_llvm_context *ac, LLVMValueRef fmask, LLVMValueRef *addr,
                               bool is_array_tex)
 {
-   struct ac_image_args fmask_load = {};
+   struct ac_image_args fmask_load = {0};
    fmask_load.opcode = ac_image_load;
    fmask_load.resource = fmask;
    fmask_load.dmask = 0xf;
@@ -4486,11 +4486,11 @@ void ac_build_sendmsg_gs_alloc_req(struct ac_llvm_context *ctx, LLVMValueRef wav
    ac_build_sendmsg(ctx, AC_SENDMSG_GS_ALLOC_REQ, tmp);
 
    if (export_dummy_prim) {
-      struct ac_ngg_prim prim = {};
+      struct ac_ngg_prim prim = {0};
       /* The vertex indices are 0,0,0. */
       prim.passthrough = ctx->i32_0;
 
-      struct ac_export_args pos = {};
+      struct ac_export_args pos = {0};
       pos.out[0] = pos.out[1] = pos.out[2] = pos.out[3] = ctx->f32_0;
       pos.target = V_008DFC_SQ_EXP_POS;
       pos.enabled_channels = 0xf;

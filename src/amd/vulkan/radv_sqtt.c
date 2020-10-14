@@ -614,7 +614,7 @@ radv_get_thread_trace(struct radv_queue *queue,
 		void *data_ptr = thread_trace_ptr + data_offset;
 		struct radv_thread_trace_info *info =
 			(struct radv_thread_trace_info *)info_ptr;
-		struct radv_thread_trace_se thread_trace_se = {};
+		struct radv_thread_trace_se thread_trace_se = {0};
 
 		if (!radv_is_thread_trace_complete(device, info)) {
 			uint32_t expected_size =

@@ -1659,8 +1659,8 @@ radv_emit_streamout(struct radv_shader_context *ctx, unsigned stream)
 		/* Load the descriptor and compute the write offset for each
 		 * enabled buffer.
 		 */
-		LLVMValueRef so_write_offset[4] = {};
-		LLVMValueRef so_buffers[4] = {};
+		LLVMValueRef so_write_offset[4] = {0};
+		LLVMValueRef so_buffers[4] = {0};
 		LLVMValueRef buf_ptr = ac_get_arg(&ctx->ac, ctx->args->streamout_buffers);
 
 		for (i = 0; i < 4; i++) {
@@ -1690,7 +1690,7 @@ radv_emit_streamout(struct radv_shader_context *ctx, unsigned stream)
 
 		/* Write streamout data. */
 		for (i = 0; i < ctx->args->shader_info->so.num_outputs; i++) {
-			struct radv_shader_output_values shader_out = {};
+			struct radv_shader_output_values shader_out = {0};
 			struct radv_stream_output *output =
 				&ctx->args->shader_info->so.outputs[i];
 
@@ -1754,7 +1754,7 @@ radv_llvm_export_vs(struct radv_shader_context *ctx,
 		    bool export_clip_dists)
 {
 	LLVMValueRef psize_value = NULL, layer_value = NULL, viewport_value = NULL;
-	struct ac_export_args pos_args[4] = {};
+	struct ac_export_args pos_args[4] = {0};
 	unsigned pos_idx, index;
 	int i;
 
@@ -2223,7 +2223,7 @@ static void build_streamout_vertex(struct radv_shader_context *ctx,
 {
 	struct radv_streamout_info *so = &ctx->args->shader_info->so;
 	LLVMBuilderRef builder = ctx->ac.builder;
-	LLVMValueRef offset[4] = {};
+	LLVMValueRef offset[4] = {0};
 	LLVMValueRef tmp;
 
 	for (unsigned buffer = 0; buffer < 4; ++buffer) {
@@ -2279,7 +2279,7 @@ static void build_streamout_vertex(struct radv_shader_context *ctx,
 			    output->stream != stream)
 				continue;
 
-			struct radv_shader_output_values out = {};
+			struct radv_shader_output_values out = {0};
 
 			for (unsigned j = 0; j < 4; j++) {
 				out.values[j] = outputs[i].values[j];
@@ -2295,7 +2295,7 @@ static void build_streamout_vertex(struct radv_shader_context *ctx,
 			if (stream != output->stream)
 				continue;
 
-			struct radv_shader_output_values out = {};
+			struct radv_shader_output_values out = {0};
 
 			for (unsigned comp = 0; comp < 4; comp++) {
 				if (!(output->component_mask & (1 << comp)))
@@ -2342,13 +2342,13 @@ static void build_streamout(struct radv_shader_context *ctx,
 	LLVMValueRef i32_2 = LLVMConstInt(ctx->ac.i32, 2, false);
 	LLVMValueRef i32_4 = LLVMConstInt(ctx->ac.i32, 4, false);
 	LLVMValueRef i32_8 = LLVMConstInt(ctx->ac.i32, 8, false);
-	LLVMValueRef so_buffer[4] = {};
+	LLVMValueRef so_buffer[4] = {0};
 	unsigned max_num_vertices = 1 + (nggso->vertices[1] ? 1 : 0) +
 					(nggso->vertices[2] ? 1 : 0);
-	LLVMValueRef prim_stride_dw[4] = {};
+	LLVMValueRef prim_stride_dw[4] = {0};
 	LLVMValueRef prim_stride_dw_vgpr = LLVMGetUndef(ctx->ac.i32);
 	int stream_for_buffer[4] = { -1, -1, -1, -1 };
-	unsigned bufmask_for_stream[4] = {};
+	unsigned bufmask_for_stream[4] = {0};
 	bool isgs = ctx->stage == MESA_SHADER_GEOMETRY;
 	unsigned scratch_emit_base = isgs ? 4 : 0;
 	LLVMValueRef scratch_emit_basev = isgs ? i32_4 : ctx->ac.i32_0;
@@ -2463,7 +2463,7 @@ static void build_streamout(struct radv_shader_context *ctx,
 		 * because LLVM can't generate divide-by-multiply if we try to do this
 		 * via VALU with one lane per buffer.
 		 */
-		LLVMValueRef max_emit[4] = {};
+		LLVMValueRef max_emit[4] = {0};
 		for (unsigned buffer = 0; buffer < 4; ++buffer) {
 			if (stream_for_buffer[buffer] == -1)
 				continue;
@@ -2560,7 +2560,7 @@ static void build_streamout(struct radv_shader_context *ctx,
 
 	/* Determine the workgroup-relative per-thread / primitive offset into
 	 * the streamout buffers */
-	struct ac_wg_scan primemit_scan[4] = {};
+	struct ac_wg_scan primemit_scan[4] = {0};
 
 	if (isgs) {
 		for (unsigned stream = 0; stream < 4; ++stream) {
@@ -2583,7 +2583,7 @@ static void build_streamout(struct radv_shader_context *ctx,
 	ac_build_s_barrier(&ctx->ac);
 
 	/* Fetch the per-buffer offsets and per-stream emit counts in all waves. */
-	LLVMValueRef wgoffset_dw[4] = {};
+	LLVMValueRef wgoffset_dw[4] = {0};
 
 	{
 		LLVMValueRef scratch_vgpr;
@@ -2754,7 +2754,7 @@ handle_ngg_outputs_post_2(struct radv_shader_context *ctx)
 
 	/* Streamout */
 	if (ctx->args->shader_info->so.num_outputs) {
-		struct ngg_streamout nggso = {};
+		struct ngg_streamout nggso = {0};
 
 		nggso.num_vertices = num_vertices_val;
 		nggso.prim_enable[0] = is_gs_thread;
@@ -2805,7 +2805,7 @@ handle_ngg_outputs_post_2(struct radv_shader_context *ctx)
 	 */
 	ac_build_ifcc(&ctx->ac, is_gs_thread, 6001);
 	{
-		struct ac_ngg_prim prim = {};
+		struct ac_ngg_prim prim = {0};
 
 		if (ctx->args->options->key.vs_common_out.as_ngg_passthrough) {
 			prim.passthrough = ac_get_arg(&ctx->ac, ctx->args->gs_vtx_offset[0]);
@@ -2977,7 +2977,7 @@ static void gfx10_ngg_gs_emit_epilogue_2(struct radv_shader_context *ctx)
 
 	/* Streamout */
 	if (ctx->args->shader_info->so.num_outputs) {
-		struct ngg_streamout nggso = {};
+		struct ngg_streamout nggso = {0};
 
 		nggso.num_vertices = LLVMConstInt(ctx->ac.i32, verts_per_prim, false);
 
@@ -3067,7 +3067,7 @@ static void gfx10_ngg_gs_emit_epilogue_2(struct radv_shader_context *ctx)
 
 	/* Inclusive scan addition across the current wave. */
 	LLVMValueRef vertlive = LLVMBuildLoad(builder, vertliveptr, "");
-	struct ac_wg_scan vertlive_scan = {};
+	struct ac_wg_scan vertlive_scan = {0};
 	vertlive_scan.op = nir_op_iadd;
 	vertlive_scan.enable_reduce = true;
 	vertlive_scan.enable_exclusive = true;
@@ -3119,7 +3119,7 @@ static void gfx10_ngg_gs_emit_epilogue_2(struct radv_shader_context *ctx)
 	ac_build_ifcc(&ctx->ac, tmp, 5140);
 	{
 		LLVMValueRef flags;
-		struct ac_ngg_prim prim = {};
+		struct ac_ngg_prim prim = {0};
 		prim.num_vertices = verts_per_prim;
 
 		tmp = ngg_gs_vertex_ptr(ctx, tid);

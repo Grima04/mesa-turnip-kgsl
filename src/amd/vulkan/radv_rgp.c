@@ -586,10 +586,10 @@ radv_sqtt_dump_data(struct radv_device *device,
 		    const struct radv_thread_trace *thread_trace,
 		    FILE *output)
 {
-	struct sqtt_file_chunk_asic_info asic_info = {};
-	struct sqtt_file_chunk_cpu_info cpu_info = {};
-	struct sqtt_file_chunk_api_info api_info = {};
-	struct sqtt_file_header header = {};
+	struct sqtt_file_chunk_asic_info asic_info = {0};
+	struct sqtt_file_chunk_cpu_info cpu_info = {0};
+	struct sqtt_file_chunk_api_info api_info = {0};
+	struct sqtt_file_header header = {0};
 	size_t file_offset = 0;
 
 	/* SQTT header file. */
@@ -616,8 +616,8 @@ radv_sqtt_dump_data(struct radv_device *device,
 		for (unsigned i = 0; i < thread_trace->num_traces; i++) {
 			const struct radv_thread_trace_se *se = &thread_trace->traces[i];
 			const struct radv_thread_trace_info *info = &se->info;
-			struct sqtt_file_chunk_sqtt_desc desc = {};
-			struct sqtt_file_chunk_sqtt_data data = {};
+			struct sqtt_file_chunk_sqtt_desc desc = {0};
+			struct sqtt_file_chunk_sqtt_data data = {0};
 			uint64_t size = info->cur_offset * 32; /* unit of 32 bytes */
 
 			/* SQTT desc chunk. */

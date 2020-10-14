@@ -452,7 +452,7 @@ static unsigned radv_choose_spi_color_format(VkFormat vk_format,
 					     bool blend_need_alpha)
 {
 	const struct vk_format_description *desc = vk_format_description(vk_format);
-	struct ac_spi_color_formats formats = {};
+	struct ac_spi_color_formats formats = {0};
 	unsigned format, ntype, swap;
 
 	format = radv_translate_colorformat(vk_format);
@@ -3035,8 +3035,8 @@ VkResult radv_create_shaders(struct radv_pipeline *pipeline,
 		struct radv_shader_binary *gs_copy_binary = NULL;
 		if (!pipeline->gs_copy_shader &&
 		    !radv_pipeline_has_ngg(pipeline)) {
-			struct radv_shader_info info = {};
-			struct radv_shader_variant_key key = {};
+			struct radv_shader_info info = {0};
+			struct radv_shader_variant_key key = {0};
 
 			key.has_multiview_view_index =
 				keys[MESA_SHADER_GEOMETRY].has_multiview_view_index;

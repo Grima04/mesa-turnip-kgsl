@@ -903,7 +903,7 @@ radv_decompress_resolve_subpass_src(struct radv_cmd_buffer *cmd_buffer)
 		struct radv_image_view *src_iview = cmd_buffer->state.attachments[src_att.attachment].iview;
 		struct radv_image *src_image = src_iview->image;
 
-		VkImageResolve2KHR region = {};
+		VkImageResolve2KHR region = {0};
 		region.sType = VK_STRUCTURE_TYPE_IMAGE_RESOLVE_2_KHR;
 		region.srcSubresource.aspectMask = src_iview->aspect_mask;
 		region.srcSubresource.mipLevel = 0;
@@ -919,7 +919,7 @@ radv_decompress_resolve_subpass_src(struct radv_cmd_buffer *cmd_buffer)
 		struct radv_image_view *src_iview = fb->attachments[src_att.attachment];
 		struct radv_image *src_image = src_iview->image;
 
-		VkImageResolve2KHR region = {};
+		VkImageResolve2KHR region = {0};
 		region.sType = VK_STRUCTURE_TYPE_IMAGE_RESOLVE_2_KHR;
 		region.srcSubresource.aspectMask = src_iview->aspect_mask;
 		region.srcSubresource.mipLevel = 0;
@@ -958,7 +958,7 @@ radv_decompress_resolve_src(struct radv_cmd_buffer *cmd_buffer,
 		radv_meta_get_iview_layer(src_image, &region->srcSubresource,
 					  &region->srcOffset);
 
-	VkImageMemoryBarrier barrier = {};
+	VkImageMemoryBarrier barrier = {0};
 	barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
 	barrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
 	barrier.oldLayout = src_image_layout;

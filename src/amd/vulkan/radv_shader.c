@@ -1279,7 +1279,7 @@ shader_variant_compile(struct radv_device *device,
 	options->debug.func = radv_compiler_debug;
 	options->debug.private_data = &debug_data;
 
-	struct radv_shader_args args = {};
+	struct radv_shader_args args = {0};
 	args.options = options;
 	args.shader_info = info;
 	args.is_gs_copy_shader = gs_copy_shader;
@@ -1563,7 +1563,7 @@ radv_GetShaderInfoAMD(VkDevice _device,
 			unsigned lds_multiplier = device->physical_device->rad_info.chip_class >= GFX7 ? 512 : 256;
 			struct ac_shader_config *conf = &variant->config;
 
-			VkShaderStatisticsInfoAMD statistics = {};
+			VkShaderStatisticsInfoAMD statistics = {0};
 			statistics.shaderStageMask = shaderStage;
 			statistics.numPhysicalVgprs = device->physical_device->rad_info.num_physical_wave64_vgprs_per_simd;
 			statistics.numPhysicalSgprs = device->physical_device->rad_info.num_physical_sgprs_per_simd;
@@ -1647,7 +1647,7 @@ radv_dump_shader_stats(struct radv_device *device,
 	uint32_t prop_count = 0;
 	VkResult result;
 
-	VkPipelineInfoKHR pipeline_info = {};
+	VkPipelineInfoKHR pipeline_info = {0};
 	pipeline_info.sType = VK_STRUCTURE_TYPE_PIPELINE_INFO_KHR;
 	pipeline_info.pipeline = radv_pipeline_to_handle(pipeline);
 
@@ -1675,7 +1675,7 @@ radv_dump_shader_stats(struct radv_device *device,
 		uint32_t stat_count = 0;
 		VkResult result;
 
-		VkPipelineExecutableInfoKHR exec_info = {};
+		VkPipelineExecutableInfoKHR exec_info = {0};
 		exec_info.pipeline = radv_pipeline_to_handle(pipeline);
 		exec_info.executableIndex = i;
 

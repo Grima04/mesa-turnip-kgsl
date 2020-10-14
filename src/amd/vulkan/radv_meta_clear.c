@@ -1599,7 +1599,7 @@ static void vi_get_fast_clear_parameters(struct radv_device *device,
 					 uint32_t* reset_value,
 					 bool *can_avoid_fast_clear_elim)
 {
-	bool values[4] = {};
+	bool values[4] = {0};
 	int extra_channel;
 	bool main_value = false;
 	bool extra_value = false;

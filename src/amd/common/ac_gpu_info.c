@@ -178,12 +178,12 @@ has_tmz_support(amdgpu_device_handle dev,
 bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
                        struct amdgpu_gpu_info *amdinfo)
 {
-   struct drm_amdgpu_info_device device_info = {};
-   struct amdgpu_buffer_size_alignments alignment_info = {};
-   struct drm_amdgpu_info_hw_ip dma = {}, compute = {}, uvd = {};
-   struct drm_amdgpu_info_hw_ip uvd_enc = {}, vce = {}, vcn_dec = {}, vcn_jpeg = {};
-   struct drm_amdgpu_info_hw_ip vcn_enc = {}, gfx = {};
-   struct amdgpu_gds_resource_info gds = {};
+   struct drm_amdgpu_info_device device_info = {0};
+   struct amdgpu_buffer_size_alignments alignment_info = {0};
+   struct drm_amdgpu_info_hw_ip dma = {0}, compute = {0}, uvd = {0};
+   struct drm_amdgpu_info_hw_ip uvd_enc = {0}, vce = {0}, vcn_dec = {0}, vcn_jpeg = {0};
+   struct drm_amdgpu_info_hw_ip vcn_enc = {0}, gfx = {0};
+   struct amdgpu_gds_resource_info gds = {0};
    uint32_t vce_version = 0, vce_feature = 0, uvd_version = 0, uvd_feature = 0;
    int r, i, j;
    amdgpu_device_handle dev = dev_p;
@@ -331,7 +331,7 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
    }
 
    if (info->drm_minor >= 9) {
-      struct drm_amdgpu_memory_info meminfo = {};
+      struct drm_amdgpu_memory_info meminfo = {0};
 
       r = amdgpu_query_info(dev, AMDGPU_INFO_MEMORY, sizeof(meminfo), &meminfo);
       if (r) {

@@ -1274,7 +1274,7 @@ static LLVMValueRef lower_gather4_integer(struct ac_llvm_context *ctx, nir_varia
       assert(!wa_8888);
       half_texel[0] = half_texel[1] = LLVMConstReal(ctx->f32, -0.5);
    } else {
-      struct ac_image_args resinfo = {};
+      struct ac_image_args resinfo = {0};
       LLVMBasicBlockRef bbs[2];
 
       LLVMValueRef unnorm = NULL;
@@ -2385,7 +2385,7 @@ static LLVMValueRef visit_image_load(struct ac_nir_context *ctx, const nir_intri
    struct waterfall_context wctx;
    LLVMValueRef dynamic_index = enter_waterfall_image(ctx, &wctx, instr);
 
-   struct ac_image_args args = {};
+   struct ac_image_args args = {0};
 
    args.cache_policy = get_cache_policy(ctx, access, false, false);
 
@@ -2455,7 +2455,7 @@ static void visit_image_store(struct ac_nir_context *ctx, const nir_intrinsic_in
    LLVMValueRef dynamic_index = enter_waterfall_image(ctx, &wctx, instr);
 
    bool writeonly_memory = access & ACCESS_NON_READABLE;
-   struct ac_image_args args = {};
+   struct ac_image_args args = {0};
 
    args.cache_policy = get_cache_policy(ctx, access, true, writeonly_memory);
 
@@ -2627,7 +2627,7 @@ static LLVMValueRef visit_image_atomic(struct ac_nir_context *ctx, const nir_int
       assert(length < sizeof(intrinsic_name));
       result = ac_build_intrinsic(&ctx->ac, intrinsic_name, ctx->ac.i32, params, param_count, 0);
    } else {
-      struct ac_image_args args = {};
+      struct ac_image_args args = {0};
       args.opcode = cmpswap ? ac_image_atomic_cmpswap : ac_image_atomic;
       args.atomic = atomic_subop;
       args.data[0] = params[0];
@@ -4771,7 +4771,7 @@ static void setup_shared(struct ac_nir_context *ctx, struct nir_shader *nir)
 void ac_nir_translate(struct ac_llvm_context *ac, struct ac_shader_abi *abi,
                       const struct ac_shader_args *args, struct nir_shader *nir)
 {
-   struct ac_nir_context ctx = {};
+   struct ac_nir_context ctx = {0};
    struct nir_function *func;
 
    ctx.ac = *ac;

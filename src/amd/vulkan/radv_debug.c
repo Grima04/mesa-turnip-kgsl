@@ -534,7 +534,7 @@ static void
 radv_dump_device_name(struct radv_device *device, FILE *f)
 {
 	struct radeon_info *info = &device->physical_device->rad_info;
-	char kernel_version[128] = {};
+	char kernel_version[128] = {0};
 	struct utsname uname_data;
 	const char *chip_name;
 

@@ -202,7 +202,7 @@ static bool read_private_lds_symbols(struct ac_rtld_binary *binary, unsigned par
    size_t num_symbols = symbols_data->d_size / sizeof(Elf64_Sym);
 
    for (size_t j = 0; j < num_symbols; ++j, ++symbol) {
-      struct ac_rtld_symbol s = {};
+      struct ac_rtld_symbol s = {0};
 
       if (ELF64_ST_TYPE(symbol->st_info) == STT_AMDGPU_LDS) {
          /* old-style LDS symbols from initial prototype -- remove eventually */
@@ -520,7 +520,7 @@ bool ac_rtld_read_config(const struct radeon_info *info, struct ac_rtld_binary *
          return false;
 
       /* TODO: be precise about scratch use? */
-      struct ac_shader_config c = {};
+      struct ac_shader_config c = {0};
       ac_parse_shader_binary_config(config_data, config_nbytes, binary->wave_size, true, info, &c);
 
       config->num_sgprs = MAX2(config->num_sgprs, c.num_sgprs);
