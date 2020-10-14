@@ -72,6 +72,7 @@ files_mesa_util = files(
   'os_socket.h',
   'u_process.c',
   'u_process.h',
+  'rwlock.h',
   'sha1/sha1.c',
   'sha1/sha1.h',
   'ralloc.c',

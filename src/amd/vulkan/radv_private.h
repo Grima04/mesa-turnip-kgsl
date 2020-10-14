@@ -48,6 +48,7 @@
 #include "compiler/shader_enums.h"
 #include "util/macros.h"
 #include "util/list.h"
+#include "util/rwlock.h"
 #include "util/xmlconfig.h"
 #include "vk_alloc.h"
 #include "vk_debug_report.h"
@@ -741,7 +742,7 @@ struct radv_queue {
 struct radv_bo_list {
 	struct radv_winsys_bo_list list;
 	unsigned capacity;
-	pthread_rwlock_t rwlock;
+	struct u_rwlock rwlock;
 };
 
 VkResult radv_bo_list_add(struct radv_device *device,
