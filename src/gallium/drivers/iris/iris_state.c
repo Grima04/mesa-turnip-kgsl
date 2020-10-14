@@ -6742,12 +6742,9 @@ iris_upload_gpgpu_walker(struct iris_context *ice,
                       IRIS_STAGE_DIRTY_CS)) {
       uint32_t desc[GENX(INTERFACE_DESCRIPTOR_DATA_length)];
 
-      unsigned slm_size = prog_data->total_shared;
-      if (ish->kernel_shared_size)
-         slm_size = ALIGN(slm_size, 8) + ish->kernel_shared_size;
-
       iris_pack_state(GENX(INTERFACE_DESCRIPTOR_DATA), desc, idd) {
-         idd.SharedLocalMemorySize = encode_slm_size(GEN_GEN, slm_size);
+         idd.SharedLocalMemorySize =
+            encode_slm_size(GEN_GEN, ish->kernel_shared_size);
          idd.KernelStartPointer =
             KSP(shader) + brw_cs_prog_data_prog_offset(cs_prog_data, simd_size);
          idd.SamplerStatePointer = shs->sampler_table.offset;
