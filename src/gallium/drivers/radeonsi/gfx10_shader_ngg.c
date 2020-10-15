@@ -555,13 +555,14 @@ enum
    lds_byte3_unused,
 
    lds_packed_data = 0, /* lds_byteN_... */
+   lds_pos_cull_x_div_w,
+   lds_pos_cull_y_div_w,
+   lds_pos_cull_w,
 
-   lds_pos_x,
+   lds_pos_x = lds_packed_data + 1,
    lds_pos_y,
    lds_pos_z,
    lds_pos_w,
-   lds_pos_x_div_w,
-   lds_pos_y_div_w,
    /* If VS: */
    lds_vertex_id,
    lds_instance_id, /* optional */
@@ -603,17 +604,17 @@ static unsigned ngg_nogs_vertex_size(struct si_shader *shader)
 
    if (shader->key.opt.ngg_culling) {
       if (shader->selector->info.stage == MESA_SHADER_VERTEX) {
-         STATIC_ASSERT(lds_instance_id + 1 == 9);
-         lds_vertex_size = MAX2(lds_vertex_size, 9);
+         STATIC_ASSERT(lds_instance_id + 1 == 7);
+         lds_vertex_size = MAX2(lds_vertex_size, 7);
       } else {
          assert(shader->selector->info.stage == MESA_SHADER_TESS_EVAL);
 
          if (shader->selector->info.uses_primid || shader->key.mono.u.vs_export_prim_id) {
-            STATIC_ASSERT(lds_tes_patch_id + 2 == 11);
-            lds_vertex_size = MAX2(lds_vertex_size, 11);
-         } else {
-            STATIC_ASSERT(lds_tes_v + 1 == 9);
+            STATIC_ASSERT(lds_tes_patch_id + 2 == 9); /* +1 for LDS padding */
             lds_vertex_size = MAX2(lds_vertex_size, 9);
+         } else {
+            STATIC_ASSERT(lds_tes_v + 1 == 7);
+            lds_vertex_size = MAX2(lds_vertex_size, 7);
          }
       }
    }
@@ -770,14 +771,14 @@ void gfx10_emit_ngg_culling_epilogue(struct ac_shader_abi *abi, unsigned max_out
          /* Store Position.W into LDS. */
          LLVMBuildStore(
             builder, ac_to_integer(&ctx->ac, position[3]),
-            ac_build_gep0(&ctx->ac, es_vtxptr, LLVMConstInt(ctx->ac.i32, lds_pos_w, 0)));
+            ac_build_gep0(&ctx->ac, es_vtxptr, LLVMConstInt(ctx->ac.i32, lds_pos_cull_w, 0)));
 
          /* Store Position.XY / W into LDS. */
          for (unsigned chan = 0; chan < 2; chan++) {
             LLVMValueRef val = ac_build_fdiv(&ctx->ac, position[chan], position[3]);
             LLVMBuildStore(
                builder, ac_to_integer(&ctx->ac, val),
-               ac_build_gep0(&ctx->ac, es_vtxptr, LLVMConstInt(ctx->ac.i32, lds_pos_x_div_w + chan, 0)));
+               ac_build_gep0(&ctx->ac, es_vtxptr, LLVMConstInt(ctx->ac.i32, lds_pos_cull_x_div_w + chan, 0)));
          }
          break;
       }
@@ -869,9 +870,9 @@ void gfx10_emit_ngg_culling_epilogue(struct ac_shader_abi *abi, unsigned max_out
          for (unsigned chan = 0; chan < 4; chan++) {
             unsigned index;
             if (chan == 0 || chan == 1)
-               index = lds_pos_x_div_w + chan;
+               index = lds_pos_cull_x_div_w + chan;
             else if (chan == 3)
-               index = lds_pos_w;
+               index = lds_pos_cull_w;
             else
                continue;
 
