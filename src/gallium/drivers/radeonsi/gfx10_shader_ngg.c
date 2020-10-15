@@ -550,7 +550,6 @@ enum
     * Byte 3: Unused
     */
    lds_byte0_accept_flag = 0,
-   lds_byte0_old_thread_id = 0,
    lds_byte1_new_thread_id,
    lds_byte2_tes_rel_patch_id,
    lds_byte3_unused,
@@ -784,46 +783,9 @@ void gfx10_emit_ngg_culling_epilogue(struct ac_shader_abi *abi, unsigned max_out
       }
    }
 
-   /* Store VertexID and InstanceID. ES threads will have to load them
-    * from LDS after vertex compaction and use them instead of their own
-    * system values.
-    */
-   bool uses_instance_id = false;
-   bool uses_tes_prim_id = false;
-   LLVMValueRef packed_data = ctx->ac.i32_0;
-
-   if (ctx->stage == MESA_SHADER_VERTEX) {
-      uses_instance_id = sel->info.uses_instanceid ||
-                         shader->key.part.vs.prolog.instance_divisor_is_one ||
-                         shader->key.part.vs.prolog.instance_divisor_is_fetched;
-
-      LLVMBuildStore(
-         builder, ctx->abi.vertex_id,
-         ac_build_gep0(&ctx->ac, es_vtxptr, LLVMConstInt(ctx->ac.i32, lds_vertex_id, 0)));
-      if (uses_instance_id) {
-         LLVMBuildStore(
-            builder, ctx->abi.instance_id,
-            ac_build_gep0(&ctx->ac, es_vtxptr, LLVMConstInt(ctx->ac.i32, lds_instance_id, 0)));
-      }
-   } else {
-      uses_tes_prim_id = sel->info.uses_primid || shader->key.mono.u.vs_export_prim_id;
-
-      assert(ctx->stage == MESA_SHADER_TESS_EVAL);
-      LLVMBuildStore(builder, ac_to_integer(&ctx->ac, ac_get_arg(&ctx->ac, ctx->tes_u)),
-                     ac_build_gep0(&ctx->ac, es_vtxptr, LLVMConstInt(ctx->ac.i32, lds_tes_u, 0)));
-      LLVMBuildStore(builder, ac_to_integer(&ctx->ac, ac_get_arg(&ctx->ac, ctx->tes_v)),
-                     ac_build_gep0(&ctx->ac, es_vtxptr, LLVMConstInt(ctx->ac.i32, lds_tes_v, 0)));
-      packed_data = LLVMBuildShl(builder, ac_get_arg(&ctx->ac, ctx->tes_rel_patch_id),
-                                 LLVMConstInt(ctx->ac.i32, lds_byte2_tes_rel_patch_id * 8, 0), "");
-      if (uses_tes_prim_id) {
-         LLVMBuildStore(
-            builder, ac_get_arg(&ctx->ac, ctx->args.tes_patch_id),
-            ac_build_gep0(&ctx->ac, es_vtxptr, LLVMConstInt(ctx->ac.i32, lds_tes_patch_id, 0)));
-      }
-   }
    /* Initialize the packed data. */
    LLVMBuildStore(
-      builder, packed_data,
+      builder, ctx->ac.i32_0,
       ac_build_gep0(&ctx->ac, es_vtxptr, LLVMConstInt(ctx->ac.i32, lds_packed_data, 0)));
    ac_build_endif(&ctx->ac, ctx->merged_wrap_if_label);
 
@@ -994,6 +956,13 @@ void gfx10_emit_ngg_culling_epilogue(struct ac_shader_abi *abi, unsigned max_out
    LLVMValueRef es_mask[2], new_num_es_threads, kill_wave;
    load_bitmasks_2x64(ctx, ngg_scratch, tid, 0, es_mask, &new_num_es_threads);
 
+   bool uses_instance_id = ctx->stage == MESA_SHADER_VERTEX &&
+                           (sel->info.uses_instanceid ||
+                            shader->key.part.vs.prolog.instance_divisor_is_one ||
+                            shader->key.part.vs.prolog.instance_divisor_is_fetched);
+   bool uses_tes_prim_id = ctx->stage == MESA_SHADER_TESS_EVAL &&
+                           (sel->info.uses_primid || shader->key.mono.u.vs_export_prim_id);
+
    /* ES threads compute their prefix sum, which is the new ES thread ID.
     * Then they write the value of the old thread ID into the LDS address
     * of the new thread ID. It will be used it to load input VGPRs from
@@ -1005,9 +974,6 @@ void gfx10_emit_ngg_culling_epilogue(struct ac_shader_abi *abi, unsigned max_out
       LLVMValueRef new_id = ac_prefix_bitcount_2x64(&ctx->ac, es_mask, old_id);
       LLVMValueRef new_vtx = ngg_nogs_vertex_ptr(ctx, new_id);
 
-      LLVMBuildStore(
-         builder, LLVMBuildTrunc(builder, old_id, ctx->ac.i8, ""),
-         si_build_gep_i8(ctx, new_vtx, lds_byte0_old_thread_id));
       LLVMBuildStore(builder, LLVMBuildTrunc(builder, new_id, ctx->ac.i8, ""),
                      si_build_gep_i8(ctx, es_vtxptr, lds_byte1_new_thread_id));
 
@@ -1016,6 +982,34 @@ void gfx10_emit_ngg_culling_epilogue(struct ac_shader_abi *abi, unsigned max_out
          LLVMBuildStore(
             builder, ac_to_integer(&ctx->ac, LLVMBuildLoad(builder, addrs[4 * pos_index + chan], "")),
             ac_build_gep0(&ctx->ac, new_vtx, LLVMConstInt(ctx->ac.i32, lds_pos_x + chan, 0)));
+      }
+
+      /* Store VertexID and InstanceID into LDS. ES threads will have to load them
+       * from LDS after vertex compaction and use them instead of their own
+       * system values.
+       */
+      if (ctx->stage == MESA_SHADER_VERTEX) {
+         LLVMBuildStore(
+            builder, ctx->abi.vertex_id,
+            ac_build_gep0(&ctx->ac, new_vtx, LLVMConstInt(ctx->ac.i32, lds_vertex_id, 0)));
+         if (uses_instance_id) {
+            LLVMBuildStore(
+               builder, ctx->abi.instance_id,
+               ac_build_gep0(&ctx->ac, new_vtx, LLVMConstInt(ctx->ac.i32, lds_instance_id, 0)));
+         }
+      } else {
+         assert(ctx->stage == MESA_SHADER_TESS_EVAL);
+         LLVMBuildStore(builder, ac_to_integer(&ctx->ac, ac_get_arg(&ctx->ac, ctx->tes_u)),
+                        ac_build_gep0(&ctx->ac, new_vtx, LLVMConstInt(ctx->ac.i32, lds_tes_u, 0)));
+         LLVMBuildStore(builder, ac_to_integer(&ctx->ac, ac_get_arg(&ctx->ac, ctx->tes_v)),
+                        ac_build_gep0(&ctx->ac, new_vtx, LLVMConstInt(ctx->ac.i32, lds_tes_v, 0)));
+         LLVMBuildStore(builder, LLVMBuildTrunc(builder, ac_get_arg(&ctx->ac, ctx->tes_rel_patch_id), ctx->ac.i8, ""),
+                        si_build_gep_i8(ctx, new_vtx, lds_byte2_tes_rel_patch_id));
+         if (uses_tes_prim_id) {
+            LLVMBuildStore(
+               builder, ac_get_arg(&ctx->ac, ctx->args.tes_patch_id),
+               ac_build_gep0(&ctx->ac, new_vtx, LLVMConstInt(ctx->ac.i32, lds_tes_patch_id, 0)));
+         }
       }
    }
    ac_build_endif(&ctx->ac, 16009);
@@ -1081,7 +1075,6 @@ void gfx10_emit_ngg_culling_epilogue(struct ac_shader_abi *abi, unsigned max_out
 
    /* Set the new ES input VGPRs. */
    LLVMValueRef es_data[4];
-   LLVMValueRef old_thread_id = ac_build_alloca_undef(&ctx->ac, ctx->ac.i32, "");
 
    for (unsigned i = 0; i < 4; i++)
       es_data[i] = ac_build_alloca_undef(&ctx->ac, ctx->ac.i32, "");
@@ -1089,32 +1082,25 @@ void gfx10_emit_ngg_culling_epilogue(struct ac_shader_abi *abi, unsigned max_out
    ac_build_ifcc(&ctx->ac, LLVMBuildICmp(ctx->ac.builder, LLVMIntULT, tid, new_num_es_threads, ""),
                  16012);
    {
-      LLVMValueRef old_id, old_es_vtxptr, tmp;
-
-      /* Load ES input VGPRs from the ES thread before compaction. */
-      old_id = LLVMBuildLoad(builder, si_build_gep_i8(ctx, es_vtxptr, lds_byte0_old_thread_id), "");
-      old_id = LLVMBuildZExt(builder, old_id, ctx->ac.i32, "");
-
-      LLVMBuildStore(builder, old_id, old_thread_id);
-      old_es_vtxptr = ngg_nogs_vertex_ptr(ctx, old_id);
+      LLVMValueRef tmp;
 
       for (unsigned i = 0; i < 2; i++) {
          tmp = LLVMBuildLoad(
             builder,
-            ac_build_gep0(&ctx->ac, old_es_vtxptr, LLVMConstInt(ctx->ac.i32, lds_vertex_id + i, 0)),
+            ac_build_gep0(&ctx->ac, es_vtxptr, LLVMConstInt(ctx->ac.i32, lds_vertex_id + i, 0)),
             "");
          LLVMBuildStore(builder, tmp, es_data[i]);
       }
 
       if (ctx->stage == MESA_SHADER_TESS_EVAL) {
          tmp = LLVMBuildLoad(builder,
-                             si_build_gep_i8(ctx, old_es_vtxptr, lds_byte2_tes_rel_patch_id), "");
+                             si_build_gep_i8(ctx, es_vtxptr, lds_byte2_tes_rel_patch_id), "");
          tmp = LLVMBuildZExt(builder, tmp, ctx->ac.i32, "");
          LLVMBuildStore(builder, tmp, es_data[2]);
 
          if (uses_tes_prim_id) {
             tmp = LLVMBuildLoad(builder,
-                                ac_build_gep0(&ctx->ac, old_es_vtxptr,
+                                ac_build_gep0(&ctx->ac, es_vtxptr,
                                               LLVMConstInt(ctx->ac.i32, lds_tes_patch_id, 0)),
                                 "");
             LLVMBuildStore(builder, tmp, es_data[3]);
