@@ -45,7 +45,6 @@ dEQP-GLES2.functional.shaders.algorithm.*
 dEQP-GLES2.functional.shaders.constant_expressions.*
 dEQP-GLES2.functional.shaders.random.*
 dEQP-GLES2.functional.texture.*
-dEQP-GLES2.functional.fragment_ops.*
 dEQP-GLES2.functional.fbo.*
 dEQP-GLES2.functional.vertex_arrays.*
 dEQP-GLES2.functional.shader_api.*
