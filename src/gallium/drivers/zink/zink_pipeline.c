@@ -21,6 +21,8 @@
  * USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+#include "compiler/spirv/spirv.h"
+
 #include "zink_pipeline.h"
 
 #include "zink_compiler.h"
@@ -203,6 +205,22 @@ zink_create_compute_pipeline(struct zink_screen *screen, struct zink_compute_pro
    stage.stage = VK_SHADER_STAGE_COMPUTE_BIT;
    stage.module = comp->module->shader;
    stage.pName = "main";
+
+   VkSpecializationInfo sinfo = {};
+   VkSpecializationMapEntry me[3];
+   if (state->use_local_size) {
+      stage.pSpecializationInfo = &sinfo;
+      sinfo.mapEntryCount = 3;
+      sinfo.pMapEntries = &me[0];
+      sinfo.dataSize = sizeof(state->local_size);
+      sinfo.pData = &state->local_size[0];
+      uint32_t ids[] = {ZINK_WORKGROUP_SIZE_X, ZINK_WORKGROUP_SIZE_Y, ZINK_WORKGROUP_SIZE_Z};
+      for (int i = 0; i < 3; i++) {
+         me[i].size = sizeof(uint32_t);
+         me[i].constantID = ids[i];
+         me[i].offset = i * sizeof(uint32_t);
+      }
+   }
 
    pci.stage = stage;
 

@@ -928,6 +928,7 @@ zink_launch_grid(struct pipe_context *pctx, const struct pipe_grid_info *info)
    if (!comp_program)
       return;
 
+   zink_program_update_compute_pipeline_state(ctx, comp_program, info->block);
    VkPipeline pipeline = zink_get_compute_pipeline(screen, comp_program,
                                                &ctx->compute_pipeline_state);
 

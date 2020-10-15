@@ -146,6 +146,9 @@ zink_compute_program_reference(struct zink_screen *screen,
    if (dst) *dst = src;
 }
 
+void
+zink_program_update_compute_pipeline_state(struct zink_context *ctx, struct zink_compute_program *comp, const uint block[3]);
+
 VkPipeline
 zink_get_compute_pipeline(struct zink_screen *screen,
                       struct zink_compute_program *comp,

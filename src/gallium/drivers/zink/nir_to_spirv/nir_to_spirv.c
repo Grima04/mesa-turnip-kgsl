@@ -86,6 +86,7 @@ struct ntv_context {
          workgroup_id_var, num_workgroups_var,
          local_invocation_id_var, global_invocation_id_var,
          local_invocation_index_var, helper_invocation_var,
+         local_group_size_var,
          shared_block_var,
          base_vertex_var, base_instance_var, draw_id_var;
 };
@@ -2854,6 +2855,12 @@ emit_intrinsic(struct ntv_context *ctx, nir_intrinsic_instr *intr)
       emit_load_uint_input(ctx, intr, &ctx->local_invocation_index_var, "gl_LocalInvocationIndex", SpvBuiltInLocalInvocationIndex);
       break;
 
+   case nir_intrinsic_load_local_group_size: {
+      assert(ctx->local_group_size_var);
+      store_dest(ctx, &intr->dest, ctx->local_group_size_var, nir_type_uint);
+      break;
+   }
+
    case nir_intrinsic_load_shared:
       emit_load_shared(ctx, intr);
       break;
@@ -3766,6 +3773,21 @@ nir_to_spirv(struct nir_shader *s, const struct zink_so_info *so_info,
                                                (uint32_t)s->info.cs.local_size[2]});
       if (s->info.cs.shared_size)
          create_shared_block(&ctx, s->info.cs.shared_size);
+
+      if (BITSET_TEST(s->info.system_values_read, SYSTEM_VALUE_LOCAL_GROUP_SIZE)) {
+         SpvId sizes[3];
+         uint32_t ids[] = {ZINK_WORKGROUP_SIZE_X, ZINK_WORKGROUP_SIZE_Y, ZINK_WORKGROUP_SIZE_Z};
+         const char *names[] = {"x", "y", "z"};
+         for (int i = 0; i < 3; i ++) {
+            sizes[i] = spirv_builder_spec_const_uint(&ctx.builder, 32);
+            spirv_builder_emit_specid(&ctx.builder, sizes[i], ids[i]);
+            spirv_builder_emit_name(&ctx.builder, sizes[i], names[i]);
+         }
+         SpvId var_type = get_uvec_type(&ctx, 32, 3);
+         ctx.local_group_size_var = spirv_builder_spec_const_composite(&ctx.builder, var_type, sizes, 3);
+         spirv_builder_emit_name(&ctx.builder, ctx.local_group_size_var, "gl_LocalGroupSize");
+         spirv_builder_emit_builtin(&ctx.builder, ctx.local_group_size_var, SpvBuiltInWorkgroupSize);
+      }
       break;
    default:
       break;

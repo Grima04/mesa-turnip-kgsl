@@ -494,7 +494,32 @@ fail:
 static uint32_t
 hash_compute_pipeline_state(const void *key)
 {
-   return _mesa_hash_data(key, offsetof(struct zink_compute_pipeline_state, hash));
+   const struct zink_compute_pipeline_state *state = key;
+   uint32_t hash = _mesa_hash_data(state, offsetof(struct zink_compute_pipeline_state, hash));
+   if (state->use_local_size)
+      hash = XXH32(&state->local_size[0], sizeof(state->local_size), hash);
+   return hash;
+}
+
+void
+zink_program_update_compute_pipeline_state(struct zink_context *ctx, struct zink_compute_program *comp, const uint block[3])
+{
+   struct zink_shader *zs = comp->shader;
+   bool use_local_size = BITSET_TEST(zs->nir->info.system_values_read, SYSTEM_VALUE_LOCAL_GROUP_SIZE);
+   if (ctx->compute_pipeline_state.use_local_size != use_local_size)
+      ctx->compute_pipeline_state.dirty = true;
+   ctx->compute_pipeline_state.use_local_size = use_local_size;
+
+   if (ctx->compute_pipeline_state.use_local_size) {
+      for (int i = 0; i < ARRAY_SIZE(ctx->compute_pipeline_state.local_size); i++) {
+         if (ctx->compute_pipeline_state.local_size[i] != block[i])
+            ctx->compute_pipeline_state.dirty = true;
+         ctx->compute_pipeline_state.local_size[i] = block[i];
+      }
+   } else
+      ctx->compute_pipeline_state.local_size[0] =
+      ctx->compute_pipeline_state.local_size[1] =
+      ctx->compute_pipeline_state.local_size[2] = 0;
 }
 
 static bool
