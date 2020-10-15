@@ -77,20 +77,40 @@ panfrost_query_core_count(int fd)
         return util_bitcount(mask);
 }
 
+/* Architectural maximums, since this register may be not implemented
+ * by a given chip. G31 is actually 512 instead of 768 but it doesn't
+ * really matter. */
+
 static unsigned
-panfrost_query_thread_tls_alloc(int fd)
+panfrost_max_thread_count(unsigned arch)
 {
-        /* On older kernels, we worst-case to 256 threads, the architectural
-         * maximum for Midgard. On my current kernel/hardware, I'm seeing this
-         * readback as 0, so we'll worst-case there too */
-
-        unsigned tls = panfrost_query_raw(fd,
-                        DRM_PANFROST_PARAM_THREAD_TLS_ALLOC, false, 256);
-
-        if (tls)
-                return tls;
-        else
+        switch (arch) {
+        /* Midgard */
+        case 4:
+        case 5:
                 return 256;
+
+        /* Bifrost, first generation */
+        case 6:
+                return 384;
+
+        /* Bifrost, second generation (G31 is 512 but it doesn't matter) */
+        case 7:
+                return 768;
+
+        /* Valhall (for completeness) */
+        default:
+                return 1024;
+        }
+}
+
+static unsigned
+panfrost_query_thread_tls_alloc(int fd, unsigned major)
+{
+        unsigned tls = panfrost_query_raw(fd,
+                        DRM_PANFROST_PARAM_THREAD_TLS_ALLOC, false, 0);
+
+        return (tls > 0) ? tls : panfrost_max_thread_count(major);
 }
 
 static uint32_t
@@ -185,7 +205,7 @@ panfrost_open_device(void *memctx, int fd, struct panfrost_device *dev)
         dev->gpu_id = panfrost_query_gpu_version(fd);
         dev->arch = panfrost_major_version(dev->gpu_id);
         dev->core_count = panfrost_query_core_count(fd);
-        dev->thread_tls_alloc = panfrost_query_thread_tls_alloc(fd);
+        dev->thread_tls_alloc = panfrost_query_thread_tls_alloc(fd, dev->arch);
         dev->kernel_version = drmGetVersion(fd);
         dev->quirks = panfrost_get_quirks(dev->gpu_id);
         dev->compressed_formats = panfrost_query_compressed_formats(fd);
