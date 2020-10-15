@@ -471,6 +471,8 @@ void setup_gs_variables(isel_context *ctx, nir_shader *nir)
       ctx->ngg_gs_scratch_addr = ctx->ngg_gs_emit_addr + ngg_emit_bytes;
 
       unsigned total_lds_bytes = esgs_ring_bytes + ngg_emit_bytes + ngg_gs_scratch_bytes;
+      assert(total_lds_bytes >= ctx->ngg_gs_emit_addr);
+      assert(total_lds_bytes >= ctx->ngg_gs_scratch_addr);
       ctx->program->config->lds_size = (total_lds_bytes + ctx->program->lds_alloc_granule - 1) / ctx->program->lds_alloc_granule;
 
       /* Make sure we have enough room for emitted GS vertices */
@@ -588,6 +590,9 @@ setup_variables(isel_context *ctx, nir_shader *nir)
    default:
       unreachable("Unhandled shader stage.");
    }
+
+   /* Make sure we fit the available LDS space. */
+   assert((ctx->program->config->lds_size * ctx->program->lds_alloc_granule) <= ctx->program->lds_limit);
 }
 
 void
