@@ -6559,6 +6559,11 @@ void emit_scoped_barrier(isel_context *ctx, nir_intrinsic_instr *instr) {
 
    assert(!(nir_semantics & (NIR_MEMORY_MAKE_AVAILABLE | NIR_MEMORY_MAKE_VISIBLE)));
 
+   /* Workgroup barriers can hang merged shaders that can potentially have 0 threads in either half. */
+   assert(exec_scope != scope_workgroup ||
+          ctx->shader->info.stage == MESA_SHADER_COMPUTE ||
+          ctx->shader->info.stage == MESA_SHADER_TESS_CTRL);
+
    bld.barrier(aco_opcode::p_barrier,
                memory_sync_info((storage_class)storage, (memory_semantics)semantics, mem_scope),
                exec_scope);
