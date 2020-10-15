@@ -219,7 +219,7 @@ panfrost_block_dim(uint64_t modifier, bool width, unsigned plane)
         case AFBC_FORMAT_MOD_BLOCK_SIZE_16x16:
                 return 16;
         case AFBC_FORMAT_MOD_BLOCK_SIZE_32x8:
-                return width ? 32 : 32;
+                return width ? 32 : 8;
         case AFBC_FORMAT_MOD_BLOCK_SIZE_64x4:
                 return width ? 64 : 4;
         case AFBC_FORMAT_MOD_BLOCK_SIZE_32x8_64x4:
