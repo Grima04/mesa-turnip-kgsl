@@ -450,6 +450,7 @@ typedef struct {
        struct list_head blocks; /* list of bi_block */
        struct panfrost_sysvals sysvals;
        uint32_t quirks;
+       unsigned tls_size;
 
        /* Is internally a blend shader? Depends on stage == FRAGMENT */
        bool is_blend;

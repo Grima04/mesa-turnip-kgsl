@@ -1966,6 +1966,8 @@ bifrost_compile_shader_nir(void *mem_ctx, nir_shader *nir,
         if (bifrost_debug & BIFROST_DBG_SHADERS)
                 disassemble_bifrost(stdout, program->compiled.data, program->compiled.size, true);
 
+        program->tls_size = ctx->tls_size;
+
         ralloc_free(ctx);
 
         return program;

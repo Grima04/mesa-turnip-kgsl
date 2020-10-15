@@ -384,6 +384,7 @@ bi_register_allocate(bi_context *ctx)
 
         assert(success);
 
+        ctx->tls_size = spill_count;
         bi_install_registers(ctx, l);
 
         lcra_free(l);
