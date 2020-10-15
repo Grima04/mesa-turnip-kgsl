@@ -1782,7 +1782,8 @@ if with_platform_x11
       dep_xxf86vm = dependency('xxf86vm')
     endif
   endif
-  if (with_egl or (
+  if (with_egl or 
+      with_dri3 or (
       with_gallium_vdpau or with_gallium_xvmc or with_gallium_xa or
       with_gallium_omx != 'disabled'))
     dep_xcb_xfixes = dependency('xcb-xfixes')
