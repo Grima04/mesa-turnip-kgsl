@@ -81,6 +81,9 @@ panfrost_nir_assign_sysvals(struct panfrost_sysvals *ctx, void *memctx, nir_shad
 int
 panfrost_sysval_for_instr(nir_instr *instr, nir_dest *dest);
 
+bool
+nir_undef_to_zero(nir_shader *shader);
+
 typedef struct {
         int work_register_count;
         int uniform_cutoff;
