@@ -289,8 +289,7 @@ static void declare_vb_descriptor_input_sgprs(struct si_shader_context *ctx)
    }
 }
 
-static void declare_vs_input_vgprs(struct si_shader_context *ctx, unsigned *num_prolog_vgprs,
-                                   bool ngg_cull_shader)
+static void declare_vs_input_vgprs(struct si_shader_context *ctx, unsigned *num_prolog_vgprs)
 {
    struct si_shader *shader = ctx->shader;
 
@@ -316,10 +315,6 @@ static void declare_vs_input_vgprs(struct si_shader_context *ctx, unsigned *num_
    }
 
    if (!shader->is_gs_copy_shader) {
-      if (shader->key.opt.ngg_culling && !ngg_cull_shader) {
-         ac_add_arg(&ctx->args, AC_ARG_VGPR, 1, AC_ARG_INT, &ctx->ngg_old_thread_id);
-      }
-
       /* Vertex load indices. */
       if (shader->selector->info.num_inputs) {
          ac_add_arg(&ctx->args, AC_ARG_VGPR, 1, AC_ARG_INT, &ctx->vertex_index0);
@@ -351,16 +346,12 @@ static void declare_vs_blit_inputs(struct si_shader_context *ctx, unsigned vs_bl
    }
 }
 
-static void declare_tes_input_vgprs(struct si_shader_context *ctx, bool ngg_cull_shader)
+static void declare_tes_input_vgprs(struct si_shader_context *ctx)
 {
    ac_add_arg(&ctx->args, AC_ARG_VGPR, 1, AC_ARG_FLOAT, &ctx->tes_u);
    ac_add_arg(&ctx->args, AC_ARG_VGPR, 1, AC_ARG_FLOAT, &ctx->tes_v);
    ac_add_arg(&ctx->args, AC_ARG_VGPR, 1, AC_ARG_INT, &ctx->tes_rel_patch_id);
    ac_add_arg(&ctx->args, AC_ARG_VGPR, 1, AC_ARG_INT, &ctx->args.tes_patch_id);
-
-   if (ctx->shader->key.opt.ngg_culling && !ngg_cull_shader) {
-      ac_add_arg(&ctx->args, AC_ARG_VGPR, 1, AC_ARG_INT, &ctx->ngg_old_thread_id);
-   }
 }
 
 enum
@@ -404,7 +395,7 @@ void si_create_function(struct si_shader_context *ctx, bool ngg_cull_shader)
          declare_vs_blit_inputs(ctx, shader->selector->info.base.vs.blit_sgprs_amd);
 
          /* VGPRs */
-         declare_vs_input_vgprs(ctx, &num_prolog_vgprs, ngg_cull_shader);
+         declare_vs_input_vgprs(ctx, &num_prolog_vgprs);
          break;
       }
 
@@ -423,7 +414,7 @@ void si_create_function(struct si_shader_context *ctx, bool ngg_cull_shader)
       }
 
       /* VGPRs */
-      declare_vs_input_vgprs(ctx, &num_prolog_vgprs, ngg_cull_shader);
+      declare_vs_input_vgprs(ctx, &num_prolog_vgprs);
 
       /* Return values */
       if (shader->key.opt.vs_as_prim_discard_cs) {
@@ -480,7 +471,7 @@ void si_create_function(struct si_shader_context *ctx, bool ngg_cull_shader)
       ac_add_arg(&ctx->args, AC_ARG_VGPR, 1, AC_ARG_INT, &ctx->args.tcs_rel_ids);
 
       if (ctx->stage == MESA_SHADER_VERTEX) {
-         declare_vs_input_vgprs(ctx, &num_prolog_vgprs, ngg_cull_shader);
+         declare_vs_input_vgprs(ctx, &num_prolog_vgprs);
 
          /* LS return values are inputs to the TCS main shader part. */
          for (i = 0; i < 8 + GFX9_TCS_NUM_USER_SGPR; i++)
@@ -548,9 +539,9 @@ void si_create_function(struct si_shader_context *ctx, bool ngg_cull_shader)
       ac_add_arg(&ctx->args, AC_ARG_VGPR, 1, AC_ARG_INT, &ctx->gs_vtx45_offset);
 
       if (ctx->stage == MESA_SHADER_VERTEX) {
-         declare_vs_input_vgprs(ctx, &num_prolog_vgprs, ngg_cull_shader);
+         declare_vs_input_vgprs(ctx, &num_prolog_vgprs);
       } else if (ctx->stage == MESA_SHADER_TESS_EVAL) {
-         declare_tes_input_vgprs(ctx, ngg_cull_shader);
+         declare_tes_input_vgprs(ctx);
       }
 
       if ((ctx->shader->key.as_es || ngg_cull_shader) &&
@@ -572,12 +563,12 @@ void si_create_function(struct si_shader_context *ctx, bool ngg_cull_shader)
             num_user_sgprs = GFX9_TESGS_NUM_USER_SGPR;
          }
 
-         /* The NGG cull shader has to return all 9 VGPRs + the old thread ID.
+         /* The NGG cull shader has to return all 9 VGPRs.
           *
           * The normal merged ESGS shader only has to return the 5 VGPRs
           * for the GS stage.
           */
-         num_vgprs = ngg_cull_shader ? 10 : 5;
+         num_vgprs = ngg_cull_shader ? 9 : 5;
 
          /* ES return values are inputs to GS. */
          for (i = 0; i < 8 + num_user_sgprs; i++)
@@ -604,7 +595,7 @@ void si_create_function(struct si_shader_context *ctx, bool ngg_cull_shader)
       }
 
       /* VGPRs */
-      declare_tes_input_vgprs(ctx, ngg_cull_shader);
+      declare_tes_input_vgprs(ctx);
       break;
 
    case MESA_SHADER_GEOMETRY:
@@ -1560,8 +1551,6 @@ static void si_get_vs_prolog_key(const struct si_shader_info *info, unsigned num
          !!(shader_out->key.opt.ngg_culling & SI_NGG_CULL_GS_FAST_LAUNCH_TRI_LIST);
       key->vs_prolog.gs_fast_launch_tri_strip =
          !!(shader_out->key.opt.ngg_culling & SI_NGG_CULL_GS_FAST_LAUNCH_TRI_STRIP);
-   } else {
-      key->vs_prolog.has_ngg_cull_inputs = !!shader_out->key.opt.ngg_culling;
    }
 
    if (shader_out->selector->info.stage == MESA_SHADER_TESS_CTRL) {

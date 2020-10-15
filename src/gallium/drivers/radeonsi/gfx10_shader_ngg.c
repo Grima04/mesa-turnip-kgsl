@@ -755,31 +755,33 @@ void gfx10_emit_ngg_culling_epilogue(struct ac_shader_abi *abi, unsigned max_out
    assert(sel->info.stage == MESA_SHADER_VERTEX ||
           (sel->info.stage == MESA_SHADER_TESS_EVAL && !shader->key.as_es));
 
-   LLVMValueRef position[4] = {};
+   LLVMValueRef es_vtxptr = ngg_nogs_vertex_ptr(ctx, get_thread_id_in_tg(ctx));
+   unsigned pos_index = 0;
+
    for (unsigned i = 0; i < info->num_outputs; i++) {
+      LLVMValueRef position[4];
+
       switch (info->output_semantic[i]) {
       case VARYING_SLOT_POS:
+         pos_index = i;
          for (unsigned j = 0; j < 4; j++) {
             position[j] = LLVMBuildLoad(ctx->ac.builder, addrs[4 * i + j], "");
          }
+
+         /* Store Position.W into LDS. */
+         LLVMBuildStore(
+            builder, ac_to_integer(&ctx->ac, position[3]),
+            ac_build_gep0(&ctx->ac, es_vtxptr, LLVMConstInt(ctx->ac.i32, lds_pos_w, 0)));
+
+         /* Store Position.XY / W into LDS. */
+         for (unsigned chan = 0; chan < 2; chan++) {
+            LLVMValueRef val = ac_build_fdiv(&ctx->ac, position[chan], position[3]);
+            LLVMBuildStore(
+               builder, ac_to_integer(&ctx->ac, val),
+               ac_build_gep0(&ctx->ac, es_vtxptr, LLVMConstInt(ctx->ac.i32, lds_pos_x_div_w + chan, 0)));
+         }
          break;
       }
-   }
-   assert(position[0]);
-
-   /* Store Position.XYZW into LDS. */
-   LLVMValueRef es_vtxptr = ngg_nogs_vertex_ptr(ctx, get_thread_id_in_tg(ctx));
-   for (unsigned chan = 0; chan < 4; chan++) {
-      LLVMBuildStore(
-         builder, ac_to_integer(&ctx->ac, position[chan]),
-         ac_build_gep0(&ctx->ac, es_vtxptr, LLVMConstInt(ctx->ac.i32, lds_pos_x + chan, 0)));
-   }
-   /* Store Position.XY / W into LDS. */
-   for (unsigned chan = 0; chan < 2; chan++) {
-      LLVMValueRef val = ac_build_fdiv(&ctx->ac, position[chan], position[3]);
-      LLVMBuildStore(
-         builder, ac_to_integer(&ctx->ac, val),
-         ac_build_gep0(&ctx->ac, es_vtxptr, LLVMConstInt(ctx->ac.i32, lds_pos_x_div_w + chan, 0)));
    }
 
    /* Store VertexID and InstanceID. ES threads will have to load them
@@ -1001,12 +1003,20 @@ void gfx10_emit_ngg_culling_epilogue(struct ac_shader_abi *abi, unsigned max_out
    {
       LLVMValueRef old_id = get_thread_id_in_tg(ctx);
       LLVMValueRef new_id = ac_prefix_bitcount_2x64(&ctx->ac, es_mask, old_id);
+      LLVMValueRef new_vtx = ngg_nogs_vertex_ptr(ctx, new_id);
 
       LLVMBuildStore(
          builder, LLVMBuildTrunc(builder, old_id, ctx->ac.i8, ""),
-         si_build_gep_i8(ctx, ngg_nogs_vertex_ptr(ctx, new_id), lds_byte0_old_thread_id));
+         si_build_gep_i8(ctx, new_vtx, lds_byte0_old_thread_id));
       LLVMBuildStore(builder, LLVMBuildTrunc(builder, new_id, ctx->ac.i8, ""),
                      si_build_gep_i8(ctx, es_vtxptr, lds_byte1_new_thread_id));
+
+      /* Store Position.XYZW into LDS. */
+      for (unsigned chan = 0; chan < 4; chan++) {
+         LLVMBuildStore(
+            builder, ac_to_integer(&ctx->ac, LLVMBuildLoad(builder, addrs[4 * pos_index + chan], "")),
+            ac_build_gep0(&ctx->ac, new_vtx, LLVMConstInt(ctx->ac.i32, lds_pos_x + chan, 0)));
+      }
    }
    ac_build_endif(&ctx->ac, 16009);
 
@@ -1187,9 +1197,6 @@ void gfx10_emit_ngg_culling_epilogue(struct ac_shader_abi *abi, unsigned max_out
       if (num_vgprs == 3)
          vgpr++;
    }
-   /* Return the old thread ID. */
-   val = LLVMBuildLoad(builder, old_thread_id, "");
-   ret = LLVMBuildInsertValue(builder, ret, ac_to_float(&ctx->ac, val), vgpr++, "");
 
    /* These two also use LDS. */
    if (sel->info.writes_edgeflag ||
@@ -1397,7 +1404,7 @@ void gfx10_emit_ngg_epilogue(struct ac_shader_abi *abi, unsigned max_outputs, LL
           */
          if (info->output_semantic[i] == VARYING_SLOT_POS &&
              ctx->shader->key.opt.ngg_culling) {
-            vertex_ptr = ngg_nogs_vertex_ptr(ctx, ac_get_arg(&ctx->ac, ctx->ngg_old_thread_id));
+            vertex_ptr = ngg_nogs_vertex_ptr(ctx, get_thread_id_in_tg(ctx));
 
             for (unsigned j = 0; j < 4; j++) {
                tmp = LLVMConstInt(ctx->ac.i32, lds_pos_x + j, 0);

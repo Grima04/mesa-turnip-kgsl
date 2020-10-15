@@ -779,7 +779,7 @@ void si_llvm_build_vs_prolog(struct si_shader_context *ctx, union si_shader_part
    int num_returns, i;
    unsigned first_vs_vgpr = key->vs_prolog.num_merged_next_stage_vgprs;
    unsigned num_input_vgprs =
-      key->vs_prolog.num_merged_next_stage_vgprs + 4 + (key->vs_prolog.has_ngg_cull_inputs ? 1 : 0);
+      key->vs_prolog.num_merged_next_stage_vgprs + 4;
    struct ac_arg input_sgpr_param[key->vs_prolog.num_input_sgprs];
    struct ac_arg input_vgpr_param[10];
    LLVMValueRef input_vgprs[10];

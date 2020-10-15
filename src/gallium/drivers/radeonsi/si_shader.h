@@ -555,7 +555,6 @@ union si_shader_part_key {
       unsigned as_es : 1;
       unsigned as_ngg : 1;
       unsigned as_prim_discard_cs : 1;
-      unsigned has_ngg_cull_inputs : 1;      /* from the NGG cull shader */
       unsigned gs_fast_launch_tri_list : 1;  /* for NGG culling */
       unsigned gs_fast_launch_tri_strip : 1; /* for NGG culling */
       /* Prologs for monolithic shaders shouldn't set EXEC. */
