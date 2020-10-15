@@ -285,3 +285,21 @@ you can test a compiler change in this shader-db with::
   (cd ../mesa && make install)
   ./run.py > after
   ./report.py before after
+
+Hardware Documentation
+----------------------
+
+For driver developers, Broadcom publicly released a `specification
+<https://docs.broadcom.com/doc/12358545>`__ PDF for the 21553, which
+is closely related to the vc4 GPU present in the Raspberry Pi.  They
+also released a `snapshot <https://docs.broadcom.com/docs/12358546>`__
+of a corresponding Android graphics driver.  That graphics driver was
+ported to Raspbian for a demo, but was not expected to have ongoing
+development.
+
+Developers with NDA access with Broadcom or Raspberry Pi can
+potentially get access to "simpenrose", the C software simulator of
+the GPU.  The Mesa driver includes a backend (`vc4_simulator.c`) to
+use simpenrose from an x86 system with the i915 graphics driver with
+all of the vc4 rendering commands emulated on simpenrose and memcpyed
+to the real GPU.
