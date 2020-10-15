@@ -1675,7 +1675,7 @@ dri2_get_capabilities(__DRIscreen *_screen)
 }
 
 /* The extension is modified during runtime if DRI_PRIME is detected */
-static __DRIimageExtension dri2ImageExtension = {
+static const __DRIimageExtension dri2ImageExtensionTempl = {
     .base = { __DRI_IMAGE, 18 },
 
     .createImageFromName          = dri2_create_image_from_name,
@@ -2015,7 +2015,7 @@ dri2_set_damage_region(__DRIdrawable *dPriv, unsigned int nrects, int *rects)
    }
 }
 
-static __DRI2bufferDamageExtension dri2BufferDamageExtension = {
+static const __DRI2bufferDamageExtension dri2BufferDamageExtensionTempl = {
    .base = { __DRI2_BUFFER_DAMAGE, 1 },
 };
 
@@ -2129,35 +2129,16 @@ static const __DRI2blobExtension driBlobExtension = {
  * Backend function init_screen.
  */
 
-static const __DRIextension *dri_screen_extensions[] = {
+static const __DRIextension *dri_screen_extensions_base[] = {
    &driTexBufferExtension.base,
    &dri2FlushExtension.base,
-   &dri2ImageExtension.base,
-   &dri2RendererQueryExtension.base,
-   &dri2GalliumConfigQueryExtension.base,
-   &dri2ThrottleExtension.base,
-   &dri2FenceExtension.base,
-   &dri2BufferDamageExtension.base,
-   &dri2InteropExtension.base,
-   &dri2NoErrorExtension.base,
-   &driBlobExtension.base,
-   NULL
-};
-
-static const __DRIextension *dri_robust_screen_extensions[] = {
-   &driTexBufferExtension.base,
-   &dri2FlushExtension.base,
-   &dri2ImageExtension.base,
    &dri2RendererQueryExtension.base,
    &dri2GalliumConfigQueryExtension.base,
    &dri2ThrottleExtension.base,
    &dri2FenceExtension.base,
    &dri2InteropExtension.base,
-   &dri2BufferDamageExtension.base,
-   &dri2Robustness.base,
    &dri2NoErrorExtension.base,
    &driBlobExtension.base,
-   NULL
 };
 
 /**
@@ -2169,8 +2150,20 @@ dri2_init_screen_extensions(struct dri_screen *screen,
                             struct pipe_screen *pscreen,
                             bool is_kms_screen)
 {
+   const __DRIextension **nExt;
+
+   STATIC_ASSERT(sizeof(screen->screen_extensions) >=
+                 sizeof(dri_screen_extensions_base));
+   memcpy(&screen->screen_extensions, dri_screen_extensions_base,
+          sizeof(dri_screen_extensions_base));
+   screen->sPriv->extensions = screen->screen_extensions;
+
+   /* Point nExt at the end of the extension list */
+   nExt = &screen->screen_extensions[ARRAY_SIZE(dri_screen_extensions_base)];
+
+   screen->image_extension = dri2ImageExtensionTempl;
    if (pscreen->resource_create_with_modifiers)
-      dri2ImageExtension.createImageWithModifiers =
+      screen->image_extension.createImageWithModifiers =
          dri2_create_image_with_modifiers;
 
    if (pscreen->get_param(pscreen, PIPE_CAP_DMABUF)) {
@@ -2178,31 +2171,40 @@ dri2_init_screen_extensions(struct dri_screen *screen,
 
       if (drmGetCap(screen->sPriv->fd, DRM_CAP_PRIME, &cap) == 0 &&
           (cap & DRM_PRIME_CAP_IMPORT)) {
-         dri2ImageExtension.createImageFromFds = dri2_from_fds;
-         dri2ImageExtension.createImageFromDmaBufs = dri2_from_dma_bufs;
-         dri2ImageExtension.createImageFromDmaBufs2 = dri2_from_dma_bufs2;
-         dri2ImageExtension.createImageFromDmaBufs3 = dri2_from_dma_bufs3;
-         dri2ImageExtension.queryDmaBufFormats = dri2_query_dma_buf_formats;
-         dri2ImageExtension.queryDmaBufModifiers =
+         screen->image_extension.createImageFromFds = dri2_from_fds;
+         screen->image_extension.createImageFromDmaBufs = dri2_from_dma_bufs;
+         screen->image_extension.createImageFromDmaBufs2 = dri2_from_dma_bufs2;
+         screen->image_extension.createImageFromDmaBufs3 = dri2_from_dma_bufs3;
+         screen->image_extension.queryDmaBufFormats =
+            dri2_query_dma_buf_formats;
+         screen->image_extension.queryDmaBufModifiers =
             dri2_query_dma_buf_modifiers;
          if (!is_kms_screen) {
-            dri2ImageExtension.queryDmaBufFormatModifierAttribs =
+            screen->image_extension.queryDmaBufFormatModifierAttribs =
                dri2_query_dma_buf_format_modifier_attribs;
          }
       }
    }
-
-   screen->sPriv->extensions = dri_screen_extensions;
+   *nExt++ = &screen->image_extension.base;
 
    if (!is_kms_screen) {
+      screen->buffer_damage_extension = dri2BufferDamageExtensionTempl;
       if (pscreen->set_damage_region)
-         dri2BufferDamageExtension.set_damage_region = dri2_set_damage_region;
+         screen->buffer_damage_extension.set_damage_region =
+            dri2_set_damage_region;
+      *nExt++ = &screen->buffer_damage_extension.base;
 
       if (pscreen->get_param(pscreen, PIPE_CAP_DEVICE_RESET_STATUS_QUERY)) {
-         screen->sPriv->extensions = dri_robust_screen_extensions;
+         *nExt++ = &dri2Robustness.base;
          screen->has_reset_status_query = true;
       }
    }
+
+   /* Ensure the extension list didn't overrun its buffer and is still
+    * NULL-terminated */
+   assert(nExt - screen->screen_extensions <=
+          ARRAY_SIZE(screen->screen_extensions) - 1);
+   assert(!*nExt);
 }
 
 /**
