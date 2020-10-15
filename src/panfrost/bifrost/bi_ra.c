@@ -229,6 +229,46 @@ bi_fill(unsigned node, uint64_t offset, unsigned channels)
         return load;
 }
 
+/* Get the single instruction in a singleton clause. Precondition: clause
+ * contains exactly 1 instruction.
+ *
+ * More complex scheduling implies tougher constraints on spilling. We'll cross
+ * that bridge when we get to it. For now, just grab the one and only
+ * instruction in the clause */
+
+static bi_instruction *
+bi_unwrap_singleton(bi_clause *clause)
+{
+       assert(clause->bundle_count == 1);
+       assert((clause->bundles[0].fma != NULL) ^ (clause->bundles[0].add != NULL));
+
+       return clause->bundles[0].fma ? clause->bundles[0].fma
+               : clause->bundles[0].add;
+}
+
+static inline void
+bi_insert_singleton(void *memctx, bi_clause *cursor, bi_block *block,
+                bi_instruction ins, bool before)
+{
+        bi_instruction *uins = rzalloc(memctx, bi_instruction);
+        memcpy(uins, &ins, sizeof(ins));
+
+        /* Get the instruction to pivot around. Should be first/last of clause
+         * depending on before setting, those coincide for singletons */
+        bi_instruction *cursor_ins = bi_unwrap_singleton(cursor);
+
+        bi_clause *clause = bi_make_singleton(memctx, uins,
+                        block, 0, (1 << 0), true);
+
+        if (before) {
+                list_addtail(&clause->link, &cursor->link);
+                list_addtail(&uins->link, &cursor_ins->link);
+        } else {
+                list_add(&clause->link, &cursor->link);
+                list_add(&uins->link, &cursor_ins->link);
+        }
+}
+
 /* If register allocation fails, find the best spill node */
 
 static signed
