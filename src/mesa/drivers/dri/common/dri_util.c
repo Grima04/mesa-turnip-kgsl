@@ -52,6 +52,10 @@
 #include "main/macros.h"
 
 driOptionDescription __dri2ConfigOptions[] = {
+      DRI_CONF_SECTION_DEBUG
+         DRI_CONF_GLX_EXTENSION_OVERRIDE()
+      DRI_CONF_SECTION_END
+
       DRI_CONF_SECTION_PERFORMANCE
          DRI_CONF_VBLANK_MODE(DRI_CONF_VBLANK_DEF_INTERVAL_1)
       DRI_CONF_SECTION_END

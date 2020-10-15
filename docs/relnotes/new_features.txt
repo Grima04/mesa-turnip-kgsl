@@ -11,3 +11,4 @@ VK_KHR_copy_commands2 on RADV
 VK_KHR_shader_terminate_invocation on RADV
 NGG GS support in ACO
 VK_KHR_shader_terminate_invocation on ANV
+driconf: add glx_extension_override

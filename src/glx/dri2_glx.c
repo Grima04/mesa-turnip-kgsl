@@ -1362,6 +1362,11 @@ dri2CreateScreen(int screen, struct glx_display * priv)
                                  &disable) || !disable)
       __glXEnableDirectExtension(&psc->base, "GLX_SGI_video_sync");
 
+   if (psc->config->base.version > 1 &&
+          psc->config->configQuerys(psc->driScreen, "glx_extension_override",
+                                    &tmp) == 0)
+      __glXParseExtensionOverride(&psc->base, tmp);
+
    /* DRI2 supports SubBuffer through DRI2CopyRegion, so it's always
     * available.*/
    psp->copySubBuffer = dri2CopySubBuffer;

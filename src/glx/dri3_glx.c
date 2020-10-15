@@ -998,6 +998,11 @@ dri3_create_screen(int screen, struct glx_display * priv)
                                  &disable) || !disable)
       __glXEnableDirectExtension(&psc->base, "GLX_EXT_buffer_age");
 
+   if (psc->config->base.version > 1 &&
+          psc->config->configQuerys(psc->driScreen, "glx_extension_override",
+                                    &tmp) == 0)
+      __glXParseExtensionOverride(&psc->base, tmp);
+
    free(driverName);
 
    tmp = getenv("LIBGL_SHOW_FPS");
