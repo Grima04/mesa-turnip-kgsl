@@ -179,8 +179,7 @@ convert_fast_clear_color(struct iris_context *ice,
       for (int i = 0; i < 4; i++) {
          unsigned bits = util_format_get_component_bits(
             format, UTIL_FORMAT_COLORSPACE_RGB, i);
-         assert(bits > 0);
-         if (bits < 32) {
+         if (bits > 0 && bits < 32) {
             int32_t max = (1 << (bits - 1)) - 1;
             int32_t min = -(1 << (bits - 1));
             override_color.i32[i] = CLAMP(override_color.i32[i], min, max);
