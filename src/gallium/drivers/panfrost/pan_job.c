@@ -727,24 +727,25 @@ panfrost_batch_reserve_framebuffer(struct panfrost_batch *batch)
 {
         struct panfrost_device *dev = pan_device(batch->ctx->base.screen);
 
-        /* If we haven't, reserve space for the framebuffer */
+        /* If we haven't, reserve space for the thread storage descriptor (or a
+         * full framebuffer descriptor on Midgard) */
 
         if (!batch->framebuffer.gpu) {
-                unsigned size = (dev->quirks & MIDGARD_SFBD) ?
+                unsigned size = (dev->quirks & IS_BIFROST) ?
+                        MALI_LOCAL_STORAGE_LENGTH :
+                        (dev->quirks & MIDGARD_SFBD) ?
                         MALI_SINGLE_TARGET_FRAMEBUFFER_LENGTH :
                         MALI_MULTI_TARGET_FRAMEBUFFER_LENGTH;
 
                 batch->framebuffer = panfrost_pool_alloc_aligned(&batch->pool, size, 64);
 
                 /* Tag the pointer */
-                if (!(dev->quirks & MIDGARD_SFBD))
+                if (!(dev->quirks & (MIDGARD_SFBD | IS_BIFROST)))
                         batch->framebuffer.gpu |= MALI_FBD_TAG_IS_MFBD;
         }
 
         return batch->framebuffer.gpu;
 }
-
-
 
 static void
 panfrost_load_surface(struct panfrost_batch *batch, struct pipe_surface *surf, unsigned loc)
@@ -863,7 +864,7 @@ panfrost_load_surface(struct panfrost_batch *batch, struct pipe_surface *surf, u
                         panfrost_batch_get_bifrost_tiler(batch, vertex_count);
                 panfrost_load_bifrost(&batch->pool, &batch->scoreboard,
                                       blend_shader,
-                                      panfrost_vt_emit_shared_memory(batch),
+                                      batch->framebuffer.gpu,
                                       tiler,
                                       transfer.gpu, vertex_count,
                                       &img, loc);

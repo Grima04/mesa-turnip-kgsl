@@ -66,9 +66,6 @@ panfrost_emit_vertex_data(struct panfrost_batch *batch,
                           mali_ptr *buffers);
 
 mali_ptr
-panfrost_vt_emit_shared_memory(struct panfrost_batch *batch);
-
-mali_ptr
 panfrost_get_index_buffer_bounded(struct panfrost_context *ctx,
                                   const struct pipe_draw_info *info,
                                   unsigned *min_index, unsigned *max_index);

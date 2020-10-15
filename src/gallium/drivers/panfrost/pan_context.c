@@ -483,9 +483,7 @@ panfrost_draw_vbo(
 
         unsigned vertex_count = ctx->vertex_count;
 
-        mali_ptr shared_mem = is_bifrost ?
-                panfrost_vt_emit_shared_memory(batch) :
-                panfrost_batch_reserve_framebuffer(batch);
+        mali_ptr shared_mem = panfrost_batch_reserve_framebuffer(batch);
 
         unsigned min_index = 0, max_index = 0;
         mali_ptr indices = 0;

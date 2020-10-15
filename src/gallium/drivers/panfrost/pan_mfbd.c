@@ -556,10 +556,10 @@ panfrost_attach_mfbd(struct panfrost_batch *batch, unsigned vertex_count)
         struct panfrost_device *dev = pan_device(batch->ctx->base.screen);
         void *fb = batch->framebuffer.cpu;
 
+        panfrost_mfbd_emit_local_storage(batch, fb);
+
         if (dev->quirks & IS_BIFROST)
-                panfrost_mfbd_emit_bifrost_parameters(batch, fb);
-        else
-                panfrost_mfbd_emit_local_storage(batch, fb);
+                return;
 
         pan_section_pack(fb, MULTI_TARGET_FRAMEBUFFER, PARAMETERS, params) {
                 params.width = batch->key.width;
@@ -572,10 +572,7 @@ panfrost_attach_mfbd(struct panfrost_batch *batch, unsigned vertex_count)
                 params.render_target_count = MAX2(batch->key.nr_cbufs, 1);
         }
 
-        if (dev->quirks & IS_BIFROST)
-                panfrost_mfbd_emit_bifrost_tiler(batch, fb, vertex_count);
-        else
-                panfrost_mfbd_emit_midgard_tiler(batch, fb, vertex_count);
+        panfrost_mfbd_emit_midgard_tiler(batch, fb, vertex_count);
 }
 
 /* Creates an MFBD for the FRAGMENT section of the bound framebuffer */

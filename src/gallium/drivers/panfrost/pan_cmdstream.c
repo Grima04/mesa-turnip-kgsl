@@ -52,32 +52,6 @@ panfrost_bo_access_for_stage(enum pipe_shader_type stage)
                PAN_BO_ACCESS_VERTEX_TILER;
 }
 
-mali_ptr
-panfrost_vt_emit_shared_memory(struct panfrost_batch *batch)
-{
-        struct panfrost_device *dev = pan_device(batch->ctx->base.screen);
-
-        struct panfrost_ptr t =
-                panfrost_pool_alloc_aligned(&batch->pool,
-                                            MALI_LOCAL_STORAGE_LENGTH,
-                                            64);
-
-        pan_pack(t.cpu, LOCAL_STORAGE, ls) {
-                ls.wls_instances = MALI_LOCAL_STORAGE_NO_WORKGROUP_MEM;
-                if (batch->stack_size) {
-                        struct panfrost_bo *stack =
-                                panfrost_batch_get_scratchpad(batch, batch->stack_size,
-                                                              dev->thread_tls_alloc,
-                                                              dev->core_count);
-
-                        ls.tls_size = panfrost_get_stack_shift(batch->stack_size);
-                        ls.tls_base_pointer = stack->ptr.gpu;
-                }
-        }
-
-        return t.gpu;
-}
-
 /* Gets a GPU address for the associated index buffer. Only gauranteed to be
  * good for the duration of the draw (transient), could last longer. Also get
  * the bounds on the index buffer for the range accessed by the draw. We do
