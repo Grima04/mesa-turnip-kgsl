@@ -153,7 +153,7 @@ _mesa_init_transform_feedback(struct gl_context *ctx)
  * Callback for _mesa_HashDeleteAll().
  */
 static void
-delete_cb(GLuint key, void *data, void *userData)
+delete_cb(void *data, void *userData)
 {
    struct gl_context *ctx = (struct gl_context *) userData;
    struct gl_transform_feedback_object *obj =

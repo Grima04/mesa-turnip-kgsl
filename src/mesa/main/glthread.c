@@ -132,7 +132,7 @@ _mesa_glthread_init(struct gl_context *ctx)
 }
 
 static void
-free_vao(GLuint key, void *data, void *userData)
+free_vao(void *data, UNUSED void *userData)
 {
    free(data);
 }

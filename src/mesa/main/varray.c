@@ -3930,7 +3930,7 @@ _mesa_init_varray(struct gl_context *ctx)
  * Callback for deleting an array object.  Called by _mesa_HashDeleteAll().
  */
 static void
-delete_arrayobj_cb(GLuint id, void *data, void *userData)
+delete_arrayobj_cb(void *data, void *userData)
 {
    struct gl_vertex_array_object *vao = (struct gl_vertex_array_object *) data;
    struct gl_context *ctx = (struct gl_context *) userData;

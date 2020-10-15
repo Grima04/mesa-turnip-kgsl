@@ -161,7 +161,7 @@ extern void _mesa_HashRemoveLocked(struct _mesa_HashTable *table, GLuint key);
 
 extern void
 _mesa_HashDeleteAll(struct _mesa_HashTable *table,
-                    void (*callback)(GLuint key, void *data, void *userData),
+                    void (*callback)(void *data, void *userData),
                     void *userData);
 
 extern void

@@ -309,18 +309,18 @@ _mesa_HashRemove(struct _mesa_HashTable *table, GLuint key)
  */
 void
 _mesa_HashDeleteAll(struct _mesa_HashTable *table,
-                    void (*callback)(GLuint key, void *data, void *userData),
+                    void (*callback)(void *data, void *userData),
                     void *userData)
 {
    assert(callback);
    _mesa_HashLockMutex(table);
    table->InDeleteAll = GL_TRUE;
    hash_table_foreach(table->ht, entry) {
-      callback((uintptr_t)entry->key, entry->data, userData);
+      callback(entry->data, userData);
       _mesa_hash_table_remove(table->ht, entry);
    }
    if (table->deleted_key_data) {
-      callback(DELETED_KEY_VALUE, table->deleted_key_data, userData);
+      callback(table->deleted_key_data, userData);
       table->deleted_key_data = NULL;
    }
    table->InDeleteAll = GL_FALSE;
