@@ -814,6 +814,11 @@ void label_instruction(opt_ctx &ctx, Block& block, aco_ptr<Instruction>& instr)
       for (Operand& op : instr->operands)
          all_const = all_const && (!op.isTemp() || ctx.info[op.tempId()].is_constant_or_literal(32));
       perfwarn(ctx.program, all_const, "All instruction operands are constant", instr.get());
+
+      ASSERTED bool is_copy = instr->opcode == aco_opcode::s_mov_b32 ||
+                              instr->opcode == aco_opcode::s_mov_b64 ||
+                              instr->opcode == aco_opcode::v_mov_b32;
+      perfwarn(ctx.program, is_copy && !instr->usesModifiers(), "Use p_parallelcopy instead", instr.get());
    }
 
    for (unsigned i = 0; i < instr->operands.size(); i++)
@@ -1210,10 +1215,7 @@ void label_instruction(opt_ctx &ctx, Block& block, aco_ptr<Instruction>& instr)
       }
       break;
    }
-   case aco_opcode::s_mov_b32: /* propagate */
-   case aco_opcode::s_mov_b64:
-   case aco_opcode::v_mov_b32:
-   case aco_opcode::p_parallelcopy:
+   case aco_opcode::p_parallelcopy: /* propagate */
       if (instr->operands[0].isTemp() && ctx.info[instr->operands[0].tempId()].is_vec() &&
           instr->operands[0].regClass() != instr->definitions[0].regClass()) {
          /* We might not be able to copy-propagate if it's a SGPR->VGPR copy, so
@@ -1252,29 +1254,6 @@ void label_instruction(opt_ctx &ctx, Block& block, aco_ptr<Instruction>& instr)
       if (!ctx.program->needs_wqm)
          ctx.info[instr->definitions[0].tempId()].set_constant(ctx.program->chip_class, 0u);
       break;
-   case aco_opcode::s_movk_i32: {
-      uint32_t v = static_cast<SOPK_instruction*>(instr.get())->imm;
-      v = v & 0x8000 ? (v | 0xffff0000) : v;
-      ctx.info[instr->definitions[0].tempId()].set_constant(ctx.program->chip_class, v);
-      break;
-   }
-   case aco_opcode::v_bfrev_b32:
-   case aco_opcode::s_brev_b32: {
-      if (instr->operands[0].isConstant()) {
-         uint32_t v = util_bitreverse(instr->operands[0].constantValue());
-         ctx.info[instr->definitions[0].tempId()].set_constant(ctx.program->chip_class, v);
-      }
-      break;
-   }
-   case aco_opcode::s_bfm_b32: {
-      if (instr->operands[0].isConstant() && instr->operands[1].isConstant()) {
-         unsigned size = instr->operands[0].constantValue() & 0x1f;
-         unsigned start = instr->operands[1].constantValue() & 0x1f;
-         uint32_t v = ((1u << size) - 1u) << start;
-         ctx.info[instr->definitions[0].tempId()].set_constant(ctx.program->chip_class, v);
-      }
-      break;
-   }
    case aco_opcode::v_mul_f16:
    case aco_opcode::v_mul_f32: { /* omod */
       ctx.info[instr->definitions[0].tempId()].set_mul(instr.get());
