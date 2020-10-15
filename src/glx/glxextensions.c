@@ -352,6 +352,29 @@ static void __glXProcessServerString(const struct extension_info *ext,
                                      unsigned char *server_support);
 
 /**
+ * Find an extension in the list based on its name.
+ *
+ * \param ext       List of extensions where to search.
+ * \param name      Name of the extension.
+ * \param name_len  Length, in characters, of the extension name.
+ */
+static const struct extension_info *
+find_extension(const struct extension_info *ext, const char *name,
+               unsigned name_len)
+{
+   unsigned i;
+
+   for (i = 0; ext[i].name != NULL; i++) {
+      if ((name_len == ext[i].name_len)
+          && (strncmp(ext[i].name, name, name_len) == 0)) {
+         return &ext[i];
+      }
+   }
+
+   return NULL;
+}
+
+/**
  * Set the state of a GLX extension.
  *
  * \param name      Name of the extension.
@@ -360,25 +383,18 @@ static void __glXProcessServerString(const struct extension_info *ext,
  * \param supported Table in which the state of the extension is to be set.
  */
 static void
-set_glx_extension(const struct extension_info *ext,
+set_glx_extension(const struct extension_info *ext_list,
                   const char *name, unsigned name_len, GLboolean state,
                   unsigned char *supported)
 {
-   unsigned i;
+   const struct extension_info *ext = find_extension(ext_list, name, name_len);
+   if (!ext)
+       return;
 
-
-   for (i = 0; ext[i].name != NULL; i++) {
-      if ((name_len == ext[i].name_len)
-          && (strncmp(ext[i].name, name, name_len) == 0)) {
-         if (state) {
-            SET_BIT(supported, ext[i].bit);
-         }
-         else {
-            CLR_BIT(supported, ext[i].bit);
-         }
-
-         return;
-      }
+   if (state) {
+      SET_BIT(supported, ext->bit);
+   } else {
+      CLR_BIT(supported, ext->bit);
    }
 }
 
