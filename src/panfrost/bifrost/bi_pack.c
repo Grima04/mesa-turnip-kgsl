@@ -790,11 +790,11 @@ bi_pack_add(bi_clause *clause, bi_bundle bundle, bi_registers *regs, gl_shader_s
                                 (sz == 16) ? pan_pack_add_isub_v2s16(clause, bundle.add, regs) :
                                 pan_pack_add_isub_s32(clause, bundle.add, regs);
                 }
-        case BI_LOAD:
-                unreachable("Packing todo");
         case BI_LOAD_ATTR:
                 return pan_pack_add_ld_attr_imm(clause, bundle.add, regs);
+        case BI_LOAD:
         case BI_LOAD_UNIFORM:
+                assert(u32 || s32 || f32);
                 switch (bundle.add->vector_channels) {
                 case 1: return pan_pack_add_load_i32(clause, bundle.add, regs);
                 case 2: return pan_pack_add_load_i64(clause, bundle.add, regs);
@@ -835,8 +835,16 @@ bi_pack_add(bi_clause *clause, bi_bundle bundle, bi_registers *regs, gl_shader_s
                         unreachable("TODO");
                 }
         case BI_MOV:
-        case BI_STORE:
                 unreachable("Packing todo");
+        case BI_STORE:
+                assert(src0_u32 || src0_s32 || src0_f32);
+                switch (bundle.add->vector_channels) {
+                case 1: return pan_pack_add_store_i32(clause, bundle.add, regs);
+                case 2: return pan_pack_add_store_i64(clause, bundle.add, regs);
+                case 3: return pan_pack_add_store_i96(clause, bundle.add, regs);
+                case 4: return pan_pack_add_store_i128(clause, bundle.add, regs);
+                default: unreachable("Invalid channel count");
+                }
         case BI_STORE_VAR:
                 return pan_pack_add_st_cvt(clause, bundle.add, regs);
         case BI_SPECIAL:
