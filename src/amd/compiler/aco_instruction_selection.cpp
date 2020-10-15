@@ -11011,12 +11011,46 @@ void ngg_emit_sendmsg_gs_alloc_req(isel_context *ctx, Temp vtx_cnt = Temp(), Tem
    if (prm_cnt.id() == 0)
       prm_cnt = ngg_max_primitive_count(ctx);
 
+   Temp prm_cnt_0;
+
+   if (ctx->program->chip_class == GFX10 && ctx->stage.has(SWStage::GS) && ctx->ngg_gs_const_prmcnt[0] <= 0) {
+      /* Navi 1x workaround: make sure to always export at least 1 vertex and triangle */
+      prm_cnt_0 = bld.sopc(aco_opcode::s_cmp_eq_u32, bld.def(s1, scc), prm_cnt, Operand(0u));
+      prm_cnt = bld.sop2(aco_opcode::s_cselect_b32, bld.def(s1), Operand(1u), prm_cnt, bld.scc(prm_cnt_0));
+      vtx_cnt = bld.sop2(aco_opcode::s_cselect_b32, bld.def(s1), Operand(1u), vtx_cnt, bld.scc(prm_cnt_0));
+   }
+
    /* Put the number of vertices and primitives into m0 for the GS_ALLOC_REQ */
    Temp tmp = bld.sop2(aco_opcode::s_lshl_b32, bld.def(s1), bld.def(s1, scc), prm_cnt, Operand(12u));
    tmp = bld.sop2(aco_opcode::s_or_b32, bld.m0(bld.def(s1)), bld.def(s1, scc), tmp, vtx_cnt);
 
    /* Request the SPI to allocate space for the primitives and vertices that will be exported by the threadgroup. */
    bld.sopp(aco_opcode::s_sendmsg, bld.m0(tmp), -1, sendmsg_gs_alloc_req);
+
+   if (prm_cnt_0.id()) {
+      /* Navi 1x workaround: export a zero-area triangle when GS has no output. */
+      Temp first_lane = bld.sop1(Builder::s_ff1_i32, bld.def(s1), Operand(exec, bld.lm));
+      Temp cond = bld.sop2(Builder::s_lshl, bld.def(bld.lm), bld.def(s1, scc),
+                           Operand(1u, ctx->program->wave_size == 64), first_lane);
+      cond = bld.sop2(Builder::s_cselect, bld.def(bld.lm), cond, Operand(0u, ctx->program->wave_size == 64), bld.scc(prm_cnt_0));
+
+      if_context ic_prim_0;
+      begin_divergent_if_then(ctx, &ic_prim_0, cond);
+      bld.reset(ctx->block);
+      ctx->block->kind |= block_kind_export_end;
+
+      Temp zero = bld.copy(bld.def(v1), Operand(0u));
+      bld.exp(aco_opcode::exp, zero, Operand(v1), Operand(v1), Operand(v1),
+        1 /* enabled mask */, V_008DFC_SQ_EXP_PRIM /* dest */,
+        false /* compressed */, true /* done */, false /* valid mask */);
+      bld.exp(aco_opcode::exp, zero, zero, zero, zero,
+        0xf /* enabled mask */, V_008DFC_SQ_EXP_POS /* dest */,
+        false /* compressed */, true /* done */, true /* valid mask */);
+
+      begin_divergent_if_else(ctx, &ic_prim_0);
+      end_divergent_if(ctx, &ic_prim_0);
+      bld.reset(ctx->block);
+   }
 
    end_uniform_if(ctx, &ic);
 
