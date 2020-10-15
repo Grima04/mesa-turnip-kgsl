@@ -74,24 +74,14 @@ bi_pack_header(bi_clause *clause, bi_clause *next_1, bi_clause *next_2, bool tdd
 static unsigned
 bi_lookup_constant(bi_clause *clause, uint32_t cons, bool *hi)
 {
-        uint64_t want = (cons >> 4);
-
         for (unsigned i = 0; i < clause->constant_count; ++i) {
-                /* Only check top 60-bits since that's what's actually embedded
-                 * in the clause, the bottom 4-bits are bundle-inline */
+                /* Try to apply to top or to bottom */
+                uint64_t top = clause->constants[i];
 
-                uint64_t candidates[2] = {
-                        clause->constants[i] >> 4,
-                        clause->constants[i] >> 36
-                };
-
-                /* Treat lo/hi separately */
-                candidates[0] &= (0xFFFFFFFF >> 4);
-
-                if (candidates[0] == want)
+                if (cons == ((uint32_t) top | (cons & 0xF)))
                         return i;
 
-                if (candidates[1] == want) {
+                if (cons == (top >> 32ul)) {
                         *hi = true;
                         return i;
                 }
