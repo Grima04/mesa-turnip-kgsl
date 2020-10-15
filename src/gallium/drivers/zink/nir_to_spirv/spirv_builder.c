@@ -215,6 +215,13 @@ spirv_builder_emit_decoration(struct spirv_builder *b, SpvId target,
 }
 
 void
+spirv_builder_emit_specid(struct spirv_builder *b, SpvId target, uint32_t id)
+{
+   uint32_t args[] = { id };
+   emit_decoration(b, target, SpvDecorationSpecId, args, ARRAY_SIZE(args));
+}
+
+void
 spirv_builder_emit_location(struct spirv_builder *b, SpvId target,
                             uint32_t location)
 {
@@ -1407,6 +1414,13 @@ spirv_builder_const_uint(struct spirv_builder *b, int width, uint64_t val)
 }
 
 SpvId
+spirv_builder_spec_const_uint(struct spirv_builder *b, int width)
+{
+   assert(width <= 32);
+   return spirv_builder_emit_unop(b, SpvOpSpecConstant, spirv_builder_type_uint(b, width), UINT_MAX);
+}
+
+SpvId
 spirv_builder_const_float(struct spirv_builder *b, int width, double val)
 {
    assert(width >= 32);
@@ -1425,6 +1439,25 @@ spirv_builder_const_composite(struct spirv_builder *b, SpvId result_type,
    return get_const_def(b, SpvOpConstantComposite, result_type,
                         (const uint32_t *)constituents,
                         num_constituents);
+}
+
+SpvId
+spirv_builder_spec_const_composite(struct spirv_builder *b, SpvId result_type,
+                                   const SpvId constituents[],
+                                   size_t num_constituents)
+{
+   SpvId result = spirv_builder_new_id(b);
+
+   assert(num_constituents > 0);
+   int words = 3 + num_constituents;
+   spirv_buffer_prepare(&b->instructions, b->mem_ctx, words);
+   spirv_buffer_emit_word(&b->instructions,
+                          SpvOpSpecConstantComposite | (words << 16));
+   spirv_buffer_emit_word(&b->instructions, result_type);
+   spirv_buffer_emit_word(&b->instructions, result);
+   for (int i = 0; i < num_constituents; ++i)
+      spirv_buffer_emit_word(&b->instructions, constituents[i]);
+   return result;
 }
 
 SpvId

@@ -90,6 +90,9 @@ spirv_builder_emit_decoration(struct spirv_builder *b, SpvId target,
                               SpvDecoration decoration);
 
 void
+spirv_builder_emit_specid(struct spirv_builder *b, SpvId target, uint32_t id);
+
+void
 spirv_builder_emit_location(struct spirv_builder *b, SpvId target,
                             uint32_t location);
 
@@ -401,12 +404,20 @@ SpvId
 spirv_builder_const_uint(struct spirv_builder *b, int width, uint64_t val);
 
 SpvId
+spirv_builder_spec_const_uint(struct spirv_builder *b, int width);
+
+SpvId
 spirv_builder_const_float(struct spirv_builder *b, int width, double val);
 
 SpvId
 spirv_builder_const_composite(struct spirv_builder *b, SpvId result_type,
                               const SpvId constituents[],
                               size_t num_constituents);
+
+SpvId
+spirv_builder_spec_const_composite(struct spirv_builder *b, SpvId result_type,
+                                   const SpvId constituents[],
+                                   size_t num_constituents);
 
 SpvId
 spirv_builder_emit_var(struct spirv_builder *b, SpvId type,
