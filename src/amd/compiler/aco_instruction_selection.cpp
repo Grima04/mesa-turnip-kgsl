@@ -7312,9 +7312,12 @@ bool emit_uniform_scan(isel_context *ctx, nir_intrinsic_instr *instr)
    return true;
 }
 
-Pseudo_reduction_instruction *create_reduction_instr(isel_context *ctx, aco_opcode aco_op, ReduceOp op, Definition dst, Temp src)
+Temp emit_reduction_instr(isel_context *ctx, aco_opcode aco_op, ReduceOp op,
+                          unsigned cluster_size, Definition dst, Temp src)
 {
    assert(src.bytes() <= 8);
+   assert(src.type() == RegType::vgpr);
+
    Builder bld(ctx->program, ctx->block);
 
    unsigned num_defs = 0;
@@ -7356,8 +7359,10 @@ Pseudo_reduction_instruction *create_reduction_instr(isel_context *ctx, aco_opco
    std::copy(defs, defs + num_defs, reduce->definitions.begin());
 
    reduce->reduce_op = op;
+   reduce->cluster_size = cluster_size;
+   bld.insert(std::move(reduce));
 
-   return reduce;
+   return dst.getTemp();
 }
 
 void emit_interp_center(isel_context *ctx, Temp dst, Temp pos1, Temp pos2)
@@ -7970,13 +7975,7 @@ void visit_intrinsic(isel_context *ctx, nir_intrinsic_instr *instr)
                unreachable("unknown reduce intrinsic");
          }
 
-         Temp tmp_dst = bld.tmp(dst.regClass());
-         aco_ptr<Pseudo_reduction_instruction> reduce{
-            create_reduction_instr(ctx, aco_op, reduce_op, Definition(tmp_dst), src)};
-
-         reduce->cluster_size = cluster_size;
-         ctx->block->instructions.emplace_back(std::move(reduce));
-
+         Temp tmp_dst = emit_reduction_instr(ctx, aco_op, reduce_op, cluster_size, bld.def(dst.regClass()), src);
          emit_wqm(ctx, tmp_dst, dst);
       }
       break;
@@ -11346,11 +11345,8 @@ void ngg_gs_write_shader_query(isel_context *ctx, nir_intrinsic_instr *instr)
          prm_cnt = as_vgpr(ctx, prm_cnt);
 
       /* Reduction calculates the primitive count for the entire subgroup. */
-      sg_prm_cnt = bld.tmp(s1);
-      aco_ptr<Pseudo_reduction_instruction> red_instr
-         {create_reduction_instr(ctx, aco_opcode::p_reduce, ReduceOp::iadd32, Definition(sg_prm_cnt), prm_cnt)};
-      red_instr->cluster_size = ctx->program->wave_size;
-      bld.insert(std::move(red_instr));
+      sg_prm_cnt = emit_reduction_instr(ctx, aco_opcode::p_reduce, ReduceOp::iadd32,
+                                        ctx->program->wave_size, bld.def(s1), prm_cnt);
    }
 
    Temp first_lane = bld.sop1(Builder::s_ff1_i32, bld.def(s1), Operand(exec, bld.lm));
