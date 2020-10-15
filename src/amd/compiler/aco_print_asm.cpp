@@ -189,7 +189,24 @@ bool print_asm(Program *program, std::vector<uint32_t>& binary,
    size_t pos = 0;
    bool invalid = false;
    unsigned next_block = 0;
+
+   unsigned prev_size = 0;
+   unsigned prev_pos = 0;
+   unsigned repeat_count = 0;
    while (pos < exec_size) {
+      bool new_block = next_block < program->blocks.size() && pos == program->blocks[next_block].offset;
+      if (pos + prev_size <= exec_size && prev_pos != pos && !new_block &&
+          memcmp(&binary[prev_pos], &binary[pos], prev_size * 4) == 0) {
+         repeat_count++;
+         pos += prev_size;
+         continue;
+      } else {
+         if (repeat_count) {
+            out << std::left << std::setw(0) << std::dec << std::setfill(' ') << "\t(then repeated " << repeat_count << " times)" << std::endl;
+         }
+         repeat_count = 0;
+      }
+
       while (next_block < program->blocks.size() && pos == program->blocks[next_block].offset) {
          if (referenced_blocks[next_block])
             out << "BB" << std::dec << next_block << ":" << std::endl;
@@ -202,25 +219,17 @@ bool print_asm(Program *program, std::vector<uint32_t>& binary,
       std::pair<bool, size_t> res = disasm_instr(
          program->chip_class, disasm, binary.data(), exec_size, pos, out);
       invalid |= res.first;
-      size_t size = res.second;
 
       out << std::right;
 
       out << " ;";
-      for (unsigned i = 0; i < size; i++)
+      for (unsigned i = 0; i < res.second; i++)
          out << " " << std::setfill('0') << std::setw(8) << std::hex << binary[pos + i];
       out << std::endl;
 
-      size_t original_pos = pos;
-      pos += size;
-
-      unsigned repeat_count = 0;
-      while (pos + size <= exec_size && memcmp(&binary[pos], &binary[original_pos], size * 4) == 0) {
-         repeat_count++;
-         pos += size;
-      }
-      if (repeat_count)
-         out << std::left << std::setw(0) << std::dec << std::setfill(' ') << "\t(then repeated " << repeat_count << " times)" << std::endl;
+      prev_size = res.second;
+      prev_pos = pos;
+      pos += res.second;
    }
    out << std::setfill(' ') << std::setw(0) << std::dec;
    assert(next_block == program->blocks.size());
