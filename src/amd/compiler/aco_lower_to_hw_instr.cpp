@@ -980,23 +980,73 @@ uint32_t get_intersection_mask(int a_start, int a_size,
    return u_bit_consecutive(intersection_start, intersection_end - intersection_start) & mask;
 }
 
-void copy_16bit_literal(lower_context *ctx, Builder& bld, Definition def, Operand op)
+void copy_constant(lower_context *ctx, Builder& bld, Definition dst, Operand op)
 {
-   if (ctx->program->chip_class < GFX10 || !(ctx->block->fp_mode.denorm16_64 & fp_denorm_keep_in)) {
-      unsigned offset = def.physReg().byte() * 8u;
-      def = Definition(PhysReg(def.physReg().reg()), v1);
-      Operand def_op(def.physReg(), v1);
-      bld.vop2(aco_opcode::v_and_b32, def, Operand(~(0xffffu << offset)), def_op);
-      bld.vop2(aco_opcode::v_or_b32, def, Operand(op.constantValue() << offset), def_op);
-   } else if (def.physReg().byte() == 2) {
-      Operand def_lo(def.physReg().advance(-2), v2b);
-      Instruction* instr = bld.vop3(aco_opcode::v_pack_b32_f16, def, def_lo, op);
-      static_cast<VOP3A_instruction*>(instr)->opsel = 0;
+   assert(op.bytes() == dst.bytes());
+
+   if (dst.regClass() == s1 && op.isLiteral()) {
+      uint32_t imm = op.constantValue();
+      if (imm >= 0xffff8000 || imm <= 0x7fff) {
+         bld.sopk(aco_opcode::s_movk_i32, dst, imm & 0xFFFFu);
+         return;
+      } else if (util_bitreverse(imm) <= 64 || util_bitreverse(imm) >= 0xFFFFFFF0) {
+         uint32_t rev = util_bitreverse(imm);
+         bld.sop1(aco_opcode::s_brev_b32, dst, Operand(rev));
+         return;
+      } else if (imm != 0) {
+         unsigned start = (ffs(imm) - 1) & 0x1f;
+         unsigned size = util_bitcount(imm) & 0x1f;
+         if ((((1u << size) - 1u) << start) == imm) {
+            bld.sop2(aco_opcode::s_bfm_b32, dst, Operand(size), Operand(start));
+            return;
+         }
+      }
+   }
+
+   if (dst.regClass() == s1) {
+      if (op.constantEquals(0x3e22f983) && ctx->program->chip_class >= GFX8)
+         op.setFixed(PhysReg{248}); /* it can be an inline constant on GFX8+ */
+      bld.sop1(aco_opcode::s_mov_b32, dst, op);
+   } else if (dst.regClass() == s2) {
+      bld.sop1(aco_opcode::s_mov_b64, dst, op);
+   } else if (dst.regClass() == v1) {
+      bld.vop1(aco_opcode::v_mov_b32, dst, op);
+   } else if (dst.regClass() == v1b) {
+      assert(ctx->program->chip_class >= GFX8);
+      uint8_t val = op.constantValue();
+      Operand op32((uint32_t)val | (val & 0x80u ? 0xffffff00u : 0u));
+      aco_ptr<SDWA_instruction> sdwa;
+      if (op32.isLiteral()) {
+         uint32_t a = (uint32_t)int8_mul_table[val * 2];
+         uint32_t b = (uint32_t)int8_mul_table[val * 2 + 1];
+         bld.vop2_sdwa(aco_opcode::v_mul_u32_u24, dst,
+                       Operand(a | (a & 0x80u ? 0xffffff00u : 0x0u)),
+                       Operand(b | (b & 0x80u ? 0xffffff00u : 0x0u)));
+      } else {
+         bld.vop1_sdwa(aco_opcode::v_mov_b32, dst, op32);
+      }
+   } else if (dst.regClass() == v2b && op.isConstant() && !op.isLiteral()) {
+      assert(ctx->program->chip_class >= GFX8);
+      bld.vop2_sdwa(aco_opcode::v_add_f16, dst, op, Operand(0u));
+   } else if (dst.regClass() == v2b && op.isLiteral()) {
+      if (ctx->program->chip_class < GFX10 || !(ctx->block->fp_mode.denorm16_64 & fp_denorm_keep_in)) {
+         unsigned offset = dst.physReg().byte() * 8u;
+         dst = Definition(PhysReg(dst.physReg().reg()), v1);
+         Operand def_op(dst.physReg(), v1);
+         bld.vop2(aco_opcode::v_and_b32, dst, Operand(~(0xffffu << offset)), def_op);
+         bld.vop2(aco_opcode::v_or_b32, dst, Operand(op.constantValue() << offset), def_op);
+      } else if (dst.physReg().byte() == 2) {
+         Operand def_lo(dst.physReg().advance(-2), v2b);
+         Instruction* instr = bld.vop3(aco_opcode::v_pack_b32_f16, dst, def_lo, op);
+         static_cast<VOP3A_instruction*>(instr)->opsel = 0;
+      } else {
+         assert(dst.physReg().byte() == 0);
+         Operand def_hi(dst.physReg().advance(2), v2b);
+         Instruction* instr = bld.vop3(aco_opcode::v_pack_b32_f16, dst, op, def_hi);
+         static_cast<VOP3A_instruction*>(instr)->opsel = 2;
+      }
    } else {
-      assert(def.physReg().byte() == 0);
-      Operand def_hi(def.physReg().advance(2), v2b);
-      Instruction* instr = bld.vop3(aco_opcode::v_pack_b32_f16, def, op, def_hi);
-      static_cast<VOP3A_instruction*>(instr)->opsel = 2;
+      unreachable("unsupported copy");
    }
 }
 
@@ -1048,10 +1098,18 @@ bool do_copy(lower_context* ctx, Builder& bld, const copy_operation& copy, bool 
          } else {
             bld.vop1(aco_opcode::v_mov_b32, def, op);
          }
-      } else if (def.regClass() == v2b && op.isLiteral()) {
-         copy_16bit_literal(ctx, bld, def, op);
+      } else if (op.isConstant()) {
+         copy_constant(ctx, bld, def, op);
+      } else if (def.regClass() == v1) {
+         bld.vop1(aco_opcode::v_mov_b32, def, op);
+      } else if (def.regClass() == s1) {
+         bld.sop1(aco_opcode::s_mov_b32, def, op);
+      } else if (def.regClass() == s2) {
+         bld.sop1(aco_opcode::s_mov_b64, def, op);
+      } else if (def.regClass().is_subdword()) {
+         bld.vop1_sdwa(aco_opcode::v_mov_b32, def, op);
       } else {
-         bld.copy(def, op);
+         unreachable("unsupported copy");
       }
 
       did_copy = true;
@@ -1157,7 +1215,7 @@ void do_swap(lower_context *ctx, Builder& bld, const copy_operation& copy, bool 
 void do_pack_2x16(lower_context *ctx, Builder& bld, Definition def, Operand lo, Operand hi)
 {
    if (lo.isConstant() && hi.isConstant()) {
-      bld.copy(def, Operand(lo.constantValue() | (hi.constantValue() << 16)));
+      copy_constant(ctx, bld, def, Operand(lo.constantValue() | (hi.constantValue() << 16)));
       return;
    }
 
@@ -1225,9 +1283,9 @@ void do_pack_2x16(lower_context *ctx, Builder& bld, Definition def, Operand lo, 
    if (ctx->program->chip_class >= GFX8) {
       /* either hi or lo are already placed correctly */
       if (lo.physReg().reg() == def.physReg().reg())
-         bld.copy(def_hi, hi);
+         bld.vop1_sdwa(aco_opcode::v_mov_b32, def_hi, hi);
       else
-         bld.copy(def_lo, lo);
+         bld.vop1_sdwa(aco_opcode::v_mov_b32, def_lo, lo);
       return;
    }
 
