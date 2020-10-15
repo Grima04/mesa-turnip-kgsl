@@ -655,6 +655,12 @@ bool bi_opt_dead_code_eliminate(bi_context *ctx, bi_block *block);
 void bi_schedule(bi_context *ctx);
 void bi_register_allocate(bi_context *ctx);
 
+bi_clause *bi_make_singleton(void *memctx, bi_instruction *ins,
+                bi_block *block,
+                unsigned scoreboard_id,
+                unsigned dependencies,
+                bool osrb);
+
 /* Liveness */
 
 void bi_compute_liveness(bi_context *ctx);
