@@ -381,7 +381,7 @@ unsigned add_coupling_code(exec_ctx& ctx, Block* block,
 
       /* exec seems to need to be manually initialized with combined shaders */
       if (ctx.program->stage.num_sw_stages() > 1 || ctx.program->stage.hw == HWStage::NGG) {
-         bld.sop1(Builder::s_mov, bld.exec(Definition(exec_mask)), bld.lm == s2 ? Operand(UINT64_MAX) : Operand(UINT32_MAX));
+         bld.copy(bld.exec(Definition(exec_mask)), Operand(UINT32_MAX, bld.lm == s2));
          instructions[0]->definitions.pop_back();
       }
 
@@ -653,15 +653,15 @@ void lower_fs_buffer_store_smem(Builder& bld, bool need_check, aco_ptr<Instructi
    Operand offset = instr->operands[1];
    if (need_check) {
       /* if exec is zero, then use UINT32_MAX as an offset and make this store a no-op */
-      Temp nonempty = bld.sopc(Builder::s_cmp_lg, bld.def(s1, scc), cur_exec, Operand(0u));
+      Temp nonempty = bld.sopc(Builder::s_cmp_lg, bld.def(s1, scc), cur_exec, Operand(0u, bld.lm == s2));
 
       if (offset.isLiteral())
-         offset = bld.sop1(aco_opcode::s_mov_b32, bld.def(s1), offset);
+         offset = bld.copy(bld.def(s1), offset);
 
       offset = bld.sop2(aco_opcode::s_cselect_b32, bld.hint_m0(bld.def(s1)),
                         offset, Operand(UINT32_MAX), bld.scc(nonempty));
    } else if (offset.isConstant() && offset.constantValue() > 0xFFFFF) {
-      offset = bld.sop1(aco_opcode::s_mov_b32, bld.hint_m0(bld.def(s1)), offset);
+      offset = bld.copy(bld.hint_m0(bld.def(s1)), offset);
    }
    if (!offset.isConstant())
       offset.setFixed(m0);
@@ -1076,7 +1076,7 @@ void add_branch_code(exec_ctx& ctx, Block* block)
       unsigned succ_idx = ctx.program->blocks[block->linear_succs[1]].linear_succs[0];
       Block& succ = ctx.program->blocks[succ_idx];
       if (!(succ.kind & block_kind_invert || succ.kind & block_kind_merge)) {
-         ctx.info[idx].exec.back().first = bld.sop1(Builder::s_mov, bld.def(bld.lm, exec), Operand(0u));
+         ctx.info[idx].exec.back().first = bld.copy(bld.def(bld.lm, exec), Operand(0u, bld.lm == s2));
       }
 
       bld.branch(aco_opcode::p_cbranch_nz, bld.hint_vcc(bld.def(s2)), bld.scc(cond), block->linear_succs[1], block->linear_succs[0]);
@@ -1105,7 +1105,7 @@ void add_branch_code(exec_ctx& ctx, Block* block)
       unsigned succ_idx = ctx.program->blocks[block->linear_succs[1]].linear_succs[0];
       Block& succ = ctx.program->blocks[succ_idx];
       if (!(succ.kind & block_kind_invert || succ.kind & block_kind_merge)) {
-         ctx.info[idx].exec.back().first = bld.sop1(Builder::s_mov, bld.def(bld.lm, exec), Operand(0u));
+         ctx.info[idx].exec.back().first = bld.copy(bld.def(bld.lm, exec), Operand(0u, bld.lm == s2));
       }
 
       bld.branch(aco_opcode::p_cbranch_nz, bld.hint_vcc(bld.def(s2)), bld.scc(cond), block->linear_succs[1], block->linear_succs[0]);

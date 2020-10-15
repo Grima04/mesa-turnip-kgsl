@@ -1003,9 +1003,10 @@ void copy_constant(lower_context *ctx, Builder& bld, Definition dst, Operand op)
       }
    }
 
+   if (op.bytes() == 4 && op.constantEquals(0x3e22f983) && ctx->program->chip_class >= GFX8)
+      op.setFixed(PhysReg{248}); /* it can be an inline constant on GFX8+ */
+
    if (dst.regClass() == s1) {
-      if (op.constantEquals(0x3e22f983) && ctx->program->chip_class >= GFX8)
-         op.setFixed(PhysReg{248}); /* it can be an inline constant on GFX8+ */
       bld.sop1(aco_opcode::s_mov_b32, dst, op);
    } else if (dst.regClass() == s2) {
       bld.sop1(aco_opcode::s_mov_b64, dst, op);
@@ -1066,8 +1067,14 @@ bool do_copy(lower_context* ctx, Builder& bld, const copy_operation& copy, bool 
       if (def.physReg() == scc) {
          bld.sopc(aco_opcode::s_cmp_lg_i32, def, op, Operand(0u));
          *preserve_scc = true;
-      } else if (def.bytes() == 8 && def.getTemp().type() == RegType::sgpr) {
-         bld.sop1(aco_opcode::s_mov_b64, def, Operand(op.physReg(), s2));
+      } else if (op.isConstant()) {
+         copy_constant(ctx, bld, def, op);
+      } else if (def.regClass() == v1) {
+         bld.vop1(aco_opcode::v_mov_b32, def, op);
+      } else if (def.regClass() == s1) {
+         bld.sop1(aco_opcode::s_mov_b32, def, op);
+      } else if (def.regClass() == s2) {
+         bld.sop1(aco_opcode::s_mov_b64, def, op);
       } else if (def.regClass().is_subdword() && ctx->program->chip_class < GFX8) {
          if (op.physReg().byte()) {
             assert(def.physReg().byte() == 0);
@@ -1098,14 +1105,6 @@ bool do_copy(lower_context* ctx, Builder& bld, const copy_operation& copy, bool 
          } else {
             bld.vop1(aco_opcode::v_mov_b32, def, op);
          }
-      } else if (op.isConstant()) {
-         copy_constant(ctx, bld, def, op);
-      } else if (def.regClass() == v1) {
-         bld.vop1(aco_opcode::v_mov_b32, def, op);
-      } else if (def.regClass() == s1) {
-         bld.sop1(aco_opcode::s_mov_b32, def, op);
-      } else if (def.regClass() == s2) {
-         bld.sop1(aco_opcode::s_mov_b64, def, op);
       } else if (def.regClass().is_subdword()) {
          bld.vop1_sdwa(aco_opcode::v_mov_b32, def, op);
       } else {
