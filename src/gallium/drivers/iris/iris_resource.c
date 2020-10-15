@@ -2135,7 +2135,7 @@ iris_flush_bits_for_history(struct iris_resource *res)
 
    if (res->bind_history & PIPE_BIND_CONSTANT_BUFFER) {
       flush |= PIPE_CONTROL_CONST_CACHE_INVALIDATE |
-               PIPE_CONTROL_DATA_CACHE_FLUSH;
+               PIPE_CONTROL_TEXTURE_CACHE_INVALIDATE;
    }
 
    if (res->bind_history & PIPE_BIND_SAMPLER_VIEW)
