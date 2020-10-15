@@ -323,14 +323,17 @@ zink_draw_vbo(struct pipe_context *pctx,
       for (int j = 0; j < shader->num_bindings; j++) {
          int index = shader->bindings[j].index;
          if (shader->bindings[j].type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER) {
-            assert(ctx->ubos[i][index].buffer_size > 0);
             assert(ctx->ubos[i][index].buffer_size <= screen->info.props.limits.maxUniformBufferRange);
-            assert(ctx->ubos[i][index].buffer);
             struct zink_resource *res = zink_resource(ctx->ubos[i][index].buffer);
+            assert(!res || ctx->ubos[i][index].buffer_size > 0);
+            assert(!res || ctx->ubos[i][index].buffer);
             write_desc_resources[num_wds] = res;
-            buffer_infos[num_buffer_info].buffer = res->buffer;
-            buffer_infos[num_buffer_info].offset = ctx->ubos[i][index].buffer_offset;
-            buffer_infos[num_buffer_info].range  = ctx->ubos[i][index].buffer_size;
+            buffer_infos[num_buffer_info].buffer = res ? res->buffer :
+                                                   (screen->info.rb2_feats.nullDescriptor ?
+                                                    VK_NULL_HANDLE :
+                                                    zink_resource(ctx->dummy_buffer)->buffer);
+            buffer_infos[num_buffer_info].offset = res ? ctx->ubos[i][index].buffer_offset : 0;
+            buffer_infos[num_buffer_info].range  = res ? ctx->ubos[i][index].buffer_size : VK_WHOLE_SIZE;
             wds[num_wds].pBufferInfo = buffer_infos + num_buffer_info;
             ++num_buffer_info;
          } else {
