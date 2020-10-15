@@ -72,7 +72,7 @@ bi_pack_header(bi_clause *clause, bi_clause *next_1, bi_clause *next_2, bool tdd
  * sources directly. */
 
 static unsigned
-bi_lookup_constant(bi_clause *clause, uint64_t cons, bool *hi, bool b64)
+bi_lookup_constant(bi_clause *clause, uint32_t cons, bool *hi)
 {
         uint64_t want = (cons >> 4);
 
@@ -85,15 +85,13 @@ bi_lookup_constant(bi_clause *clause, uint64_t cons, bool *hi, bool b64)
                         clause->constants[i] >> 36
                 };
 
-                /* For <64-bit mode, we treat lo/hi separately */
-
-                if (!b64)
-                        candidates[0] &= (0xFFFFFFFF >> 4);
+                /* Treat lo/hi separately */
+                candidates[0] &= (0xFFFFFFFF >> 4);
 
                 if (candidates[0] == want)
                         return i;
 
-                if (candidates[1] == want && !b64) {
+                if (candidates[1] == want) {
                         *hi = true;
                         return i;
                 }
@@ -152,9 +150,8 @@ bi_assign_fau_idx_single(bi_registers *regs,
                                 continue;
 
                         bool hi = false;
-                        bool b64 = nir_alu_type_get_type_size(ins->src_types[s]) > 32;
-                        uint64_t cons = bi_get_immediate(ins, s);
-                        unsigned idx = bi_lookup_constant(clause, cons, &hi, b64);
+                        uint32_t cons = bi_get_immediate(ins, s);
+                        unsigned idx = bi_lookup_constant(clause, cons, &hi);
                         unsigned lo = clause->constants[idx] & 0xF;
                         unsigned f = bi_constant_field(idx) | lo;
 
