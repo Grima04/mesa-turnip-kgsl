@@ -332,7 +332,7 @@ bool validate_ir(Program* program)
                   if (!instr->definitions[i].regClass().is_subdword())
                      continue;
                   Operand op = instr->operands[i];
-                  check(!op.isLiteral(), "Sub-dword copies cannot take literals", instr.get());
+                  check(program->chip_class >= GFX9 || !op.isLiteral(), "Sub-dword copies cannot take literals", instr.get());
                   if (op.isConstant() || (op.hasRegClass() && op.regClass().type() == RegType::sgpr))
                      check(program->chip_class >= GFX9, "Sub-dword pseudo instructions can only take constants or SGPRs on GFX9+", instr.get());
                }
