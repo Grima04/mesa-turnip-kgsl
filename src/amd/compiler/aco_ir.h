@@ -1748,7 +1748,7 @@ void insert_wait_states(Program* program);
 void insert_NOPs(Program* program);
 unsigned emit_program(Program* program, std::vector<uint32_t>& code);
 bool print_asm(Program *program, std::vector<uint32_t>& binary,
-               unsigned exec_size, std::ostream& out);
+               unsigned exec_size, FILE *output);
 bool validate_ir(Program* program);
 bool validate_ra(Program* program);
 #ifndef NDEBUG

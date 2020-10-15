@@ -187,10 +187,7 @@ void finish_assembler_test()
    } else if (program->chip_class == GFX10 && LLVM_VERSION_MAJOR < 9) {
       skip_test("LLVM 9 needed for GFX10 disassembly");
    } else if (program->chip_class >= GFX8) {
-      std::ostringstream ss;
-      print_asm(program.get(), binary, exec_size / 4u, ss);
-
-      fputs(ss.str().c_str(), output);
+      print_asm(program.get(), binary, exec_size / 4u, output);
    } else {
       //TODO: maybe we should use CLRX and skip this test if it's not available?
       for (uint32_t dword : binary)

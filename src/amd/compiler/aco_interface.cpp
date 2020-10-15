@@ -28,7 +28,6 @@
 #include "vulkan/radv_shader_args.h"
 
 #include <iostream>
-#include <sstream>
 
 static aco_compiler_statistic_info statistic_infos[] = {
    [aco::statistic_hash] = {"Hash", "CRC32 hash of code and constant data"},
@@ -173,16 +172,25 @@ void aco_compile_shader(unsigned shader_count,
 
    std::string disasm;
    if (get_disasm) {
-      std::ostringstream stream;
-      if (aco::print_asm(program.get(), code, exec_size / 4u, stream)) {
-         std::cerr << "Failed to disassemble program:\n";
-         aco_print_program(program.get(), stderr);
-         std::cerr << stream.str() << std::endl;
-         abort();
+      char *data = NULL;
+      size_t disasm_size = 0;
+      FILE *f = open_memstream(&data, &disasm_size);
+      if (f) {
+         bool fail = aco::print_asm(program.get(), code, exec_size / 4u, f);
+         fputc(0, f);
+         fclose(f);
+
+         if (fail) {
+            fprintf(stderr, "Failed to disassemble program:\n");
+            aco_print_program(program.get(), stderr);
+            fputs(data, stderr);
+            abort();
+         }
       }
-      stream << '\0';
-      disasm = stream.str();
-      size += disasm.size();
+
+      disasm = std::string(data, data + disasm_size);
+      size += disasm_size;
+      free(data);
    }
 
    size_t stats_size = 0;
