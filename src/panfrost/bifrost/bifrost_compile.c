@@ -1609,8 +1609,7 @@ emit_instr(bi_context *ctx, struct nir_instr *instr)
                 break;
 
         case nir_instr_type_ssa_undef:
-                /* Spurious */
-                break;
+                unreachable("should've been lowered");
 
         default:
                 unreachable("Unhandled instruction type");
@@ -1852,6 +1851,8 @@ bi_optimize_nir(nir_shader *nir)
                 }
 
                 NIR_PASS(progress, nir, nir_opt_undef);
+                NIR_PASS(progress, nir, nir_undef_to_zero);
+
                 NIR_PASS(progress, nir, nir_opt_loop_unroll,
                          nir_var_shader_in |
                          nir_var_shader_out |
