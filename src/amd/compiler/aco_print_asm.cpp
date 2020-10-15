@@ -10,6 +10,7 @@
 #endif
 
 namespace aco {
+namespace {
 
 /* LLVM disassembler only supports GFX8+, try to disassemble with CLRXdisasm
  * for GFX6-GFX7 if found on the system, this is better than nothing.
@@ -91,6 +92,58 @@ fail:
    return true;
 }
 
+std::pair<bool, size_t> disasm_instr(chip_class chip, LLVMDisasmContextRef disasm,
+                                     uint32_t *binary, unsigned exec_size, size_t pos,
+                                     std::ostream& out)
+{
+   /* mask out src2 on v_writelane_b32 */
+   if (((chip == GFX8 || chip == GFX9) && (binary[pos] & 0xffff8000) == 0xd28a0000) ||
+       (chip >= GFX10 && (binary[pos] & 0xffff8000) == 0xd7610000)) {
+      binary[pos+1] = binary[pos+1] & 0xF803FFFF;
+   }
+
+   char outline[1024];
+   size_t l = LLVMDisasmInstruction(disasm, (uint8_t *) &binary[pos],
+                                    (exec_size - pos) * sizeof(uint32_t), pos * 4,
+                                    outline, sizeof(outline));
+
+   if (chip >= GFX10 && l == 8 &&
+       ((binary[pos] & 0xffff0000) == 0xd7610000) &&
+       ((binary[pos + 1] & 0x1ff) == 0xff)) {
+      /* v_writelane with literal uses 3 dwords but llvm consumes only 2 */
+      l += 4;
+   }
+
+   bool invalid = false;
+   size_t size;
+   if (!l &&
+       ((chip >= GFX9 && (binary[pos] & 0xffff8000) == 0xd1348000) || /* v_add_u32_e64 + clamp */
+        (chip >= GFX10 && (binary[pos] & 0xffff8000) == 0xd7038000) || /* v_add_u16_e64 + clamp */
+        (chip <= GFX9 && (binary[pos] & 0xffff8000) == 0xd1268000) || /* v_add_u16_e64 + clamp */
+        (chip >= GFX10 && (binary[pos] & 0xffff8000) == 0xd76d8000) || /* v_add3_u32 + clamp */
+        (chip == GFX9 && (binary[pos] & 0xffff8000) == 0xd1ff8000)) /* v_add3_u32 + clamp */) {
+      out << "\tinteger addition + clamp";
+      bool has_literal = chip >= GFX10 &&
+                         (((binary[pos+1] & 0x1ff) == 0xff) || (((binary[pos+1] >> 9) & 0x1ff) == 0xff));
+      size = 2 + has_literal;
+   } else if (chip >= GFX10 && l == 4 && ((binary[pos] & 0xfe0001ff) == 0x020000f9)) {
+      out << "\tv_cndmask_b32 + sdwa";
+      size = 2;
+   } else if (!l) {
+      out << "(invalid instruction)";
+      size = 1;
+      invalid = true;
+   } else {
+      out << outline;
+      assert(l % 4 == 0);
+      size = l / 4;
+   }
+   out << std::right;
+
+   return std::make_pair(invalid, size);
+}
+} /* end namespace */
+
 bool print_asm(Program *program, std::vector<uint32_t>& binary,
                unsigned exec_size, std::ostream& out)
 {
@@ -133,7 +186,6 @@ bool print_asm(Program *program, std::vector<uint32_t>& binary,
                                                              features,
                                                              &symbols, 0, NULL, NULL);
 
-   char outline[1024];
    size_t pos = 0;
    bool invalid = false;
    unsigned next_block = 0;
@@ -144,50 +196,14 @@ bool print_asm(Program *program, std::vector<uint32_t>& binary,
          next_block++;
       }
 
-      /* mask out src2 on v_writelane_b32 */
-      if (((program->chip_class == GFX8 || program->chip_class == GFX9) && (binary[pos] & 0xffff8000) == 0xd28a0000) ||
-          (program->chip_class >= GFX10 && (binary[pos] & 0xffff8000) == 0xd7610000)) {
-         binary[pos+1] = binary[pos+1] & 0xF803FFFF;
-      }
-
       const int align_width = 60;
       out << std::left << std::setw(align_width) << std::setfill(' ');
 
-      size_t l = LLVMDisasmInstruction(disasm, (uint8_t *) &binary[pos],
-                                       (exec_size - pos) * sizeof(uint32_t), pos * 4,
-                                       outline, sizeof(outline));
+      std::pair<bool, size_t> res = disasm_instr(
+         program->chip_class, disasm, binary.data(), exec_size, pos, out);
+      invalid |= res.first;
+      size_t size = res.second;
 
-      if (program->chip_class >= GFX10 && l == 8 &&
-          ((binary[pos] & 0xffff0000) == 0xd7610000) &&
-          ((binary[pos + 1] & 0x1ff) == 0xff)) {
-         /* v_writelane with literal uses 3 dwords but llvm consumes only 2 */
-         l += 4;
-      }
-
-      size_t new_pos;
-      if (!l &&
-          ((program->chip_class >= GFX9 && (binary[pos] & 0xffff8000) == 0xd1348000) || /* v_add_u32_e64 + clamp */
-           (program->chip_class >= GFX10 && (binary[pos] & 0xffff8000) == 0xd7038000) || /* v_add_u16_e64 + clamp */
-           (program->chip_class <= GFX9 && (binary[pos] & 0xffff8000) == 0xd1268000) || /* v_add_u16_e64 + clamp */
-           (program->chip_class >= GFX10 && (binary[pos] & 0xffff8000) == 0xd76d8000) || /* v_add3_u32 + clamp */
-           (program->chip_class == GFX9 && (binary[pos] & 0xffff8000) == 0xd1ff8000)) /* v_add3_u32 + clamp */) {
-         out << "\tinteger addition + clamp";
-         bool has_literal = program->chip_class >= GFX10 &&
-                            (((binary[pos+1] & 0x1ff) == 0xff) || (((binary[pos+1] >> 9) & 0x1ff) == 0xff));
-         new_pos = pos + 2 + has_literal;
-      } else if (program->chip_class >= GFX10 && l == 4 && ((binary[pos] & 0xfe0001ff) == 0x020000f9)) {
-         out << "\tv_cndmask_b32 + sdwa";
-         new_pos = pos + 2;
-      } else if (!l) {
-         out << "(invalid instruction)";
-         new_pos = pos + 1;
-         invalid = true;
-      } else {
-         out << outline;
-         assert(l % 4 == 0);
-         new_pos = pos + l / 4;
-      }
-      size_t size = new_pos - pos;
       out << std::right;
 
       out << " ;";
