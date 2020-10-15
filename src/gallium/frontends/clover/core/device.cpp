@@ -109,7 +109,7 @@ device::vendor_id() const {
 
 size_t
 device::max_images_read() const {
-   return PIPE_MAX_SHADER_IMAGES;
+   return PIPE_MAX_SHADER_SAMPLER_VIEWS;
 }
 
 size_t
