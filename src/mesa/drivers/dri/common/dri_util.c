@@ -767,6 +767,17 @@ dri2ConfigQueryf(__DRIscreen *screen, const char *var, float *val)
     return 0;
 }
 
+static int
+dri2ConfigQuerys(__DRIscreen *screen, const char *var, char **val)
+{
+   if (!driCheckOption(&screen->optionCache, var, DRI_STRING))
+      return -1;
+
+    *val = driQueryOptionstr(&screen->optionCache, var);
+
+    return 0;
+}
+
 static unsigned int
 driGetAPIMask(__DRIscreen *screen)
 {
@@ -832,11 +843,12 @@ const __DRIswrastExtension driSWRastExtension = {
 };
 
 const __DRI2configQueryExtension dri2ConfigQueryExtension = {
-   .base = { __DRI2_CONFIG_QUERY, 1 },
+   .base = { __DRI2_CONFIG_QUERY, 2 },
 
    .configQueryb        = dri2ConfigQueryb,
    .configQueryi        = dri2ConfigQueryi,
    .configQueryf        = dri2ConfigQueryf,
+   .configQuerys        = dri2ConfigQuerys,
 };
 
 const __DRI2flushControlExtension dri2FlushControlExtension = {

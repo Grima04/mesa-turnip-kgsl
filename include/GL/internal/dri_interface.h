@@ -1795,7 +1795,7 @@ struct __DRIimageLookupExtensionRec {
  * This extension allows for common DRI2 options
  */
 #define __DRI2_CONFIG_QUERY "DRI_CONFIG_QUERY"
-#define __DRI2_CONFIG_QUERY_VERSION 1
+#define __DRI2_CONFIG_QUERY_VERSION 2
 
 typedef struct __DRI2configQueryExtensionRec __DRI2configQueryExtension;
 struct __DRI2configQueryExtensionRec {
@@ -1804,6 +1804,7 @@ struct __DRI2configQueryExtensionRec {
    int (*configQueryb)(__DRIscreen *screen, const char *var, unsigned char *val);
    int (*configQueryi)(__DRIscreen *screen, const char *var, int *val);
    int (*configQueryf)(__DRIscreen *screen, const char *var, float *val);
+   int (*configQuerys)(__DRIscreen *screen, const char *var, char **val);
 };
 
 /**

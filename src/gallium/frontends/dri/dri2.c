@@ -2018,16 +2018,33 @@ dri2GalliumConfigQueryf(__DRIscreen *sPriv, const char *var, float *val)
 }
 
 /**
+ * \brief the DRI2ConfigQueryExtension configQuerys method
+ */
+static int
+dri2GalliumConfigQuerys(__DRIscreen *sPriv, const char *var, char **val)
+{
+   struct dri_screen *screen = dri_screen(sPriv);
+
+   if (!driCheckOption(&screen->dev->option_cache, var, DRI_STRING))
+      return dri2ConfigQueryExtension.configQuerys(sPriv, var, val);
+
+    *val = driQueryOptionstr(&screen->dev->option_cache, var);
+
+    return 0;
+}
+
+/**
  * \brief the DRI2ConfigQueryExtension struct.
  *
  * We first query the driver option cache. Then the dri2 option cache.
  */
 static const __DRI2configQueryExtension dri2GalliumConfigQueryExtension = {
-   .base = { __DRI2_CONFIG_QUERY, 1 },
+   .base = { __DRI2_CONFIG_QUERY, 2 },
 
    .configQueryb        = dri2GalliumConfigQueryb,
    .configQueryi        = dri2GalliumConfigQueryi,
    .configQueryf        = dri2GalliumConfigQueryf,
+   .configQuerys        = dri2GalliumConfigQuerys,
 };
 
 /**
