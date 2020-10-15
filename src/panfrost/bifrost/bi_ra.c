@@ -287,6 +287,60 @@ bi_choose_spill_node(bi_context *ctx, struct lcra_state *l)
         return lcra_get_best_spill_node(l);
 }
 
+/* Once we've chosen a spill node, spill it. Precondition: node is a valid
+ * SSA node in the non-optimized scheduled IR that was not already
+ * spilled (enforced by bi_choose_spill_node). Returns bytes spilled */
+
+static unsigned
+bi_spill_register(bi_context *ctx, unsigned node, unsigned offset)
+{
+        assert(!(node & PAN_IS_REG));
+
+        unsigned channels = 1;
+
+        /* Spill after every store */
+        bi_foreach_block(ctx, _block) {
+                bi_block *block = (bi_block *) _block;
+                bi_foreach_clause_in_block_safe(block, clause) {
+                        bi_instruction *ins = bi_unwrap_singleton(clause);
+
+                        if (ins->dest != node) continue;
+
+                        ins->dest = bi_make_temp(ctx);
+                        ins->no_spill = true;
+                        channels = MAX2(channels, ins->vector_channels);
+
+                        bi_instruction st = bi_spill(ins->dest, offset, channels);
+                        bi_insert_singleton(ctx, clause, block, st, false);
+                        ctx->spills++;
+                }
+        }
+
+        /* Fill before every use */
+        bi_foreach_block(ctx, _block) {
+                bi_block *block = (bi_block *) _block;
+                bi_foreach_clause_in_block_safe(block, clause) {
+                        bi_instruction *ins = bi_unwrap_singleton(clause);
+                        if (!bi_has_arg(ins, node)) continue;
+
+                        /* Don't rewrite spills themselves */
+                        if (ins->segment == BI_SEGMENT_TLS) continue;
+
+                        unsigned index = bi_make_temp(ctx);
+
+                        bi_instruction ld = bi_fill(index, offset, channels);
+                        ld.no_spill = true;
+                        bi_insert_singleton(ctx, clause, block, ld, true);
+
+                        /* Rewrite to use */
+                        bi_rewrite_index_src_single(ins, node, index);
+                        ctx->fills++;
+                }
+        }
+
+        return (channels * 4);
+}
+
 void
 bi_register_allocate(bi_context *ctx)
 {
