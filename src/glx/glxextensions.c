@@ -34,6 +34,7 @@
 #include <string.h>
 #include "glxextensions.h"
 
+#include "util/driconf.h"
 
 #define SET_BIT(m,b)   (m[ (b) / 8 ] |=  (1U << ((b) % 8)))
 #define CLR_BIT(m,b)   (m[ (b) / 8 ] &= ~(1U << ((b) % 8)))
@@ -455,6 +456,74 @@ __glXEnableDirectExtension(struct glx_screen * psc, const char *name)
                      name, strlen(name), GL_TRUE, psc->direct_support);
 }
 
+static void
+__ParseExtensionOverride(struct glx_screen *psc,
+                         const struct extension_info *ext_list,
+                         unsigned char *force_enable,
+                         unsigned char *force_disable,
+                         const char *override)
+{
+   const struct extension_info *ext;
+   char *env, *field;
+
+   if (override == NULL)
+       return;
+
+   /* Copy env_const because strtok() is destructive. */
+   env = strdup(override);
+   if (env == NULL)
+      return;
+
+   for (field = strtok(env, " "); field!= NULL; field = strtok(NULL, " ")) {
+      GLboolean enable;
+
+      switch (field[0]) {
+      case '+':
+         enable = GL_TRUE;
+         ++field;
+         break;
+      case '-':
+         enable = GL_FALSE;
+         ++field;
+         break;
+      default:
+         enable = GL_TRUE;
+         break;
+      }
+
+      ext = find_extension(ext_list, field, strlen(field));
+      if (ext) {
+         if (enable)
+            SET_BIT(force_enable, ext->bit);
+         else
+            SET_BIT(force_disable, ext->bit);
+      } else {
+         fprintf(stderr, "WARNING: Trying to %s the unknown extension '%s'\n",
+                 enable ? "enable" : "disable", field);
+      }
+   }
+}
+
+/**
+ * \brief Parse the list of GLX extensions that the user wants to
+ * force-enable/disable by using \c override, and write the results to the
+ * screen's context.
+ *
+ * \param psc        Pointer to GLX per-screen record.
+ * \param override   A space-separated list of extensions to enable or disable.
+ * The list is processed thus:
+ *    - Enable recognized extension names that are prefixed with '+'.
+ *    - Disable recognized extension names that are prefixed with '-'.
+ *    - Enable recognized extension names that are not prefixed.
+ */
+void
+__glXParseExtensionOverride(struct glx_screen *psc, const char *override)
+{
+    __ParseExtensionOverride(psc, known_glx_extensions, psc->glx_force_enabled,
+                             psc->glx_force_disabled, override);
+}
+
+
 /**
  * Initialize global extension support tables.
  */
@@ -530,6 +599,10 @@ __glXExtensionsCtrScreen(struct glx_screen * psc)
       psc->ext_list_first_time = GL_FALSE;
       (void) memcpy(psc->direct_support, direct_glx_support,
                     sizeof(direct_glx_support));
+      (void) memset(psc->glx_force_enabled, 0,
+                    sizeof(psc->glx_force_enabled));
+      (void) memset(psc->glx_force_disabled, 0,
+                    sizeof(psc->glx_force_disabled));
    }
 }
 
@@ -707,8 +780,13 @@ __glXCalculateUsableExtensions(struct glx_screen * psc,
          u |= client_glx_support[i] & psc->direct_support[i] &
                  (server_support[i] | direct_glx_only[i]);
 
-         usable[i] = u;
+         /* Finally, apply driconf options to force some extension bits either
+          * enabled or disabled.
+          */
+         u |= psc->glx_force_enabled[i];
+         u &= ~psc->glx_force_disabled[i];
 
+         usable[i] = u;
       }
    }
    else {
@@ -720,6 +798,12 @@ __glXCalculateUsableExtensions(struct glx_screen * psc,
 
          /* Enable extensions that the client and server both support */
          u |= client_glx_support[i] & server_support[i];
+
+         /* Finally, apply driconf options to force some extension bits either
+          * enabled or disabled.
+          */
+         u |= psc->glx_force_enabled[i];
+         u &= ~psc->glx_force_disabled[i];
 
          usable[i] = u;
       }

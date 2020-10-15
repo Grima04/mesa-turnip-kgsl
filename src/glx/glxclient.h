@@ -546,6 +546,9 @@ struct glx_screen
    /*@{ */
    unsigned char direct_support[__GLX_EXT_BYTES];
    GLboolean ext_list_first_time;
+
+   unsigned char glx_force_enabled[__GLX_EXT_BYTES];
+   unsigned char glx_force_disabled[__GLX_EXT_BYTES];
    /*@} */
 
 };

@@ -265,6 +265,8 @@ extern void __glXCalculateUsableExtensions(struct glx_screen *psc,
                                            display_is_direct_capable,
                                            int server_minor_version);
 
+extern void __glXParseExtensionOverride(struct glx_screen *psc,
+                                        const char *override);
 extern void __glXCalculateUsableGLExtensions(struct glx_context *gc,
                                              const char *server_string,
                                              int major_version,
