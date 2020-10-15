@@ -174,6 +174,15 @@ bi_install_registers(bi_context *ctx, struct lcra_state *l)
         }
 }
 
+static void
+bi_rewrite_index_src_single(bi_instruction *ins, unsigned old, unsigned new)
+{
+        bi_foreach_src(ins, i) {
+                if (ins->src[i] == old)
+                        ins->src[i] = new;
+        }
+}
+
 static bi_instruction
 bi_spill(unsigned node, uint64_t offset, unsigned channels)
 {
