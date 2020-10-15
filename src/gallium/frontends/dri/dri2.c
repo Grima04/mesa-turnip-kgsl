@@ -2161,6 +2161,51 @@ static const __DRIextension *dri_robust_screen_extensions[] = {
 };
 
 /**
+ * Set up the DRI extension list for this screen based on its underlying
+ * gallium screen's capabilities.
+ */
+static void
+dri2_init_screen_extensions(struct dri_screen *screen,
+                            struct pipe_screen *pscreen,
+                            bool is_kms_screen)
+{
+   if (pscreen->resource_create_with_modifiers)
+      dri2ImageExtension.createImageWithModifiers =
+         dri2_create_image_with_modifiers;
+
+   if (pscreen->get_param(pscreen, PIPE_CAP_DMABUF)) {
+      uint64_t cap;
+
+      if (drmGetCap(screen->sPriv->fd, DRM_CAP_PRIME, &cap) == 0 &&
+          (cap & DRM_PRIME_CAP_IMPORT)) {
+         dri2ImageExtension.createImageFromFds = dri2_from_fds;
+         dri2ImageExtension.createImageFromDmaBufs = dri2_from_dma_bufs;
+         dri2ImageExtension.createImageFromDmaBufs2 = dri2_from_dma_bufs2;
+         dri2ImageExtension.createImageFromDmaBufs3 = dri2_from_dma_bufs3;
+         dri2ImageExtension.queryDmaBufFormats = dri2_query_dma_buf_formats;
+         dri2ImageExtension.queryDmaBufModifiers =
+            dri2_query_dma_buf_modifiers;
+         if (!is_kms_screen) {
+            dri2ImageExtension.queryDmaBufFormatModifierAttribs =
+               dri2_query_dma_buf_format_modifier_attribs;
+         }
+      }
+   }
+
+   screen->sPriv->extensions = dri_screen_extensions;
+
+   if (!is_kms_screen) {
+      if (pscreen->set_damage_region)
+         dri2BufferDamageExtension.set_damage_region = dri2_set_damage_region;
+
+      if (pscreen->get_param(pscreen, PIPE_CAP_DEVICE_RESET_STATUS_QUERY)) {
+         screen->sPriv->extensions = dri_robust_screen_extensions;
+         screen->has_reset_status_query = true;
+      }
+   }
+}
+
+/**
  * This is the driver specific part of the createNewScreen entry point.
  *
  * Returns the struct gl_config supported by this driver.
@@ -2193,36 +2238,7 @@ dri2_init_screen(__DRIscreen * sPriv)
 
    screen->throttle = pscreen->get_param(pscreen, PIPE_CAP_THROTTLE);
 
-   if (pscreen->resource_create_with_modifiers)
-      dri2ImageExtension.createImageWithModifiers =
-         dri2_create_image_with_modifiers;
-
-   if (pscreen->get_param(pscreen, PIPE_CAP_DMABUF)) {
-      uint64_t cap;
-
-      if (drmGetCap(sPriv->fd, DRM_CAP_PRIME, &cap) == 0 &&
-          (cap & DRM_PRIME_CAP_IMPORT)) {
-         dri2ImageExtension.createImageFromFds = dri2_from_fds;
-         dri2ImageExtension.createImageFromDmaBufs = dri2_from_dma_bufs;
-         dri2ImageExtension.createImageFromDmaBufs2 = dri2_from_dma_bufs2;
-         dri2ImageExtension.createImageFromDmaBufs3 = dri2_from_dma_bufs3;
-         dri2ImageExtension.queryDmaBufFormats = dri2_query_dma_buf_formats;
-         dri2ImageExtension.queryDmaBufModifiers =
-            dri2_query_dma_buf_modifiers;
-         dri2ImageExtension.queryDmaBufFormatModifierAttribs =
-            dri2_query_dma_buf_format_modifier_attribs;
-      }
-   }
-
-   if (pscreen->set_damage_region)
-      dri2BufferDamageExtension.set_damage_region = dri2_set_damage_region;
-
-   if (pscreen->get_param(pscreen, PIPE_CAP_DEVICE_RESET_STATUS_QUERY)) {
-      sPriv->extensions = dri_robust_screen_extensions;
-      screen->has_reset_status_query = true;
-   }
-   else
-      sPriv->extensions = dri_screen_extensions;
+   dri2_init_screen_extensions(screen, pscreen, false);
 
    configs = dri_init_screen_helper(screen, pscreen);
    if (!configs)
@@ -2258,7 +2274,6 @@ dri_kms_init_screen(__DRIscreen * sPriv)
    const __DRIconfig **configs;
    struct dri_screen *screen;
    struct pipe_screen *pscreen = NULL;
-   uint64_t cap;
 
    screen = CALLOC_STRUCT(dri_screen);
    if (!screen)
@@ -2277,21 +2292,7 @@ dri_kms_init_screen(__DRIscreen * sPriv)
    if (!pscreen)
        goto release_pipe;
 
-   if (pscreen->resource_create_with_modifiers)
-      dri2ImageExtension.createImageWithModifiers =
-         dri2_create_image_with_modifiers;
-
-   if (drmGetCap(sPriv->fd, DRM_CAP_PRIME, &cap) == 0 &&
-          (cap & DRM_PRIME_CAP_IMPORT)) {
-      dri2ImageExtension.createImageFromFds = dri2_from_fds;
-      dri2ImageExtension.createImageFromDmaBufs = dri2_from_dma_bufs;
-      dri2ImageExtension.createImageFromDmaBufs2 = dri2_from_dma_bufs2;
-      dri2ImageExtension.createImageFromDmaBufs3 = dri2_from_dma_bufs3;
-      dri2ImageExtension.queryDmaBufFormats = dri2_query_dma_buf_formats;
-      dri2ImageExtension.queryDmaBufModifiers = dri2_query_dma_buf_modifiers;
-   }
-
-   sPriv->extensions = dri_screen_extensions;
+   dri2_init_screen_extensions(screen, pscreen, true);
 
    configs = dri_init_screen_helper(screen, pscreen);
    if (!configs)
