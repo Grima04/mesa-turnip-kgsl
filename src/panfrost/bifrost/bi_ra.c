@@ -349,6 +349,9 @@ bi_register_allocate(bi_context *ctx)
 
         unsigned iter_count = 100; /* max iterations */
 
+        /* Number of bytes of memory we've spilled into */
+        unsigned spill_count = 0;
+
         /* For instructions that both read and write from a data register, it's
          * the *same* data register. We enforce that constraint by just doing a
          * quick rewrite. TODO: are there cases where this causes RA to have no
@@ -372,12 +375,14 @@ bi_register_allocate(bi_context *ctx)
                         if (spill_node == -1)
                                 unreachable("Failed to choose spill node\n");
 
-                        unreachable("Spilling not implemented");
+                        spill_count += bi_spill_register(ctx, spill_node, spill_count);
                 }
 
                 bi_invalidate_liveness(ctx);
                 l = bi_allocate_registers(ctx, &success);
         } while(!success && ((iter_count--) > 0));
+
+        assert(success);
 
         bi_install_registers(ctx, l);
 
