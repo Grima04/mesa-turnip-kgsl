@@ -377,6 +377,10 @@ driParseOptionInfo(driOptionCache *info,
       char *envVal = getenv(name);
       if (envVal != NULL) {
          driOptionValue v;
+
+         /* make sure the value is initialized to something sensible */
+         v._string = NULL;
+
          if (parseValue(&v, opt->info.type, envVal) &&
              checkValue(&v, optinfo)) {
             /* don't use XML_WARNING, we want the user to see this! */
