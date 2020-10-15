@@ -401,6 +401,19 @@ bool validate_ir(Program* program)
             }
             break;
          }
+         case Format::PSEUDO_REDUCTION: {
+            for (const Operand &op : instr->operands)
+               check(op.regClass().type() == RegType::vgpr, "All operands of PSEUDO_REDUCTION instructions must be in VGPRs.", instr.get());
+
+            unsigned cluster_size = static_cast<Pseudo_reduction_instruction *>(instr.get())->cluster_size;
+
+            if (instr->opcode == aco_opcode::p_reduce && cluster_size == program->wave_size)
+               check(instr->definitions[0].regClass().type() == RegType::sgpr, "The result of unclustered reductions must go into an SGPR.", instr.get());
+            else
+               check(instr->definitions[0].regClass().type() == RegType::vgpr, "The result of scans and clustered reductions must go into a VGPR.", instr.get());
+
+            break;
+         }
          case Format::SMEM: {
             if (instr->operands.size() >= 1)
                check((instr->operands[0].isFixed() && !instr->operands[0].isConstant()) ||
