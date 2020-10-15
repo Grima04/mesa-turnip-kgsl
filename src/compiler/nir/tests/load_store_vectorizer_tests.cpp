@@ -868,6 +868,62 @@ TEST_F(nir_load_store_vectorize_test, ssbo_load_adjacent_memory_barrier_shared)
    ASSERT_EQ(count_intrinsics(nir_intrinsic_load_ssbo), 1);
 }
 
+TEST_F(nir_load_store_vectorize_test, ssbo_store_adjacent_discard)
+{
+   create_store(nir_var_mem_ssbo, 0, 0, 0x1);
+   nir_builder_instr_insert(b, &nir_intrinsic_instr_create(b->shader, nir_intrinsic_discard)->instr);
+   create_store(nir_var_mem_ssbo, 0, 4, 0x2);
+
+   nir_validate_shader(b->shader, NULL);
+   ASSERT_EQ(count_intrinsics(nir_intrinsic_store_ssbo), 2);
+
+   EXPECT_TRUE(run_vectorizer(nir_var_mem_ssbo));
+
+   ASSERT_EQ(count_intrinsics(nir_intrinsic_store_ssbo), 2);
+}
+
+TEST_F(nir_load_store_vectorize_test, ssbo_store_adjacent_demote)
+{
+   create_store(nir_var_mem_ssbo, 0, 0, 0x1);
+   nir_builder_instr_insert(b, &nir_intrinsic_instr_create(b->shader, nir_intrinsic_demote)->instr);
+   create_store(nir_var_mem_ssbo, 0, 4, 0x2);
+
+   nir_validate_shader(b->shader, NULL);
+   ASSERT_EQ(count_intrinsics(nir_intrinsic_store_ssbo), 2);
+
+   EXPECT_TRUE(run_vectorizer(nir_var_mem_ssbo));
+
+   ASSERT_EQ(count_intrinsics(nir_intrinsic_store_ssbo), 2);
+}
+
+TEST_F(nir_load_store_vectorize_test, ssbo_load_adjacent_discard)
+{
+   create_load(nir_var_mem_ssbo, 0, 0, 0x1);
+   nir_builder_instr_insert(b, &nir_intrinsic_instr_create(b->shader, nir_intrinsic_discard)->instr);
+   create_load(nir_var_mem_ssbo, 0, 4, 0x2);
+
+   nir_validate_shader(b->shader, NULL);
+   ASSERT_EQ(count_intrinsics(nir_intrinsic_load_ssbo), 2);
+
+   EXPECT_TRUE(run_vectorizer(nir_var_mem_ssbo));
+
+   ASSERT_EQ(count_intrinsics(nir_intrinsic_load_ssbo), 2);
+}
+
+TEST_F(nir_load_store_vectorize_test, ssbo_load_adjacent_demote)
+{
+   create_load(nir_var_mem_ssbo, 0, 0, 0x1);
+   nir_builder_instr_insert(b, &nir_intrinsic_instr_create(b->shader, nir_intrinsic_demote)->instr);
+   create_load(nir_var_mem_ssbo, 0, 4, 0x2);
+
+   nir_validate_shader(b->shader, NULL);
+   ASSERT_EQ(count_intrinsics(nir_intrinsic_load_ssbo), 2);
+
+   EXPECT_TRUE(run_vectorizer(nir_var_mem_ssbo));
+
+   ASSERT_EQ(count_intrinsics(nir_intrinsic_load_ssbo), 1);
+}
+
 TEST_F(nir_load_store_vectorize_test, ssbo_load_adjacent_8_8_16)
 {
    create_load(nir_var_mem_ssbo, 0, 0, 0x1, 8);
