@@ -649,20 +649,41 @@ static LLVMValueRef si_insert_input_v4i32(struct si_shader_context *ctx, LLVMVal
 }
 
 static void load_bitmasks_2x64(struct si_shader_context *ctx, LLVMValueRef lds_ptr,
-                               unsigned dw_offset, LLVMValueRef mask[2],
+                               LLVMValueRef tid,
+                               unsigned dw_offset, LLVMValueRef mask[4],
                                LLVMValueRef *total_bitcount)
 {
    LLVMBuilderRef builder = ctx->ac.builder;
    LLVMValueRef ptr64 = LLVMBuildPointerCast(
       builder, lds_ptr, LLVMPointerType(LLVMArrayType(ctx->ac.i64, 2), AC_ADDR_SPACE_LDS), "");
+   LLVMValueRef tmp[2];
+
+   for (unsigned i = 0; i < 2; i++)
+      tmp[i] = ac_build_alloca_undef(&ctx->ac, ctx->ac.i64, "");
+
+   /* If all threads loaded the bitmasks, it would cause many LDS bank conflicts
+    * and the performance could decrease up to WaveSize times (32x or 64x).
+    *
+    * Therefore, only load the bitmasks in thread 0 and other threads will get them
+    * through readlane.
+    */
+   ac_build_ifcc(&ctx->ac, LLVMBuildICmp(builder, LLVMIntEQ, tid, ctx->ac.i32_0, ""), 17771);
    for (unsigned i = 0; i < 2; i++) {
       LLVMValueRef index = LLVMConstInt(ctx->ac.i32, dw_offset / 2 + i, 0);
-      mask[i] = LLVMBuildLoad(builder, ac_build_gep0(&ctx->ac, ptr64, index), "");
+      LLVMValueRef val = LLVMBuildLoad(builder, ac_build_gep0(&ctx->ac, ptr64, index), "");
+      LLVMBuildStore(builder, val, tmp[i]);
    }
+   ac_build_endif(&ctx->ac, 17771);
 
-   /* We get better code if we don't use the 128-bit bitcount. */
-   *total_bitcount = LLVMBuildAdd(builder, ac_build_bit_count(&ctx->ac, mask[0]),
-                                  ac_build_bit_count(&ctx->ac, mask[1]), "");
+   *total_bitcount = ctx->ac.i32_0;
+
+   for (unsigned i = 0; i < 2; i++) {
+      tmp[i] = LLVMBuildLoad(builder, tmp[i], "");
+      mask[i] = ac_build_readlane_no_opt_barrier(&ctx->ac, tmp[i], NULL);
+
+      *total_bitcount = LLVMBuildAdd(builder, *total_bitcount,
+                                     ac_build_bit_count(&ctx->ac, mask[i]), "");
+   }
 }
 
 /**
@@ -969,8 +990,7 @@ void gfx10_emit_ngg_culling_epilogue(struct ac_shader_abi *abi, unsigned max_out
 
    /* Load the vertex masks and compute the new ES thread count. */
    LLVMValueRef es_mask[2], new_num_es_threads, kill_wave;
-   load_bitmasks_2x64(ctx, ngg_scratch, 0, es_mask, &new_num_es_threads);
-   new_num_es_threads = ac_build_readlane_no_opt_barrier(&ctx->ac, new_num_es_threads, NULL);
+   load_bitmasks_2x64(ctx, ngg_scratch, tid, 0, es_mask, &new_num_es_threads);
 
    /* ES threads compute their prefix sum, which is the new ES thread ID.
     * Then they write the value of the old thread ID into the LDS address
