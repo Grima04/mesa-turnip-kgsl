@@ -54,6 +54,7 @@
    drivers/freedreno
    drivers/llvmpipe
    drivers/openswr
+   drivers/v3d
    drivers/vc4
    drivers/vmware-guest
    drivers/zink
