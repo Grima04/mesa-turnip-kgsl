@@ -125,6 +125,8 @@ const Dim3d Gfx10Lib::Block4K_Log2_3d[]  = {{4, 4, 4}, {3, 4, 4}, {3, 4, 3}, {3,
 Gfx10Lib::Gfx10Lib(const Client* pClient)
     :
     Lib(pClient),
+    m_numPkrLog2(0),
+    m_numSaLog2(0),
     m_colorBaseIndex(0),
     m_xmaskBaseIndex(0),
     m_dccBaseIndex(0)
