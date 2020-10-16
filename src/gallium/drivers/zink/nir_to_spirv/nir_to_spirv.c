@@ -70,7 +70,8 @@ struct ntv_context {
    unsigned char shader_slots_reserved;
 
    SpvId front_face_var, instance_id_var, vertex_id_var,
-         primitive_id_var, invocation_id_var; // geometry
+         primitive_id_var, invocation_id_var, // geometry
+         sample_mask_type, sample_id_var, sample_pos_var;
 };
 
 static SpvId
@@ -298,6 +299,10 @@ emit_input(struct ntv_context *ctx, struct nir_variable *var)
          slot = handle_slot(ctx, slot);
          spirv_builder_emit_location(&ctx->builder, var_id, slot);
       }
+      if (var->data.centroid)
+         spirv_builder_emit_decoration(&ctx->builder, var_id, SpvDecorationCentroid);
+      else if (var->data.sample)
+         spirv_builder_emit_decoration(&ctx->builder, var_id, SpvDecorationSample);
    } else if (ctx->stage < MESA_SHADER_FRAGMENT) {
       switch (slot) {
       HANDLE_EMIT_BUILTIN(POS, Position);
@@ -337,6 +342,10 @@ static void
 emit_output(struct ntv_context *ctx, struct nir_variable *var)
 {
    SpvId var_type = get_glsl_type(ctx, var->type);
+
+   /* SampleMask is always an array in spirv */
+   if (ctx->stage == MESA_SHADER_FRAGMENT && var->data.location == FRAG_RESULT_SAMPLE_MASK)
+      ctx->sample_mask_type = var_type = spirv_builder_type_array(&ctx->builder, var_type, emit_uint_const(ctx, 32, 1));
    SpvId pointer_type = spirv_builder_type_pointer(&ctx->builder,
                                                    SpvStorageClassOutput,
                                                    var_type);
@@ -387,12 +396,18 @@ emit_output(struct ntv_context *ctx, struct nir_variable *var)
             spirv_builder_emit_builtin(&ctx->builder, var_id, SpvBuiltInFragDepth);
             break;
 
+         case FRAG_RESULT_SAMPLE_MASK:
+            spirv_builder_emit_builtin(&ctx->builder, var_id, SpvBuiltInSampleMask);
+            break;
+
          default:
             slot = handle_slot(ctx, slot);
             spirv_builder_emit_location(&ctx->builder, var_id, slot);
             spirv_builder_emit_index(&ctx->builder, var_id, var->data.index);
          }
       }
+      if (var->data.sample)
+         spirv_builder_emit_decoration(&ctx->builder, var_id, SpvDecorationSample);
    }
 
    if (var->data.location_frac)
@@ -1611,7 +1626,14 @@ emit_store_deref(struct ntv_context *ctx, nir_intrinsic_instr *intr)
    SpvId src = get_src(ctx, &intr->src[1]);
 
    SpvId type = get_glsl_type(ctx, nir_src_as_deref(intr->src[0])->type);
-   SpvId result = emit_bitcast(ctx, type, src);
+   nir_variable *var = nir_deref_instr_get_variable(nir_src_as_deref(intr->src[0]));
+   SpvId result;
+   if (ctx->stage == MESA_SHADER_FRAGMENT && var->data.location == FRAG_RESULT_SAMPLE_MASK) {
+      src = emit_bitcast(ctx, type, src);
+      /* SampleMask is always an array in spirv, so we need to construct it into one */
+      result = spirv_builder_emit_composite_construct(&ctx->builder, ctx->sample_mask_type, &src, 1);
+   } else
+      result = emit_bitcast(ctx, type, src);
    spirv_builder_emit_store(&ctx->builder, ptr, result);
 }
 
@@ -1733,6 +1755,14 @@ emit_intrinsic(struct ntv_context *ctx, nir_intrinsic_instr *intr)
 
    case nir_intrinsic_load_invocation_id:
       emit_load_uint_input(ctx, intr, &ctx->invocation_id_var, "gl_InvocationId", SpvBuiltInInvocationId);
+      break;
+
+   case nir_intrinsic_load_sample_id:
+      emit_load_uint_input(ctx, intr, &ctx->sample_id_var, "gl_SampleId", SpvBuiltInSampleId);
+      break;
+
+   case nir_intrinsic_load_sample_pos:
+      emit_load_vec_input(ctx, intr, &ctx->sample_pos_var, "gl_SamplePosition", SpvBuiltInSamplePosition, nir_type_float);
       break;
 
    case nir_intrinsic_emit_vertex_with_counter:
@@ -2379,6 +2409,7 @@ nir_to_spirv(struct nir_shader *s, const struct zink_so_info *so_info,
       spirv_builder_emit_cap(&ctx.builder, SpvCapabilitySampled1D);
       spirv_builder_emit_cap(&ctx.builder, SpvCapabilityImageQuery);
       spirv_builder_emit_cap(&ctx.builder, SpvCapabilityDerivativeControl);
+      spirv_builder_emit_cap(&ctx.builder, SpvCapabilitySampleRateShading);
    }
 
    ctx.stage = s->info.stage;
