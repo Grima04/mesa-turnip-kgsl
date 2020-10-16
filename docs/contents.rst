@@ -64,6 +64,7 @@
    sourcedocs
    dispatch
    gallium/index
+   android
 
 .. toctree::
    :maxdepth: 1
