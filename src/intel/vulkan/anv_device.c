@@ -1744,17 +1744,22 @@ anv_get_physical_device_properties_1_2(struct anv_physical_device *pdevice,
    p->shaderSignedZeroInfNanPreserveFloat64  = true;
 
    /* It's a bit hard to exactly map our implementation to the limits
-    * described here.  The bindless surface handle in the extended
+    * described by Vulkan.  The bindless surface handle in the extended
     * message descriptors is 20 bits and it's an index into the table of
     * RENDER_SURFACE_STATE structs that starts at bindless surface base
-    * address.  Given that most things consume two surface states per
-    * view (general/sampled for textures and write-only/read-write for
-    * images), we claim 2^19 things.
+    * address.  This means that we can have at must 1M surface states
+    * allocated at any given time.  Since most image views take two
+    * descriptors, this means we have a limit of about 500K image views.
     *
-    * For SSBOs, we just use A64 messages so there is no real limit
-    * there beyond the limit on the total size of a descriptor set.
+    * However, since we allocate surface states at vkCreateImageView time,
+    * this means our limit is actually something on the order of 500K image
+    * views allocated at any time.  The actual limit describe by Vulkan, on
+    * the other hand, is a limit of how many you can have in a descriptor set.
+    * Assuming anyone using 1M descriptors will be using the same image view
+    * twice a bunch of times (or a bunch of null descriptors), we can safely
+    * advertise a larger limit here.
     */
-   const unsigned max_bindless_views = 1 << 19;
+   const unsigned max_bindless_views = 1 << 20;
    p->maxUpdateAfterBindDescriptorsInAllPools            = max_bindless_views;
    p->shaderUniformBufferArrayNonUniformIndexingNative   = false;
    p->shaderSampledImageArrayNonUniformIndexingNative    = false;
