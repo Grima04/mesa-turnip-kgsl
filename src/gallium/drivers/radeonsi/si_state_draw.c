@@ -2104,7 +2104,8 @@ static void si_draw_vbo(struct pipe_context *ctx,
          /* Insert a VGT_FLUSH when enabling fast launch changes to prevent hangs.
           * See issues #2418, #2426, #2434
           */
-         if (ngg_culling & SI_NGG_CULL_GS_FAST_LAUNCH_ALL)
+         if (ngg_culling & SI_NGG_CULL_GS_FAST_LAUNCH_ALL &&
+             !(sctx->ngg_culling & SI_NGG_CULL_GS_FAST_LAUNCH_ALL))
             sctx->flags |= SI_CONTEXT_VGT_FLUSH;
          sctx->ngg_culling = ngg_culling;
          sctx->do_update_shaders = true;
