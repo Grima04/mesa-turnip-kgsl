@@ -360,11 +360,11 @@ static void gfx10_sh_query_get_result_resource(struct si_context *sctx, struct s
    if (index >= 0) {
       switch (query->b.type) {
       case PIPE_QUERY_PRIMITIVES_GENERATED:
-         consts.offset = sizeof(uint32_t) * query->stream;
+         consts.offset = 4 * sizeof(uint64_t) * query->stream + 2 * sizeof(uint64_t);
          consts.config = 0;
          break;
       case PIPE_QUERY_PRIMITIVES_EMITTED:
-         consts.offset = sizeof(uint32_t) * (4 + query->stream);
+         consts.offset = 4 * sizeof(uint64_t) * query->stream + 3 * sizeof(uint64_t);
          consts.config = 0;
          break;
       case PIPE_QUERY_SO_STATISTICS:
@@ -372,7 +372,7 @@ static void gfx10_sh_query_get_result_resource(struct si_context *sctx, struct s
          consts.config = 0;
          break;
       case PIPE_QUERY_SO_OVERFLOW_PREDICATE:
-         consts.offset = sizeof(uint32_t) * query->stream;
+         consts.offset = 4 * sizeof(uint64_t) * query->stream;
          consts.config = 2;
          break;
       case PIPE_QUERY_SO_OVERFLOW_ANY_PREDICATE:
@@ -454,8 +454,9 @@ static void gfx10_sh_query_get_result_resource(struct si_context *sctx, struct s
          si_cp_wait_mem(sctx, sctx->gfx_cs, va, 0x00000001, 0x00000001, 0);
       }
 
-      sctx->b.launch_grid(&sctx->b, &grid);
-      sctx->flags |= SI_CONTEXT_CS_PARTIAL_FLUSH;
+      void *saved_cs = sctx->cs_shader_state.program;
+      si_launch_grid_internal((struct si_context *)&sctx->b, &grid, saved_cs,
+                              SI_CS_WAIT_FOR_IDLE | SI_CS_PARTIAL_FLUSH_DISABLE);
 
       if (qbuf == query->last)
          break;

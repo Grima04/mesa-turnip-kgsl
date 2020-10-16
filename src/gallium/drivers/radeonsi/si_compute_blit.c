@@ -60,15 +60,13 @@ unsigned si_get_flush_flags(struct si_context *sctx, enum si_coherency coher,
    }
 }
 
-#define SI_CS_IMAGE_OP           (1 << 0)
-#define SI_CS_WAIT_FOR_IDLE      (1 << 1)
-#define SI_CS_RENDER_COND_ENABLE (1 << 2)
-
-static void si_launch_grid_internal(struct si_context *sctx, struct pipe_grid_info *info,
+void si_launch_grid_internal(struct si_context *sctx, struct pipe_grid_info *info,
                                     void *restore_cs, unsigned flags)
 {
    /* Wait for previous shaders to finish. */
-   sctx->flags |= SI_CONTEXT_CS_PARTIAL_FLUSH | SI_CONTEXT_PS_PARTIAL_FLUSH;
+   sctx->flags |= SI_CONTEXT_PS_PARTIAL_FLUSH;
+   if (!(flags & SI_CS_PARTIAL_FLUSH_DISABLE))
+      sctx->flags |= SI_CONTEXT_CS_PARTIAL_FLUSH;
    /* Invalidate L0-L1 caches. */
    /* sL0 is never invalidated, because src resources don't use it. */
    sctx->flags |= SI_CONTEXT_INV_VCACHE;

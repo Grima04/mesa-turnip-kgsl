@@ -1339,8 +1339,15 @@ bool vi_dcc_clear_level(struct si_context *sctx, struct si_texture *tex, unsigne
 void si_init_clear_functions(struct si_context *sctx);
 
 /* si_compute_blit.c */
+#define SI_CS_IMAGE_OP              (1 << 0)
+#define SI_CS_WAIT_FOR_IDLE         (1 << 1)
+#define SI_CS_RENDER_COND_ENABLE    (1 << 2)
+#define SI_CS_PARTIAL_FLUSH_DISABLE (1 << 3)
+
 unsigned si_get_flush_flags(struct si_context *sctx, enum si_coherency coher,
                             enum si_cache_policy cache_policy);
+void si_launch_grid_internal(struct si_context *sctx, struct pipe_grid_info *info,
+                                    void *restore_cs, unsigned flags);
 void si_clear_buffer(struct si_context *sctx, struct pipe_resource *dst, uint64_t offset,
                      uint64_t size, uint32_t *clear_value, uint32_t clear_value_size,
                      enum si_coherency coher, bool force_cpdma);
