@@ -362,23 +362,17 @@ panfrost_mfbd_zs_crc_ext_set_bufs(struct panfrost_batch *batch,
         ext->zs_msaa = nr_samples > 1 ? MALI_MSAA_LAYERED : MALI_MSAA_SINGLE;
 
         if (drm_is_afbc(rsrc->modifier)) {
-                /* The only Z/S format we can compress is Z24S8 or variants
-                 * thereof (handled by the gallium frontend) */
-                assert(panfrost_is_z24s8_variant(zs_surf->format));
-
                 unsigned header_size = rsrc->slices[level].header_size;
-
-                ext->zs_write_format = MALI_ZS_FORMAT_D24S8;
-                if (version >= 7)
-                        ext->zs_block_format_v7 = MALI_BLOCK_FORMAT_V7_AFBC;
-                else
-                        ext->zs_block_format = MALI_BLOCK_FORMAT_AFBC;
-
                 ext->zs_afbc_header = base;
                 ext->zs_afbc_body = base + header_size;
                 ext->zs_afbc_body_size = 0x1000;
                 ext->zs_afbc_chunk_size = 9;
                 ext->zs_afbc_sparse = true;
+
+                if (version >= 7)
+                        ext->zs_block_format_v7 = MALI_BLOCK_FORMAT_V7_AFBC;
+                else
+                        ext->zs_block_format = MALI_BLOCK_FORMAT_AFBC;
         } else {
                 assert(rsrc->modifier == DRM_FORMAT_MOD_ARM_16X16_BLOCK_U_INTERLEAVED ||
                        rsrc->modifier == DRM_FORMAT_MOD_LINEAR);
@@ -404,37 +398,37 @@ panfrost_mfbd_zs_crc_ext_set_bufs(struct panfrost_batch *batch,
                         else
                                 ext->zs_block_format = MALI_BLOCK_FORMAT_TILED_U_INTERLEAVED;
                 }
+        }
 
-                switch (zs_surf->format) {
-                case PIPE_FORMAT_Z24_UNORM_S8_UINT:
-                        ext->zs_write_format = MALI_ZS_FORMAT_D24S8;
-                        break;
-                case PIPE_FORMAT_Z24X8_UNORM:
-                        ext->zs_write_format = MALI_ZS_FORMAT_D24X8;
-                        break;
-                case PIPE_FORMAT_Z32_FLOAT:
-                        ext->zs_write_format = MALI_ZS_FORMAT_D32;
-                        break;
-                case PIPE_FORMAT_Z32_FLOAT_S8X24_UINT:
-                        /* Midgard/Bifrost support interleaved depth/stencil
-                         * buffers, but we always treat them as multu-planar.
-                         */
-                        ext->zs_write_format = MALI_ZS_FORMAT_D32;
-                        ext->s_write_format = MALI_S_FORMAT_S8;
+        switch (zs_surf->format) {
+        case PIPE_FORMAT_Z24_UNORM_S8_UINT:
+                ext->zs_write_format = MALI_ZS_FORMAT_D24S8;
+                break;
+        case PIPE_FORMAT_Z24X8_UNORM:
+                ext->zs_write_format = MALI_ZS_FORMAT_D24X8;
+                break;
+        case PIPE_FORMAT_Z32_FLOAT:
+                ext->zs_write_format = MALI_ZS_FORMAT_D32;
+                break;
+        case PIPE_FORMAT_Z32_FLOAT_S8X24_UINT:
+                /* Midgard/Bifrost support interleaved depth/stencil
+                 * buffers, but we always treat them as multu-planar.
+                 */
+                ext->zs_write_format = MALI_ZS_FORMAT_D32;
+                ext->s_write_format = MALI_S_FORMAT_S8;
 
-                        struct panfrost_resource *stencil = rsrc->separate_stencil;
-                        struct panfrost_slice stencil_slice = stencil->slices[level];
-                        unsigned stencil_layer_stride = (nr_samples > 1) ? stencil_slice.size0 : 0;
+                struct panfrost_resource *stencil = rsrc->separate_stencil;
+                struct panfrost_slice stencil_slice = stencil->slices[level];
+                unsigned stencil_layer_stride = (nr_samples > 1) ? stencil_slice.size0 : 0;
 
-                        ext->s_writeback_base = panfrost_get_texture_address(stencil, level, first_layer, 0);
-                        ext->s_writeback_row_stride = stencil_slice.stride;
-                        if (rsrc->modifier != DRM_FORMAT_MOD_LINEAR)
-                                ext->s_writeback_row_stride *= 16;
-                        ext->s_writeback_surface_stride = stencil_layer_stride;
-                        break;
-                default:
-                        unreachable("Unsupported depth/stencil format.");
-                }
+                ext->s_writeback_base = panfrost_get_texture_address(stencil, level, first_layer, 0);
+                ext->s_writeback_row_stride = stencil_slice.stride;
+                if (rsrc->modifier != DRM_FORMAT_MOD_LINEAR)
+                        ext->s_writeback_row_stride *= 16;
+                ext->s_writeback_surface_stride = stencil_layer_stride;
+                break;
+        default:
+                unreachable("Unsupported depth/stencil format.");
         }
 }
 
