@@ -1133,6 +1133,9 @@ struct isl_format_layout {
       struct isl_channel_layout channels_array[7];
    };
 
+   /** Set if all channels have the same isl_base_type. Otherwise, ISL_BASE_VOID. */
+   enum isl_base_type uniform_channel_type;
+
    enum isl_colorspace colorspace;
    enum isl_txc txc;
 };
