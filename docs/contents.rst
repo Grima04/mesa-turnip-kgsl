@@ -42,7 +42,6 @@
    debugging
    perf
    extensions
-   vmware-guest
    application-issues
    viewperf
    xlibdriver
@@ -55,6 +54,7 @@
    drivers/freedreno
    drivers/llvmpipe
    drivers/openswr
+   drivers/vmware-guest
    drivers/zink
 
 .. toctree::
