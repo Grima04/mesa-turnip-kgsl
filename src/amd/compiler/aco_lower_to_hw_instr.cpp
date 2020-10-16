@@ -1028,7 +1028,14 @@ void copy_constant(lower_context *ctx, Builder& bld, Definition dst, Operand op)
       }
    } else if (dst.regClass() == v2b && op.isConstant() && !op.isLiteral()) {
       assert(ctx->program->chip_class >= GFX8);
-      bld.vop2_sdwa(aco_opcode::v_add_f16, dst, op, Operand(0u));
+      if (op.constantValue() >= 0xfff0 || op.constantValue() <= 64) {
+         /* use v_mov_b32 to avoid possible issues with denormal flushing or
+          * NaN. v_add_f16 is still needed for float constants. */
+         uint32_t val32 = (int32_t)(int16_t)op.constantValue();
+         bld.vop1_sdwa(aco_opcode::v_mov_b32, dst, Operand(val32));
+      } else {
+         bld.vop2_sdwa(aco_opcode::v_add_f16, dst, op, Operand(0u));
+      }
    } else if (dst.regClass() == v2b && op.isLiteral()) {
       if (ctx->program->chip_class < GFX10 || !(ctx->block->fp_mode.denorm16_64 & fp_denorm_keep_in)) {
          unsigned offset = dst.physReg().byte() * 8u;
