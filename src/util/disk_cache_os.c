@@ -39,6 +39,13 @@
 #include "zstd.h"
 #endif
 
+#include "util/crc32.h"
+
+struct cache_entry_file_data {
+   uint32_t crc32;
+   uint32_t uncompressed_size;
+};
+
 /* 3 is the recomended level, with 22 as the absolute maximum */
 #define ZSTD_COMPRESSION_LEVEL 3
 
@@ -71,7 +78,22 @@ deflate_and_write_to_disk(const void *in_data, size_t in_data_size, int dest)
       free(out);
       return 0;
    }
-   ssize_t written = write_all(dest, out, ret);
+
+   /* Create CRC of the compressed data. We will read this when restoring the
+    * cache and use it to check for corruption.
+    */
+   struct cache_entry_file_data cf_data;
+   cf_data.crc32 = util_hash_crc32(out, ret);
+   cf_data.uncompressed_size = in_data_size;
+
+   size_t cf_data_size = sizeof(cf_data);
+   ssize_t written = write_all(dest, &cf_data, cf_data_size);
+   if (written == -1) {
+      free(out);
+      return 0;
+   }
+
+   written = write_all(dest, out, ret);
    if (written == -1) {
       free(out);
       return 0;
@@ -79,6 +101,19 @@ deflate_and_write_to_disk(const void *in_data, size_t in_data_size, int dest)
    free(out);
    return ret;
 #else
+   /* Create CRC of the uncompressed data. We will read this when restoring
+    * the cache and use it to check for corruption.
+    */
+   struct cache_entry_file_data cf_data;
+   cf_data.crc32 = util_hash_crc32(in_data, in_data_size);
+   cf_data.uncompressed_size = in_data_size;
+
+   size_t cf_data_size = sizeof(cf_data);
+   ssize_t written = write_all(dest, &cf_data, cf_data_size);
+   if (written == -1) {
+      return 0;
+   }
+
    unsigned char *out;
 
    /* allocate deflate state */
@@ -119,7 +154,7 @@ deflate_and_write_to_disk(const void *in_data, size_t in_data_size, int dest)
          size_t have = BUFSIZE - strm.avail_out;
          compressed_size += have;
 
-         ssize_t written = write_all(dest, out, have);
+         written = write_all(dest, out, have);
          if (written == -1) {
             (void)deflateEnd(&strm);
             free(out);
@@ -595,16 +630,24 @@ disk_cache_load_item(struct disk_cache *cache, char *filename, size_t *size)
    if (ret == -1)
       goto fail;
 
+#ifdef HAVE_ZSTD
+   /* Check the data for corruption */
+   if (cf_data.crc32 != util_hash_crc32(data, cache_data_size))
+      goto fail;
+#endif
+
    /* Uncompress the cache data */
    uncompressed_data = malloc(cf_data.uncompressed_size);
    if (!inflate_cache_data(data, cache_data_size, uncompressed_data,
                            cf_data.uncompressed_size))
       goto fail;
 
+#ifndef HAVE_ZSTD
    /* Check the data for corruption */
    if (cf_data.crc32 != util_hash_crc32(uncompressed_data,
                                         cf_data.uncompressed_size))
       goto fail;
+#endif
 
    free(data);
    free(filename);
@@ -654,7 +697,6 @@ disk_cache_get_cache_filename(struct disk_cache *cache, const cache_key key)
 
 void
 disk_cache_write_item_to_disk(struct disk_cache_put_job *dc_job,
-                              struct cache_entry_file_data *cf_data,
                               char *filename)
 {
    int fd = -1, fd_final = -1;
@@ -754,13 +796,6 @@ disk_cache_write_item_to_disk(struct disk_cache_put_job *dc_job,
          unlink(filename_tmp);
          goto done;
       }
-   }
-
-   size_t cf_data_size = sizeof(*cf_data);
-   ret = write_all(fd, cf_data, cf_data_size);
-   if (ret == -1) {
-      unlink(filename_tmp);
-      goto done;
    }
 
    /* Now, finally, write out the contents to the temporary file, then

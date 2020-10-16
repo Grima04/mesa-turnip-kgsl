@@ -89,11 +89,6 @@ struct disk_cache_put_job {
    struct cache_item_metadata cache_item_metadata;
 };
 
-struct cache_entry_file_data {
-   uint32_t crc32;
-   uint32_t uncompressed_size;
-};
-
 char *
 disk_cache_generate_cache_dir(void *mem_ctx);
 
@@ -111,7 +106,6 @@ disk_cache_get_cache_filename(struct disk_cache *cache, const cache_key key);
 
 void
 disk_cache_write_item_to_disk(struct disk_cache_put_job *dc_job,
-                              struct cache_entry_file_data *cf_data,
                               char *filename);
 
 bool

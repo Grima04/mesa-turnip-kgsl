@@ -322,14 +322,7 @@ cache_put(void *job, int thread_index)
       i++;
    }
 
-   /* Create CRC of the data. We will read this when restoring the cache and
-    * use it to check for corruption.
-    */
-   struct cache_entry_file_data cf_data;
-   cf_data.crc32 = util_hash_crc32(dc_job->data, dc_job->size);
-   cf_data.uncompressed_size = dc_job->size;
-
-   disk_cache_write_item_to_disk(dc_job, &cf_data, filename);
+   disk_cache_write_item_to_disk(dc_job, filename);
 
 done:
    free(filename);
