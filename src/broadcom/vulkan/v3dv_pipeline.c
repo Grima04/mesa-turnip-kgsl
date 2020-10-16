@@ -1263,7 +1263,7 @@ pipeline_populate_v3d_vs_key(struct v3d_vs_key *key,
          &vi_info->pVertexAttributeDescriptions[i];
       assert(desc->location < MAX_VERTEX_ATTRIBS);
       if (desc->format == VK_FORMAT_B8G8R8A8_UNORM)
-         key->va_swap_rb_mask |= 1 << desc->location;
+         key->va_swap_rb_mask |= 1 << (VERT_ATTRIB_GENERIC0 + desc->location);
    }
 }
 
