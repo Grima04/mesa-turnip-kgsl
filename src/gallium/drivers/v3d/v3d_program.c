@@ -762,6 +762,29 @@ v3d_update_compiled_vs(struct v3d_context *v3d, uint8_t prim_mode)
                 (prim_mode == PIPE_PRIM_POINTS &&
                  v3d->rasterizer->base.point_size_per_vertex);
 
+        nir_shader *s = v3d->prog.bind_vs->base.ir.nir;
+        uint64_t inputs_read = s->info.inputs_read;
+        assert(util_bitcount(inputs_read) <= v3d->vtx->num_elements);
+
+        while (inputs_read) {
+                int location = u_bit_scan64(&inputs_read);
+                nir_variable *var =
+                        nir_find_variable_with_location(s, nir_var_shader_in, location);
+                assert (var != NULL);
+                int driver_location = var->data.driver_location;
+                switch (v3d->vtx->pipe[driver_location].src_format) {
+                case PIPE_FORMAT_B8G8R8A8_UNORM:
+                case PIPE_FORMAT_B10G10R10A2_UNORM:
+                case PIPE_FORMAT_B10G10R10A2_SNORM:
+                case PIPE_FORMAT_B10G10R10A2_USCALED:
+                case PIPE_FORMAT_B10G10R10A2_SSCALED:
+                        key->va_swap_rb_mask |= 1 << location;
+                        break;
+                default:
+                        break;
+                }
+        }
+
         struct v3d_compiled_shader *vs =
                 v3d_get_compiled_shader(v3d, &key->base, sizeof(*key));
         if (vs != v3d->prog.vs) {

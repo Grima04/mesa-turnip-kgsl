@@ -86,7 +86,7 @@ GL 3.2, GLSL 1.50 --- all DONE: i965, nv50, nvc0, r600, radeonsi, llvmpipe, soft
 
   Core/compatibility profiles                           DONE
   Geometry shaders                                      DONE ()
-  GL_ARB_vertex_array_bgra (BGRA vertex order)          DONE (freedreno, panfrost)
+  GL_ARB_vertex_array_bgra (BGRA vertex order)          DONE (freedreno, v3d, panfrost)
   GL_ARB_draw_elements_base_vertex (Base vertex offset) DONE (freedreno, v3d, panfrost)
   GL_ARB_fragment_coord_conventions (Frag shader coord) DONE (freedreno, v3d, panfrost)
   GL_ARB_provoking_vertex (Provoking vertex)            DONE (freedreno, v3d, panfrost)
