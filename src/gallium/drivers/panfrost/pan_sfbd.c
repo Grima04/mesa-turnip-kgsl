@@ -158,6 +158,9 @@ panfrost_sfbd_set_zsbuf(
         fb->zs_writeback.base = rsrc->bo->ptr.gpu + rsrc->slices[level].offset;
         fb->zs_writeback.row_stride = rsrc->slices[level].stride * 16;
         switch (surf->format) {
+        case PIPE_FORMAT_Z16_UNORM:
+                fb->zs_format = MALI_ZS_FORMAT_D16;
+                break;
         case PIPE_FORMAT_Z24_UNORM_S8_UINT:
                 fb->zs_format = MALI_ZS_FORMAT_D24S8;
                 break;

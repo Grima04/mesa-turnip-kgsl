@@ -401,6 +401,9 @@ panfrost_mfbd_zs_crc_ext_set_bufs(struct panfrost_batch *batch,
         }
 
         switch (zs_surf->format) {
+        case PIPE_FORMAT_Z16_UNORM:
+                ext->zs_write_format = MALI_ZS_FORMAT_D16;
+                break;
         case PIPE_FORMAT_Z24_UNORM_S8_UINT:
                 ext->zs_write_format = MALI_ZS_FORMAT_D24S8;
                 break;

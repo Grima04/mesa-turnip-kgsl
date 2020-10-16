@@ -468,6 +468,10 @@ panfrost_is_format_supported( struct pipe_screen *screen,
         if (is_bifrost && sample_count > 1)
                 return false;
 
+        /* Z16 causes dEQP failures on t720 */
+        if (format == PIPE_FORMAT_Z16_UNORM && dev->quirks & MIDGARD_SFBD)
+                return false;
+
         /* Don't confuse poorly written apps (workaround dEQP bug) that expect
          * more alpha than they ask for */
 

@@ -155,6 +155,7 @@ struct panfrost_format panfrost_pipe_format_table[PIPE_FORMAT_COUNT] = {
 
         [PIPE_FORMAT_R3G3B2_UNORM] 		= { MALI_RGB332_UNORM, _VT },
 
+        [PIPE_FORMAT_Z16_UNORM]                 = { MALI_R16_UNORM, _TZ },
         [PIPE_FORMAT_Z24_UNORM_S8_UINT]		= { MALI_Z24X8_UNORM, _TZ },
         [PIPE_FORMAT_Z24X8_UNORM]		= { MALI_Z24X8_UNORM, _TZ },
         [PIPE_FORMAT_Z32_FLOAT]		        = { MALI_R32F, _TZ },
