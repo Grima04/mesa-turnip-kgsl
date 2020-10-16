@@ -9233,20 +9233,6 @@ void visit_phi(isel_context *ctx, nir_phi_instr *instr)
          operands[num_operands++] = Operand(RegClass());
    }
 
-   if (num_defined == 0) {
-      Builder bld(ctx->program, ctx->block);
-      if (dst.bytes() == 4) {
-         bld.copy(Definition(dst), Operand(0u));
-      } else {
-         aco_ptr<Pseudo_instruction> vec{create_instruction<Pseudo_instruction>(aco_opcode::p_create_vector, Format::PSEUDO, dst.size(), 1)};
-         for (unsigned i = 0; i < dst.size(); i++)
-            vec->operands[i] = Operand(0u);
-         vec->definitions[0] = Definition(dst);
-         ctx->block->instructions.emplace_back(std::move(vec));
-      }
-      return;
-   }
-
    /* we can use a linear phi in some cases if one src is undef */
    if (dst.is_linear() && ctx->block->kind & block_kind_merge && num_defined == 1) {
       phi.reset(create_instruction<Pseudo_instruction>(aco_opcode::p_linear_phi, Format::PSEUDO, num_operands, 1));
