@@ -2600,8 +2600,10 @@ emit_binding_table(struct anv_cmd_buffer *cmd_buffer,
 
       default: {
          assert(binding->set < MAX_SETS);
-         const struct anv_descriptor *desc =
-            &pipe_state->descriptors[binding->set]->descriptors[binding->index];
+         const struct anv_descriptor_set *set =
+            pipe_state->descriptors[binding->set];
+         assert(binding->index < set->descriptor_count);
+         const struct anv_descriptor *desc = &set->descriptors[binding->index];
 
          switch (desc->type) {
          case VK_DESCRIPTOR_TYPE_SAMPLER:

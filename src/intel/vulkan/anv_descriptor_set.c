@@ -982,6 +982,8 @@ anv_descriptor_set_create(struct anv_device *device,
       (struct anv_buffer_view *) &set->descriptors[layout->size];
    set->buffer_view_count = layout->buffer_view_count;
 
+   set->descriptor_count = layout->size;
+
    /* By defining the descriptors to be zero now, we can later verify that
     * a descriptor has not been populated with user data.
     */

@@ -2091,6 +2091,7 @@ struct anv_descriptor_set {
    /* Link to descriptor pool's desc_sets list . */
    struct list_head pool_link;
 
+   uint32_t descriptor_count;
    struct anv_descriptor descriptors[0];
 };
 

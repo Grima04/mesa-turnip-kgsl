@@ -1241,6 +1241,7 @@ anv_cmd_buffer_push_descriptor_set(struct anv_cmd_buffer *cmd_buffer,
    }
    set->size = anv_descriptor_set_layout_size(layout);
    set->buffer_view_count = layout->buffer_view_count;
+   set->descriptor_count = layout->size;
    set->buffer_views = (*push_set)->buffer_views;
 
    if (layout->descriptor_buffer_size &&
