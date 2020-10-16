@@ -1168,14 +1168,17 @@ static void gfx10_shader_ngg(struct si_screen *sscreen, struct si_shader *shader
       late_alloc_wave64 = 0;
    else if (num_cu_per_sh <= 6)
       late_alloc_wave64 = num_cu_per_sh - 2; /* All CUs enabled */
-   else if (shader->key.opt.ngg_culling & SI_NGG_CULL_GS_FAST_LAUNCH_ALL)
-      late_alloc_wave64 = (num_cu_per_sh - 2) * 6;
+   else if (shader->key.opt.ngg_culling)
+      late_alloc_wave64 = num_cu_per_sh * 10;
    else
-      late_alloc_wave64 = (num_cu_per_sh - 2) * 4;
+      late_alloc_wave64 = num_cu_per_sh * 4;
 
    /* Limit LATE_ALLOC_GS for prevent a hang (hw bug). */
    if (sscreen->info.chip_class == GFX10)
       late_alloc_wave64 = MIN2(late_alloc_wave64, 64);
+
+   /* Max number that fits into the register field. */
+   late_alloc_wave64 = MIN2(late_alloc_wave64, 127);
 
    si_pm4_set_reg(
       pm4, R_00B204_SPI_SHADER_PGM_RSRC4_GS,
