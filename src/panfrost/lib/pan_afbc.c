@@ -103,6 +103,7 @@ panfrost_format_supports_afbc(enum pipe_format format)
         case PIPE_FORMAT_B8G8R8_UNORM:
         case PIPE_FORMAT_R5G6B5_UNORM:
         case PIPE_FORMAT_B5G6R5_UNORM:
+        case PIPE_FORMAT_Z16_UNORM:
                 return true;
         default:
                 return false;
