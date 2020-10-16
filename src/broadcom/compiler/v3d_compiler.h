@@ -418,7 +418,7 @@ struct v3d_vs_key {
          * vertex attributes. Since the hardware doesn't provide any
          * means to swizzle vertex attributes we need to do it in the shader.
          */
-        uint16_t va_swap_rb_mask;
+        uint32_t va_swap_rb_mask;
 
         bool is_coord;
         bool per_vertex_point_size;
