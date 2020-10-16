@@ -402,8 +402,6 @@ radv_physical_device_try_create(struct radv_instance *instance,
 			  device->rad_info.has_dedicated_vram &&
 			  !(device->instance->debug_flags & RADV_DEBUG_NO_NGG);
 
-	/* FIXME: ACO NGG GS randomly hangs the GPU with CTS. */
-	device->use_ngg_gs = device->use_ngg && device->use_llvm;
 	device->use_ngg_streamout = false;
 
 	/* Determine the number of threads per wave for all stages. */
