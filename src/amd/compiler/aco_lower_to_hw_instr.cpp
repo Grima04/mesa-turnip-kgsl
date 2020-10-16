@@ -1022,30 +1022,28 @@ bool do_copy(lower_context* ctx, Builder& bld, const copy_operation& copy, bool 
          if (op.physReg().byte()) {
             assert(def.physReg().byte() == 0);
             bld.vop2(aco_opcode::v_lshrrev_b32, def, Operand(op.physReg().byte() * 8), op);
-         } else if (def.physReg().byte() == 2) {
+         } else if (def.physReg().byte()) {
             assert(op.physReg().byte() == 0);
             /* preserve the target's lower half */
-            def = Definition(def.physReg().advance(-2), v1);
-            bld.vop2(aco_opcode::v_and_b32, Definition(op.physReg(), v1), Operand(0xFFFFu), op);
-            if (def.physReg().reg() != op.physReg().reg())
-               bld.vop2(aco_opcode::v_and_b32, def, Operand(0xFFFFu), Operand(def.physReg(), v2b));
-            bld.vop2(aco_opcode::v_cvt_pk_u16_u32, def, Operand(def.physReg(), v2b), op);
-         } else if (def.physReg().byte()) {
-            unsigned bits = def.physReg().byte() * 8;
-            assert(op.physReg().byte() == 0);
-            def = Definition(def.physReg().advance(-def.physReg().byte()), v1);
-            bld.vop2(aco_opcode::v_and_b32, def, Operand((1 << bits) - 1u), Operand(def.physReg(), op.regClass()));
+            uint32_t bits = def.physReg().byte() * 8;
+            PhysReg lo_reg = PhysReg(def.physReg().reg());
+            Definition lo_half = Definition(lo_reg, RegClass::get(RegType::vgpr, def.physReg().byte()));
+            Definition dst = Definition(lo_reg, RegClass::get(RegType::vgpr, lo_half.bytes() + op.bytes()));
+
             if (def.physReg().reg() == op.physReg().reg()) {
-               if (bits < 24) {
-                  bld.vop2(aco_opcode::v_mul_u32_u24, def, Operand((1 << bits) + 1u), op);
-               } else {
+               bld.vop2(aco_opcode::v_and_b32, lo_half, Operand((1 << bits) - 1u), Operand(lo_reg, lo_half.regClass()));
+               if (def.physReg().byte() == 1) {
+                  bld.vop2(aco_opcode::v_mul_u32_u24, dst, Operand((1 << bits) + 1u), op);
+               } else if (def.physReg().byte() == 2) {
+                  bld.vop2(aco_opcode::v_cvt_pk_u16_u32, dst, Operand(lo_reg, v2b), op);
+               } else if (def.physReg().byte() == 3) {
                   bld.sop1(aco_opcode::s_mov_b32, Definition(scratch_sgpr, s1), Operand((1 << bits) + 1u));
-                  bld.vop3(aco_opcode::v_mul_lo_u32, def, Operand(scratch_sgpr, s1), op);
+                  bld.vop3(aco_opcode::v_mul_lo_u32, dst, Operand(scratch_sgpr, s1), op);
                }
             } else {
-               bld.vop2(aco_opcode::v_lshlrev_b32, Definition(op.physReg(), def.regClass()), Operand(bits), op);
-               bld.vop2(aco_opcode::v_or_b32, def, Operand(def.physReg(), op.regClass()), op);
-               bld.vop2(aco_opcode::v_lshrrev_b32, Definition(op.physReg(), def.regClass()), Operand(bits), op);
+               lo_half.setFixed(lo_half.physReg().advance(4 - def.physReg().byte()));
+               bld.vop2(aco_opcode::v_lshlrev_b32, lo_half, Operand(32 - bits), Operand(lo_reg, lo_half.regClass()));
+               bld.vop3(aco_opcode::v_alignbyte_b32, dst, op, Operand(lo_half.physReg(), lo_half.regClass()), Operand(4 - def.physReg().byte()));
             }
          } else {
             bld.vop1(aco_opcode::v_mov_b32, def, op);
