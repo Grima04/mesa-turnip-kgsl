@@ -806,11 +806,20 @@ dri3_bind_extensions(struct dri3_screen *psc, struct glx_display * priv,
    }
 }
 
+static char *
+dri3_get_driver_name(struct glx_screen *glx_screen)
+{
+    struct dri3_screen *psc = (struct dri3_screen *)glx_screen;
+
+    return loader_get_driver_for_fd(psc->fd);
+}
+
 static const struct glx_screen_vtable dri3_screen_vtable = {
    .create_context         = dri3_create_context,
    .create_context_attribs = dri3_create_context_attribs,
    .query_renderer_integer = dri3_query_renderer_integer,
    .query_renderer_string  = dri3_query_renderer_string,
+   .get_driver_name        = dri3_get_driver_name,
 };
 
 /** dri3_create_screen

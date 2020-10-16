@@ -716,6 +716,7 @@ dri2DestroyScreen(struct glx_screen *base)
    /* Free the direct rendering per screen data */
    (*psc->core->destroyScreen) (psc->driScreen);
    driDestroyConfigs(psc->driver_configs);
+   free(psc->driverName);
    close(psc->fd);
    free(psc);
 }
@@ -1202,11 +1203,20 @@ dri2BindExtensions(struct dri2_screen *psc, struct glx_display * priv,
    }
 }
 
+static char *
+dri2_get_driver_name(struct glx_screen *glx_screen)
+{
+    struct dri2_screen *psc = (struct dri2_screen *)glx_screen;
+
+    return psc->driverName;
+}
+
 static const struct glx_screen_vtable dri2_screen_vtable = {
    .create_context         = dri2_create_context,
    .create_context_attribs = dri2_create_context_attribs,
    .query_renderer_integer = dri2_query_renderer_integer,
    .query_renderer_string  = dri2_query_renderer_string,
+   .get_driver_name        = dri2_get_driver_name,
 };
 
 static struct glx_screen *
@@ -1267,6 +1277,7 @@ dri2CreateScreen(int screen, struct glx_display * priv)
       free(driverName);
       driverName = loader_driverName;
    }
+   psc->driverName = driverName;
 
    extensions = driOpenDriver(driverName, &psc->driver);
    if (extensions == NULL)
@@ -1356,7 +1367,6 @@ dri2CreateScreen(int screen, struct glx_display * priv)
    psp->copySubBuffer = dri2CopySubBuffer;
    __glXEnableDirectExtension(&psc->base, "GLX_MESA_copy_sub_buffer");
 
-   free(driverName);
    free(deviceName);
 
    tmp = getenv("LIBGL_SHOW_FPS");
@@ -1383,7 +1393,6 @@ handle_error:
    if (psc->driver)
       dlclose(psc->driver);
 
-   free(driverName);
    free(deviceName);
    glx_screen_cleanup(&psc->base);
    free(psc);

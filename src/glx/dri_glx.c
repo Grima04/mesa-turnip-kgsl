@@ -99,48 +99,51 @@ struct dri_drawable
 static Bool
 driGetDriverName(Display * dpy, int scrNum, char **driverName)
 {
+   struct glx_screen *glx_screen = GetGLXScreenConfigs(dpy, scrNum);
+
+   if (!glx_screen || !glx_screen->vtable->get_driver_name)
+      return False;
+
+   *driverName = glx_screen->vtable->get_driver_name(glx_screen);
+   return True;
+}
+
+static char *
+dri_get_driver_name(struct glx_screen *psc)
+{
+   Display *dpy = psc->dpy;
+   int scrNum = psc->scr;
    int directCapable;
    Bool b;
    int event, error;
    int driverMajor, driverMinor, driverPatch;
-
-   *driverName = NULL;
+   char *driverName = NULL;
 
    if (XF86DRIQueryExtension(dpy, &event, &error)) {    /* DRI1 */
       if (!XF86DRIQueryDirectRenderingCapable(dpy, scrNum, &directCapable)) {
          ErrorMessageF("XF86DRIQueryDirectRenderingCapable failed\n");
-         return False;
+         return NULL;
       }
       if (!directCapable) {
          ErrorMessageF("XF86DRIQueryDirectRenderingCapable returned false\n");
-         return False;
+         return NULL;
       }
 
       b = XF86DRIGetClientDriverName(dpy, scrNum, &driverMajor, &driverMinor,
-                                     &driverPatch, driverName);
+                                     &driverPatch, &driverName);
       if (!b) {
          ErrorMessageF("Cannot determine driver name for screen %d\n",
                        scrNum);
-         return False;
+         return NULL;
       }
 
       InfoMessageF("XF86DRIGetClientDriverName: %d.%d.%d %s (screen %d)\n",
-                   driverMajor, driverMinor, driverPatch, *driverName,
+                   driverMajor, driverMinor, driverPatch, driverName,
                    scrNum);
 
-      return True;
+      return driverName;
    }
-   else if (DRI2QueryExtension(dpy, &event, &error)) {  /* DRI2 */
-      char *dev;
-      Bool ret = DRI2Connect(dpy, RootWindow(dpy, scrNum), driverName, &dev);
-
-      if (ret)
-         free(dev);
-
-      return ret;
-   }
-
-   return False;
+   return NULL;
 }
 
 /*
@@ -154,6 +157,7 @@ glXGetScreenDriver(Display * dpy, int scrNum)
 {
    static char ret[32];
    char *driverName;
+
    if (driGetDriverName(dpy, scrNum, &driverName)) {
       int len;
       if (!driverName)
@@ -935,6 +939,7 @@ static const struct glx_screen_vtable dri_screen_vtable = {
    .create_context_attribs = NULL,
    .query_renderer_integer = NULL,
    .query_renderer_string  = NULL,
+   .get_driver_name        = dri_get_driver_name,
 };
 
 static struct glx_screen *

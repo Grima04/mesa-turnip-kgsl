@@ -500,6 +500,8 @@ struct glx_screen_vtable {
    int (*query_renderer_string)(struct glx_screen *psc,
                                 int attribute,
                                 const char **value);
+
+   char *(*get_driver_name)(struct glx_screen *psc);
 };
 
 struct glx_screen
