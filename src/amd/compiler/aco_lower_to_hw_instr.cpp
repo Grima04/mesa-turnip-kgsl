@@ -1349,9 +1349,12 @@ void handle_operands(std::map<PhysReg, copy_operation>& copy_map, lower_context*
          std::map<PhysReg, copy_operation>::iterator other = copy_map.find(reg_hi);
          if (other != copy_map.end() && other->second.bytes == 2) {
             /* check if the target register is otherwise unused */
-            // TODO: also do this for self-intersecting registers
-            bool unused_lo = !it->second.is_used;
-            bool unused_hi = !other->second.is_used;
+            bool unused_lo = !it->second.is_used ||
+                             (it->second.is_used == 0x0101 &&
+                              other->second.op.physReg() == it->first);
+            bool unused_hi = !other->second.is_used ||
+                             (other->second.is_used == 0x0101 &&
+                              it->second.op.physReg() == reg_hi);
             if (unused_lo && unused_hi) {
                Operand lo = it->second.op;
                Operand hi = other->second.op;
