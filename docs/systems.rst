@@ -31,7 +31,7 @@ Hardware drivers include:
 
 Software drivers include:
 
--  :doc:`llvmpipe <gallium/drivers/llvmpipe>` - uses LLVM for x86 JIT code generation
+-  :doc:`llvmpipe <drivers/llvmpipe>` - uses LLVM for x86 JIT code generation
    and is multi-threaded
 -  softpipe - a reference Gallium driver
 -  :doc:`svga <vmware-guest>` - driver for VMWare virtual GPU

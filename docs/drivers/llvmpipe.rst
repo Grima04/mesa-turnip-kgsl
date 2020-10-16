@@ -1,5 +1,5 @@
-Gallium LLVMpipe Driver
-=======================
+LLVMpipe
+========
 
 Introduction
 ------------

@@ -49,6 +49,16 @@
 
 .. toctree::
    :maxdepth: 1
+   :caption: Drivers
+   :hidden:
+
+   drivers/freedreno
+   drivers/llvmpipe
+   drivers/openswr
+   drivers/zink
+
+.. toctree::
+   :maxdepth: 1
    :caption: Developer Topics
    :hidden:
 
