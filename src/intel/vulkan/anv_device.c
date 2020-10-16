@@ -1029,7 +1029,7 @@ anv_get_physical_device_features_1_2(struct anv_physical_device *pdevice,
    f->descriptorBindingStorageTexelBufferUpdateAfterBind = descIndexing;
    f->descriptorBindingUpdateUnusedWhilePending          = descIndexing;
    f->descriptorBindingPartiallyBound                    = descIndexing;
-   f->descriptorBindingVariableDescriptorCount           = false;
+   f->descriptorBindingVariableDescriptorCount           = descIndexing;
    f->runtimeDescriptorArray                             = descIndexing;
 
    f->samplerFilterMinmax                 = pdevice->info.gen >= 9;

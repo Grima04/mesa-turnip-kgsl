@@ -1949,10 +1949,8 @@ enum anv_descriptor_data {
 };
 
 struct anv_descriptor_set_binding_layout {
-#ifndef NDEBUG
    /* The type of the descriptors in this binding */
    VkDescriptorType type;
-#endif
 
    /* Flags provided when this binding was created */
    VkDescriptorBindingFlagsEXT flags;
@@ -2006,8 +2004,8 @@ struct anv_descriptor_set_layout {
    /* Number of bindings in this descriptor set */
    uint16_t binding_count;
 
-   /* Total size of the descriptor set with room for all array entries */
-   uint16_t size;
+   /* Total number of descriptors */
+   uint16_t descriptor_count;
 
    /* Shader stages affected by this descriptor set */
    uint16_t shader_stages;
@@ -2188,7 +2186,8 @@ struct anv_descriptor_update_template {
 };
 
 size_t
-anv_descriptor_set_layout_size(const struct anv_descriptor_set_layout *layout);
+anv_descriptor_set_layout_size(const struct anv_descriptor_set_layout *layout,
+                               uint32_t var_desc_count);
 
 void
 anv_descriptor_set_write_image_view(struct anv_device *device,
@@ -2235,6 +2234,7 @@ VkResult
 anv_descriptor_set_create(struct anv_device *device,
                           struct anv_descriptor_pool *pool,
                           struct anv_descriptor_set_layout *layout,
+                          uint32_t var_desc_count,
                           struct anv_descriptor_set **out_set);
 
 void

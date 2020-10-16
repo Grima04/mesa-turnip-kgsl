@@ -2602,7 +2602,22 @@ emit_binding_table(struct anv_cmd_buffer *cmd_buffer,
          assert(binding->set < MAX_SETS);
          const struct anv_descriptor_set *set =
             pipe_state->descriptors[binding->set];
-         assert(binding->index < set->descriptor_count);
+         if (binding->index >= set->descriptor_count) {
+            /* From the Vulkan spec section entitled "DescriptorSet and
+             * Binding Assignment":
+             *
+             *    "If the array is runtime-sized, then array elements greater
+             *    than or equal to the size of that binding in the bound
+             *    descriptor set must not be used."
+             *
+             * Unfortunately, the compiler isn't smart enough to figure out
+             * when a dynamic binding isn't used so it may grab the whole
+             * array and stick it in the binding table.  In this case, it's
+             * safe to just skip those bindings that are OOB.
+             */
+            assert(binding->index < set->layout->descriptor_count);
+            continue;
+         }
          const struct anv_descriptor *desc = &set->descriptors[binding->index];
 
          switch (desc->type) {
