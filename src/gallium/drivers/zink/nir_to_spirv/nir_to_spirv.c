@@ -1665,6 +1665,37 @@ emit_load_uint_input(struct ntv_context *ctx, nir_intrinsic_instr *intr, SpvId *
 }
 
 static void
+emit_load_vec_input(struct ntv_context *ctx, nir_intrinsic_instr *intr, SpvId *var_id, const char *var_name, SpvBuiltIn builtin, nir_alu_type type)
+{
+   SpvId var_type;
+
+   switch (type) {
+   case nir_type_bool:
+      var_type = get_bvec_type(ctx, nir_dest_num_components(intr->dest));
+      break;
+   case nir_type_int:
+      var_type = get_ivec_type(ctx, nir_dest_bit_size(intr->dest), nir_dest_num_components(intr->dest));
+      break;
+   case nir_type_uint:
+      var_type = get_uvec_type(ctx, nir_dest_bit_size(intr->dest), nir_dest_num_components(intr->dest));
+      break;
+   case nir_type_float:
+      var_type = get_fvec_type(ctx, nir_dest_bit_size(intr->dest), nir_dest_num_components(intr->dest));
+      break;
+   default:
+      unreachable("unknown type passed");
+   }
+   if (!*var_id)
+      *var_id = create_builtin_var(ctx, var_type,
+                                   SpvStorageClassInput,
+                                   var_name,
+                                   builtin);
+
+   SpvId result = spirv_builder_emit_load(&ctx->builder, var_type, *var_id);
+   store_dest(ctx, &intr->dest, result, type);
+}
+
+static void
 emit_intrinsic(struct ntv_context *ctx, nir_intrinsic_instr *intr)
 {
    switch (intr->intrinsic) {
