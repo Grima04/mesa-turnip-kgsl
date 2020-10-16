@@ -196,8 +196,13 @@ int r600_pipe_shader_create(struct pipe_context *ctx,
 	} else {
 		if (sel->ir_type == PIPE_SHADER_IR_TGSI) {
 			sel->nir = tgsi_to_nir(sel->tokens, ctx->screen, true);
-			/* Lower int64 ops because we have some r600 build-in shaders that use it */
-			if (!ctx->screen->get_param(ctx->screen, PIPE_CAP_DOUBLES)) {
+                        const nir_shader_compiler_options *nir_options =
+                              (const nir_shader_compiler_options *)
+                              ctx->screen->get_compiler_options(ctx->screen,
+                                                                PIPE_SHADER_IR_NIR,
+                                                                shader->shader.processor_type);
+                        /* Lower int64 ops because we have some r600 build-in shaders that use it */
+			if (nir_options->lower_int64_options) {
 				NIR_PASS_V(sel->nir, nir_lower_regs_to_ssa);
 				NIR_PASS_V(sel->nir, nir_lower_alu_to_scalar, NULL, NULL);
 				NIR_PASS_V(sel->nir, nir_lower_int64);

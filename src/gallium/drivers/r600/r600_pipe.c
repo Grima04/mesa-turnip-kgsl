@@ -407,12 +407,15 @@ static int r600_get_param(struct pipe_screen* pscreen, enum pipe_cap param)
 	case PIPE_CAP_GLSL_OPTIMIZE_CONSERVATIVELY:
 		return 0;
 
+        case PIPE_CAP_INT64:
 	case PIPE_CAP_DOUBLES:
 		if (rscreen->b.family == CHIP_ARUBA ||
 		    rscreen->b.family == CHIP_CAYMAN ||
 		    rscreen->b.family == CHIP_CYPRESS ||
 		    rscreen->b.family == CHIP_HEMLOCK)
 			return 1;
+                if (is_nir_enabled(&rscreen->b))
+                   return 1;
 		return 0;
         case PIPE_CAP_INT64_DIVMOD:
            /* it is actually not supported, but the nir lowering hdanles this corectly wheras
