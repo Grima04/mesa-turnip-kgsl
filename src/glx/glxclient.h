@@ -775,9 +775,6 @@ extern char *__glXGetString(Display * dpy, int opcode,
 extern const char __glXGLClientVersion[];
 extern const char __glXGLClientExtensions[];
 
-/* Get the unadjusted system time */
-extern int __glXGetUST(int64_t * ust);
-
 extern GLboolean __glXGetMscRateOML(Display * dpy, GLXDrawable drawable,
                                     int32_t * numerator,
                                     int32_t * denominator);

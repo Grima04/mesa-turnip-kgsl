@@ -114,23 +114,6 @@ driOpenDriver(const char *driverName, void **out_driver_handle)
    return extensions;
 }
 
-static GLboolean
-__driGetMSCRate(__DRIdrawable *draw,
-		int32_t * numerator, int32_t * denominator,
-		void *loaderPrivate)
-{
-   __GLXDRIdrawable *glxDraw = loaderPrivate;
-
-   return __glxGetMscRate(glxDraw->psc, numerator, denominator);
-}
-
-_X_HIDDEN const __DRIsystemTimeExtension systemTimeExtension = {
-   .base = {__DRI_SYSTEM_TIME, 1 },
-
-   .getUST              = __glXGetUST,
-   .getMSCRate          = __driGetMSCRate
-};
-
 #define __ATTRIB(attrib, field) \
     { attrib, offsetof(struct glx_config, field) }
 

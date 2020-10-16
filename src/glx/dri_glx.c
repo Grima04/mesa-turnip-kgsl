@@ -42,6 +42,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "dri2.h"
 #include "dri_sarea.h"
 #include <dlfcn.h>
+#include <sys/time.h>
 #include <sys/types.h>
 #include <sys/mman.h>
 #include "xf86drm.h"
@@ -277,6 +278,55 @@ out:
 
    return e ? e->config : NULL;
 }
+
+/**
+ * Get the unadjusted system time (UST).  Currently, the UST is measured in
+ * microseconds since Epoc.  The actual resolution of the UST may vary from
+ * system to system, and the units may vary from release to release.
+ * Drivers should not call this function directly.  They should instead use
+ * \c glXGetProcAddress to obtain a pointer to the function.
+ *
+ * \param ust Location to store the 64-bit UST
+ * \returns Zero on success or a negative errno value on failure.
+ *
+ * \sa glXGetProcAddress, PFNGLXGETUSTPROC
+ *
+ * \since Internal API version 20030317.
+ */
+static int
+__glXGetUST(int64_t * ust)
+{
+   struct timeval tv;
+
+   if (ust == NULL) {
+      return -EFAULT;
+   }
+
+   if (gettimeofday(&tv, NULL) == 0) {
+      ust[0] = (tv.tv_sec * 1000000) + tv.tv_usec;
+      return 0;
+   }
+   else {
+      return -errno;
+   }
+}
+
+static GLboolean
+__driGetMSCRate(__DRIdrawable *draw,
+		int32_t * numerator, int32_t * denominator,
+		void *loaderPrivate)
+{
+   __GLXDRIdrawable *glxDraw = loaderPrivate;
+
+   return __glxGetMscRate(glxDraw->psc, numerator, denominator);
+}
+
+static const __DRIsystemTimeExtension systemTimeExtension = {
+   .base = {__DRI_SYSTEM_TIME, 1 },
+
+   .getUST              = __glXGetUST,
+   .getMSCRate          = __driGetMSCRate
+};
 
 static GLboolean
 has_damage_post(Display * dpy)

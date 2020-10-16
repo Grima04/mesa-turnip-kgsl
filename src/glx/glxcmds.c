@@ -45,7 +45,6 @@
 #include "apple/apple_glx.h"
 #include "util/debug.h"
 #else
-#include <sys/time.h>
 #ifndef GLX_USE_WINDOWSGL
 #include <X11/extensions/xf86vmode.h>
 #endif /* GLX_USE_WINDOWSGL */
@@ -2648,40 +2647,6 @@ _GLX_PUBLIC
 GLX_ALIAS(__GLXextFuncPtr, glXGetProcAddress,
           (const GLubyte * procName),
           (procName), glXGetProcAddressARB)
-
-#if defined(GLX_DIRECT_RENDERING) && !defined(GLX_USE_APPLEGL)
-/**
- * Get the unadjusted system time (UST).  Currently, the UST is measured in
- * microseconds since Epoc.  The actual resolution of the UST may vary from
- * system to system, and the units may vary from release to release.
- * Drivers should not call this function directly.  They should instead use
- * \c glXGetProcAddress to obtain a pointer to the function.
- *
- * \param ust Location to store the 64-bit UST
- * \returns Zero on success or a negative errno value on failure.
- *
- * \sa glXGetProcAddress, PFNGLXGETUSTPROC
- *
- * \since Internal API version 20030317.
- */
-_X_HIDDEN int
-__glXGetUST(int64_t * ust)
-{
-   struct timeval tv;
-
-   if (ust == NULL) {
-      return -EFAULT;
-   }
-
-   if (gettimeofday(&tv, NULL) == 0) {
-      ust[0] = (tv.tv_sec * 1000000) + tv.tv_usec;
-      return 0;
-   }
-   else {
-      return -errno;
-   }
-}
-#endif /* GLX_DIRECT_RENDERING */
 
 #if defined(GLX_DIRECT_RENDERING) && !defined(GLX_USE_APPLEGL)
 
