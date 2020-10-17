@@ -2942,10 +2942,12 @@ mir_add_writeout_loops(compiler_context *ctx)
         }
 }
 
-int
-midgard_compile_shader_nir(nir_shader *nir, panfrost_program *program,
+panfrost_program *
+midgard_compile_shader_nir(void *mem_ctx, nir_shader *nir,
                            const struct panfrost_compile_inputs *inputs)
 {
+        panfrost_program *program = rzalloc(mem_ctx, panfrost_program);
+
         struct util_dynarray *compiled = &program->compiled;
 
         midgard_debug = debug_get_option_midgard_debug();
@@ -3041,7 +3043,7 @@ midgard_compile_shader_nir(nir_shader *nir, panfrost_program *program,
                 break; /* TODO: Multi-function shaders */
         }
 
-        util_dynarray_init(compiled, NULL);
+        util_dynarray_init(compiled, program);
 
         /* Per-block lowering before opts */
 
@@ -3187,5 +3189,5 @@ midgard_compile_shader_nir(nir_shader *nir, panfrost_program *program,
 
         ralloc_free(ctx);
 
-        return 0;
+        return program;
 }

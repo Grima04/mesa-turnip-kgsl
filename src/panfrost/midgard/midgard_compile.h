@@ -28,8 +28,8 @@
 #include "util/u_dynarray.h"
 #include "panfrost/util/pan_ir.h"
 
-int
-midgard_compile_shader_nir(nir_shader *nir, panfrost_program *program,
+panfrost_program *
+midgard_compile_shader_nir(void *mem_ctx, nir_shader *nir,
                            const struct panfrost_compile_inputs *inputs);
 
 /* NIR options are shared between the standalone compiler and the online

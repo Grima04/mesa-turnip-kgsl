@@ -241,7 +241,6 @@ panfrost_shader_compile(struct panfrost_context *ctx,
         s->info.stage = stage;
 
         /* Call out to Midgard compiler given the above NIR */
-        panfrost_program program = {0};
         struct panfrost_compile_inputs inputs = {
                 .gpu_id = dev->gpu_id,
                 .shaderdb = !!(dev->debug & PAN_DBG_PRECOMPILE),
@@ -249,19 +248,21 @@ panfrost_shader_compile(struct panfrost_context *ctx,
 
         memcpy(inputs.rt_formats, state->rt_formats, sizeof(inputs.rt_formats));
 
+        panfrost_program *program;
+
         if (dev->quirks & IS_BIFROST)
-                bifrost_compile_shader_nir(s, &program, &inputs);
+                program = bifrost_compile_shader_nir(NULL, s, &inputs);
         else
-                midgard_compile_shader_nir(s, &program, &inputs);
+                program = midgard_compile_shader_nir(NULL, s, &inputs);
 
         /* Prepare the compiled binary for upload */
         mali_ptr shader = 0;
         unsigned attribute_count = 0, varying_count = 0;
-        int size = program.compiled.size;
+        int size = program->compiled.size;
 
         if (size) {
                 state->bo = panfrost_bo_create(dev, size, PAN_BO_EXECUTE);
-                memcpy(state->bo->cpu, program.compiled.data, size);
+                memcpy(state->bo->cpu, program->compiled.data, size);
                 shader = state->bo->gpu;
         }
 
@@ -271,15 +272,13 @@ panfrost_shader_compile(struct panfrost_context *ctx,
                 /* If size = 0, we tag as "end-of-shader" */
 
                 if (size)
-                        shader |= program.first_tag;
+                        shader |= program->first_tag;
                 else
                         shader = 0x1;
         }
 
-        util_dynarray_fini(&program.compiled);
-
-        state->sysval_count = program.sysval_count;
-        memcpy(state->sysval, program.sysvals, sizeof(state->sysval[0]) * state->sysval_count);
+        state->sysval_count = program->sysval_count;
+        memcpy(state->sysval, program->sysvals, sizeof(state->sysval[0]) * state->sysval_count);
 
         bool vertex_id = s->info.system_values_read & (1 << SYSTEM_VALUE_VERTEX_ID);
         bool instance_id = s->info.system_values_read & (1 << SYSTEM_VALUE_INSTANCE_ID);
@@ -303,11 +302,11 @@ panfrost_shader_compile(struct panfrost_context *ctx,
                 break;
         case MESA_SHADER_FRAGMENT:
                 for (unsigned i = 0; i < ARRAY_SIZE(state->blend_ret_addrs); i++) {
-                        if (!program.blend_ret_offsets[i])
+                        if (!program->blend_ret_offsets[i])
                                 continue;
 
                         state->blend_ret_addrs[i] = (state->bo->gpu & UINT32_MAX) +
-                                                    program.blend_ret_offsets[i];
+                                                    program->blend_ret_offsets[i];
                         assert(!(state->blend_ret_addrs[i] & 0x7));
                 }
                 varying_count = util_bitcount64(s->info.inputs_read);
@@ -340,7 +339,7 @@ panfrost_shader_compile(struct panfrost_context *ctx,
 
         state->can_discard = s->info.fs.uses_discard;
         state->helper_invocations = s->info.fs.needs_helper_invocations;
-        state->stack_size = program.tls_size;
+        state->stack_size = program->tls_size;
 
         state->reads_frag_coord = s->info.inputs_read & (1 << VARYING_SLOT_POS);
         state->reads_point_coord = s->info.inputs_read & (1 << VARYING_SLOT_PNTC);
@@ -352,12 +351,12 @@ panfrost_shader_compile(struct panfrost_context *ctx,
 
         /* Separate as primary uniform count is truncated. Sysvals are prefix
          * uniforms */
-        state->uniform_count = MIN2(s->num_uniforms + program.sysval_count, program.uniform_cutoff);
-        state->work_reg_count = program.work_register_count;
+        state->uniform_count = MIN2(s->num_uniforms + program->sysval_count, program->uniform_cutoff);
+        state->work_reg_count = program->work_register_count;
 
         if (dev->quirks & IS_BIFROST)
                 for (unsigned i = 0; i < ARRAY_SIZE(state->blend_types); i++)
-                        state->blend_types[i] = bifrost_blend_type_from_nir(program.blend_types[i]);
+                        state->blend_types[i] = bifrost_blend_type_from_nir(program->blend_types[i]);
 
         /* Record the varying mapping for the command stream's bookkeeping */
 
@@ -394,6 +393,8 @@ panfrost_shader_compile(struct panfrost_context *ctx,
 
         if (stage != MESA_SHADER_FRAGMENT)
                 pan_upload_shader_descriptor(ctx, state);
+
+        ralloc_free(program);
 
         /* In both clone and tgsi_to_nir paths, the shader is ralloc'd against
          * a NULL context */

@@ -1870,10 +1870,12 @@ bi_optimize_nir(nir_shader *nir)
         NIR_PASS(progress, nir, nir_convert_from_ssa, true);
 }
 
-void
-bifrost_compile_shader_nir(nir_shader *nir, panfrost_program *program,
+panfrost_program *
+bifrost_compile_shader_nir(void *mem_ctx, nir_shader *nir,
                            const struct panfrost_compile_inputs *inputs)
 {
+        panfrost_program *program = rzalloc(mem_ctx, panfrost_program);
+
         bifrost_debug = debug_get_option_bifrost_debug();
 
         bi_context *ctx = rzalloc(NULL, bi_context);
@@ -1955,6 +1957,8 @@ bifrost_compile_shader_nir(nir_shader *nir, panfrost_program *program,
         bi_register_allocate(ctx);
         if (bifrost_debug & BIFROST_DBG_SHADERS)
                 bi_print_shader(ctx, stdout);
+
+        util_dynarray_init(&program->compiled, NULL);
         bi_pack(ctx, &program->compiled);
 
         memcpy(program->blend_ret_offsets, ctx->blend_ret_offsets, sizeof(program->blend_ret_offsets));
@@ -1963,4 +1967,6 @@ bifrost_compile_shader_nir(nir_shader *nir, panfrost_program *program,
                 disassemble_bifrost(stdout, program->compiled.data, program->compiled.size, true);
 
         ralloc_free(ctx);
+
+        return program;
 }

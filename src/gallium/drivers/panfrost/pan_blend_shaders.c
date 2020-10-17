@@ -311,8 +311,6 @@ panfrost_compile_blend_shader(struct panfrost_blend_shader *shader,
                 return;
 
         /* Compile or recompile the NIR shader */
-        panfrost_program program;
-
         struct panfrost_compile_inputs inputs = {
                 .gpu_id = dev->gpu_id,
                 .is_blend = true,
@@ -323,19 +321,22 @@ panfrost_compile_blend_shader(struct panfrost_blend_shader *shader,
         if (constants)
                 memcpy(inputs.blend.constants, constants, sizeof(inputs.blend.constants));
 
+        panfrost_program *program;
+
         if (dev->quirks & IS_BIFROST) {
                 inputs.blend.bifrost_blend_desc =
                         bifrost_get_blend_desc(shader->key.format, shader->key.rt);
-                bifrost_compile_shader_nir(shader->nir, &program, &inputs);
+                program = bifrost_compile_shader_nir(NULL, shader->nir, &inputs);
 	} else {
-                midgard_compile_shader_nir(shader->nir, &program, &inputs);
+                program = midgard_compile_shader_nir(NULL, shader->nir, &inputs);
         }
 
         /* Allow us to patch later */
-        shader->first_tag = program.first_tag;
-        shader->size = program.compiled.size;
+        shader->first_tag = program->first_tag;
+        shader->size = program->compiled.size;
         shader->buffer = reralloc_size(shader, shader->buffer, shader->size);
-        memcpy(shader->buffer, program.compiled.data, shader->size);
-        util_dynarray_fini(&program.compiled);
-        shader->work_count = program.work_register_count;
+        memcpy(shader->buffer, program->compiled.data, shader->size);
+        shader->work_count = program->work_register_count;
+
+        ralloc_free(program);
 }

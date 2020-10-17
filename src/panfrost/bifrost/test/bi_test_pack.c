@@ -143,10 +143,11 @@ bit_test_single(struct panfrost_device *dev,
         clauses[2]->message_type = BIFROST_MESSAGE_ATTRIBUTE;
         clauses[3]->message_type = BIFROST_MESSAGE_STORE;
 
-        panfrost_program prog;
+        panfrost_program prog = { 0 };
+        util_dynarray_init(&prog.compiled, NULL);
         bi_pack(ctx, &prog.compiled);
 
-        bool succ = bit_vertex(dev, prog, input, 16, NULL, 0,
+        bool succ = bit_vertex(dev, &prog, input, 16, NULL, 0,
                         s.r, 16, debug);
 
         if (debug >= BIT_DEBUG_ALL || (!succ && debug >= BIT_DEBUG_FAIL)) {

@@ -43,8 +43,8 @@
  * This is primarily designed as a fallback for preloads but could be extended
  * for other clears/blits if needed in the future. */
 
-static void
-panfrost_build_blit_shader(panfrost_program *program, unsigned gpu_id, gl_frag_result loc, nir_alu_type T, bool ms)
+static panfrost_program *
+panfrost_build_blit_shader(unsigned gpu_id, gl_frag_result loc, nir_alu_type T, bool ms)
 {
         bool is_colour = loc >= FRAG_RESULT_DATA0;
 
@@ -102,8 +102,10 @@ panfrost_build_blit_shader(panfrost_program *program, unsigned gpu_id, gl_frag_r
                 .gpu_id = gpu_id,
         };
 
-        midgard_compile_shader_nir(shader, program, &inputs);
+        panfrost_program *program = midgard_compile_shader_nir(NULL, shader, &inputs);
+
         ralloc_free(shader);
+        return program;
 }
 
 /* Compile and upload all possible blit shaders ahead-of-time to reduce draw
@@ -158,16 +160,16 @@ panfrost_init_blit_shaders(struct panfrost_device *dev)
                                 if (!(shader_descs[i].types & (1 << T)))
                                         continue;
 
-                                panfrost_program program;
-                                panfrost_build_blit_shader(&program, dev->gpu_id, loc,
-                                                nir_types[T], ms);
+                                panfrost_program *program =
+                                        panfrost_build_blit_shader(dev->gpu_id, loc,
+                                                                   nir_types[T], ms);
 
-                                assert(offset + program.compiled.size < total_size);
-                                memcpy(dev->blit_shaders.bo->cpu + offset, program.compiled.data, program.compiled.size);
+                                assert(offset + program->compiled.size < total_size);
+                                memcpy(dev->blit_shaders.bo->cpu + offset, program->compiled.data, program->compiled.size);
 
-                                dev->blit_shaders.loads[loc][T][ms] = (dev->blit_shaders.bo->gpu + offset) | program.first_tag;
-                                offset += ALIGN_POT(program.compiled.size, 64);
-                                util_dynarray_fini(&program.compiled);
+                                dev->blit_shaders.loads[loc][T][ms] = (dev->blit_shaders.bo->gpu + offset) | program->first_tag;
+                                offset += ALIGN_POT(program->compiled.size, 64);
+                                ralloc_free(program);
                         }
                 }
         }

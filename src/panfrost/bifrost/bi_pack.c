@@ -1111,8 +1111,6 @@ bi_pack(bi_context *ctx, struct util_dynarray *emission)
 {
         bool tdd = bi_terminate_discarded_threads(ctx);
 
-        util_dynarray_init(emission, NULL);
-
         bi_foreach_block(ctx, _block) {
                 bi_block *block = (bi_block *) _block;
 

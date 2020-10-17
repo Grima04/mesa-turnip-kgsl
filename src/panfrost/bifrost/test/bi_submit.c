@@ -125,12 +125,12 @@ bit_sanity_check(struct panfrost_device *dev)
 /* Constructs a vertex job */
 
 bool
-bit_vertex(struct panfrost_device *dev, panfrost_program prog,
+bit_vertex(struct panfrost_device *dev, panfrost_program *prog,
                 uint32_t *iubo, size_t sz_ubo,
                 uint32_t *iattr, size_t sz_attr,
                 uint32_t *expected, size_t sz_expected, enum bit_debug debug)
 {
-        struct panfrost_bo *shader = bit_bo_create(dev, prog.compiled.size);
+        struct panfrost_bo *shader = bit_bo_create(dev, prog->compiled.size);
         struct panfrost_bo *shader_desc = bit_bo_create(dev, 4096);
         struct panfrost_bo *ubo = bit_bo_create(dev, 4096);
         struct panfrost_bo *var = bit_bo_create(dev, 4096);
@@ -183,7 +183,7 @@ bit_vertex(struct panfrost_device *dev, panfrost_program prog,
                 cfg.preload.uniform_count = (sz_ubo / 16);
         }
 
-        memcpy(shader->cpu, prog.compiled.data, prog.compiled.size);
+        memcpy(shader->cpu, prog->compiled.data, prog->compiled.size);
 
         struct mali_compute_job_packed job;
 
