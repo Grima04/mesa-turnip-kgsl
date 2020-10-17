@@ -1293,6 +1293,49 @@ bi_emit_lod_cube(bi_context *ctx, unsigned lod)
         return mkvec.dest;
 }
 
+/* The hardware specifies texel offsets and multisample indices together as a
+ * u8vec4 <offset, ms index>. By default all are zero, so if have either a
+ * nonzero texel offset or a nonzero multisample index, we build a u8vec4 with
+ * the bits we need and return that to be passed as a staging register. Else we
+ * return 0 to avoid allocating a data register when everything is zero. */
+
+static unsigned
+bi_emit_tex_offset_ms_index(bi_context *ctx, nir_tex_instr *instr)
+{
+        unsigned dest = 0;
+
+        /* TODO: offsets */
+        assert(nir_tex_instr_src_index(instr, nir_tex_src_offset) < 0);
+
+        unsigned ms_idx = nir_tex_instr_src_index(instr, nir_tex_src_ms_index);
+        if (ms_idx >= 0 &&
+            (!nir_src_is_const(instr->src[ms_idx].src) ||
+             nir_src_as_uint(instr->src[ms_idx].src) != 0)) {
+                bi_instruction shl = {
+                        .type = BI_BITWISE,
+                        .op.bitwise = BI_BITWISE_OR,
+                        .dest = bi_make_temp(ctx),
+                        .dest_type = nir_type_uint32,
+                        .src = {
+                                pan_src_index(&instr->src[ms_idx].src),
+                                BIR_INDEX_ZERO,
+                                BIR_INDEX_CONSTANT | 0,
+                        },
+                        .src_types = {
+                                nir_type_uint32,
+                                nir_type_uint32,
+                                nir_type_uint8,
+                        },
+                        .constant.u8[0] = 24,
+                };
+
+                bi_emit(ctx, shl);
+                dest = shl.dest;
+        }
+
+        return dest;
+}
+
 /* Map to the main texture op used. Some of these (txd in particular) will
  * lower to multiple texture ops with different opcodes (GRDESC_DER + TEX in
  * sequence). We assume that lowering is handled elsewhere.
@@ -1355,6 +1398,7 @@ emit_texc(bi_context *ctx, nir_tex_instr *instr)
         case nir_texop_txl:
         case nir_texop_txb:
         case nir_texop_txf:
+        case nir_texop_txf_ms:
                 break;
         default:
                 unreachable("Unsupported texture op");
@@ -1444,6 +1488,17 @@ emit_texc(bi_context *ctx, nir_tex_instr *instr)
                         dregs[BIFROST_TEX_DREG_LOD] =
                                 bi_emit_lod_88(ctx, index, sz == 16);
                         desc.lod_or_fetch = BIFROST_LOD_MODE_BIAS;
+                        break;
+
+                case nir_tex_src_ms_index:
+                case nir_tex_src_offset:
+                        if (desc.offset_or_bias_disable)
+                                break;
+
+                        dregs[BIFROST_TEX_DREG_OFFSETMS] =
+	                        bi_emit_tex_offset_ms_index(ctx, instr);
+                        if (dregs[BIFROST_TEX_DREG_OFFSETMS])
+                                desc.offset_or_bias_disable = true;
                         break;
 
                 default:
