@@ -535,6 +535,34 @@ bi_emit_blend_const(bi_context *ctx, nir_intrinsic_instr *instr)
 }
 
 static void
+bi_emit_sample_id(bi_context *ctx, nir_intrinsic_instr *instr)
+{
+        bi_instruction ins = {
+                .type = BI_BITWISE,
+                .op.bitwise = BI_BITWISE_AND,
+                .bitwise.rshift = true,
+                .dest = pan_dest_index(&instr->dest),
+                .dest_type = nir_type_uint32,
+                .src = {
+                        /* r61[16:23] contains the sampleID */
+                        BIR_INDEX_REGISTER | 61,
+                        /* mask */
+                        BIR_INDEX_CONSTANT | 0,
+                        /* shift */
+                        BIR_INDEX_CONSTANT | 32,
+                },
+                .src_types = {
+                        nir_type_uint32,
+                        nir_type_uint32,
+                        nir_type_uint8,
+                },
+                .constant.u64 = 0xffull | (0x10ull << 32ull)
+        };
+
+        bi_emit(ctx, ins);
+}
+
+static void
 emit_intrinsic(bi_context *ctx, nir_intrinsic_instr *instr)
 {
 
@@ -604,6 +632,10 @@ emit_intrinsic(bi_context *ctx, nir_intrinsic_instr *instr)
         case nir_intrinsic_load_blend_const_color_b_float:
         case nir_intrinsic_load_blend_const_color_a_float:
                 bi_emit_blend_const(ctx, instr);
+                break;
+
+	case nir_intrinsic_load_sample_id:
+                bi_emit_sample_id(ctx, instr);
                 break;
 
         default:
