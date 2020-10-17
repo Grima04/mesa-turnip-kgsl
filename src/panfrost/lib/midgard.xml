@@ -737,8 +737,8 @@
     <field name="Multisample enable" size="1" start="16" type="bool"/>
     <field name="Multisample late coverage" size="1" start="17" type="bool"/>
     <field name="Evaluate per-sample" size="1" start="18" type="bool"/>
-    <field name="Unknown 1" size="1" start="19" type="bool"/>
-    <field name="Unknown 2" size="1" start="20" type="bool"/>
+    <field name="Fixed-function depth range fixed" size="1" start="19" type="bool"/>
+    <field name="Shader depth range fixed" size="1" start="20" type="bool"/>
     <field name="SFBD Load destination" size="1" start="21" type="bool"/>
     <field name="SFBD Blend shader" size="1" start="22" type="bool"/>
     <field name="SFBD Blend shader discard" size="1" start="23" type="bool"/>
@@ -758,10 +758,10 @@
     <field name="Alpha-to-coverage Invert" size="1" start="18" type="bool"/>
     <field name="Alpha to one" size="1" start="19" type="bool"/>
     <field name="SFBD Write enable" size="1" start="20" type="bool"/>
-    <field name="Unknown 1" size="3" start="21" type="uint"/>
+    <field name="Alpha test compare function" size="3" start="21" type="Func"/>
     <field name="SFBD sRGB" size="1" start="24" type="bool"/>
     <field name="SFBD Dither disable" size="1" start="25" type="bool"/>
-    <field name="Unknown 2" size="1" start="26" type="bool"/>
+    <field name="Force seamless cubemaps" size="1" start="26" type="bool"/>
     <field name="Depth Range 1" size="1" start="28" type="bool"/>
     <field name="Depth Range 2" size="1" start="29" type="bool"/>
     <field name="Single-sampled lines" size="1" start="30" type="bool"/>

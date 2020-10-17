@@ -250,7 +250,7 @@ panfrost_load_midg(
                 cfg.stencil_mask_misc.stencil_enable = (loc == FRAG_RESULT_STENCIL);
                 cfg.stencil_mask_misc.stencil_mask_front = 0xFF;
                 cfg.stencil_mask_misc.stencil_mask_back = 0xFF;
-                cfg.stencil_mask_misc.unknown_1 = 0x7;
+                cfg.stencil_mask_misc.alpha_test_compare_function = MALI_FUNC_ALWAYS;
 
                 cfg.stencil_front.compare_function = MALI_FUNC_ALWAYS;
                 cfg.stencil_front.stencil_fail = MALI_STENCIL_OP_REPLACE;

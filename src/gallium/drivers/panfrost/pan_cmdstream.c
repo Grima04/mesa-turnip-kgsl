@@ -532,13 +532,13 @@ panfrost_prepare_fs_state(struct panfrost_context *ctx,
         state->multisample_misc.depth_write_mask = zsa->base.depth.writemask;
         state->multisample_misc.fixed_function_near_discard = rast->depth_clip_near;
         state->multisample_misc.fixed_function_far_discard = rast->depth_clip_far;
-        state->multisample_misc.unknown_2 = true;
+        state->multisample_misc.shader_depth_range_fixed = true;
 
         state->stencil_mask_misc.stencil_mask_front = zsa->stencil_mask_front;
         state->stencil_mask_misc.stencil_mask_back = zsa->stencil_mask_back;
         state->stencil_mask_misc.stencil_enable = zsa->base.stencil[0].enabled;
         state->stencil_mask_misc.alpha_to_coverage = alpha_to_coverage;
-        state->stencil_mask_misc.unknown_1 = 0x7;
+        state->stencil_mask_misc.alpha_test_compare_function = MALI_FUNC_ALWAYS;
         state->stencil_mask_misc.depth_range_1 = rast->offset_tri;
         state->stencil_mask_misc.depth_range_2 = rast->offset_tri;
         state->stencil_mask_misc.single_sampled_lines = !rast->multisample;
