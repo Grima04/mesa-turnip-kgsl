@@ -203,18 +203,8 @@ void si_init_resource_fields(struct si_screen *sscreen, struct si_resource *res,
    if (res->domains & RADEON_DOMAIN_VRAM) {
       res->vram_usage = size;
 
-      /* We don't want to evict buffers from VRAM by mapping them for CPU access,
-       * because they might never be moved back again. If a buffer is large enough,
-       * upload data by copying from a temporary GTT buffer. 8K might not seem much,
-       * but there can be 100000 buffers.
-       *
-       * This tweak improves performance for viewperf.
-       */
-      const unsigned min_size = 8196; /* tuned to minimize mapped VRAM */
-      const unsigned max_staging_uploads = 1; /* number of uploads before mapping directly */
-
       res->max_forced_staging_uploads = res->b.max_forced_staging_uploads =
-         sscreen->info.has_dedicated_vram && size >= min_size ? max_staging_uploads : 0;
+         sscreen->info.has_dedicated_vram && size >= sscreen->info.vram_vis_size / 4 ? 1 : 0;
    } else if (res->domains & RADEON_DOMAIN_GTT) {
       res->gart_usage = size;
    }
