@@ -937,6 +937,13 @@ if _shader_cache != 'disabled'
   endif
 endif
 
+if with_shader_cache 
+  shader_cache_max_size = get_option('shader-cache-max-size')
+  if shader_cache_max_size != ''
+    pre_args += '-DMESA_GLSL_CACHE_MAX_SIZE="@0@"'.format(shader_cache_max_size)
+  endif
+endif
+
 # Check for GCC style builtins
 foreach b : ['bswap32', 'bswap64', 'clz', 'clzll', 'ctz', 'expect', 'ffs',
              'ffsll', 'popcount', 'popcountll', 'unreachable']
