@@ -291,7 +291,7 @@ i386_build:
   extends:
     - .use-x86_build-base
   variables:
-    MESA_IMAGE_TAG: &i386_build "2020-12-17-use-ephemeral"
+    MESA_IMAGE_TAG: &i386_build "2020-12-23-opengl"
 
 .use-i386_build:
   variables:
@@ -305,7 +305,7 @@ ppc64el_build:
   extends:
     - .use-x86_build-base
   variables:
-    MESA_IMAGE_TAG: &ppc64el_build "2020-12-17-use-ephemeral"
+    MESA_IMAGE_TAG: &ppc64el_build "2020-12-23-opengl"
 
 .use-ppc64el_build:
   variables:
@@ -319,7 +319,7 @@ s390x_build:
   extends:
     - .use-x86_build-base
   variables:
-    MESA_IMAGE_TAG: &s390x_build "2020-12-17-use-ephemeral"
+    MESA_IMAGE_TAG: &s390x_build "2020-12-23-opengl"
 
 .use-s390x_build:
   variables:
@@ -376,7 +376,7 @@ arm_build:
     - .fdo.container-build@debian@arm64v8
     - .container
   variables:
-    MESA_IMAGE_TAG: &arm_build "2020-12-02"
+    MESA_IMAGE_TAG: &arm_build "2020-12-23-opengl"
 
 .use-arm_build:
   variables:
@@ -731,13 +731,13 @@ meson-android:
   variables:
     UNWIND: "disabled"
     DRI_LOADERS: >
-      -D glx=disabled
+      -D glx=dri
       -D gbm=disabled
       -D egl=enabled
-      -D platforms=[]
+      -D platforms=x11
       -D osmesa=false
     GALLIUM_ST: >
-      -D dri3=disabled
+      -D dri3=enabled
       -D gallium-vdpau=disabled
       -D gallium-xvmc=disabled
       -D gallium-omx=disabled

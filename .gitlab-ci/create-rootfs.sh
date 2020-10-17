@@ -14,12 +14,6 @@ elif [ $DEBIAN_ARCH = amd64 ]; then
     ARCH_PACKAGES="firmware-amd-graphics
                    libelf1
                    libllvm10
-                   libxcb-dri2-0
-                   libxcb-dri3-0
-                   libxcb-present0
-                   libxcb-sync1
-                   libxcb-xfixes0
-                   libxshmfence1
                   "
 fi
 
@@ -58,6 +52,13 @@ apt-get -y install --no-install-recommends \
     libsensors5 \
     libx11-6 \
     libx11-xcb1 \
+    libxcb-dri2-0 \
+    libxcb-dri3-0 \
+    libxcb-present0 \
+    libxcb-randr0 \
+    libxcb-sync1 \
+    libxcb-xfixes0 \
+    libxshmfence1 \
     netcat-openbsd \
     python3 \
     python3-pil \
