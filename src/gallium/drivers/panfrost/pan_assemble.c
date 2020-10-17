@@ -78,8 +78,8 @@ pan_prepare_bifrost_props(struct panfrost_shader_state *state,
 
                 pan_prepare(&state->preload, PRELOAD);
                 state->preload.uniform_count = state->uniform_count;
-                state->preload.vertex_id = true;
-                state->preload.instance_id = true;
+                state->preload.vertex.vertex_id = true;
+                state->preload.vertex.instance_id = true;
                 break;
         case MESA_SHADER_FRAGMENT:
                 pan_prepare(&state->properties, RENDERER_PROPERTIES);
@@ -91,8 +91,8 @@ pan_prepare_bifrost_props(struct panfrost_shader_state *state,
 
                 pan_prepare(&state->preload, PRELOAD);
                 state->preload.uniform_count = state->uniform_count;
-                state->preload.fragment_position = state->reads_frag_coord;
-                state->preload.unknown = true;
+                state->preload.fragment.fragment_position = state->reads_frag_coord;
+                state->preload.fragment.coverage = true;
                 break;
         default:
                 unreachable("TODO");

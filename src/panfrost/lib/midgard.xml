@@ -680,7 +680,8 @@
     <field name="Stencil from shader" size="1" start="28" type="bool"/>
   </struct>
 
-  <struct name="Preload" size="1">
+  <struct name="Compute Preload" size="1" no-direct-packing="true">
+    <field name="PC" size="1" start="6" type="bool"/>
     <field name="Local Invocation XY" size="1" start="7" type="bool"/>
     <field name="Local Invocation Z" size="1" start="8" type="bool"/>
     <field name="Work group X" size="1" start="9" type="bool"/>
@@ -689,13 +690,37 @@
     <field name="Global Invocation X" size="1" start="12" type="bool"/>
     <field name="Global Invocation Y" size="1" start="13" type="bool"/>
     <field name="Global Invocation Z" size="1" start="14" type="bool"/>
+  </struct>
+
+  <enum name="Warp Limit">
+    <value name="None" value="0"/>
+    <value name="2" value="1"/>
+    <value name="4" value="2"/>
+    <value name="8" value="3"/>
+  </enum>
+
+  <struct name="Vertex Preload" size="1" no-direct-packing="true">
+    <field name="Warp limit" size="2" start="0" type="Warp Limit"/>
+    <field name="PC" size="1" start="6" type="bool"/>
+    <field name="Position result address lo" size="1" start="10" type="bool"/>
+    <field name="Position result address hi" size="1" start="11" type="bool"/>
     <field name="Vertex ID" size="1" start="13" type="bool"/>
     <field name="Instance ID" size="1" start="14" type="bool"/>
-    <field name="Unknown" size="1" start="7" type="bool"/>
+  </struct>
+
+  <struct name="Fragment Preload" size="1" no-direct-packing="true">
+    <field name="PC" size="1" start="6" type="bool"/>
+    <field name="Coverage" size="1" start="7" type="bool"/>
     <field name="Primitive ID" size="1" start="9" type="bool"/>
-    <field name="Front facing" size="1" start="10" type="bool"/>
+    <field name="Primitive flags" size="1" start="10" type="bool"/>
     <field name="Fragment position" size="1" start="11" type="bool"/>
-    <field name="Sample mask/ID" size="1" start="12" type="bool"/>
+    <field name="Sample mask/ID" size="1" start="13" type="bool"/>
+  </struct>
+
+  <struct name="Preload" size="1">
+    <field name="Compute" size="32" start="0" type="Compute Preload"/>
+    <field name="Vertex" size="32" start="0" type="Vertex Preload"/>
+    <field name="Fragment" size="32" start="0" type="Fragment Preload"/>
     <field name="Uniform count" size="7" start="15" type="uint"/>
   </struct>
 
