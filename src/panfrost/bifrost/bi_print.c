@@ -109,6 +109,9 @@ bi_print_index(FILE *fp, bi_instruction *ins, unsigned index, unsigned s)
                 fprintf(fp, "#0x%" PRIx64, bi_get_immediate(ins, s));
         else if (index & BIR_INDEX_ZERO)
                 fprintf(fp, "#0");
+        else if (index & BIR_INDEX_BLEND)
+                fprintf(fp, "blend_descriptor_%u.%c", ins->blend_location,
+                        (index & ~BIR_INDEX_BLEND) == BIFROST_SRC_FAU_HI ? 'y' : 'x');
         else
                 fprintf(fp, "#err");
 }
