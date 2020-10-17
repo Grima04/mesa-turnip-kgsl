@@ -1,5 +1,5 @@
 variables:
-  DISTRIBUTION_TAG: "2020-12-23-opengl-2"
+  DISTRIBUTION_TAG: "2020-12-23-piglit"
 
 .kernel+rootfs:
   stage: container-2

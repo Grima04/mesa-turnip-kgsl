@@ -50,15 +50,23 @@ apt-get -y install --no-install-recommends \
     libpng16-16 \
     libpython3.7 \
     libsensors5 \
+    libwaffle-1-0 \
     libx11-6 \
     libx11-xcb1 \
     libxcb-dri2-0 \
     libxcb-dri3-0 \
+    libxcb-glx0 \
     libxcb-present0 \
     libxcb-randr0 \
+    libxcb-shm0 \
     libxcb-sync1 \
     libxcb-xfixes0 \
+    libxdamage1 \
+    libxext6 \
+    libxfixes3 \
+    libxkbcommon0 \
     libxshmfence1 \
+    libxxf86vm1 \
     netcat-openbsd \
     python3 \
     python3-pil \

@@ -68,6 +68,7 @@ pushd rootfs
 find -H | \
   egrep -v "external/(openglcts|vulkancts|amber|glslang|spirv-tools)" |
   egrep -v "traces-db|apitrace|renderdoc|python" | \
+  egrep -v "piglit" | \
   cpio -H newc -o | \
   xz --check=crc32 -T4 - > $CI_PROJECT_DIR/rootfs.cpio.gz
 popd

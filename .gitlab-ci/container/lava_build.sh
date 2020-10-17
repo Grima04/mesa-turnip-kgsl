@@ -243,7 +243,7 @@ rm -rf /libdrm
 
 du -ah /lava-files/rootfs-${DEBIAN_ARCH} | sort -h | tail -100
 pushd /lava-files/rootfs-${DEBIAN_ARCH}
-  tar cvzf /lava-files/lava-rootfs.tgz .
+  tar czf /lava-files/lava-rootfs.tgz .
 popd
 
 if [ ${DEBIAN_ARCH} = arm64 ]; then
