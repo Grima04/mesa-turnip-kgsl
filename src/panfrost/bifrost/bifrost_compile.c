@@ -1471,13 +1471,17 @@ emit_texc(bi_context *ctx, nir_tex_instr *instr)
                         combine.src[dreg_index++] = dregs[i];
         }
 
-        /* Pass combined data registers together */
-        if (dreg_index > 0) {
+        if (dreg_index > 1) {
+                /* Pass combined data registers together */
                 tex.src[0] = combine.dest;
                 bi_emit(ctx, combine);
 
                 for (unsigned i = 0; i < dreg_index; ++i)
                         tex.swizzle[0][i] = i;
+        } else if (dreg_index == 1) {
+                tex.src[0] = combine.src[0];
+        } else {
+                tex.src[0] = tex.dest;
         }
 
         /* Pass the texture operation descriptor in src2 */
