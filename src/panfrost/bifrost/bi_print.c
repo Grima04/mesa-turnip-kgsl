@@ -82,16 +82,17 @@ bi_class_name(enum bi_class cl)
 static bool
 bi_print_dest_index(FILE *fp, bi_instruction *ins, unsigned index)
 {
+        if ((index & BIR_SPECIAL) && (index & BIR_SPECIAL) != BIR_INDEX_REGISTER)
+                return false;
+
         if (!index)
                 fprintf(fp, "_");
         else if (index & BIR_INDEX_REGISTER)
                 fprintf(fp, "br%u", index & ~BIR_INDEX_REGISTER);
         else if (index & PAN_IS_REG)
                 fprintf(fp, "r%u", index >> 1);
-        else if (!(index & BIR_SPECIAL))
-                fprintf(fp, "%u", (index >> 1) - 1);
         else
-                return false;
+                fprintf(fp, "%u", (index >> 1) - 1);
 
         return true;
 }
