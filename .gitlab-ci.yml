@@ -990,7 +990,6 @@ piglit-quick_gl:
   extends: .piglit-test
   variables:
     LP_NUM_THREADS: 0
-    NIR_VALIDATE: 0
     PIGLIT_OPTIONS: >
       --process-isolation false
       -x egl_ext_device_
@@ -1006,14 +1005,12 @@ piglit-glslparser:
   extends: .piglit-test
   variables:
     LP_NUM_THREADS: 0
-    NIR_VALIDATE: 0
     PIGLIT_PROFILES: glslparser
 
 piglit-quick_shader:
   extends: .piglit-test
   variables:
     LP_NUM_THREADS: 1
-    NIR_VALIDATE: 0
     PIGLIT_PROFILES: quick_shader
 
 .deqp-test:
@@ -1047,7 +1044,6 @@ piglit-quick_shader:
 llvmpipe-gles2:
   variables:
     DEQP_VER: gles2
-    NIR_VALIDATE: 0
     # Don't use threads inside llvmpipe, we've already got all cores
     # busy at the deqp-runner level.
     LP_NUM_THREADS: 0
@@ -1091,7 +1087,6 @@ softpipe-gl:
 virgl-gles2-on-gl:
   variables:
     DEQP_VER: gles2
-    NIR_VALIDATE: 0
     DEQP_NO_SAVE_RESULTS: 1
     DEQP_SKIPS: deqp-virgl-gl-skips.txt
     # Don't use threads inside llvmpipe, we've already got all cores
@@ -1194,15 +1189,11 @@ arm64_a630_gles31:
   extends: arm64_a630_gles2
   variables:
     DEQP_VER: gles31
-    # gles31 is about 12 minutes with validation enabled.
-    NIR_VALIDATE: 0
 
 arm64_a630_gles3:
   extends: arm64_a630_gles2
   variables:
     DEQP_VER: gles3
-    # gles3 is about 15 minutes with validation enabled.
-    NIR_VALIDATE: 0
 
 # We almost always manage to lower UBOs back to constant uploads in
 # the test suite, so get a little testing for it here.
@@ -1250,7 +1241,6 @@ arm64_a630_gmem:
     CI_NODE_INDEX: 1
     CI_NODE_TOTAL: 5
     FD_MESA_DEBUG: nobypass
-    NIR_VALIDATE: 1
 
 arm64_a630_gl:
   extends: arm64_a630_gles2
@@ -1347,7 +1337,6 @@ arm64_a306_gles2:
     DEQP_EXPECTED_RENDERER: FD307
     # Since we can't get artifacts back yet, skip making them.
     DEQP_NO_SAVE_RESULTS: 1
-    # NIR_VALIDATE=0 left intentionally unset as a3xx is fast enough at its small testsuite.
   script:
     - ./install/bare-metal/fastboot.sh
   needs:
@@ -1365,7 +1354,6 @@ arm64_a306_gles3:
     DEQP_PARALLEL: 1
     CI_NODE_INDEX: 1
     CI_NODE_TOTAL: 25
-    NIR_VALIDATE: 0
 
 # Fractional runs with debug options.  Note that since we're not
 # hitting the iommu faults, we can run in parallel (derive from gles2, not gles3).
@@ -1377,7 +1365,7 @@ arm64_a306_gles3_options:
     # Check that the non-constbuf UBO case works.
     - DEQP_RUN_SUFFIX=-nouboopt IR3_SHADER_DEBUG=nouboopt DEQP_CASELIST_FILTER="functional.*ubo" ./install/bare-metal/fastboot.sh
 
-arm64_a530_gles2:
+.arm64_a530_deqp:
   extends:
     - arm64_a306_gles2
   variables:
@@ -1389,13 +1377,17 @@ arm64_a530_gles2:
     DEQP_EXPECTED_FAILS: deqp-freedreno-a530-fails.txt
     DEQP_FLAKES: deqp-freedreno-a530-flakes.txt
     DEQP_EXPECTED_RENDERER: FD530
-    NIR_VALIDATE: 0
   tags:
     - google-freedreno-db820c
 
+arm64_a530_gles2:
+  extends:
+    - .arm64_a530_deqp
+  parallel: 2
+
 arm64_a530_gles3:
   extends:
-    - arm64_a530_gles2
+    - .arm64_a530_deqp
   variables:
     DEQP_VER: gles3
     DEQP_PARALLEL: 1
