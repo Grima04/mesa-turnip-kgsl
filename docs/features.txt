@@ -99,9 +99,9 @@ GL 3.2, GLSL 1.50 --- all DONE: i965, nv50, nvc0, r600, radeonsi, llvmpipe, soft
 
 GL 3.3, GLSL 3.30 --- all DONE: i965, nv50, nvc0, r600, radeonsi, llvmpipe, softpipe, virgl, zink
 
-  GL_ARB_blend_func_extended                            DONE (freedreno/a3xx, swr, zink, panfrost)
+  GL_ARB_blend_func_extended                            DONE (freedreno/a3xx, swr, panfrost)
   GL_ARB_explicit_attrib_location                       DONE (all drivers that support GLSL)
-  GL_ARB_occlusion_query2                               DONE (freedreno, swr, v3d, zink, panfrost)
+  GL_ARB_occlusion_query2                               DONE (freedreno, swr, v3d, panfrost)
   GL_ARB_sampler_objects                                DONE (all drivers)
   GL_ARB_shader_bit_encoding                            DONE (freedreno, swr, v3d, panfrost)
   GL_ARB_texture_rgb10_a2ui                             DONE (freedreno, swr, panfrost)
