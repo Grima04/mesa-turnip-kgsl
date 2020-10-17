@@ -1250,6 +1250,25 @@
     <field name="Weight7" size="16" start="7:16" type="uint"/>
   </struct>
 
+  <struct name="Bifrost Tiler State" size="16">
+    <field name="Word0" size="32" start="0:0" type="uint"/>
+    <field name="Word1" size="32" start="1:0" type="uint"/>
+    <field name="Word2" size="32" start="2:0" type="uint"/>
+    <field name="Word3" size="32" start="3:0" type="uint"/>
+    <field name="Word4" size="32" start="4:0" type="uint"/>
+    <field name="Word5" size="32" start="5:0" type="uint"/>
+    <field name="Word6" size="32" start="6:0" type="uint"/>
+    <field name="Word7" size="32" start="7:0" type="uint"/>
+    <field name="Word8" size="32" start="8:0" type="uint"/>
+    <field name="Word9" size="32" start="9:0" type="uint"/>
+    <field name="Word10" size="32" start="10:0" type="uint"/>
+    <field name="Word11" size="32" start="11:0" type="uint"/>
+    <field name="Word12" size="32" start="12:0" type="uint"/>
+    <field name="Word13" size="32" start="13:0" type="uint"/>
+    <field name="Word14" size="32" start="14:0" type="uint"/>
+    <field name="Word15" size="32" start="15:0" type="uint"/>
+  </struct>
+
   <struct name="Bifrost Tiler" size="48">
     <field name="Polygon List" size="64" start="0:0" type="address"/>
     <field name="Hierarchy Mask" size="13" start="2:0" type="uint"/>
@@ -1259,6 +1278,7 @@
     <field name="FB Height" size="16" start="3:16" type="uint" modifier="minus(1)"/>
     <field name="Heap" size="64" start="6:0" type="address"/>
     <field name="Weights" size="256" start="8:0" type="Bifrost Tiler Weights"/>
+    <field name="State" size="512" start="32:0" type="Bifrost Tiler State"/>
   </struct>
 
   <struct name="Bifrost Tiler Pointer">
