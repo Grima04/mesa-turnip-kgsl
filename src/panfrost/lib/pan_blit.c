@@ -32,6 +32,7 @@
 #include "pan_texture.h"
 #include "panfrost-quirks.h"
 #include "../midgard/midgard_compile.h"
+#include "../bifrost/bifrost_compile.h"
 #include "compiler/nir/nir_builder.h"
 #include "util/u_math.h"
 
@@ -44,7 +45,10 @@
  * for other clears/blits if needed in the future. */
 
 static panfrost_program *
-panfrost_build_blit_shader(unsigned gpu_id, gl_frag_result loc, nir_alu_type T, bool ms)
+panfrost_build_blit_shader(struct panfrost_device *dev,
+                           gl_frag_result loc,
+                           nir_alu_type T,
+                           bool ms)
 {
         bool is_colour = loc >= FRAG_RESULT_DATA0;
 
@@ -99,10 +103,15 @@ panfrost_build_blit_shader(unsigned gpu_id, gl_frag_result loc, nir_alu_type T, 
                 nir_store_var(b, c_out, nir_channel(b, &tex->dest.ssa, 0), 0xFF);
 
         struct panfrost_compile_inputs inputs = {
-                .gpu_id = gpu_id,
+                .gpu_id = dev->gpu_id,
         };
 
-        panfrost_program *program = midgard_compile_shader_nir(NULL, shader, &inputs);
+        panfrost_program *program;
+
+        if (dev->quirks & IS_BIFROST)
+                program = bifrost_compile_shader_nir(NULL, shader, &inputs);
+        else
+                program = midgard_compile_shader_nir(NULL, shader, &inputs);
 
         ralloc_free(shader);
         return program;
@@ -114,6 +123,7 @@ panfrost_build_blit_shader(unsigned gpu_id, gl_frag_result loc, nir_alu_type T, 
 void
 panfrost_init_blit_shaders(struct panfrost_device *dev)
 {
+        bool is_bifrost = !!(dev->quirks & IS_BIFROST);
         static const struct {
                 gl_frag_result loc;
                 unsigned types;
@@ -143,8 +153,10 @@ panfrost_init_blit_shaders(struct panfrost_device *dev)
          * than 8 quadwords each (again, overestimate is fine). */
 
         unsigned offset = 0;
-        unsigned total_size = (FRAG_RESULT_DATA7 * PAN_BLIT_NUM_TYPES)
-                * (8 * 16) * 2;
+        unsigned total_size = (FRAG_RESULT_DATA7 * PAN_BLIT_NUM_TYPES) * (8 * 16) * 2;
+
+        if (is_bifrost)
+                total_size *= 2;
 
         dev->blit_shaders.bo = panfrost_bo_create(dev, total_size, PAN_BO_EXECUTE);
 
@@ -160,15 +172,21 @@ panfrost_init_blit_shaders(struct panfrost_device *dev)
                                 if (!(shader_descs[i].types & (1 << T)))
                                         continue;
 
+                                struct pan_blit_shader *shader = &dev->blit_shaders.loads[loc][T][ms];
                                 panfrost_program *program =
-                                        panfrost_build_blit_shader(dev->gpu_id, loc,
+                                        panfrost_build_blit_shader(dev, loc,
                                                                    nir_types[T], ms);
 
                                 assert(offset + program->compiled.size < total_size);
                                 memcpy(dev->blit_shaders.bo->cpu + offset, program->compiled.data, program->compiled.size);
 
-                                dev->blit_shaders.loads[loc][T][ms] = (dev->blit_shaders.bo->gpu + offset) | program->first_tag;
-                                offset += ALIGN_POT(program->compiled.size, 64);
+                                shader->shader = (dev->blit_shaders.bo->gpu + offset) | program->first_tag;
+
+                                int rt = loc - FRAG_RESULT_DATA0;
+                                if (rt >= 0 && rt < 8 && program->blend_ret_offsets[rt])
+                                        shader->blend_ret_addr = program->blend_ret_offsets[rt] + shader->shader;
+
+                                offset += ALIGN_POT(program->compiled.size, is_bifrost ? 128 : 64);
                                 ralloc_free(program);
                         }
                 }
@@ -231,7 +249,7 @@ panfrost_load_midg(
                                             128);
 
         pan_pack(shader_meta_t.cpu, RENDERER_STATE, cfg) {
-                cfg.shader.shader = pool->dev->blit_shaders.loads[loc][T][ms];
+                cfg.shader.shader = pool->dev->blit_shaders.loads[loc][T][ms].shader;
                 cfg.shader.varying_count = 1;
                 cfg.shader.texture_count = 1;
                 cfg.shader.sampler_count = 1;

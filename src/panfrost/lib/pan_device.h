@@ -79,9 +79,14 @@ enum pan_blit_type {
 
 #define PAN_BLIT_NUM_TARGETS (12)
 
+struct pan_blit_shader {
+        mali_ptr shader;
+        uint32_t blend_ret_addr;
+};
+
 struct pan_blit_shaders {
         struct panfrost_bo *bo;
-        mali_ptr loads[PAN_BLIT_NUM_TARGETS][PAN_BLIT_NUM_TYPES][2];
+        struct pan_blit_shader loads[PAN_BLIT_NUM_TARGETS][PAN_BLIT_NUM_TYPES][2];
 };
 
 struct panfrost_device {

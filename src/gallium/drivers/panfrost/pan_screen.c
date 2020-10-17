@@ -757,9 +757,7 @@ panfrost_create_screen(int fd, struct renderonly *ro)
         screen->base.set_damage_region = panfrost_resource_set_damage_region;
 
         panfrost_resource_screen_init(&screen->base);
-
-        if (!(dev->quirks & IS_BIFROST))
-                panfrost_init_blit_shaders(dev);
+        panfrost_init_blit_shaders(dev);
 
         return &screen->base;
 }
