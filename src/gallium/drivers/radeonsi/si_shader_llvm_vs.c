@@ -906,7 +906,9 @@ void si_llvm_build_vs_prolog(struct si_shader_context *ctx, union si_shader_part
          };
          LLVMValueRef is_odd = LLVMBuildTrunc(ctx->ac.builder, thread_id_in_tg, ctx->ac.i1, "");
          LLVMValueRef flatshade_first = LLVMBuildICmp(
-            builder, LLVMIntEQ, si_unpack_param(ctx, ctx->vs_state_bits, 4, 2), ctx->ac.i32_0, "");
+            builder, LLVMIntEQ,
+            si_unpack_param(ctx, input_sgpr_param[8 + SI_SGPR_VS_STATE_BITS], 4, 2),
+            ctx->ac.i32_0, "");
 
          ac_build_triangle_strip_indices_to_triangle(&ctx->ac, is_odd, flatshade_first, index);
          input_vgprs[0] = index[0];
