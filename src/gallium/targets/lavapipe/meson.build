@@ -8,8 +8,13 @@ libvulkan_lvp = shared_library(
   link_args : [ld_args_bsymbolic, ld_args_gc_sections],
   dependencies : driver_swrast,
   install : true,
-  name_suffix : 'so',
 )
+
+if with_platform_windows
+  module_dir = join_paths(get_option('prefix'), get_option('bindir'))
+else
+  module_dir = join_paths(get_option('prefix'), get_option('libdir'))
+endif
 
 lvp_icd = custom_target(
   'lvp_icd',
@@ -17,8 +22,9 @@ lvp_icd = custom_target(
   output : 'lvp_icd.@0@.json'.format(host_machine.cpu()),
   command : [
     prog_python, '@INPUT@',
-    '--lib-path', join_paths(get_option('prefix'), get_option('libdir')),
+    '--lib-path', module_dir,
     '--out', '@OUTPUT@',
+    '--suffix', libvulkan_lvp.full_path().split('.')[-1],
   ],
   depend_files : files('../../frontends/lavapipe/lvp_extensions.py'),
   build_by_default : true,

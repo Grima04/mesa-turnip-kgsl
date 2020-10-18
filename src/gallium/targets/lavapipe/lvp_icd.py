@@ -28,10 +28,11 @@ import argparse
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--out', help='Output json file.', required=True)
-    parser.add_argument('--lib-path', help='Path to libvulkan_lvp.so')
+    parser.add_argument('--lib-path', help='Path to libvulkan_lvp.*')
+    parser.add_argument('--suffix', help='Extension of libvulkan_lvp.*')
     args = parser.parse_args()
 
-    path = 'libvulkan_lvp.so'
+    path = 'libvulkan_lvp.' + args.suffix
     if args.lib_path:
         path = os.path.join(args.lib_path, path)
 
