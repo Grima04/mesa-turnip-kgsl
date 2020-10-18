@@ -563,6 +563,28 @@ bi_emit_sample_id(bi_context *ctx, nir_intrinsic_instr *instr)
 }
 
 static void
+bi_emit_front_face(bi_context *ctx, nir_intrinsic_instr *instr)
+{
+        bi_instruction ins = {
+                .type = BI_CMP,
+                .cond = BI_COND_EQ,
+                .dest = pan_dest_index(&instr->dest),
+                .dest_type = nir_type_uint32,
+                .src = {
+                        /* r58 == 0 means primitive is front facing */
+                        BIR_INDEX_REGISTER | 58,
+                        BIR_INDEX_ZERO,
+                },
+                .src_types = {
+                        nir_type_uint32,
+                        nir_type_uint32,
+                },
+        };
+
+        bi_emit(ctx, ins);
+}
+
+static void
 emit_intrinsic(bi_context *ctx, nir_intrinsic_instr *instr)
 {
 
@@ -636,6 +658,10 @@ emit_intrinsic(bi_context *ctx, nir_intrinsic_instr *instr)
 
 	case nir_intrinsic_load_sample_id:
                 bi_emit_sample_id(ctx, instr);
+                break;
+
+	case nir_intrinsic_load_front_face:
+                bi_emit_front_face(ctx, instr);
                 break;
 
         default:
