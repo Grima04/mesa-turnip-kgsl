@@ -256,13 +256,18 @@ panfrost_load_prepare_rsd(struct pan_pool *pool, struct MALI_RENDERER_STATE *sta
 }
 
 static void
-midgard_load_emit_varying(struct pan_pool *pool, struct MALI_DRAW *draw,
-                          mali_ptr coordinates, unsigned vertex_count)
+panfrost_load_emit_varying(struct pan_pool *pool, struct MALI_DRAW *draw,
+                          mali_ptr coordinates, unsigned vertex_count,
+                          bool is_bifrost)
 {
+        /* Bifrost needs an empty desc to mark end of prefetching */
+        bool padding_buffer = is_bifrost;
+
         struct panfrost_ptr varying =
                 panfrost_pool_alloc(pool, MALI_ATTRIBUTE_LENGTH);
         struct panfrost_ptr varying_buffer =
-                panfrost_pool_alloc(pool, MALI_ATTRIBUTE_BUFFER_LENGTH);
+                panfrost_pool_alloc(pool, MALI_ATTRIBUTE_BUFFER_LENGTH *
+                                (padding_buffer ? 2 : 1));
 
         pan_pack(varying_buffer.cpu, ATTRIBUTE_BUFFER, cfg) {
                 cfg.pointer = coordinates;
@@ -270,9 +275,19 @@ midgard_load_emit_varying(struct pan_pool *pool, struct MALI_DRAW *draw,
                 cfg.size = cfg.stride * vertex_count;
         }
 
+        if (padding_buffer) {
+                pan_pack(varying_buffer.cpu + MALI_ATTRIBUTE_BUFFER_LENGTH,
+                         ATTRIBUTE_BUFFER, cfg);
+        }
+
         pan_pack(varying.cpu, ATTRIBUTE, cfg) {
                 cfg.buffer_index = 0;
-                cfg.format = (MALI_RGBA32F << 12) | panfrost_get_default_swizzle(2);
+                cfg.offset_enable = !is_bifrost;
+                cfg.format = (MALI_RGBA32F << 12);
+                if (pool->dev->quirks & HAS_SWIZZLES)
+                        cfg.format |= panfrost_get_default_swizzle(2);
+                else
+                        cfg.format |= panfrost_bifrost_swizzle(2);
         }
 
         draw->varyings = varying.gpu;
@@ -434,7 +449,7 @@ panfrost_load_midg(struct pan_pool *pool,
                 cfg.draw_descriptor_is_64b = true;
                 cfg.four_components_per_vertex = true;
 
-                midgard_load_emit_varying(pool, &cfg, coordinates, vertex_count);
+                panfrost_load_emit_varying(pool, &cfg, coordinates, vertex_count, false);
                 midgard_load_emit_texture(pool, &cfg, image);
                 panfrost_load_emit_viewport(pool, &cfg, image);
                 cfg.fbd = fbd;
@@ -455,6 +470,195 @@ panfrost_load_midg(struct pan_pool *pool,
                                                           MIDGARD_TILER_JOB,
                                                           INVOCATION),
                                           1, vertex_count, 1, 1, 1, 1, true);
+
+        panfrost_add_job(pool, scoreboard, MALI_JOB_TYPE_TILER, false, 0, &t, true);
+}
+
+static void
+bifrost_load_emit_texture(struct pan_pool *pool, struct MALI_DRAW *draw,
+                          struct pan_image *image)
+{
+        struct panfrost_ptr texture =
+                 panfrost_pool_alloc_aligned(pool,
+                                             MALI_BIFROST_TEXTURE_LENGTH +
+                                             sizeof(mali_ptr) * 2 *
+                                             MAX2(image->nr_samples, 1),
+                                             128);
+        struct panfrost_ptr sampler =
+                 panfrost_pool_alloc(pool, MALI_BIFROST_SAMPLER_LENGTH);
+        struct panfrost_ptr payload = {
+                 .cpu = texture.cpu + MALI_BIFROST_TEXTURE_LENGTH,
+                 .gpu = texture.gpu + MALI_BIFROST_TEXTURE_LENGTH,
+        };
+
+        panfrost_new_texture_bifrost(pool->dev, (void *)texture.cpu,
+                                     image->width0, image->height0,
+                                     MAX2(image->nr_samples, 1), 1,
+                                     image->format, MALI_TEXTURE_DIMENSION_2D,
+                                     image->modifier,
+                                     image->first_level, image->last_level,
+                                     0, 0,
+                                     image->nr_samples,
+                                     0,
+                                     (MALI_CHANNEL_R << 0) | (MALI_CHANNEL_G << 3) |
+                                     (MALI_CHANNEL_B << 6) | (MALI_CHANNEL_A << 9),
+                                     image->bo->ptr.gpu + image->first_layer *
+                                     panfrost_get_layer_stride(image->slices,
+                                                               image->dim == MALI_TEXTURE_DIMENSION_3D,
+                                                               image->cubemap_stride, image->first_level),
+                                     image->slices,
+                                     &payload);
+
+        pan_pack(sampler.cpu, BIFROST_SAMPLER, cfg) {
+                cfg.seamless_cube_map = false;
+                cfg.normalized_coordinates = false;
+                cfg.point_sample_minify = true;
+                cfg.point_sample_magnify = true;
+        }
+
+        draw->textures = texture.gpu;
+        draw->samplers = sampler.gpu;
+}
+
+static enum mali_bifrost_register_file_format
+blit_type_to_reg_fmt(enum pan_blit_type btype)
+{
+        switch (btype) {
+        case PAN_BLIT_FLOAT:
+                return MALI_BIFROST_REGISTER_FILE_FORMAT_F32;
+        case PAN_BLIT_INT:
+                return MALI_BIFROST_REGISTER_FILE_FORMAT_I32;
+        case PAN_BLIT_UINT:
+                return MALI_BIFROST_REGISTER_FILE_FORMAT_U32;
+        default:
+                unreachable("Invalid blit type");
+        }
+}
+
+static void
+bifrost_load_emit_blend_rt(struct pan_pool *pool, void *out,
+                           mali_ptr blend_shader, struct pan_image *image,
+                           unsigned rt, unsigned loc)
+{
+        enum pan_blit_type T =
+                (loc == FRAG_RESULT_STENCIL) ? PAN_BLIT_UINT :
+                (util_format_is_pure_uint(image->format)) ? PAN_BLIT_UINT :
+                (util_format_is_pure_sint(image->format)) ? PAN_BLIT_INT :
+                PAN_BLIT_FLOAT;
+        bool disabled = loc != (FRAG_RESULT_DATA0 + rt);
+        bool srgb = util_format_is_srgb(image->format);
+
+        pan_pack(out, BLEND, cfg) {
+                if (disabled) {
+                        cfg.enable = false;
+                        cfg.bifrost.internal.mode = MALI_BIFROST_BLEND_MODE_OFF;
+                        continue;
+                }
+
+                cfg.round_to_fb_precision = true;
+                cfg.srgb = srgb;
+                cfg.bifrost.internal.mode = blend_shader ?
+                                            MALI_BIFROST_BLEND_MODE_SHADER :
+                                            MALI_BIFROST_BLEND_MODE_OPAQUE;
+                if (blend_shader) {
+                        cfg.bifrost.internal.shader.pc = blend_shader;
+                } else {
+                        const struct util_format_description *format_desc =
+                                util_format_description(image->format);
+
+                        cfg.bifrost.equation.rgb.a = MALI_BLEND_OPERAND_A_SRC;
+                        cfg.bifrost.equation.rgb.b = MALI_BLEND_OPERAND_B_SRC;
+                        cfg.bifrost.equation.rgb.c = MALI_BLEND_OPERAND_C_ZERO;
+                        cfg.bifrost.equation.alpha.a = MALI_BLEND_OPERAND_A_SRC;
+                        cfg.bifrost.equation.alpha.b = MALI_BLEND_OPERAND_B_SRC;
+                        cfg.bifrost.equation.alpha.c = MALI_BLEND_OPERAND_C_ZERO;
+                        cfg.bifrost.equation.color_mask = 0xf;
+                        cfg.bifrost.internal.fixed_function.num_comps = format_desc->nr_channels;
+                        cfg.bifrost.internal.fixed_function.conversion.memory_format.format =
+                                panfrost_format_to_bifrost_blend(format_desc);
+                        cfg.bifrost.internal.fixed_function.conversion.register_format =
+                                blit_type_to_reg_fmt(T);
+
+                        cfg.bifrost.internal.fixed_function.rt = rt;
+                        if (pool->dev->quirks & HAS_SWIZZLES) {
+                                cfg.bifrost.internal.fixed_function.conversion.memory_format.swizzle =
+                                        panfrost_get_default_swizzle(4);
+                        }
+                }
+        }
+}
+
+static void
+bifrost_load_emit_rsd(struct pan_pool *pool, struct MALI_DRAW *draw,
+                      mali_ptr blend_shader, struct pan_image *image,
+                      unsigned loc)
+{
+        struct panfrost_ptr t =
+                panfrost_pool_alloc_aligned(pool,
+                                            MALI_RENDERER_STATE_LENGTH +
+                                            8 * MALI_BLEND_LENGTH,
+                                            128);
+
+        pan_pack(t.cpu, RENDERER_STATE, cfg) {
+                panfrost_load_prepare_rsd(pool, &cfg, image, loc);
+                cfg.properties.bifrost.zs_update_operation = MALI_PIXEL_KILL_STRONG_EARLY;
+                cfg.properties.bifrost.allow_forward_pixel_to_kill = true;
+                cfg.preload.fragment.coverage = true;
+        }
+
+        for (unsigned i = 0; i < 8; ++i) {
+                void *dest = t.cpu + MALI_RENDERER_STATE_LENGTH + MALI_BLEND_LENGTH * i;
+
+                bifrost_load_emit_blend_rt(pool, dest, blend_shader, image, i, loc);
+        }
+
+        draw->state = t.gpu;
+}
+
+void
+panfrost_load_bifrost(struct pan_pool *pool,
+                      struct pan_scoreboard *scoreboard,
+                      mali_ptr blend_shader,
+                      mali_ptr thread_storage,
+                      mali_ptr tiler,
+                      mali_ptr coordinates, unsigned vertex_count,
+                      struct pan_image *image,
+                      unsigned loc)
+{
+        struct panfrost_ptr t =
+                panfrost_pool_alloc_aligned(pool,
+                                            MALI_BIFROST_TILER_JOB_LENGTH,
+                                            64);
+        pan_section_pack(t.cpu, BIFROST_TILER_JOB, DRAW, cfg) {
+                cfg.four_components_per_vertex = true;
+                cfg.draw_descriptor_is_64b = true;
+
+                panfrost_load_emit_varying(pool, &cfg, coordinates, vertex_count, true);
+                bifrost_load_emit_texture(pool, &cfg, image);
+                panfrost_load_emit_viewport(pool, &cfg, image);
+                cfg.thread_storage = thread_storage;
+                bifrost_load_emit_rsd(pool, &cfg, blend_shader, image, loc);
+        }
+
+        pan_section_pack(t.cpu, BIFROST_TILER_JOB, PRIMITIVE, cfg) {
+                cfg.draw_mode = MALI_DRAW_MODE_TRIANGLES;
+                cfg.index_count = vertex_count;
+                cfg.job_task_split = 6;
+        }
+
+        pan_section_pack(t.cpu, BIFROST_TILER_JOB, PRIMITIVE_SIZE, cfg) {
+                cfg.constant = 1.0f;
+        }
+
+        panfrost_pack_work_groups_compute(pan_section_ptr(t.cpu,
+                                                          MIDGARD_TILER_JOB,
+                                                          INVOCATION),
+                                          1, vertex_count, 1, 1, 1, 1, true);
+
+        pan_section_pack(t.cpu, BIFROST_TILER_JOB, PADDING, cfg) { }
+        pan_section_pack(t.cpu, BIFROST_TILER_JOB, TILER, cfg) {
+                cfg.address = tiler;
+        }
 
         panfrost_add_job(pool, scoreboard, MALI_JOB_TYPE_TILER, false, 0, &t, true);
 }

@@ -204,6 +204,16 @@ panfrost_load_midg(
                 struct pan_image *image,
                 unsigned loc);
 
+void
+panfrost_load_bifrost(struct pan_pool *pool,
+                      struct pan_scoreboard *scoreboard,
+                      mali_ptr blend_shader,
+                      mali_ptr thread_storage,
+                      mali_ptr tiler,
+                      mali_ptr coordinates, unsigned vertex_count,
+                      struct pan_image *image,
+                      unsigned loc);
+
 /* DRM modifier helper */
 
 #define drm_is_afbc(mod) \
