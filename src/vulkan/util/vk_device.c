@@ -112,7 +112,7 @@ vk_device_get_proc_addr(const struct vk_device *device,
                                                     &device->enabled_extensions);
 }
 
-PFN_vkVoidFunction
+VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL
 vk_common_GetDeviceProcAddr(VkDevice _device,
                             const char *pName)
 {
@@ -120,7 +120,7 @@ vk_common_GetDeviceProcAddr(VkDevice _device,
    return vk_device_get_proc_addr(device, pName);
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 vk_common_GetDeviceQueue(VkDevice _device,
                          uint32_t queueFamilyIndex,
                          uint32_t queueIndex,
@@ -139,7 +139,7 @@ vk_common_GetDeviceQueue(VkDevice _device,
    device->dispatch_table.GetDeviceQueue2(_device, &info, pQueue);
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 vk_common_GetBufferMemoryRequirements(VkDevice _device,
                                       VkBuffer buffer,
                                       VkMemoryRequirements *pMemoryRequirements)
@@ -158,7 +158,7 @@ vk_common_GetBufferMemoryRequirements(VkDevice _device,
    *pMemoryRequirements = reqs.memoryRequirements;
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 vk_common_BindBufferMemory(VkDevice _device,
                            VkBuffer buffer,
                            VkDeviceMemory memory,
@@ -176,7 +176,7 @@ vk_common_BindBufferMemory(VkDevice _device,
    return device->dispatch_table.BindBufferMemory2(_device, 1, &bind);
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 vk_common_GetImageMemoryRequirements(VkDevice _device,
                                      VkImage image,
                                      VkMemoryRequirements *pMemoryRequirements)
@@ -195,7 +195,7 @@ vk_common_GetImageMemoryRequirements(VkDevice _device,
    *pMemoryRequirements = reqs.memoryRequirements;
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 vk_common_BindImageMemory(VkDevice _device,
                           VkImage image,
                           VkDeviceMemory memory,

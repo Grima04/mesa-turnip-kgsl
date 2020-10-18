@@ -25,7 +25,7 @@
 #include "vk_util.h"
 #include "u_math.h"
 
-VkResult lvp_CreateDescriptorSetLayout(
+VKAPI_ATTR VkResult VKAPI_CALL lvp_CreateDescriptorSetLayout(
     VkDevice                                    _device,
     const VkDescriptorSetLayoutCreateInfo*      pCreateInfo,
     const VkAllocationCallbacks*                pAllocator,
@@ -156,7 +156,7 @@ VkResult lvp_CreateDescriptorSetLayout(
    return VK_SUCCESS;
 }
 
-void lvp_DestroyDescriptorSetLayout(
+VKAPI_ATTR void VKAPI_CALL lvp_DestroyDescriptorSetLayout(
     VkDevice                                    _device,
     VkDescriptorSetLayout                       _set_layout,
     const VkAllocationCallbacks*                pAllocator)
@@ -170,7 +170,7 @@ void lvp_DestroyDescriptorSetLayout(
    vk_free2(&device->vk.alloc, pAllocator, set_layout);
 }
 
-VkResult lvp_CreatePipelineLayout(
+VKAPI_ATTR VkResult VKAPI_CALL lvp_CreatePipelineLayout(
     VkDevice                                    _device,
     const VkPipelineLayoutCreateInfo*           pCreateInfo,
     const VkAllocationCallbacks*                pAllocator,
@@ -208,7 +208,7 @@ VkResult lvp_CreatePipelineLayout(
    return VK_SUCCESS;
 }
 
-void lvp_DestroyPipelineLayout(
+VKAPI_ATTR void VKAPI_CALL lvp_DestroyPipelineLayout(
     VkDevice                                    _device,
     VkPipelineLayout                            _pipelineLayout,
     const VkAllocationCallbacks*                pAllocator)
@@ -267,7 +267,7 @@ lvp_descriptor_set_destroy(struct lvp_device *device,
    vk_free(&device->vk.alloc, set);
 }
 
-VkResult lvp_AllocateDescriptorSets(
+VKAPI_ATTR VkResult VKAPI_CALL lvp_AllocateDescriptorSets(
     VkDevice                                    _device,
     const VkDescriptorSetAllocateInfo*          pAllocateInfo,
     VkDescriptorSet*                            pDescriptorSets)
@@ -297,7 +297,7 @@ VkResult lvp_AllocateDescriptorSets(
    return result;
 }
 
-VkResult lvp_FreeDescriptorSets(
+VKAPI_ATTR VkResult VKAPI_CALL lvp_FreeDescriptorSets(
     VkDevice                                    _device,
     VkDescriptorPool                            descriptorPool,
     uint32_t                                    count,
@@ -315,7 +315,7 @@ VkResult lvp_FreeDescriptorSets(
    return VK_SUCCESS;
 }
 
-void lvp_UpdateDescriptorSets(
+VKAPI_ATTR void VKAPI_CALL lvp_UpdateDescriptorSets(
     VkDevice                                    _device,
     uint32_t                                    descriptorWriteCount,
     const VkWriteDescriptorSet*                 pDescriptorWrites,
@@ -433,7 +433,7 @@ void lvp_UpdateDescriptorSets(
    }
 }
 
-VkResult lvp_CreateDescriptorPool(
+VKAPI_ATTR VkResult VKAPI_CALL lvp_CreateDescriptorPool(
     VkDevice                                    _device,
     const VkDescriptorPoolCreateInfo*           pCreateInfo,
     const VkAllocationCallbacks*                pAllocator,
@@ -465,7 +465,7 @@ static void lvp_reset_descriptor_pool(struct lvp_device *device,
    }
 }
 
-void lvp_DestroyDescriptorPool(
+VKAPI_ATTR void VKAPI_CALL lvp_DestroyDescriptorPool(
     VkDevice                                    _device,
     VkDescriptorPool                            _pool,
     const VkAllocationCallbacks*                pAllocator)
@@ -481,7 +481,7 @@ void lvp_DestroyDescriptorPool(
    vk_free2(&device->vk.alloc, pAllocator, pool);
 }
 
-VkResult lvp_ResetDescriptorPool(
+VKAPI_ATTR VkResult VKAPI_CALL lvp_ResetDescriptorPool(
     VkDevice                                    _device,
     VkDescriptorPool                            _pool,
     VkDescriptorPoolResetFlags                  flags)
@@ -493,14 +493,14 @@ VkResult lvp_ResetDescriptorPool(
    return VK_SUCCESS;
 }
 
-void lvp_GetDescriptorSetLayoutSupport(VkDevice device,
+VKAPI_ATTR void VKAPI_CALL lvp_GetDescriptorSetLayoutSupport(VkDevice device,
                                        const VkDescriptorSetLayoutCreateInfo* pCreateInfo,
                                        VkDescriptorSetLayoutSupport* pSupport)
 {
 
 }
 
-VkResult lvp_CreateDescriptorUpdateTemplate(VkDevice _device,
+VKAPI_ATTR VkResult VKAPI_CALL lvp_CreateDescriptorUpdateTemplate(VkDevice _device,
                                             const VkDescriptorUpdateTemplateCreateInfo *pCreateInfo,
                                             const VkAllocationCallbacks *pAllocator,
                                             VkDescriptorUpdateTemplate *pDescriptorUpdateTemplate)
@@ -536,7 +536,7 @@ VkResult lvp_CreateDescriptorUpdateTemplate(VkDevice _device,
    return VK_SUCCESS;
 }
 
-void lvp_DestroyDescriptorUpdateTemplate(VkDevice _device,
+VKAPI_ATTR void VKAPI_CALL lvp_DestroyDescriptorUpdateTemplate(VkDevice _device,
                                          VkDescriptorUpdateTemplate descriptorUpdateTemplate,
                                          const VkAllocationCallbacks *pAllocator)
 {
@@ -550,7 +550,7 @@ void lvp_DestroyDescriptorUpdateTemplate(VkDevice _device,
    vk_free2(&device->vk.alloc, pAllocator, templ);
 }
 
-void lvp_UpdateDescriptorSetWithTemplate(VkDevice _device,
+VKAPI_ATTR void VKAPI_CALL lvp_UpdateDescriptorSetWithTemplate(VkDevice _device,
                                          VkDescriptorSet descriptorSet,
                                          VkDescriptorUpdateTemplate descriptorUpdateTemplate,
                                          const void *pData)

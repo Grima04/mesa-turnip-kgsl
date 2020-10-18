@@ -38,7 +38,7 @@
 #include "util/timespec.h"
 #include "os_time.h"
 
-static VkResult
+static VkResult VKAPI_CALL
 lvp_physical_device_init(struct lvp_physical_device *device,
                          struct lvp_instance *instance,
                          struct pipe_loader_device *pld)
@@ -74,7 +74,7 @@ lvp_physical_device_init(struct lvp_physical_device *device,
    return result;
 }
 
-static void
+static void VKAPI_CALL
 lvp_physical_device_finish(struct lvp_physical_device *device)
 {
    lvp_finish_wsi(device);
@@ -82,21 +82,21 @@ lvp_physical_device_finish(struct lvp_physical_device *device)
    vk_physical_device_finish(&device->vk);
 }
 
-static void *
+static void * VKAPI_CALL
 default_alloc_func(void *pUserData, size_t size, size_t align,
                    VkSystemAllocationScope allocationScope)
 {
    return os_malloc_aligned(size, align);
 }
 
-static void *
+static void * VKAPI_CALL
 default_realloc_func(void *pUserData, void *pOriginal, size_t size,
                      size_t align, VkSystemAllocationScope allocationScope)
 {
    return realloc(pOriginal, size);
 }
 
-static void
+static void VKAPI_CALL
 default_free_func(void *pUserData, void *pMemory)
 {
    os_free_aligned(pMemory);
@@ -109,7 +109,7 @@ static const VkAllocationCallbacks default_alloc = {
    .pfnFree = default_free_func,
 };
 
-VkResult lvp_CreateInstance(
+VKAPI_ATTR VkResult VKAPI_CALL lvp_CreateInstance(
    const VkInstanceCreateInfo*                 pCreateInfo,
    const VkAllocationCallbacks*                pAllocator,
    VkInstance*                                 pInstance)
@@ -161,7 +161,7 @@ VkResult lvp_CreateInstance(
    return VK_SUCCESS;
 }
 
-void lvp_DestroyInstance(
+VKAPI_ATTR void VKAPI_CALL lvp_DestroyInstance(
    VkInstance                                  _instance,
    const VkAllocationCallbacks*                pAllocator)
 {
@@ -206,7 +206,7 @@ static struct drisw_loader_funcs lvp_sw_lf = {
    .put_image2 = lvp_put_image2,
 };
 
-VkResult lvp_EnumeratePhysicalDevices(
+VKAPI_ATTR VkResult VKAPI_CALL lvp_EnumeratePhysicalDevices(
    VkInstance                                  _instance,
    uint32_t*                                   pPhysicalDeviceCount,
    VkPhysicalDevice*                           pPhysicalDevices)
@@ -247,7 +247,7 @@ VkResult lvp_EnumeratePhysicalDevices(
    return VK_SUCCESS;
 }
 
-void lvp_GetPhysicalDeviceFeatures(
+VKAPI_ATTR void VKAPI_CALL lvp_GetPhysicalDeviceFeatures(
    VkPhysicalDevice                            physicalDevice,
    VkPhysicalDeviceFeatures*                   pFeatures)
 {
@@ -303,7 +303,7 @@ void lvp_GetPhysicalDeviceFeatures(
    };
 }
 
-void lvp_GetPhysicalDeviceFeatures2(
+VKAPI_ATTR void VKAPI_CALL lvp_GetPhysicalDeviceFeatures2(
    VkPhysicalDevice                            physicalDevice,
    VkPhysicalDeviceFeatures2                  *pFeatures)
 {
@@ -379,7 +379,7 @@ lvp_device_get_cache_uuid(void *uuid)
    snprintf(uuid, VK_UUID_SIZE, "val-%s", MESA_GIT_SHA1 + 4);
 }
 
-void lvp_GetPhysicalDeviceProperties(VkPhysicalDevice physicalDevice,
+VKAPI_ATTR void VKAPI_CALL lvp_GetPhysicalDeviceProperties(VkPhysicalDevice physicalDevice,
                                      VkPhysicalDeviceProperties *pProperties)
 {
    LVP_FROM_HANDLE(lvp_physical_device, pdevice, physicalDevice);
@@ -524,7 +524,7 @@ void lvp_GetPhysicalDeviceProperties(VkPhysicalDevice physicalDevice,
 
 }
 
-void lvp_GetPhysicalDeviceProperties2(
+VKAPI_ATTR void VKAPI_CALL lvp_GetPhysicalDeviceProperties2(
    VkPhysicalDevice                            physicalDevice,
    VkPhysicalDeviceProperties2                *pProperties)
 {
@@ -612,7 +612,7 @@ static void lvp_get_physical_device_queue_family_properties(
    };
 }
 
-void lvp_GetPhysicalDeviceQueueFamilyProperties(
+VKAPI_ATTR void VKAPI_CALL lvp_GetPhysicalDeviceQueueFamilyProperties(
    VkPhysicalDevice                            physicalDevice,
    uint32_t*                                   pCount,
    VkQueueFamilyProperties*                    pQueueFamilyProperties)
@@ -626,7 +626,7 @@ void lvp_GetPhysicalDeviceQueueFamilyProperties(
    lvp_get_physical_device_queue_family_properties(pQueueFamilyProperties);
 }
 
-void lvp_GetPhysicalDeviceQueueFamilyProperties2(
+VKAPI_ATTR void VKAPI_CALL lvp_GetPhysicalDeviceQueueFamilyProperties2(
    VkPhysicalDevice                            physicalDevice,
    uint32_t*                                   pCount,
    VkQueueFamilyProperties2                   *pQueueFamilyProperties)
@@ -640,7 +640,7 @@ void lvp_GetPhysicalDeviceQueueFamilyProperties2(
    lvp_get_physical_device_queue_family_properties(&pQueueFamilyProperties->queueFamilyProperties);
 }
 
-void lvp_GetPhysicalDeviceMemoryProperties(
+VKAPI_ATTR void VKAPI_CALL lvp_GetPhysicalDeviceMemoryProperties(
    VkPhysicalDevice                            physicalDevice,
    VkPhysicalDeviceMemoryProperties*           pMemoryProperties)
 {
@@ -660,7 +660,7 @@ void lvp_GetPhysicalDeviceMemoryProperties(
    };
 }
 
-void lvp_GetPhysicalDeviceMemoryProperties2(
+VKAPI_ATTR void VKAPI_CALL lvp_GetPhysicalDeviceMemoryProperties2(
    VkPhysicalDevice                            physicalDevice,
    VkPhysicalDeviceMemoryProperties2          *pMemoryProperties)
 {
@@ -668,7 +668,7 @@ void lvp_GetPhysicalDeviceMemoryProperties2(
                                          &pMemoryProperties->memoryProperties);
 }
 
-PFN_vkVoidFunction lvp_GetInstanceProcAddr(
+VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL lvp_GetInstanceProcAddr(
    VkInstance                                  _instance,
    const char*                                 pName)
 {
@@ -771,7 +771,7 @@ lvp_queue_finish(struct lvp_queue *queue)
    queue->ctx->destroy(queue->ctx);
 }
 
-VkResult lvp_CreateDevice(
+VKAPI_ATTR VkResult VKAPI_CALL lvp_CreateDevice(
    VkPhysicalDevice                            physicalDevice,
    const VkDeviceCreateInfo*                   pCreateInfo,
    const VkAllocationCallbacks*                pAllocator,
@@ -830,7 +830,7 @@ VkResult lvp_CreateDevice(
 
 }
 
-void lvp_DestroyDevice(
+VKAPI_ATTR void VKAPI_CALL lvp_DestroyDevice(
    VkDevice                                    _device,
    const VkAllocationCallbacks*                pAllocator)
 {
@@ -841,7 +841,7 @@ void lvp_DestroyDevice(
    vk_free(&device->vk.alloc, device);
 }
 
-VkResult lvp_EnumerateInstanceExtensionProperties(
+VKAPI_ATTR VkResult VKAPI_CALL lvp_EnumerateInstanceExtensionProperties(
    const char*                                 pLayerName,
    uint32_t*                                   pPropertyCount,
    VkExtensionProperties*                      pProperties)
@@ -853,7 +853,7 @@ VkResult lvp_EnumerateInstanceExtensionProperties(
       &lvp_instance_extensions_supported, pPropertyCount, pProperties);
 }
 
-VkResult lvp_EnumerateInstanceLayerProperties(
+VKAPI_ATTR VkResult VKAPI_CALL lvp_EnumerateInstanceLayerProperties(
    uint32_t*                                   pPropertyCount,
    VkLayerProperties*                          pProperties)
 {
@@ -866,7 +866,7 @@ VkResult lvp_EnumerateInstanceLayerProperties(
    return vk_error(NULL, VK_ERROR_LAYER_NOT_PRESENT);
 }
 
-VkResult lvp_EnumerateDeviceLayerProperties(
+VKAPI_ATTR VkResult VKAPI_CALL lvp_EnumerateDeviceLayerProperties(
    VkPhysicalDevice                            physicalDevice,
    uint32_t*                                   pPropertyCount,
    VkLayerProperties*                          pProperties)
@@ -880,7 +880,7 @@ VkResult lvp_EnumerateDeviceLayerProperties(
    return vk_error(NULL, VK_ERROR_LAYER_NOT_PRESENT);
 }
 
-void lvp_GetDeviceQueue2(
+VKAPI_ATTR void VKAPI_CALL lvp_GetDeviceQueue2(
    VkDevice                                    _device,
    const VkDeviceQueueInfo2*                   pQueueInfo,
    VkQueue*                                    pQueue)
@@ -906,7 +906,7 @@ void lvp_GetDeviceQueue2(
 }
 
 
-void lvp_GetDeviceQueue(
+VKAPI_ATTR void VKAPI_CALL lvp_GetDeviceQueue(
    VkDevice                                    _device,
    uint32_t                                    queueFamilyIndex,
    uint32_t                                    queueIndex,
@@ -922,7 +922,7 @@ void lvp_GetDeviceQueue(
 }
 
 
-VkResult lvp_QueueSubmit(
+VKAPI_ATTR VkResult VKAPI_CALL lvp_QueueSubmit(
    VkQueue                                     _queue,
    uint32_t                                    submitCount,
    const VkSubmitInfo*                         pSubmits,
@@ -976,7 +976,7 @@ static VkResult queue_wait_idle(struct lvp_queue *queue, uint64_t timeout)
    return VK_SUCCESS;
 }
 
-VkResult lvp_QueueWaitIdle(
+VKAPI_ATTR VkResult VKAPI_CALL lvp_QueueWaitIdle(
    VkQueue                                     _queue)
 {
    LVP_FROM_HANDLE(lvp_queue, queue, _queue);
@@ -984,7 +984,7 @@ VkResult lvp_QueueWaitIdle(
    return queue_wait_idle(queue, UINT64_MAX);
 }
 
-VkResult lvp_DeviceWaitIdle(
+VKAPI_ATTR VkResult VKAPI_CALL lvp_DeviceWaitIdle(
    VkDevice                                    _device)
 {
    LVP_FROM_HANDLE(lvp_device, device, _device);
@@ -992,7 +992,7 @@ VkResult lvp_DeviceWaitIdle(
    return queue_wait_idle(&device->queue, UINT64_MAX);
 }
 
-VkResult lvp_AllocateMemory(
+VKAPI_ATTR VkResult VKAPI_CALL lvp_AllocateMemory(
    VkDevice                                    _device,
    const VkMemoryAllocateInfo*                 pAllocateInfo,
    const VkAllocationCallbacks*                pAllocator,
@@ -1028,7 +1028,7 @@ VkResult lvp_AllocateMemory(
    return VK_SUCCESS;
 }
 
-void lvp_FreeMemory(
+VKAPI_ATTR void VKAPI_CALL lvp_FreeMemory(
    VkDevice                                    _device,
    VkDeviceMemory                              _mem,
    const VkAllocationCallbacks*                pAllocator)
@@ -1045,7 +1045,7 @@ void lvp_FreeMemory(
 
 }
 
-VkResult lvp_MapMemory(
+VKAPI_ATTR VkResult VKAPI_CALL lvp_MapMemory(
    VkDevice                                    _device,
    VkDeviceMemory                              _memory,
    VkDeviceSize                                offset,
@@ -1067,7 +1067,7 @@ VkResult lvp_MapMemory(
    return VK_SUCCESS;
 }
 
-void lvp_UnmapMemory(
+VKAPI_ATTR void VKAPI_CALL lvp_UnmapMemory(
    VkDevice                                    _device,
    VkDeviceMemory                              _memory)
 {
@@ -1080,14 +1080,7 @@ void lvp_UnmapMemory(
    device->pscreen->unmap_memory(device->pscreen, mem->pmem);
 }
 
-VkResult lvp_FlushMappedMemoryRanges(
-   VkDevice                                    _device,
-   uint32_t                                    memoryRangeCount,
-   const VkMappedMemoryRange*                  pMemoryRanges)
-{
-   return VK_SUCCESS;
-}
-VkResult lvp_InvalidateMappedMemoryRanges(
+VKAPI_ATTR VkResult VKAPI_CALL lvp_FlushMappedMemoryRanges(
    VkDevice                                    _device,
    uint32_t                                    memoryRangeCount,
    const VkMappedMemoryRange*                  pMemoryRanges)
@@ -1095,7 +1088,15 @@ VkResult lvp_InvalidateMappedMemoryRanges(
    return VK_SUCCESS;
 }
 
-void lvp_GetBufferMemoryRequirements(
+VKAPI_ATTR VkResult VKAPI_CALL lvp_InvalidateMappedMemoryRanges(
+   VkDevice                                    _device,
+   uint32_t                                    memoryRangeCount,
+   const VkMappedMemoryRange*                  pMemoryRanges)
+{
+   return VK_SUCCESS;
+}
+
+VKAPI_ATTR void VKAPI_CALL lvp_GetBufferMemoryRequirements(
    VkDevice                                    device,
    VkBuffer                                    _buffer,
    VkMemoryRequirements*                       pMemoryRequirements)
@@ -1117,7 +1118,7 @@ void lvp_GetBufferMemoryRequirements(
    pMemoryRequirements->alignment = 64;
 }
 
-void lvp_GetBufferMemoryRequirements2(
+VKAPI_ATTR void VKAPI_CALL lvp_GetBufferMemoryRequirements2(
    VkDevice                                     device,
    const VkBufferMemoryRequirementsInfo2       *pInfo,
    VkMemoryRequirements2                       *pMemoryRequirements)
@@ -1139,7 +1140,7 @@ void lvp_GetBufferMemoryRequirements2(
    }
 }
 
-void lvp_GetImageMemoryRequirements(
+VKAPI_ATTR void VKAPI_CALL lvp_GetImageMemoryRequirements(
    VkDevice                                    device,
    VkImage                                     _image,
    VkMemoryRequirements*                       pMemoryRequirements)
@@ -1151,7 +1152,7 @@ void lvp_GetImageMemoryRequirements(
    pMemoryRequirements->alignment = image->alignment;
 }
 
-void lvp_GetImageMemoryRequirements2(
+VKAPI_ATTR void VKAPI_CALL lvp_GetImageMemoryRequirements2(
    VkDevice                                    device,
    const VkImageMemoryRequirementsInfo2       *pInfo,
    VkMemoryRequirements2                      *pMemoryRequirements)
@@ -1174,7 +1175,7 @@ void lvp_GetImageMemoryRequirements2(
    }
 }
 
-void lvp_GetImageSparseMemoryRequirements(
+VKAPI_ATTR void VKAPI_CALL lvp_GetImageSparseMemoryRequirements(
    VkDevice                                    device,
    VkImage                                     image,
    uint32_t*                                   pSparseMemoryRequirementCount,
@@ -1183,7 +1184,7 @@ void lvp_GetImageSparseMemoryRequirements(
    stub();
 }
 
-void lvp_GetImageSparseMemoryRequirements2(
+VKAPI_ATTR void VKAPI_CALL lvp_GetImageSparseMemoryRequirements2(
    VkDevice                                    device,
    const VkImageSparseMemoryRequirementsInfo2* pInfo,
    uint32_t* pSparseMemoryRequirementCount,
@@ -1192,7 +1193,7 @@ void lvp_GetImageSparseMemoryRequirements2(
    stub();
 }
 
-void lvp_GetDeviceMemoryCommitment(
+VKAPI_ATTR void VKAPI_CALL lvp_GetDeviceMemoryCommitment(
    VkDevice                                    device,
    VkDeviceMemory                              memory,
    VkDeviceSize*                               pCommittedMemoryInBytes)
@@ -1200,7 +1201,7 @@ void lvp_GetDeviceMemoryCommitment(
    *pCommittedMemoryInBytes = 0;
 }
 
-VkResult lvp_BindBufferMemory2(VkDevice _device,
+VKAPI_ATTR VkResult VKAPI_CALL lvp_BindBufferMemory2(VkDevice _device,
                                uint32_t bindInfoCount,
                                const VkBindBufferMemoryInfo *pBindInfos)
 {
@@ -1217,7 +1218,7 @@ VkResult lvp_BindBufferMemory2(VkDevice _device,
    return VK_SUCCESS;
 }
 
-VkResult lvp_BindImageMemory2(VkDevice _device,
+VKAPI_ATTR VkResult VKAPI_CALL lvp_BindImageMemory2(VkDevice _device,
                               uint32_t bindInfoCount,
                               const VkBindImageMemoryInfo *pBindInfos)
 {
@@ -1234,7 +1235,7 @@ VkResult lvp_BindImageMemory2(VkDevice _device,
    return VK_SUCCESS;
 }
 
-VkResult lvp_QueueBindSparse(
+VKAPI_ATTR VkResult VKAPI_CALL lvp_QueueBindSparse(
    VkQueue                                     queue,
    uint32_t                                    bindInfoCount,
    const VkBindSparseInfo*                     pBindInfo,
@@ -1244,7 +1245,7 @@ VkResult lvp_QueueBindSparse(
 }
 
 
-VkResult lvp_CreateFence(
+VKAPI_ATTR VkResult VKAPI_CALL lvp_CreateFence(
    VkDevice                                    _device,
    const VkFenceCreateInfo*                    pCreateInfo,
    const VkAllocationCallbacks*                pAllocator,
@@ -1267,7 +1268,7 @@ VkResult lvp_CreateFence(
    return VK_SUCCESS;
 }
 
-void lvp_DestroyFence(
+VKAPI_ATTR void VKAPI_CALL lvp_DestroyFence(
    VkDevice                                    _device,
    VkFence                                     _fence,
    const VkAllocationCallbacks*                pAllocator)
@@ -1284,7 +1285,7 @@ void lvp_DestroyFence(
    vk_free2(&device->vk.alloc, pAllocator, fence);
 }
 
-VkResult lvp_ResetFences(
+VKAPI_ATTR VkResult VKAPI_CALL lvp_ResetFences(
    VkDevice                                    _device,
    uint32_t                                    fenceCount,
    const VkFence*                              pFences)
@@ -1303,7 +1304,7 @@ VkResult lvp_ResetFences(
    return VK_SUCCESS;
 }
 
-VkResult lvp_GetFenceStatus(
+VKAPI_ATTR VkResult VKAPI_CALL lvp_GetFenceStatus(
    VkDevice                                    _device,
    VkFence                                     _fence)
 {
@@ -1331,7 +1332,7 @@ VkResult lvp_GetFenceStatus(
       return VK_NOT_READY;
 }
 
-VkResult lvp_CreateFramebuffer(
+VKAPI_ATTR VkResult VKAPI_CALL lvp_CreateFramebuffer(
    VkDevice                                    _device,
    const VkFramebufferCreateInfo*              pCreateInfo,
    const VkAllocationCallbacks*                pAllocator,
@@ -1366,7 +1367,7 @@ VkResult lvp_CreateFramebuffer(
    return VK_SUCCESS;
 }
 
-void lvp_DestroyFramebuffer(
+VKAPI_ATTR void VKAPI_CALL lvp_DestroyFramebuffer(
    VkDevice                                    _device,
    VkFramebuffer                               _fb,
    const VkAllocationCallbacks*                pAllocator)
@@ -1380,7 +1381,7 @@ void lvp_DestroyFramebuffer(
    vk_free2(&device->vk.alloc, pAllocator, fb);
 }
 
-VkResult lvp_WaitForFences(
+VKAPI_ATTR VkResult VKAPI_CALL lvp_WaitForFences(
    VkDevice                                    _device,
    uint32_t                                    fenceCount,
    const VkFence*                              pFences,
@@ -1420,7 +1421,7 @@ VkResult lvp_WaitForFences(
    return timeout_status ? VK_TIMEOUT : VK_SUCCESS;
 }
 
-VkResult lvp_CreateSemaphore(
+VKAPI_ATTR VkResult VKAPI_CALL lvp_CreateSemaphore(
    VkDevice                                    _device,
    const VkSemaphoreCreateInfo*                pCreateInfo,
    const VkAllocationCallbacks*                pAllocator,
@@ -1441,7 +1442,7 @@ VkResult lvp_CreateSemaphore(
    return VK_SUCCESS;
 }
 
-void lvp_DestroySemaphore(
+VKAPI_ATTR void VKAPI_CALL lvp_DestroySemaphore(
    VkDevice                                    _device,
    VkSemaphore                                 _semaphore,
    const VkAllocationCallbacks*                pAllocator)
@@ -1455,7 +1456,7 @@ void lvp_DestroySemaphore(
    vk_free2(&device->vk.alloc, pAllocator, semaphore);
 }
 
-VkResult lvp_CreateEvent(
+VKAPI_ATTR VkResult VKAPI_CALL lvp_CreateEvent(
    VkDevice                                    _device,
    const VkEventCreateInfo*                    pCreateInfo,
    const VkAllocationCallbacks*                pAllocator,
@@ -1475,7 +1476,7 @@ VkResult lvp_CreateEvent(
    return VK_SUCCESS;
 }
 
-void lvp_DestroyEvent(
+VKAPI_ATTR void VKAPI_CALL lvp_DestroyEvent(
    VkDevice                                    _device,
    VkEvent                                     _event,
    const VkAllocationCallbacks*                pAllocator)
@@ -1490,7 +1491,7 @@ void lvp_DestroyEvent(
    vk_free2(&device->vk.alloc, pAllocator, event);
 }
 
-VkResult lvp_GetEventStatus(
+VKAPI_ATTR VkResult VKAPI_CALL lvp_GetEventStatus(
    VkDevice                                    _device,
    VkEvent                                     _event)
 {
@@ -1500,7 +1501,7 @@ VkResult lvp_GetEventStatus(
    return VK_EVENT_RESET;
 }
 
-VkResult lvp_SetEvent(
+VKAPI_ATTR VkResult VKAPI_CALL lvp_SetEvent(
    VkDevice                                    _device,
    VkEvent                                     _event)
 {
@@ -1510,7 +1511,7 @@ VkResult lvp_SetEvent(
    return VK_SUCCESS;
 }
 
-VkResult lvp_ResetEvent(
+VKAPI_ATTR VkResult VKAPI_CALL lvp_ResetEvent(
    VkDevice                                    _device,
    VkEvent                                     _event)
 {
@@ -1520,7 +1521,7 @@ VkResult lvp_ResetEvent(
    return VK_SUCCESS;
 }
 
-VkResult lvp_CreateSampler(
+VKAPI_ATTR VkResult VKAPI_CALL lvp_CreateSampler(
    VkDevice                                    _device,
    const VkSamplerCreateInfo*                  pCreateInfo,
    const VkAllocationCallbacks*                pAllocator,
@@ -1544,7 +1545,7 @@ VkResult lvp_CreateSampler(
    return VK_SUCCESS;
 }
 
-void lvp_DestroySampler(
+VKAPI_ATTR void VKAPI_CALL lvp_DestroySampler(
    VkDevice                                    _device,
    VkSampler                                   _sampler,
    const VkAllocationCallbacks*                pAllocator)
@@ -1605,7 +1606,7 @@ vk_icdNegotiateLoaderICDInterfaceVersion(uint32_t* pSupportedVersion)
    return VK_SUCCESS;
 }
 
-VkResult lvp_CreatePrivateDataSlotEXT(
+VKAPI_ATTR VkResult VKAPI_CALL lvp_CreatePrivateDataSlotEXT(
    VkDevice                                    _device,
    const VkPrivateDataSlotCreateInfoEXT*       pCreateInfo,
    const VkAllocationCallbacks*                pAllocator,
@@ -1616,7 +1617,7 @@ VkResult lvp_CreatePrivateDataSlotEXT(
                                       pPrivateDataSlot);
 }
 
-void lvp_DestroyPrivateDataSlotEXT(
+VKAPI_ATTR void VKAPI_CALL lvp_DestroyPrivateDataSlotEXT(
    VkDevice                                    _device,
    VkPrivateDataSlotEXT                        privateDataSlot,
    const VkAllocationCallbacks*                pAllocator)
@@ -1625,7 +1626,7 @@ void lvp_DestroyPrivateDataSlotEXT(
    vk_private_data_slot_destroy(&device->vk, privateDataSlot, pAllocator);
 }
 
-VkResult lvp_SetPrivateDataEXT(
+VKAPI_ATTR VkResult VKAPI_CALL lvp_SetPrivateDataEXT(
    VkDevice                                    _device,
    VkObjectType                                objectType,
    uint64_t                                    objectHandle,
@@ -1638,7 +1639,7 @@ VkResult lvp_SetPrivateDataEXT(
                                           data);
 }
 
-void lvp_GetPrivateDataEXT(
+VKAPI_ATTR void VKAPI_CALL lvp_GetPrivateDataEXT(
    VkDevice                                    _device,
    VkObjectType                                objectType,
    uint64_t                                    objectHandle,
@@ -1650,7 +1651,7 @@ void lvp_GetPrivateDataEXT(
                                    privateDataSlot, pData);
 }
 
-void lvp_GetPhysicalDeviceExternalFenceProperties(
+VKAPI_ATTR void VKAPI_CALL lvp_GetPhysicalDeviceExternalFenceProperties(
    VkPhysicalDevice                           physicalDevice,
    const VkPhysicalDeviceExternalFenceInfo    *pExternalFenceInfo,
    VkExternalFenceProperties                  *pExternalFenceProperties)
@@ -1660,7 +1661,7 @@ void lvp_GetPhysicalDeviceExternalFenceProperties(
    pExternalFenceProperties->externalFenceFeatures = 0;
 }
 
-void lvp_GetPhysicalDeviceExternalSemaphoreProperties(
+VKAPI_ATTR void VKAPI_CALL lvp_GetPhysicalDeviceExternalSemaphoreProperties(
    VkPhysicalDevice                            physicalDevice,
    const VkPhysicalDeviceExternalSemaphoreInfo *pExternalSemaphoreInfo,
    VkExternalSemaphoreProperties               *pExternalSemaphoreProperties)

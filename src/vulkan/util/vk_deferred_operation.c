@@ -27,7 +27,7 @@
 #include "vk_common_entrypoints.h"
 #include "vk_device.h"
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 vk_common_CreateDeferredOperationKHR(VkDevice _device,
                                      const VkAllocationCallbacks *pAllocator,
                                      VkDeferredOperationKHR *pDeferredOperation)
@@ -48,7 +48,7 @@ vk_common_CreateDeferredOperationKHR(VkDevice _device,
    return VK_SUCCESS;
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 vk_common_DestroyDeferredOperationKHR(VkDevice _device,
                                       VkDeferredOperationKHR operation,
                                       const VkAllocationCallbacks *pAllocator)
@@ -63,21 +63,21 @@ vk_common_DestroyDeferredOperationKHR(VkDevice _device,
    vk_free2(&device->alloc, pAllocator, op);
 }
 
-uint32_t
+VKAPI_ATTR uint32_t VKAPI_CALL
 vk_common_GetDeferredOperationMaxConcurrencyKHR(UNUSED VkDevice device,
                                                 UNUSED VkDeferredOperationKHR operation)
 {
    return 1;
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 vk_common_GetDeferredOperationResultKHR(UNUSED VkDevice device,
                                         UNUSED VkDeferredOperationKHR operation)
 {
    return VK_SUCCESS;
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 vk_common_DeferredOperationJoinKHR(UNUSED VkDevice device,
                                    UNUSED VkDeferredOperationKHR operation)
 {

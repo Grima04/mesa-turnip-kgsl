@@ -24,7 +24,7 @@
 #include "lvp_private.h"
 #include "pipe/p_context.h"
 
-VkResult lvp_CreateQueryPool(
+VKAPI_ATTR VkResult VKAPI_CALL lvp_CreateQueryPool(
     VkDevice                                    _device,
     const VkQueryPoolCreateInfo*                pCreateInfo,
     const VkAllocationCallbacks*                pAllocator,
@@ -69,7 +69,7 @@ VkResult lvp_CreateQueryPool(
    return VK_SUCCESS;
 }
 
-void lvp_DestroyQueryPool(
+VKAPI_ATTR void VKAPI_CALL lvp_DestroyQueryPool(
     VkDevice                                    _device,
     VkQueryPool                                 _pool,
     const VkAllocationCallbacks*                pAllocator)
@@ -87,7 +87,7 @@ void lvp_DestroyQueryPool(
    vk_free2(&device->vk.alloc, pAllocator, pool);
 }
 
-VkResult lvp_GetQueryPoolResults(
+VKAPI_ATTR VkResult VKAPI_CALL lvp_GetQueryPoolResults(
    VkDevice                                    _device,
    VkQueryPool                                 queryPool,
    uint32_t                                    firstQuery,

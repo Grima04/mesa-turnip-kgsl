@@ -160,7 +160,7 @@ extern const struct vk_device_extension_table vk_android_allowed_device_extensio
 
 static const uint32_t MAX_API_VERSION = ${MAX_API_VERSION.c_vk_version()};
 
-VkResult ${driver}_EnumerateInstanceVersion(
+VKAPI_ATTR VkResult VKAPI_CALL ${driver}_EnumerateInstanceVersion(
     uint32_t*                                   pApiVersion)
 {
     *pApiVersion = MAX_API_VERSION;

@@ -54,7 +54,7 @@ vk_physical_device_finish(struct vk_physical_device *physical_device)
    vk_object_base_finish(&physical_device->base);
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 vk_common_EnumerateDeviceLayerProperties(VkPhysicalDevice physicalDevice,
                                          uint32_t *pPropertyCount,
                                          VkLayerProperties *pProperties)
@@ -68,7 +68,7 @@ vk_common_EnumerateDeviceLayerProperties(VkPhysicalDevice physicalDevice,
    return VK_ERROR_LAYER_NOT_PRESENT;
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 vk_common_EnumerateDeviceExtensionProperties(VkPhysicalDevice physicalDevice,
                                              const char *pLayerName,
                                              uint32_t *pPropertyCount,
@@ -94,7 +94,7 @@ vk_common_EnumerateDeviceExtensionProperties(VkPhysicalDevice physicalDevice,
    return vk_outarray_status(&out);
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 vk_common_GetPhysicalDeviceFeatures(VkPhysicalDevice physicalDevice,
                                     VkPhysicalDeviceFeatures *pFeatures)
 {
@@ -110,7 +110,7 @@ vk_common_GetPhysicalDeviceFeatures(VkPhysicalDevice physicalDevice,
    *pFeatures = features2.features;
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 vk_common_GetPhysicalDeviceProperties(VkPhysicalDevice physicalDevice,
                                       VkPhysicalDeviceProperties *pProperties)
 {
@@ -126,7 +126,7 @@ vk_common_GetPhysicalDeviceProperties(VkPhysicalDevice physicalDevice,
    *pProperties = props2.properties;
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 vk_common_GetPhysicalDeviceMemoryProperties(VkPhysicalDevice physicalDevice,
                                             VkPhysicalDeviceMemoryProperties *pMemoryProperties)
 {
@@ -142,7 +142,7 @@ vk_common_GetPhysicalDeviceMemoryProperties(VkPhysicalDevice physicalDevice,
    *pMemoryProperties = props2.memoryProperties;
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 vk_common_GetPhysicalDeviceFormatProperties(VkPhysicalDevice physicalDevice,
                                             VkFormat format,
                                             VkFormatProperties *pFormatProperties)
@@ -159,7 +159,7 @@ vk_common_GetPhysicalDeviceFormatProperties(VkPhysicalDevice physicalDevice,
    *pFormatProperties = props2.formatProperties;
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 vk_common_GetPhysicalDeviceImageFormatProperties(VkPhysicalDevice physicalDevice,
                                                  VkFormat format,
                                                  VkImageType type,

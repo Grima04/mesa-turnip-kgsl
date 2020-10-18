@@ -142,7 +142,7 @@ lvp_num_subpass_attachments(const VkSubpassDescription *desc)
       (desc->pDepthStencilAttachment != NULL);
 }
 
-VkResult lvp_CreateRenderPass(
+VKAPI_ATTR VkResult VKAPI_CALL lvp_CreateRenderPass(
    VkDevice                                    _device,
    const VkRenderPassCreateInfo*               pCreateInfo,
    const VkAllocationCallbacks*                pAllocator,
@@ -266,7 +266,7 @@ VkResult lvp_CreateRenderPass(
    return VK_SUCCESS;
 }
 
-void lvp_DestroyRenderPass(
+VKAPI_ATTR void VKAPI_CALL lvp_DestroyRenderPass(
    VkDevice                                    _device,
    VkRenderPass                                _pass,
    const VkAllocationCallbacks*                pAllocator)
@@ -281,7 +281,7 @@ void lvp_DestroyRenderPass(
    vk_free2(&device->vk.alloc, pAllocator, pass);
 }
 
-void lvp_GetRenderAreaGranularity(
+VKAPI_ATTR void VKAPI_CALL lvp_GetRenderAreaGranularity(
    VkDevice                                    device,
    VkRenderPass                                renderPass,
    VkExtent2D*                                 pGranularity)

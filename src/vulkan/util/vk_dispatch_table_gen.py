@@ -544,7 +544,7 @@ vk_device_dispatch_table_get_if_supported(
   % if e.guard is not None:
 #ifdef ${e.guard}
   % endif
-static ${e.return_type}
+static VKAPI_ATTR ${e.return_type} VKAPI_CALL
 ${e.prefixed_name('vk_tramp')}(${e.decl_params()})
 {
     <% assert e.params[0].type == 'VkPhysicalDevice' %>
@@ -578,7 +578,7 @@ struct vk_physical_device_dispatch_table vk_physical_device_trampolines = {
   % if e.guard is not None:
 #ifdef ${e.guard}
   % endif
-static ${e.return_type}
+static VKAPI_ATTR ${e.return_type} VKAPI_CALL
 ${e.prefixed_name('vk_tramp')}(${e.decl_params()})
 {
   % if e.params[0].type == 'VkDevice':

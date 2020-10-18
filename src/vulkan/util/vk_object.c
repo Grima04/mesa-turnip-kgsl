@@ -232,7 +232,7 @@ vk_object_base_get_private_data(struct vk_device *device,
    }
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 vk_common_CreatePrivateDataSlotEXT(VkDevice _device,
                                    const VkPrivateDataSlotCreateInfoEXT *pCreateInfo,
                                    const VkAllocationCallbacks *pAllocator,
@@ -243,7 +243,7 @@ vk_common_CreatePrivateDataSlotEXT(VkDevice _device,
                                       pPrivateDataSlot);
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 vk_common_DestroyPrivateDataSlotEXT(VkDevice _device,
                                     VkPrivateDataSlotEXT privateDataSlot,
                                     const VkAllocationCallbacks *pAllocator)
@@ -252,7 +252,7 @@ vk_common_DestroyPrivateDataSlotEXT(VkDevice _device,
    vk_private_data_slot_destroy(device, privateDataSlot, pAllocator);
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 vk_common_SetPrivateDataEXT(VkDevice _device,
                             VkObjectType objectType,
                             uint64_t objectHandle,
@@ -265,7 +265,7 @@ vk_common_SetPrivateDataEXT(VkDevice _device,
                                           privateDataSlot, data);
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 vk_common_GetPrivateDataEXT(VkDevice _device,
                             VkObjectType objectType,
                             uint64_t objectHandle,

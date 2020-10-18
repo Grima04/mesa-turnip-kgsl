@@ -40,7 +40,7 @@
       dst = temp;                                                \
    } while(0)
 
-VkResult lvp_CreateShaderModule(
+VKAPI_ATTR VkResult VKAPI_CALL lvp_CreateShaderModule(
    VkDevice                                    _device,
    const VkShaderModuleCreateInfo*             pCreateInfo,
    const VkAllocationCallbacks*                pAllocator,
@@ -69,7 +69,7 @@ VkResult lvp_CreateShaderModule(
 
 }
 
-void lvp_DestroyShaderModule(
+VKAPI_ATTR void VKAPI_CALL lvp_DestroyShaderModule(
    VkDevice                                    _device,
    VkShaderModule                              _module,
    const VkAllocationCallbacks*                pAllocator)
@@ -83,7 +83,7 @@ void lvp_DestroyShaderModule(
    vk_free2(&device->vk.alloc, pAllocator, module);
 }
 
-void lvp_DestroyPipeline(
+VKAPI_ATTR void VKAPI_CALL lvp_DestroyPipeline(
    VkDevice                                    _device,
    VkPipeline                                  _pipeline,
    const VkAllocationCallbacks*                pAllocator)
@@ -860,7 +860,7 @@ lvp_graphics_pipeline_create(
    return VK_SUCCESS;
 }
 
-VkResult lvp_CreateGraphicsPipelines(
+VKAPI_ATTR VkResult VKAPI_CALL lvp_CreateGraphicsPipelines(
    VkDevice                                    _device,
    VkPipelineCache                             pipelineCache,
    uint32_t                                    count,
@@ -948,7 +948,7 @@ lvp_compute_pipeline_create(
    return VK_SUCCESS;
 }
 
-VkResult lvp_CreateComputePipelines(
+VKAPI_ATTR VkResult VKAPI_CALL lvp_CreateComputePipelines(
    VkDevice                                    _device,
    VkPipelineCache                             pipelineCache,
    uint32_t                                    count,

@@ -33,7 +33,7 @@
 #define STACK_ARRAY_FINISH(name) \
    if (name != _stack_##name) free(name)
 
-void
+VKAPI_ATTR void VKAPI_CALL
 vk_common_CmdCopyBuffer(VkCommandBuffer commandBuffer,
                         VkBuffer srcBuffer,
                         VkBuffer dstBuffer,
@@ -69,7 +69,7 @@ vk_common_CmdCopyBuffer(VkCommandBuffer commandBuffer,
    STACK_ARRAY_FINISH(region2s);
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 vk_common_CmdCopyImage(VkCommandBuffer commandBuffer,
                        VkImage srcImage,
                        VkImageLayout srcImageLayout,
@@ -111,7 +111,7 @@ vk_common_CmdCopyImage(VkCommandBuffer commandBuffer,
    STACK_ARRAY_FINISH(region2s);
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 vk_common_CmdCopyBufferToImage(VkCommandBuffer commandBuffer,
                                VkBuffer srcBuffer,
                                VkImage dstImage,
@@ -152,7 +152,7 @@ vk_common_CmdCopyBufferToImage(VkCommandBuffer commandBuffer,
    STACK_ARRAY_FINISH(region2s);
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 vk_common_CmdCopyImageToBuffer(VkCommandBuffer commandBuffer,
                                VkImage srcImage,
                                VkImageLayout srcImageLayout,
@@ -193,7 +193,7 @@ vk_common_CmdCopyImageToBuffer(VkCommandBuffer commandBuffer,
    STACK_ARRAY_FINISH(region2s);
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 vk_common_CmdBlitImage(VkCommandBuffer commandBuffer,
                        VkImage srcImage,
                        VkImageLayout srcImageLayout,
@@ -242,7 +242,7 @@ vk_common_CmdBlitImage(VkCommandBuffer commandBuffer,
    STACK_ARRAY_FINISH(region2s);
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 vk_common_CmdResolveImage(VkCommandBuffer commandBuffer,
                           VkImage srcImage,
                           VkImageLayout srcImageLayout,

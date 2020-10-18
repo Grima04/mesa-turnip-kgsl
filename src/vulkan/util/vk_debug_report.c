@@ -42,7 +42,7 @@ VK_DEFINE_NONDISP_HANDLE_CASTS(vk_debug_report_callback, base,
                                VkDebugReportCallbackEXT,
                                VK_OBJECT_TYPE_DEBUG_REPORT_CALLBACK_EXT)
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 vk_common_CreateDebugReportCallbackEXT(VkInstance _instance,
                                        const VkDebugReportCallbackCreateInfoEXT *pCreateInfo,
                                        const VkAllocationCallbacks *pAllocator,
@@ -74,7 +74,7 @@ vk_common_CreateDebugReportCallbackEXT(VkInstance _instance,
    return VK_SUCCESS;
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 vk_common_DestroyDebugReportCallbackEXT(VkInstance _instance,
                                         VkDebugReportCallbackEXT _callback,
                                         const VkAllocationCallbacks *pAllocator)
@@ -127,7 +127,7 @@ debug_report(struct vk_instance *instance,
    mtx_unlock(&instance->debug_report.callbacks_mutex);
 }
 
-void
+VKAPI_ATTR void VKAPI_CALL
 vk_common_DebugReportMessageEXT(VkInstance _instance,
                                 VkDebugReportFlagsEXT flags,
                                 VkDebugReportObjectTypeEXT objectType,

@@ -60,7 +60,7 @@ extern const struct vk_device_entrypoint_table ${p}_device_entrypoints;
 #ifdef ${e.guard}
   % endif
   % for p in physical_device_prefixes:
-  ${e.return_type} ${p}_${e.name}(${e.decl_params()});
+  VKAPI_ATTR ${e.return_type} VKAPI_CALL ${p}_${e.name}(${e.decl_params()});
   % endfor
   % if e.guard is not None:
 #endif // ${e.guard}
@@ -72,7 +72,7 @@ extern const struct vk_device_entrypoint_table ${p}_device_entrypoints;
 #ifdef ${e.guard}
   % endif
   % for p in physical_device_prefixes:
-  ${e.return_type} ${p}_${e.name}(${e.decl_params()});
+  VKAPI_ATTR ${e.return_type} VKAPI_CALL ${p}_${e.name}(${e.decl_params()});
   % endfor
   % if e.guard is not None:
 #endif // ${e.guard}
@@ -84,7 +84,7 @@ extern const struct vk_device_entrypoint_table ${p}_device_entrypoints;
 #ifdef ${e.guard}
   % endif
   % for p in device_prefixes:
-  ${e.return_type} ${p}_${e.name}(${e.decl_params()});
+  VKAPI_ATTR ${e.return_type} VKAPI_CALL ${p}_${e.name}(${e.decl_params()});
   % endfor
   % if e.guard is not None:
 #endif // ${e.guard}
@@ -122,7 +122,7 @@ TEMPLATE_C = Template(COPYRIGHT + """
     ${e.return_type} (*${p}_${e.name}_Null)(${e.decl_params()}) = 0;
     ${e.return_type} ${p}_${e.name}_Weak(${e.decl_params()});
 #else
-    ${e.return_type} ${p}_${e.name}(${e.decl_params()}) __attribute__ ((weak));
+    VKAPI_ATTR ${e.return_type} VKAPI_CALL ${p}_${e.name}(${e.decl_params()}) __attribute__ ((weak));
 #endif
     % endfor
     % if e.guard is not None:
