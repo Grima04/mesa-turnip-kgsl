@@ -667,6 +667,10 @@ radv_check_gpu_hangs(struct radv_queue *queue, struct radeon_cmdbuf *cs)
 		fclose(f);
 	}
 
+	fprintf(stderr, "BOs:\n");
+	device->ws->dump_bo_ranges(device->ws, stderr);
+	fprintf(stderr, "\n");
+
 	/* Dump VM fault info. */
 	if (vm_fault_occurred) {
 		snprintf(dump_path, sizeof(dump_path), "%s/%s", dump_dir, "vm_fault.log");
