@@ -36,6 +36,7 @@
 #include "util/rounding.h"
 #include "pan_util.h"
 #include "pan_blending.h"
+#include "pan_cmdstream.h"
 #include "decode.h"
 #include "panfrost-quirks.h"
 
@@ -788,28 +789,6 @@ panfrost_load_surface(struct panfrost_batch *batch, struct pipe_surface *surf, u
                                                     rsrc->damage.extent.maxy);
         }
 
-        /* XXX: Native blits on Bifrost */
-        if (batch->pool.dev->quirks & IS_BIFROST) {
-                if (loc != FRAG_RESULT_DATA0)
-                        return;
-
-                /* XXX: why align on *twice* the tile length? */
-                batch->minx = batch->minx & ~((MALI_TILE_LENGTH * 2) - 1);
-                batch->miny = batch->miny & ~((MALI_TILE_LENGTH * 2) - 1);
-                batch->maxx = MIN2(ALIGN_POT(batch->maxx, MALI_TILE_LENGTH * 2),
-                                rsrc->base.width0);
-                batch->maxy = MIN2(ALIGN_POT(batch->maxy, MALI_TILE_LENGTH * 2),
-                                rsrc->base.height0);
-
-                struct pipe_box rect;
-                batch->ctx->wallpaper_batch = batch;
-                u_box_2d(batch->minx, batch->miny, batch->maxx - batch->minx,
-                                batch->maxy - batch->miny, &rect);
-                panfrost_blit_wallpaper(batch->ctx, &rect);
-                batch->ctx->wallpaper_batch = NULL;
-                return;
-        }
-
         enum pipe_format format = rsrc->base.format;
 
         if (loc == FRAG_RESULT_DEPTH) {
@@ -891,11 +870,23 @@ panfrost_load_surface(struct panfrost_batch *batch, struct pipe_surface *surf, u
                 memcpy(o, rect, sizeof(rect));
         }
 
-        panfrost_load_midg(&batch->pool, &batch->scoreboard,
-                blend_shader,
-                batch->framebuffer.gpu, transfer.gpu,
-                rsrc->damage.inverted_len * 6,
-                &img, loc);
+        unsigned vertex_count = rsrc->damage.inverted_len * 6;
+        if (batch->pool.dev->quirks & IS_BIFROST) {
+                mali_ptr tiler =
+                        panfrost_batch_get_bifrost_tiler(batch, vertex_count);
+                panfrost_load_bifrost(&batch->pool, &batch->scoreboard,
+                                      blend_shader,
+                                      panfrost_vt_emit_shared_memory(batch),
+                                      tiler,
+                                      transfer.gpu, vertex_count,
+                                      &img, loc);
+        } else {
+                panfrost_load_midg(&batch->pool, &batch->scoreboard,
+                                   blend_shader,
+                                   batch->framebuffer.gpu,
+                                   transfer.gpu, vertex_count,
+                                   &img, loc);
+        }
 
         panfrost_batch_add_bo(batch, batch->pool.dev->blit_shaders.bo,
                         PAN_BO_ACCESS_SHARED | PAN_BO_ACCESS_READ | PAN_BO_ACCESS_FRAGMENT);
