@@ -1490,7 +1490,7 @@ pan_emit_vary(struct mali_attribute_packed *out,
 
         pan_pack(out, ATTRIBUTE, cfg) {
                 cfg.buffer_index = pan_varying_index(present, buf);
-                cfg.unknown = quirks & IS_BIFROST ? 0x0 : 0x1;
+                cfg.offset_enable = quirks & IS_BIFROST ? false : true;
                 cfg.format = (format << 12) | swizzle;
                 cfg.offset = offset;
         }
@@ -1553,7 +1553,7 @@ pan_emit_vary_xfb(struct mali_attribute_packed *out,
         pan_pack(out, ATTRIBUTE, cfg) {
                 /* XFB buffers come after everything else */
                 cfg.buffer_index = pan_xfb_base(present) + o.output_buffer;
-                cfg.unknown = quirks & IS_BIFROST ? 0x0 : 0x1;
+                cfg.offset_enable = quirks & IS_BIFROST ? false : true;
 
                 /* Override number of channels and precision to highp */
                 cfg.format = (pan_xfb_format(format, o.num_components) << 12) | swizzle;

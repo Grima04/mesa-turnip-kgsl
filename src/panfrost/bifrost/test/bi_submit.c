@@ -138,12 +138,12 @@ bit_vertex(struct panfrost_device *dev, panfrost_program *prog,
 
         pan_pack(attr->cpu, ATTRIBUTE, cfg) {
                 cfg.format = (MALI_RGBA32UI << 12);
-                cfg.unknown = true;
+                cfg.offset_enable = true;
         }
 
         pan_pack(var->cpu, ATTRIBUTE, cfg) {
                 cfg.format = (MALI_RGBA32UI << 12);
-                cfg.unknown = false;
+                cfg.offset_enable = false;
         }
 
         pan_pack(var->cpu + 256, ATTRIBUTE_BUFFER, cfg) {
