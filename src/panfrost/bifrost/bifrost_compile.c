@@ -585,6 +585,28 @@ bi_emit_front_face(bi_context *ctx, nir_intrinsic_instr *instr)
 }
 
 static void
+bi_emit_point_coord(bi_context *ctx, nir_intrinsic_instr *instr)
+{
+        bi_instruction ins = {
+                .type = BI_LOAD_VAR,
+                .vector_channels = 2,
+                .dest = pan_dest_index(&instr->dest),
+                .dest_type = nir_type_float32,
+                .format = nir_type_float32,
+                .src = {
+                        BIR_INDEX_CONSTANT,
+                        BIR_INDEX_ZERO,
+                },
+                .src_types = {
+                        nir_type_uint32,
+                },
+                .constant.u64 = 20,
+        };
+
+        bi_emit(ctx, ins);
+}
+
+static void
 emit_intrinsic(bi_context *ctx, nir_intrinsic_instr *instr)
 {
 
@@ -662,6 +684,10 @@ emit_intrinsic(bi_context *ctx, nir_intrinsic_instr *instr)
 
 	case nir_intrinsic_load_front_face:
                 bi_emit_front_face(ctx, instr);
+                break;
+
+        case nir_intrinsic_load_point_coord:
+                bi_emit_point_coord(ctx, instr);
                 break;
 
         default:
