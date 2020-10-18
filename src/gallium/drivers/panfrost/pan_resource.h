@@ -113,10 +113,6 @@ panfrost_blit(struct pipe_context *pipe,
               const struct pipe_blit_info *info);
 
 void
-panfrost_blit_wallpaper(struct panfrost_context *ctx,
-                        struct pipe_box *box);
-
-void
 panfrost_resource_set_damage_region(struct pipe_screen *screen,
                                     struct pipe_resource *res,
                                     unsigned int nrects,

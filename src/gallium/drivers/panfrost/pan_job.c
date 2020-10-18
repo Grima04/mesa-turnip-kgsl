@@ -276,12 +276,6 @@ panfrost_get_batch(struct panfrost_context *ctx,
 struct panfrost_batch *
 panfrost_get_batch_for_fbo(struct panfrost_context *ctx)
 {
-        /* If we're wallpapering, we special case to workaround
-         * u_blitter abuse */
-
-        if (ctx->wallpaper_batch)
-                return ctx->wallpaper_batch;
-
         /* If we already began rendering, use that */
 
         if (ctx->batch) {
@@ -546,13 +540,6 @@ panfrost_batch_add_bo(struct panfrost_batch *batch, struct panfrost_bo *bo,
          * tracking.
          */
         if (!(flags & PAN_BO_ACCESS_SHARED))
-                return;
-
-        /* All dependencies should have been flushed before we execute the
-         * wallpaper draw, so it should be harmless to skip the
-         * update_bo_access() call.
-         */
-        if (batch == batch->ctx->wallpaper_batch)
                 return;
 
         assert(flags & PAN_BO_ACCESS_RW);

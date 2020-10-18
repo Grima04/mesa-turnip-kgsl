@@ -1309,9 +1309,6 @@ panfrost_destroy(struct pipe_context *pipe)
         if (panfrost->blitter)
                 util_blitter_destroy(panfrost->blitter);
 
-        if (panfrost->blitter_wallpaper)
-                util_blitter_destroy(panfrost->blitter_wallpaper);
-
         util_unreference_framebuffer_state(&panfrost->pipe_framebuffer);
         u_upload_destroy(pipe->stream_uploader);
         u_upload_destroy(panfrost->state_uploader);
@@ -1620,10 +1617,8 @@ panfrost_create_context(struct pipe_screen *screen, void *priv, unsigned flags)
         ctx->primconvert = util_primconvert_create(gallium, ctx->draw_modes);
 
         ctx->blitter = util_blitter_create(gallium);
-        ctx->blitter_wallpaper = util_blitter_create(gallium);
 
         assert(ctx->blitter);
-        assert(ctx->blitter_wallpaper);
 
         /* Prepare for render! */
 

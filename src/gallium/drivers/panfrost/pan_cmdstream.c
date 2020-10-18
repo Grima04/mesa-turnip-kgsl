@@ -1825,18 +1825,6 @@ panfrost_emit_vertex_tiler_jobs(struct panfrost_batch *batch,
                                 const struct panfrost_ptr *tiler_job)
 {
         struct panfrost_context *ctx = batch->ctx;
-        bool wallpapering = ctx->wallpaper_batch && batch->scoreboard.tiler_dep;
-
-        if (wallpapering) {
-                /* Inject in reverse order, with "predicted" job indices.
-                 * THIS IS A HACK XXX */
-
-                panfrost_add_job(&batch->pool, &batch->scoreboard, MALI_JOB_TYPE_TILER, false,
-                                 batch->scoreboard.job_index + 2, tiler_job, true);
-                panfrost_add_job(&batch->pool, &batch->scoreboard, MALI_JOB_TYPE_VERTEX, false, 0,
-                                 vertex_job, true);
-                return;
-        }
 
         /* If rasterizer discard is enable, only submit the vertex */
 
