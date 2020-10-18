@@ -88,7 +88,7 @@ panfrost_fragment_job(struct panfrost_batch *batch, bool has_draws)
         assert(batch->maxx > batch->minx);
         assert(batch->maxy > batch->miny);
 
-        struct panfrost_transfer transfer =
+        struct panfrost_ptr transfer =
                 panfrost_pool_alloc_aligned(&batch->pool,
                                             MALI_FRAGMENT_JOB_LENGTH, 64);
 

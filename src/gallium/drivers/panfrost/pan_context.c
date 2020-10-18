@@ -88,8 +88,8 @@ panfrost_emit_midg_tiler(struct panfrost_batch *batch,
                                                                 header_size +
                                                                 t.polygon_list_size);
 
-                        t.heap_start = device->tiler_heap->gpu;
-                        t.heap_end = device->tiler_heap->gpu +
+                        t.heap_start = device->tiler_heap->ptr.gpu;
+                        t.heap_end = device->tiler_heap->ptr.gpu +
                                      device->tiler_heap->size;
                 } else {
                         struct panfrost_bo *tiler_dummy;
@@ -98,11 +98,11 @@ panfrost_emit_midg_tiler(struct panfrost_batch *batch,
                         header_size = MALI_MIDGARD_TILER_MINIMUM_HEADER_SIZE;
 
                         /* The tiler is disabled, so don't allow the tiler heap */
-                        t.heap_start = tiler_dummy->gpu;
+                        t.heap_start = tiler_dummy->ptr.gpu;
                         t.heap_end = t.heap_start;
 
                         /* Use a dummy polygon list */
-                        t.polygon_list = tiler_dummy->gpu;
+                        t.polygon_list = tiler_dummy->ptr.gpu;
 
                         /* Disable the tiler */
                         if (hierarchy)
@@ -112,7 +112,7 @@ panfrost_emit_midg_tiler(struct panfrost_batch *batch,
                                 t.polygon_list_size = MALI_MIDGARD_TILER_MINIMUM_HEADER_SIZE + 4;
 
                                 /* We don't have a WRITE_VALUE job, so write the polygon list manually */
-                                uint32_t *polygon_list_body = (uint32_t *) (tiler_dummy->cpu + header_size);
+                                uint32_t *polygon_list_body = (uint32_t *) (tiler_dummy->ptr.cpu + header_size);
                                 polygon_list_body[0] = 0xa0000000; /* TODO: Just that? */
                         }
                 }
@@ -406,7 +406,7 @@ panfrost_draw_emit_tiler(struct panfrost_batch *batch,
                                 cfg.occlusion_query = MALI_OCCLUSION_MODE_COUNTER;
                         else
                                 cfg.occlusion_query = MALI_OCCLUSION_MODE_PREDICATE;
-                        cfg.occlusion = ctx->occlusion_query->bo->gpu;
+                        cfg.occlusion = ctx->occlusion_query->bo->ptr.gpu;
                         panfrost_batch_add_bo(ctx->batch, ctx->occlusion_query->bo,
                                               PAN_BO_ACCESS_SHARED |
                                               PAN_BO_ACCESS_RW |
@@ -470,13 +470,13 @@ panfrost_draw_vbo(
         ctx->active_prim = info->mode;
 
         bool is_bifrost = device->quirks & IS_BIFROST;
-        struct panfrost_transfer tiler =
+        struct panfrost_ptr tiler =
                 panfrost_pool_alloc_aligned(&batch->pool,
                                             is_bifrost ?
                                             MALI_BIFROST_TILER_JOB_LENGTH :
                                             MALI_MIDGARD_TILER_JOB_LENGTH,
                                             64);
-        struct panfrost_transfer vertex =
+        struct panfrost_ptr vertex =
                 panfrost_pool_alloc_aligned(&batch->pool,
                                             MALI_COMPUTE_JOB_LENGTH,
                                             64);
@@ -980,7 +980,7 @@ panfrost_create_sampler_view_bo(struct panfrost_sampler_view *so,
                 desc = util_format_description(format);
         }
 
-        so->texture_bo = prsrc->bo->gpu;
+        so->texture_bo = prsrc->bo->ptr.gpu;
         so->modifier = prsrc->modifier;
 
         unsigned char user_swizzle[4] = {
@@ -1044,7 +1044,7 @@ panfrost_create_sampler_view_bo(struct panfrost_sampler_view *so,
                                 texture->nr_samples,
                                 prsrc->cubemap_stride,
                                 panfrost_translate_swizzle_4(composed_swizzle),
-                                prsrc->bo->gpu,
+                                prsrc->bo->ptr.gpu,
                                 prsrc->slices,
                                 so->bo);
         } else {
@@ -1060,7 +1060,7 @@ panfrost_create_sampler_view_bo(struct panfrost_sampler_view *so,
                 so->bo = panfrost_bo_create(device, size, 0);
 
                 panfrost_new_texture(
-                                so->bo->cpu,
+                                so->bo->ptr.cpu,
                                 texture->width0, texture->height0,
                                 depth, array_size,
                                 format,
@@ -1072,7 +1072,7 @@ panfrost_create_sampler_view_bo(struct panfrost_sampler_view *so,
                                 texture->nr_samples,
                                 prsrc->cubemap_stride,
                                 panfrost_translate_swizzle_4(user_swizzle),
-                                prsrc->bo->gpu,
+                                prsrc->bo->ptr.gpu,
                                 prsrc->slices);
         }
 }
@@ -1365,10 +1365,9 @@ panfrost_begin_query(struct pipe_context *pipe, struct pipe_query *q)
                 }
 
                 /* Default to 0 if nothing at all drawn. */
-                memset(query->bo->cpu, 0, size);
+                memset(query->bo->ptr.cpu, 0, size);
 
                 query->msaa = (ctx->pipe_framebuffer.samples > 1);
-
                 ctx->occlusion_query = query;
                 break;
         }
@@ -1432,7 +1431,7 @@ panfrost_get_query_result(struct pipe_context *pipe,
                 panfrost_bo_wait(query->bo, INT64_MAX, false);
 
                 /* Read back the query results */
-                uint64_t *result = (uint64_t *) query->bo->cpu;
+                uint64_t *result = (uint64_t *) query->bo->ptr.cpu;
 
                 if (query->type == PIPE_QUERY_OCCLUSION_COUNTER) {
                         uint64_t passed = 0;

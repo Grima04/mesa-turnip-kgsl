@@ -61,7 +61,7 @@ panfrost_add_job(
                 enum mali_job_type type,
                 bool barrier,
                 unsigned local_dep,
-                const struct panfrost_transfer *job,
+                const struct panfrost_ptr *job,
                 bool inject);
 
 void panfrost_scoreboard_initialize_tiler(

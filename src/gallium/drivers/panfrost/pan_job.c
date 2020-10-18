@@ -632,7 +632,7 @@ panfrost_batch_get_polygon_list(struct panfrost_batch *batch, unsigned size)
                                                                PAN_BO_ACCESS_FRAGMENT);
         }
 
-        return batch->polygon_list->gpu;
+        return batch->polygon_list->ptr.gpu;
 }
 
 struct panfrost_bo *
@@ -687,14 +687,14 @@ panfrost_batch_get_bifrost_tiler(struct panfrost_batch *batch, unsigned vertex_c
                 return batch->tiler_meta;
 
         struct panfrost_device *dev = pan_device(batch->ctx->base.screen);
-        struct panfrost_transfer t =
+        struct panfrost_ptr t =
                 panfrost_pool_alloc_aligned(&batch->pool, MALI_BIFROST_TILER_HEAP_LENGTH, 64);
 
         pan_pack(t.cpu, BIFROST_TILER_HEAP, heap) {
                 heap.size = dev->tiler_heap->size;
-                heap.base = dev->tiler_heap->gpu;
-                heap.bottom = dev->tiler_heap->gpu;
-                heap.top = dev->tiler_heap->gpu + dev->tiler_heap->size;
+                heap.base = dev->tiler_heap->ptr.gpu;
+                heap.bottom = dev->tiler_heap->ptr.gpu;
+                heap.top = dev->tiler_heap->ptr.gpu + dev->tiler_heap->size;
         }
 
         mali_ptr heap = t.gpu;
@@ -864,13 +864,13 @@ panfrost_load_surface(struct panfrost_batch *batch, struct pipe_surface *surf, u
                    PAN_BO_ACCESS_READ |
                    PAN_BO_ACCESS_FRAGMENT);
 
-                memcpy(bo->cpu, b->buffer, b->size);
+                memcpy(bo->ptr.cpu, b->buffer, b->size);
                 assert(b->work_count <= 4);
 
-                blend_shader = bo->gpu | b->first_tag;
+                blend_shader = bo->ptr.gpu | b->first_tag;
         }
 
-        struct panfrost_transfer transfer = panfrost_pool_alloc_aligned(&batch->pool,
+        struct panfrost_ptr transfer = panfrost_pool_alloc_aligned(&batch->pool,
                         4 * 4 * 6 * rsrc->damage.inverted_len, 64);
 
         for (unsigned i = 0; i < rsrc->damage.inverted_len; ++i) {

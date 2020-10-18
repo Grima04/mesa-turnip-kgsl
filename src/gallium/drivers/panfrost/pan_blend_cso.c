@@ -272,14 +272,14 @@ panfrost_get_blend_for_context(struct panfrost_context *ctx, unsigned rti, struc
         /* Size check */
         assert((*shader_offset + shader->size) < 4096);
 
-        memcpy((*bo)->cpu + *shader_offset, shader->buffer, shader->size);
+        memcpy((*bo)->ptr.cpu + *shader_offset, shader->buffer, shader->size);
 
         struct panfrost_blend_final final = {
                 .is_shader = true,
                 .shader = {
                         .work_count = shader->work_count,
                         .first_tag = shader->first_tag,
-                        .gpu = (*bo)->gpu + *shader_offset,
+                        .gpu = (*bo)->ptr.gpu + *shader_offset,
                 },
                 .load_dest = rt->load_dest,
         };

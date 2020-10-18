@@ -178,9 +178,11 @@ panfrost_init_blit_shaders(struct panfrost_device *dev)
                                                                    nir_types[T], ms);
 
                                 assert(offset + program->compiled.size < total_size);
-                                memcpy(dev->blit_shaders.bo->cpu + offset, program->compiled.data, program->compiled.size);
+                                memcpy(dev->blit_shaders.bo->ptr.cpu + offset,
+                                       program->compiled.data, program->compiled.size);
 
-                                shader->shader = (dev->blit_shaders.bo->gpu + offset) | program->first_tag;
+                                shader->shader = (dev->blit_shaders.bo->ptr.gpu + offset) |
+                                                 program->first_tag;
 
                                 int rt = loc - FRAG_RESULT_DATA0;
                                 if (rt >= 0 && rt < 8 && program->blend_ret_offsets[rt])
@@ -210,10 +212,10 @@ panfrost_load_midg(
         unsigned width = u_minify(image->width0, image->first_level);
         unsigned height = u_minify(image->height0, image->first_level);
 
-        struct panfrost_transfer viewport = panfrost_pool_alloc(pool, MALI_VIEWPORT_LENGTH);
-        struct panfrost_transfer sampler = panfrost_pool_alloc(pool, MALI_MIDGARD_SAMPLER_LENGTH);
-        struct panfrost_transfer varying = panfrost_pool_alloc(pool, MALI_ATTRIBUTE_LENGTH);
-        struct panfrost_transfer varying_buffer  = panfrost_pool_alloc(pool, MALI_ATTRIBUTE_BUFFER_LENGTH);
+        struct panfrost_ptr viewport = panfrost_pool_alloc(pool, MALI_VIEWPORT_LENGTH);
+        struct panfrost_ptr sampler = panfrost_pool_alloc(pool, MALI_MIDGARD_SAMPLER_LENGTH);
+        struct panfrost_ptr varying = panfrost_pool_alloc(pool, MALI_ATTRIBUTE_LENGTH);
+        struct panfrost_ptr varying_buffer  = panfrost_pool_alloc(pool, MALI_ATTRIBUTE_BUFFER_LENGTH);
 
         pan_pack(viewport.cpu, VIEWPORT, cfg) {
                 cfg.scissor_maximum_x = width - 1; /* Inclusive */
@@ -242,7 +244,7 @@ panfrost_load_midg(
 
         bool ms = image->nr_samples > 1;
 
-        struct panfrost_transfer shader_meta_t =
+        struct panfrost_ptr shader_meta_t =
                 panfrost_pool_alloc_aligned(pool,
                                             MALI_RENDERER_STATE_LENGTH +
                                             8 * MALI_BLEND_LENGTH,
@@ -312,7 +314,7 @@ panfrost_load_midg(
          * textures, removing the need to separately key the blit shaders for
          * 2D and 3D variants */
 
-        struct panfrost_transfer texture_t = panfrost_pool_alloc_aligned(
+        struct panfrost_ptr texture_t = panfrost_pool_alloc_aligned(
                         pool, MALI_MIDGARD_TEXTURE_LENGTH + sizeof(mali_ptr) * 2 * MAX2(image->nr_samples, 1), 128);
 
         panfrost_new_texture(texture_t.cpu,
@@ -325,7 +327,7 @@ panfrost_load_midg(
                         image->nr_samples,
                         0,
                         (MALI_CHANNEL_R << 0) | (MALI_CHANNEL_G << 3) | (MALI_CHANNEL_B << 6) | (MALI_CHANNEL_A << 9),
-                        image->bo->gpu + image->first_layer *
+                        image->bo->ptr.gpu + image->first_layer *
                                 panfrost_get_layer_stride(image->slices,
                                         image->dim == MALI_TEXTURE_DIMENSION_3D,
                                         image->cubemap_stride, image->first_level),
@@ -361,7 +363,7 @@ panfrost_load_midg(
                 }
         }
 
-        struct panfrost_transfer t =
+        struct panfrost_ptr t =
                 panfrost_pool_alloc_aligned(pool, MALI_MIDGARD_TILER_JOB_LENGTH, 64);
 
         pan_section_pack(t.cpu, MIDGARD_TILER_JOB, DRAW, cfg) {

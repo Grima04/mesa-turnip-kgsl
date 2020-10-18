@@ -104,7 +104,7 @@ panfrost_launch_grid(struct pipe_context *pipe,
         ctx->compute_grid = info;
 
         /* TODO: Stub */
-        struct panfrost_transfer t =
+        struct panfrost_ptr t =
                 panfrost_pool_alloc_aligned(&batch->pool,
                                             MALI_COMPUTE_JOB_LENGTH,
                                             64);

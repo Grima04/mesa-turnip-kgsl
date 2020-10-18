@@ -331,9 +331,9 @@ panfrost_mfbd_zs_crc_ext_set_bufs(struct panfrost_batch *batch,
 
                         ext->crc_row_stride = slice->checksum_stride;
                         if (slice->checksum_bo)
-                                ext->crc_base = slice->checksum_bo->gpu;
+                                ext->crc_base = slice->checksum_bo->ptr.gpu;
                         else
-                                ext->crc_base = rsrc->bo->gpu + slice->checksum_offset;
+                                ext->crc_base = rsrc->bo->ptr.gpu + slice->checksum_offset;
 
                         if ((batch->clear & PIPE_CLEAR_COLOR0) && version >= 7) {
                                 ext->crc_clear_color = batch->clear_color[0][0] |
@@ -513,7 +513,7 @@ panfrost_mfbd_emit_local_storage(struct panfrost_batch *batch, void *fb)
                                                               dev->thread_tls_alloc,
                                                               dev->core_count);
                         ls.tls_size = shift;
-                        ls.tls_base_pointer = bo->gpu;
+                        ls.tls_base_pointer = bo->ptr.gpu;
                 }
 
                 ls.wls_instances = MALI_LOCAL_STORAGE_NO_WORKGROUP_MEM;
@@ -585,7 +585,7 @@ panfrost_mfbd_fragment(struct panfrost_batch *batch, bool has_draws)
 {
         struct panfrost_device *dev = pan_device(batch->ctx->base.screen);
         unsigned vertex_count = has_draws;
-        struct panfrost_transfer t =
+        struct panfrost_ptr t =
                 panfrost_pool_alloc_aligned(&batch->pool,
                                             panfrost_mfbd_size(batch), 64);
         void *fb = t.cpu, *zs_crc_ext, *rts;

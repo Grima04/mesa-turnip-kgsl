@@ -155,7 +155,7 @@ panfrost_sfbd_set_zsbuf(
                 unreachable("Invalid render modifier.");
 
         fb->zs_block_format = MALI_BLOCK_FORMAT_TILED_U_INTERLEAVED;
-        fb->zs_writeback.base = rsrc->bo->gpu + rsrc->slices[level].offset;
+        fb->zs_writeback.base = rsrc->bo->ptr.gpu + rsrc->slices[level].offset;
         fb->zs_writeback.row_stride = rsrc->slices[level].stride * 16;
         switch (surf->format) {
         case PIPE_FORMAT_Z24_UNORM_S8_UINT:
@@ -201,7 +201,7 @@ panfrost_emit_sfdb_local_storage(struct panfrost_batch *batch, void *sfbd,
                         panfrost_batch_get_scratchpad(batch,
                                                       shift,
                                                       dev->thread_tls_alloc,
-                                                      dev->core_count)->gpu;
+                                                      dev->core_count)->ptr.gpu;
         }
 }
 
@@ -236,7 +236,7 @@ panfrost_attach_sfbd(struct panfrost_batch *batch, unsigned vertex_count)
 mali_ptr
 panfrost_sfbd_fragment(struct panfrost_batch *batch, bool has_draws)
 {
-        struct panfrost_transfer t =
+        struct panfrost_ptr t =
                 panfrost_pool_alloc_aligned(&batch->pool,
                                             MALI_SINGLE_TARGET_FRAMEBUFFER_LENGTH,
                                             64);
@@ -261,7 +261,7 @@ panfrost_sfbd_fragment(struct panfrost_batch *batch, bool has_draws)
                                 struct panfrost_slice *slice = &rsrc->slices[level];
 
                                 params.crc_buffer.row_stride = slice->checksum_stride;
-                                params.crc_buffer.base = bo->gpu + slice->checksum_offset;
+                                params.crc_buffer.base = bo->ptr.gpu + slice->checksum_offset;
                         }
                 }
 

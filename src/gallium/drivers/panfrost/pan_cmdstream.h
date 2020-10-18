@@ -84,8 +84,8 @@ panfrost_emit_varying_descriptor(struct panfrost_batch *batch,
 
 void
 panfrost_emit_vertex_tiler_jobs(struct panfrost_batch *batch,
-                                const struct panfrost_transfer *vertex_job,
-                                const struct panfrost_transfer *tiler_job);
+                                const struct panfrost_ptr *vertex_job,
+                                const struct panfrost_ptr *tiler_job);
 
 mali_ptr
 panfrost_emit_sample_locations(struct panfrost_batch *batch);

@@ -337,7 +337,7 @@ panfrost_create_context(struct pipe_screen *screen, void *priv, unsigned flags);
 bool
 panfrost_writes_point_size(struct panfrost_context *ctx);
 
-struct panfrost_transfer
+struct panfrost_ptr
 panfrost_vertex_tiler_job(struct panfrost_context *ctx, bool is_tiler);
 
 void

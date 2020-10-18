@@ -112,7 +112,7 @@ panfrost_add_job(
                 enum mali_job_type type,
                 bool barrier,
                 unsigned local_dep,
-                const struct panfrost_transfer *job,
+                const struct panfrost_ptr *job,
                 bool inject)
 {
         bool is_bifrost = !!(pool->dev->quirks & IS_BIFROST);
@@ -203,7 +203,7 @@ panfrost_scoreboard_initialize_tiler(struct pan_pool *pool,
         /* Okay, we do. Let's generate it. We'll need the job's polygon list
          * regardless of size. */
 
-        struct panfrost_transfer transfer =
+        struct panfrost_ptr transfer =
                 panfrost_pool_alloc_aligned(pool,
                                             MALI_WRITE_VALUE_JOB_LENGTH,
                                             64);

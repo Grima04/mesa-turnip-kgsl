@@ -262,8 +262,8 @@ panfrost_shader_compile(struct panfrost_context *ctx,
 
         if (size) {
                 state->bo = panfrost_bo_create(dev, size, PAN_BO_EXECUTE);
-                memcpy(state->bo->cpu, program->compiled.data, size);
-                shader = state->bo->gpu;
+                memcpy(state->bo->ptr.cpu, program->compiled.data, size);
+                shader = state->bo->ptr.gpu;
         }
 
         /* Midgard needs the first tag on the bottom nibble */
@@ -305,7 +305,7 @@ panfrost_shader_compile(struct panfrost_context *ctx,
                         if (!program->blend_ret_offsets[i])
                                 continue;
 
-                        state->blend_ret_addrs[i] = (state->bo->gpu & UINT32_MAX) +
+                        state->blend_ret_addrs[i] = (state->bo->ptr.gpu & UINT32_MAX) +
                                                     program->blend_ret_offsets[i];
                         assert(!(state->blend_ret_addrs[i] & 0x7));
                 }

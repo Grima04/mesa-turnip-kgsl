@@ -119,7 +119,7 @@ struct panfrost_batch {
         struct panfrost_bo *tiler_dummy;
 
         /* Framebuffer descriptor. */
-        struct panfrost_transfer framebuffer;
+        struct panfrost_ptr framebuffer;
 
         /* Bifrost tiler meta descriptor. */
         mali_ptr tiler_meta;
