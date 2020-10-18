@@ -127,7 +127,7 @@ panfrost_new_texture_bifrost(
         unsigned swizzle,
         mali_ptr base,
         struct panfrost_slice *slices,
-        struct panfrost_bo *payload);
+        const struct panfrost_ptr *payload);
 
 
 unsigned

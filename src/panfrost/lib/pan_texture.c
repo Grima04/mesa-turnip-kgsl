@@ -401,7 +401,7 @@ panfrost_new_texture_bifrost(
         unsigned swizzle,
         mali_ptr base,
         struct panfrost_slice *slices,
-        struct panfrost_bo *payload)
+        const struct panfrost_ptr *payload)
 {
         const struct util_format_description *desc =
                 util_format_description(format);
@@ -410,7 +410,7 @@ panfrost_new_texture_bifrost(
         assert(mali_format);
 
         panfrost_emit_texture_payload(
-                payload->ptr.cpu,
+                payload->cpu,
                 desc,
                 mali_format,
                 dim,
@@ -437,7 +437,7 @@ panfrost_new_texture_bifrost(
                 cfg.swizzle = swizzle;
                 cfg.texel_ordering = panfrost_modifier_to_layout(modifier);
                 cfg.levels = last_level - first_level;
-                cfg.surfaces = payload->ptr.gpu;
+                cfg.surfaces = payload->gpu;
 
                 /* We specify API-level LOD clamps in the sampler descriptor
                  * and use these clamps simply for bounds checking */

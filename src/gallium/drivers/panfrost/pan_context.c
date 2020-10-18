@@ -1045,8 +1045,7 @@ panfrost_create_sampler_view_bo(struct panfrost_sampler_view *so,
                                 prsrc->cubemap_stride,
                                 panfrost_translate_swizzle_4(composed_swizzle),
                                 prsrc->bo->ptr.gpu,
-                                prsrc->slices,
-                                so->bo);
+                                prsrc->slices, &so->bo->ptr);
         } else {
                 unsigned size = panfrost_estimate_texture_payload_size(
                                 so->base.u.tex.first_level,
