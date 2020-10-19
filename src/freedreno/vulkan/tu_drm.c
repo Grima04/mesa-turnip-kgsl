@@ -866,7 +866,10 @@ tu_ResetFences(VkDevice _device, uint32_t fenceCount, const VkFence *pFences)
       .handles = (uint64_t) (uintptr_t) handles,
       .count_handles = fenceCount,
    });
-   assert(!ret);
+   if (ret) {
+      tu_device_set_lost(device, "DRM_IOCTL_SYNCOBJ_RESET failure: %s",
+                         strerror(errno));
+   }
 
    return VK_SUCCESS;
 }
