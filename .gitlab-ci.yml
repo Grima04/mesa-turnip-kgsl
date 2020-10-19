@@ -779,6 +779,7 @@ meson-arm64-build-test:
     VULKAN_DRIVERS: "amd"
     EXTRA_OPTION: >
       -Dtools=panfrost
+      -D werror=true
   script:
     - .gitlab-ci/meson-build.sh
 
