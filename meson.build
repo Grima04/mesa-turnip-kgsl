@@ -276,6 +276,9 @@ with_freedreno_kgsl = get_option('freedreno-kgsl')
 with_broadcom_vk = _vulkan_drivers.contains('broadcom')
 with_any_vk = _vulkan_drivers.length() != 0
 
+with_any_broadcom = with_gallium_vc4 or with_gallium_v3d or with_broadcom_vk
+with_any_intel = with_dri_i965 or with_intel_vk or with_gallium_iris
+
 if with_swrast_vk and not with_gallium_softpipe
   error('swrast vulkan requires gallium swrast')
 endif
@@ -1365,7 +1368,8 @@ if dep_thread.found() and host_machine.system() != 'windows'
   endif
 endif
 if host_machine.system() != 'windows'
-  dep_expat = dependency('expat', fallback : ['expat', 'expat_dep'])
+  dep_expat = dependency('expat', fallback : ['expat', 'expat_dep'],
+                         required: not with_platform_android or with_any_broadcom or with_any_intel)
 else
   dep_expat = null_dep
 endif
