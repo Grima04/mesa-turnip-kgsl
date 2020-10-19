@@ -554,6 +554,42 @@ radv_dump_device_name(struct radv_device *device, FILE *f)
 		kernel_version);
 }
 
+static void
+radv_dump_umr_ring(struct radv_queue *queue, FILE *f)
+{
+	enum ring_type ring = radv_queue_family_to_ring(queue->queue_family_index);
+	struct radv_device *device = queue->device;
+	char cmd[128];
+
+	/* TODO: Dump compute ring. */
+	if (ring != RING_GFX)
+		return;
+
+	sprintf(cmd, "umr -R %s 2>&1",
+		device->physical_device->rad_info.chip_class >= GFX10 ? "gfx_0.0.0" : "gfx");
+
+	fprintf(f, "\nUMR GFX ring:\n\n");
+	radv_dump_cmd(cmd, f);
+}
+
+static void
+radv_dump_umr_waves(struct radv_queue *queue, FILE *f)
+{
+	enum ring_type ring = radv_queue_family_to_ring(queue->queue_family_index);
+	struct radv_device *device = queue->device;
+	char cmd[128];
+
+	/* TODO: Dump compute ring. */
+	if (ring != RING_GFX)
+		return;
+
+	sprintf(cmd, "umr -O bits,halt_waves -wa %s 2>&1",
+		device->physical_device->rad_info.chip_class >= GFX10 ? "gfx_0.0.0" : "gfx");
+
+	fprintf(f, "\nUMR GFX waves:\n\n");
+	radv_dump_cmd(cmd, f);
+}
+
 static bool
 radv_gpu_hang_occured(struct radv_queue *queue, enum ring_type ring)
 {
@@ -590,6 +626,8 @@ radv_check_gpu_hangs(struct radv_queue *queue, struct radeon_cmdbuf *cs)
 
 	radv_dump_enabled_options(device, stderr);
 	radv_dump_dmesg(stderr);
+	radv_dump_umr_ring(queue, stderr);
+	radv_dump_umr_waves(queue, stderr);
 
 	if (vm_fault_occurred) {
 		fprintf(stderr, "VM fault report.\n\n");
