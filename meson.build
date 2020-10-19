@@ -1667,7 +1667,7 @@ elif _libunwind == 'false'
   _libunwind = 'disabled'
   warning('libunwind option "false" deprecated, please use "disabled" instead.')
 endif
-if _libunwind != 'disabled'
+if _libunwind != 'disabled' and not with_platform_android
   dep_unwind = dependency('libunwind', required : _libunwind == 'enabled')
   if dep_unwind.found()
     pre_args += '-DHAVE_LIBUNWIND'
