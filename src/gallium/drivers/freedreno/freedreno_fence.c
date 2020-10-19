@@ -24,8 +24,6 @@
  *    Rob Clark <robclark@freedesktop.org>
  */
 
-#include <libsync.h>
-
 #include "util/os_file.h"
 #include "util/u_inlines.h"
 

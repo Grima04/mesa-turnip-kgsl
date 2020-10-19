@@ -27,11 +27,10 @@
 #ifndef FREEDRENO_CONTEXT_H_
 #define FREEDRENO_CONTEXT_H_
 
-#include <libsync.h>
-
 #include "pipe/p_context.h"
 #include "indices/u_primconvert.h"
 #include "util/u_blitter.h"
+#include "util/libsync.h"
 #include "util/list.h"
 #include "util/slab.h"
 #include "util/u_string.h"
