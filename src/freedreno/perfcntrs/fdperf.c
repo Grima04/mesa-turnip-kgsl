@@ -737,7 +737,7 @@ counter_dialog(void)
 {
 	WINDOW *dialog;
 	struct counter_group *group;
-	int cnt, current = 0, scroll;
+	int cnt = 0, current = 0, scroll;
 
 	/* figure out dialog size: */
 	int dh = h/2;
