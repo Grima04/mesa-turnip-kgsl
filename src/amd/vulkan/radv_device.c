@@ -529,6 +529,7 @@ static const struct debug_control radv_debug_options[] = {
 	{"allentrypoints", RADV_DEBUG_ALL_ENTRYPOINTS},
 	{"metashaders", RADV_DEBUG_DUMP_META_SHADERS},
 	{"nomemorycache", RADV_DEBUG_NO_MEMORY_CACHE},
+	{"discardtodemote", RADV_DEBUG_DISCARD_TO_DEMOTE},
 	{"llvm", RADV_DEBUG_LLVM},
 	{"forcecompress", RADV_DEBUG_FORCE_COMPRESS},
 	{NULL, 0}
