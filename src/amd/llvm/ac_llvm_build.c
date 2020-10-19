@@ -2122,7 +2122,7 @@ LLVMValueRef ac_build_image_opcode(struct ac_llvm_context *ctx, struct ac_image_
    char data_type_str[8];
 
    if (atomic) {
-      data_type = ctx->i32;
+      data_type = LLVMTypeOf(a->data[0]);
    } else if (a->opcode == ac_image_store || a->opcode == ac_image_store_mip) {
       /* Image stores might have been shrinked using the format. */
       data_type = LLVMTypeOf(a->data[0]);
@@ -2258,7 +2258,7 @@ LLVMValueRef ac_build_image_opcode(struct ac_llvm_context *ctx, struct ac_image_
 
    LLVMTypeRef retty;
    if (atomic)
-      retty = ctx->i32;
+      retty = data_type;
    else if (a->opcode == ac_image_store || a->opcode == ac_image_store_mip)
       retty = ctx->voidt;
    else

@@ -1753,10 +1753,10 @@ static void visit_store_ssbo(struct ac_nir_context *ctx, nir_intrinsic_instr *in
 
 static LLVMValueRef emit_ssbo_comp_swap_64(struct ac_nir_context *ctx, LLVMValueRef descriptor,
                                            LLVMValueRef offset, LLVMValueRef compare,
-                                           LLVMValueRef exchange)
+                                           LLVMValueRef exchange, bool image)
 {
    LLVMBasicBlockRef start_block = NULL, then_block = NULL;
-   if (ctx->abi->robust_buffer_access) {
+   if (ctx->abi->robust_buffer_access || image) {
       LLVMValueRef size = ac_llvm_extract_elem(&ctx->ac, descriptor, 2);
 
       LLVMValueRef cond = LLVMBuildICmp(ctx->ac.builder, LLVMIntULT, offset, size, "");
@@ -1766,6 +1766,9 @@ static LLVMValueRef emit_ssbo_comp_swap_64(struct ac_nir_context *ctx, LLVMValue
 
       then_block = LLVMGetInsertBlock(ctx->ac.builder);
    }
+
+   if (image)
+      offset = LLVMBuildMul(ctx->ac.builder, offset, LLVMConstInt(ctx->ac.i32, 8, false), "");
 
    LLVMValueRef ptr_parts[2] = {
       ac_llvm_extract_elem(&ctx->ac, descriptor, 0),
@@ -1787,7 +1790,7 @@ static LLVMValueRef emit_ssbo_comp_swap_64(struct ac_nir_context *ctx, LLVMValue
       ac_build_atomic_cmp_xchg(&ctx->ac, ptr, compare, exchange, "singlethread-one-as");
    result = LLVMBuildExtractValue(ctx->ac.builder, result, 0, "");
 
-   if (ctx->abi->robust_buffer_access) {
+   if (ctx->abi->robust_buffer_access || image) {
       ac_build_endif(&ctx->ac, -1);
 
       LLVMBasicBlockRef incoming_blocks[2] = {
@@ -1863,7 +1866,7 @@ static LLVMValueRef visit_atomic_ssbo(struct ac_nir_context *ctx, nir_intrinsic_
 
    if (instr->intrinsic == nir_intrinsic_ssbo_atomic_comp_swap && return_type == ctx->ac.i64) {
       result = emit_ssbo_comp_swap_64(ctx, descriptor, get_src(ctx, instr->src[1]),
-                                      get_src(ctx, instr->src[2]), get_src(ctx, instr->src[3]));
+                                      get_src(ctx, instr->src[2]), get_src(ctx, instr->src[3]), false);
    } else {
       if (instr->intrinsic == nir_intrinsic_ssbo_atomic_comp_swap) {
          params[arg_count++] = ac_llvm_extract_elem(&ctx->ac, get_src(ctx, instr->src[3]), 0);
@@ -2410,8 +2413,9 @@ static LLVMValueRef visit_image_load(struct ac_nir_context *ctx, const nir_intri
    args.cache_policy = get_cache_policy(ctx, access, false, false);
 
    if (dim == GLSL_SAMPLER_DIM_BUF) {
-      unsigned mask = nir_ssa_def_components_read(&instr->dest.ssa);
-      unsigned num_channels = util_last_bit(mask);
+      unsigned num_channels = util_last_bit(nir_ssa_def_components_read(&instr->dest.ssa));
+      if (instr->dest.ssa.bit_size == 64)
+         num_channels = num_channels < 4 ? 2 : 4;
       LLVMValueRef rsrc, vindex;
 
       rsrc = get_image_buffer_descriptor(ctx, instr, dynamic_index, false, false);
@@ -2444,6 +2448,16 @@ static LLVMValueRef visit_image_load(struct ac_nir_context *ctx, const nir_intri
 
       res = ac_build_image_opcode(&ctx->ac, &args);
    }
+
+   if (instr->dest.ssa.bit_size == 64) {
+      res = LLVMBuildBitCast(ctx->ac.builder, res, LLVMVectorType(ctx->ac.i64, 2), "");
+      LLVMValueRef x = LLVMBuildExtractElement(ctx->ac.builder, res, ctx->ac.i32_0, "");
+      LLVMValueRef w = LLVMBuildExtractElement(ctx->ac.builder, res, ctx->ac.i32_1, "");
+
+      LLVMValueRef values[4] = {x, ctx->ac.i64_0, ctx->ac.i64_0, w};
+      res = ac_build_gather_values(&ctx->ac, values, 4);
+   }
+
    return exit_waterfall(ctx, &wctx, res);
 }
 
@@ -2479,9 +2493,17 @@ static void visit_image_store(struct ac_nir_context *ctx, const nir_intrinsic_in
 
    args.cache_policy = get_cache_policy(ctx, access, true, writeonly_memory);
 
+   LLVMValueRef src = get_src(ctx, instr->src[3]);
+   if (instr->src[3].ssa->bit_size == 64) {
+      /* only R64_UINT and R64_SINT supported */
+      src = ac_llvm_extract_elem(&ctx->ac, src, 0);
+      src = LLVMBuildBitCast(ctx->ac.builder, src, ctx->ac.v2f32, "");
+   } else {
+      src = ac_to_float(&ctx->ac, src);
+   }
+
    if (dim == GLSL_SAMPLER_DIM_BUF) {
       LLVMValueRef rsrc = get_image_buffer_descriptor(ctx, instr, dynamic_index, true, false);
-      LLVMValueRef src = ac_to_float(&ctx->ac, get_src(ctx, instr->src[3]));
       unsigned src_channels = ac_get_llvm_num_components(src);
       LLVMValueRef vindex;
 
@@ -2496,7 +2518,7 @@ static void visit_image_store(struct ac_nir_context *ctx, const nir_intrinsic_in
       bool level_zero = nir_src_is_const(instr->src[4]) && nir_src_as_uint(instr->src[4]) == 0;
 
       args.opcode = level_zero ? ac_image_store : ac_image_store_mip;
-      args.data[0] = ac_to_float(&ctx->ac, get_src(ctx, instr->src[3]));
+      args.data[0] = src;
       args.resource = get_image_descriptor(ctx, instr, dynamic_index, AC_DESC_IMAGE, true);
       get_image_coords(ctx, instr, dynamic_index, &args, dim, is_array);
       args.dim = ac_get_image_dim(ctx->ac.chip_class, dim, is_array);
@@ -2621,24 +2643,30 @@ static LLVMValueRef visit_image_atomic(struct ac_nir_context *ctx, const nir_int
       params[param_count++] = LLVMBuildExtractElement(ctx->ac.builder, get_src(ctx, instr->src[1]),
                                                       ctx->ac.i32_0, ""); /* vindex */
       params[param_count++] = ctx->ac.i32_0;                              /* voffset */
-      if (LLVM_VERSION_MAJOR >= 9) {
-         /* XXX: The new raw/struct atomic intrinsics are buggy
-          * with LLVM 8, see r358579.
-          */
-         params[param_count++] = ctx->ac.i32_0; /* soffset */
-         params[param_count++] = ctx->ac.i32_0; /* slc */
-
-         length = snprintf(intrinsic_name, sizeof(intrinsic_name),
-                           "llvm.amdgcn.struct.buffer.atomic.%s.i32", atomic_name);
+      if (cmpswap && instr->dest.ssa.bit_size == 64) {
+         result = emit_ssbo_comp_swap_64(ctx, params[2], params[3], params[1], params[0], true);
       } else {
-         params[param_count++] = ctx->ac.i1false; /* slc */
+         if (LLVM_VERSION_MAJOR >= 9) {
+            /* XXX: The new raw/struct atomic intrinsics are buggy
+             * with LLVM 8, see r358579.
+             */
+            params[param_count++] = ctx->ac.i32_0; /* soffset */
+            params[param_count++] = ctx->ac.i32_0; /* slc */
 
-         length = snprintf(intrinsic_name, sizeof(intrinsic_name), "llvm.amdgcn.buffer.atomic.%s",
-                           atomic_name);
+            length = snprintf(intrinsic_name, sizeof(intrinsic_name),
+                              "llvm.amdgcn.struct.buffer.atomic.%s.%s", atomic_name,
+                              instr->dest.ssa.bit_size == 64 ? "i64" : "i32");
+         } else {
+            assert(instr->dest.ssa.bit_size == 64);
+            params[param_count++] = ctx->ac.i1false; /* slc */
+
+            length = snprintf(intrinsic_name, sizeof(intrinsic_name), "llvm.amdgcn.buffer.atomic.%s",
+                              atomic_name);
+         }
+
+         assert(length < sizeof(intrinsic_name));
+         result = ac_build_intrinsic(&ctx->ac, intrinsic_name, LLVMTypeOf(params[0]), params, param_count, 0);
       }
-
-      assert(length < sizeof(intrinsic_name));
-      result = ac_build_intrinsic(&ctx->ac, intrinsic_name, ctx->ac.i32, params, param_count, 0);
    } else {
       struct ac_image_args args = {0};
       args.opcode = cmpswap ? ac_image_atomic_cmpswap : ac_image_atomic;
