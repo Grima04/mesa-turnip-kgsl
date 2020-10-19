@@ -36,6 +36,7 @@
 #include "util/u_thread.h"
 #include "util/u_atomic.h"
 #include "util/timespec.h"
+#include "os_time.h"
 
 static VkResult
 lvp_physical_device_init(struct lvp_physical_device *device,
@@ -1026,14 +1027,14 @@ static VkResult queue_wait_idle(struct lvp_queue *queue, uint64_t timeout)
       return p_atomic_read(&queue->count) == 0 ? VK_SUCCESS : VK_TIMEOUT;
    if (timeout == UINT64_MAX)
       while (p_atomic_read(&queue->count))
-         usleep(100);
+         os_time_sleep(100);
    else {
       struct timespec t, current;
       clock_gettime(CLOCK_MONOTONIC, &current);
       timespec_add_nsec(&t, &current, timeout);
       bool timedout = false;
       while (p_atomic_read(&queue->count) && !(timedout = timespec_passed(CLOCK_MONOTONIC, &t)))
-         usleep(10);
+         os_time_sleep(10);
       if (timedout)
          return VK_TIMEOUT;
    }
