@@ -52,6 +52,8 @@ files_mesa_util = files(
   'format_r11g11b10f.h',
   'format_rgb9e5.h',
   'format_srgb.h',
+  'fossilize_db.c',
+  'fossilize_db.h',
   'futex.h',
   'half_float.c',
   'half_float.h',
