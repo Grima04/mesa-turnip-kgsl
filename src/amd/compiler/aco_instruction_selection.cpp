@@ -409,7 +409,7 @@ void expand_vector(isel_context* ctx, Temp vec_src, Temp dst, unsigned num_compo
             src = bld.as_uniform(src);
          vec->operands[i] = Operand(src);
       } else {
-         vec->operands[i] = Operand(0u);
+         vec->operands[i] = Operand(0u, component_size == 2);
       }
       elems[i] = vec->operands[i].getTemp();
    }
@@ -5762,14 +5762,32 @@ void visit_image_load(isel_context *ctx, nir_intrinsic_instr *instr)
    memory_sync_info sync = get_memory_sync_info(instr, storage_image, 0);
    unsigned access = var->data.access | nir_intrinsic_access(instr);
 
+   unsigned expand_mask = nir_ssa_def_components_read(&instr->dest.ssa);
+   if (dim == GLSL_SAMPLER_DIM_BUF)
+      expand_mask = (1u << util_last_bit(expand_mask)) - 1;
+   unsigned dmask = expand_mask;
+   if (instr->dest.ssa.bit_size == 64) {
+      expand_mask &= 0x9;
+      /* only R64_UINT and R64_SINT supported. x is in xy of the result, w in zw */
+      dmask = ((expand_mask & 0x1) ? 0x3 : 0) | ((expand_mask & 0x8) ? 0xc : 0);
+   }
+   unsigned num_components = util_bitcount(dmask);
+
+   Temp tmp;
+   if (num_components == dst.size() && dst.type() == RegType::vgpr)
+      tmp = dst;
+   else
+      tmp = ctx->program->allocateTmp(RegClass(RegType::vgpr, num_components));
+
+   Temp resource = get_sampler_desc(ctx, nir_instr_as_deref(instr->src[0].ssa->parent_instr),
+                                    dim == GLSL_SAMPLER_DIM_BUF ? ACO_DESC_BUFFER : ACO_DESC_IMAGE,
+                                    nullptr, true, true);
+
    if (dim == GLSL_SAMPLER_DIM_BUF) {
-      unsigned mask = nir_ssa_def_components_read(&instr->dest.ssa);
-      unsigned num_channels = util_last_bit(mask);
-      Temp rsrc = get_sampler_desc(ctx, nir_instr_as_deref(instr->src[0].ssa->parent_instr), ACO_DESC_BUFFER, nullptr, true, true);
       Temp vindex = emit_extract_vector(ctx, get_ssa_temp(ctx, instr->src[1].ssa), 0, v1);
 
       aco_opcode opcode;
-      switch (num_channels) {
+      switch (num_components) {
       case 1:
          opcode = aco_opcode::buffer_load_format_x;
          break;
@@ -5786,55 +5804,37 @@ void visit_image_load(isel_context *ctx, nir_intrinsic_instr *instr)
          unreachable(">4 channel buffer image load");
       }
       aco_ptr<MUBUF_instruction> load{create_instruction<MUBUF_instruction>(opcode, Format::MUBUF, 3, 1)};
-      load->operands[0] = Operand(rsrc);
+      load->operands[0] = Operand(resource);
       load->operands[1] = Operand(vindex);
       load->operands[2] = Operand((uint32_t) 0);
-      Temp tmp;
-      if (num_channels == instr->dest.ssa.num_components && dst.type() == RegType::vgpr)
-         tmp = dst;
-      else
-         tmp = ctx->program->allocateTmp(RegClass(RegType::vgpr, num_channels));
       load->definitions[0] = Definition(tmp);
       load->idxen = true;
       load->glc = access & (ACCESS_VOLATILE | ACCESS_COHERENT);
       load->dlc = load->glc && ctx->options->chip_class >= GFX10;
       load->sync = sync;
       ctx->block->instructions.emplace_back(std::move(load));
+   } else {
+      Temp coords = get_image_coords(ctx, instr, type);
 
-      expand_vector(ctx, tmp, dst, instr->dest.ssa.num_components, (1 << num_channels) - 1);
-      return;
+      bool level_zero = nir_src_is_const(instr->src[3]) && nir_src_as_uint(instr->src[3]) == 0;
+      aco_opcode opcode = level_zero ? aco_opcode::image_load : aco_opcode::image_load_mip;
+
+      aco_ptr<MIMG_instruction> load{create_instruction<MIMG_instruction>(opcode, Format::MIMG, 3, 1)};
+      load->operands[0] = Operand(resource);
+      load->operands[1] = Operand(s4); /* no sampler */
+      load->operands[2] = Operand(coords);
+      load->definitions[0] = Definition(tmp);
+      load->glc = access & (ACCESS_VOLATILE | ACCESS_COHERENT) ? 1 : 0;
+      load->dlc = load->glc && ctx->options->chip_class >= GFX10;
+      load->dim = ac_get_image_dim(ctx->options->chip_class, dim, is_array);
+      load->dmask = dmask;
+      load->unrm = true;
+      load->da = should_declare_array(ctx, dim, glsl_sampler_type_is_array(type));
+      load->sync = sync;
+      ctx->block->instructions.emplace_back(std::move(load));
    }
 
-   Temp coords = get_image_coords(ctx, instr, type);
-   Temp resource = get_sampler_desc(ctx, nir_instr_as_deref(instr->src[0].ssa->parent_instr), ACO_DESC_IMAGE, nullptr, true, true);
-
-   unsigned dmask = nir_ssa_def_components_read(&instr->dest.ssa);
-   unsigned num_components = util_bitcount(dmask);
-   Temp tmp;
-   if (num_components == instr->dest.ssa.num_components && dst.type() == RegType::vgpr)
-      tmp = dst;
-   else
-      tmp = ctx->program->allocateTmp(RegClass(RegType::vgpr, num_components));
-
-   bool level_zero = nir_src_is_const(instr->src[3]) && nir_src_as_uint(instr->src[3]) == 0;
-   aco_opcode opcode = level_zero ? aco_opcode::image_load : aco_opcode::image_load_mip;
-
-   aco_ptr<MIMG_instruction> load{create_instruction<MIMG_instruction>(opcode, Format::MIMG, 3, 1)};
-   load->operands[0] = Operand(resource);
-   load->operands[1] = Operand(s4); /* no sampler */
-   load->operands[2] = Operand(coords);
-   load->definitions[0] = Definition(tmp);
-   load->glc = access & (ACCESS_VOLATILE | ACCESS_COHERENT) ? 1 : 0;
-   load->dlc = load->glc && ctx->options->chip_class >= GFX10;
-   load->dim = ac_get_image_dim(ctx->options->chip_class, dim, is_array);
-   load->dmask = dmask;
-   load->unrm = true;
-   load->da = should_declare_array(ctx, dim, glsl_sampler_type_is_array(type));
-   load->sync = sync;
-   ctx->block->instructions.emplace_back(std::move(load));
-
-   expand_vector(ctx, tmp, dst, instr->dest.ssa.num_components, dmask);
-   return;
+   expand_vector(ctx, tmp, dst, instr->dest.ssa.num_components, expand_mask);
 }
 
 void visit_image_store(isel_context *ctx, nir_intrinsic_instr *instr)
@@ -5843,7 +5843,12 @@ void visit_image_store(isel_context *ctx, nir_intrinsic_instr *instr)
    const struct glsl_type *type = glsl_without_array(var->type);
    const enum glsl_sampler_dim dim = glsl_get_sampler_dim(type);
    bool is_array = glsl_sampler_type_is_array(type);
-   Temp data = as_vgpr(ctx, get_ssa_temp(ctx, instr->src[3].ssa));
+   Temp data = get_ssa_temp(ctx, instr->src[3].ssa);
+
+   /* only R64_UINT and R64_SINT supported */
+   if (instr->src[3].ssa->bit_size == 64 && data.bytes() > 8)
+      data = emit_extract_vector(ctx, data, 0, RegClass(data.type(), 2));
+   data = as_vgpr(ctx, data);
 
    memory_sync_info sync = get_memory_sync_info(instr, storage_image, 0);
    unsigned access = var->data.access | nir_intrinsic_access(instr);
@@ -5928,51 +5933,62 @@ void visit_image_atomic(isel_context *ctx, nir_intrinsic_instr *instr)
    Builder bld(ctx->program, ctx->block);
 
    Temp data = as_vgpr(ctx, get_ssa_temp(ctx, instr->src[3].ssa));
-   assert(data.size() == 1 && "64bit ssbo atomics not yet implemented.");
+   bool is_64bit = data.bytes() == 8;
+   assert((data.bytes() == 4 || data.bytes() == 8) && "only 32/64-bit image atomics implemented.");
 
    if (instr->intrinsic == nir_intrinsic_image_deref_atomic_comp_swap)
-      data = bld.pseudo(aco_opcode::p_create_vector, bld.def(v2), get_ssa_temp(ctx, instr->src[4].ssa), data);
+      data = bld.pseudo(aco_opcode::p_create_vector, bld.def(is_64bit ? v4 : v2), get_ssa_temp(ctx, instr->src[4].ssa), data);
 
-   aco_opcode buf_op, image_op;
+   aco_opcode buf_op, buf_op64, image_op;
    switch (instr->intrinsic) {
       case nir_intrinsic_image_deref_atomic_add:
          buf_op = aco_opcode::buffer_atomic_add;
+         buf_op64 = aco_opcode::buffer_atomic_add_x2;
          image_op = aco_opcode::image_atomic_add;
          break;
       case nir_intrinsic_image_deref_atomic_umin:
          buf_op = aco_opcode::buffer_atomic_umin;
+         buf_op64 = aco_opcode::buffer_atomic_umin_x2;
          image_op = aco_opcode::image_atomic_umin;
          break;
       case nir_intrinsic_image_deref_atomic_imin:
          buf_op = aco_opcode::buffer_atomic_smin;
+         buf_op64 = aco_opcode::buffer_atomic_smin_x2;
          image_op = aco_opcode::image_atomic_smin;
          break;
       case nir_intrinsic_image_deref_atomic_umax:
          buf_op = aco_opcode::buffer_atomic_umax;
+         buf_op64 = aco_opcode::buffer_atomic_umax_x2;
          image_op = aco_opcode::image_atomic_umax;
          break;
       case nir_intrinsic_image_deref_atomic_imax:
          buf_op = aco_opcode::buffer_atomic_smax;
+         buf_op64 = aco_opcode::buffer_atomic_smax_x2;
          image_op = aco_opcode::image_atomic_smax;
          break;
       case nir_intrinsic_image_deref_atomic_and:
          buf_op = aco_opcode::buffer_atomic_and;
+         buf_op64 = aco_opcode::buffer_atomic_and_x2;
          image_op = aco_opcode::image_atomic_and;
          break;
       case nir_intrinsic_image_deref_atomic_or:
          buf_op = aco_opcode::buffer_atomic_or;
+         buf_op64 = aco_opcode::buffer_atomic_or_x2;
          image_op = aco_opcode::image_atomic_or;
          break;
       case nir_intrinsic_image_deref_atomic_xor:
          buf_op = aco_opcode::buffer_atomic_xor;
+         buf_op64 = aco_opcode::buffer_atomic_xor_x2;
          image_op = aco_opcode::image_atomic_xor;
          break;
       case nir_intrinsic_image_deref_atomic_exchange:
          buf_op = aco_opcode::buffer_atomic_swap;
+         buf_op64 = aco_opcode::buffer_atomic_swap_x2;
          image_op = aco_opcode::image_atomic_swap;
          break;
       case nir_intrinsic_image_deref_atomic_comp_swap:
          buf_op = aco_opcode::buffer_atomic_cmpswap;
+         buf_op64 = aco_opcode::buffer_atomic_cmpswap_x2;
          image_op = aco_opcode::image_atomic_cmpswap;
          break;
       default:
@@ -5986,7 +6002,8 @@ void visit_image_atomic(isel_context *ctx, nir_intrinsic_instr *instr)
       Temp vindex = emit_extract_vector(ctx, get_ssa_temp(ctx, instr->src[1].ssa), 0, v1);
       Temp resource = get_sampler_desc(ctx, nir_instr_as_deref(instr->src[0].ssa->parent_instr), ACO_DESC_BUFFER, nullptr, true, true);
       //assert(ctx->options->chip_class < GFX9 && "GFX9 stride size workaround not yet implemented.");
-      aco_ptr<MUBUF_instruction> mubuf{create_instruction<MUBUF_instruction>(buf_op, Format::MUBUF, 4, return_previous ? 1 : 0)};
+      aco_ptr<MUBUF_instruction> mubuf{create_instruction<MUBUF_instruction>(
+         is_64bit ? buf_op64 : buf_op, Format::MUBUF, 4, return_previous ? 1 : 0)};
       mubuf->operands[0] = Operand(resource);
       mubuf->operands[1] = Operand(vindex);
       mubuf->operands[2] = Operand((uint32_t)0);
