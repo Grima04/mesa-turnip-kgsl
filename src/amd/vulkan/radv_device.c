@@ -430,7 +430,7 @@ radv_physical_device_try_create(struct radv_instance *instance,
 		device->bus_info = *drm_device->businfo.pci;
 
 	if ((device->instance->debug_flags & RADV_DEBUG_INFO))
-		ac_print_gpu_info(&device->rad_info);
+		ac_print_gpu_info(&device->rad_info, stdout);
 
 	/* The WSI is structured as a layer on top of the driver, so this has
 	 * to be the last part of initialization (at least until we get other
