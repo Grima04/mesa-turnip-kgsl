@@ -533,6 +533,35 @@ static unsigned radv_map_swizzle(unsigned swizzle)
 }
 
 static void
+radv_compose_swizzle(const struct vk_format_description *desc,
+		     const VkComponentMapping *mapping, enum vk_swizzle swizzle[4])
+{
+	if (desc->format == VK_FORMAT_R64_UINT || desc->format == VK_FORMAT_R64_SINT) {
+		/* 64-bit formats only support storage images and storage images
+		 * require identity component mappings. We use 32-bit
+		 * instructions to access 64-bit images, so we need a special
+		 * case here.
+		 *
+		 * The zw components are 1,0 so that they can be easily be used
+		 * by loads to create the w component, which has to be 0 for
+		 * NULL descriptors.
+		 */
+		swizzle[0] = VK_SWIZZLE_X;
+		swizzle[1] = VK_SWIZZLE_Y;
+		swizzle[2] = VK_SWIZZLE_1;
+		swizzle[3] = VK_SWIZZLE_0;
+	} else if (!mapping) {
+		for (unsigned i = 0; i < 4; i++)
+			swizzle[i] = desc->swizzle[i];
+	} else if (desc->colorspace == VK_FORMAT_COLORSPACE_ZS) {
+		const unsigned char swizzle_xxxx[4] = {0, 0, 0, 0};
+		vk_format_compose_swizzles(mapping, swizzle_xxxx, swizzle);
+	} else {
+		vk_format_compose_swizzles(mapping, desc->swizzle, swizzle);
+	}
+}
+
+static void
 radv_make_buffer_descriptor(struct radv_device *device,
 			    struct radv_buffer *buffer,
 			    VkFormat vk_format,
@@ -546,9 +575,12 @@ radv_make_buffer_descriptor(struct radv_device *device,
 	uint64_t va = gpu_address + buffer->offset;
 	unsigned num_format, data_format;
 	int first_non_void;
+	enum vk_swizzle swizzle[4];
 	desc = vk_format_description(vk_format);
 	first_non_void = vk_format_get_first_non_void_channel(vk_format);
 	stride = desc->block.bits / 8;
+
+	radv_compose_swizzle(desc, NULL, swizzle);
 
 	va += offset;
 	state[0] = va;
@@ -560,10 +592,10 @@ radv_make_buffer_descriptor(struct radv_device *device,
 	}
 
 	state[2] = range;
-	state[3] = S_008F0C_DST_SEL_X(radv_map_swizzle(desc->swizzle[0])) |
-		   S_008F0C_DST_SEL_Y(radv_map_swizzle(desc->swizzle[1])) |
-		   S_008F0C_DST_SEL_Z(radv_map_swizzle(desc->swizzle[2])) |
-		   S_008F0C_DST_SEL_W(radv_map_swizzle(desc->swizzle[3]));
+	state[3] = S_008F0C_DST_SEL_X(radv_map_swizzle(swizzle[0])) |
+		   S_008F0C_DST_SEL_Y(radv_map_swizzle(swizzle[1])) |
+		   S_008F0C_DST_SEL_Z(radv_map_swizzle(swizzle[2])) |
+		   S_008F0C_DST_SEL_W(radv_map_swizzle(swizzle[3]));
 
 	if (device->physical_device->rad_info.chip_class >= GFX10) {
 		const struct gfx10_format *fmt = &gfx10_format_table[vk_format_to_pipe_format(vk_format)];
@@ -798,12 +830,7 @@ gfx10_make_texture_descriptor(struct radv_device *device,
 	desc = vk_format_description(vk_format);
 	img_format = gfx10_format_table[vk_format_to_pipe_format(vk_format)].img_format;
 
-	if (desc->colorspace == VK_FORMAT_COLORSPACE_ZS) {
-		const unsigned char swizzle_xxxx[4] = {0, 0, 0, 0};
-		vk_format_compose_swizzles(mapping, swizzle_xxxx, swizzle);
-	} else {
-		vk_format_compose_swizzles(mapping, desc->swizzle, swizzle);
-	}
+	radv_compose_swizzle(desc, mapping, swizzle);
 
 	type = radv_tex_dim(image->type, view_type, image->info.array_size, image->info.samples,
 			    is_storage_image, device->physical_device->rad_info.chip_class == GFX9);
@@ -924,12 +951,7 @@ si_make_texture_descriptor(struct radv_device *device,
 
 	desc = vk_format_description(vk_format);
 
-	if (desc->colorspace == VK_FORMAT_COLORSPACE_ZS) {
-		const unsigned char swizzle_xxxx[4] = {0, 0, 0, 0};
-		vk_format_compose_swizzles(mapping, swizzle_xxxx, swizzle);
-	} else {
-		vk_format_compose_swizzles(mapping, desc->swizzle, swizzle);
-	}
+	radv_compose_swizzle(desc, mapping, swizzle);
 
 	first_non_void = vk_format_get_first_non_void_channel(vk_format);
 

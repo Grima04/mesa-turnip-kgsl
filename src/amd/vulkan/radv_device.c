@@ -1454,6 +1454,13 @@ void radv_GetPhysicalDeviceFeatures2(
 			features->shaderTerminateInvocation = true;
 			break;
 		}
+		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_IMAGE_ATOMIC_INT64_FEATURES_EXT: {
+			VkPhysicalDeviceShaderImageAtomicInt64FeaturesEXT *features =
+				(VkPhysicalDeviceShaderImageAtomicInt64FeaturesEXT *)ext;
+			features->shaderImageInt64Atomics = LLVM_VERSION_MAJOR >= 11 || !pdevice->use_llvm;
+			features->sparseImageInt64Atomics = false;
+			break;
+		}
 		default:
 			break;
 		}
