@@ -28,6 +28,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <sys/utsname.h>
+#include <sys/stat.h>
 
 #include "util/mesa-sha1.h"
 #include "sid.h"
@@ -43,6 +44,8 @@
 #define COLOR_GREEN	"\033[1;32m"
 #define COLOR_YELLOW	"\033[1;33m"
 #define COLOR_CYAN	"\033[1;36m"
+
+#define RADV_DUMP_DIR "radv_dumps"
 
 /* Trace BO layout (offsets are 4 bytes):
  *
@@ -605,8 +608,10 @@ void
 radv_check_gpu_hangs(struct radv_queue *queue, struct radeon_cmdbuf *cs)
 {
 	struct radv_device *device = queue->device;
+	char dump_dir[256], dump_path[512];
 	enum ring_type ring;
 	uint64_t addr;
+	FILE *f;
 
 	ring = radv_queue_family_to_ring(queue->queue_family_index);
 
@@ -618,25 +623,90 @@ radv_check_gpu_hangs(struct radv_queue *queue, struct radeon_cmdbuf *cs)
 	if (!hang_occurred && !vm_fault_occurred)
 		return;
 
+	fprintf(stderr, "radv: GPU hang detected...\n");
+
 	radv_dump_trace(queue->device, cs);
 
-	fprintf(stderr, "GPU hang report:\n\n");
-	radv_dump_device_name(device, stderr);
-	ac_print_gpu_info(&device->physical_device->rad_info, stdout);
-
-	radv_dump_enabled_options(device, stderr);
-	radv_dump_dmesg(stderr);
-	radv_dump_umr_ring(queue, stderr);
-	radv_dump_umr_waves(queue, stderr);
-
-	if (vm_fault_occurred) {
-		fprintf(stderr, "VM fault report.\n\n");
-		fprintf(stderr, "Failing VM page: 0x%08"PRIx64"\n\n", addr);
+	/* Create a directory into $HOME/radv_dumps_<pid> to save various
+	 * debugging info about that GPU hang.
+	 */
+	snprintf(dump_dir, sizeof(dump_dir), "%s/"RADV_DUMP_DIR"_%d",
+		 debug_get_option("HOME", "."), getpid());
+	if (mkdir(dump_dir, 0774) && errno != EEXIST) {
+		fprintf(stderr, "radv: can't create directory '%s' (%i).\n",
+			dump_dir, errno);
+		abort();
 	}
 
-	radv_dump_debug_registers(device, stderr);
-	radv_dump_queue_state(queue, stderr);
+	/* Dump VM fault info. */
+	if (vm_fault_occurred) {
+		snprintf(dump_path, sizeof(dump_path), "%s/%s", dump_dir, "vm_fault.log");
+		f = fopen(dump_path, "w+");
+		if (f) {
+			fprintf(f, "VM fault report.\n\n");
+			fprintf(f, "Failing VM page: 0x%08"PRIx64"\n\n", addr);
+			fclose(f);
+		}
+	}
 
+	/* Dump enabled debug/perftest options. */
+	snprintf(dump_path, sizeof(dump_path), "%s/%s", dump_dir, "options.log");
+	f = fopen(dump_path, "w+");
+	if (f) {
+		radv_dump_enabled_options(device, f);
+		fclose(f);
+	}
+
+	/* Dump GPU info. */
+	snprintf(dump_path, sizeof(dump_path), "%s/%s", dump_dir, "gpu_info.log");
+	f = fopen(dump_path, "w+");
+	if (f) {
+		radv_dump_device_name(device, f);
+		ac_print_gpu_info(&device->physical_device->rad_info, f);
+		fclose(f);
+	}
+
+	/* Dump dmesg. */
+	snprintf(dump_path, sizeof(dump_path), "%s/%s", dump_dir, "dmesg.log");
+	f = fopen(dump_path, "w+");
+	if (f) {
+		radv_dump_dmesg(f);
+		fclose(f);
+	}
+
+	/* Dump UMR ring. */
+	snprintf(dump_path, sizeof(dump_path), "%s/%s", dump_dir, "umr_ring.log");
+	f = fopen(dump_path, "w+");
+	if (f) {
+		radv_dump_umr_ring(queue, f);
+		fclose(f);
+	}
+
+	/* Dump UMR waves. */
+	snprintf(dump_path, sizeof(dump_path), "%s/%s", dump_dir, "umr_waves.log");
+	f = fopen(dump_path, "w+");
+	if (f) {
+		radv_dump_umr_waves(queue, f);
+		fclose(f);
+	}
+
+	/* Dump debug registers. */
+	snprintf(dump_path, sizeof(dump_path), "%s/%s", dump_dir, "registers.log");
+	f = fopen(dump_path, "w+");
+	if (f) {
+		radv_dump_debug_registers(device, f);
+		fclose(f);
+	}
+
+	/* Dump pipeline state. */
+	snprintf(dump_path, sizeof(dump_path), "%s/%s", dump_dir, "pipeline.log");
+	f = fopen(dump_path, "w+");
+	if (f) {
+		radv_dump_queue_state(queue, f);
+		fclose(f);
+	}
+
+	fprintf(stderr, "radv: GPU hang report saved to '%s'!\n", dump_dir);
 	abort();
 }
 
