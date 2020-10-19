@@ -485,21 +485,25 @@ radv_dump_queue_state(struct radv_queue *queue, FILE *f)
 }
 
 static void
-radv_dump_dmesg(FILE *f)
+radv_dump_cmd(const char *cmd, FILE *f)
 {
-	char line[2000];
+	char line[2048];
 	FILE *p;
 
-	p = popen("dmesg | tail -n60", "r");
-	if (!p)
-		return;
+	p = popen(cmd, "r");
+	if (p) {
+		while (fgets(line, sizeof(line), p))
+			fputs(line, f);
+		fprintf(f, "\n");
+		pclose(p);
+	}
+}
 
+static void
+radv_dump_dmesg(FILE *f)
+{
 	fprintf(f, "\nLast 60 lines of dmesg:\n\n");
-	while (fgets(line, sizeof(line), p))
-		fputs(line, f);
-	fprintf(f, "\n");
-
-	pclose(p);
+	radv_dump_cmd("dmesg | tail -n60", f);
 }
 
 void
@@ -602,8 +606,7 @@ void
 radv_print_spirv(const char *data, uint32_t size, FILE *fp)
 {
 	char path[] = "/tmp/fileXXXXXX";
-	char line[2048], command[128];
-	FILE *p;
+	char command[128];
 	int fd;
 
 	/* Dump the binary into a temporary file. */
@@ -614,15 +617,9 @@ radv_print_spirv(const char *data, uint32_t size, FILE *fp)
 	if (write(fd, data, size) == -1)
 		goto fail;
 
-	sprintf(command, "spirv-dis %s", path);
-
 	/* Disassemble using spirv-dis if installed. */
-	p = popen(command, "r");
-	if (p) {
-		while (fgets(line, sizeof(line), p))
-			fprintf(fp, "%s", line);
-		pclose(p);
-	}
+	sprintf(command, "spirv-dis %s", path);
+	radv_dump_cmd(command, fp);
 
 fail:
 	close(fd);
