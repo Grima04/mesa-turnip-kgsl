@@ -211,6 +211,7 @@ get_device_extensions(const struct anv_physical_device *device,
       .KHR_external_memory_fd                = true,
       .KHR_external_semaphore                = true,
       .KHR_external_semaphore_fd             = true,
+      .KHR_fragment_shading_rate             = device->info.ver >= 11,
       .KHR_get_memory_requirements2          = true,
       .KHR_image_format_list                 = true,
       .KHR_imageless_framebuffer             = true,
@@ -1467,6 +1468,13 @@ void anv_GetPhysicalDeviceFeatures2(
          break;
       }
 
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADING_RATE_FEATURES_KHR: {
+         VkPhysicalDeviceFragmentShadingRateFeaturesKHR *features =
+            (VkPhysicalDeviceFragmentShadingRateFeaturesKHR *)ext;
+         features->pipelineFragmentShadingRate = true;
+         break;
+      }
+
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_ROBUSTNESS_FEATURES_EXT: {
          VkPhysicalDeviceImageRobustnessFeaturesEXT *features =
             (VkPhysicalDeviceImageRobustnessFeaturesEXT *)ext;
@@ -2207,6 +2215,49 @@ void anv_GetPhysicalDeviceProperties2(
          CORE_PROPERTY(1, 2, maxDescriptorSetUpdateAfterBindSampledImages);
          CORE_PROPERTY(1, 2, maxDescriptorSetUpdateAfterBindStorageImages);
          CORE_PROPERTY(1, 2, maxDescriptorSetUpdateAfterBindInputAttachments);
+         break;
+      }
+
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADING_RATE_PROPERTIES_KHR: {
+         VkPhysicalDeviceFragmentShadingRatePropertiesKHR *props =
+            (VkPhysicalDeviceFragmentShadingRatePropertiesKHR *)ext;
+         if (pdevice->info.ver < 11) {
+            props->minFragmentShadingRateAttachmentTexelSize = (VkExtent2D) { 0, 0 };
+            props->maxFragmentShadingRateAttachmentTexelSize = (VkExtent2D) { 0, 0 };
+            props->maxFragmentShadingRateAttachmentTexelSizeAspectRatio = 0;
+            props->primitiveFragmentShadingRateWithMultipleViewports = false;
+            props->layeredShadingRateAttachments = false;
+            props->fragmentShadingRateNonTrivialCombinerOps = true;
+            props->maxFragmentSize = (VkExtent2D) { 1, 1 };
+            props->maxFragmentSizeAspectRatio = 1;
+            props->maxFragmentShadingRateCoverageSamples = 0;
+            props->maxFragmentShadingRateRasterizationSamples = 0;
+            props->fragmentShadingRateWithShaderDepthStencilWrites = false;
+            props->fragmentShadingRateWithSampleMask = false;
+            props->fragmentShadingRateWithShaderSampleMask = false;
+            props->fragmentShadingRateWithConservativeRasterization = true;
+            props->fragmentShadingRateWithFragmentShaderInterlock = false;
+            props->fragmentShadingRateWithCustomSampleLocations = false;
+            props->fragmentShadingRateStrictMultiplyCombiner = false;
+         } else {
+            props->minFragmentShadingRateAttachmentTexelSize = (VkExtent2D) { 1, 1 };
+            props->maxFragmentShadingRateAttachmentTexelSize = (VkExtent2D) { 4, 4 };
+            props->maxFragmentShadingRateAttachmentTexelSizeAspectRatio = 0;
+            props->primitiveFragmentShadingRateWithMultipleViewports = pdevice->info.ver >= 12;
+            props->layeredShadingRateAttachments = false;
+            props->fragmentShadingRateNonTrivialCombinerOps = true;
+            props->maxFragmentSize = (VkExtent2D) { 4, 4 };
+            props->maxFragmentSizeAspectRatio = 4;
+            props->maxFragmentShadingRateCoverageSamples = 4 * 4;
+            props->maxFragmentShadingRateRasterizationSamples = VK_SAMPLE_COUNT_16_BIT;
+            props->fragmentShadingRateWithShaderDepthStencilWrites = false;
+            props->fragmentShadingRateWithSampleMask = true;
+            props->fragmentShadingRateWithShaderSampleMask = false;
+            props->fragmentShadingRateWithConservativeRasterization = true;
+            props->fragmentShadingRateWithFragmentShaderInterlock = true;
+            props->fragmentShadingRateWithCustomSampleLocations = true;
+            props->fragmentShadingRateStrictMultiplyCombiner = false;
+         }
          break;
       }
 
@@ -4736,4 +4787,37 @@ vk_icdNegotiateLoaderICDInterfaceVersion(uint32_t* pSupportedVersion)
     */
    *pSupportedVersion = MIN2(*pSupportedVersion, 4u);
    return VK_SUCCESS;
+}
+
+VkResult anv_GetPhysicalDeviceFragmentShadingRatesKHR(
+    VkPhysicalDevice                            physicalDevice,
+    uint32_t*                                   pFragmentShadingRateCount,
+    VkPhysicalDeviceFragmentShadingRateKHR*     pFragmentShadingRates)
+{
+   ANV_FROM_HANDLE(anv_physical_device, physical_device, physicalDevice);
+   VK_OUTARRAY_MAKE(out, pFragmentShadingRates, pFragmentShadingRateCount);
+
+#define append_rate(_samples, _width, _height)                          \
+   do {                                                                 \
+      vk_outarray_append(&out, __r) {                                   \
+         __r->sampleCounts = _samples;                                  \
+         __r->fragmentSize = (VkExtent2D) {                             \
+            .width = _width,                                            \
+            .height = _height,                                          \
+         };                                                             \
+      }                                                                 \
+   } while (0)
+
+   VkSampleCountFlags sample_counts =
+      isl_device_get_sample_counts(&physical_device->isl_dev);
+
+   for (uint32_t x = 4; x >= 1; x /= 2) {
+       for (uint32_t y = 4; y >= 1; y /= 2) {
+         append_rate(sample_counts, x, y);
+      }
+   }
+
+#undef append_rate
+
+   return vk_outarray_status(&out);
 }

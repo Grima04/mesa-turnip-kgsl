@@ -171,6 +171,7 @@ anv_shader_compile_to_nir(struct anv_device *device,
          .vk_memory_model = true,
          .vk_memory_model_device_scope = true,
          .workgroup_memory_explicit_layout = true,
+         .fragment_shading_rate = pdevice->info.ver >= 11,
       },
       .ubo_addr_format =
          anv_nir_ubo_addr_format(pdevice, device->robust_buffer_access),
@@ -322,6 +323,8 @@ void anv_DestroyPipeline(
 
       if (gfx_pipeline->blend_state.map)
          anv_state_pool_free(&device->dynamic_state_pool, gfx_pipeline->blend_state);
+      if (gfx_pipeline->cps_state.map)
+         anv_state_pool_free(&device->dynamic_state_pool, gfx_pipeline->cps_state);
 
       for (unsigned s = 0; s < MESA_SHADER_STAGES; s++) {
          if (gfx_pipeline->shaders[s])
@@ -458,14 +461,42 @@ populate_gs_prog_key(const struct intel_device_info *devinfo,
    populate_base_prog_key(devinfo, flags, robust_buffer_acccess, &key->base);
 }
 
+static bool
+pipeline_has_coarse_pixel(const struct anv_graphics_pipeline *pipeline,
+                          const VkPipelineFragmentShadingRateStateCreateInfoKHR *fsr_info)
+{
+   if (pipeline->sample_shading_enable)
+      return false;
+
+   /* Not dynamic & not specified for the pipeline. */
+   if ((pipeline->dynamic_states & ANV_CMD_DIRTY_DYNAMIC_SHADING_RATE) == 0 && !fsr_info)
+      return false;
+
+   /* Not dynamic & pipeline has a 1x1 fragment shading rate with no
+    * possibility for element of the pipeline to change the value.
+    */
+   if ((pipeline->dynamic_states & ANV_CMD_DIRTY_DYNAMIC_SHADING_RATE) == 0 &&
+       fsr_info->fragmentSize.width <= 1 &&
+       fsr_info->fragmentSize.height <= 1 &&
+       fsr_info->combinerOps[0] == VK_FRAGMENT_SHADING_RATE_COMBINER_OP_KEEP_KHR &&
+       fsr_info->combinerOps[1] == VK_FRAGMENT_SHADING_RATE_COMBINER_OP_KEEP_KHR)
+      return false;
+
+   return true;
+}
+
 static void
-populate_wm_prog_key(const struct intel_device_info *devinfo,
+populate_wm_prog_key(const struct anv_graphics_pipeline *pipeline,
                      VkPipelineShaderStageCreateFlags flags,
                      bool robust_buffer_acccess,
                      const struct anv_subpass *subpass,
                      const VkPipelineMultisampleStateCreateInfo *ms_info,
+                     const VkPipelineFragmentShadingRateStateCreateInfoKHR *fsr_info,
                      struct brw_wm_prog_key *key)
 {
+   const struct anv_device *device = pipeline->base.device;
+   const struct intel_device_info *devinfo = &device->info;
+
    memset(key, 0, sizeof(*key));
 
    populate_base_prog_key(devinfo, flags, robust_buffer_acccess, &key->base);
@@ -513,6 +544,10 @@ populate_wm_prog_key(const struct intel_device_info *devinfo,
 
       key->frag_coord_adds_sample_pos = key->persample_interp;
    }
+
+   key->coarse_pixel =
+      device->vk.enabled_extensions.KHR_fragment_shading_rate &&
+      pipeline_has_coarse_pixel(pipeline, fsr_info);
 }
 
 static void
@@ -1304,10 +1339,12 @@ anv_pipeline_compile_graphics(struct anv_graphics_pipeline *pipeline,
       case MESA_SHADER_FRAGMENT: {
          const bool raster_enabled =
             !info->pRasterizationState->rasterizerDiscardEnable;
-         populate_wm_prog_key(devinfo, sinfo->flags,
+         populate_wm_prog_key(pipeline, sinfo->flags,
                               pipeline->base.device->robust_buffer_access,
                               pipeline->subpass,
                               raster_enabled ? info->pMultisampleState : NULL,
+                              vk_find_struct_const(info->pNext,
+                                                   PIPELINE_FRAGMENT_SHADING_RATE_STATE_CREATE_INFO_KHR),
                               &stages[stage].key.wm);
          break;
       }
@@ -1436,6 +1473,24 @@ anv_pipeline_compile_graphics(struct anv_graphics_pipeline *pipeline,
       if (stages[s].nir == NULL) {
          result = vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
          goto fail;
+      }
+
+      /* This is rather ugly.
+       *
+       * Any variable annotated as interpolated by sample essentially disables
+       * coarse pixel shading. Unfortunately the CTS tests exercising this set
+       * the varying value in the previous stage using a constant. Our NIR
+       * infrastructure is clever enough to lookup variables across stages and
+       * constant fold, removing the variable. So in order to comply with CTS
+       * we have check variables here.
+       */
+      if (s == MESA_SHADER_FRAGMENT) {
+         nir_foreach_variable_in_list(var, &stages[s].nir->variables) {
+            if (var->data.sample) {
+               stages[s].key.wm.coarse_pixel = false;
+               break;
+            }
+         }
       }
 
       stages[s].feedback.duration += os_time_get_nano() - stage_start;
@@ -1861,14 +1916,7 @@ copy_non_dynamic_state(struct anv_graphics_pipeline *pipeline,
 
    pipeline->dynamic_state = default_dynamic_state;
 
-   if (pCreateInfo->pDynamicState) {
-      /* Remove all of the states that are marked as dynamic */
-      uint32_t count = pCreateInfo->pDynamicState->dynamicStateCount;
-      for (uint32_t s = 0; s < count; s++) {
-         states &= ~anv_cmd_dirty_bit_for_vk_dynamic_state(
-            pCreateInfo->pDynamicState->pDynamicStates[s]);
-      }
-   }
+   states &= ~pipeline->dynamic_states;
 
    struct anv_dynamic_state *dynamic = &pipeline->dynamic_state;
 
@@ -2100,14 +2148,22 @@ copy_non_dynamic_state(struct anv_graphics_pipeline *pipeline,
       }
    }
 
+   const VkPipelineFragmentShadingRateStateCreateInfoKHR *fsr_state =
+      vk_find_struct_const(pCreateInfo->pNext,
+                           PIPELINE_FRAGMENT_SHADING_RATE_STATE_CREATE_INFO_KHR);
+   if (fsr_state) {
+      if (states & ANV_CMD_DIRTY_DYNAMIC_SHADING_RATE)
+         dynamic->fragment_shading_rate = fsr_state->fragmentSize;
+   }
+
    pipeline->dynamic_state_mask = states;
 
-   /* For now that only state that can be either dynamic or baked in the
-    * pipeline is the sample location & color blend.
+   /* Mark states that can either be dynamic or fully baked into the pipeline.
     */
    pipeline->static_state_mask = states &
       (ANV_CMD_DIRTY_DYNAMIC_SAMPLE_LOCATIONS |
-       ANV_CMD_DIRTY_DYNAMIC_COLOR_BLEND_STATE);
+       ANV_CMD_DIRTY_DYNAMIC_COLOR_BLEND_STATE |
+       ANV_CMD_DIRTY_DYNAMIC_SHADING_RATE);
 }
 
 static void
@@ -2210,7 +2266,17 @@ anv_graphics_pipeline_init(struct anv_graphics_pipeline *pipeline,
 
    assert(pCreateInfo->pRasterizationState);
 
+   pipeline->dynamic_states = 0;
+   if (pCreateInfo->pDynamicState) {
+      /* Remove all of the states that are marked as dynamic */
+      uint32_t count = pCreateInfo->pDynamicState->dynamicStateCount;
+      for (uint32_t s = 0; s < count; s++) {
+         pipeline->dynamic_states |= anv_cmd_dirty_bit_for_vk_dynamic_state(
+            pCreateInfo->pDynamicState->pDynamicStates[s]);
+      }
+   }
    copy_non_dynamic_state(pipeline, pCreateInfo);
+
    pipeline->depth_clamp_enable = pCreateInfo->pRasterizationState->depthClampEnable;
 
    /* Previously we enabled depth clipping when !depthClampEnable.

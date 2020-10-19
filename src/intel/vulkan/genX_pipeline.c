@@ -374,8 +374,12 @@ emit_3dstate_sbe(struct anv_graphics_pipeline *pipeline)
 
       assert(0 <= input_index);
 
-      /* gl_Viewport and gl_Layer are stored in the VUE header */
-      if (attr == VARYING_SLOT_VIEWPORT || attr == VARYING_SLOT_LAYER) {
+      /* gl_Viewport, gl_Layer and FragmentShadingRateKHR are stored in the
+       * VUE header
+       */
+      if (attr == VARYING_SLOT_VIEWPORT ||
+          attr == VARYING_SLOT_LAYER ||
+          attr == VARYING_SLOT_PRIMITIVE_SHADING_RATE) {
          continue;
       }
 
@@ -828,6 +832,25 @@ emit_ms_state(struct anv_graphics_pipeline *pipeline,
    anv_batch_emit(&pipeline->base.batch, GENX(3DSTATE_SAMPLE_MASK), sm) {
       sm.SampleMask = sample_mask;
    }
+
+   pipeline->cps_state = ANV_STATE_NULL;
+#if GFX_VER >= 11
+   if (!(dynamic_states & ANV_CMD_DIRTY_DYNAMIC_SHADING_RATE) &&
+       pipeline->base.device->vk.enabled_extensions.KHR_fragment_shading_rate) {
+#if GFX_VER >= 12
+      struct anv_device *device = pipeline->base.device;
+      const uint32_t num_dwords =
+         GENX(CPS_STATE_length) * 4 * pipeline->dynamic_state.viewport.count;
+      pipeline->cps_state =
+         anv_state_pool_alloc(&device->dynamic_state_pool, num_dwords, 32);
+#endif
+
+      genX(emit_shading_rate)(&pipeline->base.batch,
+                              pipeline,
+                              pipeline->cps_state,
+                              &pipeline->dynamic_state);
+   }
+#endif
 }
 
 static const uint32_t vk_to_intel_logic_op[] = {
@@ -1571,12 +1594,16 @@ emit_3dstate_streamout(struct anv_graphics_pipeline *pipeline,
 
          int varying = output->location;
          uint8_t component_mask = output->component_mask;
-         /* VARYING_SLOT_PSIZ contains three scalar fields packed together:
-          * - VARYING_SLOT_LAYER    in VARYING_SLOT_PSIZ.y
-          * - VARYING_SLOT_VIEWPORT in VARYING_SLOT_PSIZ.z
-          * - VARYING_SLOT_PSIZ     in VARYING_SLOT_PSIZ.w
+         /* VARYING_SLOT_PSIZ contains four scalar fields packed together:
+          * - VARYING_SLOT_PRIMITIVE_SHADING_RATE in VARYING_SLOT_PSIZ.x
+          * - VARYING_SLOT_LAYER                  in VARYING_SLOT_PSIZ.y
+          * - VARYING_SLOT_VIEWPORT               in VARYING_SLOT_PSIZ.z
+          * - VARYING_SLOT_PSIZ                   in VARYING_SLOT_PSIZ.w
           */
-         if (varying == VARYING_SLOT_LAYER) {
+         if (varying == VARYING_SLOT_PRIMITIVE_SHADING_RATE) {
+            varying = VARYING_SLOT_PSIZ;
+            component_mask = 1 << 0; // SO_DECL_COMPMASK_X
+         } else if (varying == VARYING_SLOT_LAYER) {
             varying = VARYING_SLOT_PSIZ;
             component_mask = 1 << 1; // SO_DECL_COMPMASK_Y
          } else if (varying == VARYING_SLOT_VIEWPORT) {
@@ -2250,12 +2277,20 @@ emit_3dstate_ps_extra(struct anv_graphics_pipeline *pipeline,
       assert(!wm_prog_data->inner_coverage); /* Not available in SPIR-V */
       if (!wm_prog_data->uses_sample_mask)
          ps.InputCoverageMaskState = ICMS_NONE;
+      else if (wm_prog_data->per_coarse_pixel_dispatch)
+         ps.InputCoverageMaskState  = ICMS_NORMAL;
       else if (wm_prog_data->post_depth_coverage)
          ps.InputCoverageMaskState = ICMS_DEPTH_COVERAGE;
       else
          ps.InputCoverageMaskState = ICMS_NORMAL;
 #else
       ps.PixelShaderUsesInputCoverageMask = wm_prog_data->uses_sample_mask;
+#endif
+
+#if GFX_VER >= 11
+      ps.PixelShaderRequiresSourceDepthandorWPlaneCoefficients =
+         wm_prog_data->uses_depth_w_coefficients;
+      ps.PixelShaderIsPerCoarsePixel = wm_prog_data->per_coarse_pixel_dispatch;
 #endif
    }
 }

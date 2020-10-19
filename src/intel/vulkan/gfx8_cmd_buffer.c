@@ -722,6 +722,23 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
       }
    }
 
+#if GFX_VER >= 11
+   if (cmd_buffer->state.gfx.dirty & ANV_CMD_DIRTY_DYNAMIC_SHADING_RATE) {
+      struct anv_state cps_states = ANV_STATE_NULL;
+
+#if GFX_VER >= 12
+      uint32_t count = cmd_buffer->state.gfx.dynamic.viewport.count;
+      cps_states =
+         anv_cmd_buffer_alloc_dynamic_state(cmd_buffer,
+                                            GENX(CPS_STATE_length) * 4 * count,
+                                            32);
+#endif /* GFX_VER >= 12 */
+
+      genX(emit_shading_rate)(&cmd_buffer->batch, pipeline, cps_states,
+                              &cmd_buffer->state.gfx.dynamic);
+   }
+#endif /* GFX_VER >= 11 */
+
    cmd_buffer->state.gfx.dirty = 0;
 }
 

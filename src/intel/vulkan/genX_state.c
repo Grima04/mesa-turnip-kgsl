@@ -576,6 +576,47 @@ genX(emit_sample_pattern)(struct anv_batch *batch, uint32_t samples,
 }
 #endif
 
+#if GFX_VER >= 11
+void
+genX(emit_shading_rate)(struct anv_batch *batch,
+                        const struct anv_graphics_pipeline *pipeline,
+                        struct anv_state cps_states,
+                        struct anv_dynamic_state *dynamic_state)
+{
+   const struct brw_wm_prog_data *wm_prog_data = get_wm_prog_data(pipeline);
+   const bool cps_enable = wm_prog_data && wm_prog_data->per_coarse_pixel_dispatch;
+
+#if GFX_VER == 11
+   anv_batch_emit(batch, GENX(3DSTATE_CPS), cps) {
+      cps.CoarsePixelShadingMode = cps_enable ? CPS_MODE_CONSTANT : CPS_MODE_NONE;
+      if (cps_enable) {
+         cps.MinCPSizeX = dynamic_state->fragment_shading_rate.width;
+         cps.MinCPSizeY = dynamic_state->fragment_shading_rate.height;
+      }
+   }
+#elif GFX_VER == 12
+   for (uint32_t i = 0; i < dynamic_state->viewport.count; i++) {
+      uint32_t *cps_state_dwords =
+         cps_states.map + GENX(CPS_STATE_length) * 4 * i;
+      struct GENX(CPS_STATE) cps_state = {
+         .CoarsePixelShadingMode = cps_enable ? CPS_MODE_CONSTANT : CPS_MODE_NONE,
+      };
+
+      if (cps_enable) {
+         cps_state.MinCPSizeX = dynamic_state->fragment_shading_rate.width;
+         cps_state.MinCPSizeY = dynamic_state->fragment_shading_rate.height;
+      }
+
+      GENX(CPS_STATE_pack)(NULL, cps_state_dwords, &cps_state);
+   }
+
+   anv_batch_emit(batch, GENX(3DSTATE_CPS_POINTERS), cps) {
+      cps.CoarsePixelShadingStateArrayPointer = cps_states.offset;
+   }
+#endif
+}
+#endif /* GFX_VER >= 11 */
+
 static uint32_t
 vk_to_intel_tex_filter(VkFilter filter, bool anisotropyEnable)
 {
@@ -770,6 +811,10 @@ VkResult genX(CreateSampler)(
       struct GENX(SAMPLER_STATE) sampler_state = {
          .SamplerDisable = false,
          .TextureBorderColorMode = DX10OGL,
+
+#if GFX_VER >= 11
+         .CPSLODCompensationEnable = true,
+#endif
 
 #if GFX_VER >= 8
          .LODPreClampMode = CLAMP_MODE_OGL,
