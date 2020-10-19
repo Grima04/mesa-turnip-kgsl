@@ -440,6 +440,23 @@ can_fast_clear_depth(struct iris_context *ice,
                                     box->y + box->height);
 }
 
+static float
+convert_depth_value(enum pipe_format format, double depth)
+{
+   /* Quantize the clear value to what can be stored in the actual depth
+    * buffer. This makes checking for changes more accurate because the actual
+    * depth bits are compared. It also prevents us from getting a too-accurate
+    * depth value during depth testing or when sampling with HiZ enabled.
+    */
+   if (format == PIPE_FORMAT_Z32_FLOAT) {
+      return depth;
+   } else {
+      const unsigned nbits = format == PIPE_FORMAT_Z16_UNORM ? 16 : 24;
+      const uint32_t depth_max = (1 << nbits) - 1;
+      return (unsigned)(depth * depth_max) / (float)depth_max;
+   }
+}
+
 static void
 fast_clear_depth(struct iris_context *ice,
                  struct iris_resource *res,
@@ -450,16 +467,7 @@ fast_clear_depth(struct iris_context *ice,
    struct pipe_resource *p_res = (void *) res;
    struct iris_batch *batch = &ice->batches[IRIS_BATCH_RENDER];
 
-   /* Quantize the clear value to what can be stored in the actual depth
-    * buffer.  This makes the following check more accurate because it now
-    * checks if the actual depth bits will match.  It also prevents us from
-    * getting a too-accurate depth value during depth testing or when sampling
-    * with HiZ enabled.
-    */
-   const unsigned nbits = p_res->format == PIPE_FORMAT_Z16_UNORM ? 16 : 24;
-   const uint32_t depth_max = (1 << nbits) - 1;
-   depth = p_res->format == PIPE_FORMAT_Z32_FLOAT ? depth :
-      (unsigned)(depth * depth_max) / (float)depth_max;
+   depth = convert_depth_value(p_res->format, depth);
 
    bool update_clear_depth = false;
 
