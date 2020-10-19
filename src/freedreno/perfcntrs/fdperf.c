@@ -115,8 +115,10 @@ readfile(const char *path, int *sz)
 	int fd, ret, n = 0;
 
 	fd = open(path, O_RDONLY);
-	if (fd < 0)
+	if (fd < 0) {
+		*sz = 0;
 		return NULL;
+	}
 
 	while (1) {
 		buf = realloc(buf, n + CHUNKSIZE);
