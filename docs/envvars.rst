@@ -554,6 +554,9 @@ RADV driver environment variables
    ``forcecompress``
       Enables DCC,FMASK,CMASK,HTILE in situations where the driver supports it
       but normally does not deem it beneficial.
+   ``hang``
+      enable GPU hangs detection and dump a report to $HOME/radv_dumps_<pid>
+      if a GPU hang is detected
    ``info``
       show GPU-related information
    ``metashaders``
@@ -624,8 +627,6 @@ RADV driver environment variables
 
 ``RADV_TEX_ANISO``
    force anisotropy filter (up to 16)
-``RADV_TRACE_FILE``
-   generate cmdbuffer tracefiles when a GPU hang is detected
 ``ACO_DEBUG``
    a comma-separated list of named flags, which do various things:
 

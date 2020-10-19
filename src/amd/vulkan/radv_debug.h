@@ -57,6 +57,7 @@ enum {
 	RADV_DEBUG_DISCARD_TO_DEMOTE = 1 << 26,
 	RADV_DEBUG_LLVM              = 1 << 27,
 	RADV_DEBUG_FORCE_COMPRESS    = 1 << 28,
+	RADV_DEBUG_HANG              = 1 << 29,
 };
 
 enum {

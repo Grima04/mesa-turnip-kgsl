@@ -530,6 +530,7 @@ static const struct debug_control radv_debug_options[] = {
 	{"discardtodemote", RADV_DEBUG_DISCARD_TO_DEMOTE},
 	{"llvm", RADV_DEBUG_LLVM},
 	{"forcecompress", RADV_DEBUG_FORCE_COMPRESS},
+	{"hang", RADV_DEBUG_HANG},
 	{NULL, 0}
 };
 
@@ -2794,18 +2795,24 @@ VkResult radv_CreateDevice(
 		device->physical_device->rad_info.family == CHIP_HAWAII ? 4096 : 8192;
 
 	if (getenv("RADV_TRACE_FILE")) {
-		const char *filename = getenv("RADV_TRACE_FILE");
+		fprintf(stderr, "***********************************************************************************\n");
+		fprintf(stderr, "* WARNING: RADV_TRACE_FILE=<file> is deprecated and replaced by RADV_DEBUG=hang *\n");
+		fprintf(stderr, "***********************************************************************************\n");
+		abort();
+	}
 
+	if (device->instance->debug_flags & RADV_DEBUG_HANG) {
+		/* Enable GPU hangs detection and dump logs if a GPU hang is
+		 * detected.
+		 */
 		keep_shader_info = true;
 
 		if (!radv_init_trace(device))
 			goto fail;
 
 		fprintf(stderr, "*****************************************************************************\n");
-		fprintf(stderr, "* WARNING: RADV_TRACE_FILE is costly and should only be used for debugging! *\n");
+		fprintf(stderr, "* WARNING: RADV_DEBUG=hang is costly and should only be used for debugging! *\n");
 		fprintf(stderr, "*****************************************************************************\n");
-
-		fprintf(stderr, "Trace file will be dumped to %s\n", filename);
 
 		/* Wait for idle after every draw/dispatch to identify the
 		 * first bad call.

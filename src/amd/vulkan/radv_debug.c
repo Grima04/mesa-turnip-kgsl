@@ -83,19 +83,10 @@ radv_init_trace(struct radv_device *device)
 }
 
 static void
-radv_dump_trace(struct radv_device *device, struct radeon_cmdbuf *cs)
+radv_dump_trace(struct radv_device *device, struct radeon_cmdbuf *cs, FILE *f)
 {
-	const char *filename = getenv("RADV_TRACE_FILE");
-	FILE *f = fopen(filename, "w");
-
-	if (!f) {
-		fprintf(stderr, "Failed to write trace dump to %s\n", filename);
-		return;
-	}
-
 	fprintf(f, "Trace ID: %x\n", *device->trace_id_ptr);
 	device->ws->cs_dump(cs, f, (const int*)device->trace_id_ptr, 2);
-	fclose(f);
 }
 
 static void
@@ -625,8 +616,6 @@ radv_check_gpu_hangs(struct radv_queue *queue, struct radeon_cmdbuf *cs)
 
 	fprintf(stderr, "radv: GPU hang detected...\n");
 
-	radv_dump_trace(queue->device, cs);
-
 	/* Create a directory into $HOME/radv_dumps_<pid> to save various
 	 * debugging info about that GPU hang.
 	 */
@@ -636,6 +625,14 @@ radv_check_gpu_hangs(struct radv_queue *queue, struct radeon_cmdbuf *cs)
 		fprintf(stderr, "radv: can't create directory '%s' (%i).\n",
 			dump_dir, errno);
 		abort();
+	}
+
+	/* Dump trace file. */
+	snprintf(dump_path, sizeof(dump_path), "%s/%s", dump_dir, "trace.log");
+	f = fopen(dump_path, "w+");
+	if (f) {
+		radv_dump_trace(queue->device, cs, f);
+		fclose(f);
 	}
 
 	/* Dump pipeline state. */
