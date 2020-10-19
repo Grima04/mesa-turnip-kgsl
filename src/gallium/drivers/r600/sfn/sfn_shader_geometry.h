@@ -64,7 +64,7 @@ private:
    std::array<PValue, 6> m_per_vertex_offsets;
    PValue m_primitive_id;
    PValue m_invocation_id;
-   PValue m_export_base;
+   PValue m_export_base[4];
    bool m_first_vertex_emitted;
 
    std::map<unsigned, ArrayDeref> m_in_array_deref;

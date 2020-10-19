@@ -65,7 +65,7 @@ bool GeometryShaderFromNir::do_emit_store_deref(const nir_variable *out_var, nir
 
    auto ir = new MemRingOutIntruction(cf_mem_ring, mem_write_ind, out_value,
                                       4 * out_var->data.driver_location,
-                                      instr->num_components, m_export_base);
+                                      instr->num_components, m_export_base[0]);
 
    streamout_data[out_var->data.location] = ir;
 
@@ -180,8 +180,14 @@ bool GeometryShaderFromNir::do_allocate_reserved_registers()
    m_invocation_id.reset(reg);
    inject_register(1, 3, m_invocation_id, false);
 
-   m_export_base = get_temp_register();
-   emit_instruction(new AluInstruction(op1_mov, m_export_base, Value::zero, {alu_write, alu_last_instr}));
+   m_export_base[0] = get_temp_register(0);
+   m_export_base[1] = get_temp_register(0);
+   m_export_base[2] = get_temp_register(0);
+   m_export_base[3] = get_temp_register(0);
+   emit_instruction(new AluInstruction(op1_mov, m_export_base[0], Value::zero, {alu_write, alu_last_instr}));
+   emit_instruction(new AluInstruction(op1_mov, m_export_base[1], Value::zero, {alu_write, alu_last_instr}));
+   emit_instruction(new AluInstruction(op1_mov, m_export_base[2], Value::zero, {alu_write, alu_last_instr}));
+   emit_instruction(new AluInstruction(op1_mov, m_export_base[3], Value::zero, {alu_write, alu_last_instr}));
 
    sh_info().ring_item_sizes[0] = m_next_input_ring_offset;
 
@@ -193,7 +199,7 @@ bool GeometryShaderFromNir::do_allocate_reserved_registers()
 
 void GeometryShaderFromNir::emit_adj_fix()
 {
-   PValue adjhelp0(new  GPRValue(m_export_base->sel(), 1));
+   PValue adjhelp0(new  GPRValue(m_export_base[0]->sel(), 1));
    emit_instruction(op2_and_int, adjhelp0, {m_primitive_id, Value::one_i}, {alu_write, alu_last_instr});
 
    int help2 = allocate_temp_register();
@@ -203,7 +209,7 @@ void GeometryShaderFromNir::emit_adj_fix()
    int rotate_indices[6] = {4, 5, 0, 1, 2, 3};
 
    reg_indices[0] = reg_indices[1] = reg_indices[2] = reg_indices[3] = help2;
-   reg_indices[4] = reg_indices[5] = m_export_base->sel();
+   reg_indices[4] = reg_indices[5] = m_export_base[0]->sel();
 
    std::array<PValue, 6> adjhelp;
 
@@ -270,7 +276,7 @@ bool GeometryShaderFromNir::emit_vertex(nir_intrinsic_instr* instr, bool cut)
 
    for(auto v: streamout_data) {
       if (stream == 0 || v.first != VARYING_SLOT_POS) {
-         v.second->patch_ring(stream);
+         v.second->patch_ring(stream, m_export_base[stream]);
          emit_instruction(v.second);
       } else
          delete v.second;
@@ -279,7 +285,7 @@ bool GeometryShaderFromNir::emit_vertex(nir_intrinsic_instr* instr, bool cut)
    emit_instruction(new EmitVertex(stream, cut));
 
    if (!cut)
-      emit_instruction(new AluInstruction(op2_add_int, m_export_base, m_export_base,
+      emit_instruction(new AluInstruction(op2_add_int, m_export_base[stream], m_export_base[stream],
                                           PValue(new LiteralValue(sh_info().noutput)),
                                           {alu_write, alu_last_instr}));
 
