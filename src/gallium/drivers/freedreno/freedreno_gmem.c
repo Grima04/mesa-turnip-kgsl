@@ -780,6 +780,44 @@ fd_gmem_needs_restore(struct fd_batch *batch, const struct fd_tile *tile,
 }
 
 void
+fd_gmem_init_limits(struct pipe_screen *pscreen)
+{
+	struct fd_screen *screen = fd_screen(pscreen);
+
+	switch (screen->gpu_id) {
+	case 600 ... 699:
+		screen->gmem_alignw = 16;
+		screen->gmem_alignh = 4;
+		screen->tile_alignw = is_a650(screen) ? 96 : 32;
+		screen->tile_alignh = 32;
+		screen->num_vsc_pipes = 32;
+		break;
+	case 500 ... 599:
+		screen->gmem_alignw = screen->tile_alignw = 64;
+		screen->gmem_alignh = screen->tile_alignh = 32;
+		screen->num_vsc_pipes = 16;
+		break;
+	case 400 ... 499:
+		screen->gmem_alignw = screen->tile_alignw = 32;
+		screen->gmem_alignh = screen->tile_alignh = 32;
+		screen->num_vsc_pipes = 8;
+		break;
+	case 300 ... 399:
+		screen->gmem_alignw = screen->tile_alignw = 32;
+		screen->gmem_alignh = screen->tile_alignh = 32;
+		screen->num_vsc_pipes = 8;
+		break;
+	case 200 ... 299:
+		screen->gmem_alignw = screen->tile_alignw = 32;
+		screen->gmem_alignh = screen->tile_alignh = 32;
+		screen->num_vsc_pipes = 8;
+		break;
+	default:
+		unreachable("unsupported GPU");
+	}
+}
+
+void
 fd_gmem_screen_init(struct pipe_screen *pscreen)
 {
 	struct fd_gmem_cache *cache = &fd_screen(pscreen)->gmem_cache;
