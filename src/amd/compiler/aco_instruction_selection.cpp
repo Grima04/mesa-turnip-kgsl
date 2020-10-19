@@ -6934,6 +6934,8 @@ void ngg_visit_set_vertex_and_primitive_count(isel_context *ctx, nir_intrinsic_i
    if (!ctx->args->shader_info->gs.num_stream_output_components[stream])
       return;
 
+   ctx->ngg_gs_known_vtxcnt[stream] = true;
+
    /* Clear the primitive flags of non-emitted GS vertices. */
    if (!nir_src_is_const(instr->src[0]) || nir_src_as_uint(instr->src[0]) < ctx->shader->info.gs.vertices_out) {
       Temp vtx_cnt = get_ssa_temp(ctx, instr->src[0].ssa);
@@ -11577,6 +11579,9 @@ void ngg_gs_prelude(isel_context *ctx)
 
 void ngg_gs_finale(isel_context *ctx)
 {
+   /* Sanity check. Make sure the vertex/primitive counts are set and the LDS is correctly initialized. */
+   assert(ctx->ngg_gs_known_vtxcnt[0]);
+
    if_context ic;
    Builder bld(ctx->program, ctx->block);
 
