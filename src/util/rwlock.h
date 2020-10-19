@@ -29,7 +29,7 @@
 #define RWLOCK_H
 
 #ifdef _WIN32
-#include <Windows.h>
+#include <windows.h>
 #else
 #include <pthread.h>
 #endif
