@@ -36,6 +36,8 @@
 
 #include "frontend/sw_winsys.h"
 
+#include "drm-uapi/drm_fourcc.h"
+
 static void
 zink_resource_destroy(struct pipe_screen *pscreen,
                       struct pipe_resource *pres)
@@ -339,6 +341,7 @@ zink_resource_get_handle(struct pipe_screen *pscreen,
       if (result != VK_SUCCESS)
          return false;
       whandle->handle = fd;
+      whandle->modifier = DRM_FORMAT_MOD_INVALID;
    }
    return true;
 }
@@ -349,6 +352,9 @@ zink_resource_from_handle(struct pipe_screen *pscreen,
                  struct winsys_handle *whandle,
                  unsigned usage)
 {
+   if (whandle->modifier != DRM_FORMAT_MOD_INVALID)
+      return NULL;
+
    return resource_create(pscreen, templ, whandle, usage);
 }
 
